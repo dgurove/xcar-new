@@ -17,7 +17,7 @@
     $car = $i->carLine();
     [$state, $tone] = L::state($link);
     $paidAttempt = $link->state === PayLinkState::Paid ? $link->attempts->firstWhere('payment_id', $link->payment_id) : null;
-    if ($paidAttempt?->method) { $state = 'оплачено '.mb_strtolower(PayMethod::label($paidAttempt->method)).' '.$link->paid_at->translatedFormat('j M'); }
+    if ($paidAttempt?->method) { $state = 'оплачено '.mb_strtolower(PayMethod::label($paidAttempt->method)).' '.\App\Support\Ago::day($link->paid_at); }
     $deal = $i->deal ?? $i->creditDeal;
     $dealUrl = $deal?->offer ? '/offers/'.$deal->offer->number : null;
     $by = L::creator($link);
@@ -36,7 +36,7 @@
     };
     $open = fn (string $name) => 'data-controller="emit" data-action="emit#send" data-emit-event-param="link-'.$id.'-'.$name.':open"';
     // Время без часов (оплату отметили датой) — только день, а не «00:00».
-    $at = fn ($t) => $t->format('H:i:s') === '00:00:00' ? $t->translatedFormat('j M') : \App\Support\Ago::stamp($t, true);
+    $at = fn ($t) => $t->format('H:i:s') === '00:00:00' ? \App\Support\Ago::day($t) : \App\Support\Ago::stamp($t, true);
     // История: создал, попытки плательщика, оплачено или отменена — по времени.
     $history = collect([['created' => $link->created_at, 'text' => match (true) { (bool) $by => 'Создал '.$by->shortName(), $link->origin() === 'deal' => 'Создана сделкой', $link->origin() === 'garage' => 'Создана гаражом', default => 'Создана вручную' }, 'tone' => null]]);
     foreach ($link->attempts as $a) {
@@ -116,7 +116,7 @@
             @endif
             <a href="/work/money/invoices/{{ $i->id }}" class="row" data-turbo-frame="_top">
                 <span class="shrink-0 text-ink-muted">Счёт</span>
-                <span class="min-w-0 flex-1 truncate text-right nums">{{ $i->label() }}@if ($i->issued_at) от {{ $i->issued_at->translatedFormat('j M') }}@endif</span>
+                <span class="min-w-0 flex-1 truncate text-right nums">{{ $i->label() }}@if ($i->issued_at) от {{ \App\Support\Ago::html($i->issued_at, words: false) }}@endif</span>
                 <x-ui.chevron/>
             </a>
             @if ($link->payer_email)

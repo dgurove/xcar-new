@@ -27,7 +27,7 @@
     <x-ui.vin-code :vin="$v('vin')" class="tag"/>
     @if ($by || $phone || $v('insured_name'))
         <div class="detail-line basis-full !mt-0.5 text-sm">
-            @if ($by)<span class="nums {{ $by->isPast() ? 'text-danger' : 'text-urgent' }}">ответить до {{ $by->translatedFormat('j M, H:i') }}</span>@endif
+            @if ($by)<span class="nums {{ $by->isPast() ? 'text-danger' : 'text-urgent' }}">ответить до {{ \App\Support\Ago::html($by, true, words: false) }}</span>@endif
             @if ($v('insured_name'))<span>{{ $v('insured_name') }}</span>@endif
             @if ($phone)<a href="tel:{{ preg_replace('/[^\d+]/', '', $phone) }}" class="nums whitespace-nowrap text-accent-text">{{ $phone }}</a>@endif
         </div>

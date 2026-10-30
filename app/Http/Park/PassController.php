@@ -7,7 +7,9 @@ use App\Park\Actions\RenewPickupLink;
 use App\Park\Actions\SendPickupLink;
 use App\Park\Pass;
 use App\Park\Vehicle;
+use App\Support\Ago;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 /**
  * Выдача по QR, сторона парковки: проверка отсканированного кода при выдаче, «Страховая подтвердила»,
@@ -20,13 +22,13 @@ class PassController
     {
         $pass = Pass::byCode((string) $request->input('code'));
         $pass?->load(['vehicle.yard', 'vehicle']);
-        $when = fn (Pass $p) => \Illuminate\Support\Str::ucfirst(implode(', ', array_filter([$p->isDeal() ? 'по сделке XCar' : null, ($w = $p->whenLabel()) ? 'заберёт '.$w : null, 'сверьте с паспортом'])));
+        $when = fn (Pass $p) => Str::ucfirst(implode(', ', array_filter([$p->isDeal() ? 'по сделке XCar' : null, ($w = $p->whenLabel()) ? 'заберёт '.$w : null, 'сверьте с паспортом'])));
 
         return response()->json(match (true) {
             ! $pass => ['status' => 'unknown', 'title' => 'Это не пропуск XCar', 'text' => 'Попросите показать QR-код из письма'],
             $pass->vehicle_id !== $vehicle->id => ['status' => 'other', 'title' => 'QR для другого ТС', 'person' => $pass->vehicle->titleWithYear(),
                 'text' => $pass->vehicle->yard ? 'Парковка '.$pass->vehicle->yard->name : '', 'url' => '/cars/'.$pass->vehicle_id],
-            (bool) $pass->used_at => ['status' => 'used', 'title' => 'По этому QR ТС уже выдано', 'person' => $pass->name, 'text' => $pass->used_at->translatedFormat('j F, H:i')],
+            (bool) $pass->used_at => ['status' => 'used', 'title' => 'По этому QR ТС уже выдано', 'person' => $pass->name, 'text' => Ago::day($pass->used_at, true)],
             (bool) $pass->revoked_at => ['status' => 'revoked', 'title' => 'Пропуск погашен', 'person' => $pass->name, 'text' => $pass->revoke_reason ?: 'Покупатель сменился'],
             ! $pass->isConfirmed() => ['status' => 'unconfirmed', 'code' => $pass->code, 'name' => $pass->name, 'title' => 'Страховая не подтвердила',
                 'person' => $pass->name, 'text' => $when($pass)],

@@ -15,6 +15,8 @@ use App\Offers\Actions\ScheduleOffer;
 use App\Offers\Offer;
 use App\Offers\OfferState;
 use App\Offers\Slots;
+use App\Support\Ago;
+use App\Users\User;
 use App\Workflow\Actions\ExtendDeadline;
 use App\Workflow\Actions\PlaceOnStage;
 use App\Workflow\Actions\StepBack;
@@ -22,6 +24,7 @@ use App\Workflow\Actions\TakeExit;
 use App\Workflow\Actor;
 use App\Workflow\Outcome;
 use App\Workflow\Path;
+use App\Workflow\Requirement;
 use App\Workflow\Stage;
 use App\Workflow\Track;
 use Illuminate\Http\Request;
@@ -43,7 +46,7 @@ class RouteController
             $offer = $schedule($offer, $when, $request->user(), until: Slots::urgentUntil($request->input('urgent_until')));
 
             return back(fallback: "/offers/{$offer->number}")->with('toast', $offer->isUrgent()
-                ? 'Срочно в продаже, приём до '.$offer->bids_close_at->translatedFormat('j M, H:i')
+                ? 'Срочно в продаже, приём до '.Ago::day($offer->bids_close_at, true)
                 : 'Выйдет '.Slots::phrase($offer->slot_at));
         }
         $payload = [];
@@ -55,7 +58,7 @@ class RouteController
             if ($value !== '') {
                 // Дата со временем — словами, как её прочтёт менеджер: «20 октября, 10:00».
                 $value = match ($field['type'] ?? '') {
-                    'datetime' => Carbon::parse($value)->translatedFormat('j F, H:i'),
+                    'datetime' => Ago::day(Carbon::parse($value), true),
                     'date' => ($field['out'] ?? false) ? Carbon::parse($value)->translatedFormat('j F Y') : $value,
                     default => $value,
                 };
@@ -98,7 +101,7 @@ class RouteController
     }
 
     /** Исход менеджера, нажатый сотрудником: его просьба закрыта этим ответом (кнопки Telegram скажут «Уже отвечено»). */
-    private function forManager(Offer $offer, Outcome $exit, TakeExit $take, \App\Users\User $by): Offer
+    private function forManager(Offer $offer, Outcome $exit, TakeExit $take, User $by): Offer
     {
         abort_unless($by->canManageCrm(), 403);
         $exit->loadMissing('from');
@@ -106,7 +109,7 @@ class RouteController
         if ($exit->actor !== Actor::Manager || ! $deal?->buyer_id) {
             throw ValidationException::withMessages(['exit' => 'Это не ответ менеджера']);
         }
-        \App\Workflow\Requirement::closeOpen($deal, $exit->stage_id, ['exit' => $exit->label, 'closed_by' => 'staff', 'by' => $by->id]);
+        Requirement::closeOpen($deal, $exit->stage_id, ['exit' => $exit->label, 'closed_by' => 'staff', 'by' => $by->id]);
 
         return $take($offer, $exit, Actor::Manager, $by, ['for' => 'manager']);
     }
@@ -143,7 +146,7 @@ class RouteController
         $until = ExtendDeadline::untilFrom($position, $data);
         $extend($position, $until, $request->user());
 
-        return back(fallback: "/offers/{$offer->number}")->with('toast', 'Срок до '.$until->translatedFormat('j M, H:i'));
+        return back(fallback: "/offers/{$offer->number}")->with('toast', 'Срок до '.Ago::day($until, true));
     }
 
     /**

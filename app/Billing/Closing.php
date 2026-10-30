@@ -8,6 +8,7 @@ use App\Park\City;
 use App\Park\EventType;
 use App\Park\Vehicle;
 use App\Park\VehicleState;
+use App\Support\Ago;
 use App\Users\User;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Carbon;
@@ -50,10 +51,10 @@ final class Closing
                     continue;
                 }
                 $until = $released;
-                $reason = 'выбыла '.$released->translatedFormat('j M');
+                $reason = 'выбыла '.Ago::day($released);
             } else {
                 $until = $released && $released->lt($end) ? $released : $end;
-                $reason = $released && $released->lt($end) ? 'выбыла '.$released->translatedFormat('j M') : 'за '.Carbon::instance($month)->translatedFormat('F');
+                $reason = $released && $released->lt($end) ? 'выбыла '.Ago::day($released) : 'за '.Carbon::instance($month)->translatedFormat('F');
             }
             $groups = [];
             foreach (Accrual::storage($v, $until)->filter(fn ($s) => $s['amount'] > 0) as $s) {

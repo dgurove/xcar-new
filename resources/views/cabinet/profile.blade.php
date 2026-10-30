@@ -106,7 +106,7 @@
                 {{-- Строка ключа и есть кнопка удаления: одно действие — сам элемент, с подтверждением. --}}
                 <form method="post" action="/passkey/{{ $key->id }}" class="contents"
                     data-turbo-confirm="Удалить ключ?" data-turbo-confirm-label="Удалить"
-                    data-turbo-confirm-text="{{ $key->alias ?: 'Ключ' }}, добавлен {{ $key->created_at->translatedFormat('j M Y') }}. Вход по паролю останется">
+                    data-turbo-confirm-text="{{ $key->alias ?: 'Ключ' }}, добавлен {{ $key->created_at->format('d.m.Y') }}. Вход по паролю останется">
                     @csrf @method('delete')
                     <button class="row w-full text-left">
                         <x-ui.row-icon name="faceid" size="s"/>
@@ -117,9 +117,9 @@
                                 @if ($key->disabled_at)
                                     <span class="tag tag-amber">отключён</span>
                                 @elseif ($key->last_used_at)
-                                    <span class="tag nums">вход {{ \Illuminate\Support\Carbon::parse($key->last_used_at)->translatedFormat('j M') }}</span>
+                                    <span class="tag nums">вход {{ \App\Support\Ago::html(\Illuminate\Support\Carbon::parse($key->last_used_at), words: false) }}</span>
                                 @else
-                                    <span class="tag nums">{{ $key->created_at->translatedFormat('j M') }}</span>
+                                    <span class="tag nums">{{ \App\Support\Ago::html($key->created_at, words: false) }}</span>
                                 @endif
                             </span>
                         </span>

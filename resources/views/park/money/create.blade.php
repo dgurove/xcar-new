@@ -23,7 +23,7 @@
                 <div class="flex flex-col gap-2">
                     @foreach ($segments as $s)
                         <div class="row !py-2">
-                            <span class="min-w-0 flex-1"><span class="block nums">{{ $s['from']->translatedFormat('j M') }} – {{ $s['to']->translatedFormat('j M') }}</span><span class="row-sub nums">{{ $s['days'] }} сут × {{ Money::rub($s['rate']) }}</span></span>
+                            <span class="min-w-0 flex-1"><span class="block nums">{{ \App\Support\Ago::html($s['from'], words: false) }} – {{ \App\Support\Ago::html($s['to'], words: false) }}</span><span class="row-sub nums">{{ $s['days'] }} сут × {{ Money::rub($s['rate']) }}</span></span>
                             <span class="nums font-semibold">{{ Money::rub($s['amount']) }}</span>
                         </div>
                     @endforeach

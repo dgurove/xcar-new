@@ -15,7 +15,7 @@
     {{-- В шапке дела — и ставка шторкой (12.10.2026, `x-park.rate`): одно место, где её ставят. --}}
     @if ($move)<x-park.rate :vehicle="$vehicle" key="head" class="fact"/>@endif
 @elseif ($vehicle->state === \App\Park\VehicleState::Released)
-    <span class="fact nums">{{ $vehicle->released_at?->translatedFormat('j M Y') }}</span>
+    <span class="fact nums">{{ $vehicle->released_at?->format('d.m.Y') }}</span>
 @elseif ($vehicle->state === \App\Park\VehicleState::Cancelled && $vehicle->cancel_reason)
     <span class="fact">{{ $vehicle->cancel_reason }}</span>
 @endif

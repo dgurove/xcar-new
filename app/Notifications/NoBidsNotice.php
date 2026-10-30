@@ -3,6 +3,7 @@
 namespace App\Notifications;
 
 use App\Offers\Offer;
+use App\Support\Ago;
 
 /**
  * Ни одного подтверждения (22.10.2026, владелец: «по горящему ни одного подтверждения — потеряли деньги, в идеале ни одно
@@ -30,7 +31,7 @@ final class NoBidsNotice extends Notice
     {
         $at = $this->offer->bids_close_at;
 
-        return $at ? 'Приём до '.($at->isToday() ? $at->format('H:i') : $at->translatedFormat('j M, H:i')) : null;
+        return $at ? 'Приём до '.($at->isToday() ? $at->format('H:i') : Ago::day($at, true)) : null;
     }
 
     public function href(): string

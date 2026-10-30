@@ -11,7 +11,7 @@
         <span class="min-w-0 flex-1">
             <span class="flex items-baseline gap-3">
                 <span class="min-w-0 flex-1 {{ $alarm ? 'font-medium text-danger' : ($item->read_at ? '' : 'font-medium') }}">{{ \App\Notifications\Notice::glue($item->data['title']) }}</span>
-                <span class="nums shrink-0 text-sm text-ink-dim">{{ \App\Support\Ago::stamp($item->created_at, time: true) }}</span>
+                <span class="nums shrink-0 text-sm text-ink-dim">{{ \App\Support\Ago::html($item->created_at, time: true, short: true) }}</span>
             </span>
             @if (!empty($item->data['text']))<span class="mt-0.5 block whitespace-pre-line text-sm text-ink-muted">{{ $item->data['text'] }}</span>@endif
         </span>

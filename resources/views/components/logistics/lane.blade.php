@@ -89,7 +89,7 @@
                     <div class="step-body">
                         <div class="step-head">
                             <span class="step-title flex-1">{{ $step['title'] }}</span>
-                            @if ($step['status'] === 'done' && $step['at'])<span class="nums shrink-0 text-sm text-ink-dim">{{ $step['at']->translatedFormat('j M') }}</span>@endif
+                            @if ($step['status'] === 'done' && $step['at'])<span class="nums shrink-0 text-sm text-ink-dim">{{ \App\Support\Ago::html($step['at'], words: false) }}</span>@endif
                         </div>
                         @if ($step['hint'])<p class="step-hint">{{ $step['hint'] }}</p>@endif
                         @if ($step['key'] === 'executor' && $step['status'] === 'current' && $t->state === TransportState::New)

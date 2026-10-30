@@ -203,7 +203,8 @@ class TransportController
             // Откуда забирать — главный факт логиста (регионы): с 640, а не с 1536 (29.10.2026).
             'city' => new Column('city', 'Город', from: 'sm', aside: true, sort: 'city', rem: 7, clip: true, role: ColRole::Place),
             'step' => new Column('step', 'Что дальше', from: 'sm', role: ColRole::State, rem: 9),
-            'who' => new Column('who', 'Исполнитель', from: 'sm', sort: 'who', role: ColRole::Who, rem: 8),
+            // Кто везёт — главное в вывозе (30.10.2026, владелец: «непонятно, а кто исполнитель»): уходит последним.
+            'who' => new Column('who', 'Исполнитель', from: 'sm', sort: 'who', role: ColRole::Who, rem: 8, main: true),
             'created' => new Column('created', 'Поступила', from: $when ? '2xl' : null, aside: $when, sort: 'created', cell: 'nums whitespace-nowrap', role: ColRole::When, rem: 6.5),
             'when' => new Column('when', 'Когда', sort: 'when', cell: 'nums whitespace-nowrap', role: ColRole::When, rem: 6.5),
         };

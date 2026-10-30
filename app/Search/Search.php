@@ -18,6 +18,7 @@ use App\Offers\DealState;
 use App\Offers\LegacyClaim;
 use App\Offers\Offer;
 use App\Park\Vehicle;
+use App\Support\Ago;
 use App\Support\Money;
 use App\Support\Surface;
 use App\Users\User;
@@ -199,7 +200,7 @@ final class Search
             ->when($scope === Scope::Offers, fn ($q) => $q->crmMailFor($user))->search($t)
             ->latest('last_message_at')->limit(4)->get();
         $rows = $threads->take(3)
-            ->map(fn (Thread $th) => new Hit($th->subject ?: 'Без темы', $base.'?window='.$th->id, [$th->last_message_at?->translatedFormat('j M')]))->all();
+            ->map(fn (Thread $th) => new Hit($th->subject ?: 'Без темы', $base.'?window='.$th->id, [Ago::day($th->last_message_at)]))->all();
 
         return ['title' => 'Письма', 'rows' => $rows] + self::more($threads->count() > 3, 'Все письма', $base.'?q='.urlencode($t->raw));
     }

@@ -30,7 +30,7 @@
         @if (! $active)<x-ui.state :tone="$bid->state === BidState::Accepted ? 'open' : ($bid->state === BidState::Declined ? 'danger' : 'closed')">{{ $bid->state->label() }}</x-ui.state>@endif
     </div>
     {{-- Кто — человеком, телефон ссылкой и когда — текстом (10.10.2026: «что-то чипами, что-то текстом»). --}}
-    <div class="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm"><x-ui.person :user="$bid->user" full/>@if ($bid->user->isSuperBuyer())<span class="text-ink-dim">супер-покупатель</span>@endif @if ($bid->user->phone)<x-ui.phone :user="$bid->user"/>@endif<span class="nums text-ink-dim">{{ $bid->created_at->translatedFormat('j M, H:i') }}</span>@if ($bid->byStaff())<span class="text-ink-dim">внёс {{ $bid->placedBy?->shortName() }}</span>@endif</div>
+    <div class="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm"><x-ui.person :user="$bid->user" full/>@if ($bid->user->isSuperBuyer())<span class="text-ink-dim">супер-покупатель</span>@endif @if ($bid->user->phone)<x-ui.phone :user="$bid->user"/>@endif<span class="nums text-ink-dim">{{ \App\Support\Ago::html($bid->created_at, true, words: false) }}</span>@if ($bid->byStaff())<span class="text-ink-dim">внёс {{ $bid->placedBy?->shortName() }}</span>@endif</div>
     @if ($bid->comment)<div class="mt-1 text-sm">{{ $bid->comment }}</div>@endif
     {{-- Контрпредложение (26.10.2026): ждём ответа — акцентной строкой с «Отозвать», отказался — серым. --}}
     @if ($bid->hasPendingCounter())

@@ -7,9 +7,9 @@
         {{-- Состояние и срок — строкой текста, продление — лаймовыми словами (как в редакторе предложения, 10.10.2026). --}}
         <span class="flex basis-full flex-wrap items-baseline gap-x-3 gap-y-1 text-sm sm:basis-auto">
             @if ($purchase->closed())
-                <span class="nums text-ink-muted">Приём закрыт {{ $purchase->offers_close_at->translatedFormat('j M, H:i') }}</span>
+                <span class="nums text-ink-muted">Приём закрыт {{ \App\Support\Ago::html($purchase->offers_close_at, true, words: false) }}</span>
             @else
-                <x-ui.state :tone="$purchase->state->tone() === 'open' ? 'open' : ($purchase->state->tone() === 'plain' ? 'plain' : 'closed')">{{ $purchase->state->label() }}@if ($purchase->state === PurchaseState::Open && $purchase->offers_close_at)<span class="nums font-normal text-ink-muted"> до {{ $purchase->offers_close_at->translatedFormat('j M, H:i') }}</span>@endif</x-ui.state>
+                <x-ui.state :tone="$purchase->state->tone() === 'open' ? 'open' : ($purchase->state->tone() === 'plain' ? 'plain' : 'closed')">{{ $purchase->state->label() }}@if ($purchase->state === PurchaseState::Open && $purchase->offers_close_at)<span class="nums font-normal text-ink-muted"> до {{ \App\Support\Ago::html($purchase->offers_close_at, true, words: false) }}</span>@endif</x-ui.state>
             @endif
             @if ($purchase->state === PurchaseState::Open && $purchase->offers_close_at)
                 {{-- Продлить приём на ходу: срок считается от текущего, если он ещё не прошёл, иначе от сейчас. --}}

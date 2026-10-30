@@ -24,7 +24,7 @@
                         <{{ $mine ? 'button type=button data-action=sheet#open' : 'div' }} class="row w-full text-left">
                             <span class="min-w-0 flex-1">
                                 <span class="block">{{ $cost->title }}</span>
-                                <span class="row-sub">{{ $cost->spent_at->translatedFormat('j F') }}@if ($cost->payer === \App\Garage\Payer::Xcar), платили мы@elseif ($staff), платил менеджер@endif</span>
+                                <span class="row-sub">{{ \App\Support\Ago::html($cost->spent_at, words: false) }}@if ($cost->payer === \App\Garage\Payer::Xcar), платили мы@elseif ($staff), платил менеджер@endif</span>
                             </span>
                             <span class="nums shrink-0">{{ \App\Support\Money::exact($cost->amount) }}</span>
                             @if ($mine)<x-ui.chevron/>@endif

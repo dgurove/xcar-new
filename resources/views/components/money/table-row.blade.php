@@ -29,7 +29,7 @@
     <td class="{{ $col->classes() }} {{ $tone }}">{{ $now }}@if ($after)<span class="{{ $after[1] }}">, {{ $after[0] }}</span>@endif</td>
         @break
         @case('created')
-    <td class="{{ $col->classes() }}">{{ \App\Support\Ago::cell($invoice->created_at, true) }}</td>
+    <td class="{{ $col->classes() }}">{{ \App\Support\Ago::html($invoice->created_at, true) }}</td>
         @break
         @case('amount')
     <td class="{{ $col->classes() }} {{ $amountTone }}">{{ \App\Support\Money::nums($amount) }}</td>

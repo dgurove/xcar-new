@@ -98,14 +98,14 @@
                     <details class="step-details">
                         <summary class="step-head">
                             <span class="step-title flex-1">{{ $blockName($block) }}</span>
-                            <span class="flex shrink-0 items-center gap-1.5">@if ($step['at'])<span class="nums text-sm text-ink-dim">{{ $step['at']->translatedFormat('j M') }}</span>@endif<x-ui.icon name="chevron-down" class="step-chevron size-4 text-ink-dim"/></span>
+                            <span class="flex shrink-0 items-center gap-1.5">@if ($step['at'])<span class="nums text-sm text-ink-dim">{{ \App\Support\Ago::html($step['at'], words: false) }}</span>@endif<x-ui.icon name="chevron-down" class="step-chevron size-4 text-ink-dim"/></span>
                         </summary>
                         <div class="mt-1 flex flex-col gap-1">
                             @foreach ($step['stages'] as $s)
-                                <div class="flex flex-wrap items-baseline gap-x-2 text-sm"><span>{{ $s['stage'] }}</span><span class="nums text-ink-dim">{{ $s['at']->translatedFormat('j M, H:i') }}</span></div>
+                                <div class="flex flex-wrap items-baseline gap-x-2 text-sm"><span>{{ $s['stage'] }}</span><span class="nums text-ink-dim">{{ \App\Support\Ago::html($s['at'], true, words: false) }}</span></div>
                             @endforeach
                             @foreach ($answers as $r)
-                                <div class="text-sm"><span class="text-ink-muted">Менеджер:</span> {{ $r->answer['label'] ?? $r->answer['exit'] ?? $r->title }}@if (($r->answer['closed_by'] ?? null) === 'staff') <span class="text-ink-muted">(за него {{ $answeredBy->get($r->answer['by'] ?? 0)?->shortName() ?? 'сотрудник' }})</span>@endif <span class="nums text-ink-dim">{{ $r->done_at->translatedFormat('j M, H:i') }}</span></div>
+                                <div class="text-sm"><span class="text-ink-muted">Менеджер:</span> {{ $r->answer['label'] ?? $r->answer['exit'] ?? $r->title }}@if (($r->answer['closed_by'] ?? null) === 'staff') <span class="text-ink-muted">(за него {{ $answeredBy->get($r->answer['by'] ?? 0)?->shortName() ?? 'сотрудник' }})</span>@endif <span class="nums text-ink-dim">{{ \App\Support\Ago::html($r->done_at, true, words: false) }}</span></div>
                                 @foreach ($r->answer['fields'] ?? [] as $k => $v)<div class="text-sm"><span class="text-ink-muted">{{ collect($r->fields)->firstWhere('key', $k)['label'] ?? $k }}:</span> {{ is_array($v) ? implode(', ', $v) : $v }}</div>@endforeach
                                 @foreach ($r->getMedia('files') as $f)<x-ui.file :name="$f->file_name" :mime="$f->mime_type" :size="$f->humanReadableSize" href="/files/{{ $f->id }}" class="py-1"/>@endforeach
                             @endforeach
@@ -189,7 +189,7 @@
                         <x-route.clock :position="$position" side="staff" class="step-hint" :letters="'/offers/'.$offer->number.'/letters'"/>
                     @elseif (! $wantsInvoice && ($overdue || $position->waitsFor() !== WaitsFor::Nobody || $clock || $waitsWord))
                         {{-- Одной строкой: переносы в разметке давали пробел перед запятой. --}}
-                        <p class="step-hint {{ $tone }}">@if ($overdue)Срок вышел <span class="nums" data-controller="timer" data-timer-since-value="{{ $position->deadline_at->toIso8601String() }}" data-timer-coarse-value="true"></span> назад@else{{ $waitsWord ?? $position->waitsFor()->label() }}@if ($position->deadline_at), осталось <span class="nums" data-controller="timer" data-timer-until-value="{{ $position->deadline_at->toIso8601String() }}" data-timer-done-value="-" data-timer-coarse-value="true" data-timer-word-value="">{{ \App\Support\Ago::left($position->deadline_at, '') }}</span>@elseif ($req?->due_at), до <span class="nums">{{ $req->due_at->translatedFormat('j M, H:i') }}</span>@elseif ($stage->timerMode() === 'stopwatch'), идёт <span class="nums" data-controller="timer" data-timer-since-value="{{ $position->block_entered_at->toIso8601String() }}" data-timer-coarse-value="true"></span>@endif @endif</p>
+                        <p class="step-hint {{ $tone }}">@if ($overdue)Срок вышел <span class="nums" data-controller="timer" data-timer-since-value="{{ $position->deadline_at->toIso8601String() }}" data-timer-coarse-value="true"></span> назад@else{{ $waitsWord ?? $position->waitsFor()->label() }}@if ($position->deadline_at), осталось <span class="nums" data-controller="timer" data-timer-until-value="{{ $position->deadline_at->toIso8601String() }}" data-timer-done-value="-" data-timer-coarse-value="true" data-timer-word-value="">{{ \App\Support\Ago::left($position->deadline_at, '') }}</span>@elseif ($req?->due_at), до <span class="nums">{{ \App\Support\Ago::html($req->due_at, true, words: false) }}</span>@elseif ($stage->timerMode() === 'stopwatch'), идёт <span class="nums" data-controller="timer" data-timer-since-value="{{ $position->block_entered_at->toIso8601String() }}" data-timer-coarse-value="true"></span>@endif @endif</p>
                     @endif
                     {{-- Согласие менеджера: чаще всего он уже сказал «да» устно — «Беру в работу» за него видной тихой кнопкой. --}}
                     @if ($takeFor)
@@ -223,7 +223,7 @@
                             <div class="flex flex-wrap items-baseline gap-x-2 gap-y-1">
                                 <span class="text-sm text-ink-muted">Менеджер сообщил об оплате</span>
                                 <span class="nums font-semibold">{{ Money::rub($p->amount) }}</span>
-                                <span class="nums text-sm text-ink-dim">{{ $p->paid_at->translatedFormat('j M') }}@if ($p->ref), № {{ $p->ref }}@endif</span>
+                                <span class="nums text-sm text-ink-dim">{{ \App\Support\Ago::html($p->paid_at, words: false) }}@if ($p->ref), № {{ $p->ref }}@endif</span>
                             </div>
                             <div class="mt-2 flex flex-wrap items-center gap-2">
                                 <form method="post" action="/work/payments/{{ $p->id }}/confirm" class="contents" data-turbo-confirm="Поступило {{ Money::rub($p->amount) }}?">@csrf<x-ui.button size="sm">Поступило</x-ui.button></form>

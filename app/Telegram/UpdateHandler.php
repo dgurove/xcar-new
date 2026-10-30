@@ -15,11 +15,14 @@ use App\Notifications\RepriceAskNotice;
 use App\Notifications\TelegramChannel;
 use App\Notifications\YourTurnNotice;
 use App\Offers\Actions\AnswerCounter;
+use App\Offers\Actions\AnswerReprice;
 use App\Offers\Actions\ApplyValuations;
 use App\Offers\Bid;
 use App\Offers\Deal;
 use App\Offers\DealState;
+use App\Offers\RepriceAsk;
 use App\Offers\ValuationText;
+use App\Support\Ago;
 use App\Support\Plural;
 use App\Support\Surface;
 use App\Telegram\Actions\DecideLogin;
@@ -213,7 +216,7 @@ final class UpdateHandler
                 $deal = $agree ? $bid->offer->deal()->first() : null;
 
                 return [$agree ? 'Сделка открыта' : 'Отказались',
-                    $agree ? 'Вы согласились '.now()->translatedFormat('j M, H:i').', сделка открыта' : 'Вы отказались, ваша цена в силе',
+                    $agree ? 'Вы согласились '.Ago::day(now(), true).', сделка открыта' : 'Вы отказались, ваша цена в силе',
                     $deal ? [[TelegramChannel::button('Открыть сделку', Surface::Site->url($deal->href()))]] : $open];
             }, ['sure' => 'sureyes']);
     }
@@ -224,7 +227,7 @@ final class UpdateHandler
      */
     private function reprice(Press $press): void
     {
-        $ask = \App\Offers\RepriceAsk::with(['offer', 'deal', 'bid'])->find($press->id);
+        $ask = RepriceAsk::with(['offer', 'deal', 'bid'])->find($press->id);
         $user = User::where('telegram_chat_id', $press->fromId)->first();
         if (! $ask || ! $user || $ask->user_id !== $user->id) {
             $this->bot->answer($press->queryId, 'Эта кнопка не для вас.');
@@ -245,9 +248,9 @@ final class UpdateHandler
                 if (! in_array($which, ['yes', 'no'], true)) {
                     return null;
                 }
-                app(\App\Offers\Actions\AnswerReprice::class)($ask, $which === 'yes', $user);
+                app(AnswerReprice::class)($ask, $which === 'yes', $user);
 
-                return [$which === 'yes' ? 'Согласились' : 'Отказались', ($which === 'yes' ? 'Вы согласились' : 'Вы отказались').' — '.now()->translatedFormat('j M, H:i')];
+                return [$which === 'yes' ? 'Согласились' : 'Отказались', ($which === 'yes' ? 'Вы согласились' : 'Вы отказались').' — '.Ago::day(now(), true)];
             });
     }
 
@@ -284,7 +287,7 @@ final class UpdateHandler
                 }
                 app(AnswerRequirement::class)($r, $exit, $user);
 
-                return [$exit->label, $exit->label.' — '.now()->translatedFormat('j M, H:i')];
+                return [$exit->label, $exit->label.' — '.Ago::day(now(), true)];
             });
     }
 
@@ -359,7 +362,7 @@ final class UpdateHandler
         $owner = Robot::user();
         app(RecordPayment::class)($invoice, $owner, $invoice->remaining(), null, PaymentSource::Bank, null, 'из Telegram');
         $this->bot->answer($press->queryId, 'Оплачен.');
-        $this->bot->edit($press->chatId, $press->messageId, $message->text('Оплачен '.now()->translatedFormat('j M, H:i')), $message->afterDecision());
+        $this->bot->edit($press->chatId, $press->messageId, $message->text('Оплачен '.Ago::day(now(), true)), $message->afterDecision());
     }
 
     /** «Выплачено» под вознаграждением — перечисление на весь остаток от имени владельца. */
@@ -381,7 +384,7 @@ final class UpdateHandler
         $owner = Robot::user();
         app(RecordPayment::class)($fee, $owner, $fee->remaining(), null, PaymentSource::Bank, null, 'из Telegram');
         $this->bot->answer($press->queryId, 'Выплачено.');
-        $this->bot->edit($press->chatId, $press->messageId, $message->text('Выплачено '.now()->translatedFormat('j M, H:i')), $message->afterDecision());
+        $this->bot->edit($press->chatId, $press->messageId, $message->text('Выплачено '.Ago::day(now(), true)), $message->afterDecision());
     }
 
     /** «Поступило» под сообщением менеджера — заявленная оплата становится оплатой. */
@@ -403,7 +406,7 @@ final class UpdateHandler
         $owner = Robot::user();
         app(ConfirmPayment::class)($payment, $owner);
         $this->bot->answer($press->queryId, 'Поступило.');
-        $this->bot->edit($press->chatId, $press->messageId, $message->text('Поступило '.now()->translatedFormat('j M, H:i')), $message->afterDecision());
+        $this->bot->edit($press->chatId, $press->messageId, $message->text('Поступило '.Ago::day(now(), true)), $message->afterDecision());
     }
 
     /** «Войти» или «Это не я» под «Вход на xcar.ru». */
@@ -426,7 +429,7 @@ final class UpdateHandler
         $allow = $press->action === 'ok';
         app(DecideLogin::class)($token, $user, $allow);
         $this->bot->answer($press->queryId, $allow ? 'Входим' : 'Вход отклонён');
-        $this->bot->edit($press->chatId, $press->messageId, '<b>Вход на xcar.ru</b>'."\n".e($attempt['device'])."\n\n".($allow ? 'Вошли ' : 'Отклонено ').now()->translatedFormat('j M, H:i'));
+        $this->bot->edit($press->chatId, $press->messageId, '<b>Вход на xcar.ru</b>'."\n".e($attempt['device'])."\n\n".($allow ? 'Вошли ' : 'Отклонено ').Ago::day(now(), true));
     }
 
     /**

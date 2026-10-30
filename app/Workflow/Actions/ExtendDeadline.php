@@ -3,6 +3,7 @@
 namespace App\Workflow\Actions;
 
 use App\Offers\OfferEventType;
+use App\Support\Ago;
 use App\Users\User;
 use App\Workflow\Position;
 use App\Workflow\Requirement;
@@ -25,7 +26,7 @@ final class ExtendDeadline
         DB::transaction(function () use ($position, $until, $by) {
             $position->update(['deadline_at' => $until, 'reminded_at' => null, 'overdue_at' => null]);
             Requirement::where('offer_id', $position->offer_id)->where('stage_id', $position->stage_id)->whereNull('done_at')->update(['due_at' => $until]);
-            $position->offer?->log(OfferEventType::Note, $by, ['text' => 'Срок шага «'.$position->stage->name.'» продлён до '.$until->translatedFormat('j M, H:i')]);
+            $position->offer?->log(OfferEventType::Note, $by, ['text' => 'Срок шага «'.$position->stage->name.'» продлён до '.Ago::day($until, true)]);
         });
 
         return $position;

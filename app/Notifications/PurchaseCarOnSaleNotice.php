@@ -3,6 +3,7 @@
 namespace App\Notifications;
 
 use App\Offers\Offer;
+use App\Support\Ago;
 use App\Support\Money;
 
 /**
@@ -25,7 +26,7 @@ final class PurchaseCarOnSaleNotice extends Notice
 
     public function text(): ?string
     {
-        return $this->offer->asking_price ? Money::plain($this->offer->asking_price).', приём подтверждений до '.$this->offer->bids_close_at?->translatedFormat('j M, H:i') : null;
+        return $this->offer->asking_price ? Money::plain($this->offer->asking_price).', приём подтверждений до '.Ago::day($this->offer->bids_close_at, true) : null;
     }
 
     public function href(): string

@@ -10,6 +10,7 @@ use App\Mail\Jobs\RetractCandidateNotices;
 use App\Offers\Offer;
 use App\Park\City;
 use App\Park\Vehicle;
+use App\Support\Ago;
 use App\Support\FastAttributes;
 use App\Vendors\Vendor;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -157,10 +158,10 @@ class Candidate extends Model
     {
         $stage = $this->stage ?? CandidateStage::Intake;
         if ($stage === CandidateStage::Stored && ($at = $this->stageOf($stage)['at'] ?? null)) {
-            return 'на парковке с '.Carbon::parse($at)->translatedFormat('j M');
+            return 'на парковке с '.Ago::day(Carbon::parse($at));
         }
         if ($stage === CandidateStage::Released && ($at = $this->stageOf($stage)['at'] ?? null)) {
-            return 'выдана '.Carbon::parse($at)->translatedFormat('j M');
+            return 'выдана '.Ago::day(Carbon::parse($at));
         }
 
         return $stage->label();

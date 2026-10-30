@@ -28,7 +28,7 @@
         <div class="flex items-baseline gap-2">
             <span class="{{ $unread ? 'font-medium' : '' }}">{{ $name }}</span>
             @if ($staff && !$chat->user)<span class="tag">гость</span>@endif
-            @if ($at)<span class="ml-auto shrink-0 text-xs text-ink-dim nums">{{ \App\Support\Ago::stamp($at) }}</span>@endif
+            @if ($at)<span class="ml-auto shrink-0 text-xs text-ink-dim nums">{{ \App\Support\Ago::html($at, short: true) }}</span>@endif
         </div>
         @if ($staff && $chat->manager)<div class="mt-0.5 flex"><x-ui.person :user="$chat->manager" prefix="→"/></div>@endif
         @if (! $byCar && ($chat->offer || $staff || ($mine && ! $chat->isBuyerChat())))<div class="truncate text-sm text-ink-muted">{{ $chat->offer ? $chat->offer->titleWithYear() : 'Обращение с сайта' }}</div>@endif

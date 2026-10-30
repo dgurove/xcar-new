@@ -9,7 +9,7 @@
     <div class="nums mt-1 text-[32px] font-bold leading-tight">{{ \App\Support\Money::rub((int) $sum) }}</div>
     @if ($sub)<div class="nums mt-1 text-sm text-ink-muted">{{ $sub }}</div>@endif
     @if ($quote)<p class="mt-2 text-sm">«{{ $quote }}»</p>@endif
-    @if ($due)<p class="mt-2 text-sm">Ответьте до <span class="nums">{{ $due->setTimezone('Europe/Moscow')->translatedFormat('j M, H:i') }}</span></p>@endif
+    @if ($due)<p class="mt-2 text-sm">Ответьте до <span class="nums">{{ \App\Support\Ago::html($due->setTimezone('Europe/Moscow'), true, words: false) }}</span></p>@endif
     <div class="mt-4 flex flex-col gap-2">
         <form method="post" action="{{ $action }}" data-turbo-confirm="{{ $agreeAsk }}" @if ($agreeText) data-turbo-confirm-text="{{ $agreeText }}" @endif data-turbo-confirm-label="Согласен">
             @csrf<input type="hidden" name="agree" value="1">

@@ -3,6 +3,7 @@
 namespace App\Users;
 
 use App\Park\City;
+use App\Support\Ago;
 use App\Support\FastAttributes;
 use App\Support\Surface;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -146,7 +147,7 @@ class Invite extends Model
             return ($this->manager ? $this->manager->name.' приглашает вас' : 'Вас приглашают').' в XCar';
         }
         if ($this->role === Role::SuperBuyer) {
-            return 'Вас приглашают в XCar. Ссылка одноразовая'.($this->expires_at ? ', действует до '.$this->expires_at->translatedFormat('j F H:i') : '');
+            return 'Вас приглашают в XCar. Ссылка одноразовая'.($this->expires_at ? ', действует до '.Ago::day($this->expires_at, true) : '');
         }
         $text = 'Вас приглашают в XCar '.match ($this->role) {
             Role::Manager => 'менеджером',
@@ -158,7 +159,7 @@ class Invite extends Model
             default => mb_strtolower($this->role->label()),
         }.'. Ссылка одноразовая';
         if ($this->expires_at) {
-            $text .= ', действует до '.$this->expires_at->translatedFormat('j F H:i');
+            $text .= ', действует до '.Ago::day($this->expires_at, true);
         }
 
         return $text;

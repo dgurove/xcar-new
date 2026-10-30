@@ -3,6 +3,7 @@
 namespace App\Notifications;
 
 use App\Offers\Offer;
+use App\Support\Ago;
 use App\Support\Plural;
 use Carbon\CarbonInterface;
 
@@ -27,7 +28,7 @@ final class UnreadClosingNotice extends Notice
 
     public function title(): string
     {
-        $until = $this->closeAt->isToday() ? $this->closeAt->format('H:i') : $this->closeAt->translatedFormat('j M, H:i');
+        $until = $this->closeAt->isToday() ? $this->closeAt->format('H:i') : Ago::day($this->closeAt, true);
 
         return 'Приём до '.$until.': '.match (true) {
             $this->offer !== null => $this->offer->titleWithYear(),

@@ -9,7 +9,7 @@
             <span class="truncate">{{ $chat->displayName() }}</span>
             @if ($role = $chat->roleLabel())<span class="fact shrink-0">{{ $role }}</span>@endif
             @if ($chat->left_at)<span class="tag tag-danger shrink-0">остановил</span>@endif
-            @if ($at)<span class="ml-auto shrink-0 text-xs text-ink-dim nums">{{ \App\Support\Ago::stamp($at) }}</span>@endif
+            @if ($at)<span class="ml-auto shrink-0 text-xs text-ink-dim nums">{{ \App\Support\Ago::html($at, short: true) }}</span>@endif
         </div>
         <div class="truncate text-sm text-ink-muted">{{ $chat->lastPreview() }}</div>
     </div>

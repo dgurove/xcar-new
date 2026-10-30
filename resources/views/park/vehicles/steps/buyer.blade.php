@@ -11,7 +11,7 @@
         @if ($pass->requestMessage)
             <button type="button" class="row justify-between w-full text-left" data-controller="emit" data-action="emit#send" data-emit-event-param="letters:open" data-emit-url-param="/cars/{{ $vehicle->id }}/letters">
                 <span>Запрос страховой</span>
-                <span class="flex shrink-0 items-center gap-1 text-sm text-ink-muted">{{ $pass->requestMessage->date_at?->translatedFormat('j M, H:i') }}<x-ui.icon name="chevron-right" class="size-4"/></span>
+                <span class="flex shrink-0 items-center gap-1 text-sm text-ink-muted">{{ \App\Support\Ago::html($pass->requestMessage->date_at, true, words: false) }}<x-ui.icon name="chevron-right" class="size-4"/></span>
             </button>
         @endif
     </div>

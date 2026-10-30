@@ -3,6 +3,7 @@
 namespace App\Notifications;
 
 use App\Offers\Offer;
+use App\Support\Ago;
 use App\Support\Plural;
 
 /**
@@ -41,7 +42,7 @@ final class NewOffersNotice extends Notice
     public function text(): ?string
     {
         if ($this->offer) {
-            return $this->offer->bids_close_at ? 'Приём до '.$this->offer->bids_close_at->translatedFormat('j M, H:i') : null;
+            return $this->offer->bids_close_at ? 'Приём до '.Ago::day($this->offer->bids_close_at, true) : null;
         }
 
         return self::brandsLine($this->brands);

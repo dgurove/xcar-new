@@ -79,7 +79,7 @@
                             @if ($user->email)<a href="mailto:{{ $user->email }}">{{ $user->email }}</a>@endif
                             @if ($user->telegram_username)<a href="https://t.me/{{ $user->telegram_username }}" target="_blank" rel="noopener" data-turbo="false">{{ '@'.$user->telegram_username }}</a>@elseif ($user->telegram_chat_id)<span>Telegram</span>@endif
                             @if ($user->isManager() && isset($user->buyers_count))<a href="{{ $base }}?preset=buyers&manager={{ $user->id }}" class="text-ink">{{ $user->buyers_count }} {{ \App\Support\Plural::of($user->buyers_count, ['покупатель', 'покупателя', 'покупателей']) }}</a>@endif
-                            @if ($user->isPending() || $user->isBuyer() || $user->isSuperBuyer())<span class="nums">с {{ $user->created_at->translatedFormat('j M') }}</span>@endif
+                            @if ($user->isPending() || $user->isBuyer() || $user->isSuperBuyer())<span class="nums">с {{ \App\Support\Ago::html($user->created_at, words: false) }}</span>@endif
                             @foreach ($user->userGroups as $g)<span class="text-ink">{{ $g->name }}</span>@endforeach
                         </div>
                     </div>

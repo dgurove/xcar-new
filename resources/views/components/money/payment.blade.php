@@ -5,7 +5,7 @@
 @props(['payment', 'attempt' => null, 'staff' => false, 'slip' => null, 'title' => null, 'icon' => null])
 @php
     use App\Billing\PaymentSource; use App\Billing\PaymentState; use App\Billing\Acquiring\PayMethod;
-    $p = $payment; $a = $attempt; $day = $p->paid_at->translatedFormat('j M');
+    $p = $payment; $a = $attempt; $day = \App\Support\Ago::day($p->paid_at);
     $file = $slip ? $p->slip() : null;
     [$ico, $head, $sub, $tone] = match (true) {
         $p->state === PaymentState::Rejected => [$p->source->icon(), 'Не поступила', $p->reject_reason ?: $day, 'danger'],
@@ -15,7 +15,7 @@
         $p->source === PaymentSource::Offset => ['offset', $staff ? 'Менеджер оставил себе вознаграждение' : 'Вы оставили себе вознаграждение', $day, 'muted'],
         $p->source === PaymentSource::Acquiring => [PayMethod::icon($a?->method), 'Оплата по ссылке', $day.' '.PayMethod::label($a?->method)
             .($staff && $a?->fee() > 0 ? ', комиссия '.\App\Support\Money::exact($a->fee()) : '')
-            .($staff && $a ? ($a->payout ? ', на счёте с '.$a->payout->booked_at->translatedFormat('j M') : ', ждёт зачисления') : ''), 'open'],
+            .($staff && $a ? ($a->payout ? ', на счёте с '.\App\Support\Ago::day($a->payout->booked_at) : ', ждёт зачисления') : ''), 'open'],
         $p->source === PaymentSource::Cash => ['cash', 'Наличные', $day, 'open'],
         default => ['bank', 'Оплата по счёту', $day.($p->refNumber() ? ', п/п '.$p->refNumber() : ''), 'open'],
     };

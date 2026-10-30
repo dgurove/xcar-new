@@ -4,6 +4,7 @@ namespace App\Park\Actions;
 
 use App\Park\EventType;
 use App\Park\Vehicle;
+use App\Support\Ago;
 use App\Support\Nav;
 use App\Users\User;
 use Illuminate\Support\Carbon;
@@ -47,11 +48,11 @@ final class SetDates
                 $firstMove = $vehicle->events()->reorder()->whereIn('type', [EventType::Moved, EventType::Departed])->get()
                     ->map(fn ($e) => Carbon::parse($e->payload['day'] ?? $e->created_at)->startOfDay())->min();
                 if ($firstMove && $changes['accepted_at']->copy()->startOfDay()->gt($firstMove)) {
-                    $errors['accepted_at'] = 'Не позже перестановки '.$firstMove->translatedFormat('j M');
+                    $errors['accepted_at'] = 'Не позже перестановки '.Ago::day($firstMove);
                 }
             }
             if ($vehicle->storage_billed_until) {
-                $errors[array_key_first($changes)] = 'Хранение выставлено по '.$vehicle->storage_billed_until->translatedFormat('j M').', сначала аннулируйте счёт';
+                $errors[array_key_first($changes)] = 'Хранение выставлено по '.Ago::day($vehicle->storage_billed_until).', сначала аннулируйте счёт';
             }
             if ($errors) {
                 throw ValidationException::withMessages($errors);

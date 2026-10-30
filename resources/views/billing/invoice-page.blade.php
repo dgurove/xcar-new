@@ -18,9 +18,9 @@
         @if ($i->external_no)<span class="tag nums gap-1">№<x-ui.copy-code :value="$i->external_no"/></span>@endif
         <div class="detail-line basis-full !mt-0.5 text-sm text-ink-muted">
             <span>{{ $i->kind->label() }}</span>
-            <span class="nums">от {{ \App\Support\Ago::day($i->issued_at) }}</span>
+            <span class="nums">от {{ \App\Support\Ago::html($i->issued_at, words: false) }}</span>
             <span>{{ $i->vatRate() ? 'НДС '.$i->vatRate().' %' : 'без НДС' }}</span>
-            @if ($i->sent_at)<span class="nums">отправлен {{ $i->sent_at->translatedFormat('j M') }}</span>@endif
+            @if ($i->sent_at)<span class="nums">отправлен {{ \App\Support\Ago::html($i->sent_at, words: false) }}</span>@endif
         </div>
         </div>
         <button type="button" class="btn btn-s btn-quiet btn-round shrink-0" data-action="sheet#open" aria-label="Действия"><x-ui.icon name="more" class="size-5"/></button>
@@ -75,7 +75,7 @@
                         @foreach ($i->claims as $p)
                             <div class="flex flex-wrap items-center gap-2">
                                 <span class="nums font-semibold">{{ Money::rub($p->amount) }}</span>
-                                <span class="tag nums">{{ $p->paid_at->translatedFormat('j M Y') }}</span>
+                                <span class="tag nums">{{ $p->paid_at->format('d.m.Y') }}</span>
                                 @if ($p->ref)<span class="tag nums">№ {{ $p->ref }}</span>@endif
                                 @if ($slip = $p->slip())<x-ui.doc :doc="['url' => $base.'/payments/'.$p->id.'/slip', 'type' => \App\Support\Docs::type($slip->mime_type, $slip->file_name), 'name' => $slip->file_name, 'label' => 'Платёжка']" class="chip"><x-ui.icon name="file" class="size-3.5"/>платёжка</x-ui.doc>@endif
                                 @if ($claims ?? null)
@@ -102,7 +102,7 @@
                     @foreach ($i->payments as $p)
                         <div class="flex items-center gap-3 py-2">
                             <span class="min-w-0 flex-1">{{ $p->source->label() }}{{ $p->ref ? ' № '.$p->ref : '' }}{{ $p->note ? ', '.$p->note : '' }}@if ($slip = $p->slip()) <x-ui.doc :doc="['url' => $base.'/payments/'.$p->id.'/slip', 'type' => \App\Support\Docs::type($slip->mime_type, $slip->file_name), 'name' => $slip->file_name, 'label' => 'Платёжка']" class="chip"><x-ui.icon name="file" class="size-3.5"/>платёжка</x-ui.doc>@endif</span>
-                            <span class="nums text-sm text-ink-muted">{{ $p->paid_at->translatedFormat('j M Y') }}</span>
+                            <span class="nums text-sm text-ink-muted">{{ $p->paid_at->format('d.m.Y') }}</span>
                             <span class="nums font-semibold">{{ Money::rub($p->amount) }}</span>
                             @if ($canManage)
                                 <form method="post" action="{{ $base }}/payments/{{ $p->id }}" class="contents" data-turbo-confirm="Отменить {{ $i->isOwed() ? 'перечисление' : 'оплату' }} {{ Money::rub($p->amount) }}?">@csrf @method('delete')<button class="btn btn-ghost btn-s px-2 text-ink-muted" aria-label="Отменить"><x-ui.icon name="x" class="size-4"/></button></form>
@@ -110,7 +110,7 @@
                         </div>
                     @endforeach
                     @foreach ($i->allPayments->where('state', \App\Billing\PaymentState::Rejected) as $p)
-                        <div class="flex items-center gap-3 py-2 text-ink-muted"><span class="min-w-0 flex-1">Не поступила{{ $p->reject_reason ? ': '.$p->reject_reason : '' }}</span><span class="nums text-sm">{{ $p->paid_at->translatedFormat('j M Y') }}</span><span class="nums line-through">{{ Money::rub($p->amount) }}</span></div>
+                        <div class="flex items-center gap-3 py-2 text-ink-muted"><span class="min-w-0 flex-1">Не поступила{{ $p->reject_reason ? ': '.$p->reject_reason : '' }}</span><span class="nums text-sm">{{ $p->paid_at->format('d.m.Y') }}</span><span class="nums line-through">{{ Money::rub($p->amount) }}</span></div>
                     @endforeach
                 </div>
                 @if ($i->remaining() > 0 && $i->state === InvoiceState::Issued)<div class="mt-3 nums">Остаток <b>{{ Money::rub($i->remaining()) }}</b></div>@endif

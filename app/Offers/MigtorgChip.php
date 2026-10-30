@@ -4,6 +4,7 @@ namespace App\Offers;
 
 use App\Offers\Console\MigtorgArchive;
 use App\Offers\Jobs\ImportMigtorgLot;
+use App\Support\Ago;
 use App\Support\FieldLabels;
 use Illuminate\Support\Carbon;
 
@@ -98,12 +99,12 @@ final class MigtorgChip
     public function rows(): array
     {
         if (! $this->lot) {
-            $reached = $this->scan?->reached_at ? Carbon::parse($this->scan->reached_at)->translatedFormat('j M') : null;
+            $reached = $this->scan?->reached_at ? Ago::day(Carbon::parse($this->scan->reached_at)) : null;
 
             // Номер — в заголовке шторки: строкой ниже он только повторился бы.
             return array_filter([
                 $this->is('missing') ? 'Проверено с' : 'Проверено до' => $this->is('missing')
-                    ? ($this->scan?->floor_date ? Carbon::parse($this->scan->floor_date)->translatedFormat('j M') : null)
+                    ? ($this->scan?->floor_date ? Ago::day(Carbon::parse($this->scan->floor_date)) : null)
                     : $reached,
             ]);
         }
@@ -125,7 +126,7 @@ final class MigtorgChip
         }
         $at = Carbon::parse($this->lot->ends_at);
 
-        return $at->isPast() ? 'закончились '.$at->translatedFormat('j M') : 'до '.$at->translatedFormat('j M, H:i');
+        return $at->isPast() ? 'закончились '.Ago::day($at) : 'до '.Ago::day($at, true);
     }
 
     private function photos(): ?string

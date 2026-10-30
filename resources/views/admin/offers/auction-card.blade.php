@@ -13,7 +13,7 @@
                     <span class="row-sub">@if ($buyer->inn)<x-ui.copy-code :value="$buyer->inn" :text="'ИНН '.$buyer->inn" done="ИНН в буфере"/>@endif @if ($buyer->phone)<a href="tel:+{{ $buyer->phone }}" class="text-accent-text">{{ \App\Support\Phone::format($buyer->phone) }}</a>@endif</span>
                 @endif
             </span>
-            <span class="shrink-0 text-sm text-ink-muted">{{ \App\Support\Ago::day($deal->auction_at) }}</span>
+            <span class="shrink-0 text-sm text-ink-muted">{{ \App\Support\Ago::html($deal->auction_at, words: false) }}</span>
         </div>
         @if ($deal->state === \App\Offers\DealState::Cancelled)
             <div class="row text-ink-muted">Продажа отменена</div>

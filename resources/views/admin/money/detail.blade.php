@@ -39,7 +39,7 @@
         @endif
 
         <div class="list mt-6">
-            <div class="row"><span class="shrink-0 text-ink-muted">{{ $i->isOwed() ? 'Выплата' : 'Счёт' }}</span><span class="min-w-0 flex-1 truncate text-right nums">{{ $i->isOwed() ? '' : $i->label().' ' }}от {{ $i->issued_at->translatedFormat('j M') }}</span></div>
+            <div class="row"><span class="shrink-0 text-ink-muted">{{ $i->isOwed() ? 'Выплата' : 'Счёт' }}</span><span class="min-w-0 flex-1 truncate text-right nums">{{ $i->isOwed() ? '' : $i->label().' ' }}от {{ \App\Support\Ago::html($i->issued_at, words: false) }}</span></div>
             <div class="row"><span class="shrink-0 text-ink-muted">За что</span><span class="min-w-0 flex-1 truncate text-right">{{ $i->kind->label() }}</span></div>
             @if ($offer)
                 <a href="{{ $i->deal_id ? '/offers/'.$offer->number : '/work/garage?preset=all&peek='.$offer->number }}" class="row" data-turbo-frame="_top">
@@ -80,7 +80,7 @@
         @if ($link || $newLink)
             <div class="list-cap mt-5">Ссылка на оплату</div>
             <div class="list">
-                @if ($link)<x-billing.link-row :link="$link" :car="false" :sub="\App\Http\Admin\MoneyLinks::who($link).', '.$link->created_at->translatedFormat('j M')"/>@endif
+                @if ($link)<x-billing.link-row :link="$link" :car="false" :sub="\App\Http\Admin\MoneyLinks::who($link).', '.\App\Support\Ago::day($link->created_at)"/>@endif
                 @if ($newLink)<x-billing.pay-status :invoice="$i" staff/>@endif
             </div>
         @endif

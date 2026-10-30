@@ -20,6 +20,7 @@ final class Column
      * @param  bool  $fill  забирает запас ширины — ставит сам `Table`: последний столбец левой группы
      * @param  ColRole|null  $role  что за столбец; пусто — по флагам: `grow` — название, `pick` — галочка, `num` — сумма,
      *                              иначе — состояние
+     * @param  bool  $main  главный факт списка («Исполнитель» вывоза): когда таблица не влезает, уходит последним
      * @param  bool  $clip  данные извне (город): ширина таблицы сеткой — по 95 % значений, редкое длинное режется «…»
      *                      (`Widths::of`); системный текст флага не получает — его не режут
      */
@@ -40,6 +41,7 @@ final class Column
         public readonly float $rem = 0,
         public readonly bool $clip = false,
         public readonly ?ColRole $role = null,
+        public readonly bool $main = false,
     ) {}
 
     /** Что за столбец (`ColRole`): названа — она, иначе по флагам. */

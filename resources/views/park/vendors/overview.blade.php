@@ -32,9 +32,9 @@
     <div class="list-head">Договор</div>
     <div class="list">
         @if ($vendor->agreement_number || $vendor->agreement_date)
-            <div class="row justify-between"><span class="text-ink-muted">Номер</span><span class="nums text-right">{{ $vendor->agreement_number }}@if ($vendor->agreement_date) от {{ $vendor->agreement_date->translatedFormat('j M Y') }}@endif</span></div>
+            <div class="row justify-between"><span class="text-ink-muted">Номер</span><span class="nums text-right">{{ $vendor->agreement_number }}@if ($vendor->agreement_date) от {{ $vendor->agreement_date->format('d.m.Y') }}@endif</span></div>
         @endif
-        @if ($vendor->agreement_until)<div class="row justify-between"><span class="text-ink-muted">Действует до</span><span class="nums {{ $vendor->agreementExpired() ? 'text-danger' : '' }}">{{ $vendor->agreement_until->translatedFormat('j M Y') }}</span></div>@endif
+        @if ($vendor->agreement_until)<div class="row justify-between"><span class="text-ink-muted">Действует до</span><span class="nums {{ $vendor->agreementExpired() ? 'text-danger' : '' }}">{{ $vendor->agreement_until->format('d.m.Y') }}</span></div>@endif
         @if ($contract)
             <div class="row justify-between">
                 <a href="/files/{{ $contract->id }}" class="flex min-w-0 items-center gap-2" target="_blank" data-doc="{{ \App\Support\Docs::type($contract->mime_type, $contract->file_name) }}" data-doc-name="Договор" title="{{ $contract->file_name }}"><x-ui.icon name="file" class="size-5 shrink-0 text-ink-dim"/><span class="truncate">{{ $contract->file_name }}</span></a>

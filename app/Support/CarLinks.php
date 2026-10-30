@@ -56,7 +56,7 @@ final class CarLinks
         $links = [];
         if ($vehicle && ! $from instanceof Vehicle) {
             $day = $vehicle->accepted_at ?? $vehicle->created_at;
-            $links[] = ['title' => 'Парковка', 'state' => mb_strtolower($vehicle->state->label()).($vehicle->accepted_at ? ' с '.$day->translatedFormat('j M') : ''),
+            $links[] = ['title' => 'Парковка', 'state' => mb_strtolower($vehicle->state->label()).($vehicle->accepted_at ? ' с '.Ago::day($day) : ''),
                 'href' => Surface::Park->url('/cars/'.$vehicle->id)];
         }
         if (! $offer) {

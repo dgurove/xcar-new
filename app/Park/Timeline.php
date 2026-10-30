@@ -3,6 +3,7 @@
 namespace App\Park;
 
 use App\Mail\Extraction\Intent;
+use App\Support\Ago;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 
@@ -67,7 +68,7 @@ final class Timeline
         if ($v->accepted_at) {
             $releasing = $release?->isOpen() && $v->state === VehicleState::Stored;
             $storageState = $v->released_at || $releasing ? Step::DONE : ($v->state === VehicleState::Stored && ! $noYard ? Step::CURRENT : Step::NEXT);
-            $chips = array_values(array_filter([$v->sold_at ? 'на выдачу с '.$v->sold_at->translatedFormat('j M') : null, $v->pickup_name ? 'заберёт '.$v->pickup_name : null]));
+            $chips = array_values(array_filter([$v->sold_at ? 'на выдачу с '.Ago::day($v->sold_at) : null, $v->pickup_name ? 'заберёт '.$v->pickup_name : null]));
             $steps[] = new Step('storage', $storageState === Step::CURRENT ? 'На хранении' : 'Хранение', $storageState,
                 null, $v->sold_at, $chips, $storageState === Step::CURRENT ? ['kind' => 'act', 'label' => 'Выдать', 'step' => 'release'] : null);
 
@@ -85,9 +86,9 @@ final class Timeline
                 $steps[] = match (true) {
                     // Пропуск нашей сделки (18.10.2026): анкеты и страховой нет — кто заберёт, решил менеджер.
                     (bool) $pass?->isDeal() => new Step('buyer', 'Пропуск по сделке XCar', Step::DONE, null, $pass->confirmed_at,
-                        array_values(array_filter([$pass->name, $pass->planned_at ? 'приедет '.$pass->planned_at->translatedFormat('j M, H:i') : null, ($m = $pass->deal?->buyer) ? 'менеджер '.$m->shortName() : null]))),
+                        array_values(array_filter([$pass->name, $pass->planned_at ? 'приедет '.Ago::day($pass->planned_at, true) : null, ($m = $pass->deal?->buyer) ? 'менеджер '.$m->shortName() : null]))),
                     ! $pass => new Step('buyer', 'Ждём анкету покупателя', $v->released_at ? Step::NEXT : Step::TODO, null, null,
-                        $linkAt ? ['ссылка отправлена '.Carbon::parse($linkAt)->translatedFormat('j M')] : []),
+                        $linkAt ? ['ссылка отправлена '.Ago::day(Carbon::parse($linkAt))] : []),
                     $pass->isConfirmed() => new Step('buyer', 'Покупатель подтверждён', Step::DONE, null, $pass->confirmed_at,
                         array_values(array_filter([$pass->name, ($w = $pass->whenLabel('j M')) ? 'заберёт '.$w : null, $pass->confirm_note, $pass->confirmer?->shortName()]))),
                     default => new Step('buyer', 'Покупатель заполнил анкету', Step::TODO, null, $pass->submitted_at),

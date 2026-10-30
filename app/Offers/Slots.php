@@ -2,6 +2,7 @@
 
 namespace App\Offers;
 
+use App\Support\Ago;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
 
@@ -137,7 +138,7 @@ final class Slots
             return 'Завтра, '.$time;
         }
 
-        return Str::ucfirst($at->isoFormat('dd')).', '.$at->translatedFormat('j M').', '.$time;
+        return Str::ucfirst($at->isoFormat('dd')).', '.Ago::day($at).', '.$time;
     }
 
     /** Коротко, для переключателя в карточке строки: «Сегодня 16:00», «Завтра 16:00», «Пн 16:00». */
@@ -159,7 +160,7 @@ final class Slots
             return 'завтра '.$time;
         }
 
-        return $at->translatedFormat('j M').' '.$time;
+        return Ago::day($at).' '.$time;
     }
 
     /**

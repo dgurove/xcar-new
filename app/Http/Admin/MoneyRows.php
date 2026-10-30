@@ -5,6 +5,7 @@ namespace App\Http\Admin;
 use App\Billing\Acquiring\PayMethod;
 use App\Billing\Invoice;
 use App\Billing\PaymentSource;
+use App\Support\Ago;
 use App\Users\User;
 use Illuminate\Support\Collection;
 
@@ -49,7 +50,7 @@ final class MoneyRows
         if (! $p) {
             return null;
         }
-        $day = $p->paid_at->translatedFormat('j M');
+        $day = Ago::day($p->paid_at);
 
         return match ($p->source) {
             PaymentSource::Acquiring => 'оплатил '.$day.' по ссылке '.PayMethod::label($attempts->get($p->id)?->method),
@@ -65,7 +66,7 @@ final class MoneyRows
     {
         $p = $i->payments->sortBy('paid_at')->last();
 
-        return $p ? 'выплатили '.$p->paid_at->translatedFormat('j M').' '.($p->source === PaymentSource::Cash ? 'наличными' : 'на счёт') : null;
+        return $p ? 'выплатили '.Ago::day($p->paid_at).' '.($p->source === PaymentSource::Cash ? 'наличными' : 'на счёт') : null;
     }
 
     /** Что со ссылкой: [фраза, класс тона]; пытались и не вышло — словами ЮKassa, не трогали — «ещё не открывали». */
@@ -83,11 +84,13 @@ final class MoneyRows
     /** Срок счёта словами и тоном: «до 8 окт» / «срок прошёл 5 окт». */
     public static function due(Invoice $i): ?array
     {
-        return $i->due_at ? [($i->isOverdue() ? 'срок прошёл ' : 'до ').$i->due_at->translatedFormat('j M'), self::tone($i->light())] : null;
+        return $i->due_at ? [($i->isOverdue() ? 'срок прошёл ' : 'до ').Ago::day($i->due_at), self::tone($i->light())] : null;
     }
 
     public static function tone(?string $tone): string
     {
-        return match ($tone) { 'danger' => 'text-danger', 'urgent' => 'text-urgent', default => '' };
+        return match ($tone) {
+            'danger' => 'text-danger', 'urgent' => 'text-urgent', default => ''
+        };
     }
 }

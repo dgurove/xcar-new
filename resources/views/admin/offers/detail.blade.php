@@ -79,7 +79,7 @@
             @elseif (! $gallery && $offer->closed() && auth()->user()->canManageCrm())<span class="text-ink-muted">приём закрыт</span>@endif
             {{-- Окно галереи (08.10.2026): висит — сколько осталось, кончилось — до какого числа висело. --}}
             @if ($gallery)<span class="nums {{ $offer->isGalleryEndingSoon() ? 'text-urgent' : 'text-accent-text' }}">в галерее <span data-controller="timer" data-timer-until-value="{{ $offer->gallery_until->toIso8601String() }}" data-timer-done-value="закрыта" data-timer-coarse-value="true">{{ \App\Support\Ago::left($offer->gallery_until, 'ещё') }}</span></span>
-            @elseif ($offer->gallery_from)<span class="nums text-ink-muted">в галерее до {{ $offer->gallery_until->translatedFormat('j M, H:i') }}</span>@endif
+            @elseif ($offer->gallery_from)<span class="nums text-ink-muted">в галерее до {{ \App\Support\Ago::html($offer->gallery_until, true, words: false) }}</span>@endif
             @if ($offer->interests_count)<span class="nums text-accent-text">{{ $offer->interests_count }} {{ \App\Support\Plural::of($offer->interests_count, ['интерес', 'интереса', 'интересов']) }}</span>@endif
         </x-slot:line>
         {{-- Цен в шапке нет: у черновика — блок «Цены» по шагам в `actions`, у остального — раздел «Цены» ниже. --}}

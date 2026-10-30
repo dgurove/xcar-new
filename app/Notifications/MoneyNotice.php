@@ -8,6 +8,7 @@ use App\Billing\Invoice;
 use App\Billing\Payment;
 use App\Garage\Car;
 use App\Http\Admin\MoneyController;
+use App\Support\Ago;
 use App\Support\Money;
 use App\Support\Surface;
 use App\Telegram\Text;
@@ -79,7 +80,7 @@ final class MoneyNotice extends Notice
     public static function invoiceIssued(Invoice $i): self
     {
         // Подбор до шага оплаты срока не имеет: платить после договора с покупателем (`SyncDealInvoices::dueFor`).
-        $when = $i->due_at ? ', оплатить до '.$i->due_at->translatedFormat('j M') : ', оплатить '.$i->laterLabel(true);
+        $when = $i->due_at ? ', оплатить до '.Ago::day($i->due_at) : ', оплатить '.$i->laterLabel(true);
 
         return (new self('Счёт '.$i->label().' на '.Money::rub($i->remaining()).$when, $i->deal?->offer?->titleWithYear(), self::path($i, open: true), $i->deal?->offer?->number))
             ->tg($i, 'Счёт по :car', 'Счёт '.$i->label(), Money::rub($i->remaining()).$when)->about($i)->variant('invoice-issued', 'Счёт выставлен');
@@ -88,10 +89,10 @@ final class MoneyNotice extends Notice
     /** Расчёт по машине в гараже: счёт к оплате или то, что мы должны ему, — ведёт на машину. */
     public static function garageInvoice(Invoice $i, Car $car): self
     {
-        return (new self($i->isOwed() ? 'Вам к выплате '.Money::exact($i->remaining()).' за '.$car->offer->titleWithYear() : 'Счёт '.$i->label().' на '.Money::exact($i->remaining()).', оплатить до '.$i->due_at->translatedFormat('j M'),
+        return (new self($i->isOwed() ? 'Вам к выплате '.Money::exact($i->remaining()).' за '.$car->offer->titleWithYear() : 'Счёт '.$i->label().' на '.Money::exact($i->remaining()).', оплатить до '.Ago::day($i->due_at),
             $car->offer->titleWithYear(), $car->url(), $car->offer->number))
             ->tg($i, $i->isOwed() ? 'Вам к выплате по :car' : 'Счёт по :car', 'Счёт '.$i->label(),
-                Money::exact($i->remaining()).($i->isOwed() ? '' : ', оплатить до '.$i->due_at->translatedFormat('j M')), 'Открыть')->variant('garage-invoice', 'Расчёт по гаражу');
+                Money::exact($i->remaining()).($i->isOwed() ? '' : ', оплатить до '.Ago::day($i->due_at)), 'Открыть')->variant('garage-invoice', 'Расчёт по гаражу');
     }
 
     public static function paymentConfirmed(Payment $p): self
@@ -212,7 +213,7 @@ final class MoneyNotice extends Notice
 
     public static function feeDue(Invoice $fee): self
     {
-        return (new self('К выплате '.Money::rub($fee->total).' — '.$fee->party->name, $fee->deal?->offer?->titleWithYear().', до '.$fee->due_at->translatedFormat('j M'), MoneyController::url($fee), $fee->deal?->offer?->number, true))->about($fee)->variant('fee-due', 'Вознаграждение к выплате');
+        return (new self('К выплате '.Money::rub($fee->total).' — '.$fee->party->name, $fee->deal?->offer?->titleWithYear().', до '.Ago::day($fee->due_at), MoneyController::url($fee), $fee->deal?->offer?->number, true))->about($fee)->variant('fee-due', 'Вознаграждение к выплате');
     }
 
     public function label(): string

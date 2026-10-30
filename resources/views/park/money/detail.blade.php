@@ -5,7 +5,7 @@
         {{-- Состояние — у названия; фразой — какой счёт, от какого дня, за что и по какой ТС (ТС — ссылкой в дело). --}}
         <x-slot:badge><x-billing.light :invoice="$i" class="title-state"/></x-slot:badge>
         <x-slot:line>
-            <span class="nums">{{ $i->isOwed() ? 'мы должны' : $i->label() }} от {{ $i->issued_at->translatedFormat('j M') }}</span>
+            <span class="nums">{{ $i->isOwed() ? 'мы должны' : $i->label() }} от {{ \App\Support\Ago::html($i->issued_at, words: false) }}</span>
             <span>{{ mb_strtolower($i->kind->label()) }}</span>
             @if ($i->vehicle)<a href="/cars/{{ $i->vehicle_id }}" class="text-accent-text">{{ $i->vehicle->titleWithYear() }}</a>@elseif ($i->isRegistry())<span>{{ $i->what() }}</span>@endif
         </x-slot:line>
@@ -35,7 +35,7 @@
                 <div class="flex items-baseline gap-2 py-1.5"><span class="min-w-0 flex-1">{{ $c->title }}</span><span class="nums text-ink-muted">{{ \App\Support\Qty::format($c->qty) }} {{ $c->unitLabel() }} × {{ Money::nums($c->price) }}</span><span class="nums shrink-0">{{ Money::rub($c->amount) }}</span></div>
             @endforeach
             @foreach ($i->payments as $p)
-                <div class="flex items-baseline gap-2 py-1.5 text-accent-text"><span class="min-w-0 flex-1">{{ $p->source->label() }}{{ $p->ref ? ' № '.$p->ref : '' }}</span><span class="nums text-ink-muted">{{ $p->paid_at->translatedFormat('j M') }}</span><span class="nums shrink-0">− {{ Money::rub($p->amount) }}</span></div>
+                <div class="flex items-baseline gap-2 py-1.5 text-accent-text"><span class="min-w-0 flex-1">{{ $p->source->label() }}{{ $p->ref ? ' № '.$p->ref : '' }}</span><span class="nums text-ink-muted">{{ \App\Support\Ago::html($p->paid_at, words: false) }}</span><span class="nums shrink-0">− {{ Money::rub($p->amount) }}</span></div>
             @endforeach
         </div>
     </x-ui.row-card>

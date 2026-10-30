@@ -7,6 +7,7 @@ use App\Mail\Extraction\Patterns;
 use App\Park\City;
 use App\Park\Vehicle;
 use App\Park\VehicleState;
+use App\Support\Ago;
 use App\Support\Phone;
 use App\Support\VendorNames;
 use App\Users\User;
@@ -226,7 +227,7 @@ final class Handover
             return $t->undecided ? 'Кто забирает, решаем' : 'Вывоз заказан, ждём исполнителя';
         }
 
-        return Str::ucfirst($t->carrier() ?? 'ждёт исполнителя').($t->pickup_at ? ', вывоз '.$t->pickup_at->translatedFormat('j M') : '');
+        return Str::ucfirst($t->carrier() ?? 'ждёт исполнителя').($t->pickup_at ? ', вывоз '.Ago::day($t->pickup_at) : '');
     }
 
     /** Есть что показать: место, контакт или адрес. Пустой блок не рисуется. */

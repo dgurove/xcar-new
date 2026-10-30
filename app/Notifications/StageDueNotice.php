@@ -4,9 +4,11 @@ namespace App\Notifications;
 
 use App\Offers\Deal;
 use App\Offers\Offer;
+use App\Support\Ago;
 use App\Support\Surface;
 use App\Telegram\Text;
 use App\Workflow\Position;
+use App\Workflow\Requirement;
 
 /** Срок этапа подходит или вышел. Сотруднику — на оффер, менеджеру — на сделку. */
 final class StageDueNotice extends Notice
@@ -34,14 +36,14 @@ final class StageDueNotice extends Notice
      */
     private function what(): string
     {
-        $ask = $this->dealId ? \App\Workflow\Requirement::where('deal_id', $this->dealId)->where('stage_id', $this->position->stage_id)->whereNull('done_at')->latest('id')->value('title') : null;
+        $ask = $this->dealId ? Requirement::where('deal_id', $this->dealId)->where('stage_id', $this->position->stage_id)->whereNull('done_at')->latest('id')->value('title') : null;
 
         return $ask ?? $this->position->stage->name;
     }
 
     public function text(): ?string
     {
-        return $this->offer->titleWithYear().', срок '.$this->position->deadline_at?->translatedFormat('j M, H:i');
+        return $this->offer->titleWithYear().', срок '.Ago::day($this->position->deadline_at, true);
     }
 
     public function href(): string
@@ -88,7 +90,7 @@ final class StageDueNotice extends Notice
     {
         return $this->dealId === null ? null : [
             'title' => ($this->overdue ? 'Срок вышел по ' : 'Срок подходит по ').$this->offer->titleWithYear(),
-            'lines' => Text::lines($this->offer, $this->what().($this->position->deadline_at ? ' до '.$this->position->deadline_at->translatedFormat('j M, H:i') : '')),
+            'lines' => Text::lines($this->offer, $this->what().($this->position->deadline_at ? ' до '.Ago::day($this->position->deadline_at, true) : '')),
             'button' => 'Открыть сделку',
         ];
     }

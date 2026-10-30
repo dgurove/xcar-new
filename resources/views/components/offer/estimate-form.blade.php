@@ -36,7 +36,7 @@
                 <svg class="estimate-ok" viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="28"/><path d="M20 33l8 8 16-17"/></svg>
                 <span class="money-hero-cap">{{ match (true) { $estimate->agreed() => 'Вы согласны с ценой', $correction => 'Ваша цена', default => 'Ваша оценка' } }}</span>
                 <span class="money-hero-sum nums">{{ $money($estimate->amount) }} <small>₽</small></span>
-                <span class="money-hero-state text-ink-muted">отправлено {{ \App\Support\Ago::stamp($estimate->estimated_at, time: true) }}</span>
+                <span class="money-hero-state text-ink-muted">отправлено {{ \App\Support\Ago::html($estimate->estimated_at, time: true, short: true) }}</span>
                 @if ($correction && ! $estimate->agreed())<span class="money-hero-car nums">цена XCar {{ \App\Support\Money::rub($estimate->base_price) }}</span>
                 @elseif ($declared)<span class="money-hero-car nums">заявленная {{ \App\Support\Money::rub($declared) }}</span>@endif
             </div>

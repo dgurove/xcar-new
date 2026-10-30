@@ -26,7 +26,7 @@
             <h1 class="text-2xl">{{ $title }}</h1>
             @if ($link->state !== PayLinkState::Canceled)<span class="nums text-[32px] font-semibold leading-tight">{{ Money::exact($amount) }}</span>@endif
             @if ($link->state === PayLinkState::Paid)
-                <span class="text-ink-muted">{{ $link->paid_at->translatedFormat('j F, H:i') }}@if ($attempt) {{ PayMethod::label($attempt->method) }}@endif</span>
+                <span class="text-ink-muted">{{ \App\Support\Ago::html($link->paid_at, true, words: false) }}@if ($attempt) {{ PayMethod::label($attempt->method) }}@endif</span>
             @endif
         </div>
         @if ($processing)
@@ -35,7 +35,7 @@
     @else
         <div class="box money-hero !p-6">
             @if ($offer)<span class="money-hero-photo"><x-offer.photo :media="$offer->mainPhoto()" sizes="64px"/></span><span class="font-medium">{{ $offer->titleWithYear() }}</span>@elseif ($invoice->car_title)<span class="font-medium">{{ $invoice->car_title }}</span>@elseif ($invoice->isService())<span class="font-medium">{{ $invoice->receiptTitle() }}</span>@endif
-            <span class="text-sm text-ink-muted">Счёт {{ $invoice->label() }} от {{ $invoice->issued_at->translatedFormat('j F Y') }}</span>
+            <span class="text-sm text-ink-muted">Счёт {{ $invoice->label() }} от {{ $invoice->issued_at->format('d.m.Y') }}</span>
             <span class="nums mt-2 text-[32px] font-semibold leading-tight">{{ Money::exact($amount) }}</span>
         </div>
         @if ($declined)

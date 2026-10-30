@@ -7,6 +7,7 @@ use App\Offers\Actions\SaveDealContract;
 use App\Offers\Deal;
 use App\Offers\DealContract;
 use App\Offers\DkpDocument;
+use App\Support\Ago;
 use App\Support\Money;
 use App\Support\Pdf;
 use Illuminate\Http\Request;
@@ -42,7 +43,7 @@ class DealContractController
         if ($request->has('signed_at') && ! $request->has('vehicle')) {
             $contract = $save(DealContract::for($deal), $request->validate(['signed_at' => ['required', 'date']], [], ['signed_at' => 'дата договора']), $request->user());
 
-            return back()->with('toast', 'Дата договора '.$contract->signed_at->translatedFormat('j F'));
+            return back()->with('toast', 'Дата договора '.Ago::day($contract->signed_at));
         }
         $request->merge(['vehicle' => array_merge((array) $request->input('vehicle'), ['price' => Money::rubles($request->input('vehicle.price')) ?: null])]);
         // Продавец вносится только у ДКП (собственник по сканам); у ПРАЙМ продавец — ПРАЙМ.

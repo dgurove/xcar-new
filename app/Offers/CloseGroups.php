@@ -2,6 +2,7 @@
 
 namespace App\Offers;
 
+use App\Support\Ago;
 use App\Support\Facets\Facet;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Builder;
@@ -32,7 +33,7 @@ final class CloseGroups
         $day = match (true) {
             $at->isToday() => 'сегодня',
             $at->isTomorrow() => 'завтра',
-            default => $at->translatedFormat('j F'),
+            default => Ago::day($at),
         };
 
         return 'До '.$at->format('H:i').' '.$day;
@@ -55,7 +56,7 @@ final class CloseGroups
             return $out;
         }
         $rows = Facet::bare($list->toBase())
-            ->selectRaw("offers.bids_close_at as at, (offers.state = ? and (offers.bids_close_at is null or offers.bids_close_at > now())) as open, count(*) as n", [OfferState::Open->value])
+            ->selectRaw('offers.bids_close_at as at, (offers.state = ? and (offers.bids_close_at is null or offers.bids_close_at > now())) as open, count(*) as n', [OfferState::Open->value])
             ->groupBy('offers.bids_close_at', 'offers.state')->get();
         $out = [];
         foreach ($rows as $r) {

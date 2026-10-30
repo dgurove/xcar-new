@@ -24,7 +24,7 @@
             <x-offer.publish-sheet :offer="$offer" :id="'slot-move-'.$n" :action="'/offers/'.$n.'/state'" state="open" title="Перенести" move/>
         </div>
     @elseif ($kind === 'auction')
-        <h2 class="text-base font-medium">На аукционе{{ $offer->auction_at ? ' с '.$offer->auction_at->translatedFormat('j M') : '' }}</h2>
+        <h2 class="text-base font-medium">На аукционе{{ $offer->auction_at ? ' с '.\App\Support\Ago::day($offer->auction_at) : '' }}</h2>
         <div class="flex flex-wrap gap-2">
             @if (\App\Offers\Actions\SellAtAuction::allows($offer, auth()->user()))
                 <button type="button" class="btn btn-s btn-accent basis-full" data-controller="emit" data-action="emit#send" data-emit-event-param="auction-sale-{{ $n }}:open">Продана на аукционе</button>
@@ -38,7 +38,7 @@
             {{-- Отказ поставщика (28.10.2026): когда, кто отметил, менеджер сделки и причина словами. --}}
             @php $by = $offer->events()->where('type', \App\Offers\OfferEventType::SupplierDeclined)->with('user')->first(); @endphp
             <div>
-                <h2 class="text-base font-medium text-danger">Поставщик отказал{{ $declined->closed_at ? ' '.$declined->closed_at->translatedFormat('j M') : '' }}</h2>
+                <h2 class="text-base font-medium text-danger">Поставщик отказал{{ $declined->closed_at ? ' '.\App\Support\Ago::day($declined->closed_at) : '' }}</h2>
                 <p class="text-sm text-ink-muted">{{ collect([$declined->buyer ? 'сделка '.$declined->buyer->shortName() : null, $by?->user ? 'отметил '.$by->user->shortName() : null])->filter()->implode(', ') }}</p>
                 @if ($declined->close_note)<p class="mt-2">{{ $declined->close_note }}</p>@endif
             </div>

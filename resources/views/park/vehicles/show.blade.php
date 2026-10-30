@@ -46,7 +46,7 @@
             @endif
             @if ($vehicle->sold_at)
                 <p class="mt-1 text-sm">
-                    <span class="nums text-urgent">На выдачу с {{ $vehicle->sold_at->translatedFormat('j M') }}</span>@if ($vehicle->pickup_name || $handles)<span class="text-ink-muted">, </span>@endif
+                    <span class="nums text-urgent">На выдачу с {{ \App\Support\Ago::html($vehicle->sold_at, words: false) }}</span>@if ($vehicle->pickup_name || $handles)<span class="text-ink-muted">, </span>@endif
                     @if ($dealPass)<span>заберёт {{ $vehicle->pickup_name }}, по сделке XCar</span>@elseif ($handles)<button type="button" class="underline decoration-dotted decoration-ink-dim underline-offset-4" data-controller="emit" data-action="emit#send" data-emit-event-param="sold:open">{{ $vehicle->pickup_name ? 'заберёт '.$vehicle->pickup_name : 'кто заберёт' }}</button>@elseif ($vehicle->pickup_name)<span>заберёт {{ $vehicle->pickup_name }}</span>@endif
                     @if ($vehicle->pickup_phone)<a href="tel:+{{ $vehicle->pickupPhoneDigits() }}" class="nums ml-1 whitespace-nowrap text-accent-text">{{ $vehicle->pickup_phone }}</a>@endif
                 </p>
@@ -139,11 +139,11 @@
                     </a>
                 @endforeach
                 @if ($buyerFrom)
-                    <div class="row justify-between"><span class="{{ $buyerFrom->isPast() ? 'text-danger' : 'text-ink-muted' }}">Покупатель платит с {{ $buyerFrom->translatedFormat('j M') }}</span><span class="nums">{{ Money::rub($buyerRate) }}/сут</span></div>
+                    <div class="row justify-between"><span class="{{ $buyerFrom->isPast() ? 'text-danger' : 'text-ink-muted' }}">Покупатель платит с {{ \App\Support\Ago::html($buyerFrom, words: false) }}</span><span class="nums">{{ Money::rub($buyerRate) }}/сут</span></div>
                 @endif
                 {{-- До какого дня хранение выставлено: дальше счёт считается с этого дня, и это единственное место, где видно. --}}
                 @if ($vehicle->storage_billed_until)
-                    <div class="row justify-between"><span class="text-ink-muted">Выставлено по</span><span class="nums">{{ $vehicle->storage_billed_until->translatedFormat('j F') }}</span></div>
+                    <div class="row justify-between"><span class="text-ink-muted">Выставлено по</span>{{ \App\Support\Ago::html($vehicle->storage_billed_until, words: false) }}</div>
                 @endif
                 @if ($vehicle->contract_kind === 'commission')
                     <x-ui.doc :doc="['url' => '/acts/'.$vehicle->id.'/contract', 'type' => 'html', 'name' => 'Договор комиссии']" class="row justify-between"><span>Договор комиссии</span><x-ui.icon name="file" class="size-4 shrink-0 text-ink-dim"/></x-ui.doc>
@@ -211,7 +211,7 @@
                             <div class="leading-snug">{{ $event->text() }}</div>
                         @endif
                         <div class="mt-0.5 flex items-center gap-2 text-xs text-ink-dim">
-                            <span class="nums">{{ $event->created_at->translatedFormat('j M, H:i') }}</span>
+                            <span class="nums">{{ \App\Support\Ago::html($event->created_at, true, words: false) }}</span>
                             @if ($event->user)<span>{{ $event->user->shortName() }}</span>@elseif ($note)<span>Система</span>@endif
                             @if ($event instanceof \App\Cars\LaneEdit)<span>{{ $event->where }}</span>@endif
                         </div>
@@ -253,7 +253,7 @@
                 <form method="post" action="/cars/{{ $vehicle->id }}/buyer/reject" class="flex flex-col gap-3">
                     @csrf
                     <div class="list">
-                        <div class="row justify-between"><span class="min-w-0"><span class="block truncate">{{ $pass->name }}</span><span class="block text-sm text-ink-muted">анкета {{ $pass->submitted_at?->translatedFormat('j M, H:i') }}</span></span></div>
+                        <div class="row justify-between"><span class="min-w-0"><span class="block truncate">{{ $pass->name }}</span><span class="block text-sm text-ink-muted">анкета {{ \App\Support\Ago::html($pass->submitted_at, true, words: false) }}</span></span></div>
                     </div>
                     <x-ui.field name="reason" label="Что ответила страховая" type="textarea" required/>
                     <x-ui.sheet-foot variant="danger">Погасить пропуск</x-ui.sheet-foot>

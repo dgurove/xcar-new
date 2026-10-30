@@ -3,6 +3,7 @@
 namespace App\Garage;
 
 use App\Offers\PickupState;
+use App\Support\Ago;
 use App\Support\Plural;
 use App\Users\User;
 
@@ -53,8 +54,8 @@ final class CarLine
             default => mb_strtolower($car->state->label()),
         };
         $when = match ($car->state) {
-            CarState::Settled => (string) ($car->settled_at ?? $car->sold_at)?->translatedFormat('j M'),
-            CarState::Sold => 'с '.$car->sold_at?->translatedFormat('j M'),
+            CarState::Settled => (string) Ago::day(($car->settled_at ?? $car->sold_at)),
+            CarState::Sold => 'с '.Ago::day($car->sold_at),
             default => self::days($car->stageDays()),
         };
         [$value, $caption] = $crm ? self::crmMoney($car, $current) : self::siteMoney($car, $current, $staff);

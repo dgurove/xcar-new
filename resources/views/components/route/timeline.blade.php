@@ -21,7 +21,7 @@
             <div class="step-body">
                 <div class="step-head items-baseline">
                     <span class="step-title flex-1">{{ \App\Users\Wording::mine($block->name) }}</span>
-                    @if ($done && $step)<span class="nums shrink-0 text-sm text-ink-dim">{{ $step['at']->translatedFormat('j M') }}</span>@endif
+                    @if ($done && $step)<span class="nums shrink-0 text-sm text-ink-dim">{{ \App\Support\Ago::html($step['at'], words: false) }}</span>@endif
                 </div>
                 @if ($isCurrent && $waiting)<p class="step-hint">{{ $waiting }}</p>@endif
                 @if (! $isCurrent && ! $done && $deal && ($ask = $block->stages->first(fn ($s) => $s->ask_title && $s->awaitsManager($deal) && $reaches($s))))

@@ -6,7 +6,7 @@
 <div>
     <div class="leading-snug">{{ $event->text() }}@if (! $lane && ($lot = $event->migtorgLot())) <a href="https://www.migtorg.com/lots/{{ $lot }}" class="nums text-accent-text hover:underline" target="_blank" rel="noopener">лот {{ $lot }}</a>@endif</div>
     <div class="mt-0.5 flex items-center gap-2 text-xs text-ink-dim">
-        <span class="nums">{{ $event->created_at->translatedFormat('j M, H:i') }}</span>
+        <span class="nums">{{ \App\Support\Ago::html($event->created_at, true, words: false) }}</span>
         {{-- Кто — аватаром и именем; без человека — система (26.10.2026): почта конвертом, остальное искрой. --}}
         @if ($event->user)<span class="inline-flex items-center gap-1"><x-ui.avatar :user="$event->user" :size="16"/>{{ $event->user->shortName() }}</span>
         @else

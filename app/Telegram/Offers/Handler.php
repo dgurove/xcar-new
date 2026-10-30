@@ -6,6 +6,7 @@ use App\Live\Publisher;
 use App\Live\Topics;
 use App\Offers\Favorite;
 use App\Offers\Offer;
+use App\Support\Ago;
 use App\Support\Plural;
 use App\Support\Surface;
 use App\Telegram\Actions\LogoutTelegram;
@@ -471,7 +472,7 @@ final class Handler
             ? "Опубликовано {$n} ".Plural::of($n, ['предложение', 'предложения', 'предложений']).', показать '.($n === 1 ? 'его' : 'их').'?'
             : "Появились новые предложения: {$n}, показать их?";
         if ($urgent) {
-            $head = '🔥 Срочно: '.$urgent->titleWithYear().', приём до '.$urgent->bids_close_at->translatedFormat('j M, H:i')."\n\n".$head;
+            $head = '🔥 Срочно: '.$urgent->titleWithYear().', приём до '.Ago::day($urgent->bids_close_at, true)."\n\n".$head;
         }
         if ($sub->prompt_message_id) {
             $this->bot->deleteQuietly($sub->chat_id, (int) $sub->prompt_message_id);

@@ -125,8 +125,12 @@ final class Table
     }
 
     /**
-     * Варианты от всех столбцов до одного названия: следующий — когда таблица уже, чем нужно прежнему (названию — его ядро
-     * по 95 % значений, прочим — их ширина).
+     * Набор столбцов под ширину таблицы: по важности (обратно `DROP`, главный — `Column::$main` — первым), пока влезают —
+     * название ядром по 95 % значений, прочие целиком, в одну строку (лишний столбец не стоит строки в два этажа). Не
+     * цепочка «убрать по одному»: ушёл широкий — вернётся неважный, которому теперь хватает места (30.10.2026, «Вывоз»:
+     * ушли «Кому везти» и «Исполнитель», справа пустовала треть строки, а кто везёт — не видно). Ширины проходятся от полной
+     * до нуля шагом .25rem, правило — на каждый промежуток с одним набором (`@container` с нижней и верхней границей:
+     * наборы не вложены друг в друга).
      *
      * @param  array<string, Column>  $shown
      * @param  array<string, float>  $core
@@ -136,19 +140,49 @@ final class Table
     private function chain(string $scope, array $shown, array $core, array $full, bool $reset = false): string
     {
         $width = fn (Column $c) => $core[$c->key] ?? ($c->rem > 0 ? $c->rem : 6);
-        $drop = array_values(array_filter($shown, fn (Column $c) => ! $c->grow && ! $c->pick));
+        $fixed = array_filter($shown, fn (Column $c) => $c->grow || $c->pick);
+        $rest = array_values(array_filter($shown, fn (Column $c) => ! $c->grow && ! $c->pick));
         $rank = array_flip(array_map(fn (ColRole $r) => $r->value, self::DROP));
-        $at = array_flip(array_map(fn (Column $c) => $c->key, $drop)); // в одной ступени и роли — позже объявленный раньше
-        usort($drop, fn (Column $a, Column $b) => [$b->from === null ? 0 : self::STEPS[$b->from], $rank[$a->role()->value] ?? 0, $at[$b->key] ?? 0]
-            <=> [$a->from === null ? 0 : self::STEPS[$a->from], $rank[$b->role()->value] ?? 0, $at[$a->key] ?? 0]);
+        $at = array_flip(array_map(fn (Column $c) => $c->key, $rest));
+        // Важнее — раньше: главный, потом видимый с узкого экрана (`from`), потом по роли с конца `DROP`, потом объявленный раньше.
+        usort($rest, fn (Column $a, Column $b) => [(int) $b->main, $a->from === null ? 0 : self::STEPS[$a->from], $rank[$b->role()->value] ?? 0, $at[$a->key]]
+            <=> [(int) $a->main, $b->from === null ? 0 : self::STEPS[$b->from], $rank[$a->role()->value] ?? 0, $at[$b->key]]);
+
+        // Прочему — полная ширина (кроме растяжки): столбец встаёт, только если строка с ним остаётся одной линией.
+        $whole = fn (Column $c) => $c->fill ? $width($c) : max($full[$c->key] ?? 0, $width($c));
+        $base = array_sum(array_map($width, $fixed));
+        $pick = function (float $room) use ($rest, $whole, $base): array {
+            $left = $room - $base;
+            $keys = [];
+            foreach ($rest as $c) {
+                if ($whole($c) <= $left) {
+                    $keys[] = $c->key;
+                    $left -= $whole($c);
+                }
+            }
+
+            return $keys;
+        };
+        // Промежутки ширин с одним набором: [от, до, ключи], сверху вниз.
+        $ranges = [];
+        $top = ceil(($base + array_sum(array_map($whole, $rest))) * 4) / 4;
+        for ($room = $top; $room >= 0; $room -= .25) {
+            $keys = $pick($room);
+            if ($ranges && end($ranges)[2] === $keys) {
+                $ranges[array_key_last($ranges)][0] = $room;
+            } else {
+                $ranges[] = [$room, $ranges ? end($ranges)[0] : null, $keys];
+            }
+        }
+        $ranges[array_key_last($ranges)][0] = 0;
 
         // С карточкой — своя цепочка поверх той, что без неё: её столбцы снова видны, сколько бы та ни спрятала по ширине.
         $css = $reset ? implode(', ', array_map(fn (Column $c) => "{$scope} .col-{$c->key}", $shown)).' { display: block !important; } ' : '';
-        $css .= $this->variant($scope, $shown, $core, $full, null, '', ! $drop);
-        foreach ($drop as $i => $c) {
-            $need = round(array_sum(array_map($width, $shown)), 2);
-            unset($shown[$c->key]);
-            $css .= $this->variant($scope, $shown, $core, $full, $need, " {$scope} .col-{$c->key} { display: none !important; }", $i === count($drop) - 1);
+        foreach ($ranges as [$from, $below, $keys]) {
+            $cols = array_filter($shown, fn (Column $c) => isset($fixed[$c->key]) || in_array($c->key, $keys, true));
+            $gone = array_diff_key($shown, $cols);
+            $hide = $gone ? ' '.implode(', ', array_map(fn (Column $c) => "{$scope} .col-{$c->key}", $gone)).' { display: none !important; }' : '';
+            $css .= $this->variant($scope, $cols, $core, $full, $from, $below, $hide, ! $keys);
         }
 
         return $css;
@@ -164,21 +198,21 @@ final class Table
      * @param  array<string, Column>  $cols
      * @param  array<string, float>  $core
      * @param  array<string, float>  $full
-     * @param  float|null  $below  вариант действует, когда таблица уже этого (rem); null — самый полный
-     * @param  string  $hide  правило «ушедший столбец не рисуется»
-     * @param  bool  $last  дальше уходить некому — название ужимается до 12rem
+     * @param  float  $from  вариант действует, когда таблица не уже этого (rem)
+     * @param  float|null  $below  …и уже этого; null — самый полный
+     * @param  string  $hide  правило «ушедшие столбцы не рисуются»
+     * @param  bool  $last  кроме названия никого — оно ужимается до 12rem
      */
-    private function variant(string $scope, array $cols, array $core, array $full, ?float $below, string $hide, bool $last): string
+    private function variant(string $scope, array $cols, array $core, array $full, float $from, ?float $below, string $hide, bool $last): string
     {
         $w = fn (Column $c) => $core[$c->key] ?? ($c->rem > 0 ? $c->rem : 6);
         $roomy = round(array_sum(array_map(fn (Column $c) => $c->grow || $c->fill ? $w($c) : max($full[$c->key] ?? 0, $w($c)), $cols)), 2);
         $tight = "{$scope} .table { --cols: {$this->tracks($cols, $core, $full, false, $last)}; }";
         $wide = "{$scope} .table { --cols: {$this->tracks($cols, $core, $full, true, $last)}; }";
-        if ($below === null) {
-            return "{$tight} @container (width >= {$roomy}rem) { {$wide} }";
-        }
+        $when = fn (float $lo) => implode(' and ', array_filter([$lo > 0 ? "(width >= {$lo}rem)" : null, $below !== null ? "(width < {$below}rem)" : null]));
+        $at = fn (float $lo, string $rules) => ($cond = $when($lo)) === '' ? " {$rules}" : " @container {$cond} { {$rules} }";
 
-        return " @container (width < {$below}rem) { {$tight}{$hide} }".($roomy < $below ? " @container (width >= {$roomy}rem) and (width < {$below}rem) { {$wide} }" : '');
+        return $at($from, $tight.$hide).($below === null || $roomy < $below ? $at(max($from, $roomy), $wide) : '');
     }
 
     /**

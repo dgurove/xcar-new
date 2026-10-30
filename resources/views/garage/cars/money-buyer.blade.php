@@ -29,7 +29,7 @@
         <{{ $pdf ? 'a' : 'div' }} @if ($pdf) href="/account/invoices/{{ $holderInvoice->id }}/pdf" data-doc="pdf" data-doc-name="Счёт {{ $holderInvoice->label() }}" @endif class="row justify-between">
             <span class="min-w-0">
                 <span class="block">Счёт {{ $holderInvoice->label() }}</span>
-                <span class="row-sub">{{ $holderInvoice->state->label() }}@if ($left > 0 && $holderInvoice->due_at), до {{ $holderInvoice->due_at->translatedFormat('j M') }}@endif</span>
+                <span class="row-sub">{{ $holderInvoice->state->label() }}@if ($left > 0 && $holderInvoice->due_at), до {{ \App\Support\Ago::html($holderInvoice->due_at, words: false) }}@endif</span>
             </span>
             @if ($pdf)<span class="flex shrink-0 items-center gap-1 text-accent-text"><x-ui.icon name="file" class="size-4"/>PDF</span>@endif
         </{{ $pdf ? 'a' : 'div' }}>

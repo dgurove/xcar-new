@@ -6,7 +6,7 @@
     use App\Billing\InvoiceState;
     use App\Support\Money;
     $i = $invoice;
-    $due = $i->state === InvoiceState::Issued ? ($i->due_at ? 'до '.$i->due_at->translatedFormat('j M') : $i->laterLabel()) : mb_strtolower($i->state->label());
+    $due = $i->state === InvoiceState::Issued ? ($i->due_at ? 'до '.\App\Support\Ago::day($i->due_at) : $i->laterLabel()) : mb_strtolower($i->state->label());
     $tone = match ($i->light()) { 'danger' => 'text-danger', 'urgent' => 'text-urgent', 'open' => 'text-accent-text', default => '' };
     $what = $i->what();
     $left = $i->remaining();

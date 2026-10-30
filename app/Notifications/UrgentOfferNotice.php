@@ -4,6 +4,7 @@ namespace App\Notifications;
 
 use App\Offers\Offer;
 use App\Offers\PriceView;
+use App\Support\Ago;
 use App\Users\User;
 
 /**
@@ -30,7 +31,7 @@ final class UrgentOfferNotice extends Notice
         $price = PriceView::for($this->offer, $this->for);
         $money = $price->shown() ? ($price->withFrom() ? PriceView::money($price->from).' → ' : '').PriceView::money($price->to).' ₽' : null;
 
-        return collect([$money, $this->offer->bids_close_at ? 'приём до '.$this->offer->bids_close_at->translatedFormat('j M, H:i') : null])
+        return collect([$money, $this->offer->bids_close_at ? 'приём до '.Ago::day($this->offer->bids_close_at, true) : null])
             ->filter()->implode(', ') ?: null;
     }
 

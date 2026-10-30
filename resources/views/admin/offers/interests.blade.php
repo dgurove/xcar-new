@@ -3,7 +3,7 @@
 @php $gallery = $offer->isGallery(); $n = $offer->interests->count(); @endphp
 <x-ui.card :title="$gallery ? 'Галерея' : 'Интерес'.($n ? ' '.$n : '')">
     @if ($gallery)
-        <div class="detail-line mb-3"><span>до {{ $offer->gallery_until->translatedFormat('j M, H:i') }}</span><x-offer.gallery-left :offer="$offer"/></div>
+        <div class="detail-line mb-3"><span>до {{ \App\Support\Ago::html($offer->gallery_until, true, words: false) }}</span><x-offer.gallery-left :offer="$offer"/></div>
     @endif
     <x-offer.interests :offer="$offer"/>
 </x-ui.card>

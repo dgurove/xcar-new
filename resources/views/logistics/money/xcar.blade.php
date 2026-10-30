@@ -49,7 +49,7 @@
                         @elseif ($invoice->isOverdue())
                             <span class="block text-sm text-danger">{{ $invoice->overdueLabel() }}</span>
                         @elseif ($invoice->due_at)
-                            <span class="block text-sm text-ink-muted">до {{ \App\Support\Ago::day($invoice->due_at) }}</span>
+                            <span class="block text-sm text-ink-muted">до {{ \App\Support\Ago::html($invoice->due_at, words: false) }}</span>
                         @endif
                     </span>
                 </a>

@@ -29,7 +29,7 @@
             // Сумма — крупно в деньгах: здесь только что и до когда.
             $unpaid && $current->isOwed() => $staff ? 'отдаём менеджеру' : 'выплата вам',
             $unpaid && $car->invoice_to === 'buyer' => 'ждём оплату покупателя',
-            $unpaid => ($staff ? 'менеджер отдаёт' : 'оплата').' до '.$current->due_at->translatedFormat('j M'),
+            $unpaid => ($staff ? 'менеджер отдаёт' : 'оплата').' до '.\App\Support\Ago::day($current->due_at),
             default => null,
         },
         default => null,
@@ -45,7 +45,7 @@
             <div class="step-body">
                 <div class="step-head">
                     <span class="step-title flex-1">Документы со страховой</span>
-                    @if (! $open && $deal->closed_at)<span class="nums shrink-0 text-sm text-ink-dim">{{ $deal->closed_at->translatedFormat('j M') }}</span>@endif
+                    @if (! $open && $deal->closed_at)<span class="nums shrink-0 text-sm text-ink-dim">{{ \App\Support\Ago::html($deal->closed_at, words: false) }}</span>@endif
                 </div>
                 @if ($open && ($dealBlock || $asks))<p class="step-hint">{{ trim(mb_strtolower($dealBlock ?? '').($asks ? ', ваш ход' : ''), ', ') }}</p>@endif
             </div>
@@ -58,7 +58,7 @@
                 <div class="step-head">
                     {{-- Пройденное ожидание — факт: машина приехала. --}}
                     <span class="step-title flex-1">{{ $p['state'] === CarState::Waiting && $p['status'] === 'done' ? 'ТС приехала' : $p['state']->label() }}</span>
-                    @if ($p['status'] === 'done' && $p['at'])<span class="nums shrink-0 text-sm text-ink-dim">{{ $p['at']->translatedFormat('j M') }}</span>@endif
+                    @if ($p['status'] === 'done' && $p['at'])<span class="nums shrink-0 text-sm text-ink-dim">{{ \App\Support\Ago::html($p['at'], words: false) }}</span>@endif
                     @if (in_array($p['state'], $back ?? [], true))
                         <form method="post" action="/garage/cars/{{ $n }}/stage" class="contents" data-turbo-confirm="Вернуть на «{{ $p['state']->label() }}»?">@csrf<input type="hidden" name="state" value="{{ $p['state']->value }}"><button class="btn btn-s btn-quiet shrink-0">Вернуть</button></form>
                     @endif

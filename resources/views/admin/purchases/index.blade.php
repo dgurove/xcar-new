@@ -24,8 +24,8 @@
                     <div class="truncate">{{ $p->title ?: $p->publicTitle() }}</div>
                     <div class="row-sub">
                         <span class="nums">№ {{ $p->number }}</span>
-                        @if ($p->closed())<span>приём закрыт {{ $p->offers_close_at->translatedFormat('j M, H:i') }}</span>
-                        @else<span class="{{ $p->state->tone() === 'open' ? 'text-accent-text' : '' }}">{{ mb_strtolower($p->state->label()) }}</span>@if ($p->offers_close_at)<span>до {{ $p->offers_close_at->translatedFormat('j M, H:i') }}</span>@endif
+                        @if ($p->closed())<span>приём закрыт {{ \App\Support\Ago::html($p->offers_close_at, true, words: false) }}</span>
+                        @else<span class="{{ $p->state->tone() === 'open' ? 'text-accent-text' : '' }}">{{ mb_strtolower($p->state->label()) }}</span>@if ($p->offers_close_at)<span>до {{ \App\Support\Ago::html($p->offers_close_at, true, words: false) }}</span>@endif
                         @endif
                     </div>
                 </div>

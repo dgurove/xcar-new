@@ -11,7 +11,7 @@
                 <x-slot:chips>
                     {{-- Группы — чипами (ссылками), логин и с какого дня — строкой текста. --}}
                     @foreach ($buyer->groups as $g)<a href="/buyers/groups/{{ $g->id }}" class="tag">{{ $g->name }}</a>@endforeach
-                    <div class="detail-line basis-full !mt-0.5 text-sm text-ink-muted lg:justify-center">@if ($buyer->login)<span class="nums">{{ $buyer->login }}</span>@endif<span class="nums">с {{ $buyer->created_at->translatedFormat('j M') }}</span></div>
+                    <div class="detail-line basis-full !mt-0.5 text-sm text-ink-muted lg:justify-center">@if ($buyer->login)<span class="nums">{{ $buyer->login }}</span>@endif<span class="nums">с {{ \App\Support\Ago::html($buyer->created_at, words: false) }}</span></div>
                 </x-slot:chips>
                 <x-slot:acts>
                     @if ($buyer->phone)<a href="tel:+{{ $buyer->phone }}" class="act"><span class="btn btn-quiet btn-round"><x-ui.icon name="phone"/></span>Позвонить</a>@endif
@@ -119,7 +119,7 @@
                         @foreach ($chats as $chat)
                             <a href="/deals/chats/{{ $chat->id }}" class="row">
                                 <div class="min-w-0 flex-1">
-                                    <div class="flex items-baseline gap-2"><span class="truncate {{ $chat->unread_for_staff ? 'font-medium' : '' }}">{{ $chat->offer?->titleWithYear() ?? 'Обращение' }}</span><span class="ml-auto shrink-0 text-sm text-ink-dim">{{ \App\Support\Ago::stamp($chat->last_message_at) }}</span></div>
+                                    <div class="flex items-baseline gap-2"><span class="truncate {{ $chat->unread_for_staff ? 'font-medium' : '' }}">{{ $chat->offer?->titleWithYear() ?? 'Обращение' }}</span><span class="ml-auto shrink-0 text-sm text-ink-dim">{{ \App\Support\Ago::html($chat->last_message_at, short: true) }}</span></div>
                                     <div class="truncate text-sm {{ $chat->unread_for_staff ? '' : 'text-ink-muted' }}">{{ $chat->last_text ? \Illuminate\Support\Str::limit($chat->last_text, 90) : 'Файл' }}</div>
                                 </div>
                                 @if ($chat->unread_for_staff)<span class="badge">{{ $chat->unread_for_staff }}</span>@endif

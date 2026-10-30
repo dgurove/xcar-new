@@ -2,9 +2,12 @@
 
 namespace App\Offers\Actions;
 
+use App\Logistics\Transport;
+use App\Notifications\Notify;
 use App\Notifications\ParkNotice;
 use App\Notifications\ParkPassNotice;
 use App\Offers\Deal;
+use App\Offers\DealState;
 use App\Offers\OfferEventType;
 use App\Park\Actions\CreateRequest;
 use App\Park\Actions\MarkSold;
@@ -14,6 +17,7 @@ use App\Park\RequestState;
 use App\Park\RequestType;
 use App\Park\Vehicle;
 use App\Park\VehicleState;
+use App\Support\Ago;
 use App\Support\Phone;
 use App\Users\User;
 use Illuminate\Support\Facades\DB;
@@ -48,7 +52,7 @@ final class SyncParkRelease
             return;
         }
         // Отменили — выдача снимается; закончилась (гаражная закрыта, машина ещё у нас) — пропуск живёт до выдачи.
-        if ($deal->state === \App\Offers\DealState::Cancelled) {
+        if ($deal->state === DealState::Cancelled) {
             $this->withdraw($deal, $vehicle, $by, 'Сделка отменена');
 
             return;
@@ -94,11 +98,11 @@ final class SyncParkRelease
             ]);
             $this->ensureRequest($deal, $vehicle->fresh(), $receiver->name, $phone, $by);
             // Открытый вывоз этой машины — откуда ехать: с парковки, а не от страхователя.
-            $pickup = \App\Logistics\Transport::openFor($deal->offer);
+            $pickup = Transport::openFor($deal->offer);
             if ($pickup && ! $pickup->taken() && $vehicle->yard) {
                 $pickup->update(['from_address' => 'Парковка «'.$vehicle->yard->name.'», '.$vehicle->yard->fullAddress()]);
             }
-            $who = $receiver->name.($receiver->at ? ', приедет '.$receiver->at->translatedFormat('j M, H:i') : '');
+            $who = $receiver->name.($receiver->at ? ', приедет '.Ago::day($receiver->at, true) : '');
             $vehicle->log(EventType::Note, $by, ['text' => ($pass ? 'Сменился получатель по сделке XCar № ' : 'На выдачу по сделке XCar № ').$deal->offer->number.': '.$who]);
             $deal->offer->log(OfferEventType::Note, $by, ['text' => ($pass ? 'Парковке: сменился получатель, ' : 'Парковке: на выдачу, заберёт ').$who]);
         });
@@ -109,7 +113,7 @@ final class SyncParkRelease
                 $deal->buyer->notify(new ParkPassNotice($deal, $vehicle));
             }
             if (! $first) {
-                Notification::send(app(\App\Notifications\Notify::class)->parkManagersOf($vehicle->city_id), ParkNotice::receiverChanged($vehicle));
+                Notification::send(app(Notify::class)->parkManagersOf($vehicle->city_id), ParkNotice::receiverChanged($vehicle));
             }
         });
     }

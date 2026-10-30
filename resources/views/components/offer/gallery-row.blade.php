@@ -10,7 +10,7 @@
     $count = (int) ($offer->interests_count ?? $offer->interests()->count());
     $last = $offer->interest_at ?? ($count ? $offer->interests()->max('created_at') : null);
     $last = $last ? \Illuminate\Support\Carbon::parse($last) : null;
-    $gone = $offer->state === OfferState::Draft ? 'закрыта '.$offer->gallery_until?->translatedFormat('j M, H:i') : $offer->crmTab();
+    $gone = $offer->state === OfferState::Draft ? 'закрыта '.\App\Support\Ago::day($offer->gallery_until, true) : $offer->crmTab();
 @endphp
 <tr data-detail-key="{{ $n }}" data-search-row id="gallery-{{ $n }}" data-offer-number="{{ $n }}">
     @foreach ($table->columns as $key => $col)
@@ -20,7 +20,7 @@
         <x-ui.row-link :key="$n"><span class="cell-title"><x-ui.cat-icon :category="$offer->category()"/><span class="cell-name">{{ $offer->titleWithYear() }}</span><x-ui.links :offer="$offer"/></span></x-ui.row-link>
         <span class="cell-sub cell-sub--wrap" data-controller="fitline">
             <span class="fit-core sm:hidden"><x-vendor.ref :vendor-id="$offer->vendor_id" :ref="$offer->claim_ref"/></span>
-            @if ($offer->gallery_from)<span class="nums sm:hidden">с {{ $offer->gallery_from->translatedFormat('j M, H:i') }}</span>@endif
+            @if ($offer->gallery_from)<span class="nums sm:hidden">с {{ \App\Support\Ago::html($offer->gallery_from, true, words: false) }}</span>@endif
         </span>
     </td>
         @break
@@ -31,7 +31,7 @@
     <td class="{{ $col->classes() }}">@if ($offer->settlement)<x-ui.place class="whitespace-nowrap text-ink-muted">{{ $offer->settlement->name }}</x-ui.place>@endif</td>
         @break
         @case('from')
-    <td class="{{ $col->classes() }}">{{ \App\Support\Ago::cell($offer->gallery_from, time: true) }}</td>
+    <td class="{{ $col->classes() }}">{{ \App\Support\Ago::html($offer->gallery_from, time: true) }}</td>
         @break
         @case('left')
     <td class="{{ $col->classes() }}">
@@ -46,7 +46,7 @@
     </td>
         @break
         @case('last')
-    <td class="{{ $col->classes() }}">{{ \App\Support\Ago::cell($last, time: true) }}</td>
+    <td class="{{ $col->classes() }}">{{ \App\Support\Ago::html($last, time: true) }}</td>
         @break
         @endswitch
     @endforeach

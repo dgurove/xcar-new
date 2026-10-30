@@ -30,7 +30,7 @@
         <div class="list">
             @foreach ($invoices as $i)
                 <a href="/money/invoices/{{ $i->id }}" class="row justify-between">
-                    <span class="flex min-w-0 items-center gap-2.5"><x-billing.light :invoice="$i"/><span class="min-w-0"><span class="block truncate">{{ $i->isOwed() ? 'Мы должны' : \Illuminate\Support\Str::ucfirst($i->label()) }}</span><span class="block truncate text-sm text-ink-muted">{{ $i->issued_at->translatedFormat('j M') }}@if ($i->vehicle), {{ $i->vehicle->titleWithYear() }}@endif</span></span></span>
+                    <span class="flex min-w-0 items-center gap-2.5"><x-billing.light :invoice="$i"/><span class="min-w-0"><span class="block truncate">{{ $i->isOwed() ? 'Мы должны' : \Illuminate\Support\Str::ucfirst($i->label()) }}</span><span class="block truncate text-sm text-ink-muted">{{ \App\Support\Ago::html($i->issued_at, words: false) }}@if ($i->vehicle), {{ $i->vehicle->titleWithYear() }}@endif</span></span></span>
                     <span class="nums shrink-0 font-semibold">{{ Money::rub($i->remaining() > 0 ? $i->remaining() : $i->total) }}</span>
                 </a>
             @endforeach

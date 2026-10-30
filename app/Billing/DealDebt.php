@@ -3,6 +3,7 @@
 namespace App\Billing;
 
 use App\Offers\Deal;
+use App\Support\Ago;
 use App\Support\Money;
 use App\Workflow\Position;
 use App\Workflow\WaitsFor;
@@ -24,7 +25,7 @@ final class DealDebt
         and billing_invoices.kind <> 'reward' and billing_invoices.total > billing_invoices.paid";
 
     /** Сделка должна нам: открытый счёт или ожидаемый платёж (то же правило, что `of`). */
-    public const OWES_SQL = "(exists (select 1 from billing_invoices where ".self::OPEN_SQL.")
+    public const OWES_SQL = '(exists (select 1 from billing_invoices where '.self::OPEN_SQL.")
         or (deals.state = 'active' and coalesce(deals.amount, deals.cost) > 0
             and not (deals.garage_payer = 'manager' and deals.amount is null and exists (select 1 from offers o join vendors v on v.id = o.vendor_id
                 where o.id = deals.offer_id and v.deal_format = 'commission'))
@@ -60,7 +61,7 @@ final class DealDebt
                 $claimed => 'сообщил об оплате — проверить',
                 $paid > 0 => 'оплачено '.Money::nums($paid).' из '.Money::nums($owed + $paid),
                 $byBuyer && $first->party => 'платит покупатель '.$first->party->name,
-                default => 'счёт от '.$first->issued_at?->translatedFormat('j M'),
+                default => 'счёт от '.Ago::day($first->issued_at),
             };
 
             return new self($owed, round($open->filter->isOverdue()->sum(fn (Invoice $i) => $i->remaining()), 2), $first->due_at,
@@ -114,7 +115,7 @@ final class DealDebt
         return match (true) {
             $this->late() => "просрочено {$this->lateDays()}\u{00A0}д",
             (bool) $this->due?->isToday() => 'срок сегодня',
-            $this->due !== null => 'до '.$this->due->translatedFormat('j M'),
+            $this->due !== null => 'до '.Ago::day($this->due),
             default => $this->later ?? 'без срока',
         };
     }

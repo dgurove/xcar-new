@@ -3,7 +3,9 @@
 namespace App\Telegram\Messages;
 
 use App\Billing\Payment;
+use App\Billing\PaymentSource;
 use App\Garage\Car;
+use App\Support\Ago;
 use App\Support\Money;
 use App\Support\Surface;
 use App\Telegram\Text;
@@ -27,7 +29,7 @@ final class PaymentClaimed extends Message
         $i = $p->invoice;
 
         return Text::lines($i->deal?->offer ?? Car::ofInvoice($i)?->offer,
-            Money::rub($p->amount).($p->source === \App\Billing\PaymentSource::Cash ? ' наличными' : '').' от '.$p->paid_at->translatedFormat('j M').($p->refNumber() ? ', п/п № '.$p->refNumber() : '').($p->slip() ? ', платёжка приложена' : ''),
+            Money::rub($p->amount).($p->source === PaymentSource::Cash ? ' наличными' : '').' от '.Ago::day($p->paid_at).($p->refNumber() ? ', п/п № '.$p->refNumber() : '').($p->slip() ? ', платёжка приложена' : ''),
             'Счёт '.$i->label().', '.$i->party->name);
     }
 

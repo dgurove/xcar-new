@@ -2,6 +2,8 @@
 
 namespace App\Park;
 
+use App\Support\Ago;
+
 /**
  * Что сейчас с ТС — столбец «Статус» в «Наличии». Одна строка словами; `act` — нужно наше действие (кружок перед
  * словами, красный — просрочено), иначе мы просто ждём (одна надпись). Ошибки данных (VIN, нет тарифа) — не статус,
@@ -14,7 +16,7 @@ final class Status
     {
         $say = fn (string $label, bool $act = false, bool $late = false) => ['label' => $label, 'act' => $act, 'late' => $late];
         if ($v->state !== VehicleState::Stored) {
-            return $say(mb_strtolower($v->state->label()).($v->state === VehicleState::Released && $v->released_at ? ' '.$v->released_at->translatedFormat('j M') : ''));
+            return $say(mb_strtolower($v->state->label()).($v->state === VehicleState::Released && $v->released_at ? ' '.Ago::day($v->released_at) : ''));
         }
         // Висящие задачи (`Tasks`, список кладёт их атрибутом `task_keys`): первая — словом, остальные числом.
         $tasks = $v->getAttribute('task_keys');

@@ -6,6 +6,7 @@ use App\Park\Events\BuyerFormSubmitted;
 use App\Park\EventType;
 use App\Park\Pass;
 use App\Park\Vehicle;
+use App\Support\Ago;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -50,7 +51,7 @@ final class SubmitBuyerForm
             return $pass;
         }
 
-        $vehicle->log(EventType::BuyerForm, null, ['name' => $pass->name, 'date' => $pass->pickup_on->translatedFormat('j M')]);
+        $vehicle->log(EventType::BuyerForm, null, ['name' => $pass->name, 'date' => Ago::day($pass->pickup_on)]);
         // Страховой — только пока не подтвердила: после подтверждения новая дата её не касается.
         if (! $locked) {
             $message = $this->letters->toVendor($vehicle, 'buyer-check', [

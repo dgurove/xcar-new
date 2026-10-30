@@ -3,6 +3,7 @@
 namespace App\Notifications;
 
 use App\Offers\Handover;
+use App\Support\Ago;
 use App\Telegram\Text;
 use App\Workflow\Outcome;
 use App\Workflow\Requirement;
@@ -33,7 +34,7 @@ final class YourTurnNotice extends Notice
 
     public function text(): ?string
     {
-        $due = $this->requirement->due_at ? ' До '.$this->requirement->due_at->translatedFormat('j M, H:i').'.' : '';
+        $due = $this->requirement->due_at ? ' До '.Ago::day($this->requirement->due_at, true).'.' : '';
 
         return trim(($this->requirement->text ?? '').$due) ?: null;
     }
@@ -82,7 +83,7 @@ final class YourTurnNotice extends Notice
     /** @return list<string|null> */
     public static function telegramLines(Requirement $r): array
     {
-        return Text::lines($r->offer, $r->due_at ? 'До '.$r->due_at->translatedFormat('j M, H:i') : null);
+        return Text::lines($r->offer, $r->due_at ? 'До '.Ago::day($r->due_at, true) : null);
     }
 
     /** «Беру в работу» и «Передумал» — у кого из них есть исход на этом этапе. */

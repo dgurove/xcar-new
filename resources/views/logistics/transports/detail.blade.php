@@ -112,7 +112,7 @@
                     <span class="min-w-0">
                         <span class="block text-sm text-ink-muted">Продажа</span>
                         <span class="block {{ $sale->tone }}">{{ $sale->word }}@if ($dealStage)<span class="text-ink-muted">, {{ mb_strtolower($dealStage) }}</span>@endif</span>
-                        <span class="block text-sm text-ink-muted nums">поступила {{ \App\Support\Ago::day($t->created_at, time: true) }}</span>
+                        <span class="block text-sm text-ink-muted nums">поступила {{ \App\Support\Ago::html($t->created_at, time: true, words: false) }}</span>
                     </span>
                     @if ($sale->manager)<x-ui.person :user="$sale->manager" class="shrink-0"/>@endif
                 </div>
@@ -211,7 +211,7 @@
                     <div class="step-body">
                         <div class="step-head">
                             <span class="step-title flex-1">{{ $s['title'] }}</span>
-                            @if ($s['status'] === 'done' && $s['at'])<span class="nums shrink-0 text-sm text-ink-dim">{{ \App\Support\Ago::stamp($s['at'], time: true) }}</span>@endif
+                            @if ($s['status'] === 'done' && $s['at'])<span class="nums shrink-0 text-sm text-ink-dim">{{ \App\Support\Ago::html($s['at'], time: true, short: true) }}</span>@endif
                         </div>
                         @if ($s['hint'])<p class="step-hint">{{ $s['hint'] }}</p>@endif
                         {{-- Трек: копировать и смотреть у СДЭКа; получили — отметить (логист и ведущие — и без трека). --}}
@@ -287,7 +287,7 @@
                         <input type="hidden" name="side" value="{{ $side }}"><input type="hidden" name="paid" value="{{ $paidAt ? 0 : 1 }}">
                         <span class="min-w-0"><span class="block text-sm text-ink-muted">{{ $who }}</span><span class="block nums">{{ Money::rub((int) $sum) }}</span></span>
                         @if ($paidAt)
-                            <button class="shrink-0 text-sm text-accent-text">{{ $done }} {{ \App\Support\Ago::day($paidAt) }}</button>
+                            <button class="shrink-0 text-sm text-accent-text">{{ $done }} {{ \App\Support\Ago::html($paidAt, words: false) }}</button>
                         @elseif ($side === 'executor' || $t->state === S::Delivered)
                             <button class="btn btn-s btn-quiet shrink-0">{{ $verb }}</button>
                         @else

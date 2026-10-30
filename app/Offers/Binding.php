@@ -14,6 +14,7 @@ use App\Workflow\Stage;
 use App\Workflow\WaitsFor;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
+use Illuminate\Support\HtmlString;
 
 /**
  * Срок обязывающего предложения (19.10.2026, владелец: «очень не хватает в CRM и в логистике»): до когда поставщик держит
@@ -218,14 +219,23 @@ final class Binding
         $query->selectRaw(self::panicSql().' as binding_panic');
     }
 
-    /** «6 ноя, 16:00»; конец дня — без времени. */
+    /**
+     * Срок обязывающего — датой приложения (`Ago::at`, 30.10.2026): «03.10 16:00», конец дня — без времени, «03.10».
+     * Числами, как в протоколах торгов (20.10.2026, владелец).
+     */
     public static function date(Carbon $until): string
     {
-        // Числами «03.10» (20.10.2026, владелец), не «3 окт»: так срок пишут в протоколах торгов. Другой год — «03.10.25»,
-        // время — только если не конец дня.
         $at = $until->copy()->timezone(config('app.timezone'));
 
-        return $at->format($at->isCurrentYear() ? 'd.m' : 'd.m.y').($at->format('H:i') !== '23:59' ? ', '.$at->format('H:i') : '');
+        return Ago::at($at, $at->format('H:i') !== '23:59', words: false);
+    }
+
+    /** То же в разметке — время приглушено (`Ago::html`). */
+    public static function html(Carbon $until): HtmlString
+    {
+        $at = $until->copy()->timezone(config('app.timezone'));
+
+        return Ago::html($at, $at->format('H:i') !== '23:59', words: false);
     }
 
     /** Фраза горящего срока: «осталось 1 д 5 ч» / «истёк 03.10». */

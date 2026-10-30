@@ -14,7 +14,7 @@
             <div class="pass-qr">{!! $qr !!}</div>
             <div class="nums pb-4 text-center text-sm tracking-[.2em] text-ink-muted">{{ trim(chunk_split($pass->code, 5, ' ')) }}</div>
         @else
-            <div class="pass-done"><span class="pass-done-icon"><x-ui.icon name="check" class="size-8"/></span>{{ $pass->used_at?->translatedFormat('j F, H:i') }}</div>
+            <div class="pass-done"><span class="pass-done-icon"><x-ui.icon name="check" class="size-8"/></span>{{ \App\Support\Ago::html($pass->used_at, true, words: false) }}</div>
         @endif
     </div>
     <div class="list mt-4">

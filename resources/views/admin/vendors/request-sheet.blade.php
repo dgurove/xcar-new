@@ -3,7 +3,7 @@
      сделку). Вернуть номер в «К запросу» — кружок справа с подтверждением; вернули — серое «возвращён», в снимке он
      остаётся. Открывается и сразу — `?pill=requests&open={id}` из столбца «Запрос» в «Предложениях». --}}
 @php $n = count($r->refs); $words = ['номер', 'номера', 'номеров']; @endphp
-<x-ui.sheet :id="'claim-request-'.$r->id" :title="'Запрос '.$r->created_at->translatedFormat('j M, H:i')" :open="$open === $r->id">
+<x-ui.sheet :id="'claim-request-'.$r->id" :title="'Запрос '.\App\Support\Ago::day($r->created_at, true)" :open="$open === $r->id">
     <div class="acts acts-hero" data-controller="copy" data-copy-text-value="{{ $r->text() }}" data-copy-done-value="{{ $n }} {{ \App\Support\Plural::of($n, $words) }} в буфере">
         <button type="button" class="act" data-action="copy#copy"><span class="btn btn-accent btn-round"><x-ui.icon name="copy"/></span>Скопировать</button>
         <form method="post" action="{{ $base }}/requests/{{ $r->id }}/telegram" class="contents">

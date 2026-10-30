@@ -6,6 +6,7 @@ use App\Garage\Car as GarageCar;
 use App\Offers\CommissionState;
 use App\Offers\Deal;
 use App\Offers\DealState;
+use App\Support\Ago;
 use App\Support\Money;
 use App\Users\User;
 use Carbon\CarbonInterface;
@@ -59,7 +60,7 @@ final class DealMoney
         if ($deal->forGarageBuyer()) {
             $label = 'Цена';
         }
-        $date = fn ($at) => $at?->translatedFormat('j M');
+        $date = fn ($at) => Ago::day($at);
 
         if ($deal->state === DealState::Cancelled) {
             return new self('Сделка отменена', null, 'muted', 'closed');
@@ -148,7 +149,7 @@ final class DealMoney
         $invoice = $mine($car->invoice) ? $car->invoice : null;
         $payout = $mine($car->payoutInvoice) ? $car->payoutInvoice : ($invoice?->isOwed() ? $invoice : null);
         $invoice = $invoice?->isOwed() ? null : $invoice;
-        $date = fn ($at) => $at?->translatedFormat('j M');
+        $date = fn ($at) => Ago::day($at);
         if ($invoice && $invoice->state === InvoiceState::Issued) {
             $left = $invoice->remaining();
             $caption = $staff ? 'должен нам' : 'Отдать нам';
@@ -176,7 +177,7 @@ final class DealMoney
     /** Наша выплата менеджеру (`owed`): к выплате до срока — или выплачено. */
     private static function payout(Invoice $payout, bool $staff): self
     {
-        $date = fn ($at) => $at?->translatedFormat('j M');
+        $date = fn ($at) => Ago::day($at);
 
         return $payout->state === InvoiceState::Issued
             ? new self(($staff ? 'Выплатить до ' : 'К выплате до ').$date($payout->due_at), $payout->remaining(), 'accent', 'payout', $staff ? 'должны ему' : 'Вам к выплате', toHim: $payout->remaining())

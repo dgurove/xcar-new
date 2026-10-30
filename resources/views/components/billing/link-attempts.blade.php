@@ -7,7 +7,7 @@
         <div class="list">
             @foreach ($link->attempts->reverse()->take($limit) as $a)
                 @php [$aText, $aTone] = match (true) { $a->succeeded() => ['оплачено', 'open'], $a->isPending() => ['не завершил', 'urgent'], $a->cancel_reason === 'expired_on_confirmation' => ['бросил', 'muted'], default => [$a->cancelLabel() ?? 'отклонено', 'danger'] }; @endphp
-                <x-money.line :icon="PayMethod::icon($a->method)" :title="$a->created_at->translatedFormat('j M, H:i')" :sub="$a->method ? PayMethod::label($a->method) : null" :tone="$aTone">
+                <x-money.line :icon="PayMethod::icon($a->method)" :title="\App\Support\Ago::day($a->created_at, true)" :sub="$a->method ? PayMethod::label($a->method) : null" :tone="$aTone">
                     <x-slot:acts><x-ui.state :tone="$aTone">{{ $aText }}</x-ui.state></x-slot:acts>
                 </x-money.line>
             @endforeach

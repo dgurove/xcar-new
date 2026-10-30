@@ -14,7 +14,7 @@
                 <div class="flex flex-col items-center gap-1 text-center">
                     <x-telegram.logo class="mb-2 size-16"/>
                     <span class="text-lg">{{ $user->telegram_username ? '@'.$user->telegram_username : $user->name }}</span>
-                    @if ($user->telegram_linked_at)<span class="text-sm text-ink-muted">подключён {{ $user->telegram_linked_at->translatedFormat('j M') }}</span>@endif
+                    @if ($user->telegram_linked_at)<span class="text-sm text-ink-muted">подключён {{ \App\Support\Ago::html($user->telegram_linked_at, words: false) }}</span>@endif
                 </div>
                 <div class="list">
                     <form method="post" action="/account/telegram" class="contents" data-controller="autosubmit">

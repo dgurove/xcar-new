@@ -19,6 +19,7 @@ use App\Purchases\Kind;
 use App\Purchases\Purchase;
 use App\Purchases\PurchaseState;
 use App\Purchases\Restriction;
+use App\Support\Ago;
 use App\Support\Detail;
 use App\Support\Facets\Common;
 use App\Support\Facets\Facet;
@@ -198,7 +199,7 @@ class PurchaseController
         $from = $purchase->offers_close_at?->isFuture() ? $purchase->offers_close_at : now();
         $purchase->update(['offers_close_at' => $from->addMinutes($minutes)]);
 
-        return back()->with('toast', 'Приём до '.$purchase->offers_close_at->translatedFormat('j M, H:i'));
+        return back()->with('toast', 'Приём до '.Ago::day($purchase->offers_close_at, true));
     }
 
     public function state(Request $request, Purchase $purchase, ChangePurchaseState $change)

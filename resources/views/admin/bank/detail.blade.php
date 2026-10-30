@@ -9,7 +9,7 @@
             @if ($tx->doc_number)<span class="tag nums">п/п {{ $tx->doc_number }}</span>@endif
         </x-slot:marks>
         <x-slot:badge><x-ui.state :tone="$tx->tone()" class="title-state">{{ mb_strtolower($tx->stateLabel()) }}</x-ui.state></x-slot:badge>
-        <x-slot:line><span class="nums font-semibold">{{ Money::exact($tx->amount) }}</span><span class="nums text-ink-muted">{{ $tx->booked_at->translatedFormat('j M Y') }}</span></x-slot:line>
+        <x-slot:line><span class="nums font-semibold">{{ Money::exact($tx->amount) }}</span><span class="nums text-ink-muted">{{ $tx->booked_at->format('d.m.Y') }}</span></x-slot:line>
         <x-slot:actions>
             @if ($tx->invoice)
                 <a href="/work/money/invoices/{{ $tx->invoice_id }}" class="btn btn-s btn-quiet">Счёт {{ $tx->invoice->label() }}, {{ $tx->invoice->party->name }}</a>
@@ -25,7 +25,7 @@
                 <x-money.line :icon="$payouts->isEmpty() ? 'clock' : 'check'" :title="$tx->note" :tone="$payouts->isEmpty() ? 'urgent' : 'open'"/>
                 @foreach ($payouts as $a)
                     <x-money.line :icon="\App\Billing\Acquiring\PayMethod::icon($a->method)" :title="'Счёт '.$a->link->invoice->label().', '.$a->link->invoice->party->name"
-                        :sub="$a->created_at->translatedFormat('j M, H:i').', комиссия '.Money::exact($a->fee() ?? 0)" :amount="$a->amount" :href="'/work/money/invoices/'.$a->link->invoice_id" data-turbo-frame="_top"/>
+                        :sub="\App\Support\Ago::day($a->created_at, true).', комиссия '.Money::exact($a->fee() ?? 0)" :amount="$a->amount" :href="'/work/money/invoices/'.$a->link->invoice_id" data-turbo-frame="_top"/>
                 @endforeach
             </div>
         @endif
@@ -37,7 +37,7 @@
                         <label class="row row-check !py-2">
                             <span class="min-w-0 flex-1">
                                 <span class="block truncate">Счёт {{ $i->label() }}, {{ $i->party->name }}</span>
-                                <span class="row-sub nums">к оплате {{ Money::rub($i->remaining()) }}, от {{ $i->issued_at->translatedFormat('j M') }}{{ $i->deal?->offer ? ', '.$i->deal->offer->titleWithYear() : ($i->vehicle ? ', '.$i->vehicle->titleWithYear() : '') }}</span>
+                                <span class="row-sub nums">к оплате {{ Money::rub($i->remaining()) }}, от {{ \App\Support\Ago::html($i->issued_at, words: false) }}{{ $i->deal?->offer ? ', '.$i->deal->offer->titleWithYear() : ($i->vehicle ? ', '.$i->vehicle->titleWithYear() : '') }}</span>
                             </span>
                             <span class="check"><input type="radio" name="invoice" value="{{ $i->id }}" required></span>
                         </label>

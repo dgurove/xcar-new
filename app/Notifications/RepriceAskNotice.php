@@ -3,6 +3,7 @@
 namespace App\Notifications;
 
 use App\Offers\RepriceAsk;
+use App\Support\Ago;
 use App\Telegram\Text;
 
 /**
@@ -31,7 +32,7 @@ final class RepriceAskNotice extends Notice
 
     public function text(): ?string
     {
-        return $this->ask->phrase().'. Согласны? Ответьте до '.$this->ask->due_at->setTimezone('Europe/Moscow')->translatedFormat('j M, H:i');
+        return $this->ask->phrase().'. Согласны? Ответьте до '.Ago::day($this->ask->due_at->setTimezone('Europe/Moscow'), true);
     }
 
     public function href(): string
@@ -80,6 +81,6 @@ final class RepriceAskNotice extends Notice
     /** @return array<int, mixed> */
     public static function telegramLines(RepriceAsk $ask): array
     {
-        return Text::lines($ask->offer, $ask->phrase(), 'Согласны? Ответьте до '.$ask->due_at->setTimezone('Europe/Moscow')->translatedFormat('j M, H:i'));
+        return Text::lines($ask->offer, $ask->phrase(), 'Согласны? Ответьте до '.Ago::day($ask->due_at->setTimezone('Europe/Moscow'), true));
     }
 }

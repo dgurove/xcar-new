@@ -119,7 +119,7 @@
                         <form method="post" action="/deals/{{ $deal->id }}/contract" id="dkp-date-{{ $deal->id }}" class="hidden">@csrf @method('put')</form>
                         <x-ui.date chip submit :clearable="false" name="signed_at" :id="'dkp-date-field-'.$deal->id" :value="$contract->signed_at" :form="'dkp-date-'.$deal->id" placeholder="Указать" class="shrink-0 text-accent-text"/>
                     @else
-                        <span class="shrink-0 text-ink-muted">{{ $contract->signed_at?->translatedFormat('j M Y') ?? 'не указана' }}</span>
+                        <span class="shrink-0 text-ink-muted">{{ $contract->signed_at?->format('d.m.Y') ?? 'не указана' }}</span>
                     @endif
                 </div>
             @else

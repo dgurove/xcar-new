@@ -9,7 +9,7 @@
                 <div class="row justify-between">
                     <span class="min-w-0">
                         <span class="block">{{ $c->connected() ? 'Подключён' : 'Не подключён' }}</span>
-                        @if ($c->connected())<span class="row-sub">{{ $c->connector?->shortName() }}, {{ $c->connected_at?->translatedFormat('j M Y') }}, до {{ $c->refresh_expires_at->translatedFormat('j M Y') }}</span>@endif
+                        @if ($c->connected())<span class="row-sub">{{ $c->connector?->shortName() }}, {{ $c->connected_at?->format('d.m.Y') }}, до {{ $c->refresh_expires_at->format('d.m.Y') }}</span>@endif
                     </span>
                     @if ($admin && $configured)
                         <form method="post" action="/settings/bank/connect" data-turbo="false">@csrf<x-ui.button size="sm" :variant="$c->connected() ? 'secondary' : 'primary'">{{ $c->connected() ? 'Подключить заново' : 'Подключить' }}</x-ui.button></form>

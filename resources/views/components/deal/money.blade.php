@@ -91,7 +91,7 @@
     <div class="mt-3 flex flex-wrap items-center gap-1.5">
         {{-- Схема и режим вознаграждения — текстом, состояние словом, «Ещё счёт» — действием (10.10.2026). --}}
         <span class="text-sm text-ink-muted">{{ $deal->schemeOf()->label() }}{{ $deal->isAuction() && $invoices->isEmpty() ? ', счёт вне системы' : '' }}{{ $deal->commission && $deal->isPrime() ? ', '.mb_strtolower($deal->commission_mode->label()) : '' }}</span>
-        @if (! in_array($state, [CommissionState::Hidden, CommissionState::Withheld]))<x-ui.state :tone="$state->tone()">{{ mb_strtolower($state->label()) }}{{ $state === CommissionState::Payable && $fee ? ' до '.$fee->due_at->translatedFormat('j M') : '' }}{{ $state === CommissionState::Paid && $fee?->paid_at ? ' '.$fee->paid_at->translatedFormat('j M') : '' }}</x-ui.state>@endif
+        @if (! in_array($state, [CommissionState::Hidden, CommissionState::Withheld]))<x-ui.state :tone="$state->tone()">{{ mb_strtolower($state->label()) }}{{ $state === CommissionState::Payable && $fee ? ' до '.\App\Support\Ago::day($fee->due_at) : '' }}{{ $state === CommissionState::Paid && $fee?->paid_at ? ' '.\App\Support\Ago::day($fee->paid_at) : '' }}</x-ui.state>@endif
         @if ($deal->commission && ! $deal->withholds() && $party && ! $party->payoutReady())<x-ui.state tone="urgent">Реквизитов для выплаты нет</x-ui.state>@endif
         @if ($deal->isActive())
             {{-- Счета ставятся сами по схеме (`SyncDealInvoices`); здесь — только «Ещё счёт» для редкого ручного. --}}

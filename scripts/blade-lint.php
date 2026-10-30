@@ -55,6 +55,9 @@ $doors = [
     ['app/Http', '/\.php$/', "/preg_replace\('\/\\\\D\+\/'/", [], 'сумма из формы — App\\Support\\Money::rubles'],
     ['resources/js', '/\.js$/', '/history\.pushState/', ['resources/js/overlays.js'], 'запись истории — resources/js/overlays.js'],
     ['resources/js', '/\.js$/', '/visualViewport\??\.addEventListener/', ['resources/js/keyboard.js'], 'клавиатура — keyboard.js и событие keyboard:change'],
+    // Дата — «07.10 07:40» одним правилом (30.10.2026): в разметке Ago::html / x-ui.when, текстом Ago::at (документы — свой вид, с годом).
+    ['resources/views', '/\.blade\.php$/', "/translatedFormat\\('j [MF](,? H:i)?'\\)/", [], 'дата — App\\Support\\Ago::html или x-ui.when'],
+    ['app', '/\.php$/', "/translatedFormat\\('j [MF](,? H:i)?'\\)/", [], 'дата — App\\Support\\Ago::at'],
     ['resources/views', '/\.blade\.php$/', '/<x-ui\.sheet.* :open="\$errors->(has|hasAny|any)\((\[[^\]]*\]|\'[^\']*\')?\)"/', [], 'шторка с ошибками открывается сама — _sheet в sheet.js'],
 ];
 foreach ($doors as [$where, $type, $pattern, $allowed, $door]) {

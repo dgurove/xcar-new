@@ -23,7 +23,7 @@
                         </div>
                         <div class="mt-0.5 flex flex-wrap items-center">
                             <span class="fact">{{ $status }}</span>
-                            <span class="fact nums">{{ $interest->created_at->translatedFormat('j M') }}</span>
+                            <span class="fact nums">{{ \App\Support\Ago::html($interest->created_at, words: false) }}</span>
                         </div>
                         @if ($interest->comment)<p class="mt-1.5 text-sm text-ink-muted">{{ $interest->comment }}</p>@endif
                     </div>

@@ -9,7 +9,7 @@
     $revoked = $pass ? null : $deal->passes()->where('vehicle_id', $vehicle->id)->whereNotNull('revoked_at')
         ->where('revoke_reason', '!=', \App\Offers\Actions\SyncParkRelease::CHANGED)->latest('id')->first();
     $state = match (true) {
-        (bool) $pass?->used_at => ['выдан '.$pass->used_at->translatedFormat('j M, H:i'), 'text-open'],
+        (bool) $pass?->used_at => ['выдан '.\App\Support\Ago::day($pass->used_at, true), 'text-open'],
         (bool) $pass => ['пропуск выдан'.(($w = $pass->whenLabel('j M')) ? ', приедет '.$w : ''), 'text-open'],
         ! $receiver => ['укажите, кто заберёт, и выдадим пропуск', 'text-urgent'],
         (bool) $revoked => ['пропуск погашен парковкой'.($revoked->revoke_reason ? ': '.mb_lcfirst($revoked->revoke_reason) : ''), 'text-urgent'],

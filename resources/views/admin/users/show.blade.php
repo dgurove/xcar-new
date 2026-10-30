@@ -125,7 +125,7 @@
                                     </span>
                                     @if ($interest->comment)<span class="mt-1.5 block text-sm">{{ $interest->comment }}</span>@endif
                                 </span>
-                                <span class="nums shrink-0 text-sm text-ink-dim">{{ \App\Support\Ago::stamp($interest->created_at) }}</span>
+                                <span class="nums shrink-0 text-sm text-ink-dim">{{ \App\Support\Ago::html($interest->created_at, short: true) }}</span>
                             </a>
                         @endforeach
                     </div>

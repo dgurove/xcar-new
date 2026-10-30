@@ -2,6 +2,7 @@
 
 namespace App\Telegram\Messages;
 
+use App\Support\Ago;
 use Illuminate\Support\Carbon;
 
 /** Сообщение владельцу: заголовок, строки, кнопки решения и ссылка в CRM. */
@@ -39,6 +40,6 @@ abstract class Message
 
     protected static function moment(\DateTimeInterface $at): string
     {
-        return Carbon::instance($at)->timezone(config('app.timezone'))->translatedFormat('j M, H:i');
+        return Ago::day(Carbon::instance($at)->timezone(config('app.timezone')), true);
     }
 }

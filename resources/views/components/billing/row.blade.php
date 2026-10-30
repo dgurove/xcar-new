@@ -10,7 +10,7 @@
         $i->state === InvoiceState::Paid => ['оплачен', 'text-accent-text'],
         $i->isOverdue() => [$i->overdueLabel(), 'text-danger'],
         $i->isPartial() => ['частично', 'text-urgent'],
-        default => [$i->due_at ? 'до '.$i->due_at->translatedFormat('j M') : $i->laterLabel(), $i->light() === 'urgent' ? 'text-urgent' : 'text-ink-muted'],
+        default => [$i->due_at ? 'до '.\App\Support\Ago::day($i->due_at) : $i->laterLabel(), $i->light() === 'urgent' ? 'text-urgent' : 'text-ink-muted'],
     };
 @endphp
 <a href="/money/invoices/{{ $i->id }}" class="row">

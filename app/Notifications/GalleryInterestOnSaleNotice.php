@@ -3,6 +3,7 @@
 namespace App\Notifications;
 
 use App\Offers\Offer;
+use App\Support\Ago;
 use App\Support\Money;
 
 /**
@@ -29,7 +30,7 @@ final class GalleryInterestOnSaleNotice extends Notice
     {
         return collect([
             $this->offer->asking_price ? Money::rub($this->offer->asking_price) : null,
-            ! $this->buyer && $this->offer->bids_close_at ? 'приём подтверждений до '.$this->offer->bids_close_at->translatedFormat('j M, H:i') : null,
+            ! $this->buyer && $this->offer->bids_close_at ? 'приём подтверждений до '.Ago::day($this->offer->bids_close_at, true) : null,
         ])->filter()->implode(', ') ?: null;
     }
 

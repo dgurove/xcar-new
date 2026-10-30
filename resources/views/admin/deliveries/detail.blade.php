@@ -21,7 +21,7 @@
                     $opened = $rows->first(fn ($d) => $d->opened_at !== null);
                 @endphp
                 <div class="flex items-baseline gap-3 py-2">
-                    <span class="nums w-24 shrink-0 text-ink-muted">{{ Ago::stamp($first->created_at, true) }}</span>
+                    <span class="nums w-24 shrink-0 text-ink-muted">{{ \App\Support\Ago::html($first->created_at, true, short: true) }}</span>
                     <span class="min-w-0 flex-1">
                         <span class="block">{{ $first->label }}</span>
                         <span class="block text-xs text-ink-muted">

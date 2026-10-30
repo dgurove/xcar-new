@@ -17,7 +17,7 @@
     </td>
         @break
         @case('when')
-    <td class="{{ $col->classes() }}">{{ \App\Support\Ago::cell($claim->created_at, time: true) }}</td>
+    <td class="{{ $col->classes() }}">{{ \App\Support\Ago::html($claim->created_at, time: true) }}</td>
         @break
         @default
     <td class="{{ $col->classes() }}"></td>

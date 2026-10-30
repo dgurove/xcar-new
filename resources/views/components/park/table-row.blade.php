@@ -34,7 +34,7 @@
             <span class="fit-core"><x-park.ref :vehicle="$vehicle" class="sm:hidden"/><x-ui.plate :value="$vehicle->plate" class="sub-plate"/></span>
             @if ($hasAlerts)<span class="alerts-inline"><x-park.alerts :vehicle="$vehicle" plain :place="false" :skip="['Нет типа']"/></span>@endif
             {{-- Выданная на телефоне: когда и сколько стояла — здесь, а не третьим столбцом (30.10.2026, название сжималось до «Geely…»). --}}
-            @if ($out && $vehicle->released_at)<span class="whitespace-nowrap sm:hidden">выдана {{ \App\Support\Ago::cell($vehicle->released_at) }}@if ($days !== null), {{ $days }}&nbsp;д@endif</span>@endif
+            @if ($out && $vehicle->released_at)<span class="whitespace-nowrap sm:hidden">выдана {{ \App\Support\Ago::html($vehicle->released_at) }}@if ($days !== null), {{ $days }}&nbsp;д@endif</span>@endif
             @if ($vehicle->yard)<span class="sm:hidden">{{ $vehicle->yard->name }}</span>@endif
         </span>
         {{-- Краткая таблица телефона: задача с точкой, как в столбце «Статус», и ошибки данных словами — третьей строкой. --}}
@@ -76,11 +76,11 @@
     <td class="{{ $col->classes() }}">@if ($status['act'] || $status['label'] !== 'на парковке')<span @class(['status-cell', 'is-act' => $status['act'], 'is-late' => $status['late']])>{{ $status['label'] }}</span>@endif</td>
         @break
         @case('accepted')
-    <td class="{{ $col->classes() }}">{{ \App\Support\Ago::cell($vehicle->accepted_at) }}</td>
+    <td class="{{ $col->classes() }}">{{ \App\Support\Ago::html($vehicle->accepted_at) }}</td>
         @break
         @case('released')
     <td class="{{ $col->classes() }}">
-        @if ($vehicle->released_at)<time class="block" datetime="{{ $vehicle->released_at->toIso8601String() }}">{{ \App\Support\Ago::cell($vehicle->released_at) }}</time>@endif
+        @if ($vehicle->released_at)<time class="block" datetime="{{ $vehicle->released_at->toIso8601String() }}">{{ \App\Support\Ago::html($vehicle->released_at) }}</time>@endif
         @if ($days !== null)<span class="cell-sub">{{ $days }}&nbsp;д</span>@endif
     </td>
         @break
@@ -94,7 +94,7 @@
         @case('days')
     <td class="{{ $col->classes() }}">
         @if ($state === VehicleState::Released && $vehicle->released_at)
-            <time datetime="{{ $vehicle->released_at->toIso8601String() }}">{{ \App\Support\Ago::cell($vehicle->released_at) }}</time>
+            <time datetime="{{ $vehicle->released_at->toIso8601String() }}">{{ \App\Support\Ago::html($vehicle->released_at) }}</time>
         @elseif ($days !== null)
             <span>{{ $days }}&nbsp;д</span>
         @endif

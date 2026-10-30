@@ -3,6 +3,7 @@
 namespace App\Notifications;
 
 use App\Purchases\Purchase;
+use App\Support\Ago;
 
 final class PurchaseOpenedNotice extends Notice
 {
@@ -20,7 +21,7 @@ final class PurchaseOpenedNotice extends Notice
 
     public function text(): ?string
     {
-        return 'ТС: '.$this->purchase->cars()->count().($this->purchase->offers_close_at ? ', цены до '.$this->purchase->offers_close_at->translatedFormat('j M, H:i') : '');
+        return 'ТС: '.$this->purchase->cars()->count().($this->purchase->offers_close_at ? ', цены до '.Ago::day($this->purchase->offers_close_at, true) : '');
     }
 
     public function href(): string

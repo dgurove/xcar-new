@@ -108,12 +108,12 @@
             @elseif ($timer)<span class="nums sm:hidden {{ $offer->isEndingSoon() ? 'text-urgent' : 'text-accent-text' }}" data-controller="timer" data-timer-until-value="{{ $offer->bids_close_at->toIso8601String() }}" data-timer-done-value="приём закрыт" data-timer-coarse-value="true" data-timer-word-value="">{{ \App\Support\Ago::left($offer->bids_close_at, '') }}</span>
             @elseif ($slot && $has('state'))<span class="sm:hidden text-accent-text">{{ $slot }}</span>
             {{-- Телефон, «Опубликованные»: у ждущих решения важнее число подтверждений, дата закрытия — у остальных. --}}
-            @elseif ($pick && ! $mixed && ! $count)<span class="sm:hidden nums text-ink-muted">закрыт {{ $offer->bids_close_at->translatedFormat('j M, H:i') }}</span>
+            @elseif ($pick && ! $mixed && ! $count)<span class="sm:hidden nums text-ink-muted">закрыт {{ \App\Support\Ago::html($offer->bids_close_at, true, words: false) }}</span>
             @endif
             {{-- Черновик висит в галерее (08.10.2026) — видно и в шагах работы, с числом интереса. --}}
             @if (! $gallery && $offer->isGallery())<span class="text-accent-text nums">в галерее@if ($offer->interests_count), {{ $offer->interests_count }} {{ \App\Support\Plural::of($offer->interests_count, ['интерес', 'интереса', 'интересов']) }}@endif</span>@endif
             @if ($missing)<span class="text-danger">{{ implode(', ', $missing) }}</span>@endif
-            @if ($late)<span class="text-danger nums">страховая до {{ $offer->insurer_deadline_at->translatedFormat('j M') }}</span>@endif
+            @if ($late)<span class="text-danger nums">страховая до {{ \App\Support\Ago::html($offer->insurer_deadline_at, words: false) }}</span>@endif
         </span>
     </td>
         @break
@@ -139,7 +139,7 @@
         @elseif ($timer)<span class="nums {{ $offer->isEndingSoon() ? 'text-urgent' : 'text-accent-text' }}" data-controller="timer" data-timer-until-value="{{ $offer->bids_close_at->toIso8601String() }}" data-timer-done-value="Приём закрыт" data-timer-coarse-value="true">{{ \App\Support\Ago::left($offer->bids_close_at) }}</span>
         @elseif ($slot)<span class="text-accent-text">{{ $slot }}</span>
         {{-- Во вкладке «Опубликованные» «выбрать» говорит заголовок группы — в строке когда закрылся приём. --}}
-        @elseif ($pick)<span class="nums {{ $count ? 'text-urgent' : 'text-ink-muted' }}">закрыт {{ $offer->bids_close_at->translatedFormat('j M, H:i') }}</span>
+        @elseif ($pick)<span class="nums {{ $count ? 'text-urgent' : 'text-ink-muted' }}">закрыт {{ \App\Support\Ago::html($offer->bids_close_at, true, words: false) }}</span>
         @else<span class="{{ $tone }}{{ $draft ? ' text-ink-dim' : '' }}">{{ $offer->crmTab() }}</span>@endif
     </td>
         @break
@@ -153,7 +153,7 @@
         @case('floor')
     @if ($floorSide)
     {{-- Закупочная на месте цены («Без закупочной цены») — кто завёл и когда стоит при ней, как при цене. --}}
-    <td class="{{ $col->classes() }}">@if ($when)<span class="num-meta sm:hidden">{{ \App\Support\Ago::stamp($when) }}@if ($who)<x-ui.avatar :user="$who" :size="16" title="{{ $who->name }}"/>@elseif ($system)<x-ui.system-avatar :via="$offer->created_via" :size="16"/>@endif</span>@endif @if ($busy && $nofloor)<span class="skeleton arrive-bar w-16"></span>@elseif ($nofloor)<x-offer.rate-chip :offer="$offer" label="Заполнить"/>@elseif ($offer->floor_price)<span @if ($busy) data-arrive-count @endif>{{ \App\Support\Money::nums($offer->floor_price) }}</span>@endif</td>
+    <td class="{{ $col->classes() }}">@if ($when)<span class="num-meta sm:hidden">{{ \App\Support\Ago::html($when, short: true) }}@if ($who)<x-ui.avatar :user="$who" :size="16" title="{{ $who->name }}"/>@elseif ($system)<x-ui.system-avatar :via="$offer->created_via" :size="16"/>@endif</span>@endif @if ($busy && $nofloor)<span class="skeleton arrive-bar w-16"></span>@elseif ($nofloor)<x-offer.rate-chip :offer="$offer" label="Заполнить"/>@elseif ($offer->floor_price)<span @if ($busy) data-arrive-count @endif>{{ \App\Support\Money::nums($offer->floor_price) }}</span>@endif</td>
     @else
     <td class="{{ $col->classes() }}">@if ($offer->floor_price)<span @if ($busy) data-arrive-count @endif>{{ \App\Support\Money::nums($offer->floor_price) }}</span>@endif</td>
     @endif
@@ -163,7 +163,7 @@
         {{-- Краткая таблица (телефон, карточка рядом): кто завёл и когда — вплотную слева от цены (10.10.2026, начальник: с
              телефона непонятно, что когда создано и кем; слева всегда номер убытка, под ценой — подтверждения). Сегодня —
              время, иначе дата, за ней аватар. Столбец «Создано» в краткой таблице спрятан. --}}
-        @if ($when)<span class="num-meta sm:hidden">{{ \App\Support\Ago::stamp($when) }}@if ($who)<x-ui.avatar :user="$who" :size="16" title="{{ $who->name }}"/>@elseif ($system)<x-ui.system-avatar :via="$offer->created_via" :size="16"/>@endif</span>@endif
+        @if ($when)<span class="num-meta sm:hidden">{{ \App\Support\Ago::html($when, short: true) }}@if ($who)<x-ui.avatar :user="$who" :size="16" title="{{ $who->name }}"/>@elseif ($system)<x-ui.system-avatar :via="$offer->created_via" :size="16"/>@endif</span>@endif
         @if ($busy && $rate)<span class="skeleton arrive-bar w-16"></span>
         @elseif ($rate)<x-offer.rate-chip :offer="$offer"/>
         @elseif ($unpriced)
@@ -188,7 +188,7 @@
          Аватаром перед датой: во вкладке шага — кто перевёл сюда, иначе кто завёл черновик. --}}
     <td class="{{ $col->classes() }}">
         @php $face = ($byTab || $draft) ? $who : null; $robot = ($byTab || $draft) && $system; @endphp
-        @if ($face || $robot)<span class="inline-flex items-center gap-2 align-middle">@if ($face)<x-ui.avatar :user="$face" :size="20" title="{{ $face->name }}"/>@else<x-ui.system-avatar :via="$offer->created_via" :size="20"/>@endif @endif{{ \App\Support\Ago::cell($when, time: true) }}@if ($face || $robot)</span>@endif
+        @if ($face || $robot)<span class="inline-flex items-center gap-2 align-middle">@if ($face)<x-ui.avatar :user="$face" :size="20" title="{{ $face->name }}"/>@else<x-ui.system-avatar :via="$offer->created_via" :size="20"/>@endif @endif{{ \App\Support\Ago::html($when, time: true) }}@if ($face || $robot)</span>@endif
     </td>
         @break
         @endswitch

@@ -5,6 +5,7 @@ namespace App\Telegram\Messages;
 use App\Billing\Invoice;
 use App\Garage\Car;
 use App\Offers\Offer;
+use App\Support\Ago;
 use App\Support\Money;
 use App\Support\Surface;
 use App\Telegram\Text;
@@ -28,7 +29,7 @@ final class InvoiceOverdue extends Message
     {
         $i = $this->invoice;
 
-        $rest = 'Остаток '.Money::rub($i->remaining()).' из '.Money::rub($i->total).', срок '.$i->due_at->translatedFormat('j M').', '.$i->overdueLabel();
+        $rest = 'Остаток '.Money::rub($i->remaining()).' из '.Money::rub($i->total).', срок '.Ago::day($i->due_at).', '.$i->overdueLabel();
         if ($offer = $this->offer()) {
             return Text::lines($offer, $rest, $i->label().', '.$i->party->name);
         }
@@ -36,7 +37,7 @@ final class InvoiceOverdue extends Message
         return [
             $i->party->name,
             'Остаток '.Money::rub($i->remaining()).' из '.Money::rub($i->total),
-            'Срок '.$i->due_at->translatedFormat('j M').', '.$i->overdueLabel(),
+            'Срок '.Ago::day($i->due_at).', '.$i->overdueLabel(),
             $i->vehicle?->titleWithYear(),
         ];
     }

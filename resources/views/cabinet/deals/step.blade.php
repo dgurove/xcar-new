@@ -60,7 +60,7 @@
     @if ($deal->state !== DealState::Active && ! $deal->isGarage())
         {{-- Закончилась — состояние словом с датой, без своей плашки, и на телефоне тоже (11.10.2026: там закрытая сделка
              выглядела идущей). Гаражной его пишет своя карточка суммы. --}}
-        <p><span class="font-medium {{ $deal->state === DealState::Done ? 'text-open' : 'text-danger' }}">{{ $deal->declinedBySupplier() ? 'Поставщик отказал в продаже' : $deal->state->label() }}</span>@if ($deal->closed_at) <span class="nums text-sm text-ink-muted">{{ $deal->closed_at->translatedFormat('j M Y, H:i') }}</span>@endif</p>
+        <p><span class="font-medium {{ $deal->state === DealState::Done ? 'text-open' : 'text-danger' }}">{{ $deal->declinedBySupplier() ? 'Поставщик отказал в продаже' : $deal->state->label() }}</span>@if ($deal->closed_at) <span class="nums text-sm text-ink-muted">{{ $deal->closed_at->format('d.m.Y H:i') }}</span>@endif</p>
         {{-- Причина отказа поставщика (28.10.2026) — своими словами сотрудника, без названия вендора. --}}
         @if ($deal->declinedBySupplier() && $deal->close_note)<p class="text-ink-muted">{{ \App\Support\VendorNames::strip($deal->close_note) }}</p>@endif
     @endif
@@ -92,10 +92,10 @@
             @elseif ($requirement && ! ($pickupSteps ?? null))
                 {{-- Чек-лист получения сам говорит, что делать сейчас: заголовок просьбы повторял бы его пункт. --}}
                 <h3 class="mt-5 text-lg">@if ($direct){{ $deal->schemeOf()->payLabel() }}@if ($deal->supplierPayment()) <span class="nums">{{ \App\Support\Money::rub($deal->supplierPayment()) }}</span>@endif @else{{ \App\Users\Wording::mine($requirement->title) }}@endif</h3>
-                @if ($rejected)<p class="mt-2 font-medium text-urgent">Оплата <span class="nums">{{ \App\Support\Money::rub($rejected->amount) }}</span> от <span class="nums">{{ $rejected->paid_at->translatedFormat('j M') }}</span> не поступила{{ $rejected->reject_reason ? ': '.$rejected->reject_reason : '' }}</p>@endif
+                @if ($rejected)<p class="mt-2 font-medium text-urgent">Оплата <span class="nums">{{ \App\Support\Money::rub($rejected->amount) }}</span> от <span class="nums">{{ \App\Support\Ago::html($rejected->paid_at, words: false) }}</span> не поступила{{ $rejected->reject_reason ? ': '.$rejected->reject_reason : '' }}</p>@endif
                 {{-- Срок просьбы — тот же, что часы в шапке шага: второй раз его не пишем. --}}
                 @if ($requirement->due_at && ! ($position->deadline_at && abs($position->deadline_at->diffInMinutes($requirement->due_at)) < 1))
-                    <p class="mt-2 text-sm {{ $requirement->due_at->isPast() ? 'text-urgent' : 'text-ink-muted' }}">до {{ $requirement->due_at->translatedFormat('j M, H:i') }}, <span class="nums font-medium" data-controller="timer" data-timer-until-value="{{ $requirement->due_at->toIso8601String() }}" data-timer-done-value="срок вышел"></span></p>
+                    <p class="mt-2 text-sm {{ $requirement->due_at->isPast() ? 'text-urgent' : 'text-ink-muted' }}">до {{ \App\Support\Ago::html($requirement->due_at, true, words: false) }}, <span class="nums font-medium" data-controller="timer" data-timer-until-value="{{ $requirement->due_at->toIso8601String() }}" data-timer-done-value="срок вышел"></span></p>
                 @endif
             @elseif ($noInvoice)
                 <p class="mt-3 font-medium">Готовим счёт</p>

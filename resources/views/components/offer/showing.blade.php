@@ -19,7 +19,7 @@
     if ($mode === 'deal') {
         // Срок показа: идёт — первым пунктом «До …» (не трогать), кончился — «Показ закончился …»; ниже — выбрать заново.
         $until = $offer->deal_show_until;
-        $for = ($until ? ['keep' => ($offer->dealShowOver() ? 'Показ закончился ' : 'До ').$until->translatedFormat('j M, H:i')] : [])
+        $for = ($until ? ['keep' => ($offer->dealShowOver() ? 'Показ закончился ' : 'До ').\App\Support\Ago::day($until, true)] : [])
             + ['' => 'Пока идёт сделка'] + DealAudience::FOR;
     }
 @endphp

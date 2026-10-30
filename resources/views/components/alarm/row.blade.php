@@ -38,7 +38,7 @@
         @case('term')
     <td class="{{ $col->classes() }}">
         <span @class(['whitespace-nowrap', 'text-danger' => $past, 'text-urgent' => ! $past])>{{ $term }}</span>
-        <span class="cell-sub">{{ \App\Offers\Binding::date($until) }}</span>
+        <span class="cell-sub">{{ \App\Offers\Binding::html($until) }}</span>
     </td>
         @break
         @endswitch

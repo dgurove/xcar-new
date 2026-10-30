@@ -9,6 +9,7 @@ use App\Mail\Message;
 use App\Park\Pass;
 use App\Park\Request;
 use App\Park\Vehicle;
+use App\Support\Ago;
 use App\Support\Money;
 use App\Support\Plural;
 use App\Support\Surface;
@@ -109,7 +110,7 @@ final class ParkNotice extends Notice
     /** Покупатель заполнил анкету: прочитать ответ страховой и подтвердить. */
     public static function buyerForm(Vehicle $v, string $name, CarbonInterface $on): self
     {
-        return (new self('Покупатель заполнил анкету: '.$v->titleWithYear(), $name.', заберёт '.$on->translatedFormat('j M'), '/cars/'.$v->id, $v->id))->variant('buyer-form', 'Анкета покупателя');
+        return (new self('Покупатель заполнил анкету: '.$v->titleWithYear(), $name.', заберёт '.Ago::day($on), '/cars/'.$v->id, $v->id))->variant('buyer-form', 'Анкета покупателя');
     }
 
     /** Просроченный счёт парковки — управляющему: письмо плательщику он пишет сам, автописьма нет. */

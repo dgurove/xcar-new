@@ -103,7 +103,7 @@
                 <div class="step-body">
                     <div class="step-head">
                         <span class="step-title flex-1">{{ $s['title'] }}</span>
-                        @if ($s['status'] === 'done' && $s['at'])<span class="nums shrink-0 text-sm text-ink-dim">{{ \App\Support\Ago::stamp($s['at'], time: true) }}</span>@endif
+                        @if ($s['status'] === 'done' && $s['at'])<span class="nums shrink-0 text-sm text-ink-dim">{{ \App\Support\Ago::html($s['at'], time: true, short: true) }}</span>@endif
                     </div>
                     @if ($s['hint'])<p class="step-hint">{{ $s['hint'] }}</p>@endif
                 </div>

@@ -12,6 +12,7 @@ use App\Offers\Offer;
 use App\Offers\OfferState;
 use App\Park\Vehicle;
 use App\Park\VehicleState;
+use App\Support\Ago;
 use Illuminate\Support\HtmlString;
 
 /**
@@ -67,9 +68,9 @@ final class Cars
     {
         $key = $this->car($v->car_id, $v->ref_key, $v->vin);
         $where = match ($v->state) {
-            VehicleState::Stored => trim(($v->yard?->name ?? 'на парковке').($v->accepted_at ? ', с '.$v->accepted_at->translatedFormat('j M') : '')),
+            VehicleState::Stored => trim(($v->yard?->name ?? 'на парковке').($v->accepted_at ? ', с '.Ago::day($v->accepted_at) : '')),
             VehicleState::Expected => 'ждём на парковке',
-            VehicleState::Released => 'выдана с парковки'.($v->released_at ? ' '.$v->released_at->translatedFormat('j M') : ''),
+            VehicleState::Released => 'выдана с парковки'.($v->released_at ? ' '.Ago::day($v->released_at) : ''),
             VehicleState::Cancelled => 'не привезена',
         };
         $hit = $this->hit($key, fn () => new Hit($v->titleWithYear(), $link, ref: $v->ref, vendorId: $v->vendor_id, external: $external));

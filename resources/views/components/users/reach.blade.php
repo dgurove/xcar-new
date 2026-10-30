@@ -33,11 +33,11 @@
             <div class="row">
                 <span class="min-w-0 flex-1 truncate">{{ $sub->device() }}</span>
                 @if ($sub->silent_at && (! $sub->confirmed_at || $sub->silent_at->gt($sub->confirmed_at)))
-                    <span class="text-danger">не пришло {{ Ago::stamp($sub->silent_at) }}</span>
+                    <span class="text-danger">не пришло {{ \App\Support\Ago::html($sub->silent_at, short: true) }}</span>
                 @elseif ($sub->failed_at)
-                    <span class="text-danger">ошибка {{ Ago::stamp($sub->failed_at) }}</span>
+                    <span class="text-danger">ошибка {{ \App\Support\Ago::html($sub->failed_at, short: true) }}</span>
                 @elseif ($sub->confirmed_at)
-                    <span class="text-ink-muted">проверено {{ Ago::stamp($sub->confirmed_at) }}</span>
+                    <span class="text-ink-muted">проверено {{ \App\Support\Ago::html($sub->confirmed_at, short: true) }}</span>
                 @else
                     <span class="text-ink-dim">не проверено{{ $sub->last_sent_at ? ', ушло '.Ago::stamp($sub->last_sent_at) : '' }}</span>
                 @endif

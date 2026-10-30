@@ -73,7 +73,7 @@
     <td class="{{ $col->classes() }}"><span class="{{ $sale?->tone }}">{{ $sale?->word }}</span></td>
         @break
         @case('binding')
-    <td class="{{ $col->classes() }} {{ $binding && \App\Offers\Binding::panics($binding) ? 'text-danger' : 'text-ink-muted' }}">{{ $binding?->binding_until ? \App\Offers\Binding::date($binding->binding_until) : '' }}</td>
+    <td class="{{ $col->classes() }} {{ $binding && \App\Offers\Binding::panics($binding) ? 'text-danger' : 'text-ink-muted' }}">{{ $binding?->binding_until ? \App\Offers\Binding::html($binding->binding_until) : '' }}</td>
         @break
         @case('to')
     <td class="{{ $col->classes() }}">@if ($manager)<x-ui.person :user="$manager"/>@elseif ($to)<span class="text-ink-muted">{{ $to }}</span>@endif @if ($far)<span class="block text-sm text-ink-dim">между регионами</span>@endif</td>
@@ -88,7 +88,7 @@
     <td class="{{ $col->classes() }}">@if ($who)<x-ui.person :user="$who"/>@elseif ($logist)<span class="text-ink-muted">у логиста {{ $logist->shortName() }}</span>@endif</td>
         @break
         @case('created')
-    <td class="{{ $col->classes() }}">{{ \App\Support\Ago::cell($t->created_at, time: true) }}</td>
+    <td class="{{ $col->classes() }}">{{ \App\Support\Ago::html($t->created_at, time: true) }}</td>
         @break
         @case('when')
     <td class="{{ $col->classes() }} {{ $late ? '!text-danger' : '' }}">{{ $t->shownLabel() }}</td>

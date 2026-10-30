@@ -3,11 +3,12 @@
 namespace App\Support;
 
 use Illuminate\Support\Carbon;
+use Illuminate\Support\HtmlString;
 
 /**
  * Сколько прошло — одним словом для таблиц: «сейчас», «5 мин», «3 ч», «2 д»,
  * «3 нед», «2 мес», «1 г». Точная дата — в title у <time>. Сколько осталось до срока — left().
- * Когда — коротко, одним правилом на приложение — stamp(): «12:30» сегодня, «9 окт» в этом году, «9 окт 2025» раньше.
+ * Когда — одним правилом на приложение — at() текстом и html() в разметке: «сегодня 07:40», «07.10 07:40», «07.10.2025».
  */
 final class Ago
 {
@@ -69,37 +70,22 @@ final class Ago
     }
 
     /**
-     * Короткая дата строки, ленты и чата (16.10.2026: около двадцати мест писали её сами, и старый год выходил то
-     * «09.10.25», то «9 окт 2025»): сегодня — время, в этом году — день и месяц, раньше — с годом. С временем —
-     * «9 окт, 12:30» (сегодня — только время).
+     * Дата и время — одна дверь на всё приложение (30.10.2026, владелец: «пишу не „7 окт, 07:40“, а „07.10 07:40“», «везде —
+     * и на парковке, и в логистике, и в xcar, и в CRM»): «сегодня 07:40», «вчера 14:19», «07.10 07:40», в другом году
+     * «07.10.2025 07:40»; без времени — «сегодня», «07.10». `words: false` — без «сегодня» и «вчера», для фраз, где слово
+     * ломает речь («с 30.10 12:00», «до 21.10 23:59»). В разметке — `html` (время приглушено), текстом (уведомления,
+     * Telegram, тосты) — это.
      */
-    public static function stamp(?\DateTimeInterface $at, bool $time = false): string
-    {
-        if (! $at) {
-            return '';
-        }
-        $at = FastDate::instance($at);
-        if ($at->isToday()) {
-            return $at->format('H:i');
-        }
-        $day = $at->isCurrentYear() ? 'j M' : 'j M Y';
-
-        return $at->translatedFormat($time ? "{$day}, H:i" : $day);
-    }
-
-    /**
-     * Дата в ячейке таблицы — одна дверь для всех списков (30.10.2026, владелец: «дату я бы писал в формате dd.mm.yyyy»):
-     * «сегодня 16:45», «вчера 14:19», раньше — «28.10.2026 11:27»; без времени — «сегодня», «вчера», «28.10.2026».
-     */
-    public static function cell(?\DateTimeInterface $at, bool $time = false): string
+    public static function at(?\DateTimeInterface $at, bool $time = false, bool $words = true): string
     {
         if (! $at) {
             return '';
         }
         $at = FastDate::instance($at);
         $day = match (true) {
-            $at->isToday() => 'сегодня',
-            $at->isYesterday() => 'вчера',
+            $words && $at->isToday() => 'сегодня',
+            $words && $at->isYesterday() => 'вчера',
+            $at->isCurrentYear() => $at->format('d.m'),
             default => $at->format('d.m.Y'),
         };
 
@@ -107,21 +93,50 @@ final class Ago
     }
 
     /**
-     * День без «сегодня — время» (дата счёта, период, дата из журнала): «9 окт», в другом году — «9 окт 2025»; с временем
-     * — «9 окт, 14:05».
+     * Та же дата в разметке — одним видом везде (`.when`): `<time>` с полной датой в подсказке, время приглушено (`.when-t`).
+     * `short` — строка чата и ленты: сегодня — только время, остальные дни — без времени.
      */
-    public static function day(?\DateTimeInterface $at, bool $time = false): string
+    public static function html(?\DateTimeInterface $at, bool $time = false, bool $words = true, bool $short = false): HtmlString
+    {
+        if (! $at) {
+            return new HtmlString('');
+        }
+        $at = FastDate::instance($at);
+        $clock = '<span class="when-t">'.$at->format('H:i').'</span>';
+        $day = e(self::at($at, words: $words));
+        $text = match (true) {
+            $short && $at->isToday() && ! $time => $clock,
+            $time => $day.' '.$clock,
+            default => $day,
+        };
+
+        return new HtmlString('<time class="when" datetime="'.$at->toIso8601String().'" title="'.$at->format('d.m.Y H:i').'">'.$text.'</time>');
+    }
+
+    /** Строка чата и ленты: сегодня — время, остальные дни — дата; с временем — дата и время. Текстом. */
+    public static function stamp(?\DateTimeInterface $at, bool $time = false): string
     {
         if (! $at) {
             return '';
         }
-        $at = FastDate::instance($at);
 
-        return $at->translatedFormat(($at->isCurrentYear() ? 'j M' : 'j M Y').($time ? ', H:i' : ''));
+        return FastDate::instance($at)->isToday() && ! $time ? FastDate::instance($at)->format('H:i') : self::at($at, $time);
+    }
+
+    /** Дата в ячейке таблицы — `at` («сегодня 16:45», «28.10 11:27»). */
+    public static function cell(?\DateTimeInterface $at, bool $time = false): string
+    {
+        return self::at($at, $time);
+    }
+
+    /** День во фразе — `at` без «сегодня» и «вчера»: «с 06.10», «до 21.10 23:59». */
+    public static function day(?\DateTimeInterface $at, bool $time = false): string
+    {
+        return self::at($at, $time, words: false);
     }
 
     public static function time(Carbon $at, string $class = ''): string
     {
-        return '<time datetime="'.$at->toIso8601String().'" title="'.e($at->translatedFormat('j M, H:i')).'" class="nums '.$class.'">'.self::short($at).'</time>';
+        return '<time datetime="'.$at->toIso8601String().'" title="'.$at->format('d.m.Y H:i').'" class="nums '.$class.'">'.self::short($at).'</time>';
     }
 }

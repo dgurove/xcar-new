@@ -8,10 +8,10 @@
         <span class="cell-sub">
             <span class="text-{{ $tx->tone() }}">{{ mb_strtolower($tx->stateLabel()) }}</span>
             @if ($tx->invoice)<span>счёт {{ $tx->invoice->label() }}</span>@elseif ($tx->note)<span>{{ mb_strtolower($tx->note) }}</span>@endif
-            <span class="sm:hidden">{{ $tx->booked_at->translatedFormat('j M') }}</span>
+            <span class="sm:hidden">{{ \App\Support\Ago::html($tx->booked_at, words: false) }}</span>
         </span>
     </td>
     <td class="cell-dim col-detail-hide hidden lg:table-cell"><span class="block max-w-96 truncate">{{ $tx->purpose }}</span></td>
-    <td class="hidden sm:table-cell">{{ $tx->booked_at->translatedFormat('j M') }}</td>
+    <td class="hidden sm:table-cell">{{ \App\Support\Ago::html($tx->booked_at, words: false) }}</td>
     <td class="num nums">{{ Money::nums($tx->amount, 2) }}</td>
 </tr>

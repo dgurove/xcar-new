@@ -18,7 +18,7 @@
                 @php $i = $p->invoice; @endphp
                 <x-money.feed-row :key="$i->id" :with="['tab' => $key]" :title="R::who($i).' пишет, что '.($p->source === PaymentSource::Cash ? 'отдал наличные' : 'оплатил')" :amount="Money::rub($p->amount)" action="Проверить">
                     @if (R::what($i))<span class="cell-car">{{ R::what($i) }}</span>@endif
-                    <span class="text-urgent">сообщил {{ $p->paid_at->translatedFormat('j M') }}</span>
+                    <span class="text-urgent">сообщил {{ \App\Support\Ago::html($p->paid_at, words: false) }}</span>
                 </x-money.feed-row>
             @endforeach
         </div>

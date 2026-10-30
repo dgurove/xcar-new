@@ -19,7 +19,7 @@
             <section class="flex flex-col gap-3 rounded-(--radius-l) bg-surface-2 p-3">
                 <div class="flex min-w-0 flex-col gap-0.5">
                     <h2 class="text-base font-medium">{{ $words($m) }}</h2>
-                    <span class="text-sm text-ink-muted">{{ \App\Mail\Chains\NodeTitle::who($m) }}, <span class="nums">{{ \App\Support\Ago::stamp($m->date_at) }}</span></span>
+                    <span class="text-sm text-ink-muted">{{ \App\Mail\Chains\NodeTitle::who($m) }}, <span class="nums">{{ \App\Support\Ago::html($m->date_at, short: true) }}</span></span>
                     @if ($text = trim($m->ownText()))<p class="truncate text-sm">{{ $text }}</p>@endif
                 </div>
                 <div class="flex gap-2">

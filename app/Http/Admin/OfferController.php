@@ -49,6 +49,7 @@ use App\Offers\Reprice;
 use App\Offers\Showing;
 use App\Offers\Slots;
 use App\Offers\Tag;
+use App\Support\Ago;
 use App\Support\Detail;
 use App\Support\Facets\Common;
 use App\Support\Facets\Facet;
@@ -921,7 +922,7 @@ class OfferController
         $offer = $update($offer, ['bids_close_at' => $until], $request->user());
 
         // Из «Приём закрыт» строка уходит сразу (в «Опубликованные»), числа вкладок — следом, без обновления страницы.
-        return back()->with('toast', 'Приём до '.$offer->bids_close_at->translatedFormat('j M, H:i'))->with(self::gone($request, $offer->refresh()));
+        return back()->with('toast', 'Приём до '.Ago::day($offer->bids_close_at, true))->with(self::gone($request, $offer->refresh()));
     }
 
     /**
@@ -1068,7 +1069,7 @@ class OfferController
             $gallery = app(ShowInGallery::class);
             $offer->isGallery() ? $gallery->hide($offer, $request->user()) : $gallery($offer, $request->user());
 
-            return redirect("/offers/{$offer->number}")->with('toast', $offer->isGallery() ? 'В галерее до '.$offer->gallery_until->translatedFormat('j M, H:i') : 'Убрано из галереи')->with(self::gone($request, $offer));
+            return redirect("/offers/{$offer->number}")->with('toast', $offer->isGallery() ? 'В галерее до '.Ago::day($offer->gallery_until, true) : 'Убрано из галереи')->with(self::gone($request, $offer));
         }
         if ($next === OfferState::Open && in_array($offer->state, [OfferState::Draft, OfferState::Gallery], true)) {
             $offer = $schedule($offer, $this->when($request, Slots::NOW), $request->user(), until: Slots::urgentUntil($request->input('urgent_until')));
@@ -1088,7 +1089,7 @@ class OfferController
     {
         $mode = $request->validate(['mode' => ['required', 'in:now,after']])['mode'];
         $offer = $mode === 'now' ? $send->now($offer, $request->user()) : $send->plan($offer, $request->user());
-        $toast = $mode === 'now' ? 'На аукционе' : 'Уйдёт на аукцион '.$offer->bids_close_at->translatedFormat('j M, H:i').', если не будет подтверждений';
+        $toast = $mode === 'now' ? 'На аукционе' : 'Уйдёт на аукцион '.Ago::day($offer->bids_close_at, true).', если не будет подтверждений';
 
         return redirect("/offers/{$offer->number}")->with('toast', $toast)->with(self::gone($request, $offer));
     }
@@ -1184,7 +1185,7 @@ class OfferController
     {
         return match (true) {
             $offer->isScheduled() => 'Выйдет '.Slots::phrase($offer->slot_at),
-            $offer->isUrgent() => 'Срочно в продаже № '.$offer->number.', приём до '.$offer->bids_close_at->translatedFormat('j M, H:i'),
+            $offer->isUrgent() => 'Срочно в продаже № '.$offer->number.', приём до '.Ago::day($offer->bids_close_at, true),
             default => 'В продаже № '.$offer->number,
         };
     }

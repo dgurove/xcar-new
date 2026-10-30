@@ -36,21 +36,21 @@
             @if ($staff)<span class="min-w-0 truncate text-sm text-ink-muted">{{ $deal->buyer?->shortName() }}</span>@endif
         </span>
         {{-- В архиве исход называет раздел («Закончены», «Отменены») — у строки только когда. --}}
-        @unless ($active)<span class="nums mt-1 block text-sm text-ink-muted sm:hidden">{{ ($deal->closed_at ?? $deal->updated_at)?->translatedFormat('j M') }}</span>@endunless
+        @unless ($active)<span class="nums mt-1 block text-sm text-ink-muted sm:hidden">{{ \App\Support\Ago::html(($deal->closed_at ?? $deal->updated_at), words: false) }}</span>@endunless
         @if ($deal->declinedBySupplier())<span class="mt-1 block text-sm text-danger">Поставщик отказал в продаже</span>@endif
         @if ($task)
             @php $late = $task['due']?->isPast(); @endphp
-            <span class="mt-1 block text-sm"><span class="font-medium">{{ \App\Users\Wording::mine($task['title']) }}</span>@if ($late)<span class="text-danger">, просрочено на <span class="nums whitespace-nowrap" data-controller="timer" data-timer-since-value="{{ $task['due']->toIso8601String() }}" data-timer-coarse-value="true"></span></span>@elseif ($task['due'])<span class="text-ink-muted">, <span class="nums whitespace-nowrap">до {{ $task['due']->translatedFormat('j M, H:i') }}</span></span>@endif</span>
+            <span class="mt-1 block text-sm"><span class="font-medium">{{ \App\Users\Wording::mine($task['title']) }}</span>@if ($late)<span class="text-danger">, просрочено на <span class="nums whitespace-nowrap" data-controller="timer" data-timer-since-value="{{ $task['due']->toIso8601String() }}" data-timer-coarse-value="true"></span></span>@elseif ($task['due'])<span class="text-ink-muted">, <span class="nums whitespace-nowrap">до {{ \App\Support\Ago::html($task['due'], true, words: false) }}</span></span>@endif</span>
         @elseif ($sectioned && $paidUp)
             <span class="mt-1 block text-sm text-ink-muted">Оплата получена</span>
         @elseif ($sectioned && $position)
-            <span class="mt-1 block text-sm text-ink-muted">{{ \App\Users\Wording::mine($position->stage->block?->name ?? $position->stage->name) }}@if ($position->block_entered_at) <span class="nums whitespace-nowrap">с {{ \App\Support\Ago::day($position->block_entered_at) }}</span>@endif</span>
+            <span class="mt-1 block text-sm text-ink-muted">{{ \App\Users\Wording::mine($position->stage->block?->name ?? $position->stage->name) }}@if ($position->block_entered_at) <span class="nums whitespace-nowrap">с {{ \App\Support\Ago::html($position->block_entered_at, words: false) }}</span>@endif</span>
         @elseif ($req)
-            <span class="mt-1 block text-sm font-medium text-urgent">{{ \App\Users\Wording::mine($req->title) }}@if ($req->due_at && $req->due_at->isPast()), просрочено на <span class="nums whitespace-nowrap" data-controller="timer" data-timer-since-value="{{ $req->due_at->toIso8601String() }}" data-timer-coarse-value="true"></span>@elseif ($req->due_at), <span class="nums whitespace-nowrap">до {{ $req->due_at->translatedFormat('j M, H:i') }}</span>@endif</span>
+            <span class="mt-1 block text-sm font-medium text-urgent">{{ \App\Users\Wording::mine($req->title) }}@if ($req->due_at && $req->due_at->isPast()), просрочено на <span class="nums whitespace-nowrap" data-controller="timer" data-timer-since-value="{{ $req->due_at->toIso8601String() }}" data-timer-coarse-value="true"></span>@elseif ($req->due_at), <span class="nums whitespace-nowrap">до {{ \App\Support\Ago::html($req->due_at, true, words: false) }}</span>@endif</span>
         @elseif ($paidUp)
             <span class="mt-1 block text-sm text-ink-muted">Оплата получена</span>
         @elseif ($ask)
-            <span class="mt-1 block text-sm font-medium text-urgent">{{ \App\Users\Wording::mine($ask) }}@if ($position->deadline_at && $position->isOverdue()), просрочено на <span class="nums whitespace-nowrap" data-controller="timer" data-timer-since-value="{{ $position->deadline_at->toIso8601String() }}" data-timer-coarse-value="true"></span>@elseif ($position->deadline_at), <span class="nums whitespace-nowrap">до {{ $position->deadline_at->translatedFormat('j M, H:i') }}</span>@endif</span>
+            <span class="mt-1 block text-sm font-medium text-urgent">{{ \App\Users\Wording::mine($ask) }}@if ($position->deadline_at && $position->isOverdue()), просрочено на <span class="nums whitespace-nowrap" data-controller="timer" data-timer-since-value="{{ $position->deadline_at->toIso8601String() }}" data-timer-coarse-value="true"></span>@elseif ($position->deadline_at), <span class="nums whitespace-nowrap">до {{ \App\Support\Ago::html($position->deadline_at, true, words: false) }}</span>@endif</span>
         @elseif ($position && $active)
             <x-route.clock :position="$position" :side="$staff ? 'staff' : 'manager'" class="mt-1"/>
         @endif
@@ -59,7 +59,7 @@
         <span class="nums font-medium">{{ $deal->isGarage() ? 'В гараж' : \App\Support\Money::rub($deal->amount) }}</span>
         @if ($sectioned)
         @elseif (! $active)
-            <span class="nums text-sm text-ink-muted">{{ ($deal->closed_at ?? $deal->updated_at)?->translatedFormat('j M') }}</span>
+            <span class="nums text-sm text-ink-muted">{{ \App\Support\Ago::html(($deal->closed_at ?? $deal->updated_at), words: false) }}</span>
         @else
             {{-- Этап в покое серый: лайм — глагол. Оранжевым становится просрочка. --}}
             <x-ui.state :tone="$alarm ? 'urgent' : 'plain'" class="max-w-full"><span class="min-w-0">{{ \App\Users\Wording::mine($position?->stage->block?->name) ?? 'Идёт работа' }}</span></x-ui.state>

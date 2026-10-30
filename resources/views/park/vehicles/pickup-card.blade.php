@@ -6,7 +6,7 @@
     $sentAt = $vehicle->events->where('type', \App\Park\EventType::PickupLinkSent)->max('created_at');
     [$state, $tone] = match (true) {
         (bool) $pass => $pass->status(),
-        (bool) $sentAt => ['отправлена '.$sentAt->translatedFormat('j M'), 'plain'],
+        (bool) $sentAt => ['отправлена '.\App\Support\Ago::day($sentAt), 'plain'],
         default => ['не отправлена', 'urgent'],
     };
 @endphp

@@ -2,6 +2,7 @@
 
 namespace App\Telegram\Offers;
 
+use App\Support\Ago;
 use App\Support\Plural;
 use App\Users\Actions\IssueInvite;
 use App\Users\Invite;
@@ -124,7 +125,7 @@ final class Invites
         $came = $invite->buyers()->count();
         // Ссылке менеджеру — до какого она живёт; покупателю админа — чей покупатель.
         $tail = match (true) {
-            $invite->expires_at !== null => ', до '.$invite->expires_at->translatedFormat('j M, H:i'),
+            $invite->expires_at !== null => ', до '.Ago::day($invite->expires_at, true),
             $invite->manager_id && $invite->manager_id !== $sub->user_id => ', от '.$invite->manager?->shortName(),
             default => '',
         };

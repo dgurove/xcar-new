@@ -28,7 +28,7 @@
         <span class="min-w-0 flex-1">
             @if ($when !== false)<span class="block nums">{{ $when }}</span>@endif
             <span @class(['block', 'text-sm text-ink-muted' => $when !== false])>{{ $who }}</span>
-            @if ($binding)<span class="block nums text-sm text-danger">обязывающее до {{ \App\Offers\Binding::date($offer->binding_until) }}, {{ $binding }}</span>@endif
+            @if ($binding)<span class="block nums text-sm text-danger">обязывающее до {{ \App\Offers\Binding::html($offer->binding_until) }}, {{ $binding }}</span>@endif
         </span>
         <x-ui.icon name="chevron-right" class="size-4 shrink-0 text-ink-dim"/>
     </button>

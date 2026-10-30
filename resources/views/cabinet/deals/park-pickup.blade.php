@@ -33,7 +33,7 @@
         @if ($deal->isActive() && ! $pass?->used_at)
             <button type="button" class="row justify-between text-left" data-controller="emit" data-action="emit#send" data-emit-event-param="{{ $sheet }}:open">
                 <span class="text-ink-muted">Заберёт</span>
-                <span class="flex min-w-0 items-center gap-1"><span class="truncate">{{ $receiver?->labelFor(auth()->user()) ?? 'Указать' }}{{ $receiver?->at ? ', '.$receiver->at->translatedFormat('j M, H:i') : '' }}</span><x-ui.icon name="chevron-right" class="size-4 shrink-0 text-ink-dim"/></span>
+                <span class="flex min-w-0 items-center gap-1"><span class="truncate">{{ $receiver?->labelFor(auth()->user()) ?? 'Указать' }}{{ $receiver?->at ? ', '.\App\Support\Ago::day($receiver->at, true) : '' }}</span><x-ui.icon name="chevron-right" class="size-4 shrink-0 text-ink-dim"/></span>
             </button>
         @endif
     </div>
@@ -41,7 +41,7 @@
     @if ($revoked)
         <p class="text-sm font-medium text-urgent">Парковка погасила пропуск{{ $revoked->revoke_reason ? ': '.mb_lcfirst($revoked->revoke_reason) : '' }}. Выберите, кто заберёт, выдадим новый</p>
     @elseif ($pass?->used_at)
-        <p class="font-medium text-open">Выдан {{ $pass->used_at->translatedFormat('j M, H:i') }}</p>
+        <p class="font-medium text-open">Выдан {{ \App\Support\Ago::html($pass->used_at, true, words: false) }}</p>
     @elseif ($pass)
         <div class="pass-card">
             <div class="pass-state pass-state--open"><x-ui.icon name="check-circle" class="size-5"/>Пропуск: {{ $pass->name }}</div>

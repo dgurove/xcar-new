@@ -3,6 +3,8 @@
 namespace App\Telegram\Messages;
 
 use App\Billing\Invoice;
+use App\Http\Admin\MoneyController;
+use App\Support\Ago;
 use App\Support\Money;
 use App\Support\Surface;
 use App\Telegram\Text;
@@ -24,7 +26,7 @@ final class AgentFeeDue extends Message
         $f = $this->fee;
 
         return Text::lines($f->deal?->offer ?? $f->offer,
-            'Агентское вознаграждение '.Money::rub($f->remaining()).' до '.$f->due_at->translatedFormat('j M'),
+            'Агентское вознаграждение '.Money::rub($f->remaining()).' до '.Ago::day($f->due_at),
             $f->party->payoutReady() ? $f->party->bankDetails() : 'Реквизитов для выплаты нет');
     }
 
@@ -35,6 +37,6 @@ final class AgentFeeDue extends Message
 
     protected function link(): array
     {
-        return ['text' => 'В CRM', 'url' => Surface::Crm->url(\App\Http\Admin\MoneyController::url($this->fee))];
+        return ['text' => 'В CRM', 'url' => Surface::Crm->url(MoneyController::url($this->fee))];
     }
 }

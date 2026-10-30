@@ -3,6 +3,7 @@
 namespace App\Vendors;
 
 use App\Offers\Offer;
+use App\Support\Ago;
 use App\Support\FastAttributes;
 use App\Support\Plural;
 use App\Users\User;
@@ -71,7 +72,7 @@ class ClaimRequest extends Model
     {
         $n = count($this->refs);
 
-        return e($this->vendor->name).', запрос '.$this->created_at->translatedFormat('j M').': '.$n.' '.Plural::of($n, ['номер', 'номера', 'номеров'])
+        return e($this->vendor->name).', запрос '.Ago::day($this->created_at).': '.$n.' '.Plural::of($n, ['номер', 'номера', 'номеров'])
             ."\n\n".implode("\n", array_map(fn ($r) => '<code>'.e($r).'</code>', $this->refs));
     }
 }

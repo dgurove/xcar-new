@@ -43,7 +43,7 @@
         @elseif ($state === VehicleState::Expected)
             <span class="text-sm text-ink-muted">{{ $noRequest ? 'без заявки' : 'ожидается' }}</span>
         @elseif ($state === VehicleState::Released && $vehicle->released_at)
-            <span class="nums text-sm text-ink-dim">{{ $vehicle->released_at->translatedFormat('j M') }}</span>
+            <span class="nums text-sm text-ink-dim">{{ \App\Support\Ago::html($vehicle->released_at, words: false) }}</span>
         @endif
     </div>
 </article>

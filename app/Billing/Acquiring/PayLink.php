@@ -11,6 +11,7 @@ use App\Garage\Car;
 use App\Live\Publisher;
 use App\Live\Topics;
 use App\Search\Term;
+use App\Support\Ago;
 use App\Support\FastAttributes;
 use App\Support\Money;
 use App\Support\Surface;
@@ -151,10 +152,10 @@ class PayLink extends Model
     public function stateLine(): array
     {
         [$key, $at, $last] = $this->status();
-        $when = fn () => $at->translatedFormat('j M, H:i');
+        $when = fn () => Ago::day($at, true);
 
         return match ($key) {
-            'paid' => ['оплачено '.$at->translatedFormat('j M'), 'open'],
+            'paid' => ['оплачено '.Ago::day($at), 'open'],
             'canceled' => ['отменена', 'muted'],
             'error' => ['ЮKassa не открыла оплату '.$when(), 'danger'],
             'new' => ['ждём оплату, ещё не открывали', null],

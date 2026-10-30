@@ -2,7 +2,7 @@
 {{-- Шаг «На хранении»: исходы — «Покупатель» (шторка: кто заберёт, обычно приходит письмом страховой) и «Выдать» (окно
      действия). Дни, «На выдачу» и кто заберёт — в шапке дела, ставка — в «Оплатах»: тут не повторяются;
      своё у шага — только с какого дня платит покупатель. --}}
-@if ($buyerFrom && ($money ?? true))<div class="mt-2 flex flex-wrap items-center gap-1.5"><span class="chip nums {{ $buyerFrom->isPast() ? 'bg-danger-soft text-danger' : '' }}">покупатель с {{ $buyerFrom->translatedFormat('j M') }}, {{ Money::rub($buyerRate) }}/сут</span></div>@endif
+@if ($buyerFrom && ($money ?? true))<div class="mt-2 flex flex-wrap items-center gap-1.5"><span class="chip nums {{ $buyerFrom->isPast() ? 'bg-danger-soft text-danger' : '' }}">покупатель с {{ \App\Support\Ago::html($buyerFrom, words: false) }}, {{ Money::rub($buyerRate) }}/сут</span></div>@endif
 {{-- «Выдать» и «Покупатель» — и приёмщику (`$handles`, 27.10.2026). --}}
 @if ($handles ?? $canManage)
     <div class="mt-2 flex gap-2">

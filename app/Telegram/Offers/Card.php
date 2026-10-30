@@ -5,6 +5,7 @@ namespace App\Telegram\Offers;
 use App\Cars\Fuel;
 use App\Offers\Offer;
 use App\Offers\PriceView;
+use App\Support\Ago;
 use App\Support\Liters;
 use App\Support\Surface;
 use App\Users\User;
@@ -30,7 +31,7 @@ final class Card
      */
     public static function header(Offer $offer, int $more): string
     {
-        return e(($offer->isUrgent() ? '🔥 Срочно, приём до '.$offer->bids_close_at->translatedFormat('j M, H:i') : 'Поступило новое предложение')
+        return e(($offer->isUrgent() ? '🔥 Срочно, приём до '.Ago::day($offer->bids_close_at, true) : 'Поступило новое предложение')
             .($more > 0 ? ' (и ещё '.$more.')' : ''));
     }
 
@@ -48,7 +49,7 @@ final class Card
         }
         $price = PriceView::for($offer, $user);
         $lines = [
-            ($offer->isUrgent() ? '🔥 Срочно, приём до '.$offer->bids_close_at->translatedFormat('j M, H:i') : 'Поступило новое предложение').($more > 0 ? ' (и ещё '.$more.')' : ''),
+            ($offer->isUrgent() ? '🔥 Срочно, приём до '.Ago::day($offer->bids_close_at, true) : 'Поступило новое предложение').($more > 0 ? ' (и ещё '.$more.')' : ''),
             '',
             $title,
             $facts ? implode('; ', $facts) : null,

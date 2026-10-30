@@ -3,6 +3,7 @@
 namespace App\Offers;
 
 use App\Mail\Message;
+use App\Support\Ago;
 use App\Support\FastAttributes;
 use App\Users\User;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -87,7 +88,7 @@ class Reprice extends Model
     public function sourceLabel(): string
     {
         return match ($this->source) {
-            'letter' => 'по письму поставщика'.($this->message?->date_at ? ', '.$this->message->date_at->translatedFormat('j M') : ''),
+            'letter' => 'по письму поставщика'.($this->message?->date_at ? ', '.Ago::day($this->message->date_at) : ''),
             'valuation' => 'из текста оценки',
             'migtorg' => 'с Мигторга',
             'file' => 'из файла',

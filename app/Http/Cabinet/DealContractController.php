@@ -8,6 +8,7 @@ use App\Offers\Actions\SaveDealContract;
 use App\Offers\Deal;
 use App\Offers\DealContract;
 use App\Offers\DealState;
+use App\Support\Ago;
 use Illuminate\Http\Request;
 
 /**
@@ -38,7 +39,7 @@ class DealContractController
 
         return back()->with('open_sheet', $needs ? 'deal-buyer-data' : null)->with('toast', match (true) {
             $new => 'Покупатель добавлен',
-            isset($data['signed_at']) => 'Дата договора '.$contract->signed_at?->translatedFormat('j F'),
+            isset($data['signed_at']) => 'Дата договора '.Ago::day($contract->signed_at),
             $deal->isPrime() && $deal->fresh()->hasManagerInvoice() => 'Сохранено, счёт выставлен',
             default => 'Сохранено',
         });

@@ -15,11 +15,11 @@
 @endphp
 <section class="flex w-full flex-col gap-3 rounded-(--radius-l) bg-surface-2 p-3">
     <div class="flex flex-wrap items-baseline gap-x-2">
-        <h2 class="text-base font-medium">{{ $live ? 'Приём до '.$closeAt->translatedFormat('j M, H:i') : 'Приём закрыт' }}</h2>
+        <h2 class="text-base font-medium">{{ $live ? 'Приём до '.\App\Support\Ago::day($closeAt, true) : 'Приём закрыт' }}</h2>
         @if ($live)
             <span class="nums text-sm {{ $offer->isEndingSoon() ? 'text-urgent' : 'text-ink-muted' }}" data-controller="timer" data-timer-until-value="{{ $closeAt->toIso8601String() }}" data-timer-done-value="закрыт" data-timer-coarse-value="true">{{ \App\Support\Ago::left($closeAt, 'ещё') }}</span>
         @else
-            <span class="nums text-sm text-ink-muted">{{ $closeAt->translatedFormat('j M, H:i') }}</span>
+            <span class="nums text-sm text-ink-muted">{{ \App\Support\Ago::html($closeAt, true, words: false) }}</span>
         @endif
     </div>
     {{-- «Показ» строкой — кому и какие отметки, шторка со сроком и волнами (`x-offer.showing-row`). --}}

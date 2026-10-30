@@ -22,7 +22,7 @@
     };
     $row = 'row justify-between';
     // Состояние выплаты менеджеру — словом выплаты, а не счёта («Выставлен» про наш долг ему не говорит ничего).
-    $payoutWord = fn ($i) => $i->state === \App\Billing\InvoiceState::Paid ? 'выплачено' : 'ждёт выплаты'.($i->remaining() > 0 ? ' до '.$i->due_at->translatedFormat('j M') : '');
+    $payoutWord = fn ($i) => $i->state === \App\Billing\InvoiceState::Paid ? 'выплачено' : 'ждёт выплаты'.($i->remaining() > 0 ? ' до '.\App\Support\Ago::day($i->due_at) : '');
 @endphp
 @if ($staff && ($buyerCar ?? false))
     {{-- Машина у покупателя с гаражом — сотруднику (20.10.2026): закупочная, его цена, его счёт и наша прибыль; расчёта с
@@ -98,7 +98,7 @@
         <{{ $pdf ? 'a' : 'div' }} @if ($pdf) href="/garage/cars/{{ $car->offer->number }}/invoice/pdf" data-doc="pdf" data-doc-name="Счёт {{ $invoice?->label() }}" @endif class="{{ $row }}">
             <span class="min-w-0">
                 <span class="block">{{ $invoice->isOwed() ? ($staff ? 'Выплата менеджеру' : 'Выплата вам') : 'Счёт '.$invoice->label() }}@if ($buyerPays) <span class="text-ink-muted">{{ $invoice->party?->name }}</span>@endif</span>
-                <span class="row-sub">@if ($invoice->isOwed()){{ $payoutWord($invoice) }}@else{{ $invoice->state->label() }}@if ($invoice->remaining() > 0), до {{ $invoice->due_at->translatedFormat('j M') }}@endif @endif</span>
+                <span class="row-sub">@if ($invoice->isOwed()){{ $payoutWord($invoice) }}@else{{ $invoice->state->label() }}@if ($invoice->remaining() > 0), до {{ \App\Support\Ago::html($invoice->due_at, words: false) }}@endif @endif</span>
             </span>
             @if ($pdf)<span class="flex shrink-0 items-center gap-1 text-accent-text"><x-ui.icon name="file" class="size-4"/>PDF</span>@endif
         </{{ $pdf ? 'a' : 'div' }}>

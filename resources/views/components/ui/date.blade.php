@@ -13,7 +13,7 @@
     $v = $v === '' ? '' : ($time ? substr(str_replace(' ', 'T', $v), 0, 16) : substr($v, 0, 10));
     $day = fn ($d) => $d ? substr(str_replace(' ', 'T', (string) ($d instanceof \DateTimeInterface ? $d->format('Y-m-d') : $d)), 0, 10) : null;
     $disabled = $attributes->has('disabled') && $attributes->get('disabled') !== false;
-    $chipText = $chip && $v !== '' ? trim($prefix.' '.\Illuminate\Support\Carbon::parse($v)->translatedFormat('j M'.(substr($v, 0, 4) == now()->year ? '' : ' Y').($time ? ', H:i' : ''))) : ($prefix ?: $placeholder);
+    $chipText = $chip && $v !== '' ? trim($prefix.' '.\App\Support\Ago::day(\Illuminate\Support\Carbon::parse($v), (bool) $time)) : ($prefix ?: $placeholder);
 @endphp
 <{{ $chip ? 'span' : 'div' }} class="{{ $chip ? 'contents' : 'date-field' }}" data-controller="date" data-date-prefix-value="{{ $prefix }}" @if ($chip && $placeholder) data-date-placeholder-value="{{ $placeholder }}" @endif data-date-submit-value="{{ $submit ? 'true' : 'false' }}" data-date-time-value="{{ $time ? 'true' : 'false' }}" data-date-default-time-value="{{ $defaultTime }}" data-date-now-value="{{ $now ? 'true' : 'false' }}"
     data-date-min-value="{{ $day($min) }}" data-date-max-value="{{ $day($max) }}" @if ($limit) data-date-limit-value="{{ $limit instanceof \DateTimeInterface ? $limit->format('Y-m-d\TH:i') : substr(str_replace(' ', 'T', (string) $limit), 0, 16) }}" @endif>

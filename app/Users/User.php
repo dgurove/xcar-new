@@ -16,6 +16,7 @@ use App\Offers\Offer;
 use App\Park\City;
 use App\Push\Subscription;
 use App\Search\Term;
+use App\Support\Ago;
 use App\Support\Demo\HidesDemo;
 use App\Support\FastAttributes;
 use App\Support\Nav;
@@ -47,10 +48,10 @@ use Spatie\MediaLibrary\MediaCollections\Models\Media;
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
 {
+    use FastAttributes;
+
     /** @use HasFactory<UserFactory> */
     use HasFactory, InteractsWithMedia, Notifiable, WebAuthnAuthentication;
-
-    use FastAttributes;
     use HidesDemo;
 
     /** Стал менеджером или перестал — круги показа опубликованных пересчитываются: правило «все» его касается. */
@@ -890,7 +891,7 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
         return 'в сети '.match (true) {
             $at->isToday() => $at->format('H:i'),
             $at->isYesterday() => 'вчера',
-            default => $at->translatedFormat('j M'),
+            default => Ago::day($at),
         };
     }
 

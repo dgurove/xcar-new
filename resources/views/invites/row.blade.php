@@ -13,16 +13,16 @@
                     {{-- Одноразовая: кто сделал (админ видит ссылки всех админов — по ней ясно, чей новичок),
                          когда, «→ кто пришёл» или до когда действует. Одноразовость — пилюлей справа. --}}
                     @if ($invite->creator)<x-ui.person :user="$invite->creator" full/>@endif
-                    <span class="tag nums">{{ $invite->created_at->translatedFormat('j M, H:i') }}</span>
+                    <span class="tag nums">{{ \App\Support\Ago::html($invite->created_at, true, words: false) }}</span>
                     @if ($came->isNotEmpty())<x-ui.person :user="$came->first()" full prefix="→"/>
-                    @elseif ($invite->expires_at)<span class="tag nums">до {{ $invite->expires_at->translatedFormat('j M, H:i') }}</span>@endif
+                    @elseif ($invite->expires_at)<span class="tag nums">до {{ \App\Support\Ago::html($invite->expires_at, true, words: false) }}</span>@endif
                 @else
                     @if ($admin && $invite->label)<span class="tag">{{ $invite->kind() }}</span>@endif
                     @if ($admin && $invite->manager)<x-ui.person :user="$invite->manager"/>@endif
                     @if ($invite->group)<span class="tag">→ {{ $invite->group->name }}</span>@endif
                     @if ($other)<span class="tag">от {{ $invite->creator->shortName() }}</span>@endif
                     @if ($came->isNotEmpty())<span class="tag nums">пришло {{ $came->count() }}</span>@endif
-                    @if ($invite->isActive() && $came->isEmpty() && !$invite->group && !$other && !($admin && $invite->manager))<span class="tag nums">{{ $invite->created_at->translatedFormat('j M') }}</span>@endif
+                    @if ($invite->isActive() && $came->isEmpty() && !$invite->group && !$other && !($admin && $invite->manager))<span class="tag nums">{{ \App\Support\Ago::html($invite->created_at, words: false) }}</span>@endif
                 @endif
             </span>
         </span>
@@ -41,7 +41,7 @@
             <span>{{ $invite->kind() }}</span>
             @if ($invite->manager)<span>от {{ $invite->manager->shortName() }}</span>@endif
             @if ($invite->group)<span>в группу «{{ $invite->group->name }}»</span>@endif
-            @if (! $invite->forBuyer())<span class="text-urgent">одноразовая</span>@if ($invite->expires_at)<span class="nums">до {{ $invite->expires_at->translatedFormat('j M, H:i') }}</span>@endif
+            @if (! $invite->forBuyer())<span class="text-urgent">одноразовая</span>@if ($invite->expires_at)<span class="nums">до {{ \App\Support\Ago::html($invite->expires_at, true, words: false) }}</span>@endif
             @else<span class="text-ink-muted">{{ $invite->contactFields() === [] ? 'только имя и логин' : 'спрашиваем: '.collect($invite->contactFields())->map(fn ($f) => mb_strtolower(\App\Users\Invite::FIELDS[$f]))->implode(', ') }}</span>@endif
             <span class="nums text-ink-muted">{{ $invite->created_at->translatedFormat(! $invite->forBuyer() ? 'j M, H:i' : 'j M') }}@if ($invite->creator && (! $invite->forBuyer() || $invite->creator->isNot($me))) {{ $invite->creator->shortName() }}@endif</span>
         </div>
@@ -52,7 +52,7 @@
         @elseif ($invite->isUsedUp())
             <p class="mt-5 text-ink-muted">Ссылка сработала</p>
         @elseif ($invite->isExpired())
-            <p class="mt-5 text-ink-muted">Срок вышел {{ $invite->expires_at->translatedFormat('j M, H:i') }}</p>
+            <p class="mt-5 text-ink-muted">Срок вышел {{ \App\Support\Ago::html($invite->expires_at, true, words: false) }}</p>
         @else
             <p class="mt-5 text-ink-muted">Ссылка выключена</p>
         @endif
@@ -66,7 +66,7 @@
                         <x-ui.avatar :user="$person" :size="40"/>
                         <span class="min-w-0 flex-1">
                             <span class="block truncate font-medium">{{ $person->name }}</span>
-                            <span class="row-sub"><span class="tag">{{ $person->rolesLabel() }}</span><span class="tag nums">{{ $person->created_at->translatedFormat('j M') }}</span></span>
+                            <span class="row-sub"><span class="tag">{{ $person->rolesLabel() }}</span><span class="tag nums">{{ \App\Support\Ago::html($person->created_at, words: false) }}</span></span>
                         </span>
                         @if ($href)<x-ui.chevron/>@endif
                     </{{ $href ? 'a' : 'div' }}>

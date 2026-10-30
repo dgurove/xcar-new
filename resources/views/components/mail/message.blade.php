@@ -18,7 +18,7 @@
             <div class="letter-env mb-0"><span class="letter-env-label">Кому</span> <span class="letter-env-to">@forelse ($to as $address)<x-mail.address :email="$address"/>@empty{{ $message->to_preview ?: '—' }}@endforelse</span></div>
         </div>
         <div class="flex shrink-0 items-center gap-1">
-            <span class="text-sm text-ink-dim">{{ $message->date_at?->translatedFormat('j M, H:i') }}</span>
+            <span class="text-sm text-ink-dim">{{ \App\Support\Ago::html($message->date_at, true, words: false) }}</span>
             <form method="post" action="{{ $base }}/messages/{{ $message->id }}/flag">@csrf<button class="btn btn-ghost btn-s px-1.5 {{ $message->is_flagged ? 'text-urgent' : 'text-ink-dim' }}" aria-label="Отметить"><x-ui.icon name="flag" class="size-5"/></button></form>
         </div>
     </div>

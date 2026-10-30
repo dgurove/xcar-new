@@ -61,7 +61,7 @@
                 <span class="letter-dot"></span>
                 <details class="letter-body">
                     @php $n = count($node['items']); @endphp
-                    <summary class="letter-head"><span class="letter-who font-normal text-ink-muted">{{ $node['service'] ? $n.' '.\App\Support\Plural::of($n, ['служебное', 'служебных', 'служебных']) : 'Ещё '.$n.' '.\App\Support\Plural::of($n, ['письмо', 'письма', 'писем']) }}</span><span class="letter-when">{{ end($node['items'])->date_at?->translatedFormat('j M') }}</span></summary>
+                    <summary class="letter-head"><span class="letter-who font-normal text-ink-muted">{{ $node['service'] ? $n.' '.\App\Support\Plural::of($n, ['служебное', 'служебных', 'служебных']) : 'Ещё '.$n.' '.\App\Support\Plural::of($n, ['письмо', 'письма', 'писем']) }}</span><span class="letter-when">{{ \App\Support\Ago::html(end($node['items'])->date_at, words: false) }}</span></summary>
                     <div class="letter-text">
                         @foreach ($node['items'] as $m)
                             <x-mail.letter :message="$m" :base="$base" :title="NodeTitle::for($m, $candidate)" :titled="NodeTitle::titled($m, $candidate)" :kind="$own($m) ? 'ours' : ''" :reply="$reply"/>

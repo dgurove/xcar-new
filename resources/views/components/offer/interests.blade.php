@@ -19,7 +19,7 @@
                         @if ($interest->user->manager)<span>покупатель {{ $interest->user->manager->shortName() }}</span>@endif
                         @if ($interest->placer)<span>{{ $interest->placer->is($me) ? 'вы внесли' : 'внёс '.$interest->placer->shortName() }}</span>@endif
                         @if ($interest->user->phone && ! $interest->user->is($me))<x-ui.phone :user="$interest->user"/>@endif
-                        <span class="nums whitespace-nowrap">{{ $interest->created_at->translatedFormat('j M, H:i') }}</span>
+                        <span class="nums whitespace-nowrap">{{ \App\Support\Ago::html($interest->created_at, true, words: false) }}</span>
                         @if ($interest->state === InterestState::Closed)<x-ui.state tone="closed">закрыт</x-ui.state>@endif
                     </span>
                     @if ($interest->comment)<span class="mt-1 block text-sm">{{ $interest->comment }}</span>@endif

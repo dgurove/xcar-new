@@ -3,6 +3,8 @@
 namespace App\Offers;
 
 use App\Logistics\TransportState;
+use App\Park\VehicleState;
+use App\Support\Ago;
 use App\Users\User;
 
 /**
@@ -28,8 +30,8 @@ final class PickupState
         $park = $offer->parkVehicle;
 
         return match (true) {
-            $park?->state === \App\Park\VehicleState::Stored => ['на парковке', 'open'],
-            $park?->state === \App\Park\VehicleState::Expected && in_array($offer->car_place, [null, CarPlace::Owner], true) => ['едет на парковку', 'plain'],
+            $park?->state === VehicleState::Stored => ['на парковке', 'open'],
+            $park?->state === VehicleState::Expected && in_array($offer->car_place, [null, CarPlace::Owner], true) => ['едет на парковку', 'plain'],
             $offer->car_place === CarPlace::Keeper => self::keeper($offer, $viewer),
             $offer->car_place === CarPlace::WithUs => ['стоит у нас', 'open'],
             $offer->car_place === CarPlace::Ours => ['на парковке', 'open'],
@@ -39,7 +41,7 @@ final class PickupState
             ! $t => ['вывоз не начат', 'plain'],
             $hold !== null => [$hold, 'plain'],
             $t->state === TransportState::Moving => [$mine ? 'везёте' : 'везут', 'open'],
-            $t->state === TransportState::Agreed && $t->pickup_at !== null => [($mine ? 'забрать ' : 'вывоз ').$t->pickup_at->translatedFormat('j M'), $mine ? 'urgent' : 'plain'],
+            $t->state === TransportState::Agreed && $t->pickup_at !== null => [($mine ? 'забрать ' : 'вывоз ').Ago::day($t->pickup_at), $mine ? 'urgent' : 'plain'],
             in_array($t->state, [TransportState::Assigned, TransportState::Agreed], true) => [$mine ? 'позвонить владельцу' : 'забирает '.$who?->shortName(), $mine ? 'urgent' : 'plain'],
             default => ['ищем, кто вывезет', 'plain'],
         };

@@ -1,9 +1,10 @@
 import { Controller } from '@hotwired/stimulus';
 import { keyboard } from '../keyboard';
 import 'cally';
+import { day } from '../lib/when';
 
 // Выбор даты и времени вместо системного поля (владелец 10.10.2026: «вписывать год и время вручную — дрочево, системный
-// календарь уебанский»). Поле — словами («9 окт, 12:00», год — только если не текущий), значение для сервера — скрытое
+// календарь уебанский»). Поле — «09.10 12:00» (как все даты, `lib/when.js`; год — только если не текущий), значение для сервера — скрытое
 // поле прежнего вида (`Y-m-d` / `Y-m-dTH:i`). Нажатие — всплывашка: календарь Cally (`<calendar-date>`, выбор месяца и
 // года в шапке) и у поля со временем — одно поле `чч:мм` с временем по умолчанию (CRM 17:30, парковка 12:00). Без
 // времени день выбирается одним нажатием и всплывашка закрывается. На ПК дату можно напечатать: «8.9», «8.9.25 1730».
@@ -12,7 +13,6 @@ import 'cally';
 // закрыли с новым значением (дата приёма в деле: день, потом время — одна отправка, а не две).
 // `limit` («Y-m-dTH:i») — позже нельзя (срок обязывающего предложения, 19.10.2026, владелец: «прям запретить в календарике,
 // красным всё, что после»): дни после него красные и не нажимаются, время позже на последний день — до предела и словами.
-const MONTHS = ['янв', 'фев', 'мар', 'апр', 'мая', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'];
 const pad = (n) => String(n).padStart(2, '0');
 const iso = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 // «Сейчас» по Москве, как у сервера (`app.timezone`): у владельца в Дубае браузер на час впереди. [день, чч:мм]
@@ -60,9 +60,7 @@ export default class extends Controller {
         const p = this.parts;
         let text = '';
         if (p) {
-            const [y, m, d] = p.date.split('-').map(Number);
-            const year = y !== new Date().getFullYear() ? ` ${y}` : '';
-            text = `${d} ${MONTHS[m - 1]}${year}${this.timeValue && p.time ? `, ${p.time}` : ''}`;
+            text = `${day(p.date)}${this.timeValue && p.time ? ` ${p.time}` : ''}`;
         }
         if (this.field) {
             this.textTarget.value = text;
@@ -182,8 +180,7 @@ export default class extends Controller {
     }
 
     human(date) {
-        const [y, m, d] = date.split('-').map(Number);
-        return `${d} ${MONTHS[m - 1]}${y !== new Date().getFullYear() ? ` ${y}` : ''}`;
+        return day(date);
     }
 
     limitText() {

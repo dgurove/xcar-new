@@ -21,7 +21,7 @@
             <x-table.group :table="$columns" key="claims" title="Проверить" :count="$s['claims']->count()"/>
             @foreach ($s['claims'] as $p)
                 <x-money.table-row :table="$columns" :tab="$key" :invoice="$p->invoice" :title="$p->invoice->party->name" tone="text-urgent"
-                    :now="R::who($p->invoice).' пишет, что '.($p->source === PaymentSource::Cash ? 'отдал наличные' : 'оплатил').' '.$p->paid_at->translatedFormat('j M')"
+                    :now="R::who($p->invoice).' пишет, что '.($p->source === PaymentSource::Cash ? 'отдал наличные' : 'оплатил').' '.\App\Support\Ago::day($p->paid_at)"
                     :manager="$p->invoice->manager()" :amount="$p->amount"/>
             @endforeach
         @endif

@@ -4,6 +4,7 @@ namespace App\Offers;
 
 use App\Garage\CarState;
 use App\Garage\GaragePayer;
+use App\Support\Ago;
 use App\Support\Changes;
 use App\Support\FastAttributes;
 use App\Support\Money;
@@ -156,9 +157,9 @@ class OfferEvent extends Model
                 'keeper' => ', к менеджеру', 'ours' => ', к нам', default => ''
             },
             // Слот: поставили («В слот 4 окт, 16:00»), убрали или часы не смогли выпустить (`error` — чего не хватило).
-            OfferEventType::Scheduled => isset($p['error']) ? 'Не вышло в слот: '.$p['error'] : (isset($p['at']) ? 'В слот '.Carbon::parse($p['at'])->translatedFormat('j M, H:i') : 'Убрано из слота'),
+            OfferEventType::Scheduled => isset($p['error']) ? 'Не вышло в слот: '.$p['error'] : (isset($p['at']) ? 'В слот '.Ago::day(Carbon::parse($p['at']), true) : 'Убрано из слота'),
             // Окно галереи: открыли («В галерее до 11 окт, 23:59») или убрали руками.
-            OfferEventType::Gallery => isset($p['until']) ? 'В галерее до '.Carbon::parse($p['until'])->translatedFormat('j M, H:i') : (($p['letter'] ?? false) ? 'Убрано из галереи: пришло письмо' : 'Убрано из галереи'),
+            OfferEventType::Gallery => isset($p['until']) ? 'В галерее до '.Ago::day(Carbon::parse($p['until']), true) : (($p['letter'] ?? false) ? 'Убрано из галереи: пришло письмо' : 'Убрано из галереи'),
             OfferEventType::PlaceChanged => 'Автомобиль: '.(CarPlace::labelOf($p['place'] ?? null) ?? 'место не указано'),
             OfferEventType::Note => (string) ($p['text'] ?? ''),
             OfferEventType::Garage => self::garageText($p),

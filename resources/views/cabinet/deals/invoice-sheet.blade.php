@@ -6,7 +6,7 @@
     use App\Billing\InvoiceState;
     $i = $invoice;
 @endphp
-<x-ui.sheet :id="'invoice-'.$i->id" :title="'Счёт '.$i->label().' от '.$i->issued_at->translatedFormat('j M')" :open="(int) request('invoice') === $i->id">
+<x-ui.sheet :id="'invoice-'.$i->id" :title="'Счёт '.$i->label().' от '.\App\Support\Ago::day($i->issued_at)" :open="(int) request('invoice') === $i->id">
     <div class="list">
         @if ($i->party_id !== auth()->user()->party_id)
             <div class="row"><span class="min-w-0 flex-1 text-ink-muted">Платит</span><span class="min-w-0 truncate">{{ $i->party?->name }}</span></div>

@@ -17,7 +17,7 @@
     </span>
     <span class="flex shrink-0 flex-col items-end gap-1 text-right">
         @if ($p['pay'] > 0)
-            <span><span class="nums block font-semibold">{{ Money::rub($p['pay']) }}</span><span class="block text-xs text-ink-dim">должен нам@if ($p['pay_due']) до {{ $p['pay_due']->translatedFormat('j M') }}@endif</span></span>
+            <span><span class="nums block font-semibold">{{ Money::rub($p['pay']) }}</span><span class="block text-xs text-ink-dim">должен нам@if ($p['pay_due']) до {{ \App\Support\Ago::html($p['pay_due'], words: false) }}@endif</span></span>
         @endif
         @if ($p['payout'] > 0)
             <span><span class="nums block font-semibold text-accent-text">{{ Money::rub($p['payout']) }}</span><span class="block text-xs text-ink-dim">должны ему</span></span>

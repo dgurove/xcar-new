@@ -78,11 +78,11 @@
         <x-offer.binding :offer="$offer"/>
         {{-- Срочное (12.10.2026) — капсулой огня со сроком приёма. --}}
         @if ($offer->isUrgent())
-            <span class="pill pill-fire"><x-ui.icon name="fire" fill class="size-4"/>Срочно, до {{ $offer->bids_close_at->translatedFormat('j M, H:i') }}</span>
+            <span class="pill pill-fire"><x-ui.icon name="fire" fill class="size-4"/>Срочно, до {{ \App\Support\Ago::html($offer->bids_close_at, true, words: false) }}</span>
         @endif
         {{-- «По истечению срока на аукцион» (13.10.2026) — капсулой с концом приёма. --}}
         @if ($offer->auctionPlanned())
-            <span class="pill pill-plain"><x-ui.icon name="flag" class="size-4"/>На аукцион после {{ $offer->bids_close_at?->translatedFormat('j M, H:i') }}</span>
+            <span class="pill pill-plain"><x-ui.icon name="flag" class="size-4"/>На аукцион после {{ \App\Support\Ago::html($offer->bids_close_at, true, words: false) }}</span>
         @endif
         {{-- ТС ещё в «Заявках на приём» парковки (13.10.2026) — капсулой с парковкой, если она известна. --}}
         @if ($admin && $offer->awaitingPark())
@@ -118,7 +118,7 @@
             <div class="flex w-full flex-wrap items-center gap-x-3 gap-y-1 text-sm">
                 @if (! $admin || $intake)
                 @elseif ($offer->closed())
-                    <span class="nums text-ink-muted">Приём закрыт с {{ $offer->bids_close_at->translatedFormat('j M, H:i') }}</span>
+                    <span class="nums text-ink-muted">Приём закрыт с {{ \App\Support\Ago::html($offer->bids_close_at, true, words: false) }}</span>
                 @elseif ($offer->bids_close_at && $offer->state === OfferState::Open)
                     <span class="nums">Приём <span data-controller="timer" data-timer-until-value="{{ $offer->bids_close_at->toIso8601String() }}" data-timer-done-value="закрыт" data-timer-coarse-value="true">{{ \App\Support\Ago::left($offer->bids_close_at, 'ещё') }}</span></span>
                 @endif
@@ -213,7 +213,7 @@
                         <a href="/work/chats/{{ $chat->id }}" class="flex items-center gap-3 py-2">
                             <x-ui.avatar :user="$chat->user" :size="36"/>
                             <div class="min-w-0 flex-1">
-                                <div class="flex items-baseline gap-2"><span class="truncate {{ $chat->unread_for_staff ? 'font-medium' : '' }}">{{ $chat->displayName() }}</span><span class="ml-auto shrink-0 text-sm text-ink-dim">{{ \App\Support\Ago::stamp($chat->last_message_at) }}</span></div>
+                                <div class="flex items-baseline gap-2"><span class="truncate {{ $chat->unread_for_staff ? 'font-medium' : '' }}">{{ $chat->displayName() }}</span><span class="ml-auto shrink-0 text-sm text-ink-dim">{{ \App\Support\Ago::html($chat->last_message_at, short: true) }}</span></div>
                                 <div class="truncate text-sm text-ink-muted">{{ $chat->lastPreview(auth()->user()) }}</div>
                             </div>
                             @if ($chat->unread_for_staff)<span class="badge">{{ $chat->unread_for_staff }}</span>@endif

@@ -3,6 +3,7 @@
 namespace App\Notifications;
 
 use App\Offers\Estimate;
+use App\Support\Ago;
 use App\Support\Money;
 use App\Telegram\Text;
 
@@ -46,7 +47,7 @@ abstract class EstimateNotice extends Notice
 
     protected function due(): string
     {
-        return 'до '.$this->estimate->due_at->translatedFormat('j M, H:i');
+        return 'до '.Ago::day($this->estimate->due_at, true);
     }
 
     /** @return list<mixed> */
