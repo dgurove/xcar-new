@@ -6,7 +6,7 @@ import { scrollTop, scrollToY } from '../lib/scroller';
 
 // Вкладки экрана колесом во весь экран (`x-ui.tab-title`, 30.10.2026, владелец: «как в iOS, как на Apple Watch»).
 //
-// Нажали заголовок — заливка расходится кругом от пальца, текущая вкладка стоит ровно на месте заголовка, остальные
+// Нажали заголовок — заливка проявляется (круг владельцу не подошёл, 30.10.2026), текущая вкладка стоит ровно на месте заголовка, остальные
 // выплывают. Колесо — нативная прокрутка со снапом к «линии фокуса» (место заголовка); рост и цвет пункта считает браузер
 // анимацией по прокрутке (`animation-timeline`, app.css) — в такт пальцу, без скрипта в кадре. Скрипт только ставит
 // размеры и ловит, где колесо встало. Встало на другой вкладке — через SETTLE она грузится (владелец: «страница начинает
@@ -59,16 +59,15 @@ export default class extends Controller {
         const port = this.scroll.clientHeight;
         // Линия фокуса — верх строки, чья середина на середине первой строки заголовка.
         const focus = Math.round(r.top + line / 2 - row / 2);
-        const ox = event.clientX || r.left + 24, oy = event.clientY || r.top + line / 2;
         const set = (k, v) => wheel.style.setProperty(k, v);
         this.row = row;
         set('--wheel-focus', `${focus}px`);
         set('--wheel-tail', `${Math.max(0, port - focus - row)}px`);
         set('--wheel-at', `${port - focus}px`);
         set('--wheel-left', `${Math.round(r.left)}px`);
-        set('--wheel-ox', `${ox}px`);
-        set('--wheel-oy', `${oy}px`);
-        set('--wheel-r', `${Math.ceil(Math.hypot(Math.max(ox, innerWidth - ox), Math.max(oy, innerHeight - oy)))}px`);
+        // «›» у выбранной — ровно там, где она у заголовка: показывает, что выбрано (владелец 30.10.2026).
+        const chev = button.querySelector('.tab-title-chev')?.getBoundingClientRect();
+        if (chev) { set('--wheel-chev-x', `${chev.left}px`); set('--wheel-chev-y', `${chev.top}px`); }
         // Мелкий пункт — размер текста (`--text-base`) от размера заголовка.
         const base = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--text-base')) * parseFloat(getComputedStyle(document.documentElement).fontSize);
         set('--wheel-small', String(Math.min(1, base / parseFloat(getComputedStyle(this.items[0] ?? button).fontSize)).toFixed(3)));
@@ -82,9 +81,6 @@ export default class extends Controller {
         button.setAttribute('aria-expanded', 'true');
         void wheel.offsetWidth;
         wheel.classList.add('is-open');
-        // Круг дошёл — снимаем его: обрезка по кругу у прокрутки во весь экран стоит кадров.
-        const settled = (e) => { if (!e || (e.target === wheel && e.propertyName === 'clip-path')) wheel.classList.add('is-settled'); };
-        if (reducedMotion()) settled(); else wheel.addEventListener('transitionend', settled, { signal: this.off.signal });
         this.items[this.current]?.focus({ preventScroll: true });
     }
 
@@ -233,15 +229,12 @@ export default class extends Controller {
             Turbo.session.adapter?.hideVisitProgressBar?.();
         }
         if (!fromBack) overlays.shut(ID);
-        // Круг сворачивается к заголовку: из `clip-path: none` переход не идёт — сначала полный круг.
-        wheel.classList.remove('is-settled');
-        void wheel.offsetWidth;
         wheel.classList.remove('is-open');
         this.button?.setAttribute('aria-expanded', 'false');
         this.after(500);
     }
 
-    // Колесо уходит своим переходом (круг или угасание) — по его концу, запасом — по таймеру.
+    // Колесо уходит угасанием — по его концу, запасом — по таймеру.
     after(ms) {
         const wheel = this.wheel, off = this.off;
         if (reducedMotion()) { this.teardown(); return; }
@@ -261,7 +254,7 @@ export default class extends Controller {
         this.touching = this.leaving = false;
         this.chosen = this.url = null;
         this.mine = false;
-        wheel.classList.remove('is-open', 'is-settled', 'is-leaving');
+        wheel.classList.remove('is-open', 'is-leaving');
         this.items.forEach((a) => a.classList.remove('is-loading'));
         wheel.hidden = true;
         const home = this.element.isConnected && !this.element.querySelector('[data-wheel]') ? this.element : null;

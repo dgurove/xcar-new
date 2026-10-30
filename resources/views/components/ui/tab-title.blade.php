@@ -20,6 +20,7 @@
         </button>
     </h1>
     <div id="{{ $id }}" class="tab-wheel" data-wheel role="dialog" aria-label="Вкладки" hidden>
+        <x-ui.icon name="chevron-right" class="tab-wheel-chev size-3.5"/>
         <nav class="tab-wheel-scroll">
             @foreach ($pills as $key => $label)
                 <a href="{{ $url([$pillParam => $key === '' || $key === ($pillHome ?? array_key_first($pills)) ? null : $key, 'page' => null]) }}" class="tab-wheel-item text-xl sm:text-2xl" data-turbo-prefetch="false" @isset($bumps[$key]) data-pill-bump="{{ $key }}:{{ $counts[$bumps[$key]] ?? 0 }}" @endisset @if ((string) $pill === (string) $key) aria-current="true" @endif>

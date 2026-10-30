@@ -1038,7 +1038,6 @@ html.kb-open { --home-gap: 0px; }
   /* «›» — в поле экрана слева от названия, у самого края: видно, что это выбор, а название стоит на месте. Открыт список —
      поворачивается вниз. */
   .tab-title-chev { position: absolute; left: -.875rem; top: .65em; translate: 0 -50%; color: var(--color-ink-dim); transition: rotate var(--dur-fast); }
-  .tab-title-btn[aria-expanded="true"] .tab-title-chev { rotate: 90deg; }
   @media (hover: hover) { .tab-title-btn:hover { color: var(--color-ink-muted); } }
   /* Строка ушла в другую вкладку (lib/bump.js) — название коротко загорается лаймом, без раздувания. */
   @media (prefers-reduced-motion: no-preference) { .tab-title-btn.is-bumped { animation: title-bump .9s cubic-bezier(.2,.8,.2,1) 1; } }
@@ -1049,17 +1048,17 @@ html.kb-open { --home-gap: 0px; }
     border-radius: 999px; background: var(--color-accent);
   }
   /* Колесо вкладок (30.10.2026, владелец: «как в iOS, как на Apple Watch» — выбранная на месте заголовка чёрным, остальные
-     мельче и приглушённые, без разделителей; `tab_wheel_controller`). Заливка расходится кругом от пальца поверх шапки и
-     таб-бара; пункт растёт и чернеет у линии фокуса (место заголовка) анимацией по прокрутке — считает браузер в такт
+     мельче и приглушённые, без разделителей; `tab_wheel_controller`; вечером: «в полтора раза плотнее», «кружок не
+     подходит» — заливка проявляется и угасает, у выбранной та же «›», что у заголовка). Заливка — поверх шапки и таб-бара; пункт растёт и чернеет у линии фокуса (место заголовка) анимацией по прокрутке — считает браузер в такт
      пальцу; без неё — просто список. Размеры ставит скрипт: --wheel-focus — верх строки в фокусе, --wheel-at — та же линия
      от низа экрана (начало диапазона `cover`), --wheel-left — левый край названия, --wheel-small — мелкий пункт
-     (`--text-base` от заголовка), --wheel-ox/oy/r — круг. Цвета, шрифт и движение — токены: тёмная тема сама. */
+     (`--text-base` от заголовка), --wheel-chev-x/y — где «›» у заголовка. Цвета, шрифт и движение — токены: тёмная тема сама. */
   .tab-wheel {
     position: fixed; inset: 0; z-index: var(--z-wheel); background: var(--color-wheel); color: var(--color-ink);
-    clip-path: circle(0 at var(--wheel-ox) var(--wheel-oy)); transition: clip-path var(--dur) var(--ease-in);
+    opacity: 0; transition: opacity var(--dur) var(--ease-in);
   }
-  .tab-wheel.is-open { clip-path: circle(var(--wheel-r) at var(--wheel-ox) var(--wheel-oy)); transition: clip-path var(--dur-slow) var(--ease-out); }
-  .tab-wheel.is-settled { clip-path: none; }
+  .tab-wheel.is-open { opacity: 1; transition: opacity var(--dur) var(--ease-out); }
+  .tab-wheel-chev { position: absolute; z-index: 1; left: var(--wheel-chev-x); top: var(--wheel-chev-y); color: var(--color-ink-dim); pointer-events: none; }
   .tab-wheel.is-leaving { opacity: 0; transition: opacity var(--dur-slow) var(--ease-out); }
   .tab-wheel-scroll {
     position: absolute; inset: 0; display: block; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none;
@@ -1071,7 +1070,7 @@ html.kb-open { --home-gap: 0px; }
   .tab-wheel-scroll::-webkit-scrollbar { display: none; }
   .tab-wheel-scroll.is-gliding { scroll-snap-type: none; }
   .tab-wheel-item {
-    display: flex; align-items: center; gap: .75rem; height: 2.1em; max-width: calc(var(--wheel-left) + 26rem);
+    display: flex; align-items: center; gap: .75rem; height: 1.4em; max-width: calc(var(--wheel-left) + 26rem);
     padding-inline: var(--wheel-left) max(1rem, env(safe-area-inset-right)); scroll-snap-align: start; view-timeline: --wheel-row block;
     color: var(--color-ink-dim); -webkit-tap-highlight-color: transparent; outline: none;
   }
@@ -1085,7 +1084,7 @@ html.kb-open { --home-gap: 0px; }
   @supports (animation-timeline: view()) {
     .tab-wheel-item .tab-wheel-label, .tab-wheel-item[aria-current] .tab-wheel-label {
       animation: wheel-focus linear both; animation-timeline: --wheel-row;
-      animation-range: cover calc(var(--wheel-at) - 2.1em) cover calc(var(--wheel-at) + 2.1em);
+      animation-range: cover calc(var(--wheel-at) - 1.4em) cover calc(var(--wheel-at) + 1.4em);
     }
   }
   @keyframes wheel-focus {
@@ -1100,7 +1099,6 @@ html.kb-open { --home-gap: 0px; }
       animation: wheel-in var(--dur-slow) var(--ease-spring) both; animation-delay: calc(60ms + var(--wheel-d, 0) * 25ms);
     }
   }
-  @media (prefers-reduced-motion: reduce) { .tab-wheel, .tab-wheel.is-open { clip-path: none; transition: opacity var(--dur-fast); } .tab-wheel:not(.is-open) { opacity: 0; } }
   @keyframes wheel-in { from { opacity: 0; translate: 0 calc(var(--wheel-dir, 1) * 1rem); } }
   /* Выбрали — вкладка грузится: под названием бежит лаймовая полоска, пока страница не встала под колесом. */
   .tab-wheel-item.is-loading .tab-wheel-label::after {
