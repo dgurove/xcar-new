@@ -96,51 +96,117 @@ final class Table
     private const STEPS = ['sm' => 1, 'md' => 2, 'lg' => 3, 'xl' => 4, '2xl' => 5];
 
     /**
-     * Столбцы сеткой на ПК (29.10.2026, «Все» CRM — 749 строк: открыть карточку строки — полсекунды): от 640 каждая строка
-     * таблицы — сетка с этими столбцами, и строка за экраном не считается вовсе (`content-visibility`, `.is-grid` в app.css).
-     * Строки совпадают столбцами без общей раскладки, только если ширины не зависят от содержимого, — они из описания
-     * и данных: название — шириной в самое длинное (`--title-ch`) и не уже 12rem, `fill` забирает запас, остальное — по
-     * самим значениям столбца (`Widths::of` — сервер считает один раз, браузер ничего не меряет), `rem` — когда их нет;
-     * запас ширины сетка отдаёт сначала названию (до его полной длины), остаток — `fill`.
-     * Строка `--cols-*` на каждую ступень ширины (у ступени свои видимые столбцы) и на открытую карточку (краткая таблица:
-     * только столбцы телефона; от 1024 ещё без `aside`).
-     *
-     * @param  array<string, float>  $widths  ширины столбцов по данным, rem (`Widths::of`)
+     * В каком порядке столбцы уходят, когда таблица не влезает, — первым самый неважный: позже всех видимый на узком экране
+     * (`from`: 2xl → sm), дальше по роли — кто, где, тип, состояние, сумма, код, дата. Название и галочка не уходят.
      */
-    public function gridStyle(array $widths = []): string
-    {
-        $vars = [];
-        foreach (self::STEPS as $step => $n) {
-            $vars["--cols-{$step}"] = $this->tracks(fn (Column $c) => ! $c->phone && ($c->from === null || self::STEPS[$c->from] <= $n), $widths);
-        }
-        $vars['--cols-open'] = $this->tracks(fn (Column $c) => $c->from === null, $widths, open: true);
-        $vars['--cols-open-lg'] = $this->tracks(fn (Column $c) => $c->from === null && ! $c->aside, $widths, open: true);
+    private const DROP = [ColRole::Who, ColRole::Place, ColRole::Kind, ColRole::State, ColRole::Amount, ColRole::Code, ColRole::When];
 
-        return collect($vars)->map(fn ($v, $k) => "{$k}: {$v};")->implode(' ');
+    /**
+     * Столбцы сеткой на ПК (29.10.2026, «Все» CRM — 749 строк: открыть карточку строки — полсекунды): от 640 каждая строка
+     * таблицы — сетка с одними и теми же столбцами, и строка за экраном не считается вовсе (`content-visibility`, `.is-grid`).
+     * Строки совпадают столбцами без общей раскладки, только если ширины не зависят от содержимого строки, — они из данных
+     * всего списка (`Widths::of` — сервер считает один раз, браузер ничего не меряет).
+     *
+     * Строка на ПК всегда одна линия, и с открытой карточкой тоже (30.10.2026, владелец: «пихаем всё в три строки, когда у
+     * нас ещё куча свободного места» — была «краткая, как на телефоне»). Не влезают столбцы — уходят по одному (`DROP`), как
+     * в Linear и Finder: каждый вариант влезает с какой-то ширины таблицы, и `@container` по обёртке выбирает его сам — по
+     * ширине самой таблицы, а не экрана, поэтому карточка рядом и узкое окно — одно правило. Отдаёт `<style>` для обёртки с
+     * классом `$cls`; с открытой карточкой справа (от 1024) — своя цепочка без `aside` (это и так написано в карточке).
+     *
+     * @param  array<string, float>  $core  ширина, ниже которой столбец не ужимается, rem (`Widths::of`)
+     * @param  array<string, float>  $full  полная — до неё растут название, код и город, пока есть место
+     */
+    public function gridCss(string $cls, array $core, array $full): string
+    {
+        $desk = array_filter($this->columns, fn (Column $c) => ! $c->phone);
+
+        return '@media (min-width: 640px) { '.$this->chain(".{$cls}", $desk, $core, $full).' } '
+            .'@media (min-width: 1024px) { '.$this->chain(".split[data-open] .{$cls}", array_filter($desk, fn (Column $c) => ! $c->aside), $core, $full, reset: true).' }';
     }
 
     /**
-     * @param  \Closure(Column): bool  $shown
-     * @param  array<string, float>  $widths
+     * Варианты от всех столбцов до одного названия: следующий — когда таблица уже, чем нужно прежнему (названию — его ядро
+     * по 95 % значений, прочим — их ширина).
+     *
+     * @param  array<string, Column>  $shown
+     * @param  array<string, float>  $core
+     * @param  array<string, float>  $full
+     * @param  bool  $reset  цепочка поверх другой (с карточкой) — сначала показать свои столбцы
      */
-    private function tracks(\Closure $shown, array $widths, bool $open = false): string
+    private function chain(string $scope, array $shown, array $core, array $full, bool $reset = false): string
     {
-        $cols = array_values(array_filter($this->columns, $shown));
-        $fill = ! $open && collect($cols)->contains(fn (Column $c) => $c->fill);
+        $width = fn (Column $c) => $core[$c->key] ?? ($c->rem > 0 ? $c->rem : 6);
+        $drop = array_values(array_filter($shown, fn (Column $c) => ! $c->grow && ! $c->pick));
+        $rank = array_flip(array_map(fn (ColRole $r) => $r->value, self::DROP));
+        $at = array_flip(array_map(fn (Column $c) => $c->key, $drop)); // в одной ступени и роли — позже объявленный раньше
+        usort($drop, fn (Column $a, Column $b) => [$b->from === null ? 0 : self::STEPS[$b->from], $rank[$a->role()->value] ?? 0, $at[$b->key] ?? 0]
+            <=> [$a->from === null ? 0 : self::STEPS[$a->from], $rank[$b->role()->value] ?? 0, $at[$a->key] ?? 0]);
 
-        // Каждая строка — своя сетка, поэтому ширины не зависят от содержимого (иначе строки разошлись бы столбцами); в
-        // краткой таблице (открыта карточка) числа — по содержимому своей строки, название — остаток, как в списке телефона.
-        return collect($cols)->map(fn (Column $c) => match (true) {
-            $c->grow && $open => 'minmax(0, 1fr)',
-            // Название — шириной в самое длинное (`--title-w` — по значениям, `Widths`), запас — `fill`.
-            $c->grow && $fill => 'minmax(12rem, var(--title-w, calc(var(--title-ch, 24) * .5rem + 3.5rem)))',
-            $c->grow => 'minmax(12rem, 1fr)',
-            // Растяжка: код не переносится — не уже своих значений; состояние — по значениям, но не шире 12rem: длиннее
-            // переносится второй строкой, а не отнимает место у названия.
-            $c->fill && ! $open => 'minmax('.($c->role() === ColRole::State ? max($c->rem ?: 6, min($widths[$c->key] ?? 0, 12)) : ($widths[$c->key] ?? $c->rem)).'rem, 1fr)',
-            $c->num && $open => 'max-content',
-            // Ширина — из самих значений (и шапки); `rem` описания — только когда их нет (столбца нет в строках).
-            default => ($widths[$c->key] ?? ($c->rem > 0 ? $c->rem : 6)).'rem',
+        // С карточкой — своя цепочка поверх той, что без неё: её столбцы снова видны, сколько бы та ни спрятала по ширине.
+        $css = $reset ? implode(', ', array_map(fn (Column $c) => "{$scope} .col-{$c->key}", $shown)).' { display: block !important; } ' : '';
+        $css .= $this->variant($scope, $shown, $core, $full, null, '', ! $drop);
+        foreach ($drop as $i => $c) {
+            $need = round(array_sum(array_map($width, $shown)), 2);
+            unset($shown[$c->key]);
+            $css .= $this->variant($scope, $shown, $core, $full, $need, " {$scope} .col-{$c->key} { display: none !important; }", $i === count($drop) - 1);
+        }
+
+        return $css;
+    }
+
+    /**
+     * Вариант столбцов — в двух видах. Свободное место сетка делит поровну между растущими дорожками, а нужно по важности:
+     * сначала название — по 95 % значений (ядро), потом прочие — целиком и в одну строку (код, город, «в минус …», «36 д»),
+     * и только потом редкое длинное название (владельцы: «зачем сокращаем, если ещё куча места», «текст в три строки»).
+     * Влезают прочие целиком — они полные, название растёт до полной длины; нет — название ядром, прочие растут, сколько
+     * есть. Граница — `@container` по ширине таблицы.
+     *
+     * @param  array<string, Column>  $cols
+     * @param  array<string, float>  $core
+     * @param  array<string, float>  $full
+     * @param  float|null  $below  вариант действует, когда таблица уже этого (rem); null — самый полный
+     * @param  string  $hide  правило «ушедший столбец не рисуется»
+     * @param  bool  $last  дальше уходить некому — название ужимается до 12rem
+     */
+    private function variant(string $scope, array $cols, array $core, array $full, ?float $below, string $hide, bool $last): string
+    {
+        $w = fn (Column $c) => $core[$c->key] ?? ($c->rem > 0 ? $c->rem : 6);
+        $roomy = round(array_sum(array_map(fn (Column $c) => $c->grow || $c->fill ? $w($c) : max($full[$c->key] ?? 0, $w($c)), $cols)), 2);
+        $tight = "{$scope} .table { --cols: {$this->tracks($cols, $core, $full, false, $last)}; }";
+        $wide = "{$scope} .table { --cols: {$this->tracks($cols, $core, $full, true, $last)}; }";
+        if ($below === null) {
+            return "{$tight} @container (width >= {$roomy}rem) { {$wide} }";
+        }
+
+        return " @container (width < {$below}rem) { {$tight}{$hide} }".($roomy < $below ? " @container (width >= {$roomy}rem) and (width < {$below}rem) { {$wide} }" : '');
+    }
+
+    /**
+     * Дорожки варианта: `fill` (последний столбец левой группы) забирает остаток — пустота между группами; без `fill` в
+     * варианте остаток берёт название. `$roomy` — прочие влезают целиком: они полные, название растёт до полной длины;
+     * иначе название — ядро, прочие растут, сколько есть.
+     *
+     * @param  array<string, Column>  $cols
+     * @param  array<string, float>  $core
+     * @param  array<string, float>  $full
+     */
+    private function tracks(array $cols, array $core, array $full, bool $roomy, bool $last): string
+    {
+        $fill = collect($cols)->contains(fn (Column $c) => $c->fill);
+
+        return collect($cols)->map(function (Column $c) use ($core, $full, $fill, $roomy, $last) {
+            $w = $core[$c->key] ?? ($c->rem > 0 ? $c->rem : 6);
+            $max = max($full[$c->key] ?? $w, $w);
+
+            return match (true) {
+                // Название ужимается ниже ядра (до 12rem) только в последнем варианте — раньше уходят столбцы.
+                $c->grow => 'minmax('.($last ? min($w, 12) : $w).'rem, '.($fill ? ($roomy ? $max : $w).'rem' : '1fr').')',
+                // Состояние — по значениям; места мало — не шире 12rem: длиннее переносится второй строкой, а не отнимает место.
+                $c->fill => 'minmax('.($c->role() === ColRole::State && ! $roomy ? max($c->rem ?: 6, min($w, 12)) : $w).'rem, 1fr)',
+                $roomy => "{$max}rem",
+                $max > $w => "minmax({$w}rem, {$max}rem)",
+                default => "{$w}rem",
+            };
         })->implode(' ');
     }
 

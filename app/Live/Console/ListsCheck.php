@@ -2,6 +2,7 @@
 
 namespace App\Live\Console;
 
+use App\Purchases\Purchase;
 use App\Support\Surface;
 use App\Users\Role;
 use App\Users\User;
@@ -19,7 +20,7 @@ use Illuminate\Http\Request;
  */
 final class ListsCheck extends Command
 {
-    protected $signature = 'lists:check {--only= : часть адреса — только эти списки} {--user= : id того, кто смотрит (по умолчанию — свой у списка)}';
+    protected $signature = 'lists:check {--only= : часть адреса — только эти списки} {--user= : id того, кто смотрит (по умолчанию — свой у списка)} {--paths : только перечислить списки — «поверхность|адрес|id», для `scripts/table-audit.mjs`}';
 
     protected $description = 'Сверяет строки списков: страница против X-Live-Rows, ячейки против шапки';
 
@@ -76,7 +77,12 @@ final class ListsCheck extends Command
                 continue;
             }
             $user = $this->option('user') ? User::findOrFail($this->option('user')) : $this->viewer($role);
-            $path = str_replace('{purchase}', (string) \App\Purchases\Purchase::latest('id')->value('number'), $path);
+            $path = str_replace('{purchase}', (string) Purchase::latest('id')->value('number'), $path);
+            if ($this->option('paths')) {
+                $this->line("{$surface->value}|{$path}|{$user?->id}");
+
+                continue;
+            }
             $page = $this->fetch($kernel, $surface, $path, $user);
             if ($page === null) {
                 $this->error("{$path}: страница не открылась");
@@ -112,6 +118,9 @@ final class ListsCheck extends Command
             } else {
                 $this->info($label.': ок');
             }
+        }
+        if ($this->option('paths')) {
+            return self::SUCCESS;
         }
         $this->line("Списков: {$checked}, с ошибками: {$failures}");
 
@@ -180,7 +189,7 @@ final class ListsCheck extends Command
                 if (str_contains(' '.$tr->getAttribute('class').' ', ' table-group ')) {
                     $span = (int) ($x->query('./th', $tr)->item(0)?->getAttribute('colspan') ?: 1);
                     if ($span !== $head) {
-                        $problems[] = "заголовок группы «".trim($tr->textContent)."» шириной {$span}, столбцов {$head}";
+                        $problems[] = 'заголовок группы «'.trim($tr->textContent)."» шириной {$span}, столбцов {$head}";
                     }
 
                     continue;

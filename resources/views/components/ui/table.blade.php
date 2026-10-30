@@ -4,28 +4,34 @@
      показывает все столбцы и листается вбок. Столбец «Марка, модель» (title-cap) — шириной в самое длинное название, чтобы
      оно не сокращалось, пока справа есть место; сжимается, только когда места нет: с описанием столбцов (`table`) ширины
      считает сервер по самим строкам (`Support\Table\Widths`), без него — titles (названия или число знаков) и rest. Не влезла в ширину — листается вбок (table_scroll_controller). table — описание
-     столбцов (`Support\Table`): с ним на ПК таблица — сетка, и строка за экраном не считается (`Table::gridStyle`). --}}
+     столбцов (`Support\Table`): с ним на ПК таблица — сетка, и строка за экраном не считается (`Table::gridCss`). --}}
 @props(['head', 'id' => null, 'view' => null, 'titles' => null, 'rest' => null, 'table' => null])
 @php
     $titleCh = $titles ? collect($titles)->map(fn ($t) => is_int($t) ? $t : mb_strlen((string) $t))->max() : null;
     $wide = $view === \App\Support\ListView::WIDE;
-    // С описанием столбцов (`Support\Table`) на ПК — сеткой: строки за экраном не считаются (`Table::gridStyle`, `.is-grid`).
+    // С описанием столбцов (`Support\Table`) на ПК — сеткой: строки за экраном не считаются (`Table::gridCss`, `.is-grid`).
     // Ширины — из самих значений, на сервере (`Support\Table\Widths`): браузер ничего не меряет, запас ширины сетка отдаёт
     // сначала названию (до самого длинного), остаток — последнему столбцу левой группы (30.10.2026: у обычной таблицы его
     // забирал `fill`, а название резалось).
     $grid = $table && ! $wide;
     // Ширины по самим значениям (`Widths`, 30.10.2026) — у любой таблицы с описанием: название шириной в самое длинное
     // (`--title-w`, вместо `titles`), прочие — `--rest` (сколько места им нужно; название сжимается, только когда места нет).
-    $widths = $table ? \App\Support\Table\Widths::of((string) $slot, $table) : [];
+    $widths = $table ? \App\Support\Table\Widths::of((string) $slot, $table, $full) : [];
     $titleKey = $table ? collect($table->columns)->first(fn ($c) => $c->grow)?->key : null;
     if ($titleKey && isset($widths[$titleKey])) {
-        $style = '--title-w: '.$widths[$titleKey].'rem; --rest: '.round(array_sum(array_diff_key($widths, [$titleKey => 0])), 2).'rem;';
+        // Ширина названия — полная (`$full`): таблицей (подробная) она листается вбок, и резать название незачем.
+        $style = '--title-w: '.($full[$titleKey] ?? $widths[$titleKey]).'rem; --rest: '.round(array_sum(array_diff_key($widths, [$titleKey => 0])), 2).'rem;';
     } else {
         $style = $titleCh ? '--title-ch: '.$titleCh.';'.($rest ? ' --rest: '.$rest.'rem;' : '') : '';
     }
-    $style = trim($style.($grid ? ' '.$table->gridStyle($widths) : ''));
+    $style = trim($style);
+    // Столбцы сетки — цепочкой по ширине самой таблицы (`Table::gridCss`): не влезают — уходят по одному, строка — одна линия.
+    $gridCls = $grid ? 'tg-'.substr(md5(json_encode([array_keys($table->columns), $widths, $full])), 0, 10) : null;
 @endphp
-<div {{ $attributes->merge(['class' => 'table-wrap'.($wide ? ' is-wide' : '').($grid ? ' is-grid' : ''), 'data-controller' => 'table-scroll']) }} @if ($id) id="{{ $id }}" @endif @if ($style) style="{{ $style }}" @endif>
+<div {{ $attributes->merge(['class' => 'table-wrap'.($wide ? ' is-wide' : '').($grid ? ' is-grid '.$gridCls : ''), 'data-controller' => 'table-scroll']) }} @if ($id) id="{{ $id }}" @endif @if ($style) style="{{ $style }}" @endif>
+    @if ($grid)
+        <style>{!! $table->gridCss($gridCls, $widths, $full) !!}</style>
+    @endif
     <div class="table-box">
         <table class="table">
             <thead>{{ $head }}</thead>

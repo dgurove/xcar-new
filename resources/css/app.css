@@ -1618,6 +1618,8 @@ html.kb-open { --home-gap: 0px; }
     .table td.grow > .cell-sub > :not(:last-child) { margin-right: 0; }
     .table td.grow > .cell-sub > * + * { margin-left: .375rem; }
     .table td.grow > .cell-sub:empty { display: none; }
+    /* Строка «Вывоза» в одну линию (`cell-sub--one`, flex на телефоне) — на ПК тоже хвостом за названием, а не вторым этажом. */
+    .table td.grow > .cell-sub.cell-sub--one { display: inline; }
   }
   /* Копирование номера — по наведению: иконка в каждой строке была шумом. На телефоне — в карточке. */
   .table td .vincode > svg { opacity: 0; transition: opacity var(--dur-fast); }
@@ -1625,7 +1627,13 @@ html.kb-open { --home-gap: 0px; }
   /* «Подробной таблицей» (?vid=wide, x-ui.table view): на телефоне шапка и все столбцы, что видны на ПК,
      таблица листается вбок целиком, имя группы стоит на месте. То, что стояло во второй строке вместо
      столбцов (sm:hidden), здесь лишнее. Шапка при этом вниз не липнет: липкость считается от ближайшего
-     прокручиваемого блока, а им стала таблица. На ПК подробная совпадает с краткой. */
+     прокручиваемого блока, а им стала таблица. На ПК подробная — все столбцы таблицей, название целиком (30.10.2026: оно
+     резалось до 12rem, а «Менеджер» рядом стоял на полэкрана); не влезла — листается вбок. */
+  @media (min-width: 640px) {
+    .table-wrap.is-wide .table-box { overflow-x: auto; overscroll-behavior-x: contain; }
+    .table-wrap.is-wide .table { width: max-content; min-width: 100%; }
+    .table-wrap.is-wide .table .grow { width: auto; min-width: 12rem; max-width: none; }
+  }
   @media (max-width: 639.98px) {
     .table-wrap.is-wide .table-box { overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none; }
     .table-wrap.is-wide .table { width: max-content; min-width: 100%; }
@@ -1642,12 +1650,11 @@ html.kb-open { --home-gap: 0px; }
     .table-wrap.is-wide .table-group-name { display: inline-block; position: sticky; left: .75rem; }
   }
 
-  /* Открыли карточку — справа на ПК или листом снизу на планшете — таблица становится краткой, как на телефоне
-     (05.10.2026, владелец: «при открытии окна таблица обязана стать упрощённой»): без шапки и столбцов, что на телефоне
-     спрятаны, название в два этажа, номер и факты — во второй строке, справа цена. Подробная (`is-wide`) остаётся вся и
-     листается вбок. Уже 640 — телефон, там краткая и так. */
+  /* Старые таблицы без описания столбцов (без `is-grid`): открыли карточку — краткая, как на телефоне. У таблиц с описанием
+     так больше нет (30.10.2026, владелец: «пихаем всё в три строки, когда у нас ещё куча свободного места»): строка — та же
+     одна линия, столбцы уходят по ширине таблицы (`Table::gridCss`). */
   @media (min-width: 640px) {
-    .split[data-open] .table-wrap:not(.is-wide) {
+    .split[data-open] .table-wrap:not(.is-wide):not(.is-grid) {
       & .table thead { display: none; }
       & .table th.hidden, & .table td.hidden { display: none !important; }
       & .table .sm\:hidden { display: revert !important; }
@@ -1685,8 +1692,7 @@ html.kb-open { --home-gap: 0px; }
 
   /* Таблица с описанием столбцов на ПК — сеткой (`is-grid`, `x-ui.table :table`, 29.10.2026: на «Все» CRM — 749 строк —
      открыть и закрыть карточку строки стоило полсекунды, первая отрисовка — две). Каждая строка — сетка с одними и теми же
-     столбцами из описания (`Support\Table::gridStyle`: `--cols-*` на каждую ступень ширины и на краткую при открытой
-     карточке). Ширины от содержимого не зависят — поэтому строки совпадают столбцами без общей раскладки, и строку за
+     столбцами из описания (`Support\Table::gridCss`: варианты столбцов по ширине таблицы). Ширины от содержимого не зависят — поэтому строки совпадают столбцами без общей раскладки, и строку за
      экраном браузер не считает вовсе (`content-visibility`). Подсетка не годится: строка с `content-visibility` становится
      независимой сеткой, а пропуск по ячейкам раздувал раскладку до секунд. Вид тот же, что у таблицы: ячейка по центру
      строки (`align-content`), строка не ниже прежней, шапка и заголовки групп липнут целой строкой. Телефон и подробная
@@ -1694,8 +1700,9 @@ html.kb-open { --home-gap: 0px; }
   @media (min-width: 640px) {
     .table-wrap.is-grid:not(.is-wide) {
       /* !important: класс `table` — ещё и утилита Tailwind (`display: table`), а утилиты сильнее слоя компонентов. */
-      /* Ширина — плашки; уже наименьших ширин столбцов (название 12rem, `fill` своя) не сжимается — тогда листается вбок. */
-      & .table { display: block !important; width: 100%; min-width: min-content; --cols: var(--cols-sm); }
+      /* Ширина — плашки: не влезают столбцы — уходят (`Table::gridCss`), а не листаются вбок; `min-content` здесь считал
+         растяжку названия по её невидимому длинному тексту, и таблица с карточкой уезжала вбок на 400 px. */
+      & .table { display: block !important; width: 100%; }
       & .table > thead, & .table > tbody { display: contents; }
       & .table tr { display: grid; grid-template-columns: var(--cols); }
       & .table tr > [colspan] { grid-column: 1 / -1; }
@@ -1715,23 +1722,14 @@ html.kb-open { --home-gap: 0px; }
       & .table thead tr { position: sticky; z-index: 10; top: var(--stick-top); }
       & .table tr.table-group { position: sticky; z-index: 9; top: calc(var(--stick-top) + 2rem); }
     }
-    /* Карточка открыта — краткая таблица: строка в два этажа, без шапки, группа липнет к верху (плашка в краткой не
-       листается вбок — `overflow-x: clip`, липкость от страницы). Числа здесь шириной по своему содержимому в каждой
-       строке (под ценой — «Оценить», дата): столбец названия — остаток, как в строке списка на телефоне. */
-    .split[data-open] .table-wrap.is-grid:not(.is-wide) .table { --cols: var(--cols-open); }
-    .split[data-open] .table-wrap.is-grid:not(.is-wide) .table tbody tr:not(.table-group) { min-height: 3rem; contain-intrinsic-size: none 3rem; }
-    .split[data-open] .table-wrap.is-grid:not(.is-wide) .table tr.table-group { top: var(--stick-top); }
     /* Таблица листается вбок (не влезла) — липкость считается от неё: верх 0, как у ячеек таблицы. */
     .table-wrap.is-grid .table-box.is-scroll .table :is(thead tr, tr.table-group) { top: 0; }
   }
   @media (min-width: 640px) and (max-width: 1023.98px) { .table-wrap.is-grid .table-box .table :is(thead tr, tr.table-group) { top: 0; } }
-  @media (min-width: 768px) { .table-wrap.is-grid:not(.is-wide) .table { --cols: var(--cols-md); } }
-  @media (min-width: 1024px) {
-    .table-wrap.is-grid:not(.is-wide) .table { --cols: var(--cols-lg); }
-    .split[data-open] .table-wrap.is-grid:not(.is-wide) .table { --cols: var(--cols-open-lg); }
-  }
-  @media (min-width: 1280px) { .table-wrap.is-grid:not(.is-wide) .table { --cols: var(--cols-xl); } }
-  @media (min-width: 1536px) { .table-wrap.is-grid:not(.is-wide) .table { --cols: var(--cols-2xl); } }
+  /* Столбцы (`--cols`) и какие уходят — `<style>` таблицы (`Table::gridCss`): `@container` по ширине обёртки. Карточка
+     справа — таблица просто уже; плашка вбок не листается (`clip`: столбцы и так влезают), шапка липнет от страницы. */
+  .table-wrap.is-grid { container-type: inline-size; }
+  @media (min-width: 1024px) { .split[data-open] .table-wrap.is-grid:not(.is-wide) .table-box { overflow-x: clip; } }
 
   /* Страницы покупателя (x-pickup.layout): колонка до 28rem на фоне страницы, знак сверху. */
   .pickup-main { @apply mx-auto flex min-h-dvh w-full max-w-md flex-col px-4; padding-top: calc(var(--safe-top) + 1.25rem); padding-bottom: calc(var(--safe-bottom) + 2rem); }

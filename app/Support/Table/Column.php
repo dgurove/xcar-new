@@ -10,7 +10,8 @@ namespace App\Support\Table;
 final class Column
 {
     /**
-     * @param  string|null  $from  с какой ширины столбец виден: sm | md | lg | xl | 2xl (пусто — всегда)
+     * @param  string|null  $from  важность на узком: sm | md | lg | xl | 2xl — чем шире, тем раньше столбец уходит, когда
+     *                             таблица не влезает (`Table::gridCss`); любой непустой — на телефоне столбца нет
      * @param  bool  $phone  только на телефоне (до 640): число строки, которое на ПК стоит своими столбцами
      * @param  string|null  $sort  ключ сортировки списка (`Support\Sort`) — заголовок нажимается
      * @param  bool  $aside  прячется, пока карточка стоит справа (`col-detail-hide`)
@@ -62,6 +63,8 @@ final class Column
     public function classes(bool $head = false): string
     {
         return trim(implode(' ', array_filter([
+            // Столбец по имени — его прячет цепочка сетки (`Table::gridCss`), когда таблица уже, чем нужно.
+            'col-'.$this->key,
             $this->grow ? 'grow' : null,
             // Правая группа — по правому краю, как числа (`ColRole::right`); код — приглушённым.
             $this->num || $this->role()->right() ? 'num' : null,
@@ -70,15 +73,9 @@ final class Column
             $this->pick ? 'pick-cell' : null,
             $this->aside ? 'col-detail-hide' : null,
             $this->phone ? 'sm:hidden' : null,
-            // Полные строки классов — их видит сборка CSS (`@source` в app.css).
-            match ($this->from) {
-                'sm' => 'hidden sm:table-cell',
-                'md' => 'hidden md:table-cell',
-                'lg' => 'hidden lg:table-cell',
-                'xl' => 'hidden xl:table-cell',
-                '2xl' => 'hidden 2xl:table-cell',
-                default => null,
-            },
+            // На телефоне столбца нет; на ПК он есть всегда, а уходит, когда таблица уже, чем нужно, — цепочка сетки
+            // (`Table::gridCss`, `from` — его очередь), а не ширина экрана: рядом бывает карточка.
+            $this->from === null ? null : 'hidden sm:table-cell',
             $this->class ?: null,
             $head ? null : ($this->cell ?: null),
         ])));
