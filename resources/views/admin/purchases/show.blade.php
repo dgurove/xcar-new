@@ -89,7 +89,7 @@
         <x-ui.empty class="mt-4">Ничего не нашлось</x-ui.empty>
     @elseif (\App\Support\ListView::isTable($view))
         @php $columns = \App\Http\Admin\PurchaseController::table(); @endphp
-        <x-ui.table :table="$columns" id="cars" class="mt-4" :view="$view" :rest="$columns->rest()">
+        <x-ui.table :table="$columns" id="cars" class="mt-4" :view="$view">
             <x-slot:head><x-table.head :table="$columns" :sort="$sort"/></x-slot:head>
             @foreach ($cars as $car)<x-purchase.table-row :car="$car" :purchase="$purchase" :table="$columns"/>@endforeach
         </x-ui.table>

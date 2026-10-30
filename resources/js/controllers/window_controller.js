@@ -19,6 +19,13 @@ export default class extends Controller {
         this.onEnd = (e) => { if (this.reloadValue && e.detail?.success && this.element.contains(e.target)) this.dirty = true; };
         this.onClose = () => { if (this.dirty) { this.dirty = false; Turbo.visit(location.href, { action: 'replace' }); } };
         this.onLoad = (e) => { if (e.target === this.frameTarget) this.tools(); };
+        // Окно не загрузилось (нет связи) — словами и «Повторить», а не вечная заготовка.
+        this.onError = (e) => {
+            if (e.target !== this.frameTarget) return;
+            const url = this.frameTarget.getAttribute('src');
+            this.frameTarget.innerHTML = '<div class="flex flex-col items-center gap-3 py-10 text-center"><p class="text-ink-muted">Не загрузилось</p><button type="button" class="btn btn-s btn-quiet" data-action="window#retry">Повторить</button></div>';
+            this.retryUrl = url;
+        };
         this.onFetch = (e) => {
             if (!this.element.contains(e.target) || String(e.detail.fetchOptions.method).toUpperCase() === 'GET') return;
             const step = this.frameTarget.querySelector('[data-window-url]')?.dataset.windowUrl;
@@ -27,6 +34,7 @@ export default class extends Controller {
         document.addEventListener('turbo:before-fetch-request', this.onFetch);
         document.addEventListener('turbo:submit-end', this.onEnd);
         document.addEventListener('turbo:frame-load', this.onLoad);
+        document.addEventListener('turbo:fetch-request-error', this.onError);
         this.element.querySelector('dialog')?.addEventListener('close', this.onClose);
         this.ready = true;
         if (this.urlValue) this.load(this.urlValue);
@@ -43,6 +51,14 @@ export default class extends Controller {
         document.removeEventListener('turbo:before-fetch-request', this.onFetch);
         document.removeEventListener('turbo:submit-end', this.onEnd);
         document.removeEventListener('turbo:frame-load', this.onLoad);
+        document.removeEventListener('turbo:fetch-request-error', this.onError);
+    }
+
+    retry() {
+        const url = this.retryUrl || this.frameTarget.getAttribute('src');
+        if (!url) return;
+        this.frameTarget.removeAttribute('src');
+        this.load(url);
     }
 
     tools() {
@@ -70,12 +86,11 @@ export default class extends Controller {
 
     load(url) {
         const frame = this.frameTarget;
-        // Тот же адрес ещё грузится — не трогаем; загруженный — перечитываем: могло прийти письмо. «Грузится» дольше 3 с —
-        // загрузка оборвалась (связь, закрыли окно на полпути): нажатие грузит заново, а не оставляет заготовку навсегда
-        // (30.10.2026, сотрудник парковки: «с 3–4 раза прогружается на выдачу»).
-        const stalled = performance.now() - (this.loadingAt ?? 0) > 3000;
-        if (frame.getAttribute('src') !== url || frame.complete || stalled) {
-            this.loadingAt = performance.now();
+        // Тот же адрес ещё грузится (`busy` у фрейма; `complete` Turbo при этом не снимает — по нему не судить) — не
+        // трогаем, хоть сеть и медленная: повторное нажатие не начинает заново. Загруженный — перечитываем: могло прийти
+        // письмо. Оборвавшийся (связь, ошибка) — грузим снова, а не оставляем заготовку (30.10.2026, «с 3–4 раза
+        // прогружается на выдачу»).
+        if (frame.getAttribute('src') !== url || !frame.hasAttribute('busy')) {
             if (frame.getAttribute('src') !== url && this.hasToolsTarget) this.toolsTarget.replaceChildren();
             frame.innerHTML = this.skeleton;
             frame.removeAttribute('src');

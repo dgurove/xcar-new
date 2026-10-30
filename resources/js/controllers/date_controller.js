@@ -32,13 +32,13 @@ export default class extends Controller {
             this.calTarget.isDateDisallowed = (d) => iso(d) > last;
             this.calTarget.getDayParts = (d) => (iso(d) > last ? 'after-limit' : '');
         }
-        this.render();
+        this.render(true);
         // Значение вписали снаружи (читалка документов, `fill.js`) — слова поля догоняют.
         this.onChange = () => this.render();
         this.valueTarget.addEventListener('change', this.onChange);
         // POST → редирект на ту же страницу Turbo делает морфом: контроллер не переподключается, скрытое поле получает
         // новое значение, а слова остаются прежними (13.10.2026: «Вернуть в продажу» — срок приёма показывал старый).
-        this.onMorph = () => { if (!this.popTarget.matches(':popover-open')) this.render(); };
+        this.onMorph = () => { if (!this.popTarget.matches(':popover-open')) this.render(true); };
         document.addEventListener('turbo:morph', this.onMorph);
     }
 
@@ -53,7 +53,10 @@ export default class extends Controller {
         return date ? { date, time: (time || '').slice(0, 5) } : null;
     }
 
-    render() {
+    // server — слова того значения, что пришло с сервера (подключение, морф): они же исходные у поля, иначе нетронутая
+    // шторка с датой спрашивала «Не сохранять?» (`sheet.js` сравнивает с defaultValue, 30.10.2026). Выбор человека и
+    // вписанное снаружи (`fill.js`) — правка.
+    render(server = false) {
         const p = this.parts;
         let text = '';
         if (p) {
@@ -61,7 +64,10 @@ export default class extends Controller {
             const year = y !== new Date().getFullYear() ? ` ${y}` : '';
             text = `${d} ${MONTHS[m - 1]}${year}${this.timeValue && p.time ? `, ${p.time}` : ''}`;
         }
-        if (this.field) this.textTarget.value = text;
+        if (this.field) {
+            this.textTarget.value = text;
+            if (server) this.textTarget.defaultValue = text;
+        }
         // Пустая кнопка-дата — словом-приглашением («Указать»), а не пустым местом.
         else this.textTarget.textContent = [this.prefixValue, text].filter(Boolean).join(' ') || this.placeholderValue;
     }

@@ -81,12 +81,6 @@ final class Table
         return $this->context[$key] ?? $default;
     }
 
-    /** Сколько rem у столбцов кроме названия (`x-ui.table :rest`): название забирает остальное. */
-    public function rest(): float
-    {
-        return array_sum(array_map(fn (Column $c) => $c->grow ? 0 : $c->rem, $this->columns));
-    }
-
     public function has(string $key): bool
     {
         return isset($this->columns[$key]);

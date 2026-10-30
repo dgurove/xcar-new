@@ -3,6 +3,7 @@
 namespace App\Park;
 
 use App\Billing\Accrual;
+use App\Http\Park\VehicleController;
 use App\Park\Actions\FillFromDocs;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
@@ -39,7 +40,7 @@ final class TableRows
         ]))])->all();
         $cached = Cache::many(array_values($keys));
         // Столбцы — то же описание, что у шапки списка: выданные и деньги входят в ключ строки выше.
-        $table = \App\Http\Park\VehicleController::table($out, $money, $wide);
+        $table = VehicleController::table($out, $money, $wide);
         $rows = $fresh = [];
         foreach ($vehicles as $v) {
             $html = $cached[$keys[$v->id]] ?? null;

@@ -13,7 +13,7 @@
             @continue($groups->isEmpty())
             <section data-search-group>
                 <h2 class="detail-section {{ $tone }}">{{ $title }} <span class="nums font-normal text-ink-dim">{{ $groups->flatten()->count() }}</span></h2>
-                <x-ui.table :table="$columns" :id="'alarms-'.$key" :titles="$groups->flatten()->map->titleWithYear()" :rest="$columns->rest()">
+                <x-ui.table :table="$columns" :id="'alarms-'.$key">
                     <x-slot:head><x-table.head :table="$columns"/></x-slot:head>
                     @foreach ($groups as $reason => $rows)
                         <x-table.group :table="$columns" :key="$key.'-'.$reason" :title="\App\Offers\Binding::REASONS[$reason]" :count="$rows->count()"/>

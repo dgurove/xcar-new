@@ -45,6 +45,7 @@ use App\Offers\OfferState;
 use App\Offers\Pricing;
 use App\Offers\SupplierRequest;
 use App\Park\Actions\MarkDoc;
+use App\Park\Actions\PurgeLetters;
 use App\Park\City;
 use App\Park\DocKind;
 use App\Park\DocState;
@@ -54,6 +55,7 @@ use App\Park\InspectionKind;
 use App\Park\PhotoStage;
 use App\Park\Sale;
 use App\Park\Vehicle;
+use App\Park\VehicleState;
 use App\Support\Docs;
 use App\Support\Facets\Common;
 use App\Support\Facets\Facet;
@@ -585,9 +587,14 @@ class MailController
             $defaults['files'][] = $outbox->put($act->filename($vehicle, $intake), $act->render($vehicle, $intake));
             $stage = $intake ? PhotoStage::Intake : PhotoStage::Release;
             // Сначала снятое на парковке, потом приехавшее из писем: вендору нужны наши кадры, а не его же.
-            $shots = $vehicle->photos()->filter(fn ($m) => PhotoStage::of($m) === $stage)
+            // Файлы из писем у выданной стирает фоновая очистка (`PurgeReleasedLetters`) — в письмо их не берём: файл мог
+            // исчезнуть посреди сборки, а вендору и так нужны наши кадры.
+            $doomed = $vehicle->state === VehicleState::Released ? PurgeLetters::media($vehicle)->pluck('id')->all() : [];
+            $shots = $vehicle->photos()->filter(fn ($m) => PhotoStage::of($m) === $stage && ! in_array($m->id, $doomed, true))
                 ->sortBy(fn ($m) => $m->getCustomProperty('source') === 'mail' ? 1 : 0)->values();
-            foreach (($shots->isNotEmpty() ? $shots : $vehicle->visiblePhotos())->take(12) as $i => $m) {
+            $pool = ($shots->isNotEmpty() ? $shots : $vehicle->visiblePhotos()->reject(fn ($m) => in_array($m->id, $doomed, true)))
+                ->filter(fn ($m) => is_file($m->getPath()))->values();
+            foreach ($pool->take(12) as $i => $m) {
                 $contents = file_get_contents($m->getPath());
                 // Во вложение уходит ужатый кадр, а `sha` у него от исходника: запоминаем отпечаток отправленного,
                 // иначе это же письмо из «Отправленных» принесёт наши фото обратно вторым экземпляром.

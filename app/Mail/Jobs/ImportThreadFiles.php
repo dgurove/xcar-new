@@ -19,6 +19,7 @@ use App\Offers\OfferEventType;
 use App\Park\Actions\AutoSale;
 use App\Park\PhotoStage;
 use App\Park\Vehicle;
+use App\Park\VehicleState;
 use Illuminate\Contracts\Queue\ShouldBeUniqueUntilProcessing;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -86,7 +87,9 @@ final class ImportThreadFiles implements ShouldBeUniqueUntilProcessing, ShouldQu
     {
         $thread = Thread::find($this->threadId);
         [$model, $vehicle, $offer, $car] = self::target($thread);
-        if (! $model) {
+        // У выданной без продажи файлы из писем не хранятся (`PurgeLetters`): письмо после выдачи их не приносит — иначе они
+        // ложились в дело между выдачей и фоновой очисткой или после неё. Выдачу вернули — ТС снова стоит, файлы едут.
+        if (! $model || ($vehicle && ! $offer && $vehicle->state === VehicleState::Released)) {
             return;
         }
         $task = $this->task();

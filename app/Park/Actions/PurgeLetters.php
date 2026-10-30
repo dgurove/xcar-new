@@ -7,6 +7,8 @@ use App\Mail\Jobs\ImportThreadFiles;
 use App\Mail\Message;
 use App\Mail\Thread;
 use App\Park\Vehicle;
+use Illuminate\Support\Collection;
+use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
 /**
  * ТС выдана: то, что пришло из писем, больше не хранится — кадры и документы из писем в галерее и бумагах ТС
@@ -19,18 +21,27 @@ final class PurgeLetters
 
     public function __invoke(Vehicle $vehicle): int
     {
-        // Машина в продаже — кадры остаются: на них стоят предложение, сделка и гараж. Стираются только файлы из писем
-        // парковки (`park`): пришедшие письмами CRM в ящике парковки не лежат, `undo` их не вернёт.
-        $letters = fn () => $vehicle->media()->where('custom_properties->source', 'mail')->where('custom_properties->park', true);
-        foreach ($vehicle->offer()->exists() ? [] : $letters()->where('collection_name', 'photos')->get() as $media) {
-            $media->delete();
-        }
-        foreach ($letters()->where('collection_name', 'papers')->get() as $media) {
+        foreach (self::media($vehicle) as $media) {
             $media->delete();
         }
         $threads = Thread::where('vehicle_id', $vehicle->id)->park()->pluck('id');
 
         return $threads->isEmpty() ? 0 : $this->freeze->freeze(Message::whereIn('thread_id', $threads)->pluck('id')->all());
+    }
+
+    /**
+     * Что стирается у выданной: файлы из писем парковки (`park`) — пришедшие письмами CRM в ящике парковки не лежат, `undo`
+     * их не вернёт; кадры — только если машина не в продаже (на них стоят предложение, сделка и гараж). Им же письмо о
+     * выдаче не берёт эти кадры: очистка идёт фоном и могла стереть файл посреди сборки письма.
+     *
+     * @return Collection<int, Media>
+     */
+    public static function media(Vehicle $vehicle): Collection
+    {
+        $letters = $vehicle->media()->where('custom_properties->source', 'mail')->where('custom_properties->park', true)
+            ->whereIn('collection_name', $vehicle->offer()->exists() ? ['papers'] : ['photos', 'papers']);
+
+        return $letters->get();
     }
 
     /** Выдачу вернули: письма читаются заново, файлы и кадры едут в дело из ящика. */

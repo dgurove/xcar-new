@@ -247,11 +247,13 @@ const editing = () => [...document.querySelectorAll('form[data-dirty]:not([data-
 
 // Идёт визит Turbo (aria-busy на <html>) — его ответ придёт и сам решит, нужно ли ждущее.
 const visiting = () => document.documentElement.hasAttribute('aria-busy') && performance.now() - visitAt < 10_000;
-const busy = () => document.visibilityState !== 'visible'
+// modal — открытое окно тоже держит обновление. Свои строки после своей формы окно не ждут (`flush`): строка лежит под
+// окном, её не трогают; остальное (палец, прокрутка, набор) ждут как обычно.
+const busy = (modal = true) => document.visibilityState !== 'visible'
     || visiting()
     || fingers > 0 || performance.now() - movedAt < 600
-    || editing() || document.querySelector('[data-searching], dialog:modal')
-    || ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName);
+    || (modal && editing()) || document.querySelector(modal ? '[data-searching], dialog:modal' : '[data-searching]')
+    || (['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName) && (modal || !document.activeElement.closest('dialog')));
 
 export function refreshPage(request) {
     const id = typeof request === 'string' && /^[\w-]+$/.test(request) ? request : null;
@@ -293,8 +295,7 @@ function flush() {
     if (!waiting) return;
     // Свои строки после своей формы (выдача, приём в окне поверх списка) — сразу: строка лежит под окном, человек её не
     // трогает, а ждать закрытия окна — значит, выданная ТС висит в «На парковке» (30.10.2026, сотрудник парковки).
-    const ownRows = waiting.own && waiting.keys;
-    if (ownRows ? document.visibilityState !== 'visible' || visiting() : busy()) { if (document.visibilityState === 'visible') waitTimer = setTimeout(flush, 700); return; }
+    if (busy(!(waiting.own && waiting.keys))) { if (document.visibilityState === 'visible') waitTimer = setTimeout(flush, 700); return; }
     const { request, keys, own } = waiting;
     waiting = null;
     if (keys && keys.size <= ROWS_MAX) { patching = patching.then(() => patch([...keys], own)).catch(() => {}); return; }
@@ -329,7 +330,7 @@ async function patch(keys, own = false) {
     // Пока шёл ответ, ушли на другую страницу, вкладку или фильтр — он устарел. Открыли другую строку (сменился только
     // ?peek) — список тот же, ответ годен: прежде он выбрасывался, и строка оставалась старой. Взялись за экран — подождём.
     if (listOf(location.href) !== listOf(href)) return;
-    if (busy()) { refreshRows(keys, { own }); return; }
+    if (busy(!own)) { refreshRows(keys, { own }); return; }
     // В ответе строка, которой на экране нет под своим ключом (номер сменился при выходе в галерею или продажу — нашлась по
     // прежнему), — раскладка не та: страница целиком.
     if ([...doc.querySelectorAll('[data-detail-key]')].some((el) => !el.closest(ROW_OUT) && !rowsOf(document, el.dataset.detailKey).length)) { refreshPage(); return; }

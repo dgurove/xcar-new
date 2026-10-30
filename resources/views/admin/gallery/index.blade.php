@@ -8,7 +8,7 @@
             <x-ui.empty>{{ $searching ? 'Ничего не нашлось' : ($preset === 'interest' ? 'Откликов нет' : 'В галерее пусто') }}</x-ui.empty>
         @else
             @php $columns = \App\Http\Admin\GalleryController::table(); @endphp
-            <x-ui.table :table="$columns" id="gallery" :view="\App\Support\ListView::TABLE" :titles="$offers->getCollection()->map->titleWithYear()" :rest="$columns->rest()">
+            <x-ui.table :table="$columns" id="gallery" :view="\App\Support\ListView::TABLE">
                 <x-slot:head><x-table.head :table="$columns" :sort="$sort"/></x-slot:head>
                 @foreach ($offers as $offer)<x-offer.gallery-row :offer="$offer" :table="$columns"/>@endforeach
             </x-ui.table>

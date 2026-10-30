@@ -16,7 +16,7 @@
         <x-ui.empty class="mt-6">В гараже пусто</x-ui.empty>
     @elseif (ListView::isTable($view))
         @php $columns = \App\Http\Admin\GarageController::table(); @endphp
-        <x-ui.table :table="$columns" id="garage-table" class="mt-4" :view="$view" :titles="$groups->flatten()->map(fn ($c) => $c->offer->titleWithYear())" :rest="$columns->rest()">
+        <x-ui.table :table="$columns" id="garage-table" class="mt-4" :view="$view">
             <x-slot:head><x-table.head :table="$columns" :sort="$sort"/></x-slot:head>
             @foreach ($groups as $who => $cars)
                 <x-table.group :table="$columns" :key="'m'.($cars->first()->manager_id ?? 0)" :title="$cars->first()->manager?->name ?? 'Взяли под себя'" :count="$cars->count()"/>
