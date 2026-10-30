@@ -16,7 +16,7 @@ use Throwable;
 /**
  * Номера дел всех лотов Мигторга — открытым списком (5 запросов на всё), затем поля и фото тем предложениям, чей номер
  * убытка нашёлся. Так ловятся предложения из любой двери (форма, письма, закупки) и лоты, вышедшие позже предложения.
- * Новый лот вендора с «Черновики с Мигторга» — черновик сам (`MigtorgDrafts`).
+ * Новый лот КАСКО вендора с «Черновики с Мигторга» — черновик сам (`MigtorgDrafts`).
  */
 class MigtorgSync extends Command
 {
@@ -25,7 +25,7 @@ class MigtorgSync extends Command
     protected $description = 'Лоты Мигторга по номеру дела, поля и фото совпавшим предложениям';
 
     /** Колонки индекса, которые обновляет повторное чтение лота. */
-    public const COLUMNS = ['claim_ref', 'claim_ref_key', 'vin', 'title', 'city', 'ends_at', 'seen_at', 'gone_at', 'data'];
+    public const COLUMNS = ['claim_ref', 'claim_ref_key', 'vin', 'title', 'city', 'ends_at', 'seen_at', 'gone_at', 'section', 'data'];
 
     /** Строка индекса `migtorg_lots` из строки списка или карточки (`Migtorg::row`). Не опубликованный — сразу ушедший. */
     public static function toIndex(array $lot, Carbon $now): array
@@ -42,6 +42,7 @@ class MigtorgSync extends Command
             'ends_at' => $lot['ends_at'] ? Carbon::parse($lot['ends_at'], 'Europe/Moscow') : null,
             'seen_at' => $now,
             'gone_at' => ($lot['status'] ?? 'PUBLISHED') === 'PUBLISHED' ? null : $now,
+            'section' => $lot['section'] ?? null,
             'data' => isset($lot['data']) ? json_encode($lot['data'], JSON_UNESCAPED_UNICODE) : null,
         ];
     }

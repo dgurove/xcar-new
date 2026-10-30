@@ -53,6 +53,7 @@ use App\Offers\Console\DealCarDocsCommand;
 use App\Offers\Console\FillFromLettersCommand;
 use App\Offers\Console\RepricesFromLettersCommand;
 use App\Offers\Console\MigtorgArchive;
+use App\Offers\Console\MigtorgDropOsago;
 use App\Offers\Console\MigtorgSync;
 use App\Offers\Console\PruneEmptyDrafts;
 use App\Offers\Console\ScrubReplyNoticesCommand;
@@ -110,6 +111,7 @@ return Application::configure(basePath: dirname(__DIR__))
         PruneEmptyDrafts::class,
         MigtorgSync::class,
         MigtorgArchive::class,
+        MigtorgDropOsago::class,
         RefillVendors::class,
         TickPark::class,
         StoreByLettersCommand::class,

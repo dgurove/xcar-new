@@ -28,10 +28,11 @@ Schedule::command('offers:prune-drafts')->dailyAt('04:40');
 Schedule::call(fn () => ReadOffer::prune())->dailyAt('04:45')->name('offer-reads:prune');
 Schedule::call(fn () => Delivery::prune())->dailyAt('04:47')->name('notice-deliveries:prune');
 // Номера дел лотов Мигторга, фото совпавшим предложениям и черновики новых лотов: открытый список без входа, 5–8
-// запросов раз в 10 минут (26.10.2026: черновик Альфы и Т — как можно раньше).
-Schedule::command('migtorg:sync')->everyTenMinutes()->withoutOverlapping()->runInBackground();
-// Архив Мигторга кусками: до 150 карточек раз в 5 минут, пока не пройдены 60 дней торгов назад (потом молчит).
-Schedule::command('migtorg:archive')->everyFiveMinutes()->withoutOverlapping(10)->runInBackground();
+// запросов раз в 10 минут (26.10.2026: черновик Альфы и Т — как можно раньше). Ночью — раз в час (30.10.2026: КАСКО
+// выходит в будни 10–19, торги идут от 40 ч — ночной опрос раз в 10 минут ничего не находил). Обход архива
+// (`migtorg:archive`) пройден 05.10.2026 и из расписания снят — команда для ручного запуска.
+Schedule::command('migtorg:sync')->everyTenMinutes()->between('8:00', '21:00')->withoutOverlapping()->runInBackground();
+Schedule::command('migtorg:sync')->hourly()->unlessBetween('8:00', '21:00')->withoutOverlapping()->runInBackground();
 // Коды от бота (замок менеджеров) живут минуты — старше двух дней не нужны.
 Schedule::call(fn () => AccessCode::where('created_at', '<', now()->subDays(2))->delete())->dailyAt('04:50')->name('access-codes:prune');
 // Входы админа за человека, из которых не вышли кнопкой, — закрыть сроком сессии.

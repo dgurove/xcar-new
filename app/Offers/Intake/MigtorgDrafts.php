@@ -21,11 +21,15 @@ use Throwable;
 /**
  * Новый лот Мигторга — черновик сам (26.10.2026, владелец: модераторы открывали все лоты вкладками и заводили Альфу и
  * Т-Страхование по номеру руками). Шаг `migtorg:sync` после индекса: живой лот с номером дела, по которому предложения нет
- * ни в каком состоянии (архив и отмена — решение человека), а вендор по виду номера (`CarText::vendorOf`) — с галкой
+ * ни в каком состоянии (архив и отмена — решение человека), лот из раздела КАСКО, а вендор по виду номера (`CarText::vendorOf`) — с галкой
  * «Черновики с Мигторга» (`vendors.drafts_from_migtorg`). Заводит дверь `OpenDraft` (`migtorg`, без автора), поля — из
  * индекса, кадры — `ImportMigtorgLot`; входа на Мигторг нет — черновик с полями, кадры возьмёт `migtorg:sync`, когда вход
  * вернётся (`ImportMigtorgLot::auto`). Лот, по которому заводили, отмечен `drafted_at`: удалённый человеком черновик не
  * возвращается. Заведено — всплывашка сотрудникам CRM (событие `migtorg` темы `staff`, `x-migtorg.island`).
+ *
+ * Только КАСКО (30.10.2026, владелец: «ПВУ это не наше», «с Минторга только с раздела каско, остальное мусор», «и Тинь
+ * только из каско» — по ОСАГО ни цен, ни передач): из 552 черновиков первых четырёх дней ~80% были ОСАГО. ОСАГО-лот сам
+ * черновик не заводит, но предложению, что завели руками, письмом или стоянкой, поля и фото даёт (`ImportMigtorgLot::auto`).
  *
  * Аккаунт: новых лотов мы не ищем по сайту — их даёт открытый список; вход тратится на одну карточку на машину, задачи
  * кадров идут по одной (очередь `migtorg`).
@@ -42,7 +46,7 @@ final class MigtorgDrafts
         if (! $vendors) {
             return 0;
         }
-        $lots = DB::table('migtorg_lots as l')->whereNull('l.gone_at')->whereNull('l.drafted_at')->whereNotNull('l.claim_ref_key')
+        $lots = DB::table('migtorg_lots as l')->whereNull('l.gone_at')->whereNull('l.drafted_at')->where('l.section', 'casco')->whereNotNull('l.claim_ref_key')
             ->whereNotExists(fn ($q) => $q->from('cars')->join('offers', 'offers.car_id', '=', 'cars.id')->whereColumn('cars.claim_ref_key', 'l.claim_ref_key'))
             ->orderBy('l.id')->get();
         $ready = Migtorg::ready();

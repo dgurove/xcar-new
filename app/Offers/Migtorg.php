@@ -34,7 +34,10 @@ final class Migtorg
     /** Кадры качаются пачкой — как галерею грузит их сайт; больше четырёх разом браузер к одному хосту не шлёт. */
     public const BATCH = 4;
 
-    /** Битые по КАСКО и по ОСАГО: у обоих номер дела страховой. Целые без номера. */
+    /**
+     * Битые по КАСКО и по ОСАГО: у обоих номер дела страховой. Целые без номера. ОСАГО читается ради совпадений (фото
+     * предложению, заведённому руками, письмом, стоянкой), черновики сами — только КАСКО (`MigtorgDrafts`).
+     */
     private const SECTIONS = ['casco', 'osago'];
 
     private const TOKEN = 'migtorg:token';
@@ -57,7 +60,7 @@ final class Migtorg
     /**
      * Все опубликованные лоты: id, номер дела, VIN, название, конец торгов (московское время).
      *
-     * @return \Generator<int, array{id: int, claim_ref: string, vin: ?string, title: string, ends_at: ?string, status: ?string, city: ?string, data: array, photos: array<string, string>}>
+     * @return \Generator<int, array{id: int, claim_ref: string, vin: ?string, title: string, ends_at: ?string, status: ?string, city: ?string, section: ?string, data: array, photos: array<string, string>}>
      */
     public function lots(): \Generator
     {
@@ -89,6 +92,7 @@ final class Migtorg
             'ends_at' => $auction['end_date'] ?? null,
             'status' => $auction['status'] ?? null,
             'city' => trim((string) ($lot['city']['title'] ?? '')) ?: null,
+            'section' => is_string($lot['insurance_type'] ?? null) ? $lot['insurance_type'] : null,
             'data' => ['lot' => array_intersect_key($lot, array_flip(self::LOT_KEYS)), 'end_date' => $auction['end_date'] ?? null],
             'photos' => self::filesOf($auction),
         ];
@@ -117,6 +121,17 @@ final class Migtorg
         $auction = $this->get("/auctions/{$id}", auth: true)->json();
 
         return $auction['data'] ?? $auction;
+    }
+
+    /**
+     * Раздел лота (`casco` / `osago`) — по открытой карточке, без входа: её отдают и у кончившихся торгов. Лота нет — null.
+     */
+    public function section(int $id): ?string
+    {
+        $auction = $this->get("/auctions/{$id}")->json();
+        $type = ($auction['data'] ?? $auction)['lot']['insurance_type'] ?? null;
+
+        return is_string($type) ? $type : null;
     }
 
     /** uuid кадров карточки по порядку: главный, затем остальные — как в галерее на сайте. */
