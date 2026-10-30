@@ -1051,9 +1051,12 @@ html.kb-open { --home-gap: 0px; }
      мельче и приглушённые, без разделителей; `tab_wheel_controller`; вечером: «в полтора раза плотнее», «кружок не
      подходит» — заливка проявляется и угасает, у выбранной та же «›», что у заголовка). Заливка — поверх шапки и таб-бара; пункт растёт и чернеет у линии фокуса (место заголовка) анимацией по прокрутке — считает браузер в такт
      пальцу; без неё — просто список. Размеры ставит скрипт: --wheel-focus — верх строки в фокусе, --wheel-at — та же линия
-     от низа экрана (начало диапазона `cover`), --wheel-left — левый край названия, --wheel-small — мелкий пункт
-     (`--text-base` от заголовка), --wheel-chev-x/y — где «›» у заголовка. Цвета, шрифт и движение — токены: тёмная тема сама. */
+     от низа экрана (начало диапазона `cover`), --wheel-left — левый край названия,
+     --wheel-chev-x/y — где «›» у заголовка. Цвета, шрифт и движение — токены: тёмная тема сама. */
+  /* Мелкий пункт — заголовок, делённый на золотое сечение (владелец 31.10.2026: «размером с заголовок divided by golden
+     ratio»); строка — 1.8em: 2.1em было просторно, 1.4em — тесно. */
   .tab-wheel {
+    --wheel-small: .618; --wheel-row: 1.8em;
     position: fixed; inset: 0; z-index: var(--z-wheel); background: var(--color-wheel); color: var(--color-ink);
     opacity: 0; transition: opacity var(--dur) var(--ease-in);
   }
@@ -1070,7 +1073,7 @@ html.kb-open { --home-gap: 0px; }
   .tab-wheel-scroll::-webkit-scrollbar { display: none; }
   .tab-wheel-scroll.is-gliding { scroll-snap-type: none; }
   .tab-wheel-item {
-    display: flex; align-items: center; gap: .75rem; height: 1.4em; max-width: calc(var(--wheel-left) + 26rem);
+    display: flex; align-items: center; gap: .75rem; height: var(--wheel-row); max-width: calc(var(--wheel-left) + 26rem);
     padding-inline: var(--wheel-left) max(1rem, env(safe-area-inset-right)); scroll-snap-align: start; view-timeline: --wheel-row block;
     color: var(--color-ink-dim); -webkit-tap-highlight-color: transparent; outline: none;
   }
@@ -1084,7 +1087,7 @@ html.kb-open { --home-gap: 0px; }
   @supports (animation-timeline: view()) {
     .tab-wheel-item .tab-wheel-label, .tab-wheel-item[aria-current] .tab-wheel-label {
       animation: wheel-focus linear both; animation-timeline: --wheel-row;
-      animation-range: cover calc(var(--wheel-at) - 1.4em) cover calc(var(--wheel-at) + 1.4em);
+      animation-range: cover calc(var(--wheel-at) - var(--wheel-row)) cover calc(var(--wheel-at) + var(--wheel-row));
     }
   }
   @keyframes wheel-focus {

@@ -68,9 +68,6 @@ export default class extends Controller {
         // «›» у выбранной — ровно там, где она у заголовка: показывает, что выбрано (владелец 30.10.2026).
         const chev = button.querySelector('.tab-title-chev')?.getBoundingClientRect();
         if (chev) { set('--wheel-chev-x', `${chev.left}px`); set('--wheel-chev-y', `${chev.top}px`); }
-        // Мелкий пункт — размер текста (`--text-base`) от размера заголовка.
-        const base = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--text-base')) * parseFloat(getComputedStyle(document.documentElement).fontSize);
-        set('--wheel-small', String(Math.min(1, base / parseFloat(getComputedStyle(this.items[0] ?? button).fontSize)).toFixed(3)));
         this.items.forEach((a, i) => {
             a.style.setProperty('--wheel-d', String(Math.abs(i - this.current)));
             a.style.setProperty('--wheel-dir', String(Math.sign(i - this.current)));
