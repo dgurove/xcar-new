@@ -83,17 +83,24 @@ class Visit extends Model
         self::where('last_at', '<', now()->subDays(180))->delete();
     }
 
-    /** Устройство словами: «Safari, iPhone», у установленного — «Приложение, iPhone». */
+    /**
+     * Устройство словами: «Safari, iPhone», у установленного — «Приложение, iPhone» (по cookie, а у старых строк — по
+     * браузеру: приложение с экрана «Домой» на iPhone не называет себя Safari).
+     */
     public function device(): string
     {
         $label = UserAgent::label($this->user_agent);
+        $app = $this->app || (preg_match('/iPhone|iPad/', (string) $this->user_agent) && ! str_contains((string) $this->user_agent, 'Safari'));
 
-        return $this->app ? 'Приложение'.(str_contains($label, ', ') ? ', '.Str::after($label, ', ') : '') : $label;
+        return $app ? 'Приложение'.(str_contains($label, ', ') ? ', '.Str::after($label, ', ') : '') : $label;
     }
 
-    /** Сколько длился, секунд: от первого касания до последнего и минута на последнее. */
+    /**
+     * Сколько длился, секунд: от первого касания до последнего и минута на последнее. Стартовая строка из сессии (без
+     * хоста) — одно касание, длительности у неё нет.
+     */
     public function seconds(): int
     {
-        return (int) $this->started_at->diffInSeconds($this->last_at) + 60;
+        return $this->surface ? (int) $this->started_at->diffInSeconds($this->last_at) + 60 : 0;
     }
 }

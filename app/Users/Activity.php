@@ -103,10 +103,10 @@ final class Activity
         return $this->perDay()->where('visited', true)->count();
     }
 
-    /** Время в системе — только по журналу: стартовые строки из сессий (без хоста) — одно касание, не заход. */
+    /** Время в системе — только по журналу (`Visit::seconds`). */
     public function seconds(): int
     {
-        return (int) $this->visits->whereNotNull('surface')->sum(fn (Visit $v) => $v->seconds());
+        return (int) $this->visits->sum(fn (Visit $v) => $v->seconds());
     }
 
     /**
