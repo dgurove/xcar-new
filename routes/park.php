@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Admin\ReferenceController;
+use App\Http\Admin\UserController;
 use App\Http\Cabinet\InviteController;
 use App\Http\Mail\AttachController;
 use App\Http\Mail\ScanController;
@@ -14,7 +15,6 @@ use App\Http\Park\PassController;
 use App\Http\Park\ReportController;
 use App\Http\Park\RequestController;
 use App\Http\Park\TariffController;
-use App\Http\Park\UserController;
 use App\Http\Park\VehicleController;
 use App\Http\Park\VehicleInvoiceController;
 use App\Http\Park\VendorContactController;
@@ -164,12 +164,16 @@ Route::domain(config('xcar.park_host'))->middleware(['auth', 'section:park'])->g
     });
     // Настройки парковки — администратору парковки: правка парковок, вендоров (условия, ставки, договор, адреса), прайс, люди.
     Route::middleware('ability:isParkAdmin')->group(function () {
+        // Люди парковки — тот же экран, что в CRM (31.10.2026): список, страница человека с «Активностью», шторка «Изменить».
         Route::get('/users', [UserController::class, 'index']);
-        Route::post('/users/invites', [UserController::class, 'invite']);
+        Route::post('/users/invites', [UserController::class, 'parkInvite']);
         Route::post('/users/invites/{invite}/off', [InviteController::class, 'disable']);
         Route::post('/users/invites/{invite}/on', [InviteController::class, 'enable']);
+        Route::get('/users/{user}', [UserController::class, 'show'])->whereNumber('user');
         Route::put('/users/{user}', [UserController::class, 'update'])->whereNumber('user');
-        Route::post('/users/{user}/revoke', [UserController::class, 'revoke'])->whereNumber('user');
+        Route::post('/users/{user}/revoke', [UserController::class, 'revokePark'])->whereNumber('user');
+        Route::post('/users/{user}/password', [UserController::class, 'passwordLink'])->whereNumber('user');
+        Route::post('/users/{user}/impersonate', [UserController::class, 'impersonate'])->whereNumber('user');
         Route::post('/yards', [YardController::class, 'store']);
         Route::put('/yards/{yard}', [YardController::class, 'update']);
         Route::delete('/yards/{yard}', [YardController::class, 'destroy']);

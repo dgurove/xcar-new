@@ -1,7 +1,7 @@
 {{-- Карточка человека для сотрудников: контакт как у покупателя в кабинете (кружок, имя, чипы, ряд действий),
      ниже его чаты, у менеджера сделки, у покупателя интерес. Админу — «Изменить» тем же шитом, что в списке,
      ждущему — форма допуска. Из шапки чата открывается с «‹ Чат». --}}
-@php use App\Http\Admin\UserController; $me = auth()->user(); $base = UserController::base(); $crm = \App\Support\Surface::current() === \App\Support\Surface::Crm; $link = ($link['user'] ?? null) === $user->id ? $link : null; @endphp
+@php use App\Http\Admin\UserController; $me = auth()->user(); $base = UserController::base(); $crm = \App\Support\Surface::current() === \App\Support\Surface::Crm; $link = ($link['user'] ?? null) === $user->id ? $link : null; $park = \App\Support\Surface::current() === \App\Support\Surface::Park; $edits = UserController::manages($me, $user); @endphp
 <x-ui.cabinet :title="$user->name" :back="$back" :phone-heading="false">
 
     <div class="grid gap-6 lg:grid-cols-[1fr_18rem]">
@@ -11,7 +11,12 @@
                      Telegram), ещё строкой — с кем связан (менеджер, покупатели, сколько видит) и с какого дня. Владелец
                      10.10.2026: «одно к машине относится, другое к фактам — что-то чипами, что-то текстом». --}}
                 <x-slot:chips>
-                    <x-ui.state :tone="$user->isAdmin() ? 'soft' : ($user->isStaff() ? 'plain' : 'closed')">{{ $user->rolesLabel() }}</x-ui.state>
+                    @if ($park)
+                        {{-- На парковке — роль на парковке (31.10.2026). --}}
+                        <x-ui.state :tone="$user->isParkAdmin() ? 'soft' : 'plain'">{{ mb_ucfirst((string) \App\Park\Roles::label($user)) }}</x-ui.state>
+                    @else
+                        <x-ui.state :tone="$user->isAdmin() ? 'soft' : ($user->isStaff() ? 'plain' : 'closed')">{{ $user->rolesLabel() }}</x-ui.state>
+                    @endif
                     @if ($user->isPending())<x-ui.state tone="urgent">Ждёт</x-ui.state>@elseif ($user->isRejected())<x-ui.state tone="danger">Отклонён</x-ui.state>@endif
                     {{-- Группы человека (менеджеров или модераторов) — ведутся в «Пользователях». --}}
                     @foreach ($user->userGroups as $g)<span class="tag">{{ $g->name }}</span>@endforeach
@@ -22,8 +27,8 @@
                         @if ($user->telegram_username)<a href="https://t.me/{{ $user->telegram_username }}" target="_blank" rel="noopener" data-turbo="false" class="text-accent-text">{{ '@'.$user->telegram_username }}</a>@elseif ($user->telegram_chat_id)<span>Telegram</span>@endif
                     </div>
                     <div class="detail-line basis-full !mt-0 text-sm text-ink-muted lg:justify-center">
-                        @if ($user->isBuyer() && $user->manager)<a href="{{ $base }}/{{ $user->manager_id }}" class="text-ink">менеджер {{ $user->manager->shortName() }}</a>@endif
-                        @if ($user->isManager())<a href="{{ $base }}?preset=buyers&manager={{ $user->id }}" class="nums text-ink">{{ $buyersCount }} {{ \App\Support\Plural::of($buyersCount, ['покупатель', 'покупателя', 'покупателей']) }}</a>@endif
+                        @if ($user->isBuyer() && $user->manager && ! $park)<a href="{{ $base }}/{{ $user->manager_id }}" class="text-ink">менеджер {{ $user->manager->shortName() }}</a>@endif
+                        @if ($user->isManager() && ! $park)<a href="{{ $base }}?preset=buyers&manager={{ $user->id }}" class="nums text-ink">{{ $buyersCount }} {{ \App\Support\Plural::of($buyersCount, ['покупатель', 'покупателя', 'покупателей']) }}</a>@endif
                         @if ($seen !== null)<span class="nums">видит {{ $seen }}</span>@endif
                         <span class="nums">с {{ $user->created_at->format('d.m.Y') }}</span>
                     </div>
@@ -32,7 +37,7 @@
                     @if ($user->phone)<a href="tel:+{{ $user->phone }}" class="act"><span class="btn btn-quiet btn-round"><x-ui.icon name="phone"/></span>Позвонить</a>@endif
                     @if ($user->email)<a href="mailto:{{ $user->email }}" class="act"><span class="btn btn-quiet btn-round"><x-ui.icon name="mail"/></span>Написать</a>@endif
                     @if ($me->isAdmin() && $user->telegram_chat_id && \App\Support\Surface::current() === \App\Support\Surface::Crm)<a href="/settings/telegram/{{ $user->telegram_chat_id }}" class="act"><span class="btn btn-quiet btn-round"><x-ui.icon name="chat"/></span>Переписка</a>@endif
-                    @if ($me->isAdmin())<button type="button" class="act" data-action="sheet#open"><span class="btn btn-quiet btn-round"><x-ui.icon name="edit"/></span>Изменить</button>@endif
+                    @if ($edits)<button type="button" class="act" data-action="sheet#open"><span class="btn btn-quiet btn-round"><x-ui.icon name="edit"/></span>Изменить</button>@endif
                     @if (\App\Users\Impersonation::allowed($me, $user) && $user->isApproved())
                         <form method="post" action="{{ $base }}/{{ $user->id }}/impersonate" class="contents">
                             @csrf<button type="submit" class="act"><span class="btn btn-quiet btn-round"><x-ui.icon name="login"/></span>Войти как</button>
@@ -40,9 +45,9 @@
                     @endif
                 </x-slot:acts>
             </x-ui.contact>
-            @if ($me->isAdmin())<x-users.reach :user="$user"/>@endif
+            @if ($edits)<x-users.reach :user="$user"/>@endif
             {{-- Регионы (22.10.2026): откуда ему показывать предложения — админ правит за менеджера. --}}
-            @if ($me->isAdmin() && ($user->isManager() || $user->isSuperBuyer()))
+            @if ($me->isAdmin() && ! $park && ($user->isManager() || $user->isSuperBuyer()))
                 <div class="list mt-4">
                     <a href="/settings/users/{{ $user->id }}/regions" class="row items-center gap-3">
                         <x-ui.row-icon name="map-pin" size="s"/>
@@ -52,19 +57,23 @@
                     </a>
                 </div>
             @endif
-            @if ($me->isAdmin() && !$user->isApproved() && !$user->is($me))
+            @if ($me->isAdmin() && ! $park && !$user->isApproved() && !$user->is($me))
                 <div class="mt-4 flex lg:justify-center"><x-admin.user-access :user="$user" :base="$base"/></div>
             @endif
-            @if ($me->isAdmin())<x-admin.user-sheet :user="$user" :managers="$managers" :link="$link" :base="$base" :me="$me"/>@endif
+            @if ($edits)<x-admin.user-sheet :user="$user" :managers="$managers" :link="$link" :base="$base" :me="$me"/>@endif
         </div>
 
         <div class="min-w-0 lg:col-start-1 lg:row-start-1">
-            {{-- Экраны человека: обзор, у менеджера и супер-покупателя деньги — как у вендора, админу активность (30.10.2026). --}}
+            {{-- Экраны человека: обзор (пустого нет — сразу активность), у менеджера и супер-покупателя деньги — как у вендора,
+                 активность (30.10.2026). --}}
+            {{-- Одна пилюля — не выбор: без обзора и денег пилюль нет. --}}
+            @if ($overview || $user->hasDeals())
             <div class="mb-5 flex flex-wrap gap-1.5">
-                <x-ui.pill :href="$base.'/'.$user->id" :current="$pill === 'overview'">Обзор</x-ui.pill>
+                @if ($overview)<x-ui.pill :href="$base.'/'.$user->id" :current="$pill === 'overview'">Обзор</x-ui.pill>@endif
                 @if ($user->hasDeals())<x-ui.pill :href="$base.'/'.$user->id.'?pill=money'" :current="$pill === 'money'">Деньги</x-ui.pill>@endif
                 <x-ui.pill :href="$base.'/'.$user->id.'?pill=activity'" :current="$pill === 'activity'">Активность</x-ui.pill>
             </div>
+            @endif
             @if ($pill === 'money')
                 @include('admin.users.money')
             @elseif ($pill === 'activity')

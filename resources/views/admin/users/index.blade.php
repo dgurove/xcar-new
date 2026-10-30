@@ -1,6 +1,7 @@
-@php use App\Users\Role; use App\Http\Admin\UserController; $me = auth()->user(); $link = session('password_link'); $base = UserController::base(); @endphp
-{{-- Пользователи; пилюля «Ссылки» — все пригласительные ссылки тем же списком, что в кабинете
-     (x-invites.list): первая строка — новая, менеджеру или покупателю от имени менеджера. --}}
+@php use App\Users\Role; use App\Http\Admin\UserController; $me = auth()->user(); $link = session('password_link'); $base = UserController::base(); $park = \App\Support\Surface::current() === \App\Support\Surface::Park; @endphp
+{{-- Пользователи — один экран CRM, сайта и парковки (31.10.2026); на парковке — только её люди, роль — на парковке.
+     Пилюля «Ссылки» — все пригласительные ссылки тем же списком, что в кабинете (x-invites.list): первая строка — новая,
+     менеджеру или покупателю от имени менеджера; на парковке — её ссылки управляющему и приёмщику. --}}
 <x-ui.cabinet title="Пользователи">
     <x-ui.toolbar :sort="$sort" :pills="$pills" :pill="$preset" pill-param="preset" :counts="$counts" name="users" :facets="$facets" search="Имя, логин, телефон, почта">
         <x-slot:actions>
@@ -54,7 +55,9 @@
         </div>
     @endif
     @if ($groupKind && ! request('q'))<x-admin.user-groups :groups="$groups" :kind="$groupKind"/>@endif
-    @if ($preset === 'invites')
+    @if ($preset === 'invites' && $park)
+        @include('admin.users.park-invites')
+    @elseif ($preset === 'invites')
         <x-invites.list :invites="$invites" admin :managers="$managers" :fresh="$fresh"/>
     @elseif ($users->isEmpty())
         <x-ui.empty>{{ request('q') ? 'Никого не нашлось' : ($preset === 'buyers' ? 'Покупателей пока нет' : 'Никого нет') }}</x-ui.empty>
@@ -70,17 +73,21 @@
                         <a href="{{ $base }}/{{ $user->id }}" class="block truncate">{{ $user->name }}</a>
                         {{-- Всё о человеке одной строкой текста: роль, чей покупатель, логин, телефон, почта, покупатели, группы. --}}
                         <div class="row-sub">
-                            <span class="{{ $user->isAdmin() ? 'text-accent-text' : '' }}">{{ mb_strtolower($user->rolesLabel()) }}</span>
+                            @if ($park)
+                                <span class="{{ $user->isParkAdmin() ? 'text-accent-text' : '' }}">{{ \App\Park\Roles::label($user) }}</span>
+                            @else
+                                <span class="{{ $user->isAdmin() ? 'text-accent-text' : '' }}">{{ mb_strtolower($user->rolesLabel()) }}</span>
+                            @endif
                             {{-- Когда был (30.10.2026, владелец: управляющий две недели не заходил, а видно не было): неделя и больше — красным. --}}
                             @if ($user->isApproved())
                                 @php $away = $user->awayDays(); @endphp
-                                <a href="{{ $base }}/{{ $user->id }}?pill=activity" class="{{ $away === null || $away >= 7 ? 'text-danger' : '' }}">{{ match (true) { $away === null => 'не заходил', $away >= 7 => 'не заходил '.$away.' '.\App\Support\Plural::of($away, ['день', 'дня', 'дней']), default => $user->seenLabel() } }}</a>
+                                <a href="{{ $base }}/{{ $user->id }}?pill=activity" class="whitespace-nowrap {{ $away === null || $away >= 7 ? 'text-danger' : '' }}">{{ match (true) { $away === null => 'не заходил', $away >= 7 => 'не заходил '.$away.' '.\App\Support\Plural::of($away, ['день', 'дня', 'дней']), default => $user->seenLabel() } }}</a>
                             @endif
                             {{-- Отклик за две недели (21.10.2026): сколько открытых ему предложений открыл; мало — красным, звонить. --}}
                             @if (($r = $responses[$user->id] ?? null) && $r->shareLabel())<span class="{{ $r->low() ? 'text-danger' : 'text-ink' }}">открыл {{ $r->shareLabel() }}</span>@endif
                             @if ($user->isBuyer() && $user->manager)<a href="{{ $base }}?preset=buyers&manager={{ $user->manager_id }}" class="text-ink">{{ $user->manager->shortName() }}</a>@endif
                             @if ($user->login)<span>{{ $user->login }}</span>@endif
-                            @if ($user->phone)<a href="tel:+{{ $user->phone }}" class="nums">{{ $user->phoneFormatted() }}</a>@endif
+                            @if ($user->phone)<a href="tel:+{{ $user->phone }}" class="nums whitespace-nowrap">{{ $user->phoneFormatted() }}</a>@endif
                             @if ($user->email)<a href="mailto:{{ $user->email }}">{{ $user->email }}</a>@endif
                             @if ($user->telegram_username)<a href="https://t.me/{{ $user->telegram_username }}" target="_blank" rel="noopener" data-turbo="false">{{ '@'.$user->telegram_username }}</a>@elseif ($user->telegram_chat_id)<span>Telegram</span>@endif
                             @if ($user->isManager() && isset($user->buyers_count))<a href="{{ $base }}?preset=buyers&manager={{ $user->id }}" class="text-ink">{{ $user->buyers_count }} {{ \App\Support\Plural::of($user->buyers_count, ['покупатель', 'покупателя', 'покупателей']) }}</a>@endif

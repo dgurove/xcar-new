@@ -1,9 +1,11 @@
 {{-- Шит «Изменить» человека (админ): имя, у покупателя менеджер, у остальных контакты, роли галками и доступ;
      ниже «Войти как», ссылка на новый пароль, закрыть доступ или удалить. Открывается сам, если ссылка на пароль только что выдана.
-     07.10.2026: поля строками (.fields), кнопка .sheet-foot. --}}
+     07.10.2026: поля строками (.fields), кнопка .sheet-foot. На парковке (31.10.2026) — контакты у всех, вместо ролей CRM —
+     роль на парковке и город (себе не меняют), внизу «Закрыть доступ к парковке». --}}
 @props(['user', 'managers', 'link' => null, 'base', 'me'])
 @php
     use App\Http\Admin\UserController;
+    $park = \App\Support\Surface::current() === \App\Support\Surface::Park;
 @endphp
 {{-- Не прошло проверку — шторка этого человека открывается снова с ошибками (old('_user')). --}}
 <x-ui.sheet id="user-{{ $user->id }}" :title="$user->name" tall :open="($link['user'] ?? null) === $user->id || (int) old('_user') === $user->id">
@@ -19,7 +21,26 @@
             <x-ui.field name="first_name" id="user-first-{{ $user->id }}" label="Имя" :value="$user->first_name" required/>
             <x-ui.field name="last_name" id="user-last-{{ $user->id }}" label="Фамилия" :value="$user->last_name" required/>
         </div>
-        @if ($user->isBuyer())
+        @if ($park)
+            <div class="fields">
+                <x-ui.field name="phone" label="Телефон" type="tel" :value="$user->phoneFormatted()"/>
+                <x-ui.field name="email" label="Почта" type="email" :value="$user->email"/>
+                <x-ui.field name="login" label="Логин" :value="$user->login" autocapitalize="none"/>
+            </div>
+            @unless ($user->is($me))
+                @php $kind = old('kind', \App\Park\Roles::kindOf($user)); @endphp
+                <div class="field">
+                    <span class="field-label">Роль на парковке</span>
+                    <div class="flex flex-wrap gap-1.5">
+                        @foreach (\App\Park\Roles::KINDS as $key => $label)
+                            <label class="choice"><input type="radio" name="kind" value="{{ $key }}" @checked($kind === $key)><span>{{ $label }}</span></label>
+                        @endforeach
+                    </div>
+                    @error('kind')<p class="field-error">{{ $message }}</p>@enderror
+                </div>
+                <x-park.city-field :city="$user->park_city_id"/>
+            @endunless
+        @elseif ($user->isBuyer())
             {{-- Логин и контакты — строкой текста (10.10.2026: «что-то чипами, что-то текстом»). --}}
             <div class="detail-line !mt-0 text-sm text-ink-muted">
                 @if ($user->login)<span class="nums">{{ $user->login }}</span>@endif
@@ -78,7 +99,7 @@
         </form>
     @endif
     @unless ($user->is($me))
-        @if (\App\Users\Access\Lock::enabled() && $user->underLock() && $user->telegram_chat_id)
+        @if (! $park && \App\Users\Access\Lock::enabled() && $user->underLock() && $user->telegram_chat_id)
             {{-- Под замком вход только через Telegram: потерял его — отвязать, дальше вход паролем и привязка нового. --}}
             <form method="post" action="{{ $base }}/{{ $user->id }}/telegram/unlink" class="mt-3"
                 data-turbo-confirm="Отвязать Telegram {{ $user->shortName() }}?" data-turbo-confirm-label="Отвязать"
@@ -96,7 +117,13 @@
         @endif
         {{-- Ссылка могла уйти не тому: допущенному — закрыть доступ (выйдет отовсюду, вернуть можно из «Отклонённых»);
              отклонённому без истории — удалить насовсем. --}}
-        @if ($user->isApproved())
+        @if ($park)
+            <form method="post" action="{{ $base }}/{{ $user->id }}/revoke" class="mt-3" data-turbo-confirm="Закрыть {{ $user->shortName() }} доступ к парковке?"
+                data-turbo-confirm-label="Закрыть" data-turbo-confirm-text="{{ $user->roles->count() > 1 ? 'Роль на парковке снимется, остальное останется' : 'Выйдет со всех устройств и не сможет войти' }}">
+                @csrf
+                <x-ui.button type="submit" variant="danger" block>Закрыть доступ к парковке</x-ui.button>
+            </form>
+        @elseif ($user->isApproved())
             <form method="post" action="{{ $base }}/{{ $user->id }}/access" class="mt-3"
                 data-turbo-confirm="Закрыть доступ {{ $user->shortName() }}?" data-turbo-confirm-label="Закрыть"
                 data-turbo-confirm-text="{{ $user->isManager() ? 'Выйдет со всех устройств, его ссылки и покупатели закроются. Сделки останутся в истории' : 'Выйдет со всех устройств и не сможет войти' }}">

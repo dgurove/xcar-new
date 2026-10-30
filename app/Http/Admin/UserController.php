@@ -16,6 +16,8 @@ use App\Offers\Bid;
 use App\Offers\Deal;
 use App\Offers\Offer;
 use App\Offers\OfferState;
+use App\Park\City;
+use App\Park\Roles as ParkRoles;
 use App\Support\Facets\Common;
 use App\Support\Facets\Facet;
 use App\Support\Facets\Facets;
@@ -32,7 +34,10 @@ use App\Users\Access\RevokeDevices;
 use App\Users\Access\SwitchLock;
 use App\Users\Actions\DecideAccess;
 use App\Users\Actions\IssueImpersonation;
+use App\Users\Actions\IssueInvite;
 use App\Users\Actions\IssuePasswordLink;
+use App\Users\Actions\RevokePark;
+use App\Users\Actions\SetParkRole;
 use App\Users\Actions\TransferBuyer;
 use App\Users\Activity;
 use App\Users\BuyerGroup;
@@ -58,7 +63,7 @@ class UserController
 
     /**
      * Роли, которые админ CRM отмечает галками (ролей у человека может быть несколько); заводят людей только ссылкой.
-     * Роли парковки (управляющий, администратор парковки) тут не правятся — их ведёт парковка (`Park\UserController`),
+     * Роли парковки (управляющий, администратор парковки) тут не правятся — их ведёт парковка (этот же экран на её хосте),
      * CRM их сохраняет как есть (владелец 08.10.2026: админ CRM не админ парковки). «Исполнитель» (21.10.2026, владелец: покупатель
      * с гаражом сам вывозит машину — «в логистике он ещё как исполнитель должен быть») — галкой у любого, и у покупателя: без
      * логиста он прямой исполнитель XCar (`Channel::Partner`), у логиста — её, `logist_id` CRM не трогает.
@@ -71,31 +76,71 @@ class UserController
     /** Роли, которых в шторке нет и которые сохранение не трогает: парковки (их ведёт парковка) и главного администратора. */
     private const KEPT_ROLES = [...self::PARK_ROLES, Role::Owner];
 
-    /** Один экран на двух хостах: в CRM /settings/users, в кабинете сайта /account/users. */
+    /** Пилюли экрана на парковке: её люди и её ссылки. */
+    public const PARK_PRESETS = ['people' => 'Люди', 'invites' => 'Ссылки'];
+
+    /**
+     * Один экран на трёх хостах: в CRM /settings/users, в кабинете сайта /account/users, на парковке /users (31.10.2026,
+     * владелец: «одна система — в park какой-то кастрат, надо всё то же самое, только пользователи с доступом к парковке»).
+     */
     public static function base(): string
     {
-        return Surface::current() === Surface::Crm ? '/settings/users' : '/account/users';
+        return match (Surface::current()) {
+            Surface::Crm => '/settings/users', Surface::Park => '/users', default => '/account/users',
+        };
+    }
+
+    private static function onPark(): bool
+    {
+        return Surface::current() === Surface::Park;
+    }
+
+    /** Кто открывает экран: в CRM и на сайте — админ, на парковке — администратор парковки. */
+    public static function opens(User $me): bool
+    {
+        return self::onPark() ? $me->isParkAdmin() : $me->isAdmin();
+    }
+
+    /** Чью карточку он видит: на парковке — только людей с ролью парковки. */
+    public static function sees(User $me, User $user): bool
+    {
+        return self::opens($me) && (! self::onPark() || $user->hasRole(...ParkRoles::ROLES));
+    }
+
+    /** Кого правит: кого видит, кроме главного администратора — его правит только он сам (`User::isOwner`). */
+    public static function manages(User $me, User $user): bool
+    {
+        return self::sees($me, $user) && (! $user->isOwner() || $user->is($me));
     }
 
     public function index(Request $request)
     {
-        abort_unless($request->user()->isAdmin(), 404);
+        abort_unless(self::opens($request->user()), 404);
+        $park = self::onPark();
+        $list = $park ? 'park-users' : 'crm-users';
         // Чипы — своего вида: менеджер есть только у покупателей, группы у каждого вида свои (ключ в адресе — свой).
         $kindOf = (string) $request->query('preset', 'staff');
-        $facets = Facets::for($request, 'crm-users', ...array_filter([
+        $facets = Facets::for($request, $list, ...array_filter($park ? [] : [
             $kindOf === 'buyers' ? Common::manager('users.manager_id') : null,
             self::groupFacet($kindOf),
         ]));
-        ListPrefs::sync($request, 'crm-users', keep: $facets->keys());
-        $preset = $request->query('preset', 'staff');
+        ListPrefs::sync($request, $list, keep: $facets->keys());
+        $preset = $request->query('preset', $park ? 'people' : 'staff');
+        if ($park && ! isset(self::PARK_PRESETS[$preset])) {
+            $preset = 'people';
+        }
         $searching = $facets->searching();
         // На сайте ссылки — своя пилюля кабинета, а не пресет.
-        if ($preset === 'invites' && Surface::current() !== Surface::Crm) {
+        if ($preset === 'invites' && ! in_array(Surface::current(), [Surface::Crm, Surface::Park], true)) {
             return redirect('/account/invites');
         }
         $q = User::query()->with(['manager', 'userGroups'])->orderBy('name');
+        // На парковке — только её люди, и лупой тоже.
+        if ($park) {
+            $q->withRole(...ParkRoles::ROLES)->whereNotNull('approved_at')->when($preset === 'invites' && ! $searching, fn ($w) => $w->whereRaw('false'));
+        }
         // Лупа — по всем людям, мимо пилюли и чипов.
-        if (! $searching) {
+        if (! $searching && ! $park) {
             match ($preset) {
                 'waiting' => $q->whereNull('approved_at')->whereNull('rejected_at')->withRole(Role::Visitor)->reorder('created_at', 'desc'),
                 'rejected' => $q->whereNotNull('rejected_at')->whereNull('approved_at')->reorder('rejected_at', 'desc'),
@@ -130,7 +175,10 @@ class UserController
             default => $q->reorder('name', $dir),
         };
         $q->orderBy('users.id');
-        $counts = [
+        $counts = $park ? [
+            'people' => User::withRole(...ParkRoles::ROLES)->whereNotNull('approved_at')->count(),
+            'invites' => Invite::ofPark()->get()->filter->isActive()->count(),
+        ] : [
             'staff' => User::withRole(Role::Admin, Role::Moderator)->count(),
             'managers' => User::withRole(Role::Manager)->count(),
             'park' => User::withRole(Role::Parking)->count(),
@@ -142,8 +190,8 @@ class UserController
             'rejected' => User::whereNotNull('rejected_at')->whereNull('approved_at')->count(),
         ];
         // Прежний допуск по заявке остался в коде, но людей там больше не бывает — пустые пилюли не показываем.
-        $pills = array_filter(self::PRESETS, fn ($_, $key) => ! in_array($key, ['waiting', 'visitors', 'rejected'], true) || $counts[$key] > 0 || $preset === $key, ARRAY_FILTER_USE_BOTH);
-        if (Surface::current() !== Surface::Crm) {
+        $pills = $park ? self::PARK_PRESETS : array_filter(self::PRESETS, fn ($_, $key) => ! in_array($key, ['waiting', 'visitors', 'rejected'], true) || $counts[$key] > 0 || $preset === $key, ARRAY_FILTER_USE_BOTH);
+        if (! in_array(Surface::current(), [Surface::Crm, Surface::Park], true)) {
             unset($pills['invites']);
         }
 
@@ -155,7 +203,7 @@ class UserController
             'managers' => User::withRole(Role::Manager)->orderBy('name')->get(),
             'responses' => $preset === 'managers' ? ManagerResponse::all() : [],
             // Все ссылки — и админские, и менеджерские: админ видит, кто кого зовёт.
-            'invites' => $preset === 'invites' ? InviteController::listFor($request->user()) : collect(),
+            'invites' => $preset !== 'invites' ? collect() : ($park ? Invite::ofPark()->with(['creator', 'buyers'])->latest()->get() : InviteController::listFor($request->user())),
             'groupKind' => $kind,
             'groups' => $kind ? UserGroup::ofKind($kind)->with('members')->get() : collect(),
             'fresh' => session('invite'),
@@ -194,17 +242,23 @@ class UserController
     public function show(Request $request, User $user)
     {
         $me = $request->user();
-        abort_unless($me->isAdmin(), 404);
+        abort_unless(self::sees($me, $user), 404);
         $user->load('manager');
         $chats = Chat::where('user_id', $user->id)->when($user->isManager(), fn ($q) => $q->orWhere('manager_id', $user->id))
             ->withLast()->with(['offer', 'offer.media', 'user', 'manager'])->orderByDesc('last_message_at')->limit(50)->get();
         // Пришли из шапки чата — «‹ Чат» вместо «‹ Пользователи».
         $chat = $request->integer('chat') ? Chat::find($request->integer('chat')) : null;
+        $deals = $user->hasDeals() ? Deal::where('buyer_id', $user->id)->with(['offer', 'offer.media', 'buyer'])->latest()->get() : collect();
+        // Отклик на предложения за две недели — менеджеру и супер-покупателю (21.10.2026).
+        $response = $user->hasRole(Role::Manager, Role::SuperBuyer) ? (ManagerResponse::of($user) ?? new ManagerResponse(0, 0, 0, null)) : null;
+        $interests = $user->isBuyer() ? $user->interests()->with(['offer', 'offer.media'])->latest()->get() : collect();
+        // «Обзор» без чатов, сделок, интереса и отклика не рисуется (31.10.2026): у управляющего парковки сразу «Активность».
+        $overview = $chats->isNotEmpty() || $deals->isNotEmpty() || $response || $interests->isNotEmpty();
 
         $pill = match (true) {
             $user->hasDeals() && $request->query('pill') === 'money' => 'money',
             // Активность (30.10.2026): когда заходил, что делал и откуда — `Users\Activity`.
-            $request->query('pill') === 'activity' => 'activity',
+            $request->query('pill') === 'activity' || ! $overview => 'activity',
             default => 'overview',
         };
         $days = in_array($request->integer('days'), Activity::PERIODS, true) ? $request->integer('days') : 30;
@@ -213,6 +267,7 @@ class UserController
         return view('admin.users.show', [
             'user' => $user,
             'pill' => $pill,
+            'overview' => $overview,
             'activity' => $pill === 'activity' ? new Activity($user, $days) : null,
             'position' => $ledger?->position(),
             'party' => $pill === 'money' ? Party::forUser($user, false) : null,
@@ -220,13 +275,12 @@ class UserController
             'moneyDeals' => $ledger?->rows() ?? collect(),
             'back' => $chat ? ['Чат', (Surface::current() === Surface::Crm ? '/work/chats/' : '/account/chats/').$chat->id] : null,
             'chats' => $chats,
-            'deals' => $user->hasDeals() ? Deal::where('buyer_id', $user->id)->with(['offer', 'offer.media', 'buyer'])->latest()->get() : collect(),
+            'deals' => $deals,
             'buyersCount' => $user->isManager() ? $user->buyers()->count() : 0,
-            // Отклик на предложения за две недели — менеджеру и супер-покупателю (21.10.2026).
-            'response' => $user->hasRole(Role::Manager, Role::SuperBuyer) ? (ManagerResponse::of($user) ?? new ManagerResponse(0, 0, 0, null)) : null,
-            'interests' => $user->isBuyer() ? $user->interests()->with(['offer', 'offer.media'])->latest()->get() : collect(),
+            'response' => $response,
+            'interests' => $interests,
             'seen' => $user->isBuyer() ? Offer::where('state', OfferState::Open)->visibleTo($user)->count() : null,
-            'managers' => $me->isAdmin() ? User::withRole(Role::Manager)->orderBy('name')->get() : collect(),
+            'managers' => $me->isAdmin() && ! self::onPark() ? User::withRole(Role::Manager)->orderBy('name')->get() : collect(),
             'link' => session('password_link'),
         ]);
     }
@@ -282,9 +336,7 @@ class UserController
     /** Ссылка на новый пароль — админ выдаёт кому угодно: сотруднику без почты, менеджеру, покупателю. */
     public function passwordLink(Request $request, User $user, IssuePasswordLink $issue)
     {
-        // Главного администратора правит только он сам (`User::isOwner`).
-        abort_if($user->isOwner() && ! $user->is($request->user()), 404);
-        abort_unless($request->user()->isAdmin(), 404);
+        abort_unless(self::manages($request->user(), $user), 404);
 
         return back()->with('password_link', ['user' => $user->id, 'url' => $issue($user, $request->user())]);
     }
@@ -376,11 +428,12 @@ class UserController
         return back()->with('toast', "Доступ открыт: {$role->label()}");
     }
 
-    public function update(Request $request, User $user, TransferBuyer $transfer, SyncViewers $sync)
+    public function update(Request $request, User $user, TransferBuyer $transfer, SyncViewers $sync, SetParkRole $parkRole)
     {
-        // Главного администратора правит только он сам (`User::isOwner`).
-        abort_if($user->isOwner() && ! $user->is($request->user()), 404);
-        abort_unless($request->user()->isAdmin(), 404);
+        abort_unless(self::manages($request->user(), $user), 404);
+        if (self::onPark()) {
+            return $this->updateOnPark($request, $user, $parkRole);
+        }
         if ($user->isBuyer()) {
             $data = $request->validate([
                 'first_name' => ['required', 'string', 'max:60'],
@@ -431,36 +484,84 @@ class UserController
         return back()->with('toast', 'Сохранено');
     }
 
-    private function data(Request $request, ?User $user = null): array
+    /**
+     * На парковке (31.10.2026): имя и контакты — как в CRM, вместо ролей CRM — роль на парковке и город; роли CRM и сайта
+     * не трогаются. Себе роль парковки администратор не меняет — иначе парковкой некому управлять.
+     */
+    private function updateOnPark(Request $request, User $user, SetParkRole $parkRole)
+    {
+        $contacts = $this->contacts($request, $user);
+        $user->update($contacts);
+        if (! $user->is($request->user())) {
+            $data = $request->validate(['kind' => ['required', Rule::in(array_keys(ParkRoles::KINDS))], 'park_city_id' => self::cityRule()]);
+            $parkRole($user, $data['kind'], isset($data['park_city_id']) ? (int) $data['park_city_id'] : null);
+        }
+
+        return back()->with('toast', 'Сохранено');
+    }
+
+    /** Закрыть доступ к парковке — админ парковки, не себе. */
+    public function revokePark(Request $request, User $user, RevokePark $revoke)
+    {
+        abort_unless(self::onPark() && self::manages($request->user(), $user) && ! $user->is($request->user()), 404);
+        $revoke($user, $request->user());
+
+        return redirect(self::base())->with('toast', 'Доступ к парковке закрыт');
+    }
+
+    /** Ссылка управляющему или приёмщику парковки: одноразовая, со сроком; строка ссылки — общий `invites.row`. */
+    public function parkInvite(Request $request, IssueInvite $issue)
+    {
+        abort_unless(self::onPark() && self::opens($request->user()), 404);
+        $data = $request->validate(['expires_at' => ['required', 'date', 'after:now'], 'park_city_id' => self::cityRule()]);
+        $invite = $issue->park($request->user(), Carbon::parse($data['expires_at']), $request->boolean('park_readonly'), isset($data['park_city_id']) ? (int) $data['park_city_id'] : null);
+
+        return redirect(InviteController::home())->with('invite', $invite->id);
+    }
+
+    /** Город управляющего — один из городов парковок; пусто — весь парк. */
+    private static function cityRule(): array
+    {
+        return ['nullable', 'integer', Rule::in(array_keys(City::options()))];
+    }
+
+    /** Имя и контакты: чем-то человек должен входить — телефон, почта или логин. */
+    private function contacts(Request $request, ?User $user = null): array
     {
         // Логин хранится и проверяется на уникальность строчными — приводим до валидации.
         $request->merge([
             'phone' => $request->filled('phone') ? Phone::normalize($request->input('phone')) : null,
             'login' => mb_strtolower(trim((string) $request->input('login'))) ?: null,
         ]);
-        // У себя роль не меняется — селект отключён и в запрос не попадает.
-        $self = $user?->is($request->user()) ?? false;
-        $parkRoles = array_values(array_filter(self::KEPT_ROLES, fn (Role $r) => (bool) $user?->hasRole($r)));
         $data = $request->validate([
             'first_name' => ['required', 'string', 'max:60'],
             'last_name' => ['required', 'string', 'max:60'],
             'phone' => ['nullable', 'digits:11', Rule::unique('users', 'phone')->ignore($user)],
             'email' => ['nullable', 'email', 'max:190', Rule::unique('users', 'email')->ignore($user)],
             'login' => ['nullable', 'string', \App\Http\Auth\InviteController::LOGIN_RULE, Rule::unique('users', 'login')->ignore($user)],
+        ], ['login.regex' => 'Логин латиницей, от трёх знаков: буквы, цифры, точка']);
+        $data += ['phone' => null, 'email' => null, 'login' => null];
+        if (! $data['phone'] && ! $data['email'] && ! $data['login']) {
+            throw ValidationException::withMessages(['phone' => 'Нужен телефон, почта или логин: чем-то человек должен входить']);
+        }
+
+        return ['first_name' => trim($data['first_name']), 'last_name' => trim($data['last_name']), 'email' => $data['email'] ?: null,
+            'phone' => $data['phone'] ?: null, 'login' => $data['login']];
+    }
+
+    private function data(Request $request, ?User $user = null): array
+    {
+        // У себя роль не меняется — селект отключён и в запрос не попадает.
+        $self = $user?->is($request->user()) ?? false;
+        $parkRoles = array_values(array_filter(self::KEPT_ROLES, fn (Role $r) => (bool) $user?->hasRole($r)));
+        $data = $this->contacts($request, $user) + $request->validate([
             // У кого есть роль парковки, CRM-ролей может не быть вовсе.
             'roles' => [$self || $parkRoles ? 'nullable' : 'required', 'array', 'min:1'],
             'roles.*' => [Rule::in(array_map(fn (Role $r) => $r->value, self::ROLES))],
         ], [
-            'login.regex' => 'Логин латиницей, от трёх знаков: буквы, цифры, точка',
             'roles.required' => 'Отметьте хотя бы одну роль',
             'roles.min' => 'Отметьте хотя бы одну роль',
         ]);
-        if (! $data['phone'] && ! $data['email'] && ! ($data['login'] ?? null)) {
-            throw ValidationException::withMessages(['phone' => 'Нужен телефон, почта или логин: чем-то человек должен входить']);
-        }
-        $data['email'] = $data['email'] ?: null;
-        $data['phone'] = $data['phone'] ?: null;
-        $data['login'] = $data['login'] ?? null;
         // Ролей бывает несколько; себе админ «Админ» не снимет — остаётся при любых галках.
         $roles = array_map(fn ($r) => Role::from($r), (array) ($data['roles'] ?? []));
         // Супер-покупатель — покупатель, а не сотрудник: с другими ролями не совмещается, кроме исполнителя вывоза.
