@@ -25,7 +25,13 @@ class MigtorgSync extends Command
     protected $description = 'Лоты Мигторга по номеру дела, поля и фото совпавшим предложениям';
 
     /** Колонки индекса, которые обновляет повторное чтение лота. */
-    public const COLUMNS = ['claim_ref', 'claim_ref_key', 'vin', 'title', 'city', 'ends_at', 'seen_at', 'gone_at', 'section', 'data'];
+    public const COLUMNS = ['claim_ref', 'claim_ref_key', 'vin', 'title', 'city', 'ends_at', 'seen_at', 'gone_at', 'data'];
+
+    /** Обновление строки индекса при повторном чтении: неизвестный раздел не затирает известный. */
+    public static function updates(): array
+    {
+        return [...self::COLUMNS, 'section' => DB::raw('coalesce(excluded.section, migtorg_lots.section)')];
+    }
 
     /** Строка индекса `migtorg_lots` из строки списка или карточки (`Migtorg::row`). Не опубликованный — сразу ушедший. */
     public static function toIndex(array $lot, Carbon $now): array
@@ -106,7 +112,7 @@ class MigtorgSync extends Command
             return self::FAILURE;
         }
         foreach (array_chunk(array_values($rows), 500) as $chunk) {
-            DB::table('migtorg_lots')->upsert($chunk, ['id'], self::COLUMNS);
+            DB::table('migtorg_lots')->upsert($chunk, ['id'], self::updates());
         }
         self::media($photos);
         $gone = DB::table('migtorg_lots')->whereNull('gone_at')->where('seen_at', '<', $now)->update(['gone_at' => $now]);

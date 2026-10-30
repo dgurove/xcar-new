@@ -280,7 +280,7 @@ final class ImportMigtorgLot implements ShouldQueue
             $files = $row['photos'];
             $lotPhotos = array_values($files);
             // Карточка полнее строки списка: поля и все кадры — в индекс, им пользуются поле номера и загрузка кадров.
-            DB::table('migtorg_lots')->where('id', $this->lotId)->update(['photos' => count($lotPhotos), 'data' => json_encode($row['data'], JSON_UNESCAPED_UNICODE)]);
+            DB::table('migtorg_lots')->where('id', $this->lotId)->update(['photos' => count($lotPhotos), 'data' => json_encode($row['data'], JSON_UNESCAPED_UNICODE)] + array_filter(['section' => $row['section']]));
             MigtorgSync::media([$this->lotId => $files]);
             // Поля из индекса легли в start(); карточка дописывает то, чего в списке не было. Правит система, не человек.
             $filled = $apply($offer, MigtorgFields::of($card), null, FillCar::EMPTY, log: ['source' => 'migtorg', 'lot' => $this->lotId]);

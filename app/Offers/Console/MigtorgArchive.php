@@ -70,7 +70,7 @@ class MigtorgArchive extends Command
 
                 continue;
             }
-            DB::table('migtorg_lots')->upsert([$row], ['id'], MigtorgSync::COLUMNS);
+            DB::table('migtorg_lots')->upsert([$row], ['id'], MigtorgSync::updates());
             MigtorgSync::media([$id => $lot['photos']], newest: false);
             if ($row['claim_ref_key']) {
                 $keys[] = $row['claim_ref_key'];

@@ -69,7 +69,7 @@ final class Migtorg
             do {
                 $json = $this->get('/auctions', ['page' => $page, 'limit' => 100, 'insurance_type' => $section])->json();
                 foreach ($json['data'] ?? [] as $auction) {
-                    yield self::row($auction);
+                    yield self::row($auction, $section);
                 }
                 $last = (int) ($json['meta']['last_page'] ?? 1);
             } while ($page++ < $last);
@@ -78,11 +78,13 @@ final class Migtorg
 
     /**
      * Строка списка или карточка — то, что идёт в индекс `migtorg_lots`: `data` — поля машины для `MigtorgFields`,
-     * `photos` — кадры файл → uuid (в списке главный и три, в карточке все) для `migtorg_media`.
+     * `photos` — кадры файл → uuid (в списке главный и три, в карточке все) для `migtorg_media`. Раздел — только известный
+     * (`SECTIONS`): чужое слово не ляжет в индекс и не уронит запись; нет в лоте — раздел списка, из которого он пришёл.
      */
-    public static function row(array $auction): array
+    public static function row(array $auction, ?string $section = null): array
     {
         $lot = $auction['lot'] ?? [];
+        $type = $lot['insurance_type'] ?? null;
 
         return [
             'id' => (int) $auction['id'],
@@ -92,7 +94,7 @@ final class Migtorg
             'ends_at' => $auction['end_date'] ?? null,
             'status' => $auction['status'] ?? null,
             'city' => trim((string) ($lot['city']['title'] ?? '')) ?: null,
-            'section' => is_string($lot['insurance_type'] ?? null) ? $lot['insurance_type'] : null,
+            'section' => in_array($type, self::SECTIONS, true) ? $type : $section,
             'data' => ['lot' => array_intersect_key($lot, array_flip(self::LOT_KEYS)), 'end_date' => $auction['end_date'] ?? null],
             'photos' => self::filesOf($auction),
         ];
@@ -124,14 +126,22 @@ final class Migtorg
     }
 
     /**
-     * Раздел лота (`casco` / `osago`) — по открытой карточке, без входа: её отдают и у кончившихся торгов. Лота нет — null.
+     * Раздел лота (`casco` / `osago`) — по открытой карточке, без входа: её отдают и у кончившихся торгов. Лота нет (404) или
+     * раздел незнакомый — null; отказ и пауза — исключение, как у любого запроса.
      */
     public function section(int $id): ?string
     {
-        $auction = $this->get("/auctions/{$id}")->json();
-        $type = ($auction['data'] ?? $auction)['lot']['insurance_type'] ?? null;
+        try {
+            $auction = $this->get("/auctions/{$id}")->json();
+        } catch (RuntimeException $e) {
+            if ($e->getCode() === 404) {
+                return null;
+            }
 
-        return is_string($type) ? $type : null;
+            throw $e;
+        }
+
+        return self::row($auction['data'] ?? $auction)['section'];
     }
 
     /** uuid кадров карточки по порядку: главный, затем остальные — как в галерее на сайте. */
