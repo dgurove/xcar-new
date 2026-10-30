@@ -4,7 +4,6 @@ namespace App\Park\Actions;
 
 use App\Cars\Vin\Vin;
 use App\Mail\Actions\LinkThread;
-use App\Mail\Actions\MarkThreadRead;
 use App\Mail\Candidate;
 use App\Mail\CandidateState;
 use App\Mail\Extraction\Patterns;
@@ -22,7 +21,7 @@ use Illuminate\Support\Collection;
  */
 final class RegisterCandidate
 {
-    public function __construct(private LinkThread $link, private MarkThreadRead $read) {}
+    public function __construct(private LinkThread $link) {}
 
     public function attach(Candidate $candidate, Vehicle $vehicle): void
     {
@@ -33,8 +32,8 @@ final class RegisterCandidate
             if ($thread->vehicle_id !== $vehicle->id) {
                 ($this->link)($thread, $vehicle, $files);
             }
-            // Заведена — письма обработаны, непрочитанных в ветке не остаётся.
-            ($this->read)($thread);
+            // «Прочитано» не трогаем (30.10.2026, управляющий: письма, которые он не открывал, в ящике уже прочитаны):
+            // заведение — это разбор, а не чтение; правило — `MarkThreadRead`.
         }
         // Письма с тем же номером, которые кандидату не достались (наши ответы, «ч.2» до разбора), тоже к ТС.
         $this->link->forVehicle($vehicle, $files);
