@@ -26,7 +26,7 @@
     <td class="{{ $col->classes() }}">@if ($t->docs_received_at)<span class="text-ink-muted">получены</span>@elseif ($t->docs_track)<span class="text-accent-text">в пути</span> <x-ui.copy-code :value="$t->docs_track" done="Трек в буфере"/>@else<span class="text-urgent">{{ $u?->cdek_point ? 'ждут отправки в СДЭК: '.$u->cdek_point : 'пункта СДЭК нет' }}</span>@endif</td>
         @break
         @case('to')
-    <td class="{{ $col->classes() }}">@if ($u)<span class="inline-flex items-center gap-2"><x-ui.person :user="$u"/>@if ($u->logistics_city)<span class="text-ink-muted">{{ $u->logistics_city }}</span>@endif</span>@endif</td>
+    <td class="{{ $col->classes() }}">@if ($u)<span class="face inline-flex items-center gap-2"><x-ui.person :user="$u"/>@if ($u->logistics_city)<span class="text-ink-muted">{{ $u->logistics_city }}</span>@endif</span>@endif</td>
         @break
         @case('at')
     <td class="{{ $col->classes() }}">{{ \App\Support\Ago::html($at, time: true) }}</td>

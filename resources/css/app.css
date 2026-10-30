@@ -780,6 +780,8 @@ html.kb-open { --home-gap: 0px; }
   /* Человек чипом: аватар слева, имя. */
   /* Аватар и имя — по центру (20.10.2026: по базовой линии имя вставало вровень с низом картинки и уезжало вверх). */
   .chip.person { @apply max-w-full items-center gap-1.5 rounded-full py-0.5 pr-2.5 pl-0.5; }
+  /* Пилюля с аватаром (оценка менеджера): узкое поле со стороны аватара. */
+  .pill.face { padding-left: .25rem; padding-right: .75rem; }
   .chip.person-current { @apply bg-accent-soft text-accent-text; }
   /* Предложение менеджера — чип-кнопка; выбранное — акцентом с галочкой. */
   .offer-chip { @apply cursor-pointer transition-colors; }
@@ -1479,6 +1481,12 @@ html.kb-open { --home-gap: 0px; }
   /* Последний столбец только для телефона (`sm:hidden`, «Сумма» гаража) — на ПК край держит предпоследний. */
   @media (min-width: 640px) { .table th:has(+ .sm\:hidden:last-child), .table td:has(+ .sm\:hidden:last-child) { padding-right: .75rem; } }
   .table .num { @apply text-right; width: 1%; padding-left: .625rem; }
+  /* Аватар — у края, по которому выровнен столбец (30.10.2026, владелец: «аватарки скачут туда-сюда»): строка `face`
+     (аватар и текст, чип человека, пилюля с аватаром) в правой группе (`num`) разворачивается — аватар последним, у правого
+     края, одной вертикалью при любой длине даты или имени; блочный `flex` заодно прижимается вправо, а не влево. */
+  .table td.num .face { flex-direction: row-reverse; }
+  .table td.num .chip.face { padding-left: .625rem; padding-right: .125rem; }
+  .table td.num .pill.face { padding-left: .75rem; padding-right: .25rem; }
   .table td.cell-dim { font-size: var(--text-sm); color: var(--color-ink-muted); }
   /* Между столбцами на ПК — ровный шаг 1rem, у чисел чуть шире: они прижаты вправо и иначе липнут к соседу. */
   @media (min-width: 640px) { .table th:not(:first-child), .table td:not(:first-child) { padding-left: 1rem; } .table .num { padding-left: 1.25rem; } }

@@ -13,10 +13,10 @@
 @endphp
 @if ($given->isNotEmpty())
     @php $best = $given->first(); @endphp
-    <a href="{{ $href }}" {{ $attributes->class(['pill pill-accent nums !min-h-6 !py-0 !pl-1 !pr-3 gap-1.5 text-sm']) }} data-turbo-action="replace" data-turbo-prefetch="false" title="{{ $given->map(fn ($e) => $e->user->shortName().' '.\App\Support\Money::rub($e->amount))->implode(', ') }}"><x-ui.avatar :user="$best->user" :size="18"/>{{ \App\Support\Money::nums($best->amount) }}@if ($given->count() > 1)<span class="opacity-70">+{{ $given->count() - 1 }}</span>@endif</a>
+    <a href="{{ $href }}" {{ $attributes->class(['pill pill-accent nums face !min-h-6 !py-0 gap-1.5 text-sm']) }} data-turbo-action="replace" data-turbo-prefetch="false" title="{{ $given->map(fn ($e) => $e->user->shortName().' '.\App\Support\Money::rub($e->amount))->implode(', ') }}"><x-ui.avatar :user="$best->user" :size="18"/>{{ \App\Support\Money::nums($best->amount) }}@if ($given->count() > 1)<span class="opacity-70">+{{ $given->count() - 1 }}</span>@endif</a>
 @elseif ($waiting->isNotEmpty())
     @php $first = $waiting->first(); @endphp
-    <a href="{{ $href }}" {{ $attributes->class(['inline-flex items-center gap-1.5 text-sm']) }} data-turbo-action="replace" data-turbo-prefetch="false" title="Оценивает: {{ $waiting->map(fn ($e) => $e->user->shortName())->implode(', ') }}">
+    <a href="{{ $href }}" {{ $attributes->class(['face inline-flex items-center gap-1.5 text-sm']) }} data-turbo-action="replace" data-turbo-prefetch="false" title="Оценивает: {{ $waiting->map(fn ($e) => $e->user->shortName())->implode(', ') }}">
         <span class="flex -space-x-1.5">@foreach ($waiting->take(3) as $e)<x-ui.avatar :user="$e->user" :size="18" class="ring-2 ring-surface"/>@endforeach</span>
         <x-offer.estimate-left :estimate="$first" word="" short/>
     </a>

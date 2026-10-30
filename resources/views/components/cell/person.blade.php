@@ -9,5 +9,5 @@
             default => 'hidden truncate 2xl:inline',
         };
     @endphp
-    <span class="flex items-center gap-2" title="{{ $user->name }}"><x-ui.avatar :user="$user" :size="22"/><span class="{{ $name }}">{{ $user->name }}</span></span>
+    <span class="face flex items-center gap-2" title="{{ $user->name }}"><x-ui.avatar :user="$user" :size="22"/><span class="{{ $name }}">{{ $user->name }}</span></span>
 @endif

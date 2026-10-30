@@ -30,7 +30,7 @@
     <td class="{{ $col->classes() }}"><span class="whitespace-normal">{{ $step }}</span></td>
         @break
         @case('manager')
-    <td class="{{ $col->classes() }}">@if ($deal?->buyer)<span class="flex items-center gap-2" title="{{ $deal->buyer->name }}"><x-ui.avatar :user="$deal->buyer" :size="22"/><span class="truncate">{{ $who }}</span></span>@endif</td>
+    <td class="{{ $col->classes() }}">@if ($deal?->buyer)<span class="face flex items-center gap-2" title="{{ $deal->buyer->name }}"><x-ui.avatar :user="$deal->buyer" :size="22"/><span class="truncate">{{ $who }}</span></span>@endif</td>
         @break
         @case('vendor')
     <td class="{{ $col->classes() }}"><x-vendor.ref :vendor-id="$offer->vendor_id" :ref="$offer->claim_ref" cell/></td>
