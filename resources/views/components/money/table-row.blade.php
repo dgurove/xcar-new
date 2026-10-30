@@ -12,7 +12,7 @@
         @switch($key)
         @case('title')
     <td class="{{ $col->classes() }}">
-        <x-ui.row-link :key="$invoice->id" :with="['tab' => $tab]"><span class="cell-title">{{ $title }}</span></x-ui.row-link>
+        <x-ui.row-link :key="$invoice->id" :with="['tab' => $tab]"><span class="cell-title"><span class="cell-name">{{ $title }}</span></span></x-ui.row-link>
         <span class="cell-sub sm:hidden"><span class="{{ $tone }}">{{ $now }}</span>@if ($what)<span class="cell-car">{{ $what }}</span>@endif @if ($phone)<span class="{{ $phone[1] }}">{{ $phone[0] }}</span>@endif</span>
     </td>
         @break

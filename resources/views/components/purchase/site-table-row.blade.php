@@ -14,7 +14,7 @@
         @switch($key)
         @case('title')
     <td class="{{ $col->classes() }}">
-        <x-ui.row-link :key="$car->ref"><span class="cell-title">{{ $car->titleWithYear() }}</span></x-ui.row-link>
+        <x-ui.row-link :key="$car->ref"><span class="cell-title"><span class="cell-name">{{ $car->titleWithYear() }}</span></span></x-ui.row-link>
         <span class="cell-sub">
             <span class="sm:hidden">№ {{ $car->ref }}</span>
             @if ($showKind)<span class="sm:hidden">{{ mb_strtolower($car->kind->label()) }}</span>@endif

@@ -1579,6 +1579,9 @@ html.kb-open { --home-gap: 0px; }
   @media (max-width: 639.98px) {
     .cell-title > .title-plate { display: inline; flex-shrink: 0; margin-left: .3em; font-size: var(--text-sm); }
     .cell-sub .sub-plate { display: none; }
+    /* Название на телефоне — до двух строк, а не «Geely…» в одну (30.10.2026, владелец: вёрстка списков на телефоне —
+       «полный пиздец»): госномер и значки остаются за ним в первой строке (правило 12.10.2026), само название переносится. */
+    .table td.grow .cell-title > .cell-name { white-space: normal; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow-wrap: break-word; }
   }
   .cell-sub .fit-core, .cell-sub .plate, .cell-sub .ref-line { vertical-align: middle; }
   /* Иконка типа — по центру заглавных букв названия (высота заглавной около .7em), а не по middle: тот считает от

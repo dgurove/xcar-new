@@ -762,7 +762,7 @@ class VehicleController
             new Column('color', 'Цвет', role: ColRole::State, rem: 6), new Column('value', 'Стоимость', num: true, cell: 'nums', rem: 6)] : [];
 
         return $out
-            ? Table::park($title, $yard, $vendor, ...$docs, ...[$accepted, new Column('released', 'Выдана', sort: 'out', cell: 'nums', role: ColRole::When, rem: 5),
+            ? Table::park($title, $yard, $vendor, ...$docs, ...[$accepted, new Column('released', 'Выдана', from: 'sm', sort: 'out', cell: 'nums', role: ColRole::When, rem: 5),
                 $money ? new Column('storage', 'Хранение', num: true, sort: 'amount', cell: 'nums', rem: 7) : null])
             : Table::park($title, $yard, $vendor, ...$docs, ...[new Column('status', 'Статус', from: 'sm', sort: 'tasks', role: ColRole::State, rem: 9), $accepted,
                 new Column('days', 'Дней', num: true, sort: 'days', cell: 'nums', role: ColRole::When, rem: 4),

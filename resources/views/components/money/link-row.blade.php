@@ -13,7 +13,7 @@
         @switch($key)
         @case('title')
     <td class="{{ $col->classes() }}">
-        <x-ui.row-link :key="$link->id" :with="['tab' => 'links']"><span class="cell-title">{{ $link->payerName() }}</span></x-ui.row-link>
+        <x-ui.row-link :key="$link->id" :with="['tab' => 'links']"><span class="cell-title"><span class="cell-name">{{ $link->payerName() }}</span></span></x-ui.row-link>
         <span class="cell-sub sm:hidden">@if ($car){{ $car }}@if ($number)<span class="nums">, № {{ $number }}</span>@endif @else{{ L::who($link) }}@endif</span>
     </td>
         @break

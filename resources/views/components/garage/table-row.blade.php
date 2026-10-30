@@ -10,7 +10,7 @@
         @switch($key)
         @case('title')
     <td class="{{ $col->classes() }}">
-        <a href="{{ $href }}" class="row-link"><span class="cell-title">{{ $offer->titleWithYear() }}<x-car.keys :count="$offer->keys_count"/></span></a>
+        <a href="{{ $href }}" class="row-link"><span class="cell-title"><span class="cell-name">{{ $offer->titleWithYear() }}</span><x-car.keys :count="$offer->keys_count"/></span></a>
         <span class="cell-sub"><span class="sm:hidden"><span class="{{ $tone }}">{{ $word }}</span>{{ $when ? ', '.$when : '' }}</span>@if ($who)<span class="md:hidden"><span class="sm:hidden">, </span>{{ $who }}</span>@endif</span>
     </td>
         @break

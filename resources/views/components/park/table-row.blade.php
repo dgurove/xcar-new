@@ -33,6 +33,8 @@
                  Статус — своим столбцом; в краткой таблице телефона его нет, там то, что требует действия, — третьей строкой. --}}
             <span class="fit-core"><x-park.ref :vehicle="$vehicle" class="sm:hidden"/><x-ui.plate :value="$vehicle->plate" class="sub-plate"/></span>
             @if ($hasAlerts)<span class="alerts-inline"><x-park.alerts :vehicle="$vehicle" plain :place="false" :skip="['Нет типа']"/></span>@endif
+            {{-- Выданная на телефоне: когда и сколько стояла — здесь, а не третьим столбцом (30.10.2026, название сжималось до «Geely…»). --}}
+            @if ($out && $vehicle->released_at)<span class="whitespace-nowrap sm:hidden">выдана {{ \App\Support\Ago::cell($vehicle->released_at) }}@if ($days !== null), {{ $days }}&nbsp;д@endif</span>@endif
             @if ($vehicle->yard)<span class="sm:hidden">{{ $vehicle->yard->name }}</span>@endif
         </span>
         {{-- Краткая таблица телефона: задача с точкой, как в столбце «Статус», и ошибки данных словами — третьей строкой. --}}
