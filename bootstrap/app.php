@@ -5,6 +5,7 @@ use App\Billing\Acquiring\Console\SyncAcquiring;
 use App\Billing\Bank\Console\PerpetualSecret;
 use App\Billing\Bank\Console\SyncBank;
 use App\Billing\Console\CloseMonthCommand;
+use App\Billing\Console\RerenderInvoices;
 use App\Billing\Console\TickBilling;
 use App\Cars\Console\MergeCatalogCommand;
 use App\Http\Middleware\ActWindowBack;
@@ -21,13 +22,14 @@ use App\Http\Middleware\MarkInstalled;
 use App\Http\Middleware\MarkPrefetch;
 use App\Http\Middleware\NormalizeNumbers;
 use App\Http\Middleware\ReadNoticesOnVisit;
-use App\Http\Middleware\TrackNoticeOpen;
 use App\Http\Middleware\RedirectLegacyPaths;
 use App\Http\Middleware\ResolveSurface;
 use App\Http\Middleware\ScalarSearch;
 use App\Http\Middleware\ServerTiming;
 use App\Http\Middleware\SiteWall;
 use App\Http\Middleware\TouchSeen;
+use App\Http\Middleware\TrackNoticeOpen;
+use App\Live\Console\ListsCheck;
 use App\Live\SubscriberCookie;
 use App\Logistics\Console\MergeCancelledCommand;
 use App\Logistics\Console\TickCommand as LogisticsTick;
@@ -46,18 +48,18 @@ use App\Media\Console\Restamp;
 use App\Media\Console\TuneWatermarks;
 use App\Media\Console\UnmarkPhotos;
 use App\Offers\Console\AutoDraftsCommand;
-use App\Offers\Share\Console\PreparePdfs;
-use App\Offers\Console\DealAgreementFixCommand;
 use App\Offers\Console\BindingFromDocsCommand;
+use App\Offers\Console\DealAgreementFixCommand;
 use App\Offers\Console\DealCarDocsCommand;
 use App\Offers\Console\FillFromLettersCommand;
-use App\Offers\Console\RepricesFromLettersCommand;
 use App\Offers\Console\MigtorgArchive;
 use App\Offers\Console\MigtorgDropOsago;
 use App\Offers\Console\MigtorgSync;
 use App\Offers\Console\PruneEmptyDrafts;
+use App\Offers\Console\RepricesFromLettersCommand;
 use App\Offers\Console\ScrubReplyNoticesCommand;
 use App\Offers\Console\TickOffers;
+use App\Offers\Share\Console\PreparePdfs;
 use App\Park\Console\AutoRequestsCommand;
 use App\Park\Console\FillFromDocsCommand;
 use App\Park\Console\FindValuesCommand;
@@ -97,7 +99,8 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withCommands([
-        \App\Live\Console\ListsCheck::class,
+        RerenderInvoices::class,
+        ListsCheck::class,
         TelegramAvatars::class,
         CreateUser::class,
         TickOffers::class,

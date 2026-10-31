@@ -33,6 +33,18 @@ final class Words
         return trim(implode(' ', $parts));
     }
 
+    /** Сумма прописью для счёта: «Сто тысяч рублей 00 копеек» — с заглавной, рубли словами, копейки цифрами. */
+    public static function money(int|float $amount): string
+    {
+        $kop = (int) round($amount * 100);
+        $rub = intdiv($kop, 100);
+        $kop %= 100;
+        $words = self::rub($rub);
+
+        return mb_strtoupper(mb_substr($words, 0, 1)).mb_substr($words, 1).' '.Plural::of($rub, ['рубль', 'рубля', 'рублей'])
+            .' '.str_pad((string) $kop, 2, '0', STR_PAD_LEFT).' '.Plural::of($kop, ['копейка', 'копейки', 'копеек']);
+    }
+
     private static function triple(int $n, bool $female): string
     {
         $words = [self::HUNDREDS[intdiv($n, 100)]];

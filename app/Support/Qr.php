@@ -26,8 +26,9 @@ final class Qr
         ])))->render($text);
     }
 
-    public static function pngDataUri(string $text, int $scale = 5): string
+    /** quiet — поле вокруг кода в модулях; в счёте 0: края кода вровень с банковским блоком. */
+    public static function pngDataUri(string $text, int $scale = 5, int $quiet = 2): string
     {
-        return 'data:image/png;base64,'.base64_encode(self::png($text, $scale, 2));
+        return 'data:image/png;base64,'.base64_encode(self::png($text, $scale, $quiet));
     }
 }

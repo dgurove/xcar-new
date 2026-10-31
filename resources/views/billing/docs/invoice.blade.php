@@ -1,6 +1,10 @@
-{{-- Счёт на оплату: та же разметка для PDF (dompdf: без flex и grid, шрифты файлами) и для страницы печати. --}}
+{{-- Счёт на оплату (31.10.2026, по форме владельца — как счёт dgurov.com): логотип XCar, банковский блок и QR справа от
+     него, заголовок, Поставщик / Покупатель / Основание, таблица, итог, сумма прописью, условия, подпись — подряд, без
+     пояснений и повторов: реквизиты продавца только в банковском блоке и в «Поставщике». Та же разметка для PDF (dompdf:
+     без flex и grid — таблицами, шрифты и логотип файлами) и для страницы печати. --}}
 @php
     use App\Support\Money;
+    $pdf = $pdf ?? false;
     $fonts = resource_path('fonts/pdf');
     $p = $invoice->party;
     // Реестр за месяц — одной строкой «по реестру» (владелец 08.10.2026), машины — в акте.
@@ -9,10 +13,22 @@
         'qty' => 1, 'unit' => 'svc', 'price' => $invoice->charges->sum('amount'), 'amount' => $invoice->charges->sum('amount')])]) : $invoice->charges;
     // Удержанное менеджером вознаграждение — зачёт в момент выставления: печатается и «к оплате».
     $offset = $invoice->payments->where('source', \App\Billing\PaymentSource::Offset)->sum('amount');
+    $due = $invoice->total - $offset;
     // QR для приложения банка: реквизиты, сумма к оплате и назначение, по которому выписка найдёт счёт.
     $qr = \App\Billing\Documents\PaymentQr::text($invoice, $self);
+    $bank = $self->bank_name && $self->account && $self->bik;
+    // Логотип в документах — XCar у всех продавцов (31.10.2026, владелец: Park — только на сайте). PNG, снятый с SVG шапки:
+    // обрезку (`clip-path`) логотипа dompdf рисует криво.
+    $logo = public_path('images/xcar-doc.png');
     // В шторке документов (?embed=1) — только лист: печать у шторки.
-    $embed = ! ($pdf ?? false) && request()->boolean('embed');
+    $embed = ! $pdf && request()->boolean('embed');
+    $basis = match (true) {
+        (bool) $invoice->vehicle => $invoice->vehicle->titleWithYear().($invoice->vehicle->vin ? ', VIN '.$invoice->vehicle->vin : '').($invoice->vehicle->ref ? ', убыток '.$invoice->vehicle->ref : '').($invoice->vehicle->contract_no ? ', договор № '.$invoice->vehicle->contract_no : ''),
+        $registry => 'Акт оказанных услуг хранения '.$invoice->label().' от '.$invoice->issued_at->format('d.m.Y').', реестр ТС',
+        (bool) $invoice->deal => 'Сделка по предложению № '.$invoice->deal->offer?->number.($invoice->deal->offer ? ', '.$invoice->deal->offer->titleWithYear() : ''),
+        default => null,
+    };
+    $nb = fn (?string $s) => str_replace('№ ', '№&nbsp;', e((string) $s));
 @endphp
 <!doctype html>
 <html lang="ru">
@@ -20,78 +36,114 @@
     <meta charset="utf-8">
     <title>Счёт {{ $invoice->label() }}</title>
     <style>
-        @if ($pdf ?? false)
+        @if ($pdf)
         @font-face { font-family: "Onest"; font-weight: 400; src: url("file://{{ $fonts }}/Onest-Regular.ttf"); }
+        @font-face { font-family: "Onest"; font-weight: 500; src: url("file://{{ $fonts }}/Onest-Medium.ttf"); }
         @font-face { font-family: "Onest"; font-weight: 600; src: url("file://{{ $fonts }}/Onest-SemiBold.ttf"); }
+        @font-face { font-family: "Onest"; font-weight: 700; src: url("file://{{ $fonts }}/Onest-SemiBold.ttf"); }
+        @page { size: A4; margin: 14mm 14mm 14mm 18mm; }
+        body { margin: 0; }
+        @else
+        @font-face { font-family: "Onest"; font-weight: 100 900; font-display: swap; src: url("/fonts/onest-var.woff2") format("woff2"); }
+        body { margin: 0 auto; padding: 14mm 14mm 14mm 18mm; max-width: 210mm; box-sizing: border-box; background: #fff; }
         @endif
-        body { font-family: "Onest", -apple-system, sans-serif; font-size: 11px; color: #111; margin: 0; padding: 28px 32px; }
-        h1 { font-size: 18px; font-weight: 600; margin: 0 0 14px; }
+        body { font-family: "Onest", -apple-system, sans-serif; font-size: 9pt; line-height: 1.2; color: #1d1d1b; }
         table { width: 100%; border-collapse: collapse; }
-        .req td { padding: 3px 6px; vertical-align: top; border: 1px solid #999; }
-        .req td.l { width: 26%; color: #555; }
-        .lines { margin-top: 18px; }
-        .lines th { text-align: left; font-weight: 600; border-bottom: 1px solid #111; padding: 6px 6px; }
-        .lines td { border-bottom: 1px solid #ddd; padding: 6px 6px; }
-        .n { text-align: right; white-space: nowrap; }
-        .total { margin-top: 12px; text-align: right; font-size: 13px; }
-        .total b { font-weight: 600; }
-        .note { margin-top: 18px; color: #555; }
-        .sign { margin-top: 40px; }
-        .sign td { padding: 6px 0; }
-        .line { border-bottom: 1px solid #111; height: 22px; width: 220px; display: inline-block; }
+        td, th { vertical-align: top; text-align: left; font-weight: 400; padding: 0; }
+        b { font-weight: 600; }
+        .muted { color: #808080; }
+        .r { text-align: right; white-space: nowrap; }
+        .logo { height: 7mm; width: auto; display: block; margin-bottom: 4mm; }
+        .bank td { border: 1px solid #d0d0d0; padding: .9mm 2mm; }
+        .bank .k { width: 21mm; white-space: nowrap; }
+        .bank .v { width: 44mm; }
+        .bank small { display: block; font-size: 7pt; line-height: 1.1; color: #808080; margin-top: .2mm; }
+        .qr { width: 34mm; padding-left: 4mm; }
+        .qr img { width: 34mm; height: 34mm; display: block; }
+        h1 { font-size: 14pt; font-weight: 500; margin: 6mm 0 0; padding-bottom: 2.5mm; border-bottom: 1.5px solid #1d1d1b; }
+        .parties { margin-top: 3mm; }
+        .parties td { padding: .8mm 0; }
+        .parties td.l { width: 28mm; color: #808080; }
+        .items { margin-top: 5mm; }
+        .items th { font-size: 8pt; color: #808080; padding: 1.2mm 2mm; border-top: 1px solid #d0d0d0; border-bottom: 1px solid #d0d0d0; }
+        .items td { padding: 1.6mm 2mm; border-bottom: 1px solid #d0d0d0; }
+        .items .n { width: 7mm; }
+        .total { margin-top: 3mm; }
+        .total td { padding: .4mm 0; text-align: right; }
+        .total td.s { width: 38mm; white-space: nowrap; }
+        .total .main td { font-size: 10.5pt; font-weight: 600; }
+        .words { margin-top: 3mm; }
+        .terms { margin-top: 3mm; padding-bottom: 4mm; border-bottom: 1.5px solid #1d1d1b; color: #808080; }
+        .terms p { margin: 0; }
+        .sign { margin-top: 10mm; width: auto; }
+        .sign td { vertical-align: bottom; padding-right: 3mm; }
+        .sign .line { width: 55mm; border-bottom: 1px solid #1d1d1b; height: 6mm; }
         .print { position: fixed; top: 12px; right: 12px; }
-        .qr { margin-top: 18px; }
-        .qr td { vertical-align: middle; padding: 0 12px 0 0; }
-        .qr img { width: 140px; height: 140px; }
-        @if ($embed)
-        body { padding: 24px 20px; }
-        @endif
-        @media print { .print { display: none; } }
+        @media print { .print { display: none; } body { padding: 0; } }
     </style>
 </head>
 <body>
-    @unless (($pdf ?? false) || $embed)<div class="print"><button type="button" onclick="window.print()">Печать</button></div>@endunless
-    <table class="req">
-        <tr><td class="l">Получатель</td><td><b>{{ $self->name }}</b><br>{{ $self->details() }}</td></tr>
-        <tr><td class="l">Банк получателя</td><td>{{ $self->bankDetails() ?: '—' }}</td></tr>
-    </table>
-    <h1 style="margin-top:18px">Счёт на оплату {{ $invoice->label() }} от {{ $invoice->issued_at->format('d.m.Y') }}</h1>
-    <table class="req">
-        <tr><td class="l">Плательщик</td><td><b>{{ $p->name }}</b>@if ($p->details())<br>{{ $p->details() }}@endif</td></tr>
-        @if ($invoice->vehicle)<tr><td class="l">Основание</td><td>{{ $invoice->vehicle->titleWithYear() }}{{ $invoice->vehicle->vin ? ', VIN '.$invoice->vehicle->vin : '' }}{{ $invoice->vehicle->ref ? ', убыток '.$invoice->vehicle->ref : '' }}{{ $invoice->vehicle->contract_no ? ', договор № '.$invoice->vehicle->contract_no : '' }}</td></tr>@endif
-        @if ($registry)<tr><td class="l">Основание</td><td>Акт оказанных услуг хранения {{ $invoice->label() }} от {{ $invoice->issued_at->format('d.m.Y') }}, реестр ТС</td></tr>@endif
-        @if ($invoice->deal)<tr><td class="l">Основание</td><td>Сделка по предложению № {{ $invoice->deal->offer?->number }}{{ $invoice->deal->offer ? ', '.$invoice->deal->offer->titleWithYear() : '' }}</td></tr>@endif
-        @if ($invoice->due_at)<tr><td class="l">Оплатить до</td><td>{{ $invoice->due_at->format('d.m.Y') }}</td></tr>@endif
-    </table>
-    <table class="lines">
-        <thead><tr><th style="width:24px">№</th><th>Наименование</th><th class="n">Кол-во</th><th class="n">Ед.</th><th class="n">Цена</th><th class="n">Сумма</th></tr></thead>
-        <tbody>
-        @foreach ($lines as $i => $c)
-            <tr><td>{{ $i + 1 }}</td><td>{{ $c->title }}</td><td class="n">{{ \App\Support\Qty::format($c->qty, '.', ' ') }}</td><td class="n">{{ $c->unitLabel() }}</td><td class="n">{{ Money::nums($c->price, 2) }}</td><td class="n">{{ Money::nums($c->amount, 2) }}</td></tr>
-        @endforeach
-        </tbody>
-    </table>
-    <div class="total">
-        @if ($invoice->vat_on_top)
-            Итого без НДС: {{ Money::nums($invoice->net(), 2) }} ₽<br>
-            {{ $invoice->vatLabel() }}: {{ Money::nums($invoice->vatAmount(), 2) }} ₽<br>
-            Всего к оплате: <b>{{ Money::nums($invoice->total, 2) }} ₽</b>
-        @else
-            Итого: <b>{{ Money::nums($invoice->total, 2) }} ₽</b><br>
-            {{ $invoice->vatRate() ? $invoice->vatLabel().': '.Money::nums($invoice->vatAmount(), 2).' ₽' : 'НДС не облагается' }}
-        @endif
-        @if ($offset > 0)<br>Зачёт агентского вознаграждения: {{ Money::nums($offset, 2) }} ₽<br>К оплате: <b>{{ Money::nums($invoice->total - $offset, 2) }} ₽</b>@endif
-    </div>
-    <div class="note">Всего наименований {{ $lines->count() }}, на сумму {{ Money::nums($invoice->total, 2) }} ₽</div>
-    @if ($invoice->notes)<div class="note">{{ $invoice->notes }}</div>@endif
-    @if ($qr)
-        <table class="qr" style="width:auto"><tr>
-            <td><img src="{{ \App\Support\Qr::pngDataUri($qr) }}" alt=""></td>
-            <td class="note" style="margin:0">Оплата по QR в приложении банка<br>Назначение: {{ \App\Billing\Documents\PaymentQr::purpose($invoice) }}</td>
+    @unless ($pdf || $embed)<div class="print"><button type="button" onclick="window.print()">Печать</button></div>@endunless
+    @if (is_file($logo))<img class="logo" src="{{ $pdf ? $logo : '/images/'.basename($logo) }}" alt="">@endif
+
+    @if ($bank)
+        <table><tr>
+            <td>
+                <table class="bank">
+                    <tr><td colspan="2" rowspan="2">{{ $self->bank_name }}<small>Банк получателя</small></td><td class="k">БИК</td><td class="v">{{ $self->bik }}</td></tr>
+                    <tr><td class="k">Корр. счёт</td><td class="v">{{ $self->corr_account }}</td></tr>
+                    {{-- ИНН и КПП — своими ячейками; у ИП КПП нет — ИНН на обе. --}}
+                    <tr>@if ($self->kpp)<td>ИНН {{ $self->inn }}</td><td>КПП {{ $self->kpp }}</td>@else<td colspan="2">ИНН {{ $self->inn }}</td>@endif<td class="k" rowspan="2">Расч. счёт</td><td class="v" rowspan="2">{{ $self->account }}</td></tr>
+                    <tr><td colspan="2">{{ $self->name }}<small>Получатель</small></td></tr>
+                </table>
+            </td>
+            @if ($qr)<td class="qr"><img src="{{ \App\Support\Qr::pngDataUri($qr, 8, 0) }}" alt=""></td>@endif
         </tr></table>
     @endif
-    <table class="sign">
-        <tr><td>{{ $self->signerTitle() }} <span class="line"></span> {{ $self->director ?? '' }}</td></tr>
+
+    <h1>Счёт на оплату {!! $nb($invoice->label()) !!} от {{ $invoice->issued_at->locale('ru')->isoFormat('D MMMM YYYY') }} г.</h1>
+
+    <table class="parties">
+        <tr><td class="l">Поставщик</td><td>{{ $self->name }}@if ($self->details()), {{ $self->details() }}@endif</td></tr>
+        <tr><td class="l">Покупатель</td><td>{{ $p->name }}@if ($p->details()), {{ $p->details() }}@endif</td></tr>
+        @if ($basis)<tr><td class="l">Основание</td><td>{!! $nb($basis) !!}</td></tr>@endif
     </table>
+
+    <table class="items">
+        <tr><th class="n">№</th><th>Наименование</th><th class="r">Кол-во</th><th class="r">Ед.</th><th class="r">Цена, ₽</th><th class="r">Сумма, ₽</th></tr>
+        @foreach ($lines as $i => $c)
+            <tr><td class="n">{{ $i + 1 }}</td><td>{!! $nb($c->title) !!}</td><td class="r">{{ \App\Support\Qty::format($c->qty, '.', ' ') }}</td><td class="r">{{ $c->unitLabel() }}</td><td class="r">{{ Money::nums($c->price, 2) }}</td><td class="r">{{ Money::nums($c->amount, 2) }}</td></tr>
+        @endforeach
+    </table>
+
+    {{-- Итог: одна главная строка — сколько платить; НДС и зачёт — обычными строками над ней. --}}
+    <table class="total">
+        @if ($invoice->vat_on_top)
+            <tr><td>Итого без НДС:</td><td class="s">{{ Money::nums($invoice->net(), 2) }} ₽</td></tr>
+            <tr><td>{{ $invoice->vatLabel() }}:</td><td class="s">{{ Money::nums($invoice->vatAmount(), 2) }} ₽</td></tr>
+        @endif
+        @if ($offset > 0)
+            <tr><td>Итого:</td><td class="s">{{ Money::nums($invoice->total, 2) }} ₽</td></tr>
+            <tr><td>Зачёт агентского вознаграждения:</td><td class="s">{{ Money::nums($offset, 2) }} ₽</td></tr>
+        @endif
+        <tr class="main"><td>{{ $offset > 0 || $invoice->vat_on_top ? 'Всего к оплате' : 'Итого к оплате' }}:</td><td class="s">{{ Money::nums($due, 2) }} ₽</td></tr>
+        @unless ($invoice->vat_on_top)
+            <tr><td colspan="2">{{ $invoice->vatRate() ? $invoice->vatLabel().': '.Money::nums($invoice->vatAmount(), 2).' ₽' : 'НДС не облагается' }}</td></tr>
+        @endunless
+    </table>
+
+    <div class="words">Всего наименований {{ $lines->count() }} на сумму {{ Money::nums($due, 2) }} ₽<br><b>{{ \App\Support\Words::money($due) }}</b></div>
+
+    <div class="terms">
+        @if ($invoice->due_at)<p>Оплатить до {{ $invoice->due_at->format('d.m.Y') }}</p>@endif
+        @if ($invoice->notes)<p>{{ $invoice->notes }}</p>@endif
+        <p>Назначение платежа: {!! $nb(\App\Billing\Documents\PaymentQr::purpose($invoice)) !!}</p>
+    </div>
+
+    <table class="sign"><tr>
+        <td><b>{{ $self->signerTitle() }}</b></td>
+        <td><div class="line"></div></td>
+        <td>{{ $self->director ?? '' }}</td>
+    </tr></table>
 </body>
 </html>
