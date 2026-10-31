@@ -68,8 +68,12 @@ services:
   # Уведомления и прочее — первыми, сжатые копии кадров (media, 4 размера на кадр) — после них: пачка лотов Мигторга
   # даёт сотни задач, и уведомления стояли за ними (14.10.2026). nice — фон уступает процессор живым запросам сайта:
   # на двух ядрах страница менеджера не открывалась за 30 с, пока шли выкачки.
+  # Фон уступает сайту — весом процессора (`cpu_shares: 256` у фоновых сервисов, у app и postgres — обычный; 31.10.2026):
+  # nice действует только внутри своего контейнера, а между контейнерами (у каждого своя cgroup) ядро делило два ядра
+  # поровну — OCR, выкачка и разбор почты брали у сайта по трети и больше. Простаивает сайт — фон работает в полную силу.
   queue:
     <<: *app
+    cpu_shares: 256
     command: nice -n 10 php artisan queue:work --tries=3 --max-time=3600 --memory=384 --sleep=3 --queue=notifications,default,media
     healthcheck:
       disable: true
@@ -78,6 +82,7 @@ services:
   # пачка OCR идёт до 15 минут. Своё соединение database-scan: retry_after 960 больше таймаута задачи.
   queue-scan:
     <<: *app
+    cpu_shares: 256
     # scan — человек ждёт, scan-bg — фон (заявки и черновики из писем): фон только когда людских нет.
     command: php artisan queue:work database-scan --tries=1 --max-time=3600 --memory=256 --sleep=3 --queue=scan,scan-bg
     healthcheck:
@@ -87,6 +92,7 @@ services:
   # retry_after, чтобы работник не считал их зависшими.
   queue-long:
     <<: *app
+    cpu_shares: 256
     command: nice -n 15 php artisan queue:work database-long --tries=2 --max-time=3600 --memory=256 --sleep=5 --queue=migtorg,long
     # Минута на SIGTERM: короткие задачи дочитываются, длинную выкачку добирает повтор джобы.
     stop_grace_period: 60s
@@ -97,6 +103,7 @@ services:
   # IDLE сообщил сразу, ждало час (37 задач Мигторга впереди) — приходило только расписанием раз в минуту.
   queue-mail:
     <<: *app
+    cpu_shares: 256
     command: php artisan queue:work database-long --tries=2 --max-time=3600 --memory=256 --sleep=1 --queue=mail
     stop_grace_period: 60s
     healthcheck:
@@ -107,6 +114,7 @@ services:
   # Здесь же знак на кадрах по «Запретить шеринг» и оценке (StampPhotos, 14.10.2026): за выкачкой Мигторга он ждал час.
   queue-files:
     <<: *app
+    cpu_shares: 256
     command: php artisan queue:work database-long --tries=2 --max-time=3600 --memory=256 --sleep=2 --queue=files
     stop_grace_period: 60s
     healthcheck:
@@ -114,6 +122,7 @@ services:
 
   scheduler:
     <<: *app
+    cpu_shares: 256
     command: php artisan schedule:work
     healthcheck:
       disable: true
@@ -122,6 +131,7 @@ services:
   # Без токена спит и перезапускается: на сервере без бота сервис безвреден.
   offers-bot:
     <<: *app
+    cpu_shares: 256
     command: php artisan offers-bot:run
     healthcheck:
       disable: true
@@ -129,6 +139,7 @@ services:
   # IMAP IDLE: по процессу на активный ящик, надсмотрщик внутри команды.
   mail-watch:
     <<: *app
+    cpu_shares: 256
     command: php artisan mail:watch
     healthcheck:
       disable: true
