@@ -4,7 +4,9 @@ namespace App\Billing\Console;
 
 use App\Billing\Documents\InvoicePdf;
 use App\Billing\Invoice;
+use App\Users\User;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Auth;
 use Throwable;
 
 /**
@@ -25,11 +27,16 @@ class RerenderInvoices extends Command
             ->orderBy('id')->chunkById(50, function ($invoices) use ($pdf, &$done, &$failed) {
                 foreach ($invoices as $invoice) {
                     try {
+                        // Демо-счёт (кабинет для ЮKassa) — глазами демо-человека: иначе его контрагент скрыт (`HidesDemo`).
+                        $demo = $invoice->is_demo ? User::withoutGlobalScopes()->where('is_demo', true)->first() : null;
+                        $demo ? Auth::setUser($demo) : Auth::forgetUser();
                         $pdf->attach($invoice);
                         $done++;
                     } catch (Throwable $e) {
                         $failed++;
                         $this->error("счёт {$invoice->id}: {$e->getMessage()}");
+                    } finally {
+                        Auth::forgetUser();
                     }
                 }
             });
