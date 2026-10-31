@@ -117,6 +117,7 @@
                                 <x-ui.field name="stages[yard_id]" label="Парковка" :options="$yards" placeholder="—" :value="$sv('yard_id')" data-spots-target="yard" data-action="change->spots#sync"/>
                                 <x-ui.field name="stages[spot]" label="Место" list="spots-list" autocapitalize="characters" :value="$sv('spot')"/>
                                 <datalist id="spots-list" data-spots-target="list"></datalist>
+                                @include('park.yards.plan-pick-frame', ['pick' => null, 'at' => null])
                             </div>
                         </div>
                         <div class="flex flex-col gap-3">

@@ -4697,3 +4697,115 @@ dialog.lightbox:not(.lb-one) .lb-pill--bottom { bottom: calc(var(--lb-strip-bott
    назначение, а продажа своей шторкой: ни «Куда везти», ни «Назначить». */
 .assign-form:has(input[name="channel"][value="manager"]:checked) .assign-route,
 .assign-form:has(input[name="channel"][value="auction"]:checked) .assign-route, .assign-form:has(input[name="channel"][value="auction"]:checked) .assign-submit { display: none; }
+
+/* Схема парковки (31.10.2026, `x-park.yard-plan`, `yard_plan_controller`; редактор — `yard_editor_controller`): места —
+   светлые клетки на белом, машина — тёмный корпус поверх места (светофор простоя — оранжевой и красной полосой у «носа»), выбранная — лаймом:
+   она «в руке», свободные места под неё светятся лаймом. Единицы SVG — метры: размеры шрифта в px — это метры схемы.
+   Холст ловит жесты сам (`.plan-live`, touch-action: none): глобально зум выключен. */
+@layer components {
+  .plan { display: block; width: 100%; height: auto; font-family: var(--font-ui); user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+  .plan-live { touch-action: none; }
+  .plan text { text-anchor: middle; pointer-events: none; }
+  .plan-row { font-size: 1.4px; font-weight: 500; fill: var(--color-ink-muted); dominant-baseline: central; }
+  .spot-bg { fill: var(--color-surface-3); transition: fill .15s; }
+  .spot-num { fill: var(--color-ink-dim); }
+  .spot-body { fill: var(--color-ink); transition: fill .15s, opacity .15s; }
+  .spot-idle { pointer-events: none; }
+  .tone-urgent .spot-idle { fill: var(--color-urgent); }
+  .tone-danger .spot-idle { fill: var(--color-danger); }
+  .spot-brand, .spot-plate, .spot-num.on-car { fill: var(--color-ink-invert); }
+  .spot-brand { font-weight: 500; }
+  .spot-num.on-car, .spot-plate { opacity: .7; }
+  .plan-full .spot { cursor: pointer; }
+  .plan-pick .spot-free { cursor: pointer; }
+  .plan.is-lifting .spot-free .spot-bg { fill: var(--color-accent-soft); }
+  .plan.is-lifting .spot-free .spot-num { fill: var(--color-accent-text); }
+  .spot.is-picked .spot-body, .spot-free.is-picked .spot-bg, .spot.is-over .spot-bg, .spot-ghost { fill: var(--color-accent); }
+  .spot.is-picked text, .spot.is-over text { fill: #fff; opacity: 1; }
+  .spot-ghost { opacity: .85; pointer-events: none; }
+  .plan.is-dragging, .plan.is-dragging .spot { cursor: grabbing; }
+  .plan.is-finding .spot-car { opacity: .25; }
+  .plan.is-finding .spot-car.is-found { opacity: 1; }
+  .spot.is-found .spot-body { fill: var(--color-accent); }
+  @media (prefers-reduced-motion: no-preference) {
+    .spot.is-current .spot-body, .spot-free.is-current .spot-bg, .spot.is-found .spot-body { animation: spot-pulse 1.4s ease-in-out 3; }
+  }
+  @keyframes spot-pulse { 50% { opacity: .45; } }
+
+  .plan-tile { max-height: 14rem; }
+  .plan-pick-frame { display: block; grid-column: 1 / -1; }
+  .plan-pick { position: relative; height: 15rem; overflow: hidden; border-radius: var(--radius-l); background: var(--color-surface-2); }
+  .plan-pick > .plan { height: 100%; }
+  .plan-pick .plan-zoom { top: .5rem; right: .5rem; flex-direction: row; }
+  .plan-pick .plan-zoom-btn { width: 2.5rem; height: 2.5rem; background: var(--color-surface); }
+  .plan-tile-link { display: block; padding: .625rem; border-radius: var(--radius-l); background: var(--color-surface-2); }
+  .plan-tile-link .spot-bg { fill: var(--color-surface); }
+  .plan-tools { display: flex; align-items: center; gap: .5rem; margin-bottom: .75rem; }
+  .plan-find { flex: 1 1 auto; max-width: 24rem; }
+  .plan-stage { position: relative; overflow: hidden; height: calc(100dvh - var(--header-edge) - var(--bottom-room) - 11rem); min-height: 20rem; border-radius: var(--radius-xl); background: var(--color-surface); }
+  .plan-page.has-tray .plan-stage { height: calc(100dvh - var(--header-edge) - var(--bottom-room) - 16rem); }
+  .plan-stage > .plan { height: 100%; }
+  .plan-zoom { position: absolute; top: .75rem; right: .75rem; display: flex; flex-direction: column; gap: .375rem; }
+  .plan-zoom-btn { display: grid; place-items: center; width: 2.75rem; height: 2.75rem; border-radius: 999px; background: var(--color-surface-2); color: var(--color-ink); transition: background .15s; }
+  .plan-zoom-btn:hover { background: var(--color-hover); }
+  .plan-minus { width: 14px; height: 2px; border-radius: 1px; background: currentColor; }
+  .plan-bar { position: absolute; inset-inline: .75rem; bottom: .75rem; display: flex; align-items: center; gap: .5rem; padding: .625rem .625rem .625rem 1rem; border-radius: var(--radius-l); background: var(--color-surface); box-shadow: 0 6px 24px rgb(0 0 0 / .14); }
+  .plan-bar[hidden] { display: none; }
+  .plan-tray { margin-top: .75rem; }
+  .plan-tray-title { margin-bottom: .5rem; font-size: var(--text-sm); color: var(--color-ink-muted); }
+  .plan-tray-cars { display: flex; gap: .5rem; overflow-x: auto; scrollbar-width: none; }
+  .plan-tray-cars::-webkit-scrollbar { display: none; }
+  .plan-chip { display: inline-flex; flex: none; align-items: center; gap: .5rem; max-width: 16rem; height: 2.75rem; padding: 0 .875rem; border-radius: 999px; background: var(--color-surface); transition: background .15s, color .15s; }
+  .plan-chip.is-found { background: var(--color-accent-soft); }
+  .plan-chip.is-picked { background: var(--color-accent); color: #fff; }
+
+  /* Редактор: ряд — места с номерами, выбранный — лаймовой рамкой и двумя ручками (число мест, длина места); убранное место —
+     пустым контуром с крестом. Ручки рисуются крупнее видимого (`.ehandle-hit`), толщины линий — в пикселях экрана (k). */
+  .plan-stage-edit { height: calc(100dvh - var(--header-edge) - var(--bottom-room) - 11rem); }
+  .plan-edit { cursor: default; }
+  .plan-edit text { text-anchor: middle; pointer-events: none; fill: var(--color-ink-dim); }
+  .egrid { fill: var(--color-line); }
+  .erow-hit { fill: transparent; }
+  .espot rect { fill: var(--color-surface-3); transition: fill .12s; }
+  .espot.is-taken rect { fill: var(--color-ink); }
+  .espot.is-taken text { fill: var(--color-ink-invert); }
+  .espot.is-hole rect { fill: transparent; stroke: var(--color-line); stroke-width: .06; stroke-dasharray: .25 .2; }
+  .espot-x { stroke: var(--color-ink-dim); stroke-width: .12; stroke-linecap: round; fill: none; }
+  .erow.is-sel .espot rect { fill: var(--color-accent-soft); }
+  .erow.is-sel .espot.is-taken rect { fill: var(--color-ink); }
+  .erow.is-sel .espot.is-hole rect { fill: transparent; }
+  .erow.is-sel text { fill: var(--color-accent-text); }
+  .erow.is-sel .espot.is-taken text { fill: var(--color-ink-invert); }
+  .erow-name { font-size: 1.4px; font-weight: 500; dominant-baseline: central; }
+  .erow.is-sel .erow-name { fill: var(--color-accent-text); }
+  .esel { fill: none; stroke: var(--color-accent); pointer-events: none; }
+  .ehandle { cursor: grab; }
+  .ehandle circle { fill: var(--color-accent); }
+  .ehandle .ehandle-hit { fill: transparent; }
+  .ehandle path { stroke: #fff; fill: none; stroke-linecap: round; stroke-linejoin: round; pointer-events: none; }
+  .eguide { stroke: var(--color-accent); pointer-events: none; }
+  .egap { stroke: var(--color-ink-muted); pointer-events: none; }
+  .egap-bg { fill: var(--color-ink); pointer-events: none; }
+  .plan-edit .egap-text { fill: var(--color-ink-invert); font-weight: 500; }
+  .plan-empty { position: absolute; inset: 0; display: grid; place-items: center; pointer-events: none; }
+  .plan-empty > * { pointer-events: auto; }
+  .plan-empty[hidden], .plan-panel[hidden] { display: none; }
+  .plan-panel { position: absolute; inset-inline: .75rem; bottom: .75rem; display: flex; flex-wrap: wrap; align-items: flex-end; gap: .5rem 1rem; padding: .75rem; border-radius: var(--radius-l); background: var(--color-surface); box-shadow: 0 6px 24px rgb(0 0 0 / .14); }
+  .plan-panel-fields { display: grid; grid-template-columns: 4rem 4.5rem 4rem 5rem 5rem; gap: .5rem; min-width: 0; }
+  .plan-panel-field { display: flex; flex-direction: column; gap: .25rem; min-width: 0; font-size: var(--text-xs); color: var(--color-ink-muted); }
+  .plan-panel-field .field-input { width: 100%; padding-inline: .625rem; text-align: center; }
+  .plan-panel-acts { display: flex; flex-wrap: wrap; gap: .375rem; }
+  .plan-panel-btn { display: inline-flex; align-items: center; gap: .375rem; height: 2.5rem; padding: 0 .875rem; border-radius: 999px; background: var(--color-surface-2); font-size: var(--text-sm); white-space: nowrap; transition: background .15s, color .15s; }
+  .plan-panel-btn:hover { background: var(--color-hover); }
+  .plan-panel-btn[aria-pressed="true"] { background: var(--color-accent-soft); color: var(--color-accent-text); }
+  .plan-panel-btn:disabled { opacity: .4; }
+  @media (max-width: 639.98px) {
+    .plan-zoom { top: .5rem; right: .5rem; flex-direction: row; }
+    .plan-zoom-btn { width: 2.5rem; height: 2.5rem; background: color-mix(in oklab, var(--color-surface-2) 90%, transparent); }
+    .plan-panel { inset-inline: .5rem; bottom: .5rem; padding: .625rem; gap: .5rem; }
+    .plan-panel-fields { grid-template-columns: repeat(5, minmax(0, 1fr)); width: 100%; gap: .375rem; }
+    .plan-panel-field .field-input { padding-inline: .25rem; }
+    .plan-panel-acts { width: 100%; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .plan-panel-btn { justify-content: center; padding: 0 .5rem; font-size: var(--text-xs); gap: .25rem; }
+  }
+}

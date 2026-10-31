@@ -55,19 +55,22 @@ class Yard extends Model
         return $this->vehicles()->where('state', VehicleState::Stored);
     }
 
-    /** Все места по рядам: «A-1»…«A-20». Без рядов — пусто, место пишется свободным текстом. @return list<string> */
+    /** Ряды схемы в полном виде (`Plan::rows`): координаты, размер мест, убранные номера. @return list<array> */
+    public function plan(): array
+    {
+        return Plan::rows($this->rows);
+    }
+
+    /** Ревизия схемы: редактор сохраняет поверх той, что открыл, иначе — «Схему поменяли». */
+    public function planRev(): string
+    {
+        return substr(md5(json_encode($this->plan())), 0, 12);
+    }
+
+    /** Все места по рядам: «A-1»…«A-20», убранные — мимо. Без рядов — пусто, место пишется свободным текстом. @return list<string> */
     public function spots(): array
     {
-        $spots = [];
-        foreach ($this->rows ?? [] as $row) {
-            $name = mb_strtoupper(trim((string) ($row['name'] ?? '')));
-            $n = (int) ($row['n'] ?? 0);
-            for ($i = 1; $i <= $n; $i++) {
-                $spots[] = $name === '' ? (string) $i : $name.'-'.$i;
-            }
-        }
-
-        return $spots;
+        return array_merge([], ...array_map(fn (array $row) => array_values(Plan::codes($row)), $this->plan()));
     }
 
     /** @return array<string, int> место → id ТС, которая на нём стоит */
@@ -80,20 +83,5 @@ class Yard extends Model
     public function freeSpots(): array
     {
         return array_values(array_diff($this->spots(), array_keys($this->occupied())));
-    }
-
-    /** «Ряд A: 20» строками формы → jsonb. */
-    public static function parseRows(?string $raw): array
-    {
-        $rows = [];
-        foreach (preg_split('/[\n,;]+/u', (string) $raw) ?: [] as $line) {
-            if (preg_match('/^\s*([^:\s]*)\s*[:\s]\s*(\d{1,3})\s*$/u', $line, $m)) {
-                $rows[] = ['name' => mb_strtoupper($m[1]), 'n' => (int) $m[2]];
-            } elseif (preg_match('/^\s*(\d{1,3})\s*$/u', $line, $m)) {
-                $rows[] = ['name' => '', 'n' => (int) $m[1]];
-            }
-        }
-
-        return $rows;
     }
 }

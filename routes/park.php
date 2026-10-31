@@ -102,6 +102,7 @@ Route::domain(config('xcar.park_host'))->middleware(['auth', 'section:park'])->g
     Route::post('/cars/{vehicle}/pickup-link/renew', [PassController::class, 'renew'])->middleware(['park.manage', 'throttle:5,1']);
     Route::delete('/cars/{vehicle}', [VehicleController::class, 'destroy'])->middleware('park.manage');
     Route::post('/cars/{vehicle}/move', [VehicleController::class, 'move']);
+    Route::post('/cars/{vehicle}/swap', [VehicleController::class, 'swap']);
     Route::post('/cars/{vehicle}/rate', [VehicleController::class, 'rate'])->middleware('ability:parkMoney');
     Route::post('/cars/{vehicle}/transfer', [VehicleController::class, 'transfer'])->middleware('park.manage');
     Route::post('/cars/{vehicle}/city', [VehicleController::class, 'city']);
@@ -154,6 +155,11 @@ Route::domain(config('xcar.park_host'))->middleware(['auth', 'section:park'])->g
 
     // Раздел «Парковки» — тому, у кого их больше одной (`User::seesYards`): управляющему Питера его нет.
     Route::get('/yards', [YardController::class, 'index'])->middleware('ability:seesYards');
+    // Схема парковки: смотреть и ставить ТС на места — всем людям парковки (и управляющему одной парковки, мимо
+    // `seesYards`); ряды и места правят администратор и управляющие (`editsYardPlan`).
+    Route::get('/yards/{yard}/plan', [YardController::class, 'plan']);
+    Route::get('/yards/{yard}/plan/edit', [YardController::class, 'edit'])->middleware('ability:editsYardPlan');
+    Route::put('/yards/{yard}/plan', [YardController::class, 'save'])->middleware('ability:editsYardPlan');
     // Вендоры людям парковки — смотреть карточку и править контакты (кому слать отчёты и счета); тарифы — `parkMoney`, всё прочее — админу.
     Route::middleware('park.manage')->group(function () {
         Route::get('/vendors', [VendorController::class, 'index']);

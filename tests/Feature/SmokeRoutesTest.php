@@ -184,7 +184,7 @@ class SmokeRoutesTest extends TestCase
         foreach ($vendors as $v) {
             $v->update(['on_park' => true, 'is_active' => true]);
         }
-        $yard = Yard::create(['name' => 'Краснопутиловская', 'is_active' => true]);
+        $yard = Yard::create(['name' => 'Краснопутиловская', 'is_active' => true, 'rows' => [['id' => 'a', 'name' => 'A', 'n' => 4, 'x' => 0, 'y' => 0]]]);
 
         $offers = [];
         foreach ([0, 1, 2, 3] as $i) {
@@ -211,7 +211,7 @@ class SmokeRoutesTest extends TestCase
 
         foreach ([0, 1] as $i) {
             $v = Vehicle::create(['vendor_id' => $vendors[$i]->id, 'yard_id' => $yard->id, 'brand_id' => $brand->id, 'model_id' => $model->id,
-                'ref' => 'AUT-26-80000'.$i, 'state' => VehicleState::Stored, 'accepted_at' => now()->subDays(3)]);
+                'ref' => 'AUT-26-80000'.$i, 'state' => VehicleState::Stored, 'accepted_at' => now()->subDays(3), 'spot' => $i ? null : 'A-1']);
             ParkRequest::create(['vehicle_id' => $v->id, 'type' => RequestType::Release]);
             Transport::create(['car_id' => $v->car_id, 'origin' => 'park', 'kind' => 'move', 'to_yard_id' => $yard->id, 'destination' => 'yard']);
         }

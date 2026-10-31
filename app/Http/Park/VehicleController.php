@@ -37,6 +37,7 @@ use App\Park\Actions\RestoreVehicle;
 use App\Park\Actions\SetCity;
 use App\Park\Actions\SetDates;
 use App\Park\Actions\SetYard;
+use App\Park\Actions\SwapSpots;
 use App\Park\Actions\TakeOffSale;
 use App\Park\Actions\Transfer;
 use App\Park\Actions\UndoIntake;
@@ -539,9 +540,19 @@ class VehicleController
     public function move(Request $request, Vehicle $vehicle, Move $move)
     {
         $data = $request->validate(['yard_id' => ['required', 'exists:park_yards,id'], 'spot' => ['nullable', 'string', 'max:16']]);
-        $move($vehicle, $request->user(), Yard::findOrFail($data['yard_id']), $data['spot'] ?? null);
+        $vehicle = $move($vehicle, $request->user(), Yard::findOrFail($data['yard_id']), $data['spot'] ?? null);
 
-        return back()->with('toast', 'Переставлена');
+        return back()->with('toast', $vehicle->spot ? 'Переставлена на '.$vehicle->spot : 'Переставлена');
+    }
+
+    /** Обмен местами со схемы парковки: нажали ТС, потом занятое место (`SwapSpots`). */
+    public function swap(Request $request, Vehicle $vehicle, SwapSpots $swap)
+    {
+        $data = $request->validate(['with' => ['required', 'integer']]);
+        $other = Vehicle::findOrFail($data['with']);
+        $swap($vehicle, $other, $request->user());
+
+        return back()->with('toast', 'Поменялись местами');
     }
 
     /** Ставка машины одной шторкой (`x-park.rate`): тип ТС, своя ставка, почему, оценочная (`VehicleRate`). */

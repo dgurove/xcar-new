@@ -5,6 +5,7 @@
     <x-park.yard-field :yards="$yards" :value="$req->yard_id ?? $yards->keys()->first()" required data-spots-target="yard" data-action="change->spots#sync"/>
     <x-ui.field name="spot" label="Место" list="spots-list" autocapitalize="characters"/>
     <datalist id="spots-list" data-spots-target="list"></datalist>
+    @include('park.yards.plan-pick-frame', ['pick' => $vehicle->id, 'at' => null])
     <x-ui.field name="accepted_at" label="Когда" type="datetime-local" :value="now()->format('Y-m-d\TH:i')" now/>
     {{-- Ставка — видна до «Принять» (12.10.2026, `VehicleRate`): тип ТС угадан по марке, своя ставка пусто — по тарифу. Свои
          имена: в деле рядом стоит редактор полей ТС с той же «Категорией». --}}

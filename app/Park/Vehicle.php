@@ -71,6 +71,11 @@ class Vehicle extends Model
                 $requests = Request::withoutGlobalScope(City::SCOPE)->where('vehicle_id', $v->id)->pluck('id')->all();
                 app(Publisher::class)->rowsSoon(Topics::PARK, ['/requests' => $requests, '/cars' => [$v->id]]);
             }
+            // Схема парковки: машина встала, ушла или переехала — у тех, кто смотрит схему этой (и прежней) парковки.
+            if ($v->wasChanged(['state', 'yard_id', 'spot'])) {
+                $yards = array_unique(array_filter([$v->yard_id, $v->getOriginal('yard_id')]));
+                app(Publisher::class)->refreshSoon(Topics::PARK, ['/yards', ...array_map(fn ($id) => "/yards/{$id}/plan", $yards)]);
+            }
         });
     }
 

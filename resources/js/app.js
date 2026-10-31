@@ -109,9 +109,9 @@ window.Stimulus = application;
 // Галерея — сразу (22.10.2026): пока её кусок не пришёл, нажатие на кадр было ссылкой на картинку, и в приложении с экрана
 // «Домой» она открывалась во весь экран без выхода. Не пришёл кусок — окно берёт новую сборку (reloadForBuild).
 const controllerName = (path) => path.match(/\/([\w-]+)_controller\.js$/)[1].replace(/_/g, '-');
-const controllers = import.meta.glob(['./controllers/*_controller.js', '!./controllers/{chat,photos,qr_release,share,passkey,vin,draft,editor,combobox,login,tariff_form,car_text,drop_empty,valuation,date,export}_controller.js'], { eager: true });
+const controllers = import.meta.glob(['./controllers/*_controller.js', '!./controllers/{chat,photos,qr_release,share,passkey,vin,draft,editor,combobox,login,tariff_form,car_text,drop_empty,valuation,date,export,yard_editor}_controller.js'], { eager: true });
 for (const [path, module] of Object.entries(controllers)) application.register(controllerName(path), module.default);
-const lazy = new Map(Object.entries(import.meta.glob('./controllers/{chat,photos,qr_release,share,passkey,vin,draft,editor,combobox,login,tariff_form,car_text,drop_empty,valuation,date,export}_controller.js')).map(([path, load]) => [controllerName(path), load]));
+const lazy = new Map(Object.entries(import.meta.glob('./controllers/{chat,photos,qr_release,share,passkey,vin,draft,editor,combobox,login,tariff_form,car_text,drop_empty,valuation,date,export,yard_editor}_controller.js')).map(([path, load]) => [controllerName(path), load]));
 const loadLazy = (root) => {
     for (const [name, load] of lazy) {
         const selector = `[data-controller~="${name}"]`;

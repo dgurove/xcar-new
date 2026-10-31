@@ -519,6 +519,12 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
         return $this->isParkAdmin() || $this->isParking();
     }
 
+    /** Схема парковки — места и ряды (31.10.2026, владелец): администратор и управляющие, не приёмщик. Ставить ТС на места — все. */
+    public function editsYardPlan(): bool
+    {
+        return $this->isParkAdmin() || ($this->isParking() && ! $this->park_readonly);
+    }
+
     /** Управляющий парковкой: только park.xcar, без продаж и настроек. */
     /**
      * Город, которым ограничена парковка человека (`Park\City`): видит только его ТС, письма и счета. Пусто — весь парк;

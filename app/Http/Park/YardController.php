@@ -2,8 +2,10 @@
 
 namespace App\Http\Park;
 
+use App\Park\Actions\SavePlan;
 use App\Park\Request as ParkRequest;
 use App\Park\Vehicle;
+use App\Park\VehicleState;
 use App\Park\Yard;
 use App\Support\Detail;
 use App\Support\ListPrefs;
@@ -47,6 +49,43 @@ class YardController
         return view('park.yards.detail', ['yard' => $yard]);
     }
 
+    /**
+     * Схема парковки: ТС на местах, «без места» (места нет или оно не из схемы) лотком под схемой. `?pick=` — только схема
+     * для выбора места в шторке (`move-sheet`, приём): фрейм `plan-pick`, отмечено место `?at=`.
+     */
+    public function plan(Request $request, Yard $yard)
+    {
+        $cars = Vehicle::where('yard_id', $yard->id)->where('state', VehicleState::Stored)->with('car.brand', 'car.model')->orderBy('accepted_at')->get();
+        $spots = $yard->spots();
+        $placed = $cars->filter(fn (Vehicle $v) => $v->spot && in_array($v->spot, $spots, true))->keyBy('spot');
+        if ($request->has('pick')) {
+            return view('park.yards.plan-pick', ['yard' => $yard, 'cars' => $placed, 'at' => $request->query('at'), 'vehicle' => (int) $request->query('pick')]);
+        }
+
+        return view('park.yards.plan', [
+            'yard' => $yard, 'cars' => $placed, 'loose' => $cars->reject(fn (Vehicle $v) => $placed->has($v->spot) && $placed[$v->spot]->id === $v->id)->values(),
+            'edits' => $request->user()->editsYardPlan(),
+        ]);
+    }
+
+    /** Редактор схемы: ряды и занятые места (их не убрать) — данными для `yard_editor_controller`. */
+    public function edit(Yard $yard)
+    {
+        $taken = Vehicle::where('yard_id', $yard->id)->where('state', VehicleState::Stored)->whereNotNull('spot')->with('car.brand')->get()
+            ->mapWithKeys(fn (Vehicle $v) => [$v->spot => $v->brand?->name ?? $v->ref ?? 'ТС']);
+
+        return view('park.yards.plan-edit', ['yard' => $yard, 'rows' => $yard->plan(), 'taken' => $taken, 'rev' => $yard->planRev()]);
+    }
+
+    /** Сохранить схему из редактора (`SavePlan`): ответ — новая ревизия, ошибка — 422 словами. */
+    public function save(Request $request, Yard $yard, SavePlan $save)
+    {
+        $data = $request->validate(['rows' => ['present', 'array'], 'rev' => ['required', 'string']]);
+        $yard = $save($yard, $data['rows'], $data['rev']);
+
+        return response()->json(['rev' => $yard->planRev(), 'capacity' => $yard->capacity]);
+    }
+
     public function store(Request $request)
     {
         $yard = Yard::create($this->data($request));
@@ -63,11 +102,13 @@ class YardController
 
     private function data(Request $request): array
     {
-        $data = $request->validate(['name' => ['required', 'string', 'max:80'], 'address' => ['nullable', 'string', 'max:255'], 'settlement_id' => ['nullable', 'exists:settlements,id'], 'capacity' => ['nullable', 'integer', 'max:10000'], 'rows' => ['nullable', 'string', 'max:500'], 'notes' => ['nullable', 'string', 'max:2000']]);
-        $rows = Yard::parseRows($data['rows'] ?? null);
+        $data = $request->validate(['name' => ['required', 'string', 'max:80'], 'address' => ['nullable', 'string', 'max:255'], 'settlement_id' => ['nullable', 'exists:settlements,id'], 'capacity' => ['nullable', 'integer', 'max:10000'], 'notes' => ['nullable', 'string', 'max:2000']]);
+        // Есть схема — вместимость считает она (`SavePlan`), поле «Мест» её не перебивает.
+        if ($request->route('yard')?->rows) {
+            unset($data['capacity']);
+        }
 
-        // Ряды заданы — вместимость считается по ним, иначе числом из поля.
-        return array_merge($data, ['rows' => $rows, 'is_active' => $request->boolean('is_active', true)], $rows ? ['capacity' => array_sum(array_column($rows, 'n'))] : []);
+        return array_merge($data, ['is_active' => $request->boolean('is_active', true)]);
     }
 
     /** Убрать площадку можно пустую и без истории; с ТС — только закрыть. */
