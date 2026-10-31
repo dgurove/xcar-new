@@ -142,7 +142,7 @@
                     @include('site.catalog-estimated')
                 @else
                     @if (\App\Support\ListView::isTable($view))
-                    <x-ui.table id="catalog" :view="$view" data-list="{{ $gallery ? 'gallery' : 'catalog' }}" data-prepend="false" :table="$columns">
+                    <x-ui.table id="catalog" :view="$view" data-list="{{ $gallery ? 'gallery' : 'catalog' }}" data-prepend="false" :table="$columns" :portion="$offers">
                         <x-slot:head><x-table.head :table="$columns" :sort="$sorting"/></x-slot:head>
                         @php $group = null; @endphp
                         @foreach ($offers as $offer)

@@ -129,8 +129,17 @@ class VehicleController
         $grouped = ! $flat && count($yards) !== 1 && $q === '' && ! $state?->isFinal() && count(City::yardIdsOf($request->user())) !== 1;
         $byMonth = $out && $q === '' && $sort->key === 'out';
         // «Лентами» (группы — ленты вбок) — весь список одной страницей; «Плитками» — одна сетка со страницами (15.10.2026).
+        // Таблица — порциями по сотне (`Portion`, 31.10.2026); целиком — где порция соврёт: сортировка в памяти («Начислено»,
+        // «₽/сут», «Задачи» — по посчитанному) и группы по парковкам (собираются в памяти по имени парковки). Месяцы выбытия
+        // идут по порядку запроса — порциями, числа месяцев — по всему списку, до порции (paginate сужает сам запрос).
         Rows::only($vehicles, 'park_vehicles.id');
-        $page = ListView::paginate($request, $vehicles, whole: ListView::fromRequest($request, $grouped || $byMonth) === ListView::SHELF);
+        $whole = ListView::fromRequest($request, $grouped || $byMonth) === ListView::SHELF || $grouped || in_array($sort->key, ['amount', 'rate', 'tasks'], true);
+        $monthCounts = [];
+        if ($byMonth && ! $whole) {
+            // Без порядка и столбцов списка (`select([])` снимает и привязки подзапросов).
+            $monthCounts = (clone $vehicles)->toBase()->reorder()->select([])->selectRaw("coalesce(to_char(released_at, 'YYYY-MM'), '') as m, count(*) as n")->groupBy('m')->pluck('n', 'm')->map(fn ($n) => (int) $n)->all();
+        }
+        $page = ListView::paginate($request, $vehicles, whole: $whole);
         // Ставка на сегодня и сколько набежало за всё время стоянки — столбцы «₽/сут» и «Начислено».
         // Приёмщику (`User::parkMoney`, 27.10.2026) денег нет: не считаются вовсе — ни столбцов, ни сумм, ни сортировки по ним.
         $money = $request->user()->parkMoney();
@@ -160,6 +169,7 @@ class VehicleController
             'grouped' => $grouped,
             'flat' => $flat,
             'byMonth' => $byMonth,
+            'monthCounts' => $monthCounts,
             'out' => $out,
             'q' => $q,
             'view' => ListView::pick($request, $page->total(), shelves: $grouped || $byMonth),

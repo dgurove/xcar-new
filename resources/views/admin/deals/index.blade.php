@@ -54,7 +54,7 @@
                 @endforeach
             </x-ui.table>
         @elseif (\App\Support\ListView::isTable($view))
-            <x-ui.table :table="$table" id="deals" class="mt-6" :view="$view">
+            <x-ui.table :table="$table" id="deals" class="mt-6" :view="$view" :portion="$deals">
                 <x-slot:head><x-table.head :table="$table" :sort="$sort"/></x-slot:head>
                 @foreach ($deals as $deal)<x-deal.table-row :deal="$deal" :table="$table"/>@endforeach
             </x-ui.table>

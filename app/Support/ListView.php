@@ -15,7 +15,8 @@ use Illuminate\Http\Request;
  * Таблица — своя разметка (x-ui.table), не .cards.
  * Сколько на странице — `?per=` из набора вида (perPage): плиткам 24 / 48 / 96 (три колонки по
  * восемь рядов), строкам 30 / 60 / 120 (та же длина прокрутки), плотным спискам без вида
- * 50 / 100 / 200; таблица — целиком на одной странице. Чужое число — первое из набора.
+ * 50 / 100 / 200; таблица — порциями по сотне при листании (`Portion`, 31.10.2026; до того — целиком на одной странице).
+ * Чужое число — первое из набора.
  */
 final class ListView
 {
@@ -69,7 +70,7 @@ final class ListView
         return in_array($vid, self::ALL, true) ? $vid : null;
     }
 
-    /** Набор «по сколько» для вида; таблице — пустой: она целиком. */
+    /** Набор «по сколько» для вида; таблице — пустой: она порциями (`Portion`). */
     public static function perSizes(?string $view): array
     {
         return match ($view) {
@@ -89,14 +90,18 @@ final class ListView
     /**
      * Постраничка карточного списка: сколько на странице зависит от вида, а вид без выбора —
      * от длины (pick), поэтому счёт идёт до paginate. Шаблон берёт вид тем же pick по total().
-     * Таблица — вся на одной странице.
+     * Таблица — порциями (`Portion`): первая сотня, дальше при листании.
+     * whole — весь список одной страницей: плитки пачками лентами (x-ui.shelf) — пачку страница не рвёт; таблица, у которой
+     * порция соврёт, — сортировка в памяти (честна только на всём списке) или «Выбрать все» галками (выбрало бы одну порцию).
      */
-    /** whole — весь список одной страницей, как таблица: плитки пачками лентами (x-ui.shelf), пачку страница не рвёт. */
     public static function paginate(Request $request, Builder|Relation $q, ?int $count = null, bool $whole = false): LengthAwarePaginator
     {
         // Число уже посчитано — второй раз его не считает и сама постраничка (`total:`).
         $count ??= $q->count();
         $view = self::pick($request, $count);
+        if (self::isTable($view) && ! $whole) {
+            return Portion::of($request, $q, $count);
+        }
         $per = self::isTable($view) || $whole ? max($count, 1) : self::perPage($request, self::perSizes($view));
 
         return $q->paginate($per, total: $count)->withQueryString();

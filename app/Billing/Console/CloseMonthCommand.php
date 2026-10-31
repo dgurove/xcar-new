@@ -21,7 +21,7 @@ class CloseMonthCommand extends Command
 
     public function handle(): int
     {
-        $month = $this->option('month') ? Carbon::createFromFormat('Y-m', $this->option('month'))->startOfMonth() : now()->subMonth()->startOfMonth();
+        $month = $this->option('month') ? Carbon::createFromFormat('!Y-m', $this->option('month'))->startOfMonth() : now()->subMonthNoOverflow()->startOfMonth();
         $items = Closing::items($month);
         $this->info($month->translatedFormat('F Y').': строк '.$items->count().', сумма '.round($items->sum('amount'), 2));
         if ($items->isEmpty()) {

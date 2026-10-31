@@ -6,7 +6,7 @@
         <x-ui.toolbar :sort="$sort" name="favorites"><x-slot:extra><x-ui.view-switch :current="$view"/></x-slot:extra></x-ui.toolbar>
         @if (\App\Support\ListView::isTable($view))
         @php $columns = \App\Http\Site\CatalogController::table(auth()->user()?->bidsOnSite() ?? false, $sort, mine: auth()->user()?->bidsOnSite() ?? false); @endphp
-        <x-ui.table :view="$view" :table="$columns">
+        <x-ui.table id="favorites" :view="$view" :table="$columns" :portion="$offers">
             <x-slot:head><x-table.head :table="$columns" :sort="$sort"/></x-slot:head>
             @foreach ($offers as $offer)<x-offer.site-table-row :offer="$offer" :table="$columns"/>@endforeach
         </x-ui.table>

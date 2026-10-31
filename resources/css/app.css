@@ -1586,6 +1586,10 @@ html.kb-open { --home-gap: 0px; }
   @media (min-width: 640px) { .table tbody tr { height: 2.25rem; } }
   .table tbody tr + tr > td, .table tbody tr + tr > th { border-top: 1px solid color-mix(in oklab, var(--color-line) 70%, transparent); }
   .table tbody tr.table-group + tr > td, .table tbody tr.table-group + tr > th, .table tbody tr + tr.table-group > th, .table tbody tr + tr.table-group > td { border-top: 0; }
+  /* Порции (`tbody.table-part`) — одна таблица: линия между ними та же, что между строками. Хвост «Ещё N…» — тихая строка. */
+  .table tbody.table-part + tbody.table-part > tr:first-child:not(.table-group) > td { border-top: 1px solid color-mix(in oklab, var(--color-line) 70%, transparent); }
+  .table tbody.table-more > tr, .table tbody.table-more > tr:hover { height: auto; cursor: default; background: transparent; }
+  .table tbody.table-more > tr > td { padding: 1.25rem .75rem; text-align: center; font-size: var(--text-sm); color: var(--color-ink-dim); }
   @media (hover: hover) { .table tbody tr:hover { background: var(--color-hover); } }
   .table tbody tr[aria-selected="true"], .table tbody tr[aria-selected="true"]:hover { background: var(--color-accent-soft); }
   /* Ещё ищем покупателя и время есть (логистика, `SaleState::waiting`) — строка приглушена; наведение и открытая — целиком. */
@@ -1825,7 +1829,15 @@ html.kb-open { --home-gap: 0px; }
       /* Высота строки таблицы — наименьшая; у элемента сетки она была бы точной — отсюда min-height. Размер строки за
          экраном — ровно её высота (без `auto`: помнить прежнюю нельзя — при открытой карточке строки выше). */
       & .table tbody tr { height: auto !important; }
-      & .table tbody tr:not(.table-group) { min-height: 1.75rem; content-visibility: auto; contain-intrinsic-size: none 1.75rem; }
+      & .table tbody tr:not(.table-group) { min-height: 1.75rem; }
+      /* Строка за экраном не считается — куском, а не строкой (31.10.2026, замер «Выданных» колесом: `content-visibility` на
+         каждой строке — на каждую въехавшую стиль, раскладка, отрисовка и сборка слоёв, длинных задач 30 / 2,9 с; куском —
+         в разы реже). Кусок — порция списка (`tbody.table-part`, `Support\Portion`), его высота за экраном — отрисованная
+         (`auto`), до первой отрисовки — строки по 1.75rem (`--part` — их число). Таблица целиком (`table-whole`) — строкой,
+         как было. Липкий заголовок группы держится в своём куске: стопки пройденных заголовков нет. */
+      & .table > tbody.table-part { display: block; content-visibility: auto; contain-intrinsic-size: auto calc(var(--part, 100) * 1.75rem); }
+      & .table > tbody.table-more { display: block; }
+      & .table tbody.table-whole > tr:not(.table-group) { content-visibility: auto; contain-intrinsic-size: none 1.75rem; }
       & .table :is(thead tr, tr.table-group) > th { position: static; }
       & .table thead tr { position: sticky; z-index: 10; top: var(--stick-top); }
       & .table tr.table-group { position: sticky; z-index: 9; top: calc(var(--stick-top) + 2rem); }

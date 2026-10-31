@@ -110,9 +110,10 @@ class DealController
         Rows::only($q, 'deals.id');
         $groups = $preset === 'us' && ! $searching ? self::todo($q->get(), $sort->key === 'deadline') : null;
         $debts = $preset === 'pay' && ! $searching ? self::debts($q->get()) : null;
-        // Таблица — вся на одной странице; строками — постранично.
+        // Таблица — порциями по сотне (`Portion`), «Все» — целиком: группы по этапу собираются в памяти, порция их порвала бы;
+        // строками — постранично.
         $table = ListView::isTable(ListView::pick($request, 0));
-        $deals = $table ? ListView::paginate($request, $q) : $q->paginate(ListView::perPage($request, ListView::PER_ROWS))->withQueryString();
+        $deals = $table ? ListView::paginate($request, $q, whole: $preset === 'all' && ! $searching) : $q->paginate(ListView::perPage($request, ListView::PER_ROWS))->withQueryString();
 
         return view('admin.deals.index', [
             'groups' => $groups,

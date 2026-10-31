@@ -4,8 +4,11 @@
      показывает все столбцы и листается вбок. Столбец «Марка, модель» (title-cap) — шириной в самое длинное название, чтобы
      оно не сокращалось, пока справа есть место; сжимается, только когда места нет: с описанием столбцов (`table`) ширины
      считает сервер по самим строкам (`Support\Table\Widths`), без него — titles (названия или число знаков) и rest. Не влезла в ширину — листается вбок (table_scroll_controller). table — описание
-     столбцов (`Support\Table`): с ним на ПК таблица — сетка, и строка за экраном не считается (`Table::gridCss`). --}}
-@props(['head', 'id' => null, 'view' => null, 'titles' => null, 'rest' => null, 'table' => null])
+     столбцов (`Support\Table`): с ним на ПК таблица — сетка, и строка за экраном не считается (`Table::gridCss`).
+     portion — порция списка (`Support\Portion`, 31.10.2026): строки — куском `tbody.table-part`, за ним хвост «Ещё N» с
+     адресом следующей сотни (ловит `endless_controller`, кусок встаёт следующим `tbody` той же таблицы — в те же столбцы);
+     кусок за экраном браузер не считает (`content-visibility` куском, а не строкой). Без порции — список целиком. --}}
+@props(['head', 'id' => null, 'view' => null, 'titles' => null, 'rest' => null, 'table' => null, 'portion' => null])
 @php
     $titleCh = $titles ? collect($titles)->map(fn ($t) => is_int($t) ? $t : mb_strlen((string) $t))->max() : null;
     $wide = $view === \App\Support\ListView::WIDE;
@@ -27,15 +30,26 @@
     $style = trim($style);
     // Столбцы сетки — цепочкой по ширине самой таблицы (`Table::gridCss`): не влезают — уходят по одному, строка — одна линия.
     $gridCls = $grid ? 'tg-'.substr(md5(json_encode([array_keys($table->columns), $widths, $full])), 0, 10) : null;
+    $portion = $portion instanceof \App\Support\Portion ? $portion : null;
+    $next = $portion?->next();
+    // Свои контроллеры обёртки (прокрутка вбок, догрузка порций) — вместе с переданными (`group-fold` парковки).
+    $controllers = collect(['table-scroll', $portion ? 'endless' : null, ...explode(' ', (string) $attributes->get('data-controller'))])->filter()->unique()->implode(' ');
 @endphp
-<div {{ $attributes->merge(['class' => 'table-wrap'.($wide ? ' is-wide' : '').($grid ? ' is-grid '.$gridCls : ''), 'data-controller' => 'table-scroll']) }} @if ($id) id="{{ $id }}" @endif @if ($style) style="{{ $style }}" @endif>
+<div {{ $attributes->except('data-controller')->merge(['class' => 'table-wrap'.($wide ? ' is-wide' : '').($grid ? ' is-grid '.$gridCls : ''), 'data-controller' => $controllers]) }} @if ($id) id="{{ $id }}" @endif @if ($style) style="{{ $style }}" @endif>
     @if ($grid)
         <style>{!! $table->gridCss($gridCls, $widths, $full) !!}</style>
     @endif
     <div class="table-box">
         <table class="table">
             <thead>{{ $head }}</thead>
-            <tbody>{{ $slot }}</tbody>
+            @if ($portion)
+                <tbody class="table-part" data-rows="{{ $portion->upto() }}" style="--part: {{ $portion->count() }}">{{ $slot }}</tbody>
+                @if ($next)
+                    <tbody class="table-more" data-endless-next="{{ $next }}"><tr><td colspan="{{ $table?->span() ?? 99 }}">Ещё {{ $portion->rest() }}…</td></tr></tbody>
+                @endif
+            @else
+                <tbody class="table-whole">{{ $slot }}</tbody>
+            @endif
         </table>
     </div>
 </div>

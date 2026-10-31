@@ -83,11 +83,11 @@
                 <div class="pick-all"><label class="row-check gap-3"><span class="check"><input type="checkbox" id="pick-all-{{ $preset }}" data-turbo-permanent data-pick-target="all" data-action="pick#pickAll"></span><span>Выбрать все</span></label></div>
             @endif
             @if ($table)
-                <x-ui.table :table="$columns" id="offers" :view="$view">
+                <x-ui.table :table="$columns" id="offers" :view="$view" :portion="$offers">
                     <x-slot:head><x-table.head :table="$columns" :sort="$sort"/></x-slot:head>
                     @foreach ($groups as $key => $list)
                         @if ($title = $groupTitle($key, $list))
-                            <x-table.group :table="$columns" :key="$key" :title="$title" :count="$list->count()" :count-key="'group-'.$key">
+                            <x-table.group :table="$columns" :key="$key" :title="$title" :count="$groupCounts[$key] ?? $list->count()" :count-key="'group-'.$key">
                                 <x-slot:before>@if ($pick)<label class="row-check" aria-label="Выбрать весь слот"><span class="check"><input type="checkbox" id="pick-group-{{ $key }}" data-turbo-permanent data-pick-target="group" data-group="{{ $key }}" data-action="pick#pickGroup"></span></label>@endif</x-slot:before>
                             </x-table.group>
                         @endif

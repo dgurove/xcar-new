@@ -18,7 +18,7 @@
         default => collect([0 => $vehicles->getCollection()]),
     };
     $groupName = fn ($key, $group) => $byMonth
-        ? ($key ? mb_convert_case(\Illuminate\Support\Carbon::createFromFormat('Y-m', $key)->translatedFormat('F Y'), MB_CASE_TITLE) : 'Без даты')
+        ? ($key ? mb_convert_case(\Illuminate\Support\Carbon::createFromFormat('!Y-m', $key)->translatedFormat('F Y'), MB_CASE_TITLE) : 'Без даты')
         : ($key ? $group->first()->yard->name : 'Без парковки');
     // Шапка сортирует нажатием (x-ui.th) — каждый столбец (12.10.2026, владелец: «как в CRM»); столбцы — одно описание.
     // Подробная таблица — ещё и документы ТС (`VehicleController::table`).
@@ -29,13 +29,13 @@
     <x-ui.empty class="py-6">{{ $q !== '' ? 'Ничего не нашлось' : 'ТС нет' }}</x-ui.empty>
 @else
     @if (ListView::isTable($view))
-        <x-ui.table :table="$columns" id="vehicles" :view="$view" data-controller="table-scroll group-fold" data-group-fold-name-value="park-fold">
+        <x-ui.table :table="$columns" id="vehicles" :view="$view" :portion="$vehicles" data-controller="table-scroll group-fold" data-group-fold-name-value="park-fold">
             <x-slot:head><x-table.head :table="$columns" :sort="$sort"/></x-slot:head>
             @php $rows = \App\Park\TableRows::render($vehicles->getCollection(), $totals, $debts, $wide, $out, $money ?? true); @endphp
             @foreach ($groups as $key => $group)
                 @if ($grouped || $byMonth)
                     {{-- Заголовок группы сворачивает её (12.10.2026, владелец): память по парковке или месяцу в браузере. --}}
-                    <x-table.group :table="$columns" :key="($byMonth ? 'm' : 'y').$key" :title="$groupName($key, $group)" :count="$group->count()" class="is-foldable" data-group-fold-target="head" data-fold-key="{{ $byMonth ? 'm' : 'y' }}{{ $key }}" data-action="click->group-fold#toggle"><x-ui.icon name="chevron-down" class="fold-chevron size-4"/></x-table.group>
+                    <x-table.group :table="$columns" :key="($byMonth ? 'm' : 'y').$key" :title="$groupName($key, $group)" :count="$byMonth ? ($monthCounts[$key] ?? $group->count()) : $group->count()" class="is-foldable" data-group-fold-target="head" data-fold-key="{{ $byMonth ? 'm' : 'y' }}{{ $key }}" data-action="click->group-fold#toggle"><x-ui.icon name="chevron-down" class="fold-chevron size-4"/></x-table.group>
                 @endif
                 @foreach ($group as $vehicle){!! $rows[$vehicle->id] !!}@endforeach
             @endforeach

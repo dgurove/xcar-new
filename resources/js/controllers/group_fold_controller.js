@@ -12,11 +12,13 @@ export default class extends Controller {
         this.onMorph = () => this.apply();
         document.addEventListener('turbo:morph', this.onMorph);
         document.addEventListener('turbo:frame-render', this.onMorph);
+        this.element.addEventListener('endless:appended', this.onMorph);
     }
 
     disconnect() {
         document.removeEventListener('turbo:morph', this.onMorph);
         document.removeEventListener('turbo:frame-render', this.onMorph);
+        this.element.removeEventListener('endless:appended', this.onMorph);
     }
 
     headTargetConnected() {
@@ -36,12 +38,16 @@ export default class extends Controller {
         try { return new Set(JSON.parse(localStorage.getItem(this.nameValue) || '[]')); } catch { return new Set(); }
     }
 
+    // Строки — подряд через все куски таблицы (`tbody.table-part`): группа, продолженная догруженной порцией, заголовка в
+    // своём куске не имеет. Хвост «Ещё N…» не прячется — иначе следующая порция не догрузится.
     apply() {
         const folded = this.folded();
-        for (const head of this.headTargets) {
-            const shut = folded.has(head.dataset.foldKey);
-            head.classList.toggle('is-folded', shut);
-            for (let row = head.nextElementSibling; row && !row.classList.contains('table-group'); row = row.nextElementSibling) {
+        let shut = false;
+        for (const row of this.element.querySelectorAll('tbody:not(.table-more) > tr')) {
+            if (row.classList.contains('table-group')) {
+                shut = row.dataset.foldKey !== undefined && folded.has(row.dataset.foldKey);
+                row.classList.toggle('is-folded', shut);
+            } else {
                 row.hidden = shut;
             }
         }

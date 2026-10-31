@@ -56,6 +56,7 @@ use App\Support\Facets\Facet;
 use App\Support\Facets\Facets;
 use App\Support\ListPrefs;
 use App\Support\ListView;
+use App\Support\Portion;
 use App\Support\Money;
 use App\Support\Plural;
 use App\Support\Sort;
@@ -231,7 +232,15 @@ class OfferController
         $packed = $view === ListView::SHELF;
         // Живое обновление строкой (`Live\Rows`) — после итога и чисел вкладок: они в ответе настоящие.
         Rows::offers($q);
-        $offers = ListView::isTable($view) ? $q->paginate(max($count, 1), total: $count)->withQueryString() : ListView::paginate($request, $q, $count, whole: $packed);
+        // Таблица — порциями по сотне (`Portion`, 31.10.2026); целиком — где порция соврёт: галки «Выбрать все» и «Из таблицы
+        // Кати» (призраки — под всеми черновиками). Числа групп — по всему списку, до порции: paginate сужает сам запрос.
+        $whole = self::pickable($request->user(), $preset, $searching) || $preset === 'legacy';
+        $groupCounts = ListView::isTable($view) && ! $whole && ! $searching ? self::groupCounts($q, $preset, $admin) : [];
+        $offers = match (true) {
+            ListView::isTable($view) && ! $whole => Portion::of($request, $q, $count),
+            ListView::isTable($view) => $q->paginate(max($count, 1), total: $count)->withQueryString(),
+            default => ListView::paginate($request, $q, $count, whole: $packed),
+        };
         // Кадры нужны плиткам и строкам; в таблице их нет — кроме «Оцененных»: там по ним видно, готово ли к продаже.
         if (! ListView::isTable($view) || ($preset === 'priced' && ! $searching)) {
             $offers->loadMissing('media');
@@ -264,6 +273,7 @@ class OfferController
             'pick' => self::pickable($request->user(), $preset, $searching),
             // Столбцы таблицы — одно описание на шапку, строки и группы.
             'columns' => self::table($preset, $request->user(), $searching, $offers->getCollection()),
+            'groupCounts' => $groupCounts,
             'counts' => $counts,
             // Черновик завела почта и файлы с документами ещё догружаются — строка входит живьём (`AutoScan::states`,
             // `arrive_controller`), как заявка на парковке.
@@ -506,6 +516,28 @@ class OfferController
     public static function pickable(User $user, ?string $preset, bool $searching): bool
     {
         return $user->canManageCrm() && ! $searching && in_array($preset, ['priced', 'slots', 'archive'], true);
+    }
+
+    /**
+     * Числа групп по всему списку, а не по порции (`Portion`): у заголовка группы на первой сотне — все её строки. Ключи —
+     * как у групп шаблона (`admin/offers/index`): `done0`, `park1`, у опубликованных — номер группы.
+     *
+     * @return array<string|int, int>
+     */
+    private static function groupCounts(Builder $q, string $preset, bool $admin): array
+    {
+        [$expr, $prefix] = match (true) {
+            $preset === 'done' => [self::DONE_GROUP, 'done'],
+            $preset === 'unpriced' && $admin => [self::PARK_GROUP, 'park'],
+            $preset === 'bids' && $admin => [self::PICK_GROUP, ''],
+            default => [null, null],
+        };
+        if ($expr === null) {
+            return [];
+        }
+        // Без порядка и столбцов списка (`select([])` снимает и привязки подзапросов `withCount`).
+        return (clone $q)->toBase()->reorder()->select([])->selectRaw("({$expr}) as g, count(*) as n")->groupBy('g')->pluck('n', 'g')
+            ->mapWithKeys(fn ($n, $g) => [$prefix.$g => (int) $n])->all();
     }
 
     /** Группа «Завершённых» (DONE_GROUPS) — то же правило, что у порядка. */
