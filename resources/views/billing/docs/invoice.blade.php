@@ -1,6 +1,7 @@
 {{-- Счёт на оплату (31.10.2026, по форме владельца — как счёт dgurov.com): логотип XCar, банковский блок и QR справа от
      него, заголовок, Поставщик / Покупатель / Основание, таблица, итог, сумма прописью, условия, подпись — подряд, без
-     пояснений и повторов: реквизиты продавца только в банковском блоке и в «Поставщике». Та же разметка для PDF (dompdf:
+     пояснений и повторов: реквизиты продавца только в банковском блоке и в «Поставщике». Кеглей три: 7,5 подписи и шапка
+     таблицы, 9 текст и итог (жирным), 14 заголовок. Та же разметка для PDF (dompdf:
      без flex и grid — таблицами, шрифты и логотип файлами) и для страницы печати. --}}
 @php
     use App\Support\Money;
@@ -57,7 +58,7 @@
         .bank td { border: 1px solid #d0d0d0; padding: .9mm 2mm; }
         .bank .k { width: 21mm; white-space: nowrap; }
         .bank .v { width: 44mm; }
-        .bank small { display: block; font-size: 7pt; line-height: 1.1; color: #808080; margin-top: .2mm; }
+        .bank small { display: block; font-size: 7.5pt; line-height: 1.1; color: #808080; margin-top: .2mm; }
         .qr { width: 34mm; padding-left: 4mm; }
         .qr img { width: 34mm; height: 34mm; display: block; }
         h1 { font-size: 14pt; font-weight: 500; margin: 6mm 0 0; padding-bottom: 2.5mm; border-bottom: 1.5px solid #1d1d1b; }
@@ -65,16 +66,16 @@
         .parties td { padding: .8mm 0; }
         .parties td.l { width: 28mm; color: #808080; }
         .items { margin-top: 5mm; }
-        .items th { font-size: 8pt; color: #808080; padding: 1.2mm 2mm; border-top: 1px solid #d0d0d0; border-bottom: 1px solid #d0d0d0; }
+        .items th { font-size: 7.5pt; color: #808080; padding: 1.2mm 2mm; border-top: 1px solid #d0d0d0; border-bottom: 1px solid #d0d0d0; }
         .items td { padding: 1.6mm 2mm; border-bottom: 1px solid #d0d0d0; }
         .items .n { width: 7mm; }
         .total { margin-top: 3mm; }
         .total td { padding: .4mm 0; text-align: right; }
         .total td.s { width: 38mm; white-space: nowrap; }
-        .total .main td { font-size: 10.5pt; font-weight: 600; }
+        .total .main td { font-weight: 600; }
         .words { margin-top: 3mm; }
-        .terms { margin-top: 3mm; padding-bottom: 4mm; border-bottom: 1.5px solid #1d1d1b; color: #808080; }
-        .terms p { margin: 0; }
+        .terms { margin: 3mm 0 0; padding: 0 0 4mm 4.5mm; border-bottom: 1.5px solid #1d1d1b; }
+        .terms li { padding-left: .5mm; }
         .sign { margin-top: 10mm; width: auto; }
         .sign td { vertical-align: bottom; padding-right: 3mm; }
         .sign .line { width: 55mm; border-bottom: 1px solid #1d1d1b; height: 6mm; }
@@ -132,13 +133,15 @@
         @endunless
     </table>
 
-    <div class="words">Всего наименований {{ $lines->count() }} на сумму {{ Money::nums($due, 2) }} ₽<br><b>{{ \App\Support\Words::money($due) }}</b></div>
+    <div class="words">Всего наименований {{ $lines->count() }}, на сумму {{ Money::nums($due, 2) }} руб.<br><b>{{ \App\Support\Words::money($due) }}</b></div>
 
-    <div class="terms">
-        @if ($invoice->due_at)<p>Оплатить до {{ $invoice->due_at->format('d.m.Y') }}</p>@endif
-        @if ($invoice->notes)<p>{{ $invoice->notes }}</p>@endif
-        <p>Назначение платежа: {!! $nb(\App\Billing\Documents\PaymentQr::purpose($invoice)) !!}</p>
-    </div>
+    {{-- Условия — нумерованным списком обычным цветом, как в 1С (владелец 31.10.2026); назначение платежа остаётся: по нему
+         выписка находит счёт. --}}
+    <ol class="terms">
+        @if ($invoice->due_at)<li>Оплатить до {{ $invoice->due_at->format('d.m.Y') }}</li>@endif
+        @if ($invoice->notes)<li>{{ $invoice->notes }}</li>@endif
+        <li>Назначение платежа: {!! $nb(\App\Billing\Documents\PaymentQr::purpose($invoice)) !!}</li>
+    </ol>
 
     <table class="sign"><tr>
         <td><b>{{ $self->signerTitle() }}</b></td>
