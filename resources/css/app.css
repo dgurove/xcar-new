@@ -3732,12 +3732,14 @@ html.kb-open { --home-gap: 0px; }
   .card-arrow {
     position: absolute; top: 50%; translate: 0 -50%; height: 2rem; width: 2rem;
     align-items: center; justify-content: center; border-radius: 999px;
-    background: rgb(18 18 18 / .55); color: #fff; opacity: 0; backdrop-filter: blur(4px);
+    background: rgb(18 18 18 / .55); color: #fff; opacity: 0;
     transition: opacity .15s, background-color .15s;
   }
-  @media (hover: hover) { .card:hover .card-arrow { opacity: 1; } }
+  /* Размытие — только у видимой стрелки (31.10.2026): невидимая с `backdrop-filter` — два лишних прохода отрисовки на
+     каждой плитке на экране, на iPad (наведения нет) — всегда. */
+  @media (hover: hover) { .card:hover .card-arrow { opacity: 1; backdrop-filter: blur(4px); } }
   @media (hover: hover) { .card-arrow:hover { background: rgb(0 0 0 / .7); } }
-  .card-arrow:focus-visible { opacity: 1; }
+  .card-arrow:focus-visible { opacity: 1; backdrop-filter: blur(4px); }
 }
 
 /* Карточки в CRM и на стоянке — плотнее: в плитке фото сверху, но на треть
@@ -3844,6 +3846,9 @@ html.kb-open { --home-gap: 0px; }
   --action-pad: .5rem .75rem .75rem .5rem; --action-self: end;
   --price-size: 1rem; --price-align: left;
 }
+/* На телефоне без размытия и в плитках CRM и парковки: правило выше — вне слоя и било `.cards { --glass-blur: none }` из
+   слоя компонентов (31.10.2026, метки плиток размывались на телефоне). */
+@media (max-width: 767.98px) { .surface-crm .cards--grid, .surface-park .cards--grid { --glass-blur: none; } }
 @media (min-width: 640px) {
   .surface-crm .cards:not(.cards--list), .surface-park .cards:not(.cards--list) {
     --card-cols: minmax(5rem, 1fr) minmax(0, auto); --card-rows: auto auto auto 1fr auto;
