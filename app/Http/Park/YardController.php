@@ -28,7 +28,7 @@ class YardController
         ListPrefs::sync($request, 'park-yards');
         $closed = $request->query('closed') === 'all' || $request->boolean('closed');
         $sort = Sort::from($request->query('sort'), self::SORTS, 'name');
-        $yards = Yard::withCount('storedVehicles')->with(['settlement', 'storedVehicles:id,car_id,yard_id,spot,accepted_at', 'storedVehicles'])->orderByDesc('is_active')
+        $yards = Yard::withCount('storedVehicles')->with(['settlement', 'storedVehicles:id,car_id,yard_id,spot,accepted_at', 'storedVehicles.car'])->orderByDesc('is_active')
             ->when($sort->key === 'free', fn ($y) => $y->orderByRaw("(coalesce(capacity, 0) - (select count(*) from park_vehicles v where v.yard_id = park_yards.id and v.state = 'stored')) {$sort->dir()}"))
             ->orderBy(match ($sort->key) {
                 'created' => 'created_at', 'stored' => 'stored_vehicles_count', default => 'name'
@@ -44,7 +44,7 @@ class YardController
     /** Карточка строки таблицы: карта мест и форма. */
     public function detail(Yard $yard)
     {
-        $yard->loadCount('storedVehicles')->load(['settlement', 'storedVehicles:id,car_id,yard_id,spot,accepted_at', 'storedVehicles']);
+        $yard->loadCount('storedVehicles')->load(['settlement', 'storedVehicles:id,car_id,yard_id,spot,accepted_at', 'storedVehicles.car']);
 
         return view('park.yards.detail', ['yard' => $yard]);
     }
@@ -68,11 +68,11 @@ class YardController
         ]);
     }
 
-    /** Редактор схемы: ряды и занятые места (их не убрать) — данными для `yard_editor_controller`. */
+    /** Редактор схемы: ряды и занятые места (их не убрать; марка — для подсказки, тип — значком) — данными для `yard_editor_controller`. */
     public function edit(Yard $yard)
     {
         $taken = Vehicle::where('yard_id', $yard->id)->where('state', VehicleState::Stored)->whereNotNull('spot')->with('car.brand')->get()
-            ->mapWithKeys(fn (Vehicle $v) => [$v->spot => $v->brand?->name ?? $v->ref ?? 'ТС']);
+            ->mapWithKeys(fn (Vehicle $v) => [$v->spot => ['label' => $v->brand?->name ?? $v->ref ?? 'ТС', 'cat' => $v->category?->value]]);
 
         return view('park.yards.plan-edit', ['yard' => $yard, 'rows' => $yard->plan(), 'taken' => $taken, 'rev' => $yard->planRev()]);
     }

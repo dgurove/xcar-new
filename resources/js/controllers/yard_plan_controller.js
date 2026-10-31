@@ -7,7 +7,7 @@ import { Viewport } from '../park/plan/viewport';
 // VIN, убытку — подсветка и подъезд к машине. pick — выбор места в шторке: свободное место пишется в поле «Место» формы.
 // Схему перерисовывает морф (Mercure) — вид и выбор остаются.
 export default class extends Controller {
-    static targets = ['svg', 'bar', 'barTitle', 'barFacts', 'barLink', 'move', 'swap', 'tray', 'find'];
+    static targets = ['svg', 'stage', 'bar', 'barIcon', 'barTitle', 'barFacts', 'barLink', 'move', 'swap', 'tray', 'find'];
     static values = { mode: { type: String, default: 'full' }, yard: Number, cars: Object, vehicle: Number };
 
     connect() {
@@ -67,15 +67,17 @@ export default class extends Controller {
         if (!d.moved) {
             d.moved = true;
             this.select(d.id);
-            d.ghost = d.spot.querySelector('.spot-body').cloneNode();
+            // «Призрак» — значок той же машины под курсором; поворот значка в узком месте — в его transform.
+            const car = d.spot.querySelector('.plan-car');
+            d.box = car.getBBox();
+            d.ghost = document.createElementNS('http://www.w3.org/2000/svg', 'g');
             d.ghost.classList.add('spot-ghost');
-            d.box = d.spot.querySelector('.spot-body').getBBox();
+            d.ghost.append(car.cloneNode(true));
             this.svgTarget.append(d.ghost);
             this.svgTarget.classList.add('is-dragging');
         }
         const p = this.view.point(e);
-        d.ghost.setAttribute('x', p.x - d.box.width / 2);
-        d.ghost.setAttribute('y', p.y - d.box.height / 2);
+        d.ghost.setAttribute('transform', `translate(${p.x - (d.box.x + d.box.width / 2)} ${p.y - (d.box.y + d.box.height / 2)})`);
         const over = document.elementFromPoint(e.clientX, e.clientY)?.closest?.('[data-spot]');
         if (over !== d.over) { d.over?.classList.remove('is-over'); over?.classList.add('is-over'); d.over = over; }
     }
@@ -120,16 +122,22 @@ export default class extends Controller {
         this.paint();
         const car = this.carsValue[this.selected];
         if (!car || !this.hasBarTarget) return;
+        this.barIconTarget.innerHTML = car.icon;
         this.barTitleTarget.textContent = car.title;
-        this.barFactsTarget.textContent = [car.plate, car.spot ? `место ${car.spot}` : 'без места', car.days].filter(Boolean).join(', ');
+        // Госномер — плашкой `x-ui.plate` (разметка с сервера), место — словами.
+        const where = Object.assign(document.createElement('span'), { textContent: car.spot ? `место ${car.spot}` : 'без места' });
+        this.barFactsTarget.innerHTML = car.plate;
+        this.barFactsTarget.append(where);
         this.barLinkTarget.href = `/cars/${this.selected}`;
         this.barTarget.hidden = false;
+        this.stageTarget.classList.add('has-bar');
     }
 
     deselect() {
         this.selected = null;
         this.paint();
         if (this.hasBarTarget) this.barTarget.hidden = true;
+        if (this.hasStageTarget) this.stageTarget.classList.remove('has-bar');
     }
 
     paint() {

@@ -1,6 +1,7 @@
 import { Controller } from '@hotwired/stimulus';
 import { Viewport } from '../park/plan/viewport';
-import { AISLE, L, MAX_N, W, aisle, bounds, box, magnet, newId, nextName, snap, spots } from '../park/plan/geometry';
+import { AISLE, L, MAX_N, W, aisle, bounds, box, carIcon, magnet, newId, nextName, overlaps, snap, spots } from '../park/plan/geometry';
+import { plural } from '../lib/plural';
 import { request } from '../lib/http';
 import { confirmSheet } from '../confirm';
 
@@ -8,10 +9,11 @@ import { confirmSheet } from '../confirm';
 // (`geometry.js`, `App\Park\Plan`), рисуется здесь из JSON, сохраняется целиком (`PUT /yards/{id}/plan`, `SavePlan`).
 // Нажали ряд — выбран: за тело его тащат (мышью — любой ряд сразу), ручка на конце — число мест, ручка сбоку — длина места,
 // нажатие на место выбранного ряда — убрать или вернуть его. Ряд прилипает к краям и серединам соседних, видно проезд до
-// соседнего ряда. Поля выбранного ряда — плашкой внизу. Отмена и повтор — в памяти. Место, где стоит ТС, не убрать.
+// соседнего ряда. Выбранный ряд — плашкой внизу, поля — шторкой «Ряд»; «Сохранить» видна, пока есть несохранённое. Отмена
+// и повтор — в памяти. Место, где стоит ТС (значок её типа, как на схеме), не убрать.
 export default class extends Controller {
-    static targets = ['svg', 'panel', 'save', 'undo', 'redo', 'empty', 'name', 'from', 'n', 'w', 'l', 'dir', 'rev', 'remove'];
-    static values = { rows: Array, taken: Object, rev: String, url: String, back: String };
+    static targets = ['svg', 'panel', 'title', 'save', 'undo', 'redo', 'empty', 'name', 'from', 'n', 'w', 'l', 'rev', 'remove'];
+    static values = { rows: Array, taken: Object, rev: String, url: String, sprite: String };
 
     connect() {
         this.rows = this.rowsValue.map((r) => ({ ...r, holes: [...r.holes] }));
@@ -122,9 +124,17 @@ export default class extends Controller {
     duplicate() {
         const r = this.row();
         if (!r) return;
-        const copy = { ...r, id: newId(), name: nextName(this.rows), holes: [...r.holes], ...(r.dir === 'h' ? { y: r.y + r.l + AISLE } : { x: r.x + r.l + AISLE }) };
+        // Копия — через проезд от ряда, дальше по той же оси, пока не найдётся место, где она ни на что не ложится.
+        const copy = { ...r, id: newId(), name: nextName(this.rows), holes: [...r.holes] };
+        const step = r.l + AISLE;
+        for (let i = 1; i <= 50; i++) {
+            Object.assign(copy, r.dir === 'h' ? { y: r.y + step * i } : { x: r.x + step * i });
+            if (!this.rows.some((o) => overlaps(box(o), box(copy)))) break;
+        }
         this.change(() => this.rows.push(copy));
         this.select(copy.id);
+        const b = box(copy);
+        this.view.focus({ x: b.x0, y: b.y0, width: b.x1 - b.x0, height: b.y1 - b.y0 }, 30);
     }
 
     remove() {
@@ -140,9 +150,9 @@ export default class extends Controller {
         if (r) this.change(() => { r.dir = r.dir === 'h' ? 'v' : 'h'; });
     }
 
-    reverse() {
+    reverse(e) {
         const r = this.row();
-        if (r) this.change(() => { r.rev = !r.rev; });
+        if (r) this.change(() => { r.rev = e?.target.type === 'checkbox' ? e.target.checked : !r.rev; });
     }
 
     // Поле плашки: буква, первый номер, мест, ширина и длина места.
@@ -165,7 +175,7 @@ export default class extends Controller {
     }
 
     toggleHole(r, s) {
-        if (this.taken.get(r.id)?.has(s.k)) { this.say(`На месте ${s.code} стоит ${this.taken.get(r.id).get(s.k)}`); return; }
+        if (this.taken.get(r.id)?.has(s.k)) { this.say(`На месте ${s.code} стоит ${this.taken.get(r.id).get(s.k).label}`); return; }
         if (!s.hole && r.holes.length >= r.n - 1) return;
         this.change(() => { r.holes = s.hole ? r.holes.filter((h) => h !== s.num) : [...r.holes, s.num]; });
     }
@@ -280,8 +290,10 @@ export default class extends Controller {
         if (!this.dirty || this.saving) return;
         this.saving = true;
         this.saveTarget.disabled = true;
+        this.saveTarget.classList.add('is-busy');
         const r = await request(this.urlValue, { method: 'PUT', json: { rows: this.rows, rev: this.revValue }, statuses: [422] });
         this.saving = false;
+        this.saveTarget.classList.remove('is-busy');
         if (!r) { this.render(); return; }
         const data = await r.json().catch(() => ({}));
         if (r.status === 422) {
@@ -320,7 +332,8 @@ export default class extends Controller {
     render() {
         this.draw();
         this.fill();
-        this.saveTarget.disabled = !this.dirty || this.saving;
+        this.saveTarget.hidden = !this.dirty && !this.saving;
+        this.saveTarget.disabled = this.saving;
         this.undoTarget.disabled = !this.past.length;
         this.redoTarget.disabled = !this.future.length;
         this.emptyTarget.hidden = this.rows.length > 0;
@@ -344,17 +357,20 @@ export default class extends Controller {
                 const em = Math.min(s.w, s.h) * 0.3;
                 const car = taken?.get(s.k);
                 const cls = s.hole ? ' is-hole' : car !== undefined ? ' is-taken' : '';
-                out.push(`<g class="espot${cls}" data-k="${s.k}"><rect x="${s.x + 0.08}" y="${s.y + 0.08}" width="${s.w - 0.16}" height="${s.h - 0.16}" rx="0.35"/>`);
+                out.push(`<g class="espot${cls}" data-k="${s.k}"><rect x="${s.x + 0.08}" y="${s.y + 0.08}" width="${s.w - 0.16}" height="${s.h - 0.16}" rx="0.3"/>`);
                 if (s.hole) {
-                    const c = 0.5;
+                    const c = Math.min(s.w, s.h) * 0.16;
                     out.push(`<path class="espot-x" d="M${s.x + s.w / 2 - c} ${s.y + s.h / 2 - c}l${2 * c} ${2 * c}m0 ${-2 * c}l${-2 * c} ${2 * c}"/>`);
+                } else if (car) {
+                    out.push(carIcon(s, car.cat, this.spriteValue));
+                    out.push(`<text class="espot-num is-small" x="${s.x + 0.45}" y="${s.y + 0.75}">${s.num}</text>`);
                 } else {
-                    out.push(`<text x="${s.x + s.w / 2}" y="${s.y + s.h / 2 + em * 0.35}" font-size="${em}">${s.num}</text>`);
+                    out.push(`<text class="espot-num" x="${s.x + s.w / 2}" y="${s.y + s.h / 2}" font-size="${em}">${s.num}</text>`);
                 }
                 out.push('</g>');
             }
             if (r.name) {
-                const t = r.dir === 'h' ? [b.x0 - 0.9, (b.y0 + b.y1) / 2] : [(b.x0 + b.x1) / 2, b.y0 - 0.9];
+                const t = r.dir === 'h' ? [b.x0 - 0.8, (b.y0 + b.y1) / 2] : [(b.x0 + b.x1) / 2, b.y0 - 0.8];
                 out.push(`<text class="erow-name" x="${t[0]}" y="${t[1]}">${r.name}</text>`);
             }
             out.push('</g>');
@@ -368,13 +384,14 @@ export default class extends Controller {
             const hit = Math.max(R, 22 * k);
             const count = r.dir === 'h' ? [b.x1 + R * 0.6, (b.y0 + b.y1) / 2] : [(b.x0 + b.x1) / 2, b.y1 + R * 0.6];
             const depth = r.dir === 'h' ? [(b.x0 + b.x1) / 2, b.y1 + R * 0.6] : [b.x1 + R * 0.6, (b.y0 + b.y1) / 2];
-            const arrow = (at, horizontal) => {
-                const a = R * 0.45;
-                return horizontal ? `M${at[0] - a} ${at[1]}h${2 * a}m${-a * 0.6} ${-a * 0.6}l${a * 0.6} ${a * 0.6}l${-a * 0.6} ${a * 0.6}M${at[0] - a} ${at[1]}l${a * 0.6} ${-a * 0.6}M${at[0] - a} ${at[1]}l${a * 0.6} ${a * 0.6}`
-                    : `M${at[0]} ${at[1] - a}v${2 * a}m${-a * 0.6} ${-a * 0.6}l${a * 0.6} ${a * 0.6}l${a * 0.6} ${-a * 0.6}M${at[0]} ${at[1] - a}l${-a * 0.6} ${a * 0.6}M${at[0]} ${at[1] - a}l${a * 0.6} ${a * 0.6}`;
+            const icon = (at, name, turn = false) => {
+                const a = R * 1.1;
+                const svg = `<svg class="i ehandle-icon" viewBox="0 0 24 24" x="${at[0] - a / 2}" y="${at[1] - a / 2}" width="${a}" height="${a}"><use href="${this.spriteValue}#i-${name}"/></svg>`;
+                return turn ? `<g transform="rotate(-90 ${at[0]} ${at[1]})">${svg}</g>` : svg;
             };
-            out.push(`<g class="ehandle" data-handle="count"><circle class="ehandle-hit" cx="${count[0]}" cy="${count[1]}" r="${hit}"/><circle cx="${count[0]}" cy="${count[1]}" r="${R}"/><path d="${arrow(count, r.dir === 'h')}" stroke-width="${2 * k}"/></g>`);
-            out.push(`<g class="ehandle" data-handle="depth"><circle class="ehandle-hit" cx="${depth[0]}" cy="${depth[1]}" r="${hit}"/><circle cx="${depth[0]}" cy="${depth[1]}" r="${R}"/><path d="${arrow(depth, r.dir !== 'h')}" stroke-width="${2 * k}"/></g>`);
+            const h = r.dir === 'h';
+            out.push(`<g class="ehandle" data-handle="count"><circle class="ehandle-hit" cx="${count[0]}" cy="${count[1]}" r="${hit}"/><circle cx="${count[0]}" cy="${count[1]}" r="${R}"/>${icon(count, h ? 'chevron-right' : 'chevron-down')}</g>`);
+            out.push(`<g class="ehandle" data-handle="depth"><circle class="ehandle-hit" cx="${depth[0]}" cy="${depth[1]}" r="${hit}"/><circle cx="${depth[0]}" cy="${depth[1]}" r="${R}"/>${icon(depth, 'arrow-down', !h)}</g>`);
         }
         for (const g of this.guides || []) out.push(`<line class="eguide" x1="${g.x1}" y1="${g.y1}" x2="${g.x2}" y2="${g.y2}" stroke-width="${1.5 * k}" stroke-dasharray="${6 * k} ${4 * k}"/>`);
         if (this.gap) {
@@ -393,16 +410,17 @@ export default class extends Controller {
     fill() {
         const r = this.row();
         this.panelTarget.hidden = !r;
+        this.panelTarget.parentElement.classList.toggle('has-bar', !!r);
         if (!r) return;
         const set = (t, v) => { if (document.activeElement !== t) t.value = v; };
+        const n = r.n - r.holes.length;
+        this.titleTarget.textContent = `${r.name ? `Ряд ${r.name}` : 'Ряд'}, ${n} ${plural(n, ['место', 'места', 'мест'])}`;
         set(this.nameTarget, r.name);
         set(this.fromTarget, r.from);
         set(this.nTarget, r.n);
         set(this.wTarget, String(r.w).replace('.', ','));
         set(this.lTarget, String(r.l).replace('.', ','));
-        this.dirTarget.setAttribute('aria-pressed', r.dir === 'v');
-        this.dirTarget.querySelector('[data-dir-label]').textContent = r.dir === 'h' ? 'Вправо' : 'Вниз';
-        this.revTarget.setAttribute('aria-pressed', r.rev);
+        this.revTarget.checked = r.rev;
         this.removeTarget.disabled = this.taken.has(r.id);
     }
 }

@@ -1,36 +1,42 @@
 {{-- Схема парковки во весь экран (`x-park.yard-plan`, `yard_plan_controller`): где стоит каждая ТС и перестановка нажатием —
-     машину, потом место. Под схемой лоток «без места»: ТС на этой парковке, у которых места нет или оно не из схемы.
-     Схему правят администратор и управляющие (`editsYardPlan`) — кнопка «Изменить» ведёт в редактор. --}}
+     машину, потом место. Выбранная — плашкой внизу холста (ссылка в дело): значок типа, название, госномер, место. Под схемой лоток «без
+     места»: ТС на этой парковке без места или с местом не из схемы. Правка схемы — круглая кнопка у заголовка
+     (`editsYardPlan`). --}}
 @php
+    use Illuminate\Support\Facades\Blade;
     $all = $cars->values()->concat($loose);
     $info = $all->mapWithKeys(fn ($v) => [$v->id => [
-        'title' => $v->titleWithYear(), 'short' => $v->brand?->name ?? $v->ref ?? 'ТС', 'plate' => $v->plate, 'spot' => $cars->has($v->spot ?? '') && $cars[$v->spot]->id === $v->id ? $v->spot : null,
-        'days' => ($d = $v->daysStored()) ? $d.' д' : null,
+        'title' => $v->titleWithYear(), 'short' => $v->brand?->name ?? $v->ref ?? 'ТС',
+        'spot' => $cars->has($v->spot ?? '') && $cars[$v->spot]->id === $v->id ? $v->spot : null,
+        'icon' => Blade::render('<x-ui.cat-icon :category="$c"/>', ['c' => $v->category]),
+        'plate' => $v->plate ? Blade::render('<x-ui.plate :value="$p"/>', ['p' => $v->plate]) : '',
     ]]);
     $back = auth()->user()->seesYards() ? ['Парковки', '/yards'] : ['Наличие', '/cars?yard='.$yard->id];
 @endphp
-<x-ui.shell :title="$yard->name" :back="$back" class="plan-shell">
+<x-ui.shell :title="$yard->name" :back="$back">
+    @if ($edits && $yard->rows)
+        <x-slot:actions class="!w-auto ml-auto">
+            <a href="/yards/{{ $yard->id }}/plan/edit" class="btn btn-s btn-quiet btn-round" aria-label="Изменить схему" title="Изменить схему"><x-ui.icon name="edit" class="size-4"/></a>
+        </x-slot:actions>
+    @endif
     @if (! $yard->rows)
         <x-ui.empty class="mt-6" :href="$edits ? '/yards/'.$yard->id.'/plan/edit' : null" link="Нарисовать схему">Схемы нет</x-ui.empty>
     @else
-        <div class="plan-page{{ $loose->isNotEmpty() ? ' has-tray' : '' }}" data-controller="yard-plan" data-yard-plan-yard-value="{{ $yard->id }}" data-yard-plan-cars-value="{{ json_encode($info) }}">
-            <div class="plan-tools">
-                <label class="toolbar-search plan-find"><x-ui.icon name="search" class="size-4 shrink-0 text-ink-muted"/><input type="search" placeholder="Госномер, VIN, убыток" autocomplete="off" enterkeyhint="search" aria-label="Найти ТС" data-yard-plan-target="find" data-action="input->yard-plan#find"></label>
-                @if ($edits)<a href="/yards/{{ $yard->id }}/plan/edit" class="btn btn-s btn-quiet shrink-0 rounded-full"><x-ui.icon name="edit" class="size-4"/>Изменить</a>@endif
-            </div>
-            <div class="plan-stage">
+        <div class="plan-page" data-controller="yard-plan" data-yard-plan-yard-value="{{ $yard->id }}" data-yard-plan-cars-value="{{ json_encode($info) }}">
+            <label class="toolbar-search plan-find"><x-ui.icon name="search" class="size-4 shrink-0 text-ink-muted"/><input type="search" placeholder="Госномер, VIN, убыток" autocomplete="off" enterkeyhint="search" aria-label="Найти ТС" data-yard-plan-target="find" data-action="input->yard-plan#find"></label>
+            <div class="plan-stage" data-yard-plan-target="stage">
                 <x-park.yard-plan :yard="$yard" :cars="$cars"/>
-                <div class="plan-zoom">
-                    <button type="button" class="plan-zoom-btn" data-action="yard-plan#zoomIn" aria-label="Ближе"><x-ui.icon name="plus" class="size-5"/></button>
-                    <button type="button" class="plan-zoom-btn" data-action="yard-plan#zoomOut" aria-label="Дальше"><span class="plan-minus"></span></button>
-                    <button type="button" class="plan-zoom-btn" data-action="yard-plan#fit" aria-label="Вся парковка"><x-ui.icon name="expand" class="size-4"/></button>
-                </div>
+                @include('park.yards.plan-zoom', ['controller' => 'yard-plan'])
                 <div class="plan-bar" data-yard-plan-target="bar" hidden>
-                    <div class="min-w-0 flex-1">
-                        <div class="truncate font-medium" data-yard-plan-target="barTitle"></div>
-                        <div class="truncate text-sm text-ink-muted" data-yard-plan-target="barFacts"></div>
-                    </div>
-                    <a href="#" class="btn btn-s btn-quiet shrink-0 rounded-full" data-yard-plan-target="barLink">Открыть</a>
+                    {{-- Плашка — ссылка в дело ТС целиком, справа ›; × — снять выбор. --}}
+                    <a href="#" class="plan-bar-link" data-yard-plan-target="barLink">
+                        <span class="plan-bar-icon" data-yard-plan-target="barIcon"></span>
+                        <span class="min-w-0 flex-1">
+                            <span class="block truncate font-medium" data-yard-plan-target="barTitle"></span>
+                            <span class="plan-bar-facts" data-yard-plan-target="barFacts"></span>
+                        </span>
+                        <x-ui.icon name="chevron-right" class="size-4 shrink-0 text-ink-dim"/>
+                    </a>
                     <button type="button" class="btn btn-s btn-quiet btn-round shrink-0" data-action="yard-plan#deselect" aria-label="Отменить"><x-ui.icon name="x" class="size-4"/></button>
                 </div>
             </div>
@@ -40,7 +46,7 @@
                     <div class="plan-tray-cars">
                         @foreach ($loose as $v)
                             <button type="button" class="plan-chip" data-yard-plan-target="tray" data-vehicle="{{ $v->id }}" data-find="{{ mb_strtolower(implode(' ', array_filter([$v->plate, $v->ref, $v->vin, $v->brand?->name]))) }}" data-action="yard-plan#take">
-                                <span class="truncate">{{ $v->brand?->name ?? $v->ref ?? 'ТС' }}</span>@if ($v->plate)<x-ui.plate :value="$v->plate"/>@endif
+                                <x-ui.cat-icon :category="$v->category"/><span class="truncate">{{ $v->brand?->name ?? $v->ref ?? 'ТС' }}</span>@if ($v->plate)<x-ui.plate :value="$v->plate"/>@endif
                             </button>
                         @endforeach
                     </div>

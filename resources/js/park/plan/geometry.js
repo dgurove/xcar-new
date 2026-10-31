@@ -28,6 +28,9 @@ export function box(row) {
         : { x0: row.x, y0: row.y, x1: row.x + row.l, y1: row.y + long };
 }
 
+// Прямоугольники рядов (`box`) налезают друг на друга — касание краем не в счёт.
+export const overlaps = (a, b) => a.x0 < b.x1 - 0.01 && b.x0 < a.x1 - 0.01 && a.y0 < b.y1 - 0.01 && b.y0 < a.y1 - 0.01;
+
 export function bounds(rows) {
     if (!rows.length) return null;
     const b = rows.map(box);
@@ -90,4 +93,14 @@ export function aisle(moving, others) {
         for (const c of cands) if (c.gap > 0.01 && c.gap < 30 && (!best || c.gap < best.gap)) best = c;
     }
     return best;
+}
+
+// Машина на месте — значок её типа, как `x-park.plan-car`: квадрат 256 вписан в место стоя, без поворота. cat — тип
+// (`passenger`, `truck`…) или пусто.
+const ICONS = { passenger: 'cat-car', light: 'cat-van', truck: 'cat-truck', long: 'cat-long', trailer: 'cat-trailer', special: 'cat-special', moto: 'cat-moto' };
+export function carIcon(s, cat, sprite) {
+    const size = Math.min(s.w * 0.84, (s.h * 0.8) / 0.56);
+    const cx = s.x + s.w / 2;
+    const cy = s.y + s.h / 2;
+    return `<g class="plan-car cat-${cat || 'unknown'}"><svg class="i-s" viewBox="0 0 256 256" x="${cx - size / 2}" y="${cy - size / 2}" width="${size}" height="${size}"><use href="${sprite}#i-${ICONS[cat] || 'cat-car'}"/></svg></g>`;
 }
