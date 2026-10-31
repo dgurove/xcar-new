@@ -1,14 +1,15 @@
 import { Controller } from '@hotwired/stimulus';
 import { Viewport } from '../park/plan/viewport';
+import { ICONS } from '../park/plan/geometry';
 
 // Схема парковки (`x-park.yard-plan`). full — страница схемы: нажали машину (на схеме или в лотке «без места») — она
 // выбрана, внизу плашка с ней, свободные места светятся; нажали свободное — перестановка (`Move`), занятое — обмен
-// (`SwapSpots`, с подтверждением), мимо или её же — отмена. Мышью машину можно перетащить на место. Поиск по госномеру,
+// (`SwapSpots`, с подтверждением; машину из лотка — нет, только на свободное), мимо или её же — отмена. Мышью машину можно перетащить на место. Поиск по госномеру,
 // VIN, убытку — подсветка и подъезд к машине. pick — выбор места в шторке: свободное место пишется в поле «Место» формы.
 // Схему перерисовывает морф (Mercure) — вид и выбор остаются.
 export default class extends Controller {
     static targets = ['svg', 'stage', 'bar', 'barIcon', 'barTitle', 'barFacts', 'barLink', 'move', 'swap', 'tray', 'find'];
-    static values = { mode: { type: String, default: 'full' }, yard: Number, cars: Object, vehicle: Number };
+    static values = { mode: { type: String, default: 'full' }, yard: Number, cars: Object, vehicle: Number, sprite: String };
 
     connect() {
         this.view = new Viewport(this.svgTarget, { onTap: (e) => this.tap(e), grab: (e) => this.grab(e), min: this.modeValue === 'pick' ? 4 : 5 });
@@ -107,7 +108,9 @@ export default class extends Controller {
         if (!this.selected) { if (id) this.select(id); return; }
         if (!spot || id === this.selected) { this.deselect(); return; }
         if (!id) this.moveTo(spot.dataset.spot);
-        else this.swapWith(id);
+        // Машина без места (из лотка) не меняется местами: стоящая осталась бы без места.
+        else if (this.carsValue[this.selected]?.spot) this.swapWith(id);
+        else window.toast?.(`Место ${spot.dataset.spot} занято, выберите свободное`, 'danger');
     }
 
     // Машина из лотка «без места».
@@ -122,12 +125,10 @@ export default class extends Controller {
         this.paint();
         const car = this.carsValue[this.selected];
         if (!car || !this.hasBarTarget) return;
-        this.barIconTarget.innerHTML = car.icon;
+        this.barIconTarget.replaceChildren(catIcon(car.cat, this.spriteValue));
         this.barTitleTarget.textContent = car.title;
-        // Госномер — плашкой `x-ui.plate` (разметка с сервера), место — словами.
         const where = Object.assign(document.createElement('span'), { textContent: car.spot ? `место ${car.spot}` : 'без места' });
-        this.barFactsTarget.innerHTML = car.plate;
-        this.barFactsTarget.append(where);
+        this.barFactsTarget.replaceChildren(...[plate(car.plate), where].filter(Boolean));
         this.barLinkTarget.href = `/cars/${this.selected}`;
         this.barTarget.hidden = false;
         this.stageTarget.classList.add('has-bar');
@@ -163,7 +164,7 @@ export default class extends Controller {
         const form = this.swapTarget;
         form.action = `/cars/${this.selected}/swap`;
         form.elements.with.value = id;
-        form.dataset.turboConfirm = `Поменять местами ${a?.short ?? 'ТС'} (${a?.spot ?? 'без места'}) и ${b?.short ?? 'ТС'} (${b?.spot})?`;
+        form.dataset.turboConfirm = `Поменять местами ${a?.short ?? 'ТС'} (${a?.spot}) и ${b?.short ?? 'ТС'} (${b?.spot})?`;
         form.requestSubmit();
         this.deselect();
     }
@@ -199,4 +200,21 @@ export default class extends Controller {
         this.svgTarget.querySelectorAll('.is-picked').forEach((n) => n.classList.remove('is-picked'));
         if (code) this.svgTarget.querySelector(`[data-spot="${CSS.escape(code)}"]`)?.classList.add('is-picked');
     }
+}
+
+// Значок типа ТС — как `x-ui.cat-icon`: символ спрайта в `.cat-icon .cat-<тип>`.
+function catIcon(cat, sprite) {
+    const span = Object.assign(document.createElement('span'), { className: `cat-icon cat-${cat || 'unknown'}` });
+    span.innerHTML = `<svg class="i-s size-full" viewBox="0 0 256 256" aria-hidden="true"><use href="${sprite}#i-${ICONS[cat] || 'cat-car'}"/></svg>`;
+    return span;
+}
+
+// Госномер — как `x-ui.plate`: номер по образцу — основная часть и регион за чертой, иначе целиком; нет номера — ничего.
+function plate(value) {
+    if (!value) return null;
+    const el = Object.assign(document.createElement('span'), { className: 'plate' });
+    const m = value.replace(/ /g, '').toUpperCase().match(/^([А-ЯЁA-Z]\d{3}[А-ЯЁA-Z]{2})(\d{2,3})$/u);
+    if (!m) { el.textContent = value; return el; }
+    el.append(Object.assign(document.createElement('span'), { className: 'plate-main', textContent: m[1] }), Object.assign(document.createElement('span'), { className: 'plate-reg', textContent: m[2] }));
+    return el;
 }

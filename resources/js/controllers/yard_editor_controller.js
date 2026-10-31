@@ -31,7 +31,7 @@ export default class extends Controller {
         this.future = [];
         this.selected = null;
         this.dirty = false;
-        this.view = new Viewport(this.svgTarget, { onTap: (e) => this.tap(e), grab: (e) => this.grab(e), min: 4, onChange: () => this.draw() });
+        this.view = new Viewport(this.svgTarget, { onTap: (e) => this.tap(e), grab: (e) => this.grab(e), min: 4, wheelPan: true, onChange: () => this.schedule({ rows: false }) });
         this.view.reset(this.full());
         this.onKey = (e) => this.key(e);
         addEventListener('keydown', this.onKey);
@@ -169,7 +169,7 @@ export default class extends Controller {
             if (key === 'n') r.n = Math.max(this.lastTaken(r.id) + 1, 1, Math.min(MAX_N, Math.round(v)));
             if (key === 'w') r.w = Math.max(1.5, Math.min(8, snap(v)));
             if (key === 'l') r.l = Math.max(2.5, Math.min(25, snap(v)));
-            r.holes = r.holes.filter((h) => h >= r.from && h < r.from + r.n);
+            r.holes = r.holes.filter((h) => h < r.n);
         });
         if (e.type === 'change') this.fill();
     }
@@ -177,7 +177,7 @@ export default class extends Controller {
     toggleHole(r, s) {
         if (this.taken.get(r.id)?.has(s.k)) { this.say(`На месте ${s.code} стоит ${this.taken.get(r.id).get(s.k).label}`); return; }
         if (!s.hole && r.holes.length >= r.n - 1) return;
-        this.change(() => { r.holes = s.hole ? r.holes.filter((h) => h !== s.num) : [...r.holes, s.num]; });
+        this.change(() => { r.holes = s.hole ? r.holes.filter((h) => h !== s.k) : [...r.holes, s.k]; });
     }
 
     select(id) {
@@ -240,7 +240,7 @@ export default class extends Controller {
         } else if (g.kind === 'count') {
             const along = r.dir === 'h' ? p.x - r.x : p.y - r.y;
             r.n = Math.max(1, this.lastTaken(r.id) + 1, Math.min(MAX_N, Math.round(along / r.w)));
-            r.holes = o.holes.filter((h) => h >= r.from && h < r.from + r.n);
+            r.holes = o.holes.filter((h) => h < r.n);
         } else if (g.kind === 'depth') {
             r.l = Math.max(2.5, Math.min(25, snap(r.dir === 'h' ? p.y - r.y : p.x - r.x)));
         }
@@ -324,9 +324,16 @@ export default class extends Controller {
 
     // --- рисование ---
 
-    schedule() {
+    // Перерисовка не чаще кадра; ряды — если хоть один из запросов за кадр их менял.
+    schedule({ rows = true } = {}) {
+        this.pendingRows ||= rows;
         if (this.frame) return;
-        this.frame = requestAnimationFrame(() => { this.frame = null; this.draw(); });
+        this.frame = requestAnimationFrame(() => {
+            this.frame = null;
+            const withRows = this.pendingRows;
+            this.pendingRows = false;
+            this.draw({ rows: withRows });
+        });
     }
 
     render() {
@@ -339,14 +346,25 @@ export default class extends Controller {
         this.emptyTarget.hidden = this.rows.length > 0;
     }
 
-    draw() {
+    // Холст — три слоя: сетка, ряды, надстройка (рамка выбранного, ручки, направляющие, проезд). Ряды зависят только от схемы и
+    // выбора, надстройка — ещё и от масштаба (толщины и ручки в пикселях экрана): сдвиг и щипок перерисовывают только её, и не
+    // чаще кадра (`schedule`), а не всю схему на каждое движение пальца.
+    layers() {
+        if (this.rowsLayer?.isConnected) return;
+        this.svgTarget.innerHTML = '<defs><pattern id="plan-grid" width="1" height="1" patternUnits="userSpaceOnUse"><circle cx="0" cy="0" r="0.06" class="egrid"/></pattern></defs>'
+            + '<rect fill="url(#plan-grid)" data-layer="grid"/><g data-layer="rows"></g><g data-layer="over"></g>';
+        [this.gridLayer, this.rowsLayer, this.overLayer] = ['grid', 'rows', 'over'].map((n) => this.svgTarget.querySelector(`[data-layer="${n}"]`));
+    }
+
+    draw({ rows = true } = {}) {
         if (!this.view) return;
-        const k = this.view.scale();
+        this.layers();
+        if (rows) this.drawRows();
+        this.drawOver();
+    }
+
+    drawRows() {
         const out = [];
-        // Точки сетки — метровые, под всей видимой частью.
-        out.push('<defs><pattern id="plan-grid" width="1" height="1" patternUnits="userSpaceOnUse"><circle cx="0" cy="0" r="0.06" class="egrid"/></pattern></defs>');
-        const [vx, vy, vw, vh] = this.view.box;
-        out.push(`<rect x="${vx - 2}" y="${vy - 2}" width="${vw + 4}" height="${vh + 4}" fill="url(#plan-grid)"/>`);
         for (const r of this.rows) {
             const sel = r.id === this.selected;
             const b = box(r);
@@ -375,6 +393,15 @@ export default class extends Controller {
             }
             out.push('</g>');
         }
+        this.rowsLayer.innerHTML = out.join('');
+    }
+
+    drawOver() {
+        const k = this.view.scale();
+        const out = [];
+        // Точки сетки — метровые, под всей видимой частью.
+        const [vx, vy, vw, vh] = this.view.box;
+        Object.entries({ x: vx - 2, y: vy - 2, width: vw + 4, height: vh + 4 }).forEach(([a, v]) => this.gridLayer.setAttribute(a, v));
         const r = this.row();
         if (r) {
             const b = box(r);
@@ -403,7 +430,7 @@ export default class extends Controller {
             out.push(`<line class="egap" x1="${g.x1}" y1="${g.y1}" x2="${g.x2}" y2="${g.y2}" stroke-width="${1.5 * k}"/>`);
             out.push(`<rect class="egap-bg" x="${mx - fs * 1.8}" y="${my - fs * 0.8}" width="${fs * 3.6}" height="${fs * 1.6}" rx="${fs * 0.8}"/><text class="egap-text" x="${mx}" y="${my + fs * 0.35}" font-size="${fs}">${label}</text>`);
         }
-        this.svgTarget.innerHTML = out.join('');
+        this.overLayer.innerHTML = out.join('');
     }
 
     // Плашка выбранного ряда: поля — значениями ряда, кроме того, где сейчас курсор.

@@ -1,12 +1,14 @@
 // Сдвиг и масштаб схемы парковки: меняется viewBox, а не CSS-transform — подписи мест чёткие при любом увеличении.
-// Один палец или мышь — сдвиг, два пальца — щипок, колесо — сдвиг (с ctrl или щипок трекпада — масштаб), двойной клик —
-// ближе. Касание без сдвига — onTap. grab(e) — указатель забирает вызывающий (перетаскивание машины или ряда).
+// Один палец или мышь — сдвиг, два пальца — щипок, ctrl/⌘ + колесо или щипок трекпада — масштаб, двойной клик — ближе.
+// Колесо без ctrl листает страницу (схема в шторке и на странице с лотком под ней не должна перехватывать прокрутку);
+// wheelPan — колесо двигает схему (редактор: холст во весь экран, листать там нечего). Касание без сдвига — onTap.
+// grab(e) — указатель забирает вызывающий (перетаскивание машины или ряда).
 // Глобально зум выключен (touch-action pan-x pan-y, noZoom) — у холста свой touch-action: none (`.plan-live`).
 const MOVE = 6;
 
 export class Viewport {
-    constructor(svg, { onTap = () => {}, grab = () => false, min = 5, onChange = () => {} } = {}) {
-        Object.assign(this, { onTap, grab, min, onChange, pointers: new Map(), moved: false });
+    constructor(svg, { onTap = () => {}, grab = () => false, min = 5, onChange = () => {}, wheelPan = false } = {}) {
+        Object.assign(this, { onTap, grab, min, onChange, wheelPan, pointers: new Map(), moved: false });
         this.handlers = {
             pointerdown: (e) => this.down(e),
             pointermove: (e) => this.move(e),
@@ -116,11 +118,13 @@ export class Viewport {
     }
 
     wheel(e) {
-        e.preventDefault();
-        if (e.ctrlKey || e.metaKey || e.deltaMode === 1) {
+        if (e.ctrlKey || e.metaKey) {
+            e.preventDefault();
             this.zoom(Math.exp(-e.deltaY * (e.deltaMode === 1 ? 0.05 : 0.01)), this.point(e));
             return;
         }
+        if (!this.wheelPan) return;
+        e.preventDefault();
         const k = this.scale();
         this.box[0] += e.deltaX * k;
         this.box[1] += e.deltaY * k;

@@ -33,6 +33,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
@@ -303,6 +304,11 @@ class Vehicle extends Model
         // Места по рядам расписаны и все заняты — принимать некуда; без рядов вместимость только подсказка.
         if (! $spot && $yard->rows && ! $yard->freeSpots()) {
             throw ValidationException::withMessages(['spot' => 'На «'.$yard->name.'» свободных мест нет']);
+        }
+        // Место ставят в транзакции (приём, перестановка, обмен, схема): строка парковки под замком, пока она не закончится, — две
+        // перестановки на одно место разом идут по очереди, и вторая получает «занято», а не ошибку уникальности места.
+        if ($spot && DB::transactionLevel() > 0) {
+            Yard::withoutGlobalScopes()->whereKey($yard->id)->lockForUpdate()->value('id');
         }
         if ($spot && self::where('yard_id', $yard->id)->where('spot', $spot)->where('state', VehicleState::Stored)->when($exceptId, fn ($q) => $q->where('id', '!=', $exceptId))->exists()) {
             throw ValidationException::withMessages(['spot' => 'Место '.$spot.' занято']);

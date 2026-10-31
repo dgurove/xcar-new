@@ -5,7 +5,8 @@ namespace App\Park;
 /**
  * Схема парковки (31.10.2026, владелец: «графически видеть, где машина, и переставлять»): прямые ряды мест в метрах.
  * Ряд — `{id, name, from, n, x, y, dir, w, l, holes, rev}`: места бок о бок вправо (`h`) или вниз (`v`), размер места
- * `w × l` на весь ряд, `holes` — убранные номера (столб, въезд; номера не сдвигаются — таблички на площадке те же),
+ * `w × l` на весь ряд, `holes` — убранные места по порядку в ряду (0 — первое от начала; столб, въезд; номера остальных не
+ * сдвигаются — таблички на площадке те же, а нумерация «с конца» или с другого номера не переносит убранное на другое место),
  * `from` — первый номер, `rev` — нумерация с другого конца. Ряды «A: 20» без координат раскладываются стопкой через проезд.
  * Та же геометрия — в `resources/js/park/plan/geometry.js` (редактор).
  */
@@ -61,16 +62,16 @@ final class Plan
         return $row['rev'] ? $row['from'] + $row['n'] - 1 - $k : $row['from'] + $k;
     }
 
-    /** Места ряда без убранных: код, номер и прямоугольник. @return list<array{code: string, num: int, x: float, y: float, w: float, h: float}> */
+    /** Места ряда без убранных: порядок в ряду, код, номер и прямоугольник. @return list<array{k: int, code: string, num: int, x: float, y: float, w: float, h: float}> */
     public static function spots(array $row): array
     {
         $spots = [];
         for ($k = 0; $k < $row['n']; $k++) {
-            $num = self::num($row, $k);
-            if (in_array($num, $row['holes'], true)) {
+            if (in_array($k, $row['holes'], true)) {
                 continue;
             }
-            $spots[] = ['code' => self::code($row['name'], $num), 'num' => $num] + ($row['dir'] === 'h'
+            $num = self::num($row, $k);
+            $spots[] = ['k' => $k, 'code' => self::code($row['name'], $num), 'num' => $num] + ($row['dir'] === 'h'
                 ? ['x' => $row['x'] + $k * $row['w'], 'y' => $row['y'], 'w' => $row['w'], 'h' => $row['l']]
                 : ['x' => $row['x'], 'y' => $row['y'] + $k * $row['w'], 'w' => $row['l'], 'h' => $row['w']]);
         }

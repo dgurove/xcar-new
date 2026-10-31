@@ -63,7 +63,7 @@ class YardController
         }
 
         return view('park.yards.plan', [
-            'yard' => $yard, 'cars' => $placed, 'loose' => $cars->reject(fn (Vehicle $v) => $placed->has($v->spot) && $placed[$v->spot]->id === $v->id)->values(),
+            'yard' => $yard, 'cars' => $placed, 'loose' => $cars->reject(fn (Vehicle $v) => $v->spot !== null && $placed->get($v->spot)?->id === $v->id)->values(),
             'edits' => $request->user()->editsYardPlan(),
         ]);
     }

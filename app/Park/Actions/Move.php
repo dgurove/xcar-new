@@ -27,7 +27,8 @@ final class Move
             $from = $vehicle->yard?->name;
             $sameYard = $vehicle->yard_id === $to->id;
             $vehicle->update(['yard_id' => $to->id, 'spot' => $spot]);
-            $vehicle->log(EventType::Moved, $by, ($sameYard ? ['to' => $to->name.($spot ? ', '.$spot : '')] : ['from' => $from, 'to' => $to->name.($spot ? ', '.$spot : '')]) + ['yard_id' => $to->id]);
+            // `spot` — для отмены выдачи (`UndoRelease` возвращает ТС на место последней перестановки).
+            $vehicle->log(EventType::Moved, $by, ($sameYard ? ['to' => $to->name.($spot ? ', '.$spot : '')] : ['from' => $from, 'to' => $to->name.($spot ? ', '.$spot : '')]) + ['yard_id' => $to->id] + ($spot ? ['spot' => $spot] : []));
 
             return $vehicle;
         });

@@ -15,6 +15,7 @@ use App\Park\RequestState;
 use App\Park\RequestType;
 use App\Park\Vehicle;
 use App\Park\VehicleState;
+use App\Park\Yard;
 use App\Support\Nav;
 use App\Users\User;
 use Illuminate\Support\Facades\DB;
@@ -54,7 +55,18 @@ final class UndoRelease
             $last = collect($vehicle->yardTimeline())->last(fn ($t) => $t['yard_id'] !== null);
             $moved = $vehicle->events()->reorder()->whereIn('type', [EventType::Accepted, EventType::Moved])->latest('created_at')->latest('id')->first();
             Inspection::where('vehicle_id', $vehicle->id)->where('kind', InspectionKind::Release)->delete();
-            $vehicle->update(['state' => VehicleState::Stored, 'released_at' => null, 'yard_id' => $last['yard_id'] ?? $vehicle->yard_id, 'spot' => $moved?->payload['spot'] ?? null]);
+            // Место — из той же записи (у перестановки оно в `spot` с 31.10.2026); его заняли, пока ТС не было, — без места,
+            // её поставят со схемы (одно место — одна стоящая ТС).
+            $yardId = $last['yard_id'] ?? $vehicle->yard_id;
+            $spot = $moved?->payload['spot'] ?? null;
+            if ($spot && ($yard = Yard::withoutGlobalScopes()->find($yardId))) {
+                try {
+                    $spot = Vehicle::takeSpot($yard, $spot, $vehicle->id);
+                } catch (ValidationException) {
+                    $spot = null;
+                }
+            }
+            $vehicle->update(['state' => VehicleState::Stored, 'released_at' => null, 'yard_id' => $yardId, 'spot' => $spot]);
             // Выдали по QR — пропуск снова действует: ТС стоит, покупатель приедет с тем же кодом.
             $released = $vehicle->events()->reorder()->where('type', EventType::Released)->latest('id')->first();
             if ($passId = $released?->payload['pass'] ?? null) {

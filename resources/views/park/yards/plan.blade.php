@@ -3,13 +3,13 @@
      места»: ТС на этой парковке без места или с местом не из схемы. Правка схемы — круглая кнопка у заголовка
      (`editsYardPlan`). --}}
 @php
-    use Illuminate\Support\Facades\Blade;
     $all = $cars->values()->concat($loose);
+    // Плашке выбранной — данные, не разметка: значок типа и плашку номера собирает `yard_plan_controller` (раньше — Blade::render
+    // на каждую машину при каждой загрузке и живом обновлении).
     $info = $all->mapWithKeys(fn ($v) => [$v->id => [
         'title' => $v->titleWithYear(), 'short' => $v->brand?->name ?? $v->ref ?? 'ТС',
-        'spot' => $cars->has($v->spot ?? '') && $cars[$v->spot]->id === $v->id ? $v->spot : null,
-        'icon' => Blade::render('<x-ui.cat-icon :category="$c"/>', ['c' => $v->category]),
-        'plate' => $v->plate ? Blade::render('<x-ui.plate :value="$p"/>', ['p' => $v->plate]) : '',
+        'spot' => $v->spot !== null && ($cars[$v->spot] ?? null)?->id === $v->id ? $v->spot : null,
+        'cat' => $v->category?->value, 'plate' => $v->plate,
     ]]);
     $back = auth()->user()->seesYards() ? ['Парковки', '/yards'] : ['Наличие', '/cars?yard='.$yard->id];
 @endphp
@@ -22,7 +22,7 @@
     @if (! $yard->rows)
         <x-ui.empty class="mt-6" :href="$edits ? '/yards/'.$yard->id.'/plan/edit' : null" link="Нарисовать схему">Схемы нет</x-ui.empty>
     @else
-        <div class="plan-page" data-controller="yard-plan" data-yard-plan-yard-value="{{ $yard->id }}" data-yard-plan-cars-value="{{ json_encode($info) }}">
+        <div class="plan-page" data-controller="yard-plan" data-yard-plan-yard-value="{{ $yard->id }}" data-yard-plan-cars-value="{{ json_encode($info) }}" data-yard-plan-sprite-value="{{ \App\Support\Icons::url() }}">
             <label class="toolbar-search plan-find"><x-ui.icon name="search" class="size-4 shrink-0 text-ink-muted"/><input type="search" placeholder="Госномер, VIN, убыток" autocomplete="off" enterkeyhint="search" aria-label="Найти ТС" data-yard-plan-target="find" data-action="input->yard-plan#find"></label>
             <div class="plan-stage" data-yard-plan-target="stage">
                 <x-park.yard-plan :yard="$yard" :cars="$cars"/>

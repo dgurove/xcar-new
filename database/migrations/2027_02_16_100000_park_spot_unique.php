@@ -12,8 +12,9 @@ return new class extends Migration
 {
     public function up(): void
     {
-        DB::statement("update park_vehicles v set spot = null where v.state = 'stored' and v.spot is not null and exists (
-            select 1 from park_vehicles o where o.yard_id = v.yard_id and o.spot = v.spot and o.state = 'stored' and o.id < v.id)");
+        DB::statement("update park_vehicles set spot = null where id in (
+            select id from (select id, row_number() over (partition by yard_id, spot order by accepted_at nulls last, id) as n
+                from park_vehicles where state = 'stored' and spot is not null) t where t.n > 1)");
         DB::statement("create unique index park_vehicles_yard_spot_unique on park_vehicles (yard_id, spot) where state = 'stored' and spot is not null");
     }
 

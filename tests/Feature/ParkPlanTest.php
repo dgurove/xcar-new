@@ -58,18 +58,35 @@ class ParkPlanTest extends TestCase
     {
         $row = ['id' => 'a', 'name' => 'A', 'from' => 1, 'n' => 5, 'x' => 0, 'y' => 0, 'dir' => 'h', 'w' => 2.5, 'l' => 5, 'holes' => [], 'rev' => false];
 
-        // Убрать место или ряд, где стоит ТС, нельзя.
-        $this->savePlan($this->manager, [['holes' => [2]] + $row])->assertStatus(422);
+        // Убрать место или ряд, где стоит ТС, нельзя (убранные места — по порядку в ряду: A-2 — второе, 1).
+        $this->savePlan($this->manager, [['holes' => [1]] + $row])->assertStatus(422);
         $this->savePlan($this->manager, [])->assertStatus(422);
         $this->savePlan($this->manager, [['n' => 1] + $row])->assertStatus(422);
 
         // Ряд переименован — ТС на том же месте под новым кодом; вместимость — по схеме.
-        $this->savePlan($this->manager, [['name' => 'B', 'holes' => [5]] + $row])->assertOk();
+        $this->savePlan($this->manager, [['name' => 'B', 'holes' => [4]] + $row])->assertOk();
         $this->assertSame('B-2', $this->vehicle->refresh()->spot);
         $this->assertSame(4, $this->yard->refresh()->capacity);
 
+        // Нумерация с другого конца: убранное место остаётся тем же местом на площадке, ТС — на своём месте под новым номером
+        // (раньше убранное по номеру переезжало на место ТС, и та молча получала чужой код).
+        $this->savePlan($this->manager, [['name' => 'B', 'holes' => [4], 'rev' => true] + $row])->assertOk();
+        $this->assertSame('B-4', $this->vehicle->refresh()->spot);
+        $this->assertSame(['B-2', 'B-3', 'B-4', 'B-5'], $this->yard->refresh()->spots());
+
         // Старая ревизия — отказ, а не перезапись чужой правки.
         $this->actingAs($this->manager)->putJson(Surface::Park->url("/yards/{$this->yard->id}/plan"), ['rows' => [$row], 'rev' => 'old'])->assertStatus(422);
-        $this->assertSame('B-2', $this->vehicle->refresh()->spot);
+        $this->assertSame('B-4', $this->vehicle->refresh()->spot);
+    }
+
+    public function test_rename_does_not_collide_with_free_text_spot(): void
+    {
+        // ТС записана на «B-1» свободным текстом до схемы; ряд A переименовывают в B — на B-1 встала бы вторая машина.
+        Vehicle::create(['yard_id' => $this->yard->id, 'state' => VehicleState::Stored, 'spot' => 'B-1', 'accepted_at' => now()->subDay()]);
+        $this->vehicle->update(['spot' => 'A-1']);
+        $row = ['id' => 'a', 'name' => 'B', 'from' => 1, 'n' => 5, 'x' => 0, 'y' => 0, 'dir' => 'h', 'w' => 2.5, 'l' => 5, 'holes' => [], 'rev' => false];
+
+        $this->savePlan($this->manager, [$row])->assertStatus(422)->assertJsonPath('errors.plan.0', fn ($m) => str_contains($m, 'B-1'));
+        $this->assertSame('A-1', $this->vehicle->refresh()->spot);
     }
 }

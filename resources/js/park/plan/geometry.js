@@ -1,5 +1,5 @@
 // Геометрия схемы парковки — та же, что `App\Park\Plan`: ряд `{id, name, from, n, x, y, dir, w, l, holes, rev}` в метрах,
-// места бок о бок вправо (h) или вниз (v), убранные — по номеру. Здесь — для редактора: коды, прямоугольники, прилипание.
+// места бок о бок вправо (h) или вниз (v), убранные — по порядку в ряду (k), не по номеру. Здесь — для редактора: коды, прямоугольники, прилипание.
 export const W = 2.5;
 export const L = 5;
 export const AISLE = 6;
@@ -16,7 +16,7 @@ export function spot(row, k) {
     const rect = row.dir === 'h'
         ? { x: row.x + k * row.w, y: row.y, w: row.w, h: row.l }
         : { x: row.x, y: row.y + k * row.w, w: row.l, h: row.w };
-    return { k, num: n, code: code(row.name, n), hole: row.holes.includes(n), ...rect };
+    return { k, num: n, code: code(row.name, n), hole: row.holes.includes(k), ...rect };
 }
 
 export const spots = (row) => Array.from({ length: row.n }, (_, k) => spot(row, k));
@@ -95,11 +95,11 @@ export function aisle(moving, others) {
     return best;
 }
 
-// Машина на месте — значок её типа, как `x-park.plan-car`: квадрат 256 вписан в место стоя, без поворота. cat — тип
+// Машина на месте — значок её типа, как `x-park.plan-car`: стоя, одной величины во всех местах. cat — тип
 // (`passenger`, `truck`…) или пусто.
-const ICONS = { passenger: 'cat-car', light: 'cat-van', truck: 'cat-truck', long: 'cat-long', trailer: 'cat-trailer', special: 'cat-special', moto: 'cat-moto' };
+export const ICONS = { passenger: 'cat-car', light: 'cat-van', truck: 'cat-truck', long: 'cat-long', trailer: 'cat-trailer', special: 'cat-special', moto: 'cat-moto' };
 export function carIcon(s, cat, sprite) {
-    const size = Math.min(s.w * 0.84, (s.h * 0.8) / 0.56);
+    const size = Math.min(s.w, s.h, W) * 0.84;
     const cx = s.x + s.w / 2;
     const cy = s.y + s.h / 2;
     return `<g class="plan-car cat-${cat || 'unknown'}"><svg class="i-s" viewBox="0 0 256 256" x="${cx - size / 2}" y="${cy - size / 2}" width="${size}" height="${size}"><use href="${sprite}#i-${ICONS[cat] || 'cat-car'}"/></svg></g>`;

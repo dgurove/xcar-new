@@ -282,8 +282,8 @@ final class Nav
                 $user->isParkAdmin() ? self::link('Тарифы', '/tariffs', icon: 'wallet') : null,
                 $user->isParkAdmin() ? self::link('Пользователи', '/users', icon: 'user') : null,
                 $user->seesYards() ? self::link('Парковки', '/yards', icon: 'park') : null,
-                // Управляющему одной парковки раздела нет — схема его парковки прямо отсюда.
-                ! $user->seesYards() && ($yard = City::yardIdsOf($user)[0] ?? null) ? self::link('Схема парковки', "/yards/{$yard}/plan", icon: 'park') : null,
+                // Управляющему одной парковки раздела нет — схема его (открытой) парковки прямо отсюда.
+                ! $user->seesYards() && ($yard = Yard::where('is_active', true)->orderBy('id')->value('id')) ? self::link('Схема парковки', "/yards/{$yard}/plan", icon: 'park') : null,
                 self::link('Уведомления', '/account/notifications', icon: 'bell'),
                 // В CRM бывают не все: у сотрудника только стоянки чужой хост — стена.
                 $user->isStaff() ? self::link('Шаблоны', Surface::Crm->url('/settings/templates'), icon: 'link') : null,
