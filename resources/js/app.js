@@ -19,7 +19,7 @@ import { actionRoom } from './lib/action-room';
 import { onHide, onResume, RESUME } from './lib/resume';
 import { scrollBehavior } from './lib/motion';
 import { pullToRefresh } from './lib/pull';
-import { keepPosition, onScroll as onPageScroll, scrollTop, scrollToY } from './lib/scroller';
+import { keepPosition, onScroll as onPageScroll, quietHover, scrollTop, scrollToY } from './lib/scroller';
 import { keepPush } from './push-sync';
 import { csrf } from './lib/http';
 
@@ -179,6 +179,7 @@ formFree();
 enterNext();
 relaunchScroll();
 keepPosition();
+quietHover();
 stalePage();
 keyboardInset();
 actionRoom();

@@ -55,3 +55,18 @@ export function keepPosition() {
         if (y) requestAnimationFrame(() => scrollToY(y));
     });
 }
+
+// Пока страница едет — без наведения (31.10.2026, замер «Выданных» колесом: под неподвижным курсором проезжающие строки и
+// плитки включали `:hover`, увеличение фото и стрелки — пересчёт стилей, hit-test и отрисовка на каждый кадр). Класс на
+// #scroller, его детям `pointer-events: none` (наследуется — браузер не пересчитывает поддерево); через 150 мс после
+// последнего шага — снова как было. Только у мыши: на касаниях наведения нет.
+export function quietHover() {
+    if (!matchMedia('(hover: hover)').matches) return;
+    let timer = 0;
+    let el = null;
+    onScroll(() => {
+        if (!timer) (el = scroller()).classList.add('is-scrolling');
+        clearTimeout(timer);
+        timer = setTimeout(() => { timer = 0; el?.classList.remove('is-scrolling'); }, 150);
+    });
+}

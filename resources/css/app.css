@@ -3071,6 +3071,8 @@ html.kb-open { --home-gap: 0px; }
     scroll-padding-bottom: calc(var(--page-room) + 1rem);
   }
   .app-scroll > * { flex-shrink: 0; }
+  /* Страница едет — наведения нет (`lib/scroller.js` `quietHover`): строки под неподвижным курсором не перерисовываются. */
+  .app-scroll.is-scrolling > * { pointer-events: none; }
   /* Липкое садится на край своей прокрутки: у #scroller шапка над ним, у шторок и листа карточки шапки нет вовсе —
      где бы в DOM ни стоял лист (в #main или прямо в body). */
   .app-scroll, dialog, .split-detail { --stick-top: 0px; }
