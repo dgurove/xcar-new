@@ -17,6 +17,7 @@
         $preset === 'slots' => $offers->getCollection()->groupBy(fn ($o) => $o->slot_at->format('YmdHi')),
         $preset === 'bids' && $admin => $offers->getCollection()->groupBy(fn ($o) => OfferController::pickGroup($o))->sortKeys(),
         $preset === 'done' => $offers->getCollection()->groupBy(fn ($o) => 'done'.OfferController::doneGroup($o))->sortKeys(),
+        $preset === 'estimating' => $offers->getCollection()->groupBy(fn ($o) => 'est'.OfferController::estimateGroup($o))->sortKeys(),
         // На парковке — первыми; группы с подписью, только когда такие есть (`OfferController::PARK_GROUPS`).
         $preset === 'unpriced' && $admin && $offers->getCollection()->contains(fn ($o) => $o->onPark())
             => $offers->getCollection()->groupBy(fn ($o) => 'park'.($o->onPark() ? 0 : 1))->sortKeys(),
@@ -27,6 +28,7 @@
         $key === 'legacy' => $ghosts->isEmpty() ? null : 'Черновики',
         str_starts_with((string) $key, 'park') => OfferController::PARK_GROUPS[(int) substr($key, 4)],
         str_starts_with((string) $key, 'done') => OfferController::DONE_GROUPS[(int) substr($key, 4)],
+        str_starts_with((string) $key, 'est') => OfferController::ESTIMATE_GROUPS[(int) substr($key, 3)],
         $preset === 'slots' => $list->first()->slot_at->isPast() ? 'Выходит сейчас' : Slots::label($list->first()->slot_at),
         default => OfferController::PICK_GROUPS[$key],
     };

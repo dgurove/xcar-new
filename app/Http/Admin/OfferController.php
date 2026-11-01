@@ -33,6 +33,8 @@ use App\Offers\BidKind;
 use App\Offers\BidState;
 use App\Offers\Binding;
 use App\Offers\CatalogQuery;
+use App\Offers\Estimate;
+use App\Offers\EstimateState;
 use App\Offers\Export\OffersXlsx;
 use App\Offers\Jobs\DropEmptyDraft;
 use App\Offers\Jobs\ImportMigtorgLot;
@@ -56,9 +58,9 @@ use App\Support\Facets\Facet;
 use App\Support\Facets\Facets;
 use App\Support\ListPrefs;
 use App\Support\ListView;
-use App\Support\Portion;
 use App\Support\Money;
 use App\Support\Plural;
+use App\Support\Portion;
 use App\Support\Sort;
 use App\Support\Table\ColRole;
 use App\Support\Table\Column;
@@ -477,6 +479,14 @@ class OfferController
 
     private const PARK_GROUP = "case when exists (select 1 from park_vehicles v where v.car_id = offers.car_id and v.state in ('expected', 'stored')) then 0 else 1 end";
 
+    /**
+     * «На оценке у менеджеров» — группами (02.11.2026, владелец): «Оценённые» — хотя бы один менеджер оценил, решение за
+     * админом; «Не оценённые» — ещё ждём.
+     */
+    public const ESTIMATE_GROUPS = ['Оценённые', 'Не оценённые'];
+
+    private const ESTIMATE_GROUP = "case when exists (select 1 from offer_estimates e where e.offer_id = offers.id and e.state = 'given') then 0 else 1 end";
+
     private const PICK_GROUP = "case when bids_close_at is not null and bids_close_at <= now() and exists (select 1 from bids where bids.offer_id = offers.id and bids.state = 'active') then 0 when bids_close_at is null or bids_close_at > now() then 1 else 2 end";
 
     /**
@@ -494,11 +504,14 @@ class OfferController
         if ($preset === 'done') {
             $q->orderByRaw(self::DONE_GROUP);
         }
+        if ($preset === 'estimating') {
+            $q->orderByRaw(self::ESTIMATE_GROUP);
+        }
         match (true) {
             $preset === 'slots' => $q->orderBy('slot_at'),
             $pick => $q->orderByRaw(self::PICK_GROUP),
             // Менеджер оценил — решение за админом: такие строки первыми (11.10.2026), дальше выбранный порядок.
-            in_array($preset, ['estimating', 'priced'], true) && $sort->isDefault() => $q->orderByRaw("exists (select 1 from offer_estimates e where e.offer_id = offers.id and e.state = 'given' and (e.base_price is null or e.amount <> e.base_price)) desc"),
+            $preset === 'priced' && $sort->isDefault() => $q->orderByRaw("exists (select 1 from offer_estimates e where e.offer_id = offers.id and e.state = 'given' and (e.base_price is null or e.amount <> e.base_price)) desc"),
             default => null,
         };
         // Закрытие приёма у групп опубликованного — как было: в «Выбрать» и «Идёт приём» ближние выше, в «Без
@@ -543,12 +556,14 @@ class OfferController
         [$expr, $prefix] = match (true) {
             $preset === 'done' => [self::DONE_GROUP, 'done'],
             $preset === 'unpriced' && $admin => [self::PARK_GROUP, 'park'],
+            $preset === 'estimating' => [self::ESTIMATE_GROUP, 'est'],
             $preset === 'bids' && $admin => [self::PICK_GROUP, ''],
             default => [null, null],
         };
         if ($expr === null) {
             return [];
         }
+
         // Без порядка и столбцов списка (`select([])` снимает и привязки подзапросов `withCount`).
         return (clone $q)->toBase()->reorder()->select([])->selectRaw("({$expr}) as g, count(*) as n")->groupBy('g')->pluck('n', 'g')
             ->mapWithKeys(fn ($n, $g) => [$prefix.$g => (int) $n])->all();
@@ -558,6 +573,12 @@ class OfferController
     public static function doneGroup(Offer $offer): int
     {
         return in_array($offer->state, [OfferState::Sold, OfferState::Garage], true) ? 0 : 1;
+    }
+
+    /** Группа «На оценке у менеджеров» (ESTIMATE_GROUPS) — то же правило, что у порядка; оценённые — одним запросом на запрос. */
+    public static function estimateGroup(Offer $offer): int
+    {
+        return isset(once(fn () => Estimate::where('state', EstimateState::Given)->distinct()->pluck('offer_id')->flip()->all())[$offer->id]) ? 0 : 1;
     }
 
     /** Группа опубликованного (PICK_GROUPS) — то же правило, что у порядка. */
