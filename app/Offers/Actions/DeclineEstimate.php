@@ -30,6 +30,8 @@ final class DeclineEstimate
         $estimate->update(['state' => EstimateState::Declined, 'declined_at' => now(), 'wish_price' => $wish, 'decline_reason' => $reason]);
         $offer = $estimate->offer;
         $offer->log(OfferEventType::Estimate, $by, array_filter(['do' => 'declined', 'user' => $estimate->user_id, 'amount' => $wish, 'reason' => $reason]));
+        // Отказался последний — черновик возвращается из «На оценке у менеджеров».
+        $offer->estimates()->open()->exists() || $offer->movedByEstimate($by);
         // Запрет шеринга от оценки и числа — тем же путём, что закрытие просьб (своих открытых тут уже нет).
         app(CloseEstimates::class)($offer, $by, only: []);
         EstimatesClosed::dispatch($offer, [$estimate->id], [$estimate->user_id]);

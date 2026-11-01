@@ -46,6 +46,8 @@ final class AskEstimates
             ]))->values();
             if ($created->isNotEmpty()) {
                 EstimateLock::lock($offer);
+                // Первая просьба — черновик переходит во вкладку «На оценке у менеджеров».
+                $open === [] && $offer->movedByEstimate($by);
             }
             if ($created->isNotEmpty()) {
                 $offer->log(OfferEventType::Estimate, $by, array_filter(['do' => 'asked', 'users' => $created->map(fn ($e) => $e->user_id)->all(), 'base' => $base,

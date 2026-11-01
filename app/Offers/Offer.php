@@ -1117,6 +1117,39 @@ class Offer extends Model
     }
 
     /**
+     * Отдано менеджерам на оценку — открытая просьба (`asked` | `given`): вкладка «На оценке у менеджеров» (`crmTab`). В
+     * строках списков — одним запросом на веб-запрос, как `hasActiveBids`.
+     */
+    public function onEstimate(): bool
+    {
+        if ($this->relationLoaded('openEstimates')) {
+            return $this->openEstimates->isNotEmpty();
+        }
+        if (app()->runningInConsole()) {
+            return $this->estimates()->open()->exists();
+        }
+
+        return self::onEstimateIds()[$this->id] ?? false;
+    }
+
+    /**
+     * Ушло на оценку или вернулось с неё (01.11.2026): вкладка сменилась, хотя поля предложения те же, — `tab_at` и кто
+     * перевёл ставятся руками, как у `saving` по `tabKeyOf`. Корректировка цены вкладку не меняет — у неё цена есть.
+     */
+    public function movedByEstimate(?User $by): void
+    {
+        if ($this->state === OfferState::Draft && ! $this->asking_price) {
+            $this->forceFill(['tab_at' => now(), 'tab_by' => $by?->id])->save();
+        }
+    }
+
+    /** `once` в статическом методе — один кэш на запрос, а не на каждый объект. */
+    private static function onEstimateIds(): array
+    {
+        return once(fn () => array_fill_keys(Estimate::open()->distinct()->pluck('offer_id')->all(), true));
+    }
+
+    /**
      * Шаг работы по полям предложения — то, от чего зависит его вкладка CRM (`crmTab`): состояние, у черновика — аукцион,
      * слот, галерея-состояние, продажная, закупочная. Таблица Кати и подтверждения — не поля предложения, их тут нет.
      */
@@ -1151,6 +1184,7 @@ class Offer extends Model
                 $this->state === OfferState::Gallery => 'Галерея',
                 $this->intake_closed_at !== null && $user?->canManageCrm() => $presets['done'],
                 $this->asking_price > 0 => $presets['priced'],
+                $user?->canManageCrm() && $this->onEstimate() => $presets['estimating'],
                 $this->floor_price > 0 => $presets['unpriced'],
                 default => $presets['nofloor'],
             },

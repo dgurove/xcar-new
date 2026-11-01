@@ -31,6 +31,8 @@ final class CloseEstimates
             } elseif ($only !== null) {
                 $offer->log(OfferEventType::Estimate, $by, ['do' => 'closed', 'users' => $open->pluck('user_id')->all()]);
             }
+            // Сняли последнюю — черновик возвращается из «На оценке у менеджеров».
+            $offer->estimates()->open()->exists() || $offer->movedByEstimate($by);
         }
         EstimateLock::release($offer);
         Nav::forgetStaffCounts();

@@ -33,7 +33,7 @@ final class ListsCheck extends Command
     private function lists(): array
     {
         $crm = fn (string $path) => [Surface::Crm, $path, Role::Admin];
-        $offers = ['nofloor', 'unpriced', 'priced', 'slots', 'published', 'bids', 'done', 'all', 'archive', 'legacy', 'auction'];
+        $offers = ['nofloor', 'unpriced', 'estimating', 'priced', 'slots', 'published', 'bids', 'done', 'all', 'archive', 'legacy', 'auction'];
 
         return [
             ...array_map(fn ($p) => $crm('/work/deals?preset='.$p), ['us', 'manager', 'supplier', 'pay', 'all', 'done']),

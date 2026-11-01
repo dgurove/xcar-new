@@ -85,7 +85,7 @@ class OfferController
      * у него нет, «Опубликованные» — всё открытое (`presets`).
      */
     public const PRESETS = [
-        'nofloor' => 'Без закупочной цены', 'unpriced' => 'Без продажной цены', 'priced' => 'Оцененные', 'slots' => 'Публикация', 'published' => 'Опубликованные',
+        'nofloor' => 'Без закупочной цены', 'unpriced' => 'Без продажной цены', 'estimating' => 'На оценке у менеджеров', 'priced' => 'Оцененные', 'slots' => 'Публикация', 'published' => 'Опубликованные',
         'bids' => 'Есть подтверждения', 'done' => 'Завершённые', 'all' => 'Все', 'archive' => 'Архив', 'legacy' => 'Из таблицы Кати', 'auction' => 'На аукцион',
     ];
 
@@ -97,15 +97,15 @@ class OfferController
     private const OPEN = ['published', 'bids'];
 
     /** Вкладки, где порядок — когда предложение в них попало (`offers.tab_at`) и столбец даты — оно же. */
-    public const BY_TAB = ['nofloor', 'unpriced', 'priced', 'done', 'archive', 'auction'];
+    public const BY_TAB = ['nofloor', 'unpriced', 'estimating', 'priced', 'done', 'archive', 'auction'];
 
     /**
-     * Вкладки человека: подтверждения, «Завершённые», «Все», «Из таблицы Кати» и «На аукцион» видит только админ (срок
-     * приёма модератору не виден, сделки и гараж ему не открываются).
+     * Вкладки человека: подтверждения, «На оценке у менеджеров», «Завершённые», «Все», «Из таблицы Кати» и «На аукцион» видит
+     * только админ (срок приёма модератору не виден, оценки, сделки и гараж ему не открываются).
      */
     public static function presets(User $user): array
     {
-        return $user->canManageCrm() ? self::PRESETS : array_diff_key(self::PRESETS, ['bids' => true, 'done' => true, 'all' => true, 'legacy' => true, 'auction' => true]);
+        return $user->canManageCrm() ? self::PRESETS : array_diff_key(self::PRESETS, ['estimating' => true, 'bids' => true, 'done' => true, 'all' => true, 'legacy' => true, 'auction' => true]);
     }
 
     /** Прежние пилюли — в новые вкладки: ссылки из Telegram, закладки, `LegacyAdmin`. */
@@ -114,10 +114,10 @@ class OfferController
     ];
 
     /** Вкладки, где идёт работа по шагам: всегда таблица, без сортировки — порядок задаёт сам шаг. */
-    private const STEPS = ['nofloor', 'unpriced', 'priced', 'slots', 'published', 'bids'];
+    private const STEPS = ['nofloor', 'unpriced', 'estimating', 'priced', 'slots', 'published', 'bids'];
 
     /** Вкладки, где карточка после дела идёт к следующей строке. */
-    private const TODO = ['nofloor', 'unpriced'];
+    private const TODO = ['nofloor', 'unpriced', 'estimating'];
 
     /** Вкладки дела: строка ушла — карточка сама к следующей (оценили, заполнили закупочную, приняли подтверждение). */
     private const ADVANCE = [...self::TODO, 'bids'];
@@ -409,12 +409,17 @@ class OfferController
 
         // Черновики из таблицы Кати — только в своей вкладке, рабочим не мешают (10.10.2026; 12.10.2026 начальник снова:
         // «не отображать»).
-        if (in_array($preset, ['nofloor', 'unpriced', 'priced', 'slots', 'done'], true)) {
+        if (in_array($preset, ['nofloor', 'unpriced', 'estimating', 'priced', 'slots', 'done'], true)) {
             LegacyClaim::offList($q);
         }
         // Отправленные на аукцион (13.10.2026) — только во вкладке «На аукцион», рабочим и таблице Кати не мешают.
-        if (in_array($preset, ['nofloor', 'unpriced', 'priced', 'slots', 'done', 'legacy'], true)) {
+        if (in_array($preset, ['nofloor', 'unpriced', 'estimating', 'priced', 'slots', 'done', 'legacy'], true)) {
             $q->whereNull('offers.auction_at');
+        }
+        // Отдали менеджерам на оценку (01.11.2026, начальник) — у админа своей вкладкой, из «Без закупочной» и «Без продажной»
+        // уходит; модератору закупочную заполнять и на оценке — у него вкладки нет.
+        if ($admin && in_array($preset, ['nofloor', 'unpriced'], true)) {
+            $q->whereDoesntHave('estimates', fn ($e) => $e->open());
         }
 
         return match ($preset) {
@@ -423,6 +428,8 @@ class OfferController
             'nofloor' => $q->where('offers.state', OfferState::Draft)->whereNull('slot_at')->where(fn ($p) => $p->whereNull('asking_price')->orWhere('asking_price', 0))
                 ->where(fn ($p) => $p->whereNull('floor_price')->orWhere('floor_price', 0)),
             'unpriced' => $q->where('offers.state', OfferState::Draft)->whereNull('slot_at')->where(fn ($p) => $p->whereNull('asking_price')->orWhere('asking_price', 0))->where('floor_price', '>', 0),
+            // Без цены продажи, а менеджер думает или уже оценил (просьба `asked` | `given`); корректировка цены — в «Оцененных».
+            'estimating' => self::estimating($q),
             // Приём кончился без подтверждений — во «Завершённых» (29.10.2026, начальник), модератору — здесь же: той вкладки у него нет.
             'priced' => $q->where('offers.state', OfferState::Draft)->whereNull('slot_at')->where('asking_price', '>', 0)
                 ->when($admin, fn ($o) => $o->whereNull('offers.intake_closed_at')),
@@ -441,6 +448,13 @@ class OfferController
             'all' => $q->whereNotIn('offers.state', [OfferState::Archived, OfferState::Cancelled]),
             default => $q->whereIn('offers.state', [OfferState::Archived, OfferState::Cancelled]),
         };
+    }
+
+    /** «На оценке у менеджеров»: черновик без цены продажи (закупочная — любая) с открытой просьбой оценить. */
+    public static function estimating(Builder $q): Builder
+    {
+        return $q->where('offers.state', OfferState::Draft)->whereNull('slot_at')->where(fn ($p) => $p->whereNull('asking_price')->orWhere('asking_price', 0))
+            ->whereHas('estimates', fn ($e) => $e->open());
     }
 
     /**
@@ -484,7 +498,7 @@ class OfferController
             $preset === 'slots' => $q->orderBy('slot_at'),
             $pick => $q->orderByRaw(self::PICK_GROUP),
             // Менеджер оценил — решение за админом: такие строки первыми (11.10.2026), дальше выбранный порядок.
-            in_array($preset, ['unpriced', 'priced'], true) && $sort->isDefault() => $q->orderByRaw("exists (select 1 from offer_estimates e where e.offer_id = offers.id and e.state = 'given' and (e.base_price is null or e.amount <> e.base_price)) desc"),
+            in_array($preset, ['estimating', 'priced'], true) && $sort->isDefault() => $q->orderByRaw("exists (select 1 from offer_estimates e where e.offer_id = offers.id and e.state = 'given' and (e.base_price is null or e.amount <> e.base_price)) desc"),
             default => null,
         };
         // Закрытие приёма у групп опубликованного — как было: в «Выбрать» и «Идёт приём» ближние выше, в «Без
@@ -622,7 +636,7 @@ class OfferController
             // Оценка: закупочная — ориентир, «Оценить» на месте цены; у черновика номера нет, кто завёл — аватаром у даты.
             // Город — сразу за номером убытка (владелец 04.10.2026: «не хватает столбца с городом»). Оценочной в таблице нет
             // (владелец 05.10.2026: «скрой») — она в карточке строки, в «Деньгах».
-            'unpriced', 'priced', 'legacy', 'auction' => ['vendor', 'city', 'floor', 'price', 'created'],
+            'unpriced', 'estimating', 'priced', 'legacy', 'auction' => ['vendor', 'city', 'floor', 'price', 'created'],
             // Когда выйдет — заголовок группы, слова в строке не нужно.
             'slots' => ['vendor', 'city', 'floor', 'price', 'created'],
             // Модератору подтверждения не видны, а «в продаже» здесь и так у всех.
@@ -667,9 +681,9 @@ class OfferController
             if ($key === 'legacy') {
                 $counts['legacy_drafts'] = $q->count();
             }
-            // Лаймовый бейдж у «Без закупочной», «Без продажной цены» и «Оцененных» — сколько ответов менеджеров ждут решения: оценки и свои цены
-            // вместо цены админа («Согласен» решения не ждёт), 11.10.2026.
-            if (in_array($key, ['nofloor', 'unpriced', 'priced'], true) && $user->canManageCrm()) {
+            // Лаймовый бейдж у «На оценке у менеджеров» и «Оцененных» — сколько ответов менеджеров ждут решения: оценки и свои
+            // цены вместо цены админа («Согласен» решения не ждёт), 11.10.2026.
+            if (in_array($key, ['estimating', 'priced'], true) && $user->canManageCrm()) {
                 $counts[$key.'_given'] = (clone $q)->whereHas('estimates', fn ($e) => $e->needsDecision())->count();
             }
         }

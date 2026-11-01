@@ -35,7 +35,7 @@
     {{-- Вкладок восемь — заголовком с вертикальным списком, а не лентой пилюль (22.10.2026, владелец); действия экрана —
          в той же строке, сортировка, вид и лупа — в строке чипов. --}}
     <div class="title-row">
-        <x-ui.tab-title :pills="$presets" :pill="$preset" pill-param="preset" pill-home="" :counts="$counts" :badges="['nofloor' => 'nofloor_given', 'unpriced' => 'unpriced_given', 'priced' => 'priced_given']" :bumps="['legacy' => 'legacy_drafts']" fallback="Предложения" id="offers-tabs"/>
+        <x-ui.tab-title :pills="$presets" :pill="$preset" pill-param="preset" pill-home="" :counts="$counts" :badges="['estimating' => 'estimating_given', 'priced' => 'priced_given']" :bumps="['legacy' => 'legacy_drafts']" fallback="Предложения" id="offers-tabs"/>
         <div class="title-actions">
             @if ($preset === 'legacy' && ! $searching)<x-offer.legacy-sheet/>@endif
             {{-- «Оценить» — только в «Без закупочной»: круглой «₽» с меню (22.10.2026, владелец: в «Без продажной» кнопка не нужна
@@ -76,7 +76,7 @@
             @endif
         @endforeach
         @if ($offers->isEmpty() && $ghosts->isEmpty())
-            <x-ui.empty>{{ match ($searching ? '' : $preset) { 'nofloor' => 'Закупочные заполнены', 'unpriced' => 'Всё оценено', 'priced' => 'Оценённых нет', 'slots' => 'В слотах пусто', 'published' => 'Опубликованных нет', 'done' => 'Завершённых нет', 'bids' => 'Подтверждений нет', 'legacy' => 'Список пуст', default => 'Предложений нет' } }}</x-ui.empty>
+            <x-ui.empty>{{ match ($searching ? '' : $preset) { 'nofloor' => 'Закупочные заполнены', 'unpriced' => 'Всё оценено', 'estimating' => 'На оценке ничего нет', 'priced' => 'Оценённых нет', 'slots' => 'В слотах пусто', 'published' => 'Опубликованных нет', 'done' => 'Завершённых нет', 'bids' => 'Подтверждений нет', 'legacy' => 'Список пуст', default => 'Предложений нет' } }}</x-ui.empty>
         @else
             @if ($pick)
                 <form id="offers-pick" method="post" action="/offers/schedule" data-live-select>@csrf</form>
@@ -123,7 +123,7 @@
             @endif
             <div class="mt-8"><x-ui.pager :of="$offers" :sizes="\App\Support\ListView::perSizes($view)"/></div>
             {{-- Сделали последнюю — тост ведёт дальше по шагу (detail_controller#advance); модератору дальше ничего нет. --}}
-            @if ($preset === 'unpriced' && ! $searching)
+            @if (in_array($preset, ['unpriced', 'estimating'], true) && ! $searching)
                 <a href="/?preset=priced" data-advance-done hidden>Все оценены, дальше «Оцененные»</a>
             @elseif ($preset === 'nofloor' && ! $searching && $admin)
                 <a href="/?preset=unpriced" data-advance-done hidden>Закупочные заполнены, дальше «Без продажной цены»</a>

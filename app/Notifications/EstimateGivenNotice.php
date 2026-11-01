@@ -35,7 +35,7 @@ final class EstimateGivenNotice extends Notice
 
     public function href(): string
     {
-        return Surface::Crm->url('/?'.http_build_query(['vid' => 'table', 'preset' => $this->estimate->isCorrection() ? 'priced' : 'unpriced', 'peek' => $this->estimate->offer->number]));
+        return Surface::Crm->url('/?'.http_build_query(['vid' => 'table', 'preset' => $this->estimate->isCorrection() ? 'priced' : 'estimating', 'peek' => $this->estimate->offer->number]));
     }
 
     public function category(): string
