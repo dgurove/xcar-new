@@ -5,6 +5,7 @@ import * as overlays from '../overlays';
 import { confirmSheet } from '../confirm';
 import { refreshPage, refreshRows } from '../live';
 import { fling } from '../lib/fling';
+import { ghostFor, ghostKey, rememberGhost } from '../lib/ghost';
 
 // Список и карточка строки рядом (x-ui.shell :detail). Строка — ссылка (a[data-detail-link]) в фрейм detail; открывает и
 // закрывает контроллер, адрес (?peek=) меняет он же, не Turbo: data-turbo-action у фрейма делал из каждой загрузки визит
@@ -96,7 +97,7 @@ export default class extends Controller {
             e.detail.render = async (stream) => { await render(stream); this.mark(); };
         };
         this.frameTarget.addEventListener('turbo:before-frame-render', this.onRender);
-        this.onRendered = () => this.restore();
+        this.onRendered = () => { this.restore(); this.snap(); };
         this.frameTarget.addEventListener('turbo:frame-render', this.onRendered);
         // Нет связи, пока лист ждёт карточку, — вместо вечной заготовки слова и «Повторить».
         this.onFail = (e) => {
@@ -179,6 +180,7 @@ export default class extends Controller {
     }
 
     disconnect() {
+        clearTimeout(this.snapping);
         document.documentElement.classList.remove('detail-open');
         this.frameTarget.removeEventListener('turbo:before-frame-render', this.onRender);
         this.frameTarget.removeEventListener('turbo:frame-render', this.onRendered);
@@ -261,12 +263,29 @@ export default class extends Controller {
         }
     }
 
+    // Встала настоящая карточка — снять с неё силуэт для заготовки следующих строк этого списка (lib/ghost.js), когда
+    // браузер свободен: через секунду (контроллеры карточки грузятся кусками и успеют показать свои кнопки), лист не едет.
+    snap() {
+        clearTimeout(this.snapping);
+        this.snapping = setTimeout(() => this.snapNow(), 1000);
+    }
+
+    snapNow() {
+        const run = () => {
+            const card = this.frameTarget.querySelector('.detail-card:not(.detail-blank)');
+            if (card?.isConnected && !this.frameTarget.hasAttribute('data-moving')) rememberGhost(ghostKey(this.wide.matches), card);
+        };
+        window.requestIdleCallback ? requestIdleCallback(run, { timeout: 1500 }) : setTimeout(run, 300);
+    }
+
     // Карточка не пришла (нет сети): заготовка не мигает вечно — слова и «Повторить» на месте полос.
     failed() {
         const body = this.frameTarget.querySelector('.detail-blank .detail-body');
         if (!body) return;
         body.closest('.detail-blank').removeAttribute('aria-busy');
         body.classList.add('detail-failed');
+        body.classList.remove('detail-ghost');
+        body.removeAttribute('inert');
         body.innerHTML = '<p class="text-ink-muted">Нет связи, карточка не загрузилась</p><button type="button" class="btn btn-quiet btn-s mt-3" data-action="detail#retry">Повторить</button>';
     }
 
@@ -422,6 +441,19 @@ export default class extends Controller {
             + `<div class="detail-head mt-3"><p class="detail-blank-title"></p><div class="detail-marks blank-marks">${bars(3, 'blank-mark')}</div></div>`
             + `<div class="blank-acts">${bars(2, 'blank-act')}</div><div class="blank-list">${rows}</div></div>`;
         const text = (el) => el?.textContent.trim().split('\n')[0].trim() ?? '';
+        // Есть снимок настоящей карточки этого списка — тело по нему, с названием нажатой строки.
+        const ghost = ghostFor(ghostKey(this.wide.matches));
+        if (ghost) {
+            const body = card.querySelector('.detail-body');
+            body.classList.add('detail-ghost');
+            body.setAttribute('inert', '');
+            body.innerHTML = ghost.body;
+            card.querySelector('.detail-count').insertAdjacentHTML('afterend', '<span class="bar-btn"><i class="blank ghost-tool"></i></span>'.repeat(ghost.tools));
+            if (ghost.foot) card.insertAdjacentHTML('beforeend', `<div class="detail-foot detail-ghost" inert>${ghost.foot}</div>`);
+            const title = body.querySelector('[data-ghost-title]');
+            if (title) title.textContent = text(row.querySelector('.cell-name') ?? row.querySelector('.cell-title, .card-title') ?? row);
+            return card;
+        }
         card.querySelector('.detail-blank-title').textContent = text(row.querySelector('.cell-name') ?? row.querySelector('.cell-title, .card-title') ?? row);
         return card;
     }

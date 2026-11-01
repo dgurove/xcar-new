@@ -2739,6 +2739,15 @@ html.kb-open { --home-gap: 0px; }
   @keyframes blank-sheen { to { transform: translateX(100%); } }
   .detail-blank .detail-body.detail-failed::after { content: none; }
   .blank { display: block; background: var(--color-surface-3); }
+  /* Силуэт по снимку настоящей карточки (lib/ghost.js): текст — полосой его ширины, значки пустые, лаймовое — серым. */
+  .detail-ghost { pointer-events: none; }
+  .ghost-t { color: transparent; background: var(--color-surface-3); border-radius: var(--radius-s); -webkit-box-decoration-break: clone; box-decoration-break: clone; }
+  .detail-ghost [data-ghost-title] { color: var(--color-ink); }
+  .detail-ghost svg { visibility: hidden; }
+  .ghost-tool { width: 18px; height: 18px; border-radius: 999px; }
+  .ghost-box { display: inline-block; flex: none; vertical-align: middle; }
+  .detail-ghost .ghost-fill { background: var(--color-surface-3) !important; }
+  .detail-ghost .ghost-line { border-color: var(--color-line) !important; box-shadow: none !important; outline: none !important; }
   .blank-strip { display: flex; gap: .5rem; overflow: hidden; }
   .blank-tile { flex: none; width: 4rem; height: 5rem; border-radius: var(--radius-m); }
   .detail-blank-title { font-size: var(--text-lg); line-height: 1.375; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
