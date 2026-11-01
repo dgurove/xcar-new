@@ -11,7 +11,7 @@ use Illuminate\Support\Collection;
 
 /**
  * Приём закрылся у пачки разом (27.10.2026, владелец: 107 сообщений «Приём закрыт» за час в 17:00 — «ебаный бред»): одно
- * сообщение на момент закрытия — сколько с подтверждениями и без, ниже машины с подтверждениями и лучшей ценой; кнопка —
+ * сообщение на момент закрытия — сколько с подтверждениями и без, ниже машины с подтверждениями и самой высокой ценой; кнопка —
  * «Есть подтверждения» в CRM. Одно предложение — прежнее `BidsClosed`.
  */
 final class BidsClosedPack extends Message
@@ -35,7 +35,7 @@ final class BidsClosedPack extends Message
         $lines = ['С подтверждениями '.$with->count().', без подтверждений '.$without->count()];
         foreach ($with->take(self::MAX) as $offer) {
             $priced = $active($offer)->whereNotNull('amount');
-            $lines[] = $offer->titleWithYear().': '.$active($offer)->count().($priced->isNotEmpty() ? ', лучшая '.Money::rub($priced->max('amount')) : '');
+            $lines[] = $offer->titleWithYear().': '.$active($offer)->count().($priced->isNotEmpty() ? ', до '.Money::rub($priced->max('amount')) : '');
         }
         if (($more = $with->count() - self::MAX) > 0) {
             $lines[] = 'и ещё '.$more;

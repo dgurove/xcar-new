@@ -308,7 +308,7 @@ class Offer extends Model
 
     public function activeBids(): HasMany
     {
-        // Гаражные (без суммы) — после ценовых: «Лучшая» и сортировка смотрят на цену.
+        // Гаражные (без суммы) — после ценовых; равные суммы — кто раньше подтвердил (`id`).
         return $this->hasMany(Bid::class)->where('state', BidState::Active)->orderByRaw('amount desc nulls last')->orderBy('id');
     }
 

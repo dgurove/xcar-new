@@ -48,7 +48,7 @@ class PurchaseController
     /** Пресеты группами в выборе «Все ТС ▾»: из каждой группы выбирают один ответ. */
     public const PRESET_GROUPS = ['' => ['all'], 'Предложения менеджеров' => ['priced', 'unpriced'], 'Наша цена' => ['unfinal', 'final'], 'Служебное' => ['attention', 'nophoto', 'hidden'], 'Контрпредложение' => ['moved']];
 
-    public const SORTS = ['dl' => ['Порядок файла', 'asc'], 'best' => ['Лучшая цена', 'desc'], 'final' => ['Наша цена', 'desc'], 'fresh' => ['Дата', 'desc']];
+    public const SORTS = ['dl' => ['Порядок файла', 'asc'], 'best' => ['Высшая цена', 'desc'], 'final' => ['Наша цена', 'desc'], 'fresh' => ['Дата', 'desc']];
 
     /** Закупки — новые сверху (номер сквозной); число ТС — выбором. */
     public const LIST_SORTS = ['number' => ['Номер', 'desc'], 'cars' => ['Число ТС', 'desc']];

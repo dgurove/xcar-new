@@ -13,7 +13,7 @@ use Illuminate\Support\Collection;
 
 /**
  * Слот закрывается через час (владелец 03.10.2026: одним сообщением на слот и за час до конца, а не «Приём закрыт» по
- * каждому в 17:00): по машине — сколько подтверждений и лучшая цена, кнопка — список в CRM, где выбирать.
+ * каждому в 17:00): по машине — сколько подтверждений и самая высокая цена, кнопка — список в CRM, где выбирать.
  */
 final class SlotClosing extends Message
 {
@@ -37,7 +37,7 @@ final class SlotClosing extends Message
             $summary = match (true) {
                 $bids->isEmpty() => 'подтверждений нет',
                 $priced->isEmpty() => 'в гараж '.$garage->count(),
-                default => 'подтверждений '.$priced->count().', лучшая '.Money::rub($priced->max('amount')).($garage->isNotEmpty() ? ', в гараж '.$garage->count() : ''),
+                default => 'подтверждений '.$priced->count().', до '.Money::rub($priced->max('amount')).($garage->isNotEmpty() ? ', в гараж '.$garage->count() : ''),
             };
 
             // Срок обязывающего в ближайшие дни — тут же: выбирать надо до него (19.10.2026).

@@ -1,5 +1,6 @@
-{{-- Подтверждения предложения — одно на редактор и карточка строки. Без сделки — ждущие по сумме вниз, лучшая
-     отмечена. Со сделкой — принятое сверху со ссылкой в сделку («Перейти к сделке»: «Открыть сделку» читали как
+{{-- Подтверждения предложения — одно на редактор и карточка строки. Ждущие — по сумме вниз, при равной сумме выше тот,
+     кто подтвердил раньше (01.11.2026, начальник: «кто первый подтвердил, тот и победил»); место — бледной цифрой справа
+     («Лучшая» снята, начальник: «просто 1, 2, 3 компактно»). Со сделкой — принятое сверху со ссылкой в сделку («Перейти к сделке»: «Открыть сделку» читали как
      действие, которое ещё не сделано, 18.10.2026), ниже «Резерв N»: остальные ждущие не отклоняются,
      выбранный передумал — «Отдать» другому. Отклонённые и отозванные — свёрнуто. Внизу — «+ За менеджера» (админ вносит
      подтверждение сам, `x-offer.bid-for`), у предложения в продаже и в сделке. --}}
@@ -7,14 +8,15 @@
     use App\Offers\BidState;
     // Идущая сделка, а в редакторе (`inside`) — и состоявшаяся: её принятое подтверждение сверху.
     $deal = $offer->deal ?? (($inside ?? false) ? ($deal ?? null) : null);
-    // Гаражные (без цены) — после ценовых; «Лучшая» — среди цен.
-    $active = $offer->bids->where('state', BidState::Active)->sortByDesc('amount')->values();
-    $priced = $active->reject->isGarage();
+    // Гаражные (без цены) — после ценовых; место — среди цен.
+    $active = $offer->bids->where('state', BidState::Active)
+        ->sortBy([fn ($a, $b) => $a->isGarage() <=> $b->isGarage(), ['amount', 'desc'], ['created_at', 'asc'], ['id', 'asc']])->values();
+    $priced = $active->reject->isGarage()->values();
+    $place = fn ($bid) => $priced->count() > 1 && ($i = $priced->search(fn ($b) => $b->is($bid))) !== false ? $i + 1 : null;
     // Для гаражных — одним запросом на список: сколько машин у каждого уже в гараже.
     $garageBids = $offer->bids->filter->isGarage();
     $parked = $garageBids->isEmpty() ? collect() : \App\Garage\Car::whereIn('manager_id', $garageBids->pluck('user_id'))
         ->whereNotIn('state', [\App\Garage\CarState::Sold, \App\Garage\CarState::Settled])->selectRaw('manager_id, count(*) as n')->groupBy('manager_id')->pluck('n', 'manager_id');
-    $best = $priced->count() > 1 ? $priced->first() : null;
     $accepted = $deal ? $offer->bids->firstWhere('id', $deal->bid_id) : null;
     // Заменённое новой ценой — не отдельное подтверждение: смена цены видна в «Истории».
     $rest = $offer->bids->reject(fn ($b) => in_array($b->state, [BidState::Active, BidState::Replaced], true) || $b->is($accepted))->sortByDesc('created_at')->values();
@@ -29,7 +31,7 @@
     @if ($active->isNotEmpty())
         <div class="list">
             @foreach ($active as $bid)
-                <x-offer.bid :bid="$bid" :offer="$offer" :best="! $deal && $best && $bid->is($best)" :parked="$parked"/>
+                <x-offer.bid :bid="$bid" :offer="$offer" :place="$place($bid)" :parked="$parked"/>
             @endforeach
         </div>
     @endif

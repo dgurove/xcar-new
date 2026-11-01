@@ -10,7 +10,7 @@ use App\Support\Money;
 use App\Support\Surface;
 use App\Telegram\Text;
 
-/** Приём подтверждений закрылся по сроку: сколько подтверждений и лучшая цена — выбирать нам. */
+/** Приём подтверждений закрылся по сроку: сколько подтверждений и самая высокая цена — выбирать нам. */
 final class BidsClosed extends Message
 {
     public function __construct(private Offer $offer) {}
@@ -23,12 +23,12 @@ final class BidsClosed extends Message
     protected function lines(): array
     {
         $bids = $this->offer->bids()->where('state', BidState::Active)->get();
-        // «Лучшая» — среди цен покупателю: гаражные без цены считаются отдельно.
+        // Высшая — среди цен покупателю: гаражные без цены считаются отдельно.
         [$garage, $priced] = $bids->partition(fn ($b) => $b->kind === BidKind::Garage);
         $summary = match (true) {
             $bids->isEmpty() => 'Подтверждений нет',
             $priced->isEmpty() => 'В гараж '.$garage->count(),
-            default => 'Подтверждений '.$priced->count().', лучшая '.Money::rub($priced->max('amount')).($garage->isNotEmpty() ? ', в гараж '.$garage->count() : ''),
+            default => 'Подтверждений '.$priced->count().', до '.Money::rub($priced->max('amount')).($garage->isNotEmpty() ? ', в гараж '.$garage->count() : ''),
         };
 
         // Выбирать подтверждение и платить поставщику — до срока обязывающего (19.10.2026).
