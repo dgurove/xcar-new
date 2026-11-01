@@ -25,6 +25,14 @@ export default class extends Controller {
     static values = { url: String, collection: { type: String, default: 'photos' }, stage: String, readonly: Boolean, reload: Boolean, group: String, any: Boolean, mark: Boolean };
 
     connect() {
+        // Морф (живое обновление страницы, фрейма карточки, строки) возвращает кнопкам «Показать все» и «Развернуть»
+        // серверные hidden и подпись, а ставит их только контроллер (01.11.2026: в окошке пропадали после первого же
+        // обновления). Событие идёт с каждого узла — пересчёт один на морф.
+        this.element.addEventListener('turbo:morph-element', this.onMorph = () => {
+            if (this.morphing) return;
+            this.morphing = true;
+            queueMicrotask(() => { this.morphing = false; this.syncAll(); this.syncExpand(); });
+        });
         if (this.readonlyValue) return;
         // Редактор письма (форма с вложениями): пока файлы грузятся или один не загрузился, письмо не уходит (29.10.2026:
         // Альфа — «Письмо пришло без вложения», «Отправить» жали, пока файлы ещё шли). Сервер письмо без файла не заводит.
@@ -82,6 +90,7 @@ export default class extends Controller {
     }
 
     disconnect() {
+        this.element.removeEventListener('turbo:morph-element', this.onMorph);
         this.element.removeEventListener('dragover', this.over);
         this.element.removeEventListener('dragleave', this.leave);
         this.element.removeEventListener('drop', this.drop);
