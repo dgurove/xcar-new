@@ -189,7 +189,9 @@ export default class extends Controller {
         // 4–5. Оценочные, затем закупочные — счётчиком.
         this.mark('value', 'run');
         await this.countUp(rows, '[data-v]', 'value', false);
-        this.mark('value', 'done', counts.take ? `${counts.take} ${plural(counts.take, ['предложение', 'предложения', 'предложений'])}` : '');
+        // Подозрительные суммы (0, обрывок, втрое меньше прежней) — без галки: сказать, сколько их, чтобы не потерялись.
+        const odd = counts.suspicious ? `подозрительных ${counts.suspicious} — не отмечены` : '';
+        this.mark('value', 'done', [counts.take ? `${counts.take} ${plural(counts.take, ['предложение', 'предложения', 'предложений'])}` : '', odd].filter(Boolean).join(', '));
         this.mark('floor', 'run');
         rows.forEach((r) => r.classList.add('show-floor'));
         await this.countUp(rows, '[data-f]', 'floor', true);

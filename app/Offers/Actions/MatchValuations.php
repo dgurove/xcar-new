@@ -9,6 +9,7 @@ use App\Mail\Extraction\CodeMatcher;
 use App\Offers\Offer;
 use App\Offers\OfferState;
 use App\Offers\Pricing;
+use App\Support\Money;
 use App\Users\User;
 use App\Vendors\Vendor;
 use Illuminate\Support\Facades\DB;
@@ -31,6 +32,10 @@ use Illuminate\Support\Facades\DB;
  * `vin_fill` — VIN только в пустой (другой VIN, хоть от Мигторга, — тревожный знак, `check`: перепроверить),
  * `city_fill` — город в пустой или вместо другого, `gaps` — чего не будет и после сохранения (нет ни у предложения, ни в тексте):
  * их вписывают тут же. Сумма та же, а дописать есть что — строка не «Уже так», а «Заполним».
+ *
+ * Подозрительная сумма (`suspicious`, 01.11.2026, владелец: в таблице Альфы «23.10-31.10» — 317, 952, 2 857 и 0 ₽) — 0,
+ * меньше `Pricing::MIN` или втрое и больше меньше той, что уже стоит у предложения: статус тот же, но галка в окне снята,
+ * причина — красным, бот такие не проставляет и не заводит. Отметить можно руками.
  *
  * Сумма — оценочная только у вендора, чья закупочная от неё (`Pricing::fromAmount`, `floor_by_value`, Альфа). У остальных (Т-Страхование:
  * Марина присылает СМС «AUT-26-979366 207000», 22.10.2026) это сама закупочная — `direct`: оценочная не трогается.
@@ -91,7 +96,7 @@ final class MatchValuations
                 // Черновик получит вендора по виду номера — цены из суммы по его правилу.
                 $vendor = $vendorOf($r['ref']);
                 $floor = Pricing::fromAmount($vendor, $r['amount'])['floor_price'];
-                $out[] = $r + ['status' => count($amounts[$r['key']]) === 1 ? 'absent' : 'missing', 'lot' => $lot, 'vendor' => $vendor, 'archived' => $archived->get($r['key']), 'offer' => null, 'direct' => false, 'floor' => $floor, 'value_differs' => false, 'floor_differs' => false, 'vin_fill' => null, 'vin_taken' => null, 'city_fill' => null, 'gaps' => []];
+                $out[] = $r + ['status' => count($amounts[$r['key']]) === 1 ? 'absent' : 'missing', 'suspicious' => self::suspicious($r['amount']), 'lot' => $lot, 'vendor' => $vendor, 'archived' => $archived->get($r['key']), 'offer' => null, 'direct' => false, 'floor' => $floor, 'value_differs' => false, 'floor_differs' => false, 'vin_fill' => null, 'vin_taken' => null, 'city_fill' => null, 'gaps' => []];
 
                 continue;
             }
@@ -120,12 +125,24 @@ final class MatchValuations
                     $valueDiffers || $floorDiffers => 'conflict',
                     default => 'fill',
                 };
-                $out[] = $r + ['status' => $status, 'offer' => $offer, 'direct' => $direct, 'floor' => $floor, 'value_differs' => $valueDiffers, 'floor_differs' => $floorDiffers,
+                $before = $direct ? $offer->floor_price : $offer->value;
+                $out[] = $r + ['status' => $status, 'suspicious' => self::suspicious($r['amount'], $before ? (int) $before : null), 'offer' => $offer, 'direct' => $direct, 'floor' => $floor, 'value_differs' => $valueDiffers, 'floor_differs' => $floorDiffers,
                     'vin_fill' => $vinFill, 'vin_taken' => $vinTaken, 'city_fill' => $cityFill, 'gaps' => $gaps, 'ref_differs' => $refDiffers];
             }
         }
         usort($out, fn ($a, $b) => array_search($a['status'], self::ORDER, true) <=> array_search($b['status'], self::ORDER, true));
 
         return $out;
+    }
+
+    /** Почему сумма подозрительна — словами, или null: 0, обрывок меньше `Pricing::MIN`, втрое меньше прежней. */
+    public static function suspicious(int $amount, ?int $before = null): ?string
+    {
+        return match (true) {
+            $amount === 0 => 'сумма 0',
+            $amount < Pricing::MIN => 'сумма '.Money::rub($amount).' — слишком мала',
+            $before !== null && $before >= $amount * 3 => 'в '.intdiv($before, $amount).' раз меньше прежней '.Money::rub($before),
+            default => null,
+        };
     }
 }

@@ -4,16 +4,18 @@
      «Оставить / Перезаписать» в шапке: VIN и город ложатся в любом случае. Чего нет ни у предложения, ни в тексте — поле
      строкой под фразой. Группы (25.10.2026) — сегментом сверху, видна одна: «Заполним» (и споры), «Проверьте» (VIN
      другой, номер дважды), «Нет в CRM» (заведём черновик: с лотом Мигторга — его поля и фото, без лота — по номеру, лот
-     подтянется, когда появится; 26.10.2026), «Уже так». data-v / data-f — числа, которые valuation_controller прогоняет
-     счётчиком. --}}
+     подтянется, когда появится; 26.10.2026), «Уже так». Подозрительная сумма (`suspicious`: 0, обрывок, втрое меньше
+     прежней — 01.11.2026) — галка снята, причина красной строкой, в группе сразу за спорами. data-v / data-f — числа,
+     которые valuation_controller прогоняет счётчиком. --}}
 @php
     use App\Offers\Pricing;
     use App\Support\Money;
+    use Illuminate\Support\Str;
     $all = collect($items);
     $groups = collect([
-        'fill' => ['Заполним', $all->whereIn('status', ['conflict', 'fill'])->sortBy(fn ($i) => ($i['status'] === 'conflict' || $i['gaps']) ? 0 : 1)->values()],
+        'fill' => ['Заполним', $all->whereIn('status', ['conflict', 'fill'])->sortBy(fn ($i) => ($i['status'] === 'conflict' || $i['gaps']) ? 0 : ($i['suspicious'] ? 1 : 2))->values()],
         'check' => ['Проверьте', $all->whereIn('status', ['check', 'dispute'])->values()],
-        'absent' => ['Нет в CRM', $all->whereIn('status', ['absent', 'missing'])->values()],
+        'absent' => ['Нет в CRM', $all->whereIn('status', ['absent', 'missing'])->sortBy(fn ($i) => $i['suspicious'] ? 0 : 1)->values()],
         'same' => ['Уже так', $all->where('status', 'same')->values()],
     ])->filter(fn ($g) => $g[1]->isNotEmpty());
     $first = $groups->keys()->first();
@@ -48,14 +50,14 @@
                             default => 'новый черновик с Мигторга',
                         };
                     @endphp
-                    <div class="valuation-card valuation-row" data-valuation-row @if ($status === 'absent') data-create @endif data-floor="{{ $item['floor'] }}">
+                    <div @class(['valuation-card valuation-row', 'is-suspicious' => $item['suspicious']]) data-valuation-row @if ($status === 'absent') data-create @endif data-floor="{{ $item['floor'] }}">
                         <div class="valuation-card-head">
                             <x-ui.cat-icon :category="\App\Cars\Category::Passenger" class="valuation-cat"/>
                             <span class="min-w-0 flex-1">
                                 <span class="block truncate">{{ $lot?->title ?: $item['ref'] }}</span>
                                 <span class="row-sub"><x-vendor.ref :vendor-id="$item['vendor']" :ref="$item['ref']" copy/>@if ($lot?->city)<span>{{ $lot->city }}</span>@endif</span>
                             </span>
-                            @if ($status === 'absent')<label class="check shrink-0" aria-label="Завести"><input type="checkbox" name="create[]" value="{{ $item['key'] }}" checked data-action="valuation#count"></label>@endif
+                            @if ($status === 'absent')<label class="check shrink-0" aria-label="Завести"><input type="checkbox" name="create[]" value="{{ $item['key'] }}" @checked(! $item['suspicious']) data-action="valuation#count"></label>@endif
                         </div>
                         <p class="valuation-facts">
                             @if ($status === 'missing')
@@ -65,6 +67,7 @@
                                 <span>закупочная <span class="valuation-new valuation-floor nums" data-f>{{ Money::rub($item['floor']) }}</span></span>
                             @endif
                         </p>
+                        @if ($item['suspicious'])<p class="valuation-alarm">{{ Str::ucfirst($item['suspicious']) }}</p>@endif
                     </div>
                     @continue
                 @endif
@@ -92,7 +95,7 @@
                     $vinGap = ! ($item['vin_taken'] ?? null) && $status !== 'check' && ! $item['vin_fill'] && in_array('vin', $item['gaps'], true);
                     $cityGap = $status !== 'check' && ! $item['city_fill'] && in_array('city', $item['gaps'], true);
                 @endphp
-                <div @class(['valuation-card valuation-row', 'is-keep' => $conflict]) data-valuation-row data-value="{{ $item['amount'] }}" data-floor="{{ $item['floor'] }}"
+                <div @class(['valuation-card valuation-row', 'is-keep' => $conflict, 'is-suspicious' => $item['suspicious']]) data-valuation-row data-value="{{ $item['amount'] }}" data-floor="{{ $item['floor'] }}"
                      @if ($conflict) data-conflict @if ($item['value_differs']) data-value-differs @endif @endif
                      @if ($item['vin_fill']) data-vin-fill @endif @if ($item['city_fill']) data-city-fill @endif
                      @if ($valueChanges || $floorChanges) data-price-change @endif>
@@ -102,7 +105,7 @@
                             <span class="block truncate">{{ $o->titleWithYear() }}</span>
                             <span class="row-sub"><x-vendor.ref :vendor-id="$o->vendor_id" :ref="$item['ref']" copy/>@if ($status === 'dispute')<span class="text-urgent">номер в тексте дважды</span>@endif</span>
                         </span>
-                        @if ($take)<label class="check shrink-0" aria-label="Взять"><input type="checkbox" name="offers[]" value="{{ $o->id }}" @checked($status === 'fill') data-action="valuation#count"></label>@endif
+                        @if ($take)<label class="check shrink-0" aria-label="Взять"><input type="checkbox" name="offers[]" value="{{ $o->id }}" @checked($status === 'fill' && ! $item['suspicious']) data-action="valuation#count"></label>@endif
                         @if ($conflict)<input type="hidden" name="offers[]" value="{{ $o->id }}">@include('admin.offers.valuation-keep', ['offer' => $o])@endif
                     </div>
                     <p class="valuation-facts">
@@ -126,6 +129,7 @@
                             <span>город @if ($c['from'])<s class="valuation-old">{{ $c['from'] }}</s> @endif<span class="valuation-new">{{ $c['title'] }}</span></span>
                         @endif
                     </p>
+                    @if ($item['suspicious'])<p class="valuation-alarm">{{ Str::ucfirst($item['suspicious']) }}</p>@endif
                     @if ($vinGap || $cityGap)
                         <div class="valuation-gaps">
                             @if ($vinGap)

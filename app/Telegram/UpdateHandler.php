@@ -332,9 +332,11 @@ final class UpdateHandler
             return;
         }
         $create = $press->action === 'create';
-        $r = app(ApplyValuations::class)($user, $saved, $create ? [] : $saved['checkable'], create: $create ? array_keys($saved['create'] ?? []) : []);
+        // Подозрительные суммы кнопкой не берутся — их решают в окне оценки (`MatchValuations::suspicious`).
+        $sure = array_keys(array_filter($saved['create'] ?? [], fn ($row) => ! ($row['suspicious'] ?? false)));
+        $r = app(ApplyValuations::class)($user, $saved, $create ? [] : ($saved['sure'] ?? $saved['checkable']), create: $create ? $sure : []);
         // Нажатая часть больше не повторяется; вторая кнопка остаётся, пока её не нажали.
-        $create ? $saved['create'] = [] : $saved['checkable'] = [];
+        $create ? $saved['create'] = [] : $saved['checkable'] = $saved['sure'] = [];
         Cache::put("valuation-bot:{$press->id}", $saved, now()->addDay());
         $said = array_filter([$r['done'] ? 'Проставлено '.$r['done'] : null, $r['repriced'] ? 'на переоценку '.$r['repriced'].' — у них уже есть подтверждения' : null,
             $r['created'] ? 'заведено '.count($r['created']) : null, $r['vin_taken'] ? 'VIN занят другим предложением: '.$r['vin_taken'] : null]);

@@ -1279,6 +1279,8 @@ html.kb-open { --home-gap: 0px; }
   .valuation-cat { @apply mt-0.5 flex-none; margin-right: 0; vertical-align: 0; }
   .valuation-row.row { @apply items-start; }
   .valuation-facts { @apply mt-1.5 text-sm leading-snug text-ink-muted; }
+  /* Подозрительная сумма — своей строкой вне фактов: снятая галка их бледнит, а причина должна быть видна. */
+  .valuation-alarm { @apply mt-1 text-sm leading-snug text-danger; }
   .valuation-facts:not(:has(span)) { display: none; }
   .valuation-facts > span { @apply inline; }
   .valuation-facts > span:not(:last-child)::after { content: ", "; color: var(--color-ink-muted); }

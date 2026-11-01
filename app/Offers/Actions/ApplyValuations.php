@@ -39,6 +39,8 @@ final class ApplyValuations
             'city' => $found->filter(fn ($i) => $i['city_fill'])->mapWithKeys(fn ($i) => [$i['offer']->id => $i['city_fill']['id']])->all(),
             // Строки с галкой: снятая — ничего не пишем.
             'checkable' => $found->filter(fn ($i) => $i['status'] === 'fill')->map(fn ($i) => $i['offer']->id)->values()->all(),
+            // Что бот проставляет кнопкой: снять галку там нечем — без подозрительных сумм (`MatchValuations::suspicious`).
+            'sure' => $found->filter(fn ($i) => $i['status'] === 'fill' && ! $i['suspicious'])->map(fn ($i) => $i['offer']->id)->values()->all(),
             // Кому можно вписать руками: чего нет ни у предложения, ни в тексте.
             'gaps' => $found->filter(fn ($i) => $i['gaps'])->mapWithKeys(fn ($i) => [$i['offer']->id => $i['gaps']])->all(),
             'amounts' => $take->mapWithKeys(fn ($i) => [$i['offer']->id => $i['amount']])->all(),
@@ -46,7 +48,7 @@ final class ApplyValuations
             'differs' => $take->filter(fn ($i) => $i['status'] === 'conflict')->mapWithKeys(fn ($i) => [$i['offer']->id => ['value' => $i['value_differs'], 'floor' => $i['floor_differs']]])->all(),
             // Нет в CRM: что заводить по галке — номер, сумма и лот Мигторга, если он есть.
             'create' => collect($items)->where('status', 'absent')->mapWithKeys(fn ($i) => [$i['key'] => [
-                'ref' => $i['ref'], 'amount' => $i['amount'], 'lot' => $i['lot']?->id,
+                'ref' => $i['ref'], 'amount' => $i['amount'], 'lot' => $i['lot']?->id, 'suspicious' => (bool) $i['suspicious'],
             ]])->all(),
         ];
     }

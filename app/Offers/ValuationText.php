@@ -125,10 +125,16 @@ final class ValuationText
         return Settlement::named($line) ?? Settlement::inAddress($line);
     }
 
-    /** Рубли без копеек; не сумма — null. */
+    /**
+     * Рубли без копеек; не сумма — null. С копейками бывает и 0 («0.00» — так таблица пишет пустую или нулевую оценку,
+     * `ValuationSheet`): окно покажет её подозрительной, а не потеряет строку. Без копеек — только больше нуля.
+     */
     public static function amount(string $line): ?int
     {
-        if (preg_match(self::MONEY, $line, $m) || preg_match(self::WHOLE, $line, $m)) {
+        if (preg_match(self::MONEY, $line, $m)) {
+            return (int) preg_replace('/\D/u', '', $m[1]);
+        }
+        if (preg_match(self::WHOLE, $line, $m)) {
             $n = (int) preg_replace('/\D/u', '', $m[1]);
 
             return $n > 0 ? $n : null;

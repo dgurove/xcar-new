@@ -62,7 +62,9 @@ final class OfferValuationController
                 'refs' => count($parsed['rows']),
                 'found' => collect($items)->filter(fn ($i) => $i['offer'])->unique(fn ($i) => $i['offer']->id)->count(),
                 'absent' => ($by['absent'] ?? 0) + ($by['missing'] ?? 0),
-                'take' => $take->where('status', '!=', 'check')->count(),
+                'take' => $take->where('status', '!=', 'check')->filter(fn ($i) => ! $i['suspicious'])->count(),
+                // Подозрительные суммы (0, обрывок, втрое меньше прежней) — без галки, их отмечают руками.
+                'suspicious' => collect($items)->filter(fn ($i) => $i['suspicious'] && in_array($i['status'], ['fill', 'conflict', 'check', 'absent'], true))->count(),
                 'conflicts' => $by['conflict'] ?? 0,
                 'no_vin' => $found->filter(fn ($i) => in_array('vin', $i['gaps'], true))->unique(fn ($i) => $i['offer']->id)->count(),
                 'no_city' => $found->filter(fn ($i) => in_array('city', $i['gaps'], true))->unique(fn ($i) => $i['offer']->id)->count(),
