@@ -1,8 +1,8 @@
-{{-- Подтверждение менеджера — одно на редактор и карточка строки: сумма, насколько она от цены продажи, место среди ждущих бледной цифрой справа, светофор
+{{-- Подтверждение менеджера — одно на редактор и карточка строки: сумма, насколько она от цены продажи, когда подтвердил — справа в строке суммы, светофор
      строки (не ниже порога — сумма зелёным, ниже — жёлтая заливка, 26.10.2026; строкой группы .list в bids.blade), менеджер с телефоном, когда, комментарий. У ждущего — «Принять» (у предложения в сделке — «Отдать»:
      прежняя сделка отменится) листом «Отдать» с этим подтверждением (`x-offer.give-sheet`) и «Отклонить» рядом — одинаково в
      редакторе и карточке строки. Гаражное («В гараж») — без цены: сколько машин у менеджера уже в гараже. --}}
-@props(['bid', 'offer', 'place' => null, 'parked' => collect()])
+@props(['bid', 'offer', 'parked' => collect()])
 @php
     use App\Offers\BidState;
     use App\Support\Money;
@@ -27,10 +27,10 @@
         @if ($diff)<span class="nums whitespace-nowrap text-sm text-ink-dim">{{ $diff > 0 ? '+' : '−' }}{{ Money::nums(abs($diff)) }} от цены</span>@endif
         @if ($loss && $active)<x-ui.state tone="danger">{{ $under > 0 ? 'ниже закупочной на '.Money::nums($under) : 'равна закупочной' }}</x-ui.state>@endif
         @if (! $active)<x-ui.state :tone="$bid->state === BidState::Accepted ? 'open' : ($bid->state === BidState::Declined ? 'danger' : 'closed')">{{ $bid->state->label() }}</x-ui.state>@endif
-        @if ($place)<span class="nums ml-auto text-sm text-ink-dim opacity-60" title="Место по сумме">{{ $place }}</span>@endif
+        <span class="nums ml-auto whitespace-nowrap text-sm text-ink-dim">{{ \App\Support\Ago::html($bid->created_at, true, words: false) }}</span>
     </div>
     {{-- Кто — человеком, телефон ссылкой и когда — текстом (10.10.2026: «что-то чипами, что-то текстом»). --}}
-    <div class="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm"><x-ui.person :user="$bid->user" full/>@if ($bid->user->isSuperBuyer())<span class="text-ink-dim">супер-покупатель</span>@endif @if ($bid->user->phone)<x-ui.phone :user="$bid->user"/>@endif<span class="nums text-ink-dim">{{ \App\Support\Ago::html($bid->created_at, true, words: false) }}</span>@if ($bid->byStaff())<span class="text-ink-dim">внёс {{ $bid->placedBy?->shortName() }}</span>@endif</div>
+    <div class="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm"><x-ui.person :user="$bid->user" full/>@if ($bid->user->isSuperBuyer())<span class="text-ink-dim">супер-покупатель</span>@endif @if ($bid->user->phone)<x-ui.phone :user="$bid->user"/>@endif @if ($bid->byStaff())<span class="text-ink-dim">внёс {{ $bid->placedBy?->shortName() }}</span>@endif</div>
     @if ($bid->comment)<div class="mt-1 text-sm">{{ $bid->comment }}</div>@endif
     {{-- Контрпредложение (26.10.2026): ждём ответа — акцентной строкой с «Отозвать», отказался — серым. --}}
     @if ($bid->hasPendingCounter())
