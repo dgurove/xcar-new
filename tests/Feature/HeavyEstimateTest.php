@@ -61,10 +61,16 @@ class HeavyEstimateTest extends TestCase
     {
         $truck = $this->draft('КАМАЗ', '5691/046/00901/26');
         $car = $this->draft('Kia', '5691/046/00902/26');
+        $pickup = $this->draft('Changan', '5691/046/00904/26');
+        $pickup->update(['body' => 'pickup']);
+        $van = $this->draft('Газель', '5691/046/00905/26');
+        $this->assertSame(Category::Light, $pickup->fresh()->category());
         $this->assertSame(Category::Truck, $truck->category());
         $this->assertSame(Category::Passenger, $car->category());
 
-        $this->assertSame(1, app(AskHeavyEstimates::class)());
+        $this->assertSame(2, app(AskHeavyEstimates::class)());
+        $this->assertFalse(Estimate::where('offer_id', $pickup->id)->exists());
+        $this->assertTrue(Estimate::where('offer_id', $van->id)->exists());
         $this->assertSame(0, app(AskHeavyEstimates::class)());
         $estimate = Estimate::where('offer_id', $truck->id)->sole();
         $this->assertTrue($estimate->auto);

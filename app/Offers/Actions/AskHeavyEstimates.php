@@ -2,6 +2,7 @@
 
 namespace App\Offers\Actions;
 
+use App\Cars\Body;
 use App\Cars\Category;
 use App\Http\Admin\OfferController;
 use App\Offers\Offer;
@@ -13,6 +14,7 @@ use Throwable;
  * закупочной и без цены продажи — само на оценку своему менеджеру (`xcar.heavy_estimator`, Роман Корабельников): 48 часов
  * со знаком на фото, как у просьбы админа. Просьба `auto` — его оценка сразу публикует машину ему одному (`FirstLook`). Один
  * раз на машину: была у него просьба по ней (любая, и отказ) — больше не просим. Не оценил — висит админу «просрочено».
+ * Пикап — лёгкий коммерческий для стоянки, но не ему (02.11.2026, владелец: Changan Hunter Plus «как прилетел?»).
  */
 final class AskHeavyEstimates
 {
@@ -27,7 +29,7 @@ final class AskHeavyEstimates
         $n = 0;
         // «Без продажной цены» и «На оценке у менеджеров» разом: условие «Без продажной» без отсечки открытых просьб.
         OfferController::scopeFor('unpriced', Offer::query()->notEmptyDraft(), admin: false)
-            ->whereCar(fn ($c) => $c->whereIn('category', Category::heavy()))
+            ->whereCar(fn ($c) => $c->whereIn('category', Category::heavy())->where(fn ($b) => $b->whereNull('body')->orWhere('body', '!=', Body::Pickup->value)))
             ->whereDoesntHave('estimates', fn ($e) => $e->where('user_id', $estimator->id))
             ->lazyById()->each(function (Offer $offer) use ($estimator, &$n) {
                 try {
