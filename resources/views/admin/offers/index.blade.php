@@ -38,6 +38,12 @@
          в той же строке, сортировка, вид и лупа — в строке чипов. --}}
     <div class="title-row">
         <x-ui.tab-title :pills="$presets" :pill="$preset" pill-param="preset" pill-home="" :counts="$counts" :badges="['estimating' => 'estimating_given', 'priced' => 'priced_given']" :bumps="['legacy' => 'legacy_drafts']" fallback="Предложения" id="offers-tabs"/>
+        {{-- Фильтр стоит — видно у названия, а не только в ряду чипов: на телефоне выбранный чип бывает за краем ленты
+             (02.11.2026, владелец: «если дело в фильтре, рисовать значок фильтра, если он применён», «кнопку „Сбросить“
+             до тех, которые по умолчанию»). Нажатие — чипы как по умолчанию, «Кроме Каркаде» снова встаёт. --}}
+        @if (! $searching && $facets->active())
+            <a href="{{ $facets->defaultsUrl() }}" class="pill title-filter" aria-current="true" aria-label="Сбросить фильтры" title="Сбросить фильтры" data-turbo-action="replace" data-turbo-prefetch="false"><x-ui.icon name="filter" class="size-4"/><x-ui.icon name="x" class="size-3.5"/></a>
+        @endif
         <div class="title-actions">
             @if ($preset === 'legacy' && ! $searching)<x-offer.legacy-sheet/>@endif
             {{-- «Оценить» — только в «Без закупочной»: круглой «₽» с меню (22.10.2026, владелец: в «Без продажной» кнопка не нужна
@@ -81,7 +87,7 @@
             <x-ui.empty>{{ match ($searching ? '' : $preset) { 'nofloor' => 'Закупочные заполнены', 'unpriced' => 'Всё оценено', 'estimating' => 'На оценке ничего нет', 'priced' => 'Оценённых нет', 'slots' => 'В слотах пусто', 'published' => 'Опубликованных нет', 'done' => 'Завершённых нет', 'bids' => 'Подтверждений нет', 'legacy' => 'Список пуст', default => 'Предложений нет' } }}</x-ui.empty>
         @else
             @if ($pick)
-                <form id="offers-pick" method="post" action="/offers/schedule" data-live-select>@csrf</form>
+                <form id="offers-pick" method="post" action="/offers/schedule" data-live-select data-price-guard="publish">@csrf</form>
                 <div class="pick-all"><label class="row-check gap-3"><span class="check"><input type="checkbox" id="pick-all-{{ $preset }}" data-turbo-permanent data-pick-target="all" data-action="pick#pickAll"></span><span>Выбрать все</span></label></div>
             @endif
             @if ($table)

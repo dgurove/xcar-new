@@ -3,6 +3,8 @@
 namespace App\Support\Facets;
 
 use App\Support\Plural;
+use App\Support\Portion;
+use App\Support\ListPrefs;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Http\Exceptions\HttpResponseException;
@@ -363,7 +365,7 @@ final class Facets
     public function url(array $set): string
     {
         // Карточка строки (?peek=) после смены фильтра не открывается заново: открытая строка могла из списка уйти.
-        $query = array_merge($this->request->query(), $set, ['page' => null, 'peek' => null]);
+        $query = array_merge($this->request->query(), $set, ['page' => null, 'peek' => null, Portion::PART => null, Portion::ROWS => null]);
         $query = array_filter($query, fn ($v) => $v !== null && (is_string($v) || is_int($v)));
 
         return $this->action().($query ? '?'.str_replace('%2C', ',', http_build_query($query)) : '');
@@ -381,6 +383,14 @@ final class Facets
         }
 
         return $this->url($set + $also);
+    }
+
+    /** «Как по умолчанию» (`ListPrefs::RESET`): без всех чипов, память чипов стирает `ListPrefs::sync`. */
+    public function defaultsUrl(): string
+    {
+        $query = array_diff_key($this->request->query(), array_flip([...$this->keys(), 'page', 'peek', Portion::PART, Portion::ROWS]));
+
+        return $this->action().'?'.str_replace('%2C', ',', http_build_query([...$query, ListPrefs::RESET => '1']));
     }
 
     /** Ссылка переключателя: включённый по умолчанию выключают `0`, включают — без параметра. */

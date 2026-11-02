@@ -23,7 +23,7 @@
         <x-ui.icon name="chevron-right" class="tab-wheel-chev size-3.5"/>
         <nav class="tab-wheel-scroll">
             @foreach ($pills as $key => $label)
-                <a href="{{ $url([$pillParam => $key === '' || $key === ($pillHome ?? array_key_first($pills)) ? null : $key, 'page' => null]) }}" class="tab-wheel-item text-xl sm:text-2xl" data-turbo-prefetch="false" @isset($bumps[$key]) data-pill-bump="{{ $key }}:{{ $counts[$bumps[$key]] ?? 0 }}" @endisset @if ((string) $pill === (string) $key) aria-current="true" @endif>
+                <a href="{{ $url([$pillParam => $key === '' || $key === ($pillHome ?? array_key_first($pills)) ? null : $key, 'page' => null, 'part' => null, 'rows' => null]) }}" class="tab-wheel-item text-xl sm:text-2xl" data-turbo-prefetch="false" @isset($bumps[$key]) data-pill-bump="{{ $key }}:{{ $counts[$bumps[$key]] ?? 0 }}" @endisset @if ((string) $pill === (string) $key) aria-current="true" @endif>
                     <span class="tab-wheel-label">{{ $label }}</span>
                     <span class="tab-wheel-nums">
                         @isset($badges[$key])<span class="badge nums" data-pill-count="{{ $badges[$key] }}">{{ ($counts[$badges[$key]] ?? 0) ?: '' }}</span>@endisset

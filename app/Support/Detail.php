@@ -92,7 +92,7 @@ final class Detail
         $parts = parse_url($url) ?: [];
         parse_str($parts['query'] ?? '', $query);
 
-        return [$parts['path'] ?? '/', array_diff_key($query, ['q' => 1, 'page' => 1])];
+        return [$parts['path'] ?? '/', array_diff_key($query, ['q' => 1, 'page' => 1, Portion::PART => 1])];
     }
 
     private static function to(array $query): string

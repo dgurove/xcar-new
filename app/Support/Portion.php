@@ -33,7 +33,9 @@ final class Portion extends LengthAwarePaginator
 
     public static function of(Request $request, Builder|Relation $q, int $count): self
     {
-        $page = max(1, (int) $request->query(self::PART, 1));
+        // Номер сотни — только у догрузки хвоста (`endless_controller` шлёт `X-List`): `part` в адресе страницы — случайный
+        // (02.11.2026, Андрей: ссылка строки второй сотни унесла `part=2` в адрес, оттуда во все вкладки — «нет предложений»).
+        $page = $request->headers->has('X-List') ? max(1, (int) $request->query(self::PART, 1)) : 1;
         // Первая порция — сколько уже было догружено (`rows`), круглыми сотнями; следующие — по сотне (адрес хвоста без
         // `rows`, номер — от сотни).
         $per = $page > 1 ? self::PER : (int) min(max((int) ceil((int) $request->query(self::ROWS) / self::PER) * self::PER, self::PER), self::MAX);

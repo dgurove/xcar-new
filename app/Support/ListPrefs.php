@@ -4,7 +4,9 @@ namespace App\Support;
 
 use App\Users\Impersonation;
 use App\Users\User;
+use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\Request;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Cookie;
 
 /**
@@ -16,6 +18,9 @@ use Illuminate\Support\Facades\Cookie;
 final class ListPrefs
 {
     private const KEYS = ['sort', ListView::PARAM, ListView::PER];
+
+    /** `?reset=1` — чипы списка как по умолчанию (`resetUrl`). */
+    public const RESET = 'reset';
 
     /**
      * $keep — ключи чипов фильтра (Facets::keys): помнятся так же. Чип сняли (× и «Сбросить» ведут на `?vendor=` —
@@ -35,6 +40,9 @@ final class ListPrefs
         $keys = array_values(array_diff($keys, [...($site ? [] : [ListView::PARAM]), ...($sort ? [] : ['sort'])]));
         // Память списка целиком: ключи чипов другого вида (покупатели и сотрудники в «Пользователях») не теряются.
         $raw = self::all($request)[$list] ?? [];
+        if ($request->query(self::RESET) === '1') {
+            self::forget($request, $list, $raw, $keep);
+        }
         $saved = array_intersect_key($raw, array_flip($keys));
         $given = array_filter($request->only($keys), fn ($v) => is_string($v) && $v !== '');
         $cleared = array_values(array_filter($keep, fn ($k) => $request->query->has($k) && blank($request->query($k))));
@@ -51,6 +59,23 @@ final class ListPrefs
                 $request->query->set($key, $value);
             }
         }
+    }
+
+    /**
+     * Сбросить чипы до умолчания (02.11.2026, владелец: «кнопку „Сбросить“, чтобы сбрасывать до тех, которые по
+     * умолчанию»): × и «Сбросить» в ряду чипов запоминают пустое — «без фильтра», и умолчание экрана («Кроме Каркаде»)
+     * больше не встаёт; здесь память чипов стирается, и экран открывается как в первый раз. Сортировка и «по сколько»
+     * остаются. Ответ — переход на тот же адрес без `reset`.
+     */
+    private static function forget(Request $request, string $list, array $raw, array $keep): never
+    {
+        $left = array_diff_key($raw, array_flip($keep));
+        if ($left != $raw && ! Impersonation::active()) {
+            self::remember($request, $list, $left);
+        }
+        $query = Arr::except($request->query(), [self::RESET, ...$keep, Portion::PART, Portion::ROWS, 'page', 'peek']);
+
+        throw new HttpResponseException(redirect('/'.ltrim($request->path(), '/').($query ? '?'.Arr::query($query) : '')));
     }
 
     private static function all(Request $request): array
