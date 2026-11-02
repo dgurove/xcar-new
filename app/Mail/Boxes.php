@@ -70,6 +70,15 @@ final class Boxes
             ->selectRaw('count(distinct '.self::group($scope).') as n')->value('n');
     }
 
+    /** Сколько дел в «Требуют внимания» — бейдж почты парковки, то же число, что у пилюли. */
+    public static function attentionCount(Scope $scope): int
+    {
+        return (int) Thread::whereIn('account_id', Account::where('scope', $scope)->select('id'))
+            ->where('messages_count', '>', 0)->whereNull('archived_at')
+            ->where(fn ($w) => self::attention($w, $scope))
+            ->selectRaw('count(distinct '.self::group($scope).') as n')->value('n');
+    }
+
     /** Сколько дел в пилюле «Все» — итог таба «Почта»: без архива, делами, как в заголовке экрана. */
     public static function allCount(Scope $scope): int
     {

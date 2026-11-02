@@ -726,7 +726,9 @@ final class Nav
                     // Бейдж «Оплаты» — работа управляющего: выставить за прошлый месяц, отправить выставленное, просрочено.
                     '/money' => Closing::pendingCount() + Invoice::ofPark()->where('state', InvoiceState::Issued)
                         ->where(fn ($w) => $w->whereDate('due_at', '<', now()->toDateString())->orWhereIn('id', Invoice::toSend()->select('id')))->count(),
-                    '/mail' => Thread::where('unread_count', '>', 0)->whereNull('archived_at')->whereHas('account', fn ($a) => $a->where('scope', Scope::Park))->count(),
+                    // Бейдж «Почты» — дела «Требуют внимания», как у пилюли (02.11.2026, владелец: «счётчик нелогичный» — горели
+                    // 111 непрочитанных веток: Сергей читает почту в Mail.ru, здесь они не гаснут).
+                    '/mail' => Boxes::attentionCount(Scope::Park),
                 ];
             }
             $badges = [
