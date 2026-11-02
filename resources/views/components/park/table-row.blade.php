@@ -77,7 +77,9 @@
     <td class="{{ $col->classes() }}">@if ($status['act'] || $status['label'] !== 'на парковке')<span @class(['status-cell', 'is-act' => $status['act'], 'is-late' => $status['late']])>{{ $status['label'] }}</span>@endif</td>
         @break
         @case('accepted')
-    <td class="{{ $col->classes() }}">{{ \App\Support\Ago::html($vehicle->accepted_at) }}</td>
+    {{-- Дата приёма правится прямо в таблице (02.11.2026, владелец): нажатие — календарь с подсказками из писем, строка не
+         открывается (`date#open:stop`); форма — в самой ячейке. --}}
+    <td class="{{ $col->classes() }}">@if ($vehicle->accepted_at && auth()->user()->parkDates())<x-park.accepted :vehicle="$vehicle" key="row" :form="'dates-row-'.$vehicle->id" class="nums underline decoration-dotted decoration-ink-dim underline-offset-4"/><form method="post" action="/cars/{{ $vehicle->id }}/dates" id="dates-row-{{ $vehicle->id }}" hidden>@csrf</form>@else{{ \App\Support\Ago::html($vehicle->accepted_at) }}@endif</td>
         @break
         @case('released')
     <td class="{{ $col->classes() }}">

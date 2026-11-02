@@ -19,8 +19,8 @@
                         <summary class="step-head">
                             <span class="step-title">{{ $step->title }}</span>
                             {{-- Дата приёма (с подсказками из писем, `x-park.accepted`) и выдачи — сама выбор даты и времени тому, кто видит деньги. --}}
-                            @if ($step->at && $step->key === 'intake' && auth()->user()->parkMoney() && $vehicle->accepted_at)<x-park.accepted :vehicle="$vehicle" class="fact nums underline decoration-dotted underline-offset-2"/>
-                            @elseif ($step->at && $step->key === 'release' && auth()->user()->parkMoney() && $vehicle->released_at)<x-park.date-edit :vehicle="$vehicle" field="released_at" class="fact nums underline decoration-dotted underline-offset-2"/>
+                            @if ($step->at && $step->key === 'intake' && auth()->user()->parkDates() && $vehicle->accepted_at)<x-park.accepted :vehicle="$vehicle" class="fact nums underline decoration-dotted underline-offset-2"/>
+                            @elseif ($step->at && $step->key === 'release' && auth()->user()->parkDates() && $vehicle->released_at)<x-park.date-edit :vehicle="$vehicle" field="released_at" class="fact nums underline decoration-dotted underline-offset-2"/>
                             @elseif ($step->at)<span class="fact nums">{{ \App\Support\Ago::html($step->at, $step->key !== 'letter', words: false) }}</span>@endif
                             @foreach ($step->chips as $chip)<span class="fact max-w-[14rem]"><span class="truncate">{{ $chip }}</span></span>@endforeach
                             @if ($step->hint)<span class="min-w-0 truncate text-sm text-ink-muted">{{ $step->hint }}</span>@endif

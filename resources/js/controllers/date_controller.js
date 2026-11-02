@@ -25,6 +25,8 @@ export default class extends Controller {
     get field() { return this.textTarget.tagName === 'INPUT'; }
 
     connect() {
+        // Копия без кнопки (силуэт карточки `lib/ghost.js` и т. п.) — не выбор даты.
+        if (!this.hasTextTarget || !this.hasValueTarget) return;
         // Телефон — без клавиатуры: поле только открывает календарь.
         if (this.field && matchMedia('(pointer: coarse)').matches) this.textTarget.readOnly = true;
         if (this.limitValue) {
@@ -44,6 +46,7 @@ export default class extends Controller {
     }
 
     disconnect() {
+        if (!this.onChange) return;
         document.removeEventListener('turbo:morph', this.onMorph);
         this.valueTarget.removeEventListener('change', this.onChange);
         this.close();

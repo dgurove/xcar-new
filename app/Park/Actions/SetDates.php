@@ -71,7 +71,7 @@ final class SetDates
             $vehicle->log(EventType::DatesChanged, $by, array_filter([
                 'accepted' => isset($changes['accepted_at']) ? [$before['accepted'], $changes['accepted_at']->format('Y-m-d H:i')] : null,
                 'released' => isset($changes['released_at']) ? [$before['released'], $changes['released_at']->format('Y-m-d H:i')] : null,
-                'source' => isset($changes['accepted_at'], self::SOURCES[$source]) ? $source : null,
+                'source' => isset($changes['accepted_at']) && $source !== null && isset(self::SOURCES[$source]) ? $source : null,
             ]));
         });
         Nav::forgetStaffCounts();

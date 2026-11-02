@@ -20,6 +20,9 @@ final class Status
         }
         // Висящие задачи (`Tasks`, список кладёт их атрибутом `task_keys`): первая — словом, остальные числом.
         $tasks = $v->getAttribute('task_keys');
+        if ($tasks && $tasks[0] === 'pickup' && ($late = $v->pickupLate())) {
+            return $say($late.(count($tasks) > 1 ? ' +'.(count($tasks) - 1) : ''), true, true);
+        }
         if ($tasks) {
             return $say(mb_strtolower(Tasks::LABELS[$tasks[0]]).(count($tasks) > 1 ? ' +'.(count($tasks) - 1) : ''), true);
         }

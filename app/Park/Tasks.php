@@ -17,6 +17,7 @@ use Illuminate\Support\Facades\DB;
 final class Tasks
 {
     public const LABELS = [
+        'pickup' => 'Договориться о заборе',
         'release' => 'Выдать',
         'buyer' => 'Подтвердить покупателя',
         'inspect' => 'Запросили осмотр',
@@ -37,7 +38,12 @@ final class Tasks
         $special = "'".Intent::Inspect->value."', '".Intent::Docs->value."'";
         $open = implode(', ', array_map(fn (RequestState $s) => "'{$s->value}'", RequestState::open()));
 
+        // «Не забирают» (`Vehicle::pickupLate`): продана дольше `PICKUP_DAYS` дней, а дня забора нет или он прошёл.
+        $soldBefore = now()->subDays(Vehicle::PICKUP_DAYS)->format('Y-m-d H:i:s');
+        $today = today()->format('Y-m-d H:i:s');
+
         return match ($key) {
+            'pickup' => "park_vehicles.state = 'stored' and park_vehicles.sold_at <= '{$soldBefore}' and not exists (select 1 from park_requests r where r.vehicle_id = park_vehicles.id and r.type = 'release' and r.state in ({$open}) and r.planned_at >= '{$today}')",
             'release' => "park_vehicles.state = 'stored' and exists (select 1 from park_requests r where r.vehicle_id = park_vehicles.id and r.type = 'release' and r.state in ({$open}))",
             'buyer' => "park_vehicles.state = 'stored' and exists (select 1 from vendors vd where vd.id = park_vehicles.vendor_id and vd.release_by_qr)"
                 .' and exists (select 1 from park_passes p where p.vehicle_id = park_vehicles.id and p.submitted_at is not null and p.confirmed_at is null and p.revoked_at is null and p.used_at is null)',

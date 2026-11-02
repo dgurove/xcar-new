@@ -352,7 +352,7 @@ class RequestController
         ]);
         $at = isset($data['released_at']) ? Carbon::parse($data['released_at']) : null;
         // Сначала дата приёма: выдача сверяет свою дату с ней. Поправленная остаётся, даже если выдача не прошла, — она верная.
-        if (! empty($data['accepted_at']) && $request->user()->parkMoney()) {
+        if (! empty($data['accepted_at']) && $request->user()->parkDates()) {
             app(SetDates::class)($req->vehicle, $request->user(), Carbon::parse($data['accepted_at']), null, $data['accepted_source'] ?? null);
             $req->vehicle->refresh();
         }

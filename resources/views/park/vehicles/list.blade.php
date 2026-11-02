@@ -12,6 +12,10 @@
     $flat ??= false;
     // Приёмщику денег нет (`User::parkMoney`): столбцы ставки, начисленного и хранения не рисуются.
     $money ??= auth()->user()?->parkMoney() ?? true;
+    // Дата приёма в строке — с подсказками из писем: факты всех строк двумя запросами (`AcceptHints::prime`).
+    if (auth()->user()?->parkDates()) {
+        \App\Park\AcceptHints::prime($vehicles->getCollection());
+    }
     $groups = match (true) {
         $byMonth => $vehicles->getCollection()->groupBy(fn ($v) => $v->released_at?->format('Y-m') ?? ''),
         $grouped => $vehicles->getCollection()->groupBy(fn ($v) => $v->yard_id ?? 0)->sortBy(fn ($g, $id) => $id ? $g->first()->yard->name : "\u{10FFFF}"),

@@ -61,6 +61,7 @@ class VehicleEvent extends Model
             EventType::Released => 'Выдана'.(! empty($p['to']) ? ' '.mb_strtolower($p['to']) : '').(! empty($p['pass']) ? ', по QR' : '').(! empty($p['without_qr']) ? ', без QR: '.$p['without_qr'] : '').(! empty($p['unpaid']) ? ', с долгом '.Money::rub($p['unpaid']) : ''),
             EventType::Note => (string) ($p['text'] ?? ''),
             EventType::Updated => (! empty($p['why']) ? $p['why'].': ' : 'Изменена: ').Changes::text($p['fields'] ?? [], $p['changes'] ?? []),
+            EventType::PickupPlanned => ! empty($p['at']) ? 'Забор назначен на '.self::day($p['at']) : 'Дата забора снята',
             EventType::DatesChanged => implode(', ', array_filter([
                 isset($p['accepted']) ? 'Дата приёма: '.self::day($p['accepted'][0]).' → '.self::day($p['accepted'][1]).(isset($p['source']) ? ' '.(\App\Park\Actions\SetDates::SOURCES[$p['source']] ?? '') : '') : null,
                 isset($p['released']) ? 'Дата выдачи: '.self::day($p['released'][0]).' → '.self::day($p['released'][1]) : null,

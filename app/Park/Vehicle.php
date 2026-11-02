@@ -323,6 +323,34 @@ class Vehicle extends Model
         return $this->requests->first(fn (Request $r) => $r->type === $type && $r->isOpen());
     }
 
+    /** Сколько дней после письма «реализовано» без договорённой даты забора — уже «не забирают» (`pickupLate`). */
+    public const PICKUP_DAYS = 3;
+
+    /** День забора, о котором договорились с покупателем, — `planned_at` открытой заявки на выдачу (`PlanPickup`). */
+    public function pickupAt(): ?\Illuminate\Support\Carbon
+    {
+        return $this->openRequest(RequestType::Release)?->planned_at;
+    }
+
+    /**
+     * Продана, а забирать не едут (02.11.2026, владелец: «реализовано 27 октября, а по ней не звонят, не назначают дату
+     * забора — пометить цветом везде»): письмо о продаже старше `PICKUP_DAYS` дней и даты забора нет — «не забирают 6 д»;
+     * дата была, но прошла — «не забрали 05.11». Одно правило: тег у названия (`Alerts`), задача «Статуса» (`Tasks`), плашка
+     * окошка. SQL того же правила — `Tasks::sql('pickup')`.
+     */
+    public function pickupLate(): ?string
+    {
+        if ($this->state !== VehicleState::Stored || ! $this->sold_at || $this->sold_at->gt(now()->subDays(self::PICKUP_DAYS))) {
+            return null;
+        }
+        $at = $this->pickupAt();
+        if (! $at) {
+            return 'не забирают '.(int) $this->sold_at->copy()->startOfDay()->diffInDays(today()).' д';
+        }
+
+        return $at->lt(today()) ? 'не забрали '.$at->format('d.m') : null;
+    }
+
     public function yard(): BelongsTo
     {
         return $this->belongsTo(Yard::class, 'yard_id');

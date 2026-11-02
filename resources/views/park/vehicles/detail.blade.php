@@ -80,8 +80,8 @@
         @php
             $at = fn ($d) => $d->translatedFormat($d->isCurrentYear() ? 'j M, H:i' : 'j M Y, H:i');
             $dotted = 'underline decoration-dotted decoration-ink-dim underline-offset-4';
-            // Даты правит тот, кто видит деньги (02.11.2026: и управляющий) — приём `x-park.accepted`, выдачу `x-park.date-edit`.
-            $admin = auth()->user()->parkMoney();
+            // Даты правят все люди парковки (`parkDates`, 02.11.2026) — приём `x-park.accepted`, выдачу `x-park.date-edit`.
+            $admin = auth()->user()->parkDates();
             $stored = $state === VehicleState::Stored;
             $out = $state === VehicleState::Released && $vehicle->released_at;
         @endphp
@@ -108,6 +108,21 @@
         @if ($task)
             @include('park.vehicles.task')
         @endif
+        {{-- Документы — прямо в окошке (02.11.2026, владелец: «срочно отображай документы в окошке, а то неудобно»): тот же
+             список и «+ Документ», что в деле (`park.vehicles.papers`, ответ загрузки подменяет `#papers`); пусто — только
+             подпись с кнопкой. --}}
+        <section class="mt-3" data-controller="photos" data-photos-url-value="/cars/{{ $vehicle->id }}/media" data-photos-collection-value="papers">
+            <div class="flex items-center justify-between gap-2">
+                <h2 class="detail-section">Документы @if (($n = $vehicle->papers()->count()) > 0)<span class="nums font-normal text-ink-dim">{{ $n }}</span>@endif</h2>
+                <button type="button" class="btn btn-s btn-quiet shrink-0" data-action="photos#pick"><x-ui.icon name="plus" class="size-4"/> Документ</button>
+            </div>
+            <input type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,.heic,.doc,.docx" multiple class="sr-only" tabindex="-1" data-photos-target="input" data-action="change->photos#upload">
+            <div hidden data-photos-target="progress" class="mb-2">
+                <div class="mb-1 text-sm text-ink-muted" data-label></div>
+                <div class="h-1.5 overflow-hidden rounded-full bg-surface-3"><div class="h-full bg-accent transition-[width]" data-bar style="width:0"></div></div>
+            </div>
+            @include('park.vehicles.papers')
+        </section>
         @if (! $task && $messages->isNotEmpty())
             {{-- Без заявки — письма ТС той же лентой, что в задаче и деле (x-mail.letters). --}}
             <section class="mt-3">

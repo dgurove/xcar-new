@@ -12,7 +12,7 @@
         Intent::Bounce->value => 'Письмо не доставлено',
         default => 'Ждут ответа',
     };
-    $steps = array_values(array_intersect(['buyer', 'yard'], $tasks ?? []));
+    $steps = array_values(array_intersect(['pickup', 'buyer', 'yard'], $tasks ?? []));
 @endphp
 @if ($asks->isNotEmpty() || $steps)
     <div class="mt-3 flex flex-col gap-3">
@@ -40,7 +40,20 @@
             </section>
         @endforeach
         @foreach ($steps as $key)
-            @if ($key === 'yard' && $vehicle->state === \App\Park\VehicleState::Stored && ! $vehicle->yard_id)
+            @if ($key === 'pickup' && ($late = $vehicle->pickupLate()))
+                {{-- Продана, а не забирают (02.11.2026, владелец): красным, когда продали и что сказать; день, о котором договорились, —
+                     здесь же (`x-park.pickup`), звонок — тому, кто заберёт. --}}
+                <section class="flex flex-col gap-2 rounded-(--radius-l) bg-danger-soft p-3">
+                    <div class="flex min-w-0 flex-col gap-0.5">
+                        <h2 class="text-base font-medium text-danger">{{ mb_ucfirst($late) }}</h2>
+                        <span class="text-sm text-ink-muted">Реализована <span class="nums">{{ \App\Support\Ago::day($vehicle->sold_at) }}</span>@if ($vehicle->pickup_name), заберёт {{ $vehicle->pickup_name }}@endif</span>
+                    </div>
+                    <div class="flex flex-wrap items-center gap-2">
+                        <x-park.pickup :vehicle="$vehicle" key="now" placeholder="Назначить день забора" class="btn btn-s btn-accent"/>
+                        @if ($vehicle->pickup_phone)<a href="tel:+{{ $vehicle->pickupPhoneDigits() }}" class="btn btn-s btn-quiet"><x-ui.icon name="phone" class="size-4"/> {{ $vehicle->pickup_phone }}</a>@endif
+                    </div>
+                </section>
+            @elseif ($key === 'yard' && $vehicle->state === \App\Park\VehicleState::Stored && ! $vehicle->yard_id)
                 {{-- Парковка — здесь же, без захода в дело (02.11.2026, владелец: «проваливаться в дело и возвращаться по
                      десяткам тачек — бред»): парковка и фактический день приёма (подставлена дата письма, по которому ТС
                      принята, — его отправляют через несколько дней), «Указать» — и карточка к следующей ТС без парковки. --}}

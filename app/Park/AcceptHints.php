@@ -2,6 +2,7 @@
 
 namespace App\Park;
 
+use App\Mail\Direction;
 use App\Mail\Extraction\Intent;
 use App\Mail\Message;
 use App\Mail\Thread;
@@ -18,6 +19,9 @@ final class AcceptHints
     /** Заезд — письма не раньше месяца до нынешней даты приёма: прошлый заезд той же машины подсказкой не встаёт. */
     private const VISIT_DAYS = 30;
 
+    /** Ключ памяти запроса: таблица «Наличия» считает факты всех строк двумя запросами (`prime`), а не по три на строку. */
+    private const MEMO = 'park.accept-hints';
+
     /**
      * Варианты по порядку времени, без повторов дня: «Заявка 02.09», «Отчёт 06.09», «Заявка в системе 07.10».
      *
@@ -25,12 +29,13 @@ final class AcceptHints
      */
     public static function for(Vehicle $vehicle): array
     {
+        $facts = self::factsOf($vehicle);
         $report = self::report($vehicle);
         $asked = self::asked($vehicle, $report ?? $vehicle->accepted_at?->copy()->endOfDay() ?? now());
-        $system = Request::where('vehicle_id', $vehicle->id)->where('type', RequestType::Intake)
-            ->when($vehicle->accepted_at, fn ($q, $at) => $q->where('created_at', '<=', $at->copy()->endOfDay()))->max('created_at');
+        $till = $vehicle->accepted_at?->copy()->endOfDay();
+        $system = collect($facts['requests'])->filter(fn (Carbon $at) => ! $till || $at->lte($till))->max();
         $hints = [];
-        foreach (['request' => [$asked, 'Заявка'], 'report' => [$report, 'Отчёт'], 'system' => [$system ? Carbon::parse($system) : null, 'Заявка в системе']] as $source => [$at, $word]) {
+        foreach (['request' => [$asked, 'Заявка'], 'report' => [$report, 'Отчёт'], 'system' => [$system, 'Заявка в системе']] as $source => [$at, $word]) {
             if (! $at || isset($hints[$day = $at->toDateString()])) {
                 continue;
             }
@@ -44,22 +49,51 @@ final class AcceptHints
     /** Последнее письмо-заявка вендора на приём перед `$before` — когда машину просили принять. */
     public static function asked(Vehicle $vehicle, Carbon $before): ?Carbon
     {
-        $at = self::letters($vehicle)->where('direction', 'in')->where('intent', Intent::Intake->value)->where('date_at', '<', $before)->max('date_at');
-
-        return $at ? Carbon::parse($at) : null;
+        return collect(self::factsOf($vehicle)['letters'])
+            ->filter(fn ($l) => $l['in'] && $l['intent'] === Intent::Intake->value && $l['at']->lt($before))->pluck('at')->max();
     }
 
     /** Наше первое письмо-фотоотчёт этого заезда: машина к нему уже стояла. */
     public static function report(Vehicle $vehicle): ?Carbon
     {
-        $at = self::letters($vehicle)->where('direction', 'out')->where('intent', Intent::Accepted->value)
-            ->when($vehicle->accepted_at, fn ($q, $at) => $q->where('date_at', '>=', $at->copy()->subDays(self::VISIT_DAYS)))->min('date_at');
+        $from = $vehicle->accepted_at?->copy()->subDays(self::VISIT_DAYS);
 
-        return $at ? Carbon::parse($at) : null;
+        return collect(self::factsOf($vehicle)['letters'])
+            ->filter(fn ($l) => ! $l['in'] && $l['intent'] === Intent::Accepted->value && (! $from || $l['at']->gte($from)))->pluck('at')->min();
     }
 
-    private static function letters(Vehicle $vehicle)
+    /** Факты строк списка разом — до отрисовки таблицы. */
+    public static function prime(iterable $vehicles): void
     {
-        return Message::whereIn('thread_id', Thread::park()->where('vehicle_id', $vehicle->id)->select('id'));
+        $ids = collect($vehicles)->pluck('id')->all();
+        if ($ids && ! app()->runningInConsole()) {
+            request()->attributes->set(self::MEMO, self::facts($ids) + (request()->attributes->get(self::MEMO) ?? []));
+        }
+    }
+
+    /** @return array{letters: list<array{in: bool, intent: string, at: Carbon}>, requests: list<Carbon>} */
+    private static function factsOf(Vehicle $vehicle): array
+    {
+        return (app()->runningInConsole() ? null : request()->attributes->get(self::MEMO)[$vehicle->id] ?? null) ?? self::facts([$vehicle->id])[$vehicle->id];
+    }
+
+    /** Письма-заявки и наши отчёты в ветках ящиков парковки и заявки на приём — по ТС. */
+    private static function facts(array $ids): array
+    {
+        $out = array_fill_keys($ids, ['letters' => [], 'requests' => []]);
+        $letters = Message::query()->join('mail_threads as t', 't.id', '=', 'mail_messages.thread_id')
+            ->whereIn('t.id', Thread::park()->whereIn('vehicle_id', $ids)->select('id'))
+            ->whereIn('mail_messages.intent', [Intent::Intake->value, Intent::Accepted->value])
+            ->get(['t.vehicle_id', 'mail_messages.direction', 'mail_messages.intent', 'mail_messages.date_at']);
+        foreach ($letters as $m) {
+            if ($m->date_at) {
+                $out[$m->vehicle_id]['letters'][] = ['in' => $m->direction === Direction::In, 'intent' => $m->intent, 'at' => $m->date_at];
+            }
+        }
+        foreach (Request::whereIn('vehicle_id', $ids)->where('type', RequestType::Intake)->get(['vehicle_id', 'created_at']) as $r) {
+            $out[$r->vehicle_id]['requests'][] = $r->created_at;
+        }
+
+        return $out;
     }
 }

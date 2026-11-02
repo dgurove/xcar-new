@@ -35,6 +35,7 @@ use App\Park\Actions\PutOnSale;
 use App\Park\Actions\RegisterCandidate;
 use App\Park\Actions\RestoreVehicle;
 use App\Park\Actions\SetCity;
+use App\Park\Actions\PlanPickup;
 use App\Park\Actions\SetDates;
 use App\Park\Actions\SetYard;
 use App\Park\Actions\SwapSpots;
@@ -332,6 +333,15 @@ class VehicleController
         return back()->with('toast', isset($data['released_at']) ? 'Дата выдачи поправлена' : 'Дата приёма поправлена');
     }
 
+    /** День забора, о котором договорились (`PlanPickup`): кнопка-дата в окошке и в деле, пустая — договорённость снята. */
+    public function pickup(Request $request, Vehicle $vehicle, PlanPickup $plan)
+    {
+        $at = $request->validate(['pickup_at' => ['nullable', 'date']])['pickup_at'] ?? null;
+        $plan($vehicle, $request->user(), $at ? Carbon::parse($at) : null);
+
+        return back()->with('toast', $at ? 'Забор назначен' : 'Дата забора снята');
+    }
+
     /** Страховая продала ТС: дата и кому выдать — руками или поправить то, что вынул разбор письма. `clear` — не продано. */
     public function sold(Request $request, Vehicle $vehicle, MarkSold $sold)
     {
@@ -606,7 +616,7 @@ class VehicleController
             'accepted_at' => ['nullable', 'date'], 'accepted_source' => ['nullable', 'string', 'max:16']]);
         $user = $request->user();
         DB::transaction(function () use ($data, $vehicle, $user, $setYard, $dates) {
-            if (! empty($data['accepted_at']) && $user->parkMoney()) {
+            if (! empty($data['accepted_at']) && $user->parkDates()) {
                 $dates($vehicle, $user, Carbon::parse($data['accepted_at']), null, $data['accepted_source'] ?? null);
             }
             $setYard($vehicle, $user, Yard::findOrFail($data['yard_id']), $data['spot'] ?? null);

@@ -55,6 +55,10 @@ final class Alerts
         if ($state === VehicleState::Expected && $vehicle->relationLoaded('requests') && ! $vehicle->requests->contains(fn ($r) => $r->isOpen())) {
             $out[] = ['label' => 'без заявки', 'tone' => 'urgent'];
         }
+        // Продана, а не забирают — красным везде, где теги (02.11.2026, владелец).
+        if ($late = $vehicle->pickupLate()) {
+            $out[] = ['label' => mb_ucfirst($late), 'tone' => 'danger'];
+        }
         if (! $state->isFinal() && ($vin = $vehicle->vinProblem())) {
             $out[] = ['label' => $vin, 'tone' => 'danger'];
         }

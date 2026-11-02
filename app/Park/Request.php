@@ -17,7 +17,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 #[Fillable(['vehicle_id', 'type', 'state', 'thread_id', 'yard_id', 'done_at', 'note', 'created_by',
-    'contact_name', 'contact_phone', 'done_by', 'cancel_reason', 'letter_at', 'letter_id', 'deal_id'])]
+    'contact_name', 'contact_phone', 'done_by', 'cancel_reason', 'letter_at', 'letter_id', 'deal_id', 'planned_at'])]
 class Request extends Model
 {
     use FastAttributes;
@@ -38,7 +38,7 @@ class Request extends Model
 
     protected function casts(): array
     {
-        return ['type' => RequestType::class, 'state' => RequestState::class, 'done_at' => 'datetime', 'letter_at' => 'datetime'];
+        return ['type' => RequestType::class, 'state' => RequestState::class, 'done_at' => 'datetime', 'letter_at' => 'datetime', 'planned_at' => 'datetime'];
     }
 
     public function vehicle(): BelongsTo

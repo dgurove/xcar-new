@@ -4,7 +4,7 @@
      считается хранение). `compact` — плашкой в карточке строки «Наличия», без места: место — потом схемой или «Переставить». --}}
 @php
     $compact ??= false;
-    $dated = auth()->user()->parkMoney() && $vehicle->accepted_at;
+    $dated = auth()->user()->parkDates() && $vehicle->accepted_at;
 @endphp
 @if ($compact)
     <section class="flex flex-col gap-2 rounded-(--radius-l) bg-surface-2 p-3">

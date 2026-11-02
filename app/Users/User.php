@@ -519,6 +519,15 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
         return $this->isParkAdmin() || $this->isParking();
     }
 
+    /**
+     * Даты приёма и выдачи ТС (02.11.2026, владелец: «приёмщики и Серёга тоже должны иметь право менять, как и админ»): все
+     * люди парковки — администратор, управляющий, приёмщик.
+     */
+    public function parkDates(): bool
+    {
+        return $this->canManagePark();
+    }
+
     /** Схема парковки — места и ряды (31.10.2026, владелец): администратор и управляющие, не приёмщик. Ставить ТС на места — все. */
     public function editsYardPlan(): bool
     {
@@ -552,10 +561,13 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
      * Администратор парковки — своя роль (владелец 08.10.2026): админ CRM без неё на парковку не входит, а с ней —
      * настройки парковки и её люди. У Дмитрия и Андрея она есть, у Екатерины — нет.
      */
-    /** «Поделиться» ТС парковки (PDF, фото, архив) — админам и администраторам парковки (02.11.2026, владелец). */
+    /**
+     * «Поделиться» ТС парковки (PDF, фото, архив) — админам и всем людям парковки: администратор, управляющий, приёмщик
+     * (02.11.2026, владелец: сначала админам, вечером — «Серёге и приёмщикам тоже»).
+     */
     public function sharesPark(): bool
     {
-        return $this->isAdmin() || $this->isParkAdmin();
+        return $this->isAdmin() || $this->canManagePark();
     }
 
     public function isParkAdmin(): bool

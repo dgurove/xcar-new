@@ -25,7 +25,7 @@
 @endif
 <div class="list release-list mt-3">
     {{-- Фактическая дата приёма — тут же (02.11.2026, владелец): у многих стоит день ввода; подсказки — из писем. --}}
-    @if ($money && $vehicle->accepted_at)<x-park.accepted :vehicle="$vehicle" mode="field"/>@endif
+    @if ($vehicle->accepted_at && auth()->user()->parkDates())<x-park.accepted :vehicle="$vehicle" mode="field"/>@endif
     <div class="row justify-between">
         <label for="f-released_at" class="text-ink-muted">Когда</label>
         <x-ui.date name="released_at" :value="old('released_at', now()->format('Y-m-d\TH:i'))" time now :clearable="false" class="release-when"/>

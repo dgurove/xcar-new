@@ -68,11 +68,30 @@ class AcceptHintsTest extends TestCase
         $this->assertStringContainsString('по заявке', $event->text());
     }
 
-    public function test_receiver_cannot_change_date(): void
+    public function test_receiver_changes_date_too(): void
     {
         $receiver = User::create(['name' => 'Приёмщик', 'phone' => '79000000017', 'roles' => [Role::Parking], 'park_readonly' => true, 'park_city_id' => City::main(), 'approved_at' => now()]);
 
-        $this->assertContains($this->actingAs($receiver)->post(Surface::Park->url("/cars/{$this->vehicle->id}/dates"), ['accepted_at' => '2026-10-02T12:00'])->status(), [403, 404]);
-        $this->assertSame('2026-10-20 15:00', $this->vehicle->fresh()->accepted_at->format('Y-m-d H:i'));
+        $this->actingAs($receiver)->post(Surface::Park->url("/cars/{$this->vehicle->id}/dates"), ['accepted_at' => '2026-10-02T12:00'])->assertSessionHas('toast', 'Дата приёма поправлена');
+        $this->assertSame('2026-10-02 12:00', $this->vehicle->fresh()->accepted_at->format('Y-m-d H:i'));
+    }
+
+    /** Продана, а не забирают: тег, задача и день забора, о котором договорились (02.11.2026). */
+    public function test_pickup_late_until_date_agreed(): void
+    {
+        $manager = User::create(['name' => 'Управляющий', 'phone' => '79000000041', 'roles' => [Role::Parking], 'park_city_id' => City::main(), 'approved_at' => now()]);
+        $this->vehicle->update(['sold_at' => now()->subDays(6)]);
+        $late = fn () => Vehicle::with('requests')->find($this->vehicle->id)->pickupLate();
+
+        $this->assertSame('не забирают 6 д', $late());
+        $this->assertContains('pickup', \App\Park\Tasks::of([$this->vehicle->id])[$this->vehicle->id]);
+
+        $this->actingAs($manager)->post(Surface::Park->url("/cars/{$this->vehicle->id}/pickup"), ['pickup_at' => now()->addDay()->format('Y-m-d\T12:00')])
+            ->assertSessionHas('toast', 'Забор назначен');
+        $this->assertNull($late());
+        $this->assertNotContains('pickup', \App\Park\Tasks::of([$this->vehicle->id])[$this->vehicle->id]);
+
+        \App\Park\Request::where('vehicle_id', $this->vehicle->id)->update(['planned_at' => now()->subDays(2)->setTime(12, 0)]);
+        $this->assertSame('не забрали '.now()->subDays(2)->format('d.m'), $late());
     }
 }

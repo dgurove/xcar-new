@@ -59,7 +59,7 @@ Route::domain(config('xcar.park_host'))->middleware(['auth', 'section:park'])->g
     Route::get('/cars/export', [VehicleController::class, 'export'])->middleware('ability:parkMoney');
     Route::get('/cars/{vehicle}', [VehicleController::class, 'show']);
     Route::get('/cars/{vehicle}/letters', [VehicleController::class, 'letters']);
-    // «Поделиться» ТС — админам и администраторам парковки (02.11.2026, `User::sharesPark`).
+    // «Поделиться» ТС — админам и всем людям парковки (02.11.2026, `User::sharesPark`).
     Route::match(['get', 'post'], '/cars/{vehicle}/pdf', [ShareController::class, 'vehiclePdf']);
     Route::get('/cars/{vehicle}/photo/{media}', [ShareController::class, 'vehiclePhoto'])->whereNumber('media');
     Route::post('/cars/{vehicle}/photos/warm', [ShareController::class, 'vehicleWarm'])->middleware('throttle:240,1');
@@ -115,7 +115,8 @@ Route::domain(config('xcar.park_host'))->middleware(['auth', 'section:park'])->g
     Route::post('/cars/{vehicle}/transfer', [VehicleController::class, 'transfer'])->middleware('park.manage');
     Route::post('/cars/{vehicle}/city', [VehicleController::class, 'city']);
     Route::post('/cars/{vehicle}/yard', [VehicleController::class, 'yard']);
-    Route::post('/cars/{vehicle}/dates', [VehicleController::class, 'dates'])->middleware('ability:parkMoney');
+    Route::post('/cars/{vehicle}/dates', [VehicleController::class, 'dates'])->middleware('ability:parkDates');
+    Route::post('/cars/{vehicle}/pickup', [VehicleController::class, 'pickup'])->middleware('ability:parkDates');
     Route::post('/cars/{vehicle}/restore', [VehicleController::class, 'restore'])->middleware('park.manage');
     Route::post('/cars/{vehicle}/undo-intake', [VehicleController::class, 'undoIntake'])->middleware('park.manage');
     Route::post('/cars/{vehicle}/undo-release', [VehicleController::class, 'undoRelease'])->middleware('park.manage');
