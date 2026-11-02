@@ -117,7 +117,8 @@ func open(ctx context.Context) (*whatsmeow.Client, *sql.DB, error) {
 	return cli, db, nil
 }
 
-// pair — привязка кодом из 8 знаков: код уходит владельцу в Telegram, он вводит его в WhatsApp на телефоне.
+// pair — привязка кодом из 8 знаков: код уходит владельцу в Telegram, он вводит его в WhatsApp на телефоне. Без канала QR:
+// тот рвёт соединение через ~2,5 минуты, а человеку на код нужно больше — ждём до 10 минут.
 func pair(phone string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel()
@@ -129,35 +130,47 @@ func pair(phone string) error {
 	if cli.Store.ID != nil {
 		return fmt.Errorf("уже привязано к %s; чтобы привязать заново, удалите %s", cli.Store.ID.User, dataDir)
 	}
-	qr, err := cli.GetQRChannel(ctx)
-	if err != nil {
-		return err
-	}
+	ready, paired := make(chan struct{}, 1), make(chan error, 1)
+	cli.AddEventHandler(func(evt any) {
+		switch e := evt.(type) {
+		case *events.QR:
+			select {
+			case ready <- struct{}{}:
+			default:
+			}
+		case *events.PairSuccess:
+			paired <- nil
+		case *events.PairError:
+			paired <- e.Error
+		}
+	})
 	if err := cli.Connect(); err != nil {
 		return err
 	}
 	defer cli.Disconnect()
-	asked := false
-	for item := range qr {
-		switch {
-		case item.Event == "code" && !asked:
-			asked = true
-			code, err := cli.PairPhone(ctx, phone, true, whatsmeow.PairClientChrome, deviceName)
-			if err != nil {
-				return err
-			}
-			log.Printf("код: %s", code)
-			tell(fmt.Sprintf("Код для WhatsApp: %s\n\nНа телефоне: WhatsApp → Настройки → Связанные устройства → Привязка устройства → «Связать по номеру телефона» и ввести код. Код живёт пару минут.", code), false)
-		case item.Event == "success":
-			log.Printf("привязано: %s", cli.Store.ID)
-			// Дать телефону передать ключи и имя профиля, иначе «в сети» потом не поставить.
-			time.Sleep(20 * time.Second)
-			return nil
-		case item.Event != "code":
-			return fmt.Errorf("привязка не удалась: %s %v", item.Event, item.Error)
-		}
+	select {
+	case <-ready:
+	case <-ctx.Done():
+		return errors.New("WhatsApp не предложил привязку")
 	}
-	return errors.New("привязка не удалась: WhatsApp закрыл соединение")
+	code, err := cli.PairPhone(ctx, phone, true, whatsmeow.PairClientChrome, deviceName)
+	if err != nil {
+		return err
+	}
+	log.Printf("код: %s", code)
+	tell(fmt.Sprintf("Код для WhatsApp: %s\n\nНа телефоне: WhatsApp → Настройки → Связанные устройства → Привязка устройства → «Связать по номеру телефона» и ввести код. Жду 10 минут.", code), false)
+	select {
+	case err := <-paired:
+		if err != nil {
+			return fmt.Errorf("привязка не удалась: %w", err)
+		}
+	case <-ctx.Done():
+		return errors.New("код не ввели за 10 минут")
+	}
+	log.Printf("привязано: %s", cli.Store.ID)
+	// Дать телефону передать ключи и имя профиля, иначе «в сети» потом не поставить.
+	time.Sleep(30 * time.Second)
+	return nil
 }
 
 type service struct {
