@@ -150,6 +150,11 @@ class Deal extends Model
         if ($req = $this->openRequirement) {
             return $position?->stage->isPayStep() && $this->fullyPaid() ? null : ['title' => $req->title, 'due' => $req->due_at];
         }
+        // Гаражная — дело только просьбой (как бейдж «Гаража», `Nav::asks`): «Укажите цену продажи» у неё — сама продажа
+        // из гаража, она идёт неделями и в «Ваш ход» не встаёт (02.11.2026: 16 таких заслоняли настоящие дела).
+        if ($this->isGarage()) {
+            return null;
+        }
         if (! $position || $position->waitsFor() !== WaitsFor::Manager || $position->awaitsInvoice()) {
             return null;
         }

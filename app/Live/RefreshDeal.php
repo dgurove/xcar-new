@@ -35,7 +35,7 @@ final class RefreshDeal
         $this->publish->rowsSoon(Topics::STAFF, $garage ? ['/work/garage' => [$n]] : ['/work/deals' => [$deal->id]]);
         if ($deal->buyer_id) {
             $this->publish->refreshSoon(Topics::user($deal->buyer_id), $garage
-                ? ['/garage', "/garage/cars/{$n}", '/account/money']
+                ? ['/garage', "/garage/cars/{$n}", '/deals', '/account/money']
                 : ['/deals', "/deals/{$deal->id}", '/account/money']);
         }
         $buyer = DealContract::where('deal_id', $deal->id)->value('buyer_user_id');

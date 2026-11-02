@@ -56,13 +56,14 @@ class DealController
         }
         ListPrefs::sync($request, 'deals', view: false, keep: ['sort']);
         $sort = Sort::from($request->query('sort'), self::SORTS, '-fresh');
-        // Гаражные сделки живут в «Гараже» (решение владельца 03.10.2026), здесь — только ждущее решения «В гараж».
+        // Гаражные — тоже сделки (02.11.2026, владелец: «гаражные тоже в сделках»; до того жили только в «Гараже»): в тех же
+        // разделах, с меткой «Гараж», строка ведёт в машину гаража — там и шаг сделки.
         // Ход менеджера — просьба к нему или этап, где ждут его (ПРАЙМ без покупателя — без просьбы): просроченное, потом остальное.
         $turn = Deal::MANAGER_TURN_SQL;
         $deals = self::deals($me)->where('state', DealState::Active)
             ->orderByRaw("case when {$turn} then 0 else 1 end")
             ->orderByRaw('(select min(r.due_at) from requirements r where r.deal_id = deals.id and r.done_at is null) asc nulls last')
-            ->when($sort->key === 'amount', fn ($d) => $d->orderByRaw("amount {$sort->dir()} nulls last"))->orderBy('created_at', $sort->key === 'fresh' ? $sort->dir() : 'desc')->orderByDesc('id');
+            ->when($sort->key === 'amount', fn ($d) => $d->orderByRaw("coalesce(amount, cost) {$sort->dir()} nulls last"))->orderBy('created_at', $sort->key === 'fresh' ? $sort->dir() : 'desc')->orderByDesc('id');
         // Админу — все сделки площадки строками, постранично; менеджеру — свои разделами «чей ход» одной страницей.
         $staff = $me->isAdmin() && ! $me->isManager();
         $deals = $staff ? $deals->paginate(30) : $deals->get();
@@ -87,9 +88,11 @@ class DealController
         $tasks = $deals->mapWithKeys(fn (Deal $d) => [$d->id => $d->managerTask()]);
         [$mine, $rest] = $deals->partition(fn (Deal $d) => $tasks[$d->id] !== null);
         $mine = $mine->sortBy(fn (Deal $d) => $tasks[$d->id]['due']?->getTimestamp() ?? PHP_INT_MAX)->values();
+        // Гаражная, где ход его без просьбы, — продаёт из гаража: своим разделом, а не «Идёт сделка».
         $who = fn (Deal $d) => match ($d->offer->position()?->waitsFor()) {
             WaitsFor::Supplier => 'supplier',
             WaitsFor::Us => 'us',
+            WaitsFor::Manager => $d->isGarage() ? 'garage' : 'other',
             default => 'other',
         };
         $rest = $rest->groupBy($who);
@@ -99,6 +102,7 @@ class DealController
             'supplier' => ['title' => 'Ждём поставщика', 'deals' => $rest->get('supplier', collect())],
             'us' => ['title' => 'Ждём XCar', 'deals' => $rest->get('us', collect())],
             'other' => ['title' => 'Идёт сделка', 'deals' => $rest->get('other', collect())],
+            'garage' => ['title' => 'В гараже', 'deals' => $rest->get('garage', collect())],
         ], fn ($s) => $s['deals']->isNotEmpty());
     }
 
@@ -122,11 +126,11 @@ class DealController
         return view('cabinet.deals.archive', ['done' => $closed->where('state', DealState::Done)->values(), 'failed' => $closed->where('state', DealState::Cancelled)->values()]);
     }
 
-    /** Сделки экрана: без гаражных, с тем, что нужно строке. */
+    /** Сделки экрана с тем, что нужно строке; гаражные тоже (02.11.2026) — машина гаража нужна ссылке строки. */
     private static function deals(User $me)
     {
-        return Deal::with(['offer', 'offer.media', 'offer.positions.stage.block', 'offer.positions.stage.exits.to', 'openRequirement'])
-            ->when(! $me->hasDeals(), fn ($d) => $d->with('buyer'))->of($me)->whereNull('garage_payer');
+        return Deal::with(['offer', 'offer.media', 'offer.positions.stage.block', 'offer.positions.stage.exits.to', 'openRequirement', 'garageCar.offer'])
+            ->when(! $me->hasDeals(), fn ($d) => $d->with('buyer'))->of($me);
     }
 
     private static function bids(User $me)

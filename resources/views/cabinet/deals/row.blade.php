@@ -16,6 +16,12 @@
     $gap = $mine && $position->stage->isPayStep() && $deal->hasContract() ? $deal->invoiceGap() : null;
     $ask = $mine ? match ($gap) { 'buyer' => 'Укажите покупателя', 'passport' => 'Приложите паспорт покупателя', 'price' => 'Укажите цену продажи', default => $position->stage->managerTitle() } : null;
     $staff = auth()->user()->isAdmin() && $deal->buyer_id !== auth()->id();
+    // Гаражная (02.11.2026, «гаражные тоже в сделках»): цена — закупочная менеджера (закреплена при подтверждении), метка
+    // «Гараж», строка ведёт в машину гаража — там и шаг сделки.
+    $garage = $deal->isGarage();
+    // Метка «Гараж» — среди обычных сделок; в разделе «В гараже» её говорит заголовок.
+    $garageTag = $garage && ! ($inGarage ?? false);
+    $price = \App\Support\Money::rub($garage ? $deal->cost : $deal->amount);
     // В разделах (27.10.2026) — что сделать обычным цветом и срок (вышел — красным), у чужого хода — этап и с какого дня;
     // справа только сумма: кого ждём, говорит раздел.
     $sectioned = ($sectioned ?? false) && $active;
@@ -23,15 +29,16 @@
     // Оранжевое — только просрочка того, кто смотрит: менеджеру — его ход, админу — любая (11.10.2026).
     $alarm = ! $paidUp && ($req?->due_at?->isPast() || ($position?->isOverdue() && ($staff || $position->waitsFor() === \App\Workflow\WaitsFor::Manager)));
 @endphp
-<a href="{{ $staff ? $deal->crmUrl() : '/deals/'.$deal->id }}" class="row" @if ($staff) data-turbo="false" @endif>
+<a href="{{ $staff ? $deal->crmUrl() : ($garage ? $deal->href() : '/deals/'.$deal->id) }}" class="row" @if ($staff) data-turbo="false" @endif>
     <span class="row-photo max-sm:!h-[2.625rem] max-sm:!w-14"><x-offer.photo :media="$offer->mainPhoto()" sizes="72px"/></span>
     <span class="min-w-0 flex-1">
         <span class="block truncate font-medium">{{ $offer->titleWithYear() }}</span>
-        <span class="row-sub max-sm:!hidden"><span class="tag nums">№ {{ $offer->number }}</span>@if ($staff) {{ $deal->buyer?->shortName() }}@endif</span>
+        <span class="row-sub max-sm:!hidden">@if ($garageTag)<span class="tag tag-accent">Гараж</span>@endif<span class="tag nums">№ {{ $offer->number }}</span>@if ($staff) {{ $deal->buyer?->shortName() }}@endif</span>
         {{-- Телефон: цена — второй строкой рядом с номером, а не колонкой справа: колонка забирала треть строки, и
              название с просьбой сжимались в узкий столбик (07.10.2026, владелец: «текст сжатый, нечитабельный»). --}}
         <span class="mt-0.5 flex items-baseline gap-x-2 sm:hidden">
-            <span class="nums shrink-0 font-medium">{{ $deal->isGarage() ? 'В гараж' : \App\Support\Money::rub($deal->amount) }}</span>
+            <span class="nums shrink-0 font-medium">{{ $price }}</span>
+            @if ($garageTag)<span class="tag tag-accent shrink-0">Гараж</span>@endif
             <span class="nums shrink-0 text-sm text-ink-muted">№ {{ $offer->number }}</span>
             @if ($staff)<span class="min-w-0 truncate text-sm text-ink-muted">{{ $deal->buyer?->shortName() }}</span>@endif
         </span>
@@ -56,7 +63,7 @@
         @endif
     </span>
     <span class="flex max-w-[45%] shrink-0 flex-col items-end gap-1.5 max-sm:!hidden">
-        <span class="nums font-medium">{{ $deal->isGarage() ? 'В гараж' : \App\Support\Money::rub($deal->amount) }}</span>
+        <span class="nums font-medium">{{ $price }}</span>
         @if ($sectioned)
         @elseif (! $active)
             <span class="nums text-sm text-ink-muted">{{ \App\Support\Ago::html(($deal->closed_at ?? $deal->updated_at), words: false) }}</span>

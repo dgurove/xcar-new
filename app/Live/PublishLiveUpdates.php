@@ -21,10 +21,10 @@ use App\Logistics\Transport;
 use App\Notifications\ChatNotice;
 use App\Notifications\Notice;
 use App\Offers\Events\BidAccepted;
-use App\Offers\Events\CounterAnswered;
-use App\Offers\Events\CounterOffered;
 use App\Offers\Events\BidDeclined;
 use App\Offers\Events\BidPlaced;
+use App\Offers\Events\CounterAnswered;
+use App\Offers\Events\CounterOffered;
 use App\Offers\Events\EstimateGiven;
 use App\Offers\Events\EstimateRejected;
 use App\Offers\Events\EstimatesAsked;
@@ -183,7 +183,7 @@ final class PublishLiveUpdates
         $this->logistics($e->offer);
         if (($deal = $e->deal ?? $e->offer->deal()->first()) && $deal->buyer_id) {
             // Гаражная сделка живёт в гараже: шаг со страховой менеджер видит в карточке машины.
-            $this->publish->refresh(Topics::user($deal->buyer_id), $deal->isGarage() ? ['/garage', "/garage/cars/{$n}"] : ['/deals', "/deals/{$deal->id}"]);
+            $this->publish->refresh(Topics::user($deal->buyer_id), $deal->isGarage() ? ['/garage', "/garage/cars/{$n}", '/deals'] : ['/deals', "/deals/{$deal->id}"]);
         }
     }
 

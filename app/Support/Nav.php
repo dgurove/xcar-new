@@ -570,9 +570,9 @@ final class Nav
                 '/deals' => match (true) {
                     // Только сделки в работе, как в списке (11.10.2026): подтверждения и закончившееся — строками в конце.
                     // Плюс «Ждут решения» (02.11.2026): срок приёма вышел, его подтверждение ждёт выбора — строки того же экрана.
-                    $user->hasDeals() => Deal::where('buyer_id', $user->id)->whereNull('garage_payer')->where('state', DealState::Active)->count()
+                    $user->hasDeals() => Deal::where('buyer_id', $user->id)->where('state', DealState::Active)->count()
                         + DealController::pending($user)->count(),
-                    $user->isAdmin() => Deal::whereNull('garage_payer')->where('state', DealState::Active)->count(),
+                    $user->isAdmin() => Deal::where('state', DealState::Active)->count(),
                     default => null,
                 },
                 '/buyers' => $user->isManager() ? User::where('manager_id', $user->id)->count() : null,
@@ -609,7 +609,7 @@ final class Nav
     }
 
     /**
-     * Сколько сделок ждут его (`Deal::MANAGER_TURN_SQL`, строки раздела «Ваш ход»): обычные — «Сделки», гаражные — «Гараж». Просьба «Оплатите счёт», а счета сделки уже
+     * Сколько сделок ждут его (`Deal::MANAGER_TURN_SQL`, строки раздела «Ваш ход»): «Сделки» — все, с гаражными (02.11.2026), «Гараж» — гаражные. Просьба «Оплатите счёт», а счета сделки уже
      * оплачены (маршрут не догнал), — не считается: строка «Сделок» её не показывает (11.10.2026). Им же — значок приложения
      * (`User::badgeCount`), без остальных счётчиков таб-бара.
      *
@@ -625,7 +625,8 @@ final class Nav
                     where r.deal_id = deals.id and r.done_at is null)) as garage')->first();
             $paid = self::paidPayAsks($user);
 
-            return ['deals' => max(0, (int) $asks->deals - $paid['deals']), 'garage' => max(0, (int) $asks->garage - $paid['garage'])];
+            // «Сделки» — и гаражные (02.11.2026: они теперь и строками «Сделок», «Ваш ход»); «Гараж» — свои, как было.
+            return ['deals' => max(0, (int) $asks->deals + (int) $asks->garage - $paid['deals'] - $paid['garage']), 'garage' => max(0, (int) $asks->garage - $paid['garage'])];
         });
     }
 
@@ -658,7 +659,7 @@ final class Nav
             $badges['/buyers/interest'] = Interest::where('state', InterestState::New)->whereHas('user', fn ($u) => $u->where('manager_id', $user->id))->count();
             $badges['/buyers'] = $badges['/buyers/interest'];
             $badges['/account/buyers'] = $badges['/buyers'];
-            // Просьбы по гаражной сделке (страховая ещё идёт) — на табе «Гараж»: там её и ведут.
+            // Просьбы по гаражной сделке (страховая ещё идёт) — на табе «Гараж», где её ведут, и в «Сделках» (02.11.2026).
             $asks = self::asks($user);
             $badges['/deals/asks'] = $asks['deals'];
             $badges['/deals'] = $badges['/deals/asks'] + $badges['/buyers'];

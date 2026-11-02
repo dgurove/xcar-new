@@ -34,7 +34,7 @@
                 <h2 class="list-head">{{ $section['title'] }} <span class="nums">{{ $section['deals']->count() }}</span>@if ($loop->first)<span class="ml-auto md:hidden"><x-ui.toolbar :sort="$sort" name="deals-list"/></span>@endif</h2>
                 <div class="list">
                     @foreach ($section['deals'] as $deal)
-                        @include('cabinet.deals.row', ['deal' => $deal, 'sectioned' => true])
+                        @include('cabinet.deals.row', ['deal' => $deal, 'sectioned' => true, 'inGarage' => $key === 'garage'])
                     @endforeach
                 </div>
             </section>
