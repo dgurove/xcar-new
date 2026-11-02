@@ -107,7 +107,8 @@ final class OnMessage
         $vehicle = $linked instanceof Vehicle ? $linked : $thread?->vehicle;
         // Наше письмо о выдаче, отправленное не из приложения (ящик в почтовой программе), — так же выдаёт.
         if ($vehicle && $message->account->scope === Scope::Park && $message->intent === Intent::Released->value && $message->isOurs()) {
-            app(ReleaseByLetters::class)($vehicle);
+            // Ждущую ТС — принять днём заявки и выдать (`AcceptByLetters`), стоящую — выдать.
+            app(AcceptByLetters::class)($vehicle) ?? app(ReleaseByLetters::class)($vehicle->refresh());
         }
         // Наш отчёт о приёме из почтовой программы: ждущая ТС принята с этого дня, шаг «Отчёт вендору» сделан.
         if ($vehicle && $message->account->scope === Scope::Park && $message->intent === Intent::Accepted->value && $message->isOurs()) {
@@ -179,7 +180,7 @@ final class OnMessage
         }
         // Наше «подписанный АПП» по стоящей ТС — выдана с этого дня.
         if ($park && $message->thread?->vehicle && $message->intent === Intent::Released->value) {
-            app(ReleaseByLetters::class)($message->thread->vehicle);
+            app(AcceptByLetters::class)($message->thread->vehicle) ?? app(ReleaseByLetters::class)($message->thread->vehicle->refresh());
         }
         // Наше «принята» не окном шага (ответ в ветке): ждущая ТС принята, отчёт о приёме тоже сделан.
         if ($park && $message->thread?->vehicle && $message->intent === Intent::Accepted->value) {

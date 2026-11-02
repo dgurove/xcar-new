@@ -112,4 +112,22 @@ class AcceptByLettersTest extends TestCase
         $this->assertNull(app(AcceptByLetters::class)($vehicle));
         $this->assertSame(VehicleState::Expected, $vehicle->fresh()->state);
     }
+
+    public function test_signed_release_act_accepts_on_vendor_request_and_releases(): void
+    {
+        $vehicle = $this->vehicle();
+        Message::create(['account_id' => $this->account, 'thread_id' => $this->thread->id, 'direction' => 'in', 'from_email' => 'a@alfastrah.ru',
+            'subject' => 'Просьба организовать прием ТС', 'intent' => 'intake', 'date_at' => Carbon::parse('2026-09-02 12:58')]);
+        Message::create(['account_id' => $this->account, 'thread_id' => $this->thread->id, 'direction' => 'out', 'from_email' => 'storage@xcar.ru',
+            'subject' => 'Re: 0760/046/15089/26', 'text_body' => 'Добрый день. Направляю Вам подписанный АПП.',
+            'intent' => 'released', 'date_at' => Carbon::parse('2026-10-26 17:44')]);
+
+        $this->assertCount(1, app(AcceptByLetters::class)->suspects());
+        $this->assertNotNull(app(AcceptByLetters::class)($vehicle));
+
+        $vehicle->refresh();
+        $this->assertSame(VehicleState::Released, $vehicle->state);
+        $this->assertSame('2026-09-02', $vehicle->accepted_at->toDateString());
+        $this->assertSame('2026-10-26', $vehicle->released_at->toDateString());
+    }
 }
