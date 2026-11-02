@@ -19,19 +19,20 @@ final class TakeEstimate
 {
     public function __construct(private UpdateOffer $update) {}
 
-    public function __invoke(Estimate $estimate, User $by): Offer
+    public function __invoke(Estimate $estimate, ?User $by, ?string $why = null): Offer
     {
         if (! $estimate->isGiven()) {
             throw ValidationException::withMessages(['asking_price' => 'Оценки уже нет']);
         }
 
-        $offer = DB::transaction(function () use ($estimate, $by) {
+        $offer = DB::transaction(function () use ($estimate, $by, $why) {
             $estimate->update(['state' => EstimateState::Taken]);
             $estimate->offer->log(OfferEventType::Estimate, $by, ['do' => 'taken', 'user' => $estimate->user_id, 'amount' => $estimate->amount]);
 
-            return ($this->update)($estimate->offer, ['asking_price' => $estimate->amount], $by, ['why' => 'Оценка '.$estimate->user?->shortName()]);
+            return ($this->update)($estimate->offer, ['asking_price' => $estimate->amount], $by, ['why' => $why ?? 'Оценка '.$estimate->user?->shortName()]);
         });
-        EstimateTaken::dispatch($estimate, $by);
+        // Взяла система (`FirstLook`) — менеджеру и так «Открыты только Вам», второго «взяли» не нужно.
+        $by && EstimateTaken::dispatch($estimate, $by);
 
         return $offer;
     }

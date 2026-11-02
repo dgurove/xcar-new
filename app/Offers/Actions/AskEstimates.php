@@ -24,8 +24,9 @@ final class AskEstimates
     /**
      * @param  iterable<User>  $managers
      * @param  array<int, bool>  $declared  кому показать заявленную (id => да/нет); нет в карте — показать
+     * @param  bool  $auto  просьбу поставила система (`AskHeavyEstimates`): оценка сразу публикует машину оценившему (`FirstLook`)
      */
-    public function __invoke(Offer $offer, iterable $managers, ?User $by, array $declared = []): Collection
+    public function __invoke(Offer $offer, iterable $managers, ?User $by, array $declared = [], bool $auto = false): Collection
     {
         // Без цены продажи — оценка; с ценой (вкладка «Оцененные», 11.10.2026) — корректировка: её цена в `base_price`.
         if ($offer->state !== OfferState::Draft || $offer->isScheduled()) {
@@ -37,12 +38,12 @@ final class AskEstimates
             throw ValidationException::withMessages(['managers' => 'Выберите менеджера']);
         }
 
-        $created = DB::transaction(function () use ($offer, $managers, $by, $base, $declared) {
+        $created = DB::transaction(function () use ($offer, $managers, $by, $base, $declared, $auto) {
             $open = $offer->estimates()->open()->pluck('user_id')->all();
             $created = $managers->reject(fn (User $u) => in_array($u->id, $open, true))->map(fn (User $u) => Estimate::create([
                 'offer_id' => $offer->id, 'user_id' => $u->id, 'asked_by' => $by?->id,
                 'state' => EstimateState::Asked, 'due_at' => now()->addHours(Estimate::HOURS), 'base_price' => $base,
-                'show_declared' => $declared[$u->id] ?? true,
+                'show_declared' => $declared[$u->id] ?? true, 'auto' => $auto,
             ]))->values();
             if ($created->isNotEmpty()) {
                 EstimateLock::lock($offer);

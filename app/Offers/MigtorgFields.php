@@ -4,6 +4,7 @@ namespace App\Offers;
 
 use App\Cars\Body;
 use App\Cars\Brand;
+use App\Cars\Category;
 use App\Cars\Drive;
 use App\Cars\Fuel;
 use App\Cars\Papers;
@@ -31,6 +32,22 @@ final class MigtorgFields
         'фургон' => Body::Van, 'грузовик' => Body::Truck, 'седельный тягач' => Body::Truck, 'автобус' => Body::Bus,
         'спецтехника' => Body::Special, 'мотоцикл' => Body::Moto,
     ];
+
+    /**
+     * Тип ТС, которого кузов не скажет (02.11.2026, Z691/046/13687/26 «Граз» с кузовом «Прицеп» вставал легковым):
+     * прицеп и тягач — свои типы стоянки, у кузова их нет.
+     */
+    private const CARCASS_CATEGORY = ['прицеп' => Category::Trailer, 'полуприцеп' => Category::Trailer, 'седельный тягач' => Category::Long,
+        'эвакуатор' => Category::Truck, 'электровелосипед' => Category::Moto];
+
+    /**
+     * Тип марки в их справочнике (`brand.car_type_id`) — когда кузова нет или он «Универсал». Сверено по 18 тыс. лотов
+     * 02.11.2026: 1 — легковые (решает кузов), 3 — тягачи, 4 и 27 — прицепы, 5 и 32 — грузовые, 6 и 376 — фургоны и
+     * микроавтобусы, 20, 22, 23 — мото и квадроциклы, 31, 596, 980 — спецтехника.
+     */
+    private const TYPE_CATEGORY = [3 => Category::Long, 4 => Category::Trailer, 27 => Category::Trailer, 5 => Category::Truck,
+        32 => Category::Truck, 6 => Category::Light, 376 => Category::Light, 20 => Category::Moto, 22 => Category::Moto,
+        23 => Category::Moto, 31 => Category::Special, 596 => Category::Special, 980 => Category::Special];
 
     /** @return array<string, array{value: mixed}> поле → значение, как у окна «✨» */
     public static function of(array $auction): array
@@ -62,7 +79,10 @@ final class MigtorgFields
         $put('engine_volume', ($lot['engine_volume'] ?? 0) ?: null);
         // В списке мощности нет; карточка со входом может отдать — имя поля не знаем заранее.
         $put('engine_power', ($lot['engine_power'] ?? $lot['power'] ?? $lot['horse_power'] ?? 0) ?: null);
-        $put('body', (self::BODY[mb_strtolower(trim((string) ($lot['carcass']['title'] ?? '')))] ?? null)?->value);
+        $carcass = mb_strtolower(trim((string) ($lot['carcass']['title'] ?? '')));
+        $body = self::BODY[$carcass] ?? null;
+        $put('body', $body?->value);
+        $put('category', self::category($carcass, $body, (int) ($lot['brand']['car_type_id'] ?? 0), trim($brand.' '.($lot['model']['title'] ?? '')))?->value);
         // Город — с регионом: сёла и одинаковые имена без него не найти (`Settlement::resolve`).
         if ($city = trim((string) ($lot['city']['title'] ?? ''))) {
             // Справочник его не знает — текстом как есть (`create`, как у марки): у лота город — своё поле, не догадка.
@@ -76,5 +96,14 @@ final class MigtorgFields
         $put('deadline', $end?->isFuture() ? $end->toDateTimeString() : null);
 
         return $f;
+    }
+
+    /**
+     * Прицеп и тягач по кузову — точно; дальше наша догадка по названию (она знает «Луидор» и «Krone», у Мигторга это
+     * «Грузовик» и «Спецтехника»), дальше их кузов, дальше тип марки.
+     */
+    private static function category(string $carcass, ?Body $body, int $type, string $title): ?Category
+    {
+        return self::CARCASS_CATEGORY[$carcass] ?? Category::guess($title) ?? ($carcass !== 'универсал' ? $body?->category() : null) ?? self::TYPE_CATEGORY[$type] ?? null;
     }
 }

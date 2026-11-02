@@ -3,6 +3,7 @@
 namespace App\Notifications;
 
 use App\Offers\Estimate;
+use App\Support\Ago;
 use App\Support\Money;
 use App\Support\Surface;
 use App\Users\User;
@@ -30,12 +31,22 @@ final class EstimateGivenNotice extends Notice
 
     public function text(): ?string
     {
-        return $this->estimate->offer->titleWithYear();
+        $offer = $this->estimate->offer;
+
+        // Грузовое (`FirstLook`): оценка уже цена, и машина в продаже только у него.
+        return $offer->titleWithYear().($offer->first_look_until ? ' — опубликована только ему до '.Ago::at($offer->first_look_until, true, words: false) : '');
     }
 
     public function href(): string
     {
-        return Surface::Crm->url('/?'.http_build_query(['vid' => 'table', 'preset' => $this->estimate->isCorrection() ? 'priced' : 'estimating', 'peek' => $this->estimate->offer->number]));
+        $offer = $this->estimate->offer;
+        $preset = match (true) {
+            $offer->first_look_until !== null => 'published',
+            $this->estimate->isCorrection() => 'priced',
+            default => 'estimating',
+        };
+
+        return Surface::Crm->url('/?'.http_build_query(['vid' => 'table', 'preset' => $preset, 'peek' => $offer->number]));
     }
 
     public function category(): string

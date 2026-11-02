@@ -58,7 +58,7 @@ use Illuminate\Support\Facades\DB;
     'asking_price', 'min_bid_price', 'min_bid_share', 'prices_include_vat', 'tags', 'tag_colors', 'bids_close_at', 'sort_weight',
     'chat_enabled', 'share_locked', 'share_locked_by_estimate', 'audience_rules', 'recommended', 'vendor_id', 'claim_ref', 'insurer_deadline_at', 'car_place',
     'answer_by', 'insured_name', 'insured_phone', 'insured_phone2', 'flags', 'holder', 'docs_required', 'contact_name', 'contact_email',
-    'garage_allowed', 'deal_show_until', 'binding_until', 'held_by', 'plate', 'sts', 'pts', 'body_no', 'chassis_no', 'policy_no', 'vehicle_category',
+    'garage_allowed', 'deal_show_until', 'binding_until', 'held_by', 'plate', 'sts', 'pts', 'body_no', 'chassis_no', 'policy_no', 'vehicle_category', 'first_look_until',
 ])]
 class Offer extends Model
 {
@@ -181,6 +181,7 @@ class Offer extends Model
             'audience_rules' => 'array',
             'published_at' => 'datetime',
             'bids_close_at' => 'datetime',
+            'first_look_until' => 'datetime',
             'intake_closed_at' => 'datetime',
             'no_bids_alerted_for' => 'datetime',
             'deal_show_until' => 'datetime',

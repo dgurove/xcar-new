@@ -11,6 +11,7 @@ use App\Support\Money;
 use App\Support\Nav;
 use App\Users\User;
 use Illuminate\Validation\ValidationException;
+use Throwable;
 
 /**
  * Менеджер оценил: оценка — ориентир админу под полем цены продажи, не цена. Поправить можно, пока админ не решил;
@@ -42,6 +43,15 @@ final class GiveEstimate
         EstimateLock::release($estimate->offer);
         Nav::forgetStaffCounts();
         EstimateGiven::dispatch($estimate, $by);
+        // Просьбу поставила система (грузовое, `AskHeavyEstimates`) — оценка сразу цена и продажа ему одному. Не вышло —
+        // оценка стоит, решает админ.
+        if ($estimate->auto && ! $estimate->isCorrection()) {
+            try {
+                app(FirstLook::class)->open($estimate);
+            } catch (Throwable $e) {
+                report($e);
+            }
+        }
 
         return $estimate;
     }

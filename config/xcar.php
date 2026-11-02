@@ -149,6 +149,10 @@ return [
     'slot_hour' => 16,
     'bids_window_days' => 3,
     'bids_close_hour' => 17,
+    // Не легковые и не мото — сами на оценку этому менеджеру (Роман Корабельников), оценил — открыты только ему столько
+    // дней, потом всем (02.11.2026, владелец; `Offers\Actions\AskHeavyEstimates`, `FirstLook`).
+    'heavy_estimator' => (int) env('XCAR_HEAVY_ESTIMATOR', 17),
+    'first_look_days' => 5,
     // Черновик вендора с `to_gallery` висит в галерее столько дней, до 23:59 последнего (владелец 08.10.2026).
     'gallery_days' => 3,
     'remind_before_minutes' => 60,

@@ -24,7 +24,8 @@ final class ReturnClosedToRated
     public function __invoke(): int
     {
         $n = 0;
-        $offers = Offer::where('state', OfferState::Open)->whereNull('auction_planned_at')
+        // Первый взгляд оценившего (`FirstLook`) кончается тем же сроком — его решает `FirstLook::due`.
+        $offers = Offer::where('state', OfferState::Open)->whereNull('auction_planned_at')->whereNull('first_look_until')
             ->where('bids_close_at', '<=', now())->whereDoesntHave('deal')
             ->whereDoesntHave('bids', fn ($b) => $b->whereIn('state', [BidState::Active, BidState::Accepted]))->get();
         foreach ($offers as $offer) {

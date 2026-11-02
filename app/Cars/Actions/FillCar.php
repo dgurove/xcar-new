@@ -5,6 +5,7 @@ namespace App\Cars\Actions;
 use App\Cars\Body;
 use App\Cars\Brand;
 use App\Cars\CarModel;
+use App\Cars\Category;
 use App\Cars\Colors;
 use App\Cars\Drive;
 use App\Cars\Fuel;
@@ -46,7 +47,7 @@ final class FillCar
     public const CHOSEN = 'chosen';
 
     /** Характеристики: источник их знает, но вписанное человеком важнее — поверх только выбором человека. */
-    private const SPECS = ['mileage', 'transmission', 'drive', 'fuel', 'engine_volume', 'engine_power', 'settlement_id', 'body', 'has_keys', 'papers', 'insurer_deadline_at', 'answer_by', 'plate', 'pts', 'sts', 'binding_until'];
+    private const SPECS = ['mileage', 'transmission', 'drive', 'fuel', 'engine_volume', 'engine_power', 'settlement_id', 'body', 'vehicle_category', 'category', 'has_keys', 'papers', 'insurer_deadline_at', 'answer_by', 'plate', 'pts', 'sts', 'binding_until'];
 
     /** @return list<string> поля, которые записаны */
     public function __invoke(Offer|Vehicle $lane, array $chosen, ?User $by, string $mode = self::SOURCE, array $log = []): array
@@ -64,6 +65,8 @@ final class FillCar
                 'year' => $data['year'] = (int) $value,
                 'mileage', 'engine_volume', 'engine_power' => $data[$field] = (int) $value,
                 'transmission', 'drive', 'fuel', 'body', 'papers' => $data[$field] = (string) $value,
+                // Тип ТС — у продажи своё имя поля (`Offer::carAliases`).
+                'category' => $data[$lane instanceof Offer ? 'vehicle_category' : 'category'] = (string) $value,
                 'has_keys' => $data['has_keys'] = (bool) $value,
                 // Госномер ключом, как у формы; ПТС и СТС — как в документе.
                 'plate' => $data['plate'] = Patterns::plateKey((string) $value),
@@ -83,7 +86,10 @@ final class FillCar
             default => self::SPECS,
         };
         foreach ($keep as $field) {
-            if (array_key_exists($field, $data) && ! blank($lane->{$field})) {
+            // Тип продажи, угаданный по марке («Граз» — «Легковой»), — не значение: источник его перебивает. У ТС тип —
+            // ставка хранения, его ставит парковка.
+            $guessed = $field === 'vehicle_category' && $lane instanceof Offer && ! $lane->parkVehicle && $lane->carRecord()->categoryGuessed();
+            if (array_key_exists($field, $data) && ! blank($lane->{$field}) && ! $guessed) {
                 unset($data[$field]);
             }
         }
@@ -138,6 +144,7 @@ final class FillCar
             'drive' => [Rule::enum(Drive::class)],
             'fuel' => [Rule::enum(Fuel::class)],
             'body' => [Rule::enum(Body::class)],
+            'vehicle_category' => [Rule::enum(Category::class)],
             'papers' => [Rule::enum(Papers::class)],
             'has_keys' => ['boolean'],
             'engine_volume' => ['integer', 'between:1,20000'],

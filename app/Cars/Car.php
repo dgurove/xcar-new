@@ -71,14 +71,18 @@ class Car extends Model implements HasMedia
         static::saving(function (self $car) {
             // Тип ТС — от кузова, иначе по марке и модели («Газель», «КАМАЗ»); вписанный руками не трогаем. У машины на
             // парковке тип — её ставка хранения: его ставит парковка, кузов из CRM его не меняет.
+            // Тип, равный догадке по прежним марке, модели и кузову, — не выбор человека: сменились они — догадка заново
+            // (02.11.2026, Z691/046/13687/26: черновик завели пустым, Мигторг вписал «Граз», и «Легковой» встал навсегда).
             $parked = fn () => $car->exists && Vehicle::withoutGlobalScope(City::SCOPE)->where('car_id', $car->id)->exists();
-            if (! $car->isDirty('category') && $car->isDirty('body') && $car->body?->category() && ! ($car->category && $parked())) {
-                $car->category = $car->body->category();
-            } elseif (! $car->category && ($car->brand_id || $car->body)) {
-                $car->category = $car->body?->category() ?? Category::guess($car->title()) ?? Category::Passenger;
-            }
+            $guessed = $car->exists && $car->category && ! $car->isDirty('category') && $car->isDirty(['brand_id', 'model_id', 'body'])
+                && $car->category === self::autoCategory(Body::tryFrom((string) $car->getRawOriginal('body')), $car->titleOf($car->getRawOriginal('brand_id'), $car->getRawOriginal('model_id')));
             if ($car->isDirty(['brand_id', 'model_id'])) {
                 $car->unsetRelation('brand')->unsetRelation('model');
+            }
+            if (! $car->isDirty('category') && $car->isDirty('body') && $car->body?->category() && ! ($car->category && $parked())) {
+                $car->category = $car->body->category();
+            } elseif ((! $car->category || $guessed && ! $parked()) && ($car->brand_id || $car->body)) {
+                $car->category = self::autoCategory($car->body, $car->title());
             }
             Identity::guardCar($car);
         });
@@ -198,6 +202,23 @@ class Car extends Model implements HasMedia
     }
 
     // ------------------------------------------------------------ подписи
+
+    /** Тип ТС догадкой: от кузова, иначе по марке и модели («Газель», «КАМАЗ»), иначе легковой. */
+    public static function autoCategory(?Body $body, string $title): Category
+    {
+        return $body?->category() ?? Category::guess($title) ?? Category::Passenger;
+    }
+
+    /** Тип — только догадка (пуст или совпал с ней), а не выбор человека или источника: его перебивает тип из источника (`FillCar`). */
+    public function categoryGuessed(): bool
+    {
+        return ! $this->category || $this->category === self::autoCategory($this->body, $this->title());
+    }
+
+    private function titleOf(mixed $brandId, mixed $modelId): string
+    {
+        return trim(($brandId ? Brand::whereKey($brandId)->value('name') : '').' '.($modelId ? CarModel::whereKey($modelId)->value('name') : ''));
+    }
 
     /**
      * Марка и модель — одна дверь для всех дорожек (16.10.2026: продажа, закупка, парковка и машина собирали имя каждая
