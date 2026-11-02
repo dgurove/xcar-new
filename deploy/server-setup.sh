@@ -73,6 +73,9 @@ Match User xcar-tunnel
     AllowAgentForwarding no
     X11Forwarding no
     PermitTTY no
+    # Оборванная без прощания сессия держала бы порт, и новая не встала бы: через 45 с тишины sshd её закрывает.
+    ClientAliveInterval 15
+    ClientAliveCountMax 3
 EOC
 sshd -t && { systemctl reload ssh 2>/dev/null || systemctl reload sshd; }
 # Конец туннеля видят только контейнеры: снаружи порт закрыт, как всё, кроме 22, 80 и 443.
