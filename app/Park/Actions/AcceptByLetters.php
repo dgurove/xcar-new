@@ -4,8 +4,11 @@ namespace App\Park\Actions;
 
 use App\Mail\Extraction\Intent;
 use App\Mail\Message;
+use App\Mail\Scope;
 use App\Mail\Thread;
+use App\Park\EventType;
 use App\Park\Request;
+use App\Park\RequestState;
 use App\Park\RequestType;
 use App\Park\Vehicle;
 use App\Park\VehicleState;
@@ -35,7 +38,9 @@ final class AcceptByLetters
         if ($vehicle->state !== VehicleState::Expected) {
             return null;
         }
-        $since = Request::where('vehicle_id', $vehicle->id)->where('type', RequestType::Intake)->min('created_at');
+        // Порог — открытая заявка на приём (ТС, которую снова ждут, приняли по письму прошлого заезда — нет), без неё — любая.
+        $intake = Request::where('vehicle_id', $vehicle->id)->where('type', RequestType::Intake);
+        $since = (clone $intake)->whereIn('state', RequestState::open())->min('created_at') ?? $intake->min('created_at');
         $messages = Message::whereIn('thread_id', Thread::park()->where('vehicle_id', $vehicle->id)->select('id'))
             ->when($since, fn ($q) => $q->where('date_at', '>=', Carbon::parse($since)->startOfDay()))
             ->with('attachments')->orderBy('date_at')->get();
@@ -46,7 +51,9 @@ final class AcceptByLetters
             return null;
         }
         $after = array_map(fn (Intent $i) => $i->value, self::AFTER);
-        $undone = $messages->contains(fn (Message $m) => $m->date_at->gt($accepted->date_at) && ! $m->isOurs() && in_array($m->intent, $after, true));
+        $undone = $messages->contains(fn (Message $m) => $m->date_at->gt($accepted->date_at) && ! $m->isOurs() && in_array($m->intent, $after, true))
+            // Приём по этому письму отменили руками («Отменить приём») — человек решил, письмо снова не принимает.
+            || $vehicle->events()->reorder()->where('type', EventType::IntakeUndone)->where('created_at', '>=', $accepted->date_at)->exists();
 
         return $undone ? null : $accepted;
     }
@@ -81,12 +88,25 @@ final class AcceptByLetters
         return $vehicle->vendor?->homeYard;
     }
 
-    /** @return Collection<int, Vehicle> ждущие ТС, у которых в ветках есть наше письмо о приёме */
+    /**
+     * Ждущие ТС с письмом о приёме не раньше дня открытой заявки и без ручной отмены приёма после него — отбор в SQL, чтобы
+     * `park:tick` раз в 5 минут не перечитывал письма ТС, которые не примутся никогда. Точно решает `letter`.
+     *
+     * @return Collection<int, Vehicle>
+     */
     public function suspects(): Collection
     {
+        $open = "'".implode("','", array_map(fn ($s) => $s->value, RequestState::open()))."'";
+
         return Vehicle::with('vendor')->where('state', VehicleState::Expected)
-            ->whereIn('id', Thread::park()->whereNotNull('vehicle_id')
-                ->whereIn('id', Message::where('intent', Intent::Accepted->value)->select('thread_id'))->select('vehicle_id'))
+            ->whereExists(fn ($q) => $q->selectRaw('1')->from('mail_messages as m')
+                ->join('mail_threads as t', 't.id', '=', 'm.thread_id')
+                ->join('mail_accounts as a', fn ($j) => $j->on('a.id', '=', 't.account_id')->where('a.scope', Scope::Park->value))
+                ->whereColumn('t.vehicle_id', 'park_vehicles.id')->where('m.intent', Intent::Accepted->value)
+                ->whereRaw("m.date_at >= coalesce((select date_trunc('day', min(r.created_at)) from park_requests r where r.vehicle_id = park_vehicles.id and r.type = ? and r.state in ({$open})),
+                    (select date_trunc('day', min(r.created_at)) from park_requests r where r.vehicle_id = park_vehicles.id and r.type = ?), m.date_at)", [RequestType::Intake->value, RequestType::Intake->value])
+                ->whereNotExists(fn ($e) => $e->selectRaw('1')->from('park_vehicle_events as e')->whereColumn('e.vehicle_id', 'park_vehicles.id')
+                    ->where('e.type', EventType::IntakeUndone->value)->whereColumn('e.created_at', '>=', 'm.date_at')))
             ->get();
     }
 

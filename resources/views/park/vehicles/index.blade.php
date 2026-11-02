@@ -18,6 +18,8 @@
             </x-slot:actions>
         @endif
     </x-ui.toolbar>
+    {{-- Указали парковку в карточке последней ТС без неё — тост вместо следующей (`detail#advance`). --}}
+    <span data-advance-done hidden>ТС без парковки больше нет</span>
     <div class="mt-4" id="cars">@include('park.vehicles.list')</div>
     {{-- Окно писем для строк «Письма» в карточке ТС. --}}
     <x-mail.window/>

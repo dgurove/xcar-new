@@ -58,10 +58,20 @@ class Template extends Model
      */
     public static function replies(?string $intent): Collection
     {
-        $steps = array_column(self::PARK, 0);
-
-        return self::where('scope', Scope::Park)->whereNotIn('name', [...$steps, 'Приём на стоянку', 'Выдача со стоянки'])->orderBy('id')->get()
+        return self::where('scope', Scope::Park)->whereNotIn('name', self::steps())->orderBy('id')->get()
             ->sortBy(fn (self $t) => $intent && $t->intent === $intent ? 0 : 1)->values();
+    }
+
+    /** Письма шагов парковки — `park()` находит их по названию (и прежние «…со стоянки»), поэтому имя у них не меняется. */
+    public static function steps(): array
+    {
+        return [...array_column(self::PARK, 0), 'Приём на стоянку', 'Выдача со стоянки'];
+    }
+
+    /** Письмо шага: правится текст, но не название и не удаляется (иначе `park()` заведёт его заново, а правка потеряется). */
+    public function isStep(): bool
+    {
+        return $this->exists && $this->scope === Scope::Park && in_array($this->getOriginal('name'), self::steps(), true);
     }
 
     public static function park(string $key): self

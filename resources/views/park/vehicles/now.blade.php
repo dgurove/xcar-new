@@ -40,10 +40,17 @@
             </section>
         @endforeach
         @foreach ($steps as $key)
-            <section class="flex items-center gap-3 rounded-(--radius-l) bg-surface-2 p-3">
-                <h2 class="min-w-0 flex-1 text-base font-medium">{{ \App\Park\Tasks::LABELS[$key] }}</h2>
-                <a href="{{ $href }}" class="btn btn-s btn-accent shrink-0" data-turbo-frame="_top">Открыть дело</a>
-            </section>
+            @if ($key === 'yard' && $vehicle->state === \App\Park\VehicleState::Stored && ! $vehicle->yard_id)
+                {{-- Парковка — здесь же, без захода в дело (02.11.2026, владелец: «проваливаться в дело и возвращаться по
+                     десяткам тачек — бред»): парковка и фактический день приёма (подставлена дата письма, по которому ТС
+                     принята, — его отправляют через несколько дней), «Указать» — и карточка к следующей ТС без парковки. --}}
+                @include('park.vehicles.steps.yard', ['compact' => true])
+            @else
+                <section class="flex items-center gap-3 rounded-(--radius-l) bg-surface-2 p-3">
+                    <h2 class="min-w-0 flex-1 text-base font-medium">{{ \App\Park\Tasks::LABELS[$key] }}</h2>
+                    <a href="{{ $href }}" class="btn btn-s btn-accent shrink-0" data-turbo-frame="_top">Открыть дело</a>
+                </section>
+            @endif
         @endforeach
     </div>
 @endif

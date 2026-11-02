@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Mail\Message;
 use App\Mail\Thread;
 use App\Park\Actions\AcceptByLetters;
+use App\Park\EventType;
 use App\Park\Request;
 use App\Park\RequestState;
 use App\Park\Vehicle;
@@ -77,6 +78,28 @@ class AcceptByLettersTest extends TestCase
 
         $this->assertNull(app(AcceptByLetters::class)($vehicle));
         $this->assertSame(VehicleState::Expected, $vehicle->fresh()->state);
+    }
+
+    public function test_skips_after_manual_undo(): void
+    {
+        $vehicle = $this->vehicle();
+        $this->ours('2026-10-16 13:50');
+        $this->assertNotNull(app(AcceptByLetters::class)($vehicle));
+        // «Отменить приём»: ТС снова ждём, письмо её больше не принимает — ни сразу, ни часами `park:tick`.
+        $vehicle->refresh()->update(['state' => VehicleState::Expected, 'accepted_at' => null]);
+        $vehicle->log(EventType::IntakeUndone, null, []);
+
+        $this->assertNull(app(AcceptByLetters::class)($vehicle->refresh()));
+        $this->assertSame(0, app(AcceptByLetters::class)->all());
+        $this->assertSame(VehicleState::Expected, $vehicle->fresh()->state);
+    }
+
+    public function test_suspects_skip_letters_before_the_open_request(): void
+    {
+        $vehicle = $this->vehicle();
+        $this->ours('2026-09-01 10:00');
+
+        $this->assertCount(0, app(AcceptByLetters::class)->suspects());
     }
 
     public function test_skips_when_the_vendor_cancelled_after(): void

@@ -596,12 +596,25 @@ class VehicleController
     }
 
     /** Парковка у ТС, заведённой без неё: со дня приёма, не перестановка. Форма шага несёт и поля ТС. */
-    public function yard(Request $request, Vehicle $vehicle, SetYard $setYard)
+    /**
+     * Парковка ТС, принятой без неё, и вместе — фактический день приёма (02.11.2026: по письму принята днём письма, а оно
+     * уходит позже). Дата — только тому, кто видит деньги (от неё хранение). Из карточки строки — к следующей ТС без парковки.
+     */
+    public function yard(Request $request, Vehicle $vehicle, SetYard $setYard, SetDates $dates)
     {
-        $data = $request->validate(['yard_id' => ['required', 'exists:park_yards,id'], 'spot' => ['nullable', 'string', 'max:16']]);
-        $setYard($vehicle, $request->user(), Yard::findOrFail($data['yard_id']), $data['spot'] ?? null);
+        $data = $request->validate(['yard_id' => ['required', 'exists:park_yards,id'], 'spot' => ['nullable', 'string', 'max:16'],
+            'accepted_at' => ['nullable', 'date']]);
+        $user = $request->user();
+        DB::transaction(function () use ($data, $vehicle, $user, $setYard, $dates) {
+            if (! empty($data['accepted_at']) && $user->parkMoney()) {
+                $dates($vehicle, $user, Carbon::parse($data['accepted_at']), null);
+            }
+            $setYard($vehicle, $user, Yard::findOrFail($data['yard_id']), $data['spot'] ?? null);
+        });
 
-        return redirect("/cars/{$vehicle->id}")->with('toast', 'Парковка указана');
+        return $request->header('Turbo-Frame') === 'detail'
+            ? back()->with('toast', 'Парковка указана')->with('detail-advance', true)
+            : redirect("/cars/{$vehicle->id}")->with('toast', 'Парковка указана');
     }
 
     /** «Снова ждём»: отменённая ТС возвращается в ожидание с заявкой на приём. */

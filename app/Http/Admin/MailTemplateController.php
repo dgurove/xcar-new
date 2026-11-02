@@ -43,7 +43,8 @@ class MailTemplateController
     public function update(Request $request, Template $template)
     {
         abort_if($this->park() && $template->scope !== Scope::Park, 404);
-        $template->update($this->data($request));
+        // Письмо шага — только текст: по названию его находит `Template::park`.
+        $template->update($template->isStep() ? array_diff_key($this->data($request), array_flip(['name', 'scope', 'intent', 'attach'])) : $this->data($request));
 
         return redirect($this->base()."/{$template->id}")->with('toast', 'Сохранено');
     }
@@ -51,6 +52,7 @@ class MailTemplateController
     public function destroy(Template $template)
     {
         abort_if($this->park() && $template->scope !== Scope::Park, 404);
+        abort_if($template->isStep(), 403);
         $template->delete();
 
         return redirect($this->base())->with('toast', 'Удалён');

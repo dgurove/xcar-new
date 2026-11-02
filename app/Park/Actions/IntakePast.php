@@ -2,6 +2,7 @@
 
 namespace App\Park\Actions;
 
+use App\Billing\Actions\IssueTransferObligation;
 use App\Park\Events\VehicleAccepted;
 use App\Park\EventType;
 use App\Park\Idle;
@@ -12,6 +13,8 @@ use App\Park\Vehicle;
 use App\Park\VehicleState;
 use App\Park\Yard;
 use App\Support\Nav;
+use App\Users\Role;
+use App\Users\User;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
@@ -21,7 +24,7 @@ use Illuminate\Support\Facades\DB;
  */
 final class IntakePast
 {
-    public function __construct(private OpenDocs $openDocs) {}
+    public function __construct(private OpenDocs $openDocs, private IssueTransferObligation $transfer) {}
 
     public function __invoke(Vehicle $vehicle, ?Yard $yard, Carbon $at, array $mark): bool
     {
@@ -45,6 +48,11 @@ final class IntakePast
             return true;
         });
         if ($accepted) {
+            // Договор комиссии — обязательство перед вендором с приёма, как у `Intake`; человека нет — от первого админа, как
+            // у прочих дел системы (`SyncOffer::system`).
+            if ($system = User::withRole(Role::Admin)->orderBy('id')->first()) {
+                ($this->transfer)($vehicle, $system);
+            }
             // Без человека и заявки: администраторам «управляющий принял» не уходит (`Notify::parkHandled`).
             VehicleAccepted::dispatch($vehicle);
         }

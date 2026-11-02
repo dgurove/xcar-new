@@ -40,13 +40,14 @@
                 onclick="const r = this.closest('.compose').querySelector('.compose-recipients[hidden]'); if (r) { r.hidden = false; r.querySelector('.recipients-input').focus(); } this.hidden = true">Копия</button>
     </x-mail.recipients>
     <x-mail.recipients name="cc" label="Копия" :value="$defaults['cc']" :url="$base.'/addresses'" :names="$names" :hidden="! $ccOpen"/>
-    {{-- Шаблоны нового письма и готовые ответы парковки (`Template::replies`): ответ перечитывается в своём фрейме. --}}
+    {{-- Шаблоны нового письма и готовые ответы парковки (`Template::replies`): ответ перечитывается в своём фрейме. Без
+         предзагрузки: выбор «Фотоотчёта» собирает акт и кадры, наведение мышью не должно. --}}
     @if ($templates->isNotEmpty() && $mode !== 'forward')
         <div class="compose-row">
             <span class="compose-label">Шаблон</span>
             <div class="flex min-w-0 flex-1 gap-2 overflow-x-auto py-1">
                 @foreach ($templates as $t)
-                    <x-ui.pill :href="request()->fullUrlWithQuery(['template' => $t->id])" :current="request()->query('template') == $t->id" :data-turbo-frame="$mode === 'new' ? 'letters-frame' : $frame">{{ $t->name }}</x-ui.pill>
+                    <x-ui.pill :href="request()->fullUrlWithQuery(['template' => $t->id])" :current="request()->query('template') == $t->id" :data-turbo-frame="$mode === 'new' ? 'letters-frame' : $frame" data-turbo-prefetch="false">{{ $t->name }}</x-ui.pill>
                 @endforeach
             </div>
         </div>

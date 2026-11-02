@@ -22,7 +22,8 @@
     // «Нет парковки» — пустой столбец и задача «Указать парковку» в «Статусе».
     $hasAlerts = ! $out && collect(\App\Park\Alerts::of($vehicle))->reject(fn ($a) => $a['label'] === 'Нет типа' || $a['label'] === 'Нет парковки')->isNotEmpty();
 @endphp
-<tr data-detail-key="{{ $vehicle->id }}" data-search-row id="vehicle-{{ $vehicle->id }}" @class(['is-dim' => ! $out && $state === VehicleState::Released])>
+{{-- `data-todo` — ТС, которой парковку указывают прямо в карточке: указали — карточка к следующей такой. --}}
+<tr data-detail-key="{{ $vehicle->id }}" data-search-row id="vehicle-{{ $vehicle->id }}" @if ($state === VehicleState::Stored && ! $vehicle->yard_id) data-todo @endif @class(['is-dim' => ! $out && $state === VehicleState::Released])>
     @foreach ($table->columns as $key => $col)
         @switch($key)
         @case('title')

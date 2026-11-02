@@ -651,7 +651,8 @@ class MailController
         if ($template) {
             // Адресаты, тема и цитата — ответа, как без шаблона; шаблон даёт только текст.
             $defaults['body'] = $composer->replyWith($message, $sender, $template, $vehicle ? self::vehiclePlaceholders($vehicle) : [])['body'];
-            if ($vehicle && isset(Template::ATTACH[$template->attach]) && ($template->attach === 'intake' ? $vehicle->accepted_at : $vehicle->released_at ?? $vehicle->accepted_at)) {
+            // Акт выдачи — только выданной: у стоящей «АПП» уходит текстом, без пустого акта.
+            if ($vehicle && isset(Template::ATTACH[$template->attach]) && ($template->attach === 'intake' ? $vehicle->accepted_at : $vehicle->released_at)) {
                 $defaults['files'] = $this->actFiles($vehicle, $template->attach === 'intake', $outbox, $act);
             }
         }
@@ -1082,7 +1083,8 @@ class MailController
         $pool = ($stage ? $vehicle->photos()->filter(fn ($m) => PhotoStage::of($m) === $stage) : $vehicle->visiblePhotos())
             ->reject(fn ($m) => in_array($m->id, $doomed, true))
             ->sortBy(fn ($m) => $m->getCustomProperty('source') === 'mail' ? 1 : 0)->filter(fn ($m) => is_file($m->getPath()))->values();
-        $prefix ??= match ($stage) { PhotoStage::Intake => 'priem', PhotoStage::Release => 'vydacha', default => 'foto' };
+        // Своё имя у каждого этапа: два этапа в одном письме не дают двух «foto-1.jpg».
+        $prefix ??= match ($stage) { PhotoStage::Intake => 'priem', PhotoStage::Release => 'vydacha', PhotoStage::Vendor => 'strahovaya', PhotoStage::Pickup => 'pogruzka', null => 'foto' };
         $files = [];
         foreach ($pool->take(12) as $i => $m) {
             $contents = file_get_contents($m->getPath());
@@ -1097,17 +1099,28 @@ class MailController
         return $files;
     }
 
-    /** Отмеченное в «Из дела» (`admin/mail/case-files`): акты, кадры этапов, документы машины. @return list<string> */
+    /**
+     * Отмеченное в «Из дела» (`admin/mail/case-files`): акты, кадры этапов, документы машины. Что уже лежит во вложениях
+     * (акт и кадры от шаблона «Фотоотчёт»), второй раз не кладётся. @return list<string>
+     */
     private function caseFiles(Vehicle $vehicle, array $data, StoreOutboxFile $outbox, ActPdf $act): array
     {
+        $names = array_map(fn ($path) => substr(basename((string) $path), 37), (array) ($data['files'] ?? []));
+        $has = fn (string $name) => in_array($name, $names, true);
         $files = [];
         foreach (array_unique((array) ($data['case_act'] ?? [])) as $kind) {
-            if ($kind === 'intake' ? $vehicle->accepted_at : $vehicle->released_at) {
-                $files[] = $outbox->put($act->filename($vehicle, $kind === 'intake'), $act->render($vehicle, $kind === 'intake'));
+            $intake = $kind === 'intake';
+            if (($intake ? $vehicle->accepted_at : $vehicle->released_at) && ! $has($act->filename($vehicle, $intake))) {
+                $files[] = $outbox->put($act->filename($vehicle, $intake), $act->render($vehicle, $intake));
             }
         }
         foreach (array_unique((array) ($data['case_stage'] ?? [])) as $stage) {
-            $files = [...$files, ...$this->shotFiles($vehicle, PhotoStage::from($stage), $outbox)];
+            $stage = PhotoStage::from($stage);
+            $first = match ($stage) { PhotoStage::Intake => 'priem-1.', PhotoStage::Release => 'vydacha-1.', default => null };
+            if ($first && collect($names)->contains(fn ($n) => str_starts_with($n, $first))) {
+                continue;
+            }
+            $files = [...$files, ...$this->shotFiles($vehicle, $stage, $outbox)];
         }
         $ids = array_map('intval', (array) ($data['case'] ?? []));
         foreach ($vehicle->papers()->whereIn('id', $ids) as $paper) {
