@@ -10,6 +10,7 @@ use App\Offers\BidState;
 use App\Offers\CounterState;
 use App\Offers\Offer;
 use App\Offers\OfferState;
+use App\Telegram\UpdateHandler;
 use App\Users\Role;
 use App\Users\User;
 use App\Vendors\Vendor;
@@ -19,6 +20,7 @@ use App\Workflow\Preset;
 use App\Workflow\Stage;
 use App\Workflow\Track;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Validation\ValidationException;
 use Tests\TestCase;
@@ -67,6 +69,9 @@ class BidCounterTest extends TestCase
         $this->assertSame('ok', $this->offer->bidZone(960000));
         $this->assertSame('low', $this->offer->bidZone(950000));
         $this->assertSame('bad', $this->offer->bidZone(919000));
+        // Вдвое выше цены продажи — «Проверьте сумму» (лишний ноль, 02.11.2026).
+        $this->assertSame('high', $this->offer->bidZone(2000000));
+        $this->assertSame('ok', $this->offer->bidZone(1990000));
         // Узкий спред: что принималось, не становится недопустимым — но ниже закупочной + 20 000 спрашивает «Вы уверены?»
         // (02.11.2026, `PriceGuardTest`).
         $narrow = new Offer(['floor_price' => 900000, 'asking_price' => 910000]);
@@ -150,10 +155,10 @@ class BidCounterTest extends TestCase
         config(['xcar.telegram.token' => 'test-token', 'xcar.mercure.hub' => '']);
         $sent = [];
         $n = 70;
-        \Illuminate\Support\Facades\Http::fake(['api.telegram.org/*' => function ($r) use (&$sent, &$n) {
+        Http::fake(['api.telegram.org/*' => function ($r) use (&$sent, &$n) {
             $sent[] = $r->url().' '.$r->body();
 
-            return \Illuminate\Support\Facades\Http::response(['ok' => true, 'result' => ['message_id' => ++$n]]);
+            return Http::response(['ok' => true, 'result' => ['message_id' => ++$n]]);
         }]);
         $this->roman->forceFill(['telegram_chat_id' => 777, 'telegram_linked_at' => now()])->save();
         $bid = app(PlaceBid::class)($this->offer, $this->roman, 965000);
@@ -161,7 +166,7 @@ class BidCounterTest extends TestCase
         // Уведомление ушло в бот с кнопками ответа.
         $this->assertTrue(collect($sent)->contains(fn ($s) => str_contains($s, 'sendMessage') && str_contains($s, 'counter%3A'.$bid->id.'%3Ayes') || str_contains($s, 'counter:'.$bid->id.':yes')));
 
-        $press = fn (string $from, string $action) => app(\App\Telegram\UpdateHandler::class)->handle(['update_id' => random_int(1, 9999), 'callback_query' => [
+        $press = fn (string $from, string $action) => app(UpdateHandler::class)->handle(['update_id' => random_int(1, 9999), 'callback_query' => [
             'id' => 'q', 'from' => ['id' => (int) $from], 'data' => "counter:{$bid->id}:{$action}", 'message' => ['message_id' => 1, 'chat' => ['id' => (int) $from]]]]);
         $press('888', 'sure'); // чужой — мимо
         $this->assertTrue($bid->fresh()->hasPendingCounter());

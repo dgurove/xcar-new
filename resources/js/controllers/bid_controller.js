@@ -100,8 +100,11 @@ export default class extends Controller {
                 this.application.getControllerForElementAndIdentifier(this.choiceTarget, 'sheet')?.close();
             }
             if (zone === 'bad') return this.refuse('Цена недопустимая');
-            if (zone === 'low') {
-                const sure = await confirmSheet('Вы уверены?', { text: 'Такая цена требует дополнительного согласования с поставщиком', label: 'Уверен', warn: true, danger: false });
+            if (zone === 'low' || zone === 'high') {
+                // Вдвое выше цены продажи — почти всегда лишний ноль (02.11.2026): переспрашиваем сумму.
+                const sure = zone === 'high'
+                    ? await confirmSheet('Проверьте сумму', { text: 'Цена больше чем вдвое выше цены продажи', label: 'Всё верно', warn: true, danger: false })
+                    : await confirmSheet('Вы уверены?', { text: 'Такая цена требует дополнительного согласования с поставщиком', label: 'Уверен', warn: true, danger: false });
                 if (!sure) return;
                 this.lowTarget.value = '1';
             }

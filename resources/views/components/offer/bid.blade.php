@@ -10,7 +10,10 @@
     $garage = $bid->isGarage();
     $diff = $offer->asking_price && ! $garage ? $bid->amount - $offer->asking_price : null;
     // Светофор строки (26.10.2026): ниже порога — жёлтым, без слов (`Offer::bidZone`).
-    $low = $active && ! $garage && $bid->amount && $offer->bidZone($bid->amount) !== 'ok';
+    $zone = $active && ! $garage && $bid->amount ? $offer->bidZone($bid->amount) : 'ok';
+    $low = in_array($zone, ['low', 'bad'], true);
+    // Вдвое выше цены продажи — лишний ноль? Красным словом: принять такое — счёт на сумму в разы больше (02.11.2026).
+    $high = $zone === 'high';
     // Не выше закупочной (14.10.2026, 3308 приняли в минус молча): красным в строке, «Принять» переспрашивает, и сервер
     // без согласия такую не примет (`Give`, `loss`).
     // Закупочная, с которой менеджер подтверждал (`bids.cost`, 15.10.2026), — она закрепится в сделке.
@@ -20,11 +23,12 @@
     $give = (bool) $offer->deal;
     $inGarage = $garage ? (int) ($parked[$bid->user_id] ?? 0) : 0;
 @endphp
-<div @class(['px-4 py-3', 'bid-row--loss' => $loss && $active, 'bid-row--low' => $low && ! ($loss && $active), 'bid-row--ok' => $active && ! $garage && ! $low && ! $loss])>
+<div @class(['px-4 py-3', 'bid-row--loss' => ($loss && $active) || $high, 'bid-row--low' => $low && ! ($loss && $active), 'bid-row--ok' => $active && ! $garage && ! $low && ! $loss && ! $high])>
     <div class="flex flex-wrap items-center gap-x-2 gap-y-1">
         <span class="bid-amount nums whitespace-nowrap text-lg font-semibold">{{ $garage ? 'В гараж' : Money::rub($bid->amount) }}</span>
         @if ($inGarage)<span class="nums text-sm text-ink-dim">в гараже {{ $inGarage }}</span>@endif
         @if ($diff)<span class="nums whitespace-nowrap text-sm text-ink-dim">{{ $diff > 0 ? '+' : '−' }}{{ Money::nums(abs($diff)) }} от цены</span>@endif
+        @if ($high)<x-ui.state tone="danger">больше чем вдвое выше цены — проверьте сумму</x-ui.state>@endif
         @if ($loss && $active)<x-ui.state tone="danger">{{ $under > 0 ? 'ниже закупочной на '.Money::nums($under) : 'равна закупочной' }}</x-ui.state>@endif
         @if (! $active)<x-ui.state :tone="$bid->state === BidState::Accepted ? 'open' : ($bid->state === BidState::Declined ? 'danger' : 'closed')">{{ $bid->state->label() }}</x-ui.state>@endif
         <span class="nums ml-auto whitespace-nowrap text-sm text-ink-dim">{{ \App\Support\Ago::html($bid->created_at, true, words: false) }}</span>

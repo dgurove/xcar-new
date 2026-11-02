@@ -26,6 +26,9 @@ final class PlaceBid
     public const TOO_LOW = 'Цена недопустимая';
 
     /** Ниже порога (`Offer::minBid`) — можно, но переспрашиваем (26.10.2026); без JS форма вернётся с этой ошибкой. */
+    /** Вдвое выше цены продажи — лишний ноль? Отправить можно, переспросив (`Offer::bidZone` — `high`). */
+    public const CHECK_AMOUNT = 'Цена больше чем вдвое выше цены продажи — проверьте сумму и подтвердите ещё раз';
+
     public const NEEDS_CONSENT = 'Такая цена требует дополнительного согласования с поставщиком — подтвердите ещё раз';
 
     public function __invoke(Offer $offer, User $by, ?int $amount, ?string $comment = null, BidKind $kind = BidKind::Buyer, bool $lowOk = false): Bid
@@ -66,8 +69,8 @@ final class PlaceBid
         if ($zone === 'bad') {
             throw ValidationException::withMessages(['amount' => self::TOO_LOW]);
         }
-        if ($zone === 'low' && ! $lowOk) {
-            throw ValidationException::withMessages(['amount' => self::NEEDS_CONSENT, 'low' => '1']);
+        if (in_array($zone, ['low', 'high'], true) && ! $lowOk) {
+            throw ValidationException::withMessages(['amount' => $zone === 'high' ? self::CHECK_AMOUNT : self::NEEDS_CONSENT, 'low' => '1']);
         }
     }
 
