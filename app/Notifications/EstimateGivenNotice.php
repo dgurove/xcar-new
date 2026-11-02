@@ -33,7 +33,7 @@ final class EstimateGivenNotice extends Notice
     {
         $offer = $this->estimate->offer;
 
-        // Грузовое (`FirstLook`): оценка уже цена, и машина в продаже только у него.
+        // Эксклюзив (`FirstLook`): оценка уже цена, и машина в продаже только у него.
         return $offer->titleWithYear().($offer->first_look_until ? ' — опубликована только ему до '.Ago::at($offer->first_look_until, true, words: false) : '');
     }
 

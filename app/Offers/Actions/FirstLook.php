@@ -14,9 +14,9 @@ use Illuminate\Support\Facades\DB;
 use Throwable;
 
 /**
- * Первый взгляд оценившего (02.11.2026, владелец): грузовое, что система сама дала на оценку (`AskHeavyEstimates`), после
- * его оценки — сразу в продажу ценой его оценки и только ему (`offers.first_look_until`, `xcar.first_look_days` дней до
- * 17:00, тем же сроком кончается приём); не подтвердил за это время — открывается всем по той же цене, приём заново, как у
+ * Эксклюзив оценившего (02.11.2026, владелец и Андрей): админ, отдавая одному на оценку, выбрал «Потом только ему N дней»
+ * (`offer_estimates.exclusive_days`) — после оценки машина сразу в продаже ценой его оценки и только ему
+ * (`offers.first_look_until`, N дней до 17:00, тем же сроком кончается приём); не подтвердил за это время — открывается всем по той же цене, приём заново, как у
  * публикации. Подтвердил — дальше как у всех: «Есть подтверждения», выбирает админ.
  */
 final class FirstLook
@@ -31,7 +31,7 @@ final class FirstLook
         if (ChangeOfferState::missing($offer) || $offer->state !== OfferState::Draft || $offer->isScheduled()) {
             return;
         }
-        $until = Binding::clampClose($offer, Slots::closeFor(now(), (int) config('xcar.first_look_days')));
+        $until = Binding::clampClose($offer, Slots::closeFor(now(), $estimate->exclusive_days));
         DB::transaction(function () use ($offer, $who, $until) {
             ($this->update)($offer, [
                 'audience_rules' => AudienceRules::normalize([['type' => 'user', 'id' => $who->id, 'delay' => 0], ['type' => 'rest', 'delay' => null]]),
@@ -71,7 +71,7 @@ final class FirstLook
             ($this->update)($offer->refresh(), [
                 'audience_rules' => AudienceRules::everyone(), 'first_look_until' => null,
                 'bids_close_at' => Binding::clampClose($offer, Slots::closeFor(now())),
-            ], null, ['why' => 'Не подтвердили за '.config('xcar.first_look_days').' дней — всем']);
+            ], null, ['why' => 'Эксклюзив кончился без подтверждения — всем']);
         });
     }
 }

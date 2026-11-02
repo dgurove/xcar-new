@@ -6,7 +6,6 @@ use App\Live\Publisher;
 use App\Live\Topics;
 use App\Mail\Scan\AutoScan;
 use App\Notifications\Batch;
-use App\Offers\Actions\AskHeavyEstimates;
 use App\Offers\Actions\AutoOffer;
 use App\Offers\Actions\BindingAlarm;
 use App\Offers\Actions\FirstLook;
@@ -36,16 +35,16 @@ class TickOffers extends Command
 
     protected $signature = 'offers:tick';
 
-    protected $description = 'Часы предложений: слот 16:00, черновики в галерею, исходы по времени, просрочки, напоминания, «приём закрыт» владельцу, следующие волны показа, новые предложения пачкой после 5 минут тишины, напоминания об оценке, на аукцион без подтверждений, черновики из писем, мягкие напоминания менеджеру о шагах без срока, паника по сроку обязывающего предложения, за 3 часа до конца приёма — об избранном и непросмотренных, за 30 минут — об избранном, за 3 часа без подтверждений — открывавшим, приём закрыт без подтверждений — в «Оцененные», грузовое — на оценку своему менеджеру и после пяти дней только ему — всем';
+    protected $description = 'Часы предложений: слот 16:00, черновики в галерею, исходы по времени, просрочки, напоминания, «приём закрыт» владельцу, следующие волны показа, новые предложения пачкой после 5 минут тишины, напоминания об оценке, на аукцион без подтверждений, черновики из писем, мягкие напоминания менеджеру о шагах без срока, паника по сроку обязывающего предложения, за 3 часа до конца приёма — об избранном и непросмотренных, за 30 минут — об избранном, за 3 часа без подтверждений — открывавшим, приём закрыт без подтверждений — в «Оцененные», эксклюзив оценившего кончился без подтверждения — всем';
 
-    public function handle(PublishDueSlots $slots, TickStages $tick, NotifyBidsClosed $closed, NotifyViewers $waves, NotifyNewOffers $digest, ShowInGallery $gallery, RemindEstimates $estimates, AutoOffer $auto, SendToAuction $auction, StagesDigest $hot, RemindStalled $stalled, BindingAlarm $binding, RemindUnreadClosing $unread, NoBidsAlarm $noBids, ReturnClosedToRated $rated, AskHeavyEstimates $heavy, FirstLook $firstLook): int
+    public function handle(PublishDueSlots $slots, TickStages $tick, NotifyBidsClosed $closed, NotifyViewers $waves, NotifyNewOffers $digest, ShowInGallery $gallery, RemindEstimates $estimates, AutoOffer $auto, SendToAuction $auction, StagesDigest $hot, RemindStalled $stalled, BindingAlarm $binding, RemindUnreadClosing $unread, NoBidsAlarm $noBids, ReturnClosedToRated $rated, FirstLook $firstLook): int
     {
-        return $this->holdingSingleRun('offers:tick', function () use ($slots, $tick, $closed, $waves, $digest, $gallery, $estimates, $auto, $auction, $hot, $stalled, $binding, $unread, $noBids, $rated, $heavy, $firstLook) {
+        return $this->holdingSingleRun('offers:tick', function () use ($slots, $tick, $closed, $waves, $digest, $gallery, $estimates, $auto, $auction, $hot, $stalled, $binding, $unread, $noBids, $rated, $firstLook) {
             // Утренняя сводка «Горит» — раз в день с 10:00 (`StagesDigest`).
             $hot();
             // Слот — первым: выпущенные им предложения тем же тиком уходят менеджерам одним уведомлением (волны).
             // Первый взгляд кончился — до «приём закрыт»: не подтвердили — открывается всем с новым сроком, без «приём закрыт».
-            $counts = ['slot' => $slots(), 'gallery' => $gallery->due(), 'first_look' => $firstLook->due(), 'heavy' => $heavy()] + $tick() + ['closing' => $closed->closing(), 'closed' => $closed(), 'auction' => $auction->due(), 'rated' => $rated(), 'waves' => $waves->due(), 'digest' => $digest(), 'unread' => $unread(), 'favorites' => $unread->last(), 'no_bids' => $noBids(), 'estimates' => $estimates->due(), 'stalled' => $stalled(), 'binding' => $binding()]
+            $counts = ['slot' => $slots(), 'gallery' => $gallery->due(), 'first_look' => $firstLook->due()] + $tick() + ['closing' => $closed->closing(), 'closed' => $closed(), 'auction' => $auction->due(), 'rated' => $rated(), 'waves' => $waves->due(), 'digest' => $digest(), 'unread' => $unread(), 'favorites' => $unread->last(), 'no_bids' => $noBids(), 'estimates' => $estimates->due(), 'stalled' => $stalled(), 'binding' => $binding()]
                 // Письмо-предложение не завелось черновиком при приходе (выкладка); документы черновиков из писем дочитать —
                 // раз в пять минут, как у парковки: проход читает письма всех их веток.
                 + ['drafts' => $auto->catchUp(), 'read' => now()->minute % 5 === 0 ? AutoScan::sweep(offers: true) : 0]

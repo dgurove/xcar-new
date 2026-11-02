@@ -7,12 +7,14 @@ use App\Offers\Actions\CloseEstimates;
 use App\Offers\Actions\RejectEstimate;
 use App\Offers\Actions\TakeEstimate;
 use App\Offers\Estimate;
+use App\Offers\EstimateState;
 use App\Offers\Offer;
 use App\Offers\PriceGuard;
 use App\Support\Money;
 use App\Users\Role;
 use App\Users\User;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -40,9 +42,14 @@ final class OfferEstimateController
             // заявленная ему не покажется (как при «Скрыть»).
             $declared = array_fill_keys($ids, false);
         }
-        $created = $ask($offer, User::withRole(Role::Manager)->whereIn('id', $ids)->get(), $request->user(), $declared);
+        // Сколько дней на оценку и эксклюзив после неё (02.11.2026, Андрей) — сегментами шторки; эксклюзив — только одному.
+        $terms = $request->validate(['days' => ['nullable', Rule::in(Estimate::DAYS)], 'exclusive' => ['nullable', Rule::in(Estimate::EXCLUSIVE)]]);
+        $days = (int) ($terms['days'] ?? 2);
+        $created = $ask($offer, User::withRole(Role::Manager)->whereIn('id', $ids)->get(), $request->user(), $declared, $days, (int) ($terms['exclusive'] ?? 0) ?: null);
+        $exclusive = $created->first()?->exclusive_days;
 
-        return back()->with('toast', $created->isEmpty() ? 'Уже на оценке' : 'Отдано на оценку: '.$created->map(fn (Estimate $e) => $e->user->shortName())->implode(', '));
+        return back()->with('toast', $created->isEmpty() ? 'Уже на оценке' : 'Отдано на оценку: '.$created->map(fn (Estimate $e) => $e->user->shortName())->implode(', ')
+            .' — '.Estimate::daysWord($days).($exclusive ? ', потом только '.($created->count() === 1 ? 'ему' : 'им').' '.Estimate::daysWord($exclusive) : ''));
     }
 
     /** «Взять» — как «Оценить»: строка уходит в «Оцененные», карточка — к следующей без цены. */
@@ -80,7 +87,7 @@ final class OfferEstimateController
     /** «Спросить снова» у отказа: новая просьба тому же менеджеру с прежним «показать / скрыть заявленную». */
     public function again(Request $request, Offer $offer, Estimate $estimate, AskEstimates $ask)
     {
-        abort_unless($estimate->offer_id === $offer->id && $estimate->state === \App\Offers\EstimateState::Declined, 404);
+        abort_unless($estimate->offer_id === $offer->id && $estimate->state === EstimateState::Declined, 404);
         $ask($offer, [$estimate->user], $request->user(), [$estimate->user_id => $estimate->showsDeclared()]);
 
         return back()->with('toast', 'Спросили снова: '.$estimate->user->shortName());

@@ -5,7 +5,7 @@ namespace Tests\Feature;
 use App\Cars\Actions\FillCar;
 use App\Cars\Brand;
 use App\Cars\Category;
-use App\Offers\Actions\AskHeavyEstimates;
+use App\Offers\Actions\AskEstimates;
 use App\Offers\Actions\FirstLook;
 use App\Offers\Actions\GiveEstimate;
 use App\Offers\Actions\PlaceBid;
@@ -24,8 +24,8 @@ use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 /**
- * Грузовое — само на оценку своему менеджеру, его оценка — продажа только ему на пять дней, не подтвердил — всем
- * (02.11.2026, владелец). И тип ТС с Мигторга: «Граз» с кузовом «Прицеп» стоял легковым.
+ * Оценка с эксклюзивом (02.11.2026, владелец и Андрей): админ отдаёт одному, его оценка — продажа только ему на N дней, не
+ * подтвердил — всем; сама система никого не просит. И тип ТС с Мигторга: «Граз» с кузовом «Прицеп» стоял легковым.
  */
 class HeavyEstimateTest extends TestCase
 {
@@ -34,6 +34,8 @@ class HeavyEstimateTest extends TestCase
     private User $roma;
 
     private User $other;
+
+    private User $admin;
 
     private Vendor $vendor;
 
@@ -44,6 +46,7 @@ class HeavyEstimateTest extends TestCase
         Storage::fake('public');
         $this->roma = User::create(['name' => 'Роман Корабельников', 'phone' => '79000000050', 'roles' => [Role::Manager], 'approved_at' => now()]);
         $this->other = User::create(['name' => 'Иван', 'phone' => '79000000051', 'roles' => [Role::Manager], 'approved_at' => now()]);
+        $this->admin = User::create(['name' => 'Андрей', 'phone' => '79000000052', 'roles' => [Role::Admin], 'approved_at' => now()]);
         config(['xcar.heavy_estimator' => $this->roma->id]);
         $this->vendor = Vendor::create(['name' => 'Альфа тест']);
     }
@@ -57,35 +60,33 @@ class HeavyEstimateTest extends TestCase
         return $offer->fresh();
     }
 
-    public function test_truck_goes_to_estimator_once_and_first_look_opens_to_all(): void
+    public function test_heavy_is_not_asked_by_itself_and_exclusive_opens_to_all(): void
     {
         $truck = $this->draft('КАМАЗ', '5691/046/00901/26');
-        $car = $this->draft('Kia', '5691/046/00902/26');
         $pickup = $this->draft('Changan', '5691/046/00904/26');
         $pickup->update(['body' => 'pickup']);
-        $van = $this->draft('Газель', '5691/046/00905/26');
+        $this->assertTrue($truck->isHeavy());
+        $this->assertFalse($pickup->fresh()->isHeavy());
         $this->assertSame(Category::Light, $pickup->fresh()->category());
-        $this->assertSame(Category::Truck, $truck->category());
-        $this->assertSame(Category::Passenger, $car->category());
 
-        $this->assertSame(2, app(AskHeavyEstimates::class)());
-        $this->assertFalse(Estimate::where('offer_id', $pickup->id)->exists());
-        $this->assertTrue(Estimate::where('offer_id', $van->id)->exists());
-        $this->assertSame(0, app(AskHeavyEstimates::class)());
+        // Сама система никого не просит (02.11.2026, Андрей) — только админ.
+        $this->artisan('offers:tick');
+        $this->assertFalse(Estimate::where('offer_id', $truck->id)->exists());
+
+        $this->actingAs($this->admin)->post('http://crm.xcar.localhost/offers/'.$truck->number.'/estimates', ['managers' => [$this->roma->id], 'declared' => [$this->roma->id => 1], 'days' => 3, 'exclusive' => 5])->assertRedirect()->assertSessionHasNoErrors();
         $estimate = Estimate::where('offer_id', $truck->id)->sole();
-        $this->assertTrue($estimate->auto);
-        $this->assertSame($this->roma->id, $estimate->user_id);
-        $this->assertFalse(Estimate::where('offer_id', $car->id)->exists());
+        $this->assertSame(5, $estimate->exclusive_days);
+        $this->assertEqualsWithDelta(now()->addDays(3)->timestamp, $estimate->due_at->timestamp, 5);
 
         app(GiveEstimate::class)($estimate, 1200000, $this->roma);
         $truck = $truck->fresh();
         $this->assertSame(OfferState::Open, $truck->state);
         $this->assertSame(1200000, $truck->asking_price);
-        $this->assertNotNull($truck->first_look_until);
         $this->assertTrue($truck->first_look_until->equalTo($truck->bids_close_at));
+        $this->assertSame(5, (int) now()->startOfDay()->diffInDays($truck->first_look_until->copy()->startOfDay()));
         $this->assertSame([$this->roma->id], $truck->viewers()->pluck('user_id')->all());
 
-        // Пять дней прошли без подтверждения: «Не продано» не забирает, открывается всем с новым сроком.
+        // Эксклюзив прошёл без подтверждения: «Не продано» не забирает, открывается всем с новым сроком.
         $this->travelTo($truck->first_look_until->copy()->addMinute());
         $this->assertSame(0, app(ReturnClosedToRated::class)());
         $this->assertSame(1, app(FirstLook::class)->due());
@@ -97,10 +98,23 @@ class HeavyEstimateTest extends TestCase
         $this->assertContains($this->other->id, $truck->viewers()->pluck('user_id')->all());
     }
 
-    public function test_confirmed_first_look_stays_with_estimator(): void
+    public function test_exclusive_only_for_one_manager(): void
+    {
+        $two = $this->draft('КАМАЗ', '5691/046/00906/26');
+        app(AskEstimates::class)($two, [$this->roma, $this->other], $this->admin, days: 2, exclusive: 5);
+        $this->assertSame([null, null], Estimate::where('offer_id', $two->id)->pluck('exclusive_days')->all());
+
+        // Отдали ещё одному — эксклюзив прежней просьбы гаснет.
+        $one = $this->draft('Sitrak', '5691/046/00907/26');
+        app(AskEstimates::class)($one, [$this->roma], $this->admin, exclusive: 5);
+        app(AskEstimates::class)($one->fresh(), [$this->other], $this->admin);
+        $this->assertSame([null, null], Estimate::where('offer_id', $one->id)->orderBy('id')->pluck('exclusive_days')->all());
+    }
+
+    public function test_confirmed_exclusive_stays_with_estimator(): void
     {
         $truck = $this->draft('КАМАЗ', '5691/046/00903/26');
-        app(AskHeavyEstimates::class)();
+        app(AskEstimates::class)($truck, [$this->roma], $this->admin, exclusive: 5);
         app(GiveEstimate::class)(Estimate::where('offer_id', $truck->id)->sole(), 1200000, $this->roma);
         app(PlaceBid::class)($truck->fresh(), $this->roma, 1200000);
 

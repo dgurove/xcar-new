@@ -22,9 +22,9 @@
             <span class="nums text-sm text-ink-muted">{{ \App\Support\Ago::html($closeAt, true, words: false) }}</span>
         @endif
     </div>
-    {{-- Грузовое после оценки своего менеджера (`FirstLook`, 02.11.2026): сначала только ему, потом всем. --}}
+    {{-- Эксклюзив оценившего (`FirstLook`, 02.11.2026): сначала только ему, потом всем. --}}
     @if ($offer->first_look_until)
-        <p class="text-sm text-ink-muted">До конца приёма — только {{ \App\Offers\Actions\AskHeavyEstimates::estimator()?->shortName() }}, потом всем</p>
+        <p class="text-sm text-ink-muted">До конца приёма — только {{ $offer->estimates()->whereNotNull('exclusive_days')->latest('id')->first()?->user?->shortName() ?? 'оценившему' }}, потом всем</p>
     @endif
     {{-- «Показ» строкой — кому и какие отметки, шторка со сроком и волнами (`x-offer.showing-row`). --}}
     <x-offer.showing-row :offer="$offer" :form="$showForm" :summary="$showSummary ?? null" :when="false"/>

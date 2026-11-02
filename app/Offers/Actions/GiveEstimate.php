@@ -43,9 +43,8 @@ final class GiveEstimate
         EstimateLock::release($estimate->offer);
         Nav::forgetStaffCounts();
         EstimateGiven::dispatch($estimate, $by);
-        // Просьбу поставила система (грузовое, `AskHeavyEstimates`) — оценка сразу цена и продажа ему одному. Не вышло —
-        // оценка стоит, решает админ.
-        if ($estimate->auto && ! $estimate->isCorrection()) {
+        // Эксклюзив, выбранный админом при просьбе, — оценка сразу цена и продажа ему одному. Не вышло — оценка стоит, решает админ.
+        if ($estimate->exclusive_days && ! $estimate->isCorrection()) {
             try {
                 app(FirstLook::class)->open($estimate);
             } catch (Throwable $e) {

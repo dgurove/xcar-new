@@ -1,6 +1,8 @@
 {{-- «Отдать менеджеру на оценку» (11.10.2026): менеджеры строками с галкой, поиск от девяти, кому уже отдано — отмечено и
      не нажимается; отметил — под ним «Заявленная N ₽: Показать | Скрыть» без умолчания (владелец: «пусть просто
-     спрашивает»), «Отдать (N)» живая, когда ответили за всех; внизу. Кнопка шторки — строкой в группе оценок; trigger=false — только шторка, её открывает
+     спрашивает»), «Отдать (N)» живая, когда ответили за всех; внизу. Под списком сроки сегментами (02.11.2026, Андрей):
+     «На оценку» дней и, когда отмечен один, «Потом только ему» — эксклюзив после оценки (`FirstLook`); у грузового
+     (`Offer::isHeavy`) первым и отмеченным стоит свой менеджер (`xcar.heavy_estimator`), эксклюзив — 5 дней. Кнопка шторки — строкой в группе оценок; trigger=false — только шторка, её открывает
      событие `estimate-ask-{n}:open` (пункт «Спросить менеджеров» в «Действиях» карточки «Оцененных»). --}}
 @props(['offer', 'managers', 'label' => 'Отдать на оценку', 'trigger' => true])
 @php
@@ -8,6 +10,10 @@
     $asked = $offer->openEstimates->pluck('user_id')->all();
     // Сколько у человека уже открытых просьб — чтобы не завалить одного (подписью под именем).
     $declared = $offer->declaredPrice();
+    // Грузовое — свой менеджер первой строкой и уже отмечен; эксклюзив по умолчанию 5 дней (корректировке цены его нет).
+    $pick = ! $offer->asking_price && $offer->isHeavy() ? (int) config('xcar.heavy_estimator') : null;
+    $pick = $pick && $managers->contains('id', $pick) && ! in_array($pick, $asked, true) ? $pick : null;
+    $managers = $pick ? $managers->sortBy(fn ($m) => $m->id === $pick ? 0 : 1)->values() : $managers;
     $busy = \App\Offers\Estimate::waiting()->whereIn('user_id', $managers->pluck('id'))->selectRaw('user_id, count(*) n')->groupBy('user_id')->pluck('n', 'user_id')->all();
 @endphp
 <div data-controller="sheet" class="contents" data-action="estimate-ask-{{ $n }}:open@window->sheet#open">
@@ -30,7 +36,7 @@
                             <span class="block truncate">{{ $m->name }}</span>
                             @if ($on)<span class="row-sub">уже спросили</span>@elseif ($busy[$m->id] ?? 0)<span class="row-sub nums">на оценке {{ $busy[$m->id] }} ТС</span>@endif
                         </span>
-                        <span class="check">@if ($on)<input type="checkbox" checked tabindex="-1" aria-disabled="true">@else<input type="checkbox" name="managers[]" value="{{ $m->id }}" data-select-target="box" data-action="select#count">@endif</span>
+                        <span class="check">@if ($on)<input type="checkbox" checked tabindex="-1" aria-disabled="true">@else<input type="checkbox" name="managers[]" value="{{ $m->id }}" data-select-target="box" data-action="select#count" @checked($m->id === $pick)>@endif</span>
                     </label>
                     @if ($declared && ! $on)
                         <div class="row estimate-declared" data-select-ask="{{ $m->id }}" hidden>
@@ -44,7 +50,29 @@
                     </div>
                 @endforeach
             </div>
-            <div class="sheet-foot"><button type="submit" class="btn btn-accent w-full" data-select-target="submit" disabled>{{ $offer->asking_price ? 'Спросить' : 'Отдать' }} <span class="nums" data-select-target="count"></span></button></div>
+            {{-- Сроки — у кнопки, а не под списком из трёх десятков менеджеров: видны сразу. --}}
+            <div class="sheet-foot flex flex-col gap-2">
+                <div class="estimate-term">
+                    <span>На оценку</span>
+                    <div class="segment">
+                        @foreach (\App\Offers\Estimate::DAYS as $d)
+                            <label><input type="radio" name="days" value="{{ $d }}" @checked($d === 2)>{{ \App\Offers\Estimate::daysWord($d) }}</label>
+                        @endforeach
+                    </div>
+                </div>
+                @unless ($offer->asking_price)
+                    {{-- Эксклюзив — когда оценивает один: при двух и больше строки нет, решает админ «Взять». --}}
+                    <div class="estimate-term" data-select-single hidden>
+                        <span>Эксклюзив</span>
+                        <div class="segment">
+                            @foreach (\App\Offers\Estimate::EXCLUSIVE as $d)
+                                <label><input type="radio" name="exclusive" value="{{ $d }}" disabled @checked($d === ($pick ? 5 : 0))>{{ $d ? \App\Offers\Estimate::daysWord($d) : 'Нет' }}</label>
+                            @endforeach
+                        </div>
+                    </div>
+                @endunless
+                <button type="submit" class="btn btn-accent mt-1 w-full" data-select-target="submit" disabled>{{ $offer->asking_price ? 'Спросить' : 'Отдать' }} <span class="nums" data-select-target="count"></span></button>
+            </div>
         </form>
     </x-ui.sheet>
 </div>

@@ -1994,6 +1994,11 @@ html.kb-open { --home-gap: 0px; }
   .estimate-ok path { stroke-dasharray: 44; stroke-dashoffset: 44; animation: valuation-draw .3s .35s ease-out forwards; }
   @media (prefers-reduced-motion: reduce) { .estimate-ok circle, .estimate-ok path { animation: none; stroke-dashoffset: 0; } }
   .segment { @apply grid auto-cols-fr grid-flow-col gap-1 rounded-full bg-surface-3 p-1; }
+  /* Сроки в шторке «Отдать на оценку» (02.11.2026): подпись слева, сегмент справа; узко — сегмент строкой ниже. */
+  .estimate-term { @apply flex flex-wrap items-center gap-x-3 gap-y-1; }
+  .estimate-term > span { @apply w-20 shrink-0 text-sm text-ink-muted; }
+  .estimate-term > .segment { @apply min-w-64 flex-1; }
+  .estimate-term .segment label { @apply px-2 whitespace-nowrap; }
   .segment label { @apply relative flex min-h-9 cursor-pointer items-center justify-center rounded-full px-3 text-sm text-ink-muted; }
   .segment input { @apply absolute inset-0 opacity-0; }
   .segment label:has(input:checked) { @apply text-ink; background: color-mix(in oklab, var(--color-ink) 14%, var(--color-surface-3)); }

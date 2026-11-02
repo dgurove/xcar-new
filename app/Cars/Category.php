@@ -18,7 +18,7 @@ enum Category: string
     case Special = 'special';
     case Moto = 'moto';
 
-    /** Грузовое и спецтехника — оценивает свой менеджер (`AskHeavyEstimates`): всё, кроме легковых и мото. */
+    /** Грузовое и спецтехника — всё, кроме легковых и мото (у предложения ещё не пикап — `Offer::isHeavy`). */
     public function isHeavy(): bool
     {
         return ! in_array($this, [self::Passenger, self::Moto], true);

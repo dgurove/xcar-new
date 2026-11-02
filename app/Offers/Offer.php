@@ -2,6 +2,7 @@
 
 namespace App\Offers;
 
+use App\Cars\Body;
 use App\Cars\Category;
 use App\Cars\Events\CarChanged;
 use App\Cars\OnCar;
@@ -900,6 +901,15 @@ class Offer extends Model
     public function category(): Category
     {
         return $this->vehicle_category ?? Category::guess($this->title()) ?? Category::Passenger;
+    }
+
+    /**
+     * Грузовое — не легковой, не мото и не пикап (02.11.2026): в шторке «Отдать на оценку» сразу отмечен свой менеджер
+     * (`xcar.heavy_estimator`) и эксклюзив 5 дней. Пикап — лёгкий коммерческий для стоянки, но оценивают его все.
+     */
+    public function isHeavy(): bool
+    {
+        return $this->category()->isHeavy() && $this->body !== Body::Pickup;
     }
 
     /** Строка фактов под названием: год, пробег, коробка, привод. */

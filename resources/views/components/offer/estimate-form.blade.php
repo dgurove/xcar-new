@@ -1,6 +1,6 @@
 {{-- Оценка цены продажи менеджером (11.10.2026) — на месте цены и подтверждения, на телефоне листом по кнопке снизу
      (`DealPlacement`). Панели одна на виду (`estimate_edit_controller`):
-     - form — как ввод суммы в Apple Pay: сумма крупно по центру, заявленная, полоса 48 часов (за 6 ч оранжевая, вышло —
+     - form — как ввод суммы в Apple Pay: сумма крупно по центру, заявленная, полоса срока просьбы (за 6 ч оранжевая, вышло —
        без полосы, красным), «Отправить»;
      - choose — корректировка (цена уже стоит, админ не уверен): крупно «Цена XCar», «Согласен» лаймом и «Предложить свою»,
        она открывает form;
@@ -16,7 +16,8 @@
     $given = $estimate->isGiven();
     $correction = $estimate->isCorrection();
     $due = $estimate->due_at;
-    $total = \App\Offers\Estimate::HOURS * 3600;
+    // Срок у просьбы свой (1–5 дней, шторка «Отдать на оценку»): полоса — от просьбы до срока.
+    $total = max(3600, (int) abs($estimate->created_at->diffInSeconds($due)));
     $left = max(0, now()->diffInSeconds($due, false));
     $tone = match (true) { $due->isPast() => 'danger', $left <= \App\Offers\Estimate::REMIND_HOURS * 3600 => 'urgent', default => 'accent' };
     $home = match (true) { $given => 'done', $correction => 'choose', default => 'form' };
@@ -78,6 +79,8 @@
             @error('amount')<span class="mt-2 text-sm text-danger">{{ $message }}</span>@enderror
             @if ($correction)<span class="money-hero-car mt-2 nums">цена XCar {{ \App\Support\Money::rub($estimate->base_price) }}</span>
             @elseif ($declared)<span class="money-hero-car mt-2 nums">заявленная {{ \App\Support\Money::rub($declared) }}</span>@endif
+            {{-- Эксклюзив (`FirstLook`): оценка сразу станет ценой, и машина будет только у него. --}}
+            @if ($estimate->exclusive_days && ! $correction)<span class="money-hero-car mt-1 nums">после оценки — {{ \App\Offers\Estimate::daysWord($estimate->exclusive_days) }} только вам в продаже</span>@endif
         </div>
         @unless ($given)@include('components.offer.estimate-due')@endunless
         <button type="submit" class="btn btn-accent mt-5 w-full">{{ $given ? 'Сохранить' : 'Отправить' }}</button>

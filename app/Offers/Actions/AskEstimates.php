@@ -24,9 +24,10 @@ final class AskEstimates
     /**
      * @param  iterable<User>  $managers
      * @param  array<int, bool>  $declared  кому показать заявленную (id => да/нет); нет в карте — показать
-     * @param  bool  $auto  просьбу поставила система (`AskHeavyEstimates`): оценка сразу публикует машину оценившему (`FirstLook`)
+     * @param  int  $days  сколько дней на оценку (`Estimate::DAYS`)
+     * @param  int|null  $exclusive  эксклюзив после оценки, дней (`FirstLook`): только одному и только оценка, не корректировка
      */
-    public function __invoke(Offer $offer, iterable $managers, ?User $by, array $declared = [], bool $auto = false): Collection
+    public function __invoke(Offer $offer, iterable $managers, ?User $by, array $declared = [], int $days = 2, ?int $exclusive = null): Collection
     {
         // Без цены продажи — оценка; с ценой (вкладка «Оцененные», 11.10.2026) — корректировка: её цена в `base_price`.
         if ($offer->state !== OfferState::Draft || $offer->isScheduled()) {
@@ -38,14 +39,17 @@ final class AskEstimates
             throw ValidationException::withMessages(['managers' => 'Выберите менеджера']);
         }
 
-        $created = DB::transaction(function () use ($offer, $managers, $by, $base, $declared, $auto) {
+        $exclusive = $exclusive && $managers->count() === 1 && ! $base ? $exclusive : null;
+        $created = DB::transaction(function () use ($offer, $managers, $by, $base, $declared, $days, $exclusive) {
             $open = $offer->estimates()->open()->pluck('user_id')->all();
             $created = $managers->reject(fn (User $u) => in_array($u->id, $open, true))->map(fn (User $u) => Estimate::create([
                 'offer_id' => $offer->id, 'user_id' => $u->id, 'asked_by' => $by?->id,
-                'state' => EstimateState::Asked, 'due_at' => now()->addHours(Estimate::HOURS), 'base_price' => $base,
-                'show_declared' => $declared[$u->id] ?? true, 'auto' => $auto,
+                'state' => EstimateState::Asked, 'due_at' => now()->addDays($days), 'base_price' => $base,
+                'show_declared' => $declared[$u->id] ?? true, 'exclusive_days' => $exclusive,
             ]))->values();
             if ($created->isNotEmpty()) {
+                // Эксклюзив — когда оценивает один: отдали ещё кому-то — у прежней просьбы он гаснет, решает админ «Взять».
+                $open !== [] && $offer->estimates()->open()->whereNotIn('id', $created->pluck('id'))->update(['exclusive_days' => null]);
                 EstimateLock::lock($offer);
                 // Первая просьба — черновик переходит во вкладку «На оценке у менеджеров».
                 $open === [] && $offer->movedByEstimate($by);

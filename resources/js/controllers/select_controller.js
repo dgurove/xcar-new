@@ -20,6 +20,11 @@ export default class extends Controller {
             if (shown && !ask.querySelector('input:checked')) unanswered++;
         });
         const n = on.length;
+        // Строка только для одного (эксклюзив после оценки): видна и уходит с формой, когда отмечен ровно один.
+        this.element.querySelectorAll('[data-select-single]').forEach((el) => {
+            el.hidden = n !== 1;
+            el.querySelectorAll('input').forEach((i) => { i.disabled = n !== 1; });
+        });
         if (this.hasCountTarget) this.countTarget.textContent = n ? `(${n})` : '';
         if (this.hasSubmitTarget) this.submitTarget.disabled = n === 0 || unanswered > 0;
     }
