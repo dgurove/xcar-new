@@ -160,8 +160,12 @@ class Bot
     public function file(string $fileId, string $uniqueId): ?array
     {
         $disk = Storage::disk('private');
-        $cached = collect($disk->files('telegram'))->first(fn ($p) => pathinfo($p, PATHINFO_FILENAME) === $uniqueId);
-        if ($cached) {
+        // По имени, а не перебором папки: в ней все файлы переписки за всё время, и листать её на каждое фото — лишнее.
+        $base = $disk->path('telegram/'.basename($uniqueId));
+        $found = array_values(array_filter([...(glob($base.'.*') ?: []), $base], 'is_file'));
+        if ($found) {
+            $cached = 'telegram/'.basename($found[0]);
+
             return [$disk->get($cached), $cached];
         }
         try {
@@ -287,7 +291,7 @@ class Bot
 
     /**
      * Путь до Telegram может моргнуть (туннель переподключается за секунды): четыре попытки, после несостоявшегося
-     * соединения — сразу (200 мс), иначе через 1,5 с. Ответ 4xx — не сбой сети, его не повторяем; кроме 429 «слишком часто» — тогда ждём, сколько Telegram скажет (`retry_after`, не дольше 10 с): в 21:00 приём слота
+     * соединения — сразу (200 мс), иначе через 1,5 с. Ответ 4xx — не сбой сети, его не повторяем; кроме 429 «слишком часто» — тогда ждём, сколько Telegram скажет (`retry_after`, не дольше `maxWait`): в 21:00 приём слота
      * закрывается разом, и «Приём закрыт» владельцу уходят пачкой. Каждый вызов — в журнал переписки (если он есть):
      * принятый — как есть, отказ на отправке — пузырём с причиной.
      *
@@ -297,7 +301,7 @@ class Bot
     {
         $journaled ??= $payload;
         $request = $this->client($files ? 60 : 20)->retry(4,
-            fn (int $attempt, Throwable $e) => self::tooMany($e) ? min(10, (int) ($e->response->json('parameters.retry_after') ?? 1)) * 1000 : ($e instanceof ConnectionException ? 200 : 1500),
+            fn (int $attempt, Throwable $e) => self::tooMany($e) ? min($this->maxWait(), (int) ($e->response->json('parameters.retry_after') ?? 1)) * 1000 : ($e instanceof ConnectionException ? 200 : 1500),
             fn (Throwable $e) => ! ($e instanceof RequestException && $e->response->clientError()) || self::tooMany($e));
         foreach ($files as $field => $file) {
             [$contents, $name] = $file instanceof UploadedFile ? [$file->get(), $file->getClientOriginalName()] : $file;
@@ -337,6 +341,15 @@ class Bot
         $token = $this->token();
 
         return $token === '' ? $text : str_replace($token, '***', $text);
+    }
+
+    /**
+     * Дольше скольких секунд не ждать на 429: основной бот отвечает и на нажатия — 10 с; бот предложений шлёт пачку карточек
+     * из своего процесса, и ему важнее дождаться, чем потерять карточку (`Offers\OffersBot`).
+     */
+    protected function maxWait(): int
+    {
+        return 10;
     }
 
     private static function tooMany(Throwable $e): bool

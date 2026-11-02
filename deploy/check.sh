@@ -34,9 +34,10 @@ probe() {
         state="$(docker inspect -f '{{.State.Status}}' "xcar-$name-1" 2>/dev/null || echo missing)"
         [ "$state" = running ] || problems+=("контейнер $name: $state")
     done
-    # Туннель к Telegram из Цюриха (zurich/README.md): без него молчат оба бота. Проверка — из контейнера, тем же путём.
-    docker exec xcar-app-1 php -r 'exit(@fsockopen("zurich", 9443, $e, $s, 3) ? 0 : 1);' 2>/dev/null \
-        || problems+=("туннель к Telegram (zurich:9443) не отвечает")
+    # Туннель к Telegram из Цюриха (zurich/README.md): без него молчат оба бота. Проверка — из контейнера, тем же путём и
+    # до самого Telegram: открытый порт ещё ничего не значит — его держит sshd, даже когда из Цюриха до Telegram не дойти.
+    c="$(docker exec xcar-app-1 curl -sS -m 8 -o /dev/null -w '%{http_code}' --connect-to api.telegram.org:443:zurich:9443 https://api.telegram.org/ 2>/dev/null)"
+    [ -n "$c" ] && [ "$c" != 000 ] || problems+=("Telegram через туннель (zurich:9443) не отвечает")
 }
 probe
 if [ ${#problems[@]} -gt 0 ]; then sleep 45; probe; fi

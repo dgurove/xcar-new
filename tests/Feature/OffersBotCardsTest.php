@@ -139,14 +139,42 @@ class OffersBotCardsTest extends TestCase
         $this->assertSame([], $this->due(5502));
     }
 
+    public function test_abandoned_claim_does_not_hold_the_card(): void
+    {
+        $this->wave($this->offer, $this->manager, now()->subMinute(), now()->subMinute());
+        // Процесс убили между «взял» и «отправил»: пара без сообщения.
+        Cards::claim($this->manager, $this->offer, self::CHAT);
+        $this->assertSame([], $this->due());
+        // Через 10 минут брошенная пара карточку не держит — она уходит.
+        $this->travel(11)->minutes();
+        $this->assertSame([$this->offer->id], $this->due());
+        $this->deliver();
+        $this->assertCount(1, $this->sent);
+        $this->assertNotNull(DB::table('offer_bot_sent')->where('user_id', $this->manager->id)->value('message_id'));
+    }
+
+    public function test_share_locked_offer_cannot_be_forwarded(): void
+    {
+        $this->offer->forceFill(['share_locked' => true])->save();
+        $this->wave($this->offer, $this->manager, now()->subMinute(), now()->subMinute());
+        $this->deliver();
+        $this->assertCount(1, $this->sent);
+        $this->assertStringContainsString('protect_content=true', $this->sent[0]);
+    }
+
     public function test_card_is_retracted_when_offer_leaves_sale(): void
     {
         $this->wave($this->offer, $this->manager, now()->subMinute(), now()->subMinute());
         $this->deliver();
         $message = (int) DB::table('offer_bot_sent')->where('user_id', $this->manager->id)->value('message_id');
 
+        // Строка старой ленты («пропустить все») без сообщения — тоже уходит, иначе держала бы машину.
+        $other = User::create(['name' => 'Денис', 'phone' => '79000000503', 'roles' => [Role::Manager], 'approved_at' => now()]);
+        DB::table('offer_bot_sent')->insert(['user_id' => $other->id, 'offer_id' => $this->offer->id, 'created_at' => now()->subDays(3)]);
+
         $this->offer->forceFill(['state' => OfferState::Draft])->save();
         app()->call([new RetractOfferNotices($this->offer->id), 'handle']);
+        $this->assertFalse(DB::table('offer_bot_sent')->where('user_id', $other->id)->exists());
         $this->assertTrue(collect($this->sent)->contains(fn ($s) => str_contains($s, 'deleteMessage') && str_contains($s, 'message_id='.$message)));
         // Строка ушла: вернётся машина в продажу — карточка придёт снова.
         $this->assertFalse(DB::table('offer_bot_sent')->where('user_id', $this->manager->id)->exists());

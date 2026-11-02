@@ -21,6 +21,7 @@ use App\Offers\Bid;
 use App\Offers\Deal;
 use App\Offers\DealState;
 use App\Offers\RepriceAsk;
+use App\Offers\ValuationSheet;
 use App\Offers\ValuationText;
 use App\Support\Ago;
 use App\Support\Plural;
@@ -290,24 +291,38 @@ final class UpdateHandler
             });
     }
 
-    /** Фото (или картинка файлом) и текст с номерами убытка и суммами от админа — в очередь чтения; false — не это. */
+    /**
+     * От админа — в очередь чтения: фото, скрин, картинка файлом, таблица (`ValuationSheet::EXTENSIONS`: Альфа шлёт оценки
+     * Excel-файлом, 03.11.2026 — бот их молча пропускал, хотя окно «Оценить → Из текста» их читает) или текст «номер сумма».
+     * Подпись к файлу читается вместе с ним. false — не это.
+     */
     private function valuationMessage(int $chatId, array $message): bool
     {
         $text = trim((string) ($message['text'] ?? $message['caption'] ?? ''));
-        $photo = $message['photo'] ?? null ? end($message['photo']) : null;
-        if (! $photo && str_starts_with((string) data_get($message, 'document.mime_type'), 'image/')) {
-            $photo = ['file_id' => data_get($message, 'document.file_id'), 'file_unique_id' => data_get($message, 'document.file_unique_id')];
-        }
-        $rows = ! $photo && $text !== '' && ! str_starts_with($text, '/') ? ValuationText::parse($text)['rows'] : [];
-        if (! $photo && ! collect($rows)->contains(fn ($r) => $r['amount'] !== null)) {
+        $doc = is_array($message['document'] ?? null) ? $message['document'] : null;
+        $photo = is_array($message['photo'] ?? null) && $message['photo'] ? end($message['photo']) : null;
+        $file = match (true) {
+            $photo !== null => ['kind' => ValuationFromChat::PHOTO] + $photo,
+            $doc && str_starts_with((string) ($doc['mime_type'] ?? ''), 'image/') => ['kind' => ValuationFromChat::PHOTO] + $doc,
+            $doc && in_array(strtolower(pathinfo((string) ($doc['file_name'] ?? ''), PATHINFO_EXTENSION)), ValuationSheet::EXTENSIONS, true) => ['kind' => ValuationFromChat::SHEET] + $doc,
+            default => null,
+        };
+        $rows = ! $file && $text !== '' && ! str_starts_with($text, '/') ? ValuationText::parse($text)['rows'] : [];
+        if (! $file && ! collect($rows)->contains(fn ($r) => $r['amount'] !== null)) {
             return false;
         }
         $user = User::where('telegram_chat_id', $chatId)->first();
         if (! $user?->isAdmin()) {
             return false;
         }
-        ValuationFromChat::dispatch($chatId, $user->id, $photo ? ['file_id' => (string) $photo['file_id'], 'file_unique_id' => (string) $photo['file_unique_id']] : null, $photo ? null : $text);
-        $this->reply($chatId, $photo ? 'Читаю фото…' : 'Разбираю…', null);
+        ValuationFromChat::dispatch($chatId, $user->id,
+            $file ? ['kind' => $file['kind'], 'file_id' => (string) $file['file_id'], 'file_unique_id' => (string) $file['file_unique_id']] : null,
+            $text === '' ? null : $text);
+        $this->reply($chatId, match ($file['kind'] ?? null) {
+            ValuationFromChat::PHOTO => 'Читаю фото…',
+            ValuationFromChat::SHEET => 'Читаю таблицу…',
+            default => 'Разбираю…',
+        }, null);
 
         return true;
     }
@@ -331,14 +346,31 @@ final class UpdateHandler
             return;
         }
         $create = $press->action === 'create';
-        // Подозрительные суммы кнопкой не берутся — их решают в окне оценки (`MatchValuations::suspicious`).
-        $sure = array_keys(array_filter($saved['create'] ?? [], fn ($row) => ! ($row['suspicious'] ?? false)));
-        $r = app(ApplyValuations::class)($user, $saved, $create ? [] : ($saved['sure'] ?? $saved['checkable']), create: $create ? $sure : []);
-        // Нажатая часть больше не повторяется; вторая кнопка остаётся, пока её не нажали.
-        $create ? $saved['create'] = [] : $saved['checkable'] = $saved['sure'] = [];
-        Cache::put("valuation-bot:{$press->id}", $saved, now()->addDay());
+        // Двойное нажатие (бывает на телефоне) — второе ждёт первое и видит уже сделанное, а не пишет ещё раз: иначе по
+        // машине с подтверждениями встала бы вторая переоценка и второе уведомление админам.
+        $lock = Cache::lock("valuation-bot:{$press->id}:press", 60);
+        if (! $lock->block(30)) {
+            $this->bot->answer($press->queryId, 'Ещё записываю прошлое нажатие');
+
+            return;
+        }
+        try {
+            $saved = Cache::get("valuation-bot:{$press->id}") ?? $saved;
+            // Подозрительные суммы кнопкой не берутся — их решают в окне оценки (`MatchValuations::suspicious`).
+            $sure = array_keys(array_filter($saved['create'] ?? [], fn ($row) => ! ($row['suspicious'] ?? false)));
+            // «Завести N» заводит черновики и только: VIN и город найденных машин пишет «Проставить» (и только своих строк).
+            $r = $create
+                ? app(ApplyValuations::class)($user, ['vin' => [], 'city' => []] + $saved, [], create: $sure)
+                : app(ApplyValuations::class)($user, $saved, $saved['sure'] ?? $saved['checkable']);
+            // Нажатая часть больше не повторяется; вторая кнопка остаётся, пока её не нажали.
+            $create ? $saved['create'] = [] : $saved['checkable'] = $saved['sure'] = $saved['vin'] = $saved['city'] = [];
+            Cache::put("valuation-bot:{$press->id}", $saved, now()->addDay());
+        } finally {
+            $lock->release();
+        }
         $said = array_filter([$r['done'] ? 'Проставлено '.$r['done'] : null, $r['repriced'] ? 'на переоценку '.$r['repriced'].' — у них уже есть подтверждения' : null,
-            $r['created'] ? 'заведено '.count($r['created']) : null, $r['vin_taken'] ? 'VIN занят другим предложением: '.$r['vin_taken'] : null]);
+            $r['created'] ? 'заведено '.count($r['created']) : null, $r['vin'] ? 'VIN вписан: '.$r['vin'] : null, $r['city'] ? 'город вписан: '.$r['city'] : null,
+            $r['vin_taken'] ? 'VIN занят другим предложением: '.$r['vin_taken'] : null]);
         $line = $said ? Str::ucfirst(implode(', ', $said)) : 'Ничего не изменилось';
         $this->bot->answer($press->queryId, $line);
         $this->bot->send($press->chatId, $line, null, replyTo: $press->messageId);

@@ -2,6 +2,7 @@
 
 namespace App\Offers;
 
+use App\Media\PhotoIngest;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Process;
 
@@ -23,6 +24,22 @@ final class ValuationPhoto
     /** @return array{text: string, sure: bool} */
     public static function read(string $path): array
     {
+        // Скрин с айфона файлом — HEIC: GD его не читает, и окно с ботом отвечали «не нашёл номеров» (03.11.2026).
+        $ingest = app(PhotoIngest::class);
+        if ($ingest->isHeic($path)) {
+            try {
+                $jpg = $ingest->toJpeg($path);
+            } catch (\RuntimeException $e) {
+                Log::info('Оценка из фото: HEIC не перекодировался', ['error' => $e->getMessage()]);
+
+                return ['text' => '', 'sure' => false];
+            }
+            try {
+                return self::read($jpg);
+            } finally {
+                @unlink($jpg);
+            }
+        }
         $image = @imagecreatefromstring((string) file_get_contents($path));
         if (! $image) {
             return ['text' => '', 'sure' => false];

@@ -16,6 +16,7 @@ use App\Offers\Offer;
 use App\Offers\OfferState;
 use App\Telegram\Bot;
 use App\Telegram\ChatMessage;
+use App\Telegram\Offers\Cards;
 use App\Telegram\Offers\OffersBot;
 use App\Users\User;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -62,10 +63,11 @@ final class RetractOfferNotices implements ShouldQueue
             return;
         }
         $cards = DB::table('offer_bot_sent')->where('offer_id', $offer->id)->whereNotNull('message_id')->get();
+        $unsent = Cards::unsent($offer);
         $notices = DatabaseNotification::whereIn('type', self::TYPES)->where('data->offer', $offer->number)->get(['id', 'notifiable_id']);
         $sent = ChatMessage::where('subject', Notice::offerSubject($offer->id))->where('direction', ChatMessage::OUT)->whereNull('deleted_at')->get();
         $chats = $sent->isEmpty() ? collect() : User::whereIn('telegram_chat_id', $sent->pluck('chat_id')->unique())->pluck('id', 'telegram_chat_id');
-        $ids = $cards->pluck('user_id')->merge($notices->pluck('notifiable_id'))->merge($chats->values())->unique();
+        $ids = $cards->pluck('user_id')->merge($unsent)->merge($notices->pluck('notifiable_id'))->merge($chats->values())->unique();
         if ($ids->isEmpty() && $sent->isEmpty()) {
             return;
         }
@@ -81,6 +83,8 @@ final class RetractOfferNotices implements ShouldQueue
             }
             DB::table('offer_bot_sent')->where('user_id', $card->user_id)->where('offer_id', $offer->id)->delete();
         }
+        // Пара без сообщения (брошенная или «пропущено» из старой ленты) держала бы машину: вернётся — бот её не пришлёт.
+        Cards::forgetUnsent($offer, $onSale ? $unsent->intersect($gone->keys())->all() : $unsent->all());
         // Основной бот: «Новое предложение», «Срочно» и прочие о машине — у тех, кому она больше не видна.
         foreach ($sent as $message) {
             // Чат больше ничей (перепривязали Telegram) — сообщение о машине там некому видеть законно.

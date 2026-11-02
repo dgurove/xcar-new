@@ -42,6 +42,12 @@ final class OffersBot extends Bot
         return (bool) $this->config('login');
     }
 
+    /** Пачка публикации — десятки карточек в один чат: на 429 ждём, сколько скажет Telegram, а не теряем карточку. */
+    protected function maxWait(): int
+    {
+        return 60;
+    }
+
     public function lanes(): int
     {
         return max(1, (int) $this->config('lanes'));
@@ -57,23 +63,26 @@ final class OffersBot extends Bot
     }
 
     /**
-     * Документ с подписью (PDF карточки, `Card`): по `file_id` или файлом — тогда `file_id` в ответе.
+     * Файл с подписью — PDF карточки (`document`) или кадр закрытой для шеринга машины (`photo`, `Card`): по `file_id` или
+     * файлом — тогда `file_id` в ответе.
      *
-     * @param  array{0: string, 1: string}|string  $document  file_id или [содержимое, имя]
+     * @param  'document'|'photo'  $type
+     * @param  array{0: string, 1: string}|string  $file  file_id или [содержимое, имя]
      * @return array{id: int, file_id: ?string}
      */
-    public function document(int $chatId, array|string $document, string $caption, array $extra = []): array
+    public function media(string $type, int $chatId, array|string $file, string $caption, array $extra = []): array
     {
+        $method = $type === 'photo' ? 'sendPhoto' : 'sendDocument';
         $payload = ['chat_id' => $chatId, 'caption' => $caption, 'parse_mode' => 'HTML'] + $extra;
-        $response = is_string($document)
-            ? $this->call('sendDocument', $payload + ['document' => $document])
-            : $this->call('sendDocument', $payload, ['document' => $document]);
+        $response = is_string($file) ? $this->call($method, $payload + [$type => $file]) : $this->call($method, $payload, [$type => $file]);
         $result = $response->throw()->json('result');
+        // У фото Telegram отдаёт размеры — берём самый крупный.
+        $fileId = $type === 'photo' ? (collect($result['photo'] ?? [])->last()['file_id'] ?? null) : ($result['document']['file_id'] ?? null);
 
-        return ['id' => (int) ($result['message_id'] ?? 0), 'file_id' => $result['document']['file_id'] ?? null];
+        return ['id' => (int) ($result['message_id'] ?? 0), 'file_id' => $fileId];
     }
 
-    /** «Отправляет файл» — пока грузится PDF, который Telegram ещё не видел. */
+    /** «Отправляет файл» — пока грузится PDF или кадр, которого Telegram ещё не видел. */
     public function action(int $chatId, string $action): void
     {
         try {

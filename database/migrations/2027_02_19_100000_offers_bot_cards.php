@@ -50,7 +50,7 @@ return new class extends Migration
         Schema::create('telegram_files', function (Blueprint $t) {
             $t->id();
             $t->string('bot', 16);
-            $t->foreignId('media_id')->index()->constrained('media')->cascadeOnDelete();
+            $t->foreignId('media_id')->index('telegram_files_media_id_fk_index')->constrained('media')->cascadeOnDelete();
             $t->unsignedBigInteger('version');
             $t->string('file_id');
             $t->timestamp('created_at')->nullable();

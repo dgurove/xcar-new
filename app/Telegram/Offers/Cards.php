@@ -4,10 +4,10 @@ namespace App\Telegram\Offers;
 
 use App\Offers\Offer;
 use App\Offers\OfferState;
-use App\Users\Role;
 use App\Users\User;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -26,40 +26,52 @@ final class Cards
     private const PACK_SECONDS = 120;
 
     /**
-     * Что пора прислать: срочные первыми, дальше — в том порядке, в каком машины стали видны.
+     * Взятая пара без номера сообщения старше этого — брошена (процесс бота убили между `claim` и `remember`: выкладка,
+     * перезапуск по `ttl`): она не держит карточку, следующий обход отправит её снова.
+     */
+    private const STALE_SECONDS = 600;
+
+    /**
+     * Что пора прислать: срочные первыми, дальше — в том порядке, в каком машины стали видны. Кому служит бот, решает
+     * одна дверь `Subscriber::eligible` — подписчиков десятки, SQL её не повторяет.
      *
      * @return list<array{chat_id: int, offer_id: int}>
      */
     public static function due(?Carbon $now = null): array
     {
         $now ??= now();
-        // Кому служит бот (`Subscriber::eligible`) и что можно слать — общее для обеих веток.
-        $common = "s.blocked_at is null and u.is_demo = false
-            and (u.approved_at is not null or jsonb_exists(u.roles, 'admin') or jsonb_exists(u.roles, 'moderator'))
-            and o.state = 'open' and o.is_demo = false and (o.bids_close_at is null or o.bids_close_at > ?)
-            and not exists (select 1 from offer_bot_sent x where x.user_id = s.user_id and x.offer_id = o.id)
+        $subs = Subscriber::with('user')->whereNull('blocked_at')->get()->filter(fn (Subscriber $s) => Subscriber::eligible($s->user));
+        if ($subs->isEmpty()) {
+            return [];
+        }
+        // Админу видно всё — ему по публикации; остальным (менеджерам) — по их волне.
+        [$admins, $managers] = $subs->partition(fn (Subscriber $s) => $s->user->isAdmin());
+        $array = fn ($c) => '{'.$c->pluck('user_id')->implode(',').'}';
+        $common = "o.state = 'open' and o.is_demo = false and (o.bids_close_at is null or o.bids_close_at > ?)
+            and not exists (select 1 from offer_bot_sent x where x.user_id = s.user_id and x.offer_id = o.id
+                and (x.message_id is not null or x.created_at > ?))
             and not exists (select 1 from bids b where b.user_id = s.user_id and b.offer_id = o.id and b.state in ('active', 'accepted'))";
+        $stale = $now->copy()->subSeconds(self::STALE_SECONDS);
         $rows = DB::select("
             select s.chat_id, o.id as offer_id, o.urgent_at is not null as urgent, v.notified_at as at
             from offer_bot_chats s
             join users u on u.id = s.user_id
             join offer_viewers v on v.user_id = s.user_id
             join offers o on o.id = v.offer_id
-            where jsonb_exists(u.roles, ?) and not jsonb_exists(u.roles, ?)
+            where s.user_id = any(?::bigint[])
               and v.notified_at <= ? and v.notified_at >= s.cards_since
-              and (u.offer_regions is null or o.region_id is null or u.offer_regions @> to_jsonb(o.region_id))
+              and (coalesce(jsonb_array_length(u.offer_regions), 0) = 0 or o.region_id is null or u.offer_regions @> to_jsonb(o.region_id))
               and not exists (select 1 from offer_reads r where r.user_id = s.user_id and r.offer_id = o.id and r.read_at >= v.notified_at)
               and {$common}
             union all
             select s.chat_id, o.id, o.urgent_at is not null, o.published_at
             from offer_bot_chats s
-            join users u on u.id = s.user_id
             join offers o on o.published_at <= ? and o.published_at >= s.cards_since
-            where jsonb_exists(u.roles, ?)
+            where s.user_id = any(?::bigint[])
               and not exists (select 1 from offer_reads r where r.user_id = s.user_id and r.offer_id = o.id and r.read_at >= o.published_at)
               and {$common}
             order by urgent desc, at, offer_id
-            limit 2000", [Role::Manager->value, Role::Admin->value, $now, $now, $now, Role::Admin->value, $now]);
+            limit 2000", [$array($managers), $now, $now, $stale, $now, $array($admins), $now, $stale]);
 
         return array_map(fn ($r) => ['chat_id' => (int) $r->chat_id, 'offer_id' => (int) $r->offer_id], $rows);
     }
@@ -71,9 +83,12 @@ final class Cards
             ->where(fn ($q) => $q->whereNull('bids_close_at')->orWhere('bids_close_at', '>', now()))->exists();
     }
 
-    /** Взять пару себе до отправки: false — её уже отправили или отправляет другой процесс. */
+    /** Взять пару себе до отправки: false — её уже отправили или отправляет другой процесс. Брошенная пара — снова свободна. */
     public static function claim(User $user, Offer $offer, int $chatId): bool
     {
+        self::table()->where('user_id', $user->id)->where('offer_id', $offer->id)->whereNull('message_id')
+            ->where('created_at', '<=', now()->subSeconds(self::STALE_SECONDS))->delete();
+
         return self::table()->insertOrIgnore(['user_id' => $user->id, 'offer_id' => $offer->id, 'chat_id' => $chatId, 'created_at' => now()]) > 0;
     }
 
@@ -86,6 +101,27 @@ final class Cards
     public static function release(User $user, Offer $offer): void
     {
         self::table()->where('user_id', $user->id)->where('offer_id', $offer->id)->whereNull('message_id')->delete();
+    }
+
+    /**
+     * Кому машина взята, а сообщения нет: брошенная пара или строка старой ленты. Свежую не трогаем — её, может быть,
+     * отправляет дорожка прямо сейчас.
+     *
+     * @return Collection<int, int> id людей
+     */
+    public static function unsent(Offer $offer): Collection
+    {
+        return self::table()->where('offer_id', $offer->id)->whereNull('message_id')
+            ->where('created_at', '<=', now()->subMinute())->pluck('user_id')->map(fn ($id) => (int) $id);
+    }
+
+    /** @param  list<int>  $userIds */
+    public static function forgetUnsent(Offer $offer, array $userIds): void
+    {
+        if ($userIds) {
+            self::table()->where('offer_id', $offer->id)->whereNull('message_id')->whereIn('user_id', $userIds)
+                ->where('created_at', '<=', now()->subMinute())->delete();
+        }
     }
 
     /** Карточка — продолжение пачки (предыдущая ушла ему меньше двух минут назад): без звука. */

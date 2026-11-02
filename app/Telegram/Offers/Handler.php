@@ -25,6 +25,9 @@ use Throwable;
  */
 final class Handler
 {
+    /** @var array<int, float> чат → когда ушла последняя карточка (`pace`) */
+    private array $lastCard = [];
+
     public function __construct(private OffersBot $bot, private Publisher $publish) {}
 
     /** Чат, по которому дорожка раскладывает записи: один человек — всегда одна дорожка. */
@@ -109,15 +112,33 @@ final class Handler
         }
         // Срочное — со звуком всегда; остальное — тихо ночью (`quietHours`) и после первой карточки пачки.
         $silent = ! $offer->isUrgent() && ($user->quietHours() || Cards::inPack($user, $offer));
+        $this->pace($chatId);
         try {
-            Cards::remember($user, $offer, Card::send($this->bot, $chatId, $offer, $user, $silent));
+            $messageId = Card::send($this->bot, $chatId, $offer, $user, $silent);
         } catch (Throwable $e) {
             Cards::release($user, $offer);
             if (Bot::chatGone($e)) {
                 $sub->forceFill(['blocked_at' => now()])->save();
             }
             Log::warning('Бот предложений: карточка не ушла', ['chat' => $chatId, 'offer' => $offerId, 'error' => $e->getMessage()]);
+
+            return;
         }
+        // Ушла — пару уже не отдаём (`release`), даже если номер не запишется: иначе следующий обход прислал бы её снова.
+        Cards::remember($user, $offer, $messageId);
+    }
+
+    /**
+     * Не чаще карточки в секунду на чат — так Telegram просит для одного чата; пачка из 70 машин иначе упиралась в 429.
+     * Дорожка разбирает чаты вперемешку, и ждать приходится, только когда подряд идут карточки одному человеку.
+     */
+    private function pace(int $chatId): void
+    {
+        $wait = ($this->lastCard[$chatId] ?? 0) + 1.0 - microtime(true);
+        if ($wait > 0) {
+            usleep((int) ($wait * 1_000_000));
+        }
+        $this->lastCard[$chatId] = microtime(true);
     }
 
     // ———————————————————————————————— вход
