@@ -9,7 +9,7 @@
 #
 #   ./deploy/server-setup.sh          # всё
 #   ./deploy/server-setup.sh disk     # только диск данных и настройки docker
-#   ./deploy/server-setup.sh tunnel   # только вход для туннеля к Telegram из Цюриха (zurich/README.md);
+#   ./deploy/server-setup.sh tunnel   # только вход для туннеля из Цюриха — Telegram и WhatsApp (zurich/README.md);
 #                                     # ключ — ~/.ssh/xcar_tunnel.pub или TUNNEL_KEY_FILE
 set -euo pipefail
 SSH_HOST="${SSH_HOST:-xcar-next}"
@@ -55,14 +55,14 @@ fi
 fi # STEP=all
 
 if [ "$STEP" = all ] || [ "$STEP" = tunnel ]; then
-echo "==> туннель к Telegram из Цюриха"
-# Цюрих сам держит обратный SSH-туннель (zurich/README.md). Его пользователю можно одно: слушать 172.18.0.1:9443 —
-# шлюз сети compose — и отдавать соединения Цюриху, а тот ведёт их к api.telegram.org:443. Ни оболочки, ни TTY.
+echo "==> туннель в Цюрих: Telegram и WhatsApp"
+# Цюрих сам держит обратный SSH-туннель (zurich/README.md). Его пользователю можно одно: слушать на 172.18.0.1 — шлюзе
+# сети compose — 9443 (Цюрих ведёт к api.telegram.org:443) и 9444 (служба WhatsApp в Цюрихе). Ни оболочки, ни TTY.
 id xcar-tunnel >/dev/null 2>&1 || useradd --system --create-home --shell /usr/sbin/nologin xcar-tunnel
 home="$(getent passwd xcar-tunnel | cut -d: -f6)"
 if [ -n "$TUNNEL_KEY" ]; then
     install -d -m 700 -o xcar-tunnel -g xcar-tunnel "$home/.ssh"
-    echo "restrict,port-forwarding,permitlisten=\"172.18.0.1:9443\" $TUNNEL_KEY" > "$home/.ssh/authorized_keys"
+    echo "restrict,port-forwarding,permitlisten=\"172.18.0.1:9443\",permitlisten=\"172.18.0.1:9444\" $TUNNEL_KEY" > "$home/.ssh/authorized_keys"
     chown xcar-tunnel:xcar-tunnel "$home/.ssh/authorized_keys"
     chmod 600 "$home/.ssh/authorized_keys"
 fi
@@ -80,6 +80,7 @@ EOC
 sshd -t && { systemctl reload ssh 2>/dev/null || systemctl reload sshd; }
 # Конец туннеля видят только контейнеры: снаружи порт закрыт, как всё, кроме 22, 80 и 443.
 ufw allow from 172.18.0.0/16 to 172.18.0.1 port 9443 proto tcp >/dev/null
+ufw allow from 172.18.0.0/16 to 172.18.0.1 port 9444 proto tcp >/dev/null
 fi
 [ "$STEP" = tunnel ] && exit 0
 

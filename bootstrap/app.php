@@ -27,9 +27,9 @@ use App\Http\Middleware\ResolveSurface;
 use App\Http\Middleware\ScalarSearch;
 use App\Http\Middleware\ServerTiming;
 use App\Http\Middleware\SiteWall;
-use App\Http\Middleware\UseLinkedAccount;
 use App\Http\Middleware\TouchSeen;
 use App\Http\Middleware\TrackNoticeOpen;
+use App\Http\Middleware\UseLinkedAccount;
 use App\Live\Console\ListsCheck;
 use App\Live\SubscriberCookie;
 use App\Logistics\Console\MergeCancelledCommand;
@@ -61,12 +61,12 @@ use App\Offers\Console\RepricesFromLettersCommand;
 use App\Offers\Console\ScrubReplyNoticesCommand;
 use App\Offers\Console\TickOffers;
 use App\Offers\Share\Console\PreparePdfs;
+use App\Park\Console\AcceptByLettersCommand;
 use App\Park\Console\AutoRequestsCommand;
 use App\Park\Console\FillFromDocsCommand;
 use App\Park\Console\FindValuesCommand;
 use App\Park\Console\ReleaseByLettersCommand;
 use App\Park\Console\SpbFactCommand;
-use App\Park\Console\AcceptByLettersCommand;
 use App\Park\Console\StoreByLettersCommand;
 use App\Park\Console\TickPark;
 use App\Push\Console\MakeKeys;
@@ -82,6 +82,9 @@ use App\Telegram\Offers\Console\Run as OffersBotRun;
 use App\Users\Console\CreateUser;
 use App\Users\Console\SeedDemo;
 use App\Users\Console\TelegramAvatars;
+use App\WhatsApp\Console\Status as WhatsAppStatus;
+use App\WhatsApp\Console\Test as WhatsAppTest;
+use App\WhatsApp\Console\Tick as WhatsAppTick;
 use App\Workflow\Console\RefillVendors;
 use Illuminate\Contracts\Auth\Middleware\AuthenticatesRequests;
 use Illuminate\Database\QueryException;
@@ -146,6 +149,7 @@ return Application::configure(basePath: dirname(__DIR__))
         Report::class,
         Poll::class, SetProfile::class,
         OffersBotRun::class, OffersBotLane::class, OffersBotProfile::class,
+        WhatsAppTick::class, WhatsAppTest::class, WhatsAppStatus::class,
         SyncAcquiring::class,
         BackfillPayLinks::class,
         SyncBank::class,

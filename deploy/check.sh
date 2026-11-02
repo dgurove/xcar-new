@@ -38,6 +38,9 @@ probe() {
     # до самого Telegram: открытый порт ещё ничего не значит — его держит sshd, даже когда из Цюриха до Telegram не дойти.
     c="$(docker exec xcar-app-1 curl -sS -m 8 -o /dev/null -w '%{http_code}' --connect-to api.telegram.org:443:zurich:9443 https://api.telegram.org/ 2>/dev/null)"
     [ -n "$c" ] && [ "$c" != 000 ] || problems+=("Telegram через туннель (zurich:9443) не отвечает")
+    # WhatsApp — служба в Цюрихе тем же туннелем (zurich:9444): вошла, в группе, в группе только свои. Без WHATSAPP_VIA молчит.
+    local w
+    w="$(docker exec xcar-app-1 php artisan whatsapp:status 2>&1)" || problems+=("WhatsApp: ${w:-не отвечает}")
 }
 probe
 if [ ${#problems[@]} -gt 0 ]; then sleep 45; probe; fi

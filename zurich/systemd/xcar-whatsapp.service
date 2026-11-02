@@ -1,0 +1,21 @@
+# WhatsApp номера владельца для группы предложений xcar (README.md рядом, whatsapp/main.go).
+# Слушает 127.0.0.1:9480, прод достаёт его туннелем xcar-tunnel (zurich:9444). Сессия —
+# ~/.local/share/xcar-whatsapp, ключ и группа — ~/.config/xcar-whatsapp/env.
+[Unit]
+Description=xcar: WhatsApp для группы предложений
+After=network-online.target
+# Падения подряд — не переподключаться по кругу (частые входы WhatsApp замечает): после
+# пятого за час служба встаёт, владельцу уходит сообщение.
+StartLimitIntervalSec=3600
+StartLimitBurst=5
+OnFailure=xcar-whatsapp-down.service
+
+[Service]
+EnvironmentFile=%h/.config/xcar-whatsapp/env
+ExecStart=%h/.local/bin/xcar-whatsapp serve
+Restart=on-failure
+RestartSec=60
+MemoryMax=200M
+
+[Install]
+WantedBy=default.target

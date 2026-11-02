@@ -6,7 +6,6 @@ use App\Offers\Offer;
 use App\Offers\Share\Caption;
 use App\Offers\Share\SharePdf;
 use App\Offers\Share\Subject;
-use App\Support\Ago;
 use App\Support\Surface;
 use App\Users\User;
 use Illuminate\Http\Client\RequestException;
@@ -20,9 +19,9 @@ use Throwable;
  * Карточка предложения в боте — одно сообщение (03.11.2026, владелец: «пдф, текст и ссылка-кнопка в одном сообщении»):
  * PDF первых 10 видимых кадров (`SharePdf::prepared`, собран заранее при публикации) с подписью для клиента
  * (`Caption::forward`: машина, город, характеристики, цена) и кнопкой «Открыть в XCar». Пересылается клиенту как есть.
- * Срочное — словами на кнопке, подпись для клиента остаётся чистой. Кадров нет — то же текстом. Шеринг закрыт — как
- * решил владелец 21.10.2026: одно фото с той же подписью и `protect_content`, в Telegram его не переслать и не сохранить;
- * PDF такой машины не собирается вовсе (`PrepareSharePdf`).
+ * «Срочно» и срок приёма не пишем ни в подписи, ни на кнопке (03.11.2026, владелец). Кадров нет — то же текстом. Шеринг
+ * закрыт — как решил владелец 21.10.2026: одно фото с той же подписью и `protect_content`, в Telegram его не переслать и
+ * не сохранить; PDF такой машины не собирается вовсе (`PrepareSharePdf`).
  *
  * Файл грузится в Telegram один раз (через туннель из Цюриха, `Bot::routeOptions`): дальше всем по `file_id` — кэш по
  * ключу PDF или версии кадра, сменились кадры — ключ другой.
@@ -89,16 +88,17 @@ final class Card
     }
 
     /**
-     * Кадр JPEG до 1280 px из нашего webp; не пережали — как есть, Telegram принимает и webp.
+     * Кадр JPEG до `side` px из нашего webp; не пережали — как есть, Telegram принимает и webp. Им же — превью PDF в
+     * WhatsApp (`WhatsApp\Group`).
      *
      * @return array{0: string, 1: string} содержимое и имя
      */
-    private static function jpeg(Media $media): array
+    public static function jpeg(Media $media, int $side = self::SIDE): array
     {
         $base = (string) tempnam(sys_get_temp_dir(), 'tgph');
         $tmp = $base.'.jpg';
         try {
-            Image::load($media->getPath())->fit(Fit::Max, self::SIDE, self::SIDE)->format('jpg')->quality(85)->save($tmp);
+            Image::load($media->getPath())->fit(Fit::Max, $side, $side)->format('jpg')->quality(85)->save($tmp);
 
             return [(string) file_get_contents($tmp), 'offer-'.$media->id.'.jpg'];
         } catch (Throwable) {
@@ -109,12 +109,9 @@ final class Card
         }
     }
 
-    /** «Открыть в XCar»; у срочного — «🔥 Срочно, приём до …»: срок нужен менеджеру, а не клиенту. */
     private static function button(Offer $offer, bool $login): array
     {
-        $text = $offer->isUrgent() ? '🔥 Срочно, приём до '.Ago::day($offer->bids_close_at, true) : 'Открыть в XCar';
-
-        return self::site($text, self::url((string) $offer->number, $login), $login);
+        return self::site('Открыть в XCar', self::url((string) $offer->number, $login), $login);
     }
 
     /** Кнопка на сайт: входом через Telegram (`login_url`, нужен домен в BotFather) или простой ссылкой. */

@@ -162,6 +162,17 @@ class OffersBotCardsTest extends TestCase
         $this->assertStringContainsString('protect_content=true', $this->sent[0]);
     }
 
+    public function test_urgent_card_says_nothing_about_deadline(): void
+    {
+        // Владелец 03.11.2026: «срочно, приём до» не писать нигде — ни в подписи, ни на кнопке.
+        $this->offer->forceFill(['urgent_at' => now()])->save();
+        $this->wave($this->offer, $this->manager, now()->subMinute(), now()->subMinute());
+        $this->deliver();
+        $this->assertCount(1, $this->sent);
+        $this->assertStringContainsString('Открыть в XCar', $this->sent[0]);
+        $this->assertStringNotContainsString('Срочно', $this->sent[0]);
+    }
+
     public function test_card_is_retracted_when_offer_leaves_sale(): void
     {
         $this->wave($this->offer, $this->manager, now()->subMinute(), now()->subMinute());

@@ -1,0 +1,6 @@
+[Unit]
+Description=xcar: сообщить владельцу, что WhatsApp упал
+
+[Service]
+Type=oneshot
+ExecStart=/bin/sh -c '{ echo "xcar WhatsApp упал на zurich пять раз за час и больше не перезапускается: предложения в группу не уходят."; echo; journalctl --user -u xcar-whatsapp -n 10 --no-pager -o cat | cut -c1-300; } | %h/bin/tg-send'
