@@ -26,6 +26,34 @@
 <div @class(['px-4 py-3', 'bid-row--loss' => ($loss && $active) || $high, 'bid-row--low' => $low && ! ($loss && $active), 'bid-row--ok' => $active && ! $garage && ! $low && ! $loss && ! $high])>
     <div class="flex flex-wrap items-center gap-x-2 gap-y-1">
         <span class="bid-amount nums whitespace-nowrap text-lg font-semibold">{{ $garage ? 'В гараж' : Money::rub($bid->amount) }}</span>
+        {{-- Опечатка в цене (02.11.2026, «9 400 000 вместо 940 000») — карандаш у суммы: поправить, а не отклонять. --}}
+        @if ($active && ! $garage && $bid->amount)
+            @php $tenth = (int) round($bid->amount / 10, -3); @endphp
+            <span class="contents" data-controller="sheet">
+                <button type="button" class="btn btn-ghost btn-s -my-1 px-1.5" data-action="sheet#open" aria-label="Поправить цену" title="Поправить цену"><x-ui.icon name="edit" class="size-4"/></button>
+                <x-ui.sheet :id="'bid-amount-'.$bid->id" title="Поправить цену">
+                    <form method="post" action="/confirmations/{{ $bid->id }}/amount" class="flex flex-col gap-4" data-put-scope>
+                        @csrf
+                        <div class="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm"><x-ui.person :user="$bid->user" full/><span class="text-ink-muted">подтвердил <span class="nums">{{ Money::rub($bid->amount) }}</span>@if ($offer->asking_price), цена продажи <span class="nums">{{ Money::rub($offer->asking_price) }}</span>@endif</span></div>
+                        <label class="flex flex-col items-center gap-1">
+                            <span class="flex items-baseline justify-center gap-2">
+                                <input name="amount" inputmode="decimal" autocomplete="off" class="pay-amount nums" aria-label="Цена, ₽" placeholder="0"
+                                       value="{{ old('amount', Money::nums($high && $tenth ? $tenth : $bid->amount)) }}" data-controller="digits" data-action="input->digits#format" autofocus>
+                                <span class="text-xl text-ink-muted">₽</span>
+                            </span>
+                            @error('amount')<span class="text-sm text-danger">{{ $message }}</span>@enderror
+                        </label>
+                        @if ($tenth)
+                            <div class="sheet-chips justify-center">
+                                <button type="button" class="chip nums" data-controller="put" data-action="put#set" data-put-value-param="{{ Money::nums($tenth) }}" data-put-keep-param="true">Без лишнего нуля {{ Money::nums($tenth) }}</button>
+                                <button type="button" class="chip nums" data-controller="put" data-action="put#set" data-put-value-param="{{ Money::nums($bid->amount) }}" data-put-keep-param="true">Как было {{ Money::nums($bid->amount) }}</button>
+                            </div>
+                        @endif
+                        <x-ui.sheet-foot type="submit">Сохранить</x-ui.sheet-foot>
+                    </form>
+                </x-ui.sheet>
+            </span>
+        @endif
         @if ($inGarage)<span class="nums text-sm text-ink-dim">в гараже {{ $inGarage }}</span>@endif
         @if ($diff)<span class="nums whitespace-nowrap text-sm text-ink-dim">{{ $diff > 0 ? '+' : '−' }}{{ Money::nums(abs($diff)) }} от цены</span>@endif
         @if ($high)<x-ui.state tone="danger">больше чем вдвое выше цены — проверьте сумму</x-ui.state>@endif

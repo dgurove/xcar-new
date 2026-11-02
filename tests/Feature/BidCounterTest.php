@@ -175,4 +175,16 @@ class BidCounterTest extends TestCase
         $press('777', 'sure');
         $this->assertSame(970000, $this->offer->fresh()->deal->amount);
     }
+
+    public function test_admin_fixes_typo_in_bid_amount(): void
+    {
+        $bid = app(PlaceBid::class)($this->offer, $this->roman, 9_600_000, lowOk: true);
+        $this->assertSame('high', $this->offer->bidZone(9_600_000));
+        $this->actingAs($this->admin)->post('http://crm.xcar.localhost/confirmations/'.$bid->id.'/amount', ['amount' => '960 000'])
+            ->assertRedirect()->assertSessionHasNoErrors();
+        $this->assertSame(960000, $bid->fresh()->amount);
+        $this->assertSame(BidState::Active, $bid->fresh()->state);
+        // Менеджеру сюда нельзя.
+        $this->actingAs($this->roman)->post('http://crm.xcar.localhost/confirmations/'.$bid->id.'/amount', ['amount' => '1'])->assertStatus(403);
+    }
 }

@@ -2,6 +2,8 @@
 
 namespace App\Http\Admin;
 
+use App\Offers\Actions\AnswerCounter;
+use App\Offers\Actions\CorrectBidAmount;
 use App\Offers\Actions\DeclineBid;
 use App\Offers\Actions\MakeCounter;
 use App\Offers\Actions\PlaceBidFor;
@@ -31,6 +33,15 @@ class BidController
         return back()->with('toast', 'Подтверждение '.$manager->shortName().' внесено');
     }
 
+    /** Опечатка в цене подтверждения (02.11.2026, «9 400 000 вместо 940 000») — карандаш у суммы, `CorrectBidAmount`. */
+    public function amount(Request $request, Bid $bid, CorrectBidAmount $correct)
+    {
+        $data = $request->validate(['amount' => ['required', 'string', 'max:20']], ['amount.required' => 'Впишите цену']);
+        $correct($bid, (int) Money::rubles($data['amount']), $request->user());
+
+        return back()->with('toast', 'Цена подтверждения '.$bid->user->shortName().': '.Money::rub($bid->fresh()->amount));
+    }
+
     public function decline(Request $request, Bid $bid, DeclineBid $decline)
     {
         $decline($bid, $request->user());
@@ -51,7 +62,7 @@ class BidController
     }
 
     /** Ответ на контрпредложение за менеджера (28.10.2026): он сказал устно — «Согласен» или «Отказался». */
-    public function answerCounter(Request $request, Bid $bid, \App\Offers\Actions\AnswerCounter $answer)
+    public function answerCounter(Request $request, Bid $bid, AnswerCounter $answer)
     {
         $agree = $request->boolean('agree');
         $answer($bid, $bid->user, $agree, $request->user());
