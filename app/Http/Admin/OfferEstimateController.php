@@ -8,6 +8,7 @@ use App\Offers\Actions\RejectEstimate;
 use App\Offers\Actions\TakeEstimate;
 use App\Offers\Estimate;
 use App\Offers\Offer;
+use App\Offers\PriceGuard;
 use App\Support\Money;
 use App\Users\Role;
 use App\Users\User;
@@ -48,6 +49,7 @@ final class OfferEstimateController
     public function take(Request $request, Offer $offer, Estimate $estimate, TakeEstimate $take)
     {
         abort_unless($estimate->offer_id === $offer->id, 404);
+        PriceGuard::assert($offer, ['asking_price' => $estimate->amount], $request->boolean('price_ok'));
         $take($estimate, $request->user());
         // Корректировка: строка остаётся в «Оцененных» с новой ценой — карточка просто перечитывается.
         if ($estimate->isCorrection()) {

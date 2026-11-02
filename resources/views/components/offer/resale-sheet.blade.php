@@ -28,8 +28,8 @@
                 <x-ui.segment name="_cancel_way" :options="['sale' => 'В продажу', 'draft' => 'В черновики']" value="sale" pick/>
             @endif
             <div data-reveal-target="pane" data-reveal-key="sale">
-                <form method="post" action="/offers/{{ $n }}/resale" class="flex flex-col gap-4" @unless ($auction) data-turbo-confirm="{{ $isDeal ? 'Отменить сделку и вернуть в продажу?' : 'Вернуть в продажу?' }}" data-turbo-confirm-text="{{ $confirm }}" data-turbo-confirm-label="Вернуть" @endunless>
-                    @csrf
+                <form method="post" action="/offers/{{ $n }}/resale" class="flex flex-col gap-4" data-price-guard="whole" data-price-guard-offer="{{ $n }}" @unless ($auction) data-turbo-confirm="{{ $isDeal ? 'Отменить сделку и вернуть в продажу?' : 'Вернуть в продажу?' }}" data-turbo-confirm-text="{{ $confirm }}" data-turbo-confirm-label="Вернуть" @endunless>
+                    @csrf @if ($errors->has('price_check'))<input type="hidden" name="price_ok" value="1">@endif
                     <div>
                         <h3 class="list-head">Цены</h3>
                         <div class="fields">
@@ -60,7 +60,7 @@
             </div>
             @if ($isDeal)
                 <div data-reveal-target="pane" data-reveal-key="draft" hidden>
-                    <form method="post" action="/offers/{{ $n }}/state" data-turbo-confirm="Отменить сделку?" data-turbo-confirm-text="ТС уйдёт в черновики, подтверждение менеджера отклонится, неоплаченные счета сделки аннулируются" data-turbo-confirm-label="Отменить">
+                    <form method="post" action="/offers/{{ $n }}/state" data-price-guard="publish" data-price-guard-offer="{{ $n }}" data-turbo-confirm="Отменить сделку?" data-turbo-confirm-text="ТС уйдёт в черновики, подтверждение менеджера отклонится, неоплаченные счета сделки аннулируются" data-turbo-confirm-label="Отменить">
                         @csrf<input type="hidden" name="state" value="draft">
                         <x-ui.sheet-foot variant="danger">Отменить сделку, в черновики</x-ui.sheet-foot>
                     </form>

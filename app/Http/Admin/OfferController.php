@@ -46,6 +46,7 @@ use App\Offers\OfferEventType;
 use App\Offers\OfferFiles;
 use App\Offers\OfferNumber;
 use App\Offers\OfferState;
+use App\Offers\PriceGuard;
 use App\Offers\Pricing;
 use App\Offers\Reprice;
 use App\Offers\Showing;
@@ -892,7 +893,12 @@ class OfferController
     {
         $unpriced = $offer->state === OfferState::Draft && ! $offer->asking_price;
         $hadFloor = (bool) $offer->floor_price;
-        $update($offer, $request->payload(), $request->user());
+        $payload = $request->payload();
+        // Цена продажи под вопросом — «Точно?» (`PriceGuard`); модератор цену продажи не ставит — его не спрашиваем.
+        if ($request->user()->canManageCrm()) {
+            PriceGuard::assert($offer, $payload, $request->boolean('price_ok'));
+        }
+        $update($offer, $payload, $request->user());
         session()->forget(["mail-draft.{$offer->id}", "legacy-draft.{$offer->id}"]);
         // Нажали знак Мигторга в поле номера убытка: несохранённые правки формы (вендор, цены) легли вместе с номером.
         if ($request->input('then') === 'migtorg') {
@@ -908,6 +914,7 @@ class OfferController
             return redirect('/')->with('toast', 'Сохранено');
         }
         if ($request->input('then') === 'open' && $offer->state === OfferState::Draft && $request->user()->canManageCrm()) {
+            PriceGuard::assertPublish([$offer->refresh()], $request->boolean('price_ok'));
             $offer = $schedule($offer->refresh(), $this->when($request, Slots::NEAREST), $request->user(), until: Slots::urgentUntil($request->input('urgent_until')));
 
             return redirect("/offers/{$offer->number}")->with('toast', $this->published($offer));
@@ -1003,6 +1010,7 @@ class OfferController
         if (! $raw || $raw >= (int) $offer->asking_price) {
             return back()->withErrors(['asking_price' => 'Ниже нынешней '.Money::rub($offer->asking_price)]);
         }
+        PriceGuard::assert($offer, ['asking_price' => $raw], $request->boolean('price_ok'));
         $update($offer, ['asking_price' => $raw], $request->user(), ['why' => 'Горит без подтверждений']);
 
         return back()->with('toast', 'Цена продажи '.Money::rub($raw));
@@ -1026,6 +1034,7 @@ class OfferController
         if (! $raw || $offer->state !== OfferState::Draft) {
             return back()->with('detail-advance', true);
         }
+        PriceGuard::assert($offer, ['asking_price' => $raw], $request->boolean('price_ok'));
         $update($offer, ['asking_price' => $raw], $request->user());
 
         return back()->with('detail-advance', true)->with('detail-gone', true)->with('detail-counts', self::counts($request->user()))
@@ -1072,6 +1081,7 @@ class OfferController
         $data = $request->validate(['offers' => ['required', 'array', 'max:500'], 'offers.*' => ['integer'], 'when' => ['nullable', 'string']]);
         $when = $this->when($request, Slots::NEAREST);
         $offers = Offer::whereIn('number', $data['offers'])->get();
+        PriceGuard::assertPublish($offers, $request->boolean('price_ok'));
         $done = 0;
         $failed = [];
         foreach ($offers as $offer) {
@@ -1089,6 +1099,28 @@ class OfferController
         return $failed
             ? $back->with('toast-danger', ($toast ? $toast.'. ' : '').'Не вышли '.count($failed).': '.implode('; ', array_slice($failed, 0, 3)))
             : $back->with('toast', $toast);
+    }
+
+    /**
+     * «Точно?» до отправки (`price_guard_controller`): `offer` с ценами из формы — правка цен (`whole` — цены целиком: снова
+     * в продажу, переоценка открытого), `offers[]` — публикация. Ответ — что под вопросом, сервер всё равно проверит сам.
+     */
+    public function priceCheck(Request $request)
+    {
+        $data = $request->validate(['offer' => ['nullable', 'integer'], 'offers' => ['nullable', 'array', 'max:500'], 'offers.*' => ['integer'],
+            'asking_price' => ['nullable', 'string', 'max:20'], 'floor_price' => ['nullable', 'string', 'max:20'], 'whole' => ['boolean']]);
+        if (filled($data['offers'] ?? null)) {
+            $risky = PriceGuard::risky(Offer::whereIn('number', $data['offers'])->get());
+
+            return response()->json(['warnings' => $risky->map(fn ($r) => ['name' => $r['offer']->titleWithYear(), 'title' => $r['title'], 'text' => $r['text']])->all()]);
+        }
+        $offer = Offer::where('number', $data['offer'] ?? 0)->firstOrFail();
+        $prices = collect(['asking_price', 'floor_price'])->filter(fn ($k) => $request->has($k))->mapWithKeys(fn ($k) => [$k => Money::rubles($data[$k] ?? null) ?: null])->all();
+        $check = $request->boolean('whole')
+            ? Margin::check($prices['asking_price'] ?? $offer->asking_price, $prices['floor_price'] ?? $offer->floor_price)
+            : PriceGuard::after($offer, $prices);
+
+        return response()->json(['warnings' => $check ? [['name' => $offer->titleWithYear(), 'title' => $check['title'], 'text' => $check['text']]] : []]);
     }
 
     /** «Убрать из слота» пачкой: машины возвращаются в «Оцененные». */
@@ -1139,6 +1171,7 @@ class OfferController
             return redirect("/offers/{$offer->number}")->with('toast', $offer->isGallery() ? 'В галерее до '.Ago::day($offer->gallery_until, true) : 'Убрано из галереи')->with(self::gone($request, $offer));
         }
         if ($next === OfferState::Open && in_array($offer->state, [OfferState::Draft, OfferState::Gallery], true)) {
+            PriceGuard::assertPublish([$offer], $request->boolean('price_ok'));
             $offer = $schedule($offer, $this->when($request, Slots::NOW), $request->user(), until: Slots::urgentUntil($request->input('urgent_until')));
 
             return redirect("/offers/{$offer->number}")->with('toast', $this->published($offer))->with(self::gone($request, $offer));
@@ -1201,6 +1234,7 @@ class OfferController
             ['asking_price.required' => 'Укажите цену продажи', 'bids_close_at.after' => 'Срок приёма — позже, чем сейчас']);
         $money = fn (?string $v) => Money::rubles($v) ?: null;
         $prices = array_map($money, array_intersect_key($data, array_flip(['floor_price', 'publish_price', 'asking_price'])) + ['floor_price' => null, 'publish_price' => null]);
+        PriceGuard::assertPrices($prices['asking_price'], $prices['floor_price'] ?? $offer->floor_price, $request->boolean('price_ok'));
         $audience = $request->has('audience_rules') ? (json_decode((string) $request->input('audience_rules'), true) ?: []) : null;
         $offer = $return($offer, $request->user(), $prices, filled($data['bids_close_at'] ?? null) ? Carbon::parse($data['bids_close_at']) : null, $audience,
             stays: $request->boolean('stays'), where: array_intersect_key($data, array_flip(['settlement_id', 'inspection_address'])));

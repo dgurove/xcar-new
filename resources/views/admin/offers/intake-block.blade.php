@@ -45,7 +45,7 @@
     @if ($burning)
         <div class="contents" data-controller="sheet" data-action="lower-{{ $n }}:open@window->sheet#open">
             <x-ui.sheet :id="'lower-'.$n" title="Снизить цену">
-                <form method="post" action="/offers/{{ $n }}/lower-price" class="flex flex-col gap-4">@csrf
+                <form method="post" action="/offers/{{ $n }}/lower-price" class="flex flex-col gap-4" data-price-guard="edit" data-price-guard-offer="{{ $n }}">@csrf @if ($errors->has('price_check'))<input type="hidden" name="price_ok" value="1">@endif
                     <div class="fields">
                         <x-ui.field name="asking_price" :id="'lower-price-'.$n" label="Цена продажи, ₽" :value="\App\Support\Money::nums($offer->asking_price)" required/>
                     </div>

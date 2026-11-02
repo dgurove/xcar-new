@@ -2,7 +2,7 @@
      шторки (кнопки кита), иначе — строками `.menu`. --}}
 @props(['offer', 'button' => false])
 @foreach (\App\Offers\Slots::choices() as $c)
-    <form method="post" action="/offers/{{ $offer->number }}/state">
+    <form method="post" action="/offers/{{ $offer->number }}/state" data-price-guard="publish" data-price-guard-offer="{{ $offer->number }}">
         @csrf<input type="hidden" name="state" value="open"><input type="hidden" name="when" value="{{ $c['when'] }}">
         @php $label = $c['at'] ? 'В слот '.mb_strtolower(\App\Offers\Slots::label($c['at'])) : 'Опубликовать сейчас'; @endphp
         @if ($button)

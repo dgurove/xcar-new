@@ -67,9 +67,10 @@ class BidCounterTest extends TestCase
         $this->assertSame('ok', $this->offer->bidZone(960000));
         $this->assertSame('low', $this->offer->bidZone(950000));
         $this->assertSame('bad', $this->offer->bidZone(919000));
-        // Узкий спред: что принималось, не становится недопустимым.
+        // Узкий спред: что принималось, не становится недопустимым — но ниже закупочной + 20 000 спрашивает «Вы уверены?»
+        // (02.11.2026, `PriceGuardTest`).
         $narrow = new Offer(['floor_price' => 900000, 'asking_price' => 910000]);
-        $this->assertSame('ok', $narrow->bidZone($narrow->minBid()));
+        $this->assertSame('low', $narrow->bidZone($narrow->minBid()));
         // Без закупочной красной зоны нет.
         $this->assertNull((new Offer(['asking_price' => 1000000]))->hardMinBid());
     }

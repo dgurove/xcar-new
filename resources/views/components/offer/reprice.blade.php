@@ -31,9 +31,9 @@
         <button type="button" class="btn btn-s btn-accent" data-action="sheet#open" aria-controls="{{ $id }}">Применить…</button>
     </div>
     <x-ui.sheet :id="$id" title="Переоценка" tall :open="$mine || old('_reprice') == $reprice->id">
-        <form method="post" action="/offers/{{ $offer->number }}/reprices/{{ $reprice->id }}" class="flex flex-col gap-4" data-controller="reprice"
+        <form method="post" action="/offers/{{ $offer->number }}/reprices/{{ $reprice->id }}" class="flex flex-col gap-4" data-controller="reprice" @if ($offer->state === \App\Offers\OfferState::Open) data-price-guard="whole" data-price-guard-offer="{{ $offer->number }}" data-price-guard-floor="price" @endif
               data-reprice-from-value="{{ (int) $reprice->from_price }}">
-            @csrf
+            @csrf @if ($errors->has('price_check'))<input type="hidden" name="price_ok" value="1">@endif
             <input type="hidden" name="_reprice" value="{{ $reprice->id }}">
             @error('reprice')<x-ui.flash tone="danger">{{ $message }}</x-ui.flash>@enderror
             <div class="fields">

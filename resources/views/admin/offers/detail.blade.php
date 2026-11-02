@@ -123,7 +123,7 @@
                                 <div class="menu-group">
                                     <div class="menu-head">Опубликовать</div>
                                     @foreach (\App\Offers\Slots::choices() as $c)
-                                        <form method="post" action="/offers/{{ $n }}/state">
+                                        <form method="post" action="/offers/{{ $n }}/state" data-price-guard="publish" data-price-guard-offer="{{ $n }}">
                                             @csrf<input type="hidden" name="state" value="open"><input type="hidden" name="when" value="{{ $c['when'] }}">
                                             <button class="menu-item" role="menuitem" data-action="menu#close"><x-ui.icon :name="$c['at'] ? 'clock' : 'send'" class="size-5 text-ink-muted"/>{{ $c['at'] ? str_replace(', ', ' в ', \App\Offers\Slots::label($c['at'])) : 'Сейчас' }}</button>
                                         </form>
@@ -158,7 +158,7 @@
                             @if ($calm->isNotEmpty())
                                 <div class="menu-group">
                                     @foreach ($calm as [$next, $label])
-                                        <form method="post" action="/offers/{{ $n }}/state">
+                                        <form method="post" action="/offers/{{ $n }}/state" data-price-guard="publish" data-price-guard-offer="{{ $n }}">
                                             @csrf<input type="hidden" name="state" value="{{ $next->value }}">
                                             <button class="menu-item" role="menuitem" data-action="menu#close"><x-ui.icon :name="$icon($next)" class="size-5 text-ink-muted"/>{{ $label }}</button>
                                         </form>
@@ -174,7 +174,7 @@
                                         <button type="button" class="menu-item text-danger" role="menuitem" data-controller="emit" data-action="emit#send menu#close" data-emit-event-param="resale:open"><x-ui.icon name="undo" class="size-5"/>{{ $offer->state === OfferState::Sold && ! $offer->garageCar ? 'Отменить сделку' : 'Вернуть в продажу' }}</button>
                                     @endif
                                     @foreach ($danger as [$next, $label])
-                                        <form method="post" action="/offers/{{ $n }}/state" @if ($offer->state === OfferState::Sold) data-turbo-confirm="Отменить сделку?" data-turbo-confirm-text="Подтверждение менеджера отклонится, неоплаченные счета сделки аннулируются" @else data-turbo-confirm="{{ $next->label() }}?" @endif>
+                                        <form method="post" action="/offers/{{ $n }}/state" data-price-guard="publish" data-price-guard-offer="{{ $n }}" @if ($offer->state === OfferState::Sold) data-turbo-confirm="Отменить сделку?" data-turbo-confirm-text="Подтверждение менеджера отклонится, неоплаченные счета сделки аннулируются" @else data-turbo-confirm="{{ $next->label() }}?" @endif>
                                             @csrf<input type="hidden" name="state" value="{{ $next->value }}">
                                             <button class="menu-item text-danger" role="menuitem" data-action="menu#close"><x-ui.icon :name="$icon($next)" class="size-5"/>{{ $label }}</button>
                                         </form>
@@ -240,8 +240,8 @@
                 <x-offer.interests :offer="$offer"/>
             </section>
         @endif
-        <form method="post" action="/offers/{{ $n }}" id="detail-edit-{{ $n }}" class="detail-edit mt-4 flex flex-col gap-5" data-controller="vin save-bar migtorg-diff" data-migtorg-diff-url-value="/offers/{{ $n }}" data-migtorg-diff-fields-value="{{ json_encode((object) \App\Offers\MigtorgDiff::of($offer)) }}" data-save-bar-partial-value="true" data-save-bar-dirty-value="{{ $errors->any() && old('_fields') !== null ? 'true' : 'false' }}" data-save-bar-sent-value="{{ json_encode(array_values((array) old('_fields', []))) }}" data-turbo-frame="detail">
-            @csrf @method('put')
+        <form method="post" action="/offers/{{ $n }}" id="detail-edit-{{ $n }}" class="detail-edit mt-4 flex flex-col gap-5" @if (auth()->user()->canManageCrm()) data-price-guard="edit" data-price-guard-offer="{{ $n }}" @endif data-controller="vin save-bar migtorg-diff" data-migtorg-diff-url-value="/offers/{{ $n }}" data-migtorg-diff-fields-value="{{ json_encode((object) \App\Offers\MigtorgDiff::of($offer)) }}" data-save-bar-partial-value="true" data-save-bar-dirty-value="{{ $errors->any() && old('_fields') !== null ? 'true' : 'false' }}" data-save-bar-sent-value="{{ json_encode(array_values((array) old('_fields', []))) }}" data-turbo-frame="detail">
+            @csrf @method('put') @if ($errors->has('price_check'))<input type="hidden" name="price_ok" value="1">@endif
             {{-- Не черновик — те же «Цены» разделом формы, без шагов и кнопок. --}}
             @unless ($steps)
                 @include('admin.offers.price-steps', ['plain' => true])

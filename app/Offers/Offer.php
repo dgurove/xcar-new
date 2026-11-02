@@ -1060,9 +1060,12 @@ class Offer extends Model
         $hard = $this->hardMinBid();
         $min = $this->minBid();
 
+        // Ниже закупочной + 20 000 — всегда хотя бы «Вы уверены?», даже по цене продажи (02.11.2026, владелец: 2610142042 —
+        // цену продажи по ошибке вписали ниже закупочной, `hardMinBid` сполз к ней, и подтверждения по ней шли как обычные).
         return match (true) {
             $hard && $amount < $hard => 'bad',
             $min && $amount < $min => 'low',
+            $this->floor_price && $amount < $this->floor_price + self::HARD_GAP => 'low',
             default => 'ok',
         };
     }
@@ -1085,11 +1088,11 @@ class Offer extends Model
         if (! $asking || ! $this->declaredPrice() || $spread <= 0) {
             return [];
         }
-        $min = (int) ($this->minBid() ?? 0);
         $out = [];
         foreach ($percents as $p) {
             $off = (int) round($spread * $p / 100, -2);
-            if ($off > 0 && $asking - $off >= $min) {
+            // Только сумма без «Вы уверены?» (`bidZone`): кнопка не предлагает цену, что сама уйдёт в согласование.
+            if ($off > 0 && $this->bidZone($asking - $off) === 'ok') {
                 $out[$p] = $asking - $off;
             }
         }

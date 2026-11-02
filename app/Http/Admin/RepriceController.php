@@ -5,6 +5,7 @@ namespace App\Http\Admin;
 use App\Offers\Actions\ApplyReprice;
 use App\Offers\Actions\DismissReprice;
 use App\Offers\Offer;
+use App\Offers\PriceGuard;
 use App\Offers\Reprice;
 use App\Support\Money;
 use Illuminate\Http\Request;
@@ -26,6 +27,10 @@ class RepriceController
             'deal' => ['nullable', Rule::in([ApplyReprice::KEEP, ApplyReprice::UPDATE])],
         ], ['price.required' => 'Новая закупочная']);
         $prices = $offer->state === \App\Offers\OfferState::Open ? array_filter(array_intersect_key($data, array_flip(['asking_price']))) : [];
+        // Открытое: новая закупочная против цены продажи — «Точно?» (`PriceGuard`), её правят тут же в шторке.
+        if ($offer->state === \App\Offers\OfferState::Open) {
+            PriceGuard::assertPrices($prices['asking_price'] ?? $offer->asking_price, $data['price'], $request->boolean('price_ok'));
+        }
         $apply($reprice, $request->user(), $data['price'], $data['bids'] ?? [], $data['deal'] ?? null, $prices);
 
         return back(fallback: "/offers/{$offer->number}")->with('toast', 'Переоценка применена');

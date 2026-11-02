@@ -39,7 +39,7 @@
                         </span>
                         <x-ui.chevron/>
                     </button>
-                    <form method="post" action="/offers/{{ $n }}/estimates/{{ $e->id }}/take" data-estimate-pick-target="take" data-turbo-confirm-text="{{ $e->user->shortName() }}, {{ $e->givenAgo() }}{{ $correction && $price ? ', ваша цена '.\App\Support\Money::rub($price) : '' }}" hidden>@csrf</form>
+                    <form method="post" action="/offers/{{ $n }}/estimates/{{ $e->id }}/take" data-estimate-pick-target="take" data-price-guard="edit" data-price-guard-offer="{{ $n }}" data-price-guard-asking="{{ $e->amount }}" data-turbo-confirm-text="{{ $e->user->shortName() }}, {{ $e->givenAgo() }}{{ $correction && $price ? ', ваша цена '.\App\Support\Money::rub($price) : '' }}" hidden>@csrf</form>
                     <form method="post" action="/offers/{{ $n }}/estimates/{{ $e->id }}/reject" data-estimate-pick-target="reject" hidden>@csrf</form>
                 </div>
             @else

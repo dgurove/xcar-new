@@ -15,7 +15,7 @@
     @if ($kind === 'slot')
         <h2 class="text-base font-medium">Выйдет {{ Slots::phrase($offer->slot_at) }}</h2>
         <div class="flex flex-wrap gap-2" data-controller="sheet">
-            <form method="post" action="/offers/{{ $n }}/state" class="flex basis-full">
+            <form method="post" action="/offers/{{ $n }}/state" data-price-guard="publish" data-price-guard-offer="{{ $n }}" class="flex basis-full">
                 @csrf<input type="hidden" name="state" value="open"><input type="hidden" name="when" value="{{ Slots::NOW }}">
                 <button class="btn btn-s btn-quiet flex-1">Опубликовать сейчас</button>
             </form>
@@ -47,7 +47,7 @@
         @endif
         <div class="flex flex-wrap gap-2">
             @foreach ($transitions as [$next, $label])
-                <form method="post" action="/offers/{{ $n }}/state" class="flex min-w-0 flex-1">
+                <form method="post" action="/offers/{{ $n }}/state" data-price-guard="publish" data-price-guard-offer="{{ $n }}" class="flex min-w-0 flex-1">
                     @csrf<input type="hidden" name="state" value="{{ $next->value }}">
                     <button class="btn btn-s btn-quiet min-w-0 flex-1">{{ $label }}</button>
                 </form>

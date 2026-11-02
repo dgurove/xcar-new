@@ -138,8 +138,8 @@
     <div class="@container">
     <div class="grid grid-cols-1 items-start gap-4 @4xl:grid-cols-[minmax(0,1fr)_22rem]">
         <div class="contents @4xl:col-start-1 @4xl:row-start-1 @4xl:flex @4xl:min-w-0 @4xl:flex-col @4xl:gap-4">
-        <form method="post" action="/offers/{{ $n }}" id="offer-form" data-controller="vin draft save-bar next migtorg-diff glow empty-blocks{{ $empty ? ' drop-empty' : '' }}" data-glow-fields-value="{{ json_encode($glow) }}" data-migtorg-diff-url-value="/offers/{{ $n }}" data-migtorg-diff-fields-value="{{ json_encode((object) $migDiff) }}" data-save-bar-dirty-value="{{ $errors->any() ? 'true' : 'false' }}" @if ($empty) data-drop-empty-url-value="/offers/{{ $n }}/drop-empty" @endif class="order-2 flex flex-col gap-4 @4xl:order-none">
-            @csrf @method('put')
+        <form method="post" action="/offers/{{ $n }}" id="offer-form" @if (auth()->user()->canManageCrm()) data-price-guard="edit" data-price-guard-offer="{{ $n }}" @endif data-controller="vin draft save-bar next migtorg-diff glow empty-blocks{{ $empty ? ' drop-empty' : '' }}" data-glow-fields-value="{{ json_encode($glow) }}" data-migtorg-diff-url-value="/offers/{{ $n }}" data-migtorg-diff-fields-value="{{ json_encode((object) $migDiff) }}" data-save-bar-dirty-value="{{ $errors->any() ? 'true' : 'false' }}" @if ($empty) data-drop-empty-url-value="/offers/{{ $n }}/drop-empty" @endif class="order-2 flex flex-col gap-4 @4xl:order-none">
+            @csrf @method('put') @if ($errors->has('price_check'))<input type="hidden" name="price_ok" value="1">@endif
 
             {{-- Машина — те же блоки, что на парковке (`x-car.blocks`, 19.10.2026: «ТС одна сущность»): «Транспортное
                  средство», «ПТС и СТС», «Характеристики»; продаже своё — «Осмотр». С публикации (и у черновика с заведённой машиной) — «Изменить / Готово»,
@@ -316,7 +316,7 @@
                     {{-- На аукционе «Вернуть в продажу… / в черновики» — первыми, красное «В архив» под ними. --}}
                     @if ($auctionItems && $offer->onAuction())@include('admin.offers.auction-items', ['offer' => $offer])@endif
                     @foreach ($transitions as [$next, $label])
-                        <form method="post" action="/offers/{{ $n }}/state" @if ($offer->state === OfferState::Sold) data-turbo-confirm="Отменить сделку?" data-turbo-confirm-text="Подтверждение менеджера отклонится, неоплаченные счета сделки аннулируются" @elseif (in_array($next, [OfferState::Archived, OfferState::Cancelled])) data-turbo-confirm="{{ $next->label() }}?" @if ($offer->parkVehicle) data-turbo-confirm-text="ТС снимется с продажи, на парковке она остаётся с фото и документами" @endif @endif>
+                        <form method="post" action="/offers/{{ $n }}/state" data-price-guard="publish" data-price-guard-offer="{{ $n }}" @if ($offer->state === OfferState::Sold) data-turbo-confirm="Отменить сделку?" data-turbo-confirm-text="Подтверждение менеджера отклонится, неоплаченные счета сделки аннулируются" @elseif (in_array($next, [OfferState::Archived, OfferState::Cancelled])) data-turbo-confirm="{{ $next->label() }}?" @if ($offer->parkVehicle) data-turbo-confirm-text="ТС снимется с продажи, на парковке она остаётся с фото и документами" @endif @endif>
                             @csrf<input type="hidden" name="state" value="{{ $next->value }}">
                             <x-ui.button block :variant="$offer->state === OfferState::Sold ? 'danger' : ($next === OfferState::Open ? 'primary' : ($next->tone() === 'danger' || $next === OfferState::Archived ? 'danger' : 'secondary'))">{{ $label }}</x-ui.button>
                         </form>

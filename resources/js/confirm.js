@@ -24,7 +24,7 @@ export function confirmSheet(message, options = {}) {
         d.dataset.turboTemporary = '';
         d.innerHTML = `
             <h2 class="mb-5 text-lg"></h2>
-            <p class="-mt-3 mb-5 text-ink-muted" data-text hidden></p>
+            <p class="-mt-3 mb-5 whitespace-pre-line text-ink-muted" data-text hidden></p>
             <blockquote class="-mt-2 mb-5 border-l-2 border-surface-3 pl-3 text-ink-muted" data-quote hidden><span data-quote-text></span> <cite class="block text-sm text-ink-dim not-italic" data-quote-by></cite></blockquote>
             <div class="flex flex-col gap-2 sm:flex-row-reverse">
                 <button type="button" class="btn btn-block sm:flex-1 ${danger ? 'btn-danger' : 'btn-accent'}" data-ok></button>

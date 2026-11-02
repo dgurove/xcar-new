@@ -9,7 +9,7 @@
     $late = fn ($at) => $offer && $at && $offer->insurer_deadline_at && $offer->insurer_deadline_at->copy()->endOfDay()->lt($at);
 @endphp
 <x-ui.sheet :id="$id" :title="$title">
-    @if ($action)<form method="post" action="{{ $action }}" class="publish-choice flex flex-col gap-4">@csrf @if ($state)<input type="hidden" name="state" value="{{ $state }}">@endif @else<div class="publish-choice flex flex-col gap-4">@endif
+    @if ($action)<form method="post" action="{{ $action }}" class="publish-choice flex flex-col gap-4" data-price-guard="publish" @if ($offer) data-price-guard-offer="{{ $offer->number }}" @endif>@csrf @if ($state)<input type="hidden" name="state" value="{{ $state }}">@endif @else<div class="publish-choice flex flex-col gap-4">@endif
         <div class="list">
             @foreach ($choices as $c)
                 <label class="row row-check">

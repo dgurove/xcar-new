@@ -5,7 +5,7 @@
 @php $n = $offer->number; @endphp
 <div data-controller="sheet" data-action="urgent:open@window->sheet#open" class="contents">
     <x-ui.sheet id="urgent-{{ $n }}" title="Срочно">
-        <form method="post" action="/offers/{{ $n }}/state" class="flex flex-col gap-4">
+        <form method="post" action="/offers/{{ $n }}/state" data-price-guard="publish" data-price-guard-offer="{{ $n }}" class="flex flex-col gap-4">
             @csrf
             <input type="hidden" name="state" value="open">
             <input type="hidden" name="when" value="{{ \App\Offers\Slots::URGENT }}">

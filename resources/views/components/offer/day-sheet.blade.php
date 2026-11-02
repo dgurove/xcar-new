@@ -5,7 +5,7 @@
 @php $n = $offer->number; $hour = sprintf('%02d:00', (int) config('xcar.slot_hour')); @endphp
 <div data-controller="sheet" data-action="publish-day:open@window->sheet#open" class="contents">
     <x-ui.sheet id="publish-day-{{ $n }}" title="Опубликовать в другой день">
-        <form method="post" action="/offers/{{ $n }}/state" class="flex flex-col gap-4">
+        <form method="post" action="/offers/{{ $n }}/state" data-price-guard="publish" data-price-guard-offer="{{ $n }}" class="flex flex-col gap-4">
             @csrf
             <input type="hidden" name="state" value="open">
             <input type="hidden" name="when" value="{{ \App\Offers\Slots::DAY }}">
