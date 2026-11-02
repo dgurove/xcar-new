@@ -35,7 +35,7 @@ const PRICES = ['publish_price', 'price'];
 const FROM = ['publish_price'];
 
 export default class extends Controller {
-    static targets = ['dialog', 'field', 'photo', 'watermark', 'preview', 'status', 'statusRow', 'statusIcon', 'send', 'label', 'all', 'photosSend', 'photosLabel', 'group'];
+    static targets = ['dialog', 'field', 'photo', 'watermark', 'preview', 'status', 'statusRow', 'statusIcon', 'send', 'label', 'all', 'photosSend', 'photosLabel', 'group', 'tabCount', 'groupCount'];
     static values = { url: String, photoUrl: String, vat: String, name: String, locked: String, warmUrl: String, zipUrl: String, zipName: String };
 
     connect() {
@@ -121,10 +121,24 @@ export default class extends Controller {
         return group ? this.photoTargets.filter((p) => group.contains(p)) : this.photoTargets;
     }
 
+    // «Выбрать все» / «Снять все» своей группы и «N из M» — у вкладки и над кадрами.
     labelGroups() {
-        this.allTargets.forEach((all) => {
-            all.textContent = this.groupPhotos(all.closest('[data-share-target="group"]')).every((p) => p.checked) ? 'Снять все' : 'Выбрать все';
+        this.groupTargets.forEach((group, i) => {
+            const photos = this.groupPhotos(group);
+            const on = photos.filter((p) => p.checked).length;
+            const all = this.allTargets.find((a) => group.contains(a));
+            if (all) all.textContent = on === photos.length ? 'Снять все' : 'Выбрать все';
+            const text = `${on} из ${photos.length}`;
+            if (this.tabCountTargets[i]) this.tabCountTargets[i].textContent = text;
+            const count = this.groupCountTargets.find((c) => group.contains(c));
+            if (count) count.textContent = text;
         });
+    }
+
+    // Вкладка группы кадров: видна одна группа.
+    tab(event) {
+        const i = Number(event.target.value);
+        this.groupTargets.forEach((g, n) => { g.hidden = n !== i; });
     }
 
     photosChanged() {

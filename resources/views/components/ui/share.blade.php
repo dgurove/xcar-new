@@ -70,10 +70,20 @@
             @if ($photos->isNotEmpty())
                 <label class="check"><input type="checkbox" data-share-target="watermark" data-action="share#photosChanged"><span>Водяной знак на фото</span></label>
             @endif
-            @foreach ($groups as $g)
-                <div class="flex flex-col gap-1.5" data-share-target="group">
+            {{-- Группы кадров — вкладками «Фото от страховой 10 из 47 | Фото при приёме 0 из 9» (02.11.2026, владелец: «Выбрать все»
+                 у первого блока, а про второй, далеко внизу, не знают): сколько выбрано видно сразу у обеих, «Выбрать все» — своей. --}}
+            @if (count($groups) > 1)
+                <div class="segment share-tabs">
+                    @foreach ($groups as $i => $g)
+                        <label><input type="radio" name="{{ $id }}-tab" value="{{ $i }}" @checked($i === 0) data-action="share#tab"><span>{{ $g['label'] }}</span><span class="nums text-xs" data-share-target="tabCount"></span></label>
+                    @endforeach
+                </div>
+            @endif
+            @foreach ($groups as $i => $g)
+                <div class="flex flex-col gap-1.5" data-share-target="group" @if ($i > 0) hidden @endif>
                     <div class="flex items-center justify-between">
-                        <span class="text-sm text-ink-muted">{{ $g['label'] ?? 'Фото' }} <span class="nums">{{ $g['photos']->count() }}</span></span>
+                        {{-- Одна группа — «Фото 10 из 26» здесь; у вкладок число стоит на самой вкладке. --}}
+                        @if (count($groups) === 1)<span class="text-sm text-ink-muted">Фото <span class="nums" data-share-target="groupCount"></span></span>@else<span></span>@endif
                         <button type="button" class="pill pill-plain" data-share-target="all" data-action="share#toggleAll">Выбрать все</button>
                     </div>
                     <div class="grid grid-cols-4 gap-1.5 sm:grid-cols-5">

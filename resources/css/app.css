@@ -1994,6 +1994,9 @@ html.kb-open { --home-gap: 0px; }
   .estimate-ok path { stroke-dasharray: 44; stroke-dashoffset: 44; animation: valuation-draw .3s .35s ease-out forwards; }
   @media (prefers-reduced-motion: reduce) { .estimate-ok circle, .estimate-ok path { animation: none; stroke-dashoffset: 0; } }
   .segment { @apply grid auto-cols-fr grid-flow-col gap-1 rounded-full bg-surface-3 p-1; }
+  /* Вкладки групп кадров «Поделиться»: название и «N из M» двумя строками — длинное «Фото от страховой» на телефоне не режется. */
+  .share-tabs { border-radius: var(--radius-l); }
+  .share-tabs label { @apply flex-col gap-0 py-1.5 leading-tight text-center; border-radius: var(--radius-m); }
   /* Сроки в шторке «Отдать на оценку» (02.11.2026): подпись слева, сегмент справа; узко — сегмент строкой ниже. */
   .estimate-term { @apply flex flex-wrap items-center gap-x-3 gap-y-1; }
   .estimate-term > span { @apply w-20 shrink-0 text-sm text-ink-muted; }
