@@ -2,31 +2,20 @@
 
 namespace App\Telegram\Offers;
 
-use App\Offers\Offer;
 use App\Support\FastAttributes;
 use App\Users\User;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Facades\DB;
 
 /**
- * Подписчик бота предложений и где он в разговоре (`mode`). Пишется часто и без ценности при аварии — через
- * `pgsql_async`: на HDD прода обычная фиксация стоит 160–290 мс, а бот пишет на каждое нажатие. Таблица — только
- * этим соединением, иначе процесс заблокирует сам себя.
+ * Подписчик бота предложений: чей чат и с какого момента ему слать карточки (`cards_since` — подписался или вернулся,
+ * открытое раньше не приходит). Пишется при подписке и отметке «остановил» — через `pgsql_async`, как все записи бота:
+ * на HDD прода обычная фиксация стоит 160–290 мс. Таблица — только этим соединением, иначе процесс заблокирует сам себя.
  */
 final class Subscriber extends Model
 {
     use FastAttributes;
-
-    public const MENU = 'menu';
-
-    public const PROMPT = 'prompt';
-
-    public const FEED = 'feed';
-
-    public const ASKING = 'asking';
-
-    public const INVITE = 'invite';
 
     protected $connection = 'pgsql_async';
 
@@ -36,14 +25,7 @@ final class Subscriber extends Model
 
     protected function casts(): array
     {
-        return [
-            'muted_at' => 'datetime',
-            'blocked_at' => 'datetime',
-            'remind_at' => 'datetime',
-            'announced_at' => 'datetime',
-            'morning_on' => 'date',
-            'payload' => 'array',
-        ];
+        return ['blocked_at' => 'datetime', 'cards_since' => 'datetime'];
     }
 
     public function user(): BelongsTo
@@ -51,41 +33,18 @@ final class Subscriber extends Model
         return $this->belongsTo(User::class);
     }
 
-    public function offer(): BelongsTo
+    /**
+     * Подписан и не остановил бота: бот сам пишет ему о новых — основному боту повторять не нужно (`Notifications\OffersPack`);
+     * на сайте — строка в «Предложениях» и шторка подписки.
+     */
+    public static function subscribed(User $user): bool
     {
-        return $this->belongsTo(Offer::class);
+        return DB::connection('pgsql_async')->table('offer_bot_chats')->where('user_id', $user->id)->whereNull('blocked_at')->exists();
     }
 
-    /** Бот может ему писать: не остановил. */
-    public function scopeReachable(Builder $q): Builder
+    /** Кому бот служит: допущенные менеджеры и админы, без демо и закрытых. */
+    public static function eligible(?User $user): bool
     {
-        return $q->whereNull('blocked_at');
-    }
-
-    /** Получает анонсы новых: не отписался и не остановил. */
-    public function scopeListening(Builder $q): Builder
-    {
-        return $q->whereNull('blocked_at')->whereNull('muted_at');
-    }
-
-    /** Бот предложений сам пишет ему о новых («Появились новые предложения») — основному боту повторять не нужно. */
-    public static function listens(User $user): bool
-    {
-        return self::listening()->where('user_id', $user->id)->exists();
-    }
-
-    public function isSubscribed(): bool
-    {
-        return $this->muted_at === null;
-    }
-
-    public static function of(User $user): ?self
-    {
-        return self::where('user_id', $user->id)->first();
-    }
-
-    public function moveTo(string $mode, ?int $offerId = null): void
-    {
-        $this->forceFill(['mode' => $mode, 'offer_id' => $offerId])->save();
+        return $user !== null && ($user->isManager() || $user->isAdmin()) && $user->isApproved() && ! $user->isRejected() && ! $user->is_demo;
     }
 }

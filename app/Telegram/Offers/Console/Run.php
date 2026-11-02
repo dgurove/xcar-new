@@ -2,7 +2,7 @@
 
 namespace App\Telegram\Offers\Console;
 
-use App\Telegram\Offers\Announce;
+use App\Telegram\Offers\Cards;
 use App\Telegram\Offers\Handler;
 use App\Telegram\Offers\OffersBot;
 use Illuminate\Console\Command;
@@ -13,22 +13,30 @@ use Illuminate\Support\Once;
 use Throwable;
 
 /**
- * Бот предложений — постоянный сервис `offers-bot` (compose). Длинный опрос по IPv6 (вебхук до сервера не доходит) и
- * часы (`Announce::due`, раз в ~20 с). Каждая запись уходит дорожке своего чата — дочернему процессу
- * `offers-bot:lane` по `chat_id % lanes`: внутри чата порядок сохраняется, разные чаты идут параллельно — в пачку публикации,
- * когда все разом жмут «👍 1», медленная загрузка кадра одному не держит остальных. Одна дорожка — разбор прямо здесь.
- * Процесс живёт `ttl` и выходит — compose поднимет заново; второй экземпляр (выкладка) ждёт замок.
+ * Бот предложений — постоянный сервис `offers-bot` (compose). Длинный опрос (через туннель из Цюриха, как всё к Telegram)
+ * и часы: раз в ~20 с — какие карточки пора прислать (`Cards::due`). Каждая запись уходит дорожке своего чата — дочернему
+ * процессу `offers-bot:lane` по `chat_id % lanes`: внутри чата порядок сохраняется, разные чаты идут параллельно — пачка
+ * публикации (до 70 машин на 20 человек) расходится за минуту-две, медленная загрузка PDF одному не держит остальных.
+ * Отданную дорожке карточку часы 10 минут не раздают снова: дорожка ещё может быть занята пачкой, а повтор пара всё
+ * равно не пройдёт (`Cards::claim`). Одна дорожка — разбор прямо здесь. Процесс живёт `ttl` и выходит — compose
+ * поднимет заново; второй экземпляр (выкладка) ждёт замок.
  */
 final class Run extends Command
 {
     private const OFFSET = 'offers-bot:offset';
 
+    /** Сколько не раздавать карточку снова, пока её разбирает дорожка. */
+    private const HANDED_SECONDS = 600;
+
     protected $signature = 'offers-bot:run {--ttl=21600} {--timeout=20}';
 
-    protected $description = 'Бот предложений: опрос Telegram, часы и дорожки';
+    protected $description = 'Бот предложений: опрос Telegram, карточки и дорожки';
 
     /** @var array<int, array{proc: resource, in: resource}> */
     private array $lanes = [];
+
+    /** @var array<string, int> «чат:предложение» → когда отдана дорожке */
+    private array $handed = [];
 
     public function handle(OffersBot $bot, Handler $handler): int
     {
@@ -57,9 +65,7 @@ final class Run extends Command
                 if (time() >= $timers) {
                     $timers = time() + 20;
                     try {
-                        foreach (Announce::due() as $item) {
-                            $this->dispatch($item, $n, $handler);
-                        }
+                        $this->cards($n, $handler);
                     } catch (Throwable $e) {
                         Log::warning('Бот предложений: часы сорвались', ['error' => $e->getMessage()]);
                     }
@@ -90,6 +96,19 @@ final class Run extends Command
                 proc_close($lane['proc']);
             }
             DB::select('select pg_advisory_unlock(?)', [$key]);
+        }
+    }
+
+    private function cards(int $lanes, Handler $handler): void
+    {
+        $now = time();
+        $this->handed = array_filter($this->handed, fn (int $at) => $now - $at < self::HANDED_SECONDS);
+        foreach (Cards::due() as $item) {
+            $key = $item['chat_id'].':'.$item['offer_id'];
+            if (! isset($this->handed[$key])) {
+                $this->handed[$key] = $now;
+                $this->dispatch($item, $lanes, $handler);
+            }
         }
     }
 

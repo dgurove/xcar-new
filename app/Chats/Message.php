@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
 
-#[Fillable(['chat_id', 'seq', 'author_id', 'author_kind', 'text', 'reply_to', 'edited_at', 'deleted_at', 'via_bot'])]
+#[Fillable(['chat_id', 'seq', 'author_id', 'author_kind', 'text', 'reply_to', 'edited_at', 'deleted_at'])]
 class Message extends Model
 {
     use FastAttributes;
@@ -22,7 +22,7 @@ class Message extends Model
 
     protected function casts(): array
     {
-        return ['author_kind' => AuthorKind::class, 'created_at' => 'datetime', 'edited_at' => 'datetime', 'deleted_at' => 'datetime', 'via_bot' => 'bool'];
+        return ['author_kind' => AuthorKind::class, 'created_at' => 'datetime', 'edited_at' => 'datetime', 'deleted_at' => 'datetime'];
     }
 
     public function chat(): BelongsTo

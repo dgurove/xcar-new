@@ -4,8 +4,8 @@ namespace App\Http\Auth;
 
 use App\Telegram\Bot;
 use App\Telegram\ConnectLink;
-use App\Telegram\Offers\Handler;
 use App\Telegram\Offers\OffersBot;
+use App\Telegram\Offers\Subscriber;
 use App\Telegram\StartLink;
 use Illuminate\Http\Request;
 
@@ -22,7 +22,7 @@ final class TelegramConnectController
         if (! $user) {
             return redirect()->guest('/login');
         }
-        $offers = $request->query('bot') === ConnectLink::OFFERS && Handler::eligible($user);
+        $offers = $request->query('bot') === ConnectLink::OFFERS && Subscriber::eligible($user);
         $bot = $offers ? app(OffersBot::class) : app(Bot::class);
         $allowed = ConnectLink::allows($user);
 

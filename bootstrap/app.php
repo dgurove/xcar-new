@@ -77,7 +77,6 @@ use App\Telegram\Console\Poll;
 use App\Telegram\Console\SetProfile;
 use App\Telegram\Messages\ServerError;
 use App\Telegram\Offers\Console\Lane as OffersBotLane;
-use App\Telegram\Offers\Console\Poke as OffersBotPoke;
 use App\Telegram\Offers\Console\Profile as OffersBotProfile;
 use App\Telegram\Offers\Console\Run as OffersBotRun;
 use App\Users\Console\CreateUser;
@@ -146,7 +145,7 @@ return Application::configure(basePath: dirname(__DIR__))
         Gc::class,
         Report::class,
         Poll::class, SetProfile::class,
-        OffersBotRun::class, OffersBotLane::class, OffersBotProfile::class, OffersBotPoke::class,
+        OffersBotRun::class, OffersBotLane::class, OffersBotProfile::class,
         SyncAcquiring::class,
         BackfillPayLinks::class,
         SyncBank::class,

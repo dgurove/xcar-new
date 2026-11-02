@@ -108,28 +108,26 @@ final class Caption
     /**
      * Текст для пересылки клиенту — подпись PDF в боте предложений (21.10.2026, владелец: «как при шеринге, без VIN и меток»):
      * машина, город, характеристики одной строкой через «; », цена продажи и «с НДС». Склейка — та же, что у
-     * `share_controller.js` (`caption`); заявленной, номера, срока и ссылки нет.
+     * `share_controller.js` (`caption`); заявленной, номера, срока и ссылки нет. От человека не зависит: цену продажи любой
+     * менеджер и админ видят одну (`PriceView`), в галерее её нет ни у кого.
      */
-    public static function forward(Offer $offer, ?User $user): string
+    public static function forward(Offer $offer): string
     {
         $lines = [];
         $group = null;
-        $price = null;
-        foreach (self::fields($offer, $user) as $f) {
-            if (! in_array($f['key'], ['model', 'city', 'specs', 'fuel', 'engine', 'mileage', 'price'], true)) {
+        foreach (self::fields($offer, null) as $f) {
+            if (! in_array($f['key'], ['model', 'city', 'specs', 'fuel', 'engine', 'mileage'], true)) {
                 continue;
             }
-            if ($f['key'] === 'price') {
-                $price = $f['value'];
-            } elseif ($f['group'] && $f['group'] === $group) {
+            if ($f['group'] && $f['group'] === $group) {
                 $lines[count($lines) - 1] .= '; '.$f['value'];
             } else {
                 $lines[] = $f['value'];
             }
             $group = $f['group'];
         }
-        if ($price) {
-            $lines[] = $price.self::vatMark($offer);
+        if ($offer->asking_price && ! $offer->isGallery()) {
+            $lines[] = Money::plain($offer->asking_price, sign: false).self::vatMark($offer);
         }
 
         return implode("\n", $lines);

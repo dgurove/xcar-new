@@ -62,7 +62,7 @@ final class ManagerResponse
         return self::SQL;
     }
 
-    // Открыл — смотрел на сайте хоть раз или подтвердил (подтвердить, не открыв, можно из бота предложений); медиана —
+    // Открыл — смотрел на сайте хоть раз или подтвердил (подтвердить можно и не открывая — из каталога); медиана —
     // только по просмотрам после того, как машина ему открылась.
     private const SQL = "select v.user_id, count(*) as seen, count(*) filter (where r.read_at is not null or b.offer_id is not null) as opened,
             count(b.offer_id) as bids,

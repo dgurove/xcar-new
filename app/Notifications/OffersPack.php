@@ -21,7 +21,7 @@ trait OffersPack
             return [];
         }
         $via = $user->quietHours() ? [BannerChannel::class] : [WebPushChannel::class, BannerChannel::class];
-        if ($user->wantsTelegram($this->category()) && ! ($this->skipsOffersBot() && Subscriber::listens($user))) {
+        if ($user->wantsTelegram($this->category()) && ! ($this->skipsOffersBot() && Subscriber::subscribed($user))) {
             $via[] = TelegramChannel::class;
         }
 

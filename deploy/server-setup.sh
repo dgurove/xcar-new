@@ -9,12 +9,15 @@
 #
 #   ./deploy/server-setup.sh          # всё
 #   ./deploy/server-setup.sh disk     # только диск данных и настройки docker
+#   ./deploy/server-setup.sh tunnel   # только вход для туннеля к Telegram из Цюриха (zurich/README.md);
+#                                     # ключ — ~/.ssh/xcar_tunnel.pub или TUNNEL_KEY_FILE
 set -euo pipefail
 SSH_HOST="${SSH_HOST:-xcar-next}"
 STEP="${1:-all}"
+TUNNEL_KEY="$(cat "${TUNNEL_KEY_FILE:-$HOME/.ssh/xcar_tunnel.pub}" 2>/dev/null || true)"
 cd "$(dirname "$0")"
 
-ssh "$SSH_HOST" STEP="$STEP" DATA_DEV="${DATA_DEV:-/dev/sdb}" bash -s <<'REMOTE'
+ssh "$SSH_HOST" STEP="$STEP" DATA_DEV="${DATA_DEV:-/dev/sdb}" TUNNEL_KEY="$(printf %q "$TUNNEL_KEY")" bash -s <<'REMOTE'
 set -euo pipefail
 export DEBIAN_FRONTEND=noninteractive
 DATA=/srv/xcar/data
@@ -50,6 +53,32 @@ if ! command -v docker >/dev/null; then
     curl -fsSL https://get.docker.com | sh >/dev/null
 fi
 fi # STEP=all
+
+if [ "$STEP" = all ] || [ "$STEP" = tunnel ]; then
+echo "==> туннель к Telegram из Цюриха"
+# Цюрих сам держит обратный SSH-туннель (zurich/README.md). Его пользователю можно одно: слушать 172.18.0.1:9443 —
+# шлюз сети compose — и отдавать соединения Цюриху, а тот ведёт их к api.telegram.org:443. Ни оболочки, ни TTY.
+id xcar-tunnel >/dev/null 2>&1 || useradd --system --create-home --shell /usr/sbin/nologin xcar-tunnel
+home="$(getent passwd xcar-tunnel | cut -d: -f6)"
+if [ -n "$TUNNEL_KEY" ]; then
+    install -d -m 700 -o xcar-tunnel -g xcar-tunnel "$home/.ssh"
+    echo "restrict,port-forwarding,permitlisten=\"172.18.0.1:9443\" $TUNNEL_KEY" > "$home/.ssh/authorized_keys"
+    chown xcar-tunnel:xcar-tunnel "$home/.ssh/authorized_keys"
+    chmod 600 "$home/.ssh/authorized_keys"
+fi
+cat > /etc/ssh/sshd_config.d/20-xcar-tunnel.conf <<'EOC'
+Match User xcar-tunnel
+    GatewayPorts clientspecified
+    AllowTcpForwarding remote
+    AllowAgentForwarding no
+    X11Forwarding no
+    PermitTTY no
+EOC
+sshd -t && { systemctl reload ssh 2>/dev/null || systemctl reload sshd; }
+# Конец туннеля видят только контейнеры: снаружи порт закрыт, как всё, кроме 22, 80 и 443.
+ufw allow from 172.18.0.0/16 to 172.18.0.1 port 9443 proto tcp >/dev/null
+fi
+[ "$STEP" = tunnel ] && exit 0
 
 echo "==> docker: журналы, зеркало, потолок кэша сборки"
 # Зеркало Docker Hub: с нового адреса Hub быстро отвечает 429 на сборке.
@@ -168,7 +197,6 @@ fi
 chmod 600 .env .env.app
 
 echo "==> сеть наружу"
-curl -fsS -m 8 -o /dev/null -w 'api.telegram.org: %{http_code}\n' https://api.telegram.org || echo "api.telegram.org: недоступен"
 curl -fsS -m 8 -o /dev/null -w 'acme-v02.api.letsencrypt.org: %{http_code}\n' https://acme-v02.api.letsencrypt.org/directory || echo "letsencrypt: недоступен"
 echo "готово: $(nproc) ядер, $(free -m | awk '/Mem/{print $2}') МБ, диск $(df -h / | awk 'NR==2{print $4}') свободно"
 REMOTE

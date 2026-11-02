@@ -7,9 +7,9 @@ use Illuminate\Support\Facades\Log;
 use Throwable;
 
 /**
- * Второй бот — @xcar_offers_bot, предложения менеджерам по образцу «Дайвинчика» (владелец 03.10.2026). Тот же клиент
- * Bot API, что у основного (IPv6, повторы, 429), но свой токен и кэш, без журнала CRM: `telegram_chats` рассчитан на
- * одного бота. Сообщения — HTML; клавиатуры собирает `Keys`. Возвращает id сообщения в Telegram.
+ * Второй бот — @xcar_offers_bot: каждое новое предложение менеджеру одним сообщением (`Card`, 03.11.2026). Тот же клиент
+ * Bot API, что у основного (через Цюрих, повторы, 429), но свой токен и кэш, без журнала CRM: `telegram_chats` рассчитан
+ * на одного бота. Сообщения — HTML. Возвращает id сообщения в Telegram.
  */
 final class OffersBot extends Bot
 {
@@ -30,13 +30,13 @@ final class OffersBot extends Bot
         return 'offers-bot:'.$key;
     }
 
-    /** У этого бота владельца нет: вопросы идут админам, подписанным на него (`Questions`). */
+    /** У этого бота владельца нет: сообщения владельцу и админам шлёт основной. */
     public function ownerChatId(): ?int
     {
         return null;
     }
 
-    /** Кнопки «Открыть в XCar» — входом через Telegram, когда домен выставлен в BotFather. */
+    /** Кнопка «Открыть в XCar» — входом через Telegram, когда домен выставлен в BotFather. */
     public function logsIn(): bool
     {
         return (bool) $this->config('login');
@@ -47,7 +47,7 @@ final class OffersBot extends Bot
         return max(1, (int) $this->config('lanes'));
     }
 
-    /** @param  array<string, mixed>|null  $markup  готовый reply_markup (`Keys`) */
+    /** @param  array<string, mixed>|null  $markup  готовый reply_markup */
     public function say(int $chatId, string $html, ?array $markup = null, array $extra = []): int
     {
         $payload = ['chat_id' => $chatId, 'text' => $html, 'parse_mode' => 'HTML', 'link_preview_options' => json_encode(['is_disabled' => true])]
@@ -57,26 +57,7 @@ final class OffersBot extends Bot
     }
 
     /**
-     * Фото с подписью: по `file_id`, если кадр уже был у Telegram, иначе файлом — и `file_id` в кэш.
-     *
-     * @param  array{0: string, 1: string}|string  $photo  file_id или [содержимое, имя]
-     * @return array{id: int, file_id: ?string}
-     */
-    public function photo(int $chatId, array|string $photo, string $caption, ?array $markup = null, array $extra = []): array
-    {
-        $payload = ['chat_id' => $chatId, 'caption' => $caption, 'parse_mode' => 'HTML']
-            + ($markup ? ['reply_markup' => json_encode($markup, JSON_UNESCAPED_UNICODE)] : []) + $extra;
-        $response = is_string($photo)
-            ? $this->call('sendPhoto', $payload + ['photo' => $photo])
-            : $this->call('sendPhoto', $payload, ['photo' => $photo]);
-        $result = $response->throw()->json('result');
-        $sizes = $result['photo'] ?? [];
-
-        return ['id' => (int) ($result['message_id'] ?? 0), 'file_id' => $sizes ? (string) end($sizes)['file_id'] : null];
-    }
-
-    /**
-     * Документ с подписью (PDF карточки, `PdfCard`): по `file_id` или файлом — тогда `file_id` в ответе.
+     * Документ с подписью (PDF карточки, `Card`): по `file_id` или файлом — тогда `file_id` в ответе.
      *
      * @param  array{0: string, 1: string}|string  $document  file_id или [содержимое, имя]
      * @return array{id: int, file_id: ?string}
@@ -92,19 +73,13 @@ final class OffersBot extends Bot
         return ['id' => (int) ($result['message_id'] ?? 0), 'file_id' => $result['document']['file_id'] ?? null];
     }
 
-    /** «Печатает» / «отправляет фото» — пока грузится кадр, который Telegram ещё не видел. */
+    /** «Отправляет файл» — пока грузится PDF, который Telegram ещё не видел. */
     public function action(int $chatId, string $action): void
     {
         try {
             $this->call('sendChatAction', ['chat_id' => $chatId, 'action' => $action]);
         } catch (Throwable) {
         }
-    }
-
-    /** Отметка на сообщении человека: «принято» без лишнего сообщения в чате. */
-    public function react(int $chatId, int $messageId, string $emoji): void
-    {
-        $this->call('setMessageReaction', ['chat_id' => $chatId, 'message_id' => $messageId, 'reaction' => json_encode([['type' => 'emoji', 'emoji' => $emoji]], JSON_UNESCAPED_UNICODE)])->throw();
     }
 
     public function updates(int $offset, int $timeout): array
@@ -138,7 +113,7 @@ final class OffersBot extends Bot
 
     /**
      * Убрать карточку ушедшего предложения. Telegram удаляет только сообщения моложе 48 часов — старше остаётся
-     * переписать подпись на «Ушло из продажи» и снять кнопки (цена и «Подтвердить» у менеджера больше не висят).
+     * переписать подпись на «Ушло из продажи» и снять кнопку (цена у менеджера больше не висит).
      * false — не вышло ни то, ни другое (бот остановлен, сообщение уже удалено человеком).
      */
     public function retract(int $chatId, int $messageId): bool
@@ -149,7 +124,7 @@ final class OffersBot extends Bot
             return true;
         } catch (Throwable) {
         }
-        // Фото и PDF — подписью, заголовок карточки (текст) — текстом.
+        // PDF — подписью, карточка без кадров — текстом.
         foreach (['editMessageCaption' => 'caption', 'editMessageText' => 'text'] as $method => $field) {
             try {
                 $this->call($method, ['chat_id' => $chatId, 'message_id' => $messageId, $field => 'Ушло из продажи',

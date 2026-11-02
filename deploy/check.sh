@@ -34,6 +34,9 @@ probe() {
         state="$(docker inspect -f '{{.State.Status}}' "xcar-$name-1" 2>/dev/null || echo missing)"
         [ "$state" = running ] || problems+=("контейнер $name: $state")
     done
+    # Туннель к Telegram из Цюриха (zurich/README.md): без него молчат оба бота. Проверка — из контейнера, тем же путём.
+    docker exec xcar-app-1 php -r 'exit(@fsockopen("zurich", 9443, $e, $s, 3) ? 0 : 1);' 2>/dev/null \
+        || problems+=("туннель к Telegram (zurich:9443) не отвечает")
 }
 probe
 if [ ${#problems[@]} -gt 0 ]; then sleep 45; probe; fi
@@ -72,12 +75,14 @@ report() {
     (cd "$ROOT/current/deploy" && docker compose exec -T app php artisan storage:report 2>/dev/null)
 }
 
-# До Telegram с сервера доходит только IPv6.
+# К Telegram — через туннель из Цюриха, как всё приложение. Лежит сам туннель — тревога о нём уходит напрямую по IPv6:
+# иначе о нём некому было бы сказать.
 telegram() {
-    local token chat
+    local token chat args
     token="$(env_value TELEGRAM_BOT_TOKEN)"; chat="$(env_value TELEGRAM_CHAT_ID)"
     [ -n "$token" ] && [ -n "$chat" ] || return 1
-    curl -6 -sS -m 10 --retry 2 -o /dev/null "https://api.telegram.org/bot$token/sendMessage" --data-urlencode "chat_id=$chat" --data-urlencode "text=$1"
+    args=(-sS -m 10 --retry 2 -o /dev/null "https://api.telegram.org/bot$token/sendMessage" --data-urlencode "chat_id=$chat" --data-urlencode "text=$1")
+    curl --connect-to api.telegram.org:443:172.18.0.1:9443 "${args[@]}" 2>/dev/null || curl -6 "${args[@]}"
 }
 stamp=/run/xcar-check.last
 

@@ -27,6 +27,9 @@ x-app: &app
   # init — PID 1 собирает завершившихся потомков: фоновые задачи расписания (`runInBackground`) отрываются от
   # schedule:work и оставались зомби — 536 штук на 16.10.2026 за четыре часа, до упора в лимит процессов.
   init: true
+  # К Telegram — через туннель из Цюриха на шлюзе сети (`TELEGRAM_VIA=zurich:9443`).
+  extra_hosts:
+    - zurich:172.18.0.1
   env_file:
     - .env.app
   environment: &app-env
@@ -188,12 +191,12 @@ volumes:
   caddy_data:
   caddy_config:
 
-# IPv6 в контейнерах нужен ради Telegram: до api.telegram.org с сервера по
-# IPv4 не достучаться, по IPv6 отвечает сразу. Подсеть локальная (ULA),
-# наружу Docker выпускает через NAT66 сам. Смена сети требует `down` и `up`.
+# Подсеть закреплена ради туннеля к Telegram: Цюрих открывает его на шлюзе
+# этой сети, 172.18.0.1:9443 (`zurich/README.md`), и ufw пускает туда только её.
+# Смена сети требует `down` и `up`.
 networks:
   default:
-    enable_ipv6: true
     ipam:
       config:
-        - subnet: fd00:aca2::/64
+        - subnet: 172.18.0.0/16
+          gateway: 172.18.0.1

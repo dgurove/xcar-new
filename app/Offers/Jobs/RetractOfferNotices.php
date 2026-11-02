@@ -13,6 +13,7 @@ use App\Notifications\OffersShownNotice;
 use App\Notifications\PurchaseCarOnSaleNotice;
 use App\Notifications\UrgentOfferNotice;
 use App\Offers\Offer;
+use App\Offers\OfferState;
 use App\Telegram\Bot;
 use App\Telegram\ChatMessage;
 use App\Telegram\Offers\OffersBot;
@@ -28,7 +29,8 @@ use Throwable;
  * Предложение больше не открыто человеку (ушло в сделку, снято, срок вышел, выпал из волны): его анонс убирается —
  * карточка бота предложений в Telegram и «Новое предложение» в ленте. Владелец 10.10.2026: Ситрак опубликовали, через
  * две минуты он ушёл в сделку, а у менеджеров карточка с фото и ценой так и висела — «они перешли, и он доступен».
- * Кому оно по-прежнему открыто (свой резерв, белый список сделки), у того всё остаётся. С 13.10.2026 — все уведомления
+ * Кому оно по-прежнему открыто (свой резерв, белый список сделки), у того уведомления остаются; карточка бота — PDF для
+ * клиента — уходит у всех, как только машина не в продаже. С 13.10.2026 — все уведомления
  * о предложении (`TYPES`) и их сообщения основного бота (`Notice::offerSubject`); зовут и при сдвиге волны на будущее.
  */
 final class RetractOfferNotices implements ShouldQueue
@@ -59,30 +61,26 @@ final class RetractOfferNotices implements ShouldQueue
         if (! $offer) {
             return;
         }
-        $seen = DB::table('offer_bot_seen')->where('offer_id', $offer->id)->whereNotNull('message_id')->get();
+        $cards = DB::table('offer_bot_sent')->where('offer_id', $offer->id)->whereNotNull('message_id')->get();
         $notices = DatabaseNotification::whereIn('type', self::TYPES)->where('data->offer', $offer->number)->get(['id', 'notifiable_id']);
         $sent = ChatMessage::where('subject', Notice::offerSubject($offer->id))->where('direction', ChatMessage::OUT)->whereNull('deleted_at')->get();
         $chats = $sent->isEmpty() ? collect() : User::whereIn('telegram_chat_id', $sent->pluck('chat_id')->unique())->pluck('id', 'telegram_chat_id');
-        // Показанное ботом до 10.10.2026 — без номера сообщения: карточку не убрать, но строка «показано» уходит, иначе
-        // вернувшуюся в его волну машину бот ему больше не покажет.
-        $blind = DB::table('offer_bot_seen')->where('offer_id', $offer->id)->whereNull('message_id')->pluck('user_id');
-        $ids = $seen->pluck('user_id')->merge($notices->pluck('notifiable_id'))->merge($chats->values())->merge($blind)->unique();
+        $ids = $cards->pluck('user_id')->merge($notices->pluck('notifiable_id'))->merge($chats->values())->unique();
         if ($ids->isEmpty() && $sent->isEmpty()) {
             return;
         }
         $gone = User::whereIn('id', $ids)->get()->reject(fn (User $u) => $offer->isVisibleTo($u))->keyBy('id');
-        foreach ($seen->whereIn('user_id', $gone->keys()) as $card) {
-            // Убрали (удалили или старше 48 ч — переписали подпись) — строка «показано» уходит целиком: вернётся машина в
-            // продажу, бот покажет её снова. Не вышло — строка остаётся, следующая смена состояния попробует ещё.
-            // PDF для пересылки (`PdfCard`) — вторым сообщением карточки: убрать и его.
-            if ($card->doc_message_id ?? null) {
-                $bot->retract((int) $card->chat_id, (int) $card->doc_message_id);
+        // Карточка бота предложений — PDF для клиента: ушла машина из продажи — убираем у всех, и у того, кому она ещё
+        // видна (админ, свой резерв), чтобы проданное не переслали. Убрали (удалили или старше 48 ч — переписали подпись) —
+        // строка уходит: вернётся машина в продажу, бот пришлёт её снова. Не вышло — строка остаётся, следующая смена
+        // состояния попробует ещё.
+        $onSale = $offer->state === OfferState::Open;
+        foreach ($cards as $card) {
+            if (($onSale && ! $gone->has($card->user_id)) || ! $bot->retract((int) $card->chat_id, (int) $card->message_id)) {
+                continue;
             }
-            if ($bot->retract((int) $card->chat_id, (int) $card->message_id)) {
-                DB::table('offer_bot_seen')->where('user_id', $card->user_id)->where('offer_id', $offer->id)->delete();
-            }
+            DB::table('offer_bot_sent')->where('user_id', $card->user_id)->where('offer_id', $offer->id)->delete();
         }
-        DB::table('offer_bot_seen')->where('offer_id', $offer->id)->whereNull('message_id')->whereIn('user_id', $gone->keys())->delete();
         // Основной бот: «Новое предложение», «Срочно» и прочие о машине — у тех, кому она больше не видна.
         foreach ($sent as $message) {
             // Чат больше ничей (перепривязали Telegram) — сообщение о машине там некому видеть законно.

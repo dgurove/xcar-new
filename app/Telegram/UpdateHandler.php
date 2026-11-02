@@ -33,7 +33,6 @@ use App\Telegram\Jobs\ValuationFromChat;
 use App\Telegram\Messages\AgentFeeDue;
 use App\Telegram\Messages\InvoiceOverdue;
 use App\Telegram\Messages\PaymentClaimed;
-use App\Telegram\Offers\Handler;
 use App\Telegram\Offers\OffersBot;
 use App\Telegram\Offers\Subscriber;
 use App\Users\Access\AccessCode;
@@ -557,7 +556,7 @@ final class UpdateHandler
     private function offersBot(User $user): array
     {
         $url = app(OffersBot::class)->startUrl('hi');
-        if (! $url || ! Handler::eligible($user) || Subscriber::where('user_id', $user->id)->whereNull('blocked_at')->exists()) {
+        if (! $url || ! Subscriber::eligible($user) || Subscriber::subscribed($user)) {
             return [];
         }
 

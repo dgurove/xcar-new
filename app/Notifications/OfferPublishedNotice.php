@@ -48,7 +48,7 @@ final class OfferPublishedNotice extends Notice
     {
         $via = parent::via($user);
 
-        return in_array(TelegramChannel::class, $via, true) && Subscriber::listens($user)
+        return in_array(TelegramChannel::class, $via, true) && Subscriber::subscribed($user)
             ? array_values(array_diff($via, [TelegramChannel::class])) : $via;
     }
 

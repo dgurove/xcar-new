@@ -1,0 +1,18 @@
+# Туннель к Telegram для прода xcar (README.md рядом). Держит его Цюрих: на проде
+# 172.18.0.1:9443 — шлюз сети compose — ведёт сюда, а отсюда к api.telegram.org:443.
+# Голая TCP-труба: TLS идёт от прода до Telegram, здесь не видно ни токенов, ни
+# текстов, и на диск ничего не пишется. Пользователь xcar-tunnel на проде без
+# оболочки, ему разрешено слушать только этот адрес (deploy/server-setup.sh tunnel).
+[Unit]
+Description=xcar: туннель к Telegram для прода
+After=network-online.target
+# Перезапускать без конца: лёгший туннель видит check.sh на проде и пишет владельцу.
+StartLimitIntervalSec=0
+
+[Service]
+ExecStart=/usr/bin/ssh -NT -i %h/.ssh/xcar_tunnel -o BatchMode=yes -o IdentitiesOnly=yes -o ExitOnForwardFailure=yes -o ServerAliveInterval=15 -o ServerAliveCountMax=3 -R 172.18.0.1:9443:api.telegram.org:443 xcar-tunnel@200.169.180.17
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=default.target

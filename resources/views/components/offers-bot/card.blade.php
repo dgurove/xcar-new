@@ -3,8 +3,8 @@
 @php
     $user = auth()->user();
     $hidden = $user?->notification_settings['offers_bot_hidden'] ?? null;
-    $show = \App\Telegram\Offers\Handler::eligible($user)
-        && app(\App\Telegram\Offers\OffersBot::class)->configured() && ! \App\Telegram\Offers\Handler::subscribed($user)
+    $show = \App\Telegram\Offers\Subscriber::eligible($user)
+        && app(\App\Telegram\Offers\OffersBot::class)->configured() && ! \App\Telegram\Offers\Subscriber::subscribed($user)
         && (! $hidden || $hidden < now()->toDateString());
 @endphp
 @if ($show)

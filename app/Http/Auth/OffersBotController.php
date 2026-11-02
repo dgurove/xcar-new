@@ -2,7 +2,6 @@
 
 namespace App\Http\Auth;
 
-use App\Telegram\Offers\Handler;
 use App\Telegram\Offers\LoginUrl;
 use App\Telegram\Offers\Subscriber;
 use App\Users\Access\TelegramEntry;
@@ -16,18 +15,17 @@ use Illuminate\Support\Facades\Cache;
  */
 final class OffersBotController
 {
-    /** Куда ведёт кнопка: словом, а не путём — путь не перенаправление наружу. */
-    private const TARGETS = ['offers' => '/offers', 'favorites' => '/account/favorites', 'invites' => '/buyers/invites'];
-
+    /** Куда ведёт кнопка — словом, а не путём: путь не перенаправление наружу. */
     public function open(Request $request, string $target)
     {
-        $path = self::TARGETS[$target] ?? (ctype_digit($target) ? '/offers/'.$target : '/offers');
+        // Номер предложения или каталог (`Card::url`); прежние цели старых кнопок — «избранное», «ссылки» — тоже в каталог.
+        $path = ctype_digit($target) ? '/offers/'.$target : '/offers';
         $tgId = LoginUrl::verify($request->query(), (string) config('xcar.telegram.offers.token'));
         // Одна подпись — один вход: адрес остаётся в истории браузера.
         if ($tgId && Cache::add('offers-bot:login:'.$request->query('hash'), true, 86400)) {
             $user = Subscriber::where('chat_id', $tgId)->first()?->user;
             // Вход — как у кнопок основного бота: не новое устройство, приложение не выходит (`TelegramEntry`, 21.10.2026).
-            if ($user && Handler::eligible($user)) {
+            if ($user && Subscriber::eligible($user)) {
                 TelegramEntry::login($request, $user);
             }
         }
@@ -38,7 +36,7 @@ final class OffersBotController
     /** Шторка подписки вернулась из Telegram, а события хаба не было — подписался ли. */
     public function state(Request $request)
     {
-        return response()->json(['linked' => Handler::subscribed($request->user())]);
+        return response()->json(['linked' => Subscriber::subscribed($request->user())]);
     }
 
     /** × у строки подписки: не показывать месяц. */
