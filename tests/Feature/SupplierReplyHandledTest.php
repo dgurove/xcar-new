@@ -62,6 +62,8 @@ class SupplierReplyHandledTest extends TestCase
 
         $send(now()->addMinutes(1)->toDateTimeString());
         $this->assertSame('sent', $position()->letterStatus());
+        // Под нашим же письмом «Поставщик продал другому» нет (02.11.2026: рядом с «Ответить» его не понимали).
+        $this->actingAs($admin)->withHeaders(['Turbo-Frame' => 'letters-frame'])->get("http://crm.xcar.localhost/work/mail/{$thread->id}/window")->assertOk()->assertDontSee('продал другому');
         $reply(now()->addMinutes(2)->toDateTimeString());
         $this->assertSame('replied', $position()->letterStatus());
         $this->assertTrue($position()->needsUs());
@@ -79,7 +81,7 @@ class SupplierReplyHandledTest extends TestCase
         $this->assertSame('sent', $position()->letterStatus());
 
         // «Продал другому» из окна письма — сделка закрыта отказом поставщика.
-        $this->actingAs($admin)->withHeaders(["Turbo-Frame" => "letters-frame"])->get("http://crm.xcar.localhost/work/mail/{$thread->id}/window")->assertOk()->assertSee('Продал другому');
+        $this->actingAs($admin)->withHeaders(["Turbo-Frame" => "letters-frame"])->get("http://crm.xcar.localhost/work/mail/{$thread->id}/window")->assertOk()->assertSee('Поставщик продал другому');
         $this->actingAs($admin)->post("http://crm.xcar.localhost/work/deals/{$deal->id}/declined", ['note' => 'Поставщик продал другому: «Уже в работе.»', 'pickup' => 'drop'])->assertRedirect();
         $deal->refresh();
         $this->assertSame([DealState::Cancelled, 'supplier'], [$deal->state, $deal->close_reason]);

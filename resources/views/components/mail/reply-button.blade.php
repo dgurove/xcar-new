@@ -6,7 +6,9 @@
     // Ветка предложения в идущей сделке (28.10.2026, владелец про 0890/046/10323/25: «Уже в работе» — продали другому,
     // «там только ответить, а отвечать нечего»): «Продал другому» закрывает сделку отказом поставщика (`DeclineBySupplier`),
     // «Ответ не нужен» — разобрано, ждём его дальше (`Position::replyHandled`).
-    $deal = auth()->user()?->canManageCrm() ? $message->thread?->offer?->deal : null;
+    // Только под письмом поставщика (02.11.2026, владелец: под нашим «Выражаем интерес» кнопка рядом с «Ответить» — «че за
+    // продал другому, не понимаем»): это ответ на его «уже продано», а не действие с нашим письмом.
+    $deal = auth()->user()?->canManageCrm() && ! $message->isOurs() ? $message->thread?->offer?->deal : null;
     $deal = $deal?->isActive() ? $deal : null;
     $replied = $deal && $message->thread->offer->position(\App\Workflow\Track::Sale)?->letterStatus() === 'replied';
     $said = $deal && ! $message->isOurs() ? trim(\Illuminate\Support\Str::limit(preg_replace('/\s+/u', ' ', (string) $message->ownText()), 60, '…')) : '';
@@ -33,7 +35,7 @@
                     @csrf
                     <input type="hidden" name="note" value="Поставщик продал другому{{ $said !== '' ? ': «'.$said.'»' : '' }}">
                     <input type="hidden" name="pickup" value="{{ $deal->offer?->vendor?->pickup_on_arrival ? 'keep' : 'drop' }}">
-                    <button class="btn btn-quiet text-danger">Продал другому</button>
+                    <button class="btn btn-quiet text-danger">Поставщик продал другому</button>
                 </form>
             @endif
         </div>

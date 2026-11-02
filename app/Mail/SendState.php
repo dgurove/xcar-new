@@ -16,7 +16,7 @@ enum SendState: string
     public function label(): string
     {
         return match ($this) {
-            self::Queued => 'В очереди',
+            self::Queued => 'Отправляется',
             self::Sending => 'Отправляется',
             self::Sent => 'Отправлено',
             self::Failed => 'Не ушло',

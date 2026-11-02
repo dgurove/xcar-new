@@ -7,6 +7,7 @@ use App\Live\Topics;
 use App\Mail\Actions\LinkThread;
 use App\Mail\Actions\MarkThreadRead;
 use App\Mail\Chains\ChainBuilder;
+use App\Mail\Events\MessageFailed;
 use App\Mail\Events\MessageParsed;
 use App\Mail\Events\MessageSent;
 use App\Mail\Extraction\Intent;
@@ -49,7 +50,7 @@ final class OnMessage
 
     public function subscribe(Dispatcher $events): array
     {
-        return [MessageParsed::class => 'parsed', MessageSent::class => 'sent'];
+        return [MessageParsed::class => 'parsed', MessageSent::class => 'sent', MessageFailed::class => 'failed'];
     }
 
     /** Разбор письма и его следствия — служебная работа: в запросе управляющего с городом без областей (`City::unscoped`). */
@@ -157,6 +158,13 @@ final class OnMessage
         if ($vendor?->letters_to_telegram) {
             NotifyOwner::dispatch(new VendorLetter($message, $vendor, $offer));
         }
+    }
+
+    /** Не ушло — открытая ветка (и окно писем на любой странице) показывает «Не ушло» с «Отправить снова», а не вечное «Отправляется». */
+    public function failed(MessageFailed $e): void
+    {
+        $park = $e->message->account?->scope === Scope::Park;
+        $this->publish->refresh($park ? Topics::PARK : Topics::STAFF, [($park ? '/mail/' : '/work/mail/').$e->message->thread_id]);
     }
 
     public function sent(MessageSent $e): void

@@ -196,6 +196,12 @@ function pending() {
 
 function refresh({ paths, request }) {
     if (paths?.includes(location.pathname)) refreshPage(request);
+    // Окно писем на любой странице (02.11.2026: Андрей отправил письмо страховой, оно ушло через 3 с, а окно так и стояло
+    // «В очереди»): в окне ветка, письма предложения или ТС — узнаём по ссылкам на эту ветку (`/work/mail/{t}/…`), письмо
+    // ушло или не ушло — фрейм перечитывается сам. Открытый редактор ответа не трогаем — набранное не теряется.
+    const frame = document.querySelector('turbo-frame#letters-frame[src]');
+    if (frame && paths?.some((p) => frame.querySelector(`[href^="${p}/"], [action^="${p}/"]`))
+        && !frame.querySelector('form textarea, form trix-editor, form [contenteditable], form[data-dirty]')) frame.reload();
 }
 
 // Правка своей формой: автор свою строку уже получил ответом (потоки карточки) — как refresh, второй раз не тянем.
