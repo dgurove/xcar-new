@@ -19,6 +19,8 @@ use App\Offers\Actions\RemindUnreadClosing;
 use App\Offers\Actions\ReturnClosedToRated;
 use App\Offers\Actions\SendToAuction;
 use App\Offers\Actions\ShowInGallery;
+use App\Offers\Bid;
+use App\Offers\BidState;
 use App\Offers\Offer;
 use App\Offers\OfferState;
 use App\Support\HoldsSingleRun;
@@ -67,10 +69,14 @@ class TickOffers extends Command
         // В кэше — число, не дата: объекты кэш не принимает (`serializable_classes` выключен), Carbon возвращался обломком.
         $now = now();
         $since = Carbon::createFromTimestamp((int) Cache::get('offers:expired-tick', $now->copy()->subMinutes(5)->getTimestamp()), $now->getTimezone());
-        $numbers = Offer::where('state', OfferState::Open)->whereBetween('bids_close_at', [$since, $now])->pluck('number')->filter()->all();
+        $closed = Offer::where('state', OfferState::Open)->whereBetween('bids_close_at', [$since, $now])->get(['id', 'number']);
+        $numbers = $closed->pluck('number')->filter()->all();
         Cache::put('offers:expired-tick', $now->getTimestamp(), now()->addDay());
         if ($numbers) {
             app(Publisher::class)->rows(Topics::STAFF, ['/' => $numbers]);
+            // Подтвердившим машина переходит из «Предложений» в «Сделки → Ждут решения» (02.11.2026).
+            Bid::whereIn('offer_id', $closed->pluck('id'))->where('state', BidState::Active)->distinct()->pluck('user_id')
+                ->each(fn ($id) => app(Publisher::class)->refreshSoon(Topics::user($id), ['/deals', '/offers']));
         }
 
         return count($numbers);

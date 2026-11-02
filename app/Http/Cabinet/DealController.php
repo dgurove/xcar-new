@@ -9,6 +9,7 @@ use App\Live\Stream;
 use App\Logistics\Actions\RequestPickup;
 use App\Logistics\Actions\SelfPickup;
 use App\Media\PhotoIngest;
+use App\Offers\Actions\SetReceiver;
 use App\Offers\Bid;
 use App\Offers\BidState;
 use App\Offers\Deal;
@@ -27,6 +28,7 @@ use App\Workflow\Requirement;
 use App\Workflow\Track;
 use App\Workflow\WaitsFor;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
 class DealController
@@ -66,18 +68,19 @@ class DealController
         $deals = $staff ? $deals->paginate(30) : $deals->get();
         $sections = $staff ? null : self::sections($deals);
 
-        // Админ подтверждения решает в CRM — строки «Мои подтверждения» у него нет.
+        // Админ подтверждения решает в CRM — строки «Мои подтверждения» и «Ждут решения» у него нет.
         $bids = $me->hasDeals() ? self::waiting($me)->count() : 0;
+        $pending = $me->hasDeals() ? self::pending($me)->get()->sortByDesc(fn (Bid $b) => $b->offer->bids_close_at?->getTimestamp())->values() : collect();
         $archived = self::deals($me)->where('state', '!=', DealState::Active)->notSuperseded()->count();
 
-        return view('cabinet.deals.index', ['deals' => $deals, 'sections' => $sections, 'bids' => $bids, 'archived' => $archived, 'sort' => $sort]);
+        return view('cabinet.deals.index', ['deals' => $deals, 'sections' => $sections, 'pending' => $pending, 'bids' => $bids, 'archived' => $archived, 'sort' => $sort]);
     }
 
     /**
      * Разделы «Сделок» менеджера (27.10.2026, владелец: свои дела терялись рыжей строкой среди «Ждём поставщика»): «Ваш ход» —
      * что сделать (`Deal::managerTask`), просроченное и ближний срок первыми; дальше — чей ход сейчас. Пустые не рисуются.
      *
-     * @return array<string, array{title: string, deals: \Illuminate\Support\Collection}>
+     * @return array<string, array{title: string, deals: Collection}>
      */
     private static function sections($deals): array
     {
@@ -140,6 +143,17 @@ class DealController
         return self::bids($me)->where('state', BidState::Active)->where(fn ($w) => $w
             ->whereHas('offer', fn ($o) => $o->where('state', OfferState::Open)->whereDoesntHave('deal'))
             ->orWhereHas('offer.deal', fn ($d) => $d->where(fn ($b) => $b->whereNull('buyer_id')->orWhere('buyer_id', '!=', $me->id))));
+    }
+
+    /**
+     * «Ждут решения» в «Сделках» (02.11.2026, владелец: «из подтверждённых пропало», 33 машины у 14 менеджеров): срок приёма
+     * вышел — машина уходит из «Предложений» (`Offer::onSale`) и у подтвердившего стоит здесь, пока выбор за нами; отдали
+     * другому — тут же тем же видом (резерв, 15.10.2026). Пропадает при отказе, завершённой сделке и архиве — подтверждение
+     * гаснет (`ChangeOfferState::settleDeal`). До срока машина в «Предложениях», а все живые — в «Моих подтверждениях».
+     */
+    public static function pending(User $me)
+    {
+        return self::waiting($me)->whereHas('offer', fn ($o) => $o->where('bids_close_at', '<=', now()));
     }
 
     public function show(Request $request, Deal $deal)
@@ -215,7 +229,7 @@ class DealController
     }
 
     /** Кто заберёт машину с нашей парковки и когда (`SetReceiver`): пропуск новый, парковка видит сразу. */
-    public function receiver(Request $request, Deal $deal, \App\Offers\Actions\SetReceiver $set)
+    public function receiver(Request $request, Deal $deal, SetReceiver $set)
     {
         abort_unless($deal->buyer_id === $request->user()->id, 404);
         $deal = $set($deal, $request->user(), $request->validate(['who' => ['required', 'string', 'max:20'], 'name' => ['nullable', 'string', 'max:160'],

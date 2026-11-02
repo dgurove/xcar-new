@@ -13,6 +13,7 @@ use App\Garage\CarState;
 use App\Http\Admin\MoneyController;
 use App\Http\Admin\OfferController;
 use App\Http\Cabinet\ContractDataController;
+use App\Http\Cabinet\DealController;
 use App\Logistics\Client;
 use App\Logistics\Transport;
 use App\Logistics\TransportState;
@@ -568,7 +569,9 @@ final class Nav
                 // Сделки в работе — то, что стоит строками на экране «Сделки».
                 '/deals' => match (true) {
                     // Только сделки в работе, как в списке (11.10.2026): подтверждения и закончившееся — строками в конце.
-                    $user->hasDeals() => Deal::where('buyer_id', $user->id)->whereNull('garage_payer')->where('state', DealState::Active)->count(),
+                    // Плюс «Ждут решения» (02.11.2026): срок приёма вышел, его подтверждение ждёт выбора — строки того же экрана.
+                    $user->hasDeals() => Deal::where('buyer_id', $user->id)->whereNull('garage_payer')->where('state', DealState::Active)->count()
+                        + DealController::pending($user)->count(),
                     $user->isAdmin() => Deal::whereNull('garage_payer')->where('state', DealState::Active)->count(),
                     default => null,
                 },
