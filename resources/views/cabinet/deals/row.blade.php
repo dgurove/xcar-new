@@ -12,7 +12,8 @@
     $req = $paidUp ? null : $req;
     // Ход менеджера без просьбы (ПРАЙМ без покупателя, гаражная без цены) — что сделать словами, как на странице сделки,
     // а не голое «Ваш ход» серым.
-    $mine = $active && ! $req && ! $paidUp && $position && $position->waitsFor() === \App\Workflow\WaitsFor::Manager && ! $position->awaitsInvoice();
+    // Гаражная — ход только просьбой (`Deal::managerTask`): продажа из гаража без просьбы — не «Укажите цену продажи» рыжим.
+    $mine = $active && ! $req && ! $paidUp && ! $deal->isGarage() && $position && $position->waitsFor() === \App\Workflow\WaitsFor::Manager && ! $position->awaitsInvoice();
     $gap = $mine && $position->stage->isPayStep() && $deal->hasContract() ? $deal->invoiceGap() : null;
     $ask = $mine ? match ($gap) { 'buyer' => 'Укажите покупателя', 'passport' => 'Приложите паспорт покупателя', 'price' => 'Укажите цену продажи', default => $position->stage->managerTitle() } : null;
     $staff = auth()->user()->isAdmin() && $deal->buyer_id !== auth()->id();

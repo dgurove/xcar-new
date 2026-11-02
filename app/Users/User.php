@@ -850,8 +850,11 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
             // Только эти два запроса, а не весь таб-бар: значок считается и на каждый пуш в очереди.
             $asks = Nav::asks($this);
 
-            return $this->unreadChats(platform: false) + ($this->isManager() || $this->isSuperBuyer() ? $asks['deals'] : 0)
-                + ($this->isManager() || ($this->holdsAsBuyer() && $this->canGarage()) ? $asks['garage'] : 0);
+            // «Сделки» считают и гаражные (02.11.2026) — гаражные отдельно прибавляются только тому, у кого «Сделок» нет.
+            $deals = $this->isManager() || $this->isSuperBuyer();
+
+            return $this->unreadChats(platform: false) + ($deals ? $asks['deals'] : 0)
+                + (! $deals && $this->holdsAsBuyer() && $this->canGarage() ? $asks['garage'] : 0);
         }
 
         // Чаты площадки — работа CRM: на значке сайта их нет (08.10.2026).

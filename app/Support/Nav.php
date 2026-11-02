@@ -618,11 +618,12 @@ final class Nav
     public static function asks(User $user): array
     {
         return self::perRequest("nav.asks:{$user->id}", function () use ($user) {
-            // Гаражу — по-прежнему просьбы: строка гаража пишет «ваш ход» только по ним (цену продажи Совкомбанка называет «Продаю»).
+            // Гаражу — по-прежнему просьбы (и вопрос про новую закупочную — `Deal::managerTask` ставит его в «Ваш ход»): строка
+            // гаража пишет «ваш ход» только по ним (цену продажи Совкомбанка называет «Продаю»).
             // Сделки, а не просьбы (27.10.2026: «Укажите покупателя» — ход без просьбы — в число не входил, бейдж 1 при двух делах).
             $asks = Deal::where('buyer_id', $user->id)->where('state', DealState::Active)->whereRaw(Deal::MANAGER_TURN_SQL)
-                ->selectRaw('count(*) filter (where garage_payer is null) as deals, count(*) filter (where garage_payer is not null and exists (select 1 from requirements r
-                    where r.deal_id = deals.id and r.done_at is null)) as garage')->first();
+                ->selectRaw('count(*) filter (where garage_payer is null) as deals, count(*) filter (where garage_payer is not null and (exists (select 1 from requirements r
+                    where r.deal_id = deals.id and r.done_at is null) or exists (select 1 from reprice_asks a where a.deal_id = deals.id and a.state = \'pending\'))) as garage')->first();
             $paid = self::paidPayAsks($user);
 
             // «Сделки» — и гаражные (02.11.2026: они теперь и строками «Сделок», «Ваш ход»); «Гараж» — свои, как было.

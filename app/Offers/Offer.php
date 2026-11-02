@@ -103,6 +103,15 @@ class Offer extends Model
             if ($o->first_look_until && $o->bids_close_at && $o->isDirty('bids_close_at') && ! $o->isDirty('first_look_until')) {
                 $o->first_look_until = $o->bids_close_at;
             }
+            // Ушло из продажи (черновики, аукцион, сделка, архив) — эксклюзива больше нет, и его волна «только ему» гаснет:
+            // опубликуют снова — по правилам вендора, а не тихо одному (ревью 02.11.2026).
+            if ($o->first_look_user_id && $o->isDirty('state') && $o->state !== OfferState::Open) {
+                if ($o->audience_rules && AudienceRules::normalize($o->audience_rules) === AudienceRules::normalize([['type' => 'user', 'id' => $o->first_look_user_id, 'delay' => 0], ['type' => 'rest', 'delay' => null]])) {
+                    $o->audience_rules = null;
+                }
+                $o->first_look_until = null;
+                $o->first_look_user_id = null;
+            }
         });
         // Стоит у менеджера без его сделки (`held_by`, 21.10.2026) — пока машина на месте: уехала (забрали, привезли,
         // выдали с парковки) — метка гаснет.

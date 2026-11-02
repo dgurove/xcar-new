@@ -6,6 +6,7 @@ use App\Cars\Actions\FillCar;
 use App\Cars\Brand;
 use App\Cars\Category;
 use App\Offers\Actions\AskEstimates;
+use App\Offers\Actions\ChangeOfferState;
 use App\Offers\Actions\DeclineEstimate;
 use App\Offers\Actions\FirstLook;
 use App\Offers\Actions\GiveEstimate;
@@ -129,6 +130,20 @@ class HeavyEstimateTest extends TestCase
         $this->assertSame($this->roma->id, $truck->first_look_user_id);
         app(UpdateOffer::class)($truck, ['bids_close_at' => $truck->bids_close_at->copy()->addHour()], $this->admin);
         $this->assertTrue($truck->fresh()->first_look_until->equalTo($truck->fresh()->bids_close_at));
+    }
+
+    public function test_exclusive_ends_when_offer_leaves_sale(): void
+    {
+        $truck = $this->draft('КАМАЗ', '5691/046/00912/26');
+        app(AskEstimates::class)($truck, [$this->roma], $this->admin, exclusive: 5);
+        app(GiveEstimate::class)(Estimate::where('offer_id', $truck->id)->sole(), 1200000, $this->roma);
+        $this->assertNotNull($truck->fresh()->first_look_until);
+
+        app(ChangeOfferState::class)($truck->fresh(), OfferState::Draft, $this->admin);
+        $truck = $truck->fresh();
+        $this->assertNull($truck->first_look_until);
+        $this->assertNull($truck->first_look_user_id);
+        $this->assertNull($truck->audience_rules);
     }
 
     public function test_ask_again_keeps_days_and_exclusive(): void

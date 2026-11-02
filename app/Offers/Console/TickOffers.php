@@ -74,10 +74,12 @@ class TickOffers extends Command
         Cache::put('offers:expired-tick', $now->getTimestamp(), now()->addDay());
         if ($numbers) {
             app(Publisher::class)->rows(Topics::STAFF, ['/' => $numbers]);
-            // Подтвердившим машина переходит из «Предложений» в «Сделки → Ждут решения» (02.11.2026).
-            Bid::whereIn('offer_id', $closed->pluck('id'))->where('state', BidState::Active)->distinct()->pluck('user_id')
-                ->each(fn ($id) => app(Publisher::class)->refreshSoon(Topics::user($id), ['/deals', '/offers']));
         }
+        // Подтвердившим машина переходит из «Предложений» в «Сделки → Ждут решения» (02.11.2026) — и резерву, когда машину уже
+        // отдали другому (продана до срока, `Offer::siteList` держит её у него до срока).
+        $reserve = Offer::where('state', OfferState::Sold)->whereBetween('bids_close_at', [$since, $now])->pluck('id');
+        Bid::whereIn('offer_id', $closed->pluck('id')->merge($reserve))->where('state', BidState::Active)->distinct()->pluck('user_id')
+            ->each(fn ($id) => app(Publisher::class)->refreshSoon(Topics::user($id), ['/deals', '/offers']));
 
         return count($numbers);
     }
