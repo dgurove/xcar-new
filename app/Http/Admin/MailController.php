@@ -583,26 +583,7 @@ class MailController
             }
         } elseif ($vehicle?->accepted_at && $request->query('act') === 'release' && ! $request->old()) {
             // Отчёт о приёме — своей формой (`x-park.report-form`, 12.10.2026: наш акт и 12 фото никто не слал); здесь — выдача.
-            $intake = false;
-            $defaults['files'][] = $outbox->put($act->filename($vehicle, $intake), $act->render($vehicle, $intake));
-            $stage = $intake ? PhotoStage::Intake : PhotoStage::Release;
-            // Сначала снятое на парковке, потом приехавшее из писем: вендору нужны наши кадры, а не его же.
-            // Файлы из писем у выданной стирает фоновая очистка (`PurgeReleasedLetters`) — в письмо их не берём: файл мог
-            // исчезнуть посреди сборки, а вендору и так нужны наши кадры.
-            $doomed = $vehicle->state === VehicleState::Released ? PurgeLetters::media($vehicle)->pluck('id')->all() : [];
-            $shots = $vehicle->photos()->filter(fn ($m) => PhotoStage::of($m) === $stage && ! in_array($m->id, $doomed, true))
-                ->sortBy(fn ($m) => $m->getCustomProperty('source') === 'mail' ? 1 : 0)->values();
-            $pool = ($shots->isNotEmpty() ? $shots : $vehicle->visiblePhotos()->reject(fn ($m) => in_array($m->id, $doomed, true)))
-                ->filter(fn ($m) => is_file($m->getPath()))->values();
-            foreach ($pool->take(12) as $i => $m) {
-                $contents = file_get_contents($m->getPath());
-                // Во вложение уходит ужатый кадр, а `sha` у него от исходника: запоминаем отпечаток отправленного,
-                // иначе это же письмо из «Отправленных» принесёт наши фото обратно вторым экземпляром.
-                if ($m->getCustomProperty('sent_sha') !== ($sha = hash('sha256', $contents))) {
-                    $m->setCustomProperty('sent_sha', $sha)->save();
-                }
-                $defaults['files'][] = $outbox->put(($intake ? 'priem' : 'vydacha').'-'.($i + 1).'.'.pathinfo($m->file_name, PATHINFO_EXTENSION), $contents);
-            }
+            $defaults['files'] = [...($defaults['files'] ?? []), ...$this->actFiles($vehicle, false, $outbox, $act)];
         }
 
         // Письмо поставщику об оплате (шаблон этапа, Альфа): платёжка, что менеджер приложил на шаге оплаты, — во вложении
@@ -640,7 +621,7 @@ class MailController
         return $same ? redirect($from)->with('letters', $uri) : redirect($this->base.'?compose='.urlencode($uri));
     }
 
-    public function reply(Request $request, Thread $thread, Message $message, Composer $composer)
+    public function reply(Request $request, Thread $thread, Message $message, Composer $composer, StoreOutboxFile $outbox, ActPdf $act)
     {
         $this->guard($thread);
         abort_unless($message->thread_id === $thread->id, 404);
@@ -662,11 +643,24 @@ class MailController
             return $this->inWindow($request);
         }
 
+        // Готовые ответы парковки (02.11.2026: управляющий отвечал из «Почты Mail.ru» одними и теми же фразами): пилюли над
+        // письмом, подходящий по смыслу письма — первым; выбранный — текст его словами и, у «Фотоотчёта» и «АПП», акт с кадрами.
+        $vehicle = $thread->vehicle;
+        $templates = $this->scope === Scope::Park && $mode !== 'forward' ? Template::replies($message->intent) : collect();
+        $template = $request->query('template') ? $templates->firstWhere('id', (int) $request->query('template')) : null;
+        if ($template) {
+            // Адресаты, тема и цитата — ответа, как без шаблона; шаблон даёт только текст.
+            $defaults['body'] = $composer->replyWith($message, $sender, $template, $vehicle ? self::vehiclePlaceholders($vehicle) : [])['body'];
+            if ($vehicle && isset(Template::ATTACH[$template->attach]) && ($template->attach === 'intake' ? $vehicle->accepted_at : $vehicle->released_at ?? $vehicle->accepted_at)) {
+                $defaults['files'] = $this->actFiles($vehicle, $template->attach === 'intake', $outbox, $act);
+            }
+        }
+
         return view('admin.mail.compose-frame', ['frame' => $request->header('Turbo-Frame'), 'account' => $sender, 'accounts' => $accounts->contains('id', $sender->id) ? $accounts : collect([$sender]), 'thread' => $thread, 'parent' => $message,
-            'defaults' => $defaults, 'mode' => $mode, 'templates' => collect(), 'offer' => $thread->offer, 'vehicle' => $thread->vehicle, 'base' => $this->base]);
+            'defaults' => $defaults, 'mode' => $mode, 'templates' => $templates, 'offer' => $thread->offer, 'vehicle' => $vehicle, 'base' => $this->base]);
     }
 
-    public function send(Request $request, Composer $composer, MarkDoc $mark, MarkSupplierRequestSent $sentRequest)
+    public function send(Request $request, Composer $composer, MarkDoc $mark, MarkSupplierRequestSent $sentRequest, StoreOutboxFile $outbox, ActPdf $act)
     {
         // Из окна писем форма отвечает во фрейм: ошибки — обратно в редактор (retry), успех — ветка в окне.
         $inWindow = $request->header('Turbo-Frame') === 'letters-frame';
@@ -690,6 +684,10 @@ class MailController
         $parent = ! empty($data['parent']) ? Message::with(['thread', 'attachments', 'account'])->whereIn('account_id', $boxes)->find($data['parent']) : null;
         $thread = ! empty($data['thread']) ? Thread::where('account_id', $account->id)->find($data['thread']) : null;
 
+        // «Из дела» (02.11.2026): отмеченные акты, кадры этапов и документы машины — во вложения.
+        if ($this->scope === Scope::Park && ! empty($data['vehicle']) && ($case = Vehicle::find($data['vehicle']))) {
+            $data['files'] = [...($data['files'] ?? []), ...$this->caseFiles($case, $data, $outbox, $act)];
+        }
         // Файл, которого нет в outbox, письмо не заводит (`Composer::attach`, 29.10.2026: «Письмо пришло без вложения»), а
         // «Отправить», пока файлы грузятся, редактор не пускает (`photos_controller`) — возвращаемся в редактор с ошибкой.
         try {
@@ -1060,6 +1058,67 @@ class MailController
         return $at === false ? rtrim($body)."\n\n".Template::PICKUP_NOTICE : rtrim(mb_substr($body, 0, $at))."\n\n".Template::PICKUP_NOTICE."\n\n".mb_substr($body, $at);
     }
 
+    /**
+     * Акт и до 12 кадров приёма или выдачи во вложения письма о машине: письмо о выдаче (`act=release`) и готовые ответы
+     * парковки с `attach` (02.11.2026, «Фотоотчёт по приёму», «Подписанный АПП»). @return list<string> пути в outbox
+     */
+    private function actFiles(Vehicle $vehicle, bool $intake, StoreOutboxFile $outbox, ActPdf $act): array
+    {
+        $stage = $intake ? PhotoStage::Intake : PhotoStage::Release;
+        // Кадров этапа нет — любые видимые, под именем этапа: по нему письмо отмечает бумагу «фото» отправленной (`send`).
+        $shots = $this->shotFiles($vehicle, $stage, $outbox) ?: $this->shotFiles($vehicle, null, $outbox, $intake ? 'priem' : 'vydacha');
+
+        return [$outbox->put($act->filename($vehicle, $intake), $act->render($vehicle, $intake)), ...$shots];
+    }
+
+    /**
+     * До 12 кадров этапа (`null` — любые видимые) во вложения. Сначала снятое на парковке, потом приехавшее из писем:
+     * вендору нужны наши кадры, а не его же. Файлы из писем у выданной стирает фоновая очистка (`PurgeReleasedLetters`) —
+     * в письмо их не берём: файл мог исчезнуть посреди сборки. @return list<string> пути в outbox
+     */
+    private function shotFiles(Vehicle $vehicle, ?PhotoStage $stage, StoreOutboxFile $outbox, ?string $prefix = null): array
+    {
+        $doomed = $vehicle->state === VehicleState::Released ? PurgeLetters::media($vehicle)->pluck('id')->all() : [];
+        $pool = ($stage ? $vehicle->photos()->filter(fn ($m) => PhotoStage::of($m) === $stage) : $vehicle->visiblePhotos())
+            ->reject(fn ($m) => in_array($m->id, $doomed, true))
+            ->sortBy(fn ($m) => $m->getCustomProperty('source') === 'mail' ? 1 : 0)->filter(fn ($m) => is_file($m->getPath()))->values();
+        $prefix ??= match ($stage) { PhotoStage::Intake => 'priem', PhotoStage::Release => 'vydacha', default => 'foto' };
+        $files = [];
+        foreach ($pool->take(12) as $i => $m) {
+            $contents = file_get_contents($m->getPath());
+            // Во вложение уходит ужатый кадр, а `sha` у него от исходника: запоминаем отпечаток отправленного,
+            // иначе это же письмо из «Отправленных» принесёт наши фото обратно вторым экземпляром.
+            if ($m->getCustomProperty('sent_sha') !== ($sha = hash('sha256', $contents))) {
+                $m->setCustomProperty('sent_sha', $sha)->save();
+            }
+            $files[] = $outbox->put($prefix.'-'.($i + 1).'.'.pathinfo($m->file_name, PATHINFO_EXTENSION), $contents);
+        }
+
+        return $files;
+    }
+
+    /** Отмеченное в «Из дела» (`admin/mail/case-files`): акты, кадры этапов, документы машины. @return list<string> */
+    private function caseFiles(Vehicle $vehicle, array $data, StoreOutboxFile $outbox, ActPdf $act): array
+    {
+        $files = [];
+        foreach (array_unique((array) ($data['case_act'] ?? [])) as $kind) {
+            if ($kind === 'intake' ? $vehicle->accepted_at : $vehicle->released_at) {
+                $files[] = $outbox->put($act->filename($vehicle, $kind === 'intake'), $act->render($vehicle, $kind === 'intake'));
+            }
+        }
+        foreach (array_unique((array) ($data['case_stage'] ?? [])) as $stage) {
+            $files = [...$files, ...$this->shotFiles($vehicle, PhotoStage::from($stage), $outbox)];
+        }
+        $ids = array_map('intval', (array) ($data['case'] ?? []));
+        foreach ($vehicle->papers()->whereIn('id', $ids) as $paper) {
+            if (is_file($paper->getPath())) {
+                $files[] = $outbox->put($paper->file_name, file_get_contents($paper->getPath()));
+            }
+        }
+
+        return $files;
+    }
+
     public static function vehiclePlaceholders(Vehicle $vehicle): array
     {
         $vehicle->loadMissing(['vendor', 'yard', 'inspections']);
@@ -1116,6 +1175,12 @@ class MailController
             'files.*' => ['string'],
             'forward' => ['nullable', 'array'],
             'forward.*' => ['integer'],
+            'case_act' => ['nullable', 'array'],
+            'case_act.*' => ['in:intake,release'],
+            'case_stage' => ['nullable', 'array'],
+            'case_stage.*' => [Rule::enum(PhotoStage::class)],
+            'case' => ['nullable', 'array'],
+            'case.*' => ['integer'],
             'offer' => ['nullable', 'integer'],
             'vehicle' => ['nullable', 'integer'],
             'invoice' => ['nullable', 'integer'],

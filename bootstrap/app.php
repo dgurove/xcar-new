@@ -65,6 +65,7 @@ use App\Park\Console\FillFromDocsCommand;
 use App\Park\Console\FindValuesCommand;
 use App\Park\Console\ReleaseByLettersCommand;
 use App\Park\Console\SpbFactCommand;
+use App\Park\Console\AcceptByLettersCommand;
 use App\Park\Console\StoreByLettersCommand;
 use App\Park\Console\TickPark;
 use App\Push\Console\MakeKeys;
@@ -118,6 +119,7 @@ return Application::configure(basePath: dirname(__DIR__))
         RefillVendors::class,
         TickPark::class,
         StoreByLettersCommand::class,
+        AcceptByLettersCommand::class,
         SpbFactCommand::class,
         AutoRequestsCommand::class,
         ReleaseByLettersCommand::class,

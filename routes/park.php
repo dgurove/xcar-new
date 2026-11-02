@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Admin\ReferenceController;
+use App\Http\Admin\MailTemplateController;
 use App\Http\Admin\UserController;
 use App\Http\Cabinet\InviteController;
 use App\Http\Mail\AttachController;
@@ -174,6 +175,13 @@ Route::domain(config('xcar.park_host'))->middleware(['auth', 'section:park'])->g
         Route::post('/vendors/{vendor}/contacts', [VendorContactController::class, 'store']);
         Route::put('/vendors/{vendor}/contacts/{contact}', [VendorContactController::class, 'update']);
         Route::delete('/vendors/{vendor}/contacts/{contact}', [VendorContactController::class, 'destroy']);
+        // Шаблоны писем парковки — готовые ответы в окне ответа (02.11.2026): правят сами люди парковки.
+        Route::get('/templates', [MailTemplateController::class, 'index']);
+        Route::get('/templates/new', [MailTemplateController::class, 'create']);
+        Route::post('/templates', [MailTemplateController::class, 'store']);
+        Route::get('/templates/{template}', [MailTemplateController::class, 'edit'])->whereNumber('template');
+        Route::put('/templates/{template}', [MailTemplateController::class, 'update'])->whereNumber('template');
+        Route::delete('/templates/{template}', [MailTemplateController::class, 'destroy'])->whereNumber('template');
     });
     // Настройки парковки — администратору парковки: правка парковок, вендоров (условия, ставки, договор, адреса), прайс, люди.
     Route::middleware('ability:isParkAdmin')->group(function () {

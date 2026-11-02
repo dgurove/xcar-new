@@ -286,8 +286,8 @@ final class Nav
                 // Управляющему одной парковки раздела нет — схема его (открытой) парковки прямо отсюда.
                 ! $user->seesYards() && ($yard = Yard::where('is_active', true)->orderBy('id')->value('id')) ? self::link('Схема парковки', "/yards/{$yard}/plan", icon: 'park') : null,
                 self::link('Уведомления', '/account/notifications', icon: 'bell'),
-                // В CRM бывают не все: у сотрудника только стоянки чужой хост — стена.
-                $user->isStaff() ? self::link('Шаблоны', Surface::Crm->url('/settings/templates'), icon: 'link') : null,
+                // Шаблоны писем парковки — свои, на парковке (02.11.2026: управляющий правит готовые ответы сам).
+                $user->canManagePark() ? self::link('Шаблоны', '/templates', icon: 'link') : null,
             ])), 'Переходы' => self::switchers($user, $surface, fn ($label, $url, $icon) => self::link($label, $url, icon: $icon))]);
         }
 

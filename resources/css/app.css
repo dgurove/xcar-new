@@ -4217,6 +4217,8 @@ dialog.lightbox:not(.lb-one) .lb-pill--bottom { bottom: calc(var(--lb-strip-bott
   .compose-quote { @apply mt-2; }
   .compose-files { @apply mt-2 flex flex-wrap gap-2 empty:hidden; }
   .compose-files .file-row, .compose-file { @apply max-w-full gap-2 rounded-(--radius-m) bg-surface-3 py-1 pr-1 pl-2 text-sm; }
+  /* Галка на чипе того же тона не видна: пустой квадрат — цветом листа (пересылка, «Из дела»). */
+  .compose-file input:not(:checked) { @apply bg-surface; }
   .compose-file-failed { @apply flex items-center gap-2 rounded-(--radius-m) bg-danger/10 py-1 pr-1 pl-2 text-sm text-danger; }
   .compose-foot { @apply sticky bottom-0 flex items-center gap-1 rounded-b-(--radius-l) bg-surface-2 px-3 py-2; }
   .compose-foot > .btn { @apply mr-2; }

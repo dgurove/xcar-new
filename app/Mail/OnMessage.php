@@ -22,6 +22,7 @@ use App\Offers\Events\InsurerReplied;
 use App\Offers\InsurerReplies;
 use App\Offers\Offer;
 use App\Offers\OfferEventType;
+use App\Park\Actions\AcceptByLetters;
 use App\Park\Actions\MarkSold;
 use App\Park\Actions\ReleaseByLetters;
 use App\Park\Actions\ReportByLetters;
@@ -108,9 +109,10 @@ final class OnMessage
         if ($vehicle && $message->account->scope === Scope::Park && $message->intent === Intent::Released->value && $message->isOurs()) {
             app(ReleaseByLetters::class)($vehicle);
         }
-        // Наш отчёт о приёме из почтовой программы — шаг «Отчёт вендору» сделан.
+        // Наш отчёт о приёме из почтовой программы: ждущая ТС принята с этого дня, шаг «Отчёт вендору» сделан.
         if ($vehicle && $message->account->scope === Scope::Park && $message->intent === Intent::Accepted->value && $message->isOurs()) {
-            app(ReportByLetters::class)($vehicle);
+            app(AcceptByLetters::class)($vehicle);
+            app(ReportByLetters::class)($vehicle->refresh());
         }
         if ($vehicle && $message->direction === Direction::In) {
             $vehicle->log(EventType::Letter, null, ['from' => $message->from_name ?: $message->from_email, 'subject' => $message->subject, 'thread' => $message->thread_id, 'message' => $message->id, 'intent' => $message->intent]);
@@ -179,9 +181,10 @@ final class OnMessage
         if ($park && $message->thread?->vehicle && $message->intent === Intent::Released->value) {
             app(ReleaseByLetters::class)($message->thread->vehicle);
         }
-        // Наше «принята» не окном шага (ответ в ветке) — отчёт о приёме тоже сделан.
+        // Наше «принята» не окном шага (ответ в ветке): ждущая ТС принята, отчёт о приёме тоже сделан.
         if ($park && $message->thread?->vehicle && $message->intent === Intent::Accepted->value) {
-            app(ReportByLetters::class)($message->thread->vehicle);
+            app(AcceptByLetters::class)($message->thread->vehicle);
+            app(ReportByLetters::class)($message->thread->vehicle->refresh());
         }
         $this->publish->refresh($park ? Topics::PARK : Topics::STAFF, [($park ? '/mail/' : '/work/mail/').$e->message->thread_id]);
     }

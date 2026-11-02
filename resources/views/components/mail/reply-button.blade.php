@@ -10,12 +10,19 @@
     $deal = $deal?->isActive() ? $deal : null;
     $replied = $deal && $message->thread->offer->position(\App\Workflow\Track::Sale)?->letterStatus() === 'replied';
     $said = $deal && ! $message->isOurs() ? trim(\Illuminate\Support\Str::limit(preg_replace('/\s+/u', ' ', (string) $message->ownText()), 60, '…')) : '';
+    // Не доставлено (02.11.2026): отвечать почтовому серверу незачем — письмо пересылают на верный адрес.
+    $bounce = $message->intent === \App\Mail\Extraction\Intent::Bounce->value;
+    $editor = $base.'/'.$message->thread_id.'/reply/'.$message->id.($bounce ? '?mode=forward' : '');
 @endphp
 {{-- open — редактор грузится сразу (кнопка «Ответить» в деле ТС), кнопка внизу остаётся на время загрузки. --}}
-<turbo-frame id="{{ $frame }}" class="{{ $frame === 'reply' ? 'block' : 'contents' }}" @if ($open) src="{{ $base }}/{{ $message->thread_id }}/reply/{{ $message->id }}" @endif>
+<turbo-frame id="{{ $frame }}" class="{{ $frame === 'reply' ? 'block' : 'contents' }}" @if ($open) src="{{ $editor }}" @endif>
     @if ($frame === 'reply')
         <div class="flex flex-wrap items-center gap-2">
-            <a href="{{ $base }}/{{ $message->thread_id }}/reply/{{ $message->id }}" class="btn btn-quiet"><x-ui.icon name="reply" class="size-5"/>Ответить{{ $who ? ' '.\Illuminate\Support\Str::limit($who, 32, '…') : '' }}</a>
+            @if ($bounce)
+                <a href="{{ $editor }}" class="btn btn-quiet"><x-ui.icon name="mail" class="size-5"/>Переслать</a>
+            @else
+                <a href="{{ $editor }}" class="btn btn-quiet"><x-ui.icon name="reply" class="size-5"/>Ответить{{ $who ? ' '.\Illuminate\Support\Str::limit($who, 32, '…') : '' }}</a>
+            @endif
             {{-- Ветка ждёт ответа, а вопрос решили иначе — снять «Требуют внимания», не архивируя письмо. --}}
             @if (($message->thread?->needs_reply_at || $replied) && \App\Mail\Threads::canAnswer(auth()->user()))
                 <form method="post" action="{{ $base }}/{{ $message->thread_id }}/answered" data-turbo-frame="_top" class="contents">@csrf<button class="btn btn-quiet">Ответ не нужен</button></form>
@@ -31,6 +38,6 @@
             @endif
         </div>
     @else
-        <a href="{{ $base }}/{{ $message->thread_id }}/reply/{{ $message->id }}" class="letter-link">Ответить на это</a>
+        <a href="{{ $editor }}" class="letter-link">{{ $bounce ? 'Переслать' : 'Ответить на это' }}</a>
     @endif
 </turbo-frame>

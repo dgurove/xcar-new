@@ -9,6 +9,7 @@
     $words = fn ($m) => match ($m->intent) {
         Intent::Inspect->value => 'Запросили осмотр',
         Intent::Docs->value => 'Запросили документы',
+        Intent::Bounce->value => 'Письмо не доставлено',
         default => 'Ждут ответа',
     };
     $steps = array_values(array_intersect(['buyer', 'yard'], $tasks ?? []));
@@ -29,7 +30,8 @@
                         <x-park.act-button :vehicle="$vehicle" :step="'report?parent='.$m->id" label="Дослать фото и документы" class="btn-s min-w-0 flex-1"/>
                         <x-mail.window-button :url="$href.'/letters?at='.$m->id.'&reply=1'" label="Текстом" icon="reply" class="btn-s btn-quiet"/>
                     @else
-                        <x-mail.window-button :url="$href.'/letters?at='.$m->id.'&reply=1'" label="Ответить" icon="reply" class="btn-s btn-accent min-w-0 flex-1"/>
+                        {{-- Не доставлено — переслать на верный адрес (редактор окна сам откроется пересылкой, `x-mail.reply-button`). --}}
+                        <x-mail.window-button :url="$href.'/letters?at='.$m->id.'&reply=1'" :label="$m->intent === Intent::Bounce->value ? 'Переслать' : 'Ответить'" :icon="$m->intent === Intent::Bounce->value ? 'mail' : 'reply'" class="btn-s btn-accent min-w-0 flex-1"/>
                     @endif
                     @if (auth()->user()->canManagePark())
                         <form method="post" action="{{ $href }}/letters/{{ $m->id }}/done" class="flex">@csrf<button class="btn btn-s btn-quiet">Ответ не нужен</button></form>

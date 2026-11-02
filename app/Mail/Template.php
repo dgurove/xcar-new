@@ -7,9 +7,10 @@ use App\Workflow\Stage;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Collection;
 
 /** Заготовка письма: тема и тело с подстановками {{ number }}, {{ car }}, {{ claim_ref }}, {{ floor }}, {{ price }}, {{ manager }}, {{ insurer }}. */
-#[Fillable(['name', 'scope', 'subject', 'body'])]
+#[Fillable(['name', 'scope', 'subject', 'body', 'intent', 'attach'])]
 class Template extends Model
 {
     use FastAttributes;
@@ -45,6 +46,23 @@ class Template extends Model
         'registry' => ['Счёт за хранение по реестру', 'Счёт за хранение за {{ month }}: {{ count }} ТС',
             "Добрый день.\n\nНаправляем счёт {{ invoice }} на {{ sum }} и акт оказанных услуг хранения за {{ month }} с реестром транспортных средств ({{ count }} ТС).\n\nС уважением."],
     ];
+
+    /** Что шаблон ответа парковки прикладывает сам: акт и кадры приёма или выдачи (`MailController::actFiles`). */
+    public const ATTACH = ['intake' => 'Акт и фото приёма', 'release' => 'Акт и фото выдачи'];
+
+    /**
+     * Готовые ответы парковки в окне ответа (02.11.2026): все её шаблоны, кроме писем шагов (`PARK` — приём, выдача, счёт
+     * и прочие заводят свои окна), подходящий по смыслу письма — первым. Свои Сергей заводит в «Шаблонах» парковки.
+     *
+     * @return Collection<int, self>
+     */
+    public static function replies(?string $intent): Collection
+    {
+        $steps = array_column(self::PARK, 0);
+
+        return self::where('scope', Scope::Park)->whereNotIn('name', [...$steps, 'Приём на стоянку', 'Выдача со стоянки'])->orderBy('id')->get()
+            ->sortBy(fn (self $t) => $intent && $t->intent === $intent ? 0 : 1)->values();
+    }
 
     public static function park(string $key): self
     {
@@ -96,7 +114,7 @@ class Template extends Model
     }
 
     /** Коды машины с подписью перед ними в тексте шаблона: пустой код уходит вместе с подписью. */
-    private const LABELS = ['vin' => 'VIN', 'plate' => 'гос\.? ?номер', 'sts' => 'СТС', 'pts' => 'ПТС', 'claim_ref' => '№ убытка'];
+    private const LABELS = ['vin' => 'VIN', 'plate' => 'гос\.? ?номер', 'sts' => 'СТС', 'pts' => 'ПТС', 'claim_ref' => '№ убытка', 'address' => 'по адресу'];
 
     /**
      * Пустой код уходит со своей подписью (17.10.2026, прогон): «…Ford Kuga, VIN (ПРОГОН-Т-2) за…» — у машины без VIN

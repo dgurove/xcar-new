@@ -11,7 +11,8 @@
     @include('park.vehicles.steps.'.$partial, ['req' => $step->request, 'step' => $step])
     {{-- Висящие дела позади текущего шага (отчёт вендору не отправлен) — строками под ним, кнопкой справа. --}}
     @foreach ($steps as $todo)
-        @continue($todo === $step || $todo->state !== \App\Park\Step::TODO || ! $todo->plate || ! in_array($todo->plate['kind'], ['window', 'act'], true))
+        {{-- Письмо без ответа уже стоит плашкой «Ждут ответа» над шагом (`park/vehicles/now`) — второй «Ответить» не нужен. --}}
+        @continue($todo === $step || $todo->key === 'reply' || $todo->state !== \App\Park\Step::TODO || ! $todo->plate || ! in_array($todo->plate['kind'], ['window', 'act'], true))
         <div class="mt-2 flex items-center gap-3 border-t border-line/40 pt-2">
             <span class="min-w-0 flex-1 text-sm">{{ $todo->title }}</span>
             @if ($todo->plate['kind'] === 'window')<x-mail.window-button :url="$todo->plate['url']" :label="$todo->plate['label']" icon="mail" class="btn-s shrink-0"/>

@@ -3,6 +3,7 @@
 namespace App\Park\Console;
 
 use App\Mail\Scan\AutoScan;
+use App\Park\Actions\AcceptByLetters;
 use App\Park\Actions\AutoRequest;
 use App\Park\Actions\AutoSale;
 use App\Park\Actions\ReleaseByLetters;
@@ -28,7 +29,7 @@ class TickPark extends Command
 
     protected $description = 'Сроки заявок парковки и простой ТС';
 
-    public function handle(StoreByLetters $store, ReleaseByLetters $release, ReportByLetters $report, AutoRequest $auto, AutoSale $sale, ReportDelivery $delivery): int
+    public function handle(AcceptByLetters $accept, StoreByLetters $store, ReleaseByLetters $release, ReportByLetters $report, AutoRequest $auto, AutoSale $sale, ReportDelivery $delivery): int
     {
         $now = now();
         $threshold = Idle::warn();
@@ -41,13 +42,15 @@ class TickPark extends Command
             VehicleIdle::dispatch($v, (int) $v->accepted_at->diffInDays($now));
         }
         $stored = $store->all();
+        // Сначала приём по нашим письмам, потом отчёт о приёме: `ReportByLetters` смотрит только принятые.
+        $accepted = $accept->all();
         $released = $release->all();
         $reported = $report->all();
         $requested = $auto->catchUp();
         $swept = AutoScan::sweep();
         $sold = $sale->sweep();
         $settled = $delivery->settle();
-        $this->info("стоят долго {$idle->count()}, заведено по письмам {$stored}, выдано по письмам {$released}, отчётов о приёме по письмам {$reported}, заявок из писем {$requested}, дочитываем {$swept}, в продажу {$sold}, застрявших отчётов {$settled}");
+        $this->info("стоят долго {$idle->count()}, заведено по письмам {$stored}, принято по письмам {$accepted}, выдано по письмам {$released}, отчётов о приёме по письмам {$reported}, заявок из писем {$requested}, дочитываем {$swept}, в продажу {$sold}, застрявших отчётов {$settled}");
 
         return self::SUCCESS;
     }
