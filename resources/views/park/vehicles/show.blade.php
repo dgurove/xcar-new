@@ -59,6 +59,8 @@
         </div>
         <x-ui.docs-pill :docs="$docs" class="!min-h-0 shrink-0 !py-1 text-xs"/>
         {{-- «···» — отмены, перевод, логистика: всё управляющему; приёмщику пустой шторки не показываем. --}}
+        {{-- «Поделиться» — админам и администраторам парковки (02.11.2026, владелец: «почему шеринга нет?»). --}}
+        @if (auth()->user()->sharesPark() && $vehicle->photos()->isNotEmpty())<x-ui.share :subject="\App\Offers\Share\Subject::vehicle($vehicle)" icon/>@endif
         @if ($canManage)<button type="button" class="btn btn-s btn-quiet btn-round shrink-0" data-controller="emit" data-action="emit#send" data-emit-event-param="actions:open" aria-label="Действия"><x-ui.icon name="more" class="size-5"/></button>@endif
     </div>
     @if ($errors->any())<p class="field-error -mt-3 mb-4">{{ $errors->first() }}</p>@endif

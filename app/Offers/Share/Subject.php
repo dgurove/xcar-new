@@ -5,6 +5,7 @@ namespace App\Offers\Share;
 use App\Offers\Offer;
 use App\Offers\OfferNumber;
 use App\Park\PhotoStage;
+use App\Park\Vehicle;
 use App\Purchases\Car;
 use App\Support\Surface;
 use App\Users\User;
@@ -21,7 +22,7 @@ final class Subject
     public const LOCKED = 'Недоступно, пока администратор не согласует цену менеджера';
 
     private function __construct(
-        public readonly Offer|Car $model,
+        public readonly Offer|Car|Vehicle $model,
         public readonly string $label,
         public readonly ?CarbonInterface $date,
         public readonly string $title,
@@ -47,15 +48,32 @@ final class Subject
         return new self($car, $car->shownNumber(), $car->purchase->offers_close_at, $car->titleWithYear(), "/purchases/{$car->purchase->number}/{$car->ref}/pdf");
     }
 
+    /**
+     * ТС парковки — только админам и администраторам парковки (02.11.2026, владелец): страховая просит фото машины, а
+     * отдать было нечем. Метка на знаке — номер убытка, иначе госномер; дата — приём.
+     */
+    public static function vehicle(Vehicle $vehicle): self
+    {
+        return new self($vehicle, (string) ($vehicle->ref ?: $vehicle->plate ?: 'ТС'), $vehicle->accepted_at ?? $vehicle->created_at, $vehicle->titleWithYear(), "/cars/{$vehicle->id}/pdf");
+    }
+
     public function fields(?User $user): array
     {
-        return $this->model instanceof Offer ? Caption::fields($this->model, $user) : Caption::car($this->model, $user);
+        return match (true) {
+            $this->model instanceof Offer => Caption::fields($this->model, $user),
+            $this->model instanceof Vehicle => Caption::vehicle($this->model),
+            default => Caption::car($this->model, $user),
+        };
     }
 
     /** Шеринг запрещён тумблером в редакторе оффера или машины закупки, у оффера ещё — этому человеку, пока он оценивает. */
     public function locked(?User $user): bool
     {
-        return $this->model instanceof Offer ? $this->model->shareLockedFor($user) : (bool) $this->model->share_locked;
+        return match (true) {
+            $this->model instanceof Offer => $this->model->shareLockedFor($user),
+            $this->model instanceof Vehicle => false,
+            default => (bool) $this->model->share_locked,
+        };
     }
 
     public function vatMark(): string
@@ -97,7 +115,7 @@ final class Subject
     public function photoGroups(): array
     {
         $photos = $this->photos();
-        if (! $this->model instanceof Offer) {
+        if ($this->model instanceof Car) {
             return [['label' => null, 'folder' => null, 'photos' => $photos]];
         }
         $groups = $photos->groupBy(fn (Media $m) => PhotoStage::of($m)->value);

@@ -22,6 +22,7 @@ use App\Http\Park\VendorController;
 use App\Http\Park\YardController;
 use App\Http\SearchController;
 use App\Http\Site\LandingController;
+use App\Http\Site\ShareController;
 use Illuminate\Support\Facades\Route;
 
 // Первый экран для страховых и лизинга; вошедшего и установленное приложение уводит в заявки.
@@ -57,6 +58,12 @@ Route::domain(config('xcar.park_host'))->middleware(['auth', 'section:park'])->g
     Route::get('/cars/export', [VehicleController::class, 'export'])->middleware('ability:parkMoney');
     Route::get('/cars/{vehicle}', [VehicleController::class, 'show']);
     Route::get('/cars/{vehicle}/letters', [VehicleController::class, 'letters']);
+    // «Поделиться» ТС — админам и администраторам парковки (02.11.2026, `User::sharesPark`).
+    Route::match(['get', 'post'], '/cars/{vehicle}/pdf', [ShareController::class, 'vehiclePdf']);
+    Route::get('/cars/{vehicle}/photo/{media}', [ShareController::class, 'vehiclePhoto'])->whereNumber('media');
+    Route::post('/cars/{vehicle}/photos/warm', [ShareController::class, 'vehicleWarm'])->middleware('throttle:240,1');
+    Route::post('/cars/{vehicle}/zip', [ShareController::class, 'vehicleZip']);
+    Route::post('/share/error', [ShareController::class, 'report'])->middleware('throttle:30,1');
     // Кадры письма прикрепляются: строка хода и ряд «От страховой», пока ImportThreadFiles идёт (attach_controller).
     Route::get('/cars/{vehicle}/attach', [AttachController::class, 'vehicle']);
     Route::put('/cars/{vehicle}', [VehicleController::class, 'update'])->middleware('park.manage');

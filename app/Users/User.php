@@ -552,6 +552,12 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
      * Администратор парковки — своя роль (владелец 08.10.2026): админ CRM без неё на парковку не входит, а с ней —
      * настройки парковки и её люди. У Дмитрия и Андрея она есть, у Екатерины — нет.
      */
+    /** «Поделиться» ТС парковки (PDF, фото, архив) — админам и администраторам парковки (02.11.2026, владелец). */
+    public function sharesPark(): bool
+    {
+        return $this->isAdmin() || $this->isParkAdmin();
+    }
+
     public function isParkAdmin(): bool
     {
         return $this->hasRole(Role::ParkAdmin);

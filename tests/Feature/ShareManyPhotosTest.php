@@ -5,7 +5,11 @@ namespace Tests\Feature;
 use App\Offers\Offer;
 use App\Offers\OfferState;
 use App\Offers\Share\Subject;
+use App\Park\City;
 use App\Park\PhotoStage;
+use App\Park\Vehicle;
+use App\Park\VehicleState;
+use App\Park\Yard;
 use App\Users\Role;
 use App\Users\User;
 use App\Vendors\Vendor;
@@ -53,5 +57,30 @@ class ShareManyPhotosTest extends TestCase
         $this->assertSame(35, $archive->numFiles);
         $this->assertStringStartsWith('Фото от страховой/', $archive->getNameIndex(0));
         $this->assertStringStartsWith('Фото при приёме/', $archive->getNameIndex(34));
+    }
+
+    public function test_park_vehicle_share_for_admins_only(): void
+    {
+        config(['xcar.mercure.hub' => '']);
+        Storage::fake('public');
+        Storage::fake('cache');
+        $city = City::main();
+        $yard = Yard::create(['name' => 'Краснопутиловская', 'is_active' => true, 'settlement_id' => $city]);
+        $vehicle = Vehicle::create(['vendor_id' => Vendor::create(['name' => 'Альфа СПб'])->id, 'yard_id' => $yard->id, 'state' => VehicleState::Stored, 'accepted_at' => now()]);
+        foreach (range(1, 12) as $i) {
+            $vehicle->addMedia(UploadedFile::fake()->image("v{$i}.jpg", 200, 150))
+                ->withCustomProperties(['stage' => $i <= 4 ? PhotoStage::Vendor->value : PhotoStage::Intake->value])->toMediaCollection('photos');
+        }
+        $ids = $vehicle->fresh()->photos()->pluck('id')->all();
+        $parkAdmin = User::create(['name' => 'Админ парковки', 'phone' => '79000000061', 'roles' => [Role::ParkAdmin], 'approved_at' => now()]);
+        $parking = User::create(['name' => 'Управляющий', 'phone' => '79000000062', 'roles' => [Role::Parking], 'park_city_id' => $city, 'approved_at' => now()]);
+        $url = fn (string $path) => 'http://park.xcar.localhost/cars/'.$vehicle->id.$path;
+
+        $this->assertSame(['Фото от страховой', 'Фото при приёме'], array_column(Subject::vehicle($vehicle->fresh())->photoGroups(), 'label'));
+        $this->actingAs($parkAdmin)->get($url(''))->assertOk()->assertSee('data-share-zip-url-value', false);
+        $this->actingAs($parkAdmin)->post($url('/pdf'), ['photos' => $ids, 'watermark' => '0'])->assertOk()->assertHeader('Content-Type', 'application/pdf');
+        $this->actingAs($parkAdmin)->post($url('/zip'), ['photos' => $ids, 'watermark' => '0'])->assertOk()->assertHeader('Content-Type', 'application/zip');
+        $this->actingAs($parking)->post($url('/pdf'), ['photos' => $ids])->assertNotFound();
+        $this->actingAs($parking)->get($url(''))->assertOk()->assertDontSee('data-share-zip-url-value', false);
     }
 }

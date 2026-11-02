@@ -5,6 +5,7 @@ namespace App\Offers\Share;
 use App\Offers\Offer;
 use App\Offers\OfferNumber;
 use App\Offers\PriceView;
+use App\Park\Vehicle;
 use App\Purchases\Car;
 use App\Support\Money;
 use App\Support\Surface;
@@ -86,6 +87,22 @@ final class Caption
         ];
 
         return self::rows($rows);
+    }
+
+    /**
+     * ТС парковки (02.11.2026, владелец: «на парковке почему шеринга нет? — только админам»): номер убытка, машина, VIN,
+     * госномер, где стоит; вендор — по желанию. Цен и ссылки нет — машина не в продаже.
+     */
+    public static function vehicle(Vehicle $vehicle): array
+    {
+        return self::rows([
+            ['ref', 'Номер убытка', $vehicle->ref ?: null, true],
+            ['model', 'Марка, модель, год', $vehicle->titleWithYear(), true],
+            ['vin', 'VIN', $vehicle->vin ?: null, true],
+            ['plate', 'Госномер', $vehicle->plate ?: null, true],
+            ['yard', 'Парковка', $vehicle->yard?->name, false],
+            ['vendor', 'Вендор', $vehicle->vendor?->name, false],
+        ]);
     }
 
     /**

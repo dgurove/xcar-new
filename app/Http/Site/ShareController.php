@@ -5,6 +5,7 @@ namespace App\Http\Site;
 use App\Offers\Offer;
 use App\Offers\Share\SharePdf;
 use App\Offers\Share\Subject;
+use App\Park\Vehicle;
 use App\Purchases\Car;
 use App\Purchases\Purchase;
 use App\Purchases\Restriction;
@@ -25,6 +26,35 @@ class ShareController
 
     /** Кадров за один заход `warm`: 10 ужатий из оригинала — несколько секунд, запрос живёт до 60. */
     private const WARM_BATCH = 10;
+
+    /** ТС парковки: PDF, кадр, кадры заранее и архив — только админам и администраторам парковки (02.11.2026). */
+    public function vehiclePdf(Request $request, Vehicle $vehicle, SharePdf $pdf)
+    {
+        abort_unless($request->user()->sharesPark(), 404);
+
+        return $this->respond($request, Subject::vehicle($vehicle), $pdf);
+    }
+
+    public function vehiclePhoto(Request $request, Vehicle $vehicle, int $media, SharePdf $pdf)
+    {
+        abort_unless($request->user()->sharesPark(), 404);
+
+        return $this->respondPhoto($request, Subject::vehicle($vehicle), $media, $pdf);
+    }
+
+    public function vehicleWarm(Request $request, Vehicle $vehicle, SharePdf $pdf)
+    {
+        abort_unless($request->user()->sharesPark(), 404);
+
+        return $this->warmUp($request, Subject::vehicle($vehicle), $pdf);
+    }
+
+    public function vehicleZip(Request $request, Vehicle $vehicle, SharePdf $pdf)
+    {
+        abort_unless($request->user()->sharesPark(), 404);
+
+        return $this->respondZip($request, Subject::vehicle($vehicle), $pdf);
+    }
 
     public function warm(Request $request, Offer $offer, SharePdf $pdf)
     {
