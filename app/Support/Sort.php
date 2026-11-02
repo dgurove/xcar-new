@@ -83,7 +83,7 @@ final class Sort
     public static function url(string $value, string $param = 'sort', ?string $action = null): string
     {
         $action ??= '/'.ltrim(request()->path(), '/');
-        $query = array_merge(request()->query(), [$param => $value, 'page' => null, Portion::PART => null, Portion::ROWS => null]);
+        $query = array_merge(request()->query(), [$param => $value, 'page' => null, Portion::ROWS => null]);
 
         return $action.'?'.str_replace('%2C', ',', http_build_query(array_filter($query, fn ($v) => $v !== null && $v !== '')));
     }

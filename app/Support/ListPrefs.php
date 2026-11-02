@@ -19,7 +19,7 @@ final class ListPrefs
 {
     private const KEYS = ['sort', ListView::PARAM, ListView::PER];
 
-    /** `?reset=1` — чипы списка как по умолчанию (`resetUrl`). */
+    /** `?reset=1` — чипы списка как по умолчанию (`Facets::resetUrl`). */
     public const RESET = 'reset';
 
     /**

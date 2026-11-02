@@ -365,30 +365,21 @@ final class Facets
     public function url(array $set): string
     {
         // Карточка строки (?peek=) после смены фильтра не открывается заново: открытая строка могла из списка уйти.
-        $query = array_merge($this->request->query(), $set, ['page' => null, 'peek' => null, Portion::PART => null, Portion::ROWS => null]);
+        $query = array_merge($this->request->query(), $set, ['page' => null, 'peek' => null, Portion::ROWS => null, ListPrefs::RESET => null]);
         $query = array_filter($query, fn ($v) => $v !== null && (is_string($v) || is_int($v)));
 
         return $this->action().($query ? '?'.str_replace('%2C', ',', http_build_query($query)) : '');
     }
 
-    /** Ссылка «Сбросить»: все выбранные чипы — пустыми; $also — что снять с ними заодно (пилюля, поиск). */
+    /**
+     * «Сбросить» — чипы как по умолчанию (02.11.2026, владелец: «сбрасывать до тех, которые по умолчанию»; до того
+     * «Сбросить» снимал всё, и умолчание экрана — «Кроме Каркаде» — тоже): адрес без чипов с `ListPrefs::RESET`, память
+     * чипов стирает `ListPrefs::sync`. $also — что снять заодно (пилюля, поиск).
+     */
     public function resetUrl(array $also = []): string
     {
-        $set = [];
-        foreach ($this->keys() as $k) {
-            if ($this->on($k) !== $this->facets[$k]->byDefault) {
-                // Включённый по умолчанию возвращается без параметра, остальные — пустыми («забыть» для ListPrefs).
-                $set[$k] = $this->facets[$k]->byDefault ? null : '';
-            }
-        }
-
-        return $this->url($set + $also);
-    }
-
-    /** «Как по умолчанию» (`ListPrefs::RESET`): без всех чипов, память чипов стирает `ListPrefs::sync`. */
-    public function defaultsUrl(): string
-    {
-        $query = array_diff_key($this->request->query(), array_flip([...$this->keys(), 'page', 'peek', Portion::PART, Portion::ROWS]));
+        $query = array_diff_key($this->request->query(), array_flip([...$this->keys(), 'page', 'peek', Portion::ROWS]));
+        $query = array_filter([...$query, ...$also], fn ($v) => $v !== null && (is_string($v) || is_int($v)));
 
         return $this->action().'?'.str_replace('%2C', ',', http_build_query([...$query, ListPrefs::RESET => '1']));
     }

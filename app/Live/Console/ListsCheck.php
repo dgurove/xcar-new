@@ -3,6 +3,7 @@
 namespace App\Live\Console;
 
 use App\Purchases\Purchase;
+use App\Support\Portion;
 use App\Support\Surface;
 use App\Users\Role;
 use App\Users\User;
@@ -16,7 +17,8 @@ use Illuminate\Http\Request;
 /**
  * Сторож списков (27.10.2026, владелец: «строки превращаются в другие»): каждый список из реестра рисуется как страница и
  * как ответ живого перечитывания (`X-Live-Rows`) и сверяется — у строки столько ячеек, сколько столбцов в шапке, заголовок
- * группы на всю ширину, и строка ответа та же и под той же группой, что на странице. Только GET: можно гонять на проде.
+ * группы на всю ширину, и строка ответа та же и под той же группой, что на странице. У таблицы порциями — ещё хвост
+ * (`portion`). Только GET: можно гонять на проде.
  */
 final class ListsCheck extends Command
 {
@@ -107,6 +109,7 @@ final class ListsCheck extends Command
                     }
                 }
             }
+            $problems = [...$problems, ...$this->portion($kernel, $surface, $path, $user, $rows, $page)];
             $checked++;
             $label = "{$surface->value} {$path} — {$user?->name}, строк ".count($rows);
             if ($problems) {
@@ -125,6 +128,39 @@ final class ListsCheck extends Command
         $this->line("Списков: {$checked}, с ошибками: {$failures}");
 
         return $failures ? self::FAILURE : self::SUCCESS;
+    }
+
+    /**
+     * Хвост таблицы порциями (`Portion`, 02.11.2026: у Андрея все вкладки «Предложений» были пустыми). Ответ хвоста собран по
+     * адресу с `part=2`, и любая ссылка строки, собранная копией адреса, несёт его дальше: нажал строку второй сотни —
+     * `part` в адресе, вкладки и чипы копируют его, на каждой вкладке вторая сотня. В ответе хвоста `part` — только у
+     * следующего хвоста; страница с лишним `part` без `X-List` — та же первая сотня. @return list<string>
+     */
+    private function portion(Kernel $kernel, Surface $surface, string $path, ?User $user, array $rows, DOMXPath $page): array
+    {
+        $next = $page->query('//*[@data-endless-next][contains(@data-endless-next, "'.Portion::PART.'=")]')->item(0);
+        if (! $next instanceof DOMElement) {
+            return [];
+        }
+        $problems = [];
+        $tail = $this->fetch($kernel, $surface, $next->getAttribute('data-endless-next'), $user, ['X-List' => '1']);
+        if (! $tail) {
+            return ['хвост '.$next->getAttribute('data-endless-next').' не открылся'];
+        }
+        if (! $this->rows($tail)) {
+            $problems[] = 'в ответе хвоста нет строк';
+        }
+        foreach ($tail->query('//@*[contains(., "'.Portion::PART.'=")]') as $attr) {
+            if ($attr->nodeName !== 'data-endless-next') {
+                $problems[] = "в ответе хвоста {$attr->nodeName}=\"{$attr->nodeValue}\" несёт ".Portion::PART;
+            }
+        }
+        $stray = $this->fetch($kernel, $surface, $path.(str_contains($path, '?') ? '&' : '?').Portion::PART.'=2', $user);
+        if (! $stray || array_keys($this->rows($stray)) !== array_keys($rows)) {
+            $problems[] = 'страница с лишним '.Portion::PART.'=2 рисует не первую сотню';
+        }
+
+        return $problems;
     }
 
     private function fetch(Kernel $kernel, Surface $surface, string $path, ?User $user, array $headers = []): ?DOMXPath

@@ -1031,7 +1031,7 @@ html.kb-open { --home-gap: 0px; }
   .title-row { @apply mb-4 flex flex-wrap items-start gap-x-3 gap-y-2; }
   .tab-title { flex: 1 1 10rem; }
   .title-actions { @apply ml-auto flex shrink-0 items-center gap-1.5; }
-  .pill.title-filter { @apply shrink-0 self-center gap-1; height: 2rem; padding-inline: .625rem; }
+  .title-actions .title-filter { @apply gap-1; height: 2rem; padding-inline: .625rem; }
   .title-actions .btn-s { height: 2rem; padding-inline: .75rem; }
   .title-actions .btn-round { width: 2rem; height: 2rem; }
   /* Заголовок — одно название, без числа и стрелки (владелец: «криво, смещает всё»): число вкладки — в списке. */

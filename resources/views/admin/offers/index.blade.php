@@ -38,13 +38,14 @@
          в той же строке, сортировка, вид и лупа — в строке чипов. --}}
     <div class="title-row">
         <x-ui.tab-title :pills="$presets" :pill="$preset" pill-param="preset" pill-home="" :counts="$counts" :badges="['estimating' => 'estimating_given', 'priced' => 'priced_given']" :bumps="['legacy' => 'legacy_drafts']" fallback="Предложения" id="offers-tabs"/>
-        {{-- Фильтр стоит — видно у названия, а не только в ряду чипов: на телефоне выбранный чип бывает за краем ленты
-             (02.11.2026, владелец: «если дело в фильтре, рисовать значок фильтра, если он применён», «кнопку „Сбросить“
-             до тех, которые по умолчанию»). Нажатие — чипы как по умолчанию, «Кроме Каркаде» снова встаёт. --}}
-        @if (! $searching && $facets->active())
-            <a href="{{ $facets->defaultsUrl() }}" class="pill title-filter" aria-current="true" aria-label="Сбросить фильтры" title="Сбросить фильтры" data-turbo-action="replace" data-turbo-prefetch="false"><x-ui.icon name="filter" class="size-4"/><x-ui.icon name="x" class="size-3.5"/></a>
-        @endif
         <div class="title-actions">
+            {{-- Фильтр стоит — видно в строке названия, а не только в ряду чипов: на телефоне выбранный чип бывает за краем ленты
+                 (02.11.2026, владелец: «если дело в фильтре, рисовать значок фильтра, если он применён», «кнопку „Сбросить“
+                 до тех, которые по умолчанию»). Нажатие — чипы как по умолчанию, «Кроме Каркаде» снова встаёт; «Сбросить» в ряду
+                 чипов здесь нет — одна кнопка, а не две («в чём разница, зачем две кнопки»). --}}
+            @if (! $searching && $facets->active())
+                <a href="{{ $facets->resetUrl() }}" class="pill title-filter" aria-current="true" aria-label="Сбросить фильтры" title="Сбросить фильтры" data-turbo-action="replace" data-turbo-prefetch="false"><x-ui.icon name="filter" class="size-4"/><x-ui.icon name="x" class="size-3.5"/></a>
+            @endif
             @if ($preset === 'legacy' && ! $searching)<x-offer.legacy-sheet/>@endif
             {{-- «Оценить» — только в «Без закупочной»: круглой «₽» с меню (22.10.2026, владелец: в «Без продажной» кнопка не нужна
                  — строка сама «Оценить», а кнопки должны влезть в строку заголовка). Из текста — сообщение или фото с номерами
@@ -64,7 +65,7 @@
             <form method="post" action="/offers" class="shrink-0">@csrf<button type="submit" class="btn btn-s btn-accent rounded-full"><x-ui.icon name="plus" class="size-4"/><span class="hidden sm:inline">Новый</span></button></form>
         </div>
     </div>
-    <x-ui.toolbar :sort="$sort" name="offers" :facets="$facets" search="Номер, марка, VIN, убыток">
+    <x-ui.toolbar :sort="$sort" name="offers" :facets="$facets" :facets-reset="false" search="Номер, марка, VIN, убыток">
         <x-slot:extra>@unless ($searching || $preset === 'legacy')<x-ui.view-switch :current="$view" :views="$packable ? \App\Support\ListView::SHELVED : \App\Support\ListView::ALL"/>@endunless</x-slot:extra>
     </x-ui.toolbar>
 

@@ -299,19 +299,15 @@ export default class extends Controller {
 
     // Адрес карточки строки — ссылка самой строки, если она есть: в ней бывает больше ключа (вкладка «По ссылкам» —
     // `tab=links`, ключи ссылок и счетов там свои; без неё карточка открывалась и тут же закрывалась, 09.10.2026). Нет
-    // ссылки — от текущего адреса списка (как show).
+    // ссылки — от текущего адреса списка (как show). Сколько строк догружено (`rows=`, таблица порциями) — из адреса
+    // страницы: ссылка строки его не знает, и перечитывание с карточкой строки второй сотни рисовало бы одну первую —
+    // открытая строка пропадала бы из списка. Номер сотни (`part`) — только у хвоста, в адрес не едет.
     urlFor(row) {
         const link = row.matches('a[data-detail-link]') ? row : row.querySelector('a[data-detail-link]');
-        if (link?.href) {
-            const own = new URL(link.href, location.href);
-            own.searchParams.delete('q');
-            own.searchParams.delete('page');
-            own.searchParams.set('peek', row.dataset.detailKey);
-            return own;
-        }
-        const url = new URL(location.href);
-        url.searchParams.delete('q');
-        url.searchParams.delete('page');
+        const url = new URL(link?.href || location.href, location.href);
+        const rows = new URL(location.href).searchParams.get('rows');
+        for (const key of ['q', 'page', 'part', 'rows']) url.searchParams.delete(key);
+        if (rows) url.searchParams.set('rows', rows);
         url.searchParams.set('peek', row.dataset.detailKey);
         return url;
     }

@@ -1,7 +1,8 @@
 {{-- Ряд чипов фильтра (App\Support\Facets): на телефоне своей строкой под кнопками тулбара, листается вбок. Чип со
      шторкой — x-ui.facet-chip, переключатель («Непрочитанные», «Мои») — пилюля-ссылка. Выбрано хоть что-то —
-     последним «Сбросить». --}}
-@props(['facets', 'name' => 'list'])
+     последним «Сбросить» — чипы как по умолчанию; `reset=false` — экран держит его сам (предложения CRM — значком у
+     названия). --}}
+@props(['facets', 'name' => 'list', 'reset' => true])
 @php $chips = $facets->chips(); @endphp
 @if ($chips->isNotEmpty())
     <div class="toolbar-chips">
@@ -14,7 +15,7 @@
                     <x-ui.facet-chip :chip="$chip" :facets="$facets" :id="'facet-'.$name.'-'.$chip->facet->key"/>
                 @endif
             @endforeach
-            @if ($facets->active())
+            @if ($reset && $facets->active())
                 <a href="{{ $facets->resetUrl() }}" class="facet-reset" data-turbo-action="replace" data-turbo-prefetch="false">Сбросить</a>
             @endif
         </div>
