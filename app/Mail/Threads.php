@@ -97,6 +97,22 @@ final class Threads
             // Номера ветки — объединение номеров её писем из индекса (`ReadLetter`), письма заново не читаются.
             'keys' => DB::table('mail_message_keys')->whereIn('message_id', $messages->pluck('id'))->distinct()->orderBy('key')->pluck('key')->all(),
         ])->save();
+        // Наше письмо в ветке ТС отвечает и на вопросы в соседних ветках того же дела (`answeredElsewhere`).
+        if ($thread->vehicle_id && $sorted->last()?->direction === Direction::Out) {
+            Thread::where('vehicle_id', $thread->vehicle_id)->where('account_id', $thread->account_id)->whereKeyNot($thread->id)
+                ->where('needs_reply_at', '<=', $sorted->last()->date_at)->update(['needs_reply_at' => null]);
+        }
+    }
+
+    /**
+     * Вендор пишет о той же ТС новой веткой («RE: … СРОЧНО!»), мы отвечаем там же — вопрос старой ветки тоже снят.
+     * Без этого дело висело в «Ждёт ответа» с ответом прямо под вопросом (Geely 0323/046/14677/26, 02.11.2026).
+     */
+    private static function answeredElsewhere(Thread $thread, Message $last): bool
+    {
+        return $thread->vehicle_id && Message::where('direction', Direction::Out)->where('date_at', '>', $last->date_at)
+            ->whereIn('thread_id', Thread::where('vehicle_id', $thread->vehicle_id)->where('account_id', $thread->account_id)->select('id'))
+            ->exists();
     }
 
     /** Дата письма, которое ждёт нашего ответа, или null: считается один раз здесь и живёт в `needs_reply_at`. */
@@ -111,7 +127,7 @@ final class Threads
 
         // «Сделано» в деле ТС и «Ответ не нужен» в почте закрывают вопрос без письма (`answered`); новое письмо
         // вендора снова его открывает.
-        return $thread->answered_at?->gte($last->date_at) ? null : $last->date_at;
+        return $thread->answered_at?->gte($last->date_at) || self::answeredElsewhere($thread, $last) ? null : $last->date_at;
     }
 
     /**
