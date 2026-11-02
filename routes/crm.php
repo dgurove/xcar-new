@@ -369,6 +369,7 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
             Route::delete('/users/{user}', [UserController::class, 'destroy']);
             Route::post('/users/{user}/password', [UserController::class, 'passwordLink']);
             Route::post('/users/{user}/telegram/unlink', [UserController::class, 'unlinkTelegram']);
+            Route::post('/users/{user}/link', [UserController::class, 'link']);
             Route::post('/users/{user}/impersonate', [UserController::class, 'impersonate']);
             Route::put('/users/{user}/party', [UserController::class, 'party']);
             Route::get('/users/{user}/statement', [UserController::class, 'statement']);

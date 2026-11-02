@@ -21,6 +21,12 @@ final class SubscriberCookie
             return $response;
         }
         $topics = Topics::for($request->user(), app(GuestEnquiry::class)->chat($request)?->id);
+        // Связанные аккаунты (`UseLinkedAccount`): кука одна на все хосты — темы обоих, иначе вкладки парковки и сайта
+        // перетирали бы подписку друг другу.
+        if ($linked = $request->user()?->linked) {
+            $topics = array_values(array_unique([...$topics, ...Topics::for($linked)]));
+            sort($topics);
+        }
         // Менеджер под замком: пропуск в хаб живёт до конца окна, дальше хаб сам рвёт поток (Mercure ≥ 0.14).
         $exp = Lock::until($request);
         $token = $request->cookie(self::NAME);

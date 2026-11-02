@@ -82,6 +82,12 @@ enum Surface: string
         };
     }
 
+    /** Где дом аккаунта: хост, без которого ему нельзя (`onlyFor`), иначе сайт. По нему связанные аккаунты делят хосты (`UseLinkedAccount`). */
+    public static function homeFor(User $user): self
+    {
+        return self::onlyFor($user) ?? self::Site;
+    }
+
     /** Кому хост открыт: CRM — сотрудникам, стоянка — по разделу, логистика — логисту, водителю, партнёру и админу. Одна дверь на ResolveSurface и вход. */
     public function opensFor(?User $user): bool
     {

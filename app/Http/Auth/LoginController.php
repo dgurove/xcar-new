@@ -91,6 +91,10 @@ class LoginController
     {
         $surface = Surface::current();
         $user = Auth::user();
+        // Вошёл аккаунтом, а этот хост — дом связанного (`UseLinkedAccount`): остаёмся тут, работает второй.
+        if ($user?->linked && Surface::homeFor($user->linked) === $surface) {
+            return $surface->home();
+        }
         $allowed = $surface->opensFor($user);
 
         // Управляющий парковкой и модератор, вошедшие там, куда им нельзя, или на сайте (сайт пускает всех, но им он не

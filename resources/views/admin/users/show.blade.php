@@ -57,6 +57,23 @@
                     </a>
                 </div>
             @endif
+            {{-- Второй аккаунт того же человека (02.11.2026): управляющий парковки ↔ менеджер xcar — один вход, на каждом хосте свой
+                 аккаунт и свой Telegram (`LinkAccounts`, `UseLinkedAccount`). --}}
+            @if ($me->isAdmin() && ! $park && \App\Support\Surface::current() === \App\Support\Surface::Crm && $user->isApproved() && ! $user->isBuyer() && ! $user->isSuperBuyer())
+                <form method="post" action="/settings/users/{{ $user->id }}/link" class="list mt-4" data-controller="autosubmit">
+                    @csrf
+                    <label class="row items-center gap-3">
+                        <x-ui.row-icon name="user" size="s"/>
+                        <span class="min-w-0 flex-1">Второй аккаунт</span>
+                        <select name="linked_user_id" class="field-input w-auto max-w-[60%] text-right" data-action="change->autosubmit#submit">
+                            <option value="">нет</option>
+                            @foreach (\App\Http\Admin\UserController::linkCandidates($user) as $c)
+                                <option value="{{ $c->id }}" @selected($user->linked_user_id === $c->id)>{{ $c->name }} — {{ $c->rolesLabel() }}</option>
+                            @endforeach
+                        </select>
+                    </label>
+                </form>
+            @endif
             @if ($me->isAdmin() && ! $park && !$user->isApproved() && !$user->is($me))
                 <div class="mt-4 flex lg:justify-center"><x-admin.user-access :user="$user" :base="$base"/></div>
             @endif

@@ -34,6 +34,8 @@ use App\Users\Access\RevokeDevices;
 use App\Users\Access\SwitchLock;
 use App\Users\Actions\DecideAccess;
 use App\Users\Actions\IssueImpersonation;
+use App\Users\Actions\LinkAccounts;
+use App\Users\Actions\UnlinkAccounts;
 use App\Users\Actions\IssueInvite;
 use App\Users\Actions\IssuePasswordLink;
 use App\Users\Actions\RevokePark;
@@ -354,6 +356,37 @@ class UserController
         $revoke($user);
 
         return back()->with('toast', 'Telegram отвязан');
+    }
+
+    /**
+     * Второй аккаунт того же человека (`LinkAccounts`, 02.11.2026): управляющий парковки и менеджер xcar — один вход, на
+     * каждом хосте свой аккаунт. Пустое — отвязать. Только админ, только в CRM.
+     */
+    public function link(Request $request, User $user, LinkAccounts $link, UnlinkAccounts $unlink)
+    {
+        abort_unless($request->user()->isAdmin() && self::manages($request->user(), $user), 404);
+        $id = $request->validate(['linked_user_id' => ['nullable', 'integer', 'exists:users,id']])['linked_user_id'] ?? null;
+        if (! $id) {
+            $unlink($user);
+
+            return back()->with('toast', 'Аккаунты разъединены');
+        }
+        $other = User::findOrFail($id);
+        abort_unless(self::manages($request->user(), $other), 404);
+        $link($user, $other);
+
+        return back()->with('toast', 'Аккаунты связаны');
+    }
+
+    /** Кого можно связать с человеком: не покупатели и не демо, с другим домом (`Surface::homeFor`). */
+    public static function linkCandidates(User $user): \Illuminate\Support\Collection
+    {
+        $home = Surface::homeFor($user);
+
+        return User::whereNot('id', $user->id)->where('is_demo', false)->whereNotNull('approved_at')->whereNull('rejected_at')
+            ->where(fn ($q) => $q->whereNull('linked_user_id')->orWhere('linked_user_id', $user->id))
+            ->orderBy('name')->get(['id', 'name', 'phone', 'login', 'roles', 'linked_user_id'])
+            ->reject(fn (User $u) => $u->isBuyer() || $u->isSuperBuyer() || Surface::homeFor($u) === $home)->values();
     }
 
     /** Замок менеджеров: одно устройство, вход только через Telegram, окно 15 минут (Access\Lock). */

@@ -259,11 +259,15 @@ final class Nav
             return [];
         }
 
+        // Связанный аккаунт (`UseLinkedAccount`) — его хосты тоже переход: на своём хосте работает он.
+        $linked = $user->linked;
+        $opens = fn (Surface $s) => $s->opensFor($user) || ($linked && Surface::homeFor($linked) === $s);
+
         return array_values(array_filter([
-            $surface !== Surface::Site && ! Surface::onlyFor($user) ? $make('На сайт', Surface::Site->url(), 'cat-car') : null,
-            $surface !== Surface::Crm && Surface::Crm->opensFor($user) ? $make('CRM', Surface::Crm->url(), 'deal') : null,
-            $surface !== Surface::Park && Surface::Park->opensFor($user) ? $make('Парковка', Surface::Park->url(), 'park') : null,
-            $surface !== Surface::Logistics && Surface::Logistics->opensFor($user) ? $make('Логистика', Surface::Logistics->url(), 'cat-car') : null,
+            $surface !== Surface::Site && (! Surface::onlyFor($user) || ($linked && Surface::homeFor($linked) === Surface::Site)) ? $make('На сайт', Surface::Site->url(), 'cat-car') : null,
+            $surface !== Surface::Crm && $opens(Surface::Crm) ? $make('CRM', Surface::Crm->url(), 'deal') : null,
+            $surface !== Surface::Park && $opens(Surface::Park) ? $make('Парковка', Surface::Park->url(), 'park') : null,
+            $surface !== Surface::Logistics && $opens(Surface::Logistics) ? $make('Логистика', Surface::Logistics->url(), 'cat-car') : null,
         ]));
     }
 

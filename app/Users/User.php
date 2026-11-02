@@ -514,6 +514,12 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
      * отмены, контакты вендоров. Деньги — `parkMoney`; настройки (прайс, правила вендоров, парковки, люди) —
      * `isParkAdmin`; продажа — `isAdmin`.
      */
+    /** Второй аккаунт того же человека (`LinkAccounts`): на своём хосте работает он (`UseLinkedAccount`). */
+    public function linked(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'linked_user_id');
+    }
+
     public function canManagePark(): bool
     {
         return $this->isParkAdmin() || $this->isParking();
