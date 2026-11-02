@@ -11,6 +11,7 @@ use Spatie\Image\Enums\Fit;
 use Spatie\Image\Image;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
 use Throwable;
+use ZipArchive;
 
 /**
  * PDF для отправки в мессенджер: страница на фотографию, по размеру кадра,
@@ -50,7 +51,7 @@ final class SharePdf
     /** @param  list<int>  $mediaIds */
     public function build(Subject $subject, array $mediaIds, bool $watermark): string
     {
-        $media = $subject->model->visiblePhotos()->filter(fn (Media $m) => in_array($m->id, $mediaIds, true))->values();
+        $media = $subject->photos()->filter(fn (Media $m) => in_array($m->id, $mediaIds, true))->values();
         if ($media->isEmpty()) {
             throw new RuntimeException('Не выбрано ни одной фотографии');
         }
@@ -61,9 +62,80 @@ final class SharePdf
         if ($disk->exists($path)) {
             return $disk->path($path);
         }
+
         // Задача заранее и человек могут собирать один файл разом: второй ждёт первого и берёт готовый.
         return Cache::lock('share-pdf:'.$key, 120)->block(90, function () use ($subject, $media, $watermark, $path, $disk) {
             return $disk->exists($path) ? $disk->path($path) : $this->write($subject, $media, $watermark, $path);
+        });
+    }
+
+    /**
+     * Кадры заранее, пачкой (02.11.2026: PDF из сотен фото не собрать за время запроса — каждый кадр ужимается из
+     * оригинала): шторка зовёт по 10 и показывает ход, PDF потом лишь складывает готовые JPEG. stamped — ещё и со знаком
+     * (для ZIP и «фото»).
+     *
+     * @param  list<int>  $mediaIds
+     */
+    public function warm(Subject $subject, array $mediaIds, bool $stamped): void
+    {
+        foreach ($subject->photos()->filter(fn (Media $m) => in_array($m->id, $mediaIds, true)) as $m) {
+            try {
+                $this->jpeg($subject, $m, false);
+                $stamped && $this->jpeg($subject, $m, true);
+            } catch (Throwable $e) {
+                Log::warning('Кадр для «Поделиться» не готов', ['media' => $m->id, 'error' => $e->getMessage()]);
+            }
+        }
+    }
+
+    /**
+     * Больше 10 кадров — архивом (02.11.2026): системный лист Chrome не берёт больше 10 файлов, Safari на iPhone падает на
+     * сотнях. Внутри — папки групп («Фото от страховой», «Фото при приёме»), кадры с номером по порядку; без сжатия — JPEG
+     * и так сжат. Кэш — как у PDF.
+     *
+     * @param  list<int>  $mediaIds
+     */
+    public function zip(Subject $subject, array $mediaIds, bool $watermark): string
+    {
+        $groups = collect($subject->photoGroups())->map(fn ($g) => [...$g, 'photos' => $g['photos']->filter(fn (Media $m) => in_array($m->id, $mediaIds, true))->values()])
+            ->filter(fn ($g) => $g['photos']->isNotEmpty())->values();
+        $media = $groups->flatMap(fn ($g) => $g['photos']);
+        if ($media->isEmpty()) {
+            throw new RuntimeException('Не выбрано ни одной фотографии');
+        }
+        $key = 'zip-'.$this->key($subject, $media, $watermark);
+        $path = $subject->cacheDir()."/{$key}.zip";
+        $disk = Storage::disk(self::DISK);
+        if ($disk->exists($path)) {
+            return $disk->path($path);
+        }
+
+        return Cache::lock('share-zip:'.$key, 120)->block(90, function () use ($subject, $groups, $watermark, $path, $disk) {
+            if ($disk->exists($path)) {
+                return $disk->path($path);
+            }
+            $disk->makeDirectory(dirname($path));
+            $tmp = $disk->path($path).'.'.getmypid().'.tmp';
+            $zip = new ZipArchive;
+            if ($zip->open($tmp, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
+                throw new RuntimeException('Архив не собрался');
+            }
+            $n = 0;
+            foreach ($groups as $g) {
+                foreach ($g['photos'] as $m) {
+                    try {
+                        $name = ($g['folder'] ? $g['folder'].'/' : '').$subject->photoName(++$n);
+                        $zip->addFile($this->jpeg($subject, $m, $watermark), $name);
+                        $zip->setCompressionName($name, ZipArchive::CM_STORE);
+                    } catch (Throwable $e) {
+                        Log::warning('Фотография не попала в архив', ['media' => $m->id, 'error' => $e->getMessage()]);
+                    }
+                }
+            }
+            $zip->close();
+            rename($tmp, $disk->path($path));
+
+            return $disk->path($path);
         });
     }
 

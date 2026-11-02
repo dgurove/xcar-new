@@ -19,7 +19,10 @@ import { csrf, request } from '../lib/http';
 // «Фото» — те же кадры JPEG-ами одним вызовом share: так их отдаёт Google Фото, и
 // WhatsApp собирает альбом, а получатель качает картинки там, где документ не
 // качается. Качаются следом за PDF, чтобы не отнимать у него связь. Больше 10
-// файлов Chrome в лист не пускает.
+// файлов Chrome в лист не пускает — тогда вторая кнопка «Поделиться ZIP» (02.11.2026, владелец: «выбирать все, хоть
+// сотни»): архив с папками групп собирает сервер. Кадров больше 10 — сервер сначала готовит их пачками (`warm`, ход
+// строкой «Готовим фото 30 из 240»), PDF и ZIP потом лишь складывают готовые.
+const WARM_BATCH = 10;
 const BROKEN = 'share:open';
 const MAX_FILES = 10;
 // Сколько ждём системный лист, прежде чем признать его зависшим: промис share
@@ -32,8 +35,8 @@ const PRICES = ['publish_price', 'price'];
 const FROM = ['publish_price'];
 
 export default class extends Controller {
-    static targets = ['dialog', 'field', 'photo', 'watermark', 'preview', 'status', 'statusRow', 'statusIcon', 'send', 'label', 'all', 'photosSend', 'photosLabel'];
-    static values = { url: String, photoUrl: String, vat: String, name: String, locked: String };
+    static targets = ['dialog', 'field', 'photo', 'watermark', 'preview', 'status', 'statusRow', 'statusIcon', 'send', 'label', 'all', 'photosSend', 'photosLabel', 'group'];
+    static values = { url: String, photoUrl: String, vat: String, name: String, locked: String, warmUrl: String, zipUrl: String, zipName: String };
 
     connect() {
         this.later = debounce(() => this.prepare(), 500);
@@ -41,6 +44,7 @@ export default class extends Controller {
         this.ready(!this.hasPhotoTarget);
         this.photosReady(false);
         this.countPhotos();
+        this.labelGroups();
     }
 
     disconnect() {
@@ -49,7 +53,7 @@ export default class extends Controller {
 
     countPhotos() {
         const n = this.selectedPhotos().length;
-        if (this.hasPhotosLabelTarget) this.photosLabelTarget.textContent = n ? `Поделиться ${n} фото` : 'Поделиться фото';
+        if (this.hasPhotosLabelTarget) this.photosLabelTarget.textContent = n > MAX_FILES ? 'Поделиться ZIP' : n ? `Поделиться ${n} фото` : 'Поделиться фото';
     }
 
     // Шеринг запрещён в редакторе оффера: кнопка серая, нажатие объясняет почему.
@@ -105,16 +109,27 @@ export default class extends Controller {
         if (this.hasPreviewTarget) this.previewTarget.textContent = this.caption();
     }
 
-    // «Выбрать все» / «Снять все»: выбраны все — снимает, иначе отмечает все.
-    toggleAll() {
-        const every = this.photoTargets.every((p) => p.checked);
-        this.photoTargets.forEach((p) => { p.checked = !every; });
+    // «Выбрать все» / «Снять все» своей группы («от страховой», «при приёме»): выбраны все — снимает, иначе отмечает все.
+    toggleAll(event) {
+        const photos = this.groupPhotos(event.currentTarget.closest('[data-share-target="group"]'));
+        const every = photos.every((p) => p.checked);
+        photos.forEach((p) => { p.checked = !every; });
         this.photosChanged();
+    }
+
+    groupPhotos(group) {
+        return group ? this.photoTargets.filter((p) => group.contains(p)) : this.photoTargets;
+    }
+
+    labelGroups() {
+        this.allTargets.forEach((all) => {
+            all.textContent = this.groupPhotos(all.closest('[data-share-target="group"]')).every((p) => p.checked) ? 'Снять все' : 'Выбрать все';
+        });
     }
 
     photosChanged() {
         this.countPhotos();
-        if (this.hasAllTarget) this.allTarget.textContent = this.photoTargets.every((p) => p.checked) ? 'Снять все' : 'Выбрать все';
+        this.labelGroups();
         this.later();
     }
 
@@ -140,12 +155,65 @@ export default class extends Controller {
         const seq = (this.seq = (this.seq || 0) + 1);
         this.pdf = null;
         this.jpegs = null;
+        this.zip = null;
         this.photosError = null;
         this.photosReady(false);
         const photos = this.selectedPhotos();
         if (!photos.length) { this.status(''); this.ready(true); return; }
+        if (photos.length > MAX_FILES && !(await this.warm(seq, photos))) return;
+        if (seq !== this.seq) return;
         await this.preparePdf(seq, photos);
-        if (seq === this.seq) await this.preparePhotos(seq, photos);
+        if (seq !== this.seq) return;
+        if (photos.length > MAX_FILES) await this.prepareZip(seq, photos);
+        else await this.preparePhotos(seq, photos);
+    }
+
+    // Кадры заранее, пачками по 10 в два потока (сотни фото: PDF за один запрос не собрать), ход — строкой.
+    async warm(seq, photos) {
+        this.ready(false, 'Готовим фото…');
+        const batches = [];
+        for (let i = 0; i < photos.length; i += WARM_BATCH) batches.push(photos.slice(i, i + WARM_BATCH));
+        let done = 0;
+        let next = 0;
+        const worker = async () => {
+            while (next < batches.length && seq === this.seq) {
+                const batch = batches[next++];
+                const form = new FormData();
+                batch.forEach((id) => form.append('photos[]', id));
+                form.append('watermark', this.watermark());
+                const r = await request(this.warmUrlValue, { method: 'POST', body: form, quiet: true });
+                if (!r?.ok) throw Object.assign(new Error('warm failed'), { name: 'warm' });
+                done += batch.length;
+                if (seq === this.seq) this.status(`Готовим фото ${done} из ${photos.length}`);
+            }
+        };
+        try {
+            await Promise.all([worker(), worker()]);
+            return seq === this.seq;
+        } catch (e) {
+            if (seq === this.seq) this.fail('warm', e, 'Фото не подготовились');
+            return false;
+        }
+    }
+
+    // Архив тех же кадров с папками групп — для «Поделиться ZIP», когда фото больше 10.
+    async prepareZip(seq, photos) {
+        const form = new FormData();
+        photos.forEach((id) => form.append('photos[]', id));
+        form.append('watermark', this.watermark());
+        try {
+            const r = await request(this.zipUrlValue, { method: 'POST', body: form, accept: 'application/zip', statuses: [422], quiet: true });
+            if (seq !== this.seq) return;
+            if (!r?.ok) throw Object.assign(new Error('zip failed'), { name: `zip ${r?.status ?? 'request'}` });
+            const blob = await r.blob();
+            if (seq !== this.seq) return;
+            this.zip = new File([blob], this.zipNameValue, { type: 'application/zip' });
+            this.photosReady(true);
+        } catch (e) {
+            if (seq !== this.seq) return;
+            this.photosError = e;
+            this.photosReady(true);
+        }
     }
 
     // Кадры по одному, по три за раз. Сбой не кричит тостом — его покажет нажатие «Фото».
@@ -295,7 +363,7 @@ export default class extends Controller {
         this.writeCaption();
         const count = this.selectedPhotos().length;
         if (!count) { window.toast?.('Отметьте фото'); return; }
-        if (count > MAX_FILES) { window.toast?.(`Не больше ${MAX_FILES} фото`); return; }
+        if (count > MAX_FILES) { await this.sendZip(); return; }
         if (this.photosError) {
             this.fail('photos-prepare', this.photosError, 'Фото не скачались');
             this.prepare();
@@ -325,6 +393,30 @@ export default class extends Controller {
         }
     }
 
+    // Больше 10 фото — одним архивом: лист, где он умеет ZIP (iPhone), иначе скачать (Chrome архив в лист не пускает).
+    async sendZip() {
+        if (this.photosError) {
+            this.fail('zip-prepare', this.photosError, 'Архив не собрался');
+            this.prepare();
+            return;
+        }
+        if (!this.zip) { window.toast?.('Архив ещё собирается'); return; }
+        const files = [this.zip];
+        const facts = { files: 1, bytes: this.zip.size, canshare: !!navigator.canShare?.({ files }) };
+        if (!navigator.share || !facts.canshare || this.broken()) { this.download(files); return; }
+        this.sending = true;
+        try {
+            await navigator.share({ files });
+            this.close();
+        } catch (e) {
+            if (e.name === 'AbortError') return;
+            this.beacon('zip', e, facts);
+            this.download(files);
+        } finally {
+            this.sending = false;
+        }
+    }
+
     download(files) {
         files.forEach((file, i) => setTimeout(() => {
             const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(file), download: file.name });
@@ -334,8 +426,8 @@ export default class extends Controller {
             a.remove();
             setTimeout(() => URL.revokeObjectURL(a.href), 10000);
         }, i * 250));
-        const pdf = files[0]?.type === 'application/pdf';
-        window.toast?.(pdf ? 'Скачиваем PDF' : files.length > 1 ? `Скачиваем ${files.length} фото` : 'Скачиваем фото');
+        const type = files[0]?.type;
+        window.toast?.(type === 'application/pdf' ? 'Скачиваем PDF' : type === 'application/zip' ? 'Скачиваем архив' : files.length > 1 ? `Скачиваем ${files.length} фото` : 'Скачиваем фото');
     }
 
     fail(stage, e, text, facts = {}) {

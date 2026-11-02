@@ -1,6 +1,5 @@
 <?php
 
-use App\Http\Admin\ReferenceController;
 use App\Http\Admin\UserController;
 use App\Http\Cabinet\BuyerController;
 use App\Http\Cabinet\BuyerInterestController;
@@ -13,9 +12,9 @@ use App\Http\Cabinet\InviteController;
 use App\Http\Cabinet\ListsController;
 use App\Http\Cabinet\MoneyController;
 use App\Http\Cabinet\NotificationController;
-use App\Http\Cabinet\RegionController;
 use App\Http\Cabinet\PassportScanController;
 use App\Http\Cabinet\ProfileController;
+use App\Http\Cabinet\RegionController;
 use App\Http\Cabinet\ShowingController;
 use App\Http\Garage\CarController as GarageCarController;
 use App\Http\Garage\PickupController as GaragePickupController;
@@ -120,6 +119,8 @@ Route::middleware(['auth', 'wall'])->group(function () {
     Route::post('/offers/{offer}/note', [NoteController::class, 'update'])->middleware('throttle:60,1');
     Route::match(['get', 'post'], '/offers/{offer}/pdf', [ShareController::class, 'pdf']);
     Route::get('/offers/{offer}/photo/{media}', [ShareController::class, 'photo'])->whereNumber('media');
+    Route::post('/offers/{offer}/photos/warm', [ShareController::class, 'warm'])->middleware('throttle:240,1');
+    Route::post('/offers/{offer}/zip', [ShareController::class, 'zip']);
     Route::post('/share/error', [ShareController::class, 'report'])->middleware('throttle:30,1');
     Route::get('/offers/{offer}/chat', [OfferController::class, 'chat']);
     Route::post('/offers/{offer}/chat', [ChatController::class, 'open']);
@@ -287,6 +288,8 @@ Route::middleware(['auth', 'wall'])->group(function () {
     Route::get('/purchases/{purchase}/{car}', [PurchaseController::class, 'car'])->middleware('ability:canSeePurchases');
     Route::match(['get', 'post'], '/purchases/{purchase}/{car}/pdf', [ShareController::class, 'carPdf'])->middleware('ability:canSeePurchases');
     Route::get('/purchases/{purchase}/{car}/photo/{media}', [ShareController::class, 'carPhoto'])->whereNumber('media')->middleware('ability:canSeePurchases');
+    Route::post('/purchases/{purchase}/{car}/photos/warm', [ShareController::class, 'carWarm'])->middleware(['ability:canSeePurchases', 'throttle:240,1']);
+    Route::post('/purchases/{purchase}/{car}/zip', [ShareController::class, 'carZip'])->middleware('ability:canSeePurchases');
     Route::post('/purchases/{purchase}/{car}/price', [PurchaseController::class, 'offer'])->middleware('ability:canSeePurchases');
     Route::post('/purchases/prices/{offer}/withdraw', [PurchaseController::class, 'withdraw'])->middleware('ability:canSeePurchases');
 });

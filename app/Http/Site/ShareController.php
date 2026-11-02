@@ -20,6 +20,66 @@ use Illuminate\Support\Facades\Storage;
  */
 class ShareController
 {
+    /** Сколько кадров за раз в PDF и ZIP — потолок от ошибки, а не выбор. */
+    private const MAX_PHOTOS = 1000;
+
+    /** Кадров за один заход `warm`: 10 ужатий из оригинала — несколько секунд, запрос живёт до 60. */
+    private const WARM_BATCH = 10;
+
+    public function warm(Request $request, Offer $offer, SharePdf $pdf)
+    {
+        $user = $request->user();
+        abort_unless($user->canShare() && $offer->isVisibleTo($user), 404);
+        abort_if($offer->shareLockedFor($user), 422, Subject::LOCKED);
+
+        return $this->warmUp($request, Subject::offer($offer), $pdf);
+    }
+
+    public function carWarm(Request $request, Purchase $purchase, Car $car, SharePdf $pdf)
+    {
+        $this->authorizeCar($request, $purchase, $car);
+        abort_if($car->share_locked, 422, Subject::LOCKED);
+
+        return $this->warmUp($request, Subject::car($car), $pdf);
+    }
+
+    public function zip(Request $request, Offer $offer, SharePdf $pdf)
+    {
+        $user = $request->user();
+        abort_unless($user->canShare() && $offer->isVisibleTo($user), 404);
+        abort_if($offer->shareLockedFor($user), 422, Subject::LOCKED);
+
+        return $this->respondZip($request, Subject::offer($offer), $pdf);
+    }
+
+    public function carZip(Request $request, Purchase $purchase, Car $car, SharePdf $pdf)
+    {
+        $this->authorizeCar($request, $purchase, $car);
+        abort_if($car->share_locked, 422, Subject::LOCKED);
+
+        return $this->respondZip($request, Subject::car($car), $pdf);
+    }
+
+    private function warmUp(Request $request, Subject $subject, SharePdf $pdf)
+    {
+        $data = $request->validate(['photos' => ['required', 'array', 'max:'.self::WARM_BATCH], 'photos.*' => ['integer']]);
+        $pdf->warm($subject, array_map('intval', $data['photos']), $this->watermark($request));
+
+        return response()->noContent();
+    }
+
+    private function respondZip(Request $request, Subject $subject, SharePdf $pdf)
+    {
+        $data = $request->validate(['photos' => ['required', 'array', 'max:'.self::MAX_PHOTOS], 'photos.*' => ['integer']]);
+        try {
+            $path = $pdf->zip($subject, array_map('intval', $data['photos']), $this->watermark($request));
+        } catch (\Throwable $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+
+        return $this->send($request, $path, ['Content-Type' => 'application/zip', 'Content-Disposition' => "attachment; filename*=UTF-8''".rawurlencode($subject->zipName()), 'Cache-Control' => 'private, max-age=3600']);
+    }
+
     public function pdf(Request $request, Offer $offer, SharePdf $pdf)
     {
         $user = $request->user();
@@ -70,7 +130,7 @@ class ShareController
 
     private function respondPhoto(Request $request, Subject $subject, int $id, SharePdf $pdf)
     {
-        $photos = $subject->model->visiblePhotos()->values();
+        $photos = $subject->photos();
         $index = $photos->search(fn ($m) => $m->id === $id);
         abort_if($index === false, 404);
         $path = $pdf->jpeg($subject, $photos[$index], $this->watermark($request));
@@ -87,7 +147,9 @@ class ShareController
 
     private function respond(Request $request, Subject $subject, SharePdf $pdf)
     {
-        $data = $request->validate(['photos' => ['required', 'array', 'max:30'], 'photos.*' => ['integer'], 'watermark' => ['nullable']]);
+        // Без потолка в 30 кадров (02.11.2026, владелец: «должна быть возможность выбирать все — и сотни»): кадры шторка
+        // готовит заранее (`warm`), PDF лишь складывает их.
+        $data = $request->validate(['photos' => ['required', 'array', 'max:'.self::MAX_PHOTOS], 'photos.*' => ['integer'], 'watermark' => ['nullable']]);
         $watermark = $this->watermark($request);
 
         try {

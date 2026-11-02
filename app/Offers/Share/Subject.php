@@ -4,9 +4,13 @@ namespace App\Offers\Share;
 
 use App\Offers\Offer;
 use App\Offers\OfferNumber;
+use App\Park\PhotoStage;
 use App\Purchases\Car;
+use App\Support\Surface;
 use App\Users\User;
 use Carbon\CarbonInterface;
+use Illuminate\Support\Collection;
+use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
 /**
  * Чем делимся: оффер или машина закупки. Всё, что нужно PDF и подписи, —
@@ -81,6 +85,43 @@ final class Subject
         $name = trim(preg_replace('~[\\\\/:*?"<>|%\x00-\x1F]+~u', ' ', $this->label.' '.$this->title));
 
         return preg_replace('~\s+~u', ' ', $name) ?: 'xcar';
+    }
+
+    /**
+     * Кадры шторки «Поделиться» группами (02.11.2026, владелец: «от страховой и при приёме — два блока, выбирать и то и то
+     * без ограничений»): «Фото от страховой», «Фото при приёме» по `PhotoStage`; у машины закупки — одна группа без
+     * подписи. Порядок внутри группы — как на карточке.
+     *
+     * @return list<array{label: ?string, folder: ?string, photos: Collection<int, Media>}>
+     */
+    public function photoGroups(): array
+    {
+        $photos = $this->photos();
+        if (! $this->model instanceof Offer) {
+            return [['label' => null, 'folder' => null, 'photos' => $photos]];
+        }
+        $groups = $photos->groupBy(fn (Media $m) => PhotoStage::of($m)->value);
+
+        return collect(PhotoStage::cases())->filter(fn (PhotoStage $s) => $groups->has($s->value))
+            ->map(fn (PhotoStage $s) => ['label' => $s->label(), 'folder' => $s->label(), 'photos' => $groups[$s->value]->values()])
+            ->values()->pipe(fn ($g) => $g->count() > 1 ? $g->all() : [['label' => null, 'folder' => null, 'photos' => $photos]]);
+    }
+
+    /**
+     * Чьи кадры можно отдать: в CRM — все кадры машины, и скрытые с витрины (02.11.2026: фото при приёме у опубликованной
+     * скрыты по умолчанию — `Hidden::incoming`, и в шеринг сотрудника не попадали вовсе); на сайте — только видимые.
+     *
+     * @return Collection<int, Media>
+     */
+    public function photos(): Collection
+    {
+        return (Surface::current() === Surface::Crm ? $this->model->photos() : $this->model->visiblePhotos())->values();
+    }
+
+    /** ZIP с кадрами: «… фото.zip». */
+    public function zipName(): string
+    {
+        return $this->baseName().' фото.zip';
     }
 
     /** Каталог кэша: по таблице и id — офферы и машины не пересекаются. */
