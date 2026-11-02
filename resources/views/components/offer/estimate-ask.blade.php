@@ -60,8 +60,8 @@
                         @endforeach
                     </div>
                 </div>
-                @unless ($offer->asking_price)
-                    {{-- Эксклюзив — когда оценивает один: при двух и больше строки нет, решает админ «Взять». --}}
+                @unless ($offer->asking_price || $asked)
+                    {{-- Эксклюзив — когда оценивает один: при двух и больше (и когда уже кто-то думает) строки нет, решает админ «Взять». --}}
                     <div class="estimate-term" data-select-single hidden>
                         <span>Эксклюзив</span>
                         <div class="segment">

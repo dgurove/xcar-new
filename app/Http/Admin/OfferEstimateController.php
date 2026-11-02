@@ -49,7 +49,7 @@ final class OfferEstimateController
         $exclusive = $created->first()?->exclusive_days;
 
         return back()->with('toast', $created->isEmpty() ? 'Уже на оценке' : 'Отдано на оценку: '.$created->map(fn (Estimate $e) => $e->user->shortName())->implode(', ')
-            .' — '.Estimate::daysWord($days).($exclusive ? ', потом только '.($created->count() === 1 ? 'ему' : 'им').' '.Estimate::daysWord($exclusive) : ''));
+            .' — '.Estimate::daysWord($days).($exclusive ? ', потом только ему '.Estimate::daysWord($exclusive) : ''));
     }
 
     /** «Взять» — как «Оценить»: строка уходит в «Оцененные», карточка — к следующей без цены. */
@@ -88,7 +88,9 @@ final class OfferEstimateController
     public function again(Request $request, Offer $offer, Estimate $estimate, AskEstimates $ask)
     {
         abort_unless($estimate->offer_id === $offer->id && $estimate->state === EstimateState::Declined, 404);
-        $ask($offer, [$estimate->user], $request->user(), [$estimate->user_id => $estimate->showsDeclared()]);
+        // Спросили снова — с прежними сроком и эксклюзивом (ревью 02.11.2026: уходило на двое суток и без эксклюзива).
+        $days = collect(Estimate::DAYS)->sortBy(fn ($d) => abs($d * 86400 - abs($estimate->created_at->diffInSeconds($estimate->due_at))))->first();
+        $ask($offer, [$estimate->user], $request->user(), [$estimate->user_id => $estimate->showsDeclared()], $days, $estimate->exclusive_days);
 
         return back()->with('toast', 'Спросили снова: '.$estimate->user->shortName());
     }

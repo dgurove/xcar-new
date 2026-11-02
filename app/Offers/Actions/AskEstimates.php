@@ -39,9 +39,11 @@ final class AskEstimates
             throw ValidationException::withMessages(['managers' => 'Выберите менеджера']);
         }
 
-        $exclusive = $exclusive && $managers->count() === 1 && ! $base ? $exclusive : null;
         $created = DB::transaction(function () use ($offer, $managers, $by, $base, $declared, $days, $exclusive) {
             $open = $offer->estimates()->open()->pluck('user_id')->all();
+            // Эксклюзив — только когда оценивает один: ни других новых, ни уже открытых просьб (ревью 02.11.2026: «Отдать
+            // ещё» одному при двух думающих давало ему эксклюзив, и его оценка закрыла их).
+            $exclusive = $exclusive && $managers->count() === 1 && $open === [] && ! $base ? $exclusive : null;
             $created = $managers->reject(fn (User $u) => in_array($u->id, $open, true))->map(fn (User $u) => Estimate::create([
                 'offer_id' => $offer->id, 'user_id' => $u->id, 'asked_by' => $by?->id,
                 'state' => EstimateState::Asked, 'due_at' => now()->addDays($days), 'base_price' => $base,

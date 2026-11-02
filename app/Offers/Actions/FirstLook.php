@@ -23,7 +23,7 @@ final class FirstLook
 {
     public function __construct(private TakeEstimate $take, private UpdateOffer $update, private ChangeOfferState $change) {}
 
-    /** Оценка `auto` получена (`GiveEstimate`). Не готово к продаже (нет фото) — только цена, машина в «Оцененных». */
+    /** Оценка с эксклюзивом получена (`GiveEstimate`). Не готово к продаже (нет фото) — только цена, машина в «Оцененных». */
     public function open(Estimate $estimate): void
     {
         $who = $estimate->user;
@@ -35,7 +35,7 @@ final class FirstLook
         DB::transaction(function () use ($offer, $who, $until) {
             ($this->update)($offer, [
                 'audience_rules' => AudienceRules::normalize([['type' => 'user', 'id' => $who->id, 'delay' => 0], ['type' => 'rest', 'delay' => null]]),
-                'bids_close_at' => $until, 'first_look_until' => $until,
+                'bids_close_at' => $until, 'first_look_until' => $until, 'first_look_user_id' => $who->id,
             ], null, ['why' => 'Только '.$who->shortName().' до '.Ago::at($until, true, words: false)]);
             ($this->change)($offer->refresh(), OfferState::Open, null);
         });
@@ -61,15 +61,16 @@ final class FirstLook
     private function end(Offer $offer): void
     {
         DB::transaction(function () use ($offer) {
+            // Подтвердил — дальше как у всех.
             if ($offer->bids()->whereIn('state', [BidState::Active, BidState::Accepted])->exists() || $offer->deal()->exists()) {
-                Offer::whereKey($offer->id)->update(['first_look_until' => null]);
+                Offer::whereKey($offer->id)->update(['first_look_until' => null, 'first_look_user_id' => null]);
 
                 return;
             }
             // Выход — сейчас: для всех это новое предложение (каталог «новые сверху», пачка новых менеджерам).
             Offer::whereKey($offer->id)->update(['published_at' => now()]);
             ($this->update)($offer->refresh(), [
-                'audience_rules' => AudienceRules::everyone(), 'first_look_until' => null,
+                'audience_rules' => AudienceRules::everyone(), 'first_look_until' => null, 'first_look_user_id' => null,
                 'bids_close_at' => Binding::clampClose($offer, Slots::closeFor(now())),
             ], null, ['why' => 'Эксклюзив кончился без подтверждения — всем']);
         });

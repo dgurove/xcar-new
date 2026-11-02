@@ -59,7 +59,7 @@ use Illuminate\Support\Facades\DB;
     'asking_price', 'min_bid_price', 'min_bid_share', 'prices_include_vat', 'tags', 'tag_colors', 'bids_close_at', 'sort_weight',
     'chat_enabled', 'share_locked', 'share_locked_by_estimate', 'audience_rules', 'recommended', 'vendor_id', 'claim_ref', 'insurer_deadline_at', 'car_place',
     'answer_by', 'insured_name', 'insured_phone', 'insured_phone2', 'flags', 'holder', 'docs_required', 'contact_name', 'contact_email',
-    'garage_allowed', 'deal_show_until', 'binding_until', 'held_by', 'plate', 'sts', 'pts', 'body_no', 'chassis_no', 'policy_no', 'vehicle_category', 'first_look_until',
+    'garage_allowed', 'deal_show_until', 'binding_until', 'held_by', 'plate', 'sts', 'pts', 'body_no', 'chassis_no', 'policy_no', 'vehicle_category', 'first_look_until', 'first_look_user_id',
 ])]
 class Offer extends Model
 {
@@ -97,6 +97,13 @@ class Offer extends Model
         static::saving(fn (self $o) => $o->offsetUnset('binding_panic'));
         // `any_bids` — есть ли у машины живые подтверждения (`CatalogQuery::cards`, «Сгорает!»), без колонки.
         static::saving(fn (self $o) => $o->offsetUnset('any_bids'));
+        // Эксклюзив оценившего (`FirstLook`) кончается вместе с приёмом: продлили или сдвинули приём («+15 мин», «Показ») —
+        // сдвинулся и он (ревью 02.11.2026: «+1 ч» Роме не давал ничего — в прежний срок машина открывалась всем).
+        static::saving(function (self $o) {
+            if ($o->first_look_until && $o->bids_close_at && $o->isDirty('bids_close_at') && ! $o->isDirty('first_look_until')) {
+                $o->first_look_until = $o->bids_close_at;
+            }
+        });
         // Стоит у менеджера без его сделки (`held_by`, 21.10.2026) — пока машина на месте: уехала (забрали, привезли,
         // выдали с парковки) — метка гаснет.
         static::saving(function (self $o) {
@@ -232,6 +239,12 @@ class Offer extends Model
         $query->where(fn (Builder $q) => $q->where('collection_name', '!=', 'photos')
             ->orWhereNull('custom_properties->stage')
             ->orWhereIn('custom_properties->stage', [PhotoStage::Vendor->value, PhotoStage::Intake->value]));
+    }
+
+    /** Кто в эксклюзиве после своей оценки (`FirstLook`): машина открыта только ему до `first_look_until`. */
+    public function firstLookUser(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'first_look_user_id');
     }
 
     public function vendor(): BelongsTo

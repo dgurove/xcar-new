@@ -99,11 +99,20 @@ final class MigtorgFields
     }
 
     /**
-     * Прицеп и тягач по кузову — точно; дальше наша догадка по названию (она знает «Луидор» и «Krone», у Мигторга это
-     * «Грузовик» и «Спецтехника»), дальше их кузов, дальше тип марки.
+     * Прицеп и тягач по кузову — точно. Точный кузов легковой или лёгкий («Седан», «Пикап», «Фургон», «Мотоцикл») главнее
+     * догадки по названию (ревью 02.11.2026: «Isuzu D-Max» с кузовом «Пикап» по слову «isuzu» вставал грузовым). Кузов
+     * «Грузовик», «Спецтехника», «Автобус» у них размыт — поверх него наша догадка (она знает «Луидор» и «Krone»), дальше
+     * их кузов, дальше тип марки.
      */
     private static function category(string $carcass, ?Body $body, int $type, string $title): ?Category
     {
-        return self::CARCASS_CATEGORY[$carcass] ?? Category::guess($title) ?? ($carcass !== 'универсал' ? $body?->category() : null) ?? self::TYPE_CATEGORY[$type] ?? null;
+        if (isset(self::CARCASS_CATEGORY[$carcass])) {
+            return self::CARCASS_CATEGORY[$carcass];
+        }
+        if ($body && ! in_array($body, [Body::Truck, Body::Special, Body::Bus], true)) {
+            return $body->category();
+        }
+
+        return Category::guess($title) ?? $body?->category() ?? self::TYPE_CATEGORY[$type] ?? null;
     }
 }

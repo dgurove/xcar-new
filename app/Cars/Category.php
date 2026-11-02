@@ -24,12 +24,6 @@ enum Category: string
         return ! in_array($this, [self::Passenger, self::Moto], true);
     }
 
-    /** @return list<string> */
-    public static function heavy(): array
-    {
-        return array_values(array_map(fn (self $c) => $c->value, array_filter(self::cases(), fn (self $c) => $c->isHeavy())));
-    }
-
     /** Иконка типа (x-ui.icon) — серой миниатюрой перед названием в таблице «Наличия». */
     public function icon(): string
     {

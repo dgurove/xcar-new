@@ -6,10 +6,12 @@ use App\Cars\Actions\FillCar;
 use App\Cars\Brand;
 use App\Cars\Category;
 use App\Offers\Actions\AskEstimates;
+use App\Offers\Actions\DeclineEstimate;
 use App\Offers\Actions\FirstLook;
 use App\Offers\Actions\GiveEstimate;
 use App\Offers\Actions\PlaceBid;
 use App\Offers\Actions\ReturnClosedToRated;
+use App\Offers\Actions\UpdateOffer;
 use App\Offers\AudienceRules;
 use App\Offers\Estimate;
 use App\Offers\MigtorgFields;
@@ -109,6 +111,35 @@ class HeavyEstimateTest extends TestCase
         app(AskEstimates::class)($one, [$this->roma], $this->admin, exclusive: 5);
         app(AskEstimates::class)($one->fresh(), [$this->other], $this->admin);
         $this->assertSame([null, null], Estimate::where('offer_id', $one->id)->orderBy('id')->pluck('exclusive_days')->all());
+
+        // Уже думает другой — эксклюзива новому нет.
+        $busy = $this->draft('MAN', '5691/046/00911/26');
+        app(AskEstimates::class)($busy, [$this->other], $this->admin);
+        app(AskEstimates::class)($busy->fresh(), [$this->roma], $this->admin, exclusive: 5);
+        $this->assertSame([null, null], Estimate::where('offer_id', $busy->id)->orderBy('id')->pluck('exclusive_days')->all());
+    }
+
+    public function test_exclusive_follows_intake(): void
+    {
+        // «+1 ч» к приёму двигает и эксклюзив.
+        $truck = $this->draft('КАМАЗ', '5691/046/00908/26');
+        app(AskEstimates::class)($truck, [$this->roma], $this->admin, exclusive: 3);
+        app(GiveEstimate::class)(Estimate::where('offer_id', $truck->id)->sole(), 1200000, $this->roma);
+        $truck = $truck->fresh();
+        $this->assertSame($this->roma->id, $truck->first_look_user_id);
+        app(UpdateOffer::class)($truck, ['bids_close_at' => $truck->bids_close_at->copy()->addHour()], $this->admin);
+        $this->assertTrue($truck->fresh()->first_look_until->equalTo($truck->fresh()->bids_close_at));
+    }
+
+    public function test_ask_again_keeps_days_and_exclusive(): void
+    {
+        $truck = $this->draft('КАМАЗ', '5691/046/00910/26');
+        $estimate = app(AskEstimates::class)($truck, [$this->roma], $this->admin, days: 5, exclusive: 7)->sole();
+        app(DeclineEstimate::class)($estimate, 900000, null, $this->roma);
+        $this->actingAs($this->admin)->post('http://crm.xcar.localhost/offers/'.$truck->number.'/estimates/'.$estimate->id.'/again')->assertRedirect();
+        $again = Estimate::where('offer_id', $truck->id)->where('state', 'asked')->sole();
+        $this->assertSame(7, $again->exclusive_days);
+        $this->assertEqualsWithDelta(now()->addDays(5)->timestamp, $again->due_at->timestamp, 5);
     }
 
     public function test_confirmed_exclusive_stays_with_estimator(): void
