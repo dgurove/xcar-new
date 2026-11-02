@@ -62,7 +62,7 @@ class VehicleEvent extends Model
             EventType::Note => (string) ($p['text'] ?? ''),
             EventType::Updated => (! empty($p['why']) ? $p['why'].': ' : 'Изменена: ').Changes::text($p['fields'] ?? [], $p['changes'] ?? []),
             EventType::DatesChanged => implode(', ', array_filter([
-                isset($p['accepted']) ? 'Дата приёма: '.self::day($p['accepted'][0]).' → '.self::day($p['accepted'][1]) : null,
+                isset($p['accepted']) ? 'Дата приёма: '.self::day($p['accepted'][0]).' → '.self::day($p['accepted'][1]).(isset($p['source']) ? ' '.(\App\Park\Actions\SetDates::SOURCES[$p['source']] ?? '') : '') : null,
                 isset($p['released']) ? 'Дата выдачи: '.self::day($p['released'][0]).' → '.self::day($p['released'][1]) : null,
             ])),
             EventType::FilledFromDocs => (! empty($p['sources']) ? 'Из документов '.implode(', ', array_map(fn ($s) => '«'.$s.'»', $p['sources'])) : 'Из документов').': '.Changes::text($p['fields'] ?? [], $p['changes'] ?? []),

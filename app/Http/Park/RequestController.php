@@ -19,6 +19,7 @@ use App\Park\Actions\RefuseRelease;
 use App\Park\Actions\RegisterCandidate;
 use App\Park\Actions\RegisterFromLetters;
 use App\Park\Actions\Release;
+use App\Park\Actions\SetDates;
 use App\Park\Actions\StoreByLetters;
 use App\Park\Actions\UpdateVehicle;
 use App\Park\Inspection;
@@ -340,6 +341,8 @@ class RequestController
     public function release(Request $request, ParkRequest $req, Release $release)
     {
         $data = $request->validate(['released_at' => ['nullable', 'date'], 'to' => ['nullable', Rule::enum(ReleasedTo::class)],
+            // Фактическая дата приёма — тут же, при выдаче (02.11.2026, владелец): у многих стоит день ввода, а не приезда.
+            'accepted_at' => ['nullable', 'date'], 'accepted_source' => ['nullable', 'string', 'max:16'],
             // Выдача по QR: код из сканера или причина выдачи без него (от 20 знаков — отписку «так надо» не примем).
             'pass' => ['nullable', 'string', 'max:200'], 'pass_confirm' => ['nullable', 'boolean'],
             'without_qr_reason' => [Rule::requiredIf($request->boolean('without_qr')), 'nullable', 'string', 'min:20', 'max:500'],
@@ -348,6 +351,11 @@ class RequestController
             'without_qr_reason.min' => 'Опишите причину подробнее, от 20 знаков',
         ]);
         $at = isset($data['released_at']) ? Carbon::parse($data['released_at']) : null;
+        // Сначала дата приёма: выдача сверяет свою дату с ней. Поправленная остаётся, даже если выдача не прошла, — она верная.
+        if (! empty($data['accepted_at']) && $request->user()->parkMoney()) {
+            app(SetDates::class)($req->vehicle, $request->user(), Carbon::parse($data['accepted_at']), null, $data['accepted_source'] ?? null);
+            $req->vehicle->refresh();
+        }
         $this->saveVehicle($request, $req->vehicle);
         $qr = $request->boolean('without_qr') ? ['without' => $data['without_qr_reason']] : ['pass' => $data['pass'] ?? null, 'confirm' => $request->boolean('pass_confirm')];
         $release($req->vehicle, $request->user(), $at, null, ReleasedTo::tryFrom($data['to'] ?? '') ?? ($req->vehicle->sold_at ? ReleasedTo::Buyer : null), $data, $req, $request->boolean('force') && $request->user()->canManagePark(), $request->boolean('cash'), $qr);

@@ -11,6 +11,8 @@
 @elseif ($vehicle->state === \App\Park\VehicleState::Stored)
     @if ($vehicle->yard && $move)<x-park.place-move :vehicle="$vehicle" class="fact"/>
     @elseif ($vehicle->yard)<x-ui.place class="fact">{{ $vehicle->yard->name }}{{ $vehicle->spot ? ', '.$vehicle->spot : '' }}</x-ui.place>@endif
+    {{-- В шапке дела — и дата приёма (02.11.2026): «с 06.09 12:00», нажатие — календарь с подсказками из писем. --}}
+    @if ($move && $vehicle->accepted_at && auth()->user()?->parkMoney())<span class="fact nums">с&nbsp;<x-park.accepted :vehicle="$vehicle" key="head" class="underline decoration-dotted underline-offset-2"/></span>@endif
     <span class="fact nums">{{ $days }}&nbsp;д</span>
     {{-- В шапке дела — и ставка шторкой (12.10.2026, `x-park.rate`): одно место, где её ставят. --}}
     @if ($move)<x-park.rate :vehicle="$vehicle" key="head" class="fact"/>@endif

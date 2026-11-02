@@ -19,7 +19,7 @@ const iso = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate(
 const moscow = () => { const [day, clock] = new Date().toLocaleString('sv-SE', { timeZone: 'Europe/Moscow' }).split(' '); return [day, clock.slice(0, 5)]; };
 
 export default class extends Controller {
-    static targets = ['value', 'text', 'pop', 'cal', 'time', 'clear', 'error'];
+    static targets = ['value', 'text', 'pop', 'cal', 'time', 'clear', 'error', 'quick', 'source'];
     static values = { time: Boolean, defaultTime: { type: String, default: '12:00' }, min: String, max: String, limit: String, now: Boolean, prefix: String, submit: Boolean, placeholder: String };
 
     get field() { return this.textTarget.tagName === 'INPUT'; }
@@ -33,6 +33,7 @@ export default class extends Controller {
             this.calTarget.getDayParts = (d) => (iso(d) > last ? 'after-limit' : '');
         }
         this.render(true);
+        this.opened = this.valueTarget.value;
         // Значение вписали снаружи (читалка документов, `fill.js`) — слова поля догоняют.
         this.onChange = () => this.render();
         this.valueTarget.addEventListener('change', this.onChange);
@@ -68,6 +69,18 @@ export default class extends Controller {
         }
         // Пустая кнопка-дата — словом-приглашением («Указать»), а не пустым местом.
         else this.textTarget.textContent = [this.prefixValue, text].filter(Boolean).join(' ') || this.placeholderValue;
+        // Подсказка того же дня, что стоит, — нажатой.
+        this.quickTargets.forEach((b) => b.setAttribute('aria-pressed', String(!!p && b.dataset.dateValueParam.slice(0, 10) === p.date)));
+    }
+
+    // Подсказка дня (`quick`: «Заявка 02.09», «Отчёт 06.09») — значение одним нажатием. В календаре — закрыть (при `submit`
+    // форма уйдёт по `toggled`), рядом с полем — сразу отправить, если `submit`.
+    quick({ params: { value, source } }) {
+        this.set(this.timeValue ? value : value.slice(0, 10));
+        if (this.hasTimeTarget && this.timeValue) this.timeTarget.value = value.slice(11, 16);
+        if (this.hasSourceTarget) this.sourceTarget.value = source || '';
+        if (this.popTarget.matches(':popover-open')) { this.close(); return; }
+        if (this.submitValue && this.valueTarget.value !== this.opened) { this.opened = this.valueTarget.value; this.valueTarget.form?.requestSubmit(); }
     }
 
     open() {
@@ -128,6 +141,7 @@ export default class extends Controller {
     pick() {
         const date = this.calTarget.value;
         if (!date) return;
+        if (this.hasSourceTarget) this.sourceTarget.value = '';
         if (!this.timeValue) { this.set(date); this.close(); return; }
         // `now` (приём на парковке, владелец 10.10.2026): сегодня — время сейчас, другой день — время по умолчанию (12:00);
         // время, поправленное руками, не трогаем.

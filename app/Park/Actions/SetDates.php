@@ -15,13 +15,18 @@ use Illuminate\Validation\ValidationException;
  * Поправить дату и время приёма и выдачи (владелец 09.10.2026: «по письмам расставили, а фактические даты были другие»;
  * 10.10.2026: сама дата — календарь со временем, только администратору парковки). Вместе с датой ТС двигается и день
  * события приёма (выдачи) в ленте — по нему `Vehicle::yardTimeline` знает, где ТС стояла, и история не расходится с
- * датой. Хранение уже выставлено — нельзя: счёт посчитан от прежней даты, сначала его аннулируют.
+ * датой. С 02.11.2026 правит и управляющий (`parkMoney`), и выставленный счёт хранения правке не мешает (владелец: «счетами
+ * толком не занимались, это не настоящее»; уже выставленное не пересчитывается). `source` — откуда день («request» — письмо-заявка,
+ * «report» — наш фотоотчёт, «system» — заявка в системе: подсказки `Park\AcceptHints`), словами в истории.
  */
 final class SetDates
 {
-    public function __invoke(Vehicle $vehicle, User $by, ?Carbon $accepted, ?Carbon $released): void
+    /** Откуда взят день — словами в истории дела. */
+    public const SOURCES = ['request' => 'по заявке', 'report' => 'по отчёту', 'system' => 'по заявке в системе'];
+
+    public function __invoke(Vehicle $vehicle, User $by, ?Carbon $accepted, ?Carbon $released, ?string $source = null): void
     {
-        DB::transaction(function () use ($vehicle, $by, $accepted, $released) {
+        DB::transaction(function () use ($vehicle, $by, $accepted, $released, $source) {
             $vehicle = Vehicle::withoutGlobalScopes()->whereKey($vehicle->id)->lockForUpdate()->firstOrFail();
             $same = fn (?Carbon $new, ?Carbon $old) => ! $new || ! $old || $new->format('Y-m-d H:i') === $old->format('Y-m-d H:i');
             $changes = array_filter([
@@ -51,9 +56,6 @@ final class SetDates
                     $errors['accepted_at'] = 'Не позже перестановки '.Ago::day($firstMove);
                 }
             }
-            if ($vehicle->storage_billed_until) {
-                $errors[array_key_first($changes)] = 'Хранение выставлено по '.Ago::day($vehicle->storage_billed_until).', сначала аннулируйте счёт';
-            }
             if ($errors) {
                 throw ValidationException::withMessages($errors);
             }
@@ -69,6 +71,7 @@ final class SetDates
             $vehicle->log(EventType::DatesChanged, $by, array_filter([
                 'accepted' => isset($changes['accepted_at']) ? [$before['accepted'], $changes['accepted_at']->format('Y-m-d H:i')] : null,
                 'released' => isset($changes['released_at']) ? [$before['released'], $changes['released_at']->format('Y-m-d H:i')] : null,
+                'source' => isset($changes['accepted_at'], self::SOURCES[$source]) ? $source : null,
             ]));
         });
         Nav::forgetStaffCounts();

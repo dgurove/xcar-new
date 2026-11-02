@@ -6,6 +6,7 @@ use App\Mail\Extraction\Intent;
 use App\Mail\Message;
 use App\Mail\Scope;
 use App\Mail\Thread;
+use App\Park\AcceptHints;
 use App\Park\EventType;
 use App\Park\Request;
 use App\Park\RequestState;
@@ -69,9 +70,7 @@ final class AcceptByLetters
         // По письму о выдаче день приёма неизвестен — день письма-заявки вендора перед ним, иначе заявки в системе (её
         // заводят и через месяц после письма: у Exeed письмо 02.09, заявка 07.10, принят по акту 03.09); Сергей поправит в деле.
         $released = $letter->intent === Intent::Released->value;
-        $asked = Message::whereIn('thread_id', Thread::park()->where('vehicle_id', $vehicle->id)->select('id'))->where('direction', 'in')
-            ->where('intent', Intent::Intake->value)->where('date_at', '<', $letter->date_at)->max('date_at');
-        $at = ! $released ? $letter->date_at->copy() : ($asked ? Carbon::parse($asked) : $this->since($vehicle) ?? $letter->date_at->copy());
+        $at = ! $released ? $letter->date_at->copy() : AcceptHints::asked($vehicle, $letter->date_at) ?? $this->since($vehicle) ?? $letter->date_at->copy();
         if (! ($this->intake)($vehicle, $this->yard($vehicle), $at, ['by_letters' => true, 'message' => $letter->id])) {
             return null;
         }

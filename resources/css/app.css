@@ -2049,6 +2049,11 @@ html.kb-open { --home-gap: 0px; }
     .date-pop calendar-month::part(button) { width: 2.5rem; height: 2.5rem; }
   }
   .dark .date-pop { background: var(--color-surface-2); }
+  /* Подсказки дня (`x-ui.date :quick`) — чипами над календарём и рядом с полем (`inline`), нажатый — того же дня, что стоит. */
+  .date-quick { display: flex; flex-wrap: wrap; gap: .375rem; margin-bottom: .5rem; }
+  .date-quick > .chip { @apply whitespace-nowrap px-3 py-1.5; }
+  .date-quick--inline { margin: 0; flex-basis: 100%; }
+  .date-field > .date-quick--inline { margin-top: .5rem; }
   /* Свою переменную `--color-accent` Cally держит на `calendar-month` (чёрная по умолчанию) — даём ей лайм через `--date-accent`: напрямую
      `var(--color-accent)` ссылалась бы сама на себя. */
   .date-cal { display: block; width: 100%; --date-accent: var(--color-accent); }

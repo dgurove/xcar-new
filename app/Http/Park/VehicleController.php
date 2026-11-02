@@ -321,10 +321,10 @@ class VehicleController
     /** Поправить день приёма и выдачи — шторка «Даты» из карточки строки и дела (`SetDates`). */
     public function dates(Request $request, Vehicle $vehicle, SetDates $dates)
     {
-        $data = $request->validate(['accepted_at' => ['nullable', 'date'], 'released_at' => ['nullable', 'date']]);
+        $data = $request->validate(['accepted_at' => ['nullable', 'date'], 'released_at' => ['nullable', 'date'], 'source' => ['nullable', 'string', 'max:16']]);
         // Дата — кнопка в строке, полей под ней нет: отказ — тостом, а не ошибкой у поля.
         try {
-            $dates($vehicle, $request->user(), isset($data['accepted_at']) ? Carbon::parse($data['accepted_at']) : null, isset($data['released_at']) ? Carbon::parse($data['released_at']) : null);
+            $dates($vehicle, $request->user(), isset($data['accepted_at']) ? Carbon::parse($data['accepted_at']) : null, isset($data['released_at']) ? Carbon::parse($data['released_at']) : null, $data['source'] ?? null);
         } catch (ValidationException $e) {
             return back()->with('toast', collect($e->errors())->flatten()->first());
         }
@@ -603,11 +603,11 @@ class VehicleController
     public function yard(Request $request, Vehicle $vehicle, SetYard $setYard, SetDates $dates)
     {
         $data = $request->validate(['yard_id' => ['required', 'exists:park_yards,id'], 'spot' => ['nullable', 'string', 'max:16'],
-            'accepted_at' => ['nullable', 'date']]);
+            'accepted_at' => ['nullable', 'date'], 'accepted_source' => ['nullable', 'string', 'max:16']]);
         $user = $request->user();
         DB::transaction(function () use ($data, $vehicle, $user, $setYard, $dates) {
             if (! empty($data['accepted_at']) && $user->parkMoney()) {
-                $dates($vehicle, $user, Carbon::parse($data['accepted_at']), null);
+                $dates($vehicle, $user, Carbon::parse($data['accepted_at']), null, $data['accepted_source'] ?? null);
             }
             $setYard($vehicle, $user, Yard::findOrFail($data['yard_id']), $data['spot'] ?? null);
         });

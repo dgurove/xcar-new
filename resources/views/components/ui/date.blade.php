@@ -4,8 +4,12 @@
      приёма 17:30, парковка 12:00). Зовёт его `x-ui.field` с `type="date|datetime-local"`.
      `chip` — вместо поля кнопка с текстом «принята 5 мая, 14:05» (`prefix` — слово перед датой, класс — снаружи): дата
      сама и есть кнопка (`x-park.date-edit`); `limit` — позже нельзя, дни после красные (срок обязывающего); пустая — `placeholder` («Указать»). `submit` — значение уходит одной отправкой формы скрытого поля, когда
-     всплывашку закрыли и значение поменялось (выбор дня до времени формы не отправляет). --}}
-@props(['name', 'id' => null, 'value' => null, 'time' => false, 'defaultTime' => '12:00', 'min' => null, 'max' => null, 'limit' => null, 'placeholder' => null, 'clearable' => true, 'now' => false, 'chip' => false, 'prefix' => null, 'submit' => false])
+     всплывашку закрыли и значение поменялось (выбор дня до времени формы не отправляет).
+     `quick` — подсказки дня чипами над календарём (`[['label' => 'Заявка 02.09', 'at' => Carbon, 'source' => 'request']]`,
+     дата приёма парковки — `Park\AcceptHints`): нажатие ставит значение и закрывает выбор, при `submit` — сразу уходит;
+     `inline` — те же чипы ещё и рядом с полем (одно нажатие без календаря). `source` — имя скрытого поля, куда ложится
+     `source` нажатой подсказки (выбор в календаре его стирает). --}}
+@props(['name', 'id' => null, 'value' => null, 'time' => false, 'defaultTime' => '12:00', 'min' => null, 'max' => null, 'limit' => null, 'placeholder' => null, 'clearable' => true, 'now' => false, 'chip' => false, 'prefix' => null, 'submit' => false, 'quick' => [], 'inline' => false, 'source' => null])
 @php
     $id ??= 'f-'.str_replace(['[', ']'], ['-', ''], $name);
     // Прежние значения бывают с секундами и пробелом («2026-10-09 17:30:00») — к виду поля.
@@ -14,10 +18,13 @@
     $day = fn ($d) => $d ? substr(str_replace(' ', 'T', (string) ($d instanceof \DateTimeInterface ? $d->format('Y-m-d') : $d)), 0, 10) : null;
     $disabled = $attributes->has('disabled') && $attributes->get('disabled') !== false;
     $chipText = $chip && $v !== '' ? trim($prefix.' '.\App\Support\Ago::day(\Illuminate\Support\Carbon::parse($v), (bool) $time)) : ($prefix ?: $placeholder);
+    $quick = collect($quick)->map(fn ($q) => ['label' => $q['label'], 'value' => $q['at']->format($time ? 'Y-m-d\TH:i' : 'Y-m-d'), 'source' => $q['source'] ?? ''])->all();
+    $chips = fn () => collect($quick)->map(fn ($q) => '<button type="button" class="chip nums" data-date-target="quick" data-action="date#quick" data-date-value-param="'.e($q['value']).'" data-date-source-param="'.e($q['source']).'" aria-pressed="'.(substr($q['value'], 0, 10) === substr($v, 0, 10) ? 'true' : 'false').'">'.e($q['label']).'</button>')->implode('');
 @endphp
 <{{ $chip ? 'span' : 'div' }} class="{{ $chip ? 'contents' : 'date-field' }}" data-controller="date" data-date-prefix-value="{{ $prefix }}" @if ($chip && $placeholder) data-date-placeholder-value="{{ $placeholder }}" @endif data-date-submit-value="{{ $submit ? 'true' : 'false' }}" data-date-time-value="{{ $time ? 'true' : 'false' }}" data-date-default-time-value="{{ $defaultTime }}" data-date-now-value="{{ $now ? 'true' : 'false' }}"
     data-date-min-value="{{ $day($min) }}" data-date-max-value="{{ $day($max) }}" @if ($limit) data-date-limit-value="{{ $limit instanceof \DateTimeInterface ? $limit->format('Y-m-d\TH:i') : substr(str_replace(' ', 'T', (string) $limit), 0, 16) }}" @endif>
     <input type="hidden" name="{{ $name }}" value="{{ $v }}" data-date-target="value" {{ $attributes->except(['class', 'id', 'type', 'placeholder']) }}>
+    @if ($source)<input type="hidden" name="{{ $source }}" value="" data-date-target="source" {{ $attributes->only('form') }}>@endif
     @if ($chip)
         <button type="button" id="{{ $id }}" class="{{ $attributes->get('class') }}" data-date-target="text" data-action="date#open:prevent:stop">{{ $chipText }}</button>
     @else
@@ -25,8 +32,10 @@
             placeholder="{{ $placeholder ?? ($time ? 'Дата и время' : 'Дата') }}" @disabled($disabled) data-date-target="text"
             data-action="click->date#open keydown->date#typed change->date#typed">
     @endif
+    @if ($inline && $quick)<span class="date-quick date-quick--inline">{!! $chips() !!}</span>@endif
     {{-- Внутри <summary> (дата шага в деле) нажатие по всплывашке не должно сворачивать шаг — `date#inside`. --}}
     <div class="date-pop" popover data-date-target="pop" data-action="toggle->date#toggled click->date#inside">
+        @if ($quick)<div class="date-quick">{!! $chips() !!}</div>@endif
         <calendar-date class="date-cal" locale="ru-RU" first-day-of-week="1" format-weekday="short" data-date-target="cal" data-action="change->date#pick"
             @if ($day($min)) min="{{ $day($min) }}" @endif @if ($day($max)) max="{{ $day($max) }}" @endif>
             <x-ui.icon slot="previous" name="chevron-down" class="size-5 rotate-90" aria-label="Прошлый месяц"/>

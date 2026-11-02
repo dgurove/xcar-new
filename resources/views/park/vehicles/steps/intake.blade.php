@@ -6,7 +6,12 @@
     <x-ui.field name="spot" label="Место" list="spots-list" autocapitalize="characters"/>
     <datalist id="spots-list" data-spots-target="list"></datalist>
     @include('park.yards.plan-pick-frame', ['pick' => $vehicle->id, 'at' => null])
-    <x-ui.field name="accepted_at" label="Когда" type="datetime-local" :value="now()->format('Y-m-d\TH:i')" now/>
+    {{-- Принимают и задним числом — подсказки дня из писем (`Park\AcceptHints`: «Заявка 02.09», «Отчёт 06.09»), 02.11.2026. --}}
+    <div class="field">
+        <label for="f-accepted_at" class="field-label">Когда</label>
+        <x-ui.date name="accepted_at" time now :clearable="false" :value="old('accepted_at', now()->format('Y-m-d\TH:i'))" :max="now()"
+            :quick="\App\Park\AcceptHints::for($vehicle)" inline/>
+    </div>
     {{-- Ставка — видна до «Принять» (12.10.2026, `VehicleRate`): тип ТС угадан по марке, своя ставка пусто — по тарифу. Свои
          имена: в деле рядом стоит редактор полей ТС с той же «Категорией». --}}
     {{-- Тип ТС — всем людям парковки, своя ставка — деньги: приёмщику (`User::parkMoney`) её нет (30.10.2026). --}}
