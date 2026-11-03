@@ -67,7 +67,7 @@ final class AcceptInvite
             }
             $invite->increment('uses_count');
             // Ссылка из сделки (18.10.2026): пришедший — покупатель по договору, если его там ещё нет.
-            if ($buyer && $invite->deal_id && ($deal = Deal::find($invite->deal_id)) && $deal->isActive() && $deal->hasContract()
+            if ($buyer && $invite->deal_id && ($deal = Deal::find($invite->deal_id)) && $deal->isActive() && $deal->collectsBuyer()
                 && ! DealContract::for($deal)->buyer_user_id && $deal->buyer) {
                 app(SaveDealContract::class)(DealContract::for($deal), ['buyer_id' => $user->id], $deal->buyer);
             }

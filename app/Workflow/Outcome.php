@@ -128,6 +128,54 @@ class Outcome extends Model
         };
     }
 
+    /**
+     * Что будет после нажатия — строкой под кнопками шага в CRM (03.11.2026, владелец: «что значит „Ответ поставщика
+     * получен“, к чему это приведёт — сотрудникам страшно нажимать»): следующий этап и чей там ход. Из самого маршрута, своих
+     * текстов у кнопок нет — редактор маршрута получает это даром.
+     */
+    public function consequence(): ?string
+    {
+        $to = $this->to;
+        if (! $to) {
+            return null;
+        }
+        if ($to->waits_for === WaitsFor::Nobody) {
+            return match ($to->offer_state) {
+                OfferState::Delivered, OfferState::Garage => 'сделка закроется',
+                OfferState::Cancelled => 'сделка отменится',
+                OfferState::Archived => 'в архив',
+                default => '«'.$to->name.'»',
+            };
+        }
+        $who = match (true) {
+            $to->waits_for === WaitsFor::Manager && $to->awaitsManager() => 'менеджеру: «'.$to->managerTitle().'»',
+            $to->isLetterStep() => 'письмо поставщику',
+            $to->waits_for === WaitsFor::Supplier => 'ждём поставщика',
+            $to->offer_state === OfferState::Open => 'приём подтверждений',
+            default => 'наш ход',
+        };
+
+        return '«'.$to->name.'», '.$who;
+    }
+
+    /**
+     * Подпись кнопки сотрудника на экране (03.11.2026, владелец: «сотрудникам страшно нажимать кнопки, которые не понимаешь»):
+     * в маршруте подпись остаётся — по ней узнают шаг (`SyncHandover`, `SyncOffer`, `StepBack`), меняется только видимое.
+     * Наша кнопка рядом с ответом менеджера («Автомобиль забрал», «Договор у покупателя») говорит, что это за него.
+     */
+    public function shownLabel(): string
+    {
+        $label = mb_strtolower(trim($this->label));
+        $mirror = fn (string $manager) => $this->from?->loadedExits()->contains(fn (self $e) => $e->actor === Actor::Manager && mb_strtolower(trim($e->label)) === $manager);
+
+        return match (true) {
+            $label === 'автомобиль передан' && $mirror('автомобиль забрал') => 'Менеджер забрал автомобиль',
+            $label === 'договор передан' && $mirror('договор у покупателя') => 'Покупатель получил договор',
+            $label === 'покупатель от поставщика' => 'Продать покупателю поставщика',
+            default => $this->label,
+        };
+    }
+
     /** Согласие менеджера взять сделку в работу. */
     public function takes(): bool
     {

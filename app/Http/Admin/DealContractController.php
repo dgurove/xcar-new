@@ -21,7 +21,8 @@ class DealContractController
 {
     public function update(Request $request, Deal $deal, SaveDealContract $save)
     {
-        abort_unless($deal->hasContract(), 404);
+        // Покупатель для счёта поставщика без договора (03.11.2026, `Deal::collectsBuyer`) — только его часть, без ДКП.
+        abort_unless($deal->collectsBuyer() || $deal->contract?->buyer_user_id, 404);
         // Покупатель за менеджера (20.10.2026, владелец: «пока менеджер не укажет покупателя, мы не можем закрыть сделку,
         // должна быть возможность указывать за него»): тот же выбор, что у менеджера, — его покупатели, сам менеджер
         // (`me` — покупатель сделки), данные для договора и кто платит по счёту ПРАЙМ.
@@ -37,8 +38,13 @@ class DealContractController
             $needs = ! empty($data['buyer_id']) && ($b = $contract->fresh()->buyer) && ! $b->party?->readyAsBuyer();
 
             return back()->with('open_sheet', $needs ? 'deal-buyer-data-'.$deal->id : null)
-                ->with('toast', $deal->isPrime() && $deal->fresh()->hasManagerInvoice() ? 'Покупатель указан, счёт выставлен' : 'Покупатель указан');
+                ->with('toast', match (true) {
+                    $deal->isPrime() && $deal->fresh()->hasManagerInvoice() => 'Покупатель указан, счёт выставлен',
+                    $request->has('buyer') => 'Данные покупателя сохранены',
+                    default => 'Покупатель указан',
+                });
         }
+        abort_unless($deal->hasContract(), 404);
         // Дата договора — своей формой из строки-календаря карточки (19.10.2026).
         if ($request->has('signed_at') && ! $request->has('vehicle')) {
             $contract = $save(DealContract::for($deal), $request->validate(['signed_at' => ['required', 'date']], [], ['signed_at' => 'дата договора']), $request->user());

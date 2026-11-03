@@ -43,6 +43,10 @@ final class AnswerRequirement
             if ($requirement->asks === Asks::Document && $requirement->getMedia('files')->isEmpty()) {
                 throw ValidationException::withMessages(['files' => 'Приложите документ']);
             }
+            // Данные покупателя для счёта (03.11.2026): шаг проходит сам, когда они есть, — кнопкой без них нельзя.
+            if ($requirement->asks === Asks::Buyer && ! $requirement->deal?->contract?->buyer?->party?->readyAsBuyer()) {
+                throw ValidationException::withMessages(['exit' => 'Сначала данные покупателя со сканом паспорта']);
+            }
 
             $requirement->update(['done_at' => now(), 'answer' => ['exit' => $exit->label, 'fields' => $answer]]);
             ($this->takeExit)($requirement->offer, $exit, Actor::Manager, $by, $answer);

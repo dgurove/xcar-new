@@ -45,7 +45,7 @@
             <x-offer.reprice-asks :offer="$offer"/>
             <x-deal.person-link :deal="$deal"/>
             <x-deal.money :deal="$deal" compact/>
-            @if ($deal->hasContract())<x-deal.contract :deal="$deal"/>@endif
+            @if ($deal->hasContract())<x-deal.contract :deal="$deal"/>@elseif ($deal->collectsBuyer() || $deal->contract?->buyer_user_id)<x-deal.invoice-buyer :deal="$deal"/>@endif
             {{-- «Показ» — тот же модуль, что справа в редакторе под «Ценами» (12.10.2026): сколько и кому показывать сделку; своя
                  форма, «Сохранить изменения» подвалом карточки шлёт только тронутое. --}}
             @if ($deal->isActive() && ! $deal->isGarage() && auth()->user()->canManageCrm())

@@ -22,7 +22,7 @@ class Template extends Model
         return ['scope' => Scope::class];
     }
 
-    public const PLACEHOLDERS = ['number', 'car', 'vin', 'claim_ref', 'floor', 'price', 'manager', 'insurer', 'today'];
+    public const PLACEHOLDERS = ['number', 'car', 'vin', 'claim_ref', 'floor', 'price', 'manager', 'insurer', 'today', 'buyer'];
 
     public const PARK_PLACEHOLDERS = ['ref', 'car', 'vin', 'plate', 'yard', 'address', 'date', 'days', 'damages', 'client', 'today', 'pickup_link', 'buyer_name', 'buyer_email', 'pickup_date',
         'month', 'count', 'invoice', 'sum'];

@@ -2,4 +2,4 @@
      сделка, приводи к общему виду»): деньги и ДКП, если он у схемы есть. Заметка — в правой колонке под «Показом» (12.10.2026). --}}
 <x-deal.person-link :deal="$deal"/>
 <x-deal.money :deal="$deal" id="money"/>
-@if ($deal->hasContract())<x-deal.contract :deal="$deal"/>@endif
+@if ($deal->hasContract())<x-deal.contract :deal="$deal"/>@elseif ($deal->collectsBuyer() || $deal->contract?->buyer_user_id)<x-deal.invoice-buyer :deal="$deal"/>@endif

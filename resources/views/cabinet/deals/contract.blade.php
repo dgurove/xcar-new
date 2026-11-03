@@ -31,6 +31,8 @@
     $missing = $contract->missing();
     // Покупатель — пункт менеджера выше; у договора называем то, что вносим мы (продавец, документы ТС, цена).
     $ours = array_values(array_diff($missing, ['покупатель', 'данные покупателя', 'скан паспорта покупателя']));
+    // Без договора — покупатель для счёта поставщика (03.11.2026, Альфа): «данные для счёта».
+    $for = $deal->hasContract() ? 'договора' : 'счёта';
 @endphp
 <section @if ($part !== 'doc') id="dkp-buyer" @endif class="min-w-0">
     @unless ($embedded)<h2 class="list-head">{{ $garage ? 'Договор купли-продажи' : ($prime ? 'Покупатель: счёт и ДКП' : 'Покупатель по ДКП') }}</h2>@endunless
@@ -40,17 +42,17 @@
             @if ($ready || ! $editable)
                 <a href="{{ $isMe ? '/account/money/details' : '/buyers/'.$buyer->id }}" class="row">
                     <span class="min-w-0 flex-1"><span class="block">{{ $isMe ? ($garage ? 'Ваши данные' : 'Я сам') : ($buyer->party?->name ?: $buyer->name) }}</span>
-                        <span class="row-sub">@if ($ready)<span class="text-open">данные есть</span>@else<span class="text-urgent">нужны данные для договора</span>@endif</span></span>
+                        <span class="row-sub">@if ($ready)<span class="text-open">данные есть</span>@else<span class="text-urgent">нужны данные для {{ $for }}</span>@endif</span></span>
                     <x-ui.chevron/>
                 </a>
             @else
                 <div data-controller="sheet" class="contents">
                     <x-ui.sheet-row>
                         <span class="min-w-0 flex-1"><span class="block">{{ $isMe ? ($garage ? 'Ваши данные' : 'Я сам') : ($buyer->party?->name ?: $buyer->name) }}</span>
-                            <span class="row-sub text-urgent">{{ $noScan ? 'нужен скан паспорта' : 'нужны данные для договора' }}</span></span>
+                            <span class="row-sub text-urgent">{{ $noScan ? 'нужен скан паспорта' : 'нужны данные для '.$for }}</span></span>
                         <x-ui.chevron/>
                     </x-ui.sheet-row>
-                    <x-ui.sheet id="deal-buyer-data" title="Данные для договора" :open="$dataErrors || session('open_sheet') === 'deal-buyer-data'" tall>
+                    <x-ui.sheet id="deal-buyer-data" :title="'Данные для '.$for" :open="$dataErrors || session('open_sheet') === 'deal-buyer-data'" tall>
                         @php $buyerParty = $buyer->party ?? \App\Billing\Party::forUser($buyer); @endphp
                         @if ($buyerParty->isPerson())<x-billing.passport-scan :party="$buyerParty" form="deal-buyer-data-form"/>@endif
                         <form method="post" action="/deals/{{ $deal->id }}/contract" class="flex flex-col gap-3" id="deal-buyer-data-form">

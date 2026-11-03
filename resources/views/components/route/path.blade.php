@@ -21,7 +21,7 @@
     // Исход, что ведёт на согласие менеджера (Альфа), — «Спросить менеджера» (27.10.2026, владелец: «Поставщик согласовал»
     // читали как «сразу в работу», а это только вопрос менеджеру). Подпись исхода в маршруте не меняется — по ней узнают шаг.
     $asks = fn ($x) => $x->actor === Actor::Staff && $x->to?->asksConsent();
-    $label = fn ($x) => $asks($x) ? 'Спросить менеджера' : $x->label;
+    $label = fn ($x) => $asks($x) ? 'Спросить менеджера' : $x->setRelation('from', $stage)->shownLabel();
     $exits = $stage->exitsFor(Actor::Staff, $deal)->reject(fn ($x) => $x->acceptsBid());
     // «За менеджера» (28.10.2026, владелец: «он мне уже устно подтвердил»): его ответы шага — пунктами «···», нажимает
     // админ (`RouteController::forManager`, в «Истории» — «за менеджера»).
@@ -183,6 +183,11 @@
                                 default => 'документ',
                             };
                         }
+                        // Данные покупателя для счёта поставщика (03.11.2026): их вносит и админ — «Заполнить» ведёт к карточке.
+                        $buyerData = $req?->asks === \App\Workflow\Asks::Buyer;
+                        if ($buyerData) {
+                            $waitsWord = 'Ждём данные покупателя от менеджера';
+                        }
                     @endphp
                     @if ($position->letterStatus())
                         {{-- Этап с письмом поставщику — что с письмом, а не «Ждём поставщика» (`x-route.clock`, 11.10.2026). --}}
@@ -190,6 +195,9 @@
                     @elseif (! $wantsInvoice && ($overdue || $position->waitsFor() !== WaitsFor::Nobody || $clock || $waitsWord))
                         {{-- Одной строкой: переносы в разметке давали пробел перед запятой. --}}
                         <p class="step-hint {{ $tone }}">@if ($overdue)Срок вышел <span class="nums" data-controller="timer" data-timer-since-value="{{ $position->deadline_at->toIso8601String() }}" data-timer-coarse-value="true"></span> назад@else{{ $waitsWord ?? $position->waitsFor()->label() }}@if ($position->deadline_at), осталось <span class="nums" data-controller="timer" data-timer-until-value="{{ $position->deadline_at->toIso8601String() }}" data-timer-done-value="-" data-timer-coarse-value="true" data-timer-word-value="">{{ \App\Support\Ago::left($position->deadline_at, '') }}</span>@elseif ($req?->due_at), до <span class="nums">{{ \App\Support\Ago::html($req->due_at, true, words: false) }}</span>@elseif ($stage->timerMode() === 'stopwatch'), идёт <span class="nums" data-controller="timer" data-timer-since-value="{{ $position->block_entered_at->toIso8601String() }}" data-timer-coarse-value="true"></span>@endif @endif</p>
+                    @endif
+                    @if ($buyerData && auth()->user()?->canManageCrm())
+                        <p class="step-hint"><a href="/offers/{{ $offer->number }}#invoice-buyer" class="text-accent-text underline-offset-4" data-turbo-frame="_top">Заполнить за менеджера</a></p>
                     @endif
                     {{-- Согласие менеджера: чаще всего он уже сказал «да» устно — «Беру в работу» за него видной тихой кнопкой. --}}
                     @if ($takeFor)
@@ -323,6 +331,15 @@
                                 </div>
                             @endif
                         </div>
+                        {{-- Что будет после каждой кнопки (03.11.2026, владелец: «сотрудникам страшно нажимать кнопки, которые не
+                             понимаешь, что сделают») — следующий этап и чей там ход (`Outcome::consequence`). --}}
+                        @if ($moves->isNotEmpty())
+                            <ul class="mt-2 flex flex-col gap-0.5 text-sm text-ink-muted">
+                                @foreach ($moves->values() as $exit)
+                                    @if ($next = $exit->consequence())<li><span class="text-ink">{{ $label($exit) }}</span> → {{ $next }}</li>@endif
+                                @endforeach
+                            </ul>
+                        @endif
                     @endif
                 @else
                     <div class="step-head"><span class="step-title">{{ $blockName($block) }}</span></div>

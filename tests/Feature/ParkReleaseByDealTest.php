@@ -78,7 +78,7 @@ class ParkReleaseByDealTest extends TestCase
     /** Шагами маршрута до «Оплата получена»: согласие, «Беру в работу», платёжка, подтверждение. */
     private function paid(Offer $offer, Deal $deal): void
     {
-        foreach (['Поставщик согласовал', 'Беру в работу', 'Ответ поставщика получен', 'Платёжное поручение приложено', 'Оплата получена'] as $label) {
+        foreach (['Поставщик согласовал', 'Беру в работу', 'Поставщик сразу выставил счёт', 'Платёжное поручение приложено', 'Оплата получена'] as $label) {
             $o = $offer->fresh();
             $exit = $o->stage()->exits->first(fn ($e) => $e->label === $label && $e->fits($deal->fresh()));
             if (! $exit && $label === 'Поставщик согласовал') {

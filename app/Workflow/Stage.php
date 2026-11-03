@@ -285,7 +285,7 @@ class Stage extends Model
         return $result;
     }
 
-    private function loadedExits(): Collection
+    public function loadedExits(): Collection
     {
         return $this->relationLoaded('exits') ? $this->exits : $this->exits()->with('to')->get();
     }

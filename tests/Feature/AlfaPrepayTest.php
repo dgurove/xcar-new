@@ -83,7 +83,8 @@ class AlfaPrepayTest extends TestCase
             $exit = $stage->exitsFor(Actor::Manager, $deal)->first(fn ($e) => $e->label === 'Беру в работу');
             $exit
                 ? app(TakeExit::class)($o, $exit, Actor::Manager, $this->manager)
-                : app(TakeExit::class)($o, $stage->exitsFor(Actor::Staff, $deal)->first(fn ($e) => ! str_contains(mb_strtolower($e->label), 'отказ')), Actor::Staff, $this->admin);
+                // Реквизиты для счёта — свой тест (`AlfaRequisitesTest`): здесь — «сразу выставил счёт».
+                : app(TakeExit::class)($o, $stage->exitsFor(Actor::Staff, $deal)->first(fn ($e) => ! preg_match('/отказ|реквизит/u', mb_strtolower($e->label))), Actor::Staff, $this->admin);
         }
         $this->assertTrue($offer->fresh()->stage()->isPayStep());
     }

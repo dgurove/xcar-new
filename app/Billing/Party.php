@@ -260,6 +260,32 @@ class Party extends Model implements HasMedia
         }));
     }
 
+    /**
+     * Реквизиты строками для письма поставщику (03.11.2026, Альфа: «пришлите реквизиты для выставления счёта»): человек —
+     * ФИО, рождение, паспорт, кем и когда выдан, код, адрес; организация и ИП — название, ИНН, КПП, ОГРН, адрес,
+     * руководитель, банк (если есть).
+     */
+    public function requisitesText(): string
+    {
+        $date = fn ($d) => $d?->format('d.m.Y');
+
+        return implode("\n", array_filter($this->kind === PartyKind::Person || $this->kind === null ? [
+            $this->name,
+            $this->birth_at ? 'Дата рождения: '.$date($this->birth_at).($this->birth_place ? ', '.$this->birth_place : '') : null,
+            $this->passport ? 'Паспорт: '.implode(' № ', array_filter($this->passportParts())) : null,
+            $this->passport_issued ? 'Выдан: '.$this->passport_issued.($this->passport_issued_at ? ' '.$date($this->passport_issued_at) : '') : null,
+            $this->passport_code ? 'Код подразделения: '.$this->passport_code : null,
+            $this->reg_address ? 'Адрес регистрации: '.$this->reg_address : null,
+        ] : [
+            $this->name,
+            $this->inn ? 'ИНН '.$this->inn.($this->kpp ? ', КПП '.$this->kpp : '') : null,
+            $this->ogrn ? ($this->kind === PartyKind::Entrepreneur ? 'ОГРНИП ' : 'ОГРН ').$this->ogrn : null,
+            ($this->legal_address ?: $this->reg_address) ? 'Адрес: '.($this->legal_address ?: $this->reg_address) : null,
+            $this->director ? 'Руководитель: '.$this->director : null,
+            $this->bankDetails() ?: null,
+        ]));
+    }
+
     public function bankDetails(): string
     {
         return implode(', ', array_filter([$this->bank_name, $this->bik ? 'БИК '.$this->bik : null, $this->account ? 'р/с '.$this->account : null, $this->corr_account ? 'к/с '.$this->corr_account : null,

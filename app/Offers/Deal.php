@@ -20,6 +20,7 @@ use App\Support\FastAttributes;
 use App\Support\Surface;
 use App\Users\User;
 use App\Vendors\DealFormat;
+use App\Workflow\Asks;
 use App\Workflow\Outcome;
 use App\Workflow\Requirement;
 use App\Workflow\Stage;
@@ -441,6 +442,35 @@ class Deal extends Model
         }
 
         return $this->isDkp() || ($this->isPrime() && (! $this->isGarage() || $this->isGarageManager() || $this->namesBuyer()));
+    }
+
+    /**
+     * Собираем ли покупателя по договору: договор есть (`hasContract`) или сделка стоит на шаге «Данные покупателя»
+     * (`Asks::Buyer`, 03.11.2026, Альфа «страховой напрямую»: счёт поставщик выставит на покупателя — договора у нас нет,
+     * а данные нужны). Одна дверь для формы покупателя у менеджера и в CRM.
+     */
+    public function collectsBuyer(): bool
+    {
+        return $this->hasContract() || $this->asksBuyerData();
+    }
+
+    /** Сделка стоит на шаге, что просит данные покупателя (`Asks::Buyer`). */
+    public function asksBuyerData(): bool
+    {
+        return $this->isActive() && $this->offer?->stage()?->asks === Asks::Buyer;
+    }
+
+    /**
+     * На кого поставщик выставит счёт за ТС (03.11.2026, реквизиты Альфе): платим мы — ПРАЙМ, Р.О.С., гараж «платим мы» —
+     * наше юрлицо; иначе («страховой напрямую») — покупатель по договору.
+     */
+    public function supplierInvoicee(): ?Party
+    {
+        if ($this->schemeOf()->paysCar() || $this->isGarageUs()) {
+            return Party::seller($this->seller());
+        }
+
+        return $this->contract?->buyer?->party;
     }
 
     /** Сколько покупатель отдаёт не нам — собственнику по ДКП или страховой: своя сумма, а без неё закупочная. */

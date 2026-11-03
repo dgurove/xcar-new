@@ -596,6 +596,16 @@ class MailController
             }
         }
 
+        // Реквизиты покупателя-человека поставщику (03.11.2026, Альфа) — со сканом паспорта во вложении.
+        if ($offer?->deal && $template && ! $request->old() && preg_match('/\{\{ ?buyer ?\}\}/', (string) $template->body)
+            && ($party = $offer->deal->supplierInvoicee()) && $party->isPerson() && ! $party->seller) {
+            foreach (['main', 'reg'] as $page) {
+                if ($media = $party->passportScan($page)) {
+                    $defaults['files'][] = $outbox->put($media->file_name, file_get_contents($media->getPath()));
+                }
+            }
+        }
+
         if ($supplierRequest && ! $request->old()) {
             $defaults['files'][] = $outbox->put($supplierRequest->filename(), $supplierRequest->xlsx());
         }
@@ -1037,6 +1047,8 @@ class MailController
             'manager' => $offer->deal?->buyer?->name ?? '',
             'insurer' => $offer->vendor?->name ?? '',
             'today' => now()->translatedFormat('j F Y'),
+            // Реквизиты для счёта поставщика (03.11.2026, Альфа): покупатель по договору, где платим мы — наше юрлицо.
+            'buyer' => $offer->deal?->supplierInvoicee()?->requisitesText() ?? '',
         ];
     }
 

@@ -47,6 +47,7 @@ use App\Notifications\Notify;
 use App\Notifications\RecordDelivery;
 use App\Offers\Events\OfferPublished;
 use App\Offers\Events\OfferStateChanged;
+use App\Offers\Actions\AdvanceOnBuyerData;
 use App\Offers\Listeners\AdvanceOnReply;
 use App\Offers\Listeners\MarkSupplierLetter;
 use App\Offers\Listeners\RetractWhenGone;
@@ -135,6 +136,7 @@ class AppServiceProvider extends ServiceProvider
         Event::subscribe(ReportDelivery::class);
         Event::subscribe(SyncHandover::class);
         Event::subscribe(AdvanceOnReply::class);
+        Event::listen(StageEntered::class, [AdvanceOnBuyerData::class, 'entered']);
         Event::subscribe(MarkSupplierLetter::class);
         Event::listen(OfferStateChanged::class, RetractWhenGone::class);
         Event::listen(TransportMoved::class, StartPrepOnArrival::class);

@@ -33,6 +33,9 @@ final class AdvanceOnReply
 {
     private const EXITS = ['поставщик согласовал', 'ответ поставщика получен'];
 
+    /** Исход «просят реквизиты» (`Presets\Alfa::ASKS_REQUISITES`) — по письму, где их просят, а не по контакту. */
+    private const REQUISITES = ['поставщик просит реквизиты'];
+
     public const ASK_DOCUMENTS = 'Нужны документы для проверки и подготовки ДКП.';
 
     public function __construct(private TakeExit $take, private Composer $composer) {}
@@ -61,7 +64,9 @@ final class AdvanceOnReply
         if ($files) {
             ShareReplyFiles::dispatch($message->id);
         }
-        $moved = $contact && $this->advance($deal, $message);
+        // Просят реквизиты для счёта (Альфа, 03.11.2026) — шаг «Поставщик просит реквизиты»: менеджеру — данные покупателя.
+        $requisites = InsurerReplies::asksRequisites($message);
+        $moved = ($contact && $this->advance($deal, $message)) || ($requisites && $this->advance($deal, $message, labels: self::REQUISITES));
         // Поставщик ответил на наше письмо, а шаг сам не прошёл — ход наш: отметить исход (11.10.2026, `Position::letterStatus`).
         // Его срок снимается (19.01.2027): иначе шаг краснел «на нас» за срок поставщика; дальше — «Поставщик ответил N ч назад».
         if (! $moved && ($position = $offer->unsetRelation('positions')->position(Track::Sale)) && $position->letterStatus() === 'sent') {
@@ -116,9 +121,12 @@ final class AdvanceOnReply
         if (! $deal?->isActive()) {
             return;
         }
-        $letter = InsurerReplies::for($deal)->first(fn (Message $m) => InsurerReplies::hasContact($m));
+        $replies = InsurerReplies::for($deal);
+        $letter = $replies->first(fn (Message $m) => InsurerReplies::hasContact($m));
         if ($letter) {
             $this->advance($deal->setRelation('offer', $e->offer), $letter, quiet: false);
+        } elseif ($asked = $replies->first(fn (Message $m) => InsurerReplies::asksRequisites($m))) {
+            $this->advance($deal->setRelation('offer', $e->offer), $asked, quiet: false, labels: self::REQUISITES);
         }
     }
 
@@ -142,7 +150,7 @@ final class AdvanceOnReply
     }
 
     /** Шаг ждёт поставщика — пройти его исходом «ответ получен». $quiet — «Ваш ход» скажет уведомление о письме. */
-    private function advance(Deal $deal, Message $letter, bool $quiet = true): bool
+    private function advance(Deal $deal, Message $letter, bool $quiet = true, array $labels = self::EXITS): bool
     {
         $offer = $deal->offer->unsetRelation('positions');
         if ($offer->vendor?->deal_format === DealFormat::Wholesale) {
@@ -152,7 +160,7 @@ final class AdvanceOnReply
         if ($stage?->waits_for !== WaitsFor::Supplier) {
             return false;
         }
-        $exit = $stage->exitsFor(Actor::Staff, $deal)->first(fn (Outcome $x) => in_array(mb_strtolower(trim($x->label)), self::EXITS, true));
+        $exit = $stage->exitsFor(Actor::Staff, $deal)->first(fn (Outcome $x) => in_array(mb_strtolower(trim($x->label)), $labels, true));
         if (! $exit) {
             return false;
         }

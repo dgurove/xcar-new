@@ -44,6 +44,17 @@ final class InsurerReplies
         return $message->files()->isNotEmpty() || CloudShare::links($message->replyText(marks: true)) !== [];
     }
 
+    /**
+     * Просят реквизиты для счёта (03.11.2026, Альфа: «Просьба прислать реквизиты для выставления счета. Без НДС.») — шаг
+     * «Подтвердили покупку» проходит сам «Поставщик просит реквизиты» (`AdvanceOnReply`). Только текст ответа, без цитаты.
+     */
+    public static function asksRequisites(Message $message): bool
+    {
+        $text = mb_strtolower($message->replyText());
+
+        return str_contains($text, 'реквизит') && preg_match('/сч[её]т/u', $text) === 1;
+    }
+
     /** В ответе есть, кому звонить: телефон в тексте до подписи. */
     public static function hasContact(Message $message): bool
     {

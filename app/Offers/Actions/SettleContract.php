@@ -20,6 +20,13 @@ final class SettleContract
 {
     public function __invoke(DealContract $contract): DealContract
     {
+        // Без договора (покупатель для счёта поставщика, 03.11.2026): ни номера, ни «ДКП готов» — только шаг дальше.
+        if (! $contract->deal->hasContract()) {
+            app(AdvanceOnBuyerData::class)($contract->deal);
+            RefreshDeal::of($contract->deal);
+
+            return $contract;
+        }
         if ($contract->isReady()) {
             $this->number($contract);
             if (! $contract->ready_at) {
