@@ -81,8 +81,8 @@ return [
         'token' => env('TELEGRAM_BOT_TOKEN'),
         'owner_chat_id' => env('TELEGRAM_OWNER_CHAT_ID'),
         'username' => env('TELEGRAM_BOT_USERNAME'),
-        // Куда подключаться за api.telegram.org: на проде — туннель через Цюрих (`zurich:9443`, `Bot::routeOptions`),
-        // пусто — напрямую.
+        // Пути до api.telegram.org через запятую, по порядку (`Bot::routes`, `Support\Routes`): на проде
+        // `zurich:9443,zurich:9445,direct` — туннель Цюриха, туннель прода, напрямую; не соединилось — следующий. Пусто — напрямую.
         'via' => env('TELEGRAM_VIA'),
         // Кнопки уведомлений на сайт — входом через Telegram (`login_url`, 21.10.2026); включать после /setdomain xcar.ru
         // у основного бота в BotFather: без него Telegram отклоняет всё сообщение с кнопкой.
@@ -105,6 +105,8 @@ return [
     // предлагать ли менеджерам подключить WhatsApp (03.11.2026: пока рассылка идёт в «XCAR admin», ссылку-приглашение в неё
     // менеджерам не показываем; включить, когда будет группа «XCar | Предложения»).
     'whatsapp' => [
+        // Пути до службы через запятую (`Gateway::routes`): на проде `http://zurich:9444,http://zurich:9446` — туннель
+        // Цюриха и туннель прода.
         'via' => env('WHATSAPP_VIA'),
         'token' => env('WHATSAPP_TOKEN'),
         'since' => env('WHATSAPP_SINCE'),

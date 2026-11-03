@@ -5,8 +5,20 @@
 
 ## Как устроено
 
+Два независимых пути (03.11.2026, владелец: «туннель регулярно падает, должны быть фоллбеки»), приложение переключается само
+(`App\Support\Routes`: не соединилось — тот же запрос следующим путём, лёгший путь две минуты идёт последним):
+
     контейнер xcar ──TLS──▶ zurich:9443 (= 172.18.0.1:9443 на проде)
-        ══ обратный SSH-туннель, его держит zurich ══▶ api.telegram.org:443
+        ══ обратный SSH-туннель, его держит zurich ══▶ api.telegram.org:443 (только IPv4)
+    контейнер xcar ──TLS──▶ zurich:9445
+        ══ SSH-туннель, его держит прод (xcar-tunnel-out) ══▶ 149.154.166.110:443
+    и третьим — напрямую (`direct`): блокировка неполная, иногда проходит.
+
+WhatsApp — так же: 9444 (туннель zurich) и 9446 (туннель прода) → служба здесь, 127.0.0.1:9480.
+`TELEGRAM_VIA=zurich:9443,zurich:9445,direct`, `WHATSAPP_VIA=http://zurich:9444,http://zurich:9446`.
+
+**Почему «падал туннель»** (03.11.2026): падал не он, а IPv6 отсюда до Telegram — 1 соединение из 8 висело, и запрос с прода
+ждал до тайм-аута; сессия при этом жила часами. Лечится `AddressFamily=inet` у ssh — он действует и на пробросы.
 
 - `systemd/xcar-tunnel.service` — служба `systemctl --user` на zurich. Это `ssh -R 172.18.0.1:9443:api.telegram.org:443`
   под пользователем `xcar-tunnel` на проде.
@@ -34,8 +46,17 @@
     ssh xcar-next 'ss -ltn | grep 9443'                    # прод: слушает 172.18.0.1:9443
     ssh xcar-next 'docker exec xcar-app-1 curl -sS --connect-to api.telegram.org:443:zurich:9443 https://api.telegram.org/ -o /dev/null -w "%{http_code}\n"'
 
-`deploy/check.sh` на проде каждый раз проверяет `zurich:9443` из контейнера. Лёг туннель — тревога уходит владельцу
-напрямую по IPv6: через туннель о нём не сказать. Служба на zurich перезапускается сама каждые 5 с без предела.
+`deploy/check.sh` на проде каждые 5 минут проверяет из контейнера оба пути (9443, 9445 до Telegram; 9444, 9446 до WhatsApp).
+Лёг один — заметка «работает запасной», не чаще раза в 6 часов; беда — только когда не отвечает ни один. Тревога уходит
+первым живым путём (9443, 9445, напрямую IPv6, IPv4) и **только владельцу** (Дмитрий): технические сбои админам не шлём
+(03.11.2026). Обе службы перезапускаются сами каждые 5 с без предела.
+
+Второй путь (туннель прода): `./deploy/server-setup.sh tunnel-out` — ключ `/root/.ssh/xcar_out` и служба
+`xcar-tunnel-out` на проде; его открытый ключ — `zurich/xcar_out.pub`, `./zurich/install.sh` пишет его в
+`~/.ssh/authorized_keys` здесь с `restrict,command="/bin/false",permitopen=…` — только два проброса, ни оболочки.
+
+    ssh xcar-next 'systemctl is-active xcar-tunnel-out && ss -ltn | grep -E "944[56]"'
+    ssh xcar-next 'docker exec xcar-app-1 curl -sS --connect-to api.telegram.org:443:zurich:9445 https://api.telegram.org/ -o /dev/null -w "%{http_code}\n"'
 
 ## WhatsApp: предложения с номера владельца — в группу и в личные (03.11.2026)
 

@@ -11,6 +11,13 @@ if ! ssh-keygen -F "$PROD" >/dev/null; then
     ssh-keygen -lf <(ssh-keygen -F "$PROD" | grep -v '^#' | cut -d' ' -f2-)
 fi
 
+# Второй путь — туннель, который держит прод (`deploy/server-setup.sh tunnel-out`): его ключу здесь можно только два
+# проброса — до Telegram (IPv4) и до службы WhatsApp. Ни оболочки, ни команд, ни агента.
+OUT="restrict,port-forwarding,command=\"/bin/false\",permitopen=\"149.154.166.110:443\",permitopen=\"127.0.0.1:9480\" $(cat xcar_out.pub)"
+install -d -m 700 ~/.ssh
+touch ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys
+grep -qF "$(cut -d' ' -f2 xcar_out.pub)" ~/.ssh/authorized_keys || echo "$OUT" >> ~/.ssh/authorized_keys
+
 # WhatsApp: собрать (Go — ~/.local/go), ключ для прода и пустая группа — один раз.
 GO=~/.local/go/bin/go
 if [ -x "$GO" ]; then

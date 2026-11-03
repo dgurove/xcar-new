@@ -45,6 +45,11 @@ final class ServerError extends Message
         }
     }
 
+    public function ownerOnly(): bool
+    {
+        return true;
+    }
+
     protected function title(): string
     {
         return 'Ошибка 500';

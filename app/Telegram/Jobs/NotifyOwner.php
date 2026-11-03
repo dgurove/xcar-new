@@ -11,7 +11,7 @@ use Throwable;
 
 /**
  * Сообщение владельцу в Telegram: в чат из настроек и привязанным админам (`park` — только администраторам парковки,
- * `Bot::ownerChats`). Без токена или чатов — молча ничего.
+ * `Bot::ownerChats`); технический сбой (`Message::ownerOnly`) — только в чат владельца. Без токена или чатов — молча ничего.
  * Повтор очередью — только если не дошло никуда: иначе дошедшие получили бы его дважды.
  */
 final class NotifyOwner implements ShouldQueue
@@ -29,7 +29,7 @@ final class NotifyOwner implements ShouldQueue
 
     public function handle(Bot $bot): void
     {
-        $chats = $bot->configured() ? $bot->ownerChats($this->park) : [];
+        $chats = ! $bot->configured() ? [] : ($this->message->ownerOnly() ? array_filter([$bot->ownerChatId()]) : $bot->ownerChats($this->park));
         $failed = null;
         foreach ($chats as $chat) {
             try {

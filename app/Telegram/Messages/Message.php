@@ -33,6 +33,15 @@ abstract class Message
         return [...array_chunk($this->decisions(), 2), [$this->link()]];
     }
 
+    /**
+     * Технический сбой (ошибка 500 и т. п.) — только главному администратору (владелец, 03.11.2026: «ошибки только мне,
+     * им не надо»), без остальных админов. Деловые сообщения (приём закрыт, оплаты, сделки) — всем, как было.
+     */
+    public function ownerOnly(): bool
+    {
+        return false;
+    }
+
     public function afterDecision(): array
     {
         return [[$this->link()]];

@@ -8,6 +8,8 @@ DATA="${XCAR_DATA:-/srv/xcar/data}"
 env_value() { sed -nE "s/^$1=\"?([^\"]*)\"?\r?$/\1/p" "$ROOT/env/.env" | tail -1; }
 ADDRESSES="$(env_value SITE_ADDRESSES)"; ADDRESSES="${ADDRESSES:-http://127.0.0.1}"
 problems=()
+# Один из двух путей лёг, второй работает (zurich/README.md) — не беда, а заметка: владельцу не чаще раза в 6 часов.
+degraded=()
 
 # Каждое имя: сайт отдаёт страницы, CRM и стоянка гостю — вход. По https на себя: на :80 Caddy отвечает 308,
 # а прежние хосты (garage) — 301 на сайт; редиректы проходим, ждём итоговый 200.
@@ -34,11 +36,21 @@ probe() {
         state="$(docker inspect -f '{{.State.Status}}' "xcar-$name-1" 2>/dev/null || echo missing)"
         [ "$state" = running ] || problems+=("контейнер $name: $state")
     done
-    # Туннель к Telegram из Цюриха (zurich/README.md): без него молчат оба бота. Проверка — из контейнера, тем же путём и
-    # до самого Telegram: открытый порт ещё ничего не значит — его держит sshd, даже когда из Цюриха до Telegram не дойти.
-    c="$(docker exec xcar-app-1 curl -sS -m 8 -o /dev/null -w '%{http_code}' --connect-to api.telegram.org:443:zurich:9443 https://api.telegram.org/ 2>/dev/null)"
-    [ -n "$c" ] && [ "$c" != 000 ] || problems+=("Telegram через туннель (zurich:9443) не отвечает")
-    # WhatsApp — служба в Цюрихе тем же туннелем (zurich:9444): на связи, вошла, в группе. Без WHATSAPP_VIA молчит.
+    # Пути к Telegram (zurich/README.md): туннель Цюриха (9443) и туннель прода (9445); приложение переключается само
+    # (`Support\Routes`). Проверка — из контейнера, до самого Telegram: открытый порт ещё ничего не значит — его держит sshd,
+    # даже когда дальше не дойти. Беда — только когда не отвечает ни один путь.
+    degraded=()
+    local tg_ok=0 route
+    for route in zurich:9443 zurich:9445; do
+        c="$(docker exec xcar-app-1 curl -sS -m 8 -o /dev/null -w '%{http_code}' --connect-to "api.telegram.org:443:$route" https://api.telegram.org/ 2>/dev/null)"
+        if [ -n "$c" ] && [ "$c" != 000 ]; then tg_ok=1; else degraded+=("путь $route до Telegram не отвечает"); fi
+    done
+    [ $tg_ok = 1 ] || problems+=("Telegram недоступен: не отвечают оба туннеля (zurich:9443 и zurich:9445)")
+    # WhatsApp — служба в Цюрихе теми же туннелями (9444, 9446): на связи, вошла, в группе. Без WHATSAPP_VIA молчит.
+    for route in zurich:9444 zurich:9446; do
+        c="$(docker exec xcar-app-1 curl -sS -m 8 -o /dev/null -w '%{http_code}' "http://$route/status" 2>/dev/null)"
+        [ -n "$c" ] && [ "$c" != 000 ] || degraded+=("путь $route до WhatsApp не отвечает")
+    done
     local w
     w="$(docker exec xcar-app-1 php artisan whatsapp:status 2>&1)" || problems+=("WhatsApp: ${w:-не отвечает}")
 }
@@ -79,14 +91,16 @@ report() {
     (cd "$ROOT/current/deploy" && docker compose exec -T app php artisan storage:report 2>/dev/null)
 }
 
-# К Telegram — через туннель из Цюриха, как всё приложение. Лежит сам туннель — тревога о нём уходит напрямую по IPv6:
-# иначе о нём некому было бы сказать.
+# Тревоги — только главному администратору (TELEGRAM_CHAT_ID — чат Дмитрия; 03.11.2026, владелец: «все ошибки только мне»).
+# К Telegram — первым живым путём: туннель Цюриха, туннель прода, напрямую по IPv6 и IPv4 (блокировка неполная) — лёгший
+# путь не мешает сказать о себе.
 telegram() {
-    local token chat args
+    local token chat args via
     token="$(env_value TELEGRAM_BOT_TOKEN)"; chat="$(env_value TELEGRAM_CHAT_ID)"
     [ -n "$token" ] && [ -n "$chat" ] || return 1
-    args=(-sS -m 10 --retry 2 -o /dev/null "https://api.telegram.org/bot$token/sendMessage" --data-urlencode "chat_id=$chat" --data-urlencode "text=$1")
-    curl --connect-to api.telegram.org:443:172.18.0.1:9443 "${args[@]}" 2>/dev/null || curl -6 "${args[@]}"
+    args=(-sS -m 10 -o /dev/null "https://api.telegram.org/bot$token/sendMessage" --data-urlencode "chat_id=$chat" --data-urlencode "text=$1")
+    for via in 172.18.0.1:9443 172.18.0.1:9445; do curl --connect-to "api.telegram.org:443:$via" "${args[@]}" 2>/dev/null && return 0; done
+    curl -6 "${args[@]}" 2>/dev/null || curl -4 "${args[@]}"
 }
 stamp=/run/xcar-check.last
 
@@ -97,6 +111,16 @@ if [ -n "$failed_new" ]; then
     fi
 elif [ -n "$failed_max" ] && [ "${1:-}" = "--telegram" ]; then
     echo "$failed_max" > $failed_seen
+fi
+
+# Один путь лёг, второй работает — заметка не чаще раза в 6 часов (на одну и ту же), без «снова в порядке».
+if [ ${#degraded[@]} -gt 0 ]; then
+    note="xcar: $(printf '%s; ' "${degraded[@]}")работает запасной"
+    echo "$note"
+    notestamp=/run/xcar-check.degraded
+    if [ "${1:-}" = "--telegram" ] && [ ${#problems[@]} -eq 0 ] && { [ "$(cat $notestamp 2>/dev/null)" != "$note" ] || [ -n "$(find $notestamp -mmin +360 2>/dev/null)" ]; }; then
+        telegram "$note" && echo "$note" > $notestamp
+    fi
 fi
 
 if [ ${#problems[@]} -eq 0 ]; then

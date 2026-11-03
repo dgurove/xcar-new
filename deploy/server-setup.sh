@@ -11,6 +11,8 @@
 #   ./deploy/server-setup.sh disk     # только диск данных и настройки docker
 #   ./deploy/server-setup.sh tunnel   # только вход для туннеля из Цюриха — Telegram и WhatsApp (zurich/README.md);
 #                                     # ключ — ~/.ssh/xcar_tunnel.pub или TUNNEL_KEY_FILE
+#   ./deploy/server-setup.sh tunnel-out  # второй путь: туннель, который держит сам прод (zurich/README.md); печатает
+#                                        # ключ прода — его в zurich/xcar_out.pub и ./zurich/install.sh на Цюрихе
 set -euo pipefail
 SSH_HOST="${SSH_HOST:-xcar-next}"
 STEP="${1:-all}"
@@ -83,6 +85,37 @@ ufw allow from 172.18.0.0/16 to 172.18.0.1 port 9443 proto tcp >/dev/null
 ufw allow from 172.18.0.0/16 to 172.18.0.1 port 9444 proto tcp >/dev/null
 fi
 [ "$STEP" = tunnel ] && exit 0
+
+if [ "$STEP" = all ] || [ "$STEP" = tunnel-out ]; then
+echo "==> второй путь в Цюрих: туннель держит прод"
+# Независимо от туннеля Цюриха (03.11.2026: вся связь с Telegram и WhatsApp держалась на одной сессии): прод сам ходит в
+# Цюрих и слушает 9445 (→ Telegram 149.154.166.110:443, адресом IPv4 — цель разрешает sshd Цюриха, а IPv6 оттуда моргает)
+# и 9446 (→ служба WhatsApp). Ключу на Цюрихе можно только эти два проброса (zurich/install.sh).
+ZURICH=188.190.4.62
+[ -f /root/.ssh/xcar_out ] || ssh-keygen -q -t ed25519 -N '' -C xcar-out@prod -f /root/.ssh/xcar_out
+ssh-keygen -F "$ZURICH" -f /root/.ssh/known_hosts >/dev/null || ssh-keyscan -t ed25519 "$ZURICH" 2>/dev/null >> /root/.ssh/known_hosts
+cat > /etc/systemd/system/xcar-tunnel-out.service <<'EOC'
+[Unit]
+Description=xcar: второй путь к Telegram и WhatsApp — туннель с прода в Цюрих
+After=network-online.target docker.service
+StartLimitIntervalSec=0
+
+[Service]
+ExecStart=/usr/bin/ssh -NT -i /root/.ssh/xcar_out -o BatchMode=yes -o IdentitiesOnly=yes -o ExitOnForwardFailure=yes -o ServerAliveInterval=15 -o ServerAliveCountMax=3 -o AddressFamily=inet -L 172.18.0.1:9445:149.154.166.110:443 -L 172.18.0.1:9446:127.0.0.1:9480 claude@188.190.4.62
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+EOC
+systemctl daemon-reload
+systemctl enable xcar-tunnel-out >/dev/null 2>&1
+ufw allow from 172.18.0.0/16 to 172.18.0.1 port 9445 proto tcp >/dev/null
+ufw allow from 172.18.0.0/16 to 172.18.0.1 port 9446 proto tcp >/dev/null
+echo "ключ прода для zurich/xcar_out.pub:"; cat /root/.ssh/xcar_out.pub
+systemctl restart xcar-tunnel-out
+fi
+[ "$STEP" = tunnel-out ] && exit 0
 
 echo "==> docker: журналы, зеркало, потолок кэша сборки"
 # Зеркало Docker Hub: с нового адреса Hub быстро отвечает 429 на сборке.

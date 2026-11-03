@@ -68,9 +68,10 @@ class PayController
         } catch (Throwable $e) {
             Log::warning('acquiring: «Оплатить» по '.$code.' — '.$e->getMessage());
             $link->update(['error' => Str::limit($e->getMessage(), 250, ''), 'error_at' => now()]);
-            // Два отказа шлюза подряд — ЮKassa не отвечает или ключи не те: сотрудникам в ленту, не чаще раза в час.
+            // Два отказа шлюза подряд — ЮKassa не отвечает или ключи не те: технический сбой — только главному администратору
+            // (03.11.2026, владелец: «все ошибки только мне»), не чаще раза в час.
             if (Cache::increment('acquiring:failures') >= 2 && Cache::add('acquiring:down-told', 1, now()->addHour())) {
-                Notification::send(User::withRole(Role::Admin)->get(), MoneyNotice::gatewayDown($e->getMessage()));
+                Notification::send(User::withRole(Role::Owner)->get(), MoneyNotice::gatewayDown($e->getMessage()));
             }
 
             // Признак в адресе, а не во flash: страницу перечитывает ещё и воркер, и flash доставался ему.

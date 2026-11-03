@@ -2,6 +2,7 @@
 
 namespace App\Telegram;
 
+use App\Support\Routes;
 use App\Users\Role;
 use App\Users\User;
 use GuzzleHttp\Handler\CurlHandler;
@@ -19,8 +20,8 @@ use Throwable;
 /**
  * Бот xcar: владельцу и админам — сообщения с кнопками решения, менеджерам — уведомления по сделкам,
  * привязка чата и вход (`/start`, StartLink). Сообщения с кнопками и ответы на нажатия. Без SDK — четыре
- * метода Bot API через Http. С прода к Telegram ходим только через Цюрих (`routeOptions`, 03.11.2026): Россия
- * блокирует Telegram, а прямой путь по IPv6 моргал. `send` бросает исключение (его зовёт джоба,
+ * метода Bot API через Http. С прода к Telegram — несколькими путями с переключением (`routes`, `Support\Routes`,
+ * 03.11.2026): туннель Цюриха, туннель прода, напрямую — Россия блокирует Telegram не всегда, но часто. `send` бросает исключение (его зовёт джоба,
  * повтор — дело очереди), ответы на нажатия ошибку гасят: их зовёт опрос.
  * Всё, что уходит через `call`, попадает в журнал переписки (Journal) — мимо него не пишем.
  */
@@ -300,15 +301,21 @@ class Bot
     protected function call(string $method, array $payload, array $files = [], ?array $journaled = null): Response
     {
         $journaled ??= $payload;
-        $request = $this->client($files ? 60 : 20)->retry(4,
-            fn (int $attempt, Throwable $e) => self::tooMany($e) ? min($this->maxWait(), (int) ($e->response->json('parameters.retry_after') ?? 1)) * 1000 : ($e instanceof ConnectionException ? 200 : 1500),
-            fn (Throwable $e) => ! ($e instanceof RequestException && $e->response->clientError()) || self::tooMany($e));
-        foreach ($files as $field => $file) {
-            [$contents, $name] = $file instanceof UploadedFile ? [$file->get(), $file->getClientOriginalName()] : $file;
-            $request->attach($field, $contents, $name);
-        }
+        // Запрос собирается заново на каждом пути (`guard`): путь задаёт обработчик curl. Путей несколько — по две попытки на
+        // путь, а не четыре: всего не дольше прежнего.
+        $send = function () use ($method, $payload, $files) {
+            $request = $this->client($files ? 60 : 20)->retry(count(self::routes()) > 1 ? 2 : 4,
+                fn (int $attempt, Throwable $e) => self::tooMany($e) ? min($this->maxWait(), (int) ($e->response->json('parameters.retry_after') ?? 1)) * 1000 : ($e instanceof ConnectionException ? 200 : 1500),
+                fn (Throwable $e) => ! ($e instanceof RequestException && $e->response->clientError()) || self::tooMany($e));
+            foreach ($files as $field => $file) {
+                [$contents, $name] = $file instanceof UploadedFile ? [$file->get(), $file->getClientOriginalName()] : $file;
+                $request->attach($field, $contents, $name);
+            }
+
+            return ($files ? $request : $request->asForm())->post($method, $payload);
+        };
         try {
-            $response = $this->guard(fn () => ($files ? $request : $request->asForm())->post($method, $payload));
+            $response = $this->guard($send);
         } catch (RequestException $e) {
             if ($e->response->clientError()) {
                 $this->journal?->failed($method, $journaled, (string) ($e->response->json('description') ?? $e->getMessage()));
@@ -323,16 +330,31 @@ class Bot
     }
 
     /**
-     * Сбой соединения пишет в текст адрес запроса, а в адресе — токен бота: в лог, в упавшую задачу очереди и в
-     * отчёт об ошибке он уйти не должен. Перебрасываем с вычищенным текстом и без исходного исключения внутри.
+     * Запрос по первому живому пути, не соединилось — по следующему (`Support\Routes`). Сбой соединения пишет в текст адрес
+     * запроса, а в адресе — токен бота: в лог, в упавшую задачу очереди и в отчёт об ошибке он уйти не должен.
+     * Перебрасываем с вычищенным текстом и без исходного исключения внутри.
      */
     protected function guard(callable $request): mixed
     {
-        try {
-            return $request();
-        } catch (ConnectionException $e) {
-            throw new ConnectionException($this->scrub($e->getMessage()));
-        }
+        return Routes::over('telegram', self::routes(), function (string $route) use ($request) {
+            $this->route = $route;
+            try {
+                return $request();
+            } catch (ConnectionException $e) {
+                throw new ConnectionException($this->scrub($e->getMessage()));
+            } finally {
+                $this->route = null;
+            }
+        });
+    }
+
+    /** Путь текущего запроса (`guard`); вне его — первый живой. */
+    private ?string $route = null;
+
+    /** Пути до api.telegram.org (`TELEGRAM_VIA`): «zurich:9443,zurich:9445,direct»; пусто — напрямую. @return list<string> */
+    public static function routes(): array
+    {
+        return Routes::parse(config('xcar.telegram.via'), Routes::DIRECT);
     }
 
     /** Токен — звёздочками: для логов. */
@@ -363,27 +385,28 @@ class Bot
     }
 
     /**
-     * Соединение держим открытым: один обработчик curl на процесс — дорожка живёт часами, и новых соединений почти нет.
-     * Новое ждём 2 с, а не 10, как по умолчанию: лёгший туннель отказывает сразу, а зависшее соединение лучше повторить
-     * (`call`), чем держать бота «думающим».
+     * Соединение держим открытым: обработчик curl на путь и процесс — дорожка живёт часами, и новых соединений почти нет;
+     * пути не смешиваются. Новое ждём 2 с, а не 10, как по умолчанию: лёгший путь отказывает сразу, а зависшее соединение
+     * лучше повторить другим путём (`guard`), чем держать бота «думающим».
      */
     protected function http(): PendingRequest
     {
-        return Http::setHandler(self::$curl ??= new CurlHandler)->connectTimeout(2)->withOptions($this->routeOptions());
+        $route = $this->route ?? Routes::ordered('telegram', self::routes())[0];
+
+        return Http::setHandler(self::$curl[$route] ??= new CurlHandler)->connectTimeout(2)->withOptions(self::routeOptions($route));
     }
 
-    private static ?CurlHandler $curl = null;
+    /** @var array<string, CurlHandler> */
+    private static array $curl = [];
 
     /**
-     * Куда на самом деле подключаться за api.telegram.org (`TELEGRAM_VIA`, на проде `zurich:9443`): обратный SSH-туннель из
-     * Цюриха, голая TCP-труба до api.telegram.org:443 (`zurich/`). Имя в запросе и проверка сертификата остаются
-     * Telegram — TLS идёт от нас до него, Цюрих видит одни байты. Пусто — напрямую (разработка).
+     * Куда на самом деле подключаться за api.telegram.org: туннель (`zurich:9443` — его держит Цюрих, `zurich:9445` — прод;
+     * голая TCP-труба до api.telegram.org:443, `zurich/`) или напрямую (`direct`). Имя в запросе и проверка сертификата
+     * остаются Telegram — TLS идёт от нас до него, Цюрих видит одни байты.
      */
-    protected function routeOptions(): array
+    protected static function routeOptions(string $route): array
     {
-        $via = trim((string) config('xcar.telegram.via'));
-
-        return $via === '' ? [] : ['curl' => [CURLOPT_CONNECT_TO => ['api.telegram.org:443:'.$via]]];
+        return $route === Routes::DIRECT ? [] : ['curl' => [CURLOPT_CONNECT_TO => ['api.telegram.org:443:'.$route]]];
     }
 
     protected function token(): string

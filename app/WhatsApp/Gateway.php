@@ -2,20 +2,34 @@
 
 namespace App\WhatsApp;
 
+use App\Support\Routes;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Support\Facades\Http;
 
 /**
  * Служба WhatsApp в Цюрихе (`zurich/whatsapp`): связанное устройство номера владельца. Шлёт в группу, зашитую в её настройках
  * (`TARGET`), и в личные — только тем, кто сам написал первым (код привязки, `LinkCode`); такие сообщения она и отдаёт
- * (`inbox`). Отсюда — через туннель (`WHATSAPP_VIA`, на проде `http://zurich:9444`), с ключом `WHATSAPP_TOKEN`. Повтор с тем
- * же `key` второй раз не отправляет: служба помнит ключи у себя.
+ * (`inbox`). Отсюда — через туннели (`WHATSAPP_VIA`, на проде `http://zurich:9444,http://zurich:9446`: держит Цюрих и держит
+ * прод, переключение — `Support\Routes`), с ключом `WHATSAPP_TOKEN`. Повтор с тем же `key` второй раз не отправляет: служба
+ * помнит ключи у себя, поэтому `send` по второму пути безопасен.
  */
 final class Gateway
 {
     public function configured(): bool
     {
-        return trim((string) config('xcar.whatsapp.via')) !== '';
+        return self::routes() !== [];
+    }
+
+    /** @return list<string> */
+    public static function routes(): array
+    {
+        return Routes::parse(config('xcar.whatsapp.via'));
+    }
+
+    /** @template T @param callable(PendingRequest): T $request @return T */
+    private function over(callable $request): mixed
+    {
+        return Routes::over('whatsapp', self::routes(), fn (string $via) => $request($this->http($via)));
     }
 
     /**
@@ -26,7 +40,7 @@ final class Gateway
      */
     public function status(): array
     {
-        return $this->http()->timeout(15)->get('/status')->throw()->json();
+        return $this->over(fn (PendingRequest $http) => $http->timeout(15)->get('/status')->throw()->json());
     }
 
     /**
@@ -37,16 +51,18 @@ final class Gateway
      */
     public function send(string $key, string $caption, ?array $pdf, ?string $thumb, ?string $to = null): string
     {
-        $request = $this->http()->timeout(120)->asMultipart();
-        if ($pdf !== null) {
-            $request = $request->attach('pdf', $pdf[0], $pdf[1]);
-            if ($thumb !== null) {
-                $request = $request->attach('thumb', $thumb, 'thumb.jpg');
+        return $this->over(function (PendingRequest $request) use ($key, $caption, $pdf, $thumb, $to) {
+            $request = $request->timeout(120)->asMultipart();
+            if ($pdf !== null) {
+                $request = $request->attach('pdf', $pdf[0], $pdf[1]);
+                if ($thumb !== null) {
+                    $request = $request->attach('thumb', $thumb, 'thumb.jpg');
+                }
             }
-        }
 
-        return (string) $request->post('/send', ['key' => $key, 'caption' => $caption, 'filename' => $pdf[1] ?? '', 'to' => $to ?? ''])
-            ->throw()->json('id');
+            return (string) $request->post('/send', ['key' => $key, 'caption' => $caption, 'filename' => $pdf[1] ?? '', 'to' => $to ?? ''])
+                ->throw()->json('id');
+        });
     }
 
     /**
@@ -56,12 +72,12 @@ final class Gateway
      */
     public function inbox(int $after, int $wait): array
     {
-        return (array) $this->http()->timeout($wait + 10)->get('/inbox', ['after' => $after, 'wait' => $wait])->throw()->json();
+        return $this->over(fn (PendingRequest $http) => (array) $http->timeout($wait + 10)->get('/inbox', ['after' => $after, 'wait' => $wait])->throw()->json());
     }
 
-    private function http(): PendingRequest
+    private function http(string $via): PendingRequest
     {
-        return Http::baseUrl(rtrim((string) config('xcar.whatsapp.via'), '/'))->withToken((string) config('xcar.whatsapp.token'))
+        return Http::baseUrl(rtrim($via, '/'))->withToken((string) config('xcar.whatsapp.token'))
             ->connectTimeout(3)->acceptJson();
     }
 }

@@ -8,10 +8,12 @@
 Description=xcar: туннель прода к Telegram и WhatsApp
 After=network-online.target
 # Перезапускать без конца: лёгший туннель видит check.sh на проде и пишет владельцу.
+# AddressFamily=inet — и для проброса: до api.telegram.org только по IPv4. IPv6 отсюда до Telegram моргает (03.11.2026:
+# 1 запрос из 8 висел), и канал с прода ждал до тайм-аута — это и были тревоги «туннель не отвечает».
 StartLimitIntervalSec=0
 
 [Service]
-ExecStart=/usr/bin/ssh -NT -i %h/.ssh/xcar_tunnel -o BatchMode=yes -o IdentitiesOnly=yes -o ExitOnForwardFailure=yes -o ServerAliveInterval=15 -o ServerAliveCountMax=3 -R 172.18.0.1:9443:api.telegram.org:443 -R 172.18.0.1:9444:127.0.0.1:9480 xcar-tunnel@200.169.180.17
+ExecStart=/usr/bin/ssh -NT -i %h/.ssh/xcar_tunnel -o BatchMode=yes -o IdentitiesOnly=yes -o ExitOnForwardFailure=yes -o ServerAliveInterval=15 -o ServerAliveCountMax=3 -o AddressFamily=inet -R 172.18.0.1:9443:api.telegram.org:443 -R 172.18.0.1:9444:127.0.0.1:9480 xcar-tunnel@200.169.180.17
 Restart=always
 RestartSec=5
 
