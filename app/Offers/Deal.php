@@ -124,6 +124,12 @@ class Deal extends Model
         return (bool) $this->buyer?->isSuperBuyer();
     }
 
+    /** Что админ показал менеджеру из писем страховой (`Disclosure`), новое сверху: блок сделки и контакт получения. */
+    public function disclosures(): HasMany
+    {
+        return $this->hasMany(Disclosure::class)->orderByDesc('id');
+    }
+
     public function requirements(): HasMany
     {
         return $this->hasMany(Requirement::class)->latest();

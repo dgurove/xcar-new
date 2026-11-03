@@ -28,9 +28,13 @@ class DisclosureController
         $pick = collect($data['on'] ?? [])->mapWithKeys(fn ($key) => [$key => $data['value'][$key] ?? null])->all();
         $items = Disclosures::picked(Disclosures::proposals($deal, $letters), $pick, $data['text'] ?? null);
         $step = isset($data['step']) ? Outcome::find($data['step']) : null;
-        $disclose($deal, $request->user(), $items, $step);
+        ['moved' => $moved] = $disclose($deal, $request->user(), $items, $step);
 
-        return back(fallback: '/work/deals/'.$deal->id)->with('toast', $items ? 'Показано менеджеру' : ($step ? 'Шаг пройден' : 'Ответ разобран'));
+        return back(fallback: '/work/deals/'.$deal->id)->with('toast', match (true) {
+            $items !== [] => $moved ? 'Показано менеджеру, шаг пройден' : 'Показано менеджеру',
+            $moved => 'Шаг пройден',
+            default => 'Ответ разобран',
+        });
     }
 
     public function dismiss(Request $request, Deal $deal, Disclose $disclose)

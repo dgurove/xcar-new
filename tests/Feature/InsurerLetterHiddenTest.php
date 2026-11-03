@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Mail\Events\MessageParsed;
 use App\Mail\Message;
 use App\Mail\Thread;
 use App\Notifications\DealInfoNotice;
@@ -10,8 +11,7 @@ use App\Offers\Actions\AcceptBid;
 use App\Offers\Actions\PlaceBid;
 use App\Offers\Deal;
 use App\Offers\DealScheme;
-use App\Offers\Events\InsurerReplied;
-use App\Offers\Listeners\OnInsurerReply;
+use App\Offers\DealState;
 use App\Offers\Offer;
 use App\Offers\OfferState;
 use App\Offers\ReplyReview;
@@ -20,6 +20,7 @@ use App\Users\User;
 use App\Vendors\Vendor;
 use App\Workflow\Actions\ApplyPreset;
 use App\Workflow\Actions\EnterStage;
+use App\Workflow\Position;
 use App\Workflow\Preset;
 use App\Workflow\Stage;
 use App\Workflow\Track;
@@ -63,7 +64,7 @@ class InsurerLetterHiddenTest extends TestCase
         // Менеджеру — ничего: ни уведомления, ни шага, ни телефона, ни имени, ни адреса, ни «Ждём XCar».
         Notification::assertNothingSentTo($this->manager);
         $this->assertSame($before, $stage());
-        $this->page()->assertDontSee('123-45-67')->assertDontSee('Иванов')->assertDontSee('5189000')->assertDontSee('От XCar')
+        $this->page()->assertDontSee('123-45-67')->assertDontSee('Иванов')->assertDontSee('5189000')->assertDontSee('Информация по сделке')
             ->assertDontSee('Петров')->assertDontSee('555-66-77')->assertDontSee('Ленина');
         $this->get("http://xcar.localhost/files/{$paper->id}")->assertNotFound();
 
@@ -89,7 +90,7 @@ class InsurerLetterHiddenTest extends TestCase
         Notification::assertNotSentTo($this->manager, YourTurnNotice::class);
         $this->assertSame('Согласие менеджера', $stage());
         $this->assertSame(0, ReplyReview::pending()->count());
-        $this->page()->assertSee('От XCar')->assertSee('+7 900 123-45-67')->assertSee('Пётр')->assertSee('Звонить после 12')
+        $this->page()->assertSee('Информация по сделке')->assertSee('+7 900 123-45-67')->assertSee('Пётр')->assertSee('Звонить после 12')
             ->assertSee('паспорт.pdf')->assertDontSee('Петров')->assertDontSee('555-66-77')->assertDontSee('Ленина')
             ->assertDontSee('Иванов')->assertDontSee('5189000');
         $this->get("http://xcar.localhost/files/{$paper->id}")->assertOk();
@@ -112,7 +113,14 @@ class InsurerLetterHiddenTest extends TestCase
         $this->post("http://crm.xcar.localhost/work/deals/{$this->deal->id}/reviews/done")->assertRedirect();
         $this->assertSame(0, ReplyReview::pending()->count());
         Notification::assertNothingSentTo($this->manager);
-        $this->page()->assertDontSee('765-43-21')->assertDontSee('От XCar');
+        $this->page()->assertDontSee('765-43-21')->assertDontSee('Информация по сделке');
+
+        // Неразобранное письмо отменённой сделки машину в «Разобрать ответ» не держит.
+        $this->letter("Добрый день! Ещё контакт +7 900 765-43-22\r\n");
+        $this->assertSame('Разобрать ответ', $this->offer->fresh()->position(Track::Sale)->todo()['title'] ?? null);
+        $this->deal->forceFill(['state' => DealState::Cancelled])->save();
+        $this->assertNotSame('Разобрать ответ', $this->offer->fresh()->position(Track::Sale)?->todo()['title'] ?? null);
+        $this->assertFalse(Position::where('offer_id', $this->offer->id)->where('track', 'sale')->whereRaw("exists (select 1 from reply_reviews rr join deals rd on rd.id = rr.deal_id where rr.offer_id = offer_positions.offer_id and rr.state = 'pending' and rd.state = 'active')")->exists());
     }
 
     private function deal(): void
@@ -134,14 +142,13 @@ class InsurerLetterHiddenTest extends TestCase
         Notification::fake();
     }
 
-    /** Письмо страховой — как его разбирает `OnMessage`: история и файлы, затем «Разобрать ответ». */
+    /** Письмо страховой настоящим путём: разобрано ящиком — `MessageParsed` → `OnMessage` (история, файлы, «Разобрать ответ»). */
     private function letter(string $body): Message
     {
         $message = Message::create(['account_id' => $this->account, 'thread_id' => $this->thread->id, 'direction' => 'in',
             'from_email' => 'implementation@alfastrah.ru', 'from_name' => 'implementation', 'subject' => 'RE: 0790/046/09068/26',
             'date_at' => now()->addMinute(), 'text_body' => $body]);
-        InsurerReplied::dispatch($this->deal->fresh(), $message);
-        OnInsurerReply::queue($this->deal->fresh(), $message);
+        MessageParsed::dispatch($message);
 
         return $message;
     }

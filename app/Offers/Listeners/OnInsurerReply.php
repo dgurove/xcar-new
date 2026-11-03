@@ -5,6 +5,7 @@ namespace App\Offers\Listeners;
 use App\Mail\Composer;
 use App\Mail\Direction;
 use App\Mail\Message;
+use App\Offers\Actions\Disclose;
 use App\Offers\Deal;
 use App\Offers\Events\InsurerReplied;
 use App\Offers\InsurerReplies;
@@ -12,6 +13,7 @@ use App\Offers\Jobs\ShareReplyFiles;
 use App\Offers\OfferEventType;
 use App\Offers\ReplyReview;
 use App\Vendors\DealFormat;
+use App\Workflow\Events\StageEntered;
 use App\Workflow\Track;
 use App\Workflow\WaitsFor;
 use Illuminate\Events\Dispatcher;
@@ -31,7 +33,7 @@ final class OnInsurerReply
 
     public function subscribe(Dispatcher $events): array
     {
-        return [InsurerReplied::class => 'replied'];
+        return [InsurerReplied::class => 'replied', StageEntered::class => 'entered'];
     }
 
     public function replied(InsurerReplied $e): void
@@ -81,6 +83,7 @@ final class OnInsurerReply
     /**
      * Любое письмо страховой по идущей сделке менеджера — в «Разобрать ответ» (03.11.2026): на любой ящик, пересылка
      * сотрудника тоже (`InsurerReplies::counts`), после начала сделки. Оптом и без менеджера (аукцион) — нет: показывать некому.
+     * Гонку двух разборов одного письма держит уникальный `message_id` (`firstOrCreate` — через `createOrFirst`).
      */
     public static function queue(Deal $deal, Message $message): void
     {
@@ -89,7 +92,30 @@ final class OnInsurerReply
             || $message->direction !== Direction::In || $message->date_at?->lt($deal->created_at) || ! InsurerReplies::counts($message)) {
             return;
         }
-        ReplyReview::firstOrCreate(['message_id' => $message->id], ['deal_id' => $deal->id, 'offer_id' => $deal->offer_id, 'state' => ReplyReview::PENDING]);
+        $review = ReplyReview::firstOrCreate(['message_id' => $message->id], ['deal_id' => $deal->id, 'offer_id' => $deal->offer_id, 'state' => ReplyReview::PENDING]);
+        $review->wasRecentlyCreated && Disclose::publish($deal);
+    }
+
+    /**
+     * Шаг, что ждёт поставщика, наступил, а ответ, который его проходит (телефон, просьба реквизитов), уже пришёл и разобран
+     * (менеджер нажал «Беру в работу» после письма): раньше шаг проходил сам, теперь письмо снова встаёт в «Разобрать ответ» —
+     * с галкой шага (`Disclose::stepExit`). Шаг сдвинул сам «Показать менеджеру» (`$letter`) — нет: он только что разобран.
+     */
+    public function entered(StageEntered $e): void
+    {
+        if ($e->track !== Track::Sale || $e->to->waits_for !== WaitsFor::Supplier || ! $e->exit || $e->letter) {
+            return;
+        }
+        $deal = $e->deal ?? $e->offer->deal()->first();
+        if (! $deal?->isActive() || ! $deal->buyer_id) {
+            return;
+        }
+        $letter = InsurerReplies::for($deal)->first(fn (Message $m) => InsurerReplies::hasContact($m) || InsurerReplies::asksRequisites($m));
+        if (! $letter || ! Disclose::stepExit($deal->setRelation('offer', $e->offer), collect([$letter]))) {
+            return;
+        }
+        ReplyReview::updateOrCreate(['message_id' => $letter->id], ['deal_id' => $deal->id, 'offer_id' => $deal->offer_id, 'state' => ReplyReview::PENDING, 'done_by' => null, 'done_at' => null]);
+        Disclose::publish($deal);
     }
 
     /**

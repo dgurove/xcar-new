@@ -880,7 +880,10 @@ html.kb-open { --home-gap: 0px; }
   .text-fire { color: var(--color-fire); }
   /* Срок обязывающего предложения горит, покупателя нет (19.10.2026, владелец: «прям ПАНИКА!!!») — сплошным красным, мерцает
      (теней нет — меняется заливка); в строке списка — меткой у названия (`x-offer.binding tag`). */
-  .binding-panic { position: relative; display: inline-flex; align-items: center; gap: .3rem; background: var(--color-danger); color: #fff; font-weight: 500; }
+  /* `.pill.binding-panic`: `.pill` ниже в файле перебивал заливку и цвет (капсула выходила серой), а `nowrap` выталкивал длинную
+     фразу за край окошка на телефоне (03.11.2026) — длинная переносится внутри капсулы. */
+  .binding-panic, .pill.binding-panic { position: relative; display: inline-flex; align-items: center; gap: .3rem; background: var(--color-danger); color: #fff; font-weight: 500; }
+  .pill.binding-panic { flex-shrink: 1; min-width: 0; max-width: 100%; justify-content: flex-start; white-space: normal; text-align: left; line-height: 1.25; padding-block: .3rem; }
   /* Мерцание — белой вуалью по прозрачности, а не заливкой: прозрачность анимирует видеокарта, заливка перерисовывалась
      каждый кадр, пока тревога горит (аудит 20.10.2026). Вуаль — ::before: число тревоги идёт позже и стоит поверх. */
   .binding-panic::before, .header-btn.alarm-btn::before { content: ''; position: absolute; inset: 0; border-radius: inherit; background: #fff; opacity: 0; pointer-events: none; animation: binding-pulse 1.6s ease-in-out infinite; }
@@ -1411,10 +1414,11 @@ html.kb-open { --home-gap: 0px; }
   .field-input.is-shaking { animation: vin-shake .4s ease-in-out 1; }
   .list .row { border-radius: 0; background: transparent; min-height: 3.5rem; padding: .625rem 1rem; gap: .75rem; }
   .list > * + * { position: relative; }
-  .list > * + *::after, .list > * + .contents > .row:first-of-type::after { content: ''; position: absolute; top: 0; left: 1rem; right: 0; height: 1px; background: color-mix(in oklab, var(--color-line) 70%, transparent); pointer-events: none; z-index: 1; }
+  /* Строка внутри двух обёрток `contents` (форма вокруг `x-people.pick` — «Выбрать покупателя» в ДКП) — тоже с линией. */
+  .list > * + *::after, .list > * + .contents > .row:first-of-type::after, .list > * + .contents > .contents > .row:first-of-type::after { content: ''; position: absolute; top: 0; left: 1rem; right: 0; height: 1px; background: color-mix(in oklab, var(--color-line) 70%, transparent); pointer-events: none; z-index: 1; }
   /* Строка со шторкой или форма обёрнута в .contents (у обёртки своей коробки нет): линию рисует сама строка —
      первая .row в обёртке, а не первый ребёнок (у формы первым идёт скрытый _token). */
-  .list > * + .contents > .row:first-of-type { position: relative; }
+  .list > * + .contents > .row:first-of-type, .list > * + .contents > .contents > .row:first-of-type { position: relative; }
   .list > .contents::after { content: none; }
   /* Форма-группа (form.list): @csrf и @method идут первыми детьми — строка за ними не «вторая», линии над ней нет. */
   .list > input[type="hidden"] + :not(input)::after { content: none; }
@@ -2664,10 +2668,12 @@ html.kb-open { --home-gap: 0px; }
   /* Поля строками, как в Настройках iOS (07.10.2026, владелец выбрал из трёх): группа через линию, подпись серым
      слева — столбец по самой длинной, до 40 %, — ввод справа без рамки, строка 44 px. Обычный x-ui.field внутри
      div.fields; панели reveal внутри — class="contents" (hidden у них работает). Textarea — во всю ширину под подписью. */
-  .fields { display: grid; grid-template-columns: fit-content(40%) minmax(0, 1fr); overflow: clip; border-radius: var(--radius-l); background: var(--color-surface-2); }
+  /* Подпись — до 60 % строки, по словам без переносов внутри слова (03.11.2026, владелец: «Закупочная, / ₽*», «Цена про- /
+     дажи» — подпись в 40 % рвалась и переносилась по слогам): значение справа — число, ему хватает остатка. */
+  .fields { display: grid; grid-template-columns: fit-content(60%) minmax(0, 1fr); overflow: clip; border-radius: var(--radius-l); background: var(--color-surface-2); }
   .fields .field { position: relative; display: grid; grid-column: 1 / -1; grid-template-columns: subgrid; align-items: center; column-gap: .75rem; min-height: 2.75rem; padding: 0 1rem; }
   .fields .field::after { content: ''; position: absolute; left: 1rem; right: 0; bottom: -1px; height: 1px; background: color-mix(in oklab, var(--color-line) 70%, transparent); pointer-events: none; z-index: 1; }
-  .fields .field-label { @apply text-[15px] text-ink-muted; grid-column: 1; overflow-wrap: break-word; hyphens: auto; }
+  .fields .field-label { @apply text-[15px] text-ink-muted; grid-column: 1; overflow-wrap: break-word; hyphens: manual; text-wrap: balance; }
   .fields .field > .field-input, .fields .field > .vin-box, .fields .field > .combobox-input { grid-column: 2; }
   .fields .field .field-input { min-height: 2.75rem; padding: 0; border-radius: 0; background-color: transparent; text-align: right; text-overflow: ellipsis; box-shadow: none; }
   .fields .field select.field-input { padding: 0 1.25rem 0 0; background-position: right 0 center; text-align-last: right; }

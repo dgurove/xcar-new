@@ -62,7 +62,9 @@ class ReplyReview extends Model
      */
     public static function waiting(): Collection
     {
-        $load = fn () => self::pending()->selectRaw('offer_id, min(created_at) as at')->groupBy('offer_id')
+        // Только идущие сделки: разбор отменённой или закрытой не держит машину в «Ваш ход» и не липнет к следующей сделке.
+        $load = fn () => self::pending()->whereHas('deal', fn ($q) => $q->where('state', DealState::Active))
+            ->selectRaw('offer_id, min(created_at) as at')->groupBy('offer_id')
             ->pluck('at', 'offer_id')->map(fn ($at) => Carbon::parse($at));
 
         return app()->runningInConsole() ? $load() : once($load);

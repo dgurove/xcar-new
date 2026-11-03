@@ -104,7 +104,7 @@ final class ImportThreadFiles implements ShouldBeUniqueUntilProcessing, ShouldQu
             $pin($thread);
             $report('Читаем письмо');
             $attachments = $importer->attachmentsOf($this->messageId, $this->messageId ? null : $thread->id);
-            $hidden = $offer ? Hidden::incoming($offer) : [];
+            $hidden = $offer ? Hidden::fromLetter($offer) : [];
             $properties = $vehicle ? fn (Attachment $a) => self::stageOf($a) + $hidden : $hidden;
             $added = $importer->import($model, $attachments, 'photos', 'papers', $properties, $report);
             if ($offer) {

@@ -131,7 +131,10 @@
     @if ($admin && ($reprice = $offer->pendingReprice))<x-offer.reprice :offer="$offer" :reprice="$reprice" class="mb-4"/>@endif
     <x-offer.reprice-asks :offer="$offer" class="mb-4"/>
     {{-- Письмо страховой по сделке ждёт разбора — менеджер о нём не знает, пока админ не покажет выбранное (03.11.2026). --}}
-    @if ($admin && $offer->deal)<x-deal.reply-review :deal="$offer->deal" class="mb-4"/>@endif
+    @if ($admin && ($liveDeal = $offer->deal))
+        <x-deal.reply-review :deal="$liveDeal" class="mb-4"/>
+        @unless (\App\Offers\ReplyReview::pending()->where('deal_id', $liveDeal->id)->exists())<div class="mb-4"><x-deal.reply-review :deal="$liveDeal" pill/></div>@endunless
+    @endif
 
     {{-- Раскладка (06.10.2026, владелец): слева «Транспортное средство», под ним дорожки в ряд (`admin.offers.lanes`:
          «Продажа», «Вывоз», «Гараж» / «Сделка» / «Подтверждения») — в основной колонке, правую не занимают (07.10.2026);

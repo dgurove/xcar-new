@@ -2,6 +2,8 @@
 
 namespace App\Offers\Actions;
 
+use App\Live\Publisher;
+use App\Live\Topics;
 use App\Mail\Message;
 use App\Notifications\DealInfoNotice;
 use App\Notifications\YourTurnNotice;
@@ -10,6 +12,7 @@ use App\Offers\Disclosure;
 use App\Offers\InsurerReplies;
 use App\Offers\OfferEventType;
 use App\Offers\ReplyReview;
+use App\Support\Nav;
 use App\Users\User;
 use App\Vendors\DealFormat;
 use App\Workflow\Actions\TakeExit;
@@ -38,10 +41,13 @@ final class Disclose
 
     public function __construct(private TakeExit $take) {}
 
-    /** @param  list<array{kind: string, value: string, media?: int}>  $items  сверенные `Disclosures::picked` */
-    public function __invoke(Deal $deal, User $by, array $items, ?Outcome $step = null): ?Disclosure
+    /**
+     * @param  list<array{kind: string, value: string, media?: int}>  $items  сверенные `Disclosures::picked`
+     * @return array{disclosure: ?Disclosure, moved: bool} показали и сдвинули ли шаг (галка шага устарела — не сдвигаем)
+     */
+    public function __invoke(Deal $deal, User $by, array $items, ?Outcome $step = null): array
     {
-        [$disclosure, $turn] = DB::transaction(function () use ($deal, $by, $items, $step) {
+        [$disclosure, $moved, $turn] = DB::transaction(function () use ($deal, $by, $items, $step) {
             $deal = Deal::whereKey($deal->id)->lockForUpdate()->firstOrFail();
             $reviews = ReplyReview::pending()->where('deal_id', $deal->id)->with('message')->get();
             $disclosure = $items ? Disclosure::create(['deal_id' => $deal->id, 'items' => $items, 'message_ids' => $reviews->pluck('message_id')->all() ?: null, 'created_by' => $by->id]) : null;
@@ -52,8 +58,9 @@ final class Disclose
             $moved = $step && $step->is(self::stepExit($deal, $reviews->pluck('message')->filter())) && ($this->take)($deal->offer, $step, Actor::Staff, $by, ['letter' => $letter]);
             $disclosure && $deal->offer->log(OfferEventType::Note, $by, ['text' => 'Показали менеджеру: '.$disclosure->summary()]);
 
-            return [$disclosure, $moved ? Requirement::where('deal_id', $deal->id)->whereNull('done_at')->latest('id')->first() : null];
+            return [$disclosure, (bool) $moved, $moved ? Requirement::where('deal_id', $deal->id)->whereNull('done_at')->latest('id')->first() : null];
         });
+        self::publish($deal);
         if ($buyer = $deal->buyer) {
             if ($disclosure) {
                 $buyer->notify(new DealInfoNotice($disclosure, $turn));
@@ -62,13 +69,30 @@ final class Disclose
             }
         }
 
-        return $disclosure;
+        return ['disclosure' => $disclosure, 'moved' => $moved];
     }
 
-    /** «Ничего не показывать»: письма разобраны, менеджеру — ничего. */
+    /** «Ничего не показывать»: письма разобраны, менеджеру — ничего. Под тем же замком, что и показ. */
     public function dismiss(Deal $deal, User $by): void
     {
-        $this->done(ReplyReview::pending()->where('deal_id', $deal->id)->get(), $by);
+        DB::transaction(function () use ($deal, $by) {
+            Deal::whereKey($deal->id)->lockForUpdate()->firstOrFail();
+            $this->done(ReplyReview::pending()->where('deal_id', $deal->id)->get(), $by);
+        });
+        self::publish($deal);
+    }
+
+    /**
+     * Живое обновление (после коммита, `Publisher`): строка сделки в «Сделках» CRM и редактор, у менеджера — его сделка
+     * (показали — блок «Информация по сделке» встаёт сам). Числа таб-бара CRM — заново.
+     */
+    public static function publish(Deal $deal): void
+    {
+        $live = app(Publisher::class);
+        $live->rows(Topics::STAFF, ['/work/deals' => [$deal->id]]);
+        $live->refresh(Topics::STAFF, ['/offers/'.$deal->offer->number]);
+        $deal->buyer_id && $live->refresh(Topics::user($deal->buyer_id), [$deal->href(), '/deals']);
+        Nav::forgetStaffCounts();
     }
 
     /**

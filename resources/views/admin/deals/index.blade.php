@@ -50,7 +50,7 @@
                 <x-slot:head><x-table.head :table="$table" :sort="$sort"/></x-slot:head>
                 @foreach ($stages as $key => $stage)
                     <x-table.group :table="$table" :key="'stage:'.$stage['title']" :title="$stage['title']" :count="$stage['rows']->count()"/>
-                    @foreach ($stage['rows'] as $deal)<x-deal.table-row :deal="$deal" :table="$table"/>@endforeach
+                    @foreach ($stage['rows'] as $deal)<x-deal.table-row :deal="$deal" :table="$table" :group="$stage['title']"/>@endforeach
                 @endforeach
             </x-ui.table>
         @elseif (\App\Support\ListView::isTable($view))

@@ -6,7 +6,8 @@
      «Оплата» (27.10.2026, владелец: «нам надо понимать, кто сколько должен и какой срок») — остаток наших счетов и срок
      словом (`DealDebt`): просрочено — красным, срок в три дня — оранжевым, оплачено — зелёным; на телефоне срок — под суммой.
      Этап — `DealLine`, просроченная оплата — красным. Столбцы — `DealController::table` (шапка `x-table.head` по тому же описанию). --}}
-@props(['deal', 'table'])
+{{-- group — название группы, под которой стоит строка («Все» — по этапу): то же название в строке второй раз не пишется. --}}
+@props(['deal', 'table', 'group' => null])
 @php
     use App\Offers\DealState;
     $offer = $deal->offer;
@@ -39,7 +40,7 @@
         </x-cell.title>
         {{-- На телефоне второй строкой — срок шага и этап (20.10.2026, как в «Вывозе»; 27.10.2026 — этап здесь, а не справа:
              там он резался). Не влез — переносится. Срок оплаты — под суммой, здесь этап без него. --}}
-        <span class="cell-sub sm:hidden">@if ($active && $position)<x-route.term :position="$position"/> <span class="inline-block whitespace-nowrap text-ink-muted">{{ mb_lcfirst($position->stage->block?->name ?? $position->stage->name) }}</span>@else<span class="{{ $tone }}">{{ $word }}</span>@endif</span>
+        <span class="cell-sub sm:hidden">@if ($active && $position)<x-route.term :position="$position"/>@php $stageName = $position->stage->block?->name ?? $position->stage->name; @endphp@if (mb_strtolower($stageName) !== mb_strtolower((string) $group)) <span class="inline-block whitespace-nowrap text-ink-muted">{{ mb_lcfirst($stageName) }}</span>@endif@else<span class="{{ $tone }}">{{ $word }}</span>@endif</span>
     </td>
         @break
         @case('vendor')

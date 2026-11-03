@@ -18,18 +18,26 @@ final class Hidden
     /**
      * Свойства нового кадра — одно правило для всех дверей (руками, письмо, архив, лот Мигторга; владелец 26.10.2026):
      * пока предложение не опубликовано, кадр виден сразу; у опубликованного — скрыт, пока не посмотрят (глаз). У ТС глаз —
-     * показ в продаже: скрыт, только если её продажа уже на витрине. Черновик, который уже видят менеджеры (отдан на оценку,
-     * в галерее), — как опубликованный (03.11.2026: кадром бывает скан из письма страховой, а из писем менеджеру — ничего сам).
+     * показ в продаже: скрыт, только если её продажа уже на витрине.
      */
     public static function incoming(Model $lane): array
     {
         $offer = $lane instanceof Vehicle ? $lane->offer : $lane;
-        if (! $offer instanceof Offer) {
-            return [];
-        }
-        $seen = $offer->state !== OfferState::Draft || $offer->isGallery() || $offer->estimates()->open()->exists();
 
-        return $seen ? ['hidden' => true] : [];
+        return $offer instanceof Offer && $offer->state !== OfferState::Draft ? ['hidden' => true] : [];
+    }
+
+    /**
+     * Кадр из письма страховой (ветка, ответ по сделке, облако по ссылке): как `incoming`, а у черновика, который уже видят
+     * менеджеры (отдан на оценку, в галерее), — тоже скрыт (03.11.2026: кадром бывает скан из письма, а из писем менеджеру
+     * сам не идёт ничего). Руками, с Мигторга и из архива — по `incoming`.
+     */
+    public static function fromLetter(Model $lane): array
+    {
+        $offer = $lane instanceof Vehicle ? $lane->offer : $lane;
+        $seen = $offer instanceof Offer && $offer->state === OfferState::Draft && ($offer->isGallery() || $offer->estimates()->open()->exists());
+
+        return $seen ? ['hidden' => true] : self::incoming($lane);
     }
 
     public static function is(Media $media): bool

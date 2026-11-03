@@ -9,7 +9,7 @@
 @props(['deal', 'compact' => false, 'lane' => false])
 @php
     $offer = $deal->offer;
-    $handover = \App\Offers\Handover::for($deal);
+    $handover = \App\Offers\Handover::for($deal, staff: true);
     $sheet = $offer->pickup()?->isOpen() && ! $offer->pickedUp();
     $keys = ['insured_name', 'insured_phone', 'insured_phone2', 'inspection_address'];
     $empty = ! $offer->insured_name && ! $offer->insured_phone && ! $offer->inspection_address;
@@ -21,7 +21,8 @@
     <section {{ $attributes->class([$compact ? '' : 'box']) }} data-controller="edit-card" data-edit-card-form-value="{{ $form }}" @if ($editing) data-edit-card-editing-value="true" @endif>
         <div class="flex items-start gap-3">
             <div class="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-1.5">
-            @unless ($lane)<h2 class="{{ $compact ? 'detail-section !mb-0' : 'box-title' }}">Получение автомобиля</h2>@endunless
+            {{-- В дорожке «Вывоз» своего заголовка нет — подписью, чей контакт: иначе «Добавить» висело одно (03.11.2026). --}}
+            @if ($lane)<span class="text-sm text-ink-muted">Контакт владельца</span>@else<h2 class="{{ $compact ? 'detail-section !mb-0' : 'box-title' }}">Получение автомобиля</h2>@endif
             {{-- В дорожке «Вывоз» кто забирает и где — её собственные строки и лесенка: здесь бы это шло вторым и третьим разом
                  (28.10.2026, «Едет на парковку / забирает менеджер / Едет на нашу парковку / Забирает сам»). --}}
             @if ($handover->where && ! ($lane && ($handover->park || $offer->pickup())))<x-ui.place class="text-sm">{{ $handover->where === 'У вас' ? 'У менеджера' : $handover->where }}</x-ui.place>@endif

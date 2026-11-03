@@ -2,7 +2,10 @@
 
 namespace App\Offers;
 
+use App\Media\ForManagers;
 use App\Support\FastAttributes;
+use App\Support\Phone;
+use App\Support\VendorNames;
 use App\Users\User;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
@@ -46,12 +49,31 @@ class Disclosure extends Model
         return array_values(array_map(fn ($i) => (string) $i['value'], array_filter($this->items ?? [], fn ($i) => ($i['kind'] ?? null) === $kind)));
     }
 
-    /** Документы, что ещё лежат у машины. @return Collection<int, Media> */
+    /** Документы, что ещё лежат у машины и всё ещё открыты менеджеру (сняли «Видно менеджеру» — из блока ушли). @return Collection<int, Media> */
     public function files(): Collection
     {
         $ids = array_filter(array_map(fn ($i) => ($i['kind'] ?? null) === 'file' ? (int) ($i['media'] ?? 0) : 0, $this->items ?? []));
 
-        return $ids ? Media::whereIn('id', $ids)->get() : collect();
+        return $ids ? Media::whereIn('id', $ids)->get()->filter(fn (Media $m) => ForManagers::is($m))->values() : collect();
+    }
+
+    /**
+     * Пункты, которых нет в карточке «Получение автомобиля» рядом (`Handover` берёт оттуда контакт): тот же телефон, имя и адрес
+     * второй раз под ним не пишутся. @return list<array{kind: string, value: string, media?: int}>
+     */
+    public function besides(?Handover $handover): array
+    {
+        if (! $handover?->shows()) {
+            return $this->items ?? [];
+        }
+        $phones = array_filter([$handover->phone, $handover->phone2]);
+
+        return array_values(array_filter($this->items ?? [], fn ($i) => match ($i['kind'] ?? null) {
+            'phone' => ! in_array(Phone::normalize($i['value']), $phones, true),
+            'name' => $i['value'] !== $handover->name,
+            'address' => VendorNames::strip($i['value']) !== $handover->address,
+            default => true,
+        }));
     }
 
     /** Строкой для истории и CRM — то, что видит менеджер: «+7 999 123-45-67, Иван, паспорт.pdf». */

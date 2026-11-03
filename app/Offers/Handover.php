@@ -87,9 +87,19 @@ final class Handover
         return $staff->first(fn ($u) => $u->isParking() && ! $u->isParkHelper()) ?? $staff->first(fn ($u) => $u->isParkAdmin());
     }
 
-    public static function for(Deal $deal): self
+    /**
+     * $staff — карточка сделки в CRM: сотруднику владелец и адрес осмотра машины — как есть (их правят там же); менеджеру —
+     * только показанное админом из писем (`Disclosure`).
+     */
+    public static function for(Deal $deal, bool $staff = false): self
     {
         $offer = $deal->offer->loadMissing(['positions.stage.exits', 'parkVehicle.yard.settlement', 'settlement']);
+        $shown = Disclosures::shown($deal);
+        // Владелец: сотруднику — страхователь машины, менеджеру — показанный контакт (страхователя дописывают письма).
+        $owner = $staff
+            ? ['name' => $offer->insured_name, 'phone' => $offer->insured_phone, 'phone2' => $offer->insured_phone2, 'address' => $offer->inspection_address ?: null]
+            : ['name' => Disclosures::latest($shown, 'name'), 'phone' => Disclosures::latest($shown, 'phone'),
+                'phone2' => Disclosures::latest($shown, 'phone', 1), 'address' => Disclosures::latest($shown, 'address')];
         $sale = $offer->position(Track::Sale);
         // Вывоз — задача логистики (17.10.2026): дата, место и владелец — из неё.
         $pickup = $offer->pickup();
@@ -113,8 +123,8 @@ final class Handover
                 }
             }
         }
-        $owner = $picks || $saleAsks;
-        if ($owner && $pickup) {
+        $tells = $picks || $saleAsks;
+        if ($tells && $pickup) {
             $fields['date'] ??= $pickup->pickup_at?->format('Y-m-d');
             $fields['address'] ??= $pickup->pickup_place ?: null;
         }
@@ -146,7 +156,7 @@ final class Handover
             $atSupplier => 'У поставщика',
             // Вывезли и везут (логистика, «Забрал») — уже не у владельца.
             $place === CarPlace::Moving, $place === CarPlace::Depot => 'В пути',
-            $place === CarPlace::Owner, $offer->insured_name || $offer->insured_phone => 'У владельца',
+            $place === CarPlace::Owner, $owner['name'] || $owner['phone'] => 'У владельца',
             default => null,
         };
         $withBuyer = $where === 'У вас';
@@ -167,13 +177,13 @@ final class Handover
             $fields['name'] ??= $held->name;
             $fields['phone'] ??= $held->phone;
         }
-        // Владелец — только то, что админ показал из писем (`Disclosure`, 03.11.2026, владелец: «менеджеру ничего, пока админ не
-        // нажмёт»): страхователь и адрес осмотра машины дописывают письма (`FillFromLetter`), сами они менеджеру не идут.
-        if ($owner && ! $withBuyer && ! $atYard && ! $held && ($shown = Disclosures::shown($deal))->isNotEmpty()) {
-            $fields['name'] ??= Disclosures::latest($shown, 'name');
-            $fields['phone'] ??= Disclosures::latest($shown, 'phone');
-            $phone2 = Phone::normalize(Disclosures::latest($shown, 'phone', 1));
-            $fields['address'] ??= Disclosures::latest($shown, 'address');
+        // Владелец менеджеру — только то, что админ показал из писем (`Disclosure`, 03.11.2026, владелец: «менеджеру ничего, пока
+        // админ не нажмёт»): страхователь и адрес осмотра машины дописывают письма (`FillFromLetter`), сами они ему не идут.
+        if ($tells && ! $withBuyer && ! $atYard && ! $held) {
+            $fields['name'] ??= $owner['name'];
+            $fields['phone'] ??= $owner['phone'];
+            $phone2 = Phone::normalize($owner['phone2']);
+            $fields['address'] ??= $owner['address'];
         }
         $phone = Phone::normalize($fields['phone'] ?? null);
         // Имя и адрес бывают кусками письма страховой: её название менеджеру не показываем (15.10.2026).

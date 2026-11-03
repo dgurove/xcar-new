@@ -1,6 +1,8 @@
 {{-- Что админ показал из писем страховой одним разом (`Offers\Disclosure`, 03.11.2026, владелец: «показывается ТОЛЬКО то, что
      выбрано»): дата, телефоны ссылками, имя, адрес с картой, сообщение, документы. Самих писем менеджер не видит никогда. --}}
-@php $items = collect($disclosure->items); @endphp
+{{-- Телефон, имя и адрес, что уже стоят в «Получении автомобиля» рядом, второй раз не пишутся (`Disclosure::besides`). --}}
+@php $items = collect($disclosure->besides($handover ?? null)); $files = $disclosure->files(); @endphp
+@if ($items->where('kind', '!=', 'file')->isNotEmpty() || $files->isNotEmpty())
 <div class="reply">
     <p class="nums text-sm text-ink-dim">{{ \App\Support\Ago::html($disclosure->created_at, true, words: false) }}</p>
     @foreach ($items->whereIn('kind', ['name', 'text']) as $item)
@@ -14,9 +16,10 @@
     @foreach ($items->where('kind', 'address') as $item)
         <p class="mt-1 break-words"><a href="https://yandex.ru/maps/?text={{ rawurlencode($item['value']) }}" target="_blank" rel="noopener"><x-ui.place>{{ $item['value'] }}</x-ui.place></a></p>
     @endforeach
-    @if (($files = $disclosure->files())->isNotEmpty())
+    @if ($files->isNotEmpty())
         <div class="mt-2 flex flex-col">
             @foreach ($files as $media)<x-ui.file :name="$media->file_name" :mime="$media->mime_type" :size="$media->humanReadableSize" href="/files/{{ $media->id }}"/>@endforeach
         </div>
     @endif
 </div>
+@endif

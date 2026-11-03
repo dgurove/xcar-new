@@ -93,10 +93,10 @@ final class Disclosures
         return $items;
     }
 
-    /** Показанное по сделке, новое сверху. @return Collection<int, Disclosure> */
+    /** Показанное по сделке, новое сверху — один запрос на сделку (страница, получение, плашка CRM). @return Collection<int, Disclosure> */
     public static function shown(Deal $deal): Collection
     {
-        return Disclosure::where('deal_id', $deal->id)->orderByDesc('id')->get();
+        return $deal->loadMissing('disclosures')->disclosures;
     }
 
     /** Первое значение вида из показанного (новое главнее): контакт получения автомобиля (`Handover`). */

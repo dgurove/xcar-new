@@ -306,7 +306,8 @@ class Position extends Model
             and exists (select 1 from workflow_exits x where x.stage_id = offer_positions.stage_id
                 and x.actor = 'manager' and lower(x.label) in ('беру в работу', 'покупаю')))
         or (offer_positions.track = 'sale' and exists (select 1 from offer_reprices r where r.offer_id = offer_positions.offer_id and r.state = 'pending'))
-        or (offer_positions.track = 'sale' and exists (select 1 from reply_reviews rr where rr.offer_id = offer_positions.offer_id and rr.state = 'pending'))
+        or (offer_positions.track = 'sale' and exists (select 1 from reply_reviews rr join deals rd on rd.id = rr.deal_id
+            where rr.offer_id = offer_positions.offer_id and rr.state = 'pending' and rd.state = 'active'))
         or (offer_positions.track = 'sale' and exists (select 1 from reprice_asks a join deals d on d.id = a.deal_id
             where a.offer_id = offer_positions.offer_id and a.state = 'pending' and a.due_at < now() and d.state = 'active')), false)";
 

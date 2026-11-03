@@ -46,7 +46,7 @@ final class ShareReplyFiles implements ShouldQueue
             return;
         }
         $documents = ['letter' => $message->id];
-        $photos = Hidden::incoming($offer);
+        $photos = Hidden::fromLetter($offer);
         // Идёт сделка — картинки ответа (во вложениях и в архиве по ссылке) это документы, а не кадры машины.
         $dealing = $offer->deal()->exists();
         if ($message->files()->isNotEmpty()) {

@@ -1,0 +1,57 @@
+{{-- Шторка «Показать менеджеру» (`x-deal.reply-review`): текст писем разбора (только админу), пункты `Disclosures::proposals`
+     с галками и карандашом, своё сообщение, галка шага. Ждёт переменные компонента: $id, $deal, $letters, $proposals, $step, $picked. --}}
+@php
+    use App\Offers\Actions\Disclose;
+    use App\Offers\Disclosures;
+    use App\Support\Ago;
+@endphp
+<x-ui.sheet :id="$id" title="Показать менеджеру" tall>
+    <form method="post" action="/work/deals/{{ $deal->id }}/disclose" class="flex flex-col gap-4" data-controller="disclose">
+        @csrf
+        @error('disclose')<x-ui.flash tone="danger">{{ $message }}</x-ui.flash>@enderror
+        @foreach ($letters as $m)
+            {{-- Подпись и оговорки страховой бывают на экран — письмо листается внутри себя, пункты видны сразу. --}}
+            <div class="max-h-64 overflow-y-auto rounded-(--radius-m) bg-surface-2 px-4 py-3">
+                <p class="mb-1 text-sm text-ink-muted">Письмо {{ Ago::html($m->date_at, true, words: false) }} — видно только вам</p>
+                <p class="whitespace-pre-line break-words text-sm">{{ $m->replyText() }}</p>
+            </div>
+        @endforeach
+        @if ($proposals)
+            <div>
+                <p class="field-label mb-2">Что показать менеджеру</p>
+                <div class="list">
+                    @foreach ($proposals as $key => $p)
+                        @php $box = $id.'-'.$loop->index; @endphp
+                        <div class="row items-start gap-3" data-disclose-target="row">
+                            <span class="check mt-0.5"><input type="checkbox" id="{{ $box }}" name="on[]" value="{{ $key }}" @checked(in_array($key, $picked, true)) data-action="disclose#update"></span>
+                            <div class="min-w-0 flex-1">
+                                <label for="{{ $box }}" class="block cursor-pointer">
+                                    <span class="block text-xs text-ink-muted">{{ Disclosures::KINDS[$p['kind']] }}</span>
+                                    <span class="block break-words" data-disclose-target="text">{{ $p['kind'] === 'file' ? $p['value'] : old('value.'.$key, $p['value']) }}</span>
+                                </label>
+                                @if ($p['kind'] !== 'file')
+                                    <input type="text" name="value[{{ $key }}]" value="{{ old('value.'.$key, $p['value']) }}" class="field-input mt-1" hidden data-disclose-target="input" data-action="input->disclose#typed">
+                                @endif
+                            </div>
+                            @if ($p['kind'] === 'file')
+                                <a href="/files/{{ $p['media'] }}" class="btn btn-ghost btn-s -my-1 px-1.5 text-ink-muted" aria-label="Открыть документ"><x-ui.icon name="eye" class="size-5"/></a>
+                            @else
+                                <button type="button" class="btn btn-ghost btn-s -my-1 px-1.5 text-ink-muted" aria-label="Изменить" data-action="disclose#edit"><x-ui.icon name="edit" class="size-4"/></button>
+                            @endif
+                        </div>
+                    @endforeach
+                </div>
+            </div>
+        @endif
+        <div class="fields">
+            <x-ui.field type="textarea" name="text" label="Своё сообщение менеджеру" :id="$id.'-text'" :value="old('_sheet') === $id ? old('text') : null" rows="3" data-action="input->disclose#update" data-disclose-target="note"/>
+        </div>
+        @if ($step)
+            <label class="row row-switch rounded-(--radius-m) bg-surface-2 px-4">
+                <span class="min-w-0 flex-1">Пройти шаг «{{ $step->label }}»</span>
+                <input type="checkbox" switch class="switch" name="step" value="{{ $step->id }}" @checked(old('_sheet') === $id ? old('step') : Disclose::stepByDefault($step, $letters)) data-action="disclose#update" data-disclose-target="step">
+            </label>
+        @endif
+        <x-ui.sheet-foot type="submit" data-disclose-target="submit">Показать менеджеру</x-ui.sheet-foot>
+    </form>
+</x-ui.sheet>

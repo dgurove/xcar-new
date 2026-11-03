@@ -2,9 +2,13 @@
      Внутри задачи — между тем, что сделать, и кнопками: с кем связаться, видно сразу. --}}
 @php
     $disclosures ??= collect();
-    $early ??= collect();
-    $late ??= $disclosures;
+    // Всё показанное уже стоит в «Получении автомобиля» — блока нет (пустой блок не рисуется).
+    $handover ??= null;
+    $seen = fn ($d) => collect($d->besides($handover))->where('kind', '!=', 'file')->isNotEmpty() || $d->files()->isNotEmpty();
+    $early = ($early ?? collect())->filter($seen)->values();
+    $late = ($late ?? $disclosures)->filter($seen)->values();
 @endphp
+@if ($early->isNotEmpty() || $late->isNotEmpty())
 <section @class(['mt-5' => ! ($bare ?? false)])>
     <h3 class="text-sm font-medium text-ink-dim">Информация по сделке</h3>
     <div class="mt-2 flex flex-col gap-2">
@@ -19,3 +23,4 @@
         @foreach ($late as $disclosure)@include('cabinet.deals.disclosure')@endforeach
     </div>
 </section>
+@endif

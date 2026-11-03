@@ -31,6 +31,8 @@
             @if ($deal->buyer)<x-deal.chat-card :deal="$deal" compact/>@endif
             @if ($docs)<x-ui.docs-pill :docs="$docs"/>@endif
             <x-deal.person-link :deal="$deal" pill/>
+            {{-- Показать менеджеру руками (пункты из машины), когда письма на разбор нет — пилюлей в том же ряду. --}}
+            <x-deal.reply-review :deal="$deal" pill/>
         </x-slot:actions>
         @if ($errors->has('exit'))<x-ui.flash tone="danger" class="mt-3">{{ $errors->first('exit') }}</x-ui.flash>@endif
         <div class="mt-4 flex flex-col gap-6">
