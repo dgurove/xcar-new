@@ -178,6 +178,35 @@ class AlfaRequisitesTest extends TestCase
         $this->assertSame('Заполнить', $todo['button']['label']);
     }
 
+    public function test_alfa_scheme_choices_default_first_and_prime_asks_twice(): void
+    {
+        Notification::fake();
+        $this->admin = User::create(['name' => 'Андрей', 'phone' => '79000000001', 'roles' => [Role::Admin], 'approved_at' => now()]);
+        $this->manager = User::create(['name' => 'Денис', 'phone' => '79000000002', 'roles' => [Role::Manager], 'approved_at' => now()]);
+        $vendor = Vendor::create(['name' => 'Альфа выбор']);
+        $vendor->forceFill(['pay_before_pickup' => true])->save();
+        app(ApplyPreset::class)($vendor->workflowOrNew(Track::Sale), Preset::Alfa);
+        $offer = Offer::create(['vendor_id' => $vendor->id, 'floor_price' => 900000, 'asking_price' => 1200000, 'bids_close_at' => now()->addDay()]);
+        $offer->forceFill(['state' => OfferState::Open])->save();
+        $offer->viewers()->create(['user_id' => $this->manager->id, 'opens_at' => now()]);
+        $offer = $offer->fresh();
+
+        // Без НДС: «Напрямую» первым и по умолчанию, ПРАЙМ последним, ДКП собственника у Альфы нет (03.11.2026).
+        $this->assertSame([DealScheme::Insurer, DealScheme::Prime], DealScheme::casesFor($vendor, $offer));
+        $this->assertNull(DealScheme::unusual($offer, DealScheme::Insurer));
+        $this->assertStringContainsString('Напрямую', DealScheme::unusual($offer, DealScheme::Prime));
+
+        // «Принять» через ПРАЙМ — сначала «Точно?», со вторым нажатием — принято.
+        $bid = app(PlaceBid::class)($offer, $this->manager, 1200000);
+        $url = 'http://'.config('xcar.crm_host').'/confirmations/'.$bid->id.'/accept';
+        $this->actingAs($this->admin)->post($url, ['to' => 'deal', 'scheme' => 'prime', 'pickup' => 'us'])->assertSessionHasErrors(['scheme', 'scheme_check']);
+        $this->assertNull($offer->fresh()->deal);
+        $this->actingAs($this->admin)->post($url, ['to' => 'deal', 'scheme' => 'prime', 'pickup' => 'us', 'scheme_ok' => '1'])->assertSessionHasNoErrors();
+        $deal = $offer->fresh()->deal;
+        $this->assertSame(DealScheme::Prime, $deal->scheme);
+        $this->assertSame($this->admin->id, $deal->scheme_by);
+    }
+
     public function test_supplier_may_invoice_right_away(): void
     {
         [$offer] = $this->deal(vat: false);

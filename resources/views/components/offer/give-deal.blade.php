@@ -14,7 +14,7 @@
     $editCost = (bool) auth()->user()?->isAdmin();
 @endphp
 <x-offer.money-form :action="$bid ? '/confirmations/'.$bid->id.'/accept' : '/offers/'.$offer->number.'/give'" :amount="$amount" :priced="! $bid" :cost="$floor" :cost-editable="$editCost" :supplier-cost="$offer->floor_price"
-    :scheme="DealScheme::choiceFor($offer->vendor?->deal_format, DealScheme::forOffer($offer))" :schemes="DealScheme::casesFor($offer->vendor, $offer)" :owner-price="$offer->owner_price"
+    :offer="$offer" :scheme="DealScheme::choiceFor($offer->vendor?->deal_format, DealScheme::forOffer($offer))" :schemes="DealScheme::casesFor($offer->vendor, $offer)" :owner-price="$offer->owner_price"
     :fee="! $bid?->user->isSuperBuyer()" :submit="$handOver ? 'Отдать' : ($bid ? 'Принять' : 'Отдать')" :id="$prefix.'-commission'"
     :note="$handOver ? 'Сделка с '.$handOver->buyer?->shortName().' отменится' : null"
     :confirm="$loss ? 'Принять за '.Money::rub($bid->amount).' при закупочной '.Money::rub($floor).'? '.($under > 0 ? 'Сделка в минус '.Money::rub($under) : 'Наценки нет') : null">

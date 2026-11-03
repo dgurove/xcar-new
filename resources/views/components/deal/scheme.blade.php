@@ -33,13 +33,15 @@
     @endif
     @if ($editable)
         <x-ui.sheet :id="$sheet" title="Схема сделки">
-            <form method="post" action="/work/deals/{{ $deal->id }}/scheme" class="flex flex-col gap-4">
+            <form method="post" action="/work/deals/{{ $deal->id }}/scheme" class="flex flex-col gap-4" data-scheme-guard>
                 @csrf
+                @if ($errors->has('scheme_check'))<input type="hidden" name="scheme_ok" value="1">@endif
+                @error('scheme')<p class="field-error">{{ $message }}</p>@enderror
                 <div class="list">
                     @foreach ($choices as $c)
                         <label class="row row-check">
                             <span class="min-w-0 flex-1"><span class="block">{{ $c->label() }}</span><span class="row-sub">{{ $c->hint() }}</span></span>
-                            <span class="check"><input type="radio" name="scheme" value="{{ $c->value }}" @checked($c === $scheme)></span>
+                            <span class="check"><input type="radio" name="scheme" value="{{ $c->value }}" @checked($c === $scheme) @if ($ask = \App\Offers\DealScheme::unusual($deal->offer, $c)) data-ask="{{ $ask }}" @endif></span>
                         </label>
                     @endforeach
                 </div>

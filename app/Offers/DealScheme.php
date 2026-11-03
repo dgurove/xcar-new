@@ -32,10 +32,12 @@ enum DealScheme: string
     public function label(): string
     {
         return match ($this) {
-            self::Prime => 'ПРАЙМ по счёту',
-            self::OwnerDkp => 'Страхователю по ДКП',
-            self::Insurer => 'Страховой напрямую',
-            self::Ros => 'Р.О.С. по счёту',
+            // Что за договор — словами (03.11.2026, владелец: «варианты понятнее назвать, чтобы не тупили»; было «ПРАЙМ по
+            // счёту», «Страховой напрямую» — по Land Cruiser 781R договор напрямую, а стоял ПРАЙМ).
+            self::Prime => 'Через ПРАЙМ: ПРАЙМ продаёт покупателю',
+            self::OwnerDkp => 'ДКП: собственник продаёт покупателю',
+            self::Insurer => 'Напрямую: страховая продаёт покупателю',
+            self::Ros => 'Через Р.О.С., с НДС',
         };
     }
 
@@ -43,7 +45,7 @@ enum DealScheme: string
     public function hint(): string
     {
         return match ($this) {
-            self::Insurer => 'Покупатель платит поставщику сам, нам — подбор по ссылке',
+            self::Insurer => 'Покупатель платит страховой сам, нам — подбор по ссылке',
             self::OwnerDkp => 'Покупатель платит собственнику по ДКП, нам — подбор по ссылке',
             self::Prime => 'Покупатель платит ПРАЙМ по счёту, ПРАЙМ — поставщику, ДКП с ПРАЙМ',
             self::Ros => 'То же через ООО «Р.О.С.», с НДС',
@@ -113,7 +115,40 @@ enum DealScheme: string
      */
     public static function casesFor(?Vendor $vendor, ?Offer $offer = null): array
     {
-        return array_values(array_filter(self::cases(), fn (self $s) => $s !== self::Ros || ($vendor?->pay_before_pickup && (! $offer || $offer->prices_include_vat))));
+        $alfa = (bool) $vendor?->pay_before_pickup;
+        $cases = array_filter(self::cases(), fn (self $s) => match ($s) {
+            self::Ros => $alfa && (! $offer || $offer->prices_include_vat),
+            // ДКП собственника у Альфы не бывает — лишний вариант путал (03.11.2026).
+            self::OwnerDkp => ! $alfa,
+            default => true,
+        });
+        // Умолчание — первым, ПРАЙМ — последним, если он не умолчание (03.11.2026: ПРАЙМ стоял первым, его и принимали).
+        $default = $offer ? self::forOffer($offer) : ($alfa ? self::Insurer : self::forVendor($vendor?->deal_format));
+        usort($cases, fn (self $a, self $b) => self::rank($a, $default) <=> self::rank($b, $default));
+
+        return array_values($cases);
+    }
+
+    private static function rank(self $s, self $default): int
+    {
+        return match (true) {
+            $s === $default => 0,
+            $s === self::Prime => 9,
+            default => 1 + array_search($s, self::cases(), true),
+        };
+    }
+
+    /**
+     * Не умолчание — переспросить (03.11.2026): «У АльфаСтрахование обычно „Напрямую…“. Точно „Через ПРАЙМ…“?». null — не надо.
+     */
+    public static function unusual(Offer $offer, self $chosen): ?string
+    {
+        $default = self::forOffer($offer);
+        if ($chosen === $default || ! self::choiceFor($offer->vendor?->deal_format)) {
+            return null;
+        }
+
+        return 'У поставщика «'.($offer->vendor?->name ?? '').'» обычно «'.$default->label().'». Точно «'.$chosen->label().'»?';
     }
 
     /**

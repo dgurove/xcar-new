@@ -74,3 +74,26 @@ function setOk(form) {
     form.append(input);
     return input;
 }
+
+// Схема сделки не та, что обычно у поставщика (03.11.2026: Land Cruiser 781R приняли «через ПРАЙМ», а договор напрямую):
+// форма с `data-scheme-guard`, у отмеченной схемы `data-ask` (`DealScheme::unusual`) — лист «Точно?» до отправки, «Да» —
+// `scheme_ok=1` и та же отправка. Без скрипта сервер спросит сам ошибкой у схемы.
+export function schemeGuard() {
+    window.addEventListener('submit', (event) => {
+        const form = event.target;
+        if (!form?.hasAttribute?.('data-scheme-guard') || form.dataset.schemeChecked || event.defaultPrevented) return;
+        const ask = form.querySelector('input[name="scheme"]:checked')?.dataset.ask;
+        if (!ask || new FormData(form).get('scheme_ok') === '1') return;
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        const submitter = event.submitter;
+        confirmSheet(ask, { label: 'Да, так и есть', cancel: 'Исправить', danger: false, warn: true }).then((ok) => {
+            if (!ok) return;
+            const input = document.createElement('input');
+            Object.assign(input, { type: 'hidden', name: 'scheme_ok', value: '1' });
+            form.append(input);
+            form.dataset.schemeChecked = '1';
+            try { form.requestSubmit(submitter?.form === form ? submitter : undefined); } finally { delete form.dataset.schemeChecked; input.remove(); }
+        });
+    }, { capture: true });
+}

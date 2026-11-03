@@ -318,7 +318,7 @@ class DealController
     {
         abort_unless($deal->isActive(), 404);
         $scheme = DealScheme::from($request->validate(['scheme' => ['required', Rule::enum(DealScheme::class)]])['scheme']);
-        $change($deal, $scheme, $request->user());
+        $change($deal, $scheme, $request->user(), $request->boolean('scheme_ok'));
 
         return back()->with('toast', 'Схема: '.$scheme->label());
     }

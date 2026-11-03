@@ -14,7 +14,7 @@
      28.10.2026: `costEditable` — закупочная менеджера полем (админ при принятии, владелец: «можешь поменять закупочную,
      которая будет у него в сделке»): по умолчанию с подтверждения, разница, взаимозачёт и согласие `loss` идут за ней. --}}
 @props(['action', 'amount', 'cost' => null, 'commission' => null, 'mode' => \App\Offers\CommissionMode::Payout, 'submit' => 'Принять', 'confirm' => null, 'method' => 'post', 'id' => null, 'note' => null,
-    'scheme' => null, 'schemes' => null, 'ownerPrice' => null, 'fee' => true, 'ownerLocked' => false, 'supplierCost' => null, 'priced' => false, 'costEditable' => false, 'schemeLocked' => false])
+    'scheme' => null, 'schemes' => null, 'ownerPrice' => null, 'fee' => true, 'ownerLocked' => false, 'supplierCost' => null, 'priced' => false, 'costEditable' => false, 'schemeLocked' => false, 'offer' => null])
 @php
     use App\Offers\CommissionMode;
     use App\Offers\DealScheme;
@@ -29,7 +29,7 @@
     $costNow = $costEditable ? (Money::rubles(old('cost')) ?: $cost) : $cost;
     $margin = $costNow === null ? null : (int) $amount - $costNow;
 @endphp
-<form method="post" action="{{ $action }}" class="flex flex-col gap-4" data-controller="commission" data-commission-amount-value="{{ $amount }}" @if ($costNow !== null) data-commission-cost-value="{{ $costNow }}" @endif
+<form method="post" action="{{ $action }}" class="flex flex-col gap-4" data-scheme-guard data-controller="commission" data-commission-amount-value="{{ $amount }}" @if ($costNow !== null) data-commission-cost-value="{{ $costNow }}" @endif
     @if ($margin !== null) data-commission-margin-value="{{ $margin }}" @endif @if ($confirm) data-turbo-confirm="{{ $confirm }}" @endif>
     @csrf
     @if ($method !== 'post')@method($method)@endif
@@ -39,13 +39,21 @@
     @if ($scheme && $schemeLocked)
         <input type="hidden" name="scheme" value="{{ $scheme->value }}">
     @elseif ($scheme)
+        {{-- Схема — строками с фразой, кто кому платит, умолчание первым и отмечено (03.11.2026, владелец: чипы «ПРАЙМ по счёту /
+             Страховой напрямую» путали — Land Cruiser 781R приняли через ПРАЙМ, а договор напрямую). Не умолчание — «Точно?»
+             (`data-ask`, `scheme-guard` в `price-guard.js`; сервер — `DealScheme::unusual` и `scheme_ok`). --}}
         <div class="flex flex-col gap-1.5">
-            <span class="field-label">За ТС платят</span>
-            <div class="flex flex-wrap gap-2">
+            <span class="field-label">Договор и оплата за ТС</span>
+            @if ($errors->has('scheme_check'))<input type="hidden" name="scheme_ok" value="1">@endif
+            <div class="list">
                 @foreach ($schemes ?? DealScheme::casesFor(null) as $s)
-                    <label class="choice"><input type="radio" name="scheme" value="{{ $s->value }}" @checked($scheme === $s) data-action="commission#scheme" data-selection="{{ $s->paysSelection() ? 1 : 0 }}" data-payee="{{ $s->payeeLabel() }}"><span>{{ $s->label() }}</span></label>
+                    <label class="row row-check">
+                        <span class="min-w-0 flex-1"><span class="block">{{ $s->label() }}</span><span class="row-sub">{{ $s->hint() }}</span></span>
+                        <span class="check"><input type="radio" name="scheme" value="{{ $s->value }}" @checked($scheme === $s) data-action="commission#scheme" data-selection="{{ $s->paysSelection() ? 1 : 0 }}" data-payee="{{ $s->payeeLabel() }}" @if ($offer && ($ask = DealScheme::unusual($offer, $s))) data-ask="{{ $ask }}" @endif></span>
+                    </label>
                 @endforeach
             </div>
+            @error('scheme')<p class="field-error">{{ $message }}</p>@enderror
         </div>
     @endif
     <dl class="grid grid-cols-[auto_1fr] items-baseline gap-x-4 gap-y-1.5">

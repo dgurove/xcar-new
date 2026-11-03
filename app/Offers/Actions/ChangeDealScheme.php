@@ -17,11 +17,14 @@ final class ChangeDealScheme
 {
     public function __construct(private UpdateDealMoney $money, private AdvanceOnBuyerData $advance) {}
 
-    public function __invoke(Deal $deal, DealScheme $scheme, User $by): Deal
+    public function __invoke(Deal $deal, DealScheme $scheme, User $by, bool $ok = true): Deal
     {
         $deal->loadMissing('offer.vendor');
         if (! DealScheme::choiceFor($deal->offer->vendor?->deal_format) || ! in_array($scheme, DealScheme::casesFor($deal->offer->vendor, $deal->offer), true)) {
             throw ValidationException::withMessages(['scheme' => 'Эту схему у этого поставщика выбрать нельзя']);
+        }
+        if (! $ok && ($ask = DealScheme::unusual($deal->offer, $scheme))) {
+            throw ValidationException::withMessages(['scheme' => $ask, 'scheme_check' => '1']);
         }
         $was = $deal->schemeOf();
         if ($was === $scheme) {

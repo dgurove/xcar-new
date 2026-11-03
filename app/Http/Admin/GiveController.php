@@ -74,6 +74,10 @@ class GiveController
             $data['pickup'] = 'us';
         }
         $scheme = DealScheme::resolve($offer, DealScheme::tryFrom($data['scheme'] ?? ''));
+        // Не та схема, что обычно у поставщика (03.11.2026: Land Cruiser 781R приняли «через ПРАЙМ», а договор напрямую) — переспросить.
+        if (! $garage && ! $request->boolean('scheme_ok') && ($ask = DealScheme::unusual($offer, $scheme))) {
+            throw ValidationException::withMessages(['scheme' => $ask, 'scheme_check' => '1']);
+        }
         if (! $garage && $scheme->paysSelection() && ! isset($data['owner_price']) && ! $offer->owner_price && ! $offer->floor_price) {
             throw ValidationException::withMessages(['owner_price' => $scheme === DealScheme::OwnerDkp ? 'Сколько покупатель отдаёт страхователю по ДКП' : 'Сколько покупатель отдаёт страховой']);
         }
