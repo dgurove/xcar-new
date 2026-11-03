@@ -31,10 +31,9 @@ use Illuminate\Support\Str;
  * закрывает `SelfPickup`. Попросит — «Нужен вывоз» (`RequestPickup`); везёт логистика — словом «Везёт …», без «Забрал».
  *
  * Откуда: поля текущего шага продажи (их вписали менеджеру), задача вывоза в логистике (созвон: дата и место), парковка,
- * где стоит ТС, и
- * наконец само предложение — страхователь и адрес осмотра из письма. Контакт владельца менеджеру — только когда
- * забирает он сам или шаг продажи его и просит (Т-Страхование): забираем мы — сводить его с владельцем не нужно.
- * Письмо целиком менеджер не видит никогда: в нём закупочная.
+ * где стоит ТС, и наконец то, что админ показал менеджеру из писем страховой (`Disclosure`, 03.11.2026) — страхователя и
+ * адрес осмотра из машины сами не берём. Контакт владельца менеджеру — только когда забирает он сам или шаг продажи его и
+ * просит (Т-Страхование): забираем мы — сводить его с владельцем не нужно. Писем менеджер не видит никогда.
  */
 final class Handover
 {
@@ -168,11 +167,13 @@ final class Handover
             $fields['name'] ??= $held->name;
             $fields['phone'] ??= $held->phone;
         }
-        if ($owner && ! $withBuyer && ! $atYard && ! $held) {
-            $fields['name'] ??= $offer->insured_name;
-            $fields['phone'] ??= $offer->insured_phone;
-            $phone2 = Phone::normalize($offer->insured_phone2);
-            $fields['address'] ??= $offer->inspection_address ?: null;
+        // Владелец — только то, что админ показал из писем (`Disclosure`, 03.11.2026, владелец: «менеджеру ничего, пока админ не
+        // нажмёт»): страхователь и адрес осмотра машины дописывают письма (`FillFromLetter`), сами они менеджеру не идут.
+        if ($owner && ! $withBuyer && ! $atYard && ! $held && ($shown = Disclosures::shown($deal))->isNotEmpty()) {
+            $fields['name'] ??= Disclosures::latest($shown, 'name');
+            $fields['phone'] ??= Disclosures::latest($shown, 'phone');
+            $phone2 = Phone::normalize(Disclosures::latest($shown, 'phone', 1));
+            $fields['address'] ??= Disclosures::latest($shown, 'address');
         }
         $phone = Phone::normalize($fields['phone'] ?? null);
         // Имя и адрес бывают кусками письма страховой: её название менеджеру не показываем (15.10.2026).

@@ -36,6 +36,8 @@
         <div class="mt-4 flex flex-col gap-6">
             {{-- Порядок по смыслу (03.11.2026, владелец: «много непонятного в окошке — разобраться»): что сейчас (путь) → сделка
                  (вопрос про закупочную, деньги со схемой, покупатель) → вывоз → письма → показ и заметка → опасное. --}}
+            {{-- Письмо страховой ждёт разбора: менеджер о нём не знает, пока админ не покажет выбранное (03.11.2026). --}}
+            <x-deal.reply-review :deal="$deal"/>
             @if ($offer->positions->isNotEmpty())@include('admin.offers.route', ['cardClass' => ''])@endif
             <x-offer.reprice-asks :offer="$offer"/>
             <x-deal.money :deal="$deal" compact id="deal-money"/>

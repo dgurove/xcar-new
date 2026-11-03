@@ -18,13 +18,18 @@ final class Hidden
     /**
      * Свойства нового кадра — одно правило для всех дверей (руками, письмо, архив, лот Мигторга; владелец 26.10.2026):
      * пока предложение не опубликовано, кадр виден сразу; у опубликованного — скрыт, пока не посмотрят (глаз). У ТС глаз —
-     * показ в продаже: скрыт, только если её продажа уже на витрине.
+     * показ в продаже: скрыт, только если её продажа уже на витрине. Черновик, который уже видят менеджеры (отдан на оценку,
+     * в галерее), — как опубликованный (03.11.2026: кадром бывает скан из письма страховой, а из писем менеджеру — ничего сам).
      */
     public static function incoming(Model $lane): array
     {
         $offer = $lane instanceof Vehicle ? $lane->offer : $lane;
+        if (! $offer instanceof Offer) {
+            return [];
+        }
+        $seen = $offer->state !== OfferState::Draft || $offer->isGallery() || $offer->estimates()->open()->exists();
 
-        return $offer instanceof Offer && $offer->state !== OfferState::Draft ? ['hidden' => true] : [];
+        return $seen ? ['hidden' => true] : [];
     }
 
     public static function is(Media $media): bool

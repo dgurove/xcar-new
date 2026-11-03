@@ -14,10 +14,9 @@ use App\Offers\Bid;
 use App\Offers\BidState;
 use App\Offers\Deal;
 use App\Offers\DealState;
+use App\Offers\Disclosures;
 use App\Offers\Handover;
-use App\Offers\InsurerReplies;
 use App\Offers\OfferState;
-use App\Offers\OwnerPhones;
 use App\Support\ListPrefs;
 use App\Support\Sort;
 use App\Users\User;
@@ -89,7 +88,8 @@ class DealController
         [$mine, $rest] = $deals->partition(fn (Deal $d) => $tasks[$d->id] !== null);
         $mine = $mine->sortBy(fn (Deal $d) => $tasks[$d->id]['due']?->getTimestamp() ?? PHP_INT_MAX)->values();
         // Гаражная, где ход его без просьбы, — продаёт из гаража: своим разделом, а не «Идёт сделка».
-        $who = fn (Deal $d) => match ($d->offer->position()?->waitsFor()) {
+        // Ответ поставщика менеджеру не виден и тут: сделка остаётся в «Ждём поставщика» (`waitsForManager`, 03.11.2026).
+        $who = fn (Deal $d) => match ($d->offer->position()?->waitsForManager()) {
             WaitsFor::Supplier => 'supplier',
             WaitsFor::Us => 'us',
             WaitsFor::Manager => $d->isGarage() ? 'garage' : 'other',
@@ -211,10 +211,9 @@ class DealController
             'requirement' => $deal->openRequirement,
             'exits' => $deal->openRequirement ? Handover::managerExits($position?->stage, $deal) : collect(),
             'handover' => Handover::for($deal),
-            // Из ответов страховой — только телефоны владельца (`OwnerPhones`, 03.11.2026: текста писем менеджеру нет ни при каких
-            // условиях), новые сверху; письмо без телефона не показывается вовсе. До согласования — ничего (27.10.2026).
-            'replies' => ! $deal->agreed() ? collect() : InsurerReplies::for($deal)
-                ->map(fn ($m) => ['at' => $m->date_at, 'phones' => OwnerPhones::for($m)])->filter(fn ($r) => $r['phones'] !== [])->values(),
+            // Из писем страховой — только то, что показал админ (`Offers\Disclosure`, 03.11.2026, владелец: «менеджеру вообще
+            // ничего не показываем, пока админ не нажмёт»), новое сверху. Самих писем и их телефонов здесь нет.
+            'disclosures' => Disclosures::shown($deal),
             'invoices' => Invoice::where('deal_id', $deal->id)->where('direction', 'issued')->where('state', '!=', InvoiceState::Void)
                 // Шторка счёта (`cabinet.deals.invoice-sheet`): строки, оплаты с платёжками, ссылка — сразу, не по запросу на счёт.
                 ->with(['claims', 'party', 'charges', 'allPayments.media', 'payLinks.attempts', 'media'])->orderBy('id')->get()

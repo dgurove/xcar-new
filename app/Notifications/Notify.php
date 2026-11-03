@@ -26,9 +26,9 @@ use App\Offers\Actions\NotifyViewers;
 use App\Offers\Deal;
 use App\Offers\Estimate;
 use App\Offers\Events\BidAccepted;
+use App\Offers\Events\BidPlaced;
 use App\Offers\Events\CounterAnswered;
 use App\Offers\Events\CounterOffered;
-use App\Offers\Events\BidPlaced;
 use App\Offers\Events\EstimateGiven;
 use App\Offers\Events\EstimateRejected;
 use App\Offers\Events\EstimatesAsked;
@@ -38,8 +38,8 @@ use App\Offers\Events\InterestRegistered;
 use App\Offers\Events\OfferPublished;
 use App\Offers\Events\OffersShown;
 use App\Offers\Handover;
-use App\Offers\OfferState;
 use App\Offers\Jobs\RetractEstimateNotices;
+use App\Offers\OfferState;
 use App\Offers\OfferViewer;
 use App\Park\City;
 use App\Park\Events\BuyerFormSubmitted;
@@ -52,6 +52,7 @@ use App\Park\Events\VehicleReleased;
 use App\Park\Events\VehicleSold;
 use App\Park\Request as ParkRequest;
 use App\Park\RequestState;
+use App\Park\VehicleState;
 use App\Telegram\Jobs\NotifyOwner;
 use App\Telegram\Messages\AgentFeeDue as AgentFeeDueMessage;
 use App\Telegram\Messages\BuyerJoined as BuyerJoinedMessage;
@@ -265,7 +266,7 @@ final class Notify
             // Нажал за менеджера сам сотрудник — ему не звонить (28.10.2026).
             Notification::send($this->staff()->reject(fn (User $u) => $u->is($e->by)), new ConsentGivenNotice($deal->load(['offer', 'buyer'])));
         }
-        // Шаг сдвинуло письмо страховой — менеджеру пишет «Страховая ответила» с этим ходом (`AdvanceOnReply`).
+        // Шаг сдвинул админ галкой в «Показать менеджеру» — его ход уходит в том же уведомлении (`Offers\Actions\Disclose`).
         if (! $deal?->buyer || $e->letter) {
             return;
         }
@@ -275,7 +276,7 @@ final class Notify
         if ($requirement) {
             $deal->buyer->notify(new YourTurnNotice($requirement->load('offer')));
         } elseif ($agreed && $deal->buyerPicksUp() && ($handover = Handover::for($deal->setRelation('offer', $e->offer)))->open
-            && $handover->park?->state !== \App\Park\VehicleState::Stored) {
+            && $handover->park?->state !== VehicleState::Stored) {
             $deal->buyer->notify(new HandoverNotice($deal, $handover));
         } elseif ($e->from?->block_id !== $e->to->block_id && $deal->created_at->lt(now()->subMinute())) {
             // Первый шаг только что открытой сделки не пишем: менеджеру уже идёт «подтверждение принято».
@@ -307,7 +308,7 @@ final class Notify
     {
         // Машина стоит на нашей парковке — менеджеру пишет «Можно забирать с парковки» с пропуском (`SyncParkRelease`),
         // второе «Можно забирать» с тем же было бы дублем.
-        if ($deal->buyerPicksUp() && ($handover = Handover::for($deal))->open && $handover->park?->state !== \App\Park\VehicleState::Stored) {
+        if ($deal->buyerPicksUp() && ($handover = Handover::for($deal))->open && $handover->park?->state !== VehicleState::Stored) {
             $deal->buyer?->notify(new HandoverNotice($deal, $handover));
         }
     }

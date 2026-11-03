@@ -7,6 +7,7 @@ use App\Http\Admin\ChatController;
 use App\Http\Admin\DealContractController;
 use App\Http\Admin\DealController;
 use App\Http\Admin\DeliveryController;
+use App\Http\Admin\DisclosureController;
 use App\Http\Admin\GalleryController;
 use App\Http\Admin\GarageController;
 use App\Http\Admin\GiveController;
@@ -262,6 +263,8 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
         Route::post('/work/deals/supplier-answer', [DealController::class, 'supplierAnswer']);
         Route::put('/work/deals/{deal}/receiver', [DealController::class, 'receiver']);
         Route::post('/work/deals/{deal}/declined', [DealController::class, 'declined']);
+        Route::post('/work/deals/{deal}/disclose', [DisclosureController::class, 'store']);
+        Route::post('/work/deals/{deal}/reviews/done', [DisclosureController::class, 'dismiss']);
         // У кого что в гараже и во что обошлось.
         Route::get('/work/garage', [GarageController::class, 'index']);
         // Кто что вывозит: мы или менеджер, к нему, к нам или на парковку.

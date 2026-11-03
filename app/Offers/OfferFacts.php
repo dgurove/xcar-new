@@ -4,6 +4,7 @@ namespace App\Offers;
 
 use App\Cars\DamageZone;
 use App\Support\Units;
+use App\Support\VendorNames;
 
 /**
  * «Характеристики» ТС словами — одна дверь на витрину, страницу ТС в гараже, вывоз и сделку менеджера.
@@ -27,7 +28,7 @@ final class OfferFacts
             'Повреждения' => $offer->damage_zones ? implode(', ', array_map(fn ($z) => DamageZone::labelOf($z), $offer->damage_zones)) : null,
             'На ходу' => $offer->is_runnable === null ? null : ($offer->is_runnable ? 'Да' : 'Нет'),
             'Ключи' => $offer->has_keys === null ? null : ($offer->has_keys ? 'Есть' : 'Нет'), 'Документы' => $offer->papers?->label(),
-            'Город' => $offer->settlement?->title(), 'Осмотр' => $offer->show_address || $fullVin ? \App\Support\VendorNames::strip($offer->inspection_address) : null,
+            'Город' => $offer->settlement?->title(), 'Осмотр' => $offer->show_address || ($fullVin && auth()->user()?->isStaff()) ? VendorNames::strip($offer->inspection_address) : null,
         ], fn ($v) => $v !== null && $v !== '');
     }
 }

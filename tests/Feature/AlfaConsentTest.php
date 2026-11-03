@@ -4,14 +4,14 @@ namespace Tests\Feature;
 
 use App\Mail\Message;
 use App\Notifications\ConsentGivenNotice;
-use App\Notifications\InsurerReplyNotice;
 use App\Notifications\YourTurnNotice;
 use App\Offers\Actions\AcceptBid;
 use App\Offers\Actions\PlaceBid;
 use App\Offers\DealScheme;
-use App\Offers\Listeners\AdvanceOnReply;
+use App\Offers\Listeners\OnInsurerReply;
 use App\Offers\Offer;
 use App\Offers\OfferState;
+use App\Telegram\UpdateHandler;
 use App\Users\Role;
 use App\Users\User;
 use App\Vendors\Vendor;
@@ -24,6 +24,7 @@ use App\Workflow\Position;
 use App\Workflow\Preset;
 use App\Workflow\Stage;
 use App\Workflow\Track;
+use App\Workflow\WaitsFor;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Http;
@@ -65,11 +66,13 @@ class AlfaConsentTest extends TestCase
 
         // Альфа ответила на offer@ — не на deal@: ход наш, «поставщик ответил»; менеджеру ничего.
         Notification::fake();
-        AdvanceOnReply::mark($deal->fresh(), (new Message)->forceFill(['date_at' => now()]));
+        OnInsurerReply::mark($deal->fresh(), (new Message)->forceFill(['date_at' => now()]));
         $this->assertSame('replied', $position()->letterStatus());
         $this->assertTrue($position()->needsUs());
         $this->assertTrue(Position::whereKey($position()->id)->needsUs()->exists());
-        Notification::assertNotSentTo($manager, InsurerReplyNotice::class);
+        // Менеджер ответа не видит и ходом: у него по-прежнему «Ждём поставщика» (03.11.2026).
+        $this->assertSame(WaitsFor::Supplier, $position()->waitsForManager());
+        Notification::assertNothingSentTo($manager);
 
         // «Поставщик согласовал» — согласие менеджера до 17:00 завтра.
         app(TakeExit::class)($offer->fresh(), $position()->stage->exits->firstWhere('label', 'Поставщик согласовал'), Actor::Staff, $admin);
@@ -88,7 +91,7 @@ class AlfaConsentTest extends TestCase
         // «Беру в работу» из Telegram — с переспросом; чужой мимо.
         $requirement = $deal->fresh()->openRequirement;
         $this->assertNotNull($requirement);
-        $press = fn (int $from, string $action) => app(\App\Telegram\UpdateHandler::class)->handle(['update_id' => random_int(1, 9999), 'callback_query' => [
+        $press = fn (int $from, string $action) => app(UpdateHandler::class)->handle(['update_id' => random_int(1, 9999), 'callback_query' => [
             'id' => 'q', 'from' => ['id' => $from], 'data' => "turn:{$requirement->id}:{$action}", 'message' => ['message_id' => 1, 'chat' => ['id' => $from]]]]);
         $press(888, 'suretake');
         $this->assertSame('Согласие менеджера', $position()->stage->name);

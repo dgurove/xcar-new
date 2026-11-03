@@ -25,7 +25,7 @@ final class AttachmentImporter
     /**
      * @param  array|callable(Attachment): array  $photoProperties  свойства кадра: одни на всех (оффер) либо по письму
      *                                                              вложения (стоянка: чьё письмо — такая и стадия)
-     * @param  array  $documentProperties  свойства документов (ответ страховой по сделке: `managers`, `letter`)
+     * @param  array  $documentProperties  свойства документов (ответ страховой по сделке: `letter`; «Видно менеджеру» — только админ)
      * @return array{photos: int, documents: int} сколько добавлено
      */
     public function import(Model $model, Collection $attachments, string $photosCollection, string $documentsCollection, array|callable $photoProperties = [], ?callable $progress = null, array $documentProperties = []): array

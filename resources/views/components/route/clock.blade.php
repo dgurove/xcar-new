@@ -9,10 +9,12 @@
 @php
     $stage = $position->stage;
     $invoice = $position->awaitsInvoice();
-    $foreign = $side === 'manager' && ($invoice || $position->waitsFor() !== \App\Workflow\WaitsFor::Manager);
+    // Менеджеру ответ поставщика не виден и ходом (03.11.2026): «Ждём поставщика», пока админ не разберёт — `waitsForManager`.
+    $waits = $side === 'manager' ? $position->waitsForManager() : $position->waitsFor();
+    $foreign = $side === 'manager' && ($invoice || $waits !== \App\Workflow\WaitsFor::Manager);
     $overdue = ! $foreign && $position->isOverdue();
     $gap = $invoice ? $position->gap() : null;
-    $who = $invoice ? ($side === 'manager' ? 'Готовим счёт' : \App\Workflow\Position::gapAction($gap, $position->deal)['button']) : match ($position->waitsFor()) {
+    $who = $invoice ? ($side === 'manager' ? 'Готовим счёт' : \App\Workflow\Position::gapAction($gap, $position->deal)['button']) : match ($waits) {
         \App\Workflow\WaitsFor::Manager => $side === 'manager' ? 'Ваш ход' : 'Ждём менеджера',
         \App\Workflow\WaitsFor::Supplier => 'Ждём поставщика',
         \App\Workflow\WaitsFor::Us => $side === 'manager' ? 'Ждём XCar' : 'Наш ход',

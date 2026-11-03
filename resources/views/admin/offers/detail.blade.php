@@ -89,6 +89,7 @@
             {{-- Переоценка закупочной ждёт решения (28.10.2026): по письму поставщика или вписали при подтвердивших. --}}
             @if ($admin && ($reprice = $offer->pendingReprice))<x-offer.reprice :offer="$offer" :reprice="$reprice" class="w-full"/>@endif
             <x-offer.reprice-asks :offer="$offer" class="w-full"/>
+            @if ($admin && $offer->deal)<x-deal.reply-review :deal="$offer->deal" compact class="w-full"/>@endif
             {{-- Ряд кнопок над плашкой дела (12.10.2026, владелец выбрал вариант «В»): слот, сделка и чат слева, «Действия»
                  справа; ниже — плашка «Закупочная / Оценить / В гараж / Вывоз» или ответы менеджеров. --}}
             <div class="flex w-full flex-wrap items-center gap-2">

@@ -2,9 +2,12 @@
 
 namespace App\Workflow;
 
+use App\Mail\Message;
 use App\Offers\Deal;
 use App\Offers\DealState;
 use App\Offers\Offer;
+use App\Offers\ReplyReview;
+use App\Offers\RepriceAsk;
 use App\Support\FastAttributes;
 use App\Support\Surface;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -85,10 +88,10 @@ class Position extends Model
      * Ответ поставщика разобран — снова ждём его (28.10.2026, владелец про 0385/046/07142/26: «мы им уже несколько раз
      * написали «актуально», надо просто ждать, не понимаю, что разбирать»): наше письмо в ветке после его ответа
      * (`MarkSupplierLetter::sent`, `$letter`) или «Ответ не нужен» в окне писем (`Threads::answered`) снимают
-     * `reply_at`; ход — поставщику, срок шага — от нашего письма или от сейчас. Ответит снова — `AdvanceOnReply::mark`.
+     * `reply_at`; ход — поставщику, срок шага — от нашего письма или от сейчас. Ответит снова — `OnInsurerReply::mark`.
      * false — не было ответа на разбор (или наше письмо старше его).
      */
-    public function replyHandled(?\App\Mail\Message $letter = null): bool
+    public function replyHandled(?Message $letter = null): bool
     {
         if ($this->letterStatus() !== 'replied') {
             return false;
@@ -116,7 +119,25 @@ class Position extends Model
     public function needsUs(): bool
     {
         return ($this->waitsFor() === WaitsFor::Us && ! $this->carried()) || in_array($this->letterStatus(), ['unsent', 'failed', 'bounced', 'replied'], true)
-            || $this->consentLate() || $this->repricePending() || $this->priceAskLate() !== null;
+            || $this->consentLate() || $this->repricePending() || $this->priceAskLate() !== null || $this->replyPending() !== null;
+    }
+
+    /**
+     * Письмо страховой по сделке ждёт разбора (03.11.2026, `Offers\ReplyReview`): менеджер о нём не знает, пока админ не покажет
+     * выбранное — наш ход, что бы ни было на этапе. Когда пришло первое неразобранное.
+     */
+    public function replyPending(): ?Carbon
+    {
+        return $this->track === Track::Sale ? ReplyReview::waiting()->get($this->offer_id) : null;
+    }
+
+    /**
+     * Чей ход — так, как видит менеджер (03.11.2026, владелец: «не говорим даже, что пришёл ответ»): ответ поставщика на письмо
+     * шага (и наш недошедший) переводит ход к нам — менеджер видит прежнее «Ждём поставщика». Его страница, строки, разделы.
+     */
+    public function waitsForManager(): WaitsFor
+    {
+        return $this->waitsFor() === WaitsFor::Us && in_array($this->letterStatus(), ['replied', 'bounced'], true) ? WaitsFor::Supplier : $this->waitsFor();
     }
 
     /**
@@ -125,7 +146,7 @@ class Position extends Model
      */
     public function priceAskLate(): ?Carbon
     {
-        $due = $this->track === Track::Sale ? \App\Offers\RepriceAsk::dealDue()->get($this->offer_id) : null;
+        $due = $this->track === Track::Sale ? RepriceAsk::dealDue()->get($this->offer_id) : null;
 
         return $due?->isPast() ? $due : null;
     }
@@ -174,16 +195,19 @@ class Position extends Model
                 ($phone = $this->deal?->buyer?->phone) ? ['label' => 'Позвонить', 'tel' => $phone] : ['label' => 'Открыть', 'href' => '/offers/'.$offer->number]);
         }
 
+        if ($at = $this->replyPending()) {
+            return $todo('reply', 'Разобрать ответ', 0, $at, ['label' => 'Разобрать', 'href' => '/offers/'.$offer->number]);
+        }
+
         if ($this->repricePending()) {
             return $todo('reprice', 'Разобрать переоценку', 0, $offer->pendingReprice->created_at, ['label' => 'Открыть', 'href' => '/offers/'.$offer->number]);
         }
 
         return match (true) {
-            $letter === 'replied' => $todo('reply', 'Разобрать ответ поставщика', 0, $this->replyAt(), ['label' => 'Открыть письмо', 'letters' => '/offers/'.$offer->number.'/letters']),
+            $letter === 'replied' => $todo('reply', 'Разобрать ответ', 0, $this->replyAt(), ['label' => 'Открыть письмо', 'letters' => '/offers/'.$offer->number.'/letters']),
             $letter === 'bounced' => $todo('bounced', 'Письмо поставщику не дошло', 1, button: $write('Написать снова')),
             // Письмо с реквизитами без реквизитов не пишем (03.11.2026): сначала покупатель — «Заполнить» к его карточке.
-            in_array($letter, ['unsent', 'failed'], true) && $this->stage->isRequisitesStep() && ($gap = $this->deal?->requisitesGap())
-                => $todo('requisites', $gap, 1, button: ['label' => 'Заполнить', 'href' => $this->deal->schemeOf()->paysCar() || $this->deal->isGarageUs()
+            in_array($letter, ['unsent', 'failed'], true) && $this->stage->isRequisitesStep() && ($gap = $this->deal?->requisitesGap()) => $todo('requisites', $gap, 1, button: ['label' => 'Заполнить', 'href' => $this->deal->schemeOf()->paysCar() || $this->deal->isGarageUs()
                     ? Surface::Park->url('/money/parties') : '/offers/'.$offer->number.'#invoice-buyer']),
             in_array($letter, ['unsent', 'failed'], true) => $todo('letter', 'Написать поставщику', 1, button: $write('Написать')),
             $this->consentLate() => $todo('consent', 'Менеджер не ответил, берёт ли', 3, $this->deadline_at,
@@ -269,7 +293,8 @@ class Position extends Model
     // coalesce — пустой payload даёт null, и «не наш ход» (`whereNot`) терял такие позиции. Подписи согласия — `Outcome::TAKES`.
     // Ход наш на шаге получения под логистикой (`carried`) — не наш: этап с исходом менеджера «Автомобиль забрал».
     // Метки письма — только на этапе письма (`Stage::isLetterStep`), «менеджер не ответил» — только пока ход его
-    // (`consentLate`): без этого число пилюли «Ваш ход» расходилось со строками (27.10.2026). Ждущая переоценка — `repricePending`.
+    // (`consentLate`): без этого число пилюли «Ваш ход» расходилось со строками (27.10.2026). Ждущая переоценка — `repricePending`,
+    // письмо на разбор — `replyPending`.
     public const NEEDS_US_SQL = "coalesce((coalesce(offer_positions.waits_for, (select s.waits_for from workflow_stages s where s.id = offer_positions.stage_id)) = 'us'
             and not (coalesce(offer_positions.waits_for, '') = 'us' and exists (select 1 from workflow_exits x where x.stage_id = offer_positions.stage_id
                 and x.actor = 'manager' and lower(x.label) = 'автомобиль забрал')))
@@ -281,6 +306,7 @@ class Position extends Model
             and exists (select 1 from workflow_exits x where x.stage_id = offer_positions.stage_id
                 and x.actor = 'manager' and lower(x.label) in ('беру в работу', 'покупаю')))
         or (offer_positions.track = 'sale' and exists (select 1 from offer_reprices r where r.offer_id = offer_positions.offer_id and r.state = 'pending'))
+        or (offer_positions.track = 'sale' and exists (select 1 from reply_reviews rr where rr.offer_id = offer_positions.offer_id and rr.state = 'pending'))
         or (offer_positions.track = 'sale' and exists (select 1 from reprice_asks a join deals d on d.id = a.deal_id
             where a.offer_id = offer_positions.offer_id and a.state = 'pending' and a.due_at < now() and d.state = 'active')), false)";
 

@@ -10,8 +10,10 @@
         'Когда' => $handover->dateLabel(),
     ]);
 @endphp
-<section class="handover mt-4" aria-label="Сведения поставщика">
-    <p class="handover-cap"><x-ui.icon name="mail" class="size-4"/>От поставщика</p>
+<section class="handover mt-4" aria-label="Получение автомобиля">
+    {{-- Не «От поставщика» (03.11.2026, владелец: менеджеру не говорим даже, что пришёл ответ страховой): сведения дал XCar —
+         поля шага, вывоз, парковка, показанное админом (`Disclosure`). --}}
+    <p class="handover-cap">От XCar</p>
     <dl class="handover-card">
         @foreach ($rows as $label => $value)
             <div class="handover-row"><dt>{{ $label }}</dt><dd @class(['nums' => $label === 'Когда'])>{{ $value }}</dd></div>

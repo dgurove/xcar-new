@@ -58,7 +58,6 @@ use App\Offers\Console\MigtorgDropOsago;
 use App\Offers\Console\MigtorgSync;
 use App\Offers\Console\PruneEmptyDrafts;
 use App\Offers\Console\RepricesFromLettersCommand;
-use App\Offers\Console\ScrubReplyNoticesCommand;
 use App\Offers\Console\TickOffers;
 use App\Offers\Share\Console\PreparePdfs;
 use App\Park\Console\AcceptByLettersCommand;
@@ -111,7 +110,6 @@ return Application::configure(basePath: dirname(__DIR__))
         TickOffers::class,
         PreparePdfs::class,
         AutoDraftsCommand::class,
-        ScrubReplyNoticesCommand::class,
         FillFromLettersCommand::class,
         RepricesFromLettersCommand::class,
         DealCarDocsCommand::class,

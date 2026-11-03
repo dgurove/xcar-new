@@ -6,7 +6,7 @@ use App\Mail\Message;
 use App\Offers\Deal;
 use Illuminate\Foundation\Events\Dispatchable;
 
-/** Страховая ответила по идущей сделке письмом на deal@ (`OnMessage`): менеджеру — текст ответа, сделке — шаг дальше. */
+/** Страховая ответила по идущей сделке письмом на deal@ (`OnMessage`): история, файлы, ход шага письма — наш (`OnInsurerReply`). */
 final class InsurerReplied
 {
     use Dispatchable;

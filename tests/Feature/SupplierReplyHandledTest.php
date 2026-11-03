@@ -9,7 +9,7 @@ use App\Offers\Actions\AcceptBid;
 use App\Offers\Actions\PlaceBid;
 use App\Offers\DealScheme;
 use App\Offers\DealState;
-use App\Offers\Listeners\AdvanceOnReply;
+use App\Offers\Listeners\OnInsurerReply;
 use App\Offers\Offer;
 use App\Offers\OfferState;
 use App\Users\Role;
@@ -57,7 +57,7 @@ class SupplierReplyHandledTest extends TestCase
                 'from_email' => 'deal@xcar.ru', 'subject' => 'Re: 0385/046/07142/26', 'date_at' => $at, 'sent_at' => $at]);
             MessageSent::dispatch($m);
         };
-        $reply = fn (string $at) => AdvanceOnReply::mark($deal->fresh(), Message::create(['account_id' => $account, 'thread_id' => $thread->id, 'direction' => 'in',
+        $reply = fn (string $at) => OnInsurerReply::mark($deal->fresh(), Message::create(['account_id' => $account, 'thread_id' => $thread->id, 'direction' => 'in',
             'from_email' => 'implementation@alfastrah.ru', 'subject' => 'RE: 0385/046/07142/26', 'date_at' => $at]));
 
         $send(now()->addMinutes(1)->toDateTimeString());
@@ -81,7 +81,7 @@ class SupplierReplyHandledTest extends TestCase
         $this->assertSame('sent', $position()->letterStatus());
 
         // «Продал другому» из окна письма — сделка закрыта отказом поставщика.
-        $this->actingAs($admin)->withHeaders(["Turbo-Frame" => "letters-frame"])->get("http://crm.xcar.localhost/work/mail/{$thread->id}/window")->assertOk()->assertSee('Поставщик продал другому');
+        $this->actingAs($admin)->withHeaders(['Turbo-Frame' => 'letters-frame'])->get("http://crm.xcar.localhost/work/mail/{$thread->id}/window")->assertOk()->assertSee('Поставщик продал другому');
         $this->actingAs($admin)->post("http://crm.xcar.localhost/work/deals/{$deal->id}/declined", ['note' => 'Поставщик продал другому: «Уже в работе.»', 'pickup' => 'drop'])->assertRedirect();
         $deal->refresh();
         $this->assertSame([DealState::Cancelled, 'supplier'], [$deal->state, $deal->close_reason]);

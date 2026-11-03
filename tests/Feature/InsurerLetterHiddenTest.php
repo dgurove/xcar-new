@@ -4,13 +4,17 @@ namespace Tests\Feature;
 
 use App\Mail\Message;
 use App\Mail\Thread;
-use App\Notifications\InsurerReplyNotice;
+use App\Notifications\DealInfoNotice;
+use App\Notifications\YourTurnNotice;
 use App\Offers\Actions\AcceptBid;
 use App\Offers\Actions\PlaceBid;
+use App\Offers\Deal;
 use App\Offers\DealScheme;
 use App\Offers\Events\InsurerReplied;
+use App\Offers\Listeners\OnInsurerReply;
 use App\Offers\Offer;
 use App\Offers\OfferState;
+use App\Offers\ReplyReview;
 use App\Users\Role;
 use App\Users\User;
 use App\Vendors\Vendor;
@@ -25,48 +29,125 @@ use Illuminate\Support\Facades\Notification;
 use Tests\TestCase;
 
 /**
- * Письма страховой менеджер не видит ни при каких условиях (03.11.2026, владелец: X6 Митрофанова — в «урезанном» ответе Альфы
- * остались «сумма 5189000,00» и «максимальная ставка 5500000,00»). На странице сделки — только телефоны владельца; ответ без
- * телефона менеджеру не сообщается. Утечка тут молчалива и дорога.
+ * Письмо страховой — менеджеру ничего, пока админ не выберет (03.11.2026, владелец: «пришло письмо с телефоном и паспортом
+ * хозяина — менеджеру вообще ничего не показываем и не говорим даже, что пришёл ответ»; «дыр не должно быть вообще»). Сделка
+ * встаёт в «Разобрать ответ», админ показывает отмеченное (правленое) — менеджер видит ровно это. Утечка тут молчалива и дорога.
  */
 class InsurerLetterHiddenTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_manager_sees_only_owner_phones(): void
+    private User $admin;
+
+    private User $manager;
+
+    private Offer $offer;
+
+    private Deal $deal;
+
+    private int $account;
+
+    private Thread $thread;
+
+    public function test_manager_sees_only_what_admin_shows(): void
+    {
+        $this->deal();
+        $this->offer->update(['insured_name' => 'Петров Пётр', 'insured_phone' => '79005556677', 'inspection_address' => 'ул. Ленина, 5']);
+        $stage = fn () => $this->offer->fresh()->position(Track::Sale)->stage->name;
+        $before = $stage();
+        $paper = $this->offer->fresh()->addMediaFromString('%PDF-1.4')->usingFileName('паспорт.pdf')->toMediaCollection('papers');
+
+        $letter = $this->letter("Добрый день! Собственник Иванов Иван, +7 (900) 123-45-67, цена 5189000.\r\nГорячая линия 8-800-333-0-999\r\n");
+        $paper->setCustomProperty('letter', $letter->id)->save();
+
+        // Менеджеру — ничего: ни уведомления, ни шага, ни телефона, ни имени, ни адреса, ни «Ждём XCar».
+        Notification::assertNothingSentTo($this->manager);
+        $this->assertSame($before, $stage());
+        $this->page()->assertDontSee('123-45-67')->assertDontSee('Иванов')->assertDontSee('5189000')->assertDontSee('От XCar')
+            ->assertDontSee('Петров')->assertDontSee('555-66-77')->assertDontSee('Ленина');
+        $this->get("http://xcar.localhost/files/{$paper->id}")->assertNotFound();
+
+        // Админ — в «Разобрать ответ», видит письмо и пункты.
+        $this->assertSame(1, ReplyReview::pending()->where('deal_id', $this->deal->id)->count());
+        $this->assertSame('Разобрать ответ', $this->offer->fresh()->position(Track::Sale)->todo()['title']);
+        $this->actingAs($this->admin)->withHeaders(['Turbo-Frame' => 'detail'])->get("http://crm.xcar.localhost/work/deals?peek={$this->deal->id}")->assertOk()
+            ->assertSee('Ответ страховой')->assertSee('Иванов Иван')->assertSee('+7 900 123-45-67')->assertSee('паспорт.pdf')
+            ->assertSee('Пройти шаг «Поставщик согласовал»');
+
+        // Показать: телефон, имя «Пётр» вместо «Петров Пётр», паспорт, своё сообщение и шаг.
+        $exit = Stage::where('name', $before)->firstOrFail()->exits()->where('label', 'Поставщик согласовал')->firstOrFail();
+        $this->post("http://crm.xcar.localhost/work/deals/{$this->deal->id}/disclose", [
+            'on' => ['phone:79001234567', 'name:'.md5('петров пётр'), 'file:'.$paper->id],
+            'value' => ['phone:79001234567' => '+7 900 123-45-67', 'name:'.md5('петров пётр') => 'Пётр', 'phone:79005556677' => 'не отмечен'],
+            'text' => 'Звонить после 12', 'step' => $exit->id,
+        ])->assertSessionHasNoErrors();
+
+        Notification::assertSentToTimes($this->manager, DealInfoNotice::class, 1);
+        Notification::assertSentTo($this->manager, DealInfoNotice::class, fn (DealInfoNotice $n) => str_contains($n->text(), '+7 900 123-45-67')
+            && str_contains($n->text(), 'Пётр') && ! str_contains($n->text(), 'Петров') && ! str_contains($n->text(), '555-66-77')
+            && str_contains($n->text(), 'Звонить после 12') && str_contains($n->text(), 'Документы: 1') && str_contains($n->text(), 'Ваш ход'));
+        Notification::assertNotSentTo($this->manager, YourTurnNotice::class);
+        $this->assertSame('Согласие менеджера', $stage());
+        $this->assertSame(0, ReplyReview::pending()->count());
+        $this->page()->assertSee('От XCar')->assertSee('+7 900 123-45-67')->assertSee('Пётр')->assertSee('Звонить после 12')
+            ->assertSee('паспорт.pdf')->assertDontSee('Петров')->assertDontSee('555-66-77')->assertDontSee('Ленина')
+            ->assertDontSee('Иванов')->assertDontSee('5189000');
+        $this->get("http://xcar.localhost/files/{$paper->id}")->assertOk();
+    }
+
+    public function test_nothing_shown_and_no_foreign_items(): void
+    {
+        $this->deal();
+        $this->letter("Добрый день! Контакт +7 900 765-43-21\r\n");
+
+        // Чужой документ и выдуманный пункт не проходят.
+        $other = Offer::create(['vendor_id' => $this->offer->vendor_id]);
+        $foreign = $other->addMediaFromString('%PDF-1.4')->usingFileName('чужой.pdf')->toMediaCollection('papers');
+        $this->actingAs($this->admin)->post("http://crm.xcar.localhost/work/deals/{$this->deal->id}/disclose", ['on' => ['file:'.$foreign->id]])
+            ->assertSessionHasErrors('disclose');
+        $this->post("http://crm.xcar.localhost/work/deals/{$this->deal->id}/disclose", ['on' => ['text:x'], 'value' => ['text:x' => 'Закупочная 5189000']])
+            ->assertSessionHasErrors('disclose');
+
+        // «Ничего не показывать» — разобрано, менеджеру ничего.
+        $this->post("http://crm.xcar.localhost/work/deals/{$this->deal->id}/reviews/done")->assertRedirect();
+        $this->assertSame(0, ReplyReview::pending()->count());
+        Notification::assertNothingSentTo($this->manager);
+        $this->page()->assertDontSee('765-43-21')->assertDontSee('От XCar');
+    }
+
+    private function deal(): void
     {
         Notification::fake();
         config(['xcar.mercure.hub' => '']);
-        $admin = User::create(['name' => 'Андрей', 'phone' => '79000000001', 'roles' => [Role::Admin], 'approved_at' => now()]);
-        $manager = User::create(['name' => 'Иван', 'phone' => '79000000002', 'roles' => [Role::Manager], 'approved_at' => now()]);
+        $this->admin = User::create(['name' => 'Андрей', 'phone' => '79000000001', 'roles' => [Role::Admin], 'approved_at' => now()]);
+        $this->manager = User::create(['name' => 'Владислав', 'phone' => '79000000002', 'roles' => [Role::Manager], 'approved_at' => now()]);
         $vendor = Vendor::create(['name' => 'Альфа тест']);
         app(ApplyPreset::class)($vendor->workflowOrNew(Track::Sale), Preset::Alfa);
-        $offer = Offer::create(['vendor_id' => $vendor->id, 'floor_price' => 5189000, 'asking_price' => 5600000, 'bids_close_at' => now()->addDay()]);
-        $offer->forceFill(['state' => OfferState::Open])->save();
-        $offer->viewers()->create(['user_id' => $manager->id, 'opens_at' => now()]);
-        app(EnterStage::class)($offer, Stage::where('workflow_id', $vendor->fresh()->workflow(Track::Sale)->id)->where('name', 'Приём подтверждений')->firstOrFail());
-        $deal = app(AcceptBid::class)(app(PlaceBid::class)($offer, $manager, 5600000), $admin, scheme: DealScheme::Prime);
-        $deal->forceFill(['agreed_at' => now()])->save();
-
-        $account = DB::table('mail_accounts')->insertGetId(['slug' => 'deal', 'title' => 'deal', 'email' => 'deal@xcar.ru', 'scope' => 'offers', 'is_active' => true,
+        $this->offer = Offer::create(['vendor_id' => $vendor->id, 'floor_price' => 5189000, 'asking_price' => 5600000, 'bids_close_at' => now()->addDay()]);
+        $this->offer->forceFill(['state' => OfferState::Open])->save();
+        $this->offer->viewers()->create(['user_id' => $this->manager->id, 'opens_at' => now()]);
+        app(EnterStage::class)($this->offer, Stage::where('workflow_id', $vendor->fresh()->workflow(Track::Sale)->id)->where('name', 'Приём подтверждений')->firstOrFail());
+        $this->deal = app(AcceptBid::class)(app(PlaceBid::class)($this->offer, $this->manager, 5600000), $this->admin, scheme: DealScheme::Prime);
+        $this->account = DB::table('mail_accounts')->insertGetId(['slug' => 'deal', 'title' => 'deal', 'email' => 'deal@xcar.ru', 'scope' => 'offers', 'is_active' => true,
             'imap_host' => 'x', 'imap_username' => 'x', 'imap_password' => 'x', 'smtp_host' => 'x', 'smtp_username' => 'x', 'smtp_password' => 'x']);
-        $thread = Thread::create(['account_id' => $account, 'subject' => '0790/046/09068/26', 'offer_id' => $offer->id, 'last_message_at' => now()]);
-        $letter = fn (string $body, int $min) => Message::create(['account_id' => $account, 'thread_id' => $thread->id, 'direction' => 'in',
+        $this->thread = Thread::create(['account_id' => $this->account, 'subject' => '0790/046/09068/26', 'offer_id' => $this->offer->id, 'last_message_at' => now()]);
+        Notification::fake();
+    }
+
+    /** Письмо страховой — как его разбирает `OnMessage`: история и файлы, затем «Разобрать ответ». */
+    private function letter(string $body): Message
+    {
+        $message = Message::create(['account_id' => $this->account, 'thread_id' => $this->thread->id, 'direction' => 'in',
             'from_email' => 'implementation@alfastrah.ru', 'from_name' => 'implementation', 'subject' => 'RE: 0790/046/09068/26',
-            'date_at' => now()->addMinutes($min), 'text_body' => $body]);
-        $page = fn () => $this->actingAs($manager)->get("http://xcar.localhost/deals/{$deal->id}")->assertOk();
+            'date_at' => now()->addMinute(), 'text_body' => $body]);
+        InsurerReplied::dispatch($this->deal->fresh(), $message);
+        OnInsurerReply::queue($this->deal->fresh(), $message);
 
-        // Ставка аукциона без телефона — ни уведомления, ни блока, ни слова из письма.
-        $bid = $letter("Добрый день!\r\nВаше предложение в сумме 5189000,00 является не актуальным.\r\nМаксимальная ставка 5500000,00\r\n\r\nС уважением,\r\nБерсенева Елена\r\n", 1);
-        InsurerReplied::dispatch($deal->fresh(), $bid);
-        Notification::assertNotSentTo($manager, InsurerReplyNotice::class);
-        $page()->assertDontSee('5189000')->assertDontSee('5500000')->assertDontSee('ставка')->assertDontSee('Контакты владельца');
+        return $message;
+    }
 
-        // Контакт владельца — только номер, текст вокруг (сумма, 8-800) не виден.
-        $contact = $letter("Добрый день! Собственник Иванов Иван, +7 (900) 123-45-67, цена 5189000.\r\nГорячая линия 8-800-333-0-999\r\n", 2);
-        InsurerReplied::dispatch($deal->fresh(), $contact);
-        Notification::assertSentTo($manager, InsurerReplyNotice::class, fn ($n) => str_starts_with($n->title(), 'Контакты владельца'));
-        $page()->assertSee('Контакты владельца')->assertSee('+7 900 123-45-67')
-            ->assertDontSee('5189000')->assertDontSee('Иванов')->assertDontSee('800 333')->assertDontSee('Собственник');
+    private function page()
+    {
+        return $this->actingAs($this->manager)->get("http://xcar.localhost/deals/{$this->deal->id}")->assertOk();
     }
 }

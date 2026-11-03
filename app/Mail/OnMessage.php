@@ -11,7 +11,6 @@ use App\Mail\Events\MessageFailed;
 use App\Mail\Events\MessageParsed;
 use App\Mail\Events\MessageSent;
 use App\Mail\Extraction\Intent;
-use App\Offers\Listeners\AdvanceOnReply;
 use App\Mail\Extraction\ParkExtractor;
 use App\Mail\Reading\ReadLetter;
 use App\Notifications\Notify;
@@ -21,6 +20,7 @@ use App\Offers\Actions\FillFromLetter;
 use App\Offers\Actions\ShowInGallery;
 use App\Offers\Events\InsurerReplied;
 use App\Offers\InsurerReplies;
+use App\Offers\Listeners\OnInsurerReply;
 use App\Offers\Offer;
 use App\Offers\OfferEventType;
 use App\Park\Actions\AcceptByLetters;
@@ -88,7 +88,7 @@ final class OnMessage
             } catch (Throwable $e) {
                 Log::warning('fill-from-letter: '.$e->getMessage(), ['offer' => $offer->id, 'message' => $message->id]);
             }
-            // Ответ страховой по идущей сделке на ящик, который пишет (deal@): менеджеру и шагу сделки.
+            // Ответ страховой по идущей сделке на ящик, который пишет (deal@): история, файлы, ход шага письма — наш.
             $deal = $offer->deal;
             if ($deal && $message->account->scope === Scope::Offers && $message->account->reply_account_id === null
                 && $message->date_at?->gte($deal->created_at) && InsurerReplies::counts($message)
@@ -96,7 +96,11 @@ final class OnMessage
                 InsurerReplied::dispatch($deal, $message);
             } elseif ($deal && $message->account->scope === Scope::Offers && $message->direction === Direction::In
                 && ($message->isFromVendor() || $message->isForwardedByStaff()) && ! Intent::silent($message->intent)) {
-                AdvanceOnReply::mark($deal, $message);
+                OnInsurerReply::mark($deal, $message);
+            }
+            // Менеджеру — ничего: письмо ждёт админа в «Разобрать ответ» (03.11.2026, `Actions\Disclose`).
+            if ($deal) {
+                OnInsurerReply::queue($deal, $message);
             }
         }
         $this->toTelegram($message, $linked instanceof Offer ? $linked : $thread?->offer);

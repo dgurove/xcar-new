@@ -49,10 +49,11 @@
     $payload = collect($position?->fields() ?? [])->except($handover?->open ? $handover->keys : [])
         ->reject(fn ($v, $k) => preg_match('/платёж|оплат|сумм|перевод|цен/iu', (string) ($labels[$k] ?? $k)))
         ->map(fn ($v) => is_string($v) ? \App\Support\VendorNames::strip($v) : $v)->filter(fn ($v) => filled($v));
-    // Контакты владельца из ответов — по порядку писем. Много — ранние под «Ещё».
-    $replies = ($replies ?? collect())->reverse()->values();
-    $early = $replies->count() > 3 ? $replies->slice(0, $replies->count() - 2) : collect();
-    $late = $replies->slice($early->count());
+    // Показанное админом из писем страховой (`Offers\Disclosure`) — по порядку. Много — ранние под «Ещё».
+    $disclosures = ($disclosures ?? collect())->reverse()->values();
+    $early = $disclosures->count() > 3 ? $disclosures->slice(0, $disclosures->count() - 2) : collect();
+    $late = $disclosures->slice($early->count());
+    $ownerPhone = $disclosures->contains(fn ($d) => $d->values('phone') !== []);
     // Согласие менеджера (Альфа): поставщик уже согласовал — блок «Согласование с поставщиком» и «Ваш ход»
     // сбивали с толку, будто ждём поставщика (10.10.2026, владелец). Шапка — что случилось и вопрос, рядом только часы.
     $consent = $deal->isActive() && $requirement && $position?->stage->asksConsent();
@@ -116,7 +117,7 @@
                      приглушены. Покупателя и ДКП готовят когда угодно — их подписывают при передаче. --}}
                 @php
                     $contract = \App\Offers\DealContract::for($deal)->loadMissing(['seller', 'buyer.party']);
-                    $contact = $showHandover || $payload->isNotEmpty() || $replies->isNotEmpty();
+                    $contact = $showHandover || $payload->isNotEmpty() || $disclosures->isNotEmpty();
                     $flow = $pickupSteps ?? null;
                     $signedFiles = $requirement->asks === Asks::Document && $requirement->getMedia('files')->isNotEmpty();
                     $state = fn (bool $done) => $done ? 'done' : 'open';
@@ -127,7 +128,7 @@
                         ['doc', 'Договор купли-продажи', $state($contract->isReady())],
                         ['signed', 'Подписанный договор', $flow['signed'] === 'current' && $signedFiles ? 'done' : $flow['signed']],
                     ] : [
-                        $contact ? ['contact', $handover?->where === 'У владельца' || $replies->isNotEmpty() ? 'Свяжитесь с владельцем' : 'Где автомобиль', 'open'] : null,
+                        $contact ? ['contact', $handover?->where === 'У владельца' || $ownerPhone ? 'Свяжитесь с владельцем' : 'Где автомобиль', 'open'] : null,
                         ['buyer', $deal->isPrime() ? 'Покупатель' : 'Покупатель по ДКП', $state((bool) $contract->buyer?->party?->readyAsBuyer())],
                         ['doc', 'Договор купли-продажи', $state($contract->isReady())],
                         ['signed', 'Подписанный договор', $state($signedFiles)],
@@ -148,7 +149,7 @@
                                 @if ($key === 'contact')
                                     @if ($showHandover)@include($handover->park ? 'cabinet.deals.park-pickup' : 'cabinet.deals.handover')@endif
                                     @include('cabinet.deals.payload')
-                                    @if ($replies->isNotEmpty())@include('cabinet.deals.replies')@endif
+                                    @if ($disclosures->isNotEmpty())@include('cabinet.deals.disclosures')@endif
                                 @elseif ($key === 'buyer')
                                     @include('cabinet.deals.contract', ['part' => 'buyer', 'embedded' => true])
                                 @elseif ($key === 'doc')
@@ -163,7 +164,7 @@
             @else
             @if ($showHandover)@include($handover->park ? 'cabinet.deals.park-pickup' : 'cabinet.deals.handover')@endif
             @include('cabinet.deals.payload')
-            @if ($replies->isNotEmpty())@include('cabinet.deals.replies')@endif
+            @if ($disclosures->isNotEmpty())@include('cabinet.deals.disclosures')@endif
 
             @if ($stepInvoices->isNotEmpty())
                 <div class="list mt-5">
@@ -212,8 +213,8 @@
         <x-ui.empty>Сделка ещё не началась</x-ui.empty>
     @endif
 
-    {{-- Нет текущего шага (сделка закрыта или ещё не в работе) — ответы своей карточкой. --}}
-    @if ($replies->isNotEmpty() && ! ($deal->state === DealState::Active && $position))
-        <div class="box">@include('cabinet.deals.replies', ['bare' => true])</div>
+    {{-- Нет текущего шага (сделка закрыта или ещё не в работе) — показанное своей карточкой. --}}
+    @if ($disclosures->isNotEmpty() && ! ($deal->state === DealState::Active && $position))
+        <div class="box">@include('cabinet.deals.disclosures', ['bare' => true])</div>
     @endif
 </div>
