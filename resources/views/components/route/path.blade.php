@@ -311,7 +311,14 @@
                                     @endif
                                 @endif
                             @endforeach
-                            @if ($stage->template_id)
+                            @php
+                                // Письмо с реквизитами без реквизитов — не кнопкой, а чего не хватает (03.11.2026, владелец: «почему
+                                // „Написать поставщику“, если покупатель так и не заполнен»).
+                                $requisitesGap = $stage->isRequisitesStep() && $deal ? $deal->requisitesGap() : null;
+                            @endphp
+                            @if ($requisitesGap)
+                                <p class="order-first w-full text-sm font-medium text-urgent">{{ $requisitesGap }} — письмо поставщику пока не написать @if (auth()->user()?->canManageCrm())<a href="{{ $deal->schemeOf()->paysCar() || $deal->isGarageUs() ? \App\Support\Surface::Park->url('/money/parties') : '/offers/'.$offer->number.'#invoice-buyer' }}" class="text-accent-text underline-offset-4" data-turbo-frame="_top">Заполнить</a>@endif</p>
+                            @elseif ($stage->template_id)
                                 {{-- Письмо не ушло — это и есть дело шага: лаймовой первой; ушло — серой «Написать ещё». --}}
                                 @if ($position->letterStatus() === 'failed' && ($failedId = $position->payload['letter_failed']['id'] ?? null))
                                     {{-- Не ушло с нашей стороны — то же письмо ещё раз (`MailController::resend`). --}}
@@ -323,8 +330,9 @@
                                     <x-mail.window-button :url="$offer->vendorLetterUrl($stage)" icon="send" :label="$position->letterStatus() ? 'Написать ещё' : 'Письмо вендору'" class="btn-s"/>
                                 @endif
                             @endif
-                            {{-- Поставщик отвечает списком (Каркаде): отметить ответ по всем его сделкам разом. --}}
-                            @if ($deal && $stage->isAgreement() && $stage->waits_for === WaitsFor::Supplier && ($waiting = \App\Offers\Deal::awaitingSupplier($offer->vendor_id))->count() > 1)
+                            {{-- Поставщик отвечает списком (Каркаде, `DealFormat::Wholesale`): отметить ответ по всем его сделкам разом. У Альфы
+                                 (03.11.2026) кнопка «Ответ по списку (85)» стояла зря — она отвечает по каждой машине. --}}
+                            @if ($deal && $offer->vendor?->deal_format === \App\Vendors\DealFormat::Wholesale && $stage->isAgreement() && $stage->waits_for === WaitsFor::Supplier && ($waiting = \App\Offers\Deal::awaitingSupplier($offer->vendor_id))->count() > 1)
                                 <div data-controller="sheet">
                                     <x-ui.button type="button" size="sm" variant="secondary" data-action="sheet#open">Ответ по списку ({{ $waiting->count() }})</x-ui.button>
                                     <x-deal.supplier-answer :deals="$waiting" :id="'supplier-answer-'.$position->id"/>

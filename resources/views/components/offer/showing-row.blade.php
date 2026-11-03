@@ -20,6 +20,13 @@
     // Срок обязывающего — в шторке; строкой сводки только когда горит (красным).
     $binding = \App\Offers\Binding::matters($offer) ? \App\Offers\Binding::word($offer) : null;
     $id = 'showing-'.$offer->number.'-'.$form;
+    // У сделки (03.11.2026, владелец: в окошке сделки «Показ» во весь рост читался непонятно) — сколько и кому показывают её.
+    if ($offer->state === \App\Offers\OfferState::Sold) {
+        $until = $offer->deal_show_until;
+        $when = 'Показ: '.($until ? ($offer->dealShowOver() ? 'закончился ' : 'до ').\App\Support\Ago::day($until, true) : 'пока идёт сделка');
+        $who = \App\Offers\DealAudience::summary($offer);
+        $binding = null;
+    }
 @endphp
 @if (auth()->user()->canManageCrm())
 <div class="contents" data-controller="sheet">

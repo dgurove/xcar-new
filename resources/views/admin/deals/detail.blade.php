@@ -22,37 +22,52 @@
             <x-slot:badge><x-ui.state :tone="$deal->state === DealState::Done ? 'open' : 'danger'" class="title-state">{{ mb_strtolower($deal->state->label()) }}</x-ui.state></x-slot:badge>
         @endif
         @if ($deal->buyer?->phone)
-            <x-slot:line><span>{{ $deal->buyer->name }}</span><x-ui.phone :user="$deal->buyer"/></x-slot:line>
+            {{-- Кто это — словом (03.11.2026, владелец: имя с телефоном без подписи читалось непонятно). --}}
+            <x-slot:line><span>{{ $deal->auction_at ? 'Покупатель' : 'Менеджер' }} {{ $deal->buyer->name }}</span><x-ui.phone :user="$deal->buyer"/></x-slot:line>
         @endif
         <x-slot:aside><span class="nums text-lg font-semibold">{{ $deal->isGarage() ? 'В гараж' : \App\Support\Money::rub($deal->amount) }}</span></x-slot:aside>
         {{-- Ряд кнопок одним видом с окошком предложения (12.10.2026): «Чат» пилюлей вместо большой карточки, документы. --}}
         <x-slot:actions>
             @if ($deal->buyer)<x-deal.chat-card :deal="$deal" compact/>@endif
             @if ($docs)<x-ui.docs-pill :docs="$docs"/>@endif
+            <x-deal.person-link :deal="$deal" pill/>
         </x-slot:actions>
         @if ($errors->has('exit'))<x-ui.flash tone="danger" class="mt-3">{{ $errors->first('exit') }}</x-ui.flash>@endif
         <div class="mt-4 flex flex-col gap-6">
+            {{-- Порядок по смыслу (03.11.2026, владелец: «много непонятного в окошке — разобраться»): что сейчас (путь) → сделка
+                 (вопрос про закупочную, деньги со схемой, покупатель) → вывоз → письма → показ и заметка → опасное. --}}
             @if ($offer->positions->isNotEmpty())@include('admin.offers.route', ['cardClass' => ''])@endif
-            {{-- Письма — сразу за путём (11.10.2026): шаг говорит о письме поставщику, само письмо рядом. --}}
-            @if ($letters)
-                <section>
-                    <h2 class="detail-section">Письма <span class="nums font-normal text-ink-dim">{{ $letters }}</span></h2>
-                    <x-mail.letters :messages="$messages" :url="'/offers/'.$offer->number.'/letters'" :asks="$asks" :stages="$stages"/>
-                </section>
-            @endif
+            <x-offer.reprice-asks :offer="$offer"/>
+            <x-deal.money :deal="$deal" compact id="deal-money"/>
+            @if ($deal->hasContract())<x-deal.contract :deal="$deal"/>@elseif ($deal->collectsBuyer() || $deal->contract?->buyer_user_id)<x-deal.invoice-buyer :deal="$deal"/>@endif
             {{-- Вывоз — задача логистики с получением внутри (`x-logistics.lane`); вывоза нет — получение своим разделом. --}}
             @if ($offer->pickup())<x-logistics.lane :offer="$offer" :deal="$deal"/>@else<x-deal.handover :deal="$deal" compact/>@endif
-            <x-offer.reprice-asks :offer="$offer"/>
-            <x-deal.person-link :deal="$deal"/>
-            <x-deal.money :deal="$deal" compact/>
-            @if ($deal->hasContract())<x-deal.contract :deal="$deal"/>@elseif ($deal->collectsBuyer() || $deal->contract?->buyer_user_id)<x-deal.invoice-buyer :deal="$deal"/>@endif
-            {{-- «Показ» — тот же модуль, что справа в редакторе под «Ценами» (12.10.2026): сколько и кому показывать сделку; своя
-                 форма, «Сохранить изменения» подвалом карточки шлёт только тронутое. --}}
+            {{-- Письма: по сделке — строками; письма парковки (приём, выдача, заявки storage@) — одной строкой в то же окно писем. --}}
+            @php
+                $parkMail = $messages->filter(fn ($m) => $m->account?->scope === \App\Mail\Scope::Park);
+                $saleMail = $messages->diff($parkMail)->values();
+            @endphp
+            @if ($saleMail->isNotEmpty() || $parkMail->isNotEmpty())
+                <section>
+                    <h2 class="detail-section">Письма @if ($saleMail->isNotEmpty())<span class="nums font-normal text-ink-dim">{{ \App\Mail\Chains\NodeTitle::count($saleMail) }}</span>@endif</h2>
+                    @if ($saleMail->isNotEmpty())
+                        <x-mail.letters :messages="$saleMail" :url="'/offers/'.$offer->number.'/letters'" :asks="$asks" :stages="$stages"/>
+                    @endif
+                    @if ($parkMail->isNotEmpty())
+                        <div class="list mt-3">
+                            <button type="button" class="row w-full text-left" data-controller="emit" data-action="emit#send" data-emit-event-param="letters:open" data-emit-url-param="/offers/{{ $offer->number }}/letters">
+                                <span class="min-w-0 flex-1">Письма парковки <span class="nums text-ink-dim">{{ \App\Mail\Chains\NodeTitle::count($parkMail) }}</span></span><x-ui.chevron/>
+                            </button>
+                        </div>
+                    @endif
+                </section>
+            @endif
+            {{-- «Показ» сделки — строкой со шторкой (как у черновика): сколько и кому показывать; «Сохранить изменения» подвалом. --}}
             @if ($deal->isActive() && ! $deal->isGarage() && auth()->user()->canManageCrm())
                 <form method="post" action="/offers/{{ $offer->number }}" id="deal-show-{{ $offer->number }}" data-controller="save-bar" data-save-bar-partial-value="true" data-turbo-frame="detail">
                     @csrf @method('put')
-                    <x-offer.showing :offer="$offer" :form="'deal-show-'.$offer->number" as="section"/>
                 </form>
+                <div class="list"><x-offer.showing-row :offer="$offer" :form="'deal-show-'.$offer->number" class="row w-full text-left"/></div>
             @endif
             <x-deal.note :deal="$deal"/>
             {{-- Сделка не состоялась (11.10.2026, владелец: «отдали в сделку — и нигде нет кнопки обратно в продажу»): назад в

@@ -51,7 +51,7 @@ class Deal extends Model
 
     protected function casts(): array
     {
-        return ['state' => DealState::class, 'amount' => 'int', 'cost' => 'int', 'supplier_cost' => 'int', 'owner_price' => 'int', 'share' => 'int', 'commission' => 'int', 'commission_mode' => CommissionMode::class, 'scheme' => DealScheme::class, 'garage_payer' => GaragePayer::class, 'closed_at' => 'datetime', 'agreed_at' => 'datetime', 'prepaid_at' => 'datetime', 'supplier_paid_at' => 'datetime', 'receiver_at' => 'datetime', 'auction_at' => 'datetime'];
+        return ['scheme_at' => 'datetime', 'state' => DealState::class, 'amount' => 'int', 'cost' => 'int', 'supplier_cost' => 'int', 'owner_price' => 'int', 'share' => 'int', 'commission' => 'int', 'commission_mode' => CommissionMode::class, 'scheme' => DealScheme::class, 'garage_payer' => GaragePayer::class, 'closed_at' => 'datetime', 'agreed_at' => 'datetime', 'prepaid_at' => 'datetime', 'supplier_paid_at' => 'datetime', 'receiver_at' => 'datetime', 'auction_at' => 'datetime'];
     }
 
     public function offer(): BelongsTo
@@ -72,6 +72,12 @@ class Deal extends Model
             if ($deal->commission !== null && $deal->isDirect()) {
                 $deal->commission = null;
             }
+            // Кто и когда выбрал схему (03.11.2026, владелец: «а кто нажал, что ПРАЙМ, я не понял») — любая дверь:
+            // «Принять», «Отдать», «Схема» в CRM. Без человека (часы, консоль) — пусто, «автоматически».
+            if (! $deal->exists || $deal->isDirty('scheme')) {
+                $deal->scheme_by = auth()->id();
+                $deal->scheme_at = now();
+            }
         });
         // Сделка — покупатель есть: тревога «нет покупателя» гаснет; отменили — может загореться (`Binding`).
         static::saved(function (self $deal) {
@@ -79,6 +85,12 @@ class Deal extends Model
                 Binding::touch(Offer::find($deal->offer_id));
             }
         });
+    }
+
+    /** Кто выбрал схему (`scheme_by`, 03.11.2026). */
+    public function schemeAuthor(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'scheme_by');
     }
 
     public function buyer(): BelongsTo
@@ -471,6 +483,25 @@ class Deal extends Model
         }
 
         return $this->contract?->buyer?->party;
+    }
+
+    /**
+     * Чего не хватает письму с реквизитами для счёта поставщика (03.11.2026, владелец: «почему кнопка „Написать поставщику“,
+     * если покупатель так и не заполнен»): платим мы — реквизиты нашего юрлица; иначе — покупатель с данными и сканом. null — можно писать.
+     */
+    public function requisitesGap(): ?string
+    {
+        if ($this->schemeOf()->paysCar() || $this->isGarageUs()) {
+            return Party::seller($this->seller())->filled() ? null : 'Нет реквизитов '.$this->seller()->short();
+        }
+        $party = $this->contract?->buyer?->party;
+
+        return match (true) {
+            ! $this->contract?->buyer => 'Покупатель не выбран',
+            ! $party?->readyForContract() => 'Нет данных покупателя',
+            ! $party->readyAsBuyer() => 'Нет скана паспорта покупателя',
+            default => null,
+        };
     }
 
     /** Сколько покупатель отдаёт не нам — собственнику по ДКП или страховой: своя сумма, а без неё закупочная. */

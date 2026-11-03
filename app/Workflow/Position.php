@@ -181,6 +181,10 @@ class Position extends Model
         return match (true) {
             $letter === 'replied' => $todo('reply', 'Разобрать ответ поставщика', 0, $this->replyAt(), ['label' => 'Открыть письмо', 'letters' => '/offers/'.$offer->number.'/letters']),
             $letter === 'bounced' => $todo('bounced', 'Письмо поставщику не дошло', 1, button: $write('Написать снова')),
+            // Письмо с реквизитами без реквизитов не пишем (03.11.2026): сначала покупатель — «Заполнить» к его карточке.
+            in_array($letter, ['unsent', 'failed'], true) && $this->stage->isRequisitesStep() && ($gap = $this->deal?->requisitesGap())
+                => $todo('requisites', $gap, 1, button: ['label' => 'Заполнить', 'href' => $this->deal->schemeOf()->paysCar() || $this->deal->isGarageUs()
+                    ? Surface::Park->url('/money/parties') : '/offers/'.$offer->number.'#invoice-buyer']),
             in_array($letter, ['unsent', 'failed'], true) => $todo('letter', 'Написать поставщику', 1, button: $write('Написать')),
             $this->consentLate() => $todo('consent', 'Менеджер не ответил, берёт ли', 3, $this->deadline_at,
                 ($phone = $this->deal?->buyer?->phone) ? ['label' => 'Позвонить', 'tel' => $phone] : null),

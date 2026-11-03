@@ -119,6 +119,12 @@ class Stage extends Model
         return $this->template_id !== null && $this->waits_for === WaitsFor::Supplier;
     }
 
+    /** Шаг письма с реквизитами для счёта (`{{ buyer }}` в шаблоне, 03.11.2026, Альфа). */
+    public function isRequisitesStep(): bool
+    {
+        return $this->isLetterStep() && preg_match('/\{\{ ?buyer ?\}\}/', (string) $this->template?->body) === 1;
+    }
+
     /** Ждём согласия менеджера взять сделку в работу («Беру в работу»). */
     public function asksConsent(): bool
     {

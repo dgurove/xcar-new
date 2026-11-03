@@ -14,7 +14,7 @@
      28.10.2026: `costEditable` — закупочная менеджера полем (админ при принятии, владелец: «можешь поменять закупочную,
      которая будет у него в сделке»): по умолчанию с подтверждения, разница, взаимозачёт и согласие `loss` идут за ней. --}}
 @props(['action', 'amount', 'cost' => null, 'commission' => null, 'mode' => \App\Offers\CommissionMode::Payout, 'submit' => 'Принять', 'confirm' => null, 'method' => 'post', 'id' => null, 'note' => null,
-    'scheme' => null, 'schemes' => null, 'ownerPrice' => null, 'fee' => true, 'ownerLocked' => false, 'supplierCost' => null, 'priced' => false, 'costEditable' => false])
+    'scheme' => null, 'schemes' => null, 'ownerPrice' => null, 'fee' => true, 'ownerLocked' => false, 'supplierCost' => null, 'priced' => false, 'costEditable' => false, 'schemeLocked' => false])
 @php
     use App\Offers\CommissionMode;
     use App\Offers\DealScheme;
@@ -35,7 +35,10 @@
     @if ($method !== 'post')@method($method)@endif
     @if ($priced || $costEditable)<input type="hidden" name="loss" value="" data-commission-target="loss">@endif
     {{ $slot }}
-    @if ($scheme)
+    {{-- Схема сделки меняется своей строкой «Схема» (`x-deal.scheme`, 03.11.2026): в «Деньгах» — только она сама, без выбора. --}}
+    @if ($scheme && $schemeLocked)
+        <input type="hidden" name="scheme" value="{{ $scheme->value }}">
+    @elseif ($scheme)
         <div class="flex flex-col gap-1.5">
             <span class="field-label">За ТС платят</span>
             <div class="flex flex-wrap gap-2">

@@ -64,12 +64,21 @@
         @if ($deal?->isActive() && ! $deal->isGarage())
             <x-deal.handover :deal="$deal" compact lane class="mb-4"/>
         @endif
+        @php
+            // Менеджер забирает сам, а получение выше уже говорит «Заберёт …, после оплаты» (03.11.2026, владелец: в окошке «Вывоз»
+            // трижды одно и то же) — здесь только действие и без лесенки «Забирает → Забрать».
+            $told = $manager && $deal?->isActive() && ! $deal->isGarage();
+        @endphp
         @if ($manager && $changeable)
             {{-- Менеджер забирает сам — одной строкой; нажатие — то же окно «Назначить вывоз», где его меняют на логиста или наших. --}}
             <div class="list mb-4">
                 <button type="button" class="row w-full text-left" data-controller="emit" data-action="emit#send" data-emit-event-param="{{ $sheet }}:open">
-                    {{-- Действие — второй строкой: справа рядом с именем в узкой колонке оно ломало строку по словам. --}}
-                    <span class="min-w-0 flex-1"><span class="block">Забирает сам</span><span class="block text-sm text-accent-text">Передать в логистику</span></span><x-ui.chevron/>
+                    @if ($told)
+                        <span class="min-w-0 flex-1 text-accent-text">Передать в логистику</span><x-ui.chevron/>
+                    @else
+                        {{-- Действие — второй строкой: справа рядом с именем в узкой колонке оно ломало строку по словам. --}}
+                        <span class="min-w-0 flex-1"><span class="block">Забирает сам</span><span class="block text-sm text-accent-text">Передать в логистику</span></span><x-ui.chevron/>
+                    @endif
                 </button>
             </div>
         @endif
@@ -81,6 +90,7 @@
             </div>
             @if ($routed)<div class="mb-4"><x-logistics.route :t="$t" :me="auth()->user()" readonly/></div>@endif
         @endif
+        @unless ($told)
         <div class="steps">
             @foreach ($t->steps() as $step)
                 @continue(! $manager && in_array($step['key'], ['logist', 'executor'], true) && $t->state !== TransportState::New)
@@ -99,11 +109,12 @@
                 </div>
             @endforeach
         </div>
+        @endunless
         @if ($t->state === TransportState::Cancelled)<p class="mt-2 text-sm text-ink-muted">Вывоз отменён{{ $t->cancel_reason ? ': '.$t->cancel_reason : '' }}</p>@endif
         @if ($events)
             <details class="group list mt-4">
                 <summary class="row cursor-pointer list-none items-center justify-between gap-4">
-                    <span>История <span class="nums text-ink-dim">{{ $events }}</span></span>
+                    <span>История вывоза <span class="nums text-ink-dim">{{ $events }}</span></span>
                     <x-ui.chevron class="transition-transform group-open:rotate-90"/>
                 </summary>
                 <div class="row"><x-logistics.history :t="$t" :me="auth()->user()" :show="8" class="w-full"/></div>

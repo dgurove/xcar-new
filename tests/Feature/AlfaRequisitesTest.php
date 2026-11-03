@@ -7,6 +7,7 @@ use App\Billing\Seller;
 use App\Http\Admin\MailController;
 use App\Mail\Message;
 use App\Offers\Actions\AcceptBid;
+use App\Offers\Actions\ChangeDealScheme;
 use App\Offers\Actions\PlaceBid;
 use App\Offers\Actions\SaveDealContract;
 use App\Offers\CommissionMode;
@@ -139,6 +140,42 @@ class AlfaRequisitesTest extends TestCase
         $buyer = MailController::placeholders($offer)['buyer'];
         $this->assertStringContainsString('Р.О.С.', $buyer);
         $this->assertStringContainsString('ИНН 7700000000', $buyer);
+    }
+
+    public function test_scheme_shows_author_and_change_rehomes_requisites_step(): void
+    {
+        [$offer, $deal] = $this->deal(vat: false);
+        $this->exit($offer, 'Поставщик просит реквизиты');
+        $this->assertSame('Данные покупателя для счёта', $offer->fresh()->stage()->name);
+        $this->assertSame('Покупатель не выбран', $deal->fresh()->requisitesGap());
+
+        // Админ меняет схему на ПРАЙМ — кто и когда записано, шаг сразу на письмо с нашими реквизитами.
+        $this->actingAs($this->admin);
+        app(ChangeDealScheme::class)($deal->fresh(), DealScheme::Prime, $this->admin);
+        $deal = $deal->fresh();
+        $this->assertSame(DealScheme::Prime, $deal->scheme);
+        $this->assertSame($this->admin->id, $deal->scheme_by);
+        $this->assertSame('Реквизиты поставщику', $offer->fresh()->stage()->name);
+        $this->assertNull($deal->requisitesGap(), 'реквизиты ПРАЙМ есть — письмо можно');
+
+        // Обратно на «страховой напрямую», письмо не ушло — назад к данным покупателя, менеджеру задача, письма нет.
+        app(ChangeDealScheme::class)($deal, DealScheme::Insurer, $this->admin);
+        $offer = $offer->fresh();
+        $this->assertSame('Данные покупателя для счёта', $offer->stage()->name);
+        $this->assertNotNull($deal->fresh()->openRequirement()->first());
+        $this->assertNull($offer->position(Track::Sale)->todo()['button']['letters'] ?? null);
+    }
+
+    public function test_letter_step_without_buyer_has_no_letter_button(): void
+    {
+        [$offer, $deal] = $this->deal(vat: false);
+        $this->exit($offer, 'Поставщик просит реквизиты');
+        // На шаг письма «страховой напрямую» без покупателя (руками «Вернуть на шаг» и т. п.) — «Ваш ход» просит заполнить.
+        $letterStage = Stage::where('workflow_id', $offer->fresh()->stage()->workflow_id)->where('name', 'Реквизиты поставщику')->firstOrFail();
+        app(EnterStage::class)($offer->fresh(), $letterStage, $this->admin);
+        $todo = $offer->fresh()->position(Track::Sale)->todo();
+        $this->assertSame('requisites', $todo['key']);
+        $this->assertSame('Заполнить', $todo['button']['label']);
     }
 
     public function test_supplier_may_invoice_right_away(): void

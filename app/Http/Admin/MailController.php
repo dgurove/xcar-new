@@ -596,6 +596,10 @@ class MailController
             }
         }
 
+        // Письмо с реквизитами без реквизитов не собираем (03.11.2026): кнопки шага нет, а по старой ссылке — словами почему.
+        if ($offer?->deal && $template && preg_match('/\{\{ ?buyer ?\}\}/', (string) $template->body) && ($gap = $offer->deal->requisitesGap())) {
+            abort(409, $gap.' — письмо с реквизитами пока не написать');
+        }
         // Реквизиты покупателя-человека поставщику (03.11.2026, Альфа) — со сканом паспорта во вложении.
         if ($offer?->deal && $template && ! $request->old() && preg_match('/\{\{ ?buyer ?\}\}/', (string) $template->body)
             && ($party = $offer->deal->supplierInvoicee()) && $party->isPerson() && ! $party->seller) {

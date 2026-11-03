@@ -313,6 +313,16 @@ class DealController
         return back()->with('toast', 'Сохранено');
     }
 
+    /** «Схема» строкой в окошке и в сделке (03.11.2026): сменить — деньги, счета и шаг реквизитов встают по новой. */
+    public function scheme(Request $request, Deal $deal, \App\Offers\Actions\ChangeDealScheme $change)
+    {
+        abort_unless($deal->isActive(), 404);
+        $scheme = DealScheme::from($request->validate(['scheme' => ['required', Rule::enum(DealScheme::class)]])['scheme']);
+        $change($deal, $scheme, $request->user());
+
+        return back()->with('toast', 'Схема: '.$scheme->label());
+    }
+
     /** Кто заберёт с нашей парковки — админ за менеджера (`SetReceiver`). */
     public function receiver(Request $request, Deal $deal, SetReceiver $set)
     {

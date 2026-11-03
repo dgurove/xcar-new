@@ -20,7 +20,7 @@ final class UpdateDealMoney
 {
     public function __construct(private SyncDealInvoices $invoices) {}
 
-    public function __invoke(Deal $deal, User $by, ?int $commission, CommissionMode $mode, ?DealScheme $scheme = null, ?int $share = null): void
+    public function __invoke(Deal $deal, User $by, ?int $commission, CommissionMode $mode, ?DealScheme $scheme = null, ?int $share = null, ?string $note = null): void
     {
         if (! $deal->moneyEditable()) {
             throw ValidationException::withMessages(['commission' => 'По счёту сделки уже платили, сначала отмените оплату']);
@@ -33,13 +33,13 @@ final class UpdateDealMoney
         $wasSelection = $deal->paysSelection();
         // Гаражная Совкомбанка (`namesBuyer`) — деньги как у обычной ПРАЙМ: вознаграждение назначаем мы, когда менеджер продал.
         $garage = $deal->isGarage() && ! $deal->namesBuyer();
-        DB::transaction(function () use ($deal, $by, $commission, $mode, $scheme, $selection, $wasSelection, $share, $garage) {
+        DB::transaction(function () use ($deal, $by, $commission, $mode, $scheme, $selection, $wasSelection, $share, $garage, $note) {
             $deal->update($garage
                 ? ['scheme' => $scheme, 'share' => $deal->isGarageManager() ? $share : null]
                 : ['commission' => $commission, 'commission_mode' => $selection ? CommissionMode::Withheld : $mode, 'scheme' => $scheme,
                     // Сумма собственнику закреплена с принятия, как и закупочная (15.10.2026, владелец: «никогда»).
                     'owner_price' => $selection ? ($deal->owner_price ?? $deal->cost) : null]);
-            $deal->offer->log(OfferEventType::Note, $by, ['text' => match (true) {
+            $deal->offer->log(OfferEventType::Note, $by, ['text' => $note ?? match (true) {
                 $garage => 'Наша доля: '.($deal->share ? Money::rub($deal->share) : 'нет'),
                 $selection => $scheme->payeeLabel().' '.Money::rub((int) $deal->ownerPrice()).', вознаграждение '.($commission ? Money::rub($commission) : 'нет'),
                 default => $scheme->label().', вознаграждение '.($commission ? Money::rub($commission) : 'нет').', '.mb_strtolower($deal->commission_mode->label()),

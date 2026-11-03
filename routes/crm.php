@@ -270,6 +270,7 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
         Route::get('/work/deals/{deal}/chat', [DealController::class, 'chat']);
         Route::post('/work/deals/{deal}/note', [DealController::class, 'note']);
         Route::put('/work/deals/{deal}/money', [DealController::class, 'money']);
+        Route::post('/work/deals/{deal}/scheme', [DealController::class, 'scheme']);
         Route::put('/work/deals/{deal}/contract', [DealContractController::class, 'update']);
         // Скан паспорта покупателя, которого админ указывает за менеджера (20.10.2026) — та же загрузка, что в кабинете.
         Route::post('/parties/{party}/passport/{page}', [PassportScanController::class, 'upload'])->whereIn('page', ['main', 'reg'])->middleware('throttle:30,1');

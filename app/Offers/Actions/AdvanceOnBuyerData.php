@@ -7,7 +7,10 @@ use App\Workflow\Actions\TakeExit;
 use App\Workflow\Actor;
 use App\Workflow\Asks;
 use App\Workflow\Events\StageEntered;
+use App\Workflow\Actions\EnterStage;
+use App\Workflow\Stage;
 use App\Workflow\Track;
+use App\Users\User;
 
 /**
  * Данные покупателя для счёта поставщика собраны — шаг «Данные покупателя для счёта» (`Asks::Buyer`) проходит сам своим
@@ -33,6 +36,34 @@ final class AdvanceOnBuyerData
         ($this->take)($deal->offer, $exit, Actor::Manager, $deal->buyer, ['label' => 'Данные покупателя заполнены']);
 
         return true;
+    }
+
+    /**
+     * Сменили схему на шаге реквизитов (`ChangeDealScheme`): «страховой напрямую» без готового покупателя, а письмо с
+     * реквизитами ещё не ушло — назад на «Данные покупателя для счёта» (менеджеру задача); стало «платим мы» (ПРАЙМ, Р.О.С.)
+     * на шаге данных — сразу письмо с нашими реквизитами.
+     */
+    public function rehome(Deal $deal, User $by): void
+    {
+        $offer = $deal->offer->unsetRelation('positions');
+        $position = $offer->position(Track::Sale);
+        $stage = $position?->stage;
+        if (! $deal->isActive() || ! $stage) {
+            return;
+        }
+        $ours = $deal->schemeOf()->paysCar() || $deal->isGarageUs();
+        if ($stage->asks === Asks::Buyer && $ours) {
+            if ($exit = $stage->exitsFor(Actor::Manager, $deal)->first()) {
+                ($this->take)($offer, $exit, Actor::Manager, $by, ['label' => 'Схема сменилась: наши реквизиты']);
+            }
+
+            return;
+        }
+        $data = $stage->isRequisitesStep() && ! $ours && in_array($position->letterStatus(), [null, 'unsent', 'failed'], true)
+            ? Stage::where('workflow_id', $stage->workflow_id)->where('asks', Asks::Buyer->value)->first() : null;
+        if ($data && ! $deal->contract?->buyer?->party?->readyAsBuyer()) {
+            app(EnterStage::class)($offer, $data, $by, ['label' => 'Схема сменилась: нужны данные покупателя'], back: true);
+        }
     }
 
     /** Вошли на шаг, а данные уже есть (вернули шаг назад, покупатель тот же) — шаг проходит сразу. */
