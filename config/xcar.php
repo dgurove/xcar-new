@@ -101,11 +101,14 @@ return [
     // WhatsApp с номера владельца (03.11.2026, `App\WhatsApp\Sender`): открытое всем — в группу, не всем и просьбы оценить —
     // в личные. Шлёт служба в Цюрихе (`zurich/whatsapp`), до неё — туннель (`zurich:9444`). via пусто — WhatsApp нет; since
     // пусто — сами не уходят (только `whatsapp:test`) и менеджерам подключить не предлагается, задать — с какого момента слать.
-    // daily — потолок в сутки на всё вместе. number — номер владельца: на него пишут код привязки (`LinkCode`).
+    // daily — потолок в сутки на всё вместе. number — номер владельца: на него пишут код привязки (`LinkCode`). managers —
+    // предлагать ли менеджерам подключить WhatsApp (03.11.2026: пока рассылка идёт в «XCAR admin», ссылку-приглашение в неё
+    // менеджерам не показываем; включить, когда будет группа «XCar | Предложения»).
     'whatsapp' => [
         'via' => env('WHATSAPP_VIA'),
         'token' => env('WHATSAPP_TOKEN'),
         'since' => env('WHATSAPP_SINCE'),
+        'managers' => (bool) env('WHATSAPP_MANAGERS', false),
         'daily' => (int) env('WHATSAPP_DAILY', 100),
         'number' => env('WHATSAPP_NUMBER', '79126617100'),
     ],

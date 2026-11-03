@@ -19,7 +19,8 @@ use Throwable;
  * `Queue`, как выглядит — `Message`; здесь — когда и в каком темпе. Сообщение с машиной — как карточка бота предложений:
  * PDF (`SharePdf::prepared`) с подписью для клиента и ссылкой; «срочно» и срок приёма не пишем (владелец).
  *
- * Пока `whatsapp.since` пуст, само не уходит ничего (только `whatsapp:test`) и менеджерам WhatsApp не предлагается (`open`).
+ * Пока `whatsapp.since` пуст, само не уходит ничего (только `whatsapp:test`); менеджерам WhatsApp предлагается, только когда
+ * ещё и `whatsapp.managers` (`open`).
  *
  * Как — чтобы номер не сочли рассыльщиком (обсуждали 30.10–03.11.2026): по одному, пауза 30–90 с, после 15–20 подряд —
  * перерыв 5–10 минут; ночью (22:00–08:00 по Москве) тишина, ночное уходит с утра; не больше `whatsapp.daily` в сутки — на все
@@ -56,10 +57,14 @@ final class Sender
         return $since === '' ? null : Carbon::parse($since);
     }
 
-    /** WhatsApp открыт менеджерам: служба есть и рассылка включена — тогда его и предлагают подключить. */
+    /**
+     * WhatsApp открыт менеджерам: служба есть, рассылка включена и менеджерам его предлагают (`whatsapp.managers`) — тогда
+     * его и предлагают подключить. Рассылка в группу от этого не зависит (`step`).
+     */
     public static function open(): bool
     {
-        return trim((string) config('xcar.whatsapp.via')) !== '' && trim((string) config('xcar.whatsapp.since')) !== '';
+        return trim((string) config('xcar.whatsapp.via')) !== '' && trim((string) config('xcar.whatsapp.since')) !== ''
+            && (bool) config('xcar.whatsapp.managers');
     }
 
     /** Сколько секунд до следующего сообщения: пауза между ними. */
