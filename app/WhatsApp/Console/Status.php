@@ -5,12 +5,12 @@ namespace App\WhatsApp\Console;
 use App\WhatsApp\Group;
 use Illuminate\Console\Command;
 
-/** Для `deploy/check.sh`: что не так со службой WhatsApp и группой — строками и кодом 1; всё в порядке — молча. */
+/** Для `deploy/check.sh`: что не так со службой WhatsApp — строками и кодом 1; всё в порядке — молча. */
 final class Status extends Command
 {
     protected $signature = 'whatsapp:status';
 
-    protected $description = 'WhatsApp: служба в Цюрихе и группа в порядке?';
+    protected $description = 'WhatsApp: служба в Цюрихе в порядке?';
 
     public function handle(Group $group): int
     {

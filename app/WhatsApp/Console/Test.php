@@ -3,15 +3,13 @@
 namespace App\WhatsApp\Console;
 
 use App\Offers\OfferNumber;
-use App\Users\User;
 use App\WhatsApp\Gateway;
 use App\WhatsApp\Group;
 use Illuminate\Console\Command;
 
 /**
  * Проверка: прислать в группу перечисленные предложения тем же сообщением и в том же темпе, что и сами, но не помнить их
- * отправленными (`whatsapp_sent`) — в группу менеджеров они потом придут как обычно. Доступ тот же: открытое не каждому
- * в группе не уходит.
+ * отправленными (`whatsapp_sent`) — в группу менеджеров они потом придут как обычно.
  */
 final class Test extends Command
 {
@@ -33,22 +31,10 @@ final class Test extends Command
 
                 continue;
             }
-            $status = $gateway->status();
-            if ($trouble = Group::trouble($status)) {
+            if ($trouble = Group::trouble($gateway->status())) {
                 $this->error($trouble);
 
                 return self::FAILURE;
-            }
-            [$people, $outsiders] = $group->members($status);
-            if ($outsiders) {
-                $this->error('В группе не из xcar или с закрытым доступом: '.implode(', ', $outsiders));
-
-                return self::FAILURE;
-            }
-            if ($people->contains(fn (User $user) => ! $offer->isVisibleTo($user))) {
-                $this->warn("{$number}: открыто не всем в группе — пропускаю");
-
-                continue;
             }
             if ($wait = $group->wait()) {
                 $this->line("Пауза {$wait} с");

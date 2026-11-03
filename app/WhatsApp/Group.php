@@ -8,12 +8,9 @@ use App\Offers\Share\Caption;
 use App\Offers\Share\SharePdf;
 use App\Offers\Share\Subject;
 use App\Telegram\Offers\Card;
-use App\Telegram\Offers\Subscriber;
-use App\Users\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -26,10 +23,8 @@ use Throwable;
  * строкой; «срочно» и срок приёма не пишем (владелец). Кадров нет — текстом. Закрытый шеринг в WhatsApp не уходит: защиты от
  * пересылки там нет.
  *
- * Кому: в группе люди, и каждый должен видеть машину сам — уходит только то, что уже открыто каждому участнику
- * (`Offer::visibleTo`: волны, «Открыты только Вам», «Не показывать»). Участник — по номеру среди `users`; номер не из xcar
- * или человек, которому xcar закрыт, — отправка стоит, `whatsapp:status` поднимает тревогу (`deploy/check.sh`). Сам
- * отправитель (`me`) не считается.
+ * Кому — решает владелец, назвав группу (`TARGET` службы): состав группы не проверяем, волн и «только вам» здесь нет
+ * (владелец 03.11.2026: «если прошу в какую-то группу присылать — значит надо присылать»).
  *
  * Что: открытое с `whatsapp.since` (пусто — само ничего не уходит, только `whatsapp:test`), не демо, по одному разу на
  * машину навсегда (`whatsapp_sent`; снятое не трогаем — владелец, вернувшееся второй раз не шлём).
@@ -86,15 +81,10 @@ final class Group
         if (! $this->candidates($since)->exists()) {
             return false;
         }
-        $status = $this->gateway->status();
-        if (self::trouble($status) !== null) {
+        if (self::trouble($this->gateway->status()) !== null) {
             return false;
         }
-        [$people, $outsiders] = $this->members($status);
-        if ($outsiders) {
-            return false;
-        }
-        $offer = $this->candidates($since, $people)->first();
+        $offer = $this->candidates($since)->first();
 
         return $offer !== null && $this->deliver($offer, 'offer:'.$offer->id, true);
     }
@@ -129,7 +119,7 @@ final class Group
     }
 
     /**
-     * Что не так со службой и группой — для тревоги (`whatsapp:status`); пусто — всё в порядке.
+     * Что не так со службой — для тревоги (`whatsapp:status`); пусто — всё в порядке.
      *
      * @return list<string>
      */
@@ -143,12 +133,9 @@ final class Group
         } catch (Throwable $e) {
             return ['служба в Цюрихе не отвечает: '.$e->getMessage()];
         }
-        if ($trouble = self::trouble($status)) {
-            return [$trouble];
-        }
-        [, $outsiders] = $this->members($status);
+        $trouble = self::trouble($status);
 
-        return $outsiders ? ['в группе «'.$status['group'].'» не из xcar или с закрытым доступом: '.implode(', ', $outsiders)] : [];
+        return $trouble === null ? [] : [$trouble];
     }
 
     /** Служба не может отправить — почему; null — может. */
@@ -163,56 +150,22 @@ final class Group
         };
     }
 
-    /**
-     * Участники группы: люди xcar, которым она служит, и все остальные (номер или JID).
-     *
-     * @return array{0: Collection<int, User>, 1: list<string>}
-     */
-    public function members(array $status): array
-    {
-        $phones = array_values(array_diff($status['members'], [$status['me']]));
-        $users = User::query()->whereIn(DB::raw("regexp_replace(coalesce(phone, ''), '\\D', '', 'g')"), $phones)->get()
-            ->keyBy(fn (User $u) => preg_replace('/\D/', '', (string) $u->phone));
-        $people = collect();
-        $outsiders = [];
-        foreach ($phones as $phone) {
-            $user = $users[$phone] ?? null;
-            if (Subscriber::eligible($user)) {
-                $people->push($user);
-            } else {
-                $outsiders[] = ctype_digit($phone) ? '+'.$phone.($user ? ' ('.$user->name.')' : '') : $phone;
-            }
-        }
-
-        return [$people, $outsiders];
-    }
-
     /** Подпись: текст для клиента и ссылка на машину в XCar. */
     public static function caption(Offer $offer): string
     {
         return implode("\n\n", array_filter([Caption::forward($offer), Caption::link($offer)]));
     }
 
-    /**
-     * Очередь: в продаже, приём идёт, не демо, шеринг открыт, вышло с `since`, ещё не уходило; с людьми — только открытое
-     * каждому из них.
-     *
-     * @param  ?Collection<int, User>  $people
-     */
-    public function candidates(Carbon $since, ?Collection $people = null): Builder
+    /** Очередь: в продаже, приём идёт, не демо, шеринг открыт, вышло с `since`, ещё не уходило. */
+    public function candidates(Carbon $since): Builder
     {
-        $q = Offer::query()->where('offers.state', OfferState::Open)->where('offers.is_demo', false)
+        return Offer::query()->where('offers.state', OfferState::Open)->where('offers.is_demo', false)
             ->where('offers.share_locked', false)->where('offers.share_locked_by_estimate', false)
             ->where(fn ($w) => $w->whereNull('offers.bids_close_at')->orWhere('offers.bids_close_at', '>', now()))
             ->where('offers.published_at', '>=', $since)
             ->whereNotExists(fn ($x) => $x->from('whatsapp_sent as w')->whereColumn('w.offer_id', 'offers.id')
                 ->where(fn ($y) => $y->whereNotNull('w.message_id')->orWhere('w.attempts', '>=', self::ATTEMPTS)))
             ->orderBy('offers.published_at')->orderBy('offers.id');
-        foreach ($people ?? [] as $user) {
-            $q->whereIn('offers.id', Offer::visibleTo($user)->select('offers.id'));
-        }
-
-        return $q;
     }
 
     /** @return array{0: ?array{0: string, 1: string}, 1: ?string} PDF (содержимое, имя) и превью JPEG */

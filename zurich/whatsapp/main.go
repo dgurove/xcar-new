@@ -295,16 +295,13 @@ func (s *service) status(w http.ResponseWriter, r *http.Request) {
 	stopped := s.stopReason()
 	out := map[string]any{
 		"connected": s.cli.IsConnected(), "logged_in": s.cli.IsLoggedIn(), "stopped": nil,
-		"in_group": false, "group": nil, "me": nil, "members": []string{},
+		"in_group": false, "group": nil,
 	}
 	if stopped != "" {
 		out["stopped"] = stopped
 	}
-	if s.cli.Store.ID != nil {
-		out["me"] = s.cli.Store.ID.User
-	}
 	if info, err := s.groupInfo(r.Context(), false); err == nil && info != nil {
-		out["in_group"], out["group"], out["members"] = s.member(info), info.Name, members(info)
+		out["in_group"], out["group"] = s.member(info), info.Name
 	}
 	reply(w, http.StatusOK, out)
 }
@@ -468,22 +465,6 @@ func (s *service) member(info *types.GroupInfo) bool {
 		}
 	}
 	return false
-}
-
-// members — номера участников цифрами; кого WhatsApp не раскрыл — JID как есть (xcar сочтёт его посторонним).
-func members(info *types.GroupInfo) []string {
-	out := make([]string, 0, len(info.Participants))
-	for _, p := range info.Participants {
-		switch {
-		case !p.PhoneNumber.IsEmpty():
-			out = append(out, p.PhoneNumber.User)
-		case p.JID.Server == types.DefaultUserServer:
-			out = append(out, p.JID.User)
-		default:
-			out = append(out, p.JID.String())
-		}
-	}
-	return out
 }
 
 type upload struct{ data []byte }

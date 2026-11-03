@@ -17,11 +17,7 @@ final class Gateway
         return trim((string) config('xcar.whatsapp.via')) !== '';
     }
 
-    /**
-     * Состояние: members — номера участников цифрами; кого WhatsApp не раскрыл — JID как есть.
-     *
-     * @return array{connected: bool, logged_in: bool, stopped: ?string, in_group: bool, group: ?string, me: ?string, members: list<string>}
-     */
+    /** @return array{connected: bool, logged_in: bool, stopped: ?string, in_group: bool, group: ?string} */
     public function status(): array
     {
         return $this->http()->timeout(15)->get('/status')->throw()->json();
