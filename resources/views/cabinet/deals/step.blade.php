@@ -45,7 +45,7 @@
     $payload = collect($position?->fields() ?? [])->except($handover?->open ? $handover->keys : [])
         ->reject(fn ($v, $k) => preg_match('/платёж|оплат|сумм|перевод|цен/iu', (string) ($labels[$k] ?? $k)))
         ->map(fn ($v) => is_string($v) ? \App\Support\VendorNames::strip($v) : $v)->filter(fn ($v) => filled($v));
-    // Ответы — перепиской, по порядку писем: сначала контакт, потом документы. Много — ранние под «Ещё».
+    // Контакты владельца из ответов — по порядку писем. Много — ранние под «Ещё».
     $replies = ($replies ?? collect())->reverse()->values();
     $early = $replies->count() > 3 ? $replies->slice(0, $replies->count() - 2) : collect();
     $late = $replies->slice($early->count());

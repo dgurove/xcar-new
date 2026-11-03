@@ -17,7 +17,7 @@ use App\Offers\DealState;
 use App\Offers\Handover;
 use App\Offers\InsurerReplies;
 use App\Offers\OfferState;
-use App\Offers\ReplyText;
+use App\Offers\OwnerPhones;
 use App\Support\ListPrefs;
 use App\Support\Sort;
 use App\Users\User;
@@ -211,9 +211,10 @@ class DealController
             'requirement' => $deal->openRequirement,
             'exits' => $deal->openRequirement ? Handover::managerExits($position?->stage, $deal) : collect(),
             'handover' => Handover::for($deal),
-            // Ответы страховой по сделке — урезанные (`ReplyText`, 15.10.2026: без подписи, вендора, сумм), новые сверху;
-            // файлов писем менеджеру нет. Пустой после урезания ответ не показывается. До согласования — никаких (27.10.2026).
-            'replies' => ! $deal->agreed() ? collect() : InsurerReplies::for($deal)->filter(fn ($m) => ReplyText::for($m, $deal->offer) !== null)->values(),
+            // Из ответов страховой — только телефоны владельца (`OwnerPhones`, 03.11.2026: текста писем менеджеру нет ни при каких
+            // условиях), новые сверху; письмо без телефона не показывается вовсе. До согласования — ничего (27.10.2026).
+            'replies' => ! $deal->agreed() ? collect() : InsurerReplies::for($deal)
+                ->map(fn ($m) => ['at' => $m->date_at, 'phones' => OwnerPhones::for($m)])->filter(fn ($r) => $r['phones'] !== [])->values(),
             'invoices' => Invoice::where('deal_id', $deal->id)->where('direction', 'issued')->where('state', '!=', InvoiceState::Void)
                 // Шторка счёта (`cabinet.deals.invoice-sheet`): строки, оплаты с платёжками, ссылка — сразу, не по запросу на счёт.
                 ->with(['claims', 'party', 'charges', 'allPayments.media', 'payLinks.attempts', 'media'])->orderBy('id')->get()

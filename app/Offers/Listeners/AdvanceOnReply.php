@@ -11,6 +11,7 @@ use App\Offers\Events\InsurerReplied;
 use App\Offers\InsurerReplies;
 use App\Offers\Jobs\ShareReplyFiles;
 use App\Offers\OfferEventType;
+use App\Offers\OwnerPhones;
 use App\Vendors\DealFormat;
 use App\Workflow\Actions\TakeExit;
 use App\Workflow\Actor;
@@ -81,7 +82,13 @@ final class AdvanceOnReply
 
             return;
         }
-        $deal->buyer->notify(new InsurerReplyNotice($deal, $contact, $turn));
+        // После согласования — тоже ни слова о самом письме (03.11.2026, владелец: менеджер увидел в ответе Альфы нашу сумму и
+        // ставку аукциона): только телефоны владельца — «Контакты владельца», иначе его ход, если шаг сдвинулся, иначе ничего.
+        if (OwnerPhones::for($message) !== []) {
+            $deal->buyer->notify(new InsurerReplyNotice($deal, $turn));
+        } elseif ($turn) {
+            $deal->buyer->notify(new YourTurnNotice($turn->load('offer')));
+        }
     }
 
     /**

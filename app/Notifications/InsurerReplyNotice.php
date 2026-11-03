@@ -7,23 +7,22 @@ use App\Telegram\Text;
 use App\Workflow\Requirement;
 
 /**
- * Менеджеру сделки: страховая ответила (05.10.2026). Текста письма нет (15.10.2026, владелец: в нём закупочная, вендор и
- * подпись сотрудника страховой) — урезанный ответ на странице сделки. Сдвинуло письмо шаг — тут же его новый ход
- * («Подтвердите, что берёте в работу»): отдельного «Ваш ход» по этому шагу нет.
+ * Менеджеру сделки: в ответе страховой — телефон владельца (05.10.2026). Текста письма нет нигде (03.11.2026, владелец: письма
+ * страховой менеджер не видит ни при каких условиях) — на странице сделки только телефоны (`Offers\OwnerPhones`). Ответ без
+ * телефона менеджеру не сообщается (`AdvanceOnReply`). Сдвинуло письмо шаг — тут же его новый ход: отдельного «Ваш ход» нет.
  */
 final class InsurerReplyNotice extends Notice
 {
-    public function __construct(private Deal $deal, private bool $contact = false, private ?Requirement $turn = null) {}
+    public function __construct(private Deal $deal, private ?Requirement $turn = null) {}
 
     public function label(): string
     {
-        return 'Ответ страховой';
+        return 'Контакты владельца';
     }
 
     public function title(): string
     {
-        // Прислали телефон — это контакты владельца, а не просто «ответила» (10.10.2026).
-        return ($this->contact ? 'Контакты владельца: ' : 'Страховая ответила: ').$this->deal->offer->titleWithYear();
+        return 'Контакты владельца: '.$this->deal->offer->titleWithYear();
     }
 
     public function text(): ?string
