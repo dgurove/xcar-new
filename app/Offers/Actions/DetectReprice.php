@@ -17,7 +17,8 @@ use Illuminate\Support\Facades\Notification;
 
 /**
  * Переоценка на решение (28.10.2026, владелец: «по такому-то письму такая-то переоценка, с возможностью принять или
- * отменить»). Письмо поставщика ровно об этой машине («Новая стоимость – 433 200 руб.», `Template::newPrice`) по
+ * отменить»). Письмо поставщика ровно об этой машине («Новая стоимость – 433 200 руб.», `Template::newPrice`; «Максимальная
+ * ставка 5500000,00» переигровки — `Template::topBid`) по
  * предложению с закупочной заводит ждущую переоценку — сама закупочная не меняется; админам `RepriceNotice`. Тем же
  * `open` пользуется `UpdateOffer`, когда новую закупочную вписали при уже подтвердивших.
  */
@@ -36,7 +37,7 @@ final class DetectReprice
     /**
      * Новые цены из письма по этой машине, если оно переоценивает её закупочную (и по нему переоценки ещё не было). Сумма
      * страховой — в цены по правилу вендора (`Pricing::fromAmount`): у «Закупочная от оценочной» (Альфа) это оценочная, и
-     * закупочная — от неё с наценкой, а не сама сумма.
+     * закупочная — от неё с наценкой, а не сама сумма. «Максимальная ставка N» переигровки (`Template::topBid`) — закупочная как есть.
      *
      * @return array{floor_price: int, value?: int}|null
      */
@@ -47,8 +48,10 @@ final class DetectReprice
             || Reprice::where('message_id', $message->id)->exists()) {
             return null;
         }
-        $amount = Template::newPrice($message->ownText());
-        $prices = $amount ? Pricing::fromAmount($offer->vendor_id, $amount) : null;
+        $text = $message->ownText();
+        $amount = Template::newPrice($text);
+        // Ставка аукциона — сама закупочная: через оценочную её не пересчитываем.
+        $prices = $amount ? Pricing::fromAmount($offer->vendor_id, $amount) : (($bid = Template::topBid($text)) ? ['floor_price' => $bid] : null);
 
         return $prices && (int) $prices['floor_price'] !== (int) $offer->floor_price ? $prices : null;
     }

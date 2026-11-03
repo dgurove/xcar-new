@@ -1,8 +1,9 @@
 {{-- Переоценка на решение (28.10.2026, владелец: «по такому-то письму такая-то переоценка, с возможностью принять или
      отменить»; `Offers\Reprice`). Плашка наверху окошка и редактора: было → стало, откуда, «Открыть письмо», «Отклонить» и
      «Применить…». Шторка — новая цена (правится), у открытого цена продажи (заявленная пустая — идёт за закупочной), и решение по каждому, кто сейчас
-     подтвердил, и по сделке: «Оставить N | Обновить M» (выше прежней — «Спросить M»: менеджеру вопрос, `RepriceAsk`), заранее не отмечено ничего, «Применить» — когда решено по всем
-     (`reprice_controller`). Вписали закупочную в редакторе при подтвердивших — шторка открывается у автора сама, один раз. --}}
+     подтвердил, и по сделке: «Оставить | Обновить | Спросить» в любую сторону (03.11.2026, владелец: менеджера спрашивает только
+     админ; «Спросить» — вопрос `RepriceAsk` цифрами, ни слова письма; кто разницы не видит — без «Спросить»), заранее не
+     отмечено ничего, «Применить» — когда решено по всем (`reprice_controller`). Вписали закупочную в редакторе при подтвердивших — шторка открывается у автора сама, один раз. --}}
 @props(['offer', 'reprice'])
 @php
     use App\Support\Money;
@@ -46,22 +47,28 @@
             @if ($bids->isNotEmpty() || $deal)
                 <div class="flex flex-wrap items-center justify-between gap-2">
                     <span class="field-label">Закупочная у тех, кто уже подтвердил</span>
-                    <span class="flex gap-2">
-                        <button type="button" class="chip" data-action="reprice#all" data-reprice-choice-param="keep">Всем оставить</button>
-                        <button type="button" class="chip" data-action="reprice#all" data-reprice-choice-param="update">Всем обновить</button>
+                    <span class="flex items-center gap-2 whitespace-nowrap">
+                        <span class="text-sm text-ink-muted">Всем</span>
+                        <button type="button" class="chip" data-action="reprice#all" data-reprice-choice-param="keep">оставить</button>
+                        <button type="button" class="chip" data-action="reprice#all" data-reprice-choice-param="update">обновить</button>
+                        <button type="button" class="chip" data-action="reprice#all" data-reprice-choice-param="ask">спросить</button>
                     </span>
                 </div>
                 <div class="list">
                     @foreach ($bids as $bid)
-                        @php $cost = (int) $bid->frozenCost(); @endphp
+                        @php
+                            $cost = (int) $bid->frozenCost();
+                            $asks = \App\Offers\RepriceAsk::shownFor($bid->user, $bid, $offer, $cost, $reprice->to_price) !== null;
+                        @endphp
                         <div class="row flex-col !items-stretch gap-2" data-reprice-target="row" data-amount="{{ (int) $bid->amount }}">
                             <div class="flex flex-wrap items-center gap-x-2 gap-y-1">
                                 <x-ui.person :user="$bid->user" full/>
-                                <span class="nums text-sm text-ink-muted">{{ $bid->isGarage() ? 'в гараж' : Money::rub($bid->amount) }}, закупочная {{ Money::nums($cost) }}</span>
+                                <span class="nums text-sm text-ink-muted">{{ $bid->isGarage() ? 'в гараж' : Money::rub($bid->amount) }}, закупочная {{ Money::nums($cost) }} → <span data-reprice-target="to">{{ Money::nums($reprice->to_price) }}</span></span>
                             </div>
                             <div class="segment">
-                                <label><input type="radio" name="bids[{{ $bid->id }}]" value="keep" @checked(old('bids.'.$bid->id) === 'keep') data-action="reprice#update">Оставить&nbsp;{{ Money::nums($cost) }}</label>
-                                <label><input type="radio" name="bids[{{ $bid->id }}]" value="update" @checked(old('bids.'.$bid->id) === 'update') data-action="reprice#update"><span data-reprice-target="verb" data-cost="{{ $cost }}">{{ $reprice->to_price > $cost ? 'Спросить' : 'Обновить' }}</span>&nbsp;<span data-reprice-target="to">{{ Money::nums($reprice->to_price) }}</span></label>
+                                <label><input type="radio" name="bids[{{ $bid->id }}]" value="keep" @checked(old('bids.'.$bid->id) === 'keep') data-action="reprice#update">Оставить</label>
+                                <label><input type="radio" name="bids[{{ $bid->id }}]" value="update" @checked(old('bids.'.$bid->id) === 'update') data-action="reprice#update">Обновить</label>
+                                @if ($asks)<label><input type="radio" name="bids[{{ $bid->id }}]" value="ask" @checked(old('bids.'.$bid->id) === 'ask') data-action="reprice#update">Спросить</label>@endif
                             </div>
                             <p class="text-sm text-danger" data-reprice-target="loss" hidden></p>
                         </div>
@@ -70,18 +77,19 @@
                         <div class="row flex-col !items-stretch gap-2" data-reprice-target="row" data-amount="{{ (int) $deal->amount }}">
                             <div class="flex flex-wrap items-center gap-x-2 gap-y-1">
                                 <span class="font-medium">Сделка</span>@if ($deal->buyer)<x-ui.person :user="$deal->buyer" full/>@endif
-                                <span class="nums text-sm text-ink-muted">закупочная {{ Money::nums((int) $deal->cost) }}</span>
+                                <span class="nums text-sm text-ink-muted">закупочная {{ Money::nums((int) $deal->cost) }} → <span data-reprice-target="to">{{ Money::nums($reprice->to_price) }}</span></span>
                             </div>
+                            {{-- По счёту уже платили — только «Оставить»: вместо других — словом, почему. --}}
                             <div class="segment">
-                                <label><input type="radio" name="deal" value="keep" @checked(old('deal') === 'keep' || $dealLocked) data-action="reprice#update">Оставить&nbsp;{{ Money::nums((int) $deal->cost) }}</label>
-                                {{-- По счёту уже платили — обновить нельзя: вместо цены словом, почему. --}}
-                                <label @if ($dealLocked) class="opacity-40" @endif><input type="radio" name="deal" value="update" @checked(old('deal') === 'update') @disabled($dealLocked) data-action="reprice#update">
-                                    @if ($dealLocked)
-                                        Уже платили
-                                    @else
-                                        <span data-reprice-target="verb" data-cost="{{ (int) $deal->cost }}">{{ $reprice->to_price > (int) $deal->cost ? 'Спросить' : 'Обновить' }}</span>&nbsp;<span data-reprice-target="to">{{ Money::nums($reprice->to_price) }}</span>
+                                <label><input type="radio" name="deal" value="keep" @checked(old('deal') === 'keep' || $dealLocked) data-action="reprice#update">Оставить</label>
+                                @if ($dealLocked)
+                                    <label class="opacity-40"><input type="radio" disabled>Уже платили</label>
+                                @else
+                                    <label><input type="radio" name="deal" value="update" @checked(old('deal') === 'update') data-action="reprice#update">Обновить</label>
+                                    @if (\App\Offers\RepriceAsk::shownFor($deal->buyer, $deal, $offer, (int) $deal->cost, $reprice->to_price) !== null)
+                                        <label><input type="radio" name="deal" value="ask" @checked(old('deal') === 'ask') data-action="reprice#update">Спросить</label>
                                     @endif
-                                </label>
+                                @endif
                             </div>
                             <p class="text-sm text-danger" data-reprice-target="loss" hidden></p>
                         </div>

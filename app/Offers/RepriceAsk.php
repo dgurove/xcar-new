@@ -10,11 +10,12 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 
 /**
- * Вопрос менеджеру о выросшей закупочной (28.10.2026, владелец: «когда закупочная повышается, мы просто ставим менеджера
- * перед фактом — нужно уведомление с вопросом, согласен он или отказывается; когда понижается — не спрашивать»). Заводит
- * `Actions\ApplyReprice` на «Обновить» вверх, отвечает `Actions\AnswerReprice` — менеджер (страница, Telegram) или админ
+ * Вопрос менеджеру о новой закупочной (28.10.2026, владелец: «ставим менеджера перед фактом — нужно уведомление с вопросом,
+ * согласен он или отказывается»; 03.11.2026: «автоматику убрать», спрашивает только админ, в любую сторону, цифрами — ни слова
+ * письма). Заводит `Actions\ApplyReprice` на «Спросить», отвечает `Actions\AnswerReprice` — менеджер (страница, Telegram) или админ
  * за него. До ответа у него прежняя закупочная; не ответил к `due_at` (17:00 следующего дня) — горит у нас.
  * Закупочной на xcar нет ни у кого: `shown_*` — то, что он видит (`shownFor`, `shownAs`).
  */
@@ -86,9 +87,9 @@ class RepriceAsk extends Model
      * Ждущие вопросы идущих сделок: offer_id → срок ответа. Списки («Сделки» CRM и менеджера, «Ваш ход», бейдж) спрашивают
      * про каждую строку — одним запросом на веб-запрос (в очереди и консоли `once` жил бы весь процесс — там без памяти).
      *
-     * @return \Illuminate\Support\Collection<int, Carbon>
+     * @return Collection<int, Carbon>
      */
-    public static function dealDue(): \Illuminate\Support\Collection
+    public static function dealDue(): Collection
     {
         $load = fn () => self::pending()->whereNotNull('deal_id')->whereHas('deal', fn ($q) => $q->where('state', DealState::Active))
             ->pluck('due_at', 'offer_id')->map(fn ($at) => Carbon::parse($at));

@@ -2,11 +2,14 @@
 
 namespace App\Http\Admin;
 
+use App\Offers\Actions\AnswerReprice;
 use App\Offers\Actions\ApplyReprice;
 use App\Offers\Actions\DismissReprice;
 use App\Offers\Offer;
+use App\Offers\OfferState;
 use App\Offers\PriceGuard;
 use App\Offers\Reprice;
+use App\Offers\RepriceAsk;
 use App\Support\Money;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -23,12 +26,12 @@ class RepriceController
             'publish_price' => ['nullable', 'integer', 'min:1'],
             'asking_price' => ['nullable', 'integer', 'min:1'],
             'bids' => ['array'],
-            'bids.*' => [Rule::in([ApplyReprice::KEEP, ApplyReprice::UPDATE])],
-            'deal' => ['nullable', Rule::in([ApplyReprice::KEEP, ApplyReprice::UPDATE])],
+            'bids.*' => [Rule::in([ApplyReprice::KEEP, ApplyReprice::UPDATE, ApplyReprice::ASK])],
+            'deal' => ['nullable', Rule::in([ApplyReprice::KEEP, ApplyReprice::UPDATE, ApplyReprice::ASK])],
         ], ['price.required' => 'Новая закупочная']);
-        $prices = $offer->state === \App\Offers\OfferState::Open ? array_filter(array_intersect_key($data, array_flip(['asking_price']))) : [];
+        $prices = $offer->state === OfferState::Open ? array_filter(array_intersect_key($data, array_flip(['asking_price']))) : [];
         // Открытое: новая закупочная против цены продажи — «Точно?» (`PriceGuard`), её правят тут же в шторке.
-        if ($offer->state === \App\Offers\OfferState::Open) {
+        if ($offer->state === OfferState::Open) {
             PriceGuard::assertPrices($prices['asking_price'] ?? $offer->asking_price, $data['price'], $request->boolean('price_ok'));
         }
         $apply($reprice, $request->user(), $data['price'], $data['bids'] ?? [], $data['deal'] ?? null, $prices);
@@ -37,7 +40,7 @@ class RepriceController
     }
 
     /** Ответ за менеджера про выросшую закупочную (28.10.2026): он сказал устно. */
-    public function answer(Request $request, Offer $offer, \App\Offers\RepriceAsk $ask, \App\Offers\Actions\AnswerReprice $answer)
+    public function answer(Request $request, Offer $offer, RepriceAsk $ask, AnswerReprice $answer)
     {
         abort_unless($ask->offer_id === $offer->id, 404);
         $agree = $request->boolean('agree');

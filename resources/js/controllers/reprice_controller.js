@@ -1,11 +1,12 @@
 import { Controller } from '@hotwired/stimulus';
 import { nums, rubles } from '../lib/money';
 
-// Шторка «Переоценка» (28.10.2026, `x-offer.reprice`): по каждому, кто подтвердил, и по сделке — «Оставить | Обновить»;
-// заранее не отмечено ничего, «Применить» живая, когда решено по всем. Новая цена правится — «Обновить N» и «станет ниже
-// закупочной» идут за ней; выше прежней — «Спросить N» (менеджеру вопрос). «Всем оставить / обновить» — одним нажатием (недоступное «Обновить» сделки не трогается).
+// Шторка «Переоценка» (28.10.2026, `x-offer.reprice`): по каждому, кто подтвердил, и по сделке — «Оставить | Обновить |
+// Спросить» в любую сторону (03.11.2026, владелец: спрашивать менеджера — только решением админа); заранее не отмечено
+// ничего, «Применить» живая, когда решено по всем. Новая цена правится — «→ N» и «станет ниже закупочной» идут за ней.
+// «Всем оставить / обновить / спросить» — одним нажатием (недоступное у строки не трогается).
 export default class extends Controller {
-    static targets = ['price', 'row', 'to', 'verb', 'loss', 'submit'];
+    static targets = ['price', 'row', 'to', 'loss', 'submit'];
 
     connect() {
         this.update();
@@ -17,7 +18,9 @@ export default class extends Controller {
 
     all({ params: { choice } }) {
         for (const row of this.rowTargets) {
-            const input = row.querySelector(`input[type=radio][value="${choice}"]:not(:disabled)`);
+            // «Спросить» у того, кто разницы не видит, нет — ему «Обновить»: сервер так и сделал бы.
+            const input = row.querySelector(`input[type=radio][value="${choice}"]:not(:disabled)`)
+                ?? (choice === 'ask' ? row.querySelector('input[type=radio][value="update"]:not(:disabled)') : null);
             if (input) input.checked = true;
         }
         this.update();
@@ -26,15 +29,13 @@ export default class extends Controller {
     update() {
         const price = this.price;
         this.toTargets.forEach((el) => { el.textContent = price ? nums(price) : '—'; });
-        // Выше прежней закупочной — не «Обновить», а «Спросить»: менеджеру уйдёт вопрос (`RepriceAsk`, 28.10.2026).
-        this.verbTargets.forEach((el) => { el.textContent = price && price > Number(el.dataset.cost) ? 'Спросить' : 'Обновить'; });
         let ready = Boolean(price);
         for (const row of this.rowTargets) {
             const picked = row.querySelector('input[type=radio]:checked');
             if (!picked) ready = false;
             const amount = Number(row.dataset.amount) || 0;
             const loss = row.querySelector('[data-reprice-target="loss"]');
-            const under = picked?.value === 'update' && price && amount && amount <= price;
+            const under = picked && picked.value !== 'keep' && price && amount && amount <= price;
             if (loss) {
                 loss.hidden = !under;
                 loss.textContent = under ? (price > amount ? `Станет ниже закупочной на ${nums(price - amount)}` : 'Станет равна закупочной') : '';

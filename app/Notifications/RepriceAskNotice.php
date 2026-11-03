@@ -7,7 +7,8 @@ use App\Support\Ago;
 use App\Telegram\Text;
 
 /**
- * Менеджеру: закупочная выросла — согласен ли он (28.10.2026, `RepriceAsk`). Важное и мимо категорий (`critical`), как
+ * Менеджеру: новая закупочная — согласен ли он (28.10.2026, `RepriceAsk`; с 03.11.2026 в любую сторону и только решением админа,
+ * цифрами, ни слова письма). Важное и мимо категорий (`critical`), как
  * контрпредложение: без ответа у него прежняя цена, а у нас горит. В Telegram — «Согласен» / «Отказываюсь» с переспросом
  * (`UpdateHandler::reprice`). Ответили раньше доставки (за него админ, новая переоценка) — не шлём.
  */
@@ -22,7 +23,7 @@ final class RepriceAskNotice extends Notice
 
     public function label(): string
     {
-        return 'Закупочная выросла';
+        return 'Новая закупочная';
     }
 
     public function title(): string
@@ -75,7 +76,7 @@ final class RepriceAskNotice extends Notice
     public static function telegramTitle(RepriceAsk $ask): string
     {
         // Слово «закупочная» — только где она у него на экране (`RepriceAsk::shownAs`).
-        return ($ask->shownAs() === 'reward' ? 'Вознаграждение уменьшится: ' : 'Новая цена от поставщика: ').$ask->offer->titleWithYear();
+        return ($ask->shownAs() === 'reward' ? 'Вознаграждение изменится: ' : 'Новая цена: ').$ask->offer->titleWithYear();
     }
 
     /** @return array<int, mixed> */

@@ -20,14 +20,14 @@ use Illuminate\Validation\ValidationException;
  * оставить прежнюю цену закупа или обновить; это важно технически верно реализовать»). Под замком предложения, одной
  * транзакцией:
  * - закупочная — `UpdateOffer` (`repricing`), с причиной в истории; заодно заявленная и цена продажи из шторки;
- * - подтверждение: «Обновить» вниз — `bids.cost` = новая молча; вверх — вопрос менеджеру (`RepriceAsk`, 28.10.2026,
- *   владелец: «ставим перед фактом — неправильно»), цена встанет, когда он согласится (`AnswerReprice`); не видит разницы
- *   (заявленная вписана рукой, супер-покупатель) — встаёт сразу. «Оставить» — как было, молча (у старого подтверждения без
- *   своей закупочной она закрепляется прежней);
- * - сделка: «Обновить» — `deals.cost` = новая (у ДКП и «страховой напрямую» сумма страховой тоже, если стояла равной
- *   прежней), договор и неоплаченные счета перевыставляются (`SyncDealInvoices`) — вниз сразу, вверх — после его «Согласен»;
- *   по счёту уже платили — только «Оставить». «Оставить» (и пока ждём ответа) — новая ложится в `supplier_cost`
- *   (`UpdateDealCost`, как правка руками).
+ * - по каждому подтвердившему и по сделке админ выбирает сам, в любую сторону (03.11.2026, владелец: «автоматику убрать,
+ *   про повышение тоже вручную спрашивать, как и про понижение»): «Оставить» — как было, молча (у старого подтверждения
+ *   без своей закупочной она закрепляется прежней; у сделки новая ложится в `supplier_cost`, `UpdateDealCost`);
+ *   «Обновить» — новая встаёт молча (`bids.cost`; у сделки `deals.cost`, у ДКП и «страховой напрямую» сумма страховой
+ *   тоже, если стояла равной прежней, договор и неоплаченные счета перевыставляются — `SyncDealInvoices`); «Спросить» —
+ *   вопрос менеджеру (`RepriceAsk`, только цифрами, ни слова письма), цена встанет после его «Согласен» (`AnswerReprice`);
+ *   не видит разницы (заявленная вписана рукой, супер-покупатель) — «Спросить» значит «Обновить».
+ *   По счёту сделки уже платили — только «Оставить».
  * Решение обязательно по каждому: без него — ошибка, ничего не меняется.
  */
 final class ApplyReprice
@@ -36,10 +36,12 @@ final class ApplyReprice
 
     public const UPDATE = 'update';
 
+    public const ASK = 'ask';
+
     public function __construct(private UpdateOffer $update, private SyncDealInvoices $invoices) {}
 
     /**
-     * @param  array<int|string, string>  $bids  id подтверждения → keep | update
+     * @param  array<int|string, string>  $bids  id подтверждения → keep | update | ask
      * @param  array{publish_price?: ?int, asking_price?: ?int}  $prices
      */
     public function __invoke(Reprice $reprice, User $by, int $price, array $bids, ?string $deal, array $prices = []): void
@@ -67,8 +69,8 @@ final class ApplyReprice
             RepriceAsk::pending()->where('offer_id', $offer->id)->update(['state' => RepriceAsk::VOID]);
             $people = [];
             foreach ($live as $bid) {
-                if ($choices['bids'][$bid->id] === self::UPDATE && $was[$bid->id] !== $price) {
-                    if ($ask = $this->ask($reprice, $offer, $bid, $was[$bid->id], $price)) {
+                if ($choices['bids'][$bid->id] !== self::KEEP && $was[$bid->id] !== $price) {
+                    if ($choices['bids'][$bid->id] === self::ASK && ($ask = $this->ask($reprice, $offer, $bid, $was[$bid->id], $price))) {
                         $notify[] = $ask;
                         $people[] = $bid->user->shortName().' — спросили: '.Money::plain($was[$bid->id], sign: false).' → '.Money::plain($price);
                     } else {
@@ -83,8 +85,8 @@ final class ApplyReprice
             if ($liveDeal) {
                 $liveDeal = $liveDeal->fresh();
                 $dealWas = (int) $liveDeal->cost;
-                if ($choices['deal'] === self::UPDATE && $dealWas !== $price) {
-                    if ($ask = $this->ask($reprice, $offer, $liveDeal, $dealWas, $price)) {
+                if ($choices['deal'] !== self::KEEP && $dealWas !== $price) {
+                    if ($choices['deal'] === self::ASK && ($ask = $this->ask($reprice, $offer, $liveDeal, $dealWas, $price))) {
                         $notify[] = $ask;
                         $people[] = 'сделка '.($liveDeal->buyer?->shortName() ?? '').' — спросили: '.Money::plain($dealWas, sign: false).' → '.Money::plain($price);
                     } else {
@@ -114,7 +116,7 @@ final class ApplyReprice
         if (! $ask) {
             return;
         }
-        if ($costGiven || (int) $deal->cost >= $ask->to_price) {
+        if ($costGiven || (int) $deal->cost === $ask->to_price) {
             $ask->update(['state' => RepriceAsk::VOID]);
 
             return;
@@ -130,13 +132,13 @@ final class ApplyReprice
     }
 
     /**
-     * Закупочная выросла — вопрос тому, кто подтвердил или ведёт сделку; null — цена встаёт сразу: снизилась, или он
-     * разницы не видит (`RepriceAsk::shownFor`).
+     * «Спросить» — вопрос тому, кто подтвердил или ведёт сделку, в любую сторону; null — он разницы не видит
+     * (`RepriceAsk::shownFor`), цена встаёт сразу.
      */
     private function ask(Reprice $reprice, Offer $offer, Bid|Deal $on, int $from, int $to): ?RepriceAsk
     {
         $user = $on instanceof Bid ? $on->user : $on->buyer;
-        $shown = $to > $from ? RepriceAsk::shownFor($user, $on, $offer, $from, $to) : null;
+        $shown = RepriceAsk::shownFor($user, $on, $offer, $from, $to);
         if ($shown === null) {
             return null;
         }
@@ -161,16 +163,16 @@ final class ApplyReprice
         $out = ['bids' => [], 'deal' => null];
         foreach ($live as $bid) {
             $choice = $bids[$bid->id] ?? $bids[(string) $bid->id] ?? null;
-            if (! in_array($choice, [self::KEEP, self::UPDATE], true)) {
+            if (! in_array($choice, [self::KEEP, self::UPDATE, self::ASK], true)) {
                 throw ValidationException::withMessages(['reprice' => 'Решите по каждому, кто подтвердил: '.$bid->user->shortName()]);
             }
             $out['bids'][$bid->id] = $choice;
         }
         if ($liveDeal) {
-            if (! in_array($deal, [self::KEEP, self::UPDATE], true)) {
-                throw ValidationException::withMessages(['reprice' => 'Решите по сделке: оставить прежнюю закупочную или обновить']);
+            if (! in_array($deal, [self::KEEP, self::UPDATE, self::ASK], true)) {
+                throw ValidationException::withMessages(['reprice' => 'Решите по сделке: оставить прежнюю закупочную, обновить или спросить']);
             }
-            if ($deal === self::UPDATE && ! $liveDeal->moneyEditable()) {
+            if ($deal !== self::KEEP && ! $liveDeal->moneyEditable()) {
                 throw ValidationException::withMessages(['reprice' => 'По счёту сделки уже платили — закупочную в ней можно только оставить']);
             }
             $out['deal'] = $deal;
