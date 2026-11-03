@@ -35,6 +35,7 @@ final class EstimateAskedNotice extends EstimateNotice
         return ['title' => $this->title(), 'lines' => $this->lines(
             $correction ? 'Цена XCar '.Money::rub($this->estimate->base_price) : null,
             'Срок '.$this->due(),
+            ! $correction && $this->estimate->exclusive_days ? 'После оценки — '.Estimate::daysWord($this->estimate->exclusive_days).' только вам' : null,
         ), 'button' => $correction ? 'Проверить' : 'Оценить'];
     }
 }

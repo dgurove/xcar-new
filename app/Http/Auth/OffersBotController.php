@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\Cache;
 
 /**
  * Бот предложений на сайте: вход по кнопке «Открыть в XCar» (`login_url` — Telegram открывает ссылку отдельным
- * браузером, где человека ещё нет) и строка «Предложения в Telegram» в начале каталога — скрыть на 30 дней.
+ * браузером, где человека ещё нет), строка в начале каталога — скрыть на 30 дней, «Отписаться» в профиле.
  */
 final class OffersBotController
 {
@@ -37,6 +37,14 @@ final class OffersBotController
     public function state(Request $request)
     {
         return response()->json(['linked' => Subscriber::subscribed($request->user())]);
+    }
+
+    /** «Отписаться» в профиле: бот больше не пишет; написал ему снова — подписка встанет сама. */
+    public function destroy(Request $request)
+    {
+        Subscriber::where('user_id', $request->user()->id)->delete();
+
+        return back()->with('toast', 'Бот предложений отключён');
     }
 
     /** × у строки подписки: не показывать месяц. */

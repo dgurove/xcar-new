@@ -11,8 +11,8 @@ import { request } from '../lib/http';
 //   login — «Войти через Telegram» на странице входа: ожидание прямо в кнопке, вход после «Войти» в чате.
 // Под «Войти как» (foreign) шторка, строка и карточка те же, а «Подключить» останавливает тостом.
 // Переход в Telegram — сразу в приложение (tg://), а если его нет — через t.me. Ответ приходит событием хаба
-// live:telegram или, когда человек вернулся на вкладку, вопросом серверу. Бот предложений (x-offers-bot.connect) —
-// та же шторка со своими событием, открытием и адресом проверки (liveEvent, openEvent, stateUrl).
+// live:telegram или, когда человек вернулся на вкладку, вопросом серверу. Бот предложений и WhatsApp — своя шторка
+// «Куда присылать» (offers_feed_controller).
 export default class extends Controller {
     static targets = ['step', 'scene', 'label', 'cancel', 'title', 'stop'];
     static values = {

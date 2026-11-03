@@ -2,29 +2,29 @@
 
 namespace App\WhatsApp\Console;
 
-use App\WhatsApp\Group;
+use App\WhatsApp\Sender;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
 /**
- * Обход группы WhatsApp раз в минуту (`routes/console.php`): шлёт, что пора (`Group::step`), а следующую — в ту же минуту,
- * если пауза в неё укладывается: паузы 30–90 с без запуска каждые 15 с.
+ * Обход WhatsApp раз в минуту (`routes/console.php`): шлёт, что пора (`Sender::step` — группа, личные, оценка), а следующее —
+ * в ту же минуту, если пауза в неё укладывается: паузы 30–90 с без запуска каждые 15 с.
  */
 final class Tick extends Command
 {
     protected $signature = 'whatsapp:tick';
 
-    protected $description = 'WhatsApp: отправить в группу новые предложения';
+    protected $description = 'WhatsApp: отправить новые предложения и просьбы оценить';
 
-    public function handle(Group $group): int
+    public function handle(Sender $sender): int
     {
         $end = time() + 50;
         try {
-            while (time() + ($wait = $group->wait()) <= $end) {
+            while (time() + ($wait = $sender->wait()) <= $end) {
                 sleep($wait);
-                if (! $group->step()) {
+                if (! $sender->step()) {
                     break;
                 }
             }

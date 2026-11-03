@@ -95,6 +95,7 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
             'approved_at' => 'datetime',
             'rejected_at' => 'datetime',
             'telegram_linked_at' => 'datetime',
+            'whatsapp_linked_at' => 'datetime',
         ];
     }
 

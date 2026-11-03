@@ -21,7 +21,9 @@ Schedule::command('bank:sync --days=1 --digest')->dailyAt('06:10')->withoutOverl
 Schedule::command('mail:sync')->everyMinute()->withoutOverlapping()->runInBackground();
 // Без withoutOverlapping: очередь держит замок Postgres в самой команде — новый опрос ждёт прежний и подхватывает без паузы.
 Schedule::command('telegram:poll')->everyMinute()->runInBackground();
-// Группа WhatsApp (`WhatsApp\Group`): паузы между сообщениями — внутри минуты самой командой.
+// WhatsApp (`WhatsApp\Sender`): группа, личные, оценка — паузы между сообщениями внутри минуты самой командой; коды
+// привязки — длинным опросом эстафетой, как Telegram (привязка работает и при выключенной рассылке).
+Schedule::command('whatsapp:poll')->everyMinute()->runInBackground()->when(fn () => filled(config('xcar.whatsapp.via')));
 Schedule::command('whatsapp:tick')->everyMinute()->withoutOverlapping()->runInBackground()
     ->when(fn () => filled(config('xcar.whatsapp.via')) && filled(config('xcar.whatsapp.since')));
 Schedule::command('mail:reconcile')->dailyAt('04:10');

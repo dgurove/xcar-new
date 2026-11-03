@@ -73,11 +73,44 @@
   /* Вход через Telegram: ожидание прямо в кнопке. */
   .tg-spin { width: 1.125rem; height: 1.125rem; border-radius: 999px; border: 2px solid rgb(255 255 255 / .35); border-top-color: #fff; animation: spin .8s linear infinite; }
 
+  /* WhatsApp (03.11.2026): зелёный — его фирменный, то же исключение из «лайм — глагол», что синий Telegram. Текстом —
+     темнее: #25d366 на белом не читается. */
+  :root { --color-whatsapp: #25d366; --color-whatsapp-hover: #1fb855; --color-whatsapp-ink: #128c4a; --wa-wall: #efeae2; --wa-bubble: #fff; --wa-link: #027eb5; }
+  .dark { --color-whatsapp-ink: #25d366; --wa-wall: #0b141a; --wa-bubble: #202c33; --wa-link: #53bdeb; }
+  .btn-whatsapp { background: var(--color-whatsapp); color: #fff; }
+  @media (hover: hover) { .btn-whatsapp:hover { background: var(--color-whatsapp-hover); } }
+  .btn-whatsapp:active { background: var(--color-whatsapp-hover); }
+  .wa-logo { display: inline-flex; flex-shrink: 0; align-items: center; justify-content: center; border-radius: 999px; background: var(--color-whatsapp); color: #fff; }
+  .wa-logo > svg { width: 56%; height: 56%; }
+  .wa-tile { background: var(--color-whatsapp) !important; color: #fff !important; }
+  .tg-wait.is-wa::before, .tg-wait.is-wa::after { background: var(--color-whatsapp); }
+
+  /* «Куда присылать предложения» (x-offers-feed): два знака внахлёст в строке «Предложений» — вырез цветом плашки. */
+  .feed-logos { position: relative; display: inline-flex; width: 2.5rem; height: 2.5rem; flex-shrink: 0; }
+  .feed-logos > .tg-logo { position: absolute; left: 0; top: 0; }
+  .feed-logos > .wa-logo { position: absolute; right: 0; bottom: 0; outline: 2px solid var(--color-surface); }
+  .feed-verb-tg { color: var(--color-telegram); }
+  .feed-verb-wa { color: var(--color-whatsapp-ink); }
+  .feed-on { display: inline-flex; flex-shrink: 0; align-items: center; gap: .25rem; color: var(--color-ink-muted); font-size: var(--text-sm); }
+  /* Сцена: шапка чата сверху, переписка по очереди Telegram и WhatsApp — фон, пузырь, кнопка или ссылка. */
+  .feed-scene { padding-top: 3rem; transition: background-color .5s var(--ease-out); }
+  .feed-scene[data-app="wa"] { background: var(--wa-wall); }
+  .feed-chat { position: absolute; top: .625rem; left: .875rem; right: .875rem; display: flex; color: var(--tg-bubble-ink); font-size: var(--text-sm); font-weight: 500; }
+  .feed-chat > span { display: inline-flex; align-items: center; gap: .5rem; min-width: 0; }
+  .feed-scene[data-app="tg"] .feed-wa, .feed-scene[data-app="wa"] .feed-tg { display: none; }
+  .feed-scene[data-app="wa"] .tg-bubble, .feed-scene[data-app="wa"] .tg-typing { background: var(--wa-bubble); border-radius: .25rem .75rem .75rem .75rem; }
+  .feed-scene[data-app="wa"] .tg-file-icon { background: #e5533d; }
+  .feed-scene[data-app="wa"] .tg-key { display: none; }
+  .feed-link { display: none; color: var(--wa-link); }
+  .feed-scene[data-app="wa"] .feed-link { display: block; }
+  .feed-scene.is-playing .feed-chat { animation: tg-step .4s var(--ease-out); }
+
   @media (prefers-reduced-motion: reduce) {
     .tg-scene.is-playing .tg-typing { animation: none; }
     .tg-scene.is-playing .tg-bubble, .tg-scene.is-playing .tg-key, .tg-step:not([hidden]), .tg-done { animation: none; }
     .tg-done path { stroke-dashoffset: 0; animation: none; }
     .tg-wait::before, .tg-wait::after { animation: none; opacity: 0; }
+    .feed-scene, .feed-scene.is-playing .feed-chat { transition: none; animation: none; }
   }
 }
 

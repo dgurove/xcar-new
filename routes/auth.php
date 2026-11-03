@@ -10,6 +10,7 @@ use App\Http\Auth\PasskeyController;
 use App\Http\Auth\PasswordController;
 use App\Http\Auth\TelegramConnectController;
 use App\Http\Auth\TelegramController;
+use App\Http\Auth\WhatsAppController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('guest')->group(function () {
@@ -56,6 +57,9 @@ Route::get('/telegram/connect', [TelegramConnectController::class, 'show'])->mid
 Route::get('/telegram/open/{target}', [OffersBotController::class, 'open'])->where('target', '[a-z0-9]+')->middleware('throttle:30,1');
 Route::post('/account/offers-bot/hide', [OffersBotController::class, 'hide'])->middleware(['auth', 'throttle:20,1']);
 Route::get('/account/offers-bot/state', [OffersBotController::class, 'state'])->middleware('auth');
+Route::delete('/account/offers-bot', [OffersBotController::class, 'destroy'])->middleware('auth');
+Route::get('/account/whatsapp/state', [WhatsAppController::class, 'state'])->middleware('auth');
+Route::delete('/account/whatsapp', [WhatsAppController::class, 'destroy'])->middleware('auth');
 Route::get('/password/link/{token}', [PasswordController::class, 'link'])->middleware('throttle:30,1');
 Route::post('/password/link/{token}', [PasswordController::class, 'setByLink'])->middleware('throttle:5,1');
 

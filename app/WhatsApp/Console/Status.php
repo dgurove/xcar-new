@@ -2,7 +2,7 @@
 
 namespace App\WhatsApp\Console;
 
-use App\WhatsApp\Group;
+use App\WhatsApp\Sender;
 use Illuminate\Console\Command;
 
 /** Для `deploy/check.sh`: что не так со службой WhatsApp — строками и кодом 1; всё в порядке — молча. */
@@ -12,9 +12,9 @@ final class Status extends Command
 
     protected $description = 'WhatsApp: служба в Цюрихе в порядке?';
 
-    public function handle(Group $group): int
+    public function handle(Sender $sender): int
     {
-        $problems = $group->problems();
+        $problems = $sender->problems();
         foreach ($problems as $problem) {
             $this->line($problem);
         }

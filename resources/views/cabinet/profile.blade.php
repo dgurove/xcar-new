@@ -144,6 +144,8 @@
         </div>
     </div>
 
+    <x-offers-feed.rows/>
+
     <form method="post" action="/logout" class="list" data-turbo-confirm="Выйти?">
         @csrf
         <button class="row w-full justify-center text-danger">Выйти</button>

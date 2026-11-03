@@ -82,6 +82,7 @@ use App\Telegram\Offers\Console\Run as OffersBotRun;
 use App\Users\Console\CreateUser;
 use App\Users\Console\SeedDemo;
 use App\Users\Console\TelegramAvatars;
+use App\WhatsApp\Console\Poll as WhatsAppPoll;
 use App\WhatsApp\Console\Status as WhatsAppStatus;
 use App\WhatsApp\Console\Test as WhatsAppTest;
 use App\WhatsApp\Console\Tick as WhatsAppTick;
@@ -149,7 +150,7 @@ return Application::configure(basePath: dirname(__DIR__))
         Report::class,
         Poll::class, SetProfile::class,
         OffersBotRun::class, OffersBotLane::class, OffersBotProfile::class,
-        WhatsAppTick::class, WhatsAppTest::class, WhatsAppStatus::class,
+        WhatsAppTick::class, WhatsAppTest::class, WhatsAppStatus::class, WhatsAppPoll::class,
         SyncAcquiring::class,
         BackfillPayLinks::class,
         SyncBank::class,
