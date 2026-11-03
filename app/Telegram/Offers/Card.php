@@ -2,6 +2,7 @@
 
 namespace App\Telegram\Offers;
 
+use App\Media\Jpeg;
 use App\Offers\Offer;
 use App\Offers\Share\Caption;
 use App\Offers\Share\SharePdf;
@@ -10,10 +11,7 @@ use App\Support\Surface;
 use App\Users\User;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Cache;
-use Spatie\Image\Enums\Fit;
-use Spatie\Image\Image;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
-use Throwable;
 
 /**
  * Карточка предложения в боте — одно сообщение (03.11.2026, владелец: «пдф, текст и ссылка-кнопка в одном сообщении»):
@@ -88,25 +86,15 @@ final class Card
     }
 
     /**
-     * Кадр JPEG до `side` px из нашего webp; не пережали — как есть, Telegram принимает и webp. Им же — превью PDF в
-     * WhatsApp (`WhatsApp\Group`).
+     * Кадр JPEG до 1280 px из нашего webp; не пережали — как есть, Telegram принимает и webp.
      *
      * @return array{0: string, 1: string} содержимое и имя
      */
-    public static function jpeg(Media $media, int $side = self::SIDE): array
+    private static function jpeg(Media $media): array
     {
-        $base = (string) tempnam(sys_get_temp_dir(), 'tgph');
-        $tmp = $base.'.jpg';
-        try {
-            Image::load($media->getPath())->fit(Fit::Max, $side, $side)->format('jpg')->quality(85)->save($tmp);
+        $jpeg = Jpeg::fit($media, self::SIDE);
 
-            return [(string) file_get_contents($tmp), 'offer-'.$media->id.'.jpg'];
-        } catch (Throwable) {
-            return [(string) file_get_contents($media->getPath()), $media->file_name];
-        } finally {
-            @unlink($tmp);
-            @unlink($base);
-        }
+        return $jpeg !== null ? [$jpeg, 'offer-'.$media->id.'.jpg'] : [(string) file_get_contents($media->getPath()), $media->file_name];
     }
 
     private static function button(Offer $offer, bool $login): array

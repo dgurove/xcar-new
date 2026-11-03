@@ -17,7 +17,11 @@ final class Gateway
         return trim((string) config('xcar.whatsapp.via')) !== '';
     }
 
-    /** @return array{connected: bool, logged_in: bool, stopped: ?string, in_group: bool, group: ?string} */
+    /**
+     * in_group: null — WhatsApp не ответил про группу (`group_error`), служба знает о ней только из прошлого ответа или ничего.
+     *
+     * @return array{connected: bool, logged_in: bool, stopped: ?string, in_group: ?bool, group: ?string, group_error?: string}
+     */
     public function status(): array
     {
         return $this->http()->timeout(15)->get('/status')->throw()->json();

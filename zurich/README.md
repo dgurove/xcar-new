@@ -52,7 +52,8 @@
 2. Привязать: `~/.local/bin/xcar-whatsapp pair <номер владельца>` при остановленной службе — код из 8 знаков уходит
    владельцу в Telegram, он вводит его: WhatsApp → Связанные устройства → Привязка устройства → «Связать по номеру
    телефона». Затем `systemctl --user restart xcar-whatsapp`.
-3. Группа: `curl -s -H "Authorization: Bearer $TOKEN" 127.0.0.1:9480/groups` → JID нужной в `TARGET`, перезапуск службы.
+3. Группа: `curl -s -H "Authorization: Bearer $(sed -n 's/^TOKEN=//p' ~/.config/xcar-whatsapp/env)" 127.0.0.1:9480/groups`
+   → JID нужной в `TARGET`, перезапуск службы.
 4. На проде в `/srv/xcar/env/.env.app`: `WHATSAPP_VIA=http://zurich:9444`, `WHATSAPP_TOKEN=<TOKEN отсюда>`.
    `WHATSAPP_SINCE` пуст — сами предложения не уходят, только проверка `php artisan whatsapp:test <номера>`; задать
    (`2026-11-05 10:00`) — с этого момента публикации уходит каждое новое. `WHATSAPP_DAILY` — потолок в сутки (100).
@@ -62,7 +63,7 @@
     systemctl --user status xcar-whatsapp
     ssh xcar-next 'docker exec xcar-app-1 php artisan whatsapp:status && echo в порядке'
 
-**Остановилась сама** (отвязали, временный бан, сессию перехватили, клиент устарел) — пишет владельцу в Telegram, причина в
+**Остановилась сама** (отвязали, временный бан, сессию перехватили, клиент устарел, WhatsApp отказал в подключении) — пишет владельцу в Telegram, причина в
 `~/.local/state/xcar-whatsapp/stopped`, и больше не подключается. Разобраться, в чём дело (при бане — подождать срок и
 снизить поток), потом удалить этот файл и `systemctl --user restart xcar-whatsapp`; отвязали — удалить
 `~/.local/share/xcar-whatsapp` и привязать заново. Не отвязывать устройство на телефоне без нужды: частые привязки

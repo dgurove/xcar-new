@@ -7,10 +7,12 @@ use App\Offers\OfferState;
 use App\Vendors\Vendor;
 use App\WhatsApp\Group;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 /**
@@ -27,7 +29,10 @@ class WhatsAppGroupTest extends TestCase
 
     private int $sendStatus = 200;
 
-    /** @var list<array{key: string, caption: string}> */
+    /** Обрыв связи до службы вместо ответа. */
+    private bool $offline = false;
+
+    /** @var list<array{key: string, caption: string, files: list<string>}> */
     private array $sent = [];
 
     protected function setUp(): void
@@ -39,12 +44,17 @@ class WhatsAppGroupTest extends TestCase
         Http::fake([
             'zurich:9444/status' => fn () => Http::response($this->status),
             'zurich:9444/send' => function ($r) {
+                if ($this->offline) {
+                    return Http::failedConnection();
+                }
                 if ($this->sendStatus !== 200) {
                     return Http::response(['error' => 'нет'], $this->sendStatus);
                 }
                 // Тело — multipart: части по имени.
-                $parts = collect($r->data())->pluck('contents', 'name');
-                $this->sent[] = ['key' => $parts['key'], 'caption' => $parts['caption']];
+                $parts = collect($r->data());
+                $field = $parts->pluck('contents', 'name');
+                $this->sent[] = ['key' => $field['key'], 'caption' => $field['caption'],
+                    'files' => $parts->whereNotNull('filename')->pluck('name')->all()];
 
                 return Http::response(['id' => 'M'.count($this->sent)]);
             },
@@ -145,6 +155,53 @@ class WhatsAppGroupTest extends TestCase
         $this->assertFalse($this->step());
         $this->assertSame(3, (int) DB::table('whatsapp_sent')->value('attempts'));
         $this->assertSame([], $this->sent);
+    }
+
+    public function test_pdf_with_preview_and_link_on_next_line(): void
+    {
+        $this->addPhotos($this->offer);
+        $this->assertTrue($this->step());
+        $this->assertSame(['pdf', 'thumb'], $this->sent[0]['files']);
+        // Ссылка — следующей строкой, без пустой (владелец 03.11.2026).
+        $this->assertMatchesRegularExpression('~000\nhttps?://\S+/offers/~u', $this->sent[0]['caption']);
+        $this->assertStringNotContainsString("\n\n", $this->sent[0]['caption']);
+    }
+
+    public function test_broken_offer_does_not_hold_the_queue(): void
+    {
+        // PDF первой машины не собрать (кадр пропал с диска) — попытка тратится, после трёх очередь идёт дальше.
+        $this->addPhotos($this->offer);
+        $this->offer->fresh()->visiblePhotos()->each(fn ($m) => @unlink($m->getPath()));
+        $second = $this->openOffer();
+        foreach (range(1, 3) as $i) {
+            $this->assertFalse($this->step());
+            $this->later();
+        }
+        $this->assertTrue($this->step());
+        $this->assertSame('offer:'.$second->id, $this->sent[0]['key']);
+    }
+
+    public function test_lost_connection_does_not_spend_attempts(): void
+    {
+        // Туннель лёг — машина ждёт, сколько бы ни лежал.
+        $this->offline = true;
+        foreach (range(1, 5) as $i) {
+            $this->step();
+            $this->later();
+        }
+        $this->assertSame(0, (int) DB::table('whatsapp_sent')->value('attempts'));
+        $this->offline = false;
+        $this->assertTrue($this->step());
+        $this->assertCount(1, $this->sent);
+    }
+
+    private function addPhotos(Offer $offer): void
+    {
+        Storage::fake('public');
+        Storage::fake('cache');
+        foreach (range(1, 2) as $i) {
+            $offer->addMedia(UploadedFile::fake()->image("p{$i}.jpg", 400, 300))->toMediaCollection('photos');
+        }
     }
 
     public function test_check_sends_without_remembering(): void

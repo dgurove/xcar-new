@@ -38,7 +38,6 @@ final class Test extends Command
             }
             if ($wait = $group->wait()) {
                 $this->line("Пауза {$wait} с");
-                sleep($wait);
             }
             $sent = $group->deliver($offer, 'test:'.$offer->id.':'.time(), false);
             $this->line(($sent ? 'Ушло: ' : 'Не ушло (см. лог): ').$number.' '.$offer->titleWithYear());

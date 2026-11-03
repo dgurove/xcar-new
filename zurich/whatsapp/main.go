@@ -51,8 +51,8 @@ const (
 	deviceName = "Chrome (Linux)"
 	// Состав группы спрашиваем у WhatsApp не чаще.
 	groupTTL = 10 * time.Minute
-	// Владельцу в Telegram — не чаще.
-	alertEvery = 30 * time.Minute
+	// Сколько ждать ответа WhatsApp про группу: xcar ждёт /status 15 с.
+	groupWait = 10 * time.Second
 )
 
 var (
@@ -158,7 +158,7 @@ func pair(phone string) error {
 		return err
 	}
 	log.Printf("код: %s", code)
-	tell(fmt.Sprintf("Код для WhatsApp: %s\n\nНа телефоне: WhatsApp → Настройки → Связанные устройства → Привязка устройства → «Связать по номеру телефона» и ввести код. Жду 10 минут.", code), false)
+	tell(fmt.Sprintf("Код для WhatsApp: %s\n\nНа телефоне: WhatsApp → Настройки → Связанные устройства → Привязка устройства → «Связать по номеру телефона» и ввести код. Жду 10 минут.", code))
 	select {
 	case err := <-paired:
 		if err != nil {
@@ -254,7 +254,10 @@ func (s *service) event(evt any) {
 	case *events.ClientOutdated:
 		s.stop("WhatsApp считает клиент устаревшим — обновить whatsmeow")
 	case *events.ConnectFailure:
-		log.Printf("WhatsApp отказал в подключении: %s %s", e.Reason, e.Message)
+		// Сюда whatsmeow отдаёт только отказы, после которых сам не переподключается (временные — переподключает молча).
+		s.stop(fmt.Sprintf("WhatsApp отказал в подключении: %s %s", e.Reason, e.Message))
+	case *events.CATRefreshError:
+		s.stop("WhatsApp не продлил доступ: " + e.Error.Error())
 	case *events.Connected:
 		log.Printf("на связи")
 	}
@@ -272,7 +275,8 @@ func (s *service) stop(reason string) {
 	_ = os.MkdirAll(stateDir, 0o700)
 	_ = os.WriteFile(stopFile, []byte(reason+"\n"), 0o600)
 	go s.cli.Disconnect()
-	tell("xcar WhatsApp остановлен: "+reason+"\n\nПредложения в группу не уходят. Снять — zurich/README.md.", true)
+	// Остановка — раз на состояние (`first`, файл stopped): повторяться нечему, а снятую и снова случившуюся надо знать.
+	tell("xcar WhatsApp остановлен: " + reason + "\n\nПредложения в группу не уходят. Снять — zurich/README.md.")
 }
 
 func (s *service) auth(next http.HandlerFunc) http.HandlerFunc {
@@ -295,13 +299,19 @@ func (s *service) status(w http.ResponseWriter, r *http.Request) {
 	stopped := s.stopReason()
 	out := map[string]any{
 		"connected": s.cli.IsConnected(), "logged_in": s.cli.IsLoggedIn(), "stopped": nil,
-		"in_group": false, "group": nil,
+		"in_group": nil, "group": nil,
 	}
 	if stopped != "" {
 		out["stopped"] = stopped
 	}
-	if info, err := s.groupInfo(r.Context(), false); err == nil && info != nil {
+	// in_group: true/false — знаем; null — WhatsApp не ответил, а прежнего ответа нет (не путать с «не в группе»).
+	switch info, err := s.groupInfo(r.Context()); {
+	case info != nil:
 		out["in_group"], out["group"] = s.member(info), info.Name
+	case errors.Is(err, whatsmeow.ErrNotInGroup) || errors.Is(err, whatsmeow.ErrGroupNotFound):
+		out["in_group"] = false
+	case err != nil:
+		out["group_error"] = err.Error()
 	}
 	reply(w, http.StatusOK, out)
 }
@@ -336,7 +346,12 @@ func (s *service) send(w http.ResponseWriter, r *http.Request) {
 		reply(w, http.StatusBadRequest, map[string]string{"error": "нужны key и caption"})
 		return
 	}
-	pdf, thumb := formFile(r, "pdf"), formFile(r, "thumb")
+	pdf, err := formFile(r, "pdf")
+	if err != nil {
+		reply(w, http.StatusBadRequest, map[string]string{"error": "PDF не прочитан: " + err.Error()})
+		return
+	}
+	thumb, _ := formFile(r, "thumb")
 
 	s.sendMu.Lock()
 	defer s.sendMu.Unlock()
@@ -351,13 +366,18 @@ func (s *service) send(w http.ResponseWriter, r *http.Request) {
 		reply(w, http.StatusServiceUnavailable, map[string]string{"error": "нет связи с WhatsApp"})
 		return
 	}
-	if info, err := s.groupInfo(ctx, false); err != nil || info == nil || !s.member(info) {
+	info, err := s.groupInfo(ctx)
+	switch {
+	case info != nil && !s.member(info), errors.Is(err, whatsmeow.ErrNotInGroup), errors.Is(err, whatsmeow.ErrGroupNotFound):
 		reply(w, http.StatusConflict, map[string]string{"error": "номер не в группе"})
+		return
+	case info == nil:
+		reply(w, http.StatusServiceUnavailable, map[string]string{"error": "не узнать группу: " + fmt.Sprint(err)})
 		return
 	}
 	var id string
 	var done bool
-	err := s.db.QueryRowContext(ctx, `select id, done from xcar_sent where key = ?`, key).Scan(&id, &done)
+	err = s.db.QueryRowContext(ctx, `select id, done from xcar_sent where key = ?`, key).Scan(&id, &done)
 	switch {
 	case err == nil && done:
 		reply(w, http.StatusOK, map[string]string{"id": id})
@@ -432,22 +452,30 @@ func (s *service) later() {
 	})
 }
 
-func (s *service) groupInfo(ctx context.Context, fresh bool) (*types.GroupInfo, error) {
+// groupInfo — группа TARGET: из памяти до 10 минут, иначе у WhatsApp. Не ответил — прежний ответ, если он есть: короткий
+// сбой связи не превращается в «не в группе». Вышли из группы — забываем сразу.
+func (s *service) groupInfo(ctx context.Context) (*types.GroupInfo, error) {
 	if s.target.IsEmpty() {
 		return nil, errors.New("TARGET не задан")
 	}
 	s.groupMu.Lock()
 	defer s.groupMu.Unlock()
-	if !fresh && s.group != nil && time.Since(s.groupAt) < groupTTL {
+	if s.group != nil && time.Since(s.groupAt) < groupTTL {
 		return s.group, nil
 	}
 	if !s.cli.IsLoggedIn() {
-		return nil, errors.New("не на связи")
+		return s.group, errors.New("не на связи")
 	}
-	info, err := s.cli.GetGroupInfo(ctx, s.target)
-	if err != nil {
+	ask, cancel := context.WithTimeout(ctx, groupWait)
+	defer cancel()
+	info, err := s.cli.GetGroupInfo(ask, s.target)
+	switch {
+	case errors.Is(err, whatsmeow.ErrNotInGroup) || errors.Is(err, whatsmeow.ErrGroupNotFound):
 		s.group = nil
 		return nil, err
+	case err != nil:
+		log.Printf("группа не ответила: %v", err)
+		return s.group, err
 	}
 	s.group, s.groupAt = info, time.Now()
 	return info, nil
@@ -469,17 +497,24 @@ func (s *service) member(info *types.GroupInfo) bool {
 
 type upload struct{ data []byte }
 
-func formFile(r *http.Request, name string) *upload {
+// formFile — часть запроса; нет части — nil без ошибки, есть, но не прочиталась или пустая — ошибка.
+func formFile(r *http.Request, name string) (*upload, error) {
 	f, _, err := r.FormFile(name)
+	if errors.Is(err, http.ErrMissingFile) {
+		return nil, nil
+	}
 	if err != nil {
-		return nil
+		return nil, err
 	}
 	defer f.Close()
 	data, err := io.ReadAll(f)
-	if err != nil || len(data) == 0 {
-		return nil
+	if err == nil && len(data) == 0 {
+		err = errors.New("пустой файл")
 	}
-	return &upload{data: data}
+	if err != nil {
+		return nil, err
+	}
+	return &upload{data: data}, nil
 }
 
 var pageRe = regexp.MustCompile(`/Type\s*/Page[^s]`)
@@ -495,16 +530,8 @@ func reply(w http.ResponseWriter, code int, body any) {
 	_ = json.NewEncoder(w).Encode(body)
 }
 
-// tell — владельцу в Telegram через ~/bin/tg-send (бот ccgram). limited — не чаще раза в 30 минут.
-func tell(text string, limited bool) {
-	stamp := filepath.Join(stateDir, "alert.stamp")
-	if limited {
-		if fi, err := os.Stat(stamp); err == nil && time.Since(fi.ModTime()) < alertEvery {
-			return
-		}
-		_ = os.MkdirAll(stateDir, 0o700)
-		_ = os.WriteFile(stamp, nil, 0o600)
-	}
+// tell — владельцу в Telegram через ~/bin/tg-send (бот ccgram).
+func tell(text string) {
 	cmd := exec.Command(filepath.Join(home, "bin/tg-send"))
 	cmd.Stdin = strings.NewReader(text)
 	if out, err := cmd.CombinedOutput(); err != nil {

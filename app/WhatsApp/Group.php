@@ -2,13 +2,14 @@
 
 namespace App\WhatsApp;
 
+use App\Media\Jpeg;
 use App\Offers\Offer;
 use App\Offers\OfferState;
 use App\Offers\Share\Caption;
 use App\Offers\Share\SharePdf;
 use App\Offers\Share\Subject;
-use App\Telegram\Offers\Card;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
@@ -32,6 +33,7 @@ use Throwable;
  * Как — чтобы номер не сочли рассыльщиком (обсуждали 30.10–03.11.2026): по одному, пауза 30–90 с, после 15–20 подряд —
  * перерыв 5–10 минут; ночью (22:00–08:00 по Москве) тишина, ночная пачка уходит с утра; не больше `whatsapp.daily` в сутки.
  * Дубль хуже потери: ключ сообщения — машина, служба помнит ключи и повтор с тем же ключом второй раз не отправляет.
+ * Отправка — под общим замком с паузой внутри: `whatsapp:test` и обход не уходят вплотную друг к другу.
  */
 final class Group
 {
@@ -50,8 +52,10 @@ final class Group
     /** Столько отказов службы на одну машину — и её больше не пробуем. */
     private const ATTEMPTS = 3;
 
-    /** Превью документа: длинная сторона. */
+    /** Превью документа: длинная сторона и потолок — оно едет внутри самого сообщения. */
     private const THUMB = 240;
+
+    private const THUMB_BYTES = 60_000;
 
     private const PACE = 'whatsapp:pace';
 
@@ -78,44 +82,51 @@ final class Group
             return false;
         }
         // Нечего слать — к Цюриху не ходим.
-        if (! $this->candidates($since)->exists()) {
-            return false;
-        }
-        if (self::trouble($this->gateway->status()) !== null) {
-            return false;
-        }
         $offer = $this->candidates($since)->first();
+        if ($offer === null || self::trouble($this->gateway->status()) !== null) {
+            return false;
+        }
 
-        return $offer !== null && $this->deliver($offer, 'offer:'.$offer->id, true);
+        return $this->deliver($offer, 'offer:'.$offer->id, true);
     }
 
     /**
-     * Отправить машину в группу с паузой после. record — запомнить в `whatsapp_sent` (проверочная отправка не пишет).
+     * Отправить машину в группу: под замком, выждав паузу, и с паузой после. record — запомнить в `whatsapp_sent`
+     * (проверочная отправка не пишет).
      */
     public function deliver(Offer $offer, string $key, bool $record): bool
     {
-        if ($record) {
-            DB::table('whatsapp_sent')->insertOrIgnore(['offer_id' => $offer->id, 'created_at' => now()]);
-        }
-        try {
-            [$pdf, $thumb] = $this->files($offer);
-            $id = $this->gateway->send($key, self::caption($offer), $pdf, $thumb);
-        } catch (Throwable $e) {
-            // Служба отказала по самому сообщению — считаем попытку; лежит связь или служба остановлена — машина ждёт.
-            if ($record && $e instanceof RequestException && in_array($e->response->status(), [400, 422, 502], true)) {
-                DB::table('whatsapp_sent')->where('offer_id', $offer->id)->increment('attempts');
+        return Cache::lock('whatsapp:send', 300)->block(200, function () use ($offer, $key, $record) {
+            if ($wait = $this->wait()) {
+                sleep($wait);
             }
-            Log::warning('WhatsApp: предложение не ушло', ['offer' => $offer->id, 'error' => $e->getMessage()]);
-            Cache::forever(self::PACE, ['next' => now()->getTimestamp() + 60] + (Cache::get(self::PACE) ?? []));
+            if ($record) {
+                DB::table('whatsapp_sent')->insertOrIgnore(['offer_id' => $offer->id, 'created_at' => now()]);
+            }
+            try {
+                [$pdf, $thumb] = $this->files($offer);
+                $id = $this->gateway->send($key, self::caption($offer), $pdf, $thumb);
+            } catch (Throwable $e) {
+                // Не дошло до службы, она остановлена, не в группе или ключ не тот — машина ждёт, попытка не тратится.
+                // Остальное (PDF не собрался, служба отказала по самому сообщению) — попытка: иначе одна машина навсегда
+                // держала бы всю очередь.
+                $service = $e instanceof ConnectionException
+                    || ($e instanceof RequestException && in_array($e->response->status(), [401, 409, 503], true));
+                if ($record && ! $service) {
+                    DB::table('whatsapp_sent')->where('offer_id', $offer->id)->increment('attempts');
+                }
+                Log::warning('WhatsApp: предложение не ушло', ['offer' => $offer->id, 'error' => $e->getMessage()]);
+                Cache::forever(self::PACE, ['next' => now()->getTimestamp() + 60] + (Cache::get(self::PACE) ?? []));
 
-            return false;
-        }
-        if ($record) {
-            DB::table('whatsapp_sent')->where('offer_id', $offer->id)->update(['message_id' => $id, 'sent_at' => now()]);
-        }
-        $this->paced();
+                return false;
+            }
+            if ($record) {
+                DB::table('whatsapp_sent')->where('offer_id', $offer->id)->update(['message_id' => $id, 'sent_at' => now()]);
+            }
+            $this->paced();
 
-        return true;
+            return true;
+        });
     }
 
     /**
@@ -145,7 +156,8 @@ final class Group
             (bool) $status['stopped'] => 'служба остановлена: '.$status['stopped'],
             ! $status['logged_in'] => 'устройство не привязано к WhatsApp',
             ! $status['connected'] => 'нет связи с WhatsApp',
-            ! $status['in_group'] => 'номер не состоит в группе',
+            ($status['in_group'] ?? null) === false => 'номер не состоит в группе',
+            ($status['in_group'] ?? null) === null => 'не узнать группу у WhatsApp: '.($status['group_error'] ?? 'нет ответа'),
             default => null,
         };
     }
@@ -153,14 +165,17 @@ final class Group
     /** Подпись: текст для клиента и ссылка на машину в XCar. */
     public static function caption(Offer $offer): string
     {
-        return implode("\n\n", array_filter([Caption::forward($offer), Caption::link($offer)]));
+        return implode("\n", array_filter([Caption::forward($offer), Caption::link($offer)]));
     }
 
-    /** Очередь: в продаже, приём идёт, не демо, шеринг открыт, вышло с `since`, ещё не уходило. */
+    /**
+     * Очередь: в продаже, приём идёт, не демо, шеринг не закрыт (`share_locked_by_estimate` закрывает его только тому, кого
+     * просили оценить, — группе он не помеха), вышло с `since`, ещё не уходило.
+     */
     public function candidates(Carbon $since): Builder
     {
         return Offer::query()->where('offers.state', OfferState::Open)->where('offers.is_demo', false)
-            ->where('offers.share_locked', false)->where('offers.share_locked_by_estimate', false)
+            ->where('offers.share_locked', false)
             ->where(fn ($w) => $w->whereNull('offers.bids_close_at')->orWhere('offers.bids_close_at', '>', now()))
             ->where('offers.published_at', '>=', $since)
             ->whereNotExists(fn ($x) => $x->from('whatsapp_sent as w')->whereColumn('w.offer_id', 'offers.id')
@@ -177,10 +192,10 @@ final class Group
             return [null, null];
         }
         $pdf = [(string) file_get_contents($share->prepared($subject)), $subject->fileName()];
-        $thumb = null;
-        if ($photo = $offer->mainPhoto()) {
-            [$bytes, $name] = Card::jpeg($photo, self::THUMB);
-            $thumb = str_ends_with($name, '.jpg') ? $bytes : null;
+        $photo = $offer->mainPhoto();
+        $thumb = $photo ? Jpeg::fit($photo, self::THUMB, 70) : null;
+        if ($thumb !== null && strlen($thumb) > self::THUMB_BYTES) {
+            $thumb = null;
         }
 
         return [$pdf, $thumb];

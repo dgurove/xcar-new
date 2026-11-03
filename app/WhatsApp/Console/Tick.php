@@ -4,6 +4,7 @@ namespace App\WhatsApp\Console;
 
 use App\WhatsApp\Group;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
@@ -28,7 +29,10 @@ final class Tick extends Command
                 }
             }
         } catch (Throwable $e) {
-            Log::warning('WhatsApp: обход сорвался', ['error' => $e->getMessage()]);
+            // Лежит туннель или служба — тревогу поднимает `whatsapp:status`; в журнал — раз в час, а не каждую минуту.
+            if (Cache::add('whatsapp:tick-failed', true, 3600)) {
+                Log::warning('WhatsApp: обход сорвался', ['error' => $e->getMessage()]);
+            }
         }
 
         return self::SUCCESS;
