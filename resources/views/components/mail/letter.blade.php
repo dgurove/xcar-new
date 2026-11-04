@@ -4,7 +4,7 @@
      во фрейме под письмом. На линии — кружок отправителя (x-mail.sender-avatar); kind: stage (этап),
      ask (без нашего ответа) — заголовок светлее, ours (наше) — фон у текста. --}}
 {{-- continuation — «ч.2» того же письма (те же слова, другие файлы): текст не повторяется, только вложения. --}}
-@props(['message', 'base' => '/mail', 'title', 'titled' => true, 'kind' => '', 'open' => false, 'focus' => false, 'reply' => false, 'continuation' => false, 'dismiss' => false])
+@props(['message', 'base' => '/mail', 'title', 'titled' => true, 'kind' => '', 'open' => false, 'focus' => false, 'reply' => false, 'continuation' => false, 'dismiss' => false, 'replying' => false])
 @php
     use App\Mail\{ParseState, SendState};
     use App\Mail\Chains\NodeTitle;
@@ -98,7 +98,7 @@
             @endif
 
             <div data-controller="unhide">
-                <div class="letter-foot">
+                <div class="letter-foot" @if ($replying) data-replying @endif>
                     <button type="button" class="letter-link" data-action="unhide#show" data-unhide-target="trigger">Исходное письмо</button>
                     @if ($reply)<x-mail.reply-button :message="$m" :base="$base" :frame="'reply-'.$m->id"/>@endif
                     {{-- Переписка ждёт ответа, а «Ответ не нужен» внизу ленты — у другой (окно писем ТС, несколько веток). --}}

@@ -22,55 +22,60 @@
      скрепка и «Aa» (панель форматирования). --}}
 <div class="compose min-w-0">
     @if ($errors->any() && ! $errors->has('to') && ! $errors->has('cc'))<p class="field-error px-4 pt-3">{{ $errors->first() }}</p>@endif
-    <div class="compose-row">
-        <span class="compose-label">От</span>
-        @if ($accounts->count() > 1)
+    {{-- «От» — строкой, только когда есть из чего выбрать (04.11.2026, владелец про вид редактора: серая строка с одним ящиком
+         занимала место на телефоне); один ящик — скрытым полем. --}}
+    @if ($accounts->count() > 1)
+        <div class="compose-row">
+            <span class="compose-label">От</span>
             <select name="account" class="compose-from" aria-label="От кого">
                 @foreach ($accounts as $a)
                     <option value="{{ $a->slug }}" @selected(old('account', $account->slug) === $a->slug)>{{ $a->fromName() }} &lt;{{ $a->email }}&gt;</option>
                 @endforeach
             </select>
-        @else
-            <input type="hidden" name="account" value="{{ $account->slug }}">
-            <span class="compose-value text-ink-muted">{{ $account->fromName() }} &lt;{{ $account->email }}&gt;</span>
-        @endif
-    </div>
+        </div>
+    @else
+        <input type="hidden" name="account" value="{{ $account->slug }}">
+    @endif
     <x-mail.recipients name="to" label="Кому" :value="$defaults['to']" :url="$base.'/addresses'" :names="$names" required>
         <button type="button" class="compose-cc-toggle" @if ($ccOpen) hidden @endif
                 onclick="const r = this.closest('.compose').querySelector('.compose-recipients[hidden]'); if (r) { r.hidden = false; r.querySelector('.recipients-input').focus(); } this.hidden = true">Копия</button>
     </x-mail.recipients>
     <x-mail.recipients name="cc" label="Копия" :value="$defaults['cc']" :url="$base.'/addresses'" :names="$names" :hidden="! $ccOpen"/>
-    {{-- Шаблоны нового письма и готовые ответы парковки (`Template::replies`): ответ перечитывается в своём фрейме. Без
-         предзагрузки: выбор «Фотоотчёта» собирает акт и кадры, наведение мышью не должно. --}}
-    @if ($templates->isNotEmpty() && $mode !== 'forward')
-        <div class="compose-row">
-            <span class="compose-label">Шаблон</span>
-            <div class="flex min-w-0 flex-1 gap-2 overflow-x-auto py-1">
-                @foreach ($templates as $t)
-                    <x-ui.pill :href="request()->fullUrlWithQuery(['template' => $t->id])" :current="request()->query('template') == $t->id" :data-turbo-frame="$mode === 'new' ? 'letters-frame' : $frame" data-turbo-prefetch="false">{{ $t->name }}</x-ui.pill>
-                @endforeach
-            </div>
-        </div>
-    @endif
     <div class="compose-row">
         <label for="compose-subject-{{ $frame ?? 'page' }}" class="compose-label">Тема</label>
         <input id="compose-subject-{{ $frame ?? 'page' }}" name="subject" value="{{ old('subject', $defaults['subject']) }}" class="compose-input" autocomplete="off">
     </div>
     <div class="compose-body">
-        <x-ui.editor name="body" :value="$defaults['body']" :focus="$parent && ($defaults['quote'] ?? null) === 'reply'" bare/>
-        {{-- Исходное письмо — не в поле ответа, а свёрнутым под ним (как в Gmail): при отправке его приклеивает
-             `Composer::create`, снятая галка — ответ без цитаты. --}}
-        @if ($parent && ! empty($defaults['quote']))
-            <details class="compose-quote">
-                <summary class="flex items-center gap-2">
-                    <label class="check" onclick="event.stopPropagation()"><input type="checkbox" name="quote" value="{{ $defaults['quote'] }}" @checked(old('quote', $errors->any() ? null : $defaults['quote']) !== null)><span>{{ $defaults['quote'] === 'forward' ? 'Пересылаемое письмо' : 'Исходное письмо' }}</span></label>
-                    <x-ui.chevron class="compose-quote-chev"/>
-                </summary>
-                <div class="compose-quote-body trix-content">{!! app(\App\Mail\Composer::class)->withQuote('', $parent, $defaults['quote']) !!}</div>
-            </details>
+        {{-- Шаблоны нового письма и готовые ответы парковки (`Template::replies`) — лентой чипов над текстом, а не строкой шапки
+             (04.11.2026: подпись «Шаблон» ломала колонку подписей, белые пилюли резались краем). Ответ перечитывается в своём
+             фрейме. Без предзагрузки: выбор «Фотоотчёта» собирает акт и кадры, наведение мышью не должно. --}}
+        @if ($templates->isNotEmpty() && $mode !== 'forward')
+            <div class="compose-templates">
+                @foreach ($templates as $t)
+                    <a href="{{ request()->fullUrlWithQuery(['template' => $t->id]) }}" class="compose-template" @if (request()->query('template') == $t->id) aria-current="true" @endif data-turbo-frame="{{ $mode === 'new' ? 'letters-frame' : $frame }}" data-turbo-prefetch="false">{{ $t->name }}</a>
+                @endforeach
+            </div>
         @endif
-        @if (($vehicle ?? null) && $mode !== 'forward')
-            @include('admin.mail.case-files')
+        <x-ui.editor name="body" :value="$defaults['body']" :focus="$parent && ($defaults['quote'] ?? null) === 'reply'" bare/>
+        {{-- Исходное письмо и «Из дела» — чипами одной полосы под текстом (04.11.2026): цитату при отправке приклеивает
+             `Composer::create`, снятая галка — ответ без неё; раскрытое — под полосой. --}}
+        @php $case = ($vehicle ?? null) && $mode !== 'forward'; @endphp
+        @if (($parent && ! empty($defaults['quote'])) || $case)
+            <div class="compose-extras">
+                @if ($parent && ! empty($defaults['quote']))
+                    <details class="compose-quote" name="compose-extra-{{ $frame ?? 'page' }}">
+                        <summary class="compose-chip">
+                            <label class="check" onclick="event.stopPropagation()"><input type="checkbox" name="quote" value="{{ $defaults['quote'] }}" @checked(old('quote', $errors->any() ? null : $defaults['quote']) !== null)></label>
+                            <span>{{ $defaults['quote'] === 'forward' ? 'Пересылаемое письмо' : 'Исходное письмо' }}</span>
+                            <x-ui.chevron class="compose-quote-chev"/>
+                        </summary>
+                        <div class="compose-quote-body trix-content">{!! app(\App\Mail\Composer::class)->withQuote('', $parent, $defaults['quote']) !!}</div>
+                    </details>
+                @endif
+                @if ($case)
+                    @include('admin.mail.case-files')
+                @endif
+            </div>
         @endif
         <div id="compose-files" class="compose-files" data-controller="files">
             @if ($parent && !empty($defaults['forward']))

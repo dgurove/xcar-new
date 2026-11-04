@@ -10,8 +10,8 @@
     $open = old('case_act') || old('case_stage') || old('case');
 @endphp
 @if ($acts || $stages->isNotEmpty() || $papers->isNotEmpty())
-    <details class="compose-quote compose-case" @if ($open) open @endif>
-        <summary class="flex items-center gap-2"><x-ui.icon name="clip" class="size-4"/><span>Из дела</span><x-ui.chevron class="compose-quote-chev"/></summary>
+    <details class="compose-quote compose-case" name="compose-extra-{{ $frame ?? 'page' }}" @if ($open) open @endif>
+        <summary class="compose-chip"><x-ui.icon name="clip" class="size-4"/><span>Из дела</span><x-ui.chevron class="compose-quote-chev"/></summary>
         <div class="mt-2 flex flex-wrap gap-2">
             @foreach ($acts as $kind => $label)
                 <label class="compose-file check"><input type="checkbox" name="case_act[]" value="{{ $kind }}" @checked($picked('case_act', $kind))><span>{{ $label }}</span></label>

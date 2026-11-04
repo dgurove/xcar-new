@@ -64,16 +64,16 @@
                     <summary class="letter-head"><span class="letter-who font-normal text-ink-muted">{{ $node['service'] ? $n.' '.\App\Support\Plural::of($n, ['служебное', 'служебных', 'служебных']) : 'Ещё '.$n.' '.\App\Support\Plural::of($n, ['письмо', 'письма', 'писем']) }}</span><span class="letter-when">{{ \App\Support\Ago::html(end($node['items'])->date_at, words: false) }}</span></summary>
                     <div class="letter-text">
                         @foreach ($node['items'] as $m)
-                            <x-mail.letter :message="$m" :base="$base" :title="NodeTitle::for($m, $candidate)" :titled="NodeTitle::titled($m, $candidate)" :kind="$own($m) ? 'ours' : ''" :reply="$reply"/>
+                            <x-mail.letter :message="$m" :replying="$m->id === $replyTo?->id" :base="$base" :title="NodeTitle::for($m, $candidate)" :titled="NodeTitle::titled($m, $candidate)" :kind="$own($m) ? 'ours' : ''" :reply="$reply"/>
                         @endforeach
                     </div>
                 </details>
             </div>
         @else
             @if (isset($continued[$node->id]))
-                <x-mail.letter :message="$node" :base="$base" title="Ещё файлы к письму" :kind="$own($node) ? 'ours' : ''" :open="! $node->is_seen || $node->id === $lastId || $node->id === $focusId" :focus="$node->id === $focusId" :reply="$reply" continuation/>
+                <x-mail.letter :message="$node" :replying="$node->id === $replyTo?->id" :base="$base" title="Ещё файлы к письму" :kind="$own($node) ? 'ours' : ''" :open="! $node->is_seen || $node->id === $lastId || $node->id === $focusId" :focus="$node->id === $focusId" :reply="$reply" continuation/>
             @else
-                <x-mail.letter :message="$node" :base="$base" :title="NodeTitle::for($node, $candidate)" :titled="NodeTitle::titled($node, $candidate)" :kind="$kind($node)" :dismiss="$reply && in_array($node->id, $asks, true) && $node->thread_id !== $replyTo?->thread_id" :open="! $node->is_seen || $node->id === $focusId || ($fold ? in_array($node->id, $keep, true) : $node->id === $lastId)" :focus="$node->id === $focusId" :reply="$reply"/>
+                <x-mail.letter :message="$node" :replying="$node->id === $replyTo?->id" :base="$base" :title="NodeTitle::for($node, $candidate)" :titled="NodeTitle::titled($node, $candidate)" :kind="$kind($node)" :dismiss="$reply && in_array($node->id, $asks, true) && $node->thread_id !== $replyTo?->thread_id" :open="! $node->is_seen || $node->id === $focusId || ($fold ? in_array($node->id, $keep, true) : $node->id === $lastId)" :focus="$node->id === $focusId" :reply="$reply"/>
             @endif
         @endif
     @empty
