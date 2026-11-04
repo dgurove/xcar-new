@@ -25,7 +25,7 @@ final class CloudShare
     /**
      * Ссылки на облако в тексте письма и пароль к ним («пароль: Z?X9aK(W]-»): один на письмо.
      *
-     * @return list<array{url: string, base: string, token: string, password: ?string}>
+     * @return list<array{url: string, base: string, token: string, password: ?string, kind?: string}>
      */
     public static function links(string $text): array
     {
@@ -33,6 +33,12 @@ final class CloudShare
         preg_match_all('~(https://[^\s/<>"]+)/(?:index\.php/)?s/([A-Za-z0-9]{8,})~u', $text, $m, PREG_SET_ORDER);
         $password = preg_match('/парол[ьяе]\w*\s*[:\-–—]?\s*(\S+)/iu', $text, $p) ? $p[1] : null;
         $links = [];
+        // «Большие файлы» Mail.ru (04.11.2026, ТИТ: «К этому письму приложены ссылки на следующие файлы: Фото торги.rar
+        // (189.6 Мб) https://cloud.mail.ru/stock/…») — своя страница без пароля, файл забирается по токену из неё (`stock`).
+        preg_match_all('~https://cloud\.mail\.ru/stock/([A-Za-z0-9]{12,})~u', $text, $stock, PREG_SET_ORDER);
+        foreach ($stock as $hit) {
+            $links[$hit[1]] = ['url' => $hit[0], 'base' => 'https://cloud.mail.ru', 'token' => $hit[1], 'password' => null, 'kind' => 'mailru'];
+        }
         foreach ($m as $hit) {
             if (! self::publicHost((string) parse_url($hit[1], PHP_URL_HOST))) {
                 continue;
@@ -81,6 +87,9 @@ final class CloudShare
                     throw new RuntimeException('Архив по ссылке больше 300 МБ');
                 }
             }])->withHeaders(['User-Agent' => self::AGENT])->timeout(60);
+        if (($link['kind'] ?? null) === 'mailru') {
+            return $this->mailru($http, $link, $to);
+        }
         $share = $link['base'].'/s/'.$link['token'];
 
         $page = $http()->get($share);
@@ -110,5 +119,56 @@ final class CloudShare
 
         return preg_match("/filename\\*=UTF-8''([^;]+)/i", $disposition, $n) ? rawurldecode(trim($n[1], '"'))
             : (preg_match('/filename="([^"]+)"/i', $disposition, $n) ? $n[1] : $link['token'].'.zip');
+    }
+
+    /**
+     * Страница «Почтовые вложения» Mail.ru: в её данных — файлы ссылки (`dwl_token`, имя, размер) и адрес раздачи
+     * (`"stock":{"url":…}`); файл — `{раздача}/stock/get/{dwl_token}/{имя}`, так собирает ссылку сама страница. Несколько
+     * файлов — одним zip, как «Download all» у Nextcloud.
+     */
+    private function mailru(\Closure $http, array $link, string $to): string
+    {
+        $page = $http()->get($link['url']);
+        if (! $page->successful()) {
+            throw new RuntimeException($page->status() === 404 ? 'Ссылки на облако больше нет' : 'Облако ответило '.$page->status());
+        }
+        $html = $page->body();
+        preg_match('~"stock":\{"count":"?\d+"?,"url":"(https://[^"]+)"~', $html, $host);
+        preg_match_all('~"name":"([^"]+)","stock":"[^"]*","size":(\d+),"dwl_token":"([A-Za-z0-9]+)"~u', $html, $files, PREG_SET_ORDER);
+        $files = collect($files)->unique(3)->values();
+        if (! $host || $files->isEmpty()) {
+            throw new RuntimeException('Файлов на странице облака не нашли — ссылка истекла или страница поменялась');
+        }
+        $origin = (string) preg_replace('~^(https://[^/]+).*$~', '$1', $host[1]);
+        if (! self::publicHost((string) parse_url($origin, PHP_URL_HOST))) {
+            throw new RuntimeException('Адрес раздачи облака не публичный');
+        }
+        if ($files->sum(fn ($f) => (int) $f[2]) > self::MAX_BYTES) {
+            throw new RuntimeException('Файлы по ссылке больше 300 МБ');
+        }
+        $get = fn (array $f, string $path) => $http()->timeout(900)->sink($path)->get($origin.'/stock/get/'.$f[3].'/'.rawurlencode(json_decode('"'.$f[1].'"') ?? $f[1]));
+        if ($files->count() === 1) {
+            $f = $files->first();
+            if (! $get($f, $to)->successful()) {
+                @unlink($to);
+                throw new RuntimeException('Облако не отдало файл');
+            }
+
+            return json_decode('"'.$f[1].'"') ?? $f[1];
+        }
+        $zip = new \ZipArchive;
+        $zip->open($to, \ZipArchive::CREATE | \ZipArchive::OVERWRITE);
+        $parts = [];
+        foreach ($files as $f) {
+            $part = $to.'-'.count($parts);
+            if ($get($f, $part)->successful()) {
+                $zip->addFile($part, json_decode('"'.$f[1].'"') ?? $f[1]);
+                $parts[] = $part;
+            }
+        }
+        $zip->close();
+        array_map('unlink', $parts);
+
+        return $link['token'].'.zip';
     }
 }

@@ -44,4 +44,12 @@ class InsurerReplyTextTest extends TestCase
         $this->assertSame([], Patterns::phones($text));
         $this->assertStringContainsString('Z*9aK(W]-', $text);
     }
+
+    /** «Большие файлы» Mail.ru (04.11.2026, ТИТ): фото Evolute пришли ссылкой, а не вложением — черновик стоял без фото. */
+    public function test_mailru_big_file_link(): void
+    {
+        $links = CloudShare::links("К этому письму приложены ссылки на следующие файлы: *1. Фото торги.rar* (189.6 Мб)\nСсылка для скачивания файлов: https://cloud.mail.ru/stock/4qZ4aEPPiufzdm8Hh18LLZuj\nФайлы будут храниться до 27.04.2027");
+        $this->assertCount(1, $links);
+        $this->assertSame(['mailru', '4qZ4aEPPiufzdm8Hh18LLZuj'], [$links[0]['kind'], $links[0]['token']]);
+    }
 }

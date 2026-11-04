@@ -4,6 +4,7 @@ namespace App\Offers\Jobs;
 
 use App\Mail\Actions\PinThread;
 use App\Mail\Extraction\AttachmentImporter;
+use App\Mail\Extraction\ArchivePhotoExtractor;
 use App\Mail\Extraction\CloudShare;
 use App\Mail\Jobs\ImportThreadFiles;
 use App\Mail\Message;
@@ -69,7 +70,7 @@ final class ShareReplyFiles implements ShouldQueue
             $path = sys_get_temp_dir().'/cloud-'.Str::uuid();
             try {
                 $name = $cloud->download($link, $path);
-                $added = str_ends_with(mb_strtolower($name), '.zip')
+                $added = ArchivePhotoExtractor::isArchiveName($name)
                     ? $importer->importArchive($model, $path, 'photos', 'papers', null, $documents, 'mail', $photos, imagesAsDocuments: $dealing)
                     : ['documents' => (int) $importer->importDocument($model, 'papers', $name, (string) file_get_contents($path), 'mail', $documents), 'photos' => 0];
                 $offer->log(OfferEventType::Note, null, ['text' => 'Файлы по ссылке из письма страховой: '.($added === null ? 'архив не открылся' : 'документов '.$added['documents'].', фото '.$added['photos'])]);

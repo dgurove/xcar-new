@@ -8,6 +8,7 @@ use App\Live\Topics;
 use App\Mail\Actions\PinThread;
 use App\Mail\Attachment;
 use App\Mail\Extraction\AttachmentImporter;
+use App\Mail\Extraction\ArchivePhotoExtractor;
 use App\Mail\Extraction\CloudShare;
 use App\Mail\Extraction\Intent;
 use App\Mail\Scan\AutoScan;
@@ -156,7 +157,7 @@ final class ImportThreadFiles implements ShouldBeUniqueUntilProcessing, ShouldQu
             try {
                 $report('Забираем файлы по ссылке из письма');
                 $name = app(CloudShare::class)->download($link, $path);
-                $got = str_ends_with(mb_strtolower($name), '.zip')
+                $got = ArchivePhotoExtractor::isArchiveName($name)
                     ? $importer->importArchive($offer, $path, 'photos', 'papers', $report, [], 'mail', $photos)
                     : ['documents' => (int) $importer->importDocument($offer, 'papers', $name, (string) file_get_contents($path), 'mail'), 'photos' => 0];
                 $added = ['photos' => $added['photos'] + ($got['photos'] ?? 0), 'documents' => $added['documents'] + ($got['documents'] ?? 0)];
