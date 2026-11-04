@@ -37,6 +37,7 @@ use App\Park\VehicleState;
 use App\Park\Yard;
 use App\Purchases\Purchase;
 use App\Purchases\PurchaseState;
+use App\Space\Conveyor;
 use App\Users\Role;
 use App\Users\User;
 use App\Workflow\Position;
@@ -756,9 +757,10 @@ final class Nav
         });
     }
 
-    /** Сброс общих счётчиков сотрудников — бейджей и итогов таб-бара; личные живут свои полминуты. */
+    /** Сброс общих счётчиков сотрудников — бейджей, итогов таб-бара и чисел конвейера главной; личные живут свои полминуты. */
     public static function forgetStaffCounts(): void
     {
+        Conveyor::forget();
         foreach (Surface::cases() as $surface) {
             Cache::forget("nav.staff:{$surface->value}");
             Cache::forget("nav.counts:{$surface->value}:staff");

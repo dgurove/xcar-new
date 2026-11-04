@@ -1,5 +1,5 @@
 // Камера космоса главной CRM (04.11.2026): точка мира в середине сцены (x, y) и масштаб z. Одна на звёзды (`sky.js`,
-// каждая на своей глубине) и слой схемы (глубина 1) — схема потом поедет вместе с фоном.
+// каждая на своей глубине) и слой схемы конвейера (глубина 1): схема едет вместе с фоном.
 // Жесты — как у схемы парковки (`park/plan/viewport.js`): палец или мышь — сдвиг, два пальца — щипок со сдвигом,
 // ctrl/⌘ + колесо и щипок трекпада — масштаб, двойной тап — ближе. Сверх того физика: брошенный сдвиг катится и
 // затухает, колесо мыши масштабирует плавно к курсору, за пределами масштаба щипок упирается резинкой и отпускает
@@ -98,26 +98,50 @@ export class Camera {
         return { x: Math.round(this.x * 10) / 10, y: Math.round(this.y * 10) / 10, z: Math.round(this.z * 1000) / 1000 };
     }
 
+    // true — вид был: первый заход его не имеет и встаёт на вид схемы.
     restore({ x, y, z } = {}) {
-        if (![x, y, z].every(Number.isFinite)) return;
+        if (![x, y, z].every(Number.isFinite)) return false;
         Object.assign(this, { x, y, z: clamp(z, MIN, MAX) });
+        this.changed();
+        return true;
+    }
+
+    // Сразу на вид схемы, без полёта: первый заход, раскладка сменилась (поворот телефона).
+    jump() {
+        if (!this.view) return;
+        this.stop();
+        Object.assign(this, this.view);
+        this.raw = this.z;
         this.changed();
     }
 
-    // «К схеме»: плавно в начало мира, масштаб 1.
+    // Где схема: рамка мира `{ x0, y0, x1, y1 }` и вид «К схеме» `{ x, y, z }` — их считает `space_controller` по
+    // карточкам конвейера и форме сцены.
+    frame(bounds, view) {
+        this.bounds = bounds;
+        this.view = view;
+        this.changed();
+    }
+
+    // «К схеме»: плавно к виду схемы (без схемы — в начало мира, масштаб 1).
     home() {
         this.stop();
-        const to = { x: 0, y: 0, z: 1 };
+        const to = this.view ?? { x: 0, y: 0, z: 1 };
         if (this.still) { Object.assign(this, to); this.changed(); return; }
         this.fly = { from: { x: this.x, y: this.y, z: this.z }, to, t0: performance.now() };
         this.changed();
     }
 
-    // Схема (начало мира) за краем сцены — кнопка «К схеме» нужна.
+    // Схема ушла с глаз — кнопка «К схеме» нужна: ни кусочка рамки на экране, отдалили вдвое дальше вида схемы или
+    // приблизили так, что карточка шире экрана.
     lost() {
-        const sx = -this.x * this.z;
-        const sy = -this.y * this.z;
-        return Math.abs(sx) > this.w / 2 || Math.abs(sy) > this.h / 2 || this.z < 0.5 || this.z > 2.5;
+        const b = this.bounds;
+        if (!b) {
+            return Math.abs(this.x * this.z) > this.w / 2 || Math.abs(this.y * this.z) > this.h / 2 || this.z < 0.5 || this.z > 2.5;
+        }
+        const hw = this.w / 2 / this.z, hh = this.h / 2 / this.z;
+        const away = this.x + hw < b.x0 || this.x - hw > b.x1 || this.y + hh < b.y0 || this.y - hh > b.y1;
+        return away || this.z < (this.view?.z ?? 1) * 0.5 || this.z > 2.5;
     }
 
     get busy() {

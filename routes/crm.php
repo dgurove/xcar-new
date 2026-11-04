@@ -64,6 +64,8 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
     // (опубликованное, из закупки) — 404 через `offer.edit`. Всё остальное ниже — `ability:canManageCrm`: новый раздел, не
     // внесённый сюда, модератору закрыт сам.
     Route::get('/offers', [OfferController::class, 'index'])->name('crm.offers');
+    // Живые числа конвейера на главной (`HomeController::conveyor`) — всем сотрудникам, как сама главная.
+    Route::get('/space/conveyor', [HomeController::class, 'conveyor']);
     // Поиск в шапке — модератору тоже: свои черновики (`Search\Search::for` сам решает, кому какие группы).
     Route::get('/search', SearchController::class);
     // «Горит» — срок обязывающего (19.10.2026): ведущим логистику, админам и модераторам.

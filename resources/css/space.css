@@ -3,7 +3,8 @@
    листается (`.app-stage`), жесты забирает сцена (`touch-action: none` — глобально стоит `pan-x pan-y`). Звёзды — холст
    WebGL под всем; слой схемы `.space-world` поверх двигается одной записью transform за кадр, `will-change` — только
    пока движется (`is-moving`): после остановки браузер перерисует текст чётко при любом масштабе. Цвет неба — свой, не
-   поверхность кита: светлая тема — тёмно-синий со свечениями (холст `.space-back` под звёздами), тёмная — чёрный. */
+   поверхность кита: светлая тема — тёмно-синий со свечениями (холст `.space-back` под звёздами), тёмная — чёрный. На небе —
+   конвейер работы (`App\Space\Conveyor`): карточки этапов и линии между ними. */
 
 @layer components {
   .app-stage { overflow: hidden; overscroll-behavior: none; }
@@ -24,17 +25,44 @@
   .space-back { position: absolute; display: block; will-change: transform; }
   .dark .space-back { display: none; }
 
-  /* Начало мира — центр сцены; узел стоит в своей точке (--x, --y) и центрирован на ней. */
+  /* Начало мира — центр сцены; узел стоит в своей точке (--x, --y) и центрирован на ней. Точек у этапа две: широкая
+     раскладка (ПК, змейка) и высокая (телефон, столбец) — выбирает `space_controller` классом `is-tall` по форме сцены. */
   .space-world { position: absolute; left: 50%; top: 50%; width: 0; height: 0; transform-origin: 0 0; }
   .space-world.is-moving { will-change: transform; }
-  .space-node { position: absolute; left: var(--x, 0px); top: var(--y, 0px); translate: -50% -50%; }
+  .space-node { position: absolute; left: var(--x, 0px); top: var(--y, 0px); translate: -50% -50%; --x: var(--wx); --y: var(--wy); }
+  .space-world.is-tall .space-node { --x: var(--tx); --y: var(--ty); }
 
-  /* Блок схемы стоит на месте (05.11.2026, владелец: «не надо, чтобы схема парила вверх-вниз»). */
-  .space-float {
-    padding: 1.25rem 2rem; border-radius: var(--radius-xl);
+  /* Линии конвейера — SVG в слое схемы: тонкие при любом масштабе (`non-scaling-stroke`), под карточками; поток по ним
+     рисует WebGL (`space/flow.js`). Возврат — тише, подсказка — пунктиром. */
+  .space-links { position: absolute; left: 0; top: 0; width: 1px; height: 1px; overflow: visible; pointer-events: none; }
+  .space-links path { fill: none; stroke: rgb(255 255 255 / .2); stroke-width: 1.5; vector-effect: non-scaling-stroke; stroke-linecap: round; }
+  .space-links path.is-back { stroke: rgb(255 255 255 / .12); }
+  .space-links path.is-hint { stroke: rgb(255 255 255 / .16); stroke-dasharray: 3 6; }
+
+  /* Этап конвейера (`admin/space/node`, 04.11.2026): плашка как у кита — без теней и обводок; название 17, кто держит —
+     аватар 28 с числом, у ответственного ещё имя. */
+  .conveyor-step {
+    width: 15rem; padding: .875rem 1rem 1rem; border-radius: var(--radius-xl);
     background: var(--color-surface); color: var(--color-ink);
-    font-size: var(--text-lg); font-weight: 500; line-height: 1.2; white-space: nowrap;
+    display: grid; gap: .625rem; transition: background-color var(--dur-slow) var(--ease-out), color var(--dur-slow) var(--ease-out);
   }
+  /* Дела нет — карточка уходит в небо: полупрозрачная, текст светлый (серой плашкой на тёмном она выглядела грязной). */
+  .conveyor-step.is-idle { background: rgb(255 255 255 / .07); color: rgb(255 255 255 / .72); }
+  .conveyor-step.is-idle .who-name { color: rgb(255 255 255 / .5); }
+  .conveyor-title { font-size: var(--text-lg); font-weight: 500; line-height: 1.2; }
+  .conveyor-note { margin-top: -.375rem; font-size: var(--text-sm); color: var(--color-accent-text); }
+  .conveyor-who { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem .875rem; }
+  .who { display: inline-flex; align-items: center; gap: .4375rem; min-width: 0; }
+  .who-face { width: 28px; height: 28px; }
+  .who-icon { background: var(--color-surface-3); color: var(--color-ink-muted); }
+  .who-logo { width: 28px; height: 28px; }
+  .who-name { font-size: var(--text-sm); color: var(--color-ink-muted); }
+  .who-n { font-size: var(--text-lg); font-weight: 600; line-height: 1; }
+  .who-n.is-late { color: var(--color-danger); }
+  .who-more { font-size: var(--text-sm); color: var(--color-ink-muted); }
+  /* Число сменилось — карточка коротко загорается лаймом (`space_controller#counted`). */
+  .conveyor-step.is-bumped { animation: conveyor-bump 900ms var(--ease-out); }
+  @keyframes conveyor-bump { from { background: var(--color-accent-soft); } }
 
   /* «К схеме» — круглая кнопка в углу, появляется, когда схема ушла с глаз. */
   .space-home {

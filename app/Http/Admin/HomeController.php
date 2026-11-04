@@ -2,11 +2,13 @@
 
 namespace App\Http\Admin;
 
+use App\Live\Stream;
+use App\Space\Conveyor;
 use App\Support\Surface;
 use Illuminate\Http\Request;
 
 /**
- * Главная CRM — космос, фон будущей схемы (04.11.2026, владелец). Предложения переехали на `/offers`, работа начинается
+ * Главная CRM — космос с конвейером (04.11.2026, владелец; `App\Space\Conveyor`). Предложения переехали на `/offers`, работа начинается
  * с них (`Surface::home`), сюда ведёт только логотип. Маршрут вне `auth`, как `/` сайта и парковки: гость уходит на вход
  * без «вернуться сюда» — после входа он в предложениях, а не в космосе. Старые ссылки на список (`/?preset=…&peek=…` в
  * Telegram, пушах, закладках) — на тот же адрес под `/offers`, до входа: адрес для возврата запомнит уже список. Не 301:
@@ -30,7 +32,13 @@ final class HomeController
             return redirect(Surface::Crm->home());
         }
 
-        return view('admin.space');
+        return view('admin.space', ['nodes' => Conveyor::view()]);
+    }
+
+    /** Живые числа конвейера: событие сотрудникам — `space_controller` перечитывает кусок `#conveyor` морфом. */
+    public function conveyor()
+    {
+        return Stream::view('admin.space.stream', ['nodes' => Conveyor::view()]);
     }
 
     private static function fromInside(Request $request): bool

@@ -380,7 +380,7 @@ class OfferController
     }
 
     /** Вендор Каркаде: на проде он «Carcade», локально «Каркаде» — как его ищет миграция закупок. */
-    private static function carcadeId(): ?int
+    public static function carcadeId(): ?int
     {
         return Vendor::whereRaw("name ilike '%каркаде%' or name ilike '%carcade%'")->value('id');
     }

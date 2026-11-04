@@ -1,6 +1,9 @@
 import { Controller } from '@hotwired/stimulus';
+import * as Turbo from '@hotwired/turbo';
+import { request } from '../lib/http';
 import { reducedMotion } from '../lib/motion';
 import { Camera } from '../space/camera';
+import { bounds, curves, measure, paint, particles, pulse } from '../space/flow';
 import { Backdrop, FlatSky, Sky, fits, pixelRatio, stars } from '../space/sky';
 
 // Космос главной CRM (`admin/space`, 04.11.2026): звёзды (`space/sky.js`), камера (`space/camera.js`) и слой схемы
@@ -9,19 +12,26 @@ import { Backdrop, FlatSky, Sky, fits, pixelRatio, stars } from '../space/sky';
 // вкладка и уход со страницы — ни одного, контекст видеокарты отдаётся. Без движения (prefers-reduced-motion) и без
 // WebGL — ни мерцания, ни метеоров: кадр только на сдвиг. Медленные кадры в движении — холст мельче (dpr 2 → 1,5 → 1).
 // Фон светлой темы — свой холст (`Backdrop`): рисуется один раз и едет за камерой transform'ом, в кадр звёзд не входит.
+// Конвейер (`App\Space\Conveyor`): карточки этапов в слое схемы, линии — SVG там же, поток — проход того же WebGL
+// (`space/flow.js`). Раскладка по форме сцены: широкая (ПК) или высокая (телефон). Числа живые: событие сотрудникам —
+// кусок `#conveyor` перечитывается морфом не чаще раза в 2 с, сменившееся число докручивается, карточка загорается, а по
+// линии, где у одного этапа убыло, а у следующего прибыло, пролетает импульс.
 const IDLE = 1000 / 30;
 const DEEP_IDLE = 1000 / 20;
 const DEEP_AFTER = 30000;
 const METEOR = [25000, 60000];
 const SLOW = 24;             // мс кадра в движении: дольше — снизить dpr
 const KEY = 'space:camera';
+const CALM = 2000;           // мс: события пачкой — одно перечитывание
+const TWEEN = 700;           // мс докрутки числа
 let sky = null;              // звёзды одни на сеанс: второй заход их не считает заново
 
 const read = () => { try { return JSON.parse(sessionStorage.getItem(KEY) || 'null') ?? undefined; } catch { return undefined; } };
 const save = (value) => { try { sessionStorage.setItem(KEY, JSON.stringify(value)); } catch {} };
 
 export default class extends Controller {
-    static targets = ['back', 'sky', 'world', 'home'];
+    static targets = ['back', 'sky', 'world', 'links', 'home'];
+    static values = { url: String, links: Array };
 
     connect() {
         this.still = reducedMotion();
@@ -30,7 +40,7 @@ export default class extends Controller {
         this.build();
         this.backdrop = new Backdrop(this.backTarget);
         this.camera = new Camera(this.element, { wake: () => this.wake(), still: this.still });
-        this.camera.restore(read());
+        this.fresh = !this.camera.restore(read());
         // Тема — класс `dark` у <html> (`theme.js`): переключили — фон другой сразу, без перезагрузки. Холст звёзд — новый:
         // прозрачность контекста задаётся только при создании.
         this.theme = () => {
@@ -53,8 +63,13 @@ export default class extends Controller {
             save(this.camera.snapshot());
         };
         document.addEventListener('visibilitychange', this.onVisible);
+        this.onLive = () => this.soon();
+        document.addEventListener('live:changed', this.onLive);
+        document.addEventListener('badges:updated', this.onLive);
         this.planMeteor();
         this.fit();
+        // Шрифт приехал позже — карточки другого размера, линии к краям заново.
+        document.fonts?.ready.then(() => this.element.isConnected && this.layout());
     }
 
     disconnect() {
@@ -63,6 +78,9 @@ export default class extends Controller {
         this.resize.disconnect();
         this.themes.disconnect();
         document.removeEventListener('visibilitychange', this.onVisible);
+        document.removeEventListener('live:changed', this.onLive);
+        document.removeEventListener('badges:updated', this.onLive);
+        clearTimeout(this.wait);
         this.camera.detach();
         save(this.camera.snapshot());
         this.renderer.dispose();
@@ -71,8 +89,9 @@ export default class extends Controller {
     // Холст каждый раз свежий: контекст прежнего отдан (`dispose`), а WebGL, отказавший на полпути, держит холст за собой —
     // 2D на нём не получить. В светлой теме он прозрачный — под ним фон `Backdrop`.
     build() {
-        this.renderer = Sky.create(this.fresh(), sky, !this.dark) ?? new FlatSky(this.fresh(), sky);
+        this.renderer = Sky.create(this.canvas(), sky, !this.dark) ?? new FlatSky(this.canvas(), sky);
         this.renderer.onRestore = () => { this.drawn = -1; this.wake(); };
+        this.renderer.setFlow(this.flow ?? null);
         this.lively = this.renderer instanceof Sky && !this.still;
         if (this.camera) this.planMeteor();
     }
@@ -81,7 +100,7 @@ export default class extends Controller {
         this.camera.home();
     }
 
-    fresh() {
+    canvas() {
         const canvas = this.skyTarget.cloneNode();
         this.skyTarget.replaceWith(canvas);
         return canvas;
@@ -94,7 +113,102 @@ export default class extends Controller {
         this.renderer.resize(w, h, pixelRatio(w, h, this.cap));
         this.drawn = -1;
         this.camera.resize(w, h);
+        this.layout();
         this.paintBack();
+    }
+
+    // Раскладка схемы под сцену: высокая — телефон и узкое окно, иначе широкая. Карточки меряются заново, линии и поток —
+    // по ним; рамка и вид схемы — камере. Первый заход и смена раскладки — сразу на вид схемы.
+    layout() {
+        const { w, h } = this.camera;
+        if (w <= 1) return;
+        const tall = w < 700 || w / h < 0.85;
+        const switched = this.tall !== undefined && this.tall !== tall;
+        this.tall = tall;
+        this.worldTarget.classList.toggle('is-tall', tall);
+        this.boxes = measure(this.worldTarget);
+        this.curves = curves(this.linksValue, this.boxes);
+        paint(this.linksTarget, this.curves);
+        this.flow = this.still ? null : particles(this.curves, this.boxes);
+        this.renderer.setFlow(this.flow);
+        const frame = bounds(this.boxes);
+        if (frame) this.camera.frame(frame, this.view(frame, w, h, tall));
+        if (this.fresh || switched) { this.fresh = false; this.camera.jump(); }
+        this.drawn = -1;
+        this.wake();
+    }
+
+    // Вид «К схеме»: ПК — схема целиком; телефон — начало конвейера, середина читается, ветки выглядывают с боков, дальше
+    // листают вниз и вбок.
+    view(b, w, h, tall) {
+        const clamp = (v, a, c) => Math.min(c, Math.max(a, v));
+        if (!tall) {
+            const z = clamp(Math.min(w / (b.x1 - b.x0), h / (b.y1 - b.y0)), 0.3, 1);
+            return { x: (b.x0 + b.x1) / 2, y: (b.y0 + b.y1) / 2, z };
+        }
+        const z = clamp(w / 490, 0.6, 1);
+        return { x: (b.x0 + b.x1) / 2, y: b.y0 + h / 2 / z, z };
+    }
+
+    // Событие пачкой — одно перечитывание через CALM; идёт — ещё одно после него.
+    soon() {
+        if (this.wait) return;
+        this.wait = setTimeout(() => { this.wait = null; this.reload(); }, CALM);
+    }
+
+    async reload() {
+        if (!this.urlValue || document.visibilityState !== 'visible') return;
+        if (this.loading) { this.again = true; return; }
+        this.loading = true;
+        try {
+            const before = this.counts();
+            const r = await request(this.urlValue, { accept: 'text/vnd.turbo-stream.html', quiet: true });
+            if (r?.ok && this.element.isConnected) {
+                await stream(await r.text());
+                this.layout();
+                this.counted(before);
+            }
+        } finally {
+            this.loading = false;
+            if (this.again) { this.again = false; this.soon(); }
+        }
+    }
+
+    // Числа этапов до перечитывания: всего у этапа, его поток и у каждого, кто держит.
+    counts() {
+        const map = new Map();
+        for (const el of this.worldTarget.querySelectorAll('[data-node]')) {
+            const who = new Map([...el.querySelectorAll('[data-who]')].map((w) => [w.dataset.who, Number(w.querySelector('[data-count]')?.dataset.count) || 0]));
+            map.set(el.dataset.node, { total: Number(el.dataset.total) || 0, flow: Number(el.dataset.flow) || 0, note: el.querySelector('[data-note]')?.textContent ?? '', who });
+        }
+        return map;
+    }
+
+    // После перечитывания: сменившееся число докручивается от прежнего, карточка загорается; где у одного этапа убыло, а
+    // у следующего по линии прибыло (или источник принёс новое), — импульс по линии.
+    counted(before) {
+        const after = this.counts();
+        for (const [key, now] of after) {
+            const was = before.get(key);
+            if (!was) continue;
+            let changed = was.note !== now.note;
+            for (const [who, n] of now.who) {
+                const from = was.who.get(who) ?? 0;
+                if (from === n) continue;
+                changed = true;
+                const el = this.worldTarget.querySelector(`[data-node="${key}"] [data-who="${CSS.escape(who)}"] [data-count]`);
+                if (el && !this.still) tween(el, from, n);
+            }
+            if (changed) bump(this.worldTarget.querySelector(`[data-node="${key}"]`));
+        }
+        for (const c of this.curves ?? []) {
+            if (c.kind === 'hint') continue;
+            const a0 = before.get(c.from), a1 = after.get(c.from), b0 = before.get(c.to), b1 = after.get(c.to);
+            if (!a0 || !a1 || !b0 || !b1) continue;
+            const moved = (a1.total < a0.total && b1.total > b0.total) || (a1.flow > a0.flow && !a1.total);
+            if (moved) this.renderer.pulse((t) => pulse(c, t));
+        }
+        this.wake();
     }
 
     paintBack() {
@@ -175,4 +289,38 @@ export default class extends Controller {
         this.cap = this.cap > 1.5 ? 1.5 : 1;
         this.fit();
     }
+}
+
+// Поток Turbo с морфом `#conveyor` — и дождаться, пока он встанет (рисуется он в следующем кадре).
+function stream(html) {
+    return new Promise((resolve) => {
+        const on = (e) => {
+            if (e.target.getAttribute('target') !== 'conveyor') return;
+            document.removeEventListener('turbo:before-stream-render', on);
+            const render = e.detail.render;
+            e.detail.render = async (el) => { await render(el); resolve(); };
+        };
+        document.addEventListener('turbo:before-stream-render', on);
+        Turbo.renderStreamMessage(html);
+        setTimeout(resolve, 1000);
+    });
+}
+
+// Число докручивается от прежнего к новому — как счётчик, с замедлением к концу.
+function tween(el, from, to) {
+    const t0 = performance.now();
+    const step = (now) => {
+        const t = Math.min(1, (now - t0) / TWEEN);
+        el.textContent = String(Math.round(from + (to - from) * (1 - (1 - t) ** 3)));
+        if (t < 1 && el.isConnected) requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+}
+
+function bump(el) {
+    if (!el) return;
+    el.classList.remove('is-bumped');
+    void el.offsetWidth;
+    el.classList.add('is-bumped');
+    el.addEventListener('animationend', () => el.classList.remove('is-bumped'), { once: true });
 }
