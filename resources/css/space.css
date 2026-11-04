@@ -26,16 +26,11 @@
   .space-world.is-moving { will-change: transform; }
   .space-node { position: absolute; left: var(--x, 0px); top: var(--y, 0px); translate: -50% -50%; }
 
-  /* Парящий блок: медленно покачивается — анимация transform на внутреннем узле, её ведёт композитор. */
+  /* Блок схемы стоит на месте (05.11.2026, владелец: «не надо, чтобы схема парила вверх-вниз»). */
   .space-float {
     padding: 1.25rem 2rem; border-radius: var(--radius-xl);
     background: var(--color-surface); color: var(--color-ink);
     font-size: var(--text-lg); font-weight: 500; line-height: 1.2; white-space: nowrap;
-    animation: space-float 7s ease-in-out infinite;
-  }
-  @keyframes space-float {
-    0%, 100% { transform: translate3d(0, -5px, 0); }
-    50% { transform: translate3d(0, 5px, 0); }
   }
 
   /* «К схеме» — круглая кнопка в углу, появляется, когда схема ушла с глаз. */
@@ -47,7 +42,4 @@
   }
   .space-home[hidden] { display: grid; opacity: 0; scale: .8; pointer-events: none; }
 
-  @media (prefers-reduced-motion: reduce) {
-    .space-float { animation: none; }
-  }
 }

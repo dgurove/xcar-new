@@ -2,6 +2,7 @@
 
 namespace App\Http\Admin;
 
+use App\Support\Surface;
 use Illuminate\Http\Request;
 
 /**
@@ -10,6 +11,9 @@ use Illuminate\Http\Request;
  * без «вернуться сюда» — после входа он в предложениях, а не в космосе. Старые ссылки на список (`/?preset=…&peek=…` в
  * Telegram, пушах, закладках) — на тот же адрес под `/offers`, до входа: адрес для возврата запомнит уже список. Не 301:
  * постоянный редирект браузер запоминает навсегда, и свои параметры у главной (схема) потом не заработали бы.
+ * Космос — только изнутри CRM, логотипом (05.11.2026: начальник открыл CRM закладкой на корень и попал на «Тест»): открыли
+ * CRM снаружи — адрес руками, закладка, новая вкладка, ссылка с другого сайта — сразу предложения. Изнутри — переход Turbo
+ * или клик того же сайта (`Sec-Fetch-Site: same-origin`) либо Referer с хоста CRM (обновление страницы его сохраняет).
  */
 final class HomeController
 {
@@ -22,7 +26,16 @@ final class HomeController
             return redirect('/login');
         }
         abort_unless($request->user()->isStaff(), 404);
+        if (! self::fromInside($request)) {
+            return redirect(Surface::Crm->home());
+        }
 
         return view('admin.space');
+    }
+
+    private static function fromInside(Request $request): bool
+    {
+        return $request->header('Sec-Fetch-Site') === 'same-origin'
+            || parse_url((string) $request->header('Referer'), PHP_URL_HOST) === $request->getHost();
     }
 }

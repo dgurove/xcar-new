@@ -29,7 +29,11 @@ class CrmHomeTest extends TestCase
         $this->get(self::CRM.'/')->assertRedirect('/login');
 
         foreach ([$admin, $moderator] as $user) {
-            $this->actingAs($user)->get(self::CRM.'/')->assertOk()->assertSee('data-controller="space"', false)->assertSee('href="/"', false);
+            $this->flushHeaders();
+            // Открыли CRM снаружи (закладка, адрес руками) — предложения; логотипом изнутри — космос.
+            $this->actingAs($user)->get(self::CRM.'/')->assertRedirect('/offers');
+            $this->actingAs($user)->withHeaders(['Sec-Fetch-Site' => 'same-origin'])->get(self::CRM.'/')->assertOk()->assertSee('data-controller="space"', false)->assertSee('href="/"', false);
+            $this->actingAs($user)->withHeaders(['Sec-Fetch-Site' => 'none', 'Referer' => self::CRM.'/'])->get(self::CRM.'/')->assertOk();
             $this->actingAs($user)->get(self::CRM.'/offers?preset=nofloor')->assertOk()->assertSee('href="/offers"', false);
         }
         auth()->logout();

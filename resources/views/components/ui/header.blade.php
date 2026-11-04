@@ -21,6 +21,9 @@
     $alarm = \App\Offers\Binding::alarmsFor($user, $surface);
 @endphp
 <header id="header" class="header">
+    {{-- Состояние связи — полоса по нижнему краю шапки, вне раскладки (05.11.2026, владелец: надпись «Соединение…» в ряду
+         кнопок сдвигала логотип — «очень некрасиво»). Слова — только для экранного диктора. --}}
+    <span class="net" aria-live="polite"></span>
     {{-- Телефон: на всех хостах горизонтальный логотип ровно по центру (1fr | auto | 1fr), по бокам квадраты. Слева лупа и
          второе своё (сайт — избранное, CRM — чаты; у парковки и логистики второго нет), в глубине раздела — «‹» квадратом;
          справа колокольчик и тема. --}}
@@ -39,7 +42,6 @@
         </div>
         <a href="{{ $home }}" class="header-brand flex items-center justify-self-center" aria-label="XCar"><x-ui.brand wide class="h-10 max-w-[9.75rem] object-contain"/></a>
         <div class="flex items-center gap-1 justify-self-end">
-            <span class="net" aria-live="polite"></span>
             @if ($user)
                 <x-ui.header-btn name="notifications" :badges="$badges"/>
             @else

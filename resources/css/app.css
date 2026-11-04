@@ -3181,14 +3181,19 @@ html.kb-open { --home-gap: 0px; }
   /* Вторая строка подвала на телефоне — прямоугольник: прямые углы с обеих сторон. */
   .header-row--square > * { border-radius: 0 !important; }
 
-  /* Состояние связи в шапке: html[data-net=offline|reconnecting] ставят net.js и live.js. */
-  .net { display: none; align-items: center; gap: .375rem; margin-right: .25rem; font-size: 12px; color: var(--color-ink-muted); white-space: nowrap; }
-  .net::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--color-urgent); }
-  html[data-net] .net { display: inline-flex; }
+  /* Состояние связи — полоса 2 px по нижнему краю шапки, вне раскладки: ничего не сдвигает (05.11.2026, владелец: надпись
+     «Соединение…» в ряду кнопок сдвигала логотип). html[data-net=offline|reconnecting] ставят net.js и live.js. Соединяется —
+     по тусклой полосе бежит отрезок; нет сети — полоса красная. Слова — только диктору (`::after` за краем). */
+  .net { display: none; position: absolute; inset-inline: 0; bottom: 0; height: 2px; overflow: hidden; pointer-events: none; }
+  html[data-net] .net { display: block; }
+  .net::before { content: ''; position: absolute; inset: 0; background: var(--color-urgent); }
+  html[data-net="reconnecting"] .net { background: color-mix(in srgb, var(--color-ink) 8%, transparent); }
+  html[data-net="reconnecting"] .net::before { background: var(--color-ink-muted); opacity: .55; right: auto; width: 30%; translate: -100% 0; }
+  .net::after { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
   html[data-net="offline"] .net::after { content: 'Нет сети'; }
   html[data-net="reconnecting"] .net::after { content: 'Соединение…'; }
-  @media (prefers-reduced-motion: no-preference) { html[data-net="reconnecting"] .net::before { animation: net-pulse 1.2s ease-in-out infinite; } }
-  @keyframes net-pulse { 50% { opacity: .3; } }
+  @media (prefers-reduced-motion: no-preference) { html[data-net="reconnecting"] .net::before { animation: net-run 1.4s ease-in-out infinite; } }
+  @keyframes net-run { to { translate: 340% 0; } }
 
   /* Пара логотипов и пара иконок темы: показ, а не подмена. */
   .on-light { display: block; }
