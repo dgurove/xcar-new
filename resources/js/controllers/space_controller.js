@@ -12,7 +12,7 @@ import { Backdrop, FlatSky, Sky, fits, pixelRatio, stars } from '../space/sky';
 // вкладка и уход со страницы — ни одного, контекст видеокарты отдаётся. Без движения (prefers-reduced-motion) и без
 // WebGL — ни мерцания, ни метеоров: кадр только на сдвиг. Медленные кадры в движении — холст мельче (dpr 2 → 1,5 → 1).
 // Фон светлой темы — свой холст (`Backdrop`): рисуется один раз и едет за камерой transform'ом, в кадр звёзд не входит.
-// Конвейер (`App\Space\Conveyor`): этапы столбцами в слое схемы, обычной раскладкой flex. Числа живые: событие
+// Конвейер (`App\Space\Conveyor`): этапы столбцами в слое схемы, обычной раскладкой сетки. Числа живые: событие
 // сотрудникам — кусок `#conveyor` перечитывается морфом (`morphChildren`) не чаще раза в 2 с, сменившееся число
 // докручивается, подэтап коротко загорается.
 const IDLE = 1000 / 30;
@@ -20,7 +20,8 @@ const DEEP_IDLE = 1000 / 20;
 const DEEP_AFTER = 30000;
 const METEOR = [25000, 60000];
 const SLOW = 24;             // мс кадра в движении: дольше — снизить dpr
-const KEY = 'space:camera';
+// Вид помнится под ключом раскладки: вид прежней схемы (змейка вокруг начала мира) на новой доске — пустое небо.
+const KEY = 'space:camera:v2';
 const WHOLE = 0.6;           // ПК: доска целиком, если влезает не мельче этого,
 const PC = 0.9;              // иначе её начало в этом масштабе (ниже — если не влезает по высоте)
 const CALM = 2000;           // мс: события пачкой — одно перечитывание
@@ -143,11 +144,9 @@ export default class extends Controller {
             const z = Math.min(1, fit);
             return { x: (b.x0 + b.x1) / 2, y: (b.y0 + b.y1) / 2, z };
         }
-        // На телефоне источники — за левым краем: первый экран — первый этап.
-        const first = w < 700 && this.worldTarget.querySelector('.conveyor-stage');
-        const x0 = first ? frameOf(first, this.worldTarget).x0 : b.x0;
-        const z = w < 700 ? clamp((w - 2 * pad) / first.offsetWidth, 0.5, 1) : clamp(Math.min(PC, (h - 2 * pad) / (b.y1 - b.y0)), 0.55, 1);
-        return { x: x0 - pad / z + w / 2 / z, y: b.y0 - pad / z + h / 2 / z, z };
+        const col = this.worldTarget.querySelector('.conveyor-stage')?.offsetWidth || 300;
+        const z = w < 700 ? clamp((w - 2 * pad) / col, 0.5, 1) : clamp(Math.min(PC, (h - 2 * pad) / (b.y1 - b.y0)), 0.55, 1);
+        return { x: b.x0 - pad / z + w / 2 / z, y: b.y0 - pad / z + h / 2 / z, z };
     }
 
     // Событие пачкой — одно перечитывание через CALM; идёт — ещё одно после него.

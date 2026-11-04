@@ -106,7 +106,7 @@ export class Camera {
         return true;
     }
 
-    // Сразу на вид схемы, без полёта: первый заход, раскладка сменилась (поворот телефона).
+    // Сразу на вид схемы, без полёта: первый заход.
     jump() {
         if (!this.view) return;
         this.stop();
@@ -116,7 +116,7 @@ export class Camera {
     }
 
     // Где схема: рамка мира `{ x0, y0, x1, y1 }` и вид «К схеме» `{ x, y, z }` — их считает `space_controller` по
-    // карточкам конвейера и форме сцены.
+    // доске конвейера и форме сцены.
     frame(bounds, view) {
         this.bounds = bounds;
         this.view = view;

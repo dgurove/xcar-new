@@ -15,8 +15,8 @@
   .space {
     --space-bg: #0b0f19;
     /* Текст в воздухе — белый в обеих темах: небо тёмное всегда. */
-    --b-ink: rgb(255 255 255 / .94); --b-dim: rgb(255 255 255 / .58); --b-faint: rgb(255 255 255 / .32);
-    --b-red: #ff2d55; --b-red-text: #ff6b85; --b-lime: #b4e33d;
+    --b-ink: rgb(255 255 255 / .94); --b-dim: rgb(255 255 255 / .58);
+    --b-red: #ff2d55; --b-red-text: #ff6b85;
     position: absolute; inset: 0; overflow: hidden; background: var(--space-bg);
     touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
     cursor: grab;
@@ -32,24 +32,19 @@
   .space-world { position: absolute; left: 50%; top: 50%; width: 0; height: 0; transform-origin: 0 0; }
   .space-world.is-moving { will-change: transform; }
 
-  /* Конвейер (`admin/space/conveyor`, 05.11.2026): этапы слева направо столбцами. Шапки этапов — первая строка сетки, подэтапы
-     — вторая (`subgrid`): верх этапов и первые карточки стоят вровень, как бы ни переносились название и люди. Источники и
-     выходы — в воздухе, вровень с карточками. */
+  /* Конвейер (`admin/space/conveyor`, 05.11.2026): этапы слева направо столбцами. Шапки этапов — первая строка сетки,
+     подэтапы — вторая (`subgrid`): шапки прижаты к низу строки, и названия с первыми карточками стоят вровень, как бы ни
+     переносились люди над ними. */
   .conveyor {
     position: absolute; left: 0; top: 0; width: max-content;
     display: grid; grid-auto-flow: column; grid-template-rows: auto auto; grid-auto-columns: max-content;
-    column-gap: 2.5rem; row-gap: 1rem; align-items: start; color: var(--b-ink);
+    column-gap: 2.5rem; row-gap: .875rem; align-items: start; color: var(--b-ink);
   }
-  .conveyor-air { grid-row: 2; display: grid; gap: .75rem; width: 11rem; }
-  .air-label { font-size: var(--text-sm); color: var(--b-faint); }
-  .air-row { display: inline-flex; align-items: center; gap: .5rem; width: max-content; font-size: var(--text-base); color: var(--b-dim); }
-  .air-ico { display: grid; place-items: center; width: 1.75rem; height: 1.75rem; border-radius: 999px; background: rgb(255 255 255 / .08); }
-  .air-new { font-size: var(--text-sm); color: var(--b-lime); }
-  .air-n { font-size: var(--text-lg); font-weight: 600; color: var(--b-ink); }
 
-  /* Этап: название крупно без плашки, число рядом, горящие — красной капсулой; люди парят под ним. */
+  /* Этап: люди парят над названием (владелец 05.11.2026: «тогда от заголовков до блоков не будет лишних отступов»), название
+     крупно без плашки, число рядом, горящие — красной капсулой. */
   .conveyor-stage { grid-row: span 2; display: grid; grid-template-rows: subgrid; width: 18.5rem; }
-  .stage-head { display: grid; gap: .75rem; align-content: start; }
+  .stage-head { display: grid; gap: .625rem; align-content: end; }
   .stage-line { display: flex; align-items: flex-start; gap: .625rem; }
   .stage-title { flex: 1; min-width: 0; margin: 0; font-size: var(--text-xl); font-weight: 500; line-height: 1.15; letter-spacing: -.01em; color: var(--b-ink); }
   .stage-n { font-size: var(--text-xl); line-height: 1.15; color: var(--b-dim); }
@@ -60,7 +55,7 @@
   .stage-people { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem .875rem; }
   .stage-person { display: inline-flex; align-items: center; gap: .4375rem; }
   .person-name { font-size: var(--text-sm); color: var(--b-dim); }
-  .person-n { font-size: var(--text-base); font-weight: 600; color: var(--b-ink); }
+  .person-n { font-size: var(--text-base); font-weight: 500; color: var(--b-ink); }
   .person-n.is-late { color: var(--b-red-text); }
   .people-more { font-size: var(--text-sm); color: var(--b-dim); }
   .face-ico { display: grid; place-items: center; flex: none; width: 28px; height: 28px; background: rgb(255 255 255 / .14); color: var(--b-ink); }

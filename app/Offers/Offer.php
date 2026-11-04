@@ -1435,7 +1435,6 @@ class Offer extends Model
         return $this->openedAt()?->gt(now()->subHours(self::NEW_HOURS)) ?? false;
     }
 
-    /** Горящее: до закрытия приёма меньше 12 ч. */
     /**
      * «Сгорает!» (22.10.2026, владелец): горящее, и подтверждений нет ни у кого — кнопка плитки рыжая. Каталог даёт
      * `any_bids` одним подзапросом, иначе — запрос.
@@ -1450,6 +1449,7 @@ class Offer extends Model
         return ! $any;
     }
 
+    /** Горящее: до закрытия приёма меньше `HOT_HOURS` (в SQL — `CatalogQuery::ending`). */
     public function isEndingSoon(): bool
     {
         $left = $this->secondsLeft();

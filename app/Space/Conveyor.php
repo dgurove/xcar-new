@@ -8,9 +8,9 @@ use App\Logistics\TransportState;
 use App\Mail\Boxes;
 use App\Mail\Scope;
 use App\Offers\Binding;
+use App\Offers\CatalogQuery;
 use App\Offers\Deal;
 use App\Offers\DealState;
-use App\Offers\Interest;
 use App\Offers\Offer;
 use App\Offers\OfferState;
 use App\Support\Surface;
@@ -39,7 +39,8 @@ use Illuminate\Support\Facades\Cache;
  */
 final class Conveyor
 {
-    public const KEY = 'space.conveyor';
+    /** Ключ меняется вместе с видом снимка: прежний снимок другого вида после выкладки ронял бы главную. */
+    public const KEY = 'space.conveyor.v2';
 
     private const DIRTY = 'space.conveyor.dirty';
 
@@ -101,7 +102,7 @@ final class Conveyor
 
     /**
      * Блок маршрута сделки → подэтап, когда ход поставщика или менеджера, и наш ход без своего дела (`stage:*`). У вендоров
-     * пути разные — на схеме общий; чего нет в таблице — последним подэтапом стороны.
+     * пути разные — на схеме общий; чего нет в таблице, на схеме не считается.
      */
     private const BLOCKS = [
         'Согласование с поставщиком' => ['s-agree', 'm-consent', 'write'],
@@ -149,7 +150,7 @@ final class Conveyor
 
     /**
      * Этапы для вывода: у этапа люди (модели подставлены; у постоянных ответственных без числа, у общих — по убыванию
-     * задач, лишние — числом `more`), подэтапы с числом, горящими и ссылкой, всего и горящих; источники и выходы.
+     * задач, лишние — числом `more`), подэтапы с числом, горящими и ссылкой, всего и горящих.
      */
     public static function view(): array
     {
@@ -194,7 +195,7 @@ final class Conveyor
             ];
         })->all();
 
-        return ['stages' => $stages, 'sources' => $snap['sources'], 'ends' => $snap['ends']];
+        return $stages;
     }
 
     private static function href(string $step, array $snap): ?string
@@ -228,8 +229,7 @@ final class Conveyor
             'unsold' => $unsold, 'unsold:hot' => fn ($q) => $unsold($q)->whereRaw($panic),
             // Приём горит, когда до конца меньше `HOT_HOURS`, а подтверждений нет («Сгорает!» на сайте; без них он и есть
             // в «Опубликованных»).
-            'confirm' => $tab('published'), 'confirm:hot' => $hot('published', fn ($w) => $w->orWhere(fn ($e) => $e
-                ->where('offers.bids_close_at', '>', now())->where('offers.bids_close_at', '<', now()->addHours(Offer::HOT_HOURS)))),
+            'confirm' => $tab('published'), 'confirm:hot' => $hot('published', fn ($w) => $w->orWhere(fn ($e) => CatalogQuery::ending($e))),
             'bids' => $tab('bids'), 'bids:hot' => $hot('bids'),
         ]);
         $steps = [];
@@ -246,25 +246,10 @@ final class Conveyor
         self::deals($carcade, $steps, $people);
         self::pickups($carcade, $steps, $people);
 
-        $today = today();
-        $born = fn () => $offers()->where('offers.created_at', '>=', $today);
-
         return [
             'steps' => $steps,
             'people' => array_map('array_values', $people),
             'claims_vendor' => $claims->filter()->sortDesc()->keys()->first() ?? $claims->keys()->first(),
-            'sources' => [
-                'mail' => ['Почта', $born()->where('offers.created_via', 'mail')->count()],
-                'migtorg' => ['Мигторг', $born()->where('offers.created_via', 'migtorg')->count()],
-                'park' => ['Парковка', $born()->where('offers.created_via', 'park')->count()],
-                'gallery' => ['Галерея', Interest::where('created_at', '>=', $today)->whereHas('offer', fn ($o) => $o->whereNotNull('gallery_from'))->count()],
-            ],
-            'ends' => [
-                'done' => ['Выдано за месяц', Deal::where('state', DealState::Done)->whereNull('garage_payer')->where('closed_at', '>=', now()->subDays(30))
-                    ->whereHas('offer', fn ($o) => self::withoutCarcade($o, $carcade))->count()],
-                'garage' => ['В гараже', Deal::where('state', DealState::Active)->whereNull('auction_at')->whereNotNull('garage_payer')
-                    ->whereHas('offer', fn ($o) => self::withoutCarcade($o, $carcade))->count()],
-            ],
         ];
     }
 
@@ -325,11 +310,16 @@ final class Conveyor
                 continue;
             }
             $position->setRelation('deal', $deal);
-            $block = self::BLOCKS[$position->stage?->block?->name ?? $position->stage?->name] ?? ['s-docs', 'm-contract', 'settle'];
+            $block = self::BLOCKS[$position->stage?->block?->name ?? $position->stage?->name] ?? null;
             $hot = $position->isOverdue() || Binding::panics($deal->offer);
             if (isset($ours[$deal->offer_id]) && ($todo = $position->todo())) {
-                $add(self::ours($todo['key'], $block[2], in_array($deal->offer->vendor_id, $alfa, true)), $hot || $todo['key'] === 'price-ask');
+                ($step = self::ours($todo['key'], $block[2] ?? null, in_array($deal->offer->vendor_id, $alfa, true)))
+                    && $add($step, $hot || $todo['key'] === 'price-ask');
 
+                continue;
+            }
+            // Блока нет в таблице (новый в редакторе маршрутов, ещё «Выбор подтверждения») — не угадываем подэтап.
+            if (! $block) {
                 continue;
             }
             match ($position->waitsFor()) {
@@ -342,8 +332,8 @@ final class Conveyor
         }
     }
 
-    /** Подэтап нашего хода по делу «Ваш ход»; дела без своего ключа (`stage:*`) — по блоку маршрута. */
-    private static function ours(string $key, string $byBlock, bool $alfa): string
+    /** Подэтап нашего хода по делу «Ваш ход»; дела без своего ключа (`stage:*`) — по блоку маршрута, нет его — никуда. */
+    private static function ours(string $key, ?string $byBlock, bool $alfa): ?string
     {
         return match (true) {
             in_array($key, ['reprice', 'price-ask'], true) => 'reprice',
@@ -366,7 +356,8 @@ final class Conveyor
     {
         $open = fn (): Builder => Transport::query()->open()->inLogistics()
             ->when($carcade, fn ($q) => $q->whereNotIn('transports.car_id', Offer::where('vendor_id', $carcade)->select('car_id')));
-        $rows = fn (Builder $q) => $q->get(['transports.id', 'transports.car_id', 'state', 'logist_id', 'executor_id', 'pickup_at', 'assigned_at']);
+        // Машина не нужна — только шаг и даты (`OnCar` подгружал бы машину, марку и модель на каждый пересчёт).
+        $rows = fn (Builder $q) => $q->withoutEagerLoads()->get(['transports.id', 'transports.car_id', 'state', 'logist_id', 'executor_id', 'pickup_at', 'assigned_at']);
         $late = fn (Transport $t) => $t->isLate()
             || (in_array($t->state, [TransportState::Logist, TransportState::Assigned], true) && $t->assigned_at?->lt(now()->subDay()));
         $tally = function (string $step, $list, ?\Closure $who) use (&$steps, &$people, $late) {
@@ -384,7 +375,8 @@ final class Conveyor
         $tally('assign', $rows($open()->where('state', TransportState::New)), null);
         $tally('logist', $rows($open()->step('logist')), fn (Transport $t) => $t->logist_id);
         $tally('cdek', $rows($open()->awaitingDocs()), fn () => Owners::of('docs'));
-        $tally('drive', $rows($open()->where(fn ($s) => $s->whereIn('state', [TransportState::Assigned, TransportState::Moving])
-            ->orWhere(fn ($a) => $a->where('state', TransportState::Agreed)->where(fn ($d) => $d->where('docs_by_cdek', false)->orWhereNotNull('docs_sent_at'))))), fn (Transport $t) => $t->executor_id);
+        // Ждёт документов СДЭКом — у Лизы, не у исполнителя: одна перевозка — один подэтап.
+        $tally('drive', $rows($open()->whereIn('state', [TransportState::Assigned, TransportState::Agreed, TransportState::Moving])
+            ->whereNotIn('transports.id', Transport::query()->awaitingDocs()->select('transports.id'))), fn (Transport $t) => $t->executor_id);
     }
 }
