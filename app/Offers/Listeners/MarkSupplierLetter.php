@@ -99,7 +99,7 @@ final class MarkSupplierLetter
     }
 
     /** Наше письмо, на которое пришёл отказ: за три дня до него, тем же ящиком. */
-    private static function bouncedLetter(Message $bounce): ?Message
+    public static function bouncedLetter(Message $bounce): ?Message
     {
         $at = $bounce->date_at ?? now();
         $text = implode("\n", [$bounce->in_reply_to, $bounce->references_header, $bounce->text_body, $bounce->html_body]);

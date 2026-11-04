@@ -2,6 +2,7 @@
 
 namespace App\Mail\Actions;
 
+use App\Cars\Identity;
 use App\Mail\Extraction\Code;
 use App\Mail\Extraction\CodeMatcher;
 use App\Mail\Extraction\Keys;
@@ -119,6 +120,14 @@ final class LinkThread
         $codes = array_unique([...$this->keyed($message, 'code'), ...array_map(fn ($c) => (string) Code::key($c), $this->matcher->findAll($this->whole($message)))]);
         foreach ($codes as $code) {
             if (($offer = Offer::whereCar('claim_ref_key', $code)->first()) && ! self::otherCar($offer, $message)) {
+                $this($thread, $offer);
+
+                return $offer;
+            }
+        }
+        // Тот же номер Совкомбанка с другим годом — то же дело, если такое предложение одно.
+        foreach ($codes as $code) {
+            if (($offer = Identity::offerOtherYear($code)) && ! self::otherCar($offer, $message)) {
                 $this($thread, $offer);
 
                 return $offer;

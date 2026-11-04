@@ -114,6 +114,21 @@ final class Identity
         return $out;
     }
 
+    /**
+     * Номер Совкомбанка с другим годом (04.11.2026: «RE: 631351-25 … Новая стоимость 98 095» не легло к 631351/2026 из
+     * таблицы Кати — переоценка потерялась): год в их номере пишут как придётся, «-25» в теме и «-26» в договоре — одно
+     * дело. Предложение — только когда с этими цифрами оно одно.
+     */
+    public static function offerOtherYear(string $key): ?Offer
+    {
+        if (! preg_match('/^(\d{4,7})20\d{2}$/', $key, $m)) {
+            return null;
+        }
+        $near = Offer::query()->whereCar(fn ($c) => $c->whereRaw('claim_ref_key ~ ?', ['^'.$m[1].'20[0-9]{2}$']))->limit(2)->get();
+
+        return $near->count() === 1 ? $near->first() : null;
+    }
+
     /** Предложение той же машины (по номеру — любое, по VIN — живой машины). */
     public static function offerFor(?string $claimKey, ?string $vin): ?Offer
     {

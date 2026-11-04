@@ -80,7 +80,7 @@ final class AutoOffer
         }
         $vendor = Vendor::find($candidate->vendor_id ?: $candidate->value('vendor_id'));
         $codes = $candidate->messages->flatMap(fn (Message $m) => array_filter($m->keys(), fn ($k) => str_starts_with($k, 'code:')))->unique();
-        if ($codes->count() > 1) {
+        if ($codes->count() > 1 && ! self::splitByCar($candidate, $codes)) {
             return 'в письмах несколько номеров убытка';
         }
         if (! $candidate->code) {
@@ -110,6 +110,25 @@ final class AutoOffer
         }
 
         return null;
+    }
+
+    /**
+     * Письмо о нескольких машинах, а цепочки уже разрезаны по машинам (04.11.2026: «110927-26 и 110945-26 Мерседес
+     * Актрос + Когель» — тягач и прицеп, у каждой цепочки свой номер и VIN): у этой цепочки свой номер и VIN, остальные
+     * номера письма — у соседних цепочек тех же писем. Иначе это одна цепочка на две машины — решает человек.
+     *
+     * @param  Collection<int, string>  $codes  ключи «code:…» писем цепочки
+     */
+    private static function splitByCar(Candidate $candidate, Collection $codes): bool
+    {
+        if (! $candidate->code || ! Vin::full((string) $candidate->value('vin'))) {
+            return false;
+        }
+        $siblings = Candidate::where('id', '!=', $candidate->id)
+            ->whereHas('messages', fn ($q) => $q->whereIn('mail_messages.id', $candidate->messages->pluck('id')))
+            ->pluck('code')->map(fn ($c) => 'code:'.Code::key($c));
+
+        return $codes->diff([...$siblings, 'code:'.Code::key($candidate->code)])->isEmpty();
     }
 
     /** Почему цепочка без номера убытка не заводится; null — заводится. */

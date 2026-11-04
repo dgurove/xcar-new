@@ -77,11 +77,12 @@ final class Docs
     }
 
     /**
-     * Записи архива письма, если он уже на диске (открывать ящик ради списка страница не будет); сутки в кэше.
+     * Записи архива письма, если он уже на диске (открывать ящик ради списка страница не будет); сутки в кэше. Им же
+     * лента письма рисует кадры архива (`x-mail.archive`).
      *
      * @return list<array{index: int, name: string, size: int}>
      */
-    private static function archive(Attachment $a): array
+    public static function archive(Attachment $a): array
     {
         if (! ArchivePhotoExtractor::isArchive($a->mime) && ! ArchivePhotoExtractor::isArchiveName((string) $a->filename)) {
             return [];

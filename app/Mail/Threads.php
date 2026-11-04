@@ -105,6 +105,29 @@ final class Threads
     }
 
     /**
+     * Письмо в ящике предложений ни к чему не легло — ни к предложению, ни к цепочке «Из писем» (04.11.2026, владелец:
+     * «почему так много неразобранных»): Совкомбанк просит договор и АПП по делу, которого в CRM нет, «ГОТС оплатили, а
+     * машину не вывезли», Катя переслала предложение без номера — у писем offer@ смысла нет (`ReadLetter`), такие лежали
+     * «Прочим», их никто не видел. Теперь — «Ждёт ответа», пока не ответят, не нажмут «Ответ не нужен» или ветка не ляжет
+     * к делу (`Thread::booted`). Служебное, бухгалтерия и одно «спасибо» — мимо.
+     */
+    private static function strayVendorLetter(Thread $thread, Message $last): bool
+    {
+        if ($thread->offer_id || $thread->vehicle_id || $thread->candidate_id || $thread->account?->scope !== Scope::Offers) {
+            return false;
+        }
+        if (in_array($last->intent, [Intent::Auto->value, Intent::Bounce->value, Intent::Billing->value], true)) {
+            return false;
+        }
+        if (! $last->isForwardedByStaff() && ! Vendor::forSender($last->from_email, Scope::Offers)) {
+            return false;
+        }
+        $own = trim((string) preg_replace('/\s+/u', ' ', Message::find($last->id)?->ownText() ?? ''));
+
+        return ! preg_match('/^(?:\pL+[,!]?\s*){0,3}(?:спасибо|благодарю|принято|понял[аи]?|хорошо|ок|ok)[\s.!)]*$/iu', $own);
+    }
+
+    /**
      * Вендор пишет о той же ТС новой веткой («RE: … СРОЧНО!»), мы отвечаем там же — вопрос старой ветки тоже снят.
      * Без этого дело висело в «Ждёт ответа» с ответом прямо под вопросом (Geely 0323/046/14677/26, 02.11.2026).
      */
@@ -121,7 +144,7 @@ final class Threads
         if (! $last || $last->direction !== Direction::In || ($last->isOurs() && ! $last->isForwardedByStaff())) {
             return null;
         }
-        if (! (Intent::tryFrom((string) $last->intent)?->needsReply() ?? false)) {
+        if (! (Intent::tryFrom((string) $last->intent)?->needsReply() ?? false) && ! self::strayVendorLetter($thread, $last)) {
             return null;
         }
 

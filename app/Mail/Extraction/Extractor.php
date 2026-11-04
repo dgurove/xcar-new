@@ -42,7 +42,7 @@ final class Extractor
         if (! isset($fields['city']) && ($city = Template::city($text))) {
             $fields['city'] = ['value' => $city, 'source' => 'body'];
         }
-        $this->bareCode($fields, $topic);
+        $this->bareCode($fields, $topic, collect($attachments)->pluck('filename')->filter()->all());
         $this->body($fields, $text);
         foreach ($this->documents($attachments) as $field => $value) {
             $fields[$field] ??= $value;
@@ -58,17 +58,25 @@ final class Extractor
 
     /**
      * Номер без года («Вывоз ГОТС 771027 г Кемерово», «1188064 Exeed VX Тольятти» — так Совкомбанк пишет в теме): номер
-     * с годом берём из таблицы Кати или предложений, если такой ровно один. Иначе номера нет — угадывать год нельзя.
+     * с годом берём из таблицы Кати или предложений, если такой ровно один. Нет там — из имён вложений: «Вывоз тс убыток
+     * 837110 Саров» с «Договор комиссии 837110-26.docx» (04.11.2026, Kaiyi X7 ждал в «Из писем»), если год в них один.
+     * Иначе номера нет — угадывать год нельзя.
+     *
+     * @param  list<string>  $files
      */
-    private function bareCode(array &$fields, string $topic): void
+    private function bareCode(array &$fields, string $topic, array $files = []): void
     {
-        if (isset($fields['code']) || ! preg_match('/(?:^|ГОТС|делу|дело|уб\.?)\s*№?\s*(\d{5,7})(?![\d\/-])/ui', trim($topic), $m)) {
+        if (isset($fields['code']) || ! preg_match('/(?:^|ГОТС|делу|дело|убыт\w*|уб\.?)\s*№?\s*(\d{5,7})(?![\d\/-])/ui', trim($topic), $m)) {
             return;
         }
         $like = $m[1].'/%';
         $codes = LegacyClaim::where('claim_ref', 'like', $like)->pluck('claim_ref')
             ->merge(Car::where('claim_ref', 'like', $like)->where('is_demo', false)->pluck('claim_ref'))
             ->map(fn ($c) => Code::normalize($c))->unique()->values();
+        if ($codes->isEmpty()) {
+            $codes = collect($files)->map(fn ($f) => preg_match('/(?<!\d)'.$m[1].'\s*[\/-]\s*((?:20)?\d{2})(?!\d)/u', (string) $f, $y) ? Code::normalize($m[1].'/'.$y[1]) : null)
+                ->filter()->unique()->values();
+        }
         if ($codes->count() === 1) {
             $fields['code'] = ['value' => $codes[0], 'source' => 'subject'];
         }

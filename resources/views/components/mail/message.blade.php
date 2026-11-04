@@ -59,6 +59,12 @@
             @endforeach
         </div>
     @endif
+    @php
+        // Архив с записями — кадрами и документами внутри (`x-mail.archive`), а не строкой-файлом.
+        $archives = $documents->filter(fn ($f) => \App\Support\Docs::archive($f));
+        $documents = $documents->diff($archives);
+    @endphp
+    @foreach ($archives as $file)<x-mail.archive :file="$file" :entries="\App\Support\Docs::archive($file)" :base="$base"/>@endforeach
     @if ($documents->isNotEmpty())
         <div class="mt-3 flex flex-wrap gap-2">
             @foreach ($documents as $file)

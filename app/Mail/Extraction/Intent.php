@@ -37,9 +37,10 @@ enum Intent: string
 
     private const PARK_SUBJECTS = '/^\s*(?:automatic reply|autoreply|undeliverable|отзыв|delivery status|mail delivery|out of office|уведомление о регистрации|ваше сообщение не доставлено|вход с нового устройства|в аккаунт пытаются войти|добавлен номер телефона)\b/iu';
 
-    private const OFFER_SENDERS = '/^(?:security|noreply|no-reply|no_reply|notify|notifications?|mailer-daemon|postmaster|robot)@/i';
+    // Рассылки самой почты (VK WorkSpace с info@biz.mail.ru, 29.10.2026) — тоже служебное.
+    private const OFFER_SENDERS = '/^(?:security|noreply|no-reply|no_reply|notify|notifications?|mailer-daemon|postmaster|robot)@|@(?:biz|id|corp)\.mail\.ru$/i';
 
-    private const OFFER_SUBJECTS = '/вход с нового устройства|пытаются войти|восстановлени\w* пароля|подтвердите (?:адрес|почту)|автоответ|out of office|undeliver|не доставлено/iu';
+    private const OFFER_SUBJECTS = '/вход с нового устройства|пытаются войти|восстановлени\w* пароля|подтвердите (?:адрес|почту|пересылку)|автоответ|out of office|undeliver|не доставлено/iu';
 
     private const BOUNCE_SENDERS = '/^(?:mailer-daemon|postmaster|mail-?daemon)@/i';
 

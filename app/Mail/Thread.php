@@ -33,6 +33,12 @@ class Thread extends Model
     protected static function booted(): void
     {
         static::addGlobalScope(City::SCOPE, fn (Builder $q) => ($city = City::viewing()) ? City::threads($q, $city) : null);
+        // Ветка легла к делу — «Ждёт ответа» без дела (`Threads::strayVendorLetter`) пересчитывается: дальше её ведёт дело.
+        static::updated(function (self $thread) {
+            if ($thread->needs_reply_at && $thread->wasChanged(['offer_id', 'vehicle_id', 'candidate_id'])) {
+                app(Threads::class)->refresh($thread);
+            }
+        });
     }
 
     protected $table = 'mail_threads';
@@ -49,7 +55,7 @@ class Thread extends Model
      */
     public function refreshLists(): void
     {
-        $park = $this->account()->value('scope') === Scope::Park->value;
+        $park = $this->account?->scope === Scope::Park;
         app(Publisher::class)->refreshSoon($park ? Topics::PARK : Topics::STAFF, $park ? ['/mail', '/requests/from-mail'] : ['/work/mail', '/offers/from-mail']);
     }
 

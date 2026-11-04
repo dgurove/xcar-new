@@ -811,6 +811,13 @@ class MailController
         $name = $attachment->filename;
         // Файл из архива (`?entry=N`, шторка документов): запись — во временный файл, дальше как обычное вложение.
         if ($request->has('entry')) {
+            // Кадр архива в ленте письма (`?entry=N&thumb=1|large=1`): миниатюра считается раз и живёт в cache/mail — архив
+            // в 20 МБ не распаковывается заново на каждую плитку.
+            $size = $request->boolean('thumb') ? 320 : ($request->boolean('large') ? PhotoIngest::MAX_DIMENSION : null);
+            $cached = $size ? ($size === 320 ? 'thumb' : 'large')."-{$attachment->id}-e".(int) $request->query('entry') : null;
+            if ($cached && is_file($small = Storage::disk('cache')->path("mail/{$cached}.webp"))) {
+                return response()->file($small, ['Content-Type' => 'image/webp', 'Cache-Control' => 'private, max-age=86400']);
+            }
             $one = app(ArchivePhotoExtractor::class)->entryFile($file, (int) $request->query('entry'));
             abort_if($one === null, 404, 'Файла нет в архиве');
             [$file, $name] = [$one['path'], $one['name']];
@@ -822,6 +829,11 @@ class MailController
                     [$file, $mime] = [$jpeg, 'image/jpeg'];
                 } catch (Throwable) {
                 }
+            }
+            if ($cached && Docs::type($mime, $name) === 'image' && ($small = Thumb::of($file, false, $cached, $size))) {
+                @unlink($file);
+
+                return response()->file($small, ['Content-Type' => 'image/webp', 'Cache-Control' => 'private, max-age=86400']);
             }
             // Временный файл снимается сразу после ответа: под Octane shutdown-функции ждали бы конца воркера.
             if ($request->boolean('preview')) {

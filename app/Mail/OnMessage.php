@@ -5,6 +5,7 @@ namespace App\Mail;
 use App\Live\Publisher;
 use App\Live\Topics;
 use App\Mail\Actions\LinkThread;
+use App\Mail\Actions\SettleServiceLetter;
 use App\Mail\Actions\MarkThreadRead;
 use App\Mail\Chains\ChainBuilder;
 use App\Mail\Events\MessageFailed;
@@ -74,9 +75,15 @@ final class OnMessage
             // эвакуацию по новой цепочке завела сама цепочка (`ChainBuilder::attach` → `AutoRequest`).
             ($this->store)($candidate);
         }
+        // Ветку пересчитали до цепочки: письмо, что легло в «Из писем», — не «Ждёт ответа» без дела (`Threads::strayVendorLetter`).
+        if ($thread?->needs_reply_at && $thread->fresh()?->candidate_id) {
+            app(Threads::class)->refresh($thread->fresh());
+        }
         if ($e->quiet) {
             return; // история ящика: в базу легло, людей не дёргаем
         }
+        // Рассылка, вход в почту, отказ сервера на уведомление — ветка без дела сама в архив, нужное — владельцу.
+        app(SettleServiceLetter::class)($message->fresh(['account', 'thread']));
         // Письмо по заведённому предложению дописывает пустое: контакт, у черновика — машину, цену, документы.
         if ($offer = $linked instanceof Offer ? $linked : $thread?->offer) {
             // Новое письмо вендора по черновику в галерее — окно закрывается (привязку новой ветки ловит LinkThread).
