@@ -48,6 +48,8 @@
                 <div class="mb-2 flex flex-wrap items-center gap-2">
                     <span class="chip {{ $m->send_state === SendState::Failed ? 'bg-danger-soft text-danger' : 'bg-urgent-soft text-urgent' }}">{{ $m->send_state?->label() }}</span>
                     @if ($m->send_error)<span class="text-sm text-danger">{{ $m->send_error }}</span>@endif
+                    {{-- Не ушло — отправить снова прямо из окна писем (04.11.2026: в окне была только красная причина). --}}
+                    @if ($m->send_state === SendState::Failed)<form method="post" action="{{ $base }}/messages/{{ $m->id }}/retry" data-turbo-frame="_top">@csrf<x-ui.button size="sm" variant="secondary">Отправить снова</x-ui.button></form>@endif
                 </div>
             @endif
             @if ($m->parse_state === ParseState::Failed)

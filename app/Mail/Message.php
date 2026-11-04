@@ -212,7 +212,7 @@ class Message extends Model
     /** Цепочка References для ответа: цепочка родителя плюс сам родитель. */
     public function referencesForReply(): string
     {
-        $chain = preg_split('/\s+/', (string) $this->references_header, -1, PREG_SPLIT_NO_EMPTY) ?: [];
+        $chain = array_filter(preg_split('/\s+/', (string) $this->references_header, -1, PREG_SPLIT_NO_EMPTY) ?: [], Parser::validId(...));
         if ($this->message_id) {
             $chain[] = $this->message_id;
         }

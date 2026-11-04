@@ -61,11 +61,13 @@ final class Sender
             $headers->remove('Message-ID');
             $headers->addIdHeader('Message-ID', $message->message_id);
         }
-        if ($message->in_reply_to) {
+        if ($message->in_reply_to && Parser::validId($message->in_reply_to)) {
             $headers->addIdHeader('In-Reply-To', $message->in_reply_to);
         }
         if ($message->references_header) {
-            $headers->addIdHeader('References', preg_split('/\s+/', $message->references_header, -1, PREG_SPLIT_NO_EMPTY) ?: []);
+            // Битое звено цепочки (склеенные id из чужого письма) письмо не валит — пропускается (04.11.2026).
+            $refs = array_values(array_filter(preg_split('/\s+/', $message->references_header, -1, PREG_SPLIT_NO_EMPTY) ?: [], Parser::validId(...)));
+            $refs && $headers->addIdHeader('References', $refs);
         }
         foreach ($message->attachments as $attachment) {
             // Вложения нет ни у нас, ни в ящике — письмо не уходит (`Failed` с причиной), а не уходит без него (29.10.2026:

@@ -89,7 +89,17 @@ final class Parser
             return [];
         }
 
-        return array_values(array_filter(array_map(fn ($id) => $this->normalizeId($id), preg_split('/\s+/', trim($references), -1, PREG_SPLIT_NO_EMPTY) ?: [])));
+        // По скобкам, а не по пробелам (04.11.2026, X6 № 2610041185: Альфа шлёт «<a@x><b@y>» без пробела — склеенный
+        // «a@xb@y» потом валил наш ответ «does not comply with addr-spec»); без скобок — по пробелам.
+        $ids = preg_match_all('/<([^<>\s]+)>/', $references, $m) ? $m[1] : (preg_split('/\s+/', trim($references), -1, PREG_SPLIT_NO_EMPTY) ?: []);
+
+        return array_values(array_filter(array_map(fn ($id) => $this->normalizeId($id), $ids), fn ($id) => self::validId($id)));
+    }
+
+    /** Похоже на Message-ID: одна «@», без пробелов и скобок. Склеенное или битое в заголовки ответа не идёт. */
+    public static function validId(?string $id): bool
+    {
+        return $id !== null && preg_match('/^[^@\s<>]+@[^@\s<>]+$/', $id) === 1;
     }
 
     public function htmlToText(string $html): string
