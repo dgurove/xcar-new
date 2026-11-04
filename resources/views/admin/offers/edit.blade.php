@@ -128,7 +128,7 @@
         @if ($errors->has('state'))<x-ui.flash tone="danger" class="w-full">{{ $errors->first('state') }}</x-ui.flash>@endif
     </div>
     @if ($admin && $offer->proposed())<x-offer.proposal :offer="$offer" class="mb-4"/>@endif
-    @if ($admin && ($reprice = $offer->pendingReprice))<x-offer.reprice :offer="$offer" :reprice="$reprice" class="mb-4"/>@endif
+    @if ($admin && ($reprice = $offer->pendingReprice))<x-offer.reprice :offer="$offer" :reprice="$reprice" class="mb-4" :sheet-only="\App\Offers\RepriceFlow::inRoute($offer)"/>@endif
     <x-offer.reprice-asks :offer="$offer" class="mb-4"/>
     {{-- Письмо страховой по сделке ждёт разбора — менеджер о нём не знает, пока админ не покажет выбранное (03.11.2026). --}}
     @if ($admin && ($liveDeal = $offer->deal))

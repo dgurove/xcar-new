@@ -4,7 +4,7 @@
      подтвердил, и по сделке: «Оставить | Обновить | Спросить» в любую сторону (03.11.2026, владелец: менеджера спрашивает только
      админ; «Спросить» — вопрос `RepriceAsk` цифрами, ни слова письма; кто разницы не видит — без «Спросить»), заранее не
      отмечено ничего, «Применить» — когда решено по всем (`reprice_controller`). Вписали закупочную в редакторе при подтвердивших — шторка открывается у автора сама, один раз. --}}
-@props(['offer', 'reprice'])
+@props(['offer', 'reprice', 'sheetOnly' => false])
 @php
     use App\Support\Money;
     ['bids' => $bids, 'deal' => $deal] = \App\Offers\Reprice::affected($offer);
@@ -16,7 +16,10 @@
     $open = $offer->state === \App\Offers\OfferState::Open;
 @endphp
 {{-- `reprice:open` — «Разобрать переоценку» из шага маршрута (`x-route.path`). --}}
-<div {{ $attributes->class('proposal reprice') }} data-controller="sheet" data-action="reprice:open@window->sheet#open">
+{{-- `sheet-only` — пока идёт сделка, переоценку показывает шаг пути «Переоценка» (`x-route.reprice-step`, 04.11.2026): здесь
+     только шторка, которую открывает его «Разобрать». --}}
+<div {{ $attributes->class($sheetOnly ? 'contents' : 'proposal reprice') }} data-controller="sheet" data-action="reprice:open@window->sheet#open">
+    @unless ($sheetOnly)
     <div class="proposal-body">
         <span class="proposal-mark" aria-hidden="true"><x-ui.icon :name="$reprice->source === 'letter' ? 'mail' : 'edit'" class="size-4"/></span>
         <div class="min-w-0 flex-1">
@@ -34,6 +37,7 @@
         </form>
         <button type="button" class="btn btn-s btn-accent" data-action="sheet#open" aria-controls="{{ $id }}">Применить…</button>
     </div>
+    @endunless
     <x-ui.sheet :id="$id" title="Переоценка" tall :open="$mine || old('_reprice') == $reprice->id">
         <form method="post" action="/offers/{{ $offer->number }}/reprices/{{ $reprice->id }}" class="flex flex-col gap-4" data-controller="reprice" @if ($offer->state === \App\Offers\OfferState::Open) data-price-guard="whole" data-price-guard-offer="{{ $offer->number }}" data-price-guard-floor="price" @endif
               data-reprice-from-value="{{ (int) $reprice->from_price }}">

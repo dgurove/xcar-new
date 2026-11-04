@@ -671,6 +671,11 @@ class MailController
             }
         }
 
+        // Готовый текст ответа (04.11.2026, «Ответить» в шаге «Переоценка»: «Согласны на новую стоимость …») — над подписью.
+        if ($this->scope === Scope::Offers && $mode === 'reply' && filled($request->query('text'))) {
+            $defaults['body'] = Template::html(mb_substr((string) $request->query('text'), 0, 2000)).$defaults['body'];
+        }
+
         return view('admin.mail.compose-frame', ['frame' => $request->header('Turbo-Frame'), 'account' => $sender, 'accounts' => $accounts->contains('id', $sender->id) ? $accounts : collect([$sender]), 'thread' => $thread, 'parent' => $message,
             'defaults' => $defaults, 'mode' => $mode, 'templates' => $templates, 'offer' => $thread->offer, 'vehicle' => $vehicle, 'base' => $this->base]);
     }
@@ -744,6 +749,10 @@ class MailController
             }
         }
 
+        // Ответ на письмо переоценки — поставщику ответили (`RepriceFlow`, 04.11.2026).
+        if ($this->scope === Scope::Offers) {
+            \App\Offers\Reprice::answeredBy($message, $parent, $request->user());
+        }
         // Заявка поставщику ушла — сделки из её файла идут дальше «Заявка отправлена».
         $requested = $this->scope === Scope::Offers && ! empty($data['request_deals'])
             ? $sentRequest(array_map('intval', explode(',', $data['request_deals'])), $message, $request->user()) : null;

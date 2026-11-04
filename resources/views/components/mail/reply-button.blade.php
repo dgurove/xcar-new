@@ -1,6 +1,6 @@
 {{-- Кнопка ответа в ленте, во фрейме: внизу ленты (frame reply) — «Ответить {кому}», у письма (reply-{id}) — «Ответить на это».
      Нажатие грузит редактор в тот же фрейм; «Отмена» в редакторе возвращает кнопку (?cancel=1). --}}
-@props(['message', 'base' => '/mail', 'frame' => 'reply', 'open' => false])
+@props(['message', 'base' => '/mail', 'frame' => 'reply', 'open' => false, 'text' => null])
 @php
     $who = ! $message->isOurs() || $message->isForwardedByStaff() ? \Illuminate\Support\Str::of(\App\Mail\Chains\NodeTitle::who($message))->explode(' ')->take(2)->implode(' ') : null;
     // Ветка предложения в идущей сделке (28.10.2026, владелец про 0890/046/10323/25: «Уже в работе» — продали другому,
@@ -15,9 +15,11 @@
     // Не доставлено (02.11.2026): отвечать почтовому серверу незачем — письмо пересылают на верный адрес.
     $bounce = $message->intent === \App\Mail\Extraction\Intent::Bounce->value;
     $editor = $base.'/'.$message->thread_id.'/reply/'.$message->id.($bounce ? '?mode=forward' : '');
+    // Готовый текст ответа (шаг «Переоценка», 04.11.2026) — только в открытый сразу редактор.
+    $src = $open && filled($text) && ! $bounce ? $editor.'?'.http_build_query(['text' => $text]) : $editor;
 @endphp
 {{-- open — редактор грузится сразу (кнопка «Ответить» в деле ТС), кнопка внизу остаётся на время загрузки. --}}
-<turbo-frame id="{{ $frame }}" class="{{ $frame === 'reply' ? 'block' : 'contents' }}" @if ($open) src="{{ $editor }}" @endif>
+<turbo-frame id="{{ $frame }}" class="{{ $frame === 'reply' ? 'block' : 'contents' }}" @if ($open) src="{{ $src }}" @endif>
     @if ($frame === 'reply')
         <div class="flex flex-wrap items-center gap-2">
             @if ($bounce)

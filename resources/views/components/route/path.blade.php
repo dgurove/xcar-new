@@ -37,10 +37,9 @@
         $moves = $moves->reject(fn ($x) => $x->is($requestExit));
     }
     $overdue = $position->isOverdue();
-    // Переоценка закупочной (04.11.2026, владелец: «ни слова про переоценку, пишет, что поставщик просит реквизиты, — острый
-    // вопрос переоценка»): ждёт решения или ждём ответа менеджера по сделке — шаг говорит о ней, выходы шага — тихие.
-    $reprice = auth()->user()?->canManageCrm() ? $offer->pendingReprice : null;
-    $repriceAsk = $deal && auth()->user()?->canManageCrm() ? \App\Offers\RepriceAsk::pending()->where('deal_id', $deal->id)->with('user')->first() : null;
+    // Переоценка в сделке — свой шаг «Переоценка» перед этапом маршрута (04.11.2026, владелец: «почему согласование с
+    // поставщиком, если идёт переоценка — мы ещё ничего не приняли»): пока он не пройден, этап ждёт впереди без кнопок.
+    $reflow = $position->track === \App\Workflow\Track::Sale && auth()->user()?->canManageCrm() ? \App\Offers\RepriceFlow::for($offer) : null;
     $tone = $overdue ? 'text-danger' : match ($position->waitsFor()->tone()) { 'urgent' => 'text-urgent', 'open' => 'text-accent-text', default => 'text-ink-muted' };
     $clock = $position->deadline_at || $stage->timerMode() === 'stopwatch';
     $requirements = $offer->requirements()->with(['media', 'stage'])->get();
@@ -84,9 +83,11 @@
         </div>
     @endif
     @foreach ($path as $step)
+        {{-- Переоценка встаёт на место текущего этапа: пройденные — выше, этап — следом за ней. --}}
+        @if ($reflow && $step['state'] === Path::CURRENT)<x-route.reprice-step :flow="$reflow"/>@endif
         @php
-            // Пока цена не назначена, этап маршрута — впереди, без кнопок.
-            if ($pricing && $step['state'] === Path::CURRENT) $step['state'] = Path::NEXT;
+            // Пока цена не назначена или идёт переоценка, этап маршрута — впереди, без кнопок.
+            if (($pricing || $reflow) && $step['state'] === Path::CURRENT) $step['state'] = Path::NEXT;
             $block = $step['block'];
             // Только то, что менеджер ответил сам (есть выход): просьбу, закрытую сменой этапа, отменой или оплатой мимо него
             // (`closed_by`), «Менеджер: …» не подписываем.
@@ -193,26 +194,7 @@
                             $waitsWord = 'Ждём данные покупателя от менеджера';
                         }
                     @endphp
-                    @if ($reprice)
-                        <p class="step-hint text-urgent">Переоценка: @if ($reprice->value)оценочная <span class="nums">{{ Money::nums($reprice->value) }}</span>, @endif закупочная <span class="nums">{{ Money::nums((int) $reprice->from_price) }} → {{ Money::rub($reprice->to_price) }}</span></p>
-                        <div class="mt-2"><x-ui.button type="button" size="sm" data-controller="emit" data-action="emit#send" data-emit-event-param="reprice:open">Разобрать переоценку</x-ui.button></div>
-                    @elseif ($repriceAsk)
-                        {{-- Вопрос по сделке и показ всем — здесь, одним местом (04.11.2026, владелец: «где тут про публикацию и про то,
-                             что Владислав думает по переоценке»): кто думает, о чём, до когда, кому пока показываем и ответ за него. --}}
-                        <p class="step-hint {{ $repriceAsk->late() ? 'text-danger' : 'text-urgent' }}">{{ $repriceAsk->late() ? 'Не ответил' : 'Думает' }} {{ $repriceAsk->user?->shortName() }}: закупочная <span class="nums">{{ Money::nums($repriceAsk->from_price) }} → {{ Money::rub($repriceAsk->to_price) }}</span>, {{ $repriceAsk->late() ? 'срок вышел' : 'ответ до' }} <span class="nums">{{ \App\Support\Ago::html($repriceAsk->due_at, true, words: false) }}</span></p>
-                        @if ($offer->showsDealAsOpen())
-                            <p class="step-hint text-accent-text">Пока думает — показываем всем менеджерам до <span class="nums">{{ \App\Support\Ago::html($offer->deal_show_until, true, words: false) }}</span></p>
-                        @endif
-                        <div class="mt-2 flex flex-wrap items-center gap-2">
-                            <x-offer.answer-for :action="'/offers/'.$n.'/reprice-asks/'.$repriceAsk->id" :agree-ask="'За менеджера: согласен на '.Money::rub($repriceAsk->to_price).'?'"
-                                decline-ask="За менеджера: отказался?" :decline-text="$repriceAsk->declineMeans()"/>
-                            @if ($offer->showsDealAsOpen())
-                                <form method="post" action="/offers/{{ $n }}/show-all" class="contents" data-turbo-confirm="Убрать машину из предложений у всех менеджеров?" data-turbo-confirm-label="Снять показ">
-                                    @csrf @method('delete')<button type="submit" class="btn btn-s btn-quiet shrink-0 !h-8 rounded-full !px-3.5">Снять показ</button>
-                                </form>
-                            @endif
-                        </div>
-                    @elseif ($position->letterStatus())
+                    @if ($position->letterStatus())
                         {{-- Этап с письмом поставщику — что с письмом, а не «Ждём поставщика» (`x-route.clock`, 11.10.2026). --}}
                         <x-route.clock :position="$position" side="staff" class="step-hint" :letters="'/offers/'.$offer->number.'/letters'"/>
                     @elseif (! $wantsInvoice && ($overdue || $position->waitsFor() !== WaitsFor::Nobody || $clock || $waitsWord))
@@ -294,7 +276,7 @@
                             @endforeach
                             @foreach ($moves->values() as $i => $exit)
                                 {{-- Письмо поставщику не ушло — главное «Написать поставщику», исходы серыми. --}}
-                                @php $variant = $i === 0 && ! $wantsInvoice && $payNow->isEmpty() && $position->letterStatus() !== 'unsent' && ! $reprice && ! $repriceAsk ? 'primary' : 'secondary'; @endphp
+                                @php $variant = $i === 0 && ! $wantsInvoice && $payNow->isEmpty() && $position->letterStatus() !== 'unsent' ? 'primary' : 'secondary'; @endphp
                                 @if ($exit->to?->offer_state === \App\Offers\OfferState::Open && in_array($offer->state, [\App\Offers\OfferState::Draft, \App\Offers\OfferState::Gallery], true))
                                     {{-- «Опубликовать» — сейчас или в слот, как кнопка редактора. --}}
                                     <div data-controller="sheet">

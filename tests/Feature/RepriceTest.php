@@ -28,6 +28,7 @@ use App\Offers\OfferState;
 use App\Offers\Pricing;
 use App\Offers\Reprice;
 use App\Offers\RepriceAsk;
+use App\Offers\RepriceFlow;
 use App\Telegram\UpdateHandler;
 use App\Users\Role;
 use App\Users\User;
@@ -416,5 +417,42 @@ class RepriceTest extends TestCase
         // Выбрали в шторке «+5%» — оценочная из письма встаёт и так.
         app(ApplyReprice::class)($reprice, $this->admin, 5775000, [], null);
         $this->assertSame([5775000, 5500000], [$this->offer->fresh()->floor_price, $this->offer->fresh()->value]);
+    }
+
+    /** Переоценка письмом в сделке — шаг «Переоценка»: цена → покупатель → ответ поставщику; ответили письмом — шаг ушёл. */
+    public function test_reprice_step_in_deal_until_supplier_answered(): void
+    {
+        $deal = app(AcceptBid::class)(app(PlaceBid::class)($this->offer, $this->roman, 1050000), $this->admin, 20000, CommissionMode::Payout, scheme: DealScheme::Insurer);
+        $this->offer->update(['claim_ref' => '653253/2026']);
+        $account = DB::table('mail_accounts')->insertGetId(['slug' => 'offer', 'title' => 'offer', 'email' => 'offer@xcar.ru', 'scope' => 'offers',
+            'imap_host' => 'x', 'imap_username' => 'x', 'imap_password' => 'x', 'smtp_host' => 'x', 'smtp_username' => 'x', 'smtp_password' => 'x']);
+        $letter = Message::create(['account_id' => $account, 'direction' => 'in', 'from_email' => 'korochkin@sovcomins.ru', 'subject' => 'RE: 653253/2026',
+            'parsed' => ['keys' => ['code:'.Code::key('653253/2026')], 'own_text' => 'Новая стоимость – 650 000 руб.']]);
+        $reprice = app(DetectReprice::class)($this->offer->fresh(), $letter);
+        $this->assertNotNull($reprice);
+
+        $flow = RepriceFlow::for($this->offer->fresh());
+        $this->assertSame([RepriceFlow::NOW, RepriceFlow::WAIT, RepriceFlow::WAIT], [$flow->price(), $flow->buyer(), $flow->answer()]);
+
+        app(ApplyReprice::class)($reprice->fresh(), $this->admin, 650000, [], 'ask');
+        $flow = RepriceFlow::for($this->offer->fresh());
+        $this->assertSame([RepriceFlow::DONE, RepriceFlow::NOW, RepriceFlow::WAIT], [$flow->price(), $flow->buyer(), $flow->answer()]);
+        $this->assertNull($this->offer->fresh()->position(Track::Sale)->repriceUnanswered());
+
+        // Роман согласен — пора ответить поставщику: «Ваш ход» и SQL-зеркало.
+        app(AnswerReprice::class)(RepriceAsk::where('deal_id', $deal->id)->sole(), true, $this->roman);
+        $flow = RepriceFlow::for($this->offer->fresh());
+        $this->assertSame([RepriceFlow::DONE, RepriceFlow::DONE, RepriceFlow::NOW], [$flow->price(), $flow->buyer(), $flow->answer()]);
+        $this->assertStringContainsString('650 000', $flow->replyText());
+        $position = $this->offer->fresh()->position(Track::Sale);
+        $this->assertSame('Ответить поставщику про переоценку', $position->todo()['title'] ?? null);
+        $this->assertTrue(\App\Workflow\Position::whereKey($position->id)->needsUs()->exists());
+
+        // Ответили письмом в ту же ветку — шаг ушёл.
+        $sent = Message::create(['account_id' => $account, 'thread_id' => $letter->thread_id, 'direction' => 'out', 'from_email' => 'offer@xcar.ru', 'subject' => 'RE: 653253/2026']);
+        Reprice::answeredBy($sent, $letter, $this->admin);
+        $this->assertNotNull($reprice->fresh()->answered_at);
+        $this->assertNull(RepriceFlow::for($this->offer->fresh()));
+        $this->assertNull($this->offer->fresh()->position(Track::Sale)->repriceUnanswered());
     }
 }

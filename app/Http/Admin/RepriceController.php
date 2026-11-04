@@ -62,6 +62,18 @@ class RepriceController
         return back(fallback: "/offers/{$offer->number}")->with('toast', 'Показ всем снят');
     }
 
+    /** «Ответили не письмом» (шаг «Переоценка», 04.11.2026): поставщику ответили по телефону или из своей почты. */
+    public function answered(Request $request, Offer $offer, Reprice $reprice)
+    {
+        abort_unless($reprice->offer_id === $offer->id, 404);
+        if (! $reprice->answered_at) {
+            $reprice->update(['answered_at' => now(), 'answered_by' => $request->user()->id]);
+            $offer->log(\App\Offers\OfferEventType::Note, $request->user(), ['text' => 'Поставщику ответили про переоценку не письмом']);
+        }
+
+        return back(fallback: "/offers/{$offer->number}")->with('toast', 'Отмечено: поставщику ответили');
+    }
+
     public function dismiss(Request $request, Offer $offer, Reprice $reprice, DismissReprice $dismiss)
     {
         abort_unless($reprice->offer_id === $offer->id, 404);

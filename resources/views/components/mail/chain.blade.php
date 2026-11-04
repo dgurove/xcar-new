@@ -6,7 +6,7 @@
      «Ч.2» того же письма (те же слова от того же адреса в сутки) — узел «Ещё файлы к письму» без текста.
      fold — разбор письма: раскрыты только письмо-заявка и то, что ждёт ответа, прочие подряд идущие письма свёрнуты
      в узел «Ещё N писем» на своём месте в ленте. --}}
-@props(['messages', 'base' => '/mail', 'candidate' => null, 'reply' => false, 'subjects' => true, 'focus' => true, 'replyOpen' => false, 'fold' => false])
+@props(['messages', 'base' => '/mail', 'candidate' => null, 'reply' => false, 'subjects' => true, 'focus' => true, 'replyOpen' => false, 'replyText' => null, 'fold' => false])
 @php
     use App\Mail\Chains\NodeTitle;
     use App\Mail\Extraction\Intent;
@@ -80,6 +80,6 @@
         <x-ui.empty>Писем нет</x-ui.empty>
     @endforelse
     @if ($replyTo)
-        <div class="chain-reply"><x-mail.reply-button :message="$replyTo" :base="$base" :open="$replyOpen"/></div>
+        <div class="chain-reply"><x-mail.reply-button :message="$replyTo" :base="$base" :open="$replyOpen" :text="$replyText"/></div>
     @endif
 </div>

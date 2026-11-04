@@ -7,6 +7,7 @@ use App\Offers\Deal;
 use App\Offers\DealState;
 use App\Offers\Offer;
 use App\Offers\ReplyReview;
+use App\Offers\Reprice;
 use App\Offers\RepriceAsk;
 use App\Support\FastAttributes;
 use App\Support\Surface;
@@ -119,7 +120,8 @@ class Position extends Model
     public function needsUs(): bool
     {
         return ($this->waitsFor() === WaitsFor::Us && ! $this->carried()) || in_array($this->letterStatus(), ['unsent', 'failed', 'bounced', 'replied'], true)
-            || $this->consentLate() || $this->repricePending() || $this->priceAskLate() !== null || $this->replyPending() !== null;
+            || $this->consentLate() || $this->repricePending() || $this->priceAskLate() !== null || $this->replyPending() !== null
+            || $this->repriceUnanswered() !== null;
     }
 
     /**
@@ -155,6 +157,23 @@ class Position extends Model
     public function repricePending(): bool
     {
         return $this->track === Track::Sale && $this->offer?->pendingReprice !== null;
+    }
+
+    /**
+     * Переоценку письмом разобрали, покупатель по новой цене есть (менеджер сделки согласен или не спрашивали), а поставщику
+     * ещё не ответили (04.11.2026, `RepriceFlow`) — наш ход. Та переоценка — или null.
+     */
+    public function repriceUnanswered(): ?Reprice
+    {
+        $deal = $this->track === Track::Sale ? $this->deal : null;
+        if (! $deal || ! $deal->isActive() || $deal->isGarage()) {
+            return null;
+        }
+
+        return Reprice::where('offer_id', $this->offer_id)->where('state', Reprice::APPLIED)->where('source', 'letter')->whereNull('answered_at')
+            ->where('created_at', '>=', $deal->created_at)
+            ->whereNotExists(fn ($q) => $q->selectRaw('1')->from('reprice_asks')->where('deal_id', $deal->id)->where('state', RepriceAsk::PENDING))
+            ->latest('id')->first();
     }
 
     /**
@@ -198,6 +217,10 @@ class Position extends Model
         // Переоценка — раньше «Разобрать ответ» (04.11.2026, владелец: острый вопрос — она, а не письмо).
         if ($this->repricePending()) {
             return $todo('reprice', 'Разобрать переоценку', 0, $offer->pendingReprice->created_at, ['label' => 'Открыть', 'href' => '/offers/'.$offer->number]);
+        }
+
+        if ($answer = $this->repriceUnanswered()) {
+            return $todo('reprice-answer', 'Ответить поставщику про переоценку', 0, $answer->decided_at, ['label' => 'Открыть', 'href' => '/offers/'.$offer->number]);
         }
 
         if ($at = $this->replyPending()) {
@@ -295,7 +318,7 @@ class Position extends Model
     // Ход наш на шаге получения под логистикой (`carried`) — не наш: этап с исходом менеджера «Автомобиль забрал».
     // Метки письма — только на этапе письма (`Stage::isLetterStep`), «менеджер не ответил» — только пока ход его
     // (`consentLate`): без этого число пилюли «Ваш ход» расходилось со строками (27.10.2026). Ждущая переоценка — `repricePending`,
-    // письмо на разбор — `replyPending`.
+    // письмо на разбор — `replyPending`, ответ поставщику на переоценку — `repriceUnanswered`.
     public const NEEDS_US_SQL = "coalesce((coalesce(offer_positions.waits_for, (select s.waits_for from workflow_stages s where s.id = offer_positions.stage_id)) = 'us'
             and not (coalesce(offer_positions.waits_for, '') = 'us' and exists (select 1 from workflow_exits x where x.stage_id = offer_positions.stage_id
                 and x.actor = 'manager' and lower(x.label) = 'автомобиль забрал')))
@@ -310,7 +333,11 @@ class Position extends Model
         or (offer_positions.track = 'sale' and exists (select 1 from reply_reviews rr join deals rd on rd.id = rr.deal_id
             where rr.offer_id = offer_positions.offer_id and rr.state = 'pending' and rd.state = 'active'))
         or (offer_positions.track = 'sale' and exists (select 1 from reprice_asks a join deals d on d.id = a.deal_id
-            where a.offer_id = offer_positions.offer_id and a.state = 'pending' and a.due_at < now() and d.state = 'active')), false)";
+            where a.offer_id = offer_positions.offer_id and a.state = 'pending' and a.due_at < now() and d.state = 'active'))
+        or (offer_positions.track = 'sale' and exists (select 1 from offer_reprices r join deals d on d.offer_id = r.offer_id
+            where r.offer_id = offer_positions.offer_id and r.state = 'applied' and r.source = 'letter' and r.answered_at is null
+                and d.state = 'active' and d.garage_payer is null and r.created_at >= d.created_at
+                and not exists (select 1 from reprice_asks a where a.deal_id = d.id and a.state = 'pending'))), false)";
 
     /** Позиции, где нужно наше действие, — `needsUs()` в SQL. */
     public function scopeNeedsUs($q)
