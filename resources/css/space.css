@@ -12,7 +12,7 @@
   /* До первого кадра — цвет неба темы: светлая — тёмно-синий (чёрный под белой шапкой «бьёт по глазам», 05.11.2026),
      тёмная — чистый чёрный AMOLED. */
   .space {
-    --space-bg: #171d2c;
+    --space-bg: #0b0f19;
     position: absolute; inset: 0; overflow: hidden; background: var(--space-bg);
     touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
     cursor: grab;
