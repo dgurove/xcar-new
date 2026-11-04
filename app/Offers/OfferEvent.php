@@ -180,6 +180,8 @@ class OfferEvent extends Model
         $what = Changes::text($fields, $changes);
 
         return match (true) {
+            // Показ всем менеджерам, пока менеджер сделки думает о закупочной (`ShowDealToAll`, 04.11.2026).
+            isset($p['show_all']) => $p['show_all'],
             ($p['source'] ?? null) === 'migtorg' => 'С Мигторга: '.match (true) {
                 isset($p['photos']) => $p['photos'].' фото',
                 $fields !== [] => Changes::text(array_values(array_diff($fields, ['answer_by'])), $changes),

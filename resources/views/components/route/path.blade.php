@@ -37,6 +37,10 @@
         $moves = $moves->reject(fn ($x) => $x->is($requestExit));
     }
     $overdue = $position->isOverdue();
+    // Переоценка закупочной (04.11.2026, владелец: «ни слова про переоценку, пишет, что поставщик просит реквизиты, — острый
+    // вопрос переоценка»): ждёт решения или ждём ответа менеджера по сделке — шаг говорит о ней, выходы шага — тихие.
+    $reprice = auth()->user()?->canManageCrm() ? $offer->pendingReprice : null;
+    $repriceAsk = $deal && auth()->user()?->canManageCrm() ? \App\Offers\RepriceAsk::pending()->where('deal_id', $deal->id)->first() : null;
     $tone = $overdue ? 'text-danger' : match ($position->waitsFor()->tone()) { 'urgent' => 'text-urgent', 'open' => 'text-accent-text', default => 'text-ink-muted' };
     $clock = $position->deadline_at || $stage->timerMode() === 'stopwatch';
     $requirements = $offer->requirements()->with(['media', 'stage'])->get();
@@ -189,7 +193,12 @@
                             $waitsWord = 'Ждём данные покупателя от менеджера';
                         }
                     @endphp
-                    @if ($position->letterStatus())
+                    @if ($reprice)
+                        <p class="step-hint text-urgent">Переоценка: @if ($reprice->value)оценочная <span class="nums">{{ Money::nums($reprice->value) }}</span>, @endif закупочная <span class="nums">{{ Money::nums((int) $reprice->from_price) }} → {{ Money::rub($reprice->to_price) }}</span></p>
+                        <div class="mt-2"><x-ui.button type="button" size="sm" data-controller="emit" data-action="emit#send" data-emit-event-param="reprice:open">Разобрать переоценку</x-ui.button></div>
+                    @elseif ($repriceAsk)
+                        <p class="step-hint {{ $repriceAsk->late() ? 'text-danger' : 'text-urgent' }}">Спросили менеджера про закупочную <span class="nums">{{ Money::nums($repriceAsk->from_price) }} → {{ Money::rub($repriceAsk->to_price) }}</span>, {{ $repriceAsk->late() ? 'не ответил, срок вышел' : 'ответ до' }} <span class="nums">{{ \App\Support\Ago::html($repriceAsk->due_at, true, words: false) }}</span></p>
+                    @elseif ($position->letterStatus())
                         {{-- Этап с письмом поставщику — что с письмом, а не «Ждём поставщика» (`x-route.clock`, 11.10.2026). --}}
                         <x-route.clock :position="$position" side="staff" class="step-hint" :letters="'/offers/'.$offer->number.'/letters'"/>
                     @elseif (! $wantsInvoice && ($overdue || $position->waitsFor() !== WaitsFor::Nobody || $clock || $waitsWord))
@@ -271,7 +280,7 @@
                             @endforeach
                             @foreach ($moves->values() as $i => $exit)
                                 {{-- Письмо поставщику не ушло — главное «Написать поставщику», исходы серыми. --}}
-                                @php $variant = $i === 0 && ! $wantsInvoice && $payNow->isEmpty() && $position->letterStatus() !== 'unsent' ? 'primary' : 'secondary'; @endphp
+                                @php $variant = $i === 0 && ! $wantsInvoice && $payNow->isEmpty() && $position->letterStatus() !== 'unsent' && ! $reprice && ! $repriceAsk ? 'primary' : 'secondary'; @endphp
                                 @if ($exit->to?->offer_state === \App\Offers\OfferState::Open && in_array($offer->state, [\App\Offers\OfferState::Draft, \App\Offers\OfferState::Gallery], true))
                                     {{-- «Опубликовать» — сейчас или в слот, как кнопка редактора. --}}
                                     <div data-controller="sheet">

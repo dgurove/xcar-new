@@ -4,6 +4,7 @@ namespace App\Offers\Actions;
 
 use App\Notifications\RepriceAnsweredNotice;
 use App\Offers\BidState;
+use App\Offers\Binding;
 use App\Offers\Offer;
 use App\Offers\OfferEventType;
 use App\Offers\OfferState;
@@ -20,11 +21,12 @@ use Illuminate\Validation\ValidationException;
  *   (`ApplyReprice::updateDeal`), `supplier_cost` гаснет.
  * - «Отказываюсь»: подтверждение снимается; сделка отменяется, как «Я передумал» — предложение снова в продаже
  *   (`ChangeOfferState` → `Open`, внутри `CancelDeal`) по новой закупочной; к продаже не готово — в черновики.
+ * - Показывали всем, пока думал (`ShowDealToAll`, 04.11.2026): «Согласен» снимает показ, отказ — приём до конца показа.
  * Админам — кто что ответил (не нажавшему).
  */
 final class AnswerReprice
 {
-    public function __construct(private ApplyReprice $apply, private ChangeOfferState $state) {}
+    public function __construct(private ApplyReprice $apply, private ChangeOfferState $state, private ShowDealToAll $showAll) {}
 
     public function __invoke(RepriceAsk $ask, bool $agree, User $by): RepriceAsk
     {
@@ -47,6 +49,8 @@ final class AnswerReprice
                         throw ValidationException::withMessages(['reprice' => 'По счёту сделки уже платили — закупочную меняет админ в CRM']);
                     }
                     $this->apply->updateDeal($ask->deal, $ask->to_price, $by);
+                    // Показывали всем, пока думал (04.11.2026), — согласился: машина сразу уходит из предложений.
+                    $this->showAll->stop($offer, $by, 'Менеджер согласился — показ всем снят');
                 }
             } elseif ($ask->bid_id) {
                 // Снимается мимо `WithdrawBid`: после конца приёма отозвать своё он не может, а тут меняем мы.
@@ -54,8 +58,11 @@ final class AnswerReprice
                 $offer->log(OfferEventType::BidWithdrawn, $by, ['bid_id' => $ask->bid_id, 'reprice' => true]);
             } else {
                 // Не готово к продаже (нет фото, марки) — в черновики: сделку отменить важнее, чем выставить.
+                // Показывали всем, пока думал (04.11.2026), — приём идёт до конца показа, резервы — живые подтверждения.
+                $until = $offer->showsDealAsOpen() ? $offer->deal_show_until : null;
                 try {
                     DB::transaction(fn () => ($this->state)($offer, OfferState::Open, $by));
+                    $until && $offer->refresh()->update(['bids_close_at' => Binding::clampClose($offer, $until)]);
                 } catch (ValidationException) {
                     ($this->state)($offer->fresh(), OfferState::Draft, $by);
                 }

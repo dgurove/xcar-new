@@ -8,10 +8,12 @@ use App\Billing\PaymentSource;
 use App\Mail\Extraction\Code;
 use App\Mail\Extraction\Templates\Template;
 use App\Mail\Message;
+use App\Notifications\DealOpenedNotice;
 use App\Notifications\RepriceAnsweredNotice;
 use App\Notifications\RepriceAskNotice;
 use App\Notifications\RepriceNotice;
 use App\Offers\Actions\AcceptBid;
+use App\Offers\Actions\AnswerReprice;
 use App\Offers\Actions\ApplyReprice;
 use App\Offers\Actions\DetectReprice;
 use App\Offers\Actions\DismissReprice;
@@ -295,6 +297,55 @@ class RepriceTest extends TestCase
         $this->assertTrue($this->offer->events()->where('type', 'reprice')->get()->contains(fn ($e) => str_contains($e->text(), 'за менеджера')));
         // Админу — только ответ Дениса: свой ответ за Романа ему не звенит.
         Notification::assertSentToTimes($this->admin, RepriceAnsweredNotice::class, 1);
+    }
+
+    /**
+     * Пока менеджер сделки думает о новой закупочной — машину видят все менеджеры обычным предложением (04.11.2026, владелец:
+     * «опубликовать снова для всех на неделю, согласится — сразу убрать»); подтверждение — резервом, согласие снимает показ.
+     */
+    public function test_show_to_all_while_manager_thinks(): void
+    {
+        $deal = app(AcceptBid::class)(app(PlaceBid::class)($this->offer, $this->roman, 1050000), $this->admin, 20000, CommissionMode::Payout, scheme: DealScheme::Insurer);
+        app(UpdateOffer::class)($this->offer->fresh(), ['floor_price' => 650000], $this->admin);
+        $this->assertFalse(Offer::dealOpenTo($this->denis)->exists());
+
+        app(ApplyReprice::class)($this->offer->fresh()->pendingReprice, $this->admin, 650000, [], 'ask', ['asking_price' => 1100000], showDays: 7);
+        $offer = $this->offer->fresh();
+        $this->assertTrue($offer->showsDealAsOpen());
+        $this->assertSame(1100000, $offer->asking_price);
+        $this->assertEqualsWithDelta(now()->addDays(7)->timestamp, $offer->closesAt()->timestamp, 5);
+        $this->assertTrue(Offer::siteList($this->denis)->whereKey($offer->id)->exists());
+        Notification::assertSentTo($this->denis, DealOpenedNotice::class, fn (DealOpenedNotice $n) => str_starts_with($n->title(), 'Новое предложение'));
+        Notification::assertNotSentTo($this->roman, DealOpenedNotice::class);
+        // Денис подтверждает — резервом к идущей сделке.
+        $reserve = app(PlaceBid::class)($offer, $this->denis, 1120000);
+        $this->assertSame(BidState::Active, $reserve->state);
+
+        // Роман согласился — машины в предложениях больше нет, резерв жив.
+        app(AnswerReprice::class)(RepriceAsk::where('deal_id', $deal->id)->sole(), true, $this->roman);
+        $this->assertFalse($this->offer->fresh()->showsDealAsOpen());
+        $this->assertFalse(Offer::dealOpenTo($this->denis)->exists());
+        $this->assertSame(BidState::Active, $reserve->fresh()->state);
+        $this->assertSame(650000, $deal->fresh()->cost);
+    }
+
+    /** Отказался, пока показывали всем, — сделка отменена, приём идёт до конца показа. */
+    public function test_declined_while_shown_to_all_keeps_intake_until_show_end(): void
+    {
+        // Готово к продаже: марка и кадр — иначе отказ увёл бы в черновики.
+        $this->offer->update(['brand_id' => \App\Cars\Brand::create(['slug' => 'bmw', 'name' => 'BMW'])->id]);
+        $this->offer->addMedia(\Illuminate\Http\UploadedFile::fake()->image('a.jpg', 800, 600))->toMediaCollection('photos');
+        $deal = app(AcceptBid::class)(app(PlaceBid::class)($this->offer, $this->roman, 1050000), $this->admin, 20000, CommissionMode::Payout, scheme: DealScheme::Insurer);
+        app(UpdateOffer::class)($this->offer->fresh(), ['floor_price' => 650000], $this->admin);
+        app(ApplyReprice::class)($this->offer->fresh()->pendingReprice, $this->admin, 650000, [], 'ask', showDays: 3);
+        $until = $this->offer->fresh()->deal_show_until;
+
+        app(AnswerReprice::class)(RepriceAsk::where('deal_id', $deal->id)->sole(), false, $this->roman);
+        $offer = $this->offer->fresh();
+        $this->assertSame(DealState::Cancelled, $deal->fresh()->state);
+        $this->assertSame(OfferState::Open, $offer->state);
+        $this->assertSame($until->timestamp, $offer->bids_close_at->timestamp);
+        $this->assertNull($offer->deal_show_all_at);
     }
 
     public function test_accepting_bid_with_open_question_moves_it_to_deal(): void

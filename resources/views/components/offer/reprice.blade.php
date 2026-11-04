@@ -15,7 +15,8 @@
     $dealLocked = $deal && ! $deal->moneyEditable();
     $open = $offer->state === \App\Offers\OfferState::Open;
 @endphp
-<div {{ $attributes->class('proposal reprice') }} data-controller="sheet">
+{{-- `reprice:open` — «Разобрать переоценку» из шага маршрута (`x-route.path`). --}}
+<div {{ $attributes->class('proposal reprice') }} data-controller="sheet" data-action="reprice:open@window->sheet#open">
     <div class="proposal-body">
         <span class="proposal-mark" aria-hidden="true"><x-ui.icon :name="$reprice->source === 'letter' ? 'mail' : 'edit'" class="size-4"/></span>
         <div class="min-w-0 flex-1">
@@ -42,7 +43,7 @@
             {{-- Оценочная из письма и выбор правила переоценки: +50 000 или +5 % (`Pricing::rebids`), меньшее — сразу в поле. --}}
             @if ($reprice->value)
                 <div class="flex flex-wrap items-center justify-between gap-2">
-                    <span class="text-ink-muted">Оценочная по письму <span class="nums text-ink">{{ Money::rub($reprice->value) }}</span></span>
+                    <span class="text-ink-muted">Оценочная{{ $reprice->source === 'letter' ? ' по письму' : '' }} <span class="nums text-ink">{{ Money::rub($reprice->value) }}</span></span>
                     <span class="flex gap-2">
                         @foreach (\App\Offers\Pricing::rebids($reprice->value) as $label => $rebid)
                             <button type="button" class="chip nums" data-action="reprice#pick" data-reprice-price-param="{{ $rebid }}">{{ $label }}</button>
@@ -53,10 +54,11 @@
             <div class="fields">
                 <x-ui.field name="price" label="Закупочная, ₽" :value="Money::nums((int) old('price', $reprice->to_price))" :id="$id.'-price'" required
                     data-reprice-target="price" data-action="input->reprice#update"/>
-                @if ($open)
-                    <x-ui.field name="asking_price" label="Цена продажи, ₽" :value="$offer->asking_price ? Money::nums($offer->asking_price) : null" :id="$id.'-asking'"/>
-                @endif
+                {{-- Цена продажи — всегда (04.11.2026, владелец: «старая цена продажи ниже новой закупочной»). --}}
+                <x-ui.field name="asking_price" label="Цена продажи, ₽" :value="$offer->asking_price ? Money::nums($offer->asking_price) : null" :id="$id.'-asking'"
+                    data-reprice-target="asking" data-action="input->reprice#update"/>
             </div>
+            <p class="-mt-2 text-sm text-danger" data-reprice-target="askingLoss" hidden></p>
             @if ($bids->isNotEmpty() || $deal)
                 <div class="flex flex-wrap items-center justify-between gap-2">
                     <span class="field-label">Закупочная у тех, кто уже подтвердил</span>
@@ -105,6 +107,18 @@
                                 @endif
                             </div>
                             <p class="text-sm text-danger" data-reprice-target="loss" hidden></p>
+                            {{-- «Спросить» по сделке — пока менеджер думает, машину видят все менеджеры обычным предложением
+                                 (`ShowDealToAll`, 04.11.2026; галка стоит сразу — владелец). Согласится — показ снимется сам. --}}
+                            @unless ($dealLocked)
+                                <div class="flex flex-col gap-2" data-reprice-target="show" hidden>
+                                    <x-ui.check name="show_all" :checked="true">Пока думает — показать всем менеджерам</x-ui.check>
+                                    <div class="segment">
+                                        @foreach (\App\Offers\Actions\ShowDealToAll::DAYS as $days)
+                                            <label><input type="radio" name="show_days" value="{{ $days }}" @checked((int) old('show_days', 7) === $days)>{{ $days === 7 ? 'Неделя' : $days.' дня' }}</label>
+                                        @endforeach
+                                    </div>
+                                </div>
+                            @endunless
                         </div>
                     @endif
                 </div>

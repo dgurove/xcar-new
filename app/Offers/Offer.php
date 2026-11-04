@@ -59,7 +59,7 @@ use Illuminate\Support\Facades\DB;
     'asking_price', 'min_bid_price', 'min_bid_share', 'prices_include_vat', 'tags', 'tag_colors', 'bids_close_at', 'sort_weight',
     'chat_enabled', 'share_locked', 'share_locked_by_estimate', 'audience_rules', 'recommended', 'vendor_id', 'claim_ref', 'insurer_deadline_at', 'car_place',
     'answer_by', 'insured_name', 'insured_phone', 'insured_phone2', 'flags', 'holder', 'docs_required', 'contact_name', 'contact_email',
-    'garage_allowed', 'deal_show_until', 'binding_until', 'held_by', 'plate', 'sts', 'pts', 'body_no', 'chassis_no', 'policy_no', 'vehicle_category', 'first_look_until', 'first_look_user_id',
+    'garage_allowed', 'deal_show_until', 'deal_show_all_at', 'binding_until', 'held_by', 'plate', 'sts', 'pts', 'body_no', 'chassis_no', 'policy_no', 'vehicle_category', 'first_look_until', 'first_look_user_id',
 ])]
 class Offer extends Model
 {
@@ -202,6 +202,7 @@ class Offer extends Model
             'intake_closed_at' => 'datetime',
             'no_bids_alerted_for' => 'datetime',
             'deal_show_until' => 'datetime',
+            'deal_show_all_at' => 'datetime',
             'binding_until' => 'datetime',
             'binding_alerted_for' => 'datetime',
             'slot_at' => 'datetime',
@@ -616,7 +617,22 @@ class Offer extends Model
             return false;
         }
 
-        return DealAudience::visibleTo($this, $user);
+        return ($this->deal_show_all_at && $user->hasRole(Role::Manager)) || DealAudience::visibleTo($this, $user);
+    }
+
+    /**
+     * Показ всем менеджерам, пока менеджер сделки думает о новой закупочной (04.11.2026, `ApplyReprice`): им это обычное
+     * предложение — срок приёма до конца показа (`closesAt`), о сделке ни слова, подтверждение встаёт резервом.
+     */
+    public function showsDealAsOpen(): bool
+    {
+        return $this->state === OfferState::Sold && $this->deal_show_all_at !== null && $this->deal_show_until?->isFuture() === true;
+    }
+
+    /** До когда идёт приём для витрины: у показа всем — конец показа, иначе срок приёма. */
+    public function closesAt(): ?Carbon
+    {
+        return $this->showsDealAsOpen() ? $this->deal_show_until : $this->bids_close_at;
     }
 
     /** «Сколько показывать» сделку прошло (`deal_show_until`): список остаётся, но его никто не видит. Пусто — пока идёт сделка. */
@@ -756,8 +772,8 @@ class Offer extends Model
 
         return $q->where('state', OfferState::Sold)->whereHas('deal')
             ->where(fn ($w) => $w->whereNull('deal_show_until')->orWhere('deal_show_until', '>', now()))
-            ->where(fn ($w) => $w
-                ->whereHas('dealAudience', fn ($a) => $a->where('audience_type', DealAudience::USER)->where('audience_id', $user->id))
+            ->where(fn ($w) => $w->whereNotNull('deal_show_all_at')
+                ->orWhereHas('dealAudience', fn ($a) => $a->where('audience_type', DealAudience::USER)->where('audience_id', $user->id))
                 ->orWhere(fn ($g) => $g->whereHas('dealAudience', fn ($a) => $a->where('audience_type', DealAudience::GROUP)->whereIn('audience_id', $groups ?: [0]))));
     }
 
@@ -1485,6 +1501,9 @@ class Offer extends Model
     /** Секунд до закрытия приёма; null — приём не ограничен или закрыт. */
     public function secondsLeft(): ?int
     {
+        if ($this->showsDealAsOpen()) {
+            return (int) max(0, now()->diffInSeconds($this->deal_show_until, false));
+        }
         if (! $this->bids_close_at || ! $this->state->acceptsBids()) {
             return null;
         }

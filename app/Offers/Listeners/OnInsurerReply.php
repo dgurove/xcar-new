@@ -83,13 +83,16 @@ final class OnInsurerReply
     /**
      * Любое письмо страховой по идущей сделке менеджера — в «Разобрать ответ» (03.11.2026): на любой ящик, пересылка
      * сотрудника тоже (`InsurerReplies::counts`), после начала сделки. Оптом и без менеджера (аукцион) — нет: показывать некому.
-     * Гонку двух разборов одного письма держит уникальный `message_id` (`firstOrCreate` — через `createOrFirst`).
+     * Гонку двух разборов одного письма держит уникальный `message_id` (`firstOrCreate` — через `createOrFirst`). Письмо, что
+     * завело переоценку, — нет: его разбирают переоценкой.
      */
     public static function queue(Deal $deal, Message $message): void
     {
         $deal->loadMissing('offer.vendor');
         if (! $deal->isActive() || ! $deal->buyer_id || $deal->offer->vendor?->deal_format === DealFormat::Wholesale
-            || $message->direction !== Direction::In || $message->date_at?->lt($deal->created_at) || ! InsurerReplies::counts($message)) {
+            || $message->direction !== Direction::In || $message->date_at?->lt($deal->created_at) || ! InsurerReplies::counts($message)
+            // Письмо завело переоценку (04.11.2026) — его разбирают ею: «Спросить» менеджера цифрами, без слов письма.
+            || \App\Offers\Reprice::where('message_id', $message->id)->exists()) {
             return;
         }
         $review = ReplyReview::firstOrCreate(['message_id' => $message->id], ['deal_id' => $deal->id, 'offer_id' => $deal->offer_id, 'state' => ReplyReview::PENDING]);

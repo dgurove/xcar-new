@@ -8,7 +8,8 @@
     // Срок приёма — тем, кто подтверждает; покупателю таймер ни о чём.
     $left = $gallery || !($user?->bidsOnSite() ?? false) ? null : $offer->secondsLeft();
     $canBid = ($user?->bidsOnSite() ?? false) && ($offer->bidsOpen() || $offer->canBidInDeal($user));
-    $reserve = !$gallery && !$offer->bidsOpen() && $offer->canBidInDeal($user);
+    // Показ всем, пока менеджер сделки думает (04.11.2026): для них обычное предложение — без «Идёт сделка».
+    $reserve = !$gallery && !$offer->bidsOpen() && ! $offer->showsDealAsOpen() && $offer->canBidInDeal($user);
     $wantsInterest = $user?->canInterestIn($offer) ?? false;
     $manager = $user?->isBuyer() ? $user->manager : null;
     // Черновик, отданный этому менеджеру на оценку (11.10.2026): вместо цены и подтверждения — оценка.
@@ -42,7 +43,7 @@
 @if ($left !== null && $left > 0)
     <p class="mt-3 flex items-baseline justify-between gap-3 text-sm text-ink-muted" data-closes-with-timer>
         Приём закрывается
-        <span class="nums text-base font-semibold {{ $offer->isEndingSoon() ? 'text-urgent' : 'text-ink' }}" data-controller="timer" data-timer-until-value="{{ $offer->bids_close_at->toIso8601String() }}" data-timer-done-value="закрыт" data-timer-coarse-value="true" data-timer-word-value="через">{{ \App\Support\Ago::left($offer->bids_close_at, 'через') }}</span>
+        <span class="nums text-base font-semibold {{ $offer->isEndingSoon() ? 'text-urgent' : 'text-ink' }}" data-controller="timer" data-timer-until-value="{{ $offer->closesAt()->toIso8601String() }}" data-timer-done-value="закрыт" data-timer-coarse-value="true" data-timer-word-value="через">{{ \App\Support\Ago::left($offer->closesAt(), 'через') }}</span>
     </p>
     <p class="mt-3 text-sm text-ink-muted" hidden data-shows-when-closed>Приём подтверждений закрыт</p>
 @elseif (!$gallery && ($user?->bidsOnSite() ?? false) && !$canBid && $offer->state !== \App\Offers\OfferState::Draft)

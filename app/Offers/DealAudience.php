@@ -96,10 +96,10 @@ final class DealAudience
     {
         OfferDealAudience::where('offer_id', $offer->id)->delete();
         $offer->unsetRelation('dealAudience');
-        if ($offer->deal_show_until !== null) {
-            Offer::whereKey($offer->id)->update(['deal_show_until' => null]);
-            $offer->deal_show_until = null;
-            $offer->syncOriginalAttribute('deal_show_until');
+        if ($offer->deal_show_until !== null || $offer->deal_show_all_at !== null) {
+            Offer::whereKey($offer->id)->update(['deal_show_until' => null, 'deal_show_all_at' => null]);
+            $offer->deal_show_until = $offer->deal_show_all_at = null;
+            $offer->syncOriginalAttributes(['deal_show_until', 'deal_show_all_at']);
         }
     }
 

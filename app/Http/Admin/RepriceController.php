@@ -5,6 +5,7 @@ namespace App\Http\Admin;
 use App\Offers\Actions\AnswerReprice;
 use App\Offers\Actions\ApplyReprice;
 use App\Offers\Actions\DismissReprice;
+use App\Offers\Actions\ShowDealToAll;
 use App\Offers\Offer;
 use App\Offers\OfferState;
 use App\Offers\PriceGuard;
@@ -28,13 +29,18 @@ class RepriceController
             'bids' => ['array'],
             'bids.*' => [Rule::in([ApplyReprice::KEEP, ApplyReprice::UPDATE, ApplyReprice::ASK])],
             'deal' => ['nullable', Rule::in([ApplyReprice::KEEP, ApplyReprice::UPDATE, ApplyReprice::ASK])],
+            'show_all' => ['boolean'],
+            'show_days' => ['nullable', 'integer', Rule::in(ShowDealToAll::DAYS)],
         ], ['price.required' => 'Новая закупочная']);
-        $prices = $offer->state === OfferState::Open ? array_filter(array_intersect_key($data, array_flip(['asking_price']))) : [];
+        // Цена продажи — в любом состоянии (04.11.2026, владелец: «старая цена продажи ниже новой закупочной»): в сделке по
+        // ней машину увидят все, если показывать, пока менеджер думает.
+        $prices = array_filter(array_intersect_key($data, array_flip(['asking_price'])));
         // Открытое: новая закупочная против цены продажи — «Точно?» (`PriceGuard`), её правят тут же в шторке.
         if ($offer->state === OfferState::Open) {
             PriceGuard::assertPrices($prices['asking_price'] ?? $offer->asking_price, $data['price'], $request->boolean('price_ok'));
         }
-        $apply($reprice, $request->user(), $data['price'], $data['bids'] ?? [], $data['deal'] ?? null, $prices);
+        $showDays = ($data['deal'] ?? null) === ApplyReprice::ASK && $request->boolean('show_all') ? (int) ($data['show_days'] ?? 7) : null;
+        $apply($reprice, $request->user(), $data['price'], $data['bids'] ?? [], $data['deal'] ?? null, $prices, $showDays);
 
         return back(fallback: "/offers/{$offer->number}")->with('toast', 'Переоценка применена');
     }
@@ -47,6 +53,13 @@ class RepriceController
         $answer($ask, $agree, $request->user());
 
         return back(fallback: "/offers/{$offer->number}")->with('toast', $agree ? 'За менеджера: согласен' : 'За менеджера: отказался');
+    }
+
+    public function stopShow(Request $request, Offer $offer, ShowDealToAll $show)
+    {
+        $show->stop($offer, $request->user());
+
+        return back(fallback: "/offers/{$offer->number}")->with('toast', 'Показ всем снят');
     }
 
     public function dismiss(Request $request, Offer $offer, Reprice $reprice, DismissReprice $dismiss)

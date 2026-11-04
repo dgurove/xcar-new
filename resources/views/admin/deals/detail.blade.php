@@ -39,6 +39,8 @@
             {{-- Порядок по смыслу (03.11.2026, владелец: «много непонятного в окошке — разобраться»): что сейчас (путь) → сделка
                  (вопрос про закупочную, деньги со схемой, покупатель) → вывоз → письма → показ и заметка → опасное. --}}
             {{-- Письмо страховой ждёт разбора: менеджер о нём не знает, пока админ не покажет выбранное (03.11.2026). --}}
+            {{-- Переоценка закупочной — первой (04.11.2026, владелец: в окошке сделки о ней не было ни слова). --}}
+            @if (auth()->user()->canManageCrm() && ($reprice = $offer->pendingReprice))<x-offer.reprice :offer="$offer" :reprice="$reprice" class="w-full"/>@endif
             <x-deal.reply-review :deal="$deal"/>
             @if ($offer->positions->isNotEmpty())@include('admin.offers.route', ['cardClass' => ''])@endif
             <x-offer.reprice-asks :offer="$offer"/>

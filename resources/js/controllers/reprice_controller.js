@@ -6,7 +6,7 @@ import { nums, rubles } from '../lib/money';
 // ничего, «Применить» живая, когда решено по всем. Новая цена правится — «→ N» и «станет ниже закупочной» идут за ней.
 // «Всем оставить / обновить / спросить» — одним нажатием (недоступное у строки не трогается).
 export default class extends Controller {
-    static targets = ['price', 'row', 'to', 'loss', 'submit'];
+    static targets = ['price', 'asking', 'askingLoss', 'show', 'row', 'to', 'loss', 'submit'];
 
     connect() {
         this.update();
@@ -42,10 +42,22 @@ export default class extends Controller {
             const amount = Number(row.dataset.amount) || 0;
             const loss = row.querySelector('[data-reprice-target="loss"]');
             const under = picked && picked.value !== 'keep' && price && amount && amount <= price;
+            // Владелец 04.11.2026: «пиши не „станет ниже закупочной“, а „закупочная станет выше цены продажи“».
             if (loss) {
                 loss.hidden = !under;
-                loss.textContent = under ? (price > amount ? `Станет ниже закупочной на ${nums(price - amount)}` : 'Станет равна закупочной') : '';
+                loss.textContent = under ? (price > amount ? `Закупочная станет выше цены продажи на ${nums(price - amount)}` : 'Закупочная станет равна цене продажи') : '';
             }
+        }
+        // Цена продажи не выше новой закупочной — словом под полем.
+        if (this.hasAskingTarget && this.hasAskingLossTarget) {
+            const asking = rubles(this.askingTarget.value);
+            const low = Boolean(asking && price && asking <= price);
+            this.askingLossTarget.hidden = !low;
+            this.askingLossTarget.textContent = low ? (asking < price ? `Цена продажи ниже новой закупочной на ${nums(price - asking)}` : 'Цена продажи равна новой закупочной') : '';
+        }
+        // «Пока думает — показать всем» — только когда по сделке выбрано «Спросить».
+        if (this.hasShowTarget) {
+            this.showTarget.hidden = this.element.querySelector('input[name="deal"]:checked')?.value !== 'ask';
         }
         if (this.hasSubmitTarget) this.submitTarget.disabled = !ready;
     }

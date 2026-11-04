@@ -195,12 +195,13 @@ class Position extends Model
                 ($phone = $this->deal?->buyer?->phone) ? ['label' => 'Позвонить', 'tel' => $phone] : ['label' => 'Открыть', 'href' => '/offers/'.$offer->number]);
         }
 
-        if ($at = $this->replyPending()) {
-            return $todo('reply', 'Разобрать ответ', 0, $at, ['label' => 'Разобрать', 'href' => '/offers/'.$offer->number]);
-        }
-
+        // Переоценка — раньше «Разобрать ответ» (04.11.2026, владелец: острый вопрос — она, а не письмо).
         if ($this->repricePending()) {
             return $todo('reprice', 'Разобрать переоценку', 0, $offer->pendingReprice->created_at, ['label' => 'Открыть', 'href' => '/offers/'.$offer->number]);
+        }
+
+        if ($at = $this->replyPending()) {
+            return $todo('reply', 'Разобрать ответ', 0, $at, ['label' => 'Разобрать', 'href' => '/offers/'.$offer->number]);
         }
 
         return match (true) {
