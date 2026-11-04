@@ -455,4 +455,23 @@ class RepriceTest extends TestCase
         $this->assertNull(RepriceFlow::for($this->offer->fresh()));
         $this->assertNull($this->offer->fresh()->position(Track::Sale)->repriceUnanswered());
     }
+
+    /** Ответ Альфе — та же закупочная, что встаёт в сделку, с надбавкой к ставке словами (+50 000 или +5 %). */
+    public function test_reply_to_alfa_names_our_price_and_rise(): void
+    {
+        $this->offer->vendor->update(['floor_by_value' => true]);
+        $this->offer->update(['claim_ref' => '0790/046/09068/26', 'floor_price' => 5189000]);
+        $deal = app(AcceptBid::class)(app(PlaceBid::class)($this->offer->fresh(), $this->roman, 5600000), $this->admin, 20000, CommissionMode::Payout, scheme: DealScheme::Insurer);
+        $account = DB::table('mail_accounts')->insertGetId(['slug' => 'deal', 'title' => 'deal', 'email' => 'deal@xcar.ru', 'scope' => 'offers',
+            'imap_host' => 'x', 'imap_username' => 'x', 'imap_password' => 'x', 'smtp_host' => 'x', 'smtp_username' => 'x', 'smtp_password' => 'x']);
+        $message = Message::create(['account_id' => $account, 'direction' => 'in', 'from_email' => 'implementation@alfastrah.ru', 'subject' => 'RE: 0790/046/09068/26',
+            'parsed' => ['keys' => ['code:'.Code::key('0790/046/09068/26')], 'own_text' => 'Максимальная ставка 5500000,00. К рассмотрению принимаются предложения +5% или 50 000 руб. к максимальной ставке']]);
+        $reprice = app(DetectReprice::class)($this->offer->fresh(), $message);
+        app(ApplyReprice::class)($reprice, $this->admin, 5550000, [], 'update');
+
+        $flow = RepriceFlow::for($this->offer->fresh());
+        $this->assertSame([5550000, '+50 000 руб.'], [$flow->agreedAmount(), $flow->rise()]);
+        $this->assertSame('Добрый день! Наше предложение — 5 550 000 руб. (максимальная ставка 5 500 000 руб. +50 000 руб.).', str_replace("\u{A0}", ' ', $flow->replyText()));
+        $this->assertSame(5550000, (int) $deal->fresh()->cost);
+    }
 }

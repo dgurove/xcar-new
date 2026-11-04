@@ -133,7 +133,7 @@
                         </div>
                         @if ($answer === RepriceFlow::NOW)
                             <div class="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-2">
-                                <span class="nums text-sm text-ink-muted">«Согласны на {{ Money::rub($flow->agreedAmount()) }}»</span>
+                                <span class="nums text-sm text-ink-muted">{{ $flow->rise() ? 'Предлагаем' : 'Согласны на' }} <span class="text-ink">{{ Money::rub($flow->agreedAmount()) }}</span>@if ($flow->rise()) ({{ Money::nums($reprice->value) }} {{ $flow->rise() }})@endif</span>
                                 @if ($url = $flow->replyUrl())
                                     <x-mail.window-button :url="$url" label="Ответить" icon="reply" class="btn-s btn-accent"/>
                                 @endif

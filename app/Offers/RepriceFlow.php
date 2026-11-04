@@ -90,16 +90,35 @@ final class RepriceFlow
         };
     }
 
-    /** На какую цену соглашаемся в ответе: у «закупочной от оценочной» (Альфа) поставщик называл оценочную. */
+    /**
+     * Что предлагаем поставщику — новую закупочную, ту же, что встаёт в сделку (04.11.2026, владелец: «в ответном письме
+     * писать +5 % или +50 000, точно так же, как в сделке»).
+     */
     public function agreedAmount(): int
     {
-        return $this->reprice->value ?? $this->reprice->to_price;
+        return $this->reprice->to_price;
     }
 
-    /** Готовый текст ответа поставщику. */
+    /** Надбавка к оценочной словами («+50 000 руб.», «+5%»), у переоценки без оценочной — null. */
+    public function rise(): ?string
+    {
+        $value = $this->reprice->value;
+        if (! $value || $this->reprice->to_price <= $value) {
+            return null;
+        }
+        $pct = array_search($this->reprice->to_price, Pricing::rebids($value), true);
+
+        return $pct !== false && str_ends_with((string) $pct, '%') ? $pct : '+'.Money::plain($this->reprice->to_price - $value, sign: false).' руб.';
+    }
+
+    /** Готовый текст ответа поставщику: у оценочной — ставка и надбавка, иначе — согласие на новую стоимость. */
     public function replyText(): string
     {
-        return 'Добрый день! Согласны на новую стоимость '.Money::plain($this->agreedAmount(), sign: false).' руб.';
+        $sum = Money::plain($this->agreedAmount(), sign: false).' руб.';
+
+        return ($rise = $this->rise())
+            ? 'Добрый день! Наше предложение — '.$sum.' (максимальная ставка '.Money::plain($this->reprice->value, sign: false).' руб. '.$rise.').'
+            : 'Добрый день! Согласны на новую стоимость '.$sum;
     }
 
     /** Окно писем на письме переоценки с редактором ответа и готовым текстом. */
