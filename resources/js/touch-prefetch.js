@@ -68,7 +68,8 @@ export function touchPrefetch() {
 
     document.addEventListener('turbo:before-fetch-request', (event) => {
         const { fetchOptions, url } = event.detail;
-        if (fetchOptions.method !== 'GET' || event.target.tagName === 'FORM') return;
+        // Готовый ответ — только переходу страницы: у запроса фрейма свой заголовок, предзагрузка шла без него.
+        if (fetchOptions.method !== 'GET' || event.target.tagName === 'FORM' || event.target.tagName === 'TURBO-FRAME') return;
         const hit = pending.get(url.href);
         pending.delete(url.href);
         if (hit && Date.now() - hit.at < TTL && !hit.controller.signal.aborted) {
@@ -94,6 +95,11 @@ function prefetchable(link) {
     if (link.origin !== location.origin) return false;
     if (link.hasAttribute('download') || link.target?.startsWith('_')) return false;
     if (link.closest('[data-turbo="false"], [data-turbo-prefetch="false"], [data-turbo-method], [data-turbo-frame]')) return false;
+    // Ссылка внутри фрейма грузит фрейм, а предзагрузка уходит без `Turbo-Frame` — сервер отвечает страницей или редиректом
+    // на неё, и нажатие получало ответ без фрейма: «Не получилось» (04.11.2026, «Ответить» в окне писем у Сергея на
+    // парковке — только с телефона, мышью предзагрузки по касанию нет). Фрейм с `target="_top"` — переход страницы.
+    const frame = link.closest('turbo-frame');
+    if (frame && frame.getAttribute('target') !== '_top') return false;
     // Таб таб-бара открывает запомненный экран раздела (tabbar_controller), а не свой href — предзагрузка ушла бы мимо.
     if (link.closest('#tabbar')) return false;
     if (link.href === location.href || link.hash && link.pathname === location.pathname) return false;
