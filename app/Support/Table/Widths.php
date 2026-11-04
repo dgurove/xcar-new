@@ -39,7 +39,11 @@ final class Widths
     /** Поля ячейки (12 + 4 px) и число справа (поле слева 20 px), rem. */
     private const PAD = 1.1;
 
-    /** Поля кнопки (`btn`) и чипа (`tag`, `chip`, `plate`), rem; таймер (`timer_controller`) сервер отдаёт пустым — место под «23 д 20 ч». */
+    /**
+     * Поля кнопки (`btn`) и чипа (`tag`, `chip`, `plate`), rem; пустой таймер (`timer_controller`, сервер отдаёт без текста) —
+     * место под «23 д 20 ч». С текстом («14 д 15 ч») место — сам текст: он меняется на знак, а не вдвое (04.11.2026: запас
+     * сверх текста сделал «Приём» каталога на 70 px шире нужного, и название рядом резалось «…»).
+     */
     private const BTN = 2.3;
 
     private const CHIP = .5;
@@ -131,6 +135,9 @@ final class Widths
         $piece = -1;
         $hidden = $sub = 0; // глубина внутри скрытого на ПК элемента и внутри `.cell-sub`
         $stack = [];
+        // Запас 5 % — промежутки между кусками (`ml-1.5`, `gap`, логотип и значок копирования у номера), которых в тексте нет:
+        // буквы оценены точно (замер 30.10.2026), а без запаса номер убытка в «Сделках» резался на 5–7 px.
+        $len = fn (string $t) => self::text(trim(preg_replace('/\s+/u', ' ', html_entity_decode($t, ENT_QUOTES | ENT_HTML5)))) * 1.05;
         foreach (preg_split('#(<(?:[^>"\']|"[^"]*"|\'[^\']*\')*>)#', $html, -1, PREG_SPLIT_DELIM_CAPTURE | PREG_SPLIT_NO_EMPTY) as $part) {
             if ($part[0] !== '<') {
                 if (! $hidden) {
@@ -140,9 +147,12 @@ final class Widths
                 continue;
             }
             if ($part[1] === '/') {
-                [$hides, $isSub] = array_pop($stack) ?? [false, false];
+                [$hides, $isSub, $timer] = array_pop($stack) ?? [false, false, null];
                 $hidden -= (int) $hides;
                 $sub -= (int) $isSub;
+                if ($timer !== null && $len(mb_substr($sub ? $parts[$piece][0] : $core, $timer)) === 0.0) {
+                    $sub ? $parts[$piece][1] += self::TIMER : $coreIcons += self::TIMER;
+                }
 
                 continue;
             }
@@ -166,9 +176,11 @@ final class Widths
             if ($isSub && ! $sub && ! $hidden && ! $hides) {
                 $parts[++$piece] = ['', 0.0];
             }
-            $stack[] = [$hides, $isSub];
             $hidden += (int) $hides;
             $sub += (int) $isSub;
+            // Таймер — с какого места его текст: пустой на закрытии получает место `TIMER`.
+            $timer = ! $hidden && str_contains($part, 'data-controller="timer"') ? mb_strlen($sub ? $parts[$piece][0] : $core) : null;
+            $stack[] = [$hides, $isSub, $timer];
             if (! $hidden) {
                 $box = match (true) {
                     (bool) preg_match('#\bclass="[^"]*(?<![\w:-])(?:btn|pill)\b#', $part) => self::BTN,
@@ -176,14 +188,12 @@ final class Widths
                     // Аватар (до 22 px) с промежутком шире значка: сверх `ICON` его картинки или буквы.
                     (bool) preg_match('#\bclass="[^"]*(?<![\w:-])avatar\b#', $part) => self::CHIP,
                     default => 0,
-                } + (str_contains($part, 'data-controller="timer"') ? self::TIMER : 0);
+                };
                 $sub ? $parts[$piece][1] += $box : $coreIcons += $box;
             }
         }
 
-        // Запас 5 % — промежутки между кусками (`ml-1.5`, `gap`, логотип и значок копирования у номера), которых в тексте нет:
-        // буквы оценены точно (замер 30.10.2026), а без запаса номер убытка в «Сделках» резался на 5–7 px.
-        $w = fn (string $t, float $icons) => self::text(trim(preg_replace('/\s+/u', ' ', html_entity_decode($t, ENT_QUOTES | ENT_HTML5)))) * 1.05 + $icons;
+        $w = fn (string $t, float $icons) => $len($t) + $icons;
 
         // У названия второй этаж переносится под него сам (`.table td.grow > .cell-sub`) — ширину задаёт только ядро.
         $alone = $w($core, $coreIcons);
