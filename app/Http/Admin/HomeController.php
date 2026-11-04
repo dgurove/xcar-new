@@ -2,6 +2,7 @@
 
 namespace App\Http\Admin;
 
+use App\Space\Board;
 use App\Space\Conveyor;
 use App\Support\Surface;
 use Illuminate\Http\Request;
@@ -43,6 +44,14 @@ final class HomeController
         $response = response()->view('admin.space.conveyor', ['nodes' => Conveyor::view()]);
 
         return Conveyor::$stale ? $response->header('X-Conveyor-Stale', '1') : $response;
+    }
+
+    /** Варианты вида доски конвейера (04.11.2026, владелец: «нарисуй разные варианты и дай мне выбрать») — временно. */
+    public function variants(int $variant = 1)
+    {
+        abort_unless(isset(Board::VARIANTS[$variant]), 404);
+
+        return view('admin.space.variants', ['board' => Board::view(), 'variant' => $variant]);
     }
 
     private static function fromInside(Request $request): bool

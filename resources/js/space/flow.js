@@ -9,13 +9,30 @@ const APART = 26;          // px между встречными линиями
 const MARGIN = 60;         // px мира вокруг схемы — рамка «К схеме»
 export const STRIDE = 12;  // A: p0, c1 · B: c2, p1 · T: фаза, скорость · S: размер, яркость
 
-// Карточки этапов: центр (left/top узла — его точка, translate центрирует) и размер. Transform слоя offset не трогает.
+// Узлы схемы: центр и размер в координатах слоя. Карточка змейки стоит центром в своей точке (left/top — точка,
+// translate центрирует), узел доски — где его поставила раскладка: смещения складываются до слоя. Transform слоя offset
+// не трогает.
 export function measure(world) {
     const boxes = new Map();
     for (const el of world.querySelectorAll('[data-node]')) {
-        boxes.set(el.dataset.node, { x: el.offsetLeft, y: el.offsetTop, w: el.offsetWidth, h: el.offsetHeight, total: Number(el.dataset.total) || 0, flow: Number(el.dataset.flow) || 0 });
+        const { x, y } = offsetIn(el, world);
+        const w = el.offsetWidth, h = el.offsetHeight;
+        const centered = el.classList.contains('space-node');
+        boxes.set(el.dataset.node, { x: centered ? x : x + w / 2, y: centered ? y : y + h / 2, w, h, total: Number(el.dataset.total) || 0, flow: Number(el.dataset.flow) || 0 });
     }
     return boxes;
+}
+
+// Рамка элемента в координатах слоя: `{ x0, y0, x1, y1 }` — доска целиком для камеры.
+export function frameOf(el, world) {
+    const { x, y } = offsetIn(el, world);
+    return { x0: x, y0: y, x1: x + el.offsetWidth, y1: y + el.offsetHeight };
+}
+
+function offsetIn(el, root) {
+    let x = 0, y = 0;
+    for (let n = el; n && n !== root; n = n.offsetParent) { x += n.offsetLeft; y += n.offsetTop; }
+    return { x, y };
 }
 
 export function bounds(boxes) {

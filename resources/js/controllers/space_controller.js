@@ -4,7 +4,7 @@ import { bump } from '../lib/bump';
 import { request } from '../lib/http';
 import { reducedMotion } from '../lib/motion';
 import { Camera } from '../space/camera';
-import { bounds, curves, measure, paint, particles, pulse } from '../space/flow';
+import { bounds, curves, frameOf, measure, paint, particles, pulse } from '../space/flow';
 import { Backdrop, FlatSky, Sky, fits, pixelRatio, stars } from '../space/sky';
 
 // Космос главной CRM (`admin/space`, 04.11.2026): звёзды (`space/sky.js`), камера (`space/camera.js`) и слой схемы
@@ -28,12 +28,12 @@ const STALE = 9000;          // мс: сервер отдал прежний с�
 const TWEEN = 700;           // мс докрутки числа
 let sky = null;              // звёзды одни на сеанс: второй заход их не считает заново
 
-const read = () => { try { return JSON.parse(sessionStorage.getItem(KEY) || 'null') ?? undefined; } catch { return undefined; } };
-const save = (value) => { try { sessionStorage.setItem(KEY, JSON.stringify(value)); } catch {} };
+const read = (key) => { try { return JSON.parse(sessionStorage.getItem(key) || 'null') ?? undefined; } catch { return undefined; } };
+const save = (key, value) => { try { sessionStorage.setItem(key, JSON.stringify(value)); } catch {} };
 
 export default class extends Controller {
     static targets = ['back', 'sky', 'world', 'links', 'conveyor', 'home'];
-    static values = { url: String, links: Array };
+    static values = { url: String, links: Array, key: { type: String, default: KEY } };
 
     connect() {
         this.still = reducedMotion();
@@ -42,7 +42,7 @@ export default class extends Controller {
         this.build();
         this.backdrop = new Backdrop(this.backTarget);
         this.camera = new Camera(this.element, { wake: () => this.wake(), still: this.still });
-        this.fresh = !this.camera.restore(read());
+        this.fresh = !this.camera.restore(read(this.keyValue));
         // Тема — класс `dark` у <html> (`theme.js`): переключили — фон другой сразу, без перезагрузки. Холст звёзд — новый:
         // прозрачность контекста задаётся только при создании.
         this.theme = () => {
@@ -63,7 +63,7 @@ export default class extends Controller {
             // Вернулись, а пока вкладка была скрыта, пришло событие — числа перечитываются сейчас.
             if (document.visibilityState === 'visible') { this.touchedAt = performance.now(); this.wake(); if (this.missed) this.soon(); return; }
             this.sleep();
-            save(this.camera.snapshot());
+            save(this.keyValue, this.camera.snapshot());
         };
         document.addEventListener('visibilitychange', this.onVisible);
         this.onLive = () => this.soon();
@@ -87,7 +87,7 @@ export default class extends Controller {
         clearTimeout(this.retry);
         this.wait = this.retry = null;
         this.camera.detach();
-        save(this.camera.snapshot());
+        save(this.keyValue, this.camera.snapshot());
         this.renderer.dispose();
     }
 
@@ -127,7 +127,8 @@ export default class extends Controller {
     layout() {
         const { w, h } = this.camera;
         if (w <= 1) return;
-        const tall = w < 700 || w / h < 0.85;
+        const board = this.worldTarget.querySelector('[data-board]');
+        const tall = !board && (w < 700 || w / h < 0.85);
         const switched = this.tall !== undefined && this.tall !== tall;
         this.tall = tall;
         this.worldTarget.classList.toggle('is-tall', tall);
@@ -136,8 +137,8 @@ export default class extends Controller {
         paint(this.linksTarget, this.curves);
         this.flow = this.still ? null : particles(this.curves, this.boxes);
         this.renderer.setFlow(this.flow);
-        const frame = bounds(this.boxes);
-        if (frame) this.camera.frame(frame, this.view(frame, w, h, tall));
+        const frame = board ? frameOf(board, this.worldTarget) : bounds(this.boxes);
+        if (frame) this.camera.frame(frame, board ? this.start(frame, w, h) : this.view(frame, w, h, tall));
         if (this.fresh || switched) { this.fresh = false; this.camera.jump(); }
         this.drawn = -1;
         this.wake();
@@ -153,6 +154,18 @@ export default class extends Controller {
         }
         const z = clamp(w / 490, 0.6, 1);
         return { x: (b.x0 + b.x1) / 2, y: b.y0 + h / 2 / z, z };
+    }
+
+    // Вид доски: её начало слева — этапы читаются слева направо. ПК — заголовки и первые задачи на высоту экрана,
+    // телефон — первый столбец почти во всю ширину, дальше листают вбок.
+    start(b, w, h) {
+        const clamp = (v, a, c) => Math.min(c, Math.max(a, v));
+        const phone = w < 700;
+        // На телефоне источники — за левым краем: первый экран — первый этап.
+        const first = phone && this.worldTarget.querySelector('.board-phase');
+        const x0 = first ? frameOf(first, this.worldTarget).x0 : b.x0;
+        const z = phone ? clamp((w - 32) / 300, 0.5, 1) : clamp(h / 980, 0.55, 1);
+        return { x: x0 - (phone ? 16 : 24) / z + w / 2 / z, y: b.y0 - 64 / z + h / 2 / z, z };
     }
 
     // Событие пачкой — одно перечитывание через CALM; идёт — ещё одно после него.
