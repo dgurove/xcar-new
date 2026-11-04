@@ -36,7 +36,7 @@ class CodeMatcherTest extends TestCase
     {
         $matcher = new CodeMatcher;
         foreach (['Fwd: AUT-26-878170 // 2024 Belgee X50 (Р226КЕ977 / Y4K8622Z6RB920776)', 'Fwd: AUT-26-878170\\ 2024 Belgee',
-            'Fwd: AUT-26-878170 \\\\ 2024 Belgee', 'Fwd: AUT-26-878170  || 2024 Belgee', 'Fwd: AUT-26-878170 | 2024 | Belgee'] as $subject) {
+            'Fwd: AUT-26-878170 \\\\ 2024 Belgee', 'Fwd: AUT-26-878170  || 2024 Belgee', 'Fwd: AUT-26-878170 | 2024 | Belgee', 'Fwd: AUT-26-878170// 2024 Belgee'] as $subject) {
             $this->assertSame(['AUT-26-878170'], $matcher->findAll($subject), $subject);
         }
     }
@@ -45,5 +45,13 @@ class CodeMatcherTest extends TestCase
     public function test_tinsurance_seven_digits(): void
     {
         $this->assertSame(['AUT-26-1014182', 'AUT-26-979366'], (new CodeMatcher)->findAll("AUT-26-1014182 2259000\nAUT-26-979366 207000"));
+    }
+
+    /** ПСБ Страхование (04.11.2026): «0207-26-06» — номер, дата «2026-11-03» и телефон — нет. */
+    public function test_psb(): void
+    {
+        $matcher = new CodeMatcher;
+        $this->assertSame(['0207-26-06'], $matcher->findAll('Fwd: 0207-26-06 Соколов Кирилл Вадимович Audi A6 У846ТО799'));
+        $this->assertSame([], $matcher->findAll('Отчёт от 2026-11-03, тел. 8-800-555-85-65, 536-94-02'));
     }
 }

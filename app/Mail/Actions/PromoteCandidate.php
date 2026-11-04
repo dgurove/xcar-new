@@ -83,7 +83,9 @@ final class PromoteCandidate
             'inspection_address' => $v('location'),
             // Город письма, а нет его — место из адреса осмотра («Пермский край, д. Ванюки, …»).
             'settlement_id' => ($v('city') ? Settlement::named($v('city'))['id'] ?? null : null) ?? Settlement::inAddress($v('location'))['id'] ?? null,
-            'claim_ref' => $candidate->code,
+            // Без номера у вендора, у которого так бывает (ТИТ), — «б/н», как вписывают руками; машину держит госномер.
+            'claim_ref' => $candidate->code ?? ($vendor?->claim_ref_optional ? Code::NONE : null),
+            'plate' => $v('plate'),
             'vendor_id' => $vendor?->id,
             'prices_include_vat' => $v('vat') ?? Vendor::offersVat($vendor?->id),
             'answer_by' => $v('answer_by'),

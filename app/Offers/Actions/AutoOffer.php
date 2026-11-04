@@ -3,11 +3,13 @@
 namespace App\Offers\Actions;
 
 use App\Cars\Brand;
+use App\Cars\Identity;
 use App\Cars\Vin\Vin;
 use App\Mail\Actions\PromoteCandidate;
 use App\Mail\Candidate;
 use App\Mail\CandidateState;
 use App\Mail\Extraction\Code;
+use App\Mail\Extraction\Patterns;
 use App\Mail\Extraction\QuotationStripper;
 use App\Mail\Jobs\ImportThreadFiles;
 use App\Mail\Message;
@@ -16,6 +18,7 @@ use App\Mail\Scope;
 use App\Offers\Intake\OpenDraft;
 use App\Offers\LegacyClaim;
 use App\Offers\Offer;
+use App\Offers\OfferState;
 use App\Offers\Pricing;
 use App\Support\Nav;
 use App\Vendors\Vendor;
@@ -35,8 +38,8 @@ use Throwable;
  * «Из таблицы Кати», «Без продажной цены» или «Без закупочной»), черновик с ними сразу — строка появляется, — а файлы и
  * распознанное догружаются на глазах.
  *
- * Не заводит — цепочка ждёт человека в «Из писем»: вендор не узнан, номера убытка нет или их несколько (письмо о двух
- * машинах), номер в документах письма другой, машины нет (ни VIN, ни марки из справочника), письмо старше недели
+ * Не заводит — цепочка ждёт человека в «Из писем»: вендор не узнан, номера убытка нет (у вендора без номеров —
+ * `claim_ref_optional` — нет ни VIN, ни госномера, или машина уже в CRM) или их несколько (письмо о двух машинах), номер в документах письма другой, машины нет (ни VIN, ни марки из справочника), письмо старше недели
  * (история ящика), давняя пересылка с номером не из таблицы Кати (у вендора с вывозом каждой машины — заводится).
  */
 final class AutoOffer
@@ -75,12 +78,15 @@ final class AutoOffer
         if (! $candidate->vendor_id && ! $candidate->value('vendor_id')) {
             return 'вендор не узнан';
         }
+        $vendor = Vendor::find($candidate->vendor_id ?: $candidate->value('vendor_id'));
         $codes = $candidate->messages->flatMap(fn (Message $m) => array_filter($m->keys(), fn ($k) => str_starts_with($k, 'code:')))->unique();
         if ($codes->count() > 1) {
             return 'в письмах несколько номеров убытка';
         }
         if (! $candidate->code) {
-            return 'номера убытка нет';
+            // У вендора без номеров убытка (ТИТ, 04.11.2026: «Годные остатки Volkswagen Amarok Х139КН750» ждали в «Из писем»)
+            // машину держат VIN или госномер; госномер живого предложения — письма к нему, а не второй черновик.
+            return $vendor?->claim_ref_optional ? self::unnumbered($candidate) : 'номера убытка нет';
         }
         // 12.10.2026, 511791/2026: Совкомбанк в июньском письме «Вывоз ГОТС по делу 511791» приложил договор и акт по делу
         // 114725-26 — номер встал из темы, машина и VIN из чужих документов. Номер в документах другой — решает человек;
@@ -96,12 +102,30 @@ final class AutoOffer
         // таблице Кати: её Андрей и пересылает пачкой. У вендора, чьи машины вывозим все (Совкомбанк), — заводим всегда
         // (18.10.2026, владелец: 483511/2024 письмом марта 2025 Катя заводила руками — машина ещё стояла у клиента).
         $sent = self::forwardedAt($letter->text_body ?: strip_tags((string) $letter->html_body));
-        $vendor = Vendor::find($candidate->vendor_id ?: $candidate->value('vendor_id'));
         if (! $old && $sent && $sent->lt(now()->subDays(self::FORWARD_DAYS)) && ! $listed && ! $vendor?->pickup_on_arrival) {
             return 'давнее пересланное письмо, номера нет в таблице Кати';
         }
         if (! Vin::full((string) $candidate->value('vin')) && ! ($candidate->value('brand') && Brand::known((string) $candidate->value('brand')))) {
             return 'машины нет: ни VIN, ни марки';
+        }
+
+        return null;
+    }
+
+    /** Почему цепочка без номера убытка не заводится; null — заводится. */
+    private static function unnumbered(Candidate $candidate): ?string
+    {
+        $vin = Vin::full((string) $candidate->value('vin')) ? (string) $candidate->value('vin') : null;
+        $plate = Patterns::plateKey($candidate->value('plate'));
+        if (! $vin && ! $plate) {
+            return 'номера убытка нет, ни VIN, ни госномера';
+        }
+        if (! ($candidate->value('brand') && Brand::known((string) $candidate->value('brand'))) && ! $vin) {
+            return 'машины нет: ни VIN, ни марки';
+        }
+        $live = fn () => Offer::whereNotIn('offers.state', [OfferState::Archived, OfferState::Cancelled]);
+        if (($vin && Identity::offerByVin($vin)) || ($plate && $live()->whereCar('plate', $plate)->exists())) {
+            return 'машина уже в CRM';
         }
 
         return null;
