@@ -10,10 +10,11 @@ import { scrollTop, scrollToY } from './lib/scroller';
 // любой GET её переиздаёт, дальше открываем заново с нарастающей паузой.
 // По каналу приходит только событие; за содержимым идём на сервер:
 //   card    {number, only} — плитка оффера в каталоге: заменить или добавить; only (правка машины) — только заменить
-//   refresh {paths, request} — если открыта одна из страниц, перечитать её (morph); request — запрос Turbo, из
+//   refresh {paths, request, surface} — если открыта одна из страниц, перечитать её (morph); request — запрос Turbo, из
 //           которого пришла правка: у её автора Turbo его помнит и второй раз страницу не перечитывает
-//   rows    {paths: {путь: [ключи]}, request} — в открытом списке перечитать только эти строки (data-detail-key):
+//   rows    {paths: {путь: [ключи]}, request, surface} — в открытом списке перечитать только эти строки (data-detail-key):
 //           тот же адрес с заголовком X-Live-Rows (`Live\Rows`), строки, числа пилюль и таб-бара — из ответа (patch)
+//           surface (тема `staff` / `park`) — пути того хоста: на другом (админ на сайте, где `/offers` — каталог) — мимо
 //   notice  {id, subject, important, sound, surface, html} — карточка уведомления (banner_controller, window.notify)
 //   notices-read {subjects} — объекты открыли: их карточки закрываются
 //   toast   {message, href} — прежний вид, пока в очереди события старой выкладки
@@ -115,8 +116,8 @@ function open() {
     source = new EventSource(url, { withCredentials: true });
     const on = (name, handler) => source.addEventListener(name, (e) => { lastEventId = e.lastEventId || lastEventId; handler(JSON.parse(e.data || '{}')); });
     on('card', card);
-    on('refresh', refresh);
-    on('rows', rows);
+    on('refresh', here(refresh));
+    on('rows', here(rows));
     on('toast', ({ message, href }) => window.toast?.(message, href ? { href } : undefined));
     on('notice', (detail) => window.notify?.(detail));
     on('notices-read', ({ subjects }) => window.noticesRead?.(subjects));
@@ -194,6 +195,9 @@ function pending() {
     pill.dataset.count = String(Number(pill.dataset.count) + 1);
     pill.textContent = `Показать новые ${pill.dataset.count}`;
 }
+
+// Событие с путями чужого хоста пропускаем: адреса совпадают, а страницы разные (`Publisher::send`).
+const here = (handler) => (data) => (!data.surface || document.body.classList.contains(`surface-${data.surface}`)) && handler(data);
 
 function refresh({ paths, request }) {
     if (paths?.includes(location.pathname)) refreshPage(request);

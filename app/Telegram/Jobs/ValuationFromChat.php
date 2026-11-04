@@ -123,7 +123,7 @@ final class ValuationFromChat implements ShouldQueue
             ($by['absent'] ?? 0) ? ['text' => 'Завести '.$by['absent'], 'callback_data' => "valuation:{$id}:create"] : null,
         ]));
 
-        return array_values(array_filter([$row ?: null, [['text' => 'Открыть в CRM', 'url' => Surface::Crm->url('/?preset=nofloor')]]]));
+        return array_values(array_filter([$row ?: null, [['text' => 'Открыть в CRM', 'url' => Surface::Crm->url('/offers?preset=nofloor')]]]));
     }
 
     private function say(Bot $bot, string $text, ?array $keyboard = null): void

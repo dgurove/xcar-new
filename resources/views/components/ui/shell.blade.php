@@ -13,10 +13,12 @@
      занимает лента пилюль тулбара.
      :detail — список с карточкой строки рядом (App\Support\Detail): всё содержимое слева, фрейм detail справа
      колонкой на ПК и нижним листом на телефоне; пустой фрейм — список во всю ширину.
+     stage — сцена во всю середину без контейнера, заголовка и прокрутки (космос на главной CRM, 04.11.2026): шапка,
+     таб-бар и окна остаются.
      Документ не листается (22.10.2026): шапка, #scroller (содержимое и подвал) и таб-бар — три ряда колонки, листается
      только середина. Прокрутка документа в iOS 26–27 таскала fixed-слои за собой (WebKit 297779) — таб-бар уезжал до
      середины экрана; шапка снаружи стоит на месте, когда список отскакивает резинкой. --}}
-@props(['title' => null, 'heading' => null, 'count' => null, 'trail' => [], 'narrow' => false, 'back' => null, 'phoneBack' => null, 'backRow' => true, 'phoneHeading' => true, 'desktopHeading' => true, 'cache' => 'no-preview', 'description' => null, 'index' => false, 'detail' => null])
+@props(['title' => null, 'heading' => null, 'count' => null, 'trail' => [], 'narrow' => false, 'back' => null, 'phoneBack' => null, 'backRow' => true, 'phoneHeading' => true, 'desktopHeading' => true, 'cache' => 'no-preview', 'description' => null, 'index' => false, 'detail' => null, 'stage' => false])
 @php
     $heading = $heading === false ? null : ($heading ?? $title);
     // Пустой слот (кабинет передаёт его всегда) — всё равно что нет.
@@ -31,10 +33,13 @@
 @endphp
 <x-ui.layout :title="$title" :cache="$cache" :description="$description" :index="$index" class="app-shell">
     <x-ui.header :back="$phoneBack"/>
-    <div id="scroller" class="app-scroll">
+    <div id="scroller" @class(['app-scroll', 'app-stage' => $stage])>
 
     {{-- Запас под таб-бар и плашку действий: везде, где нет подвала (у него свой запас) — CRM, стоянка, приложение
          и вошедший на сайте в браузере (подвал только у гостя). --}}
+    @if ($stage)
+    <main id="main" {{ $attributes->merge(['class' => 'stage']) }}>{{ $slot }}</main>
+    @else
     <main id="main" class="grow relative{{ $site && !$installed && ! auth()->check() ? '' : ' main-app' }}">
         <div {{ $attributes->merge(['class' => 'container-site pt-6 pb-10 sm:pt-8 sm:pb-14'.($narrow ? ' max-w-3xl' : '')]) }}>
             @if ($detail)<div class="split" data-controller="detail" data-action="turbo:frame-load->detail#loaded keydown@window->detail#key click->detail#tap" @if ($detail->open()) data-open @endif><div class="split-main">@endif
@@ -52,6 +57,7 @@
             @if ($detail)</div>{{ $detail->html() }}</div>@endif
         </div>
     </main>
+    @endif
 
     {{-- Подвал — у сайта для гостя; у вошедшего экран приложения, документы в кабинете (Nav::cabinet). --}}
     @if ($site && !$installed && ! auth()->check())<x-ui.footer/>@endif

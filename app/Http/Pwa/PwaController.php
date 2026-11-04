@@ -23,7 +23,7 @@ class PwaController
                 ['Предложения', '/offers', 'cat-car'], ['Уведомления', '/account/notifications', 'bell'],
             ]],
             Surface::Crm => ['Предложения, галерея, работа, закупки', [
-                ['Предложения', '/', 'cat-car'], ['Галерея', '/gallery', 'photo'], ['Работа', '/work', 'deal'], ['Закупки', '/purchases', 'cart'],
+                ['Предложения', '/offers', 'cat-car'], ['Галерея', '/gallery', 'photo'], ['Работа', '/work', 'deal'], ['Закупки', '/purchases', 'cart'],
             ]],
             Surface::Park => ['Заявки, ТС, парковки', [
                 ['Заявки', '/requests', 'flag'], ['ТС', '/cars', 'cat-car'],
@@ -110,7 +110,7 @@ class PwaController
         $version = self::build();
         // Тумблер замка менеджеров — в версии: включили, и воркер обновится сам, стерев экраны, накопленные до замка.
         $version .= Lock::enabled() ? 'L' : '';
-        $js = str_replace(['__VERSION__', '__RESET__'], [$version, self::RESET], file_get_contents(resource_path('sw.js')));
+        $js = str_replace(['__VERSION__', '__RESET__', '__CRM_HOST__'], [$version, self::RESET, config('xcar.crm_host')], file_get_contents(resource_path('sw.js')));
 
         return response($js, 200, ['Content-Type' => 'text/javascript; charset=utf-8', 'Cache-Control' => 'no-cache']);
     }

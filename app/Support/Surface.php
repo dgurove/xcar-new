@@ -115,14 +115,22 @@ enum Surface: string
         return $this === self::Logistics ? 'Logistics' : $this->label();
     }
 
-    /** Где начинается работа после входа: на сайте и парковке `/` — лендинг для гостя, списки на своих адресах. */
+    /**
+     * Где начинается работа после входа: на сайте и парковке `/` — лендинг для гостя, списки на своих адресах. В CRM
+     * `/` — космос (04.11.2026), а работа — с предложений: вход, иконка приложения и «Войти как» ведут на них.
+     */
     public function home(): string
     {
         return match ($this) {
-            self::Site => '/offers',
+            self::Site, self::Crm => '/offers',
             self::Park => '/requests',
             self::Logistics => '/transports',
-            default => '/',
         };
+    }
+
+    /** Куда ведёт логотип вошедшего: в CRM — на главную с космосом, у остальных — в начало работы. */
+    public function brand(): string
+    {
+        return $this === self::Crm ? '/' : $this->home();
     }
 }

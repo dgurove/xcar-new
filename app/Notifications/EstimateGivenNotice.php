@@ -46,7 +46,7 @@ final class EstimateGivenNotice extends Notice
             default => 'estimating',
         };
 
-        return Surface::Crm->url('/?'.http_build_query(['vid' => 'table', 'preset' => $preset, 'peek' => $offer->number]));
+        return Surface::Crm->url('/offers?'.http_build_query(['vid' => 'table', 'preset' => $preset, 'peek' => $offer->number]));
     }
 
     public function category(): string

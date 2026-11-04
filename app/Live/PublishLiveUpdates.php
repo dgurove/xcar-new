@@ -90,7 +90,7 @@ final class PublishLiveUpdates
         $this->publish->refresh([Topics::CATALOG, ...$buyers], ["/offers/{$n}"]);
         $this->publish->refresh(Topics::STAFF, ["/offers/{$n}"]);
         // Списки CRM — строкой: ушла из вкладки — уходит с экрана, во вкладку пришла — там перечитывается страница.
-        $this->publish->rows(Topics::STAFF, ['/' => [$n], '/gallery' => [$n], '/work/deals' => RefreshCar::deals($e->offer)]);
+        $this->publish->rows(Topics::STAFF, ['/offers' => [$n], '/gallery' => [$n], '/work/deals' => RefreshCar::deals($e->offer)]);
         $this->logistics($e->offer);
     }
 
@@ -127,7 +127,7 @@ final class PublishLiveUpdates
     {
         $n = $e->bid->offer->number;
         $this->publish->refresh(Topics::STAFF, ["/offers/{$n}"]);
-        $this->publish->rows(Topics::STAFF, ['/' => [$n]]);
+        $this->publish->rows(Topics::STAFF, ['/offers' => [$n]]);
         $this->publish->refresh(Topics::CATALOG, ["/offers/{$n}"]);
     }
 
@@ -138,7 +138,7 @@ final class PublishLiveUpdates
         // Отклонили последнее — машина возвращается из «Есть подтверждения» в «Опубликованные»: строка уходит, а там
         // перечитывается страница.
         $this->publish->refresh(Topics::STAFF, ["/offers/{$n}"]);
-        $this->publish->rows(Topics::STAFF, ['/' => [$n], '/work/deals' => RefreshCar::deals($e->bid->offer)]);
+        $this->publish->rows(Topics::STAFF, ['/offers' => [$n], '/work/deals' => RefreshCar::deals($e->bid->offer)]);
     }
 
     /**
@@ -158,7 +158,7 @@ final class PublishLiveUpdates
             $this->publish->badges(Topics::user($id));
         }
         $this->publish->refresh(Topics::STAFF, ["/offers/{$n}"]);
-        $this->publish->rows(Topics::STAFF, ['/' => [$n]]);
+        $this->publish->rows(Topics::STAFF, ['/offers' => [$n]]);
     }
 
     public function interest(InterestRegistered $e): void
@@ -166,7 +166,7 @@ final class PublishLiveUpdates
         $n = $e->interest->offer->number;
         $this->publish->refresh(Topics::STAFF, ["/offers/{$n}"]);
         // «Галерея → Отклики» и число интересов в строке (18.10.2026: отклик живьём не появлялся).
-        $this->publish->rows(Topics::STAFF, ['/gallery' => [$n], '/' => [$n]]);
+        $this->publish->rows(Topics::STAFF, ['/gallery' => [$n], '/offers' => [$n]]);
         // Интерес покупателя — менеджеру: страница оффера и его список интересов.
         if ($manager = $e->interest->user->manager_id) {
             $this->publish->refresh(Topics::user($manager), ["/offers/{$n}", '/buyers/interest', "/buyers/{$e->interest->user_id}"]);

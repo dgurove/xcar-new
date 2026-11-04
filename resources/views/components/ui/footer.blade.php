@@ -1,7 +1,7 @@
 {{-- Подвал: ряд капсул как в шапке (О компании, документы) и знак. --}}
 @php
     $surface = \App\Support\Surface::current();
-    $home = auth()->check() ? $surface->home() : '/';
+    $home = auth()->check() ? $surface->brand() : '/';
 @endphp
 <footer class="footer relative z-10 bg-bar pt-12 text-ink">
     <div class="container-site">

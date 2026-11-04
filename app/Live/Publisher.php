@@ -40,6 +40,13 @@ final class Publisher
         if ($hub === '' || ! config('xcar.mercure.publisher_key')) {
             return;
         }
+        // Пути CRM и парковки — только на своём хосте (04.11.2026): тему `staff` слушают и админы на сайте, где `/offers` —
+        // каталог, и каждая правка в CRM перечитывала бы им его (так же `/gallery`, `/offers/{n}`). Метка — только у событий
+        // одной этой темы: смешанные (чат обеим сторонам) идут как прежде. Чужое клиент пропускает (`live.js` `here`).
+        $only = array_values(array_unique((array) $topics));
+        if (in_array($type, ['refresh', 'rows'], true) && ($only === [Topics::STAFF] || $only === [Topics::PARK])) {
+            $data['surface'] = ($only === [Topics::PARK] ? Surface::Park : Surface::Crm)->value;
+        }
         $body = implode('&', array_map(fn ($t) => 'topic='.rawurlencode($t), (array) $topics))
             .'&'.http_build_query(['type' => $type, 'data' => json_encode($data, JSON_UNESCAPED_UNICODE), 'private' => 'on']);
         try {
@@ -99,7 +106,7 @@ final class Publisher
     }
 
     /**
-     * Перечитать в открытых списках только эти строки (`Rows`, ключ — `data-detail-key`): `['/' => [номер], '/work/deals'
+     * Перечитать в открытых списках только эти строки (`Rows`, ключ — `data-detail-key`): `['/offers' => [номер], '/work/deals'
      * => [id сделки]]`. Строка ушла из списка — уходит с экрана, пришла новая — клиент перечитывает страницу целиком.
      * Пустые списки ключей отбрасываются; запрос автора — как у `refresh`.
      *

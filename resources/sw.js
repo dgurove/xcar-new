@@ -25,6 +25,9 @@ const PAGES_LIMIT = 30;
 // Экраны, которые нельзя показывать из кэша: вход, выход, служебное.
 // Корень — лендинг гостя: вошедшему он редирект в список, из кэша его показывать нельзя.
 const NO_PAGE_CACHE = /^\/($|(login|logout|register|password|passkey|i|offline|dev|live|up)(\/|$))/;
+// Предложения CRM до 04.11.2026 жили на корне и из кэша не показывались — на `/offers` так и остаётся; на сайте `/offers` —
+// каталог, он кэшируется как прежде.
+const NO_LIST_CACHE = self.location.hostname === '__CRM_HOST__' ? /^\/offers$/ : null;
 
 self.addEventListener('install', (event) => {
     event.waitUntil((async () => {
@@ -91,7 +94,7 @@ self.addEventListener('fetch', (event) => {
     // перечитывает себя морфом, если старше 5 с — app.js, meta rendered-at).
     if (request.mode === 'navigate') {
         event.respondWith((async () => {
-            const cacheable = !NO_PAGE_CACHE.test(url.pathname);
+            const cacheable = !NO_PAGE_CACHE.test(url.pathname) && !NO_LIST_CACHE?.test(url.pathname);
             const network = (async () => {
                 const response = (await event.preloadResponse) || (await fetch(request));
                 if (response.redirected && /\/login(\/|$|\?)/.test(new URL(response.url).pathname)) later(event, caches.delete(PAGES));

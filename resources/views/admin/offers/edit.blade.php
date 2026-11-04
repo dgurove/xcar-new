@@ -54,7 +54,7 @@
     // Черновик (не в слоте и не на аукционе) — «Показ» строкой в карточке «Цены», отдельной карточки нет.
     $draftShow = $admin && ! $garage && ! $deal && $offer->state === OfferState::Draft && ! $offer->isScheduled() && ! $offer->onAuction();
 @endphp
-<x-ui.shell :title="$offer->titleWithYear()" :back="['Предложения', '/']" cache="no-cache">
+<x-ui.shell :title="$offer->titleWithYear()" :back="['Предложения', '/offers']" cache="no-cache">
     <x-slot:badge><x-car.keys :count="$offer->keys_count" label/><x-ui.links :offer="$offer"/></x-slot:badge>
     {{-- Под заголовком — только состояние и метки, пилюлями одного роста (номер, убыток и документы — в полях и блоках
          ниже). Метки: выбранные пилюлями, «+» и нажатие на метку — шторка со списком и своей меткой; галки ходят в форму

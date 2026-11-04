@@ -23,7 +23,7 @@ final class LegacyClaimController
         $result = $add($text, $request->user());
         $row = fn (Offer $o) => ['number' => $o->number, 'title' => $o->titleWithYear(), 'vendor_id' => $o->vendor_id, 'claim_ref' => $o->claim_ref, 'manager' => $o->deal?->buyer?->name];
 
-        return redirect('/?preset=legacy')->with('toast', $result->summary())
+        return redirect('/offers?preset=legacy')->with('toast', $result->summary())
             ->with('legacy.deals', array_map($row, $result->deals))
             ->with('legacy.published', array_map($row, $result->published));
     }
@@ -50,7 +50,7 @@ final class LegacyClaimController
         $delete($offer, $request->user());
         session()->forget("legacy-draft.{$offer->id}");
 
-        return redirect('/?preset=legacy')->with('toast', $offer->claim_ref.' снова в «Не заведены»');
+        return redirect('/offers?preset=legacy')->with('toast', $offer->claim_ref.' снова в «Не заведены»');
     }
 
     /** Убрать номер из списка: черновик возвращается в свою рабочую вкладку. */
@@ -61,6 +61,6 @@ final class LegacyClaimController
             return redirect("/offers/{$offer->number}")->with('toast', 'Возвращено в черновики')->with(OfferController::gone($request, $offer));
         }
 
-        return back(fallback: '/?preset=legacy')->with('toast', $claim->claim_ref.' убран из списка');
+        return back(fallback: '/offers?preset=legacy')->with('toast', $claim->claim_ref.' убран из списка');
     }
 }

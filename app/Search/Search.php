@@ -74,7 +74,7 @@ final class Search
         }
 
         return [
-            'cars' => ['title' => 'ТС', 'rows' => $cars->top(self::CARS)] + self::more($offers->isNotEmpty(), 'Все предложения', '/?q='.urlencode($t->raw)),
+            'cars' => ['title' => 'ТС', 'rows' => $cars->top(self::CARS)] + self::more($offers->isNotEmpty(), 'Все предложения', '/offers?q='.urlencode($t->raw)),
             'people' => ['title' => 'Люди', 'rows' => $admin ? self::people(User::query(), $t, fn (User $u) => "/settings/users/{$u->id}") : []],
             'money' => ['title' => 'Деньги', 'rows' => $admin ? self::money(Invoice::crmMoney(), $t, crm: true) : []],
             'mail' => self::mail($user->canCrmMail() ? Scope::Offers : null, $t, '/work/mail', $user),

@@ -1,0 +1,49 @@
+/* Космос на главной CRM (04.11.2026, владелец: «ОЧЕНЬ красивый чёрный фон с мелкими звёздами… объёмный КРАСИВЫЙ
+   космос»; `admin/space`, `space_controller`). Сцена — вся середина каркаса между шапкой и таб-баром: `#scroller` не
+   листается (`.app-stage`), жесты забирает сцена (`touch-action: none` — глобально стоит `pan-x pan-y`). Звёзды — холст
+   WebGL под всем; слой схемы `.space-world` поверх двигается одной записью transform за кадр, `will-change` — только
+   пока движется (`is-moving`): после остановки браузер перерисует текст чётко при любом масштабе. Чёрный — в любой
+   теме: это космос, а не поверхность кита. */
+
+@layer components {
+  .app-stage { overflow: hidden; overscroll-behavior: none; }
+  .app-stage > .stage { position: relative; flex: 1 1 auto; min-height: 0; }
+
+  .space {
+    position: absolute; inset: 0; overflow: hidden; background: #000;
+    touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
+    cursor: grab;
+  }
+  .space.is-grabbing { cursor: grabbing; }
+  .space-sky { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+
+  /* Начало мира — центр сцены; узел стоит в своей точке (--x, --y) и центрирован на ней. */
+  .space-world { position: absolute; left: 50%; top: 50%; width: 0; height: 0; transform-origin: 0 0; }
+  .space-world.is-moving { will-change: transform; }
+  .space-node { position: absolute; left: var(--x, 0px); top: var(--y, 0px); translate: -50% -50%; }
+
+  /* Парящий блок: медленно покачивается — анимация transform на внутреннем узле, её ведёт композитор. */
+  .space-float {
+    padding: 1.25rem 2rem; border-radius: var(--radius-xl);
+    background: var(--color-surface); color: var(--color-ink);
+    font-size: var(--text-lg); font-weight: 500; line-height: 1.2; white-space: nowrap;
+    animation: space-float 7s ease-in-out infinite;
+  }
+  @keyframes space-float {
+    0%, 100% { transform: translate3d(0, -5px, 0); }
+    50% { transform: translate3d(0, 5px, 0); }
+  }
+
+  /* «К схеме» — круглая кнопка в углу, появляется, когда схема ушла с глаз. */
+  .space-home {
+    position: absolute; right: 1rem; bottom: 1rem;
+    display: grid; place-items: center; width: 2.75rem; height: 2.75rem; border-radius: 999px;
+    background: var(--color-bar); color: var(--color-ink);
+    transition: opacity var(--dur) var(--ease-out), scale var(--dur) var(--ease-out);
+  }
+  .space-home[hidden] { display: grid; opacity: 0; scale: .8; pointer-events: none; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .space-float { animation: none; }
+  }
+}

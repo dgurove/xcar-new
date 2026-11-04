@@ -85,7 +85,7 @@ final class Cars
     public function legacy(LegacyClaim $c, ?Offer $offer): void
     {
         $live = $offer && ! in_array($offer->state, [OfferState::Archived, OfferState::Cancelled], true);
-        $hit = $this->hit($this->key($c->claim_ref_key, null, 'l'.$c->id), fn () => new Hit($c->claim_ref, '/?preset=legacy', ref: $c->claim_ref));
+        $hit = $this->hit($this->key($c->claim_ref_key, null, 'l'.$c->id), fn () => new Hit($c->claim_ref, '/offers?preset=legacy', ref: $c->claim_ref));
         $hit->line[] = $live ? 'в таблице Кати' : 'в таблице Кати, не заведена';
         if (! $live) {
             $hit->action = ['url' => "/offers/legacy/{$c->id}/create", 'label' => 'Завести'];

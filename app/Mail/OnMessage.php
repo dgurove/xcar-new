@@ -107,7 +107,8 @@ final class OnMessage
         $topic = $message->account->scope === Scope::Park ? Topics::PARK : Topics::STAFF;
         $base = $message->account->scope === Scope::Park ? '/mail' : '/work/mail';
         // «Заявки» — тоже: заявку из письма могла только что завести почта (`AutoRequest`), её строка входит силуэтом.
-        $paths = [$base, "{$base}/{$message->thread_id}", '/offers/from-mail', '/requests/from-mail', '/requests', '/'];
+        // Корень: у парковки — свой экран, в CRM список предложений — `/offers`.
+        $paths = [$base, "{$base}/{$message->thread_id}", '/offers/from-mail', '/requests/from-mail', '/requests', $topic === Topics::PARK ? '/' : '/offers'];
         // Письмо по привязанной ТС — в её ленту и сотруднику, который ею занят.
         $vehicle = $linked instanceof Vehicle ? $linked : $thread?->vehicle;
         // Наше письмо о выдаче, отправленное не из приложения (ящик в почтовой программе), — так же выдаёт.

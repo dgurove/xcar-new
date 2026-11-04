@@ -54,7 +54,7 @@
                 <div class="contents" data-controller="menu sheet">
                     <button type="button" class="btn btn-s btn-quiet btn-round shrink-0 text-base font-medium" data-action="menu#toggle" aria-haspopup="menu" aria-controls="rate-menu" aria-label="Оценить">₽</button>
                     <div id="rate-menu" class="menu" popover data-menu-target="list" role="menu">
-                        <a href="/?preset={{ $preset }}&peek=first" class="menu-item" role="menuitem" data-action="menu#close">Оценить по одной</a>
+                        <a href="/offers?preset={{ $preset }}&peek=first" class="menu-item" role="menuitem" data-action="menu#close">Оценить по одной</a>
                         <button type="button" class="menu-item w-full" role="menuitem" data-action="menu#close sheet#open">Оценить из текста или файла</button>
                     </div>
                     <x-offer.valuation-sheet/>
@@ -133,9 +133,9 @@
             <div class="mt-8"><x-ui.pager :of="$offers" :sizes="\App\Support\ListView::perSizes($view)"/></div>
             {{-- Сделали последнюю — тост ведёт дальше по шагу (detail_controller#advance); модератору дальше ничего нет. --}}
             @if (in_array($preset, ['unpriced', 'estimating'], true) && ! $searching)
-                <a href="/?preset=priced" data-advance-done hidden>Все оценены, дальше «Оцененные»</a>
+                <a href="/offers?preset=priced" data-advance-done hidden>Все оценены, дальше «Оцененные»</a>
             @elseif ($preset === 'nofloor' && ! $searching && $admin)
-                <a href="/?preset=unpriced" data-advance-done hidden>Закупочные заполнены, дальше «Без продажной цены»</a>
+                <a href="/offers?preset=unpriced" data-advance-done hidden>Закупочные заполнены, дальше «Без продажной цены»</a>
             @elseif ($preset === 'nofloor' && ! $searching)
                 <span data-advance-done hidden>Закупочные заполнены</span>
             @elseif ($preset === 'bids' && ! $searching)

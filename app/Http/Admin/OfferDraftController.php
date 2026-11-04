@@ -15,6 +15,6 @@ class OfferDraftController
         $delete($offer, $request->user());
         session()->forget("mail-draft.{$offer->id}");
 
-        return redirect('/')->with('toast', 'Черновик удалён');
+        return redirect('/offers')->with('toast', 'Черновик удалён');
     }
 }

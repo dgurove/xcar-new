@@ -39,7 +39,7 @@ class Bid extends Model
                 return;
             }
             if (($bid->wasRecentlyCreated || $bid->wasChanged(['state', 'amount', 'counter_state'])) && ($n = Offer::whereKey($bid->offer_id)->value('number'))) {
-                app(Publisher::class)->rowsSoon(Topics::STAFF, ['/' => [$n]]);
+                app(Publisher::class)->rowsSoon(Topics::STAFF, ['/offers' => [$n]]);
             }
             // Подтверждение снимает тревогу «нет покупателя» (`Binding`), отзыв — возвращает.
             if ($bid->wasRecentlyCreated || $bid->wasChanged('state')) {

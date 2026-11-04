@@ -6,7 +6,7 @@
      у второй), ждём — аватары и срок серым (вышел — красным «просрочено»); склонять имя не нужно. --}}
 @props(['offer', 'label' => 'Оценить'])
 @php
-    $href = '/?'.http_build_query(array_filter(array_merge(request()->query(), ['vid' => 'table', 'peek' => $offer->number, 'page' => null]), fn ($v) => is_string($v) || is_int($v) ? $v !== '' : false));
+    $href = '/offers?'.http_build_query(array_filter(array_merge(request()->query(), ['vid' => 'table', 'peek' => $offer->number, 'page' => null]), fn ($v) => is_string($v) || is_int($v) ? $v !== '' : false));
     $estimates = $offer->relationLoaded('openEstimates') ? $offer->openEstimates : collect();
     $given = $estimates->filter->isGiven()->sortByDesc('amount')->values();
     $waiting = $estimates->reject->isGiven()->sortBy('due_at')->values();

@@ -11,8 +11,8 @@
     $capsules = \App\Support\Nav::capsules($user);
     $top = \App\Support\Nav::top($user);
     $badges = \App\Support\Nav::badges($user);
-    // Логотип ведёт вошедшего в его список, гостя — на первый экран.
-    $home = $user ? $surface->home() : '/';
+    // Логотип ведёт вошедшего в его список (в CRM — на главную с космосом), гостя — на первый экран.
+    $home = $user ? $surface->brand() : '/';
     $cabinet = \App\Support\Nav::cabinetRoot();
     $isCurrent = fn (array $item) => \App\Support\Nav::isCurrent($item, $path);
     // Чаты площадки в шапке CRM — на месте «Избранного» сайта; у модератора их нет.

@@ -29,7 +29,7 @@ final class EstimateDeclinedNotice extends Notice
 
     public function href(): string
     {
-        return Surface::Crm->url('/?'.http_build_query(['vid' => 'table', 'preset' => match (true) { $this->estimate->isCorrection() => 'priced', $this->estimate->offer->onEstimate() => 'estimating', default => 'unpriced' }, 'peek' => $this->estimate->offer->number]));
+        return Surface::Crm->url('/offers?'.http_build_query(['vid' => 'table', 'preset' => match (true) { $this->estimate->isCorrection() => 'priced', $this->estimate->offer->onEstimate() => 'estimating', default => 'unpriced' }, 'peek' => $this->estimate->offer->number]));
     }
 
     public function category(): string

@@ -11,7 +11,7 @@ final class LegacyAdmin
         'chaty' => '/work/chats',
         'sdelki' => '/work/deals',
         'zakupki' => '/purchases',
-        'stavki' => '/?preset=bids',
+        'stavki' => '/offers?preset=bids',
         'interesy' => '/interests',
         'strahovye' => '/settings/vendors',
         'marshruty' => '/settings/workflows',
@@ -29,11 +29,9 @@ final class LegacyAdmin
     public static function target(string $path, ?string $query = null): string
     {
         $segments = explode('/', trim($path, '/'), 2);
-        $head = self::MAP[$segments[0]] ?? '/';
+        // Корень старой админки и незнакомое — в предложения: они и были её первым экраном.
+        $head = self::MAP[$segments[0]] ?? '/offers';
         $tail = isset($segments[1]) ? '/'.$segments[1] : '';
-        if ($head === '/offers' && $tail === '') {
-            $head = '/';
-        }
 
         return Surface::Crm->url($head.$tail).($query ? '?'.$query : '');
     }

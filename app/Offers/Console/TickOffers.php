@@ -73,7 +73,7 @@ class TickOffers extends Command
         $numbers = $closed->pluck('number')->filter()->all();
         Cache::put('offers:expired-tick', $now->getTimestamp(), now()->addDay());
         if ($numbers) {
-            app(Publisher::class)->rows(Topics::STAFF, ['/' => $numbers]);
+            app(Publisher::class)->rows(Topics::STAFF, ['/offers' => $numbers]);
         }
         // Подтвердившим машина переходит из «Предложений» в «Сделки → Ждут решения» (02.11.2026) — и резерву, когда машину уже
         // отдали другому (продана до срока, `Offer::siteList` держит её у него до срока).

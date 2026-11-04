@@ -51,6 +51,6 @@ final class BidsClosedPack extends Message
 
     protected function link(): array
     {
-        return ['text' => 'Выбрать в CRM', 'url' => Surface::Crm->url('/?preset=bids')];
+        return ['text' => 'Выбрать в CRM', 'url' => Surface::Crm->url('/offers?preset=bids')];
     }
 }

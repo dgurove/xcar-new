@@ -7,7 +7,7 @@
 @props(['offer', 'part'])
 @php
     $estimates = $offer->relationLoaded('openEstimates') ? $offer->openEstimates->filter->isCorrection() : collect();
-    $href = '/?'.http_build_query(array_filter(array_merge(request()->query(), ['vid' => 'table', 'peek' => $offer->number, 'page' => null]), fn ($v) => is_string($v) || is_int($v) ? $v !== '' : false));
+    $href = '/offers?'.http_build_query(array_filter(array_merge(request()->query(), ['vid' => 'table', 'peek' => $offer->number, 'page' => null]), fn ($v) => is_string($v) || is_int($v) ? $v !== '' : false));
 @endphp
 @if ($part === 'proposal' && ($proposals = $estimates->filter->proposes()->sortBy('estimated_at')->values())->isNotEmpty())
     @php $first = $proposals->first(); @endphp

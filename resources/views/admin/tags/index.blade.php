@@ -30,7 +30,7 @@
                 <span class="min-w-0 flex-1 truncate font-medium">{{ $tag->name }}</span>
                 {{-- Вендоры, чьим предложениям метка ставится сама, — логотипами. --}}
                 @if ($tag->vendors->isNotEmpty())<span class="flex shrink-0 items-center gap-1" title="Ставится: {{ $tag->vendors->pluck('name')->implode(', ') }}">@foreach ($tag->vendors as $v)<x-vendor.logo :vendor="$v" class="size-5"/>@endforeach</span>@endif
-                @if ($used[$tag->name] ?? 0)<a href="/?q={{ urlencode($tag->name) }}" class="chip nums font-normal">{{ $used[$tag->name] }}</a>@endif
+                @if ($used[$tag->name] ?? 0)<a href="/offers?q={{ urlencode($tag->name) }}" class="chip nums font-normal">{{ $used[$tag->name] }}</a>@endif
                 <button type="button" class="btn btn-ghost btn-s px-2" data-action="sheet#open" aria-label="Изменить"><x-ui.icon name="edit" class="size-5"/></button>
                 <x-ui.sheet id="tag-{{ $tag->id }}" title="Метка" tall>
                     <form method="post" action="/settings/tags/{{ $tag->id }}" class="flex flex-col gap-4">

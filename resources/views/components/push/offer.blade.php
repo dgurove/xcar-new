@@ -17,7 +17,7 @@
         $intro = match ($surface) {
             Surface::Logistics => ['/transports'],
             Surface::Park => ['/requests', '/'],
-            Surface::Crm => ['/'],
+            Surface::Crm => ['/offers'],
             default => ['/offers', '/deals'],
         };
         [$head, $lead] = match (true) {

@@ -18,6 +18,9 @@
     $intro = match (true) {
         $surface === \App\Support\Surface::Logistics && $carrier => ['/transports'],
         $surface === \App\Support\Surface::Park => ['/requests', '/'],
+        // В CRM — модератору на «Предложениях»; админу шторка сама не открывается (до переезда списка с `/` 04.11.2026
+        // `/offers` здесь был редиректом, и общий список ниже в CRM не срабатывал).
+        $surface === \App\Support\Surface::Crm => $user?->isModerator() ? ['/offers'] : [],
         (bool) $user?->isModerator() => ['/'],
         default => ['/offers', '/deals'],
     };

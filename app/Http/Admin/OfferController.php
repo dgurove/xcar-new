@@ -202,7 +202,7 @@ class OfferController
         if ($legacy) {
             $query = ['preset' => $legacy] + ($request->query('preset') === 'recommended' ? ['recommended' => '1'] : []) + $request->except(['preset', 'sort']);
 
-            return redirect('/?'.http_build_query($query), 301);
+            return redirect('/offers?'.http_build_query($query), 301);
         }
         // ?peek=номер — карточка строки рядом (first — первая строка без цены, адрес получает её номер ниже).
         $detail = Detail::of($request, fn (string $key) => $this->detailOf($request, OfferNumber::find($key)));
@@ -911,7 +911,7 @@ class OfferController
         }
         // «Сохранить» у черновика — и закрыть редактор: следующий шаг черновика в списке.
         if ($request->input('then') === 'close') {
-            return redirect('/')->with('toast', 'Сохранено');
+            return redirect('/offers')->with('toast', 'Сохранено');
         }
         if ($request->input('then') === 'open' && $offer->state === OfferState::Draft && $request->user()->canManageCrm()) {
             PriceGuard::assertPublish([$offer->refresh()], $request->boolean('price_ok'));
@@ -961,7 +961,7 @@ class OfferController
     {
         $unlist($offer, request()->user());
 
-        return redirect('/')->with('toast', 'Снято с продажи');
+        return redirect('/offers')->with('toast', 'Снято с продажи');
     }
 
     /** «Принять» на плашке «Предложено из заявок на приём»: черновик остаётся в своей вкладке, плашка уходит. */
@@ -981,7 +981,7 @@ class OfferController
     {
         $resolve->decline($offer, $request->user());
 
-        return redirect('/?preset=unpriced')->with('toast', 'ТС осталась на парковке')
+        return redirect('/offers?preset=unpriced')->with('toast', 'ТС осталась на парковке')
             ->with('detail-advance', true)->with('detail-gone', true)->with('detail-counts', self::counts($request->user()));
     }
 
@@ -1094,7 +1094,7 @@ class OfferController
         }
         $at = Slots::at($when);
         $toast = $done ? ($at ? 'Выйдут '.Slots::phrase($at).': '.$done : 'Опубликовано: '.$done) : null;
-        $back = back(fallback: '/?preset=priced');
+        $back = back(fallback: '/offers?preset=priced');
 
         return $failed
             ? $back->with('toast-danger', ($toast ? $toast.'. ' : '').'Не вышли '.count($failed).': '.implode('; ', array_slice($failed, 0, 3)))
@@ -1130,7 +1130,7 @@ class OfferController
         $offers = Offer::whereIn('number', $data['offers'])->get();
         $offers->each(fn ($o) => $unschedule($o, $request->user()));
 
-        return back(fallback: '/?preset=slots')->with('toast', 'Убрано из слота: '.$offers->count());
+        return back(fallback: '/offers?preset=slots')->with('toast', 'Убрано из слота: '.$offers->count());
     }
 
     /** «Удалить навсегда» из архива — одно предложение (карточка, редактор) со всем связанным (`PurgeOffer`). */
@@ -1139,7 +1139,7 @@ class OfferController
         $title = $offer->titleWithYear();
         $purge($offer);
 
-        return redirect('/?preset=archive')->with('toast', 'Удалено навсегда: '.$title);
+        return redirect('/offers?preset=archive')->with('toast', 'Удалено навсегда: '.$title);
     }
 
     /** «Удалить навсегда» пачкой из вкладки «Архив»: не из архива (успели вернуть) пропускается. */
@@ -1152,7 +1152,7 @@ class OfferController
             $done++;
         }
 
-        return redirect('/?preset=archive')->with('toast', 'Удалено навсегда: '.$done);
+        return redirect('/offers?preset=archive')->with('toast', 'Удалено навсегда: '.$done);
     }
 
     /** Состояние из меню; «Опубликовать» у черновика и галереи — с выбором слота (`when`), без него — сейчас. */
@@ -1255,17 +1255,17 @@ class OfferController
             return [];
         }
         $preset = array_key_exists((string) ($q['preset'] ?? ''), self::presets($request->user())) ? (string) $q['preset'] : self::home($request->user());
-        $still = match ($ref['path'] ?? '/') {
-            '/' => self::scopeFor($preset, Offer::whereKey($offer->id), $request->user()->canManageCrm())->exists(),
+        $still = match ($ref['path'] ?? '/offers') {
+            '/offers' => self::scopeFor($preset, Offer::whereKey($offer->id), $request->user()->canManageCrm())->exists(),
             '/gallery' => GalleryController::listed($q['preset'] ?? null, $offer->fresh()),
             default => true,
         };
 
         // На вкладках дела карточка идёт к следующей строке, на остальных строка просто уходит.
-        $counts = ($ref['path'] ?? '/') === '/gallery' ? GalleryController::counts() : self::counts($request->user());
+        $counts = ($ref['path'] ?? '/offers') === '/gallery' ? GalleryController::counts() : self::counts($request->user());
 
         return $still ? [] : ['detail-gone' => true, 'detail-counts' => $counts]
-            + (($ref['path'] ?? '/') === '/' && in_array($preset, self::ADVANCE, true) ? ['detail-advance' => true] : []);
+            + (($ref['path'] ?? '/offers') === '/offers' && in_array($preset, self::ADVANCE, true) ? ['detail-advance' => true] : []);
     }
 
     /** «Убрать из слота»: остаётся черновиком или галереей. */

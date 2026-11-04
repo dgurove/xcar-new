@@ -179,7 +179,7 @@ class RepriceTest extends TestCase
         $page = $this->actingAs($this->admin)->get('http://crm.xcar.localhost/offers/'.$this->offer->number)->assertOk()->getContent();
         $this->assertStringContainsString('Применить переоценку', $page);
         $this->assertSame(2, substr_count($page, 'value="update"'));
-        $list = $this->actingAs($this->admin)->get('http://crm.xcar.localhost/?preset=bids&vid=table&peek='.$this->offer->number)->assertOk()->getContent();
+        $list = $this->actingAs($this->admin)->get('http://crm.xcar.localhost/offers?preset=bids&vid=table&peek='.$this->offer->number)->assertOk()->getContent();
         $this->assertStringContainsString('переоценка', $list);
         $this->assertStringContainsString('Применить переоценку', $list);
 

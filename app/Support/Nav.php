@@ -95,7 +95,7 @@ final class Nav
         // Модератор: черновики, почта по галке и профиль — остальное в CRM админу.
         if ($surface === Surface::Crm && ! $user?->canManageCrm()) {
             return array_values(array_filter([
-                self::item('Предложения', '/', ['/', '/offers']),
+                self::item('Предложения', '/offers'),
                 $user?->canCrmMail() ? self::item('Почта', '/work/mail') : null,
                 self::item('Настройки', '/settings', ['/settings', '/account'], tab: false, capsule: false),
             ]));
@@ -103,7 +103,7 @@ final class Nav
 
         if ($surface === Surface::Crm) {
             return [
-                self::item('Предложения', '/', ['/', '/offers']),
+                self::item('Предложения', '/offers'),
                 self::item('Галерея', '/gallery'),
                 self::item('Работа', '/work'),
                 self::item('Закупки', '/purchases'),
@@ -265,7 +265,7 @@ final class Nav
 
         return array_values(array_filter([
             $surface !== Surface::Site && (! Surface::onlyFor($user) || ($linked && Surface::homeFor($linked) === Surface::Site)) ? $make('На сайт', Surface::Site->url(), 'cat-car') : null,
-            $surface !== Surface::Crm && $opens(Surface::Crm) ? $make('CRM', Surface::Crm->url(), 'deal') : null,
+            $surface !== Surface::Crm && $opens(Surface::Crm) ? $make('CRM', Surface::Crm->url(Surface::Crm->home()), 'deal') : null,
             $surface !== Surface::Park && $opens(Surface::Park) ? $make('Парковка', Surface::Park->url(), 'park') : null,
             $surface !== Surface::Logistics && $opens(Surface::Logistics) ? $make('Логистика', Surface::Logistics->url(), 'cat-car') : null,
         ]));
@@ -548,12 +548,12 @@ final class Nav
             }
             if ($surface === Surface::Crm && ! $user->canManageCrm()) {
                 // Таб — как список без вкладки: «Без закупочной цены» его группы.
-                return ['totals' => ['/' => OfferController::scopeFor(OfferController::home($user), Offer::inCrm($user)->notEmptyDraft(), admin: false)->count()], 'fresh' => []];
+                return ['totals' => ['/offers' => OfferController::scopeFor(OfferController::home($user), Offer::inCrm($user)->notEmptyDraft(), admin: false)->count()], 'fresh' => []];
             }
             if ($surface === Surface::Crm) {
                 return ['totals' => [
                     // Как список без вкладки — «Без продажной цены», вместе с черновиками из закупок.
-                    '/' => OfferController::scopeFor(OfferController::home($user), Offer::notEmptyDraft())->count(),
+                    '/offers' => OfferController::scopeFor(OfferController::home($user), Offer::notEmptyDraft())->count(),
                     '/gallery' => Offer::inGallery()->count(),
                     '/work' => Deal::where('state', DealState::Active)->count(),
                     '/purchases' => Purchase::where('state', PurchaseState::Open)->count(),
@@ -737,7 +737,7 @@ final class Nav
             }
             $badges = [
                 // Раздел «Предложения» горит и подтверждениями, и оценками менеджеров, ждущими решения (11.10.2026).
-                '/' => Bid::where('state', BidState::Active)->count()
+                '/offers' => Bid::where('state', BidState::Active)->count()
                     + Offer::where('state', OfferState::Draft)->whereHas('estimates', fn ($e) => $e->needsDecision())->count(),
                 '/offers/from-mail' => Boxes::registerCount(Scope::Offers),
                 '/work/mail' => Thread::where('unread_count', '>', 0)->whereNull('archived_at')->whereHas('account', fn ($a) => $a->where('scope', Scope::Offers))->count(),
@@ -859,7 +859,7 @@ final class Nav
             return [$best['label'], $best['href']];
         }
 
-        // Путь под псевдонимом раздела (/offers/123 → «Предложения», /).
+        // Путь под псевдонимом раздела (`match` пункта шире его адреса).
         foreach (self::sections($user, $surface) as $item) {
             if (self::isCurrent($item, $path) && $item['href'] !== $path) {
                 return [$item['label'], $item['href']];

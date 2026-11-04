@@ -11,6 +11,7 @@ use App\Http\Admin\DisclosureController;
 use App\Http\Admin\GalleryController;
 use App\Http\Admin\GarageController;
 use App\Http\Admin\GiveController;
+use App\Http\Admin\HomeController;
 use App\Http\Admin\InterestController;
 use App\Http\Admin\InvoiceController;
 use App\Http\Admin\LegacyClaimController;
@@ -54,17 +55,19 @@ use App\Purchases\Purchase;
 use App\Support\Surface;
 use Illuminate\Support\Facades\Route;
 
+// Главная — космос (`HomeController`): гость — на вход, старые ссылки на список `/?…` — на `/offers?…`.
+Route::domain(config('xcar.crm_host'))->get('/', HomeController::class)->name('crm.home');
+
 // CRM — свой хост того же приложения, только для сотрудников.
 Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])->group(function () {
     // Модератору — только этот список: черновики предложений, справочник, профиль, почта по галке. Чужое предложение
     // (опубликованное, из закупки) — 404 через `offer.edit`. Всё остальное ниже — `ability:canManageCrm`: новый раздел, не
     // внесённый сюда, модератору закрыт сам.
-    Route::get('/', [OfferController::class, 'index'])->name('crm.offers');
+    Route::get('/offers', [OfferController::class, 'index'])->name('crm.offers');
     // Поиск в шапке — модератору тоже: свои черновики (`Search\Search::for` сам решает, кому какие группы).
     Route::get('/search', SearchController::class);
     // «Горит» — срок обязывающего (19.10.2026): ведущим логистику, админам и модераторам.
     Route::get('/alarms', [AlarmController::class, 'index'])->middleware('ability:leadsLogistics');
-    Route::get('/offers', fn () => redirect('/'.(request()->getQueryString() ? '?'.request()->getQueryString() : ''), 301));
     Route::post('/offers', [OfferController::class, 'store']);
     // Из писем: та же почта с вшитой выборкой «надо завести» — раньше `/offers/{offer}`, иначе from-mail примут за номер.
     Route::middleware('ability:canCrmMail')->group(function () {

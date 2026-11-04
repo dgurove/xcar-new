@@ -14,7 +14,7 @@ const host = s => s === 'site' ? 'xcar.localhost' : `${s}.xcar.localhost`;
 
 // [поверхность, адрес, кто смотрит]: 3 — админ, 6 — менеджер.
 const screens = [
-    ['crm', '/?preset=all&vid=table', 3], ['crm', '/?preset=published&vid=table', 3], ['crm', '/work/deals?preset=all', 3],
+    ['crm', '/offers?preset=all&vid=table', 3], ['crm', '/offers?preset=published&vid=table', 3], ['crm', '/work/deals?preset=all', 3],
     ['crm', '/work/mail', 3], ['site', '/', 6], ['site', '/deals', 6], ['park', '/cars?preset=stored', 3],
     ['park', '/cars?preset=out', 3], ['logistics', '/transports?preset=all', 3],
 ].filter(([s, path]) => `${s}${path}`.includes(only));

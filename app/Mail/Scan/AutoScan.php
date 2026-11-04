@@ -162,7 +162,7 @@ final class AutoScan
     public static function arrived(Offer $offer): void
     {
         Cache::put(self::arrivedKey($offer->id), true, 60);
-        app(Publisher::class)->refresh(Topics::STAFF, ['/']);
+        app(Publisher::class)->refresh(Topics::STAFF, ['/offers']);
     }
 
     /**
@@ -257,7 +257,7 @@ final class AutoScan
         if (Cache::pull(self::key($subjectKey))) {
             str_starts_with($subjectKey, 'v:')
                 ? app(Publisher::class)->refresh(Topics::PARK, ['/requests'])
-                : app(Publisher::class)->refresh(Topics::STAFF, ['/']);
+                : app(Publisher::class)->refresh(Topics::STAFF, ['/offers']);
         }
     }
 
@@ -355,7 +355,7 @@ final class AutoScan
             $publish->rows(Topics::PARK, ['/requests' => Request::withoutGlobalScope(City::SCOPE)->where('vehicle_id', $subject->vehicle->id)->pluck('id')->all()]);
         } else {
             $publish->refresh(Topics::STAFF, ["/offers/{$subject->offer->number}"]);
-            $publish->rows(Topics::STAFF, ['/' => [$subject->offer->number]]);
+            $publish->rows(Topics::STAFF, ['/offers' => [$subject->offer->number]]);
         }
     }
 
@@ -366,7 +366,7 @@ final class AutoScan
     private static function nudge(Offer $offer): void
     {
         if (Cache::add('scan:auto:nudge:'.$offer->id, true, self::NUDGE_SECONDS)) {
-            app(Publisher::class)->rows(Topics::STAFF, ['/' => [$offer->number]]);
+            app(Publisher::class)->rows(Topics::STAFF, ['/offers' => [$offer->number]]);
         }
     }
 
