@@ -23,6 +23,7 @@ const METEOR = [25000, 60000];
 const SLOW = 24;             // мс кадра в движении: дольше — снизить dpr
 const KEY = 'space:camera';
 const CALM = 2000;           // мс: события пачкой — одно перечитывание
+const STALE = 9000;          // мс: сервер отдал прежний снимок — ещё раз через столько (+ CALM)
 const TWEEN = 700;           // мс докрутки числа
 let sky = null;              // звёзды одни на сеанс: второй заход их не считает заново
 
@@ -164,6 +165,8 @@ export default class extends Controller {
             const before = this.counts();
             const r = await request(this.urlValue, { accept: 'text/vnd.turbo-stream.html', quiet: true });
             if (r?.ok && this.element.isConnected) {
+                // Сервер пересчитывает не чаще раза в 10 с: отдал прежний снимок — спросить ещё раз, когда будет можно.
+                if (r.headers.get('X-Conveyor-Stale')) setTimeout(() => this.soon(), STALE);
                 await stream(await r.text());
                 this.layout();
                 this.counted(before);

@@ -29,12 +29,21 @@ use Illuminate\Support\Facades\Cache;
  * (`OfferController::scopeFor`), «Сделок» (`Position::todo`, `waitsFor`) и вывоза (`Transport`), чтобы схема не расходилась
  * со списками. Каркаде на схеме нет (владелец: «забей, не получилось сотрудничество»). Кто за что — `Owners`.
  *
- * Снимок — числа и id, без моделей: общий на всех сотрудников, 15 с в кэше, сбрасывается вместе со счётчиками таб-бара
- * (`Nav::forgetStaffCounts` — любое событие сотрудникам); люди и логотипы подставляются при выводе (`view`).
+ * Снимок — числа и id, без моделей: общий на всех сотрудников, устаревает вместе со счётчиками таб-бара
+ * (`Nav::forgetStaffCounts` — любое событие сотрудникам), пересчитывается не чаще раза в 10 с; люди и логотипы
+ * подставляются при выводе (`view`).
  */
 final class Conveyor
 {
     public const KEY = 'space.conveyor';
+
+    /** Секунд между пересчётами и сколько снимок живёт без событий (сроки идут и без них). */
+    private const CALM = 10;
+
+    private const TTL = 60;
+
+    /** Отдан снимок, который уже устарел, но пересчитывать его рано, — главной спросить ещё раз через `CALM`. */
+    public static bool $stale = false;
 
     /**
      * Этапы: название и место центра карточки в мире — в широкой раскладке (ПК: змейка, вторая линия идёт обратно) и в
@@ -95,15 +104,31 @@ final class Conveyor
     /** Сколько людей в карточке: дальше — «+N». */
     private const SHOWN = 6;
 
-    /** @return array<string, array{holders: list<array>, note?: ?string, flow?: int}> */
+    /**
+     * Пересчёт — не чаще раза в `CALM` с (04.11.2026: на проде полсекунды-секунда, а событие сотрудникам приходит каждую
+     * минуту и чаще). Событие снимок не стирает, а помечает устаревшим (`forget`): устаревший и старше `CALM` — считается
+     * заново, моложе — отдаётся как есть, и `$stale` просит главную спросить ещё раз позже.
+     *
+     * @return array<string, array{holders: list<array>, note?: ?string, flow?: int}>
+     */
     public static function snapshot(): array
     {
-        return Cache::remember(self::KEY, 15, fn () => self::count());
+        $hit = Cache::get(self::KEY);
+        self::$stale = $hit && $hit['stale'] && time() - $hit['at'] < self::CALM;
+        if ($hit && (! $hit['stale'] || self::$stale)) {
+            return $hit['nodes'];
+        }
+        $nodes = self::count();
+        Cache::put(self::KEY, ['nodes' => $nodes, 'at' => time(), 'stale' => false], self::TTL);
+
+        return $nodes;
     }
 
     public static function forget(): void
     {
-        Cache::forget(self::KEY);
+        if ($hit = Cache::get(self::KEY)) {
+            Cache::put(self::KEY, [...$hit, 'stale' => true], self::TTL);
+        }
     }
 
     /**

@@ -35,10 +35,15 @@ final class HomeController
         return view('admin.space', ['nodes' => Conveyor::view()]);
     }
 
-    /** Живые числа конвейера: событие сотрудникам — `space_controller` перечитывает кусок `#conveyor` морфом. */
+    /**
+     * Живые числа конвейера: событие сотрудникам — `space_controller` перечитывает кусок `#conveyor` морфом. Снимок
+     * устарел, а пересчитывать рано (`Conveyor::$stale`) — заголовок просит спросить ещё раз.
+     */
     public function conveyor()
     {
-        return Stream::view('admin.space.stream', ['nodes' => Conveyor::view()]);
+        $response = Stream::view('admin.space.stream', ['nodes' => Conveyor::view()]);
+
+        return Conveyor::$stale ? $response->header('X-Conveyor-Stale', '1') : $response;
     }
 
     private static function fromInside(Request $request): bool
