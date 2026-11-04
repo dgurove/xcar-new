@@ -51,7 +51,7 @@ class Block extends Model
     public function nextBlocks(?Deal $deal = null): Collection
     {
         // Ветка не этой сделки — не путь вперёд: иначе развилка «Покупаю / Забираю в гараж» обрывала бы лестницу всем.
-        // И уходят только с этапов, до которых эта сделка в блоке доходит: «Подтвердили покупку поставщику» за
+        // И уходят только с этапов, до которых эта сделка в блоке доходит: «Подтверждение покупки» за
         // «Покупаю» гаражной сделке не встретится, и его выход в «Оплату» второй дорогой не считается.
         return $this->reachable($deal)->flatMap(fn (Stage $s) => $s->exits->filter(fn (Outcome $e) => $e->fits($deal))->map(fn (Outcome $e) => $e->to?->block))
             ->filter()->reject(fn (self $b) => $b->is($this))->unique('id')->values();

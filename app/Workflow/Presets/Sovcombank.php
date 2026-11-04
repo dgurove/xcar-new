@@ -52,12 +52,12 @@ final class Sovcombank extends Route
             + [
                 'buyer_pickup' => [
                     // Без срока: забрать — его интерес; часы и «Ваш ход» — у оплаты.
-                    'name' => 'Менеджер забирает автомобиль', 'block' => 'pickup', 'waits_for' => 'manager', 'offer_state' => 'sold',
+                    'name' => 'Забрать автомобиль', 'block' => 'pickup', 'waits_for' => 'manager', 'offer_state' => 'sold',
                     'ask_title' => 'Заберите автомобиль', 'ask_text' => 'Свяжитесь с владельцем, договоритесь о времени и заберите автомобиль. Платить до получения не нужно',
                     'exits' => [['Автомобиль забрал', 'manager', 'invoice'], ['Автомобиль передан', 'staff', 'invoice']],
                 ],
                 'invoice' => [
-                    'name' => 'Оплата по счёту ПРАЙМ', 'block' => 'payment', 'waits_for' => 'manager', 'limit_minutes' => 14 * self::DAY, 'asks' => 'document',
+                    'name' => 'Оплата счёта ПРАЙМ', 'block' => 'payment', 'waits_for' => 'manager', 'limit_minutes' => 14 * self::DAY, 'asks' => 'document',
                     'ask_title' => 'Оплатите счёт', 'ask_text' => 'Оплатите счёт ПРАЙМ по реквизитам и приложите платёжное поручение',
                     'exits' => [['Платёжное поручение приложено', 'manager', 'payment_check']],
                 ],

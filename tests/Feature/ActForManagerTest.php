@@ -25,7 +25,7 @@ use Tests\TestCase;
 
 /**
  * «За менеджера» (28.10.2026, владелец: «он мне уже устно подтвердил»): админ жмёт ответ менеджера в шаге — просьба
- * закрыта, в «Истории» «за менеджера»; «Уже согласился» у «Спросить менеджера» — сразу «Подтвердили покупку поставщику», и
+ * закрыта, в «Истории» «за менеджера»; «Уже согласился» у «Спросить менеджера» — сразу «Подтверждение покупки», и
  * менеджеру не уходит «Беру в работу?».
  */
 class ActForManagerTest extends TestCase
@@ -63,7 +63,7 @@ class ActForManagerTest extends TestCase
         Notification::fake();
         $take = $position()->stage->exits->firstWhere('label', 'Беру в работу');
         $this->actingAs($this->admin)->post("http://crm.xcar.localhost/offers/{$offer->number}/exit/{$take->id}", ['for' => 'manager'])->assertRedirect();
-        $this->assertSame('Подтвердили покупку поставщику', $position()->stage->name);
+        $this->assertSame('Подтверждение покупки', $position()->stage->name);
         $this->assertNull($deal->fresh()->openRequirement);
         $r = \App\Workflow\Requirement::where('deal_id', $deal->id)->latest('id')->first();
         $this->assertSame('staff', $r->answer['closed_by']);
@@ -83,7 +83,7 @@ class ActForManagerTest extends TestCase
         Notification::fake();
         $agreed = $position()->stage->exits->firstWhere('label', 'Поставщик согласовал');
         $this->actingAs($this->admin)->post("http://crm.xcar.localhost/offers/{$offer->number}/exit/{$agreed->id}", ['then_take' => 1])->assertRedirect();
-        $this->assertSame('Подтвердили покупку поставщику', $position()->stage->name);
+        $this->assertSame('Подтверждение покупки', $position()->stage->name);
         $this->assertTrue($deal->fresh()->agreed());
         // «Беру в работу?» ставилось в очередь на миг — к отправке просьба уже закрыта.
         Notification::assertSentTo($this->manager, YourTurnNotice::class, fn (YourTurnNotice $n) => ! $n->shouldSend($this->manager, 'database'));

@@ -122,7 +122,7 @@ abstract class Route
                 'exits' => [['Подтверждение принято', 'staff', 'claimed'], ['Подтверждений нет', 'staff', $nobody], ['Возобновить приём', 'staff', 'bidding']],
             ],
             'claimed' => [
-                'name' => 'Уведомили поставщика о покупке', 'block' => 'agreement', 'waits_for' => 'supplier', 'limit_minutes' => self::DAY, 'offer_state' => 'sold', 'letter' => 'claimed',
+                'name' => 'Письмо о покупке', 'block' => 'agreement', 'waits_for' => 'supplier', 'limit_minutes' => self::DAY, 'offer_state' => 'sold', 'letter' => 'claimed',
                 'exits' => [['Поставщик согласовал', 'staff', 'manager_confirm'], ['Поставщик отказал', 'staff', 'supplier_declined']],
             ],
             'manager_confirm' => [
@@ -180,7 +180,7 @@ abstract class Route
     {
         $rows = [
             'garage_confirmed' => [
-                'name' => 'Подтвердили покупку поставщику', 'block' => 'agreement_garage', 'waits_for' => 'supplier', 'limit_minutes' => self::DAY, 'letter' => 'confirmed',
+                'name' => 'Подтверждение покупки', 'block' => 'agreement_garage', 'waits_for' => 'supplier', 'limit_minutes' => self::DAY, 'letter' => 'confirmed',
                 'exits' => [['Ответ поставщика получен', 'staff', 'garage_payment']],
             ],
             'garage_payment' => [
@@ -211,7 +211,7 @@ abstract class Route
     protected function confirmed(string $after, string $suffix = '', ?string $picks = null): array
     {
         return [
-            'name' => 'Подтвердили покупку поставщику', 'block' => 'agreement'.$suffix, 'waits_for' => 'supplier', 'limit_minutes' => self::DAY, 'letter' => 'confirmed',
+            'name' => 'Подтверждение покупки', 'block' => 'agreement'.$suffix, 'waits_for' => 'supplier', 'limit_minutes' => self::DAY, 'letter' => 'confirmed',
             // Менеджеру — что поставщик уже согласовал: текст блока «Согласовываем» тут был бы неправдой.
             'ask_text' => 'Поставщик согласовал продажу, оформляем покупку',
             'exits' => self::forked('Ответ поставщика получен', 'staff', $after, $picks),
@@ -244,12 +244,12 @@ abstract class Route
     {
         return [
             'invoice'.$suffix => [
-                'name' => 'Счёт выставлен менеджеру', 'block' => 'payment'.$suffix, 'waits_for' => 'manager', 'limit_minutes' => 14 * self::DAY, 'asks' => 'document',
+                'name' => 'Оплата счёта', 'block' => 'payment'.$suffix, 'waits_for' => 'manager', 'limit_minutes' => 14 * self::DAY, 'asks' => 'document',
                 'ask_title' => 'Оплатите счёт', 'ask_text' => 'Оплатите по ссылке под счётом картой, СБП или SberPay: оплата отметится сама. Или по реквизитам из счёта, тогда приложите платёжное поручение',
                 'exits' => [['Платёжное поручение приложено', 'manager', 'payment_check'.$suffix]],
             ],
             'payment_check'.$suffix => [
-                'name' => 'Подтверждение оплаты поставщиком', 'block' => 'payment'.$suffix, 'waits_for' => 'supplier', 'limit_minutes' => 2 * self::DAY, 'letter' => 'payment',
+                'name' => 'Подтверждение оплаты', 'block' => 'payment'.$suffix, 'waits_for' => 'supplier', 'limit_minutes' => 2 * self::DAY, 'letter' => 'payment',
                 'exits' => [['Оплата получена', 'staff', $next], ['Оплата не поступила', 'staff', 'invoice'.$suffix]],
             ],
         ];
@@ -317,7 +317,7 @@ abstract class Route
     {
         return [
             'buyer_pickup'.$suffix => [
-                'name' => 'Менеджер забирает автомобиль', 'block' => 'handover'.$suffix, 'waits_for' => 'manager', 'limit_minutes' => 3 * self::DAY,
+                'name' => 'Забрать автомобиль', 'block' => 'handover'.$suffix, 'waits_for' => 'manager', 'limit_minutes' => 3 * self::DAY,
                 'ask_title' => 'Заберите автомобиль', 'ask_text' => 'Свяжитесь с владельцем, договоритесь о времени и заберите автомобиль',
                 'exits' => [['Автомобиль забрал', 'manager', $next], ['Автомобиль передан', 'staff', $next]],
             ],

@@ -91,7 +91,7 @@ final class EnterStage
         // Этап с письмом поставщику (11.10.2026): пока письмо не ушло, ход наш и срока нет — сутки на ответ считаются от
         // письма (`MarkSupplierLetter`). Шаг, сдвинутый самим письмом, и откат — не трогаем.
         $awaitsLetter = $track === Track::Sale && $deal?->isActive() && $to->isLetterStep() && ! $letter && ! $back;
-        // Шаг «Менеджер забирает автомобиль», а везёт логистика (17.10.2026): ход наш, без часов и просьбы «Заберите» —
+        // Шаг «Забрать автомобиль», а везёт логистика (17.10.2026): ход наш, без часов и просьбы «Заберите» —
         // шаг пройдёт сам по «Привёз» к нему (`SyncHandover`); сняли вывоз — ход снова его (`SyncHandover::turn`).
         $carried = $track === Track::Sale && $deal?->isActive() && $to->isPickupStep() && $deal->setRelation('offer', $offer->unsetRelation('pickupTask'))->carried();
         $waits = $ours || $awaitsLetter || $carried ? WaitsFor::Us : ($needsBuyer ? WaitsFor::Manager : null);

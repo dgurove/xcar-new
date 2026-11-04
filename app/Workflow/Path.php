@@ -59,7 +59,7 @@ final class Path
      * этап, где уже были, сматывает журнал до прежнего входа: отменённые и пройденные зря шаги из пути пропадают
      * (в «Истории» они остаются), и вернувшийся назад блок не стоит галочкой впереди текущего.
      *
-     * @return Collection<int, array{at: Carbon, block: string, stage: ?string, stage_id: ?int, from: ?string, from_id: ?int, exit: ?string}>
+     * @return Collection<int, array{at: Carbon, block: string, stage: ?string, stage_id: ?int, from: ?string, from_id: ?int, exit: ?string, user_id: ?int}>
      */
     public static function journal(Offer $offer, Track $track, ?Carbon $since = null): Collection
     {
@@ -69,7 +69,7 @@ final class Path
         foreach ($entries as $e) {
             $p = $e->payload;
             $entry = ['at' => $e->created_at, 'block' => $p['block'], 'stage' => $p['to'] ?? null, 'stage_id' => $p['to_id'] ?? null,
-                'from' => $p['from'] ?? null, 'from_id' => $p['from_id'] ?? null, 'exit' => $p['label'] ?? $p['exit'] ?? null];
+                'from' => $p['from'] ?? null, 'from_id' => $p['from_id'] ?? null, 'exit' => $p['label'] ?? $p['exit'] ?? null, 'user_id' => $e->user_id];
             // Снова в этапе, где уже были (откат, «Оплата не поступила», «Отказываюсь»), — всё после прежнего входа
             // из пути уходит. Откат оставляет прежний вход (с ним и выход, которым пришли тогда, — его и отменит
             // следующий откат), обычный возврат — новый: отменять надо уже его («Оплата не поступила»).

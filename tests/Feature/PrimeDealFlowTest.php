@@ -89,7 +89,7 @@ class PrimeDealFlowTest extends TestCase
         $offer = $this->offer();
         $deal = app(AcceptBid::class)(app(PlaceBid::class)($offer, $this->manager, 1050000), $this->admin, 30000, CommissionMode::Payout, scheme: DealScheme::Prime);
         // До получения счетов нет и покупателя никто не спрашивает.
-        $this->assertSame('Менеджер забирает автомобиль', $offer->fresh()->stage()->name);
+        $this->assertSame('Забрать автомобиль', $offer->fresh()->stage()->name);
         $this->assertSame(0, $deal->fresh()->issuedInvoices()->count());
         $this->pickedUp($offer);
 

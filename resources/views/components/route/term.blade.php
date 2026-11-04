@@ -5,7 +5,8 @@
      ушло письмо — в окне (`x-route.clock`, путь), не в строке. clock=false — без часов чужого хода: на шаге оплаты срок
      говорит столбец «Оплата» сделок (`DealDebt`), второй раз его не пишем. waiting=false — без «ждём менеджера, »: во
      вкладке «Ждём менеджера» это и так сказано, а в каждой строке раздвигало таблицу. --}}
-@props(['position', 'clock' => true, 'waiting' => true])
+{{-- idle — чужой ход без часов не молчит, а «ждём 3 д» с входа в блок: во «Ждём менеджера» без срока строка была пустой. --}}
+@props(['position', 'clock' => true, 'waiting' => true, 'idle' => false])
 @php
     use App\Workflow\WaitsFor;
     $invoice = $position->awaitsInvoice();
@@ -32,6 +33,7 @@
         $who === WaitsFor::Us && $position->stage->timerMode() === 'stopwatch' => ['идёт '.$timer('since', $position->block_entered_at), true],
         $who === WaitsFor::Us => ['наш ход', true],
         $wait && ! $clock => [$waiting ? $wait : null, false],
+        $wait && $idle && ! $position->deadline_at && (bool) $position->block_entered_at => ['ждём '.$timer('since', $position->block_entered_at), false],
         $wait && $position->deadline_at && $overdue => [($waiting ? $wait.', ' : '').'просрочено '.$timer('since', $position->deadline_at), false],
         $wait && (bool) $position->deadline_at => [($waiting ? $wait.', ' : '').'осталось '.$left(), false],
         (bool) $wait => [$waiting ? $wait : null, false],

@@ -86,7 +86,7 @@
                 <div class="substep-body">
                     <div class="substep-head"><span class="substep-title">Покупатель</span></div>
                     @if ($s !== RepriceFlow::WAIT && $buyer)
-                        <div class="reprice-who">
+                        <div class="step-who">
                             <x-ui.avatar :user="$buyer" :size="32"/>
                             <div class="min-w-0">
                                 <div class="truncate">{{ $buyer->shortName() }}</div>
@@ -99,14 +99,14 @@
                                 @endif
                             </div>
                             @if ($ask?->isPending())
-                                <x-offer.answer-for class="reprice-who-acts" :action="'/offers/'.$n.'/reprice-asks/'.$ask->id" :agree-ask="'За '.$buyer->shortName().': согласен на '.Money::rub($ask->to_price).'?'"
+                                <x-offer.answer-for class="step-who-acts" :action="'/offers/'.$n.'/reprice-asks/'.$ask->id" :agree-ask="'За '.$buyer->shortName().': согласен на '.Money::rub($ask->to_price).'?'"
                                     :decline-ask="'За '.$buyer->shortName().': отказался?'" :decline-text="$ask->declineMeans()"/>
                             @endif
                         </div>
                     @endif
                     @if ($flow->showsToAll())
-                        <div class="reprice-who">
-                            <span class="reprice-who-icon"><x-ui.icon name="users" class="size-4"/></span>
+                        <div class="step-who">
+                            <span class="step-who-icon"><x-ui.icon name="users" class="size-4"/></span>
                             <div class="min-w-0">
                                 <div>Все менеджеры</div>
                                 <div class="flex flex-wrap items-center gap-x-2 gap-y-1">
@@ -114,7 +114,7 @@
                                     @if ($flow->reserves)<span class="tag nums">{{ $flow->reserves }} {{ \App\Support\Plural::of($flow->reserves, ['подтверждение', 'подтверждения', 'подтверждений']) }}</span>@endif
                                 </div>
                             </div>
-                            <form method="post" action="/offers/{{ $n }}/show-all" class="reprice-who-acts" data-turbo-confirm="Убрать из предложений у всех менеджеров?" data-turbo-confirm-label="Снять показ">
+                            <form method="post" action="/offers/{{ $n }}/show-all" class="step-who-acts" data-turbo-confirm="Убрать из предложений у всех менеджеров?" data-turbo-confirm-label="Снять показ">
                                 @csrf @method('delete')<button type="submit" class="btn btn-s btn-quiet shrink-0 !h-8 rounded-full !px-3.5">Снять показ</button>
                             </form>
                         </div>

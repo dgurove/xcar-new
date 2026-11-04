@@ -133,7 +133,7 @@ class AlfaPrepayTest extends TestCase
         $this->assertFalse($deal->fresh()->mayPickUp());
 
         $this->exit($offer, 'Переведено поставщику');
-        $this->assertSame('Подтверждение оплаты поставщиком', $offer->fresh()->stage()->name);
+        $this->assertSame('Подтверждение оплаты', $offer->fresh()->stage()->name);
         $this->exit($offer, 'Оплата получена');
         $this->assertNotNull($deal->fresh()->prepaid_at);
         $this->assertTrue($deal->fresh()->mayPickUp());
@@ -153,7 +153,7 @@ class AlfaPrepayTest extends TestCase
         $this->assertFalse($deal->fresh()->mayPickUp());
 
         $this->exit($offer, 'Платёжное поручение приложено');
-        $this->assertSame('Подтверждение оплаты поставщиком', $offer->fresh()->stage()->name);
+        $this->assertSame('Подтверждение оплаты', $offer->fresh()->stage()->name);
         $this->exit($offer, 'Оплата получена');
         $this->assertTrue($deal->fresh()->mayPickUp());
     }
@@ -172,7 +172,7 @@ class AlfaPrepayTest extends TestCase
         // Подбор оплачен по ссылке — шаг на месте, ход менеджера, вывоз закрыт.
         $selection = $deal->fresh()->issuedInvoices()->sole();
         app(RecordPayment::class)($selection->fresh(), $this->admin, (float) $selection->total, now(), PaymentSource::Acquiring);
-        $this->assertSame('Счёт выставлен менеджеру', $offer->fresh()->stage()->name);
+        $this->assertSame('Оплата счёта', $offer->fresh()->stage()->name);
         $this->assertNotSame(WaitsFor::Us, $offer->fresh()->position(Track::Sale)->waits_for);
         $this->assertFalse($deal->fresh()->mayPickUp());
 
@@ -181,7 +181,7 @@ class AlfaPrepayTest extends TestCase
         $requirement->addMedia(UploadedFile::fake()->create('pp.pdf', 10, 'application/pdf'))->toMediaCollection('files');
         $slip = $offer->fresh()->stage()->payExit($deal->fresh());
         app(AnswerRequirement::class)($requirement->fresh(), $slip, $this->manager);
-        $this->assertSame('Подтверждение оплаты поставщиком', $offer->fresh()->stage()->name);
+        $this->assertSame('Подтверждение оплаты', $offer->fresh()->stage()->name);
 
         $this->exit($offer, 'Оплата получена');
         $this->assertTrue($deal->fresh()->mayPickUp());

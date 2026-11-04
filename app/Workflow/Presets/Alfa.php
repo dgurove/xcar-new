@@ -12,7 +12,9 @@ namespace App\Workflow\Presets;
  */
 final class Alfa extends Route
 {
-    public const REQUISITES_BLOCK = ['name' => 'Счёт от поставщика', 'text' => 'Поставщик выставит счёт по данным покупателя'];
+    // «Реквизиты для счёта», а не «Счёт от поставщика» (04.11.2026, владелец: «звучит, будто ждём счёт от Альфы, а это мы им
+    // должны отправить реквизиты»); шаг, где их ещё нет у менеджера, — «Нет реквизитов».
+    public const REQUISITES_BLOCK = ['name' => 'Реквизиты для счёта', 'text' => 'Поставщик выставит счёт по данным покупателя, которые мы ему отправим'];
 
     public function blocks(): array
     {
@@ -61,7 +63,7 @@ final class Alfa extends Route
             ['Поставщик сразу выставил счёт', 'staff', 'garage_payment'],
         ];
         $garage = ['garage_confirmed' => $garage['garage_confirmed'], 'garage_requisites' => [
-            'name' => 'Реквизиты поставщику, в гараж', 'block' => 'agreement_garage', 'waits_for' => 'supplier', 'limit_minutes' => 2 * self::DAY, 'letter' => 'requisites',
+            'name' => 'Письмо с реквизитами, в гараж', 'block' => 'agreement_garage', 'waits_for' => 'supplier', 'limit_minutes' => 2 * self::DAY, 'letter' => 'requisites',
             'exits' => [['Счёт от поставщика получен', 'staff', 'garage_payment']],
         ]] + $garage;
 
@@ -87,12 +89,12 @@ final class Alfa extends Route
     {
         return [
             'buyer_data' => [
-                'name' => 'Данные покупателя для счёта', 'block' => 'requisites', 'waits_for' => 'manager', 'limit_minutes' => self::DAY, 'asks' => 'buyer',
+                'name' => 'Нет реквизитов', 'block' => 'requisites', 'waits_for' => 'manager', 'limit_minutes' => self::DAY, 'asks' => 'buyer',
                 'ask_title' => 'Заполните данные покупателя', 'ask_text' => 'Поставщик выставит счёт на покупателя: нужны паспорт со сканом или реквизиты организации',
                 'exits' => [['Данные покупателя заполнены', 'manager', 'requisites']],
             ],
             'requisites' => [
-                'name' => 'Реквизиты поставщику', 'block' => 'requisites', 'waits_for' => 'supplier', 'limit_minutes' => 2 * self::DAY, 'letter' => 'requisites',
+                'name' => 'Письмо с реквизитами', 'block' => 'requisites', 'waits_for' => 'supplier', 'limit_minutes' => 2 * self::DAY, 'letter' => 'requisites',
                 'ask_text' => 'Данные отправили поставщику, ждём счёт',
                 'exits' => [['Счёт от поставщика получен', 'staff', 'invoice']],
             ],

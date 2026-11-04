@@ -53,7 +53,7 @@ class DealAgreementFixCommand extends Command
             $agreement = $wholesale && $stage ? $this->agreementStage($stage->workflow_id) : null;
             // Каркаде: всё, что ещё до проверки оплаты, — на согласование заново (и та, что уже на нём, но с просьбой
             // «Подтвердите покупку» от прежнего этапа: этап правился на месте).
-            $back = $agreement && ($stage->id === $agreement->id ? $deal->openRequirement()->exists() : in_array($stage->name, ['Согласие менеджера', 'Счёт выставлен менеджеру'], true));
+            $back = $agreement && ($stage->id === $agreement->id ? $deal->openRequirement()->exists() : in_array($stage->name, ['Согласие менеджера', 'Оплата счёта'], true));
             if (! $back && ! ($stage?->isAgreement())) {
                 continue;
             }

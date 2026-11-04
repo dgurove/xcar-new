@@ -1,7 +1,7 @@
 @php
     $view = \App\Support\ListView::pick(request(), $deals->total());
     // Столбцы — одно описание на шапку, строки и заголовки групп (`DealController::table`).
-    $table = \App\Http\Admin\DealController::table($groups !== null, $stages !== null, $facets->searching() ? null : $preset);
+    $table = \App\Http\Admin\DealController::table($groups !== null, $stages !== null, $facets->searching() ? null : $preset, $waiting !== null);
 @endphp
 <x-ui.shell title="Сделки" :heading="false" :detail="$detail">
     <x-admin.work-titles current="deals" :count="$deals->total()"/>
@@ -38,6 +38,25 @@
                 @foreach ($debts['groups'] as $key => $group)
                     <x-table.group :table="$table" :key="$key" :title="$group['title']" :count="$group['rows']->count()"><span class="ml-auto nums text-sm">@if ($group['overdue'] >= $group['owed'])<span class="text-danger">{{ \App\Support\Money::rub($group['owed']) }} просрочено</span>@else{{ \App\Support\Money::rub($group['owed']) }}@if ($group['overdue'] > 0)<span class="text-danger">, из них просрочено {{ \App\Support\Money::rub($group['overdue']) }}</span>@endif @endif</span></x-table.group>
                     @foreach ($group['rows'] as $row)<x-deal.pay-row :deal="$row['deal']" :debt="$row['debt']" :table="$table"/>@endforeach
+                @endforeach
+            </x-ui.table>
+        @endif
+    @elseif ($waiting !== null)
+        {{-- «Ждём менеджера» / «Ждём поставщика» — группами по тому, кого ждём (`DealController::waiting`, 04.11.2026): менеджер
+             с аватаром и «Позвонить» или вендор с логотипом, сколько просрочено; в строке — что ждём и срок. --}}
+        @if ($waiting->isEmpty())
+            <x-ui.empty class="mt-6">{{ $preset === 'manager' ? 'Менеджеров не ждём' : 'Поставщиков не ждём' }}</x-ui.empty>
+        @else
+            <x-ui.table :table="$table" id="deals" class="mt-6" view="table">
+                <x-slot:head><x-table.head :table="$table" :sort="$sort"/></x-slot:head>
+                @foreach ($waiting as $key => $group)
+                    <x-table.group :table="$table" :key="$key" :title="$group['title']" :count="$group['size']">
+                        <x-slot:before>@if ($group['manager'])<x-ui.avatar :user="$group['manager']" :size="24" class="mr-2 align-middle"/>@elseif ($group['vendor'])<x-vendor.logo :vendor="$group['vendor']" class="mr-2"/>@endif</x-slot:before>
+                        @if ($group['late'])<span class="text-sm font-normal text-danger">просрочено {{ $group['late'] }}</span>@endif
+                        {{-- На телефоне — значком: подпись роняла кнопку на строку ниже имени. --}}
+                        @if ($group['manager']?->phone)<a href="tel:{{ $group['manager']->phone }}" class="btn btn-s btn-quiet max-sm:aspect-square max-sm:!px-0" aria-label="Позвонить {{ $group['manager']->shortName() }}"><x-ui.icon name="phone" class="size-4"/><span class="max-sm:hidden">Позвонить</span></a>@endif
+                    </x-table.group>
+                    @foreach ($group['rows'] as $deal)<x-deal.wait-row :deal="$deal" :table="$table"/>@endforeach
                 @endforeach
             </x-ui.table>
         @endif

@@ -110,6 +110,7 @@ class DealController
         Rows::only($q, 'deals.id');
         $groups = $preset === 'us' && ! $searching ? self::todo($q->get(), $sort->key === 'deadline') : null;
         $debts = $preset === 'pay' && ! $searching ? self::debts($q->get()) : null;
+        $waiting = in_array($preset, ['manager', 'supplier'], true) && ! $searching ? self::waiting($q->get(), $preset) : null;
         // Таблица — порциями по сотне (`Portion`), «Все» — целиком: группы по этапу собираются в памяти, порция их порвала бы;
         // строками — постранично.
         $table = ListView::isTable(ListView::pick($request, 0));
@@ -120,6 +121,7 @@ class DealController
             // «Все» таблицей — группами по этапу.
             'stages' => $preset === 'all' && ! $searching && $table ? self::stages($deals->getCollection()) : null,
             'debts' => $debts,
+            'waiting' => $waiting,
             'deals' => $deals,
             'preset' => $preset,
             'counts' => $counts,
@@ -156,6 +158,34 @@ class DealController
 
             return $group;
         })->sortBy([['rank', 'asc'], ['title', 'asc']]);
+    }
+
+    /**
+     * «Ждём менеджера» / «Ждём поставщика» — группами по тому, кого ждём (04.11.2026, владелец: «непонятно, КОГО из менеджеров
+     * мы ждём и ЧЕГО мы от них ждём, а это самое главное»): у группы менеджер (аватар, «Позвонить») или вендор, у строки — что
+     * ждём (этап: «Нет реквизитов», «Оплата счёта ПРАЙМ», «Забрать автомобиль») и срок (`x-deal.wait-row`). Первыми — где
+     * просрочено, дальше — где больше сделок; внутри — по сроку списка. Весь список одной страницей.
+     *
+     * @return Collection<string, array{title: string, manager: ?\App\Users\User, vendor: ?\App\Vendors\Vendor, late: int, size: int, rows: Collection}>
+     */
+    private static function waiting(Collection $deals, string $preset): Collection
+    {
+        $manager = $preset === 'manager';
+
+        return $deals->groupBy(fn (Deal $d) => $manager ? ($d->isAuction() ? 'auction' : 'manager:'.$d->buyer_id) : 'vendor:'.$d->offer?->vendor_id)
+            ->map(function (Collection $rows) use ($manager) {
+                $first = $rows->first();
+                $vendor = $manager ? null : $first->offer?->vendor;
+
+                return [
+                    'title' => $manager ? ($first->isAuction() ? 'Аукцион' : ($first->buyer?->name ?? 'Без менеджера')) : ($vendor?->name ?? 'Без вендора'),
+                    'manager' => $manager && ! $first->isAuction() ? $first->buyer : null,
+                    'vendor' => $vendor,
+                    'late' => $rows->filter(fn (Deal $d) => $d->offer?->position()?->isOverdue())->count(),
+                    'size' => $rows->count(),
+                    'rows' => $rows->values(),
+                ];
+            })->sortBy([['late', 'desc'], ['size', 'desc'], ['title', 'asc']]);
     }
 
     /**
@@ -200,7 +230,7 @@ class DealController
      * говорит группа, у строки — сколько ждёт и кнопка; иначе — таблица со сроком шага, оплатой и суммой. preset — строке:
      * во вкладке «Ждём менеджера» / «Ждём поставщика» срок шага без «ждём …».
      */
-    public static function table(bool $todo = false, bool $staged = false, ?string $preset = null): Table
+    public static function table(bool $todo = false, bool $staged = false, ?string $preset = null, bool $waiting = false): Table
     {
         $title = new Column('title', 'Марка, модель', grow: true);
         // Ширина у каждого столбца (29.10.2026): без неё `x-ui.table :rest` гадали числом в виде, и название то резалось, то
@@ -211,6 +241,10 @@ class DealController
         return match (true) {
             // Кнопка шага — самой правой, за сроком «Ждёт».
             $todo => Table::of($title, $vendor, $manager, new Column('wait', 'Ждёт', from: 'sm', role: ColRole::When, rem: 8), new Column('action', role: ColRole::When, rem: 9)),
+            // «Ждём менеджера» / «Ждём поставщика» (`x-deal.wait-row`): кого ждём — заголовком группы, у строки — что ждём и срок.
+            $waiting => Table::of($title, $vendor, new Column('what', 'Ждём', from: 'sm', role: ColRole::State, rem: 12),
+                new Column('term', 'Срок', from: 'sm', role: ColRole::When, rem: 9),
+                new Column('amount', 'Сумма', num: true, class: 'nums', rem: 7)),
             // «Оплата» — что с оплатой, сколько должен и срок (`x-deal.pay-row`); менеджер — заголовком группы.
             $preset === 'pay' => Table::of($title, $vendor, new Column('status', 'Что с оплатой', from: 'sm', role: ColRole::State, rem: 12),
                 new Column('owed', 'Должен', num: true, class: 'nums', rem: 7), new Column('due', 'Срок', from: 'sm', role: ColRole::When, rem: 6)),

@@ -6,7 +6,9 @@
      оплате — его заявка тут же с «Поступило» / «Не поступила» (подтверждение само двигает путь, AdvanceOnPayment),
      и выходов «Оплата получена / не поступила» рядом нет — одно действие, а не два несвязанных. Слот — шаги после
      маршрута тем же видом (продажа гаражной машины).
-     07.10.2026: поля строками (.fields), кнопка .sheet-foot. --}}
+     07.10.2026: поля строками (.fields), кнопка .sheet-foot.
+     04.11.2026: текущий шаг — подпунктами этапов блока (`Workflow\Substeps`, вид — как у «Переоценки»), у подпункта «сейчас» —
+     кто действует строкой (`x-route.who`), под ней кнопки шага. --}}
 @props(['offer', 'position'])
 @php
     use App\Billing\InvoiceState;
@@ -36,12 +38,9 @@
     if ($requestExit) {
         $moves = $moves->reject(fn ($x) => $x->is($requestExit));
     }
-    $overdue = $position->isOverdue();
     // Переоценка в сделке — свой шаг «Переоценка» перед этапом маршрута (04.11.2026, владелец: «почему согласование с
     // поставщиком, если идёт переоценка — мы ещё ничего не приняли»): пока он не пройден, этап ждёт впереди без кнопок.
     $reflow = $position->track === \App\Workflow\Track::Sale && auth()->user()?->canManageCrm() ? \App\Offers\RepriceFlow::for($offer) : null;
-    $tone = $overdue ? 'text-danger' : match ($position->waitsFor()->tone()) { 'urgent' => 'text-urgent', 'open' => 'text-accent-text', default => 'text-ink-muted' };
-    $clock = $position->deadline_at || $stage->timerMode() === 'stopwatch';
     $requirements = $offer->requirements()->with(['media', 'stage'])->get();
     // Кто отвечал за менеджера («(за него …)») — одним запросом на путь, а не на каждый ответ.
     $answeredBy = \App\Users\User::whereIn('id', $requirements->map(fn ($r) => $r->answer['by'] ?? null)->filter()->unique())->get()->keyBy('id');
@@ -107,7 +106,7 @@
                         </summary>
                         <div class="mt-1 flex flex-col gap-1">
                             @foreach ($step['stages'] as $s)
-                                <div class="flex flex-wrap items-baseline gap-x-2 text-sm"><span>{{ $s['stage'] }}</span><span class="nums text-ink-dim">{{ \App\Support\Ago::html($s['at'], true, words: false) }}</span></div>
+                                <div class="flex flex-wrap items-baseline gap-x-2 text-sm"><span>{{ $block->stages->firstWhere('id', $s['stage_id'])?->name ?? $s['stage'] }}</span><span class="nums text-ink-dim">{{ \App\Support\Ago::html($s['at'], true, words: false) }}</span></div>
                             @endforeach
                             @foreach ($answers as $r)
                                 <div class="text-sm"><span class="text-ink-muted">Менеджер:</span> {{ $r->answer['label'] ?? $r->answer['exit'] ?? $r->title }}@if (($r->answer['closed_by'] ?? null) === 'staff') <span class="text-ink-muted">(за него {{ $answeredBy->get($r->answer['by'] ?? 0)?->shortName() ?? 'сотрудник' }})</span>@endif <span class="nums text-ink-dim">{{ \App\Support\Ago::html($r->done_at, true, words: false) }}</span></div>
@@ -169,40 +168,39 @@
                             </div>
                         @endif
                     </div>
-                    @if ($wantsInvoice)<div>Счёт ещё не выставлен</div>
-                    {{-- Имя этапа с письмом («Уведомили поставщика о покупке») читалось как «письмо ушло», даже когда его не
-                         отправляли (11.10.2026) — что с письмом, говорит строка ниже. --}}
-                    @elseif ($stage->name !== $block->name && ! $position->letterStatus())<div>{{ $stage->name }}</div>@endif
                     @php
-                        // Что ждём от менеджера — его ответами, а не текстом просьбы: «Подтвердите покупку» в CRM читалось как
-                        // команда админу (05.10.2026, «что такое „проверьте покупку“?»). Это и есть подсказка шага — одной строкой
-                        // с таймером: «Ждём менеджера, осталось…» и следом «Ждём от менеджера «…» до …» говорили одно дважды (07.10.2026).
+                        // Подпункты блока (`Workflow\Substeps`, 04.11.2026, владелец: «как переоценку — так и остальные этапы»):
+                        // пройденные — исходом, кто и когда; сейчас — кто действует (`x-route.who`) и кнопки шага; впереди — серым
+                        // с тем, чей там ход. В блоке из одного этапа подпунктов нет — шаг и есть он. Фраз «Ждём от менеджера
+                        // «…»», «Менеджер ответит …» и строки с именем этапа больше нет: их говорят подпункт и строка «кто».
+                        $subs = \App\Workflow\Substeps::for($position, $step['stages'], $deal);
+                        $many = $subs->count() > 1;
+                        $doneBy = $many ? \App\Users\User::whereIn('id', $subs->pluck('user_id')->filter()->unique())->get()->keyBy('id') : collect();
+                        $whoOf = fn ($s) => match ($s?->waits_for) {
+                            WaitsFor::Manager => $deal?->buyer?->shortName(),
+                            WaitsFor::Supplier => $offer->vendor?->name,
+                            default => null,
+                        };
                         $req = ! $wantsInvoice && $stage->awaitsManager($deal) ? $requirements->first(fn ($r) => ! $r->done_at && $r->stage_id === $stage->id) : null;
-                        $replies = $req ? $stage->exitsFor(\App\Workflow\Actor::Manager, $deal)->pluck('label')->map(fn ($l) => '«'.$l.'»') : collect();
-                        $waitsWord = $replies->count() > 1 ? 'Менеджер ответит '.$replies->slice(0, -1)->implode(', ').' или '.$replies->last() : ($replies->isNotEmpty() ? 'Ждём от менеджера '.$replies->first() : null);
-                        // Шаг просит документ — что именно, а не имя кнопки (19.10.2026: «Ждём от менеджера «Договор приложен»»).
-                        if ($req?->asks === \App\Workflow\Asks::Document) {
-                            $waitsWord = 'Ждём от менеджера '.match (true) {
-                                (bool) preg_match('/договор/iu', $stage->name.' '.$req->title) => 'подписанный договор',
-                                (bool) preg_match('/плат[её]ж/iu', (string) $req->title) => 'платёжку',
-                                default => 'документ',
-                            };
-                        }
                         // Данные покупателя для счёта поставщика (03.11.2026): их вносит и админ — «Заполнить» ведёт к карточке.
                         $buyerData = $req?->asks === \App\Workflow\Asks::Buyer;
-                        if ($buyerData) {
-                            $waitsWord = 'Ждём данные покупателя от менеджера';
-                        }
                     @endphp
-                    @if ($position->letterStatus())
-                        {{-- Этап с письмом поставщику — что с письмом, а не «Ждём поставщика» (`x-route.clock`, 11.10.2026). --}}
-                        <x-route.clock :position="$position" side="staff" class="step-hint" :letters="'/offers/'.$offer->number.'/letters'"/>
-                    @elseif (! $wantsInvoice && ($overdue || $position->waitsFor() !== WaitsFor::Nobody || $clock || $waitsWord))
-                        {{-- Одной строкой: переносы в разметке давали пробел перед запятой. --}}
-                        <p class="step-hint {{ $tone }}">@if ($overdue)Срок вышел <span class="nums" data-controller="timer" data-timer-since-value="{{ $position->deadline_at->toIso8601String() }}" data-timer-coarse-value="true"></span> назад@else{{ $waitsWord ?? $position->waitsFor()->label() }}@if ($position->deadline_at), осталось <span class="nums" data-controller="timer" data-timer-until-value="{{ $position->deadline_at->toIso8601String() }}" data-timer-done-value="-" data-timer-coarse-value="true" data-timer-word-value="">{{ \App\Support\Ago::left($position->deadline_at, '') }}</span>@elseif ($req?->due_at), до <span class="nums">{{ \App\Support\Ago::html($req->due_at, true, words: false) }}</span>@elseif ($stage->timerMode() === 'stopwatch'), идёт <span class="nums" data-controller="timer" data-timer-since-value="{{ $position->block_entered_at->toIso8601String() }}" data-timer-coarse-value="true"></span>@endif @endif</p>
+                    @if ($many)
+                        <ol class="substeps">
+                            @foreach ($subs->where('state', \App\Workflow\Substeps::DONE) as $sub)
+                                <li class="substep substep--done">
+                                    <span class="substep-dot"><x-ui.icon name="check" class="size-2.5"/></span>
+                                    <div class="substep-body"><div class="substep-head"><span class="substep-title">{{ $sub['name'] }}</span>@if ($sub['at'])<span class="substep-meta">@if ($by = $doneBy->get($sub['user_id'])){{ $by->shortName() }} · @endif<span class="nums">{{ \App\Support\Ago::html($sub['at'], true, words: false) }}</span></span>@endif</div></div>
+                                </li>
+                            @endforeach
+                            <li class="substep substep--now">
+                                <span class="substep-dot"></span>
+                                <div class="substep-body">
+                                    <div class="substep-head"><span class="substep-title">{{ $stage->name }}</span></div>
                     @endif
+                    <x-route.who :position="$position" :offer="$offer" :deal="$deal"/>
                     @if ($buyerData && auth()->user()?->canManageCrm())
-                        <p class="step-hint"><a href="/offers/{{ $offer->number }}#invoice-buyer" class="text-accent-text underline-offset-4" data-turbo-frame="_top">Заполнить за менеджера</a></p>
+                        <div class="mt-3 flex flex-wrap gap-2"><a href="/offers/{{ $offer->number }}#invoice-buyer" class="btn btn-s btn-accent !h-auto min-h-9 max-w-full whitespace-normal py-1.5 text-left" data-turbo-frame="_top">Заполнить за менеджера</a></div>
                     @endif
                     {{-- Согласие менеджера: чаще всего он уже сказал «да» устно — «Беру в работу» за него видной тихой кнопкой. --}}
                     @if ($takeFor)
@@ -353,6 +351,17 @@
                                 @endforeach
                             </ul>
                         @endif
+                    @endif
+                    @if ($many)
+                                </div>
+                            </li>
+                            @foreach ($subs->where('state', \App\Workflow\Substeps::WAIT) as $sub)
+                                <li class="substep substep--wait">
+                                    <span class="substep-dot"></span>
+                                    <div class="substep-body"><div class="substep-head"><span class="substep-title">{{ $sub['name'] }}</span>@if ($who = $whoOf($sub['stage']))<span class="substep-meta">{{ $who }}</span>@endif</div></div>
+                                </li>
+                            @endforeach
+                        </ol>
                     @endif
                 @else
                     <div class="step-head"><span class="step-title">{{ $blockName($block) }}</span></div>

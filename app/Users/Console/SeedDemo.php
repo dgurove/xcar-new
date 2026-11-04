@@ -107,12 +107,12 @@ final class SeedDemo extends Command
     }
 
     /**
-     * Сделки в работе стоят на этапах маршрута продажи первого же вендора, где есть «Счёт выставлен менеджеру»:
+     * Сделки в работе стоят на этапах маршрута продажи первого же вендора, где есть «Оплата счёта»:
      * Camry — шагом раньше (счёт ещё не выставлен), Rio — на счёте. Без срока: часы маршрута демо не трогают.
      */
     private function place(Deal $waiting, Deal $invoiced): void
     {
-        $invoice = Stage::where('name', 'Счёт выставлен менеджеру')->orderBy('id')->first();
+        $invoice = Stage::where('name', 'Оплата счёта')->orderBy('id')->first();
         if (! $invoice) {
             return;
         }

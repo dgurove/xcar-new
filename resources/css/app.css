@@ -2283,11 +2283,14 @@ html.kb-open { --home-gap: 0px; }
   .substep-title { font-weight: 500; }
   .substep--wait .substep-title { font-weight: 400; color: var(--color-ink-muted); }
   .substep-meta { font-size: var(--text-sm); color: var(--color-ink-muted); }
-  /* Человек — аватар и имя с состоянием строкой, кнопки — под именем своей строкой: в узкой дорожке редактора и на телефоне
-     рядом с ними имя сжималось до «Вла…». */
-  .reprice-who { display: grid; grid-template-columns: 2rem minmax(0, 1fr); align-items: center; gap: .5rem .75rem; margin-top: .625rem; }
-  .reprice-who-acts { grid-column: 2; display: flex; flex-wrap: wrap; gap: .5rem; }
-  .reprice-who-icon { display: flex; flex-shrink: 0; align-items: center; justify-content: center; width: 2rem; height: 2rem; border-radius: 999px; background: var(--color-surface-2); color: var(--color-ink-muted); }
+  /* Кто действует — аватар (логотип вендора, знак XCar) и имя с состоянием строкой, справа «Позвонить», кнопки — под именем
+     своей строкой: в узкой дорожке редактора и на телефоне рядом с ними имя сжималось до «Вла…». Одна строка на «Переоценку»
+     и подпункт «сейчас» любого шага пути (`x-route.who`, 04.11.2026). */
+  .step-who { display: grid; grid-template-columns: 2rem minmax(0, 1fr) auto; align-items: center; gap: .5rem .75rem; margin-top: .625rem; }
+  .step-who-acts { grid-column: 2 / -1; display: flex; flex-wrap: wrap; gap: .5rem; }
+  /* Состояние — своя фраза («должен 1 050 000 ₽ · просрочено 10 д»): в узкой дорожке переносится, а не лезет под «Позвонить». */
+  .step-who .state { white-space: normal; }
+  .step-who-icon { display: flex; flex-shrink: 0; align-items: center; justify-content: center; width: 2rem; height: 2rem; border-radius: 999px; background: var(--color-surface-2); color: var(--color-ink-muted); }
 
   /* Маршрут вывоза (`x-logistics.route`, 20.10.2026) — как маршрут в Google Картах: слева значки точек на одной линии (старт —
      кольцо, стоянка — точка, цель — метка), между ними отрезки плашкой на линии; линия пройденного — сплошная лаймовая,

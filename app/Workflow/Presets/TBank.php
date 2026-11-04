@@ -25,14 +25,14 @@ final class TBank extends Route
             // забрал машину»): связался → забрал → подписанный ДКП. Покупатель и ДКП готовятся параллельно — чек-листом
             // задачи (`cabinet.deals.step`), подписывают при передаче.
             'owner_contact' => [
-                'name' => 'Контакты владельца переданы менеджеру', 'block' => 'pickup', 'waits_for' => 'manager', 'limit_minutes' => self::DAY,
+                'name' => 'Связаться с владельцем', 'block' => 'pickup', 'waits_for' => 'manager', 'limit_minutes' => self::DAY,
                 'ask_title' => 'Свяжитесь с владельцем',
                 'ask_text' => 'Свяжитесь с владельцем автомобиля и договоритесь о передаче',
                 'staff_fields' => [['label' => 'Владелец'], ['label' => 'Телефон владельца'], ['label' => 'Адрес автомобиля', 'type' => 'textarea']],
                 'exits' => [['Связался с владельцем', 'manager', 'buyer_pickup']],
             ],
             'buyer_pickup' => [
-                'name' => 'Менеджер забирает автомобиль', 'block' => 'pickup', 'waits_for' => 'manager', 'limit_minutes' => 3 * self::DAY,
+                'name' => 'Забрать автомобиль', 'block' => 'pickup', 'waits_for' => 'manager', 'limit_minutes' => 3 * self::DAY,
                 'ask_title' => 'Заберите автомобиль', 'ask_text' => 'Заберите автомобиль у владельца',
                 'exits' => [['Автомобиль забрал', 'manager', 'dkp_signed'], ['Автомобиль передан', 'staff', 'dkp_signed']],
             ],

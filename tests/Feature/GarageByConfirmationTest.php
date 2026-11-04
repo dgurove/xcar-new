@@ -184,7 +184,7 @@ class GarageByConfirmationTest extends TestCase
         $offer->refresh();
         $deal = $offer->deal()->first();
         $this->assertTrue($deal->namesBuyer());
-        $this->assertSame('Менеджер забирает автомобиль', $offer->stage()->name);
+        $this->assertSame('Забрать автомобиль', $offer->stage()->name);
         $this->assertSame(0, Invoice::where('deal_id', $deal->id)->count());
         // Вывоз — задача логистики к менеджеру в гараж (17.10.2026).
         $transport = Transport::openFor($offer);
@@ -201,7 +201,7 @@ class GarageByConfirmationTest extends TestCase
         $car = Car::where('offer_id', $offer->id)->firstOrFail();
         $this->assertSame(CarState::Repair, $car->state);
         $position = $offer->fresh()->position(Track::Sale);
-        $this->assertSame('Оплата по счёту ПРАЙМ', $position->stage->name);
+        $this->assertSame('Оплата счёта ПРАЙМ', $position->stage->name);
         $this->assertSame(WaitsFor::Manager, $position->waits_for);
         $this->assertSame('price', $deal->fresh()->invoiceGap());
         $this->assertSame(0, Invoice::where('deal_id', $deal->id)->count());

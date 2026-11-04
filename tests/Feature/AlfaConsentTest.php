@@ -62,7 +62,7 @@ class AlfaConsentTest extends TestCase
         app(EnterStage::class)($offer, Stage::where('workflow_id', $vendor->fresh()->workflow(Track::Sale)->id)->where('name', 'Приём подтверждений')->firstOrFail());
         $deal = app(AcceptBid::class)(app(PlaceBid::class)($offer, $manager, 1000000), $admin, scheme: DealScheme::Prime);
         $position = fn () => Position::where('offer_id', $offer->id)->where('track', Track::Sale)->with('stage.exits.to')->firstOrFail();
-        $this->assertSame('Уведомили поставщика о покупке', $position()->stage->name);
+        $this->assertSame('Письмо о покупке', $position()->stage->name);
 
         // Альфа ответила на offer@ — не на deal@: ход наш, «поставщик ответил»; менеджеру ничего.
         Notification::fake();
@@ -98,7 +98,7 @@ class AlfaConsentTest extends TestCase
         $press(777, 'take');
         $this->assertSame('Согласие менеджера', $position()->stage->name);
         $press(777, 'suretake');
-        $this->assertSame('Подтвердили покупку поставщику', $position()->stage->name);
+        $this->assertSame('Подтверждение покупки', $position()->stage->name);
         // Шаг с письмом поставщику: ход наш, пока письмо не ушло; сотрудникам — ответить «актуально».
         $this->assertSame('unsent', $position()->letterStatus());
         Notification::assertSentTo($admin, ConsentGivenNotice::class);

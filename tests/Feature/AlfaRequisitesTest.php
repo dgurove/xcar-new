@@ -66,7 +66,7 @@ class AlfaRequisitesTest extends TestCase
             scheme: DealScheme::forOffer($offer->fresh()), ownerPrice: 900000);
         $this->exit($offer, 'Поставщик согласовал');
         $this->exit($offer, 'Беру в работу');
-        $this->assertSame('Подтвердили покупку поставщику', $offer->fresh()->stage()->name);
+        $this->assertSame('Подтверждение покупки', $offer->fresh()->stage()->name);
 
         return [$offer->fresh(), $deal->fresh()];
     }
@@ -78,6 +78,29 @@ class AlfaRequisitesTest extends TestCase
         $exit = $o->stage()->exits->first(fn ($e) => $e->label === $label && $e->fits($deal));
         $this->assertNotNull($exit, 'на «'.$o->stage()->name.'» нет «'.$label.'»');
         app(TakeExit::class)($o, $exit, $exit->actor, $exit->actor === Actor::Manager ? $this->manager : $this->admin);
+    }
+
+    /**
+     * Подпункты шага (`Workflow\Substeps`, 04.11.2026): в «Согласовании» пройденное — исходом, кто нажал; в «Реквизитах для
+     * счёта» — «Нет реквизитов» сейчас, «Письмо с реквизитами» впереди; во «Ждём менеджера» сделка — в группе своего менеджера.
+     */
+    public function test_substeps_and_waiting_tab_name_who_and_what(): void
+    {
+        [$offer] = $this->deal(vat: false);
+        $position = $offer->position(Track::Sale);
+        $subs = \App\Workflow\Substeps::for($position, \App\Workflow\Path::journal($offer, Track::Sale), $offer->deal);
+        $this->assertSame([['Поставщик согласовал', 'done'], ['Беру в работу', 'done'], ['Подтверждение покупки', 'now']],
+            $subs->map(fn ($s) => [$s['name'], $s['state']])->all());
+        $this->assertSame([$this->admin->id, $this->manager->id], $subs->take(2)->pluck('user_id')->all());
+
+        $this->exit($offer, 'Поставщик просит реквизиты');
+        $offer = $offer->fresh();
+        $subs = \App\Workflow\Substeps::for($offer->position(Track::Sale), \App\Workflow\Path::journal($offer, Track::Sale), $offer->deal);
+        $this->assertSame('Реквизиты для счёта', $offer->stage()->block->name);
+        $this->assertSame([['Нет реквизитов', 'now'], ['Письмо с реквизитами', 'wait']], $subs->map(fn ($s) => [$s['name'], $s['state']])->all());
+
+        $page = $this->actingAs($this->admin)->get('http://'.\App\Support\Surface::Crm->host().'/work/deals?preset=manager')->assertOk();
+        $page->assertSee('Денис Трофимов')->assertSee('Нет реквизитов')->assertSee('tel:79000000002', false);
     }
 
     public function test_reply_asking_requisites_is_recognized(): void
@@ -95,7 +118,7 @@ class AlfaRequisitesTest extends TestCase
 
         $this->exit($offer, 'Поставщик просит реквизиты');
         $stage = $offer->fresh()->stage();
-        $this->assertSame('Данные покупателя для счёта', $stage->name);
+        $this->assertSame('Нет реквизитов', $stage->name);
         $this->assertSame(Asks::Buyer, $stage->asks);
         $this->assertTrue($deal->fresh()->collectsBuyer());
         $requirement = $deal->fresh()->openRequirement()->firstOrFail();
@@ -110,10 +133,10 @@ class AlfaRequisitesTest extends TestCase
 
         // Админ за менеджера: покупатель — сам менеджер, паспорт со сканом — шаг проходит сам, ход наш (письмо не ушло).
         app(SaveDealContract::class)(DealContract::for($deal->fresh()), ['buyer_id' => 'me'], $this->admin);
-        $this->assertSame('Данные покупателя для счёта', $offer->fresh()->stage()->name, 'без скана шаг стоит');
+        $this->assertSame('Нет реквизитов', $offer->fresh()->stage()->name, 'без скана шаг стоит');
         $this->passportFor($this->manager);
         $offer = $offer->fresh();
-        $this->assertSame('Реквизиты поставщику', $offer->stage()->name);
+        $this->assertSame('Письмо с реквизитами', $offer->stage()->name);
         $this->assertSame(WaitsFor::Us, $offer->position(Track::Sale)->waits_for);
         $this->assertNull($deal->fresh()->contract->ready_at, 'договора у «страховой напрямую» нет — «ДКП готов» не шлём');
 
@@ -124,7 +147,7 @@ class AlfaRequisitesTest extends TestCase
         $this->assertTrue($deal->fresh()->supplierInvoicee()->hasPassportScans());
 
         $this->exit($offer, 'Счёт от поставщика получен');
-        $this->assertSame('Счёт выставлен менеджеру', $offer->fresh()->stage()->name);
+        $this->assertSame('Оплата счёта', $offer->fresh()->stage()->name);
     }
 
     public function test_ros_scheme_sends_our_requisites_without_manager(): void
@@ -135,7 +158,7 @@ class AlfaRequisitesTest extends TestCase
 
         $this->exit($offer, 'Поставщик просит реквизиты');
         $offer = $offer->fresh();
-        $this->assertSame('Реквизиты поставщику', $offer->stage()->name);
+        $this->assertSame('Письмо с реквизитами', $offer->stage()->name);
         $this->assertNull($deal->fresh()->openRequirement()->first(), 'менеджеру задачи нет');
         $buyer = MailController::placeholders($offer)['buyer'];
         $this->assertStringContainsString('Р.О.С.', $buyer);
@@ -146,7 +169,7 @@ class AlfaRequisitesTest extends TestCase
     {
         [$offer, $deal] = $this->deal(vat: false);
         $this->exit($offer, 'Поставщик просит реквизиты');
-        $this->assertSame('Данные покупателя для счёта', $offer->fresh()->stage()->name);
+        $this->assertSame('Нет реквизитов', $offer->fresh()->stage()->name);
         $this->assertSame('Покупатель не выбран', $deal->fresh()->requisitesGap());
 
         // Админ меняет схему на ПРАЙМ — кто и когда записано, шаг сразу на письмо с нашими реквизитами.
@@ -155,13 +178,13 @@ class AlfaRequisitesTest extends TestCase
         $deal = $deal->fresh();
         $this->assertSame(DealScheme::Prime, $deal->scheme);
         $this->assertSame($this->admin->id, $deal->scheme_by);
-        $this->assertSame('Реквизиты поставщику', $offer->fresh()->stage()->name);
+        $this->assertSame('Письмо с реквизитами', $offer->fresh()->stage()->name);
         $this->assertNull($deal->requisitesGap(), 'реквизиты ПРАЙМ есть — письмо можно');
 
         // Обратно на «страховой напрямую», письмо не ушло — назад к данным покупателя, менеджеру задача, письма нет.
         app(ChangeDealScheme::class)($deal, DealScheme::Insurer, $this->admin);
         $offer = $offer->fresh();
-        $this->assertSame('Данные покупателя для счёта', $offer->stage()->name);
+        $this->assertSame('Нет реквизитов', $offer->stage()->name);
         $this->assertNotNull($deal->fresh()->openRequirement()->first());
         $this->assertNull($offer->position(Track::Sale)->todo()['button']['letters'] ?? null);
     }
@@ -171,7 +194,7 @@ class AlfaRequisitesTest extends TestCase
         [$offer, $deal] = $this->deal(vat: false);
         $this->exit($offer, 'Поставщик просит реквизиты');
         // На шаг письма «страховой напрямую» без покупателя (руками «Вернуть на шаг» и т. п.) — «Ваш ход» просит заполнить.
-        $letterStage = Stage::where('workflow_id', $offer->fresh()->stage()->workflow_id)->where('name', 'Реквизиты поставщику')->firstOrFail();
+        $letterStage = Stage::where('workflow_id', $offer->fresh()->stage()->workflow_id)->where('name', 'Письмо с реквизитами')->firstOrFail();
         app(EnterStage::class)($offer->fresh(), $letterStage, $this->admin);
         $todo = $offer->fresh()->position(Track::Sale)->todo();
         $this->assertSame('requisites', $todo['key']);
@@ -211,6 +234,6 @@ class AlfaRequisitesTest extends TestCase
     {
         [$offer] = $this->deal(vat: false);
         $this->exit($offer, 'Поставщик сразу выставил счёт');
-        $this->assertSame('Счёт выставлен менеджеру', $offer->fresh()->stage()->name);
+        $this->assertSame('Оплата счёта', $offer->fresh()->stage()->name);
     }
 }

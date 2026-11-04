@@ -61,7 +61,7 @@ class DkpDealFlowTest extends TestCase
         // один раз — передумать нельзя): ответ с контактом — сразу контакты менеджеру.
         $this->assertFalse($deal->fresh()->issuedInvoices()->exists());
         $this->assertFalse(Stage::where('workflow_id', $offer->fresh()->stage()->workflow_id)->with('exits')->get()->contains(fn ($s) => $s->asksConsent()));
-        $this->walkTo($offer, $deal->fresh(), 'Контакты владельца переданы менеджеру');
+        $this->walkTo($offer, $deal->fresh(), 'Связаться с владельцем');
 
         return [$offer, $deal->fresh()];
     }

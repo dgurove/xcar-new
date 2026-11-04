@@ -49,7 +49,7 @@ final class Stock extends Route
             ],
             'claimed' => $claimed,
             'invoice' => [
-                'name' => 'Счёт выставлен менеджеру', 'block' => 'payment', 'waits_for' => 'manager', 'limit_minutes' => 14 * self::DAY, 'asks' => 'document',
+                'name' => 'Оплата счёта', 'block' => 'payment', 'waits_for' => 'manager', 'limit_minutes' => 14 * self::DAY, 'asks' => 'document',
                 'ask_title' => 'Оплатите счёт', 'ask_text' => 'Оплатите счёт и приложите платёжное поручение',
                 'exits' => [['Платёжное поручение приложено', 'manager', 'payment_check']],
             ],
@@ -64,7 +64,7 @@ final class Stock extends Route
                 'exits' => [['Поставщику оплачено', 'staff', 'pickup', 'deal'], ['Поставщику оплачено', 'staff', 'closed_won', 'keeps']],
             ],
             'pickup' => [
-                'name' => 'Выдача у поставщика', 'block' => 'handover', 'waits_for' => 'manager', 'limit_minutes' => 5 * self::DAY,
+                'name' => 'Забрать у поставщика', 'block' => 'handover', 'waits_for' => 'manager', 'limit_minutes' => 5 * self::DAY,
                 'ask_title' => 'Заберите автомобиль', 'ask_text' => 'Автомобиль оплачен поставщику. Заберите его у поставщика и отметьте, что забрали',
                 'staff_fields' => [['label' => 'Адрес выдачи', 'type' => 'textarea'], ['label' => 'Контакт на выдаче'], ['label' => 'Дата выдачи']],
                 'exits' => [['Автомобиль забрал', 'manager', 'closed_won'], ['Автомобиль передан', 'staff', 'closed_won']],

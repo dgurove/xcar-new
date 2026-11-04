@@ -22,7 +22,7 @@
     $gap = $deal->isActive() && $position?->stage->isPayStep() && $deal->hasContract() ? $deal->invoiceGap() : null;
     // Покупатель не указан или у физлица нет паспорта со сканом (11.10.2026) — задача одна: покупатель в шторке договора.
     $needsBuyer = in_array($gap, ['buyer', 'passport'], true);
-    // Шаг «Данные покупателя для счёта» (03.11.2026, Альфа просит реквизиты): та же шторка покупателя, кнопки нет — шаг
+    // Шаг «Нет реквизитов» (03.11.2026, Альфа просит реквизиты): та же шторка покупателя, кнопки нет — шаг
     // проходит сам, когда данные со сканом есть (`AdvanceOnBuyerData`). Письма поставщика менеджер не видит.
     $buyerStep = $deal->isActive() && $requirement?->asks === Asks::Buyer;
     $needsBuyer = $needsBuyer || $buyerStep;
