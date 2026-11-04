@@ -6,11 +6,9 @@
 // в шейдере; сторона плитки больше видимого при самом дальнем масштабе, а стороны групп разные — повтора не видно.
 // Один буфер, один вызов отрисовки на все звёзды и один на метеор, без текстур; мерцание считает вершинный шейдер.
 // Стоит по числу звёзд (2–11 тыс.), а не по пикселям: шейдер по пикселю (хеш-сетка) считал бы на iPhone миллионы
-// точек каждый кадр. Без WebGL — `FlatSky` на canvas 2D: те же звёзды, без мерцания, метеоров и потока конвейера.
-// Небо одно и то же при каждом заходе — генератор с постоянным зерном. Поток по линиям конвейера — тот же холст, свой
-// проход (`drawFlow`).
+// точек каждый кадр. Без WebGL — `FlatSky` на canvas 2D: те же звёзды, без мерцания и метеоров.
+// Небо одно и то же при каждом заходе — генератор с постоянным зерном.
 import { MIN } from './camera';
-import { STRIDE as FLOW_STRIDE } from './flow';
 
 // Группы: глубина, звёзд на миллион px² при масштабе 1, размер ядра (css px), яркость, доля мерцающих, лучи; `patchy` —
 // плотность пятнами (пыль и дальние гуще местами — небо не ровный «снег»). Звёзд вдвое меньше первых (04.11.2026,
@@ -213,43 +211,6 @@ void main() {
     gl_FragColor = vec4(a, a, a, a);
 }`;
 
-// Поток конвейера (`space/flow.js`): точка едет по кривой Безье линии на глубине схемы (1), положение — от времени в шейдере,
-// у краёв линии гаснет (уходит под карточку). Импульс — те же точки со скоростью 0: фазу каждому кадру даёт JS. Свечение —
-// ядро и мягкий ореол, складывается со звёздами.
-const FLOW_VS = `
-attribute vec4 aA;
-attribute vec4 aB;
-attribute vec2 aT;
-attribute vec2 aS;
-uniform vec2 uCam;
-uniform float uZ;
-uniform vec2 uHalf;
-uniform float uDpr;
-uniform float uTime;
-varying float vA;
-void main() {
-    float t = fract(aT.x + uTime * aT.y);
-    float u = 1.0 - t;
-    vec2 p = u * u * u * aA.xy + 3.0 * u * u * t * aA.zw + 3.0 * u * t * t * aB.xy + t * t * t * aB.zw;
-    vec2 s = (p - uCam) * uZ;
-    gl_Position = vec4(s.x / uHalf.x, -s.y / uHalf.y, 0.0, 1.0);
-    gl_PointSize = max(7.0, 16.0 * uZ) * aS.x * uDpr;
-    vA = aS.y * smoothstep(0.0, 0.06, t) * (1.0 - smoothstep(0.94, 1.0, t));
-}`;
-
-const FLOW_FS = `
-precision mediump float;
-uniform vec3 uColor;
-varying float vA;
-void main() {
-    float r = length(gl_PointCoord - 0.5) * 2.0;
-    float a = (smoothstep(0.32, 0.08, r) + exp(-r * r * 5.0) * 0.35) * vA;
-    gl_FragColor = vec4(uColor * a, a);
-}`;
-
-// Лайм кита (`--color-accent`), светлее: на тёмном небе родной #97bf0d тонет.
-const FLOW_COLOR = [0.72, 0.93, 0.2];
-
 // Фон светлой темы — 2D-холст под звёздами, точкой на 2 css px (свечения плавные, ретина не нужна) и с запасом `BACK_MARGIN`
 // за краем: камера двигает его transform, и только когда запаса не хватит — рисуется заново (на 1000 px сдвига — 20 px фона).
 // Свечения из плитки — выборка с плавным переходом, к краям темнее; поверх — шум в полтона, иначе плавный тёмный градиент в
@@ -362,7 +323,7 @@ export class Sky {
         const options = { alpha: see, antialias: false, depth: false, stencil: false, premultipliedAlpha: true, preserveDrawingBuffer: false, powerPreference: 'low-power' };
         const gl = canvas.getContext('webgl2', options) || canvas.getContext('webgl', options);
         if (!gl) throw new Error('нет WebGL');
-        Object.assign(this, { canvas, gl, sky, lost: false, meteor: null, flowData: null, pulses: [] });
+        Object.assign(this, { canvas, gl, sky, lost: false, meteor: null });
         canvas.addEventListener('webglcontextlost', (e) => { e.preventDefault(); this.lost = true; });
         canvas.addEventListener('webglcontextrestored', () => { this.setup(); this.lost = false; this.onRestore?.(); });
         this.setup();
@@ -372,11 +333,6 @@ export class Sky {
         const gl = this.gl;
         this.stars = program(gl, STAR_VS, STAR_FS, ['uCam', 'uLogZ', 'uHalf', 'uDpr', 'uTime', 'uMaxSize']);
         this.meteors = program(gl, METEOR_VS, METEOR_FS, ['uHead', 'uDir', 'uLen', 'uWidth', 'uHalf', 'uAlpha', 'uSharp']);
-        this.flows = program(gl, FLOW_VS, FLOW_FS, ['uCam', 'uZ', 'uHalf', 'uDpr', 'uTime', 'uColor']);
-        this.flowBuffer = gl.createBuffer();
-        this.pulseBuffer = gl.createBuffer();
-        this.flowCount = 0;
-        if (this.flowData) this.setFlow(this.flowData);
         this.buffer = gl.createBuffer();
         gl.bindBuffer(gl.ARRAY_BUFFER, this.buffer);
         gl.bufferData(gl.ARRAY_BUFFER, this.sky.data, gl.STATIC_DRAW);
@@ -389,7 +345,6 @@ export class Sky {
             look: gl.getAttribLocation(this.stars.p, 'aLook'),
             tw: gl.getAttribLocation(this.stars.p, 'aTw'),
             corner: gl.getAttribLocation(this.meteors.p, 'aCorner'),
-            flow: ['aA', 'aB', 'aT', 'aS'].map((name) => gl.getAttribLocation(this.flows.p, name)),
         };
         gl.disable(gl.DEPTH_TEST);
         gl.enable(gl.BLEND);
@@ -413,9 +368,9 @@ export class Sky {
 
     draw(cam, time) {
         const { gl } = this;
-        // Рисовать некуда (контекст потерян, сцены нет) — импульсы и метеор гаснут, иначе `flying` держал бы цикл кадров
-        // каждый кадр, пока контекст не вернётся.
-        if (this.lost || !this.w) { this.pulses = []; this.meteor = null; return; }
+        // Рисовать некуда (контекст потерян, сцены нет) — метеор гаснет, иначе `flying` держал бы цикл кадров каждый кадр,
+        // пока контекст не вернётся.
+        if (this.lost || !this.w) { this.meteor = null; return; }
         gl.clear(gl.COLOR_BUFFER_BIT);
         const s = this.stars;
         gl.useProgram(s.p);
@@ -436,7 +391,6 @@ export class Sky {
         gl.drawArrays(gl.POINTS, 0, this.sky.count);
         gl.disableVertexAttribArray(this.loc.look);
         gl.disableVertexAttribArray(this.loc.tw);
-        if (this.flowCount || this.pulses.length) this.drawFlow(cam, time);
         if (this.meteor) this.drawMeteor(cam);
     }
 
@@ -459,57 +413,7 @@ export class Sky {
     }
 
     get flying() {
-        return !!this.meteor || this.pulses.length > 0;
-    }
-
-    // Точки потока (`flow.js` `particles`) — один раз на раскладку; холст пересоздали (тема) — те же данные заново.
-    setFlow(data) {
-        this.flowData = data;
-        this.flowCount = data ? data.length / FLOW_STRIDE : 0;
-        if (this.lost || !this.flowBuffer) return;
-        this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.flowBuffer);
-        this.gl.bufferData(this.gl.ARRAY_BUFFER, data ?? new Float32Array(0), this.gl.STATIC_DRAW);
-    }
-
-    // Импульс по линии: `make(t)` — точки головы и хвоста в доле пути t (`flow.js` `pulse`), едет `life` мс.
-    pulse(make, life = 1400) {
-        this.pulses.push({ make, life, t0: performance.now() });
-    }
-
-    drawFlow(cam, time) {
-        const { gl } = this;
-        const f = this.flows;
-        gl.useProgram(f.p);
-        gl.uniform2f(f.u.uCam, cam.x, cam.y);
-        gl.uniform1f(f.u.uZ, cam.z);
-        gl.uniform2f(f.u.uHalf, this.w / 2, this.h / 2);
-        gl.uniform1f(f.u.uDpr, this.dpr);
-        gl.uniform1f(f.u.uTime, time);
-        gl.uniform3fv(f.u.uColor, FLOW_COLOR);
-        const bind = (buffer) => {
-            gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
-            const F = 4, sizes = [4, 4, 2, 2];
-            let off = 0;
-            this.loc.flow.forEach((at, i) => {
-                gl.enableVertexAttribArray(at);
-                gl.vertexAttribPointer(at, sizes[i], gl.FLOAT, false, FLOW_STRIDE * F, off * F);
-                off += sizes[i];
-            });
-        };
-        if (this.flowCount) {
-            bind(this.flowBuffer);
-            gl.drawArrays(gl.POINTS, 0, this.flowCount);
-        }
-        const now = performance.now();
-        this.pulses = this.pulses.filter((p) => now - p.t0 < p.life);
-        if (this.pulses.length) {
-            const ease = (t) => 1 - (1 - t) ** 2;
-            const data = new Float32Array(this.pulses.flatMap((p) => p.make(ease((now - p.t0) / p.life))));
-            bind(this.pulseBuffer);
-            gl.bufferData(gl.ARRAY_BUFFER, data, gl.DYNAMIC_DRAW);
-            gl.drawArrays(gl.POINTS, 0, data.length / FLOW_STRIDE);
-        }
-        this.loc.flow.forEach((at) => gl.disableVertexAttribArray(at));
+        return !!this.meteor;
     }
 
     drawMeteor(cam) {
@@ -545,9 +449,6 @@ export class Sky {
         gl.deleteBuffer(this.quad);
         gl.deleteProgram(this.stars.p);
         gl.deleteProgram(this.meteors.p);
-        gl.deleteBuffer(this.flowBuffer);
-        gl.deleteBuffer(this.pulseBuffer);
-        gl.deleteProgram(this.flows.p);
         gl.getExtension('WEBGL_lose_context')?.loseContext();
     }
 }
@@ -592,11 +493,6 @@ export class FlatSky {
     }
 
     spawn() {}
-
-    // Потока без WebGL нет: линии конвейера рисует SVG и так.
-    setFlow() {}
-
-    pulse() {}
 
     get flying() {
         return false;

@@ -3531,7 +3531,6 @@ html.kb-open { --home-gap: 0px; }
 @import "./push.css";
 @import "./lock.css";
 @import "./space.css";
-@import "./space-board.css";
 
 @layer components {
 

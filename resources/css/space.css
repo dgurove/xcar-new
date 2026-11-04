@@ -4,7 +4,7 @@
    WebGL под всем; слой схемы `.space-world` поверх двигается одной записью transform за кадр, `will-change` — только
    пока движется (`is-moving`): после остановки браузер перерисует текст чётко при любом масштабе. Цвет неба — свой, не
    поверхность кита: светлая тема — тёмно-синий со свечениями (холст `.space-back` под звёздами), тёмная — чёрный. На небе —
-   конвейер работы (`App\Space\Conveyor`): карточки этапов и линии между ними. */
+   конвейер работы (`App\Space\Conveyor`): этапы столбцами, под ними подэтапы. */
 
 @layer components {
   .app-stage { overflow: hidden; overscroll-behavior: none; }
@@ -14,6 +14,9 @@
      тёмная — чистый чёрный AMOLED. */
   .space {
     --space-bg: #0b0f19;
+    /* Текст в воздухе — белый в обеих темах: небо тёмное всегда. */
+    --b-ink: rgb(255 255 255 / .94); --b-dim: rgb(255 255 255 / .58); --b-faint: rgb(255 255 255 / .32);
+    --b-red: #ff2d55; --b-red-text: #ff6b85; --b-lime: #b4e33d;
     position: absolute; inset: 0; overflow: hidden; background: var(--space-bg);
     touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
     cursor: grab;
@@ -25,44 +28,65 @@
   .space-back { position: absolute; display: block; will-change: transform; }
   .dark .space-back { display: none; }
 
-  /* Начало мира — центр сцены; узел стоит в своей точке (--x, --y) и центрирован на ней. Точек у этапа две: широкая
-     раскладка (ПК, змейка) и высокая (телефон, столбец) — выбирает `space_controller` классом `is-tall` по форме сцены. */
+  /* Начало мира — центр сцены, доска стоит от него обычной раскладкой; transform слоя — камера. */
   .space-world { position: absolute; left: 50%; top: 50%; width: 0; height: 0; transform-origin: 0 0; }
   .space-world.is-moving { will-change: transform; }
-  .space-node { position: absolute; left: var(--x, 0px); top: var(--y, 0px); translate: -50% -50%; --x: var(--wx); --y: var(--wy); }
-  .space-world.is-tall .space-node { --x: var(--tx); --y: var(--ty); }
 
-  /* Линии конвейера — SVG в слое схемы: тонкие при любом масштабе (`non-scaling-stroke`), под карточками; поток по ним
-     рисует WebGL (`space/flow.js`). Возврат — тише, подсказка — пунктиром. */
-  .space-links { position: absolute; left: 0; top: 0; width: 1px; height: 1px; overflow: visible; pointer-events: none; }
-  .space-links path { fill: none; stroke: rgb(255 255 255 / .2); stroke-width: 1.5; vector-effect: non-scaling-stroke; stroke-linecap: round; }
-  .space-links path.is-back { stroke: rgb(255 255 255 / .12); }
-  .space-links path.is-hint { stroke: rgb(255 255 255 / .16); stroke-dasharray: 3 6; }
-
-  /* Этап конвейера (`admin/space/node`, 04.11.2026): плашка как у кита — без теней и обводок; название 17, кто держит —
-     аватар 28 с числом, у ответственного ещё имя. */
-  .conveyor-step {
-    width: 15rem; padding: .875rem 1rem 1rem; border-radius: var(--radius-xl);
-    background: var(--color-surface); color: var(--color-ink);
-    display: grid; gap: .625rem; transition: background-color var(--dur-slow) var(--ease-out), color var(--dur-slow) var(--ease-out);
+  /* Конвейер (`admin/space/conveyor`, 05.11.2026): этапы слева направо столбцами. Шапки этапов — первая строка сетки, подэтапы
+     — вторая (`subgrid`): верх этапов и первые карточки стоят вровень, как бы ни переносились название и люди. Источники и
+     выходы — в воздухе, вровень с карточками. */
+  .conveyor {
+    position: absolute; left: 0; top: 0; width: max-content;
+    display: grid; grid-auto-flow: column; grid-template-rows: auto auto; grid-auto-columns: max-content;
+    column-gap: 2.5rem; row-gap: 1rem; align-items: start; color: var(--b-ink);
   }
-  /* Дела нет — карточка уходит в небо: полупрозрачная, текст светлый (серой плашкой на тёмном она выглядела грязной). */
-  .conveyor-step.is-idle { background: rgb(255 255 255 / .07); color: rgb(255 255 255 / .72); }
-  .conveyor-step.is-idle .who-name { color: rgb(255 255 255 / .5); }
-  .conveyor-title { font-size: var(--text-lg); font-weight: 500; line-height: 1.2; }
-  .conveyor-note { margin-top: -.375rem; font-size: var(--text-sm); color: var(--color-accent-text); }
-  .conveyor-who { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem .875rem; }
-  .who { display: inline-flex; align-items: center; gap: .4375rem; min-width: 0; }
-  .who-face { width: 28px; height: 28px; }
-  .who-icon { background: var(--color-surface-3); color: var(--color-ink-muted); }
-  .who-logo { width: 28px; height: 28px; }
-  .who-name { font-size: var(--text-sm); color: var(--color-ink-muted); }
-  .who-n { font-size: var(--text-lg); font-weight: 600; line-height: 1; }
-  .who-n.is-late { color: var(--color-danger); }
-  .who-more { font-size: var(--text-sm); color: var(--color-ink-muted); }
-  /* Число сменилось — карточка коротко загорается лаймом (`space_controller#counted`). */
-  .conveyor-step.is-bumped { animation: conveyor-bump 900ms var(--ease-out); }
-  @keyframes conveyor-bump { from { background: var(--color-accent-soft); } }
+  .conveyor-air { grid-row: 2; display: grid; gap: .75rem; width: 11rem; }
+  .air-label { font-size: var(--text-sm); color: var(--b-faint); }
+  .air-row { display: inline-flex; align-items: center; gap: .5rem; width: max-content; font-size: var(--text-base); color: var(--b-dim); }
+  .air-ico { display: grid; place-items: center; width: 1.75rem; height: 1.75rem; border-radius: 999px; background: rgb(255 255 255 / .08); }
+  .air-new { font-size: var(--text-sm); color: var(--b-lime); }
+  .air-n { font-size: var(--text-lg); font-weight: 600; color: var(--b-ink); }
+
+  /* Этап: название крупно без плашки, число рядом, горящие — красной капсулой; люди парят под ним. */
+  .conveyor-stage { grid-row: span 2; display: grid; grid-template-rows: subgrid; width: 18.5rem; }
+  .stage-head { display: grid; gap: .75rem; align-content: start; }
+  .stage-line { display: flex; align-items: flex-start; gap: .625rem; }
+  .stage-title { flex: 1; min-width: 0; margin: 0; font-size: var(--text-xl); font-weight: 500; line-height: 1.15; letter-spacing: -.01em; color: var(--b-ink); }
+  .stage-n { font-size: var(--text-xl); line-height: 1.15; color: var(--b-dim); }
+  .hot-pill {
+    display: inline-flex; align-items: center; gap: .1875rem; flex: none; height: 1.5rem; padding: 0 .5rem 0 .375rem;
+    border-radius: 999px; background: var(--b-red); color: #fff; font-size: var(--text-sm); font-weight: 600;
+  }
+  .stage-people { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem .875rem; }
+  .stage-person { display: inline-flex; align-items: center; gap: .4375rem; }
+  .person-name { font-size: var(--text-sm); color: var(--b-dim); }
+  .person-n { font-size: var(--text-base); font-weight: 600; color: var(--b-ink); }
+  .person-n.is-late { color: var(--b-red-text); }
+  .people-more { font-size: var(--text-sm); color: var(--b-dim); }
+  .face-ico { display: grid; place-items: center; flex: none; width: 28px; height: 28px; background: rgb(255 255 255 / .14); color: var(--b-ink); }
+  .face-logo { flex: none; width: 28px; height: 28px; border-radius: 8px; background: #fff; }
+
+  /* Подэтап — плашка кита: глагол, справа число; горит — красная капсула и красная обводка со свечением (владелец: «ахтунг
+     — красным, красиво»). Без дела — тихая, полупрозрачная. Нажатие — его список. */
+  .stage-steps { display: grid; gap: .5rem; align-content: start; }
+  .conveyor-step {
+    display: flex; align-items: center; gap: .625rem; min-height: 3.25rem; padding: .625rem 1rem;
+    border-radius: var(--radius-l); background: var(--color-surface); color: var(--color-ink);
+    -webkit-user-drag: none; transition: background-color var(--dur) var(--ease-out), scale var(--dur) var(--ease-out);
+  }
+  .step-verb { flex: 1; min-width: 0; font-size: var(--text-base); font-weight: 500; line-height: 1.25; }
+  .step-n { font-size: var(--text-lg); font-weight: 600; line-height: 1; }
+  .conveyor-step.is-idle { background: rgb(255 255 255 / .07); color: rgb(255 255 255 / .6); }
+  .dark .conveyor-step.is-idle { background: rgb(255 255 255 / .045); color: rgb(255 255 255 / .45); }
+  .conveyor-step.is-hot { box-shadow: 0 0 0 2px var(--b-red), 0 0 26px rgb(255 45 85 / .5); }
+  @media (hover: hover) {
+    .conveyor-step[href]:hover { background: var(--color-surface-3); }
+    .conveyor-step.is-idle[href]:hover { background: rgb(255 255 255 / .12); }
+  }
+  .conveyor-step[href]:active { scale: .98; }
+  /* Число сменилось — подэтап коротко загорается лаймом (`space_controller#counted`). */
+  .conveyor-step.is-bumped { animation: step-bump 900ms var(--ease-out); }
+  @keyframes step-bump { from { background: var(--color-accent-soft); } }
 
   /* «К схеме» — круглая кнопка в углу, появляется, когда схема ушла с глаз. */
   .space-home {

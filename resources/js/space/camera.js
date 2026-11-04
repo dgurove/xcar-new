@@ -207,7 +207,8 @@ export class Camera {
     }
 
     down(e) {
-        if (e.button > 0 || e.target.closest('button, a, input, textarea, select, [contenteditable]')) return;
+        // Подэтап конвейера — ссылка, но сдвиг с него тоже сдвиг: нажатие после него гасит `click`.
+        if (e.button > 0 || e.target.closest('button, input, textarea, select, [contenteditable]')) return;
         this.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
         this.dragged = false;
         this.stop();
@@ -300,7 +301,7 @@ export class Camera {
 
     // Двойное касание или двойной клик по пустому небу — вдвое ближе к этой точке; по узлу схемы — это его нажатия.
     tap(e) {
-        if (e.target.closest?.('.space-node')) { this.lastTap = null; return; }
+        if (e.target.closest?.('a')) { this.lastTap = null; return; }
         const prev = this.lastTap;
         this.lastTap = { t: e.timeStamp, x: e.clientX, y: e.clientY };
         if (!prev || e.timeStamp - prev.t > DOUBLE || Math.hypot(e.clientX - prev.x, e.clientY - prev.y) > DOUBLE_GAP) return;

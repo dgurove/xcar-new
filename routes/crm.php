@@ -91,8 +91,6 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
     Route::post('/offers/valuations', [OfferValuationController::class, 'apply']);
     // «Из таблицы Кати» (10.10.2026): номера списком, «Завести» и «Убрать» — только админу.
     Route::middleware('ability:canManageCrm')->group(function () {
-        // Варианты вида доски конвейера на выбор владельцу (04.11.2026) — временно, до выбора.
-        Route::get('/space/variants/{variant?}', [HomeController::class, 'variants'])->whereNumber('variant');
         Route::post('/offers/legacy', [LegacyClaimController::class, 'store']);
         Route::post('/offers/legacy/{claim}/create', [LegacyClaimController::class, 'create']);
         Route::delete('/offers/legacy/{claim}', [LegacyClaimController::class, 'destroy']);

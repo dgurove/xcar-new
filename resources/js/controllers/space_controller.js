@@ -4,7 +4,6 @@ import { bump } from '../lib/bump';
 import { request } from '../lib/http';
 import { reducedMotion } from '../lib/motion';
 import { Camera } from '../space/camera';
-import { bounds, curves, frameOf, measure, paint, particles, pulse } from '../space/flow';
 import { Backdrop, FlatSky, Sky, fits, pixelRatio, stars } from '../space/sky';
 
 // Космос главной CRM (`admin/space`, 04.11.2026): звёзды (`space/sky.js`), камера (`space/camera.js`) и слой схемы
@@ -13,16 +12,17 @@ import { Backdrop, FlatSky, Sky, fits, pixelRatio, stars } from '../space/sky';
 // вкладка и уход со страницы — ни одного, контекст видеокарты отдаётся. Без движения (prefers-reduced-motion) и без
 // WebGL — ни мерцания, ни метеоров: кадр только на сдвиг. Медленные кадры в движении — холст мельче (dpr 2 → 1,5 → 1).
 // Фон светлой темы — свой холст (`Backdrop`): рисуется один раз и едет за камерой transform'ом, в кадр звёзд не входит.
-// Конвейер (`App\Space\Conveyor`): карточки этапов в слое схемы, линии — SVG там же, поток — проход того же WebGL
-// (`space/flow.js`). Раскладка по форме сцены: широкая (ПК) или высокая (телефон). Числа живые: событие сотрудникам —
-// кусок `#conveyor` перечитывается морфом (`morphChildren`) не чаще раза в 2 с, сменившееся число докручивается, карточка загорается, а по
-// линии, где у одного этапа убыло, а у следующего прибыло, пролетает импульс.
+// Конвейер (`App\Space\Conveyor`): этапы столбцами в слое схемы, обычной раскладкой flex. Числа живые: событие
+// сотрудникам — кусок `#conveyor` перечитывается морфом (`morphChildren`) не чаще раза в 2 с, сменившееся число
+// докручивается, подэтап коротко загорается.
 const IDLE = 1000 / 30;
 const DEEP_IDLE = 1000 / 20;
 const DEEP_AFTER = 30000;
 const METEOR = [25000, 60000];
 const SLOW = 24;             // мс кадра в движении: дольше — снизить dpr
 const KEY = 'space:camera';
+const WHOLE = 0.6;           // ПК: доска целиком, если влезает не мельче этого,
+const PC = 0.9;              // иначе её начало в этом масштабе (ниже — если не влезает по высоте)
 const CALM = 2000;           // мс: события пачкой — одно перечитывание
 const STALE = 9000;          // мс: сервер отдал прежний снимок — ещё раз через столько (+ CALM)
 const TWEEN = 700;           // мс докрутки числа
@@ -32,8 +32,8 @@ const read = (key) => { try { return JSON.parse(sessionStorage.getItem(key) || '
 const save = (key, value) => { try { sessionStorage.setItem(key, JSON.stringify(value)); } catch {} };
 
 export default class extends Controller {
-    static targets = ['back', 'sky', 'world', 'links', 'conveyor', 'home'];
-    static values = { url: String, links: Array, key: { type: String, default: KEY } };
+    static targets = ['back', 'sky', 'world', 'conveyor', 'home'];
+    static values = { url: String };
 
     connect() {
         this.still = reducedMotion();
@@ -42,7 +42,7 @@ export default class extends Controller {
         this.build();
         this.backdrop = new Backdrop(this.backTarget);
         this.camera = new Camera(this.element, { wake: () => this.wake(), still: this.still });
-        this.fresh = !this.camera.restore(read(this.keyValue));
+        this.fresh = !this.camera.restore(read(KEY));
         // Тема — класс `dark` у <html> (`theme.js`): переключили — фон другой сразу, без перезагрузки. Холст звёзд — новый:
         // прозрачность контекста задаётся только при создании.
         this.theme = () => {
@@ -63,7 +63,7 @@ export default class extends Controller {
             // Вернулись, а пока вкладка была скрыта, пришло событие — числа перечитываются сейчас.
             if (document.visibilityState === 'visible') { this.touchedAt = performance.now(); this.wake(); if (this.missed) this.soon(); return; }
             this.sleep();
-            save(this.keyValue, this.camera.snapshot());
+            save(KEY, this.camera.snapshot());
         };
         document.addEventListener('visibilitychange', this.onVisible);
         this.onLive = () => this.soon();
@@ -71,7 +71,7 @@ export default class extends Controller {
         document.addEventListener('badges:updated', this.onLive);
         this.planMeteor();
         this.fit();
-        // Шрифт приехал позже — карточки другого размера, линии к краям заново.
+        // Шрифт приехал позже — доска другого размера, рамка камеры заново.
         document.fonts?.ready.then(() => this.element.isConnected && this.layout());
     }
 
@@ -87,7 +87,7 @@ export default class extends Controller {
         clearTimeout(this.retry);
         this.wait = this.retry = null;
         this.camera.detach();
-        save(this.keyValue, this.camera.snapshot());
+        save(KEY, this.camera.snapshot());
         this.renderer.dispose();
     }
 
@@ -96,7 +96,6 @@ export default class extends Controller {
     build() {
         this.renderer = Sky.create(this.canvas(), sky, !this.dark) ?? new FlatSky(this.canvas(), sky);
         this.renderer.onRestore = () => { this.drawn = -1; this.wake(); };
-        this.renderer.setFlow(this.flow ?? null);
         this.lively = this.renderer instanceof Sky && !this.still;
         if (this.camera) this.planMeteor();
     }
@@ -122,50 +121,33 @@ export default class extends Controller {
         this.paintBack();
     }
 
-    // Раскладка схемы под сцену: высокая — телефон и узкое окно, иначе широкая. Карточки меряются заново, линии и поток —
-    // по ним; рамка и вид схемы — камере. Первый заход и смена раскладки — сразу на вид схемы.
+    // Рамка доски — камере, и вид её начала; первый заход — сразу на него.
     layout() {
         const { w, h } = this.camera;
-        if (w <= 1) return;
         const board = this.worldTarget.querySelector('[data-board]');
-        const tall = !board && (w < 700 || w / h < 0.85);
-        const switched = this.tall !== undefined && this.tall !== tall;
-        this.tall = tall;
-        this.worldTarget.classList.toggle('is-tall', tall);
-        this.boxes = measure(this.worldTarget);
-        this.curves = curves(this.linksValue, this.boxes);
-        paint(this.linksTarget, this.curves);
-        this.flow = this.still ? null : particles(this.curves, this.boxes);
-        this.renderer.setFlow(this.flow);
-        const frame = board ? frameOf(board, this.worldTarget) : bounds(this.boxes);
-        if (frame) this.camera.frame(frame, board ? this.start(frame, w, h) : this.view(frame, w, h, tall));
-        if (this.fresh || switched) { this.fresh = false; this.camera.jump(); }
+        if (w <= 1 || !board) return;
+        const frame = frameOf(board, this.worldTarget);
+        this.camera.frame(frame, this.start(frame, w, h));
+        if (this.fresh) { this.fresh = false; this.camera.jump(); }
         this.drawn = -1;
         this.wake();
     }
 
-    // Вид «К схеме»: ПК — схема целиком; телефон — начало конвейера, середина читается, ветки выглядывают с боков, дальше
-    // листают вниз и вбок.
-    view(b, w, h, tall) {
-        const clamp = (v, a, c) => Math.min(c, Math.max(a, v));
-        if (!tall) {
-            const z = clamp(Math.min(w / (b.x1 - b.x0), h / (b.y1 - b.y0)), 0.3, 1);
-            return { x: (b.x0 + b.x1) / 2, y: (b.y0 + b.y1) / 2, z };
-        }
-        const z = clamp(w / 490, 0.6, 1);
-        return { x: (b.x0 + b.x1) / 2, y: b.y0 + h / 2 / z, z };
-    }
-
-    // Вид доски: её начало слева — этапы читаются слева направо. ПК — заголовки и первые задачи на высоту экрана,
-    // телефон — первый столбец почти во всю ширину, дальше листают вбок.
+    // Вид доски: этапы читаются слева направо. ПК — доска целиком, если влезает не мельче `WHOLE`, иначе её начало;
+    // телефон — первый этап почти во всю ширину, дальше листают вбок.
     start(b, w, h) {
         const clamp = (v, a, c) => Math.min(c, Math.max(a, v));
-        const phone = w < 700;
+        const pad = w < 700 ? 16 : 40;
+        const fit = Math.min((w - pad * 2) / (b.x1 - b.x0), (h - pad * 2) / (b.y1 - b.y0));
+        if (w >= 700 && fit >= WHOLE) {
+            const z = Math.min(1, fit);
+            return { x: (b.x0 + b.x1) / 2, y: (b.y0 + b.y1) / 2, z };
+        }
         // На телефоне источники — за левым краем: первый экран — первый этап.
-        const first = phone && this.worldTarget.querySelector('.board-phase');
+        const first = w < 700 && this.worldTarget.querySelector('.conveyor-stage');
         const x0 = first ? frameOf(first, this.worldTarget).x0 : b.x0;
-        const z = phone ? clamp((w - 32) / 300, 0.5, 1) : clamp(h / 980, 0.55, 1);
-        return { x: x0 - (phone ? 16 : 24) / z + w / 2 / z, y: b.y0 - 64 / z + h / 2 / z, z };
+        const z = w < 700 ? clamp((w - 2 * pad) / first.offsetWidth, 0.5, 1) : clamp(Math.min(PC, (h - 2 * pad) / (b.y1 - b.y0)), 0.55, 1);
+        return { x: x0 - pad / z + w / 2 / z, y: b.y0 - pad / z + h / 2 / z, z };
     }
 
     // Событие пачкой — одно перечитывание через CALM; идёт — ещё одно после него.
@@ -203,41 +185,21 @@ export default class extends Controller {
         }
     }
 
-    // Числа этапов до перечитывания: всего у этапа, его поток и у каждого, кто держит.
+    // Числа до перечитывания: у каждого подэтапа, этапа, источника и выхода.
     counts() {
-        const map = new Map();
-        for (const el of this.worldTarget.querySelectorAll('[data-node]')) {
-            const who = new Map([...el.querySelectorAll('[data-who]')].map((w) => [w.dataset.who, Number(w.querySelector('[data-count]')?.dataset.count) || 0]));
-            map.set(el.dataset.node, { total: Number(el.dataset.total) || 0, flow: Number(el.dataset.flow) || 0, note: el.querySelector('[data-note]')?.textContent ?? '', who });
-        }
-        return map;
+        return new Map([...this.worldTarget.querySelectorAll('[data-step]')].map((el) => [el.dataset.step, Number(el.querySelector('[data-count]')?.dataset.count ?? el.dataset.count) || 0]));
     }
 
-    // После перечитывания: сменившееся число докручивается от прежнего, карточка загорается; где у одного этапа убыло, а
-    // у следующего по линии прибыло (или источник принёс новое), — импульс по линии.
+    // После перечитывания: сменившееся число докручивается от прежнего, подэтап коротко загорается.
     counted(before) {
-        const after = this.counts();
-        for (const [key, now] of after) {
+        for (const [key, n] of this.counts()) {
             const was = before.get(key);
-            if (!was) continue;
-            let changed = was.note !== now.note;
-            for (const [who, n] of now.who) {
-                const from = was.who.get(who) ?? 0;
-                if (from === n) continue;
-                changed = true;
-                const el = this.worldTarget.querySelector(`[data-node="${key}"] [data-who="${CSS.escape(who)}"] [data-count]`);
-                if (el && !this.still) tween(el, from, n);
-            }
-            if (changed) bump(this.worldTarget.querySelector(`[data-node="${key}"]`));
+            if (was === undefined || was === n) continue;
+            const el = this.worldTarget.querySelector(`[data-step="${CSS.escape(key)}"]`);
+            const count = el?.matches('[data-count]') ? el : el?.querySelector('[data-count]');
+            if (count && !this.still) tween(count, was, n);
+            if (el?.classList.contains('conveyor-step')) bump(el);
         }
-        for (const c of this.curves ?? []) {
-            if (c.kind === 'hint') continue;
-            const a0 = before.get(c.from), a1 = after.get(c.from), b0 = before.get(c.to), b1 = after.get(c.to);
-            if (!a0 || !a1 || !b0 || !b1) continue;
-            const moved = (a1.total < a0.total && b1.total > b0.total) || (a1.flow > a0.flow && !a1.total);
-            if (moved) this.renderer.pulse((t) => pulse(c, t));
-        }
-        this.wake();
     }
 
     paintBack() {
@@ -329,4 +291,12 @@ function tween(el, from, to) {
         if (t < 1 && el.isConnected) requestAnimationFrame(step);
     };
     requestAnimationFrame(step);
+}
+
+// Рамка элемента в координатах слоя схемы: `{ x0, y0, x1, y1 }`. Смещения складываются до слоя — transform слоя offset не
+// трогает.
+function frameOf(el, world) {
+    let x = 0, y = 0;
+    for (let n = el; n && n !== world; n = n.offsetParent) { x += n.offsetLeft; y += n.offsetTop; }
+    return { x0: x, y0: y, x1: x + el.offsetWidth, y1: y + el.offsetHeight };
 }

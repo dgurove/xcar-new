@@ -12,8 +12,9 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
- * Конвейер главной CRM (04.11.2026): числа этапов — те же двери, что вкладки предложений, Каркаде на схеме нет (владелец:
- * «забей»), живые числа — только сотрудникам. Молча ломается то, чего на схеме не заметить: лишняя машина в числе.
+ * Конвейер главной CRM (04.11.2026, этапы по людям — 05.11.2026): числа подэтапов — те же двери, что вкладки предложений,
+ * Каркаде на схеме нет (владелец: «забей»), живые числа — только сотрудникам, подэтап ведёт в свой список. Молча ломается то,
+ * чего на схеме не заметить: лишняя машина в числе.
  */
 class ConveyorTest extends TestCase
 {
@@ -32,14 +33,15 @@ class ConveyorTest extends TestCase
         Offer::create(['vendor_id' => OfferController::carcadeId(), 'claim_ref' => 'CC-1']);
         Offer::create(['vendor_id' => $alfa->id, 'claim_ref' => 'AT-2', 'floor_price' => 500000]);
 
-        $nodes = Conveyor::view();
-        $this->assertSame(1, $nodes['floor']['total']);
-        $this->assertSame(1, $nodes['price']['total']);
-        $this->assertSame(0, $nodes['bids']['total']);
+        $steps = collect(Conveyor::view()['stages'])->flatMap(fn ($stage) => $stage['steps'])->keyBy('key');
+        $this->assertSame(1, $steps['floor']['n']);
+        $this->assertSame(1, $steps['price']['n']);
+        $this->assertSame(0, $steps['bids']['n']);
+        $this->assertSame(0, $steps['floor']['hot']);
 
         $this->get(self::CRM.'/space/conveyor')->assertRedirect();
         $this->actingAs($manager)->get(self::CRM.'/space/conveyor')->assertForbidden();
         $this->actingAs($admin)->get(self::CRM.'/space/conveyor')->assertOk()
-            ->assertSee('data-node="floor"', false)->assertDontSee('<html', false);
+            ->assertSee('href="/offers?preset=nofloor"', false)->assertDontSee('<html', false);
     }
 }
