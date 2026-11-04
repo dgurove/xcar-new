@@ -32,7 +32,10 @@
         <h2 class="detail-section">Показ</h2>
     @endif
     {{-- Блок пришёл в форме: снятые галки и пустой список — снятые (`OfferRequest::payload`). --}}
-    <input type="hidden" name="{{ $mode === 'deal' ? '_deal_show' : '_show' }}" value="1" form="{{ $form }}">
+    {{-- Показ всем, пока менеджер сделки думает (`ShowDealToAll`, 04.11.2026): срок и список ведёт он — полей нет, блок в форму
+         не идёт, «Сохранить» его не тронет; снять — кнопкой. --}}
+    @php $showAll = $mode === 'deal' && $offer->showsDealAsOpen(); @endphp
+    @unless ($showAll)<input type="hidden" name="{{ $mode === 'deal' ? '_deal_show' : '_show' }}" value="1" form="{{ $form }}">@endunless
     <div class="grid grid-cols-[repeat(2,minmax(0,1fr))] gap-x-2 gap-y-3">
         {{-- Срок обязывающего (19.10.2026, владелец: «туда хорошо подходит»): данность от страховой, до когда поставщик держит
              закупочную; приём подтверждений — не позже. Только вендор по комиссии (Совкомбанк), сменили вендора — прячется. --}}
@@ -45,10 +48,20 @@
             {{-- Срок приёма — выбор даты (`x-ui.date`), время по умолчанию 17:30 (владелец 10.10.2026: «чаще всего надо 17:30»). --}}
             <x-ui.field name="bids_close_at" id="f-bids_close_at-{{ $n }}" label="Приём подтверждений до" type="datetime-local" default-time="17:30" span="col-span-2"
                 :value="$offer->bids_close_at?->format('Y-m-d\TH:i')" :limit="\App\Offers\Binding::closeLimit($offer)" :form="$form"/>
+        @elseif ($showAll)
+            <div class="col-span-2 flex flex-wrap items-center gap-x-3 gap-y-2">
+                <span class="min-w-0 flex-1">
+                    <span class="block">Всем менеджерам до <span class="nums">{{ \App\Support\Ago::html($offer->deal_show_until, true, words: false) }}</span></span>
+                    <span class="block text-sm text-ink-muted">пока менеджер сделки думает о закупочной</span>
+                </span>
+                <form method="post" action="/offers/{{ $n }}/show-all" class="contents" data-turbo-confirm="Убрать машину из предложений у всех менеджеров?" data-turbo-confirm-label="Снять показ">
+                    @csrf @method('delete')<button type="submit" class="btn btn-s btn-quiet shrink-0 !h-8 rounded-full !px-3.5">Снять показ</button>
+                </form>
+            </div>
         @else
             <x-ui.field name="deal_show_for" id="f-deal_show_for-{{ $n }}" label="Сколько показывать" :options="$for" :value="$offer->deal_show_until ? 'keep' : ''" span="col-span-2" :form="$form"/>
         @endif
-        <x-offer.audience-field :offer="$offer" :form="$form" :mode="$mode === 'deal' ? 'list' : 'waves'" :key="$as" class="col-span-2"/>
+        @unless ($showAll)<x-offer.audience-field :offer="$offer" :form="$form" :mode="$mode === 'deal' ? 'list' : 'waves'" :key="$as" class="col-span-2"/>@endunless
         @if ($mode === 'offer' && ($summary ?? collect())->isNotEmpty())
             <div class="col-span-2 flex flex-col gap-1.5 text-sm">
                 @foreach ($summary as $row)

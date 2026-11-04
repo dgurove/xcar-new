@@ -45,6 +45,11 @@ final class UpdateOffer
         $was = $offer->value;
         // Показ сделки кончился, а его продлили — список снова видит её: уведомление всем, а не только новым.
         $showWasOver = $offer->deal_show_until !== null && $offer->dealShowOver();
+        // Пока идёт показ всем менеджерам (`ShowDealToAll`, 04.11.2026), его срок и список ведёт он: «Показ» из старой вкладки
+        // («Никому», «Пока идёт сделка») показ не затирает — снимают его «Снять показ» и ответ менеджера.
+        if ($offer->deal_show_all_at) {
+            unset($data['deal_audience_users'], $data['deal_audience_groups'], $data['deal_show_until']);
+        }
         $offer->fill($data);
         // Сменили оценочную, закупочную не трогали — закупочная от неё же, если не вписана рукой (`Pricing::floorFor`).
         if ($offer->isDirty('value') && ! $offer->isDirty('floor_price') && ($floor = Pricing::floorFor($offer->floor_price, $was, $offer->value))) {

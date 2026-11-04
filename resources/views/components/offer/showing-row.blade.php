@@ -26,6 +26,11 @@
         $when = 'Показ: '.($until ? ($offer->dealShowOver() ? 'закончился ' : 'до ').\App\Support\Ago::day($until, true) : 'пока идёт сделка');
         $who = \App\Offers\DealAudience::summary($offer);
         $binding = null;
+        // Показ всем, пока менеджер сделки думает о новой закупочной (`ShowDealToAll`, 04.11.2026).
+        if ($offer->showsDealAsOpen()) {
+            $when = 'Показ всем менеджерам до '.\App\Support\Ago::day($until, true);
+            $who = 'пока менеджер сделки думает о закупочной';
+        }
     }
 @endphp
 @if (auth()->user()->canManageCrm())

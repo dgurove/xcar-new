@@ -134,6 +134,9 @@ final class DealAudience
     /** Сводка для редактора: «Никому» или кто видит. */
     public static function summary(Offer $offer): string
     {
+        if ($offer->deal_show_all_at) {
+            return 'Все менеджеры';
+        }
         $rows = $offer->relationLoaded('dealAudience') ? $offer->dealAudience : $offer->dealAudience()->get();
         if ($rows->isEmpty()) {
             return 'Никому';

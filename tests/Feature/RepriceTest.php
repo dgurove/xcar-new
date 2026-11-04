@@ -320,6 +320,9 @@ class RepriceTest extends TestCase
         // Денис подтверждает — резервом к идущей сделке.
         $reserve = app(PlaceBid::class)($offer, $this->denis, 1120000);
         $this->assertSame(BidState::Active, $reserve->state);
+        // «Показ» из старой вкладки («Никому», «Пока идёт сделка») показ всем не затирает.
+        app(UpdateOffer::class)($offer->fresh(), ['deal_audience_users' => [], 'deal_audience_groups' => [], 'deal_show_until' => null], $this->admin);
+        $this->assertTrue($this->offer->fresh()->showsDealAsOpen());
 
         // Роман согласился — машины в предложениях больше нет, резерв жив.
         app(AnswerReprice::class)(RepriceAsk::where('deal_id', $deal->id)->sole(), true, $this->roman);
