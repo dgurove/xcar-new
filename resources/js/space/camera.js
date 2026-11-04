@@ -12,6 +12,9 @@ export const MAX = 4;
 const FRICTION = 0.004;   // затухание броска, 1/мс: скорость × e^(−k·dt), за полсекунды остаётся 13 %
 const STOP = 0.012;       // px/мс — медленнее не катится
 const SAMPLE = 90;        // скорость броска — по последним мс движения
+const FLING_FROM = 0.45;  // px/мс (~450 px/с): медленнее — без инерции
+const FLING_FULL = 1.2;   // px/мс: отсюда бросок в полную силу
+const FLING_GAP = 80;     // мс между последним движением и отпусканием — дольше: палец замер, броска нет
 const SMOOTH = 0.016;     // масштаб колесом догоняет цель: за ~150 мс
 const FLY = 700;          // «К схеме», мс
 const DOUBLE = 300;       // двойной тап: мс и px между касаниями
@@ -254,16 +257,20 @@ export class Camera {
         this.changed();
     }
 
+    // Бросок — только быстрым движением (05.11.2026, владелец: «чуть пальцем подвинул — и оно всё ещё движется, бесит»):
+    // медленнее `FLING_FROM` — встаёт под пальцем, к `FLING_FULL` инерция плавно набирает силу, без порога-щелчка; палец
+    // замер перед отпусканием (дольше `FLING_GAP`) — тоже стоп, как в списках iOS.
     fling(t) {
         const s = this.samples ?? [];
-        if (this.still || s.length < 2 || t - s[s.length - 1].t > 100) return;
+        if (this.still || s.length < 2 || t - s[s.length - 1].t > FLING_GAP) return;
         const a = s[0], b = s[s.length - 1];
         const dt = Math.max(16, b.t - a.t);
         const vx = (b.x - a.x) / dt, vy = (b.y - a.y) / dt;
         const v = Math.hypot(vx, vy);
-        if (v < 0.08) return;
+        if (v < FLING_FROM) return;
+        const ramp = Math.min(1, (v - FLING_FROM) / (FLING_FULL - FLING_FROM));
         // Сильный бросок не улетает за тридевять земель: скорость не больше 4 px/мс (~1000 px пути).
-        const k = Math.min(1, 4 / v);
+        const k = Math.min(1, 4 / v) * ramp * ramp * (3 - 2 * ramp);
         this.vx = vx * k; this.vy = vy * k;
     }
 

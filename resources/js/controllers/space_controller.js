@@ -29,6 +29,11 @@ export default class extends Controller {
         // собой — 2D на нём не получить.
         this.renderer = Sky.create(this.fresh(), sky) ?? new FlatSky(this.fresh(), sky);
         this.renderer.onRestore = () => { this.drawn = -1; this.wake(); };
+        // Тема — класс `dark` у <html> (`theme.js`): переключили — небо другое сразу, без перезагрузки.
+        this.theme = () => { this.renderer.setTheme(document.documentElement.classList.contains('dark')); this.drawn = -1; this.wake(); };
+        this.theme();
+        this.themes = new MutationObserver(this.theme);
+        this.themes.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
         this.lively = this.renderer instanceof Sky && !this.still;
         this.camera = new Camera(this.element, { wake: () => this.wake(), still: this.still });
         this.camera.restore(read());
@@ -49,6 +54,7 @@ export default class extends Controller {
         this.sleep();
         clearTimeout(this.calm);
         this.resize.disconnect();
+        this.themes.disconnect();
         document.removeEventListener('visibilitychange', this.onVisible);
         this.camera.detach();
         save(this.camera.snapshot());

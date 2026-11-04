@@ -79,6 +79,65 @@ export function pixelRatio(w, h, cap = 2) {
     return Math.max(1, Math.min(devicePixelRatio || 1, cap, Math.sqrt(MAX_PIXELS / Math.max(1, w * h))));
 }
 
+// Светлая тема (05.11.2026, владелец: чёрный под белой шапкой «бьёт по глазам»): космос тёмно-синий, к краям темнее, с еле
+// видными свечениями; тёмная — чистый чёрный AMOLED, только звёзды. Свечения считаются один раз при заходе в бесшовную
+// плитку 128×128 (каждое пятно — по ближайшей копии в завёрнутой плитке, швов нет) и ложатся текстурой с плавающей точкой:
+// в 8 битах плавный тёмный градиент при растяжке шёл клеткой. Свечения очень плавные — 128 точек на 2400 px хватает.
+// Каждый кадр — одна выборка текстуры на пиксель, на глубине `NEBULA_DEPTH` (почти стоят — самый дальний план).
+const NEBULA = {
+    base: [23, 29, 44],                      // #171d2c
+    glows: [                                 // цвет, сила, радиус (доля плитки), сколько
+        [[64, 96, 178], 0.12, 0.41, 3],      // глубокий синий
+        [[98, 82, 172], 0.08, 0.47, 2],      // индиго
+        [[150, 118, 104], 0.045, 0.33, 1],   // еле тёплое — для живости
+    ],
+    band: [[118, 138, 205], 0.16, 0.06],     // полоса «Млечного пути»: цвет, сила, полуширина (доля плитки)
+};
+const NEBULA_SIZE = 128;
+const NEBULA_DEPTH = 0.02;
+const NEBULA_TILE = 2400;                    // css px мира на плитку при масштабе 1
+
+// RGBA 0…1 по точкам плитки.
+export function nebula(look = NEBULA) {
+    const N = NEBULA_SIZE;
+    const rand = random(1105);
+    const spots = look.glows.flatMap(([color, a, r, n]) => Array.from({ length: n }, () => ({
+        x: rand(), y: rand(), r: r * lerp(0.75, 1.25, rand()), a: a * lerp(0.75, 1.2, rand()), color,
+    })));
+    const wrap = (d) => d - Math.round(d);   // разница в завёрнутой плитке: ближайшая копия пятна
+    const data = new Float32Array(N * N * 4);
+    for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
+        const u = (i + 0.5) / N, v = (j + 0.5) / N;
+        let [r, g, b] = look.base;
+        const over = (color, k) => { r += (color[0] - r) * k; g += (color[1] - g) * k; b += (color[2] - b) * k; };
+        for (const s of spots) {
+            const d = Math.hypot(wrap(u - s.x), wrap(v - s.y)) / s.r;
+            if (d < 1.6) over(s.color, s.a * Math.exp(-d * d * 3.2));
+        }
+        // Полоса по диагонали (u + v ≡ 1): завёрнутая, она продолжается в соседней плитке — лента через всё небо.
+        if (look.band) {
+            const [color, a, w] = look.band;
+            const along = u - v;
+            const d = Math.abs(wrap(u + v - 1 + 0.025 * Math.sin(6.283 * along))) / Math.SQRT2;
+            over(color, a * Math.exp(-((d / w) ** 2)) * (0.7 + 0.3 * Math.sin(6.283 * 3 * along + 1.3)));
+        }
+        data.set([r / 255, g / 255, b / 255, 1], (j * N + i) * 4);
+    }
+    return { size: N, data };
+}
+
+// Та же плитка картинкой — для `FlatSky` (без WebGL).
+function nebulaCanvas() {
+    const { size, data } = nebula();
+    const canvas = document.createElement('canvas');
+    canvas.width = canvas.height = size;
+    const ctx = canvas.getContext('2d');
+    const img = ctx.createImageData(size, size);
+    for (let k = 0; k < data.length; k++) img.data[k] = Math.round(data[k] * 255);
+    ctx.putImageData(img, 0, 0);
+    return canvas;
+}
+
 const STAR_VS = `
 attribute vec4 aPos;
 attribute vec4 aLook;
@@ -161,6 +220,39 @@ void main() {
     gl_FragColor = vec4(a, a, a, 1.0);
 }`;
 
+// Фон светлой темы — прямоугольник на весь экран: свечения из плитки, к краям темнее; поверх — шум в полтона, иначе плавный
+// тёмный градиент в 8 битах идёт полосами. Все uniform — только у вершинного (у фрагментного своя точность по умолчанию).
+const BACK_VS = `
+attribute vec2 aCorner;
+uniform vec2 uHalf;
+uniform float uScale;
+uniform vec2 uShift;
+varying vec2 vUv;
+varying vec2 vEdge;
+void main() {
+    vUv = vec2(aCorner.x, -aCorner.y) * uHalf * uScale + uShift;
+    vEdge = aCorner;
+    gl_Position = vec4(aCorner, 0.0, 1.0);
+}`;
+
+const BACK_FS = `
+#ifdef GL_FRAGMENT_PRECISION_HIGH
+precision highp float;
+#else
+precision mediump float;
+#endif
+uniform sampler2D uNebula;
+varying vec2 vUv;
+varying vec2 vEdge;
+void main() {
+    vec3 c = texture2D(uNebula, vUv).rgb;
+    c *= 1.0 - 0.11 * dot(vEdge, vEdge);
+    // Шум без узора (у «interleaved gradient noise» на тёмном синем проступала сетка), по каналу свой — без цветных зёрен.
+    vec2 f = gl_FragCoord.xy;
+    vec3 n = fract(sin(vec3(dot(f, vec2(12.9898, 78.233)), dot(f, vec2(39.3468, 11.1351)), dot(f, vec2(73.156, 52.235)))) * 43758.5453);
+    gl_FragColor = vec4(c + (n - 0.5) / 255.0, 1.0);
+}`;
+
 function program(gl, vs, fs, uniforms) {
     const p = gl.createProgram();
     for (const [type, src] of [[gl.VERTEX_SHADER, vs], [gl.FRAGMENT_SHADER, fs]]) {
@@ -193,7 +285,7 @@ export class Sky {
         if (!gl) throw new Error('нет WebGL');
         Object.assign(this, { canvas, gl, sky, lost: false, meteor: null });
         canvas.addEventListener('webglcontextlost', (e) => { e.preventDefault(); this.lost = true; });
-        canvas.addEventListener('webglcontextrestored', () => { this.setup(); this.lost = false; this.onRestore?.(); });
+        canvas.addEventListener('webglcontextrestored', () => { this.setup(); this.lost = false; this.setTheme(this.dark); this.onRestore?.(); });
         this.setup();
     }
 
@@ -207,17 +299,66 @@ export class Sky {
         this.quad = gl.createBuffer();
         gl.bindBuffer(gl.ARRAY_BUFFER, this.quad);
         gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-0.06, -1, -0.06, 1, 1, -1, 1, 1]), gl.STATIC_DRAW);
+        this.back = program(gl, BACK_VS, BACK_FS, ['uHalf', 'uScale', 'uShift', 'uNebula']);
+        this.screen = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.screen);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
+        this.texture = null;
         this.maxSize = gl.getParameter(gl.ALIASED_POINT_SIZE_RANGE)?.[1] || 64;
         this.loc = {
             pos: gl.getAttribLocation(this.stars.p, 'aPos'),
             look: gl.getAttribLocation(this.stars.p, 'aLook'),
             tw: gl.getAttribLocation(this.stars.p, 'aTw'),
             corner: gl.getAttribLocation(this.meteors.p, 'aCorner'),
+            back: gl.getAttribLocation(this.back.p, 'aCorner'),
         };
         gl.disable(gl.DEPTH_TEST);
         gl.enable(gl.BLEND);
         gl.blendFunc(gl.ONE, gl.ONE);
         gl.clearColor(0, 0, 0, 1);
+    }
+
+    // Тема: тёмная — чёрный и только звёзды; светлая — синий фон со свечениями (плитка строится при первой светлой).
+    setTheme(dark) {
+        this.dark = dark;
+        if (dark || this.texture || this.lost) return;
+        const { gl } = this;
+        this.texture = gl.createTexture();
+        gl.bindTexture(gl.TEXTURE_2D, this.texture);
+        // Плавающая точка с плавной выборкой: в WebGL2 — RGBA16F (фильтруется всегда), в WebGL1 — по расширениям; нет их —
+        // 8 бит (на старом устройстве лучше клетка, чем ничего).
+        const { size, data } = nebula();
+        const gl2 = typeof WebGL2RenderingContext !== 'undefined' && gl instanceof WebGL2RenderingContext;
+        if (gl2) gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA16F, size, size, 0, gl.RGBA, gl.FLOAT, data);
+        else if (gl.getExtension('OES_texture_float') && gl.getExtension('OES_texture_float_linear')) gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, size, size, 0, gl.RGBA, gl.FLOAT, data);
+        else gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, size, size, 0, gl.RGBA, gl.UNSIGNED_BYTE, Uint8Array.from(data, (x) => Math.round(x * 255)));
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    }
+
+    drawBack(cam) {
+        const { gl } = this;
+        const s = this.back;
+        const k = cam.z ** NEBULA_DEPTH;
+        const tile = Math.max(NEBULA_TILE, this.sky.side);
+        gl.disable(gl.BLEND);
+        gl.useProgram(s.p);
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.screen);
+        gl.enableVertexAttribArray(this.loc.back);
+        gl.vertexAttribPointer(this.loc.back, 2, gl.FLOAT, false, 0, 0);
+        gl.activeTexture(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_2D, this.texture);
+        gl.uniform1i(s.u.uNebula, 0);
+        gl.uniform2f(s.u.uHalf, this.w / 2, this.h / 2);
+        gl.uniform1f(s.u.uScale, 1 / (tile * k));
+        // Сдвиг — дробной частью на процессоре: в шейдере большие координаты теряли бы точность.
+        const fx = (cam.x * NEBULA_DEPTH) / tile, fy = (cam.y * NEBULA_DEPTH) / tile;
+        gl.uniform2f(s.u.uShift, fx - Math.floor(fx), fy - Math.floor(fy));
+        gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+        gl.disableVertexAttribArray(this.loc.back);
+        gl.enable(gl.BLEND);
     }
 
     load(sky) {
@@ -237,7 +378,8 @@ export class Sky {
     draw(cam, time) {
         const { gl } = this;
         if (this.lost || !this.w) return;
-        gl.clear(gl.COLOR_BUFFER_BIT);
+        if (!this.dark && this.texture) this.drawBack(cam);
+        else gl.clear(gl.COLOR_BUFFER_BIT);
         const s = this.stars;
         gl.useProgram(s.p);
         gl.bindBuffer(gl.ARRAY_BUFFER, this.buffer);
@@ -313,6 +455,9 @@ export class Sky {
         const { gl } = this;
         gl.deleteBuffer(this.buffer);
         gl.deleteBuffer(this.quad);
+        gl.deleteBuffer(this.screen);
+        if (this.texture) gl.deleteTexture(this.texture);
+        gl.deleteProgram(this.back.p);
         gl.deleteProgram(this.stars.p);
         gl.deleteProgram(this.meteors.p);
         gl.getExtension('WEBGL_lose_context')?.loseContext();
@@ -329,6 +474,11 @@ export class FlatSky {
         this.sky = sky;
     }
 
+    setTheme(dark) {
+        this.dark = dark;
+        if (!dark && !this.pattern && this.ctx) this.pattern = this.ctx.createPattern(nebulaCanvas(), 'repeat');
+    }
+
     resize(w, h, dpr) {
         Object.assign(this, { w, h, dpr });
         this.canvas.width = Math.max(1, Math.round(w * dpr));
@@ -339,7 +489,7 @@ export class FlatSky {
         const { ctx, w, h, dpr } = this;
         if (!ctx || !w) return;
         ctx.setTransform(dpr, 0, 0, dpr, w * dpr / 2, h * dpr / 2);
-        ctx.fillStyle = '#000';
+        ctx.fillStyle = !this.dark && this.pattern ? this.pattern : '#000';
         ctx.fillRect(-w / 2, -h / 2, w, h);
         ctx.fillStyle = '#fff';
         const lz = Math.log(cam.z);

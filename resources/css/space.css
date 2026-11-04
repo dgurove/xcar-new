@@ -2,18 +2,22 @@
    космос»; `admin/space`, `space_controller`). Сцена — вся середина каркаса между шапкой и таб-баром: `#scroller` не
    листается (`.app-stage`), жесты забирает сцена (`touch-action: none` — глобально стоит `pan-x pan-y`). Звёзды — холст
    WebGL под всем; слой схемы `.space-world` поверх двигается одной записью transform за кадр, `will-change` — только
-   пока движется (`is-moving`): после остановки браузер перерисует текст чётко при любом масштабе. Чёрный — в любой
-   теме: это космос, а не поверхность кита. */
+   пока движется (`is-moving`): после остановки браузер перерисует текст чётко при любом масштабе. Цвет неба — свой, не
+   поверхность кита: светлая тема — тёмно-синий со свечениями, тёмная — чёрный (`sky.js`). */
 
 @layer components {
   .app-stage { overflow: hidden; overscroll-behavior: none; }
   .app-stage > .stage { position: relative; flex: 1 1 auto; min-height: 0; }
 
+  /* До первого кадра — цвет неба темы: светлая — тёмно-синий (чёрный под белой шапкой «бьёт по глазам», 05.11.2026),
+     тёмная — чистый чёрный AMOLED. */
   .space {
-    position: absolute; inset: 0; overflow: hidden; background: #000;
+    --space-bg: #171d2c;
+    position: absolute; inset: 0; overflow: hidden; background: var(--space-bg);
     touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
     cursor: grab;
   }
+  .dark .space { --space-bg: #000; }
   .space.is-grabbing { cursor: grabbing; }
   .space-sky { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 
