@@ -1,8 +1,9 @@
-{{-- Главная CRM — космос (04.11.2026, владелец): фон будущей схемы. Звёзды рисует WebGL (`resources/js/space/sky.js`),
+{{-- Главная CRM — космос (04.11.2026, владелец): фон будущей схемы. Звёзды рисует WebGL (`resources/js/space/sky.js`) поверх фона темы `.space-back`,
      сдвиг и масштаб — камера (`space/camera.js`), обоих ведёт `space_controller`. Слой `.space-world` двигается той же
      камерой, что звёзды на глубине 1: в нём будет схема, пока — блок «Тест» в начале мира. --}}
 <x-ui.shell title="Главная" :heading="false" :back="false" stage>
     <div class="space" data-controller="space" data-no-pull>
+        <canvas class="space-back" data-space-target="back" aria-hidden="true"></canvas>
         <canvas class="space-sky" data-space-target="sky" aria-hidden="true"></canvas>
         <div class="space-world" data-space-target="world">
             <div class="space-node" style="--x: 0px; --y: 0px">

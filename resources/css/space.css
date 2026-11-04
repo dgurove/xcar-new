@@ -3,7 +3,7 @@
    листается (`.app-stage`), жесты забирает сцена (`touch-action: none` — глобально стоит `pan-x pan-y`). Звёзды — холст
    WebGL под всем; слой схемы `.space-world` поверх двигается одной записью transform за кадр, `will-change` — только
    пока движется (`is-moving`): после остановки браузер перерисует текст чётко при любом масштабе. Цвет неба — свой, не
-   поверхность кита: светлая тема — тёмно-синий со свечениями, тёмная — чёрный (`sky.js`). */
+   поверхность кита: светлая тема — тёмно-синий со свечениями (холст `.space-back` под звёздами), тёмная — чёрный. */
 
 @layer components {
   .app-stage { overflow: hidden; overscroll-behavior: none; }
@@ -20,6 +20,9 @@
   .dark .space { --space-bg: #000; }
   .space.is-grabbing { cursor: grabbing; }
   .space-sky { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  /* Фон светлой темы — картинка один раз (`Backdrop` в `sky.js`), едет за камерой transform'ом: своим слоем. */
+  .space-back { position: absolute; display: block; will-change: transform; }
+  .dark .space-back { display: none; }
 
   /* Начало мира — центр сцены; узел стоит в своей точке (--x, --y) и центрирован на ней. */
   .space-world { position: absolute; left: 50%; top: 50%; width: 0; height: 0; transform-origin: 0 0; }
