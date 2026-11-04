@@ -16,6 +16,12 @@ export default class extends Controller {
         return rubles(this.priceTarget.value);
     }
 
+    // Чип правила переоценки («+50 000» / «+5%» к оценочной из письма) — закупочная в поле.
+    pick({ params: { price } }) {
+        this.priceTarget.value = nums(price);
+        this.priceTarget.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+
     all({ params: { choice } }) {
         for (const row of this.rowTargets) {
             // «Спросить» у того, кто разницы не видит, нет — ему «Обновить»: сервер так и сделал бы.

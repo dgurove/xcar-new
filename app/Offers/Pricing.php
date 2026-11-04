@@ -36,6 +36,30 @@ final class Pricing
         return self::ceilThousand($value + $add + $value * $pct / 100);
     }
 
+    /**
+     * Переоценка (04.11.2026, владелец; X6 № 2610041185, Альфа: «Максимальная ставка 5500000. К рассмотрению принимаются
+     * предложения +5% или 50 000 руб. к максимальной ставке»): правило другое, чем при поступлении, — к новой оценочной
+     * плюс 5 % или 50 000, что меньше (до миллиона — 5 %, дальше — 50 000), вверх до тысячи. 5 500 000 → 5 550 000.
+     */
+    public const REBID = [50_000, 5];
+
+    public static function rebid(int $value): int
+    {
+        return min(self::rebids($value));
+    }
+
+    /**
+     * Оба варианта переоценки — чипами в шторке: «+50 000» и «+5%».
+     *
+     * @return array<string, int>
+     */
+    public static function rebids(int $value): array
+    {
+        [$add, $pct] = self::REBID;
+
+        return ['+'.Money::nums($add) => self::ceilThousand($value + $add), "+{$pct}%" => self::ceilThousand($value * (100 + $pct) / 100)];
+    }
+
     /** Наценка словами для письма страховой: «+50 000 ₽», «+10%». */
     public static function markup(int $value): string
     {

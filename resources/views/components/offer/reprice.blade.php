@@ -21,6 +21,8 @@
         <div class="min-w-0 flex-1">
             <p class="text-ink">Переоценка {{ $reprice->sourceLabel() }}</p>
             <p class="nums text-sm text-ink-muted"><s>{{ Money::nums((int) $reprice->from_price) }}</s> → <span class="font-semibold text-ink">{{ Money::rub($reprice->to_price) }}</span> ({{ $diff > 0 ? '+' : '−' }}{{ Money::nums(abs($diff)) }})</p>
+            {{-- У Альфы в письме — оценочная, закупочная — от неё (04.11.2026, владелец: «пишется, что новая закупочная, — неправда»). --}}
+            @if ($reprice->value)<p class="nums text-sm text-ink-muted">оценочная {{ Money::nums($reprice->value) }} + {{ Money::nums($reprice->to_price - $reprice->value) }}</p>@endif
         </div>
     </div>
     <div class="proposal-acts">
@@ -37,6 +39,17 @@
             @csrf @if ($errors->has('price_check'))<input type="hidden" name="price_ok" value="1">@endif
             <input type="hidden" name="_reprice" value="{{ $reprice->id }}">
             @error('reprice')<x-ui.flash tone="danger">{{ $message }}</x-ui.flash>@enderror
+            {{-- Оценочная из письма и выбор правила переоценки: +50 000 или +5 % (`Pricing::rebids`), меньшее — сразу в поле. --}}
+            @if ($reprice->value)
+                <div class="flex flex-wrap items-center justify-between gap-2">
+                    <span class="text-ink-muted">Оценочная по письму <span class="nums text-ink">{{ Money::rub($reprice->value) }}</span></span>
+                    <span class="flex gap-2">
+                        @foreach (\App\Offers\Pricing::rebids($reprice->value) as $label => $rebid)
+                            <button type="button" class="chip nums" data-action="reprice#pick" data-reprice-price-param="{{ $rebid }}">{{ $label }}</button>
+                        @endforeach
+                    </span>
+                </div>
+            @endif
             <div class="fields">
                 <x-ui.field name="price" label="Закупочная, ₽" :value="Money::nums((int) old('price', $reprice->to_price))" :id="$id.'-price'" required
                     data-reprice-target="price" data-action="input->reprice#update"/>

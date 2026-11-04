@@ -35,9 +35,8 @@ final class DetectReprice
     }
 
     /**
-     * Новые цены из письма по этой машине, если оно переоценивает её закупочную (и по нему переоценки ещё не было). Сумма
-     * страховой — в цены по правилу вендора (`Pricing::fromAmount`): у «Закупочная от оценочной» (Альфа) это оценочная, и
-     * закупочная — от неё с наценкой, а не сама сумма. «Максимальная ставка N» переигровки (`Template::topBid`) — закупочная как есть.
+     * Новые цены из письма по этой машине, если оно переоценивает её закупочную (и по нему переоценки ещё не было). У
+     * «Закупочная от оценочной» (Альфа) сумма — оценочная, и закупочная — от неё по правилу переоценки (`Pricing::rebid`).
      *
      * @return array{floor_price: int, value?: int}|null
      */
@@ -50,8 +49,16 @@ final class DetectReprice
         }
         $text = $message->ownText();
         $amount = Template::newPrice($text);
-        // Ставка аукциона — сама закупочная: через оценочную её не пересчитываем.
-        $prices = $amount ? Pricing::fromAmount($offer->vendor_id, $amount) : (($bid = Template::topBid($text)) ? ['floor_price' => $bid] : null);
+        $bid = $amount ? null : Template::topBid($text);
+        // У Альфы сумма письма — новая оценочная, закупочная — от неё по правилу переоценки (`Pricing::rebid`: +5 % или
+        // 50 000, что меньше), а не по правилу поступления. «Максимальная ставка» переигровки — тоже оценочная (04.11.2026,
+        // владелец: «в письме новая оценочная, а не закупочная»); у другого вендора ставка — уровень, выше которого надо дать.
+        $prices = match (true) {
+            ($amount ?? $bid) !== null && Pricing::byValue($offer->vendor_id) => ['value' => $amount ?? $bid, 'floor_price' => Pricing::rebid($amount ?? $bid)],
+            $amount !== null => ['floor_price' => $amount],
+            $bid !== null => ['floor_price' => Pricing::rebid($bid)],
+            default => null,
+        };
 
         return $prices && (int) $prices['floor_price'] !== (int) $offer->floor_price ? $prices : null;
     }

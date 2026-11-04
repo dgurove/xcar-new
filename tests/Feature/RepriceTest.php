@@ -116,9 +116,9 @@ class RepriceTest extends TestCase
             'parsed' => ['keys' => ['code:'.Code::key('653253/2026')], 'own_text' => 'Новая стоимость – 700 000 руб.']]);
 
         $reprice = app(DetectReprice::class)($this->offer->fresh(), $message);
-        $this->assertSame([Pricing::floorFrom(700000), 700000], [$reprice->to_price, $reprice->value]);
+        $this->assertSame([Pricing::rebid(700000), 700000], [$reprice->to_price, $reprice->value]);
         app(ApplyReprice::class)($reprice, $this->admin, $reprice->to_price, [], null);
-        $this->assertSame([700000, Pricing::floorFrom(700000)], [$this->offer->fresh()->value, $this->offer->fresh()->floor_price]);
+        $this->assertSame([700000, Pricing::rebid(700000)], [$this->offer->fresh()->value, $this->offer->fresh()->floor_price]);
     }
 
     public function test_old_bid_without_own_cost_keeps_previous_and_manager_sees_declared_not_floor(): void
@@ -336,7 +336,10 @@ class RepriceTest extends TestCase
         $this->assertSame(600000, $deal->fresh()->cost);
     }
 
-    /** Переигровка Альфы по X6 (03.11.2026): «Максимальная ставка 5500000,00» — переоценка на решение админу, закупочная как есть. */
+    /**
+     * Переигровка Альфы по X6 (03.11.2026): «Максимальная ставка 5500000,00» — новая оценочная (04.11.2026, владелец), закупочная —
+     * плюс 5 % или 50 000, что меньше; переоценка на решение админу.
+     */
     public function test_auction_top_bid_letter_opens_reprice(): void
     {
         $text = "Добрый день!\nВаше предложение в сумме 5189000,00 является не актуальным.\nМаксимальная ставка 5500000,00\nК рассмотрению принимаются предложения +5% или 50 000 руб. к максимальной ставке";
@@ -350,8 +353,14 @@ class RepriceTest extends TestCase
             'parsed' => ['keys' => ['code:'.Code::key('0790/046/09068/26')], 'own_text' => $text]]);
 
         $reprice = app(DetectReprice::class)($this->offer->fresh(), $message);
-        $this->assertSame([5189000, 5500000, null], [$reprice->from_price, $reprice->to_price, $reprice->value]);
+        $this->assertSame([5189000, 5550000, 5500000], [$reprice->from_price, $reprice->to_price, $reprice->value]);
         $this->assertSame(5189000, $this->offer->fresh()->floor_price);
         Notification::assertSentTo($this->admin, RepriceNotice::class);
+        // До миллиона 5 % меньше 50 000 — плюс 5 %.
+        $this->assertSame(840000, Pricing::rebid(800000));
+
+        // Выбрали в шторке «+5%» — оценочная из письма встаёт и так.
+        app(ApplyReprice::class)($reprice, $this->admin, 5775000, [], null);
+        $this->assertSame([5775000, 5500000], [$this->offer->fresh()->floor_price, $this->offer->fresh()->value]);
     }
 }

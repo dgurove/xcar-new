@@ -60,8 +60,9 @@ final class ApplyReprice
             // Закупочная каждого — до записи новой: у старых подтверждений без своей (`bids.cost` пуст, до 15.10.2026) она
             // бралась от предложения, и «Оставить» после записи отдало бы им новую.
             $was = $live->mapWithKeys(fn (Bid $bid) => [$bid->id => (int) ($bid->cost ?? $from)]);
-            // Оценочная из письма (Альфа) — вместе с закупочной, если её не поправили в шторке.
-            $value = $reprice->value !== null && $price === $reprice->to_price ? ['value' => $reprice->value] : [];
+            // Оценочная из письма (Альфа) — вместе с закупочной, и когда в шторке выбрали «+5%» или вписали свою: оценочная —
+            // факт письма. Закупочную оставили прежней — и оценочную не трогаем, иначе закупочная пересчиталась бы от неё.
+            $value = $reprice->value !== null && $price !== $from ? ['value' => $reprice->value] : [];
             $data = ['floor_price' => $price] + $value + array_intersect_key($prices, array_flip(['publish_price', 'asking_price']));
             ($this->update)($offer, $data, $by, ['why' => $reprice->why()], repricing: true);
 
