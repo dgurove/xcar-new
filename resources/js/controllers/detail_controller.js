@@ -654,8 +654,14 @@ export default class extends Controller {
         }
         this.opening = null;
         this.shut = true;
-        if (!viaHistory) overlays.shut('detail');
-        const empty = () => {
+        // Запись «Назад» листа снимается шагом истории — он асинхронный. Адрес без ?peek пишем после него: на ПК (без
+        // выезда листа) он ложился на запись листа, а шаг назад возвращал прежний адрес с ?peek — перезагрузка и «Назад»
+        // снова открывали закрытую карточку (04.11.2026).
+        const back = viaHistory ? Promise.resolve() : overlays.shut('detail');
+        const empty = async () => {
+            await back;
+            // Пока шёл шаг назад, открыли другую строку — её не трогаем.
+            if (!this.shut) return;
             const frame = this.frameTarget, url = new URL(location.href);
             frame.removeAttribute('src');
             frame.replaceChildren();

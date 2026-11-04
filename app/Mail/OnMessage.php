@@ -142,7 +142,7 @@ final class OnMessage
             }
             $paths[] = "/cars/{$vehicle->id}";
         }
-        $this->publish->refresh($topic, $paths);
+        $this->publish->refresh($topic, $paths, here: Publisher::hostOf($topic));
         if ($message->direction === Direction::In && ! $message->is_seen) {
             $this->publish->toast($topic, ($message->from_name ?: $message->from_email).': '.($message->subject ?: 'без темы'), "{$base}/{$message->thread_id}");
             $this->publish->badges($topic);

@@ -24,7 +24,7 @@ final class PublishRows implements ShouldQueue
         Cache::forget("live:tail:{$this->key}");
         $rows = Cache::lock("live:rows:lock:{$this->key}", 5)->block(2, fn () => Cache::pull("live:rows:{$this->key}", []));
         $whole = array_keys(array_filter($rows, fn (array $keys) => count($keys) > Rows::MAX));
-        $whole && $publish->refresh($this->topics, $whole, $this->request);
+        $whole && $publish->refresh($this->topics, $whole, $this->request, Publisher::hostOf($this->topics));
         $publish->rows($this->topics, array_diff_key($rows, array_flip($whole)), $this->request);
     }
 }

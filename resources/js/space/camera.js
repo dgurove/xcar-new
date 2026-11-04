@@ -267,8 +267,9 @@ export class Camera {
         this.vx = vx * k; this.vy = vy * k;
     }
 
-    // Двойное касание или двойной клик — вдвое ближе к этой точке.
+    // Двойное касание или двойной клик по пустому небу — вдвое ближе к этой точке; по узлу схемы — это его нажатия.
     tap(e) {
+        if (e.target.closest?.('.space-node')) { this.lastTap = null; return; }
         const prev = this.lastTap;
         this.lastTap = { t: e.timeStamp, x: e.clientX, y: e.clientY };
         if (!prev || e.timeStamp - prev.t > DOUBLE || Math.hypot(e.clientX - prev.x, e.clientY - prev.y) > DOUBLE_GAP) return;
@@ -319,9 +320,12 @@ export class Camera {
         this.changed();
     }
 
-    // Safari: щипок трекпада — свои события жеста (колесо с ctrl он при этом тоже шлёт — его пропускаем).
+    // Safari: щипок трекпада — свои события жеста (колесо с ctrl он при этом тоже шлёт — его пропускаем). На iPhone те же
+    // события идут и при щипке пальцами, вместе с указателями: щипок там уже считает `move`, жест — мимо, иначе масштаб
+    // применялся бы дважды и от двух разных точек.
     gesture(e, phase) {
         e.preventDefault();
+        if (this.pointers.size) { this.safari = 0; return; }
         if (phase === 'start') { this.safari = 1; this.raw = this.z; this.stop(); return; }
         if (!this.safari) return;
         const { ox, oy } = this.offset(e.clientX, e.clientY);
@@ -333,7 +337,9 @@ export class Camera {
 
     key(e) {
         if (e.defaultPrevented || e.altKey || e.ctrlKey || e.metaKey) return;
-        if (e.target.closest?.('input, textarea, select, [contenteditable], dialog') || document.documentElement.classList.contains('sheet-open')) return;
+        // Только когда фокус ни на чём или на самой сцене: стрелки и «0» у ссылки шапки или таб-бара — их собственные.
+        const focus = document.activeElement;
+        if ((focus && focus !== document.body && !this.el.contains(focus)) || document.documentElement.classList.contains('sheet-open')) return;
         const push = 0.9;   // px/мс: бросок клавишей — около 220 px пути
         const moves = { ArrowLeft: [push, 0], ArrowRight: [-push, 0], ArrowUp: [0, push], ArrowDown: [0, -push] };
         if (moves[e.key]) {

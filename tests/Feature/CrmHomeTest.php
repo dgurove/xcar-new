@@ -24,7 +24,7 @@ class CrmHomeTest extends TestCase
         $moderator = User::create(['name' => 'Мод', 'phone' => '79000000051', 'roles' => [Role::Moderator], 'approved_at' => now()]);
 
         // Старая ссылка — тот же адрес под `/offers`, ещё до входа: вернуться после входа надо в список.
-        $this->get(self::CRM.'/?preset=bids&vid=table&peek=5')->assertStatus(301)->assertRedirect(self::CRM.'/offers?peek=5&preset=bids&vid=table');
+        $this->get(self::CRM.'/?preset=bids&vid=table&peek=5')->assertStatus(302)->assertRedirect(self::CRM.'/offers?peek=5&preset=bids&vid=table');
         // Гость с корня — на вход без «вернуться сюда».
         $this->get(self::CRM.'/')->assertRedirect('/login');
 

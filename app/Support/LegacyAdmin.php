@@ -30,9 +30,11 @@ final class LegacyAdmin
     {
         $segments = explode('/', trim($path, '/'), 2);
         // Корень старой админки и незнакомое — в предложения: они и были её первым экраном.
-        $head = self::MAP[$segments[0]] ?? '/offers';
+        // Цель карты может нести свой запрос (`stavki` → `?preset=bids`): хвост пути — до него, запрос старой ссылки — к нему.
+        [$head, $own] = explode('?', self::MAP[$segments[0]] ?? '/offers', 2) + [1 => ''];
         $tail = isset($segments[1]) ? '/'.$segments[1] : '';
+        $query = implode('&', array_filter([$own, (string) $query]));
 
-        return Surface::Crm->url($head.$tail).($query ? '?'.$query : '');
+        return Surface::Crm->url($head.$tail).($query !== '' ? '?'.$query : '');
     }
 }

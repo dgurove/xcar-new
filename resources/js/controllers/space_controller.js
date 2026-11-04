@@ -1,7 +1,7 @@
 import { Controller } from '@hotwired/stimulus';
 import { reducedMotion } from '../lib/motion';
 import { Camera } from '../space/camera';
-import { FlatSky, Sky, pixelRatio, stars } from '../space/sky';
+import { FlatSky, Sky, fits, pixelRatio, stars } from '../space/sky';
 
 // Космос главной CRM (`admin/space`, 04.11.2026): звёзды (`space/sky.js`), камера (`space/camera.js`) и слой схемы
 // `.space-world` — одним циклом кадров. Кадр рисуется, только когда есть что менять: жест, бросок, масштаб, полёт
@@ -68,6 +68,7 @@ export default class extends Controller {
     fit() {
         const { width: w, height: h } = this.element.getBoundingClientRect();
         if (!w || !h) return;
+        if (!fits(sky, w, h)) { sky = stars(Math.max(w, h)); this.renderer.load(sky); }
         this.renderer.resize(w, h, pixelRatio(w, h, this.cap));
         this.drawn = -1;
         this.camera.resize(w, h);
@@ -102,15 +103,17 @@ export default class extends Controller {
         }
         const flying = this.renderer.flying;
         const idle = now - this.touchedAt > DEEP_AFTER ? DEEP_IDLE : IDLE;
-        if (cam.version !== this.drawn || flying || (this.lively && now - this.lastDraw >= idle - 4)) {
-            if (moving) this.measure(now);
+        const motion = cam.version !== this.drawn;
+        // Медленные кадры считаем только по кадрам движения: палец лежит — кадры идут вхолостую, рисует лишь мерцание.
+        if (motion && moving) this.measure(now);
+        else this.prevAt = 0;
+        if (motion || flying || (this.lively && now - this.lastDraw >= idle - 4)) {
             this.renderer.draw(cam, (now - this.t0) / 1000);
-            if (cam.version !== this.drawn) this.place(moving);
+            if (motion) this.place(moving);
             this.drawn = cam.version;
             this.lastDraw = now;
         }
         if (moving || flying) { this.wake(); return; }
-        this.prevAt = 0;
         // Покой: следующий кадр — к сроку мерцания (таймером, а не кадрами экрана вхолостую) или к следующему касанию.
         if (this.lively) this.timer = setTimeout(() => { this.timer = null; this.wake(); }, Math.max(0, idle - (performance.now() - this.lastDraw)));
     }

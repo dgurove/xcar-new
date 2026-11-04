@@ -17,6 +17,7 @@ use App\Park\City;
 use App\Park\Request;
 use App\Park\RequestState;
 use App\Park\Vehicle;
+use App\Support\Surface;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -162,7 +163,7 @@ final class AutoScan
     public static function arrived(Offer $offer): void
     {
         Cache::put(self::arrivedKey($offer->id), true, 60);
-        app(Publisher::class)->refresh(Topics::STAFF, ['/offers']);
+        app(Publisher::class)->refresh(Topics::STAFF, ['/offers'], here: Surface::Crm);
     }
 
     /**
@@ -257,7 +258,7 @@ final class AutoScan
         if (Cache::pull(self::key($subjectKey))) {
             str_starts_with($subjectKey, 'v:')
                 ? app(Publisher::class)->refresh(Topics::PARK, ['/requests'])
-                : app(Publisher::class)->refresh(Topics::STAFF, ['/offers']);
+                : app(Publisher::class)->refresh(Topics::STAFF, ['/offers'], here: Surface::Crm);
         }
     }
 

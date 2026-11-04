@@ -36,9 +36,10 @@ function random(seed) {
 
 const lerp = (a, b, t) => a + (b - a) * t;
 
-// Звёзды под самый большой экран устройства (а не окна: поворот и смена размера неба не меняют).
-export function stars() {
-    const side = Math.max(screen.width || 0, screen.height || 0, innerWidth, innerHeight) + 2 * MARGIN;
+// Звёзды под самый большой экран устройства (а не окна: поворот и смена размера неба не меняют). Окно всё же шире —
+// перетащили на большой монитор — `fits` говорит «мало», и небо считается заново под него (иначе виден повтор плиток).
+export function stars(least = 0) {
+    const side = Math.ceil((Math.max(screen.width || 0, screen.height || 0, innerWidth, innerHeight, least) + 2 * MARGIN) / 512) * 512;
     const rand = random(20261104);
     const groups = GROUPS.map((g) => {
         const tile = Math.ceil(side / MIN ** g.d[1] / 64) * 64;
@@ -68,8 +69,10 @@ export function stars() {
             n++;
         }
     }
-    return { data, count: total };
+    return { data, count: total, side };
 }
+
+export const fits = (sky, w, h) => Math.max(w, h) + 2 * MARGIN <= sky.side;
 
 // Сколько физических пикселей на css: не больше 2 и не больше 4K на весь холст; `cap` — снижение по медленным кадрам.
 export function pixelRatio(w, h, cap = 2) {
@@ -217,6 +220,13 @@ export class Sky {
         gl.clearColor(0, 0, 0, 1);
     }
 
+    load(sky) {
+        this.sky = sky;
+        if (this.lost) return;
+        this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.buffer);
+        this.gl.bufferData(this.gl.ARRAY_BUFFER, sky.data, this.gl.STATIC_DRAW);
+    }
+
     resize(w, h, dpr) {
         Object.assign(this, { w, h, dpr });
         const W = Math.max(1, Math.round(w * dpr)), H = Math.max(1, Math.round(h * dpr));
@@ -313,6 +323,10 @@ export class Sky {
 export class FlatSky {
     constructor(canvas, sky) {
         Object.assign(this, { canvas, sky, ctx: canvas.getContext('2d', { alpha: false }), meteor: null });
+    }
+
+    load(sky) {
+        this.sky = sky;
     }
 
     resize(w, h, dpr) {

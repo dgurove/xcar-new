@@ -40,13 +40,6 @@ final class Publisher
         if ($hub === '' || ! config('xcar.mercure.publisher_key')) {
             return;
         }
-        // Пути CRM и парковки — только на своём хосте (04.11.2026): тему `staff` слушают и админы на сайте, где `/offers` —
-        // каталог, и каждая правка в CRM перечитывала бы им его (так же `/gallery`, `/offers/{n}`). Метка — только у событий
-        // одной этой темы: смешанные (чат обеим сторонам) идут как прежде. Чужое клиент пропускает (`live.js` `here`).
-        $only = array_values(array_unique((array) $topics));
-        if (in_array($type, ['refresh', 'rows'], true) && ($only === [Topics::STAFF] || $only === [Topics::PARK])) {
-            $data['surface'] = ($only === [Topics::PARK] ? Surface::Park : Surface::Crm)->value;
-        }
         $body = implode('&', array_map(fn ($t) => 'topic='.rawurlencode($t), (array) $topics))
             .'&'.http_build_query(['type' => $type, 'data' => json_encode($data, JSON_UNESCAPED_UNICODE), 'private' => 'on']);
         try {
@@ -81,11 +74,25 @@ final class Publisher
     /**
      * Перечитать открытые страницы. Запрос Turbo, из которого это пришло (`X-Turbo-Request-Id`), едет с событием: у автора
      * правки Turbo его узнаёт и страницу второй раз не перечитывает — ответ на его форму уже свежий.
+     * `here` — пути только этого хоста (04.11.2026): тему `staff` слушают и админы на сайте, а `/offers` там — каталог;
+     * помеченное клиент на другом хосте пропускает (`live.js` `here`). Без метки — как прежде: у `staff` бывают и пути
+     * сайта (гараж `/garage`, его видит админ).
      */
-    public function refresh(array|string $topics, array $paths, ?string $request = null): void
+    public function refresh(array|string $topics, array $paths, ?string $request = null, ?Surface $here = null): void
     {
         $request ??= request()->header('X-Turbo-Request-Id');
-        $this($topics, 'refresh', ['paths' => $paths] + (is_string($request) && $request !== '' ? ['request' => $request] : []));
+        $this($topics, 'refresh', ['paths' => $paths] + (is_string($request) && $request !== '' ? ['request' => $request] : [])
+            + ($here ? ['surface' => $here->value] : []));
+    }
+
+    /** Хост списков темы: строки (`rows`) — всегда списки CRM или парковки; у смешанных тем метки нет. */
+    public static function hostOf(array|string $topics): ?Surface
+    {
+        return match (array_values(array_unique((array) $topics))) {
+            [Topics::STAFF] => Surface::Crm,
+            [Topics::PARK] => Surface::Park,
+            default => null,
+        };
     }
 
     /**
@@ -119,7 +126,8 @@ final class Publisher
             return;
         }
         $request ??= request()->header('X-Turbo-Request-Id');
-        $this($topics, 'rows', ['paths' => $rows] + (is_string($request) && $request !== '' ? ['request' => $request] : []));
+        $this($topics, 'rows', ['paths' => $rows] + (is_string($request) && $request !== '' ? ['request' => $request] : [])
+            + (($host = self::hostOf($topics)) ? ['surface' => $host->value] : []));
     }
 
     /**
