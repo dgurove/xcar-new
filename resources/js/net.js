@@ -1,5 +1,6 @@
 import * as Turbo from '@hotwired/turbo';
 import { onResume, RESUME } from './lib/resume';
+import { csrf } from './lib/http';
 
 // Сеть и сессия без белых страниц.
 // 419 (токен истёк: приложение лежало в фоне, вход в соседнем приложении сменил
@@ -12,6 +13,17 @@ import { onResume, RESUME } from './lib/resume';
 // что он ещё доделает.
 // 500 на отправке формы — тост, форма и шторка с набранным на месте (не голая страница ошибки).
 const TIMEOUT = 50_000;
+
+// «Не получилось» — словами по ответу и с причиной владельцу (04.11.2026: Сергей на парковке жал «Ответить», видел «Не
+// получилось», а на сервере следов не было — 4xx не отчитываются). Beacon в `/client/failed` (`ClientFailureController`).
+const FAILED = { 401: 'Войдите снова', 403: 'Нет доступа', 404: 'Не найдено', 419: 'Сессия обновилась, повторите', 423: 'Устройство заблокировано' };
+function failed(kind, url, status, frame = null, redirected = null) {
+    const own = (u) => { try { const x = new URL(u, location.href); return x.pathname + x.search; } catch { return String(u ?? ''); } };
+    navigator.sendBeacon?.('/client/failed', new Blob([JSON.stringify({
+        _token: csrf(), kind, url: own(url).slice(0, 500), status: status || null, frame, redirected: redirected ? own(redirected).slice(0, 500) : null,
+    })], { type: 'application/json' }));
+    window.toast?.(FAILED[status] ?? 'Не получилось', 'danger');
+}
 
 // Остановленный переход Turbo не снимает с <html> aria-busy и полосу загрузки — они висели до следующего перехода,
 // и экран выглядел вечно грузящимся.
@@ -61,7 +73,7 @@ export function netGuards() {
         }
         if (form && fetchResponse.statusCode >= 500) {
             event.preventDefault();
-            window.toast?.('Не получилось', 'danger');
+            failed('form', form.action, fetchResponse.statusCode);
             return;
         }
         // Переход, на который ответил не Laravel, а Caddy: 504 — свободного воркера не дождались (`max_wait_time`), 502 —
@@ -107,7 +119,8 @@ export function netGuards() {
         event.preventDefault();
         const { response } = event.detail;
         if (response.redirected && /\/login/.test(response.url)) { Turbo.visit('/login'); return; }
-        window.toast?.('Не получилось', 'danger');
+        const frame = event.target;
+        failed('frame', frame.getAttribute?.('src') || response.url, response.status, frame.id || null, response.redirected ? response.url : null);
     });
 
     // Обрыв уходит в консоль как rejection — страница в порядке, тост уже показан.

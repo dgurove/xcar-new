@@ -101,7 +101,8 @@ final class FieldLabels
         if (is_array($value)) {
             return implode(', ', array_map(fn ($v) => is_scalar($v) ? (string) $v : json_encode($v, JSON_UNESCAPED_UNICODE), $value));
         }
-        if (is_string($value) && preg_match('/^\d{4}-\d{2}-\d{2}( \d{2}:\d{2})?$/', $value)) {
+        // Дата — только настоящая: номер ПСБ «0207-26-06» того же вида, и `Carbon::parse` на нём ронял историю (04.11.2026).
+        if (is_string($value) && preg_match('/^(\d{4})-(\d{2})-(\d{2})( \d{2}:\d{2})?$/', $value, $d) && checkdate((int) $d[2], (int) $d[3], (int) $d[1])) {
             $at = Carbon::parse($value);
 
             return Ago::day($at, strlen($value) > 10);

@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Auth\ClientFailureController;
 use App\Http\Auth\CodeLoginController;
 use App\Http\Auth\ImpersonationController;
 use App\Http\Auth\InviteController;
@@ -75,3 +76,5 @@ Route::post('/account/password', [PasswordController::class, 'change'])->middlew
 
 // Ошибка ключа в браузере — гостем и вошедшим, чтобы её было видно в логе.
 Route::post('/passkey/error', [PasskeyController::class, 'report'])->middleware('throttle:30,1');
+// «Не получилось» на экране — причину в лог и владельцу (`net.js`), на всех хостах.
+Route::post('/client/failed', ClientFailureController::class)->middleware('throttle:30,1');
