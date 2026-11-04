@@ -2,7 +2,6 @@
 
 namespace App\Http\Admin;
 
-use App\Live\Stream;
 use App\Space\Conveyor;
 use App\Support\Surface;
 use Illuminate\Http\Request;
@@ -36,12 +35,12 @@ final class HomeController
     }
 
     /**
-     * Живые числа конвейера: событие сотрудникам — `space_controller` перечитывает кусок `#conveyor` морфом. Снимок
-     * устарел, а пересчитывать рано (`Conveyor::$stale`) — заголовок просит спросить ещё раз.
+     * Живые числа конвейера: событие сотрудникам — `space_controller` перечитывает кусок `#conveyor` и морфит его сам.
+     * Снимок устарел, а пересчитывать рано (`Conveyor::$stale`) — заголовок просит спросить ещё раз.
      */
     public function conveyor()
     {
-        $response = Stream::view('admin.space.stream', ['nodes' => Conveyor::view()]);
+        $response = response()->view('admin.space.conveyor', ['nodes' => Conveyor::view()]);
 
         return Conveyor::$stale ? $response->header('X-Conveyor-Stale', '1') : $response;
     }

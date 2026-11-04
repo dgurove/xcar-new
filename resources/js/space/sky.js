@@ -413,7 +413,9 @@ export class Sky {
 
     draw(cam, time) {
         const { gl } = this;
-        if (this.lost || !this.w) return;
+        // Рисовать некуда (контекст потерян, сцены нет) — импульсы и метеор гаснут, иначе `flying` держал бы цикл кадров
+        // каждый кадр, пока контекст не вернётся.
+        if (this.lost || !this.w) { this.pulses = []; this.meteor = null; return; }
         gl.clear(gl.COLOR_BUFFER_BIT);
         const s = this.stars;
         gl.useProgram(s.p);

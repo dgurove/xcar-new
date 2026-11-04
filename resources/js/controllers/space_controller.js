@@ -1,5 +1,6 @@
 import { Controller } from '@hotwired/stimulus';
-import * as Turbo from '@hotwired/turbo';
+import { morphChildren } from '@hotwired/turbo';
+import { bump } from '../lib/bump';
 import { request } from '../lib/http';
 import { reducedMotion } from '../lib/motion';
 import { Camera } from '../space/camera';
@@ -14,7 +15,7 @@ import { Backdrop, FlatSky, Sky, fits, pixelRatio, stars } from '../space/sky';
 // Фон светлой темы — свой холст (`Backdrop`): рисуется один раз и едет за камерой transform'ом, в кадр звёзд не входит.
 // Конвейер (`App\Space\Conveyor`): карточки этапов в слое схемы, линии — SVG там же, поток — проход того же WebGL
 // (`space/flow.js`). Раскладка по форме сцены: широкая (ПК) или высокая (телефон). Числа живые: событие сотрудникам —
-// кусок `#conveyor` перечитывается морфом не чаще раза в 2 с, сменившееся число докручивается, карточка загорается, а по
+// кусок `#conveyor` перечитывается морфом (`morphChildren`) не чаще раза в 2 с, сменившееся число докручивается, карточка загорается, а по
 // линии, где у одного этапа убыло, а у следующего прибыло, пролетает импульс.
 const IDLE = 1000 / 30;
 const DEEP_IDLE = 1000 / 20;
@@ -31,7 +32,7 @@ const read = () => { try { return JSON.parse(sessionStorage.getItem(KEY) || 'nul
 const save = (value) => { try { sessionStorage.setItem(KEY, JSON.stringify(value)); } catch {} };
 
 export default class extends Controller {
-    static targets = ['back', 'sky', 'world', 'links', 'home'];
+    static targets = ['back', 'sky', 'world', 'links', 'conveyor', 'home'];
     static values = { url: String, links: Array };
 
     connect() {
@@ -59,7 +60,8 @@ export default class extends Controller {
         this.resize = new ResizeObserver(() => this.fit());
         this.resize.observe(this.element);
         this.onVisible = () => {
-            if (document.visibilityState === 'visible') { this.touchedAt = performance.now(); this.wake(); return; }
+            // Вернулись, а пока вкладка была скрыта, пришло событие — числа перечитываются сейчас.
+            if (document.visibilityState === 'visible') { this.touchedAt = performance.now(); this.wake(); if (this.missed) this.soon(); return; }
             this.sleep();
             save(this.camera.snapshot());
         };
@@ -82,6 +84,8 @@ export default class extends Controller {
         document.removeEventListener('live:changed', this.onLive);
         document.removeEventListener('badges:updated', this.onLive);
         clearTimeout(this.wait);
+        clearTimeout(this.retry);
+        this.wait = this.retry = null;
         this.camera.detach();
         save(this.camera.snapshot());
         this.renderer.dispose();
@@ -153,21 +157,30 @@ export default class extends Controller {
 
     // Событие пачкой — одно перечитывание через CALM; идёт — ещё одно после него.
     soon() {
-        if (this.wait) return;
+        if (this.wait || !this.element.isConnected) return;
         this.wait = setTimeout(() => { this.wait = null; this.reload(); }, CALM);
     }
 
     async reload() {
-        if (!this.urlValue || document.visibilityState !== 'visible') return;
+        if (!this.urlValue || !this.element.isConnected) return;
+        if (document.visibilityState !== 'visible') { this.missed = true; return; }
+        this.missed = false;
         if (this.loading) { this.again = true; return; }
         this.loading = true;
         try {
             const before = this.counts();
-            const r = await request(this.urlValue, { accept: 'text/vnd.turbo-stream.html', quiet: true });
+            const r = await request(this.urlValue, { accept: 'text/html', quiet: true });
             if (r?.ok && this.element.isConnected) {
                 // Сервер пересчитывает не чаще раза в 10 с: отдал прежний снимок — спросить ещё раз, когда будет можно.
-                if (r.headers.get('X-Conveyor-Stale')) setTimeout(() => this.soon(), STALE);
-                await stream(await r.text());
+                if (r.headers.get('X-Conveyor-Stale')) {
+                    clearTimeout(this.retry);
+                    this.retry = setTimeout(() => { this.retry = null; this.soon(); }, STALE);
+                }
+                // Морф сразу, без потока Turbo: числа «после» читаются с уже новых карточек.
+                const fresh = document.createElement('div');
+                fresh.innerHTML = await r.text();
+                if (!this.element.isConnected) return;
+                morphChildren(this.conveyorTarget, fresh);
                 this.layout();
                 this.counted(before);
             }
@@ -294,21 +307,6 @@ export default class extends Controller {
     }
 }
 
-// Поток Turbo с морфом `#conveyor` — и дождаться, пока он встанет (рисуется он в следующем кадре).
-function stream(html) {
-    return new Promise((resolve) => {
-        const on = (e) => {
-            if (e.target.getAttribute('target') !== 'conveyor') return;
-            document.removeEventListener('turbo:before-stream-render', on);
-            const render = e.detail.render;
-            e.detail.render = async (el) => { await render(el); resolve(); };
-        };
-        document.addEventListener('turbo:before-stream-render', on);
-        Turbo.renderStreamMessage(html);
-        setTimeout(resolve, 1000);
-    });
-}
-
 // Число докручивается от прежнего к новому — как счётчик, с замедлением к концу.
 function tween(el, from, to) {
     const t0 = performance.now();
@@ -318,12 +316,4 @@ function tween(el, from, to) {
         if (t < 1 && el.isConnected) requestAnimationFrame(step);
     };
     requestAnimationFrame(step);
-}
-
-function bump(el) {
-    if (!el) return;
-    el.classList.remove('is-bumped');
-    void el.offsetWidth;
-    el.classList.add('is-bumped');
-    el.addEventListener('animationend', () => el.classList.remove('is-bumped'), { once: true });
 }

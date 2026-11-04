@@ -40,7 +40,6 @@ class ConveyorTest extends TestCase
         $this->get(self::CRM.'/space/conveyor')->assertRedirect();
         $this->actingAs($manager)->get(self::CRM.'/space/conveyor')->assertForbidden();
         $this->actingAs($admin)->get(self::CRM.'/space/conveyor')->assertOk()
-            ->assertHeader('Content-Type', 'text/vnd.turbo-stream.html; charset=utf-8')
-            ->assertSee('target="conveyor"', false)->assertSee('data-node="floor"', false);
+            ->assertSee('data-node="floor"', false)->assertDontSee('<html', false);
     }
 }

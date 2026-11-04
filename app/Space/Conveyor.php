@@ -18,6 +18,7 @@ use App\Support\Plural;
 use App\Users\User;
 use App\Vendors\ClaimRequest;
 use App\Vendors\Vendor;
+use App\Workflow\Position;
 use App\Workflow\WaitsFor;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
@@ -36,6 +37,8 @@ use Illuminate\Support\Facades\Cache;
 final class Conveyor
 {
     public const KEY = 'space.conveyor';
+
+    private const DIRTY = 'space.conveyor.dirty';
 
     /** Секунд между пересчётами и сколько снимок живёт без событий (сроки идут и без них). */
     private const CALM = 10;
@@ -106,29 +109,30 @@ final class Conveyor
 
     /**
      * Пересчёт — не чаще раза в `CALM` с (04.11.2026: на проде полсекунды-секунда, а событие сотрудникам приходит каждую
-     * минуту и чаще). Событие снимок не стирает, а помечает устаревшим (`forget`): устаревший и старше `CALM` — считается
-     * заново, моложе — отдаётся как есть, и `$stale` просит главную спросить ещё раз позже.
+     * минуту и чаще). Событие снимок не трогает, а пишет время в маленький ключ `DIRTY` (`forget`); снимок помнит, когда
+     * его начали считать: событие позже начала — снимок устарел, даже если пересчёт шёл в это время. Устаревший и старше
+     * `CALM` — считается заново, моложе — отдаётся как есть, и `$stale` просит главную спросить ещё раз позже.
      *
      * @return array<string, array{holders: list<array>, note?: ?string, flow?: int}>
      */
     public static function snapshot(): array
     {
         $hit = Cache::get(self::KEY);
-        self::$stale = $hit && $hit['stale'] && time() - $hit['at'] < self::CALM;
-        if ($hit && (! $hit['stale'] || self::$stale)) {
+        $dirty = $hit && (int) Cache::get(self::DIRTY, 0) >= $hit['at'];
+        self::$stale = $dirty && time() - $hit['at'] < self::CALM;
+        if ($hit && (! $dirty || self::$stale)) {
             return $hit['nodes'];
         }
+        $at = time();
         $nodes = self::count();
-        Cache::put(self::KEY, ['nodes' => $nodes, 'at' => time(), 'stale' => false], self::TTL);
+        Cache::put(self::KEY, ['nodes' => $nodes, 'at' => $at], self::TTL);
 
         return $nodes;
     }
 
     public static function forget(): void
     {
-        if ($hit = Cache::get(self::KEY)) {
-            Cache::put(self::KEY, [...$hit, 'stale' => true], self::TTL);
-        }
+        Cache::put(self::DIRTY, time(), self::TTL);
     }
 
     /**
@@ -174,8 +178,20 @@ final class Conveyor
     private static function count(): array
     {
         $carcade = OfferController::carcadeId();
-        $offers = fn () => Offer::query()->notEmptyDraft()->when($carcade, fn ($q) => $q->where(fn ($v) => $v->whereNull('offers.vendor_id')->orWhere('offers.vendor_id', '!=', $carcade)));
-        $tab = fn (string $key) => OfferController::scopeFor($key, $offers())->count();
+        $offers = fn () => self::withoutCarcade(Offer::query()->notEmptyDraft(), $carcade);
+        // Числа вкладок — одним запросом: условие вкладки (`scopeFor`) — фильтром счёта, тяжёлое «не пустой черновик» —
+        // один раз (было по запросу на вкладку, ~35 мс каждый).
+        $tabs = self::tabs($offers(), [
+            'nofloor' => fn ($q) => OfferController::scopeFor('nofloor', $q),
+            'unpriced' => fn ($q) => OfferController::scopeFor('unpriced', $q),
+            'priced' => fn ($q) => OfferController::scopeFor('priced', $q),
+            'slots' => fn ($q) => OfferController::scopeFor('slots', $q),
+            'published' => fn ($q) => OfferController::scopeFor('published', $q),
+            'bids' => fn ($q) => OfferController::scopeFor('bids', $q),
+            'given' => fn ($q) => OfferController::scopeFor('estimating', $q)->whereHas('estimates', fn ($e) => $e->needsDecision()),
+            'unsold' => fn ($q) => OfferController::scopeFor('done', $q)->where('offers.state', OfferState::Draft),
+        ]);
+        $tab = fn (string $key) => $tabs[$key];
         $today = today();
         $robot = fn (string $via, ?int $n = null) => ['type' => 'robot', 'via' => $via, 'n' => $n, 'lead' => true];
         $owner = fn (string $work, int $n) => ['type' => 'user', 'id' => Owners::of($work), 'n' => $n, 'lead' => true];
@@ -186,8 +202,6 @@ final class Conveyor
         // Менеджеры на оценке: ждут их ответа (просрочено — красным), а что оценили — решает Андрей.
         $estimates = Estimate::waiting()->whereIn('offer_id', $offers()->where('offers.state', OfferState::Draft)->select('offers.id'))
             ->selectRaw('user_id, count(*) as n, count(*) filter (where due_at < now()) as late')->groupBy('user_id')->get();
-        $given = OfferController::scopeFor('estimating', $offers())->whereHas('estimates', fn ($e) => $e->needsDecision())->count();
-        $unsold = OfferController::scopeFor('done', $offers())->where('offers.state', OfferState::Draft)->count();
         $claims = Vendor::where('to_gallery', true)->get()->sum(fn (Vendor $v) => ClaimRequest::pendingFor($v)->count());
 
         // Источники: сколько пришло сегодня — строкой дня и потоком по линии.
@@ -201,16 +215,43 @@ final class Conveyor
             'claims' => ['holders' => [$owner('claims', $claims)]],
             'floor' => ['holders' => [$robot('auto'), $owner('floor', $tab('nofloor'))]],
             'price' => ['holders' => [$owner('price', $tab('unpriced'))]],
-            'estimate' => ['holders' => [$owner('price', $given), ...$estimates->map(fn ($e) => ['type' => 'user', 'id' => $e->user_id, 'n' => (int) $e->n, 'late' => (int) $e->late])]],
+            'estimate' => ['holders' => [$owner('price', $tab('given')), ...$estimates->map(fn ($e) => ['type' => 'user', 'id' => $e->user_id, 'n' => (int) $e->n, 'late' => (int) $e->late])]],
             'ready' => ['holders' => [$owner('price', $tab('priced'))]],
             'slots' => ['holders' => [$robot('auto', $tab('slots'))]],
             'intake' => ['holders' => [$icon('users', $tab('published'))],
                 'note' => $note(Bid::where('created_at', '>=', $today)->whereIn('offer_id', $offers()->select('offers.id'))->count(), ['подтверждение', 'подтверждения', 'подтверждений'])],
-            'unsold' => ['holders' => [$owner('price', $unsold)]],
+            'unsold' => ['holders' => [$owner('price', $tab('unsold'))]],
             'bids' => ['holders' => [$owner('bids', $tab('bids'))]],
         ];
 
         return [...$nodes, ...self::deals($carcade), ...self::pickups($carcade)];
+    }
+
+    /**
+     * Несколько счётов одним запросом: `count(*) filter (where …)` на каждое условие. Условие строится на чистом
+     * `Offer::query()`, его where — фильтр (подзапросы `whereHas` ссылаются на ту же `offers`).
+     *
+     * @param  array<string, \Closure>  $filters
+     * @return array<string, int>
+     */
+    private static function tabs(Builder $base, array $filters): array
+    {
+        $selects = [];
+        $bindings = [];
+        foreach ($filters as $key => $filter) {
+            $q = $filter(Offer::query())->toBase();
+            $selects[] = 'count(*) filter ('.$q->getGrammar()->compileWheres($q).') as "'.$key.'"';
+            array_push($bindings, ...$q->getBindings());
+        }
+        $row = (array) $base->toBase()->selectRaw(implode(', ', $selects), $bindings)->first();
+
+        return array_map('intval', $row);
+    }
+
+    /** Каркаде на схеме нет (владелец 04.11.2026: «забей»): одно условие на предложения и всё, что от них. */
+    private static function withoutCarcade($q, ?int $carcade, string $column = 'offers.vendor_id')
+    {
+        return $q->when($carcade, fn ($q) => $q->where(fn ($v) => $v->whereNull($column)->orWhere($column, '!=', $carcade)));
     }
 
     /**
@@ -222,9 +263,10 @@ final class Conveyor
     {
         $alfa = Vendor::where('name', 'ilike', '%альфа%')->pluck('id')->all();
         $deals = Deal::where('state', DealState::Active)->whereNull('auction_at')
-            ->whereHas('offer', fn ($o) => $o->when($carcade, fn ($q) => $q->where(fn ($v) => $v->whereNull('vendor_id')->orWhere('vendor_id', '!=', $carcade))))
+            ->whereHas('offer', fn ($o) => self::withoutCarcade($o, $carcade))
             ->with(['offer', 'offer.vendor', 'offer.positions.stage.block', 'offer.positions.stage.exits.to', 'offer.pendingReprice'])->get();
 
+        $ours = Position::query()->needsUs()->where('track', 'sale')->whereIn('offer_id', $deals->pluck('offer_id'))->pluck('offer_id')->flip();
         $tally = [];
         $add = function (string $node, array $who, bool $late = false) use (&$tally) {
             $key = $who['type'].':'.($who['id'] ?? $who['icon'] ?? '');
@@ -239,12 +281,15 @@ final class Conveyor
                 continue;
             }
             $position = $deal->offer?->position();
-            $node = self::BLOCKS[$position?->stage?->block?->name] ?? null;
+            $block = $position?->stage?->block?->name;
+            $node = $block !== null ? self::BLOCKS[$block] ?? null : null;
             if (! $node) {
                 continue;
             }
             $position->setRelation('deal', $deal);
-            if ($todo = $position->todo()) {
+            // Наш ход — по делу; где его нет (одним SQL, `NEEDS_US_SQL`), `todo()` не зовём: он спрашивал бы переоценку по
+            // каждой сделке отдельным запросом.
+            if (isset($ours[$deal->offer_id]) && ($todo = $position->todo())) {
                 $add($node, ['type' => 'user', 'id' => Owners::forTodo($todo['key'], in_array($deal->offer->vendor_id, $alfa, true)), 'lead' => true]);
 
                 continue;
@@ -252,12 +297,14 @@ final class Conveyor
             match ($position->waitsFor()) {
                 WaitsFor::Manager => $deal->buyer_id ? $add($node, ['type' => 'user', 'id' => $deal->buyer_id], $position->isOverdue()) : null,
                 WaitsFor::Supplier => $deal->offer->vendor_id ? $add($node, ['type' => 'vendor', 'id' => $deal->offer->vendor_id]) : null,
-                default => $add($node, ['type' => 'icon', 'icon' => 'cat-truck', 'label' => 'Везёт логистика']),
+                // Ход наш, а делать нечего — везёт логистика (`Position::carried`); ничей ход — просто ждём.
+                WaitsFor::Us => $add($node, ['type' => 'icon', 'icon' => 'cat-truck', 'label' => 'Везёт логистика']),
+                default => $add($node, ['type' => 'icon', 'icon' => 'clock', 'label' => 'Ждём']),
             };
         }
 
         $done = Deal::where('state', DealState::Done)->whereNull('garage_payer')->where('closed_at', '>=', now()->subDays(30))
-            ->whereHas('offer', fn ($o) => $o->when($carcade, fn ($q) => $q->where(fn ($v) => $v->whereNull('vendor_id')->orWhere('vendor_id', '!=', $carcade))))
+            ->whereHas('offer', fn ($o) => self::withoutCarcade($o, $carcade))
             ->count();
 
         return [
