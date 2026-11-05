@@ -6,8 +6,8 @@
 //   заглядывает прошлый этап, справа — следующий. Палец доску не тащит: до срабатывания она только откликается на несколько
 //   px (`nudge`, сильная резинка). Палец ушёл вбок на `COMMIT` — сразу, не дожидаясь отпускания, одна анимация `SWITCH` к
 //   соседнему этапу; остаток жеста не считается: один свайп — один этап. Отпустили раньше, но взмахом — тоже переход, иначе
-//   отклик пружиной в ноль. Свайп посреди перехода не ловит доску, а продлевает переход к следующему: пять быстрых свайпов
-//   — пять этапов. У первого и последнего порога нет — мягкая резинка и отскок;
+//   отклик обратно в ноль (`BACK`, сразу полной скоростью). Свайп посреди перехода не ловит доску, а продлевает переход к
+//   следующему: пять быстрых свайпов — пять этапов. Свайп за первый или последний этап — короткий упор туда и обратно (`BUMP`);
 // - **вверх-вниз — свободно** с броском; только чтобы доску не потерять, она не уходит с экрана целиком (`EDGE`);
 // - **масштаб** — щипок, ctrl/⌘ + колесо, двойной тап, `+`/`−`: по горизонтали якорь всегда в фокусе, по вертикали — под
 //   пальцем.
@@ -29,10 +29,14 @@ const COMMIT_WHEEL = 40;  // то же трекпадом
 const FLICK = 0.25;       // px/мс: отпустили раньше порога, но взмахом — тоже свайп
 const FLICK_MIN = 10;     // px — и хоть настолько
 const GIVE = 28;          // px: предел отклика доски пальцу до срабатывания
-const GIVE_EDGE = 60;     // у первого и последнего этапа — мягче, с отскоком
-const NUDGE = 0.03;       // пружина отклика обратно в ноль, 1/мс
-const SWITCH = 300;       // мс перехода на соседний этап; дальше — по корню из числа шагов
-const SWITCH_MAX = 520;
+const BACK = 180;         // мс: отпустили без свайпа — отклик обратно в ноль, сразу полной скоростью и с замедлением
+const BUMP = 22;          // px: свайп за первый или последний этап — доска упирается сама: туда за `BUMP_OUT`, обратно за `BUMP_BACK`
+const BUMP_OUT = 90;
+const BUMP_BACK = 200;
+const SWITCH = 230;       // мс перехода на соседний этап; дальше — по корню из числа шагов
+const SWITCH_MIN = 140;
+const SWITCH_MAX = 420;
+const EASE = 2.6;         // начальный наклон перехода: 2 — ease-out quad, 3 — cubic; выше 3 — перелёт
 const EDGE = 120;         // px: доска не уходит с экрана вверх или вниз дальше, чем оставив столько
 const BOUNCE = 0.022;     // пружина края по вертикали
 const SMOOTH = 0.016;     // масштаб и колесо мыши догоняют цель: за ~150 мс
@@ -69,7 +73,7 @@ export class Camera {
         this.target = null;               // этап, к которому едет довод
         this.anim = null;                 // переход: { a, b, t0, D, m0 }
         this.nudge = 0;                   // отклик пальцу до срабатывания свайпа, px экрана
-        this.vNudge = 0;
+        this.back = null;                 // отклик едет сам: { a, peak, t0 } — обратно в ноль или упор у края
         this.nudging = false;             // отклик держит палец или трекпад (иначе — пружиной в ноль)
         this.swiped = false;              // свайп этого жеста уже сработал
         this.vfx = 0;                     // скорость фокуса, px мира в мс
@@ -204,9 +208,9 @@ export class Camera {
         const ds = Math.abs(to - this.fx) * this.z;
         if (this.still || ds < 0.5) { this.fx = to; this.vfx = 0; this.target = null; this.anim = null; this.changed(); return; }
         const steps = Math.abs(to - this.fx) / this.pitch();
-        const D = clamp(SWITCH * Math.sqrt(steps), 160, SWITCH_MAX);
+        const D = clamp(SWITCH * Math.sqrt(steps), SWITCH_MIN, SWITCH_MAX);
         const vs = v * Math.sign(to - this.fx) * this.z;
-        const m0 = clamp((vs * D) / ds, 2, 3);
+        const m0 = clamp((vs * D) / ds, EASE, 3);
         this.anim = { a: this.fx, b: to, t0: performance.now(), D, m0 };
         this.changed();
     }
@@ -217,7 +221,7 @@ export class Camera {
         this.swiped = true;
         this.nudging = false;
         this.fx -= this.nudge / this.z;
-        this.nudge = 0; this.vNudge = 0;
+        this.nudge = 0; this.back = null;
         this.goTo(i);
     }
 
@@ -228,9 +232,18 @@ export class Camera {
         const d = total < 0 ? 1 : -1;
         const i = this.here + d;
         const edge = i < 0 || i >= this.columns.length;
-        if (!edge && Math.abs(total) >= at) { this.commit(d); return true; }
+        if (Math.abs(total) >= at) {
+            if (!edge) { this.commit(d); return true; }
+            // Дальше некуда: не резинка за пальцем, а один короткий упор — как переход, только туда и обратно.
+            this.swiped = true;
+            this.nudging = false;
+            this.back = { a: this.nudge, peak: Math.sign(total) * BUMP, t0: performance.now() };
+            this.changed();
+            return true;
+        }
         this.nudging = true;
-        this.nudge = give(total, edge ? GIVE_EDGE : GIVE);
+        this.back = null;
+        this.nudge = give(total, GIVE);
         this.changed();
         return false;
     }
@@ -238,7 +251,7 @@ export class Camera {
     // Сразу на этап, без полёта (фильтр поставил этап на новое место — на экране он стоит, где стоял).
     jumpTo(i) {
         if (!this.columns.length) return;
-        this.target = null; this.vfx = 0; this.anim = null; this.nudge = 0; this.vNudge = 0;
+        this.target = null; this.vfx = 0; this.anim = null; this.nudge = 0; this.back = null;
         this.fx = this.columns[clamp(i, 0, this.columns.length - 1)];
         this.changed();
     }
@@ -283,10 +296,23 @@ export class Camera {
             if (t >= 1) { this.fx = b; this.vfx = 0; this.anim = null; this.target = null; }
             moving = true;
         }
-        if (!this.nudging && (this.nudge || this.vNudge)) {
-            const [n, v] = spring(this.nudge, this.vNudge, NUDGE, dt);
-            this.nudge = n; this.vNudge = v;
-            if (Math.abs(n) < 0.2 && Math.abs(v) < 0.01) { this.nudge = 0; this.vNudge = 0; }
+        if (!this.nudging && this.nudge && !this.back) this.back = { a: this.nudge, peak: null, t0: now };
+        if (this.back) {
+            // Без упора — обратно сразу полной скоростью и с замедлением (ease-out cubic). С упором — туда с замедлением,
+            // обратно плавно с места (smoothstep): в точке упора скорость ноль, излома нет.
+            const { a, peak, t0 } = this.back;
+            let t = now - t0;
+            if (peak !== null && t < BUMP_OUT) {
+                const p = 1 - (1 - t / BUMP_OUT) ** 2;
+                this.nudge = a + (peak - a) * p;
+            } else {
+                const from = peak ?? a;
+                if (peak !== null) t -= BUMP_OUT;
+                const q = clamp(t / (peak !== null ? BUMP_BACK : BACK), 0, 1);
+                const p = peak !== null ? 3 * q * q - 2 * q ** 3 : 1 - (1 - q) ** 3;
+                this.nudge = from * (1 - p);
+                if (q >= 1) { this.nudge = 0; this.back = null; }
+            }
             moving = true;
         }
         if (this.yGoal !== null) {
