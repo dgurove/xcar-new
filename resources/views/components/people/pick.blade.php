@@ -46,9 +46,11 @@
             <x-ui.chevron/>
         </button>
     @else
-        {{-- Строкой списка — действие («Выбрать покупателя», «Другой покупатель»): кто выбран, пишет строка над ней. --}}
+        {{-- Строкой списка — действие («Выбрать покупателя», «Другой покупатель»): кто выбран, пишет строка над ней. Никого
+             нет — лаймовым плюсом, как «Новый покупатель» в шторке (05.11.2026); выбран — тише, это уже не главное. --}}
         <button type="button" class="row w-full text-left" data-action="sheet#open">
-            <span class="min-w-0 flex-1 font-medium text-accent-text">{{ $placeholder }}</span>
+            @if ($value === null)<x-ui.row-icon name="plus" size="s" tone="accent"/>@endif
+            <span @class(['min-w-0 flex-1', 'font-medium text-accent-text' => $value === null, 'text-sm text-ink-muted' => $value !== null])>{{ $placeholder }}</span>
             <x-ui.chevron/>
         </button>
     @endif

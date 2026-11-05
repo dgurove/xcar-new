@@ -35,20 +35,22 @@
     $for = $deal->hasContract() ? 'договора' : 'счёта';
 @endphp
 <section @if ($part !== 'doc') id="dkp-buyer" @endif class="min-w-0">
-    @unless ($embedded)<h2 class="list-head">{{ $garage ? 'Договор купли-продажи' : ($prime ? 'Покупатель: счёт и ДКП' : 'Покупатель по ДКП') }}</h2>@endunless
+    @unless ($embedded)<h2 class="list-head">{{ $garage ? 'Договор купли-продажи' : 'Покупатель' }}</h2>@endunless
     <div class="list">
         @if ($part !== 'doc')
         @if ($buyer)
             @if ($ready || ! $editable)
                 <a href="{{ $isMe ? '/account/money/details' : '/buyers/'.$buyer->id }}" class="row">
-                    <span class="min-w-0 flex-1"><span class="block">{{ $isMe ? ($garage ? 'Ваши данные' : 'Я сам') : ($buyer->party?->name ?: $buyer->name) }}</span>
+                    <x-ui.avatar :user="$buyer" :size="36"/>
+                    <span class="min-w-0 flex-1"><span class="block truncate">{{ $isMe ? ($garage ? 'Ваши данные' : 'Я сам') : ($buyer->party?->name ?: $buyer->name) }}</span>
                         <span class="row-sub">@if ($ready)<span class="text-open">данные есть</span>@else<span class="text-urgent">нужны данные для {{ $for }}</span>@endif</span></span>
                     <x-ui.chevron/>
                 </a>
             @else
                 <div data-controller="sheet" class="contents">
                     <x-ui.sheet-row>
-                        <span class="min-w-0 flex-1"><span class="block">{{ $isMe ? ($garage ? 'Ваши данные' : 'Я сам') : ($buyer->party?->name ?: $buyer->name) }}</span>
+                        <x-ui.avatar :user="$buyer" :size="36"/>
+                        <span class="min-w-0 flex-1"><span class="block truncate">{{ $isMe ? ($garage ? 'Ваши данные' : 'Я сам') : ($buyer->party?->name ?: $buyer->name) }}</span>
                             <span class="row-sub text-urgent">{{ $noScan ? 'нужен скан паспорта' : 'нужны данные для '.$for }}</span></span>
                         <x-ui.chevron/>
                     </x-ui.sheet-row>
@@ -124,12 +126,13 @@
                         <span class="shrink-0 text-ink-muted">{{ $contract->signed_at?->format('d.m.Y') ?? 'не указана' }}</span>
                     @endif
                 </div>
-            @else
+            @elseif ($ours)
+                {{-- Не готов по нашей части — что готовим; по покупателю его строка выше уже говорит (05.11.2026: «выберите
+                     покупателя» стояло трижды — в «Расчёте», у выбора и у ДКП). --}}
                 <div class="row">
                     <x-ui.row-icon name="file" size="s" tone="muted"/>
                     <span class="min-w-0 flex-1"><span class="block text-ink-muted">{{ $prime ? 'ДКП '.$deal->seller()->short() : 'ДКП' }}</span>
-                        @php $need = array_values(array_filter([in_array('покупатель', $missing, true) ? 'выберите покупателя' : null, in_array('данные покупателя', $missing, true) ? 'нужны данные покупателя' : null, in_array('скан паспорта покупателя', $missing, true) ? 'нужен скан паспорта покупателя' : null, $ours ? 'готовим: '.implode(', ', $ours) : null])); @endphp
-                        <span class="row-sub !whitespace-normal">{{ implode(', ', $need) }}</span></span>
+                        <span class="row-sub !whitespace-normal">готовим: {{ implode(', ', $ours) }}</span></span>
                 </div>
             @endif
         @endif

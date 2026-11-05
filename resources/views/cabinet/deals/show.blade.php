@@ -34,7 +34,10 @@
             <x-offer.reprice-ask :deal="$deal" class="order-1 min-w-0"/>
             <div class="order-1 min-w-0">@include('cabinet.deals.step', ['contractStep' => $contractStep, 'pickupSteps' => $pickupSteps])</div>
             {{-- Закончилась без покупателя — «выберите покупателя» уже не о чем. --}}
-            @if ($deal->hasContract() && ! $contractStep && ! $needsBuyer && ! $tooEarly && ($deal->isActive() || $deal->contract?->buyer_user_id))<div class="order-3 min-w-0">@include('cabinet.deals.contract')</div>@endif
+            {{-- Покупатель не выбран или без данных — это дело менеджера: на телефоне сразу под задачей, над «Расчётом»
+                 (05.11.2026); готов — на прежнем месте под ним. --}}
+            @php $buyerTodo = $deal->isActive() && ! $deal->contract?->buyer?->party?->readyAsBuyer(); @endphp
+            @if ($deal->hasContract() && ! $contractStep && ! $needsBuyer && ! $tooEarly && ($deal->isActive() || $deal->contract?->buyer_user_id))<div class="{{ $buyerTodo ? 'order-1' : 'order-3' }} min-w-0">@include('cabinet.deals.contract')</div>@endif
             @include('cabinet.deals.path', ['class' => 'order-5'])
 
             @if ($pastInvoices->isNotEmpty())

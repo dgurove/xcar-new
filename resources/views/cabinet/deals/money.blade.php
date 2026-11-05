@@ -94,7 +94,7 @@
             @if ($sale)<button type="button" class="row w-full text-left" data-action="sheet#open">@else<a href="#dkp-buyer" class="row">@endif
                 <span class="min-w-0 flex-1">
                     <span class="block">{{ 'Счёт '.$deal->seller()->short().($sale ? ' '.$sale->label() : '') }}</span>
-                    <span class="row-sub">@if (! $sale && ! $deal->agreed()){{ $notYet }}@elseif (! $sale)<span class="text-urgent">{{ $deal->invoiceGap() === 'passport' ? 'нужен паспорт покупателя' : 'укажите покупателя' }}</span>@elseif ($sale->state === InvoiceState::Paid)<span class="text-open">оплачен</span>@else<x-billing.light :invoice="$sale"/> платит {{ $sale->party?->name }}@endif</span>
+                    <span class="row-sub">@if (! $sale && ! $deal->agreed()){{ $notYet }}@elseif (! $sale)<span class="text-urgent">{{ $deal->invoiceGap() === 'passport' ? 'нужны данные покупателя' : 'укажите покупателя' }}</span>@elseif ($sale->state === InvoiceState::Paid)<span class="text-open">оплачен</span>@else<x-billing.light :invoice="$sale"/> платит {{ $sale->party?->name }}@endif</span>
                 </span>
                 @if ($sale)<span class="nums font-semibold">{{ Money::rub($sale->state === InvoiceState::Paid ? $sale->total : $sale->remaining()) }}</span><x-ui.chevron/>@endif
             @if ($sale)</button>@include('cabinet.deals.invoice-sheet', ['invoice' => $sale])@else</a>@endif
