@@ -150,6 +150,39 @@ class ParkClosingDocsTest extends TestCase
         $this->assertSame(InvoiceState::Issued, $october->fresh()->state);
     }
 
+    /**
+     * Документ месяца — строго свой месяц (05.11.2026, владелец: «в счёте за октябрь строки, выданные в сентябре»): по выдаче —
+     * выданные в нём; помесячно — в месяце первого невыставленного дня; эвакуация — в месяц своей даты.
+     */
+    public function test_month_holds_only_its_own_cars(): void
+    {
+        $sep = Carbon::parse('2026-09-01');
+        $oct = Carbon::parse('2026-10-01');
+        $alfa = Vendor::create(['name' => 'Альфа тест', 'party_id' => $this->vendor->party_id, 'billing_cadence' => Cadence::Release, 'act_form' => ActForm::Report]);
+        Tariff::create(['vendor_id' => $alfa->id, 'category' => 'passenger', 'service' => 'storage', 'from_day' => 1, 'price' => 300, 'valid_from' => '2023-01-01']);
+        $yard = $this->vehicle->yard_id;
+        $september = Vehicle::create(['vendor_id' => $alfa->id, 'yard_id' => $yard, 'state' => VehicleState::Released, 'accepted_at' => '2026-09-01 10:00', 'released_at' => '2026-09-17 12:00', 'vin' => 'XW8ZZZ61ZHG035221', 'ref' => 'A-1', 'category' => 'passenger']);
+        $october = Vehicle::create(['vendor_id' => $alfa->id, 'yard_id' => $yard, 'state' => VehicleState::Released, 'accepted_at' => '2026-09-20 10:00', 'released_at' => '2026-10-10 12:00', 'vin' => 'XW8ZZZ61ZHG035222', 'ref' => 'A-2', 'category' => 'passenger']);
+        $this->vehicle->update(['accepted_at' => '2026-09-01 10:00']);
+        Charge::create(['party_id' => $this->vendor->party_id, 'vehicle_id' => $this->vehicle->id, 'kind' => ChargeKind::Tow, 'title' => 'Подача эвакуатора',
+            'qty' => 1, 'unit' => 'pc', 'price' => 16000, 'amount' => 16000, 'period_from' => '2026-09-01', 'created_by' => $this->admin->id]);
+        $cars = fn ($month, $tow = false) => Closing::items($month)->where('tow', $tow)->pluck('vehicle.id')->unique()->sort()->values()->all();
+
+        // По выдаче: выданная 17.09 — только в сентябре, пока сентябрь не отправлен — тоже.
+        $this->assertSame([$this->vehicle->id, $september->id], $cars($sep));
+        $this->assertSame([$october->id], $cars($oct));
+        // Помесячно: сентябрь не отправлен — ТС только в сентябре, 30 суток.
+        $this->assertSame(30, Closing::items($sep)->firstWhere('vehicle.id', $this->vehicle->id)['days']);
+        // Эвакуация 01.09 — в сентябре, не в октябре.
+        $this->assertSame([$this->vehicle->id], $cars($sep, true));
+        $this->assertSame([], $cars($oct, true));
+
+        $group = Closing::items($sep)->firstWhere('vehicle.id', $this->vehicle->id);
+        app(FixClosingDocument::class)($sep, Closing::groupOf($group), $this->admin);
+        // Сентябрь отправлен — помесячная в октябре, 31 сутки.
+        $this->assertSame(31, Closing::items($oct)->firstWhere('vehicle.id', $this->vehicle->id)['days']);
+    }
+
     public function test_rgs_form_gives_act_and_appendix(): void
     {
         $this->vendor->update(['act_form' => ActForm::Rgs]);

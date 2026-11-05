@@ -24,14 +24,15 @@ use Throwable;
  * `Actions\FixClosingDocument`: номер, строки, `storage_billed_until`, файлы, `sent_at`. Исправили данные после отправки — `drift()` видит
  * разницу, `FixClosingDocument` с `replaces` отправляет исправленный с тем же номером и следующей редакцией, прежний аннулирован.
  *
- * Что входит: помесячные ТС — по конец месяца (или по день выдачи); «по выбытию» — за весь срок у выбывших до конца
- * месяца; покупатель — свой отрезок своим документом; эвакуация — своим документом плательщику (`tows`).
+ * Что входит — строго свой месяц: помесячные ТС — в месяце первого невыставленного дня, по конец месяца (или по день
+ * выдачи); «по выбытию» — выбывшие в этом месяце, за весь срок; покупатель — свой отрезок своим документом; эвакуация —
+ * своим документом плательщику в месяц своей даты (`tows`).
  *
  * @phpstan-type Item array{key: string, vehicle: Vehicle, payer: string, party: ?Party, ready: bool, cadence: Cadence, from: Carbon, to: Carbon, days: int, amount: float, charges: list<int>, reason: string, tow: bool}
  */
 final class Closing
 {
-    private const CACHE = 'park.closing.v3:';
+    private const CACHE = 'park.closing.v4:';
 
     /**
      * Строки месяца — что ещё не зафиксировано. `$without` — как если бы этого счёта не было (сверка и исправление: его
@@ -62,19 +63,28 @@ final class Closing
         }
         // Начисления вне счёта — одной выборкой на всех: запрос на ТС давал 411 запросов на экран (аудит 20.10.2026).
         // Эвакуация — своим документом (архив «СТОЯНКА», 05.11.2026: у СОГАЗа свой договор, у Альфы свой счёт) — `tows()`.
-        $pendingBy = self::free($without)->whereIn('vehicle_id', $vehicles->modelKeys())->where('kind', '!=', ChargeKind::Tow->value)->get()->groupBy('vehicle_id');
+        // Начисления позже месяца (октябрьские при сентябрьском документе) ждут своего месяца.
+        $pendingBy = self::free($without)->whereIn('vehicle_id', $vehicles->modelKeys())->where('kind', '!=', ChargeKind::Tow->value)
+            ->whereRaw('coalesce(period_from, created_at::date) <= ?', [$end->toDateString()])->get()->groupBy('vehicle_id');
         $items = collect();
         foreach ($vehicles as $v) {
             $cadence = $v->cadence();
             $released = $v->released_at?->copy()->startOfDay();
+            // Документ месяца — строго свой месяц (05.11.2026, владелец: «в счёте за октябрь строки, выданные в сентябре, —
+            // тупо рандом»): неотправленный сентябрь не переезжает в октябрь.
             if ($cadence === Cadence::Release) {
-                // «По выбытию» — те, кто выбыл до конца этого месяца: выбывшие позже идут в свой месяц.
-                if (! $released || $released->gt($end)) {
+                // «По выбытию» — только выбывшие в этом месяце, за весь невыставленный срок.
+                if (! $released || $released->lt($begin) || $released->gt($end)) {
                     continue;
                 }
                 $until = $released;
                 $reason = 'выбыла '.Ago::day($released);
             } else {
+                // Помесячно — только в месяце первого невыставленного дня: дни сентября — в сентябре, октябрь — после него.
+                $first = $v->storage_billed_until ? $v->storage_billed_until->copy()->addDay()->startOfDay() : $v->accepted_at->copy()->startOfDay();
+                if ($first->lt($begin) || $first->gt($end)) {
+                    continue;
+                }
                 $until = $released && $released->lt($end) ? $released : $end;
                 $reason = $released && $released->lt($end) ? 'выбыла '.Ago::day($released) : 'за '.Carbon::instance($month)->translatedFormat('F');
             }
@@ -128,8 +138,8 @@ final class Closing
     }
 
     /**
-     * Эвакуация по конец месяца — строкой на ТС и плательщика: в документ эвакуации, а не хранения, в месяц, когда она
-     * была, как бы ни считалось хранение (по выбытию — тоже сейчас).
+     * Эвакуация этого месяца — строкой на ТС и плательщика: в документ эвакуации, а не хранения, в месяц, когда она
+     * была (не «всё до конца месяца»: неотправленная сентябрьская в октябрь не переезжает), как бы ни считалось хранение.
      *
      * @param  ?list<int>  $only
      * @return Collection<int, Item>
@@ -137,7 +147,7 @@ final class Closing
     private static function tows(CarbonInterface $end, ?Invoice $without = null, ?array $only = null): Collection
     {
         $charges = self::free($without)->whereNotNull('vehicle_id')->where('kind', ChargeKind::Tow->value)
-            ->whereRaw('coalesce(period_from, created_at::date) <= ?', [$end->toDateString()])
+            ->whereRaw('coalesce(period_from, created_at::date) between ? and ?', [Carbon::instance($end)->startOfMonth()->toDateString(), $end->toDateString()])
             ->when($only !== null, fn ($q) => $q->whereIn('vehicle_id', $only))
             ->whereHas('vehicle', fn ($v) => $v->whereNotNull('accepted_at'))
             ->with(['vehicle.vendor.party', 'vehicle.ownerParty', 'vehicle.buyerParty', 'party'])->orderBy('id')->get();
