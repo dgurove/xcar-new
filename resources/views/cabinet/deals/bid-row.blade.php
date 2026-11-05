@@ -3,7 +3,7 @@
      не говорило, кто и что); в резерве — так же, о чужой сделке ни слова (15.10.2026). Гаражное — словом «В гараж» вместо цены. --}}
 @php
     $offer = $bid->offer;
-    $when = $offer->bids_close_at?->isFuture() ? 'итоги после '.\App\Support\Ago::day($offer->bids_close_at, true) : 'приём закрыт, ждём итогов';
+    $when = $offer->closesAt()?->isFuture() ? 'итоги после '.\App\Support\Ago::day($offer->closesAt(), true) : 'приём закрыт, ждём итогов';
     $price = $bid->isGarage() ? 'В гараж' : \App\Support\Money::rub($bid->amount);
 @endphp
 <a href="/offers/{{ $offer->number }}" class="row">

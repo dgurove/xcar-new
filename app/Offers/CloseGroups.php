@@ -10,7 +10,9 @@ use Illuminate\Support\Carbon;
 
 /**
  * Подпись пачки в каталоге по сроку (владелец 10.10.2026): слот закрывает приём у пачки предложений в один час —
- * «До 17:00 сегодня», «До 17:00 завтра», «До 17:00 13 октября»; закрытое и «Идёт сделка» — одной пачкой в конце.
+ * «До 17:00 сегодня», «До 17:00 завтра», «До 17:00 13 октября»; закрытое — одной пачкой в конце. Сделка в каталоге — всегда та,
+ * что показывают этому человеку (`Offer::siteList`), — открытая со сроком `closesAt` (05.11.2026: показ всем до 11.11 стоял в
+ * «Приём закрыт»).
  */
 final class CloseGroups
 {
@@ -19,7 +21,7 @@ final class CloseGroups
     {
         return $gallery
             ? self::of($offer->gallery_until, true)
-            : self::of($offer->bids_close_at, $offer->bidsOpen() && $offer->state === OfferState::Open);
+            : self::of($offer->closesAt(), $offer->state === OfferState::Sold || ($offer->bidsOpen() && $offer->state === OfferState::Open));
     }
 
     public static function of(?CarbonInterface $at, bool $open): string
@@ -56,8 +58,8 @@ final class CloseGroups
             return $out;
         }
         $rows = Facet::bare($list->toBase())
-            ->selectRaw('offers.bids_close_at as at, (offers.state = ? and (offers.bids_close_at is null or offers.bids_close_at > now())) as open, count(*) as n', [OfferState::Open->value])
-            ->groupBy('offers.bids_close_at', 'offers.state')->get();
+            ->selectRaw(Offer::closesAtSql().' as at, (offers.state = ? or (offers.state = ? and (offers.bids_close_at is null or offers.bids_close_at > now()))) as open, count(*) as n', [OfferState::Sold->value, OfferState::Open->value])
+            ->groupByRaw('1, 2')->get();
         $out = [];
         foreach ($rows as $r) {
             $label = self::of($r->at ? Carbon::parse($r->at) : null, (bool) $r->open);

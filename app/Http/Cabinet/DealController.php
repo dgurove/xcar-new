@@ -154,10 +154,13 @@ class DealController
      * вышел — машина уходит из «Предложений» (`Offer::onSale`) и у подтвердившего стоит здесь, пока выбор за нами; отдали
      * другому — тут же тем же видом (резерв, 15.10.2026). Пропадает при отказе, завершённой сделке и архиве — подтверждение
      * гаснет (`ChangeOfferState::settleDeal`). До срока машина в «Предложениях», а все живые — в «Моих подтверждениях».
+     * Сделку, что ему показывают (белый список, показ всем), он видит обычным предложением в «Предложениях» — здесь её нет,
+     * пока показ идёт (05.11.2026).
      */
     public static function pending(User $me)
     {
-        return self::waiting($me)->whereHas('offer', fn ($o) => $o->where('bids_close_at', '<=', now()));
+        return self::waiting($me)->whereHas('offer', fn ($o) => $o->where('bids_close_at', '<=', now())
+            ->whereNot(fn ($n) => $n->dealOpenTo($me)));
     }
 
     public function show(Request $request, Deal $deal)

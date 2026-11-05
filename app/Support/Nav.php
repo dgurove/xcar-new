@@ -592,7 +592,7 @@ final class Nav
                 // чип каталога; гаснет, как только открыл (`ReadOffer`). У сотрудников счётчики общие — им новые за сутки.
                 // Покупателю — по-прежнему новые за сутки: решали про менеджеров.
                 '/offers' => $user->hasRole(Role::Manager, Role::SuperBuyer)
-                    ? CatalogQuery::unread(Offer::visibleTo($user)->onSale()->inRegionsOf($user), $user)->count()
+                    ? CatalogQuery::unread(Offer::siteList($user)->inRegionsOf($user), $user)->count()
                     : CatalogQuery::fresh(clone $open, $user)->count(),
                 '/gallery' => (clone $gallery)->where('gallery_from', '>', $day)->count(),
             ]];

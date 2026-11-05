@@ -112,7 +112,7 @@ class CatalogController
                 'urgent' => $urgentCount,
                 'recommended' => $section()->where('recommended', true)->count(),
                 'fresh' => CatalogQuery::fresh($section(), $user, $gallery)->count(),
-                'ending' => CatalogQuery::ending($section())->count(),
+                'ending' => CatalogQuery::ending($section(), site: true)->count(),
             };
         }
 

@@ -13,7 +13,7 @@
     $bids = $user?->bidsOnSite() ?? false;
     $left = $gallery || !$bids ? null : $offer->secondsLeft();
     $href = $context?->offerUrl($offer) ?? "/offers/{$n}";
-    $canBid = $bids && $offer->bidsOpen() && $price->visible;
+    $canBid = $bids && $offer->openFor($user) && $price->visible;
     $wantsInterest = $user?->canInterestIn($offer) ?? false;
     $manager = $user?->isBuyer() ? $user->manager : null;
 @endphp
@@ -30,7 +30,7 @@
         </x-slot:marks>
         <x-slot:line>
             @if ($offer->settlement)<x-ui.place>{{ $offer->settlement->title() }}</x-ui.place>@endif
-            @if ($left !== null && $left > 0)<span class="nums {{ $offer->isEndingSoon() ? 'text-urgent' : '' }}">приём <span data-controller="timer" data-timer-until-value="{{ $offer->bids_close_at->toIso8601String() }}" data-timer-done-value="закрыт" data-timer-coarse-value="true">{{ \App\Support\Ago::left($offer->bids_close_at, 'ещё') }}</span></span>@elseif ($bids && !$gallery && !$offer->bidsOpen())<span class="text-ink-muted">приём закрыт</span>@endif
+            @if ($left !== null && $left > 0)<span class="nums {{ $offer->isEndingSoon() ? 'text-urgent' : '' }}">приём <span data-controller="timer" data-timer-until-value="{{ $offer->closesAt()->toIso8601String() }}" data-timer-done-value="закрыт" data-timer-coarse-value="true">{{ \App\Support\Ago::left($offer->closesAt(), 'ещё') }}</span></span>@elseif ($bids && !$gallery && !$offer->openFor($user))<span class="text-ink-muted">приём закрыт</span>@endif
         </x-slot:line>
         {{-- Избранное — рядом с «Поделиться» в полосе окошка (21.10.2026, владелец: в окошке его не находили). --}}
         <x-slot:tools>
@@ -65,7 +65,7 @@
                         <button type="submit" class="btn btn-s btn-accent shrink-0">{{ $gallery && $user->isBuyer() ? 'Сообщить о продаже' : ($gallery || $user->isBuyer() ? 'Проявить интерес' : 'Узнать цену') }}</button>
                     </form>
                 @endif
-            @elseif ($bids && !$gallery && !$offer->bidsOpen() && $offer->state !== OfferState::Draft)
+            @elseif ($bids && !$gallery && !$offer->openFor($user) && $offer->state !== OfferState::Draft)
                 <span class="text-sm text-ink-muted">Приём подтверждений закрыт</span>
             @endif
             @if ($canChat)<a href="/account/chats/offer/{{ $offer->number }}" class="pill pill-plain"><x-ui.icon name="chat" class="size-4"/> Чат@if ($chat?->unread_for_user) <span class="badge">{{ $chat->unread_for_user }}</span>@endif</a>@endif

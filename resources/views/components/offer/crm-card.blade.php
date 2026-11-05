@@ -26,7 +26,7 @@
     $corrections = ! $unpriced && $draft && $admin && $offer->relationLoaded('openEstimates') ? $offer->openEstimates->filter->isCorrection() : collect();
     $correcting = $corrections->isNotEmpty();
     $proposes = $corrections->contains->proposes();
-    $left = $gallery || ! $admin ? null : $offer->secondsLeft();
+    $left = $gallery || ! $admin || ! $offer->state->acceptsBids() ? null : $offer->secondsLeft();
     $timer = $left !== null && $left > 0;
     // Новое — голубой полосой, горящее — рыжей, как на витрине (12.10.2026); только админу.
     // Кружков «новое» и «горящее» в CRM нет (30.10.2026, владелец: «бесят»); остаются «в минус» и срок обязывающего.

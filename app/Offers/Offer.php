@@ -594,8 +594,8 @@ class Offer extends Model
     }
 
     /**
-     * Белый список «Кому показывать в сделке»: менеджеры и группы, которым предложение
-     * в сделке видно в каталоге с меткой «Идёт сделка» (DealAudience). Пусто — никому.
+     * Белый список «Кому показывать в сделке»: менеджеры и группы, которым предложение в сделке видно в каталоге обычным
+     * предложением (DealAudience; о сделке ни слова — 05.11.2026). Пусто — никому.
      */
     public function dealAudience(): HasMany
     {
@@ -629,10 +629,35 @@ class Offer extends Model
         return $this->state === OfferState::Sold && $this->deal_show_all_at !== null && $this->deal_show_until?->isFuture() === true;
     }
 
-    /** До когда идёт приём для витрины: у показа всем — конец показа, иначе срок приёма. */
+    /**
+     * До когда идёт приём для витрины. Сделку, что показывают менеджеру, он видит обычным предложением (05.11.2026,
+     * владелец: «визуально нигде ничем не отличается от других»): показ всем — до конца показа; иначе — срок приёма, пока
+     * он впереди (резерв того, кого обошли до срока), дальше — «Сколько показывать» белого списка, пусто — без срока.
+     * Близнец запросом — `closesAtSql`.
+     */
     public function closesAt(): ?Carbon
     {
-        return $this->showsDealAsOpen() ? $this->deal_show_until : $this->bids_close_at;
+        if ($this->state !== OfferState::Sold) {
+            return $this->bids_close_at;
+        }
+        if ($this->deal_show_all_at) {
+            return $this->deal_show_until;
+        }
+
+        return $this->bids_close_at?->isFuture() ? $this->bids_close_at : $this->deal_show_until;
+    }
+
+    /** `closesAt` запросом: пачки и сортировки каталога. */
+    public static function closesAtSql(): string
+    {
+        return "(case when offers.state = 'sold' then case when offers.deal_show_all_at is not null then offers.deal_show_until"
+            .' when offers.bids_close_at > now() then offers.bids_close_at else offers.deal_show_until end else offers.bids_close_at end)';
+    }
+
+    /** Приём для этого человека идёт: открыт всем или машину в сделке показывают ему. */
+    public function openFor(?User $user): bool
+    {
+        return $this->bidsOpen() || $this->canBidInDeal($user);
     }
 
     /** «Сколько показывать» сделку прошло (`deal_show_until`): список остаётся, но его никто не видит. Пусто — пока идёт сделка. */
@@ -722,7 +747,7 @@ class Offer extends Model
                 $w->orWhere(fn ($m) => $m->where('state', OfferState::Open)
                     ->whereHas('viewers', fn ($v) => $v->where('user_id', $user->id)->where('opens_at', '<=', now())));
             }
-            // Сделка, открытая менеджеру белым списком: видна в предложениях с меткой «Идёт сделка».
+            // Сделка, открытая менеджеру белым списком: видна в предложениях обычным предложением.
             if ($user->hasRole(Role::Manager)) {
                 $w->orWhere(fn ($m) => $m->dealOpenTo($user));
             }
@@ -1501,14 +1526,10 @@ class Offer extends Model
     /** Секунд до закрытия приёма; null — приём не ограничен или закрыт. */
     public function secondsLeft(): ?int
     {
-        if ($this->showsDealAsOpen()) {
-            return (int) max(0, now()->diffInSeconds($this->deal_show_until, false));
-        }
-        if (! $this->bids_close_at || ! $this->state->acceptsBids()) {
-            return null;
-        }
+        // Сделка — тому, кому её показывают (иначе в каталоге её нет): срок по `closesAt`.
+        $at = $this->state->acceptsBids() || $this->state === OfferState::Sold ? $this->closesAt() : null;
 
-        return (int) max(0, now()->diffInSeconds($this->bids_close_at, false));
+        return $at ? (int) max(0, now()->diffInSeconds($at, false)) : null;
     }
 
     public function isFavoriteOf(?User $user): bool

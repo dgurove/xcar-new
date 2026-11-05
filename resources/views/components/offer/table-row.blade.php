@@ -17,7 +17,7 @@
     $price = \App\Offers\PriceView::for($offer, auth()->user());
     // Подтверждения принимает только админ: модератору ни их числа, ни отсчёта приёма, ни «выбрать» — «в продаже».
     $admin = (bool) auth()->user()?->canManageCrm();
-    $left = $gallery || ! $admin ? null : $offer->secondsLeft();
+    $left = $gallery || ! $admin || ! $offer->state->acceptsBids() ? null : $offer->secondsLeft();
     $tone = match ($offer->state->tone()) { 'open' => 'text-accent-text', 'urgent' => 'text-urgent', 'danger' => 'text-danger', default => '' };
     $count = ! $admin ? 0 : ($gallery ? (int) $offer->interests_count : (int) $offer->active_bids_count);
     // Гаражные подтверждения без суммы — отдельно словом (владелец 05.10.2026: «непонятно, что такое 1»).

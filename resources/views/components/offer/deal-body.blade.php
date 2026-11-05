@@ -8,8 +8,6 @@
     // Срок приёма — тем, кто подтверждает; покупателю таймер ни о чём.
     $left = $gallery || !($user?->bidsOnSite() ?? false) ? null : $offer->secondsLeft();
     $canBid = ($user?->bidsOnSite() ?? false) && ($offer->bidsOpen() || $offer->canBidInDeal($user));
-    // Показ всем, пока менеджер сделки думает (04.11.2026): для них обычное предложение — без «Идёт сделка».
-    $reserve = !$gallery && !$offer->bidsOpen() && ! $offer->showsDealAsOpen() && $offer->canBidInDeal($user);
     $wantsInterest = $user?->canInterestIn($offer) ?? false;
     $manager = $user?->isBuyer() ? $user->manager : null;
     // Черновик, отданный этому менеджеру на оценку (11.10.2026): вместо цены и подтверждения — оценка.
@@ -48,9 +46,6 @@
     <p class="mt-3 text-sm text-ink-muted" hidden data-shows-when-closed>Приём подтверждений закрыт</p>
 @elseif (!$gallery && ($user?->bidsOnSite() ?? false) && !$canBid && $offer->state !== \App\Offers\OfferState::Draft)
     <p class="mt-3 text-sm text-ink-muted">Приём подтверждений закрыт</p>
-@endif
-@if ($reserve)
-    <p class="mt-3 text-sm text-ink-muted">Идёт сделка, подтверждение встанет резервом</p>
 @endif
 @if ($myBid && ! $canBid)<x-offer.my-bid :offer="$offer" :bid="$myBid" class="mt-3"/>@endif
 

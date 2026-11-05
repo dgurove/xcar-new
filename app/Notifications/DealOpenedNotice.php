@@ -6,9 +6,10 @@ use App\Offers\Offer;
 use App\Support\Money;
 
 /**
- * Менеджеру: предложение в сделке открыли ему — видно в предложениях с меткой
- * «Идёт сделка», подтверждение встанет резервом. `plain` — показ всем, пока менеджер сделки думает о закупочной
- * (`ShowDealToAll`, 04.11.2026): для них это новое предложение, о сделке ни слова.
+ * Менеджеру: предложение в сделке открыли ему — белым списком «Кому показывать в сделке» или показом всем, пока менеджер
+ * сделки думает о закупочной (`plain`, `ShowDealToAll`, 04.11.2026). Ему это новое предложение, о сделке ни слова (05.11.2026,
+ * владелец: «визуально нигде ничем не отличается от других»); подтверждение встанет резервом. `plain` различает только
+ * подпись вида в «Доставке» CRM.
  */
 final class DealOpenedNotice extends Notice
 {
@@ -16,22 +17,17 @@ final class DealOpenedNotice extends Notice
 
     public function label(): string
     {
-        return $this->plain ? 'Новое предложение' : 'Предложение в сделке открыто';
+        return $this->plain ? 'Новое предложение (показ всем)' : 'Новое предложение (белый список сделки)';
     }
 
     public function title(): string
     {
-        return ($this->plain ? 'Новое предложение: ' : 'Предложение в сделке открыто вам: ').$this->offer->titleWithYear();
+        return 'Новое предложение: '.$this->offer->titleWithYear();
     }
 
     public function text(): ?string
     {
-        $price = $this->offer->asking_price ? Money::plain($this->offer->asking_price) : '';
-        if ($this->plain) {
-            return $price !== '' ? $price : null;
-        }
-
-        return ($price !== '' ? $price.', ' : '').'идёт сделка, подтверждение встанет резервом';
+        return $this->offer->asking_price ? Money::plain($this->offer->asking_price) : null;
     }
 
     public function href(): string

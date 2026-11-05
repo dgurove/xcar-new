@@ -1,14 +1,12 @@
-{{-- Срок приёма под названием карточки витрины: «осталось 2 д 6 ч», у горящего (меньше 12 ч) — оранжевым, у срочного — цветом огня; «Идёт сделка»,
-     «Приём закрыт». Тем, кто подтверждает ценой; покупателю срок ни о чём. «Идёт сделка» — только белому списку сделки
-     (`seesDeal`); подтвердившему в резерве машина в сделке — просто «Приём закрыт» (15.10.2026). Показ всем, пока менеджер сделки
-     думает о закупочной (`showsDealAsOpen`, 04.11.2026), — обычный срок до конца показа. --}}
+{{-- Срок приёма под названием карточки витрины: «осталось 2 д 6 ч», у горящего (меньше 12 ч) — оранжевым, у срочного — цветом огня;
+     «Приём закрыт». Тем, кто подтверждает ценой; покупателю срок ни о чём. Сделка, что показывают менеджеру (белый список, показ
+     всем, резерв до срока), — обычное предложение со сроком `closesAt`: о сделке ни слова (05.11.2026, владелец). --}}
 @props(['offer'])
 @php
     $bids = auth()->user()?->bidsOnSite() ?? false;
     $left = $offer->isGallery() || ! $bids ? null : $offer->secondsLeft();
 @endphp
 @if ($offer->isGallery())
-@elseif ($offer->state === \App\Offers\OfferState::Sold && ! $offer->showsDealAsOpen() && $offer->seesDeal(auth()->user()))<span {{ $attributes->merge(['class' => 'card-when text-urgent']) }}>Идёт сделка</span>
 @elseif ($left !== null && $left > 0)<span {{ $attributes->merge(['class' => 'card-when nums '.($offer->isUrgent() ? 'text-fire' : ($offer->isEndingSoon() ? 'text-urgent' : 'text-ink-muted'))]) }}><x-ui.icon name="timer" class="size-3.5"/><span data-controller="timer" data-timer-until-value="{{ $offer->closesAt()->toIso8601String() }}" data-timer-done-value="Приём закрыт" data-timer-coarse-value="true" data-timer-word-value="осталось">{{ \App\Support\Ago::left($offer->closesAt()) }}</span></span>
-@elseif ($bids && ! $offer->bidsOpen() && $offer->state !== \App\Offers\OfferState::Draft)<span {{ $attributes->merge(['class' => 'card-when text-ink-muted']) }}>Приём закрыт</span>
+@elseif ($bids && ! $offer->openFor(auth()->user()) && $offer->state !== \App\Offers\OfferState::Draft)<span {{ $attributes->merge(['class' => 'card-when text-ink-muted']) }}>Приём закрыт</span>
 @endif

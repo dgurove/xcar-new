@@ -12,6 +12,7 @@ use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Каталог: что видит человек и в каком порядке. Всё состояние — в строке
@@ -135,7 +136,7 @@ final class CatalogQuery
         $q = self::cards($user, $gallery);
         $opened = self::openedAtSql($user);
         // Витрина — только то, что в продаже (`Offer::siteList`: открытое без сделки плюс сделка,
-        // открытая менеджеру белым списком — с меткой «Идёт сделка»): срок вышел или идёт сделка —
+        // открытая менеджеру белым списком — обычным предложением): срок вышел или идёт сделка —
         // с сайта ушло. Галерея — окно показа черновика (`Offer::inGallery`).
         $gallery ? $q->visibleTo($user)->inGallery() : $q->siteList($user);
 
@@ -160,38 +161,39 @@ final class CatalogQuery
                 'urgent' => $q->urgent(),
                 'recommended' => $q->where('recommended', true),
                 'fresh' => self::fresh($q, $user, $gallery),
-                'ending' => self::ending($q),
+                'ending' => self::ending($q, site: true),
                 'favorite' => $user ? $q->whereHas('favorites', fn ($f) => $f->where('user_id', $user->id)) : $q->whereRaw('false'),
                 default => null,
             };
         }
 
         $sort = self::sort($filters, $gallery, $prices, $user);
+        $close = Offer::closesAtSql();
+        $live = "(offers.state = 'sold' or (offers.state = 'open' and offers.bids_close_at > now()))";
         $dir = str_starts_with($sort, '-') ? 'desc' : 'asc';
         // Пачки по сроку при любой сортировке (11.10.2026, владелец): сначала порядок пачек — каталог: открытый приём по
-        // сроку, закрытый и «Идёт сделка» после; галерея — по концу окна показа. Выбранная сортировка — внутри пачки;
+        // сроку (сделка, что показывают ему, — открытая со сроком `closesAt`), закрытый после; галерея — по концу окна показа. Выбранная сортировка — внутри пачки;
         // «по сроку» по убыванию переворачивает и пачки.
         // Только в «Лентах» (`packs`, 22.10.2026): в «Плитках» пачек нет, и сортировка — какая выбрана.
         if (self::grouped($user, $gallery) && ($filters['packs'] ?? false)) {
             $packs = ltrim($sort, '-') === 'closing' ? $dir : 'asc';
             $gallery
                 ? $q->orderByRaw("offers.gallery_until {$packs} nulls last")
-                : $q->orderByRaw('case when offers.state = ? and offers.bids_close_at > now() then 0 else 1 end', [OfferState::Open->value])
-                    ->orderByRaw("offers.bids_close_at {$packs} nulls last");
+                : $q->orderByRaw("case when {$live} then 0 else 1 end")->orderByRaw("{$close} {$packs} nulls last");
         }
         match (ltrim($sort, '-')) {
             // Внутри пачки слота (или окна галереи) — рекомендованные, потом новые показы.
             'closing' => $gallery
                 ? $q->orderByRaw("gallery_until {$dir} nulls last")->orderByDesc('sort_weight')->orderByRaw("{$opened} desc nulls last")
-                : $q->orderByRaw('case when offers.state = ? and offers.bids_close_at > now() then 0 else 1 end', [OfferState::Open->value])
-                    ->orderByRaw("offers.bids_close_at {$dir} nulls last")->orderByDesc('sort_weight')->orderByRaw("{$opened} desc nulls last"),
+                : $q->orderByRaw("case when {$live} then 0 else 1 end")
+                    ->orderByRaw("{$close} {$dir} nulls last")->orderByDesc('sort_weight')->orderByRaw("{$opened} desc nulls last"),
             'price' => $q->orderByRaw("asking_price {$dir} nulls last"),
             'year' => $q->orderByRaw(Car::sql('offers', 'year')." {$dir} nulls last")->orderByDesc('published_at'),
             // Горящие — первыми, ближний срок выше (22.10.2026, владелец: «по горящему ни одного подтверждения — потеряли
             // деньги»); дальше новые сверху. Только сортировкой по умолчанию и тем, кто видит срок.
             default => $q->when(! $gallery && $sort === '-published' && ($user?->bidsOnSite() ?? false), fn ($h) => $h
-                ->orderByRaw('case when offers.state = ? and offers.bids_close_at > now() and offers.bids_close_at <= now() + make_interval(hours => ?) then 0 else 1 end', [OfferState::Open->value, Offer::HOT_HOURS])
-                ->orderByRaw('case when offers.state = ? and offers.bids_close_at > now() and offers.bids_close_at <= now() + make_interval(hours => ?) then offers.bids_close_at end asc nulls last', [OfferState::Open->value, Offer::HOT_HOURS]))
+                ->orderByRaw("case when {$live} and {$close} > now() and {$close} <= now() + make_interval(hours => ?) then 0 else 1 end", [Offer::HOT_HOURS])
+                ->orderByRaw("case when {$live} and {$close} > now() and {$close} <= now() + make_interval(hours => ?) then {$close} end asc nulls last", [Offer::HOT_HOURS]))
                 ->orderByDesc('sort_weight')->orderByRaw(($gallery ? 'gallery_from' : $opened)." {$dir} nulls last"),
         };
 
@@ -246,9 +248,12 @@ final class CatalogQuery
     }
 
     /** Горящие: приём закрывается в ближайшие 12 ч. */
-    public static function ending(Builder $q): Builder
+    public static function ending(Builder $q, bool $site = false): Builder
     {
-        return $q->where('offers.state', OfferState::Open)->whereBetween('offers.bids_close_at', [now(), now()->addHours(Offer::HOT_HOURS)]);
+        // Каталог (`site`): и сделка, что показывают ему, — по её сроку (`closesAt`); в CRM сделка горящей не бывает.
+        return $site
+            ? $q->whereIn('offers.state', [OfferState::Open, OfferState::Sold])->whereBetween(DB::raw(Offer::closesAtSql()), [now(), now()->addHours(Offer::HOT_HOURS)])
+            : $q->where('offers.state', OfferState::Open)->whereBetween('offers.bids_close_at', [now(), now()->addHours(Offer::HOT_HOURS)]);
     }
 
     /**
