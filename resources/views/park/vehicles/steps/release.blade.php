@@ -70,7 +70,7 @@
         @endif
     @endif
     @if ($vendorDue > 0 && $money)
-        <div class="row justify-between"><span class="text-ink-muted">Вендору выставим счётом</span><span class="nums text-ink-muted">{{ Money::rub($vendorDue) }}</span></div>
+        <div class="row justify-between"><span class="text-ink-muted">Вендору — в счёт месяца</span><span class="nums text-ink-muted">{{ Money::rub($vendorDue) }}</span></div>
     @endif
 </div>
 <x-park.photos :vehicle="$vehicle" :stage="PhotoStage::Release" nested :collapsed="! $win" edit :files="$win" class="mt-3"/>

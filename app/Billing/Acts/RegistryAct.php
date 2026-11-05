@@ -49,7 +49,7 @@ final class RegistryAct
         $out = [];
         foreach (self::form($invoice)->files($tow) as $template => $title) {
             [$rows, $keys] = $this->rows($invoice, $template);
-            $out[$title.' '.$invoice->docNo().'.'.pathinfo($template, PATHINFO_EXTENSION)] = Template::fill($template, $vars, $rows, $keys);
+            $out[$title.' '.$invoice->fileNo().'.'.pathinfo($template, PATHINFO_EXTENSION)] = Template::fill($template, $vars, $rows, $keys);
         }
 
         return $out;

@@ -2,9 +2,10 @@
 
 namespace App\Http\Park;
 
-use App\Billing\Actions\IssueInvoice;
+use App\Billing\Acts\RegistryAct;
 use App\Billing\ChargeKind;
 use App\Billing\Closing;
+use App\Billing\Documents\InvoicePdf;
 use App\Billing\Documents\StorageActPdf;
 use App\Billing\Invoice;
 use App\Billing\InvoiceState;
@@ -18,8 +19,7 @@ use App\Support\Facets\Common;
 use App\Support\Facets\Facets;
 use App\Support\ListPrefs;
 use App\Support\ListView;
-use App\Support\Money;
-use App\Support\Plural;
+use App\Support\OfficePreview;
 use App\Support\Sort;
 use App\Support\Table\ColRole;
 use App\Support\Table\Column;
@@ -28,6 +28,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Carbon;
+use Illuminate\Validation\ValidationException;
 
 /** Деньги стоянки: счета с пресетами, карточка строки, карточка счёта, долги по контрагентам, месяц. */
 class MoneyController
@@ -134,7 +135,7 @@ class MoneyController
         return view('billing.docs.storage-acts', ['invoice' => $invoice, 'self' => $invoice->seller->party()]);
     }
 
-    public const DEBT_SORTS = ['overdue' => ['Просрочено', 'desc'], 'owed_to_us' => ['Нам должны', 'desc'], 'we_owe' => ['Мы должны', 'desc'], 'unbilled' => ['Не выставлено', 'desc']];
+    public const DEBT_SORTS = ['overdue' => ['Просрочено', 'desc'], 'owed_to_us' => ['Нам должны', 'desc'], 'we_owe' => ['Мы должны', 'desc'], 'unbilled' => ['Не отправлено', 'desc']];
 
     public function debts(Request $request)
     {
@@ -153,30 +154,92 @@ class MoneyController
         ]);
     }
 
-    /** Закрытие месяца: строки «кому и за что выставить хранение» с галочками; «Выставить выбранные» — счета с актами. */
+    /**
+     * Счета и акты за месяц (05.11.2026, владелец: «они должны быть актуальными всегда, зафиксировать — если отправили»):
+     * живые документы по плательщикам (`Closing::items` группами) и отправленные за этот месяц со сверкой
+     * (`Closing::drift`: данные изменились после отправки).
+     */
     public function closing(Request $request)
     {
         $month = self::month($request);
-        $items = Closing::items($month);
-        // Уже выставленное за этот месяц — счета, чьё хранение кончается в нём.
-        $issued = Invoice::where('direction', 'issued')->whereHas('charges', fn ($c) => $c->where('kind', ChargeKind::Storage)->whereBetween('period_to', [$month->toDateString(), $month->copy()->endOfMonth()->toDateString()]))
-            ->where('state', '!=', InvoiceState::Void)->ofPark()->with(['party', 'vehicle'])->latest('id')->get();
+        $sent = Invoice::where('direction', 'issued')->where('state', '!=', InvoiceState::Void)->ofPark()
+            ->where(fn ($q) => $q->where('month', $month->toDateString())
+                // Счёт покупателю на ТС — без месяца: по концу его хранения.
+                ->orWhere(fn ($b) => $b->whereNull('month')->whereNotNull('vehicle_id')->whereHas('charges', fn ($c) => $c->where('kind', ChargeKind::Storage)
+                    ->whereBetween('period_to', [$month->toDateString(), $month->copy()->endOfMonth()->toDateString()]))))
+            ->with(['party', 'vehicle', 'charges.vehicle'])->latest('id')->get();
+        $sentGroups = $sent->map(fn ($i) => Closing::groupOfInvoice($i))->filter()->all();
 
         return view('park.money.closing', [
-            'month' => $month, 'items' => $items->groupBy(fn ($i) => Closing::groupOf($i)),
-            'issued' => $issued,
+            'month' => $month, 'items' => Closing::items($month)->groupBy(fn ($i) => Closing::groupOf($i)),
+            'sent' => $sent, 'drift' => $sent->mapWithKeys(fn ($i) => [$i->id => Closing::drift($i)])->filter(), 'sentGroups' => $sentGroups,
             'months' => collect(range(0, 5))->map(fn ($n) => now()->subMonths($n)->startOfMonth()),
         ]);
     }
 
-    public function close(Request $request, IssueInvoice $issue, StorageActPdf $act)
+    /** Живой документ: машины, счёт и акт на лету, «Отправить» и «Отправили сами». `replaces` — исправленный отправленного. */
+    public function draft(Request $request)
     {
-        $data = $request->validate(['month' => ['required', 'date_format:Y-m'], 'items' => ['required', 'array'], 'items.*' => ['string', 'max:20']]);
-        $result = Closing::issue(Carbon::createFromFormat('!Y-m', $data['month'])->startOfMonth(), $data['items'], $request->user(), $issue, $act);
-        $sum = Money::rub($result['issued']->sum('total'));
-        $toast = $result['issued']->isNotEmpty() ? 'Выставлено '.$result['issued']->count().' '.Plural::of($result['issued']->count(), ['счёт', 'счёта', 'счетов']).' на '.$sum : 'Ничего не выставлено';
+        [$month, $group, $replaces] = $this->draftKey($request);
+        $draft = Closing::draft($month, $group, $replaces);
+        if (! $draft) {
+            return redirect('/money/closing?month='.$month->format('Y-m'))->with('toast', 'Документ уже отправлен');
+        }
 
-        return redirect('/money/closing?month='.$data['month'])->with('toast', $toast)->withErrors($result['errors'] ? ['closing' => implode('; ', $result['errors'])] : []);
+        return view('park.money.draft', ['invoice' => $draft, 'month' => $month, 'group' => $group, 'replaces' => $replaces, 'skipped' => Closing::$skipped,
+            'query' => http_build_query(array_filter(['month' => $month->format('Y-m'), 'group' => $group, 'replaces' => $replaces?->id]))]);
+    }
+
+    public function draftPdf(Request $request, InvoicePdf $pdf)
+    {
+        [$month, $group, $replaces] = $this->draftKey($request);
+        abort_unless($draft = Closing::draft($month, $group, $replaces), 404);
+
+        return response($pdf->render($draft), 200, ['Content-Type' => 'application/pdf', 'Content-Disposition' => "inline; filename*=UTF-8''".rawurlencode('Счет '.$draft->fileNo().'.pdf')]);
+    }
+
+    /** Акт живого документа — файл формы страховой (`?n=` — второй у РГС), у счёта на ТС — PDF акта хранения. */
+    public function draftAct(Request $request, StorageActPdf $act, RegistryAct $registry)
+    {
+        [$month, $group, $replaces] = $this->draftKey($request);
+        abort_unless($draft = Closing::draft($month, $group, $replaces), 404);
+        if (! $draft->isRegistry()) {
+            return response($act->render($draft), 200, ['Content-Type' => 'application/pdf', 'Content-Disposition' => 'inline; filename="akt.pdf"']);
+        }
+        $files = $registry->files($draft);
+        $name = array_keys($files)[(int) $request->query('n', 0)] ?? null;
+        abort_unless($name !== null, 404);
+        $path = $files[$name];
+        if ($request->boolean('preview')) {
+            return OfficePreview::response($path, $name);
+        }
+
+        return response()->download($path, $name)->deleteFileAfterSend();
+    }
+
+    /** «Отправили сами» — документ ушёл не нашим письмом (на бумаге, в мессенджере): фиксируется как отправленный. */
+    public function fix(Request $request)
+    {
+        [$month, $group, $replaces] = $this->draftKey($request);
+        abort_unless($request->user()->canManagePark(), 403);
+        try {
+            $invoice = Closing::fix($month, $group, $request->user(), $replaces);
+        } catch (ValidationException $e) {
+            return redirect('/money/closing?month='.$month->format('Y-m'))->with('toast', implode(', ', $e->validator->errors()->all()));
+        }
+
+        return redirect('/money/invoices/'.$invoice->id)->with('toast', 'Отмечен отправленным, '.$invoice->label())
+            ->withErrors(Closing::$skipped ? ['closing' => implode('; ', Closing::$skipped)] : []);
+    }
+
+    /** @return array{0: Carbon, 1: string, 2: ?Invoice} */
+    private function draftKey(Request $request): array
+    {
+        $data = $request->validate(['month' => ['required', 'date_format:Y-m'], 'group' => ['required', 'string', 'max:60'], 'replaces' => ['nullable', 'integer']]);
+        $replaces = isset($data['replaces']) ? Invoice::ofPark()->where('state', InvoiceState::Issued)->findOrFail($data['replaces']) : null;
+        abort_if($replaces && $replaces->paid > 0, 422);
+
+        return [Carbon::createFromFormat('!Y-m', $data['month'])->startOfMonth(), $data['group'], $replaces];
     }
 
     private static function month(Request $request): Carbon

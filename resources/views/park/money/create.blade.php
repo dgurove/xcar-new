@@ -62,5 +62,5 @@
         <x-ui.field name="notes" label="Заметка в счёт" type="textarea"/>
         </div>
     </form>
-    <x-ui.action-bar><x-ui.button form="invoice-form" class="min-w-0 flex-1">Выставить</x-ui.button></x-ui.action-bar>
+    <x-ui.action-bar><x-ui.button form="invoice-form" class="min-w-0 flex-1">Создать счёт</x-ui.button></x-ui.action-bar>
 </x-ui.shell>

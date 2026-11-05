@@ -10,7 +10,7 @@ namespace App\Park;
  */
 final class OutMoney
 {
-    public const LABELS = ['unpaid' => 'Не оплачено', 'unbilled' => 'Не выставлено', 'paid' => 'Оплачено'];
+    public const LABELS = ['unpaid' => 'Не оплачено', 'unbilled' => 'Не отправлено', 'paid' => 'Оплачено'];
 
     /** Тон слова в строке: не оплачено — дело, не выставлено — ждёт закрытия месяца, оплачено — хорошо. */
     public const TONES = ['unpaid' => 'text-urgent', 'unbilled' => 'text-ink-muted', 'paid' => 'text-accent-text'];

@@ -18,7 +18,7 @@
                             @if ($d['overdue'] > 0)<span class="text-danger">просрочено</span>@endif
                             @if ($d['overdue'] > 0 && $d['owed_to_us'] > $d['overdue'])<span class="nums">нам {{ Money::rub($d['owed_to_us']) }}</span>@endif
                             @if ($d['we_owe'] > 0)<span class="nums text-urgent">мы должны {{ Money::rub($d['we_owe']) }}</span>@endif
-                            @if ($d['unbilled'] > 0)<span class="nums">не выставлено {{ Money::rub($d['unbilled']) }}</span>@endif
+                            @if ($d['unbilled'] > 0)<span class="nums">не отправлено {{ Money::rub($d['unbilled']) }}</span>@endif
                         </div>
                     </div>
                     @if ($d['overdue'] > 0)<span class="nums shrink-0 text-danger">{{ Money::rub($d['overdue']) }}</span>

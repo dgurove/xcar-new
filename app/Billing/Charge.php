@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /** Начисление: за что, сколько и по какой цене; в счёт попадает при выставлении, до того — «не выставлено». */
-#[Fillable(['party_id', 'vehicle_id', 'deal_id', 'invoice_id', 'kind', 'title', 'qty', 'unit', 'price', 'amount', 'period_from', 'period_to', 'voided_at', 'void_reason', 'created_by'])]
+#[Fillable(['party_id', 'vehicle_id', 'deal_id', 'invoice_id', 'kind', 'title', 'qty', 'unit', 'price', 'amount', 'period_from', 'period_to', 'starts_billing', 'voided_at', 'void_reason', 'created_by'])]
 class Charge extends Model
 {
     use FastAttributes;
@@ -19,7 +19,7 @@ class Charge extends Model
 
     protected function casts(): array
     {
-        return ['kind' => ChargeKind::class, 'qty' => 'float', 'price' => 'float', 'amount' => 'float', 'period_from' => 'date', 'period_to' => 'date', 'voided_at' => 'datetime'];
+        return ['kind' => ChargeKind::class, 'qty' => 'float', 'price' => 'float', 'amount' => 'float', 'period_from' => 'date', 'period_to' => 'date', 'starts_billing' => 'bool', 'voided_at' => 'datetime'];
     }
 
     public function party(): BelongsTo

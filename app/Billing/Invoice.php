@@ -35,7 +35,7 @@ use Spatie\MediaLibrary\InteractsWithMedia;
  * выставил: реквизиты в документах и свой ряд номеров. Реестр (`isRegistry`) — счёт парковки плательщику за месяц
  * без своей ТС: машины — строками хранения со своим `vehicle_id`, долг машины — её доля (`Ledger::shareOf`).
  */
-#[Fillable(['seller', 'park', 'direction', 'year', 'number', 'code', 'external_no', 'kind', 'month', 'party_id', 'vehicle_id', 'deal_id', 'offer_id', 'issued_at', 'due_at', 'vat', 'vat_rate', 'vat_on_top', 'total', 'paid', 'state', 'paid_at',
+#[Fillable(['seller', 'park', 'direction', 'year', 'number', 'code', 'revision', 'external_no', 'kind', 'month', 'party_id', 'vehicle_id', 'deal_id', 'offer_id', 'issued_at', 'due_at', 'vat', 'vat_rate', 'vat_on_top', 'total', 'paid', 'state', 'paid_at',
     'overdue_at', 'reminded_at', 'sent_at', 'voided_at', 'void_reason', 'notes', 'created_by', 'car_title', 'credit_deal_id'])]
 class Invoice extends Model implements HasMedia
 {
@@ -67,7 +67,7 @@ class Invoice extends Model implements HasMedia
     protected function casts(): array
     {
         return ['seller' => Seller::class, 'kind' => ChargeKind::class, 'state' => InvoiceState::class, 'month' => 'date', 'issued_at' => 'date', 'due_at' => 'date', 'paid_at' => 'date', 'vat' => 'bool', 'vat_rate' => 'int', 'vat_on_top' => 'bool', 'park' => 'bool',
-            'total' => 'float', 'paid' => 'float', 'overdue_at' => 'datetime', 'reminded_at' => 'datetime', 'sent_at' => 'datetime', 'voided_at' => 'datetime'];
+            'total' => 'float', 'paid' => 'float', 'revision' => 'int', 'overdue_at' => 'datetime', 'reminded_at' => 'datetime', 'sent_at' => 'datetime', 'voided_at' => 'datetime'];
     }
 
     public function registerMediaCollections(): void
@@ -430,15 +430,21 @@ class Invoice extends Model implements HasMedia
         return $this->deal?->buyer ?? ($this->garageCar ?? $this->garagePayoutCar)?->manager;
     }
 
-    /** Номер для документа и имени файла без «№»: «20261108-01» у парковки, иначе сквозной. */
+    /** Номер для документа без «№»: «20261108-01» у парковки, иначе сквозной. */
     public function docNo(): string
     {
         return (string) ($this->code ?? $this->number);
     }
 
+    /** Номер в имени файла: исправленный — «20261108-01 (ред 1)», как в архиве. */
+    public function fileNo(): string
+    {
+        return $this->docNo().($this->revision ? ' (ред '.$this->revision.')' : '');
+    }
+
     public function label(): string
     {
-        return $this->code ? '№ '.$this->code : ($this->number ? '№ '.$this->number : ($this->external_no ? $this->external_no : $this->kind->label()));
+        return $this->code ? '№ '.$this->code.($this->revision ? ', ред. '.$this->revision : '') : ($this->number ? '№ '.$this->number : ($this->external_no ? $this->external_no : $this->kind->label()));
     }
 
     /**

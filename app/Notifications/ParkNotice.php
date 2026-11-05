@@ -90,8 +90,8 @@ final class ParkNotice extends Notice
 
     public static function closing(CarbonInterface $month, int $count, float $sum): self
     {
-        return (new self('Закрытие '.mb_strtolower($month->translatedFormat('F')).': '.$count.' '.Plural::of($count, ['счёт', 'счёта', 'счетов']).' на '.Money::rub($sum), 'Проверьте и выставьте', '/money/closing?month='.$month->format('Y-m'),
-            category: 'park_money'))->variant('closing', 'Закрытие месяца');
+        return (new self('Счета и акты за '.mb_strtolower($month->translatedFormat('F')).': '.$count.' не '.Plural::of($count, ['отправлен', 'отправлены', 'отправлены']).' на '.Money::rub($sum), 'Проверьте и отправьте', '/money/closing?month='.$month->format('Y-m'),
+            category: 'park_money'))->variant('closing', 'Счета и акты');
     }
 
     /** Управляющий принял или выдал ТС — администраторам парковки (в Telegram им пишет `NotifyOwner`, здесь — лента и пуш). */

@@ -130,7 +130,11 @@ Route::domain(config('xcar.park_host'))->middleware(['auth', 'section:park'])->g
         Route::get('/money', [MoneyController::class, 'index']);
         Route::get('/money/debts', [MoneyController::class, 'debts']);
         Route::get('/money/closing', [MoneyController::class, 'closing']);
-        Route::post('/money/closing', [MoneyController::class, 'close']);
+        // Живой документ месяца: счёт и акт на лету, «Отправили сами» фиксирует (письмом — `/mail/new?closing=`).
+        Route::get('/money/draft', [MoneyController::class, 'draft']);
+        Route::get('/money/draft/pdf', [MoneyController::class, 'draftPdf']);
+        Route::get('/money/draft/act', [MoneyController::class, 'draftAct']);
+        Route::post('/money/draft/fix', [MoneyController::class, 'fix']);
         // Реквизиты плательщиков — и управляющему (только парковки, без наших — PartyController::guard).
         Route::get('/money/parties', [PartyController::class, 'index']);
         Route::post('/money/parties', [PartyController::class, 'store']);

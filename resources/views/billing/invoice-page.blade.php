@@ -29,7 +29,7 @@
                 {{-- Письмо — окном писем (28.10.2026, одна дверь): шторка «Действия» закрывается, окно открывается. --}}
                 @if ($mailUrl ?? null)<button type="button" class="btn btn-accent btn-block" data-controller="emit" data-action="emit#send sheet#close" data-emit-event-param="letters:open" data-emit-url-param="{{ $mailUrl }}"><x-ui.icon name="send" class="size-4"/> {{ $i->sent_at ? 'Отправить снова' : 'Отправить' }}</button>@endif
                 {{-- Документы — в шторке документов поверх окна; акт хранения — PDF, если выставлен закрытием месяца, иначе страница. --}}
-                @if ($file)<x-ui.doc :doc="['url' => $base.'/pdf', 'type' => 'pdf', 'name' => 'schet-'.$i->number.'.pdf', 'label' => 'Счёт '.$i->label()]" class="btn btn-quiet btn-block"><x-ui.icon name="file" class="size-4"/> PDF</x-ui.doc>@endif
+                @if ($file)<x-ui.doc :doc="['url' => $base.'/pdf', 'type' => 'pdf', 'name' => 'Счет '.$i->fileNo().'.pdf', 'label' => 'Счёт '.$i->label()]" class="btn btn-quiet btn-block"><x-ui.icon name="file" class="size-4"/> PDF</x-ui.doc>@endif
                 {{-- Акт: у реестра — прежний файл страховой (Excel или Word, у РГС ещё приложение), у счёта на ТС — PDF или страница. --}}
                 @include('billing.act-docs', ['invoice' => $i, 'base' => $base, 'class' => 'btn btn-ghost btn-block'])
                 @if ($i->isRegistry() && $i->park && $i->kind === \App\Billing\ChargeKind::Storage)
@@ -50,6 +50,16 @@
             </div>
         </x-ui.sheet>
     </div>
+    {{-- Данные отправленного документа изменились (`Closing::drift`): исправленный — тем же номером и «ред.», прежний аннулируется. --}}
+    @if ($drift ?? null)
+        <div class="box mb-4 flex flex-wrap items-center gap-3">
+            <div class="min-w-0 flex-1">
+                <div class="text-danger">Изменилось после отправки</div>
+                <div class="text-sm text-ink-muted">было <span class="nums">{{ Money::rub($drift['was']) }}</span>, сейчас <span class="nums">{{ Money::rub($drift['now']) }}</span></div>
+            </div>
+            @if ($reviseUrl ?? null)<a href="{{ $reviseUrl }}" class="btn btn-s btn-accent">Исправленный</a>@endif
+        </div>
+    @endif
     <div class="grid grid-cols-1 items-start gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]">
         <div class="flex flex-col gap-4">
             <x-ui.card :title="$i->isRegistry() ? 'Реестр' : 'Строки'">

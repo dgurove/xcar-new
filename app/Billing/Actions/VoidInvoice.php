@@ -41,7 +41,7 @@ final class VoidInvoice
                 $vehicle = Vehicle::whereKey($vehicleId)->lockForUpdate()->first();
                 $first = $rows->first()->period_from;
                 if ($vehicle && $vehicle->storage_billed_until && $vehicle->storage_billed_until->gte($first)) {
-                    $vehicle->update(['storage_billed_until' => $first->copy()->subDay()->lt($vehicle->accepted_at?->startOfDay()) ? null : $first->copy()->subDay()]);
+                    $vehicle->update(['storage_billed_until' => Closing::billedBefore($rows, $vehicle)]);
                 }
                 if ($invoice->isRegistry()) {
                     $vehicle?->log(EventType::InvoiceVoided, $by, ['label' => 'реестр '.$invoice->label()]);

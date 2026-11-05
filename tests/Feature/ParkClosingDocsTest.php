@@ -3,12 +3,12 @@
 namespace Tests\Feature;
 
 use App\Billing\ActForm;
-use App\Billing\Actions\IssueInvoice;
 use App\Billing\Cadence;
 use App\Billing\Charge;
 use App\Billing\ChargeKind;
 use App\Billing\Closing;
-use App\Billing\Documents\StorageActPdf;
+use App\Billing\Invoice;
+use App\Billing\InvoiceState;
 use App\Billing\Numbering;
 use App\Billing\Party;
 use App\Billing\Seller;
@@ -68,37 +68,62 @@ class ParkClosingDocsTest extends TestCase
         $this->assertSame('20260611-01', Numbering::code(Seller::Park, now()->addDay()));
     }
 
-    public function test_tow_is_its_own_invoice_and_ip_has_no_vat(): void
+    public function test_draft_is_live_and_fix_records_it(): void
     {
         Charge::create(['party_id' => $this->vendor->party_id, 'vehicle_id' => $this->vehicle->id, 'kind' => ChargeKind::Tow, 'title' => 'Подача эвакуатора',
             'qty' => 1, 'unit' => 'pc', 'price' => 16000, 'amount' => 16000, 'period_from' => '2026-10-01', 'created_by' => $this->admin->id]);
         $month = Carbon::parse('2026-10-01');
-        $items = Closing::items($month);
-        $this->assertCount(2, $items);
-        $this->assertCount(2, $items->groupBy(fn ($i) => Closing::groupOf($i)));
+        $groups = Closing::items($month)->groupBy(fn ($i) => Closing::groupOf($i))->keys();
+        $this->assertCount(2, $groups);
+        [$storageGroup, $towGroup] = str_starts_with($groups[0], 'tow:') ? [$groups[1], $groups[0]] : [$groups[0], $groups[1]];
 
-        $res = Closing::issue($month, $items->pluck('key')->all(), $this->admin, app(IssueInvoice::class), app(StorageActPdf::class));
-        $this->assertSame([], $res['errors']);
-        $storage = $res['issued']->firstWhere('kind', ChargeKind::Storage)->fresh();
-        $tow = $res['issued']->firstWhere('kind', ChargeKind::Tow)->fresh();
+        // Живой: ничего не записано, сумма по текущим данным, номер — какой получит.
+        $draft = Closing::draft($month, $storageGroup);
+        $this->assertFalse($draft->exists);
+        $this->assertSame(3100.0, (float) $draft->total);             // 31 сутки по 100, без эвакуации
+        $this->assertSame('20260511-01', $draft->code);
+        $this->assertSame(0, Invoice::count());
+        $this->assertNull($this->vehicle->fresh()->storage_billed_until);
 
-        $this->assertSame(3100.0, (float) $storage->total);           // 31 сутки по 100, без эвакуации
+        $storage = Closing::fix($month, $storageGroup, $this->admin);
+        $tow = Closing::fix($month, $towGroup, $this->admin);
+        $this->assertSame(3100.0, (float) $storage->total);
         $this->assertSame(16000.0, (float) $tow->total);
         $this->assertNull($storage->vat_rate);                         // ИП — без НДС
-        $this->assertSame('20260511-01', $storage->code);
-        $this->assertSame('20260511-02', $tow->code);
+        $this->assertNotNull($storage->sent_at);
         $this->assertSame('№ 20260511-01', $storage->label());
+        $this->assertSame('20260511-02', $tow->code);
         $this->assertStringEndsWith('.xlsx', $storage->getFirstMedia('act')->file_name);
         $this->assertStringContainsString('Акт по эвакуации', $tow->getFirstMedia('act')->file_name);
         $this->assertSame('2026-10-31', $this->vehicle->fresh()->storage_billed_until->toDateString());
+        $this->assertNull(Closing::draft($month, $storageGroup));       // отправлен — живого больше нет
+        $this->assertNull(Closing::drift($storage));
+    }
+
+    /** Данные отправленного исправили — «изменилось», исправленный уходит тем же номером и «ред. 1», прежний аннулирован. */
+    public function test_changed_after_sending_is_revised_with_same_number(): void
+    {
+        $month = Carbon::parse('2026-10-01');
+        $group = Closing::items($month)->map(fn ($i) => Closing::groupOf($i))->first();
+        $sent = Closing::fix($month, $group, $this->admin);
+        $this->vehicle->fresh()->update(['accepted_at' => '2026-10-05 10:00']);
+
+        $this->assertSame(['was' => 3100.0, 'now' => 2700.0], Closing::drift($sent->fresh()));
+        $revised = Closing::fix($month, $group, $this->admin, $sent->fresh());
+        $this->assertSame(InvoiceState::Void, $sent->fresh()->state);
+        $this->assertSame($sent->code, $revised->code);
+        $this->assertSame(1, $revised->revision);
+        $this->assertSame(2700.0, (float) $revised->total);
+        $this->assertSame('№ 20260511-01, ред. 1', $revised->label());
+        $this->assertNull(Closing::drift($revised));
     }
 
     public function test_rgs_form_gives_act_and_appendix(): void
     {
         $this->vendor->update(['act_form' => ActForm::Rgs]);
         $month = Carbon::parse('2026-10-01');
-        $res = Closing::issue($month, Closing::items($month)->pluck('key')->all(), $this->admin, app(IssueInvoice::class), app(StorageActPdf::class));
-        $files = $res['issued']->first()->fresh()->getMedia('act')->pluck('file_name')->sort()->values()->all();
+        $invoice = Closing::fix($month, Closing::items($month)->map(fn ($i) => Closing::groupOf($i))->first(), $this->admin);
+        $files = $invoice->fresh()->getMedia('act')->pluck('file_name')->sort()->values()->all();
         $this->assertCount(2, $files);
         $this->assertStringEndsWith('.docx', $files[0]);
         $this->assertStringEndsWith('.xlsx', $files[1]);

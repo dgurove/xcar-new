@@ -21,6 +21,7 @@ use App\Users\User;
 use App\Vendors\Vendor;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -53,11 +54,12 @@ final class IssueInvoice
      * @param  list<array{vehicle: Vehicle, until: ?CarbonInterface, charges: list<int>}>  $registry  ТС реестра за `$month` (`until` пуст — без хранения, реестр эвакуации)
      */
     public function __invoke(Party $party, User $by, string $direction, ChargeKind $kind, ?CarbonInterface $dueAt, ?CarbonInterface $storageUntil = null, array $chargeIds = [], array $lines = [],
-        ?Vehicle $vehicle = null, ?int $dealId = null, ?int $offerId = null, ?string $externalNo = null, ?string $notes = null, array $registry = [], ?CarbonInterface $month = null, ?Seller $seller = null): Invoice
+        ?Vehicle $vehicle = null, ?int $dealId = null, ?int $offerId = null, ?string $externalNo = null, ?string $notes = null, array $registry = [], ?CarbonInterface $month = null, ?Seller $seller = null,
+        ?string $code = null, int $revision = 0): Invoice
     {
         Nav::forgetStaffCounts();
         $this->skipped = [];
-        $invoice = DB::transaction(function () use ($party, $by, $direction, $kind, $dueAt, $storageUntil, $chargeIds, $lines, $vehicle, $dealId, $offerId, $externalNo, $notes, $registry, $month, $seller) {
+        $invoice = DB::transaction(function () use ($party, $by, $direction, $kind, $dueAt, $storageUntil, $chargeIds, $lines, $vehicle, $dealId, $offerId, $externalNo, $notes, $registry, $month, $seller, $code, $revision) {
             $year = (int) now()->format('Y');
             $issued = $direction === 'issued';
             // Реестр — только парковка: продавец — вендора-плательщика (без ТС `Seller::for` отдал бы ПРАЙМ сделок).
@@ -69,7 +71,8 @@ final class IssueInvoice
             $vatOnTop = $vatRate && $party->vat_on_top;
             $invoice = Invoice::create([
                 'seller' => $seller, 'park' => $park, 'direction' => $direction, 'year' => $issued ? $year : null, 'number' => $issued ? Numbering::next($seller, $year) : null,
-                'code' => $issued && $park ? Numbering::code($seller, now()) : null,
+                // Исправленный документ (`Closing::fix` с прежним номером) — тот же номер и следующая редакция.
+                'code' => $issued && $park ? ($code ?? Numbering::code($seller, now())) : null, 'revision' => $revision,
                 'external_no' => $externalNo, 'kind' => $kind, 'month' => $registry && $month ? Carbon::instance($month)->startOfMonth()->toDateString() : null, 'party_id' => $party->id, 'vehicle_id' => $vehicle?->id, 'deal_id' => $dealId, 'offer_id' => $offerId,
                 'issued_at' => now()->toDateString(), 'due_at' => $dueAt ? Carbon::instance($dueAt)->toDateString() : null, 'vat' => (bool) $vatRate, 'vat_rate' => $vatRate, 'vat_on_top' => $vatOnTop, 'state' => InvoiceState::Issued, 'notes' => $notes, 'created_by' => $by->id,
             ]);
@@ -148,25 +151,47 @@ final class IssueInvoice
         if ($vehicle->storage_billed_until && $until->lte($vehicle->storage_billed_until)) {
             throw ValidationException::withMessages(['storage_until' => 'Хранение по '.$vehicle->storage_billed_until->format('d.m.Y').' уже выставлено']);
         }
-        $segments = Accrual::storage($vehicle, $until);
+        $lines = self::storageLines($vehicle, $party, $until, $any);
         $total = 0.0;
+        $fresh = $vehicle->storage_billed_until === null;
+        foreach ($lines as $n => $charge) {
+            // Первая строка ТС, у которой хранение ещё не выставлялось: откат вернёт «не выставлялось», а не день до неё.
+            $charge->forceFill(['invoice_id' => $invoice->id, 'created_by' => $by->id, 'starts_billing' => $fresh && $n === 0])->save();
+            $total += $charge->amount;
+        }
+        $vehicle->update(['storage_billed_until' => $any ? $until : $vehicle->storage_billed_until]);
+
+        return $total;
+    }
+
+    /**
+     * Строки хранения ТС по день, не записанные: отрезки `Accrual` этого плательщика. Одна дверь для счёта и для живого
+     * документа закрытия (`Closing::draft`) — живой показывает ровно то, что запишет отправка. Чужой отрезок раньше своего —
+     * отказ.
+     *
+     * @return Collection<int, Charge>
+     */
+    public static function storageLines(Vehicle $vehicle, Party $party, CarbonInterface $until, ?bool &$any = null): Collection
+    {
+        $lines = collect();
+        $segments = Accrual::storage($vehicle, Carbon::instance($until)->startOfDay());
+        $any = $segments->isNotEmpty(); // день, по который выставлено, двигается и нулевыми отрезками
         foreach ($segments as $s) {
             if ($s['amount'] <= 0) {
                 continue;
             }
-            $payer = Ledger::payerParty($vehicle, $s['payer']);
+            $payer = Ledger::payerParty($vehicle, $s['payer'], false);
             if ($payer?->id !== $party->id) {
                 throw ValidationException::withMessages(['storage_until' => 'Хранение '.$s['from']->format('d.m').' – '.$s['to']->format('d.m').' платит '.($payer?->name ?? Accrual::payerLabel($s['payer'])).', сначала счёт ему']);
             }
-            $charge = Charge::create([
-                'party_id' => $party->id, 'vehicle_id' => $vehicle->id, 'invoice_id' => $invoice->id, 'kind' => ChargeKind::Storage,
+            $charge = new Charge([
+                'party_id' => $party->id, 'vehicle_id' => $vehicle->id, 'kind' => ChargeKind::Storage,
                 'title' => 'Хранение '.$s['from']->format('d.m.Y').' – '.$s['to']->format('d.m.Y'), 'qty' => $s['days'], 'unit' => 'day', 'price' => $s['rate'],
-                'amount' => $s['amount'], 'period_from' => $s['from'], 'period_to' => $s['to'], 'created_by' => $by->id,
+                'amount' => $s['amount'], 'period_from' => $s['from'], 'period_to' => $s['to'],
             ]);
-            $total += $charge->amount;
+            $lines->push($charge->setRelation('vehicle', $vehicle));
         }
-        $vehicle->update(['storage_billed_until' => $segments->isEmpty() ? $vehicle->storage_billed_until : $until]);
 
-        return $total;
+        return $lines;
     }
 }

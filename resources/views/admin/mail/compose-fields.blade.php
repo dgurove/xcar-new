@@ -5,6 +5,12 @@
 @if ($offer)<input type="hidden" name="offer" value="{{ $offer->id }}">@endif
 @if ($vehicle ?? null)<input type="hidden" name="vehicle" value="{{ $vehicle->id }}">@endif
 @if ($invoice ?? null)<input type="hidden" name="invoice" value="{{ $invoice->id }}">@endif
+{{-- Живой документ месяца: отправка фиксирует его (`MailController::send` → `Closing::fix`), файлы черновика меняются на записанные. --}}
+@if ($closing ?? null)
+    <input type="hidden" name="closing" value="{{ $closing }}">
+    @if ($closingReplaces ?? null)<input type="hidden" name="closing_replaces" value="{{ $closingReplaces }}">@endif
+    @foreach (old('closing_files', $closingFiles ?? []) as $f)<input type="hidden" name="closing_files[]" value="{{ $f }}">@endforeach
+@endif
 <input type="hidden" name="retry" value="{{ request()->getRequestUri() }}">
 @if ($then ?? null)<input type="hidden" name="then" value="{{ $then }}">@endif
 {{-- Заявка поставщику: сделки её файла — отправили письмо, они идут дальше «Заявка отправлена». --}}

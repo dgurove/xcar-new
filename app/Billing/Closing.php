@@ -3,6 +3,7 @@
 namespace App\Billing;
 
 use App\Billing\Actions\IssueInvoice;
+use App\Billing\Actions\VoidInvoice;
 use App\Billing\Documents\StorageActPdf;
 use App\Park\City;
 use App\Park\EventType;
@@ -14,34 +15,59 @@ use Carbon\CarbonInterface;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Throwable;
 
 /**
- * Закрытие месяца: кому и за что выставить хранение. Помесячные ТС — по конец месяца (или по день выдачи,
- * если выбыла раньше); ТС «после выдачи» — за весь период, когда выбыла; покупатель — свой отрезок отдельно.
- * Ничего не выставляет само: строки с галочками на экране, «Выставить выбранные» — `issue()`.
+ * Счета и акты за месяц (05.11.2026, владелец: «не должно быть понятия „Выставить“ — они должны быть актуальными всегда,
+ * просто зафиксировать, если мы их отправили»): документ плательщика за месяц живой — `draft()` считает его заново из
+ * данных (ставки, даты приёма и выдачи), ничего не записывая; отправка письмом или «Отправили сами» фиксирует его —
+ * `fix()`: номер, строки, `storage_billed_until`, файлы, `sent_at`. Исправили данные после отправки — `drift()` видит
+ * разницу, `fix(replaces:)` отправляет исправленный с тем же номером и следующей редакцией, прежний аннулирован.
+ *
+ * Что входит: помесячные ТС — по конец месяца (или по день выдачи); «по выбытию» — за весь срок у выбывших до конца
+ * месяца; покупатель — свой отрезок своим документом; эвакуация — своим документом плательщику (`tows`).
  *
  * @phpstan-type Item array{key: string, vehicle: Vehicle, payer: string, party: ?Party, ready: bool, cadence: Cadence, from: Carbon, to: Carbon, days: int, amount: float, charges: list<int>, reason: string, tow: bool}
  */
 final class Closing
 {
-    private const CACHE = 'park.closing.v2:';
+    private const CACHE = 'park.closing.v3:';
 
-    /** @return Collection<int, Item> */
-    public static function items(CarbonInterface $month): Collection
+    /** @var list<string> ТС, не вошедшие в последний `draft()` / `fix()`, с причиной (чужой отрезок раньше своего) */
+    public static array $skipped = [];
+
+    /**
+     * Строки месяца — что ещё не зафиксировано. `$without` — как если бы этого счёта не было (сверка и исправление: его
+     * ТС считаются с первого дня его строк, его начисления — свободными; в базе ничего не меняется); `$only` — только эти ТС.
+     *
+     * @param  ?list<int>  $only
+     * @return Collection<int, Item>
+     */
+    public static function items(CarbonInterface $month, ?Invoice $without = null, ?array $only = null): Collection
     {
-        // Текущий месяц — по сегодня: будущие дни не выставляются.
+        // Текущий месяц — по сегодня: будущие дни не считаются.
         $end = min(Carbon::instance($month)->endOfMonth()->startOfDay(), now()->startOfDay());
         $begin = Carbon::instance($month)->startOfMonth()->startOfDay();
+        // С какого дня ТС этого счёта снова «не выставлены» — с первого дня её строк в нём, как сделает `VoidInvoice`.
+        $replaced = $without ? $without->charges()->where('kind', ChargeKind::Storage)->whereNotNull('vehicle_id')->orderBy('period_from')->get()->groupBy('vehicle_id') : collect();
         $vehicles = Vehicle::whereIn('state', [VehicleState::Stored, VehicleState::Released])->whereNotNull('accepted_at')
-            ->where(fn ($q) => $q->whereNull('storage_billed_until')->orWhereColumn('storage_billed_until', '<', 'released_at')->orWhere(fn ($w) => $w->whereNull('released_at')->where('storage_billed_until', '<', $end)))
+            ->where(fn ($q) => $q->whereNull('storage_billed_until')->orWhereColumn('storage_billed_until', '<', 'released_at')->orWhere(fn ($w) => $w->whereNull('released_at')->where('storage_billed_until', '<', $end))
+                ->when($replaced->isNotEmpty(), fn ($x) => $x->orWhereIn('id', $replaced->keys())))
+            ->when($only !== null, fn ($q) => $q->whereIn('id', $only))
             ->with(['vendor.party', 'vendor.contacts', 'yard', 'ownerParty', 'buyerParty', 'offer.deal.buyer',
                 // Лента площадок — заранее: ставка считается по площадке того дня, иначе запрос на каждую ТС.
                 'events' => fn ($e) => $e->whereIn('type', [EventType::Accepted, EventType::Moved, EventType::Departed])])->orderBy('accepted_at')->get();
+        foreach ($vehicles as $v) {
+            if ($rows = $replaced->get($v->id)) {
+                // Только в памяти: модель дальше идёт в `Accrual`, а не в базу.
+                $v->setAttribute('storage_billed_until', self::billedBefore($rows, $v));
+            }
+        }
         // Начисления вне счёта — одной выборкой на всех: запрос на ТС давал 411 запросов на экран (аудит 20.10.2026).
-        // Эвакуация — своим счётом (архив «СТОЯНКА», 05.11.2026: у СОГАЗа свой договор, у Альфы свой счёт) — ниже, `tows()`.
-        $pendingBy = Charge::whereIn('vehicle_id', $vehicles->modelKeys())->whereNull('invoice_id')->whereNull('voided_at')->where('kind', '!=', ChargeKind::Tow->value)->get()->groupBy('vehicle_id');
+        // Эвакуация — своим документом (архив «СТОЯНКА», 05.11.2026: у СОГАЗа свой договор, у Альфы свой счёт) — `tows()`.
+        $pendingBy = self::free($without)->whereIn('vehicle_id', $vehicles->modelKeys())->where('kind', '!=', ChargeKind::Tow->value)->get()->groupBy('vehicle_id');
         $items = collect();
         foreach ($vehicles as $v) {
             $cadence = $v->cadence();
@@ -71,7 +97,7 @@ final class Closing
             $pending = $pendingBy->get($v->id, collect());
             foreach ($groups as $n => $g) {
                 $party = Ledger::payerParty($v, $g['payer'], false);
-                // Начисления вне счёта того же контрагента — в его первый счёт.
+                // Начисления вне счёта того же контрагента — в его первый документ.
                 $charges = $party?->id ? $pending->where('party_id', $party->id) : collect();
                 $pending = $pending->diff($charges);
                 $items->push(['key' => $v->id.':'.$n, 'vehicle' => $v, 'payer' => $g['payer'], 'party' => $party, 'ready' => self::ready($party), 'cadence' => $cadence, 'from' => $g['from'], 'to' => $g['to'], 'days' => $g['days'],
@@ -82,19 +108,42 @@ final class Closing
             }
         }
 
-        return $items->concat(self::tows($end));
+        return $items->concat(self::tows($end, $without, $only));
     }
 
     /**
-     * Эвакуация, не выставленная по конец месяца, — строкой на ТС и плательщика: в счёт эвакуации, а не хранения, в
-     * месяц, когда она была, как бы ни считалось хранение (по выбытию — тоже сейчас).
+     * По какой день ТС выставлена без этих строк хранения (их — по возрастанию начала): с приёма — «не выставлялось»,
+     * иначе день до первой. Одна дверь для аннулирования и сверки.
      *
+     * @param  Collection<int, Charge>  $rows
+     */
+    public static function billedBefore(Collection $rows, Vehicle $vehicle): ?Carbon
+    {
+        $first = $rows->first();
+        $day = $first->period_from->copy()->subDay();
+
+        return $first->starts_billing || ($vehicle->accepted_at && $day->lt($vehicle->accepted_at->copy()->startOfDay())) ? null : $day;
+    }
+
+    /** Начисления, свободные от счёта; у `$without` — и те, что он освободит при аннулировании (начисленные до него). */
+    private static function free(?Invoice $without)
+    {
+        return Charge::whereNull('voided_at')->where(fn ($q) => $q->whereNull('invoice_id')
+            ->when($without, fn ($x) => $x->orWhere(fn ($w) => $w->where('invoice_id', $without->id)->where('kind', '!=', ChargeKind::Storage->value)->where('created_at', '<', $without->created_at))));
+    }
+
+    /**
+     * Эвакуация по конец месяца — строкой на ТС и плательщика: в документ эвакуации, а не хранения, в месяц, когда она
+     * была, как бы ни считалось хранение (по выбытию — тоже сейчас).
+     *
+     * @param  ?list<int>  $only
      * @return Collection<int, Item>
      */
-    private static function tows(CarbonInterface $end): Collection
+    private static function tows(CarbonInterface $end, ?Invoice $without = null, ?array $only = null): Collection
     {
-        $charges = Charge::whereNotNull('vehicle_id')->whereNull('invoice_id')->whereNull('voided_at')->where('kind', ChargeKind::Tow->value)
+        $charges = self::free($without)->whereNotNull('vehicle_id')->where('kind', ChargeKind::Tow->value)
             ->whereRaw('coalesce(period_from, created_at::date) <= ?', [$end->toDateString()])
+            ->when($only !== null, fn ($q) => $q->whereIn('vehicle_id', $only))
             ->whereHas('vehicle', fn ($v) => $v->whereNotNull('accepted_at'))
             ->with(['vehicle.vendor.party', 'vehicle.ownerParty', 'vehicle.buyerParty', 'party'])->orderBy('id')->get();
 
@@ -115,44 +164,139 @@ final class Closing
     }
 
     /**
-     * Выставить выбранное: вендору и страхователю — один счёт-реестр на плательщика за месяц (решение владельца
-     * 08.10.2026), машины строками, акт с реестром; покупателю — счёт на каждую ТС, как прежде. В порядке отрезков: чужой
-     * отрезок раньше своего не даст выставить. Машина, которую выставить нельзя, не валит реестр — уходит в ошибки.
-     *
-     * @param  list<string>  $keys
-     * @return array{issued: Collection<int, Invoice>, errors: list<string>}
+     * Живой документ группы — счёт, не записанный в базу: строки хранения той же дверью, что запишет отправка
+     * (`IssueInvoice::storageLines`), начисления, итог, номер, который он получит сейчас. Нечего — null.
      */
-    public static function issue(CarbonInterface $month, array $keys, User $by, IssueInvoice $issue, StorageActPdf $act): array
+    public static function draft(CarbonInterface $month, string $group, ?Invoice $replaces = null): ?Invoice
     {
-        $issued = collect();
-        $errors = [];
-        $title = fn (Vehicle $v) => $v->titleWithYear().($v->ref ? ' '.$v->ref : '');
-        // В том же порядке, что отрезки у машины: вендор, страхователь, покупатель. Иначе счёт следующему плательщику
-        // упёрся бы в ещё не выставленный отрезок предыдущего («сначала счёт ему»).
-        $order = ['vendor' => 0, 'owner' => 1, 'buyer' => 2];
-        $groups = self::items($month)->whereIn('key', $keys)->groupBy(fn ($i) => self::groupOf($i))->sortBy(fn ($g) => ($g->first()['tow'] ? 10 : 0) + ($order[$g->first()['payer']] ?? 3));
-        foreach ($groups as $group) {
-            $first = $group->first();
-            $v = $first['vehicle'];
-            try {
-                $party = self::payer($first);
-                $invoice = $first['tow']
-                    ? $issue($party, $by, 'issued', ChargeKind::Tow, now()->addWeekdays($v->vendor?->payment_days ?? 5), month: $month,
-                        registry: $group->map(fn ($i) => ['vehicle' => $i['vehicle']->fresh(), 'until' => null, 'charges' => $i['charges']])->values()->all())
-                    : ($first['payer'] === 'buyer'
-                    ? $issue($party, $by, 'issued', ChargeKind::Storage, now(), $first['to'], $first['charges'], vehicle: $v->fresh())
-                    : $issue($party, $by, 'issued', ChargeKind::Storage, now()->addWeekdays($v->vendor?->payment_days ?? 5), month: $month,
-                        registry: $group->map(fn ($i) => ['vehicle' => $i['vehicle']->fresh(), 'until' => $i['to'], 'charges' => $i['charges']])->values()->all()));
-                $errors = [...$errors, ...$issue->skipped];
-                $act->attach($invoice);
-                $issued->push($invoice);
-            } catch (Throwable $e) {
-                $who = $first['payer'] === 'buyer' ? $title($v) : ($first['party']?->name ?? Accrual::payerLabel($first['payer']));
-                $errors = [...$errors, $who.': '.self::message($e), ...$issue->skipped];
-            }
+        $rows = self::rowsOf($month, $group, $replaces);
+        if ($rows->isEmpty()) {
+            return null;
         }
+        $first = $rows->first();
+        $v = $first['vehicle'];
+        $party = self::payer($first, false);
+        $registry = $first['tow'] || $first['payer'] !== 'buyer';
+        $seller = $registry ? Seller::ofVendor($v->vendor) : Seller::for($v);
+        $vatRate = $seller->vatRate() ?: null;
+        $charges = collect();
+        $skipped = [];
+        foreach ($rows as $i) {
+            if (! $i['tow']) {
+                try {
+                    $charges = $charges->concat(IssueInvoice::storageLines($i['vehicle'], $party, $i['to']));
+                } catch (ValidationException $e) {
+                    $skipped[] = $i['vehicle']->titleWithYear().': '.self::message($e);
 
-        return ['issued' => $issued, 'errors' => $errors];
+                    continue;
+                }
+            }
+            $charges = $charges->concat(Charge::whereIn('id', $i['charges'])->get()->each->setRelation('vehicle', $i['vehicle']));
+        }
+        $total = round((float) $charges->sum('amount'), 2);
+        $onTop = $vatRate && $party->vat_on_top;
+        $invoice = new Invoice([
+            'seller' => $seller, 'park' => true, 'direction' => 'issued', 'year' => (int) now()->format('Y'),
+            'number' => $replaces?->number ?? Numbering::next($seller, (int) now()->format('Y')),
+            'code' => $replaces?->code ?? Numbering::code($seller, now()), 'revision' => $replaces ? $replaces->revision + 1 : 0,
+            'kind' => $first['tow'] ? ChargeKind::Tow : ChargeKind::Storage, 'month' => $registry ? Carbon::instance($month)->startOfMonth()->toDateString() : null,
+            'party_id' => $party->id, 'vehicle_id' => $registry ? null : $v->id, 'issued_at' => now()->toDateString(),
+            'due_at' => ($registry ? now()->addWeekdays($v->vendor?->payment_days ?? 5) : now())->toDateString(),
+            'vat' => (bool) $vatRate, 'vat_rate' => $vatRate, 'vat_on_top' => $onTop, 'total' => $onTop ? round($total * (1 + $vatRate / 100), 2) : $total, 'paid' => 0,
+        ]);
+        $invoice->setRelation('party', $party)->setRelation('charges', $charges->values())->setRelation('vehicle', $registry ? null : $v)
+            ->setRelation('payments', collect())->setRelation('deal', null)->setRelation('media', collect());
+        self::$skipped = $skipped;
+
+        return $invoice;
+    }
+
+    /**
+     * Зафиксировать документ группы — он ушёл (письмом или «Отправили сами»): счёт с номером, строки, `storage_billed_until`,
+     * файлы, `sent_at`. `$replaces` — исправленный: прежний аннулируется, новый — с его номером и следующей редакцией, из
+     * тех же ТС. Документа уже нет — ошибка «уже отправлен».
+     */
+    public static function fix(CarbonInterface $month, string $group, User $by, ?Invoice $replaces = null): Invoice
+    {
+        return DB::transaction(function () use ($month, $group, $by, $replaces) {
+            $only = null;
+            if ($replaces) {
+                $only = $replaces->registryVehicles()->pluck('id')->all();
+                app(VoidInvoice::class)($replaces, $by, 'Исправлен');
+                $replaces->refresh();
+            }
+            $rows = self::rowsOf($month, $group, null, $only);
+            if ($rows->isEmpty()) {
+                throw ValidationException::withMessages(['closing' => 'Документ уже отправлен']);
+            }
+            $first = $rows->first();
+            $v = $first['vehicle'];
+            $party = self::payer($first);
+            $issue = app(IssueInvoice::class);
+            $code = $replaces?->code;
+            $revision = $replaces ? $replaces->revision + 1 : 0;
+            $due = now()->addWeekdays($v->vendor?->payment_days ?? 5);
+            $invoice = match (true) {
+                $first['tow'] => $issue($party, $by, 'issued', ChargeKind::Tow, $due, month: $month, code: $code, revision: $revision,
+                    registry: $rows->map(fn ($i) => ['vehicle' => $i['vehicle']->fresh(), 'until' => null, 'charges' => $i['charges']])->values()->all()),
+                $first['payer'] === 'buyer' => $issue($party, $by, 'issued', ChargeKind::Storage, now(), $first['to'], $first['charges'], vehicle: $v->fresh(), code: $code, revision: $revision),
+                default => $issue($party, $by, 'issued', ChargeKind::Storage, $due, month: $month, code: $code, revision: $revision,
+                    registry: $rows->map(fn ($i) => ['vehicle' => $i['vehicle']->fresh(), 'until' => $i['to'], 'charges' => $i['charges']])->values()->all()),
+            };
+            app(StorageActPdf::class)->attach($invoice);
+            $invoice->update(['sent_at' => now()]);
+            self::$skipped = $issue->skipped;
+
+            return $invoice;
+        });
+    }
+
+    /**
+     * Данные отправленного реестра хранения изменились (дата приёма или выдачи, ставка, тип ТС): сколько было и сколько
+     * сейчас по тем же ТС. Без изменений — null. Считается в памяти, в кэше на 10 минут до правки ТС или счёта.
+     *
+     * @return ?array{was: float, now: float}
+     */
+    public static function drift(Invoice $invoice): ?array
+    {
+        if (! $invoice->isRegistry() || $invoice->kind !== ChargeKind::Storage || $invoice->state === InvoiceState::Void || ! ($group = self::groupOfInvoice($invoice))) {
+            return null;
+        }
+        $ids = $invoice->registryVehicles()->pluck('id')->all();
+        $stamp = Vehicle::whereIn('id', $ids)->max('updated_at');
+        $key = self::CACHE.'drift:'.$invoice->id.':'.$invoice->updated_at?->timestamp.':'.$stamp;
+
+        return Cache::remember($key, 600, function () use ($invoice, $group, $ids) {
+            $draft = self::draft($invoice->month, $group, $invoice);
+            $now = $draft ? (float) $draft->total : 0.0;
+            $same = $draft && $draft->charges->pluck('vehicle_id')->unique()->sort()->values()->all() === collect($ids)->sort()->values()->all();
+
+            return abs($now - (float) $invoice->total) < 0.01 && $same ? null : ['was' => (float) $invoice->total, 'now' => $now];
+        });
+    }
+
+    /** Группа зафиксированного реестра — та же, что у живого документа (`groupOf`): по ней его исправляют. */
+    public static function groupOfInvoice(Invoice $invoice): ?string
+    {
+        if (! $invoice->isRegistry()) {
+            return null;
+        }
+        $key = 'p'.$invoice->party_id.':'.$invoice->seller->value;
+
+        return $invoice->kind === ChargeKind::Tow ? 'tow:'.$key : $key;
+    }
+
+    /**
+     * Строки группы; у исправления — только ТС исправляемого счёта.
+     *
+     * @param  ?list<int>  $only
+     * @return Collection<int, Item>
+     */
+    private static function rowsOf(CarbonInterface $month, string $group, ?Invoice $replaces = null, ?array $only = null): Collection
+    {
+        $only ??= $replaces?->registryVehicles()->pluck('id')->all();
+
+        return self::items($month, $replaces, $only)->filter(fn ($i) => self::groupOf($i) === $group)->values();
     }
 
     /**

@@ -138,7 +138,7 @@
                 </button>
                 @foreach ($unbilledBy as $payer => $a)
                     <a href="/cars/{{ $vehicle->id }}/invoices/new?payer={{ $payer }}" class="row justify-between">
-                        <span class="min-w-0"><span class="block">Не выставлено{{ $unbilledBy->count() > 1 ? ', '.mb_strtolower(\App\Billing\Accrual::payerLabel($payer)) : '' }}</span><span class="block text-sm text-ink-muted">за {{ $a['days'] }} дн</span></span>
+                        <span class="min-w-0"><span class="block">Не отправлено{{ $unbilledBy->count() > 1 ? ', '.mb_strtolower(\App\Billing\Accrual::payerLabel($payer)) : '' }}</span><span class="block text-sm text-ink-muted">за {{ $a['days'] }} дн</span></span>
                         <span class="flex shrink-0 items-center gap-1"><span class="nums font-semibold">{{ Money::rub($a['amount']) }}</span><x-ui.icon name="chevron-right" class="size-4 text-ink-dim"/></span>
                     </a>
                 @endforeach
@@ -147,7 +147,7 @@
                 @endif
                 {{-- До какого дня хранение выставлено: дальше счёт считается с этого дня, и это единственное место, где видно. --}}
                 @if ($vehicle->storage_billed_until)
-                    <div class="row justify-between"><span class="text-ink-muted">Выставлено по</span>{{ \App\Support\Ago::html($vehicle->storage_billed_until, words: false) }}</div>
+                    <div class="row justify-between"><span class="text-ink-muted">Отправлено по</span>{{ \App\Support\Ago::html($vehicle->storage_billed_until, words: false) }}</div>
                 @endif
                 @if ($vehicle->contract_kind === 'commission')
                     <x-ui.doc :doc="['url' => '/acts/'.$vehicle->id.'/contract', 'type' => 'html', 'name' => 'Договор комиссии']" class="row justify-between"><span>Договор комиссии</span><x-ui.icon name="file" class="size-4 shrink-0 text-ink-dim"/></x-ui.doc>
@@ -171,14 +171,14 @@
                     @endforeach
                     @foreach ($pendingCharges as $c)
                         <form method="post" action="/cars/{{ $vehicle->id }}/charges/{{ $c->id }}" data-turbo-confirm="Снять начисление «{{ $c->title }}»?">@csrf @method('delete')
-                            <button class="row justify-between w-full text-left"><span class="min-w-0"><span class="block truncate">{{ $c->title }}</span><span class="block text-sm text-ink-muted">не выставлено</span></span><span class="flex shrink-0 items-center gap-2"><span class="nums">{{ Money::rub($c->amount) }}</span><x-ui.icon name="x" class="size-4 text-ink-dim"/></span></button>
+                            <button class="row justify-between w-full text-left"><span class="min-w-0"><span class="block truncate">{{ $c->title }}</span><span class="block text-sm text-ink-muted">не отправлено</span></span><span class="flex shrink-0 items-center gap-2"><span class="nums">{{ Money::rub($c->amount) }}</span><x-ui.icon name="x" class="size-4 text-ink-dim"/></span></button>
                         </form>
                     @endforeach
                 </div>
             @endif
             <div class="mt-3 grid grid-cols-2 gap-2">
                 <button type="button" class="btn btn-quiet btn-s" data-action="sheet#open"><x-ui.icon name="plus" class="size-4"/>Начислить</button>
-                @if ($vehicle->accepted_at || $pendingCharges->isNotEmpty())<a href="/cars/{{ $vehicle->id }}/invoices/new" class="btn btn-quiet btn-s">Выставить счёт</a>@endif
+                @if ($vehicle->accepted_at || $pendingCharges->isNotEmpty())<a href="/cars/{{ $vehicle->id }}/invoices/new" class="btn btn-quiet btn-s">Счёт на ТС</a>@endif
             </div>
             <x-ui.sheet id="charge" title="Начислить">
                 <form method="post" action="/cars/{{ $vehicle->id }}/charges" class="flex flex-col gap-3" data-controller="price" data-price-prices-value="{{ json_encode((object) $chargePrices) }}">
