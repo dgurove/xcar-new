@@ -119,4 +119,25 @@ class ParkCityTest extends TestCase
 
         $this->assertSame([$this->moscow, CityGuess::YARD], [(int) $v->refresh()->city_id, $v->city_source]);
     }
+
+    /** Сергей (05.11.2026): весь парк, а «Заявки» — только Москва; питерская ТС в остальном парке видна, не уверены — видна. */
+    public function test_requests_city_narrows_only_the_requests_list(): void
+    {
+        $spb = $this->request('spb@absolutins.ru', ['address' => 'г. Санкт-Петербург, Пулковское шоссе']);
+        $msk = $this->request('msk@absolutins.ru', ['address' => 'г. Москва, ул. Тверская']);
+        $sergey = User::create(['name' => 'Сергей', 'phone' => '79000000045', 'roles' => [Role::Parking], 'park_requests_city_id' => $this->moscow, 'approved_at' => now()]);
+        $only = fn () => City::requestsList(Request::query(), $sergey)->pluck('vehicle_id')->all();
+
+        $this->assertSame([$msk->id], $only());
+        $spb->forceFill(['city_id' => null, 'city_source' => 'vendor'])->saveQuietly();
+        $this->assertEqualsCanonicalizing([$msk->id, $spb->id], $only());
+        // Человек с городом парковки — его город решает и заявки, поле заявок молчит.
+        $sergey->update(['park_city_id' => $this->spb]);
+        $this->assertCount(2, $only());
+
+        $sergey->update(['park_city_id' => null]);
+        $spb->forceFill(['city_id' => $this->spb])->saveQuietly();
+        $this->actingAs($sergey)->get(\App\Support\Surface::Park->url('/requests?preset=all'))->assertOk();
+        $this->assertSame(2, Vehicle::count());
+    }
 }

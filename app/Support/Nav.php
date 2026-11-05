@@ -518,7 +518,7 @@ final class Nav
             $day = now()->subDay();
             if ($surface === Surface::Park) {
                 return ['totals' => [
-                    '/requests' => Request::whereIn('state', RequestState::open())->count(),
+                    '/requests' => City::requestsList(Request::whereIn('state', RequestState::open()), $user)->count(),
                     '/cars' => Vehicle::where('state', VehicleState::Stored)->count(),
                     '/yards' => Yard::when(City::of($user), fn ($q, $city) => $q->where('settlement_id', $city))->count(),
                     '/money' => Invoice::ofPark()->where('state', InvoiceState::Issued)->count(),

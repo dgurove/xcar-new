@@ -38,7 +38,7 @@
                     </div>
                     @error('kind')<p class="field-error">{{ $message }}</p>@enderror
                 </div>
-                <x-park.city-field :city="$user->park_city_id"/>
+                <x-park.city-field :city="$user->park_city_id" :requests="$user->park_requests_city_id" with-requests/>
             @endunless
         @elseif ($user->isBuyer())
             {{-- Логин и контакты — строкой текста (10.10.2026: «что-то чипами, что-то текстом»). --}}

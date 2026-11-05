@@ -22,6 +22,7 @@ use App\Park\Actions\Release;
 use App\Park\Actions\SetDates;
 use App\Park\Actions\StoreByLetters;
 use App\Park\Actions\UpdateVehicle;
+use App\Park\City;
 use App\Park\Inspection;
 use App\Park\ReleasedTo;
 use App\Park\Request as ParkRequest;
@@ -76,6 +77,7 @@ class RequestController
             ->when($qs !== '', fn ($w) => $w->whereHas('vehicle', fn ($v) => $v->search($qs)));
         $q = (ParkRequest::with(['vehicle' => fn ($v) => $v->withCount('threads'), 'vehicle', 'vehicle.offer.deal', 'vehicle.vendor', 'vehicle.media', 'vehicle.yard', 'yard', 'letter', 'creator', 'deal.buyer']));
         $q->whereIn('state', RequestState::open());
+        City::requestsList($q, $request->user());
         if ($qs !== '') {
             $filters($q);
         } elseif ($t = RequestType::tryFrom($type)) {
@@ -89,7 +91,7 @@ class RequestController
             default => $q->orderBy('type', $dir)->orderByRaw('coalesce(letter_at, created_at) desc'),
         };
 
-        $open = $filters(ParkRequest::query())->whereIn('state', RequestState::open())->selectRaw('type, count(*) as n')->groupBy('type')->pluck('n', 'type');
+        $open = $filters(City::requestsList(ParkRequest::query(), $request->user()))->whereIn('state', RequestState::open())->selectRaw('type, count(*) as n')->groupBy('type')->pluck('n', 'type');
         $counts = $open->all() + ['all' => $open->sum()];
         // Пилюля есть, пока есть заявки: «Выдача» появляется от первой такой и исчезает с последней.
         // Выбранная остаётся и с нулём, иначе активная пилюля исчезала бы из ряда вместе со списком.

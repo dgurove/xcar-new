@@ -184,6 +184,19 @@ final class City
         $q->where(fn ($w) => $w->where($column, $city)->orWhereNull($column));
     }
 
+    /**
+     * «Заявки» одного города у человека, который видит весь парк (`users.park_requests_city_id`, 05.11.2026, Сергей: питерские
+     * заявки не его, счета и акты — по обоим городам). Только список и его числа; ТС, счета, почта и окно заявки — как были.
+     * Заявки ТС без города (не уверены, `vendorCity`) остаются у всех.
+     */
+    public static function requestsList(Builder $q, ?User $user): Builder
+    {
+        $city = $user && ! self::of($user) ? $user->park_requests_city_id : null;
+
+        return $q->when($city, fn ($w) => $w->whereIn($q->getModel()->qualifyColumn('vehicle_id'),
+            Vehicle::withoutGlobalScope(self::SCOPE)->where(fn ($v) => $v->where('city_id', $city)->orWhereNull('city_id'))->select('id')));
+    }
+
     public static function requests(Builder $q, int $city): void
     {
         $q->whereIn($q->getModel()->qualifyColumn('vehicle_id'), Vehicle::query()->select('id'));

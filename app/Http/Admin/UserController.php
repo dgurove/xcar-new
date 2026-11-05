@@ -34,13 +34,13 @@ use App\Users\Access\RevokeDevices;
 use App\Users\Access\SwitchLock;
 use App\Users\Actions\DecideAccess;
 use App\Users\Actions\IssueImpersonation;
-use App\Users\Actions\LinkAccounts;
-use App\Users\Actions\UnlinkAccounts;
 use App\Users\Actions\IssueInvite;
 use App\Users\Actions\IssuePasswordLink;
+use App\Users\Actions\LinkAccounts;
 use App\Users\Actions\RevokePark;
 use App\Users\Actions\SetParkRole;
 use App\Users\Actions\TransferBuyer;
+use App\Users\Actions\UnlinkAccounts;
 use App\Users\Activity;
 use App\Users\BuyerGroup;
 use App\Users\CrmArea;
@@ -51,6 +51,7 @@ use App\Users\User;
 use App\Users\UserGroup;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -379,7 +380,7 @@ class UserController
     }
 
     /** Кого можно связать с человеком: не покупатели и не демо, с другим домом (`Surface::homeFor`). */
-    public static function linkCandidates(User $user): \Illuminate\Support\Collection
+    public static function linkCandidates(User $user): Collection
     {
         $home = Surface::homeFor($user);
 
@@ -526,8 +527,9 @@ class UserController
         $contacts = $this->contacts($request, $user);
         $user->update($contacts);
         if (! $user->is($request->user())) {
-            $data = $request->validate(['kind' => ['required', Rule::in(array_keys(ParkRoles::KINDS))], 'park_city_id' => self::cityRule()]);
+            $data = $request->validate(['kind' => ['required', Rule::in(array_keys(ParkRoles::KINDS))], 'park_city_id' => self::cityRule(), 'park_requests_city_id' => self::cityRule()]);
             $parkRole($user, $data['kind'], isset($data['park_city_id']) ? (int) $data['park_city_id'] : null);
+            $user->update(['park_requests_city_id' => isset($data['park_requests_city_id']) ? (int) $data['park_requests_city_id'] : null]);
         }
 
         return back()->with('toast', 'Сохранено');
