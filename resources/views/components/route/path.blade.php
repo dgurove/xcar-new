@@ -225,7 +225,7 @@
                         <div class="mt-2 text-sm">@foreach ($position->fields() as $k => $v)<div><span class="text-ink-muted">{{ collect($stage->staff_fields)->firstWhere('key', $k)['label'] ?? $k }}:</span> {{ $v }}</div>@endforeach</div>
                     @endif
                     @foreach ($answers as $r)
-                        <div class="mt-1 text-sm"><span class="text-ink-muted">Менеджер:</span> {{ $r->answer['label'] ?? $r->answer['exit'] ?? $r->title }}@if (($r->answer['closed_by'] ?? null) === 'staff') <span class="text-ink-muted">(за него {{ $answeredBy->get($r->answer['by'] ?? 0)?->shortName() ?? 'сотрудник' }})</span>@endif</div>
+                        <div class="mt-2 text-sm"><span class="text-ink-muted">Менеджер ответил</span> «{{ $r->answer['label'] ?? $r->answer['exit'] ?? $r->title }}»@if (($r->answer['closed_by'] ?? null) === 'staff') <span class="text-ink-muted">(за него {{ $answeredBy->get($r->answer['by'] ?? 0)?->shortName() ?? 'сотрудник' }})</span>@endif @if ($r->done_at)<span class="nums text-ink-dim">{{ \App\Support\Ago::html($r->done_at, true, words: false) }}</span>@endif</div>
                         @foreach ($r->answer['fields'] ?? [] as $k => $v)<div class="text-sm"><span class="text-ink-muted">{{ collect($r->fields)->firstWhere('key', $k)['label'] ?? $k }}:</span> {{ is_array($v) ? implode(', ', $v) : $v }}</div>@endforeach
                         @foreach ($r->getMedia('files') as $f)<x-ui.file :name="$f->file_name" :mime="$f->mime_type" :size="$f->humanReadableSize" href="/files/{{ $f->id }}" class="py-1"/>@endforeach
                     @endforeach
@@ -249,7 +249,9 @@
                         </div>
                     @endforeach
                     @if ($wantsInvoice || $moves->isNotEmpty() || $stage->template_id || $requests || $payNow->isNotEmpty())
-                        <div class="mt-3 flex flex-wrap gap-2">
+                        {{-- `.step-acts`: кнопки делят ширину дорожки, перенеслись — каждая во всю ширину (05.11.2026, владелец про
+                             три узкие дорожки редактора: «вёрстка — треш»; кнопки разной длины стояли лесенкой). --}}
+                        <div class="step-acts mt-3">
                             {{-- Заявка поставщику пачкой: окно письма со списком файлом, отправили — все её сделки дальше. --}}
                             @if ($requests)
                                 <x-mail.window-button :url="'/work/mail/new?request='.$offer->vendor_id.'&then=close'" :label="'Заявка поставщику ('.$requests.')'" class="btn-s btn-accent"/>
@@ -344,10 +346,11 @@
                         </div>
                         {{-- Что будет после каждой кнопки (03.11.2026, владелец: «сотрудникам страшно нажимать кнопки, которые не
                              понимаешь, что сделают») — следующий этап и чей там ход (`Outcome::consequence`). --}}
+                        {{-- Кнопка одна — без повтора её названия: «Дальше: …». --}}
                         @if ($moves->isNotEmpty())
-                            <ul class="mt-2 flex flex-col gap-0.5 text-sm text-ink-muted">
+                            <ul class="step-next">
                                 @foreach ($moves->values() as $exit)
-                                    @if ($next = $exit->consequence())<li><span class="text-ink">{{ $label($exit) }}</span> → {{ $next }}</li>@endif
+                                    @if ($next = $exit->consequence())<li>@if ($moves->count() > 1)<span class="text-ink">{{ $label($exit) }}</span> → @else Дальше: @endif{{ $next }}</li>@endif
                                 @endforeach
                             </ul>
                         @endif

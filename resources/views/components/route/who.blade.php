@@ -33,7 +33,8 @@
         $letter === 'failed' => ['письмо не ушло', 'danger', null],
         $letter === 'bounced' => ['письмо не доставлено', 'danger', null],
         $letter === 'replied' => ['ответил '.Ago::html($position->replyAt(), true, words: false), 'accent', $letters],
-        $letter === 'sent' => ['ушло '.Ago::html($position->letterAt(), words: false).' · ждём '.$timer('since', $position->letterAt()), $overdue ? 'urgent' : 'plain',
+        // «ждём 17 д 15 ч» — неразрывно: в узкой дорожке переносится целиком, а не «ждём 17 д / 15 ч».
+        $letter === 'sent' => ['ушло '.Ago::html($position->letterAt(), words: false).' · <span class="whitespace-nowrap">ждём '.$timer('since', $position->letterAt()).'</span>', $overdue ? 'urgent' : 'plain',
             $letters.(isset($position->payload['letter_id']) ? '?at='.$position->payload['letter_id'] : '')],
         $invoice => ['счёт не выставлен', 'urgent', null],
         $position->carried() => ['везёт логистика', 'plain', null],
