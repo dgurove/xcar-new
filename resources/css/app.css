@@ -2228,12 +2228,49 @@ html.kb-open { --home-gap: 0px; }
 @layer components {
   .doc-hero-logo { width: 3.5rem; height: 3.5rem; margin-bottom: .75rem; border-radius: var(--radius-m); vertical-align: 0; }
   .doc-alert { @apply mt-5 rounded-(--radius-l) bg-danger-soft px-4 py-3; }
-  .doc-page { @apply grid grid-cols-1 items-start gap-6; }
-  @media (min-width: 1024px) {
-    .doc-page { grid-template-columns: 24rem minmax(0, 1fr); }
-    /* Сверка по акту: шторка документов справа, слева — таблица во всю ширину без карточки. */
-    html.docs-open .doc-page { grid-template-columns: minmax(0, 1fr); }
-    html.docs-open .doc-page-side { display: none; }
+  /* Страница документа: шапка одной плашкой — логотип, плательщик и фраза слева, сумма справа, ниже действия и файлы. */
+  .doc-head { @apply flex flex-col gap-4; }
+  .doc-head-top { @apply flex items-start gap-3; }
+  .doc-head-state { @apply text-base font-medium leading-snug; }
+  .doc-head-sum { @apply shrink-0 text-right text-2xl font-semibold leading-tight whitespace-nowrap; }
+  .doc-head-of { @apply block text-sm font-normal text-ink-muted; }
+  .doc-head-acts { @apply flex flex-wrap items-center gap-2; }
+  .doc-head-files { @apply contents; }
+  .doc-file { @apply gap-2 pl-2; }
+  .file-icon.file-icon-s { width: 1.75rem; height: 1.375rem; border-radius: 6px; font-size: 8px; letter-spacing: 0; }
+  .doc-history { @apply mt-3 px-1; }
+  @media (max-width: 639px) {
+    .doc-head-top { @apply flex-wrap; }
+    .doc-head-sum { @apply basis-full text-left; }
+  }
+  /* Все ТС документа — обычная таблица: ширины по содержимому, коды, даты и суммы целиком (не режутся), название
+     переносится; не влезла — листается вбок с закреплённым названием. Дата — кнопка цвета текста, карандаш при наведении. */
+  .doc-cars-wrap { @apply mt-5 overflow-x-auto rounded-(--radius-l) bg-surface; }
+  .doc-cars { @apply w-full border-collapse text-sm; }
+  .doc-cars th { @apply sticky top-0 z-[1] bg-surface px-3 py-2.5 text-left text-xs font-normal whitespace-nowrap text-ink-dim; }
+  .doc-cars td { @apply border-t border-line/50 px-3 py-1.5 align-middle; }
+  .doc-cars .num { @apply text-right whitespace-nowrap; }
+  .doc-cars .doc-n { @apply w-0 pr-0 text-ink-dim; }
+  .doc-cars .doc-car { min-width: 12rem; }
+  .doc-car-name { @apply hover:text-accent-text; }
+  .doc-car-extra { @apply block text-xs text-ink-muted; }
+  .doc-cars .doc-code, .doc-cars .doc-date { @apply whitespace-nowrap; }
+  .doc-cars .doc-code { @apply text-ink-muted; }
+  .doc-cars .doc-act { @apply w-0 text-center; }
+  .doc-cars tfoot td { @apply py-2.5 font-medium; }
+  .doc-date-btn { @apply -mx-1.5 rounded-(--radius-s) px-1.5 py-0.5 transition-colors hover:bg-surface-3; }
+  .doc-date-btn::after { content: ''; display: inline-block; width: .8em; height: .8em; margin-left: .3em; vertical-align: -.05em; opacity: 0;
+    background: currentColor; -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 20h9'/%3E%3Cpath d='M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z'/%3E%3C/svg%3E") center / contain no-repeat;
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 20h9'/%3E%3Cpath d='M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z'/%3E%3C/svg%3E") center / contain no-repeat; }
+  .doc-date-btn:hover::after { opacity: .5; }
+  .doc-act-btn { @apply inline-flex size-7 items-center justify-center rounded-(--radius-s) text-ink-muted transition-colors hover:bg-surface-3 hover:text-ink; }
+  .doc-act-btn.is-other { @apply opacity-40; }
+  /* Открыт акт (шторка панелью справа): поля ячеек уже, название переносится раньше — все столбцы влезают рядом с актом. */
+  html.docs-open .doc-cars th, html.docs-open .doc-cars td { @apply px-2; }
+  html.docs-open .doc-cars .doc-car { min-width: 8rem; }
+  @media (max-width: 639px) {
+    .doc-cars-wrap { @apply -mx-4 rounded-none; }
+    .doc-cars .doc-car { @apply sticky left-0 z-[1] bg-surface; min-width: 9rem; }
   }
   .table tr.table-group .table-group-aside { @apply ml-auto inline-flex gap-3 text-sm font-normal text-ink-muted; }
 }

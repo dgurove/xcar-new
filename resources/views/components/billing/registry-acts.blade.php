@@ -1,18 +1,11 @@
-{{-- Акты ТС чипами (`IntakeActs`): «приём» и «выдача» — по чипу на вид, остальные файлы вида (у Альфы акт в два листа, наш
-     отчёт) — скрытыми ссылками той же строки, они вкладками в шторке; акта по имени нет — «документы N» тем же способом;
-     ничего — «нет». --}}
+{{-- Акт ТС одной кнопкой-иконкой (`IntakeActs`): первым — акт приёма, следом выдача и наш отчёт — скрытыми ссылками той же
+     строки, они вкладками в шторке документов. Акта по имени нет — та же кнопка тусклой: внутри прочие документы машины,
+     акт среди них. Нет ничего — пусто. --}}
 @props(['acts'])
 @php
-    $groups = array_filter([
-        'приём' => $acts['intake'],
-        'выдача' => $acts['release'],
-        'документы '.count($acts['other']) => $acts['intake'] ? [] : $acts['other'],
-    ]);
+    $named = [...$acts['intake'], ...$acts['release']];
+    $docs = $named ?: $acts['other'];
 @endphp
-<span class="inline-flex flex-nowrap gap-1">
-    @forelse ($groups as $label => $docs)
-        @foreach ($docs as $n => $d)<x-ui.doc :doc="$d" :class="$n ? 'hidden' : 'chip !text-xs whitespace-nowrap'">{{ $label }}</x-ui.doc>@endforeach
-    @empty
-        <span class="text-sm text-ink-dim">нет</span>
-    @endforelse
-</span>
+@foreach ($docs as $n => $d)
+    <x-ui.doc :doc="$d" :class="$n ? 'hidden' : 'doc-act-btn'.($named ? '' : ' is-other')"><x-ui.icon name="file" class="size-[18px]"/></x-ui.doc>
+@endforeach

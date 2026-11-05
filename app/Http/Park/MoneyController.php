@@ -201,23 +201,7 @@ class MoneyController
         $data = $this->closingData($doc);
         $cars = $data['composition']['cars']->sortBy(fn ($c) => $c['vehicle']->accepted_at)->values();
 
-        return view('park.money.closing-page', $data + ['cars' => $cars, 'acts' => IntakeActs::for($cars->pluck('vehicle')->unique('id')->values()), 'table' => self::carsTable()]);
-    }
-
-    /** Таблица ТС документа на его странице: одно описание на шапку и строки `x-billing.registry-car-row`. */
-    public static function carsTable(): Table
-    {
-        return Table::of(
-            new Column('title', 'Марка, модель', grow: true),
-            new Column('ref', '№ убытка', from: 'sm', role: ColRole::Code, clip: true, rem: 9),
-            // Акты — главное на сверке: с открытой шторкой документов столбец не уходит, следующий акт — под рукой.
-            new Column('acts', 'Акты', from: 'sm', role: ColRole::State, rem: 9, main: true),
-            new Column('rate', 'Ставка', from: 'sm', num: true, cell: 'nums', rem: 6),
-            new Column('accepted', 'Принята', role: ColRole::When, rem: 8),
-            new Column('released', 'Выдана', role: ColRole::When, rem: 8),
-            new Column('days', 'Сут', from: 'sm', num: true, cell: 'nums', rem: 3.5),
-            new Column('amount', 'Сумма', num: true, cell: 'nums', rem: 6.5),
-        );
+        return view('park.money.closing-page', $data + ['cars' => $cars, 'acts' => IntakeActs::for($cars->pluck('vehicle')->unique('id')->values())]);
     }
 
     /** Карточка документа: живой — счёт на лету с номером, который получит; отправленный — счёт с оплатами и историей. */

@@ -225,7 +225,7 @@ class ParkClosingDocsTest extends TestCase
 
         $this->actingAs($this->admin)->get(Surface::Park->url('/money/invoices/'.$invoice->id))->assertRedirect('/money/closing/i'.$invoice->id);
         $this->actingAs($this->admin)->get(Surface::Park->url('/money/closing/i'.$invoice->id))->assertOk()
-            ->assertSee('Все ТС')->assertSee('Отменить отправку')->assertSee('SGZA0000933697D', false);
+            ->assertSee('Марка, модель')->assertSee('Отменить отправку')->assertSee('SGZA0000933697D', false);
 
         // Тот же номер второй раз — ошибка у поля, ничего не записано.
         Charge::create(['party_id' => $this->vendor->party_id, 'vehicle_id' => $this->vehicle->id, 'kind' => ChargeKind::Tow, 'title' => 'Подача эвакуатора',
