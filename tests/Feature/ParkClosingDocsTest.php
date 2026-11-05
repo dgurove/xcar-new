@@ -198,6 +198,7 @@ class ParkClosingDocsTest extends TestCase
         $key = ClosingDoc::liveKey($month, $group);
         $this->actingAs($this->admin)->get(Surface::Park->url('/money/closing'))->assertOk()
             ->assertSee('Октябрь')->assertSee('СОГАЗ тест')->assertSee('href="/money/closing/'.$key.'"', false);
+        $this->actingAs($this->admin)->get(Surface::Park->url('/money/closing'))->assertSee('href="/money/draft/'.$key.'/pdf"', false);
         $this->actingAs($this->admin)->get(Surface::Park->url('/money/closing?state=send'))->assertOk()->assertSee('href="/money/closing/'.$key.'"', false);
         $this->actingAs($this->admin)->get(Surface::Park->url('/money/closing?state=paid'))->assertOk()->assertDontSee('href="/money/closing/'.$key.'"', false);
         $this->actingAs($this->admin)->get(Surface::Park->url('/money/closing?peek='.$key))->assertRedirect('/money/closing/'.$key);

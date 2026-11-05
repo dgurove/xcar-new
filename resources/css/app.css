@@ -2236,11 +2236,19 @@ html.kb-open { --home-gap: 0px; }
   @media (max-width: 639px) { .doc-sum { @apply basis-full; } }
   /* Список «Счетов и актов» (06.11.2026): месяц — подпись над блоком `.list` (итог справа), от 1280 — две колонки. Строка —
      логотип, плательщик, справа столбиком сумма и под ней состояние словом; ни сумма, ни слово не режутся. */
-  .doc-months { @apply mt-4 grid items-start gap-6 xl:grid-cols-2; }
+  .doc-months { @apply mt-4 flex flex-col gap-6; }
   .doc-month-head { @apply px-1; }
   .doc-month-head .doc-month-now { @apply text-sm font-normal text-ink-dim; }
-  .doc-row-name { overflow-wrap: anywhere; }
-  .doc-row-end { @apply flex shrink-0 flex-col items-end text-right whitespace-nowrap; }
+  .doc-row { position: relative; }
+  .doc-row-name { display: block; overflow-wrap: anywhere; }
+  /* Вся строка — ссылка на страницу документа; файлы лежат над растяжкой и открывают шторку документов. */
+  .doc-row-link::after { content: ''; position: absolute; inset: 0; }
+  @media (hover: hover) { .doc-row:has(.doc-row-link:hover) { @apply bg-hover; } }
+  .doc-row-files { @apply relative z-[2] flex shrink-0 items-center gap-1; }
+  .doc-row-file { @apply inline-flex h-7 items-center gap-1.5 rounded-(--radius-s) px-2 text-sm whitespace-nowrap text-ink-muted; }
+  @media (hover: hover) { .doc-row-file:hover { @apply bg-hover text-ink; } }
+  .doc-row-file .file-icon { width: 1.25rem; height: 1rem; border-radius: 4px; font-size: 7px; letter-spacing: 0; }
+  .doc-row-end { @apply flex min-w-[7.5rem] shrink-0 flex-col items-end text-right whitespace-nowrap; }
   .doc-row-end > :last-child { @apply text-sm; }
   /* Все ТС документа — обычная таблица: ширины по содержимому, коды, даты и суммы целиком (не режутся), название
      переносится; не влезла — листается вбок с закреплённым названием. Дата — кнопка цвета текста, карандаш при наведении. */
