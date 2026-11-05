@@ -109,7 +109,9 @@
         // Ссылка знает свой счёт без запроса: строка берёт из него плательщика, машину и текст «Поделиться».
         $last = fn ($i, bool $live) => $i->payLinks->when($live, fn ($c) => $c->where('state', '!=', \App\Billing\Acquiring\PayLinkState::Canceled))
             ->sortByDesc('id')->first()?->setRelation('invoice', $i);
-        $links = $issued->map(fn ($i) => [$last($i, true), 'счёт '.$i->label()])
+        // `toBase`: пустой список счетов — коллекция моделей, и её `merge` брал ключ модели у массива ручной ссылки (05.11.2026,
+        // 2610222547: ручная ссылка есть, счетов сделки нет — окно падало).
+        $links = $issued->toBase()->map(fn ($i) => [$last($i, true), 'счёт '.$i->label()])
             ->merge($credits->map(fn ($c) => [$last($c, false), $c->state === InvoiceState::Paid ? 'вручную, в зачёт сделки' : 'вручную, засчитаем']))
             ->filter(fn ($p) => $p[0]);
     @endphp
