@@ -1,4 +1,5 @@
-@php $papers = $vehicle->papers(); @endphp
+{{-- `papersStage` — карточка «Фото, файл» окна приёма и выдачи: только файлы, добавленные на этом шаге. --}}
+@php $papers = ($papersStage ?? null) ? $vehicle->papers()->filter(fn ($m) => $m->getCustomProperty('stage') === $papersStage->value)->values() : $vehicle->papers(); @endphp
 {{-- Пусто — скрыт: подпись «Документы» с «+ Документ» встаёт без отступа снизу (`.box-head`), ответ загрузки подменит его. --}}
 <div id="papers" class="flex flex-col" @if ($papers->isEmpty()) hidden @endif>
     @foreach ($papers as $media)

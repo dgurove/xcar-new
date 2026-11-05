@@ -34,4 +34,5 @@
     </div>
 </div>
 {{-- Кадры приёма — обычным блоком с добавлением (`x-park.photos`), как после приёма в деле. --}}
-<x-park.photos :vehicle="$vehicle" :stage="\App\Park\PhotoStage::Intake" nested edit class="mt-3"/>
+{{-- Фото и файлы одной кнопкой (05.11.2026, Сергей: «не только фото, но и файлы (pdf)»): PDF — в документы ТС, их список тут же. --}}
+<x-park.photos :vehicle="$vehicle" :stage="\App\Park\PhotoStage::Intake" nested edit files class="mt-3"/>

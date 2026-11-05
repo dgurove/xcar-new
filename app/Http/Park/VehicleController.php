@@ -377,7 +377,9 @@ class VehicleController
         $stage = PhotoStage::tryFrom((string) $request->input('stage')) ?? PhotoStage::Intake;
         try {
             if ($papers) {
-                $vehicle->addMedia($file)->usingFileName(preg_replace('/[^\p{L}\p{N}._-]+/u', '-', $file->getClientOriginalName()) ?: 'dokument')->toMediaCollection('papers');
+                // Из карточки «Фото, файл» окна — со стадией: окно показывает файлы своего шага, дело — все.
+                $vehicle->addMedia($file)->usingFileName(preg_replace('/[^\p{L}\p{N}._-]+/u', '-', $file->getClientOriginalName()) ?: 'dokument')
+                    ->withCustomProperties($request->boolean('files') ? ['stage' => $stage->value] : [])->toMediaCollection('papers');
             } else {
                 // Глаз у ТС — показ в продаже: скрыт, только если продажа уже опубликована (`Hidden::incoming`).
                 $ingest->fromPhone($vehicle, 'photos', $request, properties: ['stage' => $stage->value, 'source' => 'app'] + Hidden::incoming($vehicle));
@@ -386,7 +388,7 @@ class VehicleController
             return response()->json(['message' => $e->getMessage()], 422);
         }
 
-        return $papers ? $this->papers($vehicle) : $this->gallery($vehicle, $stage->value);
+        return $papers ? $this->papers($vehicle, $request->boolean('files') ? $stage : null) : $this->gallery($vehicle, $stage->value, $request->boolean('files'));
     }
 
     public function reorder(Request $request, Vehicle $vehicle)
@@ -776,19 +778,20 @@ class VehicleController
     }
 
     /** Карточки кадров заново; `$stage` — та, из которой пришёл запрос: только ей возвращается кнопка камеры. */
-    private function gallery(Vehicle $vehicle, ?string $stage = null)
+    /** `files` — загрузка из карточки «Фото, файл» окна приёма и выдачи: её стадия возвращается такой же. */
+    private function gallery(Vehicle $vehicle, ?string $stage = null, bool $files = false)
     {
         $vehicle->unsetRelation('media');
 
-        return Stream::view('park.vehicles.photos-stream', ['vehicle' => $vehicle, 'stage' => $stage]);
+        return Stream::view('park.vehicles.photos-stream', ['vehicle' => $vehicle, 'stage' => $stage, 'files' => $files]);
     }
 
     /** Список документов заново: бумаги живут своей карточкой, к стадиям кадров отношения не имеют. */
-    private function papers(Vehicle $vehicle)
+    private function papers(Vehicle $vehicle, ?PhotoStage $stage = null)
     {
         $vehicle->unsetRelation('media');
 
-        return Stream::view('park.vehicles.papers-stream', ['vehicle' => $vehicle]);
+        return Stream::view('park.vehicles.papers-stream', ['vehicle' => $vehicle, 'stage' => $stage]);
     }
 
     /**

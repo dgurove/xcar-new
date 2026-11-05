@@ -22,7 +22,7 @@ let shown = null;
 
 export default class extends Controller {
     static targets = ['input', 'progress', 'grid', 'all', 'expand', 'failed'];
-    static values = { url: String, collection: { type: String, default: 'photos' }, stage: String, readonly: Boolean, reload: Boolean, group: String, any: Boolean, mark: Boolean };
+    static values = { url: String, collection: { type: String, default: 'photos' }, stage: String, readonly: Boolean, reload: Boolean, group: String, any: Boolean, other: String, mark: Boolean };
 
     connect() {
         // Морф (живое обновление страницы, фрейма карточки, строки) возвращает кнопкам «Показать все» и «Развернуть»
@@ -205,10 +205,12 @@ export default class extends Controller {
     // Не `run`: так зовётся действие над кадром ниже — второй метод с тем же именем перекрывал этот, и с 16.10.2026 загрузка
     // слала файл в адрес действия («/files/[object File]/undefined», 405).
     async runUpload(files) {
-        if (!this.hasGridTarget || this.collectionValue !== 'photos') return this.uploadWithBar(files);
-        const other = this.anyValue ? files.filter((f) => !isImage(f)) : [];
-        files = this.anyValue ? files.filter(isImage) : files;
-        if (!files.length) return this.uploadWithBar(other);
+        // `other` — куда класть не-кадры при `any` (окно приёма и выдачи парковки: в документы ТС); без него — туда же.
+        const any = this.anyValue && this.collectionValue === 'photos';
+        const rest = any ? files.filter((f) => !isImage(f)).map((f) => (this.otherValue ? Object.assign(f, { collection: this.otherValue }) : f)) : [];
+        if (any) files = files.filter(isImage);
+        if (!this.hasGridTarget || this.collectionValue !== 'photos') return this.uploadWithBar([...files, ...rest]);
+        if (!files.length) return this.uploadWithBar(rest);
         this.uploading = true;
         this.pendingCells ??= new Map();
         this.shown = this.gridTarget.querySelectorAll('.photo-cell[data-id]').length;
@@ -229,7 +231,7 @@ export default class extends Controller {
         await this.cellPool.push(...files.map((file) => ({ file, cell: this.pendingCell(file) })));
         this.uploading = false;
         window.dispatchEvent(new CustomEvent('photos:uploaded'));
-        if (other.length) await this.uploadWithBar(other);
+        if (rest.length) await this.uploadWithBar(rest);
     }
 
     fresher(html) {
@@ -301,7 +303,8 @@ export default class extends Controller {
 
     async prepare(file) {
         const sha = await digest(file);
-        return { file: this.collectionValue === 'photos' ? await shrink(file) : file, sha };
+        const collection = file.collection ?? this.collectionValue;
+        return { file: collection === 'photos' ? await shrink(file) : file, sha, collection };
     }
 
     // onSent — файл ушёл целиком, дальше сервер пережимает кадр и снимает чужой знак (секунда-две на кадр).
@@ -316,15 +319,17 @@ export default class extends Controller {
         }
     }
 
-    xhr({ file, sha }, onProgress, onSent) {
+    xhr({ file, sha, collection }, onProgress, onSent) {
         return new Promise((resolve, reject) => {
             const xhr = new XMLHttpRequest();
             const form = new FormData();
             form.append('file', file);
             if (sha) form.append('sha', sha);
-            form.append('collection', this.collectionValue);
+            form.append('collection', collection ?? this.collectionValue);
             // Стадия карточки: кадр ложится туда, откуда его добавили. Слоты приёма шлют свою через extra.
             if (this.stageValue) form.append('stage', this.stageValue);
+            // Карточка «Фото, файл» (`other`): ответ рисует её такой же.
+            if (this.otherValue) form.append('files', '1');
             for (const [k, v] of Object.entries(this.extra || {})) if (v) form.append(k, v);
             form.append('_token', csrf());
             xhr.open('POST', this.urlValue);
@@ -509,8 +514,11 @@ export default class extends Controller {
             document.querySelectorAll('.photo-cell img').forEach((i) => fresh.delete(i.getAttribute('src')));
             await Promise.all([...fresh].map((src) => withTimeout(preload(src), 4000)));
         }
+        // Блок сначала в своём фрейме: окно приёма и выдачи (`act-frame`) стоит поверх дела с теми же id блоков.
+        const frame = this.element.closest('turbo-frame');
         streams.forEach((stream) => {
-            const target = document.getElementById(stream.getAttribute('target'));
+            const id = stream.getAttribute('target') ?? '';
+            const target = (id && frame?.querySelector(`#${CSS.escape(id)}`)) || document.getElementById(id);
             const content = stream.querySelector('template')?.content.cloneNode(true);
             if (!target || !content) return;
             switch (stream.getAttribute('action')) {
