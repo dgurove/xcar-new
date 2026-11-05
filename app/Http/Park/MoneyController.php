@@ -90,7 +90,9 @@ class MoneyController
             'counts' => array_diff_key($counts, ['all' => 0, 'paid' => 0]),
             // Один контрагент выбран (пришли из «Долгов») — экран называется им.
             'party' => count($parties) === 1 ? Party::find($parties[0]) : null,
-            'closing' => Closing::pending(),
+            'closing' => ClosingDoc::summary(),
+            // Счетов парковки нет вовсе — ни тулбара, ни «Счетов нет»: только «Счета и акты», долги, реквизиты.
+            'any' => $qs !== '' || $counts['all'] > 0 || $parties,
             'q' => $qs,
             'facets' => $facets,
         ]);
@@ -157,23 +159,22 @@ class MoneyController
     }
 
     /**
-     * Счета и акты (05.11.2026, владелец: «не разделять по месяцам, а группировать; логотипов не хватает; кнопки посмотреть
-     * и скачать; внутри — огромный бесцельный список»): одна таблица документов по месяцам (`ClosingDoc::window`), у строки —
-     * логотип, файлы чипами и состояние словом; нажатие — карточка рядом (`closingCard`): сумма, файлы, состав, история,
-     * «Отправить». Старый `?month=` — якорем своего месяца.
+     * Счета и акты (05.11.2026, владелец: «не разделять по месяцам, а группировать; логотипов не хватает»): одна таблица
+     * документов по месяцам (`ClosingDoc::window`), у строки — логотип, что за документ и состояние словом; нажатие — сразу
+     * страница документа (`closingPage`; окошка рядом нет — владелец: «здесь оно вообще неуместно»). Старые `?month=` —
+     * якорем своего месяца, `?peek=` — на страницу документа.
      */
     public function closing(Request $request)
     {
-        $detail = Detail::of($request, fn (string $key) => ($doc = ClosingDoc::find($key)) ? $this->closingCard($doc) : null, ClosingDoc::KEY);
-        if ($detail->framed()) {
-            return $detail->response();
+        if (is_string($key = $request->query('peek')) && preg_match(ClosingDoc::KEY, $key)) {
+            return redirect('/money/closing/'.$key, 301);
         }
         if (is_string($m = $request->query('month')) && preg_match('/^\d{4}-\d{2}$/', $m)) {
-            return redirect('/money/closing'.($request->query('peek') ? '?peek='.urlencode((string) $request->query('peek')) : '').'#m'.$m, 301);
+            return redirect('/money/closing#m'.$m, 301);
         }
         $months = min(24, max(6, (int) $request->query('months', 6)));
 
-        return view('park.money.closing', ['docs' => ClosingDoc::window($months), 'months' => $months, 'detail' => $detail, 'table' => self::closingTable()]);
+        return view('park.money.closing', ['docs' => ClosingDoc::window($months), 'months' => $months, 'table' => self::closingTable()]);
     }
 
     /**
@@ -191,9 +192,8 @@ class MoneyController
     }
 
     /**
-     * Документ на всю страницу (⤢ у карточки; 05.11.2026, владелец: «в окошке сжато, а в фуллскрине всё то же, но ещё и все
-     * тачки»): слева то же, что в карточке, справа — все ТС со ставкой, датами приёма и выдачи (правятся на месте) и актами
-     * для сверки (`IntakeActs`).
+     * Документ на всю страницу (05.11.2026, владелец: «все тачки — ставка, даты приёма и выдачи, посмотреть акт»): в строке
+     * заголовка сумма и действия, ниже — все ТС со ставкой, датами (правятся на месте) и актами для сверки (`IntakeActs`).
      */
     public function closingPage(string $key)
     {
@@ -204,13 +204,7 @@ class MoneyController
         return view('park.money.closing-page', $data + ['cars' => $cars, 'acts' => IntakeActs::for($cars->pluck('vehicle')->unique('id')->values())]);
     }
 
-    /** Карточка документа: живой — счёт на лету с номером, который получит; отправленный — счёт с оплатами и историей. */
-    private function closingCard(ClosingDoc $doc)
-    {
-        return view('park.money.closing-card', $this->closingData($doc));
-    }
-
-    /** @return array<string, mixed> данные тела документа — одни на карточку и страницу */
+    /** @return array<string, mixed> данные страницы документа: живой — счёт на лету с номером, который получит; отправленный — счёт с оплатами и историей */
     private function closingData(ClosingDoc $doc): array
     {
         $draft = $doc->live() && $doc->state !== 'nobody' ? Closing::draft($doc->month, $doc->group) : null;
@@ -226,12 +220,12 @@ class MoneyController
         ];
     }
 
-    /** Прежний адрес живого документа — его карточка в списке. Исправленный — карточка отправленного. */
+    /** Прежний адрес живого документа — его страница. Исправленный — страница отправленного. */
     public function draft(Request $request)
     {
         [$month, $group, $replaces] = $this->draftKey($request);
 
-        return redirect('/money/closing?peek='.($replaces ? 'i'.$replaces->id : ClosingDoc::liveKey($month, $group)));
+        return redirect('/money/closing/'.($replaces ? 'i'.$replaces->id : ClosingDoc::liveKey($month, $group)));
     }
 
     /** Таблица «Счетов и актов» — одно описание на шапку, заголовки месяцев и строки `x-billing.closing-row`. */
@@ -290,10 +284,10 @@ class MoneyController
                 return back()->withErrors($e->errors())->withInput();
             }
 
-            return redirect('/money/closing?peek='.ClosingDoc::liveKey($month, $group))->with('toast', implode(', ', $e->validator->errors()->all()));
+            return redirect('/money/closing/'.ClosingDoc::liveKey($month, $group))->with('toast', implode(', ', $e->validator->errors()->all()));
         }
 
-        return redirect('/money/closing?peek=i'.$invoice->id)->with('toast', 'Отмечен отправленным, '.$invoice->label().($fix->skipped ? '. Не вошли: '.implode('; ', $fix->skipped) : ''));
+        return redirect('/money/closing/i'.$invoice->id)->with('toast', 'Отмечен отправленным, '.$invoice->label().($fix->skipped ? '. Не вошли: '.implode('; ', $fix->skipped) : ''));
     }
 
     /** @return array{0: Carbon, 1: string, 2: ?Invoice} */

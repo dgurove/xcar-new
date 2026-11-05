@@ -20,7 +20,7 @@ const moscow = () => { const [day, clock] = new Date().toLocaleString('sv-SE', {
 
 export default class extends Controller {
     static targets = ['value', 'text', 'pop', 'cal', 'time', 'clear', 'error', 'quick', 'source'];
-    static values = { time: Boolean, defaultTime: { type: String, default: '12:00' }, min: String, max: String, limit: String, now: Boolean, prefix: String, submit: Boolean, placeholder: String, short: Boolean };
+    static values = { time: Boolean, defaultTime: { type: String, default: '12:00' }, min: String, max: String, limit: String, now: Boolean, prefix: String, submit: Boolean, placeholder: String };
 
     get field() { return this.textTarget.tagName === 'INPUT'; }
 
@@ -64,8 +64,7 @@ export default class extends Controller {
         const p = this.parts;
         let text = '';
         if (p) {
-            // short — кнопка-дата только днём, время — в календаре (сверка дат «Счетов и актов»: даты одним видом).
-            text = `${day(p.date)}${this.timeValue && p.time && !this.shortValue ? ` ${p.time}` : ''}`;
+            text = `${day(p.date)}${this.timeValue && p.time ? ` ${p.time}` : ''}`;
         }
         if (this.field) {
             this.textTarget.value = text;

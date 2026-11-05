@@ -4,7 +4,7 @@
     // Изменилось после отправки — исправленный живым документом (`/money/draft?…&replaces=`); оплаченный не правится.
     $drift = \App\Billing\Closing::drift($invoice);
     $group = \App\Billing\Closing::groupOfInvoice($invoice);
-    $reviseUrl = $drift && $group && $invoice->paid == 0 && $me->canManagePark() ? '/money/closing?peek=i'.$invoice->id : null;
+    $reviseUrl = $drift && $group && $invoice->paid == 0 && $me->canManagePark() ? '/money/closing/i'.$invoice->id : null;
 @endphp
 @include('billing.invoice-page', [
     'base' => '/money/invoices/'.$invoice->id, 'back' => ['Оплаты', '/money'], 'canManage' => $me->canManagePark(),

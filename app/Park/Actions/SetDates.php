@@ -28,6 +28,12 @@ final class SetDates
     {
         DB::transaction(function () use ($vehicle, $by, $accepted, $released, $source) {
             $vehicle = Vehicle::withoutGlobalScopes()->whereKey($vehicle->id)->lockForUpdate()->firstOrFail();
+            // День без времени (календари дат приёма и выдачи времени не спрашивают — 05.11.2026, владелец: «всем похер на
+            // время, по умолчанию 12:00»): тот же день — время прежнее, другой — 12:00.
+            $day = fn (?Carbon $new, ?Carbon $old) => $new && $new->format('H:i:s') === '00:00:00'
+                ? ($old && $old->isSameDay($new) ? $old->copy() : $new->copy()->setTime(12, 0)) : $new;
+            $accepted = $day($accepted, $vehicle->accepted_at);
+            $released = $day($released, $vehicle->released_at);
             $same = fn (?Carbon $new, ?Carbon $old) => ! $new || ! $old || $new->format('Y-m-d H:i') === $old->format('Y-m-d H:i');
             $changes = array_filter([
                 'accepted_at' => $same($accepted, $vehicle->accepted_at) ? null : $accepted->copy()->second(0),

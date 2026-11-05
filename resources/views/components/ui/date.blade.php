@@ -9,7 +9,7 @@
      дата приёма парковки — `Park\AcceptHints`): нажатие ставит значение и закрывает выбор, при `submit` — сразу уходит;
      `inline` — те же чипы ещё и рядом с полем (одно нажатие без календаря). `source` — имя скрытого поля, куда ложится
      `source` нажатой подсказки (выбор в календаре его стирает). --}}
-@props(['name', 'id' => null, 'value' => null, 'time' => false, 'defaultTime' => '12:00', 'min' => null, 'max' => null, 'limit' => null, 'placeholder' => null, 'clearable' => true, 'now' => false, 'chip' => false, 'prefix' => null, 'submit' => false, 'quick' => [], 'inline' => false, 'source' => null, 'short' => false])
+@props(['name', 'id' => null, 'value' => null, 'time' => false, 'defaultTime' => '12:00', 'min' => null, 'max' => null, 'limit' => null, 'placeholder' => null, 'clearable' => true, 'now' => false, 'chip' => false, 'prefix' => null, 'submit' => false, 'quick' => [], 'inline' => false, 'source' => null])
 @php
     $id ??= 'f-'.str_replace(['[', ']'], ['-', ''], $name);
     // Прежние значения бывают с секундами и пробелом («2026-10-09 17:30:00») — к виду поля.
@@ -17,11 +17,11 @@
     $v = $v === '' ? '' : ($time ? substr(str_replace(' ', 'T', $v), 0, 16) : substr($v, 0, 10));
     $day = fn ($d) => $d ? substr(str_replace(' ', 'T', (string) ($d instanceof \DateTimeInterface ? $d->format('Y-m-d') : $d)), 0, 10) : null;
     $disabled = $attributes->has('disabled') && $attributes->get('disabled') !== false;
-    $chipText = $chip && $v !== '' ? trim($prefix.' '.\App\Support\Ago::day(\Illuminate\Support\Carbon::parse($v), (bool) $time && ! $short)) : ($prefix ?: $placeholder);
+    $chipText = $chip && $v !== '' ? trim($prefix.' '.\App\Support\Ago::day(\Illuminate\Support\Carbon::parse($v), (bool) $time)) : ($prefix ?: $placeholder);
     $quick = collect($quick)->map(fn ($q) => ['label' => $q['label'], 'value' => $q['at']->format($time ? 'Y-m-d\TH:i' : 'Y-m-d'), 'source' => $q['source'] ?? ''])->all();
     $chips = fn () => collect($quick)->map(fn ($q) => '<button type="button" class="chip nums" data-date-target="quick" data-action="date#quick" data-date-value-param="'.e($q['value']).'" data-date-source-param="'.e($q['source']).'" aria-pressed="'.(substr($q['value'], 0, 10) === substr($v, 0, 10) ? 'true' : 'false').'">'.e($q['label']).'</button>')->implode('');
 @endphp
-<{{ $chip ? 'span' : 'div' }} class="{{ $chip ? 'contents' : 'date-field' }}" data-controller="date" data-date-prefix-value="{{ $prefix }}" @if ($chip && $placeholder) data-date-placeholder-value="{{ $placeholder }}" @endif data-date-submit-value="{{ $submit ? 'true' : 'false' }}" @if ($short) data-date-short-value="true" @endif data-date-time-value="{{ $time ? 'true' : 'false' }}" data-date-default-time-value="{{ $defaultTime }}" data-date-now-value="{{ $now ? 'true' : 'false' }}"
+<{{ $chip ? 'span' : 'div' }} class="{{ $chip ? 'contents' : 'date-field' }}" data-controller="date" data-date-prefix-value="{{ $prefix }}" @if ($chip && $placeholder) data-date-placeholder-value="{{ $placeholder }}" @endif data-date-submit-value="{{ $submit ? 'true' : 'false' }}" data-date-time-value="{{ $time ? 'true' : 'false' }}" data-date-default-time-value="{{ $defaultTime }}" data-date-now-value="{{ $now ? 'true' : 'false' }}"
     data-date-min-value="{{ $day($min) }}" data-date-max-value="{{ $day($max) }}" @if ($limit) data-date-limit-value="{{ $limit instanceof \DateTimeInterface ? $limit->format('Y-m-d\TH:i') : substr(str_replace(' ', 'T', (string) $limit), 0, 16) }}" @endif>
     <input type="hidden" name="{{ $name }}" value="{{ $v }}" data-date-target="value" {{ $attributes->except(['class', 'id', 'type', 'placeholder']) }}>
     @if ($source)<input type="hidden" name="{{ $source }}" value="" data-date-target="source" {{ $attributes->only('form') }}>@endif

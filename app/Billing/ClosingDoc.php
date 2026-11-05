@@ -3,12 +3,15 @@
 namespace App\Billing;
 
 use App\Mail\AddressKind;
+use App\Park\City;
 use App\Support\Ago;
 use App\Support\Docs;
 use App\Support\Money;
 use App\Vendors\Vendor;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Строка «Счетов и актов» (05.11.2026, владелец: «не разделять по месяцам, а группировать; логотипов вендоров не хватает;
@@ -81,6 +84,23 @@ final class ClosingDoc
         }
 
         return $out;
+    }
+
+    /**
+     * Сколько документов в каком состоянии за всю историю — строкой «Счета и акты» в «Оплатах» (05.11.2026, владелец: «пишет
+     * „нужны реквизиты“, а там нигде не просит» — прежняя строка считала один прошлый месяц и держала кэш 10 минут). Кэш — до
+     * любой правки ТС, счетов, начислений, контрагентов, вендоров и ставок: ключ — их последние `updated_at`.
+     *
+     * @return array<string, int> состояние → число документов
+     */
+    public static function summary(): array
+    {
+        $stamp = collect(['park_vehicles', 'billing_invoices', 'billing_charges', 'billing_parties', 'vendors', 'park_tariffs'])
+            ->map(fn ($t) => DB::table($t)->max('updated_at'))->implode('|');
+        $city = City::viewing();
+
+        return Cache::remember('park.closing.summary:'.$city.':'.md5($stamp), 3600,
+            fn () => self::window()->flatten(1)->countBy(fn (self $d) => $d->state)->all());
     }
 
     /** Живой документ по ключу строки (карточка рядом): месяц и группа — в самом ключе. */

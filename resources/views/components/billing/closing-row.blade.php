@@ -8,13 +8,14 @@
     $d = $doc;
     $sub = $d->what.($d->what === 'хранение' || $d->what === 'эвакуация' || $d->what === 'страхователь' ? ', '.$d->cars.' ТС' : '');
 @endphp
-<tr @if ($d->state !== 'nobody') data-detail-key="{{ $d->key }}" @endif id="doc-{{ $d->key }}">
+<tr id="doc-{{ $d->key }}" @class(['doc-row', 'is-link' => $d->state !== 'nobody'])>
     @foreach ($table->columns as $key => $col)
         @switch($key)
         @case('title')
     <td class="{{ $col->classes() }}">
         @if ($d->state !== 'nobody')
-            <x-ui.row-link :key="$d->key"><span class="cell-title">@if ($d->vendor)<x-vendor.name :vendor="$d->vendor"/>@else{{ $d->name }}@endif</span></x-ui.row-link>
+            {{-- Ссылка на всю строку (`.doc-row.is-link a::after`): нажатие куда угодно — страница документа. --}}
+            <a href="/money/closing/{{ $d->key }}" class="doc-row-link"><span class="cell-title">@if ($d->vendor)<x-vendor.name :vendor="$d->vendor"/>@else{{ $d->name }}@endif</span></a>
         @else
             <span class="cell-title">{{ $d->name }}</span>
         @endif

@@ -1,11 +1,14 @@
-{{-- Документ «Счетов и актов» на всю страницу (05.11.2026, владелец: «в окошке сжато, а в фуллскрине всё то же, но ещё и все
-     тачки»; первая раскладка — «позорище»): шапка документа одной плашкой (`closing-head`), под ней все ТС обычной таблицей
+{{-- Документ «Счетов и актов» на всю страницу (05.11.2026, владелец: «все тачки — ставка, даты, акт»; шапку-плашку — «убрать,
+     там 4 кнопки и сумма»): в строке заголовка — логотип, плательщик, состояние словом, справа сумма и действия
+     (`closing-actions`); плашки — только когда нужен наш ход (`closing-alerts`); под ними все ТС обычной таблицей
      (`x-billing.registry-car-row`): ширины ставит браузер по содержимому — номера, суммы и даты не режутся; не влезла
      (телефон) — листается вбок, название закреплено. Последняя строка — итог. Открыт акт (шторка справа) — таблица уже. --}}
 @php use App\Support\Money; $d = $doc; @endphp
-<x-ui.shell :title="$d->name.', '.$d->what.' за '.mb_strtolower($d->month->translatedFormat($d->month->isSameYear(now()) ? 'F' : 'F Y'))" :back="['Счета и акты', '/money/closing?peek='.$d->key]" cache="no-cache">
+<x-ui.shell :title="$d->name.', '.$d->what.' за '.mb_strtolower($d->month->translatedFormat($d->month->isSameYear(now()) ? 'F' : 'F Y'))" :back="['Счета и акты', '/money/closing#m'.$d->month->format('Y-m')]" cache="no-cache">
     <x-slot:lead>@if ($d->vendor)<x-vendor.logo :vendor="$d->vendor"/>@endif</x-slot:lead>
-    @include('park.money.closing-head')
+    <x-slot:badge><span class="title-state {{ $d->tone() }}">{{ $d->state === 'send' ? 'не отправлен' : $d->word() }}</span></x-slot:badge>
+    <x-slot:actions class="doc-acts">@include('park.money.closing-actions')</x-slot:actions>
+    @include('park.money.closing-alerts')
     @if ($cars->isNotEmpty())
         <div class="doc-cars-wrap">
             <table class="doc-cars">

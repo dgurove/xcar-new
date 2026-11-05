@@ -187,24 +187,26 @@ class ParkClosingDocsTest extends TestCase
     }
 
     /**
-     * Экран «Счета и акты» — месяцами одной таблицей, строка открывает карточку рядом (живой документ — по ключу месяца
-     * и группы); «Отправили сами» записывает, кто отметил, и ведёт в карточку отправленного.
+     * Экран «Счета и акты» — месяцами одной таблицей, строка ведёт сразу на страницу документа (окошка нет; живой — по
+     * ключу месяца и группы, старый `?peek=` — туда же); «Отправили сами» записывает, кто отметил, и ведёт на страницу
+     * отправленного.
      */
-    public function test_screen_lists_months_and_opens_card(): void
+    public function test_screen_lists_months_and_opens_page(): void
     {
         $month = Carbon::parse('2026-10-01');
         $group = Closing::items($month)->map(fn ($i) => Closing::groupOf($i))->first();
         $key = ClosingDoc::liveKey($month, $group);
         $this->actingAs($this->admin)->get(Surface::Park->url('/money/closing'))->assertOk()
-            ->assertSee('Октябрь')->assertSee('СОГАЗ тест')->assertSee('data-detail-key="'.$key.'"', false);
-        $this->actingAs($this->admin)->get(Surface::Park->url('/money/closing?peek='.$key), ['Turbo-Frame' => 'detail'])->assertOk()
-            ->assertSee('Отправить')->assertSee('Файлы')->assertSee('01.10 – 31.10, 31')->assertDontSee('Не вошли');
+            ->assertSee('Октябрь')->assertSee('СОГАЗ тест')->assertSee('href="/money/closing/'.$key.'"', false);
+        $this->actingAs($this->admin)->get(Surface::Park->url('/money/closing?peek='.$key))->assertRedirect('/money/closing/'.$key);
+        $this->actingAs($this->admin)->get(Surface::Park->url('/money/closing/'.$key))->assertOk()
+            ->assertSee('Отправить')->assertSee('Отправили сами')->assertDontSee('Не вошли');
 
         $this->actingAs($this->admin)->post(Surface::Park->url('/money/draft/fix'), ['month' => '2026-10', 'group' => $group])
-            ->assertRedirect('/money/closing?peek=i'.Invoice::first()->id);
+            ->assertRedirect('/money/closing/i'.Invoice::first()->id);
         $this->assertSame($this->admin->id, Invoice::first()->sent_by);
-        $this->actingAs($this->admin)->get(Surface::Park->url('/money/closing?peek=i'.Invoice::first()->id), ['Turbo-Frame' => 'detail'])->assertOk()
-            ->assertSee('Отмечен отправленным');
+        $this->actingAs($this->admin)->get(Surface::Park->url('/money/closing/i'.Invoice::first()->id))->assertOk()
+            ->assertSee('Оплачен')->assertSee('Отменить отправку');
     }
 
     /**
