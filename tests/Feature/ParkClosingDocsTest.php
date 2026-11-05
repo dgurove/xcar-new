@@ -3,6 +3,8 @@
 namespace Tests\Feature;
 
 use App\Billing\ActForm;
+use App\Billing\Actions\FixClosingDocument;
+use App\Billing\Actions\VoidInvoice;
 use App\Billing\Cadence;
 use App\Billing\Charge;
 use App\Billing\ChargeKind;
@@ -24,6 +26,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 use Tests\TestCase;
 
 /**
@@ -85,8 +88,8 @@ class ParkClosingDocsTest extends TestCase
         $this->assertSame(0, Invoice::count());
         $this->assertNull($this->vehicle->fresh()->storage_billed_until);
 
-        $storage = Closing::fix($month, $storageGroup, $this->admin);
-        $tow = Closing::fix($month, $towGroup, $this->admin);
+        $storage = app(FixClosingDocument::class)($month, $storageGroup, $this->admin);
+        $tow = app(FixClosingDocument::class)($month, $towGroup, $this->admin);
         $this->assertSame(3100.0, (float) $storage->total);
         $this->assertSame(16000.0, (float) $tow->total);
         $this->assertNull($storage->vat_rate);                         // ИП — без НДС
@@ -105,11 +108,11 @@ class ParkClosingDocsTest extends TestCase
     {
         $month = Carbon::parse('2026-10-01');
         $group = Closing::items($month)->map(fn ($i) => Closing::groupOf($i))->first();
-        $sent = Closing::fix($month, $group, $this->admin);
+        $sent = app(FixClosingDocument::class)($month, $group, $this->admin);
         $this->vehicle->fresh()->update(['accepted_at' => '2026-10-05 10:00']);
 
         $this->assertSame(['was' => 3100.0, 'now' => 2700.0], Closing::drift($sent->fresh()));
-        $revised = Closing::fix($month, $group, $this->admin, $sent->fresh());
+        $revised = app(FixClosingDocument::class)($month, $group, $this->admin, $sent->fresh());
         $this->assertSame(InvoiceState::Void, $sent->fresh()->state);
         $this->assertSame($sent->code, $revised->code);
         $this->assertSame(1, $revised->revision);
@@ -118,11 +121,40 @@ class ParkClosingDocsTest extends TestCase
         $this->assertNull(Closing::drift($revised));
     }
 
+    /**
+     * Сентябрь и октябрь отправлены, сентябрь исправили: октябрь остаётся выставленным, второй раз не всплывает; просто
+     * аннулировать сентябрь, пока есть октябрь, нельзя.
+     */
+    public function test_revising_earlier_month_keeps_later_billed(): void
+    {
+        $this->vehicle->update(['accepted_at' => '2026-09-01 10:00']);
+        $sep = Carbon::parse('2026-09-01');
+        $oct = Carbon::parse('2026-10-01');
+        $group = Closing::items($sep)->map(fn ($i) => Closing::groupOf($i))->first();
+        $september = app(FixClosingDocument::class)($sep, $group, $this->admin);
+        $october = app(FixClosingDocument::class)($oct, $group, $this->admin);
+        $this->assertSame('2026-10-31', $this->vehicle->fresh()->storage_billed_until->toDateString());
+
+        try {
+            app(VoidInvoice::class)($september->fresh(), $this->admin);
+            $this->fail('Сентябрь аннулирован при живом октябре');
+        } catch (ValidationException) {
+        }
+
+        $this->vehicle->fresh()->update(['accepted_at' => '2026-09-03 10:00']);
+        $this->assertSame(['was' => 3000.0, 'now' => 2800.0], Closing::drift($september->fresh()));
+        $revised = app(FixClosingDocument::class)($sep, $group, $this->admin, $september->fresh());
+        $this->assertSame(2800.0, (float) $revised->total);
+        $this->assertSame('2026-10-31', $this->vehicle->fresh()->storage_billed_until->toDateString());
+        $this->assertNull(Closing::draft($oct, $group));             // октябрь не всплыл живым
+        $this->assertSame(InvoiceState::Issued, $october->fresh()->state);
+    }
+
     public function test_rgs_form_gives_act_and_appendix(): void
     {
         $this->vendor->update(['act_form' => ActForm::Rgs]);
         $month = Carbon::parse('2026-10-01');
-        $invoice = Closing::fix($month, Closing::items($month)->map(fn ($i) => Closing::groupOf($i))->first(), $this->admin);
+        $invoice = app(FixClosingDocument::class)($month, Closing::items($month)->map(fn ($i) => Closing::groupOf($i))->first(), $this->admin);
         $files = $invoice->fresh()->getMedia('act')->pluck('file_name')->sort()->values()->all();
         $this->assertCount(2, $files);
         $this->assertStringEndsWith('.docx', $files[0]);

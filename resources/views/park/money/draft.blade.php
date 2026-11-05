@@ -1,5 +1,5 @@
 {{-- Живой документ месяца (`Closing::draft`): счёт и акт по текущим данным, ничего не записано. «Отправить» — окно письма с
-     файлами, номер встаёт в момент отправки (`MailController::send` → `Closing::fix`); «Отправили сами» — фиксирует без
+     файлами, номер встаёт в момент отправки (`MailController::send` → `FixClosingDocument`); «Отправили сами» — фиксирует без
      письма. У исправленного (`replaces`) — тот же номер и следующая редакция, прежний аннулируется. --}}
 @php
     use App\Billing\Acts\RegistryAct;
@@ -8,7 +8,8 @@
     $i = $invoice; $me = auth()->user(); $party = $i->party;
     $ready = $party?->filled();
     $tow = $i->kind === ChargeKind::Tow;
-    $acts = $i->isRegistry() ? array_values(RegistryAct::form($i)->files($tow)) : ['Акт хранения'];
+    // Файлы акта: шаблон → название (у РГС — акт и приложение), у счёта на ТС — PDF акта хранения.
+    $acts = $i->isRegistry() ? RegistryAct::form($i)->files($tow) : ['akt.pdf' => 'Акт хранения'];
     $byCar = $i->charges->groupBy('vehicle_id');
     $mailUrl = '/mail/new?'.http_build_query(array_filter(['closing' => $month->format('Y-m').'|'.$group, 'replaces' => $replaces?->id]));
 @endphp
@@ -26,8 +27,8 @@
     @if ($skipped)<p class="field-error mb-4">Не вошли: {{ implode('; ', $skipped) }}</p>@endif
     <div class="mb-6 flex flex-wrap gap-2">
         <x-ui.doc :doc="['url' => '/money/draft/pdf?'.$query, 'type' => 'pdf', 'name' => 'Счет '.$i->fileNo().'.pdf', 'label' => 'Счёт']" class="chip"/>
-        @foreach ($acts as $n => $title)
-            @php $ext = $i->isRegistry() ? pathinfo(array_keys(RegistryAct::form($i)->files($tow))[$n], PATHINFO_EXTENSION) : 'pdf'; @endphp
+        @foreach (array_keys($acts) as $n => $template)
+            @php $title = $acts[$template]; $ext = pathinfo($template, PATHINFO_EXTENSION); @endphp
             <x-ui.doc :doc="['url' => '/money/draft/act?'.$query.($n ? '&n='.$n : ''), 'type' => match ($ext) { 'xlsx' => 'sheet', 'docx' => 'word', default => 'pdf' }, 'name' => $title.' '.$i->fileNo().'.'.$ext, 'label' => $title]" class="chip"/>
         @endforeach
     </div>

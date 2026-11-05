@@ -5,7 +5,6 @@ namespace App\Http\Billing;
 use App\Billing\Actions\RecordPayment;
 use App\Billing\Actions\VoidInvoice;
 use App\Billing\Actions\VoidPayment;
-use App\Billing\Acts\RegistryAct;
 use App\Billing\Invoice;
 use App\Billing\InvoiceState;
 use App\Billing\Payment;
@@ -117,16 +116,12 @@ trait InvoiceActions
     }
 
     /**
-     * Акт хранения: файл, положенный при выставлении (`?n=` — номер файла у реестра РГС: акт и приложение); реестр без
-     * файла (выставлен до 05.11.2026) получает его сейчас; счёт на ТС без файла — страница на печать.
+     * Акт хранения: файл, положенный при фиксации (`?n=` — номер файла у реестра РГС: акт и приложение); счёт на ТС без
+     * файла — страница на печать. Просмотр ничего не записывает: реестр без файлов фиксацией не проходил — 404.
      */
     public function act(Invoice $invoice)
     {
         $this->guardInvoice($invoice);
-        if ($invoice->isRegistry() && $invoice->number && ! $invoice->hasMedia('act')) {
-            app(RegistryAct::class)->attach($invoice);
-            $invoice->load('media');
-        }
         if ($media = $invoice->getMedia('act')->values()->get((int) request()->query('n', 0))) {
             // Шторка документов показывает Excel и Word HTML-ом с сервера (`?preview=1`).
             if (request()->boolean('preview') && $media->mime_type !== 'application/pdf') {

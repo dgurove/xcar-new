@@ -59,7 +59,7 @@ class ShareManyPhotosTest extends TestCase
         $this->assertStringStartsWith('Фото при приёме/', $archive->getNameIndex(34));
     }
 
-    public function test_park_vehicle_share_for_admins_only(): void
+    public function test_park_vehicle_share_for_park_people(): void
     {
         config(['xcar.mercure.hub' => '']);
         Storage::fake('public');
@@ -80,7 +80,8 @@ class ShareManyPhotosTest extends TestCase
         $this->actingAs($parkAdmin)->get($url(''))->assertOk()->assertSee('data-share-zip-url-value', false);
         $this->actingAs($parkAdmin)->post($url('/pdf'), ['photos' => $ids, 'watermark' => '0'])->assertOk()->assertHeader('Content-Type', 'application/pdf');
         $this->actingAs($parkAdmin)->post($url('/zip'), ['photos' => $ids, 'watermark' => '0'])->assertOk()->assertHeader('Content-Type', 'application/zip');
-        $this->actingAs($parking)->post($url('/pdf'), ['photos' => $ids])->assertNotFound();
-        $this->actingAs($parking)->get($url(''))->assertOk()->assertDontSee('data-share-zip-url-value', false);
+        // С 02.11.2026 «Поделиться» — всем людям парковки (`User::sharesPark`: админ и `canManagePark`), управляющему тоже.
+        $this->actingAs($parking)->post($url('/pdf'), ['photos' => $ids, 'watermark' => '0'])->assertOk()->assertHeader('Content-Type', 'application/pdf');
+        $this->actingAs($parking)->get($url(''))->assertOk()->assertSee('data-share-zip-url-value', false);
     }
 }

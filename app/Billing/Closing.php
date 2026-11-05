@@ -3,19 +3,17 @@
 namespace App\Billing;
 
 use App\Billing\Actions\IssueInvoice;
-use App\Billing\Actions\VoidInvoice;
-use App\Billing\Documents\StorageActPdf;
 use App\Park\City;
 use App\Park\EventType;
 use App\Park\Vehicle;
 use App\Park\VehicleState;
 use App\Support\Ago;
-use App\Users\User;
+use App\Vendors\Tariff;
+use App\Vendors\Vendor;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Throwable;
 
@@ -23,8 +21,8 @@ use Throwable;
  * Счета и акты за месяц (05.11.2026, владелец: «не должно быть понятия „Выставить“ — они должны быть актуальными всегда,
  * просто зафиксировать, если мы их отправили»): документ плательщика за месяц живой — `draft()` считает его заново из
  * данных (ставки, даты приёма и выдачи), ничего не записывая; отправка письмом или «Отправили сами» фиксирует его —
- * `fix()`: номер, строки, `storage_billed_until`, файлы, `sent_at`. Исправили данные после отправки — `drift()` видит
- * разницу, `fix(replaces:)` отправляет исправленный с тем же номером и следующей редакцией, прежний аннулирован.
+ * `Actions\FixClosingDocument`: номер, строки, `storage_billed_until`, файлы, `sent_at`. Исправили данные после отправки — `drift()` видит
+ * разницу, `FixClosingDocument` с `replaces` отправляет исправленный с тем же номером и следующей редакцией, прежний аннулирован.
  *
  * Что входит: помесячные ТС — по конец месяца (или по день выдачи); «по выбытию» — за весь срок у выбывших до конца
  * месяца; покупатель — свой отрезок своим документом; эвакуация — своим документом плательщику (`tows`).
@@ -34,9 +32,6 @@ use Throwable;
 final class Closing
 {
     private const CACHE = 'park.closing.v3:';
-
-    /** @var list<string> ТС, не вошедшие в последний `draft()` / `fix()`, с причиной (чужой отрезок раньше своего) */
-    public static array $skipped = [];
 
     /**
      * Строки месяца — что ещё не зафиксировано. `$without` — как если бы этого счёта не было (сверка и исправление: его
@@ -176,6 +171,9 @@ final class Closing
         $first = $rows->first();
         $v = $first['vehicle'];
         $party = self::payer($first, false);
+        if (! $party) {
+            return null; // некому: покупатель без контрагента — документ не из чего собрать
+        }
         $registry = $first['tow'] || $first['payer'] !== 'buyer';
         $seller = $registry ? Seller::ofVendor($v->vendor) : Seller::for($v);
         $vatRate = $seller->vatRate() ?: null;
@@ -205,50 +203,11 @@ final class Closing
             'vat' => (bool) $vatRate, 'vat_rate' => $vatRate, 'vat_on_top' => $onTop, 'total' => $onTop ? round($total * (1 + $vatRate / 100), 2) : $total, 'paid' => 0,
         ]);
         $invoice->setRelation('party', $party)->setRelation('charges', $charges->values())->setRelation('vehicle', $registry ? null : $v)
-            ->setRelation('payments', collect())->setRelation('deal', null)->setRelation('media', collect());
-        self::$skipped = $skipped;
+            ->setRelation('payments', collect())->setRelation('deal', null)->setRelation('media', collect())
+            // Не вошедшие ТС с причиной — отношением, а не свойством: модель черновика не записывается.
+            ->setRelation('skipped', collect($skipped));
 
         return $invoice;
-    }
-
-    /**
-     * Зафиксировать документ группы — он ушёл (письмом или «Отправили сами»): счёт с номером, строки, `storage_billed_until`,
-     * файлы, `sent_at`. `$replaces` — исправленный: прежний аннулируется, новый — с его номером и следующей редакцией, из
-     * тех же ТС. Документа уже нет — ошибка «уже отправлен».
-     */
-    public static function fix(CarbonInterface $month, string $group, User $by, ?Invoice $replaces = null): Invoice
-    {
-        return DB::transaction(function () use ($month, $group, $by, $replaces) {
-            $only = null;
-            if ($replaces) {
-                $only = $replaces->registryVehicles()->pluck('id')->all();
-                app(VoidInvoice::class)($replaces, $by, 'Исправлен');
-                $replaces->refresh();
-            }
-            $rows = self::rowsOf($month, $group, null, $only);
-            if ($rows->isEmpty()) {
-                throw ValidationException::withMessages(['closing' => 'Документ уже отправлен']);
-            }
-            $first = $rows->first();
-            $v = $first['vehicle'];
-            $party = self::payer($first);
-            $issue = app(IssueInvoice::class);
-            $code = $replaces?->code;
-            $revision = $replaces ? $replaces->revision + 1 : 0;
-            $due = now()->addWeekdays($v->vendor?->payment_days ?? 5);
-            $invoice = match (true) {
-                $first['tow'] => $issue($party, $by, 'issued', ChargeKind::Tow, $due, month: $month, code: $code, revision: $revision,
-                    registry: $rows->map(fn ($i) => ['vehicle' => $i['vehicle']->fresh(), 'until' => null, 'charges' => $i['charges']])->values()->all()),
-                $first['payer'] === 'buyer' => $issue($party, $by, 'issued', ChargeKind::Storage, now(), $first['to'], $first['charges'], vehicle: $v->fresh(), code: $code, revision: $revision),
-                default => $issue($party, $by, 'issued', ChargeKind::Storage, $due, month: $month, code: $code, revision: $revision,
-                    registry: $rows->map(fn ($i) => ['vehicle' => $i['vehicle']->fresh(), 'until' => $i['to'], 'charges' => $i['charges']])->values()->all()),
-            };
-            app(StorageActPdf::class)->attach($invoice);
-            $invoice->update(['sent_at' => now()]);
-            self::$skipped = $issue->skipped;
-
-            return $invoice;
-        });
     }
 
     /**
@@ -263,8 +222,16 @@ final class Closing
             return null;
         }
         $ids = $invoice->registryVehicles()->pluck('id')->all();
-        $stamp = Vehicle::whereIn('id', $ids)->max('updated_at');
-        $key = self::CACHE.'drift:'.$invoice->id.':'.$invoice->updated_at?->timestamp.':'.$stamp;
+        // Ключ — всё, от чего зависит сумма: ТС (даты, тип, площадка), прайс, вендор (порядок счёта, плательщик), контрагент;
+        // иначе исправленную цену сверка не видела бы до конца кэша.
+        $vendors = Vehicle::whereIn('id', $ids)->distinct()->pluck('vendor_id')->filter()->all();
+        $stamp = implode(':', [
+            Vehicle::whereIn('id', $ids)->max('updated_at'),
+            Tariff::where(fn ($q) => $q->whereIn('vendor_id', $vendors)->orWhereNull('vendor_id'))->max('updated_at'),
+            Vendor::whereIn('id', $vendors)->max('updated_at'),
+            $invoice->party?->updated_at?->timestamp,
+        ]);
+        $key = self::CACHE.'drift:'.$invoice->id.':'.$invoice->updated_at?->timestamp.':'.md5($stamp);
 
         return Cache::remember($key, 600, function () use ($invoice, $group, $ids) {
             $draft = self::draft($invoice->month, $group, $invoice);
@@ -292,7 +259,7 @@ final class Closing
      * @param  ?list<int>  $only
      * @return Collection<int, Item>
      */
-    private static function rowsOf(CarbonInterface $month, string $group, ?Invoice $replaces = null, ?array $only = null): Collection
+    public static function rowsOf(CarbonInterface $month, string $group, ?Invoice $replaces = null, ?array $only = null): Collection
     {
         $only ??= $replaces?->registryVehicles()->pluck('id')->all();
 
@@ -373,7 +340,7 @@ final class Closing
     }
 
     /** Плательщик строки; черновик вендора (без id) записывается, когда выставляем. */
-    private static function payer(array $item, bool $create = true): ?Party
+    public static function payer(array $item, bool $create = true): ?Party
     {
         $party = $item['party'] ?? Ledger::payerParty($item['vehicle'], $item['payer'], $create);
         if ($party && ! $party->exists && $create) {

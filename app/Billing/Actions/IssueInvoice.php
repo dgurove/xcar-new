@@ -71,7 +71,7 @@ final class IssueInvoice
             $vatOnTop = $vatRate && $party->vat_on_top;
             $invoice = Invoice::create([
                 'seller' => $seller, 'park' => $park, 'direction' => $direction, 'year' => $issued ? $year : null, 'number' => $issued ? Numbering::next($seller, $year) : null,
-                // Исправленный документ (`Closing::fix` с прежним номером) — тот же номер и следующая редакция.
+                // Исправленный документ (`FixClosingDocument` с прежним номером) — тот же номер и следующая редакция.
                 'code' => $issued && $park ? ($code ?? Numbering::code($seller, now())) : null, 'revision' => $revision,
                 'external_no' => $externalNo, 'kind' => $kind, 'month' => $registry && $month ? Carbon::instance($month)->startOfMonth()->toDateString() : null, 'party_id' => $party->id, 'vehicle_id' => $vehicle?->id, 'deal_id' => $dealId, 'offer_id' => $offerId,
                 'issued_at' => now()->toDateString(), 'due_at' => $dueAt ? Carbon::instance($dueAt)->toDateString() : null, 'vat' => (bool) $vatRate, 'vat_rate' => $vatRate, 'vat_on_top' => $vatOnTop, 'state' => InvoiceState::Issued, 'notes' => $notes, 'created_by' => $by->id,

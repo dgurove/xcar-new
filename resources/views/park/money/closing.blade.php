@@ -21,7 +21,8 @@
                         $first = $rows->first(); $party = $first['party'];
                         $fill = $party && ! $first['ready'] && $me->canManagePark() && ($party->exists || $first['payer'] === 'vendor');
                     @endphp
-                    <a href="/money/draft?{{ http_build_query(['month' => $month->format('Y-m'), 'group' => $group]) }}" class="row">
+                    {{-- Некому (покупатель без контрагента) — документа нет, строка не открывается. --}}
+                    <{{ $party ? 'a' : 'div' }} @if ($party) href="/money/draft?{{ http_build_query(['month' => $month->format('Y-m'), 'group' => $group]) }}" @endif class="row">
                         <div class="min-w-0 flex-1">
                             {{-- Плательщик-вендор — именем вендора: у Альфы Москвы и СПб одно юрлицо, строки иначе не различить. --}}
                             <div class="truncate">{{ $first['payer'] === 'vendor' ? $first['vehicle']->vendor?->name : ($party?->name ?? 'Без плательщика') }}</div>
@@ -35,7 +36,7 @@
                             <div class="nums">{{ Money::rub($rows->sum('amount')) }}</div>
                             <div class="text-sm {{ $first['ready'] ? 'text-urgent' : 'text-danger' }}">{{ ! $party ? 'некому' : ($first['ready'] ? 'не отправлен' : 'нет реквизитов') }}</div>
                         </div>
-                    </a>
+                    </{{ $party ? 'a' : 'div' }}>
                     @if ($fill)
                         {{-- Реквизиты — тут же шторкой: записанный контрагент — правкой, у вендора без контрагента — новый от его данных. --}}
                         <div class="row !py-2" data-controller="sheet">

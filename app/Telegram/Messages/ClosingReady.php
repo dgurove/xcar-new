@@ -2,6 +2,7 @@
 
 namespace App\Telegram\Messages;
 
+use App\Billing\Closing;
 use App\Support\Money;
 use App\Support\Surface;
 use Carbon\CarbonInterface;
@@ -22,7 +23,7 @@ final class ClosingReady extends Message
         $byParty = $this->items->groupBy(fn ($i) => $i['party']?->name ?? 'без плательщика')->map(fn ($rows) => $rows->sum('amount'))->sortDesc();
 
         return [
-            'Не отправлено на '.Money::rub($this->items->sum('amount')),
+            $this->items->groupBy(fn ($i) => Closing::groupOf($i))->count().' не отправлено на '.Money::rub($this->items->sum('amount')),
             ...$byParty->take(6)->map(fn ($sum, $name) => $name.' — '.Money::rub($sum))->values()->all(),
         ];
     }

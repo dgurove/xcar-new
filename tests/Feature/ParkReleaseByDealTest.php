@@ -209,11 +209,12 @@ class ParkReleaseByDealTest extends TestCase
         [$offer, $deal] = $this->deal(VehicleState::Expected);
         app(\App\Offers\Actions\AssignDealPickup::class)($offer->fresh(), $deal->fresh(), 'manager', $this->admin);
         $this->paid($offer, $deal);
-        // Держит только его собственный вывоз (отметить «Забрал»), а не парковка; кнопка у него есть, контакт владельца — тоже.
+        // Держит только его собственный вывоз (отметить «Забрал»), а не парковка; кнопка у него есть. Контакт владельца —
+        // только показанный админом из писем страховой (`Disclosure`, 03.11.2026): сам страхователь менеджеру не идёт.
         $this->assertSame('Сначала отметьте «Автомобиль забрал»', $deal->fresh()->closeBlocker());
         $h = Handover::for($deal->fresh());
         $this->assertTrue($h->canPick);
-        $this->assertSame('Иван Страхователь', $h->name);
+        $this->assertNull($h->name);
     }
 
     /** Выдали не по пропуску сделки (страховой, её покупателю) — машина не «у менеджера». */

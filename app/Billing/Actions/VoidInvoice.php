@@ -23,10 +23,14 @@ use Illuminate\Validation\ValidationException;
  */
 final class VoidInvoice
 {
-    public function __invoke(Invoice $invoice, ?User $by, ?string $reason = null): Invoice
+    /**
+     * @param  bool  $revising  исправление (`FixClosingDocument`): тот же период сразу выставляется заново, а «выставлено по»
+     *                          у ТС с более поздним счётом оно вернёт само — счёт позже этому не мешает
+     */
+    public function __invoke(Invoice $invoice, ?User $by, ?string $reason = null, bool $revising = false): Invoice
     {
         Nav::forgetStaffCounts();
-        $invoice = DB::transaction(function () use ($invoice, $by, $reason) {
+        $invoice = DB::transaction(function () use ($invoice, $by, $reason, $revising) {
             $invoice = Invoice::whereKey($invoice->id)->lockForUpdate()->firstOrFail();
             // Зачёт удержанного вознаграждения — не деньги: гаснет вместе со счётом. Живые оплаты — отменить сначала.
             if ($invoice->payments()->whereNotIn('source', PaymentSource::soft())->exists()) {
@@ -34,6 +38,11 @@ final class VoidInvoice
             }
             Payment::where('invoice_id', $invoice->id)->whereNull('voided_at')->update(['voided_at' => now()]);
             $storage = $invoice->charges()->where('kind', ChargeKind::Storage)->orderBy('period_from')->get();
+            // Хранение ТС выставлено и позже (сентябрь, когда октябрь уже счётом): откат «выставлено по» открыл бы и
+            // октябрь, его бы выставили второй раз (05.11.2026). Сначала — более поздний счёт.
+            if (! $revising && ($later = self::later($invoice, $storage))) {
+                throw ValidationException::withMessages(['invoice' => 'Хранение этих ТС выставлено и позже — сначала аннулируйте счёт '.$later->label()]);
+            }
             Charge::where('invoice_id', $invoice->id)->where('kind', '!=', ChargeKind::Storage)->where('created_at', '<', $invoice->created_at)->update(['invoice_id' => null]);
             Charge::where('invoice_id', $invoice->id)->whereNull('voided_at')->update(['voided_at' => now(), 'void_reason' => $reason]);
             // Период снова не выставлен — у каждой ТС счёта (у реестра их много): с первого дня её строк.
@@ -58,5 +67,20 @@ final class VoidInvoice
         InvoiceVoided::dispatch($invoice, $by);
 
         return $invoice;
+    }
+
+    /** Живой счёт с хранением тех же ТС после строк этого — его аннулируют первым. */
+    private static function later(Invoice $invoice, $storage): ?Invoice
+    {
+        $last = $storage->whereNotNull('vehicle_id')->groupBy('vehicle_id')->map(fn ($rows) => $rows->max('period_to'));
+        foreach ($last as $vehicleId => $to) {
+            $charge = Charge::where('vehicle_id', $vehicleId)->where('kind', ChargeKind::Storage)->whereNull('voided_at')->where('invoice_id', '!=', $invoice->id)
+                ->where('period_from', '>', $to)->whereHas('invoice', fn ($q) => $q->where('state', '!=', InvoiceState::Void->value))->with('invoice')->first();
+            if ($charge) {
+                return $charge->invoice;
+            }
+        }
+
+        return null;
     }
 }

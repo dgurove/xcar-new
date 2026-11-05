@@ -2,6 +2,7 @@
 
 namespace App\Http\Admin;
 
+use App\Billing\Actions\FixClosingDocument;
 use App\Billing\Acts\RegistryAct;
 use App\Billing\ChargeKind;
 use App\Billing\Closing;
@@ -507,13 +508,18 @@ class MailController
             $template ??= Template::park('invoice');
         }
         // Живой документ месяца (`?closing=2026-09|p71:park`, исправленный — `&replaces=`): письмо с его счётом и актом,
-        // номер — какой он получит; фиксируется отправкой (`send` → `Closing::fix`), закрыли не отправив — остался живым.
+        // номер — какой он получит; фиксируется отправкой (`send` → `FixClosingDocument`), закрыли не отправив — остался живым.
         $closing = ! $sale && $request->query('closing') ? self::closingKey((string) $request->query('closing'), $request->query('replaces')) : null;
         $draft = $closing ? Closing::draft(...$closing) : null;
         abort_if($closing && ! $draft, 409, 'Документ уже отправлен');
+        // Живой счёт покупателю на ТС — письмом той ТС, как выставленный (шаблон «Счёт за хранение», ветка ТС).
+        if ($draft && ! $draft->isRegistry()) {
+            $vehicle = $draft->vehicle;
+            $template ??= Template::park('invoice');
+        }
         // Счёт-реестр за месяц — новое письмо в бухгалтерию плательщика (вендора, иначе адрес контрагента), без ветки ТС.
         $registryValues = [];
-        if (($doc = $draft ?? $invoice)?->isRegistry() || $draft) {
+        if (($doc = $draft ?? $invoice)?->isRegistry()) {
             $template ??= Template::park('registry');
             $payer = Vendor::with('contacts')->where('party_id', $doc->party_id)->first();
             $registryValues = ['month' => mb_strtolower(($doc->month ?? now())->translatedFormat('F Y')), 'count' => (string) $doc->registryVehicles()->count(),
@@ -549,7 +555,7 @@ class MailController
             $thread = Thread::where('vehicle_id', $vehicle->id)->park()->where('buyer', false)->orderByDesc('last_message_at')->first();
             $parent = $thread?->messages()->where('direction', Direction::In)->orderByDesc('date_at')->first();
             $vehicle->loadMissing('vendor.contacts');
-            $values = self::vehiclePlaceholders($vehicle) + ['to' => $invoice
+            $values = self::vehiclePlaceholders($vehicle) + ['to' => $invoice || $draft
                 ? ($vehicle->vendor?->email(ContactRole::Accounting, ContactRole::Storage, ContactRole::Claims) ?? $parent?->replyToAddress() ?? '')
                 : ($parent?->replyToAddress() ?? $vehicle->vendor?->email(ContactRole::Storage, ContactRole::Claims) ?? '')];
         }
@@ -585,16 +591,13 @@ class MailController
         // Письмо о выдаче уходит с актом и фото выдачи; лишнее снимают в форме. `act=release` — акт выдачи (в том числе с
         // отказом от получения, когда ТС осталась).
         if ($invoice && ! $request->old()) {
-            if ($invoice->isRegistry() && ! $invoice->hasMedia('act')) {
-                $actPdf->attach($invoice);
-                $invoice->load('media');
-            }
             foreach (['file', 'act'] as $collection) {
                 foreach ($invoice->getMedia($collection) as $media) {
                     $defaults['files'][] = $outbox->put($media->file_name, file_get_contents($media->getPath()));
                 }
             }
-            if (! $invoice->getFirstMedia('act') && $invoice->kind === ChargeKind::Storage) {
+            // Счёт на ТС без файла акта — PDF акта хранения на лету (у реестра файлы кладёт фиксация).
+            if (! $invoice->getFirstMedia('act') && $invoice->kind === ChargeKind::Storage && ! $invoice->isRegistry()) {
                 $defaults['files'][] = $outbox->put('akt-hraneniya-'.$invoice->docNo().'-'.$invoice->year.'.pdf', $actPdf->render($invoice));
             }
         } elseif ($vehicle?->accepted_at && $request->query('act') === 'release' && ! $request->old()) {
@@ -637,7 +640,9 @@ class MailController
             // Черновик после «Принять» (BidController::accepted): отправили — окно закрывается, человек идёт дальше по списку.
             'then' => $request->query('then') === 'close' ? 'close' : null,
             'requestDeals' => $supplierRequest?->deals->pluck('id')->implode(','),
-            'closing' => $closing ? $request->query('closing') : null, 'closingReplaces' => $closing[2]?->id ?? null, 'closingFiles' => $closingFiles]);
+            'closing' => $closing ? $request->query('closing') : null, 'closingReplaces' => $closing[2]?->id ?? null, 'closingFiles' => $closingFiles,
+            // Номер, который письмо показало: при отправке он меняется на настоящий, если успел смениться (полночь, другой отправил).
+            'closingLabel' => $draft?->label()]);
     }
 
     /**
@@ -660,6 +665,7 @@ class MailController
      */
     private function closingFiles(Invoice $doc, StoreOutboxFile $outbox, StorageActPdf $actPdf): array
     {
+        // Заполненные файлы акта временные: в outbox — копия, сами стираются.
         $files = [$outbox->put('Счет '.$doc->fileNo().'.pdf', app(InvoicePdf::class)->render($doc))];
         if ($doc->exists) {
             $doc->load('media');
@@ -674,6 +680,7 @@ class MailController
         }
         foreach (app(RegistryAct::class)->files($doc) as $name => $path) {
             $files[] = $outbox->put($name, (string) file_get_contents($path));
+            @unlink($path);
         }
 
         return $files;
@@ -775,8 +782,8 @@ class MailController
             $message = DB::transaction(function () use ($data, $composer, $account, $parent, $request, $thread, $outbox, &$fixed) {
                 if ($this->scope === Scope::Park && ! empty($data['closing'])) {
                     [$month, $group, $old] = self::closingKey($data['closing'], $data['closing_replaces'] ?? null);
-                    $label = Closing::draft($month, $group, $old)?->label();
-                    $fixed = Closing::fix($month, $group, $request->user(), $old);
+                    $label = $data['closing_label'] ?? null;
+                    $fixed = app(FixClosingDocument::class)($month, $group, $request->user(), $old);
                     $drop = $data['closing_files'] ?? [];
                     $data['files'] = [...array_values(array_diff($data['files'] ?? [], $drop)), ...$this->closingFiles($fixed, $outbox, app(StorageActPdf::class))];
                     foreach (['subject', 'body'] as $f) {
@@ -1318,6 +1325,7 @@ class MailController
             'invoice' => ['nullable', 'integer'],
             'closing' => ['nullable', 'string', 'max:80'],
             'closing_replaces' => ['nullable', 'integer'],
+            'closing_label' => ['nullable', 'string', 'max:60'],
             'closing_files' => ['nullable', 'array'],
             'closing_files.*' => ['string'],
             'request_deals' => ['nullable', 'string', 'regex:/^\d+(,\d+)*$/'],

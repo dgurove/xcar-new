@@ -2,6 +2,7 @@
 
 namespace App\Billing\Acts;
 
+use App\Support\TempFile;
 use DateTimeInterface;
 use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 use PhpOffice\PhpSpreadsheet\Cell\DataType;
@@ -28,7 +29,7 @@ final class Template
     public static function fill(string $template, array $vars, array $rows, array $rowKeys): string
     {
         $path = resource_path('templates/acts/'.$template);
-        $out = tempnam(sys_get_temp_dir(), 'act-').'.'.pathinfo($template, PATHINFO_EXTENSION);
+        $out = TempFile::path('act-', pathinfo($template, PATHINFO_EXTENSION));
         match (pathinfo($template, PATHINFO_EXTENSION)) {
             'xlsx' => self::xlsx($path, $out, $vars, $rows, $rowKeys),
             'docx' => self::docx($path, $out, $vars, $rows, $rowKeys),

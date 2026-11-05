@@ -2,6 +2,7 @@
 
 namespace App\Http\Park;
 
+use App\Billing\Actions\FixClosingDocument;
 use App\Billing\Acts\RegistryAct;
 use App\Billing\ChargeKind;
 use App\Billing\Closing;
@@ -183,10 +184,10 @@ class MoneyController
         [$month, $group, $replaces] = $this->draftKey($request);
         $draft = Closing::draft($month, $group, $replaces);
         if (! $draft) {
-            return redirect('/money/closing?month='.$month->format('Y-m'))->with('toast', 'Документ уже отправлен');
+            return redirect('/money/closing?month='.$month->format('Y-m'))->with('toast', 'Документа нет — уже отправлен или некому отправить');
         }
 
-        return view('park.money.draft', ['invoice' => $draft, 'month' => $month, 'group' => $group, 'replaces' => $replaces, 'skipped' => Closing::$skipped,
+        return view('park.money.draft', ['invoice' => $draft, 'month' => $month, 'group' => $group, 'replaces' => $replaces, 'skipped' => $draft->getRelation('skipped')->all(),
             'query' => http_build_query(array_filter(['month' => $month->format('Y-m'), 'group' => $group, 'replaces' => $replaces?->id]))]);
     }
 
@@ -206,30 +207,34 @@ class MoneyController
         if (! $draft->isRegistry()) {
             return response($act->render($draft), 200, ['Content-Type' => 'application/pdf', 'Content-Disposition' => 'inline; filename="akt.pdf"']);
         }
+        // Заполненные файлы — временные: отдать нужный и стереть все (у РГС их два), иначе копятся в /tmp при каждом просмотре.
         $files = $registry->files($draft);
         $name = array_keys($files)[(int) $request->query('n', 0)] ?? null;
-        abort_unless($name !== null, 404);
-        $path = $files[$name];
-        if ($request->boolean('preview')) {
-            return OfficePreview::response($path, $name);
+        try {
+            abort_unless($name !== null, 404);
+            $response = $request->boolean('preview')
+                ? OfficePreview::response($files[$name], $name)
+                : response(file_get_contents($files[$name]), 200, ['Content-Type' => mime_content_type($files[$name]) ?: 'application/octet-stream',
+                    'Content-Disposition' => "attachment; filename*=UTF-8''".rawurlencode($name)]);
+        } finally {
+            array_map(fn ($p) => @unlink($p), $files);
         }
 
-        return response()->download($path, $name)->deleteFileAfterSend();
+        return $response;
     }
 
     /** «Отправили сами» — документ ушёл не нашим письмом (на бумаге, в мессенджере): фиксируется как отправленный. */
-    public function fix(Request $request)
+    public function fix(Request $request, FixClosingDocument $fix)
     {
         [$month, $group, $replaces] = $this->draftKey($request);
         abort_unless($request->user()->canManagePark(), 403);
         try {
-            $invoice = Closing::fix($month, $group, $request->user(), $replaces);
+            $invoice = $fix($month, $group, $request->user(), $replaces);
         } catch (ValidationException $e) {
             return redirect('/money/closing?month='.$month->format('Y-m'))->with('toast', implode(', ', $e->validator->errors()->all()));
         }
 
-        return redirect('/money/invoices/'.$invoice->id)->with('toast', 'Отмечен отправленным, '.$invoice->label())
-            ->withErrors(Closing::$skipped ? ['closing' => implode('; ', Closing::$skipped)] : []);
+        return redirect('/money/invoices/'.$invoice->id)->with('toast', 'Отмечен отправленным, '.$invoice->label().($fix->skipped ? '. Не вошли: '.implode('; ', $fix->skipped) : ''));
     }
 
     /** @return array{0: Carbon, 1: string, 2: ?Invoice} */

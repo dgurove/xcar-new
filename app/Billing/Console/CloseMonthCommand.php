@@ -12,7 +12,7 @@ use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Notification;
 
-/** 1-го числа: посчитать, кому и за что выставить хранение за прошлый месяц, и позвать людей на экран закрытия. Само ничего не выставляет. */
+/** 1-го числа: посчитать документы прошлого месяца по плательщикам и позвать людей на «Счета и акты». Само ничего не отправляет. */
 class CloseMonthCommand extends Command
 {
     protected $signature = 'billing:close-month {--month= : YYYY-MM, по умолчанию прошлый}';
@@ -33,7 +33,8 @@ class CloseMonthCommand extends Command
         foreach ($staff->groupBy(fn (User $u) => City::of($u) ?? 0) as $city => $people) {
             $own = $city ? $items->filter(fn ($i) => (int) $i['vehicle']->city_id === (int) $city) : $items;
             if ($own->isNotEmpty()) {
-                Notification::send($people, ParkNotice::closing($month, $own->count(), (float) $own->sum('amount')));
+                // Число — документы (плательщик за месяц), а не строки ТС: «3 не отправлены», а не «57».
+                Notification::send($people, ParkNotice::closing($month, $own->groupBy(fn ($i) => Closing::groupOf($i))->count(), (float) $own->sum('amount')));
             }
         }
 

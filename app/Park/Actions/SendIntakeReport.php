@@ -197,7 +197,7 @@ final class SendIntakeReport
     private function photo(Media $m, int $n): string
     {
         $this->read($m);
-        $tmp = tempnam(sys_get_temp_dir(), 'rep').'.jpg';
+        $tmp = \App\Support\TempFile::path('rep', 'jpg');
         try {
             Image::useImageDriver('gd')->loadFile($m->getPath())->fit(Fit::Max, 1600, 1600)->quality(82)->save($tmp);
             $contents = (string) file_get_contents($tmp);
