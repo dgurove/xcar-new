@@ -137,7 +137,7 @@ final class MoneyLinks
         return match ($l->status()[0]) {
             'paid' => ['оплачено', 'text-open'],
             'canceled' => ['отменена', 'text-ink-dim'],
-            'error' => ['ошибка ЮKassa', 'text-danger'],
+            'error' => ['оплата не открылась', 'text-danger'],
             'new' => ['не открывали', 'text-ink-muted'],
             'pending' => ['открыли', 'text-urgent'],
             'abandoned' => ['не оплатили', 'text-urgent'],

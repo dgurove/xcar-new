@@ -12,6 +12,7 @@ use App\Park\RequestType;
 use App\Park\Vehicle;
 use App\Park\VehicleState;
 use App\Park\Yard;
+use App\Support\Surface;
 use App\Users\Role;
 use App\Users\User;
 use App\Vendors\Vendor;
@@ -90,9 +91,24 @@ class ParkCityTest extends TestCase
         // Питерский управляющий видит ТС без города, московскую — нет.
         $keeper = User::create(['name' => 'Никита', 'phone' => '79000000043', 'roles' => [Role::Parking], 'park_city_id' => $this->spb, 'approved_at' => now()]);
         Auth::login($keeper);
+        app()->instance(Surface::class, Surface::Park);
         $seen = Vehicle::pluck('id')->all();
         $this->assertContains($unsure->id, $seen);
         $this->assertNotContains(Vehicle::withoutGlobalScope(City::SCOPE)->where('city_id', $this->moscow)->whereNull('yard_id')->value('id'), $seen);
+    }
+
+    /**
+     * Город — граница только на парковке (05.11.2026: Роман Корабельников, менеджер и управляющий Москвы, платил на xcar.ru
+     * по ссылке, счёт без ТС парковки прятала область — «Оплатить» падало «ошибкой ЮKassa»).
+     */
+    public function test_city_limits_only_on_park(): void
+    {
+        $both = User::create(['name' => 'Роман', 'phone' => '79000000017', 'roles' => [Role::Manager, Role::Parking], 'park_city_id' => $this->moscow, 'approved_at' => now()]);
+        Auth::login($both);
+        app()->instance(Surface::class, Surface::Site);
+        $this->assertNull(City::viewing());
+        app()->instance(Surface::class, Surface::Park);
+        $this->assertSame($this->moscow, City::viewing());
     }
 
     public function test_human_decision_survives_saves_until_intake(): void

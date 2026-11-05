@@ -6,6 +6,7 @@ use App\Billing\Acquiring\AcquiringPayment;
 use App\Billing\Acquiring\Actions\CancelPayLink;
 use App\Billing\Acquiring\Actions\CreatePayLink;
 use App\Billing\Acquiring\Actions\RefundAcquiring;
+use App\Billing\Acquiring\Actions\SetPayerEmail;
 use App\Billing\Acquiring\Gateway;
 use App\Billing\Acquiring\PayerKind;
 use App\Billing\Acquiring\PayLink;
@@ -43,6 +44,15 @@ class PayLinkController
             PayerKind::Other, null, $data['name'] ?? $party->name, null, $data['email'] ?? $party->email);
 
         return back()->with('toast', 'Ссылка готова')->with('open-link', $link->id);
+    }
+
+    /** Почта для чека из шторки ссылки. */
+    public function email(Request $request, PayLink $link, SetPayerEmail $set)
+    {
+        $data = $request->validate(['email' => ['required', 'email', 'max:120']], ['email.required' => 'Впишите почту', 'email.email' => 'Проверьте почту']);
+        $set($link, $data['email']);
+
+        return back()->with('toast', 'Почта для чека сохранена')->with('open-link', $link->id);
     }
 
     public function destroy(Request $request, PayLink $link, CancelPayLink $cancel, VoidInvoice $void)

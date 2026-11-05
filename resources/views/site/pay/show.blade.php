@@ -47,7 +47,7 @@
         <form method="post" action="/pay/{{ $link->code }}" class="mt-4 flex flex-col gap-3" data-turbo="false">
             @csrf
             <x-ui.field name="name" id="pay-name" label="Кто платит" :value="old('name', $link->payer_name)" autocomplete="name"/>
-            <x-ui.field name="email" id="pay-email" label="Почта для чека" type="email" :value="old('email', $link->payer_email)" required/>
+            <x-ui.field name="email" id="pay-email" label="Почта для чека" type="email" :value="old('email', $link->payer_email ?: $link->payerUser?->email)" required/>
             <x-ui.button block>{{ $declined ? 'Оплатить ещё раз' : 'Оплатить '.Money::exact($amount) }}</x-ui.button>
         </form>
         @error('link')<div class="mt-2 text-center text-sm text-danger">{{ $message }}</div>@enderror

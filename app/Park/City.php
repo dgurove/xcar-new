@@ -8,6 +8,7 @@ use App\Cars\Settlement;
 use App\Mail\Account;
 use App\Mail\Candidate;
 use App\Mail\Scope;
+use App\Support\Surface;
 use App\Users\User;
 use App\Vendors\Vendor;
 use Illuminate\Database\Eloquent\Builder;
@@ -68,10 +69,14 @@ final class City
         return $user && $user->park_city_id && ! $user->isParkAdmin() ? (int) $user->park_city_id : null;
     }
 
-    /** Город вошедшего — только уже поднятого из сессии (`hasUser`): проверка не должна запускать вход. */
+    /**
+     * Город вошедшего — только уже поднятого из сессии (`hasUser`): проверка не должна запускать вход. И только на
+     * парковке (05.11.2026: Роман Корабельников — менеджер и управляющий Москвы — платил на xcar.ru по своей ссылке, счёт
+     * без ТС парковки область прятала, «Оплатить» падало «ошибкой ЮKassa»): на сайте и в CRM он не управляющий.
+     */
     public static function viewing(): ?int
     {
-        return self::$paused === 0 && Auth::hasUser() ? self::of(Auth::user()) : null;
+        return self::$paused === 0 && Auth::hasUser() && Surface::current() === Surface::Park ? self::of(Auth::user()) : null;
     }
 
     /**

@@ -50,7 +50,7 @@
     }
     if ($link->state === PayLinkState::Paid && ! $paidAttempt) { $history->push(['created' => $link->paid_at, 'text' => 'Оплачено', 'tone' => 'open']); }
     if ($link->state === PayLinkState::Canceled && $link->canceled_at) { $history->push(['created' => $link->canceled_at, 'text' => 'Отменена', 'tone' => null]); }
-    if ($link->error_at) { $history->push(['created' => $link->error_at, 'text' => 'ЮKassa не открыла оплату', 'tone' => 'danger']); }
+    if ($link->error_at) { $history->push(['created' => $link->error_at, 'text' => 'Оплата не открылась', 'tone' => 'danger']); }
     $history = $history->sortBy('created')->values();
 @endphp
 <x-ui.detail>
@@ -119,7 +119,15 @@
                 <span class="min-w-0 flex-1 truncate text-right nums">{{ $i->label() }}@if ($i->issued_at) от {{ \App\Support\Ago::html($i->issued_at, words: false) }}@endif</span>
                 <x-ui.chevron/>
             </a>
-            @if ($link->payer_email)
+            {{-- Почта для чека (05.11.2026): обычно её вписывает плательщик на странице оплаты; знаем заранее — можно вписать
+                 тут, пока ссылка жива. Не обязательна: нет — «при оплате». --}}
+            @if ($live)
+                <button type="button" class="row w-full text-left" {!! $open('email') !!}>
+                    <span class="shrink-0 text-ink-muted">Почта для чека</span>
+                    <span @class(['min-w-0 flex-1 truncate text-right', 'text-ink-muted' => ! $link->payer_email])>{{ $link->payer_email ?: 'при оплате' }}</span>
+                    <x-ui.chevron/>
+                </button>
+            @elseif ($link->payer_email)
                 <div class="row"><span class="shrink-0 text-ink-muted">Чек</span><span class="min-w-0 flex-1 truncate text-right">{{ $link->payer_email }}</span></div>
             @endif
         </div>
@@ -142,6 +150,17 @@
             <div data-controller="sheet" data-action="link-{{ $id }}-qr:open@window->sheet#open" class="contents">
                 <x-ui.sheet :id="'link-qr-'.$id" title="QR-код">
                     <x-billing.pay-qr :link="$link" size="w-56"/>
+                </x-ui.sheet>
+            </div>
+        @endif
+        @if ($live)
+            <div data-controller="sheet" data-action="link-{{ $id }}-email:open@window->sheet#open" class="contents">
+                <x-ui.sheet :id="'link-email-'.$id" title="Почта для чека">
+                    <form method="post" action="/work/money/links/{{ $id }}/email" class="flex flex-col gap-3">
+                        @csrf @method('put')
+                        <div class="fields"><x-ui.field name="email" :id="'link-email-field-'.$id" label="Почта" type="email" :value="old('email', $link->payer_email)" placeholder="name@mail.ru"/></div>
+                        <x-ui.sheet-foot>Сохранить</x-ui.sheet-foot>
+                    </form>
                 </x-ui.sheet>
             </div>
         @endif

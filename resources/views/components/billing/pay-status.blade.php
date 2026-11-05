@@ -12,7 +12,7 @@
      второй суммы (она строкой выше; другая — словами «на N ₽»): «Ссылка на оплату», под ней кто платит и что с ней,
      справа круглые «Скопировать» и «Отправить»; нажатие — та же шторка с QR (05.10.2026, владелец про карточку на три
      строки текста и две кнопки во всю ширину). --}}
-@props(['invoice', 'staff' => false, 'create' => null, 'cancel' => null, 'compact' => false, 'link' => null])
+@props(['invoice', 'staff' => false, 'create' => null, 'cancel' => null, 'compact' => false, 'link' => null, 'email' => null])
 @php
     use App\Support\Money; use App\Billing\Acquiring\PayMethod;
     $i = $invoice;
@@ -22,6 +22,8 @@
     $payable = ! $link && \App\Billing\Acquiring\PayLink::eligible($i) && $i->remaining() - $i->claimed() > 0;
     $base = $staff ? '/work/money' : '/account/money';
     $create ??= $base.'/invoices/'.$i->id.'/links';
+    // Почта для чека — у гаража менеджера своих адресов нет: там её спросит страница оплаты.
+    $email ??= $cancel === null && $link ? $base.'/links/'.$link->id.'/email' : null;
     $cancel ??= $base.'/links';
     if ($link) {
         $link->loadMissing('attempts');
@@ -81,8 +83,19 @@
             <div class="flex flex-col gap-4">
                 <div class="money-hero">
                     <span class="nums text-[32px] font-semibold leading-tight">{{ Money::rub($link->amount) }}</span>
-                    <span class="text-ink-muted">{{ $pays }}@if ($link->payer_email), чек на {{ $link->payer_email }}@endif</span>
+                    <span class="text-ink-muted">{{ $pays }}</span>
                 </div>
+                {{-- Почта для чека — по желанию (05.11.2026): обычно её вписывает плательщик на странице оплаты, знаем заранее —
+                     можно тут. --}}
+                @if ($live && $email)
+                    <form method="post" action="{{ $email }}" class="fields">
+                        @csrf @method('put')
+                        <x-ui.field name="email" :id="'link-email-'.$link->id" label="Почта для чека" type="email" :value="$link->payer_email" placeholder="name@mail.ru"/>
+                        <x-ui.button variant="secondary" size="s" block>Сохранить почту</x-ui.button>
+                    </form>
+                @elseif ($link->payer_email)
+                    <div class="list"><div class="row"><span class="shrink-0 text-ink-muted">Чек</span><span class="min-w-0 flex-1 truncate text-right">{{ $link->payer_email }}</span></div></div>
+                @endif
                 <x-billing.pay-qr :link="$link" :main="false"/>
                 <x-ui.share-link :url="$link->url()" :title="'Оплата по счёту '.$i->label()" :text="$text" editable :rows="5"/>
                 <x-billing.link-attempts :link="$link"/>

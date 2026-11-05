@@ -301,6 +301,7 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
         Route::post('/work/payments/{payment}/reject', [MoneyController::class, 'reject']);
         Route::post('/work/money/invoices/{invoice}/links', [PayLinkController::class, 'store']);
         Route::delete('/work/money/links/{link}', [PayLinkController::class, 'destroy']);
+        Route::put('/work/money/links/{link}/email', [PayLinkController::class, 'email']);
         Route::post('/work/money/acquiring/{attempt}/refund', [PayLinkController::class, 'refund']);
         // Выписка СберБизнеса переехала в Настройки → Банк (07.10.2026): связь толком не настроена, в «Оплатах» она была мусором.
         Route::permanentRedirect('/work/money/bank', '/settings/bank/statement');

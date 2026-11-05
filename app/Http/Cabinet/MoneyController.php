@@ -4,6 +4,7 @@ namespace App\Http\Cabinet;
 
 use App\Billing\Acquiring\Actions\CancelPayLink;
 use App\Billing\Acquiring\Actions\CreatePayLink;
+use App\Billing\Acquiring\Actions\SetPayerEmail;
 use App\Billing\Acquiring\Gateway;
 use App\Billing\Acquiring\PayerKind;
 use App\Billing\Acquiring\PayLink;
@@ -126,6 +127,16 @@ class MoneyController
         $link = $create($invoice, $me, isset($data['amount']) ? (float) $data['amount'] : PayLink::defaultAmount($invoice), PayerKind::Other, null, $party->name, $party->phone, $party->email);
 
         return back()->with('toast', 'Ссылка готова')->with('open-link', $link->id);
+    }
+
+    /** Почта для чека из шторки ссылки своего счёта. */
+    public function linkEmail(Request $request, PayLink $link, SetPayerEmail $set)
+    {
+        abort_unless($link->invoice->isVisibleToManager($request->user()) && ! $link->invoice->isOwed(), 404);
+        $data = $request->validate(['email' => ['required', 'email', 'max:120']], ['email.required' => 'Впишите почту', 'email.email' => 'Проверьте почту']);
+        $set($link, $data['email']);
+
+        return back()->with('toast', 'Почта для чека сохранена')->with('open-link', $link->id);
     }
 
     public function cancelLink(Request $request, PayLink $link, CancelPayLink $cancel)

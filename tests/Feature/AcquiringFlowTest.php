@@ -100,6 +100,23 @@ class AcquiringFlowTest extends TestCase
         Http::assertSent(fn (Request $r) => data_get($r->data(), 'receipt.customer.email') === 'ivan@example.test');
     }
 
+    /**
+     * 05.11.2026: Роман Корабельников — менеджер и управляющий парковки Москвы — платил на xcar.ru вошедшим, счёт без ТС
+     * парковки прятала область города, «Оплатить» падало (в CRM — «ошибка ЮKassa»). Почту для чека вписывают и из шторки.
+     */
+    public function test_manager_with_park_city_pays_and_email_is_set_from_the_sheet(): void
+    {
+        $roman = User::create(['name' => 'Роман', 'phone' => '79000000017', 'roles' => [Role::Manager, Role::Parking], 'park_city_id' => \App\Park\City::main(), 'approved_at' => now()]);
+        $link = app(CreatePayLink::class)($this->invoice, User::first(), 100000, PayerKind::Other, null, 'Роман', null, null);
+        Http::fake(fn () => Http::response(self::payment('p-3', 'pending', 100000, $link->id)));
+
+        $this->actingAs(User::first())->put('http://crm.xcar.localhost/work/money/links/'.$link->id.'/email', ['email' => 'Roman@Example.test'])->assertSessionHasNoErrors();
+        $this->assertSame('roman@example.test', $link->fresh()->payer_email);
+
+        $this->actingAs($roman)->post('http://xcar.localhost/pay/'.$link->code)->assertRedirect('https://yoomoney.test/checkout/p-3');
+        $this->assertNull($link->fresh()->error);
+    }
+
     public function test_notice_about_unknown_payment_records_it_by_link(): void
     {
         $link = $this->link();

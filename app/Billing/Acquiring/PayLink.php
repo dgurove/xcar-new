@@ -157,7 +157,7 @@ class PayLink extends Model
         return match ($key) {
             'paid' => ['оплачено '.Ago::day($at), 'open'],
             'canceled' => ['отменена', 'muted'],
-            'error' => ['ЮKassa не открыла оплату '.$when(), 'danger'],
+            'error' => ['оплата не открылась '.$when(), 'danger'],
             'new' => ['ждём оплату, ещё не открывали', null],
             'pending' => ['открыли оплату '.$when().', ждём', 'urgent'],
             'abandoned' => ['открывали '.$when().', не оплатили', 'urgent'],
