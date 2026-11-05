@@ -1,29 +1,35 @@
 // Камера космоса главной CRM (04.11.2026; листание по этапам — 05.11.2026): точка мира в середине сцены (x, y) и масштаб z.
 // Одна на звёзды (`sky.js`, каждая на своей глубине) и слой конвейера (глубина 1): схема едет вместе с фоном.
 //
-// Мир ограничен (05.11.2026, владелец: «космос уже не бесконечный, а ограниченный по высоте и ширине»):
-// - **вбок — по этапам.** Камера правит не x, а фокус `fx` — точку мира в `FOCUS` ширины экрана (золотое сечение, чуть левее
-//   середины). Палец ведёт доску 1:1, отпустил — пружина к этапу по проекции броска, как листание страниц iOS: сильный
-//   взмах проскакивает сразу несколько этапов, касание посреди полёта ловит доску. За первым и последним этапом — резинка;
-// - **вверх-вниз — свободно** с броском, но в рамке доски: за краем резинка, долетевший бросок отскакивает пружиной;
-// - **масштаб** — щипок, ctrl/⌘ + колесо, двойной тап, `+`/`−`: по горизонтали якорь всегда в фокусе — этап остаётся на
-//   золотом сечении, по вертикали — под пальцем.
+// - **вбок — свайпами, один свайп — один этап** (05.11.2026, владелец: «не скролл с тормозами, а именно свайпы»; так листают
+//   пейджеры iOS, Android и GNOME). Камера правит не x, а фокус `fx` — точку мира в `FOCUS` ширины экрана, чуть левее
+//   середины: слева заглядывает прошлый этап, справа — следующий. Палец ведёт доску 1:1, но дальше соседнего этапа не пускает
+//   (резинка). Отпустил: взмах быстрее `FLICK` — к соседнему по направлению взмаха (вернул палец назад и взмахнул обратно —
+//   на место), медленно — к соседнему, если дотянул `NEXT` шага, иначе на место. Довод — кривая с начальной скоростью пальца
+//   и без перелёта: рывка в момент отпускания нет. Касание посреди довода ловит доску, следующий свайп считается от этапа, к
+//   которому она ехала: пять быстрых свайпов — пять этапов. За первым и последним — резинка;
+// - **вверх-вниз — свободно** с броском; только чтобы доску не потерять, она не уходит с экрана целиком (`EDGE`);
+// - **масштаб** — щипок, ctrl/⌘ + колесо, двойной тап, `+`/`−`: по горизонтали якорь всегда в фокусе, по вертикали — под
+//   пальцем.
 // Ось жеста — по первому движению (владелец: «не по диагонали»). Кадры камера не заводит: `step(now)` зовёт цикл
 // `space_controller`, `wake` — чтобы он проснулся.
 
 const MOVE = 6;           // порог сдвига, px: касание без сдвига остаётся нажатием
 export const MIN = 0.4;
 export const MAX = 2.5;
-export const FOCUS = 0.382; // этап в фокусе — центром на 1/φ² ширины экрана
+export const FOCUS = 0.46;  // этап в фокусе — центром чуть левее середины экрана
 const FRICTION = 0.004;   // затухание броска по вертикали, 1/мс: за полсекунды остаётся 13 %
 const STOP = 0.012;       // px/мс — медленнее не катится
 const SAMPLE = 90;        // скорость пальца — по последним мс движения
 const FLING_FROM = 0.45;  // px/мс: медленнее — вертикальный бросок без инерции
 const FLING_FULL = 1.2;
 const FLING_GAP = 80;     // мс между последним движением и отпусканием — дольше: палец замер, броска нет
-const PROJECT = 450;      // мс: куда долетел бы взмах вбок — цель листания (iOS считает так же)
-const NEXT = 0.33;        // доля шага: дотянули дальше — следующий этап, даже без взмаха
-const SNAP = 0.02;        // жёсткость пружины к этапу, 1/мс: шаг ≈ 300 мс, критическое затухание — без перелёта
+const FLICK = 0.3;        // px экрана в мс: быстрее — взмах, к соседнему этапу по его направлению
+const NEXT = 0.4;         // доля шага: медленно дотянули дальше — соседний этап
+const BACK = 0.15;        // доля шага: настолько потянули в одну сторону и взмахнули в другую — передумал, на место
+const TURN = 320;         // мс довода на целый шаг без скорости; короче шаг — короче довод (по корню)
+const TURN_MIN = 140;
+const EDGE = 120;         // px: доска не уходит с экрана вверх или вниз дальше, чем оставив столько
 const BOUNCE = 0.022;     // пружина края по вертикали
 const SMOOTH = 0.016;     // масштаб и колесо мыши догоняют цель: за ~150 мс
 const BAND = 0.55;        // резинка iOS: (1 − 1/(d·k/D + 1))·D
@@ -54,7 +60,8 @@ export class Camera {
         this.columns = [];                // центры этапов в мире, слева направо
         this.rows = { lo: 0, hi: 0 };     // где может стоять y (рамка доски)
         this.pointers = new Map();
-        this.target = null;               // этап, к которому едет пружина
+        this.target = null;               // этап, к которому едет довод
+        this.anim = null;                 // довод: { a, b, t0, D, m0 }
         this.vfx = 0;                     // скорость фокуса, px мира в мс
         this.vy = 0;                      // бросок по вертикали, px мира в мс
         this.goal = null;                 // масштаб к цели: { z, oy }
@@ -134,7 +141,7 @@ export class Camera {
             this.raw = this.z;
             this.fx = columns[clamp(v.i, 0, columns.length - 1)];
             this.limits();
-            this.y = Number.isFinite(v.y) ? clamp(v.y, this.rows.lo, this.rows.hi) : this.rows.lo;
+            this.y = Number.isFinite(v.y) ? clamp(v.y, this.rows.lo, this.rows.hi) : this.rest();
         } else if (!this.pointers.size && this.target === null) {
             this.fx = columns[clamp(focus, 0, columns.length - 1)];
         }
@@ -142,14 +149,27 @@ export class Camera {
         this.changed();
     }
 
-    // Где может стоять y при этом масштабе: верх доски не ниже верхнего отступа, низ не выше нижнего; доска ниже экрана — у верха.
+    // Где может стоять y: свободно, лишь бы доска не ушла с экрана целиком — у края остаётся `EDGE` px её верха или низа.
     limits() {
         if (!this.board) return this.rows;
         const { y0, y1 } = this.board;
-        const lo = y0 + (this.h / 2 - this.pad.top) / this.z;
-        const hi = y1 - (this.h / 2 - this.pad.bottom) / this.z;
-        this.rows = { lo, hi: Math.max(lo, hi) };
+        const m = (this.h / 2 - EDGE) / this.z;
+        this.rows = { lo: y0 - m, hi: Math.max(y0 - m, y1 + m) };
         return this.rows;
+    }
+
+    // Вид по вертикали при первом заходе: доска ниже середины экрана не уезжает, а выше верха не липнет — короткая стоит
+    // чуть выше середины, высокая — верхом на десятой части экрана.
+    rest() {
+        const { y0, y1 } = this.board;
+        const top = Math.max(this.h * 0.1, (this.h - (y1 - y0) * this.z) * 0.42, this.pad.top);
+        return y0 + (this.h / 2 - top) / this.z;
+    }
+
+    // Шаг между соседними этапами в мире.
+    pitch() {
+        const c = this.columns;
+        return c.length > 1 ? (c[c.length - 1] - c[0]) / (c.length - 1) : this.w / this.z;
     }
 
     // Ближайший этап к точке мира (по умолчанию — к фокусу).
@@ -159,35 +179,32 @@ export class Camera {
         return best;
     }
 
-    // Положение в долях этапов: 2,4 — между третьим и четвёртым, ближе к третьему.
-    frac(at) {
-        const c = this.columns;
-        if (c.length < 2) return 0;
-        if (at <= c[0]) return (at - c[0]) / (c[1] - c[0]);
-        for (let i = 1; i < c.length; i++) if (at <= c[i]) return i - 1 + (at - c[i - 1]) / (c[i] - c[i - 1]);
-        return c.length - 1 + (at - c[c.length - 1]) / (c[c.length - 1] - c[c.length - 2]);
-    }
-
     // Этап, от которого считается следующий шаг: куда уже летим, иначе — ближайший. Быстрые взмахи подряд складываются.
     get here() {
         return this.target ?? this.index();
     }
 
-    // К этапу i пружиной; `v` — скорость фокуса в мс (взмах), без неё — с места.
+    // К этапу i доводом; `v` — скорость фокуса, px мира в мс: довод начинается с неё (палец, прошлый довод), рывка нет.
+    // Кривая — кубическая Эрмита от места к этапу: начальный наклон — скорость, конечный — ноль. Наклон до 3 — без перелёта,
+    // быстрый взмах укорачивает довод, а не гасит скорость; без скорости — мягкий старт с наклоном 1 (как «ease-out»).
     goTo(i, v = this.vfx) {
         if (!this.columns.length) return;
         this.target = clamp(i, 0, this.columns.length - 1);
-        const x0 = this.fx - this.columns[this.target];
-        // Без перелёта: скорость к цели не больше той, что пружина гасит без пересечения (v0 ≤ ω·|x0|).
-        this.vfx = Math.sign(v) === -Math.sign(x0) ? Math.sign(v) * Math.min(Math.abs(v), SNAP * Math.abs(x0)) : v;
-        if (this.still) { this.fx = this.columns[this.target]; this.vfx = 0; this.target = null; }
+        const to = this.columns[this.target];
+        const ds = Math.abs(to - this.fx) * this.z;
+        if (this.still || ds < 0.5) { this.fx = to; this.vfx = 0; this.target = null; this.anim = null; this.changed(); return; }
+        const vs = v * Math.sign(to - this.fx) * this.z;
+        let D = clamp(TURN * Math.sqrt(ds / (this.pitch() * this.z)), TURN_MIN, TURN * 1.2);
+        if (vs * D > 3 * ds) D = Math.max(TURN_MIN * 0.8, (3 * ds) / vs);
+        const m0 = clamp((vs * D) / ds, 1, 3);
+        this.anim = { a: this.fx, b: to, t0: performance.now(), D, m0 };
         this.changed();
     }
 
     // Сразу на этап, без полёта (фильтр поставил этап на новое место — на экране он стоит, где стоял).
     jumpTo(i) {
         if (!this.columns.length) return;
-        this.target = null; this.vfx = 0;
+        this.target = null; this.vfx = 0; this.anim = null;
         this.fx = this.columns[clamp(i, 0, this.columns.length - 1)];
         this.changed();
     }
@@ -195,6 +212,7 @@ export class Camera {
     stop() {
         this.vfx = 0; this.vy = 0;
         this.target = null;
+        this.anim = null;
         this.goal = null;
         this.yGoal = null;
     }
@@ -229,11 +247,14 @@ export class Camera {
             this.limits();
             moving = true;
         }
-        if (this.target !== null) {
-            const to = this.columns[this.target];
-            const [x0, v] = spring(this.fx - to, this.vfx, SNAP, dt);
-            this.fx = to + x0; this.vfx = v;
-            if (Math.abs(x0) * this.z < 0.3 && Math.abs(v) * this.z < 0.02) { this.fx = to; this.vfx = 0; this.target = null; }
+        if (this.anim) {
+            const { a, b, t0, D, m0 } = this.anim;
+            const t = clamp((now - t0) / D, 0, 1);
+            const p = m0 * (t ** 3 - 2 * t * t + t) + 3 * t * t - 2 * t ** 3;
+            const dp = m0 * (3 * t * t - 4 * t + 1) + 6 * t - 6 * t * t;
+            this.fx = a + (b - a) * p;
+            this.vfx = ((b - a) * dp) / D;
+            if (t >= 1) { this.fx = b; this.vfx = 0; this.anim = null; this.target = null; }
             moving = true;
         }
         if (this.yGoal !== null) {
@@ -305,6 +326,7 @@ export class Camera {
         // Касание ловит доску на месте; взмах дальше считается от этапа, к которому она летела.
         this.from = this.here;
         this.stop();
+        this.grabFx = this.fx;
         this.settleAt = 0;
         if (this.pointers.size === 1) {
             this.moved = false;
@@ -328,9 +350,11 @@ export class Camera {
     // Сдвиг пальцем на (dx, dy) экрана — по выбранной оси, за краем резинкой.
     drag(dx, dy) {
         if (this.axis === 'x') {
+            // Один свайп — один этап: дальше соседних с `from` палец тянет резинку.
             this.rawFx -= dx / this.z;
             const c = this.columns;
-            this.fx = c.length ? band(this.rawFx, c[0], c[c.length - 1], this.w / this.z) : this.rawFx;
+            const i = clamp(this.from ?? this.index(), 0, c.length - 1);
+            this.fx = c.length ? band(this.rawFx, Math.min(c[Math.max(0, i - 1)], this.grabFx), Math.max(c[Math.min(c.length - 1, i + 1)], this.grabFx), this.w / this.z) : this.rawFx;
         } else {
             this.rawY -= dy / this.z;
             const { lo, hi } = this.limits();
@@ -375,6 +399,7 @@ export class Camera {
             this.axis = null;
             this.samples = [];
             this.rawFx = this.fx; this.rawY = this.y;
+            this.grabFx = this.fx;
             this.pinch = null;
             this.settle();
             return;
@@ -404,15 +429,17 @@ export class Camera {
         return { x: (b.x - a.x) / dt, y: (b.y - a.y) / dt };
     }
 
-    // Отпустили вбок со скоростью фокуса v: цель — этап, куда долетел бы взмах; дотянули больше трети шага — хотя бы
-    // соседний; от этапа, с которого начали (`from`), а не от ближайшего.
+    // Отпустили вбок со скоростью фокуса v (px мира в мс): ровно на один этап от `from` или на месте. Сдвиг считается от
+    // точки, где жест начался (`grabFx`), а не от этапа: пойманная посреди довода доска стоит между этапами.
     release(v) {
         if (!this.columns.length) return;
-        const from = this.from ?? this.index();
-        const delta = this.frac(this.fx + v * PROJECT) - from;
-        const steps = Math.abs(delta) < NEXT ? 0 : Math.sign(delta) * Math.max(1, Math.round(Math.abs(delta)));
+        const from = clamp(this.from ?? this.index(), 0, this.columns.length - 1);
         this.from = null;
-        this.goTo(from + steps, v);
+        const moved = (this.fx - (this.grabFx ?? this.fx)) / this.pitch();
+        let d = 0;
+        if (Math.abs(v) * this.z >= FLICK) d = Math.sign(moved) === -Math.sign(v) && Math.abs(moved) > BACK ? 0 : Math.sign(v);
+        else if (Math.abs(moved) >= NEXT) d = Math.sign(moved);
+        this.goTo(from + d, v);
     }
 
     // Бросок по вертикали — только быстрым движением (05.11.2026, владелец: «чуть подвинул — и оно всё ещё едет, бесит»):
@@ -464,7 +491,7 @@ export class Camera {
         const mouse = e.deltaMode === 1 || (dx === 0 && Number.isInteger(dy) && Math.abs(dy) >= 50 && (e.wheelDeltaY === undefined || e.wheelDeltaY % 120 === 0));
         if (mouse) {
             // Колесо мыши — прокрутка вверх-вниз, с shift — к соседнему этапу (браузер отдаёт его то в deltaX, то в deltaY).
-            if (e.shiftKey || dx) { this.goTo(this.here + Math.sign(dx || dy), 0); return; }
+            if (e.shiftKey || dx) { this.goTo(this.here + Math.sign(dx || dy)); return; }
             this.vy = 0;
             const { lo, hi } = this.limits();
             this.yGoal = clamp((this.yGoal ?? this.y) + dy / this.z, lo, hi);
@@ -492,6 +519,7 @@ export class Camera {
         this.wheeling = axis;
         this.axis = axis;
         this.rawFx = this.fx; this.rawY = this.y;
+        this.grabFx = this.fx;
         this.wheelDeltas = [];
         this.coasting = false;
     }
@@ -541,10 +569,10 @@ export class Camera {
         const focus = document.activeElement;
         if ((focus && focus !== document.body && !this.el.contains(focus)) || document.documentElement.classList.contains('sheet-open')) return;
         const keys = {
-            ArrowLeft: () => this.goTo(this.here - 1, 0),
-            ArrowRight: () => this.goTo(this.here + 1, 0),
-            Home: () => this.goTo(0, 0),
-            End: () => this.goTo(this.columns.length - 1, 0),
+            ArrowLeft: () => this.goTo(this.here - 1),
+            ArrowRight: () => this.goTo(this.here + 1),
+            Home: () => this.goTo(0),
+            End: () => this.goTo(this.columns.length - 1),
             ArrowUp: () => { this.yGoal = null; this.vy = this.still ? 0 : -0.9 / this.z; if (this.still) this.y -= 220 / this.z; this.changed(); },
             ArrowDown: () => { this.yGoal = null; this.vy = this.still ? 0 : 0.9 / this.z; if (this.still) this.y += 220 / this.z; this.changed(); },
             '+': () => this.zoomGoal((this.goal?.z ?? this.z) * 1.4),

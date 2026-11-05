@@ -24,7 +24,8 @@ const DEEP_AFTER = 30000;
 const METEOR = [25000, 60000];
 const SLOW = 24;             // мс кадра в движении: дольше — снизить dpr
 // Вид помнится под ключом раскладки: вид прежней схемы (змейка вокруг начала мира) на новой доске — пустое небо.
-const KEY = 'space:camera:v3';
+const KEY = 'space:camera:v4';
+const PEEK = 18;             // px: на телефоне слева от этапа в фокусе виден край прошлого
 const CALM = 2000;           // мс: события пачкой — одно перечитывание
 const STALE = 9000;          // мс: сервер отдал прежний снимок — ещё раз через столько (+ CALM)
 const TWEEN = 700;           // мс докрутки числа
@@ -133,17 +134,19 @@ export default class extends Controller {
         const columns = stages.map((s) => frame.x0 + s.offsetLeft + s.offsetWidth / 2);
         // Снизу — место плашке фильтра: последний подэтап не встаёт под неё.
         const pad = w < 700 ? { top: 16, bottom: 80 } : { top: 32, bottom: 96 };
-        if (keep) { const fx = this.camera.fx; this.camera.frame(columns, { y0: frame.y0, y1: frame.y1 }, pad, this.start(stages[0], w)); this.camera.fx = fx; }
-        else this.camera.frame(columns, { y0: frame.y0, y1: frame.y1 }, pad, this.start(stages[0], w));
+        if (keep) { const fx = this.camera.fx; this.camera.frame(columns, { y0: frame.y0, y1: frame.y1 }, pad, this.start(stages, w)); this.camera.fx = fx; }
+        else this.camera.frame(columns, { y0: frame.y0, y1: frame.y1 }, pad, this.start(stages, w));
         this.drawn = -1;
         this.wake();
     }
 
-    // Вид при первом заходе: первый этап на золотом сечении. ПК — масштаб 1; телефон — этап целиком левее середины, его
-    // левый край на отступе, справа заглядывает следующий: видно, что листать вбок.
-    start(stage, w) {
-        const col = stage?.offsetWidth || 300;
-        const z = w < 700 ? Math.min(1, Math.max(0.5, (2 * (FOCUS * w - 16)) / col)) : 1;
+    // Вид при первом заходе: первый этап в фокусе. ПК — масштаб 1; телефон — масштаб такой, что у этапа в фокусе слева
+    // заглядывает прошлый на `PEEK` px, справа — следующий: видно, что листать вбок.
+    start(stages, w) {
+        const [a, b] = stages;
+        const col = a?.offsetWidth || 300;
+        const gap = b ? b.offsetLeft - a.offsetLeft - col : 40;
+        const z = w < 700 ? Math.min(1, Math.max(0.5, (FOCUS * w - PEEK) / (col / 2 + gap))) : 1;
         return { i: 0, z };
     }
 
