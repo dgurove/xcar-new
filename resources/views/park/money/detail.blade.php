@@ -23,13 +23,12 @@
                 <form method="post" action="{{ $href }}/void" class="contents" data-turbo-confirm="Аннулировать счёт?">@csrf<button class="chip text-ink-muted">Аннулировать</button></form>
             @endif
         </x-slot:actions>
+        {{-- Реестр за месяц — составом по смыслу (`ClosingDoc::composition`), все ТС — шторкой. --}}
+        @if ($i->isRegistry())
+            <x-billing.registry-summary :composition="\App\Billing\ClosingDoc::composition($i->charges->loadMissing('vehicle'), \Illuminate\Support\Carbon::instance($i->month))" :month="$i->month" :total="(float) $i->total" :id="'p'.$i->id"/>
+        @endif
         <div class="mt-4 flex flex-col divide-y divide-line/40 text-sm">
-            {{-- Реестр — машинами: сумма строк каждой и ссылка в дело; строки хранения по датам — в акте. --}}
-            @if ($i->isRegistry())
-                @foreach ($i->registryVehicles() as $v)
-                    <a href="/cars/{{ $v->id }}" class="flex items-baseline gap-2 py-1.5"><span class="min-w-0 flex-1 truncate">{{ $v->titleWithYear() }}@if ($v->ref) <span class="text-ink-muted">{{ $v->ref }}</span>@endif</span><span class="nums shrink-0">{{ Money::rub($i->charges->where('vehicle_id', $v->id)->sum('amount')) }}</span></a>
-                @endforeach
-            @endif
+
             @foreach ($i->isRegistry() ? [] : $i->charges as $c)
                 <div class="flex items-baseline gap-2 py-1.5"><span class="min-w-0 flex-1">{{ $c->title }}</span><span class="nums text-ink-muted">{{ \App\Support\Qty::format($c->qty) }} {{ $c->unitLabel() }} × {{ Money::nums($c->price) }}</span><span class="nums shrink-0">{{ Money::rub($c->amount) }}</span></div>
             @endforeach

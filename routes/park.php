@@ -134,6 +134,9 @@ Route::domain(config('xcar.park_host'))->middleware(['auth', 'section:park'])->g
         Route::get('/money/draft', [MoneyController::class, 'draft']);
         Route::get('/money/draft/pdf', [MoneyController::class, 'draftPdf']);
         Route::get('/money/draft/act', [MoneyController::class, 'draftAct']);
+        // Те же файлы ключом строки в пути: у шторки документов вкладка — путь, и файлы разных строк не склеиваются.
+        Route::get('/money/draft/{key}/pdf', [MoneyController::class, 'draftPdf'])->where('key', 'd\d{6}-[A-Za-z0-9_-]+');
+        Route::get('/money/draft/{key}/act', [MoneyController::class, 'draftAct'])->where('key', 'd\d{6}-[A-Za-z0-9_-]+');
         Route::post('/money/draft/fix', [MoneyController::class, 'fix']);
         // Реквизиты плательщиков — и управляющему (только парковки, без наших — PartyController::guard).
         Route::get('/money/parties', [PartyController::class, 'index']);

@@ -12,7 +12,7 @@
         <div class="list mt-4">
             {{-- Прошлый месяц не закрыт — первой строкой: месяц, сколько ТС и на какую сумму, что мешает. --}}
             @php $closingMonth = \Illuminate\Support\Carbon::parse($closing['month']); @endphp
-            <a href="/money/closing?month={{ $closingMonth->format('Y-m') }}" class="row">
+            <a href="/money/closing" class="row">
                 <span class="min-w-0 flex-1">
                     <span class="block">Счета и акты</span>
                     <span class="row-sub"><span>{{ mb_strtolower($closingMonth->translatedFormat('F')) }}</span>@if ($closing['cars'])<span class="nums whitespace-nowrap">{{ $closing['cars'] }}&nbsp;ТС</span><span class="nums">{{ \App\Support\Money::rub($closing['amount']) }}</span>@endif</span>

@@ -7,6 +7,7 @@ use App\Billing\Acquiring\PayLinkState;
 use App\Garage\Car as GarageCar;
 use App\Live\Publisher;
 use App\Live\Topics;
+use App\Mail\Message;
 use App\Offers\Deal;
 use App\Offers\DealScheme;
 use App\Offers\Offer;
@@ -36,7 +37,7 @@ use Spatie\MediaLibrary\InteractsWithMedia;
  * без своей ТС: машины — строками хранения со своим `vehicle_id`, долг машины — её доля (`Ledger::shareOf`).
  */
 #[Fillable(['seller', 'park', 'direction', 'year', 'number', 'code', 'revision', 'external_no', 'kind', 'month', 'party_id', 'vehicle_id', 'deal_id', 'offer_id', 'issued_at', 'due_at', 'vat', 'vat_rate', 'vat_on_top', 'total', 'paid', 'state', 'paid_at',
-    'overdue_at', 'reminded_at', 'sent_at', 'voided_at', 'void_reason', 'notes', 'created_by', 'car_title', 'credit_deal_id'])]
+    'overdue_at', 'reminded_at', 'sent_at', 'sent_by', 'sent_message_id', 'voided_at', 'void_reason', 'notes', 'created_by', 'car_title', 'credit_deal_id'])]
 class Invoice extends Model implements HasMedia
 {
     use FastAttributes;
@@ -80,6 +81,18 @@ class Invoice extends Model implements HasMedia
     public function party(): BelongsTo
     {
         return $this->belongsTo(Party::class);
+    }
+
+    /** Кто отправил документ (письмом или «Отправили сами»). */
+    public function sender(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'sent_by');
+    }
+
+    /** Письмо, которым документ ушёл; без него — отметили отправленным сами. */
+    public function sentMessage(): BelongsTo
+    {
+        return $this->belongsTo(Message::class, 'sent_message_id');
     }
 
     public function vehicle(): BelongsTo

@@ -127,17 +127,20 @@ export default class extends Controller {
 
     get shown() { return this.element.open; }
 
-    // Документы страницы (вне окон) или открытого модального окна, из которого открыли.
+    // Документы страницы (вне окон) или открытого модального окна, из которого открыли. Ссылка внутри `[data-docs-scope]`
+    // (строка «Счетов и актов», 05.11.2026: файлы десятка документов на одной странице) — вкладки только этого места.
     links(host = this.host) {
         if (host) return [...host.querySelectorAll('a[data-doc]')].filter((a) => a.dataset.doc !== 'off');
+        if (this.docScope?.isConnected) return [...this.docScope.querySelectorAll('a[data-doc]')].filter((a) => a.dataset.doc !== 'off');
         return [...document.querySelectorAll('a[data-doc]')].filter((a) => a.dataset.doc !== 'off' && !this.element.contains(a) && !a.closest('dialog'));
     }
 
     key(a) {
         if (a.dataset.doc === 'photos') return '#photos';
-        // Файлы одного архива различаются только `?entry=N`, выгрузки одного адреса (Excel и PDF закупки) — `?format=`.
+        // Файлы одного архива различаются только `?entry=N`, выгрузки одного адреса (Excel и PDF закупки) — `?format=`,
+        // акт и приложение РГС — `?n=`.
         const url = new URL(a.href, location.href);
-        const own = ['entry', 'format'].filter((k) => url.searchParams.has(k)).map((k) => `${k}=${url.searchParams.get(k)}`);
+        const own = ['entry', 'format', 'n'].filter((k) => url.searchParams.has(k)).map((k) => `${k}=${url.searchParams.get(k)}`);
         return url.pathname + (own.length ? `?${own.join('&')}` : '');
     }
 
@@ -168,6 +171,7 @@ export default class extends Controller {
         // Была открыта в другом слое (на странице, а теперь из окна над ней) — заново в нужном.
         if (this.shown && host !== this.host) this.close(true, false);
         this.host = host;
+        this.docScope = host ? null : a.closest('[data-docs-scope]');
         const seen = new Set();
         this.items = [];
         for (const link of [...this.links(), a]) {
@@ -404,6 +408,7 @@ export default class extends Controller {
         html.classList.remove('docs-open');
         this.host?.removeEventListener('close', this.onHostClose);
         this.host = null;
+        this.docScope = null;
         if (overlays.isOpen('docs')) overlays.shut('docs');
         clearTimeout(this.countTimer);
         this.view?.destroy();

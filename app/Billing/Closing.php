@@ -41,20 +41,14 @@ final class Closing
      * @param  ?list<int>  $only
      * @return Collection<int, Item>
      */
-    public static function items(CarbonInterface $month, ?Invoice $without = null, ?array $only = null): Collection
+    public static function items(CarbonInterface $month, ?Invoice $without = null, ?array $only = null, ?Collection $vehicles = null): Collection
     {
         // Текущий месяц — по сегодня: будущие дни не считаются.
         $end = min(Carbon::instance($month)->endOfMonth()->startOfDay(), now()->startOfDay());
         $begin = Carbon::instance($month)->startOfMonth()->startOfDay();
         // С какого дня ТС этого счёта снова «не выставлены» — с первого дня её строк в нём, как сделает `VoidInvoice`.
         $replaced = $without ? $without->charges()->where('kind', ChargeKind::Storage)->whereNotNull('vehicle_id')->orderBy('period_from')->get()->groupBy('vehicle_id') : collect();
-        $vehicles = Vehicle::whereIn('state', [VehicleState::Stored, VehicleState::Released])->whereNotNull('accepted_at')
-            ->where(fn ($q) => $q->whereNull('storage_billed_until')->orWhereColumn('storage_billed_until', '<', 'released_at')->orWhere(fn ($w) => $w->whereNull('released_at')->where('storage_billed_until', '<', $end))
-                ->when($replaced->isNotEmpty(), fn ($x) => $x->orWhereIn('id', $replaced->keys())))
-            ->when($only !== null, fn ($q) => $q->whereIn('id', $only))
-            ->with(['vendor.party', 'vendor.contacts', 'yard', 'ownerParty', 'buyerParty', 'offer.deal.buyer',
-                // Лента площадок — заранее: ставка считается по площадке того дня, иначе запрос на каждую ТС.
-                'events' => fn ($e) => $e->whereIn('type', [EventType::Accepted, EventType::Moved, EventType::Departed])])->orderBy('accepted_at')->get();
+        $vehicles ??= self::vehicles($end, $replaced->keys()->all(), $only);
         foreach ($vehicles as $v) {
             if ($rows = $replaced->get($v->id)) {
                 // Только в памяти: модель дальше идёт в `Accrual`, а не в базу.
@@ -114,6 +108,24 @@ final class Closing
         }
 
         return $items->concat(self::tows($end, $without, $only));
+    }
+
+    /**
+     * ТС, у которых что-то не выставлено по `$end`. Список «Счета и акты» берёт их раз на все месяцы окна (по сегодня —
+     * шире любого месяца) и отдаёт в `items`: выборка с лентой площадок — самая дорогая часть.
+     *
+     * @param  list<int>  $replaced  ТС исправляемого счёта
+     * @param  ?list<int>  $only
+     */
+    public static function vehicles(CarbonInterface $end, array $replaced = [], ?array $only = null): Collection
+    {
+        return Vehicle::whereIn('state', [VehicleState::Stored, VehicleState::Released])->whereNotNull('accepted_at')
+            ->where(fn ($q) => $q->whereNull('storage_billed_until')->orWhereColumn('storage_billed_until', '<', 'released_at')->orWhere(fn ($w) => $w->whereNull('released_at')->where('storage_billed_until', '<', $end))
+                ->when($replaced, fn ($x) => $x->orWhereIn('id', $replaced)))
+            ->when($only !== null, fn ($q) => $q->whereIn('id', $only))
+            ->with(['vendor.party', 'vendor.contacts', 'yard', 'ownerParty', 'buyerParty', 'offer.deal.buyer',
+                // Лента площадок — заранее: ставка считается по площадке того дня, иначе запрос на каждую ТС.
+                'events' => fn ($e) => $e->whereIn('type', [EventType::Accepted, EventType::Moved, EventType::Departed])])->orderBy('accepted_at')->get();
     }
 
     /**

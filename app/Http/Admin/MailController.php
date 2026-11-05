@@ -802,6 +802,8 @@ class MailController
         }
         if (! empty($fixed)) {
             $data['invoice'] = $fixed->id;
+            // Документ месяца — с письмом, которым ушёл: история карточки «Отправлен письмом на …».
+            $fixed->update(['sent_message_id' => $message->id]);
         }
         if ($this->scope === Scope::Offers && ! empty($data['offer']) && $message->thread && ! $message->thread->offer_id) {
             $message->thread->update(['offer_id' => $data['offer']]);
@@ -822,13 +824,13 @@ class MailController
             }
             // Ушёл счёт — отметка на нём и в ленте ТС.
             if (! empty($data['invoice']) && $request->user()->parkMoney() && ($invoice = Invoice::where('vehicle_id', $vehicle->id)->find($data['invoice']))) {
-                $invoice->update(['sent_at' => now()]);
+                $invoice->update(['sent_at' => now(), 'sent_by' => $request->user()->id, 'sent_message_id' => $message->id]);
                 $vehicle->log(EventType::ReportSent, $request->user(), ['what' => 'Счёт '.$invoice->label(), 'thread' => $message->thread_id]);
             }
         }
         // Ушёл счёт-реестр — отметка на нём и отчёт в ленте каждой его ТС.
         if ($this->scope === Scope::Park && ! empty($data['invoice']) && $request->user()->parkMoney() && ($registry = Invoice::whereNull('vehicle_id')->whereNotNull('month')->find($data['invoice']))) {
-            $registry->update(['sent_at' => now()]);
+            $registry->update(['sent_at' => now(), 'sent_by' => $request->user()->id, 'sent_message_id' => $message->id]);
             foreach ($registry->registryVehicles() as $v) {
                 $v->log(EventType::ReportSent, $request->user(), ['what' => 'Реестр '.$registry->label(), 'thread' => $message->thread_id]);
             }

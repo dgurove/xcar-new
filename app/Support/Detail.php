@@ -23,11 +23,12 @@ final class Detail
 
     private bool $rendered = false;
 
-    private function __construct(private Request $request, private Closure $resolve) {}
+    /** `$pattern` — ключи не номерами («Счета и акты»: `i12`, `d202609-…`); по умолчанию только цифры. */
+    private function __construct(private Request $request, private Closure $resolve, private ?string $pattern = null) {}
 
-    public static function of(Request $request, Closure $resolve): self
+    public static function of(Request $request, Closure $resolve, ?string $pattern = null): self
     {
-        return new self($request, $resolve);
+        return new self($request, $resolve, $pattern);
     }
 
     public static function key(?Request $request = null): ?string
@@ -49,7 +50,8 @@ final class Detail
             $this->rendered = true;
             $key = self::key($this->request);
             // Ключи строк — номера и id: прочее (first, мусор в адресе) карточки не даёт и в запрос не идёт.
-            $this->html = $key === null || ! ctype_digit($key) ? null : ($this->resolve)($key);
+            $ok = $key !== null && ($this->pattern ? preg_match($this->pattern, $key) === 1 : ctype_digit($key));
+            $this->html = $ok ? ($this->resolve)($key) : null;
         }
 
         return $this->html ?? self::empty();

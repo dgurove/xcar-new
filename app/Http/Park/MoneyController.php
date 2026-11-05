@@ -4,8 +4,8 @@ namespace App\Http\Park;
 
 use App\Billing\Actions\FixClosingDocument;
 use App\Billing\Acts\RegistryAct;
-use App\Billing\ChargeKind;
 use App\Billing\Closing;
+use App\Billing\ClosingDoc;
 use App\Billing\Documents\InvoicePdf;
 use App\Billing\Documents\StorageActPdf;
 use App\Billing\Invoice;
@@ -156,39 +156,58 @@ class MoneyController
     }
 
     /**
-     * Счета и акты за месяц (05.11.2026, владелец: «они должны быть актуальными всегда, зафиксировать — если отправили»):
-     * живые документы по плательщикам (`Closing::items` группами) и отправленные за этот месяц со сверкой
-     * (`Closing::drift`: данные изменились после отправки).
+     * Счета и акты (05.11.2026, владелец: «не разделять по месяцам, а группировать; логотипов не хватает; кнопки посмотреть
+     * и скачать; внутри — огромный бесцельный список»): одна таблица документов по месяцам (`ClosingDoc::window`), у строки —
+     * логотип, файлы чипами и состояние словом; нажатие — карточка рядом (`closingCard`): сумма, файлы, состав, история,
+     * «Отправить». Старый `?month=` — якорем своего месяца.
      */
     public function closing(Request $request)
     {
-        $month = self::month($request);
-        $sent = Invoice::where('direction', 'issued')->where('state', '!=', InvoiceState::Void)->ofPark()
-            ->where(fn ($q) => $q->where('month', $month->toDateString())
-                // Счёт покупателю на ТС — без месяца: по концу его хранения.
-                ->orWhere(fn ($b) => $b->whereNull('month')->whereNotNull('vehicle_id')->whereHas('charges', fn ($c) => $c->where('kind', ChargeKind::Storage)
-                    ->whereBetween('period_to', [$month->toDateString(), $month->copy()->endOfMonth()->toDateString()]))))
-            ->with(['party', 'vehicle', 'charges.vehicle'])->latest('id')->get();
-        $sentGroups = $sent->map(fn ($i) => Closing::groupOfInvoice($i))->filter()->all();
+        $detail = Detail::of($request, fn (string $key) => ($doc = ClosingDoc::find($key)) ? $this->closingCard($doc) : null, ClosingDoc::KEY);
+        if ($detail->framed()) {
+            return $detail->response();
+        }
+        if (is_string($m = $request->query('month')) && preg_match('/^\d{4}-\d{2}$/', $m)) {
+            return redirect('/money/closing'.($request->query('peek') ? '?peek='.urlencode((string) $request->query('peek')) : '').'#m'.$m, 301);
+        }
+        $months = min(24, max(6, (int) $request->query('months', 6)));
 
-        return view('park.money.closing', [
-            'month' => $month, 'items' => Closing::items($month)->groupBy(fn ($i) => Closing::groupOf($i)),
-            'sent' => $sent, 'drift' => $sent->mapWithKeys(fn ($i) => [$i->id => Closing::drift($i)])->filter(), 'sentGroups' => $sentGroups,
-            'months' => collect(range(0, 5))->map(fn ($n) => now()->subMonths($n)->startOfMonth()),
+        return view('park.money.closing', ['docs' => ClosingDoc::window($months), 'months' => $months, 'detail' => $detail, 'table' => self::closingTable()]);
+    }
+
+    /** Карточка документа: живой — счёт на лету с номером, который получит; отправленный — счёт с оплатами и историей. */
+    private function closingCard(ClosingDoc $doc)
+    {
+        $draft = $doc->live() && $doc->state !== 'nobody' ? Closing::draft($doc->month, $doc->group) : null;
+        $invoice = $doc->invoice?->loadMissing(['party', 'charges.vehicle.vendor', 'payments', 'sender', 'sentMessage.addresses']);
+        $charges = ($invoice ?? $draft)?->charges ?? collect();
+
+        return view('park.money.closing-card', [
+            'doc' => $doc, 'draft' => $draft, 'invoice' => $invoice, 'files' => $doc->files($draft),
+            'composition' => ClosingDoc::composition($charges, $doc->month),
+            'skipped' => $draft?->getRelation('skipped')->all() ?? [],
+            'history' => $invoice ? ClosingDoc::history($invoice) : [],
+            'sources' => PaymentSource::manual(),
         ]);
     }
 
-    /** Живой документ: машины, счёт и акт на лету, «Отправить» и «Отправили сами». `replaces` — исправленный отправленного. */
+    /** Прежний адрес живого документа — его карточка в списке. Исправленный — карточка отправленного. */
     public function draft(Request $request)
     {
         [$month, $group, $replaces] = $this->draftKey($request);
-        $draft = Closing::draft($month, $group, $replaces);
-        if (! $draft) {
-            return redirect('/money/closing?month='.$month->format('Y-m'))->with('toast', 'Документа нет — уже отправлен или некому отправить');
-        }
 
-        return view('park.money.draft', ['invoice' => $draft, 'month' => $month, 'group' => $group, 'replaces' => $replaces, 'skipped' => $draft->getRelation('skipped')->all(),
-            'query' => http_build_query(array_filter(['month' => $month->format('Y-m'), 'group' => $group, 'replaces' => $replaces?->id]))]);
+        return redirect('/money/closing?peek='.($replaces ? 'i'.$replaces->id : ClosingDoc::liveKey($month, $group)));
+    }
+
+    /** Таблица «Счетов и актов» — одно описание на шапку, заголовки месяцев и строки `x-billing.closing-row`. */
+    public static function closingTable(): Table
+    {
+        return Table::of(
+            new Column('title', 'Плательщик', grow: true),
+            new Column('files', 'Файлы', from: 'sm', role: ColRole::State, rem: 11),
+            new Column('amount', 'Сумма', num: true, cell: 'nums', rem: 7),
+            new Column('state', 'Состояние', from: 'sm', role: ColRole::When, rem: 7.5),
+        );
     }
 
     public function draftPdf(Request $request, InvoicePdf $pdf)
@@ -231,15 +250,19 @@ class MoneyController
         try {
             $invoice = $fix($month, $group, $request->user(), $replaces);
         } catch (ValidationException $e) {
-            return redirect('/money/closing?month='.$month->format('Y-m'))->with('toast', implode(', ', $e->validator->errors()->all()));
+            return redirect('/money/closing?peek='.ClosingDoc::liveKey($month, $group))->with('toast', implode(', ', $e->validator->errors()->all()));
         }
 
-        return redirect('/money/invoices/'.$invoice->id)->with('toast', 'Отмечен отправленным, '.$invoice->label().($fix->skipped ? '. Не вошли: '.implode('; ', $fix->skipped) : ''));
+        return redirect('/money/closing?peek=i'.$invoice->id)->with('toast', 'Отмечен отправленным, '.$invoice->label().($fix->skipped ? '. Не вошли: '.implode('; ', $fix->skipped) : ''));
     }
 
     /** @return array{0: Carbon, 1: string, 2: ?Invoice} */
     private function draftKey(Request $request): array
     {
+        // Ключ строки в пути (`/money/draft/{key}/pdf`) — месяц и группа из него.
+        if (is_string($key = $request->route('key')) && ($live = ClosingDoc::parseLive($key))) {
+            $request->merge(['month' => $live[0]->format('Y-m'), 'group' => $live[1]]);
+        }
         $data = $request->validate(['month' => ['required', 'date_format:Y-m'], 'group' => ['required', 'string', 'max:60'], 'replaces' => ['nullable', 'integer']]);
         $replaces = isset($data['replaces']) ? Invoice::ofPark()->where('state', InvoiceState::Issued)->findOrFail($data['replaces']) : null;
         abort_if($replaces && $replaces->paid > 0, 422);

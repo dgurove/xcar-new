@@ -9,6 +9,7 @@ use App\Billing\Cadence;
 use App\Billing\Charge;
 use App\Billing\ChargeKind;
 use App\Billing\Closing;
+use App\Billing\ClosingDoc;
 use App\Billing\Invoice;
 use App\Billing\InvoiceState;
 use App\Billing\Numbering;
@@ -18,6 +19,7 @@ use App\Park\City;
 use App\Park\Vehicle;
 use App\Park\VehicleState;
 use App\Park\Yard;
+use App\Support\Surface;
 use App\Users\Role;
 use App\Users\User;
 use App\Vendors\Tariff;
@@ -51,7 +53,7 @@ class ParkClosingDocsTest extends TestCase
         Storage::fake('private');
         Notification::fake();
         Carbon::setTestNow('2026-11-05 12:00');
-        $this->admin = User::create(['name' => 'Владелец', 'phone' => '79000000001', 'roles' => [Role::Admin], 'approved_at' => now()]);
+        $this->admin = User::create(['name' => 'Владелец', 'phone' => '79000000001', 'roles' => [Role::Admin, Role::ParkAdmin], 'approved_at' => now()]);
         $party = Party::create(['kind' => 'company', 'name' => 'АО «СОГАЗ»', 'inn' => '7736035485', 'kpp' => '997950001', 'legal_address' => '107078, г. Москва']);
         $this->vendor = Vendor::create(['name' => 'СОГАЗ тест', 'party_id' => $party->id, 'billing_cadence' => Cadence::Monthly, 'act_form' => ActForm::Sogaz,
             'agreement_number' => 'СОХ/2/23/3350', 'agreement_date' => '2023-08-24', 'tow_agreement_number' => 'Э/2/23/3351', 'tow_agreement_date' => '2023-07-28']);
@@ -181,6 +183,27 @@ class ParkClosingDocsTest extends TestCase
         app(FixClosingDocument::class)($sep, Closing::groupOf($group), $this->admin);
         // Сентябрь отправлен — помесячная в октябре, 31 сутки.
         $this->assertSame(31, Closing::items($oct)->firstWhere('vehicle.id', $this->vehicle->id)['days']);
+    }
+
+    /**
+     * Экран «Счета и акты» — месяцами одной таблицей, строка открывает карточку рядом (живой документ — по ключу месяца
+     * и группы); «Отправили сами» записывает, кто отметил, и ведёт в карточку отправленного.
+     */
+    public function test_screen_lists_months_and_opens_card(): void
+    {
+        $month = Carbon::parse('2026-10-01');
+        $group = Closing::items($month)->map(fn ($i) => Closing::groupOf($i))->first();
+        $key = ClosingDoc::liveKey($month, $group);
+        $this->actingAs($this->admin)->get(Surface::Park->url('/money/closing'))->assertOk()
+            ->assertSee('Октябрь')->assertSee('СОГАЗ тест')->assertSee('data-detail-key="'.$key.'"', false);
+        $this->actingAs($this->admin)->get(Surface::Park->url('/money/closing?peek='.$key), ['Turbo-Frame' => 'detail'])->assertOk()
+            ->assertSee('Отправить')->assertSee('Файлы')->assertSee('01.10 – 31.10, 31')->assertDontSee('Не вошли');
+
+        $this->actingAs($this->admin)->post(Surface::Park->url('/money/draft/fix'), ['month' => '2026-10', 'group' => $group])
+            ->assertRedirect('/money/closing?peek=i'.Invoice::first()->id);
+        $this->assertSame($this->admin->id, Invoice::first()->sent_by);
+        $this->actingAs($this->admin)->get(Surface::Park->url('/money/closing?peek=i'.Invoice::first()->id), ['Turbo-Frame' => 'detail'])->assertOk()
+            ->assertSee('Отмечен отправленным');
     }
 
     public function test_rgs_form_gives_act_and_appendix(): void

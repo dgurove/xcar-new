@@ -62,7 +62,7 @@ final class FixClosingDocument
                 $this->restoreLater($only);
             }
             $this->act->attach($invoice);
-            $invoice->update(['sent_at' => now()]);
+            $invoice->update(['sent_at' => now(), 'sent_by' => $by->id]);
 
             return $invoice;
         });

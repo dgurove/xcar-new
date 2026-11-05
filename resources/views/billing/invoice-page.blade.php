@@ -62,13 +62,17 @@
     @endif
     <div class="grid grid-cols-1 items-start gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]">
         <div class="flex flex-col gap-4">
-            <x-ui.card :title="$i->isRegistry() ? 'Реестр' : 'Строки'">
+            {{-- Файлы документа месяца строками: просмотр в шторке документов, «Скачать» (05.11.2026, «Счета и акты»). --}}
+            @if ($files ?? null)
+                <div class="list" data-docs-scope>@foreach ($files as $f)<x-ui.file :name="$f['name']" :href="$f['url']" class="row" download/>@endforeach</div>
+            @endif
+            @if ($i->isRegistry())
+                {{-- Реестр за месяц — составом по смыслу, а не списком всех машин (`ClosingDoc::composition`); все ТС — шторкой. --}}
+                <div><x-billing.registry-summary :composition="\App\Billing\ClosingDoc::composition($i->charges->loadMissing('vehicle'), \Illuminate\Support\Carbon::instance($i->month))" :month="$i->month" :total="(float) $i->total" :id="'i'.$i->id"/></div>
+            @else
+            <x-ui.card :title="'Строки'">
                 <div class="flex flex-col divide-y divide-line/40">
-                    {{-- Реестр за месяц — машинами: её строки (без НДС сверху, он ниже отдельной строкой) и ссылка в дело; даты и ставки — в акте. --}}
-                    @foreach ($i->isRegistry() ? $i->registryVehicles() : [] as $v)
-                        <a href="{{ \App\Support\Surface::Park->url('/cars/'.$v->id) }}" class="flex items-baseline gap-3 py-2" data-turbo="false"><span class="min-w-0 flex-1 truncate">{{ $v->titleWithYear() }}@if ($v->ref) <span class="text-sm text-ink-muted">{{ $v->ref }}</span>@endif</span><span class="nums shrink-0 font-semibold">{{ Money::rub($i->charges->where('vehicle_id', $v->id)->sum('amount')) }}</span></a>
-                    @endforeach
-                    @foreach ($i->isRegistry() ? [] : $i->charges as $c)
+                    @foreach ($i->charges as $c)
                         <div class="flex items-baseline gap-3 py-2"><span class="min-w-0 flex-1">{{ $c->title }}</span><span class="nums text-sm text-ink-muted">{{ \App\Support\Qty::format($c->qty) }} {{ $c->unitLabel() }} × {{ Money::nums($c->price) }}</span><span class="nums shrink-0 font-semibold">{{ Money::rub($c->amount) }}</span></div>
                     @endforeach
                     @if ($i->vat_on_top)<div class="flex items-baseline gap-3 py-2"><span class="flex-1">{{ $i->vatLabel() }}</span><span class="nums shrink-0 font-semibold">{{ Money::rub($i->vatAmount()) }}</span></div>@endif
@@ -77,6 +81,7 @@
                     @if ($offset > 0)<div class="flex items-baseline gap-3 py-2 text-sm text-ink-muted"><span class="flex-1">Менеджер оставил себе вознаграждение</span><span class="nums">{{ Money::rub($offset) }}</span></div>@endif
                 </div>
             </x-ui.card>
+            @endif
             @if ($i->claims->isNotEmpty())
                 {{-- Менеджер сообщил об оплате: платёжка есть, денег на счету ещё не видели. --}}
                 <x-ui.card title="Сообщили об оплате" class="box-urgent">
