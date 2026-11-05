@@ -2,6 +2,8 @@
 
 namespace App\Space;
 
+use App\Vendors\Vendor;
+
 /**
  * Кто за что отвечает на конвейере главной CRM (04.11.2026, владелец). В системе исполнителей нет: «наш ход» — XCar целиком,
  * уведомления — всем админам. Здесь — кого рисовать у этапа: вид работы → id людей (на проде и в локальной базе одни).
@@ -25,23 +27,36 @@ final class Owners
         'bids' => self::ANDREY,      // выбор подтверждения
         'claims' => self::ANDREY,    // «К запросу» по галерее
         'reprice' => self::ANDREY,   // переоценка: разобрать, ответить поставщику, менеджер не ответил про закупочную
-        'alfa' => self::ANDREY,      // письма АльфаСтрахования
+        'letters' => self::ANDREY,   // письма и ответы поставщику Альфы и Т-Страхования (`LETTER_VENDORS`)
         'deals' => self::KATYA,      // наш ход в сделках: счета, оплаты, письма поставщикам, разбор ответов
         'pickup' => self::KATYA,     // назначить вывоз
         'docs' => self::LIZA,        // документы на вывоз СДЭКом
     ];
+
+    /** Чьи письма о сделке пишет и разбирает Андрей (владелец 05.11.2026: «Андрей по Альфе и Т-Страхованию, Катя по Совкому»). */
+    private const LETTER_VENDORS = ['%альфа%', '%т-страх%'];
 
     public static function of(string $work): int
     {
         return self::WORK[$work];
     }
 
-    /** Чей наш ход в сделке — по делу из `Position::todo()` (ключ группы «Ваш ход»). */
-    public static function forTodo(string $key, bool $alfa): int
+    /** Вендоры, чьи письма — у Андрея (`LETTER_VENDORS`), id. */
+    public static function letterVendors(): array
+    {
+        return Vendor::where(function ($q) {
+            foreach (self::LETTER_VENDORS as $name) {
+                $q->orWhere('name', 'ilike', $name);
+            }
+        })->pluck('id')->all();
+    }
+
+    /** Чей наш ход в сделке — по делу из `Position::todo()` (ключ группы «Ваш ход»); `$letters` — вендор из `letterVendors`. */
+    public static function forTodo(string $key, bool $letters): int
     {
         return match (true) {
             in_array($key, ['reprice', 'reprice-answer', 'price-ask'], true) => self::of('reprice'),
-            $alfa && in_array($key, ['letter', 'bounced', 'reply', 'requisites'], true) => self::of('alfa'),
+            $letters && in_array($key, ['letter', 'bounced', 'reply'], true) => self::of('letters'),
             default => self::of('deals'),
         };
     }

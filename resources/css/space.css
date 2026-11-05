@@ -65,14 +65,21 @@
      — красным, красиво»). Без дела — тихая, полупрозрачная. Нажатие — его список. */
   .stage-steps { display: grid; gap: .5rem; align-content: start; }
   .conveyor-step {
-    display: flex; align-items: center; gap: .625rem; min-height: 3.25rem; padding: .625rem 1rem;
+    display: grid; align-content: center; gap: .375rem; min-height: 3.25rem; padding: .625rem 1rem;
     border-radius: var(--radius-l); background: var(--color-surface); color: var(--color-ink);
     -webkit-user-drag: none; transition: background-color var(--dur) var(--ease-out), scale var(--dur) var(--ease-out);
   }
+  .step-line { display: flex; align-items: center; gap: .625rem; }
+  .step-logo { flex: none; width: 1.5rem; height: 1.5rem; border-radius: 6px; }
+  /* Подпункты подэтапа («Приём закрыт», «Приём ещё идёт») — строками под глаголом, число справа. */
+  .step-part { display: flex; align-items: center; justify-content: space-between; gap: .625rem; font-size: var(--text-sm); color: var(--color-ink-muted); }
+  .conveyor-step.is-idle .step-part { color: inherit; }
   .step-verb { flex: 1; min-width: 0; font-size: var(--text-base); font-weight: 500; line-height: 1.25; }
   .step-n { font-size: var(--text-lg); font-weight: 600; line-height: 1; }
   .conveyor-step.is-idle { background: rgb(255 255 255 / .07); color: rgb(255 255 255 / .6); }
   .dark .conveyor-step.is-idle { background: rgb(255 255 255 / .045); color: rgb(255 255 255 / .45); }
+  /* Этап, где только ждём (поставщика), — тише весь: делать там нечего. */
+  .conveyor-stage.is-quiet { opacity: .55; }
   .conveyor-step.is-hot { box-shadow: 0 0 0 2px var(--b-red), 0 0 26px rgb(255 45 85 / .5); }
   @media (hover: hover) {
     .conveyor-step[href]:hover { background: var(--color-surface-3); }

@@ -36,6 +36,7 @@ class ConveyorTest extends TestCase
         $steps = collect(Conveyor::view())->flatMap(fn ($stage) => $stage['steps'])->keyBy('key');
         $this->assertSame(1, $steps['floor']['n']);
         $this->assertSame(1, $steps['price']['n']);
+        $this->assertSame([0, 0], $steps['bids']['parts']->pluck('n')->all());
         $this->assertSame(0, $steps['bids']['n']);
         $this->assertSame(0, $steps['floor']['hot']);
 

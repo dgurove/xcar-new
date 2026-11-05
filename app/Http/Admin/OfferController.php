@@ -486,9 +486,9 @@ class OfferController
      */
     public const ESTIMATE_GROUPS = ['Оценённые', 'Не оценённые'];
 
-    private const ESTIMATE_GROUP = "case when exists (select 1 from offer_estimates e where e.offer_id = offers.id and e.state = 'given') then 0 else 1 end";
+    public const ESTIMATE_GROUP = "case when exists (select 1 from offer_estimates e where e.offer_id = offers.id and e.state = 'given') then 0 else 1 end";
 
-    private const PICK_GROUP = "case when bids_close_at is not null and bids_close_at <= now() and exists (select 1 from bids where bids.offer_id = offers.id and bids.state = 'active') then 0 when bids_close_at is null or bids_close_at > now() then 1 else 2 end";
+    public const PICK_GROUP = "case when bids_close_at is not null and bids_close_at <= now() and exists (select 1 from bids where bids.offer_id = offers.id and bids.state = 'active') then 0 when bids_close_at is null or bids_close_at > now() then 1 else 2 end";
 
     /**
      * Порядок вкладки: группы первыми («Публикация» — по слоту, «Опубликованные» у админа — `PICK_GROUP`), внутри —

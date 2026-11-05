@@ -17,6 +17,7 @@ const FLING_FULL = 1.2;   // px/мс: отсюда бросок в полную 
 const FLING_GAP = 80;     // мс между последним движением и отпусканием — дольше: палец замер, броска нет
 const SMOOTH = 0.016;     // масштаб колесом догоняет цель: за ~150 мс
 const FLY = 700;          // «К схеме», мс
+const WHEEL_GAP = 150;    // мс тишины колеса — следующий жест трекпада выбирает ось заново
 const DOUBLE = 300;       // двойной тап: мс и px между касаниями
 const DOUBLE_GAP = 30;
 
@@ -215,6 +216,7 @@ export class Camera {
         this.settleAt = 0;
         if (this.pointers.size === 1) {
             this.moved = false;
+            this.axis = null;
             this.start = { x: e.clientX, y: e.clientY, t: e.timeStamp };
             this.samples = [{ t: e.timeStamp, x: e.clientX, y: e.clientY }];
         } else {
@@ -239,7 +241,10 @@ export class Camera {
             // Указатель забираем, только когда тянут: захваченный с касания уводил бы нажатие с блока схемы на сцену.
             if (!this.moved) { this.el.classList.add('is-grabbing'); this.el.setPointerCapture?.(e.pointerId); }
             this.moved = true;
-            this.panBy(e.clientX - p.x, e.clientY - p.y);
+            // Сдвиг — по одной оси (05.11.2026, владелец: «либо вверх-вниз, либо влево-вправо, но не по диагонали»): куда
+            // палец ушёл дальше от начала, туда и едет до отпускания; бросок — по ней же.
+            this.axis ??= Math.abs(e.clientX - this.start.x) >= Math.abs(e.clientY - this.start.y) ? 'x' : 'y';
+            this.panBy(this.axis === 'x' ? e.clientX - p.x : 0, this.axis === 'y' ? e.clientY - p.y : 0);
             p.x = e.clientX; p.y = e.clientY;
             this.samples.push({ t: e.timeStamp, x: e.clientX, y: e.clientY });
             while (this.samples.length > 2 && e.timeStamp - this.samples[0].t > SAMPLE) this.samples.shift();
@@ -263,6 +268,7 @@ export class Camera {
             // Из щипка в один палец: сдвиг продолжается от него, без рывка; бросок после щипка не считаем.
             const [q] = this.pointers.values();
             this.start = { ...q, t: e.timeStamp };
+            this.axis = null;
             this.samples = [];
             this.pinch = null;
             this.settle();
@@ -296,7 +302,7 @@ export class Camera {
         const ramp = Math.min(1, (v - FLING_FROM) / (FLING_FULL - FLING_FROM));
         // Сильный бросок не улетает за тридевять земель: скорость не больше 4 px/мс (~1000 px пути).
         const k = Math.min(1, 4 / v) * ramp * ramp * (3 - 2 * ramp);
-        this.vx = vx * k; this.vy = vy * k;
+        this.vx = this.axis === 'y' ? 0 : vx * k; this.vy = this.axis === 'x' ? 0 : vy * k;
     }
 
     // Двойное касание или двойной клик по пустому небу — вдвое ближе к этой точке; по узлу схемы — это его нажатия.
@@ -347,8 +353,11 @@ export class Camera {
             this.zoomGoal((this.goal?.z ?? this.z) * Math.exp(-dy * 0.0022), ox, oy);
             return;
         }
+        // Трекпад двумя пальцами — тоже по одной оси: её выбирает первое событие жеста, пауза дольше `WHEEL_GAP` — новый жест.
+        if (!this.wheelAxis || e.timeStamp - this.wheelAt > WHEEL_GAP) this.wheelAxis = Math.abs(dx) >= Math.abs(dy) ? 'x' : 'y';
+        this.wheelAt = e.timeStamp;
         this.goal = null;
-        this.panBy(-dx, -dy);
+        this.panBy(this.wheelAxis === 'x' ? -dx : 0, this.wheelAxis === 'y' ? -dy : 0);
         this.changed();
     }
 

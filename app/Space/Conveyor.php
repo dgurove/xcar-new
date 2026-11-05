@@ -52,71 +52,90 @@ final class Conveyor
     /** Отдан снимок, который уже устарел, но пересчитывать его рано, — главной спросить ещё раз через `CALM`. */
     public static bool $stale = false;
 
-    /** Этапы слева направо: название и подэтапы. */
+    /**
+     * Этапы слева направо: название и подэтапы (05.11.2026, владелец прошёлся по каждому: «мне непонятно, а другим тем более»).
+     * Андрей дважды: между его этапами — менеджеры. «Ждём поставщика» — тихий: сделать там нечего, только ждать.
+     */
     public const STAGES = [
         'intake' => ['Заведение', ['letters', 'floor']],
-        'sale' => ['Цена и продажа', ['price', 'estimate', 'ready', 'slots', 'unsold']],
-        'bidding' => ['Приём подтверждений', ['confirm']],
-        'choice' => ['Выбор и переоценка', ['bids', 'claims', 'answer', 'reprice']],
-        'deal' => ['Сделка', ['write', 'reply', 'invoice', 'paid', 'settle', 'request', 'call', 'assign']],
-        'supplier' => ['Ответ поставщика', ['s-agree', 's-requisites', 's-paid', 's-docs']],
-        'manager' => ['Оплата и получение', ['m-consent', 'm-requisites', 'm-pay', 'm-pickup', 'm-contract']],
-        'pickup' => ['Вывоз', ['logist', 'drive', 'cdek']],
+        'sale' => ['Цена и продажа', ['price', 'review', 'ready', 'slots', 'unsold']],
+        'bidding' => ['Оценка и подтверждения', ['estimate', 'gallery', 'confirm']],
+        'choice' => ['Подтверждения и заявка', ['bids', 'claims', 'a-write', 'a-reply', 'answer', 'reprice']],
+        'deal' => ['Заявка', ['write', 'reply', 'invoice', 'paid', 'settle']],
+        'supplier' => ['Ждём поставщика', ['s-agree', 's-requisites', 's-paid', 's-docs']],
+        'manager' => ['Оплата и получение', ['m-consent', 'm-buyer', 'm-car', 'm-fee', 'm-pickup', 'm-scans']],
+        'arrange' => ['Оформить вывоз', ['assign', 'logist', 'cdek']],
+        'drive' => ['Исполнить вывоз', ['drive']],
     ];
 
-    /** Подэтап: глагол и список, где его задачи (`logistics:` — хост логистики; «Выразить интерес» — вендор, считается). */
+    /** Этапы, где работают многие и без лиц: значок группы вместо аватаров (владелец: «просто менеджеры написал»). */
+    private const GROUPS = ['bidding', 'manager'];
+
+    /** Этап, где только ждём, — тише остальных. */
+    private const QUIET = ['supplier'];
+
+    /**
+     * Подэтап: подпись, список, где его задачи (`logistics:` — хост логистики; «Отправить отклики» — вендор, считается), и
+     * подпункты со своими числами — подэтап их сумма.
+     */
     public const STEPS = [
         'letters' => ['Завести из писем', '/offers/from-mail'],
         'floor' => ['Вписать закупочную', '/offers?preset=nofloor'],
-        'price' => ['Назначить цену продажи', '/offers?preset=unpriced'],
-        'estimate' => ['Оценить', '/offers?preset=estimating'],
+        // Админ во вкладке «Без продажной цены» либо вписывает цену сам, либо отдаёт менеджерам — один подэтап.
+        'price' => ['Оценить / отдать на оценку', '/offers?preset=unpriced'],
+        'review' => ['Разобрать оценки', '/offers?preset=estimating'],
         'ready' => ['Выставить в продажу', '/offers?preset=priced'],
         'slots' => ['Опубликовать', '/offers?preset=slots'],
         'unsold' => ['Вернуть в продажу', '/offers?preset=done'],
-        'confirm' => ['Подтвердить ценой', '/offers?preset=published'],
-        'bids' => ['Выбрать менеджера', '/offers?preset=bids'],
-        'claims' => ['Выразить интерес', null],
-        'answer' => ['Ответить поставщику', '/work/deals?preset=us'],
+        'estimate' => ['На оценке', '/offers?preset=estimating'],
+        'gallery' => ['Выразить интерес', '/gallery'],
+        'confirm' => ['Подтвердить предложения', '/offers?preset=published'],
+        'bids' => ['Принять подтверждения', '/offers?preset=bids', ['bids-closed' => 'Приём закрыт', 'bids-open' => 'Приём ещё идёт']],
+        'claims' => ['Отправить отклики', null],
+        'a-write' => ['Отправить заявку', '/work/deals?preset=us'],
+        'a-reply' => ['Прочитать ответ поставщика', '/work/deals?preset=us'],
+        'answer' => ['Ответить про переоценку', '/work/deals?preset=us'],
         'reprice' => ['Рассмотреть переоценку', '/work/deals?preset=us'],
-        'write' => ['Написать поставщику', '/work/deals?preset=us'],
-        'reply' => ['Разобрать ответ', '/work/deals?preset=us'],
-        'invoice' => ['Выставить счёт', '/work/deals?preset=us'],
+        'write' => ['Отправить заявку', '/work/deals?preset=us'],
+        'reply' => ['Прочитать ответ поставщика', '/work/deals?preset=us'],
+        // Счёт встаёт сам; не встал по нашей причине — доля по гаражу, вознаграждение, реквизиты Р.О.С. (`Deal::invoiceGap`).
+        'invoice' => ['Доделать счёт', '/work/deals?preset=us'],
         'paid' => ['Проверить оплату', '/work/deals?preset=us'],
         'settle' => ['Оплатить поставщику', '/work/deals?preset=us'],
-        'request' => ['Отправить заявку', '/work/deals?preset=us'],
-        'call' => ['Позвонить менеджеру', '/work/deals?preset=us'],
-        'assign' => ['Назначить вывоз', 'logistics:/transports?preset=new'],
-        's-agree' => ['Согласовать покупку', '/work/deals?preset=supplier'],
-        's-requisites' => ['Прислать реквизиты', '/work/deals?preset=supplier'],
-        's-paid' => ['Подтвердить оплату', '/work/deals?preset=supplier'],
-        's-docs' => ['Оформить документы', '/work/deals?preset=supplier'],
+        's-agree' => ['Согласие на покупку', '/work/deals?preset=supplier'],
+        's-requisites' => ['Реквизиты для счёта', '/work/deals?preset=supplier'],
+        's-paid' => ['Подтверждение оплаты', '/work/deals?preset=supplier'],
+        's-docs' => ['Документы', '/work/deals?preset=supplier'],
         'm-consent' => ['Дать согласие', '/work/deals?preset=manager'],
-        'm-requisites' => ['Дать реквизиты', '/work/deals?preset=manager'],
-        'm-pay' => ['Оплатить счёт', '/work/deals?preset=manager'],
+        // Без покупателя (и его паспорта) не встанут ни договор, ни счёт.
+        'm-buyer' => ['Заполнить покупателя', '/work/deals?preset=manager'],
+        'm-car' => ['Оплатить ТС', '/work/deals?preset=manager'],
+        'm-fee' => ['Оплатить подбор', '/work/deals?preset=manager'],
         'm-pickup' => ['Забрать ТС', '/work/deals?preset=manager'],
-        'm-contract' => ['Подписать договор', '/work/deals?preset=manager'],
-        'logist' => ['Найти исполнителя', 'logistics:/transports?preset=logist'],
-        'drive' => ['Привезти ТС', 'logistics:/transports?preset=work'],
+        'm-scans' => ['Приложить сканы документов', '/work/deals?preset=manager'],
+        'assign' => ['Назначить вывоз', 'logistics:/transports?preset=new'],
+        'logist' => ['Назначить исполнителя', 'logistics:/transports?preset=logist'],
         'cdek' => ['Документы СДЭКом', 'logistics:/transports?preset=work'],
+        'drive' => ['Привезти ТС', 'logistics:/transports?preset=work'],
     ];
 
     /**
-     * Блок маршрута сделки → подэтап, когда ход поставщика или менеджера, и наш ход без своего дела (`stage:*`). У вендоров
-     * пути разные — на схеме общий; чего нет в таблице, на схеме не считается.
+     * Блок маршрута сделки → подэтап: [ход поставщика, ход менеджера, наш ход без своего дела (`stage:*`)]. У вендоров пути
+     * разные — на схеме общий; чего нет в таблице, на схеме не считается. Оплату менеджера уточняет схема (`managerStep`).
      */
     private const BLOCKS = [
         'Согласование с поставщиком' => ['s-agree', 'm-consent', 'write'],
-        'Реквизиты для счёта' => ['s-requisites', 'm-requisites', 'invoice'],
-        'Оплата' => ['s-paid', 'm-pay', 'paid'],
+        'Реквизиты для счёта' => ['s-requisites', 'm-buyer', 'invoice'],
+        'Оплата' => ['s-paid', 'm-car', 'paid'],
         'Получение автомобиля' => ['s-docs', 'm-pickup', 'settle'],
-        'Договор' => ['s-docs', 'm-contract', 'settle'],
-        'Оформление документов' => ['s-docs', 'm-contract', 'settle'],
-        'Расчёт с поставщиком' => ['s-docs', 'm-contract', 'settle'],
-        'Взяли под себя' => ['s-docs', 'm-contract', 'settle'],
-        'Оформляем на нас' => ['s-docs', 'm-contract', 'settle'],
-        'Собираем заявку поставщику' => ['s-docs', 'm-contract', 'request'],
-        'Заявка у поставщика' => ['s-docs', 'm-contract', 'request'],
-        'Покупатель от поставщика' => ['s-docs', 'm-contract', 'request'],
+        'Договор' => ['s-docs', 'm-scans', 'settle'],
+        'Оформление документов' => ['s-docs', 'm-scans', 'settle'],
+        'Расчёт с поставщиком' => ['s-docs', 'm-scans', 'settle'],
+        'Взяли под себя' => ['s-docs', 'm-scans', 'settle'],
+        'Оформляем на нас' => ['s-docs', 'm-scans', 'settle'],
+        // Заявки поставщику — только у Каркаде, его на схеме нет.
+        'Заявка у поставщика' => ['s-docs', 'm-scans', null],
+        'Покупатель от поставщика' => ['s-docs', 'm-scans', null],
     ];
 
     /** Сколько лиц у этапа с многими людьми: дальше — «+N». */
@@ -164,13 +183,13 @@ final class Conveyor
         $faces = collect($snap['people'])->flatten(1);
         $users = User::with(User::withAvatar())
             ->whereKey($faces->where('type', 'user')->pluck('id')->merge(collect($fixed)->flatten())->unique())->get()->keyBy('id');
-        $vendors = Vendor::whereKey($faces->where('type', 'vendor')->pluck('id')->unique())->get()->keyBy('id');
+        $vendors = Vendor::whereKey($faces->where('type', 'vendor')->pluck('id')->push($snap['claims_vendor'])->filter()->unique())->get()->keyBy('id');
 
         $stages = collect(self::STAGES)->map(function (array $stage, string $key) use ($snap, $fixed, $users, $vendors) {
             [$title, $steps] = $stage;
             $people = match (true) {
                 isset($fixed[$key]) => collect($fixed[$key])->map(fn (int $id) => ['type' => 'user', 'id' => $id, 'model' => $users->get($id)]),
-                $key === 'bidding' => collect([['type' => 'icon', 'icon' => 'users', 'label' => 'Менеджеры']]),
+                in_array($key, self::GROUPS, true) => collect([['type' => 'icon', 'icon' => 'users', 'label' => 'Менеджеры']]),
                 default => collect($snap['people'][$key] ?? [])
                     ->map(fn ($p) => [...$p, 'model' => $p['type'] === 'vendor' ? $vendors->get($p['id']) : $users->get($p['id'])])
                     ->sortByDesc('n'),
@@ -182,11 +201,14 @@ final class Conveyor
                 'href' => self::href($step, $snap),
                 'n' => $snap['steps'][$step]['n'] ?? 0,
                 'hot' => $snap['steps'][$step]['hot'] ?? 0,
+                'parts' => collect(self::STEPS[$step][2] ?? [])->map(fn (string $title, string $part) => ['key' => $part, 'title' => $title, 'n' => $snap['steps'][$part]['n'] ?? 0])->values(),
+                'vendor' => $step === 'claims' ? $vendors->get($snap['claims_vendor']) : null,
             ]);
 
             return [
                 'key' => $key,
                 'title' => $title,
+                'quiet' => in_array($key, self::QUIET, true),
                 'people' => $people->take(self::SHOWN),
                 'more' => max(0, $people->count() - self::SHOWN),
                 'steps' => $steps,
@@ -219,26 +241,35 @@ final class Conveyor
         $hot = fn (string $preset, ?\Closure $also = null) => fn ($q) => OfferController::scopeFor($preset, $q)
             ->where(fn ($w) => $also ? $also($w->whereRaw($panic)) : $w->whereRaw($panic));
         $unsold = fn ($q) => OfferController::scopeFor('done', $q)->where('offers.state', OfferState::Draft);
+        $group = fn (string $preset, string $sql, int $n) => fn ($q) => OfferController::scopeFor($preset, $q)->whereRaw("({$sql}) = {$n}");
+        $estimated = '('.OfferController::ESTIMATE_GROUP.')';
+        $pick = OfferController::PICK_GROUP;
         $tabs = self::tabs($offers(), [
             'floor' => $tab('nofloor'), 'floor:hot' => $hot('nofloor'),
             'price' => $tab('unpriced'), 'price:hot' => $hot('unpriced'),
-            // Оценка горит и просроченной просьбой менеджеру.
-            'estimate' => $tab('estimating'), 'estimate:hot' => $hot('estimating', fn ($w) => $w->orWhereHas('estimates', fn ($e) => $e->waiting()->where('due_at', '<', now()))),
+            // «На оценке у менеджеров» — группами вкладки (`ESTIMATE_GROUP`): хоть один оценил — разбирает Андрей, иначе ждём
+            // менеджеров, просроченная просьба горит.
+            'review' => $group('estimating', $estimated, 0), 'review:hot' => fn ($q) => $hot('estimating')($q)->whereRaw($estimated.' = 0'),
+            'estimate' => $group('estimating', $estimated, 1),
+            'estimate:hot' => fn ($q) => $hot('estimating', fn ($w) => $w->orWhereHas('estimates', fn ($e) => $e->waiting()->where('due_at', '<', now())))($q)->whereRaw($estimated.' = 1'),
             'ready' => $tab('priced'), 'ready:hot' => $hot('priced'),
             'slots' => $tab('slots'), 'slots:hot' => $hot('slots'),
             'unsold' => $unsold, 'unsold:hot' => fn ($q) => $unsold($q)->whereRaw($panic),
             // Приём горит, когда до конца меньше `HOT_HOURS`, а подтверждений нет («Сгорает!» на сайте; без них он и есть
             // в «Опубликованных»).
             'confirm' => $tab('published'), 'confirm:hot' => $hot('published', fn ($w) => $w->orWhere(fn ($e) => CatalogQuery::ending($e))),
-            'bids' => $tab('bids'), 'bids:hot' => $hot('bids'),
+            // «Есть подтверждения» — группами вкладки (`PICK_GROUP`): приём закрыт — выбирать сейчас, идёт — ждать.
+            'bids-closed' => $group('bids', $pick, 0), 'bids-open' => $group('bids', $pick, 1), 'bids:hot' => $hot('bids'),
         ]);
         $steps = [];
         foreach ($tabs as $key => $n) {
             [$step, $kind] = [...explode(':', $key), 'n'];
             $steps[$step][$kind] = $n;
         }
+        $steps['bids']['n'] = $steps['bids-closed']['n'] + $steps['bids-open']['n'];
         $steps['letters'] = ['n' => Boxes::registerCount(Scope::Offers), 'hot' => 0];
-        // «Выразить интерес» — «К запросу» вендоров с галереей; ведёт к тому, у кого их больше.
+        $steps['gallery'] = ['n' => self::withoutCarcade(Offer::inGallery(), $carcade)->count(), 'hot' => 0];
+        // «Отправить отклики» — «К запросу» вендоров с галереей; ведёт к тому, у кого их больше.
         $claims = Vendor::where('to_gallery', true)->get()->mapWithKeys(fn (Vendor $v) => [$v->id => ClaimRequest::pendingFor($v)->count()]);
         $steps['claims'] = ['n' => $claims->sum(), 'hot' => 0];
 
@@ -281,14 +312,14 @@ final class Conveyor
     }
 
     /**
-     * Идущие сделки по подэтапам. Наш ход — по делу (`Position::todo`, его же «Ваш ход» «Сделок»): переоценка, ответ про неё
-     * и письма Альфы — Андрею (`Owners::forTodo`), остальное — Кате; ход поставщика и менеджера — по блоку маршрута, с
-     * числом у каждого вендора и менеджера. Гаражная у менеджера не считается: машина стоит в гараже, его ход там — только
+     * Идущие сделки по подэтапам. Наш ход — по делу (`Position::todo`, его же «Ваш ход» «Сделок»): переоценка, ответ про неё,
+     * письма Альфы и Т-Страхования — Андрею (`Owners`), остальное — Кате; ход поставщика и менеджера — по блоку маршрута, у
+     * поставщиков — с числом у каждого вендора. Гаражная у менеджера не считается: машина стоит в гараже, его ход там — только
      * просьбой (`Deal::managerTask`), а «Оплата счёта ПРАЙМ» висит до продажи. Везёт логистика — это «Вывоз».
      */
     private static function deals(?int $carcade, array &$steps, array &$people): void
     {
-        $alfa = Vendor::where('name', 'ilike', '%альфа%')->pluck('id')->all();
+        $letters = Owners::letterVendors();
         $deals = Deal::where('state', DealState::Active)
             ->whereHas('offer', fn ($o) => self::withoutCarcade($o, $carcade))
             ->with(['offer', 'offer.positions.stage.block', 'offer.positions.stage.exits.to', 'offer.pendingReprice'])->get();
@@ -313,8 +344,9 @@ final class Conveyor
             $block = self::BLOCKS[$position->stage?->block?->name ?? $position->stage?->name] ?? null;
             $hot = $position->isOverdue() || Binding::panics($deal->offer);
             if (isset($ours[$deal->offer_id]) && ($todo = $position->todo())) {
-                ($step = self::ours($todo['key'], $block[2] ?? null, in_array($deal->offer->vendor_id, $alfa, true)))
-                    && $add($step, $hot || $todo['key'] === 'price-ask');
+                // Менеджер не ответил про закупочную или не дал согласия в срок — горит само.
+                ($step = self::ours($todo['key'], $block[2] ?? null, in_array($deal->offer->vendor_id, $letters, true)))
+                    && $add($step, $hot || in_array($todo['key'], ['price-ask', 'consent'], true));
 
                 continue;
             }
@@ -324,32 +356,49 @@ final class Conveyor
             }
             match ($position->waitsFor()) {
                 WaitsFor::Supplier => $add($block[0], $hot, $deal->offer->vendor_id ? ['type' => 'vendor', 'id' => $deal->offer->vendor_id] : null, 'supplier'),
-                WaitsFor::Manager => $deal->isGarage() ? null : $add(
-                    str_contains(mb_strtolower($position->stage->name), 'договор') ? 'm-contract' : $block[1],
-                    $hot, $deal->buyer_id ? ['type' => 'user', 'id' => $deal->buyer_id] : null, 'manager'),
+                WaitsFor::Manager => $deal->isGarage() ? null : $add(self::managerStep($block[1], $position, $deal), $hot),
                 default => null,
             };
         }
     }
 
-    /** Подэтап нашего хода по делу «Ваш ход»; дела без своего ключа (`stage:*`) — по блоку маршрута, нет его — никуда. */
-    private static function ours(string $key, ?string $byBlock, bool $alfa): ?string
+    /**
+     * Подэтап нашего хода по делу «Ваш ход»; дела без своего ключа (`stage:*`) — по блоку маршрута, нет его — никуда. Письма
+     * Альфы и Т-Страхования — у Андрея (`$letters`); «Заполнить» реквизиты и согласие, не данное в срок, — дела менеджера:
+     * без них сделка не идёт, а позвонить ему — не отдельная работа.
+     */
+    private static function ours(string $key, ?string $byBlock, bool $letters): ?string
     {
         return match (true) {
             in_array($key, ['reprice', 'price-ask'], true) => 'reprice',
             $key === 'reprice-answer' => 'answer',
-            Owners::forTodo($key, $alfa) === Owners::of('alfa') => 'answer',
-            in_array($key, ['letter', 'bounced'], true) => 'write',
-            $key === 'reply' => 'reply',
-            $key === 'requisites', str_starts_with($key, 'gap:') => 'invoice',
-            $key === 'consent' => 'call',
-            str_starts_with($key, 'request:') => 'request',
+            in_array($key, ['letter', 'bounced'], true) => $letters ? 'a-write' : 'write',
+            $key === 'reply' => $letters ? 'a-reply' : 'reply',
+            $key === 'requisites' => 'm-buyer',
+            $key === 'consent' => 'm-consent',
+            str_starts_with($key, 'gap:') => 'invoice',
+            str_starts_with($key, 'request:') => null,
             default => $byBlock,
         };
     }
 
     /**
-     * Вывоз: без исполнителя — назначить (Катя), у логиста — его, документы СДЭКом — Лиза, в работе — исполнители. Горит —
+     * Ход менеджера: договор — сканы с подписями; оплата — за что платит: без покупателя счёта нет (`managerGap`), по счёту
+     * ПРАЙМ или Р.О.С. — сама ТС, иначе — подбор XCar по ссылке (`DealScheme::paysCar`).
+     */
+    private static function managerStep(string $byBlock, Position $position, Deal $deal): string
+    {
+        return match (true) {
+            str_contains(mb_strtolower($position->stage->name), 'договор') => 'm-scans',
+            $byBlock !== 'm-car' => $byBlock,
+            $deal->managerGap() => 'm-buyer',
+            $deal->schemeOf()->paysCar() => 'm-car',
+            default => 'm-fee',
+        };
+    }
+
+    /**
+     * Вывоз: оформить — назначить (Катя), исполнителя у логиста (Татьяна), документы СДЭКом (Лиза); исполнить — исполнители. Горит —
      * день вывоза прошёл без «Забрал» (`isLate`) или у логиста и исполнителя стоит больше суток.
      */
     private static function pickups(?int $carcade, array &$steps, array &$people): void
@@ -360,23 +409,23 @@ final class Conveyor
         $rows = fn (Builder $q) => $q->withoutEagerLoads()->get(['transports.id', 'transports.car_id', 'state', 'logist_id', 'executor_id', 'pickup_at', 'assigned_at']);
         $late = fn (Transport $t) => $t->isLate()
             || (in_array($t->state, [TransportState::Logist, TransportState::Assigned], true) && $t->assigned_at?->lt(now()->subDay()));
-        $tally = function (string $step, $list, ?\Closure $who) use (&$steps, &$people, $late) {
+        $tally = function (string $step, string $stage, $list, \Closure $who) use (&$steps, &$people, $late) {
             $steps[$step] = ['n' => $list->count(), 'hot' => $list->filter($late)->count()];
             foreach ($list as $t) {
-                if (! ($id = $who ? $who($t) : null)) {
+                if (! ($id = $who($t))) {
                     continue;
                 }
-                $people['pickup']['user:'.$id] ??= ['type' => 'user', 'id' => $id, 'n' => 0, 'late' => 0];
-                $people['pickup']['user:'.$id]['n']++;
-                $people['pickup']['user:'.$id]['late'] += $late($t) ? 1 : 0;
+                $people[$stage]['user:'.$id] ??= ['type' => 'user', 'id' => $id, 'n' => 0, 'late' => 0];
+                $people[$stage]['user:'.$id]['n']++;
+                $people[$stage]['user:'.$id]['late'] += $late($t) ? 1 : 0;
             }
         };
 
-        $tally('assign', $rows($open()->where('state', TransportState::New)), null);
-        $tally('logist', $rows($open()->step('logist')), fn (Transport $t) => $t->logist_id);
-        $tally('cdek', $rows($open()->awaitingDocs()), fn () => Owners::of('docs'));
+        $tally('assign', 'arrange', $rows($open()->where('state', TransportState::New)), fn () => Owners::of('pickup'));
+        $tally('logist', 'arrange', $rows($open()->step('logist')), fn (Transport $t) => $t->logist_id);
+        $tally('cdek', 'arrange', $rows($open()->awaitingDocs()), fn () => Owners::of('docs'));
         // Ждёт документов СДЭКом — у Лизы, не у исполнителя: одна перевозка — один подэтап.
-        $tally('drive', $rows($open()->whereIn('state', [TransportState::Assigned, TransportState::Agreed, TransportState::Moving])
+        $tally('drive', 'drive', $rows($open()->whereIn('state', [TransportState::Assigned, TransportState::Agreed, TransportState::Moving])
             ->whereNotIn('transports.id', Transport::query()->awaitingDocs()->select('transports.id'))), fn (Transport $t) => $t->executor_id);
     }
 }
