@@ -35,11 +35,15 @@
                                     <span class="block truncate"><a href="/cars/{{ $v->id }}" class="hover:underline">{{ $v->titleWithYear() }}</a></span>
                                     <span class="row-sub">
                                         {{-- Год — у даты не этого года: «26 дек 2023 – 30 сен» вместо «26 дек – 30 сен», что читалось тремя месяцами. --}}
+                                        @if ($r['tow'])
+                                            <span class="text-ink">эвакуация</span><span class="nums">{{ \App\Support\Ago::html($r['from'], words: false) }}@unless ($r['from']->isSameDay($r['to'])) – {{ \App\Support\Ago::html($r['to'], words: false) }}@endunless</span>
+                                        @else
                                         <span class="nums">{{ \App\Support\Ago::html($r['from'], words: false) }} – {{ \App\Support\Ago::html($r['to'], words: false) }}, {{ $r['days'] }} сут</span>
                                         <span>{{ $r['reason'] }}</span>
-                                        @if ($r['cadence'] === Cadence::Release)<span>по выбытию</span>@endif
+                                        @endif
+                                        @if ($r['cadence'] === Cadence::Release && ! $r['tow'])<span>по выбытию</span>@endif
                                         @if ($r['payer'] === 'buyer')<span class="text-ink">покупатель</span>@elseif ($r['payer'] === 'owner')<span class="text-ink">страхователь</span>@endif
-                                        @if ($r['charges'])<span>+ начисления</span>@endif
+                                        @if ($r['charges'] && ! $r['tow'])<span>+ начисления</span>@endif
                                         @if ($v->ref)<span>{{ $v->ref }}</span>@endif
                                     </span>
                                 </span>

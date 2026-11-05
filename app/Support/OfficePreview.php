@@ -63,7 +63,9 @@ final class OfficePreview
 
     private static function sheet(string $path): ?string
     {
-        $reader = new Reader(new Options);
+        // Объединённые ячейки — colspan / rowspan: в актах страховых шапка и абзацы — одна ячейка на всю ширину листа,
+        // без объединения текст вставал в первый узкий столбец (05.11.2026).
+        $reader = new Reader(new Options(SHOULD_PRESERVE_EMPTY_ROWS: true, SHOULD_LOAD_MERGE_CELLS: true));
         $reader->open($path);
         $out = '';
         try {
@@ -81,7 +83,7 @@ final class OfficePreview
                     while ($cells && end($cells) === '') {
                         array_pop($cells);
                     }
-                    $rows[] = $cells;
+                    $rows[$i - 1] = $cells; // номер строки листа (пустые сохраняются) — по нему считают объединения
                     $width = max($width, count($cells));
                 }
                 while ($rows && end($rows) === []) {
@@ -90,11 +92,21 @@ final class OfficePreview
                 if (! $rows) {
                     continue;
                 }
+                [$spans, $covered] = self::merges($sheet->getMergeCells());
                 $out .= '<h3>'.e($sheet->getName()).'</h3><div class="docs-table docs-sheet"><table>';
-                foreach ($rows as $cells) {
+                for ($r = 0; $r <= array_key_last($rows); $r++) {
+                    $cells = $rows[$r] ?? [];
+                    if (! $cells && ! isset($spans[$r]) && ! isset($covered[$r])) {
+                        continue;
+                    }
                     $out .= '<tr>';
                     for ($c = 0; $c < $width; $c++) {
-                        $out .= '<td>'.e($cells[$c] ?? '').'</td>';
+                        if (isset($covered[$r][$c])) {
+                            continue;
+                        }
+                        [$rs, $cs] = $spans[$r][$c] ?? [1, 1];
+                        $cs = min($cs, $width - $c);
+                        $out .= '<td'.($cs > 1 ? ' colspan="'.$cs.'"' : '').($rs > 1 ? ' rowspan="'.$rs.'"' : '').'>'.e($cells[$c] ?? '').'</td>';
                     }
                     $out .= '</tr>';
                 }
@@ -105,6 +117,37 @@ final class OfficePreview
         }
 
         return $out !== '' ? $out : null;
+    }
+
+    /**
+     * «A1:J3» → у начальной ячейки [строк, столбцов], остальные ячейки диапазона — закрыты; номера с нуля.
+     *
+     * @param  list<string>  $ranges
+     * @return array{0: array<int, array<int, array{int, int}>>, 1: array<int, array<int, true>>}
+     */
+    private static function merges(array $ranges): array
+    {
+        $spans = $covered = [];
+        foreach ($ranges as $range) {
+            if (! preg_match('/^([A-Z]+)(\d+):([A-Z]+)(\d+)$/', $range, $m)) {
+                continue;
+            }
+            $col = fn (string $l) => array_reduce(str_split($l), fn ($n, $ch) => $n * 26 + ord($ch) - 64, 0) - 1;
+            [$r1, $c1, $r2, $c2] = [(int) $m[2] - 1, $col($m[1]), (int) $m[4] - 1, $col($m[3])];
+            if ($c1 >= self::COLS || $r1 >= self::ROWS) {
+                continue;
+            }
+            $spans[$r1][$c1] = [$r2 - $r1 + 1, $c2 - $c1 + 1];
+            for ($r = $r1; $r <= $r2; $r++) {
+                for ($c = $c1; $c <= $c2; $c++) {
+                    if ($r !== $r1 || $c !== $c1) {
+                        $covered[$r][$c] = true;
+                    }
+                }
+            }
+        }
+
+        return [$spans, $covered];
     }
 
     private static function cell(mixed $v): string

@@ -92,6 +92,13 @@ final class MatchTransaction
         $open = fn () => Invoice::ofSeller(self::SELLER)->where('direction', 'issued')->where('state', InvoiceState::Issued)->with('party');
         $fits = fn (Invoice $i) => $tx->amount <= $i->remaining() + 0.005 && (! $tx->counterparty_inn || ! $i->party->inn || $i->party->inn === $tx->counterparty_inn);
 
+        // Номер документа парковки «20261108-01» (счёт Альфы СПб от ПРАЙМ) — сам по себе однозначен.
+        if (preg_match_all('/\b(20\d{6}-\d{2})\b/u', (string) $tx->purpose, $m)) {
+            $found = $open()->whereIn('code', $m[1])->get()->filter($fits);
+            if ($found->count() === 1) {
+                return $found->first();
+            }
+        }
         [$numbers, $year] = self::numbers((string) $tx->purpose);
         if ($numbers) {
             $found = $open()->whereIn('number', $numbers)->where('year', $year ?? $tx->booked_at->year)->get()->filter($fits);

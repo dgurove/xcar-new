@@ -50,7 +50,7 @@ final class IssueInvoice
      * @param  ?CarbonInterface  $storageUntil  хранение по этот день включительно (null — без хранения)
      * @param  list<int>  $chargeIds  невыставленные начисления
      * @param  list<array{title: string, qty: float, unit: string, price: float, kind?: string}>  $lines  свободные строки
-     * @param  list<array{vehicle: Vehicle, until: CarbonInterface, charges: list<int>}>  $registry  ТС реестра за `$month`
+     * @param  list<array{vehicle: Vehicle, until: ?CarbonInterface, charges: list<int>}>  $registry  ТС реестра за `$month` (`until` пуст — без хранения, реестр эвакуации)
      */
     public function __invoke(Party $party, User $by, string $direction, ChargeKind $kind, ?CarbonInterface $dueAt, ?CarbonInterface $storageUntil = null, array $chargeIds = [], array $lines = [],
         ?Vehicle $vehicle = null, ?int $dealId = null, ?int $offerId = null, ?string $externalNo = null, ?string $notes = null, array $registry = [], ?CarbonInterface $month = null, ?Seller $seller = null): Invoice
@@ -69,6 +69,7 @@ final class IssueInvoice
             $vatOnTop = $vatRate && $party->vat_on_top;
             $invoice = Invoice::create([
                 'seller' => $seller, 'park' => $park, 'direction' => $direction, 'year' => $issued ? $year : null, 'number' => $issued ? Numbering::next($seller, $year) : null,
+                'code' => $issued && $park ? Numbering::code($seller, now()) : null,
                 'external_no' => $externalNo, 'kind' => $kind, 'month' => $registry && $month ? Carbon::instance($month)->startOfMonth()->toDateString() : null, 'party_id' => $party->id, 'vehicle_id' => $vehicle?->id, 'deal_id' => $dealId, 'offer_id' => $offerId,
                 'issued_at' => now()->toDateString(), 'due_at' => $dueAt ? Carbon::instance($dueAt)->toDateString() : null, 'vat' => (bool) $vatRate, 'vat_rate' => $vatRate, 'vat_on_top' => $vatOnTop, 'state' => InvoiceState::Issued, 'notes' => $notes, 'created_by' => $by->id,
             ]);
@@ -82,7 +83,8 @@ final class IssueInvoice
                 $v = $r['vehicle'];
                 try {
                     $amounts[$v->id] = DB::transaction(function () use ($invoice, $party, $v, $r, $by) {
-                        $sum = $this->storage($invoice, $party, $v, $r['until'], $by);
+                        // Реестр эвакуации — без хранения: `until` пуст, в счёт идут только начисления.
+                        $sum = $r['until'] ? $this->storage($invoice, $party, $v, $r['until'], $by) : 0.0;
                         $charges = Charge::whereIn('id', $r['charges'] ?? [])->where('vehicle_id', $v->id)->whereNull('invoice_id')->whereNull('voided_at')->where('party_id', $party->id)->lockForUpdate()->get();
                         $charges->each->update(['invoice_id' => $invoice->id]);
 

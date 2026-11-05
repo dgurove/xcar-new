@@ -41,7 +41,7 @@ final class PaymentQr
     /** Назначение платежа — то же, что ищет `MatchTransaction`. */
     public static function purpose(Invoice $invoice): string
     {
-        return 'Оплата по счёту № '.$invoice->number.' от '.$invoice->issued_at->format('d.m.Y').'. '
+        return 'Оплата по счёту № '.$invoice->docNo().' от '.$invoice->issued_at->format('d.m.Y').'. '
             .($invoice->vatRate() ? 'В т.ч. НДС '.$invoice->vatRate().'%' : 'НДС не облагается');
     }
 }

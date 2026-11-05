@@ -8,10 +8,16 @@
     $pdf = $pdf ?? false;
     $fonts = resource_path('fonts/pdf');
     $p = $invoice->party;
-    // Реестр за месяц — одной строкой «по реестру» (владелец 08.10.2026), машины — в акте.
+    // Реестр за месяц — одной строкой (владелец 08.10.2026), машины — в акте. Слова — как в прежних счетах страховым (архив
+    // «СТОЯНКА», 05.11.2026): услуга за месяц на основании договора согласно акту, «Кол-во» — число ТС, цены нет.
     $registry = $invoice->isRegistry();
-    $lines = $registry ? collect([new \App\Billing\Charge(['title' => 'Услуги хранения ТС за '.mb_strtolower($invoice->month->translatedFormat('F Y')).', '.$invoice->registryVehicles()->count().' ТС, по реестру',
-        'qty' => 1, 'unit' => 'svc', 'price' => $invoice->charges->sum('amount'), 'amount' => $invoice->charges->sum('amount')])]) : $invoice->charges;
+    $tow = $invoice->kind === \App\Billing\ChargeKind::Tow;
+    $vendor = $registry ? $invoice->registryVehicles()->first()?->vendor : null;
+    $agreement = $tow && $vendor?->tow_agreement_number ? [$vendor->tow_agreement_number, $vendor->tow_agreement_date] : [$vendor?->agreement_number, $vendor?->agreement_date];
+    $contract = $agreement[0] ? 'Договор № '.$agreement[0].($agreement[1] ? ' от '.$agreement[1]->format('d.m.Y').' г.' : '') : null;
+    $lines = $registry ? collect([new \App\Billing\Charge(['title' => ($tow ? 'Услуги по эвакуации транспортных средств' : 'Услуги по хранению автотранспорта').' за '.mb_strtolower($invoice->month->translatedFormat('F Y')).' г.'
+        .($contract ? ' на основании '.str_replace('Договор', 'Договора', $contract) : '').' согласно акту № '.$invoice->docNo().' от '.$invoice->issued_at->format('d.m.Y'),
+        'qty' => $invoice->registryVehicles()->count(), 'unit' => 'ts', 'price' => null, 'amount' => $invoice->charges->sum('amount')])]) : $invoice->charges;
     // Удержанное менеджером вознаграждение — зачёт в момент выставления: печатается и «к оплате».
     $offset = $invoice->payments->where('source', \App\Billing\PaymentSource::Offset)->sum('amount');
     $due = $invoice->total - $offset;
@@ -25,7 +31,7 @@
     $embed = ! $pdf && request()->boolean('embed');
     $basis = match (true) {
         (bool) $invoice->vehicle => $invoice->vehicle->titleWithYear().($invoice->vehicle->vin ? ', VIN '.$invoice->vehicle->vin : '').($invoice->vehicle->ref ? ', убыток '.$invoice->vehicle->ref : '').($invoice->vehicle->contract_no ? ', договор № '.$invoice->vehicle->contract_no : ''),
-        $registry => 'Акт оказанных услуг хранения '.$invoice->label().' от '.$invoice->issued_at->format('d.m.Y').', реестр ТС',
+        $registry => $contract ?? ($tow ? 'Эвакуация транспортных средств' : 'Хранение транспортных средств'),
         (bool) $invoice->deal => 'Сделка по предложению № '.$invoice->deal->offer?->number.($invoice->deal->offer ? ', '.$invoice->deal->offer->titleWithYear() : ''),
         default => null,
     };
@@ -113,7 +119,7 @@
     <table class="items">
         <tr><th class="n">№</th><th>Наименование</th><th class="r">Кол-во</th><th class="r">Ед.</th><th class="r">Цена, ₽</th><th class="r">Сумма, ₽</th></tr>
         @foreach ($lines as $i => $c)
-            <tr><td class="n">{{ $i + 1 }}</td><td>{!! $nb($c->title) !!}</td><td class="r">{{ \App\Support\Qty::format($c->qty, '.', ' ') }}</td><td class="r">{{ $c->unitLabel() }}</td><td class="r">{{ Money::nums($c->price, 2) }}</td><td class="r">{{ Money::nums($c->amount, 2) }}</td></tr>
+            <tr><td class="n">{{ $i + 1 }}</td><td>{!! $nb($c->title) !!}</td><td class="r">{{ \App\Support\Qty::format($c->qty, '.', ' ') }}</td><td class="r">{{ $c->unitLabel() }}</td><td class="r">{{ $c->price === null ? '' : Money::nums($c->price, 2) }}</td><td class="r">{{ Money::nums($c->amount, 2) }}</td></tr>
         @endforeach
     </table>
 

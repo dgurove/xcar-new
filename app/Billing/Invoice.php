@@ -8,6 +8,7 @@ use App\Garage\Car as GarageCar;
 use App\Live\Publisher;
 use App\Live\Topics;
 use App\Offers\Deal;
+use App\Offers\DealScheme;
 use App\Offers\Offer;
 use App\Offers\OfferNumber;
 use App\Park\City;
@@ -34,7 +35,7 @@ use Spatie\MediaLibrary\InteractsWithMedia;
  * выставил: реквизиты в документах и свой ряд номеров. Реестр (`isRegistry`) — счёт парковки плательщику за месяц
  * без своей ТС: машины — строками хранения со своим `vehicle_id`, долг машины — её доля (`Ledger::shareOf`).
  */
-#[Fillable(['seller', 'park', 'direction', 'year', 'number', 'external_no', 'kind', 'month', 'party_id', 'vehicle_id', 'deal_id', 'offer_id', 'issued_at', 'due_at', 'vat', 'vat_rate', 'vat_on_top', 'total', 'paid', 'state', 'paid_at',
+#[Fillable(['seller', 'park', 'direction', 'year', 'number', 'code', 'external_no', 'kind', 'month', 'party_id', 'vehicle_id', 'deal_id', 'offer_id', 'issued_at', 'due_at', 'vat', 'vat_rate', 'vat_on_top', 'total', 'paid', 'state', 'paid_at',
     'overdue_at', 'reminded_at', 'sent_at', 'voided_at', 'void_reason', 'notes', 'created_by', 'car_title', 'credit_deal_id'])]
 class Invoice extends Model implements HasMedia
 {
@@ -72,7 +73,8 @@ class Invoice extends Model implements HasMedia
     public function registerMediaCollections(): void
     {
         $this->addMediaCollection('file')->useDisk('private')->singleFile();
-        $this->addMediaCollection('act')->useDisk('private')->singleFile();
+        // Акт: у счёта на ТС — один PDF, у реестра — файлы прежней формы страховой (у РГС — акт и приложение).
+        $this->addMediaCollection('act')->useDisk('private');
     }
 
     public function party(): BelongsTo
@@ -123,6 +125,7 @@ class Invoice extends Model implements HasMedia
 
         return $q->where(fn ($s) => $s
             ->when($t->invoice, fn ($x, $n) => $x->orWhere('billing_invoices.number', $n))
+            ->orWhere('billing_invoices.code', 'ilike', $like)
             ->orWhere('billing_invoices.external_no', 'ilike', $like)
             ->orWhere('billing_invoices.car_title', 'ilike', $like)
             ->orWhereHas('party', $name)
@@ -344,8 +347,8 @@ class Invoice extends Model implements HasMedia
     public function laterLabel(bool $long = false): string
     {
         return match ($this->deal?->scheme) {
-            \App\Offers\DealScheme::OwnerDkp => $long ? 'после договора с покупателем' : 'после договора',
-            \App\Offers\DealScheme::Insurer => 'вместе с оплатой за ТС',
+            DealScheme::OwnerDkp => $long ? 'после договора с покупателем' : 'после договора',
+            DealScheme::Insurer => 'вместе с оплатой за ТС',
             default => 'без срока',
         };
     }
@@ -427,9 +430,15 @@ class Invoice extends Model implements HasMedia
         return $this->deal?->buyer ?? ($this->garageCar ?? $this->garagePayoutCar)?->manager;
     }
 
+    /** Номер для документа и имени файла без «№»: «20261108-01» у парковки, иначе сквозной. */
+    public function docNo(): string
+    {
+        return (string) ($this->code ?? $this->number);
+    }
+
     public function label(): string
     {
-        return $this->number ? '№ '.$this->number : ($this->external_no ? $this->external_no : $this->kind->label());
+        return $this->code ? '№ '.$this->code : ($this->number ? '№ '.$this->number : ($this->external_no ? $this->external_no : $this->kind->label()));
     }
 
     /**

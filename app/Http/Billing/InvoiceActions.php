@@ -5,11 +5,13 @@ namespace App\Http\Billing;
 use App\Billing\Actions\RecordPayment;
 use App\Billing\Actions\VoidInvoice;
 use App\Billing\Actions\VoidPayment;
+use App\Billing\Acts\RegistryAct;
 use App\Billing\Invoice;
 use App\Billing\InvoiceState;
 use App\Billing\Payment;
 use App\Billing\PaymentSource;
 use App\Support\Nav;
+use App\Support\OfficePreview;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Validation\Rule;
@@ -114,15 +116,29 @@ trait InvoiceActions
         return view('billing.docs.invoice', ['invoice' => $invoice, 'self' => $invoice->seller->party(), 'pdf' => false]);
     }
 
-    /** Акт хранения: PDF, если выставлен закрытием месяца, иначе страница на печать (у реестра — отчёт-акт). */
+    /**
+     * Акт хранения: файл, положенный при выставлении (`?n=` — номер файла у реестра РГС: акт и приложение); реестр без
+     * файла (выставлен до 05.11.2026) получает его сейчас; счёт на ТС без файла — страница на печать.
+     */
     public function act(Invoice $invoice)
     {
         $this->guardInvoice($invoice);
-        if ($media = $invoice->getFirstMedia('act')) {
-            return response()->file($media->getPath(), ['Content-Type' => 'application/pdf', 'Content-Disposition' => 'inline; filename="'.$media->file_name.'"']);
+        if ($invoice->isRegistry() && $invoice->number && ! $invoice->hasMedia('act')) {
+            app(RegistryAct::class)->attach($invoice);
+            $invoice->load('media');
         }
+        if ($media = $invoice->getMedia('act')->values()->get((int) request()->query('n', 0))) {
+            // Шторка документов показывает Excel и Word HTML-ом с сервера (`?preview=1`).
+            if (request()->boolean('preview') && $media->mime_type !== 'application/pdf') {
+                return OfficePreview::response($media->getPath(), $media->file_name);
+            }
+            $inline = $media->mime_type === 'application/pdf' && ! request()->boolean('download');
+
+            return response()->file($media->getPath(), ['Content-Type' => $media->mime_type, 'Content-Disposition' => ($inline ? 'inline' : 'attachment').'; filename*=UTF-8\'\''.rawurlencode($media->file_name)]);
+        }
+        abort_if($invoice->isRegistry(), 404);
         $invoice->load(['party', 'vehicle', 'vehicle.yard', 'charges.vehicle', 'charges.vehicle.yard']);
 
-        return view($invoice->isRegistry() ? 'billing.docs.storage-registry' : 'billing.docs.storage-act', ['invoice' => $invoice, 'self' => $invoice->seller->party()]);
+        return view('billing.docs.storage-act', ['invoice' => $invoice, 'self' => $invoice->seller->party()]);
     }
 }

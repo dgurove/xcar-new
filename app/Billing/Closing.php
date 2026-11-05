@@ -22,7 +22,7 @@ use Throwable;
  * если выбыла раньше); ТС «после выдачи» — за весь период, когда выбыла; покупатель — свой отрезок отдельно.
  * Ничего не выставляет само: строки с галочками на экране, «Выставить выбранные» — `issue()`.
  *
- * @phpstan-type Item array{key: string, vehicle: Vehicle, payer: string, party: ?Party, ready: bool, cadence: Cadence, from: Carbon, to: Carbon, days: int, amount: float, charges: list<int>, reason: string}
+ * @phpstan-type Item array{key: string, vehicle: Vehicle, payer: string, party: ?Party, ready: bool, cadence: Cadence, from: Carbon, to: Carbon, days: int, amount: float, charges: list<int>, reason: string, tow: bool}
  */
 final class Closing
 {
@@ -40,7 +40,8 @@ final class Closing
                 // Лента площадок — заранее: ставка считается по площадке того дня, иначе запрос на каждую ТС.
                 'events' => fn ($e) => $e->whereIn('type', [EventType::Accepted, EventType::Moved, EventType::Departed])])->orderBy('accepted_at')->get();
         // Начисления вне счёта — одной выборкой на всех: запрос на ТС давал 411 запросов на экран (аудит 20.10.2026).
-        $pendingBy = Charge::whereIn('vehicle_id', $vehicles->modelKeys())->whereNull('invoice_id')->whereNull('voided_at')->get()->groupBy('vehicle_id');
+        // Эвакуация — своим счётом (архив «СТОЯНКА», 05.11.2026: у СОГАЗа свой договор, у Альфы свой счёт) — ниже, `tows()`.
+        $pendingBy = Charge::whereIn('vehicle_id', $vehicles->modelKeys())->whereNull('invoice_id')->whereNull('voided_at')->where('kind', '!=', ChargeKind::Tow->value)->get()->groupBy('vehicle_id');
         $items = collect();
         foreach ($vehicles as $v) {
             $cadence = $v->cadence();
@@ -73,15 +74,44 @@ final class Closing
                 // Начисления вне счёта того же контрагента — в его первый счёт.
                 $charges = $party?->id ? $pending->where('party_id', $party->id) : collect();
                 $pending = $pending->diff($charges);
-                $items->push(['key' => $v->id.':'.$n, 'vehicle' => $v, 'payer' => $g['payer'], 'party' => $party, 'ready' => (bool) $party?->billable(), 'cadence' => $cadence, 'from' => $g['from'], 'to' => $g['to'], 'days' => $g['days'],
+                $items->push(['key' => $v->id.':'.$n, 'vehicle' => $v, 'payer' => $g['payer'], 'party' => $party, 'ready' => self::ready($party), 'cadence' => $cadence, 'from' => $g['from'], 'to' => $g['to'], 'days' => $g['days'],
                     'amount' => round($g['amount'] + $charges->sum('amount'), 2), 'charges' => $charges->pluck('id')->values()->all(),
                     // Хранение по этой ТС не выставлялось ни разу: период идёт с приёма, и «за сентябрь» врало бы.
                     // Сам период стоит рядом отдельным чипом, поэтому здесь — только почему сумма такая.
-                    'reason' => $cadence !== Cadence::Release && $g['from']->lt($begin) ? 'с приёма' : $reason]);
+                    'reason' => $cadence !== Cadence::Release && $g['from']->lt($begin) ? 'с приёма' : $reason, 'tow' => false]);
             }
         }
 
-        return $items;
+        return $items->concat(self::tows($end));
+    }
+
+    /**
+     * Эвакуация, не выставленная по конец месяца, — строкой на ТС и плательщика: в счёт эвакуации, а не хранения, в
+     * месяц, когда она была, как бы ни считалось хранение (по выбытию — тоже сейчас).
+     *
+     * @return Collection<int, Item>
+     */
+    private static function tows(CarbonInterface $end): Collection
+    {
+        $charges = Charge::whereNotNull('vehicle_id')->whereNull('invoice_id')->whereNull('voided_at')->where('kind', ChargeKind::Tow->value)
+            ->whereRaw('coalesce(period_from, created_at::date) <= ?', [$end->toDateString()])
+            ->whereHas('vehicle', fn ($v) => $v->whereNotNull('accepted_at'))
+            ->with(['vehicle.vendor.party', 'vehicle.ownerParty', 'vehicle.buyerParty', 'party'])->orderBy('id')->get();
+
+        return $charges->groupBy(fn ($c) => $c->vehicle_id.':'.$c->party_id)->map(function ($rows, $key) {
+            $v = $rows->first()->vehicle;
+            $party = $rows->first()->party;
+            $payer = match (true) {
+                $party && $party->id === $v->vendor?->party_id => 'vendor',
+                $party && $party->id === $v->owner_party_id => 'owner',
+                default => 'buyer',
+            };
+            $day = fn ($c) => Carbon::parse($c->period_from ?? $c->created_at)->startOfDay();
+
+            return ['key' => 'tow:'.$key, 'vehicle' => $v, 'payer' => $payer, 'party' => $party, 'ready' => self::ready($party), 'cadence' => $v->cadence(),
+                'from' => $rows->map($day)->min(), 'to' => $rows->map($day)->max(), 'days' => 0, 'amount' => round((float) $rows->sum('amount'), 2),
+                'charges' => $rows->pluck('id')->values()->all(), 'reason' => 'эвакуация', 'tow' => true];
+        })->values();
     }
 
     /**
@@ -100,16 +130,19 @@ final class Closing
         // В том же порядке, что отрезки у машины: вендор, страхователь, покупатель. Иначе счёт следующему плательщику
         // упёрся бы в ещё не выставленный отрезок предыдущего («сначала счёт ему»).
         $order = ['vendor' => 0, 'owner' => 1, 'buyer' => 2];
-        $groups = self::items($month)->whereIn('key', $keys)->groupBy(fn ($i) => self::groupOf($i))->sortBy(fn ($g) => $order[$g->first()['payer']] ?? 3);
+        $groups = self::items($month)->whereIn('key', $keys)->groupBy(fn ($i) => self::groupOf($i))->sortBy(fn ($g) => ($g->first()['tow'] ? 10 : 0) + ($order[$g->first()['payer']] ?? 3));
         foreach ($groups as $group) {
             $first = $group->first();
             $v = $first['vehicle'];
             try {
                 $party = self::payer($first);
-                $invoice = $first['payer'] === 'buyer'
+                $invoice = $first['tow']
+                    ? $issue($party, $by, 'issued', ChargeKind::Tow, now()->addWeekdays($v->vendor?->payment_days ?? 5), month: $month,
+                        registry: $group->map(fn ($i) => ['vehicle' => $i['vehicle']->fresh(), 'until' => null, 'charges' => $i['charges']])->values()->all())
+                    : ($first['payer'] === 'buyer'
                     ? $issue($party, $by, 'issued', ChargeKind::Storage, now(), $first['to'], $first['charges'], vehicle: $v->fresh())
                     : $issue($party, $by, 'issued', ChargeKind::Storage, now()->addWeekdays($v->vendor?->payment_days ?? 5), month: $month,
-                        registry: $group->map(fn ($i) => ['vehicle' => $i['vehicle']->fresh(), 'until' => $i['to'], 'charges' => $i['charges']])->values()->all());
+                        registry: $group->map(fn ($i) => ['vehicle' => $i['vehicle']->fresh(), 'until' => $i['to'], 'charges' => $i['charges']])->values()->all()));
                 $errors = [...$errors, ...$issue->skipped];
                 $act->attach($invoice);
                 $issued->push($invoice);
@@ -171,6 +204,10 @@ final class Closing
      */
     public static function groupOf(array $item): string
     {
+        if ($item['tow'] ?? false) {
+            // Эвакуация — один счёт плательщику за месяц, у любого плательщика.
+            return 'tow:'.($item['party']?->id ? 'p'.$item['party']->id.':'.Seller::ofVendor($item['vehicle']->vendor)->value : 'none:'.$item['key']);
+        }
         if ($item['payer'] === 'buyer') {
             return 'buyer:'.$item['key'];
         }
@@ -180,6 +217,15 @@ final class Closing
         $seller = ':'.Seller::ofVendor($item['vehicle']->vendor)->value;
 
         return ($id = self::payer($item, false)?->id) ? 'p'.$id.$seller : ($item['payer'] === 'vendor' ? 'v'.$item['vehicle']->vendor_id : 'none:'.$item['key']);
+    }
+
+    /**
+     * Плательщику можно выставить: есть чем назвать (ИНН, у человека — паспорт или карта). Его банк в счёте не печатается —
+     * платит он нам (05.11.2026: у Альфы банка нет ни в одном прежнем счёте, а с ним закрытие стояло бы у 170 ТС).
+     */
+    private static function ready(?Party $party): bool
+    {
+        return (bool) $party?->filled();
     }
 
     /** Плательщик строки; черновик вендора (без id) записывается, когда выставляем. */

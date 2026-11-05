@@ -2,27 +2,33 @@
 
 namespace App\Billing\Documents;
 
+use App\Billing\Acts\RegistryAct;
 use App\Billing\Invoice;
 use App\Support\Pdf;
 
-/** Акт оказанных услуг хранения — PDF при счёте: закрытие месяца кладёт его рядом со счётом, письмо вендору берёт оба; у реестра — с таблицей машин. */
+/**
+ * Акт к счёту хранения, кладётся рядом со счётом; письмо вендору берёт оба. Реестр закрытия месяца — прежний файл
+ * страховой (`Acts\RegistryAct`: Excel или Word по форме вендора); счёт на одну ТС — PDF акта хранения.
+ */
 final class StorageActPdf
 {
+    public function __construct(private RegistryAct $registry) {}
+
     public function attach(Invoice $invoice): void
     {
+        if ($invoice->isRegistry()) {
+            $this->registry->attach($invoice);
+
+            return;
+        }
         $path = tempnam(sys_get_temp_dir(), 'akt-').'.pdf';
         file_put_contents($path, $this->render($invoice));
-        $invoice->addMedia($path)->usingFileName('akt-hraneniya-'.$invoice->number.'-'.$invoice->year.'.pdf')->toMediaCollection('act');
+        $invoice->addMedia($path)->usingFileName('akt-hraneniya-'.$invoice->docNo().'-'.$invoice->year.'.pdf')->toMediaCollection('act');
     }
 
+    /** PDF акта хранения одной ТС. */
     public function render(Invoice $invoice): string
     {
-        // Реестр за месяц — альбомный лист: машина строкой (ТС, госномер, VIN, убыток, парковка, период, сутки, ставка, сумма).
-        if ($invoice->isRegistry()) {
-            $invoice->loadMissing(['party', 'charges.vehicle', 'charges.vehicle.yard']);
-
-            return Pdf::render('billing.docs.storage-registry', ['invoice' => $invoice, 'self' => $invoice->seller->party()], 'landscape');
-        }
         $invoice->loadMissing(['party', 'vehicle', 'vehicle.yard', 'charges']);
 
         return Pdf::render('billing.docs.storage-act', ['invoice' => $invoice, 'self' => $invoice->seller->party()]);

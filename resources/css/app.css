@@ -3502,6 +3502,8 @@ html.kb-open { --home-gap: 0px; }
   .docs-table td { border: 1px solid var(--color-line); padding: .25rem .5rem; vertical-align: top; min-width: 3rem; }
   .docs-table td p { margin: 0; }
   .docs-sheet td { white-space: nowrap; }
+  /* Объединённая ячейка (шапка и абзацы актов страховых) — текстом во всю ширину, с переносом. */
+  .docs-sheet td[colspan] { white-space: normal; min-width: 24rem; }
   .docs-video { display: block; width: 100%; height: 100%; background: #000; object-fit: contain; }
   .docs-paper { min-height: 100%; padding-top: 1rem; background: #fff; color: #1d1d1b; color-scheme: light; }
   .docs-paper h3 { color: #808080; }

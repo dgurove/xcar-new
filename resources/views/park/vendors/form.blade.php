@@ -31,6 +31,10 @@
                 <x-ui.field name="agreement_date" label="Дата" type="date" :value="$vendor->agreement_date?->toDateString()"/>
                 <x-ui.field name="agreement_until" label="Действует до" type="date" :value="$vendor->agreement_until?->toDateString()"/>
                 <x-ui.field name="payment_days" label="Оплата, раб. дней" :value="$vendor->payment_days"/>
+                {{-- Эвакуация — своим счётом по своему договору (у СОГАЗа — № Э/2/23/3351); пусто — по основному. --}}
+                <x-ui.field name="tow_agreement_number" label="Договор эвакуации, номер" :value="$vendor->tow_agreement_number" placeholder="Как основной"/>
+                <x-ui.field name="tow_agreement_date" label="Договор эвакуации, дата" type="date" :value="$vendor->tow_agreement_date?->toDateString()"/>
+                <x-ui.field name="act_form" label="Акт к счёту" :options="\App\Billing\ActForm::options()" :value="($vendor->act_form ?? \App\Billing\ActForm::Report)->value"/>
             </div>
             <div class="list-head">Хранение</div>
             {{-- Опоздавший покупатель платит только там, где так в договоре: срок за счёт вендора вписывают на самой ТС,

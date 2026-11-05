@@ -575,13 +575,17 @@ class MailController
         // Письмо о выдаче уходит с актом и фото выдачи; лишнее снимают в форме. `act=release` — акт выдачи (в том числе с
         // отказом от получения, когда ТС осталась).
         if ($invoice && ! $request->old()) {
+            if ($invoice->isRegistry() && ! $invoice->hasMedia('act')) {
+                $actPdf->attach($invoice);
+                $invoice->load('media');
+            }
             foreach (['file', 'act'] as $collection) {
-                if ($media = $invoice->getFirstMedia($collection)) {
+                foreach ($invoice->getMedia($collection) as $media) {
                     $defaults['files'][] = $outbox->put($media->file_name, file_get_contents($media->getPath()));
                 }
             }
             if (! $invoice->getFirstMedia('act') && $invoice->kind === ChargeKind::Storage) {
-                $defaults['files'][] = $outbox->put('akt-hraneniya-'.$invoice->number.'-'.$invoice->year.'.pdf', $actPdf->render($invoice));
+                $defaults['files'][] = $outbox->put('akt-hraneniya-'.$invoice->docNo().'-'.$invoice->year.'.pdf', $actPdf->render($invoice));
             }
         } elseif ($vehicle?->accepted_at && $request->query('act') === 'release' && ! $request->old()) {
             // Отчёт о приёме — своей формой (`x-park.report-form`, 12.10.2026: наш акт и 12 фото никто не слал); здесь — выдача.

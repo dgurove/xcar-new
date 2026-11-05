@@ -6,7 +6,6 @@ use App\Billing\Actions\IssueInvoice;
 use App\Billing\ChargeKind;
 use App\Billing\Closing;
 use App\Billing\Documents\StorageActPdf;
-use App\Billing\Export\RegistryExport;
 use App\Billing\Invoice;
 use App\Billing\InvoiceState;
 use App\Billing\Ledger;
@@ -133,16 +132,6 @@ class MoneyController
         $invoice->load(['party', 'charges.vehicle', 'charges.vehicle.yard', 'charges.vehicle.vendor']);
 
         return view('billing.docs.storage-acts', ['invoice' => $invoice, 'self' => $invoice->seller->party()]);
-    }
-
-    /** Отчёт-акт реестра файлом Excel — той же формой, что PDF: вендор правит его и присылает назад. */
-    public function registryXlsx(Invoice $invoice)
-    {
-        $this->guardInvoice($invoice);
-        abort_unless($invoice->isRegistry(), 404);
-
-        return response()->streamDownload(fn () => RegistryExport::write($invoice, 'php://output'), 'Отчёт-акт '.$invoice->label().'.xlsx',
-            ['Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet']);
     }
 
     public const DEBT_SORTS = ['overdue' => ['Просрочено', 'desc'], 'owed_to_us' => ['Нам должны', 'desc'], 'we_owe' => ['Мы должны', 'desc'], 'unbilled' => ['Не выставлено', 'desc']];

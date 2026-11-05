@@ -3,6 +3,7 @@
 namespace App\Http\Park;
 
 use App\Billing\Accrual;
+use App\Billing\ActForm;
 use App\Billing\Cadence;
 use App\Billing\Invoice;
 use App\Billing\Ledger;
@@ -162,6 +163,9 @@ class VendorController
             'agreement_number' => ['nullable', 'string', 'max:60'],
             'agreement_date' => ['nullable', 'date'],
             'agreement_until' => ['nullable', 'date'],
+            'tow_agreement_number' => ['nullable', 'string', 'max:60'],
+            'tow_agreement_date' => ['nullable', 'date'],
+            'act_form' => ['nullable', Rule::enum(ActForm::class)],
             'payment_days' => ['nullable', 'integer', 'between:0,365'],
             'storage_payer' => ['required', Rule::in(['vendor', 'owner', 'nobody'])],
             'buyer_pays_late' => ['boolean'],

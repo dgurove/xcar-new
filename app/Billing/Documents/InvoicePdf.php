@@ -12,7 +12,7 @@ final class InvoicePdf
     {
         $path = tempnam(sys_get_temp_dir(), 'schet-').'.pdf';
         file_put_contents($path, $this->render($invoice));
-        $invoice->addMedia($path)->usingFileName('schet-'.$invoice->number.'-'.$invoice->year.'.pdf')->toMediaCollection('file');
+        $invoice->addMedia($path)->usingFileName(($invoice->code ? 'Счет '.$invoice->code : 'schet-'.$invoice->number.'-'.$invoice->year).'.pdf')->toMediaCollection('file');
     }
 
     public function render(Invoice $invoice): string
