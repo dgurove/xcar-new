@@ -3,6 +3,7 @@
 namespace App\Http\Admin;
 
 use App\Billing\ChargeKind;
+use App\Billing\Documents\PassportPdf;
 use App\Billing\Documents\StorageActPdf;
 use App\Billing\Invoice;
 use App\Live\Stream;
@@ -43,6 +44,7 @@ use App\Offers\Offer;
 use App\Offers\OfferNumber;
 use App\Offers\OfferState;
 use App\Offers\Pricing;
+use App\Offers\Reprice;
 use App\Offers\SupplierRequest;
 use App\Park\Actions\MarkDoc;
 use App\Park\Actions\PurgeLetters;
@@ -600,14 +602,11 @@ class MailController
         if ($offer?->deal && $template && preg_match('/\{\{ ?buyer ?\}\}/', (string) $template->body) && ($gap = $offer->deal->requisitesGap())) {
             abort(409, $gap.' — письмо с реквизитами пока не написать');
         }
-        // Реквизиты покупателя-человека поставщику (03.11.2026, Альфа) — со сканом паспорта во вложении.
+        // Реквизиты покупателя-человека поставщику (03.11.2026, Альфа) — со сканом паспорта во вложении, одним PDF (05.11.2026,
+        // владелец: «фотки со сканами, а должен pdf файл формировать и прикреплять»).
         if ($offer?->deal && $template && ! $request->old() && preg_match('/\{\{ ?buyer ?\}\}/', (string) $template->body)
-            && ($party = $offer->deal->supplierInvoicee()) && $party->isPerson() && ! $party->seller) {
-            foreach (['main', 'reg'] as $page) {
-                if ($media = $party->passportScan($page)) {
-                    $defaults['files'][] = $outbox->put($media->file_name, file_get_contents($media->getPath()));
-                }
-            }
+            && ($party = $offer->deal->supplierInvoicee()) && $party->isPerson() && ! $party->seller && ($scan = PassportPdf::render($party))) {
+            $defaults['files'][] = $outbox->put(PassportPdf::fileName($party), $scan);
         }
 
         if ($supplierRequest && ! $request->old()) {
@@ -751,7 +750,7 @@ class MailController
 
         // Ответ на письмо переоценки — поставщику ответили (`RepriceFlow`, 04.11.2026).
         if ($this->scope === Scope::Offers) {
-            \App\Offers\Reprice::answeredBy($message, $parent, $request->user());
+            Reprice::answeredBy($message, $parent, $request->user());
         }
         // Заявка поставщику ушла — сделки из её файла идут дальше «Заявка отправлена».
         $requested = $this->scope === Scope::Offers && ! empty($data['request_deals'])
@@ -1121,7 +1120,9 @@ class MailController
             ->reject(fn ($m) => in_array($m->id, $doomed, true))
             ->sortBy(fn ($m) => $m->getCustomProperty('source') === 'mail' ? 1 : 0)->filter(fn ($m) => is_file($m->getPath()))->values();
         // Своё имя у каждого этапа: два этапа в одном письме не дают двух «foto-1.jpg».
-        $prefix ??= match ($stage) { PhotoStage::Intake => 'priem', PhotoStage::Release => 'vydacha', PhotoStage::Vendor => 'strahovaya', PhotoStage::Pickup => 'pogruzka', null => 'foto' };
+        $prefix ??= match ($stage) {
+            PhotoStage::Intake => 'priem', PhotoStage::Release => 'vydacha', PhotoStage::Vendor => 'strahovaya', PhotoStage::Pickup => 'pogruzka', null => 'foto'
+        };
         $files = [];
         foreach ($pool->take(12) as $i => $m) {
             $contents = file_get_contents($m->getPath());
@@ -1153,7 +1154,9 @@ class MailController
         }
         foreach (array_unique((array) ($data['case_stage'] ?? [])) as $stage) {
             $stage = PhotoStage::from($stage);
-            $first = match ($stage) { PhotoStage::Intake => 'priem-1.', PhotoStage::Release => 'vydacha-1.', default => null };
+            $first = match ($stage) {
+                PhotoStage::Intake => 'priem-1.', PhotoStage::Release => 'vydacha-1.', default => null
+            };
             if ($first && collect($names)->contains(fn ($n) => str_starts_with($n, $first))) {
                 continue;
             }

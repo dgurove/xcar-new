@@ -85,7 +85,16 @@ export default class extends Controller {
         const name = (key) => (this.prefixValue ? `${this.prefixValue}[${key}]` : key);
         const sure = filler(form, { overwrite: true });
         const rest = filler(form);
-        for (const [key, value] of Object.entries(fields)) (checked.includes(key) ? sure : rest).plain(name(key), value);
+        // ФИО со скана полнее вписанного — тоже поверх (05.11.2026: стояло имя аккаунта «Роман Мирошников», скан прочёл
+        // «Мирошников Роман Игоревич», а в письмо поставщику ушло без отчества): все слова поля есть в прочитанном.
+        const words = (v) => String(v || '').toLowerCase().replace(/ё/g, 'е').split(/\s+/).filter(Boolean);
+        const fuller = (key, value) => {
+            if (key !== 'name') return false;
+            const had = words(form.elements[name(key)]?.value);
+            const read = words(value);
+            return had.length > 0 && read.length > had.length && had.every((w) => read.includes(w));
+        };
+        for (const [key, value] of Object.entries(fields)) (checked.includes(key) || fuller(key, value) ? sure : rest).plain(name(key), value);
         await sure.run();
         await rest.run();
         // Даты — скрытое поле под календарём (`date_controller`): видимый текст перерисовывается им самим.

@@ -2,6 +2,7 @@
 
 namespace App\Http\Cabinet;
 
+use App\Billing\Documents\PassportPdf;
 use App\Billing\Jobs\ReadPassport;
 use App\Billing\Party;
 use App\Live\RefreshDeal;
@@ -13,6 +14,7 @@ use App\Offers\DealState;
 use App\Users\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Process;
+use Symfony\Component\HttpFoundation\HeaderUtils;
 
 /**
  * Скан паспорта покупателя (11.10.2026, владелец: «пусть прикрепляют скан, распознаётся, поля можно поправить; без
@@ -74,6 +76,17 @@ class PassportScanController
             array_map('unlink', glob($dir.'/*') ?: []);
             @rmdir($dir);
         }
+    }
+
+    /** Скан одним PDF — посмотреть и скачать (шторка документов, «Скачать»). */
+    public function pdf(Request $request, Party $party)
+    {
+        $me = $request->user();
+        abort_unless($me->isAdmin() || $party->managedBy($me), 404);
+        $pdf = PassportPdf::render($party);
+        abort_unless($pdf, 404);
+
+        return response($pdf, 200, ['Content-Type' => 'application/pdf', 'Content-Disposition' => HeaderUtils::makeDisposition('inline', PassportPdf::fileName($party), 'passport.pdf'), 'Cache-Control' => 'private, no-store']);
     }
 
     /** Что прочитано: по странице — состояние, миниатюра и поля; шторка заполняет пустые. */

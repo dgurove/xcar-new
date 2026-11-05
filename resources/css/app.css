@@ -2724,6 +2724,14 @@ html.kb-open { --home-gap: 0px; }
      пересчитывало стили всей страницы на каждую вставку узла (29.10.2026). */
   .fields .field:has(> textarea) { display: flex; flex-direction: column; align-items: stretch; padding-block: .625rem; gap: .25rem; }
   .fields .field textarea.field-input { min-height: 3rem; text-align: left; }
+  /* Поля одним видом — подпись сверху, значение под ней во всю ширину (паспорт, 05.11.2026: справа от подписи ФИО резалось
+     «Макаров Дмит…», а смесь строк и столбиков «скачет»). Подпись 13, значение 16, текст переносится, без ручки. */
+  .fields.fields-stack .field { display: flex; flex-direction: column; align-items: stretch; gap: .125rem; min-height: 0; padding-block: .5rem; }
+  .fields.fields-stack .field > .field-label { @apply text-sm; padding-block: 0; }
+  .fields.fields-stack .field .field-input { min-height: 1.5rem; text-align: left; justify-content: flex-start; }
+  .fields.fields-stack .field textarea.field-input { min-height: 1.5rem; resize: none; field-sizing: content; }
+  .fields.fields-stack .field input.field-input::-webkit-date-and-time-value { text-align: left; }
+  .fields.fields-stack .field-error { text-align: left; padding-bottom: 0; }
   .fields .field-error { grid-column: 1 / -1; padding-bottom: .5rem; text-align: right; }
   .fields .field-invalid .field-input { box-shadow: none; --tw-ring-shadow: 0 0 #0000; }
   .fields .field-invalid .field-label { @apply text-danger; }

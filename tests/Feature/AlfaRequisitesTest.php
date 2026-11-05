@@ -148,8 +148,34 @@ class AlfaRequisitesTest extends TestCase
         $this->assertStringContainsString('Паспорт: 11 11 № 111111', $buyer);
         $this->assertTrue($deal->fresh()->supplierInvoicee()->hasPassportScans());
 
+        // Скан — одним PDF (05.11.2026): поставщику во вложении, админу — посмотреть и скачать из «Покупателя для счёта».
+        $party = $deal->fresh()->supplierInvoicee();
+        $party->getMedia('passport')->each->delete();
+        foreach (array_keys(Party::PASSPORT_PAGES) as $page) {
+            $party->addMedia(\Illuminate\Http\UploadedFile::fake()->image($page.'.jpg', 400, 300))->withCustomProperties(['page' => $page, 'read' => 'done'])->toMediaCollection('passport');
+        }
+        $this->assertStringStartsWith('%PDF', (string) \App\Billing\Documents\PassportPdf::render($party->fresh()));
+        $this->actingAs($this->admin)->get(\App\Support\Surface::Crm->url('/parties/'.$party->id.'/passport.pdf'))
+            ->assertOk()->assertHeader('Content-Type', 'application/pdf');
+
         $this->exit($offer, 'Счёт от поставщика получен');
         $this->assertSame('Оплата счёта', $offer->fresh()->stage()->name);
+    }
+
+    /** ФИО со скана полнее имени аккаунта — встаёт само, другое имя — нет (05.11.2026: в письмо ушло «Роман Мирошников»). */
+    public function test_fuller_name_from_passport_scan_replaces_short_one(): void
+    {
+        $party = Party::create(['kind' => 'person', 'name' => 'Роман Мирошников']);
+        $media = $party->addMediaFromString('scan')->usingFileName('main.jpg')
+            ->withCustomProperties(['page' => 'main', 'read' => 'done', 'fields' => ['name' => 'Мирошников Роман Игоревич']])->toMediaCollection('passport');
+        \App\Billing\Jobs\ReadPassport::fullerName($media->fresh());
+        $this->assertSame('Мирошников Роман Игоревич', $party->fresh()->name);
+
+        $other = Party::create(['kind' => 'person', 'name' => 'Иван Петров']);
+        $m = $other->addMediaFromString('scan')->usingFileName('main.jpg')
+            ->withCustomProperties(['page' => 'main', 'read' => 'done', 'fields' => ['name' => 'Мирошников Роман Игоревич']])->toMediaCollection('passport');
+        \App\Billing\Jobs\ReadPassport::fullerName($m->fresh());
+        $this->assertSame('Иван Петров', $other->fresh()->name);
     }
 
     public function test_ros_scheme_sends_our_requisites_without_manager(): void

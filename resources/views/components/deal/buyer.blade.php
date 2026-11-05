@@ -16,17 +16,31 @@
     $dataSheet = 'deal-buyer-data-'.$deal->id;
     // Без договора (поставщик выставит счёт на покупателя, 03.11.2026) — «данные для счёта».
     $for = $deal->hasContract() ? 'договора' : 'счёта';
+    // Скан паспорта одним PDF — посмотреть и скачать (05.11.2026, владелец: «когда менеджер заполняет данные покупателя, их
+    // невозможно посмотреть и скачать в админке»).
+    $scanPdf = $buyer?->party?->isPerson() && $buyer->party->getMedia('passport')->isNotEmpty()
+        ? ['url' => '/parties/'.$buyer->party->id.'/passport.pdf', 'type' => 'pdf', 'name' => \App\Billing\Documents\PassportPdf::fileName($buyer->party), 'label' => 'Паспорт'] : null;
 @endphp
-@if ($buyer && $live && ! $ready)
+{{-- Данные есть — та же шторка: посмотреть, поправить, скан PDF (05.11.2026). --}}
+@if ($buyer && $live)
     <div data-controller="sheet" class="contents">
         <x-ui.sheet-row>
             <span class="shrink-0 text-ink-muted">Покупатель</span>
-            <span class="min-w-0 flex-1 text-right"><span class="block truncate">{{ $who }}{{ $isManager ? ', менеджер' : '' }}</span><span class="block text-sm text-urgent">{{ $noScan ? 'нужен скан паспорта' : 'нужны данные для '.$for }}</span></span>
+            <span class="min-w-0 flex-1 text-right"><span class="block truncate">{{ $who }}{{ $isManager ? ', менеджер' : '' }}</span>@if ($ready)<span class="block text-sm text-open">данные есть</span>@else<span class="block text-sm text-urgent">{{ $noScan ? 'нужен скан паспорта' : 'нужны данные для '.$for }}</span>@endif</span>
             <x-ui.chevron/>
         </x-ui.sheet-row>
-        <x-ui.sheet :id="$dataSheet" :title="'Данные для '.$for" :open="session('open_sheet') === $dataSheet || $errors->hasAny(['buyer.*'])" tall>
+        <x-ui.sheet :id="$dataSheet" :title="$ready ? 'Данные покупателя' : 'Данные для '.$for" :open="session('open_sheet') === $dataSheet || $errors->hasAny(['buyer.*'])" tall>
             @php $buyerParty = $buyer->party ?? \App\Billing\Party::forUser($buyer); @endphp
             @if ($buyerParty->isPerson())<x-billing.passport-scan :party="$buyerParty" :form="$dataSheet.'-form'"/>@endif
+            @if ($scanPdf)
+                <div class="list mb-3">
+                    <x-ui.doc :doc="$scanPdf" class="row">
+                        <x-ui.row-icon name="file" size="s" tone="open"/>
+                        <span class="min-w-0 flex-1">Скан паспорта, PDF</span>
+                        <x-ui.chevron/>
+                    </x-ui.doc>
+                </div>
+            @endif
             <form method="post" action="/work/deals/{{ $deal->id }}/contract" class="flex flex-col gap-3" id="{{ $dataSheet }}-form">
                 @csrf @method('put')
                 <x-billing.buyer-fields :party="$buyerParty" :key="'crm-buyer-'.$deal->id"/>
@@ -39,6 +53,13 @@
         <span class="shrink-0 text-ink-muted">Покупатель</span>
         <span class="min-w-0 flex-1 text-right">@if ($buyer)<span class="block truncate">{{ $who }}{{ $isManager ? ', менеджер' : '' }}</span>@if ($ready)<span class="block text-sm text-open">данные есть</span>@endif @else<span class="text-ink-muted">не выбран</span>@endif</span>
     </div>
+    @if ($scanPdf)
+        <x-ui.doc :doc="$scanPdf" class="row">
+            <x-ui.row-icon name="file" size="s" tone="open"/>
+            <span class="min-w-0 flex-1">Скан паспорта, PDF</span>
+            <x-ui.chevron/>
+        </x-ui.doc>
+    @endif
 @endif
 @if ($live && $buyer && ! $isManager && $deal->isPrime())
     <form method="post" action="/work/deals/{{ $deal->id }}/contract" class="contents" data-controller="autosubmit">
