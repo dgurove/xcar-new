@@ -2223,15 +2223,9 @@ html.kb-open { --home-gap: 0px; }
 
 }
 
-/* «Счета и акты» (05.11.2026, владелец: «логотипов не хватает», «кнопки посмотреть и скачать»): файлы документа чипами в
-   строке — квадратик расширения и подпись; на телефоне — третьим этажом под названием, от 640 — своим столбцом. В карточке —
-   логотип крупно над суммой, плашки внимания красным. */
+/* «Счета и акты» (05.11.2026): в карточке — логотип крупно над суммой, плашки внимания красным, сумма месяца — справа в
+   заголовке группы. */
 @layer components {
-  .doc-chips { display: inline-flex; flex-wrap: wrap; gap: .375rem; }
-  .table td.grow > .doc-chips { display: flex; margin-top: .375rem; }
-  .doc-chip { @apply inline-flex items-center gap-1.5 rounded-(--radius-s) bg-surface-3 py-1 pl-1 pr-2 text-xs leading-none text-ink; }
-  .doc-chip:hover { @apply text-accent-text; }
-  .file-icon.file-icon-xs { width: 1.375rem; height: 1rem; border-radius: 4px; font-size: 7px; letter-spacing: 0; }
   .doc-hero-logo { width: 3.5rem; height: 3.5rem; margin-bottom: .75rem; border-radius: var(--radius-m); vertical-align: 0; }
   .doc-alert { @apply mt-5 rounded-(--radius-l) bg-danger-soft px-4 py-3; }
   .table tr.table-group .table-group-aside { @apply ml-auto inline-flex gap-3 text-sm font-normal text-ink-muted; }

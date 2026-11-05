@@ -204,7 +204,6 @@ class MoneyController
     {
         return Table::of(
             new Column('title', 'Плательщик', grow: true),
-            new Column('files', 'Файлы', from: 'sm', role: ColRole::State, rem: 11),
             new Column('amount', 'Сумма', num: true, cell: 'nums', rem: 7),
             new Column('state', 'Состояние', from: 'sm', role: ColRole::When, rem: 7.5),
         );

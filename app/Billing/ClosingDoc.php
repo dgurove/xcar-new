@@ -2,7 +2,6 @@
 
 namespace App\Billing;
 
-use App\Cars\Category;
 use App\Mail\AddressKind;
 use App\Support\Ago;
 use App\Support\Docs;
@@ -265,11 +264,11 @@ final class ClosingDoc
 
     /**
      * Состав документа по смыслу, а не списком машин (владелец: «огромный список, странный, бесцельный»): по ТС — период,
-     * сутки и сумма; группы по движению в месяце (помесячно: стояли весь месяц, приняты, выданы; по выдаче — все выданы)
-     * и по типу ТС со ставкой.
+     * сутки и сумма; группы по движению в месяце (помесячно: стояли весь месяц, приняты, выданы; по выдаче — все выданы).
+     * По типу ТС не делится (владелец: «не вижу смысла»).
      *
      * @param  Collection<int, Charge>  $charges  строки документа (живого или отправленного)
-     * @return array{cars: Collection<int, array>, moves: list<array{label: string, cars: int, amount: float}>, kinds: list<array{label: string, cars: int, days: int, rate: ?float, amount: float}>, other: float}
+     * @return array{cars: Collection<int, array>, moves: list<array{label: string, cars: int, amount: float}>, other: float}
      */
     public static function composition(Collection $charges, Carbon $month): array
     {
@@ -296,13 +295,8 @@ final class ClosingDoc
                 }
             }
         }
-        $kinds = $stored->groupBy(fn ($c) => $c['vehicle']->category?->value ?? 'none')->map(fn ($set, $cat) => [
-            'label' => $cat === 'none' ? 'Без типа' : Category::from($cat)->label(), 'cars' => $set->count(), 'days' => (int) $set->sum('days'),
-            'rate' => count($rates = $set->flatMap(fn ($c) => $c['rates'])->unique()->values()->all()) === 1 ? $rates[0] : null,
-            'amount' => round((float) $set->sum('amount'), 2),
-        ])->sortByDesc('amount')->values()->all();
 
-        return ['cars' => $cars, 'moves' => $moves, 'kinds' => count($kinds) > 1 ? $kinds : [], 'other' => round((float) $charges->where('kind', '!=', ChargeKind::Storage)->sum('amount'), 2)];
+        return ['cars' => $cars, 'moves' => $moves, 'other' => round((float) $charges->where('kind', '!=', ChargeKind::Storage)->sum('amount'), 2)];
     }
 
     /**
