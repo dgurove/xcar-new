@@ -952,15 +952,13 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
 
     // -------------------------------------------------------------- имя и аватар
 
-    /** «Иван П.» — для капсулы в шапке и таб-бара. */
+    /**
+     * Имя в строках, капсулах и подписях — полностью, «Иван Петров» (05.11.2026, владелец: «раздражает везде писать только
+     * первую букву фамилии — сотрудников много, их по фамилиям и называют»). Было «Иван П.». Длинное режет вёрстка (`truncate`).
+     */
     public function shortName(): string
     {
-        $parts = preg_split('/\s+/', trim($this->name)) ?: [];
-        if (count($parts) < 2) {
-            return $this->name;
-        }
-
-        return $parts[0].' '.mb_substr($parts[1], 0, 1).'.';
+        return trim(preg_replace('/\s+/u', ' ', (string) $this->name));
     }
 
     /** «Иван» — обращение в приветствии. */

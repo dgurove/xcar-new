@@ -200,14 +200,14 @@
                     @endif
                     <x-route.who :position="$position" :offer="$offer" :deal="$deal"/>
                     @if ($buyerData && auth()->user()?->canManageCrm())
-                        <div class="mt-3 flex flex-wrap gap-2"><a href="/offers/{{ $offer->number }}#invoice-buyer" class="btn btn-s btn-accent !h-auto min-h-9 max-w-full whitespace-normal py-1.5 text-left" data-turbo-frame="_top">Заполнить за менеджера</a></div>
+                        <div class="step-acts mt-3"><a href="/offers/{{ $offer->number }}#invoice-buyer" class="btn btn-s btn-accent !h-auto min-h-9 whitespace-normal py-1.5" data-turbo-frame="_top">Заполнить за менеджера</a></div>
                     @endif
                     {{-- Согласие менеджера: чаще всего он уже сказал «да» устно — «Беру в работу» за него видной тихой кнопкой. --}}
                     @if ($takeFor)
-                        <form method="post" action="/offers/{{ $n }}/exit/{{ $takeFor->id }}" class="mt-2">
+                        <form method="post" action="/offers/{{ $n }}/exit/{{ $takeFor->id }}" class="step-acts mt-2">
                             @csrf<input type="hidden" name="for" value="manager">
                             {{-- В узкой дорожке подпись переносится, а не вылезает за карточку. --}}
-                            <x-ui.button size="sm" variant="secondary" class="!h-auto min-h-9 max-w-full whitespace-normal py-1.5 text-left">«{{ $takeFor->label }}» за менеджера</x-ui.button>
+                            <x-ui.button size="sm" variant="secondary" class="!h-auto min-h-9 w-full whitespace-normal py-1.5">«{{ $takeFor->label }}» за менеджера</x-ui.button>
                         </form>
                     @endif
                     {{-- Менеджер уже приложил, но шаг ещё не отметил — файл видно сразу. --}}
