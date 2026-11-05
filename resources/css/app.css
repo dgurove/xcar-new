@@ -2234,10 +2234,14 @@ html.kb-open { --home-gap: 0px; }
   .doc-file { @apply gap-2 pl-2; }
   .file-icon.file-icon-s { width: 1.75rem; height: 1.375rem; border-radius: 6px; font-size: 8px; letter-spacing: 0; }
   @media (max-width: 639px) { .doc-sum { @apply basis-full; } }
-  /* Строка списка «Счетов и актов» — ссылка целиком: на страницу документа. */
-  .table tr.doc-row.is-link { position: relative; cursor: pointer; }
-  .table tr.doc-row.is-link:hover { background: var(--color-surface-2); }
-  .doc-row-link::after { content: ''; position: absolute; inset: 0; }
+  /* Список «Счетов и актов» (06.11.2026): месяц — подпись над блоком `.list` (итог справа), от 1280 — две колонки. Строка —
+     логотип, плательщик, справа столбиком сумма и под ней состояние словом; ни сумма, ни слово не режутся. */
+  .doc-months { @apply mt-4 grid items-start gap-6 xl:grid-cols-2; }
+  .doc-month-head { @apply px-1; }
+  .doc-month-head .doc-month-now { @apply text-sm font-normal text-ink-dim; }
+  .doc-row-name { overflow-wrap: anywhere; }
+  .doc-row-end { @apply flex shrink-0 flex-col items-end text-right whitespace-nowrap; }
+  .doc-row-end > :last-child { @apply text-sm; }
   /* Все ТС документа — обычная таблица: ширины по содержимому, коды, даты и суммы целиком (не режутся), название
      переносится; не влезла — листается вбок с закреплённым названием. Дата — кнопка цвета текста, карандаш при наведении. */
   .doc-cars-wrap { @apply mt-2 overflow-x-auto rounded-(--radius-l) bg-surface; }
@@ -2267,7 +2271,6 @@ html.kb-open { --home-gap: 0px; }
     .doc-cars-wrap { @apply -mx-4 rounded-none; }
     .doc-cars .doc-car { @apply sticky left-0 z-[1] bg-surface; min-width: 9rem; }
   }
-  .table tr.table-group .table-group-aside { @apply ml-auto inline-flex gap-3 text-sm font-normal text-ink-muted; }
 }
 
 /* Прошедшая фаза дела: строка-заголовок раскрывается стрелкой, тело — под ней в той же карточке. */

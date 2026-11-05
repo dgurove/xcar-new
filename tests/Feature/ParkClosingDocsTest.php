@@ -187,7 +187,7 @@ class ParkClosingDocsTest extends TestCase
     }
 
     /**
-     * Экран «Счета и акты» — месяцами одной таблицей, строка ведёт сразу на страницу документа (окошка нет; живой — по
+     * Экран «Счета и акты» — блоками по месяцам, пилюли по шагу документа, строка ведёт сразу на страницу документа (окошка нет; живой — по
      * ключу месяца и группы, старый `?peek=` — туда же); «Отправили сами» записывает, кто отметил, и ведёт на страницу
      * отправленного.
      */
@@ -198,6 +198,8 @@ class ParkClosingDocsTest extends TestCase
         $key = ClosingDoc::liveKey($month, $group);
         $this->actingAs($this->admin)->get(Surface::Park->url('/money/closing'))->assertOk()
             ->assertSee('Октябрь')->assertSee('СОГАЗ тест')->assertSee('href="/money/closing/'.$key.'"', false);
+        $this->actingAs($this->admin)->get(Surface::Park->url('/money/closing?state=send'))->assertOk()->assertSee('href="/money/closing/'.$key.'"', false);
+        $this->actingAs($this->admin)->get(Surface::Park->url('/money/closing?state=paid'))->assertOk()->assertDontSee('href="/money/closing/'.$key.'"', false);
         $this->actingAs($this->admin)->get(Surface::Park->url('/money/closing?peek='.$key))->assertRedirect('/money/closing/'.$key);
         $this->actingAs($this->admin)->get(Surface::Park->url('/money/closing/'.$key))->assertOk()
             ->assertSee('Отправить')->assertSee('Отправили сами')->assertDontSee('Не вошли');

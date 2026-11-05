@@ -159,8 +159,9 @@ class MoneyController
     }
 
     /**
-     * Счета и акты (05.11.2026, владелец: «не разделять по месяцам, а группировать; логотипов не хватает»): одна таблица
-     * документов по месяцам (`ClosingDoc::window`), у строки — логотип, что за документ и состояние словом; нажатие — сразу
+     * Счета и акты (05.11.2026, владелец: «не разделять по месяцам, а группировать; логотипов не хватает»; 06.11.2026 —
+     * «табличный вид не подходит, блоки со строками, подписи месяцев вне блоков»): блок `.list` на месяц (`ClosingDoc::window`),
+     * пилюли по шагу — `?state=` (`CLOSING_STATES`); у строки — логотип, что за документ и состояние словом; нажатие — сразу
      * страница документа (`closingPage`; окошка рядом нет — владелец: «здесь оно вообще неуместно»). Старые `?month=` —
      * якорем своего месяца, `?peek=` — на страницу документа.
      */
@@ -173,9 +174,25 @@ class MoneyController
             return redirect('/money/closing#m'.$m, 301);
         }
         $months = min(24, max(6, (int) $request->query('months', 6)));
+        $docs = ClosingDoc::window($months);
+        $state = array_key_exists($s = (string) $request->query('state', ''), self::CLOSING_STATES) ? $s : '';
+        $counts = ['' => $docs->flatten(1)->count()];
+        foreach (self::CLOSING_STATES as $key => $states) {
+            $counts[$key] = $docs->flatten(1)->whereIn('state', $states)->count();
+        }
+        if ($state !== '') {
+            $docs = $docs->map(fn ($list) => $list->whereIn('state', self::CLOSING_STATES[$state])->values())->filter->isNotEmpty();
+        }
 
-        return view('park.money.closing', ['docs' => ClosingDoc::window($months), 'months' => $months, 'table' => self::closingTable()]);
+        return view('park.money.closing', ['docs' => $docs, 'months' => $months, 'state' => $state, 'counts' => array_filter($counts)]);
     }
+
+    /** Пилюли «Счетов и актов» — состояния документа (`ClosingDoc::$state`) по шагу: отправить, ждём оплату, оплачены. */
+    private const CLOSING_STATES = [
+        'send' => ['drift', 'send', 'blocked', 'nobody'],
+        'wait' => ['overdue', 'due'],
+        'paid' => ['paid'],
+    ];
 
     /**
      * Счёт: документ «Счетов и актов» (реестр месяца, счёт покупателю за хранение) — на своей странице со всеми ТС
@@ -226,16 +243,6 @@ class MoneyController
         [$month, $group, $replaces] = $this->draftKey($request);
 
         return redirect('/money/closing/'.($replaces ? 'i'.$replaces->id : ClosingDoc::liveKey($month, $group)));
-    }
-
-    /** Таблица «Счетов и актов» — одно описание на шапку, заголовки месяцев и строки `x-billing.closing-row`. */
-    public static function closingTable(): Table
-    {
-        return Table::of(
-            new Column('title', 'Плательщик', grow: true),
-            new Column('amount', 'Сумма', num: true, cell: 'nums', rem: 7),
-            new Column('state', 'Состояние', from: 'sm', role: ColRole::When, rem: 7.5),
-        );
     }
 
     public function draftPdf(Request $request, InvoicePdf $pdf)

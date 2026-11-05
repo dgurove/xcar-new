@@ -1,41 +1,28 @@
-{{-- Строка «Счетов и актов» (`ClosingDoc`): логотип и имя плательщика, под ним что за документ и сколько ТС (у отправленного —
-     номер); справа сумма, под ней на телефоне состояние словом — от 640 своим столбцом. Файлов в строке нет (владелец:
-     «бесполезные») — они в карточке. Без плательщика (покупатель без контрагента)
-     — строка без карточки: документа не из чего собрать. --}}
-@props(['doc', 'table'])
+{{-- Строка «Счетов и актов» (`ClosingDoc`) в блоке месяца `.list` (06.11.2026, владелец: «табличный вид не подходит — блоки
+     со строками»): логотип и имя плательщика, под ним что за документ и сколько ТС (у отправленного — номер); справа столбиком
+     сумма и под ней состояние своим цветом; нажатие — страница документа. Файлов в строке нет (владелец: «бесполезные»).
+     Без плательщика (покупатель без контрагента) — строка без ссылки: документа не из чего собрать. --}}
+@props(['doc'])
 @php
-    use App\Support\Money;
+    use App\Support\Money; use App\Support\Ago;
     $d = $doc;
-    $sub = $d->what.($d->what === 'хранение' || $d->what === 'эвакуация' || $d->what === 'страхователь' ? ', '.$d->cars.' ТС' : '');
+    $sub = $d->what.(in_array($d->what, ['хранение', 'эвакуация', 'страхователь'], true) ? ', '.$d->cars.' ТС' : '');
+    $tag = $d->state === 'nobody' ? 'div' : 'a';
 @endphp
-<tr id="doc-{{ $d->key }}" @class(['doc-row', 'is-link' => $d->state !== 'nobody'])>
-    @foreach ($table->columns as $key => $col)
-        @switch($key)
-        @case('title')
-    <td class="{{ $col->classes() }}">
-        @if ($d->state !== 'nobody')
-            {{-- Ссылка на всю строку (`.doc-row.is-link a::after`): нажатие куда угодно — страница документа. --}}
-            <a href="/money/closing/{{ $d->key }}" class="doc-row-link"><span class="cell-title">@if ($d->vendor)<x-vendor.name :vendor="$d->vendor"/>@else{{ $d->name }}@endif</span></a>
-        @else
-            <span class="cell-title">{{ $d->name }}</span>
-        @endif
-        <span class="cell-sub">
-            <span class="sm:hidden {{ $d->tone() }}">{{ $d->word() }}</span>
+<{{ $tag }} @if ($tag === 'a') href="/money/closing/{{ $d->key }}" @endif id="doc-{{ $d->key }}" class="row doc-row">
+    @if ($d->vendor)<x-vendor.logo :vendor="$d->vendor" class="size-9 shrink-0"/>@else<span class="vendor-logo is-letter size-9 shrink-0" aria-hidden="true"><span>{{ mb_strtoupper(mb_substr($d->name, 0, 1)) }}</span></span>@endif
+    <div class="min-w-0 flex-1">
+        <div class="doc-row-name">{{ $d->vendor?->name ?? $d->name }}</div>
+        <div class="row-sub">
             <span>{{ $sub }}</span>
-            @if ($d->invoice)<span class="nums">{{ $d->invoice->label() }}</span>@endif
+            @if ($d->invoice)<span class="nums">{{ $d->invoice->label() }}@if ($d->invoice->issued_at) от {{ Ago::day($d->invoice->issued_at) }}@endif</span>@endif
             @if ($d->extra)<span>дополнительно</span>@endif
-        </span>
-    </td>
-        @break
-        @case('amount')
-    <td class="{{ $col->classes() }}">
-        {{ Money::nums($d->drift['now'] ?? $d->amount) }}
-        @if ($d->drift)<span class="cell-sub line-through">{{ Money::nums($d->drift['was']) }}</span>@endif
-    </td>
-        @break
-        @case('state')
-    <td class="{{ $col->classes() }} {{ $d->tone() }}">{{ $d->word() }}</td>
-        @break
-        @endswitch
-    @endforeach
-</tr>
+            @if ($d->drift)<span class="nums">было {{ Money::nums($d->drift['was']) }}</span>@endif
+        </div>
+    </div>
+    <div class="doc-row-end">
+        <span class="nums">{{ Money::rub($d->drift['now'] ?? $d->amount) }}</span>
+        <span class="{{ $d->tone() }}">{{ $d->word() }}</span>
+    </div>
+    @if ($tag === 'a')<x-ui.chevron/>@endif
+</{{ $tag }}>
