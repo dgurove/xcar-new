@@ -44,15 +44,17 @@
   /* Этап: люди парят над названием (владелец 05.11.2026: «тогда от заголовков до блоков не будет лишних отступов»), название
      крупно без плашки, число рядом, горящие — красной капсулой. */
   .conveyor-stage { grid-row: span 2; display: grid; grid-template-rows: subgrid; width: 18.5rem; }
-  .stage-head { display: grid; gap: .625rem; align-content: end; }
+  /* Шапки одной высоты (05.11.2026, владелец: «скачут»): ряд людей — одна строка высотой аватара, есть люди или нет; название —
+     всегда две строки, у короткого вторая пустая. Верх названий и первые подэтапы — одной линией. */
+  .stage-head { display: grid; gap: .625rem; align-content: start; }
   .stage-line { display: flex; align-items: flex-start; gap: .625rem; }
-  .stage-title { flex: 1; min-width: 0; margin: 0; font-size: var(--text-xl); font-weight: 500; line-height: 1.15; letter-spacing: -.01em; color: var(--b-ink); }
+  .stage-title { flex: 1; min-width: 0; min-height: 2lh; margin: 0; font-size: var(--text-xl); font-weight: 500; line-height: 1.15; letter-spacing: -.01em; color: var(--b-ink); }
   .stage-n { font-size: var(--text-xl); line-height: 1.15; color: var(--b-dim); }
   .hot-pill {
     display: inline-flex; align-items: center; gap: .1875rem; flex: none; height: 1.5rem; padding: 0 .5rem 0 .375rem;
     border-radius: 999px; background: var(--b-red); color: #fff; font-size: var(--text-sm); font-weight: 600;
   }
-  .stage-people { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem .875rem; }
+  .stage-people { display: flex; align-items: center; gap: .875rem; height: 28px; overflow: hidden; white-space: nowrap; }
   .stage-person { display: inline-flex; align-items: center; gap: .4375rem; }
   .person-name { font-size: var(--text-sm); color: var(--b-dim); }
   .person-n { font-size: var(--text-base); font-weight: 500; color: var(--b-ink); }
@@ -90,13 +92,22 @@
   .conveyor-step.is-bumped { animation: step-bump 900ms var(--ease-out); }
   @keyframes step-bump { from { background: var(--color-accent-soft); } }
 
-  /* «К схеме» — круглая кнопка в углу, появляется, когда схема ушла с глаз. */
-  .space-home {
-    position: absolute; right: 1rem; bottom: 1rem;
-    display: grid; place-items: center; width: 2.75rem; height: 2.75rem; border-radius: 999px;
-    background: var(--color-bar); color: var(--color-ink);
-    transition: opacity var(--dur) var(--ease-out), scale var(--dur) var(--ease-out);
+  /* Фильтр «Ответственный» (`admin/space/filter`) — плашка в правом нижнем углу, всегда видна: кто выбран и тумблер. */
+  .space-filter {
+    position: absolute; right: 1rem; bottom: 1rem; z-index: 1;
+    display: flex; align-items: center; gap: .5rem; height: 2.75rem; padding: 0 .625rem 0 .375rem;
+    border-radius: 999px; background: var(--color-bar); color: var(--color-ink); cursor: default;
+    touch-action: manipulation;
   }
-  .space-home[hidden] { display: grid; opacity: 0; scale: .8; pointer-events: none; }
+  .space-filter-who { display: flex; align-items: center; gap: .375rem; min-width: 0; max-width: 12rem; height: 2.25rem; padding: 0 .5rem 0 .25rem; border-radius: 999px; font-size: var(--text-sm); }
+  @media (hover: hover) { .space-filter-who:hover { background: var(--color-surface-2); } }
+  .space-filter-face { display: flex; align-items: center; gap: .5rem; min-width: 0; }
+  .space-people .space-filter-face { gap: .625rem; }
+  /* У выбранного нет работы на доске (вошедший без своих подэтапов) — тумблер не включается. */
+  .space-filter .switch:disabled { opacity: .4; }
+  .face-ico-s { width: 24px; height: 24px; background: var(--color-surface-2); color: var(--color-ink); }
+  /* Фильтр включён — люди этапа, кроме выбранного, приглушены. */
+  .stage-person { transition: opacity var(--dur) var(--ease-out); }
+  .stage-person.is-dim { opacity: .35; }
 
 }

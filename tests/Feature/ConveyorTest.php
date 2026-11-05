@@ -39,6 +39,12 @@ class ConveyorTest extends TestCase
         $this->assertSame([0, 0], $steps['bids']['parts']->pluck('n')->all());
         $this->assertSame(0, $steps['bids']['n']);
         $this->assertSame(0, $steps['floor']['hot']);
+        // Фильтр «Ответственный»: у подэтапа — кто его делает и его доля; в выборе — наши, затем группы.
+        $this->assertSame(['user:'.\App\Space\Owners::of('floor') => [1, 0]], $steps['floor']['by']);
+        $this->assertSame(['group:managers' => [0, 0]], $steps['confirm']['by']);
+        $people = collect(Conveyor::people(Conveyor::view()))->pluck('key');
+        $this->assertContains('group:managers', $people);
+        $this->assertSame('group:managers', $people->first(fn ($k) => str_starts_with($k, 'group:')));
 
         $this->get(self::CRM.'/space/conveyor')->assertRedirect();
         $this->actingAs($manager)->get(self::CRM.'/space/conveyor')->assertForbidden();

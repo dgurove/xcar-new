@@ -33,6 +33,38 @@ final class Owners
         'docs' => self::LIZA,        // документы на вывоз СДЭКом
     ];
 
+    /**
+     * Чей подэтап конвейера — для фильтра «Ответственный» на главной (05.11.2026, владелец): вид работы из `WORK` или группа.
+     * Подэтапа здесь нет — его люди из самих записей: «Назначить исполнителя» — логист перевозки (`Conveyor::pickups`).
+     */
+    public const STEPS = [
+        'letters' => 'drafts', 'floor' => 'floor',
+        'price' => 'price', 'review' => 'price', 'ready' => 'price', 'unsold' => 'price',
+        'bids' => 'bids', 'claims' => 'claims', 'a-write' => 'letters', 'a-reply' => 'letters',
+        'answer' => 'reprice', 'reprice' => 'reprice',
+        'write' => 'deals', 'reply' => 'deals', 'invoice' => 'deals', 'paid' => 'deals', 'settle' => 'deals',
+        'assign' => 'pickup', 'cdek' => 'docs',
+    ];
+
+    /** Группы фильтра: без лиц или из многих людей — одной строкой. */
+    public const GROUPS = [
+        'group:managers' => 'Менеджеры',
+        'group:vendors' => 'Поставщики',
+        'group:drivers' => 'Исполнители вывоза',
+    ];
+
+    /** Ключ ответственного подэтапа (`user:4`, `group:managers`); `null` — люди из записей. */
+    public static function keyOf(string $step): ?string
+    {
+        return match (true) {
+            isset(self::STEPS[$step]) => 'user:'.self::of(self::STEPS[$step]),
+            in_array($step, ['estimate', 'gallery', 'confirm'], true), str_starts_with($step, 'm-') => 'group:managers',
+            str_starts_with($step, 's-') => 'group:vendors',
+            $step === 'drive' => 'group:drivers',
+            default => null,
+        };
+    }
+
     /** Чьи письма о сделке пишет и разбирает Андрей (владелец 05.11.2026: «Андрей по Альфе и Т-Страхованию, Катя по Совкому»). */
     private const LETTER_VENDORS = ['%альфа%', '%т-страх%'];
 

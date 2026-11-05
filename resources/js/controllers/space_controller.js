@@ -3,27 +3,28 @@ import { morphChildren } from '@hotwired/turbo';
 import { bump } from '../lib/bump';
 import { request } from '../lib/http';
 import { reducedMotion } from '../lib/motion';
-import { Camera } from '../space/camera';
+import { Camera, FOCUS } from '../space/camera';
+import { Filter } from '../space/filter';
 import { Backdrop, FlatSky, Sky, fits, pixelRatio, stars } from '../space/sky';
 
 // Космос главной CRM (`admin/space`, 04.11.2026): звёзды (`space/sky.js`), камера (`space/camera.js`) и слой схемы
-// `.space-world` — одним циклом кадров. Кадр рисуется, только когда есть что менять: жест, бросок, масштаб, полёт
-// «К схеме» и метеор — каждый кадр экрана; в покое — 30 кадров/с ради мерцания, после 30 с без касаний — 20; скрытая
+// `.space-world` — одним циклом кадров. Кадр рисуется, только когда есть что менять: жест, бросок, масштаб,
+// пружина к этапу и метеор — каждый кадр экрана; в покое — 30 кадров/с ради мерцания, после 30 с без касаний — 20; скрытая
 // вкладка и уход со страницы — ни одного, контекст видеокарты отдаётся. Без движения (prefers-reduced-motion) и без
 // WebGL — ни мерцания, ни метеоров: кадр только на сдвиг. Медленные кадры в движении — холст мельче (dpr 2 → 1,5 → 1).
 // Фон светлой темы — свой холст (`Backdrop`): рисуется один раз и едет за камерой transform'ом, в кадр звёзд не входит.
 // Конвейер (`App\Space\Conveyor`): этапы столбцами в слое схемы, обычной раскладкой сетки. Числа живые: событие
 // сотрудникам — кусок `#conveyor` перечитывается морфом (`morphChildren`) не чаще раза в 2 с, сменившееся число
-// докручивается, подэтап коротко загорается.
+// докручивается, подэтап коротко загорается. Вбок камера листает по этапам (центры видимых этапов — ей), мир — в рамке
+// доски. Фильтр «Ответственный» (`space/filter.js`) — плашка в углу: выбор и тумблер помнит браузер.
+const PICK = 'space:who';
 const IDLE = 1000 / 30;
 const DEEP_IDLE = 1000 / 20;
 const DEEP_AFTER = 30000;
 const METEOR = [25000, 60000];
 const SLOW = 24;             // мс кадра в движении: дольше — снизить dpr
 // Вид помнится под ключом раскладки: вид прежней схемы (змейка вокруг начала мира) на новой доске — пустое небо.
-const KEY = 'space:camera:v2';
-const WHOLE = 0.6;           // ПК: доска целиком, если влезает не мельче этого,
-const PC = 0.9;              // иначе её начало в этом масштабе (ниже — если не влезает по высоте)
+const KEY = 'space:camera:v3';
 const CALM = 2000;           // мс: события пачкой — одно перечитывание
 const STALE = 9000;          // мс: сервер отдал прежний снимок — ещё раз через столько (+ CALM)
 const TWEEN = 700;           // мс докрутки числа
@@ -31,10 +32,12 @@ let sky = null;              // звёзды одни на сеанс: втор�
 
 const read = (key) => { try { return JSON.parse(sessionStorage.getItem(key) || 'null') ?? undefined; } catch { return undefined; } };
 const save = (key, value) => { try { sessionStorage.setItem(key, JSON.stringify(value)); } catch {} };
+const recall = () => { try { return JSON.parse(localStorage.getItem(PICK) || 'null'); } catch { return null; } };
+const remember = (value) => { try { localStorage.setItem(PICK, JSON.stringify(value)); } catch {} };
 
 export default class extends Controller {
-    static targets = ['back', 'sky', 'world', 'conveyor', 'home'];
-    static values = { url: String };
+    static targets = ['back', 'sky', 'world', 'conveyor', 'filter', 'who', 'toggle'];
+    static values = { url: String, me: String };
 
     connect() {
         this.still = reducedMotion();
@@ -43,7 +46,9 @@ export default class extends Controller {
         this.build();
         this.backdrop = new Backdrop(this.backTarget);
         this.camera = new Camera(this.element, { wake: () => this.wake(), still: this.still });
-        this.fresh = !this.camera.restore(read(KEY));
+        this.camera.restore(read(KEY));
+        this.filter = new Filter(this.worldTarget, this.camera, { still: this.still, relayout: (keep) => this.layout(keep) });
+        this.pickInit();
         // Тема — класс `dark` у <html> (`theme.js`): переключили — фон другой сразу, без перезагрузки. Холст звёзд — новый:
         // прозрачность контекста задаётся только при создании.
         this.theme = () => {
@@ -101,10 +106,6 @@ export default class extends Controller {
         if (this.camera) this.planMeteor();
     }
 
-    home() {
-        this.camera.home();
-    }
-
     canvas() {
         const canvas = this.skyTarget.cloneNode();
         this.skyTarget.replaceWith(canvas);
@@ -122,31 +123,67 @@ export default class extends Controller {
         this.paintBack();
     }
 
-    // Рамка доски — камере, и вид её начала; первый заход — сразу на него.
-    layout() {
-        const { w, h } = this.camera;
+    // Рамка камере: центры видимых этапов и высота доски; `keep` — фокус не трогать (его ставит фильтр).
+    layout(keep = false) {
+        const { w } = this.camera;
         const board = this.worldTarget.querySelector('[data-board]');
         if (w <= 1 || !board) return;
         const frame = frameOf(board, this.worldTarget);
-        this.camera.frame(frame, this.start(frame, w, h));
-        if (this.fresh) { this.fresh = false; this.camera.jump(); }
+        const stages = [...board.querySelectorAll('.conveyor-stage:not([hidden])')];
+        const columns = stages.map((s) => frame.x0 + s.offsetLeft + s.offsetWidth / 2);
+        // Снизу — место плашке фильтра: последний подэтап не встаёт под неё.
+        const pad = w < 700 ? { top: 16, bottom: 80 } : { top: 32, bottom: 96 };
+        if (keep) { const fx = this.camera.fx; this.camera.frame(columns, { y0: frame.y0, y1: frame.y1 }, pad, this.start(stages[0], w)); this.camera.fx = fx; }
+        else this.camera.frame(columns, { y0: frame.y0, y1: frame.y1 }, pad, this.start(stages[0], w));
         this.drawn = -1;
         this.wake();
     }
 
-    // Вид доски: этапы читаются слева направо. ПК — доска целиком, если влезает не мельче `WHOLE`, иначе её начало;
-    // телефон — первый этап почти во всю ширину, дальше листают вбок.
-    start(b, w, h) {
-        const clamp = (v, a, c) => Math.min(c, Math.max(a, v));
-        const pad = w < 700 ? 16 : 40;
-        const fit = Math.min((w - pad * 2) / (b.x1 - b.x0), (h - pad * 2) / (b.y1 - b.y0));
-        if (w >= 700 && fit >= WHOLE) {
-            const z = Math.min(1, fit);
-            return { x: (b.x0 + b.x1) / 2, y: (b.y0 + b.y1) / 2, z };
-        }
-        const col = this.worldTarget.querySelector('.conveyor-stage')?.offsetWidth || 300;
-        const z = w < 700 ? clamp((w - 2 * pad) / col, 0.5, 1) : clamp(Math.min(PC, (h - 2 * pad) / (b.y1 - b.y0)), 0.55, 1);
-        return { x: b.x0 - pad / z + w / 2 / z, y: b.y0 - pad / z + h / 2 / z, z };
+    // Вид при первом заходе: первый этап на золотом сечении. ПК — масштаб 1; телефон — этап целиком левее середины, его
+    // левый край на отступе, справа заглядывает следующий: видно, что листать вбок.
+    start(stage, w) {
+        const col = stage?.offsetWidth || 300;
+        const z = w < 700 ? Math.min(1, Math.max(0.5, (2 * (FOCUS * w - 16)) / col)) : 1;
+        return { i: 0, z };
+    }
+
+    // Фильтр «Ответственный»: выбор и тумблер из памяти браузера, иначе — сам вошедший; включён, если у него есть работа
+    // на доске (у владельца и модератора её нет — пустой доски при входе не будет).
+    pickInit() {
+        const has = (key) => !!this.filterTarget.querySelector(`[data-key="${CSS.escape(key)}"][role="menuitemradio"]`);
+        const saved = recall();
+        const key = saved && has(saved.key) ? saved.key : this.meValue;
+        const on = saved && has(saved.key) ? !!saved.on : has(this.meValue);
+        this.pick(key);
+        this.toggleTarget.checked = on && !this.toggleTarget.disabled;
+        this.filter.set(this.toggleTarget.checked ? key : null, { animate: false });
+    }
+
+    // У выбранного без работы на доске (вошедший владелец) тумблер не включается: пустой доски не бывает.
+    pick(key) {
+        this.chosen = key;
+        const item = this.filterTarget.querySelector(`[data-key="${CSS.escape(key)}"][role="menuitemradio"]`);
+        for (const el of this.filterTarget.querySelectorAll('[role="menuitemradio"]')) el.toggleAttribute('aria-current', el === item);
+        if (item) this.whoTarget.innerHTML = item.innerHTML;
+        this.toggleTarget.disabled = !item;
+        if (!item) this.toggleTarget.checked = false;
+    }
+
+    // Выбрали человека — фильтр включается сам: выбор и есть просьба показать его.
+    choose(event) {
+        this.pick(event.currentTarget.dataset.key);
+        this.toggleTarget.checked = true;
+        this.apply();
+    }
+
+    toggle() {
+        this.apply();
+    }
+
+    apply() {
+        const on = this.toggleTarget.checked;
+        remember({ key: this.chosen, on });
+        this.filter.set(on ? this.chosen : null);
     }
 
     // Событие пачкой — одно перечитывание через CALM; идёт — ещё одно после него.
@@ -175,7 +212,12 @@ export default class extends Controller {
                 fresh.innerHTML = await r.text();
                 if (!this.element.isConnected) return;
                 morphChildren(this.conveyorTarget, fresh);
-                this.layout();
+                // Морф вернул все подэтапы и общие числа — отбор заново, без анимации; фокус — на том же этапе.
+                const focus = this.filter.focusStage();
+                const was = focus ? this.filter.center(focus) : this.camera.fx;
+                this.filter.reapply();
+                this.layout(true);
+                this.filter.refocus(focus, was);
                 this.counted(before);
             }
         } finally {
@@ -184,9 +226,10 @@ export default class extends Controller {
         }
     }
 
-    // Числа до перечитывания: у каждого подэтапа, этапа, источника и выхода.
+    // Показанные числа у каждого подэтапа и этапа (с фильтром — доля выбранного, `data-shown`).
     counts() {
-        return new Map([...this.worldTarget.querySelectorAll('[data-step]')].map((el) => [el.dataset.step, Number(el.querySelector('[data-count]')?.dataset.count ?? el.dataset.count) || 0]));
+        const n = (el) => (el ? Number(el.dataset.shown ?? el.dataset.count) || 0 : 0);
+        return new Map([...this.worldTarget.querySelectorAll('[data-step]')].map((el) => [el.dataset.step, n(el.matches('[data-count]') ? el : el.querySelector('[data-count]'))]));
     }
 
     // После перечитывания: сменившееся число докручивается от прежнего, подэтап коротко загорается.
@@ -264,8 +307,6 @@ export default class extends Controller {
             clearTimeout(this.calm);
             this.calm = setTimeout(() => this.worldTarget.classList.remove('is-moving'), 200);
         }
-        const lost = this.camera.lost();
-        if (this.homeTarget.hidden === lost) this.homeTarget.hidden = !lost;
     }
 
     // Медленные кадры в движении (45 подряд в среднем дольше SLOW) — холст мельче, звёзды те же.

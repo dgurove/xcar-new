@@ -40,7 +40,7 @@ use Illuminate\Support\Facades\Cache;
 final class Conveyor
 {
     /** Ключ меняется вместе с видом снимка: прежний снимок другого вида после выкладки ронял бы главную. */
-    public const KEY = 'space.conveyor.v2';
+    public const KEY = 'space.conveyor.v3';
 
     private const DIRTY = 'space.conveyor.dirty';
 
@@ -187,11 +187,14 @@ final class Conveyor
 
         $stages = collect(self::STAGES)->map(function (array $stage, string $key) use ($snap, $fixed, $users, $vendors) {
             [$title, $steps] = $stage;
+            // Ключ лица — тот же, что у фильтра «Ответственный»: поставщики и исполнители там — группой.
             $people = match (true) {
-                isset($fixed[$key]) => collect($fixed[$key])->map(fn (int $id) => ['type' => 'user', 'id' => $id, 'model' => $users->get($id)]),
-                in_array($key, self::GROUPS, true) => collect([['type' => 'icon', 'icon' => 'users', 'label' => 'Менеджеры']]),
+                isset($fixed[$key]) => collect($fixed[$key])->map(fn (int $id) => ['type' => 'user', 'id' => $id, 'key' => 'user:'.$id, 'model' => $users->get($id)]),
+                in_array($key, self::GROUPS, true) => collect([['type' => 'icon', 'icon' => 'users', 'label' => 'Менеджеры', 'key' => 'group:managers']]),
                 default => collect($snap['people'][$key] ?? [])
-                    ->map(fn ($p) => [...$p, 'model' => $p['type'] === 'vendor' ? $vendors->get($p['id']) : $users->get($p['id'])])
+                    ->map(fn ($p) => [...$p,
+                        'key' => match (true) { $p['type'] === 'vendor' => 'group:vendors', $key === 'drive' => 'group:drivers', default => 'user:'.$p['id'] },
+                        'model' => $p['type'] === 'vendor' ? $vendors->get($p['id']) : $users->get($p['id'])])
                     ->sortByDesc('n'),
             };
             $people = $people->filter(fn ($p) => $p['type'] === 'icon' || $p['model'])->values();
@@ -203,6 +206,7 @@ final class Conveyor
                 'hot' => $snap['steps'][$step]['hot'] ?? 0,
                 'parts' => collect(self::STEPS[$step][2] ?? [])->map(fn (string $title, string $part) => ['key' => $part, 'title' => $title, 'n' => $snap['steps'][$part]['n'] ?? 0])->values(),
                 'vendor' => $step === 'claims' ? $vendors->get($snap['claims_vendor']) : null,
+                'by' => self::by($step, $snap),
             ]);
 
             return [
@@ -218,6 +222,38 @@ final class Conveyor
         })->all();
 
         return $stages;
+    }
+
+    /**
+     * Кто делает подэтап и сколько у каждого — для фильтра «Ответственный»: `[ключ => [число, горящих]]`. У постоянного
+     * ответственного и у группы — весь подэтап (и пустой: работа его, просто сейчас её нет), у «Назначить исполнителя» —
+     * по логисту перевозок (`pickups`).
+     */
+    private static function by(string $step, array $snap): array
+    {
+        if ($key = Owners::keyOf($step)) {
+            return [$key => [$snap['steps'][$step]['n'] ?? 0, $snap['steps'][$step]['hot'] ?? 0]];
+        }
+
+        return $snap['steps'][$step]['by'] ?? [];
+    }
+
+    /**
+     * Выбор фильтра «Ответственный»: сначала наши — кто делает подэтапы доски, по имени, — затем группы (`Owners::GROUPS`).
+     * `[['key' => 'user:4', 'name' => …, 'user' => User|null, 'icon' => …]]`.
+     */
+    public static function people(array $board): array
+    {
+        $keys = collect($board)->flatMap(fn ($stage) => $stage['steps']->flatMap(fn ($step) => array_keys($step['by'])))->unique();
+        $users = User::with(User::withAvatar())
+            ->whereKey($keys->filter(fn ($k) => str_starts_with($k, 'user:'))->map(fn ($k) => (int) substr($k, 5)))->get()->sortBy('name');
+        $icons = ['group:managers' => 'users', 'group:vendors' => 'bank', 'group:drivers' => 'cat-truck'];
+
+        return [
+            ...$users->map(fn (User $u) => ['key' => 'user:'.$u->id, 'name' => $u->name, 'user' => $u, 'icon' => null])->values()->all(),
+            ...collect(Owners::GROUPS)->filter(fn ($name, $key) => $keys->contains($key))
+                ->map(fn ($name, $key) => ['key' => $key, 'name' => $name, 'user' => null, 'icon' => $icons[$key]])->values()->all(),
+        ];
     }
 
     private static function href(string $step, array $snap): ?string
@@ -409,11 +445,14 @@ final class Conveyor
         $late = fn (Transport $t) => $t->isLate()
             || (in_array($t->state, [TransportState::Logist, TransportState::Assigned], true) && $t->assigned_at?->lt(now()->subDay()));
         $tally = function (string $step, string $stage, $list, \Closure $who) use (&$steps, &$people, $late) {
-            $steps[$step] = ['n' => $list->count(), 'hot' => $list->filter($late)->count()];
+            $steps[$step] = ['n' => $list->count(), 'hot' => $list->filter($late)->count(), 'by' => []];
             foreach ($list as $t) {
                 if (! ($id = $who($t))) {
                     continue;
                 }
+                $by = &$steps[$step]['by']['user:'.$id];
+                $by = [($by[0] ?? 0) + 1, ($by[1] ?? 0) + ($late($t) ? 1 : 0)];
+                unset($by);
                 $people[$stage]['user:'.$id] ??= ['type' => 'user', 'id' => $id, 'n' => 0, 'late' => 0];
                 $people[$stage]['user:'.$id]['n']++;
                 $people[$stage]['user:'.$id]['late'] += $late($t) ? 1 : 0;

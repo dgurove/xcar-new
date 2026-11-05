@@ -31,7 +31,9 @@ final class HomeController
             return redirect(Surface::Crm->home());
         }
 
-        return view('admin.space', ['board' => Conveyor::view()]);
+        $board = Conveyor::view();
+
+        return view('admin.space', ['board' => $board, 'people' => Conveyor::people($board)]);
     }
 
     /**
