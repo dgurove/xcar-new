@@ -165,7 +165,7 @@ class Stage extends Model
         return $this->exitsFor(Actor::Manager, $deal)->isNotEmpty();
     }
 
-    /** Наш исход, ведущий на этап с таким состоянием оффера: так кнопка «Опубликовать» догоняет маршрут. */
+    /** Наш исход, ведущий на этап с таким состоянием оффера: так кнопка «Выставить в продажу» догоняет маршрут. */
     public function exitInto(OfferState $state, ?Deal $deal = null): ?Outcome
     {
         return $this->exitsFor(Actor::Staff, $deal)->first(fn (Outcome $e) => $e->to?->offer_state === $state);

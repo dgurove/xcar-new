@@ -1,6 +1,6 @@
 {{-- Что сейчас с предложением и что с этим сделать — плашкой сверху окошка, тем же видом, что «Цены» черновика и «Приём»
      (19.10.2026, владелец: «непонятно, что от тебя хотят в этом окне», «к унификации»): кнопками, а не пунктами «Действий».
-     Слот («Публикация») — когда выйдет, «Опубликовать сейчас», «Перенести» (шторка слотов), «Убрать из слота»; на аукционе —
+     Слот («Публикация») — когда выйдет, «Выставить сейчас», «Перенести» (шторка слотов), «Убрать из слота»; на аукционе —
      «Вернуть в продажу» (шторка `x-offer.resale-sheet`) и «В черновики»; архив — «Вернуть в черновики» и красным «Удалить
      навсегда». На аукционе первой — «Продана на аукционе» (шторка `x-offer.auction-sale-sheet`, 20.10.2026). Этих пунктов в «Действиях» тогда нет. --}}
 @php
@@ -17,7 +17,7 @@
         <div class="flex flex-wrap gap-2" data-controller="sheet">
             <form method="post" action="/offers/{{ $n }}/state" data-price-guard="publish" data-price-guard-offer="{{ $n }}" class="flex basis-full">
                 @csrf<input type="hidden" name="state" value="open"><input type="hidden" name="when" value="{{ Slots::NOW }}">
-                <button class="btn btn-s btn-quiet flex-1">Опубликовать сейчас</button>
+                <button class="btn btn-s btn-quiet flex-1">Выставить сейчас</button>
             </form>
             <button type="button" class="btn btn-s btn-quiet min-w-0 flex-1" data-action="sheet#open">Перенести</button>
             <form method="post" action="/offers/{{ $n }}/unschedule" class="flex min-w-0 flex-1">@csrf<button class="btn btn-s btn-quiet min-w-0 flex-1">Убрать из слота</button></form>

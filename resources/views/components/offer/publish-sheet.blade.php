@@ -1,9 +1,10 @@
-{{-- «Опубликовать» с выбором (владелец 03.10.2026): сейчас, в ближайший слот (по умолчанию) или в следующий — строками
-     с датой, кнопка называет исход (подпись меняется по отмеченной строке, `.publish-choice` в app.css). Своей формой
+{{-- «Выставить в продажу» с выбором времени (владелец 03.10.2026; одно слово для действия — 05.11.2026, владелец: «не понимаю
+     разницы между „Выставить в продажу“ и „Опубликовать“»): сейчас, в ближайший слот (по умолчанию) или в следующий — строками
+     со временем выхода, кнопка называет исход (подпись меняется по отмеченной строке, `.publish-choice` в app.css). Своей формой
      (`action`: выход маршрута) или полями чужой (`form`: редактор, `submit` — then=open). Срок страховой раньше слота —
      дата красным: таймер черновика уведёт предложение раньше. Без offer — пачкой (галочки «Оцененных» и «Публикации»,
      `form` — их форма); move — перенос стоящих в слоте: «Перенести на завтра в 16:00». «Другой день» — календарь (`Slots::DAY`). --}}
-@props(['offer' => null, 'id', 'action' => null, 'form' => null, 'submit' => [], 'title' => 'Опубликовать', 'move' => false, 'state' => null])
+@props(['offer' => null, 'id', 'action' => null, 'form' => null, 'submit' => [], 'title' => 'Выставить в продажу', 'move' => false, 'state' => null])
 @php
     $choices = \App\Offers\Slots::choices();
     $late = fn ($at) => $offer && $at && $offer->insurer_deadline_at && $offer->insurer_deadline_at->copy()->endOfDay()->lt($at);
@@ -14,8 +15,7 @@
             @foreach ($choices as $c)
                 <label class="row row-check">
                     <span class="min-w-0 flex-1">
-                        <span class="block">{{ $c['title'] }}</span>
-                        @if ($c['label'])<span @class(['row-sub', 'text-danger' => $late($c['at'])])>{{ $c['label'] }}</span>@endif
+                        <span @class(['block', 'text-danger' => $late($c['at'])])>{{ $c['title'] }}</span>
                     </span>
                     <span class="check"><input type="radio" name="when" value="{{ $c['when'] }}" @if ($form) form="{{ $form }}" @endif @checked($c['when'] === \App\Offers\Slots::NEAREST)></span>
                 </label>
@@ -44,9 +44,9 @@
         @endif
         {{-- Шторка закрывается сразу: ошибка поля (номер убытка, фото) должна быть видна, а не под шторкой. --}}
         <x-ui.button block :form="$form" :name="array_key_first($submit)" :value="$submit ? reset($submit) : null" data-action="sheet#close">
-            @foreach ($choices as $c)<span data-when="{{ $c['when'] }}">{{ $c['at'] ? ($move ? 'Перенести на ' : 'Опубликовать ').\App\Offers\Slots::phrase($c['at']) : 'Опубликовать сейчас' }}</span>@endforeach
-            <span data-when="{{ \App\Offers\Slots::DAY }}">{{ $move ? 'Перенести' : 'Опубликовать' }}</span>
-            <span data-when="{{ \App\Offers\Slots::URGENT }}">Опубликовать срочно</span>
+            @foreach ($choices as $c)<span data-when="{{ $c['when'] }}">{{ $c['at'] ? ($move ? 'Перенести на ' : 'Выставить ').\App\Offers\Slots::phrase($c['at']) : 'Выставить сейчас' }}</span>@endforeach
+            <span data-when="{{ \App\Offers\Slots::DAY }}">{{ $move ? 'Перенести' : 'Выставить в продажу' }}</span>
+            <span data-when="{{ \App\Offers\Slots::URGENT }}">Выставить срочно</span>
         </x-ui.button>
     @if ($action)</form>@else</div>@endif
 </x-ui.sheet>

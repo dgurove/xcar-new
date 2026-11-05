@@ -16,11 +16,11 @@
     // Кнопки состояния — только уместные (OfferState::actions): в сделке — отмена сделки, «Снять с продажи» — у того, что в продаже.
     // Модератору — поля, кадры и документы: оценки, состояния, подтверждений, интереса и круга показа у него нет.
     $transitions = $admin ? collect($offer->stateActions())->mapWithKeys(fn ($label, $state) => [$state => [OfferState::from($state), $label]]) : collect();
-    // «Опубликовать» у черновика и галереи — тремя пунктами: сейчас, в ближайший слот, в следующий (`x-offer.publish-items`).
+    // «Выставить в продажу» у черновика и галереи — тремя пунктами: сейчас, в ближайший слот, в следующий (`x-offer.publish-items`).
     // Без цены продажи публиковать нечего — пунктов нет, пока её не поставили.
     // На аукционе — «Вернуть в продажу…» шторкой (`auctionActions`), слотов нет.
     $publishItems = $admin && in_array($offer->state, [OfferState::Draft, OfferState::Gallery], true) && ! $offer->isScheduled() && $offer->asking_price && ! $offer->onAuction();
-    // «Опубликовать» у черновика — пунктами слота; у сделки «вернуть в продажу» — обычным пунктом (отмена сделки).
+    // «Выставить в продажу» у черновика — пунктами слота; у сделки «вернуть в продажу» — обычным пунктом (отмена сделки).
     if ($offer->state !== OfferState::Sold) $transitions = $transitions->except(OfferState::Open->value);
     // Блок «Оценить» — у черновика без цены продажи; оценённому цену правят в «Ценах».
     $rate = $admin && $offer->state === OfferState::Draft && ! $offer->asking_price && ! $offer->isScheduled();
@@ -48,7 +48,7 @@
         default => null,
     };
     // Оценённый черновик — «Выставить в продажу» кнопкой в «Ценах» (19.10.2026, владелец: «пропала кнопка выставить в
-    // продажу»); тогда в «Действиях» ни «Опубликовать», ни «Отдать…» второй раз нет.
+    // продажу»); тогда в «Действиях» ни «Выставить в продажу», ни «Отдать…» второй раз нет.
     $publishButton = $steps && $publishItems;
     // Открытое — блок «Приём» сверху (`admin/offers/intake-block`): срок и продление кнопками, во фразе под названием его нет.
     $intake = $admin && $offer->state === OfferState::Open && $offer->bids_close_at;
@@ -122,11 +122,11 @@
                         <div id="detail-actions-{{ $n }}" class="menu" popover data-menu-target="list" data-align="end" role="menu">
                             @if ($publishItems && ! $publishButton)
                                 <div class="menu-group">
-                                    <div class="menu-head">Опубликовать</div>
+                                    <div class="menu-head">Выставить в продажу</div>
                                     @foreach (\App\Offers\Slots::choices() as $c)
                                         <form method="post" action="/offers/{{ $n }}/state" data-price-guard="publish" data-price-guard-offer="{{ $n }}">
                                             @csrf<input type="hidden" name="state" value="open"><input type="hidden" name="when" value="{{ $c['when'] }}">
-                                            <button class="menu-item" role="menuitem" data-action="menu#close"><x-ui.icon :name="$c['at'] ? 'clock' : 'send'" class="size-5 text-ink-muted"/>{{ $c['at'] ? str_replace(', ', ' в ', \App\Offers\Slots::label($c['at'])) : 'Сейчас' }}</button>
+                                            <button class="menu-item" role="menuitem" data-action="menu#close"><x-ui.icon :name="$c['at'] ? 'clock' : 'send'" class="size-5 text-ink-muted"/>{{ $c['at'] ? str_replace(', ', ' в ', $c['title']) : 'Сейчас' }}</button>
                                         </form>
                                     @endforeach
                                     <button type="button" class="menu-item" role="menuitem" data-controller="emit" data-action="emit#send menu#close" data-emit-event-param="publish-day:open"><x-ui.icon name="calendar" class="size-5 text-ink-muted"/>Другой день…</button>

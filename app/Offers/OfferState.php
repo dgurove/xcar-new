@@ -80,8 +80,8 @@ enum OfferState: string
     {
         return match ($this) {
             // «В галерею» — не переход: черновик остаётся черновиком, у него открывается окно показа (`ShowInGallery`).
-            self::Draft => [self::Open->value => 'Опубликовать', self::Gallery->value => 'В галерею', self::Archived->value => 'В архив'],
-            self::Gallery => [self::Open->value => 'Опубликовать', self::Draft->value => 'Снять с продажи', self::Archived->value => 'В архив'],
+            self::Draft => [self::Open->value => 'Выставить в продажу', self::Gallery->value => 'В галерею', self::Archived->value => 'В архив'],
+            self::Gallery => [self::Open->value => 'Выставить в продажу', self::Draft->value => 'Снять с продажи', self::Archived->value => 'В архив'],
             self::Open => [self::Draft->value => 'Снять с продажи', self::Archived->value => 'В архив'],
             self::Delivered, self::Cancelled => [self::Archived->value => 'В архив'],
             self::Archived => [self::Draft->value => 'Вернуть в черновики'],

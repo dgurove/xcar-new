@@ -110,7 +110,7 @@ abstract class Route
         $head = [
             'draft' => [
                 'name' => 'Черновик', 'block' => 'sale', 'waits_for' => 'us', 'deadline_source' => $draftDeadline, 'offer_state' => 'draft',
-                'exits' => [['Опубликовать', 'staff', 'bidding'], ...$draftExits],
+                'exits' => [['Выставить в продажу', 'staff', 'bidding'], ...$draftExits],
             ],
             'bidding' => [
                 // Срок не свой: часы идут по bids_close_at, тому же, что видит покупатель.

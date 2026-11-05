@@ -12,7 +12,7 @@ use Carbon\Carbon;
 use Illuminate\Validation\ValidationException;
 
 /**
- * «Опубликовать» с выбором (владелец 03.10.2026): сейчас — как раньше, иначе в слот 16:00 — ближайший или следующий.
+ * «Выставить в продажу» с выбором времени (владелец 03.10.2026): сейчас — как раньше, иначе в слот 16:00 — ближайший или следующий.
  * Готовность проверяется сразу, а не в 16:00; срок приёма не хранится — его посчитает публикация от слота.
  */
 final class ScheduleOffer
@@ -23,7 +23,7 @@ final class ScheduleOffer
     public function __invoke(Offer $offer, string $when, User $by, bool $batch = false, ?Carbon $until = null): Offer
     {
         if (! in_array($offer->state, [OfferState::Draft, OfferState::Gallery], true)) {
-            throw ValidationException::withMessages(['state' => 'Опубликовать можно черновик или галерею']);
+            throw ValidationException::withMessages(['state' => 'Выставить в продажу можно черновик или галерею']);
         }
         // «Срочно» (12.10.2026): сейчас, свой срок приёма, всем сразу (`SyncViewers`), громкое уведомление
         // (`NotifyViewers` → `UrgentOfferNotice`). Срок и метка — записью до перехода: публикация будущий срок не трогает,

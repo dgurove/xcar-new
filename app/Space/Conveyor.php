@@ -54,11 +54,12 @@ final class Conveyor
 
     /**
      * Этапы слева направо: название и подэтапы (05.11.2026, владелец прошёлся по каждому: «мне непонятно, а другим тем более»).
-     * Андрей дважды: между его этапами — менеджеры. «Ждём поставщика» — тихий: сделать там нечего, только ждать.
+     * Андрей дважды: между его этапами — менеджеры. «Ждём поставщика» — тихий: сделать там нечего, только ждать. Слота
+     * («Публикация») нет: «Выставить в продажу» в 16:00 — таймер того же действия, задач там нет (владелец 05.11.2026).
      */
     public const STAGES = [
         'intake' => ['Заведение', ['letters', 'floor']],
-        'sale' => ['Цена и продажа', ['price', 'review', 'ready', 'slots', 'unsold']],
+        'sale' => ['Цена и продажа', ['price', 'review', 'ready', 'unsold']],
         'bidding' => ['Оценка и подтверждения', ['estimate', 'gallery', 'confirm']],
         'choice' => ['Подтверждения и заявка', ['bids', 'claims', 'a-write', 'a-reply', 'answer', 'reprice']],
         'deal' => ['Заявка', ['write', 'reply', 'invoice', 'paid', 'settle']],
@@ -85,7 +86,6 @@ final class Conveyor
         'price' => ['Оценить / отдать на оценку', '/offers?preset=unpriced'],
         'review' => ['Разобрать оценки', '/offers?preset=estimating'],
         'ready' => ['Выставить в продажу', '/offers?preset=priced'],
-        'slots' => ['Опубликовать', '/offers?preset=slots'],
         'unsold' => ['Вернуть в продажу', '/offers?preset=done'],
         'estimate' => ['На оценке', '/offers?preset=estimating'],
         'gallery' => ['Выразить интерес', '/gallery'],
@@ -253,7 +253,6 @@ final class Conveyor
             'estimate' => $group('estimating', $estimated, 1),
             'estimate:hot' => fn ($q) => $hot('estimating', fn ($w) => $w->orWhereHas('estimates', fn ($e) => $e->waiting()->where('due_at', '<', now())))($q)->whereRaw($estimated.' = 1'),
             'ready' => $tab('priced'), 'ready:hot' => $hot('priced'),
-            'slots' => $tab('slots'), 'slots:hot' => $hot('slots'),
             'unsold' => $unsold, 'unsold:hot' => fn ($q) => $unsold($q)->whereRaw($panic),
             // Приём горит, когда до конца меньше `HOT_HOURS`, а подтверждений нет («Сгорает!» на сайте; без них он и есть
             // в «Опубликованных»).

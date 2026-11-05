@@ -1,6 +1,6 @@
 {{-- Предложения CRM — вкладки по шагам (владелец 04.10.2026): «Без закупочной цены» (модератор), «Без продажной цены»
      (админ; 05.10.2026 «Без цены» разделена надвое) — строки и карточка, к следующей по делу, «Оцененные» (галочки и
-     «Отправить в продажу»), «Публикация» (группы по слотам, раньше — выше), «Опубликованные» (группы: выбрать, идёт приём, без подтверждений), «Архив». Галочки — pick_controller,
+     «Выставить в продажу»), «Публикация» (группы по слотам, раньше — выше), «Опубликованные» (группы: выбрать, идёт приём, без подтверждений), «Архив». Галочки — pick_controller,
      форма `offers-pick` вне таблицы: строки к ней приписаны атрибутом form. --}}
 @php
     use App\Http\Admin\OfferController;
@@ -144,7 +144,7 @@
             @if ($pick && $preset === 'priced')
                 <x-ui.action-bar class="action-bar--pick" data-pick-target="bar" hidden>
                     <div class="contents" data-controller="sheet">
-                        <x-ui.button type="button" class="min-w-0 flex-1" data-action="sheet#open">Отправить в продажу <span class="nums" data-pick-target="count"></span></x-ui.button>
+                        <x-ui.button type="button" class="min-w-0 flex-1" data-action="sheet#open">Выставить в продажу <span class="nums" data-pick-target="count"></span></x-ui.button>
                         <x-offer.publish-sheet id="offers-send" form="offers-pick"/>
                     </div>
                 </x-ui.action-bar>

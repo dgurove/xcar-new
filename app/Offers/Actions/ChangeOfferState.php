@@ -179,7 +179,7 @@ final class ChangeOfferState
     public static function assertReady(Offer $offer): void
     {
         if ($missing = self::missing($offer)) {
-            throw ValidationException::withMessages(['state' => 'Для публикации не хватает: '.implode(', ', $missing)]);
+            throw ValidationException::withMessages(['state' => 'Чтобы выставить в продажу, не хватает: '.implode(', ', $missing)]);
         }
     }
 

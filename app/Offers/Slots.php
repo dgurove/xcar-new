@@ -164,7 +164,8 @@ final class Slots
     }
 
     /**
-     * Три варианта для выбора в CRM, по умолчанию — ближайший слот.
+     * Три варианта «когда» у «Выставить в продажу» в CRM, по умолчанию — ближайший слот. Слово «слот» — внутреннее: в
+     * подписи — время выхода («Сегодня, 16:00»).
      *
      * @return list<array{when: string, title: string, at: ?Carbon, label: ?string}>
      */
@@ -175,8 +176,8 @@ final class Slots
 
         return [
             ['when' => self::NOW, 'title' => 'Сейчас', 'at' => null, 'label' => null],
-            ['when' => self::NEAREST, 'title' => 'В ближайший слот', 'at' => $nearest, 'label' => self::label($nearest)],
-            ['when' => self::NEXT, 'title' => 'В следующий слот', 'at' => $next, 'label' => self::label($next)],
+            ['when' => self::NEAREST, 'title' => self::label($nearest), 'at' => $nearest, 'label' => null],
+            ['when' => self::NEXT, 'title' => self::label($next), 'at' => $next, 'label' => null],
         ];
     }
 

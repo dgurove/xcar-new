@@ -61,7 +61,7 @@
     $undo = \App\Workflow\Actions\StepBack::undoable($offer, $position->track);
     // «Продлить срок» (19.01.2027, начальник): шагу с часами — +1 день, +3 дня, до даты (`ExtendDeadline`).
     $extend = $position->deadline_at !== null && auth()->user()?->canManageCrm();
-    // Черновик без цены продажи (владелец 04.10.2026): первый шаг продажи — назначить цену, а не «Опубликовать». Шаг не
+    // Черновик без цены продажи (владелец 04.10.2026): первый шаг продажи — назначить цену, а не «Выставить в продажу». Шаг не
     // из маршрута — он стоит перед ним текущим с «Оценить» (`/offers/{n}/rate`), а этап маршрута ждёт впереди серым.
     $pricing = $position->track === \App\Workflow\Track::Sale && $offer->state === \App\Offers\OfferState::Draft && ! $offer->asking_price && ! $offer->isScheduled() && auth()->user()?->canManageCrm();
 @endphp
@@ -276,7 +276,7 @@
                                 {{-- Письмо поставщику не ушло — главное «Написать поставщику», исходы серыми. --}}
                                 @php $variant = $i === 0 && ! $wantsInvoice && $payNow->isEmpty() && $position->letterStatus() !== 'unsent' ? 'primary' : 'secondary'; @endphp
                                 @if ($exit->to?->offer_state === \App\Offers\OfferState::Open && in_array($offer->state, [\App\Offers\OfferState::Draft, \App\Offers\OfferState::Gallery], true))
-                                    {{-- «Опубликовать» — сейчас или в слот, как кнопка редактора. --}}
+                                    {{-- «Выставить в продажу» — сейчас или в слот, как кнопка редактора. --}}
                                     <div data-controller="sheet">
                                         <x-ui.button type="button" size="sm" :variant="$variant" data-action="sheet#open">{{ $label($exit) }}</x-ui.button>
                                         <x-offer.publish-sheet :offer="$offer" id="exit-{{ $exit->id }}" action="/offers/{{ $n }}/exit/{{ $exit->id }}"/>

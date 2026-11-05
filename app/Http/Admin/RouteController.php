@@ -38,7 +38,7 @@ class RouteController
 {
     public function exit(Request $request, Offer $offer, Outcome $exit, TakeExit $take, ScheduleOffer $schedule)
     {
-        // «Опубликовать» маршрута — с выбором слота, как кнопка редактора: в слот — маршрут догонят часы
+        // «Выставить в продажу» маршрута — с выбором слота, как кнопка редактора: в слот — маршрут догонят часы
         // (`ChangeOfferState` в 16:00 сам найдёт выход в «Приём»), сейчас — шаг как обычно.
         $when = Slots::when($request->input('when'), $request->input('day'), Slots::NOW);
         if ($when !== Slots::NOW && $exit->to?->offer_state === OfferState::Open

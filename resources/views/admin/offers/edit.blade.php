@@ -264,7 +264,7 @@
          (и цепочку в архив), «Сохранить». Черновик и дальше только «Сохранить»: публикуют из списка по маршруту. --}}
     @php
         $draft = $offer->state === OfferState::Draft;
-        // «Опубликовать» — с выбором слота: у черновика шторкой из плашки, у галереи тремя пунктами в «···».
+        // «Выставить в продажу» — с выбором слота: у черновика шторкой из плашки, у галереи тремя пунктами в «···».
         $publishItems = $admin && $offer->state === OfferState::Gallery && ! $offer->isScheduled();
         if ($draft || $offer->state === OfferState::Gallery) $transitions = $transitions->except(OfferState::Open->value);
         // «Отменить сделку, в черновики» — пунктом шторки «Отменить сделку» (`x-offer.resale-sheet`), второй кнопкой не нужна.
@@ -290,7 +290,7 @@
         @elseif ($draft)
             {{-- Черновик заводят пачкой подряд — и модератор, и админ (владелец 04.10.2026): «Сохранить» сохраняет и закрывает
                  редактор (в список), «+ Новый» сохраняет и открывает следующий черновик с тем же вендором. Публикуют из
-                 списка («Оцененные» → «Отправить в продажу»). Модератор свой черновик удаляет корзиной, админ — в «···». --}}
+                 списка («Оцененные» → «Выставить в продажу»). Модератор свой черновик удаляет корзиной, админ — в «···». --}}
             @if ($deletable && ! $admin)
                 <form method="post" action="/offers/{{ $n }}" class="draft-delete contents" data-turbo-confirm="Удалить черновик? Фото и документы удалятся вместе с ним">@csrf @method('delete')<x-ui.button variant="secondary" round class="btn-lg shrink-0" aria-label="Удалить черновик"><x-ui.icon name="trash" class="size-5"/></x-ui.button></form>
             @endif
@@ -308,8 +308,8 @@
                 <div class="flex flex-col gap-2">
                     @if ($publishItems)
                         <x-offer.publish-items :offer="$offer" button/>
-                        <x-ui.button type="button" block variant="secondary" data-controller="emit" data-action="emit#send sheet#close" data-emit-event-param="publish-day:open"><x-ui.icon name="calendar" class="size-5"/> Другой день…</x-ui.button>
-                        <x-ui.button type="button" block class="btn-fire" data-controller="emit" data-action="emit#send sheet#close" data-emit-event-param="urgent:open"><x-ui.icon name="fire" fill class="size-5"/> Срочно…</x-ui.button>
+                        <x-ui.button type="button" block variant="secondary" data-controller="emit" data-action="emit#send sheet#close" data-emit-event-param="publish-day:open"><x-ui.icon name="calendar" class="size-5"/> Выставить в другой день…</x-ui.button>
+                        <x-ui.button type="button" block class="btn-fire" data-controller="emit" data-action="emit#send sheet#close" data-emit-event-param="urgent:open"><x-ui.icon name="fire" fill class="size-5"/> Выставить срочно…</x-ui.button>
                     @endif
                     @if ($resale && $offer->state === OfferState::Sold && $offer->deal?->isActive())
                         <x-ui.button type="button" block variant="danger" data-controller="emit" data-action="emit#send sheet#close" data-emit-event-param="declined:open">Поставщик отказал…</x-ui.button>
