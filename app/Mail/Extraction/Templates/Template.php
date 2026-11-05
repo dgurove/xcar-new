@@ -446,6 +446,9 @@ abstract class Template
             return [null, null];
         }
         $head = (string) preg_replace('/\(.*$/us', '', $text);
+        // VIN в теме — не часть модели: «Changan CS35 PLUS, LS5A3DKR7SA972302» (Энергогарант, 05.11.2026) давало модель
+        // «CS35 PLUS, LS5A3…», а справочник от неё оставлял «CS35». Вырезаем VIN и слово «VIN» перед ним.
+        $head = (string) preg_replace('/(?:\bVIN\s*:?\s*)?\b'.Patterns::VIN_CHARS.'\b/ui', ' ', $head);
         if (preg_match(self::YEAR, $head, $year, PREG_OFFSET_CAPTURE)) {
             $head = mb_substr($head, mb_strlen(mb_strcut($head, 0, $year[0][1] + strlen($year[0][0]))));
         } else {

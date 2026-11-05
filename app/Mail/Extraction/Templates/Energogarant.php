@@ -4,7 +4,10 @@ namespace App\Mail\Extraction\Templates;
 
 use App\Mail\Extraction\Patterns;
 
-/** Энергогарант: тема «код, ТС Марка Модель / VIN», цены в первом письме нет. */
+/**
+ * Энергогарант: тема «код, ТС Марка Модель / VIN» или «Марка Модель, VIN» (05.11.2026, Changan CS35 PLUS), цены в письме нет —
+ * номер убытка и «Наивысшее предложение» дают протокол торгов SD-Assistance во вложении (`DocumentFields`).
+ */
 final class Energogarant extends Template
 {
     public function extract(string $subject, string $body): array

@@ -26,7 +26,7 @@ class VendorSeeder extends Seeder
         ['АльфаСтрахование СПб', ['kolbasinamp@alfastrah.ru', 'filippovaiaiu@alfastrah.ru'], Parser::Generic, Preset::Alfa, false],
         // Совкомбанк обязывает вывозить каждую машину — задача на вывоз встаёт вместе с предложением.
         ['Совкомбанк Страхование', ['sovcomins.ru'], Parser::Sovcombank, Preset::Sovcombank, true],
-        ['Энергогарант', ['msk-garant.ru', 'energogarant.ru'], Parser::Energogarant, null, false],
+        ['Энергогарант', ['msk-garant.ru', 'energogarant.ru'], Parser::Energogarant, Preset::Alfa, false],
         ['ИНСАЙТ', ['insightins.ru'], Parser::Insight, null, false],
         ['Абсолют Страхование', ['absolutins.ru'], Parser::Generic, null, false],
         ['ВСК', ['vsk.ru'], Parser::Generic, null, false],
