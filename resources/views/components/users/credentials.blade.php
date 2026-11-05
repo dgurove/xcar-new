@@ -10,7 +10,7 @@
                 <div class="list">
                     <div class="row"><span class="shrink-0 text-ink-muted">Кто</span><span class="min-w-0 flex-1 truncate text-right">{{ $c['name'] }}</span></div>
                     <div class="row"><span class="shrink-0 text-ink-muted">Адрес</span><span class="min-w-0 flex-1 truncate text-right">{{ preg_replace('#^https?://#', '', $c['url']) }}</span></div>
-                    <div class="row"><span class="shrink-0 text-ink-muted">Телефон</span><span class="min-w-0 flex-1 text-right nums">{{ $c['phone'] }}</span></div>
+                    <div class="row"><span class="shrink-0 text-ink-muted">{{ $c['via'] ?? 'Телефон' }}</span><span class="min-w-0 flex-1 text-right nums">{{ $c['phone'] }}</span></div>
                     <div class="row"><span class="shrink-0 text-ink-muted">Пароль</span><span class="min-w-0 flex-1 text-right font-mono text-lg select-all">{{ $c['password'] }}</span></div>
                 </div>
                 <x-ui.share-link :url="$c['url']" title="Вход в XCar" done="Данные для входа в буфере" :text="$text"/>

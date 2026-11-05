@@ -249,6 +249,7 @@ Route::middleware(['auth', 'wall'])->group(function () {
         Route::put('/buyers/{user}/groups', [BuyerController::class, 'groups'])->whereNumber('user');
         Route::put('/buyers/{user}/sees', [BuyerController::class, 'sees'])->whereNumber('user');
         Route::post('/buyers/{user}/password', [BuyerController::class, 'passwordLink'])->whereNumber('user');
+        Route::post('/buyers/{user}/access', [BuyerController::class, 'access'])->whereNumber('user');
         Route::put('/buyers/{user}/passport', [BuyerController::class, 'passport'])->whereNumber('user');
     });
 

@@ -50,13 +50,15 @@ class InviteController
             // Срок ссылке, которой человек «пришёл», не нужен: она использована тут же.
             $request->merge(['expires_at' => now()->addDay()->format('Y-m-d H:i')]);
         }
-        $data = $request->validate(IssueInvite::rules($me) + ($person ? AddPerson::rules() : []));
+        // Менеджер заводит своего покупателя по имени — без телефона и почты (05.11.2026); админ — как прежде.
+        $contact = ! $me->isAdmin();
+        $data = $request->validate(IssueInvite::rules($me) + ($person ? AddPerson::rules(contact: $contact) : []));
         $data['phone'] = $request->boolean('phone');
         $data['email'] = $request->boolean('email');
         if ($person) {
-            [$user, $credentials] = $add(fn () => $issue($me, $data), $data);
+            [$user, $credentials] = $add(fn () => $issue($me, $data), $data, contact: $contact);
 
-            return redirect(self::peopleHome($user))->with('credentials', $credentials);
+            return redirect(self::peopleHome($user))->with($credentials ? ['credentials' => $credentials] : ['toast' => $user->name.' в покупателях']);
         }
         $invite = $issue($me, $data);
 

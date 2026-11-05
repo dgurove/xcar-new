@@ -12,8 +12,11 @@
     <div data-person class="fields">
         <x-ui.field name="first_name" label="Имя" required autocomplete="off"/>
         <x-ui.field name="last_name" label="Фамилия" autocomplete="off"/>
-        <x-ui.field name="person_phone" label="Телефон" type="tel" required/>
-        <x-ui.field name="person_email" label="Почта" type="email"/>
+        {{-- Менеджер заводит покупателя по имени (05.11.2026): телефон и почта — только у админа. --}}
+        @if ($admin)
+            <x-ui.field name="person_phone" label="Телефон" type="tel" required/>
+            <x-ui.field name="person_email" label="Почта" type="email"/>
+        @endif
     </div>
     @if ($admin)
         {{-- Пять ролей в сегменты не помещаются на телефоне — селект. Супер-покупателю — одноразовая, как сотруднику. --}}
@@ -39,7 +42,8 @@
                 <x-ui.field name="group_id" label="В группу" :options="$groups->pluck('name', 'id')" placeholder="Без группы"/>
             @endif</div>
         {{-- Что увидит покупатель (12.10.2026, владелец: «неразбериха с покупателями»): по умолчанию всё, что открыто менеджеру. --}}
-        <x-buyer.sees-segment/>
+        {{-- Покупатель по имени входа не получает — что он видит, решится, когда ему дадут вход. --}}
+        <div @unless ($admin) data-link @endunless class="contents"><x-buyer.sees-segment/></div>
         <div data-link class="flex flex-col gap-2">
             {{-- Телефон по умолчанию спрашивается (владелец 05.10.2026); снять — если менеджер не хочет отдавать номер покупателя. --}}
             <x-ui.check name="phone" :checked="old('_token') ? (bool) old('phone') : true">Покупатель указывает телефон</x-ui.check>

@@ -1,4 +1,4 @@
-{{-- Панель «+ Новый …» шторки выбора (18.10.2026): данными — имя, фамилия, телефон и свои поля места (у исполнителя город и
+{{-- Панель «+ Новый …» шторки выбора (18.10.2026): данными — имя, фамилия, телефон (покупателю — без него) и свои поля места (у исполнителя город и
      СДЭК, у заказчика — название, контакт, адрес); «Ссылкой» — где человек может прийти сам. Отправляет JSON
      (`people_pick_controller#create`), без формы: шторка стоит и внутри чужих форм. Успех — в той же панели: данные входа
      или ссылка с «Отправить» и «Скопировать». Поля — `_person[…]`: чужая форма их игнорирует. --}}
@@ -30,8 +30,11 @@
             @else
                 <x-ui.field :name="$f('first_name')" :id="$id('first')" label="Имя" required autocomplete="off" data-people-field="first_name"/>
                 <x-ui.field :name="$f('last_name')" :id="$id('last')" label="Фамилия" autocomplete="off" data-people-field="last_name"/>
-                <x-ui.field :name="$f('person_phone')" :id="$id('phone')" label="Телефон" type="tel" required data-people-field="person_phone"/>
-                @if ($kind === 'contractor')
+                {{-- Покупатель — по имени (05.11.2026, владелец: «не хотят прикладывать данные покупателей, потому что просит
+                     телефон — убери; почту тоже не надо»): вход ему дают потом, на его странице. --}}
+                @unless ($kind === 'buyer')<x-ui.field :name="$f('person_phone')" :id="$id('phone')" label="Телефон" type="tel" required data-people-field="person_phone"/>@endunless
+                @if ($kind === 'buyer')
+                @elseif ($kind === 'contractor')
                     <x-ui.field :name="$f('logistics_city')" :id="$id('city')" label="Город" data-people-field="logistics_city"/>
                     <x-ui.field :name="$f('cdek_point')" :id="$id('cdek')" label="Пункт СДЭК" type="textarea" data-people-field="cdek_point"/>
                 @else

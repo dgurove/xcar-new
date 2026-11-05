@@ -30,12 +30,26 @@
                             </x-ui.sheet>
                         </div>
                     @endif
-                    <form method="post" action="/buyers/{{ $buyer->id }}/password" class="contents"
-                        data-turbo-confirm="Выдать ссылку для нового пароля?" data-turbo-confirm-label="Выдать"
-                        data-turbo-confirm-text="{{ $buyer->shortName() }} откроет её и придумает новый пароль. Действует сутки, один раз.">
-                        @csrf
-                        <button type="submit" class="act"><span class="btn btn-quiet btn-round"><x-ui.icon name="key"/></span>Пароль</button>
-                    </form>
+                    @if ($buyer->login || $buyer->phone || $buyer->email)
+                        <form method="post" action="/buyers/{{ $buyer->id }}/password" class="contents"
+                            data-turbo-confirm="Выдать ссылку для нового пароля?" data-turbo-confirm-label="Выдать"
+                            data-turbo-confirm-text="{{ $buyer->shortName() }} откроет её и придумает новый пароль. Действует сутки, один раз.">
+                            @csrf
+                            <button type="submit" class="act"><span class="btn btn-quiet btn-round"><x-ui.icon name="key"/></span>Пароль</button>
+                        </form>
+                    @else
+                        {{-- Заведён по имени (05.11.2026): входа нет, пока менеджер сам не даст — телефон или почта и пароль здесь. --}}
+                        <div data-controller="sheet" class="contents">
+                            <button type="button" class="act" data-action="sheet#open"><span class="btn btn-quiet btn-round"><x-ui.icon name="key"/></span>Дать вход</button>
+                            <x-ui.sheet id="buyer-access" title="Вход в XCar">
+                                <form method="post" action="/buyers/{{ $buyer->id }}/access" class="flex flex-col gap-3">
+                                    @csrf
+                                    <div class="fields"><x-ui.field name="contact" label="Телефон или почта" autocomplete="off" autocapitalize="off" required/></div>
+                                    <x-ui.sheet-foot>Дать вход</x-ui.sheet-foot>
+                                </form>
+                            </x-ui.sheet>
+                        </div>
+                    @endif
                 </x-slot:acts>
             </x-ui.contact>
             <x-ui.sheet id="password-link" title="Ссылка для нового пароля" :open="$link !== null">

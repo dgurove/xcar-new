@@ -37,10 +37,10 @@
             <input name="login" required autocomplete="username" autocapitalize="none" spellcheck="false" class="field-input" placeholder="Логин, например ivan.petrov" value="{{ old('login') }}" data-login-target="login" data-action="input->login#touched">
             <input name="password" type="password" required autocomplete="new-password" class="field-input" placeholder="Пароль, от восьми знаков">
             @if ($invite->allows('phone'))
-                <input name="phone" type="tel" required inputmode="tel" autocomplete="tel" class="field-input" placeholder="Телефон" value="{{ old('phone') }}">
+                <input name="phone" type="tel" @unless ($invite->forBuyer()) required @endunless inputmode="tel" autocomplete="tel" class="field-input" placeholder="{{ $invite->forBuyer() ? 'Телефон, если хотите' : 'Телефон' }}" value="{{ old('phone') }}">
             @endif
             @if ($invite->allows('email'))
-                <input name="email" type="email" @if ($invite->forBuyer()) required @endif inputmode="email" autocomplete="email" class="field-input" placeholder="{{ $invite->forBuyer() ? 'Почта' : 'Почта, если есть' }}" value="{{ old('email') }}">
+                <input name="email" type="email" inputmode="email" autocomplete="email" class="field-input" placeholder="Почта, если есть" value="{{ old('email') }}">
             @endif
             @foreach (['first_name', 'last_name', 'login', 'password', 'phone', 'email', 'avatar', 'consent'] as $field)
                 @error($field)<p class="text-sm text-danger">{{ $message }}</p>@enderror

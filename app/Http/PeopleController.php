@@ -72,12 +72,13 @@ class PeopleController
             return response()->json(['link' => ['url' => $made->url(), 'text' => self::linkText($kind)]]);
         }
 
-        $v = validator($data, AddPerson::rules() + ($kind === 'contractor'
+        $buyer = $kind === 'buyer';
+        $v = validator($data, AddPerson::rules(contact: $buyer) + ($kind === 'contractor'
             ? ['logistics_city' => ['nullable', 'string', 'max:120'], 'cdek_point' => ['nullable', 'string', 'max:300']] : []),
             ['first_name.required' => 'Имя', 'person_phone.required' => 'Телефон'])->validate();
         [$user, $credentials] = $add($invite, $v, array_filter([
             'logistics_city' => $v['logistics_city'] ?? null, 'cdek_point' => $v['cdek_point'] ?? null,
-        ]));
+        ]), contact: $buyer);
 
         return response()->json(self::answer(People::row($user->fresh())) + ['credentials' => $credentials]);
     }

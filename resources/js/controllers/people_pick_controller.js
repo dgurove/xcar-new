@@ -171,7 +171,7 @@ export default class extends Controller {
         this.shareText = `${c.text}\n${c.url}`;
         this.doneTitleTarget.textContent = c.name;
         this.doneSubTarget.textContent = 'Отправьте данные для входа';
-        this.rows([['Телефон', c.phone], ['Пароль', c.password], ['Вход', c.url.replace(/^https?:\/\//, '')]]);
+        this.rows([[c.via || 'Телефон', c.phone], ['Пароль', c.password], ['Вход', c.url.replace(/^https?:\/\//, '')]]);
         this.finishTarget.textContent = this.hasFinishLabelTarget ? this.finishLabelTarget.textContent : 'Готово';
         this.formTarget.hidden = true;
         this.doneTarget.hidden = false;

@@ -22,27 +22,33 @@ final class AddPerson
 {
     public function __construct(private AcceptInvite $accept) {}
 
-    public static function rules(): array
+    /**
+     * `$contact` — покупатель менеджера (05.11.2026, владелец: «менеджеры не хотят прикладывать данные покупателей, потому что
+     * просит телефон — убери; почту тоже не надо»): заводится по имени, без телефона и входа; вход дают потом («Дать вход»
+     * на странице покупателя, `GiveBuyerAccess`).
+     */
+    public static function rules(bool $contact = false): array
     {
         return [
             'first_name' => ['required', 'string', 'max:60'],
             'last_name' => ['nullable', 'string', 'max:60'],
-            'person_phone' => ['required', 'string', 'max:40'],
-            'person_email' => ['nullable', 'email', 'max:255'],
+            'person_phone' => [$contact ? 'nullable' : 'required', 'string', 'max:40'],
+            'person_email' => $contact ? ['prohibited'] : ['nullable', 'email', 'max:255'],
         ];
     }
 
     /**
      * @param  callable(): Invite  $invite  ссылка, по которой человек «пришёл»: её делает та же дверь, что «Ссылкой»
-     * @return array{0: User, 1: array<string, string>} человек и данные для шторки входа
+     * @return array{0: User, 1: ?array<string, string>} человек и данные для шторки входа (без телефона входа нет — null)
      */
-    public function __invoke(callable $invite, array $data, array $extra = []): array
+    public function __invoke(callable $invite, array $data, array $extra = [], bool $contact = false): array
     {
+        $typed = trim((string) ($data['person_phone'] ?? '')) !== '';
         $phone = Phone::normalize($data['person_phone'] ?? null);
-        if (! $phone) {
+        if (! $phone && ($typed || ! $contact)) {
             throw ValidationException::withMessages(['person_phone' => 'Телефон: +7 и 10 цифр']);
         }
-        if (User::where('phone', $phone)->exists()) {
+        if ($phone && User::where('phone', $phone)->exists()) {
             throw ValidationException::withMessages(['person_phone' => 'Этот телефон уже занят']);
         }
         $email = mb_strtolower(trim((string) ($data['person_email'] ?? ''))) ?: null;
@@ -66,7 +72,7 @@ final class AddPerson
             return $user;
         });
 
-        return [$user, self::credentials($user, $password)];
+        return [$user, $phone ? self::credentials($user, $password) : null];
     }
 
     /**
@@ -76,14 +82,16 @@ final class AddPerson
      */
     public static function credentials(User $user, string $password): array
     {
-        $phone = Phone::format($user->phone);
+        // Входят телефоном, а покупатель без телефона — почтой (05.11.2026, владелец: «покупатели могут входить по почте»).
+        [$via, $login] = $user->phone ? ['Телефон', Phone::format($user->phone)] : ['Почта', (string) $user->email];
 
         return [
             'name' => $user->name,
             'url' => self::loginUrl($user),
-            'phone' => $phone,
+            'via' => $via,
+            'phone' => $login,
             'password' => $password,
-            'text' => "Вам открыт доступ к XCar\nТелефон: {$phone}\nПароль: {$password}\nВход:",
+            'text' => "Вам открыт доступ к XCar\n{$via}: {$login}\nПароль: {$password}\nВход:",
         ];
     }
 

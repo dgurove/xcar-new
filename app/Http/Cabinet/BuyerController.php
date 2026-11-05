@@ -18,6 +18,7 @@ use App\Offers\OfferState;
 use App\Offers\Showing;
 use App\Support\ListPrefs;
 use App\Support\Sort;
+use App\Users\Actions\GiveBuyerAccess;
 use App\Users\Actions\IssuePasswordLink;
 use App\Users\BuyerGroup;
 use App\Users\User;
@@ -162,6 +163,14 @@ class BuyerController
         PassportScanController::resyncFor($user, $request->user(), app(SyncDealInvoices::class));
 
         return back()->with('toast', 'Паспорт сохранён');
+    }
+
+    /** «Дать вход» покупателю, заведённому по имени: телефон или почта и пароль, шторка входа (`GiveBuyerAccess`). */
+    public function access(Request $request, User $user, GiveBuyerAccess $give)
+    {
+        abort_unless($user->manager_id === $request->user()->id, 404);
+
+        return back()->with('credentials', $give($user, $request->input('contact')));
     }
 
     public function passwordLink(Request $request, User $user, IssuePasswordLink $issue)

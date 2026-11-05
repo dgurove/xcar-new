@@ -51,12 +51,13 @@ class InviteController
             'avatar' => ['nullable', 'image', 'max:8192'],
             'consent' => ['accepted'],
         ];
+        // Покупателю телефон и почта — по желанию (05.11.2026, владелец: «нахера тебе эти телефоны так сильно нужны»): входит
+        // он логином, а поля в ссылке — лишь разрешение их указать. Остальным телефон по ссылке обязателен, как был.
         if ($invite->allows('phone')) {
-            $rules['phone'] = ['required', 'regex:/^7\d{10}$/', Rule::unique('users', 'phone')];
+            $rules['phone'] = [$invite->forBuyer() ? 'nullable' : 'required', 'regex:/^7\d{10}$/', Rule::unique('users', 'phone')];
         }
         if ($invite->allows('email')) {
-            // Менеджеру почта не обязательна: покупатели видят его телефон.
-            $rules['email'] = [$invite->forBuyer() ? 'required' : 'nullable', 'email', 'max:190', Rule::unique('users', 'email')];
+            $rules['email'] = ['nullable', 'email', 'max:190', Rule::unique('users', 'email')];
         }
         $data = $request->validate($rules, [
             'first_name.required' => 'Введите имя',
