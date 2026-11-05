@@ -1,13 +1,13 @@
 // Камера космоса главной CRM (04.11.2026; листание по этапам — 05.11.2026): точка мира в середине сцены (x, y) и масштаб z.
 // Одна на звёзды (`sky.js`, каждая на своей глубине) и слой конвейера (глубина 1): схема едет вместе с фоном.
 //
-// - **вбок — свайпами, один свайп — один этап** (05.11.2026, владелец: «не скролл с тормозами, а именно свайпы»; так листают
-//   пейджеры iOS, Android и GNOME). Камера правит не x, а фокус `fx` — точку мира в `FOCUS` ширины экрана, чуть левее
-//   середины: слева заглядывает прошлый этап, справа — следующий. Палец ведёт доску 1:1, но дальше соседнего этапа не пускает
-//   (резинка). Отпустил: взмах быстрее `FLICK` — к соседнему по направлению взмаха (вернул палец назад и взмахнул обратно —
-//   на место), медленно — к соседнему, если дотянул `NEXT` шага, иначе на место. Довод — кривая с начальной скоростью пальца
-//   и без перелёта: рывка в момент отпускания нет. Касание посреди довода ловит доску, следующий свайп считается от этапа, к
-//   которому она ехала: пять быстрых свайпов — пять этапов. За первым и последним — резинка;
+// - **вбок — переключатель этапов** (05.11.2026, владелец: «не скролл с тормозами, а именно свайпы»; из двух вариантов —
+//   «Переключатель»). Камера правит не x, а фокус `fx` — точку мира в `FOCUS` ширины экрана, чуть левее середины: слева
+//   заглядывает прошлый этап, справа — следующий. Палец доску не тащит: до срабатывания она только откликается на несколько
+//   px (`nudge`, сильная резинка). Палец ушёл вбок на `COMMIT` — сразу, не дожидаясь отпускания, одна анимация `SWITCH` к
+//   соседнему этапу; остаток жеста не считается: один свайп — один этап. Отпустили раньше, но взмахом — тоже переход, иначе
+//   отклик пружиной в ноль. Свайп посреди перехода не ловит доску, а продлевает переход к следующему: пять быстрых свайпов
+//   — пять этапов. У первого и последнего порога нет — мягкая резинка и отскок;
 // - **вверх-вниз — свободно** с броском; только чтобы доску не потерять, она не уходит с экрана целиком (`EDGE`);
 // - **масштаб** — щипок, ctrl/⌘ + колесо, двойной тап, `+`/`−`: по горизонтали якорь всегда в фокусе, по вертикали — под
 //   пальцем.
@@ -24,11 +24,15 @@ const SAMPLE = 90;        // скорость пальца — по послед
 const FLING_FROM = 0.45;  // px/мс: медленнее — вертикальный бросок без инерции
 const FLING_FULL = 1.2;
 const FLING_GAP = 80;     // мс между последним движением и отпусканием — дольше: палец замер, броска нет
-const FLICK = 0.3;        // px экрана в мс: быстрее — взмах, к соседнему этапу по его направлению
-const NEXT = 0.4;         // доля шага: медленно дотянули дальше — соседний этап
-const BACK = 0.15;        // доля шага: настолько потянули в одну сторону и взмахнули в другую — передумал, на место
-const TURN = 320;         // мс довода на целый шаг без скорости; короче шаг — короче довод (по корню)
-const TURN_MIN = 140;
+const COMMIT = 32;        // px пальца вбок — свайп сработал, сразу, до отпускания
+const COMMIT_WHEEL = 40;  // то же трекпадом
+const FLICK = 0.25;       // px/мс: отпустили раньше порога, но взмахом — тоже свайп
+const FLICK_MIN = 10;     // px — и хоть настолько
+const GIVE = 28;          // px: предел отклика доски пальцу до срабатывания
+const GIVE_EDGE = 60;     // у первого и последнего этапа — мягче, с отскоком
+const NUDGE = 0.03;       // пружина отклика обратно в ноль, 1/мс
+const SWITCH = 300;       // мс перехода на соседний этап; дальше — по корню из числа шагов
+const SWITCH_MAX = 520;
 const EDGE = 120;         // px: доска не уходит с экрана вверх или вниз дальше, чем оставив столько
 const BOUNCE = 0.022;     // пружина края по вертикали
 const SMOOTH = 0.016;     // масштаб и колесо мыши догоняют цель: за ~150 мс
@@ -42,6 +46,8 @@ const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
 // За пределом масштаба щипок не обрывается, а упирается: каждая следующая доля — всё меньше.
 const soft = (z) => (z > MAX ? MAX * (z / MAX) ** 0.3 : z < MIN ? MIN * (z / MIN) ** 0.3 : z);
 // Резинка: за краем [lo, hi] смещение растёт всё медленнее, не дальше D.
+// Отклик пальцу: сдвиг d px растёт всё медленнее, не дальше R.
+const give = (d, R) => Math.sign(d) * (1 - 1 / ((Math.abs(d) * BAND) / R + 1)) * R;
 const band = (v, lo, hi, D) => {
     const r = (d) => (1 - 1 / ((d * BAND) / D + 1)) * D;
     return v < lo ? lo - r(lo - v) : v > hi ? hi + r(v - hi) : v;
@@ -61,7 +67,11 @@ export class Camera {
         this.rows = { lo: 0, hi: 0 };     // где может стоять y (рамка доски)
         this.pointers = new Map();
         this.target = null;               // этап, к которому едет довод
-        this.anim = null;                 // довод: { a, b, t0, D, m0 }
+        this.anim = null;                 // переход: { a, b, t0, D, m0 }
+        this.nudge = 0;                   // отклик пальцу до срабатывания свайпа, px экрана
+        this.vNudge = 0;
+        this.nudging = false;             // отклик держит палец или трекпад (иначе — пружиной в ноль)
+        this.swiped = false;              // свайп этого жеста уже сработал
         this.vfx = 0;                     // скорость фокуса, px мира в мс
         this.vy = 0;                      // бросок по вертикали, px мира в мс
         this.goal = null;                 // масштаб к цели: { z, oy }
@@ -93,7 +103,7 @@ export class Camera {
 
     // Середина экрана в мире: фокус стоит на `FOCUS` ширины, а не посередине.
     get x() {
-        return this.fx + ((0.5 - FOCUS) * this.w) / this.z;
+        return this.fx + ((0.5 - FOCUS) * this.w - this.nudge) / this.z;
     }
 
     get busy() {
@@ -184,37 +194,53 @@ export class Camera {
         return this.target ?? this.index();
     }
 
-    // К этапу i доводом; `v` — скорость фокуса, px мира в мс: довод начинается с неё (палец, прошлый довод), рывка нет.
-    // Кривая — кубическая Эрмита от места к этапу: начальный наклон — скорость, конечный — ноль. Наклон до 3 — без перелёта,
-    // быстрый взмах укорачивает довод, а не гасит скорость; без скорости — мягкий старт с наклоном 1 (как «ease-out»).
+    // К этапу i переходом: кубическая кривая Эрмита от места к этапу, конечный наклон — ноль. Начальный наклон 2 — ровное
+    // замедление (ease-out quad): быстрый старт, конец без долгого доезда. Переход посреди перехода начинается с текущей
+    // скорости (`v`, px мира в мс), если она больше, — без рывка; наклон до 3 — без перелёта.
     goTo(i, v = this.vfx) {
         if (!this.columns.length) return;
         this.target = clamp(i, 0, this.columns.length - 1);
         const to = this.columns[this.target];
         const ds = Math.abs(to - this.fx) * this.z;
         if (this.still || ds < 0.5) { this.fx = to; this.vfx = 0; this.target = null; this.anim = null; this.changed(); return; }
+        const steps = Math.abs(to - this.fx) / this.pitch();
+        const D = clamp(SWITCH * Math.sqrt(steps), 160, SWITCH_MAX);
         const vs = v * Math.sign(to - this.fx) * this.z;
-        let D = clamp(TURN * Math.sqrt(ds / (this.pitch() * this.z)), TURN_MIN, TURN * 1.2);
-        if (vs * D > 3 * ds) D = Math.max(TURN_MIN * 0.8, (3 * ds) / vs);
-        const m0 = clamp((vs * D) / ds, 1, 3);
+        const m0 = clamp((vs * D) / ds, 2, 3);
         this.anim = { a: this.fx, b: to, t0: performance.now(), D, m0 };
         this.changed();
+    }
+
+    // Свайп сработал: отклик вливается в фокус (на экране ничего не прыгает), переход к соседнему этапу в сторону d.
+    commit(d) {
+        const i = this.here + d;
+        this.swiped = true;
+        this.nudging = false;
+        this.fx -= this.nudge / this.z;
+        this.nudge = 0; this.vNudge = 0;
+        this.goTo(i);
+    }
+
+    // Палец (или трекпад) ушёл вбок на total px экрана от начала жеста: дошёл до порога `at` — свайп, иначе — отклик.
+    // true — сработал.
+    swipeX(total, at = COMMIT) {
+        if (this.swiped || !this.columns.length) return false;
+        const d = total < 0 ? 1 : -1;
+        const i = this.here + d;
+        const edge = i < 0 || i >= this.columns.length;
+        if (!edge && Math.abs(total) >= at) { this.commit(d); return true; }
+        this.nudging = true;
+        this.nudge = give(total, edge ? GIVE_EDGE : GIVE);
+        this.changed();
+        return false;
     }
 
     // Сразу на этап, без полёта (фильтр поставил этап на новое место — на экране он стоит, где стоял).
     jumpTo(i) {
         if (!this.columns.length) return;
-        this.target = null; this.vfx = 0; this.anim = null;
+        this.target = null; this.vfx = 0; this.anim = null; this.nudge = 0; this.vNudge = 0;
         this.fx = this.columns[clamp(i, 0, this.columns.length - 1)];
         this.changed();
-    }
-
-    stop() {
-        this.vfx = 0; this.vy = 0;
-        this.target = null;
-        this.anim = null;
-        this.goal = null;
-        this.yGoal = null;
     }
 
     // Вид — в sessionStorage: «Назад» на главную возвращает к тому же этапу.
@@ -257,6 +283,12 @@ export class Camera {
             if (t >= 1) { this.fx = b; this.vfx = 0; this.anim = null; this.target = null; }
             moving = true;
         }
+        if (!this.nudging && (this.nudge || this.vNudge)) {
+            const [n, v] = spring(this.nudge, this.vNudge, NUDGE, dt);
+            this.nudge = n; this.vNudge = v;
+            if (Math.abs(n) < 0.2 && Math.abs(v) < 0.01) { this.nudge = 0; this.vNudge = 0; }
+            moving = true;
+        }
         if (this.yGoal !== null) {
             const k = 1 - Math.exp(-SMOOTH * dt);
             this.y += (this.yGoal - this.y) * k;
@@ -289,10 +321,10 @@ export class Camera {
     // Щипок или трекпад кончились: масштаб за пределом — резинкой к пределу, листание вбок — к этапу.
     settle() {
         this.settleAt = 0;
-        const { wheeling, coasting } = this;
-        this.wheeling = null; this.coasting = false;
-        // Трекпад вбок затих, а убывания дельт не было (пальцы замерли и сняты) — к этапу.
-        if (wheeling === 'x' && !coasting) this.release(this.wheelV ?? 0);
+        const { wheeling } = this;
+        this.wheeling = null; this.coasting = null;
+        // Трекпад вбок затих, свайп не сработал — отклик обратно в ноль.
+        if (wheeling === 'x') this.nudging = false;
         const z = clamp(this.z, MIN, MAX);
         this.raw = z;
         if (z === this.z) { this.changed(); return; }
@@ -323,17 +355,16 @@ export class Camera {
         if (e.button > 0 || e.target.closest('button, input, textarea, select, label, [contenteditable], [data-space-ui]')) return;
         this.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
         this.dragged = false;
-        // Касание ловит доску на месте; взмах дальше считается от этапа, к которому она летела.
-        this.from = this.here;
-        this.stop();
-        this.grabFx = this.fx;
+        // Касание ловит вертикальный бросок и масштаб, но не переход вбок: новый свайп его продлит.
+        this.vy = 0; this.yGoal = null; this.goal = null;
+        this.swiped = false;
         this.settleAt = 0;
         if (this.pointers.size === 1) {
             this.moved = false;
             this.axis = null;
             this.start = { x: e.clientX, y: e.clientY };
             this.samples = [{ t: e.timeStamp, x: e.clientX, y: e.clientY }];
-            this.rawFx = this.fx; this.rawY = this.y;
+            this.rawY = this.y;
         } else {
             this.moved = true;
         }
@@ -347,19 +378,11 @@ export class Camera {
         return { d: Math.hypot(a.x - b.x, a.y - b.y) || 1, y: (a.y + b.y) / 2 };
     }
 
-    // Сдвиг пальцем на (dx, dy) экрана — по выбранной оси, за краем резинкой.
-    drag(dx, dy) {
-        if (this.axis === 'x') {
-            // Один свайп — один этап: дальше соседних с `from` палец тянет резинку.
-            this.rawFx -= dx / this.z;
-            const c = this.columns;
-            const i = clamp(this.from ?? this.index(), 0, c.length - 1);
-            this.fx = c.length ? band(this.rawFx, Math.min(c[Math.max(0, i - 1)], this.grabFx), Math.max(c[Math.min(c.length - 1, i + 1)], this.grabFx), this.w / this.z) : this.rawFx;
-        } else {
-            this.rawY -= dy / this.z;
-            const { lo, hi } = this.limits();
-            this.y = band(this.rawY, lo, hi, this.h / this.z);
-        }
+    // Сдвиг пальцем по вертикали на dy px экрана, за краем — резинкой.
+    dragY(dy) {
+        this.rawY -= dy / this.z;
+        const { lo, hi } = this.limits();
+        this.y = band(this.rawY, lo, hi, this.h / this.z);
     }
 
     move(e) {
@@ -372,7 +395,8 @@ export class Camera {
             if (!this.moved) { this.el.classList.add('is-grabbing'); this.el.setPointerCapture?.(e.pointerId); }
             this.moved = true;
             this.axis ??= Math.abs(e.clientX - this.start.x) >= Math.abs(e.clientY - this.start.y) ? 'x' : 'y';
-            this.drag(e.clientX - p.x, e.clientY - p.y);
+            if (this.axis === 'x') this.swipeX(e.clientX - this.start.x);
+            else this.dragY(e.clientY - p.y);
             p.x = e.clientX; p.y = e.clientY;
             this.samples.push({ t: e.timeStamp, x: e.clientX, y: e.clientY });
             while (this.samples.length > 2 && e.timeStamp - this.samples[0].t > SAMPLE) this.samples.shift();
@@ -398,8 +422,9 @@ export class Camera {
             this.start = { ...q };
             this.axis = null;
             this.samples = [];
-            this.rawFx = this.fx; this.rawY = this.y;
-            this.grabFx = this.fx;
+            this.rawY = this.y;
+            this.swiped = true;          // после щипка свайпа в этом жесте нет
+            this.nudging = false;
             this.pinch = null;
             this.settle();
             return;
@@ -411,10 +436,14 @@ export class Camera {
         if (this.moved) {
             this.dragged = !cancel;
             const v = this.velocity(e.timeStamp);
-            if (this.axis === 'x') this.release(-v.x / this.z);
-            else this.throwY(v.y);
+            if (this.axis === 'x') {
+                const total = e.clientX - this.start.x;
+                // Не дотянули до порога, но взмахнули в ту же сторону — тоже свайп.
+                if (!cancel && Math.abs(v.x) >= FLICK && Math.abs(total) >= FLICK_MIN && Math.sign(v.x) === Math.sign(total)) this.swipeX(total, 0);
+                this.nudging = false;
+            } else this.throwY(v.y);
         } else {
-            this.release(0);
+            this.nudging = false;
             if (!cancel) this.tap(e);
         }
         this.changed();
@@ -427,19 +456,6 @@ export class Camera {
         const a = s[0], b = s[s.length - 1];
         const dt = Math.max(16, b.t - a.t);
         return { x: (b.x - a.x) / dt, y: (b.y - a.y) / dt };
-    }
-
-    // Отпустили вбок со скоростью фокуса v (px мира в мс): ровно на один этап от `from` или на месте. Сдвиг считается от
-    // точки, где жест начался (`grabFx`), а не от этапа: пойманная посреди довода доска стоит между этапами.
-    release(v) {
-        if (!this.columns.length) return;
-        const from = clamp(this.from ?? this.index(), 0, this.columns.length - 1);
-        this.from = null;
-        const moved = (this.fx - (this.grabFx ?? this.fx)) / this.pitch();
-        let d = 0;
-        if (Math.abs(v) * this.z >= FLICK) d = Math.sign(moved) === -Math.sign(v) && Math.abs(moved) > BACK ? 0 : Math.sign(v);
-        else if (Math.abs(moved) >= NEXT) d = Math.sign(moved);
-        this.goTo(from + d, v);
     }
 
     // Бросок по вертикали — только быстрым движением (05.11.2026, владелец: «чуть подвинул — и оно всё ещё едет, бесит»):
@@ -502,48 +518,45 @@ export class Camera {
         // Трекпад: ось выбирает первое событие жеста, пауза дольше `WHEEL_GAP` — новый жест.
         const fresh = !this.wheeling || e.timeStamp - this.wheelAt > WHEEL_GAP;
         if (fresh) this.wheelStart(Math.abs(dx) >= Math.abs(dy) ? 'x' : 'y');
-        const gap = e.timeStamp - this.wheelAt;
         this.wheelAt = e.timeStamp;
-        if (this.wheeling === 'x') this.wheelX(dx, gap);
+        if (this.wheeling === 'x') this.wheelX(dx);
         else if (this.wheeling === 'y') {
             this.axis = 'y';
-            this.drag(0, -dy);
+            this.dragY(-dy);
             this.settleAt = performance.now() + WHEEL_REST;
         }
         this.changed();
     }
 
     wheelStart(axis) {
-        this.from = this.here;
-        this.stop();
+        this.vy = 0; this.yGoal = null;
         this.wheeling = axis;
         this.axis = axis;
-        this.rawFx = this.fx; this.rawY = this.y;
-        this.grabFx = this.fx;
-        this.wheelDeltas = [];
-        this.coasting = false;
+        this.rawY = this.y;
+        this.wheelSum = 0;
+        this.swiped = false;
+        this.coasting = null;
     }
 
-    // Вбок трекпадом: пока пальцы на трекпаде — доска едет 1:1. Дельты начали убывать — это уже инерция macOS: пальцы сняли,
-    // листаем к этапу по скорости последних дельт, а хвост инерции пропускаем, пока дельты снова не вырастут (новый взмах).
-    wheelX(dx, gap) {
-        const d = this.wheelDeltas;
-        if (this.coasting) {
-            const prev = d[d.length - 1] ?? 0;
-            d.push(Math.abs(dx));
-            if (Math.abs(dx) > Math.max(4, prev * 1.4)) this.wheelStart('x');
-            else { this.settleAt = performance.now() + WHEEL_GAP; return; }
+    // Вбок трекпадом: дельты жеста копятся откликом; сумма дошла до `COMMIT_WHEEL` — свайп. Дальше жест заперт: остаток
+    // пальцев и инерция macOS не листают. Отпирает новый взмах — дельты сначала пошли на убыль (инерция), потом снова выросли
+    // (пальцы взмахнули ещё раз), — или пауза `WHEEL_GAP` (новый жест).
+    wheelX(dx) {
+        const a = Math.abs(dx);
+        const c = this.coasting;
+        if (c) {
+            if (c.fell && a > Math.max(4, c.prev * 1.4)) this.wheelStart('x');
+            else {
+                c.peak = Math.max(c.peak, a);
+                c.fell ||= a < c.peak * 0.6;
+                c.prev = a;
+                this.settleAt = performance.now() + WHEEL_GAP;
+                return;
+            }
         }
-        d.push(Math.abs(dx));
-        this.drag(-dx, 0);
-        // Скорость — по последним 4 дельтам: px за мс.
-        this.wheelV = (dx / Math.max(8, Math.min(gap, 40))) / this.z;
-        const n = d.length;
-        const falling = n >= 4 && d[n - 1] < d[n - 2] && d[n - 2] < d[n - 3] && d[n - 1] < Math.max(...d) * 0.6;
-        if (falling) {
-            this.coasting = true;
-            this.release(this.wheelV);
-            this.wheelDeltas = [Math.abs(dx)];
+        this.wheelSum += dx;
+        if (this.swipeX(-this.wheelSum, COMMIT_WHEEL)) {
+            this.coasting = { peak: a, fell: false, prev: a };
             this.settleAt = performance.now() + WHEEL_GAP;
             return;
         }
