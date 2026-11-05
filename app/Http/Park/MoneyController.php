@@ -14,6 +14,7 @@ use App\Billing\Ledger;
 use App\Billing\Party;
 use App\Billing\PaymentSource;
 use App\Http\Billing\InvoiceActions;
+use App\Park\IntakeActs;
 use App\Search\Term;
 use App\Support\Detail;
 use App\Support\Facets\Common;
@@ -34,7 +35,7 @@ use Illuminate\Validation\ValidationException;
 /** Деньги стоянки: счета с пресетами, карточка строки, карточка счёта, долги по контрагентам, месяц. */
 class MoneyController
 {
-    use InvoiceActions;
+    use InvoiceActions { show as invoiceShow; }
 
     /** «Отправить» — выставленные страховой стороне, письма с которыми ещё не уходили (`Invoice::toSend`): очередь управляющего. */
     public const PRESETS = ['unpaid' => 'Не оплачены', 'send' => 'Отправить', 'overdue' => 'Просрочены', 'owed' => 'Мы должны', 'paid' => 'Оплачены', 'all' => 'Все'];
@@ -175,20 +176,70 @@ class MoneyController
         return view('park.money.closing', ['docs' => ClosingDoc::window($months), 'months' => $months, 'detail' => $detail, 'table' => self::closingTable()]);
     }
 
+    /**
+     * Счёт: документ «Счетов и актов» (реестр месяца, счёт покупателю за хранение) — на своей странице со всеми ТС
+     * (`closingPage`), двух экранов у одного документа нет; остальные — прежняя страница счёта.
+     */
+    public function show(Invoice $invoice)
+    {
+        $this->guardInvoice($invoice);
+        if ($invoice->direction === 'issued' && ($invoice->isRegistry() || ($invoice->vehicle_id && $invoice->kind === ChargeKind::Storage))) {
+            return redirect('/money/closing/i'.$invoice->id);
+        }
+
+        return $this->invoiceShow($invoice);
+    }
+
+    /**
+     * Документ на всю страницу (⤢ у карточки; 05.11.2026, владелец: «в окошке сжато, а в фуллскрине всё то же, но ещё и все
+     * тачки»): слева то же, что в карточке, справа — все ТС со ставкой, датами приёма и выдачи (правятся на месте) и актами
+     * для сверки (`IntakeActs`).
+     */
+    public function closingPage(string $key)
+    {
+        abort_unless(preg_match(ClosingDoc::KEY, $key) && ($doc = ClosingDoc::find($key)), 404);
+        $data = $this->closingData($doc);
+        $cars = $data['composition']['cars']->sortBy(fn ($c) => $c['vehicle']->accepted_at)->values();
+
+        return view('park.money.closing-page', $data + ['cars' => $cars, 'acts' => IntakeActs::for($cars->pluck('vehicle')->unique('id')->values()), 'table' => self::carsTable()]);
+    }
+
+    /** Таблица ТС документа на его странице: одно описание на шапку и строки `x-billing.registry-car-row`. */
+    public static function carsTable(): Table
+    {
+        return Table::of(
+            new Column('title', 'Марка, модель', grow: true),
+            new Column('ref', '№ убытка', from: 'sm', role: ColRole::Code, clip: true, rem: 9),
+            // Акты — главное на сверке: с открытой шторкой документов столбец не уходит, следующий акт — под рукой.
+            new Column('acts', 'Акты', from: 'sm', role: ColRole::State, rem: 9, main: true),
+            new Column('rate', 'Ставка', from: 'sm', num: true, cell: 'nums', rem: 6),
+            new Column('accepted', 'Принята', role: ColRole::When, rem: 8),
+            new Column('released', 'Выдана', role: ColRole::When, rem: 8),
+            new Column('days', 'Сут', from: 'sm', num: true, cell: 'nums', rem: 3.5),
+            new Column('amount', 'Сумма', num: true, cell: 'nums', rem: 6.5),
+        );
+    }
+
     /** Карточка документа: живой — счёт на лету с номером, который получит; отправленный — счёт с оплатами и историей. */
     private function closingCard(ClosingDoc $doc)
+    {
+        return view('park.money.closing-card', $this->closingData($doc));
+    }
+
+    /** @return array<string, mixed> данные тела документа — одни на карточку и страницу */
+    private function closingData(ClosingDoc $doc): array
     {
         $draft = $doc->live() && $doc->state !== 'nobody' ? Closing::draft($doc->month, $doc->group) : null;
         $invoice = $doc->invoice?->loadMissing(['party', 'charges.vehicle.vendor', 'payments', 'sender', 'sentMessage.addresses']);
         $charges = ($invoice ?? $draft)?->charges ?? collect();
 
-        return view('park.money.closing-card', [
+        return [
             'doc' => $doc, 'draft' => $draft, 'invoice' => $invoice, 'files' => $doc->files($draft),
             'composition' => ClosingDoc::composition($charges, $doc->month),
             'skipped' => $draft?->getRelation('skipped')->all() ?? [],
             'history' => $invoice ? ClosingDoc::history($invoice) : [],
             'sources' => PaymentSource::manual(),
-        ]);
+        ];
     }
 
     /** Прежний адрес живого документа — его карточка в списке. Исправленный — карточка отправленного. */
@@ -246,9 +297,15 @@ class MoneyController
     {
         [$month, $group, $replaces] = $this->draftKey($request);
         abort_unless($request->user()->canManagePark(), 403);
+        // Прошлый документ ушёл по-старому — свой номер из архива и день отправки (`FixClosingDocument`).
+        $own = $request->validate(['code' => ['nullable', 'string', 'max:40'], 'sent_on' => ['nullable', 'date', 'before_or_equal:today']]);
         try {
-            $invoice = $fix($month, $group, $request->user(), $replaces);
+            $invoice = $fix($month, $group, $request->user(), $replaces, $own['code'] ?? null, isset($own['sent_on']) ? Carbon::parse($own['sent_on']) : null);
         } catch (ValidationException $e) {
+            if ($e->validator->errors()->has('code')) {
+                return back()->withErrors($e->errors())->withInput();
+            }
+
             return redirect('/money/closing?peek='.ClosingDoc::liveKey($month, $group))->with('toast', implode(', ', $e->validator->errors()->all()));
         }
 

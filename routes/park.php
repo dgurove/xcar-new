@@ -130,6 +130,8 @@ Route::domain(config('xcar.park_host'))->middleware(['auth', 'section:park'])->g
         Route::get('/money', [MoneyController::class, 'index']);
         Route::get('/money/debts', [MoneyController::class, 'debts']);
         Route::get('/money/closing', [MoneyController::class, 'closing']);
+        // Документ на всю страницу: то же, что карточка, и все ТС с датами и актами для сверки.
+        Route::get('/money/closing/{key}', [MoneyController::class, 'closingPage'])->where('key', '(i\d+|d\d{6}-[A-Za-z0-9_-]+)');
         // Живой документ месяца: счёт и акт на лету, «Отправили сами» фиксирует (письмом — `/mail/new?closing=`).
         Route::get('/money/draft', [MoneyController::class, 'draft']);
         Route::get('/money/draft/pdf', [MoneyController::class, 'draftPdf']);

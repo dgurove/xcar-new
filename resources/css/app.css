@@ -2228,6 +2228,13 @@ html.kb-open { --home-gap: 0px; }
 @layer components {
   .doc-hero-logo { width: 3.5rem; height: 3.5rem; margin-bottom: .75rem; border-radius: var(--radius-m); vertical-align: 0; }
   .doc-alert { @apply mt-5 rounded-(--radius-l) bg-danger-soft px-4 py-3; }
+  .doc-page { @apply grid grid-cols-1 items-start gap-6; }
+  @media (min-width: 1024px) {
+    .doc-page { grid-template-columns: 24rem minmax(0, 1fr); }
+    /* Сверка по акту: шторка документов справа, слева — таблица во всю ширину без карточки. */
+    html.docs-open .doc-page { grid-template-columns: minmax(0, 1fr); }
+    html.docs-open .doc-page-side { display: none; }
+  }
   .table tr.table-group .table-group-aside { @apply ml-auto inline-flex gap-3 text-sm font-normal text-ink-muted; }
 }
 

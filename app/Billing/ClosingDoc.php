@@ -46,7 +46,8 @@ final class ClosingDoc
     ) {}
 
     /**
-     * Документы последних `$months` месяцев и любого более раннего с живым документом — по месяцам, новые сверху.
+     * Документы последних `$months` месяцев и любого более раннего с живым или отправленным документом — по месяцам,
+     * новые сверху (05.11.2026, владелец: «за всю историю счета и акты составлять»).
      *
      * @return Collection<string, Collection<int, self>> «Y-m» → документы по порядку дела
      */
@@ -58,6 +59,10 @@ final class ClosingDoc
         $earliest = $vehicles->map(fn ($v) => $v->storage_billed_until?->copy()->addDay() ?? $v->accepted_at)->filter()->min();
         $from = $now->copy()->subMonths($months - 1);
         $from = $earliest && $earliest->lt($from) ? Carbon::instance($earliest)->startOfMonth() : $from;
+        // И отправленные раньше самого раннего живого (прошлое отмечают по месяцу — август 2024 отправлен, живой уже сентябрь):
+        // список — вся история документов, а не окно.
+        $sentFrom = Invoice::where('direction', 'issued')->where('state', '!=', InvoiceState::Void)->ofPark()->whereNotNull('month')->min('month');
+        $from = $sentFrom && Carbon::parse($sentFrom)->lt($from) ? Carbon::parse($sentFrom)->startOfMonth() : $from;
         $list = collect();
         for ($m = $now->copy(); $m->gte($from); $m->subMonth()) {
             $list->push($m->copy());

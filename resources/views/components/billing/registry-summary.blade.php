@@ -3,7 +3,7 @@
      владелец: «не вижу смысла»), эвакуация и прочее, итог; последней строкой «Все N ТС» — шторка со строкой на машину: период, сутки, сумма, ссылка
      в дело. В эвакуации и счёте покупателю групп нет — машины строками сразу (их одна-три). Карточка «Счетов и актов» и
      страница счёта. --}}
-@props(['composition', 'month', 'total', 'id'])
+@props(['composition', 'month', 'total', 'id', 'all' => true])
 @php
     use App\Support\Money;
     $c = $composition; $cars = $c['cars'];
@@ -31,7 +31,7 @@
         <span class="min-w-0 flex-1">Итого<span class="row-sub"><span class="nums">{{ $cars->count() }}&nbsp;ТС</span>@if ($days)<span class="nums">{{ Money::nums($days) }}&nbsp;сут</span>@endif</span></span>
         <span class="nums shrink-0 font-semibold">{{ Money::rub($total) }}</span>
     </div>
-    @unless ($few)
+    @if (! $few && $all)
         <div data-controller="sheet">
             <button type="button" class="row w-full text-left" data-action="sheet#open"><span class="min-w-0 flex-1 text-accent-text">Все {{ $cars->count() }}&nbsp;ТС</span><x-ui.chevron/></button>
             <x-ui.sheet :id="'cars-'.$id" :title="'ТС в документе, '.$cars->count()" tall>
@@ -40,5 +40,5 @@
                 </div>
             </x-ui.sheet>
         </div>
-    @endunless
+    @endif
 </div>

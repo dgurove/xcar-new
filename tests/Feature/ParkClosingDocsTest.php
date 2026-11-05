@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Billing\ActForm;
 use App\Billing\Actions\FixClosingDocument;
+use App\Billing\Actions\TickInvoices;
 use App\Billing\Actions\VoidInvoice;
 use App\Billing\Cadence;
 use App\Billing\Charge;
@@ -204,6 +205,51 @@ class ParkClosingDocsTest extends TestCase
         $this->assertSame($this->admin->id, Invoice::first()->sent_by);
         $this->actingAs($this->admin)->get(Surface::Park->url('/money/closing?peek=i'.Invoice::first()->id), ['Turbo-Frame' => 'detail'])->assertOk()
             ->assertSee('Отмечен отправленным');
+    }
+
+    /**
+     * Прошлый документ ушёл по-старому (05.11.2026, владелец: «сверю со старыми актами и прожму, что отправлено»): «Отправили
+     * сами» — свой номер из архива и день; занятый номер — ошибкой у поля. Счёт-реестр открывается страницей документа со
+     * всеми ТС.
+     */
+    public function test_marked_sent_with_archive_number_and_day(): void
+    {
+        $month = Carbon::parse('2026-10-01');
+        $group = Closing::items($month)->map(fn ($i) => Closing::groupOf($i))->first();
+        $this->actingAs($this->admin)->post(Surface::Park->url('/money/draft/fix'), ['month' => '2026-10', 'group' => $group, 'code' => '20261102-07', 'sent_on' => '2026-11-02']);
+        $invoice = Invoice::firstOrFail();
+        $this->assertSame('20261102-07', $invoice->code);
+        $this->assertSame('2026-11-02', $invoice->issued_at->toDateString());
+        $this->assertSame('2026-11-02', $invoice->sent_at->toDateString());
+        $this->assertTrue($invoice->due_at->gt($invoice->issued_at));
+
+        $this->actingAs($this->admin)->get(Surface::Park->url('/money/invoices/'.$invoice->id))->assertRedirect('/money/closing/i'.$invoice->id);
+        $this->actingAs($this->admin)->get(Surface::Park->url('/money/closing/i'.$invoice->id))->assertOk()
+            ->assertSee('Все ТС')->assertSee('Отменить отправку')->assertSee('SGZA0000933697D', false);
+
+        // Тот же номер второй раз — ошибка у поля, ничего не записано.
+        Charge::create(['party_id' => $this->vendor->party_id, 'vehicle_id' => $this->vehicle->id, 'kind' => ChargeKind::Tow, 'title' => 'Подача эвакуатора',
+            'qty' => 1, 'unit' => 'pc', 'price' => 16000, 'amount' => 16000, 'period_from' => '2026-10-03', 'created_by' => $this->admin->id]);
+        $tow = Closing::items($month)->first(fn ($i) => $i['tow']);
+        $this->actingAs($this->admin)->from(Surface::Park->url('/money/closing'))
+            ->post(Surface::Park->url('/money/draft/fix'), ['month' => '2026-10', 'group' => Closing::groupOf($tow), 'code' => '20261102-07', 'sent_on' => '2026-11-02'])
+            ->assertSessionHasErrors('code');
+        $this->assertSame(1, Invoice::count());
+
+        // «···» → «Отменить отправку»: номер освобождается, документ снова живой.
+        $this->actingAs($this->admin)->post(Surface::Park->url('/money/invoices/'.$invoice->id.'/void'));
+        $this->assertSame(InvoiceState::Void, $invoice->fresh()->state);
+        $this->assertNotNull(Closing::draft($month, $group));
+    }
+
+    /** Отмеченный задним числом с прошедшим сроком — просрочка отмечена молча: часы не шлют «просрочен» за всю историю. */
+    public function test_back_dated_document_does_not_alarm_overdue(): void
+    {
+        $month = Carbon::parse('2026-10-01');
+        $group = Closing::items($month)->map(fn ($i) => Closing::groupOf($i))->first();
+        $invoice = app(FixClosingDocument::class)($month, $group, $this->admin, null, '20261001-01', Carbon::parse('2026-10-01'));
+        $this->assertNotNull($invoice->fresh()->overdue_at);
+        $this->assertSame(0, app(TickInvoices::class)());
     }
 
     public function test_rgs_form_gives_act_and_appendix(): void
