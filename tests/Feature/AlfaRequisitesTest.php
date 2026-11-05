@@ -138,6 +138,8 @@ class AlfaRequisitesTest extends TestCase
         $offer = $offer->fresh();
         $this->assertSame('Письмо с реквизитами', $offer->stage()->name);
         $this->assertSame(WaitsFor::Us, $offer->position(Track::Sale)->waits_for);
+        // Данные есть — сотрудникам громко «напишите поставщику» (05.11.2026, владелец: «вот тут уведомление уместно»).
+        Notification::assertSentTo($this->admin, \App\Notifications\OurTurnNotice::class, fn ($n) => str_contains((string) $n->text(), 'Напишите поставщику'));
         $this->assertNull($deal->fresh()->contract->ready_at, 'договора у «страховой напрямую» нет — «ДКП готов» не шлём');
 
         // В письме — реквизиты покупателя, скан — у него же (вложение черновика).

@@ -79,12 +79,12 @@
                 </div>
             </li>
 
-            {{-- 2. Покупатель: менеджер сделки и, пока он думает, все менеджеры. --}}
+            {{-- 2. Кто берёт по новой цене (05.11.2026: «Покупатель» читался как клиент менеджера): менеджер сделки и, пока он думает, все менеджеры. --}}
             @php $s = $flow->buyer(); @endphp
             <li class="substep substep--{{ $s }}">
                 <span class="substep-dot">@if ($s === RepriceFlow::DONE)<x-ui.icon name="check" class="size-2.5"/>@endif</span>
                 <div class="substep-body">
-                    <div class="substep-head"><span class="substep-title">Покупатель</span></div>
+                    <div class="substep-head"><span class="substep-title">Кто берёт</span></div>
                     @if ($s !== RepriceFlow::WAIT && $buyer)
                         <div class="step-who">
                             <x-ui.avatar :user="$buyer" :size="32"/>
@@ -129,7 +129,7 @@
                     <div class="substep-body">
                         <div class="substep-head">
                             <span class="substep-title">Ответ поставщику</span>
-                            @if ($answer === RepriceFlow::WAIT)<span class="substep-meta">когда будет покупатель</span>@endif
+                            @if ($answer === RepriceFlow::WAIT)<span class="substep-meta">когда кто-то возьмёт</span>@endif
                         </div>
                         @if ($answer === RepriceFlow::NOW)
                             <div class="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-2">

@@ -26,7 +26,6 @@ use App\Offers\Actions\NotifyViewers;
 use App\Offers\Deal;
 use App\Offers\Estimate;
 use App\Offers\Events\BidAccepted;
-use App\Offers\Events\BidPlaced;
 use App\Offers\Events\CounterAnswered;
 use App\Offers\Events\CounterOffered;
 use App\Offers\Events\EstimateGiven;
@@ -84,7 +83,6 @@ final class Notify
     {
         return [
             OfferPublished::class => 'offerPublished',
-            BidPlaced::class => 'bidPlaced',
             BidAccepted::class => 'bidAccepted',
             CounterOffered::class => 'counterOffered',
             CounterAnswered::class => 'counterAnswered',
@@ -162,13 +160,6 @@ final class Notify
         }
     }
 
-    public function bidPlaced(BidPlaced $e): void
-    {
-        if ($e->byStaff) {
-            return; // внёс сам админ — он и так знает
-        }
-        Notification::send($this->staff(), new BidPlacedNotice($e->bid->load('offer', 'user')));
-    }
 
     public function bidAccepted(BidAccepted $e): void
     {
@@ -265,6 +256,12 @@ final class Notify
         if ($deal && $e->exit?->takes() && $e->to->isLetterStep()) {
             // Нажал за менеджера сам сотрудник — ему не звонить (28.10.2026).
             Notification::send($this->staff()->reject(fn (User $u) => $u->is($e->by)), new ConsentGivenNotice($deal->load(['offer', 'buyer'])));
+        } elseif ($deal?->isActive() && $deal->buyer && $e->by?->is($deal->buyer) && ! $position?->awaitsInvoice()
+            && ($e->to->isLetterStep() || $e->to->waits_for === WaitsFor::Us)) {
+            // Менеджер сделал своё, и ход наш (заполнил реквизиты — письмо страховой, приложил, забрал): громко сотрудникам
+            // (05.11.2026, владелец: «вот тут уведомление уместно» — вместо каждого нового подтверждения). Нажал за него
+            // сотрудник — `by` не менеджер, никому. Счёт не встал — своё `invoiceNeeded` выше.
+            Notification::send($this->staff(), new OurTurnNotice($deal->load(['offer', 'buyer']), $e->to, $e->exit));
         }
         // Шаг сдвинул админ галкой в «Показать менеджеру» — его ход уходит в том же уведомлении (`Offers\Actions\Disclose`).
         if (! $deal?->buyer || $e->letter) {
