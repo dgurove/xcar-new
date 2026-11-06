@@ -2142,6 +2142,9 @@ html.kb-open { --home-gap: 0px; }
   .tag .vendor-logo.is-letter { background: var(--color-surface); }
   .vendor-name { @apply inline-flex min-w-0 max-w-full items-center; gap: .4em; vertical-align: bottom; }
   .vendor-name-text { @apply truncate; }
+  /* Имя целиком, с переносом — где оно своей строкой (счёт в деньгах сделки). */
+  .vendor-name-wrap { display: flex; }
+  .vendor-name-wrap .vendor-name-text { white-space: normal; overflow: visible; overflow-wrap: break-word; }
   .tag.vendor-name { padding-left: 4px; }
   /* Столбец «Вендор, № убытка»: логотип с именем и номер в одну строку. Логотип перед названием ТС — только пока
      этого столбца нет (краткая таблица телефона). */
@@ -2462,8 +2465,8 @@ html.kb-open { --home-gap: 0px; }
   .scan-field { @apply flex-wrap items-start gap-y-0.5 sm:flex-nowrap; }
   /* Расхождение с документом (`x-park.doc-differences`): было → стало переносится целыми значениями, не посимвольно. */
   .doc-diff-row { @apply items-start py-3; }
-  .doc-diff-change { @apply mt-0.5 flex flex-wrap items-baseline gap-x-2 gap-y-0.5; }
-  .doc-diff-change > * { @apply shrink-0; }
+  /* Было — зачёркнутым серым, стало — под ним (06.11.2026: «было → стало» в узком окошке рвалось стрелкой в конце строки). */
+  .doc-diff-change { @apply mt-0.5 flex flex-col; overflow-wrap: anywhere; }
   .scan-field > .switch, .scan-field > .check, .scan-field > :last-child { @apply self-center; }
   /* Подпись колонкой — от 640; на телефоне строкой над значением, иначе «537 142 ₽» не влезало. */
   .scan-label { @apply w-full shrink-0 text-sm text-ink-muted empty:hidden sm:w-24 sm:pt-px sm:empty:block; }

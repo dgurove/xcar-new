@@ -24,6 +24,7 @@
     @if ($scan && $party?->exists)
         <div data-reveal-target="pane" data-reveal-key="person ip" @if ($kind === 'company') hidden @endif>
             <x-billing.passport-scan :party="$party" :form="$scan" :prefix="$prefix"/>
+            {{ $scanAfter ?? '' }}
         </div>
     @endif
     <div class="fields fields-stack" data-reveal-target="pane" data-reveal-key="person ip" @if ($kind === 'company') hidden @endif>

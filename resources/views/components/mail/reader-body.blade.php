@@ -13,7 +13,7 @@
     <div class="row doc-diff-row">
         <span class="min-w-0 flex-1">
             <span class="block text-sm text-ink-muted" data-slot="label"></span>
-            <span class="doc-diff-change"><span class="text-ink-muted" data-slot="now"></span><span class="text-ink-dim" aria-hidden="true" data-slot="arrow">→</span><span data-slot="doc"></span></span>
+            <span class="doc-diff-change"><s class="text-ink-dim" data-slot="now"></s><span class="hidden" data-slot="arrow"></span><span class="font-medium" data-slot="doc"></span></span>
             <span class="block text-sm text-ink-dim" data-slot="from"></span>
             <span class="mt-2 flex gap-2">
                 <button type="button" class="btn btn-s btn-quiet max-w-48 flex-1" data-act="reject">Отклонить</button>

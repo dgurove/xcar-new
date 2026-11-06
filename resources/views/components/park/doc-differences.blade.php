@@ -1,5 +1,5 @@
 {{-- Группа «документы» над полями ТС: строка на расхождение карточки с документом (FillFromDocs::differences) —
-     поле, «в карточке → в документе», откуда, под ними «Отклонить» и «Взять» с подтверждением: кнопки
+     поле, в карточке (зачёркнуто) и в документе под ним, откуда, под ними «Отклонить» и «Взять» с подтверждением: кнопки
      отправляют форму вокруг на свой адрес (вложенной формы быть не может). Последней строкой — слот: вход в окно
      «Из документов» (x-mail.scan-button). Пусто и то и другое — группы нет. bare — строками чужой группы `.list` (окошко
      строки, 20.10.2026), form — id внешней формы `/take`: в группе есть шторки со своими формами, вложить её нельзя. --}}
@@ -20,7 +20,7 @@
             <div class="row doc-diff-row">
                 <span class="min-w-0 flex-1">
                     <span class="block text-sm text-ink-muted">{{ $labels[$field] }}</span>
-                    <span class="doc-diff-change"><span class="text-ink-muted {{ $nums }}">{{ $show($now) }}</span><span class="text-ink-dim" aria-hidden="true">→</span><span class="{{ $nums }}">{{ $show($d['value']) }}</span></span>
+                    <span class="doc-diff-change"><s class="text-ink-dim {{ $nums }}">{{ $show($now) }}</s><span class="font-medium {{ $nums }}">{{ $show($d['value']) }}</span></span>
                     <span class="block text-sm text-ink-dim">{{ implode(', ', $d['sources']) }}</span>
                     <span class="mt-2 flex gap-2">
                         <button type="submit" @if ($form) form="{{ $form }}" @endif class="btn btn-s btn-quiet flex-1 max-w-48" formaction="/cars/{{ $vehicle->id }}/take" formmethod="post" formnovalidate name="reject" value="{{ $field }}|{{ $d['value'] }}">Отклонить</button>

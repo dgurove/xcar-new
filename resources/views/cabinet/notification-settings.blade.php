@@ -67,30 +67,6 @@
             </section>
         @endif
 
-        {{-- На почту (06.11.2026, владелец: «только СУПЕР важное, все ненавидят спам»): короткий список `Categories::mail`, всё
-             выключено, пока человек сам не включит; работает только с подтверждённой почтой. --}}
-        @if ($user->email && $mail)
-            <section>
-                <h2 class="list-head">На почту</h2>
-                <input type="hidden" name="mail_shown" value="1">
-                <div class="list">
-                    <div class="row">
-                        <x-ui.row-icon name="mail"/>
-                        <span class="min-w-0 flex-1">
-                            <span class="block break-words">{!! str_replace('@', '@<wbr>', e($user->email)) !!}</span>
-                            <span class="row-sub {{ $user->mailVerified() ? 'text-open' : 'text-ink-muted' }}">{{ $user->mailVerified() ? 'подтверждена' : 'не подтверждена' }}</span>
-                        </span>
-                        @unless ($user->mailVerified())<button type="submit" form="verify-mail" class="btn btn-s btn-quiet shrink-0">Подтвердить</button>@endunless
-                    </div>
-                    @foreach ($mail as $key => $label)
-                        <label @class(['row row-switch', 'opacity-50' => ! $user->mailVerified()])>
-                            <span class="min-w-0 flex-1 font-medium">{{ $label }}</span>
-                            <input type="checkbox" name="mail_on[]" value="{{ $key }}" class="switch" @checked($user->mailVerified() && $user->wantsMail() && in_array($key, $settings['mail_on'] ?? [], true)) @disabled(! $user->mailVerified()) data-action="change->autosubmit#submit">
-                        </label>
-                    @endforeach
-                </div>
-            </section>
-        @endif
 
         @if ($categories['on'] || $categories['always'])
         <section>
@@ -110,6 +86,38 @@
                 @endforeach
             </div>
         </section>
+        @endif
+
+        {{-- На почту (06.11.2026, владелец: «только СУПЕР важное, все ненавидят спам»): короткий список `Categories::mail`, всё
+             выключено, пока человек сам не включит; работает только с подтверждённой почтой. --}}
+        @if ($user->email && $mail)
+            <section>
+                <h2 class="list-head">На почту</h2>
+                <input type="hidden" name="mail_shown" value="1">
+                <div class="list">
+                    {{-- Адрес — во всю строку (06.11.2026, владелец: рядом с кнопкой он рвался «dimyan1984@x / mail.ru»); «Подтвердить
+                         почту» — своей строкой-действием под ним. --}}
+                    <div class="row">
+                        <x-ui.row-icon name="mail"/>
+                        <span class="min-w-0 flex-1">
+                            <span class="block truncate font-medium">{{ $user->email }}</span>
+                            <span class="row-sub {{ $user->mailVerified() ? 'text-open' : 'text-ink-muted' }}">{{ $user->mailVerified() ? 'подтверждена' : 'не подтверждена' }}</span>
+                        </span>
+                    </div>
+                    @unless ($user->mailVerified())
+                        <button type="submit" form="verify-mail" class="row w-full text-left text-accent-text">
+                            <span class="min-w-0 flex-1 font-medium">Подтвердить почту</span>
+                            <x-ui.chevron/>
+                        </button>
+                    @endunless
+                    @foreach ($mail as $key => $label)
+                        <label @class(['row row-switch', 'opacity-50' => ! $user->mailVerified()])>
+                            <span class="min-w-0 flex-1 font-medium">{{ $label }}</span>
+                            <input type="checkbox" name="mail_on[]" value="{{ $key }}" class="switch" @checked($user->mailVerified() && $user->wantsMail() && in_array($key, $settings['mail_on'] ?? [], true)) @disabled(! $user->mailVerified()) data-action="change->autosubmit#submit">
+                        </label>
+                    @endforeach
+                </div>
+            </section>
         @endif
 
         <section>

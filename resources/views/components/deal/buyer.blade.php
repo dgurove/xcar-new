@@ -37,18 +37,22 @@
         </x-ui.sheet-row>
         <x-ui.sheet :id="$dataSheet" :title="$ready ? 'Данные покупателя' : 'Данные для '.$for" :open="session('open_sheet') === $dataSheet || $errors->hasAny(['buyer.*']) || $ask" tall>
             @php $buyerParty = $buyer->party ?? \App\Billing\Party::forUser($buyer); @endphp
-            @if ($scanPdf)
-                <div class="list mb-3">
-                    <x-ui.doc :doc="$scanPdf" class="row">
-                        <x-ui.row-icon name="file" size="s" tone="open"/>
-                        <span class="min-w-0 flex-1">Скан паспорта, PDF</span>
-                        <x-ui.chevron/>
-                    </x-ui.doc>
-                </div>
-            @endif
             <form method="post" action="/work/deals/{{ $deal->id }}/contract" class="flex flex-col gap-3" id="{{ $dataSheet }}-form">
                 @csrf @method('put')
-                <x-billing.buyer-fields :party="$buyerParty" :key="'crm-buyer-'.$deal->id" :scan="$dataSheet.'-form'" :fallback="$buyer->name"/>
+                <x-billing.buyer-fields :party="$buyerParty" :key="'crm-buyer-'.$deal->id" :scan="$dataSheet.'-form'" :fallback="$buyer->name">
+                    {{-- Скан одним PDF — под плитками скана, а не над видом покупателя (06.11.2026). --}}
+                    @if ($scanPdf)
+                        <x-slot:scan-after>
+                            <div class="list mt-3">
+                                <x-ui.doc :doc="$scanPdf" class="row">
+                                    <x-ui.row-icon name="file" size="s" tone="open"/>
+                                    <span class="min-w-0 flex-1">Скан паспорта, PDF</span>
+                                    <x-ui.chevron/>
+                                </x-ui.doc>
+                            </div>
+                        </x-slot:scan-after>
+                    @endif
+                </x-billing.buyer-fields>
                 <x-ui.sheet-foot>Сохранить</x-ui.sheet-foot>
             </form>
         </x-ui.sheet>
