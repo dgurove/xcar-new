@@ -100,4 +100,31 @@ class ClaimDigestTest extends TestCase
         $job->failed(new \RuntimeException('smtp'));
         $this->assertTrue(true);
     }
+
+    /** Кнопка «Отправить запрос» в 12:00 — письмо Андрею сразу; в 18:00 — только новые. Ушло — владельцу в Telegram. */
+    public function test_manual_send_mails_now_and_owner_hears_in_telegram(): void
+    {
+        config(['xcar.telegram.token' => 'test-token']);
+        $said = [];
+        \Illuminate\Support\Facades\Http::fake(function ($r) use (&$said) {
+            $said[] = $r['text'] ?? '';
+
+            return \Illuminate\Support\Facades\Http::response(['ok' => true, 'result' => ['message_id' => 1]]);
+        });
+        $owner = User::create(['name' => 'Дмитрий Гуров', 'phone' => '79000000003', 'roles' => [Role::Admin, Role::Owner], 'approved_at' => now()]);
+        $owner->forceFill(['telegram_chat_id' => 555])->save();
+        $a = $this->pending('AUT-26-666666');
+        $this->actingAs($owner)->post(\App\Support\Surface::Crm->url('/settings/vendors/'.$this->vendor->id.'/requests'), ['offers' => [$a->id]])
+            ->assertSessionHas('toast', fn ($t) => str_contains($t, 'Андрей Кузнецов на почту'));
+        $job = null;
+        Queue::assertPushed(SendSystemMail::class, function (SendSystemMail $j) use (&$job) {
+            return (bool) ($job = $j);
+        });
+        $job->handle();
+        $this->assertTrue(collect($said)->contains(fn ($t) => str_contains($t, 'номера на почте') && str_contains($t, '1 номер')), 'владельцу — что письмо ушло');
+
+        $this->pending('AUT-26-777777');
+        $this->assertSame(1, $this->at('18:01'));
+        $this->assertSame(['AUT-26-777777'], ClaimRequest::latest('id')->first()->refs, 'в 18:00 — только новые');
+    }
 }
