@@ -5,7 +5,7 @@ import { request } from '../lib/http';
 import { reducedMotion } from '../lib/motion';
 import { Camera, FOCUS } from '../space/camera';
 import { Filter } from '../space/filter';
-import { FlatMarks, Marks, fits, marks, pixelRatio } from '../space/marks';
+import { FlatMarks, Marks, marks, pixelRatio } from '../space/marks';
 
 // Главная CRM (`admin/space`, 04.11.2026; с 06.11.2026 — фото паркинга и знаки бренда вместо звёзд): знаки
 // (`space/marks.js`), камера (`space/camera.js`), слой фото и слой схемы `.space-world` — одним циклом кадров. Кадр
@@ -30,7 +30,7 @@ const PEEK = 18;             // px: на телефоне слева от эта
 const CALM = 2000;           // мс: события пачкой — одно перечитывание
 const STALE = 9000;          // мс: сервер отдал прежний снимок — ещё раз через столько (+ CALM)
 const TWEEN = 700;           // мс докрутки числа
-let set = null;              // знаки одни на сеанс: второй заход их не считает заново
+let set = null;              // знаки под размер сцены: тот же размер — второй заход их не считает заново
 
 const read = (key) => { try { return JSON.parse(sessionStorage.getItem(key) || 'null') ?? undefined; } catch { return undefined; } };
 const save = (key, value) => { try { sessionStorage.setItem(key, JSON.stringify(value)); } catch {} };
@@ -43,7 +43,7 @@ export default class extends Controller {
 
     connect() {
         this.still = reducedMotion();
-        set ??= marks();
+        set ??= marks(innerWidth, innerHeight);
         this.dark = document.documentElement.classList.contains('dark');
         this.build();
         this.camera = new Camera(this.element, { wake: () => this.wake(), still: this.still });
@@ -111,7 +111,8 @@ export default class extends Controller {
     fit() {
         const { width: w, height: h } = this.element.getBoundingClientRect();
         if (!w || !h) return;
-        if (!fits(set, w, h)) { set = marks(Math.max(w, h)); this.renderer.load(set); }
+        // Композиция — в долях сцены: новый размер — знаки заново (их сотня-другая, это дёшево).
+        if (set.w !== w || set.h !== h) { set = marks(w, h); this.renderer.load(set); }
         this.renderer.resize(w, h, pixelRatio(w, h, this.cap));
         this.drawn = -1;
         this.camera.resize(w, h);

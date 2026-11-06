@@ -6,9 +6,9 @@
 // состояниями за десятки секунд, в столбике X и ряду ▶ лайм шагает по очереди, X и ▶ чуть покачиваются, сетки стоят.
 // Производительность — главное (владелец: «это очень-очень важно»): один буфер WebGL, один вызов отрисовки точками, форму
 // рисует фрагментный шейдер, окраску и покачивание — вершинный от времени; по кадру JS не считает ничего. Знаков сотни.
-// Небо бесконечно: знаки слоя лежат в плитке и заворачиваются по модулю в шейдере. Без WebGL — `FlatMarks` на 2D, без
-// оживления. Раскладка одна и та же при каждом заходе — генератор с постоянным зерном.
-import { MIN } from './camera';
+// Раскладка — одна из двух продуманных композиций по ширине сцены (`COMPOSITIONS`); плитка заворачивается по модулю в
+// шейдере. Без WebGL — `FlatMarks` на 2D, без оживления. Раскладка одна и та же при каждом заходе — генератор с
+// постоянным зерном.
 
 // Цвета — по номеру: 0 серый, 1 белый (в светлой теме — графит), 2 лайм, 3 тёмный (без синевы — владелец: «синий не
 // надо»), 4 пусто. Состояние знака — номер
@@ -22,20 +22,41 @@ const SQUARE = 0, CROSS = 1, PLAY = 2;
 // Оживление: 0 — стоит, 1 — волна по диагонали сетки, 2 — дышит, 3 — очередь в столбике или ряду.
 const STILL = 0, WAVE = 1, BREATH = 2, TURN = 3;
 
-// Слои: глубины, групп на миллион px² плитки, доли видов групп, размер знака и шаг (css px), сетка — столбцов и строк. Из
-// трёх раскладок владелец выбрал «По краям» (06.11.2026): знаков много, но там, где доска, их нет — см. `mask`. Главное —
-// островки квадратиков в дальнем слое (две сетки разной глубины наезжали бы друг на друга при сдвиге); ▶▶▶ и X — всего
-// несколько на экран, ближе и крупнее (владелец: «квадратиков преступно мало, они красивые, треугольников и крестиков —
-// всего несколько»).
-// Глубины — в 3–4 раза меньше первых (06.11.2026, владелец: при движении знаки «прямо возле карточек», а должны казаться
-// сильно далеко): самый ближний слой едет со скоростью 0,07 доски. Квадратики мигают вдвое чаще первых (период 6–14 с).
-const LAYERS = [
-    { d: [0.006, 0.014], groups: 4.5, kinds: { grid: 1 }, size: [8, 10], step: [24, 28], grid: [[4, 7], [4, 7]] },
-    { d: [0.018, 0.035], cell: 480, mark: [18, 22] },
-    { d: [0.04, 0.07], cell: 1000, mark: [28, 34] },
-];
-// ▶▶▶ и X — крупнее квадратиков, с зазором, как в брендбуке: шаг — доля размера знака.
-const TRIAD_STEP = { play: 1.4, cross: 1.6 };
+// Глубины малые (06.11.2026, владелец: при движении знаки «прямо возле карточек», а должны казаться сильно далеко): ▶ и X
+// едут со скоростью 0,02–0,035 доски, сетки — 0,006–0,014: знаки почти стоят на экране.
+const DEPTH = { grid: [0.006, 0.014], triad: [0.018, 0.035] };
+// Композиция — по макету владельца (экран входа 720×1280, 06.11.2026: «я именно про количество и расположение»): сетка
+// 3×5 в левом верхнем углу, сетка 5×7 в правом нижнем, столбик X слева внизу, ряд ▶▶▶ справа над нижней сеткой. Размеры —
+// в px макета: квадрат 9 при шаге 58×43 (по горизонтали шире — так в брендбуке), нижняя сетка гуще — 47×34; X и ▶ — 36–38
+// при шаге 64. На сцене всё умножается на `k`: на телефоне — ширина / 720, на ПК — по высоте сцены (0,6–0,9). Место — доля сцены `u, v` и
+// угол группы, который туда встаёт (`at`: tl, tr, bl, br, c). Где сцену занимает доска, сдвинуто к свободному: нижняя сетка — над
+// плашкой фильтра. Что окажется под карточками при сдвиге, гасит `mask`. Квадратики мигают вдвое чаще первых (6–14 с).
+const COMPOSITIONS = {
+    narrow: {
+        k: (w) => w / 720,
+        groups: [
+            // На телефоне над шапками этапов места на две строки: ниже сетка ушла бы под доску.
+            { kind: 'grid', u: 0.06, v: 0.02, at: 'tl', cols: 3, rows: 2, step: [58, 43], size: 9 },
+            { kind: 'play', u: 0.7, v: 0.69, at: 'c', step: 64, size: 38 },
+            { kind: 'cross', u: 0.167, v: 0.74, at: 'c', step: 64, size: 36 },
+            { kind: 'grid', u: 0.96, v: 0.87, at: 'br', cols: 5, rows: 5, step: [47, 34], size: 7 },
+        ],
+    },
+    // ПК — тот же язык, но сеток больше (владелец: «на компе чуть побольше элементов», «квадратиков добавить», ▶ и X —
+    // как на макете, по одному): сетки во всех четырёх углах (верхние — над шапками этапов, нижняя левая — под столбиком X).
+    wide: {
+        k: (w, h) => Math.min(0.9, Math.max(0.6, h / 1200)),
+        groups: [
+            { kind: 'grid', u: 0.015, v: 0.03, at: 'tl', cols: 3, rows: 5, step: [58, 43], size: 9 },
+            { kind: 'grid', u: 0.985, v: 0.025, at: 'tr', cols: 6, rows: 4, step: [47, 34], size: 7 },
+            { kind: 'cross', u: 0.075, v: 0.7, at: 'c', step: 64, size: 36 },
+            { kind: 'grid', u: 0.015, v: 0.975, at: 'bl', cols: 4, rows: 3, step: [47, 34], size: 7 },
+            { kind: 'play', u: 0.74, v: 0.72, at: 'c', step: 64, size: 38 },
+            { kind: 'grid', u: 0.985, v: 0.975, at: 'br', cols: 5, rows: 7, step: [47, 34], size: 7 },
+        ],
+    },
+};
+export const NARROW = 700;     // css px: уже — узкая композиция (телефон стоя), шире — широкая (и телефон боком)
 // Доска гасит знаки под собой: рамки шапок и столбцов подэтапов (в координатах слоя схемы), знак ближе `CLEAR` px к рамке
 // гаснет, за `CLEAR + FADE` — виден целиком. Рамок не больше `MAX_RECTS` (этапов девять, по две рамки).
 const MAX_RECTS = 32;
@@ -75,76 +96,55 @@ function cell(rand) {
     return { a: Number(a), b: Number(a), anim: STILL };
 }
 
-// Знаки под самый большой экран устройства; окно шире — `fits` говорит «мало», и раскладка считается заново.
-export function marks(least = 0) {
-    const side = Math.ceil((Math.max(screen.width || 0, screen.height || 0, innerWidth, innerHeight, least) + 2 * MARGIN) / 512) * 512;
+// Знаки под сцену `w×h`: композиция по ширине, места — от середины сцены. Плитка одна на набор и вдвое больше сцены: при
+// сдвиге и масштабе 0,4 повторов не видно, за краем композиции пусто.
+export function marks(w, h) {
+    const look = COMPOSITIONS[w < NARROW ? 'narrow' : 'wide'];
+    const k = look.k(w, h);
+    const side = Math.ceil((2 * Math.max(w, h, 1) + 2 * MARGIN) / 64) * 64;
     const rand = random(20261106);
     const out = [];
-    const put = (x, y, d, tile, size, kind, st, anim, k, speed, phase, move = [0, 0, 0], n = 1) =>
-        out.push(x, y, d, tile, size, kind, st.a, st.b, anim, k, speed, phase, move[0], move[1], move[2], n);
-
-    // Все группы всех слоёв — в одном списке: при первом виде (камера у начала) группы разных слоёв не налезают друг на
-    // друга. Место — от середины своей плитки, как его покажет шейдер.
-    const taken = [];
-    for (const layer of LAYERS) {
-        const tile = Math.ceil(side / MIN ** layer.d[1] / 64) * 64;
-        // Телефон: экран мал, а доска закрывает его почти весь — групп гуще, иначе на свободном месте пусто.
-        // ▶▶▶ и X — не жребием по всей плитке, а по клеткам: в клетке одна группа, ▶ и X шахматкой. Групп всего несколько на
-        // экран, и жребий давал то одни крестики, то одни треугольники (владелец: «треугольничков нигде нет»).
-        const n = layer.cell ? Math.max(2, Math.round(tile / layer.cell)) : 0, span = n && tile / n;
-        const count = n ? n * n : Math.round((layer.groups * (side <= 1536 ? 1.6 : 1) * tile * tile) / 1e6);
-        for (let g = 0, tries = 0; g < count && tries < count * 30; tries++) {
-            const ci = n && g % n, cj = n && Math.floor(g / n);
-            // Клетка, где место так и не нашлось, — пропускается; каждая третья клетка пустая (владелец: ▶ и X «в полтора раза
-            // меньше»). Пустые — по своему узору, не по шахматке: ▶ и X убывают поровну.
-            if (n && (tries > (g + 1) * 12 || (ci + 2 * cj) % 3 === 0)) { g++; continue; }
-            const kind = n ? ((ci + cj) % 2 ? 'cross' : 'play') : pickBy(rand, layer.kinds);
-            const size = kind === 'grid' ? lerp(layer.size[0], layer.size[1], rand()) : lerp(layer.mark[0], layer.mark[1], rand());
-            const step = kind === 'grid' ? lerp(layer.step[0], layer.step[1], rand()) : size * TRIAD_STEP[kind];
-            const cols = kind === 'grid' ? Math.round(lerp(layer.grid[0][0], layer.grid[0][1], rand())) : kind === 'play' ? 3 : 1;
-            const rows = kind === 'grid' ? Math.round(lerp(layer.grid[1][0], layer.grid[1][1], rand())) : kind === 'cross' ? 3 : 1;
-            const w = cols * step, h = rows * step;
-            const x = n ? (ci + lerp(0.1, 0.75, rand())) * span : rand() * tile;
-            const y = n ? (cj + lerp(0.1, 0.75, rand())) * span : rand() * tile;
-            // Не налезает ни на одну группу (с запасом в два шага; в своём слое — и через край плитки).
-            const at = (v) => ((v + tile / 2) % tile) - tile / 2;
-            const cx = at(x + w / 2), cy = at(y + h / 2);
-            const apart = (a, b, span, t) => { const d = Math.abs(a - b); return (t ? Math.min(d, t - d) : d) >= span; };
-            if (taken.some((p) => !(apart(cx, p.cx, (w + p.w) / 2 + 2 * step, p.tile === tile && tile) || apart(cy, p.cy, (h + p.h) / 2 + 2 * step, p.tile === tile && tile)))) continue;
-            taken.push({ cx, cy, w, h, tile });
-            g++;
-            const d = lerp(layer.d[0], layer.d[1], rand());
-            // Покачивание всей группой: X — вверх-вниз, ▶ — вперёд-назад; сетки стоят (владелец: «пусть квадратики не двигаются»).
-            const sway = kind !== 'grid' && rand() < 0.7;
-            const amp = lerp(3, 6, rand());
-            const move = sway ? [kind === 'play' ? amp : 0, kind === 'play' ? 0 : amp, lerp(0.5, 0.9, rand())] : [0, 0, 0];
-            const phase = rand() * 6.283;
-            if (kind === 'grid') {
-                const speed = lerp(0.55, 0.85, rand());
-                const K = lerp(0.45, 0.7, rand());
-                for (let j = 0; j < rows; j++) for (let i = 0; i < cols; i++) {
-                    const c = cell(rand);
-                    put(x + i * step, y + j * step, d, tile, size, SQUARE, c, c.anim, (i + j) * K,
-                        c.anim === WAVE ? speed : lerp(0.45, 1.1, rand()), c.anim === WAVE ? phase : rand() * 6.283, move);
-                }
-            } else {
-                // Очередь: лайм шагает по знакам — ▶ слева направо, X сверху вниз.
-                const shape = kind === 'play' ? PLAY : CROSS;
-                const speed = lerp(0.3, 0.45, rand());
-                // Чаще серые: крупные ближние знаки не спорят со схемой, белые — изредка.
-                const base = (rand() < 0.7 ? GRAY : WHITE) + FILL;
-                for (let i = 0; i < 3; i++) {
-                    put(x + (kind === 'play' ? i * step : 0), y + (kind === 'cross' ? i * step : 0), d, tile, size, shape,
-                        { a: base, b: LIME + FILL }, TURN, i, speed, phase, move, 3);
-                }
+    const put = (x, y, d, size, kind, st, anim, i, speed, phase, move = [0, 0, 0], n = 1) =>
+        out.push(x, y, d, side, size, kind, st.a, st.b, anim, i, speed, phase, move[0], move[1], move[2], n);
+    for (const g of look.groups) {
+        const kind = g.kind;
+        const grid = kind === 'grid';
+        const [sx, sy] = grid ? g.step.map((v) => v * k) : [g.step * k, g.step * k];
+        const size = g.size * k;
+        const cols = grid ? g.cols : kind === 'play' ? 3 : 1;
+        const rows = grid ? g.rows : kind === 'cross' ? 3 : 1;
+        // Центр первого знака: угол группы `at` — в точке (u, v) сцены, от её середины.
+        const gw = (cols - 1) * sx, gh = (rows - 1) * sy;
+        const px = (g.u - 0.5) * w, py = (g.v - 0.5) * h;
+        const x = g.at[1] === 'l' ? px + size / 2 : g.at[1] === 'r' ? px - gw - size / 2 : px - gw / 2;
+        const y = g.at[0] === 't' ? py + size / 2 : g.at[0] === 'b' ? py - gh - size / 2 : py - gh / 2;
+        const [d0, d1] = DEPTH[grid ? 'grid' : 'triad'];
+        const d = lerp(d0, d1, rand());
+        // Покачивание: X — вверх-вниз, ▶ — вперёд-назад; сетки стоят (владелец: «пусть квадратики не двигаются»).
+        const amp = lerp(2, 4, rand());
+        const move = grid ? [0, 0, 0] : [kind === 'play' ? amp : 0, kind === 'play' ? 0 : amp, lerp(0.5, 0.9, rand())];
+        const phase = rand() * 6.283;
+        if (grid) {
+            const speed = lerp(0.55, 0.85, rand());
+            const K = lerp(0.45, 0.7, rand());
+            for (let j = 0; j < rows; j++) for (let i = 0; i < cols; i++) {
+                const c = cell(rand);
+                put(x + i * sx, y + j * sy, d, size, SQUARE, c, c.anim, (i + j) * K,
+                    c.anim === WAVE ? speed : lerp(0.45, 1.1, rand()), c.anim === WAVE ? phase : rand() * 6.283);
+            }
+        } else {
+            // Очередь: лайм шагает по знакам — ▶ слева направо, X сверху вниз. Остальные белые (в светлой теме — графит).
+            const shape = kind === 'play' ? PLAY : CROSS;
+            const speed = lerp(0.3, 0.45, rand());
+            for (let i = 0; i < 3; i++) {
+                put(x + (kind === 'play' ? i * sx : 0), y + (kind === 'cross' ? i * sy : 0), d, size, shape,
+                    { a: WHITE + FILL, b: LIME + FILL }, TURN, i, speed, phase, move, 3);
             }
         }
     }
     const data = new Float32Array(out);
-    return { data, count: data.length / STRIDE, side };
+    return { data, count: data.length / STRIDE, side, w, h };
 }
-
-export const fits = (set, w, h) => Math.max(w, h) + 2 * MARGIN <= set.side;
 
 // Сколько физических пикселей на css: не больше 2 и не больше 4K на весь холст; `cap` — снижение по медленным кадрам.
 export function pixelRatio(w, h, cap = 2) {
