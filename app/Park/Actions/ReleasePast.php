@@ -4,7 +4,6 @@ namespace App\Park\Actions;
 
 use App\Park\Events\VehicleReleased;
 use App\Park\EventType;
-use App\Park\Jobs\PurgeReleasedLetters;
 use App\Park\Request;
 use App\Park\RequestState;
 use App\Park\Vehicle;
@@ -30,8 +29,7 @@ final class ReleasePast
             $vehicle->revokePass('выдана по письмам');
         });
         VehicleReleased::dispatch($vehicle, null, $by);
-        // Из писем больше ничего не хранится: кадры и документы из писем стираются, письма веток замораживаются — фоном
-        // (`PurgeReleasedLetters`): по 80 файлам выдача стояла 2 с, и строка не уходила из списка.
-        PurgeReleasedLetters::dispatch($vehicle->id);
+        // Файлы из писем при выдаче не стираются (06.11.2026, владелец: по актам приёма и выдачи сверяют даты счёта и акта за
+        // месяц) — их чистит ночью `park:purge-letters`, когда месяц выдачи закрыт и оплачен (`LettersPurge::due`).
     }
 }

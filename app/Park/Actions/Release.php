@@ -9,7 +9,6 @@ use App\Park\Events\VehicleReleased;
 use App\Park\EventType;
 use App\Park\Inspection;
 use App\Park\InspectionKind;
-use App\Park\Jobs\PurgeReleasedLetters;
 use App\Park\Pass;
 use App\Park\ReleasedTo;
 use App\Park\Request;
@@ -103,9 +102,8 @@ final class Release
         if ($withoutQr) {
             ReleasedWithoutQr::dispatch($vehicle, $by, $withoutQr);
         }
-        // Из писем больше ничего не хранится: кадры и документы из писем стираются, письма веток замораживаются — фоном
-        // (`PurgeReleasedLetters`): по 80 файлам выдача стояла 2 с, и строка не уходила из списка.
-        PurgeReleasedLetters::dispatch($vehicle->id);
+        // Файлы из писем при выдаче не стираются (06.11.2026, владелец: по актам приёма и выдачи сверяют даты счёта и акта за
+        // месяц) — их чистит ночью `park:purge-letters`, когда месяц выдачи закрыт и оплачен (`LettersPurge::due`).
 
         return $vehicle;
     }

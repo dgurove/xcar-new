@@ -27,6 +27,12 @@ final class PinThread
         return $this->pin(Attachment::whereHas('message', fn ($q) => $q->where('thread_id', $thread->id)));
     }
 
+    /** Только эти вложения (возврат документов выданной: без её фото). @param  list<int>  $ids */
+    public function only(array $ids): int
+    {
+        return $ids ? $this->pin(Attachment::whereIn('id', $ids)) : 0;
+    }
+
     public function message(Message $message): int
     {
         return $this->pin(Attachment::where('message_id', $message->id));

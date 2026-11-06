@@ -20,7 +20,6 @@ use App\Offers\OfferEventType;
 use App\Park\Actions\AutoSale;
 use App\Park\PhotoStage;
 use App\Park\Vehicle;
-use App\Park\VehicleState;
 use Illuminate\Contracts\Queue\ShouldBeUniqueUntilProcessing;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -57,7 +56,7 @@ final class ImportThreadFiles implements ShouldBeUniqueUntilProcessing, ShouldQu
      * @param  ?int  $messageId  только одно письмо (пришло в привязанную ветку); null — вся ветка
      * @param  ?int  $expected  сколько кадров ждём (`attachNow`): заглушки в ряду фото с первой секунды
      */
-    public function __construct(public int $threadId, public ?int $messageId = null, public ?int $expected = null)
+    public function __construct(public int $threadId, public ?int $messageId = null, public ?int $expected = null, public bool $documentsOnly = false)
     {
         $this->onConnection('database-long')->onQueue('files')->afterCommit();
     }
@@ -81,16 +80,27 @@ final class ImportThreadFiles implements ShouldBeUniqueUntilProcessing, ShouldQu
     /** Замок на ветку и письмо: ждущая джоба одного письма не должна глотать джобу следующего. */
     public function uniqueId(): string
     {
-        return $this->threadId.':'.($this->messageId ?? 'all');
+        return $this->threadId.':'.($this->messageId ?? 'all').($this->documentsOnly ? ':docs' : '');
     }
 
     public function handle(PinThread $pin, AttachmentImporter $importer, Publisher $publish): void
     {
         $thread = Thread::find($this->threadId);
         [$model, $vehicle, $offer, $car] = self::target($thread);
-        // У выданной без продажи файлы из писем не хранятся (`PurgeLetters`): письмо после выдачи их не приносит — иначе они
-        // ложились в дело между выдачей и фоновой очисткой или после неё. Выдачу вернули — ТС снова стоит, файлы едут.
-        if (! $model || ($vehicle && ! $offer && $vehicle->state === VehicleState::Released)) {
+        // У выданной без продажи, чей месяц выдачи закрыт и оплачен (`LettersPurge::due`), файлы из писем уже не хранятся
+        // (`PurgeLetters`): письмо их не приносит. До того — как у стоящей: акты нужны для сверки счёта и акта за месяц.
+        if (! $model || ($vehicle && ! $offer && \App\Park\LettersPurge::due($vehicle))) {
+            return;
+        }
+        // Возврат документов из ящика (`park:restore-letter-docs`): только документы — фото выданной не нужны, а диск их не
+        // выдержит (10 ГБ). Закрепить из ящика и положить в бумаги ТС.
+        if ($this->documentsOnly) {
+            $attachments = $importer->attachmentsOf(null, $thread->id);
+            $docs = collect(app(\App\Mail\Extraction\AttachmentClassifier::class)->classify($attachments)['documents']);
+            $pin->only($docs->pluck('id')->all());
+            $added = $importer->importDocuments($model, $importer->attachmentsOf(null, $thread->id), 'papers');
+            Log::info('Документы выданной из ящика', ['thread' => $thread->id, 'vehicle' => $vehicle?->id, 'documents' => $added]);
+
             return;
         }
         $task = $this->task();

@@ -63,6 +63,8 @@ use App\Offers\Share\Console\PreparePdfs;
 use App\Park\Console\AcceptByLettersCommand;
 use App\Park\Console\AutoRequestsCommand;
 use App\Park\Console\FillFromDocsCommand;
+use App\Park\Console\PurgeLettersCommand;
+use App\Park\Console\RestoreLetterDocsCommand;
 use App\Park\Console\FindValuesCommand;
 use App\Park\Console\ReleaseByLettersCommand;
 use App\Park\Console\SpbFactCommand;
@@ -158,6 +160,8 @@ return Application::configure(basePath: dirname(__DIR__))
         MergeCatalogCommand::class,
         DealAgreementFixCommand::class,
         FillFromDocsCommand::class,
+        PurgeLettersCommand::class,
+        RestoreLetterDocsCommand::class,
         FindValuesCommand::class,
     ])
     ->withMiddleware(function (Middleware $middleware): void {
