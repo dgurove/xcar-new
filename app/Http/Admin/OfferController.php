@@ -1291,8 +1291,8 @@ class OfferController
             'stays' => ['nullable', 'boolean'], 'settlement_id' => ['nullable', 'integer', 'exists:settlements,id'], 'inspection_address' => ['nullable', 'string', 'max:500'],
             // Плашка «Без подтверждений»: срок сегментом — 3 дня, неделя или свой день (`day`).
             'term' => ['nullable', 'in:3,7,day'], 'day' => ['required_if:term,day', 'nullable', 'date', 'after:now']],
-            ['asking_price.required' => 'Укажите цену продажи', 'bids_close_at.after' => 'Срок приёма — позже, чем сейчас', 'day.after' => 'Срок приёма — позже, чем сейчас',
-                'day.required_if' => 'Укажите, до когда приём']);
+            ['asking_price.required' => 'Укажите цену продажи', 'bids_close_at.after' => 'Срок приёма — позже, чем сейчас', 'day.after' => 'Срок показа — позже, чем сейчас',
+                'day.required_if' => 'Укажите, до когда показывать']);
         if (filled($data['term'] ?? null)) {
             $data['bids_close_at'] = self::termClose($offer, $data['term'], $data['day'] ?? null)->format('Y-m-d H:i:s');
         }

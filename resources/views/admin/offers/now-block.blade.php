@@ -37,15 +37,22 @@
             $hints = $asking ? array_filter(['−5 %' => $cut(.95), '−10 %' => $cut(.9), '−50 000' => $asking - 50000], fn ($v) => $v >= \App\Offers\Pricing::MIN) : [];
             $day = \App\Offers\Binding::clampClose($offer, Slots::closeFor(now(), 7));
         @endphp
-        <div>
-            <h2 class="text-base font-medium">Приём закрыт без подтверждений</h2>
-            <p class="text-sm text-ink-muted"><span class="nums">{{ \App\Support\Ago::day($offer->intake_closed_at, true) }}</span>@if ($times > 1), выставляли {{ $times }} {{ \App\Support\Plural::of($times, ['раз', 'раза', 'раз']) }}@endif</p>
+        {{-- Плотно, как «Цены» черновика (06.11.2026, владелец: «зачем огромный отступ, шрифт огромный»): дата — в строке
+             заголовка, поля — подписью сверху на светлой плашке, а не строкой настроек. --}}
+        <div class="flex flex-wrap items-baseline gap-x-2">
+            <h2 class="text-base font-medium">Без подтверждений</h2>
+            <span class="nums text-sm text-ink-muted">приём закрыт {{ \App\Support\Ago::day($offer->intake_closed_at, true) }}@if ($times > 1), выставляли {{ $times }} {{ \App\Support\Plural::of($times, ['раз', 'раза', 'раз']) }}@endif</span>
         </div>
-        <form method="post" action="/offers/{{ $n }}/resale" id="unsold-{{ $n }}" class="unsold-form flex flex-col gap-3" data-price-guard="whole" data-price-guard-offer="{{ $n }}">
+        <form method="post" action="/offers/{{ $n }}/resale" id="unsold-{{ $n }}" class="unsold-form flex flex-col gap-2" data-price-guard="whole" data-price-guard-offer="{{ $n }}">
             @csrf @if ($errors->has('price_check'))<input type="hidden" name="price_ok" value="1">@endif
-            <div class="flex flex-col gap-2" data-put-scope>
-                <div class="fields">
-                    <x-ui.field name="asking_price" :id="'unsold-price-'.$n" label="Цена продажи, ₽" :value="old('asking_price', $asking ? \App\Support\Money::nums($asking) : null)" required/>
+            <div class="flex flex-col gap-1.5" data-put-scope>
+                <div class="field @error('asking_price') field-invalid @enderror">
+                    <div class="flex items-center gap-3">
+                    <label for="unsold-price-{{ $n }}" class="field-label shrink-0 !mb-0">Цена продажи, ₽</label>
+                    <input type="text" id="unsold-price-{{ $n }}" name="asking_price" inputmode="decimal" autocomplete="off" required class="field-input nums !bg-surface min-w-0 flex-1 text-right"
+                        data-controller="digits" data-action="input->digits#format" value="{{ old('asking_price', $asking ? \App\Support\Money::nums($asking) : '') }}">
+                    </div>
+                    @error('asking_price')<span class="field-error">{{ $message }}</span>@enderror
                 </div>
                 @if ($hints)
                     <div class="sheet-chips">
@@ -59,11 +66,11 @@
                     <p class="flex flex-wrap items-baseline gap-x-2 text-sm text-ink-muted"><span class="nums">закупочная {{ \App\Support\Money::rub($offer->floor_price) }}</span><x-offer.margin :m="$offer->marginMark()"/></p>
                 @endif
             </div>
-            <div class="unsold-term flex flex-col gap-2">
-                <span class="field-label">Приём</span>
+            <div class="unsold-term flex flex-col gap-1.5">
+                <span class="field-label">Срок показа</span>
                 <x-ui.segment name="term" :options="['3' => '3 дня', '7' => 'Неделя', 'day' => 'До даты']" :value="old('term', '3')"/>
                 <div class="unsold-day fields">
-                    <x-ui.field name="day" :id="'unsold-day-'.$n" label="Приём до" type="datetime-local" default-time="17:30" :value="old('day', $day->format('Y-m-d\TH:i'))" :min="now()->format('Y-m-d\TH:i')" :limit="\App\Offers\Binding::closeLimit($offer)"/>
+                    <x-ui.field name="day" :id="'unsold-day-'.$n" label="Показывать до" type="datetime-local" default-time="17:30" :value="old('day', $day->format('Y-m-d\TH:i'))" :min="now()->format('Y-m-d\TH:i')" :limit="\App\Offers\Binding::closeLimit($offer)"/>
                 </div>
                 @error('day')<span class="text-sm text-danger">{{ $message }}</span>@enderror
                 @error('bids_close_at')<span class="text-sm text-danger">{{ $message }}</span>@enderror

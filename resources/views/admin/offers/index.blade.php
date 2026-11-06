@@ -174,7 +174,7 @@
                         <x-ui.button type="button" class="min-w-0 flex-1 md:flex-none" data-action="sheet#open">Вернуть в продажу <span class="nums" data-pick-target="count"></span></x-ui.button>
                         <x-ui.sheet id="offers-relist" title="Вернуть в продажу">
                             <div class="flex flex-col gap-4">
-                                <div class="list-head">Приём</div>
+                                <div class="list-head">Срок показа</div>
                                 <div class="list">
                                     @foreach ([3 => '3 дня', 7 => 'Неделя'] as $term => $label)
                                         <label class="row row-check">
