@@ -14,8 +14,9 @@
 @if ($asks->isNotEmpty())
     <div {{ $attributes->class('list') }}>
         @foreach ($asks as $ask)
-            <div class="row flex-wrap items-center gap-x-3 gap-y-2">
-                <span class="min-w-0 flex-1">
+            {{-- Ответ за менеджера — строкой под вопросом (06.11.2026: справа от трёх строк текста он сжимал их до столбика). --}}
+            <div class="row flex-col items-stretch gap-2">
+                <span class="min-w-0">
                     <span class="block">{{ $ask->user->shortName() }} — {{ $ask->deal_id ? 'сделка' : 'подтверждение' }}, закупочная <span class="nums">{{ \App\Support\Money::nums($ask->from_price) }} → {{ \App\Support\Money::rub($ask->to_price) }}</span></span>
                     <span class="block text-sm {{ $ask->late() ? 'text-danger' : 'text-ink-muted' }}">{{ $ask->late() ? 'не ответил, срок вышел' : 'ждём ответа' }} <span class="nums">{{ \App\Support\Ago::html($ask->due_at->setTimezone('Europe/Moscow'), true, words: false) }}</span></span>
                     {{-- Пока думает — показываем всем (`ShowDealToAll`, 04.11.2026); согласится — снимется само. --}}

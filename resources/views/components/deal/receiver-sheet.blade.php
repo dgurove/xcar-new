@@ -31,7 +31,7 @@
             </label>
         </div>
         @error('who')<div class="text-sm text-danger">{{ $message }}</div>@enderror
-        <div class="fields" data-reveal-target="pane" data-reveal-key="other" @if ($who !== 'other') hidden @endif>
+        <div class="fields fields-stack" data-reveal-target="pane" data-reveal-key="other" @if ($who !== 'other') hidden @endif>
             <x-ui.field name="name" id="{{ $id }}-name" label="ФИО" :value="old('name', $deal->receiver_name)"/>
             <x-ui.field name="phone" id="{{ $id }}-phone" label="Телефон" type="tel" :value="old('phone', $deal->receiver_phone)"/>
         </div>

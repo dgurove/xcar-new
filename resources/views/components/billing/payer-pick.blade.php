@@ -39,7 +39,7 @@
         <div class="fields mt-3" data-reveal-target="pane" data-reveal-key="{{ $b->id }}" @unless ($picked($b)) hidden @endunless><x-ui.field name="email" id="{{ $id }}-email-{{ $b->id }}" label="Почта для чека" type="email"/></div>
     @endforeach
     <div class="mt-3 flex flex-col gap-3" data-reveal-target="pane" data-reveal-key="other" @if ($payer !== 'other') hidden @endif>
-        <div class="fields">
+        <div class="fields fields-stack">
             <x-ui.field name="name" id="{{ $id }}-name" label="ФИО" :value="$otherName"/>
             <x-ui.field name="email" id="{{ $id }}-email-other" label="Почта для чека" type="email"/>
         </div>

@@ -32,8 +32,8 @@
         @endif
         @if ($deal->isActive() && ! $pass?->used_at)
             <button type="button" class="row justify-between text-left" data-controller="emit" data-action="emit#send" data-emit-event-param="{{ $sheet }}:open">
-                <span class="text-ink-muted">Заберёт</span>
-                <span class="flex min-w-0 items-center gap-1"><span class="truncate">{{ $receiver?->labelFor(auth()->user()) ?? 'Указать' }}{{ $receiver?->at ? ', '.\App\Support\Ago::day($receiver->at, true) : '' }}</span><x-ui.icon name="chevron-right" class="size-4 shrink-0 text-ink-dim"/></span>
+                <span class="min-w-0 flex-1"><span class="block text-sm text-ink-muted">Заберёт</span><span class="block break-words">{{ $receiver?->labelFor(auth()->user()) ?? 'Указать' }}{{ $receiver?->at ? ', '.\App\Support\Ago::day($receiver->at, true) : '' }}</span></span>
+                <x-ui.icon name="chevron-right" class="size-4 shrink-0 text-ink-dim"/>
             </button>
         @endif
     </div>

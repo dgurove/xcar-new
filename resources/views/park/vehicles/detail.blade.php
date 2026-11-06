@@ -142,8 +142,7 @@
             @if ($tel)
                 <a href="tel:+{{ preg_replace('/\D+/', '', $tel) }}" class="row">
                     <x-ui.row-icon name="phone" tone="soft" size="s"/>
-                    <span class="min-w-0 flex-1 truncate">{{ $who ?: 'Страхователь' }}</span>
-                    <span class="nums shrink-0 text-accent-text">{{ $tel }}</span>
+                    <span class="min-w-0 flex-1"><span class="block break-words">{{ $who ?: 'Страхователь' }}</span><span class="row-sub nums text-accent-text">{{ $tel }}</span></span>
                 </a>
             @elseif ($who !== '')
                 <div class="row"><x-ui.row-icon name="phone" tone="muted" size="s"/><span class="min-w-0 flex-1 truncate">{{ $who }}</span></div>

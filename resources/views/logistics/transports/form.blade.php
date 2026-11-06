@@ -33,7 +33,7 @@
 
             <section class="flex flex-col gap-2">
                 <h2 class="list-head">Откуда</h2>
-                <div class="fields">
+                <div class="fields fields-stack">
                     <x-ui.field name="from_address" label="Адрес" type="textarea" :value="$t->from_address" required data-order-form-target="from"/>
                     <x-ui.field name="from_contact" label="У кого забрать" :value="$t->from_contact"/>
                     <x-ui.field name="from_phone" label="Телефон" type="tel" :value="$t->from_phone ? \App\Support\Phone::format($t->from_phone) : null"/>
@@ -43,7 +43,7 @@
 
             <section class="flex flex-col gap-2">
                 <h2 class="list-head">Куда</h2>
-                <div class="fields">
+                <div class="fields fields-stack">
                     <x-ui.field name="to_address" label="Адрес" type="textarea" :value="$t->to_address" required/>
                     <x-ui.field name="to_contact" label="Кто принимает" :value="$t->to_contact"/>
                     <x-ui.field name="to_phone" label="Телефон" type="tel" :value="$t->to_phone ? \App\Support\Phone::format($t->to_phone) : null"/>

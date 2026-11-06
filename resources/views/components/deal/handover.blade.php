@@ -19,8 +19,9 @@
 @endphp
 @if ($deal->isActive() && ! $deal->isGarage())
     <section {{ $attributes->class([$compact ? '' : 'box']) }} data-controller="edit-card" data-edit-card-form-value="{{ $form }}" @if ($editing) data-edit-card-editing-value="true" @endif>
-        <div class="flex items-start gap-3">
-            <div class="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-1.5">
+        {{-- Кнопки уходят строкой ниже, когда заголовку с местом тесно (06.11.2026: в окошке сделки он сжимался в три строки). --}}
+        <div class="flex flex-wrap items-start gap-x-3 gap-y-2">
+            <div class="flex min-w-[min(100%,14rem)] flex-1 flex-wrap items-center gap-x-3 gap-y-1.5">
             {{-- В дорожке «Вывоз» своего заголовка нет — подписью, чей контакт: иначе «Добавить» висело одно (03.11.2026). --}}
             @if ($lane)<span class="text-sm text-ink-muted">Контакт владельца</span>@else<h2 class="{{ $compact ? 'detail-section !mb-0' : 'box-title' }}">Получение автомобиля</h2>@endif
             {{-- В дорожке «Вывоз» кто забирает и где — её собственные строки и лесенка: здесь бы это шло вторым и третьим разом
@@ -54,7 +55,7 @@
             </div>@endunless
         </div>
         <div data-edit-card-target="edit" @unless ($editing) hidden @endunless>
-            <form method="post" action="/offers/{{ $offer->number }}" id="{{ $form }}" class="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2" data-controller="save-bar">
+            <form method="post" action="/offers/{{ $offer->number }}" id="{{ $form }}" class="mt-3 grid grid-cols-1 gap-3 {{ $compact ? '' : 'sm:grid-cols-2' }}" data-controller="save-bar">
                 @csrf @method('put')
                 <input type="hidden" name="_form" value="{{ $form }}">
                 <x-ui.field name="insured_name" label="Владелец" :value="$offer->insured_name" id="handover-name-{{ $deal->id }}"/>

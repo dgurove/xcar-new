@@ -8,7 +8,7 @@
                 {{-- Страховая продала ТС: дата письма, кому выдать; дальше дни за счёт вендора и покупатель по множителю. --}}
                 <form method="post" action="/cars/{{ $vehicle->id }}/sold" class="flex flex-col gap-3">
                     @csrf
-                    <div class="fields">
+                    <div class="fields fields-stack">
                         <x-ui.field name="sold_at" label="Дата реализации" type="date" :value="($vehicle->sold_at ?? now())->toDateString()" required/>
                         <x-ui.field name="pickup_phone" label="Телефон" type="tel" :value="$vehicle->pickup_phone"/>
                         <x-ui.field name="pickup_name" label="Кто заберёт" :value="$vehicle->pickup_name"/>

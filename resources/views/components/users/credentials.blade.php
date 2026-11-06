@@ -8,8 +8,8 @@
         <x-ui.sheet id="credentials" title="Данные для входа" open>
             <div class="flex flex-col gap-4">
                 <div class="list">
-                    <div class="row"><span class="shrink-0 text-ink-muted">Кто</span><span class="min-w-0 flex-1 truncate text-right">{{ $c['name'] }}</span></div>
-                    <div class="row"><span class="shrink-0 text-ink-muted">Адрес</span><span class="min-w-0 flex-1 truncate text-right">{{ preg_replace('#^https?://#', '', $c['url']) }}</span></div>
+                    <div class="row"><span class="shrink-0 text-ink-muted">Кто</span><span class="min-w-0 flex-1 break-words text-right">{{ $c['name'] }}</span></div>
+                    <div class="row"><span class="shrink-0 text-ink-muted">Адрес</span><span class="min-w-0 flex-1 break-all text-right">{{ preg_replace('#^https?://#', '', $c['url']) }}</span></div>
                     <div class="row"><span class="shrink-0 text-ink-muted">{{ $c['via'] ?? 'Телефон' }}</span><span class="min-w-0 flex-1 text-right nums">{{ $c['phone'] }}</span></div>
                     <div class="row"><span class="shrink-0 text-ink-muted">Пароль</span><span class="min-w-0 flex-1 text-right font-mono text-lg select-all">{{ $c['password'] }}</span></div>
                 </div>

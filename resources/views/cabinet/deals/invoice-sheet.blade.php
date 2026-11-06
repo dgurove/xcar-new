@@ -9,7 +9,7 @@
 <x-ui.sheet :id="'invoice-'.$i->id" :title="'Счёт '.$i->label().' от '.\App\Support\Ago::day($i->issued_at)" :open="(int) request('invoice') === $i->id">
     <div class="list">
         @if ($i->party_id !== auth()->user()->party_id)
-            <div class="row"><span class="min-w-0 flex-1 text-ink-muted">Платит</span><span class="min-w-0 truncate">{{ $i->party?->name }}</span></div>
+            <div class="row"><span class="shrink-0 text-ink-muted">Платит</span><span class="min-w-0 flex-1 break-words text-right">{{ $i->party?->title() }}</span></div>
         @endif
         @foreach ($i->charges as $c)
             <div class="row"><span class="min-w-0 flex-1 text-ink-muted">{{ $c->title }}</span><span class="nums shrink-0">{{ Money::rub($c->amount) }}</span></div>

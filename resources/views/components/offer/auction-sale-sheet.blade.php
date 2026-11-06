@@ -15,13 +15,13 @@
             @csrf
             <x-ui.segment name="buyer_kind" :options="['person' => 'Физлицо', 'company' => 'Организация']" :value="$kind" pick/>
             <div class="contents" data-reveal-target="pane" data-reveal-key="person" @if ($kind !== 'person') hidden @endif>
-                <div class="fields">
+                <div class="fields fields-stack">
                     <x-ui.field name="buyer_name" :id="'auction-person-'.$n" label="ФИО покупателя" :value="$kind === 'person' ? old('buyer_name') : null"/>
                     <x-ui.field name="buyer_phone" :id="'auction-phone-'.$n" label="Телефон" type="tel" :value="old('buyer_phone')"/>
                 </div>
             </div>
             <div class="contents" data-reveal-target="pane" data-reveal-key="company" @if ($kind !== 'company') hidden @endif>
-                <div class="fields">
+                <div class="fields fields-stack">
                     <x-ui.field name="buyer_name" :id="'auction-company-'.$n" label="Организация" :value="$kind === 'company' ? old('buyer_name') : null"/>
                     <x-ui.field name="buyer_inn" :id="'auction-inn-'.$n" label="ИНН" :value="old('buyer_inn')"/>
                 </div>

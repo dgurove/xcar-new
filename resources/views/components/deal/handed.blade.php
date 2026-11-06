@@ -9,8 +9,8 @@
         <x-ui.sheet id="handed" :title="'Отдано: '.$h['name']">
             <div class="flex flex-col gap-4">
                 <div class="list">
-                    <div class="row"><span class="shrink-0 text-ink-muted">ТС</span><span class="min-w-0 flex-1 truncate text-right">{{ $h['title'] }}</span></div>
-                    <div class="row"><span class="shrink-0 text-ink-muted">Ссылка</span><span class="min-w-0 flex-1 truncate text-right">{{ preg_replace('#^https?://#', '', $h['url']) }}</span></div>
+                    <div class="row"><span class="shrink-0 text-ink-muted">ТС</span><span class="min-w-0 flex-1 break-words text-right">{{ $h['title'] }}</span></div>
+                    <div class="row"><span class="shrink-0 text-ink-muted">Ссылка</span><span class="min-w-0 flex-1 break-all text-right">{{ preg_replace('#^https?://#', '', $h['url']) }}</span></div>
                 </div>
                 <x-ui.share-link :url="$h['url']" :title="$h['title']" done="Ссылка в буфере" :text="$h['text']"/>
             </div>
