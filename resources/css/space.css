@@ -33,11 +33,11 @@
   .space-photo { position: absolute; inset: 0; }
   /* Затемнение и полоса дымки под шапкой страницы — внутри слоя фото (его псевдоэлементы), а не своими полноэкранными
      слоями: каждый такой слой — лишний проход по всему экрану в каждом кадре (06.11.2026, «очень фризит»). Затемнение: светлая — лёгкая вуаль, тёмная — темнее к краям (владелец: «чуть
-     затемнить», затем «менее тёмное»). Полоса под шапкой (логотип, поиск, разделы) — та же дымка, что за блоками, к низу
+     затемнить», затем «менее тёмное», «сильно менее тёмным — чуть ли не чёрный»). Полоса под шапкой (логотип, поиск, разделы) — та же дымка, что за блоками, к низу
      сходит на нет (владелец: «такой же под шапкой — единообразие»). */
   .space-photo::before, .space-photo::after { content: ""; position: absolute; inset: 0; }
   .space-photo::before { background: linear-gradient(rgb(255 255 255 / .48), rgb(255 255 255 / .32) 45%, rgb(255 255 255 / .52)); }
-  .dark .space-photo::before { background: radial-gradient(120% 90% at 46% 40%, rgb(0 0 0 / .26), rgb(0 0 0 / .52)); }
+  .dark .space-photo::before { background: radial-gradient(120% 90% at 46% 40%, rgb(0 0 0 / .08), rgb(0 0 0 / .3)); }
   .space-photo::after { bottom: auto; height: 7rem; background: linear-gradient(var(--b-veil), transparent); }
   .space-marks { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 
@@ -88,7 +88,7 @@
      растеризации доски, а у 18 этих пятен это было главное в цене перерисовки; размытие фона под блоками
      (`backdrop-filter`) пересчитывалось бы каждый кадр. */
   .space { --b-veil: rgb(234 235 237 / .84); }  /* светлая — чуть серее белого: белые карточки на ней не теряют край */
-  .dark .space { --b-veil: rgb(0 0 0 / .55); }
+  .dark .space { --b-veil: rgb(18 20 24 / .34); }  /* тёмная — так же еле заметно, как светлая: чёрная была «чернотой» (владелец) */
   .conveyor { isolation: isolate; }
   .stage-head, .stage-steps { position: relative; }
   .stage-steps { align-self: start; }
