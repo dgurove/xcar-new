@@ -118,7 +118,9 @@ final class MailClaimDigest
         $request = ClaimRequest::with('vendor')->find($requestId);
         $to = User::find($toId);
         if ($request && $to) {
-            $this->tellOwner('<b>'.e($to->name).': номера на почте</b>'."\n".e($request->vendor->name).', '.self::count($request).' — '.e((string) $to->email));
+            // Сами номера, а не «7 номеров» (06.11.2026, владелец) — `<code>`, копируются касанием.
+            $this->tellOwner('<b>'.e($to->name).': номера на почте</b>'."\n".e($request->vendor->name).', '.self::count($request).' — '.e((string) $to->email)
+                ."\n\n".implode("\n", array_map(fn ($r) => '<code>'.e($r).'</code>', $request->refs)));
         }
     }
 
@@ -132,7 +134,8 @@ final class MailClaimDigest
         }
         $tg = $this->send->telegram($request, $to);
         $tg || Log::error('Номера «К запросу» не дошли ни письмом, ни в Telegram', ['request' => $requestId, 'user' => $to->id]);
-        $this->tellOwner('<b>'.e($to->name).': письмо с номерами не ушло</b>'."\n".e($request->vendor->name).', '.self::count($request).($tg ? ' — отправили ему в Telegram' : ' — и в Telegram не дошло'));
+        $this->tellOwner('<b>'.e($to->name).': письмо с номерами не ушло</b>'."\n".e($request->vendor->name).', '.self::count($request).($tg ? ' — отправили ему в Telegram' : ' — и в Telegram не дошло')
+            ."\n\n".implode("\n", array_map(fn ($r) => '<code>'.e($r).'</code>', $request->refs)));
     }
 
     private static function count(ClaimRequest $request): string

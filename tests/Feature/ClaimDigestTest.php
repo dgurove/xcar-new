@@ -121,7 +121,7 @@ class ClaimDigestTest extends TestCase
             return (bool) ($job = $j);
         });
         $job->handle();
-        $this->assertTrue(collect($said)->contains(fn ($t) => str_contains($t, 'номера на почте') && str_contains($t, '1 номер')), 'владельцу — что письмо ушло');
+        $this->assertTrue(collect($said)->contains(fn ($t) => str_contains($t, 'номера на почте') && str_contains($t, '<code>AUT-26-666666</code>')), 'владельцу — что письмо ушло');
 
         $this->pending('AUT-26-777777');
         $this->assertSame(1, $this->at('18:01'));
