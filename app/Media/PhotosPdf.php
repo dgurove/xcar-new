@@ -23,7 +23,7 @@ final class PhotosPdf
      * @param  list<UploadedFile>  $files
      * @return array{pdf: string, name: string, label: string, pages: int} name — имя файла с номером убытка, label — как назвал человек (чип)
      */
-    public function make(array $files, string $name, ?string $ref = null): array
+    public function make(array $files, string $name, ?\App\Park\Vehicle $vehicle = null): array
     {
         $pages = [];
         $temp = [];
@@ -40,20 +40,23 @@ final class PhotosPdf
             array_map('unlink', array_filter($temp, 'is_file'));
         }
 
-        return ['pdf' => $pdf, 'name' => self::fileName($name, $ref), 'label' => pathinfo(self::fileName($name), PATHINFO_FILENAME), 'pages' => count($pages)];
+        return ['pdf' => $pdf, 'name' => self::fileName($name, $vehicle?->docLine(), $vehicle?->ref), 'label' => pathinfo(self::fileName($name), PATHINFO_FILENAME), 'pages' => count($pages)];
     }
 
-    /** «Акт выдачи» → «Акт выдачи 0760-046-02677-26.pdf»: номер убытка хвостом, если его ещё нет; без запрещённых знаков. */
-    public static function fileName(string $name, ?string $ref = null): string
+    /**
+     * «Акт выдачи» → «Акт выдачи Z691-046-06548-26, Kia Rio, 2019, VIN …, А123ВС77.pdf» (06.11.2026, Сергей: не только номер
+     * убытка — марка, модель, год, VIN, номер; `Vehicle::docLine`): хвостом, если номера убытка в названии ещё нет; без
+     * запрещённых знаков (`/` номера — `-`).
+     */
+    public static function fileName(string $name, ?string $line = null, ?string $ref = null): string
     {
         $name = trim((string) preg_replace('/\s+/u', ' ', preg_replace('/\.pdf$/iu', '', $name)));
-        $tail = $ref ? str_replace('/', '-', trim($ref)) : '';
-        if ($tail !== '' && ! str_contains($name, $tail) && ! str_contains($name, trim((string) $ref))) {
-            $name .= ' '.$tail;
+        if ($line && ! ($ref && (str_contains($name, $ref) || str_contains($name, str_replace('/', '-', $ref))))) {
+            $name .= ' '.$line;
         }
         $name = trim((string) preg_replace('/[\\\\\/:*?"<>|]+/u', '-', $name), ' .-');
 
-        return mb_substr($name !== '' ? $name : 'Документ', 0, 120).'.pdf';
+        return mb_substr($name !== '' ? $name : 'Документ', 0, 180).'.pdf';
     }
 
     /**

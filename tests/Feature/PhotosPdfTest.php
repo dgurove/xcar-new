@@ -53,10 +53,10 @@ class PhotosPdfTest extends TestCase
     {
         $r = $this->actingAs($this->admin)->post(Surface::Park->url('/cars/'.$this->vehicle->id.'/report/pdf'),
             ['pages' => $this->pages(3), 'name' => 'Акт приёма', 'kind' => ReportDoc::Act->value]);
-        $r->assertOk()->assertJson(['name' => 'Акт приёма 0760-046-02677-26.pdf', 'pages' => 3]);
+        $r->assertOk()->assertJson(['name' => 'Акт приёма 0760-046-02677-26, VIN XW8ZZZ61ZHG035220.pdf', 'pages' => 3]);
         $m = $this->vehicle->fresh()->getMedia('papers')->firstWhere('id', $r->json('id'));
         $this->assertSame(ReportDoc::Act->value, $m->getCustomProperty('report_doc'));
-        $this->assertSame('Акт приёма 0760-046-02677-26.pdf', $m->getCustomProperty('title'));
+        $this->assertSame('Акт приёма 0760-046-02677-26, VIN XW8ZZZ61ZHG035220.pdf', $m->getCustomProperty('title'));
         $this->assertSame(3, self::pageCount((string) file_get_contents($m->getPath())));
     }
 
@@ -71,7 +71,7 @@ class PhotosPdfTest extends TestCase
     {
         $r = $this->actingAs($this->admin)->post(Surface::Park->url('/mail/file/pdf'),
             ['pages' => $this->pages(1), 'name' => 'Акт выдачи', 'vehicle' => $this->vehicle->id]);
-        $r->assertOk()->assertJson(['name' => 'Акт выдачи 0760-046-02677-26.pdf', 'pages' => 1]);
+        $r->assertOk()->assertJson(['name' => 'Акт выдачи 0760-046-02677-26, VIN XW8ZZZ61ZHG035220.pdf', 'pages' => 1]);
         $this->assertStringContainsString('name="files[]"', $r->json('html'));
         preg_match('#value="(outbox/[^"]+)"#', $r->json('html'), $path);
         $this->assertSame(1, self::pageCount(Storage::disk(Parts::CACHE_DISK)->get($path[1])));

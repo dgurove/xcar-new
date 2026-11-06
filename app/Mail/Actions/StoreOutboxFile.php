@@ -18,7 +18,7 @@ final class StoreOutboxFile
     /** То же для файла, который сделали сами (акт, фото с диска). */
     public function put(string $name, string $contents): string
     {
-        $name = mb_substr(trim(preg_replace('/[^\p{L}\p{N}._ -]+/u', '_', $name) ?: 'file', '_ '), 0, 150) ?: 'file';
+        $name = mb_substr(trim(preg_replace('/[^\p{L}\p{N}.,_ -]+/u', '_', $name) ?: 'file', '_ '), 0, 200) ?: 'file';
         $path = 'outbox/'.Str::uuid().'-'.$name;
         Storage::disk(Parts::CACHE_DISK)->put($path, $contents);
 

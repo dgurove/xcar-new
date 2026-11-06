@@ -135,7 +135,7 @@ class ReportController
         $stage = $data['stage'] ?? null;
         $kind = $stage ? null : (ReportDoc::tryFrom((string) $data['kind']) ?? abort(422, 'Нет такого документа'));
         try {
-            $made = $photos->make($request->file('pages'), $data['name'], $vehicle->ref);
+            $made = $photos->make($request->file('pages'), $data['name'], $vehicle);
             $m = $vehicle->addMediaFromString($made['pdf'])->usingFileName($stage ? $made['name'] : mb_substr(pathinfo($made['name'], PATHINFO_FILENAME), 0, 110).'-'.uniqid().'.pdf')
                 ->withCustomProperties(array_filter(['report_doc' => $kind?->value, 'stage' => $stage, 'source' => 'app', 'title' => $made['name'], 'label' => $made['label'], 'pages' => $made['pages']]))
                 ->toMediaCollection('papers');

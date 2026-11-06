@@ -22,6 +22,7 @@ final class ActPdf
 
     public function filename(Vehicle $vehicle, bool $intake = true): string
     {
-        return ($intake ? 'akt-priema' : 'akt-vydachi').($vehicle->ref ? '-'.preg_replace('/[^\w-]+/u', '-', $vehicle->ref) : '').'.pdf';
+        // «Акт выдачи Z691-046-06548-26, Kia Rio, 2019, VIN …, А123ВС77.pdf» (06.11.2026, Сергей; `Vehicle::docLine`).
+        return \App\Media\PhotosPdf::fileName($intake ? 'Акт приёма' : 'Акт выдачи', $vehicle->docLine());
     }
 }

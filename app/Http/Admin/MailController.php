@@ -610,6 +610,15 @@ class MailController
         if ($parent && ! $offer) {
             $defaults['subject'] = $defaults['subject'] ?: 'Re: '.$parent->subject;
         }
+        // Тема письма о выдаче — с машиной (06.11.2026, Сергей): «RE: Z691/046/06548/26 ч.1 - Kia Rio, 2019, VIN …, А123ВС77»;
+        // номера убытка в теме нет — и он хвостом; уже есть VIN — не повторяем.
+        if ($release && ! $request->old()) {
+            $subject = trim((string) ($defaults['subject'] ?? ''));
+            if (! ($vehicle->vin && str_contains($subject, $vehicle->vin))) {
+                $line = $vehicle->docLine(! ($vehicle->ref && str_contains($subject, $vehicle->ref)));
+                $defaults['subject'] = $line === '' ? $subject : ($subject === '' ? $line : $subject.' - '.$line);
+            }
+        }
         if ($invoice && ! $request->old()) {
             foreach (['file', 'act'] as $collection) {
                 foreach ($invoice->getMedia($collection) as $media) {
@@ -837,7 +846,8 @@ class MailController
         // Ушёл акт и фото — бумаги «акты» и «фото» вендору отмечаются отправленными этим письмом, в ленте ТС — отчёт.
         if ($this->scope === Scope::Park && ! empty($data['vehicle']) && ($vehicle = Vehicle::find($data['vehicle']))) {
             $sent = collect($message->attachments()->pluck('filename'));
-            $act = $sent->first(fn ($f) => str_starts_with($f, 'akt-'));
+            // Наш акт — «akt-…» (прежние) или «Акт приёма / выдачи …» (`ActPdf::filename`).
+            $act = $sent->first(fn ($f) => preg_match('/^(akt-|Акт (приёма|выдачи) )/u', (string) $f) === 1);
             $report = ($data['report'] ?? null) === 'release';
             $kinds = array_filter([$act || $report ? DocKind::HandoverAct : null, $act ? DocKind::StorageAct : null, $sent->contains(fn ($f) => preg_match('/^(priem|vydacha)-\d+\./', $f)) ? DocKind::Photos : null]);
             foreach ($vehicle->docs()->where('direction', 'out')->where('state', DocState::Pending)->whereIn('kind', $kinds)->get() as $doc) {
@@ -845,7 +855,7 @@ class MailController
             }
             // Письмо о выдаче (`report=release`) — отчёт о выдаче, что бы ни приложили (сканы своими именами, 06.11.2026).
             if ($act || ($data['report'] ?? null) === 'release') {
-                $vehicle->log(EventType::ReportSent, $request->user(), ['what' => ($data['report'] ?? null) === 'release' || str_starts_with((string) $act, 'akt-vydachi') ? 'Акт выдачи' : 'Акт приёма', 'thread' => $message->thread_id]);
+                $vehicle->log(EventType::ReportSent, $request->user(), ['what' => ($data['report'] ?? null) === 'release' || preg_match('/^(akt-vydachi|Акт выдачи )/u', (string) $act) === 1 ? 'Акт выдачи' : 'Акт приёма', 'thread' => $message->thread_id]);
             }
             // Ушёл счёт — отметка на нём и в ленте ТС.
             if (! empty($data['invoice']) && $request->user()->parkMoney() && ($invoice = Invoice::where('vehicle_id', $vehicle->id)->find($data['invoice']))) {
@@ -935,7 +945,7 @@ class MailController
         ], ['name.required' => 'Как назвать документ?']);
         $vehicle = $this->scope === Scope::Park && ! empty($data['vehicle']) ? Vehicle::find($data['vehicle']) : null;
         try {
-            $made = $photos->make($request->file('pages'), $data['name'], $vehicle?->ref);
+            $made = $photos->make($request->file('pages'), $data['name'], $vehicle);
         } catch (Throwable $e) {
             return response()->json(['message' => 'PDF не собрался: '.$e->getMessage()], 422);
         }
