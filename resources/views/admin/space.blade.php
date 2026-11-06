@@ -9,6 +9,7 @@
         <div class="space-photo parking-photo" data-space-target="photo" aria-hidden="true"></div>
         <div class="space-shade" aria-hidden="true"></div>
         <canvas class="space-marks" data-space-target="marks" aria-hidden="true"></canvas>
+        <div class="space-top" aria-hidden="true"></div>
         <div class="space-world" data-space-target="world">
             <div id="conveyor" class="contents" data-space-target="conveyor">
                 @include('admin.space.conveyor')
