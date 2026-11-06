@@ -12,7 +12,10 @@
     $isManager = $buyer && $buyer->id === $deal->buyer_id;
     $ready = $buyer?->party?->readyAsBuyer();
     $gap = $buyer?->party?->buyerGap();
+    // Строка — как в «Покупателях» (06.11.2026, владелец: «Покупатель  Гамидов Та…» — подпись слева съедала ФИО): аватар, имя во
+    // всю строку, под ним состояние; у ИП и организации — вид словом.
     $who = $buyer ? ($buyer->party?->name ?: $buyer->name) : null;
+    $kindWord = match ($buyer?->party?->kind) { \App\Billing\PartyKind::Entrepreneur => 'ИП, ', \App\Billing\PartyKind::Company => 'организация, ', default => '' };
     $dataSheet = 'deal-buyer-data-'.$deal->id;
     // «Заполнить» / «Заполнить за менеджера» из шага пути и «Ваш ход» (`?buyer=1`, 06.11.2026: ссылка на `#invoice-buyer` только
     // прокручивала к карточке — шторку надо было ещё найти): данных нет — сразу их шторка, покупателя нет — его выбор.
@@ -28,8 +31,8 @@
 @if ($buyer && $live)
     <div data-controller="sheet" class="contents">
         <x-ui.sheet-row>
-            <span class="shrink-0 text-ink-muted">Покупатель</span>
-            <span class="min-w-0 flex-1 text-right"><span class="block truncate">{{ $who }}{{ $isManager ? ', менеджер' : '' }}</span>@if ($ready)<span class="block text-sm text-open">данные есть</span>@else<span class="block text-sm text-urgent">{{ $gap ?? 'нужны данные для '.$for }}</span>@endif</span>
+            <x-ui.avatar :user="$buyer" :size="36"/>
+            <span class="min-w-0 flex-1"><span class="block truncate">{{ $who }}{{ $isManager ? ', менеджер' : '' }}</span>@if ($ready)<span class="row-sub text-open">{{ $kindWord }}данные есть</span>@else<span class="row-sub text-urgent">{{ $gap ?? 'нужны данные для '.$for }}</span>@endif</span>
             <x-ui.chevron/>
         </x-ui.sheet-row>
         <x-ui.sheet :id="$dataSheet" :title="$ready ? 'Данные покупателя' : 'Данные для '.$for" :open="session('open_sheet') === $dataSheet || $errors->hasAny(['buyer.*']) || $ask" tall>
@@ -52,8 +55,8 @@
     </div>
 @elseif ($buyer || ! $live)
     <div class="row">
-        <span class="shrink-0 text-ink-muted">Покупатель</span>
-        <span class="min-w-0 flex-1 text-right">@if ($buyer)<span class="block truncate">{{ $who }}{{ $isManager ? ', менеджер' : '' }}</span>@if ($ready)<span class="block text-sm text-open">данные есть</span>@endif @else<span class="text-ink-muted">не выбран</span>@endif</span>
+        @if ($buyer)<x-ui.avatar :user="$buyer" :size="36"/>@endif
+        <span class="min-w-0 flex-1">@if ($buyer)<span class="block truncate">{{ $who }}{{ $isManager ? ', менеджер' : '' }}</span>@if ($ready)<span class="row-sub text-open">{{ $kindWord }}данные есть</span>@endif @else<span class="text-ink-muted">Покупатель не выбран</span>@endif</span>
     </div>
     @if ($scanPdf)
         <x-ui.doc :doc="$scanPdf" class="row">
