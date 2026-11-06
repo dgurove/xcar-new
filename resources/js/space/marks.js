@@ -22,10 +22,12 @@ const SQUARE = 0, CROSS = 1, PLAY = 2;
 const STILL = 0, WAVE = 1, BREATH = 2, TURN = 3;
 
 // Слои: глубины, групп на миллион px² плитки, доли видов групп, размер знака и шаг (css px), сетка — столбцов и строк. Из
-// трёх раскладок владелец выбрал «По краям» (06.11.2026): знаков много, но там, где доска, их нет — см. `mask`.
+// трёх раскладок владелец выбрал «По краям» (06.11.2026): знаков много, но там, где доска, их нет — см. `mask`; островков
+// квадратиков вдвое меньше первых (владелец: «развелось»), и все в дальнем слое — две сетки разной глубины не
+// наезжают друг на друга при сдвиге; ▶ — почти каждая вторая группа.
 const LAYERS = [
-    { d: [0.02, 0.045], groups: 6, kinds: { grid: 0.7, play: 0.3 }, size: [8, 10], step: [24, 28], grid: [[4, 7], [4, 7]] },
-    { d: [0.06, 0.12], groups: 3.2, kinds: { grid: 0.35, cross: 0.2, play: 0.45 }, size: [10, 12], step: [28, 32], grid: [[3, 5], [3, 5]] },
+    { d: [0.02, 0.045], groups: 4.2, kinds: { grid: 0.55, play: 0.45 }, size: [8, 10], step: [24, 28], grid: [[4, 7], [4, 7]] },
+    { d: [0.06, 0.12], groups: 1.6, kinds: { cross: 0.4, play: 0.6 }, size: [10, 12], step: [28, 32] },
     { d: [0.2, 0.3], groups: 0.6, kinds: { cross: 0.4, play: 0.6 }, size: [16, 20], step: [38, 44] },
 ];
 // Доска гасит знаки под собой: рамки шапок и столбцов подэтапов (в координатах слоя схемы), знак ближе `CLEAR` px к рамке
@@ -75,11 +77,13 @@ export function marks(least = 0) {
     const put = (x, y, d, tile, size, kind, st, anim, k, speed, phase, move = [0, 0, 0], n = 1) =>
         out.push(x, y, d, tile, size, kind, st.a, st.b, anim, k, speed, phase, move[0], move[1], move[2], n);
 
+    // Все группы всех слоёв — в одном списке: при первом виде (камера у начала) группы разных слоёв не налезают друг на
+    // друга. Место — от середины своей плитки, как его покажет шейдер.
+    const taken = [];
     for (const layer of LAYERS) {
         const tile = Math.ceil(side / MIN ** layer.d[1] / 64) * 64;
         // Телефон: экран мал, а доска закрывает его почти весь — групп гуще, иначе на свободном месте пусто.
         const count = Math.round((layer.groups * (side <= 1536 ? 1.6 : 1) * tile * tile) / 1e6);
-        const placed = [];
         for (let g = 0, tries = 0; g < count && tries < count * 30; tries++) {
             const kind = pickBy(rand, layer.kinds);
             const size = lerp(layer.size[0], layer.size[1], rand());
@@ -88,10 +92,12 @@ export function marks(least = 0) {
             const rows = kind === 'grid' ? Math.round(lerp(layer.grid[1][0], layer.grid[1][1], rand())) : kind === 'cross' ? 3 : 1;
             const w = cols * step, h = rows * step;
             const x = rand() * tile, y = rand() * tile;
-            // Группы слоя не налезают друг на друга (с запасом в шаг, по завёрнутой плитке).
-            const near = (a, b, span) => Math.abs(((a - b + tile * 1.5) % tile) - tile / 2) < span;
-            if (placed.some((p) => near(x + w / 2, p.x + p.w / 2, (w + p.w) / 2 + 2 * step) && near(y + h / 2, p.y + p.h / 2, (h + p.h) / 2 + 2 * step))) continue;
-            placed.push({ x, y, w, h });
+            // Не налезает ни на одну группу (с запасом в два шага; в своём слое — и через край плитки).
+            const at = (v) => ((v + tile / 2) % tile) - tile / 2;
+            const cx = at(x + w / 2), cy = at(y + h / 2);
+            const apart = (a, b, span, t) => { const d = Math.abs(a - b); return (t ? Math.min(d, t - d) : d) >= span; };
+            if (taken.some((p) => !(apart(cx, p.cx, (w + p.w) / 2 + 2 * step, p.tile === tile && tile) || apart(cy, p.cy, (h + p.h) / 2 + 2 * step, p.tile === tile && tile)))) continue;
+            taken.push({ cx, cy, w, h, tile });
             g++;
             const d = lerp(layer.d[0], layer.d[1], rand());
             // Покачивание всей группой: X — вверх-вниз, ▶ — вперёд-назад; сетки стоят (владелец: «пусть квадратики не двигаются»).

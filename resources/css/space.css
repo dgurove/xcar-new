@@ -11,11 +11,12 @@
   .app-stage { overflow: hidden; overscroll-behavior: none; }
   .app-stage > .stage { position: relative; flex: 1 1 auto; min-height: 0; }
 
-  /* До фото — его средний тон. Текст доски «в воздухе» — по фото: на светлом кадре тёмный, на тёмном белый. */
+  /* До фото — его средний тон. Текст доски «в воздухе» — по фото: на светлом кадре тёмный, на тёмном белый; второстепенный
+     (числа этапов, имена) — непрозрачным серым, не прозрачностью: на пёстром фото полупрозрачное не читалось (владелец). */
   .space {
     --space-bg: #dfe1e3;
-    --b-ink: var(--color-ink); --b-dim: rgb(29 29 27 / .6);
-    --b-idle: var(--color-surface); --b-idle-ink: rgb(29 29 27 / .42); --b-idle-hover: var(--color-surface-3); --b-face: rgb(29 29 27 / .1);
+    --b-ink: var(--color-ink); --b-dim: #4a4a47;
+    --b-idle: var(--color-surface); --b-idle-ink: #9a9a98; --b-idle-hover: var(--color-surface-3); --b-face: #e4e4e2;
     --b-red: #ff2d55; --b-red-text: #ff6b85;
     position: absolute; inset: 0; overflow: hidden; background: var(--space-bg);
     touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
@@ -23,8 +24,8 @@
   }
   .dark .space {
     --space-bg: #15181c;
-    --b-ink: rgb(255 255 255 / .94); --b-dim: rgb(255 255 255 / .58);
-    --b-idle: var(--color-surface); --b-idle-ink: rgb(255 255 255 / .4); --b-idle-hover: var(--color-surface-3); --b-face: rgb(255 255 255 / .14);
+    --b-ink: #fff; --b-dim: #c9c9ce;
+    --b-idle: var(--color-surface); --b-idle-ink: #7c7c80; --b-idle-hover: var(--color-surface-3); --b-face: #3a3a3c;
   }
   .space.is-grabbing { cursor: grabbing; }
   /* Фото — с запасом 64 px за краем (`PHOTO_ROOM` в `space_controller`): камера сдвигает его и чуть масштабирует от
@@ -90,8 +91,10 @@
      тёмными местами кадра — «нечитабельно»). */
   .conveyor-step.is-idle { background: var(--b-idle); color: var(--b-idle-ink); }
   .conveyor-step.is-idle .step-logo { opacity: .5; }
-  /* Этап, где только ждём (поставщика), — тише весь: делать там нечего. */
-  .conveyor-stage.is-quiet { opacity: .55; }
+  /* Этап, где только ждём (поставщика), — тише весь: делать там нечего. Тише цветом, а не прозрачностью — на фото
+     полупрозрачное не читается. */
+  .conveyor-stage.is-quiet .stage-title { color: var(--b-dim); }
+  .conveyor-stage.is-quiet .conveyor-step { color: var(--color-ink-muted); }
   .conveyor-step.is-hot { box-shadow: 0 0 0 2px var(--b-red), 0 0 26px rgb(255 45 85 / .5); }
   @media (hover: hover) {
     .conveyor-step[href]:hover { background: var(--color-surface-3); }
