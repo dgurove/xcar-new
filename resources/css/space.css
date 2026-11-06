@@ -11,11 +11,11 @@
   .app-stage { overflow: hidden; overscroll-behavior: none; }
   .app-stage > .stage { position: relative; flex: 1 1 auto; min-height: 0; }
 
-  /* До фото — его средний тон. Текст доски «в воздухе» — по фото: на светлом кадре тёмный, на тёмном белый; второстепенный
-     (числа этапов, имена) — непрозрачным серым, не прозрачностью: на пёстром фото полупрозрачное не читалось (владелец). */
+  /* До фото — его средний тон. Текст доски «в воздухе» — по фото: на светлом кадре тёмный, на тёмном белый; числа этапов
+     и имена — тем же цветом, что названия (владелец: «чёрными прям, а не серыми»): на пёстром фото серое не читалось. */
   .space {
     --space-bg: #dfe1e3;
-    --b-ink: var(--color-ink); --b-dim: #4a4a47;
+    --b-ink: var(--color-ink); --b-dim: var(--b-ink);
     --b-idle: var(--color-surface); --b-idle-ink: #9a9a98; --b-idle-hover: var(--color-surface-3); --b-face: #e4e4e2;
     --b-red: #ff2d55; --b-red-text: #ff6b85;
     position: absolute; inset: 0; overflow: hidden; background: var(--space-bg);
@@ -24,7 +24,7 @@
   }
   .dark .space {
     --space-bg: #15181c;
-    --b-ink: #fff; --b-dim: #c9c9ce;
+    --b-ink: #fff; --b-dim: var(--b-ink);
     --b-idle: var(--color-surface); --b-idle-ink: #7c7c80; --b-idle-hover: var(--color-surface-3); --b-face: #3a3a3c;
   }
   .space.is-grabbing { cursor: grabbing; }
@@ -91,9 +91,8 @@
      тёмными местами кадра — «нечитабельно»). */
   .conveyor-step.is-idle { background: var(--b-idle); color: var(--b-idle-ink); }
   .conveyor-step.is-idle .step-logo { opacity: .5; }
-  /* Этап, где только ждём (поставщика), — тише весь: делать там нечего. Тише цветом, а не прозрачностью — на фото
+  /* Этап, где только ждём (поставщика), — тише: делать там нечего. Тише цветом текста плашек, а не прозрачностью — на фото
      полупрозрачное не читается. */
-  .conveyor-stage.is-quiet .stage-title { color: var(--b-dim); }
   .conveyor-stage.is-quiet .conveyor-step { color: var(--color-ink-muted); }
   .conveyor-step.is-hot { box-shadow: 0 0 0 2px var(--b-red), 0 0 26px rgb(255 45 85 / .5); }
   @media (hover: hover) {
