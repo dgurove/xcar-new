@@ -610,7 +610,7 @@ class MailController
         if ($parent && ! $offer) {
             $defaults['subject'] = $defaults['subject'] ?: 'Re: '.$parent->subject;
         }
-        // Тема письма о выдаче — с машиной (06.11.2026, Сергей): «RE: Z691/046/06548/26 ч.1 - Kia Rio, 2019, VIN …, А123ВС77»;
+        // Тема письма о выдаче — с машиной (06.11.2026, Сергей): «RE: Z691/046/06548/26 ч.1 - Kia Rio 2019 VIN …»;
         // номера убытка в теме нет — и он хвостом; уже есть VIN — не повторяем.
         if ($release && ! $request->old()) {
             $subject = trim((string) ($defaults['subject'] ?? ''));

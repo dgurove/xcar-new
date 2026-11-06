@@ -418,14 +418,17 @@ class Vehicle extends Model
     }
 
     /**
-     * Машина одной строкой для имён документов и темы письма (06.11.2026, Сергей): «Z691/046/06548/26, Kia Rio, 2019, VIN …,
-     * А123ВС77» — номер убытка, марка и модель с годом, VIN, госномер; чего нет — пропускается. `ref: false` — без номера
+     * Машина одной строкой для имён документов и темы письма (06.11.2026, Сергей): «Z691/046/06548/26 Kia Rio 2019
+     * VIN …» — номер убытка, марка и модель, год, VIN через пробел (владелец: без запятых и госномера); чего нет — пропускается. `ref: false` — без номера
      * убытка (в теме ветки он уже стоит).
      */
     public function docLine(bool $ref = true): string
     {
-        return implode(', ', array_filter([$ref ? $this->ref : null, $this->carRecord()->titleWithYear() ?: null,
-            $this->vin ? 'VIN '.$this->vin : null, $this->plate]));
+        $car = $this->carRecord();
+        $title = $car->title();
+
+        return implode(' ', array_filter([$ref ? $this->ref : null, $title !== '' ? $title : null,
+            $title !== '' && $car->year ? (string) $car->year : null, $this->vin ? 'VIN '.$this->vin : null]));
     }
 
     public function titleWithYear(): string
