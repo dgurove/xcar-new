@@ -34,10 +34,12 @@
   /* Затемнение и полоса дымки под шапкой страницы — внутри слоя фото (его псевдоэлементы), а не своими полноэкранными
      слоями: каждый такой слой — лишний проход по всему экрану в каждом кадре (06.11.2026, «очень фризит»). Затемнение: светлая — лёгкая вуаль, тёмная — темнее к краям (владелец: «чуть
      затемнить», затем «менее тёмное», «сильно менее тёмным — чуть ли не чёрный»). Полоса под шапкой (логотип, поиск, разделы) — та же дымка, что за блоками, к низу
-     сходит на нет (владелец: «такой же под шапкой — единообразие»). */
+     сходит на нет (владелец: «такой же под шапкой — единообразие»). Тёмная 06.11.2026 вечером — фото темнее (владелец: «только фотку на фоне»,
+     дымка за блоками прежняя): затемнение — заливка в неподвижном слое фото, растеризуется один раз. Ни
+     `filter: brightness()` (пересчёт картинки), ни нового полноэкранного слоя — на кадр это не влияет. */
   .space-photo::before, .space-photo::after { content: ""; position: absolute; inset: 0; }
   .space-photo::before { background: linear-gradient(rgb(255 255 255 / .48), rgb(255 255 255 / .32) 45%, rgb(255 255 255 / .52)); }
-  .dark .space-photo::before { background: radial-gradient(120% 90% at 46% 40%, rgb(0 0 0 / .08), rgb(0 0 0 / .3)); }
+  .dark .space-photo::before { background: radial-gradient(120% 90% at 46% 40%, rgb(0 0 0 / .32), rgb(0 0 0 / .5)); }
   .space-photo::after { bottom: auto; height: 7rem; background: linear-gradient(var(--b-veil), transparent); }
   .space-marks { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 
@@ -101,7 +103,7 @@
     mask-composite: intersect;
   }
 
-  /* Подэтап — плашка кита: глагол, справа число; горит — красная капсула и красная обводка со свечением (владелец: «ахтунг
+  /* Подэтап — плашка кита: глагол, справа число; горит — красная капсула и красная полоса у левого края (06.11.2026: вместо обводки со свечением) (владелец: «ахтунг
      — красным, красиво»). Без дела — тихая, бледным текстом. Нажатие — его список. */
   .stage-steps { display: grid; gap: .5rem; align-content: start; }
   .conveyor-step {
@@ -130,7 +132,9 @@
   /* Этап, где только ждём (поставщика), — тише: делать там нечего. Тише цветом текста плашек, а не прозрачностью — на фото
      полупрозрачное не читается. */
   .conveyor-stage.is-quiet .conveyor-step { color: var(--color-ink-muted); }
-  .conveyor-step.is-hot { box-shadow: 0 0 0 2px var(--b-red), 0 0 26px rgb(255 45 85 / .5); }
+  /* Горит — красная полоса во всю высоту у левого края; плашка обрезает её по своему скруглению. */
+  .conveyor-step { position: relative; overflow: hidden; }
+  .conveyor-step.is-hot::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: var(--b-red); }
   @media (hover: hover) {
     .conveyor-step[href]:hover { background: var(--color-surface-3); }
     .conveyor-step.is-idle[href]:hover { background: var(--b-idle-hover); }

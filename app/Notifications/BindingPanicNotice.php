@@ -65,7 +65,7 @@ final class BindingPanicNotice extends Notice
 
     public function icon(): string
     {
-        return 'siren';
+        return 'fire';
     }
 
     public function subject(): string
