@@ -42,11 +42,14 @@ final class ChatNotice extends Notice
         return '/account/chats/'.$this->message->chat_id;
     }
 
-    /** В Telegram — сообщение целиком; автоответ площадки (без автора) — нет: человек сам только что написал. */
+    /**
+     * В Telegram — сообщение целиком; автоответ площадки — нет: человек сам только что написал. Другое сообщение площадки без
+     * автора (вопрос «Берём?», `PlatformMessage`) — да: ради него оно и пишется.
+     */
     public function toTelegram(): ?array
     {
         $m = $this->message;
-        if ($m->author_kind !== AuthorKind::Participant && ! $m->author_id) {
+        if ($m->author_kind !== AuthorKind::Participant && ! $m->author_id && str_contains((string) $m->text, \App\Chats\Actions\AutoReply::MARK)) {
             return null;
         }
         $chat = $m->chat;

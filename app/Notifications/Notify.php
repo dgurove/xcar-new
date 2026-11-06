@@ -16,6 +16,8 @@ use App\Billing\Events\PaymentRejected;
 use App\Billing\Invoice;
 use App\Billing\InvoiceState;
 use App\Billing\PaymentSource;
+use App\Chats\Actions\OpenChat;
+use App\Chats\Actions\PlatformMessage;
 use App\Chats\AuthorKind;
 use App\Chats\Events\ChatMessagePosted;
 use App\Chats\Presence;
@@ -74,11 +76,15 @@ use App\Workflow\Requirement;
 use App\Workflow\Track;
 use App\Workflow\WaitsFor;
 use Illuminate\Events\Dispatcher;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 
 /** Кому что рассказать, когда в офферах что-то произошло. */
 final class Notify
 {
+    /** Вопрос менеджеру в чате, когда спрашиваем согласие (`stageEntered`). */
+    public const CONSENT_ASK = 'Привет, подтверждаешь? Берём?';
+
     public function subscribe(Dispatcher $events): array
     {
         return [
@@ -272,6 +278,13 @@ final class Notify
         $agreed = $e->exit && str_starts_with(mb_strtolower($e->exit->label), 'поставщик согласовал');
         if ($requirement) {
             $deal->buyer->notify(new YourTurnNotice($requirement->load('offer')));
+            // Согласие менеджера — ещё и сообщением площадки в чате по машине (06.11.2026, владелец: «чтобы они точно увидели,
+            // в такие моменты нам срочно нужен ответ»): и по «Спросить менеджера», и когда вопрос встал сам новому менеджеру
+            // (`Give::agreedBefore`). После коммита — иначе чат увидит сообщение раньше, чем шаг.
+            if ($e->to->asksConsent()) {
+                [$offer, $manager] = [$e->offer, $deal->buyer];
+                DB::afterCommit(fn () => app(PlatformMessage::class)(app(OpenChat::class)($offer, $manager, greet: false), self::CONSENT_ASK));
+            }
         } elseif ($agreed && $deal->buyerPicksUp() && ($handover = Handover::for($deal->setRelation('offer', $e->offer)))->open
             && $handover->park?->state !== VehicleState::Stored) {
             $deal->buyer->notify(new HandoverNotice($deal, $handover));

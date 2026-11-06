@@ -1,0 +1,33 @@
+<?php
+
+namespace App\Chats\Actions;
+
+use App\Chats\AuthorKind;
+use App\Chats\Chat;
+use App\Chats\Events\ChatMessagePosted;
+use App\Chats\Message;
+use Illuminate\Support\Facades\DB;
+
+/**
+ * Сообщение от «Администрации XCar» без автора-человека (06.11.2026, вопрос «Берём?» на согласии менеджера): как пузырь
+ * сотрудника, у человека — непрочитанным и уведомлением чата (`Notify::chat`). Автоответ (`AutoReply`) — тоже без автора,
+ * но стирается, когда сотрудник ответил; это сообщение остаётся.
+ */
+final class PlatformMessage
+{
+    public function __invoke(Chat $chat, string $text): Message
+    {
+        $message = DB::transaction(function () use ($chat, $text) {
+            $chat = Chat::whereKey($chat->id)->lockForUpdate()->firstOrFail();
+            $seq = $chat->messages_count + 1;
+            $message = $chat->messages()->create(['seq' => $seq, 'author_kind' => AuthorKind::Staff, 'text' => $text]);
+            $chat->update(['messages_count' => $seq, 'last_message_at' => now(), 'unread_for_user' => $chat->unread_for_user + 1,
+                'unread_for_staff' => 0, 'read_seq_staff' => $seq]);
+
+            return $message;
+        });
+        ChatMessagePosted::dispatch($message->load('chat.offer', 'chat.user', 'chat.manager', 'files'));
+
+        return $message;
+    }
+}

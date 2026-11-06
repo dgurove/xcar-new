@@ -99,11 +99,27 @@ class DealAnswersScopeTest extends TestCase
         app(AcceptBid::class)(app(PlaceBid::class)($offer->fresh(), $first, 1000000), $admin, scheme: DealScheme::Prime);
         $this->assertSame('Письмо о покупке', $position()->stage->name);
         app(TakeExit::class)($offer->fresh(), $position()->stage->exits->firstWhere('label', 'Поставщик согласовал'), Actor::Staff, $admin);
+        // «Спросить менеджера» — ещё и сообщением от «Администрации XCar» в его чате по машине (06.11.2026).
+        $asked = fn (User $m) => \App\Chats\Chat::platformWith($offer, $m)->first()?->messages()->where('author_kind', \App\Chats\AuthorKind::Staff)
+            ->whereNull('author_id')->where('text', \App\Notifications\Notify::CONSENT_ASK)->count();
+        $this->assertSame(1, $asked($first));
+        $this->assertSame(1, \App\Chats\Chat::platformWith($offer, $first)->first()->unread_for_user);
         $refuse($first);
 
         $deal = app(AcceptBid::class)(app(PlaceBid::class)($offer->fresh(), $second, 990000), $admin, scheme: DealScheme::Prime);
         $this->assertSame('Согласие менеджера', $position()->stage->name);
         $this->assertSame($second->id, Requirement::where('deal_id', $deal->id)->whereNull('done_at')->sole()->user_id);
+        $this->assertSame(1, $asked($second), 'вопрос встал сам — и сообщение тоже');
+        Notification::assertSentTo($second, \App\Notifications\ChatNotice::class, fn ($n) => $n->message()->text === \App\Notifications\Notify::CONSENT_ASK
+            && in_array(\App\Notifications\Notify::CONSENT_ASK, $n->toTelegram()['lines'] ?? [], true));
+        // Сотрудник ответил в чате — вопрос остаётся (стирается только автоответ).
+        app(\App\Chats\Actions\PostMessage::class)(\App\Chats\Chat::platformWith($offer, $second)->first(), $admin, 'Ждём ответа');
+        $this->assertSame(1, $asked($second));
+        $chat = app(\App\Chats\Actions\OpenChat::class)($offer, $third, greet: false);
+        app(\App\Chats\Actions\AutoReply::class)($chat);
+        app(\App\Chats\Actions\PlatformMessage::class)($chat, 'Вопрос');
+        app(\App\Chats\Actions\PostMessage::class)($chat, $admin, 'Ответ');
+        $this->assertSame(['Вопрос', 'Ответ'], \App\Chats\Message::where('chat_id', $chat->id)->orderBy('seq')->pluck('text')->all(), 'автоответ стёрт, вопрос остался');
 
         // Поставщику другая сумма (вписали другую закупочную) — согласовывать заново.
         $refuse($second);
