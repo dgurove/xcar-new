@@ -3,14 +3,15 @@
      key — начало id полей, когда два набора с одним prefix на странице. rows — строками, как в Настройках (.fields, в
      шторке договора, 07.10.2026); на страницах — сеткой. В строках все поля одним видом — подпись сверху, значение под ней
      во всю ширину (`.fields-stack`, 05.11.2026, владелец: ФИО резалось «Макаров Дмит…», а смесь строк и столбиков —
-     «скачут размеры и подписи»); длинное (место рождения, кем выдан, адрес) переносится. --}}
-@props(['party' => null, 'prefix', 'key' => null, 'rows' => false])
+     «скачут размеры и подписи»); длинное (место рождения, кем выдан, адрес) переносится. fio=false — без ФИО, bare — без
+     своей плашки (`x-billing.buyer-fields`: ФИО у физлица и ИП одно, паспорт — только у физлица, 06.11.2026). --}}
+@props(['party' => null, 'prefix', 'key' => null, 'rows' => false, 'fio' => true, 'bare' => false])
 @php
     $n = fn (string $f) => $prefix.'['.$f.']'; $id = fn (string $f) => ($key ?? $prefix).'-'.$f; $g = $rows ? 'contents' : 'grid grid-cols-1 gap-3 sm:grid-cols-2';
     $long = $rows ? 'textarea' : 'text';
 @endphp
-<div class="{{ $rows ? 'fields fields-stack' : 'flex flex-col gap-3' }}">
-    <x-ui.field :name="$n('name')" :id="$id('name')" label="ФИО" :value="$party?->name" required/>
+<div class="{{ $bare ? 'contents' : ($rows ? 'fields fields-stack' : 'flex flex-col gap-3') }}">
+    @if ($fio)<x-ui.field :name="$n('name')" :id="$id('name')" label="ФИО" :value="$party?->name" required/>@endif
     <div class="{{ $g }}">
         <x-ui.field :name="$n('birth_at')" :id="$id('birth_at')" label="Дата рождения" type="date" :value="$party?->birth_at?->toDateString()" required/>
         <x-ui.field :name="$n('birth_place')" :id="$id('birth_place')" label="Место рождения" :type="$long" rows="1" :value="$party?->birth_place"/>

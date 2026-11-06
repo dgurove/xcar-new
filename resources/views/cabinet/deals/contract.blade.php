@@ -14,7 +14,7 @@
     $isMe = $buyer && $buyer->id === $me->id;
     // Готов — с паспортом и его сканом у физлица (`Party::readyAsBuyer`, 11.10.2026); без скана — та же шторка данных.
     $ready = $buyer?->party?->readyAsBuyer();
-    $noScan = $buyer?->party?->readyForContract() && ! $ready;
+    $gap = $buyer?->party?->buyerGap();
     $mine = $me->buyers()->orderBy('name')->get(['id', 'name']);
     $prime = $deal->isPrime();
     $editable = $deal->isActive();
@@ -51,15 +51,14 @@
                     <x-ui.sheet-row>
                         <x-ui.avatar :user="$buyer" :size="36"/>
                         <span class="min-w-0 flex-1"><span class="block truncate">{{ $isMe ? ($garage ? 'Ваши данные' : 'Я сам') : ($buyer->party?->name ?: $buyer->name) }}</span>
-                            <span class="row-sub text-urgent">{{ $noScan ? 'нужен скан паспорта' : 'нужны данные для '.$for }}</span></span>
+                            <span class="row-sub text-urgent">{{ $gap ?? 'нужны данные для '.$for }}</span></span>
                         <x-ui.chevron/>
                     </x-ui.sheet-row>
                     <x-ui.sheet id="deal-buyer-data" :title="'Данные для '.$for" :open="$dataErrors || session('open_sheet') === 'deal-buyer-data'" tall>
                         @php $buyerParty = $buyer->party ?? \App\Billing\Party::forUser($buyer); @endphp
-                        @if ($buyerParty->isPerson())<x-billing.passport-scan :party="$buyerParty" form="deal-buyer-data-form"/>@endif
                         <form method="post" action="/deals/{{ $deal->id }}/contract" class="flex flex-col gap-3" id="deal-buyer-data-form">
                             @csrf @method('put')
-                            <x-billing.buyer-fields :party="$buyerParty" key="buyer-now"/>
+                            <x-billing.buyer-fields :party="$buyerParty" key="buyer-now" scan="deal-buyer-data-form" :fallback="$buyer->name"/>
                             <x-ui.sheet-foot>Сохранить</x-ui.sheet-foot>
                         </form>
                     </x-ui.sheet>

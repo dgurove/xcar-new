@@ -112,7 +112,7 @@
 
     <table class="parties">
         <tr><td class="l">Поставщик</td><td>{{ $self->name }}@if ($self->details()), {{ $self->details() }}@endif</td></tr>
-        <tr><td class="l">Покупатель</td><td>{{ $p->name }}@if ($p->details()), {{ $p->details() }}@endif</td></tr>
+        <tr><td class="l">Покупатель</td><td>{{ $p->title() }}@if ($p->details()), {{ $p->details() }}@endif</td></tr>
         @if ($basis)<tr><td class="l">Основание</td><td>{!! $nb($basis) !!}</td></tr>@endif
     </table>
 

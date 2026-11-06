@@ -11,13 +11,13 @@
     <tr>
         <td>
             @if ($s)
-                <div>{{ $s->full_name ?: $s->name }}</div>
+                <div>{{ $s->full_name ?: $s->title() }}</div>
                 @foreach ($lines($s) as $line)<div>{{ $line }}</div>@endforeach
             @endif
         </td>
         <td>
             @if ($doc->isCompany($b))
-                <div>{{ $b->full_name ?: $b->name }}</div>
+                <div>{{ $b->full_name ?: $b->title() }}</div>
                 @foreach ($lines($b) as $line)<div>{{ $line }}</div>@endforeach
             @else
                 <div>{{ $doc->v($b?->name, 70) }}</div>

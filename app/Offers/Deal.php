@@ -505,7 +505,7 @@ class Deal extends Model
         return match (true) {
             ! $this->contract?->buyer => 'Покупатель не выбран',
             ! $party?->readyForContract() => 'Нет данных покупателя',
-            ! $party->readyAsBuyer() => 'Нет скана паспорта покупателя',
+            ! $party->readyAsBuyer() => $party->buyerGap() === 'нужен банк ИП' ? 'Нет банка ИП покупателя' : 'Нет скана паспорта покупателя',
             default => null,
         };
     }

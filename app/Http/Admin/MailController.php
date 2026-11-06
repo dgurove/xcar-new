@@ -619,10 +619,10 @@ class MailController
         if ($offer?->deal && $template && preg_match('/\{\{ ?buyer ?\}\}/', (string) $template->body) && ($gap = $offer->deal->requisitesGap())) {
             abort(409, $gap.' — письмо с реквизитами пока не написать');
         }
-        // Реквизиты покупателя-человека поставщику (03.11.2026, Альфа) — со сканом паспорта во вложении, одним PDF (05.11.2026,
+        // Реквизиты покупателя-человека и ИП поставщику (03.11.2026, Альфа; ИП — 06.11.2026) — со сканом паспорта во вложении, одним PDF (05.11.2026,
         // владелец: «фотки со сканами, а должен pdf файл формировать и прикреплять»).
         if ($offer?->deal && $template && ! $request->old() && preg_match('/\{\{ ?buyer ?\}\}/', (string) $template->body)
-            && ($party = $offer->deal->supplierInvoicee()) && $party->isPerson() && ! $party->seller && ($scan = PassportPdf::render($party))) {
+            && ($party = $offer->deal->supplierInvoicee()) && $party->needsPassportScan() && ! $party->seller && ($scan = PassportPdf::render($party))) {
             $defaults['files'][] = $outbox->put(PassportPdf::fileName($party), $scan);
         }
 

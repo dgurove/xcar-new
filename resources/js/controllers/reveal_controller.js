@@ -1,6 +1,6 @@
 import { Controller } from '@hotwired/stimulus';
 
-// Радио открывает свою группу полей (data-reveal-key = value радио), остальные прячет
+// Радио открывает свою группу полей (data-reveal-key = value радио, можно несколько через пробел), остальные прячет
 // и выключает, чтобы их значения не ушли в форму. С labelSelector кнопка (обычно в плашке,
 // по селектору) получает подпись выбранного исхода — data-reveal-label у радио.
 // Вложенный reveal (способ оплаты → кто платит) ведёт свои панели сам: чужие цели здесь не трогаются.
@@ -44,7 +44,7 @@ export default class extends Controller {
     // и тогда есть «К менеджеру». Спрятанное радио, если было выбрано, уступает соседнему.
     toggle(event) {
         const on = event.currentTarget.value !== '';
-        for (const pane of this.paneTargets.filter((p) => this.owns(p) && p.dataset.revealKey === event.params.key)) {
+        for (const pane of this.paneTargets.filter((p) => this.owns(p) && this.keys(p).includes(event.params.key))) {
             pane.hidden = !on;
             const radio = pane.querySelector('input[type=radio]');
             if (!on && radio?.checked) {
@@ -55,9 +55,14 @@ export default class extends Controller {
         }
     }
 
+    // Панель бывает общей нескольким значениям — ключи через пробел (`person ip`: скан паспорта у физлица и ИП).
+    keys(pane) {
+        return (pane.dataset.revealKey || '').split(/\s+/);
+    }
+
     show(key, label) {
         for (const pane of this.paneTargets.filter((p) => this.owns(p))) {
-            const on = pane.dataset.revealKey === key;
+            const on = this.keys(pane).includes(key);
             pane.hidden = !on;
             // Поля скрытой панели — своей, вложенной или внешнего reveal — так и остаются выключенными. Прочее скрытое
             // снаружи не в счёт: шторка в плашке, что прячется до первой галочки (логистика: «Назначить (N)»), иначе

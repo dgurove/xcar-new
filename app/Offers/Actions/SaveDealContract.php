@@ -2,6 +2,7 @@
 
 namespace App\Offers\Actions;
 
+use App\Billing\Actions\SaveBuyerData;
 use App\Billing\Party;
 use App\Billing\PartyKind;
 use App\Notifications\BuyerContractDataNotice;
@@ -18,12 +19,12 @@ use Illuminate\Validation\ValidationException;
  * (`vehicle`: госномер, СТС, (Э)ПТС, кузов, шасси — в машину; цена и город — в договор), дату договора (`signed_at`) —
  * и менеджер, и сотрудник. Менеджер — покупателя: своего (`buyer_id`), себя
  * (`me`) или нового (`new_buyer`: заводится в его «Покупателях» без пароля), с паспортом или реквизитами организации
- * (`buyer`), и у ПРАЙМ — кто платит по счёту (`payer`). Счёт ПРАЙМ ставится тут же сам (`SyncDealInvoices`). Договор
+ * (`buyer`, `SaveBuyerData`: физлицо, ИП или организация), и у ПРАЙМ — кто платит по счёту (`payer`). Счёт ПРАЙМ ставится тут же сам (`SyncDealInvoices`). Договор
  * собрался впервые — менеджеру «ДКП готов».
  */
 final class SaveDealContract
 {
-    public function __construct(private SyncDealInvoices $invoices, private UpdateOffer $offers, private SettleContract $settle) {}
+    public function __construct(private SyncDealInvoices $invoices, private UpdateOffer $offers, private SettleContract $settle, private SaveBuyerData $buyerData) {}
 
     public function __invoke(DealContract $contract, array $data, User $by): DealContract
     {
@@ -51,7 +52,7 @@ final class SaveDealContract
                 if ($phone && User::where('phone', $phone)->exists()) {
                     throw ValidationException::withMessages(['new_buyer.phone' => 'С этим телефоном уже есть человек в xcar']);
                 }
-                $name = trim($data['buyer']['name'] ?? '');
+                $name = trim($data['buyer']['name'] ?? $data['buyer']['org'] ?? '');
                 [$last, $first] = array_pad(preg_split('/\s+/u', $name, 2) ?: [], 2, null);
                 $buyer = User::create(['name' => $name, 'last_name' => $last, 'first_name' => $first, 'phone' => $phone, 'roles' => [Role::Buyer],
                     'manager_id' => $deal->buyer_id, 'approved_at' => now(), 'approved_by' => $by->id, 'access' => []]);
@@ -72,11 +73,8 @@ final class SaveDealContract
                 $contract->payer = $data['payer'];
             }
             if (isset($data['buyer']) && ($buyer = $contract->buyer()->first())) {
-                $party = Party::forUser($buyer);
-                $company = ($data['buyer']['kind'] ?? 'person') === 'company';
                 // Покупатель — сам менеджер-ИП или самозанятый: паспорт дописываем, вид его реквизитов для выплат не трогаем.
-                $keep = $buyer->id === $deal->buyer_id && in_array($party->kind, [PartyKind::Entrepreneur, PartyKind::SelfEmployed], true);
-                $party->fill(($keep ? [] : ['kind' => $company ? PartyKind::Company : PartyKind::Person]) + ($company ? self::company($data['buyer']) : self::passport($data['buyer'])))->save();
+                ($this->buyerData)(Party::forUser($buyer), $data['buyer'], keepKind: $buyer->id === $deal->buyer_id);
             }
             $contract->save();
             $deal->offer->log(OfferEventType::Note, $by, ['text' => 'ДКП: '.implode(', ', array_filter([
@@ -95,14 +93,6 @@ final class SaveDealContract
         }
 
         return ($this->settle)($contract);
-    }
-
-    /** Реквизиты организации из набора формы. */
-    private static function company(array $data): array
-    {
-        $fields = array_intersect_key($data, array_flip(['name', 'inn', 'kpp', 'ogrn', 'legal_address', 'director']));
-
-        return array_map(fn ($v) => is_string($v) && trim($v) === '' ? null : (is_string($v) ? trim($v) : $v), $fields);
     }
 
     /** Поля паспорта из набора формы — только они, пустые строки как null. */

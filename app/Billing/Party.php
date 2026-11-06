@@ -153,6 +153,27 @@ class Party extends Model implements HasMedia
         return ! in_array($this->kind, [PartyKind::Company, PartyKind::Entrepreneur], true);
     }
 
+    /**
+     * Покупателю нужен скан паспорта: физлицу и ИП (06.11.2026, владелец: физлицо платит со своего ИП — поставщику
+     * реквизиты ИП и PDF со сканом паспорта). У организации паспорта нет.
+     */
+    public function needsPassportScan(): bool
+    {
+        return $this->isPerson() || $this->kind === PartyKind::Entrepreneur;
+    }
+
+    /**
+     * Как называть в документах: ИП, у которого в имени ФИО (так его вносят в форме покупателя), — «Индивидуальный
+     * предприниматель Гамидов Тагир Гасинович»; имя уже с «ИП» и остальные — как есть.
+     */
+    public function title(): string
+    {
+        $name = trim((string) $this->name);
+
+        return $this->kind === PartyKind::Entrepreneur && ! preg_match('/^(ип|индивидуальный\s+предприниматель)\b/iu', $name)
+            ? 'Индивидуальный предприниматель '.$name : $name;
+    }
+
     /** Обе страницы скана паспорта прикреплены. */
     public function hasPassportScans(): bool
     {
@@ -166,7 +187,19 @@ class Party extends Model implements HasMedia
      */
     public function readyAsBuyer(): bool
     {
-        return $this->readyForContract() && (! $this->isPerson() || $this->hasPassportScans());
+        return $this->readyForContract() && (! $this->needsPassportScan() || $this->hasPassportScans())
+            && ($this->kind !== PartyKind::Entrepreneur || ! $this->bankMissing());
+    }
+
+    /** Чего ещё нет у покупателя, когда сторона договора уже внесена: скана паспорта или банка ИП; null — всё есть или не внесена. */
+    public function buyerGap(): ?string
+    {
+        return match (true) {
+            ! $this->readyForContract() => null,
+            $this->needsPassportScan() && ! $this->hasPassportScans() => 'нужен скан паспорта',
+            $this->kind === PartyKind::Entrepreneur && $this->bankMissing() => 'нужен банк ИП',
+            default => null,
+        };
     }
 
     /** Чей это контрагент на сайте: сам человек (его `party_id`) или его менеджер — им можно прикреплять и смотреть скан. */
@@ -180,7 +213,7 @@ class Party extends Model implements HasMedia
     {
         return match ($this->kind) {
             PartyKind::Company => filled($this->name) && filled($this->inn) && filled($this->legal_address) && filled($this->director),
-            PartyKind::Entrepreneur => filled($this->name) && filled($this->inn) && filled($this->legal_address),
+            PartyKind::Entrepreneur => filled($this->name) && filled($this->inn) && filled($this->ogrn) && filled($this->legal_address ?: $this->reg_address),
             default => $this->hasPassport(),
         };
     }
@@ -262,8 +295,8 @@ class Party extends Model implements HasMedia
 
     /**
      * Реквизиты строками для письма поставщику (03.11.2026, Альфа: «пришлите реквизиты для выставления счёта»): человек —
-     * ФИО, рождение, паспорт, кем и когда выдан, код, адрес; организация и ИП — название, ИНН, КПП, ОГРН, адрес,
-     * руководитель, банк (если есть).
+     * ФИО, рождение, паспорт, кем и когда выдан, код, адрес; организация и ИП — название, адрес, ИНН, КПП, ОГРН(ИП),
+     * руководитель, р/с, банк, БИК, к/с. Скан паспорта физлица и ИП идёт PDF во вложении (`MailController`).
      */
     public function requisitesText(): string
     {
@@ -277,12 +310,16 @@ class Party extends Model implements HasMedia
             $this->passport_code ? 'Код подразделения: '.$this->passport_code : null,
             $this->reg_address ? 'Адрес регистрации: '.$this->reg_address : null,
         ] : [
-            $this->name,
+            // Организация и ИП — как реквизиты в банке (06.11.2026, ИП Гамидова): каждое строкой со своей подписью.
+            $this->title(),
+            ($this->legal_address ?: $this->reg_address) ? 'Адрес: '.($this->legal_address ?: $this->reg_address) : null,
             $this->inn ? 'ИНН '.$this->inn.($this->kpp ? ', КПП '.$this->kpp : '') : null,
             $this->ogrn ? ($this->kind === PartyKind::Entrepreneur ? 'ОГРНИП ' : 'ОГРН ').$this->ogrn : null,
-            ($this->legal_address ?: $this->reg_address) ? 'Адрес: '.($this->legal_address ?: $this->reg_address) : null,
             $this->director ? 'Руководитель: '.$this->director : null,
-            $this->bankDetails() ?: null,
+            $this->account ? 'Расчётный счёт: '.$this->account : null,
+            $this->bank_name ? 'Банк: '.$this->bank_name : null,
+            $this->bik ? 'БИК: '.$this->bik : null,
+            $this->corr_account ? 'Корр. счёт: '.$this->corr_account : null,
         ]));
     }
 

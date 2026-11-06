@@ -135,7 +135,7 @@ final class DkpDocument
      */
     public function companyIntro(Party $p, string $role): string
     {
-        $name = $p->full_name ?: $p->name;
+        $name = $p->full_name ?: $p->title();
         if ($p->kind === PartyKind::Entrepreneur) {
             return $name.', '.'именуемый в дальнейшем «'.$role.'»';
         }

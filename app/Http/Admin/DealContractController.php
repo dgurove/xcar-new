@@ -32,7 +32,8 @@ class DealContractController
             if ($request->has('buyer')) {
                 $rules += PartyRules::passport('buyer');
             }
-            $data = $request->validate($rules, [], ['buyer.name' => 'ФИО покупателя']);
+            PartyRules::squeeze($request);
+            $data = $request->validate($rules, [], ['buyer.name' => 'ФИО покупателя'] + PartyRules::buyerLabels());
             $contract = $save(DealContract::for($deal), $data, $request->user());
             // Выбрали покупателя без данных для договора — сразу их шторка со сканом паспорта, как у менеджера.
             $needs = ! empty($data['buyer_id']) && ($b = $contract->fresh()->buyer) && ! $b->party?->readyAsBuyer();

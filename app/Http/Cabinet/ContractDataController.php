@@ -2,6 +2,7 @@
 
 namespace App\Http\Cabinet;
 
+use App\Billing\Actions\SaveBuyerData;
 use App\Billing\Party;
 use App\Billing\PartyKind;
 use App\Billing\PartyRules;
@@ -35,16 +36,20 @@ class ContractDataController
         return view('cabinet.contract-data', ['party' => $party]);
     }
 
-    public function update(Request $request, SyncDealInvoices $invoices)
+    public function update(Request $request, SyncDealInvoices $invoices, SaveBuyerData $save)
     {
         abort_unless(self::opensFor($me = $request->user()), 404);
-        $data = $request->validate(PartyRules::passport('buyer'), [], ['buyer.name' => 'ФИО'])['buyer'];
-        $party = Party::forUser($me);
-        $company = ($data['kind'] ?? 'person') === 'company';
-        $fields = $company ? ['name', 'inn', 'kpp', 'ogrn', 'legal_address', 'director'] : ['name', 'birth_at', 'birth_place', 'passport', 'passport_issued', 'passport_issued_at', 'passport_code', 'reg_address'];
-        $party->fill(['kind' => $company ? PartyKind::Company : PartyKind::Person] + array_map(fn ($v) => is_string($v) ? (trim($v) ?: null) : $v, array_intersect_key($data, array_flip($fields))))->save();
+        PartyRules::squeeze($request);
+        $data = $request->validate(PartyRules::passport('buyer'), [], PartyRules::buyerLabels())['buyer'];
+        $party = $save(Party::forUser($me), $data);
         PassportScanController::resyncFor($me, $me, $invoices);
 
-        return back()->with('toast', $party->fresh()->readyAsBuyer() ? 'Данные для договора сохранены' : 'Сохранено, приложите скан паспорта');
+        $gap = $party->fresh()->buyerGap();
+
+        return back()->with('toast', match (true) {
+            $party->readyAsBuyer() => 'Данные для договора сохранены',
+            $gap === 'нужен банк ИП' => 'Сохранено, впишите банк',
+            default => 'Сохранено, приложите скан паспорта',
+        });
     }
 }

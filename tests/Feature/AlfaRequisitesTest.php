@@ -272,4 +272,47 @@ class AlfaRequisitesTest extends TestCase
         $this->exit($offer, 'Поставщик сразу выставил счёт');
         $this->assertSame('Оплата счёта', $offer->fresh()->stage()->name);
     }
+
+    /**
+     * Покупатель-физлицо платит со своего ИП (06.11.2026, 0760/046/14575/26): поставщику — реквизиты ИП и PDF со сканом
+     * паспорта. Смена вида не стирает внесённое: паспорт физлица остаётся у ИП; ИП без банка не сохраняется.
+     */
+    public function test_buyer_paying_from_own_ip_keeps_passport_and_sends_ip_requisites(): void
+    {
+        [$offer, $deal] = $this->deal(vat: false);
+        $this->exit($offer, 'Поставщик просит реквизиты');
+        $buyer = User::create(['name' => 'Тагир Гамидов', 'roles' => [Role::Buyer], 'manager_id' => $this->manager->id, 'approved_at' => now()]);
+        app(SaveDealContract::class)(DealContract::for($deal->fresh()), ['buyer_id' => (string) $buyer->id], $this->admin);
+        $put = fn (array $data) => $this->actingAs($this->admin)->from(\App\Support\Surface::Crm->url('/offers/'.$offer->number))
+            ->put(\App\Support\Surface::Crm->url('/work/deals/'.$deal->id.'/contract'), ['buyer' => $data]);
+
+        $put(['kind' => 'person', 'name' => 'Гамидов Тагир Гасинович', 'birth_at' => '1995-08-17', 'passport' => '82 15 693772',
+            'passport_issued' => 'ТП УФМС России по Респ. Дагестан', 'passport_issued_at' => '2015-09-02', 'reg_address' => 'Московская обл., г. Химки'])->assertSessionHasNoErrors();
+        $ip = ['kind' => 'ip', 'name' => 'Гамидов Тагир Гасинович', 'inn' => '052601687270', 'ogrn' => '325508100342772', 'legal_address' => ''];
+        $put($ip)->assertSessionHasErrors(['buyer.account', 'buyer.bik', 'buyer.bank_name']);
+        $put($ip + ['account' => '4080 2810 6000 0844 2681', 'bank_name' => 'АО «ТБанк»', 'bik' => '044525974', 'corr_account' => '30101810145250000974'])->assertSessionHasNoErrors();
+
+        $party = $buyer->fresh()->party;
+        $this->assertSame(\App\Billing\PartyKind::Entrepreneur, $party->kind);
+        $this->assertSame(['82 15 693772', 'Московская обл., г. Химки', '40802810600008442681'], [$party->passport, $party->legal_address, $party->account], 'паспорт на месте, адрес ИП — прописка');
+        $this->assertSame('Нет скана паспорта покупателя', $deal->fresh()->requisitesGap());
+
+        foreach (array_keys(Party::PASSPORT_PAGES) as $page) {
+            $party->addMedia(\Illuminate\Http\UploadedFile::fake()->image($page.'.jpg', 400, 300))->withCustomProperties(['page' => $page, 'read' => 'done'])->toMediaCollection('passport');
+        }
+        \App\Http\Cabinet\PassportScanController::resyncFor($buyer->fresh(), $this->admin, app(\App\Offers\Actions\SyncDealInvoices::class));
+        $this->assertNull($deal->fresh()->requisitesGap());
+        $this->assertSame('Письмо с реквизитами', $offer->fresh()->stage()->name);
+
+        $text = MailController::placeholders($offer->fresh())['buyer'];
+        foreach (['Индивидуальный предприниматель Гамидов Тагир Гасинович', 'ИНН 052601687270', 'ОГРНИП 325508100342772', 'Расчётный счёт: 40802810600008442681', 'БИК: 044525974'] as $line) {
+            $this->assertStringContainsString($line, $text);
+        }
+        $this->assertStringNotContainsString('Паспорт:', $text);
+        $this->assertTrue($party->fresh()->needsPassportScan(), 'скан ИП идёт поставщику PDF');
+
+        // Обратно в физлицо — паспорт тот же, ИНН и банк ИП в базе остались.
+        $put(['kind' => 'person', 'name' => 'Гамидов Тагир Гасинович', 'passport' => '82 15 693772'])->assertSessionHasNoErrors();
+        $this->assertSame([\App\Billing\PartyKind::Person, '052601687270', '1995-08-17'], [$party->fresh()->kind, $party->fresh()->inn, $party->fresh()->birth_at->toDateString()]);
+    }
 }
