@@ -1,58 +1,27 @@
-{{-- Строка «Счетов и актов» (`ClosingDoc`) в таблице кита: маленький логотип и имя плательщика, под ним что за документ (у
-     отправленного — номер; на телефоне ещё сколько ТС и состояние); на ПК — за что, состояние, отправлен, оплатить до, число строк
-     акта; справа сумма. Файлов в строке нет (владелец: «убери») — они на странице документа. Нажатие по
-     строке — страница документа (`row-go`, ссылка `a.row-link` у имени). Без плательщика (покупатель без контрагента) —
-     строка без ссылки: документа не из чего собрать. --}}
-@props(['doc', 'table'])
+{{-- Строка «Счетов и актов» (`ClosingDoc`) — строка списка плашкой, тем же видом, что «Вендоры» (06.11.2026, владелец: «как в
+     вендорах, тот же модуль»): логотип, имя плательщика, вторым этажом — за что (хранение не пишется — почти все такие), сколько
+     строк в акте, состояние словом своим цветом («35 строк отправить»), у отправленного — номер; справа сумма. Нажатие — страница документа.
+     Без плательщика (покупатель без контрагента) — строка без ссылки: документа не из чего собрать. --}}
+@props(['doc'])
 @php
-    use App\Support\Money; use App\Support\Ago;
+    use App\Support\Money; use App\Support\Plural;
     $d = $doc;
-    $counted = in_array($d->what, ['хранение', 'эвакуация', 'страхователь'], true);
-    $i = $d->invoice;
+    $link = $d->state !== 'nobody';
+    $tag = $link ? 'a' : 'div';
 @endphp
-{{-- `data-detail-key` — по нему сервер считает ширины столбцов (`Support\Table\Widths`); окошка у списка нет. --}}
-<tr id="doc-{{ $d->key }}" data-detail-key="{{ $d->key }}">
-    @foreach ($table->columns as $key => $col)
-        @switch($key)
-        @case('title')
-    <td class="{{ $col->classes() }}">
-        @if ($d->state !== 'nobody')
-            <a href="/money/closing/{{ $d->key }}" class="row-link"><span class="cell-title">@if ($d->vendor)<x-vendor.name :vendor="$d->vendor"/>@else{{ $d->name }}@endif</span></a>
-        @else
-            <span class="cell-title">{{ $d->name }}</span>
-        @endif
-        <span class="cell-sub">
-            <span class="sm:hidden {{ $d->tone() }}">{{ $d->word() }}</span>
-            {{-- На ПК «за что» и число строк — своими столбцами; на телефоне — здесь: хранение словом не пишется (почти все
-                 счета такие), другое — пишется; число строк акта (владелец: «не N ТС, а N строк»). --}}
-            @if ($d->what !== 'хранение')<span class="sm:hidden">{{ $d->what }}</span>@endif
-            @if ($counted)<span class="sm:hidden">{{ $d->cars }}&nbsp;{{ \App\Support\Plural::of($d->cars, ['строка', 'строки', 'строк']) }}</span>@endif
+<{{ $tag }} @if ($link) href="/money/closing/{{ $d->key }}" @endif id="doc-{{ $d->key }}" class="row gap-2.5 pl-3 pr-2.5">
+    @if ($d->vendor)<x-vendor.logo :vendor="$d->vendor" class="size-8"/>@else<span class="vendor-logo is-letter size-8" aria-hidden="true"><span>{{ mb_strtoupper(mb_substr($d->name, 0, 1)) }}</span></span>@endif
+    <span class="min-w-0 flex-1">
+        {{-- Имя переносится по словам, а не режется: «АльфаСтрахование С…» на телефоне теряло «СПб» — другой плательщик. --}}
+        <span class="block">{{ $d->vendor?->name ?? $d->name }}</span>
+        <span class="row-sub">
+            @if ($d->what !== 'хранение')<span>{{ $d->what }}</span>@endif
+            @if (in_array($d->what, ['хранение', 'эвакуация', 'страхователь'], true))<span class="nums">{{ $d->cars }}&nbsp;{{ Plural::of($d->cars, ['строка', 'строки', 'строк']) }}</span>@endif
+            <span class="{{ $d->tone() }}">{{ $d->word() }}</span>
             @if ($d->invoice)<span class="nums">{{ $d->invoice->label() }}</span>@endif
-            @if ($d->extra)<span>дополнительно</span>@endif
+            @if ($d->drift)<span class="nums">было {{ Money::rub($d->drift['was']) }}</span>@endif
         </span>
-    </td>
-        @break
-        @case('what')
-    <td class="{{ $col->classes() }}">{{ $d->what }}</td>
-        @break
-        @case('sent')
-    <td class="{{ $col->classes() }}">@if ($i?->sent_at){{ Ago::day($i->sent_at) }}@endif</td>
-        @break
-        @case('due')
-    <td class="{{ $col->classes() }} {{ $d->state === 'overdue' ? 'text-danger' : '' }}">@if ($i?->due_at){{ Ago::day($i->due_at) }}@endif</td>
-        @break
-        @case('cars')
-    <td class="{{ $col->classes() }}">@if ($counted){{ $d->cars }}@endif</td>
-        @break
-        @case('state')
-    <td class="{{ $col->classes() }} {{ $d->tone() }}">{{ $d->word() }}</td>
-        @break
-        @case('amount')
-    <td class="{{ $col->classes() }}">
-        {{ Money::rub($d->drift['now'] ?? $d->amount) }}
-        @if ($d->drift)<span class="cell-sub line-through">{{ Money::rub($d->drift['was']) }}</span>@endif
-    </td>
-        @break
-        @endswitch
-    @endforeach
-</tr>
+    </span>
+    <span class="nums shrink-0">{{ Money::rub($d->drift['now'] ?? $d->amount) }}</span>
+    @if ($link)<x-ui.icon name="chevron-right" class="size-4 shrink-0 text-ink-dim"/>@endif
+</{{ $tag }}>

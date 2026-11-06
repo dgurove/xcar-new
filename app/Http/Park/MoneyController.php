@@ -174,7 +174,7 @@ class MoneyController
         }
         $months = min(24, max(6, (int) $request->query('months', 6)));
 
-        return view('park.money.closing', ['docs' => ClosingDoc::window($months), 'months' => $months, 'table' => self::closingTable()]);
+        return view('park.money.closing', ['docs' => ClosingDoc::window($months), 'months' => $months]);
     }
 
     /**
@@ -245,25 +245,6 @@ class MoneyController
         [$month, $group, $replaces] = $this->draftKey($request);
 
         return redirect('/money/closing/'.($replaces ? 'i'.$replaces->id : ClosingDoc::liveKey($month, $group)));
-    }
-
-    /**
-     * Таблица «Счетов и актов» — одно описание на шапку, заголовки месяцев и строки `x-billing.closing-row` (06.11.2026,
-     * владелец: пустую полосу на ПК — делом): плательщик, за что (хранение, эвакуация), состояние, когда отправлен и до
-     * какого оплатить, сколько строк в акте, сумма; файлов в строке нет — они на странице документа. Порядок парковочный (`Table::park`: когда → сколько) — сумма крайней справа, итог
-     * месяца в заголовке группы встаёт над ней.
-     */
-    public static function closingTable(): Table
-    {
-        return Table::park(
-            new Column('title', 'Плательщик', grow: true),
-            new Column('what', 'За что', from: 'sm', role: ColRole::Code),
-            new Column('state', 'Состояние', from: 'sm', role: ColRole::State),
-            new Column('sent', 'Отправлен', from: 'md', cell: 'nums', role: ColRole::When),
-            new Column('due', 'Оплатить до', from: 'md', cell: 'nums', role: ColRole::When),
-            new Column('cars', 'Строк', from: 'sm', num: true, cell: 'nums'),
-            new Column('amount', 'Сумма', num: true, cell: 'nums'),
-        );
     }
 
     public function draftPdf(Request $request, InvoicePdf $pdf)

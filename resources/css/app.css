@@ -1619,12 +1619,6 @@ html.kb-open { --home-gap: 0px; }
   /* Заголовок группы `x-table.group`: название с числом слева, кнопка группы справа («Отправить заявку»). */
   .table tr.table-group .table-group-row { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem .75rem; }
   .table tr.table-group .table-group-row > .btn { margin-left: auto; font-size: var(--text-sm); }
-  /* Тихий заголовок группы — месяцы «Счетов и актов» (06.11.2026, владелец: «месяца и суммы за месяц — opacity 0.7»):
-     прозрачен текст, а не строка — липкая подложка заголовка остаётся глухой. */
-  .table tr.table-group.is-quiet .table-group-row { opacity: .7; }
-  /* Над месяцем — полстроки воздуха (владелец 06.11.2026), кроме самого первого под шапкой. */
-  .table tr.table-group.is-quiet > th, .table-wrap .table tr.table-group.is-quiet > th { padding-top: .875rem; }
-  .table tbody tr.table-group.is-quiet:first-child > th, .table-wrap .table tbody tr.table-group.is-quiet:first-child > th { padding-top: .5rem; }
   /* Таблицы на ПК — плотнее (29.10.2026, владелец: управляющий парковки ушёл в Excel — «шрифт огромный, люди не слепые»,
      на экране 22 ТС против 55; в тот же день — так же во всех таблицах CRM, логистики и сайта): текст 13 вместо 15, строка
      28 px вместо 36, шаг между столбцами 12 px. Телефон — как был. */
