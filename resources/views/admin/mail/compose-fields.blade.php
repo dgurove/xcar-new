@@ -5,6 +5,7 @@
 @if ($offer)<input type="hidden" name="offer" value="{{ $offer->id }}">@endif
 @if ($vehicle ?? null)<input type="hidden" name="vehicle" value="{{ $vehicle->id }}">@endif
 @if ($invoice ?? null)<input type="hidden" name="invoice" value="{{ $invoice->id }}">@endif
+@if ($report ?? null)<input type="hidden" name="report" value="{{ $report }}">@endif
 {{-- Живой документ месяца: отправка фиксирует его (`MailController::send` → `FixClosingDocument`), файлы черновика меняются на записанные. --}}
 @if ($closing ?? null)
     <input type="hidden" name="closing" value="{{ $closing }}">
@@ -105,6 +106,11 @@
     <div class="compose-foot">
         <x-ui.button size="sm">Отправить</x-ui.button>
         <button type="button" class="compose-tool" data-action="photos#pick" aria-label="Приложить файл" title="Приложить файл"><x-ui.icon name="clip" class="size-5"/></button>
+        {{-- Документ из фото одним PDF (06.11.2026, Сергей: акт выдачи проще сфоткать) — письма парковки о машине. --}}
+        @if (($vehicle ?? null) && $mode !== 'forward')
+            <x-ui.photo-pdf :id="'pdf-'.($frame ?? 'page')" :url="$base.'/file/pdf'" :vehicle="$vehicle->id" append="#compose-files" label="" button="compose-tool"
+                :name="($report ?? null) === 'release' ? 'Акт выдачи' : ''" :chips="['Акт выдачи', 'АПП', 'Разрешение на выдачу', 'Доверенность', 'Акт приёма']"/>
+        @endif
         <button type="button" class="compose-tool compose-format" aria-label="Форматирование" title="Форматирование"
                 onclick="this.closest('.compose').toggleAttribute('data-format'); this.classList.toggle('is-on')">Aa</button>
         {{-- Новое письмо без ветки — «Отмена» закрывает окно (`letters:close`). --}}

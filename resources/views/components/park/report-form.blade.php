@@ -1,8 +1,8 @@
 {{-- Отчёт о приёме вендору (12.10.2026, владелец: «висит задача отправить акты приёма — а где это делать»): шаг «Письмо
      вендору» окна действия (`park/act/report`) и «Дослать фото и документы» на письмо вендора (`parent`). Кому (ответ в
      ветке заявки или на это письмо), фото приёма плиткой — все отмечены, нажатие снимает, «Добавить» — новые снимки;
-     документы — слоты из настроек вендора (`IntakeReport::kinds`) и «Другой документ»: лежащий у ТС скан отмечен, «Снять» —
-     камера (несколько страниц → один PDF при отправке), «Файл» — загрузка. С 29.10.2026 (Никита: «работает через раз»)
+     документы — слоты из настроек вендора (`IntakeReport::kinds`) и «Другой документ»: лежащий у ТС скан отмечен, «Из фото» —
+     камера или галерея одним PDF с названием (`x-ui.photo-pdf`, собирается сразу), «Файл» — загрузка. С 29.10.2026 (Никита: «работает через раз»)
      каждый файл уходит на сервер сразу при выборе, ужатым в телефоне (`report_controller`), с ходом и повтором тапом;
      «Отправить» ждёт, пока всё загрузится, и несёт только номера — письма собирает очередь (`Park\Report`). Отчёт в пути —
      «Отправляется» с тем, что уходит, не ушёл — причина и «Повторить». Подвалом листа — кнопка, что считает, что уйдёт, и тихое «Уже
@@ -65,16 +65,20 @@
                 <div class="list">
                     @foreach ($report->slots as $kind => $docs)
                         @php $k = ReportDoc::from($kind); @endphp
-                        <div class="row flex-wrap items-center gap-x-2 gap-y-2" data-report-target="slot" data-kind="{{ $kind }}">
+                        <div class="row flex-wrap items-center gap-x-2 gap-y-2" data-report-target="slot" data-kind="{{ $kind }}" data-action="photo-pdf:saved->report#pdf">
                             <span class="min-w-0 flex-1 {{ $k === ReportDoc::Other ? 'text-ink-muted' : '' }}">{{ $k->label() }}</span>
-                            <label class="btn btn-s btn-quiet shrink-0 rounded-full" aria-label="Снять"><x-ui.icon name="camera" class="size-4"/><span class="hidden sm:inline">Снять</span>
-                                <input type="file" accept="image/*" capture="environment" multiple class="sr-only" data-action="change->report#scan">
-                            </label>
+                            {{-- Из фото — камера или галерея одним PDF с названием (06.11.2026, Сергей; `x-ui.photo-pdf`): PDF собирается сразу. --}}
+                            <x-ui.photo-pdf :id="'pdf-'.$vehicle->id.'-'.$kind" :url="'/cars/'.$vehicle->id.'/report/pdf'" :kind="$kind"
+                                :name="$k === ReportDoc::Other ? '' : $k->label()" :chips="array_values(array_unique(array_filter([$k === ReportDoc::Other ? null : $k->label(), 'Акт приёма', 'АПП', 'Направление на хранение'])))"/>
                             <label class="btn btn-s btn-quiet shrink-0 rounded-full" aria-label="Файл"><x-ui.icon name="clip" class="size-4"/><span class="hidden sm:inline">Файл</span>
                                 <input type="file" accept="{{ $k === ReportDoc::Other ? '' : 'image/*,.pdf,application/pdf' }}" multiple class="sr-only" data-action="change->report#files">
                             </label>
                             <div class="flex w-full flex-wrap gap-2 empty:hidden" data-chips>
                                 @foreach ($docs as $doc)
+                                    @if ($doc->getCustomProperty('title'))
+                                        <x-park.report-file :doc="$doc" :kind="$kind"/>
+                                        @continue
+                                    @endif
                                     {{-- Снимок «Снять», что ещё не ушёл (PDF из него собирает отправка), — «снимок N» со своим выбором; файл — без хвоста-номера. --}}
                                     @php $scan = $doc->getCustomProperty('scan'); @endphp
                                     <label class="choice report-chip" @if ($scan) data-scan="{{ $scan }}" @endif><input type="checkbox" name="docs[{{ $kind }}][]" value="{{ $doc->id }}" @checked($k !== ReportDoc::Other) data-action="report#count" data-report-target="doc"><span class="max-w-[10rem] truncate">{{ $scan ? 'снимок '.((int) $doc->getCustomProperty('page') + 1) : preg_replace('/-[a-z0-9]{13}(\.[^.]+)$/i', '$1', $doc->file_name) }}</span></label>

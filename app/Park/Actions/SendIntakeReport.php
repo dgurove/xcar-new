@@ -79,7 +79,8 @@ final class SendIntakeReport
                 $contents = $this->read($m);
                 $this->sha[$m->id] = [$m, hash('sha256', $contents)];
                 $ext = strtolower(pathinfo($m->file_name, PATHINFO_EXTENSION)) ?: 'pdf';
-                $files[] = $this->outbox->put($intake->fileName($kind, $i, $list->count(), $ext, $m->file_name), $contents);
+                // Документ из фото — названием, что дал человек (`PhotosPdf`, «Акт приёма 0760-046-…pdf»).
+                $files[] = $this->outbox->put($m->getCustomProperty('title') ?: $intake->fileName($kind, $i, $list->count(), $ext, $m->file_name), $contents);
             }
         }
         $docsCount = count($files);

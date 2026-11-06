@@ -85,6 +85,7 @@ Route::domain(config('xcar.park_host'))->middleware(['auth', 'section:park'])->g
     Route::post('/cars/{vehicle}/release', [RequestController::class, 'releaseCar']);
     Route::post('/cars/{vehicle}/report', [ReportController::class, 'store']);
     Route::post('/cars/{vehicle}/report/file', [ReportController::class, 'file']);
+    Route::post('/cars/{vehicle}/report/pdf', [ReportController::class, 'pdf']);
     Route::post('/cars/{vehicle}/report/{report}/retry', [ReportController::class, 'retry']);
     Route::post('/cars/{vehicle}/report-sent', [ReportController::class, 'sent'])->middleware('ability:parkHandles');
     // «✨ Распознать» в деле ТС — то же окно, что у цепочки «Из писем» (ScanController, Scan\VehicleSubject).
@@ -224,6 +225,7 @@ Route::domain(config('xcar.park_host'))->middleware(['auth', 'section:park'])->g
     Route::get('/mail/new', [MailController::class, 'compose']);
     Route::post('/mail', [MailController::class, 'send']);
     Route::post('/mail/file', [MailController::class, 'file']);
+    Route::post('/mail/file/pdf', [MailController::class, 'filePdf']);
     Route::get('/mail/addresses', [MailController::class, 'addresses']);
     // «Проверить почту» стоит и на «Из писем» — у заявок он без раздела «Почта».
     Route::post('/mail/sync', [MailController::class, 'sync']);

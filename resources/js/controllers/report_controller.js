@@ -74,6 +74,20 @@ export default class extends Controller {
         files.forEach((file, page) => this.doc(e.target, file, `снимок ${page + 1}`, { scan, page }));
     }
 
+    // «Из фото» (`x-ui.photo-pdf`) — PDF уже собран и лежит у ТС: строкой вложения (`x-park.report-file`, разметка с сервера).
+    pdf(e) {
+        const { html } = e.detail ?? {};
+        if (!html) return;
+        e.currentTarget.querySelector('[data-chips]').insertAdjacentHTML('beforeend', html);
+        this.count();
+    }
+
+    // «×» у документа из фото — не прикладывать: строка уходит, с ней и галка формы.
+    unattach(e) {
+        e.target.closest('.report-file')?.remove();
+        this.count();
+    }
+
     // «Файл» — каждый своим документом.
     files(e) {
         const files = [...e.target.files];

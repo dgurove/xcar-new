@@ -10,6 +10,7 @@ use App\Mail\Thread;
 use App\Mail\Threads;
 use App\Media\Hidden;
 use App\Media\PhotoIngest;
+use App\Media\PhotosPdf;
 use App\Park\Actions\MarkReportSent;
 use App\Park\IntakeReport;
 use App\Park\Jobs\BuildIntakeReport;
@@ -19,8 +20,6 @@ use App\Park\Vehicle;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
-use RuntimeException;
-use Spatie\Image\Image;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 use Throwable;
 
@@ -83,7 +82,7 @@ class ReportController
      * приёме»; иначе вид документа (`ReportDoc`): снимок «Снять» — страница (`scan` — один выбор, `page` — порядок; одним PDF
      * их склеит отправка), файл — как есть. Ответ — номер, он и уходит в форму.
      */
-    public function file(Request $request, Vehicle $vehicle, PhotoIngest $ingest)
+    public function file(Request $request, Vehicle $vehicle, PhotoIngest $ingest, PhotosPdf $photos)
     {
         $data = $request->validate([
             'file' => ['required', 'file', 'max:40960'],
@@ -100,7 +99,7 @@ class ReportController
                 return response()->json(['id' => $m->id]);
             }
             $kind = ReportDoc::tryFrom($data['kind']) ?? abort(422, 'Нет такого документа');
-            $path = $this->readable($file->getRealPath(), $ingest);
+            $path = $photos->readable($file->getRealPath());
             $ext = $path !== $file->getRealPath() ? 'jpg' : strtolower($file->getClientOriginalExtension() ?: ($file->guessExtension() ?: 'pdf'));
             $base = $kind === ReportDoc::Other
                 ? (trim((string) preg_replace('/[^\p{L}\p{N}._ -]+/u', '_', pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME))) ?: 'dokument')
@@ -119,33 +118,30 @@ class ReportController
     }
 
     /**
-     * Снимок документа — картинкой, которую соберёт в PDF dompdf (JPEG, PNG, GIF): HEIC с Android (телефон его не ужал) и
-     * прочее — в JPEG здесь; не читается вовсе — ошибка сразу у плитки, а не пустая страница у вендора. Не картинка — как есть.
+     * Документ из фото (06.11.2026, Сергей): снимки с камеры или из галереи одним PDF под названием, что дал человек
+     * (`x-ui.photo-pdf`), — в бумаги ТС видом слота отчёта. Ответ — номер, имя и число страниц: чип слота.
      */
-    private function readable(string $path, PhotoIngest $ingest): string
+    public function pdf(Request $request, Vehicle $vehicle, PhotosPdf $photos)
     {
-        $mime = (string) (new \finfo(FILEINFO_MIME_TYPE))->file($path);
-        if (! str_starts_with($mime, 'image/') && ! $ingest->isHeic($path)) {
-            return $path;
-        }
-        if ($ingest->isHeic($path)) {
-            return $ingest->toJpeg($path);
-        }
-        $type = @getimagesize($path)[2] ?? null;
-        if (in_array($type, [IMAGETYPE_JPEG, IMAGETYPE_PNG, IMAGETYPE_GIF], true)) {
-            return $path;
-        }
-        $base = tempnam(sys_get_temp_dir(), 'scan');
-        $jpg = $base.'.jpg';
-        @unlink($base);
+        $data = $request->validate([
+            'pages' => ['required', 'array', 'min:1', 'max:'.PhotosPdf::MAX_PAGES],
+            'pages.*' => ['required', 'file', 'max:40960'],
+            'name' => ['required', 'string', 'max:120'],
+            'kind' => ['required', 'string'],
+        ], ['name.required' => 'Как назвать документ?']);
+        abort_unless($vehicle->accepted_at, 404);
+        $kind = ReportDoc::tryFrom($data['kind']) ?? abort(422, 'Нет такого документа');
         try {
-            Image::useImageDriver('gd')->loadFile($path)->quality(85)->save($jpg);
-        } catch (Throwable) {
-            @unlink($jpg);
-            throw new RuntimeException('снимок не читается, снимите заново');
+            $made = $photos->make($request->file('pages'), $data['name'], $vehicle->ref);
+            $m = $vehicle->addMediaFromString($made['pdf'])->usingFileName(mb_substr(pathinfo($made['name'], PATHINFO_FILENAME), 0, 110).'-'.uniqid().'.pdf')
+                ->withCustomProperties(['report_doc' => $kind->value, 'source' => 'app', 'title' => $made['name'], 'label' => $made['label'], 'pages' => $made['pages']])
+                ->toMediaCollection('papers');
+        } catch (Throwable $e) {
+            return response()->json(['message' => 'PDF не собрался: '.$e->getMessage()], 422);
         }
 
-        return $jpg;
+        return response()->json(['id' => $m->id, 'name' => $made['name'], 'label' => $made['label'], 'pages' => $made['pages'],
+            'html' => view('components.park.report-file', ['doc' => $m, 'kind' => $kind->value])->render()]);
     }
 
     /**

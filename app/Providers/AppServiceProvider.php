@@ -91,7 +91,7 @@ class AppServiceProvider extends ServiceProvider
      * Файлы `views/components`, которые рисуют как шаблон — `view()`, `@include`: под Blaze файл — определение функции и
      * рисует пустоту, поэтому они — обычным Blade. Новый такой вызов без строки здесь ловит `scripts/blade-lint.php`.
      */
-    public const PLAIN_COMPONENTS = ['ui/detail', 'park/table-row', 'offer/favorite-stream', 'offer/estimate-due', 'ui/share-link-buttons', 'ui/star', 'vendor/tariff-step'];
+    public const PLAIN_COMPONENTS = ['ui/detail', 'park/table-row', 'offer/favorite-stream', 'offer/estimate-due', 'ui/share-link-buttons', 'ui/star', 'vendor/tariff-step', 'park/report-file'];
 
     public function register(): void
     {

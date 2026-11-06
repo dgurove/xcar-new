@@ -13,6 +13,7 @@ use App\Billing\Invoice;
 use App\Billing\InvoiceState;
 use App\Live\Stream;
 use App\Mail\Account;
+use App\Mail\AddressKind;
 use App\Mail\Actions\ArchiveThread;
 use App\Mail\Actions\FreezeMessages;
 use App\Mail\Actions\LinkThread;
@@ -41,6 +42,7 @@ use App\Mail\Template;
 use App\Mail\Thread;
 use App\Mail\Threads;
 use App\Media\PhotoIngest;
+use App\Media\PhotosPdf;
 use App\Media\Thumb;
 use App\Offers\Actions\AutoOffer;
 use App\Offers\Actions\MarkSupplierRequestSent;
@@ -58,6 +60,7 @@ use App\Park\DocKind;
 use App\Park\DocState;
 use App\Park\Documents\ActPdf;
 use App\Park\EventType;
+use App\Park\RequestType;
 use App\Park\InspectionKind;
 use App\Park\PhotoStage;
 use App\Park\Sale;
@@ -559,6 +562,25 @@ class MailController
                 ? ($vehicle->vendor?->email(ContactRole::Accounting, ContactRole::Storage, ContactRole::Claims) ?? $parent?->replyToAddress() ?? '')
                 : ($parent?->replyToAddress() ?? $vehicle->vendor?->email(ContactRole::Storage, ContactRole::Claims) ?? '')];
         }
+        // Письмо о выдаче — ответом в ветку заявки, как их писали руками (06.11.2026, владелец и Сергей: «Re: Направление на
+        // хранение», в копии все, кому был адресован изначальный запрос): тема «Re: …» и цитата ветки, адресат — кто писал
+        // последним, копия — все адресаты первого письма ветки и последнего (кроме наших ящиков и самого адресата). Ничего
+        // само не прикладывается (владелец: «фото к письму не нужны, ничего не подтягивать») — сканы кладут скрепкой или «Из дела».
+        $release = $vehicle && ! $invoice && ! $draft && $request->query('act') === 'release';
+        // Отвечаем не на последнее письмо ветки (там бывают внутренние пересылки), а на письмо о реализации ТС, без него — на
+        // заявку о приёме (владелец 06.11.2026); нет ни того, ни другого — как было, на последнее письмо вендора.
+        if ($release && ($asked = self::releaseParent($vehicle))) {
+            $parent = $asked;
+            $thread = $asked->thread;
+            // Пересылка сотрудника — отвечаем вендору из цитаты, как обычный ответ (`Composer::reply`).
+            $values['to'] = $composer->reply($asked)['to'] ?: ($asked->replyToAddress() ?? $values['to']);
+        }
+        if ($release && $parent) {
+            $values['cc'] = implode(', ', self::requestCopies($parent, $vehicle, (string) $values['to']));
+            if (! $request->query('account')) {
+                $account = $accounts->firstWhere('id', $parent->account->sender()->id) ?? $account;
+            }
+        }
         // Письмо о приёме у вендора с выдачей по QR — со ссылкой на анкету покупателя: в шаблоне её нет — абзацем
         // перед подписью (шаблоны в базе заведены раньше, чем появилась выдача по QR).
         if ($vehicle && $template && $vehicle->vendor?->release_by_qr && $request->query('act') === 'intake' && ! str_contains((string) $template->body, 'pickup_link')) {
@@ -578,7 +600,7 @@ class MailController
             }
         }
         $values += $registryValues;
-        $defaults = $offer && $parent ? $composer->replyWith($parent, $account, $template, $values) : $composer->fresh($account, $template, $values);
+        $defaults = ($offer || $release) && $parent ? $composer->replyWith($parent, $account, $template, $values) : $composer->fresh($account, $template, $values);
         if ($saleTo ?? null) {
             $defaults['to'] = $saleTo;
         }
@@ -588,8 +610,6 @@ class MailController
         if ($parent && ! $offer) {
             $defaults['subject'] = $defaults['subject'] ?: 'Re: '.$parent->subject;
         }
-        // Письмо о выдаче уходит с актом и фото выдачи; лишнее снимают в форме. `act=release` — акт выдачи (в том числе с
-        // отказом от получения, когда ТС осталась).
         if ($invoice && ! $request->old()) {
             foreach (['file', 'act'] as $collection) {
                 foreach ($invoice->getMedia($collection) as $media) {
@@ -600,9 +620,6 @@ class MailController
             if (! $invoice->getFirstMedia('act') && $invoice->kind === ChargeKind::Storage && ! $invoice->isRegistry()) {
                 $defaults['files'][] = $outbox->put('akt-hraneniya-'.$invoice->docNo().'-'.$invoice->year.'.pdf', $actPdf->render($invoice));
             }
-        } elseif ($vehicle?->accepted_at && $request->query('act') === 'release' && ! $request->old()) {
-            // Отчёт о приёме — своей формой (`x-park.report-form`, 12.10.2026: наш акт и 12 фото никто не слал); здесь — выдача.
-            $defaults['files'] = [...($defaults['files'] ?? []), ...$this->actFiles($vehicle, false, $outbox, $act)];
         }
 
         // Письмо поставщику об оплате (шаблон этапа, Альфа): платёжка, что менеджер приложил на шаге оплаты, — во вложении
@@ -635,7 +652,7 @@ class MailController
             $defaults['files'] = [...($defaults['files'] ?? []), ...$closingFiles];
         }
 
-        return view('admin.mail.compose-frame', ['frame' => $request->header('Turbo-Frame'), 'account' => $account, 'accounts' => $accounts, 'thread' => $thread, 'parent' => $parent, 'defaults' => $defaults, 'invoice' => $invoice,
+        return view('admin.mail.compose-frame', ['frame' => $request->header('Turbo-Frame'), 'account' => $account, 'accounts' => $accounts, 'thread' => $thread, 'parent' => $parent, 'report' => $release ? 'release' : null, 'defaults' => $defaults, 'invoice' => $invoice,
             'mode' => 'new', 'templates' => Template::where('scope', $this->scope)->orderBy('name')->get(), 'offer' => $offer, 'vehicle' => $vehicle, 'base' => $this->base,
             // Черновик после «Принять» (BidController::accepted): отправили — окно закрывается, человек идёт дальше по списку.
             'then' => $request->query('then') === 'close' ? 'close' : null,
@@ -815,12 +832,14 @@ class MailController
         if ($this->scope === Scope::Park && ! empty($data['vehicle']) && ($vehicle = Vehicle::find($data['vehicle']))) {
             $sent = collect($message->attachments()->pluck('filename'));
             $act = $sent->first(fn ($f) => str_starts_with($f, 'akt-'));
-            $kinds = array_filter([$act ? DocKind::HandoverAct : null, $act ? DocKind::StorageAct : null, $sent->contains(fn ($f) => preg_match('/^(priem|vydacha)-\d+\./', $f)) ? DocKind::Photos : null]);
+            $report = ($data['report'] ?? null) === 'release';
+            $kinds = array_filter([$act || $report ? DocKind::HandoverAct : null, $act ? DocKind::StorageAct : null, $sent->contains(fn ($f) => preg_match('/^(priem|vydacha)-\d+\./', $f)) ? DocKind::Photos : null]);
             foreach ($vehicle->docs()->where('direction', 'out')->where('state', DocState::Pending)->whereIn('kind', $kinds)->get() as $doc) {
                 $mark($doc, $request->user(), DocState::Sent, threadId: $message->thread_id);
             }
-            if ($act) {
-                $vehicle->log(EventType::ReportSent, $request->user(), ['what' => str_starts_with($act, 'akt-vydachi') ? 'Акт выдачи' : 'Акт приёма', 'thread' => $message->thread_id]);
+            // Письмо о выдаче (`report=release`) — отчёт о выдаче, что бы ни приложили (сканы своими именами, 06.11.2026).
+            if ($act || ($data['report'] ?? null) === 'release') {
+                $vehicle->log(EventType::ReportSent, $request->user(), ['what' => ($data['report'] ?? null) === 'release' || str_starts_with((string) $act, 'akt-vydachi') ? 'Акт выдачи' : 'Акт приёма', 'thread' => $message->thread_id]);
             }
             // Ушёл счёт — отметка на нём и в ленте ТС.
             if (! empty($data['invoice']) && $request->user()->parkMoney() && ($invoice = Invoice::where('vehicle_id', $vehicle->id)->find($data['invoice']))) {
@@ -894,6 +913,29 @@ class MailController
         $path = $store($request->file('file'));
 
         return Stream::view('admin.mail.file-stream', ['path' => $path, 'name' => $request->file('file')->getClientOriginalName()]);
+    }
+
+    /**
+     * Документ из фото во вложения письма (06.11.2026, Сергей: акт выдачи проще сфоткать): снимки одним PDF под названием,
+     * номер убытка ТС — хвостом (`PhotosPdf`). Ответ — строка вложения `admin.mail.file-row`, её ставит `photo_pdf_controller`.
+     */
+    public function filePdf(Request $request, StoreOutboxFile $store, PhotosPdf $photos)
+    {
+        $data = $request->validate([
+            'pages' => ['required', 'array', 'min:1', 'max:'.PhotosPdf::MAX_PAGES],
+            'pages.*' => ['required', 'file', 'max:40960'],
+            'name' => ['required', 'string', 'max:120'],
+            'vehicle' => ['nullable', 'integer'],
+        ], ['name.required' => 'Как назвать документ?']);
+        $vehicle = $this->scope === Scope::Park && ! empty($data['vehicle']) ? Vehicle::find($data['vehicle']) : null;
+        try {
+            $made = $photos->make($request->file('pages'), $data['name'], $vehicle?->ref);
+        } catch (Throwable $e) {
+            return response()->json(['message' => 'PDF не собрался: '.$e->getMessage()], 422);
+        }
+        $path = $store->put($made['name'], $made['pdf']);
+
+        return response()->json(['name' => $made['name'], 'pages' => $made['pages'], 'html' => view('admin.mail.file-row', ['path' => $path, 'name' => $made['name']])->render()]);
     }
 
     public function attachment(Request $request, Attachment $attachment, PhotoIngest $photos)
@@ -1260,6 +1302,49 @@ class MailController
         return $files;
     }
 
+    /**
+     * Письмо, на которое отвечает письмо о выдаче: о реализации ТС (`sold_message_id`), без него — заявка о приёме (письмо
+     * первой заявки на приём). Только входящее письмо парковки.
+     */
+    private static function releaseParent(Vehicle $vehicle): ?Message
+    {
+        $intake = $vehicle->requests()->where('type', RequestType::Intake)->whereNotNull('letter_id')->orderBy('id')->value('letter_id');
+        foreach (array_filter([$vehicle->sold_message_id, $intake]) as $id) {
+            $m = Message::with(['account', 'addresses', 'thread'])->where('direction', Direction::In)->find($id);
+            if ($m && $m->account?->scope === Scope::Park) {
+                return $m;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Копия письма о выдаче — все, кому был адресован изначальный запрос (06.11.2026, Сергей): отправитель и адресаты «Кому» и
+     * «Копия» заявки о приёме и письма, на которое отвечаем, без наших ящиков и без самого адресата. @return list<string>
+     */
+    private static function requestCopies(Message $parent, Vehicle $vehicle, string $to): array
+    {
+        $intake = $vehicle->requests()->where('type', RequestType::Intake)->whereNotNull('letter_id')->orderBy('id')->value('letter_id');
+        $first = $intake ? Message::with('addresses')->find($intake) : null;
+        $ours = Account::pluck('email')->map(fn ($e) => mb_strtolower(trim((string) $e)))->filter()->all();
+        $skip = [...$ours, ...array_map(fn ($a) => mb_strtolower(trim($a)), explode(',', $to))];
+        $out = [];
+        foreach (array_filter([$first, $parent]) as $m) {
+            $m->loadMissing('addresses');
+            foreach ([AddressKind::From, AddressKind::To, AddressKind::Cc] as $kind) {
+                foreach ($m->addressesOfKind($kind) as $a) {
+                    $e = mb_strtolower(trim($a->email));
+                    if ($e !== '' && ! in_array($e, $skip, true) && ! in_array($e, $out, true)) {
+                        $out[] = $e;
+                    }
+                }
+            }
+        }
+
+        return $out;
+    }
+
     public static function vehiclePlaceholders(Vehicle $vehicle): array
     {
         $vehicle->loadMissing(['vendor', 'yard', 'inspections']);
@@ -1325,6 +1410,7 @@ class MailController
             'offer' => ['nullable', 'integer'],
             'vehicle' => ['nullable', 'integer'],
             'invoice' => ['nullable', 'integer'],
+            'report' => ['nullable', 'in:release'],
             'closing' => ['nullable', 'string', 'max:80'],
             'closing_replaces' => ['nullable', 'integer'],
             'closing_label' => ['nullable', 'string', 'max:60'],

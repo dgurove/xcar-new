@@ -2542,6 +2542,22 @@ html.kb-open { --home-gap: 0px; }
   /* Отчёт о приёме (x-park.report-form): подпись группы с числом, фото плиткой 4 в ряд (на ПК 6) — отмеченное с лаймовой
      галкой, снятое тускнеет; последняя плитка — «Добавить» с камерой. */
   .report-head { display: flex; align-items: baseline; justify-content: space-between; gap: .5rem; margin-bottom: .5rem; font-size: var(--text-sm); color: var(--color-ink-muted); }
+  /* Документ из фото (`x-ui.photo-pdf`, 06.11.2026): две крупные кнопки — камера и галерея; страницы плитками отчёта с
+     номером, «×» и «‹» (раньше); полоса хода сохранения. */
+  .photo-pdf-sources { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; }
+  .photo-pdf-source { @apply flex cursor-pointer flex-col items-center justify-center gap-1.5 rounded-(--radius-l) bg-surface-2 py-5 text-ink transition-colors; }
+  @media (hover: hover) { .photo-pdf-source:hover { @apply bg-hover; } }
+  .photo-pdf-source:active { @apply bg-hover; }
+  .report-shots.photo-pdf-pages { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .5rem; }
+  @container (min-width: 32rem) { .report-shots.photo-pdf-pages { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+  .photo-pdf-page { aspect-ratio: 3 / 4; cursor: default; }
+  .photo-pdf-n { @apply absolute bottom-1 left-1 grid h-5 min-w-5 place-items-center rounded-full bg-black/60 px-1.5 text-xs text-white; }
+  .photo-pdf-x, .photo-pdf-up { @apply absolute top-1 grid size-6 place-items-center rounded-full bg-black/60 text-sm leading-none text-white; }
+  .photo-pdf-x { right: .25rem; }
+  .photo-pdf-up { left: .25rem; }
+  .report-file { @apply w-full min-w-0 py-0.5; }
+  .photo-pdf-bar { @apply h-1 overflow-hidden rounded-full bg-surface-3; }
+  .photo-pdf-bar > span { display: block; height: 100%; width: calc(var(--p, 0) * 100%); background: var(--color-accent); transition: width .2s; }
   .report-shots { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .375rem; }
   @container (min-width: 32rem) { .report-shots { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
   .report-shot { position: relative; aspect-ratio: 4 / 3; overflow: hidden; border-radius: var(--radius-s); background: var(--color-surface-2); cursor: pointer; }
