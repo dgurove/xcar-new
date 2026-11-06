@@ -19,7 +19,8 @@ use Illuminate\Support\Facades\Cache;
 final class TableRows
 {
     /** @param  Collection<int, Vehicle>  $vehicles @return array<int, string> id ТС => HTML строки */
-    public static function render(Collection $vehicles, array $totals, array $debts, bool $wide = false, bool $out = false, bool $money = true): array
+    /** @param  bool  $doc  строка документа «Счетов и актов» (`VehicleController::table` doc: «Сумма» документа) */
+    public static function render(Collection $vehicles, array $totals, array $debts, bool $wide = false, bool $out = false, bool $money = true, bool $doc = false): array
     {
         if ($vehicles->isEmpty()) {
             return [];
@@ -36,11 +37,11 @@ final class TableRows
             $v->threads_count, $v->waiting_count ?? 0,
             $v->requests->map(fn ($r) => $r->id.':'.$r->updated_at?->getTimestamp())->implode(','), today()->toDateString(),
             $v->vendor?->name, $v->vendor?->logoUrl(), $v->yard?->name, $v->spot,
-            json_encode([$totals[$v->id] ?? null, $debts[$v->id] ?? 0, $wide, $docs[$v->id], $out, $v->getAttribute('money_state'), $v->getAttribute('task_keys')]),
+            json_encode([$totals[$v->id] ?? null, $debts[$v->id] ?? 0, $wide, $docs[$v->id], $out, $v->getAttribute('money_state'), $v->getAttribute('task_keys'), $doc]),
         ]))])->all();
         $cached = Cache::many(array_values($keys));
         // Столбцы — то же описание, что у шапки списка: выданные и деньги входят в ключ строки выше.
-        $table = VehicleController::table($out, $money, $wide);
+        $table = VehicleController::table($out, $money, $wide, $doc);
         $rows = $fresh = [];
         foreach ($vehicles as $v) {
             $html = $cached[$keys[$v->id]] ?? null;

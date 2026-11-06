@@ -6,7 +6,8 @@
      В «Все» выданная строка тусклая. 
      Выданная (`out`, пилюля «Выданы») — свои столбцы, архив дела: принята, выдана (под датой — сколько стояла), хранение
      за весь срок и под ним деньги словом (`OutMoney`); ставки, статуса и «что не так» у неё нет. Столбцы —
-     `VehicleController::table` (выданные, деньги приёмщику), ячейки — в его порядке. --}}
+     `VehicleController::table` (выданные, деньги приёмщику), ячейки — в его порядке. Документ «Счетов и актов» — столбцы
+     выданных, «Сумма» — деньги ТС в документе (`docsum`). --}}
 @props(['vehicle', 'table', 'total' => null, 'debt' => 0])
 @php
     use App\Park\VehicleState;
@@ -18,6 +19,11 @@
     $status = \App\Park\Status::of($vehicle);
     // Приёмщику (27.10.2026) столбцов денег нет: ни ставки, ни начисленного, ни «хранения» у выданных — их нет в описании.
     $out = $table->has('released');
+    // Документ «Счетов и актов» (06.11.2026, владелец): без госномера, парковки и суток; даты — значком приёма и выдачи
+    // вместе с датой одной кнопкой-календарём (`x-park.accepted`, `x-park.date-edit` с `icon`).
+    $doc = $table->has('docsum');
+    $dateCls = 'inline-flex items-center gap-1.5 nums underline decoration-dotted decoration-ink-dim underline-offset-4';
+    $edit = auth()->user()?->parkDates();
     $money = $out && $table->has('storage') ? \App\Park\OutMoney::of($vehicle) : null;
     // «Нет парковки» — пустой столбец и задача «Указать парковку» в «Статусе».
     $hasAlerts = ! $out && collect(\App\Park\Alerts::of($vehicle))->reject(fn ($a) => $a['label'] === 'Нет типа' || $a['label'] === 'Нет парковки')->isNotEmpty();
@@ -28,15 +34,27 @@
         @switch($key)
         @case('title')
     <td class="{{ $col->classes() }}">
-        <x-ui.row-link :key="$vehicle->id"><span class="cell-title"><span class="cat-icon {{ $vehicle->category ? 'cat-'.$vehicle->category->value : 'cat-unknown' }}" title="{{ $vehicle->category?->label() ?? 'Тип не указан' }}"><x-ui.icon :name="$vehicle->category?->icon() ?? 'cat-unknown'" class="size-full"/></span><span class="cell-name">{{ $vehicle->titleWithYear() }}</span><x-car.keys :count="$vehicle->keys_count"/><x-ui.plate :value="$vehicle->plate" class="title-plate"/><x-ui.links :vehicle="$vehicle"/></span></x-ui.row-link>
+        <x-ui.row-link :key="$vehicle->id"><span class="cell-title"><span class="cat-icon {{ $vehicle->category ? 'cat-'.$vehicle->category->value : 'cat-unknown' }}" title="{{ $vehicle->category?->label() ?? 'Тип не указан' }}"><x-ui.icon :name="$vehicle->category?->icon() ?? 'cat-unknown'" class="size-full"/></span><span class="cell-name">{{ $vehicle->titleWithYear() }}</span><x-car.keys :count="$vehicle->keys_count"/>@unless ($doc)<x-ui.plate :value="$vehicle->plate" class="title-plate"/>@endunless<x-ui.links :vehicle="$vehicle"/></span></x-ui.row-link>
         <span class="cell-sub" data-controller="fitline">
             {{-- Номера, потом ошибки данных («нет VIN», «нет тарифа»); тип не указан — знак вопроса вместо иконки, не слово.
                  Статус — своим столбцом; в краткой таблице телефона его нет, там то, что требует действия, — третьей строкой. --}}
-            <span class="fit-core"><x-park.ref :vehicle="$vehicle" class="sm:hidden"/><x-ui.plate :value="$vehicle->plate" class="sub-plate"/></span>
+            <span class="fit-core"><x-park.ref :vehicle="$vehicle" class="sm:hidden"/>@unless ($doc)<x-ui.plate :value="$vehicle->plate" class="sub-plate"/>@endunless</span>
             @if ($hasAlerts)<span class="alerts-inline"><x-park.alerts :vehicle="$vehicle" plain :place="false" :skip="['Нет типа']"/></span>@endif
             {{-- Выданная на телефоне: когда и сколько стояла — здесь, а не третьим столбцом (30.10.2026, название сжималось до «Geely…»). --}}
-            @if ($out && $vehicle->released_at)<span class="whitespace-nowrap sm:hidden">выдана {{ \App\Support\Ago::html($vehicle->released_at) }}@if ($days !== null), {{ $days }}&nbsp;д@endif</span>@endif
-            @if ($vehicle->yard)<span class="sm:hidden">{{ $vehicle->yard->name }}</span>@endif
+            @if ($doc)
+                {{-- Телефон: столбцов дат нет — те же кнопки-даты здесь (свои id и формы), всегда своей строкой под номером
+                     (владелец: «скачет туда-сюда», когда короткий номер пускал их в ту же строку). --}}
+                <span class="mt-1 flex w-full gap-3 whitespace-nowrap sm:hidden">
+                    @if ($vehicle->accepted_at)<x-park.accepted :vehicle="$vehicle" key="ph" :form="'dates-ph-'.$vehicle->id" :icon="\App\Park\RequestType::Intake" :class="$dateCls"/><form method="post" action="/cars/{{ $vehicle->id }}/dates" id="dates-ph-{{ $vehicle->id }}" hidden>@csrf</form>@endif
+                    @if ($vehicle->released_at)
+                        @if ($edit)<x-park.date-edit :vehicle="$vehicle" field="released_at" :icon="\App\Park\RequestType::Release" :form="'dates-phr-'.$vehicle->id" :class="$dateCls" key="ph"/><form method="post" action="/cars/{{ $vehicle->id }}/dates" id="dates-phr-{{ $vehicle->id }}" hidden>@csrf</form>@else<span class="inline-flex items-center gap-1 nums"><x-park.request-type :type="\App\Park\RequestType::Release" :word="false"/>{{ \App\Support\Ago::day($vehicle->released_at) }}</span>@endif
+                    @endif
+                    <x-park.rate :vehicle="$vehicle" key="ph"/>
+                </span>
+            @else
+                @if ($out && $vehicle->released_at)<span class="whitespace-nowrap sm:hidden">выдана {{ \App\Support\Ago::html($vehicle->released_at) }}@if ($days !== null), {{ $days }}&nbsp;д@endif</span>@endif
+                @if ($vehicle->yard)<span class="sm:hidden">{{ $vehicle->yard->name }}</span>@endif
+            @endif
         </span>
         {{-- Краткая таблица телефона: задача с точкой, как в столбце «Статус», и значок «что не так» — третьей строкой. --}}
         @if (! $out && ($status['act'] || $hasAlerts))
@@ -79,13 +97,24 @@
         @case('accepted')
     {{-- Дата приёма правится прямо в таблице (02.11.2026, владелец): нажатие — календарь с подсказками из писем, строка не
          открывается (`date#open:stop`); форма — в самой ячейке. --}}
+    @if ($doc)
+    <td class="{{ $col->classes() }}">@if ($vehicle->accepted_at)<x-park.accepted :vehicle="$vehicle" key="row" :form="'dates-row-'.$vehicle->id" :icon="\App\Park\RequestType::Intake" :class="$dateCls"/><form method="post" action="/cars/{{ $vehicle->id }}/dates" id="dates-row-{{ $vehicle->id }}" hidden>@csrf</form>@endif</td>
+    @else
     <td class="{{ $col->classes() }}">@if ($vehicle->accepted_at && auth()->user()->parkDates())<x-park.accepted :vehicle="$vehicle" key="row" :form="'dates-row-'.$vehicle->id" class="nums underline decoration-dotted decoration-ink-dim underline-offset-4"/><form method="post" action="/cars/{{ $vehicle->id }}/dates" id="dates-row-{{ $vehicle->id }}" hidden>@csrf</form>@else{{ \App\Support\Ago::html($vehicle->accepted_at) }}@endif</td>
+    @endif
         @break
         @case('released')
+    @if ($doc)
+    <td class="{{ $col->classes() }}">
+        @if ($vehicle->released_at && $edit)<x-park.date-edit :vehicle="$vehicle" field="released_at" :icon="\App\Park\RequestType::Release" :form="'dates-rel-'.$vehicle->id" :class="$dateCls" key="row"/><form method="post" action="/cars/{{ $vehicle->id }}/dates" id="dates-rel-{{ $vehicle->id }}" hidden>@csrf</form>
+        @elseif ($vehicle->released_at)<span class="inline-flex items-center gap-1 nums"><x-park.request-type :type="\App\Park\RequestType::Release" :word="false"/>{{ \App\Support\Ago::day($vehicle->released_at) }}</span>@endif
+    </td>
+    @else
     <td class="{{ $col->classes() }}">
         @if ($vehicle->released_at)<time class="block" datetime="{{ $vehicle->released_at->toIso8601String() }}">{{ \App\Support\Ago::html($vehicle->released_at) }}</time>@endif
         @if ($days !== null)<span class="cell-sub">{{ $days }}&nbsp;д</span>@endif
     </td>
+    @endif
         @break
         @case('storage')
     <td class="{{ $col->classes() }}">
@@ -93,6 +122,9 @@
         @if ($debt > 0)<span class="cell-sub text-urgent">не оплачено {{ Money::nums($debt) }}</span>
         @elseif ($money && ($money !== 'unbilled' || $amount > 0))<span class="cell-sub {{ \App\Park\OutMoney::TONES[$money] }}">{{ mb_strtolower(\App\Park\OutMoney::LABELS[$money]) }}</span>@endif
     </td>
+        @break
+        @case('docsum')
+    <td class="{{ $col->classes() }}">@if ($amount > 0){{ Money::rub($amount) }}@endif</td>
         @break
         @case('days')
     <td class="{{ $col->classes() }}">
@@ -105,7 +137,12 @@
         @break
         @case('rate')
     {{-- Своя ставка — с пометкой «своя» (12.10.2026), нет ставки — оранжевое «нет»: правят шторкой «Ставка» в окошке. --}}
+    {{-- В документе «Счетов и актов» — сама шторка на месте (`x-park.rate`, владелец 06.11.2026: «ставку менять»). --}}
+    @if ($doc)
+    <td class="{{ $col->classes() }}"><x-park.rate :vehicle="$vehicle" key="row"/></td>
+    @else
     <td class="{{ $col->classes() }}">@if ($rate){{ Money::rub($rate) }}/д@if ($vehicle->storage_rate !== null)<span class="cell-sub">своя</span>@endif @elseif ($state === VehicleState::Stored)<span class="text-urgent">нет</span>@endif</td>
+    @endif
         @break
         @case('amount')
     <td class="{{ $col->classes() }}">

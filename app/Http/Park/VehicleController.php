@@ -118,8 +118,40 @@ class VehicleController
         if (! $request->query->has(ListView::PARAM)) {
             $request->query->set(ListView::PARAM, ListView::TABLE);
         }
-        [$vehicles, $state, $q, $sort] = $this->listQuery($request, $facets);
-        $out = $state === VehicleState::Released;
+        $data = $this->listing($request, $facets);
+        $yards = $facets->selected('yard');
+        [$out, $q, $state] = [$data['out'], $data['q'], $data['state']];
+        // Живой поиск просит только список: тот же кусок, что рисует страницу.
+        if ($request->header('X-List')) {
+            return response()->view('park.vehicles.list', $data);
+        }
+        $yard = count($yards) === 1 && ctype_digit($yards[0]) ? Yard::find((int) $yards[0]) : null;
+
+        return view('park.vehicles.index', $data + [
+            'presets' => self::PRESETS, 'preset' => $out ? 'out' : (self::preset($request) === 'all' && $q === '' ? 'all' : 'stored'),
+            'counts' => ['stored' => $stored = Vehicle::where('state', VehicleState::Stored)->count(), 'out' => $released = Vehicle::where('state', VehicleState::Released)->count(), 'all' => $stored + $released],
+            'state' => $state,
+            'yard' => $yard,
+            'facets' => $facets,
+            'detail' => $detail,
+        ]);
+    }
+
+
+    /**
+     * Выборка и всё, что нужно куску `park.vehicles.list`: строки, сортировка, деньги, задачи, вид. Одна на «Наличие» и на
+     * страницу документа «Счетов и актов» (06.11.2026, владелец: «бери таблицу „Выданы“ и используй ровно такую же на
+     * странице счёта»): `$scope` сужает выборку до ТС документа (до чипов — их числа в пределах документа), `$doc` —
+     * его суммы по ТС (`amounts`); у документа без групп, столбцы выданных и «Сумма».
+     *
+     * @param  array{amounts: array<int, float>, rates: array<int, float>}|null  $doc
+     */
+    public function listing(Request $request, Facets $facets, ?\Closure $scope = null, ?array $doc = null): array
+    {
+        $yards = $facets->selected('yard');
+        [$vehicles, $state, $q, $sort] = $this->listQuery($request, $facets, $scope);
+        // Документ «Счетов и актов» — столбцы выданных (принята, выдана), а не стоящих: в нём и стоящие, и выданные.
+        $out = $doc !== null || $state === VehicleState::Released;
         $yards = $facets->selected('yard');
 
         // Кадры нужны плиткам и строкам; таблице — нет (миниатюр в ней нет, карточка грузит своё).
@@ -127,8 +159,8 @@ class VehicleController
         // Без выбранной парковки (или с несколькими) и без поиска строки собраны под заголовками парковок, выбывшие — под
         // месяцами выбытия. Плитками пачка — лента вбок, весь список одной страницей, как у таблицы (11.10.2026).
         $flat = $request->query('flat') === '1';
-        $grouped = ! $flat && count($yards) !== 1 && $q === '' && ! $state?->isFinal() && count(City::yardIdsOf($request->user())) !== 1;
-        $byMonth = $out && $q === '' && $sort->key === 'out';
+        $grouped = $doc === null && ! $flat && count($yards) !== 1 && $q === '' && ! $state?->isFinal() && count(City::yardIdsOf($request->user())) !== 1;
+        $byMonth = $doc === null && $out && $q === '' && $sort->key === 'out';
         // «Лентами» (группы — ленты вбок) — весь список одной страницей; «Плитками» — одна сетка со страницами (15.10.2026).
         // Таблица — порциями по сотне (`Portion`, 31.10.2026); целиком — где порция соврёт: сортировка в памяти («Начислено»,
         // «₽/сут», «Задачи» — по посчитанному) и группы по парковкам (собираются в памяти по имени парковки). Месяцы выбытия
@@ -144,7 +176,8 @@ class VehicleController
         // Ставка на сегодня и сколько набежало за всё время стоянки — столбцы «₽/сут» и «Начислено».
         // Приёмщику (`User::parkMoney`, 27.10.2026) денег нет: не считаются вовсе — ни столбцов, ни сумм, ни сортировки по ним.
         $money = $request->user()->parkMoney();
-        $totals = $money ? Accrual::cachedTotals($page->getCollection()) : [];
+        // У документа «Сумма» — его деньги по ТС (`$doc['amounts']`), а не всё набежавшее за стоянку.
+        $totals = ! $money ? [] : ($doc !== null ? collect($doc['amounts'])->map(fn ($a, $id) => ['amount' => $a, 'rate' => $doc['rates'][$id] ?? 0])->all() : Accrual::cachedTotals($page->getCollection()));
         // «Больше набежало» — по посчитанному: в базе этой суммы нет. Таблица целиком на одной странице,
         // так что сортировка в памяти честная; у карточек — в пределах страницы.
         // Висящие задачи (`Park\Tasks`) — одним запросом на страницу: слово в «Статусе» и сортировка «Задачи».
@@ -164,7 +197,7 @@ class VehicleController
         $data = [
             'vehicles' => $page,
             'sort' => $sort,
-            'debts' => $money ? Ledger::debtsByVehicle($page->pluck('id')->all()) : [],
+            'debts' => $money && $doc === null ? Ledger::debtsByVehicle($page->pluck('id')->all()) : [],
             'money' => $money,
             'totals' => $totals,
             'grouped' => $grouped,
@@ -174,21 +207,11 @@ class VehicleController
             'out' => $out,
             'q' => $q,
             'view' => ListView::pick($request, $page->total(), shelves: $grouped || $byMonth),
-        ];
-        // Живой поиск просит только список: тот же кусок, что рисует страницу.
-        if ($request->header('X-List')) {
-            return response()->view('park.vehicles.list', $data);
-        }
-        $yard = count($yards) === 1 && ctype_digit($yards[0]) ? Yard::find((int) $yards[0]) : null;
-
-        return view('park.vehicles.index', $data + [
-            'presets' => self::PRESETS, 'preset' => $out ? 'out' : (self::preset($request) === 'all' && $q === '' ? 'all' : 'stored'),
-            'counts' => ['stored' => $stored = Vehicle::where('state', VehicleState::Stored)->count(), 'out' => $released = Vehicle::where('state', VehicleState::Released)->count(), 'all' => $stored + $released],
             'state' => $state,
-            'yard' => $yard,
-            'facets' => $facets,
-            'detail' => $detail,
-        ]);
+            'docList' => $doc !== null,
+        ];
+
+        return $data;
     }
 
     /**
@@ -655,14 +678,15 @@ class VehicleController
 
     /** Подсказка для комбобокса: по номеру, VIN, госномеру, марке. */
     /** Чипы «Наличия»: вендор, парковка, тип ТС и «Без ставки» — одни у списка и у выгрузки. */
-    private function facets(Request $request): Facets
+    public function facets(Request $request, ?string $list = null): Facets
     {
         $noRate = null;
         $facets = null;
 
-        // Выданным — месяц выдачи и деньги вместо «Без ставки» (ставка — дело стоящих).
-        if (self::preset($request) === 'out') {
-            return Facets::for($request, 'park-vehicles',
+        // Выданным — месяц выдачи и деньги вместо «Без ставки» (ставка — дело стоящих). Документу «Счетов и актов» (`$list`)
+        // — те же чипы без «Деньги»: суммы у него свои.
+        if ($list !== null || self::preset($request) === 'out') {
+            return Facets::for($request, $list ?? 'park-vehicles',
                 Tasks::facet(),
                 Common::vendor('park_vehicles.vendor_id'),
                 Common::yard('park_vehicles.yard_id'),
@@ -670,7 +694,7 @@ class VehicleController
                 Facet::column('month', 'Месяц', ['месяц', 'месяца', 'месяцев'], "to_char(park_vehicles.released_at, 'YYYY-MM')")->natural()
                     ->labels(fn (array $keys) => collect($keys)->filter(fn ($k) => preg_match('/^\d{4}-\d{2}$/', $k))->sortDesc()
                         ->mapWithKeys(fn ($k) => [$k => new Option($k, mb_convert_case(Carbon::createFromFormat('!Y-m', $k)->translatedFormat('F Y'), MB_CASE_TITLE))])->all()),
-                ...($request->user()->parkMoney() ? [Facet::column('money', 'Деньги', ['состояние', 'состояния', 'состояний'], OutMoney::sql())->natural()
+                ...($list === null && $request->user()->parkMoney() ? [Facet::column('money', 'Деньги', ['состояние', 'состояния', 'состояний'], OutMoney::sql())->natural()
                     ->labels(fn (array $keys) => collect(OutMoney::LABELS)->only($keys)->map(fn ($label, $key) => new Option($key, $label))->all())] : []),
             );
         }
@@ -701,11 +725,12 @@ class VehicleController
         return array_key_exists((string) $request->query('preset'), self::PRESETS) ? $request->query('preset') : 'stored';
     }
 
-    private function listQuery(Request $request, Facets $facets): array
+    private function listQuery(Request $request, Facets $facets, ?\Closure $scope = null): array
     {
         $q = trim((string) $request->query('q'));
-        $preset = self::preset($request);
-        $state = VehicleState::tryFrom((string) $request->query('state')) ?? ($q !== '' || $preset === 'all' ? null : ($preset === 'out' ? VehicleState::Released : VehicleState::Stored));
+        // Свой круг ТС (документ «Счетов и актов») — без пилюль: стоящие и выданные вместе.
+        $preset = $scope ? 'scoped' : self::preset($request);
+        $state = VehicleState::tryFrom((string) $request->query('state')) ?? ($q !== '' || $preset === 'all' || $scope ? null : ($preset === 'out' ? VehicleState::Released : VehicleState::Stored));
         // Лента площадок и сделка — заранее: ставку и набежавшее считаем по каждой строке списка.
         $vehicles = Vehicle::withCount(['threads', 'threads as waiting_count' => fn ($t) => $t->whereNotNull('needs_reply_at')])
             ->with(['vendor', 'yard', 'offer.deal.buyer', 'requests',
@@ -714,10 +739,12 @@ class VehicleController
             ->when(! $state && $q === '' && $preset === 'all', fn ($v) => $v->whereIn('state', [VehicleState::Stored, VehicleState::Released]))
             // Деньги выданной словом — в строке, карточке и выгрузке, тем же выражением, что чип «Деньги».
             ->when($state === VehicleState::Released, fn ($v) => $v->addSelect(DB::raw(OutMoney::sql().' as money_state')))
+            ->when($scope, fn ($v) => $scope($v))
             ->search($q);
         $facets->apply($vehicles);
         $sorts = $request->user()?->parkMoney() ? self::SORTS : array_diff_key(self::SORTS, array_flip(['rate', 'amount']));
-        $sort = Sort::from($request->query('sort'), $sorts, $state === VehicleState::Released ? '-out' : 'accepted');
+        // Выданные и документ «Счетов и актов» (владелец 06.11.2026) — по дате выдачи, свежие сверху.
+        $sort = Sort::from($request->query('sort'), $sorts, $state === VehicleState::Released || $scope ? '-out' : 'accepted');
         $dir = $sort->dir();
         match ($sort->key) {
             'fresh' => $vehicles->orderBy('created_at', $sort->dir())->orderBy('id', $sort->dir()),
@@ -803,7 +830,7 @@ class VehicleController
      * столбца, парковочный (`Table::park`, 30.10.2026): принята → дней → ставка → начислено вытекают друг из друга, парковка
      * — самой правой.
      */
-    public static function table(bool $out, bool $money, bool $wide = false): Table
+    public static function table(bool $out, bool $money, bool $wide = false, bool $doc = false): Table
     {
         $title = new Column('title', 'Марка, модель', grow: true, sort: 'name');
         $yard = new Column('yard', 'Парковка', from: 'sm', sort: 'yard', role: ColRole::Place, rem: 8);
@@ -813,8 +840,18 @@ class VehicleController
             new Column('pts', 'ПТС', cell: 'text-sm', role: ColRole::Code, rem: 8), new Column('policy', '№ полиса', cell: 'text-sm', role: ColRole::Code, rem: 9),
             new Column('color', 'Цвет', role: ColRole::State, rem: 6), new Column('value', 'Стоимость', num: true, cell: 'nums', rem: 6)] : [];
 
+        $released = new Column('released', 'Выдана', from: 'sm', sort: 'out', cell: 'nums', role: ColRole::When, rem: 5);
+        // Документ «Счетов и актов» (06.11.2026): столбцы выданных, «Ставка» — шторкой на месте (`x-park.rate`), «Сумма» —
+        // деньги ТС в этом документе; акты — в окошке ТС.
+        if ($doc) {
+            // Без парковки (владелец: «указание парковок убрать»).
+            return Table::park($title, $vendor, ...$docs, ...[new Column('accepted', 'Принята', from: 'sm', sort: 'accepted', cell: 'nums', role: ColRole::When, rem: 6.5), $released,
+                $money ? new Column('rate', 'Ставка', from: 'sm', num: true, sort: 'rate', cell: 'nums', rem: 7) : null,
+                $money ? new Column('docsum', 'Сумма', num: true, sort: 'amount', cell: 'nums', rem: 7) : null]);
+        }
+
         return $out
-            ? Table::park($title, $yard, $vendor, ...$docs, ...[$accepted, new Column('released', 'Выдана', from: 'sm', sort: 'out', cell: 'nums', role: ColRole::When, rem: 5),
+            ? Table::park($title, $yard, $vendor, ...$docs, ...[$accepted, $released,
                 $money ? new Column('storage', 'Хранение', num: true, sort: 'amount', cell: 'nums', rem: 7) : null])
             : Table::park($title, $yard, $vendor, ...$docs, ...[new Column('status', 'Статус', from: 'sm', sort: 'tasks', role: ColRole::State, rem: 9), $accepted,
                 new Column('days', 'Дней', num: true, sort: 'days', cell: 'nums', role: ColRole::When, rem: 4),

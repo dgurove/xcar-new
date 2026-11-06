@@ -27,7 +27,9 @@
     // Шапка сортирует нажатием (x-ui.th) — каждый столбец (12.10.2026, владелец: «как в CRM»); столбцы — одно описание.
     // Подробная таблица — ещё и документы ТС (`VehicleController::table`).
     $wide = $view === ListView::WIDE;
-    $columns = \App\Http\Park\VehicleController::table($out, $money ?? true, $wide);
+    // Документ «Счетов и актов»: столбцы выданных и «Сумма» документа.
+    $docList ??= false;
+    $columns = \App\Http\Park\VehicleController::table($out, $money ?? true, $wide, $docList);
 @endphp
 @if ($vehicles->isEmpty())
     <x-ui.empty class="py-6">{{ $q !== '' ? 'Ничего не нашлось' : 'ТС нет' }}</x-ui.empty>
@@ -35,7 +37,7 @@
     @if (ListView::isTable($view))
         <x-ui.table :table="$columns" id="vehicles" :view="$view" :portion="$vehicles" data-controller="table-scroll group-fold" data-group-fold-name-value="park-fold">
             <x-slot:head><x-table.head :table="$columns" :sort="$sort"/></x-slot:head>
-            @php $rows = \App\Park\TableRows::render($vehicles->getCollection(), $totals, $debts, $wide, $out, $money ?? true); @endphp
+            @php $rows = \App\Park\TableRows::render($vehicles->getCollection(), $totals, $debts, $wide, $out, $money ?? true, $docList); @endphp
             @foreach ($groups as $key => $group)
                 @if ($grouped || $byMonth)
                     {{-- Заголовок группы сворачивает её (12.10.2026, владелец): память по парковке или месяцу в браузере. --}}

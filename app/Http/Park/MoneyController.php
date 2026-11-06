@@ -14,7 +14,7 @@ use App\Billing\Ledger;
 use App\Billing\Party;
 use App\Billing\PaymentSource;
 use App\Http\Billing\InvoiceActions;
-use App\Park\IntakeActs;
+use App\Park\Vehicle;
 use App\Search\Term;
 use App\Support\Detail;
 use App\Support\Facets\Common;
@@ -160,8 +160,7 @@ class MoneyController
 
     /**
      * Счета и акты (05.11.2026, владелец: «не разделять по месяцам, а группировать; логотипов не хватает»; 06.11.2026 —
-     * «табличный вид не подходит, блоки со строками, подписи месяцев вне блоков»): блок `.list` на месяц (`ClosingDoc::window`),
-     * пилюли по шагу — `?state=` (`CLOSING_STATES`); у строки — логотип, что за документ и состояние словом; нажатие — сразу
+     * «табличный вид не подходит, блоки со строками, подписи месяцев вне блоков»): блок `.list` на месяц (`ClosingDoc::window`); у строки — логотип, что за документ и состояние словом; нажатие — сразу
      * страница документа (`closingPage`; окошка рядом нет — владелец: «здесь оно вообще неуместно»). Старые `?month=` —
      * якорем своего месяца, `?peek=` — на страницу документа.
      */
@@ -174,25 +173,9 @@ class MoneyController
             return redirect('/money/closing#m'.$m, 301);
         }
         $months = min(24, max(6, (int) $request->query('months', 6)));
-        $docs = ClosingDoc::window($months);
-        $state = array_key_exists($s = (string) $request->query('state', ''), self::CLOSING_STATES) ? $s : '';
-        $counts = ['' => $docs->flatten(1)->count()];
-        foreach (self::CLOSING_STATES as $key => $states) {
-            $counts[$key] = $docs->flatten(1)->whereIn('state', $states)->count();
-        }
-        if ($state !== '') {
-            $docs = $docs->map(fn ($list) => $list->whereIn('state', self::CLOSING_STATES[$state])->values())->filter->isNotEmpty();
-        }
 
-        return view('park.money.closing', ['docs' => $docs, 'months' => $months, 'state' => $state, 'counts' => array_filter($counts)]);
+        return view('park.money.closing', ['docs' => ClosingDoc::window($months), 'months' => $months, 'table' => self::closingTable()]);
     }
-
-    /** Пилюли «Счетов и актов» — состояния документа (`ClosingDoc::$state`) по шагу: отправить, ждём оплату, оплачены. */
-    private const CLOSING_STATES = [
-        'send' => ['drift', 'send', 'blocked', 'nobody'],
-        'wait' => ['overdue', 'due'],
-        'paid' => ['paid'],
-    ];
 
     /**
      * Счёт: документ «Счетов и актов» (реестр месяца, счёт покупателю за хранение) — на своей странице со всеми ТС
@@ -209,16 +192,35 @@ class MoneyController
     }
 
     /**
-     * Документ на всю страницу (05.11.2026, владелец: «все тачки — ставка, даты приёма и выдачи, посмотреть акт»): в строке
-     * заголовка сумма и действия, ниже — все ТС со ставкой, датами (правятся на месте) и актами для сверки (`IntakeActs`).
+     * Документ на всю страницу (05.11.2026, владелец: «все тачки — ставка, даты приёма и выдачи, посмотреть акт»; 06.11.2026 —
+     * «бери таблицу „Выданы“ и используй ровно такую же»): в строке заголовка сумма и действия, ниже — ТС документа тем же
+     * списком, что «Наличие» (`VehicleController::listing`: чипы, сортировка, лупа, виды, окошко ТС), и «Сумма» —
+     * деньги ТС в этом документе; акты — в окошке ТС.
      */
-    public function closingPage(string $key)
+    public function closingPage(Request $request, string $key, VehicleController $vehicles)
     {
         abort_unless(preg_match(ClosingDoc::KEY, $key) && ($doc = ClosingDoc::find($key)), 404);
         $data = $this->closingData($doc);
-        $cars = $data['composition']['cars']->sortBy(fn ($c) => $c['vehicle']->accepted_at)->values();
+        $cars = $data['composition']['cars'];
+        $ids = $cars->pluck('vehicle.id')->unique()->values()->all();
+        $detail = Detail::of($request, fn (string $id) => in_array((int) $id, $ids, true) && ($v = Vehicle::find($id)) ? $vehicles->detail($request, $v) : null);
+        if ($detail->framed()) {
+            return $detail->response();
+        }
+        $facets = $vehicles->facets($request, 'park-closing');
+        ListPrefs::sync($request, 'park-closing', keep: $facets->keys(), sort: false);
+        if (! $request->query->has(ListView::PARAM)) {
+            $request->query->set(ListView::PARAM, ListView::TABLE);
+        }
+        $list = $vehicles->listing($request, $facets, fn ($q) => $q->whereIn('park_vehicles.id', $ids), [
+            'amounts' => $cars->groupBy('vehicle.id')->map->sum('amount')->all(),
+            'rates' => $cars->groupBy('vehicle.id')->map(fn ($c) => (float) ($c->pluck('rates')->flatten()->last() ?? 0))->all(),
+        ]);
+        if ($request->header('X-List')) {
+            return response()->view('park.vehicles.list', $list);
+        }
 
-        return view('park.money.closing-page', $data + ['cars' => $cars, 'acts' => IntakeActs::for($cars->pluck('vehicle')->unique('id')->values())]);
+        return view('park.money.closing-page', $data + $list + ['facets' => $facets, 'detail' => $detail]);
     }
 
     /** @return array<string, mixed> данные страницы документа: живой — счёт на лету с номером, который получит; отправленный — счёт с оплатами и историей */
@@ -243,6 +245,25 @@ class MoneyController
         [$month, $group, $replaces] = $this->draftKey($request);
 
         return redirect('/money/closing/'.($replaces ? 'i'.$replaces->id : ClosingDoc::liveKey($month, $group)));
+    }
+
+    /**
+     * Таблица «Счетов и актов» — одно описание на шапку, заголовки месяцев и строки `x-billing.closing-row` (06.11.2026,
+     * владелец: пустую полосу на ПК — делом): плательщик, за что (хранение, эвакуация), состояние, когда отправлен и до
+     * какого оплатить, сколько строк в акте, сумма; файлов в строке нет — они на странице документа. Порядок парковочный (`Table::park`: когда → сколько) — сумма крайней справа, итог
+     * месяца в заголовке группы встаёт над ней.
+     */
+    public static function closingTable(): Table
+    {
+        return Table::park(
+            new Column('title', 'Плательщик', grow: true),
+            new Column('what', 'За что', from: 'sm', role: ColRole::Code),
+            new Column('state', 'Состояние', from: 'sm', role: ColRole::State),
+            new Column('sent', 'Отправлен', from: 'md', cell: 'nums', role: ColRole::When),
+            new Column('due', 'Оплатить до', from: 'md', cell: 'nums', role: ColRole::When),
+            new Column('cars', 'Строк', from: 'sm', num: true, cell: 'nums'),
+            new Column('amount', 'Сумма', num: true, cell: 'nums'),
+        );
     }
 
     public function draftPdf(Request $request, InvoicePdf $pdf)

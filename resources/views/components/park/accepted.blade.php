@@ -6,13 +6,13 @@
      `accepted_at` чужой формы (выдача, «Указать парковку»): строка «Принята», под ней подсказки чипами без календаря.
      `key` — у второй даты на той же странице (шапка и лента дела) свой id; `form` — своя форма (строка таблицы: форма карточки
      рядом с тем же id ушла бы мимо фрейма). --}}
-@props(['vehicle', 'mode' => 'submit', 'key' => 'at', 'form' => null])
+@props(['vehicle', 'mode' => 'submit', 'key' => 'at', 'form' => null, 'icon' => null])
 @php
     $edit = auth()->user()?->parkDates() && $vehicle->accepted_at;
     $hints = $edit ? \App\Park\AcceptHints::for($vehicle) : [];
 @endphp
 @if (! $edit)
-    @if ($vehicle->accepted_at)<span {{ $attributes->only('class') }}>{{ \App\Support\Ago::day($vehicle->accepted_at) }}</span>@endif
+    @if ($vehicle->accepted_at)<span {{ $attributes->only('class') }}>@if ($icon instanceof \App\Park\RequestType)<x-park.request-type :type="$icon" :word="false"/>@elseif ($icon)<x-ui.icon :name="$icon" class="size-4 shrink-0"/>@endif{{ \App\Support\Ago::day($vehicle->accepted_at) }}</span>@endif
 @elseif ($mode === 'field')
     <div class="row flex-wrap justify-between gap-y-2">
         <label for="f-accepted-{{ $vehicle->id }}" class="text-ink-muted">Принята</label>
@@ -22,5 +22,5 @@
     @error('accepted_at')<p class="field-error px-4 pb-2">{{ $message }}</p>@enderror
 @else
     <x-ui.date chip submit :clearable="false" name="accepted_at" :id="'de-accepted_at-'.$vehicle->id.'-'.$key" :value="$vehicle->accepted_at"
-        :max="now()" :quick="$hints" source="source" :form="$form ?? 'dates-'.$vehicle->id.'-accepted_at'" {{ $attributes->only('class') }}/>
+        :max="now()" :quick="$hints" source="source" :form="$form ?? 'dates-'.$vehicle->id.'-accepted_at'" :icon="$icon" {{ $attributes->only('class') }}/>
 @endif

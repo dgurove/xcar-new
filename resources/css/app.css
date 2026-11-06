@@ -1619,6 +1619,12 @@ html.kb-open { --home-gap: 0px; }
   /* Заголовок группы `x-table.group`: название с числом слева, кнопка группы справа («Отправить заявку»). */
   .table tr.table-group .table-group-row { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem .75rem; }
   .table tr.table-group .table-group-row > .btn { margin-left: auto; font-size: var(--text-sm); }
+  /* Тихий заголовок группы — месяцы «Счетов и актов» (06.11.2026, владелец: «месяца и суммы за месяц — opacity 0.7»):
+     прозрачен текст, а не строка — липкая подложка заголовка остаётся глухой. */
+  .table tr.table-group.is-quiet .table-group-row { opacity: .7; }
+  /* Над месяцем — полстроки воздуха (владелец 06.11.2026), кроме самого первого под шапкой. */
+  .table tr.table-group.is-quiet > th, .table-wrap .table tr.table-group.is-quiet > th { padding-top: .875rem; }
+  .table tbody tr.table-group.is-quiet:first-child > th, .table-wrap .table tbody tr.table-group.is-quiet:first-child > th { padding-top: .5rem; }
   /* Таблицы на ПК — плотнее (29.10.2026, владелец: управляющий парковки ушёл в Excel — «шрифт огромный, люди не слепые»,
      на экране 22 ТС против 55; в тот же день — так же во всех таблицах CRM, логистики и сайта): текст 13 вместо 15, строка
      28 px вместо 36, шаг между столбцами 12 px. Телефон — как был. */
@@ -1636,8 +1642,8 @@ html.kb-open { --home-gap: 0px; }
     .table-wrap .table tbody tr.table-group:first-child > th { padding-top: .5rem; }
     /* Кнопка в строке и в заголовке группы («Написать», «Позвонить», «Отправить заявку») — ростом пилюли «Оценить», 24 px:
        кнопка 36–40 px раздувала свою строку, и таблица шла ступеньками (29.10.2026). */
-    .table-wrap .table :is(td, tr.table-group) .btn { height: 1.5rem; padding-inline: .75rem; gap: .375rem; font-size: var(--text-sm); }
-    .table-wrap .table :is(td, tr.table-group) .btn > svg { width: 1rem; height: 1rem; }
+    .table-wrap .table :is(td, tr.table-group) .btn:not(dialog .btn) { height: 1.5rem; padding-inline: .75rem; gap: .375rem; font-size: var(--text-sm); }
+    .table-wrap .table :is(td, tr.table-group) .btn:not(dialog .btn) > svg { width: 1rem; height: 1rem; }
     /* Подробная «Наличия» — ещё и документы ТС: в ширину экрана не влезает, листается вбок целиком, название не уже 14rem. */
     .surface-park .table-wrap.is-wide .table-box { overflow-x: auto; overscroll-behavior-x: contain; }
     .surface-park .table-wrap.is-wide .table { width: max-content; min-width: 100%; }
@@ -2226,7 +2232,6 @@ html.kb-open { --home-gap: 0px; }
 /* «Счета и акты» (05.11.2026): в карточке — логотип крупно над суммой, плашки внимания красным, сумма месяца — справа в
    заголовке группы. */
 @layer components {
-  .doc-hero-logo { width: 3.5rem; height: 3.5rem; margin-bottom: .75rem; border-radius: var(--radius-m); vertical-align: 0; }
   .doc-alert { @apply mb-3 rounded-(--radius-l) bg-danger-soft px-4 py-3; }
   /* Страница документа: сумма и действия — в строке заголовка (слот `actions`), отдельной шапки нет. */
   .doc-acts { @apply gap-2; }
@@ -2234,39 +2239,6 @@ html.kb-open { --home-gap: 0px; }
   .doc-file { @apply gap-2 pl-2; }
   .file-icon.file-icon-s { width: 1.75rem; height: 1.375rem; border-radius: 6px; font-size: 8px; letter-spacing: 0; }
   @media (max-width: 639px) { .doc-sum { @apply basis-full; } }
-  /* Список «Счетов и актов» (06.11.2026): месяц — подпись над блоком `.list` одним размером (месяц, «идёт», итог — 17, разница
-     только цветом). Строка — маленький логотип перед плательщиком, справа столбиком сумма и под ней состояние словом; на ПК
-     перед суммой файлы тихими метками. */
-  .doc-months { @apply mt-4 flex flex-col gap-6; }
-  .doc-month-head { @apply px-1; }
-  .doc-month-head .doc-month-now { @apply font-normal text-ink-dim; }
-  .doc-row { position: relative; }
-  .doc-row-name { display: block; }
-  .doc-row-name > .vendor-logo { margin-right: .4em; }
-  /* Вся строка — ссылка на страницу документа; файлы лежат над растяжкой и открывают шторку документов. */
-  .doc-row-link::after { content: ''; position: absolute; inset: 0; }
-  @media (hover: hover) { .doc-row:has(.doc-row-link:hover) { @apply bg-hover; } }
-  .doc-row-files { @apply relative z-[2] flex shrink-0 items-center gap-1; }
-  .doc-row-file { @apply inline-flex h-7 items-center gap-1.5 rounded-(--radius-s) px-2 text-sm whitespace-nowrap text-ink-muted; }
-  @media (hover: hover) { .doc-row-file:hover { @apply bg-hover text-ink; } }
-  .doc-row-file .file-icon { width: 1.25rem; height: 1rem; border-radius: 4px; font-size: 7px; letter-spacing: 0; }
-  .doc-row-end { @apply flex shrink-0 lg:min-w-[7.5rem] flex-col items-end text-right whitespace-nowrap; }
-  .doc-row-end > :last-child { @apply text-sm; }
-  /* Все ТС документа — строками `.list` (06.11.2026, таблица вбок — «пиздец»): номер, название, справа сумма и под ней акт;
-     второй строкой № убытка, даты кнопками-календарём (тихий пунктир — нажимаемое и на телефоне), сутки × ставка. */
-  .doc-cars { @apply mt-2; }
-  .list .row.doc-car-row { @apply items-start; }
-  .doc-car-n { @apply w-6 shrink-0 pt-px text-ink-dim; }
-  .doc-car-name { @apply hover:text-accent-text; }
-  .doc-car-extra { @apply ml-1.5 text-sm text-ink-muted; }
-  .doc-car-dates { @apply inline-flex items-baseline gap-1 whitespace-nowrap; }
-  .doc-car-end { @apply flex shrink-0 flex-col items-end gap-1 whitespace-nowrap lg:flex-row-reverse lg:items-center lg:gap-4 lg:self-center; }
-  .doc-car-end .doc-row-file { @apply -mr-2 relative lg:mr-0; }
-  .doc-car-end > .nums { @apply lg:min-w-[6.5rem] lg:text-right; }
-  .doc-row-file.is-other { @apply opacity-60; }
-  .list .row.doc-car-foot { @apply min-h-12 text-ink-muted; }
-  .list .row.doc-car-foot .nums { @apply text-ink; }
-  .doc-date-btn { @apply -mx-1 rounded-(--radius-s) px-1 transition-colors hover:bg-surface-3 hover:text-ink; text-decoration: underline dotted color-mix(in oklab, currentColor 45%, transparent); text-underline-offset: 3px; }
 }
 
 /* Прошедшая фаза дела: строка-заголовок раскрывается стрелкой, тело — под ней в той же карточке. */
@@ -2499,7 +2471,9 @@ html.kb-open { --home-gap: 0px; }
   .scan-bar > span { @apply block h-full rounded-full bg-accent; transition: width var(--dur-slow) var(--ease-out); }
   .scan-spin { @apply size-5 shrink-0 rounded-full; border: 2px solid var(--color-accent); border-top-color: transparent; animation: spin .8s linear infinite; }
   .scan-value { @apply flex min-w-0 items-center gap-2 truncate; }
-  .scan-change > * { @apply shrink-0; }
+  /* Было → стало переносится целыми значениями, а не режется (06.11.2026, «Atlas Pro → Atlas…» в окошке рядом с кнопками). */
+  .scan-value.scan-change { @apply flex-wrap gap-x-2 gap-y-0.5; overflow: visible; white-space: normal; }
+  .scan-change > * { @apply min-w-0 shrink-0; overflow-wrap: anywhere; }
   .scan-same > summary { @apply cursor-pointer list-none; }
   .scan-same > summary::-webkit-details-marker { display: none; }
   .scan-same .scan-chevron { @apply ml-1 self-center; transition: rotate var(--dur-fast); }
@@ -2622,6 +2596,9 @@ html.kb-open { --home-gap: 0px; }
 /* ------------------------------------------------------------- шторки */
 
 @layer components {
+  /* Шторка, нарисованная внутри ячейки таблицы (ставка в строке документа «Счетов и актов»), — в верхнем слое, но
+     наследует от ячейки выравнивание, перенос и размер: возвращаем обычные, как у шторки страницы (06.11.2026). */
+  td .sheet, th .sheet { text-align: left; white-space: normal; font-size: var(--text-base); line-height: var(--text-base--line-height); font-variant-numeric: normal; }
   .sheet {
     @apply m-0 w-full max-w-none rounded-t-(--radius-xl) bg-surface p-5 text-ink shadow-(--shadow-drop);
     margin-top: auto;

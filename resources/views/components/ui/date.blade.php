@@ -2,14 +2,14 @@
      скрытое поле прежнего вида (`Y-m-d`, со временем `Y-m-d\TH:i`): сервер не меняется. Свои атрибуты (`data-action`,
      `disabled`, `form`) — у скрытого поля, `disabled` ещё и у видимого. Время по умолчанию — `default-time` (CRM срок
      приёма 17:30, парковка 12:00). Зовёт его `x-ui.field` с `type="date|datetime-local"`.
-     `chip` — вместо поля кнопка с текстом «принята 5 мая, 14:05» (`prefix` — слово перед датой, класс — снаружи): дата
+     `chip` — вместо поля кнопка с текстом (`icon` — значок перед ним в той же кнопке: имя значка или `RequestType` — кружок приёма или выдачи, как в «Заявках») «принята 5 мая, 14:05» (`prefix` — слово перед датой, класс — снаружи): дата
      сама и есть кнопка (`x-park.date-edit`); `limit` — позже нельзя, дни после красные (срок обязывающего); пустая — `placeholder` («Указать»). `submit` — значение уходит одной отправкой формы скрытого поля, когда
      всплывашку закрыли и значение поменялось (выбор дня до времени формы не отправляет).
      `quick` — подсказки дня чипами над календарём (`[['label' => 'Заявка 02.09', 'at' => Carbon, 'source' => 'request']]`,
      дата приёма парковки — `Park\AcceptHints`): нажатие ставит значение и закрывает выбор, при `submit` — сразу уходит;
      `inline` — те же чипы ещё и рядом с полем (одно нажатие без календаря). `source` — имя скрытого поля, куда ложится
      `source` нажатой подсказки (выбор в календаре его стирает). --}}
-@props(['name', 'id' => null, 'value' => null, 'time' => false, 'defaultTime' => '12:00', 'min' => null, 'max' => null, 'limit' => null, 'placeholder' => null, 'clearable' => true, 'now' => false, 'chip' => false, 'prefix' => null, 'submit' => false, 'quick' => [], 'inline' => false, 'source' => null])
+@props(['name', 'id' => null, 'value' => null, 'time' => false, 'defaultTime' => '12:00', 'min' => null, 'max' => null, 'limit' => null, 'placeholder' => null, 'clearable' => true, 'now' => false, 'chip' => false, 'prefix' => null, 'submit' => false, 'quick' => [], 'inline' => false, 'source' => null, 'icon' => null])
 @php
     $id ??= 'f-'.str_replace(['[', ']'], ['-', ''], $name);
     // Прежние значения бывают с секундами и пробелом («2026-10-09 17:30:00») — к виду поля.
@@ -26,7 +26,12 @@
     <input type="hidden" name="{{ $name }}" value="{{ $v }}" data-date-target="value" {{ $attributes->except(['class', 'id', 'type', 'placeholder']) }}>
     @if ($source)<input type="hidden" name="{{ $source }}" value="" data-date-target="source" {{ $attributes->only('form') }}>@endif
     @if ($chip)
-        <button type="button" id="{{ $id }}" class="{{ $attributes->get('class') }}" data-date-target="text" data-action="date#open:prevent:stop">{{ $chipText }}</button>
+        @if ($icon)
+            {{-- Значок в той же кнопке (документ «Счетов и актов»: приём, выдача): нажатие и по значку, и по дате. --}}
+            <button type="button" id="{{ $id }}" class="{{ $attributes->get('class') }}" data-action="date#open:prevent:stop">@if ($icon instanceof \App\Park\RequestType)<x-park.request-type :type="$icon" :word="false"/>@else<x-ui.icon :name="$icon" class="size-4 shrink-0"/>@endif<span data-date-target="text">{{ $chipText }}</span></button>
+        @else
+            <button type="button" id="{{ $id }}" class="{{ $attributes->get('class') }}" data-date-target="text" data-action="date#open:prevent:stop">{{ $chipText }}</button>
+        @endif
     @else
         <input type="text" id="{{ $id }}" class="field-input date-input {{ $attributes->get('class') }}" autocomplete="off" spellcheck="false"
             placeholder="{{ $placeholder ?? ($time ? 'Дата и время' : 'Дата') }}" @disabled($disabled) data-date-target="text"

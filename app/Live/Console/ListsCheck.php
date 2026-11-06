@@ -51,6 +51,7 @@ final class ListsCheck extends Command
             [Surface::Park, '/cars?preset=stored', Role::ParkAdmin],
             [Surface::Park, '/cars?preset=out', Role::ParkAdmin],
             [Surface::Park, '/money', Role::ParkAdmin],
+            [Surface::Park, '/money/closing', Role::ParkAdmin],
             ...array_map(fn ($p) => [Surface::Logistics, '/transports?preset='.$p, Role::Admin], ['new', 'logist', 'work', 'moving', 'done', 'all']),
             [Surface::Logistics, '/documents', Role::Admin],
             [Surface::Site, '/offers?vid=table', Role::Manager],
