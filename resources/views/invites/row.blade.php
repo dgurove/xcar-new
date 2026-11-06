@@ -49,6 +49,12 @@
         @if ($invite->isActive())
             {{-- Готовый текст для мессенджера: одноразовость и срок в нём уже сказаны. --}}
             <x-ui.share-link :url="$invite->url()" title="Приглашение в xcar" :text="$invite->message()" editable show-url class="mt-5"/>
+            {{-- Или письмом с no_reply (06.11.2026): адрес строкой, кнопка справа. --}}
+            <form method="post" action="{{ $base }}/{{ $invite->code }}/mail" class="mt-3 flex items-stretch gap-2">
+                @csrf
+                <input type="email" name="email" required placeholder="Почта" autocomplete="off" class="field-input min-w-0 flex-1" aria-label="Почта">
+                <button type="submit" class="btn btn-quiet shrink-0 !h-auto rounded-(--radius-l) px-4"><x-ui.icon name="mail" class="size-5"/>На почту</button>
+            </form>
         @elseif ($invite->isUsedUp())
             <p class="mt-5 text-ink-muted">Ссылка сработала</p>
         @elseif ($invite->isExpired())

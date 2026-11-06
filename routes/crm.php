@@ -397,6 +397,7 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
             Route::post('/users/invites/{invite}/off', [InviteController::class, 'disable']);
             Route::post('/users/invites/{invite}/on', [InviteController::class, 'enable']);
 
+            Route::post('/users/invites/{invite}/mail', [InviteController::class, 'mail']);
             Route::post('/people/credentials-mail/{token}', [\App\Http\PeopleMailController::class, 'credentials']);
             Route::post('/people/{user}/password-link-mail', [\App\Http\PeopleMailController::class, 'passwordLink']);
             Route::get('/tags', [TagController::class, 'index']);

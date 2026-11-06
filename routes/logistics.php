@@ -93,6 +93,7 @@ Route::domain(config('xcar.logistics_host'))->middleware(['auth', 'ability:canLo
         Route::post('/contractors/invites', [ContractorController::class, 'invite']);
         Route::post('/contractors/{user}/password', [ContractorController::class, 'password'])->whereNumber('user');
         Route::post('/contractors/invites/{invite}/off', [InviteController::class, 'disable']);
+        Route::post('/contractors/invites/{invite}/mail', [InviteController::class, 'mail']);
         Route::post('/contractors/invites/{invite}/on', [InviteController::class, 'enable']);
         Route::put('/contractors/{user}', [ContractorController::class, 'update'])->whereNumber('user');
         Route::post('/contractors/{user}/revoke', [ContractorController::class, 'revoke'])->whereNumber('user');

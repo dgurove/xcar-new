@@ -198,6 +198,7 @@ Route::domain(config('xcar.park_host'))->middleware(['auth', 'section:park'])->g
         Route::get('/users', [UserController::class, 'index']);
         Route::post('/users/invites', [UserController::class, 'parkInvite']);
         Route::post('/users/invites/{invite}/off', [InviteController::class, 'disable']);
+        Route::post('/users/invites/{invite}/mail', [InviteController::class, 'mail']);
         Route::post('/users/invites/{invite}/on', [InviteController::class, 'enable']);
         Route::get('/users/{user}', [UserController::class, 'show'])->whereNumber('user');
         Route::put('/users/{user}', [UserController::class, 'update'])->whereNumber('user');

@@ -82,6 +82,28 @@ class InviteController
         return back()->with('toast', 'Ссылка выключена');
     }
 
+    /**
+     * «На почту» в шторке ссылки (06.11.2026, no_reply): приглашение письмом на введённый адрес. Только живая ссылка и
+     * только тому, кто ею распоряжается; не чаще раза в минуту на ссылку.
+     */
+    public function mail(Request $request, Invite $invite)
+    {
+        $me = $request->user();
+        abort_unless($invite->isManageableBy($me) && $invite->isActive(), 404);
+        $to = $request->validate(['email' => ['required', 'email', 'max:190']], [], ['email' => 'почта'])['email'];
+        if (! \Illuminate\Support\Facades\Cache::add('invite-mail:'.$invite->id, true, 60)) {
+            return back()->with('toast', 'Письмо уже ушло, подождите минуту');
+        }
+        $html = view('emails.notice', [
+            'title' => 'Приглашение в XCar', 'subtitle' => $me->name.' приглашает вас в XCar', 'preheader' => 'Ссылка, чтобы войти в XCar',
+            'button' => ['text' => 'Принять приглашение', 'url' => $invite->url()],
+            'note' => $invite->expires_at ? 'Ссылка одноразовая и работает до '.\App\Support\Ago::at($invite->expires_at, true) : null,
+        ])->render();
+        \App\Mail\SystemMail::queue(\App\Mail\SystemMail::make($to, null, 'Приглашение в XCar', $html));
+
+        return back()->with('toast', 'Приглашение отправлено на '.$to);
+    }
+
     public function enable(Request $request, Invite $invite)
     {
         abort_unless($invite->isManageableBy($request->user()), 404);

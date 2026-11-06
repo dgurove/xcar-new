@@ -173,6 +173,7 @@ Route::middleware(['auth', 'wall'])->group(function () {
     Route::get('/account/invites', [InviteController::class, 'index']);
     Route::post('/account/invites', [InviteController::class, 'store']);
     Route::post('/account/invites/{invite}/off', [InviteController::class, 'disable']);
+    Route::post('/account/invites/{invite}/mail', [InviteController::class, 'mail']);
     Route::post('/account/invites/{invite}/on', [InviteController::class, 'enable']);
 
     // Сделки — раздел таб-бара менеджеру и админу (админу все, ведёт он их в CRM; чужому 404 в контроллере).
@@ -240,6 +241,7 @@ Route::middleware(['auth', 'wall'])->group(function () {
         Route::post('/people/credentials-mail/{token}', [\App\Http\PeopleMailController::class, 'credentials']);
         Route::post('/people/{user}/password-link-mail', [\App\Http\PeopleMailController::class, 'passwordLink']);
         Route::post('/buyers/invites/{invite}/off', [InviteController::class, 'disable']);
+        Route::post('/buyers/invites/{invite}/mail', [InviteController::class, 'mail']);
         Route::post('/buyers/invites/{invite}/on', [InviteController::class, 'enable']);
         Route::get('/buyers/interest', [BuyerInterestController::class, 'index']);
         Route::post('/buyers/interest/{interest}', [BuyerInterestController::class, 'update']);
