@@ -126,6 +126,7 @@ return Application::configure(basePath: dirname(__DIR__))
         AutoRequestsCommand::class,
         ReleaseByLettersCommand::class,
         TickBilling::class,
+        \App\Vendors\Console\ClaimDigestCommand::class,
         CloseMonthCommand::class,
         LogisticsTick::class,
         MergeCancelledCommand::class,
@@ -171,7 +172,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->web(append: [KeepFlashInBackground::class, NormalizeNumbers::class, UseLinkedAccount::class, ResolveSurface::class, SubscriberCookie::class, MarkInstalled::class, DetailBack::class, ActWindowBack::class, Impersonated::class, DeviceGate::class, TouchSeen::class, TrackNoticeOpen::class, ReadNoticesOnVisit::class, DemoReadOnly::class]);
         $middleware->encryptCookies(except: [SubscriberCookie::NAME, 'theme', MarkInstalled::COOKIE, 'xcar-reset']);
         // Уведомления провайдеров: подписи у ЮKassa нет, статус перечитывается по API (`PayController::hook`).
-        $middleware->validateCsrfTokens(except: ['hooks/*']);
+        $middleware->validateCsrfTokens(except: ['hooks/*', 'mail/unsubscribe/*']);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

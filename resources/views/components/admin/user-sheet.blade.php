@@ -13,6 +13,7 @@
         <x-ui.share-link :url="$link['url']" title="Ссылка для нового пароля" show-url class="mb-6">
             <x-slot:below><p class="text-sm text-ink-muted">Действует сутки, один раз. Отдайте её {{ $user->shortName() }} любым способом.</p></x-slot:below>
         </x-ui.share-link>
+        <x-users.link-mail :user="$user" :url="$link['url']" class="-mt-3 mb-6"/>
     @endif
     <form method="post" action="{{ $base }}/{{ $user->id }}" class="user-form flex flex-col gap-3">
         @csrf @method('put')

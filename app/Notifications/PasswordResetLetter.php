@@ -2,15 +2,9 @@
 
 namespace App\Notifications;
 
-use App\Mail\Account;
-use App\Mail\Scope;
 use Illuminate\Auth\Notifications\ResetPassword;
-use Illuminate\Notifications\Messages\MailMessage;
 
-/**
- * «Забыл пароль» письмом через SMTP боевого ящика (`XCAR_SYSTEM_ACCOUNT`, по умолчанию deal@): системный мейлер
- * на проде выключен (`MAIL_MAILER=log`). Отправка сразу, в запросе: ссылка строится от адреса, на котором нажали.
- */
+/** «Забыл пароль» письмом с no-reply (`PasswordMailChannel`, `SystemMail`): ссылка строится от адреса, на котором нажали. */
 final class PasswordResetLetter extends ResetPassword
 {
     public function via($notifiable): array
@@ -18,20 +12,15 @@ final class PasswordResetLetter extends ResetPassword
         return [PasswordMailChannel::class];
     }
 
-    public static function account(): ?Account
-    {
-        return Account::where('slug', config('xcar.system_account'))->where('is_active', true)->first()
-            ?? Account::where('scope', Scope::Offers)->where('is_active', true)->orderBy('id')->first();
-    }
-
-    public function toMail($notifiable): MailMessage
+    public function letter($notifiable): \Symfony\Component\Mime\Email
     {
         $minutes = config('auth.passwords.'.config('auth.defaults.passwords').'.expire');
+        $html = view('emails.password', [
+            'title' => 'Новый пароль', 'subtitle' => $notifiable->name, 'preheader' => 'Ссылка, чтобы задать новый пароль',
+            'button' => ['text' => 'Задать пароль', 'url' => $this->resetUrl($notifiable)],
+            'note' => "Ссылка работает {$minutes} минут. Если пароль не меняли, просто удалите письмо",
+        ])->render();
 
-        return (new MailMessage)->subject('Новый пароль на xcar')->greeting($notifiable->name.',')
-            ->line('Чтобы задать новый пароль, нажмите кнопку')
-            ->action('Задать пароль', $this->resetUrl($notifiable))
-            ->line("Ссылка работает {$minutes} минут. Если пароль не меняли, просто удалите письмо")
-            ->salutation(config('app.name'));
+        return \App\Mail\SystemMail::make($notifiable->email, $notifiable->name, 'Новый пароль на xcar', $html);
     }
 }

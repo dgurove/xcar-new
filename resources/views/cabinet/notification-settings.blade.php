@@ -32,16 +32,6 @@
                     <span class="min-w-0 flex-1 font-medium">Звук в приложении</span>
                     <input type="checkbox" name="sound" value="1" class="switch" @checked($user->wantsSound()) data-action="change->autosubmit#submit">
                 </label>
-                @if ($user->email)
-                    <label class="row row-switch">
-                        <x-ui.row-icon name="mail"/>
-                        <span class="min-w-0 flex-1">
-                            <span class="block font-medium">На почту</span>
-                            <span class="row-sub"><span class="tag">{{ $user->email }}</span></span>
-                        </span>
-                        <input type="checkbox" name="mail" value="1" class="switch" @checked($user->wantsMail()) data-action="change->autosubmit#submit">
-                    </label>
-                @endif
                 @if ($user->canLinkTelegram())
                     <button type="button" class="row w-full text-left" data-controller="emit" data-action="emit#send" data-emit-event-param="telegram:open">
                         <span class="flex size-11 shrink-0 items-center justify-center rounded-full tg-tile"><x-telegram.logo plain/></span>
@@ -71,6 +61,31 @@
                         <label class="row row-switch">
                             <span class="min-w-0 flex-1 font-medium">{{ $label }}</span>
                             <input type="checkbox" name="tg[]" value="{{ $key }}" class="switch" @checked(! in_array($key, $settings['telegram_off'] ?? [], true)) data-action="change->autosubmit#submit">
+                        </label>
+                    @endforeach
+                </div>
+            </section>
+        @endif
+
+        {{-- На почту (06.11.2026, владелец: «только СУПЕР важное, все ненавидят спам»): короткий список `Categories::mail`, всё
+             выключено, пока человек сам не включит; работает только с подтверждённой почтой. --}}
+        @if ($user->email && $mail)
+            <section>
+                <h2 class="list-head">На почту</h2>
+                <input type="hidden" name="mail_shown" value="1">
+                <div class="list">
+                    <div class="row">
+                        <x-ui.row-icon name="mail"/>
+                        <span class="min-w-0 flex-1">
+                            <span class="block break-words">{!! str_replace('@', '@<wbr>', e($user->email)) !!}</span>
+                            <span class="row-sub {{ $user->mailVerified() ? 'text-open' : 'text-ink-muted' }}">{{ $user->mailVerified() ? 'подтверждена' : 'не подтверждена' }}</span>
+                        </span>
+                        @unless ($user->mailVerified())<button type="submit" form="verify-mail" class="btn btn-s btn-quiet shrink-0">Подтвердить</button>@endunless
+                    </div>
+                    @foreach ($mail as $key => $label)
+                        <label @class(['row row-switch', 'opacity-50' => ! $user->mailVerified()])>
+                            <span class="min-w-0 flex-1 font-medium">{{ $label }}</span>
+                            <input type="checkbox" name="mail_on[]" value="{{ $key }}" class="switch" @checked($user->mailVerified() && $user->wantsMail() && in_array($key, $settings['mail_on'] ?? [], true)) @disabled(! $user->mailVerified()) data-action="change->autosubmit#submit">
                         </label>
                     @endforeach
                 </div>
@@ -119,4 +134,5 @@
             <span class="min-w-0 flex-1 font-medium">Проверить</span>
         </button>
     </form>
+    <form method="post" action="/account/notifications/verify-mail" id="verify-mail" hidden>@csrf</form>
 </x-ui.cabinet>

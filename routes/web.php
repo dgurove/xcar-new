@@ -51,6 +51,8 @@ Route::get('/sw.js', [PwaController::class, 'worker']);
 Route::get('/icons.svg', [PwaController::class, 'icons']);
 // «Не присылать на почту» из письма: подписанная ссылка, без входа.
 Route::match(['get', 'post'], '/mail/unsubscribe/{user}', [NotificationController::class, 'unsubscribe'])->middleware('signed')->name('mail.unsubscribe');
+// Подтверждение почты из письма — без входа, подписанной ссылкой на 3 дня (`SecurityLetter::verify`).
+Route::get('/mail/verify/{user}/{hash}', [NotificationController::class, 'verifyMail'])->middleware('signed')->name('mail.verify');
 Route::post('/push/subscription', [PushController::class, 'store'])->middleware('auth');
 Route::delete('/push/subscription', [PushController::class, 'destroy'])->middleware('auth');
 Route::post('/push/test', [PushController::class, 'test'])->middleware(['auth', 'throttle:6,1']);
@@ -159,6 +161,7 @@ Route::middleware(['auth', 'wall'])->group(function () {
     Route::put('/account/regions', [RegionController::class, 'update']);
     Route::get('/account/notifications/settings', [NotificationController::class, 'settingsPage']);
     Route::put('/account/notifications/settings', [NotificationController::class, 'settings']);
+    Route::post('/account/notifications/verify-mail', [NotificationController::class, 'sendVerify']);
     Route::post('/account/notifications/check', [NotificationController::class, 'test'])->middleware('throttle:3,1');
     Route::get('/account/notifications/{id}', [NotificationController::class, 'open']);
 
@@ -234,6 +237,8 @@ Route::middleware(['auth', 'wall'])->group(function () {
         Route::post('/buyers/invites', [InviteController::class, 'store']);
         // «+ Новый покупатель» в шторке выбора — на месте, без ухода со страницы (18.10.2026).
         Route::post('/people', [PeopleController::class, 'store']);
+        Route::post('/people/credentials-mail/{token}', [\App\Http\PeopleMailController::class, 'credentials']);
+        Route::post('/people/{user}/password-link-mail', [\App\Http\PeopleMailController::class, 'passwordLink']);
         Route::post('/buyers/invites/{invite}/off', [InviteController::class, 'disable']);
         Route::post('/buyers/invites/{invite}/on', [InviteController::class, 'enable']);
         Route::get('/buyers/interest', [BuyerInterestController::class, 'index']);

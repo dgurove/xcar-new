@@ -25,6 +25,8 @@ Route::domain(config('xcar.logistics_host'))->middleware(['auth', 'ability:canLo
     Route::get('/search', SearchController::class);
     // «+ Новый исполнитель / заказчик / логист / сотрудник» в шторке выбора (18.10.2026).
     Route::post('/people', [PeopleController::class, 'store']);
+    Route::post('/people/credentials-mail/{token}', [\App\Http\PeopleMailController::class, 'credentials']);
+    Route::post('/people/{user}/password-link-mail', [\App\Http\PeopleMailController::class, 'passwordLink']);
     Route::get('/transports', [TransportController::class, 'index']);
     // Заявки логиста от своих заказчиков (18.10.2026): форма, правка, отметки денег.
     Route::get('/transports/new', [OrderController::class, 'create']);

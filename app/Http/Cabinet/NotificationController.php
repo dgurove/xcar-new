@@ -90,6 +90,7 @@ class NotificationController
             'user' => $user,
             'categories' => Categories::for($user),
             'telegram' => Categories::telegram($user),
+            'mail' => Categories::mail($user),
             'settings' => $user->notification_settings ?? [],
         ]);
     }
@@ -100,8 +101,8 @@ class NotificationController
         $allowed = array_keys(Categories::for($user)['on']);
         $inTelegram = array_keys(Categories::telegram($user));
         // Прочие ключи (пуш, «напомнить позже» про Telegram) форма не присылает — их не теряем.
+        $mailOn = array_values(array_intersect(array_keys(Categories::mail($user)), array_map('strval', (array) $request->input('mail_on', []))));
         $user->update(['notification_settings' => [
-            'mail' => $request->boolean('mail'),
             'sound' => $request->boolean('sound'),
             'quiet' => $request->boolean('quiet'),
             // Форма присылает включённые категории — выключенные считаем от разрешённых.
@@ -110,9 +111,31 @@ class NotificationController
             // Что не слать в Telegram: из того, что туда вообще идёт, — не отмеченное (лента и пуш — по `off`). Строк не было
             // на экране (Telegram выключен) — прежний выбор не трогаем.
             + ($request->boolean('tg_shown') ? ['telegram_off' => array_values(array_diff($inTelegram, array_map('strval', (array) $request->input('tg', []))))] : [])
+            // На почту — отмеченное из `Categories::mail`; включил хоть что-то — отписка из письма снимается. Почта не
+            // подтверждена — тумблеры выключены и не приходят: прежний выбор не трогаем.
+            + ($request->boolean('mail_shown') && $user->mailVerified() ? ['mail_on' => $mailOn] + ($mailOn ? ['mail' => true] : []) : [])
             + ($user->notification_settings ?? [])]);
 
         return back()->with('toast', 'Сохранено');
+    }
+
+    /** «Подтвердить» у почты в настройках: письмо со ссылкой (`SecurityLetter::verify`). */
+    public function sendVerify(Request $request)
+    {
+        $user = $request->user();
+
+        return back()->with('toast', \App\Users\SecurityLetter::verify($user) ? 'Письмо отправлено на '.$user->email : ($user->mailVerified() ? 'Почта уже подтверждена' : 'Письмо уже отправлено, проверьте почту'));
+    }
+
+    /** Ссылка из письма: тот же адрес, что был, — почта подтверждена; адрес сменили после письма — нет. */
+    public function verifyMail(Request $request, User $user, string $hash)
+    {
+        $ok = $user->email && hash_equals(sha1((string) $user->email), $hash);
+        if ($ok && ! $user->email_verified_at) {
+            $user->forceFill(['email_verified_at' => now()])->saveQuietly();
+        }
+
+        return view('cabinet.mail-verified', ['user' => $user, 'ok' => $ok]);
     }
 
     public function test(Request $request)
@@ -124,9 +147,17 @@ class NotificationController
         return back()->with('toast', 'Отправили пробное уведомление');
     }
 
-    /** Из письма, без входа: подписанная ссылка выключает почту; «Вернуть» — включает. */
+    /**
+     * Из письма, без входа: подписанная ссылка выключает почту; «Вернуть» — включает. Почтовик отписывает одним нажатием
+     * POST-ом с `List-Unsubscribe=One-Click` (RFC 8058) — это отписка, а не «Вернуть»; токена у него нет (исключение CSRF).
+     */
     public function unsubscribe(Request $request, User $user)
     {
+        if ($request->isMethod('post') && $request->input('List-Unsubscribe') === 'One-Click') {
+            $user->update(['notification_settings' => ['mail' => false] + ($user->notification_settings ?? [])]);
+
+            return response()->noContent();
+        }
         if ($request->isMethod('post')) {
             $user->update(['notification_settings' => ['mail' => true] + ($user->notification_settings ?? [])]);
 

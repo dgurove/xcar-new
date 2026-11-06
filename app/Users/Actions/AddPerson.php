@@ -85,7 +85,15 @@ final class AddPerson
         // Входят телефоном, а покупатель без телефона — почтой (05.11.2026, владелец: «покупатели могут входить по почте»).
         [$via, $login] = $user->phone ? ['Телефон', Phone::format($user->phone)] : ['Почта', (string) $user->email];
 
+        // «Отправить на почту» в шторке (06.11.2026): одноразовый ключ, под ним — кому и какой пароль, 15 минут.
+        $mail = null;
+        if ($user->email) {
+            $mail = \Illuminate\Support\Str::random(40);
+            \Illuminate\Support\Facades\Cache::put('credentials-mail:'.$mail, ['user' => $user->id, 'via' => $via, 'login' => $login, 'password' => $password, 'url' => self::loginUrl($user)], now()->addMinutes(15));
+        }
+
         return [
+            'mail' => $mail, 'email' => $user->email,
             'name' => $user->name,
             'url' => self::loginUrl($user),
             'via' => $via,

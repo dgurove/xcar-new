@@ -57,6 +57,7 @@
                     <x-ui.share-link :url="$link['url']" title="Новый пароль на xcar" show-url>
                         <x-slot:below><p class="flex flex-wrap items-center gap-1.5 text-sm text-ink-muted">{{ $buyer->shortName() }}, логин <span class="nums font-medium text-ink">{{ $buyer->loginLabel() }}</span></p></x-slot:below>
                     </x-ui.share-link>
+                    <x-users.link-mail :user="$buyer" :url="$link['url']" class="mt-3"/>
                 @endif
             </x-ui.sheet>
         </div>

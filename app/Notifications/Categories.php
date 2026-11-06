@@ -76,6 +76,24 @@ final class Categories
     }
 
     /**
+     * Что можно получать на почту (06.11.2026, владелец: «только по очень важным вещам, все ненавидят спам; даже если
+     * обязывающее сгорает — это не письмо, а пуш»): короткий список по ролям, по умолчанию всё выключено
+     * (`notification_settings.mail_on`). И из включённого письмом уходит только то, где нужен человек (`Notice::important`,
+     * `critical`). Чатов, новых предложений, подтверждений, оценок и сроков на почте нет никогда.
+     *
+     * @return array<string, string>
+     */
+    public static function mail(User $user): array
+    {
+        return [
+            ...($user->hasRole(Role::Manager, Role::SuperBuyer) || ($user->holdsAsBuyer() && $user->canGarage()) ? ['deals' => 'Сделки: ваш ход, счета', 'bids' => 'Выбрали ваше подтверждение'] : []),
+            ...($user->hasRole(Role::Admin) ? ['deals' => 'Сделки: ход за нами', 'money' => 'Деньги'] : []),
+            ...($user->hasRole(Role::Parking, Role::ParkAdmin) ? ['park' => 'Парковка: заявки и письма', ...($user->hasRole(Role::ParkAdmin) || $user->parkMoney() ? ['park_money' => 'Парковка: оплаты'] : [])] : []),
+            ...($user->hasRole(Role::Logist, Role::Driver, Role::Contractor) || $user->carriesForLogistics() ? ['logistics' => 'Вывоз поручен вам'] : []),
+        ];
+    }
+
+    /**
      * Что из выключаемого вообще приходит в Telegram — эти строки и выбираются «в Telegram» (`telegram_off`). Остальное
      * туда не шлётся (у уведомления нет `toTelegram`) или критичное и идёт всегда.
      *

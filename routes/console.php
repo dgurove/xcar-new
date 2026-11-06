@@ -9,6 +9,8 @@ use Illuminate\Support\Facades\Schedule;
 
 Schedule::command('offers:tick')->everyMinute()->withoutOverlapping();
 Schedule::command('park:tick')->everyFiveMinutes()->withoutOverlapping();
+// Номера «К запросу» письмом в 9:00 и 18:00 (`claims:digest`): каждые 5 минут — пропущенный слот уходит следующим проходом.
+Schedule::command('claims:digest')->everyFiveMinutes()->withoutOverlapping();
 Schedule::command('logistics:tick')->everyFifteenMinutes()->withoutOverlapping();
 Schedule::command('billing:tick')->dailyAt('09:05');
 // Прозрачности водяных знаков по снятым и почищенным вручную кадрам — ночью, процессор свободен.

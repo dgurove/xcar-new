@@ -56,6 +56,9 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
     use HidesDemo;
 
     /** Стал менеджером или перестал — круги показа опубликованных пересчитываются: правило «все» его касается. */
+    /** Прежний подтверждённый адрес на время сохранения — ему «Почта изменена». */
+    public ?string $mailWas = null;
+
     protected static function booted(): void
     {
         // Имя и фамилия — два поля (05.10.2026), `name` — их сборка «Имя Фамилия»: по нему ищут, сортируют и рисуют
@@ -67,6 +70,23 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
                 $parts = preg_split('/\s+/u', trim((string) $user->name), 2) ?: [];
                 $user->first_name = $parts[0] ?? '';
                 $user->last_name = $parts[1] ?? null;
+            }
+        });
+        // Почта сменилась — подтверждать заново, а прежнему адресу (если был подтверждён) — «Почта изменена» (06.11.2026:
+        // письма с no-reply идут только на подтверждённую). Пароль сменился — «Пароль изменён» (`SecurityLetter`).
+        static::saving(function (self $user) {
+            if ($user->exists && $user->isDirty('email')) {
+                $user->mailWas = $user->getOriginal('email_verified_at') ? $user->getOriginal('email') : null;
+                $user->email_verified_at = null;
+            }
+        });
+        static::saved(function (self $user) {
+            if (! $user->wasRecentlyCreated && $user->wasChanged('password')) {
+                \App\Users\SecurityLetter::passwordChanged($user);
+            }
+            if ($user->mailWas) {
+                \App\Users\SecurityLetter::emailChanged($user, $user->mailWas);
+                $user->mailWas = null;
             }
         });
         static::saved(function (self $user) {
@@ -726,9 +746,26 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
         return $section === Section::Park && ($this->isParkAdmin() || $this->isParking());
     }
 
+    /** Не отписался от писем (ссылка в письме, галка «Письма о событиях» у админа). Что слать — `wantsMailFor`. */
     public function wantsMail(): bool
     {
         return ($this->notification_settings['mail'] ?? true) !== false;
+    }
+
+    /** Почта подтверждена: только на неё уходят уведомления и письма безопасности (06.11.2026). */
+    public function mailVerified(): bool
+    {
+        return $this->email && $this->email_verified_at;
+    }
+
+    /**
+     * Уведомления этой категории — на почту (06.11.2026, владелец: «только по очень важным вещам», по умолчанию выключено):
+     * человек сам включил категорию (`notification_settings.mail_on`, из `Categories::mail`), почта подтверждена, не отписан.
+     */
+    public function wantsMailFor(string $category): bool
+    {
+        return $this->mailVerified() && $this->wantsMail() && in_array($category, $this->notification_settings['mail_on'] ?? [], true)
+            && array_key_exists($category, \App\Notifications\Categories::mail($this));
     }
 
     /** Звук важных уведомлений в приложении — по умолчанию включён. */

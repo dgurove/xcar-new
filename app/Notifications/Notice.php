@@ -9,7 +9,6 @@ use App\Users\User;
 use App\Users\Wording;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 use Illuminate\Support\HtmlString;
 
@@ -246,7 +245,7 @@ abstract class Notice extends Notification implements ShouldQueue
 
     /**
      * Куда: выключенная категория — никуда; лента всегда; тихое — только в ленту; пуш — не в тихие часы;
-     * почта — если есть адрес и не выключена (сотруднику — только важное и сводки); Telegram — если привязан и уведомление туда просится.
+     * почта — только включённое человеком и важное (`wantsMailFor`); Telegram — если привязан и уведомление туда просится.
      */
     public function via(User $user): array
     {
@@ -260,10 +259,10 @@ abstract class Notice extends Notification implements ShouldQueue
         if (! $user->quietHours()) {
             $via[] = WebPushChannel::class;
         }
-        // Сотрудникам письмом — только важное и сводки (27.10.2026: каждая строка ленты уходила письмом админу).
-        if ($user->email && $user->wantsMail() && (! $user->isStaff() || $this->critical() || $this->important() || $this instanceof BatchNotice)) {
-            // Уведомления стоянки — через её ящик, если он есть; остальное — системный мейлер.
-            $via[] = str_starts_with($this->category(), 'park') && MailboxChannel::account() ? MailboxChannel::class : 'mail';
+        // На почту — только то, что человек сам включил (`User::wantsMailFor`, по умолчанию ничего; 06.11.2026, владелец:
+        // «все ненавидят спам»), и из этого — где нужен человек, или сводка сотруднику.
+        if ($user->wantsMailFor($this->category()) && ($this->critical() || $this->important() || $this instanceof BatchNotice)) {
+            $via[] = SystemMailChannel::class;
         }
         // В Telegram — если он включён и эта категория там не выключена; критичное — всегда.
         if ($user->wantsTelegram($this->critical() ? null : $this->category()) && $this->toTelegram() !== null) {
@@ -306,15 +305,17 @@ abstract class Notice extends Notification implements ShouldQueue
             + ($this->alarm() ? ['alarm' => true] : []);
     }
 
-    public function toMail(User $user): MailMessage
+    /**
+     * Уведомление письмом (`SystemMailChannel`, общий вид `emails.layout`): заголовок, строка текста, «Открыть» — на хост
+     * своего приложения, как кнопка Telegram, и «Не присылать на почту» (ещё и `List-Unsubscribe`).
+     */
+    public function toSystemMail(User $user): \Symfony\Component\Mime\Email
     {
-        $mail = (new MailMessage)->subject($this->titleFor($user))->greeting($user->name.',')->line($this->titleFor($user));
-        if ($this->text()) {
-            $mail->line($this->textFor($user));
-        }
+        $html = view('emails.notice', [
+            'title' => $this->titleFor($user), 'subtitle' => $this->textFor($user), 'preheader' => $this->textFor($user), 'compact' => true,
+            'button' => ['text' => 'Открыть', 'url' => NoticeLink::tracked($this->telegramUrl(), $this, 'mail')], 'unsubscribe' => $user->unsubscribeUrl(),
+        ])->render();
 
-        // Адрес — как у кнопки Telegram: путь CRM на хост CRM (`url()` в очереди собирал всё от сайта, 06.11.2026).
-        return $mail->action('Открыть', NoticeLink::tracked($this->telegramUrl(), $this, 'mail'))->salutation(config('app.name'))
-            ->line(new HtmlString('<a href="'.e($user->unsubscribeUrl()).'" style="color:#808080">Не присылать на почту</a>'));
+        return \App\Mail\SystemMail::make((string) $user->email, $user->name, $this->titleFor($user), $html, ['unsubscribe' => $user->unsubscribeUrl()]);
     }
 }

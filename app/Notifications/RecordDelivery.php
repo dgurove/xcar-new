@@ -19,7 +19,7 @@ final class RecordDelivery
         BannerChannel::class => 'banner',
         WebPushChannel::class => 'push',
         TelegramChannel::class => 'telegram',
-        MailboxChannel::class => 'mail',
+        SystemMailChannel::class => 'mail',
     ];
 
     public function handle(NotificationSent $e): void
