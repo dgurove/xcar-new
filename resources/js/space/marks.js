@@ -10,13 +10,14 @@
 // оживления. Раскладка одна и та же при каждом заходе — генератор с постоянным зерном.
 import { MIN } from './camera';
 
-// Цвета — по номеру: 0 серый, 1 белый (в светлой теме — графит), 2 лайм, 3 тёмный синий, 4 пусто. Состояние знака — номер
+// Цвета — по номеру: 0 серый, 1 белый (в светлой теме — графит), 2 лайм, 3 тёмный (без синевы — владелец: «синий не
+// надо»), 4 пусто. Состояние знака — номер
 // цвета + 8, если залит. Палитра по теме — uniform: смена темы ничего не пересчитывает.
 const PALETTE = {
-    dark: [[0.72, 0.74, 0.78, 0.42], [1, 1, 1, 0.82], [0.66, 0.8, 0.12, 1], [0.1, 0.13, 0.3, 0.75], [0, 0, 0, 0]],
-    light: [[0.34, 0.37, 0.41, 0.34], [0.16, 0.17, 0.2, 0.62], [0.4, 0.59, 0.04, 0.95], [0.16, 0.2, 0.38, 0.28], [0, 0, 0, 0]],
+    dark: [[0.72, 0.74, 0.78, 0.42], [1, 1, 1, 0.82], [0.66, 0.8, 0.12, 1], [0.17, 0.17, 0.18, 0.8], [0, 0, 0, 0]],
+    light: [[0.34, 0.37, 0.41, 0.34], [0.16, 0.17, 0.2, 0.62], [0.4, 0.59, 0.04, 0.95], [0.3, 0.3, 0.31, 0.26], [0, 0, 0, 0]],
 };
-const GRAY = 0, WHITE = 1, LIME = 2, NAVY = 3, NONE = 4, FILL = 8;
+const GRAY = 0, WHITE = 1, LIME = 2, DARK = 3, NONE = 4, FILL = 8;
 const SQUARE = 0, CROSS = 1, PLAY = 2;
 // Оживление: 0 — стоит, 1 — волна по диагонали сетки, 2 — дышит, 3 — очередь в столбике или ряду.
 const STILL = 0, WAVE = 1, BREATH = 2, TURN = 3;
@@ -24,12 +25,15 @@ const STILL = 0, WAVE = 1, BREATH = 2, TURN = 3;
 // Слои: глубины, групп на миллион px² плитки, доли видов групп, размер знака и шаг (css px), сетка — столбцов и строк. Из
 // трёх раскладок владелец выбрал «По краям» (06.11.2026): знаков много, но там, где доска, их нет — см. `mask`; островков
 // квадратиков вдвое меньше первых (владелец: «развелось»), и все в дальнем слое — две сетки разной глубины не
-// наезжают друг на друга при сдвиге; ▶ — почти каждая вторая группа.
+// наезжают друг на друга при сдвиге; ▶▶▶ и X — поровну, вместе их больше, чем сеток.
 const LAYERS = [
-    { d: [0.02, 0.045], groups: 4.2, kinds: { grid: 0.55, play: 0.45 }, size: [8, 10], step: [24, 28], grid: [[4, 7], [4, 7]] },
-    { d: [0.06, 0.12], groups: 1.6, kinds: { cross: 0.4, play: 0.6 }, size: [10, 12], step: [28, 32] },
-    { d: [0.2, 0.3], groups: 0.6, kinds: { cross: 0.4, play: 0.6 }, size: [16, 20], step: [38, 44] },
+    { d: [0.02, 0.045], groups: 5, kinds: { grid: 0.42, play: 0.29, cross: 0.29 }, size: [8, 10], step: [24, 28], grid: [[4, 7], [4, 7]], mark: [13, 15] },
+    { d: [0.06, 0.12], groups: 2.6, kinds: { cross: 0.5, play: 0.5 }, mark: [15, 18] },
+    { d: [0.2, 0.3], groups: 0.8, kinds: { cross: 0.5, play: 0.5 }, mark: [24, 30] },
 ];
+// ▶▶▶ и X — крупнее квадратиков и плотно, как в брендбуке (владелец, 06.11.2026: «треугольнички в полтора раза больше и
+// ближе друг к другу», «крестики того же размера, по вертикали»): шаг — доля размера знака.
+const TRIAD_STEP = { play: 1.2, cross: 1.4 };
 // Доска гасит знаки под собой: рамки шапок и столбцов подэтапов (в координатах слоя схемы), знак ближе `CLEAR` px к рамке
 // гаснет, за `CLEAR + FADE` — виден целиком. Рамок не больше `MAX_RECTS` (этапов девять, по две рамки).
 const MAX_RECTS = 32;
@@ -62,10 +66,10 @@ function cell(rand) {
     const r = rand();
     if (r < 0.24) return { a: rand() < 0.5 ? GRAY : WHITE, b: rand() < 0.55 ? LIME : LIME + FILL, anim: WAVE };
     if (r < 0.52) {
-        const b = pickBy(rand, { [WHITE]: 3, [WHITE + FILL]: 2, [NAVY + FILL]: 2, [NONE]: 2, [GRAY + FILL]: 1 });
+        const b = pickBy(rand, { [WHITE]: 3, [WHITE + FILL]: 2, [DARK + FILL]: 2, [NONE]: 2, [GRAY + FILL]: 1 });
         return { a: GRAY, b: Number(b), anim: BREATH };
     }
-    const a = pickBy(rand, { [GRAY]: 14, [WHITE]: 2, [NAVY + FILL]: 2, [NONE]: 2 });
+    const a = pickBy(rand, { [GRAY]: 14, [WHITE]: 2, [DARK + FILL]: 2, [NONE]: 2 });
     return { a: Number(a), b: Number(a), anim: STILL };
 }
 
@@ -86,8 +90,8 @@ export function marks(least = 0) {
         const count = Math.round((layer.groups * (side <= 1536 ? 1.6 : 1) * tile * tile) / 1e6);
         for (let g = 0, tries = 0; g < count && tries < count * 30; tries++) {
             const kind = pickBy(rand, layer.kinds);
-            const size = lerp(layer.size[0], layer.size[1], rand());
-            const step = lerp(layer.step[0], layer.step[1], rand());
+            const size = kind === 'grid' ? lerp(layer.size[0], layer.size[1], rand()) : lerp(layer.mark[0], layer.mark[1], rand());
+            const step = kind === 'grid' ? lerp(layer.step[0], layer.step[1], rand()) : size * TRIAD_STEP[kind];
             const cols = kind === 'grid' ? Math.round(lerp(layer.grid[0][0], layer.grid[0][1], rand())) : kind === 'play' ? 3 : 1;
             const rows = kind === 'grid' ? Math.round(lerp(layer.grid[1][0], layer.grid[1][1], rand())) : kind === 'cross' ? 3 : 1;
             const w = cols * step, h = rows * step;

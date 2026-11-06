@@ -38,7 +38,10 @@
   .space-marks { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 
   /* Начало мира — центр сцены, доска стоит от него обычной раскладкой; transform слоя — камера. */
-  .space-world { position: absolute; left: 50%; top: 50%; width: 0; height: 0; transform-origin: 0 0; }
+  .space-world { position: absolute; left: 50%; top: 50%; width: 0; height: 0; transform-origin: 0 0; opacity: 0; }
+  /* Доска видна с первой расстановки камерой (`space_controller#place`): контроллер грузится отдельным куском, и до него
+     доска стояла бы от середины экрана, а потом прыгала на место (владелец: «при открытии всё жёстко дёргается»). */
+  .space-world.is-placed { opacity: 1; transition: opacity 160ms var(--ease-out); }
   .space-world.is-moving { will-change: transform; }
 
   /* Конвейер (`admin/space/conveyor`, 05.11.2026): этапы слева направо столбцами. Шапки этапов — первая строка сетки,

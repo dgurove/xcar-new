@@ -296,6 +296,7 @@ export default class extends Controller {
         const px = clamp(-x * PHOTO_DEPTH * k, -room, room), py = clamp(-y * PHOTO_DEPTH * k, -room, room);
         this.photoTarget.style.transform = `translate3d(${px}px, ${py}px, 0) scale(${k})`;
         this.worldTarget.style.transform = `translate3d(${-x * z}px, ${-y * z}px, 0) scale(${z})`;
+        this.worldTarget.classList.add('is-placed');
         if (moving) {
             this.worldTarget.classList.add('is-moving');
             clearTimeout(this.calm);
