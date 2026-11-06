@@ -65,10 +65,9 @@
             </div>
         @endif
         <x-ui.editor name="body" :value="$defaults['body']" :focus="$parent && ($defaults['quote'] ?? null) === 'reply'" bare/>
-        {{-- Исходное письмо и «Из дела» — чипами одной полосы под текстом (04.11.2026): цитату при отправке приклеивает
-             `Composer::create`, снятая галка — ответ без неё; раскрытое — под полосой. --}}
-        @php $case = ($vehicle ?? null) && $mode !== 'forward'; @endphp
-        @if (($parent && ! empty($defaults['quote'])) || $case)
+        {{-- Исходное письмо — чипом под текстом (04.11.2026): цитату при отправке приклеивает `Composer::create`, снятая галка —
+             ответ без неё. «Из дела» снято (06.11.2026, владелец: «бесполезная херня»): файлы — скрепкой и «Документ из фото». --}}
+        @if ($parent && ! empty($defaults['quote']))
             <div class="compose-extras">
                 @if ($parent && ! empty($defaults['quote']))
                     <details class="compose-quote" name="compose-extra-{{ $frame ?? 'page' }}">
@@ -79,9 +78,6 @@
                         </summary>
                         <div class="compose-quote-body trix-content">{!! app(\App\Mail\Composer::class)->withQuote('', $parent, $defaults['quote']) !!}</div>
                     </details>
-                @endif
-                @if ($case)
-                    @include('admin.mail.case-files')
                 @endif
             </div>
         @endif

@@ -564,8 +564,8 @@ class MailController
         }
         // Письмо о выдаче — ответом в ветку заявки, как их писали руками (06.11.2026, владелец и Сергей: «Re: Направление на
         // хранение», в копии все, кому был адресован изначальный запрос): тема «Re: …» и цитата ветки, адресат — кто писал
-        // последним, копия — все адресаты первого письма ветки и последнего (кроме наших ящиков и самого адресата). Ничего
-        // само не прикладывается (владелец: «фото к письму не нужны, ничего не подтягивать») — сканы кладут скрепкой или «Из дела».
+        // последним, копия — все адресаты первого письма ветки и последнего (кроме наших ящиков и самого адресата). Из дела
+        // само не подтягивается ничего (владелец: «фото к письму не нужны»), кроме файлов, приложенных в окне выдачи (ниже).
         $release = $vehicle && ! $invoice && ! $draft && $request->query('act') === 'release';
         // Отвечаем не на последнее письмо ветки (там бывают внутренние пересылки), а на письмо о реализации ТС, без него — на
         // заявку о приёме (владелец 06.11.2026); нет ни того, ни другого — как было, на последнее письмо вендора.
@@ -619,6 +619,16 @@ class MailController
             // Счёт на ТС без файла акта — PDF акта хранения на лету (у реестра файлы кладёт фиксация).
             if (! $invoice->getFirstMedia('act') && $invoice->kind === ChargeKind::Storage && ! $invoice->isRegistry()) {
                 $defaults['files'][] = $outbox->put('akt-hraneniya-'.$invoice->docNo().'-'.$invoice->year.'.pdf', $actPdf->render($invoice));
+            }
+        } elseif ($release && ! $request->old()) {
+            // Письмо о выдаче — с тем, что приложили в окне выдачи (06.11.2026, владелец): файлы шага (акт скрепкой или
+            // «Документ из фото») и снятые там кадры. Остальное из дела само не подтягивается.
+            $stepFiles = $vehicle->papers()->filter(fn ($m) => $m->getCustomProperty('stage') === PhotoStage::Release->value)
+                ->concat($vehicle->photos()->filter(fn ($m) => PhotoStage::of($m) === PhotoStage::Release));
+            foreach ($stepFiles as $media) {
+                if (is_file($media->getPath())) {
+                    $defaults['files'][] = $outbox->put($media->getCustomProperty('title') ?: $media->file_name, file_get_contents($media->getPath()));
+                }
             }
         }
 
@@ -786,10 +796,6 @@ class MailController
         $parent = ! empty($data['parent']) ? Message::with(['thread', 'attachments', 'account'])->whereIn('account_id', $boxes)->find($data['parent']) : null;
         $thread = ! empty($data['thread']) ? Thread::where('account_id', $account->id)->find($data['thread']) : null;
 
-        // «Из дела» (02.11.2026): отмеченные акты, кадры этапов и документы машины — во вложения.
-        if ($this->scope === Scope::Park && ! empty($data['vehicle']) && ($case = Vehicle::find($data['vehicle']))) {
-            $data['files'] = [...($data['files'] ?? []), ...$this->caseFiles($case, $data, $outbox, $act)];
-        }
         // Файл, которого нет в outbox, письмо не заводит (`Composer::attach`, 29.10.2026: «Письмо пришло без вложения»), а
         // «Отправить», пока файлы грузятся, редактор не пускает (`photos_controller`) — возвращаемся в редактор с ошибкой.
         // Живой документ месяца фиксируется этой отправкой той же транзакцией: файлы черновика меняются на файлы
@@ -1268,41 +1274,6 @@ class MailController
     }
 
     /**
-     * Отмеченное в «Из дела» (`admin/mail/case-files`): акты, кадры этапов, документы машины. Что уже лежит во вложениях
-     * (акт и кадры от шаблона «Фотоотчёт»), второй раз не кладётся. @return list<string>
-     */
-    private function caseFiles(Vehicle $vehicle, array $data, StoreOutboxFile $outbox, ActPdf $act): array
-    {
-        $names = array_map(fn ($path) => substr(basename((string) $path), 37), (array) ($data['files'] ?? []));
-        $has = fn (string $name) => in_array($name, $names, true);
-        $files = [];
-        foreach (array_unique((array) ($data['case_act'] ?? [])) as $kind) {
-            $intake = $kind === 'intake';
-            if (($intake ? $vehicle->accepted_at : $vehicle->released_at) && ! $has($act->filename($vehicle, $intake))) {
-                $files[] = $outbox->put($act->filename($vehicle, $intake), $act->render($vehicle, $intake));
-            }
-        }
-        foreach (array_unique((array) ($data['case_stage'] ?? [])) as $stage) {
-            $stage = PhotoStage::from($stage);
-            $first = match ($stage) {
-                PhotoStage::Intake => 'priem-1.', PhotoStage::Release => 'vydacha-1.', default => null
-            };
-            if ($first && collect($names)->contains(fn ($n) => str_starts_with($n, $first))) {
-                continue;
-            }
-            $files = [...$files, ...$this->shotFiles($vehicle, $stage, $outbox)];
-        }
-        $ids = array_map('intval', (array) ($data['case'] ?? []));
-        foreach ($vehicle->papers()->whereIn('id', $ids) as $paper) {
-            if (is_file($paper->getPath())) {
-                $files[] = $outbox->put($paper->file_name, file_get_contents($paper->getPath()));
-            }
-        }
-
-        return $files;
-    }
-
-    /**
      * Письмо, на которое отвечает письмо о выдаче: о реализации ТС (`sold_message_id`), без него — заявка о приёме (письмо
      * первой заявки на приём). Только входящее письмо парковки.
      */
@@ -1401,12 +1372,6 @@ class MailController
             'files.*' => ['string'],
             'forward' => ['nullable', 'array'],
             'forward.*' => ['integer'],
-            'case_act' => ['nullable', 'array'],
-            'case_act.*' => ['in:intake,release'],
-            'case_stage' => ['nullable', 'array'],
-            'case_stage.*' => [Rule::enum(PhotoStage::class)],
-            'case' => ['nullable', 'array'],
-            'case.*' => ['integer'],
             'offer' => ['nullable', 'integer'],
             'vehicle' => ['nullable', 'integer'],
             'invoice' => ['nullable', 'integer'],

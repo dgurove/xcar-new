@@ -4348,7 +4348,7 @@ dialog.lightbox:not(.lb-one) .lb-pill--bottom { bottom: calc(var(--lb-strip-bott
   .compose-templates::-webkit-scrollbar { display: none; }
   .compose-template { @apply inline-flex h-8 shrink-0 items-center rounded-full bg-surface-3 px-3 text-sm whitespace-nowrap text-ink hover:bg-line/60; }
   .compose-template[aria-current] { @apply bg-accent font-medium text-white hover:bg-accent-hover; }
-  /* Исходное письмо и «Из дела» — чипами одной полосы под текстом; раскрытый встаёт во всю ширину, содержимое — под ним. */
+  /* Исходное письмо — чипом под текстом; раскрытый встаёт во всю ширину, содержимое — под ним. */
   .compose-extras { @apply mt-3 flex flex-wrap items-start gap-1.5; }
   .compose-extras > details[open] { @apply basis-full; }
   .compose-chip { @apply inline-flex h-8 cursor-pointer list-none items-center gap-1.5 rounded-full bg-surface-3 pr-2 pl-3 text-sm text-ink; }
@@ -4360,7 +4360,7 @@ dialog.lightbox:not(.lb-one) .lb-pill--bottom { bottom: calc(var(--lb-strip-bott
   .chain:has(.chain-reply .compose) .letter-foot[data-replying] > turbo-frame > .letter-link { display: none; }
   .compose-files { @apply mt-2 flex flex-wrap gap-2 empty:hidden; }
   .compose-files .file-row, .compose-file { @apply max-w-full gap-2 rounded-(--radius-m) bg-surface-3 py-1 pr-1 pl-2 text-sm; }
-  /* Галка на чипе того же тона не видна: пустой квадрат — цветом листа (пересылка, «Из дела»). */
+  /* Галка на чипе того же тона не видна: пустой квадрат — цветом листа (пересылка). */
   .compose-file input:not(:checked) { @apply bg-surface; }
   .compose-file-failed { @apply flex items-center gap-2 rounded-(--radius-m) bg-danger/10 py-1 pr-1 pl-2 text-sm text-danger; }
   .compose-foot { @apply sticky bottom-0 flex items-center gap-1 rounded-b-(--radius-l) bg-surface-2 px-4 pt-1 pb-3; }
