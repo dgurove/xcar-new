@@ -15,7 +15,7 @@
     @if ($vehicle->accepted_at)<span {{ $attributes->only('class') }}>@if ($icon instanceof \App\Park\RequestType)<x-park.request-type :type="$icon" :word="false"/>@elseif ($icon)<x-ui.icon :name="$icon" class="size-4 shrink-0"/>@endif{{ \App\Support\Ago::day($vehicle->accepted_at) }}</span>@endif
 @elseif ($mode === 'field')
     <div class="row flex-wrap justify-between gap-y-2">
-        <label for="f-accepted-{{ $vehicle->id }}" class="text-ink-muted">Принята</label>
+        <label for="f-accepted-{{ $vehicle->id }}" class="text-ink-muted">Дата приёма</label>
         <x-ui.date chip :clearable="false" name="accepted_at" :id="'f-accepted-'.$vehicle->id" :value="old('accepted_at', $vehicle->accepted_at)"
             :max="now()" :quick="$hints" inline source="accepted_source" class="nums underline decoration-dotted decoration-ink-dim underline-offset-4"/>
     </div>

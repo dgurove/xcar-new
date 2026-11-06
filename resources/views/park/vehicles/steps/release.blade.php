@@ -27,8 +27,9 @@
     {{-- Фактическая дата приёма — тут же (02.11.2026, владелец): у многих стоит день ввода; подсказки — из писем. --}}
     @if ($vehicle->accepted_at && auth()->user()->parkDates())<x-park.accepted :vehicle="$vehicle" mode="field"/>@endif
     <div class="row justify-between">
-        <label for="f-released_at" class="text-ink-muted">Когда</label>
-        <x-ui.date name="released_at" :value="old('released_at', now()->format('Y-m-d\TH:i'))" time now :clearable="false" class="release-when"/>
+        <label for="f-released_at" class="text-ink-muted">Дата выдачи</label>
+        {{-- Кнопкой-датой, как «Дата приёма» над ней: время тусклее даты (06.11.2026, владелец). --}}
+        <x-ui.date chip name="released_at" id="f-released_at" :value="old('released_at', now()->format('Y-m-d\TH:i'))" time now :clearable="false" class="nums underline decoration-dotted decoration-ink-dim underline-offset-4"/>
     </div>
     @error('released_at')<p class="field-error px-4 pb-2">{{ $message }}</p>@enderror
     {{-- Кто заберёт — из письма о продаже; не вписан — «Указать» (шторка «Покупатель»), вписан — имя и звонок. По сделке XCar

@@ -22,18 +22,27 @@
                 <x-ui.icon name="chevron-down" class="step-chevron size-5 text-ink-dim"/>
             </summary>
             <div class="mt-4">@include('park.vehicles.photo-body')</div>
-            @if ($files)<div class="[&>#papers:not([hidden])]:mt-3">@include('park.vehicles.papers', ['papersStage' => $stage])</div>@endif
+            @if ($files)<div class="[&>.papers-list:not([hidden])]:mt-3">@include('park.vehicles.papers', ['papersStage' => $stage])</div>@endif
         </details>
     @else
         {{-- Подписью раздела, как «Документы» и «Оплаты» рядом (20.10.2026): крупным — сами кадры. Пусто — строка
              «подпись … + Фото», без плитки с камерой во всю карточку (два пустых блока стояли столбом). --}}
         @php $blank = $edit && ! $n && ! $pending; @endphp
         <div @class(['flex flex-wrap items-center gap-x-3 gap-y-1.5', 'mb-3' => ! $blank])>
-            <h2 class="box-title !mb-0">{{ $stage->label() }}@if ($n) <span class="nums">{{ $n }}</span>@endif</h2>
-            @if ($blank)<x-ui.button type="button" variant="secondary" size="sm" class="ml-auto" data-action="photos#pick"><x-ui.icon name="plus" class="size-4"/> {{ $files ? 'Фото, файл' : 'Фото' }}</x-ui.button>
+            {{-- Окно выдачи — «Акт выдачи»: прикладывают акт, фото редко (06.11.2026, владелец). --}}
+            <h2 class="box-title !mb-0">{{ $files && $stage === PhotoStage::Release ? 'Акт выдачи' : $stage->label() }}@if ($n) <span class="nums">{{ $n }}</span>@endif</h2>
+            @if ($files)
+                {{-- Окно приёма и выдачи (06.11.2026, Сергей): скрепка — фото и файлы как есть, камера — документ из фото
+                     одним PDF с названием (`x-ui.photo-pdf`), встаёт в файлы этого шага. --}}
+                <span class="ml-auto flex items-center gap-2">
+                    <button type="button" class="btn btn-s btn-quiet btn-round" data-action="photos#pick" aria-label="Фото или файл" title="Фото или файл"><x-ui.icon name="clip" class="size-4"/></button>
+                    <x-ui.photo-pdf :id="'pdf-'.$vehicle->id.'-'.$stage->value" :url="'/cars/'.$vehicle->id.'/report/pdf'" :stage="$stage->value" label="" button="btn btn-s btn-quiet btn-round"
+                        :name="$stage === PhotoStage::Release ? 'Акт выдачи' : ($stage === PhotoStage::Intake ? 'Акт приёма' : '')" :chips="['Акт выдачи', 'Акт приёма', 'АПП', 'Разрешение на выдачу', 'Доверенность']"/>
+                </span>
+            @elseif ($blank)<x-ui.button type="button" variant="secondary" size="sm" class="ml-auto" data-action="photos#pick"><x-ui.icon name="plus" class="size-4"/> Фото</x-ui.button>
             @elseif (auth()->user()->isAdmin())<x-ui.photos-all class="ml-auto"/>@endif
         </div>
         @include('park.vehicles.photo-body')
-        @if ($files)<div class="[&>#papers:not([hidden])]:mt-3">@include('park.vehicles.papers', ['papersStage' => $stage])</div>@endif
+        @if ($files)<div class="[&>.papers-list:not([hidden])]:mt-3">@include('park.vehicles.papers', ['papersStage' => $stage])</div>@endif
     @endif
 </x-ui.card>

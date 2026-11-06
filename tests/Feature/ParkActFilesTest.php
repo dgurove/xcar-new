@@ -16,7 +16,7 @@ use Tests\TestCase;
 
 /**
  * Окно приёма и выдачи (05.11.2026, Сергей: «можно было добавлять не только фото, но и файлы (pdf)»): одна кнопка
- * «Фото, файл» — кадр ложится в фото шага, PDF — в документы ТС со стадией, и окно показывает файлы своего шага.
+ * Скрепка «Фото или файл» (рядом камера — документ из фото, `x-ui.photo-pdf`) — кадр ложится в фото шага, PDF — в документы ТС со стадией, и окно показывает файлы своего шага.
  */
 class ParkActFilesTest extends TestCase
 {
@@ -31,7 +31,7 @@ class ParkActFilesTest extends TestCase
         $this->actingAs($keeper);
 
         $this->get(Surface::Park->url("/cars/{$vehicle->id}/window/intake"))->assertOk()
-            ->assertSee('data-photos-other-value="papers"', false)->assertSee('Фото, файл');
+            ->assertSee('data-photos-other-value="papers"', false)->assertSee('aria-label="Фото или файл"', false)->assertSee('Документ из фото');
 
         $pdf = UploadedFile::fake()->create('akt.pdf', 20, 'application/pdf');
         $this->post(Surface::Park->url("/cars/{$vehicle->id}/media"), ['file' => $pdf, 'collection' => 'papers', 'stage' => 'intake', 'files' => 1])
@@ -39,7 +39,7 @@ class ParkActFilesTest extends TestCase
         $paper = $vehicle->fresh()->papers()->sole();
         $this->assertSame(PhotoStage::Intake->value, $paper->getCustomProperty('stage'));
 
-        // Кадр из той же карточки: ответ рисует её снова «Фото, файл», файл шага — под кадрами.
+        // Кадр из той же карточки: ответ рисует её снова со скрепкой, файл шага — под кадрами.
         $this->post(Surface::Park->url("/cars/{$vehicle->id}/media"), ['file' => UploadedFile::fake()->image('car.jpg', 400, 300), 'stage' => 'intake', 'files' => 1])
             ->assertOk()->assertSee('data-photos-other-value="papers"', false)->assertSee('akt.pdf');
 

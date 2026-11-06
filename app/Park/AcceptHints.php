@@ -23,7 +23,7 @@ final class AcceptHints
     private const MEMO = 'park.accept-hints';
 
     /**
-     * Варианты по порядку времени, без повторов дня: «Заявка 02.09», «Отчёт 06.09», «Заявка в системе 07.10».
+     * Варианты по порядку времени, без повторов дня: «Заявка 02.09», «Письмо о приёме 06.09» (06.11.2026, владелец: «Отчёт» непонятно), «Заявка в системе 07.10».
      *
      * @return list<array{label: string, at: Carbon, source: string}>
      */
@@ -35,7 +35,7 @@ final class AcceptHints
         $till = $vehicle->accepted_at?->copy()->endOfDay();
         $system = collect($facts['requests'])->filter(fn (Carbon $at) => ! $till || $at->lte($till))->max();
         $hints = [];
-        foreach (['request' => [$asked, 'Заявка'], 'report' => [$report, 'Отчёт'], 'system' => [$system, 'Заявка в системе']] as $source => [$at, $word]) {
+        foreach (['request' => [$asked, 'Заявка'], 'report' => [$report, 'Письмо о приёме'], 'system' => [$system, 'Заявка в системе']] as $source => [$at, $word]) {
             if (! $at || isset($hints[$day = $at->toDateString()])) {
                 continue;
             }

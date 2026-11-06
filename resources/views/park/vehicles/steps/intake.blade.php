@@ -8,7 +8,7 @@
     @include('park.yards.plan-pick-frame', ['pick' => $vehicle->id, 'at' => null])
     {{-- Принимают и задним числом — подсказки дня из писем (`Park\AcceptHints`: «Заявка 02.09», «Отчёт 06.09»), 02.11.2026. --}}
     <div class="field">
-        <label for="f-accepted_at" class="field-label">Когда</label>
+        <label for="f-accepted_at" class="field-label">Дата приёма</label>
         <x-ui.date name="accepted_at" time now :clearable="false" :value="old('accepted_at', now()->format('Y-m-d\TH:i'))" :max="now()"
             :quick="\App\Park\AcceptHints::for($vehicle)" inline/>
     </div>

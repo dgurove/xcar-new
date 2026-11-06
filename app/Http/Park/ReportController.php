@@ -127,21 +127,25 @@ class ReportController
             'pages' => ['required', 'array', 'min:1', 'max:'.PhotosPdf::MAX_PAGES],
             'pages.*' => ['required', 'file', 'max:40960'],
             'name' => ['required', 'string', 'max:120'],
-            'kind' => ['required', 'string'],
+            'kind' => ['required_without:stage', 'nullable', 'string'],
+            'stage' => ['nullable', 'in:intake,release'],
         ], ['name.required' => 'Как назвать документ?']);
         abort_unless($vehicle->accepted_at, 404);
-        $kind = ReportDoc::tryFrom($data['kind']) ?? abort(422, 'Нет такого документа');
+        // Слот отчёта о приёме — вид документа (`kind`); файлы шага окна приёма или выдачи (`stage`) — без вида, со стадией.
+        $stage = $data['stage'] ?? null;
+        $kind = $stage ? null : (ReportDoc::tryFrom((string) $data['kind']) ?? abort(422, 'Нет такого документа'));
         try {
             $made = $photos->make($request->file('pages'), $data['name'], $vehicle->ref);
-            $m = $vehicle->addMediaFromString($made['pdf'])->usingFileName(mb_substr(pathinfo($made['name'], PATHINFO_FILENAME), 0, 110).'-'.uniqid().'.pdf')
-                ->withCustomProperties(['report_doc' => $kind->value, 'source' => 'app', 'title' => $made['name'], 'label' => $made['label'], 'pages' => $made['pages']])
+            $m = $vehicle->addMediaFromString($made['pdf'])->usingFileName($stage ? $made['name'] : mb_substr(pathinfo($made['name'], PATHINFO_FILENAME), 0, 110).'-'.uniqid().'.pdf')
+                ->withCustomProperties(array_filter(['report_doc' => $kind?->value, 'stage' => $stage, 'source' => 'app', 'title' => $made['name'], 'label' => $made['label'], 'pages' => $made['pages']]))
                 ->toMediaCollection('papers');
         } catch (Throwable $e) {
             return response()->json(['message' => 'PDF не собрался: '.$e->getMessage()], 422);
         }
 
-        return response()->json(['id' => $m->id, 'name' => $made['name'], 'label' => $made['label'], 'pages' => $made['pages'],
-            'html' => view('components.park.report-file', ['doc' => $m, 'kind' => $kind->value])->render()]);
+        return response()->json(['id' => $m->id, 'name' => $made['name'], 'label' => $made['label'], 'pages' => $made['pages']] + ($stage
+            ? ['stream' => view('park.vehicles.papers-stream', ['vehicle' => $vehicle->fresh(), 'stage' => \App\Park\PhotoStage::from($stage)])->render()]
+            : ['html' => view('components.park.report-file', ['doc' => $m, 'kind' => $kind->value])->render()]));
     }
 
     /**

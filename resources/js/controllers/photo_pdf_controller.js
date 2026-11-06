@@ -2,6 +2,7 @@ import { Controller } from '@hotwired/stimulus';
 import { shrink } from '../lib/image.js';
 import { request } from '../lib/http.js';
 import { closeSheet } from '../sheet.js';
+import * as Turbo from '@hotwired/turbo';
 
 // Документ из фото одним PDF (06.11.2026, Сергей: «проще сфоткать документ, чем сканить»; `x-ui.photo-pdf`): «Снять» —
 // камера, «Из галереи» — несколько снимков сразу; страницы плитками в порядке выбора, «×» убирает, «‹» ставит раньше,
@@ -10,7 +11,7 @@ import { closeSheet } from '../sheet.js';
 // ({id|html, name, pages}) на кнопке шторки, а `html` (строка вложения письма) встаёт в `append`.
 export default class extends Controller {
     static targets = ['pages', 'name', 'save', 'error', 'bar', 'empty'];
-    static values = { url: String, kind: String, vehicle: String, append: String, name: String };
+    static values = { url: String, kind: String, stage: String, vehicle: String, append: String, name: String };
 
     connect() {
         this.files = [];
@@ -82,6 +83,7 @@ export default class extends Controller {
             }
             form.append('name', name);
             if (this.kindValue) form.append('kind', this.kindValue);
+            if (this.stageValue) form.append('stage', this.stageValue);
             if (this.vehicleValue) form.append('vehicle', this.vehicleValue);
             this.progress(0.7);
             const r = await request(this.urlValue, { method: 'POST', body: form, quiet: true, statuses: [422], timeout: 120000 });
@@ -89,6 +91,8 @@ export default class extends Controller {
             if (!r || !r.ok) throw new Error(answer?.errors?.name?.[0] || answer?.message || (r ? 'PDF не собрался' : 'Нет связи'));
             this.progress(1);
             if (answer.html && this.appendValue) document.querySelector(this.appendValue)?.insertAdjacentHTML('beforeend', answer.html);
+            // Файлы шага окна приёма и выдачи — список бумаг заново потоком (`park.vehicles.papers-stream`).
+            if (answer.stream) Turbo.renderStreamMessage(answer.stream);
             this.element.dispatchEvent(new CustomEvent('photo-pdf:saved', { bubbles: true, detail: answer }));
             window.toast?.(`${answer.name} — ${answer.pages} ${plural(answer.pages, 'страница', 'страницы', 'страниц')}`);
             this.reset();

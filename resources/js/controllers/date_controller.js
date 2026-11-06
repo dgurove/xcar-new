@@ -71,6 +71,11 @@ export default class extends Controller {
             if (server) this.textTarget.defaultValue = text;
         }
         // Пустая кнопка-дата — словом-приглашением («Указать»), а не пустым местом.
+        // Со временем — время тусклее даты (`.when-t`), как везде в приложении.
+        else if (p && this.timeValue && p.time) {
+            this.textTarget.textContent = [this.prefixValue, day(p.date)].filter(Boolean).join(' ') + ' ';
+            this.textTarget.append(Object.assign(document.createElement('span'), { className: 'when-t', textContent: p.time }));
+        }
         else this.textTarget.textContent = [this.prefixValue, text].filter(Boolean).join(' ') || this.placeholderValue;
         // Подсказка того же дня, что стоит, — нажатой.
         this.quickTargets.forEach((b) => b.setAttribute('aria-pressed', String(!!p && b.dataset.dateValueParam.slice(0, 10) === p.date)));

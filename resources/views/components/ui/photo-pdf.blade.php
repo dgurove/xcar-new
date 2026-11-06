@@ -4,9 +4,9 @@
      слать (бумаги ТС — `/cars/{v}/report/pdf` с kind; вложение письма — `/mail/file/pdf`, строка встаёт в append);
      готово — событие `photo-pdf:saved` на обёртке. Поле названия без своей формы: внутри чужой формы оно лишнее и
      сервером не читается. --}}
-@props(['id', 'url', 'name' => '', 'chips' => [], 'kind' => null, 'vehicle' => null, 'append' => null, 'label' => 'Из фото', 'button' => 'btn btn-s btn-quiet shrink-0 rounded-full'])
+@props(['id', 'url', 'name' => '', 'chips' => [], 'kind' => null, 'stage' => null, 'vehicle' => null, 'append' => null, 'label' => 'Из фото', 'button' => 'btn btn-s btn-quiet shrink-0 rounded-full'])
 <span class="contents" data-controller="sheet photo-pdf" data-photo-pdf-url-value="{{ $url }}" data-photo-pdf-name-value="{{ $name }}"
-      @if ($kind) data-photo-pdf-kind-value="{{ $kind }}" @endif @if ($vehicle) data-photo-pdf-vehicle-value="{{ $vehicle }}" @endif @if ($append) data-photo-pdf-append-value="{{ $append }}" @endif {{ $attributes }}>
+      @if ($kind) data-photo-pdf-kind-value="{{ $kind }}" @endif @if ($stage) data-photo-pdf-stage-value="{{ $stage }}" @endif @if ($vehicle) data-photo-pdf-vehicle-value="{{ $vehicle }}" @endif @if ($append) data-photo-pdf-append-value="{{ $append }}" @endif {{ $attributes }}>
     <button type="button" class="{{ $button }}" data-action="sheet#open" aria-label="Документ из фото" title="Документ из фото"><x-ui.icon name="camera" class="size-4"/>@if ($label)<span class="hidden sm:inline">{{ $label }}</span>@endif</button>
     <x-ui.sheet :id="$id" title="Документ из фото">
         <div class="photo-pdf-sources">

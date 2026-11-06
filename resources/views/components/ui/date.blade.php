@@ -18,6 +18,8 @@
     $day = fn ($d) => $d ? substr(str_replace(' ', 'T', (string) ($d instanceof \DateTimeInterface ? $d->format('Y-m-d') : $d)), 0, 10) : null;
     $disabled = $attributes->has('disabled') && $attributes->get('disabled') !== false;
     $chipText = $chip && $v !== '' ? trim($prefix.' '.\App\Support\Ago::day(\Illuminate\Support\Carbon::parse($v), (bool) $time)) : ($prefix ?: $placeholder);
+    // Кнопка-дата со временем — время тусклее даты, как везде в приложении (`.when-t`, 06.11.2026, владелец: «уродская»).
+    $chipHtml = $chip && $time && $v !== '' ? e(trim($prefix.' '.\App\Support\Ago::day(\Illuminate\Support\Carbon::parse($v)))).' <span class="when-t">'.e(\Illuminate\Support\Carbon::parse($v)->format('H:i')).'</span>' : e($chipText);
     $quick = collect($quick)->map(fn ($q) => ['label' => $q['label'], 'value' => $q['at']->format($time ? 'Y-m-d\TH:i' : 'Y-m-d'), 'source' => $q['source'] ?? ''])->all();
     $chips = fn () => collect($quick)->map(fn ($q) => '<button type="button" class="chip nums" data-date-target="quick" data-action="date#quick" data-date-value-param="'.e($q['value']).'" data-date-source-param="'.e($q['source']).'" aria-pressed="'.(substr($q['value'], 0, 10) === substr($v, 0, 10) ? 'true' : 'false').'">'.e($q['label']).'</button>')->implode('');
 @endphp
@@ -30,7 +32,7 @@
             {{-- Значок в той же кнопке (документ «Счетов и актов»: приём, выдача): нажатие и по значку, и по дате. --}}
             <button type="button" id="{{ $id }}" class="{{ $attributes->get('class') }}" data-action="date#open:prevent:stop">@if ($icon instanceof \App\Park\RequestType)<x-park.request-type :type="$icon" :word="false"/>@else<x-ui.icon :name="$icon" class="size-4 shrink-0"/>@endif<span data-date-target="text">{{ $chipText }}</span></button>
         @else
-            <button type="button" id="{{ $id }}" class="{{ $attributes->get('class') }}" data-date-target="text" data-action="date#open:prevent:stop">{{ $chipText }}</button>
+            <button type="button" id="{{ $id }}" class="{{ $attributes->get('class') }}" data-date-target="text" data-action="date#open:prevent:stop">{!! $chipHtml !!}</button>
         @endif
     @else
         <input type="text" id="{{ $id }}" class="field-input date-input {{ $attributes->get('class') }}" autocomplete="off" spellcheck="false"

@@ -50,7 +50,7 @@ class AcceptHintsTest extends TestCase
     {
         $hints = AcceptHints::for($this->vehicle);
 
-        $this->assertSame(['Заявка 02.10', 'Отчёт 06.10'], array_column($hints, 'label'));
+        $this->assertSame(['Заявка 02.10', 'Письмо о приёме 06.10'], array_column($hints, 'label'));
         $this->assertSame('2026-10-02 12:00', $hints[0]['at']->format('Y-m-d H:i'));
         $this->assertSame('request', $hints[0]['source']);
     }
