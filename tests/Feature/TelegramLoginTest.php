@@ -54,6 +54,23 @@ class TelegramLoginTest extends TestCase
         $this->assertArrayHasKey('url', $crm);
     }
 
+    /** Путь CRM — на хост CRM (06.11.2026: «Открыть сделку» из «Менеджер берёт сделку» вела на xcar.ru/work/deals/…). */
+    public function test_crm_path_button_goes_to_crm(): void
+    {
+        $notice = fn (string $href) => new class($href) extends \App\Notifications\Notice
+        {
+            public function __construct(private string $to) {}
+
+            public function title(): string { return 't'; }
+
+            public function label(): string { return 'l'; }
+
+            public function href(): string { return $this->to; }
+        };
+        $this->assertSame(Surface::Crm->url('/work/deals/57'), $notice('/work/deals/57')->telegramUrl());
+        $this->assertSame(Surface::Site->url('/deals/57'), $notice('/deals/57')->telegramUrl());
+    }
+
     public function test_signature_logs_in_once_and_keeps_the_app_device(): void
     {
         $app = Device::create(['user_id' => $this->manager->id, 'token_hash' => hash('sha256', 'tok'), 'public_key' => [], 'label' => 'Safari, iPhone',

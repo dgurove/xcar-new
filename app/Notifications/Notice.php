@@ -239,7 +239,9 @@ abstract class Notice extends Notification implements ShouldQueue
     {
         $href = $this->href();
 
-        return str_starts_with($href, 'http') ? $href : Surface::Site->url($href);
+        // Путь CRM, парковки и логистики — на свой хост (06.11.2026: «Открыть сделку» из «Менеджер берёт сделку» вела на
+        // xcar.ru/work/deals/… — такой страницы на сайте нет).
+        return str_starts_with($href, 'http') ? $href : ($this->surface() ?? Surface::Site)->url($href);
     }
 
     /**
