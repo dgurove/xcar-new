@@ -16,7 +16,7 @@
   .space {
     --space-bg: #dfe1e3;
     --b-ink: var(--color-ink); --b-dim: var(--b-ink);
-    --b-idle: var(--color-surface); --b-idle-ink: #9a9a98; --b-idle-hover: var(--color-surface-3); --b-face: #e4e4e2;
+    --b-idle: var(--color-surface); --b-idle-ink: #9a9a98; --b-idle-hover: var(--color-surface-3); --b-face: #d6d7d9;
     --b-red: #ff2d55; --b-red-text: #ff6b85;
     position: absolute; inset: 0; overflow: hidden; background: var(--space-bg);
     touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
@@ -74,6 +74,20 @@
   .people-more { font-size: var(--text-sm); color: var(--b-dim); }
   .face-ico { display: grid; place-items: center; flex: none; width: 28px; height: 28px; background: var(--b-face); color: var(--b-ink); }
   .face-logo { flex: none; width: 28px; height: 28px; border-radius: 8px; background: #fff; }
+
+  /* Читаемость на фото (06.11.2026, владелец выбрал «Ленту» из четырёх вариантов, и «не только за заголовками, но и за
+     блоками», затем «такой же под шапкой — единообразие»): за шапкой этапа и за столбцом подэтапов — дымка по их форме с
+     мягкими краями. Обычный градиент и тень в слое доски: рисуются один раз, при сдвиге едут готовой картинкой (размытие фона под
+     блоками пересчитывалось бы каждый кадр). */
+  .space { --b-veil: rgb(234 235 237 / .84); }  /* светлая — чуть серее белого: белые карточки на ней не теряют край */
+  .dark .space { --b-veil: rgb(0 0 0 / .62); }
+  .conveyor { isolation: isolate; }
+  .stage-head, .stage-steps { position: relative; }
+  .stage-steps { align-self: start; }
+  .stage-head::before, .stage-steps::before {
+    content: ""; position: absolute; z-index: -1; inset: -.5rem; border-radius: 2rem;
+    background: var(--b-veil); box-shadow: 0 0 2.5rem 1.5rem var(--b-veil);
+  }
 
   /* Подэтап — плашка кита: глагол, справа число; горит — красная капсула и красная обводка со свечением (владелец: «ахтунг
      — красным, красиво»). Без дела — тихая, бледным текстом. Нажатие — его список. */

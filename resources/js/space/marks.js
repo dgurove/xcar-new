@@ -23,17 +23,17 @@ const SQUARE = 0, CROSS = 1, PLAY = 2;
 const STILL = 0, WAVE = 1, BREATH = 2, TURN = 3;
 
 // Слои: глубины, групп на миллион px² плитки, доли видов групп, размер знака и шаг (css px), сетка — столбцов и строк. Из
-// трёх раскладок владелец выбрал «По краям» (06.11.2026): знаков много, но там, где доска, их нет — см. `mask`; островков
-// квадратиков вдвое меньше первых (владелец: «развелось»), и все в дальнем слое — две сетки разной глубины не
-// наезжают друг на друга при сдвиге; ▶▶▶ и X — поровну, вместе их больше, чем сеток.
+// трёх раскладок владелец выбрал «По краям» (06.11.2026): знаков много, но там, где доска, их нет — см. `mask`. Главное —
+// островки квадратиков в дальнем слое (две сетки разной глубины наезжали бы друг на друга при сдвиге); ▶▶▶ и X — всего
+// несколько на экран, ближе и крупнее (владелец: «квадратиков преступно мало, они красивые, треугольников и крестиков —
+// всего несколько»).
 const LAYERS = [
-    { d: [0.02, 0.045], groups: 5, kinds: { grid: 0.42, play: 0.29, cross: 0.29 }, size: [8, 10], step: [24, 28], grid: [[4, 7], [4, 7]], mark: [13, 15] },
-    { d: [0.06, 0.12], groups: 2.6, kinds: { cross: 0.5, play: 0.5 }, mark: [15, 18] },
-    { d: [0.2, 0.3], groups: 0.8, kinds: { cross: 0.5, play: 0.5 }, mark: [24, 30] },
+    { d: [0.02, 0.045], groups: 4.5, kinds: { grid: 1 }, size: [8, 10], step: [24, 28], grid: [[4, 7], [4, 7]] },
+    { d: [0.06, 0.12], groups: 0.55, kinds: { cross: 0.5, play: 0.5 }, mark: [18, 22] },
+    { d: [0.2, 0.3], groups: 0.22, kinds: { cross: 0.5, play: 0.5 }, mark: [28, 34] },
 ];
-// ▶▶▶ и X — крупнее квадратиков и плотно, как в брендбуке (владелец, 06.11.2026: «треугольнички в полтора раза больше и
-// ближе друг к другу», «крестики того же размера, по вертикали»): шаг — доля размера знака.
-const TRIAD_STEP = { play: 1.2, cross: 1.4 };
+// ▶▶▶ и X — крупнее квадратиков, с зазором, как в брендбуке: шаг — доля размера знака.
+const TRIAD_STEP = { play: 1.4, cross: 1.6 };
 // Доска гасит знаки под собой: рамки шапок и столбцов подэтапов (в координатах слоя схемы), знак ближе `CLEAR` px к рамке
 // гаснет, за `CLEAR + FADE` — виден целиком. Рамок не больше `MAX_RECTS` (этапов девять, по две рамки).
 const MAX_RECTS = 32;
@@ -243,9 +243,11 @@ void main() {
         float fill = clamp(0.5 - box, 0.0, 1.0);
         a = mix(line, fill, vFill);
     } else if (vKind < 1.5) {
-        float bar = min(abs(q.x - q.y), abs(q.x + q.y)) * 0.7071 - h * 0.3;
-        float box = max(abs(q.x), abs(q.y)) - h;
-        a = clamp(0.5 - max(bar, box), 0.0, 1.0);
+        // Две перекладины — прямоугольники по диагоналям с прямыми торцами (владелец: «с квадратными концами»).
+        vec2 r = vec2(q.x + q.y, q.x - q.y) * 0.7071;
+        float l = h * 1.12, t = h * 0.29;
+        float bar = min(max(abs(r.x) - l, abs(r.y) - t), max(abs(r.y) - l, abs(r.x) - t));
+        a = clamp(0.5 - bar, 0.0, 1.0);
     } else {
         float back = -0.8 * h - q.x;
         float edge = ((q.x - h) * h + abs(q.y) * 1.8 * h) / (2.059 * h);
@@ -424,13 +426,13 @@ export class FlatMarks {
             } else if (kind === SQUARE) {
                 ctx.fillRect(x - r, y - r, 2 * r, 2 * r);
             } else if (kind === CROSS) {
-                ctx.lineWidth = r * 0.6;
-                ctx.save(); ctx.beginPath(); ctx.rect(x - r, y - r, 2 * r, 2 * r); ctx.clip();
+                const e = r * 0.79;
+                ctx.lineWidth = r * 0.58;
+                ctx.lineCap = 'butt';
                 ctx.beginPath();
-                ctx.moveTo(x - r, y - r); ctx.lineTo(x + r, y + r);
-                ctx.moveTo(x + r, y - r); ctx.lineTo(x - r, y + r);
+                ctx.moveTo(x - e, y - e); ctx.lineTo(x + e, y + e);
+                ctx.moveTo(x + e, y - e); ctx.lineTo(x - e, y + e);
                 ctx.stroke();
-                ctx.restore();
             } else {
                 ctx.beginPath();
                 ctx.moveTo(x - 0.8 * r, y - r); ctx.lineTo(x + r, y); ctx.lineTo(x - 0.8 * r, y + r);
