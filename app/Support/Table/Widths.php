@@ -200,7 +200,7 @@ final class Widths
         $piece = array_map(fn ($p) => $w($p[0], $p[1]), $parts);
 
         // Целиком — куски в линию через отступ .375rem (`.table tbody td > .cell-sub + .cell-sub`), и у названия тоже: есть
-        // место — «страховая до 12 окт» стоит за ним, а название не режется.
+        // место — «обязывающее до 12 окт» стоит за ним, а название не режется.
         return [max([$alone, ...($pieces ? $piece : [])]), $alone + array_sum($piece) + .375 * count($piece)];
     }
 

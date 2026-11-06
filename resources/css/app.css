@@ -607,6 +607,9 @@ html.kb-open { --home-gap: 0px; }
   .publish-choice:has(input[value="day"]:checked) [data-when="day"] { display: inline; }
   .publish-choice .publish-day { display: none; }
   .publish-choice:has(input[value="day"]:checked) .publish-day { display: block; }
+  /* «Без подтверждений» (06.11.2026): поле даты приёма — только при «До даты»; остальное сегментом. */
+  .unsold-term .unsold-day { display: none; }
+  .unsold-term:has(input[value="day"]:checked) .unsold-day { display: block; }
   /* «Срочно» (12.10.2026): поле «Приём до» — только когда выбрано, кнопка — огнём. */
   .btn-fire { background: var(--color-fire); color: #fff; }
   .pill-fire { gap: .25rem; background: var(--color-fire-soft); color: #d93a0b; }

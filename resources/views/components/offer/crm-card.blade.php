@@ -44,7 +44,7 @@
 {{-- data-todo — как у строки таблицы (OfferController::todo): по таким карточка идёт к следующей и в плитках. --}}
 <article data-search-row id="admin-offer-{{ $n }}" data-offer-number="{{ $n }}" data-detail-key="{{ $n }}" class="card group {{ $mark ? 'card--'.$mark : '' }} {{ $arrive ? 'arrive arrive--offer' : '' }} {{ $busy ? 'arrive--busy arrive--'.$arriving : '' }}" @if (auth()->user() && \App\Http\Admin\OfferController::todo($offer, auth()->user())) data-todo @endif @if ($offer->claim_ref_key) data-flip="c:{{ $offer->claim_ref_key }}" @endif @if ($arrive) data-controller="arrive" data-arrive-state-value="{{ $arriving }}" data-arrive-subject-value="o:{{ $offer->id }}" @endif>
     <a href="{{ $href }}" class="card-link" aria-hidden="true" tabindex="-1" {!! $peek !!}></a>
-    @if ($checkable && ! $missing)<label class="card-check card-check--on" aria-label="Выбрать"><input type="checkbox" id="pick-{{ $n }}" data-turbo-permanent name="offers[]" value="{{ $n }}" form="offers-pick" data-pick-target="box" data-group="{{ $group }}" data-action="pick#sync"><span><x-ui.icon name="check" class="size-4"/></span></label>@endif
+    @if ($checkable && (! $missing || request()->query('preset') === 'done'))<label class="card-check card-check--on" aria-label="Выбрать"><input type="checkbox" id="pick-{{ $n }}" data-turbo-permanent name="offers[]" value="{{ $n }}" form="offers-pick" data-pick-target="box" data-group="{{ $group }}" data-action="pick#sync"><span><x-ui.icon name="check" class="size-4"/></span></label>@endif
     <x-ui.card-media :photos="$photos" :href="$href" :link="$peek"/>
     <div class="card-body">
         <div class="card-title">

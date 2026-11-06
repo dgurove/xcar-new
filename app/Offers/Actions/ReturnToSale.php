@@ -22,7 +22,8 @@ use Illuminate\Validation\ValidationException;
  * менеджерам с новыми ценами. Идущая сделка отменяется (`CancelDeal`: подтверждение снова ждёт, неоплаченные счета
  * гаснут), строка гаража стирается; цены — `UpdateOffer`, публикация — `ChangeOfferState` (срок приёма — новый).
  * Гаражная машина, по которой менеджер уже тратил или продал её, — не молча: сначала разбирают расходы и продажу.
- * Так же — черновик с аукциона («Вернуть в продажу…», 13.10.2026): цены, срок приёма и «Кому показывать» одной шторкой.
+ * Так же — черновик с аукциона («Вернуть в продажу…», 13.10.2026): цены, срок приёма и «Кому показывать» одной шторкой,
+ * и черновик после приёма без подтверждений (вкладка «Без подтверждений», 06.11.2026, `unsold`).
  * Машина уже стоит у менеджера (21.10.2026, Иван Заикин: взял в гараж, привёз, чинить не стал — «отдать другому в
  * продажу») — `$stays`: она остаётся у него (`offers.held_by`), новая сделка забирает её у него; город и адрес осмотра —
  * его (`$where`).
@@ -37,11 +38,20 @@ final class ReturnToSale
      * @param  ?array  $audience  волны «Кому показывать» (`AudienceRules`); null — не трогать, [] — как у вендора
      * @param  array{settlement_id?: ?int, inspection_address?: ?string}  $where  где машина стоит, когда она остаётся у менеджера
      */
+    /**
+     * Приём кончился без подтверждений — черновик во вкладке «Без подтверждений» (06.11.2026, владелец: «удобно решить —
+     * снова публиковать, для кого и на какой срок, или архивировать»): плашка окошка и пачка вкладки возвращают его сюда же.
+     */
+    public static function unsold(Offer $offer): bool
+    {
+        return $offer->state === OfferState::Draft && $offer->intake_closed_at !== null && ! $offer->slot_at && ! $offer->onAuction();
+    }
+
     public function __invoke(Offer $offer, User $by, array $prices, ?CarbonInterface $closeAt = null, ?array $audience = null, bool $stays = false, array $where = []): Offer
     {
         $auction = $offer->onAuction();
-        if (! $auction && ! in_array($offer->state, [OfferState::Sold, OfferState::Garage], true)) {
-            throw ValidationException::withMessages(['state' => 'ТС не в сделке, не в гараже и не на аукционе']);
+        if (! $auction && ! self::unsold($offer) && ! in_array($offer->state, [OfferState::Sold, OfferState::Garage], true)) {
+            throw ValidationException::withMessages(['state' => 'ТС не в сделке, не в гараже, не на аукционе и не после приёма без подтверждений']);
         }
         $car = GarageCar::where('offer_id', $offer->id)->first();
         if ($car?->isSold()) {

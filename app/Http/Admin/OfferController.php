@@ -89,12 +89,12 @@ class OfferController
      */
     public const PRESETS = [
         'nofloor' => 'Без закупочной цены', 'unpriced' => 'Без продажной цены', 'estimating' => 'На оценке у менеджеров', 'priced' => 'Оцененные', 'slots' => 'Публикация', 'published' => 'Опубликованные',
-        'bids' => 'Есть подтверждения', 'done' => 'Завершённые', 'all' => 'Все', 'archive' => 'Архив', 'legacy' => 'Из таблицы Кати', 'auction' => 'На аукцион',
+        'bids' => 'Есть подтверждения', 'done' => 'Без подтверждений', 'all' => 'Все', 'archive' => 'Архив', 'legacy' => 'Из таблицы Кати', 'auction' => 'На аукцион',
     ];
 
     /**
      * Опубликованное: «Опубликованные» и «Есть подтверждения» — одни правила сортировки и чипов. Вкладки «Приём закрыт»
-     * (17.10–29.10.2026) нет: опубликовано — значит идёт приём, кончился без подтверждений — черновиком во «Завершённые»
+     * (17.10–29.10.2026) нет: опубликовано — значит идёт приём, кончился без подтверждений — черновиком в «Без подтверждений»
      * (`ReturnClosedToRated`).
      */
     private const OPEN = ['published', 'bids'];
@@ -103,7 +103,7 @@ class OfferController
     public const BY_TAB = ['nofloor', 'unpriced', 'estimating', 'priced', 'done', 'archive', 'auction'];
 
     /**
-     * Вкладки человека: подтверждения, «На оценке у менеджеров», «Завершённые», «Все», «Из таблицы Кати» и «На аукцион» видит
+     * Вкладки человека: подтверждения, «На оценке у менеджеров», «Без подтверждений», «Все», «Из таблицы Кати» и «На аукцион» видит
      * только админ (срок приёма модератору не виден, оценки, сделки и гараж ему не открываются).
      */
     public static function presets(User $user): array
@@ -123,7 +123,7 @@ class OfferController
     private const TODO = ['nofloor', 'unpriced', 'estimating'];
 
     /** Вкладки дела: строка ушла — карточка сама к следующей (оценили, заполнили закупочную, приняли подтверждение). */
-    private const ADVANCE = [...self::TODO, 'bids'];
+    private const ADVANCE = [...self::TODO, 'bids', 'done'];
 
     /**
      * Вкладка по умолчанию — дело человека: модератору закупочная, админу цена продажи. Админ, который ещё и модератор
@@ -137,9 +137,12 @@ class OfferController
     /** Есть ли у человека дело по строке на его шаге: закупочная — у всех, цена продажи и подтверждения — у админа. */
     public static function todo(Offer $offer, User $user): bool
     {
-        // Админу дело и у открытого с подтверждениями («Есть подтверждения»): принять — и к следующему.
+        // Админу дело и у открытого с подтверждениями («Есть подтверждения»): принять — и к следующему; у черновика после
+        // приёма без подтверждений — решить.
         return ($offer->state === OfferState::Draft && ! $offer->slot_at && ! $offer->asking_price && (! $offer->floor_price || $user->canManageCrm()))
-            || ($offer->state === OfferState::Open && $user->canManageCrm() && (int) $offer->active_bids_count > 0);
+            || ($offer->state === OfferState::Open && $user->canManageCrm() && (int) $offer->active_bids_count > 0)
+            // «Без подтверждений» (06.11.2026): вернуть или в архив — и к следующей.
+            || ($user->canManageCrm() && ReturnToSale::unsold($offer));
     }
 
     /**
@@ -323,7 +326,7 @@ class OfferController
                 ...($admin ? [Facet::toggle('loss', 'В минус', fn ($o) => Margin::scope($o))->dot('loss')] : []),
             ],
             // Внутри «Всех» без «Где сейчас» не сузить: черновики, продажа, сделки, гараж.
-            'all', 'done' => [...self::facets(), Facet::column('state', 'Где сейчас', ['состояние', 'состояния', 'состояний'], 'offers.state')->enum(OfferState::class)->natural()],
+            'all' => [...self::facets(), Facet::column('state', 'Где сейчас', ['состояние', 'состояния', 'состояний'], 'offers.state')->enum(OfferState::class)->natural()],
             default => self::facets(),
         }, ...($admin ? [
             // Срок обязывающего горит, покупателя нет (19.10.2026, владелец: «прям ПАНИКА!!!») — красной точкой с числом; на
@@ -349,12 +352,14 @@ class OfferController
             ->withCount(['activeBids', 'interests', 'activeBids as garage_bids_count' => fn ($b) => $b->where('kind', BidKind::Garage)])->withMax('activeBids as top_bid', 'amount');
         // Горит ли срок обязывающего — одним подзапросом на список, а не запросами на строку (`Binding::of`).
         Binding::select($q);
+        // Горит ли — для первой группы вкладки (`HOT`).
+        $q->selectRaw(Binding::soonSql().' as binding_soon');
         // Ждущая переоценка закупочной (28.10.2026) — меткой у цены и чипом.
         if ($admin) {
             $q->withExists(['reprices as reprice_pending' => fn ($r) => $r->where('state', Reprice::PENDING)]);
         }
         // «Все» и поиск — где машина после продажи: этап сделки, менеджер, срок оплаты, гараж (`DealLine::forOffer`).
-        if ($admin && (in_array($preset, ['all', 'done'], true) || $searching)) {
+        if ($admin && ($preset === 'all' || $searching)) {
             $q->with(['deal.buyer', 'deal.invoices.claims', 'lastDeal.buyer', 'garageCar.manager', 'positions.stage.block', 'positions.stage.exits.to',
                 ...User::withAvatar('deal.buyer.media'), ...User::withAvatar('lastDeal.buyer.media'), ...User::withAvatar('garageCar.manager.media')]);
         }
@@ -433,7 +438,7 @@ class OfferController
             'unpriced' => $q->where('offers.state', OfferState::Draft)->whereNull('slot_at')->where(fn ($p) => $p->whereNull('asking_price')->orWhere('asking_price', 0))->where('floor_price', '>', 0),
             // Без цены продажи, а менеджер думает или уже оценил (просьба `asked` | `given`); корректировка цены — в «Оцененных».
             'estimating' => self::estimating($q),
-            // Приём кончился без подтверждений — во «Завершённых» (29.10.2026, начальник), модератору — здесь же: той вкладки у него нет.
+            // Приём кончился без подтверждений — в «Без подтверждений» (29.10.2026, начальник), модератору — здесь же: той вкладки у него нет.
             'priced' => $q->where('offers.state', OfferState::Draft)->whereNull('slot_at')->where('asking_price', '>', 0)
                 ->when($admin, fn ($o) => $o->whereNull('offers.intake_closed_at')),
             'slots' => $q->scheduled(),
@@ -442,10 +447,9 @@ class OfferController
             'published' => $q->where('offers.state', OfferState::Open)
                 ->when($admin, fn ($o) => $o->where(fn ($c) => $c->whereNull('offers.bids_close_at')->orWhere('offers.bids_close_at', '>', now()))
                     ->whereDoesntHave('bids', $bids)),
-            // «Завершённые» (29.10.2026, начальник: «что не продано — в отдельную, и там что в работе»): сделка идёт или
-            // гараж — «В работе», приём кончился без подтверждений — «Не продано» (`DONE_GROUPS`).
-            'done' => $q->where(fn ($o) => $o->whereIn('offers.state', [OfferState::Sold, OfferState::Garage])
-                ->orWhere(fn ($d) => $d->where('offers.state', OfferState::Draft)->whereNull('slot_at')->whereNotNull('offers.intake_closed_at'))),
+            // «Без подтверждений» (06.11.2026, владелец; до того «Завершённые» с группой «В работе» — сделки и гараж, им там не
+            // место): приём кончился без подтверждений — решить, вернуть в продажу или в архив. Список держат пустым.
+            'done' => $q->where('offers.state', OfferState::Draft)->whereNull('slot_at')->whereNotNull('offers.intake_closed_at'),
             'bids' => $q->where('offers.state', OfferState::Open)->whereHas('bids', $bids),
             // «Все» (21.10.2026, владелец: «все, в том числе завершённые и перешедшие в сделку, короче все кроме архивных»).
             'all' => $q->whereNotIn('offers.state', [OfferState::Archived, OfferState::Cancelled]),
@@ -467,10 +471,15 @@ class OfferController
      */
     public const PICK_GROUPS = ['Выбрать', 'Идёт приём', 'Приём закрыт'];
 
-    /** «Завершённые» — группами: машина в работе (сделка, гараж) первой, ниже не проданные. */
-    public const DONE_GROUPS = ['В работе', 'Не продано'];
+    /**
+     * Горит обязывающий (`Binding::soonSql`) — первой группой во вкладках, где такие строки бывают (06.11.2026, владелец:
+     * «всегда вверх поднимать, чтобы их в первую очередь обработали»), над группами самой вкладки и при любой сортировке.
+     * «Публикации» нет: там группы — время выхода. Ключ группы — `hot`, у остальных строк — прежний; у вкладки без своих
+     * групп — `rest` («Остальные»). Строке — колонка `binding_soon` (`listQuery`).
+     */
+    public const HOT = ['nofloor', 'unpriced', 'estimating', 'priced', 'published', 'bids', 'done', 'all'];
 
-    private const DONE_GROUP = "case when offers.state in ('sold', 'garage') then 0 else 1 end";
+    public const HOT_GROUP = 'Горит обязывающий';
 
     /**
      * «Без продажной цены» админа — машины на нашей парковке первыми своей группой (22.10.2026, начальник: у них приоритет),
@@ -502,8 +511,8 @@ class OfferController
         if ($preset === 'unpriced' && $admin) {
             $q->orderByRaw(self::PARK_GROUP);
         }
-        if ($preset === 'done') {
-            $q->orderByRaw(self::DONE_GROUP);
+        if (in_array($preset, self::HOT, true)) {
+            $q->orderByRaw('('.Binding::soonSql().') desc');
         }
         if ($preset === 'estimating') {
             $q->orderByRaw(self::ESTIMATE_GROUP);
@@ -537,13 +546,13 @@ class OfferController
     }
 
     /**
-     * Галочки первым столбцом — админу в «Оцененных», «Публикации» и «Архиве», не в поиске. Одна дверь для списка и свежей
+     * Галочки первым столбцом — админу в «Оцененных», «Публикации», «Архиве» и «Без подтверждений», не в поиске. Одна дверь для списка и свежей
      * строки из карточки (`admin/offers/detail` → `row`): там своё правило без «Архива» давало строку без галочки, и
      * открытая строка съезжала относительно соседей (11.10.2026).
      */
     public static function pickable(User $user, ?string $preset, bool $searching): bool
     {
-        return $user->canManageCrm() && ! $searching && in_array($preset, ['priced', 'slots', 'archive'], true);
+        return $user->canManageCrm() && ! $searching && in_array($preset, ['priced', 'slots', 'archive', 'done'], true);
     }
 
     /**
@@ -555,12 +564,16 @@ class OfferController
     private static function groupCounts(Builder $q, string $preset, bool $admin): array
     {
         [$expr, $prefix] = match (true) {
-            $preset === 'done' => [self::DONE_GROUP, 'done'],
             $preset === 'unpriced' && $admin => [self::PARK_GROUP, 'park'],
             $preset === 'estimating' => [self::ESTIMATE_GROUP, 'est'],
             $preset === 'bids' && $admin => [self::PICK_GROUP, ''],
             default => [null, null],
         };
+        // Горящий обязывающий — своей группой поверх групп вкладки (`HOT`); без своих групп остальные — `rest`.
+        if (in_array($preset, self::HOT, true)) {
+            $expr = "case when ".Binding::soonSql()." then 'hot' else ".($expr === null ? "'rest'" : "'{$prefix}' || ({$expr})::text").' end';
+            $prefix = '';
+        }
         if ($expr === null) {
             return [];
         }
@@ -568,12 +581,6 @@ class OfferController
         // Без порядка и столбцов списка (`select([])` снимает и привязки подзапросов `withCount`).
         return (clone $q)->toBase()->reorder()->select([])->selectRaw("({$expr}) as g, count(*) as n")->groupBy('g')->pluck('n', 'g')
             ->mapWithKeys(fn ($n, $g) => [$prefix.$g => (int) $n])->all();
-    }
-
-    /** Группа «Завершённых» (DONE_GROUPS) — то же правило, что у порядка. */
-    public static function doneGroup(Offer $offer): int
-    {
-        return in_array($offer->state, [OfferState::Sold, OfferState::Garage], true) ? 0 : 1;
     }
 
     /** Группа «На оценке у менеджеров» (ESTIMATE_GROUPS) — то же правило, что у порядка; оценённые — одним запросом на запрос. */
@@ -623,7 +630,7 @@ class OfferController
             new Column('number', '№', from: 'sm', aside: true, cell: 'nums', role: ColRole::Code, rem: 7),
             // Во «Все» город — с 1024: место отдано этапу сделки и менеджеру в «Состоянии» (27.10.2026; с 29.10.2026 таблица
             // плотнее, и с 1536 — слишком поздно).
-            $has('city') ? new Column('city', 'Город', from: in_array($preset, ['all', 'done'], true) ? 'lg' : 'sm', aside: true, clip: true, role: ColRole::Place, rem: max(5, $cityCh * .5 + 2.5)) : null,
+            $has('city') ? new Column('city', 'Город', from: $preset === 'all' ? 'lg' : 'sm', aside: true, clip: true, role: ColRole::Place, rem: max(5, $cityCh * .5 + 2.5)) : null,
             $has('state') ? new Column('state', ! $all && $has('bids') ? 'Приём' : 'Состояние', from: 'sm', sort: 'closing', cell: 'whitespace-normal', role: ColRole::State, rem: 10) : null,
             // Подтверждения принимает только админ — модератору столбца нет.
             $has('bids') && $user->canManageCrm() ? new Column('bids', 'Подтверждения', from: 'sm', num: true, sort: 'bids', cell: 'nums', rem: 7) : null,
@@ -659,6 +666,8 @@ class OfferController
             // Город — сразу за номером убытка (владелец 04.10.2026: «не хватает столбца с городом»). Оценочной в таблице нет
             // (владелец 05.10.2026: «скрой») — она в карточке строки, в «Деньгах».
             'unpriced', 'estimating', 'priced', 'legacy', 'auction' => ['vendor', 'city', 'floor', 'price', 'created'],
+            // «Без подтверждений» — только черновики после приёма: состояние у всех одно, дата — когда кончился приём.
+            'done' => ['vendor', 'city', 'floor', 'price', 'created'],
             // Когда выйдет — заголовок группы, слова в строке не нужно.
             'slots' => ['vendor', 'city', 'floor', 'price', 'created'],
             // Модератору подтверждения не видны, а «в продаже» здесь и так у всех.
@@ -695,7 +704,7 @@ class OfferController
                     $key === 'bids' && $carcadeDefault => ['vendor'],
                     in_array($key, self::OPEN, true) => [],
                     default => ['recommended'],
-                }, ...(in_array($key, ['all', 'done'], true) ? [] : ['state'])]);
+                }, ...($key === 'all' ? [] : ['state'])]);
             }
             // У «Из таблицы Кати» в числе и незаведённые номера — призрачные строки. Черновик из письма встаёт туда из
             // призрака, и число не меняется, — пилюле отдельно число черновиков: выросло — она вспыхивает (flip.js).
@@ -1155,6 +1164,55 @@ class OfferController
         return redirect('/offers?preset=archive')->with('toast', 'Удалено навсегда: '.$done);
     }
 
+    /**
+     * «Без подтверждений» пачкой (06.11.2026, владелец: «максимально быстрым и удобным»): галочки вкладки → «Вернуть в
+     * продажу (N)» с одним сроком (цены и кому — у каждой свои, как в прошлый раз) или «В архив (N)». Каждая машина — своей
+     * транзакцией: не вышла одна (нет фото, приём уже вернули) — остальные идут, тост называет, что не вышло.
+     */
+    public function relistMany(Request $request, ReturnToSale $return)
+    {
+        $data = $request->validate(['offers' => ['required', 'array', 'max:500'], 'offers.*' => ['integer'], 'term' => ['required', 'in:3,7']]);
+        [$done, $failed] = [0, []];
+        foreach ($this->unsoldPicked($request, $data['offers']) as $offer) {
+            try {
+                $return($offer, $request->user(), [], self::termClose($offer, $data['term']));
+                $done++;
+            } catch (ValidationException $e) {
+                $failed[] = $offer->number.': '.mb_strtolower(collect($e->errors())->flatten()->first() ?? 'не вышло');
+            }
+        }
+
+        return redirect('/offers?preset=done')->with('toast', self::manyToast('В продаже', $done, $failed));
+    }
+
+    public function archiveMany(Request $request, ChangeOfferState $change)
+    {
+        $data = $request->validate(['offers' => ['required', 'array', 'max:500'], 'offers.*' => ['integer']]);
+        [$done, $failed] = [0, []];
+        foreach ($this->unsoldPicked($request, $data['offers']) as $offer) {
+            try {
+                $change($offer, OfferState::Archived, $request->user());
+                $done++;
+            } catch (ValidationException $e) {
+                $failed[] = $offer->number.': '.mb_strtolower(collect($e->errors())->flatten()->first() ?? 'не вышло');
+            }
+        }
+
+        return redirect('/offers?preset=done')->with('toast', self::manyToast('В архиве', $done, $failed));
+    }
+
+    /** Отмеченные из «Без подтверждений», что ещё там: успели вернуть или убрать — пропускаются молча. */
+    private function unsoldPicked(Request $request, array $numbers)
+    {
+        return self::scopeFor('done', Offer::inCrm($request->user())->whereIn('offers.number', $numbers))->get();
+    }
+
+    /** «В продаже: 12», «В архиве: 3, не вышло 2 — 2610…: нет фото». */
+    private static function manyToast(string $what, int $done, array $failed): string
+    {
+        return $what.': '.$done.($failed ? ', не вышло '.count($failed).' — '.implode('; ', array_slice($failed, 0, 3)).(count($failed) > 3 ? '…' : '') : '');
+    }
+
     /** Состояние из меню; «Выставить в продажу» у черновика и галереи — с выбором слота (`when`), без него — сейчас. */
     public function state(Request $request, Offer $offer, ChangeOfferState $change, ScheduleOffer $schedule)
     {
@@ -1230,8 +1288,14 @@ class OfferController
     {
         $data = $request->validate(['floor_price' => ['nullable', 'string', 'max:20'], 'publish_price' => ['nullable', 'string', 'max:20'],
             'asking_price' => ['required', 'string', 'max:20'], 'bids_close_at' => ['nullable', 'date', 'after:now'], 'audience_rules' => ['nullable', 'json'],
-            'stays' => ['nullable', 'boolean'], 'settlement_id' => ['nullable', 'integer', 'exists:settlements,id'], 'inspection_address' => ['nullable', 'string', 'max:500']],
-            ['asking_price.required' => 'Укажите цену продажи', 'bids_close_at.after' => 'Срок приёма — позже, чем сейчас']);
+            'stays' => ['nullable', 'boolean'], 'settlement_id' => ['nullable', 'integer', 'exists:settlements,id'], 'inspection_address' => ['nullable', 'string', 'max:500'],
+            // Плашка «Без подтверждений»: срок сегментом — 3 дня, неделя или свой день (`day`).
+            'term' => ['nullable', 'in:3,7,day'], 'day' => ['required_if:term,day', 'nullable', 'date', 'after:now']],
+            ['asking_price.required' => 'Укажите цену продажи', 'bids_close_at.after' => 'Срок приёма — позже, чем сейчас', 'day.after' => 'Срок приёма — позже, чем сейчас',
+                'day.required_if' => 'Укажите, до когда приём']);
+        if (filled($data['term'] ?? null)) {
+            $data['bids_close_at'] = self::termClose($offer, $data['term'], $data['day'] ?? null)->format('Y-m-d H:i:s');
+        }
         $money = fn (?string $v) => Money::rubles($v) ?: null;
         $prices = array_map($money, array_intersect_key($data, array_flip(['floor_price', 'publish_price', 'asking_price'])) + ['floor_price' => null, 'publish_price' => null]);
         PriceGuard::assertPrices($prices['asking_price'], $prices['floor_price'] ?? $offer->floor_price, $request->boolean('price_ok'));
@@ -1240,6 +1304,14 @@ class OfferController
             stays: $request->boolean('stays'), where: array_intersect_key($data, array_flip(['settlement_id', 'inspection_address'])));
 
         return redirect("/offers/{$offer->number}")->with('toast', 'В продаже № '.$offer->number)->with(self::gone($request, $offer));
+    }
+
+    /** Срок приёма по сегменту плашки «Без подтверждений»: 3 дня и неделя — в час закрытия приёма, не позже обязывающего. */
+    public static function termClose(Offer $offer, string $term, ?string $day = null): Carbon
+    {
+        $at = $term === 'day' ? Carbon::parse($day) : Slots::closeFor(now(), (int) $term);
+
+        return $term === 'day' ? $at : Binding::clampClose($offer, $at);
     }
 
     /**

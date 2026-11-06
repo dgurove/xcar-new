@@ -86,7 +86,7 @@ final class Conveyor
         'price' => ['Оценить / отдать на оценку', '/offers?preset=unpriced'],
         'review' => ['Разобрать оценки', '/offers?preset=estimating'],
         'ready' => ['Выставить в продажу', '/offers?preset=priced'],
-        'unsold' => ['Вернуть в продажу', '/offers?preset=done'],
+        'unsold' => ['Вернуть или в архив', '/offers?preset=done'],
         'estimate' => ['На оценке', '/offers?preset=estimating'],
         'gallery' => ['Выразить интерес', '/gallery'],
         'confirm' => ['Подтвердить предложения', '/offers?preset=published'],
@@ -276,7 +276,7 @@ final class Conveyor
         $tab = fn (string $preset) => fn ($q) => OfferController::scopeFor($preset, $q);
         $hot = fn (string $preset, ?\Closure $also = null) => fn ($q) => OfferController::scopeFor($preset, $q)
             ->where(fn ($w) => $also ? $also($w->whereRaw($panic)) : $w->whereRaw($panic));
-        $unsold = fn ($q) => OfferController::scopeFor('done', $q)->where('offers.state', OfferState::Draft);
+        $unsold = $tab('done');
         $group = fn (string $preset, string $sql, int $n) => fn ($q) => OfferController::scopeFor($preset, $q)->whereRaw("({$sql}) = {$n}");
         $estimated = '('.OfferController::ESTIMATE_GROUP.')';
         $pick = OfferController::PICK_GROUP;

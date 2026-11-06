@@ -176,6 +176,21 @@ final class Binding
             ." and (({$table}.state in ({$states}) and not ".$sql(self::BUYER_SQL).') or '.$sql(self::UNPAID_SQL).'))';
     }
 
+    /**
+     * Срок горит и машину надо решать первой (06.11.2026, владелец: «по которым срок обязывающего скоро сгорит / сгорел —
+     * всегда выше остальных, и в других вкладках тоже»): срок не позже `edge`, а машина ещё ищет покупателя — черновик,
+     * галерея, продажа, и с подтверждением, которое не приняли (`undecided`: во «Есть подтверждения» такие тоже первыми).
+     * Сделки, что не заплатили поставщику, — нет: их ведут в «Сделках» (на проде таких 96 — во «Всех» они закрыли бы
+     * собой машины без покупателя). Группа «Горит обязывающий» во вкладках предложений CRM.
+     */
+    public static function soonSql(string $table = 'offers'): string
+    {
+        $states = implode(',', array_map(fn ($v) => "'{$v}'", self::liveValues()));
+
+        return "({$table}.binding_until is not null and {$table}.binding_until <= '".self::edge()->toDateTimeString()."'"
+            ." and {$table}.state in ({$states}))";
+    }
+
     /** @return list<string> */
     private static function liveValues(): array
     {

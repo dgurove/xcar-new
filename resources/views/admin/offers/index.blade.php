@@ -16,18 +16,34 @@
         $preset === 'legacy' => collect(['legacy' => $offers->getCollection()])->filter(fn ($list) => $list->isNotEmpty()),
         $preset === 'slots' => $offers->getCollection()->groupBy(fn ($o) => $o->slot_at->format('YmdHi')),
         $preset === 'bids' && $admin => $offers->getCollection()->groupBy(fn ($o) => OfferController::pickGroup($o))->sortKeys(),
-        $preset === 'done' => $offers->getCollection()->groupBy(fn ($o) => 'done'.OfferController::doneGroup($o))->sortKeys(),
         $preset === 'estimating' => $offers->getCollection()->groupBy(fn ($o) => 'est'.OfferController::estimateGroup($o))->sortKeys(),
         // На парковке — первыми; группы с подписью, только когда такие есть (`OfferController::PARK_GROUPS`).
         $preset === 'unpriced' && $admin && $offers->getCollection()->contains(fn ($o) => $o->onPark())
             => $offers->getCollection()->groupBy(fn ($o) => 'park'.($o->onPark() ? 0 : 1))->sortKeys(),
         default => collect(['' => $offers->getCollection()]),
     };
+    // Горит обязывающий — первой группой над группами вкладки (`OfferController::HOT`, 06.11.2026): строки уже первыми по
+    // порядку запроса; остальные — в своих группах, у вкладки без групп — «Остальные». Есть ли такие — по числам групп
+    // всего списка (порция их может не иметь) или по самим строкам.
+    $hotTab = ! $searching && $view !== \App\Support\ListView::GRID && in_array($preset, OfferController::HOT, true);
+    if ($hotTab && (($groupCounts['hot'] ?? 0) > 0 || $offers->getCollection()->contains(fn ($o) => $o->binding_soon))) {
+        $split = collect();
+        $hot = $groups->flatten(1)->filter(fn ($o) => $o->binding_soon)->values();
+        if ($hot->isNotEmpty()) $split->put('hot', $hot);
+        // put, а не merge: у опубликованных ключи групп — числа, merge их перенумеровал бы.
+        foreach ($groups as $key => $list) {
+            $rest = $list->reject(fn ($o) => $o->binding_soon)->values();
+            if ($rest->isNotEmpty()) $split->put($key === '' ? 'rest' : $key, $rest);
+        }
+        $groups = $split;
+        $groupCounts['rest'] ??= collect($groupCounts)->except('hot')->sum() ?: null;
+    }
     $groupTitle = fn ($key, $list) => match (true) {
         $key === '' => null,
+        $key === 'hot' => OfferController::HOT_GROUP,
+        $key === 'rest' => 'Остальные',
         $key === 'legacy' => $ghosts->isEmpty() ? null : 'Черновики',
         str_starts_with((string) $key, 'park') => OfferController::PARK_GROUPS[(int) substr($key, 4)],
-        str_starts_with((string) $key, 'done') => OfferController::DONE_GROUPS[(int) substr($key, 4)],
         str_starts_with((string) $key, 'est') => OfferController::ESTIMATE_GROUPS[(int) substr($key, 3)],
         $preset === 'slots' => $list->first()->slot_at->isPast() ? 'Выходит сейчас' : Slots::label($list->first()->slot_at),
         default => OfferController::PICK_GROUPS[$key],
@@ -85,7 +101,7 @@
             @endif
         @endforeach
         @if ($offers->isEmpty() && $ghosts->isEmpty())
-            <x-ui.empty>{{ match ($searching ? '' : $preset) { 'nofloor' => 'Закупочные заполнены', 'unpriced' => 'Всё оценено', 'estimating' => 'На оценке ничего нет', 'priced' => 'Оценённых нет', 'slots' => 'В слотах пусто', 'published' => 'Опубликованных нет', 'done' => 'Завершённых нет', 'bids' => 'Подтверждений нет', 'legacy' => 'Список пуст', default => 'Предложений нет' } }}</x-ui.empty>
+            <x-ui.empty>{{ match ($searching ? '' : $preset) { 'nofloor' => 'Закупочные заполнены', 'unpriced' => 'Всё оценено', 'estimating' => 'На оценке ничего нет', 'priced' => 'Оценённых нет', 'slots' => 'В слотах пусто', 'published' => 'Опубликованных нет', 'done' => 'Всё разобрано', 'bids' => 'Подтверждений нет', 'legacy' => 'Список пуст', default => 'Предложений нет' } }}</x-ui.empty>
         @else
             @if ($pick)
                 <form id="offers-pick" method="post" action="/offers/schedule" data-live-select data-price-guard="publish">@csrf</form>
@@ -140,12 +156,37 @@
                 <span data-advance-done hidden>Закупочные заполнены</span>
             @elseif ($preset === 'bids' && ! $searching)
                 <span data-advance-done hidden>Подтверждения разобраны</span>
+            @elseif ($preset === 'done' && ! $searching)
+                <span data-advance-done hidden>Всё разобрано</span>
             @endif
             @if ($pick && $preset === 'priced')
                 <x-ui.action-bar class="action-bar--pick" data-pick-target="bar" hidden>
                     <div class="contents" data-controller="sheet">
                         <x-ui.button type="button" class="min-w-0 flex-1" data-action="sheet#open">Выставить в продажу <span class="nums" data-pick-target="count"></span></x-ui.button>
                         <x-offer.publish-sheet id="offers-send" form="offers-pick"/>
+                    </div>
+                </x-ui.action-bar>
+            @elseif ($pick && $preset === 'done')
+                {{-- «Без подтверждений» пачкой (06.11.2026): вернуть с одним сроком (цены и кому — у каждой свои) или в архив. --}}
+                <x-ui.action-bar class="action-bar--pick" data-pick-target="bar" hidden>
+                    <x-ui.button form="offers-pick" formaction="/offers/archive" variant="secondary" class="min-w-0 flex-1 md:flex-none" data-turbo-confirm="Убрать в архив?" data-turbo-confirm-text="Отмеченные уйдут в «Архив», оттуда их можно вернуть в черновики" data-turbo-confirm-label="В архив">В архив</x-ui.button>
+                    <div class="contents" data-controller="sheet">
+                        <x-ui.button type="button" class="min-w-0 flex-1 md:flex-none" data-action="sheet#open">Вернуть в продажу <span class="nums" data-pick-target="count"></span></x-ui.button>
+                        <x-ui.sheet id="offers-relist" title="Вернуть в продажу">
+                            <div class="flex flex-col gap-4">
+                                <div class="list-head">Приём</div>
+                                <div class="list">
+                                    @foreach ([3 => '3 дня', 7 => 'Неделя'] as $term => $label)
+                                        <label class="row row-check">
+                                            <span class="min-w-0 flex-1">{{ $label }} — до {{ \App\Support\Ago::day(\App\Offers\Slots::closeFor(now(), $term), true) }}</span>
+                                            <span class="check"><input type="radio" name="term" value="{{ $term }}" form="offers-pick" @checked($term === 3)></span>
+                                        </label>
+                                    @endforeach
+                                </div>
+                                <p class="text-sm text-ink-muted">Цены и кому показывать — как в прошлый раз у каждой; срок не позже обязывающего</p>
+                                <x-ui.button block form="offers-pick" formaction="/offers/relist" data-action="sheet#close">Вернуть в продажу</x-ui.button>
+                            </div>
+                        </x-ui.sheet>
                     </div>
                 </x-ui.action-bar>
             @elseif ($pick && $preset === 'archive')

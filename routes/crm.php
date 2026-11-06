@@ -231,6 +231,9 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
         // Пачкой из «Оцененных» и «Публикации»: галочки строк, `offers[]` — номера.
         Route::post('/offers/schedule', [OfferController::class, 'scheduleMany']);
         Route::post('/offers/unschedule', [OfferController::class, 'unscheduleMany']);
+        // «Без подтверждений» пачкой (06.11.2026): вернуть в продажу с одним сроком или в архив.
+        Route::post('/offers/relist', [OfferController::class, 'relistMany']);
+        Route::post('/offers/archive', [OfferController::class, 'archiveMany']);
         // Архив — навсегда, со всем связанным: пачкой из вкладки и по одному из карточки и редактора (PurgeOffer).
         Route::post('/offers/purge', [OfferController::class, 'purgeMany']);
         Route::post('/offers/{offer}/purge', [OfferController::class, 'purge']);

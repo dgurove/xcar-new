@@ -89,7 +89,7 @@
     @foreach ($table->columns as $key => $col)
         @switch($key)
         @case('pick')
-    <td class="{{ $col->classes() }}">@unless ($missing)<label class="row-check" aria-label="Выбрать"><span class="check"><input type="checkbox" id="pick-{{ $n }}" data-turbo-permanent name="offers[]" value="{{ $n }}" form="offers-pick" data-pick-target="box" data-group="{{ $group }}" data-action="pick#sync"></span></label>@endunless</td>
+    <td class="{{ $col->classes() }}">@unless ($missing && request()->query('preset') !== 'done')<label class="row-check" aria-label="Выбрать"><span class="check"><input type="checkbox" id="pick-{{ $n }}" data-turbo-permanent name="offers[]" value="{{ $n }}" form="offers-pick" data-pick-target="box" data-group="{{ $group }}" data-action="pick#sync"></span></label>@endunless</td>
         @break
         @case('title')
     <td class="{{ $col->classes() }}">
@@ -113,7 +113,7 @@
             {{-- Черновик висит в галерее (08.10.2026) — видно и в шагах работы, с числом интереса. --}}
             @if (! $gallery && $offer->isGallery())<span class="text-accent-text nums">в галерее@if ($offer->interests_count), {{ $offer->interests_count }} {{ \App\Support\Plural::of($offer->interests_count, ['интерес', 'интереса', 'интересов']) }}@endif</span>@endif
             @if ($missing)<span class="text-danger">{{ implode(', ', $missing) }}</span>@endif
-            @if ($late)<span class="text-danger nums">страховая до {{ \App\Support\Ago::html($offer->insurer_deadline_at, words: false) }}</span>@endif
+            @if ($late)<span class="text-danger nums">обязывающее до {{ \App\Support\Ago::html($offer->insurer_deadline_at, words: false) }}</span>@endif
         </span>
     </td>
         @break

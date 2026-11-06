@@ -19,7 +19,10 @@
     // «Выставить в продажу» у черновика и галереи — тремя пунктами: сейчас, в ближайший слот, в следующий (`x-offer.publish-items`).
     // Без цены продажи публиковать нечего — пунктов нет, пока её не поставили.
     // На аукционе — «Вернуть в продажу…» шторкой (`auctionActions`), слотов нет.
-    $publishItems = $admin && in_array($offer->state, [OfferState::Draft, OfferState::Gallery], true) && ! $offer->isScheduled() && $offer->asking_price && ! $offer->onAuction();
+    // «Без подтверждений» (06.11.2026): цена, срок, кому и «Вернуть в продажу» / «В архив» — плашкой сверху (`now-block`), без
+    // «Цен» по шагам и без «Выставить в продажу» в «Действиях».
+    $unsold = $admin && \App\Offers\Actions\ReturnToSale::unsold($offer);
+    $publishItems = $admin && in_array($offer->state, [OfferState::Draft, OfferState::Gallery], true) && ! $offer->isScheduled() && $offer->asking_price && ! $offer->onAuction() && ! $unsold;
     // «Выставить в продажу» у черновика — пунктами слота; у сделки «вернуть в продажу» — обычным пунктом (отмена сделки).
     if ($offer->state !== OfferState::Sold) $transitions = $transitions->except(OfferState::Open->value);
     // Блок «Оценить» — у черновика без цены продажи; оценённому цену правят в «Ценах».
@@ -39,11 +42,12 @@
     $pickup = $rate && ($offer->pickup()?->isOpen() || $offer->vendor?->pickup_on_arrival) && ! $offer->pickedUp();
     $ways = $garage || $pickup;
     // Цены черновика — блоком по шагам сверху окошка (19.10.2026); у остального — разделом «Цены» в форме.
-    $steps = $offer->state === OfferState::Draft && ! $offer->isScheduled() && ! $offer->onAuction();
+    $steps = $offer->state === OfferState::Draft && ! $offer->isScheduled() && ! $offer->onAuction() && ! $unsold;
     // Слот, аукцион, архив — плашка «что сейчас» сверху (`admin/offers/now-block`) с кнопками вместо пунктов «Действий».
     $nowKind = ! $admin ? null : match (true) {
         $offer->isScheduled() => 'slot',
         $offer->onAuction() => 'auction',
+        $unsold => 'unsold',
         in_array($offer->state, [OfferState::Archived, OfferState::Cancelled], true) => 'archive',
         default => null,
     };
@@ -110,6 +114,8 @@
                     $listed = $admin && $offer->state === OfferState::Draft ? \App\Offers\LegacyClaim::listed($offer) : null;
                     // Архив — «Вернуть в черновики» и «Удалить навсегда» кнопками плашки (`now-block`), в «Действиях» их нет.
                     if ($nowKind === 'archive') [$calm, $danger] = [collect(), collect()];
+                    // «В архив» у «Без подтверждений» — кнопкой плашки.
+                    if ($unsold) $danger = $danger->except(OfferState::Archived->value);
                     $menuPurge = $purge && $nowKind !== 'archive';
                     $icon = fn (OfferState $s) => match ($s) { OfferState::Gallery => 'grid', OfferState::Draft => $offer->state === OfferState::Archived ? 'undo' : 'eye-off', OfferState::Archived => 'archive', default => 'flag' };
                 @endphp
@@ -250,7 +256,7 @@
             @endunless
             {{-- «Показ» — тот же модуль, что справа в редакторе: под «Ценами», режим по делу (у сделки и гаража — свой или нет). --}}
             {{-- У черновика и открытого «Показ» — строкой со шторкой в блоке «Цены» и плашке «Приём»; разделом — только у сделки. --}}
-            @unless ($steps || $intake)<x-offer.showing :offer="$offer" :form="'detail-edit-'.$n" as="section"/>@endunless
+            @unless ($steps || $intake || $unsold)<x-offer.showing :offer="$offer" :form="'detail-edit-'.$n" as="section"/>@endunless
             {{-- Машина — те же блоки, что в редакторе и на парковке (`x-car.blocks`), разделами окошка. --}}
             <x-car.blocks :lane="$offer" :blocks="['car', 'papers', 'specs']" as="section"
                 :required="$offer->state === \App\Offers\OfferState::Draft ? ['vendor_id', 'claim_ref', 'brand_id'] : []"/>
