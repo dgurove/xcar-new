@@ -93,8 +93,9 @@ export function marks(least = 0) {
         const count = n ? n * n : Math.round((layer.groups * (side <= 1536 ? 1.6 : 1) * tile * tile) / 1e6);
         for (let g = 0, tries = 0; g < count && tries < count * 30; tries++) {
             const ci = n && g % n, cj = n && Math.floor(g / n);
-            // Клетка, где место так и не нашлось, — пропускается.
-            if (n && tries > (g + 1) * 12) { g++; continue; }
+            // Клетка, где место так и не нашлось, — пропускается; каждая третья клетка пустая (владелец: ▶ и X «в полтора раза
+            // меньше»). Пустые — по своему узору, не по шахматке: ▶ и X убывают поровну.
+            if (n && (tries > (g + 1) * 12 || (ci + 2 * cj) % 3 === 0)) { g++; continue; }
             const kind = n ? ((ci + cj) % 2 ? 'cross' : 'play') : pickBy(rand, layer.kinds);
             const size = kind === 'grid' ? lerp(layer.size[0], layer.size[1], rand()) : lerp(layer.mark[0], layer.mark[1], rand());
             const step = kind === 'grid' ? lerp(layer.step[0], layer.step[1], rand()) : size * TRIAD_STEP[kind];
