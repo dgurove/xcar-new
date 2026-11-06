@@ -131,9 +131,17 @@ class AlfaRequisitesTest extends TestCase
         } catch (ValidationException) {
         }
 
+        // «Заполнить за менеджера» ведёт с `?buyer=1` — шторка выбора покупателя открыта сразу (06.11.2026: ссылка только
+        // прокручивала к карточке).
+        $crm = fn (string $path) => $this->actingAs($this->admin)->get(\App\Support\Surface::Crm->url($path))->assertOk();
+        $crm('/offers/'.$offer->number)->assertSee('?buyer=1#invoice-buyer', false)->assertDontSee('data-sheet-open-value', false);
+        $crm('/offers/'.$offer->number.'?buyer=1')->assertSee('data-sheet-open-value', false);
+
         // Админ за менеджера: покупатель — сам менеджер, паспорт со сканом — шаг проходит сам, ход наш (письмо не ушло).
         app(SaveDealContract::class)(DealContract::for($deal->fresh()), ['buyer_id' => 'me'], $this->admin);
         $this->assertSame('Нет реквизитов', $offer->fresh()->stage()->name, 'без скана шаг стоит');
+        // Покупатель выбран, данных нет — по той же ссылке открыта шторка данных.
+        $this->assertMatchesRegularExpression('/<dialog id="deal-buyer-data-'.$deal->id.'"[^<]*data-sheet-open-value/', $crm('/offers/'.$offer->number.'?buyer=1')->getContent());
         $this->passportFor($this->manager);
         $offer = $offer->fresh();
         $this->assertSame('Письмо с реквизитами', $offer->stage()->name);

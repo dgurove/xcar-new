@@ -41,9 +41,13 @@
     // Переоценка в сделке — свой шаг «Переоценка» перед этапом маршрута (04.11.2026, владелец: «почему согласование с
     // поставщиком, если идёт переоценка — мы ещё ничего не приняли»): пока он не пройден, этап ждёт впереди без кнопок.
     $reflow = $position->track === \App\Workflow\Track::Sale && auth()->user()?->canManageCrm() ? \App\Offers\RepriceFlow::for($offer) : null;
-    $requirements = $offer->requirements()->with(['media', 'stage'])->get();
-    // Кто отвечал за менеджера («(за него …)») — одним запросом на путь, а не на каждый ответ.
-    $answeredBy = \App\Users\User::whereIn('id', $requirements->map(fn ($r) => $r->answer['by'] ?? null)->filter()->unique())->get()->keyBy('id');
+    // Ответы — только идущей сделки (06.11.2026, владелец: Макаров «передумал» в сделке № 83, машину отдали Трофимову, а в шаге
+    // его сделки № 307 висело «Менеджер ответил «Я передумал»» — начальник решил, что передумал и Трофимов). Прежние сделки —
+    // в «Истории» с именем.
+    $requirements = $deal ? $deal->requirements()->with(['media', 'stage'])->get() : collect();
+    // Кто отвечал — по имени, и за него («(за него …)») — одним запросом на путь, а не на каждый ответ.
+    $answeredBy = \App\Users\User::whereIn('id', $requirements->flatMap(fn ($r) => [$r->user_id, $r->answer['by'] ?? null])->filter()->unique())->get()->keyBy('id');
+    $answerer = fn ($r) => $answeredBy->get($r->user_id)?->shortName() ?? 'Менеджер';
     $menu = 'route-more-'.$position->id;
     $invoices = $deal ? $deal->invoices()->with('claims.media')->get()->reject(fn ($i) => $i->isOwed() || $i->state === InvoiceState::Void) : collect();
     // Этап оплаты без счёта — ход наш (`Position::awaitsInvoice`): «Выставить счёт» первой кнопкой.
@@ -109,7 +113,7 @@
                                 <div class="flex flex-wrap items-baseline gap-x-2 text-sm"><span>{{ $block->stages->firstWhere('id', $s['stage_id'])?->name ?? $s['stage'] }}</span><span class="nums text-ink-dim">{{ \App\Support\Ago::html($s['at'], true, words: false) }}</span></div>
                             @endforeach
                             @foreach ($answers as $r)
-                                <div class="text-sm"><span class="text-ink-muted">Менеджер:</span> {{ $r->answer['label'] ?? $r->answer['exit'] ?? $r->title }}@if (($r->answer['closed_by'] ?? null) === 'staff') <span class="text-ink-muted">(за него {{ $answeredBy->get($r->answer['by'] ?? 0)?->shortName() ?? 'сотрудник' }})</span>@endif <span class="nums text-ink-dim">{{ \App\Support\Ago::html($r->done_at, true, words: false) }}</span></div>
+                                <div class="text-sm"><span class="text-ink-muted">{{ $answerer($r) }}:</span> {{ $r->answer['label'] ?? $r->answer['exit'] ?? $r->title }}@if (($r->answer['closed_by'] ?? null) === 'staff') <span class="text-ink-muted">(за него {{ $answeredBy->get($r->answer['by'] ?? 0)?->shortName() ?? 'сотрудник' }})</span>@endif <span class="nums text-ink-dim">{{ \App\Support\Ago::html($r->done_at, true, words: false) }}</span></div>
                                 @foreach ($r->answer['fields'] ?? [] as $k => $v)<div class="text-sm"><span class="text-ink-muted">{{ collect($r->fields)->firstWhere('key', $k)['label'] ?? $k }}:</span> {{ is_array($v) ? implode(', ', $v) : $v }}</div>@endforeach
                                 @foreach ($r->getMedia('files') as $f)<x-ui.file :name="$f->file_name" :mime="$f->mime_type" :size="$f->humanReadableSize" href="/files/{{ $f->id }}" class="py-1"/>@endforeach
                             @endforeach
@@ -200,7 +204,7 @@
                     @endif
                     <x-route.who :position="$position" :offer="$offer" :deal="$deal"/>
                     @if ($buyerData && auth()->user()?->canManageCrm())
-                        <div class="step-acts mt-3"><a href="/offers/{{ $offer->number }}#invoice-buyer" class="btn btn-s btn-accent !h-auto min-h-9 whitespace-normal py-1.5" data-turbo-frame="_top">Заполнить за менеджера</a></div>
+                        <div class="step-acts mt-3"><a href="/offers/{{ $offer->number }}?buyer=1#invoice-buyer" class="btn btn-s btn-accent !h-auto min-h-9 whitespace-normal py-1.5" data-turbo-frame="_top">Заполнить за менеджера</a></div>
                     @endif
                     {{-- Согласие менеджера: чаще всего он уже сказал «да» устно — «Беру в работу» за него видной тихой кнопкой. --}}
                     @if ($takeFor)
@@ -225,7 +229,7 @@
                         <div class="mt-2 text-sm">@foreach ($position->fields() as $k => $v)<div><span class="text-ink-muted">{{ collect($stage->staff_fields)->firstWhere('key', $k)['label'] ?? $k }}:</span> {{ $v }}</div>@endforeach</div>
                     @endif
                     @foreach ($answers as $r)
-                        <div class="mt-2 text-sm"><span class="text-ink-muted">Менеджер ответил</span> «{{ $r->answer['label'] ?? $r->answer['exit'] ?? $r->title }}»@if (($r->answer['closed_by'] ?? null) === 'staff') <span class="text-ink-muted">(за него {{ $answeredBy->get($r->answer['by'] ?? 0)?->shortName() ?? 'сотрудник' }})</span>@endif @if ($r->done_at)<span class="nums text-ink-dim">{{ \App\Support\Ago::html($r->done_at, true, words: false) }}</span>@endif</div>
+                        <div class="mt-2 text-sm"><span class="text-ink-muted">{{ $answerer($r) }}:</span> «{{ $r->answer['label'] ?? $r->answer['exit'] ?? $r->title }}»@if (($r->answer['closed_by'] ?? null) === 'staff') <span class="text-ink-muted">(за него {{ $answeredBy->get($r->answer['by'] ?? 0)?->shortName() ?? 'сотрудник' }})</span>@endif @if ($r->done_at)<span class="nums text-ink-dim">{{ \App\Support\Ago::html($r->done_at, true, words: false) }}</span>@endif</div>
                         @foreach ($r->answer['fields'] ?? [] as $k => $v)<div class="text-sm"><span class="text-ink-muted">{{ collect($r->fields)->firstWhere('key', $k)['label'] ?? $k }}:</span> {{ is_array($v) ? implode(', ', $v) : $v }}</div>@endforeach
                         @foreach ($r->getMedia('files') as $f)<x-ui.file :name="$f->file_name" :mime="$f->mime_type" :size="$f->humanReadableSize" href="/files/{{ $f->id }}" class="py-1"/>@endforeach
                     @endforeach
@@ -322,7 +326,7 @@
                                 $requisitesGap = $stage->isRequisitesStep() && $deal ? $deal->requisitesGap() : null;
                             @endphp
                             @if ($requisitesGap)
-                                <p class="order-first w-full text-sm font-medium text-urgent">{{ $requisitesGap }} — письмо поставщику пока не написать @if (auth()->user()?->canManageCrm())<a href="{{ $deal->schemeOf()->paysCar() || $deal->isGarageUs() ? \App\Support\Surface::Park->url('/money/parties') : '/offers/'.$offer->number.'#invoice-buyer' }}" class="text-accent-text underline-offset-4" data-turbo-frame="_top">Заполнить</a>@endif</p>
+                                <p class="order-first w-full text-sm font-medium text-urgent">{{ $requisitesGap }} — письмо поставщику пока не написать @if (auth()->user()?->canManageCrm())<a href="{{ $deal->schemeOf()->paysCar() || $deal->isGarageUs() ? \App\Support\Surface::Park->url('/money/parties') : '/offers/'.$offer->number.'?buyer=1#invoice-buyer' }}" class="text-accent-text underline-offset-4" data-turbo-frame="_top">Заполнить</a>@endif</p>
                             @elseif ($stage->template_id)
                                 {{-- Письмо не ушло — это и есть дело шага: лаймовой первой; ушло — серой «Написать ещё». --}}
                                 @if ($position->letterStatus() === 'failed' && ($failedId = $position->payload['letter_failed']['id'] ?? null))

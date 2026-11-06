@@ -12,7 +12,7 @@
      вид кнопки: row (строка с плюсом), button (лаймовая кнопка). --}}
 @props(['name', 'label' => null, 'value' => null, 'people' => collect(), 'kind', 'title' => null, 'newLabel' => null, 'link' => false,
     'deal' => null, 'autosubmit' => false, 'none' => null, 'variant' => 'field', 'placeholder' => 'Выбрать', 'required' => false, 'finish' => null,
-    'only' => false, 'append' => null, 'reload' => false, 'trigger' => 'row', 'owner' => null])
+    'only' => false, 'append' => null, 'reload' => false, 'trigger' => 'row', 'owner' => null, 'open' => false])
 @php
     use App\Support\Surface;
     $uid = 'pp'.substr(md5($name.$kind.uniqid('', true)), 0, 8);
@@ -57,7 +57,7 @@
     @unless ($only)<input type="hidden" name="{{ $name }}" value="{{ old($name, $value) }}" data-people-pick-target="hidden">@endunless
     @if ($error && $variant === 'field')<p class="field-error">{{ $error }}</p>@endif
 
-    <x-ui.sheet :id="$uid" :title="$only ? $newLabel : ($title ?? $label ?? 'Выбор')" class="sheet-steady people-sheet">
+    <x-ui.sheet :id="$uid" :title="$only ? $newLabel : ($title ?? $label ?? 'Выбор')" :open="$open" class="sheet-steady people-sheet">
         {{-- Шторка стоит внутри чужой формы (вывоз, договор): её списки и «+ Новый …» — не поля той формы (`formFree` в app.js). --}}
         <div @class(['people-panes', 'people-panes--only' => $only]) data-people-pick-target="panes" data-form-free>
             @unless ($only)

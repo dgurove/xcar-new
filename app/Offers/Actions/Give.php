@@ -16,12 +16,14 @@ use App\Offers\Events\BidAccepted;
 use App\Offers\Events\BidDeclined;
 use App\Offers\Giving;
 use App\Offers\Offer;
+use App\Offers\OfferEvent;
 use App\Offers\OfferEventType;
 use App\Offers\OfferNumber;
 use App\Offers\OfferState;
 use App\Support\Money;
 use App\Users\User;
 use App\Workflow\Actions\EnterStage;
+use App\Workflow\Actor;
 use App\Workflow\Track;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -236,11 +238,39 @@ final class Give
         $offer->unsetRelation('positions');
         $position = $offer->position(Track::Sale);
         if ($position && $position->stage_id !== $before) {
-            return $offer;
+            return $this->agreedBefore($offer, $deal, $by);
         }
         $workflow = $position ? $position->stage->workflow : ($offer->vendor?->is_active ? $offer->vendor->workflow(Track::Sale) : null);
         $entry = $position || $workflow?->is_active ? $workflow?->dealEntry($deal) : null;
 
         return $entry && $entry->id !== $position?->stage_id ? ($this->enter)($offer, $entry, $by) : $offer;
+    }
+
+    /**
+     * Поставщик уже согласовал эту машину, а прежний менеджер передумал (06.11.2026, владелец: Tank 300 № 2610152115 —
+     * Альфа согласовала 02.11, Макаров «Я передумал», машину приняли от Трофимова, и сделка снова встала на «Письмо о
+     * покупке»; «Спросить менеджера» никто не нажал — он же уже нажат, — и Трофимов два с половиной дня не видел вопроса):
+     * новая сделка на тех же условиях для поставщика (схема, закупочная, сумма страховой или собственнику) сразу идёт к
+     * согласию нового менеджера. С тех пор поставщик отказал, была переоценка или машина уходила из продажи — письмо заново.
+     */
+    private function agreedBefore(Offer $offer, Deal $deal, User $by): Offer
+    {
+        $stage = $offer->stage();
+        $exit = $stage?->exitsFor(Actor::Staff, $deal)->first(fn ($x) => $x->to?->asksConsent());
+        if (! $exit) {
+            return $offer;
+        }
+        $agreed = OfferEvent::where('offer_id', $offer->id)->where('type', OfferEventType::StageEntered)
+            ->where('payload->to_id', $exit->to->id)->latest('id')->first();
+        $previous = $agreed ? Deal::where('offer_id', $offer->id)->whereKeyNot($deal->id)->where('created_at', '<=', $agreed->created_at)->latest('id')->first() : null;
+        if (! $previous || $previous->scheme !== $deal->scheme || (int) $previous->cost !== (int) $deal->cost || $previous->ownerPrice() !== $deal->ownerPrice()) {
+            return $offer;
+        }
+        $broken = OfferEvent::where('offer_id', $offer->id)->where('id', '>', $agreed->id)
+            ->where(fn ($q) => $q->whereIn('type', [OfferEventType::SupplierDeclined, OfferEventType::Reprice])
+                ->orWhere(fn ($q) => $q->where('type', OfferEventType::StateChanged)->whereNotIn('payload->to', [OfferState::Open->value, OfferState::Sold->value])))
+            ->exists();
+
+        return $broken ? $offer : ($this->enter)($offer, $exit->to, $by, ['label' => 'Поставщик согласовал '.$agreed->created_at->format('d.m')], $exit);
     }
 }
