@@ -1,32 +1,40 @@
-/* Космос на главной CRM (04.11.2026, владелец: «ОЧЕНЬ красивый чёрный фон с мелкими звёздами… объёмный КРАСИВЫЙ
-   космос»; `admin/space`, `space_controller`). Сцена — вся середина каркаса между шапкой и таб-баром: `#scroller` не
-   листается (`.app-stage`), жесты забирает сцена (`touch-action: none` — глобально стоит `pan-x pan-y`). Звёзды — холст
-   WebGL под всем; слой схемы `.space-world` поверх двигается одной записью transform за кадр, `will-change` — только
-   пока движется (`is-moving`): после остановки браузер перерисует текст чётко при любом масштабе. Цвет неба — свой, не
-   поверхность кита: светлая тема — тёмно-синий со свечениями (холст `.space-back` под звёздами), тёмная — чёрный. На небе —
-   конвейер работы (`App\Space\Conveyor`): этапы столбцами, под ними подэтапы. */
+/* Главная CRM (04.11.2026; `admin/space`, `space_controller`). Сцена — вся середина каркаса между шапкой и таб-баром:
+   `#scroller` не листается (`.app-stage`), жесты забирает сцена (`touch-action: none` — глобально стоит `pan-x pan-y`).
+   Фон — фото паркинга со страницы входа (06.11.2026, владелец: звёзды «по брендбуку не вписывались»): тёмная тема — тёмный
+   кадр, светлая — светлый (`.parking-photo` из `hero.css`), камера двигает его transform'ом почти на месте; над ним —
+   затемнение ради читаемости доски и холст WebGL знаков бренда (`space/marks.js`). Слой схемы `.space-world` поверх
+   двигается одной записью transform за кадр, `will-change` — только пока движется (`is-moving`): после остановки браузер
+   перерисует текст чётко при любом масштабе. На фоне — конвейер работы (`App\Space\Conveyor`): этапы столбцами, под ними
+   подэтапы. */
 
 @layer components {
   .app-stage { overflow: hidden; overscroll-behavior: none; }
   .app-stage > .stage { position: relative; flex: 1 1 auto; min-height: 0; }
 
-  /* До первого кадра — цвет неба темы: светлая — тёмно-синий (чёрный под белой шапкой «бьёт по глазам», 05.11.2026),
-     тёмная — чистый чёрный AMOLED. */
+  /* До фото — его средний тон. Текст доски «в воздухе» — по фото: на светлом кадре тёмный, на тёмном белый. */
   .space {
-    --space-bg: #0b0f19;
-    /* Текст в воздухе — белый в обеих темах: небо тёмное всегда. */
-    --b-ink: rgb(255 255 255 / .94); --b-dim: rgb(255 255 255 / .58);
+    --space-bg: #dfe1e3;
+    --b-ink: var(--color-ink); --b-dim: rgb(29 29 27 / .6);
+    --b-idle: var(--color-surface); --b-idle-ink: rgb(29 29 27 / .42); --b-idle-hover: var(--color-surface-3); --b-face: rgb(29 29 27 / .1);
     --b-red: #ff2d55; --b-red-text: #ff6b85;
     position: absolute; inset: 0; overflow: hidden; background: var(--space-bg);
     touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
     cursor: grab;
   }
-  .dark .space { --space-bg: #000; }
+  .dark .space {
+    --space-bg: #15181c;
+    --b-ink: rgb(255 255 255 / .94); --b-dim: rgb(255 255 255 / .58);
+    --b-idle: var(--color-surface); --b-idle-ink: rgb(255 255 255 / .4); --b-idle-hover: var(--color-surface-3); --b-face: rgb(255 255 255 / .14);
+  }
   .space.is-grabbing { cursor: grabbing; }
-  .space-sky { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
-  /* Фон светлой темы — картинка один раз (`Backdrop` в `sky.js`), едет за камерой transform'ом: своим слоем. */
-  .space-back { position: absolute; display: block; will-change: transform; }
-  .dark .space-back { display: none; }
+  /* Фото — с запасом 64 px за краем (`PHOTO_ROOM` в `space_controller`): камера сдвигает его и чуть масштабирует от
+     середины. Своим слоем: движение — только композитор, картинка не перерисовывается. */
+  .space-photo { position: absolute; inset: -64px; will-change: transform; }
+  /* Затемнение: доска читается поверх любого места кадра. Светлая — лёгкая вуаль, тёмная — заметно темнее (06.11.2026,
+     владелец: «не очень читабельно, фотку в тёмной теме чуть затемнить»), к краям сильнее. */
+  .space-shade { position: absolute; inset: 0; background: linear-gradient(rgb(255 255 255 / .48), rgb(255 255 255 / .32) 45%, rgb(255 255 255 / .52)); }
+  .dark .space-shade { background: radial-gradient(120% 90% at 46% 40%, rgb(0 0 0 / .42), rgb(0 0 0 / .7)); }
+  .space-marks { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 
   /* Начало мира — центр сцены, доска стоит от него обычной раскладкой; transform слоя — камера. */
   .space-world { position: absolute; left: 50%; top: 50%; width: 0; height: 0; transform-origin: 0 0; }
@@ -60,11 +68,11 @@
   .person-n { font-size: var(--text-base); font-weight: 500; color: var(--b-ink); }
   .person-n.is-late { color: var(--b-red-text); }
   .people-more { font-size: var(--text-sm); color: var(--b-dim); }
-  .face-ico { display: grid; place-items: center; flex: none; width: 28px; height: 28px; background: rgb(255 255 255 / .14); color: var(--b-ink); }
+  .face-ico { display: grid; place-items: center; flex: none; width: 28px; height: 28px; background: var(--b-face); color: var(--b-ink); }
   .face-logo { flex: none; width: 28px; height: 28px; border-radius: 8px; background: #fff; }
 
   /* Подэтап — плашка кита: глагол, справа число; горит — красная капсула и красная обводка со свечением (владелец: «ахтунг
-     — красным, красиво»). Без дела — тихая, полупрозрачная. Нажатие — его список. */
+     — красным, красиво»). Без дела — тихая, бледным текстом. Нажатие — его список. */
   .stage-steps { display: grid; gap: .5rem; align-content: start; }
   .conveyor-step {
     display: grid; align-content: center; gap: .375rem; min-height: 3.25rem; padding: .625rem 1rem;
@@ -78,14 +86,16 @@
   .conveyor-step.is-idle .step-part { color: inherit; }
   .step-verb { flex: 1; min-width: 0; font-size: var(--text-base); font-weight: 500; line-height: 1.25; }
   .step-n { font-size: var(--text-lg); font-weight: 600; line-height: 1; }
-  .conveyor-step.is-idle { background: rgb(255 255 255 / .07); color: rgb(255 255 255 / .6); }
-  .dark .conveyor-step.is-idle { background: rgb(255 255 255 / .045); color: rgb(255 255 255 / .45); }
+  /* Без дела — та же залитая плашка, бледный только текст (06.11.2026, владелец: полупрозрачная плашка на фото сливалась с
+     тёмными местами кадра — «нечитабельно»). */
+  .conveyor-step.is-idle { background: var(--b-idle); color: var(--b-idle-ink); }
+  .conveyor-step.is-idle .step-logo { opacity: .5; }
   /* Этап, где только ждём (поставщика), — тише весь: делать там нечего. */
   .conveyor-stage.is-quiet { opacity: .55; }
   .conveyor-step.is-hot { box-shadow: 0 0 0 2px var(--b-red), 0 0 26px rgb(255 45 85 / .5); }
   @media (hover: hover) {
     .conveyor-step[href]:hover { background: var(--color-surface-3); }
-    .conveyor-step.is-idle[href]:hover { background: rgb(255 255 255 / .12); }
+    .conveyor-step.is-idle[href]:hover { background: var(--b-idle-hover); }
   }
   .conveyor-step[href]:active { scale: .98; }
   /* Число сменилось — подэтап коротко загорается лаймом (`space_controller#counted`). */

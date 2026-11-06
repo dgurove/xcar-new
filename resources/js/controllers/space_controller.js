@@ -5,23 +5,25 @@ import { request } from '../lib/http';
 import { reducedMotion } from '../lib/motion';
 import { Camera, FOCUS } from '../space/camera';
 import { Filter } from '../space/filter';
-import { Backdrop, FlatSky, Sky, fits, pixelRatio, stars } from '../space/sky';
+import { FlatMarks, Marks, fits, marks, pixelRatio } from '../space/marks';
 
-// Космос главной CRM (`admin/space`, 04.11.2026): звёзды (`space/sky.js`), камера (`space/camera.js`) и слой схемы
-// `.space-world` — одним циклом кадров. Кадр рисуется, только когда есть что менять: жест, бросок, масштаб,
-// пружина к этапу и метеор — каждый кадр экрана; в покое — 30 кадров/с ради мерцания, после 30 с без касаний — 20; скрытая
-// вкладка и уход со страницы — ни одного, контекст видеокарты отдаётся. Без движения (prefers-reduced-motion) и без
-// WebGL — ни мерцания, ни метеоров: кадр только на сдвиг. Медленные кадры в движении — холст мельче (dpr 2 → 1,5 → 1).
-// Фон светлой темы — свой холст (`Backdrop`): рисуется один раз и едет за камерой transform'ом, в кадр звёзд не входит.
+// Главная CRM (`admin/space`, 04.11.2026; с 06.11.2026 — фото паркинга и знаки бренда вместо звёзд): знаки
+// (`space/marks.js`), камера (`space/camera.js`), слой фото и слой схемы `.space-world` — одним циклом кадров. Кадр
+// рисуется, только когда есть что менять: жест, бросок, масштаб и переход к этапу — каждый кадр экрана; в покое — 20 кадров/с
+// ради оживления знаков (оно медленное, за секунды), после 30 с без касаний — 10; скрытая вкладка и уход со страницы — ни
+// одного, контекст видеокарты отдаётся. Без движения (prefers-reduced-motion) и без WebGL — без оживления: кадр только на
+// сдвиг. Медленные кадры в движении — холст мельче (dpr 2 → 1,5 → 1). Фото — div с картинкой темы (`.parking-photo`), камера
+// двигает его transform'ом на глубине `PHOTO_DEPTH`: в кадр не входит, перерисовки нет.
 // Конвейер (`App\Space\Conveyor`): этапы столбцами в слое схемы, обычной раскладкой сетки. Числа живые: событие
 // сотрудникам — кусок `#conveyor` перечитывается морфом (`morphChildren`) не чаще раза в 2 с, сменившееся число
 // докручивается, подэтап коротко загорается. Вбок камера листает по этапам (центры видимых этапов — ей), мир — в рамке
 // доски. Фильтр «Ответственный» (`space/filter.js`) — плашка в углу: выбор и тумблер помнит браузер.
 const PICK = 'space:who';
-const IDLE = 1000 / 30;
-const DEEP_IDLE = 1000 / 20;
+const IDLE = 1000 / 20;
+const DEEP_IDLE = 1000 / 10;
 const DEEP_AFTER = 30000;
-const METEOR = [25000, 60000];
+const PHOTO_DEPTH = 0.01;    // фото почти стоит: чуть плывёт и растёт за камерой
+const PHOTO_ROOM = 64;       // css px запаса фото за краем сцены (`.space-photo`)
 const SLOW = 24;             // мс кадра в движении: дольше — снизить dpr
 // Вид помнится под ключом раскладки: вид прежней схемы (змейка вокруг начала мира) на новой доске — пустое небо.
 const KEY = 'space:camera:v4';
@@ -29,7 +31,7 @@ const PEEK = 18;             // px: на телефоне слева от эта
 const CALM = 2000;           // мс: события пачкой — одно перечитывание
 const STALE = 9000;          // мс: сервер отдал прежний снимок — ещё раз через столько (+ CALM)
 const TWEEN = 700;           // мс докрутки числа
-let sky = null;              // звёзды одни на сеанс: второй заход их не считает заново
+let set = null;              // знаки одни на сеанс: второй заход их не считает заново
 
 const read = (key) => { try { return JSON.parse(sessionStorage.getItem(key) || 'null') ?? undefined; } catch { return undefined; } };
 const save = (key, value) => { try { sessionStorage.setItem(key, JSON.stringify(value)); } catch {} };
@@ -37,29 +39,26 @@ const recall = () => { try { return JSON.parse(localStorage.getItem(PICK) || 'nu
 const remember = (value) => { try { localStorage.setItem(PICK, JSON.stringify(value)); } catch {} };
 
 export default class extends Controller {
-    static targets = ['back', 'sky', 'world', 'conveyor', 'filter', 'who', 'toggle'];
+    static targets = ['photo', 'marks', 'world', 'conveyor', 'filter', 'who', 'toggle'];
     static values = { url: String, me: String };
 
     connect() {
         this.still = reducedMotion();
-        sky ??= stars();
+        set ??= marks();
         this.dark = document.documentElement.classList.contains('dark');
         this.build();
-        this.backdrop = new Backdrop(this.backTarget);
         this.camera = new Camera(this.element, { wake: () => this.wake(), still: this.still });
         this.camera.restore(read(KEY));
         this.filter = new Filter(this.worldTarget, this.camera, { still: this.still, relayout: (keep) => this.layout(keep) });
         this.pickInit();
-        // Тема — класс `dark` у <html> (`theme.js`): переключили — фон другой сразу, без перезагрузки. Холст звёзд — новый:
-        // прозрачность контекста задаётся только при создании.
+        // Тема — класс `dark` у <html> (`theme.js`): фото меняет CSS, знакам — другая палитра (uniform), без нового контекста.
         this.theme = () => {
             const dark = document.documentElement.classList.contains('dark');
             if (dark === this.dark) return;
             this.dark = dark;
-            this.renderer.dispose();
-            this.build();
-            if (dark) this.backdrop.clear();
-            this.fit();
+            this.renderer.theme(dark);
+            this.drawn = -1;
+            this.wake();
         };
         this.themes = new MutationObserver(this.theme);
         this.themes.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
@@ -76,7 +75,6 @@ export default class extends Controller {
         this.onLive = () => this.soon();
         document.addEventListener('live:changed', this.onLive);
         document.addEventListener('badges:updated', this.onLive);
-        this.planMeteor();
         this.fit();
         // Шрифт приехал позже — доска другого размера, рамка камеры заново.
         document.fonts?.ready.then(() => this.element.isConnected && this.layout());
@@ -98,33 +96,31 @@ export default class extends Controller {
         this.renderer.dispose();
     }
 
-    // Холст каждый раз свежий: контекст прежнего отдан (`dispose`), а WebGL, отказавший на полпути, держит холст за собой —
-    // 2D на нём не получить. В светлой теме он прозрачный — под ним фон `Backdrop`.
+    // Холст каждый раз свежий: WebGL, отказавший на полпути, держит холст за собой — 2D на нём не получить.
     build() {
-        this.renderer = Sky.create(this.canvas(), sky, !this.dark) ?? new FlatSky(this.canvas(), sky);
+        this.renderer = Marks.create(this.canvas(), set, this.dark) ?? new FlatMarks(this.canvas(), set, this.dark);
         this.renderer.onRestore = () => { this.drawn = -1; this.wake(); };
-        this.lively = this.renderer instanceof Sky && !this.still;
-        if (this.camera) this.planMeteor();
+        this.lively = this.renderer instanceof Marks && !this.still;
     }
 
     canvas() {
-        const canvas = this.skyTarget.cloneNode();
-        this.skyTarget.replaceWith(canvas);
+        const canvas = this.marksTarget.cloneNode();
+        this.marksTarget.replaceWith(canvas);
         return canvas;
     }
 
     fit() {
         const { width: w, height: h } = this.element.getBoundingClientRect();
         if (!w || !h) return;
-        if (!fits(sky, w, h)) { sky = stars(Math.max(w, h)); this.renderer.load(sky); }
+        if (!fits(set, w, h)) { set = marks(Math.max(w, h)); this.renderer.load(set); }
         this.renderer.resize(w, h, pixelRatio(w, h, this.cap));
         this.drawn = -1;
         this.camera.resize(w, h);
         this.layout();
-        this.paintBack();
     }
 
-    // Рамка камере: центры видимых этапов и высота доски; `keep` — фокус не трогать (его ставит фильтр).
+    // Рамка камере: центры видимых этапов и высота доски; `keep` — фокус не трогать (его ставит фильтр). Знакам — рамки шапок
+    // и столбцов подэтапов: под доской их нет, вокруг — есть (владелец: за заголовками «читать трудно»).
     layout(keep = false) {
         const { w } = this.camera;
         const board = this.worldTarget.querySelector('[data-board]');
@@ -134,6 +130,15 @@ export default class extends Controller {
         const columns = stages.map((s) => frame.x0 + s.offsetLeft + s.offsetWidth / 2);
         // Снизу — место плашке фильтра: последний подэтап не встаёт под неё.
         const pad = w < 700 ? { top: 16, bottom: 80 } : { top: 32, bottom: 96 };
+        // Рамки — по самим карточкам, не по строке сетки: строка подэтапов у всех этапов одной высоты (subgrid), и под коротким
+        // столбцом свободное место было бы закрыто.
+        this.renderer.mask(stages.flatMap((s) => {
+            const head = frameOf(s.querySelector('.stage-head'), this.worldTarget);
+            const steps = [...s.querySelectorAll('.stage-steps > .conveyor-step:not([hidden])')].map((el) => frameOf(el, this.worldTarget));
+            const rects = [[head.x0, head.y0, head.x1, head.y1]];
+            if (steps.length) rects.push([Math.min(...steps.map((r) => r.x0)), steps[0].y0, Math.max(...steps.map((r) => r.x1)), steps.at(-1).y1]);
+            return rects;
+        }));
         if (keep) { const fx = this.camera.fx; this.camera.frame(columns, { y0: frame.y0, y1: frame.y1 }, pad, this.start(stages, w)); this.camera.fx = fx; }
         else this.camera.frame(columns, { y0: frame.y0, y1: frame.y1 }, pad, this.start(stages, w));
         this.drawn = -1;
@@ -247,14 +252,6 @@ export default class extends Controller {
         }
     }
 
-    paintBack() {
-        if (this.dark) return;
-        const { width: w, height: h } = this.element.getBoundingClientRect();
-        if (!w || !h) return;
-        this.backdrop.paint(w, h, this.camera, sky.side);
-        this.backdrop.place(this.camera, w, h);
-    }
-
     wake() {
         if (this.frame || document.visibilityState !== 'visible' || !this.element.isConnected) return;
         clearTimeout(this.timer);
@@ -269,41 +266,35 @@ export default class extends Controller {
         this.timer = null;
     }
 
-    planMeteor() {
-        this.meteorAt = this.lively ? performance.now() + METEOR[0] + Math.random() * (METEOR[1] - METEOR[0]) : 0;
-    }
-
     tick(now) {
         this.frame = null;
         const cam = this.camera;
         const moving = cam.step(now);
         if (moving) this.touchedAt = now;
-        if (this.meteorAt && now >= this.meteorAt && !this.renderer.flying) {
-            this.renderer.spawn(cam);
-            this.planMeteor();
-        }
-        const flying = this.renderer.flying;
         const idle = now - this.touchedAt > DEEP_AFTER ? DEEP_IDLE : IDLE;
         const motion = cam.version !== this.drawn;
-        // Медленные кадры считаем только по кадрам движения: палец лежит — кадры идут вхолостую, рисует лишь мерцание.
+        // Медленные кадры считаем только по кадрам движения: палец лежит — кадры идут вхолостую, рисует лишь оживление.
         if (motion && moving) this.measure(now);
         else this.prevAt = 0;
-        if (motion || flying || (this.lively && now - this.lastDraw >= idle - 4)) {
+        if (motion || (this.lively && now - this.lastDraw >= idle - 4)) {
             this.renderer.draw(cam, (now - this.t0) / 1000);
             if (motion) this.place(moving);
             this.drawn = cam.version;
             this.lastDraw = now;
         }
-        if (moving || flying) { this.wake(); return; }
-        // Покой: следующий кадр — к сроку мерцания (таймером, а не кадрами экрана вхолостую) или к следующему касанию.
+        if (moving) { this.wake(); return; }
+        // Покой: следующий кадр — к сроку оживления (таймером, а не кадрами экрана вхолостую) или к следующему касанию.
         if (this.lively) this.timer = setTimeout(() => { this.timer = null; this.wake(); }, Math.max(0, idle - (performance.now() - this.lastDraw)));
     }
 
     // Слой схемы — глубина 1: та же камера, одна запись transform. will-change — только пока едет: после остановки
-    // браузер перерисует текст схемы чётко при любом масштабе.
+    // браузер перерисует текст схемы чётко при любом масштабе. Фото — глубина `PHOTO_DEPTH`, сдвиг не больше запаса за краем.
     place(moving) {
         const { x, y, z } = this.camera;
-        if (!this.dark && !this.backdrop.place(this.camera, this.camera.w, this.camera.h)) this.paintBack();
+        const k = z ** PHOTO_DEPTH;
+        const room = PHOTO_ROOM - (Math.max(this.camera.w, this.camera.h) / 2 + PHOTO_ROOM) * Math.max(0, 1 - k);
+        const px = clamp(-x * PHOTO_DEPTH * k, -room, room), py = clamp(-y * PHOTO_DEPTH * k, -room, room);
+        this.photoTarget.style.transform = `translate3d(${px}px, ${py}px, 0) scale(${k})`;
         this.worldTarget.style.transform = `translate3d(${-x * z}px, ${-y * z}px, 0) scale(${z})`;
         if (moving) {
             this.worldTarget.classList.add('is-moving');
@@ -312,7 +303,7 @@ export default class extends Controller {
         }
     }
 
-    // Медленные кадры в движении (45 подряд в среднем дольше SLOW) — холст мельче, звёзды те же.
+    // Медленные кадры в движении (45 подряд в среднем дольше SLOW) — холст мельче, знаки те же.
     measure(now) {
         if (this.prevAt) this.slow.push(now - this.prevAt);
         this.prevAt = now;
@@ -324,6 +315,8 @@ export default class extends Controller {
         this.fit();
     }
 }
+
+const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
 
 // Число докручивается от прежнего к новому — как счётчик, с замедлением к концу.
 function tween(el, from, to) {
