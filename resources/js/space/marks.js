@@ -29,8 +29,8 @@ const STILL = 0, WAVE = 1, BREATH = 2, TURN = 3;
 // всего несколько»).
 const LAYERS = [
     { d: [0.02, 0.045], groups: 4.5, kinds: { grid: 1 }, size: [8, 10], step: [24, 28], grid: [[4, 7], [4, 7]] },
-    { d: [0.06, 0.12], groups: 0.55, kinds: { cross: 0.5, play: 0.5 }, mark: [18, 22] },
-    { d: [0.2, 0.3], groups: 0.22, kinds: { cross: 0.5, play: 0.5 }, mark: [28, 34] },
+    { d: [0.06, 0.12], cell: 480, mark: [18, 22] },
+    { d: [0.2, 0.3], cell: 1000, mark: [28, 34] },
 ];
 // ▶▶▶ и X — крупнее квадратиков, с зазором, как в брендбуке: шаг — доля размера знака.
 const TRIAD_STEP = { play: 1.4, cross: 1.6 };
@@ -87,15 +87,22 @@ export function marks(least = 0) {
     for (const layer of LAYERS) {
         const tile = Math.ceil(side / MIN ** layer.d[1] / 64) * 64;
         // Телефон: экран мал, а доска закрывает его почти весь — групп гуще, иначе на свободном месте пусто.
-        const count = Math.round((layer.groups * (side <= 1536 ? 1.6 : 1) * tile * tile) / 1e6);
+        // ▶▶▶ и X — не жребием по всей плитке, а по клеткам: в клетке одна группа, ▶ и X шахматкой. Групп всего несколько на
+        // экран, и жребий давал то одни крестики, то одни треугольники (владелец: «треугольничков нигде нет»).
+        const n = layer.cell ? Math.max(2, Math.round(tile / layer.cell)) : 0, span = n && tile / n;
+        const count = n ? n * n : Math.round((layer.groups * (side <= 1536 ? 1.6 : 1) * tile * tile) / 1e6);
         for (let g = 0, tries = 0; g < count && tries < count * 30; tries++) {
-            const kind = pickBy(rand, layer.kinds);
+            const ci = n && g % n, cj = n && Math.floor(g / n);
+            // Клетка, где место так и не нашлось, — пропускается.
+            if (n && tries > (g + 1) * 12) { g++; continue; }
+            const kind = n ? ((ci + cj) % 2 ? 'cross' : 'play') : pickBy(rand, layer.kinds);
             const size = kind === 'grid' ? lerp(layer.size[0], layer.size[1], rand()) : lerp(layer.mark[0], layer.mark[1], rand());
             const step = kind === 'grid' ? lerp(layer.step[0], layer.step[1], rand()) : size * TRIAD_STEP[kind];
             const cols = kind === 'grid' ? Math.round(lerp(layer.grid[0][0], layer.grid[0][1], rand())) : kind === 'play' ? 3 : 1;
             const rows = kind === 'grid' ? Math.round(lerp(layer.grid[1][0], layer.grid[1][1], rand())) : kind === 'cross' ? 3 : 1;
             const w = cols * step, h = rows * step;
-            const x = rand() * tile, y = rand() * tile;
+            const x = n ? (ci + lerp(0.1, 0.75, rand())) * span : rand() * tile;
+            const y = n ? (cj + lerp(0.1, 0.75, rand())) * span : rand() * tile;
             // Не налезает ни на одну группу (с запасом в два шага; в своём слое — и через край плитки).
             const at = (v) => ((v + tile / 2) % tile) - tile / 2;
             const cx = at(x + w / 2), cy = at(y + h / 2);
