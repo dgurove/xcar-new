@@ -40,7 +40,7 @@ use Illuminate\Support\Facades\Cache;
 final class Conveyor
 {
     /** Ключ меняется вместе с видом снимка: прежний снимок другого вида после выкладки ронял бы главную. */
-    public const KEY = 'space.conveyor.v3';
+    public const KEY = 'space.conveyor.v4';
 
     private const DIRTY = 'space.conveyor.dirty';
 
@@ -183,7 +183,8 @@ final class Conveyor
         $faces = collect($snap['people'])->flatten(1);
         $users = User::with(User::withAvatar())
             ->whereKey($faces->where('type', 'user')->pluck('id')->merge(collect($fixed)->flatten())->unique())->get()->keyBy('id');
-        $vendors = Vendor::whereKey($faces->where('type', 'vendor')->pluck('id')->push($snap['claims_vendor'])->filter()->unique())->get()->keyBy('id');
+        $mixed = collect(['bids-closed', 'bids-open'])->flatMap(fn ($part) => array_keys($snap['steps'][$part]['vendors'] ?? []));
+        $vendors = Vendor::whereKey($faces->where('type', 'vendor')->pluck('id')->push($snap['claims_vendor'])->merge($mixed)->filter()->unique())->get()->keyBy('id');
 
         $stages = collect(self::STAGES)->map(function (array $stage, string $key) use ($snap, $fixed, $users, $vendors) {
             [$title, $steps] = $stage;
@@ -198,15 +199,20 @@ final class Conveyor
                     ->sortByDesc('n'),
             };
             $people = $people->filter(fn ($p) => $p['type'] === 'icon' || $p['model'])->values();
+            // Этап чужого хода (поставщики, исполнители) — без красного и у лиц: горит только наш ход (`burns`).
+            if (! collect($steps)->contains(fn (string $step) => self::burns($step))) {
+                $people = $people->map(fn ($p) => ['late' => 0] + $p)->map(fn ($p) => [...$p, 'late' => 0]);
+            }
             $steps = collect($steps)->map(fn (string $step) => [
                 'key' => $step,
                 'title' => self::STEPS[$step][0],
                 'href' => self::href($step, $snap),
                 'n' => $snap['steps'][$step]['n'] ?? 0,
-                'hot' => $snap['steps'][$step]['hot'] ?? 0,
-                'parts' => collect(self::STEPS[$step][2] ?? [])->map(fn (string $title, string $part) => ['key' => $part, 'title' => $title, 'n' => $snap['steps'][$part]['n'] ?? 0])->values(),
+                'hot' => self::burns($step) ? $snap['steps'][$step]['hot'] ?? 0 : 0,
+                'parts' => collect(self::STEPS[$step][2] ?? [])->map(fn (string $title, string $part) => ['key' => $part, 'title' => $title, 'n' => $snap['steps'][$part]['n'] ?? 0,
+                    'vendors' => collect($snap['steps'][$part]['vendors'] ?? [])->map(fn (int $n, int $id) => ['vendor' => $vendors->get($id), 'n' => $n])->sortByDesc('n')->values()])->values(),
                 'vendor' => $step === 'claims' ? $vendors->get($snap['claims_vendor']) : null,
-                'by' => self::by($step, $snap),
+                'by' => self::burns($step) ? self::by($step, $snap) : array_map(fn (array $v) => [$v[0], 0], self::by($step, $snap)),
             ]);
 
             return [
@@ -222,6 +228,17 @@ final class Conveyor
         })->all();
 
         return $stages;
+    }
+
+    /**
+     * Горит — только наш ход (06.11.2026, владелец: «слишком много красных, глаза разбегаются»; «страховая долго не согласует —
+     * мы ничего с этим сделать не можем», «менеджеров ждём — не наш ход»): подэтапы групп — менеджеров, поставщиков,
+     * исполнителей вывоза (`Owners::keyOf` → `group:*`) — не горят, число остаётся. Горит у наших: обязывающий, просроченная
+     * оценка у Андрея, вывоз у Кати и логиста, менеджер не ответил про закупочную — решать нам.
+     */
+    private static function burns(string $step): bool
+    {
+        return ! str_starts_with((string) Owners::keyOf($step), 'group:');
     }
 
     /**
@@ -302,6 +319,13 @@ final class Conveyor
             $steps[$step][$kind] = $n;
         }
         $steps['bids']['n'] = $steps['bids-closed']['n'] + $steps['bids-open']['n'];
+        // Состав «Приём закрыт» / «Приём ещё идёт» по вендорам (06.11.2026, владелец: «логотипчик — количество, чтобы понимать
+        // состав») — одним GROUP BY по той же двери вкладки, в том же снимке: лишнего пересчёта нет.
+        $mix = OfferController::scopeFor('bids', $offers())->toBase()->reorder()->select([])
+            ->selectRaw("({$pick}) as g, offers.vendor_id as v, count(*) as n")->whereRaw("({$pick}) in (0, 1)")->groupBy('g', 'v')->get();
+        foreach ($mix as $row) {
+            $steps[(int) $row->g === 0 ? 'bids-closed' : 'bids-open']['vendors'][(int) $row->v] = (int) $row->n;
+        }
         $steps['letters'] = ['n' => Boxes::registerCount(Scope::Offers), 'hot' => 0];
         $steps['gallery'] = ['n' => self::withoutCarcade(Offer::inGallery(), $carcade)->count(), 'hot' => 0];
         // «Отправить отклики» — «К запросу» вендоров с галереей; ведёт к тому, у кого их больше.

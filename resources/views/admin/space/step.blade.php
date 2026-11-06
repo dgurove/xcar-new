@@ -16,9 +16,18 @@
         <span class="step-n" data-count="{{ $step['n'] }}">{{ $step['n'] }}</span>
     </span>
     @foreach ($step['parts'] as $part)
+        {{-- Состав по вендорам — логотип и число справа в строке подпункта, перед общим числом (06.11.2026, владелец). --}}
         <span class="step-part" data-step="{{ $part['key'] }}">
             <span class="step-part-title">{{ $part['title'] }}</span>
-            <span data-count="{{ $part['n'] }}">{{ $part['n'] }}</span>
+            @if ($part['vendors']->isNotEmpty())
+                <span class="step-mix">
+                    @foreach ($part['vendors'] as $mix)
+                        <span class="step-mix-item" title="{{ $mix['vendor']?->name ?? 'Без вендора' }}">@if ($mix['vendor'])<x-vendor.logo :vendor="$mix['vendor']" class="step-mix-logo"/>@else<span class="step-mix-logo"></span>@endif<span class="nums">{{ $mix['n'] }}</span></span>
+                    @endforeach
+                </span>
+            @endif
+            {{-- Есть разбивка — она вместо числа подпункта (владелец: «сумму сумм сверху оставь»); число — для живого обновления. --}}
+            <span class="step-part-n" data-count="{{ $part['n'] }}" @if ($part['vendors']->isNotEmpty()) hidden @endif>{{ $part['n'] }}</span>
         </span>
     @endforeach
 </{{ $tag }}>

@@ -114,6 +114,13 @@
   /* Подпункты подэтапа («Приём закрыт», «Приём ещё идёт») — строками под глаголом, число справа. */
   .step-part { display: flex; align-items: center; justify-content: space-between; gap: .625rem; font-size: var(--text-sm); color: var(--color-ink-muted); }
   .conveyor-step.is-idle .step-part { color: inherit; }
+  /* Состав подпункта по вендорам: логотип и число справа, перед общим числом, плотно. */
+  .step-part-title { flex: 1; min-width: 0; }
+  .step-mix { display: flex; align-items: center; gap: .5rem; }
+  .step-mix-item { display: flex; align-items: center; gap: .1875rem; color: var(--color-ink); }
+  .step-mix-logo { flex: none; width: 1rem; height: 1rem; border-radius: 4px; background: var(--color-surface-3); }
+  .step-part-n { min-width: 1.25rem; text-align: right; }
+  .conveyor-step.is-idle .step-mix-item { color: inherit; }
   .step-verb { flex: 1; min-width: 0; font-size: var(--text-base); font-weight: 500; line-height: 1.25; }
   .step-n { font-size: var(--text-lg); font-weight: 600; line-height: 1; }
   /* Без дела — та же залитая плашка, бледный только текст (06.11.2026, владелец: полупрозрачная плашка на фото сливалась с
