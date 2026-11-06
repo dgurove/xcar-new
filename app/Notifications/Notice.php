@@ -313,7 +313,8 @@ abstract class Notice extends Notification implements ShouldQueue
             $mail->line($this->textFor($user));
         }
 
-        return $mail->action('Открыть', NoticeLink::tracked(url($this->href()), $this, 'mail'))->salutation(config('app.name'))
+        // Адрес — как у кнопки Telegram: путь CRM на хост CRM (`url()` в очереди собирал всё от сайта, 06.11.2026).
+        return $mail->action('Открыть', NoticeLink::tracked($this->telegramUrl(), $this, 'mail'))->salutation(config('app.name'))
             ->line(new HtmlString('<a href="'.e($user->unsubscribeUrl()).'" style="color:#808080">Не присылать на почту</a>'));
     }
 }
