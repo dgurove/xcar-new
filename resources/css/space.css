@@ -1,10 +1,10 @@
 /* Главная CRM (04.11.2026; `admin/space`, `space_controller`). Сцена — вся середина каркаса между шапкой и таб-баром:
    `#scroller` не листается (`.app-stage`), жесты забирает сцена (`touch-action: none` — глобально стоит `pan-x pan-y`).
    Фон — фото паркинга со страницы входа (06.11.2026, владелец: звёзды «по брендбуку не вписывались»): тёмная тема — тёмный
-   кадр, светлая — светлый (`.parking-photo` из `hero.css`), камера двигает его transform'ом почти на месте; над ним —
+   кадр, светлая — светлый (`.parking-photo` из `hero.css`), стоит неподвижно; над ним —
    затемнение ради читаемости доски и холст WebGL знаков бренда (`space/marks.js`). Слой схемы `.space-world` поверх
-   двигается одной записью transform за кадр, `will-change` — только пока движется (`is-moving`): после остановки браузер
-   перерисует текст чётко при любом масштабе. На фоне — конвейер работы (`App\Space\Conveyor`): этапы столбцами, под ними
+   двигается одной записью transform за кадр, слоем постоянно; после смены масштаба он один раз растеризуется заново
+   (`is-resharp`), и текст чёткий. На фоне — конвейер работы (`App\Space\Conveyor`): этапы столбцами, под ними
    подэтапы. */
 
 @layer components {
@@ -28,22 +28,28 @@
     --b-idle: var(--color-surface); --b-idle-ink: #7c7c80; --b-idle-hover: var(--color-surface-3); --b-face: #3a3a3c;
   }
   .space.is-grabbing { cursor: grabbing; }
-  /* Фото — с запасом 64 px за краем (`PHOTO_ROOM` в `space_controller`): камера сдвигает его и чуть масштабирует от
-     середины. Своим слоем: движение — только композитор, картинка не перерисовывается. */
-  .space-photo { position: absolute; inset: -64px; will-change: transform; }
-  /* Затемнение: доска читается поверх любого места кадра. Светлая — лёгкая вуаль, тёмная — заметно темнее (06.11.2026,
-     владелец: «не очень читабельно, фотку в тёмной теме чуть затемнить»; после дымки за блоками — «менее тёмное»), к краям
-     сильнее. */
-  .space-shade { position: absolute; inset: 0; background: linear-gradient(rgb(255 255 255 / .48), rgb(255 255 255 / .32) 45%, rgb(255 255 255 / .52)); }
-  .dark .space-shade { background: radial-gradient(120% 90% at 46% 40%, rgb(0 0 0 / .26), rgb(0 0 0 / .52)); }
+  /* Фото стоит неподвижно, просто фоном (06.11.2026, владелец: «пусть ваще не двигается»): сдвиг его слоя за камерой, даже на
+     доли пикселя, перерисовывал всё фото в каждом кадре движения — 70–85 % растеризации, «очень фризит». */
+  .space-photo { position: absolute; inset: 0; }
+  /* Затемнение и полоса дымки под шапкой страницы — внутри слоя фото (его псевдоэлементы), а не своими полноэкранными
+     слоями: каждый такой слой — лишний проход по всему экрану в каждом кадре (06.11.2026, «очень фризит»). Затемнение: светлая — лёгкая вуаль, тёмная — темнее к краям (владелец: «чуть
+     затемнить», затем «менее тёмное»). Полоса под шапкой (логотип, поиск, разделы) — та же дымка, что за блоками, к низу
+     сходит на нет (владелец: «такой же под шапкой — единообразие»). */
+  .space-photo::before, .space-photo::after { content: ""; position: absolute; inset: 0; }
+  .space-photo::before { background: linear-gradient(rgb(255 255 255 / .48), rgb(255 255 255 / .32) 45%, rgb(255 255 255 / .52)); }
+  .dark .space-photo::before { background: radial-gradient(120% 90% at 46% 40%, rgb(0 0 0 / .26), rgb(0 0 0 / .52)); }
+  .space-photo::after { bottom: auto; height: 7rem; background: linear-gradient(var(--b-veil), transparent); }
   .space-marks { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 
   /* Начало мира — центр сцены, доска стоит от него обычной раскладкой; transform слоя — камера. */
-  .space-world { position: absolute; left: 50%; top: 50%; width: 0; height: 0; transform-origin: 0 0; opacity: 0; }
+  /* Слой доски — постоянный (06.11.2026, «очень фризит»): прежде `will-change` стоял только на время движения, и каждый
+     свайп начинался и кончался перерисовкой всей доски. Чёткость текста после масштаба — `is-resharp` на два кадра
+     (`space_controller#resharp`), только когда масштаб сменился. */
+  .space-world { position: absolute; left: 50%; top: 50%; width: 0; height: 0; transform-origin: 0 0; opacity: 0; will-change: transform; }
+  .space-world.is-resharp { will-change: auto; }
   /* Доска видна с первой расстановки камерой (`space_controller#place`): контроллер грузится отдельным куском, и до него
      доска стояла бы от середины экрана, а потом прыгала на место (владелец: «при открытии всё жёстко дёргается»). */
   .space-world.is-placed { opacity: 1; transition: opacity 160ms var(--ease-out); }
-  .space-world.is-moving { will-change: transform; }
 
   /* Конвейер (`admin/space/conveyor`, 05.11.2026): этапы слева направо столбцами. Шапки этапов — первая строка сетки,
      подэтапы — вторая (`subgrid`): шапки прижаты к низу строки, и названия с первыми карточками стоят вровень, как бы ни
@@ -78,20 +84,22 @@
 
   /* Читаемость на фото (06.11.2026, владелец выбрал «Ленту» из четырёх вариантов, и «не только за заголовками, но и за
      блоками», затем «такой же под шапкой — единообразие»): за шапкой этапа и за столбцом подэтапов — дымка по их форме с
-     мягкими краями. Обычный градиент и тень в слое доски: рисуются один раз, при сдвиге едут готовой картинкой (размытие фона под
-     блоками пересчитывалось бы каждый кадр). */
+     мягкими краями. Заливка с краем маской из двух градиентов, а не размытой тенью: тень 40 px — свёртка на каждой
+     растеризации доски, а у 18 этих пятен это было главное в цене перерисовки; размытие фона под блоками
+     (`backdrop-filter`) пересчитывалось бы каждый кадр. */
   .space { --b-veil: rgb(234 235 237 / .84); }  /* светлая — чуть серее белого: белые карточки на ней не теряют край */
   .dark .space { --b-veil: rgb(0 0 0 / .55); }
   .conveyor { isolation: isolate; }
   .stage-head, .stage-steps { position: relative; }
   .stage-steps { align-self: start; }
   .stage-head::before, .stage-steps::before {
-    content: ""; position: absolute; z-index: -1; inset: -.5rem; border-radius: 2rem;
-    background: var(--b-veil); box-shadow: 0 0 2.5rem 1.5rem var(--b-veil);
+    --edge: linear-gradient(to right, transparent, #000 2.75rem, #000 calc(100% - 2.75rem), transparent);
+    content: ""; position: absolute; z-index: -1; inset: -3rem; background: var(--b-veil);
+    -webkit-mask-image: var(--edge), linear-gradient(transparent, #000 2.75rem, #000 calc(100% - 2.75rem), transparent);
+    -webkit-mask-composite: source-in;
+    mask-image: var(--edge), linear-gradient(transparent, #000 2.75rem, #000 calc(100% - 2.75rem), transparent);
+    mask-composite: intersect;
   }
-  /* Под шапкой страницы (логотип, поиск, разделы) — та же дымка полосой, к низу сходит на нет (владелец: «такой же под
-     шапкой — единообразие»). В слое экрана, не доски: шапка стоит, доска едет под полосой. */
-  .space-top { position: absolute; left: 0; right: 0; top: 0; height: 7rem; pointer-events: none; background: linear-gradient(var(--b-veil), transparent); }
 
   /* Подэтап — плашка кита: глагол, справа число; горит — красная капсула и красная обводка со свечением (владелец: «ахтунг
      — красным, красиво»). Без дела — тихая, бледным текстом. Нажатие — его список. */

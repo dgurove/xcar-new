@@ -12,8 +12,9 @@ import { FlatMarks, Marks, fits, marks, pixelRatio } from '../space/marks';
 // рисуется, только когда есть что менять: жест, бросок, масштаб и переход к этапу — каждый кадр экрана; в покое — 20 кадров/с
 // ради оживления знаков (оно медленное, за секунды), после 30 с без касаний — 10; скрытая вкладка и уход со страницы — ни
 // одного, контекст видеокарты отдаётся. Без движения (prefers-reduced-motion) и без WebGL — без оживления: кадр только на
-// сдвиг. Медленные кадры в движении — холст мельче (dpr 2 → 1,5 → 1). Фото — div с картинкой темы (`.parking-photo`), камера
-// двигает его transform'ом на глубине `PHOTO_DEPTH`: в кадр не входит, перерисовки нет.
+// сдвиг. Медленные кадры в движении — холст мельче (dpr 2 → 1,5 → 1). Фото — div с картинкой темы (`.parking-photo`), стоит
+// неподвижно, просто фоном (06.11.2026, владелец; сдвиг его слоя за камерой, даже на доли пикселя, перерисовывал всё фото
+// в каждом кадре движения — 70–85 % всей растеризации, «очень фризит»).
 // Конвейер (`App\Space\Conveyor`): этапы столбцами в слое схемы, обычной раскладкой сетки. Числа живые: событие
 // сотрудникам — кусок `#conveyor` перечитывается морфом (`morphChildren`) не чаще раза в 2 с, сменившееся число
 // докручивается, подэтап коротко загорается. Вбок камера листает по этапам (центры видимых этапов — ей), мир — в рамке
@@ -22,8 +23,6 @@ const PICK = 'space:who';
 const IDLE = 1000 / 20;
 const DEEP_IDLE = 1000 / 10;
 const DEEP_AFTER = 30000;
-const PHOTO_DEPTH = 0.01;    // фото почти стоит: чуть плывёт и растёт за камерой
-const PHOTO_ROOM = 64;       // css px запаса фото за краем сцены (`.space-photo`)
 const SLOW = 24;             // мс кадра в движении: дольше — снизить dpr
 // Вид помнится под ключом раскладки: вид прежней схемы (змейка вокруг начала мира) на новой доске — пустое небо.
 const KEY = 'space:camera:v4';
@@ -39,7 +38,7 @@ const recall = () => { try { return JSON.parse(localStorage.getItem(PICK) || 'nu
 const remember = (value) => { try { localStorage.setItem(PICK, JSON.stringify(value)); } catch {} };
 
 export default class extends Controller {
-    static targets = ['photo', 'marks', 'world', 'conveyor', 'filter', 'who', 'toggle'];
+    static targets = ['marks', 'world', 'conveyor', 'filter', 'who', 'toggle'];
     static values = { url: String, me: String };
 
     connect() {
@@ -287,21 +286,28 @@ export default class extends Controller {
         if (this.lively) this.timer = setTimeout(() => { this.timer = null; this.wake(); }, Math.max(0, idle - (performance.now() - this.lastDraw)));
     }
 
-    // Слой схемы — глубина 1: та же камера, одна запись transform. will-change — только пока едет: после остановки
-    // браузер перерисует текст схемы чётко при любом масштабе. Фото — глубина `PHOTO_DEPTH`, сдвиг не больше запаса за краем.
+    // Слой схемы — глубина 1: та же камера, одна запись transform; слой постоянный (`will-change` в CSS), сдвиг его не
+    // перерисовывает. Фото не двигается.
     place(moving) {
         const { x, y, z } = this.camera;
-        const k = z ** PHOTO_DEPTH;
-        const room = PHOTO_ROOM - (Math.max(this.camera.w, this.camera.h) / 2 + PHOTO_ROOM) * Math.max(0, 1 - k);
-        const px = clamp(-x * PHOTO_DEPTH * k, -room, room), py = clamp(-y * PHOTO_DEPTH * k, -room, room);
-        this.photoTarget.style.transform = `translate3d(${px}px, ${py}px, 0) scale(${k})`;
         this.worldTarget.style.transform = `translate3d(${-x * z}px, ${-y * z}px, 0) scale(${z})`;
         this.worldTarget.classList.add('is-placed');
-        if (moving) {
-            this.worldTarget.classList.add('is-moving');
+        this.sharpZ ??= z;
+        if (moving && z !== this.sharpZ) {
             clearTimeout(this.calm);
-            this.calm = setTimeout(() => this.worldTarget.classList.remove('is-moving'), 200);
+            this.calm = setTimeout(() => this.resharp(), 200);
         }
+    }
+
+    // Масштаб сменился и встал — слой доски на два кадра без `will-change`: браузер растеризует его заново в новом масштабе, и
+    // текст чёткий. При сдвиге без масштаба не нужно: готовая картинка та же.
+    resharp() {
+        const z = this.camera.z;
+        if (z === this.sharpZ || !this.element.isConnected) return;
+        if (this.camera.anim || this.camera.target != null) { this.calm = setTimeout(() => this.resharp(), 200); return; }
+        this.sharpZ = z;
+        this.worldTarget.classList.add('is-resharp');
+        requestAnimationFrame(() => requestAnimationFrame(() => this.worldTarget.classList.remove('is-resharp')));
     }
 
     // Медленные кадры в движении (45 подряд в среднем дольше SLOW) — холст мельче, знаки те же.
@@ -316,8 +322,6 @@ export default class extends Controller {
         this.fit();
     }
 }
-
-const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
 
 // Число докручивается от прежнего к новому — как счётчик, с замедлением к концу.
 function tween(el, from, to) {
