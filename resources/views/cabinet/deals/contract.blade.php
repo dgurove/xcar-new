@@ -99,7 +99,7 @@
             @endphp
             <form method="post" action="/deals/{{ $deal->id }}/contract" class="contents">
                 @csrf @method('put')
-                <x-people.pick name="buyer_id" kind="buyer" variant="row" :people="$rows" :value="$current" title="Покупатель" :deal="$deal->id" link autosubmit
+                <x-people.pick name="buyer_id" kind="buyer" passport variant="row" :people="$rows" :value="$current" title="Покупатель" :deal="$deal->id" link autosubmit
                     :placeholder="$buyer ? 'Другой покупатель' : 'Выбрать покупателя'" finish="Выбрать" data-action="buyer:open@window->sheet#open"/>
             </form>
             @error('buyer_id')<p class="field-error px-4 py-2">{{ $message }}</p>@enderror

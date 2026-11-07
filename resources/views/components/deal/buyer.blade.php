@@ -92,7 +92,7 @@
     @endphp
     <form method="post" action="/work/deals/{{ $deal->id }}/contract" class="contents">
         @csrf @method('put')
-        <x-people.pick name="buyer_id" kind="buyer" variant="row" :people="$rows" :value="$isManager ? 'me' : $buyer?->id" title="Покупатель" :deal="$deal->id" link autosubmit :open="$ask && ! $buyer"
+        <x-people.pick name="buyer_id" kind="buyer" passport variant="row" :people="$rows" :value="$isManager ? 'me' : $buyer?->id" title="Покупатель" :deal="$deal->id" link autosubmit :open="$ask && ! $buyer"
             :placeholder="$buyer ? 'Другой покупатель' : 'Выбрать покупателя'" finish="Выбрать"/>
     </form>
     @error('buyer_id')<p class="field-error px-4 py-2">{{ $message }}</p>@enderror

@@ -20,6 +20,9 @@ use Illuminate\Validation\ValidationException;
  */
 final class AddPerson
 {
+    /** Имя покупателя, заведённого по одному скану паспорта: настоящее встанет, когда скан прочитается (`ReadPassport`). */
+    public const UNNAMED = 'Новый покупатель';
+
     public function __construct(private AcceptInvite $accept) {}
 
     /**

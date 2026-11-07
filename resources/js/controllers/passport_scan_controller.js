@@ -1,9 +1,11 @@
 import { Controller } from '@hotwired/stimulus';
 import { filler } from '../fill.js';
 import { getJson } from '../lib/http';
+import { openLightbox } from '../lightbox';
 
 // Скан паспорта (x-billing.passport-scan): страница уходит на сервер, читает задача `ReadPassport`, плитка опрашивает
-// `live` раз в 2 с, пока читается, и ставит прочитанное в пустые поля формы — с подсветкой, набранное руками не трогает.
+// `live` раз в 2 с, пока читается, и ставит прочитанное в поля формы с подсветкой: ФИО и сверенное — поверх, прочее — в
+// пустые. Нажатие на скан — наш просмотр на весь экран по обеим страницам.
 export default class extends Controller {
     static values = { url: String, form: String, prefix: String };
 
@@ -16,6 +18,21 @@ export default class extends Controller {
 
     disconnect() {
         clearTimeout(this.timer);
+        this.viewer?.destroy();
+        this.viewer = null;
+    }
+
+    // Просмотр (07.11.2026, владелец: «пока корректирую распознанное — быстро посмотреть, что в паспорте»): обе страницы,
+    // листаются; только что выбранный файл — его же картинкой, пока сервер не ответил.
+    async view(event) {
+        const tiles = this.tileTargets.filter((t) => t.classList.contains('passport-tile--on'));
+        const items = tiles.map((t) => {
+            const img = t.querySelector('.passport-tile-view img');
+            const local = img?.src.startsWith('blob:') ? img.src : null;
+            return { src: local || t.dataset.url || img?.src, thumb: local || t.dataset.thumb, el: img };
+        }).filter((it) => it.src);
+        const index = Math.max(0, tiles.indexOf(event.currentTarget.closest('[data-page]')));
+        this.viewer = await openLightbox({ items, index, download: true, onClose: () => { this.viewer = null; } });
     }
 
     // Две фотографии сразу — разворот и прописка по порядку; PDF из двух страниц сервер сам делит на обе плитки.
@@ -66,6 +83,7 @@ export default class extends Controller {
             // Страница с сервера (PDF разделили на обе плитки) — её миниатюра, если плитка показывает другое.
             if (page.thumb && tile.dataset.thumb !== page.thumb) {
                 tile.dataset.thumb = page.thumb;
+                tile.dataset.url = page.url;
                 if (!tile.querySelector('img')?.src.startsWith('blob:') || tile.dataset.sent !== '1') this.preview(tile, page.thumb, 'image/jpeg');
             }
             delete tile.dataset.sent;
@@ -77,24 +95,26 @@ export default class extends Controller {
         if (data.reading) this.poll();
     }
 
-    // Сверенное контрольными цифрами (серия и номер, даты, код, ФИО по зоне) — поверх введённого: скан главнее ручного
-    // ввода; прочее — только в пустые поля.
+    // ФИО и сверенное контрольными цифрами (серия и номер, даты, код) — поверх введённого: скан главнее ручного ввода
+    // (07.11.2026, владелец: вписали «Гусейн Максутов», паспорт — «Максутов Гусейн Максутович», должно встать с паспорта);
+    // буква, в которой ошибся OCR, — по вписанному (`ReadPassport::spelled`). Прочее — только в пустые поля.
     async fill(fields, checked) {
         const form = document.getElementById(this.formValue);
         if (!form) return;
         const name = (key) => (this.prefixValue ? `${this.prefixValue}[${key}]` : key);
         const sure = filler(form, { overwrite: true });
         const rest = filler(form);
-        // ФИО со скана полнее вписанного — тоже поверх (05.11.2026: стояло имя аккаунта «Роман Мирошников», скан прочёл
-        // «Мирошников Роман Игоревич», а в письмо поставщику ушло без отчества): все слова поля есть в прочитанном.
-        const words = (v) => String(v || '').toLowerCase().replace(/ё/g, 'е').split(/\s+/).filter(Boolean);
-        const fuller = (key, value) => {
-            if (key !== 'name') return false;
-            const had = words(form.elements[name(key)]?.value);
-            const read = words(value);
-            return had.length > 0 && read.length > had.length && had.every((w) => read.includes(w));
-        };
-        for (const [key, value] of Object.entries(fields)) (checked.includes(key) || fuller(key, value) ? sure : rest).plain(name(key), value);
+        for (let [key, value] of Object.entries(fields)) {
+            const to = key === 'name' || checked.includes(key) ? sure : rest;
+            if (key === 'name') value = spelled(value, form.elements[name('name')]?.value);
+            // Серия и номер — двумя полями, где форма их так держит (`x-billing.passport-fields`).
+            if (key === 'passport' && form.elements[name('passport_series')]) {
+                const [, series, number] = String(value).match(/^(\d{2}\s?\d{2})\s*(\d{6})$/) || [];
+                if (series) { to.plain(name('passport_series'), series); to.plain(name('passport_number'), number); }
+                continue;
+            }
+            to.plain(name(key), value);
+        }
         await sure.run();
         await rest.run();
         // Даты — скрытое поле под календарём (`date_controller`): видимый текст перерисовывается им самим.
@@ -102,7 +122,7 @@ export default class extends Controller {
     }
 
     preview(tile, src, type) {
-        const box = tile.querySelector('.passport-tile-img');
+        const box = tile.querySelector('.passport-tile-view');
         if (!type.startsWith('image/')) return;
         box.innerHTML = '';
         const img = document.createElement('img');
@@ -110,4 +130,15 @@ export default class extends Controller {
         img.alt = '';
         box.append(img);
     }
+}
+
+// Слово паспорта той же длины, что вписанное, и с одной другой буквой — вписанным написанием (как `ReadPassport::spelled`).
+function spelled(read, typed) {
+    const norm = (w) => [...w.toLowerCase().replace(/ё/g, 'е')];
+    const typedWords = String(typed || '').trim().split(/\s+/).filter(Boolean);
+    return String(read || '').trim().split(/\s+/).map((w) => {
+        const a = norm(w);
+        const t = typedWords.find((x) => { const b = norm(x); return a.length === b.length && a.filter((c, i) => c !== b[i]).length === 1; });
+        return t ? t.charAt(0).toUpperCase() + t.slice(1).toLowerCase() : w;
+    }).join(' ');
 }

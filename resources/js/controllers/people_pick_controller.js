@@ -11,7 +11,7 @@ import { focusField } from '../keyboard';
 // отправляет форму. only — у шторки нет своего списка (кнопка «Добавить покупателя», строка в списке с галками): новый
 // встаёт отмеченным в чужой список (`append` — селектор списка, имя галки — `name`) или страница перечитывается (`reload`).
 export default class extends Controller {
-    static targets = ['shown', 'hidden', 'list', 'panes', 'newPane', 'form', 'error', 'submit', 'done', 'doneTitle', 'doneSub', 'doneRows',
+    static targets = ['shown', 'hidden', 'list', 'panes', 'newPane', 'form', 'error', 'submit', 'done', 'doneTitle', 'doneSub', 'doneRows', 'passport', 'passportFiles',
         'shareBtn', 'copyBtn', 'finish', 'finishLabel', 'addRow'];
     static values = { kind: String, url: String, name: String, deal: Number, owner: Number, autosubmit: Boolean, placeholder: String, only: Boolean, append: String, reload: Boolean };
 
@@ -98,6 +98,8 @@ export default class extends Controller {
         this.formTarget.hidden = false;
         this.doneTarget.hidden = true;
         this.formTarget.querySelectorAll('[data-people-field]').forEach((el) => { el.value = ''; });
+        this.files = [];
+        this.drawFiles();
         this.clearErrors();
         this.made = null;
     }
@@ -117,13 +119,19 @@ export default class extends Controller {
         this.busy = true;
         this.submitTarget.classList.add('is-busy');
         let r;
+        const payload = { kind: this.kindValue, mode: link ? 'link' : 'person', deal: this.dealValue || null, owner: this.ownerValue || null, _person: person };
+        const files = link ? [] : (this.files || []);
+        // С паспортом — файлами (FormData), без него — как было, JSON.
+        let body = JSON.stringify(payload);
+        const headers = { Accept: 'application/json', 'X-CSRF-TOKEN': csrf(), 'X-Requested-With': 'XMLHttpRequest' };
+        if (files.length) {
+            body = new FormData();
+            for (const [k, v] of Object.entries(payload)) if (k !== '_person' && v !== null) body.append(k, v);
+            for (const [k, v] of Object.entries(person)) body.append(`_person[${k}]`, v);
+            for (const f of files) body.append('passport[]', f);
+        } else headers['Content-Type'] = 'application/json';
         try {
-            r = await fetch(this.urlValue, {
-                method: 'POST',
-                credentials: 'same-origin',
-                headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-CSRF-TOKEN': csrf(), 'X-Requested-With': 'XMLHttpRequest' },
-                body: JSON.stringify({ kind: this.kindValue, mode: link ? 'link' : 'person', deal: this.dealValue || null, owner: this.ownerValue || null, _person: person }),
-            });
+            r = await fetch(this.urlValue, { method: 'POST', credentials: 'same-origin', headers, body });
         } catch {
             this.fail('Нет связи');
             return;
@@ -135,6 +143,36 @@ export default class extends Controller {
         if (r.status === 422 && data?.errors) { this.showErrors(data.errors); return; }
         if (!r.ok || !data) { this.fail('Не получилось'); return; }
         if (data.link) this.doneLink(data.link); else this.added(data);
+    }
+
+    // Паспорт к новому покупателю: файлы чипами с «×», уходят вместе с ним (`PeopleController::store`).
+    passport(event) {
+        this.files = [...(this.files || []), ...(event.target.files || [])].slice(0, 2);
+        event.target.value = '';
+        this.drawFiles();
+    }
+
+    dropFile(event) {
+        this.files.splice(Number(event.currentTarget.dataset.index), 1);
+        this.drawFiles();
+    }
+
+    drawFiles() {
+        if (!this.hasPassportFilesTarget) return;
+        const box = this.passportFilesTarget;
+        box.innerHTML = '';
+        (this.files || []).forEach((file, i) => {
+            const chip = document.createElement('button');
+            chip.type = 'button';
+            chip.className = 'chip people-passport-file';
+            chip.dataset.index = String(i);
+            chip.dataset.action = 'people-pick#dropFile';
+            chip.setAttribute('aria-label', `Убрать ${file.name}`);
+            chip.innerHTML = '<span class="min-w-0 truncate"></span><span aria-hidden="true">×</span>';
+            chip.firstChild.textContent = file.name;
+            box.append(chip);
+        });
+        box.hidden = !(this.files || []).length;
     }
 
     fail(text) {
@@ -247,6 +285,8 @@ export default class extends Controller {
             list.prepend(option);
             input.dispatchEvent(new Event('change', { bubbles: true }));
         }
-        if (this.reloadValue) window.Turbo?.visit(location.href, { action: 'replace' });
+        // Заведён с паспортом из «Покупателей» — сразу на его страницу: там скан читается и заполняет поля.
+        if (made.go) window.Turbo?.visit(made.go);
+        else if (this.reloadValue) window.Turbo?.visit(location.href, { action: 'replace' });
     }
 }

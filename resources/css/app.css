@@ -735,17 +735,37 @@ html.kb-open { --home-gap: 0px; }
   /* Скан паспорта (x-billing.passport-scan, 11.10.2026): две плитки над полями — разворот с фото и прописка. Пустая —
      значок камеры на мягком фоне, с файлом — миниатюра; подпись под ней, справа искра, пока читаем. */
   .passport-scan { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .75rem; margin-bottom: 1rem; }
-  .passport-tile { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: .375rem .5rem; cursor: pointer; }
-  .passport-tile-img { grid-column: 1 / -1; position: relative; display: flex; align-items: center; justify-content: center; aspect-ratio: 4 / 3; overflow: hidden;
-    border-radius: var(--radius-l); background: var(--color-surface-3); color: var(--color-ink-muted); transition: background-color .15s; }
-  @media (hover: hover) { .passport-tile:hover .passport-tile-img { background: var(--color-line); } }
+  /* Серия и номер паспорта одной строкой (07.11.2026): «серия ____ номер ______», слова приглушены, как подписи. */
+  .passport-no { display: flex; align-items: center; gap: .5rem; min-width: 0; }
+  .passport-no-part { flex: none; font-size: var(--text-sm); color: var(--color-ink-muted); }
+  .passport-no .field-input { min-width: 0; }
+  .passport-no .passport-no-series { flex: 0 0 5.5rem; }
+  .passport-no .passport-no-number { flex: 1 1 0; }
+  .fields .field .passport-no .field-input { text-align: left; }
+  .fields .field > .passport-no { grid-column: 2; }
+  .fields.fields-stack .field > .passport-no { width: 100%; }
+  /* Паспорт к новому покупателю (07.11.2026): строка поля, файлы — чипами под ней. */
+  .people-passport { cursor: pointer; }
+  .people-passport-pick { grid-column: 2; justify-self: end; color: var(--color-accent-text); }
+  .people-passport-files { display: flex; flex-wrap: wrap; gap: .5rem; padding: .5rem 1rem; }
+  .people-passport-file { max-width: 100%; gap: .375rem; }
+  .passport-tile { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: .375rem .5rem; }
+  .passport-tile-img { grid-column: 1 / -1; grid-row: 1; position: relative; display: flex; align-items: center; justify-content: center; aspect-ratio: 4 / 3; overflow: hidden;
+    border-radius: var(--radius-l); background: var(--color-surface-3); color: var(--color-ink-muted); transition: background-color .15s; cursor: pointer; }
+  @media (hover: hover) { .passport-tile-img:hover { background: var(--color-line); } }
   .passport-tile-img img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  /* Со сканом — просмотр и кнопка замены поверх кадра; без — выбор файла (07.11.2026). */
+  .passport-tile--on .passport-tile-pick, .passport-tile:not(.passport-tile--on) .passport-tile-view, .passport-tile:not(.passport-tile--on) .passport-tile-swap { display: none; }
+  .passport-tile-view { cursor: zoom-in; }
+  .passport-tile-swap { grid-column: 1 / -1; grid-row: 1; align-self: start; justify-self: end; z-index: 1; margin: .5rem; display: flex; align-items: center; justify-content: center;
+    width: 2.25rem; height: 2.25rem; border-radius: 999px; color: #fff; background: rgb(0 0 0 / .45); backdrop-filter: blur(10px); cursor: pointer; }
+  @media (hover: hover) { .passport-tile-swap:hover { background: rgb(0 0 0 / .6); } }
   .passport-tile-label { min-width: 0; font-size: var(--text-sm); font-weight: 500; }
   .passport-tile:not(.passport-tile--on) .passport-tile-label { color: var(--color-accent-text); }
   .passport-tile-state { display: inline-flex; align-items: center; font-size: var(--text-sm); }
   .passport-tile:not([data-state="reading"]) .scan-spark, .passport-tile:not([data-state="failed"]) .scan-failed { display: none; }
   .scan-failed { color: var(--color-urgent); }
-  .passport-tile:focus-within .passport-tile-img { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+  .passport-tile-img:focus-visible, .passport-tile-pick:focus-within, .passport-tile-swap:focus-within { outline: 2px solid var(--color-accent); outline-offset: 2px; }
   /* Пилюля вкладки, куда уехала строка из карточки (StreamActions.count): коротко лаймом и чуть крупнее. */
   @media (prefers-reduced-motion: no-preference) {
     .is-bumped { animation: pill-bump .9s cubic-bezier(.2,.8,.2,1) 1; }

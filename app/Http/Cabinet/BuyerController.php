@@ -156,6 +156,7 @@ class BuyerController
     public function passport(Request $request, User $user)
     {
         abort_unless($user->manager_id === $request->user()->id && $user->isBuyer(), 404);
+        PartyRules::squeeze($request);
         $data = $request->validate(PartyRules::passport('buyer'), [], ['buyer.name' => 'ФИО'])['buyer'];
         $party = Party::forUser($user);
         $party->fill(['kind' => PartyKind::Person] + array_map(fn ($v) => is_string($v) && trim($v) === '' ? null : $v, $data))->save();

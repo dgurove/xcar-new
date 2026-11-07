@@ -41,7 +41,11 @@ final class PartyRules
         ];
     }
 
-    /** Реквизиты цифрами без пробелов и дефисов («4080 2810 …» из банка) — до проверки `digits`. */
+    /**
+     * Реквизиты цифрами без пробелов и дефисов («4080 2810 …» из банка) — до проверки `digits`. Серия и номер паспорта
+     * двумя полями (`x-billing.passport-fields`, 07.11.2026, владелец: «серия ____ номер ______») — в одно `passport`
+     * «82 07 445349».
+     */
     public static function squeeze(\Illuminate\Http\Request $request, string $prefix = 'buyer'): void
     {
         $set = (array) $request->input($prefix);
@@ -50,7 +54,37 @@ final class PartyRules
                 $set[$f] = preg_replace('/[\s\-]+/u', '', $set[$f]);
             }
         }
+        if (array_key_exists('passport_series', $set) || array_key_exists('passport_number', $set)) {
+            $set['passport'] = self::passportNumber((string) ($set['passport_series'] ?? ''), (string) ($set['passport_number'] ?? ''));
+            unset($set['passport_series'], $set['passport_number']);
+        }
         $set && $request->merge([$prefix => $set]);
+    }
+
+    /** «8207» и «445349» → «82 07 445349»; не по образцу (старый или чужой паспорт) — как вписали, через пробел. */
+    public static function passportNumber(string $series, string $number): ?string
+    {
+        $s = preg_replace('/\D+/u', '', $series);
+        $n = preg_replace('/\D+/u', '', $number);
+        if (strlen($s) === 4 && strlen($n) === 6) {
+            return substr($s, 0, 2).' '.substr($s, 2).' '.$n;
+        }
+        $raw = trim(preg_replace('/\s+/u', ' ', trim($series).' '.trim($number)));
+
+        return $raw === '' ? null : $raw;
+    }
+
+    /** Обратно, для двух полей формы: «82 07 445349» → ['82 07', '445349']. @return array{0: string, 1: string} */
+    public static function passportParts(?string $passport): array
+    {
+        $p = trim((string) $passport);
+        if (preg_match('/^(\d{2})\s?(\d{2})\s*(\d{6})$/u', $p, $m)) {
+            return [$m[1].' '.$m[2], $m[3]];
+        }
+        // Не по образцу — номер последним словом, остальное — серия.
+        $words = preg_split('/\s+/u', $p) ?: [];
+
+        return count($words) > 1 ? [implode(' ', array_slice($words, 0, -1)), (string) end($words)] : ['', $p];
     }
 
     /** Подписи полей покупателя в ошибках: «Поле ОГРНИП обязательно», а не «buyer.ogrn». */

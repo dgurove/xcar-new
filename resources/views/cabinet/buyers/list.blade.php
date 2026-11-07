@@ -16,7 +16,7 @@
         </a>
         {{-- На телефоне «Добавить» — плашка внизу экрана; строкой — только на компьютере. Экран ссылок открывается сразу
              шторкой «Покупатель»: ввести данные или сделать ссылку (18.10.2026). --}}
-        <div class="contents max-md:hidden"><x-people.pick name="buyer" kind="buyer" only reload link placeholder="Добавить покупателя"/></div>
+        <div class="contents max-md:hidden"><x-people.pick name="buyer" kind="buyer" only reload link passport placeholder="Добавить покупателя"/></div>
         <a href="{{ $invitesUrl }}" class="row max-md:!hidden">
             <x-ui.row-icon name="link"/>
             <span class="min-w-0 flex-1">Ссылки-приглашения</span>

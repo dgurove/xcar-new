@@ -2,7 +2,10 @@
 
 namespace App\Http;
 
+use App\Billing\Actions\StorePassportScan;
+use App\Billing\Party;
 use App\Cars\Settlement;
+use App\Http\Cabinet\PassportScanController;
 use App\Logistics\Client;
 use App\Logistics\Depot;
 use App\Offers\Deal;
@@ -25,7 +28,7 @@ class PeopleController
 {
     public const KINDS = ['buyer', 'contractor', 'logist', 'driver', 'client', 'depot'];
 
-    public function store(Request $request, AddPerson $add, IssueInvite $issue)
+    public function store(Request $request, AddPerson $add, IssueInvite $issue, StorePassportScan $store)
     {
         $me = $request->user();
         $kind = (string) $request->input('kind');
@@ -73,14 +76,27 @@ class PeopleController
         }
 
         $buyer = $kind === 'buyer';
-        $v = validator($data, AddPerson::rules(contact: $buyer) + ($kind === 'contractor'
+        // Покупатель с паспортом (07.11.2026, владелец): имя по желанию — встанет со скана (`ReadPassport::passportName`).
+        $passport = $buyer ? array_values(array_filter((array) $request->file('passport', []))) : [];
+        $passport && validator(['passport' => $passport], ['passport' => ['array', 'max:2'], 'passport.*' => PassportScanController::FILE])->validate();
+        $rules = AddPerson::rules(contact: $buyer);
+        $passport && $rules['first_name'] = ['nullable', 'string', 'max:60'];
+        $v = validator($data, $rules + ($kind === 'contractor'
             ? ['logistics_city' => ['nullable', 'string', 'max:120'], 'cdek_point' => ['nullable', 'string', 'max:300']] : []),
-            ['first_name.required' => 'Имя', 'person_phone.required' => 'Телефон'])->validate();
+            ['first_name.required' => $buyer ? 'Имя или паспорт' : 'Имя', 'person_phone.required' => 'Телефон'])->validate();
+        if ($passport && trim((string) ($v['first_name'] ?? '')) === '' && trim((string) ($v['last_name'] ?? '')) === '') {
+            [$v['first_name'], $v['last_name']] = [AddPerson::UNNAMED, ''];
+        }
         [$user, $credentials] = $add($invite, $v, array_filter([
             'logistics_city' => $v['logistics_city'] ?? null, 'cdek_point' => $v['cdek_point'] ?? null,
         ]), contact: $buyer);
+        if ($passport) {
+            $store(Party::forUser($user), 'main', $passport, $me);
+        }
+        // Из «Покупателей» с паспортом — сразу на его страницу, там скан читается; в сделке шторка данных откроется сама.
+        $go = $passport && ! $deal ? '/buyers/'.$user->id.'?passport=1' : null;
 
-        return response()->json(self::answer(People::row($user->fresh())) + ['credentials' => $credentials]);
+        return response()->json(self::answer(People::row($user->fresh())) + ['credentials' => $credentials, 'go' => $go]);
     }
 
     /** Кто кого заводит. */

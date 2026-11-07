@@ -1,8 +1,10 @@
 {{-- Панель «+ Новый …» шторки выбора (18.10.2026): данными — имя, фамилия, телефон (покупателю — без него) и свои поля места (у исполнителя город и
      СДЭК, у заказчика — название, контакт, адрес); «Ссылкой» — где человек может прийти сам. Отправляет JSON
      (`people_pick_controller#create`), без формы: шторка стоит и внутри чужих форм. Успех — в той же панели: данные входа
-     или ссылка с «Отправить» и «Скопировать». Поля — `_person[…]`: чужая форма их игнорирует. --}}
-@props(['kind', 'link' => false, 'uid'])
+     или ссылка с «Отправить» и «Скопировать». Поля — `_person[…]`: чужая форма их игнорирует. passport — покупателю можно
+     сразу приложить паспорт (07.11.2026, владелец: «прикрепить фотки или пдф, чтобы сам имя фамилию распознал, а на
+     следующем шаге сканы подставил и заполнил»): тогда имя по желанию, файлы уходят с ним (`StorePassportScan`). --}}
+@props(['kind', 'link' => false, 'uid', 'passport' => false])
 @php
     $f = fn (string $key) => '_person['.$key.']';
     $id = fn (string $key) => 'pp-'.$uid.'-'.$key;
@@ -34,6 +36,14 @@
                      телефон — убери; почту тоже не надо»): вход ему дают потом, на его странице. --}}
                 @unless ($kind === 'buyer')<x-ui.field :name="$f('person_phone')" :id="$id('phone')" label="Телефон" type="tel" required data-people-field="person_phone"/>@endunless
                 @if ($kind === 'buyer')
+                    @if ($passport)
+                        <label class="field people-passport">
+                            <span class="field-label">Паспорт</span>
+                            <span class="people-passport-pick">Фото или PDF</span>
+                            <input type="file" class="sr-only" accept="image/*,application/pdf" multiple data-people-pick-target="passport" data-action="change->people-pick#passport">
+                        </label>
+                        <div class="people-passport-files" data-people-pick-target="passportFiles" hidden></div>
+                    @endif
                 @elseif ($kind === 'contractor')
                     <x-ui.field :name="$f('logistics_city')" :id="$id('city')" label="Город" data-people-field="logistics_city"/>
                     <x-ui.field :name="$f('cdek_point')" :id="$id('cdek')" label="Пункт СДЭК" type="textarea" data-people-field="cdek_point"/>

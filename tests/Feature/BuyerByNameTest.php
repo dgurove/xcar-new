@@ -51,4 +51,36 @@ class BuyerByNameTest extends TestCase
         $this->assertNull($buyer->fresh()->phone);
         $this->assertTrue($buyer->fresh()->mayHave('email'));
     }
+
+    /** С паспортом — имя по желанию: «Новый покупатель», скан на его контрагенте читается, дальше — его страница (07.11.2026). */
+    public function test_buyer_by_passport_alone(): void
+    {
+        \Illuminate\Support\Facades\Queue::fake();
+        $this->actingAs($this->manager)->post('http://xcar.localhost/people', ['kind' => 'buyer', 'mode' => 'person', '_person' => ['first_name' => ''],
+            'passport' => [\Illuminate\Http\UploadedFile::fake()->image('main.jpg', 400, 300), \Illuminate\Http\UploadedFile::fake()->image('reg.jpg', 300, 400)]], ['Accept' => 'application/json'])
+            ->assertOk()->assertJsonPath('go', fn ($go) => str_starts_with((string) $go, '/buyers/'));
+        $buyer = User::where('manager_id', $this->manager->id)->sole();
+        $this->assertSame(\App\Users\Actions\AddPerson::UNNAMED, $buyer->name);
+        $this->assertNotNull($buyer->party?->passportScan('main'));
+        $this->assertNotNull($buyer->party->passportScan('reg'));
+        \Illuminate\Support\Facades\Queue::assertPushed(\App\Billing\Jobs\ReadPassport::class, 2);
+
+        // Скан прочитан — ФИО контрагенту, «Имя Фамилия» аккаунту.
+        $media = $buyer->party->passportScan('main');
+        $media->setCustomProperty('fields', ['name' => 'Алиев Гусейн Магомедович'])->save();
+        \App\Billing\Jobs\ReadPassport::passportName($media->fresh());
+        $this->assertSame('Гусейн Алиев', $buyer->fresh()->name);
+        $this->assertSame('Алиев Гусейн Магомедович', $buyer->party->fresh()->name);
+
+        // Ни имени, ни паспорта — «Имя или паспорт».
+        $this->postJson('http://xcar.localhost/people', ['kind' => 'buyer', '_person' => ['first_name' => '']])->assertJsonValidationErrors(['first_name' => 'Имя или паспорт']);
+    }
+
+    /** Серия и номер двумя полями — в одно `passport`. */
+    public function test_passport_series_and_number_join(): void
+    {
+        $this->assertSame('82 07 445349', \App\Billing\PartyRules::passportNumber('8207', ' 445349'));
+        $this->assertSame(['82 07', '445349'], \App\Billing\PartyRules::passportParts('82 07 445349'));
+        $this->assertSame('AB 1234567', \App\Billing\PartyRules::passportNumber('AB', '1234567'));
+    }
 }

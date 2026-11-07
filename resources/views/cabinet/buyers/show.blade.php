@@ -161,7 +161,8 @@
                         <x-ui.chevron/>
                     </x-ui.sheet-row>
                 </div>
-                <x-ui.sheet id="passport" title="Паспорт">
+                {{-- Заведён с паспортом («Новый покупатель» → `?passport=1`, 07.11.2026) — шторка сразу открыта: скан читается и заполняет поля. --}}
+                <x-ui.sheet id="passport" title="Паспорт" :open="request()->boolean('passport')">
                     <x-billing.passport-scan :party="$party" form="buyer-passport-form"/>
                     <form method="post" action="/buyers/{{ $buyer->id }}/passport" class="flex flex-col gap-3" id="buyer-passport-form">
                         @csrf @method('put')

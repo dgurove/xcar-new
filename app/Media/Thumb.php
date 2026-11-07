@@ -14,6 +14,12 @@ use Throwable;
 final class Thumb
 {
     /** Путь к готовой миниатюре; null — не вышло, отдать файл как есть или значок. `$name` — имя в `cache/mail`. */
+    /** Миниатюру — заново при следующем запросе (файл повернули). */
+    public static function forget(string $name): void
+    {
+        Storage::disk('cache')->delete('mail/'.$name.'.webp');
+    }
+
     public static function of(string $file, bool $pdf, string $name, int $size = 320): ?string
     {
         $small = Storage::disk('cache')->path('mail/'.$name.'.webp');

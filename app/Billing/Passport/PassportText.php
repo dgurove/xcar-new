@@ -36,7 +36,7 @@ final class PassportText
      */
     public static function main(string $text): array
     {
-        $lines = self::lines($text);
+        $lines = self::lines(explode(self::ACROSS, $text, 2)[0]);
         $mrz = self::mrz($lines);
         $fields = [];
         $checked = [];
@@ -52,13 +52,10 @@ final class PassportText
                 $fields['birth_at'] = $dates[count($dates) - 1];
             }
         }
-        // Серия и номер красным вертикально у обеих страниц: «87 11 524350». Без зоны верим, только если обе сошлись —
+        // Серия и номер красным вертикально у обеих страниц: «87 11 524350». Без зоны верим, только если сошлись —
         // неверный номер в договоре хуже пустого поля.
-        preg_match_all('/(?<!\d)(\d{2})\s?(\d{2})\s{0,3}(\d{6})(?!\d)/u', preg_replace('/[OО]/u', '0', $text), $sn, PREG_SET_ORDER);
-        $seen = array_count_values(array_map(fn ($m) => "{$m[1]} {$m[2]} {$m[3]}", $sn));
-        arsort($seen);
-        if ($seen && reset($seen) >= 2) {
-            $fields['passport'] = array_key_first($seen);
+        if ($number = self::number($text, $fields['passport_code'] ?? null, $fields['passport_issued_at'] ?? null)) {
+            $fields['passport'] = $number;
         }
 
         // Зона главнее, только где сошлись контрольные цифры; без них — лишь на пустое место, а номер паспорта — никогда:
@@ -91,34 +88,136 @@ final class PassportText
     }
 
     /**
+     * Код субъекта в коде подразделения (первые две цифры, «050-003» — Дагестан) → первые две цифры серии паспорта (код
+     * ОКАТО, «82 07»). Неуверенные субъекты (автономные округа, Крым) не внесены: без них проверка просто не помогает.
+     */
+    private const OKATO = [
+        '01' => '79', '02' => '80', '03' => '81', '04' => '84', '05' => '82', '06' => '26', '07' => '83', '08' => '85', '09' => '91',
+        '10' => '86', '11' => '87', '12' => '88', '13' => '89', '14' => '98', '15' => '90', '16' => '92', '17' => '93', '18' => '94',
+        '19' => '95', '20' => '96', '21' => '97', '22' => '01', '23' => '03', '24' => '04', '25' => '05', '26' => '07', '27' => '08',
+        '28' => '10', '29' => '11', '30' => '12', '31' => '14', '32' => '15', '33' => '17', '34' => '18', '35' => '19', '36' => '20',
+        '37' => '24', '38' => '25', '39' => '27', '40' => '29', '41' => '30', '42' => '32', '43' => '33', '44' => '34', '45' => '37',
+        '46' => '38', '47' => '41', '48' => '42', '49' => '44', '50' => '46', '51' => '47', '52' => '22', '53' => '49', '54' => '50',
+        '55' => '52', '56' => '53', '57' => '54', '58' => '56', '59' => '57', '60' => '58', '61' => '60', '62' => '61', '63' => '36',
+        '64' => '63', '65' => '64', '66' => '65', '67' => '66', '68' => '68', '69' => '28', '70' => '69', '71' => '70', '72' => '71',
+        '73' => '73', '74' => '75', '75' => '76', '76' => '78', '77' => '45', '78' => '40', '79' => '99',
+    ];
+
+    /** Строка, после которой `ocr` кладёт цифры, прочитанные поперёк страницы (серия и номер стоят вертикально). */
+    public const ACROSS = '‹поперёк›';
+
+    /**
+     * Серия и номер (07.11.2026, скан Максутова: красные цифры у края обрезаны — сверху «07 445349», снизу «82 07 4453»).
+     * Номер — шесть цифр, встреченные не меньше двух раз. Серия — четыре цифры перед номером или перед его началом;
+     * верна, если её подтверждают два отпечатка (целиком или последние две цифры перед номером) или один, но первые две
+     * цифры — ОКАТО субъекта из кода подразделения, а год бланка не позже выдачи. Иначе пусто.
+     */
+    private static function number(string $text, ?string $code, ?string $issuedAt): ?string
+    {
+        $text = preg_replace('/[OО]/u', '0', $text);
+        // Прочитанное поперёк — отдельно: те же цифры, прочитанные и вдоль, считались бы двумя отпечатками. Номер —
+        // по тому из двух, где он встречен чаще (поперёк обрезанный отпечаток «82 07 4453» — тоже встреча).
+        $parts = explode(self::ACROSS, $text, 2);
+        $across = isset($parts[1]) && preg_match('/\d{4}/', $parts[1]) ? $parts[1] : null;
+        $text = $across ?? $parts[0];
+
+        preg_match_all('/(?<!\d)(\d{2})\s?(\d{2})\s{0,3}(\d{6})(?!\d)/u', $text, $full, PREG_SET_ORDER);
+        $whole = array_count_values(array_map(fn ($m) => "{$m[1]} {$m[2]} {$m[3]}", $full));
+        arsort($whole);
+        if ($whole && reset($whole) >= 2) {
+            return array_key_first($whole);
+        }
+
+        $six = fn (string $t) => preg_match_all('/(?<!\d)\d{6}(?!\d)|(?<=\d{4})\d{6}(?!\d)/u', $t, $x) ? $x[0] : [];
+        $counts = [];
+        foreach (array_filter([$parts[0], $across]) as $source) {
+            $here = array_count_values($six($source));
+            foreach (array_keys($here) as $n) {
+                // Обрезанный отпечаток: серия и начало номера, не меньше четырёх цифр.
+                preg_match_all('/(?<!\d)\d{2}\s?\d{2}\s{0,3}(\d{4,5})(?!\d)/u', $source, $cut);
+                $here[$n] += count(array_filter($cut[1], fn ($c) => str_starts_with((string) $n, $c)));
+                $counts[$n] = max($counts[$n] ?? 0, $here[$n]);
+            }
+        }
+        arsort($counts);
+        $number = $counts && reset($counts) >= 2 ? (string) array_key_first($counts) : null;
+        if ($number === null) {
+            return null;
+        }
+        // Серия перед номером или перед его началом (низ обрезан: «82 07 4453»), и одиночные две цифры перед номером
+        // («07 445349» — верх обрезан).
+        $series = [];
+        $tails = [];
+        preg_match_all('/(?<!\d)(\d{2})\s?(\d{2})\s{0,3}(\d{2,6})(?!\d)/u', $text, $m, PREG_SET_ORDER);
+        foreach ($m as $x) {
+            if (str_starts_with($number, $x[3])) {
+                $series[] = $x[1].' '.$x[2];
+            }
+        }
+        preg_match_all('/(?<!\d)(\d{2})\s{1,3}'.$number.'(?!\d)/u', $text, $t);
+        foreach ($t[1] as $two) {
+            $tails[] = $two;
+        }
+        $best = null;
+        $bestScore = 0;
+        foreach (array_unique($series) as $s) {
+            $score = count(array_keys($series, $s)) + count(array_keys($tails, substr($s, 3)));
+            // «82 07 445349» целиком дал и серию, и хвост «07» — это один отпечаток.
+            $score -= count(array_filter($full, fn ($f) => "{$f[1]} {$f[2]}" === $s && $f[3] === $number));
+            if ($score > $bestScore) {
+                [$best, $bestScore] = [$s, $score];
+            }
+        }
+        if ($best === null) {
+            return null;
+        }
+        $region = $code ? (self::OKATO[substr($code, 0, 2)] ?? null) : null;
+        $blank = (int) substr($best, 3);
+        $year = $issuedAt ? (int) substr($issuedAt, 2, 2) : null;
+        $plausible = $region === substr($best, 0, 2) && ($year === null || $blank <= $year || $blank >= 97);
+        if ($bestScore >= 2 || ($bestScore >= 1 && $plausible)) {
+            return $best.' '.$number;
+        }
+
+        return null;
+    }
+
+    /**
      * Адрес из штампа «Зарегистрирован»: последний по дате, «снят с учёта» — мимо.
      *
      * @return array{fields: array<string, string>, checked: list<string>}
      */
     public static function registration(string $text): array
     {
-        $lines = self::lines($text);
+        $lines = self::lines(explode(self::ACROSS, $text, 2)[0]);
         $stamps = [];
         $current = null;
+        // Строки до штампа: у сельского штампа адрес стоит над «ЗАРЕГИСТРИРОВАН» (07.11.2026, «РЕСПУБЛИКА ДАГЕСТАН /
+        // КАРАБУДАХКЕНТСКИЙ РАЙОН / АДМИНИСТРАЦИЯ С.АДАНАК / ЗАРЕГИСТРИРОВАН / 0904 2008.»).
+        $loose = [];
         foreach ($lines as $line) {
             $up = self::cyr(mb_strtoupper($line));
             if (preg_match('/З?АРЕГИСТР|РЕГИСТРИРОВАН/u', $up) && ! preg_match('/СНЯТ|РЕГИСТРАЦИОННОГО/u', $up)) {
                 $current !== null && $stamps[] = $current;
-                $current = ['date' => null, 'lines' => []];
+                $current = ['date' => null, 'lines' => [], 'before' => $loose];
+                $loose = [];
 
                 continue;
             }
             if (preg_match('/СНЯТ\b|С РЕГИСТРАЦИОННОГО/u', $up)) {
                 $current !== null && $stamps[] = $current;
                 $current = null;
+                $loose = [];
 
                 continue;
             }
             if ($current === null) {
+                $loose[] = $line;
+
                 continue;
             }
-            if (! $current['date'] && ($d = self::dates($line))) {
-                $current['date'] = $d[0];
+            if (! $current['date'] && ($d = self::stampDate($line))) {
+                $current['date'] = $d;
 
                 continue;
             }
@@ -130,8 +229,27 @@ final class PassportText
         }
         usort($stamps, fn ($a, $b) => strcmp((string) $b['date'], (string) $a['date']));
         $address = self::address($stamps[0]['lines']);
+        if ($address === '') {
+            // Над словом — не больше пяти строк вплотную к нему, без заголовка страницы «Место жительства».
+            $before = array_values(array_filter($stamps[0]['before'], fn ($l) => ! preg_match('/МЕСТО|ЖИТЕЛЬСТВ|^\W*\d{1,2}\W*$/u', self::cyr(mb_strtoupper($l)))));
+            $address = self::address(array_slice($before, -5));
+        }
 
         return ['fields' => $address !== '' ? ['reg_address' => $address] : [], 'checked' => []];
+    }
+
+    /** Дата штампа — и без точек: «09.04.2008», «0904 2008.», «09 04 2008». */
+    private static function stampDate(string $line): ?string
+    {
+        if ($d = self::dates($line)) {
+            return $d[0];
+        }
+        if (preg_match('/(?<!\d)(\d{2})[.,\s]?(\d{2})[.,\s]{1,4}((?:19|20)\d{2})(?!\d)/u', preg_replace('/[OО]/u', '0', $line), $m)
+            && (int) $m[1] >= 1 && (int) $m[1] <= 31 && (int) $m[2] >= 1 && (int) $m[2] <= 12) {
+            return "{$m[3]}-{$m[2]}-{$m[1]}";
+        }
+
+        return null;
     }
 
     /** Строки штампа → «САМАРСКАЯ ОБЛ., ГОР. САМАРА, УЛ. МОЛОДОГВАРДЕЙСКАЯ, Д. 151, КВ. 23». */
@@ -139,7 +257,8 @@ final class PassportText
     {
         $parts = [];
         foreach ($lines as $line) {
-            $up = self::fixPrefix(self::cyr(mb_strtoupper(trim($line)), true));
+            // «АДМИНИСТРАЦИЯ С.АДАНАК» — кто ставил штамп; адрес — село.
+            $up = preg_replace('/^АДМИНИСТРАЦИ[ЯИ]\s+/u', '', self::fixPrefix(self::cyr(mb_strtoupper(trim($line)), true)));
             // Кем зарегистрирован, код подразделения, подпись — конец адреса («ГУМВД», «ФУМВД» — тот же «ГУ МВД»).
             if (preg_match('/МВД|УФМС|ОВД|ОВМ|ОТДЕЛ|МИГРАЦ|ПАСПОРТН/u', $up) || preg_match('/^\d{3}-\d{3}|ЗАВЕРИЛ|ПОДПИСЬ/u', $up)) {
                 break;
@@ -397,11 +516,15 @@ final class PassportText
                 $line = preg_replace('/\d{2}[.,]\d{2}[.,]\d{4}|\b(МУЖ|ЖЕН)\.?/u', '   ', self::cyr(mb_strtoupper($line)));
             }
             foreach (self::values($line) as $v) {
+                // Обрывок подписи «Пол» в строке даты («ПО.МУЖ» → «ПО.») — не значение.
+                if ($n === 0 && preg_match('/^[А-ЯЁ]{1,2}\.?$/u', $v)) {
+                    continue;
+                }
                 if (! preg_match('/[А-Я]{2,}/u', $v) || preg_match('/^(РОССИЯ|RUSSIA|POCCИЯ)(\s|$)|^\d/u', $v) || preg_match(self::LABELS, $v)) {
                     continue;
                 }
                 // Хвост подписи «рождения» («ИЯ») перед «ГОР.», «С.», «ПОС.» — не значение.
-                $out[] = preg_replace(['/\s{2,}/u', '/^[А-ЯЁ]{1,2}\s+(?=(ГОР|ПОС|С|Д|Г|ДЕР|СТ|РП|ПГТ)\.?\s)/u'], [' ', ''], $v);
+                $out[] = preg_replace(['/\s{2,}/u', '/^[А-ЯЁ]{1,2}\.?\s+(?=(ГОР|ПОС|С|Д|Г|ДЕР|СТ|РП|ПГТ)\.?\s)/u'], [' ', ''], $v);
             }
         }
 

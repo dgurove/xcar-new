@@ -170,20 +170,26 @@ class AlfaRequisitesTest extends TestCase
         $this->assertSame('Оплата счёта', $offer->fresh()->stage()->name);
     }
 
-    /** ФИО со скана полнее имени аккаунта — встаёт само, другое имя — нет (05.11.2026: в письмо ушло «Роман Мирошников»). */
-    public function test_fuller_name_from_passport_scan_replaces_short_one(): void
+    /**
+     * ФИО со скана встаёт поверх вписанного (05.11.2026: в письмо ушло «Роман Мирошников»; 07.11.2026, владелец: и другое
+     * вписанное — паспорт главнее), буква OCR — по вписанному; у организации имя не трогается.
+     */
+    public function test_passport_name_replaces_typed_one(): void
     {
+        $read = fn (Party $party, string $name) => \App\Billing\Jobs\ReadPassport::passportName($party->addMediaFromString('scan')->usingFileName('main.jpg')
+            ->withCustomProperties(['page' => 'main', 'read' => 'done', 'fields' => ['name' => $name]])->toMediaCollection('passport')->fresh());
+
         $party = Party::create(['kind' => 'person', 'name' => 'Роман Мирошников']);
-        $media = $party->addMediaFromString('scan')->usingFileName('main.jpg')
-            ->withCustomProperties(['page' => 'main', 'read' => 'done', 'fields' => ['name' => 'Мирошников Роман Игоревич']])->toMediaCollection('passport');
-        \App\Billing\Jobs\ReadPassport::fullerName($media->fresh());
+        $read($party, 'Мирошников Роман Игоревич');
         $this->assertSame('Мирошников Роман Игоревич', $party->fresh()->name);
 
-        $other = Party::create(['kind' => 'person', 'name' => 'Иван Петров']);
-        $m = $other->addMediaFromString('scan')->usingFileName('main.jpg')
-            ->withCustomProperties(['page' => 'main', 'read' => 'done', 'fields' => ['name' => 'Мирошников Роман Игоревич']])->toMediaCollection('passport');
-        \App\Billing\Jobs\ReadPassport::fullerName($m->fresh());
-        $this->assertSame('Иван Петров', $other->fresh()->name);
+        $typo = Party::create(['kind' => 'person', 'name' => 'Гусейн Максутов']);
+        $read($typo, 'Максутов Фусейн Максутович');
+        $this->assertSame('Максутов Гусейн Максутович', $typo->fresh()->name);
+
+        $company = Party::create(['kind' => 'company', 'name' => 'ООО «Ромашка»']);
+        $read($company, 'Мирошников Роман Игоревич');
+        $this->assertSame('ООО «Ромашка»', $company->fresh()->name);
     }
 
     public function test_ros_scheme_sends_our_requisites_without_manager(): void

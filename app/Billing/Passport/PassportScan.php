@@ -2,13 +2,13 @@
 
 namespace App\Billing\Passport;
 
-use App\Mail\Scan\DocumentPhoto;
+use App\Mail\Scan\PassportPhoto;
 use App\Mail\Scan\Paper;
 use App\Mail\Scan\ScanFile;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
-/** Скан страницы паспорта для `DocumentText`: тот же медиафайл, что `Paper`, но фото документа (повороты, увеличение). */
-final class PassportScan implements DocumentPhoto, ScanFile
+/** Скан страницы паспорта для `DocumentText`: тот же медиафайл, что `Paper`, но фото паспорта (повороты, увеличение, цифры поперёк). */
+final class PassportScan implements PassportPhoto, ScanFile
 {
     private Paper $paper;
 

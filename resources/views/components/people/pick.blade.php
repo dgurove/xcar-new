@@ -12,7 +12,7 @@
      вид кнопки: row (строка с плюсом), button (лаймовая кнопка). --}}
 @props(['name', 'label' => null, 'value' => null, 'people' => collect(), 'kind', 'title' => null, 'newLabel' => null, 'link' => false,
     'deal' => null, 'autosubmit' => false, 'none' => null, 'variant' => 'field', 'placeholder' => 'Выбрать', 'required' => false, 'finish' => null,
-    'only' => false, 'append' => null, 'reload' => false, 'trigger' => 'row', 'owner' => null, 'open' => false])
+    'only' => false, 'append' => null, 'reload' => false, 'trigger' => 'row', 'owner' => null, 'open' => false, 'passport' => false])
 @php
     use App\Support\Surface;
     $uid = 'pp'.substr(md5($name.$kind.uniqid('', true)), 0, 8);
@@ -93,7 +93,7 @@
             @endunless
             @if ($canCreate)
                 <div class="people-new-pane" data-new-title="{{ $newLabel }}">
-                    <x-people.new-pane :kind="$kind" :link="$link" :uid="$uid"/>
+                    <x-people.new-pane :kind="$kind" :link="$link" :uid="$uid" :passport="$passport"/>
                     <span hidden data-people-pick-target="finishLabel">{{ $finish }}</span>
                 </div>
             @endif

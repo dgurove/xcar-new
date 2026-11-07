@@ -4,6 +4,7 @@ namespace App\Mail\Extraction;
 
 use App\Mail\Parts;
 use App\Mail\Scan\DocumentPhoto;
+use App\Mail\Scan\PassportPhoto;
 use App\Mail\Scan\ScanFile;
 use Closure;
 use Illuminate\Support\Facades\Log;
@@ -112,7 +113,7 @@ final class DocumentText
      * Прочитать файлы по порядку: прочитанное и слой — сразу, остальное — через `ocr` кусками по CHUNK картинок.
      * Первый кусок — один первый файл: читалка «Завести» заполняет поля по нему, не дожидаясь пачки. PDF
      * растеризуется перед своим куском, а не все сразу. `$done($file, $text)` зовётся по каждому файлу, как только он
-     * готов; `null` — не прочитан (упал, не уложился). `$halt()` — «Стоп» человека: проверяется раз в полсекунды,
+     * готов (третьим — поворот одной картинки, `ocr` `turn`; из кэша — нет); `null` — не прочитан (упал, не уложился). `$halt()` — «Стоп» человека: проверяется раз в полсекунды,
      * пока `ocr` работает, `ocr` гасится, недочитанное и не начатое `$done` не получает. `$timeout` — меньше таймаута задачи:
      * иначе её убьют раньше, чем сработает `finally`.
      *
@@ -153,9 +154,11 @@ final class DocumentText
                 $pages[$a->scanId()][$row['file']] = (string) ($row['text'] ?? '');
                 if (! in_array(null, $pages[$a->scanId()], true)) {
                     $text = trim(implode("\n\f\n", $pages[$a->scanId()]));
+                    // Поворот, с которым прочитано, — только у одной картинки (фото документа): страницы PDF не поворачиваем.
+                    $turn = count($pages[$a->scanId()]) === 1 && isset($row['turn']) ? (int) $row['turn'] : null;
                     self::put($a, $text);
                     unset($pages[$a->scanId()]);
-                    $done($a, $text);
+                    $done($a, $text, $turn);
                 }
             };
             // Кусками по CHUNK картинок: на длинной пачке ocr падал (сигнал 11, копится память), по одному — ни разу.
@@ -281,7 +284,8 @@ final class DocumentText
         // Фото документа — под именем «doc-…»: скрипт поставит его прямо и увеличит мелкое (`DocumentPhoto`).
         // Картинка-документ (СТС по имени, скан заявки — `DocumentScan`) — тоже: заявку Альфы присылают и боком.
         if ($a instanceof DocumentPhoto || ! $a->isPhoto()) {
-            $link = $dir.'/doc-'.$a->scanId().'.'.(pathinfo($path, PATHINFO_EXTENSION) ?: 'jpg');
+            // Паспорт — «pass-…»: скрипт читает его ещё поперёк (серия и номер вертикально, `PassportPhoto`).
+            $link = $dir.'/'.($a instanceof PassportPhoto ? 'pass-' : 'doc-').$a->scanId().'.'.(pathinfo($path, PATHINFO_EXTENSION) ?: 'jpg');
             @symlink($path, $link);
 
             return [is_link($link) ? $link : $path];
