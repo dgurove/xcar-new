@@ -9,14 +9,17 @@ use App\Notifications\GalleryInterestOnSaleNotice;
 use App\Notifications\OfferPublishedNotice;
 use App\Notifications\SlotPublishedNotice;
 use App\Notifications\UrgentOfferNotice;
+use App\Offers\AudienceRules;
 use App\Offers\Interest;
 use App\Offers\Offer;
+use App\Offers\OfferEventType;
 use App\Offers\OfferState;
 use App\Offers\OfferViewer;
 use App\Purchases\Car as PurchaseCar;
 use App\Support\Nav;
 use App\Users\Role;
 use App\Users\User;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
@@ -85,7 +88,7 @@ final class NotifyViewers
         // Отметка и выборка одним запросом: публикация «сейчас» в другом процессе не напишет второй раз.
         $rows = collect(DB::select(
             'update offer_viewers set notified_at = ? where notified_at is null and opens_at <= ?
-                and offer_id in (select id from offers where state = ? and is_demo = false) returning offer_id, user_id',
+                and offer_id in (select id from offers where state = ? and is_demo = false) returning offer_id, user_id, opens_at',
             [now(), now(), OfferState::Open->value],
         ));
         if ($rows->isEmpty()) {
@@ -101,6 +104,7 @@ final class NotifyViewers
                 continue;
             }
             $ids = $viewers->pluck('user_id')->all();
+            self::logWave($offer, $viewers);
             if ($offer->isUrgent()) {
                 $users->only($ids)->filter(fn (User $u) => $offer->regionOpenTo($u))->each(fn (User $u) => $u->notify(new UrgentOfferNotice($offer, $u)));
                 $this->publish->card($offer->number, Topics::CATALOG);
@@ -182,6 +186,27 @@ final class NotifyViewers
     private function announcePurchase(Offer $offer): void
     {
         PurchaseCar::where('car_id', $offer->car_id)->whereNull('announced_at')->update(['announced_at' => now()]);
+    }
+
+    /**
+     * Открылась не первая волна — строкой истории «Открыто: остальные менеджеры — через 5 дней после выхода (31 человек)»
+     * (07.11.2026, владелец: в истории было «Срок приёма истёк», а не какая волна наступила). Первая волна — сама публикация.
+     */
+    private static function logWave(Offer $offer, $viewers): void
+    {
+        if (! $offer->published_at) {
+            return;
+        }
+        foreach ($viewers->groupBy(fn ($v) => (int) round(($offer->published_at->diffInSeconds(Carbon::parse($v->opens_at), false)) / 60)) as $delay => $wave) {
+            if ($delay < 1) {
+                continue;
+            }
+            $offer->log(OfferEventType::Wave, null, array_filter([
+                'who' => AudienceRules::waveNames(AudienceRules::of($offer), $delay) ?: null,
+                'after' => AudienceRules::when($delay),
+                'count' => $wave->count(),
+            ]));
+        }
     }
 
     /** «Открыты только Вам»: в волнах показа предложения ровно один человек (`Offer::scopeOnlyFor`). */

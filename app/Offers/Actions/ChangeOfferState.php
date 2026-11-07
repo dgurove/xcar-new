@@ -4,6 +4,7 @@ namespace App\Offers\Actions;
 
 use App\Garage\Actions\CloseGarageDeal;
 use App\Garage\Car as GarageCar;
+use App\Offers\AudienceRules;
 use App\Offers\BidState;
 use App\Offers\Binding;
 use App\Offers\Deal;
@@ -130,7 +131,9 @@ final class ChangeOfferState
             }
             // Кто видит — до событий: уведомление о публикации берёт наступившие волны.
             app(SyncViewers::class)($offer);
-            $offer->log(OfferEventType::StateChanged, $by, ['from' => $from->value, 'to' => $next->value] + ($auction ? ['auction' => true] : []));
+            // В продажу — кому и до когда, словами «Кому показывать» (07.11.2026): в истории видно, кому было открыто.
+            $offer->log(OfferEventType::StateChanged, $by, ['from' => $from->value, 'to' => $next->value] + ($auction ? ['auction' => true] : [])
+                + ($next === OfferState::Open ? ['audience' => AudienceRules::summary(AudienceRules::of($offer)), 'until' => $offer->bids_close_at?->toDateTimeString()] : []));
             if ($galleryClosed) {
                 $offer->log(OfferEventType::Gallery, $by);
             }

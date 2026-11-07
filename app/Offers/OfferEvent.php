@@ -8,6 +8,7 @@ use App\Support\Ago;
 use App\Support\Changes;
 use App\Support\FastAttributes;
 use App\Support\Money;
+use App\Support\Plural;
 use App\Users\User;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
@@ -97,8 +98,12 @@ class OfferEvent extends Model
             },
             OfferEventType::Updated => self::updatedText($p),
             // «closed» — состояние, которого больше нет; старые записи ленты остаются читаемыми.
+            // Выставили в продажу — кому и до когда (07.11.2026, владелец: Рома просил доказательств, что машины были ему открыты).
             OfferEventType::StateChanged => ! empty($p['auction']) ? ($p['to'] === OfferState::Delivered->value ? 'Продана на аукционе' : 'Продажа на аукционе отменена')
-                : OfferState::tryFrom($p['to'] ?? '')?->label() ?? ($p['to'] === 'closed' ? 'Приём закрыт' : (string) $p['to']),
+                : (($p['to'] ?? null) === OfferState::Open->value && isset($p['audience'])
+                    ? 'Выставлено в продажу: '.preg_replace_callback('/^(Всем|Никому|Остальные)/u', fn ($m) => mb_strtolower($m[1]), $p['audience']).(! empty($p['until']) ? ', приём до '.Ago::at(Carbon::parse($p['until']), true, words: false) : '')
+                    : (OfferState::tryFrom($p['to'] ?? '')?->label() ?? ($p['to'] === 'closed' ? 'Приём закрыт' : (string) $p['to']))),
+            OfferEventType::Wave => 'Открыто: '.($p['who'] ?? 'следующая волна').(! empty($p['after']) ? ' — '.$p['after'].' после выхода' : '').(! empty($p['count']) ? ' ('.$p['count'].' '.Plural::of((int) $p['count'], ['человек', 'человека', 'человек']).')' : ''),
             OfferEventType::BidPlaced => ! empty($p['garage']) ? 'Подтверждение в гараж' : 'Подтверждение '.Money::plain($p['amount'] ?? 0),
             OfferEventType::BidAccepted => match (true) {
                 isset($p['buyer_price']) => 'В гараж покупателю за '.Money::rub($p['buyer_price']),

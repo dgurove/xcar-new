@@ -157,6 +157,24 @@ final class AudienceRules
         return mb_strtoupper(mb_substr($text, 0, 1)).mb_substr($text, 1);
     }
 
+    /**
+     * Кому открылась волна с этим сдвигом от выхода — именами строк правил («остальные», «Москва», «Роман Корабельников»);
+     * не нашлась — пусто (07.11.2026, строка истории `OfferEventType::Wave`).
+     */
+    public static function waveNames(array $rules, int $delay): string
+    {
+        $rules = collect(self::normalize($rules ?: self::everyone()))->filter(fn ($r) => $r['delay'] !== null && abs($r['delay'] - $delay) <= 1);
+        $groups = UserGroup::whereIn('id', $rules->where('type', 'group')->pluck('id'))->pluck('name', 'id');
+        $users = User::whereIn('id', $rules->where('type', 'user')->pluck('id'))->get()->keyBy('id');
+
+        return $rules->map(fn ($r) => match ($r['type']) {
+            'group' => $groups[$r['id']] ?? null,
+            'user' => $users[$r['id']]?->shortName(),
+            self::SUPER => self::SUPER_NAME,
+            'rest' => 'остальные менеджеры',
+        })->filter()->implode(', ');
+    }
+
     /** Для шторки «Кому»: группы менеджеров, менеджеры (короткими именами), супер-покупатели строкой и варианты времени. */
     public static function options(): array
     {

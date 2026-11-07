@@ -39,6 +39,7 @@ use App\Vendors\ClaimRequest;
 use App\Vendors\DealFormat;
 use App\Vendors\Kind;
 use App\Vendors\Vendor;
+use App\Workflow\DeadlineSource;
 use App\Workflow\Outcome;
 use App\Workflow\Position;
 use App\Workflow\Requirement;
@@ -154,6 +155,12 @@ class Offer extends Model
                 // её полей (19.10.2026: адрес — поле продажи, не машины, и правка одного адреса не доезжала никуда).
                 $car = $o->car_id;
                 DB::afterCommit(fn () => CarChanged::dispatch($car, ['inspection_address']));
+            }
+            // Срок приёма перенесли — шаг «Приём подтверждений» (срок — `DeadlineSource::BidsClose`) идёт по новому (07.11.2026:
+            // Нефаз 93341 — приём до 20.11, а шаг закрылся «Срок приёма истёк» 07.11 по сроку первой публикации).
+            if ($o->wasChanged('bids_close_at') && $o->bids_close_at) {
+                Position::where('offer_id', $o->id)->whereHas('stage', fn ($s) => $s->where('deadline_source', DeadlineSource::BidsClose))
+                    ->update(['deadline_at' => $o->bids_close_at] + ($o->bids_close_at->isFuture() ? ['reminded_at' => null, 'overdue_at' => null] : []));
             }
             // Тревога в шапке (`Binding::touch`): новый срок, ушло из продажи или вернулось.
             if ($o->wasChanged(['binding_until', 'state'])) {
