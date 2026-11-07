@@ -15,13 +15,13 @@
     // ниже неё (05.10.2026, владелец: «просит приложить договор, а он где-то ниже формируется»).
     // Получение по ДКП (Т-Страхование, 06.10.2026): «Связался» → «Забрал» → подписанный договор — тот же чек-лист с первого шага.
     $pickupSteps = \App\Offers\Handover::checklist($deal, $position);
-    $contractStep = $deal->isActive() && $deal->hasContract() && $requirement && ($pickupSteps || ($requirement->asks === \App\Workflow\Asks::Document && ! $position?->stage->isPayStep()));
+    $contractStep = $deal->isLive() && $deal->hasContract() && $requirement && ($pickupSteps || ($requirement->asks === \App\Workflow\Asks::Document && ! $position?->stage->isPayStep()));
     // ПРАЙМ без покупателя: задача и есть выбор покупателя — он в ней, а не вторым блоком с той же кнопкой.
-    $needsBuyer = $deal->isActive() && $position?->stage->isPayStep() && $deal->hasContract() && in_array($deal->invoiceGap(), ['buyer', 'passport'], true);
+    $needsBuyer = $deal->isLive() && $position?->stage->isPayStep() && $deal->hasContract() && in_array($deal->invoiceGap(), ['buyer', 'passport'], true);
     // Пока покупка не согласована (11.10.2026 — Каркаде, 27.10.2026 — у всех: BMW X6 Альфы 22 дня просила «Выбрать
     // покупателя» и ДКП, хотя поставщик ещё не ответил, а менеджер не сказал «Беру»): «Выбрать покупателя» и ДКП рано.
     // Блок встанет после согласования (`Deal::agreed`).
-    $tooEarly = $deal->isActive() && ! $deal->agreed();
+    $tooEarly = $deal->isLive() && ! $deal->agreed();
 @endphp
 <x-ui.shell :title="$offer->titleWithYear()" :back="['Сделки', '/deals']">
     <x-slot:badge><x-car.keys :count="$offer->keys_count" label/></x-slot:badge>
@@ -36,8 +36,8 @@
             {{-- Закончилась без покупателя — «выберите покупателя» уже не о чем. --}}
             {{-- Покупатель не выбран или без данных — это дело менеджера: на телефоне сразу под задачей, над «Расчётом»
                  (05.11.2026); готов — на прежнем месте под ним. --}}
-            @php $buyerTodo = $deal->isActive() && ! $deal->contract?->buyer?->party?->readyAsBuyer(); @endphp
-            @if ($deal->hasContract() && ! $contractStep && ! $needsBuyer && ! $tooEarly && ($deal->isActive() || $deal->contract?->buyer_user_id))<div class="{{ $buyerTodo ? 'order-1' : 'order-3' }} min-w-0">@include('cabinet.deals.contract')</div>@endif
+            @php $buyerTodo = $deal->isLive() && ! $deal->contract?->buyer?->party?->readyAsBuyer(); @endphp
+            @if ($deal->hasContract() && ! $contractStep && ! $needsBuyer && ! $tooEarly && ($deal->isLive() || $deal->contract?->buyer_user_id))<div class="{{ $buyerTodo ? 'order-1' : 'order-3' }} min-w-0">@include('cabinet.deals.contract')</div>@endif
             @include('cabinet.deals.path', ['class' => 'order-5'])
 
             @if ($pastInvoices->isNotEmpty())
@@ -82,7 +82,7 @@
                 @else
                     <div class="box">
                         <a href="/offers/{{ $offer->number }}" class="nums block text-[32px] font-bold leading-none">{{ \App\Support\Money::rub($deal->amount) }}</a>
-                        @if ($deal->state !== DealState::Active)<x-ui.state :tone="$deal->state === DealState::Done ? 'open' : 'danger'" class="mt-2">{{ mb_strtolower($deal->state->label()) }}</x-ui.state>@endif
+                        @if (! $deal->isLive())<x-ui.state :tone="$deal->state === DealState::Done ? 'open' : 'danger'" class="mt-2">{{ mb_strtolower($deal->state->label()) }}</x-ui.state>@endif
                         <dl class="mt-4 grid grid-cols-2 gap-x-6 gap-y-3">
                             <div class="min-w-0"><dt class="text-sm text-ink-dim">Предложение</dt><dd class="nums mt-0.5 break-words font-normal"><x-ui.copy-code :value="(string) $offer->number"/></dd></div>
                             @if ($feeState !== CommissionState::Hidden)

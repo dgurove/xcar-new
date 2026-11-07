@@ -17,7 +17,7 @@
     $gap = $buyer?->party?->buyerGap();
     $mine = $me->buyers()->orderBy('name')->get(['id', 'name']);
     $prime = $deal->isPrime();
-    $editable = $deal->isActive();
+    $editable = $deal->isLive();
     // Гаражная «платит менеджер»: ДКП ПРАЙМ с ним самим — выбирать покупателя нечего, нужны только его данные.
     $garage = $deal->isGarage();
     $current = $isMe ? 'me' : $buyer?->id;

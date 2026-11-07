@@ -2,7 +2,7 @@
      продажи), деньги сделки формой `x-offer.money-form` (схема, сумма собственнику, вознаграждение), кто забирает ТС.
      С подтверждением — его принятие: кому и цена — из него; не выше закупочной — переспрашивает. Отдать другому —
      прежняя сделка отменится. Закупочную менеджера в сделке админ может поправить тут же (28.10.2026, `costEditable`). --}}
-@props(['offer', 'bid' => null, 'prefix' => 'give'])
+@props(['offer', 'bid' => null, 'prefix' => 'give', 'parallel' => false])
 @php
     use App\Offers\DealScheme;
     use App\Support\Money;
@@ -15,10 +15,11 @@
 @endphp
 <x-offer.money-form :action="$bid ? '/confirmations/'.$bid->id.'/accept' : '/offers/'.$offer->number.'/give'" :amount="$amount" :priced="! $bid" :cost="$floor" :cost-editable="$editCost" :supplier-cost="$offer->floor_price"
     :offer="$offer" :scheme="DealScheme::choiceFor($offer->vendor?->deal_format, DealScheme::forOffer($offer))" :schemes="DealScheme::casesFor($offer->vendor, $offer)" :owner-price="$offer->owner_price"
-    :fee="! $bid?->user->isSuperBuyer()" :submit="$handOver ? 'Отдать' : ($bid ? 'Принять' : 'Отдать')" :id="$prefix.'-commission'"
-    :note="$handOver ? 'Сделка с '.$handOver->buyer?->shortName().' отменится' : null"
+    :fee="! $bid?->user->isSuperBuyer()" :submit="$parallel ? 'Поручить' : ($handOver ? 'Отдать' : ($bid ? 'Принять' : 'Отдать'))" :id="$prefix.'-commission'"
+    :note="$parallel ? $handOver?->buyer?->shortName().' остаётся в сделке, друг о друге они не узнают' : ($handOver ? 'Сделка у '.$handOver->buyer?->shortName().' отменится' : null)"
     :confirm="$loss ? 'Принять за '.Money::rub($bid->amount).' при закупочной '.Money::rub($floor).'? '.($under > 0 ? 'Сделка в минус '.Money::rub($under) : 'Наценки нет') : null">
     <input type="hidden" name="to" value="deal">
+    @if ($parallel)<input type="hidden" name="parallel" value="1">@endif
     @if ($loss && ! $editCost)<input type="hidden" name="loss" value="1">@endif
     @error('give')<x-ui.flash tone="danger">{{ $message }}</x-ui.flash>@enderror
     @unless ($bid)
@@ -28,5 +29,6 @@
                 data-commission-target="price" data-action="input->commission#input"/>
         </div>
     @endunless
-    <x-offer.pickup-choice :offer="$offer" :manager="$bid?->user"/>
+    {{-- Параллельной ТС не забирают: вывоз — у главной. --}}
+    @unless ($parallel)<x-offer.pickup-choice :offer="$offer" :manager="$bid?->user"/>@endunless
 </x-offer.money-form>

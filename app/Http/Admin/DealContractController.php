@@ -27,7 +27,7 @@ class DealContractController
         // должна быть возможность указывать за него»): тот же выбор, что у менеджера, — его покупатели, сам менеджер
         // (`me` — покупатель сделки), данные для договора и кто платит по счёту ПРАЙМ.
         if (($request->hasAny(['buyer_id', 'payer', 'buyer'])) && ! $request->has('vehicle')) {
-            abort_unless($deal->isActive(), 404);
+            abort_unless($deal->isLive(), 404);
             $rules = ['buyer_id' => ['nullable', 'string'], 'payer' => ['nullable', 'in:buyer,manager']];
             if ($request->has('buyer')) {
                 $rules += PartyRules::passport('buyer');

@@ -7,7 +7,6 @@ use App\Http\Admin\ChatController;
 use App\Http\Admin\DealContractController;
 use App\Http\Admin\DealController;
 use App\Http\Admin\DeliveryController;
-use App\Http\Admin\ParsingController;
 use App\Http\Admin\DisclosureController;
 use App\Http\Admin\GalleryController;
 use App\Http\Admin\GarageController;
@@ -25,6 +24,8 @@ use App\Http\Admin\OfferDraftController;
 use App\Http\Admin\OfferEstimateController;
 use App\Http\Admin\OfferPhotoController;
 use App\Http\Admin\OfferValuationController;
+use App\Http\Admin\ParallelController;
+use App\Http\Admin\ParsingController;
 use App\Http\Admin\PayLinkController;
 use App\Http\Admin\PurchaseCarPhotoController;
 use App\Http\Admin\PurchaseController;
@@ -265,6 +266,9 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
         Route::post('/work/deals/supplier-answer', [DealController::class, 'supplierAnswer']);
         Route::put('/work/deals/{deal}/receiver', [DealController::class, 'receiver']);
         Route::post('/work/deals/{deal}/declined', [DealController::class, 'declined']);
+        // Параллельные сделки (07.11.2026, `Offers\Parallels`): переключиться на эту — «Взять в работу», закрыть одну — «Снять».
+        Route::post('/work/deals/{deal}/take', [ParallelController::class, 'take']);
+        Route::post('/work/deals/{deal}/drop', [ParallelController::class, 'drop']);
         Route::post('/work/deals/{deal}/disclose', [DisclosureController::class, 'store']);
         Route::post('/work/deals/{deal}/reviews/done', [DisclosureController::class, 'dismiss']);
         // У кого что в гараже и во что обошлось.

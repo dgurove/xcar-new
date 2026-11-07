@@ -37,6 +37,8 @@
         <x-cell.title :key="$deal->id" :offer="$offer" :strong="$replied">
             <x-slot:before>@if ($replied)<span class="card-tone card-tone--reply" aria-label="Поставщик ответил"></span>@endif</x-slot:before>
             @if ($burning)<x-offer.binding :offer="$offer" icon/>@endif
+            {{-- Параллельные этой машины (07.11.2026): метка у названия — столбец менеджера на узком экране уходит. --}}
+            @if ($deal->parallels_count)<span class="tag ml-1.5" title="Параллельно ещё {{ $deal->parallels_count }}">+{{ $deal->parallels_count }} параллельно</span>@endif
         </x-cell.title>
         {{-- На телефоне второй строкой — срок шага и этап (20.10.2026, как в «Вывозе»; 27.10.2026 — этап здесь, а не справа:
              там он резался). Не влез — переносится. Срок оплаты — под суммой, здесь этап без него. --}}

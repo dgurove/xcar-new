@@ -72,7 +72,7 @@ class OfferEvent extends Model
     public function adminOnly(): bool
     {
         return $this->inPurchase() || in_array($this->type, [OfferEventType::BidPlaced, OfferEventType::BidWithdrawn, OfferEventType::BidAccepted, OfferEventType::BidDeclined,
-            OfferEventType::Counter, OfferEventType::Garage, OfferEventType::Estimate, OfferEventType::InsurerReplied, OfferEventType::SupplierLetter], true)
+            OfferEventType::Counter, OfferEventType::Garage, OfferEventType::Estimate, OfferEventType::InsurerReplied, OfferEventType::SupplierLetter, OfferEventType::Parallel], true)
             || ($this->type === OfferEventType::Updated && array_intersect(array_keys($this->payload['changes'] ?? []) ?: ($this->payload['fields'] ?? []),
                 ['asking_price', 'min_bid_price', 'cost', 'supplier_cost', 'deal_owner_price', 'amount', 'commission', 'share']));
     }
@@ -120,6 +120,7 @@ class OfferEvent extends Model
             OfferEventType::StageEntered => (($p['track'] ?? '') === 'service' ? 'Вывоз: ' : 'Этап: ').($p['to'] ?? '').(! empty($p['back']) ? ', шаг отменён' : (! empty($p['exit']) ? ' («'.($p['label'] ?? $p['exit']).'»'.(! empty($p['letter']) ? ' по письму' : '').(($p['for'] ?? null) === 'manager' ? ' за менеджера' : '').')' : ''))
                 // Платёжка нашей оплаты поставщику («Поставщику оплачено»): «дата оплаты 19 октября 2026, номер платёжки 512».
                 .(! empty($p['fields']) ? ', '.collect($p['fields'])->map(fn ($v, $k) => mb_strtolower($k).' '.$v)->implode(', ') : ''),
+            OfferEventType::Parallel => self::parallelText($p),
             OfferEventType::StageOverdue => 'Срок вышел: '.($p['stage'] ?? ''),
             OfferEventType::StageReminded => 'Срок подходит: '.($p['stage'] ?? ''),
             OfferEventType::RouteDropped => 'Вывоз отменён',
@@ -224,6 +225,20 @@ class OfferEvent extends Model
             OfferEventType::Note => ! empty($p['unchosen']) ? $in.'выбор цены '.$sum.' отменён'.$whose : $in.($p['text'] ?? ''),
             OfferEventType::Updated => $in.'админская цена '.($was ? Money::plain((int) $was, sign: false).' → ' : '').($now ? Money::rub((int) $now) : 'снята'),
             default => $in.$type->value,
+        };
+    }
+
+    /** Параллельная сделка (07.11.2026): кому поручили, её шаг, переключили на неё, закрыли. Только админу. */
+    private static function parallelText(array $p): string
+    {
+        $who = isset($p['manager']) ? self::managerName((int) $p['manager']) : '';
+
+        return match ($p['do'] ?? null) {
+            'given' => 'Поручено параллельно: '.$who.(isset($p['amount']) ? ', '.Money::rub((int) $p['amount']) : '').(! empty($p['to']) ? ', у него — '.$p['to'] : ''),
+            'stage' => 'Параллельно, '.$who.': '.($p['to'] ?? '').(! empty($p['label']) ? ' («'.$p['label'].'»)' : ''),
+            'taken' => 'В работу — '.$who.(isset($p['from']) ? ', '.self::managerName((int) $p['from']).' — параллельно' : '').(! empty($p['reissue']) ? ', счёт перевыставить' : ''),
+            'closed' => 'Параллельная закрыта, '.$who.(! empty($p['why']) ? ': '.$p['why'] : ''),
+            default => 'Параллельно',
         };
     }
 

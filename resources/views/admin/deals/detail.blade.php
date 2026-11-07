@@ -46,6 +46,14 @@
             <x-offer.reprice-asks :offer="$offer"/>
             <x-deal.money :deal="$deal" compact id="deal-money"/>
             @if ($deal->hasContract())<x-deal.contract :deal="$deal"/>@elseif ($deal->collectsBuyer() || $deal->contract?->buyer_user_id)<x-deal.invoice-buyer :deal="$deal"/>@endif
+            {{-- Параллельные этой машины (07.11.2026, `Parallels`): чьи реквизиты, «Взять в работу» — и в окошке, не только в редакторе. --}}
+            @php $parallelCount = auth()->user()->canManageCrm() && $deal->isActive() ? $deal->parallels()->count() : 0; @endphp
+            @if ($parallelCount)
+                <section>
+                    <h2 class="detail-section">Параллельно <span class="nums font-normal text-ink-dim">{{ $parallelCount }}</span></h2>
+                    @include('admin.offers.parallels', ['offer' => $offer, 'main' => $deal, 'bare' => true])
+                </section>
+            @endif
             {{-- Вывоз — задача логистики с получением внутри (`x-logistics.lane`); вывоза нет — получение своим разделом. --}}
             @if ($offer->pickup())<x-logistics.lane :offer="$offer" :deal="$deal"/>@else<x-deal.handover :deal="$deal" compact/>@endif
             {{-- Письма: по сделке — строками; письма парковки (приём, выдача, заявки storage@) — одной строкой в то же окно писем. --}}

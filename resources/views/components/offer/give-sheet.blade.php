@@ -8,7 +8,11 @@
     $id = $bid ? 'give-bid-'.$bid->id : 'give-'.$n;
     $handOver = (bool) $offer->deal;
     $deal = (bool) $offer->asking_price;
+    // У сделки покупателя — два пути (07.11.2026, начальник): передать полностью (прежняя отменится) или поручить
+    // параллельно (прежняя остаётся, никто не знает о другом, `Parallels`).
+    $twoWays = $handOver && $bid && ! $bid->isGarage() && ! $offer->deal->isGarage() && ! $offer->deal->isAuction();
     $title = match (true) {
+        $twoWays => 'Отдать',
         $handOver => 'Отдать другому',
         $bid?->isGarage() => 'Отдать в гараж',
         (bool) $bid => 'Принять подтверждение',
@@ -24,7 +28,17 @@
                 <span class="nums text-sm font-medium text-danger">обязывающее {{ $offer->binding_until->isPast() ? $bindingWord : 'до '.\App\Offers\Binding::date($offer->binding_until).', '.$bindingWord }}</span>
             @endif
         </div>
-        @if ($bid)
+        @if ($twoWays)
+            <div class="flex flex-col gap-4" data-controller="reveal">
+                <x-ui.segment name="_how" :options="['full' => 'Полностью', 'parallel' => 'Параллельно']" :value="old('parallel') ? 'parallel' : 'full'" pick/>
+                <div data-reveal-target="pane" data-reveal-key="full" @if (old('parallel')) hidden @endif>
+                    <x-offer.give-deal :offer="$offer" :bid="$bid" :prefix="$id"/>
+                </div>
+                <div data-reveal-target="pane" data-reveal-key="parallel" @unless (old('parallel')) hidden @endunless>
+                    <x-offer.give-deal :offer="$offer" :bid="$bid" :prefix="$id.'-par'" parallel/>
+                </div>
+            </div>
+        @elseif ($bid)
             @if ($bid->isGarage())
                 <x-offer.give-garage :offer="$offer" :bid="$bid" :prefix="$id"/>
             @else

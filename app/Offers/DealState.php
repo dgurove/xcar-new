@@ -11,6 +11,8 @@ enum DealState: string
     case Active = 'active';
     case Done = 'done';
     case Cancelled = 'cancelled';
+    // Поручена параллельно (07.11.2026): менеджер ведёт её как свою, о главной не знает; маршрута у неё нет — теневой шаг.
+    case Parallel = 'parallel';
 
     public function label(): string
     {
@@ -18,6 +20,7 @@ enum DealState: string
             self::Active => 'Идёт',
             self::Done => 'Завершена',
             self::Cancelled => 'Отменена',
+            self::Parallel => 'Параллельно',
         };
     }
 }

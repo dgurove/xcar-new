@@ -20,6 +20,7 @@ use App\Offers\OfferEvent;
 use App\Offers\OfferEventType;
 use App\Offers\OfferNumber;
 use App\Offers\OfferState;
+use App\Offers\Parallels;
 use App\Support\Money;
 use App\Users\User;
 use App\Workflow\Actions\EnterStage;
@@ -73,6 +74,10 @@ final class Give
             // после того, как открыли шторку, — тогда переспрашиваем.
             if (! $garage && ! $g->loss && $cost && $bid->amount <= $cost) {
                 throw ValidationException::withMessages(['give' => 'Цена '.Money::rub($bid->amount).' не выше закупочной '.Money::rub($cost).': отдайте ещё раз']);
+            }
+
+            if ($g->parallel) {
+                return $this->parallel($offer, $g, $bid, $manager, $cost, $by);
             }
 
             // Отдаём другому: прежняя сделка отменяется, прежний победитель узнаёт об этом.
@@ -183,7 +188,7 @@ final class Give
         }
     }
 
-    private function deal(Offer $offer, Giving $g, ?Bid $bid, ?User $manager, bool $garage, ?int $cost): Deal
+    private function deal(Offer $offer, Giving $g, ?Bid $bid, ?User $manager, bool $garage, ?int $cost, DealState $state = DealState::Active): Deal
     {
         $scheme = DealScheme::resolve($offer, $g->scheme);
         [$commission, $mode, $payer, $share] = [$g->commission, $g->mode, null, null];
@@ -202,10 +207,50 @@ final class Give
             $mode = CommissionMode::Withheld;
         }
 
-        return Deal::create(['offer_id' => $offer->id, 'bid_id' => $bid?->id, 'buyer_id' => $manager?->id, 'amount' => $bid?->amount, 'state' => DealState::Active,
+        return Deal::create(['offer_id' => $offer->id, 'bid_id' => $bid?->id, 'buyer_id' => $manager?->id, 'amount' => $bid?->amount, 'state' => $state,
             'cost' => $cost, 'supplier_cost' => $offer->floor_price && $offer->floor_price !== $cost ? $offer->floor_price : null,
             'owner_price' => $scheme->paysSelection() && ! $garage ? ($g->ownerPrice ?? $offer->owner_price ?? $cost) : null,
             'share' => $share, 'commission' => $commission, 'commission_mode' => $mode, 'scheme' => $scheme, 'garage_payer' => $payer]);
+    }
+
+    /**
+     * «Поручить параллельно» (07.11.2026, начальник: «чтобы Прадо был не только у Тужикова, но и у Зайцева, и они не видели
+     * друг друга»): идущая сделка остаётся как есть, этому менеджеру — параллельная на тех же деньгах, что «Передать
+     * полностью» (схема, вознаграждение, закупочная), со своим теневым шагом (`Parallels`). Ему — обычное «Подтверждение
+     * принято», главному — ничего. Только сделке покупателя и пока по главной не платили (`Parallels::locked`).
+     */
+    private function parallel(Offer $offer, Giving $g, ?Bid $bid, ?User $manager, ?int $cost, User $by): Deal
+    {
+        $main = $offer->deal()->first();
+        $error = match (true) {
+            ! $bid => 'Параллельно поручают подтверждению из резерва',
+            ! $main || $offer->state !== OfferState::Sold => 'Параллельно — только когда ТС уже в сделке',
+            $bid->isGarage() => 'В гараж параллельно не поручить',
+            $main->buyer_id === $manager?->id => 'Сделка и так у этого менеджера',
+            Deal::where('offer_id', $offer->id)->where('buyer_id', $manager?->id)->where('state', DealState::Parallel)->exists() => 'Ему уже поручено параллельно',
+            default => Parallels::locked($main),
+        };
+        if ($error) {
+            throw ValidationException::withMessages(['give' => $error]);
+        }
+        $bid->update(['state' => BidState::Accepted, 'decided_at' => now(), 'decided_by' => $by->id]);
+        $deal = $this->deal($offer, $g, $bid, $manager, false, $cost, DealState::Parallel);
+        $deal->setRelation('offer', $offer);
+        if ($deal->isDirect()) {
+            DealContract::for($deal);
+        }
+        $stage = $offer->unsetRelation('positions')->position(Track::Sale)?->stage;
+        $to = $stage ? Parallels::target($deal, null, $stage)?->loadMissing('block') : null;
+        // Одна строка «Истории» — она же первый шаг его пути (`Path::journal` берёт и её).
+        $offer->log(OfferEventType::Parallel, $by, ['do' => 'given', 'deal' => $deal->id, 'manager' => $manager?->id, 'bid_id' => $bid->id,
+            'amount' => $deal->amount, 'main' => $main->id, 'scheme' => $deal->scheme->value, 'commission' => $deal->commission,
+            'track' => Track::Sale->value, 'to' => $to?->name, 'to_id' => $to?->id, 'block' => $to?->block?->name]);
+        if ($to) {
+            Parallels::enter($deal, $to, $by, log: false);
+        }
+        BidAccepted::dispatch($bid, $by);
+
+        return $deal->fresh();
     }
 
     /**
@@ -220,6 +265,22 @@ final class Give
         }
 
         return $stage ? ($this->enter)($offer, $stage, $by) : $offer;
+    }
+
+    /**
+     * Параллельная становится главной, когда идущей сделки у машины нет (главную отменили, `TakeParallel`): тот же вход в
+     * сделку, что у «Отдать», — состояние «Идёт сделка», маршрут исходом приёма (и сразу к согласию, если поставщик уже
+     * согласовал), без маршрута — счета сразу.
+     */
+    public function promote(Offer $offer, Deal $deal, User $by): Offer
+    {
+        $offer = $this->enterDeal($offer, $deal, $by);
+        $offer->unsetRelation('positions');
+        if (! $offer->position(Track::Sale)) {
+            ($this->agree)($deal->fresh(), $by);
+        }
+
+        return $offer;
     }
 
     /**

@@ -21,6 +21,8 @@
     $under = ! $garage && $floor && $bid->amount !== null ? $floor - $bid->amount : null;
     $loss = $under !== null && $under >= 0;
     $give = (bool) $offer->deal;
+    // «Отдать…» (07.11.2026): у сделки покупателя окно спрашивает — передать полностью или поручить параллельно.
+    $twoWays = $give && ! $garage && ! $offer->deal->isGarage() && ! $offer->deal->isAuction();
     $inGarage = $garage ? (int) ($parked[$bid->user_id] ?? 0) : 0;
 @endphp
 <div @class(['px-4 py-3', 'bid-row--loss' => ($loss && $active) || $high, 'bid-row--low' => $low && ! ($loss && $active), 'bid-row--ok' => $active && ! $garage && ! $low && ! $loss && ! $high])>
@@ -79,7 +81,7 @@
     @if ($active)
         <div class="mt-2 flex flex-wrap items-start gap-2">
             <x-offer.give-sheet :offer="$offer" :bid="$bid">
-                <x-ui.button type="button" size="sm" data-action="sheet#open">{{ $give ? 'Отдать' : 'Принять' }}</x-ui.button>
+                <x-ui.button type="button" size="sm" data-action="sheet#open">{{ $give ? ($twoWays ? 'Отдать…' : 'Отдать') : 'Принять' }}</x-ui.button>
             </x-offer.give-sheet>
             @if (! $garage && ! $give)
                 <x-offer.counter-sheet :offer="$offer" :bid="$bid">

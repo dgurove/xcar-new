@@ -3,14 +3,14 @@
 namespace App\Offers\Actions;
 
 use App\Offers\Deal;
+use App\Users\User;
+use App\Workflow\Actions\EnterStage;
 use App\Workflow\Actions\TakeExit;
 use App\Workflow\Actor;
 use App\Workflow\Asks;
 use App\Workflow\Events\StageEntered;
-use App\Workflow\Actions\EnterStage;
 use App\Workflow\Stage;
 use App\Workflow\Track;
-use App\Users\User;
 
 /**
  * Данные покупателя для счёта поставщика собраны — шаг «Нет реквизитов» (`Asks::Buyer`) проходит сам своим
@@ -25,6 +25,11 @@ final class AdvanceOnBuyerData
     public function __invoke(Deal $deal): bool
     {
         $deal->loadMissing(['offer', 'contract.buyer.party']);
+        // Параллельная (07.11.2026): данные готовы — её теневой шаг дальше («Письмо с реквизитами»), машина стоит; нам —
+        // «прислал реквизиты» (`ParallelBuyerNotice`).
+        if ($deal->isParallel()) {
+            return app(ParallelBuyerReady::class)($deal);
+        }
         $stage = $deal->offer?->unsetRelation('positions')->stage(Track::Sale);
         if (! $deal->isActive() || $stage?->asks !== Asks::Buyer || ! $deal->contract?->buyer?->party?->readyAsBuyer()) {
             return false;

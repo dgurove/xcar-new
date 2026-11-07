@@ -41,7 +41,7 @@ final class RetimeStage
             DB::transaction(function () use ($position, $deadline, $stage, $by, $was, $now) {
                 $future = $deadline?->isFuture() ?? true;
                 $position->update(['deadline_at' => $deadline] + ($future ? ['reminded_at' => null, 'overdue_at' => null] : []));
-                Requirement::where('offer_id', $position->offer_id)->where('stage_id', $stage->id)->whereNull('done_at')->update(['due_at' => $deadline]);
+                Requirement::where('offer_id', $position->offer_id)->ofRoute()->where('stage_id', $stage->id)->whereNull('done_at')->update(['due_at' => $deadline]);
                 $position->offer?->log(OfferEventType::Note, $by, ['text' => "Срок этапа «{$stage->name}» изменён: {$was} → {$now}"]);
             });
             $count++;

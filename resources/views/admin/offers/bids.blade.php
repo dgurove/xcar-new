@@ -16,15 +16,22 @@
     $parked = $garageBids->isEmpty() ? collect() : \App\Garage\Car::whereIn('manager_id', $garageBids->pluck('user_id'))
         ->whereNotIn('state', [\App\Garage\CarState::Sold, \App\Garage\CarState::Settled])->selectRaw('manager_id, count(*) as n')->groupBy('manager_id')->pluck('n', 'manager_id');
     $accepted = $deal ? $offer->bids->firstWhere('id', $deal->bid_id) : null;
+    // Подтверждения параллельных сделок — их блоком «Параллельно» (07.11.2026), не в «Ещё».
+    $parallelBids = \App\Offers\Deal::where('offer_id', $offer->id)->where('state', \App\Offers\DealState::Parallel)->pluck('bid_id')->filter();
     // Заменённое новой ценой — не отдельное подтверждение: смена цены видна в «Истории».
-    $rest = $offer->bids->reject(fn ($b) => in_array($b->state, [BidState::Active, BidState::Replaced], true) || $b->is($accepted))->sortByDesc('created_at')->values();
+    $rest = $offer->bids->reject(fn ($b) => in_array($b->state, [BidState::Active, BidState::Replaced], true) || $b->is($accepted) || $parallelBids->contains($b->id))->sortByDesc('created_at')->values();
 @endphp
 {{-- Группы строк через линию (.list), а не плашка на каждое подтверждение. --}}
 <div class="flex flex-col gap-2">
     @if ($accepted)
         <div class="list"><x-offer.bid :bid="$accepted" :offer="$offer" :parked="$parked"/></div>
         @unless ($inside ?? false)<a href="{{ $offer->crmPath() }}" class="btn btn-s btn-quiet self-start" data-turbo-frame="_top">Перейти к сделке</a>@endunless
-        @if ($active->isNotEmpty())<div class="mt-2 px-1 text-sm text-ink-dim">Резерв <span class="nums">{{ $active->count() }}</span></div>@endif
+    @endif
+    @if ($parallelBids->isNotEmpty() && auth()->user()?->canManageCrm())
+        @include('admin.offers.parallels', ['offer' => $offer, 'main' => $offer->deal])
+    @endif
+    @if ($accepted && $active->isNotEmpty())
+        <div class="mt-2 px-1 text-sm text-ink-dim">Резерв <span class="nums">{{ $active->count() }}</span></div>
     @endif
     @if ($active->isNotEmpty())
         <div class="list">

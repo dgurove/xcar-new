@@ -74,19 +74,28 @@ final class CancelDeal
                 app(Cancel::class)($open->fresh(), $by, 'Сделка отменена', system: true);
             }
         }
+        self::voidUnpaid($deal, $by, 'Сделка отменена');
+        // Выдача с нашей парковки по этой сделке снимается: пропуск гаснет, продажа на парковке — тоже (18.10.2026).
+        app(SyncParkRelease::class)($deal->fresh(), $by);
+
+        return $deal;
+    }
+
+    /**
+     * Невыплаченное вознаграждение и счета менеджеру, за которые не платили, гаснут (и ссылки на оплату с ними,
+     * `CloseLinksWhenSettled`); оплаченное — история. Отмена сделки и переключение на параллельную (`TakeParallel`).
+     */
+    public static function voidUnpaid(Deal $deal, ?User $by, string $why): void
+    {
         if (($fee = $deal->agentFee()->first()) && $fee->state === InvoiceState::Issued && $fee->paid == 0) {
-            app(VoidInvoice::class)($fee, $by, 'Сделка отменена');
+            app(VoidInvoice::class)($fee, $by, $why);
         }
         // Счёт менеджеру, за который ещё не платили (подбор по ДКП выставляется при принятии), гаснет вместе со сделкой —
         // и ссылка на оплату с ним (`CloseLinksWhenSettled`). Оплаченное — история: возврат решает человек.
         foreach ($deal->issuedInvoices()->where('state', InvoiceState::Issued)->where('kind', '!=', ChargeKind::Reward)->get() as $invoice) {
             if (! $invoice->payments()->whereNotIn('source', PaymentSource::soft())->exists()) {
-                app(VoidInvoice::class)($invoice, $by, 'Сделка отменена');
+                app(VoidInvoice::class)($invoice, $by, $why);
             }
         }
-        // Выдача с нашей парковки по этой сделке снимается: пропуск гаснет, продажа на парковке — тоже (18.10.2026).
-        app(SyncParkRelease::class)($deal->fresh(), $by);
-
-        return $deal;
     }
 }

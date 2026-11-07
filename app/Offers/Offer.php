@@ -19,6 +19,7 @@ use App\Logistics\Transport;
 use App\Logistics\TransportKind;
 use App\Logistics\TransportState;
 use App\Mail\Candidate;
+use App\Mail\Template;
 use App\Mail\Thread;
 use App\Park\PhotoStage;
 use App\Park\Sale;
@@ -305,8 +306,10 @@ class Offer extends Model
     public function vendorLetterUrl(?Stage $stage = null): ?string
     {
         $stage ??= $this->stage();
+        // Переключили на другие реквизиты после письма (`TakeParallel`, 07.11.2026) — письмо «перевыставить счёт».
+        $template = $stage?->template_id && $stage->isRequisitesStep() && $this->deal?->reissue_at ? Template::reissue($stage->template)->id : $stage?->template_id;
 
-        return $stage?->template_id ? "/work/mail/new?offer={$this->number}&template={$stage->template_id}" : null;
+        return $template ? "/work/mail/new?offer={$this->number}&template={$template}" : null;
     }
 
     public function settlement(): BelongsTo

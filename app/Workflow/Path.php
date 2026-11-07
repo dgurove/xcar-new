@@ -61,9 +61,18 @@ final class Path
      *
      * @return Collection<int, array{at: Carbon, block: string, stage: ?string, stage_id: ?int, from: ?string, from_id: ?int, exit: ?string, user_id: ?int}>
      */
-    public static function journal(Offer $offer, Track $track, ?Carbon $since = null): Collection
+    public static function journal(Offer $offer, Track $track, ?Carbon $since = null, ?Deal $parallel = null): Collection
     {
-        $entries = $offer->events()->where('type', OfferEventType::StageEntered)->when($since, fn ($q) => $q->where('created_at', '>=', $since))->reorder()->orderBy('id')->get()
+        // Параллельная сделка (07.11.2026) — свой путь: её теневые шаги, а не шаги машины (`Offers\Parallels::enter`). Была
+        // главной, пока на другого не переключили, — до переключения её путь и есть путь машины.
+        $demoted = $parallel ? $offer->events()->where('type', OfferEventType::Parallel)->where('payload->do', 'taken')
+            ->where('payload->main', $parallel->id)->reorder()->orderBy('id')->value('created_at') : null;
+        $entries = $offer->events()
+            ->when(! $parallel, fn ($q) => $q->where('type', OfferEventType::StageEntered))
+            ->when($parallel, fn ($q) => $q->where(fn ($w) => $w
+                ->where(fn ($p) => $p->where('type', OfferEventType::Parallel)->whereIn('payload->do', ['given', 'stage'])->where('payload->deal', $parallel->id))
+                ->when($demoted, fn ($w) => $w->orWhere(fn ($m) => $m->where('type', OfferEventType::StageEntered)->where('created_at', '<', $demoted)))))
+            ->when($since, fn ($q) => $q->where('created_at', '>=', $since))->reorder()->orderBy('id')->get()
             ->filter(fn ($e) => ($e->payload['track'] ?? Track::Sale->value) === $track->value && ($e->payload['block'] ?? null));
         $journal = [];
         foreach ($entries as $e) {

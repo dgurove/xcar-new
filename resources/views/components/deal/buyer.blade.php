@@ -3,12 +3,13 @@
      сам менеджер, его покупатели, «+ Новый покупатель» (встаёт в «Покупатели» менеджера и в сделку); нет данных — их шторка со
      сканом паспорта; у ПРАЙМ — кто платит по счёту. Строками внутри `.list`: в ДКП (`x-deal.contract`) и в «Покупателе для
      счёта» поставщика (`x-deal.invoice-buyer`, 03.11.2026). --}}
-@props(['deal', 'contract' => null])
+@props(['deal', 'contract' => null, 'autoOpen' => true])
 @php
     $contract ??= \App\Offers\DealContract::for($deal)->loadMissing(['buyer.party']);
     $manager = $deal->buyer;
     $buyer = $contract->buyer;
-    $live = $deal->isActive() && ! $deal->isDirect() && $manager?->isManager();
+    // Параллельная (07.11.2026) — тоже живая: её покупателя смотрят и заполняют за менеджера так же.
+    $live = $deal->isLive() && ! $deal->isDirect() && $manager?->isManager();
     $isManager = $buyer && $buyer->id === $deal->buyer_id;
     $ready = $buyer?->party?->readyAsBuyer();
     $gap = $buyer?->party?->buyerGap();
@@ -19,7 +20,8 @@
     $dataSheet = 'deal-buyer-data-'.$deal->id;
     // «Заполнить» / «Заполнить за менеджера» из шага пути и «Ваш ход» (`?buyer=1`, 06.11.2026: ссылка на `#invoice-buyer` только
     // прокручивала к карточке — шторку надо было ещё найти): данных нет — сразу их шторка, покупателя нет — его выбор.
-    $ask = $live && request()->boolean('buyer') && ! $ready;
+    // Покупатели параллельных на той же странице сами не открываются (`autoOpen` = false): `?buyer=1` — про главную сделку.
+    $ask = $autoOpen && $live && request()->boolean('buyer') && ! $ready;
     // Без договора (поставщик выставит счёт на покупателя, 03.11.2026) — «данные для счёта».
     $for = $deal->hasContract() ? 'договора' : 'счёта';
     // Скан паспорта одним PDF — посмотреть и скачать (05.11.2026, владелец: «когда менеджер заполняет данные покупателя, их

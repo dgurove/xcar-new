@@ -10,6 +10,8 @@ use App\Mail\Extraction\Intent;
 use App\Mail\Message;
 use App\Mail\Scope;
 use App\Notifications\SupplierLetterNotice;
+use App\Offers\Deal;
+use App\Offers\DealState;
 use App\Offers\OfferEventType;
 use App\Workflow\Position;
 use App\Workflow\Track;
@@ -62,6 +64,10 @@ final class MarkSupplierLetter
             'payload' => [...$payload, 'letter_id' => $message->id, 'letter_at' => $at->toIso8601String()],
         ]);
         $offer->log(OfferEventType::SupplierLetter, $message->author, ['letter' => $message->id]);
+        // Письмо «перевыставить счёт» ушло (`TakeParallel`) — дальше у шага снова обычный шаблон.
+        if ($position->stage->isRequisitesStep()) {
+            Deal::where('offer_id', $offer->id)->where('state', DealState::Active)->whereNotNull('reissue_at')->update(['reissue_at' => null]);
+        }
     }
 
     /** Не ушло: шаг красным; уведомление — один раз на письмо («Повторить» с тем же сбоем не звенит снова). */

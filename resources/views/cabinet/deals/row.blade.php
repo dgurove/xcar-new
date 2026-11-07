@@ -5,7 +5,7 @@
     use App\Offers\DealState;
     $offer = $deal->offer;
     $position = $offer->position();
-    $active = $deal->state === DealState::Active;
+    $active = $deal->isLive();
     $req = $active ? $deal->openRequirement : null;
     // Просьба «Оплатите счёт», а счета уже оплачены (маршрут не догнал) — не просим, пишем как есть.
     $paidUp = $req && $position?->stage->isPayStep() && $deal->fullyPaid();

@@ -50,6 +50,10 @@ final class SyncDealInvoices
 
     public function __invoke(Deal $deal, User $by): void
     {
+        // Параллельная (07.11.2026) счетов не имеет: они встанут, когда её возьмут в работу (`TakeParallel`).
+        if ($deal->isParallel()) {
+            return;
+        }
         $this->adopt($deal);
         // Покупатель с гаражом у Совкомбанка: «да» поставщика там нет вовсе — счёт на его цену сразу, долгом (20.10.2026).
         if (! $deal->agreed() && ! ($deal->forGarageBuyer() && $deal->isCommission())) {

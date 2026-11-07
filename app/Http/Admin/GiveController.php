@@ -85,13 +85,22 @@ class GiveController
             'mode' => CommissionMode::tryFrom($data['mode'] ?? '') ?? CommissionMode::Payout, 'payer' => GaragePayer::tryFrom($data['payer'] ?? ''),
             'share' => $data['share'] ?? null, 'pickup' => $data['pickup'] ?? null, 'where' => $data['where'] ?? 'owner', 'loss' => $request->boolean('loss'),
             'buyerPrice' => $data['buyer_price'] ?? null, 'arrivedAt' => $arrivedAt,
-            'cost' => ! $garage && $request->user()->isAdmin() ? ($data['cost'] ?? null) : null];
+            'cost' => ! $garage && $request->user()->isAdmin() ? ($data['cost'] ?? null) : null,
+            // «Отдать… → Поручить параллельно» (07.11.2026): идущая остаётся, этому — параллельная; вывоз не трогаем.
+            'parallel' => $bid && $request->boolean('parallel')];
+        if ($money['parallel']) {
+            $money['pickup'] = null;
+        }
         $giving = $bid ? Giving::bid($bid, ...$money)
             : new Giving($offer, isset($data['manager_id']) ? User::find($data['manager_id']) : null, $garage, $amount, ...$money);
 
         $handOver = $offer->deal()->exists();
         $before = $this->stageId($offer);
         $deal = $give($giving, $request->user());
+        if ($deal->isParallel()) {
+            return back()->with('toast', 'Поручили параллельно: '.$deal->buyer?->shortName())
+                ->with('handed', ['name' => $deal->buyer?->shortName(), 'title' => $offer->titleWithYear(), 'url' => $deal->personUrl(), 'text' => $deal->personText(), 'wait' => false]);
+        }
 
         return $this->done($request, $offer, $deal, $handOver ? null : $before, $handOver);
     }

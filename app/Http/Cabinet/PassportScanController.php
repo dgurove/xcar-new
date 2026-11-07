@@ -129,7 +129,7 @@ class PassportScanController
     /** Сделки, где этот человек — покупатель по договору или сам менеджер-покупатель: пересобрать счёт и готовность ДКП. */
     public static function resyncFor(User $user, User $by, SyncDealInvoices $invoices): void
     {
-        $deals = Deal::where('state', DealState::Active)->where(fn ($q) => $q->whereHas('contract', fn ($c) => $c->where('buyer_user_id', $user->id))->orWhere('buyer_id', $user->id))->get();
+        $deals = Deal::whereIn('state', [DealState::Active, DealState::Parallel])->where(fn ($q) => $q->whereHas('contract', fn ($c) => $c->where('buyer_user_id', $user->id))->orWhere('buyer_id', $user->id))->get();
         foreach ($deals as $deal) {
             $invoices($deal->fresh(['offer', 'buyer', 'contract.buyer']), $by);
             if ($contract = $deal->contract?->fresh(['seller', 'buyer.party', 'deal.offer', 'deal.buyer'])) {

@@ -76,7 +76,8 @@ class InsurerLetterHiddenTest extends TestCase
             ->assertSee('Пройти шаг «Поставщик согласовал»');
 
         // Показать: телефон, имя «Пётр» вместо «Петров Пётр», паспорт, своё сообщение и шаг.
-        $exit = Stage::where('name', $before)->firstOrFail()->exits()->where('label', 'Поставщик согласовал')->firstOrFail();
+        // Шаг своей машины, а не первый с таким именем: «Письмо о покупке» есть в нескольких маршрутах.
+        $exit = $this->offer->fresh()->stage()->exits()->where('label', 'Поставщик согласовал')->firstOrFail();
         $this->post("http://crm.xcar.localhost/work/deals/{$this->deal->id}/disclose", [
             'on' => ['phone:79001234567', 'name:'.md5('петров пётр'), 'file:'.$paper->id],
             'value' => ['phone:79001234567' => '+7 900 123-45-67', 'name:'.md5('петров пётр') => 'Пётр', 'phone:79005556677' => 'не отмечен'],

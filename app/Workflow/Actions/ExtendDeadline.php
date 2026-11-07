@@ -25,7 +25,7 @@ final class ExtendDeadline
         }
         DB::transaction(function () use ($position, $until, $by) {
             $position->update(['deadline_at' => $until, 'reminded_at' => null, 'overdue_at' => null]);
-            Requirement::where('offer_id', $position->offer_id)->where('stage_id', $position->stage_id)->whereNull('done_at')->update(['due_at' => $until]);
+            Requirement::where('offer_id', $position->offer_id)->ofRoute()->where('stage_id', $position->stage_id)->whereNull('done_at')->update(['due_at' => $until]);
             $position->offer?->log(OfferEventType::Note, $by, ['text' => 'Срок шага «'.$position->stage->name.'» продлён до '.Ago::day($until, true)]);
         });
 

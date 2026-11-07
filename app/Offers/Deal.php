@@ -43,7 +43,7 @@ use Illuminate\Support\Carbon;
  * не видит, пока по сделке нет живого счёта — `showsCommission()`.
  */
 #[Fillable(['offer_id', 'bid_id', 'buyer_id', 'amount', 'cost', 'supplier_cost', 'owner_price', 'share', 'commission', 'commission_mode', 'scheme', 'garage_payer', 'state', 'notes', 'closed_at', 'close_reason', 'close_note', 'agreed_at', 'prepaid_at', 'supplier_paid_at',
-    'receiver_user_id', 'receiver_name', 'receiver_phone', 'receiver_at', 'auction_at', 'buyer_party_id'])]
+    'receiver_user_id', 'receiver_name', 'receiver_phone', 'receiver_at', 'auction_at', 'buyer_party_id', 'shadow_stage_id', 'shadow_at', 'reissue_at'])]
 class Deal extends Model
 {
     use FastAttributes;
@@ -51,7 +51,7 @@ class Deal extends Model
 
     protected function casts(): array
     {
-        return ['scheme_at' => 'datetime', 'state' => DealState::class, 'amount' => 'int', 'cost' => 'int', 'supplier_cost' => 'int', 'owner_price' => 'int', 'share' => 'int', 'commission' => 'int', 'commission_mode' => CommissionMode::class, 'scheme' => DealScheme::class, 'garage_payer' => GaragePayer::class, 'closed_at' => 'datetime', 'agreed_at' => 'datetime', 'prepaid_at' => 'datetime', 'supplier_paid_at' => 'datetime', 'receiver_at' => 'datetime', 'auction_at' => 'datetime'];
+        return ['scheme_at' => 'datetime', 'state' => DealState::class, 'amount' => 'int', 'cost' => 'int', 'supplier_cost' => 'int', 'owner_price' => 'int', 'share' => 'int', 'commission' => 'int', 'commission_mode' => CommissionMode::class, 'scheme' => DealScheme::class, 'garage_payer' => GaragePayer::class, 'closed_at' => 'datetime', 'agreed_at' => 'datetime', 'prepaid_at' => 'datetime', 'supplier_paid_at' => 'datetime', 'receiver_at' => 'datetime', 'auction_at' => 'datetime', 'shadow_at' => 'datetime', 'reissue_at' => 'datetime'];
     }
 
     public function offer(): BelongsTo
@@ -146,8 +146,8 @@ class Deal extends Model
      */
     public const MANAGER_TURN_SQL = "(exists (select 1 from requirements r where r.deal_id = deals.id and r.done_at is null)
         or exists (select 1 from reprice_asks a where a.deal_id = deals.id and a.state = 'pending')
-        or exists (select 1 from offer_positions p join workflow_stages s on s.id = p.stage_id where p.offer_id = deals.offer_id
-            and p.track = 'sale' and coalesce(p.waits_for, s.waits_for) = 'manager'))";
+        or (deals.state = 'active' and exists (select 1 from offer_positions p join workflow_stages s on s.id = p.stage_id where p.offer_id = deals.offer_id
+            and p.track = 'sale' and coalesce(p.waits_for, s.waits_for) = 'manager')))";
 
     /**
      * Что сделать менеджеру по идущей сделке (27.10.2026, владелец: «глянь так же с точки зрения менеджера»): просьба шага,
@@ -158,6 +158,10 @@ class Deal extends Model
      */
     public function managerTask(): ?array
     {
+        // Параллельная — ход только её просьбой: шаг машины у неё чужой (`Parallels`).
+        if ($this->isParallel()) {
+            return ($req = $this->openRequirement) ? ['title' => $req->title, 'due' => $req->due_at] : null;
+        }
         if (! $this->isActive()) {
             return null;
         }
@@ -475,6 +479,11 @@ class Deal extends Model
     /** Сделка стоит на шаге, что просит данные покупателя (`Asks::Buyer`). */
     public function asksBuyerData(): bool
     {
+        // Параллельная (07.11.2026) — по своему теневому шагу.
+        if ($this->isParallel()) {
+            return $this->shadowStage?->asks === Asks::Buyer;
+        }
+
         return $this->isActive() && $this->offer?->stage()?->asks === Asks::Buyer;
     }
 
@@ -788,6 +797,44 @@ class Deal extends Model
     public function isActive(): bool
     {
         return $this->state === DealState::Active;
+    }
+
+    /**
+     * Поручена параллельно (07.11.2026, `Offers\Parallels`): менеджер ведёт её как обычную, маршрута, писем и счетов у неё
+     * нет — шаг теневой (`shadowStage`). Действия по машине — только у идущей (`isActive`).
+     */
+    public function isParallel(): bool
+    {
+        return $this->state === DealState::Parallel;
+    }
+
+    /**
+     * Была параллельной (поручили параллельно или переключили с неё на другого) — её путь теневой и после закрытия: шаги
+     * машины этой сделке не показываются никогда (`Parallels::dress`, `Path::journal`).
+     */
+    public function wasParallel(): bool
+    {
+        return $this->isParallel() || once(fn () => OfferEvent::where('offer_id', $this->offer_id)->where('type', OfferEventType::Parallel)
+            ->where(fn ($q) => $q->where(fn ($g) => $g->where('payload->do', 'given')->where('payload->deal', $this->id))
+                ->orWhere(fn ($t) => $t->where('payload->do', 'taken')->where('payload->main', $this->id)))->exists());
+    }
+
+    /** Живая для менеджера: идущая или параллельная — его страница, строки и «Ваш ход» рисуют её одинаково. */
+    public function isLive(): bool
+    {
+        return $this->isActive() || $this->isParallel();
+    }
+
+    /** Параллельные той же машины (у главной): метка «+N» в «Сделках» CRM. */
+    public function parallels(): HasMany
+    {
+        return $this->hasMany(self::class, 'offer_id', 'offer_id')->where('state', DealState::Parallel);
+    }
+
+    /** Теневой шаг параллельной — где она у менеджера, пока машину ведёт главная. */
+    public function shadowStage(): BelongsTo
+    {
+        return $this->belongsTo(Stage::class, 'shadow_stage_id');
     }
 
     /**

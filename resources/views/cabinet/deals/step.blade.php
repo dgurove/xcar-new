@@ -19,12 +19,12 @@
     // Оплата, а счёта ещё нет: ход наш (`Position::awaitsInvoice`), просить оплатить нечего — счёт готовим.
     $noInvoice = (bool) $position?->awaitsInvoice();
     // ПРАЙМ без покупателя — ход менеджера: счёт встанет сам, как только он укажет, кому (`Deal::invoiceGap`).
-    $gap = $deal->isActive() && $position?->stage->isPayStep() && $deal->hasContract() ? $deal->invoiceGap() : null;
+    $gap = $deal->isLive() && $position?->stage->isPayStep() && $deal->hasContract() ? $deal->invoiceGap() : null;
     // Покупатель не указан или у физлица нет паспорта со сканом (11.10.2026) — задача одна: покупатель в шторке договора.
     $needsBuyer = in_array($gap, ['buyer', 'passport'], true);
     // Шаг «Нет реквизитов» (03.11.2026, Альфа просит реквизиты): та же шторка покупателя, кнопки нет — шаг
     // проходит сам, когда данные со сканом есть (`AdvanceOnBuyerData`). Письма поставщика менеджер не видит.
-    $buyerStep = $deal->isActive() && $requirement?->asks === Asks::Buyer;
+    $buyerStep = $deal->isLive() && $requirement?->asks === Asks::Buyer;
     $needsBuyer = $needsBuyer || $buyerStep;
     // Гаражная Совкомбанка: счёт и договор — когда менеджер продаст (`Deal::namesBuyer`): цену он пишет «Продаю».
     $needsPrice = $gap === 'price';
@@ -56,13 +56,13 @@
     $ownerPhone = $disclosures->contains(fn ($d) => $d->values('phone') !== []);
     // Согласие менеджера (Альфа): поставщик уже согласовал — блок «Согласование с поставщиком» и «Ваш ход»
     // сбивали с толку, будто ждём поставщика (10.10.2026, владелец). Шапка — что случилось и вопрос, рядом только часы.
-    $consent = $deal->isActive() && $requirement && $position?->stage->asksConsent();
+    $consent = $deal->isLive() && $requirement && $position?->stage->asksConsent();
     // До согласия ждём поставщика (27.10.2026, владелец: менеджер не знает, что будет дальше): одной строкой — что дальше
     // спросим его. О письмах поставщика ни слова.
-    $consentAhead = $deal->isActive() && ! $consent && ! $deal->agreed() && $position?->stage->loadMissing('exits.to.exits')->exits->contains(fn ($e) => $e->to?->asksConsent());
+    $consentAhead = $deal->isLive() && ! $consent && ! $deal->agreed() && $position?->stage->loadMissing('exits.to.exits')->exits->contains(fn ($e) => $e->to?->asksConsent());
 @endphp
 <div class="flex flex-col gap-6">
-    @if ($deal->state !== DealState::Active && ! $deal->isGarage())
+    @if (! $deal->isLive() && ! $deal->isGarage())
         {{-- Закончилась — состояние словом с датой, без своей плашки, и на телефоне тоже (11.10.2026: там закрытая сделка
              выглядела идущей). Гаражной его пишет своя карточка суммы. --}}
         <p><span class="font-medium {{ $deal->state === DealState::Done ? 'text-open' : 'text-danger' }}">{{ $deal->declinedBySupplier() ? 'Поставщик отказал в продаже' : $deal->state->label() }}</span>@if ($deal->closed_at) <span class="nums text-sm text-ink-muted">{{ $deal->closed_at->format('d.m.Y H:i') }}</span>@endif</p>
@@ -70,7 +70,7 @@
         @if ($deal->declinedBySupplier() && $deal->close_note)<p class="text-ink-muted">{{ \App\Support\VendorNames::strip($deal->close_note) }}</p>@endif
     @endif
 
-    @if ($deal->state === DealState::Active && $position)
+    @if ($deal->isLive() && $position)
         <div class="box {{ $requirement && $position->isOverdue() && ! $paidUp ? 'box-urgent' : '' }}">
             @if ($consent)
                 <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
@@ -209,12 +209,12 @@
             {{-- В чек-листе договора с получением строка стоит под «Заберите автомобиль». --}}
             @unless (($contractStep ?? false) && ($pickupSteps ?? null))@include('cabinet.deals.pickup-request')@endunless
         </div>
-    @elseif ($deal->state === DealState::Active)
+    @elseif ($deal->isLive())
         <x-ui.empty>Сделка ещё не началась</x-ui.empty>
     @endif
 
     {{-- Нет текущего шага (сделка закрыта или ещё не в работе) — показанное своей карточкой. --}}
-    @if ($disclosures->isNotEmpty() && ! ($deal->state === DealState::Active && $position))
+    @if ($disclosures->isNotEmpty() && ! ($deal->isLive() && $position))
         <div class="box">@include('cabinet.deals.disclosures', ['bare' => true])</div>
     @endif
 </div>

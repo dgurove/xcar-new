@@ -4,6 +4,7 @@ namespace App\Http\Admin;
 
 use App\Billing\DealDebt;
 use App\Live\Rows;
+use App\Offers\Actions\ChangeDealScheme;
 use App\Offers\Actions\DeclineBySupplier;
 use App\Offers\Actions\SetReceiver;
 use App\Offers\Actions\UpdateDealMoney;
@@ -25,6 +26,8 @@ use App\Support\Sort;
 use App\Support\Table\ColRole;
 use App\Support\Table\Column;
 use App\Support\Table\Table;
+use App\Users\User;
+use App\Vendors\Vendor;
 use App\Workflow\Actions\TakeExit;
 use App\Workflow\Actor;
 use App\Workflow\Outcome;
@@ -50,7 +53,8 @@ class DealController
 
     public function index(Request $request)
     {
-        $detail = Detail::of($request, fn (string $key) => ($deal = Deal::find($key)) ? $this->window($deal) : null);
+        // Параллельная (07.11.2026) своего окошка не имеет: открывается сделка её машины, где она в блоке «Параллельно».
+        $detail = Detail::of($request, fn (string $key) => ($deal = Deal::find($key)) ? $this->window($deal->isParallel() ? ($deal->offer->deal ?? $deal) : $deal) : null);
         if ($detail->framed()) {
             return $detail->response();
         }
@@ -86,7 +90,9 @@ class DealController
         $sort = Sort::from($request->query('sort'), self::SORTS, 'deadline');
 
         // Гаражные — тоже сделки (27.10.2026, владелец: «в сделках их стоит отображать»; с 13.10 их здесь не было).
-        $q = Deal::query()->with(['offer', 'offer.vendor', 'offer.media', 'offer.positions.stage.block', 'offer.positions.stage.exits.to', 'offer.pendingReprice', 'buyer', 'openRequirement', 'invoices.claims', 'invoices.party', 'contract']);
+        $q = Deal::query()->with(['offer', 'offer.vendor', 'offer.media', 'offer.positions.stage.block', 'offer.positions.stage.exits.to', 'offer.pendingReprice', 'buyer', 'openRequirement', 'invoices.claims', 'invoices.party', 'contract'])->withCount('parallels')
+            // Параллельные (07.11.2026) — не свои строки: они в сделке своей машины, у строки метка «+N параллельно».
+            ->where('deals.state', '!=', DealState::Parallel->value);
         if ($searching) {
             // Лупа — по всем сделкам: номер предложения, VIN, марка, убыток, менеджер.
             $term = trim((string) $request->query('q'));
@@ -166,7 +172,7 @@ class DealController
      * ждём (этап: «Нет реквизитов», «Оплата счёта ПРАЙМ», «Забрать автомобиль») и срок (`x-deal.wait-row`). Первыми — где
      * просрочено, дальше — где больше сделок; внутри — по сроку списка. Весь список одной страницей.
      *
-     * @return Collection<string, array{title: string, manager: ?\App\Users\User, vendor: ?\App\Vendors\Vendor, late: int, size: int, rows: Collection}>
+     * @return Collection<string, array{title: string, manager: ?User, vendor: ?Vendor, late: int, size: int, rows: Collection}>
      */
     private static function waiting(Collection $deals, string $preset): Collection
     {
@@ -351,7 +357,7 @@ class DealController
     }
 
     /** «Схема» строкой в окошке и в сделке (03.11.2026): сменить — деньги, счета и шаг реквизитов встают по новой. */
-    public function scheme(Request $request, Deal $deal, \App\Offers\Actions\ChangeDealScheme $change)
+    public function scheme(Request $request, Deal $deal, ChangeDealScheme $change)
     {
         abort_unless($deal->isActive(), 404);
         $scheme = DealScheme::from($request->validate(['scheme' => ['required', Rule::enum(DealScheme::class)]])['scheme']);

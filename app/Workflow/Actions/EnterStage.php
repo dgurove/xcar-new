@@ -55,7 +55,7 @@ final class EnterStage
         $deal = $offer->deal()->with('buyer')->first();
 
         if ($from) {
-            Requirement::where('offer_id', $offer->id)->where('stage_id', $from->id)->whereNull('done_at')
+            Requirement::where('offer_id', $offer->id)->ofRoute()->where('stage_id', $from->id)->whereNull('done_at')
                 ->update(['done_at' => $now, 'answer' => json_encode(['closed_by' => 'stage'])]);
         }
 

@@ -3,6 +3,7 @@
 namespace App\Workflow;
 
 use App\Offers\Deal;
+use App\Offers\DealState;
 use App\Offers\Offer;
 use App\Support\FastAttributes;
 use App\Users\User;
@@ -53,6 +54,16 @@ class Requirement extends Model implements HasMedia
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    /**
+     * Просьбы маршрута машины — без просьб параллельных сделок (07.11.2026, `Offers\Parallels`): у тех свой теневой шаг,
+     * шаг главной их не закрывает и не сдвигает их сроки.
+     */
+    public function scopeOfRoute($q)
+    {
+        return $q->where(fn ($w) => $w->whereNull('deal_id')->orWhereNotExists(fn ($d) => $d->selectRaw('1')->from('deals')
+            ->whereColumn('deals.id', 'requirements.deal_id')->where('deals.state', DealState::Parallel->value)));
     }
 
     public function isOpen(): bool

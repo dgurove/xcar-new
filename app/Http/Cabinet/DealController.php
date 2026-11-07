@@ -17,6 +17,7 @@ use App\Offers\DealState;
 use App\Offers\Disclosures;
 use App\Offers\Handover;
 use App\Offers\OfferState;
+use App\Offers\Parallels;
 use App\Support\ListPrefs;
 use App\Support\Sort;
 use App\Users\User;
@@ -59,19 +60,20 @@ class DealController
         // разделах, с меткой «Гараж», строка ведёт в машину гаража — там и шаг сделки.
         // Ход менеджера — просьба к нему или этап, где ждут его (ПРАЙМ без покупателя — без просьбы): просроченное, потом остальное.
         $turn = Deal::MANAGER_TURN_SQL;
-        $deals = self::deals($me)->where('state', DealState::Active)
+        // Параллельная (07.11.2026) — его сделка, как идущая: со своим теневым шагом (`Parallels::dress`).
+        $deals = self::deals($me)->whereIn('state', [DealState::Active, DealState::Parallel])
             ->orderByRaw("case when {$turn} then 0 else 1 end")
             ->orderByRaw('(select min(r.due_at) from requirements r where r.deal_id = deals.id and r.done_at is null) asc nulls last')
             ->when($sort->key === 'amount', fn ($d) => $d->orderByRaw("coalesce(amount, cost) {$sort->dir()} nulls last"))->orderBy('created_at', $sort->key === 'fresh' ? $sort->dir() : 'desc')->orderByDesc('id');
         // Админу — все сделки площадки строками, постранично; менеджеру — свои разделами «чей ход» одной страницей.
         $staff = $me->isAdmin() && ! $me->isManager();
-        $deals = $staff ? $deals->paginate(30) : $deals->get();
+        $deals = $staff ? $deals->paginate(30) : $deals->get()->each(fn (Deal $d) => Parallels::dress($d->loadMissing('shadowStage')));
         $sections = $staff ? null : self::sections($deals);
 
         // Админ подтверждения решает в CRM — строки «Мои подтверждения» и «Ждут решения» у него нет.
         $bids = $me->hasDeals() ? self::waiting($me)->count() : 0;
         $pending = $me->hasDeals() ? self::pending($me)->get()->sortByDesc(fn (Bid $b) => $b->offer->bids_close_at?->getTimestamp())->values() : collect();
-        $archived = self::deals($me)->where('state', '!=', DealState::Active)->notSuperseded()->count();
+        $archived = self::deals($me)->whereNotIn('state', [DealState::Active, DealState::Parallel])->notSuperseded()->count();
 
         return view('cabinet.deals.index', ['deals' => $deals, 'sections' => $sections, 'pending' => $pending, 'bids' => $bids, 'archived' => $archived, 'sort' => $sort]);
     }
@@ -120,8 +122,11 @@ class DealController
     private function archive(Request $request)
     {
         $me = $request->user();
-        $closed = self::deals($me)->where('state', '!=', DealState::Active)->notSuperseded()
+        $closed = self::deals($me)->whereNotIn('state', [DealState::Active, DealState::Parallel])->notSuperseded()
             ->orderByRaw('coalesce(closed_at, updated_at) desc')->orderByDesc('id')->limit(self::ARCHIVE)->get();
+
+        // Закрытая параллельная — без шага машины (`Parallels::dress`).
+        $closed->each(fn (Deal $d) => Parallels::dress($d));
 
         return view('cabinet.deals.archive', ['done' => $closed->where('state', DealState::Done)->values(), 'failed' => $closed->where('state', DealState::Cancelled)->values()]);
     }
@@ -199,9 +204,11 @@ class DealController
     public static function stepData(Deal $deal): array
     {
         $deal->load(['offer', 'offer.media', 'offer.settlement', 'offer.positions.stage.block', 'offer.positions.stage.workflow', 'offer.positions.stage.exits.to', 'openRequirement.media', 'requirements']);
+        // Параллельная (07.11.2026): шаг и путь — её теневые, шагов машины она не видит.
+        Parallels::dress($deal);
         $position = $deal->offer->position(Track::Sale);
         // Журнал с начала сделки, с учётом откатов — тот же, что путь в CRM.
-        $steps = Path::journal($deal->offer, Track::Sale, $deal->created_at);
+        $steps = Path::journal($deal->offer, Track::Sale, $deal->created_at, ! $deal->isActive() && $deal->wasParallel() ? $deal : null);
         // Менеджеру путь целиком: на развилке — главной дорогой (`guess`), а не обрывом на текущем шаге.
         $blocks = $position ? Path::ladder($position->stage, $steps->pluck('block')->all(), $deal, guess: true) : collect();
 
@@ -212,7 +219,7 @@ class DealController
             'blocks' => $blocks,
             'steps' => $steps,
             'requirement' => $deal->openRequirement,
-            'exits' => $deal->openRequirement ? Handover::managerExits($position?->stage, $deal) : collect(),
+            'exits' => $deal->openRequirement ? ($deal->isParallel() && $position ? Parallels::exits($deal, $position->stage) : Handover::managerExits($position?->stage, $deal)) : collect(),
             'handover' => Handover::for($deal),
             // Из писем страховой — только то, что показал админ (`Offers\Disclosure`, 03.11.2026, владелец: «менеджеру вообще
             // ничего не показываем, пока админ не нажмёт»), новое сверху. Самих писем и их телефонов здесь нет.

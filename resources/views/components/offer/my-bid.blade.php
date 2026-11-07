@@ -3,7 +3,7 @@
 @props(['offer', 'bid'])
 <x-offer.counter-card :bid="$bid" class="mb-3 w-full"/>
 <x-offer.reprice-ask :bid="$bid" class="mb-3 w-full"/>
-@php $deal = $bid->state === \App\Offers\BidState::Accepted ? $offer->deal()->where('bid_id', $bid->id)->first() : null; @endphp
+@php $deal = $bid->state === \App\Offers\BidState::Accepted ? \App\Offers\Deal::where('bid_id', $bid->id)->whereIn('state', [\App\Offers\DealState::Active, \App\Offers\DealState::Parallel])->latest('id')->first() : null; @endphp
 @if ($deal)
     <a href="{{ $deal->href() }}" {{ $attributes->class('flex items-center gap-3') }}>
 @else

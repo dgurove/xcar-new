@@ -204,6 +204,12 @@ final class ChangeOfferState
      */
     private function settleDeal(Offer $offer, OfferState $next, ?User $by = null): void
     {
+        // Параллельные сделки (07.11.2026) живут, пока машина в сделке или снова в приёме: главную отменили — любую из них
+        // можно взять в работу (`TakeParallel`). Ушла дальше (выдана, в гараже, в черновики, архив, отказ) — закрываются.
+        if (! in_array($next, [OfferState::Open, OfferState::Sold], true)) {
+            // Причина `gone` — её и только её отказ поставщика перепишет в «Поставщик отказал» (`DeclineBySupplier::mark`).
+            app(CloseParallels::class)($offer, $by, 'ТС ушло из сделки: '.mb_strtolower($next->label()), 'gone');
+        }
         $deal = $offer->deal()->first();
         $garage = $next === OfferState::Garage && $deal?->isGarage();
         if ($garage || in_array($next, [OfferState::Delivered, OfferState::Archived], true)) {

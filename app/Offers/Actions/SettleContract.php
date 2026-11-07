@@ -21,7 +21,8 @@ final class SettleContract
     public function __invoke(DealContract $contract): DealContract
     {
         // Без договора (покупатель для счёта поставщика, 03.11.2026): ни номера, ни «ДКП готов» — только шаг дальше.
-        if (! $contract->deal->hasContract()) {
+        // Параллельная — без номера договора и «ДКП готов»: договор будет у той, что пойдёт в работу (`TakeParallel`).
+        if (! $contract->deal->hasContract() || $contract->deal->isParallel()) {
             app(AdvanceOnBuyerData::class)($contract->deal);
             RefreshDeal::of($contract->deal);
 
