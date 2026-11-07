@@ -37,9 +37,10 @@ final class RecordOnOffer
             'agreed' => 'созвонились, '.$t->next(),
             'docs_sent' => 'документы отправлены СДЭКом, трек '.$t->docs_track,
             'docs_received' => 'документы получены',
-            'picked' => 'вывезена'.(($d = $t->destinationLabel()) ? ', '.$d : ''),
-            // «Уже вывезли» задним числом — с датой: «привёз, к нам, 12 окт, 14:00».
-            'delivered' => 'привёз'.(($d = $t->destinationLabel()) ? ', '.$d : '')
+            // «Забрали ТС, куда — в гараж Виталий Зайцев» (07.11.2026: было «вывезена, В гараж …» — о машине в женском роде).
+            'picked' => 'забрали ТС'.(($d = $t->destinationLabel()) ? ', куда — '.self::where($d) : ''),
+            // «Уже вывезли» задним числом — с датой: «привезли — к нам, 12.10 14:00».
+            'delivered' => 'привезли'.(($d = $t->destinationLabel()) ? ' — '.self::where($d) : '')
                 .($t->delivered_at?->lt(now()->subMinutes(5)) ? ', '.Ago::day($t->delivered_at, time: true) : ''),
             'cancelled' => 'отменён'.($t->cancel_reason ? ': '.$t->cancel_reason : ''),
             'auction' => 'забрал аукцион',
@@ -49,5 +50,11 @@ final class RecordOnOffer
         if ($text) {
             $t->saleOffer()?->log(OfferEventType::Note, $e->by, ['text' => 'Вывоз: '.$text]);
         }
+    }
+
+    /** «В гараж …», «К нам», «Парковка …» — со строчной во фразе; адрес, вписанный руками, — как вписан. */
+    private static function where(string $to): string
+    {
+        return preg_replace_callback('/^(В гараж|К нам|Менеджеру|Парковка|Покупателю)/u', fn ($m) => mb_strtolower($m[1]), $to);
     }
 }

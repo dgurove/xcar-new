@@ -2,9 +2,11 @@
 
 namespace App\Support;
 
+use App\Offers\AudienceRules;
 use BackedEnum;
 use DateTimeInterface;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Str;
 
 /**
  * Что меняет правка — «было → стало» для истории (14.10.2026, владелец: после файла Carcade нельзя было сказать, какая
@@ -15,11 +17,17 @@ use Illuminate\Database\Eloquent\Model;
  */
 final class Changes
 {
-    /** Длинный текст и составное: в ленте — «описание», без пересказа. */
-    public const TEXT = ['description', 'notes', 'damage_note', 'audience_rules', 'tag_colors', 'storage_rate_note'];
+    /** Длинный текст: в ленте — началом нового текста в кавычках («описание «Мост битый, …»»), у остальных — только имя. */
+    public const TEXT = ['description', 'notes', 'damage_note', 'storage_rate_note'];
 
-    /** Производное от других полей и служебное. */
-    private const SKIP = ['claim_ref_key', 'ref_key', 'plate_key', 'vehicle_category', 'city_id', 'tab_at', 'tab_by', 'updated_at', 'created_at'];
+    /** Пересказ длинного текста — столько знаков нового (07.11.2026, владелец: «что тогда установили — не написано»). */
+    private const EXCERPT = 60;
+
+    /**
+     * Производное от других полей и служебное. Цвета меток — оформление: «цвета меток» без значения в ленте ничего не
+     * говорило (07.11.2026).
+     */
+    private const SKIP = ['claim_ref_key', 'ref_key', 'plate_key', 'vehicle_category', 'city_id', 'tab_at', 'tab_by', 'updated_at', 'created_at', 'tag_colors'];
 
     /**
      * Грязные поля моделей (одна правка может писать и предложение, и машину) — до `save()`.
@@ -36,9 +44,14 @@ final class Changes
                     continue;
                 }
                 $fields[] = $key;
-                if (! in_array($key, self::TEXT, true)) {
-                    $changes[$key] = [self::raw($model->exists ? $model->getOriginal($key) : null), self::raw($model->getAttribute($key))];
-                }
+                $was = $model->exists ? $model->getOriginal($key) : null;
+                $now = $model->getAttribute($key);
+                $changes[$key] = match (true) {
+                    // «Кому показывать» — словами шторки: «Роман Корабельников сразу, остальные через 5 дней» (07.11.2026).
+                    $key === 'audience_rules' => [$model->exists ? AudienceRules::summary((array) $was) : null, AudienceRules::summary((array) $now)],
+                    in_array($key, self::TEXT, true) => [null, filled($now) ? '«'.Str::limit(trim(preg_replace('/\s+/u', ' ', (string) $now)), self::EXCERPT).'»' : null],
+                    default => [self::raw($was), self::raw($now)],
+                };
             }
         }
 

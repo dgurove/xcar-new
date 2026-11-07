@@ -77,10 +77,12 @@ final class SaveDealContract
                 ($this->buyerData)(Party::forUser($buyer), $data['buyer'], keepKind: $buyer->id === $deal->buyer_id);
             }
             $contract->save();
-            $deal->offer->log(OfferEventType::Note, $by, ['text' => 'ДКП: '.implode(', ', array_filter([
+            // Ничего из названного не тронули (кто платит, скан) — «ДКП изменён», а не пустое «ДКП: » (07.11.2026).
+            $what = implode(', ', array_filter([
                 isset($data['seller']) ? 'продавец' : null, isset($data['vehicle']) ? 'ТС' : null, isset($data['signed_at']) ? 'дата '.$contract->signed_at?->format('d.m.Y') : null, $contract->wasChanged('buyer_user_id') ? 'покупатель '.$contract->buyer?->name : null,
                 isset($data['buyer']) && ! $contract->wasChanged('buyer_user_id') ? 'паспорт покупателя' : null,
-            ]))]);
+            ]));
+            $deal->offer->log(OfferEventType::Note, $by, ['text' => $what !== '' ? 'ДКП: '.$what : 'ДКП изменён']);
         });
         $picked = $contract->wasChanged('buyer_user_id');
         // Плательщик или его данные сменились — счёт ПРАЙМ встаёт сам (или перевыставляется, если за него не платили).

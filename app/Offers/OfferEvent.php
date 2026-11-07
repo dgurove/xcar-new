@@ -100,14 +100,12 @@ class OfferEvent extends Model
             // «closed» — состояние, которого больше нет; старые записи ленты остаются читаемыми.
             // Выставили в продажу — кому и до когда (07.11.2026, владелец: Рома просил доказательств, что машины были ему открыты).
             OfferEventType::StateChanged => ! empty($p['auction']) ? ($p['to'] === OfferState::Delivered->value ? 'Продана на аукционе' : 'Продажа на аукционе отменена')
-                : (($p['to'] ?? null) === OfferState::Open->value && isset($p['audience'])
-                    ? 'Выставлено в продажу: '.preg_replace_callback('/^(Всем|Никому|Остальные)/u', fn ($m) => mb_strtolower($m[1]), $p['audience']).(! empty($p['until']) ? ', приём до '.Ago::at(Carbon::parse($p['until']), true, words: false) : '')
-                    : (OfferState::tryFrom($p['to'] ?? '')?->label() ?? ($p['to'] === 'closed' ? 'Приём закрыт' : (string) $p['to']))),
+                : self::stateText($p),
             OfferEventType::Wave => 'Открыто: '.($p['who'] ?? 'следующая волна').(! empty($p['after']) ? ' — '.$p['after'].' после выхода' : '').(! empty($p['count']) ? ' ('.$p['count'].' '.Plural::of((int) $p['count'], ['человек', 'человека', 'человек']).')' : ''),
             OfferEventType::BidPlaced => ! empty($p['garage']) ? 'Подтверждение в гараж' : 'Подтверждение '.Money::plain($p['amount'] ?? 0),
             OfferEventType::BidAccepted => match (true) {
                 isset($p['buyer_price']) => 'В гараж покупателю за '.Money::rub($p['buyer_price']),
-                isset($p['garage']) => 'В гараж, поставщику платит '.mb_strtolower(GaragePayer::tryFrom($p['garage'])?->label() ?? ''),
+                isset($p['garage']) => 'В гараж, поставщику '.(GaragePayer::tryFrom($p['garage']) === GaragePayer::Us ? 'платим мы' : 'платит '.mb_strtolower(GaragePayer::tryFrom($p['garage'])?->label() ?? '')),
                 // Закупочную менеджера поправили при принятии — было и стало.
                 isset($p['cost']) => 'Подтверждение принято, закупочная менеджера '.Money::plain((int) $p['cost'][0], sign: false).' → '.Money::rub((int) $p['cost'][1]),
                 default => 'Подтверждение принято',
@@ -159,7 +157,8 @@ class OfferEvent extends Model
             // Номер ушёл вендору в ежедневный запрос (15.10.2026) или метку сняли.
             OfferEventType::Requested => ! empty($p['cleared']) ? 'Номер возвращён в «К запросу»' : 'Номер отправлен вендору в запрос',
             // Прежняя запись (до 17.10.2026 вывоз поручали в CRM): «к менеджеру» / «к нам».
-            OfferEventType::PickupAssigned => 'Вывоз: '.($p['who'] ?? 'мы').match ($p['to'] ?? '') {
+            // «Кто вывозит: Иван Заикин, к менеджеру» (07.11.2026: «Вывоз: мы, к нам» читалось как ход вывоза).
+            OfferEventType::PickupAssigned => 'Кто вывозит: '.($p['who'] ?? 'мы').match ($p['to'] ?? '') {
                 'keeper' => ', к менеджеру', 'ours' => ', к нам', default => ''
             },
             // Слот: поставили («В слот 4 окт, 16:00»), убрали или часы не смогли выпустить (`error` — чего не хватило).
@@ -179,6 +178,35 @@ class OfferEvent extends Model
      * правка — началом строки: Мигторг (поля лота, «ответ до» — тот же конец торгов, что «срок от вендора», или кадры),
      * «Из текста», файл поставщика, своя причина (`why`) — у правок пробником и из других дверей без человека.
      */
+    /**
+     * Переход состояния — что сделали, а не название состояния (07.11.2026: «Черновик», «Приём подтверждений» в ленте не
+     * говорили, сняли с продажи или вернули из архива). В продажу — кому и до когда, если это записано.
+     */
+    private static function stateText(array $p): string
+    {
+        $to = OfferState::tryFrom($p['to'] ?? '');
+        $from = OfferState::tryFrom($p['from'] ?? '');
+
+        return match (true) {
+            $to === OfferState::Open => 'Выставлено в продажу'.(isset($p['audience'])
+                ? ': '.preg_replace_callback('/^(Всем|Никому|Остальные)/u', fn ($m) => mb_strtolower($m[1]), $p['audience']) : '')
+                .(! empty($p['until']) ? ', приём до '.Ago::at(Carbon::parse($p['until']), true, words: false) : ''),
+            $to === OfferState::Draft => match ($from) {
+                OfferState::Open, OfferState::Gallery => 'Снято с продажи, в черновики',
+                OfferState::Sold => 'Сделка отменена, в черновики',
+                OfferState::Garage => 'Из гаража в черновики',
+                OfferState::Archived => 'Из архива в черновики',
+                default => 'В черновики',
+            },
+            $to === OfferState::Sold => 'Передано в сделку',
+            $to === OfferState::Garage => 'В гараж',
+            $to === OfferState::Archived => 'В архив',
+            $to === OfferState::Delivered => 'Выдано покупателю',
+            ($p['to'] ?? null) === 'closed' => 'Приём закрыт',
+            default => $to?->label() ?? (string) ($p['to'] ?? ''),
+        };
+    }
+
     private static function updatedText(array $p): string
     {
         $fields = $p['fields'] ?? [];
@@ -251,14 +279,17 @@ class OfferEvent extends Model
     private static function estimateText(array $p): string
     {
         $names = fn (array $ids) => User::whereIn('id', $ids)->get(['id', 'name'])->map(fn (User $u) => $u->shortName())->implode(', ');
+        // Кому отдали — у каждого «без заявленной» у его имени, а не вторым списком тех же имён (07.11.2026).
+        $hidden = array_map('intval', $p['hidden'] ?? []);
+        $asked = fn () => User::whereIn('id', $p['users'] ?? [])->get(['id', 'name'])
+            ->map(fn (User $u) => $u->shortName().(in_array($u->id, $hidden, true) ? ' (без заявленной)' : ''))->implode(', ');
         $one = fn () => isset($p['user']) ? $names([(int) $p['user']]) : '';
         $sum = isset($p['amount']) ? Money::rub((int) $p['amount']) : '';
 
         return match ($p['do'] ?? null) {
             'asked' => (isset($p['base'])
-                ? 'На корректировку '.Money::rub((int) $p['base']).': '.$names($p['users'] ?? [])
-                : 'Отдано на оценку: '.$names($p['users'] ?? []))
-                .(empty($p['hidden']) ? '' : ', без заявленной: '.$names($p['hidden'])),
+                ? 'На корректировку '.Money::rub((int) $p['base']).': '.$asked()
+                : 'Отдано на оценку: '.$asked()),
             'given' => ! empty($p['agreed']) ? 'Согласен с ценой '.$sum : 'Оценка: '.$sum,
             'kept' => 'Оставлена цена '.$sum,
             'declined' => 'Отказ от оценки: '.$one().', хочет '.$sum.(empty($p['reason']) ? '' : ', «'.$p['reason'].'»'),
@@ -281,7 +312,7 @@ class OfferEvent extends Model
             'stage' => match ($state = CarState::tryFrom($p['state'] ?? '')) {
                 CarState::Sold => 'Продана'.(isset($p['price']) ? ' за '.$sum('price') : ''),
                 null => 'Гараж',
-                default => ($state->isPrep() ? 'Гараж: ' : 'Продажа: ').mb_strtolower($state->label()),
+                default => ($state->isPrep() ? 'Гараж: ' : 'Продажа: ').mb_lcfirst($state->label()),
             },
             'cost' => 'Расход: '.mb_strtolower($p['title'] ?? '').' '.$sum('amount').(($p['payer'] ?? null) === 'xcar' ? ', платили мы' : ''),
             'cost_edit' => 'Расход изменён: '.mb_strtolower($p['title'] ?? '').' '.$sum('amount').(($p['payer'] ?? null) === 'xcar' ? ', платили мы' : ''),

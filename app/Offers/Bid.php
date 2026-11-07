@@ -4,6 +4,7 @@ namespace App\Offers;
 
 use App\Live\Publisher;
 use App\Live\Topics;
+use App\Offers\Actions\SyncViewers;
 use App\Purchases\Car as PurchaseCar;
 use App\Support\FastAttributes;
 use App\Users\User;
@@ -41,9 +42,12 @@ class Bid extends Model
             if (($bid->wasRecentlyCreated || $bid->wasChanged(['state', 'amount', 'counter_state'])) && ($n = Offer::whereKey($bid->offer_id)->value('number'))) {
                 app(Publisher::class)->rowsSoon(Topics::STAFF, ['/offers' => [$n]]);
             }
-            // Подтверждение снимает тревогу «нет покупателя» (`Binding`), отзыв — возвращает.
+            // Подтверждение снимает тревогу «нет покупателя» (`Binding`), отзыв — возвращает. Волны показа — тоже: есть живое
+            // подтверждение — следующие волны держатся, ушло — открываются по прежнему расписанию (`SyncViewers`, 07.11.2026).
             if ($bid->wasRecentlyCreated || $bid->wasChanged('state')) {
-                Binding::touch(Offer::find($bid->offer_id));
+                $offer = Offer::find($bid->offer_id);
+                Binding::touch($offer);
+                $offer && app(SyncViewers::class)($offer);
             }
         });
     }
