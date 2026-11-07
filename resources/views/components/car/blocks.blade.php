@@ -6,8 +6,12 @@
 @php
     $of ??= $lane ? $lane::class : null;
     $twins = in_array('car', $blocks, true) ? ($of === \App\Offers\Offer::class ? '/offers/twins' : '/reference/twins') : null;
+    // Машина страницы для «Это документ» в шторке документов (фото из письма — читать как документ).
+    $user = auth()->user();
+    $carDoc = $lane?->exists && $user && ($lane instanceof \App\Offers\Offer ? $lane->isEditableBy($user) : $user->canManagePark())
+        ? ($lane instanceof \App\Offers\Offer ? '/offers/'.$lane->number : '/cars/'.$lane->id).'/as-document' : null;
 @endphp
-<div class="contents" @if ($twins) data-controller="twins" data-twins-url-value="{{ $twins }}" data-twins-except-value="{{ $lane?->id }}" data-twins-candidate-value="{{ $candidate }}" data-action="input->twins#changed" @endif>
+<div class="contents" @if ($carDoc) data-car-doc="{{ $carDoc }}" @endif @if ($twins) data-controller="twins" data-twins-url-value="{{ $twins }}" data-twins-except-value="{{ $lane?->id }}" data-twins-candidate-value="{{ $candidate }}" data-action="input->twins#changed" @endif>
     @foreach ($blocks as $block)
         <x-car.block :lane="$lane" :of="$of" :block="$block" :values="$values" :fold="$fold" :hints="$hints" :required="$required" :as="$as"
             :top="$block === 'car' ? $top : null" :id="$block === 'papers' ? 'car-docs' : null" @class(['scroll-mt-24' => $block === 'papers'])/>

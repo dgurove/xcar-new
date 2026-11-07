@@ -43,11 +43,12 @@ use App\Http\Cabinet\InviteController;
 use App\Http\Cabinet\PassportScanController;
 use App\Http\Cabinet\ProfileController;
 use App\Http\Cabinet\RegionController;
+use App\Http\Cars\CarFieldController;
 use App\Http\Garage\CarController as GarageCarController;
 use App\Http\Garage\SettlementController as GarageSettlementController;
 use App\Http\Mail\AttachController;
-use App\Http\Mail\ScanController;
 use App\Http\PeopleController;
+use App\Http\PeopleMailController;
 use App\Http\SearchController;
 use App\Http\Site\ShareController;
 use App\Purchases\Car;
@@ -77,10 +78,6 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
         Route::post('/offers/from-mail/{candidate}/create', [MailController::class, 'promote']);
         Route::post('/offers/from-mail/{candidate}/decline', [MailController::class, 'decline']);
         Route::get('/offers/from-mail/{candidate}/letters', [MailController::class, 'candidateLetters']);
-        // «✨ Распознать» — то же окно, что на парковке (ScanController): у цепочки «Из писем» и у предложения.
-        Route::get('/offers/from-mail/{candidate}/scan', [ScanController::class, 'show']);
-        Route::post('/offers/from-mail/{candidate}/scan', [ScanController::class, 'scan']);
-        Route::post('/offers/from-mail/{candidate}/scan/apply', [ScanController::class, 'apply']);
     });
     Route::get('/offers/twins', [OfferController::class, 'twins']);
     // Окно «Выгрузка» над списком: вкладка, чипы и лупа — файлом или данными для буфера (`format=json`).
@@ -99,15 +96,6 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
     Route::middleware('offer.edit')->group(function () {
         Route::get('/offers/{offer}', [OfferController::class, 'edit'])->name('crm.offers.edit');
         Route::get('/offers/{offer}/letters', [MailController::class, 'offerLetters'])->middleware('ability:canCrmMail');
-        // «✨» читает документы предложения, а вложения писем — только тем, кому открыта почта (`OfferSubject::for`).
-        Route::get('/offers/{offer}/scan', [ScanController::class, 'offerShow']);
-        Route::post('/offers/{offer}/scan', [ScanController::class, 'offerScan']);
-        Route::post('/offers/{offer}/scan/apply', [ScanController::class, 'offerApply']);
-        // Читалка в блоке «Документы» редактора: читает сама по порядку, поля заполняются по ходу (x-mail.reader).
-        Route::get('/offers/{offer}/scan/live', [ScanController::class, 'offerLive']);
-        Route::post('/offers/{offer}/scan/read', [ScanController::class, 'offerRead']);
-        Route::post('/offers/{offer}/scan/stop', [ScanController::class, 'offerStop']);
-        Route::post('/offers/{offer}/scan/reject', [ScanController::class, 'offerReject']);
         // Кадры письма прикрепляются: строка хода и ряд фото, пока ImportThreadFiles идёт (attach_controller).
         Route::get('/offers/{offer}/attach', [AttachController::class, 'offer']);
         Route::put('/offers/{offer}', [OfferController::class, 'update']);
@@ -126,7 +114,9 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
         Route::post('/offers/{offer}/media', [OfferPhotoController::class, 'store']);
         Route::post('/offers/{offer}/media/migtorg', [OfferPhotoController::class, 'migtorg']);
         Route::get('/offers/{offer}/migtorg', [OfferPhotoController::class, 'migtorgChip']);
-        Route::post('/offers/{offer}/migtorg/{field}/{act}', [OfferController::class, 'migtorg'])->whereIn('act', ['take', 'reject']);
+        // Спорное поле машины — выбрать вариант источника или оставить (`Cars\Sources`); фото — «Это документ».
+        Route::post('/offers/{offer}/fields/{field}', [CarFieldController::class, 'offer']);
+        Route::post('/offers/{offer}/as-document', [CarFieldController::class, 'offerDocument']);
         Route::post('/offers/{offer}/media/order', [OfferPhotoController::class, 'reorder']);
         Route::post('/offers/{offer}/media/visibility', [OfferPhotoController::class, 'visibility']);
         Route::post('/offers/{offer}/media/{media}/hide', [OfferPhotoController::class, 'toggle']);
@@ -394,12 +384,12 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
             Route::post('/users/invites', [InviteController::class, 'store']);
             // «+ Новый логист / сотрудник» в шторке выбора «Кто вывозит» (18.10.2026).
             Route::post('/people', [PeopleController::class, 'store']);
+            Route::post('/people/credentials-mail/{token}', [PeopleMailController::class, 'credentials']);
+            Route::post('/people/{user}/password-link-mail', [PeopleMailController::class, 'passwordLink']);
             Route::post('/users/invites/{invite}/off', [InviteController::class, 'disable']);
+            Route::post('/users/invites/{invite}/mail', [InviteController::class, 'mail']);
             Route::post('/users/invites/{invite}/on', [InviteController::class, 'enable']);
 
-            Route::post('/users/invites/{invite}/mail', [InviteController::class, 'mail']);
-            Route::post('/people/credentials-mail/{token}', [\App\Http\PeopleMailController::class, 'credentials']);
-            Route::post('/people/{user}/password-link-mail', [\App\Http\PeopleMailController::class, 'passwordLink']);
             Route::get('/tags', [TagController::class, 'index']);
             Route::post('/tags', [TagController::class, 'store']);
             Route::post('/tags/order', [TagController::class, 'reorder']);

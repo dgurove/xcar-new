@@ -44,8 +44,17 @@
     $grid = $as === 'card' ? 'grid grid-cols-2 gap-3 @4xl:grid-cols-3' : 'grid grid-cols-[repeat(2,minmax(0,1fr))] gap-x-2 gap-y-2.5';
     $req = fn (string $c) => in_array($c, $required, true);
     $draft = $sale && $lane?->state === OfferState::Draft;
+    // Спорные поля блока (`Cars\Sources\Variants`) — строками над полями, и в виде текстом, и в правке.
+    $variantFields = ['car' => ['car', 'vin', 'year', 'color', 'mileage'], 'papers' => ['plate', 'pts', 'sts'],
+        'specs' => ['body', 'transmission', 'drive', 'fuel', 'engine_volume', 'engine_power']][$block] ?? [];
 @endphp
-<x-car.card :title="$title" :fold="$fold" :empty="$cells->isEmpty()" :as="$as" :top="$top" {{ $attributes }}>
+<x-car.card :title="$title" :fold="$fold" :empty="$cells->isEmpty()" :as="$as" {{ $attributes }}>
+    <x-slot:top>
+        {{ $top }}
+        @if ($lane && $variantFields)
+            <x-car.variants :lane="$lane" :fields="$variantFields"/>
+        @endif
+    </x-slot:top>
     <x-slot:view>
         @if ($cells->isNotEmpty())
             <div class="{{ $grid }} !gap-y-2.5 leading-snug">

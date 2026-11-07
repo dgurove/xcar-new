@@ -4,7 +4,6 @@ namespace App\Park;
 
 use App\Billing\Accrual;
 use App\Http\Park\VehicleController;
-use App\Park\Actions\FillFromDocs;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 
@@ -28,7 +27,8 @@ final class TableRows
         // Значок связи (x-ui.links) — только админу: строка админа и управляющего — разные строки кэша.
         // Строка приёмщика (без денег, `User::parkMoney`) — своя строка кэша.
         $common = Accrual::mark('park_tariffs').'|'.self::templates().'|'.(int) (auth()->user()?->isAdmin() ?? false).'|'.(int) $money;
-        $docs = FillFromDocs::flags($vehicles);
+        // Спорные поля машины (`Cars\Sources\Variants`, `cars.value_conflicts`) — метка строки.
+        $docs = $vehicles->mapWithKeys(fn (Vehicle $v) => [$v->id => $v->carRecord()->value_conflicts > 0])->all();
         $keys = $vehicles->mapWithKeys(fn (Vehicle $v) => [$v->id => 'park.row:'.md5(implode('|', [
             // Машина (`Cars\Car`: марка, VIN, номер — их правят и из CRM) и её продажа со сделкой (значок связи) — свои
             // записи: их правка ТС не трогает.

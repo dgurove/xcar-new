@@ -4,6 +4,7 @@ namespace App\Cars\Actions;
 
 use App\Cars\Body;
 use App\Cars\Brand;
+use App\Cars\CarFields;
 use App\Cars\CarModel;
 use App\Cars\Category;
 use App\Cars\Colors;
@@ -89,7 +90,9 @@ final class FillCar
             // Тип продажи, угаданный по марке («Граз» — «Легковой»), — не значение: источник его перебивает. У ТС тип —
             // ставка хранения, его ставит парковка.
             $guessed = $field === 'vehicle_category' && $lane instanceof Offer && ! $lane->parkVehicle && $lane->carRecord()->categoryGuessed();
-            if (array_key_exists($field, $data) && ! blank($lane->{$field}) && ! $guessed) {
+            // Поле последним правил человек — источник его не трогает, даже стёртое (`Car::stamp`, 07.11.2026).
+            $human = $onlyEmpty && $lane->carRecord()->byHuman(CarFields::column($lane::class, $field));
+            if (array_key_exists($field, $data) && (! blank($lane->{$field}) || $human) && ! $guessed) {
                 unset($data[$field]);
             }
         }

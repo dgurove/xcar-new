@@ -7,6 +7,7 @@ use App\Billing\Bank\Console\SyncBank;
 use App\Billing\Console\CloseMonthCommand;
 use App\Billing\Console\RerenderInvoices;
 use App\Billing\Console\TickBilling;
+use App\Cars\Console\CollectValuesCommand;
 use App\Cars\Console\MergeCatalogCommand;
 use App\Http\Middleware\ActWindowBack;
 use App\Http\Middleware\DemoReadOnly;
@@ -62,11 +63,10 @@ use App\Offers\Console\TickOffers;
 use App\Offers\Share\Console\PreparePdfs;
 use App\Park\Console\AcceptByLettersCommand;
 use App\Park\Console\AutoRequestsCommand;
-use App\Park\Console\FillFromDocsCommand;
-use App\Park\Console\PurgeLettersCommand;
-use App\Park\Console\RestoreLetterDocsCommand;
 use App\Park\Console\FindValuesCommand;
+use App\Park\Console\PurgeLettersCommand;
 use App\Park\Console\ReleaseByLettersCommand;
+use App\Park\Console\RestoreLetterDocsCommand;
 use App\Park\Console\SpbFactCommand;
 use App\Park\Console\StoreByLettersCommand;
 use App\Park\Console\TickPark;
@@ -83,6 +83,7 @@ use App\Telegram\Offers\Console\Run as OffersBotRun;
 use App\Users\Console\CreateUser;
 use App\Users\Console\SeedDemo;
 use App\Users\Console\TelegramAvatars;
+use App\Vendors\Console\ClaimDigestCommand;
 use App\WhatsApp\Console\Poll as WhatsAppPoll;
 use App\WhatsApp\Console\Status as WhatsAppStatus;
 use App\WhatsApp\Console\Test as WhatsAppTest;
@@ -105,6 +106,7 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withCommands([
+        CollectValuesCommand::class,
         RerenderInvoices::class,
         ListsCheck::class,
         TelegramAvatars::class,
@@ -128,7 +130,7 @@ return Application::configure(basePath: dirname(__DIR__))
         AutoRequestsCommand::class,
         ReleaseByLettersCommand::class,
         TickBilling::class,
-        \App\Vendors\Console\ClaimDigestCommand::class,
+        ClaimDigestCommand::class,
         CloseMonthCommand::class,
         LogisticsTick::class,
         MergeCancelledCommand::class,
@@ -159,7 +161,6 @@ return Application::configure(basePath: dirname(__DIR__))
         SeedDemo::class,
         MergeCatalogCommand::class,
         DealAgreementFixCommand::class,
-        FillFromDocsCommand::class,
         PurgeLettersCommand::class,
         RestoreLetterDocsCommand::class,
         FindValuesCommand::class,

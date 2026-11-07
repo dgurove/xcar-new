@@ -99,6 +99,8 @@ final class UpdateOffer
         // Правка пишет и предложение, и его машину (`Cars\Car`): история и «что поменялось» — по обеим.
         $diff = Changes::ofLane($offer);
         $changed = [...array_keys($offer->getDirty()), ...$offer->carDirty()];
+        // Кто вписал поля машины (`Car::stamp`): стёртое человеком источник не заполняет снова.
+        $offer->relationLoaded('car') && $offer->getRelation('car')?->stamp($by, $log);
         $offer->save();
         if (array_intersect(['audience_rules', 'vendor_id'], $changed)) {
             app(SyncViewers::class)($offer);

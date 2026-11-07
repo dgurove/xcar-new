@@ -4,10 +4,10 @@ namespace App\Mail\Scan;
 
 use App\Cars\Car;
 use App\Cars\Progress;
+use App\Cars\Sources\Collect;
 use App\Live\Publisher;
 use App\Live\Topics;
 use App\Mail\Extraction\DocumentText;
-use App\Mail\Extraction\ScanFields;
 use App\Mail\Jobs\ImportThreadFiles;
 use App\Mail\Jobs\ScanAttachments;
 use App\Offers\Offer;
@@ -20,8 +20,6 @@ use App\Park\Vehicle;
 use App\Support\Surface;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
-use Throwable;
 
 /**
  * Фоновое чтение ТС, которую завела почта (`Park\Actions\AutoRequest`, владелец 07.10.2026: «распознание документов и
@@ -81,6 +79,20 @@ final class AutoScan
     }
 
     /**
+     * Документы машины — прочитать в фоне без хода строки списка (07.11.2026, владелец: «документы мы и так распознаём»):
+     * у любой живой машины, а не только у заведённой почтой. Зовут: документ приложили руками, к машине привязали ветку,
+     * доехали файлы письма, «Это документ» у фото, часы (`sweep`). Читать нечего — сразу собрать, что говорят источники.
+     */
+    public static function readDocs(Vehicle|Offer $model): void
+    {
+        $subject = self::subject($model);
+        Reader::read($subject, [], background: true);
+        if (! ScanAttachments::reading(Reader::files($subject))) {
+            app(Collect::class)($model->carRecord());
+        }
+    }
+
+    /**
      * Черновик завела почта: строка встаёт сразу, а читать нечего, пока файлы едут из ящика (`ImportThreadFiles`). Метка
      * «ждём файлы»; задача файлов кончилась — `filesArrived` ставит чтение.
      */
@@ -128,8 +140,12 @@ final class AutoScan
         }
         $key = $subject->key();
         $mark = self::mark($key);
+        // Что говорят документы машины — после любого чтения (`Cars\Sources\Collect`): пустые поля, где источники
+        // согласны, встают сами, спорные — выбором в карточке.
+        app(Collect::class)(self::model($subject)->refresh()->carRecord());
         if (! $mark) {
             self::unregister($key);
+            self::ping($subject);
 
             return;
         }
@@ -140,7 +156,6 @@ final class AutoScan
             || ScanAttachments::reading(Reader::files($subject))) {
             return;
         }
-        self::fill($subject);
         Cache::forget(self::key($key));
         self::unregister($key);
         // Минута «только что» — строка проявляется и вспыхивает у того, кто смотрит (`arrive_controller`).
@@ -326,25 +341,6 @@ final class AutoScan
         $n = max($pass['n'], 1);
 
         return ['state' => 'reading', 'i' => min($pass['i'] + 1, $n), 'n' => $n, 'what' => 'docs'];
-    }
-
-    /**
-     * Пустое поле — первым вариантом прочитанного, как отмечено по умолчанию в окне «Распознать» (письмо, потом
-     * документы по `Files::rank`: СТС и ПТС первыми); заполненное — строками «в документе иначе» в деле и редакторе.
-     */
-    private static function fill(VehicleSubject|OfferSubject $subject): void
-    {
-        try {
-            $rows = ScanFields::of($subject->current(), Reader::docs(Reader::files($subject)), $subject->fields());
-            $picks = collect($rows)->filter(fn (array $row) => $row['state'] === 'new' && $row['options'])
-                ->map(fn (array $row) => $row['options'][0]['text'])->all();
-            if ($picks) {
-                $subject->apply(ScanFields::chosen($rows, $picks), null);
-            }
-        } catch (Throwable $e) {
-            // Не вписалось — строка всё равно становится полной: поля человек заполнит из документов в деле.
-            Log::warning('Поля из документов не вписались сами', ['subject' => $subject->key(), 'error' => $e->getMessage()]);
-        }
     }
 
     private static function ping(VehicleSubject|OfferSubject $subject): void

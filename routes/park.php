@@ -4,6 +4,7 @@ use App\Http\Admin\MailTemplateController;
 use App\Http\Admin\ReferenceController;
 use App\Http\Admin\UserController;
 use App\Http\Cabinet\InviteController;
+use App\Http\Cars\CarFieldController;
 use App\Http\Mail\AttachController;
 use App\Http\Mail\ScanController;
 use App\Http\Park\ActController;
@@ -40,10 +41,6 @@ Route::domain(config('xcar.park_host'))->middleware(['auth', 'section:park'])->g
     Route::get('/requests/from-mail', [MailController::class, 'fromMail']);
     Route::post('/requests/from-mail/{candidate}/decline', [MailController::class, 'decline']);
     Route::get('/requests/from-mail/{candidate}/letters', [MailController::class, 'candidateLetters']);
-    // «✨ Распознать»: файлы цепочки → OCR → что подставить (ScanController).
-    Route::get('/requests/from-mail/{candidate}/scan', [ScanController::class, 'show']);
-    Route::post('/requests/from-mail/{candidate}/scan', [ScanController::class, 'scan']);
-    Route::post('/requests/from-mail/{candidate}/scan/apply', [ScanController::class, 'apply']);
     // Читалка «Завести» в разборе письма: документы читаются сами по порядку, поля заполняются по ходу (x-mail.reader).
     Route::get('/requests/from-mail/{candidate}/scan/live', [ScanController::class, 'readerLive']);
     Route::post('/requests/from-mail/{candidate}/scan/read', [ScanController::class, 'readerRead']);
@@ -88,12 +85,9 @@ Route::domain(config('xcar.park_host'))->middleware(['auth', 'section:park'])->g
     Route::post('/cars/{vehicle}/report/pdf', [ReportController::class, 'pdf']);
     Route::post('/cars/{vehicle}/report/{report}/retry', [ReportController::class, 'retry']);
     Route::post('/cars/{vehicle}/report-sent', [ReportController::class, 'sent'])->middleware('ability:parkHandles');
-    // «✨ Распознать» в деле ТС — то же окно, что у цепочки «Из писем» (ScanController, Scan\VehicleSubject).
-    Route::get('/cars/{vehicle}/scan', [ScanController::class, 'vehicleShow'])->middleware('park.manage');
-    Route::post('/cars/{vehicle}/scan', [ScanController::class, 'vehicleScan'])->middleware('park.manage');
-    Route::post('/cars/{vehicle}/scan/apply', [ScanController::class, 'vehicleApply'])->middleware('park.manage');
-    // Чип «в документе …»: кнопка отправляет форму дела (там _method=PUT) на свой адрес.
-    Route::match(['post', 'put'], '/cars/{vehicle}/take', [ScanController::class, 'vehicleTake'])->middleware('park.manage');
+    // Спорное поле машины — выбрать вариант источника или оставить (`Cars\Sources`); фото — «Это документ».
+    Route::post('/cars/{vehicle}/fields/{field}', [CarFieldController::class, 'vehicle'])->middleware('park.manage');
+    Route::post('/cars/{vehicle}/as-document', [CarFieldController::class, 'vehicleDocument'])->middleware('park.manage');
     Route::post('/cars/{vehicle}/letters/{message}/done', [VehicleController::class, 'letterDone']);
     Route::post('/cars/{vehicle}/docs', [VehicleController::class, 'doc']);
     Route::post('/cars/{vehicle}/docs/{doc}', [VehicleController::class, 'doc']);

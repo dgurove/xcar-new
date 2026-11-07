@@ -28,6 +28,7 @@ final class UpdateVehicle
         $vehicle->fill($data);
         $diff = Changes::ofLane($vehicle);
         $changed = [...array_keys($vehicle->getDirty()), ...$vehicle->carDirty()];
+        $vehicle->relationLoaded('car') && $vehicle->getRelation('car')?->stamp($by, $sources ? ['sources' => $sources] : []);
         $vehicle->save();
         if (! $changed) {
             return $vehicle;

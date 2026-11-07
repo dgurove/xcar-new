@@ -40,7 +40,6 @@ use App\Offers\Jobs\DropEmptyDraft;
 use App\Offers\Jobs\ImportMigtorgLot;
 use App\Offers\LegacyClaim;
 use App\Offers\Margin;
-use App\Offers\MigtorgDiff;
 use App\Offers\Offer;
 use App\Offers\OfferEventType;
 use App\Offers\OfferFiles;
@@ -571,7 +570,7 @@ class OfferController
         };
         // Горящий обязывающий — своей группой поверх групп вкладки (`HOT`); без своих групп остальные — `rest`.
         if (in_array($preset, self::HOT, true)) {
-            $expr = "case when ".Binding::soonSql()." then 'hot' else ".($expr === null ? "'rest'" : "'{$prefix}' || ({$expr})::text").' end';
+            $expr = 'case when '.Binding::soonSql()." then 'hot' else ".($expr === null ? "'rest'" : "'{$prefix}' || ({$expr})::text").' end';
             $prefix = '';
         }
         if ($expr === null) {
@@ -1048,14 +1047,6 @@ class OfferController
 
         return back()->with('detail-advance', true)->with('detail-gone', true)->with('detail-counts', self::counts($request->user()))
             ->with('toast', 'Оценено: '.Money::rub($raw));
-    }
-
-    /** «!» Мигторга: «Взять» его значение или «Отклонить» (`MigtorgDiff`); ответ — новый список разниц. */
-    public function migtorg(Request $request, Offer $offer, string $field, string $act)
-    {
-        $done = $act === 'take' ? MigtorgDiff::take($offer, $field, $request->user()) : MigtorgDiff::reject($offer, $field, $request->user());
-
-        return response()->json(['ok' => $done, 'fields' => (object) MigtorgDiff::of($offer->refresh())]);
     }
 
     /**

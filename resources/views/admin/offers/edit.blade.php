@@ -21,8 +21,7 @@
     $moneyKeys = ['value', 'floor_price', 'publish_price', 'asking_price', 'min_bid_price', 'min_bid_share'];
     // Подсветка Мигторга читается один раз (`glowed` забирает её из кэша) — и для формы ниже.
     $glow = \App\Offers\Jobs\ImportMigtorgLot::glowed($offer);
-    $migDiff = \App\Offers\MigtorgDiff::of($offer);
-    $hints = [...array_keys($migDiff), ...$glow];
+    $hints = $glow;
     // Сворачивание и «Показ» — от дела, а не от одного состояния: у машины в сделке или гараже ТС и цены свёрнуты всегда
     // (07.10.2026, владелец: «гараж — это тоже как сделка»).
     $published = $offer->state !== OfferState::Draft || $deal || $garage;
@@ -143,18 +142,17 @@
     <div class="@container">
     <div class="grid grid-cols-1 items-start gap-4 @4xl:grid-cols-[minmax(0,1fr)_22rem]">
         <div class="contents @4xl:col-start-1 @4xl:row-start-1 @4xl:flex @4xl:min-w-0 @4xl:flex-col @4xl:gap-4">
-        <form method="post" action="/offers/{{ $n }}" id="offer-form" @if (auth()->user()->canManageCrm()) data-price-guard="edit" data-price-guard-offer="{{ $n }}" @endif data-controller="vin draft save-bar next migtorg-diff glow empty-blocks{{ $empty ? ' drop-empty' : '' }}" data-glow-fields-value="{{ json_encode($glow) }}" data-migtorg-diff-url-value="/offers/{{ $n }}" data-migtorg-diff-fields-value="{{ json_encode((object) $migDiff) }}" data-save-bar-dirty-value="{{ $errors->any() ? 'true' : 'false' }}" @if ($empty) data-drop-empty-url-value="/offers/{{ $n }}/drop-empty" @endif class="order-2 flex flex-col gap-4 @4xl:order-none">
+        <form method="post" action="/offers/{{ $n }}" id="offer-form" @if (auth()->user()->canManageCrm()) data-price-guard="edit" data-price-guard-offer="{{ $n }}" @endif data-controller="vin draft save-bar next glow empty-blocks{{ $empty ? ' drop-empty' : '' }}" data-glow-fields-value="{{ json_encode($glow) }}" data-save-bar-dirty-value="{{ $errors->any() ? 'true' : 'false' }}" @if ($empty) data-drop-empty-url-value="/offers/{{ $n }}/drop-empty" @endif class="order-2 flex flex-col gap-4 @4xl:order-none">
             @csrf @method('put') @if ($errors->has('price_check'))<input type="hidden" name="price_ok" value="1">@endif
 
             {{-- Машина — те же блоки, что на парковке (`x-car.blocks`, 19.10.2026: «ТС одна сущность»): «Транспортное
                  средство», «ПТС и СТС», «Характеристики»; продаже своё — «Осмотр». С публикации (и у черновика с заведённой машиной) — «Изменить / Готово»,
                  как в Контактах iOS: текстом, «Изменить» ставит поля, «Готово» сохраняет. Поля всё время в форме, скрытые:
-                 сохранение «Показа» шлёт их как есть. Черновик — сразу поля; ошибка или расхождение Мигторга раскрывает
-                 свой блок. --}}
+                 сохранение «Показа» шлёт их как есть. Черновик — сразу поля; ошибка раскрывает свой блок, спорные поля —
+                 строками в блоке (`x-car.variants`). --}}
             <x-car.blocks :lane="$offer" :blocks="['car', 'papers', 'specs']" :fold="$foldCar" :hints="$hints"
                 :required="$published ? [] : ['vendor_id', 'claim_ref', 'brand_id']">
                 <x-slot:top>
-                    <x-mail.reader-diffs form="offer-form" class="mb-3"/>
                     @if ($empty)
                         <div class="mb-3"><x-ui.paste/></div>
                     @endif
@@ -246,7 +244,7 @@
         </x-ui.card>
 
         <x-ui.card title="Документы" class="order-4 @4xl:order-none @4xl:col-span-2">
-            @include('admin.offers.papers-block', ['reader' => true, 'auto' => $fromMail])
+            @include('admin.offers.papers-block')
         </x-ui.card>
 
         {{-- Письма — под документами, как в деле ТС: все строками, как в «Почте»; письмо и ответ — окном поверх редактора. --}}

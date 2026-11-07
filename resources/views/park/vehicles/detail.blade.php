@@ -1,23 +1,18 @@
 {{-- Карточка строки таблицы машин стоянки (фрейм detail) — работа с ТС без страницы:
      лента фото, метки, дней на стоянке; у заявки — письма и телефон (`task`), приём и выдача — окном действия; переставить
      (метка парковки — кнопка шторки «Переставить»), выдать (дата, с
-     подтверждением), акты; ниже расхождения карточки с документами строками «Взять» (FillFromDocs), заявки строками и
-     заметка с последними событиями. Под действиями — группа документов: расхождения и «Заполнить из документов»
-     (пока нет марки, модели, VIN, года или цвета) или «Сверить с документами»; искра — ещё и в полосе карточки (tools).
-     Окно «Из документов» встаёт поверх, карточка остаётся и перечитывается после «Подставить».
-     Формы отвечают в карточку (DetailBack), строка — свежей из row. --}}
+     подтверждением), акты; ниже спорные поля машины строками (`x-car.variants`: выбрать, что верно), заявки строками и
+     заметка с последними событиями. Формы отвечают в карточку (DetailBack), строка — свежей из row. --}}
 @php
     use App\Park\VehicleState;
     $state = $vehicle->state;
     $href = '/cars/'.$vehicle->id;
-    $scanUrl = $href.'/scan';
     // Выданная — итог дела: кому и как выдали (событие выдачи), сколько стояла, хранение и деньги словом (OutMoney).
     $released = $state === VehicleState::Released ? $vehicle->events->firstWhere('type', \App\Park\EventType::Released) : null;
     $handedTo = $released ? ($vehicle->pickup_name ?: ($released->payload['to'] ?? null)) : null;
     // Приёмщику (`User::parkMoney`) денег нет: ни хранения словом, ни ставки, ни долга (сумм ему не считает и контроллер).
     $seesMoney = auth()->user()->parkMoney();
     $money = $seesMoney ? \App\Park\OutMoney::of($vehicle) : null;
-    $gaps = ! $vehicle->brand_id || ! $vehicle->model_id || $vehicle->vinProblem() || ! $vehicle->year || ! $vehicle->color;
 @endphp
 <x-ui.detail>
     {{-- Запасной «Открыть» на месте пустого ряда действий не нужен: дело открывает значок в полосе карточки. --}}
@@ -43,7 +38,7 @@
             @if ($vehicle->ref)<x-vendor.ref :vendor="$vehicle->vendor" :ref="$vehicle->ref" copy class="tag nums"/>
             @elseif ($vehicle->vendor)<x-vendor.name :vendor="$vehicle->vendor" class="tag"/>@endif
             <x-ui.vin-code :vin="$vehicle->vin" class="tag"/>
-            <x-park.alerts :vehicle="$vehicle" :skip="$differences ? [\App\Park\Alerts::DOCS] : []"/>
+            <x-park.alerts :vehicle="$vehicle" :skip="[\App\Park\Alerts::DOCS]"/>
             @if ($debt > 0 && $state === VehicleState::Stored)<span class="nums text-danger">долг {{ \App\Support\Money::rub($debt) }}</span>@endif
         </x-slot:marks>
         <x-slot:aside>
@@ -148,13 +143,11 @@
                 <div class="row"><x-ui.row-icon name="phone" tone="muted" size="s"/><span class="min-w-0 flex-1 truncate">{{ $who }}</span></div>
             @endif
             <x-park.sale :vehicle="$vehicle" row="bare"/>
-            @if ($differences || $scanFiles->isNotEmpty())
-                <x-park.doc-differences :vehicle="$vehicle" :differences="$differences" bare :form="'take-'.$vehicle->id">
-                    @if ($scanFiles->isNotEmpty())<x-mail.scan-button :url="$scanUrl" :fill="$gaps" :files="$scanFiles"/>@endif
-                </x-park.doc-differences>
-            @endif
         </div>
-        @if ($differences)<form id="take-{{ $vehicle->id }}" method="post" action="{{ $href }}/take" hidden>@csrf</form>@endif
+        @unless ($state->isFinal())
+            @if (auth()->user()->canManagePark())<span hidden data-car-doc="{{ $href }}/as-document"></span>@endif
+            <x-car.variants :lane="$vehicle" :fields="array_keys(\App\Cars\Sources\Values::FIELDS)" class="mt-3"/>
+        @endunless
         <x-park.date-forms :vehicle="$vehicle"/>
         @if ($state === VehicleState::Stored && ! ($fromRequests ?? false))
             @include('park.vehicles.move-sheet')

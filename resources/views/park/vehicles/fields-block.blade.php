@@ -2,17 +2,12 @@
      «Транспортное средство», «ПТС и СТС», «Страхователь» и своё парковки — «Хранение» (оценочная и своя ставка). Правило
      одно с CRM: машина заведена — блоки текстом с «Изменить / Готово», пустые с «Добавить» (владелец: «на парковке всё
      ещё не сворачиваются»; было — полями, пока ТС ждём); полями — только новая заявка и разбор письма. Нет марки или
-     модели — «Транспортное средство» сразу полями; блок с ошибкой раскрывается сам. Над полями машины — расхождения
-     «в карточке → в документе» с «Взять». --}}
+     модели — «Транспортное средство» сразу полями; блок с ошибкой раскрывается сам. Спорные поля — строками в своих
+     блоках (`x-car.variants`). --}}
 @php
-    $differences ??= [];
     $fold = true;
     $hints = $vehicle->brand_id && $vehicle->model_id ? [] : ['brand_id', 'model_id'];
 @endphp
-<x-car.blocks :lane="$vehicle" :blocks="\App\Park\VehicleFields::BLOCKS" :fold="$fold" :hints="$hints" :required="['brand_id']">
-    <x-slot:top>
-        <x-park.doc-differences :vehicle="$vehicle" :differences="$differences" class="mb-3"/>
-    </x-slot:top>
-</x-car.blocks>
+<x-car.blocks :lane="$vehicle" :blocks="\App\Park\VehicleFields::BLOCKS" :fold="$fold" :hints="$hints" :required="['brand_id']"/>
 @include('park.vehicles.storage-block', ['fold' => $fold])
 <x-ui.save-bar page/>

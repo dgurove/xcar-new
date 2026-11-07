@@ -14,6 +14,9 @@
     $empty = $value === null && ($vehicle?->storage_rate === null || ! $rate);
 @endphp
 <x-car.card title="Хранение" :fold="$fold" :empty="$empty">
+    <x-slot:top>
+        <x-car.variants :lane="$vehicle" :fields="['value']"/>
+    </x-slot:top>
     <x-slot:view>
         @unless ($empty)
             <div class="grid grid-cols-2 gap-3 !gap-y-2.5 leading-snug @4xl:grid-cols-3">

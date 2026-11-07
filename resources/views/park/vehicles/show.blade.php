@@ -103,7 +103,7 @@
         {{-- Документы — над фото: их обычно немного. Строками; «+ Документ» и искра «Из документов» — в строке подписи справа,
              как «+ Фото» у пустых блоков кадров (20.10.2026). --}}
         <x-ui.card title="Документы" data-controller="photos" data-photos-url-value="/cars/{{ $vehicle->id }}/media" data-photos-collection-value="papers">
-            <x-slot:actions><span class="flex items-center gap-2"><x-ui.button type="button" variant="secondary" size="sm" data-action="photos#pick"><x-ui.icon name="plus" class="size-4"/> Документ</x-ui.button>@include('park.vehicles.scan-row')</span></x-slot:actions>
+            <x-slot:actions><span class="flex items-center gap-2"><x-ui.button type="button" variant="secondary" size="sm" data-action="photos#pick"><x-ui.icon name="plus" class="size-4"/> Документ</x-ui.button></span></x-slot:actions>
             <input type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,.heic,.doc,.docx" multiple class="sr-only" tabindex="-1" data-photos-target="input" data-action="change->photos#upload">
             <div hidden data-photos-target="progress" class="mb-3">
                 <div class="mb-1 text-sm text-ink-muted" data-label></div>

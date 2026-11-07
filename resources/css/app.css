@@ -1198,7 +1198,6 @@ html.kb-open { --home-gap: 0px; }
   .migtorg-field { @apply absolute inset-y-0 right-2 flex items-center gap-1.5; }
   /* Нашёлся лот — знак на красноватой подложке их цвета: видно, что это кнопка, а не значок. */
   /* Поле не совпадает с лотом Мигторга: «!» у подписи, нажатие — строка «На Мигторге: …» под полем. */
-  .migtorg-diff { @apply ml-1.5 inline-flex size-4 items-center justify-center rounded-full align-[1px] text-[11px] font-semibold leading-none text-white; background: var(--color-urgent); }
   .field-note { @apply mt-1 text-sm; color: var(--color-urgent); }
   /* «Оценить → Из текста» (valuation_controller, 25.10.2026 как в приложении): источник строками, файл карточкой с
      кольцом хода, этапы с кольцом и галкой, строки текста схлопываются, итог — сегмент по группам и карточки, в конце
@@ -2463,9 +2462,21 @@ html.kb-open { --home-gap: 0px; }
   .scan-doc--lost .scan-sheet, .scan-doc--empty .scan-sheet { opacity: .55; }
   /* Поле — подпись колонкой слева, как в форме; значение крупно, откуда — мелко под ним. */
   .scan-field { @apply flex-wrap items-start gap-y-0.5 sm:flex-nowrap; }
-  /* Расхождение с документом (`x-park.doc-differences`): было → стало переносится целыми значениями, не посимвольно. */
+  /* Спорные поля машины (`x-car.variants`, 07.11.2026): строка на поле — подпись, что сейчас, оранжевое «ещё N»; шторка —
+     варианты строками, откуда — ссылками под значением. */
+  .variants { @apply mb-3 flex flex-col gap-1.5; }
+  .variant-line { @apply flex w-full items-baseline gap-3 rounded-xl px-3 py-2 text-left; background: var(--color-urgent-soft); }
+  .variant-label { @apply shrink-0 text-sm text-ink-dim; }
+  .variant-now { @apply min-w-0 shrink truncate; }
+  .variant-more { @apply ml-auto inline-flex min-w-0 max-w-[60%] items-center gap-0.5 self-center whitespace-nowrap font-medium; color: var(--color-urgent); }
+  .variant-option { @apply items-center gap-3 py-3; }
+  .variant-value { @apply block font-medium; overflow-wrap: anywhere; }
+  .variant-sources { @apply mt-1 flex flex-wrap gap-x-3 gap-y-1; }
+  .variant-source { @apply min-w-0 max-w-full truncate text-sm text-ink-muted; }
+  a.variant-source { color: var(--color-accent-text); }
+  .variant-current { @apply shrink-0 text-sm text-ink-dim; }
+  /* Расхождение формы с документом в читалке «Завести» (`x-mail.reader-body`): было → стало целыми значениями. */
   .doc-diff-row { @apply items-start py-3; }
-  /* Было — зачёркнутым серым, стало — под ним (06.11.2026: «было → стало» в узком окошке рвалось стрелкой в конце строки). */
   .doc-diff-change { @apply mt-0.5 flex flex-col; overflow-wrap: anywhere; }
   .scan-field > .switch, .scan-field > .check, .scan-field > :last-child { @apply self-center; }
   /* Подпись колонкой — от 640; на телефоне строкой над значением, иначе «537 142 ₽» не влезало. */

@@ -3,7 +3,6 @@
 namespace App\Park;
 
 use App\Billing\Accrual;
-use App\Park\Actions\FillFromDocs;
 use App\Vendors\Tariff;
 use App\Vendors\TariffService;
 
@@ -18,7 +17,7 @@ final class Alerts
     /** У вендора нет прайса на эту ТС — списком не починить, нужны цены из договора. */
     public const NO_TARIFF = 'Нет тарифа';
 
-    /** Карточка ТС и её документы расходятся (`FillFromDocs::flagged`). */
+    /** Карточка ТС и её документы расходятся (`cars.value_conflicts`, `Cars\Sources\Variants`). */
     public const DOCS = 'В документе иначе';
 
     /** Подсказка значка в строке — полной фразой, где метка коротка (`x-park.alerts plain`). */
@@ -65,7 +64,7 @@ final class Alerts
         if (! $state->isFinal() && $vehicle->noLetters()) {
             $out[] = ['label' => 'Писем нет', 'tone' => 'urgent'];
         }
-        if ($docs && ! $state->isFinal() && FillFromDocs::flagged($vehicle)) {
+        if ($docs && ! $state->isFinal() && $vehicle->carRecord()->value_conflicts > 0) {
             $out[] = ['label' => self::DOCS, 'tone' => 'urgent'];
         }
 

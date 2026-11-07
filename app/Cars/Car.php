@@ -12,11 +12,11 @@ use App\Media\HasPhotos;
 use App\Offers\CarPlace;
 use App\Offers\Offer;
 use App\Offers\OfferEvent;
-use App\Park\Actions\FillFromDocs;
 use App\Park\City;
 use App\Park\Vehicle;
 use App\Purchases\Car as PurchaseCar;
 use App\Support\FastAttributes;
+use App\Users\User;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -62,7 +62,7 @@ class Car extends Model implements HasMedia
             'damage_cause' => DamageCause::class, 'papers' => Papers::class, 'category' => Category::class, 'place' => CarPlace::class,
             'damage_zones' => 'array', 'flags' => 'array', 'docs_required' => 'array',
             'oversize' => 'bool', 'is_runnable' => 'bool', 'has_keys' => 'bool', 'active' => 'bool', 'is_demo' => 'bool',
-            'incident_date' => 'date',
+            'incident_date' => 'date', 'field_sources' => 'array',
         ];
     }
 
@@ -93,9 +93,9 @@ class Car extends Model implements HasMedia
             if ($car->brand_id && strlen((string) $car->vin) === 17 && ($car->wasRecentlyCreated || $car->wasChanged(['vin', 'brand_id']))) {
                 KnownWmi::saw($car->vin);
             }
-            if ($car->wasChanged(['vin', 'plate', 'year', 'color', 'value', 'brand_id', 'model_id'])
-                && ($vehicle = Vehicle::withoutGlobalScope(City::SCOPE)->where('car_id', $car->id)->first())) {
-                FillFromDocs::forget($vehicle);
+            // Спорные поля (`Cars\Sources\Variants`) — заново, когда поменялось поле, о котором говорят источники.
+            if (! $car->wasRecentlyCreated && $car->wasChanged(Sources\Variants::COLUMNS)) {
+                DB::afterCommit(fn () => Sources\Variants::recount($car));
             }
             // Экраны всех дорожек перечитываются (`Live\RefreshCar`) — после коммита: раньше записи перечитывать нечего,
             // откат — и правки не было. Новая машина — нет: у новой дорожки свои события.
@@ -207,6 +207,36 @@ class Car extends Model implements HasMedia
     public static function autoCategory(?Body $body, string $title): Category
     {
         return $body?->category() ?? Category::guess($title) ?? Category::Passenger;
+    }
+
+    /**
+     * Кто последним вписал поля, что сейчас меняются (07.11.2026, `Cars\Sources`): человек (`$by`), иначе источник из
+     * `$log` (`source` — migtorg, valuation, file; `letter` — письмо; `sources` — документы парковки), иначе система.
+     * Зовут двери записи дорожек (`UpdateOffer`, `UpdateVehicle`) перед сохранением.
+     */
+    public function stamp(?User $by, array $log = []): void
+    {
+        $dirty = array_diff(array_keys($this->getDirty()), [...self::DERIVED, 'field_sources', 'value_conflicts', 'updated_at', 'created_at', 'active']);
+        if (! $dirty) {
+            return;
+        }
+        $who = $by ? 'human' : match (true) {
+            isset($log['source']) => (string) $log['source'],
+            isset($log['letter']) => 'letter',
+            isset($log['sources']) => 'doc',
+            default => 'system',
+        };
+        $sources = (array) ($this->field_sources ?? []);
+        foreach ($dirty as $column) {
+            $sources[$column] = ['by' => $who, 'at' => now()->toDateTimeString()] + ($by ? ['user' => $by->id] : []);
+        }
+        $this->field_sources = $sources;
+    }
+
+    /** Поле последним правил человек: источник его не заполняет, даже стёртое. */
+    public function byHuman(string $column): bool
+    {
+        return ($this->field_sources[$column]['by'] ?? null) === 'human';
     }
 
     /** Тип — только догадка (пуст или совпал с ней), а не выбор человека или источника: его перебивает тип из источника (`FillCar`). */

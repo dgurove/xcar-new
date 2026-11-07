@@ -13,6 +13,9 @@
     $empty = ! $offer->settlement_id && ! filled($offer->inspection_address) && $description === '';
 @endphp
 <x-car.card title="Осмотр" :fold="$fold" :empty="$empty" :as="$as">
+    <x-slot:top>
+        <x-car.variants :lane="$offer" :fields="['city']"/>
+    </x-slot:top>
     <x-slot:view>
         @unless ($empty)
             <div class="{{ $grid }} !gap-y-2.5 leading-snug">

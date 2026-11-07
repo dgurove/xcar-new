@@ -17,7 +17,6 @@ use App\Mail\Direction;
 use App\Mail\Extraction\Patterns;
 use App\Mail\Message;
 use App\Mail\Scan\AutoScan;
-use App\Mail\Scan\VehicleSubject;
 use App\Mail\Thread;
 use App\Mail\Threads;
 use App\Media\Actions\RotatePhoto;
@@ -27,15 +26,14 @@ use App\Media\PhotoIngest;
 use App\Offers\Actions\UpdateOffer;
 use App\Offers\Pricing;
 use App\Park\Actions\CancelVehicle;
-use App\Park\Actions\FillFromDocs;
 use App\Park\Actions\MarkDoc;
 use App\Park\Actions\MarkSold;
 use App\Park\Actions\Move;
+use App\Park\Actions\PlanPickup;
 use App\Park\Actions\PutOnSale;
 use App\Park\Actions\RegisterCandidate;
 use App\Park\Actions\RestoreVehicle;
 use App\Park\Actions\SetCity;
-use App\Park\Actions\PlanPickup;
 use App\Park\Actions\SetDates;
 use App\Park\Actions\SetYard;
 use App\Park\Actions\SwapSpots;
@@ -136,7 +134,6 @@ class VehicleController
             'detail' => $detail,
         ]);
     }
-
 
     /**
      * Выборка и всё, что нужно куску `park.vehicles.list`: строки, сортировка, деньги, задачи, вид. Одна на «Наличие» и на
@@ -281,10 +278,6 @@ class VehicleController
             // «Долг» в карточке — неоплаченные счета; набежавшее стоит рядом отдельным числом.
             'debt' => $request->user()->parkMoney() ? Ledger::vehicleDebt($vehicle) : 0,
             'debtBlocks' => ! ($vehicle->vendor?->release_without_payment ?? false),
-            // «✨» и расхождения с документами — тем, кто правит ТС, и только когда письма есть.
-            // Выданной сверять уже нечего: машины на парковке нет.
-            'scanFiles' => ($scan = $request->user()->canManagePark() && $vehicle->threads_count > 0 && ! $vehicle->state->isFinal()) ? (new VehicleSubject($vehicle))->files() : collect(),
-            'differences' => $scan ? app(FillFromDocs::class)->differences($vehicle) : [],
         ]);
     }
 

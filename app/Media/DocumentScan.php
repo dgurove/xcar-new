@@ -101,6 +101,15 @@ final class DocumentScan
         return $white / $n >= self::WHITE && $color / $n <= self::COLOR && $paper / $n >= self::PAPER;
     }
 
+    /** Человек сказал «это документ» (просмотр фото, 07.11.2026): вердикт по содержимому — скан, чтение возьмёт его документом. */
+    public static function confirm(?string $sha): void
+    {
+        if ($sha) {
+            Cache::forever(self::key($sha), 1);
+            self::$memo[$sha] = true;
+        }
+    }
+
     private static function key(string $sha): string
     {
         return 'docscan2:'.$sha;

@@ -1,7 +1,7 @@
 import { Controller } from '@hotwired/stimulus';
 import * as Turbo from '@hotwired/turbo';
 import { confirmSheet } from '../confirm';
-import { csrf, request } from '../lib/http';
+import { csrf, post, request } from '../lib/http';
 import { shrink } from '../lib/image';
 import { pool, sha as digest } from '../lib/upload';
 import { refreshCsrf } from '../net';
@@ -616,6 +616,8 @@ export default class extends Controller {
                 { name: 'rotate', icon: 'rotate', title: 'Повернуть', bottom: true, shown: (i) => can(i, 'rotate'), run: act('rotate') },
                 { name: 'trash', icon: 'trash', title: 'Удалить', shown: (i) => can(i, 'delete'), run: act('delete', 'Удалить фото?') },
                 { name: 'mark', icon: 'mark', title: 'Водяной знак', shown: (i) => can(i, 'mark'), run: (i) => this.markSheet(this.viewer.items[i]) },
+                // Кадр — на самом деле документ (ПТС снят на столе): в документы машины, его прочтут сами (07.11.2026).
+                { name: 'paper', icon: 'paper', title: 'Это документ', shown: (i) => !!this.paperUrl((this.viewer?.items ?? items)[i]), run: (i) => this.toPapers(this.viewer.items[i]) },
             ],
             onClose: () => { this.viewer = null; shown = null; },
         });
@@ -623,6 +625,25 @@ export default class extends Controller {
             this.viewer = lightbox;
             shown = { lb: lightbox, items: () => this.items() };
         }
+    }
+
+    // Адрес «Это документ» у кадра машины: фото продажи (/offers/N/media) и ТС (/cars/N/media), не документы.
+    paperUrl(it) {
+        const owner = it?.owner;
+        if (!it?.id || !owner || owner.collectionValue !== 'photos') return null;
+        const m = owner.urlValue.match(/^(\/(?:offers|cars)\/[^/]+)\/media$/);
+        return m ? `${m[1]}/as-document` : null;
+    }
+
+    async toPapers(it) {
+        const url = this.paperUrl(it);
+        if (!url || !(await confirmSheet('Перенести кадр в документы?', { label: 'В документы' }))) return;
+        const r = await post(url, { file: `m${it.id}` });
+        const data = await r?.json().catch(() => null);
+        if (!data?.ok) return;
+        window.toast?.(data.toast);
+        this.viewer?.close();
+        Turbo.visit(location.href, { action: 'replace' });
     }
 
     // ---- шторка «Водяной знак» поверх просмотрщика (только фото предложений CRM, data-photos-mark-value): кадр

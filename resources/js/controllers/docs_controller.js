@@ -4,6 +4,7 @@ import * as overlays from '../overlays';
 import { keyboard } from '../keyboard';
 import { known, shareFile, warm } from '../docs/share';
 import { fling } from '../lib/fling';
+import { post } from '../lib/http';
 import { pageEdges, scrollByY } from '../lib/scroller';
 
 // Шторка документов (x-ui.docs, одна на страницу в x-ui.shell): скан заявки, СТС, Excel, письмо, фото, акт —
@@ -23,12 +24,11 @@ import { pageEdges, scrollByY } from '../lib/scroller';
 // печать, в ней «Поделиться» системы) или «Скачать» и «Печать» на компьютере, закрыть.
 // Высота и ширина помнятся (localStorage); форма, отправленная при открытой шторке, вернётся на ту же
 // страницу — шторка откроется снова на том же документе. `a[data-doc-auto]` открывается сам.
-// ✨ — открытое вложение письма (скан, фото) в окно «Распознать» предмета страницы (`[data-scan-subject]` у
-// x-mail.scan-button): окно сразу читает этот файл (`?only=`); в редакторе с читалкой «Завести» (data-scan-reader) —
-// файл дописывается в её чтение, поля заполнятся по ходу.
+// «Это документ» — открытое фото из письма на самом деле документ (ПТС снят на столе, 07.11.2026): у машины страницы
+// (`[data-car-doc]` — адрес `…/as-document`) оно читается как документ, его поля — вариантами в карточке; в разборе
+// письма с читалкой «Завести» (`[data-scan-reader]`) — файл дописывается в её чтение, поля заполнятся по ходу.
 const FILE = /^\/(?:files|(?:[\w-]+\/)*mail\/attachments)\/\d+\/?$/;
 const ATTACHMENT = /\/mail\/attachments\/(\d+)\/?$/;
-const PAPER = /^\/files\/(\d+)\/?$/;
 const SNAPS = [.3, .55, .88];
 const wide = matchMedia('(min-width: 1024px)');
 const coarse = matchMedia('(pointer: coarse)');
@@ -226,7 +226,7 @@ export default class extends Controller {
         this.countTarget.textContent = '';
         this.countTarget.classList.remove('is-shown');
         this.title(item.name);
-        this.scanTarget.hidden = !this.scanUrl(item);
+        this.scanTarget.hidden = !this.scanFile(item);
         this.downloadTarget.href = item.url;
         this.describe({ kind: item.type || null });
         // Небольшой файл (Excel, Word, текст) телефон берёт сразу — «Поделиться» откроет лист в том же жесте.
@@ -322,33 +322,28 @@ export default class extends Controller {
         this.view?.print?.();
     }
 
-    // Адрес окна «Распознать» с этим файлом: вложение письма (не файл из архива) или документ предложения (`m45`,
-    // если предмет их читает — data-scan-papers), скан или фото, и на странице есть предмет с ✨ — вне окон (окно
-    // «Распознать» открывается и над шторкой, модальной над окном писем).
-    scanUrl(item) {
-        const target = this.scanFile(item);
-        return target ? `${target.button.dataset.scanSubject}?only=${target.id}` : null;
-    }
-
-    // Предмет страницы с ✨ и номер файла для него; читалка «Завести» (data-scan-reader) берёт файл в своё чтение.
+    // Куда отдать открытый файл как документ: фото вложения письма (не из архива) — машине страницы или читалке «Завести».
     scanFile(item) {
-        if (!['pdf', 'image'].includes(item.type)) return null;
+        if (item.type !== 'image') return null;
         const url = new URL(item.url, location.href);
-        const button = [...document.querySelectorAll('[data-scan-subject]')].find((b) => !b.closest('dialog'));
-        const paper = button?.hasAttribute('data-scan-papers') && url.pathname.match(PAPER)?.[1];
-        const id = paper ? `m${paper}` : !url.searchParams.has('entry') && url.pathname.match(ATTACHMENT)?.[1];
-        return id && button ? { button, id } : null;
+        const id = !url.searchParams.has('entry') && url.pathname.match(ATTACHMENT)?.[1];
+        if (!id) return null;
+        const outside = (el) => !el.closest('dialog');
+        const reader = [...document.querySelectorAll('[data-scan-reader]')].find(outside);
+        const car = [...document.querySelectorAll('[data-car-doc]')].find(outside);
+        return reader || car ? { reader, car, id } : null;
     }
 
-    scan() {
+    async scan() {
         const target = this.scanFile(this.items[this.index] ?? {});
         if (!target) return;
-        if (target.button.hasAttribute('data-scan-reader')) {
-            target.button.dispatchEvent(new CustomEvent('reader:add', { detail: { id: target.id } }));
-            window.toast?.('Файл в чтении');
-        } else {
-            window.dispatchEvent(new CustomEvent('scan:open', { detail: { url: `${target.button.dataset.scanSubject}?only=${target.id}` } }));
+        if (target.reader) {
+            target.reader.dispatchEvent(new CustomEvent('reader:add', { detail: { id: target.id } }));
+            return window.toast?.('Файл в чтении');
         }
+        const r = await post(target.car.dataset.carDoc, { file: target.id });
+        const data = await r?.json().catch(() => null);
+        if (data?.toast) window.toast?.(data.toast);
     }
 
     reveal(instant) {

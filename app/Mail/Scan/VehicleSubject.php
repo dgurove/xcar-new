@@ -9,7 +9,6 @@ use App\Live\Topics;
 use App\Mail\Extraction\DocumentText;
 use App\Mail\Extraction\ScanFields;
 use App\Offers\Pricing;
-use App\Park\Actions\FillFromDocs;
 use App\Park\Actions\UpdateVehicle;
 use App\Park\Vehicle;
 use App\Park\VehicleFields;
@@ -113,9 +112,6 @@ final class VehicleSubject implements Subject
 
     public function refresh(): void
     {
-        FillFromDocs::forget($this->vehicle);
-        // Расхождения считаются сразу: метка «в документе иначе» встаёт в строке таблицы, не дожидаясь показа дела.
-        app(FillFromDocs::class)->differences($this->vehicle->refresh());
         app(Publisher::class)->refresh(Topics::PARK, ['/cars/'.$this->vehicle->id]);
     }
 }

@@ -247,7 +247,7 @@
                 <x-offer.interests :offer="$offer"/>
             </section>
         @endif
-        <form method="post" action="/offers/{{ $n }}" id="detail-edit-{{ $n }}" class="detail-edit mt-4 flex flex-col gap-5" @if (auth()->user()->canManageCrm()) data-price-guard="edit" data-price-guard-offer="{{ $n }}" @endif data-controller="vin save-bar migtorg-diff" data-migtorg-diff-url-value="/offers/{{ $n }}" data-migtorg-diff-fields-value="{{ json_encode((object) \App\Offers\MigtorgDiff::of($offer)) }}" data-save-bar-partial-value="true" data-save-bar-dirty-value="{{ $errors->any() && old('_fields') !== null ? 'true' : 'false' }}" data-save-bar-sent-value="{{ json_encode(array_values((array) old('_fields', []))) }}" data-turbo-frame="detail">
+        <form method="post" action="/offers/{{ $n }}" id="detail-edit-{{ $n }}" class="detail-edit mt-4 flex flex-col gap-5" @if (auth()->user()->canManageCrm()) data-price-guard="edit" data-price-guard-offer="{{ $n }}" @endif data-controller="vin save-bar" data-save-bar-partial-value="true" data-save-bar-dirty-value="{{ $errors->any() && old('_fields') !== null ? 'true' : 'false' }}" data-save-bar-sent-value="{{ json_encode(array_values((array) old('_fields', []))) }}" data-turbo-frame="detail">
             @csrf @method('put') @if ($errors->has('price_check'))<input type="hidden" name="price_ok" value="1">@endif
             {{-- Не черновик — те же «Цены» разделом формы, без шагов и кнопок. --}}
             @unless ($steps)

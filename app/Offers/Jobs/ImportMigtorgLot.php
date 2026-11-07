@@ -5,6 +5,7 @@ namespace App\Offers\Jobs;
 use App\Cars\Actions\FillCar;
 use App\Cars\Brand;
 use App\Cars\IdentityTaken;
+use App\Cars\Jobs\ReadCarDocs;
 use App\Cars\Progress;
 use App\Live\Publisher;
 use App\Live\Topics;
@@ -155,6 +156,7 @@ final class ImportMigtorgLot implements ShouldQueue
         if ($fields = self::fieldsOf($lot)) {
             self::glow($offer, app(FillCar::class)($offer, $fields, null, FillCar::EMPTY, log: ['source' => 'migtorg', 'lot' => $lot->id]));
         }
+        ReadCarDocs::dispatch((int) $offer->car_id);
         // Ход — сразу, а не когда задачу возьмёт воркер: чип крутится с нажатия, второй раз кнопку не нажать.
         Progress::step($offer, Progress::MIGTORG, 'Забираем фото с Мигторга', 0);
         self::dispatch($offer->id, $lot->id, $manual);
@@ -286,6 +288,8 @@ final class ImportMigtorgLot implements ShouldQueue
             $filled = $apply($offer, MigtorgFields::of($card), null, FillCar::EMPTY, log: ['source' => 'migtorg', 'lot' => $this->lotId]);
             self::glow($offer, $filled);
             $offer->refresh();
+            // Лот — источник вариантов полей (`Cars\Sources`): где он расходится с вписанным — выбор в карточке.
+            ReadCarDocs::dispatch((int) $offer->car_id);
             $this->refresh($publish, $offer);
             $photos = $offer->media()->where('collection_name', 'photos')->get();
             $have = $photos->map(fn (Media $m) => $m->getCustomProperty('migtorg'))->filter()->flip();

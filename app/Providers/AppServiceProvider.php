@@ -21,7 +21,9 @@ use App\Billing\Listeners\PayoutWhenPaid;
 use App\Billing\Listeners\ReturnOnReject;
 use App\Billing\Listeners\RevokeAgentFee;
 use App\Billing\Listeners\StartSelectionDue;
+use App\Cars\Car;
 use App\Cars\Events\CarChanged;
+use App\Cars\Jobs\ReadCarDocs;
 use App\Chats\Events\ChatMessagePosted;
 use App\Chats\Listeners\AttachGuestEnquiry;
 use App\Chats\Listeners\MailGuestReply;
@@ -106,6 +108,12 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        // У машины появился документ — её документы читаются сами (`Cars\Jobs\ReadCarDocs`, 07.11.2026).
+        Media::created(function ($media) {
+            if ($media->model_type === Car::class && $media->collection_name === 'papers') {
+                ReadCarDocs::dispatch((int) $media->model_id);
+            }
+        });
         // Локально ленивая загрузка в цикле (N+1) пишется в storage/logs/lazy.log с адресом экрана: видно при проходе
         // экранов, а работа соседних сессий в том же дереве не падает исключением.
         if (! $this->app->isProduction() && ! $this->app->runningUnitTests()) {

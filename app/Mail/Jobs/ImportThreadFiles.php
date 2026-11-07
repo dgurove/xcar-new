@@ -2,13 +2,15 @@
 
 namespace App\Mail\Jobs;
 
+use App\Cars\Jobs\ReadCarDocs;
 use App\Cars\Progress;
 use App\Live\Publisher;
 use App\Live\Topics;
 use App\Mail\Actions\PinThread;
 use App\Mail\Attachment;
-use App\Mail\Extraction\AttachmentImporter;
 use App\Mail\Extraction\ArchivePhotoExtractor;
+use App\Mail\Extraction\AttachmentClassifier;
+use App\Mail\Extraction\AttachmentImporter;
 use App\Mail\Extraction\CloudShare;
 use App\Mail\Extraction\Intent;
 use App\Mail\Scan\AutoScan;
@@ -18,6 +20,7 @@ use App\Offers\Events\OfferStateChanged;
 use App\Offers\Offer;
 use App\Offers\OfferEventType;
 use App\Park\Actions\AutoSale;
+use App\Park\LettersPurge;
 use App\Park\PhotoStage;
 use App\Park\Vehicle;
 use Illuminate\Contracts\Queue\ShouldBeUniqueUntilProcessing;
@@ -89,14 +92,14 @@ final class ImportThreadFiles implements ShouldBeUniqueUntilProcessing, ShouldQu
         [$model, $vehicle, $offer, $car] = self::target($thread);
         // У выданной без продажи, чей месяц выдачи закрыт и оплачен (`LettersPurge::due`), файлы из писем уже не хранятся
         // (`PurgeLetters`): письмо их не приносит. До того — как у стоящей: акты нужны для сверки счёта и акта за месяц.
-        if (! $model || ($vehicle && ! $offer && \App\Park\LettersPurge::due($vehicle))) {
+        if (! $model || ($vehicle && ! $offer && LettersPurge::due($vehicle))) {
             return;
         }
         // Возврат документов из ящика (`park:restore-letter-docs`): только документы — фото выданной не нужны, а диск их не
         // выдержит (10 ГБ). Закрепить из ящика и положить в бумаги ТС.
         if ($this->documentsOnly) {
             $attachments = $importer->attachmentsOf(null, $thread->id);
-            $docs = collect(app(\App\Mail\Extraction\AttachmentClassifier::class)->classify($attachments)['documents']);
+            $docs = collect(app(AttachmentClassifier::class)->classify($attachments)['documents']);
             $pin->only($docs->pluck('id')->all());
             $added = $importer->importDocuments($model, $importer->attachmentsOf(null, $thread->id), 'papers');
             Log::info('Документы выданной из ящика', ['thread' => $thread->id, 'vehicle' => $vehicle?->id, 'documents' => $added]);
@@ -128,6 +131,8 @@ final class ImportThreadFiles implements ShouldBeUniqueUntilProcessing, ShouldQu
                 // Черновик завела почта — файлы всех веток доехали, теперь документы читаются сами (`AutoScan`).
                 AutoScan::filesArrived($offer);
             }
+            // Любая машина: письма с документами привязали — прочитать их (`ReadCarDocs`, 07.11.2026).
+            $model?->car_id && ReadCarDocs::dispatch((int) $model->car_id);
         }
         // Фото ТС доехали все (задача не упала) — вендор «Сразу в продажу» отправляет её в продажу, если документы прочитаны.
         if ($vehicle && ! $offer) {

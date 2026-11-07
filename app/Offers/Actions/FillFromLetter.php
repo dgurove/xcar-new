@@ -3,6 +3,7 @@
 namespace App\Offers\Actions;
 
 use App\Cars\Actions\FillCar;
+use App\Cars\Jobs\ReadCarDocs;
 use App\Cars\Settlement;
 use App\Cars\Vin\VinAutofill;
 use App\Mail\Actions\LinkThread;
@@ -35,6 +36,8 @@ final class FillFromLetter
         if (! $message->isFromVendor() || ! self::about($offer, $message) || LinkThread::otherCar($offer, $message)) {
             return;
         }
+        // Что письмо говорит о машине — в варианты полей (`Cars\Sources`); спорное с вписанным — выбором в карточке.
+        ReadCarDocs::dispatch((int) $offer->car_id);
         $data = [];
         foreach (['insured_name' => 'insured_name', 'insured_phone' => 'insured_phone', 'inspection_address' => 'location'] as $column => $field) {
             $value = trim((string) $message->field($field));
