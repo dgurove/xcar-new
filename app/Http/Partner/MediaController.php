@@ -120,6 +120,28 @@ class MediaController
      * Имя документа на экране и при скачивании: своё — как загрузил, остальное — «Документ N» с расширением. N — место в
      * списке документов машины: список отдаёт его сам (`$n`), отдача файла считает одним запросом.
      */
+    /**
+     * Главный кадр каждой машины списка — одним запросом (миниатюра в строке, 08.11.2026): первый из тех, что `shown` отдал
+     * бы редактору (не скрытый, не парковочный, кадр продажи — `Offer::saleMedia`).
+     *
+     * @param  \Illuminate\Support\Collection<int, Offer>  $offers
+     * @return array<int, Media> car_id → кадр
+     */
+    public static function covers(\Illuminate\Support\Collection $offers): array
+    {
+        $cars = $offers->pluck('car_id')->filter()->unique()->values();
+        if ($cars->isEmpty()) {
+            return [];
+        }
+
+        return Media::query()->select(['id', 'model_id', 'updated_at', 'custom_properties'])
+            ->where('model_type', \App\Cars\Car::class)->whereIn('model_id', $cars)->where('collection_name', 'photos')
+            ->tap(fn ($q) => Offer::saleMedia($q))
+            ->orderBy('model_id')->orderBy('order_column')->get()
+            ->reject(fn (Media $m) => Hidden::is($m) || Sale::parkOwned($m))
+            ->unique('model_id')->keyBy('model_id')->all();
+    }
+
     public static function paperName(Media $media, ?int $n = null): string
     {
         $ext = strtolower(pathinfo($media->file_name, PATHINFO_EXTENSION));

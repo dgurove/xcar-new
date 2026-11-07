@@ -260,6 +260,12 @@ class Offer extends Model
     /** В продажу идут кадры от страховой и приёма (погрузка и выдача — дело парковки) и все документы. */
     protected function carMediaScope(Builder $query): void
     {
+        self::saleMedia($query);
+    }
+
+    /** Кадры машины, что относятся к продаже: без кадров приёма у других вендоров и выдачи — тот же отбор, что `media`. */
+    public static function saleMedia(Builder $query): void
+    {
         $query->where(fn (Builder $q) => $q->where('collection_name', '!=', 'photos')
             ->orWhereNull('custom_properties->stage')
             ->orWhereIn('custom_properties->stage', [PhotoStage::Vendor->value, PhotoStage::Intake->value]));

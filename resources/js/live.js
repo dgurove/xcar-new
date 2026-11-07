@@ -260,12 +260,13 @@ const editing = () => [...document.querySelectorAll('form[data-dirty]:not([data-
 
 // Идёт визит Turbo (aria-busy на <html>) — его ответ придёт и сам решит, нужно ли ждущее.
 const visiting = () => document.documentElement.hasAttribute('aria-busy') && performance.now() - visitAt < 10_000;
+// `data-live-hold` — у строки идёт своё (цена партнёра ждёт «Отменить», `price_row`): морф вернул бы строку к серверной.
 // modal — открытое окно тоже держит обновление. Свои строки после своей формы окно не ждут (`flush`): строка лежит под
 // окном, её не трогают; остальное (палец, прокрутка, набор) ждут как обычно.
 const busy = (modal = true) => document.visibilityState !== 'visible'
     || visiting()
     || fingers > 0 || performance.now() - movedAt < 600
-    || (modal && editing()) || document.querySelector(modal ? '[data-searching], dialog:modal' : '[data-searching]')
+    || (modal && editing()) || document.querySelector(modal ? '[data-searching], [data-live-hold], dialog:modal' : '[data-searching], [data-live-hold]')
     || (['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName) && (modal || !document.activeElement.closest('dialog')));
 
 export function refreshPage(request) {

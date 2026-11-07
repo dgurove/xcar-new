@@ -119,6 +119,26 @@ class PartnerTest extends TestCase
         $this->actingAs($this->alfaMan)->get($this->url('/offers/'.$offer->id))->assertNotFound();
     }
 
+    /**
+     * Цена из строки списка (08.11.2026, `price_row`): ответ JSON, закупочная по ступеням предложения; без марки и модели —
+     * 422 «Укажите марку и модель». В редакторе без цены «Сохранить» оставляет на месте.
+     */
+    public function test_price_from_list_row(): void
+    {
+        $offer = $this->draft($this->alfa, '0001/046/00005/26');
+        $this->actingAs($this->alfaMan)->put($this->url('/offers/'.$offer->id), ['mileage' => '5 000'])->assertRedirectContains('/offers/'.$offer->id);
+        $this->actingAs($this->alfaMan)->putJson($this->url('/offers/'.$offer->id), ['value' => '700 000', '_fields' => ['value']])
+            ->assertOk()->assertExactJson(['sent' => true, 'floor' => 770_000]);
+        $offer->refresh();
+        $this->assertSame(770_000, $offer->floor_price);
+        $this->assertSame(5_000, (int) $offer->mileage);
+
+        $bare = Offer::create(['vendor_id' => $this->alfa->id, 'claim_ref' => '0001/046/00006/26']);
+        $this->actingAs($this->alfaMan)->putJson($this->url('/offers/'.$bare->id), ['value' => '700 000', '_fields' => ['value']])
+            ->assertUnprocessable()->assertJsonValidationErrors('brand_id');
+        $this->assertNull($bare->refresh()->floor_price);
+    }
+
     public function test_find_claim_outcomes(): void
     {
         $mine = $this->draft($this->alfa, '0001/046/00005/26');

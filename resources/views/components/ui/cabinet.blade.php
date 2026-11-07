@@ -12,10 +12,18 @@
     $back = $back === false ? null : ($back ?? Nav::backFor($path, $user));
     $phoneBack = $back ?? Nav::phoneBack($path, $user);
     $heading ??= $title;
+    // Партнёр (08.11.2026): шапки и таб-бара нет — «‹» к списку в ряду заголовка, и на корне тоже, иначе из профиля не уйти.
+    $partner = \App\Support\Surface::current() === \App\Support\Surface::Partner;
+    if ($partner) {
+        $back = $back && $back[1] !== '/account' ? $back : ['Предложения', '/offers'];
+        $phoneBack = $back;
+        $root = false;
+        $pills = false; // один раздел — колонки пилюль с одним «Профилем» нет
+    }
 @endphp
 {{-- Шелл рисует «назад» в шапке телефона. h1 — на телефоне всегда, кроме корня (там карточка профиля); на ПК — только
      без пилюль: с ними раздел называет текущая пилюля. --}}
-<x-ui.shell :title="$title" :heading="$root && $pills ? false : $heading" :back="$back ?? false" :phone-back="$phoneBack" :back-row="false" :phone-heading="$phoneHeading ?? ! $root" :desktop-heading="! $pills" :detail="$detail">
+<x-ui.shell :title="$title" :heading="$root && $pills ? false : $heading" :back="$back ?? false" :phone-back="$phoneBack" :back-row="$partner" :phone-heading="$phoneHeading ?? ! $root" :desktop-heading="! $pills" :detail="$detail">
     {{-- Кнопки справа от h1 — слот шелла как есть (сортировка «Оплат» на телефоне). --}}
     @isset($actions)
         <x-slot:actions class="{{ $actions->attributes->get('class') }}">{{ $actions }}</x-slot:actions>

@@ -223,6 +223,9 @@
    страницы не берут. Считает `resources/js/lib/action-room.js` (класс `has-action`): `:root:has(…)` здесь пересчитывал
    стили корня на каждую вставку узла на странице (29.10.2026). */
 html.has-action { --action: 1; }
+/* Партнёр (08.11.2026, владелец: «шапка и лого тут не нужны»): шапки и таб-бара нет — верх у самого выреза, низ у края. */
+body.surface-partner { --header-edge: var(--safe-top); --stick-top: var(--safe-top); --tabbar: 0px; --bottom-edge: 0px; --bottom-room: calc(var(--action) * var(--spacing-action)); --page-room: var(--bottom-room); }
+@media (min-width: 768px) { body.surface-partner { --bottom-room: calc(var(--action) * 6rem); --page-room: var(--bottom-room); } }
 /* От планшета таб-бара нет, кнопки действий парят справа внизу. */
 @media (min-width: 768px) {
   :root { --spacing-header: 80px; --tabbar: 0px; --bottom-edge: 0px; --bottom-room: calc(var(--action) * 6rem); } /* шапка: py-2 + два ряда по 30 px + 4 px между */
@@ -450,6 +453,83 @@ html.kb-open { --home-gap: 0px; }
   .floor-rule-unit { @apply pr-5; }
   .floor-rule .btn-round { @apply size-7 min-h-0 p-0; }
   .floor-rules-acts { @apply flex flex-wrap gap-2; }
+  /* Список партнёра (08.11.2026, владелец: «таблица выглядит отвратительно»): главный кадр строки, оценочная полем прямо в
+     строке и закупочная рядом (`price_row`); после Enter — «700 000 → 770 000 ₽ · Отменить» с полосой 5 секунд, ушла —
+     строка сворачивается. */
+  .partner-thumb { display: flex; align-items: center; justify-content: center; width: 3.5rem; aspect-ratio: 4 / 3; overflow: hidden; border-radius: var(--radius-s); background: var(--color-surface-2); color: var(--color-ink-dim); }
+  .partner-thumb img { width: 100%; height: 100%; object-fit: cover; }
+  .table td.col-photo { width: 1%; padding-block: .375rem !important; padding-right: 0; }
+  .partner-thumb { flex: none; }
+  .table td.col-photo + td { padding-left: .75rem !important; }
+  .partner-price { position: relative; align-items: center; justify-content: flex-end; }
+  .partner-price-input { width: 100%; height: 2rem; padding: 0 .75rem; border-radius: var(--radius-s); background: var(--color-surface-2); color: var(--color-ink); text-align: right; font-size: 15px; outline: none; }
+  .partner-price-input::placeholder { color: var(--color-ink-dim); }
+  .partner-price-input:focus { box-shadow: inset 0 0 0 1.5px var(--color-accent); }
+  .partner-price-floor { color: var(--color-ink); font-size: 15px; }
+  .partner-price-floor.is-error { color: var(--color-danger); font-size: 13px; white-space: normal; }
+  /* После Enter поле прячется под «Отменить» с полосой 5 секунд: цена уйдёт, когда полоса кончится. */
+  .partner-price.is-waiting .partner-price-input { visibility: hidden; }
+  .partner-price-undo { position: absolute; inset: 0; overflow: hidden; border-radius: var(--radius-s); background: var(--color-surface-2); color: var(--color-ink); font-weight: 500; }
+  .partner-price-undo[hidden] { display: none; }
+  .partner-price-undo::after { content: ''; position: absolute; left: 0; bottom: 0; height: 2px; width: 100%; background: var(--color-accent); transform-origin: left; animation: partner-wait 5s linear forwards; }
+  .partner-price.is-sending .partner-price-undo { opacity: .5; pointer-events: none; }
+  .partner-price-fill { display: inline-flex; align-items: center; gap: .125rem; color: var(--color-ink-muted); }
+  @keyframes partner-wait { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+  tr.is-gone { opacity: 0; transition: opacity .25s var(--ease-out); pointer-events: none; }
+  tr[data-controller~="price-row"] { cursor: pointer; }
+  /* Редактор партнёра (08.11.2026, владелец: «редактор — пиздец халтура»): телефон — одной колонкой «номер → фото → цена →
+     поля», ПК — слева фото и поля, справа липкая «Цена» во всю высоту. Поля — группами строк (`.fields` на фоне страницы
+     белой плашкой), «ПТС и СТС» пустая — свёрнута в строку заголовка с «Добавить». */
+  .partner-edit { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-areas: "head" "photos" "price" "fields"; gap: 1rem; }
+  .partner-edit-head { grid-area: head; }
+  .partner-edit-photos { grid-area: photos; min-width: 0; }
+  .partner-edit-price { grid-area: price; min-width: 0; }
+  .partner-edit-fields { grid-area: fields; display: grid; gap: 1.25rem; align-items: start; min-width: 0; }
+  .partner-edit-col { display: flex; min-width: 0; flex-direction: column; gap: 1.25rem; }
+  @media (min-width: 1024px) {
+    .partner-edit { grid-template-columns: minmax(0, 1fr) 22rem; grid-template-areas: "head price" "photos price" "fields price"; grid-template-rows: auto auto 1fr; column-gap: 1.5rem; }
+    .partner-edit-price { align-self: start; position: sticky; top: calc(var(--stick-top) + 1rem); }
+  }
+  @media (min-width: 1280px) { .partner-edit-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  .fields.fields-page { background: var(--color-surface); }
+  .partner-group-title { @apply mb-1.5 flex items-center justify-between px-4 text-sm text-ink-muted; }
+  .partner-group-fold > summary { list-style: none; cursor: pointer; }
+  .partner-group-fold > summary::-webkit-details-marker { display: none; }
+  .partner-group-add { color: var(--color-accent); font-weight: 500; }
+  .partner-group-fold[open] .partner-group-add { display: none; }
+  .partner-group .box { padding: 1rem; }
+  .partner-queue { display: flex; align-items: center; gap: .25rem; }
+  .partner-queue > span:first-child { margin-right: .375rem; }
+  /* Фото: главный кадр крупно, лента миниатюр под ним. */
+  .partner-gallery { display: flex; flex-direction: column; gap: .5rem; }
+  .partner-gallery-main { position: relative; display: block; width: 100%; aspect-ratio: 16 / 10; max-height: 30rem; overflow: hidden; border-radius: var(--radius-xl); background: var(--color-surface-2); cursor: zoom-in; }
+  .partner-gallery-main img { width: 100%; height: 100%; object-fit: cover; }
+  .partner-gallery-count { position: absolute; left: .75rem; bottom: .75rem; border-radius: 999px; background: rgb(0 0 0 / .55); color: #fff; padding: .25rem .625rem; font-size: var(--text-xs); }
+  .partner-gallery-empty { display: flex; width: 100%; aspect-ratio: 16 / 7; max-height: 18rem; flex-direction: column; align-items: center; justify-content: center; gap: .5rem; border-radius: var(--radius-xl); background: var(--color-surface); color: var(--color-ink-muted); transition: background var(--dur-fast); }
+  .partner-gallery-empty:hover, .partner-gallery.is-dropping .partner-gallery-empty { background: var(--color-surface-2); }
+  .partner-gallery .photo-row { margin-inline: 0; padding-inline: 0; }
+  /* «Цена»: оценочная крупным полем, наценка строкой, закупочная итогом — главный показатель экрана (правило 6). */
+  .partner-price-panel { display: flex; flex-direction: column; gap: 1rem; }
+  .partner-price-panel .box-title { margin-bottom: -.25rem; }
+  .partner-value { display: flex; flex-direction: column; gap: .375rem; }
+  .partner-value-label { @apply text-sm text-ink-muted; }
+  .partner-value-box { display: flex; align-items: center; gap: .5rem; height: 3.75rem; padding: 0 1rem; border-radius: var(--radius-m); background: var(--color-surface-2); cursor: text; }
+  .partner-value-box:focus-within { box-shadow: inset 0 0 0 1.5px var(--color-accent); }
+  .partner-value.is-invalid .partner-value-box { box-shadow: inset 0 0 0 1.5px var(--color-danger); }
+  .partner-value-input { min-width: 0; flex: 1; background: transparent; outline: none; font-size: 26px; font-weight: 500; text-align: right; color: var(--color-ink); }
+  .partner-value-input::placeholder { color: var(--color-ink-dim); }
+  .partner-value-rub { font-size: 22px; color: var(--color-ink-muted); }
+  .partner-markup > summary { display: flex; align-items: baseline; gap: .5rem; list-style: none; cursor: pointer; }
+  .partner-markup > summary::-webkit-details-marker { display: none; }
+  .partner-markup > summary > :first-child { margin-right: auto; }
+  .partner-markup-edit { color: var(--color-accent); font-weight: 500; }
+  .partner-markup[open] .partner-markup-edit { color: var(--color-ink-muted); }
+  .partner-markup .floor-rules { max-width: none; }
+  .partner-floor { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; padding-top: 1rem; border-top: var(--hairline) solid var(--color-hairline); }
+  .partner-floor-sum { font-size: 28px; font-weight: 600; line-height: 1.1; }
+  .partner-floor-sum:empty::before { content: '—'; color: var(--color-ink-dim); font-weight: 400; }
+
+  @media (min-width: 640px) { .surface-partner .table-wrap .table td.grow .cell-name { font-size: 15px; } }
   .retreat-link { @apply mx-auto -mt-1 block px-4 py-3 text-sm text-ink-muted hover:text-ink; }
   .btn-danger { @apply bg-danger-soft text-danger hover:bg-danger hover:text-white; }
   .btn-glass  { color: #fff; background: rgb(255 255 255 / .12); backdrop-filter: blur(10px); }

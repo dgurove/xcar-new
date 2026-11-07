@@ -97,6 +97,11 @@ final class Widths
             if ($c->pick || ($c->title === '' && ! isset($values[$c->key]))) {
                 continue;
             }
+            if ($c->fixed) {
+                $want[$c->key] = $full[$c->key] = $c->rem;
+
+                continue;
+            }
             // Название и код (номер убытка, ДЛ) — данные извне, как город: по 95 % строк, редкое длинное режется «…»
             // (`--title-w` у `x-ui.table`, `.vincode-text`).
             $clip = $c->clip || $c->grow || $c->role() === ColRole::Code;

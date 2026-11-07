@@ -25,6 +25,9 @@
     if (isset($actions) && $actions->isEmpty()) { unset($actions); }
     if (isset($lead) && $lead->isEmpty()) { unset($lead); }
     $site = \App\Support\Surface::current() === \App\Support\Surface::Site;
+    // Партнёр — без шапки и таб-бара (08.11.2026): ряд заголовка с «‹» и на телефоне.
+    $partner = \App\Support\Surface::current() === \App\Support\Surface::Partner;
+    if ($partner) { $phoneHeading = true; }
     // Подвал и крошки — веб-мебель: в установленном приложении их нет (документы — в кабинете).
     $installed = \App\Http\Middleware\MarkInstalled::installed(request());
     $path = '/'.ltrim(request()->path(), '/');
@@ -48,7 +51,7 @@
             @if ($heading || isset($actions) || ($back && $backRow))
                 {{-- Без заголовка и действий ряд нужен только ради круглой «‹» на десктопе: на телефоне она в шапке. --}}
                 <div @class(['has-back mb-4 flex-wrap items-center gap-x-4 gap-y-2', 'flex' => $heading || isset($actions), 'hidden md:flex' => !$heading && !isset($actions), 'max-md:hidden' => !$phoneHeading, 'md:hidden' => !$desktopHeading])>
-                    @if ($back)<x-ui.back :back="$back"/>@endif
+                    @if ($back)<x-ui.back :back="$back" :phone="$partner"/>@endif
                     @if ($heading)<h1 class="head-title text-xl sm:text-2xl">@isset($lead){{ $lead }} @endisset{{ $heading }}{{ $badge ?? '' }}@if ($count !== null) <span class="nums ml-2 text-base font-normal text-ink-dim" data-shell-count>{{ $count }}</span>@endif</h1>@endif
                     @isset($actions)<div {{ $actions->attributes->merge(['class' => 'flex w-full flex-wrap items-center gap-1 sm:ml-auto sm:w-auto sm:gap-2']) }}>{{ $actions }}</div>@endisset
                 </div>
@@ -72,6 +75,6 @@
     @endauth
     {{-- Новые лоты Мигторга черновиками — капсула сотрудникам CRM (админы и модераторы, тема `staff`). --}}
     @if (auth()->user()?->isStaff() && \App\Support\Surface::current() === \App\Support\Surface::Crm)<x-migtorg.island/>@endif
-    <x-ui.tabbar/>
+    @unless ($partner)<x-ui.tabbar/>@endunless
     <x-ui.toasts/>
 </x-ui.layout>

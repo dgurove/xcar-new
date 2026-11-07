@@ -1,6 +1,8 @@
 {{-- Partner XCar (07.11.2026): черновики вендора поставщика без закупочной цены — таблицей, как CRM «Без закупочной».
-     Нажатие — редактор; «+ Новое» — окно «Номер убытка» (`OfferController::find`). Вписал цену — строка уходит. --}}
-<x-ui.shell title="Предложения" :count="$offers->total()" :phone-heading="false">
+     Цена — прямо в строке (08.11.2026), нажатие по строке — редактор; «+ Новое» — окно «Номер убытка» (`OfferController::find`).
+     Вписал цену — строка уходит. Шапки нет: справа от заголовка — аватар с меню (`partner.me`). --}}
+<x-ui.shell title="Предложения" :count="$offers->total()">
+    <x-slot:actions class="!w-auto ml-auto">@include('partner.me')</x-slot:actions>
     <x-ui.toolbar :sort="$sort" name="partner-offers" :facets="$facets" search="Номер, марка, VIN">
         <x-slot:actions>
             <div class="contents" data-controller="sheet">
@@ -25,7 +27,7 @@
             @php $columns = \App\Http\Partner\OfferController::table(); @endphp
             <x-ui.table :table="$columns" id="partner-offers" :view="\App\Support\ListView::TABLE" :portion="$offers">
                 <x-slot:head><x-table.head :table="$columns" :sort="$sort"/></x-slot:head>
-                @foreach ($offers as $offer)@include('partner.offers.row', ['offer' => $offer, 'table' => $columns])@endforeach
+                @foreach ($offers as $offer)@include('partner.offers.row', ['offer' => $offer, 'table' => $columns, 'covers' => $covers])@endforeach
             </x-ui.table>
         @endif
     </div>

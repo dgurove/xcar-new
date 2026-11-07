@@ -23,6 +23,8 @@ final class Column
      * @param  bool  $main  главный факт списка («Исполнитель» вывоза): когда таблица не влезает, уходит последним
      * @param  bool  $clip  данные извне (город): ширина таблицы сеткой — по 95 % значений, редкое длинное режется «…»
      *                      (`Widths::of`); системный текст флага не получает — его не режут
+     * @param  bool  $fixed  ширина — ровно `rem`, значения не меряются: в ячейке не текст (кадр, поле ввода — у партнёра,
+     *                       08.11.2026)
      */
     public function __construct(
         public readonly string $key,
@@ -42,6 +44,7 @@ final class Column
         public readonly bool $clip = false,
         public readonly ?ColRole $role = null,
         public readonly bool $main = false,
+        public readonly bool $fixed = false,
     ) {}
 
     /** Что за столбец (`ColRole`): названа — она, иначе по флагам. */

@@ -404,7 +404,9 @@ const typed = 'input:not([type=hidden]), select, textarea';
 function firstInvalid(root) {
     const bad = root.querySelector('.field-invalid .field-input, .form-row.is-invalid input, .form-row.is-invalid select');
     if (bad) return bad;
-    const note = root.querySelector('.field-error');
+    // Скрытая подпись — место под ошибку, а не ошибка (диапазоны наценки, 08.11.2026: редактор партнёра на телефоне
+    // открывался прокрученным к ним).
+    const note = [...root.querySelectorAll('.field-error')].find((n) => !n.hidden && n.textContent.trim() !== '');
     for (let el = note?.previousElementSibling; el; el = el.previousElementSibling) {
         const field = el.matches(typed) ? el : el.querySelector(typed);
         if (field) return field;
