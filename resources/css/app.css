@@ -2467,10 +2467,15 @@ html.kb-open { --home-gap: 0px; }
      откуда — ссылками под значением. */
   .variant-hint { @apply mt-0.5 inline-flex self-start max-w-full items-center gap-0.5 text-left text-sm font-medium; color: var(--color-urgent); }
   span.variant-hint { @apply mt-0 inline; }
-  /* Значения источников под полем правки (`x-car.source-values`, 08.11.2026): видны при фокусе, строками подсказок справочника
-     — в потоке формы, не поверх соседних полей. */
-  .source-values { @apply mt-1 flex flex-col rounded-(--radius-m) bg-surface-2 p-1; }
+  /* Значения источников поля правки (`x-car.source-values`, 08.11.2026) — выпадающим списком справочника (`.combobox-list`)
+     поверх формы, сразу под полем ввода (`top` ставит контроллер); строка — значение, откуда тусклым, галка у текущего. */
+  .field:has(> .source-values) { position: relative; }
   .source-values[hidden] { display: none; }
+  @media (max-width: 639px) { .source-values { min-width: min(20rem, calc(100vw - 2rem)); } }
+  .combobox-option.source-option { @apply items-center gap-3; }
+  .source-value { @apply max-w-[60%] shrink-0 truncate; }
+  .source-from { @apply min-w-0 flex-1 truncate text-right text-sm text-ink-muted; }
+  .source-check { @apply flex size-4 shrink-0 items-center justify-center; color: var(--color-accent-text); }
   .variant-option { @apply items-center gap-3 py-3; }
   /* «Парсинг» (`admin/parsing`, 08.11.2026, владелец: «по одной тачке на экран — пипец», «полосы не нужны»): машина —
      карточка без линий, шапка одной строкой (места — ссылками справа, на телефоне — второй строкой), поле — строка сетки:

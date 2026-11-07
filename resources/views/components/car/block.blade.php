@@ -56,8 +56,21 @@
 
         return array_values(array_filter($known[$f], fn ($i) => $now === null || ! \App\Cars\Sources\Values::same($f, (string) $i['key'], $now)));
     };
-    $sourcesOf = fn (string $c) => array_map(fn ($i) => ['value' => $c === 'engine_volume' ? Liters::format((int) ($i['write']['engine_volume'] ?? 0)) : (string) ($i['write'][$c] ?? ''),
-        'label' => $i['label'], 'from' => $i['from']], $others($c));
+    // Выпадающий список поля: что сейчас (с галкой) и остальные значения источников; одно и то же — списка нет.
+    $sourcesOf = function (string $c) use ($known, $lane, $others) {
+        $rest = $others($c);
+        if (! $rest) {
+            return [];
+        }
+        $input = fn (array $w) => $c === 'engine_volume' ? Liters::format((int) ($w['engine_volume'] ?? 0)) : (string) ($w[$c] ?? '');
+        $now = \App\Cars\Sources\Values::current($lane, $c);
+        $mine = $now ? collect($known[$c] ?? [])->first(fn ($i) => \App\Cars\Sources\Values::same($c, (string) $i['key'], $now['key'])) : null;
+
+        return [
+            ...($now ? [['value' => $input($now['write']), 'label' => $now['label'], 'from' => $mine['from'] ?? 'сейчас', 'now' => true]] : []),
+            ...array_map(fn ($i) => ['value' => $input($i['write']), 'label' => $i['label'], 'from' => $i['from'], 'now' => false], $rest),
+        ];
+    };
     $notesOf = fn (string $c) => collect($others($c))->mapWithKeys(fn ($i) => [(string) ($i['write'][$c] ?? '') => $i['from']])->all();
     // Марка и модель — первыми в списках справочников; модель без справочника (новая) — только «Парсингом» и шторкой.
     $carOptions = array_values(array_filter($others('model_id'), fn ($i) => ! empty($i['write']['brand_id'])));

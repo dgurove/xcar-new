@@ -14,9 +14,12 @@
     // Спор об оценочной (`Cars\Sources\Variants`) — меткой у поля.
     $variant = \App\Cars\Sources\Variants::visible($vehicle, ['value'])['value'] ?? null;
     // Оценочные из источников — под полем (и выбранные раньше, и отклонённые: `Values::known`).
-    $valueSources = $vehicle && \App\Cars\Sources\Variants::can($vehicle) ? collect(\App\Cars\Sources\Values::known($vehicle->car_id)['value'] ?? [])
-        ->reject(fn ($i) => (int) ($i['write']['value'] ?? 0) === (int) $value)
-        ->map(fn ($i) => ['value' => (string) $i['write']['value'], 'label' => $i['label'], 'from' => $i['from']])->values()->all() : [];
+    $valueKnown = $vehicle && \App\Cars\Sources\Variants::can($vehicle) ? collect(\App\Cars\Sources\Values::known($vehicle->car_id)['value'] ?? []) : collect();
+    $valueRest = $valueKnown->reject(fn ($i) => (int) ($i['write']['value'] ?? 0) === (int) $value);
+    $valueSources = $valueRest->isEmpty() ? [] : [
+        ...($value !== null ? [['value' => (string) $value, 'label' => Money::rub((int) $value), 'from' => $valueKnown->first(fn ($i) => (int) ($i['write']['value'] ?? 0) === (int) $value)['from'] ?? 'сейчас', 'now' => true]] : []),
+        ...$valueRest->map(fn ($i) => ['value' => (string) $i['write']['value'], 'label' => $i['label'], 'from' => $i['from'], 'now' => false])->values()->all(),
+    ];
     $empty = $value === null && ! $variant && ($vehicle?->storage_rate === null || ! $rate);
 @endphp
 <x-car.card title="Хранение" :fold="$fold" :empty="$empty">
