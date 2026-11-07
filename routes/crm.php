@@ -7,6 +7,7 @@ use App\Http\Admin\ChatController;
 use App\Http\Admin\DealContractController;
 use App\Http\Admin\DealController;
 use App\Http\Admin\DeliveryController;
+use App\Http\Admin\ParsingController;
 use App\Http\Admin\DisclosureController;
 use App\Http\Admin\GalleryController;
 use App\Http\Admin\GarageController;
@@ -422,6 +423,10 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
             Route::put('/timers/{stage}', [TimerController::class, 'update'])->whereNumber('stage');
             // Доставка уведомлений (30.10.2026): что ушло людям и открыли ли — по журналу `notice_deliveries`.
             Route::get('/deliveries', [DeliveryController::class, 'index']);
+            // «Парсинг» (08.11.2026): спорные поля машин из источников — списком, выбор вариантом.
+            Route::get('/parsing', [ParsingController::class, 'index']);
+            Route::get('/parsing/cars/{car}', [ParsingController::class, 'car'])->whereNumber('car');
+            Route::post('/parsing/cars/{car}/fields/{field}', [ParsingController::class, 'pick'])->whereNumber('car');
             Route::post('/workflows/{workflow}/enable', [WorkflowController::class, 'activate']);
             Route::post('/workflows/{workflow}/fill', [WorkflowController::class, 'fill']);
             Route::post('/workflows/{workflow}/order', [WorkflowController::class, 'reorder']);

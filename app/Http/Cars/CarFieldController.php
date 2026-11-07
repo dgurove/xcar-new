@@ -24,12 +24,12 @@ final class CarFieldController
 {
     public function offer(Request $request, Offer $offer, string $field)
     {
-        return $this->pick($request, $offer, $field);
+        return $this->answer($request, $offer, $field);
     }
 
     public function vehicle(Request $request, Vehicle $vehicle, string $field)
     {
-        return $this->pick($request, $vehicle, $field);
+        return $this->answer($request, $vehicle, $field);
     }
 
     public function offerDocument(Request $request, Offer $offer)
@@ -42,7 +42,8 @@ final class CarFieldController
         return $this->document($request, $vehicle);
     }
 
-    private function pick(Request $request, Offer|Vehicle $lane, string $field)
+    /** Выбор или «оставить» по полю дорожки — и с экрана «Парсинг» (`Admin\ParsingController`). */
+    public function answer(Request $request, Offer|Vehicle $lane, string $field)
     {
         abort_unless(isset(Values::FIELDS[$field]), 404);
         $data = $request->validate(['key' => ['nullable', 'string', 'max:160'], 'seen' => ['nullable', 'string', 'max:160'], 'keep' => ['nullable', 'boolean']]);

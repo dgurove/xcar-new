@@ -38,10 +38,16 @@ export default class extends Controller {
         this.reload();
     }
 
-    // Карточка строки (фрейм `detail`) перечитывается сама; страница редактора и дела — заново тем же адресом.
+    // Карточка строки (фрейм `detail`) и машины «Парсинга» перечитываются сами; страница редактора и дела — заново тем же адресом.
     reload() {
         const frame = this.element.closest('turbo-frame');
         if (frame?.id === 'detail' && frame.src) return frame.reload();
+        // Карточка машины на «Парсинге» — свой фрейм без src (иначе сто запросов при загрузке): адрес — data-reload-src.
+        if (frame?.dataset.reloadSrc) {
+            if (frame.src) return frame.reload();
+            frame.src = frame.dataset.reloadSrc;
+            return;
+        }
         Turbo.visit(location.href, { action: 'replace' });
     }
 }

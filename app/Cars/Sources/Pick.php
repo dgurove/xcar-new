@@ -78,7 +78,15 @@ final class Pick
                 if ($group->isEmpty() || $group->pluck('key')->unique()->count() > 1) {
                     continue;
                 }
-                $this->write($lane, json_decode($group->first()->write, true), null, $group->pluck('title')->unique()->values()->all(), $group->first());
+                // Одна машина, которую записать нельзя (гаражная: «ТС в гараже: сначала „Отдали по ошибке“», 08.11.2026 оборвало
+                // сбор на проде), не роняет остальные поля и машины.
+                try {
+                    $this->write($lane, json_decode($group->first()->write, true), null, $group->pluck('title')->unique()->values()->all(), $group->first());
+                } catch (\Throwable $e) {
+                    \Illuminate\Support\Facades\Log::warning('Поле из источников не вписалось', ['car' => $car->id, 'field' => $field, 'error' => $e->getMessage()]);
+
+                    continue;
+                }
                 $lane->refresh();
                 $car->refresh();
             }

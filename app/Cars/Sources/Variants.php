@@ -130,10 +130,28 @@ final class Variants
         return array_keys(array_filter(Values::FIELDS, fn ($f) => ! array_diff($f[1], $columns)));
     }
 
-    /** Сколько спорных — в `cars.value_conflicts` (метка в строках без разбора). */
+    /**
+     * Спорные поля машины по обеим дорожкам сразу (экран «Парсинг», `cars.value_conflicts`): город — у продажи, оценочная —
+     * у ТС, общее — у продажи, если она есть. У каждого — дорожка, через которую оно пишется (`lane`).
+     *
+     * @return array<string, array<string, mixed>>
+     */
+    public static function all(Car $car): array
+    {
+        $out = [];
+        foreach (array_filter([$car->offer, $car->vehicle]) as $lane) {
+            foreach (self::for($car, $lane) as $field => $v) {
+                $out[$field] ??= $v + ['lane' => $lane];
+            }
+        }
+
+        return array_filter(array_replace(array_fill_keys(array_keys(Values::FIELDS), null), $out));
+    }
+
+    /** Сколько спорных — в `cars.value_conflicts` (метка в строках без разбора, «Парсинг»). */
     public static function recount(Car $car): int
     {
-        $n = count(self::for($car));
+        $n = count(self::all($car));
         if ((int) $car->value_conflicts !== $n) {
             DB::table('cars')->where('id', $car->id)->update(['value_conflicts' => $n]);
             $car->setRawAttributes(['value_conflicts' => $n] + $car->getAttributes(), true);

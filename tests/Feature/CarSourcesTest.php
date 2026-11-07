@@ -78,7 +78,7 @@ class CarSourcesTest extends TestCase
         $this->assertTrue($this->offer->carRecord()->fresh()->byHuman('year'));
 
         // Отклонено общее для машины: парковка ТС той же машины спора не видит.
-        $vehicle = Vehicle::create(['car_id' => $this->offer->car_id, 'vendor_id' => $this->offer->vendor_id, 'state' => VehicleState::Expected]);
+        $vehicle = Vehicle::forceCreate(['car_id' => $this->offer->car_id, 'vendor_id' => $this->offer->vendor_id, 'state' => VehicleState::Expected]);
         $this->assertArrayNotHasKey('year', Variants::for($vehicle->carRecord(), $vehicle));
 
         // Новый третий вариант — снова спор.
@@ -178,6 +178,31 @@ class CarSourcesTest extends TestCase
         $this->assertArrayNotHasKey('year', Values::of(['year' => ['value' => 1890]]));
         $this->assertArrayNotHasKey('color', Values::of(['color' => ['value' => 'AUTOMOBILE']]), 'обрывок OCR — не цвет');
         $this->assertArrayNotHasKey('car', Values::of(['brand' => ['value' => 'Неизвестная марка'], 'model' => ['value' => 'X']]));
+    }
+
+    /** «Парсинг»: споры обеих дорожек машины одним списком, выбор пишет через свою дорожку, не админу экрана нет. */
+    public function test_parsing_lists_both_lanes_and_picks(): void
+    {
+        Vehicle::forceCreate(['car_id' => $this->offer->car_id, 'vendor_id' => $this->offer->vendor_id, 'state' => VehicleState::Expected]);
+        $this->offer->carRecord()->forceFill(['value' => 900_000])->save();
+        $this->value('year', 2019, 'migtorg', '1', 'Мигторг');
+        DB::table('car_values')->insert(['car_id' => $this->offer->car_id, 'field' => 'value', 'source' => 'doc', 'source_id' => '7', 'title' => 'Акт',
+            'write' => json_encode(['value' => 1_200_000]), 'key' => '1200000', 'label' => '1 200 000 ₽', 'created_at' => now()]);
+        $car = $this->offer->carRecord()->fresh();
+        $all = Variants::all($car);
+        $this->assertSame(['year', 'value'], array_keys($all));
+        $this->assertInstanceOf(Vehicle::class, $all['value']['lane'], 'оценочная — у ТС');
+        $this->assertSame(2, Variants::recount($car));
+
+        $crm = 'http://'.config('xcar.crm_host');
+        $this->actingAs($this->admin)->get($crm.'/settings/parsing')->assertOk()->assertSee('1 200 000 ₽')->assertSee('Предложение');
+        $this->actingAs($this->admin)->postJson($crm.'/settings/parsing/cars/'.$car->id.'/fields/value', ['key' => '1200000', 'seen' => '900000'])
+            ->assertOk()->assertJson(['ok' => true]);
+        $this->assertSame(1_200_000, (int) $car->fresh()->value);
+        $this->actingAs($this->admin)->get($crm.'/settings/parsing/cars/'.$car->id)->assertOk()->assertDontSee('1 200 000 ₽');
+
+        $moderator = User::create(['name' => 'Лиза', 'phone' => '79000000031', 'roles' => [Role::Moderator], 'approved_at' => now()]);
+        $this->actingAs($moderator)->get($crm.'/settings/parsing')->assertNotFound();
     }
 
     public function test_endpoint_answers_json(): void

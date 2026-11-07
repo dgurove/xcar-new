@@ -9,21 +9,10 @@
 @props(['lane', 'variants' => [], 'as' => null])
 @php
     use App\Offers\Offer;
-    use App\Support\Docs;
     $url = $lane instanceof Offer ? '/offers/'.$lane->number.'/fields' : '/cars/'.$lane?->id.'/fields';
     $mail = $lane instanceof Offer ? '/work/mail' : '/mail';
-    // Файлы источников — одним запросом на блок: вложения писем, документы машины, письма.
-    $ids = $as === 'rows' ? collect() : collect($variants)->flatMap(fn ($v) => collect([...$v['options'], $v['current'] ?? ['sources' => []]])->flatMap(fn ($o) => $o['sources']));
-    $attachments = $ids->where('kind', 'doc')->pluck('id')->filter(fn ($i) => ctype_digit((string) $i))->whenNotEmpty(fn ($c) => \App\Mail\Attachment::whereIn('id', $c)->get()->keyBy('id'), fn () => collect());
-    $media = $ids->where('kind', 'doc')->pluck('id')->filter(fn ($i) => str_starts_with((string) $i, 'm'))->map(fn ($i) => (int) substr($i, 1))->whenNotEmpty(fn ($c) => \Spatie\MediaLibrary\MediaCollections\Models\Media::whereIn('id', $c)->get()->keyBy('id'), fn () => collect());
-    $letters = $ids->where('kind', 'letter')->pluck('id')->whenNotEmpty(fn ($c) => \App\Mail\Message::whereIn('id', $c)->get()->keyBy('id'), fn () => collect());
-    $doc = function (array $s) use ($attachments, $media, $letters, $mail) {
-        return match ($s['kind']) {
-            'doc' => str_starts_with($s['id'], 'm') ? (($m = $media[(int) substr($s['id'], 1)] ?? null) ? Docs::media($m) : null) : (($a = $attachments[(int) $s['id']] ?? null) ? Docs::attachment($a, $mail) : null),
-            'letter' => ($m = $letters[(int) $s['id']] ?? null) ? Docs::letter($m, $mail) : null,
-            default => null,
-        };
-    };
+    // Файлы источников — одним запросом на блок (`SourceDocs`); строкам списка не нужны.
+    $doc = $as === 'rows' ? fn () => null : \App\Cars\Sources\SourceDocs::for($variants, $mail);
 @endphp
 @if ($variants && $as === 'rows')
     @foreach ($variants as $field => $v)
