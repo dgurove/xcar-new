@@ -19,7 +19,9 @@ use Throwable;
  * (`offer_estimates.exclusive_days`) — админ проверил оценку и нажал «Взять»: машина в продаже ценой его оценки и только ему
  * (`offers.first_look_until`, N дней до 17:00 от «Взять», тем же сроком кончается приём; до 07.11.2026 — сразу после
  * оценки, без админа); не подтвердил за это время — открывается всем по той же цене, приём заново, как у
- * публикации. Подтвердил — дальше как у всех: «Есть подтверждения», выбирает админ.
+ * публикации. Подтвердил — эксклюзив ждёт решения админа: остальным не открывается, пока у него есть живое подтверждение;
+ * отказали или отозвал — открывается всем тем же путём (07.11.2026, владелец: «1 из 1 подтвердил и прошло 5 дней — остальным
+ * не показываем, пока этому не отказали»; до того эксклюзив гас, и после отказа машина оставалась только ему).
  */
 final class FirstLook
 {
@@ -55,8 +57,7 @@ final class FirstLook
         Offer::where('state', OfferState::Open)->whereNotNull('first_look_until')->where('first_look_until', '<=', now())
             ->lazyById()->each(function (Offer $offer) use (&$n) {
                 try {
-                    $this->end($offer);
-                    $n++;
+                    $n += (int) $this->end($offer);
                 } catch (Throwable $e) {
                     report($e);
                 }
@@ -65,14 +66,18 @@ final class FirstLook
         return $n;
     }
 
-    private function end(Offer $offer): void
+    /** @return bool открыто всем */
+    private function end(Offer $offer): bool
     {
-        DB::transaction(function () use ($offer) {
-            // Подтвердил — дальше как у всех.
-            if ($offer->bids()->whereIn('state', [BidState::Active, BidState::Accepted])->exists() || $offer->deal()->exists()) {
+        return DB::transaction(function () use ($offer) {
+            // Сделка — эксклюзив кончился. Живое подтверждение — ждём ответа админа, ничего не трогаем.
+            if ($offer->deal()->exists()) {
                 Offer::whereKey($offer->id)->update(['first_look_until' => null, 'first_look_user_id' => null]);
 
-                return;
+                return false;
+            }
+            if ($offer->bids()->whereIn('state', [BidState::Active, BidState::Accepted])->exists()) {
+                return false;
             }
             // Выход — сейчас: для всех это новое предложение (каталог «новые сверху», пачка новых менеджерам).
             Offer::whereKey($offer->id)->update(['published_at' => now()]);
@@ -80,6 +85,8 @@ final class FirstLook
                 'audience_rules' => AudienceRules::everyone(), 'first_look_until' => null, 'first_look_user_id' => null,
                 'bids_close_at' => Binding::clampClose($offer, Slots::closeFor(now())),
             ], null, ['why' => 'Эксклюзив кончился без подтверждения — всем']);
+
+            return true;
         });
     }
 }

@@ -21,8 +21,9 @@ use Illuminate\Support\Facades\DB;
  *
  * **Есть подтверждение — следующие волны не открываются** (07.11.2026, владелец: «если сделали „опубликовать этим, остальным
  * через N дней“ — нельзя публиковать остальным, если хотя бы от одного есть подтверждение»): пока у машины живое
- * подтверждение того, кому она уже открыта, волн в будущем нет; подтверждение отозвали или отклонили — `Bid::saved` зовёт
- * пересчёт, и волны встают по прежнему расписанию (прошедшее время — сразу).
+ * подтверждение того, кому она уже открыта, волн в будущем нет; остальным — только когда по всем живым отказали или их
+ * отозвали: `Bid::saved` зовёт пересчёт, и волны встают по прежнему расписанию (прошедшее время — сразу, в оставшийся срок
+ * приёма; приём кончился — никому, машина уходит в «Без подтверждений»).
  */
 final class SyncViewers
 {
@@ -43,6 +44,13 @@ final class SyncViewers
         if ($offer->state === OfferState::Open && ($held = $this->held($offer, $opens))) {
             $open = array_diff_key($open, $held);
             $opens = array_diff_key($opens, $held);
+        }
+        // Приём кончился — новых людей в волнах нет (07.11.2026, владелец: отказали по подтверждениям после конца приёма —
+        // остальные машину не видят, она уходит в «Без подтверждений»; иначе до шага часов им ушло бы «Новое предложение»).
+        if ($offer->state === OfferState::Open && $offer->bids_close_at?->isPast()) {
+            $already = array_flip(OfferViewer::where('offer_id', $offer->id)->pluck('user_id')->all());
+            $open = array_intersect_key($open, $already);
+            $opens = array_intersect_key($opens, $already);
         }
 
         DB::transaction(function () use ($offer, $open, $opens) {
@@ -67,24 +75,31 @@ final class SyncViewers
     }
 
     /**
-     * Будущие волны, которые держит подтверждение: кто-то из тех, кому машина уже открыта, подтвердил (живое — `Active`,
-     * `Accepted`). Первым удержанием — строка истории.
+     * Волны, которые держит подтверждение: у кого-то живое (`Active`, `Accepted`) — все, чья волна позже его волны, не видят,
+     * наступило их время или нет (5 дней прошли, одному отказали, второе висит — всё ещё нет). Кому уже показали и написали
+     * (`notified_at`), не прячем. Первым удержанием — строка истории.
      *
      * @param  array<int, CarbonInterface>  $opens
      * @return array<int, true>
      */
     private function held(Offer $offer, array $opens): array
     {
-        $later = array_filter($opens, fn ($at) => $at->isFuture());
-        $openNow = array_keys(array_diff_key($opens, $later));
-        if (! $later || ! $openNow || ! $offer->bids()->whereIn('state', [BidState::Active, BidState::Accepted])->whereIn('user_id', $openNow)->exists()) {
+        $bidders = $offer->bids()->whereIn('state', [BidState::Active, BidState::Accepted])->pluck('user_id')->unique()
+            ->filter(fn ($id) => isset($opens[$id]));
+        if ($bidders->isEmpty()) {
             return [];
         }
-        if (OfferViewer::where('offer_id', $offer->id)->whereIn('user_id', array_keys($later))->exists()) {
+        $wave = $bidders->map(fn ($id) => $opens[$id])->min();
+        $shown = array_flip(OfferViewer::where('offer_id', $offer->id)->whereNotNull('notified_at')->where('opens_at', '<=', now())->pluck('user_id')->all());
+        $held = array_keys(array_filter($opens, fn ($at, $id) => $at->gt($wave) && ! isset($shown[$id]), ARRAY_FILTER_USE_BOTH));
+        if (! $held) {
+            return [];
+        }
+        if (OfferViewer::where('offer_id', $offer->id)->whereIn('user_id', $held)->exists()) {
             $offer->log(OfferEventType::Note, null, ['text' => 'Остальным не открывается: есть подтверждение']);
         }
 
-        return array_fill_keys(array_keys($later), true);
+        return array_fill_keys($held, true);
     }
 
     /** Все опубликованные — после смены групп или нового менеджера. */

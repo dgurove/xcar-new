@@ -14,6 +14,8 @@ use App\Offers\Actions\PlaceBid;
 use App\Offers\Actions\ReturnClosedToRated;
 use App\Offers\Actions\UpdateOffer;
 use App\Offers\AudienceRules;
+use App\Offers\Bid;
+use App\Offers\BidState;
 use App\Offers\Estimate;
 use App\Offers\MigtorgFields;
 use App\Offers\Offer;
@@ -169,11 +171,21 @@ class HeavyEstimateTest extends TestCase
         $this->giveAndTake($truck);
         app(PlaceBid::class)($truck->fresh(), $this->roma, 1200000);
 
+        // Срок эксклюзива прошёл — остальным не открывается, пока у него живое подтверждение (07.11.2026, владелец).
         $this->travelTo($truck->fresh()->first_look_until->copy()->addMinute());
-        app(FirstLook::class)->due();
+        $this->assertSame(0, app(FirstLook::class)->due());
+        $truck = $truck->fresh();
+        $this->assertNotNull($truck->first_look_until);
+        $this->assertSame([$this->roma->id], $truck->viewers()->pluck('user_id')->all());
+        $this->assertSame(0, app(ReturnClosedToRated::class)());
+
+        // Отказали — всем, с новым сроком приёма.
+        Bid::where('offer_id', $truck->id)->update(['state' => BidState::Declined]);
+        $this->assertSame(1, app(FirstLook::class)->due());
         $truck = $truck->fresh();
         $this->assertNull($truck->first_look_until);
-        $this->assertSame([$this->roma->id], $truck->viewers()->pluck('user_id')->all());
+        $this->assertTrue($truck->bids_close_at->isFuture());
+        $this->assertContains($this->other->id, $truck->viewers()->pluck('user_id')->all());
     }
 
     public function test_migtorg_trailer_beats_guessed_passenger(): void

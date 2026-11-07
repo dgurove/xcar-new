@@ -24,7 +24,10 @@
     </div>
     {{-- Эксклюзив оценившего (`FirstLook`, 02.11.2026): сначала только ему, потом всем. --}}
     @if ($offer->first_look_until)
-        <p class="text-sm text-ink-muted">До конца приёма — только {{ $offer->firstLookUser?->shortName() ?? 'оценившему' }}, потом всем</p>
+        {{-- Эксклюзив кончился, а подтверждение живое — всем, только когда по нему откажут (07.11.2026). --}}
+        <p class="text-sm text-ink-muted">{{ $offer->first_look_until->isPast()
+            ? 'Только '.($offer->firstLookUser?->shortName() ?? 'оценившему').', всем — если откажете по его подтверждению'
+            : 'До конца приёма — только '.($offer->firstLookUser?->shortName() ?? 'оценившему').', потом всем' }}</p>
     @endif
     {{-- «Показ» строкой — кому и какие отметки, шторка со сроком и волнами (`x-offer.showing-row`). --}}
     <x-offer.showing-row :offer="$offer" :form="$showForm" :summary="$showSummary ?? null" :when="false"/>
