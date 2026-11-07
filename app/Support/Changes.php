@@ -109,6 +109,10 @@ final class Changes
     public static function pair(string $field, mixed $was, mixed $now): string
     {
         $empty = fn ($v) => $v === null || $v === '' || $v === [];
+        // «Кому показывать» — фраза с запятыми: в кавычках, чтобы не сливалась с соседними полями.
+        if ($field === 'audience_rules') {
+            return ($empty($was) ? '' : '«'.$was.'» → ').'«'.($now ?: 'всем сразу').'»';
+        }
         if ($empty($was)) {
             return FieldLabels::value($field, $now) ?? 'нет';
         }
