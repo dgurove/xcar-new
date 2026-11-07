@@ -10,6 +10,7 @@ use App\Offers\Offer;
 use App\Offers\Partner\FindClaim;
 use App\Offers\Partner\Handover;
 use App\Offers\Partner\PartnerOffers;
+use App\Offers\Partner\SendPrices;
 use App\Offers\Pricing;
 use App\Support\Facets\Common;
 use App\Support\Facets\Facets;
@@ -20,6 +21,7 @@ use App\Support\Table\Column;
 use App\Support\Table\ColRole;
 use App\Support\Table\Table;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -59,6 +61,7 @@ class OfferController
             // Всегда таблица порциями (`?vid=` здесь нет: вид у партнёра один).
             'offers' => $offers,
             'covers' => MediaController::covers($offers->getCollection()),
+            'waiting' => PartnerOffers::priced(PartnerOffers::for($user))->count(),
             'sort' => $sort,
             'facets' => $facets,
             'searching' => $searching,
@@ -74,9 +77,11 @@ class OfferController
             new Column('title', 'Марка, модель', grow: true, sort: 'title'),
             new Column('ref', '№ убытка', from: 'sm', role: ColRole::Code, rem: 10),
             new Column('city', 'Город', from: 'sm', clip: true, sort: 'city', role: ColRole::Place, rem: 8),
-            // Цена прямо в строке (08.11.2026): оценочная полем, закупочная рядом на лету; Enter отправляет (`price_row`).
+            // Цена прямо в строке (08.11.2026): оценочная полем, закупочная рядом на лету; Enter сохраняет (`price_row`).
             new Column('value', 'Оценочная', from: 'sm', role: ColRole::Amount, rem: 9.5, fixed: true),
             new Column('floor', 'Закупочная', from: 'sm', role: ColRole::Amount, rem: 7.5, fixed: true),
+            // Вписанная цена ждёт «Отправить» (08.11.2026): кнопка у строки, все сразу — над списком.
+            new Column('send', '', from: 'sm', role: ColRole::Amount, rem: 7, fixed: true),
             new Column('created', 'Заведено', from: 'sm', sort: 'created', cell: 'nums whitespace-nowrap', role: ColRole::When, rem: 7.5),
         );
     }
@@ -108,13 +113,24 @@ class OfferController
         ]);
     }
 
-    public function update(OfferRequest $request, Offer $offer, UpdateOffer $update)
+    /**
+     * Сохранить черновик (08.11.2026, владелец: «автоматически не отправлять»): вписанная оценочная ставит закупочную — у нас
+     * предложение сразу «Без продажной», а у него остаётся с «Отправить» (`partner_price_at`). «Отправить» в редакторе
+     * (`then=send`) — сохранить и сразу отправить, дальше следующее. Цена из строки списка (`price_row`) — ответ JSON.
+     */
+    public function update(OfferRequest $request, Offer $offer, UpdateOffer $update, SendPrices $send)
     {
         $user = $request->user();
         abort_unless(PartnerOffers::opens($user, $offer), 404);
         $held = $offer->heldByPartner();
+        $payload = $request->payload($offer);
         try {
-            $update($offer, $request->payload($offer), $user);
+            DB::transaction(function () use ($update, $offer, $payload, $user) {
+                $update($offer, $payload, $user);
+                if (isset($payload['floor_price'])) {
+                    $offer->refresh()->forceFill(['partner_price_at' => now()])->save();
+                }
+            });
         } catch (IdentityTaken $e) {
             // Номер или VIN у другой машины — без её номера и названия (`IdentityTaken` их называет).
             throw ValidationException::withMessages([$e->field === 'vin' ? 'vin' : 'claim_ref' => 'ТС с этим '.($e->field === 'vin' ? 'VIN' : 'номером').' уже в работе']);
@@ -122,17 +138,30 @@ class OfferController
         Handover::after($offer, $held);
         MediaController::forget($user->id);
         $offer->refresh();
-        // Вписал цену — предложение ушло к нам: из его списка оно пропало, дальше — следующее без цены (последнее — список).
-        // Без цены — «Сохранить»: остаётся на месте (08.11.2026: одна кнопка, её подпись — по оценочной).
-        $sent = ! PartnerOffers::opens($user, $offer);
-        $next = $sent ? $this->next($user, $offer) : $offer;
 
-        // Цена из строки списка (`price_row`, 08.11.2026) — ответ словами, а не страницей: строка уходит сама.
         if ($request->wantsJson()) {
-            return response()->json(['sent' => $sent, 'floor' => $offer->floor_price]);
+            return response()->json(['priced' => $offer->partner_price_at !== null, 'floor' => $offer->floor_price, 'waiting' => PartnerOffers::priced(PartnerOffers::for($user))->count()]);
+        }
+        if ($request->input('then') === 'send' && $send($user, $offer)) {
+            $next = $this->next($user, $offer);
+
+            return redirect($next ? "/offers/{$next->id}" : '/offers')->with('toast', 'Цена отправлена: '.$offer->titleWithYear());
         }
 
-        return redirect($next ? "/offers/{$next->id}" : '/offers')->with('toast', $sent ? 'Цена отправлена: '.$offer->titleWithYear() : 'Сохранено');
+        return redirect(PartnerOffers::opens($user, $offer) ? "/offers/{$offer->id}" : '/offers')->with('toast', 'Сохранено');
+    }
+
+    /** «Отправить» у строки (JSON) и «Отправить N» над списком — вписанные цены уходят к нам (`SendPrices`). */
+    public function send(Request $request, SendPrices $send, ?Offer $offer = null)
+    {
+        $user = $request->user();
+        abort_if($offer && ! PartnerOffers::opens($user, $offer), 404);
+        $n = $send($user, $offer);
+        if ($request->wantsJson()) {
+            return response()->json(['sent' => $n, 'waiting' => PartnerOffers::priced(PartnerOffers::for($user))->count()]);
+        }
+
+        return redirect('/offers')->with('toast', $n ? 'Отправлено: '.$n : 'Нечего отправлять');
     }
 
     /** Свой черновик без цены — удалить можно (опечатка в номере, завёл не то). Чужой — только наш человек. */

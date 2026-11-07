@@ -1,12 +1,17 @@
 {{-- Partner XCar (07.11.2026): черновики вендора поставщика без закупочной цены — таблицей, как CRM «Без закупочной».
-     Цена — прямо в строке (08.11.2026), нажатие по строке — редактор; «+ Новое» — окно «Номер убытка» (`OfferController::find`).
+     Цена — прямо в строке (08.11.2026): Enter сохраняет, уходит к нам — «Отправить» у строки или «Отправить N» над списком;
+     нажатие по строке — редактор; «+ Новое» — окно «Номер убытка» (`OfferController::find`).
      Вписал цену — строка уходит. Шапки нет: справа от заголовка — аватар с меню (`partner.me`). --}}
 <x-ui.shell title="Предложения" :count="$offers->total()">
     <x-slot:actions class="!w-auto ml-auto">@include('partner.me')</x-slot:actions>
     <x-ui.toolbar :sort="$sort" name="partner-offers" :facets="$facets" search="Номер, марка, VIN">
         <x-slot:actions>
             <div class="contents" data-controller="sheet">
-                <button type="button" class="btn btn-s btn-accent shrink-0 rounded-full" data-action="sheet#open"><x-ui.icon name="plus" class="size-4"/><span>Новое</span></button>
+                {{-- Вписанные, но не отправленные (08.11.2026) — «Отправить N» главной кнопкой; число правит `price_row`. --}}
+                <form method="post" action="/offers/send" class="contents" data-partner-send-all @if (! $waiting) hidden @endif>@csrf
+                    <button class="btn btn-s btn-accent shrink-0 rounded-full"><x-ui.icon name="send" class="size-4"/><span>Отправить <span class="nums" data-partner-waiting>{{ $waiting }}</span></span></button>
+                </form>
+                <button type="button" @class(['btn btn-s shrink-0 rounded-full', 'btn-accent' => ! $waiting, 'btn-quiet' => $waiting]) data-partner-new data-action="sheet#open"><x-ui.icon name="plus" class="size-4"/><span>Новое</span></button>
                 <x-ui.sheet id="claim-find" title="Новое предложение">
                     <form method="post" action="/offers/find" class="flex flex-col gap-3">
                         @csrf

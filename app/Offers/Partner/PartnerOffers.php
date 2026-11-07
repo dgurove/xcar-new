@@ -13,7 +13,8 @@ use Illuminate\Support\Facades\Cache;
 /**
  * Что поставщику открыто на partner.xcar.ru (07.11.2026) — одна дверь: список, лупа, число таба, редактор, фото и
  * документы. Черновики его вендора без закупочной (условие вкладки CRM «Без закупочной цены», `OfferController::scopeFor`),
- * не из закупки и ни разу не бывшие в сделке или гараже. Вписал цену — предложение ушло к нам, и ему оно больше не открыто.
+ * не из закупки и ни разу не бывшие в сделке или гараже. Вписал цену — у нас оно сразу «Без продажной», а у него остаётся,
+ * пока он не нажмёт «Отправить» (`partner_price_at`, 08.11.2026; `SendPrices`) или пока наши не двинут его дальше.
  */
 final class PartnerOffers
 {
@@ -29,7 +30,23 @@ final class PartnerOffers
         }
         self::eligible($q->where('offers.vendor_id', $user->vendor_id));
 
-        return OfferController::scopeFor('nofloor', $q, admin: false);
+        return self::listed($q);
+    }
+
+    /**
+     * Где предложение у поставщика, без вендора: без закупочной — или с его вписанной и не отправленной ценой, пока у нас оно
+     * «Без продажной» (цена продажи, слот, публикация, архив — у него его больше нет). Им же — `Handover`: ушло ли от него.
+     */
+    public static function listed(Builder $q): Builder
+    {
+        return $q->where(fn ($w) => $w->where(fn ($n) => OfferController::scopeFor('nofloor', $n, admin: false))
+            ->orWhere(fn ($u) => OfferController::scopeFor('unpriced', $u->whereNotNull('offers.partner_price_at'), admin: false)));
+    }
+
+    /** Цена вписана, но не отправлена: у него в списке с «Отправить». */
+    public static function priced(Builder $q): Builder
+    {
+        return $q->whereNotNull('offers.partner_price_at')->where('offers.floor_price', '>', 0);
     }
 
     /**
@@ -57,12 +74,13 @@ final class PartnerOffers
     }
 
     /**
-     * Черновик у поставщика: завёл он и цену ещё не отдал. Пока так, автоматика его не трогает — ни поля, ни кадры сами не
-     * появляются (`Offer::heldByPartner`); отдал — черновик наш, и всё работает как обычно.
+     * Черновик у поставщика: завёл он и цену ещё не отправил (вписанная, но не отправленная — тоже у него). Пока так,
+     * автоматика его не трогает — ни поля, ни кадры сами не появляются (`Offer::heldByPartner`); отправил — черновик наш, и
+     * всё работает как обычно.
      */
     public static function held(Offer $offer): bool
     {
         return $offer->created_via === 'partner' && $offer->state === OfferState::Draft && $offer->slot_at === null
-            && ! ($offer->floor_price > 0) && ! ($offer->asking_price > 0);
+            && (! ($offer->floor_price > 0) || $offer->partner_price_at !== null) && ! ($offer->asking_price > 0);
     }
 }

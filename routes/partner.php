@@ -14,6 +14,9 @@ Route::domain(config('xcar.partner_host'))->middleware(['auth', 'ability:isSuppl
     Route::get('/offers', [OfferController::class, 'index']);
     // Номером не прощупать нашу базу: не чаще 30 раз в минуту.
     Route::post('/offers/find', [OfferController::class, 'find'])->middleware('throttle:30,1');
+    // Вписанные цены — к нам по «Отправить» (08.11.2026): все сразу или одна.
+    Route::post('/offers/send', [OfferController::class, 'send']);
+    Route::post('/offers/{offer:id}/send', [OfferController::class, 'send'])->whereNumber('offer');
     Route::get('/offers/{offer:id}', [OfferController::class, 'edit'])->whereNumber('offer');
     Route::put('/offers/{offer:id}', [OfferController::class, 'update'])->whereNumber('offer');
     Route::delete('/offers/{offer:id}', [OfferController::class, 'destroy'])->whereNumber('offer');

@@ -1,14 +1,17 @@
 {{-- Строка черновика у поставщика (08.11.2026, владелец: «таблица выглядит отвратительно»): главный кадр, название с годом,
-     № убытка, город, оценочная полем прямо в строке с закупочной на лету и дата заведения. Enter — цена уходит через 5 с с
-     «Отменить» (`price_row`), фокус — на поле следующей строки; нажатие по строке мимо поля — редактор. Без марки и модели
+     № убытка, город, оценочная полем прямо в строке с закупочной на лету и дата заведения. Enter — цена сохраняется
+     (`price_row`), фокус — на поле следующей строки; у вписанной — «Отправить»: только по ней строка уходит к нам (владелец:
+     «автоматически не отправлять»). Нажатие по строке мимо поля — редактор. Без марки и модели
      цену не отдают — вместо поля «Заполнить». Ничего нашего: ни авторов, ни источников, ни состояний.
      `data-detail-key` — по нему `Support\Table\Widths` находит строки и считает ширины столбцов. --}}
 @php
     $href = '/offers/'.$offer->id;
     $cover = $covers[$offer->car_id] ?? null;
     $priced = $offer->brand_id && $offer->model_id;
+    // Вписал, но не отправил (`partner_price_at`) — его оценочная в поле, закупочная рядом, «Отправить» видна.
+    $waiting = $offer->partner_price_at !== null && $offer->floor_price > 0;
 @endphp
-<tr id="partner-offer-{{ $offer->id }}" data-detail-key="{{ $offer->id }}" data-search-row data-controller="price-row"
+<tr id="partner-offer-{{ $offer->id }}" @class(['is-priced' => $waiting]) data-detail-key="{{ $offer->id }}" data-search-row data-controller="price-row"
     data-price-row-url-value="{{ $href }}" data-price-row-rules-value="@json(\App\Offers\Pricing::rulesFor($offer))" data-action="click->price-row#open">
     @foreach ($table->columns as $key => $col)
         @switch($key)
@@ -41,11 +44,10 @@
         @case('value')
     <td class="{{ $col->classes() }}">
         @if ($priced)
-            <div class="partner-price flex" data-price-row-target="box">
-                <input type="text" inputmode="decimal" enterkeyhint="send" autocomplete="off" placeholder="Вписать" aria-label="Оценочная, ₽"
+            <div class="partner-price flex">
+                <input type="text" inputmode="decimal" enterkeyhint="done" autocomplete="off" placeholder="Вписать" aria-label="Оценочная, ₽" value="{{ $waiting && $offer->value ? \App\Support\Money::nums((int) $offer->value) : '' }}"
                     class="partner-price-input nums" data-controller="digits" data-price-row-target="input"
                     data-action="input->digits#format input->price-row#sync keydown->price-row#key">
-                <button type="button" class="partner-price-undo" data-price-row-target="wait" data-action="price-row#undo" hidden>Отменить</button>
             </div>
         @else
             <a href="{{ $href }}" class="partner-price-fill">Заполнить <x-ui.icon name="chevron-right" class="size-4"/></a>
@@ -53,7 +55,10 @@
     </td>
         @break
         @case('floor')
-    <td class="{{ $col->classes() }}"><span class="partner-price-floor nums" data-price-row-target="floor"></span></td>
+    <td class="{{ $col->classes() }}"><span class="partner-price-floor nums" data-price-row-target="floor">{{ $waiting ? \App\Support\Money::rub($offer->floor_price) : '' }}</span></td>
+        @break
+        @case('send')
+    <td class="{{ $col->classes() }}">@if ($priced)<button type="button" class="partner-send" data-price-row-target="send" data-action="price-row#send">Отправить</button>@endif</td>
         @break
         @case('created')
     <td class="{{ $col->classes() }}">{{ \App\Support\Ago::html($offer->created_at) }}</td>

@@ -115,7 +115,12 @@ class PartnerTest extends TestCase
         $this->assertSame('0001/046/00004/26', $offer->claim_ref);
         $this->assertSame(45_000, (int) $offer->mileage);
         $this->assertSame([[500_000, 50_000, 0], [2_000_000, 0, 12], [null, 200_000, 0]], Pricing::rulesFor($offer));
-        // Цену отдал — предложение ушло к нам, у поставщика его больше нет.
+        // Цену вписал — у нас «Без продажной», а у поставщика остаётся, пока не нажмёт «Отправить» (08.11.2026).
+        $this->assertNotNull($offer->partner_price_at);
+        $this->assertTrue(\App\Http\Admin\OfferController::scopeFor('unpriced', Offer::whereKey($offer->id))->exists());
+        $this->actingAs($this->alfaMan)->get($this->url('/offers/'.$offer->id))->assertOk();
+        $this->actingAs($this->alfaMan)->post($this->url('/offers/'.$offer->id.'/send'))->assertRedirect();
+        $this->assertNull($offer->refresh()->partner_price_at);
         $this->actingAs($this->alfaMan)->get($this->url('/offers/'.$offer->id))->assertNotFound();
     }
 
@@ -128,7 +133,7 @@ class PartnerTest extends TestCase
         $offer = $this->draft($this->alfa, '0001/046/00005/26');
         $this->actingAs($this->alfaMan)->put($this->url('/offers/'.$offer->id), ['mileage' => '5 000'])->assertRedirectContains('/offers/'.$offer->id);
         $this->actingAs($this->alfaMan)->putJson($this->url('/offers/'.$offer->id), ['value' => '700 000', '_fields' => ['value']])
-            ->assertOk()->assertExactJson(['sent' => true, 'floor' => 770_000]);
+            ->assertOk()->assertExactJson(['priced' => true, 'floor' => 770_000, 'waiting' => 1]);
         $offer->refresh();
         $this->assertSame(770_000, $offer->floor_price);
         $this->assertSame(5_000, (int) $offer->mileage);
@@ -137,6 +142,39 @@ class PartnerTest extends TestCase
         $this->actingAs($this->alfaMan)->putJson($this->url('/offers/'.$bare->id), ['value' => '700 000', '_fields' => ['value']])
             ->assertUnprocessable()->assertJsonValidationErrors('brand_id');
         $this->assertNull($bare->refresh()->floor_price);
+    }
+
+    /**
+     * «Отправить» (08.11.2026, владелец: «автоматически не отправлять»): вписанная цена у поставщика ждёт; его черновик держит
+     * автоматику, пока не отправлено; «Отправить N» — только его вписанные; цена продажи из CRM уводит предложение и гасит
+     * метку.
+     */
+    public function test_prices_wait_for_send(): void
+    {
+        $own = $this->draft($this->alfa, '0001/046/00007/26');
+        $own->forceFill(['created_via' => 'partner'])->save();
+        $second = $this->draft($this->alfa, '0001/046/00008/26');
+        $untouched = $this->draft($this->alfa, '0001/046/00009/26');
+        foreach ([$own, $second] as $o) {
+            $this->actingAs($this->alfaMan)->putJson($this->url('/offers/'.$o->id), ['value' => '700 000', '_fields' => ['value']])->assertOk();
+        }
+        $this->assertTrue($own->refresh()->heldByPartner());
+        $html = $this->actingAs($this->alfaMan)->get($this->url('/offers'))->assertOk()->getContent();
+        $this->assertStringContainsString('data-partner-waiting>2<', $html);
+
+        Queue::fake();
+        $this->actingAs($this->alfaMan)->post($this->url('/offers/send'))->assertRedirect()->assertSessionHas('toast', 'Отправлено: 2');
+        Queue::assertPushed(ReadCarDocs::class);
+        $this->assertFalse($own->refresh()->heldByPartner());
+        $this->assertFalse(\App\Offers\Partner\PartnerOffers::opens($this->alfaMan, $second));
+        $this->assertTrue(\App\Offers\Partner\PartnerOffers::opens($this->alfaMan, $untouched));
+
+        // Наши поставили цену продажи раньше «Отправить» — у поставщика его нет, метка погасла.
+        $third = $this->draft($this->alfa, '0001/046/00011/26');
+        $this->actingAs($this->alfaMan)->putJson($this->url('/offers/'.$third->id), ['value' => '700 000', '_fields' => ['value']])->assertOk();
+        $third->refresh()->update(['asking_price' => 900_000]);
+        $this->assertNull($third->refresh()->partner_price_at);
+        $this->assertFalse(\App\Offers\Partner\PartnerOffers::opens($this->alfaMan, $third));
     }
 
     public function test_find_claim_outcomes(): void

@@ -80,9 +80,10 @@
         <form method="post" action="/offers/{{ $offer->id }}" class="mt-8" data-turbo-confirm="Удалить черновик? Фото и документы удалятся вместе с ним">@csrf @method('delete')<x-ui.button variant="ghost" class="text-danger"><x-ui.icon name="trash" class="size-5"/> Удалить черновик</x-ui.button></form>
     @endif
 
-    {{-- Телефон: кнопка цены — плашкой снизу; на ПК она в панели «Цена». --}}
+    {{-- Телефон: «Сохранить» и «Отправить» — плашкой снизу; на ПК они в панели «Цена». --}}
     <x-ui.action-bar class="md:hidden">
-        <button type="submit" form="partner-offer" class="btn btn-accent min-w-0 flex-1" data-value-floor-target="button" data-idle="Сохранить" data-ready="Отправить цену">Сохранить</button>
+        <button type="submit" form="partner-offer" class="btn btn-quiet min-w-0 flex-1">Сохранить</button>
+        <button type="submit" form="partner-offer" name="then" value="send" class="btn btn-accent min-w-0 flex-1" data-value-floor-target="button" hidden>Отправить</button>
     </x-ui.action-bar>
     </div>
 </x-ui.shell>

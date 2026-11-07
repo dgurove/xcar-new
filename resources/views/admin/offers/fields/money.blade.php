@@ -43,7 +43,8 @@
         {{-- Закупочная и цена продажи — рядом (19.10.2026, владелец: «компактнее»). --}}
         <div class="grid grid-cols-2 gap-2">
             <div @class(['field', 'field-invalid' => $errors->has('floor_price'), 'col-span-2' => ! $admin || $garageOnly])>
-                <label for="{{ $idp }}floor" class="field-label">Закупочная, ₽</label>
+                {{-- Поставщик вписал, но не отправил (08.11.2026, `partner_price_at`) — цену у себя он ещё может поправить. --}}
+                <label for="{{ $idp }}floor" class="field-label">Закупочная, ₽@if ($offer->partner_price_at) <span class="text-ink-dim">· у поставщика</span>@endif</label>
                 <input type="text" id="{{ $idp }}floor" name="floor_price" @if ($form) form="{{ $form }}" @endif @if ($now) data-save-own @endif inputmode="decimal" autocomplete="off" enterkeyhint="{{ $admin ? 'next' : 'go' }}" class="{{ $input }} {{ $now === 'floor' ? $ring : '' }}"
                     data-controller="digits" data-action="input->digits#format" data-value-floor-target="floor" value="{{ old('floor_price', $offer->floor_price ? \App\Support\Money::nums($offer->floor_price) : '') }}"
                     @if ($now === 'floor' && ! $valued) data-detail-focus @endif>

@@ -1,22 +1,20 @@
 import { Controller } from '@hotwired/stimulus';
-import { floorFrom, markup } from '../lib/floor';
+import { floorFrom } from '../lib/floor';
 import { nums, rub, rubles } from '../lib/money';
 
 // Оценочная → закупочная прямо в форме, по правилу сервера (`Offers\Pricing`, ступени — значением `rules`). Закупочная
 // пересчитывается, только пока она пустая или посчитана от прежней оценочной — вписанную рукой не трогаем. Ступени
 // предложения правят диапазоны (x-offer.floor-rules, событие floor-rules:change — `rules`). Закупочная бывает и не полем,
-// а итогом (`result`, у партнёра): тогда она всегда по ступеням. У партнёра ещё (08.11.2026): `rule` — наценка ступени, где
-// лежит оценочная («+10%»; пусто — все диапазоны строкой с сервера), `button` — подпись кнопки «Отправить цену» / «Сохранить»
-// (`data-ready` / `data-idle`): цена уходит, только когда оценочная вписана.
+// а итогом (`result`, у партнёра): тогда она всегда по ступеням. У партнёра ещё (08.11.2026): `button` — «Отправить»: видна,
+// только когда оценочная вписана.
 
 export default class extends Controller {
-    static targets = ['value', 'floor', 'result', 'rule', 'button'];
+    static targets = ['value', 'floor', 'result', 'button'];
     static values = { rules: Array };
 
     // Оценочной в форме может не быть (не Альфа, или она сверху карточки) — тогда считать нечего.
     connect() {
         this.was = this.hasValueTarget ? (rubles(this.valueTarget.value) ?? 0) : 0;
-        this.ruleIdle = this.hasRuleTarget ? this.ruleTarget.textContent : '';
         this.show();
     }
 
@@ -46,7 +44,6 @@ export default class extends Controller {
         if (!this.hasValueTarget) return;
         const value = rubles(this.valueTarget.value) ?? 0;
         if (this.hasResultTarget) this.resultTarget.textContent = value ? rub(floorFrom(value, this.rulesValue)) : '';
-        if (this.hasRuleTarget) this.ruleTarget.textContent = value ? markup(value, this.rulesValue, rub).replace('%', ' %') : this.ruleIdle;
-        this.buttonTargets.forEach((b) => { b.textContent = value ? b.dataset.ready : b.dataset.idle; });
+        this.buttonTargets.forEach((b) => { b.hidden = !value; });
     }
 }

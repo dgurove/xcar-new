@@ -46,8 +46,7 @@
                 {{-- Диапазоны наценки к оценочной (07.11.2026): умолчание предложений вендора — поставщик на partner.xcar.ru
                      правит их у каждого своего предложения. --}}
                 <div class="flex flex-col gap-1.5">
-                    <span class="field-label">Диапазоны наценки к оценочной</span>
-                    <x-offer.floor-rules :rules="\App\Offers\Pricing::rulesFor($vendor)" :default="$vendor->floor_by_value ? \App\Offers\Pricing::RULES : \App\Offers\Pricing::FLAT" id="vendor-floor-rules"/>
+                    <x-offer.floor-rules :rules="\App\Offers\Pricing::rulesFor($vendor)" :default="$vendor->floor_by_value ? \App\Offers\Pricing::RULES : \App\Offers\Pricing::FLAT" id="vendor-floor-rules" label="Наценка к оценочной"/>
                     @error('floor_rules')<span class="field-error">{{ $message }}</span>@enderror
                 </div>
                 <x-ui.check name="to_gallery" :checked="$vendor->to_gallery">Черновики в галерею на {{ config('xcar.gallery_days') }} дня</x-ui.check>

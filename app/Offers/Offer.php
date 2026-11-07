@@ -145,6 +145,16 @@ class Offer extends Model
         });
         // Продажа кончилась (в архив, снята) — в истории ТС парковки «Снята с продажи»; машина и её файлы — у машины,
         // парковку это не трогает (владелец 05.10.2026: «удаление предложения отменяет продажу, а парковку не трогает»).
+        // Цена поставщика вписана, но не отправлена (`partner_price_at`, 08.11.2026), а наши уже двинули черновик (цена продажи,
+        // слот, выставили, архив): у поставщика его больше нет — метка гаснет, и автоматика, что ждала его «Отправить», идёт сама.
+        static::saved(function (self $o) {
+            if ($o->partner_price_at && $o->wasChanged(['state', 'asking_price', 'slot_at', 'vendor_id'])
+                && ! \App\Offers\Partner\PartnerOffers::listed(\App\Offers\Partner\PartnerOffers::eligible(self::whereKey($o->id)))->exists()) {
+                $held = $o->created_via === 'partner';
+                $o->forceFill(['partner_price_at' => null])->saveQuietly();
+                DB::afterCommit(fn () => \App\Offers\Partner\Handover::after($o, $held));
+            }
+        });
         static::saved(function (self $o) {
             if ($o->wasChanged('state') && in_array($o->state, [OfferState::Archived, OfferState::Cancelled], true)) {
                 Sale::end($o);
@@ -210,6 +220,7 @@ class Offer extends Model
             'garage_allowed' => 'bool',
             'audience_rules' => 'array',
             'floor_rules' => 'array',
+            'partner_price_at' => 'datetime',
             'published_at' => 'datetime',
             'bids_close_at' => 'datetime',
             'first_look_until' => 'datetime',
