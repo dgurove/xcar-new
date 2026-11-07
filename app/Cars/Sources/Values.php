@@ -282,6 +282,58 @@ final class Values
         };
     }
 
+    /**
+     * Все значения источников машины по полям — и отклонённые (08.11.2026, владелец: «выбрали — остальные не стирать, чтобы
+     * при правке поля можно было выбрать другой, если нажал не то»): подсказки в полях правки (`x-car.source-values`).
+     * Одинаковые склеены (`same`), у каждого — что записать, подпись и откуда. Один запрос на машину за запрос (`once`).
+     *
+     * @return array<string, list<array{key: string, label: string, write: array, from: string}>>
+     */
+    public static function known(int $carId): array
+    {
+        return once(function () use ($carId) {
+            $out = [];
+            foreach (\Illuminate\Support\Facades\DB::table('car_values')->where('car_id', $carId)->orderBy('id')->get()->groupBy('field') as $field => $rows) {
+                $items = [];
+                foreach ($rows as $row) {
+                    $at = collect(array_keys($items))->first(fn ($k) => self::same($field, (string) $k, $row->key)) ?? $row->key;
+                    $items[$at] ??= ['key' => $row->key, 'label' => $row->label, 'write' => json_decode($row->write, true), 'titles' => []];
+                    $items[$at]['titles'][] = $row->title;
+                }
+                $items = array_map(fn ($i) => $i + ['from' => self::from($i['titles'])], array_values($items));
+                $out[$field] = $field === 'city' ? self::places($items) : $items;
+            }
+
+            return $out;
+        });
+    }
+
+    /** Откуда коротко, для узких мест: «Мигторг 815720, оценка ГОТС». */
+    public static function from(array $titles): string
+    {
+        return str_replace('Мигторг, лот ', 'Мигторг ', implode(', ', array_unique($titles)));
+    }
+
+    /**
+     * Одноимённые города — с регионом словами (08.11.2026, владелец о «Донецк, 61» и «Донецк, 80»: «лол не понял» — код
+     * региона ничего не говорит): у подписей, чьи названия совпадают, — «Донецк · Рост. обл.» и «Донецк · ДНР»
+     * (`regions.short`), прочие — как были. Ключ города — id места. @param list<array{key: string, label: string}> $items
+     * @return list<array>
+     */
+    public static function places(array $items): array
+    {
+        $places = Settlement::with('region:id,short,name')->whereIn('id', array_map(fn ($i) => (int) $i['key'], $items))->get()->keyBy('id');
+        $names = array_count_values(array_filter(array_map(fn ($i) => $places[(int) $i['key']]->name ?? null, $items)));
+        foreach ($items as &$item) {
+            $place = $places[(int) $item['key']] ?? null;
+            if ($place && ($names[$place->name] ?? 0) > 1 && ($region = $place->region?->short ?: $place->region?->name)) {
+                $item['label'] = $place->name.' · '.$region;
+            }
+        }
+
+        return $items;
+    }
+
     /** Колонка машины поля в форме дорожки (`brand_id`, у продажи тип и т. п.). */
     public static function columns(string $field): array
     {

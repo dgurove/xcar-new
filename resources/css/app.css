@@ -2467,6 +2467,10 @@ html.kb-open { --home-gap: 0px; }
      откуда — ссылками под значением. */
   .variant-hint { @apply mt-0.5 inline-flex self-start max-w-full items-center gap-0.5 text-left text-sm font-medium; color: var(--color-urgent); }
   span.variant-hint { @apply mt-0 inline; }
+  /* Значения источников под полем правки (`x-car.source-values`, 08.11.2026): видны при фокусе, строками подсказок справочника
+     — в потоке формы, не поверх соседних полей. */
+  .source-values { @apply mt-1 flex flex-col rounded-(--radius-m) bg-surface-2 p-1; }
+  .source-values[hidden] { display: none; }
   .variant-option { @apply items-center gap-3 py-3; }
   /* «Парсинг» (`admin/parsing`, 08.11.2026, владелец: «по одной тачке на экран — пипец», «полосы не нужны»): машина —
      карточка без линий, шапка одной строкой (места — ссылками справа, на телефоне — второй строкой), поле — строка сетки:

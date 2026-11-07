@@ -170,6 +170,44 @@ class CarSourcesTest extends TestCase
         $this->assertCount(2, $pts['options'][0]['sources']);
     }
 
+    /** «Донецк, 61» и «Донецк, 80» — разные города: подписи с регионом словами (08.11.2026, владелец: «лол не понял»). */
+    public function test_same_name_cities_show_region(): void
+    {
+        $place = function (string $plate, string $region, string $short) {
+            $r = \App\Cars\Region::firstOrCreate(['plate' => $plate], ['oktmo' => 'T'.$plate, 'name' => $region, 'short' => $short, 'match' => mb_strtolower($region)]);
+
+            return \App\Cars\Settlement::create(['name' => 'Донецк', 'type' => 'город', 'region_code' => $plate, 'region_id' => $r->id, 'rank' => 1]);
+        };
+        $rostov = $place('61', 'Ростовская область', 'Рост. обл.');
+        $dnr = $place('80', 'Донецкая Народная Республика', 'ДНР');
+        $this->offer->forceFill(['settlement_id' => $rostov->id])->save();
+        DB::table('car_values')->insert(['car_id' => $this->offer->car_id, 'field' => 'city', 'source' => 'migtorg', 'source_id' => '1', 'title' => 'Мигторг, лот 816957',
+            'write' => json_encode(['settlement_id' => $dnr->id]), 'key' => (string) $dnr->id, 'label' => 'Донецк, 80', 'created_at' => now()]);
+        $city = Variants::for($this->offer->fresh()->carRecord(), $this->offer->fresh())['city'];
+        $this->assertSame('Донецк · Рост. обл.', $city['current']['label']);
+        $this->assertSame('Донецк · ДНР', $city['options'][0]['label']);
+    }
+
+    /** Выбрали вариант — проигравший остаётся подсказкой в поле; правка поля человеком гасит спор. */
+    public function test_known_keeps_losers_and_human_edit_settles(): void
+    {
+        $this->value('color', 'Черный', 'migtorg', '1', 'Мигторг, лот 5');
+        $this->value('color', 'Серый', 'doc', '2', 'ПТС');
+        $this->assertArrayHasKey('color', Variants::for($this->offer->carRecord(), $this->offer));
+
+        // Человек вписал «Серый» формой — спор погас, «Черный» и «Белый» отклонены, но подсказки целы.
+        app(UpdateOffer::class)($this->offer, ['color' => 'Серый'], $this->admin);
+        $offer = $this->offer->fresh();
+        $this->assertArrayNotHasKey('color', Variants::for($offer->carRecord(), $offer));
+        $this->assertSame(0, $offer->carRecord()->fresh()->value_conflicts);
+        $this->assertSame(['Черный', 'Серый'], array_column(Values::known($offer->car_id)['color'], 'label'));
+        $this->assertSame('Мигторг 5', Values::known($offer->car_id)['color'][0]['from']);
+
+        // Новое третье значение — снова спор.
+        $this->value('color', 'Зеленый', 'doc', '3', 'СТС');
+        $this->assertSame(['Зеленый'], array_column(Variants::for($offer->carRecord(), $offer)['color']['options'], 'label'));
+    }
+
     public function test_unwritable_is_no_variant(): void
     {
         $other = Offer::create(['vendor_id' => $this->offer->vendor_id]);

@@ -33,6 +33,10 @@ final class UpdateVehicle
         if (! $changed) {
             return $vehicle;
         }
+        // Человек поменял поле, о котором говорят источники, — его выбор гасит спор (`Pick::settle`).
+        if ($by) {
+            app(\App\Cars\Sources\Pick::class)->settle($vehicle, $changed, $by);
+        }
         // Номер и VIN — у машины: у её продажи письма и лот Мигторга по новому номеру, как при правке из CRM.
         if ($offer = $vehicle->offer) {
             UpdateOffer::identityChanged($offer, array_keys($vehicle->carRecord()->getChanges()));

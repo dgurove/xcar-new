@@ -64,7 +64,13 @@ final class Variants
             // Пустое поле с одним согласным вариантом — не спор: его вписывает `Pick::fillEmpty`.
             $disputed = $current ? (bool) $options : count($options) > 1;
             if ($disputed) {
-                $out[$field] = ['field' => $field, 'label' => Values::title($field), 'current' => $current, 'options' => array_values($options)];
+                $options = array_values($options);
+                // Одноимённые города — с регионом словами (`Values::places`).
+                if ($field === 'city') {
+                    $named = Values::places([...($current ? [$current] : []), ...$options]);
+                    [$current, $options] = $current ? [array_shift($named), $named] : [null, $named];
+                }
+                $out[$field] = ['field' => $field, 'label' => Values::title($field), 'current' => $current, 'options' => $options];
             }
         }
 
@@ -78,12 +84,19 @@ final class Variants
      */
     public static function visible(Offer|Vehicle|null $lane, array $fields): array
     {
-        $user = auth()->user();
-        if (! $lane?->exists || ! $user || ! ($lane instanceof Offer ? $lane->isEditableBy($user) : $user->canManagePark())) {
+        if (! self::can($lane)) {
             return [];
         }
 
         return array_intersect_key(self::for($lane->carRecord(), $lane), array_flip($fields));
+    }
+
+    /** Правит ли вошедший машину дорожки: продажу — дверь `offer.edit`, ТС — `canManagePark`. */
+    public static function can(Offer|Vehicle|null $lane): bool
+    {
+        $user = auth()->user();
+
+        return $lane?->exists && $user && ($lane instanceof Offer ? $lane->isEditableBy($user) : $user->canManagePark());
     }
 
     /** Отклонён ли вариант — и с шумом распознавания (отклонили «16 OP» — «16 OR» тоже не встаёт). */

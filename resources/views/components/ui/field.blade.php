@@ -1,8 +1,8 @@
-{{-- copy — иконка внутри поля справа: кладёт в буфер то, что сейчас введено (госномер, ПТС). Слот suffix — своё
+{{-- notes — к подписи опции выбора дописано откуда («Механическая · Мигторг», значения источников машины). copy — иконка внутри поля справа: кладёт в буфер то, что сейчас введено (госномер, ПТС). Слот suffix — своё
      внутри поля справа вместо неё (номер убытка — значок Мигторга, x-offer.migtorg-field).
      required — звёздочка у подписи; без поля сервер не сохранит (атрибута required нет: поле в свёрнутом блоке
      браузер не покажет, и форма молча не уйдёт). --}}
-@props(['name', 'label' => null, 'type' => 'text', 'value' => null, 'options' => null, 'placeholder' => null, 'afterLabel' => null, 'span' => null, 'copy' => false, 'required' => false, 'digits' => false])
+@props(['name', 'label' => null, 'type' => 'text', 'value' => null, 'options' => null, 'placeholder' => null, 'afterLabel' => null, 'span' => null, 'copy' => false, 'required' => false, 'digits' => false, 'notes' => []])
 @php
     $id = $attributes->get('id', 'f-'.str_replace(['[', ']'], ['-', ''], $name));
     // Поле набора (`rows[0][price]`): ошибки и old() лежат под точками — иначе строка лестницы прайса
@@ -62,7 +62,7 @@
         <select id="{{ $id }}" name="{{ $name }}" {{ $attributes->except('id')->merge(['class' => 'field-input'] + $wiring) }}>
             @if ($placeholder)<option value="">{{ $placeholder }}</option>@endif
             @foreach ($options as $optValue => $optLabel)
-                <option value="{{ $optValue }}" @selected((string) $bound === (string) $optValue)>{{ $optLabel }}</option>
+                <option value="{{ $optValue }}" @selected((string) $bound === (string) $optValue)>{{ $optLabel }}{{ isset($notes[$optValue]) ? ' · '.$notes[$optValue] : '' }}</option>
             @endforeach
         </select>
     @elseif ($type === 'textarea')

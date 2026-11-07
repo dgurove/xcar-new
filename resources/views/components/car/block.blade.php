@@ -44,6 +44,28 @@
         'specs' => ['body', 'transmission', 'drive', 'fuel', 'engine_volume', 'engine_power']][$block] ?? [];
     $variants = $variantFields ? \App\Cars\Sources\Variants::visible($lane, $variantFields) : [];
     $hintOf = fn (string $c) => $variants[$c === 'model_id' ? 'car' : $c] ?? null;
+    // Значения источников в полях правки — и выбранные раньше, и отклонённые (`Values::known`, 08.11.2026): ошибся
+    // выбором — другой вариант под рукой. Что уже в поле — не предлагается.
+    $known = $lane && $car && \App\Cars\Sources\Variants::can($lane) ? \App\Cars\Sources\Values::known($car->id) : [];
+    $others = function (string $c) use ($known, $lane) {
+        $f = $c === 'model_id' ? 'car' : $c;
+        if (empty($known[$f])) {
+            return [];
+        }
+        $now = \App\Cars\Sources\Values::current($lane, $f)['key'] ?? null;
+
+        return array_values(array_filter($known[$f], fn ($i) => $now === null || ! \App\Cars\Sources\Values::same($f, (string) $i['key'], $now)));
+    };
+    $sourcesOf = fn (string $c) => array_map(fn ($i) => ['value' => $c === 'engine_volume' ? Liters::format((int) ($i['write']['engine_volume'] ?? 0)) : (string) ($i['write'][$c] ?? ''),
+        'label' => $i['label'], 'from' => $i['from']], $others($c));
+    $notesOf = fn (string $c) => collect($others($c))->mapWithKeys(fn ($i) => [(string) ($i['write'][$c] ?? '') => $i['from']])->all();
+    // Марка и модель — первыми в списках справочников; модель без справочника (новая) — только «Парсингом» и шторкой.
+    $carOptions = array_values(array_filter($others('model_id'), fn ($i) => ! empty($i['write']['brand_id'])));
+    $brandNames = $carOptions ? \App\Cars\Brand::whereIn('id', array_column(array_column($carOptions, 'write'), 'brand_id'))->pluck('name', 'id') : collect();
+    $modelNames = $carOptions ? \App\Cars\CarModel::whereIn('id', array_filter(array_map(fn ($i) => $i['write']['model_id'] ?? null, $carOptions)))->pluck('name', 'id') : collect();
+    $brandPinned = collect($carOptions)->unique(fn ($i) => $i['write']['brand_id'])->map(fn ($i) => ['id' => $i['write']['brand_id'], 'label' => $brandNames[$i['write']['brand_id']] ?? '', 'hint' => $i['from']])->filter(fn ($p) => $p['label'] !== '')->values()->all();
+    $modelPinned = collect($carOptions)->filter(fn ($i) => isset($modelNames[$i['write']['model_id'] ?? 0]))->map(fn ($i) => ['id' => $i['write']['model_id'], 'label' => $modelNames[$i['write']['model_id']], 'hint' => $i['from'],
+        'brand' => ['id' => $i['write']['brand_id'], 'label' => $brandNames[$i['write']['brand_id']] ?? '']])->values()->all();
     $cells = collect($columns)->mapWithKeys(fn ($c) => [$c => $text($c)])->filter(fn ($v, $c) => ($v !== null && $v !== '') || $hintOf($c));
     // ПТС с пятнадцатью цифрами — электронный.
     $ptsLabel = fn ($v) => preg_match('/^\d{15}$/', preg_replace('/\s+/', '', (string) $v)) ? 'ЭПТС' : 'ПТС';
@@ -97,26 +119,26 @@
                         @if ($sale)
                             <x-slot:after-label><x-ui.eye-check name="show_vin" :checked="$lane->show_vin"/></x-slot:after-label>
                         @endif
-                        <x-slot:hint><x-car.variant-hint :v="$hintOf($c)" :car="$car?->id"/></x-slot:hint>
+                        <x-slot:hint><x-car.variant-hint :v="$hintOf($c)" :car="$car?->id"/><x-car.source-values :items="$sourcesOf($c)"/></x-slot:hint>
                     </x-ui.vin>
                     {{-- Такая ТС уже есть — строками под полями сразу при вводе (`twins_controller` у `x-car.blocks`). --}}
                     <div class="col-span-full flex flex-col gap-2 empty:hidden" data-twins-target="box"></div>
                     @break
                 @case ('brand')
-                    <x-cars.brand-model :brand-id="$raw('brand_id')" :brand-text="$brand?->name" :model-id="$raw('model_id')" :model-text="$model?->name" :required="$req('brand_id')">
+                    <x-cars.brand-model :brand-id="$raw('brand_id')" :brand-text="$brand?->name" :model-id="$raw('model_id')" :model-text="$model?->name" :required="$req('brand_id')" :brand-pinned="$brandPinned" :model-pinned="$modelPinned">
                         <x-slot:hint><x-car.variant-hint :v="$hintOf('model_id')" :car="$car?->id"/></x-slot:hint>
                     </x-cars.brand-model>
                     @break
                 @case ('model')
                     @break
                 @case ('enum')
-                    <x-ui.field :name="$name($c)" :label="CarFields::label($c)" :options="CarFields::enum($c)::options()" placeholder="—" :value="$raw($c) instanceof \BackedEnum ? $raw($c)->value : $raw($c)">
+                    <x-ui.field :name="$name($c)" :label="CarFields::label($c)" :options="CarFields::enum($c)::options()" placeholder="—" :value="$raw($c) instanceof \BackedEnum ? $raw($c)->value : $raw($c)" :notes="$notesOf($c)">
                         <x-slot:hint><x-car.variant-hint :v="$hintOf($c)" :car="$car?->id"/></x-slot:hint>
                     </x-ui.field>
                     @break
                 @case ('liters')
                     <x-ui.field :name="$c" :label="CarFields::label($c)" placeholder="1,6" :value="Liters::format($raw($c))">
-                        <x-slot:hint><x-car.variant-hint :v="$hintOf($c)" :car="$car?->id"/></x-slot:hint>
+                        <x-slot:hint><x-car.variant-hint :v="$hintOf($c)" :car="$car?->id"/><x-car.source-values :items="$sourcesOf($c)"/></x-slot:hint>
                     </x-ui.field>
                     @break
                 @case ('tel')
@@ -132,7 +154,7 @@
                         </x-ui.field>
                     @else
                         <x-ui.field :name="$name($c)" :label="CarFields::label($c)" :value="$raw($c)" :digits="CarFields::kind($c) === 'digits'" :copy="CarFields::kind($c) === 'code'" :required="$req($c)">
-                        <x-slot:hint><x-car.variant-hint :v="$hintOf($c)" :car="$car?->id"/></x-slot:hint>
+                        <x-slot:hint><x-car.variant-hint :v="$hintOf($c)" :car="$car?->id"/><x-car.source-values :items="$sourcesOf($c)"/></x-slot:hint>
                     </x-ui.field>
                     @endif
             @endswitch

@@ -13,6 +13,10 @@
     }
     // Спор об оценочной (`Cars\Sources\Variants`) — меткой у поля.
     $variant = \App\Cars\Sources\Variants::visible($vehicle, ['value'])['value'] ?? null;
+    // Оценочные из источников — под полем (и выбранные раньше, и отклонённые: `Values::known`).
+    $valueSources = $vehicle && \App\Cars\Sources\Variants::can($vehicle) ? collect(\App\Cars\Sources\Values::known($vehicle->car_id)['value'] ?? [])
+        ->reject(fn ($i) => (int) ($i['write']['value'] ?? 0) === (int) $value)
+        ->map(fn ($i) => ['value' => (string) $i['write']['value'], 'label' => $i['label'], 'from' => $i['from']])->values()->all() : [];
     $empty = $value === null && ! $variant && ($vehicle?->storage_rate === null || ! $rate);
 @endphp
 <x-car.card title="Хранение" :fold="$fold" :empty="$empty">
@@ -35,7 +39,7 @@
     </x-slot:view>
     <div class="grid grid-cols-2 gap-3 @4xl:grid-cols-3">
         <x-ui.field digits name="value" label="Оценочная стоимость, ₽" :value="$value">
-            <x-slot:hint><x-car.variant-hint :v="$variant" :car="$vehicle?->car_id"/></x-slot:hint>
+            <x-slot:hint><x-car.variant-hint :v="$variant" :car="$vehicle?->car_id"/><x-car.source-values :items="$valueSources"/></x-slot:hint>
         </x-ui.field>
         @if ($rate)
             <x-ui.field name="storage_rate" label="Своя ставка, ₽/сут"

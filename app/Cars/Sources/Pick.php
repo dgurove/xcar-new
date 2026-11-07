@@ -115,6 +115,30 @@ final class Pick
     }
 
     /** @param  iterable<string>  $keys */
+    /**
+     * Человек сам поменял поле формой (выбрал из подсказки источников или вписал) — это и есть выбор: отклонения поля
+     * забываются, остальные значения источников отклоняются, спор гаснет (08.11.2026). Новое третье — снова спор.
+     * Подсказки в поле остаются: `Values::known` читает и отклонённые. @param list<string> $columns что поменялось
+     */
+    public function settle(Offer|Vehicle $lane, array $columns, User $by): void
+    {
+        $fields = array_keys(array_filter(Values::FIELDS, fn ($f) => array_intersect($f[1], $columns)));
+        if (! $fields) {
+            return;
+        }
+        $car = $lane->carRecord();
+        $rows = DB::table('car_values')->where('car_id', $car->id)->whereIn('field', $fields)->get(['field', 'key'])->groupBy('field');
+        if ($rows->isEmpty()) {
+            return;
+        }
+        foreach ($rows as $field => $group) {
+            $now = Values::current($lane, $field)['key'] ?? null;
+            Rejections::forget(Rejections::car($car->id), Variants::REJECT, $field);
+            $this->reject($car, $field, $group->pluck('key')->unique()->reject(fn ($k) => $now !== null && Values::same($field, (string) $k, $now)), $by);
+        }
+        Variants::recount($car->refresh());
+    }
+
     private function reject(Car $car, string $field, iterable $keys, User $by): void
     {
         foreach ($keys as $key) {

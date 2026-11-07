@@ -102,6 +102,10 @@ final class UpdateOffer
         // Кто вписал поля машины (`Car::stamp`): стёртое человеком источник не заполняет снова.
         $offer->relationLoaded('car') && $offer->getRelation('car')?->stamp($by, $log);
         $offer->save();
+        // Человек поменял поле, о котором говорят источники, — его выбор гасит спор (`Pick::settle`).
+        if ($by && $changed) {
+            app(\App\Cars\Sources\Pick::class)->settle($offer, $changed, $by);
+        }
         if (array_intersect(['audience_rules', 'vendor_id'], $changed)) {
             app(SyncViewers::class)($offer);
             app(NotifyViewers::class)($offer, live: true);

@@ -9,7 +9,7 @@ import { getJson, post } from '../lib/http';
 // значение уходит параметром (модель зависит от марки).
 export default class extends Controller {
     static targets = ['input', 'hidden', 'list'];
-    static values = { url: String, create: String, depends: String, resets: String, param: { type: String, default: 'brand' } };
+    static values = { url: String, create: String, depends: String, resets: String, param: { type: String, default: 'brand' }, pinned: Array };
 
     connect() {
         this.later = debounce(() => this.load(), 150);
@@ -36,6 +36,7 @@ export default class extends Controller {
     }
 
     search() {
+        this.typed = true;
         const had = this.hiddenTarget.value !== '';
         this.hiddenTarget.value = '';
         if (had) this.hiddenTarget.dispatchEvent(new Event('change', { bubbles: true }));
@@ -58,6 +59,14 @@ export default class extends Controller {
     }
 
     render(items, q) {
+        // Значения источников машины (`pinned`, 08.11.2026) — первыми, по совпадению с набранным; справочник — за ними без них.
+        if (this.pinnedValue.length) {
+            // Фильтр — только по набранному: при фокусе в поле стоит текущее значение, по нему варианты бы и пропали.
+            const ql = this.typed ? q.toLowerCase() : '';
+            const pins = this.pinnedValue.filter((p) => !ql || p.label.toLowerCase().includes(ql));
+            const ids = new Set(pins.map((p) => String(p.id)));
+            items = [...pins, ...items.filter((i) => !ids.has(String(i.id)))];
+        }
         const exact = items.some((i) => i.label.toLowerCase() === q.toLowerCase());
         this.listTarget.innerHTML = '';
         for (const item of items) this.listTarget.append(this.option(item.label, item.hint, () => this.choose(item)));
@@ -89,6 +98,17 @@ export default class extends Controller {
     }
 
     choose(item) {
+        this.typed = false;
+        // Модель из источника другой марки — и марка её (без сброса модели: её ставим следом).
+        if (item.brand) {
+            const box = this.near('#cb-brand_id');
+            const hidden = box?.querySelector('[name=brand_id]');
+            if (hidden && hidden.value !== String(item.brand.id)) {
+                hidden.value = item.brand.id;
+                box.querySelector('.field-input').value = item.brand.label;
+                hidden.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+        }
         this.inputTarget.value = item.label;
         this.hiddenTarget.value = item.id;
         this.close();
@@ -186,6 +206,7 @@ export default class extends Controller {
     }
 
     close() {
+        this.typed = false;
         const list = this.listTarget;
         list.hidden = true;
         list.classList.remove('is-inline');

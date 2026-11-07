@@ -12,6 +12,11 @@
     $grid = $as === 'card' ? 'grid grid-cols-2 gap-3 @4xl:grid-cols-3' : 'grid grid-cols-[repeat(2,minmax(0,1fr))] gap-x-2 gap-y-2.5';
     // Спор о городе (`Cars\Sources\Variants`) — меткой у поля «Город».
     $city = \App\Cars\Sources\Variants::visible($offer, ['city'])['city'] ?? null;
+    // Города из источников — первыми в списке поля (и выбранные раньше, и отклонённые: `Values::known`).
+    $cityNow = $offer->settlement_id;
+    $cityPinned = \App\Cars\Sources\Variants::can($offer) ? collect(\App\Cars\Sources\Values::known($offer->car_id)['city'] ?? [])
+        ->reject(fn ($i) => (int) ($i['write']['settlement_id'] ?? 0) === (int) $cityNow)
+        ->map(fn ($i) => ['id' => $i['write']['settlement_id'], 'label' => $i['label'], 'hint' => $i['from']])->values()->all() : [];
     $empty = ! $offer->settlement_id && ! $city && ! filled($offer->inspection_address) && $description === '';
 @endphp
 <x-car.card title="Осмотр" :fold="$fold" :empty="$empty" :as="$as">
@@ -34,7 +39,7 @@
         @endunless
     </x-slot:view>
     <div class="{{ $grid }}">
-        <x-ui.combobox name="settlement_id" label="Город" url="/reference/settlements" create="/reference/settlements" :value="$offer->settlement_id" :text="$offer->settlement?->title()">
+        <x-ui.combobox name="settlement_id" label="Город" url="/reference/settlements" create="/reference/settlements" :value="$offer->settlement_id" :text="$offer->settlement?->title()" :pinned="$cityPinned">
             <x-slot:hint><x-car.variant-hint :v="$city" :car="$offer->car_id"/></x-slot:hint>
         </x-ui.combobox>
         <x-ui.field name="inspection_address" label="Адрес осмотра" :value="$offer->inspection_address" span="col-span-2">
