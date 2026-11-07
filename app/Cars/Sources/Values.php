@@ -51,6 +51,12 @@ final class Values
     /** Латиница, похожая на кириллицу госномера: «A123BC77» и «А123ВС77» — один номер. */
     private const PLATE = ['A' => 'А', 'B' => 'В', 'E' => 'Е', 'K' => 'К', 'M' => 'М', 'H' => 'Н', 'O' => 'О', 'P' => 'Р', 'C' => 'С', 'T' => 'Т', 'Y' => 'У', 'X' => 'Х'];
 
+    /** Кириллица, похожая на латиницу, в имени модели строчными: «С 180» и «C-Класс» — одна «c». */
+    private const LATIN = ['а' => 'a', 'в' => 'b', 'е' => 'e', 'к' => 'k', 'м' => 'm', 'н' => 'h', 'о' => 'o', 'р' => 'p', 'с' => 'c', 'т' => 't', 'у' => 'y', 'х' => 'x'];
+
+    /** Цвета одним словом: «Серебряный» и «Серебристый» — один; хвост «металлик» спора не делает. */
+    private const COLOR_WORDS = ['серебряный' => 'серебристый', 'серебро' => 'серебристый', 'серебр' => 'серебристый', 'графит' => 'графитовый', 'металлик' => '', 'перламутр' => '', 'матовый' => ''];
+
     /**
      * Поля источника (вид `FillCar`: поле → ['value' => …, 'region' => …]) — в значения по полям `FIELDS`.
      * Модель, которой нет в справочнике, — вариант с её именем (`model_name`), заводится при записи; `$newModels` false —
@@ -95,41 +101,84 @@ final class Values
         return self::row($field, $write);
     }
 
-    /** Одно ли это значение: марка без модели совпадает с той же маркой с любой моделью. */
+    /**
+     * Одно ли это значение (08.11.2026, на проде 114 машин со спорами, треть — шум распознавания): та же модель другими
+     * словами, VIN или ПТС с ошибкой OCR в знаке, «Серебряный» и «Серебристый», 3 713 и 3 700 км. Такое — не спор: вариант
+     * склеивается с текущим значением (или с другим вариантом), а не встаёт на выбор.
+     */
     public static function same(string $field, string $a, string $b): bool
     {
         if ($a === $b) {
             return true;
         }
-        if ($field === 'car') {
-            [$ab, $am] = explode(':', $a, 2) + [1 => null];
-            [$bb, $bm] = explode(':', $b, 2) + [1 => null];
-            if ($ab !== $bb) {
-                return false;
-            }
-            if ($am === null || $bm === null) {
-                return true;
-            }
-            // Модель по имени («n…» — новая, «m…» — справочника): одно, если слова одной — начало другой без слов марки
-            // («Granta» и «Lada Granta», «Largus» и «Largus универсал», «X5» и «X5 xDrive 30Li» — одна машина; «Tiggo 7» и
-            // «Tiggo 7L» — разные). В справочнике бывают дубли, спором они не становятся.
-            $brand = Brand::find((int) substr($ab, 1));
-            $skip = array_filter(preg_split('/[^\p{L}\d]+/u', mb_strtolower(($brand?->name ?? '').' '.($brand?->name_ru ?? ''))) ?: []);
-            $words = function (string $m) use ($skip) {
-                $name = str_starts_with($m, 'n') ? substr($m, 1) : (string) CarModel::find((int) substr($m, 1))?->name;
 
-                return array_values(array_diff(array_filter(preg_split('/[^\p{L}\d]+/u', mb_strtolower($name)) ?: []), $skip));
-            };
-            [$x, $y] = [$words($am), $words($bm)];
-            if (! $x || ! $y) {
-                return false;
-            }
-            [$short, $long] = count($x) <= count($y) ? [$x, $y] : [$y, $x];
+        return match ($field) {
+            'car' => self::sameCar($a, $b),
+            // VIN из скана: одна-две буквы OCR («LS4…» и «LB4…»); VIN другой машины расходится больше.
+            'vin' => strlen($a) === 17 && strlen($b) === 17 && levenshtein($a, $b) <= 2,
+            // Серия и номер ПТС, СТС — знак OCR («16 OP» и «16 OR»); другой документ расходится больше.
+            'pts', 'sts' => mb_strlen($a) === mb_strlen($b) && self::differs($a, $b) <= 1,
+            'color' => self::within(explode(' ', $a), explode(' ', $b)),
+            // Пробег — округление в документе (3 713 и 3 700): до 1 % или 100 км.
+            'mileage' => is_numeric($a) && is_numeric($b) && abs((int) $a - (int) $b) <= max(100, 0.01 * max((int) $a, (int) $b)),
+            // Объём — десятые литра, соседние — одно (7,7 и 7,8 л: 7 698 и 7 750 см³).
+            'engine_volume' => is_numeric($a) && is_numeric($b) && abs((int) $a - (int) $b) <= 1,
+            default => false,
+        };
+    }
 
-            return array_slice($long, 0, count($short)) === $short;
+    /**
+     * Марка без модели совпадает с той же маркой с любой моделью. Модель по имени («n…» — новая, «m…» — справочника) — одна,
+     * если слова одной есть в другой без слов марки и «класс» («Granta» и «Lada 2190 Granta», «UAZ PROFI» и «Profi»,
+     * «Tank 300» и «Tank GWM 300», «X5» и «X5 xDrive 30Li»), или слитно одна — начало другой с хвостом из цифр
+     * («Аф77 N2 Lj» и «АФ77N2LJ-02»). «Tiggo 7» и «Tiggo 7L», «C5» и «S5» — разные. Дубли справочника спором не становятся.
+     */
+    private static function sameCar(string $a, string $b): bool
+    {
+        [$ab, $am] = explode(':', $a, 2) + [1 => null];
+        [$bb, $bm] = explode(':', $b, 2) + [1 => null];
+        if ($ab !== $bb) {
+            return false;
         }
+        if ($am === null || $bm === null) {
+            return true;
+        }
+        $brand = Brand::find((int) substr($ab, 1));
+        $split = fn (string $t) => array_values(array_filter(preg_split('/[^\p{L}\d]+/u', strtr(mb_strtolower($t), self::LATIN)) ?: [], fn ($w) => $w !== ''));
+        $skip = [...$split(($brand?->name ?? '').' '.($brand?->name_ru ?? '').' '.($brand?->slug ?? '')), 'класс', 'class', 'серия', 'series'];
+        $words = function (string $m) use ($split, $skip) {
+            $name = str_starts_with($m, 'n') ? substr($m, 1) : (string) CarModel::find((int) substr($m, 1))?->name;
 
-        return false;
+            return array_values(array_diff($split($name), $skip));
+        };
+        [$x, $y] = [$words($am), $words($bm)];
+        if (! $x || ! $y) {
+            return false;
+        }
+        if (self::within($x, $y)) {
+            return true;
+        }
+        [$short, $long] = mb_strlen(implode('', $x)) <= mb_strlen(implode('', $y)) ? [implode('', $x), implode('', $y)] : [implode('', $y), implode('', $x)];
+
+        return mb_strlen($short) >= 6 && str_starts_with($long, $short) && ctype_digit(mb_substr($long, mb_strlen($short)));
+    }
+
+    /** Все слова одного — среди слов другого. */
+    private static function within(array $x, array $y): bool
+    {
+        $x = array_filter($x);
+        $y = array_filter($y);
+
+        return $x && $y && (! array_diff($x, $y) || ! array_diff($y, $x));
+    }
+
+    /** Сколько знаков на тех же местах разные. */
+    private static function differs(string $a, string $b): int
+    {
+        $x = mb_str_split($a);
+        $y = mb_str_split($b);
+
+        return count(array_filter(array_keys($x), fn ($i) => $x[$i] !== ($y[$i] ?? null)));
     }
 
     /** @return array{write: array<string, mixed>, key: string, label: string} */
@@ -166,10 +215,22 @@ final class Values
             'plate' => strtr(mb_strtoupper((string) preg_replace('/\s+/u', '', (string) $value)), self::PLATE),
             // Объём — до десятой литра: 1598 и 1600 см³ — оба «1,6 л».
             'engine_volume' => (string) round((int) $value / 100),
-            'pts', 'sts', 'vin' => mb_strtoupper((string) preg_replace('/[\s\-]+/u', '', (string) $value)),
-            'color' => mb_strtolower(trim((string) $value)),
+            // ПТС и СТС — латиница как кириллица: «78 YX» и «78 УХ» — одна серия.
+            'pts', 'sts' => strtr(mb_strtoupper((string) preg_replace('/[\s\-]+/u', '', (string) $value)), self::PLATE),
+            'vin' => mb_strtoupper((string) preg_replace('/[\s\-]+/u', '', (string) $value)),
+            'color' => self::colorKey((string) $value),
             default => (string) $value,
         };
+    }
+
+    /** Цвет словами по порядку без хвостов и с одним именем серебристого: «серый», «черный серый». */
+    private static function colorKey(string $value): string
+    {
+        $words = preg_split('/[\s,]+/u', str_replace('ё', 'е', mb_strtolower(trim($value))), -1, PREG_SPLIT_NO_EMPTY) ?: [];
+        $words = array_filter(array_map(fn ($w) => self::COLOR_WORDS[$w] ?? $w, $words), fn ($w) => $w !== '');
+        sort($words);
+
+        return implode(' ', array_unique($words)) ?: mb_strtolower(trim($value));
     }
 
     /** Марка и модель источника → id справочника; модель источник назвал, а её нет — не вариант (кроме Мигторга). */

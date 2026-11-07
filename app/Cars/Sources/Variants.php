@@ -53,11 +53,13 @@ final class Variants
 
                     continue;
                 }
-                if (in_array($row->key, $rejected[$field] ?? [], true) || self::legacy($legacy, $field, $row->label)) {
+                if (self::rejected($rejected, $field, $row->key) || self::legacy($legacy, $field, $row->label)) {
                     continue;
                 }
-                $options[$row->key] ??= ['key' => $row->key, 'label' => $row->label, 'write' => json_decode($row->write, true), 'sources' => []];
-                $options[$row->key]['sources'][] = $source;
+                // Тот же вариант с шумом распознавания («16 OP» и «16 OR») — к первому, а не вторым на выбор.
+                $key = collect(array_keys($options))->first(fn ($k) => Values::same($field, (string) $k, $row->key)) ?? $row->key;
+                $options[$key] ??= ['key' => $row->key, 'label' => $row->label, 'write' => json_decode($row->write, true), 'sources' => []];
+                $options[$key]['sources'][] = $source;
             }
             // Пустое поле с одним согласным вариантом — не спор: его вписывает `Pick::fillEmpty`.
             $disputed = $current ? (bool) $options : count($options) > 1;
@@ -82,6 +84,18 @@ final class Variants
         }
 
         return array_intersect_key(self::for($lane->carRecord(), $lane), array_flip($fields));
+    }
+
+    /** Отклонён ли вариант — и с шумом распознавания (отклонили «16 OP» — «16 OR» тоже не встаёт). */
+    public static function rejected(array $rejected, string $field, string $key): bool
+    {
+        foreach ($rejected[$field] ?? [] as $no) {
+            if (Values::same($field, (string) $no, $key)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

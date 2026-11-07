@@ -132,6 +132,43 @@ class CarSourcesTest extends TestCase
         $this->assertArrayNotHasKey('car', Variants::for($this->offer->fresh()->carRecord(), $this->offer->fresh()));
     }
 
+    /** Шум распознавания — не спор (08.11.2026, прод: треть из 114 машин со спорами). */
+    public function test_recognition_noise_is_the_same_value(): void
+    {
+        $key = fn (string $field, mixed $value) => Values::of([$field => ['value' => $value]], null, trusted: true)[$field]['key'];
+        $this->assertTrue(Values::same('vin', $key('vin', 'LS4ASE2A3PJ104389'), $key('vin', 'LB4ASE2A3PJ104389')), 'VIN: знак OCR');
+        $this->assertFalse(Values::same('vin', $key('vin', 'LS4ASE2A3PJ104389'), $key('vin', 'XTA21900000000001')));
+        $this->assertTrue(Values::same('pts', $key('pts', '78 УХ 719622'), $key('pts', '78 YX 719622')), 'ПТС латиницей');
+        $this->assertTrue(Values::same('pts', $key('pts', '16 OP 553416'), $key('pts', '16 OR 553416')), 'ПТС: знак OCR');
+        $this->assertFalse(Values::same('sts', $key('sts', '77 43 673235'), $key('sts', '77 36 594660')), 'другой СТС');
+        $this->assertTrue(Values::same('color', $key('color', 'Серебристый'), Values::row('color', ['color' => 'Серебряный'])['key']));
+        $this->assertTrue(Values::same('color', $key('color', 'Серый'), Values::row('color', ['color' => 'Черный серый'])['key']));
+        $this->assertFalse(Values::same('color', $key('color', 'Белый'), $key('color', 'Черный')));
+        $this->assertTrue(Values::same('mileage', $key('mileage', 3713), $key('mileage', 3700)));
+        $this->assertFalse(Values::same('mileage', $key('mileage', 44263), $key('mileage', 44)));
+        $this->assertTrue(Values::same('engine_volume', $key('engine_volume', 7698), $key('engine_volume', 7750)));
+
+        $model = function (string $brand, string $slug, string $name) {
+            $b = Brand::firstOrCreate(['slug' => $slug], ['name' => $brand]);
+
+            return 'b'.$b->id.':m'.CarModel::create(['brand_id' => $b->id, 'slug' => \Str::slug($name).'-'.random_int(1, 99999), 'name' => $name])->id;
+        };
+        $this->assertTrue(Values::same('car', $model('УАЗ', 'uaz', 'UAZ PROFI'), $model('УАЗ', 'uaz', 'Profi')));
+        $this->assertTrue(Values::same('car', $model('Lada', 'lada', '2190 Granta'), $model('Lada', 'lada', 'Granta')));
+        $this->assertTrue(Values::same('car', $model('Tank', 'tank', '300'), $model('Tank', 'tank', 'GWM 300')));
+        $this->assertTrue(Values::same('car', $model('JAC', 'jac', 'Аф77 N2 Lj'), $model('JAC', 'jac', 'АФ77N2LJ-02')));
+        $this->assertFalse(Values::same('car', $model('Chery', 'chery', 'Tiggo 7'), $model('Chery', 'chery', 'Tiggo 7L')));
+        $this->assertFalse(Values::same('car', $model('Omoda', 'omoda', 'C5'), $model('Omoda', 'omoda', 'S5')));
+
+        // Отклонили вариант — тот же с шумом не встаёт.
+        $this->value('pts', '16 OP 553416', 'doc', '1', 'ПТС');
+        $this->value('pts', '16 OR 553416', 'doc', '2', 'Скан ПТС');
+        $this->value('pts', '16 ОР 999999', 'doc', '3', 'Другой ПТС');
+        $pts = Variants::for($this->offer->carRecord(), $this->offer)['pts'];
+        $this->assertCount(2, $pts['options'], 'знак OCR склеен в один вариант');
+        $this->assertCount(2, $pts['options'][0]['sources']);
+    }
+
     public function test_unwritable_is_no_variant(): void
     {
         $other = Offer::create(['vendor_id' => $this->offer->vendor_id]);

@@ -73,7 +73,8 @@ final class Pick
                 if (Values::current($lane, $field) || array_filter($columns, fn ($c) => $car->byHuman($c))) {
                     continue;
                 }
-                $group = $group->reject(fn ($r) => in_array($r->key, $rejected[$field] ?? [], true));
+                // Вписывается только точное согласие источников (VIN с разницей в знак — не «согласны»).
+                $group = $group->reject(fn ($r) => Variants::rejected($rejected, $field, $r->key));
                 if ($group->isEmpty() || $group->pluck('key')->unique()->count() > 1) {
                     continue;
                 }
