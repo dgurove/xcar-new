@@ -742,10 +742,10 @@ class Deal extends Model
             : null;
     }
 
-    /** Сделка в CRM: админ ведёт её в редакторе предложения (`Admin\DealController::show`). */
+    /** Сделка в CRM: админ ведёт её в редакторе предложения (`Admin\DealController::show`), гаражную — у «Гаража». */
     public function crmUrl(): string
     {
-        return Surface::Crm->url('/offers/'.$this->offer->number);
+        return Surface::Crm->url('/offers/'.$this->offer->number.($this->isGarage() ? '#garage' : ''));
     }
 
     /** Куда ведёт сделка менеджера: гаражная живёт в гараже, а не в «Сделках». */

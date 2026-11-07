@@ -19,7 +19,7 @@
     $paidAttempt = $link->state === PayLinkState::Paid ? $link->attempts->firstWhere('payment_id', $link->payment_id) : null;
     if ($paidAttempt?->method) { $state = 'оплачено '.mb_strtolower(PayMethod::label($paidAttempt->method)).' '.\App\Support\Ago::day($link->paid_at); }
     $deal = $i->deal ?? $i->creditDeal;
-    $dealUrl = $deal?->offer ? '/offers/'.$deal->offer->number : null;
+    $dealUrl = $deal?->offer ? '/offers/'.$deal->offer->number.($deal->isGarage() ? '#garage' : '') : null;
     $by = L::creator($link);
     $refund = $link->attempts->first(fn ($a) => $a->succeeded() && $a->refundable() > 0);
     $editCar = $manual && $i->state !== InvoiceState::Void;
@@ -92,7 +92,7 @@
                     <x-ui.chevron/>
                 </button>
             @elseif ($car)
-                <a @if ($offer) href="/offers/{{ $offer->number }}" data-turbo-frame="_top" @endif class="row">
+                <a @if ($offer) href="{{ $offer->crmPath() }}" data-turbo-frame="_top" @endif class="row">
                     <span class="shrink-0 text-ink-muted">ТС</span>
                     <span class="min-w-0 flex-1 truncate text-right nums">{{ $car }}</span>
                     @if ($offer)<x-ui.chevron/>@endif

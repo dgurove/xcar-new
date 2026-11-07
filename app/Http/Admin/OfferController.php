@@ -878,6 +878,11 @@ class OfferController
     public function detail(Request $request, Offer $offer, ?bool $gallery = null)
     {
         $admin = $request->user()->canManageCrm();
+        // Машина в сделке — окошко сделки, а не предложения (08.11.2026, владелец: «нашёл в поиске — открылось
+        // предложение, жми ещё „Сделка“ — бред»): то же, что у «Сделок». Модератору сделок не видно — у него предложение.
+        if ($admin && ! $gallery && ($deal = $offer->dealNow())) {
+            return app(DealController::class)->window($deal);
+        }
         $offer->load(['settlement', 'media', ...($admin ? ['bids.user', 'interests.user.manager', 'interests.placer', 'deal', 'purchaseCar.bids.user', 'purchaseCar.purchase', 'parkVehicle:id,car_id,state,yard_id,accepted_at,created_at', 'parkVehicle.yard:id,name', 'vendor.workflows', 'positions.stage', 'openEstimates.user', ...User::withAvatar('openEstimates.user.media'), 'declinedEstimates.user', ...User::withAvatar('declinedEstimates.user.media')] : [])])
             ->loadCount(['activeBids', 'interests', 'activeBids as garage_bids_count' => fn ($b) => $b->where('kind', BidKind::Garage)])->loadMax('activeBids as top_bid', 'amount');
 

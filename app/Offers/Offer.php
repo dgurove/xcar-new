@@ -465,6 +465,42 @@ class Offer extends Model
         return $this->hasOne(Deal::class)->ofMany(['id' => 'max'], fn ($q) => $q->whereIn('state', [DealState::Active, DealState::Done]));
     }
 
+    /**
+     * Сделка, которой машина сейчас «является» (08.11.2026, владелец: «предложение и сделка — два состояния одной сущности;
+     * если это сделка — везде должна открываться сделка»): в сделке, гараже или выдана — идущая, иначе последняя состоявшаяся;
+     * в продаже, черновике, архиве — нет (сорвавшиеся сделки — только «Историей»). По ней окошко списка предложений
+     * открывает сделку (`OfferController::detail`), а ссылки — `crmUrl`.
+     */
+    public function dealNow(): ?Deal
+    {
+        return in_array($this->state, [OfferState::Sold, OfferState::Delivered, OfferState::Garage], true) ? $this->lastDeal : null;
+    }
+
+    /**
+     * Машина в CRM — одна страница, редактор: в сделке он и есть сделка (дорожка «Сделка» видна сразу — на ПК колонкой,
+     * прокрутка к ней срезала бы шапку); в гараже — к «Гаражу». По состоянию, без запроса: строки списков зовут на каждую.
+     */
+    public function crmPath(): string
+    {
+        return '/offers/'.$this->number.($this->state === OfferState::Garage ? '#garage' : '');
+    }
+
+    /** То же адресом с хостом CRM — для парковки, логистики, сайта, писем и Telegram. */
+    public function crmUrl(): string
+    {
+        return Surface::Crm->url($this->crmPath());
+    }
+
+    /** Где машина — словом для ссылки: «Сделка», «Гараж» или вкладка предложения. */
+    public function crmPlace(?User $user = null): string
+    {
+        return match ($this->state) {
+            OfferState::Garage => 'Гараж',
+            OfferState::Sold, OfferState::Delivered => 'Сделка',
+            default => $this->crmTab($user),
+        };
+    }
+
     /** Переоценки закупочной (`Reprice`): ждущая — плашка «Переоценка» в окошке и редакторе. */
     public function reprices(): HasMany
     {

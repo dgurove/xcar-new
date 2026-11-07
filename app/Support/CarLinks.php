@@ -62,13 +62,16 @@ final class CarLinks
         if (! $offer) {
             return [...$links, ...self::pickup($from)];
         }
-        if (! $from instanceof Offer) {
+        // Предложение и сделка — одна машина (08.11.2026, владелец): в сделке — один пункт «Сделка», в гараже — «Гараж»,
+        // «Продажа» — только пока машина продаётся (`Offer::dealNow`).
+        $car = GarageCar::where('offer_id', $offer->id)->latest('id')->first();
+        $deal = $offer->dealNow();
+        if (! $deal && $offer->state !== \App\Offers\OfferState::Garage && ! $from instanceof Offer) {
             $links[] = ['title' => 'Продажа', 'state' => $offer->crmTab().', № '.$offer->number, 'href' => Surface::Crm->url('/offers/'.$offer->number)];
         }
         // Гаражная сделка — это и есть гараж (владелец 18.10.2026: «как это и сделка, и гараж?»): одним пунктом «Гараж».
-        $car = GarageCar::where('offer_id', $offer->id)->latest('id')->first();
-        if (($deal = $offer->deal) && ! ($car && $deal->isGarage())) {
-            $links[] = ['title' => 'Сделка', 'state' => $deal->buyer?->name ?? 'идёт', 'href' => Surface::Crm->url('/work/deals/'.$deal->id)];
+        if ($deal && ! ($car && $deal->isGarage())) {
+            $links[] = ['title' => 'Сделка', 'state' => $deal->buyer?->name ?? 'идёт', 'href' => $deal->crmUrl()];
         }
         if ($car) {
             $links[] = ['title' => 'Гараж', 'state' => mb_lcfirst($car->state->label()).($car->manager ? ', '.$car->manager->shortName() : ''), 'href' => $car->crmUrl()];

@@ -59,7 +59,8 @@ final class Search
         $cars = new Cars($t);
         $offers = Offer::inCrm($user)->notEmptyDraft()->searchCrm($t)
             ->with(['deal.buyer', 'garageCar.manager', 'parkVehicle.yard'])->latest('updated_at')->limit(12)->get()
-            ->each(fn (Offer $o) => $cars->offer($o, link: "/offers/{$o->number}", crm: true));
+            // Машина в гараже — сразу к «Гаражу» (`Offer::crmPath`); в сделке редактор и есть сделка.
+            ->each(fn (Offer $o) => $cars->offer($o, link: $admin ? $o->crmPath() : "/offers/{$o->number}", crm: true));
         if (Surface::Park->opensFor($user)) {
             Vehicle::search($t)->with(['yard'])->latest('updated_at')->limit(12)->get()
                 ->each(fn (Vehicle $v) => $cars->vehicle($v, link: Surface::Park->url("/cars/{$v->id}"), external: true));

@@ -55,7 +55,7 @@ final class ParsingController
     /** @return Collection<int, array{car: Car, variants: array, rank: int}> */
     private function cars($query): Collection
     {
-        return $query->with(['brand', 'model', 'offer.vendor', 'offer.deal', 'vehicle.vendor', 'vehicle.yard', 'vehicle.requests'])->get()
+        return $query->with(['brand', 'model', 'offer.vendor', 'offer.deal', 'offer.lastDeal', 'vehicle.vendor', 'vehicle.yard', 'vehicle.requests'])->get()
             ->map(fn (Car $car) => ['car' => $car, 'variants' => Variants::all($car), 'rank' => self::RANK[match (true) {
                 (bool) $car->offer?->deal => 'deal',
                 $car->offer?->state === \App\Offers\OfferState::Open => 'open',

@@ -50,7 +50,7 @@ class DealController
 
     public function index(Request $request)
     {
-        $detail = Detail::of($request, fn (string $key) => ($deal = Deal::find($key)) ? $this->detail($deal) : null);
+        $detail = Detail::of($request, fn (string $key) => ($deal = Deal::find($key)) ? $this->window($deal) : null);
         if ($detail->framed()) {
             return $detail->response();
         }
@@ -292,7 +292,7 @@ class DealController
      */
     public function show(Deal $deal)
     {
-        return redirect('/offers/'.$deal->offer->number);
+        return redirect('/offers/'.$deal->offer->number.($deal->isGarage() ? '#garage' : ''));
     }
 
     /** Карточка чата сделки — фрейм перечитывает её по новому сообщению (`x-deal.chat-card`). */
@@ -303,8 +303,11 @@ class DealController
         return Blade::render('<x-deal.chat-card :deal="$deal" :compact="$compact"/>', ['deal' => $deal, 'compact' => $request->boolean('compact')]);
     }
 
-    /** Карточка сделки рядом со списком (Detail): путь, деньги, письма, заметка — без истории. */
-    private function detail(Deal $deal)
+    /**
+     * Карточка сделки рядом со списком (Detail): путь, деньги, письма, заметка — без истории. Её же открывает список
+     * предложений у машины в сделке (`OfferController::detail`, 08.11.2026: одна машина — одно окошко).
+     */
+    public function window(Deal $deal)
     {
         return view('admin.deals.detail', $this->data($deal));
     }

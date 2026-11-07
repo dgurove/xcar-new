@@ -66,13 +66,15 @@
                 <div class="row"><span class="min-w-0 flex-1 text-ink-muted">Закупочная</span><span class="shrink-0 text-right"><span class="block nums">{{ $floor ? \App\Support\Money::rub($floor) : 'нет' }}</span>@if ($floor)<span class="block text-sm text-ink-muted">{{ $how }}</span>@endif</span></div>
             </div>
             <div class="list">
-                <a href="{{ Surface::Crm->url('/offers/'.$offer->number) }}" class="row" data-turbo="false">
-                    <span class="min-w-0 flex-1">Предложение № {{ $offer->number }}<span class="row-sub">{{ $offer->crmTab() }}@if ($price), {{ $price }}@endif</span></span>
-                    <x-ui.chevron/>
-                </a>
-                @if ($offer->deal)
-                    <a href="{{ Surface::Crm->url('/work/deals/'.$offer->deal->id) }}" class="row" data-turbo="false">
+                {{-- Машина в сделке — одна строка «Сделка» (08.11.2026: предложение и сделка — одна машина). --}}
+                @if ($dealNow = $offer->dealNow())
+                    <a href="{{ $dealNow->crmUrl() }}" class="row" data-turbo="false">
                         <span class="min-w-0 flex-1">Сделка<span class="row-sub">снять с продажи можно, только отменив её в CRM</span></span>
+                        <x-ui.chevron/>
+                    </a>
+                @else
+                    <a href="{{ Surface::Crm->url('/offers/'.$offer->number) }}" class="row" data-turbo="false">
+                        <span class="min-w-0 flex-1">Предложение № {{ $offer->number }}<span class="row-sub">{{ $offer->crmTab() }}@if ($price), {{ $price }}@endif</span></span>
                         <x-ui.chevron/>
                     </a>
                 @endif

@@ -97,7 +97,6 @@
             {{-- Ряд кнопок над плашкой дела (12.10.2026, владелец выбрал вариант «В»): слот, сделка и чат слева, «Действия»
                  справа; ниже — плашка «Закупочная / Оценить / В гараж / Вывоз» или ответы менеджеров. --}}
             <div class="flex w-full flex-wrap items-center gap-2">
-                @if ($admin && $offer->deal)<x-ui.pill tone="open" href="/work/deals/{{ $offer->deal->id }}"><x-ui.icon name="deal" class="size-4"/> Сделка</x-ui.pill>@endif
                 @if ($chats->isNotEmpty())<x-ui.pill :tone="$unread ? 'urgent' : 'plain'" href="/work/chats?preset=all&q={{ $n }}"><x-ui.icon name="chat" class="size-4"/> {{ $chats->count() === 1 ? 'Чат' : 'Чаты' }}@if ($chats->count() > 1 && ! $unread) <span class="nums text-ink-dim">{{ $chats->count() }}</span>@endif @if ($unread) <span class="badge">{{ $unread }}</span>@endif</x-ui.pill>@endif
                 {{-- «Действия» (05.10.2026, начальник: одной кнопкой справа, как в приложениях) — меню группами, как в iOS: продлить
                      приём, опубликовать (сейчас или в слот), смена состояния; архив и удаление — красным последними. --}}

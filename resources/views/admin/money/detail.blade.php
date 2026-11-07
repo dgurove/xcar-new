@@ -42,7 +42,7 @@
             <div class="row"><span class="shrink-0 text-ink-muted">{{ $i->isOwed() ? 'Выплата' : 'Счёт' }}</span><span class="min-w-0 flex-1 truncate text-right nums">{{ $i->isOwed() ? '' : $i->label().' ' }}от {{ \App\Support\Ago::html($i->issued_at, words: false) }}</span></div>
             <div class="row"><span class="shrink-0 text-ink-muted">За что</span><span class="min-w-0 flex-1 truncate text-right">{{ $i->kind->label() }}</span></div>
             @if ($offer)
-                <a href="{{ $i->deal_id ? '/offers/'.$offer->number : '/work/garage?preset=all&peek='.$offer->number }}" class="row" data-turbo-frame="_top">
+                <a href="{{ $i->deal_id ? $offer->crmPath() : '/work/garage?preset=all&peek='.$offer->number }}" class="row" data-turbo-frame="_top">
                     <span class="shrink-0 text-ink-muted">ТС</span><span class="min-w-0 flex-1 truncate text-right">{{ $offer->titleWithYear() }}</span><x-ui.chevron/>
                 </a>
             @endif

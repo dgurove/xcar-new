@@ -28,7 +28,7 @@
             <div class="mt-2 flex flex-wrap items-center gap-1.5">
                 @foreach ($who as $name)<span class="fact">{{ $name }}</span>@endforeach
                 @if ($thread->vehicle)<a href="{{ \App\Support\Surface::Park->url('/cars/'.$thread->vehicle->id) }}" class="text-sm text-accent-text" @unless ($park) data-turbo="false" @endunless>{{ $thread->vehicle->titleWithYear() }}@if ($thread->vehicle->ref && $thread->vehicle->brand_id) <span class="nums text-ink-muted ml-1">{{ $thread->vehicle->ref }}</span>@endif</a>@endif
-                @if ($thread->offer)<a href="{{ \App\Support\Surface::Crm->url('/offers/'.$thread->offer->number) }}" class="text-sm text-accent-text" @if ($park) data-turbo="false" @endif>{{ $thread->offer->title() }} <span class="nums text-ink-muted">№ {{ $thread->offer->number }}</span></a>@endif
+                @if ($thread->offer)<a href="{{ $thread->offer->crmUrl() }}" class="text-sm text-accent-text" @if ($park) data-turbo="false" @endif>{{ $thread->offer->title() }} <span class="nums text-ink-muted">№ {{ $thread->offer->number }}</span></a>@endif
                 <span class="fact">{{ $thread->account->title }}</span>
                 @if ($thread->candidate && ! $linked)
                     @if ($thread->candidate->state === \App\Mail\CandidateState::Rejected)<span class="fact">Кандидат в архиве</span>

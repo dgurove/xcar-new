@@ -12,12 +12,11 @@
     $variants = $only ? array_intersect_key($item['variants'], [$only => true]) : $item['variants'];
     $offer = $car->offer;
     $vehicle = $car->vehicle;
-    $deal = $offer?->deal;
     $request = $vehicle?->requests->first(fn ($r) => $r->isOpen());
     $doc = \App\Cars\Sources\SourceDocs::for($variants, '/work/mail');
     $places = array_filter([
-        'Сделка' => $deal ? Surface::Crm->url('/work/deals/'.$deal->id) : null,
-        'Предложение' => $offer ? Surface::Crm->url('/offers/'.$offer->number) : null,
+        // Предложение и сделка — одна машина: одна ссылка, словом «Сделка» / «Гараж» / «Предложение».
+        ...($offer ? [($offer->dealNow() || $offer->state === \App\Offers\OfferState::Garage ? $offer->crmPlace() : 'Предложение') => $offer->crmPath()] : []),
         'Парковка' => $vehicle ? Surface::Park->url('/cars/'.$vehicle->id) : null,
         'Заявка' => $request ? Surface::Park->url('/requests/'.$request->id) : null,
     ]);
