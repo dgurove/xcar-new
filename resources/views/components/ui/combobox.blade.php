@@ -11,5 +11,6 @@
            data-action="input->combobox#search focus->combobox#open" {{ $attributes }}>
     <input type="hidden" name="{{ $name }}" value="{{ old($name, $value) }}" data-combobox-target="hidden">
     <div class="combobox-list" data-combobox-target="list" popover="manual" hidden></div>
+    {{ $hint ?? '' }}
     @if ($error)<p class="field-error">{{ $error }}</p>@endif
 </div>

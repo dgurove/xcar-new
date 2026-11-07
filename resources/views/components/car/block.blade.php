@@ -38,22 +38,23 @@
             default => $c === 'engine_power' && $v ? $v.' л. с.' : ($v === '' ? null : $v),
         };
     };
-    $cells = collect($columns)->mapWithKeys(fn ($c) => [$c => $text($c)])->filter(fn ($v) => $v !== null && $v !== '');
+    // Спорные поля блока (`Cars\Sources\Variants`) — меткой в самом поле, «или Белый ›» под значением и под полем ввода;
+    // марка с моделью — у модели. Пустое спорное — ячейкой и в виде текстом.
+    $variantFields = ['car' => ['car', 'vin', 'year', 'color', 'mileage'], 'papers' => ['plate', 'pts', 'sts'],
+        'specs' => ['body', 'transmission', 'drive', 'fuel', 'engine_volume', 'engine_power']][$block] ?? [];
+    $variants = $variantFields ? \App\Cars\Sources\Variants::visible($lane, $variantFields) : [];
+    $hintOf = fn (string $c) => $variants[$c === 'model_id' ? 'car' : $c] ?? null;
+    $cells = collect($columns)->mapWithKeys(fn ($c) => [$c => $text($c)])->filter(fn ($v, $c) => ($v !== null && $v !== '') || $hintOf($c));
     // ПТС с пятнадцатью цифрами — электронный.
     $ptsLabel = fn ($v) => preg_match('/^\d{15}$/', preg_replace('/\s+/', '', (string) $v)) ? 'ЭПТС' : 'ПТС';
     $grid = $as === 'card' ? 'grid grid-cols-2 gap-3 @4xl:grid-cols-3' : 'grid grid-cols-[repeat(2,minmax(0,1fr))] gap-x-2 gap-y-2.5';
     $req = fn (string $c) => in_array($c, $required, true);
     $draft = $sale && $lane?->state === OfferState::Draft;
-    // Спорные поля блока (`Cars\Sources\Variants`) — строками над полями, и в виде текстом, и в правке.
-    $variantFields = ['car' => ['car', 'vin', 'year', 'color', 'mileage'], 'papers' => ['plate', 'pts', 'sts'],
-        'specs' => ['body', 'transmission', 'drive', 'fuel', 'engine_volume', 'engine_power']][$block] ?? [];
 @endphp
 <x-car.card :title="$title" :fold="$fold" :empty="$cells->isEmpty()" :as="$as" {{ $attributes }}>
     <x-slot:top>
         {{ $top }}
-        @if ($lane && $variantFields)
-            <x-car.variants :lane="$lane" :fields="$variantFields"/>
-        @endif
+        <x-car.variants :lane="$lane" :variants="$variants"/>
     </x-slot:top>
     <x-slot:view>
         @if ($cells->isNotEmpty())
@@ -61,12 +62,15 @@
                 @foreach ($cells as $c => $value)
                     <div @class(['min-w-0', 'col-span-2' => $c === 'vin'])>
                         <div class="field-label">{{ $c === 'pts' ? $ptsLabel($value) : CarFields::label($c, $lane) }}</div>
-                        <div class="mt-0.5 break-words">
-                            @if ($c === 'vin')<x-ui.vin-code :vin="$value" copy/>
-                            @elseif (CarFields::kind($c) === 'code' || $c === 'plate')<x-ui.copy-code :value="$value" class="break-all"/>
-                            @elseif (CarFields::kind($c) === 'tel')<a href="tel:{{ preg_replace('/[^\d+]/', '', $value) }}" class="text-accent-text">{{ $value }}</a>
-                            @else{{ $value }}@endif
-                        </div>
+                        @if ($value !== null && $value !== '')
+                            <div class="mt-0.5 break-words">
+                                @if ($c === 'vin')<x-ui.vin-code :vin="$value" copy/>
+                                @elseif (CarFields::kind($c) === 'code' || $c === 'plate')<x-ui.copy-code :value="$value" class="break-all"/>
+                                @elseif (CarFields::kind($c) === 'tel')<a href="tel:{{ preg_replace('/[^\d+]/', '', $value) }}" class="text-accent-text">{{ $value }}</a>
+                                @else{{ $value }}@endif
+                            </div>
+                        @endif
+                        <x-car.variant-hint :v="$hintOf($c)" :car="$car?->id"/>
                     </div>
                 @endforeach
             </div>
@@ -93,20 +97,27 @@
                         @if ($sale)
                             <x-slot:after-label><x-ui.eye-check name="show_vin" :checked="$lane->show_vin"/></x-slot:after-label>
                         @endif
+                        <x-slot:hint><x-car.variant-hint :v="$hintOf($c)" :car="$car?->id"/></x-slot:hint>
                     </x-ui.vin>
                     {{-- Такая ТС уже есть — строками под полями сразу при вводе (`twins_controller` у `x-car.blocks`). --}}
                     <div class="col-span-full flex flex-col gap-2 empty:hidden" data-twins-target="box"></div>
                     @break
                 @case ('brand')
-                    <x-cars.brand-model :brand-id="$raw('brand_id')" :brand-text="$brand?->name" :model-id="$raw('model_id')" :model-text="$model?->name" :required="$req('brand_id')"/>
+                    <x-cars.brand-model :brand-id="$raw('brand_id')" :brand-text="$brand?->name" :model-id="$raw('model_id')" :model-text="$model?->name" :required="$req('brand_id')">
+                        <x-slot:hint><x-car.variant-hint :v="$hintOf('model_id')" :car="$car?->id"/></x-slot:hint>
+                    </x-cars.brand-model>
                     @break
                 @case ('model')
                     @break
                 @case ('enum')
-                    <x-ui.field :name="$name($c)" :label="CarFields::label($c)" :options="CarFields::enum($c)::options()" placeholder="—" :value="$raw($c) instanceof \BackedEnum ? $raw($c)->value : $raw($c)"/>
+                    <x-ui.field :name="$name($c)" :label="CarFields::label($c)" :options="CarFields::enum($c)::options()" placeholder="—" :value="$raw($c) instanceof \BackedEnum ? $raw($c)->value : $raw($c)">
+                        <x-slot:hint><x-car.variant-hint :v="$hintOf($c)" :car="$car?->id"/></x-slot:hint>
+                    </x-ui.field>
                     @break
                 @case ('liters')
-                    <x-ui.field :name="$c" :label="CarFields::label($c)" placeholder="1,6" :value="Liters::format($raw($c))"/>
+                    <x-ui.field :name="$c" :label="CarFields::label($c)" placeholder="1,6" :value="Liters::format($raw($c))">
+                        <x-slot:hint><x-car.variant-hint :v="$hintOf($c)" :car="$car?->id"/></x-slot:hint>
+                    </x-ui.field>
                     @break
                 @case ('tel')
                     <x-ui.field :name="$name($c)" :id="'v-'.$name($c)" :label="CarFields::label($c)" type="tel" :value="$raw($c)"/>
@@ -120,7 +131,9 @@
                             @endif
                         </x-ui.field>
                     @else
-                        <x-ui.field :name="$name($c)" :label="CarFields::label($c)" :value="$raw($c)" :digits="CarFields::kind($c) === 'digits'" :copy="CarFields::kind($c) === 'code'" :required="$req($c)"/>
+                        <x-ui.field :name="$name($c)" :label="CarFields::label($c)" :value="$raw($c)" :digits="CarFields::kind($c) === 'digits'" :copy="CarFields::kind($c) === 'code'" :required="$req($c)">
+                        <x-slot:hint><x-car.variant-hint :v="$hintOf($c)" :car="$car?->id"/></x-slot:hint>
+                    </x-ui.field>
                     @endif
             @endswitch
         @endforeach

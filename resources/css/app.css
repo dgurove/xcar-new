@@ -2462,13 +2462,11 @@ html.kb-open { --home-gap: 0px; }
   .scan-doc--lost .scan-sheet, .scan-doc--empty .scan-sheet { opacity: .55; }
   /* Поле — подпись колонкой слева, как в форме; значение крупно, откуда — мелко под ним. */
   .scan-field { @apply flex-wrap items-start gap-y-0.5 sm:flex-nowrap; }
-  /* Спорные поля машины (`x-car.variants`, 07.11.2026): строка на поле — подпись, что сейчас, оранжевое «ещё N»; шторка —
-     варианты строками, откуда — ссылками под значением. */
-  .variants { @apply mb-3 flex flex-col gap-1.5; }
-  .variant-line { @apply flex w-full items-baseline gap-3 rounded-xl px-3 py-2 text-left; background: var(--color-urgent-soft); }
-  .variant-label { @apply shrink-0 text-sm text-ink-dim; }
-  .variant-now { @apply min-w-0 shrink truncate; }
-  .variant-more { @apply ml-auto inline-flex min-w-0 max-w-[60%] items-center gap-0.5 self-center whitespace-nowrap font-medium; color: var(--color-urgent); }
+  /* Спорные поля машины (`x-car.variants`, 07.11.2026): метка в самом поле — оранжевое «или Белый ›» под значением и под
+     полем ввода, без плашки (владелец: плашка над блоком — «так нормальные люди не делают»); шторка — варианты строками,
+     откуда — ссылками под значением. */
+  .variant-hint { @apply mt-0.5 inline-flex self-start max-w-full items-center gap-0.5 text-left text-sm font-medium; color: var(--color-urgent); }
+  span.variant-hint { @apply mt-0 inline; }
   .variant-option { @apply items-center gap-3 py-3; }
   .variant-value { @apply block font-medium; overflow-wrap: anywhere; }
   .variant-sources { @apply mt-1 flex flex-wrap gap-x-3 gap-y-1; }

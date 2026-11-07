@@ -1,7 +1,7 @@
 {{-- Карточка строки таблицы машин стоянки (фрейм detail) — работа с ТС без страницы:
      лента фото, метки, дней на стоянке; у заявки — письма и телефон (`task`), приём и выдача — окном действия; переставить
      (метка парковки — кнопка шторки «Переставить»), выдать (дата, с
-     подтверждением), акты; ниже спорные поля машины строками (`x-car.variants`: выбрать, что верно), заявки строками и
+     подтверждением), акты; спорные поля машины строками группы со страхователем и продажей (`x-car.variants`: выбрать, что верно), заявки строками и
      заметка с последними событиями. Формы отвечают в карточку (DetailBack), строка — свежей из row. --}}
 @php
     use App\Park\VehicleState;
@@ -133,6 +133,10 @@
             $tel = $task && $task->type === \App\Park\RequestType::Intake && $state->isBefore() ? ($task->contact_phone ?? $vehicle->contact_phone) : null;
             $who = $task && $task->type === \App\Park\RequestType::Intake && $state->isBefore() ? rtrim((string) ($task->contact_name ?? $vehicle->contact_name), " ,") : '';
         @endphp
+        @php
+            // Спорные поля машины (`Cars\Sources\Variants`) — строками той же группы: полей в окошке нет.
+            $variants = $state->isFinal() ? [] : \App\Cars\Sources\Variants::visible($vehicle, array_keys(\App\Cars\Sources\Values::FIELDS));
+        @endphp
         <div class="list mt-3 [&:not(:has(*))]:hidden">
             @if ($tel)
                 <a href="tel:+{{ preg_replace('/\D+/', '', $tel) }}" class="row">
@@ -143,10 +147,11 @@
                 <div class="row"><x-ui.row-icon name="phone" tone="muted" size="s"/><span class="min-w-0 flex-1 truncate">{{ $who }}</span></div>
             @endif
             <x-park.sale :vehicle="$vehicle" row="bare"/>
+            <x-car.variants :lane="$vehicle" :variants="$variants" as="rows"/>
         </div>
         @unless ($state->isFinal())
             @if (auth()->user()->canManagePark())<span hidden data-car-doc="{{ $href }}/as-document"></span>@endif
-            <x-car.variants :lane="$vehicle" :fields="array_keys(\App\Cars\Sources\Values::FIELDS)" class="mt-3"/>
+            <x-car.variants :lane="$vehicle" :variants="$variants"/>
         @endunless
         <x-park.date-forms :vehicle="$vehicle"/>
         @if ($state === VehicleState::Stored && ! ($fromRequests ?? false))

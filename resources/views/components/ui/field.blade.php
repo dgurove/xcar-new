@@ -84,5 +84,6 @@
             @if ($type !== 'password' && $type !== 'file') value="{{ $bound }}" @endif
             {{ $attributes->except('id')->merge(['class' => 'field-input'] + $keys) }}>
     @endif
+    {{ $hint ?? '' }}
     @if ($error)<p class="field-error">{{ $error }}</p>@endif
 </div>

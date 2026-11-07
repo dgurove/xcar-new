@@ -71,6 +71,20 @@ final class Variants
     }
 
     /**
+     * Спорные поля дорожки, которые видит вошедший (правит её: продажу — дверь `offer.edit`, ТС — `canManagePark`),
+     * только из `$fields` — для блока карточки. @param list<string> $fields
+     */
+    public static function visible(Offer|Vehicle|null $lane, array $fields): array
+    {
+        $user = auth()->user();
+        if (! $lane?->exists || ! $user || ! ($lane instanceof Offer ? $lane->isEditableBy($user) : $user->canManagePark())) {
+            return [];
+        }
+
+        return array_intersect_key(self::for($lane->carRecord(), $lane), array_flip($fields));
+    }
+
+    /**
      * Отклонённое до 07.11.2026 — текстом по старым именам полей («Мигторг отклонён: X6 XDRIVE30D», «Отклонить» у документа
      * парковки): тот же текст в подписи варианта — вариант не показывается.
      */

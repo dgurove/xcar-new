@@ -22,5 +22,6 @@
             </svg>
         </button>
     </div>
+    {{ $hint ?? '' }}
     @if ($error)<p class="field-error">{{ $error }}</p>@endif
 </div>

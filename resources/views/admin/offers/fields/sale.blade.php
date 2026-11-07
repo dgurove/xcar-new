@@ -10,23 +10,33 @@
     }
     $description = trim(html_entity_decode(strip_tags(str_replace(['<br>', '</div>', '</p>'], "\n", (string) $offer->description))));
     $grid = $as === 'card' ? 'grid grid-cols-2 gap-3 @4xl:grid-cols-3' : 'grid grid-cols-[repeat(2,minmax(0,1fr))] gap-x-2 gap-y-2.5';
-    $empty = ! $offer->settlement_id && ! filled($offer->inspection_address) && $description === '';
+    // Спор о городе (`Cars\Sources\Variants`) — меткой у поля «Город».
+    $city = \App\Cars\Sources\Variants::visible($offer, ['city'])['city'] ?? null;
+    $empty = ! $offer->settlement_id && ! $city && ! filled($offer->inspection_address) && $description === '';
 @endphp
 <x-car.card title="Осмотр" :fold="$fold" :empty="$empty" :as="$as">
     <x-slot:top>
-        <x-car.variants :lane="$offer" :fields="['city']"/>
+        <x-car.variants :lane="$offer" :variants="array_filter(['city' => $city])"/>
     </x-slot:top>
     <x-slot:view>
         @unless ($empty)
             <div class="{{ $grid }} !gap-y-2.5 leading-snug">
-                @if ($offer->settlement)<div class="min-w-0"><div class="field-label">Город</div><div class="mt-0.5 break-words"><x-ui.place>{{ $offer->settlement->title() }}</x-ui.place></div></div>@endif
+                @if ($offer->settlement || $city)
+                    <div class="min-w-0">
+                        <div class="field-label">Город</div>
+                        @if ($offer->settlement)<div class="mt-0.5 break-words"><x-ui.place>{{ $offer->settlement->title() }}</x-ui.place></div>@endif
+                        <x-car.variant-hint :v="$city" :car="$offer->car_id"/>
+                    </div>
+                @endif
                 @if (filled($offer->inspection_address))<div class="col-span-2 min-w-0"><div class="field-label">Адрес осмотра</div><div class="mt-0.5 break-words">{{ $offer->inspection_address }}</div></div>@endif
                 @if ($description !== '')<div class="col-span-full min-w-0"><div class="field-label">Описание</div><p class="mt-0.5 line-clamp-2 whitespace-pre-line text-ink-muted">{{ $description }}</p></div>@endif
             </div>
         @endunless
     </x-slot:view>
     <div class="{{ $grid }}">
-        <x-ui.combobox name="settlement_id" label="Город" url="/reference/settlements" create="/reference/settlements" :value="$offer->settlement_id" :text="$offer->settlement?->title()"/>
+        <x-ui.combobox name="settlement_id" label="Город" url="/reference/settlements" create="/reference/settlements" :value="$offer->settlement_id" :text="$offer->settlement?->title()">
+            <x-slot:hint><x-car.variant-hint :v="$city" :car="$offer->car_id"/></x-slot:hint>
+        </x-ui.combobox>
         <x-ui.field name="inspection_address" label="Адрес осмотра" :value="$offer->inspection_address" span="col-span-2">
             <x-slot:after-label><x-ui.eye-check name="show_address" :checked="$offer->show_address"/></x-slot:after-label>
         </x-ui.field>
