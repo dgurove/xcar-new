@@ -643,6 +643,7 @@ html.kb-open { --home-gap: 0px; }
   .invite-form:has(select[name="role"] option:checked:not([value="moderator"])) [data-crm] { display: none !important; }
   .invite-form:has(select[name="role"] option:checked:not([value="manager"])) [data-managers] { display: none !important; }
   .invite-form:has(select[name="role"] option:checked:not([value="supplier"])) [data-supplier] { display: none !important; }
+  .invite-form:has(select[name="role"] option[value="supplier"]:checked) [data-contact] { display: none !important; }
   .user-form:has(input[name="roles[]"][value="moderator"]:not(:checked)) [data-crm] { display: none !important; }
   .user-form:has(input[name="roles[]"][value="manager"]:not(:checked)) [data-managers] { display: none !important; }
   .user-form:has(input[name="roles[]"][value="supplier"]:not(:checked)) [data-supplier] { display: none !important; }

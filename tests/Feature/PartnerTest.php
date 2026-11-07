@@ -241,4 +241,26 @@ class PartnerTest extends TestCase
         $this->actingAs($this->alfaMan)->delete($this->url('/offers/'.$offer->id.'/media/'.$ours->id))->assertForbidden();
         $this->actingAs($this->alfaMan)->delete($this->url('/offers/'.$offer->id.'/media/'.$photo->id))->assertOk();
     }
+
+    /** «Ввести данные» поставщику (08.11.2026): логином, без телефона; им он входит на partner. */
+    public function test_supplier_added_by_login(): void
+    {
+        $admin = User::create(['name' => 'Админ', 'phone' => '79990000001', 'roles' => [Role::Admin], 'approved_at' => now()]);
+        $add = fn (array $extra) => $this->actingAs($admin)->post(Surface::Crm->url('/settings/users/invites'), ['mode' => 'person', 'role' => 'supplier',
+            'vendor_id' => $this->alfa->id, 'first_name' => 'Олег', 'person_phone' => '+7 999 111-22-33'] + $extra);
+
+        $add(['person_login' => ''])->assertSessionHasNoErrors()->assertSessionHas('credentials', fn ($c) => $c['via'] === 'Логин' && $c['phone'] === 'alfa' && str_contains($c['url'], 'partner.'));
+        $user = User::where('login', 'alfa')->firstOrFail();
+        $this->assertNull($user->phone);
+        $this->assertTrue($user->isSupplier());
+        $this->assertSame($this->alfa->id, $user->vendor_id);
+        $add(['person_login' => ''])->assertSessionHasNoErrors();
+        $this->assertTrue(User::where('login', 'alfa2')->exists());
+        $add(['person_login' => 'Alfa.Partner'])->assertSessionHasErrors('person_login');
+
+        $add(['person_login' => 'oleg.alfa'])->assertSessionHasNoErrors();
+        $password = session('credentials')['password'];
+        auth()->logout();
+        $this->post($this->url('/login'), ['login' => 'oleg.alfa', 'password' => $password])->assertRedirect($this->url('/offers'));
+    }
 }

@@ -37,6 +37,7 @@ final class AddPerson
             'last_name' => ['nullable', 'string', 'max:60'],
             'person_phone' => [$contact ? 'nullable' : 'required', 'string', 'max:40'],
             'person_email' => $contact ? ['prohibited'] : ['nullable', 'email', 'max:255'],
+            'person_login' => ['nullable', 'string', 'max:32'],
         ];
     }
 
@@ -46,9 +47,15 @@ final class AddPerson
      */
     public function __invoke(callable $invite, array $data, array $extra = [], bool $contact = false): array
     {
+        // Поставщик (08.11.2026, владелец: «пусть у них вход по логину будет») — логином, без телефона и почты: сотрудник
+        // страховой, свой номер нам он не даёт. Не вписали логин — свой от вендора («alfastrakhovanie2»).
+        $login = ($data['role'] ?? null) === \App\Users\Role::Supplier->value ? self::login($data) : null;
+        if ($login) {
+            $data['person_phone'] = $data['person_email'] = null; // поля скрыты — вписанное до смены роли не в счёт
+        }
         $typed = trim((string) ($data['person_phone'] ?? '')) !== '';
         $phone = Phone::normalize($data['person_phone'] ?? null);
-        if (! $phone && ($typed || ! $contact)) {
+        if (! $phone && ($typed || ! $contact) && ! $login) {
             throw ValidationException::withMessages(['person_phone' => 'Телефон: +7 и 10 цифр']);
         }
         if ($phone && User::where('phone', $phone)->exists()) {
@@ -60,13 +67,13 @@ final class AddPerson
         }
         $password = Passwords::readable();
 
-        $user = DB::transaction(function () use ($invite, $data, $phone, $email, $password, $extra) {
+        $user = DB::transaction(function () use ($invite, $data, $phone, $email, $password, $extra, $login) {
             /** @var Invite $made */
             $made = $invite();
             $made->forceFill(['fields' => ['phone' => true, 'email' => true], 'max_uses' => 1, 'manual' => true])->save();
             $user = ($this->accept)($made, [
                 'first_name' => $data['first_name'], 'last_name' => (string) ($data['last_name'] ?? ''),
-                'login' => null, 'password' => $password, 'phone' => $phone, 'email' => $email,
+                'login' => $login, 'password' => $password, 'phone' => $phone, 'email' => $email,
             ]);
             if ($extra) {
                 $user->update($extra);
@@ -75,7 +82,33 @@ final class AddPerson
             return $user;
         });
 
-        return [$user, $phone ? self::credentials($user, $password) : null];
+        return [$user, $phone || $login ? self::credentials($user, $password) : null];
+    }
+
+    /** Логин поставщика: вписанный — как есть (занят — ошибка у поля), пустой — от имени вендора с первым свободным номером. */
+    private static function login(array $data): string
+    {
+        $taken = fn (string $l) => User::withoutGlobalScopes()->whereRaw('lower(login) = ?', [$l])->exists();
+        $typed = mb_strtolower(trim((string) ($data['person_login'] ?? '')));
+        if ($typed !== '') {
+            if (! preg_match('/^(?=.*[a-z])[a-z0-9._-]{3,32}$/', $typed)) {
+                throw ValidationException::withMessages(['person_login' => 'Логин: латиница, цифры, точка, дефис, от 3 знаков']);
+            }
+            if ($taken($typed)) {
+                throw ValidationException::withMessages(['person_login' => 'Этот логин уже занят']);
+            }
+
+            return $typed;
+        }
+        // Первое слово имени латиницей: «АльфаСтрахование» → alfa, «Совкомбанк» → sovkombank, «Т-Страхование» → tstrakhovaniye.
+        $latin = fn (string $s) => (string) preg_replace('/[^a-z0-9]/', '', (string) transliterator_transliterate('Russian-Latin/BGN; Latin-ASCII; Lower()', $s));
+        $words = preg_split('/[^\p{L}\d]+|(?<=\p{Ll})(?=\p{Lu})/u', (string) \App\Vendors\Vendor::find($data['vendor_id'] ?? null)?->name, -1, PREG_SPLIT_NO_EMPTY) ?: [];
+        $base = $latin($words[0] ?? '');
+        $base = strlen($base) >= 3 ? $base : $latin(implode('', array_slice($words, 0, 2)));
+        $base = preg_match('/^(?=.*[a-z]).{3,}$/', $base) ? substr($base, 0, 28) : 'partner';
+        for ($n = 1, $l = $base; $taken($l); $l = $base.(++$n));
+
+        return $l;
     }
 
     /**
@@ -86,7 +119,12 @@ final class AddPerson
     public static function credentials(User $user, string $password): array
     {
         // Входят телефоном, а покупатель без телефона — почтой (05.11.2026, владелец: «покупатели могут входить по почте»).
-        [$via, $login] = $user->phone ? ['Телефон', Phone::format($user->phone)] : ['Почта', (string) $user->email];
+        // Поставщик — логином (08.11.2026).
+        [$via, $login] = match (true) {
+            (bool) $user->phone => ['Телефон', Phone::format($user->phone)],
+            $user->isSupplier() && (bool) $user->login => ['Логин', $user->login],
+            default => ['Почта', (string) $user->email],
+        };
 
         // «Отправить на почту» в шторке (06.11.2026): одноразовый ключ, под ним — кому и какой пароль, 15 минут.
         $mail = null;

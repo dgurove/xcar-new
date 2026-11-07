@@ -13,9 +13,16 @@
         <x-ui.field name="first_name" label="Имя" required autocomplete="off"/>
         <x-ui.field name="last_name" label="Фамилия" autocomplete="off"/>
         {{-- Менеджер заводит покупателя по имени (05.11.2026): телефон и почта — только у админа. --}}
+        {{-- Поставщику — логин вместо телефона и почты (08.11.2026); пустой — сервер даст свой от вендора. Телефон без
+             required: скрытое обязательное поле не пустило бы форму; обязателен он на сервере (`AddPerson`). --}}
         @if ($admin)
-            <x-ui.field name="person_phone" label="Телефон" type="tel" required/>
-            <x-ui.field name="person_email" label="Почта" type="email"/>
+            <div data-contact class="contents">
+                <x-ui.field name="person_phone" label="Телефон" type="tel"/>
+                <x-ui.field name="person_email" label="Почта" type="email"/>
+            </div>
+            <div data-supplier class="contents">
+                <x-ui.field name="person_login" label="Логин" placeholder="От вендора" autocomplete="off" autocapitalize="none"/>
+            </div>
         @endif
     </div>
     @if ($admin)
