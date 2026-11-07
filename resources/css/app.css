@@ -736,8 +736,10 @@ html.kb-open { --home-gap: 0px; }
      значок камеры на мягком фоне, с файлом — миниатюра; подпись под ней, справа искра, пока читаем. */
   .passport-scan { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .75rem; margin-bottom: 1rem; }
   /* Серия и номер паспорта одной строкой (07.11.2026): «серия ____ номер ______», слова приглушены, как подписи. */
-  .passport-no { display: flex; align-items: center; gap: .5rem; min-width: 0; }
-  .passport-no-part { flex: none; font-size: var(--text-sm); color: var(--color-ink-muted); }
+  /* Слова — того же размера, что значение (класс поля даёт им тот же шрифт на любой поверхности), одной линией по базовой
+     (07.11.2026, владелец: «разные размеры шрифтов и текст на разных уровнях»). */
+  .passport-no { display: flex; align-items: baseline; gap: .5rem; min-width: 0; }
+  .passport-no .passport-no-part { flex: none; width: auto; min-height: 0; padding: 0; background: none; box-shadow: none; color: var(--color-ink-muted); cursor: text; }
   .passport-no .field-input { min-width: 0; }
   .passport-no .passport-no-series { flex: 0 0 5.5rem; }
   .passport-no .passport-no-number { flex: 1 1 0; }

@@ -25,9 +25,9 @@
         <div class="field {{ $passportError ? 'field-invalid' : '' }}">
             <label for="{{ $id('passport_series') }}" class="field-label">Паспорт<x-ui.req/></label>
             <div class="passport-no">
-                <label class="passport-no-part" for="{{ $id('passport_series') }}">серия</label>
+                <label class="field-input passport-no-part" for="{{ $id('passport_series') }}">серия</label>
                 <input id="{{ $id('passport_series') }}" name="{{ $n('passport_series') }}" value="{{ old($dot('passport_series'), $series) }}" class="field-input passport-no-series" inputmode="decimal" autocomplete="off" autocorrect="off" spellcheck="false" maxlength="12">
-                <label class="passport-no-part" for="{{ $id('passport_number') }}">номер</label>
+                <label class="field-input passport-no-part" for="{{ $id('passport_number') }}">номер</label>
                 <input id="{{ $id('passport_number') }}" name="{{ $n('passport_number') }}" value="{{ old($dot('passport_number'), $number) }}" class="field-input passport-no-number" inputmode="decimal" autocomplete="off" autocorrect="off" spellcheck="false" maxlength="30">
             </div>
             @if ($passportError)<p class="field-error">{{ $passportError }}</p>@endif
