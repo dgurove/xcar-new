@@ -7,7 +7,7 @@
             <x-ui.pill :href="'/settings/parsing?field='.$f" :current="$field === $f" :tone="$field === $f ? 'accent' : null">{{ \App\Cars\Sources\Values::title($f) }} <span class="nums opacity-70">{{ $n }}</span></x-ui.pill>
         @endforeach
     </x-ui.pills>
-    <div class="mt-4 flex flex-col gap-3" id="list">
+    <div class="mt-4 flex flex-col gap-2" id="list">
         @forelse ($cars as $item)
             @include('admin.parsing.car', ['item' => $item, 'only' => $field])
         @empty

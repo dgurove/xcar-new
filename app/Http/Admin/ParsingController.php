@@ -37,7 +37,10 @@ final class ParsingController
     {
         abort_unless($request->user()->isAdmin(), 404);
 
-        return view('admin.parsing.car', ['item' => $this->cars(Car::query()->whereKey($car->id))->first() ?? ['car' => $car, 'variants' => []]]);
+        // Фильтр по полю — как у списка: карточка после выбора показывает то же поле.
+        $only = isset(Values::FIELDS[$f = (string) $request->query('field')]) ? $f : null;
+
+        return view('admin.parsing.car', ['item' => $this->cars(Car::query()->whereKey($car->id))->first() ?? ['car' => $car, 'variants' => []], 'only' => $only]);
     }
 
     public function pick(Request $request, Car $car, string $field)

@@ -2468,24 +2468,34 @@ html.kb-open { --home-gap: 0px; }
   .variant-hint { @apply mt-0.5 inline-flex self-start max-w-full items-center gap-0.5 text-left text-sm font-medium; color: var(--color-urgent); }
   span.variant-hint { @apply mt-0 inline; }
   .variant-option { @apply items-center gap-3 py-3; }
-  /* «Парсинг» (`admin/parsing`, 08.11.2026, владелец: «как полноценное приложение, а не колхоз»): машина — плашка `.list`,
-     спорное поле — подпись внутри плашки и варианты строками выбора, как в «Настройках» iOS: значение, под ним откуда —
-     тусклым, справа значок источника, кружок выбора у края (у текущего — лаймовый с галкой). Строй один на телефоне и ПК. */
-  .parsing-place { @apply shrink-0 text-right text-sm leading-tight text-ink-muted; }
-  .parsing-head { @apply px-4 pb-1 pt-4 text-sm text-ink-dim; }
-  .list > .parsing-head + .row::after { content: none; }
-  .parsing-other { opacity: .5; }
-  .list .row.parsing-choice { @apply gap-2 py-0 pr-3; }
-  .parsing-pick { @apply flex min-h-12 min-w-0 flex-1 items-center gap-3 py-2.5 text-left; }
+  /* «Парсинг» (`admin/parsing`, 08.11.2026, владелец: «по одной тачке на экран — пипец», «полосы не нужны»): машина —
+     карточка без линий, шапка одной строкой (места — ссылками справа, на телефоне — второй строкой), поле — строка сетки:
+     подпись колонкой 7rem (на телефоне — над ячейками), варианты — ячейки одинаковой ширины по две в ряд, ровными колонками
+     от машины к машине. У текущей ячейки — лаймовая заливка с галкой; значок источника — в углу ячейки. */
+  .parsing-car { @apply p-3 sm:px-4; }
+  .parsing-top { @apply flex flex-wrap items-center gap-x-2 gap-y-0.5; }
+  .parsing-codes { @apply flex min-w-0 items-center gap-2 text-sm text-ink-muted; }
+  .parsing-meta { @apply flex min-w-0 basis-full flex-wrap items-center gap-x-3 gap-y-0.5 sm:basis-auto sm:flex-1; }
+  .parsing-places { @apply flex shrink-0 gap-3 text-sm sm:ml-auto; }
+  .parsing-places a { @apply inline-flex items-center text-accent-text; }
+  .parsing-row { @apply mt-2 grid gap-1 sm:grid-cols-[7rem_minmax(0,1fr)] sm:gap-3; }
+  .parsing-label { @apply text-sm text-ink-dim sm:pt-2; }
+  .parsing-cells { @apply grid grid-cols-2 gap-1.5; }
+  .parsing-cell { @apply relative min-w-0 rounded-(--radius-m) bg-surface-2; }
+  .parsing-cell.is-now { background: var(--color-accent-soft); }
+  .parsing-pick { @apply block w-full min-w-0 rounded-(--radius-m) px-3 py-1.5 text-left; }
+  .parsing-cell:has(> .parsing-open) .parsing-value { @apply pr-6; }
+  .parsing-cell.is-empty { @apply px-3 py-1.5; background: transparent; }
   .parsing-pick:disabled { opacity: .5; }
-  .parsing-value { @apply block; overflow-wrap: anywhere; }
-  .parsing-source { @apply mt-0.5 block truncate text-sm text-ink-dim; }
-  .parsing-open { @apply flex size-8 shrink-0 items-center justify-center rounded-full text-ink-dim; }
-  @media (hover: hover) { a.parsing-open:hover { background: var(--color-hover); color: var(--color-ink); } .parsing-choice:not(.is-now):has(.parsing-pick:hover) { background: var(--color-hover); } }
-  .parsing-radio, .parsing-radio-room { @apply flex size-[22px] shrink-0 items-center justify-center rounded-full; }
-  .parsing-radio { box-shadow: inset 0 0 0 1.5px color-mix(in oklab, var(--color-ink) 24%, transparent); }
-  .is-now .parsing-radio { @apply bg-accent text-white; box-shadow: none; }
-  .is-now .parsing-value { color: var(--color-ink); }
+  @media (hover: hover) { .parsing-cell:not(.is-now) .parsing-pick:hover { background: var(--color-hover); } }
+  .parsing-value { @apply line-clamp-2 leading-snug; overflow-wrap: anywhere; }
+  .is-now .parsing-value { color: var(--color-accent-text); }
+  .is-empty .parsing-value { @apply text-ink-dim; }
+  .parsing-check { @apply -mt-0.5 mr-1 inline align-middle; }
+  .parsing-from { @apply block truncate text-sm text-ink-dim; }
+  .parsing-open { @apply absolute right-1 top-1 flex size-7 items-center justify-center rounded-full text-ink-dim; }
+  @media (hover: hover) { .parsing-open:hover { background: var(--color-hover); color: var(--color-ink); } }
+  .parsing-done { @apply flex items-center gap-2 text-sm text-ink-dim; }
   .variant-value { @apply block font-medium; overflow-wrap: anywhere; }
   .variant-sources { @apply mt-1 flex flex-wrap gap-x-3 gap-y-1; }
   .variant-source { @apply min-w-0 max-w-full truncate text-sm text-ink-muted; }
