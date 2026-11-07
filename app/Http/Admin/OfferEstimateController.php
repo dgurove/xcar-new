@@ -4,12 +4,14 @@ namespace App\Http\Admin;
 
 use App\Offers\Actions\AskEstimates;
 use App\Offers\Actions\CloseEstimates;
+use App\Offers\Actions\FirstLook;
 use App\Offers\Actions\RejectEstimate;
 use App\Offers\Actions\TakeEstimate;
 use App\Offers\Estimate;
 use App\Offers\EstimateState;
 use App\Offers\Offer;
 use App\Offers\PriceGuard;
+use App\Support\Ago;
 use App\Support\Money;
 use App\Users\Role;
 use App\Users\User;
@@ -53,10 +55,19 @@ final class OfferEstimateController
     }
 
     /** «Взять» — как «Оценить»: строка уходит в «Оцененные», карточка — к следующей без цены. */
-    public function take(Request $request, Offer $offer, Estimate $estimate, TakeEstimate $take)
+    public function take(Request $request, Offer $offer, Estimate $estimate, TakeEstimate $take, FirstLook $firstLook)
     {
         abort_unless($estimate->offer_id === $offer->id, 404);
         PriceGuard::assert($offer, ['asking_price' => $estimate->amount], $request->boolean('price_ok'));
+        // Эксклюзив, выбранный при просьбе, — «Взять» сразу выставляет только ему (07.11.2026, владелец: оценку проверяет админ).
+        if ($estimate->exclusive_days && ! $estimate->isCorrection()) {
+            $published = $firstLook->open($estimate, $request->user());
+            $offer->refresh();
+
+            return back()->with('detail-advance', true)->with('detail-gone', true)->with('detail-counts', OfferController::counts($request->user()))
+                ->with('toast', $published ? 'Выставлено, видит только '.$estimate->user->shortName().' до '.Ago::at($offer->first_look_until, true, words: false)
+                    : 'Оценено: '.Money::rub($estimate->amount).', в продажу не готово');
+        }
         $take($estimate, $request->user());
         // Корректировка: строка остаётся в «Оцененных» с новой ценой — карточка просто перечитывается.
         if ($estimate->isCorrection()) {

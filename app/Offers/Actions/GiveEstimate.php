@@ -11,7 +11,6 @@ use App\Support\Money;
 use App\Support\Nav;
 use App\Users\User;
 use Illuminate\Validation\ValidationException;
-use Throwable;
 
 /**
  * Менеджер оценил: оценка — ориентир админу под полем цены продажи, не цена. Поправить можно, пока админ не решил;
@@ -43,14 +42,8 @@ final class GiveEstimate
         EstimateLock::release($estimate->offer);
         Nav::forgetStaffCounts();
         EstimateGiven::dispatch($estimate, $by);
-        // Эксклюзив, выбранный админом при просьбе, — оценка сразу цена и продажа ему одному. Не вышло — оценка стоит, решает админ.
-        if ($estimate->exclusive_days && ! $estimate->isCorrection()) {
-            try {
-                app(FirstLook::class)->open($estimate);
-            } catch (Throwable $e) {
-                report($e);
-            }
-        }
+        // Эксклюзив сам в продажу не выводит (07.11.2026, владелец: «админ должен проверить оценку и тогда уже опубликовать
+        // только для него»): оценка ждёт в «На оценке у менеджеров», «Взять» админа — цена и продажа ему одному (`FirstLook`).
 
         return $estimate;
     }

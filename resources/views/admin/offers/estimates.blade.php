@@ -26,7 +26,7 @@
                     <x-ui.state tone="open" class="shrink-0">согласен</x-ui.state>
                 </div>
             @elseif ($e->isGiven())
-                <div class="contents" data-controller="estimate-pick" data-estimate-pick-title-value="Взять ценой продажи {{ \App\Support\Money::rub($e->amount) }}?">
+                <div class="contents" data-controller="estimate-pick" data-estimate-pick-title-value="{{ $e->exclusive_days && ! $correction ? 'Взять '.\App\Support\Money::rub($e->amount).' и выставить только ему на '.\App\Offers\Estimate::daysWord($e->exclusive_days).'?' : 'Взять ценой продажи '.\App\Support\Money::rub($e->amount).'?' }}">
                     <button type="button" class="row w-full text-left" data-action="estimate-pick#open">
                         <x-ui.avatar :user="$e->user" :size="32"/>
                         <span class="min-w-0 flex-1">

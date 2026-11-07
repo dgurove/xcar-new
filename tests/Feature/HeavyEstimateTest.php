@@ -81,7 +81,12 @@ class HeavyEstimateTest extends TestCase
         $this->assertSame(5, $estimate->exclusive_days);
         $this->assertEqualsWithDelta(now()->addDays(3)->timestamp, $estimate->due_at->timestamp, 5);
 
+        // Оценка сама в продажу не выводит (07.11.2026, владелец): ждёт админа, «Взять» — продажа только ему.
         app(GiveEstimate::class)($estimate, 1200000, $this->roma);
+        $this->assertSame(OfferState::Draft, $truck->fresh()->state);
+        $this->assertNull($truck->fresh()->asking_price);
+        $this->actingAs($this->admin)->post('http://crm.xcar.localhost/offers/'.$truck->number.'/estimates/'.$estimate->id.'/take', ['price_ok' => 1])
+            ->assertRedirect()->assertSessionHasNoErrors();
         $truck = $truck->fresh();
         $this->assertSame(OfferState::Open, $truck->state);
         $this->assertSame(1200000, $truck->asking_price);
@@ -125,7 +130,7 @@ class HeavyEstimateTest extends TestCase
         // «+1 ч» к приёму двигает и эксклюзив.
         $truck = $this->draft('КАМАЗ', '5691/046/00908/26');
         app(AskEstimates::class)($truck, [$this->roma], $this->admin, exclusive: 3);
-        app(GiveEstimate::class)(Estimate::where('offer_id', $truck->id)->sole(), 1200000, $this->roma);
+        $this->giveAndTake($truck);
         $truck = $truck->fresh();
         $this->assertSame($this->roma->id, $truck->first_look_user_id);
         app(UpdateOffer::class)($truck, ['bids_close_at' => $truck->bids_close_at->copy()->addHour()], $this->admin);
@@ -136,7 +141,7 @@ class HeavyEstimateTest extends TestCase
     {
         $truck = $this->draft('КАМАЗ', '5691/046/00912/26');
         app(AskEstimates::class)($truck, [$this->roma], $this->admin, exclusive: 5);
-        app(GiveEstimate::class)(Estimate::where('offer_id', $truck->id)->sole(), 1200000, $this->roma);
+        $this->giveAndTake($truck);
         $this->assertNotNull($truck->fresh()->first_look_until);
 
         app(ChangeOfferState::class)($truck->fresh(), OfferState::Draft, $this->admin);
@@ -161,7 +166,7 @@ class HeavyEstimateTest extends TestCase
     {
         $truck = $this->draft('КАМАЗ', '5691/046/00903/26');
         app(AskEstimates::class)($truck, [$this->roma], $this->admin, exclusive: 5);
-        app(GiveEstimate::class)(Estimate::where('offer_id', $truck->id)->sole(), 1200000, $this->roma);
+        $this->giveAndTake($truck);
         app(PlaceBid::class)($truck->fresh(), $this->roma, 1200000);
 
         $this->travelTo($truck->fresh()->first_look_until->copy()->addMinute());
@@ -187,5 +192,12 @@ class HeavyEstimateTest extends TestCase
         $chosen = Offer::create(['vendor_id' => $this->vendor->id, 'claim_ref' => 'Z691/046/13688/26', 'brand_id' => Brand::where('name', 'Граз')->value('id'), 'vehicle_category' => Category::Special]);
         app(FillCar::class)($chosen, $fields, null, FillCar::EMPTY);
         $this->assertSame(Category::Special, $chosen->fresh()->category());
+    }
+
+    /** Рома оценил, админ взял: с эксклюзивом — продажа только ему. */
+    private function giveAndTake(Offer $truck): void
+    {
+        $estimate = app(GiveEstimate::class)(Estimate::where('offer_id', $truck->id)->sole(), 1200000, $this->roma);
+        app(FirstLook::class)->open($estimate, $this->admin);
     }
 }
