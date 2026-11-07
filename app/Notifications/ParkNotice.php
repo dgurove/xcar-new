@@ -25,7 +25,13 @@ use Carbon\CarbonInterface;
 final class ParkNotice extends Notice
 {
     public function __construct(private string $title, private ?string $text, private string $path, private ?int $vehicleId = null, private bool $critical = false,
-        private string $category = 'park', private bool $telegram = true, private ?string $batch = null, private ?string $line = null) {}
+        private string $category = 'park', private bool $telegram = true, private ?string $batch = null, private ?string $line = null,
+        private bool $quiet = false) {}
+
+    public function quiet(): bool
+    {
+        return $this->quiet;
+    }
 
     /** Простой и «управляющий принял / выдал» администраторам — пачкой (`Batch`, 27.10.2026): по одному на ТС — спам. */
     public function batchKey(): ?string
@@ -94,11 +100,11 @@ final class ParkNotice extends Notice
             category: 'park_money'))->variant('closing', 'Счета и акты');
     }
 
-    /** Управляющий принял или выдал ТС — администраторам парковки (в Telegram им пишет `NotifyOwner`, здесь — лента и пуш). */
+    /** Управляющий принял или выдал ТС — администраторам парковки строкой в ленте: сведения, а не дело (07.11.2026). */
     public static function handled(Vehicle $v, User $by, bool $released): self
     {
         return (new self($by->shortName().' '.($released ? 'выдал' : 'принял').': '.$v->titleWithYear(), implode(', ', array_filter([$v->vendor?->name, $v->yard?->name, $v->ref])),
-            '/cars/'.$v->id, $v->id, telegram: false, batch: 'park-handled', line: $by->shortName().' '.($released ? 'выдал' : 'принял').' '.$v->titleWithYear()))->variant('handled', 'Принял или выдал');
+            '/cars/'.$v->id, $v->id, telegram: false, batch: 'park-handled', line: $by->shortName().' '.($released ? 'выдал' : 'принял').' '.$v->titleWithYear(), quiet: true))->variant('handled', 'Принял или выдал');
     }
 
     public static function idle(Vehicle $v, int $days): self

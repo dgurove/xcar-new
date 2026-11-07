@@ -2,6 +2,7 @@
 
 namespace App\Offers\Actions;
 
+use App\Offers\BidState;
 use App\Offers\Offer;
 use App\Offers\OfferState;
 use App\Telegram\Jobs\NotifyOwner;
@@ -35,7 +36,8 @@ final class NotifyBidsClosed
 
     /**
      * Закрылись по сроку — одно сообщение на момент закрытия (27.10.2026: в 17:00 закрывается пачка, было по сообщению на
-     * каждое — 107 за час): одно — `BidsClosed`, несколько — `BidsClosedPack`.
+     * каждое — 107 за час): одно — `BidsClosed`, несколько — `BidsClosedPack`. Без единого подтверждения — молча (07.11.2026,
+     * владелец: «уведомления — только где нужен я»): выбирать нечего, машина сама уходит в «Без подтверждений».
      */
     public function __invoke(): int
     {
@@ -44,7 +46,9 @@ final class NotifyBidsClosed
             ->with('bids')->orderBy('id')->get();
         foreach ($offers->groupBy(fn (Offer $o) => $o->bids_close_at->format('Y-m-d H:i')) as $group) {
             DB::table('offers')->whereIn('id', $group->pluck('id'))->update(['bids_closed_notified_for' => DB::raw('bids_close_at')]);
-            NotifyOwner::dispatch($group->count() === 1 ? new BidsClosed($group->first()) : new BidsClosedPack($group->values()));
+            if ($group->contains(fn (Offer $o) => $o->bids->contains('state', BidState::Active))) {
+                NotifyOwner::dispatch($group->count() === 1 ? new BidsClosed($group->first()) : new BidsClosedPack($group->values()));
+            }
         }
 
         return $offers->count();

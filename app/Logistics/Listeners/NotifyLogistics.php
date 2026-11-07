@@ -34,10 +34,10 @@ final class NotifyLogistics
         ];
     }
 
-    /** Новый вывоз без исполнителя — админам. */
+    /** Новый вывоз без исполнителя — ведущим строкой в ленте; звенит, только если два часа никого не назначили (`TickCommand`). */
     public function requested(TransportRequested $e): void
     {
-        DB::afterCommit(fn () => Batch::send(User::logisticsLeads()->get(), TransportNotice::requested($e->transport)->forLeads('transport-requested')));
+        DB::afterCommit(fn () => Batch::send(User::logisticsLeads()->get(), TransportNotice::requested($e->transport)->forLeads('transport-requested', quiet: true)));
     }
 
     /**

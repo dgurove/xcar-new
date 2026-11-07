@@ -18,7 +18,9 @@ use Illuminate\Support\Facades\DB;
  * Напоминание до срока (21.10.2026, владелец: «менеджеры не видят, когда приходят новые машины, проёбываемся по срокам»):
  * менеджеру и супер-покупателю, у кого нет своего живого подтверждения.
  * - За 3 часа — одно сообщение на человека и момент закрытия (у слота у всех 17:00 — обычно одно в день): машины в его
- *   «Избранном» (открывал или нет) и те, что он не открывал. Непросмотренное — если машина открылась ему раньше этих трёх
+ *   «Избранном» (открывал или нет), те, что он не открывал, и те, что открывал, а подтверждения нет ни у кого (до 07.11.2026
+ *   это было отдельное громкое «Ни одного подтверждения» на каждую машину — менеджеру по 2 в день рядом с этим, открывали
+ *   9 %; владелец: «уведомления — только где нужен я»). Непросмотренное — если машина открылась ему раньше этих трёх
  *   часов: кому внутри них, тому только что пришло «Опубликовано N». Отметка `offer_viewers.closing_reminded_at`.
  * - За 30 минут — только «Избранное», громко (`last`, как «скоро закончится» у eBay). Отметка `last_reminded_at`.
  * Срочные не в счёт — о них уже громко. Отметки — до отправки, снимает новая публикация (`Notify::offerPublished`).
@@ -35,6 +37,10 @@ final class RemindUnreadClosing
 
     private const FAVORITE = 'exists (select 1 from favorites f where f.offer_id = v.offer_id and f.user_id = v.user_id)';
 
+    /** Открывал машину, а живого подтверждения нет ни у кого — «горит без подтверждений» (`NoBidsAlarm::burning`). */
+    private const NO_BIDS = '(exists (select 1 from offer_reads r where r.user_id = v.user_id and r.offer_id = v.offer_id)
+        and not exists (select 1 from bids b where b.offer_id = v.offer_id and b.state in (?, ?)))';
+
     public function __invoke(): int
     {
         $now = now();
@@ -45,11 +51,11 @@ final class RemindUnreadClosing
               and o.bids_close_at > ? and o.bids_close_at <= ?
               and jsonb_exists_any(u.roles, array[?, ?]) and u.rejected_at is null
               and not '.self::LIVE_BID.'
-              and ('.self::FAVORITE.' or (v.opens_at <= o.bids_close_at - make_interval(hours => ?)
+              and ('.self::FAVORITE.' or '.self::NO_BIDS.' or (v.opens_at <= o.bids_close_at - make_interval(hours => ?)
                 and not exists (select 1 from offer_reads r where r.user_id = v.user_id and r.offer_id = v.offer_id and r.read_at >= o.published_at)))
             returning v.user_id, v.offer_id, '.self::FAVORITE.' as favorite', [
             $now, $now, OfferState::Open->value, $now, $now->copy()->addHours(self::HOURS), Role::Manager->value, Role::SuperBuyer->value,
-            BidState::Active->value, BidState::Accepted->value, self::HOURS,
+            BidState::Active->value, BidState::Accepted->value, BidState::Active->value, BidState::Accepted->value, self::HOURS,
         ]));
         $sent = 0;
         foreach ($rows->groupBy('user_id') as $userId => $mine) {
@@ -60,13 +66,17 @@ final class RemindUnreadClosing
             $favorites = $mine->filter(fn ($r) => $r->favorite)->pluck('offer_id')->all();
             // Видно ему и в продаже сейчас (сделка, снятие) — тем же правилом, что каталог; не избранное — ещё и не открыто.
             // Не избранное — только из его регионов (22.10.2026, `Offer::inRegionsOf`); избранное — своё, из любого.
-            $unread = CatalogQuery::unread(Offer::query()->whereIn('offers.id', $mine->pluck('offer_id'))->inRegionsOf($user), $user)->pluck('offers.id')->all();
+            $regional = Offer::query()->whereIn('offers.id', $mine->pluck('offer_id'))->inRegionsOf($user);
+            $unread = CatalogQuery::unread(clone $regional, $user)->pluck('offers.id')->all();
+            // Без подтверждений — по факту на сейчас: за время тика кто-то мог подтвердить.
+            $unbid = NoBidsAlarm::burning()->whereIn('offers.id', (clone $regional)->select('offers.id'))->pluck('offers.id')->all();
             $offers = $this->onSale($user, $mine->pluck('offer_id'))
-                ->filter(fn (Offer $o) => in_array($o->id, $favorites, true) || in_array($o->id, $unread, true));
+                ->filter(fn (Offer $o) => in_array($o->id, $favorites, true) || in_array($o->id, $unread, true) || in_array($o->id, $unbid, true));
             foreach ($offers->groupBy(fn (Offer $o) => $o->bids_close_at->format('Y-m-d H:i')) as $at => $pack) {
                 $liked = $pack->filter(fn (Offer $o) => in_array($o->id, $favorites, true))->count();
-                $user->notify(new UnreadClosingNotice($pack->count() - $liked, $liked, NotifyNewOffers::brands($pack), Carbon::parse($at),
-                    $pack->count() === 1 ? $pack->first() : null));
+                $notOpened = $pack->filter(fn (Offer $o) => ! in_array($o->id, $favorites, true) && in_array($o->id, $unread, true))->count();
+                $user->notify(new UnreadClosingNotice($notOpened, $liked, NotifyNewOffers::brands($pack), Carbon::parse($at),
+                    $pack->count() === 1 ? $pack->first() : null, $pack->count() - $liked - $notOpened));
                 $sent++;
             }
         }

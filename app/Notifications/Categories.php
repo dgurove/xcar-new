@@ -44,7 +44,7 @@ final class Categories
             $add(['on' => ['letters' => 'Новые из писем'], 'always' => []]);
         }
         if ($user->hasRole(Role::Admin)) {
-            $add(['on' => ['bids' => 'Подтверждения', 'deals' => 'Сроки этапов', 'money' => 'Деньги', 'chats' => 'Чаты'], 'always' => []]);
+            $add(['on' => ['bids' => 'Подтверждения', 'deals' => 'Сделки: ход за нами', 'money' => 'Деньги', 'chats' => 'Чаты'], 'always' => []]);
         }
         // Администратор парковки — своя роль, не у каждого админа CRM.
         if ($user->hasRole(Role::ParkAdmin)) {

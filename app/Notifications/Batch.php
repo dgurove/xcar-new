@@ -27,6 +27,7 @@ final class Batch
         'stage-due' => ['Срок подходит: %s', ['шаг', 'шага', 'шагов'], 'crm', '/work/deals'],
         'transport-moved' => ['Вывоз: %s', ['событие', 'события', 'событий'], 'logistics', '/transports'],
         'transport-requested' => ['Новые вывозы: %s', ['задача', 'задачи', 'задач'], 'logistics', '/transports'],
+        'transport-waiting' => ['Вывоз ждёт назначения: %s', ['задача', 'задачи', 'задач'], 'logistics', '/transports?preset=new'],
         'park-idle' => ['Стоят дольше 30 дней: %s', ['ТС', 'ТС', 'ТС'], 'park', '/cars?sort=-days'],
         'park-handled' => ['Приём и выдача: %s', ['ТС', 'ТС', 'ТС'], 'park', '/cars'],
     ];

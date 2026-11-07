@@ -7,6 +7,7 @@ use App\Notifications\TelegramChannel;
 use App\Support\Plural;
 use App\Support\Surface;
 use App\Users\User;
+use Illuminate\Support\Str;
 
 /**
  * Уведомление логистики — в logistics.xcar.ru (`category` logistics). Вывоз Совкомбанка — наша обязанность, поэтому
@@ -27,7 +28,9 @@ final class TransportNotice extends Notice
      */
     public function forLeads(string $batch, bool $quiet = false): self
     {
-        return new self($this->transport, $this->title, $this->text, $this->critical, $this->telegram, $this->path, $batch, $quiet);
+        $copy = new self($this->transport, $this->title, $this->text, $this->critical, $this->telegram, $this->path, $batch, $quiet);
+
+        return $this->variantLabel() ? $copy->variant(Str::after($this->kind(), ':'), $this->variantLabel()) : $copy;
     }
 
     public function batchKey(): ?string
@@ -49,6 +52,15 @@ final class TransportNotice extends Notice
     public static function requested(Transport $t): self
     {
         return (new self($t, 'Вывоз: '.$t->title(), self::where($t), true, true))->variant('requested', 'Новый вывоз');
+    }
+
+    /**
+     * Новый вывоз два часа без исполнителя — ведущим (07.11.2026, владелец: «уведомления — только где нужен я»; сам новый
+     * вывоз приходит строкой в ленте, открывали 0 из 97): тогда уже пора решать, кто везёт.
+     */
+    public static function waiting(Transport $t): self
+    {
+        return (new self($t, 'Вывоз ждёт назначения: '.$t->title(), self::where($t), false, true, batch: 'transport-waiting'))->variant('waiting', 'Вывоз ждёт назначения');
     }
 
     /** Поручение исполнителю или логисту. */

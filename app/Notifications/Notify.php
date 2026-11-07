@@ -40,7 +40,6 @@ use App\Offers\Events\OfferPublished;
 use App\Offers\Events\OffersShown;
 use App\Offers\Handover;
 use App\Offers\Jobs\RetractEstimateNotices;
-use App\Offers\OfferState;
 use App\Offers\OfferViewer;
 use App\Park\City;
 use App\Park\Events\BuyerFormSubmitted;
@@ -60,7 +59,6 @@ use App\Telegram\Messages\BuyerJoined as BuyerJoinedMessage;
 use App\Telegram\Messages\InvoiceNeeded as InvoiceNeededMessage;
 use App\Telegram\Messages\ManagerJoined as ManagerJoinedMessage;
 use App\Telegram\Messages\OnlinePayment as OnlinePaymentMessage;
-use App\Telegram\Messages\ParkHandled;
 use App\Telegram\Messages\PaymentClaimed as PaymentClaimedMessage;
 use App\Telegram\Messages\RosTransferDue;
 use App\Users\Events\AccessDecided;
@@ -333,14 +331,9 @@ final class Notify
                 $deal->buyer->notify(new StageDueNotice($e->offer, $e->position, $e->overdue, $deal->id));
             }
         }
-        // Сотрудникам (19.01.2027: 598 уведомлений о сроках за неделю, по 28 в день на админа) — «скоро» только когда ход наш,
-        // чужой ход (менеджер, поставщик) — лишь «срок вышел»; утром — одна строка «Горит» (`StagesDigest`). Пачкой (`Batch`,
-        // 27.10.2026: за час 106 штук). Предложение ещё в продаже — это «Выбор подтверждения» после конца приёма: его говорят
-        // «Приём закрыт» (Telegram) и вкладка «Есть подтверждения», сроком не дублируем.
-        $waits = $e->position->waitsFor();
-        if ($e->offer->state !== OfferState::Open && ($waits === WaitsFor::Us || ($e->overdue && $waits !== WaitsFor::Nobody))) {
-            Batch::send($this->staff(), new StageDueNotice($e->offer, $e->position, $e->overdue));
-        }
+        // Сотрудникам сроки этапов не шлются (07.11.2026, владелец: «уведомления — только где нужен я»; по журналу доставки
+        // админы открывали 1–2 % «Срок подходит / вышел»): горящее — одной строкой утром (`StagesDigest`), в «Сделках → Ваш ход»
+        // и на главной.
     }
 
     /**
@@ -422,8 +415,8 @@ final class Notify
         }
         $v = $e->vehicle->load(['vendor', 'yard']);
         $released = $e instanceof VehicleReleased;
+        // Сведения, а не дело (07.11.2026, владелец): строкой в ленте, без пуша и Telegram.
         Batch::send(User::withRole(Role::ParkAdmin)->whereNotNull('approved_at')->get(), ParkNotice::handled($v, $e->by, $released));
-        NotifyOwner::dispatch(new ParkHandled($v, $e->by, $released), park: true);
     }
 
     public function parkWithoutQr(ReleasedWithoutQr $e): void

@@ -5,6 +5,7 @@ namespace App\Logistics\Console;
 use App\Logistics\Transport;
 use App\Logistics\TransportNotice;
 use App\Logistics\TransportState;
+use App\Notifications\Batch;
 use App\Users\User;
 use Illuminate\Console\Command;
 use Illuminate\Support\Collection;
@@ -39,6 +40,8 @@ final class TickCommand extends Command
                 $t->update(['late_noticed_at' => now()]);
             });
 
+        $this->waiting();
+
         self::stuck()->whereNull('nudged_at')->each(function (Transport $t) {
             $to = $t->state === TransportState::Logist ? $t->logist : $t->executor;
             $to?->notify(TransportNotice::callDue($t));
@@ -62,6 +65,22 @@ final class TickCommand extends Command
             ->where(fn ($q) => $q->where('state', TransportState::Logist)
                 ->orWhere(fn ($a) => $a->where('state', TransportState::Assigned)->where('kind', '!=', 'move')))
             ->with(['executor', 'logist', 'car'])->get();
+    }
+
+    /** Новый вывоз два часа без исполнителя — ведущим, один раз, днём 9–20 по Москве; старше суток — в утренней сводке. */
+    private function waiting(): void
+    {
+        $hour = now('Europe/Moscow')->hour;
+        if ($hour < 9 || $hour >= 20) {
+            return;
+        }
+        $due = Transport::where('state', TransportState::New)->where('undecided', false)
+            ->whereBetween('created_at', [now()->subDay(), now()->subHours(2)])->with('car')->get()
+            ->reject->isOrder()->filter(fn (Transport $t) => Cache::add('logistics:waiting:'.$t->id, true, now()->addDays(2)));
+        if ($due->isNotEmpty()) {
+            $leads = User::logisticsLeads()->get();
+            $due->each(fn (Transport $t) => Batch::send($leads, TransportNotice::waiting($t)));
+        }
     }
 
     /** Сводка админам — раз в день, с 10:00 по Москве. */

@@ -14,32 +14,22 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 
 /**
- * Ни одного подтверждения (22.10.2026, владелец: «по горящему ни одного подтверждения — потеряли деньги»). Часы
- * (`offers:tick`): за 3 часа до конца приёма у открытого без живых подтверждений — тем, кто машину открывал (не из
- * избранного: тем своё «в избранном» в тот же час, `RemindUnreadClosing`), из его регионов; один раз на срок
- * (`no_bids_alerted_for`). «Уведомить менеджеров» из CRM (`notify`) — всем, кому она открыта, из их регионов.
+ * Ни одного подтверждения (22.10.2026, владелец: «по горящему ни одного подтверждения — потеряли деньги»). Часами — не
+ * отдельным уведомлением на машину, а строкой в напоминании за 3 часа (`RemindUnreadClosing`, 07.11.2026: менеджеру шло по
+ * два в день рядом с «Приём до 17:00», открывали 9 %). Здесь — «горит без подтверждений» (чип CRM, плитка «Сгорает!») и
+ * «Уведомить менеджеров» из CRM (`notify`) — всем, кому машина открыта, из их регионов, громко.
  */
 final class NoBidsAlarm
 {
     public const HOURS = 3;
 
-    public function __invoke(): int
-    {
-        $n = 0;
-        foreach (self::burning()->where('offers.bids_close_at', '<=', now()->addHours(self::HOURS))
-            ->where(fn ($q) => $q->whereNull('no_bids_alerted_for')->orWhereColumn('no_bids_alerted_for', '!=', 'bids_close_at'))
-            ->lazyById() as $offer) {
-            DB::table('offers')->where('id', $offer->id)->update(['no_bids_alerted_for' => $offer->bids_close_at]);
-            $n += $this->send($offer, readers: true);
-        }
-
-        return $n;
-    }
-
     /** «Уведомить менеджеров» (CRM): всем, кому машина открыта, кроме подтвердивших. Возвращает, скольким ушло. */
     public function notify(Offer $offer): int
     {
-        return $this->send($offer, readers: false);
+        $users = $this->audience($offer)->filter(fn (User $u) => $offer->regionOpenTo($u) && $offer->isVisibleTo($u));
+        Notification::send($users, new NoBidsNotice($offer));
+
+        return $users->count();
     }
 
     /** Открытое, приём идёт, ни одного живого подтверждения — «горит без подтверждений» (и чип CRM). */
@@ -49,22 +39,10 @@ final class NoBidsAlarm
             ->whereDoesntHave('bids', fn ($b) => $b->whereIn('state', [BidState::Active, BidState::Accepted]));
     }
 
-    private function send(Offer $offer, bool $readers): int
-    {
-        $users = $this->audience($offer, $readers)->filter(fn (User $u) => $offer->regionOpenTo($u) && $offer->isVisibleTo($u));
-        Notification::send($users, new NoBidsNotice($offer));
-
-        return $users->count();
-    }
-
     /** @return Collection<int, User> */
-    private function audience(Offer $offer, bool $readers): Collection
+    private function audience(Offer $offer): Collection
     {
-        $ids = DB::table('offer_viewers as v')->where('v.offer_id', $offer->id)->where('v.opens_at', '<=', now())
-            ->when($readers, fn ($q) => $q
-                ->whereExists(fn ($r) => $r->selectRaw('1')->from('offer_reads as r')->whereColumn('r.offer_id', 'v.offer_id')->whereColumn('r.user_id', 'v.user_id'))
-                ->whereNotExists(fn ($f) => $f->selectRaw('1')->from('favorites as f')->whereColumn('f.offer_id', 'v.offer_id')->whereColumn('f.user_id', 'v.user_id')))
-            ->pluck('v.user_id');
+        $ids = DB::table('offer_viewers as v')->where('v.offer_id', $offer->id)->where('v.opens_at', '<=', now())->pluck('v.user_id');
 
         return User::whereIn('id', $ids)->withRole(Role::Manager, Role::SuperBuyer)->whereNull('rejected_at')->get();
     }

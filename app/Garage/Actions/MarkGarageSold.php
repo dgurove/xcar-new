@@ -7,8 +7,6 @@ use App\Garage\CarState;
 use App\Garage\Events\GarageChanged;
 use App\Offers\Actions\SyncDealInvoices;
 use App\Offers\DealContract;
-use App\Telegram\Jobs\NotifyOwner;
-use App\Telegram\Messages\GarageSelling;
 use App\Users\User;
 use Illuminate\Validation\ValidationException;
 
@@ -52,9 +50,6 @@ final class MarkGarageSold
             $car->moveTo(CarState::Settled, ['settled_at' => now()], $by);
         }
         GarageChanged::dispatch($car);
-        if (! $staff && ! $buyer) {
-            NotifyOwner::dispatch(new GarageSelling($car->load(['offer', 'manager', 'costs'])));
-        }
 
         return $car;
     }

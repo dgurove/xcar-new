@@ -54,15 +54,13 @@ final class EstimateGivenNotice extends Notice
         return 'bids';
     }
 
-    /** Своя цена или оценка — решать админу, со звуком; «Согласен» с его ценой — тихо, строкой в ленте. */
-    public function important(): bool
-    {
-        return ! $this->estimate->agreed();
-    }
-
+    /**
+     * Строкой в ленте, без звука и пуша (07.11.2026, владелец: оценки разбирает разом — «На оценке у менеджеров → Оценённые»,
+     * подэтап главной «Разобрать оценки»; по журналу доставки открывали 2 %).
+     */
     public function quiet(): bool
     {
-        return $this->estimate->agreed();
+        return true;
     }
 
     public function actor(): ?User
