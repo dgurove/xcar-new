@@ -262,6 +262,7 @@ func serve() error {
 	mux.HandleFunc("GET /groups", s.auth(s.groups))
 	mux.HandleFunc("GET /inbox", s.auth(s.inbox))
 	mux.HandleFunc("POST /send", s.auth(s.send))
+	mux.HandleFunc("POST /revoke", s.auth(s.revoke))
 	addr := cmp.Or(os.Getenv("LISTEN"), listen)
 	srv := &http.Server{Addr: addr, Handler: mux, ReadTimeout: 2 * time.Minute, WriteTimeout: 3 * time.Minute}
 	go func() {
@@ -651,6 +652,35 @@ func (s *service) send(w http.ResponseWriter, r *http.Request) {
 	}
 	_, _ = s.db.ExecContext(context.Background(), `update xcar_sent set done = 1 where key = ?`, key)
 	s.later()
+	reply(w, http.StatusOK, map[string]string{"id": id})
+}
+
+// revoke — удалить у всех своё сообщение по ключу xcar (07.11.2026, владелец: «отмена, удали в WhatsApp»): в группе или в
+// личке `to`. Сообщение, которое не уходило, — 404.
+func (s *service) revoke(w http.ResponseWriter, r *http.Request) {
+	key := r.FormValue("key")
+	var id string
+	if err := s.db.QueryRowContext(r.Context(), `select id from xcar_sent where key = ? and done = 1`, key).Scan(&id); err != nil {
+		reply(w, http.StatusNotFound, map[string]string{"error": "не отправлялось"})
+		return
+	}
+	chat := s.target
+	if to := r.FormValue("to"); to != "" {
+		jid, err := types.ParseJID(to)
+		if err != nil {
+			reply(w, http.StatusBadRequest, map[string]string{"error": "to — не JID"})
+			return
+		}
+		chat = jid.ToNonAD()
+	}
+	s.sendMu.Lock()
+	defer s.sendMu.Unlock()
+	ctx, cancel := context.WithTimeout(context.WithoutCancel(r.Context()), 60*time.Second)
+	defer cancel()
+	if _, err := s.cli.SendMessage(ctx, chat, s.cli.BuildRevoke(chat, types.EmptyJID, id)); err != nil {
+		reply(w, http.StatusBadGateway, map[string]string{"error": "удаление: " + err.Error()})
+		return
+	}
 	reply(w, http.StatusOK, map[string]string{"id": id})
 }
 
