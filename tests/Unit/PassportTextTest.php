@@ -33,7 +33,7 @@ class PassportTextTest extends TestCase
     {
         $result = PassportText::main($this->main()."\n".PassportText::ACROSS."\n07 512946\n82 07 5129");
 
-        $this->assertSame('82 07 512946', $result['fields']['passport']);
+        $this->assertSame('8207 512946', $result['fields']['passport']);
         $this->assertSame('050-003', $result['fields']['passport_code']);
     }
 

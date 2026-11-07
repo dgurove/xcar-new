@@ -153,7 +153,7 @@ class AlfaRequisitesTest extends TestCase
         // В письме — реквизиты покупателя, скан — у него же (вложение черновика).
         $buyer = MailController::placeholders($offer)['buyer'];
         $this->assertStringContainsString('Денис Трофимов', $buyer);
-        $this->assertStringContainsString('Паспорт: 11 11 № 111111', $buyer);
+        $this->assertStringContainsString('Паспорт: 1111 111111', $buyer);
         $this->assertTrue($deal->fresh()->supplierInvoicee()->hasPassportScans());
 
         // Скан — одним PDF (05.11.2026): поставщику во вложении, админу — посмотреть и скачать из «Покупателя для счёта».

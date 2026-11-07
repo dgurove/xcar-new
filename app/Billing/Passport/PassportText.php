@@ -84,6 +84,9 @@ final class PassportText
             $fields['birth_place'] = $place;
         }
 
+        // Серия без пробела: «8207 445349» (07.11.2026, владелец).
+        isset($fields['passport']) && $fields['passport'] = preg_replace('/^(\d{2})\s(\d{2})\s/u', '$1$2 ', $fields['passport']);
+
         return ['fields' => $fields, 'checked' => array_values(array_unique($checked))];
     }
 

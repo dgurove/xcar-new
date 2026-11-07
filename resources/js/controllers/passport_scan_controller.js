@@ -110,7 +110,7 @@ export default class extends Controller {
             // Серия и номер — двумя полями, где форма их так держит (`x-billing.passport-fields`).
             if (key === 'passport' && form.elements[name('passport_series')]) {
                 const [, series, number] = String(value).match(/^(\d{2}\s?\d{2})\s*(\d{6})$/) || [];
-                if (series) { to.plain(name('passport_series'), series); to.plain(name('passport_number'), number); }
+                if (series) { to.plain(name('passport_series'), series.replace(/\s/g, '')); to.plain(name('passport_number'), number); }
                 continue;
             }
             to.plain(name(key), value);

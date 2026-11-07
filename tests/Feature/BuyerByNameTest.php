@@ -79,8 +79,8 @@ class BuyerByNameTest extends TestCase
     /** Серия и номер двумя полями — в одно `passport`. */
     public function test_passport_series_and_number_join(): void
     {
-        $this->assertSame('82 07 445349', \App\Billing\PartyRules::passportNumber('8207', ' 445349'));
-        $this->assertSame(['82 07', '445349'], \App\Billing\PartyRules::passportParts('82 07 445349'));
+        $this->assertSame('8207 445349', \App\Billing\PartyRules::passportNumber('82 07', ' 445349'));
+        $this->assertSame(['8207', '445349'], \App\Billing\PartyRules::passportParts('82 07 445349'));
         $this->assertSame('AB 1234567', \App\Billing\PartyRules::passportNumber('AB', '1234567'));
     }
 }

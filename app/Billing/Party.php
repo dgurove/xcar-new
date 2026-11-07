@@ -98,7 +98,7 @@ class Party extends Model implements HasMedia
     }
 
     /**
-     * Серия и номер паспорта порознь — для договора «паспорт серии 45 12 № 345678». Храним одной строкой как ввели
+     * Серия и номер паспорта порознь — для договора «паспорт серии 4512 № 345678» (серия без пробела — 07.11.2026, владелец). Храним одной строкой как ввели
      * («4512345678», «45 12 345678», «серия 4512 № 345678»): десять цифр — 4 + 6, иначе последние цифры от шести — номер.
      *
      * @return array{0: ?string, 1: ?string} серия, номер (не разобралось — серии нет, номер как вписан)
@@ -108,7 +108,7 @@ class Party extends Model implements HasMedia
         $raw = trim((string) $this->passport);
         $digits = preg_replace('/\D/', '', $raw);
         if (strlen($digits) === 10) {
-            return [substr($digits, 0, 2).' '.substr($digits, 2, 2), substr($digits, 4)];
+            return [substr($digits, 0, 4), substr($digits, 4)];
         }
         if (preg_match('/^(.*?\d.*?)\s*№?\s*(\d{6,})$/u', $raw, $m)) {
             return [trim(preg_replace('/^серия\s*/iu', '', rtrim($m[1], ' №'))), $m[2]];
@@ -305,7 +305,8 @@ class Party extends Model implements HasMedia
         return implode("\n", array_filter($this->kind === PartyKind::Person || $this->kind === null ? [
             $this->name,
             $this->birth_at ? 'Дата рождения: '.$date($this->birth_at).($this->birth_place ? ', '.$this->birth_place : '') : null,
-            $this->passport ? 'Паспорт: '.implode(' № ', array_filter($this->passportParts())) : null,
+            // «Паспорт: 8207 445349» — без «№» и пробела в серии (07.11.2026, владелец).
+            $this->passport ? 'Паспорт: '.implode(' ', array_filter($this->passportParts())) : null,
             $this->passport_issued ? 'Выдан: '.$this->passport_issued.($this->passport_issued_at ? ' '.$date($this->passport_issued_at) : '') : null,
             $this->passport_code ? 'Код подразделения: '.$this->passport_code : null,
             $this->reg_address ? 'Адрес регистрации: '.$this->reg_address : null,

@@ -44,7 +44,7 @@ final class PartyRules
     /**
      * Реквизиты цифрами без пробелов и дефисов («4080 2810 …» из банка) — до проверки `digits`. Серия и номер паспорта
      * двумя полями (`x-billing.passport-fields`, 07.11.2026, владелец: «серия ____ номер ______») — в одно `passport`
-     * «82 07 445349».
+     * «8207 445349».
      */
     public static function squeeze(\Illuminate\Http\Request $request, string $prefix = 'buyer'): void
     {
@@ -61,25 +61,25 @@ final class PartyRules
         $set && $request->merge([$prefix => $set]);
     }
 
-    /** «8207» и «445349» → «82 07 445349»; не по образцу (старый или чужой паспорт) — как вписали, через пробел. */
+    /** «82 07» и «445349» → «8207 445349» (серия без пробела, 07.11.2026, владелец); не по образцу (старый или чужой паспорт) — как вписали, через пробел. */
     public static function passportNumber(string $series, string $number): ?string
     {
         $s = preg_replace('/\D+/u', '', $series);
         $n = preg_replace('/\D+/u', '', $number);
         if (strlen($s) === 4 && strlen($n) === 6) {
-            return substr($s, 0, 2).' '.substr($s, 2).' '.$n;
+            return $s.' '.$n;
         }
         $raw = trim(preg_replace('/\s+/u', ' ', trim($series).' '.trim($number)));
 
         return $raw === '' ? null : $raw;
     }
 
-    /** Обратно, для двух полей формы: «82 07 445349» → ['82 07', '445349']. @return array{0: string, 1: string} */
+    /** Обратно, для двух полей формы: «82 07 445349» и «8207 445349» → ['8207', '445349']. @return array{0: string, 1: string} */
     public static function passportParts(?string $passport): array
     {
         $p = trim((string) $passport);
         if (preg_match('/^(\d{2})\s?(\d{2})\s*(\d{6})$/u', $p, $m)) {
-            return [$m[1].' '.$m[2], $m[3]];
+            return [$m[1].$m[2], $m[3]];
         }
         // Не по образцу — номер последним словом, остальное — серия.
         $words = preg_split('/\s+/u', $p) ?: [];
