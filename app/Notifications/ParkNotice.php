@@ -61,12 +61,13 @@ final class ParkNotice extends Notice
 
     public static function mail(Vehicle $v, Message $m): self
     {
-        // Заголовок — смысл письма («Вендор ждёт документы или фото»), а не тема; у дела — шаг «Нужно ответить».
+        // Заголовок — смысл письма («Вендор ждёт документы или фото»), а не тема; у дела — шаг «Нужно ответить». Ответ не
+        // нужен — только строкой ленты (07.11.2026, владелец: «глуши»; управляющие открывали 3 %).
         $intent = Intent::tryFrom((string) $m->intent);
         $title = $intent && $intent->needsReply() ? $intent->title() : 'Письмо';
 
         return (new self($title.': '.$v->titleWithYear(), ($m->from_name ?: $m->from_email).', '.($m->subject ?: 'без темы'), '/cars/'.$v->id, $v->id,
-            telegram: $intent?->needsReply() ?? false))->variant('mail', 'Письмо по ТС');
+            telegram: $intent?->needsReply() ?? false, quiet: ! $intent?->needsReply()))->variant('mail', 'Письмо по ТС');
     }
 
     public static function sold(Vehicle $v, ?Message $m = null): self

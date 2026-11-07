@@ -8,7 +8,8 @@ use Illuminate\Support\HtmlString;
 
 /**
  * Письмо-предложение само стало черновиком (`AutoOffer`, 12.10.2026) — модераторам с галкой почты вместо «Новое из
- * писем»: заводить уже нечего, а закупочную и поля проверить надо. Ведёт в черновик, тихо, как письма.
+ * писем»: заводить уже нечего, а закупочную и поля проверить надо. Ведёт в черновик. Только строкой ленты — без пуша и
+ * Telegram (07.11.2026, владелец: «глуши»; по журналу доставки открыли 0 из ~70 за неделю — работу берут из списка).
  */
 final class OfferDraftNotice extends Notice
 {
@@ -34,9 +35,9 @@ final class OfferDraftNotice extends Notice
         return Surface::Crm->url('/offers/'.$this->offer->number);
     }
 
-    public function important(): bool
+    public function quiet(): bool
     {
-        return false;
+        return true;
     }
 
     public function category(): string
