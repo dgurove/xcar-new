@@ -43,8 +43,15 @@ final class Extractor
             $fields['city'] = ['value' => $city, 'source' => 'body'];
         }
         $this->bareCode($fields, $topic, collect($attachments)->pluck('filename')->filter()->all());
-        $this->body($fields, $text);
+        $guessed = $this->body($fields, $text);
         foreach ($this->documents($attachments) as $field => $value) {
+            // Цена документа с подписью («назначает цену», «стоимость … составляет») важнее догадки по голой сумме в
+            // тексте (07.11.2026, 641546/2026: в пересланной переписке одна сумма — выплата 880 000, в договоре — 260 000).
+            if ($field === 'floor_price' && $guessed) {
+                $fields[$field] = $value;
+
+                continue;
+            }
             $fields[$field] ??= $value;
         }
         if ($vendor) {
@@ -170,16 +177,21 @@ final class Extractor
     /**
      * Цена без подписи шаблона: сумма с «руб / р. / ₽» в своих словах письма — голой строкой («1 259 990 руб.», так пишет
      * Совкомбанк) или внутри фразы. Берётся, только если разная сумма одна; пробег, «забрать за» (это `owner_price`)
-     * и даты не в счёт.
+     * и даты не в счёт; выплата, возмещение и страховая сумма — деньги страхователя, не цена машины (07.11.2026, 641546/2026:
+     * «выплату страхового в неоспариваемой части, в размере 880 000 руб.» стала закупочной вместо 260 000).
+     * true — цена угадана здесь: подписанная цена документа её заменит.
      */
-    private function body(array &$fields, string $text): void
+    private function body(array &$fields, string $text): bool
     {
+        $guessed = false;
         $plain = Template::plain($text);
         if (! isset($fields['floor_price']) && preg_match_all('/(?<![\d.,])'.Template::MONEY.'\s*(?:руб|р\.|₽)/u', $plain, $m, PREG_OFFSET_CAPTURE)) {
             $prices = [];
             foreach ($m[1] as [$digits, $at]) {
                 $before = mb_strtolower(mb_strcut($plain, max(0, $at - 60), min(60, $at)));   // смещение в байтах — режем по буквам
-                if (preg_match('/(пробег\w*|забрать\s+за|км)\s*[:–—-]?\s*$/u', $before)) {
+                $sentence = preg_split('/[.!?\n](?=\s)/u', mb_strtolower(mb_strcut($plain, max(0, $at - 240), min(240, $at))));
+                if (preg_match('/(пробег\w*|забрать\s+за|км)\s*[:–—-]?\s*$/u', $before)
+                    || preg_match('/выплат|возмещени|страхов\w*\s+сумм/u', (string) end($sentence))) {
                     continue;
                 }
                 if ($value = Template::money($digits)) {
@@ -188,6 +200,7 @@ final class Extractor
             }
             if (count($prices) === 1) {
                 $fields['floor_price'] = ['value' => array_key_first($prices), 'source' => 'body'];
+                $guessed = true;
             }
         }
         if (preg_match('/готов\w*\s+к\s+передаче\s*[–—:\-]?\s*('.Patterns::PHONE.')\s*([А-ЯЁ][а-яё]+(?:\s+[А-ЯЁ][а-яё]+){0,2})?/u', $text, $m)) {
@@ -198,6 +211,8 @@ final class Extractor
             }
             $fields['request'] ??= ['value' => 'tow', 'source' => 'body'];
         }
+
+        return $guessed;
     }
 
     /**
