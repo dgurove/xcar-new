@@ -95,6 +95,14 @@ final class ImportThreadFiles implements ShouldBeUniqueUntilProcessing, ShouldQu
         if (! $model || ($vehicle && ! $offer && LettersPurge::due($vehicle))) {
             return;
         }
+        // Черновик у поставщика (partner.xcar.ru): файлы письма сами не ложатся у него на глазах — их принесёт `Partner\Handover`,
+        // когда он отдаст цену.
+        if (! $vehicle && $offer?->heldByPartner()) {
+            // Ход задачи встал при постановке (`announce`) — снять, иначе «Прикрепляем файлы» висит в CRM навсегда.
+            Progress::done($model, $this->task());
+
+            return;
+        }
         // Возврат документов из ящика (`park:restore-letter-docs`): только документы — фото выданной не нужны, а диск их не
         // выдержит (10 ГБ). Закрепить из ящика и положить в бумаги ТС.
         if ($this->documentsOnly) {

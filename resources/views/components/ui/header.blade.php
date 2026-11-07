@@ -19,6 +19,8 @@
     $crmChats = $surface === \App\Support\Surface::Crm && $user?->canManageCrm();
     // Тревога «нет покупателя» — ведущим логистику в CRM и логистике, логисту в логистике (`Offers\Binding::alarmsFor`).
     $alarm = \App\Offers\Binding::alarmsFor($user, $surface);
+    // Партнёру (поставщик, 07.11.2026) — ни поиска по системе, ни уведомлений: его список ищет лупой сам.
+    $tools = $user && $surface !== \App\Support\Surface::Partner;
 @endphp
 <header id="header" class="header">
     {{-- Состояние связи — полоса по нижнему краю шапки, вне раскладки (05.11.2026, владелец: надпись «Соединение…» в ряду
@@ -33,7 +35,7 @@
                 <a href="{{ $back[1] }}" class="header-btn header-sq" aria-label="Назад" title="Назад" data-controller="back" data-action="back#go" data-turbo-action="replace">
                     <x-ui.icon name="chevron-left" class="-ml-px size-5"/>
                 </a>
-            @elseif ($user)
+            @elseif ($tools)
                 <x-search.box phone/>
                 {{-- Тревога — на месте «Чатов» (19.10.2026, владелец): горит — капсула, «Чаты» прячутся; погасла — «Чаты» снова. --}}
                 @if ($alarm)<x-ui.header-btn name="alarm"/>@endif
@@ -42,9 +44,9 @@
         </div>
         <a href="{{ $home }}" class="header-brand flex items-center justify-self-center" aria-label="XCar"><x-ui.brand wide class="h-10 max-w-[9.75rem] object-contain"/></a>
         <div class="flex items-center gap-1 justify-self-end">
-            @if ($user)
+            @if ($tools)
                 <x-ui.header-btn name="notifications" :badges="$badges"/>
-            @else
+            @elseif (! $user)
                 <a href="/login" class="header-btn header-sq" aria-label="Войти"><x-ui.icon name="login" class="size-[18px]"/></a>
             @endif
             <span class="contents" data-theme-phone><x-ui.header-btn name="theme"/></span>
@@ -62,7 +64,7 @@
         @endif
         <div class="header-row">
             {{-- Поиск — по закрытому: гостю не нужен. --}}
-            @if ($user)
+            @if ($tools)
             <x-search.box/>
             @endif
             @foreach ($top as $item)
@@ -86,7 +88,7 @@
                     {{ $item['label'] }}<x-ui.badge :href="$item['href']" :badges="$badges"/>
                 </a>
             @endforeach
-            @if ($user)
+            @if ($tools)
                 @if ($alarm)<x-ui.header-btn name="alarm" wide/>@endif
                 <x-ui.header-btn name="notifications" wide :badges="$badges"/>
                 @if ($site || $crmChats)<x-ui.header-btn :name="$site ? 'favorites' : 'chats'" wide :badges="$badges"/>@endif

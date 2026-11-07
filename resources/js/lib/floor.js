@@ -5,9 +5,10 @@ export const ceilThousand = (n) => Math.ceil(Math.round(n * 100) / 100 / 1000) *
 
 const step = (value, rules) => rules.find(([below]) => below === null || value < below) ?? rules.at(-1);
 
+// Без наценки — сама оценочная, без округления (как `Pricing::floorFrom`).
 export function floorFrom(value, rules) {
     const [, add, pct] = step(value, rules);
-    return ceilThousand(value + add + (value * pct) / 100);
+    return add || pct ? ceilThousand(value + add + (value * pct) / 100) : value;
 }
 
 export function markup(value, rules, rub) {

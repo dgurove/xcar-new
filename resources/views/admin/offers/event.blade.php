@@ -8,7 +8,8 @@
     <div class="mt-0.5 flex items-center gap-2 text-xs text-ink-dim">
         <span class="nums">{{ \App\Support\Ago::html($event->created_at, true, words: false) }}</span>
         {{-- Кто — аватаром и именем; без человека — система (26.10.2026): почта конвертом, остальное искрой. --}}
-        @if ($event->user)<span class="inline-flex items-center gap-1"><x-ui.avatar :user="$event->user" :size="16"/>{{ $event->user->shortName() }}</span>
+        {{-- Поставщик (partner.xcar.ru) — с вендором: «Ирина Соколова, АльфаСтрахование». --}}
+        @if ($event->user)<span class="inline-flex items-center gap-1"><x-ui.avatar :user="$event->user" :size="16"/>{{ $event->user->shortName() }}@if ($event->user->isSupplier() && $event->user->vendor), {{ $event->user->vendor->name }}@endif</span>
         @else
             @php
                 $p = is_array($event->payload ?? null) ? $event->payload : [];

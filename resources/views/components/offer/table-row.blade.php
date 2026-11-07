@@ -148,7 +148,7 @@
     <td class="{{ $col->classes() }} {{ $gallery ? 'text-accent-text' : 'text-urgent' }}">@if ($gallery){{ $count ?: '' }}@else{{ $priceBids ?: '' }}@if ($priceBids && $offer->top_bid)<span class="ml-1 text-sm text-ink-muted">до {{ \App\Support\Money::nums($offer->top_bid) }}</span>@endif{{ $priceBids && $garageBids ? ',' : '' }}@if ($garageBids)<span class="ml-1 whitespace-nowrap">{{ $garageBids }} <span class="text-sm">в гараж</span></span>@endif @endif</td>
         @break
         @case('value')
-    <td class="{{ $col->classes() }}">{{ $offer->value && \App\Offers\Pricing::byValue($offer->vendor_id) ? \App\Support\Money::nums($offer->value) : '' }}</td>
+    <td class="{{ $col->classes() }}">{{ $offer->value && \App\Offers\Pricing::valued($offer) ? \App\Support\Money::nums($offer->value) : '' }}</td>
         @break
         @case('floor')
     @if ($floorSide)

@@ -23,12 +23,12 @@ export default class extends Controller {
                 if (Date.now() - at < STALE) this.found(detail);
             }
         };
-        document.addEventListener('live:migtorg', this.onFound);
+        document.addEventListener('live:lots', this.onFound);
         document.addEventListener('visibilitychange', this.onVisible);
     }
 
     disconnect() {
-        document.removeEventListener('live:migtorg', this.onFound);
+        document.removeEventListener('live:lots', this.onFound);
         document.removeEventListener('visibilitychange', this.onVisible);
         clearTimeout(this.timer);
     }

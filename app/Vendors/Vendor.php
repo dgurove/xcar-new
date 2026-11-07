@@ -45,7 +45,7 @@ use Spatie\MediaLibrary\InteractsWithMedia;
     'deal_format', 'to_gallery', 'drafts_from_migtorg', 'letters_to_telegram', 'pickup_on_arrival', 'claim_ref_optional', 'reward_kind', 'reward_value', 'payment_days', 'offers_include_vat', 'answer_hours', 'silence_means_buy', 'binding_days',
     'storage_payer', 'buyer_pays_late', 'release_without_payment', 'release_by_qr', 'auto_sale', 'floor_by_value', 'buyer_rate_multiplier', 'billing_cadence',
     'senders', 'parser', 'park_senders', 'mail_account_id', 'party_id', 'report_template_id', 'refusal_template_id', 'home_yard_id', 'park_seller',
-    'intake_docs', 'intake_note', 'audience_rules', 'intake_report_docs',
+    'intake_docs', 'intake_note', 'audience_rules', 'intake_report_docs', 'floor_rules',
 ])]
 class Vendor extends Model implements HasMedia
 {
@@ -95,6 +95,7 @@ class Vendor extends Model implements HasMedia
             'park_seller' => Seller::class,
             'senders' => 'array',
             'audience_rules' => 'array',
+            'floor_rules' => 'array',
             'parser' => Parser::class,
             'park_senders' => 'array',
             'intake_docs' => 'array',

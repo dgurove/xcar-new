@@ -5,8 +5,8 @@
 @php
     use App\Support\Ago;
     use App\Support\Plural;
-    $where = ['site' => 'Сайт', 'crm' => 'CRM', 'park' => 'Парковка', 'logistics' => 'Логистика'];
-    $icons = ['site' => 'eye', 'crm' => 'cat-car', 'park' => 'park', 'logistics' => 'cat-truck'];
+    $where = ['site' => 'Сайт', 'crm' => 'CRM', 'park' => 'Парковка', 'logistics' => 'Логистика', 'partner' => 'Партнёр'];
+    $icons = ['site' => 'eye', 'crm' => 'cat-car', 'park' => 'park', 'logistics' => 'cat-truck', 'partner' => 'cat-car'];
     $last = $a->lastSeen();
     $absent = $a->absentDays();
     $visit = $a->lastVisit();

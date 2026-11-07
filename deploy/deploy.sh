@@ -25,6 +25,8 @@ lint() {
     if [ -z "$php" ]; then echo "    шаблоны не проверены: нет php"; return; fi
     echo "==> шаблоны"
     "$php" scripts/blade-lint.php
+    # Сборка поставщика без внутреннего (Partner XCar, 07.11.2026): ни «Мигторга», ни разбора документов в его браузере.
+    if command -v node >/dev/null; then echo "==> сборка партнёра"; node scripts/partner-lint.mjs; else echo "    сборка партнёра не проверена: нет node"; fi
 }
 
 snapshot() {

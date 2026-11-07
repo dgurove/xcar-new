@@ -185,7 +185,8 @@ final class ImportMigtorgLot implements ShouldQueue
     /** Совпавший лот берётся сам один раз: поля нужны и предложению с фото, кадры задача сама кладёт только в пустой ряд. */
     public static function auto(Offer $offer): bool
     {
-        if (! in_array($offer->state, self::STATES, true)) {
+        // Черновик у поставщика (partner.xcar.ru) сам не заполняется: поля и кадры не появляются у него на глазах.
+        if (! in_array($offer->state, self::STATES, true) || $offer->heldByPartner()) {
             return false;
         }
         $lot = self::lotFor($offer);

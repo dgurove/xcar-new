@@ -79,7 +79,7 @@ final class ApplyValuations
             $set = [];
             if (in_array($offer->id, $ids, true)) {
                 $value = (int) $saved['amounts'][$offer->id];
-                $set = Pricing::fromAmount($offer->vendor_id, $value);
+                $set = Pricing::fromAmount($offer->vendor_id, $value, $offer);
                 // Расхождение без «Перезаписать» — вписанное остаётся; оставили оценочную — закупочная тоже прежняя.
                 $differs = $saved['differs'][$offer->id] ?? null;
                 if ($differs && ($keep[$offer->id] ?? 'keep') === 'keep') {
@@ -140,7 +140,7 @@ final class ApplyValuations
             }
             // Вернулось из архива или уже было — цены из текста поверх прежних.
             if ($outcome !== OpenDraft::CREATED) {
-                ($this->update)($offer, Pricing::fromAmount($offer->vendor_id, (int) $row['amount']), $user, ['source' => 'valuation']);
+                ($this->update)($offer, Pricing::fromAmount($offer->vendor_id, (int) $row['amount'], $offer), $user, ['source' => 'valuation']);
             }
             if ($lot && $outcome !== OpenDraft::EXISTING) {
                 ImportMigtorgLot::start($offer->refresh(), $lot);

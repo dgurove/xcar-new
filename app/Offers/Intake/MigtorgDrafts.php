@@ -90,7 +90,7 @@ final class MigtorgDrafts
             $made[] = $offer->refresh()->title() ?: $lot->title;
         }
         if ($made) {
-            app(Publisher::class)(Topics::STAFF, 'migtorg', ['count' => count($made), 'cars' => array_slice($made, 0, 3)]);
+            app(Publisher::class)(Topics::STAFF, 'lots', ['count' => count($made), 'cars' => array_slice($made, 0, 3)]);
         }
 
         return count($made);

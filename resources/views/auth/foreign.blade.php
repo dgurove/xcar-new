@@ -4,6 +4,7 @@
     $whose = match ($surface) {
         \App\Support\Surface::Park => 'парковка',
         \App\Support\Surface::Logistics => 'логистика',
+        \App\Support\Surface::Partner => 'кабинет поставщиков',
         default => 'администрация',
     };
 @endphp

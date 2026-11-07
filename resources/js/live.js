@@ -26,7 +26,7 @@ import { scrollTop, scrollToY } from './lib/scroller';
 //   telegram {state} — live:telegram для telegram_controller: чат привязан, вход подтверждён или отклонён
 //   offers-bot / whatsapp {state: linked} — live:offers-bot / live:whatsapp для offers_feed_controller: подписка встала
 //   scan {candidate} — live:scan для scan_controller: «✨ Распознать» прочитал файл или закончил
-//   migtorg {count, cars} — новые лоты Мигторга заведены черновиками: live:migtorg для migtorg_island_controller
+//   lots {count, cars} — новые лоты Мигторга заведены черновиками: live:lots для lots_island_controller
 //   tg-chat / tg-chat-edit {chat, seq} — переписка бота (админам): live:tg-chat* для той же ленты chat_controller
 //   lock {state} — замок менеджера (lock_controller): approved / denied — кнопка под кодом в боте, kicked — вошли с другого
 //           устройства. live:retopic {topics} от замка — пересоздать поток: '' — закрыть (заморозка), иначе — с новым
@@ -125,7 +125,7 @@ function open() {
     on('chat', chat);
     // Что-то поменялось у сотрудников — числа конвейера на главной CRM перечитываются (`space_controller`, ещё по `badges:updated`).
     ['refresh', 'rows'].forEach((name) => on(name, () => document.dispatchEvent(new CustomEvent('live:changed'))));
-    ['telegram', 'offers-bot', 'whatsapp', 'scan', 'lock', 'files', 'migtorg'].forEach((name) => on(name, (detail) => document.dispatchEvent(new CustomEvent(`live:${name}`, { detail }))));
+    ['telegram', 'offers-bot', 'whatsapp', 'scan', 'lock', 'files', 'lots'].forEach((name) => on(name, (detail) => document.dispatchEvent(new CustomEvent(`live:${name}`, { detail }))));
     ['chat-edit', 'chat-read', 'chat-typing', 'tg-chat', 'tg-chat-edit'].forEach((name) => on(name, (detail) => document.dispatchEvent(new CustomEvent(`live:${name}`, { detail }))));
     source.onopen = () => {
         document.documentElement.removeAttribute('data-net');

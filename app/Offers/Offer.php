@@ -61,7 +61,7 @@ use Illuminate\Support\Facades\DB;
     'asking_price', 'min_bid_price', 'min_bid_share', 'prices_include_vat', 'tags', 'tag_colors', 'bids_close_at', 'sort_weight',
     'chat_enabled', 'share_locked', 'share_locked_by_estimate', 'audience_rules', 'recommended', 'vendor_id', 'claim_ref', 'insurer_deadline_at', 'car_place',
     'answer_by', 'insured_name', 'insured_phone', 'insured_phone2', 'flags', 'holder', 'docs_required', 'contact_name', 'contact_email',
-    'garage_allowed', 'deal_show_until', 'deal_show_all_at', 'binding_until', 'held_by', 'plate', 'sts', 'pts', 'body_no', 'chassis_no', 'policy_no', 'vehicle_category', 'first_look_until', 'first_look_user_id',
+    'garage_allowed', 'deal_show_until', 'deal_show_all_at', 'binding_until', 'held_by', 'plate', 'sts', 'pts', 'body_no', 'chassis_no', 'policy_no', 'vehicle_category', 'first_look_until', 'first_look_user_id', 'floor_rules',
 ])]
 class Offer extends Model
 {
@@ -178,6 +178,11 @@ class Offer extends Model
             if ($o->wasChanged(self::ROW_FIELDS)) {
                 $keys = array_filter([$o->number, $o->wasChanged('number') ? $o->getOriginal('number') : null]);
                 app(Publisher::class)->rowsSoon(Topics::STAFF, ['/offers' => $keys, '/gallery' => $keys]);
+                // Поставщики вендора (partner.xcar.ru, 07.11.2026) — сигнал перечитать свой список, без полей; только вендорам,
+                // у которых поставщики есть.
+                foreach (array_unique(array_filter([$o->vendor_id, $o->wasChanged('vendor_id') ? $o->getOriginal('vendor_id') : null])) as $vendor) {
+                    in_array((int) $vendor, \App\Offers\Partner\PartnerOffers::vendorIds(), true) && app(Publisher::class)->refreshSoon(Topics::partner((int) $vendor), ['/offers']);
+                }
             }
         });
         static::deleted(fn (self $o) => $o->number ? app(Publisher::class)->rowsSoon(Topics::STAFF, ['/offers' => [$o->number], '/gallery' => [$o->number]]) : null);
@@ -204,6 +209,7 @@ class Offer extends Model
             'recommended' => 'bool',
             'garage_allowed' => 'bool',
             'audience_rules' => 'array',
+            'floor_rules' => 'array',
             'published_at' => 'datetime',
             'bids_close_at' => 'datetime',
             'first_look_until' => 'datetime',
@@ -772,7 +778,8 @@ class Offer extends Model
      */
     public function scopeVisibleTo(Builder $q, ?User $user): Builder
     {
-        if (! $user) {
+        // Поставщику (07.11.2026) — ни витрины, ни галереи: его черновики идут только через `Partner\PartnerOffers`.
+        if (! $user || $user->isSupplier()) {
             return $q->whereRaw('false');
         }
         if ($user->isAdmin()) {
@@ -899,9 +906,12 @@ class Offer extends Model
             // Было в сделке или в гараже — модератору закрыто совсем (15.10.2026, владелец: новая закупочная «не должна
             // показываться никому — ни модераторам»): её история, цены, деньги сделки и письма deal@.
             // Черновик с Мигторга (`MigtorgDrafts`) — всем модераторам: это их работа, которую раньше делали руками (26.10.2026).
+            // Черновик поставщика (partner.xcar.ru, 07.11.2026) — всем модераторам: «Без закупочной» — их работа, автор у
+            // него — поставщик, а не их группа.
             return $q->where(fn ($w) => $w->whereIn('moderator_id', $user->teamIds())
                 ->when($user->canCrmMail(), fn ($m) => $m->orWhere(fn ($n) => $n->autoDrafted()))
-                ->orWhere(fn ($n) => $n->migtorgDrafted()))
+                ->orWhere(fn ($n) => $n->migtorgDrafted())
+                ->orWhere('offers.created_via', 'partner'))
                 ->whereDoesntHave('purchaseCar')
                 ->whereNotExists(fn ($e) => $e->from('deals')->whereColumn('deals.offer_id', 'offers.id'))
                 ->whereNotExists(fn ($e) => $e->from('garage_cars')->whereColumn('garage_cars.offer_id', 'offers.id'));
@@ -933,6 +943,12 @@ class Offer extends Model
     {
         return $q->whereNull('offers.moderator_id')->whereExists(fn ($e) => $e->from('car_events')->whereColumn('car_events.offer_id', 'offers.id')
             ->where('car_events.type', OfferEventType::Created)->whereNull('car_events.user_id')->whereRaw("jsonb_exists(car_events.payload, 'migtorg')"));
+    }
+
+    /** Черновик у поставщика (partner.xcar.ru): автоматика его не заполняет, пока он не отдал цену (`PartnerOffers::held`). */
+    public function heldByPartner(): bool
+    {
+        return \App\Offers\Partner\PartnerOffers::held($this);
     }
 
     /** Черновик, который завела почта и который ещё не выходил наружу: его можно снять «Не заявка», как после «Завести». */
@@ -987,7 +1003,9 @@ class Offer extends Model
     {
         $mine = $this->moderator_id === $user->id || ($user->canCrmMail() && $this->isAutoDraft())
             || ($this->moderator_id === null && once(fn () => self::query()->whereKey($this->id)->migtorgDrafted()->exists()));
-        if ($this->state !== OfferState::Draft || $this->published_at !== null || ! ($user->isAdmin() || ($user->isModerator() && $mine))) {
+        // Поставщик (partner.xcar.ru) — только свой: заведённый им самим (07.11.2026).
+        $supplier = $user->isSupplier() && $this->moderator_id === $user->id;
+        if ($this->state !== OfferState::Draft || $this->published_at !== null || ! ($user->isAdmin() || ($user->isModerator() && $mine) || $supplier)) {
             return false;
         }
 

@@ -33,7 +33,8 @@ final class FillFromLetter
     /** `$read` — ставить чтение документов (`AutoScan`); разовая сверка без записи его не ставит. */
     public function __invoke(Offer $offer, Message $message, bool $read = true): void
     {
-        if (! $message->isFromVendor() || ! self::about($offer, $message) || LinkThread::otherCar($offer, $message)) {
+        // Черновик у поставщика (partner.xcar.ru) письма не заполняют: прочтутся, когда он отдаст цену (`Partner\Handover`).
+        if (! $message->isFromVendor() || ! self::about($offer, $message) || LinkThread::otherCar($offer, $message) || $offer->heldByPartner()) {
             return;
         }
         // Что письмо говорит о машине — в варианты полей (`Cars\Sources`); спорное с вписанным — выбором в карточке.

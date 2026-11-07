@@ -26,6 +26,9 @@ use Throwable;
  * 4. чужой знак площадки снимается (`Unmark`, только у предложения);
  * 5. сжатие до 1600 px в webp (2 МБ → ~200 КБ) — оригинал не хранится;
  * 6. наш знак ставит `StampOnAdd` при добавлении.
+ *
+ * Кадр поставщика (свойство `partner` — кто загрузил, partner.xcar.ru, 07.11.2026) — без шагов 1, 3 и 4: ничего «умного»
+ * с его файлом не происходит — лежит как загрузил, только ужат.
  */
 final class PhotoIngest
 {
@@ -78,7 +81,8 @@ final class PhotoIngest
         try {
             // Кадр, скачанный с сайта Мигторга со знаком (`{файл}_watermark.webp`), лот которого в индексе, — их
             // оригинал без знака и крупнее.
-            if ($collection === 'photos' && $model instanceof Offer && ! isset($properties['migtorg']) && ($uuid = Migtorg::mediaOf($name)) && ($original = $this->migtorgOriginal($uuid))) {
+            $plain = isset($properties['partner']);
+            if (! $plain && $collection === 'photos' && $model instanceof Offer && ! isset($properties['migtorg']) && ($uuid = Migtorg::mediaOf($name)) && ($original = $this->migtorgOriginal($uuid))) {
                 @unlink($path);
                 [$path, $properties['migtorg']] = [$original, $uuid];
             }
@@ -90,7 +94,7 @@ final class PhotoIngest
             if ($twin = self::twin($model, $collection, $properties['sha'], $properties['stage'] ?? null)) {
                 return $twin;
             }
-            $bands = $collection === 'photos' ? $this->pages($path) : [];
+            $bands = $collection === 'photos' && ! $plain ? $this->pages($path) : [];
             if (! $bands) {
                 return $this->place($model, $collection, $path, $name, $properties, $max);
             }
@@ -139,7 +143,7 @@ final class PhotoIngest
         try {
             // Чужой знак площадки снимается до сжатия: webp размывает край знака, и формула снятия перестаёт сходиться.
             // Оригинал Мигторга (`migtorg`) приходит без их знака — снимать нечего.
-            if ($collection === 'photos' && $model instanceof Offer && ! isset($properties['migtorg']) && ($clean = app(Unmark::class)($path))) {
+            if ($collection === 'photos' && $model instanceof Offer && ! isset($properties['migtorg']) && ! isset($properties['partner']) && ($clean = app(Unmark::class)($path))) {
                 $properties += ['unmarked' => $clean['mark']];
             }
             $webp = $this->shrink($clean['path'] ?? $path, $max);

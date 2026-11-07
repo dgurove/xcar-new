@@ -86,7 +86,18 @@ final class OpenDraft
     /** @return array{0: Offer, 1: string} */
     private function reopen(Offer $offer, DraftSource $source, ?User $by): array
     {
-        if ($offer->state === OfferState::Cancelled && $source->reopenCancelled) {
+        return $this->reopenArchived($offer, $by, $source->reopenCancelled);
+    }
+
+    /**
+     * Архивное (и снятое, если `cancelled`) — снова черновик; остальное — как есть (`EXISTING`). Одна дверь писем, Мигторга,
+     * оценок и поставщика (`Partner\FindClaim`).
+     *
+     * @return array{0: Offer, 1: string}
+     */
+    public function reopenArchived(Offer $offer, ?User $by, bool $cancelled = true): array
+    {
+        if ($offer->state === OfferState::Cancelled && $cancelled) {
             $offer = ($this->change)($offer, OfferState::Archived, $by);
         }
         if ($offer->state !== OfferState::Archived) {

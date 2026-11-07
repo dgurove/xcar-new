@@ -89,6 +89,10 @@
             <div data-crm class="flex flex-col gap-3">
                 <x-admin.crm-access-fields :areas="$user->access ?? []" :user="$user"/>
             </div>
+            {{-- Поставщик (partner.xcar.ru, 07.11.2026) — его вендор. --}}
+            <div data-supplier class="fields">
+                <x-ui.field name="vendor_id" label="Вендор поставщика" :options="\App\Vendors\Vendor::query()->whereNull('crm_vendor_id')->where('is_active', true)->orderBy('name')->pluck('name', 'id')" placeholder="Выберите вендора" :value="old('vendor_id', $user->vendor_id)"/>
+            </div>
             <x-ui.check name="mail" :checked="$user->wantsMail()">Письма о событиях</x-ui.check>
         @endif
         <x-ui.sheet-foot>Сохранить</x-ui.sheet-foot>

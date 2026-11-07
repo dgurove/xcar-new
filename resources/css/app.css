@@ -438,6 +438,18 @@ html.kb-open { --home-gap: 0px; }
   .price-more > summary { list-style: none; width: fit-content; }
   .price-more > summary::-webkit-details-marker { display: none; }
   .price-more[open] .price-more-chevron { rotate: 180deg; }
+  /* Диапазоны наценки (x-offer.floor-rules, 07.11.2026): строка «до [граница] + [наценка] [₽|%] ×» одной сеткой, на
+     телефоне влезает в 343 px; «дальше» — без поля границы. Поля плотнее обычных, 16 px текста — iOS не зумит. */
+  .floor-rules { @apply flex max-w-md flex-col gap-2; }
+  .floor-rules-list { @apply flex flex-col gap-1.5; }
+  .floor-rule { display: grid; grid-template-columns: minmax(0, 1.5fr) .5rem minmax(0, 1fr) 3.5rem 1.75rem; align-items: center; gap: .3rem; }
+  .floor-rule-edge { @apply flex min-w-0 items-center gap-1; }
+  .floor-rule-word { @apply shrink-0 text-sm text-ink-muted; }
+  .floor-rule .field-input { @apply min-w-0 px-2; height: 2.5rem; }
+  .floor-rule-plus { @apply text-center text-sm text-ink-muted; }
+  .floor-rule-unit { @apply pr-5; }
+  .floor-rule .btn-round { @apply size-7 min-h-0 p-0; }
+  .floor-rules-acts { @apply flex flex-wrap gap-2; }
   .retreat-link { @apply mx-auto -mt-1 block px-4 py-3 text-sm text-ink-muted hover:text-ink; }
   .btn-danger { @apply bg-danger-soft text-danger hover:bg-danger hover:text-white; }
   .btn-glass  { color: #fff; background: rgb(255 255 255 / .12); backdrop-filter: blur(10px); }
@@ -630,8 +642,10 @@ html.kb-open { --home-gap: 0px; }
      «Менеджере». В ссылке роль одна (выпадашка), у человека — галками, их бывает несколько. */
   .invite-form:has(select[name="role"] option:checked:not([value="moderator"])) [data-crm] { display: none !important; }
   .invite-form:has(select[name="role"] option:checked:not([value="manager"])) [data-managers] { display: none !important; }
+  .invite-form:has(select[name="role"] option:checked:not([value="supplier"])) [data-supplier] { display: none !important; }
   .user-form:has(input[name="roles[]"][value="moderator"]:not(:checked)) [data-crm] { display: none !important; }
   .user-form:has(input[name="roles[]"][value="manager"]:not(:checked)) [data-managers] { display: none !important; }
+  .user-form:has(input[name="roles[]"][value="supplier"]:not(:checked)) [data-supplier] { display: none !important; }
   .user-form:has(input[name="roles[]"][value="super_buyer"]:not(:checked)) [data-super] { display: none !important; }
   /* «Кому передать покупателей» — только когда «Менеджер» сняли. */
   .user-form:has(input[name="roles[]"][value="manager"]:checked) [data-transfer] { display: none !important; }
@@ -1215,9 +1229,9 @@ html.kb-open { --home-gap: 0px; }
   .box-nested .pill-plain { @apply bg-surface; }
   /* Чип «Мигторг» (`x-offer.migtorg`): знак их флажком, пока лот ждёт или качается — текст обычный, всё взято —
      приглушён (знак того, откуда фото и поля). Кольцо загрузки — тот же лайм и та же скорость, что у плитки. */
-  .migtorg-mark { display: inline-block; height: .625rem; width: auto; flex: none; }
+  .lot-mark { display: inline-block; height: .625rem; width: auto; flex: none; }
   /* Мигторг в поле номера убытка (x-offer.migtorg-field): справа внутри поля, как кнопка у VIN. */
-  .migtorg-field { @apply absolute inset-y-0 right-2 flex items-center gap-1.5; }
+  .lot-field { @apply absolute inset-y-0 right-2 flex items-center gap-1.5; }
   /* Нашёлся лот — знак на красноватой подложке их цвета: видно, что это кнопка, а не значок. */
   /* Поле не совпадает с лотом Мигторга: «!» у подписи, нажатие — строка «На Мигторге: …» под полем. */
   .field-note { @apply mt-1 text-sm; color: var(--color-urgent); }
@@ -1333,21 +1347,21 @@ html.kb-open { --home-gap: 0px; }
   }
   @keyframes valuation-draw { to { stroke-dashoffset: 0; } }
   @media (prefers-reduced-motion: reduce) { .valuation-tick, .valuation-ok circle, .valuation-ok path { animation: none !important; stroke-dashoffset: 0; } }
-  .migtorg-field-btn { @apply flex size-9 items-center justify-center rounded-full transition-colors; background: color-mix(in oklab, #D6514A 18%, transparent); }
+  .lot-field-btn { @apply flex size-9 items-center justify-center rounded-full transition-colors; background: color-mix(in oklab, #D6514A 18%, transparent); }
   /* «б/н» в пустом номере убытка у вендора без номеров (ТИТ): вписывает значение, лайм — глагол. */
   /* «б/н» — внутри поля справа, как ✨ у VIN (19.10.2026, владелец: «от кнопки б/н всё съезжает»): сетка формы не растёт. */
   .claim-none { @apply absolute top-1/2 right-1.5 flex h-7 -translate-y-1/2 items-center rounded-full bg-accent-soft px-2.5 text-sm; color: var(--color-accent-text); }
-  .migtorg-field-btn:hover { background: color-mix(in oklab, #D6514A 30%, transparent); }
+  .lot-field-btn:hover { background: color-mix(in oklab, #D6514A 30%, transparent); }
   /* «Удалить черновик» в плашке модератора уступает место «Сохранить изменения»: втроём не влезают на телефоне. */
   .action-bar:has([data-save-bar-button]:not([hidden])) .draft-delete { display: none !important; }
-  .migtorg-field-btn .migtorg-mark { @apply h-3 w-4; }
-  .migtorg-field-state { @apply flex items-center gap-1.5 px-2; }
-  .migtorg-field-state.is-quiet .migtorg-mark { opacity: .45; }
-  .vin-box:has(.migtorg-field) .field-input { padding-right: 3rem; }
-  .migtorg-ring { @apply inline-block size-3.5 flex-none rounded-full; border: 2px solid color-mix(in oklab, var(--color-ink) 18%, transparent); border-top-color: var(--color-accent); }
+  .lot-field-btn .lot-mark { @apply h-3 w-4; }
+  .lot-field-state { @apply flex items-center gap-1.5 px-2; }
+  .lot-field-state.is-quiet .lot-mark { opacity: .45; }
+  .vin-box:has(.lot-field) .field-input { padding-right: 3rem; }
+  .lot-ring { @apply inline-block size-3.5 flex-none rounded-full; border: 2px solid color-mix(in oklab, var(--color-ink) 18%, transparent); border-top-color: var(--color-accent); }
   /* «Ищем» — то же кольцо серым и медленнее: лайм только у того, что реально качается. */
-  .migtorg-ring.is-idle { border-top-color: color-mix(in oklab, var(--color-ink) 55%, transparent); }
-  @media (prefers-reduced-motion: no-preference) { .migtorg-ring { animation: spin .9s linear infinite; } .migtorg-ring.is-idle { animation-duration: 2.4s; } }
+  .lot-ring.is-idle { border-top-color: color-mix(in oklab, var(--color-ink) 55%, transparent); }
+  @media (prefers-reduced-motion: no-preference) { .lot-ring { animation: spin .9s linear infinite; } .lot-ring.is-idle { animation-duration: 2.4s; } }
   /* Состояние («оплачен», «просрочен», «идёт сделка») — цветным словом, как в приложении, а не капсулой: капсула
      остаётся у того, что нажимается (a, button). Так же теги-предупреждения («ниже минимальной»). */
   span.pill:is(.pill-open, .pill-urgent, .pill-closed, .pill-danger, .pill-soft, .pill-plain):not(.offer-head *),

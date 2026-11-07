@@ -7,7 +7,8 @@ use App\Users\Section;
 use App\Users\User;
 
 /**
- * Поверхность — одно из четырёх приложений на своём хосте: сайт, CRM, стоянка, логистика (гараж — раздел сайта /garage).
+ * Поверхность — одно из пяти приложений на своём хосте: сайт, CRM, стоянка, логистика (гараж — раздел сайта /garage) и
+ * партнёр — partner.xcar.ru для поставщиков (07.11.2026).
  * Определяется по хосту запроса в ResolveSurface; вне запроса — сайт.
  */
 enum Surface: string
@@ -16,6 +17,7 @@ enum Surface: string
     case Crm = 'crm';
     case Park = 'park';
     case Logistics = 'logistics';
+    case Partner = 'partner';
 
     public static function fromHost(string $host): self
     {
@@ -23,6 +25,7 @@ enum Surface: string
             config('xcar.crm_host') => self::Crm,
             config('xcar.park_host') => self::Park,
             config('xcar.logistics_host') => self::Logistics,
+            config('xcar.partner_host') => self::Partner,
             default => self::Site,
         };
     }
@@ -50,6 +53,7 @@ enum Surface: string
             self::Crm => config('xcar.crm_host'),
             self::Park => config('xcar.park_host'),
             self::Logistics => config('xcar.logistics_host'),
+            self::Partner => config('xcar.partner_host'),
         };
     }
 
@@ -66,10 +70,14 @@ enum Surface: string
      * Дом человека, которому сайт не нужен вовсе (ни одной роли сайта: менеджер, админ, покупатель, проверяющий,
      * посетитель): модератору — CRM, управляющему — парковка. С хоста, который ему закрыт, уводят туда (SiteWall,
      * ResolveSurface, вход, регистрация по ссылке); с открытого — не уводят: модератор с ролью «Парковка» работает в обоих.
-     * Логисту, нашим людям на вывозе и исполнителям логиста — логистика.
+     * Логисту, нашим людям на вывозе и исполнителям логиста — логистика. Поставщику — партнёр, всегда и первым: роль не
+     * совмещается, и ни сайт, ни CRM ему не открываются никогда (07.11.2026).
      */
     public static function onlyFor(?User $user): ?self
     {
+        if ($user?->isSupplier()) {
+            return self::Partner;
+        }
         if (! $user || $user->hasRole(Role::Manager, Role::Admin, Role::Buyer, Role::SuperBuyer, Role::Reviewer, Role::Visitor)) {
             return null;
         }
@@ -96,6 +104,7 @@ enum Surface: string
             self::Crm => (bool) $user?->isStaff(),
             self::Park => (bool) $user?->canAccess(Section::Park),
             self::Logistics => (bool) $user?->canLogistics(),
+            self::Partner => (bool) $user?->isSupplier(),
         };
     }
 
@@ -106,6 +115,7 @@ enum Surface: string
             self::Crm => 'CRM XCar',
             self::Park => 'Park XCar',
             self::Logistics => 'Logistics XCar',
+            self::Partner => 'Partner XCar',
         };
     }
 
@@ -122,7 +132,7 @@ enum Surface: string
     public function home(): string
     {
         return match ($this) {
-            self::Site, self::Crm => '/offers',
+            self::Site, self::Crm, self::Partner => '/offers',
             self::Park => '/requests',
             self::Logistics => '/transports',
         };

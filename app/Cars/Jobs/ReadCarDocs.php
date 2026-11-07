@@ -11,7 +11,8 @@ use Illuminate\Foundation\Queue\Queueable;
 /**
  * У машины появился документ (приложили руками, доехал из письма, сканы из фото, «Это документ») — прочитать её документы
  * в фоне (07.11.2026, `AutoScan::readDocs`): у любой живой машины, а не только у заведённой почтой. Пачка файлов — одна
- * задача: постановка на машину уникальна, с задержкой, пока ложатся остальные.
+ * задача: постановка на машину уникальна, с задержкой, пока ложатся остальные. Черновик у поставщика (partner.xcar.ru,
+ * `Offer::heldByPartner`) не читается: поля сами не появляются у него на глазах; отдал цену — читается (`Partner\Handover`).
  */
 final class ReadCarDocs implements ShouldBeUniqueUntilProcessing, ShouldQueue
 {
@@ -34,6 +35,9 @@ final class ReadCarDocs implements ShouldBeUniqueUntilProcessing, ShouldQueue
     public function handle(): void
     {
         $car = Car::find($this->carId);
+        if ($car?->offer?->heldByPartner()) {
+            return;
+        }
         foreach (array_filter([$car?->offer, $car?->vehicle]) as $lane) {
             AutoScan::readDocs($lane);
         }

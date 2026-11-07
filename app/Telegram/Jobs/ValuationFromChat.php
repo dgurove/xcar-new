@@ -98,7 +98,7 @@ final class ValuationFromChat implements ShouldQueue
         $lines = [];
         foreach ($items as $i) {
             $car = $i['offer'] ? e($i['offer']->titleWithYear()) : null;
-            $floor = $i['offer'] && $i['amount'] ? (Pricing::fromAmount($i['offer']->vendor_id, (int) $i['amount'])['floor_price'] ?? null) : null;
+            $floor = $i['offer'] && $i['amount'] ? (Pricing::fromAmount($i['offer']->vendor_id, (int) $i['amount'], $i['offer'])['floor_price'] ?? null) : null;
             $lines[] = $i['suspicious'] && in_array($i['status'], ['fill', 'absent'], true)
                 ? '⚠️ '.e($i['ref']).($car ? ' — '.$car : '').': '.e($i['suspicious']).', решите в окне оценки'
                 : match ($i['status']) {

@@ -7,6 +7,7 @@ use App\Mail\Scope;
 use App\Offers\Actions\SendClaimRequest;
 use App\Offers\Actions\SyncViewers;
 use App\Offers\AudienceRules;
+use App\Offers\Pricing;
 use App\Offers\Binding;
 use App\Offers\Export\OffersXlsx;
 use App\Offers\Offer;
@@ -298,6 +299,8 @@ class VendorController
             'pickup_on_arrival' => ['boolean'],
             'claim_ref_optional' => ['boolean'],
             'audience_rules' => ['nullable', 'json'],
+            // Диапазоны наценки к оценочной по умолчанию (07.11.2026): у поставщика на partner.xcar.ru и у его предложений.
+            'floor_rules' => ['nullable', 'string', 'max:2000', fn ($a, $v, $fail) => filled($v) && Pricing::clean($v) === null ? $fail('Диапазоны не сходятся: границы должны расти, последний — «дальше»') : null],
             // Ящик продажи — только из ящиков CRM: парковочный отсюда не выбрать.
             'mail_account_id' => ['nullable', Rule::exists('mail_accounts', 'id')->where('scope', Scope::Offers->value)->whereNull('reply_account_id')],
             'senders' => ['nullable', 'string', 'max:2000'],
@@ -309,7 +312,11 @@ class VendorController
         }
         // Волны показа: «всем сразу» — то же, что ничего (AudienceRules::of по умолчанию).
         $rules = AudienceRules::normalize($request->input('audience_rules'));
+        // Ступени, равные умолчанию (у «Закупочная от оценочной» — `Pricing::RULES`, иначе +0), не свои: null.
+        $floorRules = Pricing::clean($request->input('floor_rules'));
+        $floorRules = $floorRules === ($request->boolean('floor_by_value') ? Pricing::RULES : Pricing::FLAT) ? null : $floorRules;
         $vendor->update(array_merge($data, [
+            'floor_rules' => $request->has('floor_rules') ? $floorRules : $vendor->floor_rules,
             'audience_rules' => $request->filled('audience_rules') ? ($rules === AudienceRules::everyone() ? null : $rules) : $vendor->audience_rules,
             'senders' => $senders,
             'is_active' => $request->boolean('is_active'),

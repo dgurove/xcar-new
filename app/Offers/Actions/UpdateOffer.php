@@ -43,6 +43,7 @@ final class UpdateOffer
     public function __invoke(Offer $offer, array $data, ?User $by, array $log = [], bool $repricing = false): Offer
     {
         $was = $offer->value;
+        $wasRules = Pricing::autoRules($offer);
         // Показ сделки кончился, а его продлили — список снова видит её: уведомление всем, а не только новым.
         $showWasOver = $offer->deal_show_until !== null && $offer->dealShowOver();
         // Пока идёт показ всем менеджерам (`ShowDealToAll`, 04.11.2026), его срок и список ведёт он: «Показ» из старой вкладки
@@ -51,8 +52,10 @@ final class UpdateOffer
             unset($data['deal_audience_users'], $data['deal_audience_groups'], $data['deal_show_until']);
         }
         $offer->fill($data);
-        // Сменили оценочную, закупочную не трогали — закупочная от неё же, если не вписана рукой (`Pricing::floorFor`).
-        if ($offer->isDirty('value') && ! $offer->isDirty('floor_price') && ($floor = Pricing::floorFor($offer->floor_price, $was, $offer->value))) {
+        // Сменили оценочную или ступени предложения, закупочную не трогали — закупочная от неё же по ступеням предложения,
+        // если не вписана рукой (`Pricing::floorFor`).
+        if (($offer->isDirty('value') || $offer->isDirty('floor_rules')) && ! $offer->isDirty('floor_price')
+            && ($floor = Pricing::floorFor($offer->floor_price, $was, $offer->value, Pricing::autoRules($offer), $wasRules))) {
             $offer->floor_price = $floor;
         }
         // Сменили вендора, а НДС не прислали (у модератора галки нет) — НДС цен от вендора. Присланный — письмом или
@@ -140,7 +143,11 @@ final class UpdateOffer
         if ($reprice) {
             DetectReprice::open($offer, $reprice, in_array($log['source'] ?? null, Reprice::SOURCES, true) ? $log['source'] : 'manual', null, $by, $repriceValue);
         }
-        self::identityChanged($offer, $changed);
+        // Правка поставщика (partner.xcar.ru): ветки писем и лот по новому VIN не тянутся у него на глазах — их подтянет
+        // `Partner\Handover`, когда предложение уйдёт от него.
+        if (! $by?->isSupplier()) {
+            self::identityChanged($offer, $changed);
+        }
         // Гараж запретили — ждущие «В гараж» отклоняются (решение владельца 03.10.2026), принять их уже нельзя.
         if (in_array('garage_allowed', $changed, true) && ! $offer->garage_allowed) {
             $offer->bids()->where('state', BidState::Active)->where('kind', BidKind::Garage)->get()->each(fn (Bid $bid) => app(DeclineBid::class)($bid, $by));

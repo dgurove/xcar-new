@@ -43,6 +43,13 @@
                 <x-ui.check name="offers_include_vat" :checked="$vendor->offers_include_vat">Цены предложений с НДС</x-ui.check>
                 {{-- Сумма страховой — оценочная (Альфа): закупочная от неё по правилу `Offers\Pricing`, в CRM поле «Оценочная». --}}
                 <x-ui.check name="floor_by_value" :checked="$vendor->floor_by_value">Закупочная от оценочной</x-ui.check>
+                {{-- Диапазоны наценки к оценочной (07.11.2026): умолчание предложений вендора — поставщик на partner.xcar.ru
+                     правит их у каждого своего предложения. --}}
+                <div class="flex flex-col gap-1.5">
+                    <span class="field-label">Диапазоны наценки к оценочной</span>
+                    <x-offer.floor-rules :rules="\App\Offers\Pricing::rulesFor($vendor)" :default="$vendor->floor_by_value ? \App\Offers\Pricing::RULES : \App\Offers\Pricing::FLAT" id="vendor-floor-rules"/>
+                    @error('floor_rules')<span class="field-error">{{ $message }}</span>@enderror
+                </div>
                 <x-ui.check name="to_gallery" :checked="$vendor->to_gallery">Черновики в галерею на {{ config('xcar.gallery_days') }} дня</x-ui.check>
                 {{-- Новый лот с номером этого вендора — черновик сам (`Offers\Intake\MigtorgDrafts`, 26.10.2026). --}}
                 <x-ui.check name="drafts_from_migtorg" :checked="$vendor->drafts_from_migtorg">Черновики с Мигторга</x-ui.check>

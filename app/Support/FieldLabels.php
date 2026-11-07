@@ -47,7 +47,7 @@ final class FieldLabels
         'is_runnable' => 'на ходу', 'has_keys' => 'ключи', 'papers' => 'документы', 'incident_date' => 'дата события', 'description' => 'описание',
         'car_place' => 'где ТС', 'settlement_id' => 'город', 'inspection_address' => 'адрес осмотра', 'floor_price' => 'закупочная цена', 'owner_price' => 'собственнику по ДКП', 'value' => 'оценочная стоимость', 'publish_price' => 'заявленная цена', 'asking_price' => 'цена продажи',
         'min_bid_price' => 'минимальная цена', 'min_bid_share' => 'доля от цены', 'prices_include_vat' => 'НДС', 'tags' => 'метки', 'tag_colors' => 'цвета меток', 'bids_close_at' => 'срок приёма', 'first_look_until' => 'только оценившему до',
-        'chat_enabled' => 'чат', 'share_locked' => 'запрет шеринга', 'recommended' => 'рекомендуем', 'managers_limited' => 'круг менеджеров', 'managers' => 'менеджеры', 'audience_rules' => 'кому показывать', 'audience_id' => 'шаблон показа', 'deal_audience' => 'кому показывать в сделке', 'deal_show_until' => 'сколько показывать в сделке',
+        'chat_enabled' => 'чат', 'share_locked' => 'запрет шеринга', 'recommended' => 'рекомендуем', 'managers_limited' => 'круг менеджеров', 'managers' => 'менеджеры', 'audience_rules' => 'кому показывать', 'floor_rules' => 'наценка к оценочной', 'audience_id' => 'шаблон показа', 'deal_audience' => 'кому показывать в сделке', 'deal_show_until' => 'сколько показывать в сделке',
         'vendor_id' => 'вендор', 'answer_by' => 'ответ до', 'insured_name' => 'страхователь', 'insured_phone' => 'телефон страхователя', 'insured_phone2' => 'ещё телефон страхователя', 'flags' => 'признаки', 'holder' => 'держатель',
         'contact_name' => 'контакт', 'contact_phone' => 'телефон', 'contact_email' => 'почта ответственного', 'insurer_deadline_at' => 'срок от вендора', 'binding_until' => 'срок обязывающего предложения',
         'category' => 'категория', 'oversize' => 'негабарит', 'value' => 'оценочная стоимость', 'policy_no' => '№ полиса', 'contract_kind' => 'основание', 'contract_no' => 'номер договора', 'contract_at' => 'дата договора',
@@ -97,6 +97,10 @@ final class FieldLabels
         }
         if ($field === 'settlement_id') {
             return Settlement::find($value)?->title() ?? (string) $value;
+        }
+        // Диапазоны наценки (07.11.2026): «до 500 000 +50 000 ₽, до 2 000 000 +10%, дальше +200 000 ₽».
+        if ($field === 'floor_rules' && ($rules = \App\Offers\Pricing::clean($value))) {
+            return \App\Offers\Pricing::rulesLabel($rules);
         }
         if (is_array($value)) {
             return implode(', ', array_map(fn ($v) => is_scalar($v) ? (string) $v : json_encode($v, JSON_UNESCAPED_UNICODE), $value));

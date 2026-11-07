@@ -103,12 +103,13 @@ final class MatchValuations
             foreach ($found as $offer) {
                 $vin = strtoupper((string) $offer->vin);
                 $direct = ! Pricing::byValue($offer->vendor_id);
-                $floor = $direct ? $r['amount'] : Pricing::floorFrom($r['amount']);
+                $rules = Pricing::rulesFor($offer);
+                $floor = $direct ? $r['amount'] : Pricing::floorFrom($r['amount'], $rules);
                 // Вписанное расходится: оценочная другая; закупочная вписана рукой (не пустая и не посчитанная от
                 // прежней оценочной) и не та, что получится.
                 $valueDiffers = ! $direct && $offer->value !== null && (int) $offer->value !== $r['amount'];
                 $floorDiffers = $offer->floor_price !== null && (int) $offer->floor_price !== $floor
-                    && ($direct || ! ($offer->value && (int) $offer->floor_price === Pricing::floorFrom((int) $offer->value)));
+                    && ($direct || ! ($offer->value && (int) $offer->floor_price === Pricing::floorFrom((int) $offer->value, $rules)));
                 $city = $r['city'] ?? null;
                 $vinFill = $vin === '' && $r['vin'] ? $r['vin'] : null;
                 // VIN из текста — у другого живого предложения: это не та машина или двойник, не записываем (`Identity`).

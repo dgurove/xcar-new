@@ -11,10 +11,10 @@ import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 
 const at = (p) => new URL(p, import.meta.url).pathname;
 const BLACK = '#000000';
-const SURFACES = ['site', 'crm', 'park', 'logistics'];
+const SURFACES = ['site', 'crm', 'park', 'logistics', 'partner'];
 
 // Ярлыки манифеста по поверхностям → иконки кита; тот же список — в PwaController::manifest.
-const SHORTCUT_ICONS = { site: ['cat-car', 'bell'], crm: ['cat-car', 'photo', 'deal', 'cart'], park: ['flag', 'cat-car'], logistics: ['cat-car'] };
+const SHORTCUT_ICONS = { site: ['cat-car', 'bell'], crm: ['cat-car', 'photo', 'deal', 'cart'], park: ['flag', 'cat-car'], logistics: ['cat-car'], partner: ['cat-car'] };
 
 // Экраны iPhone в точках и плотности; тот же список — в components/ui/startup.blade.php.
 const SCREENS = [

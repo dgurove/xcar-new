@@ -113,7 +113,7 @@
                             <span @if ($disputeValue) data-disputed @endif>Оценочная @if ($o->value)<s class="valuation-old nums">{{ Money::nums($o->value) }}</s> @endif<span class="valuation-new nums" data-v>{{ Money::nums($item['amount']) }}</span></span>
                         @endif
                         @if ($floorChanges && $status !== 'dispute')
-                            <span @if ($disputeFloor) data-disputed @endif title="{{ Pricing::floorLabel((int) $item['floor'], $item['direct'] ? null : (int) $item['amount']) }}">закупочная @if ($o->floor_price)<s class="valuation-old nums">{{ Money::nums($o->floor_price) }}</s> @endif<span class="valuation-new valuation-floor nums" data-f>{{ Money::rub($item['floor']) }}</span></span>
+                            <span @if ($disputeFloor) data-disputed @endif title="{{ Pricing::floorLabel((int) $item['floor'], $item['direct'] ? null : (int) $item['amount'], $o ? Pricing::rulesFor($o) : Pricing::rulesFor($item['vendor'] ?? null)) }}">закупочная @if ($o->floor_price)<s class="valuation-old nums">{{ Money::nums($o->floor_price) }}</s> @endif<span class="valuation-new valuation-floor nums" data-f>{{ Money::rub($item['floor']) }}</span></span>
                         @endif
                         @if ($item['ref_differs'] ?? null)
                             <span class="text-urgent">в тексте <span class="nums">{{ $item['ref'] }}</span>, в CRM <span class="nums">{{ $item['ref_differs'] }}</span></span>

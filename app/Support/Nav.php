@@ -28,6 +28,7 @@ use App\Offers\DealState;
 use App\Offers\Interest;
 use App\Offers\InterestState;
 use App\Offers\Offer;
+use App\Offers\Partner\PartnerOffers;
 use App\Offers\OfferState;
 use App\Park\City;
 use App\Park\Request;
@@ -91,6 +92,11 @@ final class Nav
                 $user->isAdmin() || $user->isLogist() ? self::item('Исполнители', '/contractors') : null,
                 $user->isAdmin() || $user->isLogist() ? self::item('Оплаты', '/money') : null,
             ]));
+        }
+
+        // Партнёр (07.11.2026): поставщику — его черновики без цены и профиль, больше ничего.
+        if ($surface === Surface::Partner) {
+            return $user ? [self::item('Предложения', '/offers')] : [];
         }
 
         // Модератор: черновики, почта по галке и профиль — остальное в CRM админу.
@@ -204,7 +210,7 @@ final class Nav
                 }
             }
         }
-        $tabs[] = self::item($surface === Surface::Crm ? 'Настройки' : 'Кабинет', $root, array_values(array_unique($match)));
+        $tabs[] = self::item(match ($surface) { Surface::Crm => 'Настройки', Surface::Partner => 'Профиль', default => 'Кабинет' }, $root, array_values(array_unique($match)));
 
         return $tabs;
     }
@@ -294,6 +300,11 @@ final class Nav
                 // Шаблоны писем парковки — свои, на парковке (02.11.2026: управляющий правит готовые ответы сам).
                 $user->canManagePark() ? self::link('Шаблоны', '/templates', icon: 'link') : null,
             ])), 'Переходы' => self::switchers($user, $surface, fn ($label, $url, $icon) => self::link($label, $url, icon: $icon))]);
+        }
+
+        // Партнёру — только профиль: ни уведомлений, ни переходов.
+        if ($surface === Surface::Partner) {
+            return ['' => [self::link('Профиль', '/account', exact: true)]];
         }
 
         if ($surface === Surface::Logistics) {
@@ -432,7 +443,7 @@ final class Nav
         foreach (self::cabinetFor($user, 'phone', $surface) as $links) {
             foreach ($links as $l) {
                 if ($l['href'] === $path) {
-                    return [$surface === Surface::Crm ? 'Настройки' : 'Кабинет', self::cabinetRoot($surface)];
+                    return [match ($surface) { Surface::Crm => 'Настройки', Surface::Partner => 'Профиль', default => 'Кабинет' }, self::cabinetRoot($surface)];
                 }
             }
         }
@@ -548,6 +559,9 @@ final class Nav
                         : 0),
                 ], 'fresh' => []];
             }
+            if ($surface === Surface::Partner) {
+                return ['totals' => ['/offers' => PartnerOffers::for($user)->notEmptyDraft()->count()], 'fresh' => []];
+            }
             if ($surface === Surface::Crm && ! $user->canManageCrm()) {
                 // Таб — как список без вкладки: «Без закупочной цены» его группы.
                 return ['totals' => ['/offers' => OfferController::scopeFor(OfferController::home($user), Offer::inCrm($user)->notEmptyDraft(), admin: false)->count()], 'fresh' => []];
@@ -640,6 +654,10 @@ final class Nav
 
     private static function count(User $user, Surface $surface): array
     {
+        // Партнёру бейджей нет: уведомлений у него нет, новое — само число таба.
+        if ($surface === Surface::Partner) {
+            return [];
+        }
         $badges = ['/account/notifications' => $user->unreadCount()];
 
         if ($surface === Surface::Crm && ! $user->canManageCrm()) {

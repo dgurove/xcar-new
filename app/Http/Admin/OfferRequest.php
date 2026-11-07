@@ -11,6 +11,7 @@ use App\Offers\AudienceRules;
 use App\Offers\DealAudience;
 use App\Offers\Flag;
 use App\Offers\Offer;
+use App\Offers\Pricing;
 use App\Offers\OfferState;
 use App\Offers\Tag;
 use App\Support\Money;
@@ -30,7 +31,7 @@ class OfferRequest extends FormRequest
     public const MODERATOR = [
         'brand_id', 'model_id', 'year', 'mileage', 'vin', 'show_vin', 'show_address', 'body', 'transmission', 'drive', 'fuel',
         'engine_volume', 'engine_power', 'color', 'settlement_id', 'inspection_address', 'description', 'floor_price', 'value', 'vendor_id', 'claim_ref',
-        'prices_include_vat', 'vehicle_category', 'plate', 'pts', 'sts', 'policy_no', 'body_no', 'chassis_no', 'binding_until',
+        'prices_include_vat', 'vehicle_category', 'plate', 'pts', 'sts', 'policy_no', 'body_no', 'chassis_no', 'binding_until', 'floor_rules',
     ];
 
     protected function prepareForValidation(): void
@@ -75,6 +76,8 @@ class OfferRequest extends FormRequest
             'insured_phone2' => ['nullable', 'string', 'max:40'],
             'floor_price' => ['nullable', 'integer', 'max:100000000'],
             'value' => ['nullable', 'integer', 'min:0', 'max:1000000000'],
+            // Диапазоны наценки предложения (07.11.2026) — JSON из `x-offer.floor-rules`, приводит `Pricing::clean`.
+            'floor_rules' => ['nullable', 'string', 'max:2000', fn ($a, $v, $fail) => filled($v) && Pricing::clean($v) === null ? $fail('Диапазоны не сходятся: границы должны расти, последний — «дальше»') : null],
             'publish_price' => ['nullable', 'integer', 'max:100000000', ...($this->filled('asking_price') ? ['lte:asking_price'] : [])],
             'asking_price' => ['nullable', 'integer', 'max:100000000'],
             'min_bid_price' => ['nullable', 'integer', 'max:100000000'],
@@ -135,6 +138,15 @@ class OfferRequest extends FormRequest
         foreach (['show_vin', 'show_address', 'chat_enabled', 'share_locked', 'recommended', 'prices_include_vat', 'garage_allowed'] as $flag) {
             if ($sent($flag) && ($show || ! in_array($flag, $showOnly, true))) {
                 $data[$flag] = $this->boolean($flag);
+            }
+        }
+        if (array_key_exists('floor_rules', $data)) {
+            // Не тронули — как было (свои поставщика остаются своими, даже если совпадают с вендором); поправили — свои.
+            $rules = Pricing::clean($this->input('floor_rules'));
+            if ($rules === null || (($offer = $this->route('offer')) && $rules === Pricing::rulesFor($offer))) {
+                unset($data['floor_rules']);
+            } else {
+                $data['floor_rules'] = $rules;
             }
         }
         if ($sent('audience_rules') && $show) {

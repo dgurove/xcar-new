@@ -102,15 +102,24 @@ class OfferPhotoController
     public function reorder(Request $request, Offer $offer)
     {
         $order = $request->validate(['order' => ['required', 'array'], 'order.*' => ['integer']])['order'];
-        // Порядок присылает один блок (от страховой, при приёме): его кадры встают на свои места в общей ленте;
-        // звезда (`main`) ставит выбранный кадр первым во всей ленте.
-        $all = $offer->photos()->pluck('id')->all();
-        $ids = array_values(array_intersect($order, $all));
-        if ($ids) {
-            Media::setNewOrder(PhotoBlocks::order($all, $ids, $request->boolean('main')));
-        }
+        self::applyOrder($offer, $order, $request->boolean('main'));
 
         return $this->gallery($offer->refresh());
+    }
+
+    /**
+     * Порядок присылает один блок (от страховой, при приёме): его кадры встают на свои места в общей ленте; звезда (`main`)
+     * ставит выбранный кадр первым во всей ленте. Чужие id отбрасываются. Одна дверь CRM и партнёра.
+     *
+     * @param  list<int>  $order
+     */
+    public static function applyOrder(Offer $offer, array $order, bool $main): void
+    {
+        $all = $offer->photos()->pluck('id')->all();
+        $ids = array_values(array_intersect(array_map('intval', $order), $all));
+        if ($ids) {
+            Media::setNewOrder(PhotoBlocks::order($all, $ids, $main));
+        }
     }
 
     public function toggle(Offer $offer, Media $media)

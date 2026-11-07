@@ -53,6 +53,8 @@ final class AcceptInvite
                 'park_city_id' => $invite->role === Role::Parking ? $invite->park_city_id : null,
                 // Исполнитель логиста — её человек: она его и позвала.
                 'logist_id' => $invite->role === Role::Contractor ? $invite->created_by : null,
+                // Поставщик — человек своего вендора (07.11.2026).
+                'vendor_id' => $invite->role === Role::Supplier ? $invite->vendor_id : null,
             ]);
             if ($buyer && $invite->group_id) {
                 $user->groups()->attach($invite->group_id, ['created_at' => now()]);
@@ -84,7 +86,13 @@ final class AcceptInvite
             }
         }
 
-        $invite->forBuyer() ? BuyerJoined::dispatch($user, $invite) : ManagerJoined::dispatch($user, $invite);
+        // Поставщику «новый менеджер» владельцу не нужен: его заводит сам админ (07.11.2026). Его вендор — в живые обновления.
+        $user->isSupplier() && \Illuminate\Support\Facades\Cache::forget('partner:vendors');
+        match (true) {
+            $invite->forBuyer() => BuyerJoined::dispatch($user, $invite),
+            $user->isSupplier() => null,
+            default => ManagerJoined::dispatch($user, $invite),
+        };
 
         return $user;
     }

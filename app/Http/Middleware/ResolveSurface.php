@@ -13,6 +13,14 @@ class ResolveSurface
 {
     private const SHARED = ['login', 'logout', 'lock', 'register', 'password', 'passkey', 'up', 'media', 'live', 'chats', 'account', 'manifest.webmanifest', 'offline', 'push', 'sw.js', 'icons.svg', 'deals', 'admin', 'mail', 'files', 'client'];
 
+    /**
+     * Партнёру (07.11.2026) из общих путей — только вход, выход и служебное: ни кабинета, ни чатов, ни сделок, ни почты,
+     * ни файлов и медиа (кадры и документы — свои адреса партнёра). Профиль — ровно `/account` и смена пароля.
+     */
+    private const PARTNER_SHARED = ['login', 'logout', 'lock', 'password', 'passkey', 'up', 'live', 'manifest.webmanifest', 'offline', 'sw.js', 'icons.svg', 'client'];
+
+    private const PARTNER_PATHS = ['account', 'account/password'];
+
     /** Что открыто на чужом хосте тому, кому туда нельзя: выйти и служебное. */
     private const ANYONE = ['login', 'logout', 'password', 'passkey', 'up', 'manifest.webmanifest', 'offline', 'sw.js', 'icons.svg', 'admin', 'client'];
 
@@ -26,7 +34,10 @@ class ResolveSurface
         if ($surface !== Surface::Site) {
             $first = explode('/', $request->path())[0];
             $own = $request->route()?->getDomain() === $surface->host();
-            abort_unless($own || in_array($first, self::SHARED, true), 404);
+            $shared = $surface === Surface::Partner
+                ? in_array($first, self::PARTNER_SHARED, true) || in_array($request->path(), self::PARTNER_PATHS, true)
+                : in_array($first, self::SHARED, true);
+            abort_unless($own || $shared, 404);
 
             $user = $request->user();
 

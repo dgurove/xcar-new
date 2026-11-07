@@ -15,27 +15,38 @@
     $garageOnly ??= false;
     $admin = auth()->user()->canManageCrm();
     $byValue = \App\Offers\Pricing::byValueIds();
+    // Ступени предложения (07.11.2026): свои ставит поставщик на partner.xcar.ru, иначе — вендора. Свои — и оценочная видна.
+    $rules = \App\Offers\Pricing::autoRules($offer);
+    $valued = \App\Offers\Pricing::valued($offer);
     $more = $offer->publish_price || $offer->min_bid_price || $offer->min_bid_share || $errors->hasAny(['publish_price', 'min_bid_price', 'min_bid_share']);
     $input = 'field-input nums'.($plate ? ' !bg-surface' : '');
     $ring = '!ring-2 !ring-accent';
     $bindingDays = $offer->vendor_id ? (int) \App\Vendors\Vendor::whereKey($offer->vendor_id)->value('binding_days') : 0;
 @endphp
-<div class="flex flex-col gap-2" data-controller="min-bid value-floor" data-value-floor-rules-value="@json(\App\Offers\Pricing::RULES)">
+<div class="flex flex-col gap-2" data-controller="min-bid value-floor" data-value-floor-rules-value="@json($rules)" data-action="floor-rules:change->value-floor#rules">
     <div class="flex flex-col gap-2">
         {{-- Оценочная — только у вендора, чья закупочная от неё (`floor_by_value`, Альфа); сменили вендора — прячется сама. --}}
-        <div class="field" data-controller="by-vendor" data-by-vendor-ids-value="{{ json_encode($byValue) }}" @unless (in_array($offer->vendor_id, $byValue, true) || (! $admin && $offer->value)) hidden @endunless>
+        <div class="field" data-controller="by-vendor" data-by-vendor-ids-value="{{ json_encode($byValue) }}" @unless ($valued || (! $admin && $offer->value)) hidden @endunless>
             <label for="{{ $idp }}value" class="field-label">Оценочная, ₽</label>
             <input type="text" id="{{ $idp }}value" name="value" @if ($form) form="{{ $form }}" @endif @if ($now) data-save-own @endif inputmode="decimal" autocomplete="off" enterkeyhint="next" class="{{ $input }}"
                 data-controller="digits" data-action="input->digits#format input->value-floor#sync" data-value-floor-target="value" value="{{ old('value', $offer->value ? \App\Support\Money::nums($offer->value) : '') }}"
-                @if ($now === 'floor' && in_array($offer->vendor_id, $byValue, true)) data-detail-focus @endif>
+                @if ($now === 'floor' && $valued) data-detail-focus @endif>
         </div>
+        {{-- Диапазоны наценки — свёрнутой строкой под оценочной: ступени словами, нажатие — правка (как у поставщика). --}}
+        @if ($valued && ! $garageOnly)
+            <details class="price-more" @if ($errors->has('floor_rules')) open @endif>
+                <summary class="flex items-center gap-1 text-sm text-ink-muted"><span class="min-w-0">{{ \App\Offers\Pricing::rulesLabel($rules) }}</span> <x-ui.icon name="chevron-down" class="price-more-chevron size-4 shrink-0"/></summary>
+                <div class="mt-2"><x-offer.floor-rules :rules="$rules" :default="\App\Offers\Pricing::rulesFor($offer->vendor_id)" :form="$form" :id="$idp.'rules'"/></div>
+                @error('floor_rules')<span class="field-error">{{ $message }}</span>@enderror
+            </details>
+        @endif
         {{-- Закупочная и цена продажи — рядом (19.10.2026, владелец: «компактнее»). --}}
         <div class="grid grid-cols-2 gap-2">
             <div @class(['field', 'field-invalid' => $errors->has('floor_price'), 'col-span-2' => ! $admin || $garageOnly])>
                 <label for="{{ $idp }}floor" class="field-label">Закупочная, ₽</label>
                 <input type="text" id="{{ $idp }}floor" name="floor_price" @if ($form) form="{{ $form }}" @endif @if ($now) data-save-own @endif inputmode="decimal" autocomplete="off" enterkeyhint="{{ $admin ? 'next' : 'go' }}" class="{{ $input }} {{ $now === 'floor' ? $ring : '' }}"
                     data-controller="digits" data-action="input->digits#format" data-value-floor-target="floor" value="{{ old('floor_price', $offer->floor_price ? \App\Support\Money::nums($offer->floor_price) : '') }}"
-                    @if ($now === 'floor' && ! in_array($offer->vendor_id, $byValue, true)) data-detail-focus @endif>
+                    @if ($now === 'floor' && ! $valued) data-detail-focus @endif>
                 @error('floor_price')<span class="field-error">{{ $message }}</span>@enderror
             </div>
             @if ($admin && ! $garageOnly)

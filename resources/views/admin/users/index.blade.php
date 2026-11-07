@@ -77,6 +77,8 @@
                                 <span class="{{ $user->isParkAdmin() ? 'text-accent-text' : '' }}">{{ \App\Park\Roles::label($user) }}</span>
                             @else
                                 <span class="{{ $user->isAdmin() ? 'text-accent-text' : '' }}">{{ mb_strtolower($user->rolesLabel()) }}</span>
+                                {{-- Поставщик — с вендором (partner.xcar.ru): «поставщик АльфаСтрахование». --}}
+                                @if ($user->isSupplier() && $user->vendor)<span>{{ $user->vendor->name }}</span>@endif
                             @endif
                             {{-- Когда был (30.10.2026, владелец: управляющий две недели не заходил, а видно не было): неделя и больше — красным. --}}
                             @if ($user->isApproved())

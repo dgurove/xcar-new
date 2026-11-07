@@ -94,7 +94,7 @@ class AppServiceProvider extends ServiceProvider
      * Файлы `views/components`, которые рисуют как шаблон — `view()`, `@include`: под Blaze файл — определение функции и
      * рисует пустоту, поэтому они — обычным Blade. Новый такой вызов без строки здесь ловит `scripts/blade-lint.php`.
      */
-    public const PLAIN_COMPONENTS = ['ui/detail', 'park/table-row', 'offer/favorite-stream', 'offer/estimate-due', 'ui/share-link-buttons', 'ui/star', 'vendor/tariff-step', 'park/report-file'];
+    public const PLAIN_COMPONENTS = ['ui/detail', 'park/table-row', 'offer/favorite-stream', 'offer/estimate-due', 'ui/share-link-buttons', 'ui/star', 'vendor/tariff-step', 'park/report-file', 'offer/floor-rule'];
 
     public function register(): void
     {
@@ -111,7 +111,8 @@ class AppServiceProvider extends ServiceProvider
     {
         // У машины появился документ — её документы читаются сами (`Cars\Jobs\ReadCarDocs`, 07.11.2026).
         Media::created(function ($media) {
-            if ($media->model_type === Car::class && $media->collection_name === 'papers') {
+            // Файл поставщика (partner.xcar.ru) сам не читается: читается после того, как он отдал цену (`Partner\Handover`).
+            if ($media->model_type === Car::class && $media->collection_name === 'papers' && ! $media->getCustomProperty('partner')) {
                 ReadCarDocs::dispatch((int) $media->model_id);
             }
         });

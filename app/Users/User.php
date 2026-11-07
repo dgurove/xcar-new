@@ -23,6 +23,7 @@ use App\Support\Nav;
 use App\Support\Phone;
 use App\Support\Surface;
 use App\Telegram\Bot;
+use App\Vendors\Vendor;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
@@ -44,7 +45,7 @@ use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\InteractsWithMedia;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
-#[Fillable(['name', 'first_name', 'last_name', 'phone', 'login', 'email', 'password', 'roles', 'access', 'notification_settings', 'approved_at', 'approved_by', 'rejected_at', 'manager_id', 'invite_id', 'contact_fields', 'park_readonly', 'party_id', 'park_city_id', 'park_requests_city_id', 'buyer_sees', 'buyer_show_vin', 'logist_id', 'logistics_city', 'cdek_point', 'garage_enabled', 'garage_price_shown', 'offer_regions'])]
+#[Fillable(['name', 'first_name', 'last_name', 'phone', 'login', 'email', 'password', 'roles', 'access', 'notification_settings', 'approved_at', 'approved_by', 'rejected_at', 'manager_id', 'invite_id', 'contact_fields', 'park_readonly', 'party_id', 'park_city_id', 'park_requests_city_id', 'buyer_sees', 'buyer_show_vin', 'logist_id', 'logistics_city', 'cdek_point', 'garage_enabled', 'garage_price_shown', 'offer_regions', 'vendor_id'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
 {
@@ -642,10 +643,27 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
         return ! $this->is_demo && ($this->isManager() || $this->isBuyer() || $this->isSuperBuyer() || $this->isAdmin());
     }
 
-    /** Сайтовое (избранное, чаты, интересы, поддержка, поток каталога) — всем, у кого сайт есть: не только парковка или логистика. */
+    /** Сайтовое (избранное, чаты, интересы, поддержка, поток каталога) — всем, у кого сайт есть: не только парковка, логистика или партнёр. */
     public function usesSite(): bool
     {
-        return ! in_array(Surface::onlyFor($this), [Surface::Park, Surface::Logistics], true);
+        return ! in_array(Surface::onlyFor($this), [Surface::Park, Surface::Logistics, Surface::Partner], true);
+    }
+
+    // -------------------------------------------------------------- поставщик
+
+    /**
+     * Поставщик (07.11.2026): сотрудник страховой своего вендора — только partner.xcar.ru, черновики вендора без закупочной
+     * (`Offers\Partner\PartnerOffers`). Ни сайта, ни CRM, ни уведомлений; роль не совмещается с другими.
+     */
+    public function isSupplier(): bool
+    {
+        return $this->hasRole(Role::Supplier);
+    }
+
+    /** Вендор поставщика (CRM-вендор: «АльфаСтрахование», а не «АльфаСтрахование СПб» парковки). */
+    public function vendor(): BelongsTo
+    {
+        return $this->belongsTo(Vendor::class);
     }
 
     // -------------------------------------------------------------- логистика
@@ -887,6 +905,7 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
             Surface::Logistics => $this->notifications()->where('data->surface', 'logistics'),
             Surface::Crm => $this->notifications()->where(fn ($q) => $q->whereNull('data->surface')->orWhere('data->surface', 'crm')),
             Surface::Site => $this->notifications()->whereNull('data->surface'),
+            Surface::Partner => $this->notifications()->where('data->surface', 'partner'),
         };
     }
 
@@ -921,7 +940,7 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
 
         // Чаты площадки — работа CRM: на значке сайта их нет (08.10.2026).
         // На парковке и в логистике чатов нет — их непрочитанное в значок приложения не идёт.
-        return $this->unreadCount($surface) + (in_array($here, [Surface::Park, Surface::Logistics], true) ? 0 : $this->unreadChats(platform: $here === Surface::Crm));
+        return $this->unreadCount($surface) + (in_array($here, [Surface::Park, Surface::Logistics, Surface::Partner], true) ? 0 : $this->unreadChats(platform: $here === Surface::Crm));
     }
 
     /** Непрочитанное в чатах: свои чаты и чаты покупателей, где человек — вторая сторона; сотруднику — и площадки. */

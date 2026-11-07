@@ -36,6 +36,7 @@ final class ReadNotices
                 Surface::Logistics => $q->where('data->surface', 'logistics'),
                 Surface::Crm => $q->where(fn ($w) => $w->whereNull('data->surface')->orWhere('data->surface', 'crm')),
                 Surface::Site => $q->whereNull('data->surface'),
+                Surface::Partner => $q->where('data->surface', 'partner'),
             })
             ->update(['read_at' => now()]);
         if ($read > 0) {

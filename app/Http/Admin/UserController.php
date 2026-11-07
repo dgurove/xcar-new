@@ -59,7 +59,7 @@ use Illuminate\Validation\ValidationException;
 /** Пользователи: список и правки — администратору, карточка человека — любому сотруднику. */
 class UserController
 {
-    public const PRESETS = ['staff' => 'Сотрудники', 'managers' => 'Менеджеры', 'park' => 'Парковка', 'logistics' => 'Логистика', 'buyers' => 'Покупатели', 'invites' => 'Ссылки', 'waiting' => 'Ждут', 'visitors' => 'Посетители', 'rejected' => 'Отклонённые'];
+    public const PRESETS = ['staff' => 'Сотрудники', 'managers' => 'Менеджеры', 'park' => 'Парковка', 'logistics' => 'Логистика', 'suppliers' => 'Поставщики', 'buyers' => 'Покупатели', 'invites' => 'Ссылки', 'waiting' => 'Ждут', 'visitors' => 'Посетители', 'rejected' => 'Отклонённые'];
 
     /** Люди — по имени (справочник, владелец 06.10.2026); ждущие, покупатели и отклонённые — новые сверху. */
     public const SORTS = ['name' => ['Имя', 'asc'], 'created' => ['Дата добавления', 'desc'], 'seen' => ['Последний вход', 'desc']];
@@ -71,7 +71,7 @@ class UserController
      * с гаражом сам вывозит машину — «в логистике он ещё как исполнитель должен быть») — галкой у любого, и у покупателя: без
      * логиста он прямой исполнитель XCar (`Channel::Partner`), у логиста — её, `logist_id` CRM не трогает.
      */
-    public const ROLES = [Role::Admin, Role::Moderator, Role::Manager, Role::Reviewer, Role::SuperBuyer, Role::Logist, Role::Driver, Role::Contractor];
+    public const ROLES = [Role::Admin, Role::Moderator, Role::Manager, Role::Reviewer, Role::SuperBuyer, Role::Logist, Role::Driver, Role::Contractor, Role::Supplier];
 
     /** Роли, которые ведёт парковка. */
     public const PARK_ROLES = [Role::ParkAdmin, Role::Parking];
@@ -150,6 +150,8 @@ class UserController
                 'managers' => $q->withRole(Role::Manager)->withCount('buyers'),
                 'park' => $q->withRole(Role::Parking),
                 'logistics' => $q->where(fn ($w) => $w->withRole(Role::Logist, Role::Driver)->orWhere(fn ($c) => $c->withRole(Role::Contractor)->whereNull('logist_id'))),
+                // Поставщики (partner.xcar.ru, 07.11.2026) — сотрудники страховых, в строке их вендор.
+                'suppliers' => $q->withRole(Role::Supplier)->with('vendor'),
                 // Супер-покупатели — здесь же, у них вместо менеджера «супер-покупатель» в строке.
                 'buyers' => $q->withRole(Role::Buyer, Role::SuperBuyer)->reorder('created_at', 'desc'),
                 'visitors' => $q->withRole(Role::Visitor)->whereNotNull('approved_at'),
@@ -186,6 +188,7 @@ class UserController
             'managers' => User::withRole(Role::Manager)->count(),
             'park' => User::withRole(Role::Parking)->count(),
             'logistics' => User::where(fn ($w) => $w->withRole(Role::Logist, Role::Driver)->orWhere(fn ($c) => $c->withRole(Role::Contractor)->whereNull('logist_id')))->count(),
+            'suppliers' => User::withRole(Role::Supplier)->count(),
             'buyers' => User::withRole(Role::Buyer, Role::SuperBuyer)->count(),
             'invites' => Invite::whereNull('disabled_at')->where(fn ($w) => $w->whereNull('max_uses')->orWhereColumn('uses_count', '<', 'max_uses'))->where(fn ($w) => $w->whereNull('expires_at')->orWhere('expires_at', '>', now()))->count(),
             'waiting' => User::whereNull('approved_at')->whereNull('rejected_at')->withRole(Role::Visitor)->count(),
@@ -603,6 +606,15 @@ class UserController
         if (in_array(Role::SuperBuyer, $roles, true) && (array_diff(array_map(fn (Role $r) => $r->value, $roles), [Role::SuperBuyer->value, Role::Contractor->value]) || $parkRoles || $self)) {
             throw ValidationException::withMessages(['roles' => 'Супер-покупатель совмещается только с исполнителем вывоза']);
         }
+        // Поставщик (partner.xcar.ru) — только поставщик и только со своим вендором: ни сайта, ни CRM ему нельзя.
+        if (in_array(Role::Supplier, $roles, true) && (count($roles) > 1 || $parkRoles || $self)) {
+            throw ValidationException::withMessages(['roles' => 'Поставщик не совмещается с другими ролями']);
+        }
+        if (in_array(Role::Supplier, $roles, true)) {
+            $data['vendor_id'] = (int) $request->validate(['vendor_id' => ['required', Rule::exists('vendors', 'id')->whereNull('crm_vendor_id')]], ['vendor_id.required' => 'Выберите вендора'])['vendor_id'];
+        } else {
+            $data['vendor_id'] = null;
+        }
         if ($self && ! in_array(Role::Admin, $roles, true)) {
             $roles[] = Role::Admin;
         }
@@ -622,7 +634,7 @@ class UserController
     private function presetOf(User $user): string
     {
         return match (true) {
-            $user->isStaff() => 'staff', $user->isManager() => 'managers', $user->isSuperBuyer() => 'buyers', $user->isParking() => 'park', $user->isLogist() || $user->isDriver() || $user->isContractor() => 'logistics', $user->hasRole(Role::Visitor) => 'visitors', default => 'staff'
+            $user->isStaff() => 'staff', $user->isManager() => 'managers', $user->isSuperBuyer() => 'buyers', $user->isParking() => 'park', $user->isLogist() || $user->isDriver() || $user->isContractor() => 'logistics', $user->isSupplier() => 'suppliers', $user->hasRole(Role::Visitor) => 'visitors', default => 'staff'
         };
     }
 }

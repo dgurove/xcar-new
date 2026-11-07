@@ -68,7 +68,7 @@ final class Categories
         if ($user->hasRole(Role::Moderator)) {
             $add(['on' => [], 'always' => ['Документы на вывоз']]);
         }
-        if (! $on && ! $always && ! $user->hasRole(Role::Moderator)) {
+        if (! $on && ! $always && ! $user->hasRole(Role::Moderator, Role::Supplier)) {
             $add(['on' => ['offers' => 'Новые предложения', 'chats' => 'Чаты'], 'always' => []]);
         }
 

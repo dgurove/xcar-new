@@ -772,7 +772,7 @@ class OfferController
         // Модератору — поля, фото, документы и история: подтверждений, интереса, сделки, маршрута, чатов и круга показа
         // он не видит, и грузить их незачем.
         $admin = $request->user()->canManageCrm();
-        $offer->load(['settlement', 'media', 'car.events.user', ...($admin ? ['bids.user', 'purchaseCar.purchase', 'purchaseCar.bids.user', 'interests.user.manager', 'interests.placer', 'vendor.workflows', 'parkVehicle.yard', 'parkVehicle.requests',
+        $offer->load(['settlement', 'media', 'car.events.user.vendor', ...($admin ? ['bids.user', 'purchaseCar.purchase', 'purchaseCar.bids.user', 'interests.user.manager', 'interests.placer', 'vendor.workflows', 'parkVehicle.yard', 'parkVehicle.requests',
             'positions.stage.block', 'positions.stage.exits.to.block.stages', 'positions.stage.workflow', 'deal.buyer', 'dealAudience', 'lastDeal.buyer', 'lastDeal.bid'] : [])]);
         // Давно закрытое предложение лежит в холодном слое без конверсий — досчитать, раз открыли.
         if (in_array($offer->state, [OfferState::Archived, OfferState::Cancelled, OfferState::Delivered], true)) {
@@ -1066,7 +1066,7 @@ class OfferController
         $floor = $money($data['floor_price'] ?? null);
         $value = $money($data['value'] ?? null);
         // Вписали только оценочную (Альфа), а закупочную браузер не досчитал — она по правилу (`Pricing`).
-        $floor ??= $value && Pricing::byValue($offer->vendor_id) ? Pricing::floorFrom($value) : null;
+        $floor ??= $value && Pricing::valued($offer) ? Pricing::floorFrom($value, Pricing::rulesFor($offer)) : null;
         if (! $floor || $offer->state !== OfferState::Draft) {
             return back()->with('detail-advance', true);
         }

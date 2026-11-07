@@ -20,7 +20,11 @@
     </div>
     @if ($admin)
         {{-- Пять ролей в сегменты не помещаются на телефоне — селект. Супер-покупателю — одноразовая, как сотруднику. --}}
-        <div class="fields"><x-ui.field name="role" label="Кому" :options="['manager' => 'Менеджеру', 'moderator' => 'Модератору', 'admin' => 'Администратору', 'buyer' => 'Покупателю', 'super_buyer' => 'Супер-покупателю', 'logist' => 'Логисту', 'driver' => 'Водителю']" :value="old('role', 'manager')"/></div>
+        <div class="fields"><x-ui.field name="role" label="Кому" :options="['manager' => 'Менеджеру', 'moderator' => 'Модератору', 'admin' => 'Администратору', 'buyer' => 'Покупателю', 'super_buyer' => 'Супер-покупателю', 'logist' => 'Логисту', 'driver' => 'Водителю', 'supplier' => 'Поставщику']" :value="old('role', 'manager')"/></div>
+        {{-- Поставщику (partner.xcar.ru, 07.11.2026) — его вендор: что ему открыть. --}}
+        <div data-supplier class="fields">
+            <x-ui.field name="vendor_id" label="Вендор" :options="\App\Vendors\Vendor::query()->whereNull('crm_vendor_id')->where('is_active', true)->orderBy('name')->pluck('name', 'id')" placeholder="Выберите вендора" :value="old('vendor_id')"/>
+        </div>
         <div data-managers class="fields">
             <x-admin.group-picker :groups="\App\Users\UserGroup::ofKind(\App\Users\UserGroup::MANAGERS)->get()" name="manager"/>
         </div>

@@ -30,7 +30,7 @@ export default class extends Controller {
 
     // Кружок поиска — вместо значка, пока ответ не пришёл.
     waiting(on) {
-        this.element.querySelectorAll(':scope > :not([data-migtorg-target])').forEach((el) => { el.hidden = on; });
+        this.element.querySelectorAll(':scope > :not([data-lot-field-target])').forEach((el) => { el.hidden = on; });
         this.waitTarget.hidden = !on;
     }
 
@@ -38,7 +38,7 @@ export default class extends Controller {
         const ref = this.field?.value.trim() ?? '';
         if (!force && ref === this.last) { this.waiting(false); return; }
         this.last = ref;
-        if (ref === '') { this.waiting(false); this.element.querySelectorAll(':scope > :not([data-migtorg-target])').forEach((el) => el.remove()); return; }
+        if (ref === '') { this.waiting(false); this.element.querySelectorAll(':scope > :not([data-lot-field-target])').forEach((el) => el.remove()); return; }
         this.abort?.abort();
         this.abort = new AbortController();
         // Значок в фоне: не ответил (или ответ устарел) — кружок гаснет, тоста нет.
@@ -55,10 +55,10 @@ export default class extends Controller {
         if (bar) {
             // Только тронутые поля и номер (`_fields[]`): пустая марка черновика не валит проверку, а выбранный и не
             // сохранённый вендор не теряется — 04.10.2026 знак слал один номер, и «Т‑Страхование» возвращалось в «Совком».
-            own.querySelectorAll('[data-migtorg-extra]').forEach((i) => i.remove());
+            own.querySelectorAll('[data-lot-field-extra]').forEach((i) => i.remove());
             bar.dirty.add(this.field.name);
             bar.touched = true;
-            const put = (name, value) => { const i = document.createElement('input'); i.type = 'hidden'; i.name = name; i.value = value; i.dataset.migtorgExtra = ''; own.append(i); };
+            const put = (name, value) => { const i = document.createElement('input'); i.type = 'hidden'; i.name = name; i.value = value; i.dataset.lotFieldExtra = ''; own.append(i); };
             if (!bar.partialValue) bar.dirty.forEach((name) => put('_fields[]', name));
             put('then', 'migtorg');
             this.waiting(true);

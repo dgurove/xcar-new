@@ -53,6 +53,11 @@ final class FillCar
     /** @return list<string> поля, которые записаны */
     public function __invoke(Offer|Vehicle $lane, array $chosen, ?User $by, string $mode = self::SOURCE, array $log = []): array
     {
+        // Черновик у поставщика (partner.xcar.ru, `Offer::heldByPartner`): источники сами его не заполняют — поля не появляются
+        // у него на глазах. Выбор человека («✨», «Взять») — пишется. Отдал цену — источники приходят снова (`Partner\Handover`).
+        if ($mode !== self::CHOSEN && $lane instanceof Offer && $lane->heldByPartner()) {
+            return [];
+        }
         // Марка источника — один раз: новую заводит только источник со своим справочником марок (`create`: Мигторг).
         $chosenBrand = isset($chosen['brand']) ? (! empty($chosen['brand']['create']) ? Brand::resolve((string) $chosen['brand']['value']) : Brand::known((string) $chosen['brand']['value'])) : null;
         $data = [];

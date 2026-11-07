@@ -17,6 +17,7 @@ enum Role: string
     case Logist = 'logist';       // логист (Татьяна): logistics.xcar — вывозы в регионах своими исполнителями (`Contractor`), расстояние и цена
     case Driver = 'driver';       // наш человек на вывозе (ООО «ПРАЙМ», Иван, Сергей): logistics.xcar — только свои задачи
     case Contractor = 'contractor'; // исполнитель логиста в регионах (17.10.2026): его заводит сам логист, видит только свои задачи
+    case Supplier = 'supplier';   // поставщик (07.11.2026): сотрудник страховой — partner.xcar.ru, черновики своего вендора без закупочной; ничего больше
 
     public function label(): string
     {
@@ -34,6 +35,7 @@ enum Role: string
             self::Logist => 'Логист',
             self::Driver => 'Сотрудник на вывозе',
             self::Contractor => 'Исполнитель',
+            self::Supplier => 'Поставщик',
         };
     }
 
@@ -90,7 +92,7 @@ enum Role: string
     /** Поделиться PDF — всем, кроме покупателей (их цена — не для пересылки дальше) и модератора (у него черновики). */
     public function canShare(): bool
     {
-        return ! in_array($this, [self::Buyer, self::SuperBuyer, self::Parking, self::ParkAdmin, self::Reviewer, self::Moderator, self::Logist, self::Driver, self::Contractor], true);
+        return ! in_array($this, [self::Buyer, self::SuperBuyer, self::Parking, self::ParkAdmin, self::Reviewer, self::Moderator, self::Logist, self::Driver, self::Contractor, self::Supplier], true);
     }
 
     /** Гараж — машины на ремонте у менеджеров: сами менеджеры и админ, что вносит итог и счёт. */

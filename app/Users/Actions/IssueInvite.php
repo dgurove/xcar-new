@@ -20,7 +20,7 @@ use Illuminate\Validation\Rule;
 final class IssueInvite
 {
     /** Кем может стать пришедший по ссылке админа CRM. Управляющего и помощника парковки зовёт парковка (`park()`). */
-    public const ROLES = [Role::Manager, Role::Moderator, Role::Admin, Role::Buyer, Role::SuperBuyer, Role::Logist, Role::Driver];
+    public const ROLES = [Role::Manager, Role::Moderator, Role::Admin, Role::Buyer, Role::SuperBuyer, Role::Logist, Role::Driver, Role::Supplier];
 
     /**
      * Логист зовёт своего исполнителя (17.10.2026, владелец: «у Татьяны свои исполнители, должна быть возможность
@@ -87,6 +87,8 @@ final class IssueInvite
             'buyer_sees' => $sees,
             // Модератору — что открыто сверх черновиков.
             ...($role === Role::Moderator ? ['access' => array_values($data['crm_areas'] ?? [])] : []),
+            // Поставщику — его вендор (07.11.2026): без вендора ему нечего открыть.
+            ...($role === Role::Supplier ? ['vendor_id' => (int) $data['vendor_id']] : []),
             // Менеджер и модератор — сразу в группе своего вида (UserGroup), если выбрана.
             'user_group_id' => match ($role) {
                 Role::Manager => ($data['manager_group_id'] ?? null) ?: null,
@@ -120,6 +122,7 @@ final class IssueInvite
             $rules['crm_areas.*'] = [Rule::in(CrmArea::values())];
             $rules['manager_group_id'] = ['exclude_unless:role,manager', 'nullable', Rule::exists('user_groups', 'id')->where('kind', UserGroup::MANAGERS)];
             $rules['moderator_group_id'] = ['exclude_unless:role,moderator', 'nullable', Rule::exists('user_groups', 'id')->where('kind', UserGroup::MODERATORS)];
+            $rules['vendor_id'] = ['exclude_unless:role,supplier', 'required', Rule::exists('vendors', 'id')->whereNull('crm_vendor_id')];
         } else {
             $rules['group_id'] = ['nullable', Rule::exists('buyer_groups', 'id')->where('manager_id', $by->id)];
         }

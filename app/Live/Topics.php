@@ -23,6 +23,15 @@ final class Topics
         return 'user/'.($user instanceof User ? $user->id : $user);
     }
 
+    /**
+     * Поставщики одного вендора на partner.xcar.ru (07.11.2026): их список перечитывается, когда меняется черновик вендора.
+     * В теме только сигнал «перечитать» — ни полей, ни имён.
+     */
+    public static function partner(int $vendorId): string
+    {
+        return 'partner/'.$vendorId;
+    }
+
     /** Обращение гостя: тема одного чата, попадает в токен только по cookie. */
     public static function chat(int $chat): string
     {
@@ -46,8 +55,11 @@ final class Topics
         $park = $surface === Surface::Park;
         // Логистике не нужны ни события CRM, ни парковки: только личная тема человека.
         $logistics = $surface === Surface::Logistics;
+        // Партнёру — только своё: личная тема и тема вендора, ни каталога, ни CRM.
+        $partner = $surface === Surface::Partner;
 
         return array_values(array_filter(self::for($user, $guestChat), fn ($t) => match (true) {
+            $partner => str_starts_with($t, 'user/') || str_starts_with($t, 'partner/') || str_starts_with($t, 'lock/'),
             $logistics => $t !== self::STAFF && $t !== self::PARK,
             $park => $t !== self::STAFF,
             default => $t !== self::PARK,
@@ -84,6 +96,10 @@ final class Topics
         }
         if (! $user && request()->hasSession() && is_string($login = request()->session()->get('telegram.login'))) {
             $topics[] = self::login($login);
+        }
+        if ($user?->isSupplier()) {
+            // Поставщик слушает только себя и свой вендор: ни каталога, ни сотрудников (07.11.2026).
+            return array_values(array_filter([$own ?? null, self::user($user), $user->vendor_id ? self::partner($user->vendor_id) : null]));
         }
         if ($user) {
             $topics[] = self::user($user);

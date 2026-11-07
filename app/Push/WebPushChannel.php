@@ -29,7 +29,7 @@ final class WebPushChannel
         $subs = $subs->filter(function ($sub) use ($only) {
             $host = $sub->host ? Surface::fromHost($sub->host) : Surface::Site;
 
-            return $only ? $host === $only : ! in_array($host, [Surface::Park, Surface::Logistics], true);
+            return $only ? $host === $only : ! in_array($host, [Surface::Park, Surface::Logistics, Surface::Partner], true);
         });
         if ($subs->isEmpty()) {
             return Sent::skipped('нет подписок в этом приложении');
