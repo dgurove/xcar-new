@@ -414,20 +414,21 @@ class Offer extends Model
     }
 
     /**
-     * Открыто только этому человеку (11.10.2026, владелец: «Открыты только Вам»): в волнах показа (`offer_viewers`) он
-     * один, никому другому — ни сейчас, ни позже — предложение не откроется.
+     * Открыто сейчас только этому человеку (11.10.2026, владелец: «Открыты только Вам»): в волнах показа (`offer_viewers`)
+     * его волна наступила, чужие — нет. С 07.11.2026 и эксклюзив на время — «Роме на 5 дней, потом остальным» (до того
+     * считалось только «никому другому никогда», и такие машины стояли в общем списке под «Не просмотренными»).
      */
     public function scopeOnlyFor(Builder $q, User $user): Builder
     {
-        return $q->whereHas('viewers', fn ($v) => $v->where('user_id', $user->id))
-            ->whereDoesntHave('viewers', fn ($v) => $v->where('user_id', '!=', $user->id));
+        return $q->whereHas('viewers', fn ($v) => $v->where('user_id', $user->id)->where('opens_at', '<=', now()))
+            ->whereDoesntHave('viewers', fn ($v) => $v->where('user_id', '!=', $user->id)->where('opens_at', '<=', now()));
     }
 
     /** Всё, кроме открытого только ему (`scopeOnlyFor`): основной список, когда «Открыты только Вам» стоит своей пачкой. */
     public function scopeNotOnlyFor(Builder $q, User $user): Builder
     {
-        return $q->where(fn ($w) => $w->whereDoesntHave('viewers', fn ($v) => $v->where('user_id', $user->id))
-            ->orWhereHas('viewers', fn ($v) => $v->where('user_id', '!=', $user->id)));
+        return $q->where(fn ($w) => $w->whereDoesntHave('viewers', fn ($v) => $v->where('user_id', $user->id)->where('opens_at', '<=', now()))
+            ->orWhereHas('viewers', fn ($v) => $v->where('user_id', '!=', $user->id)->where('opens_at', '<=', now())));
     }
 
     public function interests(): HasMany

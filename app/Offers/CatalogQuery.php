@@ -148,7 +148,7 @@ final class CatalogQuery
             }
             // Список каталога кладёт его чипом (`unreadFacet`), стрелкам страницы предложения он приходит в адресе.
             if (! $gallery && $user && ($filters['unread'] ?? null) === '1') {
-                self::unread($q, $user, $since);
+                self::unreadOrOnly($q, $user, $since);
             }
         }
         // Лупа — по всему разделу, мимо пилюли и чипов.
@@ -224,7 +224,17 @@ final class CatalogQuery
     /** Чип «Не просмотренные»: включён каждый заход, выключают на этот раз (`?unread=0`), не запоминается. */
     public static function unreadFacet(User $user, CarbonInterface $since): Facet
     {
-        return Facet::toggle('unread', 'Не просмотренные', fn (Builder $q) => self::unread($q, $user, $since))->byDefault()->countSelf();
+        return Facet::toggle('unread', 'Не просмотренные', fn (Builder $q) => self::unreadOrOnly($q, $user, $since))->byDefault()->countSelf();
+    }
+
+    /**
+     * Фильтр списка «Не просмотренные»: «Открыты только Вам» он не прячет никогда (07.11.2026, владелец: Рома открыл машины
+     * эксклюзива, а потом сказал, что их не было видно, — фильтр спрятал просмотренные). Напоминания о непросмотренном
+     * (`RemindUnreadClosing`) — по чистому `unread`.
+     */
+    public static function unreadOrOnly(Builder $q, User $user, ?CarbonInterface $since = null): Builder
+    {
+        return $q->where(fn (Builder $w) => self::unread($w, $user, $since)->orWhere(fn (Builder $o) => $o->onlyFor($user)));
     }
 
     /**
