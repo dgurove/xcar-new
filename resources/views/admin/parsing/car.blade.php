@@ -38,7 +38,7 @@
                     </span>
                 </span>
                 @if ($main)
-                    <span class="parsing-place">{{ $main[1] !== '' ? $main[1] : $main[0] }}</span>
+                    <span class="parsing-place">{{ \Illuminate\Support\Str::before($main[0], ' · ') }}</span>
                     <x-ui.icon name="chevron-right" class="size-4 shrink-0 text-ink-dim"/>
                 @endif
             </a>
