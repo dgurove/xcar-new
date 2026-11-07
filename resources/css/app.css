@@ -2468,23 +2468,24 @@ html.kb-open { --home-gap: 0px; }
   .variant-hint { @apply mt-0.5 inline-flex self-start max-w-full items-center gap-0.5 text-left text-sm font-medium; color: var(--color-urgent); }
   span.variant-hint { @apply mt-0 inline; }
   .variant-option { @apply items-center gap-3 py-3; }
-  /* «Парсинг» (`admin/parsing`, 08.11.2026): машина карточкой, спорное поле — подпись слева и варианты кнопками справа,
-     под вариантом — откуда; текущий — лаймовой заливкой с галкой (обводок нет), пусто — «—». На телефоне подпись над вариантами. */
-  .parsing-link { @apply inline-flex items-center gap-0.5; }
-  .parsing-fields { @apply mt-3 flex flex-col; }
-  .parsing-field { @apply grid gap-x-4 gap-y-1.5 py-3 sm:grid-cols-[9rem_minmax(0,1fr)]; border-top: 1px solid color-mix(in oklab, var(--color-line) 70%, transparent); }
-  .parsing-field:last-child { @apply pb-0; }
-  .parsing-field--other { opacity: .55; }
-  .parsing-label { @apply text-sm text-ink-dim sm:pt-2; }
-  .parsing-options { @apply flex flex-wrap gap-x-3 gap-y-2; }
-  .parsing-option { @apply flex min-w-0 max-w-full flex-col items-start gap-1; }
-  .parsing-pick { @apply inline-flex min-h-9 max-w-full items-center gap-1.5 rounded-xl px-3 py-1.5 text-left; background: var(--color-surface-2); }
-  @media (hover: hover) { button.parsing-pick:not(.parsing-pick--now):hover { background: var(--color-hover); } }
-  .parsing-pick--now { background: var(--color-accent-soft); color: var(--color-accent-text); }
-  .parsing-pick--empty { @apply px-1 text-ink-dim; background: transparent; }
+  /* «Парсинг» (`admin/parsing`, 08.11.2026, владелец: «как полноценное приложение, а не колхоз»): машина — плашка `.list`,
+     спорное поле — подпись внутри плашки и варианты строками выбора, как в «Настройках» iOS: значение, под ним откуда —
+     тусклым, справа значок источника, кружок выбора у края (у текущего — лаймовый с галкой). Строй один на телефоне и ПК. */
+  .parsing-place { @apply shrink-0 text-right text-sm leading-tight text-ink-muted; }
+  .parsing-head { @apply px-4 pb-1 pt-4 text-sm text-ink-dim; }
+  .list > .parsing-head + .row::after { content: none; }
+  .parsing-other { opacity: .5; }
+  .list .row.parsing-choice { @apply gap-2 py-0 pr-3; }
+  .parsing-pick { @apply flex min-h-12 min-w-0 flex-1 items-center gap-3 py-2.5 text-left; }
   .parsing-pick:disabled { opacity: .5; }
-  .parsing-sources { @apply flex max-w-full flex-wrap gap-x-2.5 px-1; }
-  .parsing-done { @apply flex items-center gap-2 text-sm text-ink-dim; }
+  .parsing-value { @apply block; overflow-wrap: anywhere; }
+  .parsing-source { @apply mt-0.5 block truncate text-sm text-ink-dim; }
+  .parsing-open { @apply flex size-8 shrink-0 items-center justify-center rounded-full text-ink-dim; }
+  @media (hover: hover) { a.parsing-open:hover { background: var(--color-hover); color: var(--color-ink); } .parsing-choice:not(.is-now):has(.parsing-pick:hover) { background: var(--color-hover); } }
+  .parsing-radio, .parsing-radio-room { @apply flex size-[22px] shrink-0 items-center justify-center rounded-full; }
+  .parsing-radio { box-shadow: inset 0 0 0 1.5px color-mix(in oklab, var(--color-ink) 24%, transparent); }
+  .is-now .parsing-radio { @apply bg-accent text-white; box-shadow: none; }
+  .is-now .parsing-value { color: var(--color-ink); }
   .variant-value { @apply block font-medium; overflow-wrap: anywhere; }
   .variant-sources { @apply mt-1 flex flex-wrap gap-x-3 gap-y-1; }
   .variant-source { @apply min-w-0 max-w-full truncate text-sm text-ink-muted; }

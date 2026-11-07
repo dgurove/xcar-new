@@ -1,7 +1,9 @@
-{{-- Машина на экране «Парсинг»: название и коды, где она сейчас — ссылками (предложение, сделка, ТС парковки, открытая
-     заявка), ниже спорные поля — подпись и варианты кнопками. Нажатие на вариант пишет его, на текущий — «оставить»
-     (`car_variants_controller`, `POST /settings/parsing/cars/{car}/fields/{field}`); после — фрейм перечитывается сам.
-     Под вариантом — откуда: Мигторг ссылкой на лот, письмо и документ — в шторке документов. Разобрано всё — «Разобрано». --}}
+{{-- Машина на экране «Парсинг» (08.11.2026) — одна плашка `.list`, как «Настройки» iOS: сверху строка-ссылка в главное
+     место машины (сделка → предложение → ТС парковки) и строки других мест, ниже спорные поля — подпись поля и варианты
+     строками выбора с кружком справа (у текущего — лаймовый с галкой). Нажатие на строку пишет вариант, на текущую —
+     «оставить» (`car_variants_controller`, `POST /settings/parsing/cars/{car}/fields/{field}`), фрейм перечитывается сам.
+     Откуда вариант — тусклой строкой под значением, открыть источник — значком справа (кнопкой: в кнопке выбора ссылок быть не может).
+     Разобрано всё — одна строка «разобрано». Строй один на телефоне и ПК. --}}
 @php
     use App\Support\Surface;
     $car = $item['car'];
@@ -12,76 +14,79 @@
     $request = $vehicle?->requests->first(fn ($r) => $r->isOpen());
     $doc = \App\Cars\Sources\SourceDocs::for($variants, '/work/mail');
     $only ??= null;
-    $links = array_filter([
-        // Вкладка предложения — словом, кроме сделки: о ней — своя ссылка рядом.
-        $offer ? [$deal ? 'Предложение' : 'Предложение · '.$offer->crmTab(), Surface::Crm->url('/offers/'.$offer->number)] : null,
-        $deal ? ['Сделка', Surface::Crm->url('/work/deals/'.$deal->id)] : null,
-        $vehicle ? ['Парковка'.($vehicle->yard ? ' · '.$vehicle->yard->name : '').' · '.$vehicle->state->label(), Surface::Park->url('/cars/'.$vehicle->id)] : null,
-        $request ? ['Заявка · '.$request->type->label(), Surface::Park->url('/requests/'.$request->id)] : null,
-    ]);
+    // Места машины: первое — шапка карточки, остальные — строками под ней.
+    // Справа у места — его состояние одним словом; у предложения при сделке — без него (вкладка «Сделки» ничего не добавит).
+    $places = array_values(array_filter([
+        $deal ? ['Сделка', '', Surface::Crm->url('/work/deals/'.$deal->id), 'deal'] : null,
+        $offer ? ['Предложение', $deal ? '' : $offer->crmTab(), Surface::Crm->url('/offers/'.$offer->number), 'grid'] : null,
+        $vehicle ? ['Парковка'.($vehicle->yard ? ' · '.$vehicle->yard->name : ''), $vehicle->state->label(), Surface::Park->url('/cars/'.$vehicle->id), 'park'] : null,
+        $request ? ['Заявка · '.$request->type->label(), '', Surface::Park->url('/requests/'.$request->id), 'park'] : null,
+    ]));
+    $main = array_shift($places);
+    $title = $car->titleWithYear() ?: 'Без марки';
 @endphp
 <turbo-frame id="parsing-car-{{ $car->id }}" data-reload-src="/settings/parsing/cars/{{ $car->id }}">
     @if ($variants)
-        <section class="box parsing-car" data-controller="car-variants" data-car-variants-url-value="/settings/parsing/cars/{{ $car->id }}/fields">
-            <div class="flex items-start gap-2.5">
-                <x-ui.cat-icon :category="$offer?->category()" class="mt-0.5 shrink-0"/>
-                <div class="min-w-0 flex-1">
-                    <div class="cell-title truncate">{{ $car->titleWithYear() ?: 'Без марки' }}</div>
-                    <div class="mt-1 flex flex-wrap items-center gap-1.5">
-                        <x-vendor.ref :vendor="$offer?->vendor ?? $vehicle?->vendor" :ref="$offer?->claim_ref ?? $vehicle?->ref" copy/>
-                        @if ($car->plate)<span class="tag nums">{{ $car->plate }}</span>@endif
-                    </div>
-                </div>
-            </div>
-            @if ($links)
-                <div class="mt-3 flex flex-wrap gap-1.5">
-                    @foreach ($links as [$label, $href])
-                        <a href="{{ $href }}" target="_top" data-turbo-frame="_top" class="chip parsing-link">{{ $label }}<x-ui.icon name="chevron-right" class="size-3.5 shrink-0"/></a>
-                    @endforeach
-                </div>
-            @endif
-            <div class="parsing-fields">
-                @foreach ($variants as $field => $v)
-                    <div @class(['parsing-field', 'parsing-field--other' => $only && $only !== $field])>
-                        <div class="parsing-label">{{ $v['label'] }}</div>
-                        <div class="parsing-options">
-                            @unless ($v['current'])
-                                <div class="parsing-option"><span class="parsing-pick parsing-pick--empty">—</span><span class="parsing-sources"><span class="variant-source">сейчас пусто</span></span></div>
-                            @endunless
-                            @foreach (array_filter([$v['current'] ? $v['current'] + ['now' => true] : null, ...$v['options']]) as $o)
-                                <div class="parsing-option">
-                                    @if (! empty($o['now']))
-                                        <button type="button" class="parsing-pick parsing-pick--now" data-action="car-variants#keep"
-                                            data-car-variants-field-param="{{ $field }}" data-car-variants-seen-param="{{ $v['current']['key'] }}" title="Оставить">
-                                            <span class="min-w-0 break-words">{{ $o['label'] }}</span><x-ui.icon name="check" class="size-4 shrink-0"/>
-                                        </button>
-                                    @else
-                                        <button type="button" class="parsing-pick" data-action="car-variants#pick"
-                                            data-car-variants-field-param="{{ $field }}" data-car-variants-key-param="{{ $o['key'] }}" data-car-variants-seen-param="{{ $v['current']['key'] ?? '' }}">
-                                            <span class="min-w-0 break-words">{{ $o['label'] }}</span>
-                                        </button>
-                                    @endif
-                                    <span class="parsing-sources">
-                                        @forelse ($o['sources'] as $s)
-                                            @if ($s['kind'] === 'migtorg')
-                                                <a href="https://www.migtorg.com/lots/{{ $s['id'] }}" target="_blank" rel="noopener" class="variant-source">{{ $s['title'] }}</a>
-                                            @elseif ($d = $doc($s))
-                                                <x-ui.doc :doc="$d" class="variant-source">{{ $s['title'] }}</x-ui.doc>
-                                            @else
-                                                <span class="variant-source">{{ $s['title'] }}</span>
-                                            @endif
-                                        @empty
-                                            <span class="variant-source">сейчас в карточке</span>
-                                        @endforelse
-                                    </span>
-                                </div>
-                            @endforeach
+        <div class="list parsing-car" data-controller="car-variants" data-car-variants-url-value="/settings/parsing/cars/{{ $car->id }}/fields">
+            <a @if ($main) href="{{ $main[2] }}" target="_top" data-turbo-frame="_top" @endif class="row">
+                <span class="row-icon row-icon-s row-icon-plain"><x-ui.cat-icon :category="$offer?->category()" class="size-5"/></span>
+                <span class="min-w-0 flex-1">
+                    <span class="cell-title block truncate">{{ $title }}</span>
+                    <span class="row-sub">
+                        <x-vendor.ref :vendor="$offer?->vendor ?? $vehicle?->vendor" :ref="$offer?->claim_ref ?? $vehicle?->ref"/>
+                        @if ($car->plate)<span class="nums">{{ $car->plate }}</span>@endif
+                    </span>
+                </span>
+                @if ($main)
+                    <span class="parsing-place">{{ $main[1] !== '' ? $main[1] : $main[0] }}</span>
+                    <x-ui.icon name="chevron-right" class="size-4 shrink-0 text-ink-dim"/>
+                @endif
+            </a>
+            @foreach ($places as [$label, $state, $href, $icon])
+                <a href="{{ $href }}" target="_top" data-turbo-frame="_top" class="row">
+                    <x-ui.row-icon :name="$icon" size="s"/>
+                    <span class="min-w-0 flex-1 truncate">{{ $label }}</span>
+                    @if ($state !== '')<span class="parsing-place text-ink-dim">{{ $state }}</span>@endif
+                    <x-ui.icon name="chevron-right" class="size-4 shrink-0 text-ink-dim"/>
+                </a>
+            @endforeach
+            @foreach ($variants as $field => $v)
+                @php $other = $only && $only !== $field; @endphp
+                    <div @class(['parsing-head', 'parsing-other' => $other])>{{ $v['label'] }}</div>
+                    @unless ($v['current'])
+                        <div @class(['row parsing-choice parsing-choice--empty', 'parsing-other' => $other])>
+                            <span class="min-w-0 flex-1 py-2.5"><span class="parsing-value text-ink-dim">—</span><span class="parsing-source">сейчас пусто</span></span>
+                            <span class="parsing-radio-room"></span>
                         </div>
-                    </div>
-                @endforeach
-            </div>
-        </section>
+                    @endunless
+                    @foreach (array_filter([$v['current'] ? $v['current'] + ['now' => true] : null, ...$v['options']]) as $o)
+                        @php
+                            $now = ! empty($o['now']);
+                            $open = collect($o['sources'])->map(fn ($s) => $s['kind'] === 'migtorg' ? ['lot', 'https://www.migtorg.com/lots/'.$s['id']] : (($d = $doc($s)) ? ['doc', $d] : null))->filter()->first();
+                            $from = $o['sources'] ? implode(', ', array_column($o['sources'], 'title')) : 'сейчас в карточке';
+                        @endphp
+                        <div @class(['row parsing-choice', 'is-now' => $now, 'parsing-other' => $other])>
+                            <button type="button" class="parsing-pick" title="{{ $now ? 'Оставить' : 'Выбрать' }}"
+                                data-action="car-variants#{{ $now ? 'keep' : 'pick' }}" data-car-variants-field-param="{{ $field }}"
+                                @unless ($now) data-car-variants-key-param="{{ $o['key'] }}" @endunless data-car-variants-seen-param="{{ $v['current']['key'] ?? '' }}">
+                                <span class="min-w-0 flex-1">
+                                    <span class="parsing-value">{{ $o['label'] }}</span>
+                                    <span class="parsing-source">{{ $from }}</span>
+                                </span>
+                            </button>
+                            @if ($open && $open[0] === 'lot')
+                                <a href="{{ $open[1] }}" target="_blank" rel="noopener" class="parsing-open" aria-label="Открыть лот" title="Открыть лот"><x-ui.icon name="share" class="size-4"/></a>
+                            @elseif ($open)
+                                <x-ui.doc :doc="$open[1]" class="parsing-open" aria-label="Открыть документ"><x-ui.icon name="file" class="size-4"/></x-ui.doc>
+                            @else
+                                <span class="parsing-open"></span>
+                            @endif
+                            <span class="parsing-radio">@if ($now)<x-ui.icon name="check" class="size-3.5"/>@endif</span>
+                        </div>
+                    @endforeach
+            @endforeach
+        </div>
     @else
-        <div class="box parsing-done"><x-ui.icon name="check" class="size-4"/>{{ $car->titleWithYear() }} — разобрано</div>
+        <div class="list"><div class="row text-ink-dim"><x-ui.row-icon name="check" tone="soft" size="s"/><span class="min-w-0 flex-1 truncate">{{ $title }} — разобрано</span></div></div>
     @endif
 </turbo-frame>
