@@ -145,7 +145,7 @@ final class Values
         }
         $brand = Brand::find((int) substr($ab, 1));
         $split = fn (string $t) => array_values(array_filter(preg_split('/[^\p{L}\d]+/u', strtr(mb_strtolower($t), self::LATIN)) ?: [], fn ($w) => $w !== ''));
-        $skip = [...$split(($brand?->name ?? '').' '.($brand?->name_ru ?? '').' '.($brand?->slug ?? '')), 'класс', 'class', 'серия', 'series'];
+        $skip = $split(($brand?->name ?? '').' '.($brand?->name_ru ?? '').' '.($brand?->slug ?? '').' класс class серия series');
         $words = function (string $m) use ($split, $skip) {
             $name = str_starts_with($m, 'n') ? substr($m, 1) : (string) CarModel::find((int) substr($m, 1))?->name;
 

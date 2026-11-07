@@ -159,6 +159,7 @@ class CarSourcesTest extends TestCase
         $this->assertTrue(Values::same('car', $model('JAC', 'jac', 'Аф77 N2 Lj'), $model('JAC', 'jac', 'АФ77N2LJ-02')));
         $this->assertFalse(Values::same('car', $model('Chery', 'chery', 'Tiggo 7'), $model('Chery', 'chery', 'Tiggo 7L')));
         $this->assertFalse(Values::same('car', $model('Omoda', 'omoda', 'C5'), $model('Omoda', 'omoda', 'S5')));
+        $this->assertTrue(Values::same('car', $model('Mercedes-Benz', 'mercedes-benz', 'C-Класс'), $model('Mercedes-Benz', 'mercedes-benz', 'С 180')), 'кириллическая «С»');
 
         // Отклонили вариант — тот же с шумом не встаёт.
         $this->value('pts', '16 OP 553416', 'doc', '1', 'ПТС');
