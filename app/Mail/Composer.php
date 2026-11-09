@@ -189,6 +189,10 @@ final class Composer
             if (! $disk->exists($path) || ! $disk->size($path)) {
                 throw ValidationException::withMessages(['files' => 'Файл «'.substr(basename((string) $path), 37).'» не загрузился, приложите его ещё раз']);
             }
+            // WebP, AVIF и HEIC страховые не открывают — уходят JPEG (`OutboxImage`, 09.11.2026). Картинки в теле — как есть.
+            if (! isset($inline[$path])) {
+                $path = OutboxImage::normalize($path);
+            }
             $message->attachments()->create([
                 'filename' => substr(basename($path), 37), // после uuid и дефиса
                 'mime' => $disk->mimeType($path) ?: null,

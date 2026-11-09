@@ -25,7 +25,7 @@ class Template extends Model
     public const PLACEHOLDERS = ['number', 'car', 'vin', 'claim_ref', 'floor', 'price', 'manager', 'insurer', 'today', 'buyer'];
 
     public const PARK_PLACEHOLDERS = ['ref', 'car', 'vin', 'plate', 'yard', 'address', 'date', 'days', 'damages', 'client', 'today', 'pickup_link', 'buyer_name', 'buyer_email', 'pickup_date',
-        'month', 'count', 'invoice', 'sum'];
+        'month', 'count', 'invoice', 'sum', 'seller'];
 
     /** Письма стоянки по делу: приём, выдача, отказ от получения, счёт. Заводятся при первом обращении, дальше правятся руками. */
     public const PARK = [
@@ -59,11 +59,11 @@ class Template extends Model
             "Добрый день.\n\nНаправляем счёт {{ invoice }} на {{ sum }} за хранение за {{ month }} ({{ count }} ТС).\n\nС уважением."],
         // На сверку (09.11.2026, владелец: «первично — „Направляем Вам на сверку отчет-акт за октябрь 2026“, финальную — другой
         // текст, пусть спрашивает»): документ не фиксируется, письмо — его текстом.
-        'registry-review' => ['Сверка: счёт и акт по реестру', 'Отчет-акт за {{ month }} на сверку',
+        'registry-review' => ['Сверка: счёт и акт по реестру', 'Стоянка {{ seller }} счёт и отчет-акт за {{ month }} на сверку',
             "Добрый день.\nНаправляем Вам на сверку счёт и отчет-акт за {{ month }}."],
-        'registry-review-act' => ['Сверка: акт по реестру', 'Отчет-акт за {{ month }} на сверку',
+        'registry-review-act' => ['Сверка: акт по реестру', 'Стоянка {{ seller }} отчет-акт за {{ month }} на сверку',
             "Добрый день.\nНаправляем Вам на сверку отчет-акт за {{ month }}."],
-        'registry-review-bill' => ['Сверка: счёт по реестру', 'Счёт за {{ month }} на сверку',
+        'registry-review-bill' => ['Сверка: счёт по реестру', 'Стоянка {{ seller }} счёт за {{ month }} на сверку',
             "Добрый день.\nНаправляем Вам на сверку счёт за {{ month }}."],
         'invoice-review' => ['Сверка: счёт и акт по ТС', 'На сверку: {{ car }}, убыток {{ ref }}',
             "Добрый день.\nНаправляем Вам на сверку счёт и акт за хранение ТС {{ car }}, VIN {{ vin }}, госномер {{ plate }}."],

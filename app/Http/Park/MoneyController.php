@@ -14,6 +14,8 @@ use App\Billing\Ledger;
 use App\Billing\Party;
 use App\Billing\PaymentSource;
 use App\Http\Billing\InvoiceActions;
+use App\Mail\Actions\MarkThreadRead;
+use App\Mail\Thread;
 use App\Park\Vehicle;
 use App\Search\Term;
 use App\Support\Detail;
@@ -236,7 +238,29 @@ class MoneyController
             'skipped' => $draft?->getRelation('skipped')->all() ?? [],
             'history' => $invoice ? ClosingDoc::history($invoice) : [],
             'sources' => PaymentSource::manual(),
+            'letters' => self::closingThreads($doc)->flatMap->messages,
         ];
+    }
+
+    /** Ветки переписки документа (`mail_threads.closing_key`), с письмами для ленты и окна. */
+    private static function closingThreads(ClosingDoc $doc)
+    {
+        $key = $doc->talkKey();
+
+        return $key ? Thread::where('closing_key', $key)->with(['messages.account', 'messages.thread', 'messages.attachments', 'messages.addresses', 'messages.author'])->get() : collect();
+    }
+
+    /** Окно писем документа месяца: вся переписка одной лентой, «Ответить» в ветку (`?reply=1`), `?at=` — прочитано. */
+    public function closingLetters(Request $request, string $key, MarkThreadRead $markRead)
+    {
+        abort_unless(preg_match(ClosingDoc::KEY, $key) && ($doc = ClosingDoc::find($key)), 404);
+        $threads = self::closingThreads($doc);
+        abort_if($threads->isEmpty(), 404);
+        if ($request->query('at') && ! str_contains($request->header('Sec-Purpose', $request->header('X-Sec-Purpose', '')), 'prefetch')) {
+            $threads->each(fn (Thread $t) => $markRead($t));
+        }
+
+        return view('park.money.closing-letters', ['messages' => $threads->flatMap->messages]);
     }
 
     /** Прежний адрес живого документа — его страница. Исправленный — страница отправленного. */

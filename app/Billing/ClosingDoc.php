@@ -25,7 +25,7 @@ final class ClosingDoc
     public const KEY = '/^(i\\d+|d\\d{6}-[A-Za-z0-9_-]+)$/';
 
     /** Порядок внутри месяца — сначала где нужен наш ход. */
-    private const ORDER = ['drift' => 0, 'send' => 1, 'blocked' => 2, 'nobody' => 3, 'overdue' => 4, 'due' => 5, 'paid' => 6];
+    private const ORDER = ['drift' => 0, 'answered' => 1, 'send' => 2, 'blocked' => 3, 'nobody' => 4, 'review' => 5, 'overdue' => 6, 'due' => 7, 'paid' => 8];
 
     /**
      * @param  Collection<int, array>  $rows  строки живого документа (`Closing::items` одной группы)
@@ -151,9 +151,14 @@ final class ClosingDoc
             $first['payer'] === 'owner' => 'страхователь',
             default => 'хранение',
         };
+        // Отправили на сверку (ветка письма с этим документом, `mail_threads.closing_key`, 09.11.2026): «на согласовании», пока
+        // последнее письмо наше; ответили — «ответили», наш ход.
+        $talk = self::talks()[$month->format('Y-m').'|'.$group] ?? null;
         $state = match (true) {
             ! $party => 'nobody',
             ! $first['ready'] => 'blocked',
+            $talk === 'in' => 'answered',
+            $talk === 'out' => 'review',
             default => 'send',
         };
 
@@ -208,6 +213,21 @@ final class ClosingDoc
         return Carbon::parse($day)->startOfMonth();
     }
 
+    /** Переписка по документам месяца: «месяц|группа» → кто написал последним (`in` — страховая, `out` — мы). @return array<string, string> */
+    public static function talks(): array
+    {
+        return once(fn () => \App\Mail\Thread::whereNotNull('closing_key')->orderBy('last_message_at')->pluck('last_direction', 'closing_key')
+            ->map(fn ($d) => $d instanceof \BackedEnum ? $d->value : (string) $d)->all());
+    }
+
+    /** Ключ переписки документа: «месяц|группа» (у отправленного — по его счёту). */
+    public function talkKey(): ?string
+    {
+        $group = $this->group ?? ($this->invoice ? Closing::groupOfInvoice($this->invoice) : null);
+
+        return $group ? $this->month->format('Y-m').'|'.$group : null;
+    }
+
     public function live(): bool
     {
         return $this->invoice === null;
@@ -219,6 +239,8 @@ final class ClosingDoc
         return match ($this->state) {
             'drift' => 'изменилось',
             'send' => 'отправить',
+            'review' => 'на согласовании',
+            'answered' => 'ответили',
             'blocked' => 'нет реквизитов',
             'nobody' => 'нет плательщика',
             'paid' => 'оплачен',
@@ -230,7 +252,8 @@ final class ClosingDoc
     public function tone(): string
     {
         return match ($this->state) {
-            'send' => 'text-urgent',
+            'send', 'answered' => 'text-urgent',
+            'review' => 'text-ink-muted',
             'drift', 'blocked', 'nobody', 'overdue' => 'text-danger',
             'paid' => 'text-accent-text',
             default => $this->invoice?->light() === 'urgent' ? 'text-urgent' : 'text-ink-muted',

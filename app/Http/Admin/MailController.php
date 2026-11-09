@@ -531,7 +531,11 @@ class MailController
         if (($doc = $draft ?? $invoice)?->isRegistry()) {
             $template ??= Template::park('registry'.$kind);
             $payer = Vendor::with('contacts')->where('party_id', $doc->party_id)->first();
-            $registryValues = ['month' => mb_strtolower(($doc->month ?? now())->translatedFormat('F Y')), 'count' => (string) $doc->registryVehicles()->count(),
+            // Продавец в теме сверки (09.11.2026, владелец: «Стоянка ИП Кузнецов А.В. отчет-акт за октябрь 2026 на сверку»):
+            // ИП — «ИП Кузнецов А.В.», организация — названием.
+            $seller = $doc->seller->party();
+            $registryValues = ['seller' => $seller->kind === \App\Billing\PartyKind::Entrepreneur ? 'ИП '.str_replace('. ', '.', (string) $seller->director) : $seller->name,
+                'month' => mb_strtolower(($doc->month ?? now())->translatedFormat('F Y')), 'count' => (string) $doc->registryVehicles()->count(),
                 'invoice' => $doc->label(), 'sum' => Money::rub($doc->total),
                 'to' => $payer?->email(ContactRole::Accounting, ContactRole::Storage, ContactRole::Claims) ?? $doc->party->email ?? ''];
         }
@@ -606,7 +610,14 @@ class MailController
             }
         }
         $values += $registryValues;
-        $defaults = ($offer || $release) && $parent ? $composer->replyWith($parent, $account, $template, $values) : $composer->fresh($account, $template, $values);
+        // Переписка по документу месяца (09.11.2026): была отправка на сверку — следующее письмо (финал, ещё сверка) ответом в
+        // ту же ветку, у страховой оно встаёт в ту же переписку. Ветку знает `mail_threads.closing_key`.
+        $closingThread = $closing ? Thread::where('closing_key', (string) $request->query('closing'))->where('account_id', $account->id)->latest('last_message_at')->first() : null;
+        if ($closingThread) {
+            $thread = $closingThread;
+            $parent = $closingThread->messages()->reorder()->orderByDesc('date_at')->first();
+        }
+        $defaults = ($offer || $release || $closingThread) && $parent ? $composer->replyWith($parent, $account, $template, $values) : $composer->fresh($account, $template, $values);
         if ($saleTo ?? null) {
             $defaults['to'] = $saleTo;
         }
@@ -683,6 +694,7 @@ class MailController
             'then' => $request->query('then') === 'close' ? 'close' : null,
             'requestDeals' => $supplierRequest?->deals->pluck('id')->implode(','),
             'closing' => $closing && ! $review ? $request->query('closing') : null, 'closingReplaces' => $closing[2]?->id ?? null, 'closingFiles' => $closingFiles, 'closingSend' => $send,
+            'closingThread' => $closing ? $request->query('closing') : null,
             // Номер, который письмо показало: при отправке он меняется на настоящий, если успел смениться (полночь, другой отправил).
             'closingLabel' => $draft?->label()]);
     }
@@ -841,6 +853,10 @@ class MailController
                 return redirect($retry)->withErrors($e->errors())->withInput();
             }
             throw $e;
+        }
+        // Ветка письма с документом месяца — его переписка (сверка и финал): «месяц|группа» (`mail_threads.closing_key`).
+        if ($this->scope === Scope::Park && ! empty($data['closing_thread']) && $message->thread && preg_match('/^\d{4}-\d{2}\|.{1,60}$/u', $data['closing_thread'])) {
+            $message->thread->update(['closing_key' => $data['closing_thread']]);
         }
         if (! empty($fixed)) {
             $data['invoice'] = $fixed->id;
@@ -1401,6 +1417,7 @@ class MailController
             'closing_label' => ['nullable', 'string', 'max:60'],
             'closing_files' => ['nullable', 'array'],
             'closing_send' => ['nullable', 'string', 'in:both,act,invoice'],
+            'closing_thread' => ['nullable', 'string', 'max:80'],
             'closing_files.*' => ['string'],
             'request_deals' => ['nullable', 'string', 'regex:/^\d+(,\d+)*$/'],
         ], [], ['to' => 'Кому', 'cc' => 'Копия', 'subject' => 'Тема', 'body' => 'Письмо']);

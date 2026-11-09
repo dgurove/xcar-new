@@ -24,7 +24,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * Ветка писем. `keys` — её номера (code:/vin:/plate:, см. Extraction\Keys), `candidate_id` — кандидат «Из писем»,
  * `archived_at` — убрана из «Входящих» (как в Gmail: найдётся поиском, новое чужое письмо вернёт).
  */
-#[Fillable(['account_id', 'root_message_id', 'subject', 'subject_normalized', 'participants', 'last_message_at', 'messages_count', 'unread_count', 'has_attachments', 'offer_id', 'vehicle_id', 'buyer', 'unlinked_at', 'keys', 'candidate_id', 'archived_at', 'vendor_id'])]
+#[Fillable(['account_id', 'root_message_id', 'subject', 'subject_normalized', 'participants', 'last_message_at', 'messages_count', 'unread_count', 'has_attachments', 'offer_id', 'vehicle_id', 'buyer', 'unlinked_at', 'keys', 'candidate_id', 'archived_at', 'vendor_id', 'closing_key'])]
 class Thread extends Model
 {
     use FastAttributes;
