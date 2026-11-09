@@ -5,6 +5,8 @@ namespace App\Offers\Actions;
 use App\Garage\Actions\CloseGarageDeal;
 use App\Garage\Car as GarageCar;
 use App\Offers\AudienceRules;
+use App\Offers\Estimate;
+use App\Offers\Exclusive;
 use App\Offers\BidState;
 use App\Offers\Binding;
 use App\Offers\Deal;
@@ -64,6 +66,8 @@ final class ChangeOfferState
             if ($from === OfferState::Garage && GarageCar::where('offer_id', $offer->id)->exists()) {
                 throw ValidationException::withMessages(['state' => 'ТС в гараже: сначала «Отдали по ошибке»']);
             }
+            // Эксклюзив за оценку (`Exclusive`, 09.11.2026): оценщику — сразу, остальным — после него, как бы ни вписали цену.
+            $exclusive = $next === OfferState::Open && in_array($from, [OfferState::Draft, OfferState::Gallery], true) ? Exclusive::owed($offer) : collect();
             if ($next === OfferState::Open) {
                 self::assertReady($offer);
                 // Номер — до даты выхода: `issue` выдаёт его только тому, кто ещё не выходил наружу.
@@ -123,7 +127,16 @@ final class ChangeOfferState
             if ($galleryClosed) {
                 $offer->gallery_until = now();
             }
+            if ($exclusive->isNotEmpty()) {
+                // Из галереи выход сохранял бы прежнюю дату — эксклюзив считается от этого выхода.
+                $at || $offer->published_at = now();
+                $offer->audience_rules = Exclusive::rules(AudienceRules::of($offer), $exclusive, $offer);
+            }
             $offer->save();
+            if ($exclusive->isNotEmpty()) {
+                $exclusive->each(fn (Estimate $e) => $e->update(['exclusive_until' => Exclusive::until($offer, $e)]));
+                $offer->log(OfferEventType::Note, $by, ['text' => Exclusive::words($exclusive)]);
+            }
             // Ушли из сделки куда угодно (продажа, черновик, архив) — белый список «Кому показывать в сделке»
             // стирается: дальше работают обычные волны. «Отдать» другому сделку не трогает — состояние то же.
             if ($from === OfferState::Sold && $next !== OfferState::Sold) {

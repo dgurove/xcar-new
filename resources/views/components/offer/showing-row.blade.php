@@ -16,7 +16,10 @@
         ! $offer->chat_enabled ? 'без чата' : null,
         ! $offer->garage_allowed ? 'без гаража' : null,
     ]);
-    $who = AudienceRules::summary(AudienceRules::of($offer)).($marks ? ', '.implode(', ', $marks) : '');
+    // Эксклюзив за оценку (`Exclusive`, 09.11.2026) встанет сам при выходе — сводка сразу такая, какой будет.
+    $owed = in_array($offer->state, [\App\Offers\OfferState::Draft, \App\Offers\OfferState::Gallery], true) ? \App\Offers\Exclusive::owed($offer) : collect();
+    $rules = $owed->isNotEmpty() ? \App\Offers\Exclusive::rules(AudienceRules::of($offer), $owed, $offer) : AudienceRules::of($offer);
+    $who = AudienceRules::summary($rules).($marks ? ', '.implode(', ', $marks) : '');
     // Срок обязывающего — в шторке; строкой сводки только когда горит (красным).
     $binding = \App\Offers\Binding::matters($offer) ? \App\Offers\Binding::word($offer) : null;
     $id = 'showing-'.$offer->number.'-'.$form;

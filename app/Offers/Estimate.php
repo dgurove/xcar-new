@@ -16,7 +16,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * у каждого 48 часов; оценка — ориентир под полем цены продажи в CRM, ценой она становится только по «Взять».
  * Срок вышел — просьба висит просроченной, пока менеджер не оценит или админ не снимет. Действия — `Actions\*Estimate*`.
  */
-#[Fillable(['offer_id', 'user_id', 'asked_by', 'state', 'due_at', 'base_price', 'amount', 'estimated_at', 'rejected_amount', 'rejected_at', 'reminded_at', 'show_declared', 'declined_at', 'wish_price', 'decline_reason', 'exclusive_days'])]
+#[Fillable(['offer_id', 'user_id', 'asked_by', 'state', 'due_at', 'base_price', 'amount', 'estimated_at', 'rejected_amount', 'rejected_at', 'reminded_at', 'show_declared', 'declined_at', 'wish_price', 'decline_reason', 'exclusive_days', 'exclusive_until'])]
 class Estimate extends Model
 {
     use FastAttributes;
@@ -51,6 +51,7 @@ class Estimate extends Model
             'rejected_amount' => 'integer',
             'show_declared' => 'boolean',
             'exclusive_days' => 'integer',
+            'exclusive_until' => 'datetime',
             'declined_at' => 'datetime',
             'wish_price' => 'integer',
         ];

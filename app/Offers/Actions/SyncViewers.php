@@ -4,6 +4,7 @@ namespace App\Offers\Actions;
 
 use App\Offers\AudienceRules;
 use App\Offers\BidState;
+use App\Offers\Exclusive;
 use App\Offers\Jobs\RetractOfferNotices;
 use App\Offers\Offer;
 use App\Offers\OfferEventType;
@@ -36,7 +37,8 @@ final class SyncViewers
         $base = $offer->published_at ?? now();
         $open = AudienceRules::openings(AudienceRules::of($offer), $people);
         // Срочное (12.10.2026) — всем сразу: задержки волн снимаются, «Не показывать» (кого нет в волнах) — как было.
-        if ($offer->isUrgent()) {
+        // Эксклюзив за оценку (`Exclusive`) идёт — «Срочно» его не снимает: волны остаются.
+        if ($offer->isUrgent() && Exclusive::running($offer)->isEmpty()) {
             $open = array_map(fn () => 0, $open);
         }
 

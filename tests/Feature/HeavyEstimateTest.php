@@ -206,6 +206,39 @@ class HeavyEstimateTest extends TestCase
         $this->assertSame(Category::Special, $chosen->fresh()->category());
     }
 
+    /**
+     * Daf XF 2611093833 (09.11.2026): Рома оценил 1 500 000, Андрей вписал свою 1 630 000 и выставил «Всем сразу» — эксклюзив
+     * всё равно Роме; «Показ» и «Срочно» его не снимают, повторный выход — без него.
+     */
+    public function test_own_price_keeps_exclusive(): void
+    {
+        $truck = $this->draft('DAF', '0196/046/03097/26');
+        app(AskEstimates::class)($truck, [$this->roma], $this->admin, exclusive: 5);
+        app(GiveEstimate::class)(Estimate::where('offer_id', $truck->id)->sole(), 1500000, $this->roma);
+        app(UpdateOffer::class)($truck->fresh(), ['asking_price' => 1630000], $this->admin);
+        $this->assertSame('closed', Estimate::where('offer_id', $truck->id)->sole()->state->value);
+
+        app(ChangeOfferState::class)($truck->fresh(), OfferState::Open, $this->admin);
+        $truck = $truck->fresh();
+        $opens = $truck->viewers()->pluck('opens_at', 'user_id');
+        $this->assertTrue($opens[$this->roma->id]->lte(now()));
+        $this->assertEqualsWithDelta($truck->published_at->copy()->addDays(5)->timestamp, $opens[$this->other->id]->timestamp, 60);
+        $this->assertNotNull(Estimate::where('offer_id', $truck->id)->sole()->exclusive_until);
+
+        // «Показ» на «Всем сразу» и «Срочно» — остальные всё равно через 5 дней.
+        app(UpdateOffer::class)($truck, ['audience_rules' => AudienceRules::everyone()], $this->admin);
+        $truck->forceFill(['urgent_at' => now()])->save();
+        app(\App\Offers\Actions\SyncViewers::class)($truck->fresh());
+        $this->assertTrue($truck->viewers()->where('user_id', $this->other->id)->value('opens_at') > now()->addDays(4));
+
+        // Эксклюзив прошёл, машина снова в черновике и снова в продаже — волны свои.
+        $this->travel(6)->days();
+        app(ChangeOfferState::class)($truck->fresh(), OfferState::Draft, $this->admin);
+        app(UpdateOffer::class)($truck->fresh(), ['audience_rules' => AudienceRules::everyone()], $this->admin);
+        app(ChangeOfferState::class)($truck->fresh(), OfferState::Open, $this->admin);
+        $this->assertTrue($truck->viewers()->where('user_id', $this->other->id)->value('opens_at') <= now());
+    }
+
     /** Рома оценил, админ взял: с эксклюзивом — продажа только ему. */
     private function giveAndTake(Offer $truck): void
     {

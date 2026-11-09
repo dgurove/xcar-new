@@ -15,6 +15,8 @@ use App\Offers\Jobs\ImportMigtorgLot;
 use App\Offers\LegacyClaim;
 use App\Offers\Offer;
 use App\Offers\OfferEventType;
+use App\Offers\AudienceRules;
+use App\Offers\Exclusive;
 use App\Offers\OfferState;
 use App\Offers\Pricing;
 use App\Offers\Reprice;
@@ -98,6 +100,10 @@ final class UpdateOffer
         $oldBinding = $offer->getOriginal('binding_until');
         if ($offer->isDirty('binding_until') && $offer->bids_close_at?->isFuture()) {
             $offer->bids_close_at = Binding::clampClose($offer, $offer->bids_close_at);
+        }
+        // Эксклюзив за оценку идёт — правка «Показа» его не снимает (`Exclusive`).
+        if ($offer->state === OfferState::Open && $offer->isDirty('audience_rules') && ($running = Exclusive::running($offer))->isNotEmpty()) {
+            $offer->audience_rules = Exclusive::rules(AudienceRules::of($offer), $running, $offer);
         }
         // Правка пишет и предложение, и его машину (`Cars\Car`): история и «что поменялось» — по обеим.
         $diff = Changes::ofLane($offer);

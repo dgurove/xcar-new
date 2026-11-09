@@ -79,8 +79,10 @@ final class FirstLook
             if ($offer->bids()->whereIn('state', [BidState::Active, BidState::Accepted])->exists()) {
                 return false;
             }
-            // Выход — сейчас: для всех это новое предложение (каталог «новые сверху», пачка новых менеджерам).
+            // Выход — сейчас: для всех это новое предложение (каталог «новые сверху», пачка новых менеджерам). Эксклюзив за
+            // оценку (`Exclusive`) кончился — «Показ» дальше свой.
             Offer::whereKey($offer->id)->update(['published_at' => now()]);
+            Estimate::where('offer_id', $offer->id)->where('exclusive_until', '>', now())->update(['exclusive_until' => now()]);
             ($this->update)($offer->refresh(), [
                 'audience_rules' => AudienceRules::everyone(), 'first_look_until' => null, 'first_look_user_id' => null,
                 'bids_close_at' => Binding::clampClose($offer, Slots::closeFor(now())),
