@@ -18,9 +18,11 @@
         @endif
         @if ($showFiles)
             <x-ui.card title="Документы">
-                <div class="list" data-docs-scope>
+                {{-- Строками прямо в плашке, без плашки внутри плашки и крупных значков (09.11.2026, владелец: «файлы громоздкие,
+                     не вижу смысла блок в блоке»): значок типа мелко, название, номер тихо справа. --}}
+                <div class="doc-files" data-docs-scope>
                     @foreach ($files as $f)
-                        <x-ui.doc :doc="$f" class="row gap-3"><x-ui.file-icon :name="$f['name']"/><span class="min-w-0 flex-1 truncate">{{ $f['label'] }}</span><span class="shrink-0 truncate text-sm text-ink-muted">{{ pathinfo($f['name'], PATHINFO_FILENAME) }}</span></x-ui.doc>
+                        <x-ui.doc :doc="$f" class="doc-file-row"><x-ui.file-icon :name="$f['name']" class="file-icon-s"/><span class="min-w-0 flex-1 truncate">{{ $f['label'] }}</span><span class="nums shrink-0 text-sm text-ink-muted">{{ preg_replace('/^\D+\s*/u', '', pathinfo($f['name'], PATHINFO_FILENAME)) }}</span></x-ui.doc>
                     @endforeach
                 </div>
             </x-ui.card>
