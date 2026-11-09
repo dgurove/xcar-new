@@ -1112,6 +1112,29 @@ html.kb-open { --home-gap: 0px; }
      встают в ту же строку после кнопок. */
   .toolbar-chips { @apply min-w-0 basis-full overflow-x-auto; order: 10; scrollbar-width: none; overscroll-behavior: contain; }
   .toolbar-chips::-webkit-scrollbar { display: none; }
+  /* Второй ряд вкладок (`x-ui.toolbar` слот sub, вкладки дел «Сделок» CRM, `x-deal.work-tabs`, 09.11.2026): на ПК своей строкой
+     между пилюлями с кнопками и чипами (у чипов order 10), на телефоне — сразу под пилюлями (порядок разметки), листается вбок
+     от края до края. Тише пилюль: без подложки, текущая — мягким лаймом; ушла в ноль живым обновлением — прячется. */
+  .toolbar:has(> .toolbar-sub) { flex-wrap: wrap; }
+  .toolbar-sub { @apply min-w-0 basis-full; order: 9; }
+  .work-tabs { @apply flex snap-x items-center gap-1 overflow-x-auto; scrollbar-width: none; }
+  .work-tabs::-webkit-scrollbar { display: none; }
+  @media (max-width: 767.98px) {
+    /* От края до края: при `basis-full` отрицательные поля только сдвигали бы ряд, и он обрезался за 1rem до правого края. */
+    .toolbar-sub { order: 0; flex: 0 0 calc(100% + 2rem); margin-inline: -1rem; }
+    .work-tabs { padding-inline: 1rem; scroll-padding-inline: 1rem; }
+  }
+  .work-tab {
+    @apply inline-flex shrink-0 snap-start items-center gap-1.5 whitespace-nowrap rounded-full px-3 py-1 text-sm text-ink-muted transition-colors;
+    min-height: 1.875rem;
+  }
+  .work-tab .nums { opacity: .7; }
+  .work-tab[aria-current="true"] { @apply bg-accent-soft font-medium text-accent-text; }
+  .work-tab:not([aria-current]):has(> .work-tab-n:empty) { display: none; }
+  @media (hover: hover) {
+    .work-tab:hover { @apply bg-hover text-ink; }
+    .work-tab[aria-current="true"]:hover { @apply bg-accent-soft text-accent; }
+  }
   /* Телефон (09.10.2026, владелец: «шапка — треть экрана»): чипы не своей строкой, а в ряду кнопок — после сортировки и
      лупы, до действий справа; листаются вбок до правого края. Тулбар в два ряда: пилюли, под ними кнопки с чипами. */
   @media (max-width: 767.98px) {
@@ -1767,6 +1790,13 @@ html.kb-open { --home-gap: 0px; }
   /* Заголовок группы `x-table.group`: название с числом слева, кнопка группы справа («Отправить заявку»). */
   .table tr.table-group .table-group-row { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem .75rem; }
   .table tr.table-group .table-group-row > .btn { margin-left: auto; font-size: var(--text-sm); }
+  /* Название группы ссылкой на одну её (`x-table.group href`) — текстом, лаймом при наведении; скрепка — тусклым значком. */
+  .table tr.table-group .table-group-link { color: inherit; }
+  .table tr.table-group .table-group-copy { @apply inline-flex size-7 items-center justify-center rounded-full align-middle text-ink-dim; }
+  @media (hover: hover) {
+    .table tr.table-group .table-group-link:hover { @apply text-accent-text; }
+    .table tr.table-group .table-group-copy:hover { @apply bg-hover text-ink; }
+  }
   /* Таблицы на ПК — плотнее (29.10.2026, владелец: управляющий парковки ушёл в Excel — «шрифт огромный, люди не слепые»,
      на экране 22 ТС против 55; в тот же день — так же во всех таблицах CRM, логистики и сайта): текст 13 вместо 15, строка
      28 px вместо 36, шаг между столбцами 12 px. Телефон — как был. */

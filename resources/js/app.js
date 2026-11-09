@@ -709,8 +709,8 @@ function headerState() {
 
 // Активная пилюля ленты — в кадре, а не за краем экрана.
 function activePillIntoView() {
-    const show = () => document.querySelectorAll('.pills [aria-current], .toolbar-pills [aria-current], .cabinet-pills [aria-current], .work-titles [aria-current]').forEach((el) => {
-        const row = el.closest('.pills, .toolbar-pills, .cabinet-pills, .work-titles');
+    const show = () => document.querySelectorAll('.pills [aria-current], .toolbar-pills [aria-current], .cabinet-pills [aria-current], .work-titles [aria-current], .work-tabs [aria-current]').forEach((el) => {
+        const row = el.closest('.pills, .toolbar-pills, .cabinet-pills, .work-titles, .work-tabs');
         if (!row || row.scrollWidth <= row.clientWidth) return;
         // Уже целиком в кадре (с полем ленты) — не трогаем: иначе первая пилюля прилипает к краю экрана.
         const pad = parseFloat(getComputedStyle(row).paddingLeft) || 0;

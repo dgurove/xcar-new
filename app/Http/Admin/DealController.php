@@ -13,7 +13,11 @@ use App\Offers\CommissionMode;
 use App\Offers\Deal;
 use App\Offers\DealScheme;
 use App\Offers\DealState;
+use App\Offers\DealWork;
+use App\Offers\InsurerReplies;
 use App\Offers\OfferFiles;
+use App\Offers\ReplyKind;
+use App\Offers\ReplyReview;
 use App\Support\Detail;
 use App\Support\Facets\Common;
 use App\Support\Facets\Facet;
@@ -23,6 +27,7 @@ use App\Support\ListPrefs;
 use App\Support\ListView;
 use App\Support\Money;
 use App\Support\Sort;
+use App\Support\Surface;
 use App\Support\Table\ColRole;
 use App\Support\Table\Column;
 use App\Support\Table\Table;
@@ -113,10 +118,21 @@ class DealController
             default => $q->orderByRaw(self::turnRank())->orderByRaw("(select min(deadline_at) from offer_positions where offer_positions.offer_id = deals.offer_id) {$dir} nulls last"),
         };
         $q->orderByDesc('deals.id');
+        // Вкладки дел и «чего ждём» — по всему списку, до сужения строк живого обновления (`Rows::only`): их числа клиент
+        // берёт из того же ответа (`data-pill-count`), а строки рисуются только запрошенные.
+        $work = ! $searching && in_array($preset, ['us', 'manager', 'supplier'], true) ? (clone $q)->get() : null;
         Rows::only($q, 'deals.id');
-        $groups = $preset === 'us' && ! $searching ? self::todo($q->get(), $sort->key === 'deadline') : null;
+        $live = Rows::keys();
+        $link = fn (array $set) => '/work/deals?'.str_replace('%2C', ',', http_build_query(array_filter(
+            array_merge(array_diff_key($request->query(), array_flip(['page', 'rows', 'part', 'peek', 'sub'])), $set), fn ($v) => $v !== null && $v !== '')));
+        $work = match (true) {
+            $work && $preset === 'us' => self::todo($work, $sort->key === 'deadline', $request, $link, $live),
+            $work !== null => self::waiting($work, $preset, $request, $link, $live),
+            default => null,
+        };
+        $groups = $preset === 'us' ? $work['groups'] ?? null : null;
+        $waiting = $preset !== 'us' ? $work['groups'] ?? null : null;
         $debts = $preset === 'pay' && ! $searching ? self::debts($q->get()) : null;
-        $waiting = in_array($preset, ['manager', 'supplier'], true) && ! $searching ? self::waiting($q->get(), $preset) : null;
         // Таблица — порциями по сотне (`Portion`), «Все» — целиком: группы по этапу собираются в памяти, порция их порвала бы;
         // строками — постранично.
         $table = ListView::isTable(ListView::pick($request, 0));
@@ -128,6 +144,8 @@ class DealController
             'stages' => $preset === 'all' && ! $searching && $table ? self::stages($deals->getCollection()) : null,
             'debts' => $debts,
             'waiting' => $waiting,
+            // Вкладки дел второго ряда (`x-deal.work-tabs`) и выбранный подзаголовок.
+            'work' => $work,
             'deals' => $deals,
             'preset' => $preset,
             'counts' => $counts,
@@ -140,20 +158,40 @@ class DealController
     /**
      * «Ваш ход» — список дел (27.10.2026, владелец: «не видно, что нужно сделать, а что просто просрочено»): группы по тому,
      * что сделать (`Position::todo`), внутри — кто дольше ждёт; у заявки поставщику кнопка одна на группу (письмо на все
-     * сделки вендора). Весь список одной страницей: дел — десятки. @return Collection<string, array>
+     * сделки вендора). Весь список одной страницей: дел — десятки.
+     *
+     * С 09.11.2026 — вкладками дел (`Offers\DealWork::section`, `?todo=`; владелец: «безумно неудобно», «Разобрать ответ —
+     * отдельная вкладка, и в ней подзаголовки: каким-то пришло „ГОТС поступили на реализацию“, по каким-то запрос реквизитов»):
+     * открыт первый непустой раздел, «Все» — прежний общий вид. «Разобрать ответ» — подзаголовками по смыслу письма
+     * (`Offers\ReplyKind`). Подзаголовок — ссылка (`&sub=`): только эта группа, адрес для начальника — скрепкой.
+     *
+     * @param  ?list<string>  $live  ключи строк живого обновления — рисуются только они, числа — по всему списку
+     * @return array{tabs: list<array>, tab: string, sub: ?array, groups: Collection<string, array>}
      */
-    private static function todo(Collection $deals, bool $byWait): Collection
+    private static function todo(Collection $deals, bool $byWait, Request $request, \Closure $link, ?array $live): array
     {
         $rows = $deals->map(function (Deal $deal) {
             $position = $deal->offer?->position();
             $position?->setRelation('offer', $deal->offer)->setRelation('deal', $deal);
+            $todo = $position?->todo();
 
-            return ['deal' => $deal, 'todo' => $position?->todo()];
-        })->filter(fn ($r) => $r['todo']);
+            return $todo ? ['deal' => $deal, 'todo' => $todo, 'section' => DealWork::section($todo['key'])] : null;
+        })->filter()->values();
+        $counts = $rows->countBy('section');
+        $asked = (string) $request->query('todo');
+        $tab = $asked === DealWork::ALL || isset(DealWork::SECTIONS[$asked]) ? $asked
+            : (collect(DealWork::SECTIONS)->keys()->first(fn (string $k) => ($counts[$k] ?? 0) > 0) ?? DealWork::ALL);
+        $tabs = collect(DealWork::SECTIONS)->map(fn (string $title, string $key) => ['key' => $key, 'title' => $title, 'n' => $counts[$key] ?? 0])
+            ->push(['key' => DealWork::ALL, 'title' => 'Все', 'n' => null])
+            ->map(fn (array $t) => [...$t, 'count' => 'todo:'.$t['key'], 'href' => $link(['preset' => null, 'what' => null, 'todo' => $t['key']])])->values()->all();
 
-        return $rows->groupBy(fn ($r) => $r['todo']['key'])->map(function (Collection $rows, string $key) use ($byWait) {
+        $rows = $tab === DealWork::ALL ? $rows : $rows->where('section', $tab);
+        $kinds = $tab === 'reply' ? self::replyKinds($rows->pluck('deal')) : collect();
+        $groups = $rows->groupBy(fn ($r) => $tab === 'reply' ? $kinds[$r['deal']->id]->value : $r['todo']['key'])->map(function (Collection $rows, string $key) use ($byWait, $tab, $link) {
             $first = $rows->first();
-            $group = ['title' => $first['todo']['title'], 'rank' => $first['todo']['rank'], 'button' => null,
+            $kind = $tab === 'reply' ? ReplyKind::from($key) : null;
+            $group = ['title' => $kind?->title() ?? $first['todo']['title'], 'rank' => $kind ? array_search($kind, ReplyKind::cases(), true) : $first['todo']['rank'],
+                'button' => null, 'size' => $rows->count(),
                 'rows' => $byWait ? $rows->sortBy(fn ($r) => $r['todo']['since']?->getTimestamp() ?? PHP_INT_MAX)->values() : $rows->values()];
             if (str_starts_with($key, 'request:')) {
                 $vendor = $first['deal']->offer->vendor;
@@ -161,9 +199,62 @@ class DealController
                 // Без числа: в письмо идут и гаражные сделки вендора, которых здесь нет, — «(8)» над шестью строками путало.
                 $group['button'] = ['label' => 'Отправить заявку', 'letters' => '/work/mail/new?request='.$vendor?->id.'&then=close'];
             }
+            // В «Все» подзаголовок не ссылка: он и есть вкладка.
+            if ($tab !== DealWork::ALL) {
+                $group['href'] = $link(['preset' => null, 'todo' => $tab, 'sub' => $key]);
+                $group['link'] = Surface::Crm->url('/work/deals?'.http_build_query(['todo' => $tab, 'sub' => $key]));
+            }
 
             return $group;
         })->sortBy([['rank', 'asc'], ['title', 'asc']]);
+
+        return self::narrow(['tabs' => $tabs, 'tab' => $tab], $groups, $request, $link(['preset' => null, 'todo' => $tab]), $live);
+    }
+
+    /** Смысл писем на разборе по сделкам вкладки — одним запросом (`ReplyReview`), старый путь без строки разбора — последний ответ. */
+    private static function replyKinds(Collection $deals): Collection
+    {
+        $letters = ReplyReview::pending()->whereIn('deal_id', $deals->pluck('id'))->with('message.attachments')->get()
+            ->groupBy('deal_id')->map(fn (Collection $reviews) => $reviews->pluck('message')->filter());
+
+        return $deals->mapWithKeys(fn (Deal $deal) => [$deal->id => ReplyKind::forDeal(
+            ($letters[$deal->id] ?? collect())->whenEmpty(fn () => InsurerReplies::for($deal)->take(1)->load('attachments')))]);
+    }
+
+    /**
+     * Подзаголовок по ссылке (`&sub=`) — только эта группа (нет такой — пусто, а не всё: ссылку дали на неё); строки живого
+     * обновления — только запрошенные.
+     */
+    private static function narrow(array $work, Collection $groups, Request $request, string $clear, ?array $live): array
+    {
+        $sub = (string) $request->query('sub');
+        if ($sub !== '') {
+            $work['sub'] = ['title' => $groups[$sub]['title'] ?? self::subTitle($sub), 'clear' => $clear];
+            $groups = $groups->only([$sub]);
+        }
+        if ($live !== null) {
+            $groups = $groups->map(fn (array $g) => [...$g, 'rows' => $g['rows']->filter(fn ($r) => in_array((string) ($r instanceof Deal ? $r : $r['deal'])->id, $live, true))->values()])
+                ->filter(fn (array $g) => $g['rows']->isNotEmpty());
+        }
+
+        return [...$work, 'sub' => $work['sub'] ?? null, 'groups' => $groups];
+    }
+
+    /** Подпись подзаголовка, которого сейчас нет в списке (ссылку дали на него, а он уже разобран). */
+    private static function subTitle(string $sub): string
+    {
+        // Подписи — как у дел `Position::todo`.
+        return ReplyKind::tryFrom($sub)?->title() ?? match (true) {
+            str_starts_with($sub, 'stage:') => substr($sub, 6),
+            str_starts_with($sub, 'request:') => 'Отправить заявку поставщику',
+            default => [
+                'reprice' => 'Разобрать переоценку', 'reprice-answer' => 'Ответить поставщику про переоценку',
+                'price-ask' => 'Менеджер не ответил про закупочную', 'letter' => 'Написать поставщику',
+                'bounced' => 'Письмо поставщику не дошло', 'consent' => 'Менеджер не ответил, берёт ли',
+                'gap:share' => 'Вписать нашу долю', 'gap:commission' => 'Назначить вознаграждение',
+                'gap:ros_requisites' => 'Заполнить реквизиты Р.О.С.', 'gap:invoice' => 'Выставить счёт',
+            ][$sub] ?? 'Группа',
+        };
     }
 
     /**
@@ -172,13 +263,31 @@ class DealController
      * ждём (этап: «Нет реквизитов», «Оплата счёта ПРАЙМ», «Забрать автомобиль») и срок (`x-deal.wait-row`). Первыми — где
      * просрочено, дальше — где больше сделок; внутри — по сроку списка. Весь список одной страницей.
      *
-     * @return Collection<string, array{title: string, manager: ?User, vendor: ?Vendor, late: int, size: int, rows: Collection}>
+     * С 09.11.2026 — вкладками по тому, чего ждём (`?what=`, владелец выбрал из вариантов): подэтапы схемы главной
+     * (`DealWork::waitStep`), блок не из таблицы — «Прочее», последней — «Все».
+     *
+     * @return array{tabs: list<array>, tab: string, sub: ?array, groups: Collection<string, array{title: string, manager: ?User, vendor: ?Vendor, late: int, size: int, rows: Collection}>}
      */
-    private static function waiting(Collection $deals, string $preset): Collection
+    private static function waiting(Collection $deals, string $preset, Request $request, \Closure $link, ?array $live): array
     {
         $manager = $preset === 'manager';
+        // Чего ждём — вкладками (09.11.2026, `DealWork::waitStep`, `?what=`): те же подэтапы, что на схеме главной.
+        $steps = $deals->mapWithKeys(function (Deal $d) {
+            $position = $d->offer?->position();
+            $position?->setRelation('deal', $d);
 
-        return $deals->groupBy(fn (Deal $d) => $manager ? ($d->isAuction() ? 'auction' : 'manager:'.$d->buyer_id) : 'vendor:'.$d->offer?->vendor_id)
+            return [$d->id => ($position ? DealWork::waitStep($position, $d) : null) ?? DealWork::OTHER];
+        });
+        $counts = $steps->countBy();
+        $order = [...DealWork::WAITS[$preset], DealWork::OTHER];
+        $asked = (string) $request->query('what');
+        $tab = in_array($asked, [...$order, DealWork::ALL], true) ? $asked : (collect($order)->first(fn (string $k) => ($counts[$k] ?? 0) > 0) ?? DealWork::ALL);
+        $tabs = collect($order)->map(fn (string $key) => ['key' => $key, 'title' => DealWork::waitTitle($key), 'n' => $counts[$key] ?? 0])
+            ->push(['key' => DealWork::ALL, 'title' => 'Все', 'n' => null])
+            ->map(fn (array $t) => [...$t, 'count' => 'what:'.$preset.':'.$t['key'], 'href' => $link(['todo' => null, 'what' => $t['key']])])->values()->all();
+        $deals = $tab === DealWork::ALL ? $deals : $deals->filter(fn (Deal $d) => $steps[$d->id] === $tab)->values();
+
+        $groups = $deals->groupBy(fn (Deal $d) => $manager ? ($d->isAuction() ? 'auction' : 'manager:'.$d->buyer_id) : 'vendor:'.$d->offer?->vendor_id)
             ->map(function (Collection $rows) use ($manager) {
                 $first = $rows->first();
                 $vendor = $manager ? null : $first->offer?->vendor;
@@ -192,6 +301,8 @@ class DealController
                     'rows' => $rows->values(),
                 ];
             })->sortBy([['late', 'desc'], ['size', 'desc'], ['title', 'asc']]);
+
+        return self::narrow(['tabs' => $tabs, 'tab' => $tab], $groups, $request, $link(['what' => $tab]), $live);
     }
 
     /**

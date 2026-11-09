@@ -11,6 +11,7 @@ use App\Offers\Binding;
 use App\Offers\CatalogQuery;
 use App\Offers\Deal;
 use App\Offers\DealState;
+use App\Offers\DealWork;
 use App\Offers\Offer;
 use App\Offers\OfferState;
 use App\Support\Surface;
@@ -92,50 +93,31 @@ final class Conveyor
         'confirm' => ['Подтвердить предложения', '/offers?preset=published'],
         'bids' => ['Принять подтверждения', '/offers?preset=bids', ['bids-closed' => 'Приём закрыт', 'bids-open' => 'Приём ещё идёт']],
         'claims' => ['Отправить отклики', null],
-        'a-write' => ['Отправить заявку', '/work/deals?preset=us'],
-        'a-reply' => ['Прочитать ответ поставщика', '/work/deals?preset=us'],
-        'answer' => ['Ответить про переоценку', '/work/deals?preset=us'],
-        'reprice' => ['Рассмотреть переоценку', '/work/deals?preset=us'],
-        'write' => ['Отправить заявку', '/work/deals?preset=us'],
-        'reply' => ['Прочитать ответ поставщика', '/work/deals?preset=us'],
+        'a-write' => ['Отправить заявку', '/work/deals?todo=write'],
+        'a-reply' => ['Прочитать ответ поставщика', '/work/deals?todo=reply'],
+        'answer' => ['Ответить про переоценку', '/work/deals?todo=reprice&sub=reprice-answer'],
+        'reprice' => ['Рассмотреть переоценку', '/work/deals?todo=reprice'],
+        'write' => ['Отправить заявку', '/work/deals?todo=write'],
+        'reply' => ['Прочитать ответ поставщика', '/work/deals?todo=reply'],
         // Счёт встаёт сам; не встал по нашей причине — доля по гаражу, вознаграждение, реквизиты Р.О.С. (`Deal::invoiceGap`).
-        'invoice' => ['Доделать счёт', '/work/deals?preset=us'],
-        'paid' => ['Проверить оплату', '/work/deals?preset=us'],
-        'settle' => ['Оплатить поставщику', '/work/deals?preset=us'],
-        's-agree' => ['Согласие на покупку', '/work/deals?preset=supplier'],
-        's-requisites' => ['Реквизиты для счёта', '/work/deals?preset=supplier'],
-        's-paid' => ['Подтверждение оплаты', '/work/deals?preset=supplier'],
-        's-docs' => ['Документы', '/work/deals?preset=supplier'],
-        'm-consent' => ['Дать согласие', '/work/deals?preset=manager'],
+        'invoice' => ['Доделать счёт', '/work/deals?todo=invoice'],
+        'paid' => ['Проверить оплату', '/work/deals?todo=step'],
+        'settle' => ['Оплатить поставщику', '/work/deals?todo=step'],
+        's-agree' => ['Согласие на покупку', '/work/deals?preset=supplier&what=s-agree'],
+        's-requisites' => ['Реквизиты для счёта', '/work/deals?preset=supplier&what=s-requisites'],
+        's-paid' => ['Подтверждение оплаты', '/work/deals?preset=supplier&what=s-paid'],
+        's-docs' => ['Документы', '/work/deals?preset=supplier&what=s-docs'],
+        'm-consent' => ['Дать согласие', '/work/deals?preset=manager&what=m-consent'],
         // Без покупателя (и его паспорта) не встанут ни договор, ни счёт.
-        'm-buyer' => ['Заполнить покупателя', '/work/deals?preset=manager'],
-        'm-car' => ['Оплатить ТС', '/work/deals?preset=manager'],
-        'm-fee' => ['Оплатить подбор', '/work/deals?preset=manager'],
-        'm-pickup' => ['Забрать ТС', '/work/deals?preset=manager'],
-        'm-scans' => ['Приложить сканы документов', '/work/deals?preset=manager'],
+        'm-buyer' => ['Заполнить покупателя', '/work/deals?preset=manager&what=m-buyer'],
+        'm-car' => ['Оплатить ТС', '/work/deals?preset=manager&what=m-car'],
+        'm-fee' => ['Оплатить подбор', '/work/deals?preset=manager&what=m-fee'],
+        'm-pickup' => ['Забрать ТС', '/work/deals?preset=manager&what=m-pickup'],
+        'm-scans' => ['Приложить сканы документов', '/work/deals?preset=manager&what=m-scans'],
         'assign' => ['Назначить вывоз', 'logistics:/transports?preset=new'],
         'logist' => ['Назначить исполнителя', 'logistics:/transports?preset=logist'],
         'cdek' => ['Документы СДЭКом', 'logistics:/transports?preset=work'],
         'drive' => ['Привезти ТС', 'logistics:/transports?preset=work'],
-    ];
-
-    /**
-     * Блок маршрута сделки → подэтап: [ход поставщика, ход менеджера, наш ход без своего дела (`stage:*`)]. У вендоров пути
-     * разные — на схеме общий; чего нет в таблице, на схеме не считается. Оплату менеджера уточняет схема (`managerStep`).
-     */
-    private const BLOCKS = [
-        'Согласование с поставщиком' => ['s-agree', 'm-consent', 'write'],
-        'Реквизиты для счёта' => ['s-requisites', 'm-buyer', 'invoice'],
-        'Оплата' => ['s-paid', 'm-car', 'paid'],
-        'Получение автомобиля' => ['s-docs', 'm-pickup', 'settle'],
-        'Договор' => ['s-docs', 'm-scans', 'settle'],
-        'Оформление документов' => ['s-docs', 'm-scans', 'settle'],
-        'Расчёт с поставщиком' => ['s-docs', 'm-scans', 'settle'],
-        'Взяли под себя' => ['s-docs', 'm-scans', 'settle'],
-        'Оформляем на нас' => ['s-docs', 'm-scans', 'settle'],
-        // Заявки поставщику — только у Каркаде, его на схеме нет.
-        'Заявка у поставщика' => ['s-docs', 'm-scans', null],
-        'Покупатель от поставщика' => ['s-docs', 'm-scans', null],
     ];
 
     /** Сколько лиц у этапа с многими людьми: дальше — «+N». */
@@ -400,7 +382,7 @@ final class Conveyor
                 continue;
             }
             $position->setRelation('deal', $deal);
-            $block = self::BLOCKS[$position->stage?->block?->name ?? $position->stage?->name] ?? null;
+            $block = DealWork::block($position);
             $hot = $position->isOverdue() || Binding::panics($deal->offer);
             if (isset($ours[$deal->offer_id]) && ($todo = $position->todo())) {
                 // Менеджер не ответил про закупочную или не дал согласия в срок — горит само.
@@ -415,7 +397,7 @@ final class Conveyor
             }
             match ($position->waitsFor()) {
                 WaitsFor::Supplier => $add($block[0], $hot, $deal->offer->vendor_id ? ['type' => 'vendor', 'id' => $deal->offer->vendor_id] : null, 'supplier'),
-                WaitsFor::Manager => $deal->isGarage() ? null : $add(self::managerStep($block[1], $position, $deal), $hot),
+                WaitsFor::Manager => $deal->isGarage() ? null : $add(DealWork::managerStep($block[1], $position, $deal), $hot),
                 default => null,
             };
         }
@@ -438,21 +420,6 @@ final class Conveyor
             str_starts_with($key, 'gap:') => 'invoice',
             str_starts_with($key, 'request:') => null,
             default => $byBlock,
-        };
-    }
-
-    /**
-     * Ход менеджера: договор — сканы с подписями; оплата — за что платит: без покупателя счёта нет (`managerGap`), по счёту
-     * ПРАЙМ или Р.О.С. — сама ТС, иначе — подбор XCar по ссылке (`DealScheme::paysCar`).
-     */
-    private static function managerStep(string $byBlock, Position $position, Deal $deal): string
-    {
-        return match (true) {
-            str_contains(mb_strtolower($position->stage->name), 'договор') => 'm-scans',
-            $byBlock !== 'm-car' => $byBlock,
-            $deal->managerGap() => 'm-buyer',
-            $deal->schemeOf()->paysCar() => 'm-car',
-            default => 'm-fee',
         };
     }
 

@@ -11,11 +11,13 @@
      searchTarget — что подменять ответом (#list), searchUrl — куда спрашивать, если не сюда (чаты: открытый чат
      читать нельзя);
      слот pillsExtra — пилюли-ссылки в хвосте ряда («+ Группа», «Ссылки 2»);
+     слот sub — второй ряд вкладок под пилюлями (дела «Сделок» CRM, `x-deal.work-tabs`), до чипов; pillDrop — параметры этого
+     ряда, которые пилюля снимает (`todo`, `what`, `sub`: у другой пилюли свои вкладки);
      слот extra — кнопки экрана в левой группе после сортировки (переключатель вида),
      слот actions — у правого края («+», «Из писем»).
      Сортировка — окошко x-ui.sort: поле и направление (владелец 06.10.2026: «кнопка сортировки, окошко — выбор
      критерия и ascending/descending»); прежнего меню исходов словами («Сначала дешёвые») больше нет. --}}
-@props(['sort' => null, 'sortParam' => 'sort', 'pills' => [], 'dots' => [], 'pill' => '', 'pillParam' => 'view', 'pillDefault' => true, 'pillHome' => null, 'counts' => [], 'badges' => [], 'bumps' => [], 'tones' => [], 'name' => 'list', 'action' => null, 'search' => null, 'searchTarget' => '#list', 'searchUrl' => null, 'q' => null, 'facets' => null, 'searchOpen' => false, 'sortToggles' => [], 'facetsReset' => true])
+@props(['sort' => null, 'sortParam' => 'sort', 'pills' => [], 'dots' => [], 'pill' => '', 'pillParam' => 'view', 'pillDefault' => true, 'pillHome' => null, 'pillDrop' => [], 'counts' => [], 'badges' => [], 'bumps' => [], 'tones' => [], 'name' => 'list', 'action' => null, 'search' => null, 'searchTarget' => '#list', 'searchUrl' => null, 'q' => null, 'facets' => null, 'searchOpen' => false, 'sortToggles' => [], 'facetsReset' => true])
 @php
     $action ??= '/'.ltrim(request()->path(), '/');
     $query = request()->query();
@@ -42,7 +44,7 @@
         <div class="toolbar-pills min-w-0 flex-1 snap-x overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden max-md:order-first max-md:-mx-4 max-md:flex-initial max-md:px-4" data-title-anchor>
             <div class="flex flex-nowrap items-center gap-2">
                 @foreach ($pills as $key => $label)
-                    <a href="{{ $url([$pillParam => $key === '' || $key === ($pillHome ?? array_key_first($pills)) ? null : $key, 'page' => null, 'rows' => null]) }}" class="pill {{ (string) $pill === (string) $key ? '' : ($tones[$key] ?? '') }}" @isset($dots[$key]) data-tone="{{ $dots[$key] }}" @endisset data-turbo-action="replace" @isset($bumps[$key]) data-pill-bump="{{ $key }}:{{ $counts[$bumps[$key]] ?? 0 }}" @endisset @if ((string) $pill === (string) $key && ($pillDefault || $key !== array_key_first($pills))) aria-current="true" @endif>
+                    <a href="{{ $url([$pillParam => $key === '' || $key === ($pillHome ?? array_key_first($pills)) ? null : $key, 'page' => null, 'rows' => null, ...array_fill_keys($pillDrop, null)]) }}" class="pill {{ (string) $pill === (string) $key ? '' : ($tones[$key] ?? '') }}" @isset($dots[$key]) data-tone="{{ $dots[$key] }}" @endisset data-turbo-action="replace" @isset($bumps[$key]) data-pill-bump="{{ $key }}:{{ $counts[$bumps[$key]] ?? 0 }}" @endisset @if ((string) $pill === (string) $key && ($pillDefault || $key !== array_key_first($pills))) aria-current="true" @endif>
                         @isset($dots[$key])@if ($dots[$key] === 'urgent')<x-ui.icon name="fire" fill class="mr-1 size-4 {{ (string) $pill === (string) $key ? '' : 'text-fire' }}"/>@else<span class="card-tone card-tone--{{ $dots[$key] }}"></span>@endif @endisset{{ $label }}@if (array_key_exists($key, $counts)) <span class="nums opacity-70" data-pill-count="{{ $key }}">{{ $counts[$key] ?: '' }}</span>@endif
                         @isset($badges[$key])<span class="badge nums" data-pill-count="{{ $badges[$key] }}">{{ ($counts[$badges[$key]] ?? 0) ?: '' }}</span>@endisset
                     </a>
@@ -51,6 +53,10 @@
             </div>
         </div>
     @endif
+    @isset($sub)
+        {{-- Второй ряд вкладок: на ПК своей строкой между рядом пилюль с кнопками и чипами, на телефоне — сразу под пилюлями. --}}
+        <div class="toolbar-sub">{{ $sub }}</div>
+    @endisset
     {{-- Без пилюль кнопки слева, действия справа (`ml-auto`), на ПК чипы встают в ту же строку после кнопок. Распорки
          нет: её `md:block` из слоя утилит перебивал правило «спрятать без пилюль», и кнопки с чипами уезжали на середину. --}}
 
