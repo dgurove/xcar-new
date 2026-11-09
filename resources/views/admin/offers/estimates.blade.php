@@ -43,8 +43,11 @@
                     <form method="post" action="/offers/{{ $n }}/estimates/{{ $e->id }}/reject" data-estimate-pick-target="reject" hidden>@csrf</form>
                 </div>
             @else
-                <form method="post" action="/offers/{{ $n }}/estimates/{{ $e->id }}" class="contents" data-turbo-confirm="Снять {{ $e->user->shortName() }} с оценки?" data-turbo-confirm-label="Снять">
-                    @csrf @method('delete')
+                {{-- Обещан эксклюзив за оценку (`Exclusive`) — снять только с тем же предупреждением, что «Выставить всем…». --}}
+                @php $promised = $e->exclusive_days > 0 && ! $e->withdrawn_at && ! $e->exclusive_until; @endphp
+                <form method="post" action="/offers/{{ $n }}/estimates/{{ $e->id }}" class="contents" data-turbo-confirm="Снять {{ $e->user->shortName() }} с оценки?" data-turbo-confirm-label="Снять"
+                      @if ($promised) data-turbo-confirm-text="Обещано {{ \App\Offers\Estimate::daysWord($e->exclusive_days) }} только ему в продаже. Снимете — машину можно будет выставить всем" @endif>
+                    @csrf @method('delete')@if ($promised)<input type="hidden" name="waive" value="1">@endif
                     <button type="submit" class="row w-full text-left">
                         <x-ui.avatar :user="$e->user" :size="32"/>
                         <span class="min-w-0 flex-1">

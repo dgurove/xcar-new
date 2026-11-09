@@ -201,6 +201,8 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
         Route::post('/offers/{offer}/lower-price', [OfferController::class, 'lowerPrice']);
         Route::post('/offers/{offer}/no-bids', [OfferController::class, 'notifyNoBids'])->middleware('throttle:6,1');
         Route::post('/offers/{offer}/state', [OfferController::class, 'state']);
+        // «Открыть всем сейчас…» — снять эксклюзив за оценку у машины в продаже (09.11.2026, `Exclusive`).
+        Route::post('/offers/{offer}/exclusive-off', [OfferController::class, 'exclusiveOff']);
         // «На аукцион» (13.10.2026): отправить сейчас или по истечении срока; DELETE — отменить или убрать с аукциона.
         Route::post('/offers/{offer}/auction', [OfferController::class, 'auction']);
         Route::delete('/offers/{offer}/auction', [OfferController::class, 'auctionCancel']);

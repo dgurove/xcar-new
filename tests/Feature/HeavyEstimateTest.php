@@ -114,11 +114,11 @@ class HeavyEstimateTest extends TestCase
         app(AskEstimates::class)($two, [$this->roma, $this->other], $this->admin, days: 2, exclusive: 5);
         $this->assertSame([null, null], Estimate::where('offer_id', $two->id)->pluck('exclusive_days')->all());
 
-        // Отдали ещё одному — эксклюзив прежней просьбы гаснет.
+        // Отдали ещё одному — эксклюзив прежней просьбы остаётся (09.11.2026: обещанное снимают только явно).
         $one = $this->draft('Sitrak', '5691/046/00907/26');
         app(AskEstimates::class)($one, [$this->roma], $this->admin, exclusive: 5);
         app(AskEstimates::class)($one->fresh(), [$this->other], $this->admin);
-        $this->assertSame([null, null], Estimate::where('offer_id', $one->id)->orderBy('id')->pluck('exclusive_days')->all());
+        $this->assertSame([5, null], Estimate::where('offer_id', $one->id)->orderBy('id')->pluck('exclusive_days')->all());
 
         // Уже думает другой — эксклюзива новому нет.
         $busy = $this->draft('MAN', '5691/046/00911/26');
@@ -237,6 +237,63 @@ class HeavyEstimateTest extends TestCase
         app(UpdateOffer::class)($truck->fresh(), ['audience_rules' => AudienceRules::everyone()], $this->admin);
         app(ChangeOfferState::class)($truck->fresh(), OfferState::Open, $this->admin);
         $this->assertTrue($truck->viewers()->where('user_id', $this->other->id)->value('opens_at') <= now());
+    }
+
+    /** Дыры эксклюзива (09.11.2026): не успел оценить, снялись и вышли снова, галерея, крестик, «Выставить всем…». */
+    public function test_exclusive_holes_closed(): void
+    {
+        $opens = fn (Offer $o) => $o->viewers()->where('user_id', $this->other->id)->value('opens_at');
+
+        // Роман ещё оценивает, а цену вписали сами — всё равно ему.
+        $a = $this->draft('Scania', '5691/046/00921/26');
+        app(AskEstimates::class)($a, [$this->roma], $this->admin, exclusive: 5);
+        app(UpdateOffer::class)($a->fresh(), ['asking_price' => 1700000], $this->admin);
+        app(ChangeOfferState::class)($a->fresh(), OfferState::Open, $this->admin);
+        $until = Estimate::where('offer_id', $a->id)->sole()->exclusive_until;
+        $this->assertTrue($opens($a)->gt(now()->addDays(4)));
+
+        // Сняли с продажи на второй день, «Показ» поставили «Всем сразу» и выставили снова — снова только ему, до прежнего конца.
+        $this->travel(2)->days();
+        app(ChangeOfferState::class)($a->fresh(), OfferState::Draft, $this->admin);
+        app(UpdateOffer::class)($a->fresh(), ['audience_rules' => AudienceRules::everyone()], $this->admin);
+        app(ChangeOfferState::class)($a->fresh(), OfferState::Open, $this->admin);
+        $this->assertEqualsWithDelta($until->timestamp, $opens($a)->timestamp, 120);
+        $this->travelBack();
+
+        // В галерею — нельзя, руками и часами.
+        $b = $this->draft('Volvo', '5691/046/00922/26');
+        $this->vendor->update(['to_gallery' => true]);
+        app(AskEstimates::class)($b, [$this->roma], $this->admin, exclusive: 5);
+        $this->assertSame(0, app(\App\Offers\Actions\ShowInGallery::class)->due());
+        $this->actingAs($this->admin)->post('http://crm.xcar.localhost/offers/'.$b->number.'/state', ['state' => 'gallery'])->assertSessionHasErrors('state');
+        $this->assertNull($b->fresh()->gallery_from);
+
+        // Крестик без подтверждения не снимает; с ним — снимает, и выход уже без эксклюзива.
+        $e = Estimate::where('offer_id', $b->id)->sole();
+        $this->actingAs($this->admin)->delete('http://crm.xcar.localhost/offers/'.$b->number.'/estimates/'.$e->id)->assertSessionHasErrors('estimate');
+        $this->assertSame('asked', $e->fresh()->state->value);
+        $this->actingAs($this->admin)->delete('http://crm.xcar.localhost/offers/'.$b->number.'/estimates/'.$e->id, ['waive' => 1])->assertSessionHasNoErrors();
+        $this->assertNotNull($e->fresh()->withdrawn_at);
+        app(UpdateOffer::class)($b->fresh(), ['asking_price' => 1400000], $this->admin);
+        app(ChangeOfferState::class)($b->fresh(), OfferState::Open, $this->admin);
+        $this->assertTrue($opens($b)->lte(now()));
+
+        // «Выставить всем…» — снимает и выставляет всем; в продаже — «Открыть всем сейчас…».
+        $c = $this->draft('Iveco', '5691/046/00923/26');
+        app(AskEstimates::class)($c, [$this->roma], $this->admin, exclusive: 5);
+        app(GiveEstimate::class)(Estimate::where('offer_id', $c->id)->sole(), 900000, $this->roma);
+        app(UpdateOffer::class)($c->fresh(), ['asking_price' => 950000], $this->admin);
+        $this->actingAs($this->admin)->post('http://crm.xcar.localhost/offers/'.$c->number.'/state', ['state' => 'open', 'when' => 'now', 'all' => 1, 'price_ok' => 1])->assertSessionHasNoErrors();
+        $this->assertSame(OfferState::Open, $c->fresh()->state);
+        $this->assertTrue($opens($c)->lte(now()));
+
+        $d = $this->draft('Howo', '5691/046/00924/26');
+        app(AskEstimates::class)($d, [$this->roma], $this->admin, exclusive: 5);
+        app(UpdateOffer::class)($d->fresh(), ['asking_price' => 800000], $this->admin);
+        app(ChangeOfferState::class)($d->fresh(), OfferState::Open, $this->admin);
+        $this->assertTrue($opens($d)->gt(now()));
+        $this->actingAs($this->admin)->post('http://crm.xcar.localhost/offers/'.$d->number.'/exclusive-off')->assertSessionHasNoErrors();
+        $this->assertTrue($opens($d)->lte(now()));
     }
 
     /** Рома оценил, админ взял: с эксклюзивом — продажа только ему. */

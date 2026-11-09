@@ -17,7 +17,7 @@
         ! $offer->garage_allowed ? 'без гаража' : null,
     ]);
     // Эксклюзив за оценку (`Exclusive`, 09.11.2026) встанет сам при выходе — сводка сразу такая, какой будет.
-    $owed = in_array($offer->state, [\App\Offers\OfferState::Draft, \App\Offers\OfferState::Gallery], true) ? \App\Offers\Exclusive::owed($offer) : collect();
+    $owed = in_array($offer->state, [\App\Offers\OfferState::Draft, \App\Offers\OfferState::Gallery], true) ? \App\Offers\Exclusive::due($offer) : collect();
     $rules = $owed->isNotEmpty() ? \App\Offers\Exclusive::rules(AudienceRules::of($offer), $owed, $offer) : AudienceRules::of($offer);
     $who = AudienceRules::summary($rules).($marks ? ', '.implode(', ', $marks) : '');
     // Срок обязывающего — в шторке; строкой сводки только когда горит (красным).

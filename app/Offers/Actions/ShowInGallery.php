@@ -2,6 +2,7 @@
 
 namespace App\Offers\Actions;
 
+use App\Offers\Exclusive;
 use App\Offers\LegacyClaim;
 use App\Offers\Offer;
 use App\Offers\OfferEventType;
@@ -28,6 +29,8 @@ final class ShowInGallery
             throw ValidationException::withMessages(['state' => 'В галерею можно только черновик']);
         }
         ChangeOfferState::readyForGallery($offer);
+        // Эксклюзив за оценку (`Exclusive`): галерею видят все менеджеры. Часы (`due`) такой черновик пропускают — та же ошибка.
+        Exclusive::guard($offer);
         OfferNumber::reserve($offer);
         $until = Slots::galleryUntil(now());
         $offer->forceFill(['gallery_from' => now(), 'gallery_until' => $until])->save();

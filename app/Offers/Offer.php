@@ -1502,6 +1502,9 @@ class Offer extends Model
         $actions = $this->state->actions();
         if ($this->isGallery() && isset($actions[OfferState::Gallery->value])) {
             $actions[OfferState::Gallery->value] = 'Убрать из галереи';
+        } elseif (isset($actions[OfferState::Gallery->value]) && Exclusive::due($this)->isNotEmpty()) {
+            // Эксклюзив за оценку (`Exclusive`, 09.11.2026): галерею видят все менеджеры — пункта нет.
+            unset($actions[OfferState::Gallery->value]);
         }
         // С аукциона в продажу — шторкой с ценами и показом (`auctionActions`), в галерею — не отсюда.
         if ($this->onAuction()) {

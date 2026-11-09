@@ -50,8 +50,7 @@ final class AskEstimates
                 'show_declared' => $declared[$u->id] ?? true, 'exclusive_days' => $exclusive,
             ]))->values();
             if ($created->isNotEmpty()) {
-                // Эксклюзив — когда оценивает один: отдали ещё кому-то — у прежней просьбы он гаснет, решает админ «Взять».
-                $open !== [] && $offer->estimates()->open()->whereNotIn('id', $created->pluck('id'))->update(['exclusive_days' => null]);
+                // Эксклюзив прежней просьбы не гасится (09.11.2026, `Exclusive`): обещанное за оценку снимают только явно.
                 EstimateLock::lock($offer);
                 // Первая просьба — черновик переходит во вкладку «На оценке у менеджеров».
                 $open === [] && $offer->movedByEstimate($by);

@@ -121,7 +121,9 @@
                 {{-- Без закупочной тоже (14.10.2026, владелец): шторка спросит «Вы уверены…», менеджер оценивает без заявленной. --}}
                 @php $askMenu = ($correct || $rate) && $offer->openEstimates->isEmpty() && $offer->declinedEstimates->isEmpty(); @endphp
                 @php $auctionMenu = $admin && $offer->auctionActions() !== [] && $nowKind !== 'auction'; @endphp
-                @if ($calm->isNotEmpty() || $danger->isNotEmpty() || ($publishItems && ! $publishButton) || $menuPurge || $listed || $resale || $askMenu || $auctionMenu || ($giveMenu && ! $publishButton))
+                {{-- «Выставить всем…» / «Открыть всем сейчас…» — снять эксклюзив за оценку, только отсюда и с предупреждением. --}}
+                @php $exclusiveMenu = $admin && (($publishItems && \App\Offers\Exclusive::due($offer)->isNotEmpty()) || ($offer->state === OfferState::Open && \App\Offers\Exclusive::running($offer)->isNotEmpty())); @endphp
+                @if ($calm->isNotEmpty() || $danger->isNotEmpty() || ($publishItems && ! $publishButton) || $menuPurge || $listed || $resale || $askMenu || $auctionMenu || ($giveMenu && ! $publishButton) || $exclusiveMenu)
                     <div class="contents" data-controller="menu">
                         <button type="button" class="pill pill-plain ml-auto" data-action="menu#toggle" aria-haspopup="menu" aria-controls="detail-actions-{{ $n }}">Действия <x-ui.icon name="chevron-down" class="size-4"/></button>
                         <div id="detail-actions-{{ $n }}" class="menu" popover data-menu-target="list" data-align="end" role="menu">
@@ -142,6 +144,9 @@
                                 <div class="menu-group">
                                     <button type="button" class="menu-item" role="menuitem" data-controller="emit" data-action="emit#send menu#close" data-emit-event-param="give-{{ $n }}:open"><x-ui.icon name="deal" class="size-5 text-ink-muted"/>Отдать…</button>
                                 </div>
+                            @endif
+                            @if ($exclusiveMenu)
+                                <div class="menu-group"><x-offer.exclusive-off :offer="$offer"/></div>
                             @endif
                             {{-- Менеджерам на оценку (без цены) или на корректировку (цена стоит, админ не уверен), 11.10.2026: пунктом, а не
                                  строкой у каждой карточки; отдали — ответы группой в карточке. --}}

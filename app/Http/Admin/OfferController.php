@@ -34,6 +34,7 @@ use App\Offers\BidState;
 use App\Offers\Binding;
 use App\Offers\CatalogQuery;
 use App\Offers\Estimate;
+use App\Offers\Exclusive;
 use App\Offers\EstimateState;
 use App\Offers\Export\OffersXlsx;
 use App\Offers\Jobs\DropEmptyDraft;
@@ -70,6 +71,7 @@ use App\Users\User;
 use App\Vendors\Vendor;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
@@ -1226,6 +1228,11 @@ class OfferController
         }
         if ($next === OfferState::Open && in_array($offer->state, [OfferState::Draft, OfferState::Gallery], true)) {
             PriceGuard::assertPublish([$offer], $request->boolean('price_ok'));
+            // «Выставить всем…» (`all=1`, 09.11.2026): эксклюзив за оценку снимается осознанно, после предупреждения; без него
+            // выход ставит оценщика сразу, остальных — после (`Exclusive`).
+            if ($request->boolean('all')) {
+                Exclusive::waive($offer, $request->user());
+            }
             $offer = $schedule($offer, $this->when($request, Slots::NOW), $request->user(), until: Slots::urgentUntil($request->input('urgent_until')));
 
             return redirect("/offers/{$offer->number}")->with('toast', $this->published($offer))->with(self::gone($request, $offer));
@@ -1233,6 +1240,21 @@ class OfferController
         $change($offer, $next, $request->user());
 
         return redirect("/offers/{$offer->number}")->with('toast', $next->label())->with(self::gone($request, $offer));
+    }
+
+    /**
+     * «Открыть всем сейчас…» (09.11.2026): эксклюзив за оценку у машины в продаже снимается после предупреждения, «Показ» —
+     * как по умолчанию у вендора.
+     */
+    public function exclusiveOff(Request $request, Offer $offer, UpdateOffer $update)
+    {
+        abort_unless($offer->state === OfferState::Open, 404);
+        DB::transaction(function () use ($request, $offer, $update) {
+            $waived = Exclusive::waive($offer, $request->user());
+            $waived->isNotEmpty() && $update($offer->refresh(), ['audience_rules' => null, 'first_look_until' => null, 'first_look_user_id' => null], $request->user(), ['why' => 'Эксклюзив за оценку снят']);
+        });
+
+        return redirect("/offers/{$offer->number}")->with('toast', 'Открыто всем')->with(self::gone($request, $offer));
     }
 
     /**

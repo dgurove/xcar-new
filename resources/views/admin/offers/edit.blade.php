@@ -305,7 +305,8 @@
             <x-ui.button form="offer-form" class="min-w-0 flex-1" data-save-bar-button data-save-bar="offer-form" hidden>Сохранить изменения</x-ui.button>
         @endif
         @php $auctionItems = $admin && $offer->auctionActions() !== [] && $nowKind !== 'auction'; @endphp
-        @if (($transitions->isNotEmpty() || $resale || $publishItems || $auctionItems || ($canGive && ! $publishButton) || ($deletable && $admin)) && ! $fromMail && ! $fromLegacy)
+        @php $exclusiveItems = $admin && ((in_array($offer->state, [OfferState::Draft, OfferState::Gallery], true) && $offer->asking_price && ! $offer->isScheduled() && ! $offer->onAuction() && \App\Offers\Exclusive::due($offer)->isNotEmpty()) || ($offer->state === OfferState::Open && \App\Offers\Exclusive::running($offer)->isNotEmpty())); @endphp
+        @if (($transitions->isNotEmpty() || $resale || $publishItems || $auctionItems || ($canGive && ! $publishButton) || ($deletable && $admin) || $exclusiveItems) && ! $fromMail && ! $fromLegacy)
             {{-- Контроллер шторки — только вместе с ней: у сделки «···» нет, и пустой контроллер падал в консоль. --}}
             <div class="contents" data-controller="sheet">
             <x-ui.button type="button" variant="secondary" round class="btn-lg" data-action="sheet#open" aria-label="Состояние"><x-ui.icon name="more" class="size-6"/></x-ui.button>
@@ -335,6 +336,7 @@
                     @if ($canGive && ! $publishButton)
                         <x-ui.button type="button" variant="secondary" block data-controller="emit" data-action="emit#send sheet#close" data-emit-event-param="give-{{ $n }}:open">Отдать…</x-ui.button>
                     @endif
+                    @if ($exclusiveItems)<x-offer.exclusive-off :offer="$offer" button/>@endif
                     @if ($admin && ! $purge && in_array($offer->state, [OfferState::Archived, OfferState::Cancelled], true))
                         <form method="post" action="/offers/{{ $n }}/purge" data-turbo-confirm="Удалить навсегда? Фото, документы, сделки, чаты и счета по нему удалятся без возврата" data-turbo-confirm-label="Удалить">@csrf<x-ui.button block variant="danger">Удалить навсегда</x-ui.button></form>
                     @endif

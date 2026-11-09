@@ -67,7 +67,10 @@ final class ChangeOfferState
                 throw ValidationException::withMessages(['state' => 'ТС в гараже: сначала «Отдали по ошибке»']);
             }
             // Эксклюзив за оценку (`Exclusive`, 09.11.2026): оценщику — сразу, остальным — после него, как бы ни вписали цену.
-            $exclusive = $next === OfferState::Open && in_array($from, [OfferState::Draft, OfferState::Gallery], true) ? Exclusive::owed($offer) : collect();
+            $exclusive = $next === OfferState::Open && in_array($from, [OfferState::Draft, OfferState::Gallery], true) ? Exclusive::due($offer) : collect();
+            if ($next === OfferState::Gallery) {
+                Exclusive::guard($offer);
+            }
             if ($next === OfferState::Open) {
                 self::assertReady($offer);
                 // Номер — до даты выхода: `issue` выдаёт его только тому, кто ещё не выходил наружу.
@@ -134,7 +137,8 @@ final class ChangeOfferState
             }
             $offer->save();
             if ($exclusive->isNotEmpty()) {
-                $exclusive->each(fn (Estimate $e) => $e->update(['exclusive_until' => Exclusive::until($offer, $e)]));
+                // Идущий (снялись и вышли снова) — до прежнего конца, новый — от этого выхода.
+                $exclusive->whereNull('exclusive_until')->each(fn (Estimate $e) => $e->update(['exclusive_until' => Exclusive::until($offer, $e)]));
                 $offer->log(OfferEventType::Note, $by, ['text' => Exclusive::words($exclusive)]);
             }
             // Ушли из сделки куда угодно (продажа, черновик, архив) — белый список «Кому показывать в сделке»

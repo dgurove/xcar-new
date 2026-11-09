@@ -8,6 +8,7 @@ use App\Offers\Actions\FirstLook;
 use App\Offers\Actions\RejectEstimate;
 use App\Offers\Actions\TakeEstimate;
 use App\Offers\Estimate;
+use App\Offers\Exclusive;
 use App\Offers\EstimateState;
 use App\Offers\Offer;
 use App\Offers\PriceGuard;
@@ -109,6 +110,13 @@ final class OfferEstimateController
     public function destroy(Request $request, Offer $offer, Estimate $estimate, CloseEstimates $close)
     {
         abort_unless($estimate->offer_id === $offer->id, 404);
+        // Обещан эксклюзив за оценку (`Exclusive`) — крестик снимает его только с подтверждением (`waive=1` из предупреждения).
+        if ($estimate->exclusive_days > 0 && ! $estimate->withdrawn_at && ! $estimate->exclusive_until) {
+            if (! $request->boolean('waive')) {
+                return back()->withErrors(['estimate' => 'Обещан эксклюзив за оценку — снимите с подтверждением']);
+            }
+            Exclusive::waive($offer, $request->user(), collect([$estimate]));
+        }
         $close($offer, $request->user(), [$estimate->id]);
 
         return back()->with('toast', 'Снято с оценки');
