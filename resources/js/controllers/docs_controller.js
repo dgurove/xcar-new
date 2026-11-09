@@ -51,7 +51,7 @@ export default class extends Controller {
         // Уход со страницы (визит) закрывает шторку до снимка Turbo; снимок без визита — это «Назад» со шторки над
         // ней (запись страницы без ключа Turbo), шторка остаётся.
         this.onVisit = () => { this.leaving = true; };
-        this.onLoad = () => { this.leaving = false; };
+        this.onLoad = () => { this.leaving = false; this.watchCard(); };
         this.onCache = () => { if (this.leaving) this.close(true); };
         this.onHostClose = () => { if (this.shown && this.host) this.close(true); };
         // «Подставить» в окне «Распознать» перечитывает страницу на месте (docs:keep перед этим) — тот же документ снова.
@@ -79,7 +79,7 @@ export default class extends Controller {
         window.addEventListener('docs:keep', this.onKeep);
         addEventListener('resize', this.onViewport);
         wide.addEventListener('change', this.onWide);
-        const start = () => this.restore();
+        const start = () => { this.watchCard(); this.restore(); };
         document.readyState === 'loading' ? document.addEventListener('DOMContentLoaded', start, { once: true }) : setTimeout(start);
     }
 
@@ -96,6 +96,7 @@ export default class extends Controller {
         removeEventListener('resize', this.onViewport);
         wide.removeEventListener('change', this.onWide);
         this.host?.removeEventListener('close', this.onHostClose);
+        this.cardWatch?.disconnect();
         clearTimeout(this.countTimer);
         this.view?.destroy();
         this.view = null;
@@ -172,20 +173,31 @@ export default class extends Controller {
         if (this.shown && host !== this.host) this.close(true, false);
         this.host = host;
         this.docScope = host ? null : a.closest('[data-docs-scope]');
+        // Документ карточки строки (окошко списка) — чья это карточка: сменилась — «Выберите документ» (`watchCard`).
+        this.card = host ? null : (a.closest('turbo-frame#detail') ? this.cardKey() : null);
+        const start = this.collect(a);
+        this.reveal(instant);
+        if (auto && !wide.matches) this.setHeight(Math.min(this.height, this.snaps()[1]));
+        this.show(start);
+    }
+
+    // Вкладки — документы страницы (или окна, или места `data-docs-scope`), без повторов; фото из писем — одной вкладкой.
+    // a — ссылка, по которой открыли (её место — номер вкладки), null — без открытого (смена карточки).
+    collect(a = null) {
         const seen = new Set();
         this.items = [];
-        for (const link of [...this.links(), a]) {
+        for (const link of a ? [...this.links(), a] : this.links()) {
             const item = this.item(link);
             if (seen.has(item.key)) continue;
             seen.add(item.key);
             this.items.push(item);
         }
         // Фото из писем — одной вкладкой «Фото N» с сеткой, а не вкладкой на каждый кадр (в ящике ТС их бывает под сотню).
-        let start = this.items.findIndex((item) => item.key === this.key(a));
+        let start = a ? this.items.findIndex((item) => item.key === this.key(a)) : -1;
         const shots = this.items.filter((item) => item.type === 'image' && /\/attachments\/\d+/.test(new URL(item.url).pathname));
         if (shots.length > 1) {
             const first = this.items.indexOf(shots[0]);
-            const opened = shots.indexOf(this.items[start]);
+            const opened = start >= 0 ? shots.indexOf(this.items[start]) : -1;
             const pic = (item, p) => { const u = new URL(item.url); u.search = ''; u.searchParams.set(p, '1'); return u.href; };
             const group = {
                 key: '#mail-photos', url: '#photos', type: 'photos', name: `Фото ${shots.length}`, file: '',
@@ -193,7 +205,7 @@ export default class extends Controller {
             };
             this.items = this.items.filter((item) => !shots.includes(item));
             this.items.splice(first, 0, group);
-            start = opened >= 0 ? first : this.items.findIndex((item) => item.key === this.key(a));
+            start = opened >= 0 ? first : (a ? this.items.findIndex((item) => item.key === this.key(a)) : -1);
         }
         this.tabsTarget.replaceChildren(...this.items.map((item, i) => {
             const b = document.createElement('button');
@@ -205,10 +217,53 @@ export default class extends Controller {
             b.dataset.index = i;
             return b;
         }));
-        this.tabsTarget.hidden = this.items.length < 2;
-        this.reveal(instant);
-        if (auto && !wide.matches) this.setHeight(Math.min(this.height, this.snaps()[1]));
-        this.show(start);
+        // Без открытого документа вкладка нужна и одна — по ней выбирают.
+        this.tabsTarget.hidden = a ? this.items.length < 2 : this.items.length === 0;
+        return start;
+    }
+
+    // Чья карточка в окошке списка — `data-peek` у `.detail-card` (x-ui.detail); заготовка или пустой фрейм — ''.
+    cardKey() {
+        return document.querySelector('turbo-frame#detail .detail-card')?.dataset.peek ?? '';
+    }
+
+    // Окошко списка сменило машину (↑/↓, другая строка, строка ушла из списка), а открыт документ прежней — вместо него
+    // «Выберите документ» (09.11.2026, владелец: «переключаюсь на другую тачку, а документ забываю кликнуть, и мне кажется,
+    // что это документ к этой тачке — уже много раз неприятные казусы были»). Шторка остаётся открытой, вкладки — документы
+    // новой машины, как только её карточка пришла. Та же карточка заново (сохранили форму) — документ остаётся.
+    watchCard() {
+        const frame = document.querySelector('turbo-frame#detail');
+        if (frame === this.cardFrame) return;
+        this.cardWatch?.disconnect();
+        this.cardFrame = frame;
+        if (!frame) return;
+        this.cardWatch = new MutationObserver(() => {
+            if (!this.shown || this.host || this.card === null) return;
+            const key = this.cardKey();
+            if (key === this.card) return;
+            this.card = key;
+            this.blank();
+        });
+        this.cardWatch.observe(frame, { childList: true });
+    }
+
+    blank() {
+        ++this.token;
+        clearTimeout(this.countTimer);
+        this.view?.destroy();
+        this.view = null;
+        this.index = -1;
+        this.docScope = null;
+        this.collect(null);
+        this.title('Выберите документ');
+        this.metaTarget.textContent = '';
+        this.countTarget.textContent = '';
+        this.countTarget.classList.remove('is-shown');
+        [this.rotateTarget, this.printTarget, this.scanTarget, this.downloadTarget].forEach((el) => { el.hidden = true; });
+        const empty = document.createElement('div');
+        empty.className = 'docs-empty';
+        empty.textContent = this.items.length ? 'Выберите документ' : 'Документов нет';
+        this.bodyTarget.replaceChildren(empty);
     }
 
     pick(event) {

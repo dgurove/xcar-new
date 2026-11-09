@@ -3722,6 +3722,8 @@ html.kb-open { --home-gap: 0px; }
   .docs-count:empty { display: none; }
   .docs-body { @apply relative min-h-0 flex-1; }
   .docs-view { @apply absolute inset-0 overflow-y-auto; overscroll-behavior: contain; }
+  /* Окошко сменило машину — документа прежней нет, пока не выбрали (`docs_controller#blank`, 09.11.2026). */
+  .docs-empty { @apply absolute inset-0 grid place-items-center p-6 text-center text-ink-muted; }
   /* Пока документ грузится — пустой лист на сером поле, а не кольцо. */
   .docs-wait { @apply overflow-hidden bg-surface-2; }
   .docs-wait::after {

@@ -174,6 +174,7 @@ export default class extends Controller {
         document.addEventListener('turbo:morph', this.onMorphed);
         this.rowsSeen = new MutationObserver((records) => {
             if (records.some((r) => [...r.addedNodes].some((n) => n.nodeType === 1 && n.matches('[data-detail-key]')))) this.mark();
+            this.follow(records);
         });
         this.element.querySelectorAll('.split-main').forEach((main) => this.rowsSeen.observe(main, { childList: true, subtree: true }));
         this.settle(false);
@@ -197,6 +198,7 @@ export default class extends Controller {
         ['turbo:load', 'turbo:morph'].forEach((n) => document.removeEventListener(n, this.onMark));
         document.removeEventListener('turbo:morph', this.onMorphed);
         this.rowsSeen.disconnect();
+        clearTimeout(this.followTimer);
     }
 
     get open() { return this.frameTarget.childElementCount > 0; }
@@ -468,6 +470,29 @@ export default class extends Controller {
     select(row) {
         this.current?.removeAttribute('aria-selected');
         row?.setAttribute('aria-selected', 'true');
+        // Чья карточка и на каком месте — чтобы, когда строка уйдёт из списка, открыть вставшую на её место (`follow`).
+        if (row) { this.lastKey = row.dataset.detailKey; this.lastIndex = this.rows.indexOf(row); }
+    }
+
+    // Открытая строка ушла из списка — поправили дату выдачи, и ТС уехала в другой месяц, сохранили, и предложение ушло из
+    // вкладки (09.11.2026, владелец: «чтобы у меня не закрывалось всё, а просто переключало на следующую тачку»): карточка
+    // переходит на строку, вставшую на её место, последняя — на предыдущую; строк не осталось — закрывается. Строку,
+    // которую перечитали (ушла и тут же пришла той же), не трогаем. Закрытая руками карточка (shut) не открывается.
+    follow(records) {
+        const key = this.lastKey;
+        if (!key || this.shut) return;
+        const sel = `[data-detail-key="${CSS.escape(key)}"]`;
+        const gone = records.some((r) => [...r.removedNodes].some((n) => n.nodeType === 1 && (n.matches(sel) || n.querySelector(sel))));
+        if (!gone) return;
+        clearTimeout(this.followTimer);
+        this.followTimer = setTimeout(() => {
+            if (this.shut || this.lastKey !== key) return;
+            const rows = this.rows;
+            if (rows.some((r) => r.dataset.detailKey === key)) return;
+            const next = rows[Math.min(this.lastIndex ?? 0, rows.length - 1)];
+            if (next) this.show(next);
+            else if (this.open) this.close();
+        }, 60);
     }
 
     // Строка — над листом (scroll-margin под него стоит при data-open); прокрутка одна и плавная, и только если нужна.
