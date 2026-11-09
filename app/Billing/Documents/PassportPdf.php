@@ -54,10 +54,17 @@ final class PassportPdf
             }
         }
         $type = @getimagesize($path)[2] ?? null;
-        if ($type === IMAGETYPE_JPEG) {
-            return file_get_contents($path);
+        $contents = (string) file_get_contents($path);
+        // Страница — как держали телефон (09.11.2026, владелец: «пдф с обеими страницами паспорта с корректными
+        // ориентациями»): снимок с телефона лежит боком, а «как повернуть» — в EXIF; dompdf его не читает.
+        $turn = $type === IMAGETYPE_JPEG ? self::exifTurn($contents) : 0;
+        if ($type === IMAGETYPE_JPEG && $turn === 0) {
+            return $contents;
         }
-        if (in_array($type, [IMAGETYPE_PNG, IMAGETYPE_WEBP], true) && ($img = @imagecreatefromstring((string) file_get_contents($path)))) {
+        if (in_array($type, [IMAGETYPE_JPEG, IMAGETYPE_PNG, IMAGETYPE_WEBP], true) && ($img = @imagecreatefromstring($contents))) {
+            if ($turn !== 0 && ($rotated = imagerotate($img, $turn, 0))) {
+                $img = $rotated;
+            }
             ob_start();
             imagejpeg($img, null, 90);
 
@@ -65,5 +72,21 @@ final class PassportPdf
         }
 
         return null;
+    }
+
+    /** Поворот из EXIF (градусы для `imagerotate`, против часовой): 3 — 180, 6 — на 90 по часовой, 8 — на 90 против. */
+    private static function exifTurn(string $jpeg): int
+    {
+        if (! function_exists('exif_read_data')) {
+            return 0;
+        }
+        $exif = @exif_read_data('data://image/jpeg;base64,'.base64_encode($jpeg));
+
+        return match ((int) ($exif['Orientation'] ?? 0)) {
+            3 => 180,
+            6 => -90,
+            8 => 90,
+            default => 0,
+        };
     }
 }
