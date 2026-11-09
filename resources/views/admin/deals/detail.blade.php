@@ -56,24 +56,11 @@
             @endif
             {{-- Вывоз — задача логистики с получением внутри (`x-logistics.lane`); вывоза нет — получение своим разделом. --}}
             @if ($offer->pickup())<x-logistics.lane :offer="$offer" :deal="$deal"/>@else<x-deal.handover :deal="$deal" compact/>@endif
-            {{-- Письма: по сделке — строками; письма парковки (приём, выдача, заявки storage@) — одной строкой в то же окно писем. --}}
-            @php
-                $parkMail = $messages->filter(fn ($m) => $m->account?->scope === \App\Mail\Scope::Park);
-                $saleMail = $messages->diff($parkMail)->values();
-            @endphp
-            @if ($saleMail->isNotEmpty() || $parkMail->isNotEmpty())
+            {{-- Письма: по сделке — строками; письма парковки (приём, выдача, заявки storage@) — своей лентой ниже (`split`). --}}
+            @if ($messages->isNotEmpty())
                 <section>
-                    <h2 class="detail-section">Письма @if ($saleMail->isNotEmpty())<span class="nums font-normal text-ink-dim">{{ \App\Mail\Chains\NodeTitle::count($saleMail) }}</span>@endif</h2>
-                    @if ($saleMail->isNotEmpty())
-                        <x-mail.letters :messages="$saleMail" :url="'/offers/'.$offer->number.'/letters'" :asks="$asks" :stages="$stages"/>
-                    @endif
-                    @if ($parkMail->isNotEmpty())
-                        <div class="list mt-3">
-                            <button type="button" class="row w-full text-left" data-controller="emit" data-action="emit#send" data-emit-event-param="letters:open" data-emit-url-param="/offers/{{ $offer->number }}/letters">
-                                <span class="min-w-0 flex-1">Письма парковки <span class="nums text-ink-dim">{{ \App\Mail\Chains\NodeTitle::count($parkMail) }}</span></span><x-ui.chevron/>
-                            </button>
-                        </div>
-                    @endif
+                    <h2 class="detail-section">Письма @if ($dealLetters)<span class="nums font-normal text-ink-dim">{{ $dealLetters }}</span>@endif</h2>
+                    <x-mail.letters :messages="$messages" :url="'/offers/'.$offer->number.'/letters'" :asks="$asks" :stages="$stages" split/>
                 </section>
             @endif
             {{-- «Показ» сделки — строкой со шторкой (как у черновика): сколько и кому показывать; «Сохранить изменения» подвалом. --}}

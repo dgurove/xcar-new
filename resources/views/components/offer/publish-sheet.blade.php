@@ -10,6 +10,14 @@
     $late = fn ($at) => $offer && $at && $offer->insurer_deadline_at && $offer->insurer_deadline_at->copy()->endOfDay()->lt($at);
 @endphp
 <x-ui.sheet :id="$id" :title="$title">
+    {{-- Какую машину и за сколько выставляем — крупно сверху (09.11.2026: Evolute 2611093788 выставили, думая, что это другая
+         машина: окошко сменило карточку, а шторка говорила только «Выставить в продажу»). --}}
+    @if ($offer)
+        <div class="mb-4 rounded-(--radius-m) bg-surface-2 px-3 py-2.5">
+            <div class="font-medium">{{ $offer->titleWithYear() }}</div>
+            <div class="text-sm text-ink-muted">@if ($offer->claim_ref)<span class="nums">{{ $offer->claim_ref }}</span>, @endif цена продажи <span class="nums text-ink">{{ $offer->asking_price ? \App\Support\Money::rub($offer->asking_price) : 'не вписана' }}</span></div>
+        </div>
+    @endif
     @if ($action)<form method="post" action="{{ $action }}" class="publish-choice flex flex-col gap-4" data-price-guard="publish" @if ($offer) data-price-guard-offer="{{ $offer->number }}" @endif>@csrf @if ($state)<input type="hidden" name="state" value="{{ $state }}">@endif @else<div class="publish-choice flex flex-col gap-4">@endif
         <div class="list">
             @foreach ($choices as $c)

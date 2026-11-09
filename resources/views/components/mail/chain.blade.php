@@ -43,7 +43,11 @@
     }
     // Одно служебное письмо подряд — обычный узел; при fold свёрнутое остаётся свёрнутым и в одиночку.
     $nodes = array_map(fn ($n) => is_array($n) && count($n['items']) === 1 && ! $fold ? $n['items'][0] : $n, $nodes);
-    $replyTo = $reply ? ($messages->last(fn (Message $m) => ! $own($m)) ?? $messages->last()) : null;
+    // Окно писем предложения: «Ответить» внизу — в ветку сделки (offer@, deal@), не парковки (09.11.2026: письмо storage@ о
+    // приёме ТС свежее, и «Написать» по сделке открывало ответ со storage@). Ответ парковке — у самого её письма.
+    $pool = $messages->filter(fn (Message $m) => $m->account?->scope !== \App\Mail\Scope::Park);
+    $pool = $pool->isNotEmpty() ? $pool : $messages;
+    $replyTo = $reply ? ($pool->last(fn (Message $m) => ! $own($m)) ?? $pool->last()) : null;
     $subject = null;
     // Тема строкой — без «Re:/Fwd:», у пересылки сотрудника — та, что в цитате: это письмо вендора.
     $topic = fn (Message $m) => ($m->isForwardedByStaff() ? \App\Mail\Extraction\QuotationStripper::forwardedSubject($m->text_body) : null)

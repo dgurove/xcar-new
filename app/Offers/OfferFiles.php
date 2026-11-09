@@ -6,6 +6,7 @@ use App\Mail\Candidate;
 use App\Mail\Chains\NodeTitle;
 use App\Mail\Direction;
 use App\Mail\Message;
+use App\Mail\Scope;
 use App\Mail\Thread;
 use App\Media\ForManagers;
 use App\Users\User;
@@ -30,7 +31,9 @@ final class OfferFiles
      * сходятся. asks — последнее входящее ветки, что ждёт ответа (одно правило почты — `needs_reply_at`), stages —
      * письма этапов цепочки «Из писем».
      *
-     * @return array{messages: Collection<int, Message>, letters: int, asks: Collection, stages: Collection}
+     * dealLetters — число писем без парковки (storage@ — своей лентой ниже, `x-mail.letters split`), для заголовка.
+     *
+     * @return array{messages: Collection<int, Message>, letters: int, dealLetters: int, asks: Collection, stages: Collection}
      */
     public static function letters(Offer $offer, ?User $user): array
     {
@@ -42,6 +45,7 @@ final class OfferFiles
         return [
             'messages' => $messages,
             'letters' => NodeTitle::count($messages),
+            'dealLetters' => NodeTitle::count($messages->reject(fn (Message $m) => $m->account?->scope === Scope::Park)->values()),
             'asks' => $messages->filter(fn (Message $m) => in_array($m->thread_id, $waiting, true) && ! $m->isOurs())->groupBy('thread_id')->map->last()->values(),
             'stages' => $messages->isEmpty() ? collect() : collect(Candidate::where('offer_id', $offer->id)->latest('id')->first(['id', 'stages'])?->stages ?? [])->pluck('message_id'),
         ];

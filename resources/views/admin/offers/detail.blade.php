@@ -229,8 +229,8 @@
              по ним заполняют поля и оценивают): все строками, как в «Почте», строка открывает окно поверх списка на письме. --}}
         @if ($letters && auth()->user()->canCrmMail())
             <section class="mt-4">
-                <h2 class="detail-section">Письма <span class="nums font-normal text-ink-dim">{{ $letters }}</span></h2>
-                <x-mail.letters :messages="$messages" :url="'/offers/'.$n.'/letters'" :asks="$asks" :stages="$stages"/>
+                <h2 class="detail-section">Письма @if ($dealLetters)<span class="nums font-normal text-ink-dim">{{ $dealLetters }}</span>@endif</h2>
+                <x-mail.letters :messages="$messages" :url="'/offers/'.$n.'/letters'" :asks="$asks" :stages="$stages" split/>
             </section>
         @endif
         @if ($bids->isNotEmpty() || ($admin && ($offer->state === OfferState::Open || $offer->purchaseCar?->hasPrices())))

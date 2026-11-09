@@ -97,6 +97,9 @@ export default class extends Controller {
             e.detail.render = async (stream) => { await render(stream); this.mark(); };
         };
         this.frameTarget.addEventListener('turbo:before-frame-render', this.onRender);
+        // Своя отправка из карточки — только после неё ушедшая строка переключает карточку на следующую (`follow`).
+        this.onOwnSubmit = (e) => { if (this.frameTarget.contains(e.target) || e.target.closest?.('dialog')) this.submittedAt = Date.now(); };
+        document.addEventListener('turbo:submit-start', this.onOwnSubmit);
         this.onRendered = () => { this.restore(); this.snap(); };
         this.frameTarget.addEventListener('turbo:frame-render', this.onRendered);
         // Нет связи, пока лист ждёт карточку, — вместо вечной заготовки слова и «Повторить».
@@ -199,6 +202,7 @@ export default class extends Controller {
         document.removeEventListener('turbo:morph', this.onMorphed);
         this.rowsSeen.disconnect();
         clearTimeout(this.followTimer);
+        document.removeEventListener('turbo:submit-start', this.onOwnSubmit);
     }
 
     get open() { return this.frameTarget.childElementCount > 0; }
@@ -474,24 +478,32 @@ export default class extends Controller {
         if (row) { this.lastKey = row.dataset.detailKey; this.lastIndex = this.rows.indexOf(row); }
     }
 
-    // Открытая строка ушла из списка — поправили дату выдачи, и ТС уехала в другой месяц, сохранили, и предложение ушло из
-    // вкладки (09.11.2026, владелец: «чтобы у меня не закрывалось всё, а просто переключало на следующую тачку»): карточка
-    // переходит на строку, вставшую на её место, последняя — на предыдущую; строк не осталось — закрывается. Строку,
-    // которую перечитали (ушла и тут же пришла той же), не трогаем. Закрытая руками карточка (shut) не открывается.
+    // Открытая строка ушла из списка после своего действия в карточке — поправили дату выдачи, и ТС уехала в другой месяц,
+    // отдали на оценку, сохранили, и предложение ушло из вкладки (09.11.2026, владелец: «чтобы не закрывалось всё, а
+    // переключало на следующую тачку»): карточка переходит на строку, вставшую на её место. Только после своей отправки из
+    // карточки (8 с) и только без набранного: в тот же вечер строки уходили живым обновлением чужих правок, карточка сама
+    // менялась под рукой, и цену с «Выставить в продажу» Андрей сделал не той машине (Evolute 2611093788). Сменилась —
+    // тост с названием новой, чтобы это было видно.
     follow(records) {
         const key = this.lastKey;
-        if (!key || this.shut) return;
+        if (!key || this.shut || !this.submittedAt || Date.now() - this.submittedAt > 8000) return;
         const sel = `[data-detail-key="${CSS.escape(key)}"]`;
         const gone = records.some((r) => [...r.removedNodes].some((n) => n.nodeType === 1 && (n.matches(sel) || n.querySelector(sel))));
         if (!gone) return;
         clearTimeout(this.followTimer);
         this.followTimer = setTimeout(() => {
-            if (this.shut || this.lastKey !== key) return;
+            if (this.shut || this.lastKey !== key || this.dirty) return;
             const rows = this.rows;
             if (rows.some((r) => r.dataset.detailKey === key)) return;
             const next = rows[Math.min(this.lastIndex ?? 0, rows.length - 1)];
-            if (next) this.show(next);
-            else if (this.open) this.close();
+            this.submittedAt = 0;
+            if (!next) { if (this.open) this.close(); return; }
+            this.show(next);
+            // Название без госномера, значков и меток — только марка и год.
+            const title = (next.querySelector('.cell-title, .row-title, .card-title') ?? next).cloneNode(true);
+            title.querySelectorAll('.plate, .tag, .state, svg, button').forEach((el) => el.remove());
+            const name = title.textContent.replace(/\s+/g, ' ').trim();
+            window.toast?.(`Строка ушла из списка, открыта следующая: ${name.slice(0, 60)}`);
         }, 60);
     }
 

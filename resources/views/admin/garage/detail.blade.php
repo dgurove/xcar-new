@@ -26,8 +26,8 @@
         <div class="mt-4">@include('admin.offers.garage-card', ['routeHere' => true])</div>
         @if ($letters)
             <section class="mt-5">
-                <h2 class="detail-section">Письма <span class="nums font-normal text-ink-dim">{{ $letters }}</span></h2>
-                <x-mail.letters :messages="$messages" :url="'/offers/'.$offer->number.'/letters'" :asks="$asks" :stages="$stages"/>
+                <h2 class="detail-section">Письма @if ($dealLetters)<span class="nums font-normal text-ink-dim">{{ $dealLetters }}</span>@endif</h2>
+                <x-mail.letters :messages="$messages" :url="'/offers/'.$offer->number.'/letters'" :asks="$asks" :stages="$stages" split/>
             </section>
         @endif
         {{-- «Вернуть в продажу» из «⋯» карточки — шторка с ценами (в редакторе её ставит сам редактор). --}}
