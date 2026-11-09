@@ -50,10 +50,13 @@
             @if ($site && !$installed && ! auth()->check())<x-ui.crumbs :trail="$trail"/>@endif
             @if ($heading || isset($actions) || ($back && $backRow))
                 {{-- Без заголовка и действий ряд нужен только ради круглой «‹» на десктопе: на телефоне она в шапке. --}}
-                <div @class(['has-back mb-4 flex-wrap items-center gap-x-4 gap-y-2', 'flex' => $heading || isset($actions), 'hidden md:flex' => !$heading && !isset($actions), 'max-md:hidden' => !$phoneHeading, 'md:hidden' => !$desktopHeading])>
+                <div @class(['has-back mb-4 flex-wrap items-center gap-x-4 gap-y-2', 'has-sub' => isset($sub), 'flex' => $heading || isset($actions), 'hidden md:flex' => !$heading && !isset($actions), 'max-md:hidden' => !$phoneHeading, 'md:hidden' => !$desktopHeading])>
                     @if ($back)<x-ui.back :back="$back" :phone="$partner"/>@endif
                     @if ($heading)<h1 class="head-title text-xl sm:text-2xl">@isset($lead){{ $lead }} @endisset @if ($copyTitle)<x-ui.copy-text>{{ $heading }}</x-ui.copy-text>@else{{ $heading }}@endif{{ $badge ?? '' }}@if ($count !== null) <span class="nums ml-2 text-base font-normal text-ink-dim" data-shell-count>{{ $count }}</span>@endif</h1>@endif
-                    @isset($actions)<div {{ $actions->attributes->merge(['class' => 'flex w-full flex-wrap items-center gap-1 sm:ml-auto sm:w-auto sm:gap-2']) }}>{{ $actions }}</div>@endisset
+                    {{-- sub — строка под названием (факты документа, 09.11.2026): на ПК второй строкой под заголовком, на телефоне —
+                         между заголовком и кнопками действий. --}}
+                    @isset($sub)<div {{ $sub->attributes->merge(['class' => 'basis-full order-3 max-md:order-2']) }}>{{ $sub }}</div>@endisset
+                    @isset($actions)<div {{ $actions->attributes->merge(['class' => 'flex w-full flex-wrap items-center gap-1 sm:ml-auto sm:w-auto sm:gap-2'.(isset($sub) ? ' max-md:order-3' : '')]) }}>{{ $actions }}</div>@endisset
                 </div>
             @endif
             {{ $slot }}

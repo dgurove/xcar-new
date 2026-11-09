@@ -2381,6 +2381,8 @@ html.kb-open { --home-gap: 0px; }
   /* Страница документа: сумма и действия — в строке заголовка (слот `actions`), отдельной шапки нет. */
   .doc-acts { @apply gap-2; }
   .doc-sum { @apply mr-2 text-xl font-semibold whitespace-nowrap; }
+  /* Строка фактов под названием документа: состояние, сумма, ТС — подряд, тихо (09.11.2026). */
+  .doc-facts { @apply -mt-1 flex flex-wrap items-baseline gap-x-4 gap-y-1 text-ink-muted; }
   .doc-file { @apply gap-2 pl-2; }
   .file-icon.file-icon-s { width: 1.75rem; height: 1.375rem; border-radius: 6px; font-size: 8px; letter-spacing: 0; }
   @media (max-width: 639px) { .doc-sum { @apply basis-full; } }
@@ -3466,6 +3468,12 @@ html.kb-open { --home-gap: 0px; }
   @media (min-width: 1400px) {
     .has-back { position: relative; }
     .back-title { position: absolute; right: 100%; top: 50%; translate: -.75rem -50%; }
+    /* Со строкой под названием (`sub`) — «‹» вровень с названием, а не посередине двух строк. */
+    .has-sub > .back-title { top: 1.25rem; }
+  }
+  /* Пока «‹» в потоке (ПК уже 1400), строка под названием начинается под названием, а не под «‹». */
+  @media (min-width: 768px) and (max-width: 1399.98px) {
+    .has-sub > .doc-facts { padding-left: 3.25rem; }
   }
 
   /* Квадрат телефона и квадрат в конце ряда капсул. */
