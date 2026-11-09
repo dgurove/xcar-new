@@ -26,7 +26,7 @@ final class ReportSheet
     /** Столбцы таблицы: подпись, ширина (знаков), выравнивание. */
     private const COLUMNS = [
         'A' => ['№', 5, Alignment::HORIZONTAL_CENTER],
-        'B' => ['VIN ТС', 21, Alignment::HORIZONTAL_LEFT],
+        'B' => ['VIN ТС', 23, Alignment::HORIZONTAL_LEFT],
         'C' => ['Дата принятия ТС к хранению', 13, Alignment::HORIZONTAL_CENTER],
         'D' => ['Дата передачи ТС после хранения', 13, Alignment::HORIZONTAL_CENTER],
         'E' => ['№ убытка', 20, Alignment::HORIZONTAL_LEFT],
@@ -36,6 +36,9 @@ final class ReportSheet
         'I' => ['Наименование услуги', 34, Alignment::HORIZONTAL_LEFT],
         'J' => ['Стоимость оказания услуги', 13, Alignment::HORIZONTAL_RIGHT],
     ];
+
+    /** Столбцы с переносом текста — по ним считается высота строки. */
+    private const WRAPS = ['H', 'I'];
 
     private const FONT = 'Times New Roman';
 
@@ -98,7 +101,7 @@ final class ReportSheet
             }
             $s->setCellValue('J'.$r, $amount);
             // Высота — по самому длинному тексту строки (Excel не подбирает высоту сам, если в строке перенос).
-            $lines = max(1, ...array_map(fn ($col) => self::lines((string) $s->getCell($col.$r)->getValue(), self::COLUMNS[$col][1]), ['E', 'F', 'H', 'I']));
+            $lines = max(1, ...array_map(fn ($col) => self::lines((string) $s->getCell($col.$r)->getValue(), self::COLUMNS[$col][1]), self::WRAPS));
             $s->getRowDimension($r)->setRowHeight(self::LINE * $lines + 5);
             $r++;
         }
@@ -106,15 +109,25 @@ final class ReportSheet
         if ($last >= $first) {
             $s->getStyle("C{$first}:D{$last}")->getNumberFormat()->setFormatCode('dd.mm.yyyy');
             $s->getStyle("J{$first}:J{$last}")->getNumberFormat()->setFormatCode('#,##0');
-            $s->getStyle("A{$first}:J{$last}")->getAlignment()->setVertical(Alignment::VERTICAL_CENTER)->setWrapText(true);
+            $s->getStyle("A{$first}:J{$last}")->getAlignment()->setVertical(Alignment::VERTICAL_CENTER)->setWrapText(false);
+            // Переносятся только марка и услуга; коды (VIN, убыток, полис, госномер) — одной строкой всегда: не влез — шрифт
+            // ужимается (09.11.2026: VIN «SADCA2BN1HA88621 / 1» на маке ломался на две строки).
+            foreach (self::WRAPS as $col) {
+                $s->getStyle("{$col}{$first}:{$col}{$last}")->getAlignment()->setWrapText(true);
+            }
+            foreach (['B', 'E', 'F', 'G'] as $col) {
+                $s->getStyle("{$col}{$first}:{$col}{$last}")->getAlignment()->setShrinkToFit(true);
+            }
             foreach (self::COLUMNS as $col => [, , $align]) {
                 $s->getStyle("{$col}{$first}:{$col}{$last}")->getAlignment()->setHorizontal($align);
             }
         }
-        $s->setCellValue('I'.$r, 'Итого');
+        // Итог — строкой «Итого:» через всю таблицу до суммы, справа, жирным (как в счетах и актах), сумма — под суммами.
+        $s->mergeCells("A{$r}:I{$r}");
+        $s->setCellValue('A'.$r, 'Итого:');
         $s->setCellValue('J'.$r, (float) ($vars['sum'] ?? $sum));
-        $s->getStyle("I{$r}:J{$r}")->getFont()->setBold(true);
-        $s->getStyle("I{$r}:J{$r}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT)->setVertical(Alignment::VERTICAL_CENTER);
+        $s->getStyle("A{$r}:J{$r}")->getFont()->setBold(true);
+        $s->getStyle("A{$r}:J{$r}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT)->setVertical(Alignment::VERTICAL_CENTER);
         $s->getStyle('J'.$r)->getNumberFormat()->setFormatCode('#,##0');
         $s->getRowDimension($r)->setRowHeight(self::LINE + 6);
         $s->getStyle("A{$head}:J{$r}")->getBorders()->getAllBorders()->setBorderStyle(Border::BORDER_THIN);
