@@ -50,7 +50,9 @@
             @if ($saleDeal)
                 <p class="mt-1 text-sm text-ink-muted">Идёт сделка XCar, выдача — когда можно будет забирать</p>
             @endif
-            @if ($vehicle->sold_at)
+            {{-- «На выдачу с …, кто заберёт» — только пока ТС ещё у нас (09.11.2026, владелец: «зачем спрашиваем, кто заберёт,
+                 если уже выдано»); выданной — кто забрал, словом. --}}
+            @if ($vehicle->sold_at && ! $vehicle->state->isFinal())
                 <p class="mt-1 text-sm">
                     <span class="nums text-urgent">На выдачу с {{ \App\Support\Ago::html($vehicle->sold_at, words: false) }}</span>@if ($vehicle->pickup_name || $handles)<span class="text-ink-muted">, </span>@endif
                     @if ($dealPass)<span>заберёт {{ $vehicle->pickup_name }}, по сделке XCar</span>@elseif ($handles)<button type="button" class="underline decoration-dotted decoration-ink-dim underline-offset-4" data-controller="emit" data-action="emit#send" data-emit-event-param="sold:open">{{ $vehicle->pickup_name ? 'заберёт '.$vehicle->pickup_name : 'кто заберёт' }}</button>@elseif ($vehicle->pickup_name)<span>заберёт {{ $vehicle->pickup_name }}</span>@endif
@@ -58,6 +60,8 @@
                     {{-- День забора, о котором договорились (`x-park.pickup`); нет и продана давно — красным «не забирают 6 д». --}}
                     @if ($vehicle->state === \App\Park\VehicleState::Stored)<span class="text-ink-muted">, забор </span><x-park.pickup :vehicle="$vehicle" key="head" class="nums underline decoration-dotted decoration-ink-dim underline-offset-4"/>@if ($late = $vehicle->pickupLate())<span class="ml-1 text-danger">{{ $late }}</span>@endif @endif
                 </p>
+            @elseif ($vehicle->state === \App\Park\VehicleState::Released && $vehicle->pickup_name)
+                <p class="mt-1 text-sm text-ink-muted">Забрал {{ $vehicle->pickup_name }}@if ($vehicle->pickup_phone) <a href="tel:+{{ $vehicle->pickupPhoneDigits() }}" class="nums whitespace-nowrap text-accent-text">{{ $vehicle->pickup_phone }}</a>@endif</p>
             @endif
             @if ($transport)
                 <p class="mt-1 text-sm">

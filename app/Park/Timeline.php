@@ -68,7 +68,7 @@ final class Timeline
         if ($v->accepted_at) {
             $releasing = $release?->isOpen() && $v->state === VehicleState::Stored;
             $storageState = $v->released_at || $releasing ? Step::DONE : ($v->state === VehicleState::Stored && ! $noYard ? Step::CURRENT : Step::NEXT);
-            $chips = array_values(array_filter([$v->sold_at ? 'на выдачу с '.Ago::day($v->sold_at) : null, $v->pickup_name ? 'заберёт '.$v->pickup_name : null]));
+            $chips = array_values(array_filter([$v->sold_at ? 'на выдачу с '.Ago::day($v->sold_at) : null, $v->pickup_name ? ($v->released_at ? 'забрал ' : 'заберёт ').$v->pickup_name : null]));
             $steps[] = new Step('storage', $storageState === Step::CURRENT ? 'На хранении' : 'Хранение', $storageState,
                 null, $v->sold_at, $chips, $storageState === Step::CURRENT ? ['kind' => 'act', 'label' => 'Выдать', 'step' => 'release'] : null);
 
