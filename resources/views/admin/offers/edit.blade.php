@@ -53,7 +53,7 @@
     // Черновик (не в слоте и не на аукционе) — «Показ» строкой в карточке «Цены», отдельной карточки нет.
     $draftShow = $admin && ! $garage && ! $deal && $offer->state === OfferState::Draft && ! $offer->isScheduled() && ! $offer->onAuction();
 @endphp
-<x-ui.shell :title="$offer->titleWithYear()" :back="['Предложения', '/offers']" cache="no-cache">
+<x-ui.shell :title="$offer->titleWithYear()" copy-title :back="['Предложения', '/offers']" cache="no-cache">
     <x-slot:badge><x-car.keys :count="$offer->keys_count" label/><x-ui.links :offer="$offer"/></x-slot:badge>
     {{-- Под заголовком — только состояние и метки, пилюлями одного роста (номер, убыток и документы — в полях и блоках
          ниже). Метки: выбранные пилюлями, «+» и нажатие на метку — шторка со списком и своей меткой; галки ходят в форму
@@ -62,7 +62,14 @@
         $own = $offer->tag_colors ?? [];
         $tagStyle = fn (string $name) => \App\Offers\Tag::style(\App\Offers\Tag::colorOf($name, $own));
     @endphp
-    <div class="offer-head -mt-3 mb-4 flex flex-wrap items-center gap-1.5">
+    {{-- Коды машины под названием, как в окошке (09.11.2026, владелец: «не листать до полей»): номер, убыток или ДЛ, VIN —
+         копируются нажатием. --}}
+    <div class="-mt-3 mb-3 flex flex-wrap items-center gap-1.5">
+        @unless ($offer->state === \App\Offers\OfferState::Draft)<span class="tag nums gap-1">№<x-ui.copy-code :value="(string) $offer->number" done="Номер в буфере"/></span>@endunless
+        @if ($offer->claim_ref)<x-vendor.ref :vendor="$offer->vendor" :ref="$offer->claim_ref" copy class="tag nums"/>@endif
+        <x-ui.vin-code :vin="$offer->vin" class="tag"/>
+    </div>
+    <div class="offer-head mb-4 flex flex-wrap items-center gap-1.5">
         @if ($garage)
             {{-- Отданная в гараж — «в гараже», как в сделке, пока идут и бумаги со страховой (владелец 06.10.2026). --}}
             <x-ui.pill tone="plain" href="#garage">В гараже, {{ $garage->manager?->shortName() ?? 'взяли под себя' }}</x-ui.pill>

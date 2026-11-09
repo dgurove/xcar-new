@@ -278,6 +278,8 @@ class VehicleController
             // «Долг» в карточке — неоплаченные счета; набежавшее стоит рядом отдельным числом.
             'debt' => $request->user()->parkMoney() ? Ledger::vehicleDebt($vehicle) : 0,
             'debtBlocks' => ! ($vehicle->vendor?->release_without_payment ?? false),
+            // Набежало и не выставлено (с дня после `storage_billed_until`) — шторка «Хранение» и кнопка «Выставить счёт».
+            'unbilled' => $request->user()->parkMoney() && $vehicle->accepted_at ? round((float) Accrual::storage($vehicle)->sum('amount'), 2) : 0,
         ]);
     }
 
@@ -594,9 +596,28 @@ class VehicleController
     }
 
     /** Ставка машины одной шторкой (`x-park.rate`): тип ТС, своя ставка, почему, оценочная (`VehicleRate`). */
+    /**
+     * Ставка ТС (`x-park.rate`) и шторка «Хранение» окошка (`x-park.storage-sheet`, 09.11.2026): `mode=total` — своя сумма
+     * за весь срок выданной ТС, `mode=rate` — по ставке, своя сумма снимается. Без `mode` — прежняя шторка ставки.
+     */
     public function rate(Request $request, Vehicle $vehicle, UpdateVehicle $update)
     {
-        $update($vehicle, VehicleRate::from($request), $request->user());
+        if ($request->input('mode') === 'total') {
+            abort_unless($vehicle->state === \App\Park\VehicleState::Released, 422);
+            $request->merge(['storage_total' => str_replace([' ', ' ', ','], ['', '', '.'], (string) $request->input('storage_total'))]);
+            $data = $request->validate([
+                'storage_total' => ['required', 'numeric', 'min:0', 'max:100000000'],
+                'storage_rate_note' => ['nullable', 'string', 'max:120'],
+            ], ['storage_total.required' => 'Впишите сумму']);
+            $update($vehicle, ['storage_total' => (float) $data['storage_total']] + array_intersect_key($data, ['storage_rate_note' => 1]), $request->user());
+
+            return back()->with('toast', 'Хранение '.\App\Support\Money::rub($vehicle->storage_total));
+        }
+        $data = VehicleRate::from($request);
+        if ($request->input('mode') === 'rate') {
+            $data['storage_total'] = null;
+        }
+        $update($vehicle, $data, $request->user());
         $shown = VehicleRate::shown($vehicle->refresh());
 
         return back()->with('toast', $shown['text'] ? 'Ставка '.$shown['text'] : 'Сохранено, ставки нет');

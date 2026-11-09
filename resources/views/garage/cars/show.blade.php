@@ -5,7 +5,7 @@
      (`GarageView`: «Забрал», если везёт сам, «Готова», «Продаю»), редкое — в «⋯». Шторки: расход, «Продаю», «Продана»,
      счёт с вознаграждением, «Поступило», «Оплатить». --}}
 @php extract($view); @endphp
-<x-ui.shell :title="$offer->titleWithYear()" :back="['Гараж', '/garage']">
+<x-ui.shell :title="$offer->titleWithYear()" copy-title :back="['Гараж', '/garage']">
     {{-- Состояние — мелким цветным словом у названия (`.title-state`, как у карточек), чья и «Сделка в CRM» — строкой
          справа; на ПК слово больше не висит в углу шапки оторванно от названия (10.10.2026). --}}
     <x-slot:badge><x-car.keys :count="$car->offer->keys_count" label/><x-ui.state :tone="$car->state->tone()" class="title-state">{{ mb_lcfirst($car->state->label()) }}</x-ui.state></x-slot:badge>

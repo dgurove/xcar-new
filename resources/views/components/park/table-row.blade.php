@@ -53,7 +53,7 @@
                 </span>
             @else
                 @if ($out && $vehicle->released_at)<span class="whitespace-nowrap sm:hidden">выдана {{ \App\Support\Ago::html($vehicle->released_at) }}@if ($days !== null), {{ $days }}&nbsp;д@endif</span>@endif
-                @if ($vehicle->yard)<span class="sm:hidden">{{ $vehicle->yard->name }}</span>@endif
+                @if ($vehicle->yard)<x-ui.place class="sm:hidden">{{ $vehicle->yard->name }}</x-ui.place>@endif
             @endif
         </span>
         {{-- Краткая таблица телефона: задача с точкой, как в столбце «Статус», и значок «что не так» — третьей строкой. --}}

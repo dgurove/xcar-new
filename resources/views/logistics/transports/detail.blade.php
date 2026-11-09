@@ -85,16 +85,17 @@
     {{-- Лента сверху — кадры машины, что видит этот человек (`Logistics\FileAccess`); глазами ими правят в блоке «Фото». --}}
     {{-- Ленты кадров сверху нет (22.10.2026, «зачем фотки два раза»): кадры — в блоке «Фото» ниже. --}}
     <x-ui.row-card :title="$t->title()" :photos="collect()" :action="false" :blank="false">
-        @if (($me->isStaff() && ($t->vendorId() || $t->car?->claim_ref)) || $t->car?->plate || ($t->car?->vin && ($admin || $handles)))
+        @if (($me->isStaff() && ($t->vendorId() || $t->car?->claim_ref)) || ($t->car?->vin && ($admin || $handles)))
             <x-slot:marks>
                 @if ($me->isStaff())<x-vendor.ref :vendor-id="$t->vendorId()" :ref="$t->car?->claim_ref" copy class="tag"/>@endif
-                @if ($t->car?->plate)<x-ui.copy-code :value="$t->car->plate" class="tag" done="Госномер в буфере"/>@endif
                 @if ($admin || $handles)<x-ui.vin-code :vin="$t->car?->vin" class="tag"/>@endif
             </x-slot:marks>
         @endif
-        <x-slot:badge><x-car.keys :count="$t->car?->keys_count" label/><x-ui.links :transport="$t"/><span class="title-state {{ $t->isLate() ? 'text-danger' : $t->state->tone() }}">{{ $t->isLate() ? 'не вывезли в срок' : $t->next() }}</span></x-slot:badge>
+        {{-- Что дальше — посередине полосы окошка, госномер — сразу за названием (09.11.2026, как на парковке). --}}
+        <x-slot:status><span class="state {{ $t->isLate() ? 'text-danger' : $t->state->tone() }}">{{ $t->isLate() ? 'не вывезли в срок' : $t->next() }}</span></x-slot:status>
+        <x-slot:badge>@if ($t->car?->plate)<x-ui.plate :value="$t->car->plate" class="ml-1.5 cursor-pointer align-[.15em] text-sm" role="button" tabindex="0" title="Скопировать" data-controller="copy" :data-copy-text-value="$t->car->plate" data-copy-done-value="Госномер в буфере" data-action="click->copy#copy:prevent:stop keydown.enter->copy#copy:prevent"/>@endif<x-car.keys :count="$t->car?->keys_count" label/><x-ui.links :transport="$t"/></x-slot:badge>
         <x-slot:line>
-            @if ($city)<span>{{ $city }}</span>@endif
+            @if ($city)<x-ui.place>{{ $city }}</x-ui.place>@endif
             @if (! $pickup && ! $t->from_depot_id)<span>перевозка</span>@endif
         </x-slot:line>
         @if ($order && $mine)
@@ -191,7 +192,7 @@
                 @endif
             </div>
         @elseif (! $pickup && ! $fromDepot && ($t->from_address || $t->destinationLabel()))
-            <p class="mt-4 text-sm">{{ $t->from_address ?? '?' }} → {{ $t->destinationLabel() ?? '?' }}</p>
+            <p class="mt-4 flex flex-wrap items-baseline gap-x-1.5 text-sm"><x-ui.place>{{ $t->from_address ?? '?' }}</x-ui.place><span class="text-ink-muted">→</span><x-ui.place>{{ $t->destinationLabel() ?? '?' }}</x-ui.place></p>
         @endif
 
         {{-- Маршрут: точки и отрезки со своими исполнителями — ведущим и логисту (исполнителю — только его отрезок). --}}

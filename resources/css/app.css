@@ -979,6 +979,10 @@ html.kb-open { --home-gap: 0px; }
   .tag.vincode { padding-right: 7px; }
   .mark.place > svg { color: inherit; opacity: .8; }
   .vincode { cursor: pointer; }
+  /* Название, что копируется нажатием (`x-ui.copy-text`): текст остаётся текстом, курсор и подсветка — что нажимается. */
+  .copy-text { cursor: pointer; border-radius: 4px; transition: color var(--dur) var(--ease-out); }
+  @media (hover: hover) { .copy-text:hover { color: var(--color-accent-text); } }
+  .copy-text:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
   @media (hover: hover) { .vincode:hover > svg { color: var(--color-ink); } }
   .dark .tag { background: var(--tag-bg-d, var(--color-surface-3)); color: var(--tag-text-d, var(--color-ink-muted)); }
   /* Тег-ссылка (телефон, почта, группа) — нажимается: курсор и тон темнее при наведении, как у пилюли. */
@@ -3171,6 +3175,32 @@ html.kb-open { --home-gap: 0px; }
     .detail-aside { grid-column: 1 / -1; grid-row: auto; text-align: left; margin-top: .125rem; }
     .detail-marks { grid-column: 1 / -1; }
   }
+  /* Состояние посередине полосы окошка (row-card status, 09.11.2026): место одно, от длины названия не скачет. Между
+     группами кнопок, две строки максимум, свои слова не режутся. */
+  .detail-status { margin-inline: auto; min-width: 0; padding-inline: .25rem; text-align: center; line-height: 1.2; text-wrap: balance; }
+  .detail-status .state { white-space: normal; display: inline; font-size: var(--text-sm); }
+  /* Коды в шапке окошка парковки и логистики копируются нажатием без значка (вариант D3 владельца). */
+  .surface-park .detail-marks .vincode > svg, .surface-logistics .detail-marks .vincode > svg { display: none; }
+  .surface-park .detail-marks .tag.vincode, .surface-logistics .detail-marks .tag.vincode { padding-right: 10px; }
+  /* Что не так, красной строкой с точкой: долг над полоской срока. */
+  .detail-alert { @apply flex items-center gap-2 text-sm text-danger; }
+  .detail-alert::before { content: ""; @apply size-[7px] shrink-0 rounded-full bg-danger; }
+  /* Полоска срока ТС (`x-park.stay`): где стоит и сумма, линия от приёма до выдачи (у стоящей — до «сегодня»), даты и дни. */
+  .stay { @apply flex flex-col gap-2 rounded-(--radius-l) bg-surface-2 px-3.5 py-3; }
+  .stay-top { @apply flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1; }
+  .stay-place { @apply min-w-0 font-medium; }
+  .stay-sum { @apply ml-auto inline-flex items-center gap-0.5 whitespace-nowrap font-bold; }
+  .stay-sum:hover { @apply text-accent-text; }
+  .stay-track { @apply relative flex h-3.5 items-center; }
+  .stay-line { @apply absolute inset-x-[5px] h-[3px] rounded-full bg-accent; }
+  .stay-line.is-wait { background: repeating-linear-gradient(90deg, var(--color-ink-dim) 0 4px, transparent 4px 8px); }
+  .stay-dot { @apply absolute left-0 size-[11px] rounded-full bg-accent; box-shadow: 0 0 0 3px var(--color-surface-2); }
+  .stay-dot + .stay-dot { left: auto; right: 0; }
+  .stay-dot.is-now { background: var(--color-surface-2); box-shadow: inset 0 0 0 2px var(--color-accent), 0 0 0 3px var(--color-surface-2); }
+  .stay-dot.is-hollow { background: var(--color-surface-2); box-shadow: inset 0 0 0 2px var(--color-ink-dim), 0 0 0 3px var(--color-surface-2); }
+  .stay-dates { @apply flex items-baseline justify-between gap-2 text-sm text-ink-muted; }
+  .stay-dates > * { @apply min-w-0 flex-1; }
+  .stay-dates > .stay-days { @apply flex-none text-center font-medium text-ink; }
   .detail-photo { @apply shrink-0 overflow-hidden rounded-(--radius-m) bg-surface-3; width: 6rem; height: 4.5rem; }
   .detail-photo img { @apply size-full object-cover; }
   /* Лента кадров в карточке: несколько в ряд, тап — во весь экран (Viewer). */
@@ -4278,6 +4308,14 @@ html::view-transition-image-pair(hero) { isolation: auto; }
   /* Кадры блоками по стадии (PhotoBlocks): подпись блока слева над лентой, кнопки справа; с подписью ряд виден всегда. */
   .photo-blocks { display: flex; flex-direction: column; gap: .875rem; }
   .photo-block-title { @apply mr-auto self-center text-sm text-ink-muted; }
+  /* Подзаголовок ленты — кнопка со стрелкой (`x-ui.photos-expand`, 09.11.2026): вправо — лента, вниз — плитка. */
+  .photos-toggle { @apply -my-1 mr-auto inline-flex min-h-8 items-center gap-1 self-center text-sm text-ink-muted; }
+  @media (hover: hover) { .photos-toggle:not(.is-static):hover { @apply text-ink; } }
+  .photos-toggle[hidden] { display: none; }
+  .photos-toggle-chev { @apply text-ink-dim; transition: transform var(--dur) var(--ease-out); }
+  .photos-toggle[aria-expanded="true"] .photos-toggle-chev { transform: rotate(90deg); }
+  .photos-toggle.is-static { cursor: default; }
+  .photos-toggle.is-static .photos-toggle-chev { display: none; }
   /* «Развернуть»: лента — плиткой, плитка «добавить» — первой клеткой; перетаскивание то же. На телефоне — квадраты по
      5.5rem, от 640 — клетки 4:3 от 7.5rem (21.10.2026, владелец: «криво на компьютере» — квадраты по 90 px выходили мельче
      кадров свёрнутой ленты и резали фото 4:3). */

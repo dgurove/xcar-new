@@ -23,7 +23,7 @@
     // Блок встанет после согласования (`Deal::agreed`).
     $tooEarly = $deal->isLive() && ! $deal->agreed();
 @endphp
-<x-ui.shell :title="$offer->titleWithYear()" :back="['Сделки', '/deals']">
+<x-ui.shell :title="$offer->titleWithYear()" copy-title :back="['Сделки', '/deals']">
     <x-slot:badge><x-car.keys :count="$offer->keys_count" label/></x-slot:badge>
     {{-- Сделка — не объявление (05.10.2026, владелец): первым делом задача, справа расчёт, кадры — плиткой в самом низу
          колонки. ПК: слева работа (задача, покупатель, путь, счета), справа липко расчёт, характеристики, документы, фото.

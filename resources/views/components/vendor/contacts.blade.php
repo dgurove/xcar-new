@@ -13,7 +13,7 @@
                         @unless ($sale)<span>{{ $c->role->label() }}</span>@endunless
                         @if ($c->is_default)<span>основной</span>@endif
                         @if ($c->always_cc)<span>в копии</span>@endif
-                        @if ($c->yard && ! $sale)<span>{{ $c->yard->name }}</span>@endif
+                        @if ($c->yard && ! $sale)<x-ui.place>{{ $c->yard->name }}</x-ui.place>@endif
                         @if ($c->title)<span>{{ $c->title }}</span>@endif
                     </span>
                 </span>

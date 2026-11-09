@@ -126,7 +126,14 @@ export default class extends Controller {
         const open = this.expanded;
         row.classList.toggle('is-open', open);
         const n = row.querySelectorAll('.photo-cell').length;
-        this.expandTargets.forEach((b) => { b.hidden = n < 2; b.textContent = open ? 'Свернуть' : 'Развернуть'; });
+        // Подзаголовок со стрелкой: меньше двух кадров — без стрелки и не нажимается (без подзаголовка — не виден).
+        this.expandTargets.forEach((b) => {
+            const still = n < 2;
+            b.hidden = still && !('titled' in b.dataset);
+            b.disabled = still;
+            b.classList.toggle('is-static', still);
+            b.setAttribute('aria-expanded', String(open && !still));
+        });
     }
 
     expand() {
@@ -139,7 +146,7 @@ export default class extends Controller {
         if (!this.hasAllTarget) return;
         const cells = this.eyeCells();
         const any = cells.some((c) => c.dataset.hidden === '1');
-        this.allTargets.forEach((b) => { b.hidden = cells.length < 2; b.textContent = any ? 'Показать все' : 'Скрыть все'; });
+        this.allTargets.forEach((b) => { b.hidden = cells.length < 2; b.textContent = any ? 'Отображать все' : 'Скрыть все'; });
     }
 
     async all() {
@@ -148,7 +155,7 @@ export default class extends Controller {
         const hide = !cells.some((c) => c.dataset.hidden === '1');
         // Одно нажатие стирает разметку глазом по каждому кадру — сначала спросить.
         const n = cells.filter((c) => (c.dataset.hidden === '1') !== hide).length;
-        if (!(await confirmSheet(hide ? `Скрыть все фото (${n})?` : `Показать все фото (${n})?`, { danger: hide }))) return;
+        if (!(await confirmSheet(hide ? `Скрыть все фото (${n})?` : `Отображать все фото (${n})?`, { danger: hide }))) return;
         const paint = (to) => cells.forEach((c) => {
             c.dataset.hidden = to ? '1' : '0';
             c.classList.toggle('is-hidden', to);

@@ -10,13 +10,21 @@
      Поток letters (session letters) — окно писем с черновиком письма вендору после «Принять».
      line — фраза положения под метками (город, где ТС, сроки), куски — элементами, запятые ставит CSS.
      blank=false — нет фото, нет и ленты (без серой заглушки с машинкой: парковка, 10.10.2026).
+     status — состояние словом посередине полосы (парковка, логистика).
      head=false — без шапки с названием и метками: тело рисует свою (карточки «Оплат»: сумма крупно по центру). --}}
-@props(['offer' => null, 'head' => true, 'href' => null, 'title', 'photos' => null, 'photo' => null, 'marks' => null, 'facts' => [], 'line' => null, 'aside' => null, 'actions' => null, 'action' => 'Открыть', 'tools' => null, 'media' => null, 'foot' => null, 'blank' => true])
+@props(['offer' => null, 'status' => null, 'head' => true, 'href' => null, 'title', 'photos' => null, 'photo' => null, 'marks' => null, 'facts' => [], 'line' => null, 'aside' => null, 'actions' => null, 'action' => 'Открыть', 'tools' => null, 'media' => null, 'foot' => null, 'blank' => true])
 <div class="detail-bar" data-action="pointerdown->detail#grab">
     <span class="detail-handle" aria-hidden="true"></span>
     <button type="button" class="bar-btn" data-action="detail#prev" aria-label="Предыдущая"><x-ui.icon name="chevron-down" class="size-[18px] rotate-180"/></button>
     <button type="button" class="bar-btn" data-action="detail#next" aria-label="Следующая"><x-ui.icon name="chevron-down" class="size-[18px]"/></button>
-    <span class="detail-count nums mr-auto" data-detail-target="count"></span>
+    {{-- Состояние — посередине полосы (09.11.2026, владелец: «бесит, что статус после наименования пишется и из-за этого
+         он то там, то там скачет»): слот status, место у него одно в любой карточке; без него счётчик прижимает кнопки вправо. --}}
+    @if ($status && trim($status) !== '')
+        <span class="detail-count nums" data-detail-target="count"></span>
+        <span class="detail-status">{{ $status }}</span>
+    @else
+        <span class="detail-count nums mr-auto" data-detail-target="count"></span>
+    @endif
     <span id="detail-tools" class="contents">{{ $tools }}</span>
     @if ($href)<a class="bar-btn" href="{{ $href }}" data-turbo-frame="_top" aria-label="Открыть страницу"><x-ui.icon name="expand" class="size-[18px]"/></a>@endif
     <a class="bar-btn" href="{{ \App\Support\Detail::close() }}" data-turbo-frame="detail" data-turbo-prefetch="false" data-detail-target="close" data-action="detail#close:prevent" aria-label="Закрыть"><x-ui.icon name="x" class="size-[18px]"/></a>
@@ -27,7 +35,8 @@
     {{-- Шапка с лентой: название, справа цена, под названием метки; на телефоне цена — своей строкой под названием,
          метки — во всю ширину рядом (узкая колонка рядом с ценой ставила их столбиком). --}}
     <div class="detail-head mt-3">
-        <a @if ($href) href="{{ $href }}" @endif class="detail-title block text-lg leading-snug hover:text-accent-text"><span class="line-clamp-2">{{ $title }}{{ $badge ?? '' }}</span></a>
+        {{-- Название — копируется нажатием (09.11.2026, владелец); страницу открывает значок в полосе. --}}
+        <div class="detail-title block text-lg leading-snug"><span class="line-clamp-2"><x-ui.copy-text>{{ $title }}</x-ui.copy-text>{{ $badge ?? '' }}</span></div>
         @if ($aside && trim($aside) !== '')<div class="detail-aside">{{ $aside }}</div>@endif
         {{-- Метки — чипами (коды, состояние); характеристики (пробег, коробка, привод) — строкой текста под ними: разное
              по смыслу — разным видом (владелец 10.10.2026: «одно к машине относится, другое к фактам»). --}}
@@ -40,7 +49,7 @@
 <div class="flex items-start gap-3">
     @if ($photo !== false)<a href="{{ $href }}" class="detail-photo">@if ($photo)<x-offer.photo :media="$photo" sizes="96px" eager/>@else<x-ui.car-blank/>@endif</a>@endif
     <div class="min-w-0 flex-1">
-        <a @if ($href) href="{{ $href }}" @endif class="block text-lg leading-snug hover:text-accent-text"><span class="line-clamp-2">{{ $title }}{{ $badge ?? '' }}</span></a>
+        <div class="block text-lg leading-snug"><span class="line-clamp-2"><x-ui.copy-text>{{ $title }}</x-ui.copy-text>{{ $badge ?? '' }}</span></div>
         @if ($marks && trim($marks) !== '')<div class="mt-1.5 flex flex-wrap items-center gap-1.5">{{ $marks }}</div>@endif
         @if ($line && trim($line) !== '')<div class="detail-line">{{ $line }}</div>@endif
     </div>

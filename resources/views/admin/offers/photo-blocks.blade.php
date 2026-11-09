@@ -22,7 +22,7 @@
         @php $first = $i === 0; @endphp
         <div class="photo-block" data-controller="photos" data-photos-url-value="/offers/{{ $n }}/media" data-photos-stage-value="{{ $stage->value }}" data-photos-group-value="offer-{{ $offer->id }}" data-photos-order="{{ $i }}" data-photos-mark-value="true" @if ($first) data-photos-any-value="true" @endif>
             {{-- Над лентой, а не под ней: развёрнутая плиткой лента уносила бы кнопки вниз. --}}
-            <div class="photos-over">@if ($titled)<span class="photo-block-title">{{ $stage->label() }}</span>@endif<x-ui.photos-expand/><x-ui.photos-all/></div>
+            <div class="photos-over"><x-ui.photos-expand :title="$titled ? $stage->label() : null"/><x-ui.photos-all/></div>
             @include('admin.offers.photo-upload')
             <x-ui.photos :id="$root.'-'.$stage->value" :photos="$photos" :main-id="$mainId" :pending="$first ? $pending : 0"
                 :deletable="$detail ? false : fn ($m) => ! \App\Park\Sale::parkOwned($m)"/>

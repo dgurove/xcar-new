@@ -6,7 +6,7 @@
     $back = $context?->backUrl() ?? ($gallery ? '/gallery' : '/offers');
     $dealInSheet = \App\Offers\DealPlacement::inSheet($offer, $user, $myInterest);
 @endphp
-<x-ui.shell :title="$offer->titleWithYear()" :back="[$gallery ? 'Галерея' : 'Предложения', $back]" :trail="[['Главная', '/'], [$gallery ? 'Галерея' : 'Предложения', $back], ['№ '.$offer->number]]" data-offer-page="{{ $offer->number }}">
+<x-ui.shell :title="$offer->titleWithYear()" copy-title :back="[$gallery ? 'Галерея' : 'Предложения', $back]" :trail="[['Главная', '/'], [$gallery ? 'Галерея' : 'Предложения', $back], ['№ '.$offer->number]]" data-offer-page="{{ $offer->number }}">
     <x-slot:actions>
         @if ($user?->canShare())<x-offer.share :offer="$offer" icon/>@endif
         {{-- Черновик на оценке (11.10.2026) в избранное не кладётся: в списке «Избранного» его не будет. --}}

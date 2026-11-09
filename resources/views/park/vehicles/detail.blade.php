@@ -7,12 +7,9 @@
     use App\Park\VehicleState;
     $state = $vehicle->state;
     $href = '/cars/'.$vehicle->id;
-    // Выданная — итог дела: кому и как выдали (событие выдачи), сколько стояла, хранение и деньги словом (OutMoney).
+    // Выданная — итог дела: кому и как выдали (событие выдачи); срок и сумма — полоской (`x-park.stay`).
     $released = $state === VehicleState::Released ? $vehicle->events->firstWhere('type', \App\Park\EventType::Released) : null;
     $handedTo = $released ? ($vehicle->pickup_name ?: ($released->payload['to'] ?? null)) : null;
-    // Приёмщику (`User::parkMoney`) денег нет: ни хранения словом, ни ставки, ни долга (сумм ему не считает и контроллер).
-    $seesMoney = auth()->user()->parkMoney();
-    $money = $seesMoney ? \App\Park\OutMoney::of($vehicle) : null;
 @endphp
 <x-ui.detail>
     {{-- Запасной «Открыть» на месте пустого ряда действий не нужен: дело открывает значок в полосе карточки. --}}
@@ -23,29 +20,24 @@
         @endif
         {{-- Продажа — кнопкой на виду (11.10.2026, владелец: «куда-то делась кнопка, не можем найти» — пункт в значке связи
              не находили): строкой группы над задачей, как «Заполнить из документов»; и в «Заявках». --}}
-        {{-- Состояние — словом у названия и только когда фраза его не говорит: стоит на парковке — видно по «Краснопутиловская,
-             с 8 окт» (владелец 10.10.2026: «если написано, что он на Краснопутиловской с 8 октября, и так понятно»). --}}
-        {{-- У названия по порядку: госномер, значок связи, состояние (12.10.2026, владелец). --}}
-        <x-slot:badge>@if ($vehicle->plate)<x-ui.plate :value="$vehicle->plate" class="ml-1.5 align-[.15em] text-sm"/>@endif<x-ui.links :vehicle="$vehicle"/>@if ($state !== VehicleState::Stored)<x-ui.state :tone="$state->tone()" class="title-state">{{ mb_strtolower($state->label()) }}</x-ui.state>@endif</x-slot:badge>
+        {{-- Состояние — посередине полосы окошка (09.11.2026, владелец: у названия «то там, то там скачет»), у стоящей его нет:
+             полоска срока и так говорит «на парковке». У названия — госномер сразу за ним и значок связи (12.10.2026). --}}
+        @if ($state !== VehicleState::Stored)
+            <x-slot:status><x-ui.state :tone="$state->tone()">{{ mb_strtolower($state->label()) }}</x-ui.state></x-slot:status>
+        @endif
+        <x-slot:badge>@if ($vehicle->plate)<x-ui.plate :value="$vehicle->plate" class="ml-1.5 align-[.15em] text-sm"/>@endif<x-ui.links :vehicle="$vehicle"/></x-slot:badge>
         {{-- Кадры блоками по стадии с глазом (показ в продаже) и «Показать все»; добавляют и удаляют — в деле ТС. --}}
         @if ($vehicle->photos()->isNotEmpty() && ! ($fromRequests ?? false))
             <x-slot:media>@include('park.vehicles.detail-photos')</x-slot:media>
         @endif
-        {{-- Под названием — машина (коды чипами: госномер, убыток с логотипом вендора, VIN) и что не так; где и с какого
-             времени — фразой ниже. Владелец 10.10.2026: «одно к машине относится, другое к фактам», «статус „на
-             парковке“ тут не к месту» — среди кодов; состояние — у названия). Ставки нет — дни и сумма справа. --}}
+        {{-- Под названием — коды машины одним рядом (убыток с логотипом вендора, VIN; копируются нажатием, значков нет —
+             `.detail-codes`) и что не так. Где, когда и сколько — полоской срока ниже (`x-park.stay`), ставки и долга у суммы нет. --}}
         <x-slot:marks>
             @if ($vehicle->ref)<x-vendor.ref :vendor="$vehicle->vendor" :ref="$vehicle->ref" copy class="tag nums"/>
             @elseif ($vehicle->vendor)<x-vendor.name :vendor="$vehicle->vendor" class="tag"/>@endif
             <x-ui.vin-code :vin="$vehicle->vin" class="tag"/>
-            <x-park.alerts :vehicle="$vehicle" :skip="[\App\Park\Alerts::DOCS]"/>
-            @if ($debt > 0 && $state === VehicleState::Stored)<span class="nums text-danger">долг {{ \App\Support\Money::rub($debt) }}</span>@endif
+            <x-park.alerts :vehicle="$vehicle" :skip="[\App\Park\Alerts::DOCS]" :place="false"/>
         </x-slot:marks>
-        <x-slot:aside>
-            @if ($state === VehicleState::Stored && $vehicle->daysStored() !== null)<span class="nums whitespace-nowrap text-lg font-bold">{{ $vehicle->daysStored() }} {{ \App\Support\Plural::of($vehicle->daysStored(), ['день', 'дня', 'дней']) }}</span>@endif
-            @if ($total && $total['amount'] > 0)<span @class(['nums whitespace-nowrap', 'text-lg font-bold' => $state === VehicleState::Released, 'text-sm text-ink-dim' => $state !== VehicleState::Released])>{{ \App\Support\Money::rub($total['amount']) }}</span>@endif
-            @if ($money && ($money !== 'unbilled' || ($total['amount'] ?? 0) > 0))<span class="whitespace-nowrap text-sm {{ \App\Park\OutMoney::TONES[$money] }}">{{ mb_strtolower(\App\Park\OutMoney::LABELS[$money]) }}</span>@endif
-        </x-slot:aside>
         {{-- Главное действие карточки — одно и подвалом листа во всю ширину (10.10.2026, владелец: «кнопки действий справа
              выравнивают, а не слева»): открывает окно действия (`x-park.act-window`, 12.10.2026 — «разграничить машину и
              действие»): «Принять», «Выдать» (по QR — сканер в окне), висящий отчёт — «Отправить акт приёма» (окно сразу на
@@ -66,39 +58,14 @@
             <x-slot:foot><div class="detail-action"><x-park.act-button :vehicle="$vehicle" :step="$foot[0]" :label="$foot[1]" :advance="$advance" class="w-full"/></div></x-slot:foot>
         @elseif ($releaseReport)
             <x-slot:foot><div class="detail-action"><x-mail.window-button :url="$releaseReportUrl" label="Отправить акт выдачи" icon="mail" class="btn-accent w-full"/></div></x-slot:foot>
+        @elseif ($state === VehicleState::Released && ($unbilled ?? 0) > 0)
+            {{-- Не выставленное хранение выданной — главной кнопкой, а не словом у суммы (09.11.2026, D3 владельца). --}}
+            <x-slot:foot><div class="detail-action"><a href="/cars/{{ $vehicle->id }}/invoices/new" data-turbo-frame="_top" class="btn btn-accent w-full">Выставить счёт на {{ \App\Support\Money::rub($unbilled) }}</a></div></x-slot:foot>
         @endif
-        {{-- Положение фразой: «Краснопутиловская, с 6 окт, 12:00», у выданной «Измайловский лес, с 11 авг по 10 окт, 61 день»
-             (состояние — у названия, у стоящей его нет). Парковка у стоящей — кнопка
-             шторки «Переставить», даты — календарь администратору парковки (`x-park.date-edit`); нажимаемое — пунктиром.
-             Не <p>: всплывашка календаря — <div>, и разбор HTML закрывал абзац на ней. Строка — flex: пробелы между кусками
-             (компоненты кончаются переводом строки) не рисуются; свои пробелы — внутри кусков (whitespace-pre). --}}
-        @php
-            $at = fn ($d) => $d->translatedFormat($d->isCurrentYear() ? 'j M, H:i' : 'j M Y, H:i');
-            $dotted = 'underline decoration-dotted decoration-ink-dim underline-offset-4';
-            // Даты правят все люди парковки (`parkDates`, 02.11.2026) — приём `x-park.accepted`, выдачу `x-park.date-edit`.
-            $admin = auth()->user()->parkDates();
-            $stored = $state === VehicleState::Stored;
-            $out = $state === VehicleState::Released && $vehicle->released_at;
-        @endphp
-        @php
-            // Куски фразы — неразрывными связками «слово, разделитель» (inline-flex: переводы строк компонентов не рисуются, свои
-            // пробелы — в whitespace-pre): разделитель хвостом, перенос не начинает строку с запятой.
-            $seg = 'inline-flex items-baseline whitespace-nowrap';
-            $day = fn ($field) => $admin ? null : $at($vehicle->{$field});
-        @endphp
-        <div class="detail-where mt-2 flex flex-wrap items-baseline">
-            @if ($vehicle->yard)<span class="{{ $seg }}">@if ($stored && ! ($fromRequests ?? false))<x-park.place-move :vehicle="$vehicle" :chevron="false" :class="$dotted"/>@else<x-ui.place>{{ $vehicle->yard->name }}</x-ui.place>@endif<span class="whitespace-pre text-ink-muted">{{ ($stored || $out) && $vehicle->accepted_at ? ', ' : '' }}</span></span>@endif
-            @if (($stored || $out) && $vehicle->accepted_at)<span class="{{ $seg }}"><span class="whitespace-pre text-ink-muted">с </span><x-park.accepted :vehicle="$vehicle" :class="'nums '.$dotted"/><span class="whitespace-pre">{{ $out ? ' ' : '' }}</span></span>@endif
-            {{-- Ставка — тем же куском фразы, шторкой (12.10.2026, `x-park.rate`): «300 ₽/сут», своя, «ставки нет». --}}
-            @if ($stored && $seesMoney && ! ($fromRequests ?? false))<span class="{{ $seg }}">@if ($vehicle->yard || $vehicle->accepted_at)<span class="whitespace-pre text-ink-muted">, </span>@endif<x-park.rate :vehicle="$vehicle"/></span>@endif
-            @if ($out)
-                <span class="{{ $seg }}"><span class="whitespace-pre text-ink-muted">по </span>@if ($admin)<x-park.date-edit :vehicle="$vehicle" field="released_at" :class="'nums '.$dotted"/>@else<span class="nums">{{ $day('released_at') }}</span>@endif<span class="whitespace-pre text-ink-muted">{{ $vehicle->accepted_at && $vehicle->daysStored() !== null ? ', ' : '' }}</span></span>
-                @if ($vehicle->accepted_at && $vehicle->daysStored() !== null)<span class="nums text-ink-muted">{{ $vehicle->daysStored() }} {{ \App\Support\Plural::of($vehicle->daysStored(), ['день', 'дня', 'дней']) }}</span>@endif
-            @elseif ($state === VehicleState::Cancelled && $vehicle->cancel_reason)
-                <span class="text-ink-muted">{{ $vehicle->cancel_reason }}</span>
-            @endif
-        </div>
-        @if ($handedTo)<p class="text-ink-muted">{{ $handedTo }}{{ $released && ! empty($released->payload['pass']) ? ', по QR' : ($released && ! empty($released->payload['without_qr']) ? ', без QR' : '') }}</p>@endif
+        {{-- Долг — красной строкой над полоской, как всё, что не так с машиной (09.11.2026: у суммы слов нет). --}}
+        @if ($debt > 0)<div class="detail-alert mt-3">Долг {{ \App\Support\Money::rub($debt) }}</div>@endif
+        <x-park.stay :vehicle="$vehicle" :total="$total" :debt="$debt" :unbilled="$unbilled ?? 0" :movable="! ($fromRequests ?? false)" class="mt-3"/>
+        @if ($handedTo)<p class="mt-2 text-ink-muted">{{ $handedTo }}{{ $released && ! empty($released->payload['pass']) ? ', по QR' : ($released && ! empty($released->payload['without_qr']) ? ', без QR' : '') }}</p>@endif
         @include('park.vehicles.now')
         @if ($task)
             @include('park.vehicles.task')

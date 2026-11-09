@@ -28,7 +28,7 @@ use Illuminate\Support\Facades\DB;
 final class Accrual
 {
     /** @return Collection<int, Segment> */
-    public static function storage(Vehicle $vehicle, ?CarbonInterface $until = null, bool $fromStart = false): Collection
+    public static function storage(Vehicle $vehicle, ?CarbonInterface $until = null, bool $fromStart = false, bool $raw = false): Collection
     {
         if (! $vehicle->accepted_at) {
             return collect();
@@ -87,6 +87,7 @@ final class Accrual
         if ($current) {
             $segments->push($current);
         }
+        $segments = $raw ? $segments : self::ownTotal($vehicle, $segments, $fromStart && ! $until);
 
         // Наружу отрезки отдаются датами: их считанные единицы, здесь Carbon уже ничего не стоит.
         return $segments->map(function (array $s) {
@@ -95,6 +96,38 @@ final class Accrual
 
             return $s;
         });
+    }
+
+    /**
+     * Своя сумма выданной ТС (`storage_total`, 09.11.2026): итог за весь срок вписали руками — ставки отрезков меняются в
+     * одной пропорции (весь срок по ставке стоил S, стал T), дни и плательщики прежние; по ставке ноль — поровну на сутки.
+     * Весь срок целиком (`$whole`) — последний отрезок добирает копейки, чтобы сумма сошлась ровно. У невыданной не действует.
+     *
+     * @param  Collection<int, array>  $segments
+     */
+    private static function ownTotal(Vehicle $vehicle, Collection $segments, bool $whole): Collection
+    {
+        if ($vehicle->storage_total === null || $vehicle->state !== \App\Park\VehicleState::Released || ! $vehicle->released_at || $segments->isEmpty()) {
+            return $segments;
+        }
+        $full = $whole ? $segments : self::storage($vehicle, null, true, raw: true);
+        $sum = (float) $full->sum('amount');
+        $days = (int) $full->sum('days');
+        $total = (float) $vehicle->storage_total;
+        $segments = $segments->map(function (array $s) use ($sum, $days, $total) {
+            $s['rate'] = $sum > 0 ? $s['rate'] * $total / $sum : ($days > 0 ? $total / $days : 0.0);
+            $s['amount'] = round($s['days'] * $s['rate'], 2);
+
+            return $s;
+        });
+        if ($whole && $segments->count() > 0) {
+            $last = $segments->keys()->last();
+            $s = $segments[$last];
+            $s['amount'] = round($total - (float) $segments->except($last)->sum('amount'), 2);
+            $segments[$last] = $s;
+        }
+
+        return $segments;
     }
 
     /**

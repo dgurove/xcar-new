@@ -40,7 +40,7 @@
                 <a @if ($t) href="/transports?preset=all&peek={{ $t->id }}" @endif class="row">
                     <span class="min-w-0 flex-1">
                         <span class="block truncate">{{ $t ? $t->title() : ($line ?: 'Вывоз') }}</span>
-                        @if ($t)<span class="row-sub">{{ implode(', ', array_filter([$t->city(), $t->distance_km ? $t->distance_km.' км' : null])) }}</span>@endif
+                        @if ($t)<span class="row-sub">@if ($t->city())<x-ui.place>{{ $t->city() }}</x-ui.place>@endif @if ($t->distance_km)<span class="nums">{{ $t->distance_km }} км</span>@endif</span>@endif
                     </span>
                     <span class="shrink-0 text-right">
                         <span class="block nums">{{ Money::rub((int) $invoice->total) }}</span>

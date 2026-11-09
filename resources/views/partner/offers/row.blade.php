@@ -31,7 +31,7 @@
         <a href="{{ $href }}" class="row-link"><span class="cell-title"><span class="cell-name">{{ $offer->brand_id ? $offer->titleWithYear() : 'Без марки' }}</span></span></a>
         <span class="cell-sub">
             <span class="nums sm:hidden">{{ $offer->claim_ref }}</span>
-            @if ($offer->settlement)<span class="sm:hidden">{{ $offer->settlement->title() }}</span>@endif
+            @if ($offer->settlement)<x-ui.place class="sm:hidden">{{ $offer->settlement->title() }}</x-ui.place>@endif
         </span>
     </td>
         @break

@@ -18,7 +18,7 @@
         <span class="cell-sub">
             <span class="sm:hidden">№ {{ $car->ref }}</span>
             @if ($showKind)<span class="sm:hidden">{{ mb_strtolower($car->kind->label()) }}</span>@endif
-            @if ($city)<span class="sm:hidden">{{ $city }}</span>@endif
+            @if ($city)<x-ui.place class="sm:hidden">{{ $city }}</x-ui.place>@endif
         </span>
     </td>
         @break
@@ -29,7 +29,7 @@
     <td class="{{ $col->classes() }}">{{ $car->kind->label() }}</td>
         @break
         @case('city')
-    <td class="{{ $col->classes() }}">{{ $city }}</td>
+    <td class="{{ $col->classes() }}">@if ($city)<x-ui.place class="whitespace-nowrap text-ink-muted">{{ $city }}</x-ui.place>@endif</td>
         @break
         @case('price')
     <td class="{{ $col->classes() }}">

@@ -44,7 +44,7 @@
             @elseif ($gallery)<x-offer.gallery-left :offer="$offer" word="" class="sm:hidden"/>
             @elseif ($left !== null && $left > 0)<span class="cell-timer sm:hidden {{ $offer->isEndingSoon() ? 'text-urgent' : 'text-ink-muted' }}"><x-ui.icon name="timer" class="size-3.5"/><span class="nums" data-controller="timer" data-timer-until-value="{{ $offer->closesAt()->toIso8601String() }}" data-timer-done-value="приём закрыт" data-timer-coarse-value="true" data-timer-word-value="">{{ \App\Support\Ago::left($offer->closesAt(), '') }}</span></span>
             @elseif ($bids && !$offer->openFor($user))<span class="sm:hidden">приём закрыт</span>@endif
-            @if ($city)<span class="sm:hidden">{{ $city }}</span>@endif
+            @if ($city)<x-ui.place class="sm:hidden">{{ $city }}</x-ui.place>@endif
             {{-- Открывал — «просмотрено» (`ReadOffer`); показывает `data-viewed` строки, его же ставит клик (`app.js`). --}}
             @if ($user)<span class="row-viewed">просмотрено</span>@endif
         </span>
@@ -62,7 +62,7 @@
     </td>
         @break
         @case('city')
-    <td class="{{ $col->classes() }}">{{ $city }}</td>
+    <td class="{{ $col->classes() }}">@if ($city)<x-ui.place class="whitespace-nowrap text-ink-muted">{{ $city }}</x-ui.place>@endif</td>
         @break
         @case('price')
     <td class="{{ $col->classes() }}">

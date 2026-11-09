@@ -55,7 +55,7 @@
                             <x-ui.cat-icon :category="\App\Cars\Category::Passenger" class="valuation-cat"/>
                             <span class="min-w-0 flex-1">
                                 <span class="block truncate">{{ $lot?->title ?: $item['ref'] }}</span>
-                                <span class="row-sub"><x-vendor.ref :vendor-id="$item['vendor']" :ref="$item['ref']" copy/>@if ($lot?->city)<span>{{ $lot->city }}</span>@endif</span>
+                                <span class="row-sub"><x-vendor.ref :vendor-id="$item['vendor']" :ref="$item['ref']" copy/>@if ($lot?->city)<x-ui.place>{{ $lot->city }}</x-ui.place>@endif</span>
                             </span>
                             @if ($status === 'absent')<label class="check shrink-0" aria-label="Завести"><input type="checkbox" name="create[]" value="{{ $item['key'] }}" @checked(! $item['suspicious']) data-action="valuation#count"></label>@endif
                         </div>

@@ -15,7 +15,7 @@ class NormalizeNumbers
 {
     private const FIELDS = [
         'amount', 'price', 'cost', 'qty', 'sum', 'commission', 'sold_price', 'asking_price', 'floor_price', 'publish_price',
-        'min_bid_price', 'min_bid_share', 'assigned_price', 'storage_rate', 'buyer_rate_multiplier', 'reward_value',
+        'min_bid_price', 'min_bid_share', 'assigned_price', 'storage_rate', 'storage_total', 'buyer_rate_multiplier', 'reward_value',
         'mileage', 'year', 'engine_power', 'capacity', 'distance_km', 'km_included', 'keys_count', 'limit_value',
         'payment_days', 'answer_hours', 'binding_days', 'from_day', 'from_value',
     ];

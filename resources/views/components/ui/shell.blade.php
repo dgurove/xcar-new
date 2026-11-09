@@ -18,7 +18,7 @@
      Документ не листается (22.10.2026): шапка, #scroller (содержимое и подвал) и таб-бар — три ряда колонки, листается
      только середина. Прокрутка документа в iOS 26–27 таскала fixed-слои за собой (WebKit 297779) — таб-бар уезжал до
      середины экрана; шапка снаружи стоит на месте, когда список отскакивает резинкой. --}}
-@props(['title' => null, 'heading' => null, 'count' => null, 'trail' => [], 'narrow' => false, 'back' => null, 'phoneBack' => null, 'backRow' => true, 'phoneHeading' => true, 'desktopHeading' => true, 'cache' => 'no-preview', 'description' => null, 'index' => false, 'detail' => null, 'stage' => false])
+@props(['title' => null, 'copyTitle' => false, 'heading' => null, 'count' => null, 'trail' => [], 'narrow' => false, 'back' => null, 'phoneBack' => null, 'backRow' => true, 'phoneHeading' => true, 'desktopHeading' => true, 'cache' => 'no-preview', 'description' => null, 'index' => false, 'detail' => null, 'stage' => false])
 @php
     $heading = $heading === false ? null : ($heading ?? $title);
     // Пустой слот (кабинет передаёт его всегда) — всё равно что нет.
@@ -52,7 +52,7 @@
                 {{-- Без заголовка и действий ряд нужен только ради круглой «‹» на десктопе: на телефоне она в шапке. --}}
                 <div @class(['has-back mb-4 flex-wrap items-center gap-x-4 gap-y-2', 'flex' => $heading || isset($actions), 'hidden md:flex' => !$heading && !isset($actions), 'max-md:hidden' => !$phoneHeading, 'md:hidden' => !$desktopHeading])>
                     @if ($back)<x-ui.back :back="$back" :phone="$partner"/>@endif
-                    @if ($heading)<h1 class="head-title text-xl sm:text-2xl">@isset($lead){{ $lead }} @endisset{{ $heading }}{{ $badge ?? '' }}@if ($count !== null) <span class="nums ml-2 text-base font-normal text-ink-dim" data-shell-count>{{ $count }}</span>@endif</h1>@endif
+                    @if ($heading)<h1 class="head-title text-xl sm:text-2xl">@isset($lead){{ $lead }} @endisset @if ($copyTitle)<x-ui.copy-text>{{ $heading }}</x-ui.copy-text>@else{{ $heading }}@endif{{ $badge ?? '' }}@if ($count !== null) <span class="nums ml-2 text-base font-normal text-ink-dim" data-shell-count>{{ $count }}</span>@endif</h1>@endif
                     @isset($actions)<div {{ $actions->attributes->merge(['class' => 'flex w-full flex-wrap items-center gap-1 sm:ml-auto sm:w-auto sm:gap-2']) }}>{{ $actions }}</div>@endisset
                 </div>
             @endif

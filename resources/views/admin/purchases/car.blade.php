@@ -1,5 +1,5 @@
 @php use App\Cars\{Transmission, Fuel}; use App\Purchases\{Kind, ImportState}; use App\Offers\BidState; $n = $purchase->number; @endphp
-<x-ui.shell :title="$car->titleWithYear()" :back="['Закупка', '/purchases/'.$purchase->number]">
+<x-ui.shell :title="$car->titleWithYear()" copy-title :back="['Закупка', '/purchases/'.$purchase->number]">
     <div class="mb-4 flex flex-wrap items-center gap-2">
         <span class="chip">{{ str_starts_with(mb_strtoupper($car->dl), 'ДЛ') ? $car->dl : 'ДЛ '.$car->dl }}</span>
         <span class="chip">№ {{ $car->ref }}</span>

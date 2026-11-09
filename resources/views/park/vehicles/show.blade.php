@@ -19,14 +19,20 @@
     $transport = \App\Logistics\Transport::openFor($vehicle);
     $transportLine = $transport ? implode(', ', array_filter([$transport->next(), $transport->carrier(), $transport->destinationLabel()])) : null;
 @endphp
-<x-ui.shell :title="$vehicle->titleWithYear()" cache="no-cache">
+<x-ui.shell :title="$vehicle->titleWithYear()" copy-title cache="no-cache">
     <x-slot:badge><x-car.keys :count="$vehicle->keys_count" label/><x-ui.links :vehicle="$vehicle"/></x-slot:badge>
     {{-- Шапка — только положение и люди, текстом: состояние с местом и днями, что не так, долг красным словом; строкой ниже —
          продажа страховой («На выдачу с 6 окт», кто заберёт — нажатие открывает шторку «Покупатель», телефон ссылкой).
          Справа — только действия: документы и «⋯». Продажа в CRM — пунктами значка связи у названия (как в карточке
          «Наличия», владелец 10.10.2026: «одно к машине относится, другое к фактам»). Всё, что есть в полях (номер, вендор,
          телефон страхователя) и в «Деньгах» (начислено), тут не повторяется; ставка — здесь, у места, шторкой `x-park.rate` (12.10.2026). --}}
-    <div class="-mt-3 mb-6 flex items-start gap-3">
+    {{-- Коды машины под названием, как в окошке (09.11.2026): госномер, убыток с логотипом вендора, VIN — копируются нажатием. --}}
+    <div class="-mt-3 mb-3 flex flex-wrap items-center gap-1.5">
+        @if ($vehicle->plate)<x-ui.plate :value="$vehicle->plate" class="cursor-pointer text-sm" role="button" tabindex="0" title="Скопировать" data-controller="copy" :data-copy-text-value="$vehicle->plate" data-copy-done-value="Госномер в буфере" data-action="click->copy#copy:prevent:stop keydown.enter->copy#copy:prevent"/>@endif
+        @if ($vehicle->ref)<x-vendor.ref :vendor="$vehicle->vendor" :ref="$vehicle->ref" copy class="tag nums"/>@endif
+        <x-ui.vin-code :vin="$vehicle->vin" class="tag"/>
+    </div>
+    <div class="mb-6 flex items-start gap-3">
         <div class="min-w-0 flex-1">
             <div class="flex flex-wrap items-center gap-1.5">
                 <x-park.state :vehicle="$vehicle" :move="$state === VehicleState::Stored"/>
