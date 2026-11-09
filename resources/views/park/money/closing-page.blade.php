@@ -8,6 +8,15 @@
     <x-slot:badge><span class="title-state {{ $d->tone() }}">{{ $d->state === 'send' ? 'не отправлен' : $d->word() }}</span></x-slot:badge>
     <x-slot:actions class="doc-acts">@include('park.money.closing-actions')</x-slot:actions>
     @include('park.money.closing-alerts')
+    {{-- Переписка по документу (09.11.2026, владелец: «удобно видеть переписку по этой цепочке, писать и отвечать на их
+         вопросы»): письма веток с этим документом (`mail_threads.closing_key`) строками, нажатие — окно на письме, «Ответить» —
+         редактор в ветке. Нет писем — блока нет. --}}
+    @if ($letters->isNotEmpty())
+        <section class="mt-4 max-w-3xl">
+            <h2 class="detail-section">Переписка <span class="nums font-normal text-ink-dim">{{ \App\Mail\Chains\NodeTitle::count($letters) }}</span></h2>
+            <x-mail.letters :messages="$letters" :url="'/money/closing/'.$d->key.'/letters'"/>
+        </section>
+    @endif
     <x-ui.toolbar :sort="$sort" :facets="$facets" name="closing-cars" search="Номер, VIN, госномер, СТС, марка" search-target="#cars" :q="$q" class="mt-4">
         <x-slot:extra><x-ui.view-switch :current="$view" :views="\App\Support\ListView::ALL"/></x-slot:extra>
     </x-ui.toolbar>

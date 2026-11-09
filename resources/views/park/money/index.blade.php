@@ -14,7 +14,7 @@
                  просрочено (`ClosingDoc::summary`, те же состояния, что в списке). Нечего — строка без чисел. --}}
             <a href="/money/closing" class="row">
                 <span class="min-w-0 flex-1">Счета и акты</span>
-                @foreach (['drift' => ['изменилось', 'text-danger'], 'blocked' => ['нет реквизитов', 'text-danger'], 'nobody' => ['нет плательщика', 'text-danger'], 'send' => ['отправить', 'text-urgent'], 'overdue' => ['просрочено', 'text-danger']] as $state => [$word, $tone])
+                @foreach (['drift' => ['изменилось', 'text-danger'], 'blocked' => ['нет реквизитов', 'text-danger'], 'nobody' => ['нет плательщика', 'text-danger'], 'answered' => ['ответили', 'text-urgent'], 'send' => ['отправить', 'text-urgent'], 'review' => ['на согласовании', 'text-ink-muted'], 'overdue' => ['просрочено', 'text-danger']] as $state => [$word, $tone])
                     @if ($closing[$state] ?? 0)<span class="nums shrink-0 text-sm {{ $tone }}">{{ $word }} {{ $closing[$state] }}</span>@endif
                 @endforeach
                 <x-ui.icon name="chevron-right" class="size-5 text-ink-dim"/>

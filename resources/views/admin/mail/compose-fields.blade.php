@@ -7,6 +7,7 @@
 @if ($invoice ?? null)<input type="hidden" name="invoice" value="{{ $invoice->id }}">@endif
 @if ($report ?? null)<input type="hidden" name="report" value="{{ $report }}">@endif
 {{-- Живой документ месяца: отправка фиксирует его (`MailController::send` → `FixClosingDocument`), файлы черновика меняются на записанные. --}}
+@if ($closingThread ?? null)<input type="hidden" name="closing_thread" value="{{ $closingThread }}">@endif
 @if ($closing ?? null)
     <input type="hidden" name="closing" value="{{ $closing }}">
     @if ($closingReplaces ?? null)<input type="hidden" name="closing_replaces" value="{{ $closingReplaces }}">@endif

@@ -14,7 +14,7 @@
     $issued = $i && $i->state === InvoiceState::Issued;
 @endphp
 <span class="doc-sum nums">{{ Money::rub($sum) }}</span>
-@if ($manage && $d->state === 'send' && $d->live())
+@if ($manage && in_array($d->state, ['send', 'review', 'answered'], true) && $d->live())
     @include('park.money.closing-send', ['label' => 'Отправить', 'class' => 'btn btn-s btn-accent'])
     <span data-controller="sheet" class="contents">
         <button type="button" class="btn btn-s btn-quiet" data-action="sheet#open"><x-ui.icon name="check" class="size-4"/>Отправили сами</button>
