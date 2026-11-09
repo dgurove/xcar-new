@@ -8,7 +8,7 @@ use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 use PhpOffice\PhpSpreadsheet\Cell\DataType;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Shared\Date as ExcelDate;
-use PhpOffice\PhpSpreadsheet\Style\NumberFormat;
+use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use RuntimeException;
 use ZipArchive;
 
@@ -62,7 +62,6 @@ final class Template
             }
         }
         $merges = array_values(array_filter($sheet->getMergeCells(), fn ($m) => preg_match('/^([A-Z]+)'.$sample.':([A-Z]+)'.$sample.'$/', $m)));
-        $height = $sheet->getRowDimension($sample)->getRowHeight();
         $n = max(1, count($rows));
         if ($n > 1) {
             $sheet->insertNewRowBefore($sample + 1, $n - 1);
@@ -82,8 +81,11 @@ final class Template
                 foreach ($merges as $m) {
                     $sheet->mergeCells(str_replace((string) $sample, (string) $r, $m));
                 }
-                $sheet->getRowDimension($r)->setRowHeight($height);
             }
+            // Высота — по содержимому, текст — посередине по вертикали (09.11.2026, владелец: «высота строк не огромная, а по
+            // содержанию; выравнивание по вертикали, а не по низу»): высоту образца не копируем, Excel подбирает её сам.
+            $sheet->getRowDimension($r)->setRowHeight(-1);
+            $sheet->getStyle('A'.$r.':'.Coordinate::stringFromColumnIndex($hi).$r)->getAlignment()->setVertical(Alignment::VERTICAL_CENTER);
             foreach ($cells as $col => $text) {
                 self::put($sheet, $col.$r, $text, $data + ['first' => $first, 'last' => $last]);
             }
@@ -100,6 +102,8 @@ final class Template
                 }
             }
         }
+        // Фильтр в шапке таблицы прежнего файла акту не нужен — стрелки в каждой клетке шапки.
+        $sheet->setAutoFilter('');
         IOFactory::createWriter($book, 'Xlsx')->save($out);
     }
 
@@ -115,10 +119,8 @@ final class Template
             $v = $data[$m[1]];
             if ($v instanceof DateTimeInterface) {
                 $cell->setValue(ExcelDate::PHPToExcel($v));
-                $format = $sheet->getStyle($coord)->getNumberFormat();
-                if (in_array($format->getFormatCode(), [NumberFormat::FORMAT_GENERAL, '@'], true)) {
-                    $format->setFormatCode('dd.mm.yyyy');
-                }
+                // Дата — всегда «28.03.2026»: формат прежних файлов «m/d/yyyy» Excel на маке показывал «3/28/26».
+                $sheet->getStyle($coord)->getNumberFormat()->setFormatCode('dd.mm.yyyy');
 
                 return;
             }

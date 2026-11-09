@@ -49,7 +49,10 @@ final class RegistryAct
         $out = [];
         foreach (self::form($invoice)->files($tow) as $template => $title) {
             [$rows, $keys] = $this->rows($invoice, $template);
-            $out[$title.' '.$invoice->fileNo().'.'.pathinfo($template, PATHINFO_EXTENSION)] = Template::fill($template, $vars, $rows, $keys);
+            // Отчёт-акт Альфы — собирается кодом (`ReportSheet`, 09.11.2026), остальные формы — прежние файлы страховых.
+            $out[$title.' '.$invoice->fileNo().'.'.pathinfo($template, PATHINFO_EXTENSION)] = $template === 'report.xlsx'
+                ? ReportSheet::build($vars, $rows)
+                : Template::fill($template, $vars, $rows, $keys);
         }
 
         return $out;
@@ -98,6 +101,8 @@ final class RegistryAct
                 ? 'Хранитель окончил оказание услуг Поклажедателю, сведения о которых указаны в нижеприведенной таблице.'
                 : 'Сведения об оказанных услугах указаны в нижеприведенной таблице.',
             'total' => Money::plain($total, 0, false),
+            // Итог числом — ячейка итога отчёт-акта (без формулы по скрытым столбцам, 09.11.2026).
+            'sum' => $total,
             'total_text' => Money::plain($rub, 0, false).' ('.mb_strtoupper(mb_substr($words, 0, 1)).mb_substr($words, 1).') '.Plural::of($rub, ['рубль', 'рубля', 'рублей']).' '.$kop.' копеек',
             'total_rub' => Money::plain($rub, 0, false).' руб. '.$kop.' коп.',
             'total_words' => Words::money($total),
@@ -180,7 +185,7 @@ final class RegistryAct
             'report.xlsx' => $charges->map(fn (Charge $c) => [
                 'vin' => $c->vehicle->vin, 'accepted' => $c->vehicle->accepted_at?->copy()->startOfDay(), 'released' => $c->vehicle->released_at?->copy()->startOfDay(),
                 'ref' => $c->vehicle->ref, 'policy' => $c->vehicle->policy_no, 'plate' => $c->vehicle->plate, 'car' => $car($c->vehicle),
-                'service' => $c->kind === ChargeKind::Storage ? $service.$this->part($c) : mb_strtoupper($c->title), 'days' => $money($c->qty), 'price' => $money($c->price),
+                'service' => $c->kind === ChargeKind::Storage ? $service.$this->part($c) : mb_strtoupper($c->title), 'amount' => $money($c->amount),
             ]),
             'report-tow.xlsx' => $charges->map(fn (Charge $c) => [
                 'vin' => $c->vehicle->vin, 'date' => $day($c), 'ref' => $c->vehicle->ref, 'policy' => $c->vehicle->policy_no, 'plate' => $c->vehicle->plate,

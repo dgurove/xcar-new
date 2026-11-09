@@ -1,6 +1,6 @@
 {{-- Действия документа в строке заголовка страницы (05.11.2026, владелец: «шапку вообще убрать: там 4 кнопки и сумма,
      номер, без НДС и сколько — необязательно; компактно, чтобы спокойно смотреть содержание»): сумма, «Отправить» и
-     «Отправили сами» (у отправленного — «Оплачен» и «Отправить снова»), файлы счёта и акта (просмотр в шторке документов,
+     «Отправили сами» (у отправленного — «Оплачен» и «Отправить снова»; «Отправить» сначала спрашивает — `closing-send`), файлы счёта и акта (просмотр в шторке документов,
      скачать — в её полосе), «···». Состояние — словом у заголовка (`closing-page`). --}}
 @php
     use App\Support\Money; use App\Support\Ago; use App\Billing\InvoiceState;
@@ -15,7 +15,7 @@
 @endphp
 <span class="doc-sum nums">{{ Money::rub($sum) }}</span>
 @if ($manage && $d->state === 'send' && $d->live())
-    <button type="button" class="btn btn-s btn-accent" data-controller="emit" data-action="emit#send" data-emit-event-param="letters:open" data-emit-url-param="{{ $mailUrl }}"><x-ui.icon name="send" class="size-4"/>Отправить</button>
+    @include('park.money.closing-send', ['label' => 'Отправить', 'class' => 'btn btn-s btn-accent'])
     <span data-controller="sheet" class="contents">
         <button type="button" class="btn btn-s btn-quiet" data-action="sheet#open"><x-ui.icon name="check" class="size-4"/>Отправили сами</button>
         <x-ui.sheet :id="'fix-'.$d->key" title="Отправили сами">@include('park.money.closing-fix', ['replaces' => null])</x-ui.sheet>
@@ -27,7 +27,7 @@
             <x-ui.sheet :id="'paid-'.$i->id" :title="'Оплата по счёту '.$i->label()"><x-billing.pay-form :invoice="$i" :action="'/money/invoices/'.$i->id.'/payments'" :sources="$sources" sheet/></x-ui.sheet>
         </span>
     @endif
-    <button type="button" class="btn btn-s btn-quiet" data-controller="emit" data-action="emit#send" data-emit-event-param="letters:open" data-emit-url-param="{{ $mailUrl }}"><x-ui.icon name="send" class="size-4"/>Отправить снова</button>
+    @include('park.money.closing-send', ['label' => 'Отправить снова', 'class' => 'btn btn-s btn-quiet'])
 @endif
 @if ($files && $d->state !== 'blocked')
     <span class="contents" data-docs-scope>

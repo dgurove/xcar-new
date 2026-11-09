@@ -11,6 +11,7 @@
     <input type="hidden" name="closing" value="{{ $closing }}">
     @if ($closingReplaces ?? null)<input type="hidden" name="closing_replaces" value="{{ $closingReplaces }}">@endif
     <input type="hidden" name="closing_label" value="{{ old('closing_label', $closingLabel ?? '') }}">
+    <input type="hidden" name="closing_send" value="{{ old('closing_send', $closingSend ?? 'both') }}">
     @foreach (old('closing_files', $closingFiles ?? []) as $f)<input type="hidden" name="closing_files[]" value="{{ $f }}">@endforeach
 @endif
 <input type="hidden" name="retry" value="{{ request()->getRequestUri() }}">
