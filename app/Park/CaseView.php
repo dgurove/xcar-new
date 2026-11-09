@@ -99,7 +99,7 @@ final class CaseView
             'vendors' => Vendor::where(fn ($q) => $q->onPark()->where('is_active', true))->orWhere('vendors.id', $vehicle->vendor_id)->orderBy('name')->pluck('name', 'id'),
             'categories' => Category::options(),
             // Персональная ставка важнее прайса: `Accrual` считает по ней, а чип показывал бы лестницу вендора.
-            'storageRate' => $vehicle->storage_rate !== null ? 'своя '.Money::rub($vehicle->storage_rate).'/сут' : Tariff::ladderLabel(Tariff::ladderFor($vehicle, TariffService::Storage)),
+            'storageRate' => $vehicle->storage_rate !== null ? 'своя '.Money::rub($vehicle->storage_rate).'/д' : Tariff::ladderLabel(Tariff::ladderFor($vehicle, TariffService::Storage)),
             'accrued' => Accrual::summary($vehicle),
             'buyerFrom' => $vehicle->sold_at ? Accrual::buyerFrom($vehicle) : null,
             'buyerRate' => $vehicle->sold_at ? Accrual::buyerRate($vehicle) : 0,

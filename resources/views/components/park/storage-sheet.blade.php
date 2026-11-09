@@ -42,7 +42,7 @@
             <input type="hidden" name="mode" value="rate">
         @endif
         <div class="fields" data-reveal-target="pane" data-reveal-key="rate" @if ($mode !== 'rate') hidden @endif>
-            <x-ui.field name="storage_rate" :id="$id.'-rate'" label="Своя ставка, ₽/сут"
+            <x-ui.field name="storage_rate" :id="$id.'-rate'" label="Своя ставка, ₽/д"
                 :value="$vehicle->storage_rate !== null ? Money::nums((int) round($vehicle->storage_rate)) : null" :placeholder="\App\Park\VehicleRate::hint($vehicle)"/>
             <x-ui.field name="category" :id="$id.'-category'" label="Тип ТС" :options="collect(\App\Cars\Category::cases())->mapWithKeys(fn ($c) => [$c->value => $c->label()])->all()" placeholder="—" :value="$vehicle->category?->value"/>
             <x-ui.field digits name="value" :id="$id.'-value'" label="Оценочная, ₽" :value="$vehicle->value ? Money::nums($vehicle->value) : null"/>

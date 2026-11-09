@@ -146,7 +146,7 @@ final class Accrual
         return $vehicle->buyer_free_until->copy()->addDay()->startOfDay();
     }
 
-    /** Ставка покупателя на сегодня — для чипа «покупатель с …, N ₽/сут». */
+    /** Ставка покупателя на сегодня — для чипа «покупатель с …, N ₽/д». */
     public static function buyerRate(Vehicle $vehicle): float
     {
         $index = $vehicle->accepted_at ? (int) $vehicle->accepted_at->copy()->startOfDay()->diffInDays(now()->startOfDay()) + 1 : 1;
@@ -249,7 +249,7 @@ final class Accrual
     }
 
     /**
-     * Ставка на сегодня (у выданной — на день выдачи) по нынешнему плательщику: чип и столбец «₽/сут».
+     * Ставка на сегодня (у выданной — на день выдачи) по нынешнему плательщику: чип и столбец «₽/д».
      * null — прайса на эту ТС нет: не заполнена категория, не заполнена стоимость при тарифе по стоимости
      * или у вендора нет прайса вовсе.
      */

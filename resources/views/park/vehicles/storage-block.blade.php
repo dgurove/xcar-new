@@ -36,7 +36,7 @@
                         <x-car.variant-hint :v="$variant" :car="$vehicle?->car_id"/>
                     </div>
                 @endif
-                @if ($rate && $vehicle->storage_rate !== null)<div class="min-w-0"><div class="field-label">Своя ставка</div><div class="mt-0.5 nums">{{ Money::nums((int) round($vehicle->storage_rate)) }} ₽/сут</div></div>@endif
+                @if ($rate && $vehicle->storage_rate !== null)<div class="min-w-0"><div class="field-label">Своя ставка</div><div class="mt-0.5 nums">{{ Money::nums((int) round($vehicle->storage_rate)) }} ₽/д</div></div>@endif
             </div>
         @endunless
     </x-slot:view>
@@ -45,7 +45,7 @@
             <x-slot:hint><x-car.variant-hint :v="$variant" :car="$vehicle?->car_id"/><x-car.source-values :items="$valueSources"/></x-slot:hint>
         </x-ui.field>
         @if ($rate)
-            <x-ui.field name="storage_rate" label="Своя ставка, ₽/сут"
+            <x-ui.field name="storage_rate" label="Своя ставка, ₽/д"
                 :value="$vehicle->storage_rate !== null ? Money::nums((int) round($vehicle->storage_rate)) : null" :placeholder="\App\Park\VehicleRate::hint($vehicle)"/>
         @endif
     </div>

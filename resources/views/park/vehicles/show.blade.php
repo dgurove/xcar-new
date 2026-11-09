@@ -149,7 +149,7 @@
                     </a>
                 @endforeach
                 @if ($buyerFrom)
-                    <div class="row justify-between"><span class="{{ $buyerFrom->isPast() ? 'text-danger' : 'text-ink-muted' }}">Покупатель платит с {{ \App\Support\Ago::html($buyerFrom, words: false) }}</span><span class="nums">{{ Money::rub($buyerRate) }}/сут</span></div>
+                    <div class="row justify-between"><span class="{{ $buyerFrom->isPast() ? 'text-danger' : 'text-ink-muted' }}">Покупатель платит с {{ \App\Support\Ago::html($buyerFrom, words: false) }}</span><span class="nums">{{ Money::rub($buyerRate) }}/д</span></div>
                 @endif
                 {{-- До какого дня хранение выставлено: дальше счёт считается с этого дня, и это единственное место, где видно. --}}
                 @if ($vehicle->storage_billed_until)

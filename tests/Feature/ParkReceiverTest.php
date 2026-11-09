@@ -71,7 +71,7 @@ class ParkReceiverTest extends TestCase
         $this->assertStringNotContainsString('Ставка', $list);
         $this->assertStringNotContainsString('300 ₽', str_replace("\u{A0}", ' ', $list));
         $case = $this->actingAs($this->receiver)->get(Surface::Park->url("/cars/{$id}"))->assertOk()->getContent();
-        $this->assertStringNotContainsString('₽/сут', $case);
+        $this->assertStringNotContainsString('₽/д', $case);
         $this->assertStringNotContainsString('Выставить счёт', $case);
 
         // Управляющий — как раньше.

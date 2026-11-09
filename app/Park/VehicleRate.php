@@ -53,17 +53,17 @@ final class VehicleRate
     }
 
     /**
-     * Что писать во фразе: своя — «300 ₽/сут, своя», по тарифу — ставка сегодня (до приёма — первая ступень), нет — null.
+     * Что писать во фразе: своя — «300 ₽/д, своя», по тарифу — ставка сегодня (до приёма — первая ступень), нет — null.
      *
      * @return array{text: ?string, own: bool}
      */
     public static function shown(Vehicle $vehicle): array
     {
         if ($vehicle->storage_rate !== null) {
-            return ['text' => Money::nums((int) round($vehicle->storage_rate)).' ₽/сут', 'own' => true];
+            return ['text' => Money::nums((int) round($vehicle->storage_rate)).' ₽/д', 'own' => true];
         }
         $rate = $vehicle->accepted_at ? Accrual::rateToday($vehicle) : Tariff::ladderFor($vehicle, TariffService::Storage)->first()?->price;
 
-        return ['text' => $rate !== null ? Money::nums((int) round($rate)).' ₽/сут' : null, 'own' => false];
+        return ['text' => $rate !== null ? Money::nums((int) round($rate)).' ₽/д' : null, 'own' => false];
     }
 }

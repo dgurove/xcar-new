@@ -100,7 +100,7 @@ class Tariff extends Model
     }
 
     /**
-     * Лестница целиком, со всеми ступенями по стоимости, — для сводки условий вендора («250…450 ₽/сут по
+     * Лестница целиком, со всеми ступенями по стоимости, — для сводки условий вендора («250…450 ₽/д по
      * стоимости»): тот же уровень, что у начисления, но без выбора ступени под стоимость конкретной ТС.
      *
      * @return Collection<int, self>
@@ -291,7 +291,7 @@ class Tariff extends Model
         return self::ladderFor($vehicle, $service, $on)->first();
     }
 
-    /** «300 ₽/сут с 4 дн», «250…450 ₽/сут по стоимости», «5 000 ₽ до 30 км», «150 ₽/км». */
+    /** «300 ₽/д с 4 дн», «250…450 ₽/д по стоимости», «5 000 ₽ до 30 км», «150 ₽/км». */
     public static function ladderLabel(Collection $ladder): ?string
     {
         if ($ladder->isEmpty()) {
@@ -308,19 +308,19 @@ class Tariff extends Model
                     return 'бесплатно';
                 }
                 if ($steps->pluck('from_value')->unique()->count() > 1) {
-                    return Money::nums($prices->min()).'…'.Money::rub($prices->max()).'/сут по стоимости';
+                    return Money::nums($prices->min()).'…'.Money::rub($prices->max()).'/д по стоимости';
                 }
                 $one = $steps->first(fn (self $t) => $t->price > 0);
 
                 // «от 0 ₽» не пишем: это самая нижняя ступень, порог там ничего не говорит.
-                return Money::rub($one->price).'/сут'.($one->from_day > 1 ? ' с '.$one->from_day.' дн' : '').($one->from_value > 0 ? ' от '.Money::rub($one->from_value) : '');
+                return Money::rub($one->price).'/д'.($one->from_day > 1 ? ' с '.$one->from_day.' дн' : '').($one->from_value > 0 ? ' от '.Money::rub($one->from_value) : '');
             }
             $paid = $ladder->first(fn (self $t) => $t->price > 0);
             if (! $paid) {
                 return 'бесплатно';
             }
 
-            return Money::rub($paid->price).'/сут'.($paid->from_day > 1 ? ' с '.$paid->from_day.' дн' : '');
+            return Money::rub($paid->price).'/д'.($paid->from_day > 1 ? ' с '.$paid->from_day.' дн' : '');
         }
         $t = $ladder->first();
 

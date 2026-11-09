@@ -17,7 +17,7 @@
     {{-- Тип ТС — всем людям парковки, своя ставка — деньги: приёмщику (`User::parkMoney`) её нет (30.10.2026). --}}
     <x-ui.field name="intake_category" label="Тип ТС" :options="collect(\App\Cars\Category::cases())->mapWithKeys(fn ($c) => [$c->value => $c->label()])->all()" placeholder="—" :value="old('intake_category', $vehicle->category?->value)"/>
     @if (auth()->user()->parkMoney())
-        <x-ui.field name="intake_rate" label="Своя ставка, ₽/сут"
+        <x-ui.field name="intake_rate" label="Своя ставка, ₽/д"
             :value="old('intake_rate', $vehicle->storage_rate !== null ? \App\Support\Money::nums((int) round($vehicle->storage_rate)) : null)" :placeholder="\App\Park\VehicleRate::hint($vehicle)"/>
     @endif
     <div class="field">
