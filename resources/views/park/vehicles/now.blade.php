@@ -43,7 +43,7 @@
             @if ($key === 'pickup' && ($late = $vehicle->pickupLate()))
                 {{-- Продана, а не забирают (02.11.2026, владелец): красным, когда продали и что сказать; день, о котором договорились, —
                      здесь же (`x-park.pickup`), звонок — тому, кто заберёт. --}}
-                <section class="flex flex-col gap-2 rounded-(--radius-l) bg-danger-soft p-3">
+                <section class="flash flash-danger flex flex-col gap-2">
                     <div class="flex min-w-0 flex-col gap-0.5">
                         <h2 class="text-base font-medium text-danger">{{ mb_ucfirst($late) }}</h2>
                         <span class="text-sm text-ink-muted">Реализована <span class="nums">{{ \App\Support\Ago::day($vehicle->sold_at) }}</span>@if ($vehicle->pickup_name), заберёт {{ $vehicle->pickup_name }}@endif</span>

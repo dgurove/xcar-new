@@ -1045,16 +1045,16 @@ html.kb-open { --home-gap: 0px; }
   .header:has([data-alarm-button="phone"]:not([hidden])) [data-chats-phone] { display: none; }
   .header-btn.alarm-btn[hidden] { display: none; }
   @media (prefers-reduced-motion: reduce) { .header-btn.alarm-btn { animation: none; } }
-  /* Карточка уведомления тревоги — красная (`Notice::alarm`), закрытая — улетает в капсулу шапки. */
-  .banner.banner--alarm { background: var(--color-danger); color: #fff; }
-  .banner.banner--alarm .banner-time, .banner.banner--alarm .banner-text, .banner.banner--alarm .banner-close { color: rgb(255 255 255 / .85); }
-  .banner.banner--alarm .row-icon { background: rgb(255 255 255 / .2); color: #fff; }
+  /* Карточка уведомления тревоги (`Notice::alarm`) — обычная, красный только кружок значка (10.11.2026, без заливки
+     цветом); закрытая — улетает в капсулу шапки. */
+  .banner.banner--alarm .row-icon { background: var(--color-danger); color: #fff; }
   /* Строка шторки тревоги — красная полоса слева, как у строки с паникой. */
   .alarm-row { position: relative; }
   .alarm-row::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--color-danger); }
   .banner.is-to-alarm { transition: transform .45s cubic-bezier(.4, 0, .2, 1), opacity .45s; opacity: 0; }
-  /* Жёлтое «внимание» без срочности: «Без цены», «С НДС», «отключён». */
-  .tag-amber { --tag-bg: #fef3c7; --tag-text: #92400e; --tag-bg-d: #3f2606; --tag-text-d: #fcd34d; }
+  /* «Внимание» без срочности: «Без цены», «С НДС», «отключён» — серая метка с оранжевым словом (10.11.2026, владелец:
+     бледно-жёлтое — «вырвиглаз»). */
+  .tag-amber { --tag-bg: var(--color-surface-3); --tag-text: var(--color-urgent); --tag-bg-d: var(--color-surface-3); --tag-text-d: var(--color-urgent); }
   .tag-recommended { --tag-bg: #e3f1fb; --tag-text: #1878b8; --tag-bg-d: #0f2537; --tag-text-d: #6cc0ff; }
 
   /* Пилюля: пресет, раздел, состояние. Активная — лайм с белым. */
@@ -1399,7 +1399,7 @@ html.kb-open { --home-gap: 0px; }
   .valuation-step[data-state="done"] .valuation-tick { @apply block; animation: valuation-draw .35s ease-out forwards; }
   .valuation-lines { @apply mt-4 max-h-[40dvh] overflow-hidden text-sm; mask-image: linear-gradient(to bottom, #000 80%, transparent); }
   .valuation-line { @apply truncate rounded-md px-2 py-0.5 text-ink-dim transition-colors duration-300; }
-  .valuation-line.is-kept { @apply text-ink; background: var(--color-accent-soft); }
+  .valuation-line.is-kept { @apply text-ink; box-shadow: inset 3px 0 0 var(--color-accent); }
   .valuation-ok { @apply size-16 flex-none; fill: none; stroke: var(--color-accent); stroke-width: 4; stroke-linecap: round; stroke-linejoin: round; }
   .valuation-ok circle { stroke-dasharray: 176; stroke-dashoffset: 176; animation: valuation-draw .5s ease-out forwards; }
   .valuation-ok path { stroke-dasharray: 44; stroke-dashoffset: 44; animation: valuation-draw .3s .35s ease-out forwards; }
@@ -1517,7 +1517,6 @@ html.kb-open { --home-gap: 0px; }
   /* Заметка в истории дела: реплика на подложке, отличима от событий-строк. */
   .history-note { @apply rounded-(--radius-m) bg-surface-2 px-3 py-2; }
   .box-nested { @apply rounded-(--radius-l) bg-surface-2 p-4; }
-  .box-urgent { @apply bg-urgent-soft; }
 
   /* Пустое состояние — фраза серым по центру прямо на фоне экрана, без плашки (плашкой в тёмной теме выходила
      яма); куда пойти — тихой кнопкой под ней. Пустая группа внутри экрана — .empty-line: одной серой строкой
@@ -1530,11 +1529,20 @@ html.kb-open { --home-gap: 0px; }
   .empty-line { @apply flex min-h-9 flex-wrap items-center gap-x-3 gap-y-2 px-1 text-ink-muted; }
   .empty-line > p { @apply min-w-0 flex-auto; }
 
-  .flash { @apply rounded-(--radius-l) px-4 py-3; }
-  .flash-open   { @apply bg-open-soft text-open; }
-  .flash-danger { @apply bg-danger-soft text-danger; }
-  .flash-accent { @apply bg-accent-soft text-accent-text; }
-  .flash-urgent { @apply bg-urgent-soft text-urgent; }
+  /* Плашки внимания без заливки цветом (10.11.2026, владелец: «блеклым жёлтым заливаешь — вырвиглаз», выбрал вариант А):
+     блок белый (на белом — серый), цвет — только кружок со значком слева (`.flash`, `.doc-alert`, `.box-urgent h2`).
+     Строки таблиц и списков — полосой слева (вариант Б, `--stripe`). */
+  .flash { @apply relative block rounded-(--radius-l) bg-surface py-3 pr-4 text-ink; padding-left: 3rem; --mark: var(--color-open); --mark-glyph: '✓'; }
+  .flash::before, .doc-alert::before { content: var(--mark-glyph); position: absolute; left: 1rem; top: .8125rem; display: grid; place-items: center; width: 1.375rem; height: 1.375rem; border-radius: 999px; background: var(--mark); color: #fff; font-size: .8125rem; font-weight: 700; line-height: 1; }
+  .sheet .flash, .box .flash, .detail-card .flash { @apply bg-surface-2; }
+  .flash-open   { --mark: var(--color-open); --mark-glyph: '✓'; }
+  .flash-danger { --mark: var(--color-danger); --mark-glyph: '!'; }
+  .flash-accent { --mark: var(--color-accent); --mark-glyph: '✦'; }
+  .flash-urgent { --mark: var(--color-urgent); --mark-glyph: '!'; }
+  .box-urgent h2::before { content: '!'; display: inline-grid; place-items: center; width: 1.375rem; height: 1.375rem; margin-right: .5rem; vertical-align: .125rem; border-radius: 999px; background: var(--color-urgent); color: #fff; font-size: .8125rem; font-weight: 700; line-height: 1; }
+  .box-nested.box-urgent h2::before { content: none; }
+  /* Строка с полосой слева — вариант Б. */
+  .stripe, .box-nested.box-urgent { box-shadow: inset 4px 0 0 var(--stripe, var(--color-urgent)); }
 
   /* Крошки, строки списков, тексты. */
   .crumbs { @apply mb-4 text-sm text-ink-dim; }
@@ -1572,14 +1580,14 @@ html.kb-open { --home-gap: 0px; }
   /* Подтверждение светофором (26.10.2026, `Offer::bidZone`): не ниже порога — сумма зелёным, ниже — жёлтая заливка
      строки, не выше закупочной — красная. Слов «ниже минимальной» нет — цвет и есть сигнал. */
   .bid-row--ok .bid-amount { color: var(--color-open); }
-  .bid-row--low { background: var(--color-warn-soft); }
-  .bid-row--low .bid-amount { color: var(--color-warn); }
-  .bid-row--loss { background: var(--color-danger-soft); }
+  .bid-row--low { box-shadow: inset 4px 0 0 var(--color-urgent); }
+  .bid-row--low .bid-amount { color: var(--color-urgent); }
+  .bid-row--loss { box-shadow: inset 4px 0 0 var(--color-danger); }
   .bid-row--loss .bid-amount { color: var(--color-danger); }
   /* Контрпредложение — карточка менеджера и строка админа: заливка акцента, без обводок. */
-  .counter-card { @apply rounded-(--radius-l) bg-accent-soft p-4; }
+  .counter-card { @apply rounded-(--radius-l) bg-surface p-4; } /* без заливки цветом (10.11.2026, владелец: «в глазах плывёт») — цвет только у подписи */
   .confirm-warn { display: grid; place-items: center; width: 2.75rem; height: 2.75rem; margin-bottom: .75rem; border-radius: 9999px;
-    background: var(--color-warn-soft); color: var(--color-warn); font-weight: 600; font-size: 1.25rem; }
+    background: var(--color-urgent); color: #fff; font-weight: 600; font-size: 1.25rem; }
   .field-input.is-shaking { animation: vin-shake .4s ease-in-out 1; }
   .list .row { border-radius: 0; background: transparent; min-height: 3.5rem; padding: .625rem 1rem; gap: .75rem; }
   .list > * + * { position: relative; }
@@ -1672,13 +1680,13 @@ html.kb-open { --home-gap: 0px; }
   .activity-legend i { @apply ml-2 inline-block size-2.5 rounded-[3px]; background: var(--color-ink); }
   .activity-legend i.is-visit { background: var(--color-ink-dim); }
   .activity-gap { @apply mt-5 flex items-center justify-center gap-2 rounded-(--radius-l) bg-surface-2 px-4 py-3 text-sm text-ink-muted; }
-  .activity-gap.is-long { @apply bg-danger-soft text-danger; }
+  .activity-gap.is-long { @apply text-danger; }
   .activity-what { @apply mt-0.5 text-sm text-ink-muted; }
   /* Подпись группы строк, как в «Настройках» iOS: мелко и серым над плашкой, справа — состояние словом. */
   .list-cap { @apply flex items-baseline gap-2 px-4 pb-1.5 text-sm font-medium text-ink-dim; }
   /* Вознаграждение менеджера по ДКП — его прибыль (05.10.2026): строка в зелёном, сумма с мягким свечением и одним
      проходом блика при показе; без движения — просто зелёным. */
-  .row.profit { @apply bg-open-soft; }
+  .row.profit { box-shadow: inset 4px 0 0 var(--color-open); }
   .profit-sum { @apply text-xl font-bold; color: var(--color-open); filter: drop-shadow(0 0 10px color-mix(in srgb, var(--color-open) 45%, transparent)); }
   @media (prefers-reduced-motion: no-preference) {
     .profit-sum { background: linear-gradient(100deg, var(--color-open) 40%, color-mix(in srgb, var(--color-open) 30%, white) 50%, var(--color-open) 60%) 100% 0 / 250% 100%;
@@ -1769,14 +1777,16 @@ html.kb-open { --home-gap: 0px; }
   .table tbody.table-more > tr, .table tbody.table-more > tr:hover { height: auto; cursor: default; background: transparent; }
   .table tbody.table-more > tr > td { padding: 1.25rem .75rem; text-align: center; font-size: var(--text-sm); color: var(--color-ink-dim); }
   @media (hover: hover) { .table tbody tr:hover { background: var(--color-hover); } }
-  .table tbody tr[aria-selected="true"], .table tbody tr[aria-selected="true"]:hover { background: var(--color-accent-soft); }
+  /* Выбранная — серым с лаймовой полосой слева (10.11.2026: без заливки цветом). */
+  .table tbody tr[aria-selected="true"], .table tbody tr[aria-selected="true"]:hover { background: var(--color-surface-3); }
+  .table tbody tr[aria-selected="true"] > td:first-child { box-shadow: inset 4px 0 0 var(--color-accent); }
   /* Ещё ищем покупателя и время есть (логистика, `SaleState::waiting`) — строка приглушена; наведение и открытая — целиком. */
   .table tbody tr.is-dim > td:not(.pick-cell) { opacity: .5; }
   .table tbody tr.is-dim:hover > td, .table tbody tr.is-dim[aria-selected="true"] > td { opacity: 1; }
   /* Строка списка `.list` с карточкой рядом (лента «Оплат») — выбрана так же, как строка таблицы. */
-  .list .row[aria-selected="true"], .list .row[aria-selected="true"]:hover { background: var(--color-accent-soft); }
+  .list .row[aria-selected="true"], .list .row[aria-selected="true"]:hover { background: var(--color-surface-3); box-shadow: inset 4px 0 0 var(--color-accent); }
   /* Плитка и строка, чья карточка открыта рядом, — как выбранная строка таблицы. */
-  .card[aria-selected="true"] { background: var(--color-accent-soft); box-shadow: inset 0 0 0 2px var(--color-accent); }
+  .card[aria-selected="true"] { box-shadow: inset 0 0 0 2px var(--color-accent); }
   .table tbody tr:focus-visible { outline: 2px solid var(--color-accent); outline-offset: -2px; }
   .table tbody tr.table-group, .table tbody tr.table-group:hover { height: auto; cursor: default; background: var(--color-surface); }
   .table tr.table-group > th {
@@ -2055,9 +2065,9 @@ html.kb-open { --home-gap: 0px; }
   .pass-done { @apply m-4 flex aspect-[4/3] flex-col items-center justify-center gap-3 rounded-(--radius-l) bg-surface-2 text-ink-muted; }
   .pass-done-icon { @apply flex size-16 items-center justify-center rounded-full bg-closed-soft text-ink; }
   /* Страница скана обычной камерой: что делать — лаймовой плашкой с иконкой сверху. */
-  .scan-lead { @apply flex items-center gap-3 rounded-(--radius-l) bg-accent-soft p-4; }
+  .scan-lead { @apply flex items-center gap-3 rounded-(--radius-l) bg-surface p-4; }
   .scan-lead-icon { @apply flex size-12 shrink-0 items-center justify-center rounded-full bg-accent text-white; }
-  .scan-lead-icon--danger { @apply size-16 bg-danger-soft text-danger; }
+  .scan-lead-icon--danger { @apply size-16 bg-danger text-white; }
   /* Поле строкой плашки: подпись сверху мелко, ввод без своей подложки, ошибка под ним. */
   .form-row { @apply flex flex-col gap-0.5 px-4 py-2.5; }
   .form-row-label { @apply text-sm text-ink-muted; }
@@ -2202,13 +2212,10 @@ html.kb-open { --home-gap: 0px; }
   .pay-methods span { @apply flex items-center gap-1.5; }
   .qr-result-again { @apply flex size-10 shrink-0 items-center justify-center rounded-full text-ink-muted hover:bg-hover; }
   .qr-result-again svg { width: 1.25rem; height: 1.25rem; }
-  .qr-result--open { @apply bg-accent-soft; }
   .qr-result--open .qr-result-icon { @apply bg-accent; }
   .qr-result--open .qr-result-title { @apply text-accent-text; }
-  .qr-result--urgent { @apply bg-urgent-soft; }
   .qr-result--urgent .qr-result-icon { @apply bg-urgent; }
   .qr-result--urgent .qr-result-title { @apply text-urgent; }
-  .qr-result--danger { @apply bg-danger-soft; }
   .qr-result--danger .qr-result-icon { @apply bg-danger; }
   .qr-result--danger .qr-result-title { @apply text-danger; }
   .qr-result--wait { @apply bg-surface-2; }
@@ -2410,7 +2417,7 @@ html.kb-open { --home-gap: 0px; }
 /* «Счета и акты» (05.11.2026): в карточке — логотип крупно над суммой, плашки внимания красным, сумма месяца — справа в
    заголовке группы. */
 @layer components {
-  .doc-alert { @apply mb-3 rounded-(--radius-l) bg-danger-soft px-4 py-3; }
+  .doc-alert { @apply relative mb-3 rounded-(--radius-l) bg-surface py-3 pr-4; padding-left: 3rem; --mark: var(--color-danger); --mark-glyph: '!'; }
   /* Страница документа: сумма и действия — в строке заголовка (слот `actions`), отдельной шапки нет. */
   .doc-acts { @apply gap-2; }
   .doc-sum { @apply mr-2 text-xl font-semibold whitespace-nowrap; }
@@ -2529,7 +2536,7 @@ html.kb-open { --home-gap: 0px; }
   .route-leg .route-mark::before { content: ''; position: absolute; top: -.25rem; bottom: -.25rem; left: 50%; width: 3px; translate: -50% 0; border-radius: 2px; background: var(--color-accent); }
   .route-leg--ahead .route-mark::before { width: 2px; background: repeating-linear-gradient(to bottom, var(--color-ink-dim) 0 4px, transparent 4px 9px); }
   .route-leg-body { grid-column: 2 / -1; display: flex; align-items: center; gap: .75rem; width: 100%; margin-block: .25rem; padding: .5rem .75rem; border-radius: var(--radius-m); background: var(--color-surface-2); text-align: left; }
-  .route-leg--now .route-leg-body { background: var(--color-accent-soft); }
+  .route-leg--now .route-leg-body { box-shadow: inset 4px 0 0 var(--color-accent); }
   .route-who { overflow-wrap: anywhere; }
   .route-state { margin-left: auto; flex-shrink: 0; font-size: var(--text-sm); color: var(--color-ink-muted); text-align: right; }
   .route-leg--now .route-state { color: var(--color-accent-text); }
@@ -2675,7 +2682,7 @@ html.kb-open { --home-gap: 0px; }
   .parsing-label { @apply text-sm text-ink-dim sm:pt-2; }
   .parsing-cells { @apply grid grid-cols-2 gap-1.5; }
   .parsing-cell { @apply relative min-w-0 rounded-(--radius-m) bg-surface-2; }
-  .parsing-cell.is-now { background: var(--color-accent-soft); }
+  .parsing-cell.is-now { box-shadow: inset 4px 0 0 var(--color-accent); }
   .parsing-pick { @apply block w-full min-w-0 rounded-(--radius-m) px-3 py-1.5 text-left; }
   .parsing-cell:has(> .parsing-open) .parsing-value { @apply pr-6; }
   .parsing-cell.is-empty { @apply px-3 py-1.5; background: transparent; }
@@ -3588,7 +3595,7 @@ html.kb-open { --home-gap: 0px; }
   .search-link { display: block; min-width: 0; flex: 1 1 0; min-height: 2.75rem; padding: .4375rem .75rem; }
   .search-pop .search-link, .search-pop .search-all { border-radius: var(--radius-m); }
   @media (hover: hover) { .search-link:hover, .search-all:hover { background: var(--color-hover); } }
-  .search-results [data-hit].is-active { background: var(--color-accent-soft); }
+  .search-results [data-hit].is-active { background: var(--color-surface-3); }
   .search-title { @apply block truncate text-base text-ink; }
   .search-line { @apply mt-0.5 flex flex-wrap items-baseline text-sm text-ink-muted; column-gap: .3em; }
   .search-line > .search-ref { margin-right: .3em; }
@@ -4888,12 +4895,12 @@ dialog.lightbox:not(.lb-one) .lb-pill--bottom { bottom: calc(var(--lb-strip-bott
     .chat-row:hover + .chat-row::before, .chat-row:hover::before, .chat-row:has(+ .chat-row:hover)::before { display: none; }
   }
   /* Поиск — шапкой списка: окно переписки начинается вровень с ним; поле той же ширины и скругления, что строки. */
-  .chat-row[aria-current] { background: var(--color-accent-soft); }
+  .chat-row[aria-current] { background: var(--color-surface-3); box-shadow: inset 4px 0 0 var(--color-accent); }
   .chat-row[aria-current]::before, .chat-row[aria-current] + .chat-row::before { display: none; }
   .chat-row-photo { position: relative; flex-shrink: 0; width: 3.5rem; height: 2.5rem; }
   .chat-row-photo > img, .chat-row-photo > svg { width: 100%; height: 100%; object-fit: cover; border-radius: var(--radius-m); background: var(--color-surface-3); }
   .chat-row-avatar { position: absolute; right: -.375rem; bottom: -.375rem; box-shadow: 0 0 0 2px var(--color-surface); }
-  .chat-row[aria-current] .chat-row-avatar { box-shadow: 0 0 0 2px var(--color-accent-soft); }
+  .chat-row[aria-current] .chat-row-avatar { box-shadow: 0 0 0 2px var(--color-surface-3); }
   .chat-pane { display: none; min-height: 0; }
   .chat-split.has-current .chat-rows { display: none; }
   .chat-split.has-current .chat-pane { display: flex; flex-direction: column; }
@@ -4981,7 +4988,7 @@ dialog.lightbox:not(.lb-one) .lb-pill--bottom { bottom: calc(var(--lb-strip-bott
 
   /* Разделители: день липкой пилюлей по центру, «Новые сообщения» лаймовой строкой. */
   .chat-day { position: sticky; top: .25rem; z-index: 1; align-self: center; margin: .5rem 0 .25rem; padding: .1875rem .625rem; border-radius: 999px; background: var(--color-surface-3); font-family: var(--font-ui); font-size: 12px; color: var(--color-ink-muted); }
-  .chat-new { align-self: stretch; margin: .5rem 0 .25rem; padding: .25rem; border-radius: var(--radius-s); background: var(--color-accent-soft); text-align: center; font-family: var(--font-ui); font-size: 12px; color: var(--color-accent-text); }
+  .chat-new { align-self: stretch; margin: .5rem 0 .25rem; padding: .25rem; border-radius: var(--radius-s); text-align: center; font-family: var(--font-ui); font-size: 12px; color: var(--color-accent-text); }
   .chat-more { height: 1px; }
 }
 
@@ -5111,9 +5118,10 @@ dialog.lightbox:not(.lb-one) .lb-pill--bottom { bottom: calc(var(--lb-strip-bott
    схлопывается по высоте; «Отклонить» (`is-declining`): плашка гаснет и съезжает вниз. Высоту для схлопывания ставит
    `proposal_controller` (`--h`). Метка «Ждём приём» у названия — `.tag-await`. */
 @layer components {
-  .proposal { position: relative; overflow: hidden; display: flex; flex-wrap: wrap; align-items: center; gap: .75rem 1rem; padding: .875rem 1rem; border-radius: var(--radius-l); background: var(--color-accent-soft); }
+  .proposal { position: relative; overflow: hidden; display: flex; flex-wrap: wrap; align-items: center; gap: .75rem 1rem; padding: .875rem 1rem; border-radius: var(--radius-l); background: var(--color-surface); }
+  .detail-card .proposal, .box .proposal, .sheet .proposal { background: var(--color-surface-2); }
   .proposal-body { display: flex; align-items: flex-start; gap: .625rem; flex: 1 1 16rem; min-width: 0; }
-  .proposal-mark { position: relative; display: grid; place-items: center; flex: none; width: 1.75rem; height: 1.75rem; margin-top: -.125rem; border-radius: 999px; background: var(--color-surface); color: var(--color-accent-text); }
+  .proposal-mark { position: relative; display: grid; place-items: center; flex: none; width: 1.75rem; height: 1.75rem; margin-top: -.125rem; border-radius: 999px; background: var(--color-accent); color: #fff; }
   .proposal-mark > * { grid-area: 1 / 1; transition: opacity .25s, scale .35s cubic-bezier(.2, .8, .2, 1); }
   .proposal-check { opacity: 0; scale: .4; }
   .proposal-acts { display: flex; flex-wrap: wrap; gap: .5rem; margin-left: auto; }
