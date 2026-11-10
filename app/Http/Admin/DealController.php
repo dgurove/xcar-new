@@ -162,7 +162,7 @@ class DealController
      *
      * С 09.11.2026 — вкладками дел (`Offers\DealWork::section`, `?todo=`; владелец: «безумно неудобно», «Разобрать ответ —
      * отдельная вкладка, и в ней подзаголовки: каким-то пришло „ГОТС поступили на реализацию“, по каким-то запрос реквизитов»):
-     * открыт первый непустой раздел, «Все» — прежний общий вид. «Разобрать ответ» — подзаголовками по смыслу письма
+     * первой и по умолчанию — «Все» (10.11.2026): все дела группами в порядке вкладок. «Разобрать ответ» — подзаголовками по смыслу письма
      * (`Offers\ReplyKind`). Подзаголовок — ссылка (`&sub=`): только эта группа, адрес для начальника — скрепкой.
      *
      * @param  ?list<string>  $live  ключи строк живого обновления — рисуются только они, числа — по всему списку
@@ -179,34 +179,38 @@ class DealController
         })->filter()->values();
         $counts = $rows->countBy('section');
         $asked = (string) $request->query('todo');
-        $tab = $asked === DealWork::ALL || isset(DealWork::SECTIONS[$asked]) ? $asked
-            : (collect(DealWork::SECTIONS)->keys()->first(fn (string $k) => ($counts[$k] ?? 0) > 0) ?? DealWork::ALL);
-        $tabs = collect(DealWork::SECTIONS)->map(fn (string $title, string $key) => ['key' => $key, 'title' => $title, 'n' => $counts[$key] ?? 0])
-            ->push(['key' => DealWork::ALL, 'title' => 'Все', 'n' => null])
-            ->map(fn (array $t) => [...$t, 'count' => 'todo:'.$t['key'], 'href' => $link(['preset' => null, 'what' => null, 'todo' => $t['key']])])->values()->all();
+        // «Все» — первой и по умолчанию (10.11.2026, владелец: «чтобы точно не пропустили — а то разберут первую вкладку, а на
+        // остальные забьют»): все дела группами в порядке вкладок, у групп «Разобрать ответ» — смысл письма.
+        $tab = isset(DealWork::SECTIONS[$asked]) ? $asked : DealWork::ALL;
+        $tabs = collect([DealWork::ALL => 'Все', ...DealWork::SECTIONS])
+            ->map(fn (string $title, string $key) => ['key' => $key, 'title' => $title, 'n' => $key === DealWork::ALL ? $rows->count() : $counts[$key] ?? 0,
+                'count' => 'todo:'.$key, 'href' => $link(['preset' => null, 'what' => null, 'todo' => $key === DealWork::ALL ? null : $key])])->values()->all();
 
-        $rows = $tab === DealWork::ALL ? $rows : $rows->where('section', $tab);
-        $kinds = $tab === 'reply' ? self::replyKinds($rows->pluck('deal')) : collect();
-        $groups = $rows->groupBy(fn ($r) => $tab === 'reply' ? $kinds[$r['deal']->id]->value : $r['todo']['key'])->map(function (Collection $rows, string $key) use ($byWait, $tab, $link) {
+        $all = $tab === DealWork::ALL;
+        $rows = $all ? $rows : $rows->where('section', $tab);
+        $kinds = self::replyKinds($rows->where('section', 'reply')->pluck('deal'));
+        $order = array_flip(array_keys(DealWork::SECTIONS));
+        $groups = $rows->groupBy(fn ($r) => ($all ? $r['section'].'.' : '').($r['section'] === 'reply' ? $kinds[$r['deal']->id]->value : $r['todo']['key']))->map(function (Collection $rows, string $key) use ($byWait, $all, $link, $order) {
             $first = $rows->first();
-            $kind = $tab === 'reply' ? ReplyKind::from($key) : null;
-            $group = ['title' => $kind?->title() ?? $first['todo']['title'], 'rank' => $kind ? array_search($kind, ReplyKind::cases(), true) : $first['todo']['rank'],
+            $section = $first['section'];
+            $sub = $all ? substr($key, strlen($section) + 1) : $key;
+            $kind = $section === 'reply' ? ReplyKind::from($sub) : null;
+            $group = ['title' => $kind ? ($all ? DealWork::SECTIONS['reply'].': ' : '').$kind->title() : $first['todo']['title'],
+                'section' => $order[$section], 'rank' => $kind ? array_search($kind, ReplyKind::cases(), true) : $first['todo']['rank'],
                 'button' => null, 'size' => $rows->count(),
                 'rows' => $byWait ? $rows->sortBy(fn ($r) => $r['todo']['since']?->getTimestamp() ?? PHP_INT_MAX)->values() : $rows->values()];
-            if (str_starts_with($key, 'request:')) {
+            if (str_starts_with($sub, 'request:')) {
                 $vendor = $first['deal']->offer->vendor;
                 $group['title'] .= $vendor ? ': '.$vendor->name : '';
                 // Без числа: в письмо идут и гаражные сделки вендора, которых здесь нет, — «(8)» над шестью строками путало.
                 $group['button'] = ['label' => 'Отправить заявку', 'letters' => '/work/mail/new?request='.$vendor?->id.'&then=close'];
             }
-            // В «Все» подзаголовок не ссылка: он и есть вкладка.
-            if ($tab !== DealWork::ALL) {
-                $group['href'] = $link(['preset' => null, 'todo' => $tab, 'sub' => $key]);
-                $group['link'] = Surface::Crm->url('/work/deals?'.http_build_query(['todo' => $tab, 'sub' => $key]));
-            }
+            // Подзаголовок — ссылка на свою группу во вкладке раздела, скрепка — её адрес для начальника.
+            $group['href'] = $link(['preset' => null, 'todo' => $section, 'sub' => $sub]);
+            $group['link'] = Surface::Crm->url('/work/deals?'.http_build_query(['todo' => $section, 'sub' => $sub]));
 
             return $group;
-        })->sortBy([['rank', 'asc'], ['title', 'asc']]);
+        })->sortBy([['section', 'asc'], ['rank', 'asc'], ['title', 'asc']]);
 
         return self::narrow(['tabs' => $tabs, 'tab' => $tab], $groups, $request, $link(['preset' => null, 'todo' => $tab]), $live);
     }
@@ -227,7 +231,7 @@ class DealController
      */
     private static function narrow(array $work, Collection $groups, Request $request, string $clear, ?array $live): array
     {
-        $sub = (string) $request->query('sub');
+        $sub = $work['tab'] === DealWork::ALL ? '' : (string) $request->query('sub');
         if ($sub !== '') {
             $work['sub'] = ['title' => $groups[$sub]['title'] ?? self::subTitle($sub), 'clear' => $clear];
             $groups = $groups->only([$sub]);
@@ -264,7 +268,7 @@ class DealController
      * просрочено, дальше — где больше сделок; внутри — по сроку списка. Весь список одной страницей.
      *
      * С 09.11.2026 — вкладками по тому, чего ждём (`?what=`, владелец выбрал из вариантов): подэтапы схемы главной
-     * (`DealWork::waitStep`), блок не из таблицы — «Прочее», последней — «Все».
+     * (`DealWork::waitStep`), блок не из таблицы — «Прочее», первой и по умолчанию — «Все» (10.11.2026).
      *
      * @return array{tabs: list<array>, tab: string, sub: ?array, groups: Collection<string, array{title: string, manager: ?User, vendor: ?Vendor, late: int, size: int, rows: Collection}>}
      */
@@ -281,10 +285,11 @@ class DealController
         $counts = $steps->countBy();
         $order = [...DealWork::WAITS[$preset], DealWork::OTHER];
         $asked = (string) $request->query('what');
-        $tab = in_array($asked, [...$order, DealWork::ALL], true) ? $asked : (collect($order)->first(fn (string $k) => ($counts[$k] ?? 0) > 0) ?? DealWork::ALL);
-        $tabs = collect($order)->map(fn (string $key) => ['key' => $key, 'title' => DealWork::waitTitle($key), 'n' => $counts[$key] ?? 0])
-            ->push(['key' => DealWork::ALL, 'title' => 'Все', 'n' => null])
-            ->map(fn (array $t) => [...$t, 'count' => 'what:'.$preset.':'.$t['key'], 'href' => $link(['todo' => null, 'what' => $t['key']])])->values()->all();
+        // «Все» — первой и по умолчанию, как в «Ваш ход» (10.11.2026).
+        $tab = in_array($asked, $order, true) ? $asked : DealWork::ALL;
+        $tabs = collect([DealWork::ALL, ...$order])->map(fn (string $key) => ['key' => $key, 'title' => $key === DealWork::ALL ? 'Все' : DealWork::waitTitle($key),
+            'n' => $key === DealWork::ALL ? $deals->count() : $counts[$key] ?? 0,
+            'count' => 'what:'.$preset.':'.$key, 'href' => $link(['todo' => null, 'what' => $key === DealWork::ALL ? null : $key])])->all();
         $deals = $tab === DealWork::ALL ? $deals : $deals->filter(fn (Deal $d) => $steps[$d->id] === $tab)->values();
 
         $groups = $deals->groupBy(fn (Deal $d) => $manager ? ($d->isAuction() ? 'auction' : 'manager:'.$d->buyer_id) : 'vendor:'.$d->offer?->vendor_id)

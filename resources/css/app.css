@@ -1783,6 +1783,9 @@ html.kb-open { --home-gap: 0px; }
     position: sticky; z-index: 9; top: var(--stick-top);
     padding-top: .75rem; padding-bottom: .25rem; background: var(--color-surface);
     font-size: var(--text-lg); font-weight: 500; color: var(--color-ink);
+    /* Название группы — своя фраза: переносится, а не раздвигает таблицу телефона («Разобрать ответ: ГОТС поступили на
+       реализацию» во «Все» «Сделок», 10.11.2026). */
+    white-space: normal;
   }
   .table tbody tr.table-group:first-child > th { padding-top: .75rem; }
   @media (min-width: 640px) { .table tr.table-group > th { top: calc(var(--stick-top) + 2rem); } }
