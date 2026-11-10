@@ -14,5 +14,6 @@ final class TransportAssigned
 {
     use Dispatchable;
 
-    public function __construct(public Transport $transport, public ?User $previous = null, public bool $batch = false) {}
+    /** `previousLogist` — логист задачи до смены, когда вёз его водитель (`previous` — водитель). */
+    public function __construct(public Transport $transport, public ?User $previous = null, public bool $batch = false, public ?User $previousLogist = null) {}
 }

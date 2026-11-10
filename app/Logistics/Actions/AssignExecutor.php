@@ -100,7 +100,7 @@ final class AssignExecutor
                 TransportEvent::record($t, 'assigned', $by, ['executor' => $t->executor_id, 'was' => $wasExecutor ?? $wasLogist]);
             }
             if (($who && ! $who->is($previous)) || $changed) {
-                TransportAssigned::dispatch($t, $previous, $batch);
+                TransportAssigned::dispatch($t, $previous, $batch, $wasLogist && $wasExecutor ? User::find($wasLogist) : null);
             }
 
             return $t;

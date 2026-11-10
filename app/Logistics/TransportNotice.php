@@ -173,6 +173,21 @@ final class TransportNotice extends Notice
         return (new self($t, 'Куда везти: '.$t->title(), $t->routeLabel() ?? 'пока неизвестно', true, true))->variant('rerouted', 'Куда везти');
     }
 
+    /**
+     * ТС отдали в гараж менеджеру, пока вывоз в работе (10.11.2026, админ: «когда отдаю в гараж — нужно, чтобы исполнителя
+     * информировала, что ушла в гараж и какому менеджеру»): логисту и исполнителю — куда теперь везти, в Telegram.
+     */
+    public static function toGarage(Transport $t): self
+    {
+        return (new self($t, 'В гараж: '.$t->title(), 'везти: '.($t->routeLabel() ?? 'менеджеру'), true, true))->variant('to-garage', 'Ушла в гараж');
+    }
+
+    /** Везёт сам менеджер — логисту и исполнителю, что уже взяли задачу: ехать не нужно (10.11.2026). */
+    public static function selfPickup(Transport $t): self
+    {
+        return (new self($t, 'Вывоз не нужен: '.$t->title(), 'забирает сам менеджер'.(($m = $t->executor?->shortName()) ? ' '.$m : ''), true, true))->variant('self-pickup', 'Забирает менеджер');
+    }
+
     /** «Уже вывезли» пачкой — другим ведущим одной строкой. */
     public static function backdatedMany(int $n): self
     {

@@ -63,6 +63,11 @@ final class NotifyLogistics
             $manager->notify(new PickupTakenNotice($t, $offer, $deal?->href() ?? '/deals'));
         }
         if ($t->isSelfPickup()) {
+            // Забрал себе менеджер, а задача была у логиста или водителя (10.11.2026: «Отдать в гараж → Менеджер сам» поверх
+            // назначенного) — тем, у кого она была: ехать не нужно.
+            $was = collect([$e->previous, $e->previousLogist])->filter()->unique('id')->reject(fn (User $u) => $u->is($t->executor) || $u->is($manager));
+            $was->isNotEmpty() && Notification::send($was, TransportNotice::selfPickup($t));
+
             return;
         }
         $to = $t->executor ?? ($t->channel === Channel::Logist ? $t->logist : null);
