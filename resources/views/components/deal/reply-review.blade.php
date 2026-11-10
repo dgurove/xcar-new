@@ -38,9 +38,10 @@
              с письмом, «Показать менеджеру» и «Не нужно». Показанное раньше — строкой дела под ней. --}}
         @if ($letters->isNotEmpty())
             <div class="contents" data-controller="sheet">
-                <x-route.task-row icon="mail" urgent aria-controls="{{ $id }}">
+                {{-- Логотип вместо имени поставщика (10.11.2026, владелец: «название нахер надо, логотип въебать и всё»). --}}
+                <x-route.task-row icon="mail" :vendor="$offer->vendor" urgent aria-controls="{{ $id }}">
                     @php $what = $step && \App\Offers\SupplierInvoice::needs($deal, $step) ? 'Счёт' : 'Письмо'; @endphp
-                    {{ $letters->count() > 1 ? $letters->count().' '.\App\Support\Plural::of($letters->count(), ['письмо', 'письма', 'писем']) : $what }} от {{ $vendor ?? 'поставщика' }} <span class="nums whitespace-nowrap text-sm text-ink-muted">{!! Ago::html($letters->first()->date_at, true, words: false) !!}</span>
+                    {{ $letters->count() > 1 ? $letters->count().' '.\App\Support\Plural::of($letters->count(), ['письмо', 'письма', 'писем']).', последнее' : $what }} от <span class="nums whitespace-nowrap">{!! Ago::html($letters->first()->date_at, true, words: false) !!}</span>
                 </x-route.task-row>
                 @include('admin.deals.reply-review-sheet', $sheet + ['line' => true])
             </div>

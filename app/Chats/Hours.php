@@ -37,8 +37,8 @@ final class Hours
         }
         $minutes = (int) $closed->diffInMinutes($now);
         $parts = array_filter([
-            intdiv($minutes, 60) ? intdiv($minutes, 60).' ч' : null,
-            $minutes % 60 ? ($minutes % 60).' мин' : null,
+            intdiv($minutes, 60) ? intdiv($minutes, 60).'ч' : null,
+            $minutes % 60 ? ($minutes % 60).'мин' : null,
         ]);
 
         return ($feminine ? 'была' : 'был').' в сети '.($parts ? implode(' ', $parts).' назад' : 'только что');

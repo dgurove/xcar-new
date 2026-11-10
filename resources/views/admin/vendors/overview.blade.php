@@ -5,7 +5,7 @@
     <div class="list">
         <div class="row justify-between"><span class="text-ink-muted">Формат сделки</span><span>{{ $vendor->deal_format->label() }}</span></div>
         @if ($vendor->reward_kind)<div class="row justify-between"><span class="text-ink-muted">Вознаграждение</span><span class="nums">{{ $vendor->reward_kind === RewardKind::Difference ? 'Разница цен' : ($vendor->reward_kind === RewardKind::Percent ? $vendor->reward_value.' %' : Money::rub($vendor->reward_value)) }}</span></div>@endif
-        @if ($vendor->answer_hours)<div class="row justify-between"><span class="text-ink-muted">Ответ</span><span class="nums">{{ $vendor->answer_hours }} ч</span></div>@endif
+        @if ($vendor->answer_hours)<div class="row justify-between"><span class="text-ink-muted">Ответ</span><span class="nums">{{ $vendor->answer_hours }}ч</span></div>@endif
         @if ($vendor->binding_days)<div class="row justify-between"><span class="text-ink-muted">Предложение держим</span><span class="nums">{{ $vendor->binding_days }} дн</span></div>@endif
         <div class="row justify-between"><span class="text-ink-muted">НДС</span><span>{{ $vendor->offers_include_vat ? 'Цены с НДС' : 'Без НДС' }}</span></div>
         @if ($vendor->defaultTags->isNotEmpty())

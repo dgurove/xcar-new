@@ -62,7 +62,7 @@
         <select id="{{ $id }}" name="{{ $name }}" {{ $attributes->except('id')->merge(['class' => 'field-input'] + $wiring) }}>
             @if ($placeholder)<option value="">{{ $placeholder }}</option>@endif
             @foreach ($options as $optValue => $optLabel)
-                <option value="{{ $optValue }}" @selected((string) $bound === (string) $optValue)>{{ $optLabel }}{{ isset($notes[$optValue]) ? ' · '.$notes[$optValue] : '' }}</option>
+                <option value="{{ $optValue }}" @selected((string) $bound === (string) $optValue)>{{ $optLabel }}{{ isset($notes[$optValue]) ? ', '.$notes[$optValue] : '' }}</option>
             @endforeach
         </select>
     @elseif ($type === 'textarea')

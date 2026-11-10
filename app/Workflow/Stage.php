@@ -245,7 +245,7 @@ class Stage extends Model
         $h = intdiv($minutes % 1440, 60);
         $m = $minutes % 60;
 
-        return implode(' ', array_filter([$d ? $d.' д' : null, $h ? $h.' ч' : null, $m ? $m.' мин' : null])) ?: '0 мин';
+        return implode(' ', array_filter([$d ? $d.'д' : null, $h ? $h.'ч' : null, $m ? $m.'мин' : null])) ?: '0мин';
     }
 
     /** Срок этапа для оффера, если войти в него сейчас: свой, конец приёма подтверждений, срок страховой или 17:00 завтра. */

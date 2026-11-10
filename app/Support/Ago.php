@@ -18,12 +18,12 @@ final class Ago
 
         return match (true) {
             $s < 60 => 'сейчас',
-            $s < 3600 => intdiv($s, 60).' мин',
-            $s < 86400 => intdiv($s, 3600).' ч',
-            $s < 86400 * 7 => intdiv($s, 86400).' д',
-            $s < 86400 * 30 => intdiv($s, 86400 * 7).' нед',
-            $s < 86400 * 365 => max(1, intdiv($s, 86400 * 30)).' мес',
-            default => intdiv($s, 86400 * 365).' г',
+            $s < 3600 => intdiv($s, 60).'мин',
+            $s < 86400 => intdiv($s, 3600).'ч',
+            $s < 86400 * 7 => intdiv($s, 86400).'д',
+            $s < 86400 * 30 => intdiv($s, 86400 * 7).'нед',
+            $s < 86400 * 365 => max(1, intdiv($s, 86400 * 30)).'мес',
+            default => intdiv($s, 86400 * 365).'г',
         };
     }
 
@@ -49,7 +49,7 @@ final class Ago
 
     public static function since(Carbon $from): string
     {
-        return str_replace([' д', ' ч', ' мин'], ['д', 'ч', 'мин'], self::span(max(60, (int) floor($from->diffInSeconds(now(), false)))));
+        return self::span(max(60, (int) floor($from->diffInSeconds(now(), false))));
     }
 
     /** Длительность тем же видом: «1 ч 48 мин», «2 д 4 ч» — «обычно открывает через» (`ManagerResponse`). */
@@ -63,9 +63,10 @@ final class Ago
         [$d, $h, $m] = [intdiv($s, 86400), intdiv($s % 86400, 3600), intdiv($s % 3600, 60)];
 
         return match (true) {
-            $d > 0 => $h ? "{$d} д {$h} ч" : "{$d} д",
-            $h > 0 => $m ? "{$h} ч {$m} мин" : "{$h} ч",
-            default => "{$m} мин",
+            // Слитно (10.11.2026, владелец: «не 6 д 5 ч, а 6д 5ч»).
+            $d > 0 => $h ? "{$d}д {$h}ч" : "{$d}д",
+            $h > 0 => $m ? "{$h}ч {$m}мин" : "{$h}ч",
+            default => "{$m}мин",
         };
     }
 

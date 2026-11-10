@@ -95,7 +95,7 @@
             @endphp
             <h2 class="list-head mt-5">
                 <span>{{ $dayName($t['day']) }}</span>
-                <span class="ml-auto text-sm font-normal text-ink-muted">{{ collect([$dv->count() ? $dv->count().' '.Plural::of($dv->count(), ['заход', 'захода', 'заходов']) : null, $ds ? Ago::duration($ds) : null, $da ? $da.' '.Plural::of($da, ['действие', 'действия', 'действий']) : null])->filter()->implode(' · ') }}</span>
+                <span class="ml-auto text-sm font-normal text-ink-muted">{{ collect([$dv->count() ? $dv->count().' '.Plural::of($dv->count(), ['заход', 'захода', 'заходов']) : null, $ds ? Ago::duration($ds) : null, $da ? $da.' '.Plural::of($da, ['действие', 'действия', 'действий']) : null])->filter()->implode(', ') }}</span>
             </h2>
             <div class="list">
                 @foreach ($t['items'] as $i)
@@ -104,7 +104,7 @@
                         <div class="row items-center gap-3">
                             <x-ui.row-icon :name="$v->login ? 'login' : (str_contains($v->device(), 'iPhone') || str_contains($v->device(), 'Android') ? 'smartphone' : 'eye')" size="s" :tone="$v->login ? 'soft' : null"/>
                             <div class="min-w-0 flex-1">
-                                <div class="truncate">{{ $v->login ? 'Вход' : 'Заходил' }}@if ($v->surface) · {{ $where[$v->surface->value] }}@endif</div>
+                                <div class="truncate">{{ $v->login ? 'Вход' : 'Заходил' }}@if ($v->surface), {{ $where[$v->surface->value] }}@endif</div>
                                 <div class="row-sub"><span>{{ $v->device() }}</span>@if ($v->ip)<span class="nums">{{ $v->ip }}</span>@endif</div>
                             </div>
                             <span class="nums shrink-0 text-sm text-ink-muted">{{ $v->started_at->format('H:i') }}@if ($v->seconds() > 90)–{{ $v->last_at->format('H:i') }}@endif</span>

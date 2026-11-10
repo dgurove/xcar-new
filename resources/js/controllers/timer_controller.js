@@ -83,13 +83,13 @@ export default class extends Controller {
 
     format(total) {
         const d = Math.floor(total / 86400), h = Math.floor((total % 86400) / 3600), m = Math.floor((total % 3600) / 60), s = total % 60;
-        return d > 0 ? `${d} д ${h} ч` : h > 0 ? `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}` : `${m}:${String(s).padStart(2, '0')}`;
+        return d > 0 ? `${d}д ${h}ч` : h > 0 ? `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}` : `${m}:${String(s).padStart(2, '0')}`;
     }
 
-    // Нулевой хвост не пишем: «3 ч», а не «3 ч 0 мин».
+    // Нулевой хвост не пишем: «3ч», а не «3ч 0мин»; слитно, как `Support\Ago` (10.11.2026).
     rough(total) {
         const d = Math.floor(total / 86400), h = Math.floor((total % 86400) / 3600), m = Math.floor((total % 3600) / 60);
-        return d > 0 ? (h ? `${d} д ${h} ч` : `${d} д`) : h > 0 ? (m ? `${h} ч ${m} мин` : `${h} ч`) : `${Math.max(1, m)} мин`;
+        return d > 0 ? (h ? `${d}д ${h}ч` : `${d}д`) : h > 0 ? (m ? `${h}ч ${m}мин` : `${h}ч`) : `${Math.max(1, m)}мин`;
     }
 
     // Сколько осталось словами; та же строка у сервера — Support\Ago::left.

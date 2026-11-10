@@ -7,7 +7,7 @@
     <div class="flex flex-col gap-5" data-window-compact>
         <div>
             <p class="text-lg font-medium">{{ $position?->stage->name ?? 'Письмо поставщику' }}</p>
-            <p class="text-sm text-ink-muted">{{ $offer->vendor?->name }} · {{ $offer->titleWithYear() }}</p>
+            <p class="text-sm text-ink-muted">{{ $offer->titleWithYear() }}, {{ $offer->vendor?->name }}</p>
         </div>
         <div class="flex flex-col gap-2">
             <a href="{{ $to }}" data-turbo-frame="letters-frame" class="btn btn-accent w-full"><x-ui.icon name="send" class="size-4"/>Написать письмо</a>

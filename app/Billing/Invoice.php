@@ -350,7 +350,7 @@ class Invoice extends Model implements HasMedia
      */
     public function overdueLabel(bool $capital = false): string
     {
-        return ($capital ? 'Просрочен' : 'просрочен').' на '.$this->overdueDays().' д';
+        return ($capital ? 'Просрочен' : 'просрочен').' на '.$this->overdueDays().'д';
     }
 
     /**

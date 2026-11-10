@@ -71,7 +71,7 @@
                 <div class="substep-body">
                     <div class="substep-head">
                         <span class="substep-title">Цена</span>
-                        @if ($s === RepriceFlow::DONE)<span class="substep-meta">{{ $reprice->decider?->shortName() }} · <span class="nums">{{ Ago::html($reprice->decided_at, words: false) }}</span></span>@endif
+                        @if ($s === RepriceFlow::DONE)<span class="substep-meta">{{ $reprice->decider?->shortName() }}, <span class="nums">{{ Ago::html($reprice->decided_at, words: false) }}</span></span>@endif
                     </div>
                     @if ($s === RepriceFlow::NOW)
                         <x-ui.button type="button" size="sm" class="mt-2" data-controller="emit" data-action="emit#send" data-emit-event-param="reprice:open">Разобрать</x-ui.button>
@@ -97,7 +97,7 @@
                                 @elseif ($ask?->isPending())
                                     <x-ui.state :tone="$ask->late() ? 'danger' : 'urgent'" class="nums">{{ $ask->late() ? 'не назвал цену, срок ' : 'думает до ' }}{{ Ago::at($ask->due_at, true, words: false) }}</x-ui.state>
                                 @elseif ($ask)
-                                    <x-ui.state tone="open" class="nums">{{ Money::rub((int) $flow->deal->amount) }} · {{ Ago::at($ask->answered_at, words: false) }}</x-ui.state>
+                                    <x-ui.state tone="open" class="nums">{{ Money::rub((int) $flow->deal->amount) }}, {{ Ago::at($ask->answered_at, words: false) }}</x-ui.state>
                                 @else
                                     <x-ui.state class="nums">закупочная {{ Money::nums((int) $flow->deal->cost) }}</x-ui.state>
                                 @endif

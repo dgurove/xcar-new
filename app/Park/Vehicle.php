@@ -345,7 +345,7 @@ class Vehicle extends Model
         }
         $at = $this->pickupAt();
         if (! $at) {
-            return 'не забирают '.(int) $this->sold_at->copy()->startOfDay()->diffInDays(today()).' д';
+            return 'не забирают '.(int) $this->sold_at->copy()->startOfDay()->diffInDays(today()).'д';
         }
 
         return $at->lt(today()) ? 'не забрали '.$at->format('d.m') : null;

@@ -177,7 +177,7 @@ export default class extends Controller {
                 name.textContent = r.name || r.email;
                 const sub = document.createElement('span');
                 sub.className = 'truncate text-sm text-ink-muted';
-                sub.textContent = [r.name ? r.email : null, r.vendor].filter(Boolean).join(' · ');
+                sub.textContent = [r.name ? r.email : null, r.vendor].filter(Boolean).join(', ');
                 b.append(name, sub);
                 b.addEventListener('mousedown', (e) => e.preventDefault());
                 b.addEventListener('click', () => this.pick(b));

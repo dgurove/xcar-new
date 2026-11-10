@@ -153,7 +153,7 @@
                     {{-- «···» — справа от названия и в узкой колонке: длинное название переносится, а не выталкивает кнопку. --}}
                     <div class="step-head !flex-nowrap !items-start">
                         <span class="min-w-0 flex-1">
-                            @if ($many && $blockName($block) !== $stage->name)<span class="step-kicker">{{ $blockName($block) }} · {{ $place }} из {{ $subs->count() }}</span>@endif
+                            @if ($many && $blockName($block) !== $stage->name)<span class="step-kicker">{{ $blockName($block) }}, {{ $place }} из {{ $subs->count() }}</span>@endif
                             <span class="step-title block">{{ $stage->name }}</span>
                         </span>
                         @if ($breaks->isNotEmpty() || $undo || $extend || $forManager->isNotEmpty() || in_array($position->letterStatus(), ['unsent', 'failed', 'bounced'], true))
@@ -206,7 +206,7 @@
                             @foreach ($subs->where('state', \App\Workflow\Substeps::DONE) as $sub)
                                 <li class="substep substep--done">
                                     <span class="substep-dot"><x-ui.icon name="check" class="size-2.5"/></span>
-                                    <div class="substep-body"><div class="substep-head"><span class="substep-title">{{ $sub['name'] }}</span>@if ($sub['at'])<span class="substep-meta">@if ($by = $doneBy->get($sub['user_id'])){{ $by->shortName() }} · @endif<span class="nums">{{ \App\Support\Ago::html($sub['at'], true, words: false) }}</span></span>@endif</div></div>
+                                    <div class="substep-body"><div class="substep-head"><span class="substep-title">{{ $sub['name'] }}</span>@if ($sub['at'])<span class="substep-meta">@if ($by = $doneBy->get($sub['user_id'])){{ $by->shortName() }}, @endif<span class="nums">{{ \App\Support\Ago::html($sub['at'], true, words: false) }}</span></span>@endif</div></div>
                                 </li>
                             @endforeach
                         </ol>

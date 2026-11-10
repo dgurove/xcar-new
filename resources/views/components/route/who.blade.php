@@ -1,7 +1,7 @@
 {{-- Кто сейчас действует на шаге пути — строкой, а не фразой (04.11.2026, владелец: «во „Ждём менеджера“ непонятно, кого и чего
      ждём», «тупо текстом — это не дизайн»): менеджер сделки — аватар и имя («Позвонить» снята 10.11.2026 — не пользовались); поставщик — логотип и имя; мы —
      знак XCar. Справа от имени — состояние словом цвета (`x-ui.state`): у менеджера срок («до 05.11 17:00», «просрочено 2 д»,
-     без срока «ждём 3 д»), у письма поставщику — что с ним («письмо не отправлено», «ушло 04.11 · ждём 1 д», «ответил 04.11»
+     без срока «ждём 3 д»), у письма поставщику — что с ним («письмо не отправлено», «письмо от 04.11, ждём 1д», «ответил 04.11»
      — нажатие открывает окно писем на нём), у нашего хода — часы. Под подпунктом «сейчас» в `x-route.path`, той же строкой
      в «Переоценке» (`.step-who`). --}}
 @props(['position', 'offer', 'deal' => null])
@@ -34,6 +34,19 @@
         ? \App\Workflow\Requirement::where('deal_id', $deal->id)->where('stage_id', $position->stage_id)->whereNull('done_at')->latest('id')->first()
         : null;
     $asked = $asked && $asked->created_at >= $position->entered_at->copy()->subMinute() ? $asked : null;
+    // Везёт наша логистика (10.11.2026, владелец: «„везёт логистика“ — непонятно, что это значит»): кто везёт — водитель или логист
+    // с аватаром, состояние — что с вывозом его словами.
+    $trip = $position->carried() ? \App\Logistics\Transport::openFor($offer) : null;
+    $driver = $trip?->executor ?? $trip?->logist;
+    $tripState = match (true) {
+        ! $trip => 'вывоз не заведён',
+        $trip->state === \App\Logistics\TransportState::New => 'водителя ещё не назначили',
+        $trip->state === \App\Logistics\TransportState::Logist => 'ищет водителя',
+        $trip->taken() => 'забрал, везёт '.mb_strtolower(mb_substr((string) $trip->routeLabel(), 0, 1)).mb_substr((string) $trip->routeLabel(), 1),
+        $trip->awaitsDocs() => 'ждёт документы',
+        (bool) $trip->pickup_at => 'заберёт '.$trip->pickupDay('d.m'),
+        default => 'договаривается с владельцем',
+    };
     [$state, $tone, $open] = match (true) {
         $letter === 'unsent' => ['письмо не отправлено', $overdue ? 'danger' : 'urgent', null],
         $letter === 'failed' => ['письмо не ушло', 'danger', null],
@@ -41,14 +54,14 @@
         $letter === 'replied' => ['ответил '.Ago::html($position->replyAt(), true, words: false), 'accent', $letters],
         // «ждём 17 д 15 ч» — неразрывно: в узкой дорожке переносится целиком, а не «ждём 17 д / 15 ч».
         // Без письма — сообщили сами (`SkipLetter`, 10.11.2026): ссылки на письмо нет.
-        $letter === 'sent' && ! empty($position->payload['letter_by_hand']) => ['сообщили сами '.Ago::html($position->letterAt(), words: false).' · <span class="whitespace-nowrap">ждём '.$timer('since', $position->letterAt()).'</span>', $overdue ? 'urgent' : 'plain', null],
-        $letter === 'sent' => ['ушло '.Ago::html($position->letterAt(), words: false).' · <span class="whitespace-nowrap">ждём '.$timer('since', $position->letterAt()).'</span>', $overdue ? 'urgent' : 'plain',
+        $letter === 'sent' && ! empty($position->payload['letter_by_hand']) => ['сообщили сами '.Ago::html($position->letterAt(), words: false).', <span class="whitespace-nowrap">ждём '.$timer('since', $position->letterAt()).'</span>', $overdue ? 'urgent' : 'plain', null],
+        $letter === 'sent' => ['письмо от '.Ago::html($position->letterAt(), words: false).', <span class="whitespace-nowrap">ждём '.$timer('since', $position->letterAt()).'</span>', $overdue ? 'urgent' : 'plain',
             $letters.(isset($position->payload['letter_id']) ? '?at='.$position->payload['letter_id'] : '')],
         $invoice => ['счёт не выставлен', 'urgent', null],
-        $position->carried() => ['везёт логистика', 'plain', null],
-        (bool) $debt => ['должен&nbsp;'.e($debt->amount()).' · '.e($debt->word()), $debt->late() ? 'danger' : 'plain', null],
+        $position->carried() => [e($tripState), $trip && in_array($trip->state, [\App\Logistics\TransportState::New, \App\Logistics\TransportState::Logist], true) ? 'urgent' : 'plain', null],
+        (bool) $debt => ['должен&nbsp;'.e($debt->amount()).', '.e($debt->word()), $debt->late() ? 'danger' : 'plain', null],
         // Ждём менеджера — сколько ждём и срок одной строкой (10.11.2026: «до 11.11» без «ждём» не говорило, что ход его).
-        $side === 'manager' && (bool) $position->deadline_at => ['<span class="whitespace-nowrap">ждём '.$timer('since', $since).'</span> · '.($overdue ? '<span class="whitespace-nowrap">просрочено '.$timer('since', $position->deadline_at).'</span>' : 'до '.e(Ago::at($position->deadline_at, true, words: false))), $overdue ? 'danger' : 'plain', null],
+        $side === 'manager' && (bool) $position->deadline_at => ['<span class="whitespace-nowrap">ждём '.$timer('since', $since).'</span>, '.($overdue ? '<span class="whitespace-nowrap">просрочено на '.$timer('since', $position->deadline_at).'</span>' : 'срок '.e(Ago::at($position->deadline_at, true, words: false))), $overdue ? 'danger' : 'plain', null],
         $overdue && (bool) $position->deadline_at => ['просрочено '.$timer('since', $position->deadline_at), 'danger', null],
         $side === 'us' && (bool) $position->deadline_at => ['осталось '.$timer('until', $position->deadline_at), 'urgent', null],
         (bool) $position->deadline_at => ['до '.e(Ago::at($position->deadline_at, true, words: false)), 'urgent', null],
@@ -62,17 +75,19 @@
             <x-ui.avatar :user="$manager" :size="32"/>
         @elseif ($vendor)
             <span class="step-who-icon"><x-vendor.logo :vendor="$vendor" class="!size-6"/></span>
+        @elseif ($driver)
+            <x-ui.avatar :user="$driver" :size="32"/>
         @elseif ($side === 'us')
             <span class="step-who-icon"><x-ui.logo mark class="size-5"/></span>
         @else
             <span class="step-who-icon"><x-ui.icon name="user" class="size-4"/></span>
         @endif
         <div class="min-w-0">
-            <div class="truncate">{{ $manager?->shortName() ?? $vendor?->name ?? ($side === 'us' ? 'XCar' : ($deal?->isAuction() ? 'Аукцион' : 'Менеджер')) }}</div>
+            <div class="truncate">{{ $manager?->shortName() ?? $driver?->shortName() ?? $vendor?->name ?? ($trip !== null || $position->carried() ? 'Вывоз' : null) ?? ($side === 'us' ? 'XCar' : ($deal?->isAuction() ? 'Аукцион' : 'Менеджер')) }}</div>
             @if ($open)
                 <button type="button" class="state state-{{ $tone }} underline decoration-dotted underline-offset-4" data-controller="emit" data-action="emit#send" data-emit-event-param="letters:open" data-emit-url-param="{{ $open }}"><span>{!! $state !!}</span></button>
             @elseif ($asked)
-                <x-ui.state :tone="$overdue ? 'danger' : 'plain'"><span>спросили {!! Ago::html($asked->created_at, true, words: false) !!} · <span class="whitespace-nowrap">молчит {!! $timer('since', $asked->created_at) !!}</span>@if ($position->deadline_at) · {!! $overdue ? '<span class="whitespace-nowrap">просрочено '.$timer('since', $position->deadline_at).'</span>' : 'до '.e(Ago::at($position->deadline_at, true, words: false)) !!}@endif</span></x-ui.state>
+                <x-ui.state :tone="$overdue ? 'danger' : 'plain'"><span>спросили {!! Ago::html($asked->created_at, true, words: false) !!}, <span class="whitespace-nowrap">молчит {!! $timer('since', $asked->created_at) !!}</span>@if ($position->deadline_at), {!! $overdue ? '<span class="whitespace-nowrap">просрочено на '.$timer('since', $position->deadline_at).'</span>' : 'срок '.e(Ago::at($position->deadline_at, true, words: false)) !!}@endif</span></x-ui.state>
             @else
                 {{-- Одной вставкой: `.state` — inline-flex, и пробелы между текстом и датой он съедал («ушло15.10»). --}}
                 <x-ui.state :tone="$tone"><span>{!! $state !!}</span></x-ui.state>

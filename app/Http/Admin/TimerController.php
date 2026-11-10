@@ -57,7 +57,7 @@ class TimerController
         $data = $this->limit($request);
         $result = $set($stage, SaveStage::minutes($data), ($data['limit_unit'] ?? null) === 'workdays', $request->boolean('retime', true), $request->user());
 
-        return $this->done($result, $stage->name.' · '.$stage->workflow->vendor?->name);
+        return $this->done($result, $stage->name.', '.$stage->workflow->vendor?->name);
     }
 
     /** «Всем вендорам»: один срок этапу с этим именем у каждого вендора, где срок свой. */
@@ -71,7 +71,7 @@ class TimerController
             $total['problems'] = [...$total['problems'], ...$r['problems']];
         }
 
-        return $this->done($total, $data['name'].' · всем вендорам');
+        return $this->done($total, $data['name'].', всем вендорам');
     }
 
     private function limit(Request $request): array

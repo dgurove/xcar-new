@@ -327,7 +327,7 @@ final class Values
         foreach ($items as &$item) {
             $place = $places[(int) $item['key']] ?? null;
             if ($place && ($names[$place->name] ?? 0) > 1 && ($region = $place->region?->short ?: $place->region?->name)) {
-                $item['label'] = $place->name.' · '.$region;
+                $item['label'] = $place->name.', '.$region;
             }
         }
 

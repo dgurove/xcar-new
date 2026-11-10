@@ -46,6 +46,6 @@ final class StageStats
         }
         $m = $row['median'];
 
-        return 'обычно '.($m >= 1440 ? round($m / 1440, $m < 4320 ? 1 : 0).' д' : ($m >= 60 ? round($m / 60).' ч' : max(1, $m).' мин'));
+        return 'обычно '.($m >= 1440 ? round($m / 1440, $m < 4320 ? 1 : 0).'д' : ($m >= 60 ? round($m / 60).'ч' : max(1, $m).'мин'));
     }
 }
