@@ -116,9 +116,10 @@ final class RepriceFlow
     {
         $sum = Money::plain($this->agreedAmount(), sign: false).' руб.';
 
-        return ($rise = $this->rise())
+        // С подписью (10.11.2026, владелец: «„С уважением, Андрей Кузнецов“ очень не хватает»).
+        return (($rise = $this->rise())
             ? 'Добрый день! Наше предложение — '.$sum.' (максимальная ставка '.Money::plain($this->reprice->value, sign: false).' руб. '.$rise.').'
-            : 'Добрый день! Согласны на новую стоимость '.$sum;
+            : 'Добрый день! Согласны на новую стоимость '.$sum)."\n\n".\App\Mail\Template::OFFERS_SIGN;
     }
 
     /** Окно писем на письме переоценки с редактором ответа и готовым текстом. */

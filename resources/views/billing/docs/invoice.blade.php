@@ -30,7 +30,7 @@
     // В шторке документов (?embed=1) — только лист: печать у шторки.
     $embed = ! $pdf && request()->boolean('embed');
     $basis = match (true) {
-        (bool) $invoice->vehicle => $invoice->vehicle->titleWithYear().($invoice->vehicle->vin ? ', VIN '.$invoice->vehicle->vin : '').($invoice->vehicle->ref ? ', убыток '.$invoice->vehicle->ref : '').($invoice->vehicle->contract_no ? ', договор № '.$invoice->vehicle->contract_no : ''),
+        (bool) $invoice->vehicle => $invoice->vehicle->titleWithYear().($invoice->vehicle->vin ? ', VIN '.$invoice->vehicle->vin : '').($invoice->vehicle->ref ? ', '.$invoice->vehicle->ref : '').($invoice->vehicle->contract_no ? ', договор № '.$invoice->vehicle->contract_no : ''),
         $registry => $contract ?? ($tow ? 'Эвакуация транспортных средств' : 'Хранение транспортных средств'),
         (bool) $invoice->deal => 'Сделка по предложению № '.$invoice->deal->offer?->number.($invoice->deal->offer ? ', '.$invoice->deal->offer->titleWithYear() : ''),
         default => null,

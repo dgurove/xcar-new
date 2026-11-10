@@ -210,6 +210,9 @@ final class ApplyReprice
         $fresh->contract?->update(['price' => DealContract::priceFor($fresh)]);
         ($this->invoices)($fresh, $by);
         if ($amount !== null && $amount !== $amountWas) {
+            // Подтверждение, по которому сделка, — та же цена: карточка «Сделка» в CRM показывает его сумму (10.11.2026, владелец:
+            // «почему всё ещё 5 440 000» — сделке поставили 5 700 000, а подтверждение осталось прежним).
+            $fresh->bid_id && Bid::whereKey($fresh->bid_id)->update(['amount' => $amount]);
             $fresh->offer->log(OfferEventType::Note, $by, ['text' => 'Цена подтверждения '.Money::plain((int) $amountWas, sign: false).' → '.Money::plain($amount).' — '.($fresh->buyer?->shortName() ?? 'сделка')]);
         }
     }

@@ -298,6 +298,7 @@ class RepriceTest extends TestCase
         $this->actingAs($this->admin)->post('http://crm.xcar.localhost/offers/'.$this->offer->number.'/reprice-asks/'.$ask->id, ['do' => 'accept'])->assertRedirect();
         $deal = $deal->fresh();
         $this->assertSame([650000, 1100000, null], [$deal->cost, (int) $deal->amount, $deal->supplier_cost]);
+        $this->assertSame(1100000, (int) $deal->bid->amount, 'подтверждение сделки — та же цена');
         $this->assertSame(InvoiceState::Void, $first->fresh()->state);
         $this->assertEqualsWithDelta(1100000 - 650000 - 20000, $deal->issuedInvoices()->where('state', InvoiceState::Issued)->sole()->total, 0.01);
         $this->assertSame(RepriceAsk::AGREED, $ask->fresh()->state);
@@ -551,7 +552,7 @@ class RepriceTest extends TestCase
 
         $flow = RepriceFlow::for($this->offer->fresh());
         $this->assertSame([5550000, '+50 000 руб.'], [$flow->agreedAmount(), $flow->rise()]);
-        $this->assertSame('Добрый день! Наше предложение — 5 550 000 руб. (максимальная ставка 5 500 000 руб. +50 000 руб.).', str_replace("\u{A0}", ' ', $flow->replyText()));
+        $this->assertSame("Добрый день! Наше предложение — 5 550 000 руб. (максимальная ставка 5 500 000 руб. +50 000 руб.).\n\nС уважением,\nАндрей Кузнецов", str_replace("\u{A0}", ' ', $flow->replyText()));
         $this->assertSame(5550000, (int) $deal->fresh()->cost);
     }
 }

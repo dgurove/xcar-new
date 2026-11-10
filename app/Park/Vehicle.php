@@ -411,10 +411,10 @@ class Vehicle extends Model
         return null;
     }
 
-    /** Подпись в подтверждении «В продажу»: машина, госномер, убыток — чтобы видеть, что выставляешь. */
+    /** Подпись в подтверждении «В продажу»: машина, госномер, номер — чтобы видеть, что выставляешь. */
     public function saleLabel(): string
     {
-        return implode(', ', array_filter([$this->titleWithYear(), $this->plate, $this->ref ? 'убыток '.$this->ref : null]));
+        return implode(', ', array_filter([$this->titleWithYear(), $this->plate, $this->ref]));
     }
 
     /**
