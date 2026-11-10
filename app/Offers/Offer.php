@@ -835,7 +835,7 @@ class Offer extends Model
                 } else {
                     // Всё, что открыто его менеджеру (волна менеджера наступила), — или только открытое менеджером вручную
                     // (`buyer_sees = picked`, 12.10.2026).
-                    $groups = $user->groupIds();
+                    $groups = $user->userGroupIds();
                     $w->orWhere(fn ($m) => $m->where('state', OfferState::Open)
                         // Срочное (12.10.2026) — всем покупателям менеджера, и «выбранным» тоже.
                         ->when(! $user->buyerSeesAll(), fn ($m) => $m->where(fn ($p) => $p->where(fn ($u) => $u->urgent())
@@ -864,7 +864,7 @@ class Offer extends Model
         if (! $user || ! $user->hasRole(Role::Manager)) {
             return $q->whereRaw('false');
         }
-        $groups = DB::table('user_group_user')->where('user_id', $user->id)->pluck('group_id')->all();
+        $groups = $user->userGroupIds();
 
         return $q->where('state', OfferState::Sold)->whereHas('deal')
             ->where(fn ($w) => $w->whereNull('deal_show_until')->orWhere('deal_show_until', '>', now()))

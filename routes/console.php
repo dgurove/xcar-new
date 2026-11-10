@@ -5,6 +5,7 @@ use App\Offers\ReadOffer;
 use App\Users\Access\AccessCode;
 use App\Users\Actions\CloseStaleImpersonations;
 use App\Users\Visit;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schedule;
 
 Schedule::command('offers:tick')->everyMinute()->withoutOverlapping();
@@ -49,3 +50,8 @@ Schedule::command('migtorg:sync')->everyTenMinutes()->when(fn () => (now()->hour
 Schedule::call(fn () => AccessCode::where('created_at', '<', now()->subDays(2))->delete())->dailyAt('04:50')->name('access-codes:prune');
 // Входы админа за человека, из которых не вышли кнопкой, — закрыть сроком сессии.
 Schedule::call(fn () => app(CloseStaleImpersonations::class)())->hourly()->name('impersonations:close');
+// Медленные ответы за день владельцу (`ServerTiming` пишет `slow-*.log`, 10.11.2026) — вечером, когда работа кончилась.
+Schedule::command('perf:digest')->dailyAt('20:30');
+// Сессии гостей (боты, сканеры, проверка живости) — сутки, а не срок входа в 30 дней: 160 тыс. мёртвых строк на 10.11.2026.
+Schedule::call(fn () => DB::table('sessions')->whereNull('user_id')->where('last_activity', '<', now()->subDay()->getTimestamp())->delete())
+    ->dailyAt('04:55')->name('guest-sessions:prune');

@@ -105,7 +105,7 @@ RUN set -eux; \
 USER www-data
 
 # Проверка ходит на внутренний порт и получает ответ от php (`health: '/up'`).
-HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --start-interval=2s --retries=3 \
     CMD curl -fsS http://127.0.0.1:2020/up >/dev/null || exit 1
 
 ENTRYPOINT ["entrypoint"]

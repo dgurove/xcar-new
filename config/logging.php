@@ -74,6 +74,15 @@ return [
             'replace_placeholders' => true,
         ],
 
+        // Медленные ответы и 5xx (`ServerTiming`), сводка — `perf:digest`. Строка — JSON после сообщения `slow`.
+        'slow' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/slow.log'),
+            'level' => 'info',
+            'days' => 60,
+            'replace_placeholders' => true,
+        ],
+
         'daily' => [
             'driver' => 'daily',
             'path' => storage_path('logs/laravel.log'),

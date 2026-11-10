@@ -351,6 +351,11 @@ class OfferController
         // Пустой «+ Новый» в списке не стоит: его либо заполнят, либо он удалится, как только из него уйдут.
         $q = Offer::query()->inCrm($request->user())->notEmptyDraft()->with(['settlement', 'vendor', 'parkVehicle:id,car_id,state,accepted_at,created_at', 'deal', 'garageCar'])
             ->withCount(['activeBids', 'interests', 'activeBids as garage_bids_count' => fn ($b) => $b->where('kind', BidKind::Garage)])->withMax('activeBids as top_bid', 'amount');
+        // Строка с галочкой спрашивает «нет фото» (`ChangeOfferState::missing`) — кадры одним запросом на список, а не на
+        // строку (10.11.2026: «Без подтверждений» — 216 запросов кадров, секунда на сервере).
+        if (self::pickable($request->user(), $preset, $searching)) {
+            $q->with('media');
+        }
         // Горит ли срок обязывающего — одним подзапросом на список, а не запросами на строку (`Binding::of`).
         Binding::select($q);
         // Горит ли — для первой группы вкладки (`HOT`).

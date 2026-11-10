@@ -42,6 +42,9 @@ class Position extends Model
         ];
     }
 
+    /** Список уже знает, есть ли у машины переоценка письмом без ответа (`Admin\DealController::todo`): null — спросить базу. */
+    public ?bool $letterRepriceKnown = null;
+
     public function offer(): BelongsTo
     {
         return $this->belongsTo(Offer::class);
@@ -172,7 +175,7 @@ class Position extends Model
     public function repriceUnanswered(): ?Reprice
     {
         $deal = $this->track === Track::Sale ? $this->deal : null;
-        if (! $deal || ! $deal->isActive() || $deal->isGarage()) {
+        if (! $deal || ! $deal->isActive() || $deal->isGarage() || $this->letterRepriceKnown === false) {
             return null;
         }
 

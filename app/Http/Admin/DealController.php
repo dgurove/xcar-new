@@ -31,6 +31,7 @@ use App\Support\Surface;
 use App\Support\Table\ColRole;
 use App\Support\Table\Column;
 use App\Support\Table\Table;
+use App\Offers\Reprice;
 use App\Users\User;
 use App\Vendors\Vendor;
 use App\Workflow\Actions\TakeExit;
@@ -95,7 +96,7 @@ class DealController
         $sort = Sort::from($request->query('sort'), self::SORTS, 'deadline');
 
         // Гаражные — тоже сделки (27.10.2026, владелец: «в сделках их стоит отображать»; с 13.10 их здесь не было).
-        $q = Deal::query()->with(['offer', 'offer.vendor', 'offer.media', 'offer.positions.stage.block', 'offer.positions.stage.exits.to', 'offer.pendingReprice', 'buyer', 'openRequirement', 'invoices.claims', 'invoices.party', 'contract'])->withCount('parallels')
+        $q = Deal::query()->with(['offer', 'offer.vendor', 'offer.media', 'offer.positions.stage.block', 'offer.positions.stage.exits.to', 'offer.pendingReprice', 'buyer', ...User::withAvatar('buyer.media'), 'openRequirement', 'invoices.claims', 'invoices.party', 'contract'])->withCount('parallels')
             // Параллельные (07.11.2026) — не свои строки: они в сделке своей машины, у строки метка «+N параллельно».
             ->where('deals.state', '!=', DealState::Parallel->value);
         if ($searching) {
@@ -170,9 +171,13 @@ class DealController
      */
     private static function todo(Collection $deals, bool $byWait, Request $request, \Closure $link, ?array $live): array
     {
-        $rows = $deals->map(function (Deal $deal) {
+        // Переоценки письмом без ответа — одним запросом на список, а не на сделку (`Position::repriceUnanswered`, 10.11.2026).
+        $letters = Reprice::whereIn('offer_id', $deals->pluck('offer_id')->filter()->unique())->where('state', Reprice::APPLIED)
+            ->where('source', 'letter')->whereNull('answered_at')->distinct()->pluck('offer_id')->flip();
+        $rows = $deals->map(function (Deal $deal) use ($letters) {
             $position = $deal->offer?->position();
             $position?->setRelation('offer', $deal->offer)->setRelation('deal', $deal);
+            $position && ($position->letterRepriceKnown = $letters->has($deal->offer_id));
             $todo = $position?->todo();
 
             return $todo ? ['deal' => $deal, 'todo' => $todo, 'section' => DealWork::section($todo['key'])] : null;

@@ -143,7 +143,8 @@ class Message extends Model
     /** @return list<string> адреса наших ящиков (offer@, deal@, storage@) */
     public static function ownMailboxes(): array
     {
-        return Cache::remember('mail:own-mailboxes', 300, fn () => Account::query()->pluck('email')->map(fn ($e) => mb_strtolower((string) $e))->filter()->values()->all());
+        // Зовут на каждое письмо списка — кэш в базе один раз на запрос (64 запроса на «Почте», 10.11.2026).
+        return once(fn () => Cache::remember('mail:own-mailboxes', 300, fn () => Account::query()->pluck('email')->map(fn ($e) => mb_strtolower((string) $e))->filter()->values()->all()));
     }
 
     /** Пересылка сотрудника: кто написал на самом деле — имя из «От:» цитаты («Лапшин Александр Юрьевич»), иначе адрес. */

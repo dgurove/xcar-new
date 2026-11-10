@@ -4143,7 +4143,7 @@ php artisan offers-bot:run | offers-bot:profile   # бот предложени�
 php artisan offers:tick | park:tick | billing:tick | mail:sync | mail:reconcile | push:keys | media:restamp | vendors:refill
 npm run build                    # ассеты; npm run dev — с горячей перезагрузкой
 node scripts/icons.mjs           # иконки, экраны запуска, водяной знак из resources/icons
-./deploy/deploy.sh               # выкладка: снимок git → сборка → бэкап базы → миграции → up
+./deploy/deploy.sh               # выкладка: снимок git → сборка здесь → образ на прод → бэкап базы → миграции → up
 ./deploy/deploy.sh backup|check|artisan …|rollback TAG
 ```
 
@@ -4169,6 +4169,13 @@ cookie на `.xcar.localhost`. База `xcar_new` (xcar/xcar). Почта ло�
 (`xcar.logistics_aliases`, `RedirectLegacyPaths`). Старый
 сервер `xcar-new` (201.24.57.130) заморожен с 12.09.2026.
 **Прод не трогать без спроса, выкладка только `deploy/deploy.sh`.**
+**Образ собирается на zurich, не на проде** (10.11.2026, «не грузит система»: сборка забирала оба ядра прода на минуты,
+выкладок по 6–7 в час): `build` — `docker build` из `git archive HEAD`, `ship` — свой реестр `xcar-registry` на zurich
+(127.0.0.1:5000), прод тянет только новые слои обратным туннелем ssh (127.0.0.1:5055 на проде); `BUILD_ON=prod` — по-старому.
+`up` поднимает сначала `app` и ждёт `/up` (`--start-interval=2s` у healthcheck), работников — по одному; дамп перед
+миграцией — `nice`. **Медленное видно** — `ServerTiming` пишет ответ от 2 с, от 150 запросов и 5xx строкой JSON в
+`storage/logs/slow-*.log` (60 дней, на диске данных — переживает выкладку), `perf:digest` в 20:30 шлёт владельцу сводку
+(`--day= --print` — в консоли). Гостевые сессии живут сутки (`guest-sessions:prune`), проверка живости — одной сессией.
 Скомпилированные блейды — в образе (`VIEW_COMPILED_PATH=/app/bootstrap/cache/views`,
 `view:cache` при сборке): том `storage/framework/views` не читается, старый
 компилят из прошлого релиза всплыть не может, коммитить во время выкладки

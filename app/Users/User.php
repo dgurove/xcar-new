@@ -495,6 +495,14 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
         return app()->runningInConsole() ? $ids() : once($ids);
     }
 
+    /** id его групп в «Пользователях» (`user_group_user`, не группы покупателя) — один запрос на веб-запрос: видимость сделки спрашивает их на каждый счётчик. */
+    public function userGroupIds(): array
+    {
+        $ids = fn () => DB::table('user_group_user')->where('user_id', $this->id)->pluck('group_id')->all();
+
+        return app()->runningInConsole() ? $ids() : once($ids);
+    }
+
     /** Группы человека в «Пользователях»: менеджеру — для волн показа, модератору — общие предложения (UserGroup). */
     public function userGroups(): BelongsToMany
     {

@@ -5,12 +5,18 @@
 #   ./deploy/deploy.sh build|migrate|up|ps|logs|artisan …|rollback TAG
 #
 # Снимок — `git archive HEAD`, а не рабочее дерево: в дереве идёт
-# незакоммиченная работа. Образ собирается на сервере (докера на маке нет).
+# незакоммиченная работа. Образ собирается здесь, на zurich, а не на проде (10.11.2026: сборка забирала оба ядра
+# прода на минуты, 6–7 выкладок в час — «не грузит система»); на прод уходят только новые слои через свой реестр
+# (`ship`). `BUILD_ON=prod` — по-старому, на сервере.
 set -euo pipefail
 
 SSH_HOST="${SSH_HOST:-xcar-next}"
 ROOT=/srv/xcar
 TAG="${TAG:-dg-$(date +%Y%m%d-%H%M%S)}"
+BUILD_ON="${BUILD_ON:-here}"
+# Реестр образов на zurich (только 127.0.0.1) и его порт на проде — обратным туннелем ssh на время `docker pull`.
+REGISTRY=127.0.0.1:5000
+REMOTE_REGISTRY=127.0.0.1:5055
 cd "$(dirname "$0")/.."
 
 remote() { ssh "$SSH_HOST" "$@"; }
@@ -47,12 +53,52 @@ compose_in() { # каталог release, аргументы compose
 current_dir() { remote "readlink -f $ROOT/current"; }
 
 build() {
-    echo "==> сборка образа"
-    compose_in "$(release_dir)" build app
-    # Кэш, которого эта сборка не коснулась двое суток, — после сборки, не до:
-    # снимок контекста выкладки нужен ей самой (обжигались 08.09). --max-used-space в Docker 29 ничего не снимает.
-    # Кэш колёс pip (`id=xcar-pip`) не трогаем: без него слой OCR качается с PyPI полчаса.
-    remote "docker builder prune -f --filter until=48h --filter type!=exec.cachemount >/dev/null 2>&1 || true"
+    if [ "$BUILD_ON" = prod ]; then
+        echo "==> сборка образа на сервере"
+        compose_in "$(release_dir)" build app
+        # Кэш, которого эта сборка не коснулась двое суток, — после сборки, не до:
+        # снимок контекста выкладки нужен ей самой (обжигались 08.09). --max-used-space в Docker 29 ничего не снимает.
+        # Кэш колёс pip (`id=xcar-pip`) не трогаем: без него слой OCR качается с PyPI полчаса.
+        remote "docker builder prune -f --filter until=48h --filter type!=exec.cachemount >/dev/null 2>&1 || true"
+        return
+    fi
+    echo "==> сборка образа здесь"
+    local dir="${XDG_CACHE_HOME:-$HOME/.cache}/xcar-build/$TAG"
+    rm -rf "$dir" && mkdir -p "$dir"
+    git archive --format=tar HEAD | tar -x -C "$dir"
+    nice -n 10 docker build -q -f "$dir/deploy/Dockerfile" --target app -t "xcar/app:$TAG" "$dir" >/dev/null
+    rm -rf "$dir"
+    docker builder prune -f --filter until=48h --filter type!=exec.cachemount >/dev/null 2>&1 || true
+    ship
+}
+
+registry() { # свой реестр образов на zurich, удаление манифестов включено — старые чистит `ship`
+    docker ps -q --filter name='^xcar-registry$' | grep -q . && return
+    docker rm -f xcar-registry >/dev/null 2>&1 || true
+    docker run -d --restart unless-stopped --name xcar-registry -p "$REGISTRY:5000" \
+        -e REGISTRY_STORAGE_DELETE_ENABLED=true -v xcar-registry:/var/lib/registry registry:2 >/dev/null
+    sleep 2
+}
+
+ship() { # готовый образ на прод: в реестр здесь, оттуда прод тянет только новые слои
+    echo "==> образ на сервер"
+    registry
+    docker tag "xcar/app:$TAG" "$REGISTRY/xcar/app:$TAG"
+    docker push -q "$REGISTRY/xcar/app:$TAG" >/dev/null
+    docker rmi "$REGISTRY/xcar/app:$TAG" >/dev/null
+    ssh -o ExitOnForwardFailure=yes -R "${REMOTE_REGISTRY#*:}:$REGISTRY" "$SSH_HOST" \
+        "docker pull -q $REMOTE_REGISTRY/xcar/app:$TAG >/dev/null && docker tag $REMOTE_REGISTRY/xcar/app:$TAG xcar/app:$TAG && docker rmi $REMOTE_REGISTRY/xcar/app:$TAG >/dev/null"
+    # Здесь и в реестре — три последних: прод держит свои три сам (`prune`).
+    local old
+    old=$(docker images xcar/app --format '{{.Tag}}' | grep '^dg-' | sort -r | tail -n +4 || true)
+    for t in $old; do
+        docker rmi "xcar/app:$t" >/dev/null 2>&1 || true
+        local digest
+        digest=$(curl -sfI -H 'Accept: application/vnd.docker.distribution.manifest.v2+json' -H 'Accept: application/vnd.oci.image.manifest.v1+json' \
+            "http://$REGISTRY/v2/xcar/app/manifests/$t" | tr -d '\r' | awk -F': ' 'tolower($1)=="docker-content-digest"{print $2}')
+        [ -n "$digest" ] && curl -sf -X DELETE "http://$REGISTRY/v2/xcar/app/manifests/$digest" >/dev/null || true
+    done
+    [ -n "$old" ] && docker exec xcar-registry registry garbage-collect --delete-untagged /etc/docker/registry/config.yml >/dev/null 2>&1 || true
 }
 
 migrate() {
@@ -71,6 +117,11 @@ migrate() {
 
 up() {
     echo "==> запуск"
+    # Сначала сайт — и ждём, пока ответит (healthcheck `/up`); работники — следом по одному: разом девять контейнеров
+    # на двух ядрах прода давали пик, и страницы не открывались (10.11.2026).
+    compose_in "$(release_dir)" up -d --no-deps --wait --wait-timeout 120 app
+    remote "cd $(release_dir)/deploy && for s in scheduler queue queue-mail queue-files queue-scan queue-long offers-bot mail-watch; do \
+        docker compose up -d --no-deps \$s >/dev/null 2>&1; sleep 3; done"
     compose_in "$(release_dir)" up -d --remove-orphans
     # Старый планировщик убит посреди задач, а их замки withoutOverlapping живут в кэше до 10 минут:
     # бот (telegram:poll) и почта молчали бы после каждой выкладки. Новые контейнеры ещё ничего не держат.

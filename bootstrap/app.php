@@ -83,6 +83,7 @@ use App\Telegram\Offers\Console\Run as OffersBotRun;
 use App\Users\Console\CreateUser;
 use App\Users\Console\SeedDemo;
 use App\Users\Console\TelegramAvatars;
+use App\Support\Console\PerfDigestCommand;
 use App\Vendors\Console\ClaimDigestCommand;
 use App\WhatsApp\Console\Poll as WhatsAppPoll;
 use App\WhatsApp\Console\Status as WhatsAppStatus;
@@ -106,6 +107,7 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withCommands([
+        PerfDigestCommand::class,
         CollectValuesCommand::class,
         RerenderInvoices::class,
         ListsCheck::class,

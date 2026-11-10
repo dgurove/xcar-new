@@ -46,7 +46,7 @@ dump_db() {
     echo "==> база $DB_DATABASE"
     # Дамп и проверка оглавления — внутри контейнера: формату custom нужен seek,
     # из конвейера pg_restore --list отвечает «did not find magic string».
-    docker exec xcar-postgres-1 sh -c "pg_dump -U '$DB_USERNAME' -d '$DB_DATABASE' -Fc --no-owner --no-privileges -f /tmp/backup.dump && pg_restore --list /tmp/backup.dump > /dev/null"
+    docker exec xcar-postgres-1 sh -c "nice -n 10 pg_dump -U '$DB_USERNAME' -d '$DB_DATABASE' -Fc --no-owner --no-privileges -f /tmp/backup.dump && pg_restore --list /tmp/backup.dump > /dev/null"
     docker cp xcar-postgres-1:/tmp/backup.dump "$db"
     docker exec xcar-postgres-1 rm -f /tmp/backup.dump
     test -s "$db" || { echo "дамп пустой" >&2; exit 1; }
