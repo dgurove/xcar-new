@@ -305,7 +305,7 @@ class AlfaRequisitesTest extends TestCase
         $this->assertStringStartsWith('Счёт поставщика от ', $pdf->name);
         Notification::assertSentTo($this->manager, \App\Notifications\DealInfoNotice::class);
 
-        $this->actingAs($this->manager)->get(\App\Support\Surface::Site->url('/deals/'.$deal->id))->assertOk()->assertSee($pdf->name)->assertSee('Только от плательщика');
+        $this->actingAs($this->manager)->get(\App\Support\Surface::Site->url('/deals/'.$deal->id))->assertOk()->assertSee('Счёт поставщика')->assertSee('от '.$pdf->created_at->timezone('Europe/Moscow')->format('d.m'))->assertSee('Только от плательщика');
         $this->actingAs($this->admin)->followingRedirects()->get($crm('/work/deals/'.$deal->id))->assertOk()->assertDontSee('Менеджер не видит счёт поставщика');
         $pdf->forgetCustomProperty(\App\Offers\SupplierInvoice::PROP)->save();
         $this->actingAs($this->admin)->followingRedirects()->get($crm('/work/deals/'.$deal->id))->assertSee('Менеджер не видит счёт поставщика');

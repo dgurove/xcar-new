@@ -21,7 +21,7 @@ import { openSheet, closeSheet, outside } from '../sheet';
 let shown = null;
 
 export default class extends Controller {
-    static targets = ['input', 'progress', 'grid', 'all', 'expand', 'failed'];
+    static targets = ['input', 'progress', 'grid', 'all', 'expand', 'failed', 'camera'];
     static values = { url: String, collection: { type: String, default: 'photos' }, stage: String, readonly: Boolean, reload: Boolean, group: String, any: Boolean, other: String, mark: Boolean };
 
     connect() {
@@ -101,6 +101,15 @@ export default class extends Controller {
     }
 
     pick() { this.inputTarget.click(); }
+
+    // Чек с камеры (10.11.2026, шаг оплаты): своё поле с capture — сразу камера телефона, файл уходит тем же путём.
+    camera() { (this.hasCameraTarget ? this.cameraTarget : this.inputTarget).click(); }
+
+    uploadCamera() {
+        const files = [...this.cameraTarget.files];
+        this.cameraTarget.value = '';
+        return this.uploadFiles(files);
+    }
 
     // «Показать все» / «Скрыть все» (владелец, 04.10.2026): хоть один кадр скрыт — показать все, иначе скрыть все.
     // Кадры с глазом этого ряда; меньше двух — кнопки нет.

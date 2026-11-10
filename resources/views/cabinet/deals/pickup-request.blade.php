@@ -1,4 +1,4 @@
-{{-- Кто везёт или «Нужен вывоз» (17.10.2026, владелец): забирает сам — «Автомобиль забрал» кнопкой шага, логистов — только
+{{-- Кто везёт или «Попросить вывоз…» (17.10.2026, владелец): забирает сам — «Автомобиль забрал» кнопкой шага, логистов — только
      если попросит; везёт логистика — кто и когда словом, довезут — шаг пройдёт сам. В чек-листе договора — под «Заберите
      автомобиль», иначе — под кнопками шага. --}}
 @if ($handover?->carrier)
@@ -10,7 +10,10 @@
             @csrf<x-ui.button block variant="secondary">Автомобиль забрал</x-ui.button>
         </form>
     @endif
-    <form method="post" action="/deals/{{ $deal->id }}/pickup" class="{{ ($inline ?? false) ? 'mt-1' : 'mt-3 text-center' }}" data-turbo-confirm="Попросить логистов забрать ТС?" data-turbo-confirm-label="Попросить">
-        @csrf<button @class(["retreat-link", "!mx-0 !px-0" => $inline ?? false])>Нужен вывоз</button>
-    </form>
+    {{-- «Попросить вывоз…» (10.11.2026, было «Нужен вывоз» — владелец: «непонятно, что эта кнопка делает»): шторка с тем,
+         что будет (`x-deal.pickup-ask-sheet`), просьба — в ней. --}}
+    <div data-controller="sheet" class="{{ ($inline ?? false) ? 'mt-1' : 'mt-3 text-center' }}">
+        <button type="button" @class(["retreat-link", "!mx-0 !px-0" => $inline ?? false]) data-action="sheet#open">Попросить вывоз…</button>
+        <x-deal.pickup-ask-sheet :deal="$deal"/>
+    </div>
 @endif

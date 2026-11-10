@@ -5,6 +5,7 @@ namespace App\Billing\Listeners;
 use App\Billing\ChargeKind;
 use App\Billing\Events\InvoiceIssued;
 use App\Billing\Events\InvoiceVoided;
+use App\Chats\StepAsk;
 use App\Offers\Deal;
 use App\Workflow\Position;
 use App\Workflow\Requirement;
@@ -44,14 +45,15 @@ final class PassTurnOnInvoice
             ]);
             $open = Requirement::where('deal_id', $deal->id)->where('stage_id', $position->stage_id)->whereNull('done_at')->exists();
             if (! $open && $deal->buyer_id && $position->stage->awaitsManager($deal)) {
-                Requirement::askFor($deal, $position->stage, $position);
+                // Уведомления здесь нет (о счёте говорит своё), а в чат сделки — «Оплатите…» с кнопкой шага (`StepAsk`).
+                StepAsk::post(Requirement::askFor($deal, $position->stage, $position));
             }
         } elseif ($e instanceof InvoiceVoided && $position->waits_for === null && ! $deal->hasManagerInvoice() && ! $deal->paysSupplierOn($position->stage)) {
             // Ход снова менеджера («Укажите покупателя») — часы оплаты от «Забрал» (`Deal::payDue`), наш — без часов.
             $gap = $deal->invoiceGap();
             $position->update(['waits_for' => $deal->managerGap() ? WaitsFor::Manager : WaitsFor::Us,
                 'deadline_at' => in_array($gap, ['buyer', 'passport'], true) ? $deal->payDue() : null, 'reminded_at' => null, 'overdue_at' => null]);
-            Requirement::where('deal_id', $deal->id)->where('stage_id', $position->stage_id)->whereNull('done_at')->delete();
+            Requirement::where('deal_id', $deal->id)->where('stage_id', $position->stage_id)->whereNull('done_at')->get()->each->delete();
         }
     }
 }

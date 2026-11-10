@@ -2,6 +2,7 @@
 
 namespace App\Offers\Listeners;
 
+use App\Chats\StepAsk;
 use App\Logistics\Actions\SelfPickup;
 use App\Logistics\Events\TransportAssigned;
 use App\Logistics\Events\TransportMoved;
@@ -114,7 +115,7 @@ final class SyncHandover
         $ours = $deal->setRelation('offer', $offer->unsetRelation('pickupTask'))->carried();
         if ($ours && $position->waits_for !== WaitsFor::Us) {
             $position->update(['waits_for' => WaitsFor::Us, 'deadline_at' => null, 'reminded_at' => null, 'overdue_at' => null]);
-            Requirement::where('deal_id', $deal->id)->where('stage_id', $position->stage_id)->whereNull('done_at')->delete();
+            Requirement::where('deal_id', $deal->id)->where('stage_id', $position->stage_id)->whereNull('done_at')->get()->each->delete();
         } elseif (! $ours && $position->waits_for === WaitsFor::Us) {
             $position->update(['waits_for' => null, 'deadline_at' => $position->stage->deadlineFor($offer, Carbon::now()), 'reminded_at' => null, 'overdue_at' => null]);
             $open = Requirement::where('deal_id', $deal->id)->where('stage_id', $position->stage_id)->whereNull('done_at')->exists();
@@ -125,6 +126,7 @@ final class SyncHandover
                 $requirement = Requirement::askFor($deal, $position->stage, $position);
                 $buyer = $deal->buyer;
                 DB::afterCommit(fn () => $buyer->notify(new YourTurnNotice($requirement->load('offer'))));
+                StepAsk::post($requirement);
             }
         }
     }

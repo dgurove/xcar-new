@@ -26,6 +26,11 @@
     // проходит сам, когда данные со сканом есть (`AdvanceOnBuyerData`). Письма поставщика менеджер не видит.
     $buyerStep = $deal->isLive() && $requirement?->asks === Asks::Buyer;
     $needsBuyer = $needsBuyer || $buyerStep;
+    // Реквизиты прислал фотографией — вносим мы (10.11.2026, `deals.buyer_scans_at`): ни выбора, ни часов, одно слово.
+    $photosSent = $needsBuyer && $deal->buyer_scans_at;
+    $needsBuyer = $needsBuyer && ! $photosSent;
+    // Покупатель ещё не выбран — сначала плитки «Паспорт» / «Карточка фирмы» (`x-deal.buyer-photos`).
+    $photoTiles = $needsBuyer && ! \App\Offers\DealContract::for($deal)->buyer_user_id;
     // Гаражная Совкомбанка: счёт и договор — когда менеджер продаст (`Deal::namesBuyer`): цену он пишет «Продаю».
     $needsPrice = $gap === 'price';
     // Строки счетов — только в гараже, где «Расчёта» нет; на странице сделки счёт в «Расчёте», а здесь — сама оплата.
@@ -71,34 +76,32 @@
     @endif
 
     @if ($deal->isLive() && $position)
-        <div class="box {{ $requirement && $position->isOverdue() && ! $paidUp ? 'box-urgent' : '' }}">
-            @if ($consent)
-                <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-                    <h2>Поставщик согласовал</h2>
-                    <x-route.clock :position="$position" bare/>
-                </div>
-                <h3 class="mt-5 text-lg">Подтверждаете, что берёте в работу?</h3>
-            @else
-            <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-                <h2>{{ \App\Users\Wording::mine($position->stage->block?->name) ?? 'Идёт работа' }}</h2>
-                {{-- Счёта нет — ниже «Готовим счёт», второй раз в шапке не пишем. Ход менеджера — только часы: что сделать,
-                     говорит заголовок задачи ниже, «Ваш ход» над ним — лишнее слово (без срока — ничего). --}}
-                @unless ($noInvoice || $paidUp)<x-route.clock :position="$position" :bare="$position->waitsFor() === \App\Workflow\WaitsFor::Manager"/>@endunless
-            </div>
-            @endif
-
-            @if ($consent)
-            @elseif ($needsBuyer && ! $buyerStep)
-                <h3 class="mt-5 text-lg">{{ $gap === 'passport' ? 'Приложите паспорт покупателя' : 'Укажите покупателя' }}</h3>
-            @elseif ($needsPrice)
-                <h3 class="mt-5 text-lg">Укажите цену продажи</h3>
-            @elseif ($paidUp)
-                <h3 class="mt-5 text-lg">Оплата получена</h3>
-            @elseif ($requirement && ! ($pickupSteps ?? null))
-                {{-- Чек-лист получения сам говорит, что делать сейчас: заголовок просьбы повторял бы его пункт. --}}
-                <h3 class="mt-5 text-lg">@if ($direct){{ $deal->schemeOf()->payLabel() }}@if ($deal->supplierPayment()) <span class="nums">{{ \App\Support\Money::rub($deal->supplierPayment()) }}</span>@endif @else{{ \App\Users\Wording::mine($requirement->title) }}@endif</h3>
+        <div id="step" class="box scroll-mt-4 {{ $requirement && $position->isOverdue() && ! $paidUp ? 'box-urgent' : '' }}">
+            {{-- Где сделка на пути — полосой (10.11.2026): пройдено, сейчас, впереди; нажатие — к «Пути сделки». --}}
+            @if (isset($blocks))<x-route.strip :blocks="$blocks" :position="$position"/>@endif
+            {{-- Шапка — одна фраза, что сделать (10.11.2026, владелец: «зачем писать „Оплата / Оплатить“, „Получение автомобиля /
+                 Заберите автомобиль“ — пользователь не тупой»): заголовок — само дело, под ним срок; имя этапа — только когда
+                 делать менеджеру нечего (ждём, готовим счёт) или дело говорит чек-лист ниже. --}}
+            @php
+                $heading = match (true) {
+                    $consent => 'Берёте в работу?',
+                    $photosSent => 'Реквизиты по фото у XCar',
+                    $needsBuyer && ! $buyerStep => $gap === 'passport' ? 'Приложите паспорт покупателя' : 'Укажите покупателя',
+                    $needsPrice => 'Укажите цену продажи',
+                    $paidUp => 'Оплата получена',
+                    $requirement && ! ($pickupSteps ?? null) => $direct
+                        ? trim(preg_replace('/^Оплатить/u', 'Оплатите', (string) $deal->schemeOf()->payLabel()).' '.($deal->supplierPayment() ? \App\Support\Money::rub($deal->supplierPayment()) : ''))
+                        : \App\Users\Wording::mine($requirement->title),
+                    default => \App\Users\Wording::mine($position->stage->block?->name) ?? 'Идёт работа',
+                };
+            @endphp
+            <h2>{{ $heading }}</h2>
+            @unless ($noInvoice || $paidUp || $photosSent)<div class="mt-1 text-sm"><x-route.clock :position="$position" :bare="$consent || $position->waitsFor() === \App\Workflow\WaitsFor::Manager"/></div>@endunless
+            @if ($photosSent)
+                <p class="mt-2 text-sm text-ink-muted">Внесём сами, шаг пройдёт без вас</p>
+            @elseif ($requirement && ! ($pickupSteps ?? null) && ! $needsBuyer && ! $needsPrice && ! $paidUp && ! $consent)
                 @if ($rejected)<p class="mt-2 font-medium text-urgent">Оплата <span class="nums">{{ \App\Support\Money::rub($rejected->amount) }}</span> от <span class="nums">{{ \App\Support\Ago::html($rejected->paid_at, words: false) }}</span> не поступила{{ $rejected->reject_reason ? ': '.$rejected->reject_reason : '' }}</p>@endif
-                {{-- Срок просьбы — тот же, что часы в шапке шага: второй раз его не пишем. --}}
+                {{-- Срок просьбы — тот же, что часы под заголовком: второй раз его не пишем. --}}
                 @if ($requirement->due_at && ! ($position->deadline_at && abs($position->deadline_at->diffInMinutes($requirement->due_at)) < 1))
                     <p class="mt-2 text-sm {{ $requirement->due_at->isPast() ? 'text-urgent' : 'text-ink-muted' }}">до {{ \App\Support\Ago::html($requirement->due_at, true, words: false) }}, <span class="nums font-medium" data-controller="timer" data-timer-until-value="{{ $requirement->due_at->toIso8601String() }}" data-timer-done-value="срок вышел"></span></p>
                 @endif
@@ -168,10 +171,10 @@
             @if ($direct && \App\Offers\SupplierInvoice::onPay($deal, $position->stage))
                 @if ($supplierBills->isNotEmpty())
                     <div class="list mt-4">
-                        @foreach ($supplierBills as $f)<x-ui.file :name="$f->name.'.'.pathinfo($f->file_name, PATHINFO_EXTENSION)" :mime="$f->mime_type" href="/files/{{ $f->id }}"/>@endforeach
+                        {{-- Счёт — своим именем и с «Поделиться» (10.11.2026: менеджеры не узнавали счёт в файле со сканера и не могли
+                             переслать его тому, кто платит); чек — кнопкой ниже, с камеры. --}}
+                        @foreach ($supplierBills as $f)<x-ui.file name="Счёт поставщика" :mime="$f->mime_type" :size="'от '.$f->created_at->timezone('Europe/Moscow')->format('d.m')" href="/files/{{ $f->id }}" download/>@endforeach
                     </div>
-                    {{-- Чем подтвердить оплату — словами (10.11.2026: в кассе дают чек, бывает скан или файл платёжки). --}}
-                    <p class="mt-3 text-sm text-ink-muted">Оплатили — приложите фото чека, скан или файл платёжки</p>
                 @else
                     <p class="mt-3 text-ink-muted">Счёт поставщика пришлём сюда</p>
                 @endif
@@ -196,9 +199,10 @@
 
             {{-- Действия — после всего, что нужно прочитать. --}}
             @if ($needsBuyer)
+                @if ($photoTiles)<div class="mt-4"><x-deal.buyer-photos :deal="$deal"/></div>@endif
                 <div class="mt-4">@include('cabinet.deals.contract', ['part' => 'buyer', 'embedded' => true])</div>
             @endif
-            @if ($requirement && ! $needsBuyer && (! $selectionPay || $direct) && ! $paidUp)
+            @if ($requirement && ! $needsBuyer && ! $photosSent && (! $selectionPay || $direct) && ! $paidUp)
                 @if ($payStep && $unpaid->isNotEmpty() && ! $direct)
                     @if ($claimable->isNotEmpty())
                         {{-- Та же шторка, что в «Деньгах»: ссылкой (кто платит), по счёту с платёжкой, наличными. Ответ — сюда же. --}}

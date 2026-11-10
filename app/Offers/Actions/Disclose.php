@@ -2,6 +2,7 @@
 
 namespace App\Offers\Actions;
 
+use App\Chats\StepAsk;
 use App\Live\Publisher;
 use App\Live\Topics;
 use App\Mail\Message;
@@ -80,6 +81,8 @@ final class Disclose
             } elseif ($turn) {
                 $buyer->notify(new YourTurnNotice($turn->load('offer')));
             }
+            // Новый ход — и кнопками в чате сделки (`StepAsk`), как на любом шаге.
+            $turn && StepAsk::post($turn);
         }
 
         return ['disclosure' => $disclosure, 'moved' => $moved];

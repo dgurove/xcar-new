@@ -9,7 +9,9 @@
     $inMoney = $deal->isGarage() ? [] : collect([\App\Billing\ChargeKind::Selection, \App\Billing\ChargeKind::Sale])
         ->map(fn ($kind) => $liveInvoices->first(fn ($i) => $i->kind === $kind)?->id)->filter()->all();
     $pastInvoices = $liveInvoices->reject(fn ($i) => $i->state === \App\Billing\InvoiceState::Issued || in_array($i->id, $inMoney, true));
-    $docs = \App\Offers\OfferFiles::forManagers($offer, auth()->user());
+    // Счёт поставщика — в задаче оплаты и в «Информации по сделке» своим именем; в «Документах» он был третьим разом под
+    // именем со сканера (10.11.2026).
+    $docs = \App\Offers\OfferFiles::forManagers($offer, auth()->user())->reject(fn ($m) => $m->getCustomProperty('supplier_invoice'));
     $photos = $offer->visiblePhotos();
     // Шаг договора (просьба приложить документ, у сделки есть ДКП): покупатель и сам ДКП — пунктами задачи, а не блоком
     // ниже неё (05.10.2026, владелец: «просит приложить договор, а он где-то ниже формируется»).
@@ -27,8 +29,8 @@
     <x-slot:badge><x-car.keys :count="$offer->keys_count" label/></x-slot:badge>
     {{-- Сделка — не объявление (05.10.2026, владелец): первым делом задача, справа расчёт, кадры — плиткой в самом низу
          колонки. ПК: слева работа (задача, покупатель, путь, счета), справа липко расчёт, характеристики, документы, фото.
-         Телефон — одна колонка: чат, задача, расчёт, покупатель, путь, характеристики, документы, фото. Чат — карточкой
-         (`cabinet.deals.chat-card`): на ПК первым сбоку, на телефоне самым верхом. --}}
+         Телефон — одна колонка: задача, чат, расчёт, покупатель, путь, характеристики, документы, фото. Чат — карточкой
+         (`cabinet.deals.chat-card`): на ПК первым сбоку, на телефоне под задачей (10.11.2026). --}}
     <div data-deal-offer="{{ $offer->number }}" class="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[minmax(0,1fr)_22rem] lg:gap-8">
         <section class="contents lg:col-start-1 lg:row-start-1 lg:flex lg:min-w-0 lg:flex-col lg:gap-6">
             <x-offer.reprice-ask :deal="$deal" class="order-1 min-w-0"/>
@@ -75,7 +77,8 @@
         <aside class="contents lg:sticky lg:top-[calc(var(--stick-top)+1rem)] lg:col-start-2 lg:row-start-1 lg:flex lg:flex-col lg:gap-6 lg:self-start">
             {{-- Чат — как диалог мессенджера, а не кнопкой в заголовке (06.10.2026, владелец): на ПК первым в боковой
                  колонке, на телефоне — самым верхом, над задачей. --}}
-            @if ($offer->chatOpenFor(auth()->user()))<div class="order-first min-w-0">@include('cabinet.deals.chat-card')</div>@endif
+            {{-- На телефоне — под задачей (10.11.2026, владелец: «пишут в чат, а не кнопку жмут»: чат стоял над делом). --}}
+            @if ($offer->chatOpenFor(auth()->user()))<div class="order-1 min-w-0">@include('cabinet.deals.chat-card')</div>@endif
             <div class="order-2 min-w-0">
                 @if (! $deal->isGarage())
                     @include('cabinet.deals.money')

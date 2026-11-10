@@ -3,10 +3,8 @@
 namespace App\Offers;
 
 use App\Billing\PaymentSource;
-use App\Chats\Actions\OpenChat;
-use App\Chats\Actions\PlatformMessage;
+use App\Chats\StepAsk;
 use App\Live\RefreshDeal;
-use App\Notifications\Notify;
 use App\Notifications\ParallelBuyerNotice;
 use App\Notifications\YourTurnNotice;
 use App\Users\Role;
@@ -21,7 +19,6 @@ use App\Workflow\Track;
 use App\Workflow\WaitsFor;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 
 /**
@@ -192,11 +189,8 @@ final class Parallels
             $requirement->update(['due_at' => $to->deadlineFor($deal->offer, $now)]);
             if (! $quiet && $deal->buyer) {
                 $deal->buyer->notify(new YourTurnNotice($requirement->load(['offer', 'deal', 'stage'])));
-                if ($to->asksConsent()) {
-                    [$offer, $manager] = [$deal->offer, $deal->buyer];
-                    DB::afterCommit(fn () => app(PlatformMessage::class)(
-                        app(OpenChat::class)($offer, $manager, greet: false), Notify::CONSENT_ASK));
-                }
+                // В чат — с кнопками шага (`StepAsk`; на согласии — «Привет, подтверждаешь? Берём?»).
+                StepAsk::post($requirement);
             }
         }
         // Реквизиты пришли — нам громко: может, переключимся на него (владелец).

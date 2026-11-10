@@ -5,7 +5,7 @@
     $currentBlock = $position?->stage->exits->isNotEmpty() ? $position->stage->block_id : null;
 @endphp
 @if ($blocks->isNotEmpty())
-    <div class="box {{ $class ?? '' }}">
+    <div id="path" class="box scroll-mt-4 {{ $class ?? '' }}">
         <h2 class="box-title">Путь сделки</h2>
         <div class="mt-3"><x-route.timeline :blocks="$blocks" :current="$currentBlock" :steps="$steps" :deal="$deal"/></div>
     </div>

@@ -17,6 +17,7 @@ use App\Park\Pass;
 use App\Park\VehicleState;
 use App\Support\Demo\HidesDemo;
 use App\Support\FastAttributes;
+use App\Support\Money;
 use App\Support\Surface;
 use App\Users\User;
 use App\Vendors\DealFormat;
@@ -42,7 +43,7 @@ use Illuminate\Support\Carbon;
  * выплачиваем после оплаты или менеджер удерживает сам. Менеджер вознаграждение
  * не видит, пока по сделке нет живого счёта — `showsCommission()`.
  */
-#[Fillable(['offer_id', 'bid_id', 'buyer_id', 'amount', 'cost', 'supplier_cost', 'owner_price', 'share', 'commission', 'commission_mode', 'scheme', 'garage_payer', 'state', 'notes', 'closed_at', 'close_reason', 'close_note', 'agreed_at', 'prepaid_at', 'supplier_paid_at',
+#[Fillable(['offer_id', 'bid_id', 'buyer_id', 'amount', 'cost', 'supplier_cost', 'owner_price', 'share', 'commission', 'commission_mode', 'scheme', 'garage_payer', 'state', 'notes', 'closed_at', 'close_reason', 'close_note', 'agreed_at', 'buyer_scans_at', 'prepaid_at', 'supplier_paid_at',
     'receiver_user_id', 'receiver_name', 'receiver_phone', 'receiver_at', 'auction_at', 'buyer_party_id', 'shadow_stage_id', 'shadow_at', 'reissue_at'])]
 class Deal extends Model
 {
@@ -51,7 +52,7 @@ class Deal extends Model
 
     protected function casts(): array
     {
-        return ['scheme_at' => 'datetime', 'state' => DealState::class, 'amount' => 'int', 'cost' => 'int', 'supplier_cost' => 'int', 'owner_price' => 'int', 'share' => 'int', 'commission' => 'int', 'commission_mode' => CommissionMode::class, 'scheme' => DealScheme::class, 'garage_payer' => GaragePayer::class, 'closed_at' => 'datetime', 'agreed_at' => 'datetime', 'prepaid_at' => 'datetime', 'supplier_paid_at' => 'datetime', 'receiver_at' => 'datetime', 'auction_at' => 'datetime', 'shadow_at' => 'datetime', 'reissue_at' => 'datetime'];
+        return ['scheme_at' => 'datetime', 'state' => DealState::class, 'amount' => 'int', 'cost' => 'int', 'supplier_cost' => 'int', 'owner_price' => 'int', 'share' => 'int', 'commission' => 'int', 'commission_mode' => CommissionMode::class, 'scheme' => DealScheme::class, 'garage_payer' => GaragePayer::class, 'closed_at' => 'datetime', 'agreed_at' => 'datetime', 'buyer_scans_at' => 'datetime', 'prepaid_at' => 'datetime', 'supplier_paid_at' => 'datetime', 'receiver_at' => 'datetime', 'auction_at' => 'datetime', 'shadow_at' => 'datetime', 'reissue_at' => 'datetime'];
     }
 
     public function offer(): BelongsTo
@@ -142,25 +143,29 @@ class Deal extends Model
 
     /**
      * Ход менеджера в SQL — для «Ваш ход» в «Сделках» сайта и бейджа (`Nav::asks`): открытая просьба или этап продажи ждёт его
-     * (ПРАЙМ без покупателя — без просьбы). То же правило в PHP — `managerTask()`.
+     * (ПРАЙМ без покупателя — без просьбы); реквизиты прислал фотографией — ход наш. То же правило в PHP — `managerTask()`.
      */
-    public const MANAGER_TURN_SQL = "(exists (select 1 from requirements r where r.deal_id = deals.id and r.done_at is null)
-        or exists (select 1 from reprice_asks a where a.deal_id = deals.id and a.state in ('pending', 'countered'))
+    public const MANAGER_TURN_SQL = "(exists (select 1 from reprice_asks a where a.deal_id = deals.id and a.state in ('pending', 'countered'))
+        or (deals.buyer_scans_at is null and (exists (select 1 from requirements r where r.deal_id = deals.id and r.done_at is null)
         or (deals.state = 'active' and exists (select 1 from offer_positions p join workflow_stages s on s.id = p.stage_id where p.offer_id = deals.offer_id
-            and p.track = 'sale' and coalesce(p.waits_for, s.waits_for) = 'manager')))";
+            and p.track = 'sale' and coalesce(p.waits_for, s.waits_for) = 'manager')))))";
 
     /**
      * Что сделать менеджеру по идущей сделке (27.10.2026, владелец: «глянь так же с точки зрения менеджера»): просьба шага,
      * а без неё — ход его словами («Укажите покупателя», имя шага для менеджера). Просьба «Оплатите», а счета уже
      * оплачены (маршрут не догнал), — не дело. Одно место для строки, раздела «Ваш ход» и бейджа.
      *
-     * @return array{title: string, due: ?Carbon}|null
+     * `kind` — чем ответить (`ManagerAsk`): `ask` — просьба шага, `reprice` — цена, `buyer` / `passport` / `price` — пробел
+     * счёта, `step` — шаг без просьбы. Оплата поставщику самим менеджером — словами задачи шага: «Оплатить страховой 890 000 ₽».
+     * Прислал реквизиты фотографией (`buyer_scans_at`, 10.11.2026) — ход наш, пока не внесём.
+     *
+     * @return array{title: string, due: ?Carbon, kind: string}|null
      */
     public function managerTask(): ?array
     {
         // Параллельная — ход только её просьбой: шаг машины у неё чужой (`Parallels`).
         if ($this->isParallel()) {
-            return ($req = $this->openRequirement) ? ['title' => $req->title, 'due' => $req->due_at] : null;
+            return ($req = $this->openRequirement) ? ['title' => $req->title, 'due' => $req->due_at, 'kind' => 'ask'] : null;
         }
         if (! $this->isActive()) {
             return null;
@@ -168,10 +173,22 @@ class Deal extends Model
         $position = $this->offer?->position();
         // Выросла закупочная — сначала ответ про цену (28.10.2026, `RepriceAsk`).
         if ($due = RepriceAsk::dealDue()->get($this->offer_id)) {
-            return ['title' => 'Назовите новую цену', 'due' => $due];
+            return ['title' => 'Назовите новую цену', 'due' => $due, 'kind' => 'reprice'];
+        }
+        if ($this->buyer_scans_at) {
+            return null;
         }
         if ($req = $this->openRequirement) {
-            return $position?->stage->isPayStep() && $this->fullyPaid() ? null : ['title' => $req->title, 'due' => $req->due_at];
+            if ($position?->stage->isPayStep() && $this->fullyPaid()) {
+                return null;
+            }
+            $pays = $req->stage && $this->paysSupplierOn($req->stage) && ($label = $this->schemeOf()->payLabel());
+
+            // Заголовок шага — «Оплатить страховой»; дело — просьбой, как остальные: «Оплатите страховой 890 000 ₽».
+            $label = $pays ? preg_replace('/^Оплатить/u', 'Оплатите', $label) : null;
+
+            return ['title' => $pays ? trim($label.' '.($this->supplierPayment() ? Money::rub($this->supplierPayment()) : '')) : $req->title,
+                'due' => $req->due_at, 'kind' => 'ask'];
         }
         // Гаражная — дело только просьбой (как бейдж «Гаража», `Nav::asks`): «Укажите цену продажи» у неё — сама продажа
         // из гаража, она идёт неделями и в «Ваш ход» не встаёт (02.11.2026: 16 таких заслоняли настоящие дела).
@@ -188,7 +205,7 @@ class Deal extends Model
             'passport' => 'Приложите паспорт покупателя',
             'price' => 'Укажите цену продажи',
             default => $position->stage->managerTitle(),
-        }, 'due' => $position->deadline_at];
+        }, 'due' => $position->deadline_at, 'kind' => in_array($gap, ['buyer', 'passport', 'price'], true) ? $gap : 'step'];
     }
 
     /** Договор купли-продажи: собственника (ДКП) или ПРАЙМ с покупателем менеджера (`DealContract`). */

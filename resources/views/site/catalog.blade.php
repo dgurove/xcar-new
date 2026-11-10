@@ -38,6 +38,15 @@
                     $toEstimate = $estimates->reject(fn ($o) => $o->openEstimates->first()?->isGiven());
                     $estimated = $estimates->filter(fn ($o) => $o->openEstimates->first()?->isGiven());
                 @endphp
+                {{-- «Ждут вас» — дела по своим сделкам первой лентой (10.11.2026, владелец: «подтверждение предложений научились, а
+                     когда сделка — почти всегда приходится за них админам нажимать»): кнопка ответа прямо в плитке. --}}
+                @if (($asks ?? collect())->isNotEmpty())
+                    <div class="mb-6">
+                        <x-ui.shelf title="Ждут вас" :count="$asks->count()" id="catalog-asks">
+                            @foreach ($asks as $ask)<x-deal.ask-card :ask="$ask"/>@endforeach
+                        </x-ui.shelf>
+                    </div>
+                @endif
                 {{-- «Нужно оценить» — самым верхом, выше «Срочно», на любом виде и любой пилюле (30.10.2026, менеджеры: «в
                      приложении некуда заходить, чтобы их увидеть» — в «Плитках» они стояли в общей сетке без подписи, после
                      срочных, а на пилюлях «Новые» и «Горящие» пропадали). --}}

@@ -2,8 +2,10 @@
 
 namespace App\Http\Admin;
 
+use App\Chats\Message;
 use App\Offers\Deal;
 use App\Offers\Documents\PaymentProofPdf;
+use App\Workflow\Actions\AttachChatFiles;
 use App\Workflow\Actions\AttachRequirementFiles;
 use App\Workflow\Actions\TakeExit;
 use App\Workflow\Actor;
@@ -26,9 +28,15 @@ final class PaymentProofController
     {
         abort_unless($request->user()->canManageCrm(), 403);
         $requirement = $this->open($deal);
-        $request->validate(['files' => ['array'], 'files.*' => ['file', 'max:30720']]);
+        $request->validate(['files' => ['array'], 'files.*' => ['file', 'max:30720'], 'message' => ['nullable', 'integer']]);
         foreach ($request->file('files', []) as $file) {
             $attach($requirement, $file);
+        }
+        // Чек прислал в чат сделки (10.11.2026, `x-chat.doc-pick`): файлы его сообщения — без скачивания и новой загрузки.
+        if ($request->filled('message')) {
+            $message = Message::with(['files', 'chat'])->findOrFail((int) $request->input('message'));
+            abort_unless($message->chat->offer_id === $deal->offer_id && $message->chat->user_id === $deal->buyer_id && ! $message->isDeleted(), 404);
+            app(AttachChatFiles::class)($requirement, $message);
         }
         if ($requirement->refresh()->getMedia('files')->isEmpty()) {
             throw ValidationException::withMessages(['payment_proof' => 'Добавьте чек, скан или файл платёжки']);

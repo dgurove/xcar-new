@@ -94,6 +94,11 @@ final class SaveDealContract
             $buyer->notify(new BuyerContractDataNotice($deal));
         }
 
+        // Реквизиты, что менеджер прислал фотографией, внесли полностью — наш ход по ним кончился (`deals.buyer_scans_at`).
+        if ($deal->buyer_scans_at && $contract->fresh()->buyer?->party?->readyAsBuyer()) {
+            $deal->update(['buyer_scans_at' => null]);
+        }
+
         return ($this->settle)($contract);
     }
 

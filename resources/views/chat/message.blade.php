@@ -11,8 +11,12 @@
     // Мета (время, галочки) сидит на последней строке текста; в пузыре из одних фото — поверх фото.
     $photoOnly = !$deleted && !$m->text && $images->isNotEmpty() && $docs->isEmpty();
     $kb = fn (int $b) => $b >= 1048576 ? round($b / 1048576, 1).' МБ' : max(1, (int) round($b / 1024)).' КБ';
+    // Под пузырём — кнопки шага (сообщение площадки с просьбой) или «Это чек об оплате» (файлы менеджера, шаг ждёт документ).
+    $stepKeys = !$deleted && !$system && $m->requirement_id;
+    $docPick = !$deleted && !$stepKeys && ($docAsk ?? null) && $m->author_kind === AuthorKind::Participant && $m->files->isNotEmpty()
+        && $m->created_at->gte($docAsk->created_at->copy()->subDays(2));
 @endphp
-<div class="msg {{ $system ? 'is-system' : ($mine ? 'is-mine' : 'is-their') }} {{ $cont ? 'is-cont' : '' }} {{ $mine && !$system && $m->seq <= $readSeq ? 'is-read' : '' }} {{ $m->edited_at && !$deleted ? 'is-edited' : '' }} {{ $photoOnly ? 'is-photo' : '' }}" data-seq="{{ $m->seq }}" data-day="{{ $day }}" data-author="{{ $m->author_id ?? $m->author_kind->value }}" @if ($own) data-own @endif @if ($deleted) data-deleted @endif @if (!$system && !$readonly && !$deleted) data-action="contextmenu->chat#menu:prevent pointerdown->chat#press pointerup->chat#release pointercancel->chat#release pointermove->chat#drag" @endif>
+<div class="msg {{ $system ? 'is-system' : ($mine ? 'is-mine' : 'is-their') }} {{ $cont ? 'is-cont' : '' }} {{ $mine && !$system && $m->seq <= $readSeq ? 'is-read' : '' }} {{ $m->edited_at && !$deleted ? 'is-edited' : '' }} {{ $photoOnly ? 'is-photo' : '' }} {{ $stepKeys || $docPick ? 'has-step' : '' }}" data-seq="{{ $m->seq }}" data-day="{{ $day }}" data-author="{{ $m->author_id ?? $m->author_kind->value }}" @if ($own) data-own @endif @if ($deleted) data-deleted @endif @if (!$system && !$readonly && !$deleted) data-action="contextmenu->chat#menu:prevent pointerdown->chat#press pointerup->chat#release pointercancel->chat#release pointermove->chat#drag" @endif>
     @if ($system)
         <div class="msg-system">{{ $m->text }}</div>
     @else
@@ -38,5 +42,11 @@
             @endif
             <div class="msg-meta">@if ($m->edited_at && !$deleted)<span>изменено</span>@endif<span class="nums">{{ $m->created_at->format('H:i') }}</span>@if ($mine)<x-ui.icon name="check" class="msg-tick msg-tick-sent size-3.5"/><x-ui.icon name="check-check" class="msg-tick msg-tick-read size-3.5"/>@endif</div>
         </div>
+        {{-- Кнопки шага под сообщением площадки (`x-chat.step-keys`) и «Это чек об оплате» под файлами менеджера. --}}
+        @if ($stepKeys)
+            <x-chat.step-keys :message="$m" :chat="$chat" :user="$user" :readonly="$readonly"/>
+        @elseif ($docPick)
+            <x-chat.doc-pick :message="$m" :ask="$docAsk" :user="$user" :chat="$chat"/>
+        @endif
     @endif
 </div>

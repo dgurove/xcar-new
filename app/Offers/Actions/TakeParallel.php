@@ -2,6 +2,7 @@
 
 namespace App\Offers\Actions;
 
+use App\Chats\StepAsk;
 use App\Logistics\Actions\AssignExecutor;
 use App\Logistics\Channel;
 use App\Logistics\Transport;
@@ -123,6 +124,7 @@ final class TakeParallel
         if ($ask && $stage->awaitsManager($deal) && $deal->buyer) {
             $requirement = Requirement::askFor($deal, $stage, $offer->position(Track::Sale));
             $deal->buyer->notify(new YourTurnNotice($requirement->load(['offer', 'deal', 'stage'])));
+            StepAsk::post($requirement);
         }
     }
 

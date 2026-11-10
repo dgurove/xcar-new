@@ -4,6 +4,8 @@
 @if ($requirement->asks === Asks::Document)
     <div class="mt-5" data-controller="photos" data-photos-url-value="/deals/{{ $deal->id }}/files">
         <input type="file" accept="image/*,.pdf,.heic" multiple class="sr-only" tabindex="-1" data-photos-target="input" data-action="change->photos#upload">
+        {{-- Чек — сразу камерой (10.11.2026): «Сфотографировать чек» открывает её, файл платёжки — обычным выбором. --}}
+        <input type="file" accept="image/*" capture="environment" class="sr-only" tabindex="-1" data-photos-target="camera" data-action="change->photos#uploadCamera">
         @include('cabinet.deals.files', ['requirement' => $requirement])
         <div hidden data-photos-target="progress" class="my-2">
             <div class="mb-1 text-sm text-ink-muted" data-label></div>

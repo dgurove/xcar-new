@@ -4,6 +4,7 @@ namespace App\Http\Site;
 
 use App\Offers\CatalogQuery;
 use App\Offers\CloseGroups;
+use App\Offers\ManagerAsk;
 use App\Offers\Offer;
 use App\Offers\OfferNumber;
 use App\Offers\Showing;
@@ -130,6 +131,9 @@ class CatalogController
             ? CatalogQuery::cards($user)->askedOf($user)->with(['openEstimates' => fn ($e) => $e->where('user_id', $user->id)])->get()
                 ->sortBy(fn (Offer $o) => [$o->openEstimates->first()?->isGiven() ? 1 : 0, $o->openEstimates->first()?->due_at?->timestamp])->values()
             : collect();
+        // «Ждут вас» (10.11.2026, владелец: менеджеры подтверждают предложения, а до сделок не доходят): дела по его сделкам —
+        // первой лентой с кнопкой ответа, на первой странице каталога и не в поиске (`ManagerAsk::of`).
+        $asks = ! $gallery && $user && blank($filters['q'] ?? null) && $offers->currentPage() === 1 ? ManagerAsk::of($user) : collect();
         Showing::remember($user, $offers->pluck('id')->all());
         // Всё просмотрено, а в продаже есть — пустой экран говорит это и ведёт на весь список.
         $allSeen = $unread && blank($filters['q'] ?? null) && $offers->isEmpty() && $urgent->isEmpty() && $exclusive->isEmpty()
@@ -160,6 +164,7 @@ class CatalogController
             'counts' => $pills + $counts,
             'manager' => $user?->isBuyer() ? $user->manager : null,
             'estimates' => $estimates,
+            'asks' => $asks,
         ]);
     }
 

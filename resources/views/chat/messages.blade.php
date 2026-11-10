@@ -11,6 +11,10 @@
     $prev = null;
     $today = now()->startOfDay();
     \App\Chats\Message::primeReplies($messages);
+    // Кнопки шага под сообщениями площадки и «Это чек об оплате» под файлами менеджера (10.11.2026, `Chats\StepAsk`).
+    \App\Chats\StepAsk::prime($messages);
+    $docAsk ??= collect($messages)->contains(fn ($m) => $m->author_kind === AuthorKind::Participant && ! $m->isDeleted() && $m->files->isNotEmpty())
+        ? \App\Chats\StepAsk::documentAsk($chat) : null;
 @endphp
 @if (!empty($more))<div class="chat-more" data-chat-target="more" data-seq="{{ $messages->first()->seq }}"></div>@endif
 @foreach ($messages as $m)
@@ -24,6 +28,6 @@
         <div class="chat-day" data-day="{{ $day }}">{{ $m->created_at->isToday() ? 'Сегодня' : ($m->created_at->isYesterday() ? 'Вчера' : $m->created_at->translatedFormat($m->created_at->year === $today->year ? 'j F' : 'j F Y')) }}</div>
     @endif
     @if ($firstUnread && $m->seq === $firstUnread)<div class="chat-new" id="chat-new">Новые сообщения</div>@endif
-    @include('chat.message', ['m' => $m, 'chat' => $chat, 'user' => $user, 'mine' => $mine, 'system' => $system, 'cont' => $cont, 'readonly' => $readonly, 'staffEyes' => $staffEyes, 'readSeq' => $readSeq, 'day' => $day])
+    @include('chat.message', ['m' => $m, 'chat' => $chat, 'user' => $user, 'mine' => $mine, 'system' => $system, 'cont' => $cont, 'readonly' => $readonly, 'staffEyes' => $staffEyes, 'readSeq' => $readSeq, 'day' => $day, 'docAsk' => $docAsk])
     @php $prev = $m; @endphp
 @endforeach

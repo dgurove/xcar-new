@@ -2,16 +2,24 @@
 
 namespace App\Http\Cabinet;
 
+use App\Billing\Actions\StorePassportScan;
 use App\Billing\Invoice;
 use App\Billing\InvoiceState;
+use App\Billing\Party;
+use App\Billing\PartyKind;
+use App\Chats\AuthorKind;
+use App\Chats\Message;
 use App\Live\RefreshDeal;
 use App\Live\Stream;
 use App\Logistics\Actions\RequestPickup;
 use App\Logistics\Actions\SelfPickup;
+use App\Media\PhotoIngest;
+use App\Offers\Actions\SaveDealContract;
 use App\Offers\Actions\SetReceiver;
 use App\Offers\Bid;
 use App\Offers\BidState;
 use App\Offers\Deal;
+use App\Offers\DealContract;
 use App\Offers\DealState;
 use App\Offers\Disclosures;
 use App\Offers\Handover;
@@ -19,8 +27,14 @@ use App\Offers\OfferState;
 use App\Offers\Parallels;
 use App\Support\ListPrefs;
 use App\Support\Sort;
+use App\Users\Actions\AddPerson;
+use App\Users\Actions\IssueInvite;
 use App\Users\User;
+use App\Users\Wording;
 use App\Workflow\Actions\AnswerRequirement;
+use App\Workflow\Actions\AttachChatFiles;
+use App\Workflow\Actions\AttachRequirementFiles;
+use App\Workflow\Asks;
 use App\Workflow\Outcome;
 use App\Workflow\Path;
 use App\Workflow\Requirement;
@@ -90,7 +104,8 @@ class DealController
         $mine = $mine->sortBy(fn (Deal $d) => $tasks[$d->id]['due']?->getTimestamp() ?? PHP_INT_MAX)->values();
         // Гаражная, где ход его без просьбы, — продаёт из гаража: своим разделом, а не «Идёт сделка».
         // Ответ поставщика менеджеру не виден и тут: сделка остаётся в «Ждём поставщика» (`waitsForManager`, 03.11.2026).
-        $who = fn (Deal $d) => match ($d->offer->position()?->waitsForManager()) {
+        // Реквизиты прислал фотографией — вносим мы: «Ждём XCar» (10.11.2026).
+        $who = fn (Deal $d) => $d->buyer_scans_at ? 'us' : match ($d->offer->position()?->waitsForManager()) {
             WaitsFor::Supplier => 'supplier',
             WaitsFor::Us => 'us',
             WaitsFor::Manager => $d->isGarage() ? 'garage' : 'other',
@@ -233,12 +248,93 @@ class DealController
     public function answer(Request $request, Deal $deal, AnswerRequirement $answer)
     {
         abort_unless($deal->buyer_id === $request->user()->id, 404);
-        $requirement = $deal->openRequirement()->firstOrFail();
-        $exit = Outcome::findOrFail($request->validate(['exit' => ['required', 'integer']])['exit']);
+        $data = $request->validate(['exit' => ['required', 'integer'], 'requirement' => ['nullable', 'integer'], 'back' => ['nullable', 'string', 'max:500']]);
+        // Кнопка не со страницы сделки (чат, полка, вопрос при входе — `x-deal.ask-action`) несёт свою просьбу: на неё уже
+        // ответили (за него, сам шаг ушёл) — не отвечаем на новую чужой кнопкой.
+        $requirement = $deal->openRequirement()->first();
+        if (! $requirement || (isset($data['requirement']) && (int) $data['requirement'] !== $requirement->id)) {
+            return $this->back($request, $deal)->with('toast', 'Ответ уже не нужен');
+        }
+        $exit = Outcome::findOrFail($data['exit']);
         $answer($requirement, $exit, $request->user(), (array) $request->input('fields', []));
 
-        // Сразу туда, где сделку смотрят (гаражная — в гараж): второй редирект съел бы тост.
-        return redirect($deal->refresh()->href())->with('toast', $exit->label);
+        // Сразу туда, где сделку смотрят (гаражная — в гараж) или откуда нажали: второй редирект съел бы тост.
+        return $this->back($request, $deal->refresh())->with('toast', Wording::mine($exit->label));
+    }
+
+    /** Туда, откуда нажали (`back` — путь этого же сайта: чат, «Предложения», «Сделки»), иначе на сделку. */
+    private function back(Request $request, Deal $deal)
+    {
+        $back = (string) $request->input('back');
+
+        return redirect(str_starts_with($back, '/') && ! str_starts_with($back, '//') && ! str_contains($back, '\\') ? $back : $deal->href());
+    }
+
+    /**
+     * «Это чек об оплате» под его фото в чате сделки (10.11.2026, `x-chat.doc-pick`): файлы сообщения — в просьбу шага
+     * (`AttachChatFiles`), и ответ шага, если он один («Оплатил, документ приложен»); вариантов несколько — на шаг.
+     */
+    public function chatFiles(Request $request, Deal $deal, AttachChatFiles $attach, AnswerRequirement $answer)
+    {
+        $me = $request->user();
+        abort_unless($deal->buyer_id === $me->id, 404);
+        $data = $request->validate(['message' => ['required', 'integer'], 'back' => ['nullable', 'string', 'max:500']]);
+        $requirement = $deal->openRequirement()->with('stage.exits')->first();
+        if (! $requirement || $requirement->asks !== Asks::Document) {
+            return $this->back($request, $deal)->with('toast', 'Ответ уже не нужен');
+        }
+        $message = Message::with(['files', 'chat'])->findOrFail($data['message']);
+        abort_unless($message->chat->offer_id === $deal->offer_id && $message->chat->user_id === $me->id
+            && $message->author_kind === AuthorKind::Participant && ! $message->isDeleted(), 404);
+        if ($attach($requirement, $message) === 0) {
+            return $this->back($request, $deal)->with('toast', 'Файл не нашёлся, приложите его на шаге');
+        }
+        $exits = $deal->isParallel() ? Parallels::exits($deal, $requirement->stage) : Handover::managerExits($requirement->stage, $deal);
+        $moves = $exits->reject(fn (Outcome $e) => $e->isRetreat() || Deal::closes($e))->values();
+        if ($moves->count() !== 1) {
+            return redirect($deal->href().'#step')->with('toast', 'Приложено, ответьте на шаге');
+        }
+        $answer($requirement->fresh(), $moves->first(), $me);
+
+        return $this->back($request, $deal->refresh())->with('toast', Wording::mine($moves->first()->label));
+    }
+
+    /**
+     * Реквизиты покупателя фотографией (10.11.2026, владелец: «не прикрепляют реквизиты»; паспорт сфотографировать проще, чем
+     * заполнить форму): новый покупатель менеджера встаёт в сделку, паспорт — сканом с чтением (`StorePassportScan` →
+     * `ReadPassport`), карточка фирмы — в документы контрагента; внести и проверить — наш ход (`deals.buyer_scans_at`, «Ваш ход →
+     * Внести реквизиты по фото»), у менеджера — «Ждём XCar».
+     */
+    public function buyerPhotos(Request $request, Deal $deal, AddPerson $add, IssueInvite $issue, StorePassportScan $store, SaveDealContract $save, PhotoIngest $ingest)
+    {
+        $me = $request->user();
+        abort_unless($deal->buyer_id === $me->id && $deal->isLive() && ! $me->isSuperBuyer(), 404);
+        $data = $request->validate(['kind' => ['required', 'in:passport,company'], 'files' => ['required', 'array', 'min:1', 'max:4'],
+            'files.*' => PassportScanController::FILE], ['files.required' => 'Сфотографируйте документ']);
+        $files = array_values($request->file('files'));
+        [$user] = $add(fn () => $issue->buyer($me, $deal->id), ['first_name' => AddPerson::UNNAMED, 'last_name' => ''], contact: true);
+        $party = Party::forUser($user);
+        if ($data['kind'] === 'passport') {
+            $store($party, 'main', $files, $me);
+        } else {
+            $party->update(['kind' => PartyKind::Company]);
+            foreach ($files as $file) {
+                str_starts_with((string) $file->getMimeType(), 'image/') ? $ingest->fromUpload($party, 'card', $file) : $party->addMedia($file)->toMediaCollection('card');
+            }
+        }
+        $save(DealContract::for($deal), ['buyer_id' => (string) $user->id], $me);
+        $deal->update(['buyer_scans_at' => now()]);
+
+        return $this->back($request, $deal)->with('toast', 'Отправили, реквизиты внесём сами');
+    }
+
+    /** «Ещё нет» и закрытие вопроса при входе (`x-deal.ask-sheet`): до завтра не спрашиваем (`requirements.prompted_at`). */
+    public function later(Request $request, Deal $deal)
+    {
+        abort_unless($deal->buyer_id === $request->user()->id, 404);
+        $deal->openRequirement()->first()?->update(['prompted_at' => now()]);
+
+        return $request->expectsJson() ? response()->noContent() : $this->back($request, $deal);
     }
 
     /** Кто заберёт машину с нашей парковки и когда (`SetReceiver`): пропуск новый, парковка видит сразу. */
@@ -251,13 +347,13 @@ class DealController
         return redirect($deal->href())->with('toast', 'Заберёт '.$deal->receiver()?->labelFor($request->user()));
     }
 
-    /** «Нужен вывоз» — менеджер, что забирает сам, просит логистов (`RequestPickup`). */
+    /** «Попросить вывоз…» — менеджер, что забирает сам, просит логистов (`RequestPickup`). */
     public function requestPickup(Request $request, Deal $deal, RequestPickup $pickup)
     {
         abort_unless($deal->buyer_id === $request->user()->id && $deal->isActive() && $deal->offer, 404);
         $pickup($deal->offer, $request->user());
 
-        return redirect($deal->href())->with('toast', 'Попросили вывоз, логистика назначит исполнителя');
+        return $this->back($request, $deal)->with('toast', 'Попросили вывоз, логистика назначит исполнителя');
     }
 
     /** «Автомобиль забрал», когда шага получения в маршруте нет (`Handover::canPick`): вывоз закрыт у него. */
@@ -277,7 +373,7 @@ class DealController
         $request->validate(['file' => ['required', 'file', 'max:30720']]);
         $file = $request->file('file');
         try {
-            app(\App\Workflow\Actions\AttachRequirementFiles::class)($requirement, $file);
+            app(AttachRequirementFiles::class)($requirement, $file);
         } catch (\Throwable $e) {
             return response()->json(['message' => $e->getMessage()], 422);
         }

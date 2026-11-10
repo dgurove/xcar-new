@@ -2,6 +2,8 @@
 
 namespace App\Workflow;
 
+use App\Chats\Events\ChatMessageChanged;
+use App\Chats\Message;
 use App\Offers\Deal;
 use App\Offers\DealState;
 use App\Offers\Offer;
@@ -10,11 +12,13 @@ use App\Users\User;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\InteractsWithMedia;
 
 /** Просьба к менеджеру на этапе, где его ход. Ответ — нажатая кнопка плюс поля или документ. */
-#[Fillable(['offer_id', 'deal_id', 'stage_id', 'user_id', 'title', 'text', 'asks', 'fields', 'due_at', 'done_at', 'answer'])]
+#[Fillable(['offer_id', 'deal_id', 'stage_id', 'user_id', 'title', 'text', 'asks', 'fields', 'due_at', 'done_at', 'answer', 'prompted_at'])]
 class Requirement extends Model implements HasMedia
 {
     use FastAttributes;
@@ -28,7 +32,38 @@ class Requirement extends Model implements HasMedia
             'answer' => 'array',
             'due_at' => 'datetime',
             'done_at' => 'datetime',
+            'prompted_at' => 'datetime',
         ];
+    }
+
+    /**
+     * Ответили, закрыли шагом, удалили — сообщение с кнопками этой просьбы в чате сделки перерисовывается (`Chats\StepAsk`):
+     * вместо кнопок — ответ, у удалённой — просто текст. После коммита: чат перечитывает пузырь сразу.
+     */
+    protected static function booted(): void
+    {
+        static::updated(function (self $r) {
+            $r->wasChanged('done_at') && self::redrawChat(Message::where('requirement_id', $r->id)->get());
+        });
+        static::deleting(function (self $r) {
+            self::redrawChat(Message::where('requirement_id', $r->id)->get());
+        });
+    }
+
+    /** Закрыли или удалили просьбы запросом мимо модели (`EnterStage`, `SyncHandover`) — их кнопки в чате тоже перерисовать. */
+    public static function redrawFor(iterable $ids): void
+    {
+        $ids = collect($ids)->filter()->values();
+        $ids->isNotEmpty() && self::redrawChat(Message::whereIn('requirement_id', $ids)->get());
+    }
+
+    /** @param  Collection<int, Message>  $messages */
+    private static function redrawChat($messages): void
+    {
+        if ($messages->isEmpty()) {
+            return;
+        }
+        DB::afterCommit(fn () => $messages->each(fn (Message $m) => ChatMessageChanged::dispatch($m->fresh(['chat']) ?? $m->load('chat'))));
     }
 
     public function registerMediaCollections(): void

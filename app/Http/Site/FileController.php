@@ -61,7 +61,11 @@ final class FileController
 
         return response()->file($media->getPath(), [
             'Content-Type' => $media->mime_type,
-            'Content-Disposition' => ($inline ? 'inline' : 'attachment')."; filename*=UTF-8''".rawurlencode(Surface::current() === Surface::Site ? InternalRefs::fileName($media->file_name, InternalRefs::refsOf($media->model)) : $media->file_name),
+            // Счёт поставщика — своим именем «Счёт поставщика от …» (`SupplierInvoice::mark`), а не номером со сканера: его
+            // пересылают тому, кто платит (10.11.2026).
+            'Content-Disposition' => ($inline ? 'inline' : 'attachment')."; filename*=UTF-8''".rawurlencode($media->getCustomProperty('supplier_invoice') && $media->name
+                ? $media->name.'.'.pathinfo($media->file_name, PATHINFO_EXTENSION)
+                : (Surface::current() === Surface::Site ? InternalRefs::fileName($media->file_name, InternalRefs::refsOf($media->model)) : $media->file_name)),
             'X-Content-Type-Options' => 'nosniff',
             'Cache-Control' => 'private, max-age=86400',
         ]);

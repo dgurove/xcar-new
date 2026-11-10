@@ -73,7 +73,7 @@
         @if (\App\Support\Surface::current() === \App\Support\Surface::Partner)
             <x-ui.docs/>
         @else
-            <x-ui.docs/><x-telegram.connect/><x-push.offer/><x-users.credentials/><div id="handed-host" class="contents"><x-deal.handed/></div>
+            <x-ui.docs/><x-deal.ask-sheet/><x-telegram.connect/><x-push.offer/><x-users.credentials/><div id="handed-host" class="contents"><x-deal.handed/></div>
         @endif
     @endauth
     {{-- Новые лоты Мигторга черновиками — капсула сотрудникам CRM (админы и модераторы, тема `staff`). --}}

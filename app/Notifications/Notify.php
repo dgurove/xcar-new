@@ -16,11 +16,10 @@ use App\Billing\Events\PaymentRejected;
 use App\Billing\Invoice;
 use App\Billing\InvoiceState;
 use App\Billing\PaymentSource;
-use App\Chats\Actions\OpenChat;
-use App\Chats\Actions\PlatformMessage;
 use App\Chats\AuthorKind;
 use App\Chats\Events\ChatMessagePosted;
 use App\Chats\Presence;
+use App\Chats\StepAsk;
 use App\Garage\Car as GarageCar;
 use App\Mail\CandidateState;
 use App\Mail\Scope;
@@ -75,7 +74,6 @@ use App\Workflow\Requirement;
 use App\Workflow\Track;
 use App\Workflow\WaitsFor;
 use Illuminate\Events\Dispatcher;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 
 /** Кому что рассказать, когда в офферах что-то произошло. */
@@ -234,6 +232,17 @@ final class Notify
         $interest->user->manager?->notify(new BuyerInterestNotice($interest));
     }
 
+    /**
+     * Ход менеджера: `YourTurnNotice` и сообщение площадки в чате сделки с кнопками шага (`Chats\StepAsk`; 06.11.2026 — только
+     * «Привет, подтверждаешь? Берём?» на согласии, владелец: «чтобы они точно увидели»; 10.11.2026 — на каждом шаге, с кнопками:
+     * «пишут в чат, а не кнопку жмут»). Одна дверь для всех мест, где у менеджера встаёт просьба.
+     */
+    public static function yourTurn(User $buyer, Requirement $requirement): void
+    {
+        $buyer->notify(new YourTurnNotice($requirement->load('offer')));
+        StepAsk::post($requirement);
+    }
+
     public function stageEntered(StageEntered $e): void
     {
         $deal = $e->deal ?? $e->offer->deal()->with('buyer')->first();
@@ -276,14 +285,7 @@ final class Notify
         // Поставщик согласовал, а забирает сам менеджер — сразу с кем говорить и куда ехать (04.10.2026).
         $agreed = $e->exit && str_starts_with(mb_strtolower($e->exit->label), 'поставщик согласовал');
         if ($requirement) {
-            $deal->buyer->notify(new YourTurnNotice($requirement->load('offer')));
-            // Согласие менеджера — ещё и сообщением площадки в чате по машине (06.11.2026, владелец: «чтобы они точно увидели,
-            // в такие моменты нам срочно нужен ответ»): и по «Спросить менеджера», и когда вопрос встал сам новому менеджеру
-            // (`Give::agreedBefore`). После коммита — иначе чат увидит сообщение раньше, чем шаг.
-            if ($e->to->asksConsent()) {
-                [$offer, $manager] = [$e->offer, $deal->buyer];
-                DB::afterCommit(fn () => app(PlatformMessage::class)(app(OpenChat::class)($offer, $manager, greet: false), self::CONSENT_ASK));
-            }
+            self::yourTurn($deal->buyer, $requirement);
         } elseif ($agreed && $deal->buyerPicksUp() && ($handover = Handover::for($deal->setRelation('offer', $e->offer)))->open
             && $handover->park?->state !== VehicleState::Stored) {
             $deal->buyer->notify(new HandoverNotice($deal, $handover));
@@ -344,6 +346,11 @@ final class Notify
     public function chat(ChatMessagePosted $e): void
     {
         $chat = $e->message->chat;
+        // Ход менеджера в чате (`StepAsk`): о нём уже сказал `YourTurnNotice` — второе уведомление о том же не нужно. Кроме
+        // «Привет, подтверждаешь? Берём?» — оно и уведомлением чата с 06.11.2026 (владелец: «чтобы они точно увидели»).
+        if ($e->message->requirement_id && ! $e->message->author_id && $e->message->text !== self::CONSENT_ASK) {
+            return;
+        }
         if ($e->message->author_kind === AuthorKind::Participant) {
             // Вторая сторона: менеджер покупателя или сотрудники площадки.
             $to = $chat->manager_id ? collect([$chat->manager])->filter() : $this->staff();

@@ -1,8 +1,12 @@
 {{-- Бар поля чата и меню пузыря — одни на чаты сайта и переписку бота (`chat_controller`): чип ответа или правки,
      превью, скрепка, капсула ввода, круглая «отправить» (бледная, пока нечего слать); меню — один popover на ленту.
      draft — ключ черновика, accept — что можно приложить (у бота — любой файл, пусто). --}}
-@props(['draft', 'placeholder' => 'Сообщение', 'accept' => 'image/*,.pdf,.heic'])
+@props(['draft', 'placeholder' => 'Сообщение', 'accept' => 'image/*,.pdf,.heic', 'step' => null])
 <div class="chat-bar">
+    @if ($step)
+        {{-- Чип «С кнопками» (10.11.2026): отмечен — сообщение уйдёт менеджеру с кнопками его шага, после отправки снимается. --}}
+        <label class="chat-step-chip"><input type="checkbox" class="sr-only chat-step-box" data-chat-target="step" value="{{ $step->id }}"><x-ui.icon name="check" class="chat-step-tick size-4"/>С кнопками: {{ $step->title }}</label>
+    @endif
     <div class="chat-state" data-chat-target="state" hidden>
         <x-ui.icon name="reply" class="size-4 shrink-0 text-accent-text" data-chat-target="stateIcon"/>
         <div class="min-w-0 flex-1"><div class="truncate text-xs text-accent-text" data-chat-target="stateName"></div><div class="truncate text-sm" data-chat-target="stateText"></div></div>

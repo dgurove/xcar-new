@@ -5,13 +5,14 @@ namespace App\Chats;
 use App\Support\FastAttributes;
 use App\Support\Linkify;
 use App\Users\User;
+use App\Workflow\Requirement;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
 
-#[Fillable(['chat_id', 'seq', 'author_id', 'author_kind', 'text', 'reply_to', 'edited_at', 'deleted_at'])]
+#[Fillable(['chat_id', 'seq', 'author_id', 'author_kind', 'text', 'reply_to', 'edited_at', 'deleted_at', 'requirement_id'])]
 class Message extends Model
 {
     use FastAttributes;
@@ -33,6 +34,12 @@ class Message extends Model
     public function author(): BelongsTo
     {
         return $this->belongsTo(User::class, 'author_id');
+    }
+
+    /** Просьба шага, чьи кнопки несёт сообщение площадки (10.11.2026, `Chats\StepKeys`). */
+    public function requirement(): BelongsTo
+    {
+        return $this->belongsTo(Requirement::class);
     }
 
     public function files(): HasMany

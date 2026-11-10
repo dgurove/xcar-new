@@ -27,9 +27,13 @@
     // справа только сумма: кого ждём, говорит раздел.
     $sectioned = ($sectioned ?? false) && $active;
     $task = $sectioned ? $deal->managerTask() : null;
+    // «Ваш ход» — с кнопкой ответа прямо в строке (10.11.2026, владелец: «как им понятнее и удобнее»): «Беру в работу»,
+    // «Автомобиль забрал» — сразу, остальное — ссылкой на шаг с подписью, что там сделать (`x-deal.ask-action`).
+    $rowAsk = $task && ! $staff ? \App\Offers\ManagerAsk::for($deal) : null;
     // Оранжевое — только просрочка того, кто смотрит: менеджеру — его ход, админу — любая (11.10.2026).
     $alarm = ! $paidUp && ($req?->due_at?->isPast() || ($position?->isOverdue() && ($staff || $position->waitsFor() === \App\Workflow\WaitsFor::Manager)));
 @endphp
+@if ($rowAsk)<div class="contents">@endif
 <a href="{{ $staff ? $deal->crmUrl() : ($garage ? $deal->href() : '/deals/'.$deal->id) }}" class="row" @if ($staff) data-turbo="false" @endif>
     <span class="row-photo max-sm:!h-[2.625rem] max-sm:!w-14"><x-offer.photo :media="$offer->mainPhoto()" sizes="72px"/></span>
     <span class="min-w-0 flex-1">
@@ -74,3 +78,7 @@
         @endif
     </span>
 </a>
+@if ($rowAsk)
+    <x-deal.ask-action :ask="$rowAsk" variant="row" class="row-ask"/>
+</div>
+@endif

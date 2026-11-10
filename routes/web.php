@@ -21,6 +21,7 @@ use App\Http\Garage\PickupController as GaragePickupController;
 use App\Http\Garage\SettlementController as GarageSettlementController;
 use App\Http\Live\FragmentController;
 use App\Http\PeopleController;
+use App\Http\PeopleMailController;
 use App\Http\Pwa\PushController;
 use App\Http\Pwa\PwaController;
 use App\Http\SearchController;
@@ -225,6 +226,9 @@ Route::middleware(['auth', 'wall'])->group(function () {
         Route::get('/deals/{deal}/dkp', [DealContractController::class, 'show']);
         Route::get('/deals/{deal}/dkp.pdf', [DealContractController::class, 'show']);
         Route::post('/deals/{deal}/files', [DealController::class, 'upload']);
+        Route::post('/deals/{deal}/chat-files', [DealController::class, 'chatFiles']);
+        Route::post('/deals/{deal}/buyer-photos', [DealController::class, 'buyerPhotos']);
+        Route::post('/deals/{deal}/later', [DealController::class, 'later']);
         Route::delete('/deals/{deal}/files/{media}', [DealController::class, 'removeFile']);
     });
 
@@ -238,8 +242,8 @@ Route::middleware(['auth', 'wall'])->group(function () {
         Route::post('/buyers/invites', [InviteController::class, 'store']);
         // «+ Новый покупатель» в шторке выбора — на месте, без ухода со страницы (18.10.2026).
         Route::post('/people', [PeopleController::class, 'store']);
-        Route::post('/people/credentials-mail/{token}', [\App\Http\PeopleMailController::class, 'credentials']);
-        Route::post('/people/{user}/password-link-mail', [\App\Http\PeopleMailController::class, 'passwordLink']);
+        Route::post('/people/credentials-mail/{token}', [PeopleMailController::class, 'credentials']);
+        Route::post('/people/{user}/password-link-mail', [PeopleMailController::class, 'passwordLink']);
         Route::post('/buyers/invites/{invite}/off', [InviteController::class, 'disable']);
         Route::post('/buyers/invites/{invite}/mail', [InviteController::class, 'mail']);
         Route::post('/buyers/invites/{invite}/on', [InviteController::class, 'enable']);

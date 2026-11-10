@@ -15,7 +15,7 @@ import { scrollBehavior } from '../lib/motion';
 // до отправки, вставка из буфера и drop; просмотр — lightbox.js, как везде.
 
 export default class extends Controller {
-    static targets = ['list', 'form', 'input', 'files', 'submit', 'state', 'stateIcon', 'stateName', 'stateText', 'previews', 'menu', 'ownItem', 'copyItem', 'editItem', 'more'];
+    static targets = ['list', 'form', 'input', 'files', 'submit', 'state', 'stateIcon', 'stateName', 'stateText', 'previews', 'menu', 'ownItem', 'copyItem', 'editItem', 'more', 'step'];
     static values = { url: String, open: String, id: Number, last: Number, readonly: Boolean };
 
     connect() {
@@ -527,6 +527,11 @@ export default class extends Controller {
         form.append('text', text);
         form.append('after', this.lastValue);
         if (replyTo) form.append('reply_to', replyTo);
+        // «С кнопками» (CRM): сообщение уходит с кнопками открытого шага менеджера, отметка — на одно сообщение.
+        if (this.hasStepTarget && this.stepTarget.checked) {
+            form.append('step', this.stepTarget.value);
+            this.stepTarget.checked = false;
+        }
         (await Promise.all(files.map((f) => shrink(f)))).forEach((f) => form.append('files[]', f));
         try {
             // Чата ещё нет — первое сообщение уходит на open, ответ приносит адрес ленты.

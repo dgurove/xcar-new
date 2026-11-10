@@ -1,7 +1,9 @@
 {{-- Квадрат с расширением файла, цвет по типу; картинка — миниатюрой, если есть. --}}
 @props(['name', 'mime' => null, 'thumb' => null])
 @php
-    $ext = strtolower(pathinfo($name, PATHINFO_EXTENSION) ?: (explode('/', (string) $mime)[1] ?? ''));
+    // Имя без расширения с точкой в дате («Счёт поставщика от 10.11.2026») — тип по mime, а не «2026».
+    $ext = strtolower(pathinfo($name, PATHINFO_EXTENSION));
+    $ext = $ext !== '' && ! ctype_digit($ext) ? $ext : (explode('/', (string) $mime)[1] ?? '');
     $kind = match (true) {
         $ext === 'pdf' => 'pdf',
         in_array($ext, ['xls', 'xlsx', 'csv', 'ods']) => 'sheet',

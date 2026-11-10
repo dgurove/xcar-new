@@ -139,6 +139,8 @@ class Party extends Model implements HasMedia
     {
         // Скан паспорта — только на закрытом диске, отдаёт `FileController` (админ, сам человек, его менеджер).
         $this->addMediaCollection('passport')->useDisk('private');
+        // Карточка организации или ИП фотографией (10.11.2026, «Реквизиты фотографией» у менеджера): реквизиты по ней вносим мы.
+        $this->addMediaCollection('card')->useDisk('private');
     }
 
     /** Скан страницы паспорта (`main` — разворот с фото, `reg` — прописка); новый заменяет прежний. */

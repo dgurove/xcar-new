@@ -55,8 +55,15 @@ final class EnterStage
         $deal = $offer->deal()->with('buyer')->first();
 
         if ($from) {
-            Requirement::where('offer_id', $offer->id)->ofRoute()->where('stage_id', $from->id)->whereNull('done_at')
-                ->update(['done_at' => $now, 'answer' => json_encode(['closed_by' => 'stage'])]);
+            $open = Requirement::where('offer_id', $offer->id)->ofRoute()->where('stage_id', $from->id)->whereNull('done_at');
+            $closing = (clone $open)->pluck('id');
+            $open->update(['done_at' => $now, 'answer' => json_encode(['closed_by' => 'stage'])]);
+            // Кнопки этих просьб в чате сделки — ответом «Шаг пройден» (`Chats\StepAsk`).
+            Requirement::redrawFor($closing);
+        }
+        // Реквизиты фотографией внесли, шаг ушёл — наш ход по ним кончился (`deals.buyer_scans_at`).
+        if ($track === Track::Sale && $deal?->buyer_scans_at) {
+            $deal->update(['buyer_scans_at' => null]);
         }
 
         if ($track === Track::Sale && $to->offer_state === OfferState::Open
