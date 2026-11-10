@@ -3,9 +3,11 @@
 namespace Tests\Feature;
 
 use App\Mail\Events\MessageParsed;
+use App\Mail\Events\MessageSent;
 use App\Mail\Message;
 use App\Mail\Thread;
 use App\Notifications\DealInfoNotice;
+use App\Notifications\SupplierInvoiceArrivedNotice;
 use App\Notifications\YourTurnNotice;
 use App\Offers\Actions\AcceptBid;
 use App\Offers\Actions\PlaceBid;
@@ -130,10 +132,29 @@ class InsurerLetterHiddenTest extends TestCase
         $this->deal();
         $this->letter("Добрый день! Согласовано.\r\n");
         $exit = $this->offer->fresh()->stage()->exits()->where('label', 'Поставщик согласовал')->firstOrFail();
-        $this->actingAs($this->admin)->post("http://crm.xcar.localhost/offers/".$this->offer->fresh()->number."/exit/{$exit->id}")->assertRedirect();
+        $this->actingAs($this->admin)->post('http://crm.xcar.localhost/offers/'.$this->offer->fresh()->number."/exit/{$exit->id}")->assertRedirect();
         $this->assertSame(0, ReplyReview::pending()->where('deal_id', $this->deal->id)->count());
         $this->assertSame($this->admin->id, ReplyReview::where('deal_id', $this->deal->id)->value('done_by'));
         $this->assertTrue($this->offer->events()->where('payload->text', 'Письмо разобрано шагом «Поставщик согласовал»')->exists());
+    }
+
+    /** Шаг сдвинул менеджер — разбор остаётся; письмо поставщику этого шага от сотрудника его закрывает (10.11.2026, Volvo 01527). */
+    public function test_step_letter_closes_past_review(): void
+    {
+        $this->deal();
+        $this->letter("Добрый день! Согласовано.\r\n");
+        $this->travel(1)->minutes();
+        $workflow = $this->offer->vendor->workflow(Track::Sale)->id;
+        app(EnterStage::class)($this->offer->fresh(), Stage::where('workflow_id', $workflow)->where('name', 'Подтверждение покупки')->firstOrFail(), $this->manager);
+        $this->assertSame(1, ReplyReview::pending()->where('deal_id', $this->deal->id)->count());
+        $this->travel(1)->minutes();
+        $m = Message::create(['account_id' => $this->account, 'thread_id' => $this->thread->id, 'direction' => 'out', 'message_id' => uniqid().'@xcar.ru',
+            'from_email' => 'deal@xcar.ru', 'subject' => 'Re: 0790/046/09068/26', 'date_at' => now(), 'sent_at' => now(), 'created_by' => $this->admin->id]);
+        MessageSent::dispatch($m);
+        $this->assertSame(0, ReplyReview::pending()->where('deal_id', $this->deal->id)->count());
+        $position = Position::where('offer_id', $this->offer->id)->where('track', 'sale')->firstOrFail();
+        $this->assertSame('sent', $position->letterStatus());
+        $this->assertFalse($position->needsUs());
     }
 
     private function deal(): void
@@ -160,9 +181,9 @@ class InsurerLetterHiddenTest extends TestCase
     {
         $this->deal();
         $this->letter("Добрый день! Контакт +7 900 765-43-21\r\n");
-        Notification::assertNotSentTo($this->admin, \App\Notifications\SupplierInvoiceArrivedNotice::class);
+        Notification::assertNotSentTo($this->admin, SupplierInvoiceArrivedNotice::class);
         $this->letter("Добрый день! Внимание!!! Оплата принимается только от плательщика по счету!!!\r\n");
-        Notification::assertSentTo($this->admin, \App\Notifications\SupplierInvoiceArrivedNotice::class, fn ($n) => $n->important() && str_contains($n->title(), 'выставила счёт'));
+        Notification::assertSentTo($this->admin, SupplierInvoiceArrivedNotice::class, fn ($n) => $n->important() && str_contains($n->title(), 'выставила счёт'));
     }
 
     /** Письмо страховой настоящим путём: разобрано ящиком — `MessageParsed` → `OnMessage` (история, файлы, «Разобрать ответ»). */

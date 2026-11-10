@@ -13,6 +13,7 @@ use App\Notifications\SupplierLetterNotice;
 use App\Offers\Deal;
 use App\Offers\DealState;
 use App\Offers\OfferEventType;
+use App\Offers\ReplyReview;
 use App\Workflow\Position;
 use App\Workflow\Track;
 use App\Workflow\WaitsFor;
@@ -64,6 +65,13 @@ final class MarkSupplierLetter
             'payload' => [...$payload, 'letter_id' => $message->id, 'letter_at' => $at->toIso8601String()],
         ]);
         $offer->log(OfferEventType::SupplierLetter, $message->author, ['letter' => $message->id]);
+        // Письма прошлых шагов разобраны (10.11.2026, Volvo 01527: «Подтверждение покупки» ушло в Альфу, а сделка стояла «Ваш ход →
+        // Разобрать ответ» по письму «согласовали» с прошлого шага): сотрудник пишет поставщику письмо этого шага — те уже прочитаны.
+        if ($message->author?->isStaff() && ($deal = $offer->deal) && $deal->isActive()) {
+            $done = ReplyReview::pending()->where('deal_id', $deal->id)->where('created_at', '<', $position->entered_at)
+                ->update(['state' => ReplyReview::DONE, 'done_by' => $message->author->id, 'done_at' => now()]);
+            $done && $offer->log(OfferEventType::Note, $message->author, ['text' => ($done > 1 ? 'Письма разобраны' : 'Письмо разобрано').' письмом поставщику']);
+        }
         // Письмо «перевыставить счёт» ушло (`TakeParallel`) — дальше у шага снова обычный шаблон.
         if ($position->stage->isRequisitesStep()) {
             Deal::where('offer_id', $offer->id)->where('state', DealState::Active)->whereNotNull('reissue_at')->update(['reissue_at' => null]);
