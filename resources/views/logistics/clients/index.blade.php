@@ -45,7 +45,7 @@
                         @if ($c->transports_count)
                             <a href="/transports?preset=all&client={{ $c->id }}" class="row"><span class="min-w-0 flex-1">Заявки</span><span class="nums text-ink-muted">{{ $c->transports_count }}</span><x-ui.chevron/></a>
                         @endif
-                        @if ($c->phone)<a href="tel:+{{ $c->phone }}" class="row"><span class="min-w-0 flex-1">Позвонить</span><span class="nums text-accent-text">{{ Phone::format($c->phone) }}</span></a>@endif
+                        @if ($c->phone)<a href="tel:+{{ $c->phone }}" class="row"><span class="min-w-0 flex-1">Телефон</span><span class="nums text-accent-text">{{ Phone::format($c->phone) }}</span></a>@endif
                     </div>
                     @include('logistics.clients.fields', ['client' => $c, 'action' => '/clients/'.$c->id, 'id' => $c->id])
                     <form method="post" action="/clients/{{ $c->id }}/archive" class="mt-2">

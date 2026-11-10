@@ -227,9 +227,8 @@
                     @endif
                     {{-- Менеджер платит поставщику по его счёту, а счёта не видит (10.11.2026, 0790/046/11079/26) — красной строкой. --}}
                     @if ($deal && \App\Offers\SupplierInvoice::onPay($deal, $stage) && auth()->user()?->canManageCrm() && \App\Offers\SupplierInvoice::shown($offer)->isEmpty())
-                        <div class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-2" data-controller="sheet">
-                            <p class="text-sm font-medium text-urgent">Менеджер не видит счёт поставщика</p>
-                            <x-ui.button type="button" size="sm" data-action="sheet#open" aria-controls="invoice-pay-{{ $position->id }}">Показать счёт</x-ui.button>
+                        <div class="contents" data-controller="sheet">
+                            <x-route.task-row icon="file" urgent aria-controls="invoice-pay-{{ $position->id }}">Менеджер не видит счёт поставщика</x-route.task-row>
                             <x-deal.supplier-invoice-sheet :id="'invoice-pay-'.$position->id" :deal="$deal"/>
                         </div>
                     @endif
@@ -254,13 +253,17 @@
                          «Изменить» внизу дорожки «Сделка»). Покупателя вносит менеджер — его тут нет. --}}
                     @if ($deal?->isActive() && $deal->hasContract() && auth()->user()?->canManageCrm()
                         && ($ours = array_values(array_diff(\App\Offers\DealContract::for($deal)->missing(), ['покупатель', 'данные покупателя', 'скан паспорта покупателя']))))
-                        <p class="step-hint text-urgent">ДКП ждёт: {{ implode(', ', $ours) }} <a href="/offers/{{ $offer->number }}?dkp=1#dkp" class="text-accent-text underline-offset-4" data-turbo-frame="_top">Заполнить</a></p>
+                        <x-route.task-row icon="file" urgent :href="'/offers/'.$offer->number.'?dkp=1#dkp'" data-turbo-frame="_top">ДКП не готов: {{ implode(', ', $ours) }}</x-route.task-row>
                     @endif
                     @if ($position->fields())
                         <div class="mt-2 text-sm">@foreach ($position->fields() as $k => $v)<div><span class="text-ink-muted">{{ collect($stage->staff_fields)->firstWhere('key', $k)['label'] ?? $k }}:</span> {{ $v }}</div>@endforeach</div>
                     @endif
+                    @php $doneNames = $subs->where('state', \App\Workflow\Substeps::DONE)->pluck('name')->map(fn ($v) => mb_strtolower($v)); @endphp
                     @foreach ($answers as $r)
+                        {{-- Ответ, что уже стоит пройденным подпунктом с именем и временем, второй строкой не повторяем (10.11.2026). --}}
+                        @unless ($doneNames->contains(mb_strtolower($r->answer['label'] ?? $r->answer['exit'] ?? '')))
                         <div class="mt-2 text-sm"><span class="text-ink-muted">{{ $answerer($r) }}:</span> «{{ $r->answer['label'] ?? $r->answer['exit'] ?? $r->title }}»@if (($r->answer['closed_by'] ?? null) === 'staff') <span class="text-ink-muted">(за него {{ $answeredBy->get($r->answer['by'] ?? 0)?->shortName() ?? 'сотрудник' }})</span>@endif @if ($r->done_at)<span class="nums text-ink-dim">{{ \App\Support\Ago::html($r->done_at, true, words: false) }}</span>@endif</div>
+                        @endunless
                         @foreach ($r->answer['fields'] ?? [] as $k => $v)<div class="text-sm"><span class="text-ink-muted">{{ collect($r->fields)->firstWhere('key', $k)['label'] ?? $k }}:</span> {{ is_array($v) ? implode(', ', $v) : $v }}</div>@endforeach
                         @foreach ($r->getMedia('files') as $f)<x-ui.file :name="$f->file_name" :mime="$f->mime_type" :size="$f->humanReadableSize" href="/files/{{ $f->id }}" class="py-1"/>@endforeach
                     @endforeach
@@ -351,7 +354,8 @@
                                             @csrf<input type="hidden" name="then_take" value="" data-ask-consent-target="take"><x-ui.button size="sm" :variant="$variant">{{ $label($exit) }}</x-ui.button>
                                         </form>
                                     @else
-                                        <form method="post" action="/offers/{{ $n }}/exit/{{ $exit->id }}" @if ($confirm) data-turbo-confirm="{{ $confirm }}" @endif>
+                                        @php $next = $exit->consequence(); @endphp
+                                        <form method="post" action="/offers/{{ $n }}/exit/{{ $exit->id }}" @if ($confirm) data-turbo-confirm="{{ $confirm }}" @if ($next) data-turbo-confirm-text="Дальше: {{ $next }}" @endif @elseif ($next) data-turbo-confirm="{{ $label($exit) }}?" data-turbo-confirm-text="Дальше: {{ $next }}" data-turbo-confirm-label="{{ $label($exit) }}" @endif>
                                             @csrf<x-ui.button size="sm" :variant="$variant">{{ $label($exit) }}</x-ui.button>
                                         </form>
                                     @endif
@@ -385,16 +389,8 @@
                                 </div>
                             @endif
                         </div>
-                        {{-- Что будет после каждой кнопки (03.11.2026, владелец: «сотрудникам страшно нажимать кнопки, которые не
-                             понимаешь, что сделают») — следующий этап и чей там ход (`Outcome::consequence`). --}}
-                        {{-- Кнопка одна — без повтора её названия: «Дальше: …». --}}
-                        @if ($moves->isNotEmpty())
-                            <ul class="step-next">
-                                @foreach ($moves->values() as $exit)
-                                    @if ($next = $exit->consequence())<li>@if ($moves->count() > 1)<span class="text-ink">{{ $label($exit) }}</span> → @else Дальше: @endif{{ $next }}</li>@endif
-                                @endforeach
-                            </ul>
-                        @endif
+                        {{-- Что будет после кнопки (03.11.2026, «сотрудникам страшно нажимать») — в переспросе кнопки, а не строкой «Дальше:»
+                             под ней (10.11.2026, владелец: «месиво»). --}}
                     @endif
                     @if ($subs->where('state', \App\Workflow\Substeps::WAIT)->isNotEmpty())
                         <ol class="substeps">

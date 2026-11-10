@@ -27,7 +27,6 @@
         @if ($readonly && $chat?->manager)
             @if ($crm)<a href="/settings/users/{{ $chat->manager_id }}?chat={{ $chat->id }}" class="chip person shrink-0"><x-ui.avatar :user="$chat->manager" :size="20"/>{{ $chat->manager->shortName() }}</a>@else<x-ui.person :user="$chat->manager" class="shrink-0"/>@endif
         @endif
-        @if ($other?->phone)<a href="tel:+{{ $other->phone }}" class="btn btn-ghost btn-round" aria-label="Позвонить"><x-ui.icon name="phone" class="size-5"/></a>@endif
         @if ($crm && ! $readonly && $chat?->exists && $user?->isAdmin())
             {{-- Спам и реклама — удалить чат целиком (06.10.2026). --}}
             <div class="contents" data-controller="menu">

@@ -1,5 +1,5 @@
 {{-- Кто сейчас действует на шаге пути — строкой, а не фразой (04.11.2026, владелец: «во „Ждём менеджера“ непонятно, кого и чего
-     ждём», «тупо текстом — это не дизайн»): менеджер сделки — аватар, имя и «Позвонить»; поставщик — логотип и имя; мы —
+     ждём», «тупо текстом — это не дизайн»): менеджер сделки — аватар и имя («Позвонить» снята 10.11.2026 — не пользовались); поставщик — логотип и имя; мы —
      знак XCar. Справа от имени — состояние словом цвета (`x-ui.state`): у менеджера срок («до 05.11 17:00», «просрочено 2 д»,
      без срока «ждём 3 д»), у письма поставщику — что с ним («письмо не отправлено», «ушло 04.11 · ждём 1 д», «ответил 04.11»
      — нажатие открывает окно писем на нём), у нашего хода — часы. Под подпунктом «сейчас» в `x-route.path`, той же строкой
@@ -28,9 +28,9 @@
     // Шаг оплаты со счётом — сколько должен и срок счёта (`DealDebt`), как в «Оплате» и строке «Ждём менеджера».
     $debt = $side === 'manager' && $deal && $position->stage->isPayStep() ? \App\Billing\DealDebt::of($deal) : null;
     $debt = $debt && ! $debt->paid() ? $debt : null;
-    // Спросили менеджера и он молчит (10.11.2026, начальник по Volvo 01527: «он пока не ответил — почему это нигде не видно»):
-    // когда спросили и сколько молчит, срок — второй строкой.
-    $asked = $manager && ! $debt && ! $position->carried()
+    // Спросили менеджера и он молчит (10.11.2026, начальник по Volvo 01527: «он пока не ответил — почему это нигде не видно») —
+    // только у вопроса «Берёте в работу?»: «Заберите автомобиль» — дело, а не вопрос, там «ждём 7 д · до 05.11».
+    $asked = $manager && ! $debt && ! $position->carried() && $position->stage->asksConsent()
         ? \App\Workflow\Requirement::where('deal_id', $deal->id)->where('stage_id', $position->stage_id)->whereNull('done_at')->latest('id')->first()
         : null;
     $asked = $asked && $asked->created_at >= $position->entered_at->copy()->subMinute() ? $asked : null;
@@ -47,6 +47,8 @@
         $invoice => ['счёт не выставлен', 'urgent', null],
         $position->carried() => ['везёт логистика', 'plain', null],
         (bool) $debt => ['должен&nbsp;'.e($debt->amount()).' · '.e($debt->word()), $debt->late() ? 'danger' : 'plain', null],
+        // Ждём менеджера — сколько ждём и срок одной строкой (10.11.2026: «до 11.11» без «ждём» не говорило, что ход его).
+        $side === 'manager' && (bool) $position->deadline_at => ['<span class="whitespace-nowrap">ждём '.$timer('since', $since).'</span> · '.($overdue ? '<span class="whitespace-nowrap">просрочено '.$timer('since', $position->deadline_at).'</span>' : 'до '.e(Ago::at($position->deadline_at, true, words: false))), $overdue ? 'danger' : 'plain', null],
         $overdue && (bool) $position->deadline_at => ['просрочено '.$timer('since', $position->deadline_at), 'danger', null],
         $side === 'us' && (bool) $position->deadline_at => ['осталось '.$timer('until', $position->deadline_at), 'urgent', null],
         (bool) $position->deadline_at => ['до '.e(Ago::at($position->deadline_at, true, words: false)), 'urgent', null],
@@ -70,17 +72,11 @@
             @if ($open)
                 <button type="button" class="state state-{{ $tone }} underline decoration-dotted underline-offset-4" data-controller="emit" data-action="emit#send" data-emit-event-param="letters:open" data-emit-url-param="{{ $open }}"><span>{!! $state !!}</span></button>
             @elseif ($asked)
-                <x-ui.state tone="plain"><span>спросили {!! Ago::html($asked->created_at, true, words: false) !!} · <span class="whitespace-nowrap">молчит {!! $timer('since', $asked->created_at) !!}</span></span></x-ui.state>
-                @if ($position->deadline_at)
-                    <div><x-ui.state :tone="$overdue ? 'danger' : 'urgent'"><span>{!! $overdue ? 'срок вышел '.$timer('since', $position->deadline_at).' назад' : 'ответит до '.e(Ago::at($position->deadline_at, true, words: false)) !!}</span></x-ui.state></div>
-                @endif
+                <x-ui.state :tone="$overdue ? 'danger' : 'plain'"><span>спросили {!! Ago::html($asked->created_at, true, words: false) !!} · <span class="whitespace-nowrap">молчит {!! $timer('since', $asked->created_at) !!}</span>@if ($position->deadline_at) · {!! $overdue ? '<span class="whitespace-nowrap">просрочено '.$timer('since', $position->deadline_at).'</span>' : 'до '.e(Ago::at($position->deadline_at, true, words: false)) !!}@endif</span></x-ui.state>
             @else
                 {{-- Одной вставкой: `.state` — inline-flex, и пробелы между текстом и датой он съедал («ушло15.10»). --}}
                 <x-ui.state :tone="$tone"><span>{!! $state !!}</span></x-ui.state>
             @endif
         </div>
-        @if ($manager?->phone)
-            <a href="tel:{{ $manager->phone }}" class="btn btn-s btn-quiet btn-round shrink-0" aria-label="Позвонить {{ $manager->shortName() }}" title="{{ $manager->phone }}"><x-ui.icon name="phone" class="size-4"/></a>
-        @endif
     </div>
 @endif

@@ -48,7 +48,7 @@
         @endif
     @elseif ($waiting !== null)
         {{-- «Ждём менеджера» / «Ждём поставщика» — группами по тому, кого ждём (`DealController::waiting`, 04.11.2026): менеджер
-             с аватаром и «Позвонить» или вендор с логотипом, сколько просрочено; в строке — что ждём и срок. --}}
+             с аватаром или вендор с логотипом, сколько просрочено; в строке — что ждём и срок. --}}
         @if ($waiting->isEmpty())
             <x-ui.empty class="mt-6">{{ $work['tab'] !== 'all' ? 'Здесь никого не ждём' : ($preset === 'manager' ? 'Менеджеров не ждём' : 'Поставщиков не ждём') }}</x-ui.empty>
         @else
@@ -58,8 +58,6 @@
                     <x-table.group :table="$table" :key="$key" :title="$group['title']" :count="$group['size']">
                         <x-slot:before>@if ($group['manager'])<x-ui.avatar :user="$group['manager']" :size="24" class="mr-2 align-middle"/>@elseif ($group['vendor'])<x-vendor.logo :vendor="$group['vendor']" class="mr-2"/>@endif</x-slot:before>
                         @if ($group['late'])<span class="text-sm font-normal text-danger">просрочено {{ $group['late'] }}</span>@endif
-                        {{-- На телефоне — значком: подпись роняла кнопку на строку ниже имени. --}}
-                        @if ($group['manager']?->phone)<a href="tel:{{ $group['manager']->phone }}" class="btn btn-s btn-quiet max-sm:aspect-square max-sm:!px-0" aria-label="Позвонить {{ $group['manager']->shortName() }}"><x-ui.icon name="phone" class="size-4"/><span class="max-sm:hidden">Позвонить</span></a>@endif
                     </x-table.group>
                     @foreach ($group['rows'] as $deal)<x-deal.wait-row :deal="$deal" :table="$table"/>@endforeach
                 @endforeach

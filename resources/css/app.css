@@ -2498,14 +2498,14 @@ html.kb-open { --home-gap: 0px; }
   .substep-title { font-weight: 500; }
   .substep--wait .substep-title { font-weight: 400; color: var(--color-ink-muted); }
   .substep-meta { font-size: var(--text-sm); color: var(--color-ink-muted); }
-  /* Кто действует — аватар (логотип вендора, знак XCar) и имя с состоянием строкой, справа «Позвонить», кнопки — под именем
+  /* Кто действует — аватар (логотип вендора, знак XCar) и имя с состоянием строкой, кнопки — под именем
      своей строкой: в узкой дорожке редактора и на телефоне рядом с ними имя сжималось до «Вла…». Одна строка на «Переоценку»
      и подпункт «сейчас» любого шага пути (`x-route.who`, 04.11.2026). */
   .step-who { display: grid; grid-template-columns: 2rem minmax(0, 1fr) auto; align-items: center; gap: .5rem .625rem; margin-top: .625rem; }
   .step-who-acts { grid-column: 2 / -1; display: flex; flex-wrap: wrap; gap: .5rem; }
   .step-who-acts > form, .step-who-acts > div, .step-who-acts > button, .step-who-acts > a { flex: 1 1 auto; min-width: 0; }
   .step-who-acts > form > .btn, .step-who-acts > div > .btn { width: 100%; }
-  /* Состояние — своя фраза («должен 1 050 000 ₽ · просрочено 10 д»): в узкой дорожке переносится, а не лезет под «Позвонить». */
+  /* Состояние — своя фраза («должен 1 050 000 ₽ · просрочено 10 д»): в узкой дорожке переносится, а не лезет вправо. */
   .step-who .state { white-space: normal; }
   /* Состояние письма — кнопкой (открывает окно писем): строкой текста слева, а не текстом кнопки по центру — в узкой дорожке
      «ушло 03.11 · ждём 1 д 14 ч» переносилось и разъезжалось под именем поставщика (05.11.2026). */
@@ -2515,11 +2515,12 @@ html.kb-open { --home-gap: 0px; }
   .step-acts > form, .step-acts > div, .step-acts > a, .step-acts > button { flex: 1 1 auto; min-width: 0; }
   .step-acts > form > .btn, .step-acts > div > .btn { width: 100%; }
   .step-acts > p { flex-basis: 100%; }
-  /* Письмо поставщика ждёт разбора — строкой в шаге (10.11.2026, `x-deal.reply-review line`): тихие ссылки, лайм — у кнопок шага. */
-  .step-letter { margin-top: .75rem; display: flex; flex-direction: column; gap: .25rem; }
-  .step-letter-acts { display: flex; flex-wrap: wrap; gap: .25rem 1rem; padding-left: 1.5rem; font-size: var(--text-sm); }
-  .step-letter-acts button { color: var(--color-accent-text); }
-  .step-next { margin-top: .5rem; display: flex; flex-direction: column; gap: .125rem; font-size: var(--text-sm); color: var(--color-ink-muted); }
+  /* Строка дела в шаге (`x-route.task-row`, 10.11.2026): письмо, ДКП, счёт — одним видом, как строка `.list`; цвет — только точкой. */
+  .step-task { margin-top: .5rem; display: flex; width: 100%; align-items: center; gap: .625rem; text-align: left; font-size: var(--text-base); color: var(--color-ink); }
+  .step-task + .step-task { margin-top: .25rem; }
+  .step-task-icon { position: relative; display: flex; flex-shrink: 0; align-items: center; justify-content: center; width: 2rem; height: 2rem; border-radius: 999px; background: var(--color-surface-2); color: var(--color-ink-muted); }
+  .step-task-dot { position: absolute; top: 0; right: 0; width: .5rem; height: .5rem; border-radius: 999px; background: var(--color-urgent); }
+  .step-task-note { margin-top: .25rem; padding-left: 2.625rem; font-size: var(--text-sm); color: var(--color-ink-muted); }
   .step-who-icon { display: flex; flex-shrink: 0; align-items: center; justify-content: center; width: 2rem; height: 2rem; border-radius: 999px; background: var(--color-surface-2); color: var(--color-ink-muted); }
 
   /* Маршрут вывоза (`x-logistics.route`, 20.10.2026) — как маршрут в Google Картах: слева значки точек на одной линии (старт —

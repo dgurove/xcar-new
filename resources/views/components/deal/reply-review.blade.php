@@ -34,24 +34,19 @@
             @include('admin.deals.reply-review-sheet', $sheet)
         </span>
     @elseif ($line)
-        @if ($letters->isNotEmpty() || $shown->isNotEmpty())
-        <div {{ $attributes->class('step-letter') }} data-controller="sheet">
-            @if ($letters->isNotEmpty())
-                <div class="flex items-baseline gap-2">
-                    <x-ui.icon name="mail" class="size-4 shrink-0 translate-y-0.5 text-ink-muted"/>
-                    <span class="min-w-0">{{ $step && \App\Offers\SupplierInvoice::needs($deal, $step) ? 'Счёт' : 'Письмо' }} от {{ $vendor ?? 'поставщика' }}{{ $letters->count() > 1 ? ', писем: '.$letters->count() : '' }} <span class="nums text-sm text-ink-muted">{!! Ago::html($letters->first()->date_at, true, words: false) !!}</span></span>
-                </div>
-                <div class="step-letter-acts">
-                    <button type="button" data-controller="emit" data-action="emit#send" data-emit-event-param="letters:open" data-emit-url-param="/offers/{{ $offer->number }}/letters?at={{ $letters->first()->id }}">Открыть</button>
-                    <button type="button" data-action="sheet#open" aria-controls="{{ $id }}">Показать менеджеру</button>
-                    <form method="post" action="/work/deals/{{ $deal->id }}/reviews/done" class="contents" data-turbo-confirm="Менеджер не узнает об этом письме" data-turbo-confirm-label="Не нужно"><button type="submit">Не нужно</button></form>
-                </div>
-                @include('admin.deals.reply-review-sheet', $sheet)
-            @endif
-            @foreach ($shown->take(3) as $d)
-                <p class="text-sm text-ink-muted">Менеджеру показано {!! Ago::html($d->created_at, true, words: false) !!}: <span class="text-ink">{{ $d->summary() }}</span></p>
-            @endforeach
-        </div>
+        {{-- Строкой дела (10.11.2026, владелец: «лютое месиво»): одна строка «Совкомбанк · 3 письма, 09.11», нажатие — шторка разбора
+             с письмом, «Показать менеджеру» и «Не нужно». Показанное раньше — строкой дела под ней. --}}
+        @if ($letters->isNotEmpty())
+            <div class="contents" data-controller="sheet">
+                <x-route.task-row icon="mail" urgent aria-controls="{{ $id }}">
+                    @php $what = $step && \App\Offers\SupplierInvoice::needs($deal, $step) ? 'Счёт' : 'Письмо'; @endphp
+                    {{ $letters->count() > 1 ? $letters->count().' '.\App\Support\Plural::of($letters->count(), ['письмо', 'письма', 'писем']) : $what }} от {{ $vendor ?? 'поставщика' }} <span class="nums whitespace-nowrap text-sm text-ink-muted">{!! Ago::html($letters->first()->date_at, true, words: false) !!}</span>
+                </x-route.task-row>
+                @include('admin.deals.reply-review-sheet', $sheet + ['line' => true])
+            </div>
+        @endif
+        @if ($shown->isNotEmpty())
+            <p class="step-task-note">Менеджеру показано {!! Ago::html($shown->first()->created_at, true, words: false) !!}: <span class="text-ink">{{ $shown->first()->summary() }}</span></p>
         @endif
     @elseif ($letters->isNotEmpty() || $shown->isNotEmpty())
     <div {{ $attributes }} data-controller="sheet">

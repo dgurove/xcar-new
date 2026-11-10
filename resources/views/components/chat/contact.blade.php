@@ -1,4 +1,4 @@
-{{-- Шторка-контакт из шапки чата: крупный аватар, имя, статус, «Позвонить» (если есть телефон),
+{{-- Шторка-контакт из шапки чата: крупный аватар, имя, статус, телефон номером («Позвонить» снята 10.11.2026),
      ниже — остальные чаты с этим человеком. Площадка (user пуст) — знак приложения, без звонка. --}}
 @props(['user' => null, 'name', 'status' => null, 'chats' => null, 'me'])
 <x-ui.sheet id="chat-contact">
@@ -7,8 +7,8 @@
         <div class="mt-3 text-lg font-medium">{{ $name }}</div>
         @if ($status)<div class="text-sm text-ink-muted">{{ $status }}</div>@endif
         @if ($user?->phone)
-            <div class="acts mt-4 justify-center">
-                <a href="tel:+{{ $user->phone }}" class="act"><span class="btn btn-quiet btn-round"><x-ui.icon name="phone"/></span>Позвонить</a>
+            <div class="mt-3">
+                <x-ui.phone :user="$user"/>
             </div>
         @endif
     </div>

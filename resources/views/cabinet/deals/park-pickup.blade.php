@@ -26,8 +26,7 @@
         {{-- Ещё едет к нам — пока она у владельца: не довезут, забирать у него. --}}
         @if (! $stored && ($handover->name || $handover->phone))
             <div class="row justify-between">
-                <span class="min-w-0"><span class="block truncate">{{ $handover->name ?? 'Владелец' }}</span><span class="block text-sm text-ink-muted">пока у владельца</span></span>
-                @if ($handover->phone)<a href="tel:+{{ $handover->phone }}" class="btn btn-round btn-quiet shrink-0" aria-label="Позвонить"><x-ui.icon name="phone" class="size-5"/></a>@endif
+                <span class="min-w-0"><span class="block truncate">{{ $handover->name ?? 'Владелец' }}</span><span class="block text-sm text-ink-muted">пока у владельца@if ($handover->phone), <span class="nums whitespace-nowrap">{{ \App\Support\Phone::format($handover->phone) }}</span>@endif</span></span>
             </div>
         @endif
         @if ($deal->isActive() && ! $pass?->used_at)

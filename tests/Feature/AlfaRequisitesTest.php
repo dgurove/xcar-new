@@ -101,7 +101,7 @@ class AlfaRequisitesTest extends TestCase
         $this->assertSame([['Нет реквизитов', 'now'], ['Письмо с реквизитами', 'wait']], $subs->map(fn ($s) => [$s['name'], $s['state']])->all());
 
         $page = $this->actingAs($this->admin)->get('http://'.\App\Support\Surface::Crm->host().'/work/deals?preset=manager')->assertOk();
-        $page->assertSee('Денис Трофимов')->assertSee('Нет реквизитов')->assertSee('tel:79000000002', false);
+        $page->assertSee('Денис Трофимов')->assertSee('Нет реквизитов')->assertDontSee('tel:79000000002', false); // «Позвонить» снята 10.11.2026
     }
 
     public function test_reply_asking_requisites_is_recognized(): void

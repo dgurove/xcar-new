@@ -11,10 +11,9 @@
                 <x-slot:chips>
                     {{-- Группы — чипами (ссылками), логин и с какого дня — строкой текста. --}}
                     @foreach ($buyer->groups as $g)<a href="/buyers/groups/{{ $g->id }}" class="tag">{{ $g->name }}</a>@endforeach
-                    <div class="detail-line basis-full !mt-0.5 text-sm text-ink-muted lg:justify-center">@if ($buyer->login)<span class="nums">{{ $buyer->login }}</span>@endif<span class="nums">с {{ \App\Support\Ago::html($buyer->created_at, words: false) }}</span></div>
+                    <div class="detail-line basis-full !mt-0.5 text-sm text-ink-muted lg:justify-center">@if ($buyer->login)<span class="nums">{{ $buyer->login }}</span>@endif @if ($buyer->phone)<span><x-ui.phone :user="$buyer"/></span> @endif<span class="nums">с {{ \App\Support\Ago::html($buyer->created_at, words: false) }}</span></div>
                 </x-slot:chips>
                 <x-slot:acts>
-                    @if ($buyer->phone)<a href="tel:+{{ $buyer->phone }}" class="act"><span class="btn btn-quiet btn-round"><x-ui.icon name="phone"/></span>Позвонить</a>@endif
                     @if ($buyer->email)<a href="mailto:{{ $buyer->email }}" class="act"><span class="btn btn-quiet btn-round"><x-ui.icon name="mail"/></span>Написать</a>@endif
                     @if ($groups->isNotEmpty())
                         <div data-controller="sheet" class="contents">

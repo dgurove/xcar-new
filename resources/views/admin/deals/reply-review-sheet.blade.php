@@ -9,14 +9,20 @@
     $guess = $billed ? \App\Offers\SupplierInvoice::guess($deal->offer->getMedia('papers')->whereIn('id', collect($proposals)->pluck('media')->filter())->sortByDesc('id')) : null;
     $picked = $picked ?: ($guess ? ['file:'.$guess->id] : []);
 @endphp
-<x-ui.sheet :id="$id" title="Показать менеджеру" tall>
+{{-- `$line` — шторку открывает строка письма в шаге (10.11.2026): она и есть разбор — «Открыть» у письма, «Не нужно» в подвале,
+     что уже показано — сверху. --}}
+@php $line = ($line ?? false) && $letters->isNotEmpty(); @endphp
+<x-ui.sheet :id="$id" :title="$line ? ($billed ? 'Счёт' : 'Письмо').' от '.($deal->offer->vendor?->name ?? 'поставщика') : 'Показать менеджеру'" tall>
+    @if ($line)
+        <form method="post" action="/work/deals/{{ $deal->id }}/reviews/done" id="{{ $id }}-skip" hidden data-turbo-confirm="Менеджер не узнает об этом письме" data-turbo-confirm-label="Не нужно">@csrf</form>
+    @endif
     <form method="post" action="/work/deals/{{ $deal->id }}/disclose" class="flex flex-col gap-4" data-controller="disclose">
         @csrf
         @error('disclose')<x-ui.flash tone="danger">{{ $message }}</x-ui.flash>@enderror
         @foreach ($letters as $m)
             {{-- Подпись и оговорки страховой бывают на экран — письмо листается внутри себя, пункты видны сразу. --}}
             <div class="max-h-64 overflow-y-auto rounded-(--radius-m) bg-surface-2 px-4 py-3">
-                <p class="mb-1 text-sm text-ink-muted">Письмо {{ Ago::html($m->date_at, true, words: false) }} — видно только вам</p>
+                <p class="mb-1 flex items-baseline gap-3 text-sm text-ink-muted"><span class="min-w-0 flex-1">Письмо {{ Ago::html($m->date_at, true, words: false) }} — видно только вам</span>@if ($line)<button type="button" class="shrink-0 text-accent-text" data-controller="emit" data-action="emit#send sheet#close" data-emit-event-param="letters:open" data-emit-url-param="/offers/{{ $deal->offer->number }}/letters?at={{ $m->id }}">Открыть</button>@endif</p>
                 <p class="whitespace-pre-line break-words text-sm">{{ $m->replyText() }}</p>
             </div>
         @endforeach
@@ -56,6 +62,13 @@
                 <input type="checkbox" switch class="switch" name="step" value="{{ $step->id }}" @checked(old('_sheet') === $id ? old('step') : Disclose::stepByDefault($step, $letters, $deal)) data-action="disclose#update" data-disclose-target="step">
             </label>
         @endif
-        <x-ui.sheet-foot type="submit" data-disclose-target="submit">Показать менеджеру</x-ui.sheet-foot>
+        @if ($line)
+            <div class="sheet-foot flex gap-2">
+                <x-ui.button type="submit" variant="secondary" form="{{ $id }}-skip" class="flex-1">Не нужно</x-ui.button>
+                <x-ui.button type="submit" class="flex-[2]" data-disclose-target="submit">Показать менеджеру</x-ui.button>
+            </div>
+        @else
+            <x-ui.sheet-foot type="submit" data-disclose-target="submit">Показать менеджеру</x-ui.sheet-foot>
+        @endif
     </form>
 </x-ui.sheet>

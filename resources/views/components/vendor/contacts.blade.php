@@ -15,10 +15,10 @@
                         @if ($c->always_cc)<span>в копии</span>@endif
                         @if ($c->yard && ! $sale)<x-ui.place>{{ $c->yard->name }}</x-ui.place>@endif
                         @if ($c->title)<span>{{ $c->title }}</span>@endif
+                        @if ($c->phone)<span class="nums">{{ \App\Support\Phone::format($c->phoneDigits()) }}</span>@endif
                     </span>
                 </span>
             </button>
-            @if ($c->phone)<a href="tel:+{{ $c->phoneDigits() }}" class="btn btn-quiet btn-round btn-s shrink-0" aria-label="Позвонить"><x-ui.icon name="phone" class="size-5"/></a>@endif
             @if ($c->email)<a href="mailto:{{ $c->email }}" class="btn btn-quiet btn-round btn-s shrink-0" aria-label="Написать"><x-ui.icon name="mail" class="size-5"/></a>@endif
             @if ($manage)
                 <x-ui.sheet id="contact-{{ $c->id }}" title="Контакт" :open="$errors->has('name') && (int) old('contact_id') === $c->id">

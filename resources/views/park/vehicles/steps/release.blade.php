@@ -40,12 +40,11 @@
                 <span class="block truncate">{{ $pass->name }}</span>
                 <span class="block text-sm text-ink-muted">{{ implode(', ', array_filter(['по сделке XCar', ($m = $pass->deal?->buyer) && $m->name !== $pass->name ? 'менеджер '.$m->shortName() : null, ($w = $pass->whenLabel('j M')) ? 'приедет '.$w : null])) }}</span>
             </span>
-            @if ($pass->phone)<a href="tel:+{{ \App\Support\Phone::normalize($pass->phone) }}" class="btn btn-round btn-quiet shrink-0" aria-label="Позвонить"><x-ui.icon name="phone" class="size-5"/></a>@endif
+            @if ($pass->phone)<span class="nums shrink-0 text-sm text-ink-muted">{{ $pass->phone }}</span>@endif
         </div>
     @elseif (! $qr && $who)
         <div class="row justify-between">
             <span class="min-w-0"><span class="block truncate">{{ $who }}</span>@if ($vehicle->pickup_phone)<span class="nums block text-sm text-ink-muted">{{ $vehicle->pickup_phone }}</span>@endif</span>
-            @if ($vehicle->pickup_phone)<a href="tel:+{{ $vehicle->pickupPhoneDigits() }}" class="btn btn-round btn-quiet shrink-0" aria-label="Позвонить"><x-ui.icon name="phone" class="size-5"/></a>@endif
         </div>
     @elseif (! $qr && $handles)
         <div class="row justify-between">

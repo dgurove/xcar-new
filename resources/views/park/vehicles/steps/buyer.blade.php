@@ -5,7 +5,6 @@
     <div class="list mt-2">
         <div class="row justify-between">
             <span class="min-w-0"><span class="block">{{ $pass->name }}</span><span class="block text-sm text-ink-muted">{{ ($w = $pass->whenLabel()) ? 'заберёт '.$w : '' }}</span></span>
-            <a href="tel:{{ preg_replace('/[^\d+]/', '', $pass->phone) }}" class="btn btn-round btn-quiet shrink-0" aria-label="Позвонить {{ $pass->phone }}"><x-ui.icon name="phone" class="size-5"/></a>
         </div>
         <div class="row justify-between"><span class="nums shrink-0 whitespace-nowrap">{{ $pass->phone }}</span><span class="min-w-0 truncate text-ink-muted">{{ $pass->email }}</span></div>
         @if ($pass->requestMessage)
