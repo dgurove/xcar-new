@@ -280,6 +280,37 @@ class AlfaRequisitesTest extends TestCase
     }
 
     /**
+     * Счёт поставщика — менеджеру, а не мимо него (10.11.2026, 0790/046/11079/26: «Счёт от поставщика получен» перевёл сделку на
+     * «Оплатить страховой», а счёт лежал в «Разобрать ответ»): голой кнопкой шаг не пройти; шторкой — счёт открыт менеджеру
+     * «Счётом поставщика от …» и стоит у него на шаге оплаты, а в CRM без него — «Менеджер не видит счёт поставщика».
+     */
+    public function test_supplier_invoice_goes_to_manager_with_step(): void
+    {
+        [$offer, $deal] = $this->deal(vat: false);
+        $exit = $offer->stage()->exits->first(fn ($e) => $e->label === 'Поставщик сразу выставил счёт' && $e->fits($deal));
+        $this->assertTrue(\App\Offers\SupplierInvoice::needs($deal, $exit));
+        $crm = fn (string $path) => \App\Support\Surface::Crm->url($path);
+
+        $this->actingAs($this->admin)->post($crm('/offers/'.$offer->number.'/exit/'.$exit->id))->assertSessionHasErrors('exit');
+        $this->assertSame('Подтверждение покупки', $offer->fresh()->stage()->name);
+
+        $pdf = $offer->addMedia(\Illuminate\Http\UploadedFile::fake()->create('20261109174014.pdf', 20, 'application/pdf'))
+            ->withCustomProperties(['letter' => 1])->toMediaCollection('papers');
+        $this->actingAs($this->admin)->post($crm('/work/deals/'.$deal->id.'/supplier-invoice'), ['media' => $pdf->id, 'exit' => $exit->id, 'text' => 'Только от плательщика'])
+            ->assertSessionHasNoErrors();
+        $this->assertSame('Оплата счёта', $offer->fresh()->stage()->name);
+        $pdf->refresh();
+        $this->assertTrue((bool) $pdf->getCustomProperty('managers'));
+        $this->assertStringStartsWith('Счёт поставщика от ', $pdf->name);
+        Notification::assertSentTo($this->manager, \App\Notifications\DealInfoNotice::class);
+
+        $this->actingAs($this->manager)->get(\App\Support\Surface::Site->url('/deals/'.$deal->id))->assertOk()->assertSee($pdf->name)->assertSee('Только от плательщика');
+        $this->actingAs($this->admin)->followingRedirects()->get($crm('/work/deals/'.$deal->id))->assertOk()->assertDontSee('Менеджер не видит счёт поставщика');
+        $pdf->forgetCustomProperty(\App\Offers\SupplierInvoice::PROP)->save();
+        $this->actingAs($this->admin)->followingRedirects()->get($crm('/work/deals/'.$deal->id))->assertSee('Менеджер не видит счёт поставщика');
+    }
+
+    /**
      * Покупатель-физлицо платит со своего ИП (06.11.2026, 0760/046/14575/26): поставщику — реквизиты ИП и PDF со сканом
      * паспорта. Смена вида не стирает внесённое: паспорт физлица остаётся у ИП; ИП без банка не сохраняется.
      */

@@ -6,8 +6,10 @@ use App\Offers\Actions\Disclose;
 use App\Offers\Deal;
 use App\Offers\Disclosures;
 use App\Offers\ReplyReview;
+use App\Offers\SupplierInvoice;
 use App\Workflow\Outcome;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 
 /**
  * «Разобрать ответ» в сделке CRM (`x-deal.reply-review`, 03.11.2026): показать менеджеру отмеченное из писем страховой или
@@ -35,6 +37,40 @@ class DisclosureController
             $moved => 'Шаг пройден',
             default => 'Ответ разобран',
         });
+    }
+
+    /**
+     * «Счёт поставщика» (`x-deal.supplier-invoice-sheet`, 10.11.2026): выбранный документ или новый файл — менеджеру счётом
+     * (`SupplierInvoice::mark`), своё сообщение, и шаг «Счёт от поставщика получен», если нажали его.
+     */
+    public function invoice(Request $request, Deal $deal, Disclose $disclose)
+    {
+        abort_unless($deal->buyer_id && $deal->isActive(), 404);
+        $data = $request->validate([
+            'media' => ['nullable', 'integer'],
+            'file' => ['nullable', 'file', 'max:20480'],
+            'text' => ['nullable', 'string', 'max:2000'],
+            'exit' => ['nullable', 'integer'],
+        ]);
+        $offer = $deal->offer;
+        $exit = isset($data['exit']) ? Outcome::find($data['exit']) : null;
+        abort_if($exit && ! SupplierInvoice::needs($deal, $exit), 404);
+        if ($file = $request->file('file')) {
+            $name = $file->getClientOriginalName();
+            $media = $offer->addMedia($file)->usingFileName(OfferPhotoController::safeName($name))->withCustomProperties(['sha' => hash_file('sha256', $file->getRealPath())])->toMediaCollection('papers');
+        } else {
+            $media = SupplierInvoice::candidates($offer)->firstWhere('id', (int) ($data['media'] ?? 0));
+        }
+        if (! $media) {
+            throw ValidationException::withMessages(['invoice' => 'Выберите счёт или добавьте файл']);
+        }
+        $items = [['kind' => 'file', 'value' => $media->name, 'media' => $media->id]];
+        if ($text = trim((string) ($data['text'] ?? ''))) {
+            $items[] = ['kind' => 'text', 'value' => mb_substr($text, 0, 2000)];
+        }
+        ['moved' => $moved] = $disclose($deal, $request->user(), $items, $exit, $media->id);
+
+        return back(fallback: '/work/deals/'.$deal->id)->with('toast', $moved ? 'Счёт показан менеджеру, шаг пройден' : 'Счёт показан менеджеру');
     }
 
     public function dismiss(Request $request, Deal $deal, Disclose $disclose)

@@ -4,7 +4,8 @@
     $disclosures ??= collect();
     // Всё показанное уже стоит в «Получении автомобиля» — блока нет (пустой блок не рисуется).
     $handover ??= null;
-    $seen = fn ($d) => collect($d->besides($handover))->where('kind', '!=', 'file')->isNotEmpty() || $d->files()->isNotEmpty();
+    // Счёт поставщика стоит в шаге оплаты своей строкой — тут его нет (`skipFiles`).
+    $seen = fn ($d) => collect($d->besides($handover))->where('kind', '!=', 'file')->isNotEmpty() || $d->files()->reject(fn ($m) => in_array($m->id, $skipFiles ?? [], true))->isNotEmpty();
     $early = ($early ?? collect())->filter($seen)->values();
     $late = ($late ?? $disclosures)->filter($seen)->values();
 @endphp

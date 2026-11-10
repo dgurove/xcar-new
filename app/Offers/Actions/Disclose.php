@@ -12,6 +12,7 @@ use App\Offers\Disclosure;
 use App\Offers\InsurerReplies;
 use App\Offers\OfferEventType;
 use App\Offers\ReplyReview;
+use App\Offers\SupplierInvoice;
 use App\Support\Nav;
 use App\Users\User;
 use App\Vendors\DealFormat;
@@ -23,6 +24,7 @@ use App\Workflow\Track;
 use App\Workflow\WaitsFor;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
 /**
@@ -45,17 +47,28 @@ final class Disclose
      * @param  list<array{kind: string, value: string, media?: int}>  $items  сверенные `Disclosures::picked`
      * @return array{disclosure: ?Disclosure, moved: bool} показали и сдвинули ли шаг (галка шага устарела — не сдвигаем)
      */
-    public function __invoke(Deal $deal, User $by, array $items, ?Outcome $step = null): array
+    public function __invoke(Deal $deal, User $by, array $items, ?Outcome $step = null, ?int $invoice = null): array
     {
-        [$disclosure, $moved, $turn] = DB::transaction(function () use ($deal, $by, $items, $step) {
+        [$disclosure, $moved, $turn] = DB::transaction(function () use ($deal, $by, $items, $step, $invoice) {
             $deal = Deal::whereKey($deal->id)->lockForUpdate()->firstOrFail();
             $reviews = ReplyReview::pending()->where('deal_id', $deal->id)->with('message')->get();
-            $disclosure = $items ? Disclosure::create(['deal_id' => $deal->id, 'items' => $items, 'message_ids' => $reviews->pluck('message_id')->all() ?: null, 'created_by' => $by->id]) : null;
             $files = array_filter(array_map(fn ($i) => $i['media'] ?? null, $items));
+            // Счёт поставщика (`SupplierInvoice`): выбранный файлом (`$invoice` — шторка «Счёт поставщика») или, у галки шага на оплату
+            // поставщику менеджером, отмеченные документы письма. Без счёта такой шаг не проходит.
+            $billed = $invoice ? [$invoice] : ($step && SupplierInvoice::needs($deal, $step) ? $files : []);
+            if (($invoice && ! in_array($invoice, $files, true)) || ($step && SupplierInvoice::needs($deal, $step) && $billed === [])) {
+                throw ValidationException::withMessages(['disclose' => 'Отметьте счёт поставщика — без него менеджеру нечего оплатить']);
+            }
+            if ($billed) {
+                $marked = Media::whereIn('id', $billed)->get()->each(fn (Media $m) => SupplierInvoice::mark($m))->keyBy('id');
+                $items = array_map(fn ($i) => isset($i['media'], $marked[$i['media']]) ? ['value' => $marked[$i['media']]->name] + $i : $i, $items);
+            }
+            $disclosure = $items ? Disclosure::create(['deal_id' => $deal->id, 'items' => $items, 'message_ids' => $reviews->pluck('message_id')->all() ?: null, 'created_by' => $by->id]) : null;
             Media::whereIn('id', $files)->get()->each(fn (Media $m) => $m->setCustomProperty('managers', true)->save());
             $this->done($reviews, $by);
             $letter = $reviews->max('message_id');
-            $moved = $step && $step->is(self::stepExit($deal, $reviews->pluck('message')->filter())) && ($this->take)($deal->offer, $step, Actor::Staff, $by, ['letter' => $letter]);
+            $fits = $invoice ? $step?->stage_id === $deal->offer->position(Track::Sale)?->stage_id : $step?->is(self::stepExit($deal, $reviews->pluck('message')->filter()));
+            $moved = $step && $fits && ($this->take)($deal->offer, $step, Actor::Staff, $by, $letter ? ['letter' => $letter] : []);
             $disclosure && $deal->offer->log(OfferEventType::Note, $by, ['text' => 'Показали менеджеру: '.$disclosure->summary()]);
 
             return [$disclosure, (bool) $moved, $moved ? Requirement::where('deal_id', $deal->id)->whereNull('done_at')->latest('id')->first() : null];
@@ -110,13 +123,19 @@ final class Disclose
         }
         $find = fn (array $labels) => $stage->exitsFor(Actor::Staff, $deal)->first(fn (Outcome $x) => in_array(mb_strtolower(trim($x->label)), $labels, true));
 
-        return ($letters->contains(fn (Message $m) => InsurerReplies::asksRequisites($m)) ? $find(self::REQUISITES) : null) ?? $find(self::EXITS);
+        // Ждём счёт, а письмо с файлом — «Счёт от поставщика получен» (10.11.2026, 0790/046/11079/26: счёт пришёл, а шаг жали
+        // отдельно и менеджер его не видел).
+        $billed = $letters->contains(fn (Message $m) => InsurerReplies::hasFiles($m))
+            ? $stage->exitsFor(Actor::Staff, $deal)->first(fn (Outcome $x) => SupplierInvoice::needs($deal, $x)) : null;
+
+        return ($letters->contains(fn (Message $m) => InsurerReplies::asksRequisites($m)) ? $find(self::REQUISITES) : null) ?? $billed ?? $find(self::EXITS);
     }
 
     /** Галка шага отмечена сама там, где раньше шаг проходило письмо: в нём телефон или просьба реквизитов. */
-    public static function stepByDefault(Outcome $exit, Collection $letters): bool
+    public static function stepByDefault(Outcome $exit, Collection $letters, ?Deal $deal = null): bool
     {
         return in_array(mb_strtolower(trim($exit->label)), self::REQUISITES, true)
+            || SupplierInvoice::needs($deal, $exit)
             || $letters->contains(fn (Message $m) => InsurerReplies::hasContact($m));
     }
 

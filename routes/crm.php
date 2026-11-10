@@ -272,6 +272,7 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
         Route::post('/work/deals/{deal}/take', [ParallelController::class, 'take']);
         Route::post('/work/deals/{deal}/drop', [ParallelController::class, 'drop']);
         Route::post('/work/deals/{deal}/disclose', [DisclosureController::class, 'store']);
+        Route::post('/work/deals/{deal}/supplier-invoice', [DisclosureController::class, 'invoice']);
         Route::post('/work/deals/{deal}/reviews/done', [DisclosureController::class, 'dismiss']);
         // У кого что в гараже и во что обошлось.
         Route::get('/work/garage', [GarageController::class, 'index']);

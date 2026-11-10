@@ -1,7 +1,7 @@
 {{-- Что админ показал из писем страховой одним разом (`Offers\Disclosure`, 03.11.2026, владелец: «показывается ТОЛЬКО то, что
      выбрано»): дата, телефоны ссылками, имя, адрес с картой, сообщение, документы. Самих писем менеджер не видит никогда. --}}
 {{-- Телефон, имя и адрес, что уже стоят в «Получении автомобиля» рядом, второй раз не пишутся (`Disclosure::besides`). --}}
-@php $items = collect($disclosure->besides($handover ?? null)); $files = $disclosure->files(); @endphp
+@php $items = collect($disclosure->besides($handover ?? null)); $files = $disclosure->files()->reject(fn ($m) => in_array($m->id, $skipFiles ?? [], true))->values(); @endphp
 @if ($items->where('kind', '!=', 'file')->isNotEmpty() || $files->isNotEmpty())
 <div class="reply">
     <p class="nums text-sm text-ink-dim">{{ \App\Support\Ago::html($disclosure->created_at, true, words: false) }}</p>

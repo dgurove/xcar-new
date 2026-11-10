@@ -27,6 +27,7 @@ use App\Workflow\Path;
 use App\Workflow\Requirement;
 use App\Workflow\Stage;
 use App\Workflow\Track;
+use App\Offers\SupplierInvoice;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -48,6 +49,10 @@ class RouteController
             return back(fallback: "/offers/{$offer->number}")->with('toast', $offer->isUrgent()
                 ? 'Срочно в продаже, приём до '.Ago::day($offer->bids_close_at, true)
                 : 'Выйдет '.Slots::phrase($offer->slot_at));
+        }
+        // На оплату поставщику менеджером — только со счётом поставщика (`SupplierInvoice`, шторка «Счёт поставщика»).
+        if ($request->input('for') !== 'manager' && SupplierInvoice::needs($offer->deal?->isActive() ? $offer->deal : null, $exit)) {
+            throw ValidationException::withMessages(['exit' => 'Сначала выберите счёт поставщика — менеджер платит по нему']);
         }
         $payload = [];
         foreach ($exit->staffFields() as $field) {

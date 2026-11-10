@@ -214,6 +214,14 @@
                             <x-ui.button size="sm" variant="secondary" class="!h-auto min-h-9 w-full whitespace-normal py-1.5">«{{ $takeFor->label }}» за менеджера</x-ui.button>
                         </form>
                     @endif
+                    {{-- Менеджер платит поставщику по его счёту, а счёта не видит (10.11.2026, 0790/046/11079/26) — красной строкой. --}}
+                    @if ($deal && \App\Offers\SupplierInvoice::onPay($deal, $stage) && auth()->user()?->canManageCrm() && \App\Offers\SupplierInvoice::shown($offer)->isEmpty())
+                        <div class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-2" data-controller="sheet">
+                            <p class="text-sm font-medium text-urgent">Менеджер не видит счёт поставщика</p>
+                            <x-ui.button type="button" size="sm" data-action="sheet#open" aria-controls="invoice-pay-{{ $position->id }}">Показать счёт</x-ui.button>
+                            <x-deal.supplier-invoice-sheet :id="'invoice-pay-'.$position->id" :deal="$deal"/>
+                        </div>
+                    @endif
                     {{-- Менеджер уже приложил, но шаг ещё не отметил — файл видно сразу. --}}
                     @if ($req && $req->getMedia('files')->isNotEmpty())
                         <div class="mt-2 flex flex-col gap-1">@foreach ($req->getMedia('files') as $f)<x-ui.file :name="$f->file_name" :mime="$f->mime_type" :size="$f->humanReadableSize" href="/files/{{ $f->id }}" class="py-1"/>@endforeach</div>
@@ -286,6 +294,12 @@
                                     <div data-controller="sheet">
                                         <x-ui.button type="button" size="sm" :variant="$variant" data-action="sheet#open">{{ $label($exit) }}</x-ui.button>
                                         <x-offer.publish-sheet :offer="$offer" id="exit-{{ $exit->id }}" action="/offers/{{ $n }}/exit/{{ $exit->id }}"/>
+                                    </div>
+                                @elseif (\App\Offers\SupplierInvoice::needs($deal, $exit))
+                                    {{-- На оплату поставщику менеджером — только со счётом: шторка выбора счёта (`SupplierInvoice`). --}}
+                                    <div data-controller="sheet">
+                                        <x-ui.button type="button" size="sm" :variant="$variant" data-action="sheet#open" aria-controls="invoice-{{ $exit->id }}">{{ $label($exit) }}</x-ui.button>
+                                        <x-deal.supplier-invoice-sheet :id="'invoice-'.$exit->id" :deal="$deal" :exit="$exit"/>
                                     </div>
                                 @elseif ($exit->staffFields())
                                     <div data-controller="sheet">

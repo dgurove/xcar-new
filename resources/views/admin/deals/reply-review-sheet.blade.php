@@ -4,6 +4,10 @@
     use App\Offers\Actions\Disclose;
     use App\Offers\Disclosures;
     use App\Support\Ago;
+    // Ждём счёт поставщика, а в письме файл (10.11.2026) — он «Счёт поставщика», отмечен сам; без него шаг не пройти.
+    $billed = $step && \App\Offers\SupplierInvoice::needs($deal, $step);
+    $guess = $billed ? \App\Offers\SupplierInvoice::guess($deal->offer->getMedia('papers')->whereIn('id', collect($proposals)->pluck('media')->filter())->sortByDesc('id')) : null;
+    $picked = $picked ?: ($guess ? ['file:'.$guess->id] : []);
 @endphp
 <x-ui.sheet :id="$id" title="Показать менеджеру" tall>
     <form method="post" action="/work/deals/{{ $deal->id }}/disclose" class="flex flex-col gap-4" data-controller="disclose">
@@ -26,7 +30,7 @@
                             <span class="check mt-0.5"><input type="checkbox" id="{{ $box }}" name="on[]" value="{{ $key }}" @checked(in_array($key, $picked, true)) data-action="disclose#update"></span>
                             <div class="min-w-0 flex-1">
                                 <label for="{{ $box }}" class="block cursor-pointer">
-                                    <span class="block text-xs text-ink-muted">{{ Disclosures::KINDS[$p['kind']] }}</span>
+                                    <span class="block text-xs text-ink-muted">{{ $guess && $p['media'] === $guess->id ? 'Счёт поставщика' : Disclosures::KINDS[$p['kind']] }}</span>
                                     <span class="block break-words" data-disclose-target="text">{{ $p['kind'] === 'file' ? $p['value'] : old('value.'.$key, $p['value']) }}</span>
                                 </label>
                                 @if ($p['kind'] !== 'file')
@@ -49,7 +53,7 @@
         @if ($step)
             <label class="row row-switch rounded-(--radius-m) bg-surface-2 px-4">
                 <span class="min-w-0 flex-1">Пройти шаг «{{ $step->label }}»</span>
-                <input type="checkbox" switch class="switch" name="step" value="{{ $step->id }}" @checked(old('_sheet') === $id ? old('step') : Disclose::stepByDefault($step, $letters)) data-action="disclose#update" data-disclose-target="step">
+                <input type="checkbox" switch class="switch" name="step" value="{{ $step->id }}" @checked(old('_sheet') === $id ? old('step') : Disclose::stepByDefault($step, $letters, $deal)) data-action="disclose#update" data-disclose-target="step">
             </label>
         @endif
         <x-ui.sheet-foot type="submit" data-disclose-target="submit">Показать менеджеру</x-ui.sheet-foot>

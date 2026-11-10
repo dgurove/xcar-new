@@ -35,7 +35,7 @@
                 <div class="proposal-body">
                     <span class="proposal-mark" aria-hidden="true"><x-ui.icon name="mail" class="size-4"/></span>
                     <div class="min-w-0 flex-1">
-                        <p class="text-ink">Ответ страховой{{ $letters->count() > 1 ? ', писем: '.$letters->count() : '' }}</p>
+                        <p class="text-ink">{{ $step && \App\Offers\SupplierInvoice::needs($deal, $step) ? 'Счёт от страховой' : 'Ответ страховой' }}{{ $letters->count() > 1 ? ', писем: '.$letters->count() : '' }}</p>
                         <p class="text-sm text-ink-muted">{{ Ago::html($letters->first()->date_at, true) }}, менеджер о нём не знает</p>
                     </div>
                 </div>

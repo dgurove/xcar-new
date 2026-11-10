@@ -162,9 +162,21 @@
                     @endforeach
                 </ol>
             @else
+            {{-- Платит поставщику сам — его счёт тут же, первым (10.11.2026, 0790/046/11079/26: счёт был в «Информации по сделке»
+                 номером со сканера, а на шаге «Оплатить страховой» его не было). Пока не показали — словом. --}}
+            @php $supplierBills = $direct ? \App\Offers\SupplierInvoice::shown($deal->offer) : collect(); @endphp
+            @if ($direct && \App\Offers\SupplierInvoice::onPay($deal, $position->stage))
+                @if ($supplierBills->isNotEmpty())
+                    <div class="list mt-4">
+                        @foreach ($supplierBills as $f)<x-ui.file :name="$f->name.'.'.pathinfo($f->file_name, PATHINFO_EXTENSION)" :mime="$f->mime_type" href="/files/{{ $f->id }}"/>@endforeach
+                    </div>
+                @else
+                    <p class="mt-3 text-ink-muted">Счёт поставщика пришлём сюда</p>
+                @endif
+            @endif
             @if ($showHandover)@include($handover->park ? 'cabinet.deals.park-pickup' : 'cabinet.deals.handover')@endif
             @include('cabinet.deals.payload')
-            @if ($disclosures->isNotEmpty())@include('cabinet.deals.disclosures')@endif
+            @if ($disclosures->isNotEmpty())@include('cabinet.deals.disclosures', ['skipFiles' => $supplierBills->pluck('id')->all()])@endif
 
             @if ($stepInvoices->isNotEmpty())
                 <div class="list mt-5">
