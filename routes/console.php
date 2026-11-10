@@ -1,5 +1,6 @@
 <?php
 
+use App\Mail\Message;
 use App\Notifications\Delivery;
 use App\Offers\DealState;
 use App\Offers\OfferEvent;
@@ -65,17 +66,21 @@ Schedule::call(fn () => DB::table('sessions')->whereNull('user_id')->where('last
 
 /*
  * Разово (10.11.2026): разборы писем, по которым сотрудник уже сдвинул шаг, и разборы ушедших сделок — разобраны. Дальше это
- * делает `Offers\Listeners\CloseReviewsOnStep` на каждый шаг.
+ * делает `Offers\Listeners\CloseReviews` на каждый шаг и ответ поставщику.
  */
 Artisan::command('deals:close-stale-reviews {--dry}', function () {
-    $stale = ReplyReview::pending()->with(['deal', 'offer'])->get()->filter(function ($r) {
+    $stale = ReplyReview::pending()->with(['deal', 'offer', 'message'])->get()->filter(function ($r) {
         if ($r->deal?->state !== DealState::Active) {
             return true;
         }
 
+        $staff = User::withRole(Role::Admin, Role::Moderator)->select('id');
+
+        // Те же правила, что у `Offers\Listeners\CloseReviews`: сотрудник сдвинул шаг или ответил в той же ветке после письма.
         return OfferEvent::where('offer_id', $r->offer_id)->where('type', OfferEventType::StageEntered)
-            ->where('created_at', '>', $r->created_at)->where('payload->track', 'sale')
-            ->whereIn('user_id', User::withRole(Role::Admin, Role::Moderator)->select('id'))->exists();
+            ->where('created_at', '>', $r->created_at)->where('payload->track', 'sale')->whereIn('user_id', $staff)->exists()
+            || ($r->message && Message::where('thread_id', $r->message->thread_id)->where('direction', 'out')
+                ->where('date_at', '>', $r->message->date_at)->whereIn('created_by', $staff)->exists());
     });
     foreach ($stale as $r) {
         $this->line($r->id.' сделка '.$r->deal_id.' '.$r->offer?->number.' '.$r->created_at->format('d.m H:i').' '.($r->deal?->state->value ?? '—'));

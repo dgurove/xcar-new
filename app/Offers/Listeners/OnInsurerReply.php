@@ -5,18 +5,24 @@ namespace App\Offers\Listeners;
 use App\Mail\Composer;
 use App\Mail\Direction;
 use App\Mail\Message;
+use App\Notifications\SupplierInvoiceArrivedNotice;
 use App\Offers\Actions\Disclose;
 use App\Offers\Deal;
 use App\Offers\Events\InsurerReplied;
 use App\Offers\InsurerReplies;
 use App\Offers\Jobs\ShareReplyFiles;
 use App\Offers\OfferEventType;
+use App\Offers\ReplyKind;
 use App\Offers\ReplyReview;
+use App\Offers\Reprice;
+use App\Users\Role;
+use App\Users\User;
 use App\Vendors\DealFormat;
 use App\Workflow\Events\StageEntered;
 use App\Workflow\Track;
 use App\Workflow\WaitsFor;
 use Illuminate\Events\Dispatcher;
+use Illuminate\Support\Facades\Notification;
 
 /**
  * Страховая ответила по сделке (05.10.2026, Ford Kuga). С 03.11.2026 письмо для менеджера не делает ничего (владелец: «пришло
@@ -92,15 +98,15 @@ final class OnInsurerReply
         if (! $deal->isActive() || ! $deal->buyer_id || $deal->offer->vendor?->deal_format === DealFormat::Wholesale
             || $message->direction !== Direction::In || $message->date_at?->lt($deal->created_at) || ! InsurerReplies::counts($message)
             // Письмо завело переоценку (04.11.2026) — его разбирают ею: «Спросить» менеджера цифрами, без слов письма.
-            || \App\Offers\Reprice::where('message_id', $message->id)->exists()) {
+            || Reprice::where('message_id', $message->id)->exists()) {
             return;
         }
         $review = ReplyReview::firstOrCreate(['message_id' => $message->id], ['deal_id' => $deal->id, 'offer_id' => $deal->offer_id, 'state' => ReplyReview::PENDING]);
         $review->wasRecentlyCreated && Disclose::publish($deal);
         // Счёт страховой — громко админам (10.11.2026, `SupplierInvoiceArrivedNotice`): менеджер его не видит, а срок оплаты идёт.
-        if ($review->wasRecentlyCreated && \App\Offers\ReplyKind::of($message) === \App\Offers\ReplyKind::Invoice) {
-            \Illuminate\Support\Facades\Notification::send(\App\Users\User::withRole(\App\Users\Role::Admin)->get(),
-                new \App\Notifications\SupplierInvoiceArrivedNotice($deal->load(['offer.vendor', 'buyer'])));
+        if ($review->wasRecentlyCreated && ReplyKind::of($message) === ReplyKind::Invoice) {
+            Notification::send(User::withRole(Role::Admin)->get(),
+                new SupplierInvoiceArrivedNotice($deal->load(['offer.vendor', 'buyer'])));
         }
     }
 
