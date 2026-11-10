@@ -45,14 +45,38 @@ class RepriceController
         return back(fallback: "/offers/{$offer->number}")->with('toast', 'Переоценка применена');
     }
 
-    /** Ответ за менеджера про выросшую закупочную (28.10.2026): он сказал устно. */
+    /**
+     * Новая цена после переоценки (10.11.2026): за менеджера (он сказал устно) — цена, «согласен» / «отказался» на наше
+     * контрпредложение, отказ; наше решение по названной им цене — принять, контрпредложение, отказать.
+     */
     public function answer(Request $request, Offer $offer, RepriceAsk $ask, AnswerReprice $answer)
     {
         abort_unless($ask->offer_id === $offer->id, 404);
-        $agree = $request->boolean('agree');
-        $answer($ask, $agree, $request->user());
+        $by = $request->user();
+        $do = $request->input('do', $request->has('agree') && ! $request->boolean('agree') ? 'decline' : 'price');
+        $rub = fn (string $key) => Money::rubles($request->validate([$key => 'required'])[$key]);
+        $offered = $ask->isOffered();
+        if ($do === 'accept') {
+            $answer->accept($ask, $by);
+            $toast = 'Цена принята';
+        } elseif ($do === 'counter') {
+            $answer->counter($ask, $rub('counter_price'), $by);
+            $toast = 'Контрпредложение отправлено';
+        } elseif ($do === 'agree') {
+            $answer->agree($ask, $by);
+            $toast = 'За менеджера: согласен';
+        } elseif ($do === 'refuse') {
+            $answer->refuseCounter($ask, $by);
+            $toast = 'За менеджера: не согласен с контрпредложением';
+        } elseif ($do === 'decline') {
+            $answer->decline($ask, $by);
+            $toast = $offered ? 'Отказали менеджеру' : 'За менеджера: отказался';
+        } else {
+            $answer->offer($ask, $price = $rub('reprice_price'), $by);
+            $toast = 'За менеджера: цена '.Money::rub($price);
+        }
 
-        return back(fallback: "/offers/{$offer->number}")->with('toast', $agree ? 'За менеджера: согласен' : 'За менеджера: отказался');
+        return back(fallback: "/offers/{$offer->number}")->with('toast', $toast);
     }
 
     public function stopShow(Request $request, Offer $offer, ShowDealToAll $show)

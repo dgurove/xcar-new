@@ -9,8 +9,9 @@ use App\Telegram\Text;
 /**
  * Менеджеру: новая закупочная — согласен ли он (28.10.2026, `RepriceAsk`; с 03.11.2026 в любую сторону и только решением админа,
  * цифрами, ни слова письма). Важное и мимо категорий (`critical`), как
- * контрпредложение: без ответа у него прежняя цена, а у нас горит. В Telegram — «Согласен» / «Отказываюсь» с переспросом
- * (`UpdateHandler::reprice`). Ответили раньше доставки (за него админ, новая переоценка) — не шлём.
+ * контрпредложение: без ответа у него прежняя цена, а у нас горит. С 10.11.2026 ответ — его новая цена подтверждения: в
+ * Telegram «Ввести цену» ведёт на страницу, «Отказываюсь» — с переспросом (`UpdateHandler::reprice`). Ответили раньше доставки
+ * (за него админ, новая переоценка) — не шлём.
  */
 final class RepriceAskNotice extends Notice
 {
@@ -33,7 +34,9 @@ final class RepriceAskNotice extends Notice
 
     public function text(): ?string
     {
-        return $this->ask->phrase().'. Согласны? Ответьте до '.Ago::day($this->ask->due_at->setTimezone('Europe/Moscow'), true);
+        $p = $this->ask->pairs();
+
+        return 'Было '.$p['was'].', стало '.$p['now'].'. Назовите новую цену подтверждения до '.Ago::day($this->ask->due_at->setTimezone('Europe/Moscow'), true);
     }
 
     public function href(): string
@@ -64,13 +67,13 @@ final class RepriceAskNotice extends Notice
     public function toTelegram(): ?array
     {
         return ['title' => self::telegramTitle($this->ask), 'lines' => self::telegramLines($this->ask),
-            'keyboard' => [self::buttons($this->ask)], 'button' => 'Открыть'];
+            'keyboard' => [self::buttons($this->ask)], 'button' => 'Ввести цену'];
     }
 
-    /** @return list<array{text: string, callback_data: string}> */
+    /** Цену вводят на странице («Ввести цену» — кнопка-ссылка), здесь — только отказ. @return list<array{text: string, callback_data: string}> */
     public static function buttons(RepriceAsk $ask): array
     {
-        return [['text' => 'Согласен', 'callback_data' => "reprice:{$ask->id}:yes"], ['text' => 'Отказываюсь', 'callback_data' => "reprice:{$ask->id}:no"]];
+        return [['text' => 'Отказываюсь', 'callback_data' => "reprice:{$ask->id}:no"]];
     }
 
     public static function telegramTitle(RepriceAsk $ask): string
@@ -82,6 +85,8 @@ final class RepriceAskNotice extends Notice
     /** @return array<int, mixed> */
     public static function telegramLines(RepriceAsk $ask): array
     {
-        return Text::lines($ask->offer, $ask->phrase(), 'Согласны? Ответьте до '.Ago::day($ask->due_at->setTimezone('Europe/Moscow'), true));
+        $p = $ask->pairs();
+
+        return Text::lines($ask->offer, 'Было: '.$p['was'], 'Стало: '.$p['now'], 'Назовите новую цену подтверждения до '.Ago::day($ask->due_at->setTimezone('Europe/Moscow'), true));
     }
 }

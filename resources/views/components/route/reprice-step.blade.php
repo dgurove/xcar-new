@@ -1,7 +1,7 @@
 {{-- Шаг «Переоценка» в пути сделки (04.11.2026, владелец про X6: «почему согласование с поставщиком, если идёт переоценка»;
      «тупо текст — это не дизайн»): текущий, этап маршрута ждёт впереди. Сверху откуда (вендор, письмо) и цены было → стало,
      ниже вложенная лента из трёх подпунктов `Offers\RepriceFlow`: цена (разобрать шторкой плашки), покупатель (менеджер сделки
-     строкой с аватаром, его ответ и «Согласен» / «Отказался» за него; «Все менеджеры», пока показываем, с числом подтверждений
+     строкой с аватаром, его новая цена и решение по ней — `x-offer.reprice-ask-acts`, 10.11.2026; «Все менеджеры», пока показываем, с числом подтверждений
      и «Снять показ»), ответ поставщику (окно писем с готовым текстом, отвечаем, когда есть покупатель). --}}
 @props(['flow'])
 @php
@@ -90,17 +90,20 @@
                             <x-ui.avatar :user="$buyer" :size="32"/>
                             <div class="min-w-0">
                                 <div class="truncate">{{ $buyer->shortName() }}</div>
-                                @if ($ask?->isPending())
-                                    <x-ui.state :tone="$ask->late() ? 'danger' : 'urgent'" class="nums">{{ $ask->late() ? 'не ответил, срок ' : 'думает до ' }}{{ Ago::at($ask->due_at, true, words: false) }}</x-ui.state>
+                                @if ($ask?->isOffered())
+                                    <x-ui.state tone="urgent" class="nums">предлагает {{ Money::rub((int) $ask->offered_price) }}{{ $ask->counter_price ? ', от нашего отказался' : '' }}</x-ui.state>
+                                @elseif ($ask?->isCountered())
+                                    <x-ui.state :tone="$ask->late() ? 'danger' : 'accent'" class="nums">наше {{ Money::rub((int) $ask->counter_price) }} вместо {{ Money::nums((int) $ask->offered_price) }}, {{ $ask->late() ? 'не ответил, срок ' : 'думает до ' }}{{ Ago::at($ask->due_at, true, words: false) }}</x-ui.state>
+                                @elseif ($ask?->isPending())
+                                    <x-ui.state :tone="$ask->late() ? 'danger' : 'urgent'" class="nums">{{ $ask->late() ? 'не назвал цену, срок ' : 'думает до ' }}{{ Ago::at($ask->due_at, true, words: false) }}</x-ui.state>
                                 @elseif ($ask)
-                                    <x-ui.state tone="open" class="nums">согласен · {{ Ago::at($ask->answered_at, words: false) }}</x-ui.state>
+                                    <x-ui.state tone="open" class="nums">{{ Money::rub((int) $flow->deal->amount) }} · {{ Ago::at($ask->answered_at, words: false) }}</x-ui.state>
                                 @else
                                     <x-ui.state class="nums">закупочная {{ Money::nums((int) $flow->deal->cost) }}</x-ui.state>
                                 @endif
                             </div>
-                            @if ($ask?->isPending())
-                                <x-offer.answer-for class="step-who-acts" :action="'/offers/'.$n.'/reprice-asks/'.$ask->id" :agree-ask="'За '.$buyer->shortName().': согласен на '.Money::rub($ask->to_price).'?'"
-                                    :decline-ask="'За '.$buyer->shortName().': отказался?'" :decline-text="$ask->declineMeans()"/>
+                            @if ($ask?->isOpen())
+                                <x-offer.reprice-ask-acts class="step-who-acts" :ask="$ask" :offer="$offer"/>
                             @endif
                         </div>
                     @endif

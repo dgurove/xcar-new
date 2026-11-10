@@ -1,10 +1,10 @@
 {{-- Ждём ответа менеджера про выросшую закупочную (28.10.2026, `RepriceAsk`) — в CRM строками под плашками окошка, редактора
-     и сделки (вопрос по сделке с путём — в текущем шаге): кто, что выросло, до когда (вышел срок — красным). Он сказал устно — «Согласен» / «Отказался» за него (тот же
-     `AnswerReprice`; отказ отменяет сделку — с переспросом). Только админу CRM. --}}
+     и сделки (вопрос по сделке с путём — в текущем шаге): кто, что выросло, до когда (вышел срок — красным), названная им цена;
+     кнопки — `x-offer.reprice-ask-acts` (цена за него, решение по его цене; отказ отменяет сделку — с переспросом). Только админу CRM. --}}
 @props(['offer'])
 @php
     $asks = auth()->user()?->canManageCrm()
-        ? \App\Offers\RepriceAsk::pending()->where('offer_id', $offer->id)->with(['user', 'deal', 'bid'])->orderBy('id')->get()->filter->alive()
+        ? \App\Offers\RepriceAsk::open()->where('offer_id', $offer->id)->with(['user', 'deal', 'bid'])->orderBy('id')->get()->filter->alive()
         : collect();
     // Вопрос по сделке с путём говорит текущий шаг (`x-route.path`, 04.11.2026) — здесь только подтверждения и сделка без пути.
     if ($offer->positions->isNotEmpty()) {
@@ -18,15 +18,18 @@
             <div class="row flex-col items-stretch gap-2">
                 <span class="min-w-0">
                     <span class="block">{{ $ask->user->shortName() }} — {{ $ask->deal_id ? 'сделка' : 'подтверждение' }}, закупочная <span class="nums">{{ \App\Support\Money::nums($ask->from_price) }} → {{ \App\Support\Money::rub($ask->to_price) }}</span></span>
-                    <span class="block text-sm {{ $ask->late() ? 'text-danger' : 'text-ink-muted' }}">{{ $ask->late() ? 'не ответил, срок вышел' : 'ждём ответа' }} <span class="nums">{{ \App\Support\Ago::html($ask->due_at->setTimezone('Europe/Moscow'), true, words: false) }}</span></span>
+                    @if ($ask->isOffered())
+                        <span class="block text-sm text-urgent nums">предлагает {{ \App\Support\Money::rub((int) $ask->offered_price) }}</span>
+                    @else
+                        <span class="block text-sm {{ $ask->late() ? 'text-danger' : 'text-ink-muted' }}">@if ($ask->isCountered())<span class="nums">наше {{ \App\Support\Money::rub((int) $ask->counter_price) }}</span>, @endif{{ $ask->late() ? 'не ответил, срок вышел' : 'ждём ответа' }} <span class="nums">{{ \App\Support\Ago::html($ask->due_at->setTimezone('Europe/Moscow'), true, words: false) }}</span></span>
+                    @endif
                     {{-- Пока думает — показываем всем (`ShowDealToAll`, 04.11.2026); согласится — снимется само. --}}
                     @if ($ask->deal_id && $offer->showsDealAsOpen())
                         <span class="block text-sm text-accent-text">показываем всем менеджерам до <span class="nums">{{ \App\Support\Ago::html($offer->deal_show_until, true, words: false) }}</span>
                             <form method="post" action="/offers/{{ $offer->number }}/show-all" class="inline" data-turbo-confirm="Убрать машину из предложений у всех менеджеров?" data-turbo-confirm-label="Снять показ">@csrf @method('delete')<button class="underline decoration-dotted underline-offset-4 text-ink-muted">снять</button></form></span>
                     @endif
                 </span>
-                <x-offer.answer-for :action="'/offers/'.$offer->number.'/reprice-asks/'.$ask->id" :agree-ask="'За менеджера: согласен на '.\App\Support\Money::rub($ask->to_price).'?'"
-                    decline-ask="За менеджера: отказался?" :decline-text="$ask->declineMeans()"/>
+                <x-offer.reprice-ask-acts :ask="$ask" :offer="$offer"/>
             </div>
         @endforeach
     </div>

@@ -145,7 +145,7 @@ class Deal extends Model
      * (ПРАЙМ без покупателя — без просьбы). То же правило в PHP — `managerTask()`.
      */
     public const MANAGER_TURN_SQL = "(exists (select 1 from requirements r where r.deal_id = deals.id and r.done_at is null)
-        or exists (select 1 from reprice_asks a where a.deal_id = deals.id and a.state = 'pending')
+        or exists (select 1 from reprice_asks a where a.deal_id = deals.id and a.state in ('pending', 'countered'))
         or (deals.state = 'active' and exists (select 1 from offer_positions p join workflow_stages s on s.id = p.stage_id where p.offer_id = deals.offer_id
             and p.track = 'sale' and coalesce(p.waits_for, s.waits_for) = 'manager')))";
 
@@ -168,7 +168,7 @@ class Deal extends Model
         $position = $this->offer?->position();
         // Выросла закупочная — сначала ответ про цену (28.10.2026, `RepriceAsk`).
         if ($due = RepriceAsk::dealDue()->get($this->offer_id)) {
-            return ['title' => 'Ответьте про новую цену', 'due' => $due];
+            return ['title' => 'Назовите новую цену', 'due' => $due];
         }
         if ($req = $this->openRequirement) {
             return $position?->stage->isPayStep() && $this->fullyPaid() ? null : ['title' => $req->title, 'due' => $req->due_at];

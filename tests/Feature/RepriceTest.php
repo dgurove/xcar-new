@@ -11,6 +11,7 @@ use App\Mail\Message;
 use App\Notifications\DealOpenedNotice;
 use App\Notifications\RepriceAnsweredNotice;
 use App\Notifications\RepriceAskNotice;
+use App\Notifications\RepriceDecidedNotice;
 use App\Notifications\RepriceNotice;
 use App\Offers\Actions\AcceptBid;
 use App\Offers\Actions\AnswerReprice;
@@ -237,22 +238,29 @@ class RepriceTest extends TestCase
         app(TakeExit::class)($this->offer->fresh(), $stage->exits->firstWhere('label', 'Автомобиль забрал'), Actor::Manager, $this->roman);
     }
 
-    public function test_increase_asks_manager_and_agree_applies(): void
+    /**
+     * Выросла закупочная, «Спросить» (10.11.2026, владелец по 0790/046/09068/26: «Согласен» менял только закупочную, сделка
+     * стояла в минус): менеджер видит было → стало и вводит новую цену подтверждения, админ принимает, отвечает
+     * контрпредложением или отказывает.
+     */
+    public function test_increase_asks_manager_price_and_admin_decides(): void
     {
         $deal = app(AcceptBid::class)(app(PlaceBid::class)($this->offer, $this->roman, 1050000), $this->admin, 20000, CommissionMode::Payout, scheme: DealScheme::Insurer);
         $this->pickedUp();
         $first = $deal->fresh()->issuedInvoices()->sole();
 
-        // Закупочная выросла, админ выбрал «Спросить» — цена у менеджера прежняя, ему вопрос с кнопками, у нас — ждём.
+        // Закупочная выросла, админ выбрал «Спросить» — цена у менеджера прежняя, ему вопрос, у нас — ждём.
         app(UpdateOffer::class)($this->offer->fresh(), ['floor_price' => 650000], $this->admin);
-        app(ApplyReprice::class)($this->offer->fresh()->pendingReprice, $this->admin, 650000, [], 'ask');
+        app(ApplyReprice::class)($this->offer->fresh()->pendingReprice, $this->admin, 650000, [], 'ask', ['asking_price' => 1150000]);
         $this->assertSame(594762, $deal->fresh()->cost);
         $ask = RepriceAsk::sole();
         $this->assertTrue($ask->alive());
+        $this->assertSame(1150000, $ask->asking_to);
         Notification::assertSentTo($this->roman, RepriceAskNotice::class, fn (RepriceAskNotice $n) => $n->critical()
-            && collect($n->toTelegram()['keyboard'][0])->pluck('text')->all() === ['Согласен', 'Отказываюсь']);
-        $this->assertSame('Ответьте про новую цену', $deal->fresh()->managerTask()['title']);
-        $this->actingAs($this->roman)->get('http://xcar.localhost/deals/'.$deal->id)->assertOk()->assertSee('Новая цена');
+            && collect($n->toTelegram()['keyboard'][0])->pluck('text')->all() === ['Отказываюсь'] && $n->toTelegram()['button'] === 'Ввести цену');
+        $this->assertSame('Назовите новую цену', $deal->fresh()->managerTask()['title']);
+        $this->actingAs($this->roman)->get('http://xcar.localhost/deals/'.$deal->id)->assertOk()
+            ->assertSee('Новая цена подтверждения')->assertSee(\App\Support\Money::nums(594762), false)->assertSee(\App\Support\Money::nums(1150000), false);
 
         // Срок вышел — горит у нас.
         $this->travel(2)->days();
@@ -261,12 +269,78 @@ class RepriceTest extends TestCase
         $this->assertSame('price-ask', $position->todo()['key']);
         $this->travelBack();
 
-        // Согласен — новая закупочная, подбор перевыставлен; админам — ответ.
-        $this->actingAs($this->roman)->post('http://xcar.localhost/reprice-asks/'.$ask->id, ['agree' => 1])->assertRedirect();
-        $this->assertSame(650000, $deal->fresh()->cost);
+        // Недопустимая цена — ошибкой, ничего не меняется.
+        $this->actingAs($this->roman)->from('http://xcar.localhost/deals/'.$deal->id)->post('http://xcar.localhost/reprice-asks/'.$ask->id, ['do' => 'price', 'price' => '600 000'])
+            ->assertSessionHasErrors('amount');
+        $this->assertSame(RepriceAsk::PENDING, $ask->fresh()->state);
+
+        // Назвал цену — решаем мы: сделка прежняя, «Ваш ход» у нас, админам — важное.
+        $this->actingAs($this->roman)->post('http://xcar.localhost/reprice-asks/'.$ask->id, ['do' => 'price', 'price' => '1 100 000'])->assertRedirect();
+        $ask->refresh();
+        $this->assertSame([RepriceAsk::OFFERED, 1100000], [$ask->state, $ask->offered_price]);
+        $this->assertSame([594762, 1050000], [$deal->fresh()->cost, (int) $deal->fresh()->amount]);
+        $position = $this->offer->fresh()->position();
+        $this->assertSame('price-offer', $position->todo()['key']);
+        $this->assertTrue(\App\Workflow\Position::whereKey($position->id)->needsUs()->exists());
+        $this->assertNotSame('Назовите новую цену', $deal->fresh()->managerTask()['title'] ?? null);
+        Notification::assertSentTo($this->admin, RepriceAnsweredNotice::class, fn (RepriceAnsweredNotice $n) => $n->important() && str_contains($n->title(), 'предлагает'));
+
+        // Контрпредложение — ход снова его; не согласен — снова его цена.
+        $this->actingAs($this->admin)->post('http://crm.xcar.localhost/offers/'.$this->offer->number.'/reprice-asks/'.$ask->id, ['do' => 'counter', 'counter_price' => '1 150 000'])->assertRedirect();
+        $this->assertSame([RepriceAsk::COUNTERED, 1150000], [$ask->fresh()->state, $ask->fresh()->counter_price]);
+        Notification::assertSentTo($this->roman, RepriceDecidedNotice::class, fn (RepriceDecidedNotice $n) => str_starts_with($n->title(), 'Контрпредложение'));
+        $this->assertSame('Назовите новую цену', $deal->fresh()->managerTask()['title']);
+        $this->actingAs($this->roman)->get('http://xcar.localhost/deals/'.$deal->id)->assertSee('Контрпредложение')->assertSee(\App\Support\Money::nums(1150000), false);
+        $this->actingAs($this->roman)->post('http://xcar.localhost/reprice-asks/'.$ask->id, ['do' => 'refuse'])->assertRedirect();
+        $this->assertSame(RepriceAsk::OFFERED, $ask->fresh()->state);
+
+        // Приняли — новая закупочная и его цена, подбор перевыставлен; ему — «Цена принята».
+        $this->actingAs($this->admin)->post('http://crm.xcar.localhost/offers/'.$this->offer->number.'/reprice-asks/'.$ask->id, ['do' => 'accept'])->assertRedirect();
+        $deal = $deal->fresh();
+        $this->assertSame([650000, 1100000, null], [$deal->cost, (int) $deal->amount, $deal->supplier_cost]);
         $this->assertSame(InvoiceState::Void, $first->fresh()->state);
+        $this->assertEqualsWithDelta(1100000 - 650000 - 20000, $deal->issuedInvoices()->where('state', InvoiceState::Issued)->sole()->total, 0.01);
         $this->assertSame(RepriceAsk::AGREED, $ask->fresh()->state);
-        Notification::assertSentTo($this->admin, RepriceAnsweredNotice::class);
+        $this->assertNull($deal->marginMark());
+        Notification::assertSentTo($this->roman, RepriceDecidedNotice::class, fn (RepriceDecidedNotice $n) => str_starts_with($n->title(), 'Цена принята'));
+    }
+
+    /** Админ отказал по названной цене — сделка отменена, менеджеру сообщение; цена за менеджера — сразу в сделку. */
+    public function test_admin_rejects_offered_price_or_enters_it_for_manager(): void
+    {
+        $deal = app(AcceptBid::class)(app(PlaceBid::class)($this->offer, $this->roman, 1050000), $this->admin, 20000, CommissionMode::Payout, scheme: DealScheme::Insurer);
+        app(UpdateOffer::class)($this->offer->fresh(), ['floor_price' => 650000], $this->admin);
+        app(ApplyReprice::class)($this->offer->fresh()->pendingReprice, $this->admin, 650000, [], 'ask');
+        $ask = RepriceAsk::sole();
+
+        // За менеджера ниже новой закупочной — нельзя.
+        $crm = 'http://crm.xcar.localhost/offers/'.$this->offer->number.'/reprice-asks/'.$ask->id;
+        $this->actingAs($this->admin)->post($crm, ['do' => 'price', 'reprice_price' => '640 000'])->assertSessionHasErrors('reprice_price');
+        // Сказал устно 1 120 000 — сразу в сделке.
+        $this->actingAs($this->admin)->post($crm, ['do' => 'price', 'reprice_price' => '1 120 000'])->assertRedirect();
+        $this->assertSame([650000, 1120000], [$deal->fresh()->cost, (int) $deal->fresh()->amount]);
+        $this->assertSame(RepriceAsk::AGREED, $ask->fresh()->state);
+
+        // Новая переоценка, он назвал цену — отказали: сделка отменена, ему сообщение.
+        app(UpdateOffer::class)($this->offer->fresh(), ['floor_price' => 700000], $this->admin);
+        app(ApplyReprice::class)($this->offer->fresh()->pendingReprice, $this->admin, 700000, [], 'ask');
+        $ask = RepriceAsk::where('state', RepriceAsk::PENDING)->sole();
+        app(AnswerReprice::class)->offer($ask, 1130000, $this->roman);
+        $this->actingAs($this->admin)->post('http://crm.xcar.localhost/offers/'.$this->offer->number.'/reprice-asks/'.$ask->id, ['do' => 'decline'])->assertRedirect();
+        $this->assertSame(DealState::Cancelled, $deal->fresh()->state);
+        Notification::assertSentTo($this->roman, RepriceDecidedNotice::class, fn (RepriceDecidedNotice $n) => str_starts_with($n->title(), 'Сделка отменена'));
+    }
+
+    /** По подтверждению названная цена сразу его: сумма и новая закупочная. */
+    public function test_bid_question_takes_new_price(): void
+    {
+        $bid = app(PlaceBid::class)($this->offer, $this->roman, 1050000);
+        app(UpdateOffer::class)($this->offer->fresh(), ['floor_price' => 650000], $this->admin);
+        app(ApplyReprice::class)($this->offer->fresh()->pendingReprice, $this->admin, 650000, [$bid->id => 'ask'], null);
+        $ask = RepriceAsk::sole();
+        app(AnswerReprice::class)->offer($ask, 1100000, $this->roman);
+        $this->assertSame([1100000, 650000], [(int) $bid->fresh()->amount, (int) $bid->fresh()->cost]);
+        $this->assertSame(RepriceAsk::AGREED, $ask->fresh()->state);
     }
 
     public function test_increase_declined_cancels_deal_and_withdraws_bid(): void
@@ -325,8 +399,10 @@ class RepriceTest extends TestCase
         app(UpdateOffer::class)($offer->fresh(), ['deal_audience_users' => [], 'deal_audience_groups' => [], 'deal_show_until' => null], $this->admin);
         $this->assertTrue($this->offer->fresh()->showsDealAsOpen());
 
-        // Роман согласился — машины в предложениях больше нет, резерв жив.
-        app(AnswerReprice::class)(RepriceAsk::where('deal_id', $deal->id)->sole(), true, $this->roman);
+        // Роман назвал цену — показ ещё идёт; приняли — машины в предложениях больше нет, резерв жив.
+        $ask = app(AnswerReprice::class)->offer(RepriceAsk::where('deal_id', $deal->id)->sole(), 1150000, $this->roman);
+        $this->assertTrue($this->offer->fresh()->showsDealAsOpen());
+        app(AnswerReprice::class)->accept($ask, $this->admin);
         $this->assertFalse($this->offer->fresh()->showsDealAsOpen());
         $this->assertFalse(Offer::dealOpenTo($this->denis)->exists());
         $this->assertSame(BidState::Active, $reserve->fresh()->state);
@@ -344,7 +420,7 @@ class RepriceTest extends TestCase
         app(ApplyReprice::class)($this->offer->fresh()->pendingReprice, $this->admin, 650000, [], 'ask', showDays: 3);
         $until = $this->offer->fresh()->deal_show_until;
 
-        app(AnswerReprice::class)(RepriceAsk::where('deal_id', $deal->id)->sole(), false, $this->roman);
+        app(AnswerReprice::class)->decline(RepriceAsk::where('deal_id', $deal->id)->sole(), $this->roman);
         $offer = $this->offer->fresh();
         $this->assertSame(DealState::Cancelled, $deal->fresh()->state);
         $this->assertSame(OfferState::Open, $offer->state);
@@ -387,7 +463,8 @@ class RepriceTest extends TestCase
         $ask = RepriceAsk::sole();
         $this->assertSame([650000, 600000], [$ask->from_price, $ask->to_price]);
         Notification::assertSentTo($this->roman, RepriceAskNotice::class, fn (RepriceAskNotice $n) => ! str_contains($n->title(), 'уменьшится'));
-        $this->actingAs($this->roman)->post('http://xcar.localhost/reprice-asks/'.$ask->id, ['agree' => 1])->assertRedirect();
+        $this->actingAs($this->roman)->post('http://xcar.localhost/reprice-asks/'.$ask->id, ['do' => 'price', 'price' => '1 050 000'])->assertRedirect();
+        app(AnswerReprice::class)->accept($ask->fresh(), $this->admin);
         $this->assertSame(600000, $deal->fresh()->cost);
     }
 
@@ -439,8 +516,11 @@ class RepriceTest extends TestCase
         $this->assertSame([RepriceFlow::DONE, RepriceFlow::NOW, RepriceFlow::WAIT], [$flow->price(), $flow->buyer(), $flow->answer()]);
         $this->assertNull($this->offer->fresh()->position(Track::Sale)->repriceUnanswered());
 
-        // Роман согласен — пора ответить поставщику: «Ваш ход» и SQL-зеркало.
-        app(AnswerReprice::class)(RepriceAsk::where('deal_id', $deal->id)->sole(), true, $this->roman);
+        // Роман назвал цену — решаем мы, ответ поставщику ждёт; приняли — пора ответить поставщику: «Ваш ход» и SQL-зеркало.
+        $ask = app(AnswerReprice::class)->offer(RepriceAsk::where('deal_id', $deal->id)->sole(), 1100000, $this->roman);
+        $this->assertSame(RepriceFlow::NOW, RepriceFlow::for($this->offer->fresh())->buyer());
+        $this->assertNull($this->offer->fresh()->position(Track::Sale)->repriceUnanswered());
+        app(AnswerReprice::class)->accept($ask, $this->admin);
         $flow = RepriceFlow::for($this->offer->fresh());
         $this->assertSame([RepriceFlow::DONE, RepriceFlow::DONE, RepriceFlow::NOW], [$flow->price(), $flow->buyer(), $flow->answer()]);
         $this->assertStringContainsString('650 000', $flow->replyText());

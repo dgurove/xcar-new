@@ -283,7 +283,7 @@ final class Parallels
             $main->isGarage() => 'Гаражную сделку не переключить',
             $main->isAuction() => 'Продажу на аукционе не переключить',
             $paid => 'По сделке уже платили: переключить нельзя',
-            RepriceAsk::where('deal_id', $main->id)->where('state', 'pending')->exists() => 'Менеджер думает про новую закупочную: сначала его ответ',
+            RepriceAsk::where('deal_id', $main->id)->whereIn('state', RepriceAsk::OPEN)->exists() => 'Не решили с менеджером новую цену: сначала это',
             default => null,
         };
     }

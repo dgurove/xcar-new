@@ -18,13 +18,31 @@ use Illuminate\Support\Collection;
  * письма). Заводит `Actions\ApplyReprice` на «Спросить», отвечает `Actions\AnswerReprice` — менеджер (страница, Telegram) или админ
  * за него. До ответа у него прежняя закупочная; не ответил к `due_at` (17:00 следующего дня) — горит у нас.
  * Закупочной на xcar нет ни у кого: `shown_*` — то, что он видит (`shownFor`, `shownAs`).
+ *
+ * Ответ — его новая цена подтверждения (10.11.2026, владелец по 0790/046/09068/26: «Согласен» поменял только закупочную, сумма
+ * сделки 5 440 000 осталась при закупочной 5 550 000 — «где ввод его новой цены подтверждения»): видит было → стало
+ * (`shown_*` и цена продажи `asking_*`) и вводит цену. По подтверждению она сразу его цена (дальше решаем, как по любому
+ * подтверждению); по сделке — `offered`, решает админ: принять, контрпредложение (`countered`, ход снова его) или отказ.
  */
-#[Fillable(['reprice_id', 'offer_id', 'bid_id', 'deal_id', 'user_id', 'from_price', 'to_price', 'shown_from', 'shown_to', 'state', 'due_at', 'answered_at', 'answered_by'])]
+#[Fillable(['reprice_id', 'offer_id', 'bid_id', 'deal_id', 'user_id', 'from_price', 'to_price', 'shown_from', 'shown_to', 'state', 'due_at', 'answered_at', 'answered_by',
+    'asking_from', 'asking_to', 'offered_price', 'offered_at', 'counter_price', 'counter_at'])]
 class RepriceAsk extends Model
 {
     use FastAttributes;
 
     public const PENDING = 'pending';
+
+    /** Менеджер назвал новую цену по сделке — решаем мы. */
+    public const OFFERED = 'offered';
+
+    /** Наше контрпредложение по сделке — ход снова его. */
+    public const COUNTERED = 'countered';
+
+    /** Вопрос живой: ждём менеджера или решаем мы. */
+    public const OPEN = [self::PENDING, self::OFFERED, self::COUNTERED];
+
+    /** Ход менеджера: ответить на вопрос или на наше контрпредложение. */
+    public const HIS_TURN = [self::PENDING, self::COUNTERED];
 
     public const AGREED = 'agreed';
 
@@ -35,7 +53,8 @@ class RepriceAsk extends Model
 
     protected function casts(): array
     {
-        return ['from_price' => 'int', 'to_price' => 'int', 'shown_from' => 'int', 'shown_to' => 'int', 'due_at' => 'datetime', 'answered_at' => 'datetime'];
+        return ['from_price' => 'int', 'to_price' => 'int', 'shown_from' => 'int', 'shown_to' => 'int', 'due_at' => 'datetime', 'answered_at' => 'datetime',
+            'asking_from' => 'int', 'asking_to' => 'int', 'offered_price' => 'int', 'offered_at' => 'datetime', 'counter_price' => 'int', 'counter_at' => 'datetime'];
     }
 
     public function offer(): BelongsTo
@@ -68,15 +87,43 @@ class RepriceAsk extends Model
         return $q->where('reprice_asks.state', self::PENDING);
     }
 
+    /** Живые: ждём менеджера или решаем мы. */
+    public function scopeOpen(Builder $q): Builder
+    {
+        return $q->whereIn('reprice_asks.state', self::OPEN);
+    }
+
     public function isPending(): bool
     {
         return $this->state === self::PENDING;
     }
 
+    public function isOpen(): bool
+    {
+        return in_array($this->state, self::OPEN, true);
+    }
+
+    /** Менеджер назвал цену — решаем мы. */
+    public function isOffered(): bool
+    {
+        return $this->state === self::OFFERED;
+    }
+
+    public function isCountered(): bool
+    {
+        return $this->state === self::COUNTERED;
+    }
+
+    /** Ход менеджера: вопрос или наше контрпредложение. */
+    public function hisTurn(): bool
+    {
+        return in_array($this->state, self::HIS_TURN, true);
+    }
+
     /** Вопрос ещё про живое: подтверждение не сняли, сделку не отменили другим путём. */
     public function alive(): bool
     {
-        if (! $this->isPending()) {
+        if (! $this->isOpen()) {
             return false;
         }
 
@@ -91,15 +138,52 @@ class RepriceAsk extends Model
      */
     public static function dealDue(): Collection
     {
-        $load = fn () => self::pending()->whereNotNull('deal_id')->whereHas('deal', fn ($q) => $q->where('state', DealState::Active))
+        $load = fn () => self::whereIn('reprice_asks.state', self::HIS_TURN)->whereNotNull('deal_id')->whereHas('deal', fn ($q) => $q->where('state', DealState::Active))
             ->pluck('due_at', 'offer_id')->map(fn ($at) => Carbon::parse($at));
+
+        return app()->runningInConsole() ? $load() : once($load);
+    }
+
+    /** Менеджер назвал цену по идущей сделке — решаем мы: offer_id → когда назвал. Одним запросом, как `dealDue`. */
+    public static function dealOffered(): Collection
+    {
+        $load = fn () => self::where('reprice_asks.state', self::OFFERED)->whereNotNull('deal_id')->whereHas('deal', fn ($q) => $q->where('state', DealState::Active))
+            ->pluck('offered_at', 'offer_id')->map(fn ($at) => Carbon::parse($at));
 
         return app()->runningInConsole() ? $load() : once($load);
     }
 
     public function late(): bool
     {
-        return $this->isPending() && $this->due_at?->isPast();
+        return $this->hisTurn() && $this->due_at?->isPast();
+    }
+
+    /** Его цена подтверждения до вопроса: у сделки — сумма сделки, у подтверждения — его сумма. */
+    public function amountWas(): ?int
+    {
+        $v = $this->deal_id ? $this->deal?->amount : $this->bid?->amount;
+
+        return $v === null ? null : (int) $v;
+    }
+
+    /** Цена, на которой сойдёмся при «Принять» / «Согласен»: наше контрпредложение или его. */
+    public function settlePrice(): ?int
+    {
+        return $this->isCountered() ? $this->counter_price : $this->offered_price;
+    }
+
+    /**
+     * Было → стало для менеджера двумя парами (владелец: «было 5 189 000 → 5 490 000, стало 5 550 000 → 5 700 000»):
+     * то, что он видит (`shown_*`), и цена продажи. Цены продажи нет (старый вопрос) или видит он вознаграждение — одно число.
+     *
+     * @return array{was: string, now: string}
+     */
+    public function pairs(): array
+    {
+        $reward = $this->shownAs() === 'reward';
+        $pair = fn (?int $a, ?int $b) => Money::nums((int) $a).($b && ! $reward ? ' → '.Money::rub($b) : ' ₽');
+
+        return ['was' => $pair($this->shown_from, $this->asking_from), 'now' => $pair($this->shown_to, $this->asking_to)];
     }
 
     /** Ответил админ за менеджера. */

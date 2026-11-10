@@ -11,7 +11,7 @@ use App\Support\Money;
  *
  * Три подпункта, каждый `done` | `now` | `wait`:
  * - **цена** — переоценку разобрали (`ApplyReprice`);
- * - **покупатель** — менеджер сделки согласен (`RepriceAsk`), по сделке решили без вопроса или, пока он думает, машину
+ * - **покупатель** — с менеджером сделки сошлись на новой цене (`RepriceAsk`), по сделке решили без вопроса или, пока он думает, машину
  *   показывают всем (`ShowDealToAll`) и кто-то подтвердил резервом;
  * - **ответ** поставщику — только у переоценки письмом: отправили ответ на письмо или «Ответили не письмом»
  *   (`Reprice::answered_at`). Отвечаем, когда есть покупатель (владелец, 04.11.2026), до того — `wait`.
@@ -55,7 +55,7 @@ final class RepriceFlow
             return null;
         }
         $ask = $reprice->isPending() ? null : RepriceAsk::where('deal_id', $deal->id)->where('reprice_id', $reprice->id)
-            ->whereIn('state', [RepriceAsk::PENDING, RepriceAsk::AGREED])->latest('id')->with('user')->first();
+            ->whereIn('state', [...RepriceAsk::OPEN, RepriceAsk::AGREED])->latest('id')->with(['user', 'deal'])->first();
         $reserves = $offer->deal_show_all_at
             ? $offer->bids()->where('state', BidState::Active)->where('created_at', '>=', $offer->deal_show_all_at)->count()
             : 0;
@@ -74,7 +74,7 @@ final class RepriceFlow
     {
         return match (true) {
             $this->reprice->isPending() => self::WAIT,
-            $this->ask?->isPending() && $this->reserves === 0 => self::NOW,
+            $this->ask?->isOpen() && $this->reserves === 0 => self::NOW,
             default => self::DONE,
         };
     }

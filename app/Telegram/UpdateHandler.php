@@ -222,8 +222,8 @@ final class UpdateHandler
     }
 
     /**
-     * Ответ на новую цену из бота (28.10.2026, `RepriceAsk`): обе кнопки переспрашивают — «Согласен» меняет его цену,
-     * «Отказываюсь» отменяет сделку или снимает подтверждение. Нажать может только сам менеджер.
+     * Ответ на новую цену из бота (28.10.2026, `RepriceAsk`): с 10.11.2026 цену называют на странице («Ввести цену»), здесь —
+     * «Отказываюсь» с переспросом: отменяет сделку или снимает подтверждение. Нажать может только сам менеджер.
      */
     private function reprice(Press $press): void
     {
@@ -235,7 +235,7 @@ final class UpdateHandler
             return;
         }
         $text = self::body(RepriceAskNotice::telegramTitle($ask), RepriceAskNotice::telegramLines($ask));
-        $open = [[TelegramChannel::button('Открыть', Surface::Site->url($ask->deal_id ? $ask->deal->href() : '/offers/'.$ask->offer->number))]];
+        $open = [[TelegramChannel::button('Ввести цену', Surface::Site->url($ask->deal_id ? $ask->deal->href() : '/offers/'.$ask->offer->number))]];
         if (! $ask->alive()) {
             $this->bot->answer($press->queryId, 'Уже не действует');
             $this->bot->edit($press->chatId, $press->messageId, $text('Уже не действует'), $open);
@@ -243,14 +243,15 @@ final class UpdateHandler
             return;
         }
         $this->confirmed($press, 'reprice', $text, RepriceAskNotice::buttons($ask), $open,
-            ['yes' => ['Согласиться на новую цену?', 'Да, согласен'], 'no' => ['Отказаться? '.$ask->declineMeans(), 'Да, отказываюсь']],
+            ['no' => ['Отказаться? '.$ask->declineMeans(), 'Да, отказываюсь']],
             function (string $which) use ($ask, $user) {
-                if (! in_array($which, ['yes', 'no'], true)) {
+                // Цену называют на странице (10.11.2026); прежнее «Согласен» из старых сообщений — туда же.
+                if ($which !== 'no') {
                     return null;
                 }
-                app(AnswerReprice::class)($ask, $which === 'yes', $user);
+                app(AnswerReprice::class)->decline($ask, $user);
 
-                return [$which === 'yes' ? 'Согласились' : 'Отказались', ($which === 'yes' ? 'Вы согласились' : 'Вы отказались').' — '.Ago::day(now(), true)];
+                return ['Отказались', 'Вы отказались — '.Ago::day(now(), true)];
             });
     }
 

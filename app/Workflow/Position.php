@@ -120,7 +120,7 @@ class Position extends Model
     public function needsUs(): bool
     {
         return ($this->waitsFor() === WaitsFor::Us && ! $this->carried()) || in_array($this->letterStatus(), ['unsent', 'failed', 'bounced', 'replied'], true)
-            || $this->consentLate() || $this->repricePending() || $this->priceAskLate() !== null || $this->replyPending() !== null
+            || $this->consentLate() || $this->repricePending() || $this->priceAskLate() !== null || $this->priceOffered() !== null || $this->replyPending() !== null
             || $this->repriceUnanswered() !== null;
     }
 
@@ -153,6 +153,12 @@ class Position extends Model
         return $due?->isPast() ? $due : null;
     }
 
+    /** Менеджер сделки назвал новую цену после переоценки (10.11.2026, `RepriceAsk::OFFERED`) — решаем мы. Когда назвал. */
+    public function priceOffered(): ?Carbon
+    {
+        return $this->track === Track::Sale ? RepriceAsk::dealOffered()->get($this->offer_id) : null;
+    }
+
     /** Ждёт решения переоценка закупочной (28.10.2026, `Offers\Reprice`) — наш ход, что бы ни было на этапе. */
     public function repricePending(): bool
     {
@@ -172,7 +178,7 @@ class Position extends Model
 
         return Reprice::where('offer_id', $this->offer_id)->where('state', Reprice::APPLIED)->where('source', 'letter')->whereNull('answered_at')
             ->where('created_at', '>=', $deal->created_at)
-            ->whereNotExists(fn ($q) => $q->selectRaw('1')->from('reprice_asks')->where('deal_id', $deal->id)->where('state', RepriceAsk::PENDING))
+            ->whereNotExists(fn ($q) => $q->selectRaw('1')->from('reprice_asks')->where('deal_id', $deal->id)->whereIn('state', RepriceAsk::OPEN))
             ->latest('id')->first();
     }
 
@@ -212,6 +218,10 @@ class Position extends Model
         if ($due = $this->priceAskLate()) {
             return $todo('price-ask', 'Менеджер не ответил про закупочную', 0, $due,
                 ($phone = $this->deal?->buyer?->phone) ? ['label' => 'Позвонить', 'tel' => $phone] : ['label' => 'Открыть', 'href' => '/offers/'.$offer->number]);
+        }
+
+        if ($at = $this->priceOffered()) {
+            return $todo('price-offer', 'Менеджер назвал новую цену', 0, $at, ['label' => 'Открыть', 'href' => '/offers/'.$offer->number]);
         }
 
         // Переоценка — раньше «Разобрать ответ» (04.11.2026, владелец: острый вопрос — она, а не письмо).
@@ -333,11 +343,13 @@ class Position extends Model
         or (offer_positions.track = 'sale' and exists (select 1 from reply_reviews rr join deals rd on rd.id = rr.deal_id
             where rr.offer_id = offer_positions.offer_id and rr.state = 'pending' and rd.state = 'active'))
         or (offer_positions.track = 'sale' and exists (select 1 from reprice_asks a join deals d on d.id = a.deal_id
-            where a.offer_id = offer_positions.offer_id and a.state = 'pending' and a.due_at < now() and d.state = 'active'))
+            where a.offer_id = offer_positions.offer_id and a.state in ('pending', 'countered') and a.due_at < now() and d.state = 'active'))
+        or (offer_positions.track = 'sale' and exists (select 1 from reprice_asks a join deals d on d.id = a.deal_id
+            where a.offer_id = offer_positions.offer_id and a.state = 'offered' and d.state = 'active'))
         or (offer_positions.track = 'sale' and exists (select 1 from offer_reprices r join deals d on d.offer_id = r.offer_id
             where r.offer_id = offer_positions.offer_id and r.state = 'applied' and r.source = 'letter' and r.answered_at is null
                 and d.state = 'active' and d.garage_payer is null and r.created_at >= d.created_at
-                and not exists (select 1 from reprice_asks a where a.deal_id = d.id and a.state = 'pending'))), false)";
+                and not exists (select 1 from reprice_asks a where a.deal_id = d.id and a.state in ('pending', 'offered', 'countered')))), false)";
 
     /** Позиции, где нужно наше действие, — `needsUs()` в SQL. */
     public function scopeNeedsUs($q)

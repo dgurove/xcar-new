@@ -67,14 +67,17 @@ final class ApplyReprice
             // факт письма. Закупочную оставили прежней — и оценочную не трогаем, иначе закупочная пересчиталась бы от неё.
             $value = $reprice->value !== null && $price !== $from ? ['value' => $reprice->value] : [];
             $data = ['floor_price' => $price] + $value + array_intersect_key($prices, array_flip(['publish_price', 'asking_price']));
+            // Цена продажи до и после — менеджеру в вопросе (было → стало парами, 10.11.2026).
+            $asking = ['from' => $offer->asking_price === null ? null : (int) $offer->asking_price];
             ($this->update)($offer, $data, $by, ['why' => $reprice->why()], repricing: true);
+            $asking['to'] = ($a = $offer->fresh()->asking_price) === null ? null : (int) $a;
 
             // Прежние вопросы по этим подтверждениям и сделке гаснут: решается заново по новой переоценке.
-            RepriceAsk::pending()->where('offer_id', $offer->id)->update(['state' => RepriceAsk::VOID]);
+            RepriceAsk::open()->where('offer_id', $offer->id)->update(['state' => RepriceAsk::VOID]);
             $people = [];
             foreach ($live as $bid) {
                 if ($choices['bids'][$bid->id] !== self::KEEP && $was[$bid->id] !== $price) {
-                    if ($choices['bids'][$bid->id] === self::ASK && ($ask = $this->ask($reprice, $offer, $bid, $was[$bid->id], $price))) {
+                    if ($choices['bids'][$bid->id] === self::ASK && ($ask = $this->ask($reprice, $offer, $bid, $was[$bid->id], $price, $asking))) {
                         $notify[] = $ask;
                         $people[] = $bid->user->shortName().' — спросили: '.Money::plain($was[$bid->id], sign: false).' → '.Money::plain($price);
                     } else {
@@ -90,7 +93,7 @@ final class ApplyReprice
                 $liveDeal = $liveDeal->fresh();
                 $dealWas = (int) $liveDeal->cost;
                 if ($choices['deal'] !== self::KEEP && $dealWas !== $price) {
-                    if ($choices['deal'] === self::ASK && ($ask = $this->ask($reprice, $offer, $liveDeal, $dealWas, $price))) {
+                    if ($choices['deal'] === self::ASK && ($ask = $this->ask($reprice, $offer, $liveDeal, $dealWas, $price, $asking))) {
                         $notify[] = $ask;
                         $show = $showDays ? $offer : null;
                         $people[] = 'сделка '.($liveDeal->buyer?->shortName() ?? '').' — спросили: '.Money::plain($dealWas, sign: false).' → '.Money::plain($price);
@@ -141,7 +144,8 @@ final class ApplyReprice
      * «Спросить» — вопрос тому, кто подтвердил или ведёт сделку, в любую сторону; null — он разницы не видит
      * (`RepriceAsk::shownFor`), цена встаёт сразу.
      */
-    private function ask(Reprice $reprice, Offer $offer, Bid|Deal $on, int $from, int $to): ?RepriceAsk
+    /** @param  array{from: ?int, to: ?int}  $asking  цена продажи до и после переоценки */
+    private function ask(Reprice $reprice, Offer $offer, Bid|Deal $on, int $from, int $to, array $asking): ?RepriceAsk
     {
         $user = $on instanceof Bid ? $on->user : $on->buyer;
         $shown = RepriceAsk::shownFor($user, $on, $offer, $from, $to);
@@ -153,7 +157,7 @@ final class ApplyReprice
             'reprice_id' => $reprice->id, 'offer_id' => $offer->id, 'user_id' => $user->id,
             'bid_id' => $on instanceof Bid ? $on->id : null, 'deal_id' => $on instanceof Deal ? $on->id : null,
             'from_price' => $from, 'to_price' => $to, 'shown_from' => $shown[0], 'shown_to' => $shown[1],
-            'state' => RepriceAsk::PENDING, 'due_at' => RepriceAsk::dueFrom(now()),
+            'state' => RepriceAsk::PENDING, 'due_at' => RepriceAsk::dueFrom(now()), 'asking_from' => $asking['from'], 'asking_to' => $asking['to'],
         ])->setRelation('user', $user);
     }
 
@@ -191,16 +195,22 @@ final class ApplyReprice
      * Сделка с новой закупочной: `cost`, сумма страховой у ДКП и «страховой напрямую» (если стояла равной прежней — значит,
      * её никто не вписывал отдельно), договор и счета. `supplier_cost` гаснет — закупочная поставщика и менеджера снова одна.
      */
-    public function updateDeal(Deal $deal, int $price, User $by): void
+    /** @param  ?int  $amount  новая цена подтверждения менеджера (ответ на вопрос, 10.11.2026); null — прежняя */
+    public function updateDeal(Deal $deal, int $price, User $by, ?int $amount = null): void
     {
         $was = (int) $deal->cost;
+        $amountWas = $deal->amount === null ? null : (int) $deal->amount;
         $deal->forceFill([
             'cost' => $price,
+            ...($amount !== null ? ['amount' => $amount] : []),
             'supplier_cost' => null,
             'owner_price' => $deal->owner_price !== null && (int) $deal->owner_price === $was ? $price : $deal->owner_price,
         ])->save();
         $fresh = $deal->fresh();
         $fresh->contract?->update(['price' => DealContract::priceFor($fresh)]);
         ($this->invoices)($fresh, $by);
+        if ($amount !== null && $amount !== $amountWas) {
+            $fresh->offer->log(OfferEventType::Note, $by, ['text' => 'Цена подтверждения '.Money::plain((int) $amountWas, sign: false).' → '.Money::plain($amount).' — '.($fresh->buyer?->shortName() ?? 'сделка')]);
+        }
     }
 }

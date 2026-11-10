@@ -644,7 +644,7 @@ final class Nav
             // Параллельная (07.11.2026) — его сделка, как идущая: ход по её просьбе (`MANAGER_TURN_SQL`).
             $asks = Deal::where('buyer_id', $user->id)->whereIn('state', [DealState::Active, DealState::Parallel])->whereRaw(Deal::MANAGER_TURN_SQL)
                 ->selectRaw('count(*) filter (where garage_payer is null) as deals, count(*) filter (where garage_payer is not null and (exists (select 1 from requirements r
-                    where r.deal_id = deals.id and r.done_at is null) or exists (select 1 from reprice_asks a where a.deal_id = deals.id and a.state = \'pending\'))) as garage')->first();
+                    where r.deal_id = deals.id and r.done_at is null) or exists (select 1 from reprice_asks a where a.deal_id = deals.id and a.state in (\'pending\', \'countered\')))) as garage')->first();
             $paid = self::paidPayAsks($user);
 
             // «Сделки» — и гаражные (02.11.2026: они теперь и строками «Сделок», «Ваш ход»); «Гараж» — свои, как было.

@@ -78,14 +78,30 @@ class BidController
     public function answerReprice(Request $request, \App\Offers\RepriceAsk $ask, \App\Offers\Actions\AnswerReprice $answer)
     {
         abort_unless($ask->user_id === $request->user()->id, 404);
-        $agree = $request->boolean('agree');
+        // Цена (10.11.2026, владелец: «его просит ввести новую цену подтверждения»), согласие или нет на наше контрпредложение, отказ.
+        $do = $request->input('do', $request->has('agree') && ! $request->boolean('agree') ? 'decline' : 'price');
         // Куда после отказа — до ответа: отменённая сделка и снятое подтверждение страницу уже не держат (после конца приёма
         // предложение ему не видно — 404), гаражная — из «Гаража», а не из «Сделок».
         $away = $ask->deal_id ? ($ask->deal?->isGarage() ? '/garage' : '/deals') : '/offers';
-        $answer($ask, $agree, $request->user());
+        $by = $request->user();
+        if ($do === 'decline') {
+            $answer->decline($ask, $by);
 
-        return $agree ? back()->with('toast', 'Новая цена принята')
-            : redirect($away)->with('toast', $ask->deal_id ? 'Сделка отменена' : 'Подтверждение снято');
+            return redirect($away)->with('toast', $ask->deal_id ? 'Сделка отменена' : 'Подтверждение снято');
+        }
+        if ($do === 'agree') {
+            $answer->agree($ask, $by);
+
+            return back()->with('toast', 'Новая цена принята');
+        }
+        if ($do === 'refuse') {
+            $answer->refuseCounter($ask, $by);
+
+            return back()->with('toast', 'Ваша цена в силе — ждём решения');
+        }
+        $answer->offer($ask, \App\Support\Money::rubles($request->validate(['price' => 'required'])['price']), $by, $request->boolean('low_ok'));
+
+        return back()->with('toast', $ask->deal_id ? 'Цена отправлена — ждём решения' : 'Новая цена принята');
     }
 
     public function withdraw(Request $request, Bid $bid, WithdrawBid $withdraw)
