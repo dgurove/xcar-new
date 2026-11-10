@@ -95,7 +95,8 @@ ship() { # готовый образ на прод: в реестр здесь, 
         docker rmi "xcar/app:$t" >/dev/null 2>&1 || true
         local digest
         digest=$(curl -sfI -H 'Accept: application/vnd.docker.distribution.manifest.v2+json' -H 'Accept: application/vnd.oci.image.manifest.v1+json' \
-            "http://$REGISTRY/v2/xcar/app/manifests/$t" | tr -d '\r' | awk -F': ' 'tolower($1)=="docker-content-digest"{print $2}')
+            "http://$REGISTRY/v2/xcar/app/manifests/$t" | tr -d '\r' | awk -F': ' 'tolower($1)=="docker-content-digest"{print $2}' || true)
+        # Тега в реестре уже нет (404, curl -f — код 22) — при pipefail это обрывало выкладку после того, как образ уже на проде.
         [ -n "$digest" ] && curl -sf -X DELETE "http://$REGISTRY/v2/xcar/app/manifests/$digest" >/dev/null || true
     done
     [ -n "$old" ] && docker exec xcar-registry registry garbage-collect --delete-untagged /etc/docker/registry/config.yml >/dev/null 2>&1 || true
