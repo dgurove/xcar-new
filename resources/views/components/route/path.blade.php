@@ -25,7 +25,12 @@
     // Исход, что ведёт на согласие менеджера (Альфа), — «Спросить менеджера» (27.10.2026, владелец: «Поставщик согласовал»
     // читали как «сразу в работу», а это только вопрос менеджеру). Подпись исхода в маршруте не меняется — по ней узнают шаг.
     $asks = fn ($x) => $x->actor === Actor::Staff && $x->to?->asksConsent();
-    $label = fn ($x) => $asks($x) ? 'Спросить менеджера' : $x->setRelation('from', $stage)->shownLabel();
+    // Страховая просит реквизиты, а покупатель уже есть (10.11.2026, владелец: «это задача для нас — отправить реквизиты, что
+    // менеджер прикрепил до этого»): исход к «Нет реквизитов» / «Письму с реквизитами» — «Отправить реквизиты», шаг «Нет
+    // реквизитов» пройдёт сам (`AdvanceOnBuyerData`), письмо откроется (`RouteController::exit`).
+    $sends = fn ($x) => $deal && $x->actor === Actor::Staff && ($x->to?->asks === \App\Workflow\Asks::Buyer || $x->to?->isRequisitesStep())
+        && $deal->requisitesGap() === null;
+    $label = fn ($x) => $asks($x) ? 'Спросить менеджера' : ($sends($x) ? 'Отправить реквизиты' : $x->setRelation('from', $stage)->shownLabel());
     $exits = $stage->exitsFor(Actor::Staff, $deal)->reject(fn ($x) => $x->acceptsBid());
     // «За менеджера» (28.10.2026, владелец: «он мне уже устно подтвердил»): его ответы шага — пунктами «···», нажимает
     // админ (`RouteController::forManager`, в «Истории» — «за менеджера»).
@@ -214,6 +219,10 @@
                     <x-route.who :position="$position" :offer="$offer" :deal="$deal"/>
                     {{-- Письмо поставщика ждёт разбора — строкой в шаге, а не лаймовой плашкой над путём (10.11.2026). --}}
                     @if ($deal && $position->track === \App\Workflow\Track::Sale && auth()->user()?->canManageCrm())<x-deal.reply-review :deal="$deal" line/>@endif
+                    {{-- Покупателя менеджер должен дать с согласия (10.11.2026, `AskBuyer`): пока не дал — строкой дела, внести за него. --}}
+                    @if ($deal?->buyer_asked_at && $position->track === \App\Workflow\Track::Sale && auth()->user()?->canManageCrm())
+                        <x-route.task-row icon="user" :urgent="$deal->buyer_due_at?->isPast()" :href="'/offers/'.$offer->number.($deal->hasContract() ? '?dkp=1#dkp' : '?buyer=1#invoice-buyer')" data-turbo-frame="_top">{{ $deal->buyer_scans_at ? 'Реквизиты покупателя прислал фото, внести' : 'Менеджер не указал покупателя' }}@if ($deal->buyer_due_at && ! $deal->buyer_scans_at) <span class="whitespace-nowrap text-sm text-ink-muted">срок {{ \App\Support\Ago::at($deal->buyer_due_at, true, words: false) }}</span>@endif</x-route.task-row>
+                    @endif
                     @if ($buyerData && auth()->user()?->canManageCrm())
                         <div class="step-acts mt-3"><a href="/offers/{{ $offer->number }}?buyer=1#invoice-buyer" class="btn btn-s btn-accent !h-auto min-h-9 whitespace-normal py-1.5" data-turbo-frame="_top">Заполнить за менеджера</a></div>
                     @endif

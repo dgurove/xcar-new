@@ -258,8 +258,14 @@ class DealController
         $exit = Outcome::findOrFail($data['exit']);
         $answer($requirement, $exit, $request->user(), (array) $request->input('fields', []));
 
+        $deal->refresh();
+        // «Беру в работу» — сразу окно «Кто покупатель?» на странице сделки, откуда бы ни нажали (10.11.2026, `AskBuyer`).
+        if ($exit->takes() && $deal->buyer_asked_at) {
+            return redirect($deal->href())->with('toast', Wording::mine($exit->label))->with('open_sheet', 'deal-buyer-ask-'.$deal->id);
+        }
+
         // Сразу туда, где сделку смотрят (гаражная — в гараж) или откуда нажали: второй редирект съел бы тост.
-        return $this->back($request, $deal->refresh())->with('toast', Wording::mine($exit->label));
+        return $this->back($request, $deal)->with('toast', Wording::mine($exit->label));
     }
 
     /** Туда, откуда нажали (`back` — путь этого же сайта: чат, «Предложения», «Сделки»), иначе на сделку. */

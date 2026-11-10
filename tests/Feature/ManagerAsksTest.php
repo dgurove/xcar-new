@@ -96,7 +96,8 @@ class ManagerAsksTest extends TestCase
 
         $take = $requirement->stage->exits->first(fn ($e) => $e->takes());
         $this->actingAs($this->manager)->post("http://xcar.localhost/deals/{$deal->id}/reply", ['exit' => $take->id, 'requirement' => $requirement->id, 'back' => "/deals/chats/{$chat->id}"])
-            ->assertRedirect("/deals/chats/{$chat->id}");
+            // Согласие — сразу на сделку с окном «Кто покупатель?» (10.11.2026, `AskBuyer`), а не обратно в чат.
+            ->assertRedirect($deal->fresh()->href())->assertSessionHas('open_sheet', 'deal-buyer-ask-'.$deal->id);
         $this->assertNotNull($requirement->fresh()->done_at);
         $this->assertSame('Подтверждение покупки', $offer->fresh()->stage()->name);
         // Под сообщением — ответ, а не кнопки.

@@ -101,6 +101,14 @@ class RouteController
                 ->with('toast-undo', (bool) StepBack::undoable($offer, $exit->from->workflow->track));
         }
 
+        // «Отправить реквизиты» (10.11.2026): покупатель был готов, «Нет реквизитов» прошёл сам — сразу письмо с реквизитами
+        // (вопрос перед черновиком, `LetterPrompt`), как после «Принять».
+        $now = $offer->fresh()->stage();
+        if (($exit->to?->asks === Asks::Buyer || $exit->to?->isRequisitesStep()) && $now?->isRequisitesStep()
+            && in_array($offer->fresh()->position()?->letterStatus(), ['unsent', null], true) && ($url = $offer->fresh()->vendorLetterUrl($now))) {
+            \App\Mail\LetterPrompt::ask($request->user(), $offer, $url.'&then=close');
+        }
+
         // Туда же, откуда нажали: страница сделки, редактор или карточка строки (DetailBack), а не всегда в редактор.
         // Шаг можно отменить — в тосте «Отменить».
         return back(fallback: "/offers/{$offer->number}")->with('toast', $exit->label)

@@ -39,7 +39,10 @@
             {{-- Покупатель не выбран или без данных — это дело менеджера: на телефоне сразу под задачей, над «Расчётом»
                  (05.11.2026); готов — на прежнем месте под ним. --}}
             @php $buyerTodo = $deal->isLive() && ! $deal->contract?->buyer?->party?->readyAsBuyer(); @endphp
-            @if ($deal->hasContract() && ! $contractStep && ! $needsBuyer && ! $tooEarly && ($deal->isLive() || $deal->contract?->buyer_user_id))<div class="{{ $buyerTodo ? 'order-1' : 'order-3' }} min-w-0">@include('cabinet.deals.contract')</div>@endif
+            {{-- С согласия — и у «страховой напрямую» (10.11.2026, `Deal::needsBuyer`); на шаге «Нет реквизитов» покупатель в задаче. --}}
+            @php $buyerHere = ($deal->hasContract() || $deal->buyerAhead()) && $requirement?->asks !== \App\Workflow\Asks::Buyer; @endphp
+            @if ($buyerHere && ! $contractStep && ! $needsBuyer && ! $tooEarly && ($deal->isLive() || $deal->contract?->buyer_user_id))<div class="{{ $buyerTodo || $deal->buyer_asked_at ? 'order-1' : 'order-3' }} min-w-0">@include('cabinet.deals.buyer-block')</div>@endif
+            @if ($deal->buyer_asked_at && $deal->isLive())<x-deal.buyer-ask-sheet :deal="$deal"/>@endif
             @include('cabinet.deals.path', ['class' => 'order-5'])
 
             @if ($pastInvoices->isNotEmpty())

@@ -61,10 +61,8 @@ final class EnterStage
             // Кнопки этих просьб в чате сделки — ответом «Шаг пройден» (`Chats\StepAsk`).
             Requirement::redrawFor($closing);
         }
-        // Реквизиты фотографией внесли, шаг ушёл — наш ход по ним кончился (`deals.buyer_scans_at`).
-        if ($track === Track::Sale && $deal?->buyer_scans_at) {
-            $deal->update(['buyer_scans_at' => null]);
-        }
+        // Реквизиты фотографией (`deals.buyer_scans_at`) шаг больше не гасит (10.11.2026): их присылают с согласия, задолго до
+        // «Нет реквизитов» — гасит только `SaveDealContract`, когда данные внесли.
 
         if ($track === Track::Sale && $to->offer_state === OfferState::Open
             && (! $offer->bids_close_at || $offer->bids_close_at->isPast())) {
@@ -80,6 +78,10 @@ final class EnterStage
             && ! ($deal->isCommission() && $to->isPickupStep())
             && in_array($to->offer_state, [null, OfferState::Sold], true)) {
             ($this->agree)($deal->setRelation('offer', $offer), $by);
+        }
+        // «Беру в работу» — сразу дело «Укажите покупателя» (10.11.2026, `AskBuyer`), а не когда страховая попросит реквизиты.
+        if ($track === Track::Sale && $deal?->isActive() && $exit?->takes() && ! $back) {
+            app(\App\Offers\Actions\AskBuyer::class)->ask($deal);
         }
 
         // Заплатили поставщику — выход из этапа нашей оплаты («Поставщику оплачено», «Переведено поставщику»): срок

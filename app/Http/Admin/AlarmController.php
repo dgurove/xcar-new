@@ -71,8 +71,6 @@ final class AlarmController
     {
         return Table::of(
             new Column('title', 'Марка, модель', grow: true),
-            new Column('step', 'Этап', from: 'sm', role: ColRole::State, rem: 12),
-            new Column('manager', 'Менеджер', from: 'sm', role: ColRole::Who, rem: 9),
             new Column('vendor', 'Вендор, № убытка', from: 'sm', role: ColRole::Code, rem: 10),
             new Column('term', 'Срок', cell: 'nums', role: ColRole::When, rem: 8),
         );

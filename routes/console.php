@@ -90,3 +90,25 @@ Artisan::command('deals:close-stale-reviews {--dry}', function () {
         ReplyReview::whereIn('id', $stale->pluck('id'))->update(['state' => ReplyReview::DONE, 'done_at' => now()]);
     }
 })->purpose('Закрыть разборы писем, по которым шаг уже сдвинули');
+
+/*
+ * Разово (10.11.2026, владелец: «реквизиты требовать сразу, как взял в работу»; идущим — с уведомлением): сделки, где менеджер
+ * уже согласился, а покупателя нет или он без данных, получают дело «Укажите покупателя» (`AskBuyer`), как новые после «Беру в
+ * работу». На шаге «Нет реквизитов» и оплаты — нет: там покупателя просит сам шаг.
+ */
+Artisan::command('deals:ask-buyers {--dry}', function () {
+    $deals = \App\Offers\Deal::with(['buyer', 'offer', 'contract.buyer.party'])->where('state', DealState::Active)->whereNotNull('agreed_at')
+        ->whereNull('buyer_asked_at')->get()->filter(function ($d) {
+            $stage = $d->offer?->stage();
+
+            return $d->buyer && $stage && $stage->asks !== \App\Workflow\Asks::Buyer && ! $stage->isPayStep() && ! $stage->isRequisitesStep()
+                && $d->buyerGap() !== null;
+        });
+    foreach ($deals as $d) {
+        $this->line($d->id.' '.$d->offer->number.' '.$d->offer->titleWithYear().', '.$d->buyer->shortName().', '.$d->offer->stage()->name.': '.$d->buyerGap());
+    }
+    $this->info(($this->option('dry') ? 'Попросил бы: ' : 'Попросил: ').$deals->count());
+    if (! $this->option('dry')) {
+        $deals->each(fn ($d) => app(\App\Offers\Actions\AskBuyer::class)->ask($d));
+    }
+})->purpose('Дело «Укажите покупателя» сделкам, где менеджер уже согласился');

@@ -24,6 +24,7 @@ final class SettleContract
         // Параллельная — без номера договора и «ДКП готов»: договор будет у той, что пойдёт в работу (`TakeParallel`).
         if (! $contract->deal->hasContract() || $contract->deal->isParallel()) {
             app(AdvanceOnBuyerData::class)($contract->deal);
+            AskBuyer::settle($contract->deal);
             RefreshDeal::of($contract->deal);
 
             return $contract;
@@ -35,6 +36,8 @@ final class SettleContract
                 $contract->deal->buyer?->notify(new ContractReadyNotice($contract->deal));
             }
         }
+        // Покупатель готов — дело «Укажите покупателя» гаснет (10.11.2026).
+        AskBuyer::settle($contract->deal);
         RefreshDeal::of($contract->deal);
 
         return $contract;
