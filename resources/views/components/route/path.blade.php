@@ -221,7 +221,7 @@
                     @if ($deal && $position->track === \App\Workflow\Track::Sale && auth()->user()?->canManageCrm())<x-deal.reply-review :deal="$deal" line/>@endif
                     {{-- Покупателя менеджер должен дать с согласия (10.11.2026, `AskBuyer`): пока не дал — строкой дела, внести за него. --}}
                     @if ($deal?->buyer_asked_at && $position->track === \App\Workflow\Track::Sale && auth()->user()?->canManageCrm())
-                        <x-route.task-row icon="user" :urgent="$deal->buyer_due_at?->isPast()" :href="'/offers/'.$offer->number.($deal->hasContract() ? '?dkp=1#dkp' : '?buyer=1#invoice-buyer')" data-turbo-frame="_top">{{ $deal->buyer_scans_at ? 'Реквизиты покупателя прислал фото, внести' : 'Менеджер не указал покупателя' }}@if ($deal->buyer_due_at && ! $deal->buyer_scans_at) <span class="whitespace-nowrap text-sm text-ink-muted">срок {{ \App\Support\Ago::at($deal->buyer_due_at, true, words: false) }}</span>@endif</x-route.task-row>
+                        <x-route.task-row icon="user" :href="'/offers/'.$offer->number.($deal->hasContract() ? '?dkp=1#dkp' : '?buyer=1#invoice-buyer')" data-turbo-frame="_top">{{ $deal->buyer_scans_at ? 'Реквизиты покупателя прислал фото, внести' : 'Менеджер не указал покупателя' }}</x-route.task-row>
                     @endif
                     @if ($buyerData && auth()->user()?->canManageCrm())
                         <div class="step-acts mt-3"><a href="/offers/{{ $offer->number }}?buyer=1#invoice-buyer" class="btn btn-s btn-accent !h-auto min-h-9 whitespace-normal py-1.5" data-turbo-frame="_top">Заполнить за менеджера</a></div>

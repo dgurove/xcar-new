@@ -3,7 +3,6 @@
 namespace App\Notifications;
 
 use App\Offers\Deal;
-use App\Support\Ago;
 use App\Telegram\Text;
 
 /**
@@ -32,7 +31,7 @@ final class BuyerAskNotice extends Notice
 
     public function text(): ?string
     {
-        return 'Страховая попросит реквизиты, отправим сразу'.($this->deal->buyer_due_at ? '. До '.Ago::day($this->deal->buyer_due_at, true) : '');
+        return 'Страховая попросит реквизиты, отправим сразу';
     }
 
     public function href(): string
@@ -50,7 +49,7 @@ final class BuyerAskNotice extends Notice
         return 'deals';
     }
 
-    public function critical(): bool
+    public function important(): bool
     {
         return true;
     }
@@ -58,7 +57,7 @@ final class BuyerAskNotice extends Notice
     public function toTelegram(): ?array
     {
         return ['title' => 'Укажите покупателя: '.$this->deal->offer->titleWithYear(),
-            'lines' => Text::lines($this->deal->offer, $this->deal->buyer_due_at ? 'До '.Ago::day($this->deal->buyer_due_at, true) : null),
+            'lines' => Text::lines($this->deal->offer, 'Страховая попросит реквизиты, отправим сразу'),
             'button' => 'Указать покупателя'];
     }
 

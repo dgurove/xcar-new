@@ -43,7 +43,7 @@ use Illuminate\Support\Carbon;
  * выплачиваем после оплаты или менеджер удерживает сам. Менеджер вознаграждение
  * не видит, пока по сделке нет живого счёта — `showsCommission()`.
  */
-#[Fillable(['offer_id', 'bid_id', 'buyer_id', 'amount', 'cost', 'supplier_cost', 'owner_price', 'share', 'commission', 'commission_mode', 'scheme', 'garage_payer', 'state', 'notes', 'closed_at', 'close_reason', 'close_note', 'agreed_at', 'buyer_scans_at', 'buyer_asked_at', 'buyer_due_at', 'prepaid_at', 'supplier_paid_at',
+#[Fillable(['offer_id', 'bid_id', 'buyer_id', 'amount', 'cost', 'supplier_cost', 'owner_price', 'share', 'commission', 'commission_mode', 'scheme', 'garage_payer', 'state', 'notes', 'closed_at', 'close_reason', 'close_note', 'agreed_at', 'buyer_scans_at', 'buyer_asked_at', 'prepaid_at', 'supplier_paid_at',
     'receiver_user_id', 'receiver_name', 'receiver_phone', 'receiver_at', 'auction_at', 'buyer_party_id', 'shadow_stage_id', 'shadow_at', 'reissue_at'])]
 class Deal extends Model
 {
@@ -52,7 +52,7 @@ class Deal extends Model
 
     protected function casts(): array
     {
-        return ['scheme_at' => 'datetime', 'state' => DealState::class, 'amount' => 'int', 'cost' => 'int', 'supplier_cost' => 'int', 'owner_price' => 'int', 'share' => 'int', 'commission' => 'int', 'commission_mode' => CommissionMode::class, 'scheme' => DealScheme::class, 'garage_payer' => GaragePayer::class, 'closed_at' => 'datetime', 'agreed_at' => 'datetime', 'buyer_scans_at' => 'datetime', 'buyer_asked_at' => 'datetime', 'buyer_due_at' => 'datetime', 'prepaid_at' => 'datetime', 'supplier_paid_at' => 'datetime', 'receiver_at' => 'datetime', 'auction_at' => 'datetime', 'shadow_at' => 'datetime', 'reissue_at' => 'datetime'];
+        return ['scheme_at' => 'datetime', 'state' => DealState::class, 'amount' => 'int', 'cost' => 'int', 'supplier_cost' => 'int', 'owner_price' => 'int', 'share' => 'int', 'commission' => 'int', 'commission_mode' => CommissionMode::class, 'scheme' => DealScheme::class, 'garage_payer' => GaragePayer::class, 'closed_at' => 'datetime', 'agreed_at' => 'datetime', 'buyer_scans_at' => 'datetime', 'buyer_asked_at' => 'datetime', 'prepaid_at' => 'datetime', 'supplier_paid_at' => 'datetime', 'receiver_at' => 'datetime', 'auction_at' => 'datetime', 'shadow_at' => 'datetime', 'reissue_at' => 'datetime'];
     }
 
     public function offer(): BelongsTo
@@ -87,7 +87,7 @@ class Deal extends Model
             }
             // Сделка ушла — дело «Укажите покупателя» гаснет (10.11.2026, `AskBuyer`).
             if ($deal->wasChanged('state') && $deal->buyer_asked_at && ! $deal->isActive()) {
-                $deal->forceFill(['buyer_asked_at' => null, 'buyer_due_at' => null])->saveQuietly();
+                $deal->forceFill(['buyer_asked_at' => null])->saveQuietly();
             }
         });
     }
@@ -199,7 +199,7 @@ class Deal extends Model
         // Покупатель — с согласия (10.11.2026, владелец: «реквизиты требовать сразу, как взял в работу, а не когда страховая
         // запросила»): шаг ждёт поставщика, а дело менеджера — покупатель (`AskBuyer`, `buyer_asked_at`).
         if ($this->buyer_asked_at) {
-            return ['title' => 'Укажите покупателя', 'due' => $this->buyer_due_at, 'kind' => 'buyer'];
+            return ['title' => 'Укажите покупателя', 'due' => null, 'kind' => 'buyer'];
         }
         // Гаражная — дело только просьбой (как бейдж «Гаража», `Nav::asks`): «Укажите цену продажи» у неё — сама продажа
         // из гаража, она идёт неделями и в «Ваш ход» не встаёт (02.11.2026: 16 таких заслоняли настоящие дела).
