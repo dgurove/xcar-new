@@ -138,7 +138,7 @@
     <x-offer.reprice-asks :offer="$offer" class="mb-4"/>
     {{-- Письмо страховой по сделке ждёт разбора — менеджер о нём не знает, пока админ не покажет выбранное (03.11.2026). --}}
     @if ($admin && ($liveDeal = $offer->deal))
-        <x-deal.reply-review :deal="$liveDeal" class="mb-4"/>
+        @unless ($offer->position(\App\Workflow\Track::Sale))<x-deal.reply-review :deal="$liveDeal" class="mb-4"/>@endunless
         @unless (\App\Offers\ReplyReview::pending()->where('deal_id', $liveDeal->id)->exists())<div class="mb-4"><x-deal.reply-review :deal="$liveDeal" pill/></div>@endunless
     @endif
 

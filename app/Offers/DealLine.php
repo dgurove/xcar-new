@@ -60,10 +60,14 @@ final class DealLine
         return null;
     }
 
-    /** Этап — блок маршрута; на шаге оплаты с открытым счётом — его срок. */
+    /**
+     * Этап маршрута, а не блок (10.11.2026, начальник по Volvo 01527: «Согласование с поставщиком», а ждём согласия менеджера):
+     * блоки — язык менеджера, в CRM — что сейчас. Пометку гаражной ветки «, в гараж» говорит «В гараж:» спереди. На шаге
+     * оплаты с открытым счётом — его срок.
+     */
     private static function stage(Position $position, ?DealDebt $debt): array
     {
-        $word = $position->stage->block?->name ?? $position->stage->name;
+        $word = str_replace(', в гараж', '', $position->stage->name);
         if ($debt && ! $debt->paid() && $position->stage->isPayStep()) {
             return [$word.', '.$debt->word(), $debt->late() ? 'text-danger' : ''];
         }

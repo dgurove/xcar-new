@@ -42,7 +42,7 @@
         </x-cell.title>
         {{-- На телефоне второй строкой — срок шага и этап (20.10.2026, как в «Вывозе»; 27.10.2026 — этап здесь, а не справа:
              там он резался). Не влез — переносится. Срок оплаты — под суммой, здесь этап без него. --}}
-        <span class="cell-sub sm:hidden">@if ($active && $position)<x-route.term :position="$position"/>@php $stageName = $position->stage->block?->name ?? $position->stage->name; @endphp@if (mb_strtolower($stageName) !== mb_strtolower((string) $group)) <span class="inline-block whitespace-nowrap text-ink-muted">{{ mb_lcfirst($stageName) }}</span>@endif@else<span class="{{ $tone }}">{{ $word }}</span>@endif</span>
+        <span class="cell-sub sm:hidden">@if ($active && $position)<x-route.term :position="$position"/>@php $stageName = str_replace(', в гараж', '', $position->stage->name); @endphp@if (mb_strtolower($stageName) !== mb_strtolower((string) $group)) <span class="inline-block whitespace-nowrap text-ink-muted">{{ mb_lcfirst($stageName) }}</span>@endif@else<span class="{{ $tone }}">{{ $word }}</span>@endif</span>
     </td>
         @break
         @case('vendor')

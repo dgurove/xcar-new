@@ -28,6 +28,12 @@
     // Шаг оплаты со счётом — сколько должен и срок счёта (`DealDebt`), как в «Оплате» и строке «Ждём менеджера».
     $debt = $side === 'manager' && $deal && $position->stage->isPayStep() ? \App\Billing\DealDebt::of($deal) : null;
     $debt = $debt && ! $debt->paid() ? $debt : null;
+    // Спросили менеджера и он молчит (10.11.2026, начальник по Volvo 01527: «он пока не ответил — почему это нигде не видно»):
+    // когда спросили и сколько молчит, срок — второй строкой.
+    $asked = $manager && ! $debt && ! $position->carried()
+        ? \App\Workflow\Requirement::where('deal_id', $deal->id)->where('stage_id', $position->stage_id)->whereNull('done_at')->latest('id')->first()
+        : null;
+    $asked = $asked && $asked->created_at >= $position->entered_at->copy()->subMinute() ? $asked : null;
     [$state, $tone, $open] = match (true) {
         $letter === 'unsent' => ['письмо не отправлено', $overdue ? 'danger' : 'urgent', null],
         $letter === 'failed' => ['письмо не ушло', 'danger', null],
@@ -61,6 +67,11 @@
             <div class="truncate">{{ $manager?->shortName() ?? $vendor?->name ?? ($side === 'us' ? 'XCar' : ($deal?->isAuction() ? 'Аукцион' : 'Менеджер')) }}</div>
             @if ($open)
                 <button type="button" class="state state-{{ $tone }} underline decoration-dotted underline-offset-4" data-controller="emit" data-action="emit#send" data-emit-event-param="letters:open" data-emit-url-param="{{ $open }}"><span>{!! $state !!}</span></button>
+            @elseif ($asked)
+                <x-ui.state tone="plain"><span>спросили {!! Ago::html($asked->created_at, true, words: false) !!} · <span class="whitespace-nowrap">молчит {!! $timer('since', $asked->created_at) !!}</span></span></x-ui.state>
+                @if ($position->deadline_at)
+                    <div><x-ui.state :tone="$overdue ? 'danger' : 'urgent'"><span>{!! $overdue ? 'срок вышел '.$timer('since', $position->deadline_at).' назад' : 'ответит до '.e(Ago::at($position->deadline_at, true, words: false)) !!}</span></x-ui.state></div>
+                @endif
             @else
                 {{-- Одной вставкой: `.state` — inline-flex, и пробелы между текстом и датой он съедал («ушло15.10»). --}}
                 <x-ui.state :tone="$tone"><span>{!! $state !!}</span></x-ui.state>

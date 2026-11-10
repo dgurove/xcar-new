@@ -1,10 +1,17 @@
 <?php
 
 use App\Notifications\Delivery;
+use App\Offers\DealState;
+use App\Offers\OfferEvent;
+use App\Offers\OfferEventType;
 use App\Offers\ReadOffer;
+use App\Offers\ReplyReview;
 use App\Users\Access\AccessCode;
 use App\Users\Actions\CloseStaleImpersonations;
+use App\Users\Role;
+use App\Users\User;
 use App\Users\Visit;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schedule;
 
@@ -55,3 +62,26 @@ Schedule::command('perf:digest')->dailyAt('20:30');
 // Сессии гостей (боты, сканеры, проверка живости) — сутки, а не срок входа в 30 дней: 160 тыс. мёртвых строк на 10.11.2026.
 Schedule::call(fn () => DB::table('sessions')->whereNull('user_id')->where('last_activity', '<', now()->subDay()->getTimestamp())->delete())
     ->dailyAt('04:55')->name('guest-sessions:prune');
+
+/*
+ * Разово (10.11.2026): разборы писем, по которым сотрудник уже сдвинул шаг, и разборы ушедших сделок — разобраны. Дальше это
+ * делает `Offers\Listeners\CloseReviewsOnStep` на каждый шаг.
+ */
+Artisan::command('deals:close-stale-reviews {--dry}', function () {
+    $stale = ReplyReview::pending()->with(['deal', 'offer'])->get()->filter(function ($r) {
+        if ($r->deal?->state !== DealState::Active) {
+            return true;
+        }
+
+        return OfferEvent::where('offer_id', $r->offer_id)->where('type', OfferEventType::StageEntered)
+            ->where('created_at', '>', $r->created_at)->where('payload->track', 'sale')
+            ->whereIn('user_id', User::withRole(Role::Admin, Role::Moderator)->select('id'))->exists();
+    });
+    foreach ($stale as $r) {
+        $this->line($r->id.' сделка '.$r->deal_id.' '.$r->offer?->number.' '.$r->created_at->format('d.m H:i').' '.($r->deal?->state->value ?? '—'));
+    }
+    $this->info(($this->option('dry') ? 'Закрыл бы: ' : 'Закрыто: ').$stale->count());
+    if (! $this->option('dry') && $stale->isNotEmpty()) {
+        ReplyReview::whereIn('id', $stale->pluck('id'))->update(['state' => ReplyReview::DONE, 'done_at' => now()]);
+    }
+})->purpose('Закрыть разборы писем, по которым шаг уже сдвинули');

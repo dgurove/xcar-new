@@ -2462,6 +2462,8 @@ html.kb-open { --home-gap: 0px; }
   .step--next .step-title, .step--todo .step-title { color: var(--color-ink-muted); font-weight: 400; }
   .step--current .step-title { font-size: var(--text-lg); }
   .step-hint { margin-top: .125rem; font-size: var(--text-sm); color: var(--color-ink-muted); }
+  /* Блок над этапом текущего шага в CRM («Согласование с поставщиком · 2 из 3», 10.11.2026). */
+  .step-kicker { display: block; font-size: var(--text-sm); color: var(--color-ink-muted); }
   .step-details > summary { cursor: pointer; list-style: none; }
   .step-details > summary::-webkit-details-marker { display: none; }
   .step-details[open] .step-chevron { rotate: 180deg; }
@@ -2484,6 +2486,8 @@ html.kb-open { --home-gap: 0px; }
      полоске, которая всё сдвигает — в итоге нихера места не остаётся»): точка — в строке названия, всё под ним (кто, кнопки)
      — от левого края шага, во всю ширину дорожки. */
   .substeps { display: flex; flex-direction: column; gap: .75rem; margin-top: .875rem; }
+  .substeps--done { gap: .25rem; margin-top: .375rem; }
+  .substeps--done .substep-title { font-weight: 400; }
   .substep { position: relative; min-width: 0; }
   .substep-dot { position: absolute; left: 0; top: .4375rem; display: flex; align-items: center; justify-content: center; width: .5rem; height: .5rem; border-radius: 999px; background: var(--color-line); color: #1d1d1b; }
   .substep--done .substep-dot { width: .875rem; height: .875rem; top: .25rem; background: var(--color-accent); }
@@ -2511,6 +2515,10 @@ html.kb-open { --home-gap: 0px; }
   .step-acts > form, .step-acts > div, .step-acts > a, .step-acts > button { flex: 1 1 auto; min-width: 0; }
   .step-acts > form > .btn, .step-acts > div > .btn { width: 100%; }
   .step-acts > p { flex-basis: 100%; }
+  /* Письмо поставщика ждёт разбора — строкой в шаге (10.11.2026, `x-deal.reply-review line`): тихие ссылки, лайм — у кнопок шага. */
+  .step-letter { margin-top: .75rem; display: flex; flex-direction: column; gap: .25rem; }
+  .step-letter-acts { display: flex; flex-wrap: wrap; gap: .25rem 1rem; padding-left: 1.5rem; font-size: var(--text-sm); }
+  .step-letter-acts button { color: var(--color-accent-text); }
   .step-next { margin-top: .5rem; display: flex; flex-direction: column; gap: .125rem; font-size: var(--text-sm); color: var(--color-ink-muted); }
   .step-who-icon { display: flex; flex-shrink: 0; align-items: center; justify-content: center; width: 2rem; height: 2rem; border-radius: 999px; background: var(--color-surface-2); color: var(--color-ink-muted); }
 

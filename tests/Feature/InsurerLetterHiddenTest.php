@@ -72,7 +72,7 @@ class InsurerLetterHiddenTest extends TestCase
         $this->assertSame(1, ReplyReview::pending()->where('deal_id', $this->deal->id)->count());
         $this->assertSame('Разобрать ответ', $this->offer->fresh()->position(Track::Sale)->todo()['title']);
         $this->actingAs($this->admin)->withHeaders(['Turbo-Frame' => 'detail'])->get("http://crm.xcar.localhost/work/deals?peek={$this->deal->id}")->assertOk()
-            ->assertSee('Ответ страховой')->assertSee('Иванов Иван')->assertSee('+7 900 123-45-67')->assertSee('паспорт.pdf')
+            ->assertSee('Письмо от Альфа тест')->assertSee('Иванов Иван')->assertSee('+7 900 123-45-67')->assertSee('паспорт.pdf')
             ->assertSee('Пройти шаг «Поставщик согласовал»');
 
         // Показать: телефон, имя «Пётр» вместо «Петров Пётр», паспорт, своё сообщение и шаг.
@@ -122,6 +122,18 @@ class InsurerLetterHiddenTest extends TestCase
         $this->deal->forceFill(['state' => DealState::Cancelled])->save();
         $this->assertNotSame('Разобрать ответ', $this->offer->fresh()->position(Track::Sale)?->todo()['title'] ?? null);
         $this->assertFalse(Position::where('offer_id', $this->offer->id)->where('track', 'sale')->whereRaw("exists (select 1 from reply_reviews rr join deals rd on rd.id = rr.deal_id where rr.offer_id = offer_positions.offer_id and rr.state = 'pending' and rd.state = 'active')")->exists());
+    }
+
+    /** Сотрудник сдвинул шаг после письма — разбор закрыт, в «Истории» строка (10.11.2026, Volvo 01527); шаг менеджера — нет. */
+    public function test_staff_step_closes_review(): void
+    {
+        $this->deal();
+        $this->letter("Добрый день! Согласовано.\r\n");
+        $exit = $this->offer->fresh()->stage()->exits()->where('label', 'Поставщик согласовал')->firstOrFail();
+        $this->actingAs($this->admin)->post("http://crm.xcar.localhost/offers/".$this->offer->fresh()->number."/exit/{$exit->id}")->assertRedirect();
+        $this->assertSame(0, ReplyReview::pending()->where('deal_id', $this->deal->id)->count());
+        $this->assertSame($this->admin->id, ReplyReview::where('deal_id', $this->deal->id)->value('done_by'));
+        $this->assertTrue($this->offer->events()->where('payload->text', 'Письмо разобрано шагом «Поставщик согласовал»')->exists());
     }
 
     private function deal(): void

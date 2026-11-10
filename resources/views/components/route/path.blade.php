@@ -8,7 +8,9 @@
      маршрута тем же видом (продажа гаражной машины).
      07.10.2026: поля строками (.fields), кнопка .sheet-foot.
      04.11.2026: текущий шаг — подпунктами этапов блока (`Workflow\Substeps`, вид — как у «Переоценки»), у подпункта «сейчас» —
-     кто действует строкой (`x-route.who`), под ней кнопки шага. --}}
+     кто действует строкой (`x-route.who`), под ней кнопки шага.
+     10.11.2026: заголовок текущего шага — сам этап («Согласие менеджера»), блок — мелкой строкой над ним; пройденное в блоке —
+     строками под заголовком, ждущее в блоке — серым в конце; ждущее письмо поставщика — строкой в шаге (`x-deal.reply-line`). --}}
 @props(['offer', 'position'])
 @php
     use App\Billing\InvoiceState;
@@ -128,9 +130,32 @@
                         </div>
                     </details>
                 @elseif ($step['state'] === Path::CURRENT)
+                    @php
+                        // Подпункты блока (`Workflow\Substeps`, 04.11.2026, владелец: «как переоценку — так и остальные этапы»):
+                        // пройденные — исходом, кто и когда; сейчас — кто действует (`x-route.who`) и кнопки шага; впереди — серым
+                        // с тем, чей там ход. В блоке из одного этапа подпунктов нет — шаг и есть он. Фраз «Ждём от менеджера
+                        // «…»», «Менеджер ответит …» и строки с именем этапа больше нет: их говорят подпункт и строка «кто».
+                        $subs = \App\Workflow\Substeps::for($position, $step['stages'], $deal);
+                        $many = $subs->count() > 1;
+                        // 10.11.2026 (начальник по Volvo 01527: «почему согласование с поставщиком, если ждём Макарова»): в CRM
+                        // заголовок — сам этап, блок — мелкой строкой над ним с местом в блоке; блоки — язык менеджера.
+                        $place = $subs->where('state', \App\Workflow\Substeps::DONE)->count() + 1;
+                        $doneBy = $many ? \App\Users\User::whereIn('id', $subs->pluck('user_id')->filter()->unique())->get()->keyBy('id') : collect();
+                        $whoOf = fn ($s) => match ($s?->waits_for) {
+                            WaitsFor::Manager => $deal?->buyer?->shortName(),
+                            WaitsFor::Supplier => $offer->vendor?->name,
+                            default => null,
+                        };
+                        $req = ! $wantsInvoice && $stage->awaitsManager($deal) ? $requirements->first(fn ($r) => ! $r->done_at && $r->stage_id === $stage->id) : null;
+                        // Данные покупателя для счёта поставщика (03.11.2026): их вносит и админ — «Заполнить» ведёт к карточке.
+                        $buyerData = $req?->asks === \App\Workflow\Asks::Buyer;
+                    @endphp
                     {{-- «···» — справа от названия и в узкой колонке: длинное название переносится, а не выталкивает кнопку. --}}
                     <div class="step-head !flex-nowrap !items-start">
-                        <span class="step-title min-w-0 flex-1">{{ $blockName($block) }}</span>
+                        <span class="min-w-0 flex-1">
+                            @if ($many && $blockName($block) !== $stage->name)<span class="step-kicker">{{ $blockName($block) }} · {{ $place }} из {{ $subs->count() }}</span>@endif
+                            <span class="step-title block">{{ $stage->name }}</span>
+                        </span>
                         @if ($breaks->isNotEmpty() || $undo || $extend || $forManager->isNotEmpty())
                             <div class="contents" data-controller="menu">
                                 <button type="button" class="btn btn-s btn-quiet btn-round -my-1 ml-auto shrink-0" data-action="menu#toggle" aria-label="Ещё" aria-haspopup="menu" aria-controls="{{ $menu }}"><x-ui.icon name="more" class="size-5"/></button>
@@ -172,37 +197,19 @@
                             </div>
                         @endif
                     </div>
-                    @php
-                        // Подпункты блока (`Workflow\Substeps`, 04.11.2026, владелец: «как переоценку — так и остальные этапы»):
-                        // пройденные — исходом, кто и когда; сейчас — кто действует (`x-route.who`) и кнопки шага; впереди — серым
-                        // с тем, чей там ход. В блоке из одного этапа подпунктов нет — шаг и есть он. Фраз «Ждём от менеджера
-                        // «…»», «Менеджер ответит …» и строки с именем этапа больше нет: их говорят подпункт и строка «кто».
-                        $subs = \App\Workflow\Substeps::for($position, $step['stages'], $deal);
-                        $many = $subs->count() > 1;
-                        $doneBy = $many ? \App\Users\User::whereIn('id', $subs->pluck('user_id')->filter()->unique())->get()->keyBy('id') : collect();
-                        $whoOf = fn ($s) => match ($s?->waits_for) {
-                            WaitsFor::Manager => $deal?->buyer?->shortName(),
-                            WaitsFor::Supplier => $offer->vendor?->name,
-                            default => null,
-                        };
-                        $req = ! $wantsInvoice && $stage->awaitsManager($deal) ? $requirements->first(fn ($r) => ! $r->done_at && $r->stage_id === $stage->id) : null;
-                        // Данные покупателя для счёта поставщика (03.11.2026): их вносит и админ — «Заполнить» ведёт к карточке.
-                        $buyerData = $req?->asks === \App\Workflow\Asks::Buyer;
-                    @endphp
-                    @if ($many)
-                        <ol class="substeps">
+                    @if ($subs->where('state', \App\Workflow\Substeps::DONE)->isNotEmpty())
+                        <ol class="substeps substeps--done">
                             @foreach ($subs->where('state', \App\Workflow\Substeps::DONE) as $sub)
                                 <li class="substep substep--done">
                                     <span class="substep-dot"><x-ui.icon name="check" class="size-2.5"/></span>
                                     <div class="substep-body"><div class="substep-head"><span class="substep-title">{{ $sub['name'] }}</span>@if ($sub['at'])<span class="substep-meta">@if ($by = $doneBy->get($sub['user_id'])){{ $by->shortName() }} · @endif<span class="nums">{{ \App\Support\Ago::html($sub['at'], true, words: false) }}</span></span>@endif</div></div>
                                 </li>
                             @endforeach
-                            <li class="substep substep--now">
-                                <span class="substep-dot"></span>
-                                <div class="substep-body">
-                                    <div class="substep-head"><span class="substep-title">{{ $stage->name }}</span></div>
+                        </ol>
                     @endif
                     <x-route.who :position="$position" :offer="$offer" :deal="$deal"/>
+                    {{-- Письмо поставщика ждёт разбора — строкой в шаге, а не лаймовой плашкой над путём (10.11.2026). --}}
+                    @if ($deal && $position->track === \App\Workflow\Track::Sale && auth()->user()?->canManageCrm())<x-deal.reply-review :deal="$deal" line/>@endif
                     @if ($buyerData && auth()->user()?->canManageCrm())
                         <div class="step-acts mt-3"><a href="/offers/{{ $offer->number }}?buyer=1#invoice-buyer" class="btn btn-s btn-accent !h-auto min-h-9 whitespace-normal py-1.5" data-turbo-frame="_top">Заполнить за менеджера</a></div>
                     @endif
@@ -385,9 +392,8 @@
                             </ul>
                         @endif
                     @endif
-                    @if ($many)
-                                </div>
-                            </li>
+                    @if ($subs->where('state', \App\Workflow\Substeps::WAIT)->isNotEmpty())
+                        <ol class="substeps">
                             @foreach ($subs->where('state', \App\Workflow\Substeps::WAIT) as $sub)
                                 <li class="substep substep--wait">
                                     <span class="substep-dot"></span>
