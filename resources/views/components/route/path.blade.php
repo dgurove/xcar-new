@@ -156,7 +156,7 @@
                             @if ($many && $blockName($block) !== $stage->name)<span class="step-kicker">{{ $blockName($block) }} · {{ $place }} из {{ $subs->count() }}</span>@endif
                             <span class="step-title block">{{ $stage->name }}</span>
                         </span>
-                        @if ($breaks->isNotEmpty() || $undo || $extend || $forManager->isNotEmpty())
+                        @if ($breaks->isNotEmpty() || $undo || $extend || $forManager->isNotEmpty() || in_array($position->letterStatus(), ['unsent', 'failed', 'bounced'], true))
                             <div class="contents" data-controller="menu">
                                 <button type="button" class="btn btn-s btn-quiet btn-round -my-1 ml-auto shrink-0" data-action="menu#toggle" aria-label="Ещё" aria-haspopup="menu" aria-controls="{{ $menu }}"><x-ui.icon name="more" class="size-5"/></button>
                                 <div id="{{ $menu }}" class="menu" popover data-menu-target="list" role="menu">
@@ -170,6 +170,10 @@
                                             <form method="post" action="/offers/{{ $n }}/deadline" class="contents">@csrf<input type="hidden" name="track" value="{{ $position->track->value }}"><input type="hidden" name="days" value="{{ $days }}"><button class="menu-item w-full" role="menuitem">{{ $extendLabel }}</button></form>
                                         @endforeach
                                         <button type="button" class="menu-item w-full" role="menuitem" data-controller="emit" data-action="emit#send" data-emit-event-param="deadline-{{ $position->id }}:open">Срок до даты…</button>
+                                    @endif
+                                    {{-- Письмо шага — без письма: сообщили сами (`SkipLetter`, 10.11.2026). --}}
+                                    @if (in_array($position->letterStatus(), ['unsent', 'failed', 'bounced'], true))
+                                        <form method="post" action="/offers/{{ $n }}/letter-skip" class="contents" data-turbo-confirm="Поставщику сообщили не письмом?" data-turbo-confirm-text="Шаг будет ждать ответа поставщика" data-turbo-confirm-label="Сообщили сами">@csrf<button class="menu-item w-full" role="menuitem">Без письма — сообщили сами</button></form>
                                     @endif
                                     @foreach ($forManager as $exit)
                                         {{-- Уход в продажу («Я передумал») отменяет сделку — переспрашиваем; остальное — сразу. --}}

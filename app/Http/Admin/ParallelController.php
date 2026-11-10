@@ -23,7 +23,7 @@ class ParallelController
         $offer = $deal->offer->fresh();
         $position = $offer->position(Track::Sale);
         if ($position?->stage->isRequisitesStep() && in_array($position->letterStatus(), ['unsent', 'failed'], true) && ($url = $offer->vendorLetterUrl($position->stage))) {
-            LetterPrompt::push($request->user(), $url.'&then=close');
+            LetterPrompt::ask($request->user(), $offer, $url.'&then=close');
         }
 
         return back()->with('toast', 'В работу: '.$deal->buyer?->shortName().($reissue ? ', письмо «перевыставить счёт»' : ''));

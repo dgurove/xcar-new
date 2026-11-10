@@ -111,7 +111,7 @@ class GiveController
         $letter = $after && $after !== $before ? $offer->fresh()->vendorLetterUrl(Stage::find($after)) : null;
         // Окно письма — из очереди человека на сервере (`LetterPrompt`), не из сессии: метку сессии съедал соседний запрос.
         if ($letter) {
-            LetterPrompt::push($request->user(), $letter.'&then=close');
+            LetterPrompt::ask($request->user(), $offer, $letter.'&then=close');
         }
         $who = $deal->buyer?->shortName();
         $toast = match (true) {

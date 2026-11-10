@@ -8,7 +8,6 @@ use App\Http\Admin\DealContractController;
 use App\Http\Admin\DealController;
 use App\Http\Admin\DeliveryController;
 use App\Http\Admin\DisclosureController;
-use App\Http\Admin\PaymentProofController;
 use App\Http\Admin\GalleryController;
 use App\Http\Admin\GarageController;
 use App\Http\Admin\GiveController;
@@ -28,6 +27,7 @@ use App\Http\Admin\OfferValuationController;
 use App\Http\Admin\ParallelController;
 use App\Http\Admin\ParsingController;
 use App\Http\Admin\PayLinkController;
+use App\Http\Admin\PaymentProofController;
 use App\Http\Admin\PurchaseCarPhotoController;
 use App\Http\Admin\PurchaseController;
 use App\Http\Admin\ReferenceController;
@@ -245,6 +245,8 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
         Route::post('/offers/{offer}/stage', [RouteController::class, 'place']);
         Route::post('/offers/{offer}/back', [RouteController::class, 'back']);
         Route::post('/offers/{offer}/deadline', [RouteController::class, 'deadline']);
+        Route::get('/offers/{offer}/letter-ask', [RouteController::class, 'letterAsk']);
+        Route::post('/offers/{offer}/letter-skip', [RouteController::class, 'letterSkip']);
         Route::post('/offers/{offer}/pickup', [RouteController::class, 'pickup']);
         // «Видно менеджеру» у документа — решает админ (модератору документ менеджерам не открыть).
         Route::post('/offers/{offer}/media/{media}/managers', [OfferPhotoController::class, 'managers']);

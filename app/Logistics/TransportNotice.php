@@ -4,6 +4,7 @@ namespace App\Logistics;
 
 use App\Notifications\Notice;
 use App\Notifications\TelegramChannel;
+use App\Offers\Deal;
 use App\Support\Plural;
 use App\Support\Surface;
 use App\Users\User;
@@ -174,12 +175,17 @@ final class TransportNotice extends Notice
     }
 
     /**
-     * ТС отдали в гараж менеджеру, пока вывоз в работе (10.11.2026, админ: «когда отдаю в гараж — нужно, чтобы исполнителя
-     * информировала, что ушла в гараж и какому менеджеру»): логисту и исполнителю — куда теперь везти, в Telegram.
+     * ТС отдали менеджеру — в сделку, другому или в гараж, — пока вывоз в работе (10.11.2026, админ: «когда отдаю — нужно,
+     * чтобы исполнителя информировала, что ушла в гараж и какому менеджеру», «и не только в гараж»): логисту и исполнителю —
+     * кому и куда теперь везти, в Telegram. Зовёт `Give` (`TellPickupWorkers`).
      */
-    public static function toGarage(Transport $t): self
+    public static function given(Transport $t, Deal $deal): self
     {
-        return (new self($t, 'В гараж: '.$t->title(), 'везти: '.($t->routeLabel() ?? 'менеджеру'), true, true))->variant('to-garage', 'Ушла в гараж');
+        $route = $t->routeLabel();
+
+        return (new self($t, ($deal->isGarage() ? 'В гараж: ' : 'В сделку: ').$t->title(),
+            implode(', ', array_filter(['менеджер '.($deal->buyer?->shortName() ?? '—'), $route ? 'везти: '.$route : null])), true, true))
+            ->variant('given', 'Отдали менеджеру');
     }
 
     /** Везёт сам менеджер — логисту и исполнителю, что уже взяли задачу: ехать не нужно (10.11.2026). */

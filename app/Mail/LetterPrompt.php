@@ -3,6 +3,7 @@
 namespace App\Mail;
 
 use App\Http\Middleware\KeepFlashInBackground;
+use App\Offers\Offer;
 use App\Support\Surface;
 use App\Users\User;
 use Illuminate\Contracts\Cache\LockTimeoutException;
@@ -27,6 +28,15 @@ final class LetterPrompt
         self::locked($user->id, function () use ($user, $url) {
             Cache::put(self::key($user->id), array_values(array_unique([...Cache::get(self::key($user->id), []), $url])), now()->addMinutes(self::TTL));
         });
+    }
+
+    /**
+     * Письмо шага — сначала вопрос (10.11.2026, начальник: «не сразу окно черновика, а спрашивало — писать, без письма или
+     * отмена»): окно открывается на `/offers/{n}/letter-ask`, редактор — его кнопкой «Написать письмо».
+     */
+    public static function ask(User $user, Offer $offer, string $editor): void
+    {
+        self::push($user, '/offers/'.$offer->number.'/letter-ask?to='.urlencode($editor));
     }
 
     /** Первое ждущее письмо — один раз за запрос: и окно страницы, и поток карточки спрашивают, открывает одно. */

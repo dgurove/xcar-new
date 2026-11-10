@@ -2897,8 +2897,13 @@ html.kb-open { --home-gap: 0px; }
     .sheet-tall { height: 100dvh; max-height: none; border-radius: 0; padding-top: calc(.75rem + var(--safe-top)); }
     .sheet-tall::before { display: none; }
     .sheet-tall .sheet-x { display: none; }
+    /* Окно писем с вопросом вместо письма (`letter-ask`, 10.11.2026) — обычная шторка по содержимому. */
+    .sheet-tall.sheet-compact { height: fit-content; max-height: 85dvh; border-radius: var(--radius-xl) var(--radius-xl) 0 0; padding-top: 1.25rem; }
+    .sheet-tall.sheet-compact::before { display: block; }
+    .sheet-tall.sheet-compact .sheet-x { display: inline-flex; }
+    .sheet-tall.sheet-compact .sheet-back { display: none; }
   }
-  @media (min-width: 640px) { .sheet-tall .sheet-back { display: none; } }
+  @media (min-width: 640px) { .sheet-tall .sheet-back { display: none; } .sheet-tall.sheet-compact { max-width: 28rem; } }
   @keyframes sheet-up   { from { translate: 0 100%; } }
   @keyframes sheet-down { from { translate: 0 var(--from, 0px); } to { translate: 0 110%; } }
   @keyframes dialog-in  { from { transform: translateY(16px); opacity: 0; } }

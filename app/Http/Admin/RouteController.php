@@ -15,19 +15,21 @@ use App\Offers\Actions\ScheduleOffer;
 use App\Offers\Offer;
 use App\Offers\OfferState;
 use App\Offers\Slots;
+use App\Offers\SupplierInvoice;
 use App\Support\Ago;
 use App\Users\User;
 use App\Workflow\Actions\ExtendDeadline;
 use App\Workflow\Actions\PlaceOnStage;
+use App\Workflow\Actions\SkipLetter;
 use App\Workflow\Actions\StepBack;
 use App\Workflow\Actions\TakeExit;
 use App\Workflow\Actor;
+use App\Workflow\Asks;
 use App\Workflow\Outcome;
 use App\Workflow\Path;
 use App\Workflow\Requirement;
 use App\Workflow\Stage;
 use App\Workflow\Track;
-use App\Offers\SupplierInvoice;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -115,7 +117,7 @@ class RouteController
             throw ValidationException::withMessages(['exit' => 'Это не ответ менеджера']);
         }
         // Данные покупателя для счёта (03.11.2026) — «за менеджера» без них письмо поставщику ушло бы пустым.
-        if ($exit->from?->asks === \App\Workflow\Asks::Buyer && ! $deal->contract?->buyer?->party?->readyAsBuyer()) {
+        if ($exit->from?->asks === Asks::Buyer && ! $deal->contract?->buyer?->party?->readyAsBuyer()) {
             throw ValidationException::withMessages(['exit' => 'Сначала данные покупателя со сканом паспорта — «Покупатель для счёта»']);
         }
         Requirement::closeOpen($deal, $exit->stage_id, ['exit' => $exit->label, 'closed_by' => 'staff', 'by' => $by->id]);
@@ -148,6 +150,28 @@ class RouteController
     }
 
     /** «Продлить срок» шага: +1 день, +3 дня или до даты (`ExtendDeadline`). */
+    /**
+     * Перед черновиком письма шага — вопрос (10.11.2026, начальник): «Написать письмо» (редактор в том же окне), «Без письма —
+     * сообщили сами» (`SkipLetter`), «Отмена». Окно писем открывает его вместо редактора (`LetterPrompt::ask`).
+     */
+    public function letterAsk(Request $request, Offer $offer)
+    {
+        $to = (string) $request->query('to');
+        abort_unless(str_starts_with($to, '/work/mail/new?'), 404);
+
+        return view('admin.offers.letter-ask', ['offer' => $offer, 'to' => $to, 'position' => $offer->position(Track::Sale)]);
+    }
+
+    public function letterSkip(Request $request, Offer $offer, SkipLetter $skip)
+    {
+        $skip($offer, $request->user());
+        if ($request->header('Turbo-Frame') === 'letters-frame') {
+            return response()->view('admin.offers.letter-ask-done', ['toast' => 'Без письма: ждём ответа поставщика']);
+        }
+
+        return back(fallback: "/offers/{$offer->number}")->with('toast', 'Без письма: ждём ответа поставщика');
+    }
+
     public function deadline(Request $request, Offer $offer, ExtendDeadline $extend)
     {
         $data = $request->validate(['track' => ['required', Rule::enum(Track::class)], 'days' => ['nullable', 'integer', 'min:1', 'max:60'], 'until' => ['nullable', 'date']]);

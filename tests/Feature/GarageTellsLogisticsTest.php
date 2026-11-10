@@ -62,13 +62,25 @@ class GarageTellsLogisticsTest extends TestCase
         $this->give('us');
         Notification::assertSentTo($this->driver, TransportNotice::class, fn ($n) => str_starts_with($n->title(), 'В гараж:')
             && str_contains((string) $n->text(), 'Корабельников'));
+        Notification::assertNotSentTo($this->driver, TransportNotice::class, fn ($n) => str_starts_with($n->title(), 'Вывоз не нужен'));
         $this->assertTrue(Transport::openFor($this->offer->fresh())->isExecutedBy($this->driver));
+    }
+
+    /** И не только в гараж (10.11.2026): в сделку менеджеру — водителю «В сделку: …» с менеджером. */
+    public function test_deal_tells_driver_too(): void
+    {
+        $this->actingAs($this->admin)->post('http://crm.xcar.localhost/offers/'.$this->offer->number.'/give', [
+            'to' => 'deal', 'manager_id' => $this->manager->id, 'amount' => '950 000', 'scheme' => 'prime', 'pickup' => 'us',
+        ]);
+        Notification::assertSentTo($this->driver, TransportNotice::class, fn ($n) => str_starts_with($n->title(), 'В сделку:')
+            && str_contains((string) $n->text(), 'Корабельников'));
     }
 
     public function test_driver_hears_manager_picks_himself(): void
     {
         $this->give('manager');
         Notification::assertSentTo($this->driver, TransportNotice::class, fn ($n) => str_starts_with($n->title(), 'Вывоз не нужен:'));
+        Notification::assertNotSentTo($this->driver, TransportNotice::class, fn ($n) => str_starts_with($n->title(), 'В гараж:'));
         $this->assertTrue(Transport::openFor($this->offer->fresh())->isExecutedBy($this->manager));
     }
 }

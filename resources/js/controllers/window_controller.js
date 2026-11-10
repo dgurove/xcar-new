@@ -62,6 +62,8 @@ export default class extends Controller {
     }
 
     tools() {
+        // Вопрос перед письмом (`letter-ask`) — окно низкое, по содержимому; редактор и ветка — снова во весь экран.
+        this.element.querySelector('dialog')?.classList.toggle('sheet-compact', !!this.frameTarget.querySelector('[data-window-compact]'));
         const title = this.frameTarget.querySelector('template[data-window-title]');
         const head = this.element.querySelector('dialog .sheet-bar h2');
         if (title && head) head.replaceChildren(...title.content.cloneNode(true).childNodes);

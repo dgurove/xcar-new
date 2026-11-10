@@ -4,6 +4,9 @@ namespace App\Offers\Actions;
 
 use App\Garage\Actions\ReserveCar;
 use App\Garage\GaragePayer;
+use App\Logistics\Listeners\NotifyLogistics;
+use App\Logistics\Transport;
+use App\Logistics\TransportNotice;
 use App\Offers\Bid;
 use App\Offers\BidKind;
 use App\Offers\BidState;
@@ -27,6 +30,7 @@ use App\Workflow\Actions\EnterStage;
 use App\Workflow\Actor;
 use App\Workflow\Track;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -119,6 +123,8 @@ final class Give
             if ($g->pickup) {
                 ($this->pickup)($offer, $deal->fresh(), $g->pickup, $by, $g->where, $previous, $g->arrivedAt);
             }
+            // Вывоз уже у логиста или водителя — им кому и куда теперь везти (10.11.2026); «Менеджер сам» говорит смена исполнителя.
+            self::tellPickupWorkers($offer, $deal, $by);
             // Покупателю с гаражом у Совкомбанка счёт на его цену — сразу (`SyncDealInvoices`): ждать «да» там нечего.
             if ($garage && $manager?->holdsAsBuyer() && $deal->isCommission()) {
                 app(SyncDealInvoices::class)($deal->fresh(), $by);
@@ -132,6 +138,25 @@ final class Give
 
             return $deal;
         });
+    }
+
+    /**
+     * Отдали менеджеру, а вывоз уже в работе у логиста или водителя (10.11.2026, админ: «информировать исполнителя, что ушла в
+     * гараж и какому менеджеру», «и не только в гараж»): им — `TransportNotice::given` после записи. Везёт сам менеджер — нет:
+     * прежним водителю и логисту «Вывоз не нужен» шлёт смена исполнителя (`NotifyLogistics::assigned`).
+     */
+    private static function tellPickupWorkers(Offer $offer, Deal $deal, User $by): void
+    {
+        $t = Transport::openFor($offer->fresh());
+        if (! $t || $t->isSelfPickup()) {
+            return;
+        }
+        $t->load(['executor', 'logist']);
+        $workers = NotifyLogistics::workers($t, $by);
+        if ($workers->isNotEmpty()) {
+            $deal = $deal->fresh('buyer');
+            DB::afterCommit(fn () => Notification::send($workers, TransportNotice::given($t->fresh(), $deal)));
+        }
     }
 
     private function activeBid(Bid $bid, Offer $offer): Bid

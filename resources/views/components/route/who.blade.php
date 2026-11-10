@@ -40,6 +40,8 @@
         $letter === 'bounced' => ['письмо не доставлено', 'danger', null],
         $letter === 'replied' => ['ответил '.Ago::html($position->replyAt(), true, words: false), 'accent', $letters],
         // «ждём 17 д 15 ч» — неразрывно: в узкой дорожке переносится целиком, а не «ждём 17 д / 15 ч».
+        // Без письма — сообщили сами (`SkipLetter`, 10.11.2026): ссылки на письмо нет.
+        $letter === 'sent' && ! empty($position->payload['letter_by_hand']) => ['сообщили сами '.Ago::html($position->letterAt(), words: false).' · <span class="whitespace-nowrap">ждём '.$timer('since', $position->letterAt()).'</span>', $overdue ? 'urgent' : 'plain', null],
         $letter === 'sent' => ['ушло '.Ago::html($position->letterAt(), words: false).' · <span class="whitespace-nowrap">ждём '.$timer('since', $position->letterAt()).'</span>', $overdue ? 'urgent' : 'plain',
             $letters.(isset($position->payload['letter_id']) ? '?at='.$position->payload['letter_id'] : '')],
         $invoice => ['счёт не выставлен', 'urgent', null],

@@ -8,10 +8,8 @@ use App\Logistics\Actions\AssignExecutor;
 use App\Logistics\Actions\Backdate;
 use App\Logistics\Actions\OpenPickup;
 use App\Logistics\Channel;
-use App\Logistics\Listeners\NotifyLogistics;
 use App\Logistics\Point;
 use App\Logistics\Transport;
-use App\Logistics\TransportNotice;
 use App\Offers\Actions\AssignDealPickup;
 use App\Offers\CarPlace;
 use App\Offers\Offer;
@@ -19,8 +17,6 @@ use App\Park\VehicleState;
 use App\Users\User;
 use App\Workflow\Actions\SetCarPlace;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Notification;
 
 /**
  * У гаражной машины вывоз есть всегда (06.10.2026): где она физически — это он, а не этап гаража. С 17.10.2026 это задача
@@ -77,12 +73,6 @@ final class EnsurePickup
         }
         if ($self && ! $t->isExecutedBy($evacuator)) {
             ($this->assign)($t, Channel::Manager, $evacuator, $by);
-        }
-        // Вывоз уже у логиста или водителя, а везёт не сам менеджер (10.11.2026, админ: «когда отдаю в гараж — информировать
-        // исполнителя, что ушла в гараж и какому менеджеру»): им — куда теперь везти. «Менеджер сам» говорит смена исполнителя.
-        if (! $self && $car->manager_id && ($workers = NotifyLogistics::workers($t->fresh(['executor', 'logist']), $by))->isNotEmpty()) {
-            $fresh = $t->fresh();
-            DB::afterCommit(fn () => Notification::send($workers, TransportNotice::toGarage($fresh)));
         }
         AssignDealPickup::undecided($t, $later && ! $self);
 
