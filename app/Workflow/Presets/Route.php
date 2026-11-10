@@ -61,9 +61,9 @@ abstract class Route
                 'body' => "Здравствуйте!\n\nРеквизиты для счёта на {{ car }}, VIN {{ vin }} ({{ claim_ref }}):\n\n{{ buyer }}\n\nС уважением,\nАндрей Кузнецов",
             ],
             'payment' => [
-                'name' => 'Поставщику: платёжное поручение',
+                'name' => 'Поставщику: документ об оплате',
                 'subject' => 'Оплата {{ car }}, убыток {{ claim_ref }}',
-                'body' => "Здравствуйте!\n\nСчёт за {{ car }}, убыток {{ claim_ref }}, оплачен на сумму {{ price }}.\nПлатёжное поручение во вложении. Просим подтвердить поступление средств.",
+                'body' => "Здравствуйте!\n\nСчёт за {{ car }}, убыток {{ claim_ref }}, оплачен на сумму {{ price }}.\nДокумент об оплате во вложении. Просим подтвердить поступление средств.",
             ],
         ];
     }
@@ -246,7 +246,7 @@ abstract class Route
             'invoice'.$suffix => [
                 'name' => 'Оплата счёта', 'block' => 'payment'.$suffix, 'waits_for' => 'manager', 'limit_minutes' => 14 * self::DAY, 'asks' => 'document',
                 'ask_title' => 'Оплатите счёт', 'ask_text' => 'Оплатите по ссылке под счётом картой, СБП или SberPay: оплата отметится сама. Или по реквизитам из счёта, тогда приложите платёжное поручение',
-                'exits' => [['Платёжное поручение приложено', 'manager', 'payment_check'.$suffix]],
+                'exits' => [['Оплатил, документ приложен', 'manager', 'payment_check'.$suffix]],
             ],
             'payment_check'.$suffix => [
                 'name' => 'Подтверждение оплаты', 'block' => 'payment'.$suffix, 'waits_for' => 'supplier', 'limit_minutes' => 2 * self::DAY, 'letter' => 'payment',
@@ -266,7 +266,7 @@ abstract class Route
             'selection_pay' => [
                 'name' => 'Оплата подбора', 'block' => 'payment', 'waits_for' => 'manager', 'limit_minutes' => 14 * self::DAY, 'asks' => 'document',
                 'ask_title' => 'Оплатите подбор', 'ask_text' => 'Оплатите по ссылке под счётом картой, СБП или SberPay: оплата отметится сама. Или по реквизитам из счёта, тогда приложите платёжное поручение',
-                'exits' => [['Платёжное поручение приложено', 'manager', 'selection_check']],
+                'exits' => [['Оплатил, документ приложен', 'manager', 'selection_check']],
             ],
             'selection_check' => [
                 'name' => 'Проверка оплаты подбора', 'block' => 'payment', 'waits_for' => 'us', 'limit_minutes' => self::DAY,

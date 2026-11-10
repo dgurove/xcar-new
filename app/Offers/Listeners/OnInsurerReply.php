@@ -97,6 +97,11 @@ final class OnInsurerReply
         }
         $review = ReplyReview::firstOrCreate(['message_id' => $message->id], ['deal_id' => $deal->id, 'offer_id' => $deal->offer_id, 'state' => ReplyReview::PENDING]);
         $review->wasRecentlyCreated && Disclose::publish($deal);
+        // Счёт страховой — громко админам (10.11.2026, `SupplierInvoiceArrivedNotice`): менеджер его не видит, а срок оплаты идёт.
+        if ($review->wasRecentlyCreated && \App\Offers\ReplyKind::of($message) === \App\Offers\ReplyKind::Invoice) {
+            \Illuminate\Support\Facades\Notification::send(\App\Users\User::withRole(\App\Users\Role::Admin)->get(),
+                new \App\Notifications\SupplierInvoiceArrivedNotice($deal->load(['offer.vendor', 'buyer'])));
+        }
     }
 
     /**

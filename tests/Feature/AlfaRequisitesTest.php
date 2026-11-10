@@ -30,6 +30,7 @@ use App\Workflow\Preset;
 use App\Workflow\Stage;
 use App\Workflow\Track;
 use App\Workflow\WaitsFor;
+use App\Offers\Documents\PaymentProofPdf;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
@@ -308,6 +309,44 @@ class AlfaRequisitesTest extends TestCase
         $this->actingAs($this->admin)->followingRedirects()->get($crm('/work/deals/'.$deal->id))->assertOk()->assertDontSee('Менеджер не видит счёт поставщика');
         $pdf->forgetCustomProperty(\App\Offers\SupplierInvoice::PROP)->save();
         $this->actingAs($this->admin)->followingRedirects()->get($crm('/work/deals/'.$deal->id))->assertSee('Менеджер не видит счёт поставщика');
+    }
+
+    /**
+     * Документ об оплате за менеджера (10.11.2026, X6 0790/046/09068/26: покупатель заплатил в кассе Альфы, менеджер прислал два
+     * фото чека в чат): админ прикладывает их на шаге оплаты — шаг пройден за менеджера, страховой — один PDF из двух листов.
+     */
+    public function test_admin_attaches_payment_proof_and_letter_gets_one_pdf(): void
+    {
+        [$offer, $deal] = $this->deal(vat: false);
+        $crm = fn (string $path) => \App\Support\Surface::Crm->url($path);
+        $exit = $offer->stage()->exits->first(fn ($e) => $e->label === 'Поставщик сразу выставил счёт' && $e->fits($deal));
+        $pdf = $offer->addMedia(\Illuminate\Http\UploadedFile::fake()->create('schet.pdf', 20, 'application/pdf'))->withCustomProperties(['letter' => 1])->toMediaCollection('papers');
+        $this->actingAs($this->admin)->post($crm('/work/deals/'.$deal->id.'/supplier-invoice'), ['media' => $pdf->id, 'exit' => $exit->id])->assertSessionHasNoErrors();
+        $this->assertSame('Оплата счёта', $offer->fresh()->stage()->name);
+
+        // Без файла — нельзя.
+        $this->actingAs($this->admin)->post($crm('/work/deals/'.$deal->id.'/payment-proof'), ['pass' => 1])->assertSessionHasErrors('payment_proof');
+        $this->actingAs($this->admin)->followingRedirects()->get($crm('/work/deals/'.$deal->id))->assertSee('Приложить за менеджера');
+
+        $files = [\Illuminate\Http\UploadedFile::fake()->image('chek-1.jpg', 600, 900), \Illuminate\Http\UploadedFile::fake()->image('chek-2.jpg', 640, 960)];
+        $this->actingAs($this->admin)->post($crm('/work/deals/'.$deal->id.'/payment-proof'), ['files' => $files, 'pass' => 1])->assertSessionHasNoErrors();
+        $this->assertSame('Подтверждение оплаты', $offer->fresh()->stage()->name);
+        $deal = $deal->fresh();
+        $this->assertCount(2, PaymentProofPdf::files($deal));
+        $this->assertSame('Оплатил, документ приложен', PaymentProofPdf::requirement($deal)->answer['exit']);
+
+        $doc = PaymentProofPdf::render($deal);
+        $this->assertStringStartsWith('%PDF', $doc);
+        $this->assertSame(2, preg_match_all('#/Type\s*/Page[^s]#', $doc));
+        $this->actingAs($this->admin)->get($crm('/work/deals/'.$deal->id.'/payment-proof.pdf'))->assertOk()->assertHeader('Content-Type', 'application/pdf');
+
+        // Письмо шага — с одним PDF вместо россыпи снимков; кнопка шага — «Отправить страховой».
+        \Illuminate\Support\Facades\DB::table('mail_accounts')->insert(['slug' => 'deal', 'title' => 'deal', 'email' => 'deal@xcar.ru', 'scope' => 'offers', 'is_active' => true,
+            'imap_host' => 'x', 'imap_username' => 'x', 'imap_password' => 'x', 'smtp_host' => 'x', 'smtp_username' => 'x', 'smtp_password' => 'x']);
+        $stage = $offer->fresh()->stage();
+        $this->actingAs($this->admin)->followingRedirects()->get($crm('/work/deals/'.$deal->id))->assertSee('Отправить страховой')->assertSee('Документ об оплате, PDF');
+        $this->actingAs($this->admin)->withHeaders(['Turbo-Frame' => 'letters-frame'])->get($crm('/work/mail/new?offer='.$offer->number.'&template='.$stage->template_id))->assertOk()
+            ->assertSee(PaymentProofPdf::fileName($deal))->assertDontSee('chek-1')->assertSee('Документ об оплате во вложении');
     }
 
     /**

@@ -84,7 +84,7 @@ class PaymentProofFieldsTest extends TestCase
 
         $this->assertSame('Проверка оплаты', $this->offer->fresh()->stage()->name);
         $answer = Requirement::where('deal_id', $this->deal->id)->whereNotNull('done_at')->latest('id')->first()->answer;
-        $this->assertSame('Платёжное поручение приложено', $answer['exit']);
+        $this->assertSame('Оплатил, документ приложен', $answer['exit']);
         $this->assertSame('Отдал наличными', $answer['label']);
         $history = $this->offer->events()->whereIn('type', [OfferEventType::RequirementAnswered, OfferEventType::StageEntered])->get()->map->text();
         $this->assertContains('Менеджер: «Отдал наличными»', $history);

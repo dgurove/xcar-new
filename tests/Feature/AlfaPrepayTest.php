@@ -152,7 +152,7 @@ class AlfaPrepayTest extends TestCase
         $this->assertNotNull($selection->openLink());
         $this->assertFalse($deal->fresh()->mayPickUp());
 
-        $this->exit($offer, 'Платёжное поручение приложено');
+        $this->exit($offer, 'Оплатил, документ приложен');
         $this->assertSame('Подтверждение оплаты', $offer->fresh()->stage()->name);
         $this->exit($offer, 'Оплата получена');
         $this->assertTrue($deal->fresh()->mayPickUp());

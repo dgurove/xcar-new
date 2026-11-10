@@ -8,7 +8,8 @@
     $stage = $requirement->stage;
     $attachLabel ??= match (true) {
         (bool) preg_match('/договор/iu', $stage?->name.' '.$requirement->title) => 'Приложить договор',
-        (bool) $stage?->isPayStep() || (bool) preg_match('/плат[её]ж/iu', (string) $requirement->title) => 'Приложить платёжку',
+        // Оплата — чек кассы, скан или файл платёжки (10.11.2026, владелец: «не всегда сфотографировать»).
+        (bool) $stage?->isPayStep() || (bool) preg_match('/плат[её]ж/iu', (string) $requirement->title) => 'Приложить чек или платёжку',
         default => 'Приложить документ',
     };
 @endphp

@@ -8,7 +8,6 @@ use App\Live\RefreshDeal;
 use App\Live\Stream;
 use App\Logistics\Actions\RequestPickup;
 use App\Logistics\Actions\SelfPickup;
-use App\Media\PhotoIngest;
 use App\Offers\Actions\SetReceiver;
 use App\Offers\Bid;
 use App\Offers\BidState;
@@ -271,19 +270,14 @@ class DealController
         return redirect($deal->href())->with('toast', 'Автомобиль забрал');
     }
 
-    public function upload(Request $request, Deal $deal, PhotoIngest $ingest)
+    public function upload(Request $request, Deal $deal)
     {
         abort_unless($deal->buyer_id === $request->user()->id, 404);
         $requirement = $deal->openRequirement()->firstOrFail();
         $request->validate(['file' => ['required', 'file', 'max:30720']]);
         $file = $request->file('file');
         try {
-            if (str_starts_with((string) $file->getMimeType(), 'image/')) {
-                $ingest->fromUpload($requirement, 'files', $file);
-            } else {
-                $name = pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME);
-                $requirement->addMedia($file)->usingFileName((trim(preg_replace('/[^\p{L}\p{N}._-]+/u', '-', $name), '-.') ?: 'dokument').'.'.strtolower($file->getClientOriginalExtension()))->toMediaCollection('files');
-            }
+            app(\App\Workflow\Actions\AttachRequirementFiles::class)($requirement, $file);
         } catch (\Throwable $e) {
             return response()->json(['message' => $e->getMessage()], 422);
         }

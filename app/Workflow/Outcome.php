@@ -176,6 +176,17 @@ class Outcome extends Model
         };
     }
 
+    /**
+     * Ответ «оплатил» на шаге оплаты: «Оплатил, документ приложен» (10.11.2026, владелец: в кассе дают чек, бывает скан или
+     * файл — не только платёжное поручение) и прежнее «Платёжное поручение приложено».
+     */
+    public function isPayExit(): bool
+    {
+        $label = mb_strtolower(trim($this->label));
+
+        return str_starts_with($label, 'платёжное поручение') || str_starts_with($label, 'оплатил, документ');
+    }
+
     /** Согласие менеджера взять сделку в работу. */
     public function takes(): bool
     {

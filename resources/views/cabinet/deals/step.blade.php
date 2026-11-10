@@ -170,6 +170,8 @@
                     <div class="list mt-4">
                         @foreach ($supplierBills as $f)<x-ui.file :name="$f->name.'.'.pathinfo($f->file_name, PATHINFO_EXTENSION)" :mime="$f->mime_type" href="/files/{{ $f->id }}"/>@endforeach
                     </div>
+                    {{-- Чем подтвердить оплату — словами (10.11.2026: в кассе дают чек, бывает скан или файл платёжки). --}}
+                    <p class="mt-3 text-sm text-ink-muted">Оплатили — приложите фото чека, скан или файл платёжки</p>
                 @else
                     <p class="mt-3 text-ink-muted">Счёт поставщика пришлём сюда</p>
                 @endif
@@ -207,7 +209,7 @@
                         </div>
                     @endif
                 @else
-                    @include('cabinet.deals.answer', $direct ? ['attachLabel' => 'Приложить платёжку'] : [])
+                    @include('cabinet.deals.answer', $direct ? ['attachLabel' => 'Приложить чек или платёжку'] : [])
                 @endif
             @endif
             @if ($direct && $selectionPay)

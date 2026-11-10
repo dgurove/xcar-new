@@ -8,6 +8,7 @@ use App\Billing\ChargeKind;
 use App\Billing\Closing;
 use App\Billing\Documents\InvoicePdf;
 use App\Billing\Documents\PassportPdf;
+use App\Offers\Documents\PaymentProofPdf;
 use App\Billing\Documents\StorageActPdf;
 use App\Billing\Invoice;
 use App\Billing\InvoiceState;
@@ -82,7 +83,6 @@ use App\Vendors\Contact;
 use App\Vendors\ContactRole;
 use App\Vendors\Kind;
 use App\Vendors\Vendor;
-use App\Workflow\Requirement;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -658,14 +658,12 @@ class MailController
             }
         }
 
-        // Письмо поставщику об оплате (шаблон этапа, Альфа): платёжка, что менеджер приложил на шаге оплаты, — во вложении
-        // (18.10.2026: «Платёжное поручение во вложении» уходило без него).
-        if ($offer?->deal && $template && ! $request->old() && $template->id === $offer->stage()?->template_id) {
-            $slip = Requirement::where('deal_id', $offer->deal->id)->whereNotNull('done_at')
-                ->where('answer->exit', 'Платёжное поручение приложено')->latest('done_at')->first();
-            foreach ($slip?->getMedia('files') ?? [] as $media) {
-                $defaults['files'][] = $outbox->put($media->file_name, file_get_contents($media->getPath()));
-            }
+        // Письмо поставщику об оплате (шаблон этапа, Альфа): документ об оплате, что приложили на шаге оплаты, — во вложении
+        // (18.10.2026: «Платёжное поручение во вложении» уходило без него) одним PDF (10.11.2026, владелец: «из двух фоток, как
+        // с паспортом, формировался пдф» — `PaymentProofPdf`).
+        if ($offer?->deal && $template && ! $request->old() && $template->id === $offer->stage()?->template_id
+            && PaymentProofPdf::files($offer->deal)->isNotEmpty() && ($proof = PaymentProofPdf::render($offer->deal))) {
+            $defaults['files'][] = $outbox->put(PaymentProofPdf::fileName($offer->deal), $proof);
         }
 
         // Письмо с реквизитами без реквизитов не собираем (03.11.2026): кнопки шага нет, а по старой ссылке — словами почему.

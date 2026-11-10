@@ -31,7 +31,7 @@ final class DealDebt
                 where o.id = deals.offer_id and v.deal_format = 'commission'))
             and not exists (select 1 from billing_invoices i where i.deal_id = deals.id and i.direction = 'issued' and i.state <> 'void' and i.kind <> 'reward')
             and exists (select 1 from offer_positions p where p.offer_id = deals.offer_id and p.track = 'sale' and p.waits_for in ('us', 'manager')
-                and exists (select 1 from workflow_exits x where x.stage_id = p.stage_id and x.actor = 'manager' and lower(x.label) like 'платёжное поручение%'))))";
+                and exists (select 1 from workflow_exits x where x.stage_id = p.stage_id and x.actor = 'manager' and (lower(x.label) like 'платёжное поручение%' or lower(x.label) like 'оплатил, документ%')))))";
 
     /** Срок «скоро» — как жёлтый светофор счёта (`Invoice::light`). */
     public const SOON_DAYS = 3;

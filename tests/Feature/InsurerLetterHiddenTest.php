@@ -143,6 +143,16 @@ class InsurerLetterHiddenTest extends TestCase
         Notification::fake();
     }
 
+    /** Счёт страховой — громко админам (10.11.2026, `SupplierInvoiceArrivedNotice`); прочие ответы — тихо. */
+    public function test_invoice_letter_alerts_admins(): void
+    {
+        $this->deal();
+        $this->letter("Добрый день! Контакт +7 900 765-43-21\r\n");
+        Notification::assertNotSentTo($this->admin, \App\Notifications\SupplierInvoiceArrivedNotice::class);
+        $this->letter("Добрый день! Внимание!!! Оплата принимается только от плательщика по счету!!!\r\n");
+        Notification::assertSentTo($this->admin, \App\Notifications\SupplierInvoiceArrivedNotice::class, fn ($n) => $n->important() && str_contains($n->title(), 'выставила счёт'));
+    }
+
     /** Письмо страховой настоящим путём: разобрано ящиком — `MessageParsed` → `OnMessage` (история, файлы, «Разобрать ответ»). */
     private function letter(string $body): Message
     {

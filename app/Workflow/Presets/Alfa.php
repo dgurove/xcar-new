@@ -31,8 +31,8 @@ final class Alfa extends Route
     {
         $payment = $this->invoiceSegment('contract');
         $payment['invoice']['exits'] = [
-            ['Платёжное поручение приложено', 'manager', 'ros_transfer', 'ros'],
-            ['Платёжное поручение приложено', 'manager', 'payment_check', 'not_ros'],
+            ['Оплатил, документ приложен', 'manager', 'ros_transfer', 'ros'],
+            ['Оплатил, документ приложен', 'manager', 'payment_check', 'not_ros'],
         ];
         // Перевод с Р.О.С. — между оплатой и проверкой Альфой: порядок в блоке — порядок пути.
         $payment = ['invoice' => $payment['invoice'], 'ros_transfer' => null, 'payment_check' => $payment['payment_check']];

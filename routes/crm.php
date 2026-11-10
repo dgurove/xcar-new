@@ -8,6 +8,7 @@ use App\Http\Admin\DealContractController;
 use App\Http\Admin\DealController;
 use App\Http\Admin\DeliveryController;
 use App\Http\Admin\DisclosureController;
+use App\Http\Admin\PaymentProofController;
 use App\Http\Admin\GalleryController;
 use App\Http\Admin\GarageController;
 use App\Http\Admin\GiveController;
@@ -273,6 +274,10 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
         Route::post('/work/deals/{deal}/drop', [ParallelController::class, 'drop']);
         Route::post('/work/deals/{deal}/disclose', [DisclosureController::class, 'store']);
         Route::post('/work/deals/{deal}/supplier-invoice', [DisclosureController::class, 'invoice']);
+        // Документ об оплате поставщику за менеджера и одним PDF (10.11.2026, `PaymentProofController`).
+        Route::post('/work/deals/{deal}/payment-proof', [PaymentProofController::class, 'store']);
+        Route::delete('/work/deals/{deal}/payment-proof/{media}', [PaymentProofController::class, 'remove']);
+        Route::get('/work/deals/{deal}/payment-proof.pdf', [PaymentProofController::class, 'pdf']);
         Route::post('/work/deals/{deal}/reviews/done', [DisclosureController::class, 'dismiss']);
         // У кого что в гараже и во что обошлось.
         Route::get('/work/garage', [GarageController::class, 'index']);

@@ -79,13 +79,13 @@ class Stage extends Model
     }
 
     /**
-     * Этап оплаты: менеджер выходит из него «Платёжное поручение приложено». Ход на нём зависит от счёта — без счёта
+     * Этап оплаты: менеджер выходит из него «Оплатил, документ приложен» (до 10.11.2026 — «Платёжное поручение приложено»). Ход на нём зависит от счёта — без счёта
      * ждём нас (`Position::awaitsInvoice`). Одна дверь вместо сравнения подписи по месту.
      */
     public function isPayStep(): bool
     {
         // По всем веткам: у гаражной «платим мы» тот же этап, а без сделки её выходы `exitsFor` не отдаёт.
-        return $this->loadedExits()->contains(fn (Outcome $e) => $e->actor === Actor::Manager && str_starts_with(mb_strtolower($e->label), 'платёжное поручение'));
+        return $this->loadedExits()->contains(fn (Outcome $e) => $e->actor === Actor::Manager && $e->isPayExit());
     }
 
     /**
@@ -154,10 +154,10 @@ class Stage extends Model
             || $e->takes());
     }
 
-    /** Выход менеджера «Платёжное поручение приложено» этого этапа — его жмут заявка об оплате и сама оплата. */
+    /** Выход менеджера «Оплатил, документ приложен» этого этапа — его жмут заявка об оплате и сама оплата. */
     public function payExit(?Deal $deal = null): ?Outcome
     {
-        return $this->exitsFor(Actor::Manager, $deal)->first(fn (Outcome $e) => str_starts_with(mb_strtolower($e->label), 'платёжное поручение'));
+        return $this->exitsFor(Actor::Manager, $deal)->first(fn (Outcome $e) => $e->isPayExit());
     }
 
     public function awaitsManager(?Deal $deal = null): bool

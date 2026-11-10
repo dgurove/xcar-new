@@ -50,7 +50,7 @@
                 // Платёж поставщику у Альфы (оплата до вывоза) — подтверждает поставщик: «оплачено», пока ждём — что платёжка у нас.
                 $paidSupplier = $deal->offer?->vendor?->pay_before_pickup ? match (true) {
                     $deal->prepaid_at !== null => ['оплачено', 'text-open'],
-                    \App\Workflow\Requirement::where('deal_id', $deal->id)->whereNotNull('done_at')->where('answer->exit', 'Платёжное поручение приложено')->exists() => ['ждём подтверждения поставщика', ''],
+                    \App\Workflow\Requirement::where('deal_id', $deal->id)->whereNotNull('done_at')->whereIn('answer->exit', \App\Offers\Documents\PaymentProofPdf::EXITS)->exists() => ['ждём подтверждения поставщика', ''],
                     default => null,
                 } : null;
             @endphp

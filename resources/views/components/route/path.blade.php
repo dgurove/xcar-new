@@ -226,6 +226,18 @@
                     @if ($req && $req->getMedia('files')->isNotEmpty())
                         <div class="mt-2 flex flex-col gap-1">@foreach ($req->getMedia('files') as $f)<x-ui.file :name="$f->file_name" :mime="$f->mime_type" :size="$f->humanReadableSize" href="/files/{{ $f->id }}" class="py-1"/>@endforeach</div>
                     @endif
+                    {{-- Документ об оплате (10.11.2026): на шаге оплаты админ прикладывает за менеджера (чек прислал в чат), дальше — одним
+                         PDF для страховой (`PaymentProofPdf`), пока письмо об оплате не ушло. --}}
+                    @php $payProof = $deal && auth()->user()?->canManageCrm() ? \App\Offers\Documents\PaymentProofPdf::files($deal)->isNotEmpty() : false; @endphp
+                    @if ($req && $req->asks === \App\Workflow\Asks::Document && $stage->isPayStep() && auth()->user()?->canManageCrm())
+                        <div class="step-acts mt-2" data-controller="sheet">
+                            <x-ui.button type="button" size="sm" variant="secondary" data-action="sheet#open">{{ $req->getMedia('files')->isEmpty() ? 'Приложить за менеджера' : 'Документ об оплате' }}</x-ui.button>
+                            <x-deal.payment-proof-sheet :id="'payment-proof-'.$position->id" :deal="$deal" :requirement="$req"/>
+                        </div>
+                    @endif
+                    @if ($payProof && ($stage->isPayStep() || ($stage->waits_for === WaitsFor::Supplier && $stage->template_id && $position->letterStatus() !== 'sent')))
+                        <a href="/work/deals/{{ $deal->id }}/payment-proof.pdf" target="_blank" class="mt-2 flex items-center gap-2 text-sm text-accent-text"><x-ui.file-icon name="Оплата.pdf" class="file-icon-s"/>Документ об оплате, PDF</a>
+                    @endif
                     {{-- ДКП: что вписываем мы (продавец по СТС, документы ТС, цена) — прямо в шаге, «Заполнить» открывает карточку «ДКП»
                          сразу полями (17.10.2026, владелец: «нет возможности указать данные продавца, всё встало» — поля жили за
                          «Изменить» внизу дорожки «Сделка»). Покупателя вносит менеджер — его тут нет. --}}
@@ -348,7 +360,7 @@
                                     <form method="post" action="/work/mail/messages/{{ $failedId }}/retry" class="order-first">@csrf<button class="btn btn-accent btn-s"><x-ui.icon name="send" class="size-4"/>Повторить отправку</button></form>
                                 @elseif (in_array($position->letterStatus(), ['unsent', 'bounced'], true))
                                     {{-- Письмо — окном писем, как везде (28.10.2026: ссылка уводила на отдельную страницу); ушло — в окне его ветка, закрыли — шаг перечитан. --}}
-                                    <x-mail.window-button :url="$offer->vendorLetterUrl($stage)" icon="send" :label="$position->letterStatus() === 'bounced' ? 'Написать снова' : 'Написать поставщику'" class="btn-accent btn-s order-first"/>
+                                    <x-mail.window-button :url="$offer->vendorLetterUrl($stage)" icon="send" :label="$position->letterStatus() === 'bounced' ? 'Написать снова' : ($deal && str_contains((string) $stage->template?->body, 'Документ об оплате') ? 'Отправить страховой' : 'Написать поставщику')" class="btn-accent btn-s order-first"/>
                                 @else
                                     <x-mail.window-button :url="$offer->vendorLetterUrl($stage)" icon="send" :label="$position->letterStatus() ? 'Написать ещё' : 'Письмо вендору'" class="btn-s"/>
                                 @endif
