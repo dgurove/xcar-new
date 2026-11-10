@@ -2,13 +2,16 @@
      строки (не ниже порога — сумма зелёным, ниже — жёлтая заливка, 26.10.2026; строкой группы .list в bids.blade), менеджер с телефоном, когда, комментарий. У ждущего — «Принять» (у предложения в сделке — «Отдать»:
      прежняя сделка отменится) листом «Отдать» с этим подтверждением (`x-offer.give-sheet`) и «Отклонить» рядом — одинаково в
      редакторе и карточке строки. Гаражное («В гараж») — без цены: сколько машин у менеджера уже в гараже. --}}
-@props(['bid', 'offer', 'parked' => collect()])
+@props(['bid', 'offer', 'parked' => collect(), 'deal' => null])
 @php
     use App\Offers\BidState;
     use App\Support\Money;
     $active = $bid->state === BidState::Active;
     $garage = $bid->isGarage();
-    $diff = $offer->asking_price && ! $garage ? $bid->amount - $offer->asking_price : null;
+    // Принятое — цена самой сделки (10.11.2026, владелец: «почему сумма сделки и подтверждения — две разные суммы»): копия
+    // в подтверждении не может разойтись с тем, по чему счета и договор.
+    $price = $deal && ! $garage && $deal->amount !== null ? (int) $deal->amount : $bid->amount;
+    $diff = $offer->asking_price && ! $garage ? $price - $offer->asking_price : null;
     // Светофор строки (26.10.2026): ниже порога — жёлтым, без слов (`Offer::bidZone`).
     $zone = $active && ! $garage && $bid->amount ? $offer->bidZone($bid->amount) : 'ok';
     $low = in_array($zone, ['low', 'bad'], true);
@@ -18,7 +21,7 @@
     // без согласия такую не примет (`Give`, `loss`).
     // Закупочная, с которой менеджер подтверждал (`bids.cost`, 15.10.2026), — она закрепится в сделке.
     $floor = $bid->frozenCost();
-    $under = ! $garage && $floor && $bid->amount !== null ? $floor - $bid->amount : null;
+    $under = ! $garage && $floor && $price !== null ? $floor - $price : null;
     $loss = $under !== null && $under >= 0;
     $give = (bool) $offer->deal;
     // «Отдать…» (07.11.2026): у сделки покупателя окно спрашивает — передать полностью или поручить параллельно.
@@ -27,7 +30,7 @@
 @endphp
 <div @class(['px-4 py-3', 'bid-row--loss' => ($loss && $active) || $high, 'bid-row--low' => $low && ! ($loss && $active), 'bid-row--ok' => $active && ! $garage && ! $low && ! $loss && ! $high])>
     <div class="flex flex-wrap items-center gap-x-2 gap-y-1">
-        <span class="bid-amount nums whitespace-nowrap text-lg font-semibold">{{ $garage ? 'В гараж' : Money::rub($bid->amount) }}</span>
+        <span class="bid-amount nums whitespace-nowrap text-lg font-semibold">{{ $garage ? 'В гараж' : Money::rub($price) }}</span>
         {{-- Опечатка в цене (02.11.2026, «9 400 000 вместо 940 000») — карандаш у суммы: поправить, а не отклонять. --}}
         @if ($active && ! $garage && $bid->amount)
             @php $tenth = (int) round($bid->amount / 10, -3); @endphp

@@ -299,6 +299,7 @@ class RepriceTest extends TestCase
         $deal = $deal->fresh();
         $this->assertSame([650000, 1100000, null], [$deal->cost, (int) $deal->amount, $deal->supplier_cost]);
         $this->assertSame(1100000, (int) $deal->bid->amount, 'подтверждение сделки — та же цена');
+        $this->actingAs($this->admin)->get('http://crm.xcar.localhost/offers/'.$this->offer->number)->assertOk()->assertSee(\App\Support\Money::rub(1100000), false);
         $this->assertSame(InvoiceState::Void, $first->fresh()->state);
         $this->assertEqualsWithDelta(1100000 - 650000 - 20000, $deal->issuedInvoices()->where('state', InvoiceState::Issued)->sole()->total, 0.01);
         $this->assertSame(RepriceAsk::AGREED, $ask->fresh()->state);

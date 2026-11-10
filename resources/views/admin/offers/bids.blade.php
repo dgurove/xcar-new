@@ -24,7 +24,7 @@
 {{-- Группы строк через линию (.list), а не плашка на каждое подтверждение. --}}
 <div class="flex flex-col gap-2">
     @if ($accepted)
-        <div class="list"><x-offer.bid :bid="$accepted" :offer="$offer" :parked="$parked"/></div>
+        <div class="list"><x-offer.bid :bid="$accepted" :offer="$offer" :parked="$parked" :deal="$offer->deal?->bid_id === $accepted->id ? $offer->deal : null"/></div>
         @unless ($inside ?? false)<a href="{{ $offer->crmPath() }}" class="btn btn-s btn-quiet self-start" data-turbo-frame="_top">Перейти к сделке</a>@endunless
     @endif
     @if ($parallelBids->isNotEmpty() && auth()->user()?->canManageCrm())
