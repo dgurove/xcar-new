@@ -3,6 +3,6 @@
 <span {{ $attributes->class('min-w-0 flex-1') }}>
     <span class="block">{{ $title }}</span>
     @foreach (\App\Offers\Signing::byDay($deal) as $d)
-        <span class="block nums"><span class="text-ink-muted">{{ $d['day']->locale('ru')->isoFormat('dd') }} {{ $d['day']->format('d.m') }}</span>&nbsp; {{ $d['all'] ? 'весь день' : implode(', ', $d['times']) }}</span>
+        <span class="block nums"><span class="text-ink-muted">{{ $d['day']->locale('ru')->isoFormat('dd') }} {{ $d['day']->format('d.m') }}</span>&nbsp; {{ implode(', ', $d['times']) }}</span>
     @endforeach
 </span>

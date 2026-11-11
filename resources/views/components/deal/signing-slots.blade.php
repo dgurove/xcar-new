@@ -1,6 +1,6 @@
 {{-- Когда покупатель сможет подписать — сетка «день × час» (11.11.2026, владелец: «следующие 5 рабочих дней и по часам слоты,
-     выбрать сколько угодно — в одни дни может в 12 и 14, в другие только в 9 и 16»). День строкой («12 ноября чт», «Весь день»
-     справа — отметить или снять все его часы), под ним часы филиала чипами-галками одним рядом; не влезает — ряд листается вбок
+     выбрать сколько угодно — в одни дни может в 12 и 14, в другие только в 9 и 16»). День строкой («12 ноября чт»; «Весь день»
+     владелец убрал), под ним часы филиала чипами-галками одним рядом; не влезает — ряд листается вбок
      (до краёв карточки, справа затухает, пока есть куда). Одна форма → `SaveSigningWish`, на кнопке — сколько отмечено
      (`slots_pick_controller`). Отмеченное раньше — отмечено. `back` — куда вернуться. --}}
 @props(['deal', 'action', 'back' => null, 'submit' => 'Отправить'])
@@ -14,10 +14,9 @@
     @if ($back)<input type="hidden" name="back" value="{{ $back }}">@endif
     @foreach ($grid as $date => $slots)
         @php $day = $slots->first(); @endphp
-        <div class="slot-day-row" data-slots-pick-target="day">
+        <div class="slot-day-row">
             <div class="slot-day-head">
                 <span class="min-w-0 flex-1"><span class="font-medium">{{ $day->locale('ru')->isoFormat('D MMMM') }}</span> <span class="text-ink-muted">{{ $day->isTomorrow() ? 'завтра' : $day->locale('ru')->isoFormat('dd') }}</span></span>
-                <button type="button" class="slot-all" data-action="slots-pick#all">Весь день</button>
             </div>
             <div class="slot-row" data-slots-pick-target="row" data-action="scroll->slots-pick#edge">
                 @foreach ($slots as $slot)

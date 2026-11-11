@@ -109,36 +109,29 @@ final class Signing
     }
 
     /**
-     * Слоты по дням: [день => [«9:00», …]], весь день филиала — «весь день» / «в любое время с … до …».
+     * Слоты по дням: [день => [«9:00», …]].
      *
-     * @return list<array{day: Carbon, times: list<string>, all: bool}>
+     * @return list<array{day: Carbon, times: list<string>}>
      */
     public static function byDay(Deal $deal): array
     {
-        $hours = self::times($deal);
-
-        return self::wish($deal)?->groupBy(fn (Carbon $c) => $c->toDateString())->map(function (Collection $g) use ($hours) {
-            $times = $g->map(fn (Carbon $c) => $c->format('G:i'))->values()->all();
-
-            return ['day' => $g->first()->copy()->startOfDay(), 'times' => $times, 'all' => array_diff($hours, $times) === []];
-        })->values()->all() ?? [];
+        return self::wish($deal)?->groupBy(fn (Carbon $c) => $c->toDateString())
+            ->map(fn (Collection $g) => ['day' => $g->first()->copy()->startOfDay(), 'times' => $g->map(fn (Carbon $c) => $c->format('G:i'))->values()->all()])
+            ->values()->all() ?? [];
     }
 
-    /** «чт 12.11 в 12:00 или 14:00, пт 13.11 весь день» — строкой шага и чата; null — не названо. */
+    /** «чт 12.11 в 12:00 или 14:00, пт 13.11 в 9:00» — строкой шага и чата; null — не названо. */
     public static function wishLine(Deal $deal): ?string
     {
-        $days = array_map(fn ($d) => $d['day']->locale('ru')->isoFormat('dd').' '.$d['day']->format('d.m').' '.($d['all'] ? 'весь день' : 'в '.self::either($d['times'])), self::byDay($deal));
+        $days = array_map(fn ($d) => $d['day']->locale('ru')->isoFormat('dd').' '.$d['day']->format('d.m').' в '.self::either($d['times']), self::byDay($deal));
 
         return $days ? implode(', ', $days) : null;
     }
 
-    /** В письме: «в четверг 12.11 в 12:00 или 14:00; в пятницу 13.11 в любое время с 9:00 до 18:00». */
+    /** В письме: «в четверг 12.11 в 12:00 или 14:00; в пятницу 13.11 в 9:00». */
     public static function wishWords(Deal $deal): string
     {
-        $o = self::office($deal);
-        $hm = fn (string $t) => preg_replace('/^0(\d)/', '$1', $t);
-        $days = array_map(fn ($d) => self::on($d['day']).' '.$d['day']->format('d.m').' '
-            .($d['all'] ? 'в любое время с '.$hm($o['from']).' до '.$hm($o['to']) : 'в '.self::either($d['times'])), self::byDay($deal));
+        $days = array_map(fn ($d) => self::on($d['day']).' '.$d['day']->format('d.m').' в '.self::either($d['times']), self::byDay($deal));
 
         // Дни — через «;»: внутри дня уже «или» («в 12:00 или 14:00»).
         return implode('; ', $days);

@@ -3308,8 +3308,6 @@ html.kb-open { --home-gap: 0px; }
      p-5 / sm:p-6), полосы нет, справа затухает, пока есть куда листать; на ПК 9 часов влезают — ряд обычный. */
   .slot-days { @apply flex flex-col gap-4; }
   .slot-day-head { @apply mb-2 flex items-baseline gap-3; }
-  .slot-all { @apply shrink-0 text-sm text-ink-muted; }
-  .slot-all.is-on { @apply text-ink; }
   .slot-row { display: flex; gap: .5rem; overflow-x: auto; overscroll-behavior-x: contain; scroll-snap-type: x proximity; scrollbar-width: none;
     -webkit-overflow-scrolling: touch; touch-action: pan-x pan-y; }
   .slot-row::-webkit-scrollbar { display: none; }

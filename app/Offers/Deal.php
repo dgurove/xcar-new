@@ -196,7 +196,7 @@ class Deal extends Model
             }
             // Поставщик не смог в названное время и предложил своё (11.11.2026, `Signing`) — словами, что выбирать.
             if ($this->signing_slots && Signing::picks($req->stage)) {
-                return ['title' => 'Поставщик предложил другое время — выберите', 'due' => $req->due_at, 'kind' => 'ask'];
+                return ['title' => 'Поставщик предложил другое время для подписания', 'due' => $req->due_at, 'kind' => 'ask'];
             }
             $pays = $req->stage && $this->paysSupplierOn($req->stage) && ($label = $this->schemeOf()->payLabel());
 

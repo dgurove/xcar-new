@@ -32,22 +32,34 @@ final class StepAsk
                 || Message::where('requirement_id', $r->id)->exists()) {
                 return;
             }
-            app(PlatformMessage::class)(app(OpenChat::class)($deal->offer, $deal->buyer, greet: false), self::text($r), $r);
+            // Оплатить страховой — сразу и сам счёт вложением (11.11.2026, владелец).
+            $bill = $r->stage && $deal->paysSupplierOn($r->stage) ? \App\Offers\SupplierInvoice::shown($deal->offer)->take(1) : collect();
+            app(PlatformMessage::class)(app(OpenChat::class)($deal->offer, $deal->buyer, greet: false), self::text($r), $r, media: $bill);
         });
     }
 
-    /** Текст сообщения: на согласии — прежний вопрос, иначе — что сделать словами дела (`Deal::managerTask`) и до когда. */
+    /**
+     * Текст сообщения — без «вы» и «ты» (11.11.2026, владелец: «не „Оплатите“, а „Пришёл счёт от страховой“», «не „Привет!“, а
+     * „Привет,“»): на согласии — «Привет, берём в работу?»; оплата страховой — «Привет, пришёл счёт от страховой на 1 593 000 ₽»
+     * без срока (счёт — вложением, `post`); остальное — дело словами без обращения (`Wording::neutral`) и срок.
+     */
     public static function text(Requirement $r): string
     {
         if ($r->stage?->asksConsent()) {
             return Notify::CONSENT_ASK;
         }
-        $task = $r->deal?->managerTask();
-        $title = $task && $task['kind'] === 'ask' ? $task['title'] : $r->title;
-        // Вопрос («Когда покупатель сможет подписать договор?») — без «, до …» за знаком вопроса.
-        $due = $r->due_at && ! str_ends_with($title, '?') ? ', до '.Ago::day($r->due_at, true) : '';
+        $deal = $r->deal;
+        $due = $r->due_at ? Ago::day($r->due_at, true) : null;
+        if ($deal && $r->stage && $deal->paysSupplierOn($r->stage)) {
+            $sum = $deal->supplierPayment();
 
-        return 'Привет! '.Wording::for($r->deal?->buyer, $title).$due;
+            // Без срока оплаты (11.11.2026, владелец): только что пришло и сколько, сам счёт — вложением.
+            return 'Привет, пришёл счёт от страховой'.($sum ? ' на '.\App\Support\Money::rub($sum) : '');
+        }
+        $task = $deal?->managerTask();
+        $title = Wording::neutral(Wording::for($deal?->buyer, $task && $task['kind'] === 'ask' ? $task['title'] : $r->title));
+
+        return 'Привет, '.$title.($due && ! str_ends_with($title, '?') ? ', до '.$due : '');
     }
 
     /**

@@ -128,7 +128,7 @@ class ManagerAsksTest extends TestCase
         $this->assertNotNull(ManagerAsk::for($deal->fresh()));
         // Остальные шаги — сообщением с кнопками, но без второго уведомления: о ходе сказал `YourTurnNotice`.
         $step = Message::where('requirement_id', $deal->openRequirement()->firstOrFail()->id)->firstOrFail();
-        $this->assertStringStartsWith('Привет! ', $step->text);
+        $this->assertStringStartsWith('Привет, ', $step->text);
         Notification::assertNotSentTo($this->manager, ChatNotice::class, fn ($n) => $n->message()->is($step));
 
         $this->actingAs($this->manager)->post("http://xcar.localhost/deals/{$deal->id}/buyer-photos", [

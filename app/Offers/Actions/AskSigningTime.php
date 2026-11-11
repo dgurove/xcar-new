@@ -17,7 +17,7 @@ use Illuminate\Support\Facades\DB;
  */
 final class AskSigningTime
 {
-    public const CHAT_TEXT = 'Привет! Поставщик готовит договор. Когда покупатель сможет подписать? Выберите время — сразу запишем';
+    public const CHAT_TEXT = 'Привет, поставщик готовит договор. Когда покупатель сможет подписать? Время можно выбрать заранее — запишем сразу, как договор будет готов';
 
     public function __invoke(Deal $deal, bool $notify = true): bool
     {

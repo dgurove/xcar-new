@@ -79,7 +79,8 @@ use Illuminate\Support\Facades\Notification;
 final class Notify
 {
     /** Вопрос менеджеру в чате, когда спрашиваем согласие (`stageEntered`). */
-    public const CONSENT_ASK = 'Привет, подтверждаешь? Берём?';
+    // Без «ты» и «вы» (11.11.2026, владелец): было «Привет, подтверждаешь? Берём?».
+    public const CONSENT_ASK = 'Привет, берём в работу?';
 
     public function subscribe(Dispatcher $events): array
     {
@@ -346,7 +347,8 @@ final class Notify
         $chat = $e->message->chat;
         // Ход менеджера в чате (`StepAsk`): о нём уже сказал `YourTurnNotice` — второе уведомление о том же не нужно. Кроме
         // «Привет, подтверждаешь? Берём?» — оно и уведомлением чата с 06.11.2026 (владелец: «чтобы они точно увидели»).
-        if ($e->message->requirement_id && ! $e->message->author_id && $e->message->text !== self::CONSENT_ASK) {
+        // Вопрос «Когда покупатель сможет подписать?» (`ask`) — о нём сказал `SigningTimeNotice`.
+        if ((($e->message->requirement_id && $e->message->text !== self::CONSENT_ASK) || $e->message->ask) && ! $e->message->author_id) {
             return;
         }
         if ($e->message->author_kind === AuthorKind::Participant) {
