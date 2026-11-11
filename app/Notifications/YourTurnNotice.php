@@ -2,7 +2,6 @@
 
 namespace App\Notifications;
 
-use App\Offers\Handover;
 use App\Support\Ago;
 use App\Telegram\Text;
 use App\Workflow\Outcome;
@@ -98,7 +97,7 @@ final class YourTurnNotice extends Notice
     /** Исход согласия: take — «Беру в работу», drop — «Я передумал». */
     public static function consentExit(Requirement $r, string $which): ?Outcome
     {
-        $exits = $r->deal ? Handover::managerExits($r->stage, $r->deal) : collect();
+        $exits = $r->deal ? $r->deal->managerExits($r->stage) : collect();
 
         return $exits->first(fn (Outcome $e) => $which === 'take' ? $e->takes() : $e->isRetreat());
     }

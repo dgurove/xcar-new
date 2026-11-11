@@ -14,6 +14,7 @@ use App\Garage\Car as GarageCar;
 use App\Garage\GaragePayer;
 use App\Logistics\Channel;
 use App\Park\Pass;
+use App\Park\Vehicle;
 use App\Park\VehicleState;
 use App\Support\Demo\HidesDemo;
 use App\Support\FastAttributes;
@@ -182,7 +183,7 @@ class Deal extends Model
         }
         // Просьба шага главнее реквизитов фотографией (10.11.2026): прислал паспорт до «Беру в работу» — согласие не пропадает.
         $req = $this->openRequirement;
-        if ($this->buyer_scans_at && (! $req || $req->asks === \App\Workflow\Asks::Buyer)) {
+        if ($this->buyer_scans_at && (! $req || $req->asks === Asks::Buyer)) {
             return null;
         }
         if ($req) {
@@ -460,6 +461,22 @@ class Deal extends Model
     public function passes(): HasMany
     {
         return $this->hasMany(Pass::class);
+    }
+
+    /**
+     * Пропуск на выдачу этой машины с парковки (страница сделки менеджера и выдача в CRM — одна выборка, 11.11.2026):
+     * живой, а без него — погашенный самой парковкой (покупатель отказался, выдача снята), чтобы сказать почему; погашенный
+     * сменой получателя (`SyncParkRelease::CHANGED`) не в счёт — новый выдан или будет.
+     *
+     * @return array{0: ?Pass, 1: ?Pass} живой, погашенный парковкой
+     */
+    public function releasePass(Vehicle $vehicle): array
+    {
+        $passes = $this->passes()->where('vehicle_id', $vehicle->id);
+        $pass = (clone $passes)->whereNull('revoked_at')->latest('id')->first();
+
+        return [$pass, $pass ? null : $passes->whereNotNull('revoked_at')
+            ->where('revoke_reason', '!=', Actions\SyncParkRelease::CHANGED)->latest('id')->first()];
     }
 
     /** Исход ведёт в конец сделки «Сделка закрыта» (оффер — «Выдан»). */
@@ -915,6 +932,22 @@ class Deal extends Model
     public function isParallel(): bool
     {
         return $this->state === DealState::Parallel;
+    }
+
+    /**
+     * Чем менеджер отвечает на шаг — одна дверь (11.11.2026: страница сделки, ответ из чата, поток файлов шага, кнопки чата
+     * и Telegram выбирали каждый сам, и у параллельной поток файлов и чат рисовали кнопки шага основной машины): у
+     * параллельной — исходы её теневого шага (`Parallels::exits`), у остальных — `Handover::managerExits`.
+     *
+     * @return \Illuminate\Support\Collection<int, Outcome>
+     */
+    public function managerExits(?Stage $stage): \Illuminate\Support\Collection
+    {
+        if (! $stage) {
+            return collect();
+        }
+
+        return $this->isParallel() ? Parallels::exits($this, $stage) : Handover::managerExits($stage, $this);
     }
 
     /**

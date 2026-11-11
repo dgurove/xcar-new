@@ -5,13 +5,10 @@
 @php
     /** @var \App\Offers\Handover $handover */
     $vehicle = $handover->park;
-    $pass = $vehicle->passes()->where('deal_id', $deal->id)->whereNull('revoked_at')->latest('id')->first();
+    [$pass, $revoked] = $deal->releasePass($vehicle);
     $receiver = $deal->receiver();
     $stored = $vehicle->state === \App\Park\VehicleState::Stored;
     $keeper = $stored ? \App\Offers\Handover::parkContact($vehicle) : null;
-    // Парковка погасила пропуск сама (покупатель отказался, выдача снята) — сказать почему: новый — выбором «Заберёт».
-    $revoked = $pass ? null : $vehicle->passes()->where('deal_id', $deal->id)->whereNotNull('revoked_at')
-        ->where('revoke_reason', '!=', \App\Offers\Actions\SyncParkRelease::CHANGED)->latest('id')->first();
     $sheet = 'receiver-'.$deal->id;
     $url = $pass ? \App\Support\Surface::Site->url('/pass/'.$pass->code) : null;
 @endphp

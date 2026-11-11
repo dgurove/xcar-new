@@ -15,7 +15,7 @@
     // Готов — с паспортом и его сканом у физлица (`Party::readyAsBuyer`, 11.10.2026); без скана — та же шторка данных.
     $ready = $buyer?->party?->readyAsBuyer();
     $gap = $buyer?->party?->buyerGap();
-    $mine = $me->buyers()->orderBy('name')->get(['id', 'name']);
+    $mine = \App\Support\People::buyersOf($me);
     $prime = $deal->isPrime();
     $editable = $deal->isLive();
     // Гаражная «платит менеджер»: ДКП ПРАЙМ с ним самим — выбирать покупателя нечего, нужны только его данные.
@@ -94,8 +94,7 @@
                  в пользователей, это бред»): «Я сам», свои покупатели, «+ Новый покупатель» тут же — данными (пароль, вход) или
                  ссылкой, что помнит сделку. Выбор сразу сохраняется; данных для договора нет — следом их шторка со сканом. --}}
             @php
-                $rows = collect([['name' => 'Я сам'] + \App\Support\People::row($me, $me->party?->readyAsBuyer() ? 'данные для договора есть' : 'ваши данные для договора')])->map(fn ($r) => ['id' => 'me'] + $r)
-                    ->concat($me->buyers()->with('party')->orderBy('name')->get()->map(fn ($b) => \App\Support\People::row($b, $b->party?->readyAsBuyer() ? 'данные для договора есть' : ($b->phone ? \App\Support\Phone::format($b->phone) : 'данных для договора нет'))));
+                $rows = \App\Support\People::contractBuyers($me, 'Я сам', 'ваши данные для договора');
             @endphp
             <form method="post" action="/deals/{{ $deal->id }}/contract" class="contents">
                 @csrf @method('put')

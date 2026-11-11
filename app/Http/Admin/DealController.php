@@ -18,6 +18,7 @@ use App\Offers\InsurerReplies;
 use App\Offers\OfferFiles;
 use App\Offers\ReplyKind;
 use App\Offers\ReplyReview;
+use App\Offers\Reprice;
 use App\Support\Detail;
 use App\Support\Facets\Common;
 use App\Support\Facets\Facet;
@@ -31,7 +32,6 @@ use App\Support\Surface;
 use App\Support\Table\ColRole;
 use App\Support\Table\Column;
 use App\Support\Table\Table;
-use App\Offers\Reprice;
 use App\Users\User;
 use App\Vendors\Vendor;
 use App\Workflow\Actions\TakeExit;
@@ -41,6 +41,7 @@ use App\Workflow\Position;
 use App\Workflow\Track;
 use App\Workflow\WaitsFor;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\DB;
@@ -127,17 +128,25 @@ class DealController
         $link = fn (array $set) => '/work/deals?'.str_replace('%2C', ',', http_build_query(array_filter(
             array_merge(array_diff_key($request->query(), array_flip(['page', 'rows', 'part', 'peek', 'sub'])), $set), fn ($v) => $v !== null && $v !== '')));
         $work = match (true) {
-            $work && $preset === 'us' => self::todo($work, $sort->key === 'deadline', $request, $link, $live),
-            $work !== null => self::waiting($work, $preset, $request, $link, $live),
+            $work && $preset === 'us' => self::todo($work, $sort->key === 'deadline', $request, $link, $live) + ['all' => $work->count()],
+            $work !== null => self::waiting($work, $preset, $request, $link, $live) + ['all' => $work->count()],
             default => null,
         };
+        $total = $work['all'] ?? null;
         $groups = $preset === 'us' ? $work['groups'] ?? null : null;
         $waiting = $preset !== 'us' ? $work['groups'] ?? null : null;
-        $debts = $preset === 'pay' && ! $searching ? self::debts($q->get()) : null;
+        $paying = $preset === 'pay' && ! $searching ? $q->get() : null;
+        $debts = $paying ? self::debts($paying) : null;
         // Таблица — порциями по сотне (`Portion`), «Все» — целиком: группы по этапу собираются в памяти, порция их порвала бы;
-        // строками — постранично.
+        // строками — постранично. Дела, «Ждём …» и «Оплата» уже загружены целиком — вторая выборка страницы с теми же тяжёлыми
+        // связями не нужна (11.11.2026: сотня строк грузилась и не рисовалась), виду нужно только число.
         $table = ListView::isTable(ListView::pick($request, 0));
-        $deals = $table ? ListView::paginate($request, $q, whole: $preset === 'all' && ! $searching) : $q->paginate(ListView::perPage($request, ListView::PER_ROWS))->withQueryString();
+        $deals = match (true) {
+            $total !== null => new LengthAwarePaginator([], $total, 1),
+            $paying !== null => new LengthAwarePaginator([], $paying->count(), 1),
+            $table => ListView::paginate($request, $q, whole: $preset === 'all' && ! $searching),
+            default => $q->paginate(ListView::perPage($request, ListView::PER_ROWS))->withQueryString(),
+        };
 
         return view('admin.deals.index', [
             'groups' => $groups,

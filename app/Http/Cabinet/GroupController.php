@@ -26,7 +26,6 @@ class GroupController
     public function show(Request $request, BuyerGroup $group)
     {
         $me = $request->user();
-        abort_unless($group->manager_id === $me->id, 404);
         $group->load('members');
         $offerIds = Showing::where('group_id', $group->id)->pluck('offer_id');
 
@@ -40,7 +39,6 @@ class GroupController
 
     public function update(Request $request, BuyerGroup $group)
     {
-        abort_unless($group->manager_id === $request->user()->id, 404);
         $data = $request->validate(['name' => ['required', 'string', 'max:60']]);
         $group->update(['name' => trim($data['name'])]);
 
@@ -50,7 +48,6 @@ class GroupController
     public function members(Request $request, BuyerGroup $group)
     {
         $me = $request->user();
-        abort_unless($group->manager_id === $me->id, 404);
         $ids = collect($request->input('users', []))->map(fn ($v) => (int) $v)->all();
         $allowed = $me->buyers()->whereIn('id', $ids)->pluck('id')->all();
         $changes = $group->members()->sync(collect($allowed)->mapWithKeys(fn ($id) => [$id => ['created_at' => now()]])->all());
@@ -63,7 +60,6 @@ class GroupController
     public function destroy(Request $request, BuyerGroup $group, HideOffers $hide)
     {
         $me = $request->user();
-        abort_unless($group->manager_id === $me->id, 404);
         // Сначала снимаем показы группы действием — покупатели получат «карточка ушла», потом саму группу.
         $hide($me, Showing::where('group_id', $group->id)->pluck('offer_id')->all(), null, $group);
         $group->delete();

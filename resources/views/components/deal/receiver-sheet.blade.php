@@ -5,7 +5,7 @@
 @php
     $manager = $deal->buyer;
     $mine = auth()->id() === $deal->buyer_id;
-    $buyers = $manager?->buyers()->with(\App\Users\User::withAvatar())->orderBy('name')->get() ?? collect();
+    $buyers = $manager ? \App\Support\People::buyersOf($manager) : collect();
     $r = $receiver ?? $deal->receiver();
     $who = old('who', match (true) {
         filled($deal->receiver_name) => 'other',

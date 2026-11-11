@@ -14,7 +14,9 @@ use App\Live\Stream;
 use App\Logistics\Actions\RequestPickup;
 use App\Logistics\Actions\SelfPickup;
 use App\Media\PhotoIngest;
+use App\Offers\Actions\PickSigningTime;
 use App\Offers\Actions\SaveDealContract;
+use App\Offers\Actions\SaveSigningWish;
 use App\Offers\Actions\SetReceiver;
 use App\Offers\Bid;
 use App\Offers\BidState;
@@ -25,7 +27,10 @@ use App\Offers\Disclosures;
 use App\Offers\Handover;
 use App\Offers\OfferState;
 use App\Offers\Parallels;
+use App\Offers\Signing;
+use App\Support\Ago;
 use App\Support\ListPrefs;
+use App\Support\SafeBack;
 use App\Support\Sort;
 use App\Users\Actions\AddPerson;
 use App\Users\Actions\IssueInvite;
@@ -209,7 +214,7 @@ class DealController
     /** Карточка чата по сделке — фрейм перечитывает её по новому сообщению. */
     public function chat(Request $request, Deal $deal)
     {
-        abort_unless($deal->buyer_id === $request->user()->id && $deal->offer->chatOpenFor($request->user()), 404);
+        abort_unless($deal->offer->chatOpenFor($request->user()), 404);
 
         return view('cabinet.deals.chat-card', ['deal' => $deal, 'offer' => $deal->offer]);
     }
@@ -233,7 +238,10 @@ class DealController
             'blocks' => $blocks,
             'steps' => $steps,
             'requirement' => $deal->openRequirement,
-            'exits' => $deal->openRequirement ? ($deal->isParallel() && $position ? Parallels::exits($deal, $position->stage) : Handover::managerExits($position?->stage, $deal)) : collect(),
+            'exits' => $deal->openRequirement ? $deal->managerExits($position?->stage) : collect(),
+            // Чего не хватает счёту ПРАЙМ на шаге оплаты (`Deal::invoiceGap`) — одно значение на страницу и задачу (11.11.2026:
+            // страница и `cabinet.deals.step` считали его каждая сама).
+            'payGap' => $deal->isLive() && $position?->stage->isPayStep() && $deal->hasContract() ? $deal->invoiceGap() : null,
             'handover' => Handover::for($deal),
             // Из писем страховой — только то, что показал админ (`Offers\Disclosure`, 03.11.2026, владелец: «менеджеру вообще
             // ничего не показываем, пока админ не нажмёт»), новое сверху. Самих писем и их телефонов здесь нет.
@@ -247,7 +255,6 @@ class DealController
 
     public function answer(Request $request, Deal $deal, AnswerRequirement $answer)
     {
-        abort_unless($deal->buyer_id === $request->user()->id, 404);
         $data = $request->validate(['exit' => ['required', 'integer'], 'requirement' => ['nullable', 'integer'], 'back' => ['nullable', 'string', 'max:500']]);
         // Кнопка не со страницы сделки (чат, полка, вопрос при входе — `x-deal.ask-action`) несёт свою просьбу: на неё уже
         // ответили (за него, сам шаг ушёл) — не отвечаем на новую чужой кнопкой.
@@ -271,9 +278,7 @@ class DealController
     /** Туда, откуда нажали (`back` — путь этого же сайта: чат, «Предложения», «Сделки»), иначе на сделку. */
     private function back(Request $request, Deal $deal)
     {
-        $back = (string) $request->input('back');
-
-        return redirect(str_starts_with($back, '/') && ! str_starts_with($back, '//') && ! str_contains($back, '\\') ? $back : $deal->href());
+        return redirect(SafeBack::path($request->input('back')) ?? $deal->href());
     }
 
     /**
@@ -283,7 +288,6 @@ class DealController
     public function chatFiles(Request $request, Deal $deal, AttachChatFiles $attach, AnswerRequirement $answer)
     {
         $me = $request->user();
-        abort_unless($deal->buyer_id === $me->id, 404);
         $data = $request->validate(['message' => ['required', 'integer'], 'back' => ['nullable', 'string', 'max:500']]);
         $requirement = $deal->openRequirement()->with('stage.exits')->first();
         if (! $requirement || $requirement->asks !== Asks::Document) {
@@ -295,7 +299,7 @@ class DealController
         if ($attach($requirement, $message) === 0) {
             return $this->back($request, $deal)->with('toast', 'Файл не нашёлся, приложите его на шаге');
         }
-        $exits = $deal->isParallel() ? Parallels::exits($deal, $requirement->stage) : Handover::managerExits($requirement->stage, $deal);
+        $exits = $deal->managerExits($requirement->stage);
         $moves = $exits->reject(fn (Outcome $e) => $e->isRetreat() || Deal::closes($e))->values();
         if ($moves->count() !== 1) {
             return redirect($deal->href().'#step')->with('toast', 'Приложено, ответьте на шаге');
@@ -314,7 +318,7 @@ class DealController
     public function buyerPhotos(Request $request, Deal $deal, AddPerson $add, IssueInvite $issue, StorePassportScan $store, SaveDealContract $save, PhotoIngest $ingest)
     {
         $me = $request->user();
-        abort_unless($deal->buyer_id === $me->id && $deal->isLive() && ! $me->isSuperBuyer(), 404);
+        abort_unless($deal->isLive() && ! $me->isSuperBuyer(), 404);
         $data = $request->validate(['kind' => ['required', 'in:passport,company'], 'files' => ['required', 'array', 'min:1', 'max:4'],
             'files.*' => PassportScanController::FILE], ['files.required' => 'Сфотографируйте документ']);
         $files = array_values($request->file('files'));
@@ -337,44 +341,40 @@ class DealController
     /** «Ещё нет» и закрытие вопроса при входе (`x-deal.ask-sheet`): до завтра не спрашиваем (`requirements.prompted_at`). */
     public function later(Request $request, Deal $deal)
     {
-        abort_unless($deal->buyer_id === $request->user()->id, 404);
         $deal->openRequirement()->first()?->update(['prompted_at' => now()]);
 
         return $request->expectsJson() ? response()->noContent() : $this->back($request, $deal);
     }
 
     /** Время подписания у поставщика — плиткой или своим (`PickSigningTime`). */
-    public function signing(Request $request, Deal $deal, \App\Offers\Actions\PickSigningTime $pick)
+    public function signing(Request $request, Deal $deal, PickSigningTime $pick)
     {
-        abort_unless($deal->buyer_id === $request->user()->id, 404);
         $deal = $pick($deal, $request->user(), (string) $request->validate(['at' => ['required', 'string', 'max:30']])['at']);
 
-        return $this->back($request, $deal)->with('toast', 'Записываем на '.\App\Support\Ago::at($deal->signing_at, true, words: false));
+        return $this->back($request, $deal)->with('toast', 'Записываем на '.Ago::at($deal->signing_at, true, words: false));
     }
 
     /** Когда покупатель сможет подписать договор (`SaveSigningWish`): день и время — со страницы сделки и из чата. */
-    public function signingWish(Request $request, Deal $deal, \App\Offers\Actions\SaveSigningWish $save)
+    public function signingWish(Request $request, Deal $deal, SaveSigningWish $save)
     {
-        abort_unless($deal->buyer_id === $request->user()->id, 404);
         $data = $request->validate(['slots' => ['required', 'array', 'max:60'], 'slots.*' => ['string', 'max:16']], ['slots.required' => 'Отметьте хотя бы одно время']);
         $deal = $save($deal, $request->user(), $data['slots']);
 
-        return $this->back($request, $deal)->with('toast', 'Покупатель может '.\App\Offers\Signing::wishLine($deal));
+        return $this->back($request, $deal)->with('toast', 'Покупатель может '.Signing::wishLine($deal));
     }
 
     /** Встреча в календарь телефона: подписание на час, с адресом. */
     public function signingIcs(Request $request, Deal $deal)
     {
-        abort_unless($deal->buyer_id === $request->user()->id && \App\Offers\Signing::booked($deal), 404);
+        abort_unless(Signing::booked($deal), 404);
 
-        return response(\App\Offers\Signing::ics($deal), 200, ['Content-Type' => 'text/calendar; charset=utf-8',
+        return response(Signing::ics($deal), 200, ['Content-Type' => 'text/calendar; charset=utf-8',
             'Content-Disposition' => 'attachment; filename="podpisanie-'.$deal->offer->number.'.ics"']);
     }
 
     /** Кто заберёт машину с нашей парковки и когда (`SetReceiver`): пропуск новый, парковка видит сразу. */
     public function receiver(Request $request, Deal $deal, SetReceiver $set)
     {
-        abort_unless($deal->buyer_id === $request->user()->id, 404);
         $deal = $set($deal, $request->user(), $request->validate(['who' => ['required', 'string', 'max:20'], 'name' => ['nullable', 'string', 'max:160'],
             'phone' => ['nullable', 'string', 'max:32'], 'at' => ['nullable', 'date']]));
 
@@ -384,7 +384,11 @@ class DealController
     /** «Попросить вывоз…» — менеджер, что забирает сам, просит логистов (`RequestPickup`). */
     public function requestPickup(Request $request, Deal $deal, RequestPickup $pickup)
     {
-        abort_unless($deal->buyer_id === $request->user()->id && $deal->isActive() && $deal->offer, 404);
+        abort_unless($deal->isActive() && $deal->offer, 404);
+        // То же правило, что рисует кнопку (`Handover::canRequest`, 11.11.2026: просить можно было и когда ТС уже у нас).
+        if (! Handover::for($deal)->canRequest) {
+            return $this->back($request, $deal)->with('toast-danger', 'Вывоз сейчас не нужен');
+        }
         $pickup($deal->offer, $request->user());
 
         return $this->back($request, $deal)->with('toast', 'Попросили вывоз, логистика назначит исполнителя');
@@ -393,8 +397,10 @@ class DealController
     /** «Автомобиль забрал», когда шага получения в маршруте нет (`Handover::canPick`): вывоз закрыт у него. */
     public function picked(Request $request, Deal $deal, SelfPickup $self)
     {
-        abort_unless($deal->buyer_id === $request->user()->id && $deal->isActive() && $deal->offer, 404);
-        abort_unless(Handover::for($deal)->canPick, 422, 'Забрать сейчас нельзя');
+        abort_unless($deal->isActive() && $deal->offer, 404);
+        if (! Handover::for($deal)->canPick) {
+            return redirect($deal->href())->with('toast-danger', 'Забрать сейчас нельзя');
+        }
         $self($deal->offer, $request->user(), $request->user());
 
         return redirect($deal->href())->with('toast', 'Автомобиль забрал');
@@ -402,7 +408,6 @@ class DealController
 
     public function upload(Request $request, Deal $deal)
     {
-        abort_unless($deal->buyer_id === $request->user()->id, 404);
         $requirement = $deal->openRequirement()->firstOrFail();
         $request->validate(['file' => ['required', 'file', 'max:30720']]);
         $file = $request->file('file');
@@ -417,7 +422,6 @@ class DealController
 
     public function removeFile(Request $request, Deal $deal, Media $media)
     {
-        abort_unless($deal->buyer_id === $request->user()->id, 404);
         $requirement = $deal->openRequirement()->firstOrFail();
         abort_unless($media->model_id === $requirement->id && $media->model_type === $requirement::class, 404);
         $media->delete();
@@ -431,9 +435,9 @@ class DealController
         // Файл шага видят CRM (путь сделки) и вторая вкладка менеджера — без перезагрузки (19.10.2026).
         RefreshDeal::of($deal);
         $requirement = $requirement->fresh();
-        $stage = $deal->offer->position(Track::Sale)?->stage;
 
+        // Кнопки — шага этой просьбы (у параллельной — её теневого), а не шага машины.
         return Stream::view('cabinet.deals.files-stream', ['requirement' => $requirement, 'deal' => $deal,
-            'exits' => Handover::managerExits($stage, $deal)]);
+            'exits' => $deal->managerExits($requirement->stage)]);
     }
 }

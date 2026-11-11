@@ -6,7 +6,7 @@
     @else
         <div class="list">
             @foreach ($interests as $interest)
-                @include('cabinet.buyers.interest-row', ['interest' => $interest])
+                @include('cabinet.buyers.interest-row', ['interest' => $interest, 'visible' => $visible])
             @endforeach
         </div>
         <x-ui.pager :of="$interests" :sizes="[]"/>

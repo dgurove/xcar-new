@@ -15,53 +15,24 @@
     use App\Offers\OfferState;
     $n = $offer->number;
     $price = \App\Offers\PriceView::for($offer, auth()->user());
-    // Подтверждения принимает только админ: модератору ни их числа, ни отсчёта приёма, ни «выбрать» — «в продаже».
-    $admin = (bool) auth()->user()?->canManageCrm();
-    $left = $gallery || ! $admin || ! $offer->state->acceptsBids() ? null : $offer->secondsLeft();
-    $tone = match ($offer->state->tone()) { 'open' => 'text-accent-text', 'urgent' => 'text-urgent', 'danger' => 'text-danger', default => '' };
-    $count = ! $admin ? 0 : ($gallery ? (int) $offer->interests_count : (int) $offer->active_bids_count);
-    // Гаражные подтверждения без суммы — отдельно словом (владелец 05.10.2026: «непонятно, что такое 1»).
-    $garageBids = $gallery ? 0 : min($count, (int) $offer->garage_bids_count);
-    $priceBids = $count - $garageBids;
-    $countWord = $gallery ? 'интерес '.$count : implode(', ', array_filter([$priceBids ? $priceBids.' подтв.' : null, $garageBids ? $garageBids.' в гараж' : null]));
-    $timer = $left !== null && $left > 0;
-    // Новое (опубликовано за сутки) — голубой точкой, горящее — рыжей, как на витрине (12.10.2026); только админу.
-    // Кружков у названия в CRM нет (30.10.2026, владелец: «бесят»): срок — часами у названия и чипом «Горит срок», «в минус» — у цены.
-    // Приём закрылся, а подтверждения есть — ход наш: «выбрать» оранжевым; без них — «приём закрыт».
-    $pick = $admin && $offer->state === OfferState::Open && ! $timer && $offer->bids_close_at;
     // В поиске (список смешанный) про строку важнее всего, где она: вкладкой, без часов и «выбрать».
     $mixed = (bool) $table->context('mixed');
     $checkable = $table->has('pick');
-    // Логотип — из одной выборки вендоров на страницу, а не связью на каждую строку.
-    $vendor = $offer->vendor_id ? \App\Vendors\Vendor::badges()->get($offer->vendor_id) : null;
-    // Списки грузят связи сами; дозагрузка — только если чего-то нет (сам `loadMissing` на строку стоил 4 % страницы).
-    if (! $offer->relationLoaded('parkVehicle') || ! $offer->relationLoaded('deal') || ! $offer->relationLoaded('garageCar')) {
-        $offer->loadMissing(['parkVehicle:id,car_id,state,accepted_at,created_at', 'deal', 'garageCar']);
-    }
-    // После продажи — не слово вкладки «Сделки», а этап сделки и менеджер (`DealLine`, 27.10.2026, владелец: «видно, у кого
-    // она в сделке и какой этап»): «Оплата, просрочено 3 д» красным, «Гараж: в продаже». Цвет — только просрочка.
-    $line = $admin && in_array($offer->state, [OfferState::Sold, OfferState::Delivered, OfferState::Garage, OfferState::Cancelled], true) ? \App\Offers\DealLine::forOffer($offer) : null;
-    $stateWord = $line?->word ?? $offer->crmTab();
-    $tone = $line ? $line->tone : $tone;
-    $draft = $offer->state === OfferState::Draft;
-    $unpriced = $draft && ! $offer->asking_price;
-    // «Оценить» — дело админа: модератор цену продажи не ставит, у него на месте слова пусто, закупочная — как была.
-    $rate = $unpriced && auth()->user()?->canManageCrm();
-    // Корректировки менеджеров у оценённого черновика (11.10.2026) — что показать у цены (`x-offer.correction-chip`).
-    $corrections = ! $rate && $offer->state === \App\Offers\OfferState::Draft && auth()->user()?->canManageCrm() && $offer->relationLoaded('openEstimates') ? $offer->openEstimates->filter->isCorrection() : collect();
-    $correcting = $corrections->isNotEmpty();
-    $proposes = $corrections->contains->proposes();
-    $waits = $corrections->contains(fn ($e) => ! $e->isGiven());
+    // Черновик завела почта (`AutoOffer`), файлы и документы догружаются (`AutoScan::states`): что уже знаем из письма —
+    // номер, вендор, закупочная, машина из темы — стоит сразу, остальное полосами; ход — строкой под названием.
+    $arriving = $arrive['state'] ?? null;
+    $busy = in_array($arriving, ['ghost', 'files', 'reading'], true);
+    // Что сказать о строке — один расчёт с плиткой (`Offers\OfferRow`): подтверждения, слово места, «Оценить», чего не хватает.
+    $r = \App\Offers\OfferRow::for($offer, auth()->user(), $gallery, $checkable, $busy);
+    [$admin, $timer, $count, $countWord, $line, $stateWord, $tone, $draft, $unpriced, $rate, $slot, $missing, $todo, $vendor, $noVin]
+        = [$r->admin, $r->timer, $r->count, $r->countWord, $r->line, $r->stateWord, $r->tone, $r->draft, $r->unpriced, $r->rate, $r->slot, $r->missing, $r->todo, $r->vendor, $r->noVin];
+    [$corrections, $correcting, $proposes, $waits, $garageBids, $priceBids] = [$r->corrections, $r->correcting(), $r->proposes(), $r->waits(), $r->garageBids, $r->priceBids];
+    // Приём закрылся, а подтверждения есть — ход наш: «выбрать» оранжевым; без них — «приём закрыт».
+    $pick = $admin && $offer->state === OfferState::Open && ! $timer && $offer->bids_close_at;
     // Закупочной нет — «Заполнить» в её ячейке (вкладка «Без закупочной цены», дело модератора); там же столбца цены нет,
     // и на телефоне справа стоит закупочная.
     $nofloor = $unpriced && ! $offer->floor_price && ! $offer->isScheduled();
     $floorSide = (bool) $table->context('floorSide');
-    // data-todo — у человека по строке есть дело (OfferController::todo): по таким карточка идёт «Дальше».
-    $todo = auth()->user() && \App\Http\Admin\OfferController::todo($offer, auth()->user());
-    // Поставлено в слот — «выйдет сегодня в 16:00» на месте состояния.
-    $slot = $offer->isScheduled() ? 'выйдет '.\App\Offers\Slots::phrase($offer->slot_at) : null;
-    // Чего не хватает для продажи — у оценённого черновика: галочки у такого нет.
-    $missing = $checkable && $draft && ! $slot ? array_map(fn ($m) => 'нет '.match ($m) { 'фотографии' => 'фото', 'марка' => 'марки', 'цена продажи' => 'цены', default => $m }, \App\Offers\Actions\ChangeOfferState::missing($offer)) : [];
     $has = fn (string $k) => $table->has($k);
     $when = match ($table->context('when')) {
         'published' => $offer->published_at,
@@ -75,13 +46,6 @@
     // Человека нет — система (26.10.2026, владелец: «пустота мне не нравится»): завела почта — конверт, Мигторг, парковка —
     // искра. Во вкладке шага — перевела система (`tab_by` пишется с 18.10.2026, раньше пусто у всех — там не угадываем).
     $system = ! $who && ($byTab ? (bool) $offer->tab_at?->gte('2026-10-18') : (bool) $offer->created_via);
-    // VIN на Мигторге не дают — его запрашивают у страховой (05.10.2026): красным у названия, пока продажа жива.
-    $noVin = blank($offer->vin) && in_array($offer->state, [OfferState::Draft, OfferState::Gallery, OfferState::Open], true);
-    // Черновик завела почта (`AutoOffer`), файлы и документы догружаются (`AutoScan::states`): что уже знаем из письма —
-    // номер, вендор, закупочная, машина из темы — стоит сразу, остальное полосами; ход — строкой под названием.
-    $arriving = $arrive['state'] ?? null;
-    $busy = in_array($arriving, ['ghost', 'files', 'reading'], true);
-    $noVin = $noVin && ! $busy;
     $late = $checkable && $draft && $offer->insurer_deadline_at && $offer->insurer_deadline_at->copy()->endOfDay()->lt($offer->slot_at ?? \App\Offers\Slots::nearest());
 @endphp
 <tr data-detail-key="{{ $n }}" data-search-row id="{{ ($gallery ? 'gallery-' : 'admin-offer-') }}{{ $n }}" data-offer-number="{{ $n }}" @if ($todo) data-todo @endif @if ($offer->claim_ref_key) data-flip="c:{{ $offer->claim_ref_key }}" @endif @if ($arrive) data-controller="arrive" data-arrive-state-value="{{ $arriving }}" data-arrive-subject-value="o:{{ $offer->id }}" @endif @class(['arrive arrive--offer' => $arrive, 'arrive--'.$arriving => $busy, 'arrive--busy' => $busy])>

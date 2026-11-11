@@ -162,6 +162,6 @@
     @endif
 @elseif (! $staff && $unpaid && ! $current->isOwed() && $car->invoice_to !== 'buyer' && $current->remaining() - $current->claimed() > 0)
     <div {!! $wrap('pay') !!}>
-        <x-billing.pay-sheet :invoices="collect([$invoice])" :action="'/garage/cars/'.$n.'/checkout'" :pdf="'/garage/cars/'.$n.'/invoice/pdf'" :buyers="$user->buyers()->orderBy('name')->get()" :open="$errors->any()" :other-name="$car->buyer_name"/>
+        <x-billing.pay-sheet :invoices="collect([$invoice])" :action="'/garage/cars/'.$n.'/checkout'" :pdf="'/garage/cars/'.$n.'/invoice/pdf'" :buyers="\App\Support\People::buyersOf($user)" :open="$errors->any()" :other-name="$car->buyer_name"/>
     </div>
 @endif

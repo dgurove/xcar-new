@@ -115,7 +115,7 @@ class SettlementController
         $data = $request->validate([
             'amount' => ['required', 'numeric', 'min:0.01'],
             'paid_at' => ['nullable', 'date', 'before_or_equal:today'],
-            'source' => ['nullable', \Illuminate\Validation\Rule::enum(PaymentSource::class)],
+            'source' => ['nullable', Rule::enum(PaymentSource::class)],
             'ref' => ['exclude_unless:source,bank,acquiring', 'nullable', 'string', 'max:60'],
             'note' => ['nullable', 'string', 'max:255'],
             'slip' => ['exclude_unless:source,bank', 'nullable', 'file', 'max:20480', 'mimes:pdf,jpg,jpeg,png,heic'],
@@ -197,10 +197,7 @@ class SettlementController
 
     private function car(Request $request, Offer $offer): Car
     {
-        $car = Car::where('offer_id', $offer->id)->with(['offer', 'manager', 'costs', 'invoice.payments', 'payoutInvoice', 'deal'])->firstOrFail();
-        abort_unless($request->user()->isAdmin() || $car->manager_id === $request->user()->id, 404);
-
-        return $car;
+        return Car::forOffer($offer, $request->user()) ?? abort(404);
     }
 
     private function staffCar(Request $request, Offer $offer): Car

@@ -47,6 +47,30 @@ final class People
             ->with(User::withAvatar())->orderBy('name')->get()));
     }
 
+    /**
+     * Покупатели менеджера (с контрагентом и аватаром) — раз на запрос: на странице сделки их брали три-четыре шторки
+     * своими одинаковыми запросами (11.11.2026).
+     *
+     * @return \Illuminate\Database\Eloquent\Collection<int, User>
+     */
+    public static function buyersOf(User $manager): \Illuminate\Database\Eloquent\Collection
+    {
+        return once(fn () => $manager->buyers()->with(['party', ...User::withAvatar()])->orderBy('name')->get());
+    }
+
+    /**
+     * Кто покупатель по ДКП — строки выбора (сделка менеджера на сайте и админом в CRM, `x-deal.contract` / `cabinet.deals.contract`):
+     * сам менеджер первой строкой (`id` — `me`), дальше его покупатели с тем, есть ли данные для договора.
+     *
+     * @return Collection<int, Row>
+     */
+    public static function contractBuyers(User $manager, string $self, string $selfMissing): Collection
+    {
+        return collect([['id' => 'me'] + ['name' => $self] + self::row($manager, $manager->party?->readyAsBuyer() ? 'данные для договора есть' : $selfMissing)])
+            ->concat(self::buyersOf($manager)->map(fn (User $b) => self::row($b, $b->party?->readyAsBuyer() ? 'данные для договора есть'
+                : ($b->phone ? Phone::format($b->phone) : 'данных для договора нет'))));
+    }
+
     /** Покупатели с гаражом по тумблеру — «Отдать → В гараж → Покупателю»; подпись — супер-покупатель или чей покупатель. */
     public static function garageBuyers(): Collection
     {

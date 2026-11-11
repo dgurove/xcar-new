@@ -103,7 +103,6 @@ class CarController
         return redirect(Surface::current() === Surface::Crm ? '/offers/'.$offer->number : '/garage')->with('toast', 'ТС вернулось в черновики');
     }
 
-    /** Машина этого человека или любая — сотруднику; чужая для менеджера не существует. */
     /** «Забрал» — менеджер забрал машину сам: вывоз закрыт «у него», подготовка начнётся сама (`SelfPickup`). */
     public function picked(Request $request, Offer $offer, SelfPickup $self)
     {
@@ -114,7 +113,7 @@ class CarController
         }
         $self($offer, $request->user(), $request->user());
 
-        return back()->with('toast', 'Забрал: '.$offer->titleWithYear());
+        return back()->with('toast', 'Автомобиль забрал');
     }
 
     /** «Нужен вывоз» — просит логистов (`RequestPickup`). */
@@ -138,11 +137,7 @@ class CarController
 
     private function car(Request $request, Offer $offer): Car
     {
-        $car = Car::where('offer_id', $offer->id)->with(['offer', 'offer.media', 'offer.settlement', 'manager', 'costs.author', 'invoice', 'payoutInvoice', 'deal'])->firstOrFail();
-        $car->costs->each->setRelation('car', $car);
-        abort_unless($request->user()->isAdmin() || $car->manager_id === $request->user()->id, 404);
-
-        return $car;
+        return Car::forOffer($offer, $request->user()) ?? abort(404);
     }
 
     private function costData(Request $request): array

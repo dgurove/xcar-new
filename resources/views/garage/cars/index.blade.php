@@ -27,7 +27,8 @@
         'tone' => $lines[$car->id]->tone, 'when' => $lines[$car->id]->when, 'value' => $lines[$car->id]->value,
         'caption' => $lines[$car->id]->caption, 'who' => $lines[$car->id]->who];
     // Стоят у менеджера без его сделки (21.10.2026): чинить не стал, продаёт XCar — строка без денег и этапов, ведёт на ТС.
-    $heldRows = $held->map(fn ($o) => ['offer' => $o, 'href' => $o->isVisibleTo($user) ? '/offers/'.$o->number : '/garage', 'word' => 'продаёт XCar', 'tone' => 'text-ink-muted',
+    $heldSeen = \App\Offers\Offer::visibleIdsTo($user, $held);
+    $heldRows = $held->map(fn ($o) => ['offer' => $o, 'href' => isset($heldSeen[$o->id]) ? '/offers/'.$o->number : '/garage', 'word' => 'продаёт XCar', 'tone' => 'text-ink-muted',
         'when' => null, 'value' => null, 'caption' => null, 'who' => $staff ? $o->heldBy?->shortName() : null, 'car' => null]);
     $groups = array_filter([
         '' => $open->map(fn ($c) => $carRow($c) + ['car' => $c]),

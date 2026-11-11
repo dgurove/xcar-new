@@ -6,7 +6,6 @@ use App\Billing\Party;
 use App\Billing\PartyKind;
 use App\Billing\PartyRules;
 use App\Chats\Chat;
-use App\Chats\Message;
 use App\Live\Publisher;
 use App\Live\Topics;
 use App\Offers\Actions\SyncDealInvoices;
@@ -51,9 +50,12 @@ class BuyerController
             ->orderBy(match ($sort->key) {
                 'created' => 'users.created_at', 'seen' => 'seen_count', default => 'users.name'
             }, $sort->dir())->orderBy('users.id')
+            // «Выбранные» — то же правило, что `Offer::scopeVisibleTo` у покупателя: срочное — всем, остальное — показом лично
+            // или через группу (11.11.2026: без срочного число в списке было меньше, чем на странице покупателя).
             ->addSelect(['seen_count' => Offer::query()->selectRaw('count(*)')->where('state', OfferState::Open)
-                ->whereHas('showings', fn ($s) => $s->where('manager_id', $me->id)->where(fn ($w) => $w->whereColumn('showings.user_id', 'users.id')
-                    ->orWhereIn('showings.group_id', DB::table('buyer_group_user')->select('group_id')->whereColumn('buyer_group_user.user_id', 'users.id'))))
+                ->where(fn ($p) => $p->where(fn ($u) => $u->urgent())->orWhereHas('showings', fn ($s) => $s->where('manager_id', $me->id)
+                    ->where(fn ($w) => $w->whereColumn('showings.user_id', 'users.id')
+                        ->orWhereIn('showings.group_id', DB::table('buyer_group_user')->select('group_id')->whereColumn('buyer_group_user.user_id', 'users.id')))))
                 ->whereHas('viewers', fn ($v) => $v->where('user_id', $me->id)->where('opens_at', '<=', now()))]);
         if ($term) {
             $q->search($term);
@@ -74,7 +76,7 @@ class BuyerController
         $seen = $buyers->getCollection()->mapWithKeys(fn ($b) => [$b->id => $b->buyerSeesAll() ? $all : (int) $b->seen_count]);
         $interests = Interest::whereIn('user_id', $ids)->where('state', InterestState::New)->selectRaw('user_id, count(*) as n')->groupBy('user_id')->pluck('n', 'user_id');
         // Строка «Интерес» над списком: новых — лаймом, иначе сколько всего.
-        $mine = Interest::whereHas('user', fn ($u) => $u->where('manager_id', $me->id));
+        $mine = Interest::ofManager($me);
         $interestAll = $term ? 0 : (clone $mine)->count();
         $interestNew = $term ? 0 : $mine->where('state', InterestState::New)->count();
 
@@ -102,7 +104,6 @@ class BuyerController
     public function show(Request $request, User $user)
     {
         $me = $request->user();
-        abort_unless($user->manager_id === $me->id && $user->isBuyer(), 404);
         $user->load(['groups', 'party']);
         // Скан паспорта прикрепляется к контрагенту — он нужен и до первого сохранения полей.
         $user->party ?? $user->setRelation('party', Party::forUser($user));
@@ -129,9 +130,10 @@ class BuyerController
             'seenCount' => $seenCount,
             'direct' => $direct,
             'via' => $via,
-            'interests' => $user->interests()->with('offer', 'offer.media')->latest()->get(),
-            'chats' => Chat::where('user_id', $user->id)->where('manager_id', $me->id)->with(['offer'])
-                ->addSelect(['*', 'last_text' => Message::select('text')->whereColumn('chat_id', 'chats.id')->orderByDesc('seq')->limit(1)])->orderByDesc('last_message_at')->get(),
+            'interests' => $interests = $user->interests()->with('offer', 'offer.media')->latest()->get(),
+            'visible' => Offer::visibleIdsTo($me, $interests->pluck('offer')),
+            // Строки — как в «Чатах» (`Chat::withLast` + `x-chat.row`): удалённое не видно текстом, ссылки очищены.
+            'chats' => Chat::withLast()->where('user_id', $user->id)->where('manager_id', $me->id)->orderByDesc('last_message_at')->get(),
             'link' => session('password_link'),
         ]);
     }
@@ -142,7 +144,7 @@ class BuyerController
      */
     public function sees(Request $request, User $user)
     {
-        abort_unless($user->manager_id === $request->user()->id && $user->isBuyer() && $user->hasBuyerAccess(), 404);
+        abort_unless($user->hasBuyerAccess(), 404);
         $data = $request->validate(['buyer_sees' => ['required', 'in:all,picked']]);
         $user->update(['buyer_sees' => $data['buyer_sees'], 'buyer_show_vin' => $request->boolean('buyer_show_vin')]);
         app(Publisher::class)->refresh(Topics::user($user->id), ['/offers', '/account']);
@@ -155,7 +157,6 @@ class BuyerController
     public function groups(Request $request, User $user)
     {
         $me = $request->user();
-        abort_unless($user->manager_id === $me->id, 404);
         $ids = collect($request->input('groups', []))->map(fn ($v) => (int) $v)->all();
         $allowed = BuyerGroup::whereIn('id', $ids)->where('manager_id', $me->id)->pluck('id')->all();
         $user->groups()->sync(collect($allowed)->mapWithKeys(fn ($id) => [$id => ['created_at' => now()]])->all());
@@ -167,7 +168,6 @@ class BuyerController
     /** Паспорт покупателя для ДКП — у его контрагента (физлицо). */
     public function passport(Request $request, User $user)
     {
-        abort_unless($user->manager_id === $request->user()->id && $user->isBuyer(), 404);
         PartyRules::squeeze($request);
         $data = $request->validate(PartyRules::passport('buyer'), [], ['buyer.name' => 'ФИО'])['buyer'];
         $party = Party::forUser($user);
@@ -181,7 +181,6 @@ class BuyerController
     /** «Дать доступ» покупателю без доступа: телефон или почта (если нет), что видит и пароль — шторкой входа (`GiveBuyerAccess`). */
     public function access(Request $request, User $user, GiveBuyerAccess $give)
     {
-        abort_unless($user->manager_id === $request->user()->id && $user->isBuyer(), 404);
         $sees = $request->validate(['buyer_sees' => ['nullable', 'in:all,picked']])['buyer_sees'] ?? 'all';
 
         return back()->with('credentials', $give($user, $request->input('contact'), $sees))->with('toast', 'Доступ открыт');
@@ -190,7 +189,6 @@ class BuyerController
     /** «Закрыть доступ»: войти не может и ничего не видит, покупателем остаётся (`CloseBuyerAccess`). */
     public function closeAccess(Request $request, User $user, CloseBuyerAccess $close)
     {
-        abort_unless($user->manager_id === $request->user()->id && $user->isBuyer(), 404);
         $close($user);
 
         return back()->with('toast', 'Доступ закрыт');
@@ -199,7 +197,6 @@ class BuyerController
     public function passwordLink(Request $request, User $user, IssuePasswordLink $issue)
     {
         $me = $request->user();
-        abort_unless($user->manager_id === $me->id, 404);
 
         return back()->with('password_link', ['user' => $user->id, 'url' => $issue($user, $me)]);
     }

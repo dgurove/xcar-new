@@ -12,7 +12,7 @@
     $manager = $user && $r && $r->user_id === $user->id && ! $readonly;
     $ask = $r && $deal && $r->isOpen() && $manager ? ManagerAsk::for($deal) : null;
     $here = $ask && $ask->requirement?->id === $r->id;
-    $labels = $r && $deal && $r->isOpen() && ! $manager && $r->stage ? Handover::managerExits($r->stage, $deal)->map(fn ($e) => $e->label) : collect();
+    $labels = $r && $deal && $r->isOpen() && ! $manager && $r->stage ? $deal->managerExits($r->stage)->map(fn ($e) => $e->label) : collect();
 @endphp
 @if ($r && $deal)
     <div class="msg-step">

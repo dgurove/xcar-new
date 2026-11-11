@@ -20,7 +20,7 @@ class DealContractController
     public function update(Request $request, Deal $deal, SaveDealContract $save)
     {
         // Покупатель для счёта поставщика без договора — тоже здесь (03.11.2026, `Deal::collectsBuyer`).
-        abort_unless($deal->buyer_id === $request->user()->id && ($deal->collectsBuyer() || $deal->contract?->buyer_user_id) && $deal->isLive(), 404);
+        abort_unless(($deal->collectsBuyer() || $deal->contract?->buyer_user_id) && $deal->isLive(), 404);
         $new = $request->input('buyer_id') === 'new';
         $rules = ['buyer_id' => ['nullable', 'string'], 'payer' => ['nullable', 'in:buyer,manager'], 'signed_at' => ['sometimes', 'required', 'date']];
         if ($new) {
@@ -49,7 +49,7 @@ class DealContractController
 
     public function show(Request $request, Deal $deal)
     {
-        abort_unless($deal->buyer_id === $request->user()->id && $deal->hasContract(), 404);
+        abort_unless($deal->hasContract(), 404);
         abort_if($deal->state === DealState::Cancelled, 404);
         // Менеджеру — только готовый договор: с прочерками вместо покупателя его не печатают (06.10.2026).
         abort_unless(DealContract::for($deal)->isReady(), 404);

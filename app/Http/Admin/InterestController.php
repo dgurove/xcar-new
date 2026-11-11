@@ -9,13 +9,14 @@ use App\Offers\InterestState;
 use App\Offers\Offer;
 use App\Users\User;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
 class InterestController
 {
     public function update(Request $request, Interest $interest, MarkInterest $mark)
     {
-        $state = InterestState::from($request->validate(['state' => ['required', 'string']])['state']);
+        $state = InterestState::from($request->validate(['state' => ['required', Rule::enum(InterestState::class)]])['state']);
         $mark($interest, $state, $request->user());
 
         return back()->with('toast', $state->label());

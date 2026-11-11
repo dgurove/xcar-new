@@ -4,7 +4,8 @@
 @php
     $offer = $interest->offer; $person ??= true; $car ??= true; $new = $interest->state === \App\Offers\InterestState::New;
     // Машина ушла от менеджера (сузили круг, сделка, снята) — интерес остаётся строкой, но без цены, фото и ссылки.
-    $seen = $offer->isVisibleTo(auth()->user());
+    // Список передаёт `visible` (`Offer::visibleIdsTo` одним разом); одна строка (поток, страница предложения) спрашивает сама.
+    $seen = isset($visible) ? isset($visible[$offer->id]) : $offer->isVisibleTo(auth()->user());
     $price = \App\Offers\PriceView::for($offer, auth()->user());
     // Кнопка называет исход, от первого лица (11.10.2026: голое «Связались» — правило no-em-dash-in-ui).
     $verb = $new ? ['contacted', 'Я связался', 'check', 'swipe-btn-accent'] : ['closed', 'Закрыть', 'x', ''];

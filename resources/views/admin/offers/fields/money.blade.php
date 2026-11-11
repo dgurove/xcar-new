@@ -21,7 +21,7 @@
     $more = $offer->publish_price || $offer->min_bid_price || $offer->min_bid_share || $errors->hasAny(['publish_price', 'min_bid_price', 'min_bid_share']);
     $input = 'field-input nums'.($plate ? ' !bg-surface' : '');
     $ring = '!ring-2 !ring-accent';
-    $bindingDays = $offer->vendor_id ? (int) \App\Vendors\Vendor::whereKey($offer->vendor_id)->value('binding_days') : 0;
+    $bindingDays = $offer->vendorBindingDays();
 @endphp
 <div class="flex flex-col gap-2" data-controller="min-bid value-floor" data-value-floor-rules-value="@json($rules)" data-action="floor-rules:change->value-floor#rules">
     <div class="flex flex-col gap-2">

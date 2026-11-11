@@ -191,7 +191,7 @@
             <h2 class="list-head">Интерес</h2>
             <div class="list">
                 @foreach ($interests as $interest)
-                    @include('cabinet.buyers.interest-row', ['interest' => $interest, 'person' => false])
+                    @include('cabinet.buyers.interest-row', ['interest' => $interest, 'person' => false, 'visible' => $visible])
                 @endforeach
             </div>
         </section>
@@ -201,13 +201,7 @@
             <h2 class="list-head">Чаты</h2>
             <div class="list">
                 @foreach ($chats as $chat)
-                    <a href="/deals/chats/{{ $chat->id }}" class="row">
-                        <div class="min-w-0 flex-1">
-                            <div class="flex items-baseline gap-2"><span class="truncate {{ $chat->unread_for_staff ? 'font-medium' : '' }}">{{ $chat->offer?->titleWithYear() ?? 'Обращение' }}</span><span class="ml-auto shrink-0 text-sm text-ink-dim">{{ \App\Support\Ago::html($chat->last_message_at, short: true) }}</span></div>
-                            <div class="truncate text-sm {{ $chat->unread_for_staff ? '' : 'text-ink-muted' }}">{{ $chat->last_text ? \Illuminate\Support\Str::limit($chat->last_text, 90) : 'Файл' }}</div>
-                        </div>
-                        @if ($chat->unread_for_staff)<span class="badge">{{ $chat->unread_for_staff }}</span>@endif
-                    </a>
+                    <x-chat.row :chat="$chat" :me="auth()->user()" :href="'/deals/chats/'.$chat->id"/>
                 @endforeach
             </div>
         </section>

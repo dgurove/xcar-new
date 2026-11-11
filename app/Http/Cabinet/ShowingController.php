@@ -8,6 +8,7 @@ use App\Offers\Offer;
 use App\Offers\OfferState;
 use App\Offers\Showing;
 use App\Support\Plural;
+use App\Support\SafeBack;
 use App\Users\BuyerGroup;
 use App\Users\User;
 use Illuminate\Http\Request;
@@ -80,11 +81,9 @@ class ShowingController
             : ($result['buyers']
                 ? 'Открыто '.$result['buyers'].' '.Plural::of($result['buyers'], ['покупателю', 'покупателям', 'покупателям'])
                 : 'Уже было открыто');
-        // Назад — только на свой путь: с одним слэшем в начале (не `//host`) и разумной длины, иначе обычный back().
-        $back = (string) $request->input('back', '');
-        $own = $back !== '' && strlen($back) <= 2000 && preg_match('#^/(?!/)#', $back) === 1;
+        $back = SafeBack::path($request->input('back'));
 
-        return ($own ? redirect($back) : back())->with('toast', $toast);
+        return ($back ? redirect($back) : back())->with('toast', $toast);
     }
 
     public function destroy(Request $request, HideOffers $hide)

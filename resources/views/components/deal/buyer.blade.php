@@ -87,8 +87,7 @@
 @endif
 @if ($live && ! ($deal->isGarage() && $buyer))
     @php
-        $rows = collect([['name' => $manager->name.', менеджер'] + \App\Support\People::row($manager, $manager->party?->readyAsBuyer() ? 'данные для договора есть' : 'сам покупает')])->map(fn ($r) => ['id' => 'me'] + $r)
-            ->concat($manager->buyers()->with('party')->orderBy('name')->get()->map(fn ($b) => \App\Support\People::row($b, $b->party?->readyAsBuyer() ? 'данные для договора есть' : ($b->phone ? \App\Support\Phone::format($b->phone) : 'данных для договора нет'))));
+        $rows = \App\Support\People::contractBuyers($manager, $manager->name.', менеджер', 'сам покупает');
     @endphp
     <form method="post" action="/work/deals/{{ $deal->id }}/contract" class="contents">
         @csrf @method('put')

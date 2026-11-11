@@ -13,7 +13,6 @@
         $chat = \App\Chats\Chat::withLast()->platformWith($offer, $buyer)->first();
     }
     $unread = (int) ($chat?->unread_for_staff ?? 0);
-    $at = $chat?->last_message_at;
 @endphp
 @if ($compact)
 {{-- Пилюлей «Чат» в ряду окошка сделки (12.10.2026, владелец: «Чат вот так красиво компактно везде и у сделок»): число
@@ -34,25 +33,7 @@
             @csrf
             <button type="submit" class="box deal-chat w-full text-left" aria-label="Чат с {{ $buyer->shortName() }}">
     @endif
-        <span class="deal-chat-avatar">
-            <x-chat.avatar :user="$buyer" :size="44"/>
-            <span class="deal-chat-bubble"><x-ui.icon name="chat" class="size-3"/></span>
-        </span>
-        <span class="min-w-0 flex-1">
-            <span class="flex items-baseline gap-2">
-                <span class="truncate font-medium">{{ $buyer->shortName() }}</span>
-                @if ($at)<span class="nums ml-auto shrink-0 text-xs text-ink-dim">{{ \App\Support\Ago::html($at, short: true) }}</span>@endif
-            </span>
-            <span class="mt-0.5 flex items-center gap-2">
-                @if ($chat)
-                    <span @class(['truncate text-sm', 'text-ink-muted' => ! $unread])>{{ $chat->lastPreview(auth()->user()) }}</span>
-                    @if ($unread)<span class="badge ml-auto">{{ $unread }}</span>@endif
-                @else
-                    <span class="text-sm text-ink-muted">Сообщений пока нет</span>
-                @endif
-            </span>
-        </span>
-        @unless ($unread)<x-ui.chevron/>@endunless
+        <x-chat.card-body :chat="$chat" :title="$buyer->shortName()" :unread="$unread" :user="$buyer"/>
     @if ($chat)
         </a>
     @else

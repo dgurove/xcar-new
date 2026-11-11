@@ -21,6 +21,8 @@ use App\Logistics\TransportState;
 use App\Mail\Candidate;
 use App\Mail\Template;
 use App\Mail\Thread;
+use App\Offers\Partner\Handover;
+use App\Offers\Partner\PartnerOffers;
 use App\Park\PhotoStage;
 use App\Park\Sale;
 use App\Park\Vehicle;
@@ -149,10 +151,10 @@ class Offer extends Model
         // слот, выставили, архив): у поставщика его больше нет — метка гаснет, и автоматика, что ждала его «Отправить», идёт сама.
         static::saved(function (self $o) {
             if ($o->partner_price_at && $o->wasChanged(['state', 'asking_price', 'slot_at', 'vendor_id'])
-                && ! \App\Offers\Partner\PartnerOffers::listed(\App\Offers\Partner\PartnerOffers::eligible(self::whereKey($o->id)))->exists()) {
+                && ! PartnerOffers::listed(PartnerOffers::eligible(self::whereKey($o->id)))->exists()) {
                 $held = $o->created_via === 'partner';
                 $o->forceFill(['partner_price_at' => null])->saveQuietly();
-                DB::afterCommit(fn () => \App\Offers\Partner\Handover::after($o, $held));
+                DB::afterCommit(fn () => Handover::after($o, $held));
             }
         });
         static::saved(function (self $o) {
@@ -191,7 +193,7 @@ class Offer extends Model
                 // Поставщики вендора (partner.xcar.ru, 07.11.2026) — сигнал перечитать свой список, без полей; только вендорам,
                 // у которых поставщики есть.
                 foreach (array_unique(array_filter([$o->vendor_id, $o->wasChanged('vendor_id') ? $o->getOriginal('vendor_id') : null])) as $vendor) {
-                    in_array((int) $vendor, \App\Offers\Partner\PartnerOffers::vendorIds(), true) && app(Publisher::class)->refreshSoon(Topics::partner((int) $vendor), ['/offers']);
+                    in_array((int) $vendor, PartnerOffers::vendorIds(), true) && app(Publisher::class)->refreshSoon(Topics::partner((int) $vendor), ['/offers']);
                 }
             }
         });
@@ -966,7 +968,7 @@ class Offer extends Model
     /** Черновик у поставщика (partner.xcar.ru): автоматика его не заполняет, пока он не отдал цену (`PartnerOffers::held`). */
     public function heldByPartner(): bool
     {
-        return \App\Offers\Partner\PartnerOffers::held($this);
+        return PartnerOffers::held($this);
     }
 
     /** Черновик, который завела почта и который ещё не выходил наружу: его можно снять «Не заявка», как после «Завести». */
@@ -986,6 +988,41 @@ class Offer extends Model
         return $user?->isAdmin() || self::query()->whereKey($this->id)->visibleTo($user)->exists()
             || ($user && $this->bids()->where('user_id', $user->id)->whereIn('state', [BidState::Active, BidState::Accepted])->exists())
             || $this->isAskedOf($user);
+    }
+
+    /** Срок обязывающего у вендора в днях (поля «Цены» и «Показ») — из подгруженного вендора, без запроса в виде. */
+    public function vendorBindingDays(): int
+    {
+        if (! $this->vendor_id) {
+            return 0;
+        }
+        $vendor = $this->relationLoaded('vendor') && $this->vendor?->id === $this->vendor_id ? $this->vendor : $this->vendor()->first();
+
+        return (int) $vendor?->binding_days;
+    }
+
+    /**
+     * `isVisibleTo` для списка разом — те же три правила тремя запросами на весь список, а не до трёх на строку (11.11.2026:
+     * строки интереса и «Стоят у вас» спрашивали каждую машину отдельно). Ответ — id видимых ключами.
+     *
+     * @param  iterable<self>  $offers
+     * @return array<int, true>
+     */
+    public static function visibleIdsTo(?User $user, iterable $offers): array
+    {
+        $ids = collect($offers)->pluck('id')->filter()->unique()->values()->all();
+        if (! $user || ! $ids) {
+            return [];
+        }
+        if ($user->isAdmin()) {
+            return array_fill_keys($ids, true);
+        }
+        $seen = self::query()->whereIn('offers.id', $ids)->visibleTo($user)->pluck('offers.id')
+            ->merge(Bid::whereIn('offer_id', $ids)->where('user_id', $user->id)->whereIn('state', [BidState::Active, BidState::Accepted])->pluck('offer_id'))
+            ->merge(Estimate::open()->whereIn('offer_id', $ids)->where('user_id', $user->id)
+                ->whereHas('offer', fn ($o) => $o->where('state', OfferState::Draft))->pluck('offer_id'));
+
+        return array_fill_keys($seen->unique()->all(), true);
     }
 
     /**

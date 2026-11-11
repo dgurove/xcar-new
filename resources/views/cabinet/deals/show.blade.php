@@ -9,9 +9,7 @@
     $inMoney = $deal->isGarage() ? [] : collect([\App\Billing\ChargeKind::Selection, \App\Billing\ChargeKind::Sale])
         ->map(fn ($kind) => $liveInvoices->first(fn ($i) => $i->kind === $kind)?->id)->filter()->all();
     $pastInvoices = $liveInvoices->reject(fn ($i) => $i->state === \App\Billing\InvoiceState::Issued || in_array($i->id, $inMoney, true));
-    // Счёт поставщика — в задаче оплаты и в «Информации по сделке» своим именем; в «Документах» он был третьим разом под
-    // именем со сканера (10.11.2026).
-    $docs = \App\Offers\OfferFiles::forManagers($offer, auth()->user())->reject(fn ($m) => $m->getCustomProperty('supplier_invoice'));
+    $docs = \App\Offers\OfferFiles::forManagers($offer, auth()->user());
     $photos = $offer->visiblePhotos();
     // Шаг договора (просьба приложить документ, у сделки есть ДКП): покупатель и сам ДКП — пунктами задачи, а не блоком
     // ниже неё (05.10.2026, владелец: «просит приложить договор, а он где-то ниже формируется»).
@@ -19,7 +17,7 @@
     $pickupSteps = \App\Offers\Handover::checklist($deal, $position);
     $contractStep = $deal->isLive() && $deal->hasContract() && $requirement && ($pickupSteps || ($requirement->asks === \App\Workflow\Asks::Document && ! $position?->stage->isPayStep()));
     // ПРАЙМ без покупателя: задача и есть выбор покупателя — он в ней, а не вторым блоком с той же кнопкой.
-    $needsBuyer = $deal->isLive() && $position?->stage->isPayStep() && $deal->hasContract() && in_array($deal->invoiceGap(), ['buyer', 'passport'], true);
+    $needsBuyer = in_array($payGap, ['buyer', 'passport'], true);
     // Пока покупка не согласована (11.10.2026 — Каркаде, 27.10.2026 — у всех: BMW X6 Альфы 22 дня просила «Выбрать
     // покупателя» и ДКП, хотя поставщик ещё не ответил, а менеджер не сказал «Беру»): «Выбрать покупателя» и ДКП рано.
     // Блок встанет после согласования (`Deal::agreed`).

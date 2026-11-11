@@ -19,7 +19,7 @@
     // Оплата, а счёта ещё нет: ход наш (`Position::awaitsInvoice`), просить оплатить нечего — счёт готовим.
     $noInvoice = (bool) $position?->awaitsInvoice();
     // ПРАЙМ без покупателя — ход менеджера: счёт встанет сам, как только он укажет, кому (`Deal::invoiceGap`).
-    $gap = $deal->isLive() && $position?->stage->isPayStep() && $deal->hasContract() ? $deal->invoiceGap() : null;
+    $gap = $payGap;
     // Покупатель не указан или у физлица нет паспорта со сканом (11.10.2026) — задача одна: покупатель в шторке договора.
     $needsBuyer = in_array($gap, ['buyer', 'passport'], true);
     // Шаг «Нет реквизитов» (03.11.2026, Альфа просит реквизиты): та же шторка покупателя, кнопки нет — шаг
@@ -244,7 +244,7 @@
                         <div data-controller="sheet" class="mt-5">
                             <x-ui.button type="button" block data-action="sheet#open">Оплатить{!! $claimable->count() === 1 ? ' <span class="nums">'.\App\Support\Money::rub($claimable->first()->remaining() - $claimable->first()->claimed()).'</span>' : '' !!}</x-ui.button>
                             <x-billing.pay-sheet :invoices="$claimable" :action="'/account/money/deals/'.$deal->id.'/pay'" pdf="/account/invoices/{id}/pdf"
-                                :buyers="auth()->user()->buyers()->with(\App\Users\User::withAvatar())->orderBy('name')->get()" :open="($errors->any() && old('way')) || request()->boolean('pay')"/>
+                                :buyers="\App\Support\People::buyersOf(auth()->user())" :open="($errors->any() && old('way')) || request()->boolean('pay')"/>
                         </div>
                     @endif
                 @else

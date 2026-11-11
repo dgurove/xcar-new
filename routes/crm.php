@@ -33,6 +33,7 @@ use App\Http\Admin\PurchaseController;
 use App\Http\Admin\ReferenceController;
 use App\Http\Admin\RepriceController;
 use App\Http\Admin\RouteController;
+use App\Http\Admin\SigningController;
 use App\Http\Admin\TagController;
 use App\Http\Admin\TelegramChatController;
 use App\Http\Admin\TimerController;
@@ -189,7 +190,6 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
         Route::put('/garage/costs/{cost}', [GarageCarController::class, 'updateCost']);
         Route::delete('/garage/costs/{cost}', [GarageCarController::class, 'destroyCost']);
         Route::post('/garage/cars/{offer}/stage', [GarageSettlementController::class, 'stage']);
-        Route::post('/garage/cars/{offer}/advance', [GarageSettlementController::class, 'stage']);
         Route::post('/garage/cars/{offer}/sold', [GarageSettlementController::class, 'sold']);
         Route::delete('/garage/cars/{offer}/sold', [GarageSettlementController::class, 'unsold']);
         Route::put('/garage/cars/{offer}/buyer-price', [GarageSettlementController::class, 'buyerPrice']);
@@ -276,11 +276,11 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
         Route::post('/work/deals/{deal}/drop', [ParallelController::class, 'drop']);
         Route::post('/work/deals/{deal}/disclose', [DisclosureController::class, 'store']);
         Route::post('/work/deals/{deal}/supplier-invoice', [DisclosureController::class, 'invoice']);
-        Route::post('/work/deals/{deal}/signing-slots', [\App\Http\Admin\SigningController::class, 'slots']);
-        Route::post('/work/deals/{deal}/signing', [\App\Http\Admin\SigningController::class, 'pick']);
-        Route::post('/work/deals/{deal}/signing-wish', [\App\Http\Admin\SigningController::class, 'wish']);
-        Route::post('/work/deals/{deal}/signing-confirm', [\App\Http\Admin\SigningController::class, 'confirm']);
-        Route::get('/work/deals/{deal}/signing.ics', [\App\Http\Admin\SigningController::class, 'ics']);
+        Route::post('/work/deals/{deal}/signing-slots', [SigningController::class, 'slots']);
+        Route::post('/work/deals/{deal}/signing', [SigningController::class, 'pick']);
+        Route::post('/work/deals/{deal}/signing-wish', [SigningController::class, 'wish']);
+        Route::post('/work/deals/{deal}/signing-confirm', [SigningController::class, 'confirm']);
+        Route::get('/work/deals/{deal}/signing.ics', [SigningController::class, 'ics']);
         // Документ об оплате поставщику за менеджера и одним PDF (10.11.2026, `PaymentProofController`).
         Route::post('/work/deals/{deal}/payment-proof', [PaymentProofController::class, 'store']);
         Route::delete('/work/deals/{deal}/payment-proof/{media}', [PaymentProofController::class, 'remove']);

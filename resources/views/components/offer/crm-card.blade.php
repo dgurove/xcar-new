@@ -15,40 +15,25 @@
     $price = \App\Offers\PriceView::for($offer, auth()->user());
     $main = $offer->mainPhoto();
     $photos = $offer->visiblePhotos()->reject(fn ($p) => $main && $p->is($main))->prepend($main)->filter()->take(6)->values();
-    $vendor = $offer->vendor_id ? \App\Vendors\Vendor::badges()->get($offer->vendor_id) : null;
-    $draft = $offer->state === OfferState::Draft;
-    // Подтверждения принимает только админ: модератору ни их числа, ни отсчёта приёма — открытое для него «в продаже».
-    $admin = (bool) auth()->user()?->canManageCrm();
-    $unpriced = $draft && ! $offer->asking_price;
-    // «Оценить» — дело админа: модератор цену продажи не ставит, у него на месте слова пусто, закупочная — как была.
-    $rate = $unpriced && $admin;
-    // Корректировки менеджеров у оценённого черновика (11.10.2026, `x-offer.correction-chip`).
-    $corrections = ! $unpriced && $draft && $admin && $offer->relationLoaded('openEstimates') ? $offer->openEstimates->filter->isCorrection() : collect();
-    $correcting = $corrections->isNotEmpty();
-    $proposes = $corrections->contains->proposes();
-    $left = $gallery || ! $admin || ! $offer->state->acceptsBids() ? null : $offer->secondsLeft();
-    $timer = $left !== null && $left > 0;
-    // Новое — голубой полосой, горящее — рыжей, как на витрине (12.10.2026); только админу.
-    // Кружков «новое» и «горящее» в CRM нет (30.10.2026, владелец: «бесят»); остаются «в минус» и срок обязывающего.
-    $mark = $admin && ! $gallery && ! in_array($crmTone = $offer->crmTone(), ['fresh', 'hot'], true) ? $crmTone : null;
-    $tone = match ($offer->state->tone()) { 'open' => 'text-accent-text', 'urgent' => 'text-urgent', 'danger' => 'text-danger', default => 'text-ink' };
-    $count = ! $admin ? 0 : ($gallery ? (int) ($offer->interests_count ?? 0) : (int) ($offer->active_bids_count ?? 0));
-    // Выбор пачкой («Оцененные», «Публикация») — галочкой в углу кадра, как в строке таблицы; не готовое к продаже —
-    // без галочки, «нет фото» красным в строке текста.
     // Черновик из письма догружается (`AutoScan::states`): ход строкой, полоса бежит по карточке, «Оценить» — после.
     $arriving = $arrive['state'] ?? null;
     $busy = in_array($arriving, ['ghost', 'files', 'reading'], true);
-    $rate = $rate && ! $busy;
-    $missing = $checkable && $draft && ! $offer->isScheduled() ? array_map(fn ($m) => 'нет '.match ($m) { 'фотографии' => 'фото', 'марка' => 'марки', 'цена продажи' => 'цены', default => $m }, \App\Offers\Actions\ChangeOfferState::missing($offer)) : [];
+    // Что сказать о плитке — тот же расчёт, что у строки таблицы (`Offers\OfferRow`, 11.11.2026): после продажи — этап сделки
+    // с менеджером, подтверждения — «2 подтв., 1 в гараж»; выбор пачкой — галочкой в углу кадра, не готовое — «нет фото».
+    $r = \App\Offers\OfferRow::for($offer, auth()->user(), $gallery, $checkable, $busy);
+    [$admin, $draft, $unpriced, $rate, $timer, $vendor, $missing] = [$r->admin, $r->draft, $r->unpriced, $r->rate, $r->timer, $r->vendor, $r->missing];
+    [$corrections, $correcting, $proposes] = [$r->corrections, $r->correcting(), $r->proposes()];
+    // Кружков «новое» и «горящее» в CRM нет (30.10.2026, владелец: «бесят»); остаются «в минус» и срок обязывающего.
+    $mark = $admin && ! $gallery && ! in_array($crmTone = $offer->crmTone(), ['fresh', 'hot'], true) ? $crmTone : null;
 @endphp
 {{-- data-todo — как у строки таблицы (OfferController::todo): по таким карточка идёт к следующей и в плитках. --}}
-<article data-search-row id="admin-offer-{{ $n }}" data-offer-number="{{ $n }}" data-detail-key="{{ $n }}" class="card group {{ $mark ? 'card--'.$mark : '' }} {{ $arrive ? 'arrive arrive--offer' : '' }} {{ $busy ? 'arrive--busy arrive--'.$arriving : '' }}" @if (auth()->user() && \App\Http\Admin\OfferController::todo($offer, auth()->user())) data-todo @endif @if ($offer->claim_ref_key) data-flip="c:{{ $offer->claim_ref_key }}" @endif @if ($arrive) data-controller="arrive" data-arrive-state-value="{{ $arriving }}" data-arrive-subject-value="o:{{ $offer->id }}" @endif>
+<article data-search-row id="admin-offer-{{ $n }}" data-offer-number="{{ $n }}" data-detail-key="{{ $n }}" class="card group {{ $mark ? 'card--'.$mark : '' }} {{ $arrive ? 'arrive arrive--offer' : '' }} {{ $busy ? 'arrive--busy arrive--'.$arriving : '' }}" @if ($r->todo) data-todo @endif @if ($offer->claim_ref_key) data-flip="c:{{ $offer->claim_ref_key }}" @endif @if ($arrive) data-controller="arrive" data-arrive-state-value="{{ $arriving }}" data-arrive-subject-value="o:{{ $offer->id }}" @endif>
     <a href="{{ $href }}" class="card-link" aria-hidden="true" tabindex="-1" {!! $peek !!}></a>
     @if ($checkable && (! $missing || request()->query('preset') === 'done'))<label class="card-check card-check--on" aria-label="Выбрать"><input type="checkbox" id="pick-{{ $n }}" data-turbo-permanent name="offers[]" value="{{ $n }}" form="offers-pick" data-pick-target="box" data-group="{{ $group }}" data-action="pick#sync"><span><x-ui.icon name="check" class="size-4"/></span></label>@endif
     <x-ui.card-media :photos="$photos" :href="$href" :link="$peek"/>
     <div class="card-body">
         <div class="card-title">
-            <a href="{{ $href }}" {!! $peek !!} class="flex min-w-0 flex-1 items-center gap-[.25em] leading-snug hover:text-accent-text"><span class="line-clamp-1 min-w-0">{{ $offer->titleWithYear() }}</span>@if ($offer->recommended)<x-offer.recommended/>@endif{{ "" }}@if ($offer->isUrgent())<x-offer.urgent/>@endif{{ "" }}@if ($offer->auctionPlanned())<x-offer.auction/>@endif{{ "" }}@if ($admin && $offer->proposed())<span class="ml-1.5 inline-flex shrink-0 text-accent-text" title="Предложено из заявок на приём" aria-label="Предложено из заявок на приём"><x-ui.spark class="size-4"/></span>@endif{{ "" }}@if ($admin && $offer->awaitingPark())<x-offer.awaiting/>@endif<x-ui.links :offer="$offer"/>@if (! $busy && blank($offer->vin) && in_array($offer->state, [\App\Offers\OfferState::Draft, \App\Offers\OfferState::Gallery, \App\Offers\OfferState::Open], true))<span class="shrink-0 text-sm text-danger">Нет VIN</span>@endif{{ "" }}@if ($offer->intake_closed_at && $offer->state === \App\Offers\OfferState::Draft && request()->query('preset') !== 'done')<span class="ml-1.5 shrink-0 text-sm text-urgent">приём закрыт</span>@endif{{ "" }}@if ($offer->partner_price_at)<span class="ml-1.5 shrink-0 text-sm text-ink-muted" title="Поставщик вписал цену, но ещё не отправил — может поправить">у поставщика</span>@endif<x-offer.binding :offer="$offer" icon class="shrink-0"/></a>
+            <a href="{{ $href }}" {!! $peek !!} class="flex min-w-0 flex-1 items-center gap-[.25em] leading-snug hover:text-accent-text"><span class="line-clamp-1 min-w-0">{{ $offer->titleWithYear() }}</span>@if ($offer->recommended)<x-offer.recommended/>@endif{{ "" }}@if ($offer->isUrgent())<x-offer.urgent/>@endif{{ "" }}@if ($offer->auctionPlanned())<x-offer.auction/>@endif{{ "" }}@if ($admin && $offer->proposed())<span class="ml-1.5 inline-flex shrink-0 text-accent-text" title="Предложено из заявок на приём" aria-label="Предложено из заявок на приём"><x-ui.spark class="size-4"/></span>@endif{{ "" }}@if ($admin && $offer->awaitingPark())<x-offer.awaiting/>@endif<x-ui.links :offer="$offer"/>@if ($r->noVin)<span class="shrink-0 text-sm text-danger">Нет VIN</span>@endif{{ "" }}@if ($offer->intake_closed_at && $offer->state === \App\Offers\OfferState::Draft && request()->query('preset') !== 'done')<span class="ml-1.5 shrink-0 text-sm text-urgent">приём закрыт</span>@endif{{ "" }}@if ($offer->partner_price_at)<span class="ml-1.5 shrink-0 text-sm text-ink-muted" title="Поставщик вписал цену, но ещё не отправил — может поправить">у поставщика</span>@endif<x-offer.binding :offer="$offer" icon class="shrink-0"/></a>
         </div>
     </div>
     <div class="card-extra">
@@ -56,9 +41,9 @@
             {{-- Номер первым и одним куском (fitline ужимает строку, чтобы он влез), состояние — после, его можно обрезать. --}}
             @if ($vendor || $offer->claim_ref)<span class="fit-core"><x-vendor.ref :vendor="$vendor" :ref="$offer->claim_ref" copy/></span>@endif
             @if ($timer)<span class="nums {{ $offer->isEndingSoon() ? 'text-urgent' : 'text-accent-text' }}" data-controller="timer" data-timer-until-value="{{ $offer->bids_close_at->toIso8601String() }}" data-timer-done-value="приём закрыт" data-timer-coarse-value="true" data-timer-word-value="">{{ \App\Support\Ago::left($offer->bids_close_at, '') }}</span>
-            @elseif ($offer->isScheduled())<span class="text-accent-text">выйдет {{ \App\Offers\Slots::phrase($offer->slot_at) }}</span>
-            @elseif (! $draft || filled(request('q')))<span class="{{ $tone }}">{{ $offer->crmTab() }}</span>@endif
-            @if ($count)<span class="{{ $gallery ? 'text-accent-text' : 'text-urgent' }}">{{ $count }} {{ $gallery ? \App\Support\Plural::of($count, ['интерес', 'интереса', 'интересов']) : 'подтв.' }}</span>@endif
+            @elseif ($r->slot)<span class="text-accent-text">{{ $r->slot }}</span>
+            @elseif (! $draft || filled(request('q')))<span class="{{ $r->tone }}">{{ $r->stateWord }}@if ($r->line?->who)<span class="text-ink-muted">, {{ $r->line->who }}</span>@endif</span>@endif
+            @if ($r->countWord)<span class="{{ $gallery ? 'text-accent-text' : 'text-urgent' }}">{{ $r->countWord }}</span>@endif
             @if ($missing)<span class="text-danger">{{ implode(', ', $missing) }}</span>@endif
             @if ($admin && ! $busy)<x-offer.margin :m="$offer->marginMark()" class="!ml-0"/>@endif
             @if ($admin && $offer->reprice_pending)<span class="text-urgent">переоценка</span>@endif

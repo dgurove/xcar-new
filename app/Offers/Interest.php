@@ -5,6 +5,7 @@ namespace App\Offers;
 use App\Support\FastAttributes;
 use App\Users\User;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -26,6 +27,12 @@ class Interest extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    /** Интерес покупателей менеджера — список «Интерес», строка над «Покупателями» и её числа. */
+    public function scopeOfManager(Builder $q, User $manager): Builder
+    {
+        return $q->whereHas('user', fn ($u) => $u->where('manager_id', $manager->id));
     }
 
     /** Сотрудник, что внёс интерес за менеджера (`placed_by`); свой интерес — пусто. */

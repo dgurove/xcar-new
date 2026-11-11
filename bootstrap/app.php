@@ -15,6 +15,7 @@ use App\Http\Middleware\DetailBack;
 use App\Http\Middleware\DeviceGate;
 use App\Http\Middleware\EnsureAbility;
 use App\Http\Middleware\EnsureOfferEditable;
+use App\Http\Middleware\EnsureOwn;
 use App\Http\Middleware\EnsureParkManager;
 use App\Http\Middleware\EnsureSection;
 use App\Http\Middleware\Impersonated;
@@ -73,6 +74,7 @@ use App\Park\Console\TickPark;
 use App\Push\Console\MakeKeys;
 use App\Storage\Console\Gc;
 use App\Storage\Console\Report;
+use App\Support\Console\PerfDigestCommand;
 use App\Support\Surface;
 use App\Telegram\Console\Poll;
 use App\Telegram\Console\SetProfile;
@@ -83,7 +85,6 @@ use App\Telegram\Offers\Console\Run as OffersBotRun;
 use App\Users\Console\CreateUser;
 use App\Users\Console\SeedDemo;
 use App\Users\Console\TelegramAvatars;
-use App\Support\Console\PerfDigestCommand;
 use App\Vendors\Console\ClaimDigestCommand;
 use App\WhatsApp\Console\Poll as WhatsAppPoll;
 use App\WhatsApp\Console\Status as WhatsAppStatus;
@@ -170,7 +171,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->redirectGuestsTo('/login');
         $middleware->redirectUsersTo(fn () => Surface::current()->home());
-        $middleware->alias(['ability' => EnsureAbility::class, 'section' => EnsureSection::class, 'park.manage' => EnsureParkManager::class, 'offer.edit' => EnsureOfferEditable::class, 'wall' => SiteWall::class]);
+        $middleware->alias(['ability' => EnsureAbility::class, 'section' => EnsureSection::class, 'park.manage' => EnsureParkManager::class, 'offer.edit' => EnsureOfferEditable::class, 'own' => EnsureOwn::class, 'wall' => SiteWall::class]);
         $middleware->prepend([ServerTiming::class, RedirectLegacyPaths::class, MarkPrefetch::class, ScalarSearch::class]);
         // Поверхность и технические работы решаются до `auth`: гость на закрытой стоянке видит страницу, а не вход.
         $middleware->prependToPriorityList(AuthenticatesRequests::class, ResolveSurface::class);

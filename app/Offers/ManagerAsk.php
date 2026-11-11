@@ -65,7 +65,7 @@ final class ManagerAsk
         }
         $req = $task['kind'] === 'ask' ? $deal->openRequirement : null;
         $stage = $req?->stage;
-        $exits = $stage ? ($deal->isParallel() ? Parallels::exits($deal, $stage) : Handover::managerExits($stage, $deal)) : collect();
+        $exits = $deal->managerExits($stage);
         [$retreats, $moves] = $exits->partition(fn (Outcome $e) => $e->isRetreat());
         // Закрыть сделку, пока автомобиль не забрали, нельзя — вместо кнопки на шаге написано, что сначала.
         $blocker = $moves->contains(fn (Outcome $e) => Deal::closes($e)) ? $deal->closeBlocker() : null;

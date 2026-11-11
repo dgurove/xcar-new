@@ -2,12 +2,10 @@
      него) и что с пропуском: ждём, когда можно забирать, пропуск выдан, выдан с парковки. Внутри «Получения» сделки. --}}
 @props(['deal', 'vehicle'])
 @php
-    $pass = $deal->passes()->where('vehicle_id', $vehicle->id)->whereNull('revoked_at')->latest('id')->first();
+    // Живой пропуск или погашенный парковкой («Покупатель отказался») — новый только выбором в шторке.
+    [$pass, $revoked] = $deal->releasePass($vehicle);
     $receiver = $deal->receiver();
     $sheet = 'receiver-crm-'.$deal->id;
-    // Парковка погасила пропуск сама («Покупатель отказался») — новый только выбором в шторке.
-    $revoked = $pass ? null : $deal->passes()->where('vehicle_id', $vehicle->id)->whereNotNull('revoked_at')
-        ->where('revoke_reason', '!=', \App\Offers\Actions\SyncParkRelease::CHANGED)->latest('id')->first();
     $state = match (true) {
         (bool) $pass?->used_at => ['выдан '.\App\Support\Ago::day($pass->used_at, true), 'text-open'],
         (bool) $pass => ['пропуск выдан'.(($w = $pass->whenLabel('j M')) ? ', приедет '.$w : ''), 'text-open'],

@@ -9,8 +9,8 @@ use App\Mail\Message;
 use App\Mail\Scope;
 use App\Mail\Thread;
 use App\Media\ForManagers;
-use App\Users\User;
 use App\Support\Docs;
+use App\Users\User;
 use Illuminate\Support\Collection;
 
 /**
@@ -77,6 +77,8 @@ final class OfferFiles
     {
         $papers = $offer->papers();
 
-        return $user->isAdmin() ? $papers : $papers->filter(fn ($m) => ForManagers::is($m))->values();
+        // Счёт поставщика менеджеру — строкой в шаге оплаты и в «Информации по сделке» своим именем; в «Документах» он был
+        // третьим разом под именем со сканера (10.11.2026 на странице сделки, 11.11.2026 — и в гараже).
+        return $user->isAdmin() ? $papers : $papers->filter(fn ($m) => ForManagers::is($m) && ! $m->getCustomProperty('supplier_invoice'))->values();
     }
 }

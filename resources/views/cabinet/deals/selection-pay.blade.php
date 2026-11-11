@@ -8,7 +8,7 @@
     $mine = $deal->buyer_id === auth()->id();
     $left = round($i->remaining() - $i->claimed(), 2);
     $link = $i->openLink();
-    $buyers = $mine ? auth()->user()->buyers()->with(\App\Users\User::withAvatar())->orderBy('name')->get() : collect();
+    $buyers = $mine ? \App\Support\People::buyersOf(auth()->user()) : collect();
 @endphp
 @if ($mine && $i->state === InvoiceState::Issued && $left > 0)
     <div data-controller="sheet" class="{{ $class ?? 'mt-4' }}">

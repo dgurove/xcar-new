@@ -82,6 +82,22 @@ class Car extends Model
         return $this->belongsTo(Invoice::class, 'payout_invoice_id');
     }
 
+    /**
+     * Машина гаража предложения — одна выборка на CRM (окно, редактор), гараж сайта и расчёт (11.11.2026: три загрузчика со
+     * своими связями). С `$user` — только его или любая сотруднику, иначе null (чужая для менеджера не существует).
+     */
+    public static function forOffer(Offer $offer, ?User $user = null): ?self
+    {
+        $car = self::with(['manager', 'costs.author', 'invoice.payments', 'payoutInvoice', 'deal'])->where('offer_id', $offer->id)->first();
+        if (! $car || ($user && ! $user->isAdmin() && $car->manager_id !== $user->id)) {
+            return null;
+        }
+        $car->setRelation('offer', $offer->loadMissing(['media', 'settlement']));
+        $car->costs->each->setRelation('car', $car);
+
+        return $car;
+    }
+
     /** Расходы, свежие первыми: их и читают сверху вниз. */
     public function costs(): HasMany
     {

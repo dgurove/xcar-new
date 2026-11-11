@@ -28,7 +28,7 @@ use App\Support\Money;
 use App\Support\OfficePreview;
 use App\Support\Sort;
 use App\Support\Surface;
-use App\Users\User;
+use App\Support\TempFile;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 
@@ -86,7 +86,6 @@ class MoneyController
      */
     public function deal(Request $request, Deal $deal)
     {
-        abort_unless($deal->buyer_id === $request->user()->id, 404);
 
         return redirect($deal->href().($request->boolean('pay') ? '?pay=1' : '').'#money', 301);
     }
@@ -95,7 +94,6 @@ class MoneyController
     public function pay(Request $request, Deal $deal, PayChoice $choice)
     {
         $me = $request->user();
-        abort_unless($deal->buyer_id === $me->id, 404);
         $invoice = $deal->issuedInvoices()->whereKey((int) $request->input('invoice'))->firstOrFail();
         abort_unless($invoice->isVisibleToManager($me) && ! $invoice->isOwed() && $invoice->kind !== ChargeKind::Reward, 404);
 
@@ -193,7 +191,7 @@ class MoneyController
     public function export(Request $request, ManagerStatement $xlsx)
     {
         [$from, $to] = $this->period($request);
-        $path = $xlsx->write($request->user(), $from, $to, \App\Support\TempFile::path('sdelki-', 'xlsx'));
+        $path = $xlsx->write($request->user(), $from, $to, TempFile::path('sdelki-', 'xlsx'));
         $name = 'sdelki-'.$from->format('Y-m-d').'-'.$to->format('Y-m-d').'.xlsx';
         // Шторка документов просит Excel HTML-фрагментом.
         if ($request->boolean('preview')) {

@@ -209,30 +209,32 @@ Route::middleware(['auth', 'wall'])->group(function () {
         Route::get('/account/money/statement', [MoneyController::class, 'statement']);
         Route::get('/account/money/export', [MoneyController::class, 'export']);
         Route::get('/account/money/invoices/{invoice}', [MoneyController::class, 'invoice']);
-        Route::post('/account/money/deals/{deal}/pay', [MoneyController::class, 'pay']);
+        Route::post('/account/money/deals/{deal}/pay', [MoneyController::class, 'pay'])->middleware('own:deal');
         Route::post('/account/money/invoices/{invoice}/links', [MoneyController::class, 'link']);
         Route::delete('/account/money/links/{link}', [MoneyController::class, 'cancelLink']);
         Route::put('/account/money/links/{link}/email', [MoneyController::class, 'linkEmail']);
         Route::get('/account/money/invoices/{invoice}/payments/{payment}/slip', [MoneyController::class, 'slip']);
-        Route::get('/account/money/deals/{deal}', [MoneyController::class, 'deal']);
+        Route::get('/account/money/deals/{deal}', [MoneyController::class, 'deal'])->middleware('own:deal');
 
         // Действия по сделке.
-        Route::get('/deals/{deal}/chat', [DealController::class, 'chat']);
-        Route::post('/deals/{deal}/reply', [DealController::class, 'answer']);
-        Route::post('/deals/{deal}/signing', [DealController::class, 'signing']);
-        Route::post('/deals/{deal}/signing-wish', [DealController::class, 'signingWish']);
-        Route::get('/deals/{deal}/signing.ics', [DealController::class, 'signingIcs']);
-        Route::put('/deals/{deal}/receiver', [DealController::class, 'receiver']);
-        Route::post('/deals/{deal}/pickup', [DealController::class, 'requestPickup']);
-        Route::post('/deals/{deal}/picked', [DealController::class, 'picked']);
-        Route::put('/deals/{deal}/contract', [DealContractController::class, 'update']);
-        Route::get('/deals/{deal}/dkp', [DealContractController::class, 'show']);
-        Route::get('/deals/{deal}/dkp.pdf', [DealContractController::class, 'show']);
-        Route::post('/deals/{deal}/files', [DealController::class, 'upload']);
-        Route::post('/deals/{deal}/chat-files', [DealController::class, 'chatFiles']);
-        Route::post('/deals/{deal}/buyer-photos', [DealController::class, 'buyerPhotos']);
-        Route::post('/deals/{deal}/later', [DealController::class, 'later']);
-        Route::delete('/deals/{deal}/files/{media}', [DealController::class, 'removeFile']);
+        Route::middleware('own:deal')->group(function () {
+            Route::get('/deals/{deal}/chat', [DealController::class, 'chat']);
+            Route::post('/deals/{deal}/reply', [DealController::class, 'answer']);
+            Route::post('/deals/{deal}/signing', [DealController::class, 'signing']);
+            Route::post('/deals/{deal}/signing-wish', [DealController::class, 'signingWish']);
+            Route::get('/deals/{deal}/signing.ics', [DealController::class, 'signingIcs']);
+            Route::put('/deals/{deal}/receiver', [DealController::class, 'receiver']);
+            Route::post('/deals/{deal}/pickup', [DealController::class, 'requestPickup']);
+            Route::post('/deals/{deal}/picked', [DealController::class, 'picked']);
+            Route::put('/deals/{deal}/contract', [DealContractController::class, 'update']);
+            Route::get('/deals/{deal}/dkp', [DealContractController::class, 'show']);
+            Route::get('/deals/{deal}/dkp.pdf', [DealContractController::class, 'show']);
+            Route::post('/deals/{deal}/files', [DealController::class, 'upload']);
+            Route::post('/deals/{deal}/chat-files', [DealController::class, 'chatFiles']);
+            Route::post('/deals/{deal}/buyer-photos', [DealController::class, 'buyerPhotos']);
+            Route::post('/deals/{deal}/later', [DealController::class, 'later']);
+            Route::delete('/deals/{deal}/files/{media}', [DealController::class, 'removeFile']);
+        });
     });
 
     // Покупатели менеджера — вторая пилюля «Сделок» (интерес, группы, показы внутри).
@@ -253,21 +255,25 @@ Route::middleware(['auth', 'wall'])->group(function () {
         Route::get('/buyers/interest', [BuyerInterestController::class, 'index']);
         Route::post('/buyers/interest/{interest}', [BuyerInterestController::class, 'update']);
         Route::post('/buyers/groups', [GroupController::class, 'store']);
-        Route::get('/buyers/groups/{group}', [GroupController::class, 'show']);
-        Route::put('/buyers/groups/{group}', [GroupController::class, 'update']);
-        Route::put('/buyers/groups/{group}/members', [GroupController::class, 'members']);
-        Route::delete('/buyers/groups/{group}', [GroupController::class, 'destroy']);
+        Route::middleware('own:group')->group(function () {
+            Route::get('/buyers/groups/{group}', [GroupController::class, 'show']);
+            Route::put('/buyers/groups/{group}', [GroupController::class, 'update']);
+            Route::put('/buyers/groups/{group}/members', [GroupController::class, 'members']);
+            Route::delete('/buyers/groups/{group}', [GroupController::class, 'destroy']);
+        });
         Route::get('/buyers/showings/new', [ShowingController::class, 'create']);
         Route::get('/buyers/showings/pick', [ShowingController::class, 'pick']);
         Route::post('/buyers/showings', [ShowingController::class, 'store']);
         Route::delete('/buyers/showings', [ShowingController::class, 'destroy']);
-        Route::get('/buyers/{user}', [BuyerController::class, 'show'])->whereNumber('user');
-        Route::put('/buyers/{user}/groups', [BuyerController::class, 'groups'])->whereNumber('user');
-        Route::put('/buyers/{user}/sees', [BuyerController::class, 'sees'])->whereNumber('user');
-        Route::post('/buyers/{user}/password', [BuyerController::class, 'passwordLink'])->whereNumber('user');
-        Route::post('/buyers/{user}/access', [BuyerController::class, 'access'])->whereNumber('user');
-        Route::delete('/buyers/{user}/access', [BuyerController::class, 'closeAccess'])->whereNumber('user');
-        Route::put('/buyers/{user}/passport', [BuyerController::class, 'passport'])->whereNumber('user');
+        Route::middleware('own:buyer')->group(function () {
+            Route::get('/buyers/{user}', [BuyerController::class, 'show'])->whereNumber('user');
+            Route::put('/buyers/{user}/groups', [BuyerController::class, 'groups'])->whereNumber('user');
+            Route::put('/buyers/{user}/sees', [BuyerController::class, 'sees'])->whereNumber('user');
+            Route::post('/buyers/{user}/password', [BuyerController::class, 'passwordLink'])->whereNumber('user');
+            Route::post('/buyers/{user}/access', [BuyerController::class, 'access'])->whereNumber('user');
+            Route::delete('/buyers/{user}/access', [BuyerController::class, 'closeAccess'])->whereNumber('user');
+            Route::put('/buyers/{user}/passport', [BuyerController::class, 'passport'])->whereNumber('user');
+        });
     });
 
     // Гараж — машины, выведенные из продажи менеджеру на ремонт (до 30.09.2026 — хост garage.xcar.ru).
@@ -285,7 +291,6 @@ Route::middleware(['auth', 'wall'])->group(function () {
         Route::delete('/costs/{cost}', [GarageCarController::class, 'destroyCost']);
         // Этапы: «Готова» — кнопкой; «Продаю» — менеджер ценой, итог и счёт — мы, об оплате сообщает он.
         Route::post('/cars/{offer}/stage', [GarageSettlementController::class, 'stage']);
-        Route::post('/cars/{offer}/advance', [GarageSettlementController::class, 'stage']);
         Route::post('/cars/{offer}/sold', [GarageSettlementController::class, 'sold']);
         Route::delete('/cars/{offer}/sold', [GarageSettlementController::class, 'unsold']);
         Route::put('/cars/{offer}/buyer-price', [GarageSettlementController::class, 'buyerPrice']);

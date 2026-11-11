@@ -34,8 +34,8 @@ use App\Offers\BidState;
 use App\Offers\Binding;
 use App\Offers\CatalogQuery;
 use App\Offers\Estimate;
-use App\Offers\Exclusive;
 use App\Offers\EstimateState;
+use App\Offers\Exclusive;
 use App\Offers\Export\OffersXlsx;
 use App\Offers\Jobs\DropEmptyDraft;
 use App\Offers\Jobs\ImportMigtorgLot;
@@ -71,10 +71,10 @@ use App\Users\User;
 use App\Vendors\Vendor;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 class OfferController
@@ -824,23 +824,11 @@ class OfferController
     /** Карточка «Гараж» в редакторе и в «Работе → Гараж»: что рисовать и какие действия доступны. */
     public static function garageView(Offer $offer, User $user): ?array
     {
-        $car = GarageCar::with(['manager', 'costs.author', 'invoice', 'payoutInvoice', 'deal'])->where('offer_id', $offer->id)->first();
-        if (! $car) {
-            return null;
-        }
-        $car->setRelation('offer', $offer);
-        $car->costs->each->setRelation('car', $car);
+        $car = GarageCar::forOffer($offer);
 
-        return GarageView::for($car, $user);
+        return $car ? GarageView::for($car, $user) : null;
     }
 
-    /**
-     * Шторка документов редактора: письмо вендора, документы предложения, файлы писем, которых среди них нет
-     * (пока идёт импорт, документов ещё нет), фото.
-     *
-     * @param  Collection<int, Thread>  $threads
-     * @return list<array<string, mixed>>
-     */
     /**
      * Другие предложения с тем же VIN или номером убытка (twins_controller под полями): второе на ту же машину видно до
      * сохранения. Чужое модератору (опубликованное, из закупки) — строкой без ссылки: знать, что оно есть, надо.
