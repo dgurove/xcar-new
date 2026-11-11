@@ -3275,17 +3275,30 @@ html.kb-open { --home-gap: 0px; }
   .photo-tile img { @apply size-full object-cover; }
   .photo-tile-more { @apply absolute inset-0 flex items-center justify-center bg-black/55 text-lg font-medium text-white; }
   /* Задача сделки: получение фактами одной строкой, ответы страховой подложками. */
-  /* Получение по сделке — сведения поставщика, как «Найдено в Почте»: подпись источника, подложка, поля подписаны слева. */
+  /* Получение по сделке — подпись источника над карточкой сведений `x-ui.info`. */
   .handover-cap { @apply mb-1.5 flex items-center gap-1.5 text-sm text-ink-dim; }
-  .handover-card { @apply rounded-(--radius-m) bg-surface-2 px-4 py-1; }
-  .handover-row { @apply grid grid-cols-[4.5rem_minmax(0,1fr)] items-baseline gap-x-3 py-2; }
-  .handover-row + .handover-row { border-top: 1px solid var(--color-line); }
-  .handover-row > dt { @apply text-sm text-ink-muted; }
-  .handover-row > dd { @apply min-w-0 break-words; }
+  /* Сведения значками (11.11.2026): значок, значение, второе под ним; колонки подписей нет нигде. */
+  .info-card { @apply rounded-(--radius-m) bg-surface-2 px-4; }
+  .info-row { @apply flex items-start gap-3 py-3; }
+  .info-row + .info-row { border-top: 1px solid var(--color-line); }
+  .info-icon { @apply mt-px shrink-0 text-ink-dim; }
+  .info-sub { @apply mt-0.5 block break-words text-sm text-ink-muted; }
   .handover-phone { @apply mt-0.5 inline-flex items-center gap-1.5 font-medium text-accent-text; }
   .handover-facts { @apply flex flex-wrap items-center gap-x-4 gap-y-1.5; }
   .handover-facts > span { @apply inline-flex min-w-0 items-center gap-1.5; }
   .handover-facts > span > svg, .handover-facts > .place > svg { @apply size-4 shrink-0 text-ink-dim; }
+  /* Запись на подписание (11.11.2026, `Offers\Signing`): время плитками; встреча — листок календаря, время, адрес, действия. */
+  .slot-grid { @apply grid grid-cols-3 gap-2; }
+  .slot { @apply flex w-full flex-col items-center gap-0.5 rounded-(--radius-m) bg-surface-2 px-2 py-3 transition-colors active:bg-surface-3; }
+  .slot-day { @apply text-sm text-ink-muted; }
+  .slot-time { @apply text-lg font-medium; }
+  .appt { @apply rounded-(--radius-m) bg-surface-2 p-4; }
+  .appt-head { @apply flex items-center gap-4; }
+  .appt-cal { @apply flex w-14 shrink-0 flex-col items-center overflow-hidden rounded-(--radius-s) bg-surface pb-1.5; }
+  .appt-month { @apply pt-1.5 text-xs font-medium tracking-wide text-danger; }
+  .appt-day { @apply pt-0.5 text-2xl leading-none font-medium; }
+  .appt-place { @apply mt-3 block text-sm break-words text-ink-muted; }
+  .appt-acts { @apply mt-3 flex flex-wrap gap-2; }
   .reply { @apply min-w-0 rounded-(--radius-m) bg-surface-2 px-4 py-3; }
   .reply p a { @apply text-accent-text; }
   /* Телефон — капсулой (контакт получения и телефон в ответе): нажатие звонит, с кем связаться, видно сразу. */

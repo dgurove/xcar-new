@@ -37,11 +37,9 @@ use Spatie\MediaLibrary\MediaCollections\Models\Media;
  */
 final class Disclose
 {
-    // Альфа после оплаты (11.11.2026): «договор готов», свободное время, запись — письмами.
-    private const EXITS = ['поставщик согласовал', 'ответ поставщика получен', 'договор готов', 'поставщик прислал время', 'запись подтверждена'];
-
-    /** Галка отмечена сама: показ менеджеру и есть смысл шага (время поставщика — ему выбирать с покупателем). */
-    private const SHOWN = ['поставщик прислал время'];
+    // Альфа после оплаты (11.11.2026): «договор готов» и «запись подтверждена» — письмами. Свободное время — не галкой, а
+    // шторкой слотов (`OfferSigningSlots`).
+    private const EXITS = ['поставщик согласовал', 'ответ поставщика получен', 'договор готов', 'запись подтверждена'];
 
     /** Исход «просят реквизиты» (`Presets\Alfa::ASKS_REQUISITES`) — по письму, где их просят, а не по телефону. */
     private const REQUISITES = ['поставщик просит реквизиты'];
@@ -141,7 +139,7 @@ final class Disclose
     /** Галка шага отмечена сама там, где раньше шаг проходило письмо: в нём телефон или просьба реквизитов. */
     public static function stepByDefault(Outcome $exit, Collection $letters, ?Deal $deal = null): bool
     {
-        return in_array(mb_strtolower(trim($exit->label)), [...self::REQUISITES, ...self::SHOWN], true)
+        return in_array(mb_strtolower(trim($exit->label)), self::REQUISITES, true)
             || SupplierInvoice::needs($deal, $exit)
             || $letters->contains(fn (Message $m) => InsurerReplies::hasContact($m));
     }

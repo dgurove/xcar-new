@@ -82,12 +82,10 @@ final class Alfa extends Route
 
     public const SIGNING_TEXT = 'Поставщик готовит договор, затем запись на подписание';
 
-    /** Ключ поля «Дата и время подписания» — по нему `{{ signing }}` в письме записи (`MailController::placeholders`). */
-    public const SIGNING_FIELD = 'data_i_vremia_podpisaniia';
-
     /**
-     * Подготовка договора (ждём Альфу без срока) → письмо «свободное время» → менеджер выбирает с покупателем → письмо
-     * «запись» → подписание: подписывает по-разному, поэтому кнопка и за менеджера, и за нас.
+     * Подготовка договора (ждём Альфу без срока) → письмо «свободное время» → «Поставщик прислал время» — шторкой слоты и
+     * адрес (`deals.signing_slots|address`, `OfferSigningSlots`) → менеджер выбирает плиткой (`PickSigningTime`, `signing_at`) →
+     * письмо «запись» → подписание: подписывает по-разному, поэтому кнопка и за менеджера, и за нас. Вид — `x-deal.appointment`.
      */
     public static function signing(): array
     {
@@ -99,18 +97,17 @@ final class Alfa extends Route
             ],
             'slots' => [
                 'name' => 'Свободное время для подписания', 'block' => 'signing', 'waits_for' => 'supplier', 'limit_minutes' => self::DAY, 'letter' => 'slots',
-                'ask_text' => 'Договор готов, узнаём у поставщика свободное время для подписания',
+                'ask_text' => 'Договор готов, узнаём время для подписания',
                 'exits' => [['Поставщик прислал время', 'staff', 'signing_time']],
             ],
             'signing_time' => [
-                'name' => 'Время подписания', 'block' => 'signing', 'waits_for' => 'manager', 'limit_minutes' => self::DAY, 'asks' => 'fields',
-                'ask_title' => 'Согласуйте время подписания с покупателем', 'ask_text' => 'Свободное время поставщика — в информации по сделке. Впишите, когда может покупатель',
-                'fields' => [['label' => 'Дата и время подписания', 'type' => 'datetime', 'key' => self::SIGNING_FIELD]],
+                'name' => 'Время подписания', 'block' => 'signing', 'waits_for' => 'manager', 'limit_minutes' => self::DAY,
+                'ask_title' => 'Выберите время подписания с покупателем', 'ask_text' => 'Свободное время поставщика — выберите, когда может покупатель',
                 'exits' => [['Время согласовано', 'manager', 'appointment']],
             ],
             'appointment' => [
                 'name' => 'Запись на подписание', 'block' => 'signing', 'waits_for' => 'supplier', 'limit_minutes' => self::DAY, 'letter' => 'appointment',
-                'ask_text' => 'Записываем покупателя на подписание у поставщика',
+                'ask_text' => 'Записываем на подписание',
                 'exits' => [['Запись подтверждена', 'staff', 'signing']],
             ],
             'signing' => [
@@ -132,7 +129,7 @@ final class Alfa extends Route
             'appointment' => [
                 'name' => 'Поставщику: запись на подписание',
                 'subject' => '{{ claim_ref }}',
-                'body' => "Здравствуйте!\n\nПросим записать покупателя на подписание договора купли-продажи {{ car }}, VIN {{ vin }} ({{ claim_ref }}): {{ signing }}\n\nС уважением,\nАндрей Кузнецов",
+                'body' => "Здравствуйте!\n\nПросим записать покупателя на подписание договора купли-продажи {{ car }}, VIN {{ vin }} ({{ claim_ref }}): {{ signing }}, {{ signing_address }}\n\nС уважением,\nАндрей Кузнецов",
             ],
         ];
     }

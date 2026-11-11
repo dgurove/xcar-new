@@ -81,13 +81,13 @@
     {{-- Схема — первой строкой: кто кому платит решает всё ниже (03.11.2026). --}}
     @unless ($deal->isAuction())<x-deal.scheme :deal="$deal"/>@endunless
     <dl class="grid grid-cols-[auto_1fr] items-baseline gap-x-4 gap-y-1.5">
-        @foreach ($shown as [$dt, $value, $class])<dt class="text-sm text-ink-dim">{{ $dt }}</dt><dd class="{{ $class }}">{{ $value }}</dd>@endforeach
+        @foreach ($shown as [$dt, $value, $class])<dt class="text-sm text-ink-dim">{{ $dt }}</dt><dd class="text-right {{ $class }}">{{ $value }}</dd>@endforeach
     </dl>
     @if ($rest)
         <details class="group mt-1.5">
             <summary class="flex cursor-pointer list-none items-center gap-1 text-sm text-ink-muted">Расклад<x-ui.icon name="chevron-down" class="size-4 transition-transform group-open:rotate-180"/></summary>
             <dl class="mt-1.5 grid grid-cols-[auto_1fr] items-baseline gap-x-4 gap-y-1.5">
-                @foreach ($rest as [$dt, $value, $class])<dt class="text-sm text-ink-dim">{{ $dt }}</dt><dd class="{{ $class }}">{{ $value }}</dd>@endforeach
+                @foreach ($rest as [$dt, $value, $class])<dt class="text-sm text-ink-dim">{{ $dt }}</dt><dd class="text-right {{ $class }}">{{ $value }}</dd>@endforeach
             </dl>
         </details>
     @endif

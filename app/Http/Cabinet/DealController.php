@@ -343,6 +343,24 @@ class DealController
         return $request->expectsJson() ? response()->noContent() : $this->back($request, $deal);
     }
 
+    /** Время подписания у поставщика — плиткой или своим (`PickSigningTime`). */
+    public function signing(Request $request, Deal $deal, \App\Offers\Actions\PickSigningTime $pick)
+    {
+        abort_unless($deal->buyer_id === $request->user()->id, 404);
+        $deal = $pick($deal, $request->user(), (string) $request->validate(['at' => ['required', 'string', 'max:30']])['at']);
+
+        return $this->back($request, $deal)->with('toast', 'Записываем на '.\App\Support\Ago::at($deal->signing_at, true, words: false));
+    }
+
+    /** Встреча в календарь телефона: подписание на час, с адресом. */
+    public function signingIcs(Request $request, Deal $deal)
+    {
+        abort_unless($deal->buyer_id === $request->user()->id && \App\Offers\Signing::booked($deal), 404);
+
+        return response(\App\Offers\Signing::ics($deal), 200, ['Content-Type' => 'text/calendar; charset=utf-8',
+            'Content-Disposition' => 'attachment; filename="podpisanie-'.$deal->offer->number.'.ics"']);
+    }
+
     /** Кто заберёт машину с нашей парковки и когда (`SetReceiver`): пропуск новый, парковка видит сразу. */
     public function receiver(Request $request, Deal $deal, SetReceiver $set)
     {

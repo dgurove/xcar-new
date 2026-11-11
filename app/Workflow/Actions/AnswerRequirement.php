@@ -47,6 +47,10 @@ final class AnswerRequirement
                     $answer[$field['key']] = $value;
                 }
             }
+            // Время подписания — только выбранным временем (`PickSigningTime` ставит его до ответа).
+            if (\App\Offers\Signing::pickExit($exit) && ! $requirement->deal?->signing_at) {
+                throw ValidationException::withMessages(['exit' => 'Сначала выберите время']);
+            }
             if (Deal::closes($exit) && ($blocker = $requirement->deal?->closeBlocker())) {
                 throw ValidationException::withMessages(['exit' => $blocker]);
             }

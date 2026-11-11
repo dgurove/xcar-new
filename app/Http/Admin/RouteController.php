@@ -56,6 +56,13 @@ class RouteController
         if ($request->input('for') !== 'manager' && SupplierInvoice::needs($offer->deal?->isActive() ? $offer->deal : null, $exit)) {
             throw ValidationException::withMessages(['exit' => 'Сначала выберите счёт поставщика — менеджер платит по нему']);
         }
+        // Свободное время поставщика — шторкой слотов (`OfferSigningSlots`), время за менеджера — выбором (`PickSigningTime`).
+        if (\App\Offers\Signing::slotsExit($exit)) {
+            throw ValidationException::withMessages(['exit' => 'Внесите свободное время поставщика']);
+        }
+        if (\App\Offers\Signing::pickExit($exit) && ! $offer->deal?->signing_at) {
+            throw ValidationException::withMessages(['exit' => 'Сначала выберите время']);
+        }
         $payload = [];
         foreach ($exit->staffFields() as $field) {
             $value = trim((string) $request->input("fields.{$field['key']}", ''));

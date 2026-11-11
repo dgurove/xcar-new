@@ -1243,24 +1243,10 @@ class MailController
             'today' => now()->translatedFormat('j F Y'),
             // Реквизиты для счёта поставщика (03.11.2026, Альфа): покупатель по договору, где платим мы — наше юрлицо.
             'buyer' => $offer->deal?->supplierInvoicee()?->requisitesText() ?? '',
-            // Время подписания у Альфы (11.11.2026): что вписал менеджер на «Время подписания».
-            'signing' => self::signingAt($offer),
+            // Запись на подписание у Альфы (11.11.2026): время, что выбрал менеджер, и адрес филиала.
+            'signing' => $offer->deal?->signing_at ? \App\Support\Ago::at($offer->deal->signing_at, true, words: false) : '',
+            'signing_address' => $offer->deal?->signing_address ?? '',
         ];
-    }
-
-    /** Последний ответ «Дата и время подписания» по сделке — «14.11 11:00», в другом году с годом. */
-    public static function signingAt(Offer $offer): string
-    {
-        $at = $offer->deal ? \App\Workflow\Requirement::where('deal_id', $offer->deal->id)->whereNotNull('done_at')
-            ->whereNotNull('answer->fields->'.\App\Workflow\Presets\Alfa::SIGNING_FIELD)->latest('done_at')->first()?->answer['fields'][\App\Workflow\Presets\Alfa::SIGNING_FIELD] ?? null : null;
-        if (! $at) {
-            return '';
-        }
-        try {
-            return \App\Support\Ago::at(\Illuminate\Support\Carbon::parse((string) $at), true, words: false);
-        } catch (\Throwable) {
-            return (string) $at;
-        }
     }
 
     /** Подстановки шаблона из машины на стоянке. */

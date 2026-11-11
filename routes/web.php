@@ -219,6 +219,8 @@ Route::middleware(['auth', 'wall'])->group(function () {
         // Действия по сделке.
         Route::get('/deals/{deal}/chat', [DealController::class, 'chat']);
         Route::post('/deals/{deal}/reply', [DealController::class, 'answer']);
+        Route::post('/deals/{deal}/signing', [DealController::class, 'signing']);
+        Route::get('/deals/{deal}/signing.ics', [DealController::class, 'signingIcs']);
         Route::put('/deals/{deal}/receiver', [DealController::class, 'receiver']);
         Route::post('/deals/{deal}/pickup', [DealController::class, 'requestPickup']);
         Route::post('/deals/{deal}/picked', [DealController::class, 'picked']);

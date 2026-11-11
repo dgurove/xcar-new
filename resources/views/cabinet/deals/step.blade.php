@@ -89,6 +89,8 @@
                     $needsBuyer && ! $buyerStep => $gap === 'passport' ? 'Приложите паспорт покупателя' : 'Укажите покупателя',
                     $needsPrice => 'Укажите цену продажи',
                     $paidUp => 'Оплата получена',
+                    // Встреча записана — дата в карточке ниже, в заголовке её не повторяем.
+                    $requirement && \App\Offers\Signing::booked($deal) => \App\Users\Wording::mine($position->stage->managerTitle()),
                     $requirement && ! ($pickupSteps ?? null) => $direct
                         ? trim(preg_replace('/^Оплатить/u', 'Оплатите', (string) $deal->schemeOf()->payLabel()).' '.($deal->supplierPayment() ? \App\Support\Money::rub($deal->supplierPayment()) : ''))
                         : \App\Users\Wording::mine($requirement->title),
@@ -182,6 +184,13 @@
                     <p class="mt-3 text-ink-muted">Счёт поставщика пришлём сюда</p>
                 @endif
             @endif
+            {{-- Запись на подписание (`Offers\Signing`): выбрать время плиткой, потом — карточка встречи. --}}
+            @php $signingPick = $requirement && \App\Offers\Signing::picks($position->stage); @endphp
+            @if ($signingPick)
+                <x-deal.signing-pick :deal="$deal" :action="'/deals/'.$deal->id.'/signing'" class="mt-4"/>
+            @elseif (\App\Offers\Signing::booked($deal))
+                <x-deal.appointment :deal="$deal" :confirmed="$position->waitsFor() === \App\Workflow\WaitsFor::Manager" :ics="'/deals/'.$deal->id.'/signing.ics'" class="mt-4"/>
+            @endif
             @if ($showHandover)@include($handover->park ? 'cabinet.deals.park-pickup' : 'cabinet.deals.handover')@endif
             @include('cabinet.deals.payload')
             @if ($disclosures->isNotEmpty())@include('cabinet.deals.disclosures', ['skipFiles' => $supplierBills->pluck('id')->all()])@endif
@@ -205,7 +214,7 @@
                 @if ($photoTiles)<div class="mt-4"><x-deal.buyer-photos :deal="$deal"/></div>@endif
                 <div class="mt-4">@include('cabinet.deals.contract', ['part' => 'buyer', 'embedded' => true])</div>
             @endif
-            @if ($requirement && ! $needsBuyer && ! $photosSent && (! $selectionPay || $direct) && ! $paidUp)
+            @if ($requirement && ! $needsBuyer && ! $photosSent && (! $selectionPay || $direct) && ! $paidUp && ! $signingPick)
                 @if ($payStep && $unpaid->isNotEmpty() && ! $direct)
                     @if ($claimable->isNotEmpty())
                         {{-- Та же шторка, что в «Деньгах»: ссылкой (кто платит), по счёту с платёжкой, наличными. Ответ — сюда же. --}}

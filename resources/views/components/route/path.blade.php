@@ -223,6 +223,14 @@
                     @if ($deal?->buyer_asked_at && $position->track === \App\Workflow\Track::Sale && auth()->user()?->canManageCrm())
                         <x-route.task-row icon="user" :href="'/offers/'.$offer->number.($deal->hasContract() ? '?dkp=1#dkp' : '?buyer=1#invoice-buyer')" data-turbo-frame="_top">{{ $deal->buyer_scans_at ? 'Реквизиты покупателя прислал фото, внести' : 'Менеджер не указал покупателя' }}</x-route.task-row>
                     @endif
+                    {{-- Запись на подписание (`Offers\Signing`): менеджер выбирает время — его варианты плитками (за него), выбрано —
+                         карточка встречи. --}}
+                    @if ($deal && $position->track === \App\Workflow\Track::Sale && \App\Offers\Signing::picks($position->stage) && auth()->user()?->canManageCrm())
+                        <p class="mt-3 text-sm text-ink-muted">Выбрать за менеджера</p>
+                        <x-deal.signing-pick :deal="$deal" :action="'/work/deals/'.$deal->id.'/signing'" class="mt-2"/>
+                    @elseif ($deal && $position->track === \App\Workflow\Track::Sale && \App\Offers\Signing::booked($deal))
+                        <x-deal.appointment :deal="$deal" :confirmed="$position->waitsFor() === \App\Workflow\WaitsFor::Manager" :ics="'/work/deals/'.$deal->id.'/signing.ics'" class="mt-3"/>
+                    @endif
                     @if ($buyerData && auth()->user()?->canManageCrm())
                         <div class="step-acts mt-3"><a href="/offers/{{ $offer->number }}?buyer=1#invoice-buyer" class="btn btn-s btn-accent !h-auto min-h-9 whitespace-normal py-1.5" data-turbo-frame="_top">Заполнить за менеджера</a></div>
                     @endif
@@ -329,6 +337,12 @@
                                     <div data-controller="sheet">
                                         <x-ui.button type="button" size="sm" :variant="$variant" data-action="sheet#open">{{ $label($exit) }}</x-ui.button>
                                         <x-offer.publish-sheet :offer="$offer" id="exit-{{ $exit->id }}" action="/offers/{{ $n }}/exit/{{ $exit->id }}"/>
+                                    </div>
+                                @elseif ($deal && \App\Offers\Signing::slotsExit($exit))
+                                    {{-- Свободное время поставщика — шторкой: адрес и время, менеджер выберет плиткой (`Offers\Signing`). --}}
+                                    <div data-controller="sheet">
+                                        <x-ui.button type="button" size="sm" :variant="$variant" data-action="sheet#open" aria-controls="slots-{{ $exit->id }}">{{ $label($exit) }}</x-ui.button>
+                                        <x-deal.signing-slots-sheet :id="'slots-'.$exit->id" :deal="$deal" :exit="$exit"/>
                                     </div>
                                 @elseif (\App\Offers\SupplierInvoice::needs($deal, $exit))
                                     {{-- На оплату поставщику менеджером — только со счётом: шторка выбора счёта (`SupplierInvoice`). --}}

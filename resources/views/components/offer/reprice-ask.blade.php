@@ -30,8 +30,8 @@
     <div {{ $attributes->class('counter-card') }}>
         <div class="text-sm text-accent-text">{{ $ask->shownAs() === 'reward' ? 'Вознаграждение изменится' : 'Цена изменилась' }}</div>
         <div class="mt-2 flex flex-col gap-1">
-            <div class="flex items-baseline gap-3"><span class="w-14 shrink-0 text-ink-muted">Было</span><span class="nums">{{ $p['was'] }}</span></div>
-            <div class="flex items-baseline gap-3"><span class="w-14 shrink-0 text-ink-muted">Стало</span><span class="nums font-bold">{{ $p['now'] }}</span></div>
+            <div class="flex items-baseline justify-between gap-3"><span class="text-ink-muted">Было</span><span class="nums">{{ $p['was'] }}</span></div>
+            <div class="flex items-baseline justify-between gap-3"><span class="text-ink-muted">Стало</span><span class="nums font-bold">{{ $p['now'] }}</span></div>
         </div>
         @if ($was)<p class="nums mt-2 text-sm text-ink-muted">Ваша цена подтверждения {{ Money::rub($was) }}</p>@endif
         <form method="post" action="{{ $action }}" class="mt-4 flex flex-col gap-2">
