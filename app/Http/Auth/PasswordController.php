@@ -80,6 +80,9 @@ class PasswordController
         if (self::telegramOnly($link->user)) {
             throw ValidationException::withMessages(['password' => 'Вход только через Telegram']);
         }
+        if (! $link->user->hasBuyerAccess()) {
+            throw ValidationException::withMessages(['password' => 'Доступ закрыт — его открывает ваш менеджер']);
+        }
 
         $data = $request->validate(['password' => ['required', 'string', 'min:8', 'confirmed']]);
         $user = $set($link, $data['password']);

@@ -67,7 +67,7 @@ final class AddPerson
         }
         $password = Passwords::readable();
 
-        $user = DB::transaction(function () use ($invite, $data, $phone, $email, $password, $extra, $login) {
+        $user = DB::transaction(function () use ($invite, $data, $phone, $email, $password, $extra, $login, $contact) {
             /** @var Invite $made */
             $made = $invite();
             $made->forceFill(['fields' => ['phone' => true, 'email' => true], 'max_uses' => 1, 'manual' => true])->save();
@@ -77,6 +77,10 @@ final class AddPerson
             ]);
             if ($extra) {
                 $user->update($extra);
+            }
+            // Покупатель, которого админ завёл с телефоном или почтой (не «по имени», `contact`), — сразу с доступом.
+            if (! $contact && $user->isBuyer() && ($phone || $email)) {
+                $user->forceFill(['buyer_access_at' => now()])->save();
             }
 
             return $user;
@@ -119,10 +123,11 @@ final class AddPerson
     public static function credentials(User $user, string $password): array
     {
         // Входят телефоном, а покупатель без телефона — почтой (05.11.2026, владелец: «покупатели могут входить по почте»).
-        // Поставщик — логином (08.11.2026).
+        // Поставщик — логином (08.11.2026); покупатель, что пришёл по ссылке (логин свой, телефона нет), — тоже логином: доступ
+        // ему открыли снова — «Почта: » пустой не годится (11.11.2026).
         [$via, $login] = match (true) {
             (bool) $user->phone => ['Телефон', Phone::format($user->phone)],
-            $user->isSupplier() && (bool) $user->login => ['Логин', $user->login],
+            (bool) $user->login && ($user->isSupplier() || ! $user->email) => ['Логин', $user->login],
             default => ['Почта', (string) $user->email],
         };
 

@@ -124,7 +124,11 @@ final class Notify
     /** Покупатель прошёл по ссылке: менеджеру — в ленту и push, владельцу — строка в Telegram. */
     public function buyerJoined(BuyerJoined $e): void
     {
-        $e->user->manager?->notify(new BuyerJoinedNotice($e->user));
+        // Завёл сам менеджер («Ввести данные», «Новый покупатель», скан паспорта — `invites.manual`) — сообщать ему не о чем
+        // (11.11.2026); админ за него (CRM, сделка менеджера — ссылка всё равно от имени менеджера) — сказать надо.
+        if (! ($e->invite->manual && auth()->id() === $e->user->manager_id)) {
+            $e->user->manager?->notify(new BuyerJoinedNotice($e->user));
+        }
         NotifyOwner::dispatch(new BuyerJoinedMessage($e->user->load('manager')));
     }
 

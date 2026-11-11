@@ -45,7 +45,8 @@ final class ReadPassport implements ShouldQueue
         $read = false;
         DocumentText::read([new PassportScan($media)], function ($file, ?string $text, ?int $turn = null) use ($media, &$read) {
             $read = true;
-            $result = $media->getCustomProperty('page') === 'reg' ? PassportText::registration((string) $text) : PassportText::main((string) $text);
+            $page = $text === null ? $media->getCustomProperty('page') : self::placePage($media, (string) $text);
+            $result = $page === 'reg' ? PassportText::registration((string) $text) : PassportText::main((string) $text);
             // Сначала поворот, потом «прочитано»: шторка по «done» берёт миниатюру уже прямой.
             $text !== null && $turn && self::upright($media, $turn, $text);
             $media->setCustomProperty('read', $text === null ? 'failed' : 'done')
@@ -57,6 +58,39 @@ final class ReadPassport implements ShouldQueue
             $media->setCustomProperty('read', 'failed')->save();
         }
         self::passportName($media);
+    }
+
+    /**
+     * Какая это страница на самом деле (11.11.2026, владелец: «прикрепляют паспорт и прописку разом — путает порядок,
+     * подставляет прописку в паспорт и наоборот, и ничего не распознаёт»): фото из галереи приходят в любом порядке, а плитка
+     * бралась по порядку. Разворот узнаётся по зоне внизу (сошлись контрольные цифры) или ФИО, прописка — по штампу с
+     * адресом. Лежит не на своей плитке — меняется местами с соседней (та перечитывается под своей: текст в кэше).
+     * Обе страницы читаются разом, и обе могут поменять — итог тот же: каждая встаёт туда, что про неё прочитано.
+     */
+    private static function placePage(Media $media, string $text): string
+    {
+        $page = (string) $media->getCustomProperty('page');
+        $main = PassportText::main($text);
+        $isMain = $main['checked'] !== [] || isset($main['fields']['name']);
+        $isReg = ! $isMain && isset(PassportText::registration($text)['fields']['reg_address']);
+        $actual = match (true) {
+            $page === 'reg' && $isMain => 'main',
+            $page !== 'reg' && $isReg => 'reg',
+            default => $page,
+        };
+        $party = $media->model;
+        if ($actual === $page || ! $party instanceof Party) {
+            return $page;
+        }
+        $other = Media::where('model_type', $media->model_type)->where('model_id', $media->model_id)->where('collection_name', 'passport')
+            ->whereKeyNot($media->id)->get()->first(fn (Media $m) => $m->getCustomProperty('page') === $actual);
+        $media->setCustomProperty('page', $actual)->save();
+        if ($other) {
+            $other->setCustomProperty('page', $page)->setCustomProperty('read', 'reading')->save();
+            self::dispatch($other->id);
+        }
+
+        return $actual;
     }
 
     /**

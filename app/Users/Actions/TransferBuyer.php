@@ -37,7 +37,7 @@ final class TransferBuyer
             OffersHidden::dispatch($to, [$buyer->id => $seen]);
         }
 
-        $to->notify(new BuyerJoinedNotice($buyer));
+        $to->notify(new BuyerJoinedNotice($buyer, transferred: true));
 
         return $buyer;
     }

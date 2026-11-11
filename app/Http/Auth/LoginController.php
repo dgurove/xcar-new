@@ -46,6 +46,10 @@ class LoginController
         if (Lock::enabled() && $user instanceof User && $user->underLock() && $user->telegram_chat_id !== null) {
             throw ValidationException::withMessages(['login' => 'Вход по паролю закрыт, войдите через Telegram']);
         }
+        // Покупатель без доступа (11.11.2026): пароль у него сброшен при закрытии, но и со старым — не пускаем.
+        if ($user instanceof User && ! $user->hasBuyerAccess()) {
+            throw ValidationException::withMessages(['login' => 'Доступ закрыт — его открывает ваш менеджер']);
+        }
         Auth::login($user, $request->boolean('remember', true));
 
         $request->session()->regenerate();

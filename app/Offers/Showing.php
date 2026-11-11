@@ -63,8 +63,9 @@ class Showing extends Model
             ->pluck('user_id');
         $ids = $direct->merge($viaGroups)->unique()->values();
 
-        // Кто видит всё, что открыто менеджеру (12.10.2026), показом ничего не получает — его здесь нет.
-        return $ids->isEmpty() ? $ids : User::whereIn('id', $ids)->where('buyer_sees', 'picked')->pluck('id')->values();
+        // Кто видит всё, что открыто менеджеру (12.10.2026), показом ничего не получает — его здесь нет; без доступа к
+        // предложениям (11.11.2026) — не видит вовсе.
+        return $ids->isEmpty() ? $ids : User::whereIn('id', $ids)->where('buyer_sees', 'picked')->withBuyerAccess()->pluck('id')->values();
     }
 
     /**
@@ -76,7 +77,7 @@ class Showing extends Model
     public static function seersOf(Offer $offer): Collection
     {
         $managers = DB::table('offer_viewers')->where('offer_id', $offer->id)->where('opens_at', '<=', now())->select('user_id');
-        $all = User::withRole(Role::Buyer)->where('buyer_sees', '!=', 'picked')->whereIn('manager_id', $managers)->whereNull('rejected_at')->pluck('id');
+        $all = User::withRole(Role::Buyer)->where('buyer_sees', '!=', 'picked')->whereIn('manager_id', $managers)->whereNull('rejected_at')->withBuyerAccess()->pluck('id');
 
         return self::buyerIdsOf($offer)->merge($all)->unique()->values();
     }
@@ -88,20 +89,20 @@ class Showing extends Model
     public static function pickable(User $manager): bool
     {
         if (app()->runningInConsole()) {
-            return User::withRole(Role::Buyer)->where('manager_id', $manager->id)->where('buyer_sees', 'picked')->exists();
+            return User::withRole(Role::Buyer)->where('manager_id', $manager->id)->where('buyer_sees', 'picked')->withBuyerAccess()->exists();
         }
         $key = 'showings.pickable.'.$manager->id;
         if (! request()->attributes->has($key)) {
-            request()->attributes->set($key, User::withRole(Role::Buyer)->where('manager_id', $manager->id)->where('buyer_sees', 'picked')->whereNull('rejected_at')->exists());
+            request()->attributes->set($key, User::withRole(Role::Buyer)->where('manager_id', $manager->id)->where('buyer_sees', 'picked')->whereNull('rejected_at')->withBuyerAccess()->exists());
         }
 
         return request()->attributes->get($key);
     }
 
-    /** Покупатели менеджера, что видят всё открытое ему (`buyer_sees = all`). */
+    /** Покупатели менеджера, что видят всё открытое ему (`buyer_sees = all`) — с доступом к предложениям (11.11.2026). */
     public static function seeAllCount(User $manager): int
     {
-        return User::withRole(Role::Buyer)->where('manager_id', $manager->id)->where('buyer_sees', '!=', 'picked')->whereNull('rejected_at')->count();
+        return User::withRole(Role::Buyer)->where('manager_id', $manager->id)->where('buyer_sees', '!=', 'picked')->whereNull('rejected_at')->withBuyerAccess()->count();
     }
 
     /**
@@ -120,6 +121,7 @@ class Showing extends Model
             ->leftJoin('buyer_group_user as m', 'm.group_id', '=', 's.group_id')
             ->join('users as u', 'u.id', '=', DB::raw('coalesce(s.user_id, m.user_id)'))
             ->where('u.buyer_sees', 'picked')
+            ->whereNotNull('u.buyer_access_at')
             ->where('s.manager_id', $manager->id)
             ->whereIn('s.offer_id', $offerIds)
             ->selectRaw('s.offer_id, count(distinct coalesce(s.user_id, m.user_id)) as n')

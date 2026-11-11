@@ -1,5 +1,5 @@
 {{-- Покупатель — как контакт в телефоне: кружок, имя, чипы, ряд действий (позвонить, написать, пароль).
-     Ниже — что видит: строка режима («Все предложения» / «Выбранные»), у выбранных — строки показов (прямой снимается
+     Ниже — доступ к предложениям (есть / нет, 11.11.2026) и что видит: строка режима («Все предложения» / «Выбранные»), у выбранных — строки показов (прямой снимается
      смахиванием); интерес, чаты, паспорт строкой. Группы — действие «Группы» в том же ряду.
      Главное действие «выбранных» — «Открыть предложения» — в полосе внизу. --}}
 @php $me = auth()->user(); $link = ($link['user'] ?? null) === $buyer->id ? $link : null; @endphp
@@ -11,7 +11,7 @@
                 <x-slot:chips>
                     {{-- Группы — чипами (ссылками), логин и с какого дня — строкой текста. --}}
                     @foreach ($buyer->groups as $g)<a href="/buyers/groups/{{ $g->id }}" class="tag">{{ $g->name }}</a>@endforeach
-                    <div class="detail-line basis-full !mt-0.5 text-sm text-ink-muted lg:justify-center">@if ($buyer->login)<span class="nums">{{ $buyer->login }}</span>@endif @if ($buyer->phone)<span><x-ui.phone :user="$buyer"/></span> @endif<span class="nums">с {{ \App\Support\Ago::html($buyer->created_at, words: false) }}</span></div>
+                    <div class="detail-line basis-full !mt-0.5 text-sm text-ink-muted lg:justify-center">@if ($buyer->login)<span class="nums">{{ $buyer->login }}</span>@endif @if ($buyer->phone)<x-ui.phone :user="$buyer"/>@endif<span class="nums">с {{ \App\Support\Ago::html($buyer->created_at, words: false) }}</span></div>
                 </x-slot:chips>
                 <x-slot:acts>
                     @if ($buyer->email)<a href="mailto:{{ $buyer->email }}" class="act"><span class="btn btn-quiet btn-round"><x-ui.icon name="mail"/></span>Написать</a>@endif
@@ -29,25 +29,14 @@
                             </x-ui.sheet>
                         </div>
                     @endif
-                    @if ($buyer->signsIn())
+                    {{-- Пароль — тому, у кого есть доступ; дать доступ — строкой «Без доступа» ниже (11.11.2026). --}}
+                    @if ($buyer->hasBuyerAccess())
                         <form method="post" action="/buyers/{{ $buyer->id }}/password" class="contents"
                             data-turbo-confirm="Выдать ссылку для нового пароля?" data-turbo-confirm-label="Выдать"
                             data-turbo-confirm-text="{{ $buyer->shortName() }} откроет её и придумает новый пароль. Действует сутки, один раз.">
                             @csrf
                             <button type="submit" class="act"><span class="btn btn-quiet btn-round"><x-ui.icon name="key"/></span>Пароль</button>
                         </form>
-                    @else
-                        {{-- Заведён по имени (05.11.2026): входа нет, пока менеджер сам не даст — телефон или почта и пароль здесь. --}}
-                        <div data-controller="sheet" class="contents">
-                            <button type="button" class="act" data-action="sheet#open"><span class="btn btn-quiet btn-round"><x-ui.icon name="key"/></span>Дать вход</button>
-                            <x-ui.sheet id="buyer-access" title="Вход в XCar">
-                                <form method="post" action="/buyers/{{ $buyer->id }}/access" class="flex flex-col gap-3">
-                                    @csrf
-                                    <div class="fields"><x-ui.field name="contact" label="Телефон или почта" autocomplete="off" autocapitalize="off" required/></div>
-                                    <x-ui.sheet-foot>Дать вход</x-ui.sheet-foot>
-                                </form>
-                            </x-ui.sheet>
-                        </div>
                     @endif
                 </x-slot:acts>
             </x-ui.contact>
@@ -62,22 +51,50 @@
         </div>
 
         <div class="min-w-0 lg:col-start-1 lg:row-start-1">
-            {{-- Что видит (12.10.2026, владелец: «менеджеры не понимают, как открывать покупателям доступ»): строка режима со
-                 шторкой — «Все предложения» (всё открытое менеджеру, сразу с ценой) или «Выбранные» (открытое вручную, список
-                 ниже и «Открыть предложения» внизу). --}}
-            {{-- Без входа (заведён по имени для сделки) — ничего не видит: строки «Что видит» нет, есть «Дать вход» в шапке (11.11.2026). --}}
-            @if ($buyer->signsIn())
+            {{-- Доступ к предложениям (11.11.2026, владелец: «покупатели с доступом и без доступа»; `User::hasBuyerAccess`) —
+                 первой строкой. С доступом — что видит: все ваши предложения или выбранные (12.10.2026), шторка — режим, VIN и
+                 «Закрыть доступ» (войти не сможет, данные для сделок останутся). Без доступа — «только данные для сделок», шторка
+                 «Дать доступ»: телефон или почта, если их нет, и что видит; пароль — шторкой входа. --}}
+            @unless ($buyer->hasBuyerAccess())
+            {{-- Без доступа: строка — только состояние (без действия справа), кнопка — своей строкой ниже (владелец 11.11.2026:
+                 «не пихать кнопку справа от заголовка», «кнопка — кнопкой, а не текстом»). --}}
+            <section data-controller="sheet" class="flex flex-col gap-3">
+                <div class="list">
+                    <div class="row">
+                        <x-ui.row-icon name="eye-off"/>
+                        <span class="min-w-0 flex-1">
+                            <span class="block font-medium">Без доступа к предложениям</span>
+                            <span class="row-sub">Только данные для сделок, войти не может</span>
+                        </span>
+                    </div>
+                </div>
+                <x-ui.button type="button" variant="secondary" block data-action="sheet#open"><x-ui.icon name="eye" class="size-5"/> Дать доступ</x-ui.button>
+                <x-ui.sheet id="buyer-access" title="Доступ к предложениям">
+                    <form method="post" action="/buyers/{{ $buyer->id }}/access" class="flex flex-col gap-4">
+                        @csrf
+                        <p class="text-ink-muted">{{ $buyer->shortName() }} войдёт в XCar и увидит ваши предложения. Пароль покажем после — отправите ему.</p>
+                        <div class="fields">
+                            @unless ($buyer->hasSignInContact())
+                                <x-ui.field name="contact" label="Телефон или почта" autocomplete="off" autocapitalize="off" required/>
+                            @endunless
+                            <x-ui.field name="buyer_sees" label="Видит" :options="['all' => 'Все предложения', 'picked' => 'Выбранные']" :value="old('buyer_sees', $buyer->buyer_sees === 'picked' ? 'picked' : 'all')"/>
+                        </div>
+                        <x-ui.sheet-foot>Дать доступ</x-ui.sheet-foot>
+                    </form>
+                </x-ui.sheet>
+            </section>
+            @else
             <section data-controller="sheet">
                 <div data-controller="sheet" class="list">
                     <x-ui.sheet-row>
                         <x-ui.row-icon name="eye"/>
                         <span class="min-w-0 flex-1">
-                            <span class="block font-medium">{{ $seesAll ? 'Видит все ваши предложения' : 'Видит выбранные' }}</span>
-                            <span class="row-sub"><span class="nums">{{ $seenCount }} {{ \App\Support\Plural::of($seenCount, ['предложение', 'предложения', 'предложений']) }}</span>@if ($seesAll && $buyer->buyer_show_vin)<span>с VIN</span>@endif</span>
+                            <span class="block font-medium">Доступ к предложениям</span>
+                            <span class="row-sub"><span>{{ $seesAll ? 'все ваши' : 'выбранные' }}</span><span class="nums">{{ $seenCount }} {{ \App\Support\Plural::of($seenCount, ['предложение', 'предложения', 'предложений']) }}</span>@if ($seesAll && $buyer->buyer_show_vin)<span>с VIN</span>@endif</span>
                         </span>
                         <x-ui.chevron/>
                     </x-ui.sheet-row>
-                    <x-ui.sheet id="buyer-sees" title="Что видит {{ $buyer->shortName() }}">
+                    <x-ui.sheet id="buyer-sees" title="Доступ к предложениям">
                         <form method="post" action="/buyers/{{ $buyer->id }}/sees" class="flex flex-col gap-4" data-controller="reveal">
                             @csrf @method('put')
                             <x-ui.segment name="buyer_sees" :options="['all' => 'Все предложения', 'picked' => 'Выбранные']" :value="$seesAll ? 'all' : 'picked'" pick/>
@@ -90,6 +107,12 @@
                                 </div>
                             </div>
                             <x-ui.sheet-foot>Сохранить</x-ui.sheet-foot>
+                        </form>
+                        <form method="post" action="/buyers/{{ $buyer->id }}/access" class="mt-2"
+                            data-turbo-confirm="Закрыть доступ?" data-turbo-confirm-label="Закрыть"
+                            data-turbo-confirm-text="{{ $buyer->shortName() }} больше не сможет войти и не увидит предложения. Данные для сделок останутся, доступ можно открыть снова.">
+                            @csrf @method('delete')
+                            <x-ui.button variant="danger" block>Закрыть доступ</x-ui.button>
                         </form>
                     </x-ui.sheet>
                 </div>
@@ -117,7 +140,7 @@
                     </x-ui.action-bar>
                 @endunless
             </section>
-            @endif
+            @endunless
 
             @if ($interests->isNotEmpty())
                 <section class="mt-6">

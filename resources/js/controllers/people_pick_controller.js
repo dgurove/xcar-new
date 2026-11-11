@@ -97,7 +97,12 @@ export default class extends Controller {
         if (!this.hasFormTarget) return;
         this.formTarget.hidden = false;
         this.doneTarget.hidden = true;
-        this.formTarget.querySelectorAll('[data-people-field]').forEach((el) => { el.value = ''; });
+        // Сегменты (доступ покупателя, что видит) — к выбору по умолчанию, поля — пустыми.
+        this.formTarget.querySelectorAll('[data-people-field]').forEach((el) => {
+            if (el.type === 'radio') el.checked = el.defaultChecked;
+            else if (el.tagName === 'SELECT') el.selectedIndex = Math.max(0, [...el.options].findIndex((o) => o.defaultSelected));
+            else el.value = '';
+        });
         this.files = [];
         this.drawFiles();
         this.clearErrors();
@@ -115,7 +120,7 @@ export default class extends Controller {
         this.clearErrors();
         const link = this.newPaneTarget.dataset.mode === 'link';
         const person = {};
-        if (!link) for (const el of this.newPaneTarget.querySelectorAll('[data-people-field]')) person[el.dataset.peopleField] = el.value;
+        if (!link) for (const el of this.newPaneTarget.querySelectorAll('[data-people-field]')) if (el.type !== 'radio' || el.checked) person[el.dataset.peopleField] = el.value;
         this.busy = true;
         this.submitTarget.classList.add('is-busy');
         let r;
@@ -203,7 +208,7 @@ export default class extends Controller {
             if (this.hasAddRowTarget) this.addRowTarget.before(option); else this.listTarget.append(option);
             this.listTarget.querySelectorAll('input[type=radio]').forEach((i) => { i.checked = i === option.querySelector('input'); });
         }
-        if (!data.credentials) { this.finish(); window.toast?.(`${data.name} в списке`); return; }
+        if (!data.credentials) { this.finish(); window.toast?.(data.toast || `${data.name} в списке`); return; }
         const c = data.credentials;
         // Текст — с сервера (`AddPerson::credentials`), одной копией с шторкой `x-users.credentials`.
         this.shareText = `${c.text}\n${c.url}`;

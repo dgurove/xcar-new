@@ -17,6 +17,20 @@
                 <label><input type="radio" name="_pp_mode_{{ $uid }}" value="link" data-action="people-pick#mode"><span>Ссылкой</span></label>
             </div>
         @endif
+        @if ($kind === 'buyer' && $passport)
+            {{-- Паспорт — первым и отдельно от имени (11.11.2026, владелец: «не доходит, что имя и фамилию необязательно
+                 вводить, если прикрепить паспорт»): кнопка, под ней что будет, ниже «или вручную» — имя без звёздочки
+                 (сервер требует имя или паспорт). Страницы можно в любом порядке — `ReadPassport` разложит сам. --}}
+            <div class="people-person flex flex-col gap-2">
+                <label class="btn btn-quiet btn-block cursor-pointer">
+                    <x-ui.icon name="file" class="size-5"/> Прикрепить паспорт
+                    <input type="file" class="sr-only" accept="image/*,application/pdf" multiple data-people-pick-target="passport" data-action="change->people-pick#passport">
+                </label>
+                <div class="people-passport-files" data-people-pick-target="passportFiles" hidden></div>
+                <p class="px-1 text-sm text-ink-muted">Разворот с фото и прописка, фото или PDF. Имя и данные паспорта заполнятся сами.</p>
+                <div class="mt-1 flex items-center gap-3 text-sm text-ink-dim"><span class="h-px flex-1 bg-line"></span>или вручную<span class="h-px flex-1 bg-line"></span></div>
+            </div>
+        @endif
         <div class="people-person fields">
             @if ($kind === 'depot')
                 <x-ui.field :name="$f('name')" :id="$id('name')" label="Название" required autocomplete="off" placeholder="Например: Киров, Северная" data-people-field="name"/>
@@ -30,20 +44,12 @@
                 <x-ui.field :name="$f('phone')" :id="$id('phone')" label="Телефон" type="tel" data-people-field="phone"/>
                 <x-ui.field :name="$f('address')" :id="$id('address')" label="Откуда забирать" type="textarea" data-people-field="address"/>
             @else
-                <x-ui.field :name="$f('first_name')" :id="$id('first')" label="Имя" required autocomplete="off" data-people-field="first_name"/>
+                <x-ui.field :name="$f('first_name')" :id="$id('first')" label="Имя" :required="! ($kind === 'buyer' && $passport)" autocomplete="off" data-people-field="first_name"/>
                 <x-ui.field :name="$f('last_name')" :id="$id('last')" label="Фамилия" autocomplete="off" data-people-field="last_name"/>
                 {{-- Покупатель — по имени (05.11.2026, владелец: «не хотят прикладывать данные покупателей, потому что просит
                      телефон — убери; почту тоже не надо»): вход ему дают потом, на его странице. --}}
                 @unless ($kind === 'buyer')<x-ui.field :name="$f('person_phone')" :id="$id('phone')" label="Телефон" type="tel" required data-people-field="person_phone"/>@endunless
                 @if ($kind === 'buyer')
-                    @if ($passport)
-                        <label class="field people-passport">
-                            <span class="field-label">Паспорт</span>
-                            <span class="people-passport-pick">Фото или PDF</span>
-                            <input type="file" class="sr-only" accept="image/*,application/pdf" multiple data-people-pick-target="passport" data-action="change->people-pick#passport">
-                        </label>
-                        <div class="people-passport-files" data-people-pick-target="passportFiles" hidden></div>
-                    @endif
                 @elseif ($kind === 'contractor')
                     <x-ui.field :name="$f('logistics_city')" :id="$id('city')" label="Город" data-people-field="logistics_city"/>
                     <x-ui.field :name="$f('cdek_point')" :id="$id('cdek')" label="Пункт СДЭК" type="textarea" data-people-field="cdek_point"/>
@@ -52,6 +58,23 @@
                 @endif
             @endif
         </div>
+        @if ($kind === 'buyer')
+            {{-- Доступ к предложениям — сразу (11.11.2026, владелец: «показывать ли ему предложения или это чисто паспортные
+                 данные»): «Только для сделки» (по умолчанию) — без доступа; «С доступом» — чем войдёт и что видит, пароль —
+                 в панели «Готово». Ссылкой человек приходит сам — там доступ и так есть. --}}
+            <div class="people-person people-access flex flex-col gap-2">
+                <div class="segment" role="radiogroup">
+                    <label><input type="radio" name="_pp_access_{{ $uid }}" value="none" checked data-people-field="access"><span>Только для сделки</span></label>
+                    <label><input type="radio" name="_pp_access_{{ $uid }}" value="open" data-people-field="access"><span>С доступом</span></label>
+                </div>
+                <p class="people-access-none px-1 text-sm text-ink-muted">Данные для договора. Войти и видеть предложения не сможет, доступ можно дать потом.</p>
+                {{-- Чем войдёт и что видит — одной группой полей, как имя выше: без своих заголовков и подсказок. --}}
+                <div class="people-access-open fields">
+                    <x-ui.field :name="$f('contact')" :id="$id('contact')" label="Телефон или почта" autocomplete="off" autocapitalize="off" data-people-field="contact"/>
+                    <x-ui.field :name="$f('buyer_sees')" :id="$id('sees')" label="Видит" :options="['all' => 'Все предложения', 'picked' => 'Выбранные']" value="all" data-people-field="buyer_sees"/>
+                </div>
+            </div>
+        @endif
         <p class="field-error hidden" data-people-pick-target="error"></p>
         <button type="button" class="btn btn-accent btn-block" data-people-pick-target="submit" data-action="people-pick#create">
             <span class="people-person-label">Добавить</span>@if ($link)<span class="people-link-label">Сделать ссылку</span>@endif

@@ -45,6 +45,9 @@ final class AcceptInvite
                 'invite_id' => $invite->id,
                 'contact_fields' => $buyer ? $invite->contactFields() : [],
                 'buyer_sees' => $buyer && $invite->buyer_sees === 'picked' ? 'picked' : 'all',
+                // Пришёл по ссылке сам — логин и пароль свои, доступ к предложениям сразу; заведённый менеджером (`manual`,
+                // `AddPerson`) — без доступа, пока его не дадут (11.11.2026, `GiveBuyerAccess`).
+                'buyer_access_at' => $buyer && ! $invite->manual ? now() : null,
                 'approved_at' => now(),
                 'approved_by' => $invite->created_by,
                 // Модератор получает доступ, заданный в ссылке; роль «Парковка» — только приёмку или нет.

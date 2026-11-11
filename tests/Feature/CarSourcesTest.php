@@ -184,8 +184,8 @@ class CarSourcesTest extends TestCase
         DB::table('car_values')->insert(['car_id' => $this->offer->car_id, 'field' => 'city', 'source' => 'migtorg', 'source_id' => '1', 'title' => 'Мигторг, лот 816957',
             'write' => json_encode(['settlement_id' => $dnr->id]), 'key' => (string) $dnr->id, 'label' => 'Донецк, 80', 'created_at' => now()]);
         $city = Variants::for($this->offer->fresh()->carRecord(), $this->offer->fresh())['city'];
-        $this->assertSame('Донецк · Рост. обл.', $city['current']['label']);
-        $this->assertSame('Донецк · ДНР', $city['options'][0]['label']);
+        $this->assertSame('Донецк, Рост. обл.', $city['current']['label']);
+        $this->assertSame('Донецк, ДНР', $city['options'][0]['label']);
     }
 
     /** Выбрали вариант — проигравший остаётся подсказкой в поле; правка поля человеком гасит спор. */

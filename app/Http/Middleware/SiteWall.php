@@ -3,8 +3,10 @@
 namespace App\Http\Middleware;
 
 use App\Support\Surface;
+use App\Users\Impersonation;
 use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 /**
  * Стена вокруг сайта: гостю — вход и регистрация, зарегистрированному без
@@ -22,6 +24,15 @@ class SiteWall
         $user = $request->user();
         if (! $user) {
             return $request->expectsJson() ? abort(401) : redirect()->guest('/login');
+        }
+        // Покупатель без доступа к предложениям (11.11.2026, `User::hasBuyerAccess`): сессия, что осталась с прежнего входа
+        // или пришла мимо пароля (Telegram, код, ссылка), закрывается. Админ «за него» — смотрит, как есть.
+        if (! $user->hasBuyerAccess() && ! Impersonation::active()) {
+            Auth::logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+
+            return $request->expectsJson() ? abort(403) : response()->view('auth.closed', [], 403);
         }
         // Управляющему парковкой и модератору сайта нет: их место — park.xcar и CRM, туда и уводим.
         if ($home = Surface::onlyFor($user)) {

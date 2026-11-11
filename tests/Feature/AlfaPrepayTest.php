@@ -186,12 +186,17 @@ class AlfaPrepayTest extends TestCase
         $this->exit($offer, 'Оплата получена');
         $this->assertTrue($deal->fresh()->mayPickUp());
 
-        // Документы у Альфы — «Передача договора» одним шагом; машину забирает менеджер и ещё не забрал — не закрыть.
-        $this->assertSame('Передача договора', $offer->fresh()->stage()->name);
+        // Оплату получили — Альфа готовит договор (подписание, 11.11.2026); машину забирает менеджер и ещё не забрал — не закрыть.
+        $this->assertSame('Подготовка договора', $offer->fresh()->stage()->name);
         app(AssignDealPickup::class)($offer->fresh(), $deal->fresh(), 'manager', $this->admin);
         $this->assertSame('Сначала отметьте «Автомобиль забрал»', $deal->fresh()->closeBlocker());
+        // Договор готов → время → запись подтверждена → «Подписание»: закрыть сделку «Договор подписан» нельзя, пока не забрал.
+        $this->exit($offer, 'Договор готов');
+        $this->exit($offer, 'Время согласовано');
+        $this->exit($offer, 'Запись подтверждена');
+        $this->assertSame('Подписание', $offer->fresh()->stage()->name);
         $requirement = $deal->fresh()->openRequirement()->firstOrFail();
-        $close = $offer->fresh()->stage()->exitsFor(Actor::Manager, $deal->fresh())->first(fn ($e) => $e->label === 'Договор у покупателя');
+        $close = $offer->fresh()->stage()->exitsFor(Actor::Manager, $deal->fresh())->first(fn ($e) => $e->label === 'Договор подписан');
         $this->expectException(ValidationException::class);
         app(AnswerRequirement::class)($requirement->fresh(), $close, $this->manager);
     }

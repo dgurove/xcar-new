@@ -45,7 +45,7 @@ use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\InteractsWithMedia;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
-#[Fillable(['name', 'first_name', 'last_name', 'phone', 'login', 'email', 'password', 'roles', 'access', 'notification_settings', 'approved_at', 'approved_by', 'rejected_at', 'manager_id', 'invite_id', 'contact_fields', 'park_readonly', 'party_id', 'park_city_id', 'park_requests_city_id', 'buyer_sees', 'buyer_show_vin', 'logist_id', 'logistics_city', 'cdek_point', 'garage_enabled', 'garage_price_shown', 'offer_regions', 'vendor_id'])]
+#[Fillable(['name', 'first_name', 'last_name', 'phone', 'login', 'email', 'password', 'roles', 'access', 'notification_settings', 'approved_at', 'approved_by', 'rejected_at', 'manager_id', 'invite_id', 'contact_fields', 'park_readonly', 'party_id', 'park_city_id', 'park_requests_city_id', 'buyer_sees', 'buyer_show_vin', 'buyer_access_at', 'logist_id', 'logistics_city', 'cdek_point', 'garage_enabled', 'garage_price_shown', 'offer_regions', 'vendor_id'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
 {
@@ -110,6 +110,7 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
             'list_prefs' => 'array',
             'contact_fields' => 'array',
             'buyer_show_vin' => 'bool',
+            'buyer_access_at' => 'datetime',
             'garage_enabled' => 'bool',
             'garage_price_shown' => 'bool',
             'email_verified_at' => 'datetime',
@@ -285,18 +286,33 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
     }
 
     /**
-     * Покупатель видит всё, что открыто его менеджеру (12.10.2026, владелец; `users.buyer_sees = all`, по умолчанию), а не
-     * только открытое вручную (`picked`). Одна дверь видимости, «нового», VIN и уведомлений о новых предложениях.
+     * Доступ покупателя к предложениям (11.11.2026, владелец: «разделить покупателей с доступом и без доступа»;
+     * `users.buyer_access_at`): с ним входит и видит предложения (все или выбранные — `buyer_sees`), без него — только
+     * данные для сделок: войти не может, ничего не видит и ни в одном «видит / видят N» не считается. Дают и закрывают —
+     * `GiveBuyerAccess` / `CloseBuyerAccess`. Сотрудникам и остальным ролям — не про них, всегда true.
      */
-    /**
-     * Может войти: есть логин, телефон или почта. Покупатель, заведённый по имени для сделки (`AddPerson` contact), — нет,
-     * пока менеджер не даст вход: он ничего не видит, и «видит все ваши предложения» у него — неправда (11.11.2026, владелец).
-     */
-    public function signsIn(): bool
+    public function hasBuyerAccess(): bool
+    {
+        return ! $this->isBuyer() || $this->buyer_access_at !== null;
+    }
+
+    /** Покупатели с доступом к предложениям — одна дверь для всех «видит / видят N», показов и уведомлений покупателям. */
+    public function scopeWithBuyerAccess(Builder $q): Builder
+    {
+        return $q->whereNotNull('users.buyer_access_at');
+    }
+
+    /** Есть чем войти — логин, телефон или почта; нет — «Дать доступ» спросит телефон или почту (`GiveBuyerAccess`). */
+    public function hasSignInContact(): bool
     {
         return filled($this->login) || filled($this->phone) || filled($this->email);
     }
 
+    /**
+     * Покупатель видит всё, что открыто его менеджеру (12.10.2026, владелец; `users.buyer_sees = all`, по умолчанию), а не
+     * только открытое вручную (`picked`). Одна дверь видимости, «нового», VIN и уведомлений о новых предложениях. Режим —
+     * без учёта доступа: видит ли вообще, говорит `hasBuyerAccess`.
+     */
     public function buyerSeesAll(): bool
     {
         return $this->isBuyer() && ($this->buyer_sees ?? 'all') !== 'picked';

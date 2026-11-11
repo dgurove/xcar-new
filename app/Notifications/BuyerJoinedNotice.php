@@ -7,7 +7,8 @@ use App\Users\User;
 /** Менеджеру: человек прошёл по его ссылке. */
 final class BuyerJoinedNotice extends Notice
 {
-    public function __construct(private User $buyer) {}
+    /** @param  bool  $transferred  админ передал покупателя от другого менеджера (`TransferBuyer`) */
+    public function __construct(private User $buyer, private bool $transferred = false) {}
 
     public function label(): string
     {
@@ -16,13 +17,19 @@ final class BuyerJoinedNotice extends Notice
 
     public function title(): string
     {
-        return $this->buyer->name.' принял приглашение';
+        // Админ завёл за менеджера (без ссылки) или передал от другого — «в ваших покупателях», а не «принял приглашение».
+        return $this->buyer->name.($this->transferred || $this->buyer->invite?->manual ? ' в ваших покупателях' : ' принял приглашение');
     }
 
     public function text(): ?string
     {
-        // Видит всё открытое менеджеру (12.10.2026, по умолчанию) — делать ничего не нужно; «Выбранные» — ждут менеджера.
-        return $this->buyer->buyerSeesAll() ? 'Видит все ваши предложения' : 'Откройте ему предложения';
+        // Без доступа (заведён по имени) — ничего не видит (11.11.2026); с доступом: всё открытое менеджеру (по умолчанию) —
+        // делать ничего не нужно, «Выбранные» — ждут менеджера.
+        return match (true) {
+            ! $this->buyer->hasBuyerAccess() => 'Без доступа к предложениям',
+            $this->buyer->buyerSeesAll() => 'Видит все ваши предложения',
+            default => 'Откройте ему предложения',
+        };
     }
 
     public function href(): string

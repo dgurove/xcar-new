@@ -4,6 +4,7 @@ namespace App\Http\Cabinet;
 
 use App\Support\Surface;
 use App\Users\Actions\AddPerson;
+use App\Users\Actions\GiveBuyerAccess;
 use App\Users\Actions\IssueInvite;
 use App\Users\Invite;
 use App\Users\Role;
@@ -55,8 +56,17 @@ class InviteController
         $data = $request->validate(IssueInvite::rules($me) + ($person ? AddPerson::rules(contact: $contact) : []));
         $data['phone'] = $request->boolean('phone');
         $data['email'] = $request->boolean('email');
+        // Менеджер выбирает при добавлении (11.11.2026, владелец: «показывать ли ему предложения или это чисто паспортные
+        // данные»): «Только для сделки» — без доступа, «С доступом» — телефон или почта, что видит, пароль шторкой.
+        $open = $person && $contact && $request->input('access') === 'open';
+        if ($open) {
+            GiveBuyerAccess::contact(null, $request->input('contact'));
+        }
         if ($person) {
             [$user, $credentials] = $add(fn () => $issue($me, $data), $data, contact: $contact);
+            if ($open) {
+                $credentials = app(GiveBuyerAccess::class)($user, $request->input('contact'), $request->input('person_sees') === 'picked' ? 'picked' : 'all');
+            }
 
             return redirect(self::peopleHome($user))->with($credentials ? ['credentials' => $credentials] : ['toast' => $user->name.' в покупателях']);
         }

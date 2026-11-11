@@ -83,7 +83,7 @@ class AcceptHintsTest extends TestCase
         $this->vehicle->update(['sold_at' => now()->subDays(6)]);
         $late = fn () => Vehicle::with('requests')->find($this->vehicle->id)->pickupLate();
 
-        $this->assertSame('не забирают 6 д', $late());
+        $this->assertSame('не забирают 6д', $late());
         $this->assertContains('pickup', \App\Park\Tasks::of([$this->vehicle->id])[$this->vehicle->id]);
 
         $this->actingAs($manager)->post(Surface::Park->url("/cars/{$this->vehicle->id}/pickup"), ['pickup_at' => now()->addDay()->format('Y-m-d\T12:00')])

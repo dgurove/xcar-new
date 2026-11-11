@@ -20,7 +20,7 @@
         <input type="hidden" name="_user" value="{{ $user->id }}">
         <div class="fields">
             <x-ui.field name="first_name" id="user-first-{{ $user->id }}" label="Имя" :value="$user->first_name" required/>
-            <x-ui.field name="last_name" id="user-last-{{ $user->id }}" label="Фамилия" :value="$user->last_name" required/>
+            <x-ui.field name="last_name" id="user-last-{{ $user->id }}" label="Фамилия" :value="$user->last_name" :required="! $user->isBuyer()"/>
         </div>
         @if ($park)
             <div class="fields">
@@ -112,6 +112,15 @@
                 @csrf
                 <x-ui.button type="submit" variant="secondary" block><x-telegram.logo plain class="size-5"/> Отвязать Telegram</x-ui.button>
             </form>
+        @elseif ($user->isBuyer() && ! $user->hasBuyerAccess())
+            {{-- Покупатель без доступа (11.11.2026): дать — чем войдёт (если нечем), пароль шторкой входа. --}}
+            <form method="post" action="{{ $base }}/{{ $user->id }}/access" class="mt-3 flex flex-col gap-3">
+                @csrf<input type="hidden" name="grant" value="1"><input type="hidden" name="_user" value="{{ $user->id }}">
+                @unless ($user->hasSignInContact())
+                    <div class="fields"><x-ui.field name="contact" label="Телефон или почта" autocomplete="off" autocapitalize="off" required/></div>
+                @endunless
+                <x-ui.button type="submit" variant="secondary" block><x-ui.icon name="eye" class="size-5"/> Дать доступ к предложениям</x-ui.button>
+            </form>
         @else
         <form method="post" action="{{ $base }}/{{ $user->id }}/password" class="mt-3"
             data-turbo-confirm="Выдать ссылку для нового пароля?" data-turbo-confirm-label="Выдать"
@@ -128,6 +137,15 @@
                 @csrf
                 <x-ui.button type="submit" variant="danger" block>Закрыть доступ к парковке</x-ui.button>
             </form>
+        @elseif ($user->isBuyer() && $user->isApproved())
+            @if ($user->hasBuyerAccess())
+                <form method="post" action="{{ $base }}/{{ $user->id }}/access" class="mt-3"
+                    data-turbo-confirm="Закрыть доступ {{ $user->shortName() }}?" data-turbo-confirm-label="Закрыть"
+                    data-turbo-confirm-text="Не сможет войти и не увидит предложения. Покупателем {{ $user->manager?->shortName() ?? 'менеджера' }} останется, данные для сделок — тоже">
+                    @csrf<input type="hidden" name="reject" value="1">
+                    <x-ui.button type="submit" variant="danger" block>Закрыть доступ</x-ui.button>
+                </form>
+            @endif
         @elseif ($user->isApproved())
             <form method="post" action="{{ $base }}/{{ $user->id }}/access" class="mt-3"
                 data-turbo-confirm="Закрыть доступ {{ $user->shortName() }}?" data-turbo-confirm-label="Закрыть"

@@ -42,14 +42,38 @@ class BuyerByNameTest extends TestCase
             ->assertRedirect()->assertSessionHasNoErrors()->assertSessionMissing('credentials');
         $buyer = User::where('manager_id', $this->manager->id)->sole();
         $this->assertNull($buyer->phone);
-        $this->get('http://xcar.localhost/buyers/'.$buyer->id)->assertOk()->assertSee('Дать вход');
+        // Без доступа (11.11.2026): ни «видит все», ни входа — строка «Без доступа» и «Дать доступ».
+        $this->get('http://xcar.localhost/buyers/'.$buyer->id)->assertOk()->assertSee('Без доступа к предложениям')->assertDontSee('Видит все');
+        $this->assertFalse($buyer->fresh()->hasBuyerAccess());
 
         $this->post('http://xcar.localhost/buyers/'.$buyer->id.'/access', ['contact' => '+7 900 000-00-01'])->assertSessionHasErrors('contact');
         // Без телефона — почтой (владелец: «покупатели могут без телефона входить по почте»).
-        $this->post('http://xcar.localhost/buyers/'.$buyer->id.'/access', ['contact' => 'Oleg@Mail.ru'])->assertSessionHas('credentials.via', 'Почта');
-        $this->assertSame('oleg@mail.ru', $buyer->fresh()->email);
-        $this->assertNull($buyer->fresh()->phone);
-        $this->assertTrue($buyer->fresh()->mayHave('email'));
+        $this->post('http://xcar.localhost/buyers/'.$buyer->id.'/access', ['contact' => 'Oleg@Mail.ru', 'buyer_sees' => 'picked'])->assertSessionHas('credentials.via', 'Почта');
+        $buyer = $buyer->fresh();
+        $this->assertSame('oleg@mail.ru', $buyer->email);
+        $this->assertNull($buyer->phone);
+        $this->assertTrue($buyer->mayHave('email'));
+        $this->assertTrue($buyer->hasBuyerAccess());
+        $this->assertSame('picked', $buyer->buyer_sees);
+
+        // Закрыть доступ: войти не может, покупателем остаётся.
+        $this->delete('http://xcar.localhost/buyers/'.$buyer->id.'/access')->assertSessionHas('toast', 'Доступ закрыт');
+        $buyer = $buyer->fresh();
+        $this->assertFalse($buyer->hasBuyerAccess());
+        $this->assertTrue($buyer->isBuyer());
+        $this->assertSame($this->manager->id, $buyer->manager_id);
+        $this->actingAs($buyer)->get('http://xcar.localhost/offers')->assertForbidden()->assertSee('Доступ закрыт');
+    }
+
+    /** «С доступом» при добавлении (11.11.2026): чем войдёт — сразу, пароль шторкой. */
+    public function test_buyers_form_adds_with_access(): void
+    {
+        $this->actingAs($this->manager)->post('http://xcar.localhost/buyers/invites', ['mode' => 'person', 'first_name' => 'Ира', 'access' => 'open'])
+            ->assertSessionHasErrors('contact');
+        $this->assertSame(0, User::where('manager_id', $this->manager->id)->count());
+        $this->post('http://xcar.localhost/buyers/invites', ['mode' => 'person', 'first_name' => 'Ира', 'access' => 'open', 'contact' => '+7 900 111-22-33'])
+            ->assertSessionHas('credentials.via', 'Телефон');
+        $this->assertTrue(User::where('manager_id', $this->manager->id)->sole()->hasBuyerAccess());
     }
 
     /** С паспортом — имя по желанию: «Новый покупатель», скан на его контрагенте читается, дальше — его страница (07.11.2026). */

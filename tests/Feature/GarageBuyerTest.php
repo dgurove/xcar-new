@@ -51,7 +51,7 @@ class GarageBuyerTest extends TestCase
         parent::setUp();
         $this->admin = User::create(['name' => 'Андрей', 'phone' => '79000000001', 'roles' => [Role::Admin], 'approved_at' => now()]);
         $manager = User::create(['name' => 'Роман Корабельников', 'phone' => '79000000002', 'roles' => [Role::Manager], 'approved_at' => now()]);
-        $this->buyer = User::create(['name' => 'Пётр Покупателев', 'phone' => '79000000003', 'roles' => [Role::Buyer], 'manager_id' => $manager->id, 'approved_at' => now()]);
+        $this->buyer = User::create(['name' => 'Пётр Покупателев', 'phone' => '79000000003', 'roles' => [Role::Buyer], 'manager_id' => $manager->id, 'approved_at' => now(), 'buyer_access_at' => now()]);
         $this->vendor = Vendor::create(['name' => 'Альфа тест']);
         app(ApplyPreset::class)($this->vendor->workflowOrNew(Track::Sale), Preset::Alfa);
     }

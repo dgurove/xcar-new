@@ -830,7 +830,8 @@ class Offer extends Model
             }
             if ($user->hasRole(Role::Buyer)) {
                 $any = true;
-                if (! $user->manager_id) {
+                // Без доступа к предложениям (11.11.2026, `User::hasBuyerAccess`) — ничего, как без менеджера.
+                if (! $user->manager_id || ! $user->hasBuyerAccess()) {
                     $w->orWhereRaw('false');
                 } else {
                     // Всё, что открыто его менеджеру (волна менеджера наступила), — или только открытое менеджером вручную

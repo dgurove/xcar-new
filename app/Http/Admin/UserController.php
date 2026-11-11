@@ -32,7 +32,9 @@ use App\Telegram\Actions\UnlinkChat;
 use App\Users\Access\Lock;
 use App\Users\Access\RevokeDevices;
 use App\Users\Access\SwitchLock;
+use App\Users\Actions\CloseBuyerAccess;
 use App\Users\Actions\DecideAccess;
+use App\Users\Actions\GiveBuyerAccess;
 use App\Users\Actions\IssueImpersonation;
 use App\Users\Actions\IssueInvite;
 use App\Users\Actions\IssuePasswordLink;
@@ -285,7 +287,8 @@ class UserController
             'buyersCount' => $user->isManager() ? $user->buyers()->count() : 0,
             'response' => $response,
             'interests' => $interests,
-            'seen' => $user->isBuyer() ? Offer::where('state', OfferState::Open)->visibleTo($user)->count() : null,
+            // Без доступа (11.11.2026) — не «видит N», а «без доступа».
+            'seen' => $user->isBuyer() && $user->hasBuyerAccess() ? Offer::where('state', OfferState::Open)->visibleTo($user)->count() : null,
             'managers' => $me->isAdmin() && ! self::onPark() ? User::withRole(Role::Manager)->orderBy('name')->get() : collect(),
             'link' => session('password_link'),
         ]);
@@ -454,6 +457,22 @@ class UserController
         // Главного администратора правит только он сам (`User::isOwner`).
         abort_if($user->isOwner() && ! $user->is($request->user()), 404);
         abort_unless($request->user()->isAdmin() && ! $user->is($request->user()), 404);
+        // Покупатель (11.11.2026): доступ к предложениям — дать или закрыть, покупателем менеджера он остаётся (а не
+        // посетитель, как у `DecideAccess::reject`: тот ломал его сделки).
+        if ($user->isBuyer() && $user->isApproved()) {
+            // Только своё: закрыть — тому, у кого доступ есть, дать — тому, у кого нет (повторная отправка формы не
+            // сбрасывает пароль молча).
+            if ($request->boolean('reject')) {
+                abort_unless($user->hasBuyerAccess(), 422);
+                app(CloseBuyerAccess::class)($user);
+
+                return back()->with('toast', 'Доступ закрыт');
+            }
+            abort_unless($request->boolean('grant') && ! $user->hasBuyerAccess(), 422);
+            $sees = $request->validate(['buyer_sees' => ['nullable', 'in:all,picked']])['buyer_sees'] ?? ($user->buyer_sees ?? 'all');
+
+            return back()->with('credentials', app(GiveBuyerAccess::class)($user, $request->input('contact'), $sees))->with('toast', 'Доступ открыт');
+        }
         if ($request->boolean('reject')) {
             $decide->reject($user, $request->user());
 
@@ -474,14 +493,15 @@ class UserController
         if ($user->isBuyer()) {
             $data = $request->validate([
                 'first_name' => ['required', 'string', 'max:60'],
-                'last_name' => ['required', 'string', 'max:60'],
+                // Покупателя заводят по одному имени (05.11.2026) — фамилия по желанию, иначе его карточку не сохранить.
+                'last_name' => ['nullable', 'string', 'max:60'],
                 // Без менеджера — покупатель одной машины в гараже (21.10.2026, `User::onlyGarage`); у кого менеджер был, без
                 // него не оставить — его покупатели и показы держатся на менеджере.
                 'manager_id' => [$user->manager_id ? 'required' : 'nullable', Rule::exists('users', 'id')->where(fn ($q) => $q->whereJsonContains('roles', Role::Manager->value))],
             ]);
             // Гараж покупателю — тумблером (20.10.2026): чтобы ему можно было отдать ТС; «Исполнитель вывоза» (21.10.2026) — второй
             // ролью: свою машину он везёт сам, и задачу видит в логистике.
-            $user->update(['first_name' => trim($data['first_name']), 'last_name' => trim($data['last_name']), 'garage_enabled' => $request->boolean('garage_enabled'),
+            $user->update(['first_name' => trim($data['first_name']), 'last_name' => trim((string) ($data['last_name'] ?? '')), 'garage_enabled' => $request->boolean('garage_enabled'),
                 'garage_price_shown' => $request->boolean('garage_price_shown'),
                 // Роли парковки и главного админа CRM не правит (`KEPT_ROLES`): Сергей Николаев — управляющий и покупатель с гаражом.
                 'roles' => [Role::Buyer, ...($request->boolean('contractor') ? [Role::Contractor] : []),

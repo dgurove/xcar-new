@@ -25,6 +25,19 @@
             </div>
         @endif
     </div>
+    @unless ($admin)
+        {{-- Доступ к предложениям — сразу (11.11.2026, владелец: «указывать, показывать ли ему предложения или это чисто
+             паспортные данные»): «Только для сделки» — без доступа (по умолчанию), «С доступом» — телефон или почта, чем
+             войдёт, и что видит ниже; пароль — шторкой входа. --}}
+        <div data-person class="flex flex-col gap-2">
+            <x-ui.segment name="access" :options="['none' => 'Только для сделки', 'open' => 'С доступом']" :value="old('access', 'none')"/>
+            <p data-access-none class="px-1 text-sm text-ink-muted">Данные для договора. Войти и видеть предложения не сможет, доступ можно дать потом.</p>
+            <div data-access-open class="fields">
+                <x-ui.field name="contact" label="Телефон или почта" autocomplete="off" autocapitalize="off"/>
+                <x-ui.field name="person_sees" label="Видит" :options="['all' => 'Все предложения', 'picked' => 'Выбранные']" :value="old('person_sees', 'all')"/>
+            </div>
+        </div>
+    @endunless
     @if ($admin)
         {{-- Пять ролей в сегменты не помещаются на телефоне — селект. Супер-покупателю — одноразовая, как сотруднику. --}}
         <div class="fields"><x-ui.field name="role" label="Кому" :options="['manager' => 'Менеджеру', 'moderator' => 'Модератору', 'admin' => 'Администратору', 'buyer' => 'Покупателю', 'super_buyer' => 'Супер-покупателю', 'logist' => 'Логисту', 'driver' => 'Водителю', 'supplier' => 'Поставщику']" :value="old('role', 'manager')"/></div>
@@ -53,7 +66,7 @@
                 <x-ui.field name="group_id" label="В группу" :options="$groups->pluck('name', 'id')" placeholder="Без группы"/>
             @endif</div>
         {{-- Что увидит покупатель (12.10.2026, владелец: «неразбериха с покупателями»): по умолчанию всё, что открыто менеджеру. --}}
-        {{-- Покупатель по имени входа не получает — что он видит, решится, когда ему дадут вход. --}}
+        {{-- Менеджер: только по ссылке; данными — полем «Видит» рядом с телефоном (`person_sees`). --}}
         <div @unless ($admin) data-link @endunless class="contents"><x-buyer.sees-segment/></div>
         <div data-link class="flex flex-col gap-2">
             {{-- Телефон по умолчанию спрашивается (владелец 05.10.2026); снять — если менеджер не хочет отдавать номер покупателя. --}}

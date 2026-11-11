@@ -57,7 +57,7 @@
 
         <div class="min-w-0 lg:col-start-1 lg:row-start-1">
             <section data-controller="sheet">
-                <h2 class="list-head">Видит @if ($offers->isNotEmpty())<span class="nums">{{ $offers->count() }}</span>@endif</h2>
+                <h2 class="list-head">Открыто группе @if ($offers->isNotEmpty())<span class="nums">{{ $offers->count() }}</span>@endif</h2>
                 <x-ui.sheet id="pick" title="Открыть группе «{{ $group->name }}»" wide>
                     <turbo-frame id="pick-frame" src="/buyers/showings/pick?group={{ $group->id }}" loading="lazy" class="block min-h-40">
                         <x-ui.skeleton :rows="3"/>

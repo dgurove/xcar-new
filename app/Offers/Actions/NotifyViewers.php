@@ -151,7 +151,7 @@ final class NotifyViewers
         if (! $managers) {
             return;
         }
-        $buyers = User::withRole(Role::Buyer)->whereIn('manager_id', $managers)->whereNull('rejected_at')->get()->groupBy('manager_id');
+        $buyers = User::withRole(Role::Buyer)->whereIn('manager_id', $managers)->whereNull('rejected_at')->withBuyerAccess()->get()->groupBy('manager_id');
         if ($buyers->isEmpty()) {
             return;
         }

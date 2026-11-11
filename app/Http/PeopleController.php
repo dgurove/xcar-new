@@ -13,6 +13,7 @@ use App\Support\People;
 use App\Support\Phone;
 use App\Support\Surface;
 use App\Users\Actions\AddPerson;
+use App\Users\Actions\GiveBuyerAccess;
 use App\Users\Actions\IssueInvite;
 use App\Users\User;
 use Illuminate\Http\Request;
@@ -84,19 +85,30 @@ class PeopleController
         $v = validator($data, $rules + ($kind === 'contractor'
             ? ['logistics_city' => ['nullable', 'string', 'max:120'], 'cdek_point' => ['nullable', 'string', 'max:300']] : []),
             ['first_name.required' => $buyer ? 'Имя или паспорт' : 'Имя', 'person_phone.required' => 'Телефон'])->validate();
+        // «С доступом» (11.11.2026): чем войдёт — проверяем до того, как заведём, иначе ошибка оставила бы его без доступа.
+        $open = $buyer && ($data['access'] ?? null) === 'open';
+        if ($open) {
+            GiveBuyerAccess::contact(null, $data['contact'] ?? null);
+        }
         if ($passport && trim((string) ($v['first_name'] ?? '')) === '' && trim((string) ($v['last_name'] ?? '')) === '') {
             [$v['first_name'], $v['last_name']] = [AddPerson::UNNAMED, ''];
         }
         [$user, $credentials] = $add($invite, $v, array_filter([
             'logistics_city' => $v['logistics_city'] ?? null, 'cdek_point' => $v['cdek_point'] ?? null,
         ]), contact: $buyer);
+        if ($open) {
+            $credentials = app(GiveBuyerAccess::class)($user, $data['contact'] ?? null, ($data['buyer_sees'] ?? 'all') === 'picked' ? 'picked' : 'all');
+        }
         if ($passport) {
             $store(Party::forUser($user), 'main', $passport, $me);
         }
         // Из «Покупателей» с паспортом — сразу на его страницу, там скан читается; в сделке шторка данных откроется сама.
         $go = $passport && ! $deal ? '/buyers/'.$user->id.'?passport=1' : null;
 
-        return response()->json(self::answer(People::row($user->fresh())) + ['credentials' => $credentials, 'go' => $go]);
+        // Без доступа он во вкладке «Без доступа», а не в открытом списке — тост говорит, где искать (11.11.2026).
+        $toast = $buyer && ! $deal && ! $credentials ? $user->name.' — в «Без доступа»' : null;
+
+        return response()->json(self::answer(People::row($user->fresh())) + ['credentials' => $credentials, 'go' => $go, 'toast' => $toast]);
     }
 
     /** Кто кого заводит. */

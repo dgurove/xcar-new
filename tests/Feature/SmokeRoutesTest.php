@@ -168,7 +168,7 @@ class SmokeRoutesTest extends TestCase
         $other = $user('Олег Сидоров', [Role::Manager]);
         $users = [$admin, $manager,
             $user('Мария Модератор', [Role::Moderator]),
-            $user('Пётр Покупатель', [Role::Buyer], ['manager_id' => $manager->id]),
+            $user('Пётр Покупатель', [Role::Buyer], ['manager_id' => $manager->id, 'buyer_access_at' => now()]),
             $user('Света Супер', [Role::SuperBuyer]),
             $user('Катя Парковка', [Role::Parking]),
             $logist = $user('Татьяна Логист', [Role::Logist]),

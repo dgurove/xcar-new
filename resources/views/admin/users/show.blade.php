@@ -29,7 +29,7 @@
                     <div class="detail-line basis-full !mt-0 text-sm text-ink-muted lg:justify-center">
                         @if ($user->isBuyer() && $user->manager && ! $park)<a href="{{ $base }}/{{ $user->manager_id }}" class="text-ink">менеджер {{ $user->manager->shortName() }}</a>@endif
                         @if ($user->isManager() && ! $park)<a href="{{ $base }}?preset=buyers&manager={{ $user->id }}" class="nums text-ink">{{ $buyersCount }} {{ \App\Support\Plural::of($buyersCount, ['покупатель', 'покупателя', 'покупателей']) }}</a>@endif
-                        @if ($seen !== null)<span class="nums">видит {{ $seen }}</span>@endif
+                        @if ($seen !== null)<span class="nums">видит {{ $seen }}</span>@elseif ($user->isBuyer())<span>без доступа</span>@endif
                         <span class="nums">с {{ $user->created_at->format('d.m.Y') }}</span>
                     </div>
                 </x-slot:chips>
@@ -44,7 +44,8 @@
                     @endif
                 </x-slot:acts>
             </x-ui.contact>
-            @if ($edits)<x-users.reach :user="$user"/>@endif
+            {{-- Куда доходят уведомления — тому, кто может войти; покупателю без доступа слать нечего. --}}
+            @if ($edits && $user->hasBuyerAccess())<x-users.reach :user="$user"/>@endif
             {{-- Регионы (22.10.2026): откуда ему показывать предложения — админ правит за менеджера. --}}
             @if ($me->isAdmin() && ! $park && ($user->isManager() || $user->isSuperBuyer()))
                 <div class="list mt-4">

@@ -18,6 +18,7 @@ use App\Offers\OfferState;
 use App\Offers\Showing;
 use App\Support\ListPrefs;
 use App\Support\Sort;
+use App\Users\Actions\CloseBuyerAccess;
 use App\Users\Actions\GiveBuyerAccess;
 use App\Users\Actions\IssuePasswordLink;
 use App\Users\BuyerGroup;
@@ -35,10 +36,17 @@ class BuyerController
     {
         $me = $request->user();
         ListPrefs::sync($request, 'buyers', view: false, keep: ['sort']);
-        $sort = Sort::from($request->query('sort'), self::SORTS, 'name');
         $term = trim((string) $request->query('q'));
+        // С доступом и без (11.11.2026, владелец: «разделить понятия»): пилюли над списком; поиск — по всем, у строки без
+        // доступа — пометка. Сортировка «Видит предложений» — только у тех, кто видит.
+        $access = $request->query('access') === 'none' ? 'none' : 'open';
+        $sorts = $access === 'none' && ! $term ? array_diff_key(self::SORTS, ['seen' => 1]) : self::SORTS;
+        $sort = Sort::from($request->query('sort'), $sorts, 'name');
+        $accessCounts = $me->buyers()->selectRaw('count(*) filter (where buyer_access_at is not null) as open, count(*) filter (where buyer_access_at is null) as none')
+            ->reorder()->first()?->only(['open', 'none']) ?? ['open' => 0, 'none' => 0];
         // «Видит N» — подзапросом в той же выборке (было по два запроса на человека); аватары — сразу.
         $q = $me->buyers()->with(['groups', 'media' => fn ($m) => $m->where('collection_name', 'avatar')])
+            ->when(! $term, fn ($q) => $access === 'none' ? $q->whereNull('users.buyer_access_at') : $q->withBuyerAccess())
             ->when($sort->key === 'seen', fn ($q) => $q->orderByRaw("(users.buyer_sees <> 'picked') ".$sort->dir()))
             ->orderBy(match ($sort->key) {
                 'created' => 'users.created_at', 'seen' => 'seen_count', default => 'users.name'
@@ -80,6 +88,8 @@ class BuyerController
             'interestNew' => $interestNew,
             'interestAll' => $interestAll,
             'buyers' => $buyers,
+            'access' => $access,
+            'accessCounts' => array_map('intval', $accessCounts),
             'sort' => $sort,
             'groups' => $groups,
             'groupSeen' => $groupSeen,
@@ -97,13 +107,15 @@ class BuyerController
         // Скан паспорта прикрепляется к контрагенту — он нужен и до первого сохранения полей.
         $user->party ?? $user->setRelation('party', Party::forUser($user));
 
-        $direct = Showing::where('manager_id', $me->id)->where('user_id', $user->id)->pluck('offer_id')->all();
+        // Без доступа (11.11.2026) — ничего не видит: ни числа, ни списка, ни показов — экран их и не рисует.
+        $access = $user->hasBuyerAccess();
+        $direct = $access ? Showing::where('manager_id', $me->id)->where('user_id', $user->id)->pluck('offer_id')->all() : [];
         // Видит всё открытое менеджеру — списка нет (это весь его каталог), только число.
         $seesAll = $user->buyerSeesAll();
-        $seenCount = Offer::where('state', OfferState::Open)->visibleTo($user)->count();
-        $offers = $seesAll ? collect() : Offer::with(['settlement', 'media', 'favorites'])->where('state', OfferState::Open)->visibleTo($user)->orderByDesc('published_at')->get();
+        $seenCount = $access ? Offer::where('state', OfferState::Open)->visibleTo($user)->count() : 0;
+        $offers = $seesAll || ! $access ? collect() : Offer::with(['settlement', 'media', 'favorites'])->where('state', OfferState::Open)->visibleTo($user)->orderByDesc('published_at')->get();
         // Через какую группу пришёл показ — чипом на карточке; прямой показ снимается здесь же.
-        $via = Showing::where('manager_id', $me->id)->whereIn('offer_id', $offers->pluck('id'))->whereIn('group_id', $user->groups->pluck('id'))->with('group')->get()->groupBy('offer_id');
+        $via = $offers->isEmpty() ? collect() : Showing::where('manager_id', $me->id)->whereIn('offer_id', $offers->pluck('id'))->whereIn('group_id', $user->groups->pluck('id'))->with('group')->get()->groupBy('offer_id');
 
         // Пришли из шапки чата — «‹ Чат» вместо «‹ Покупатели».
         $chat = $request->integer('chat') ? Chat::whereKey($request->integer('chat'))->where('user_id', $user->id)->where('manager_id', $me->id)->first() : null;
@@ -130,7 +142,7 @@ class BuyerController
      */
     public function sees(Request $request, User $user)
     {
-        abort_unless($user->manager_id === $request->user()->id && $user->isBuyer(), 404);
+        abort_unless($user->manager_id === $request->user()->id && $user->isBuyer() && $user->hasBuyerAccess(), 404);
         $data = $request->validate(['buyer_sees' => ['required', 'in:all,picked']]);
         $user->update(['buyer_sees' => $data['buyer_sees'], 'buyer_show_vin' => $request->boolean('buyer_show_vin')]);
         app(Publisher::class)->refresh(Topics::user($user->id), ['/offers', '/account']);
@@ -166,12 +178,22 @@ class BuyerController
         return back()->with('toast', 'Паспорт сохранён');
     }
 
-    /** «Дать вход» покупателю, заведённому по имени: телефон или почта и пароль, шторка входа (`GiveBuyerAccess`). */
+    /** «Дать доступ» покупателю без доступа: телефон или почта (если нет), что видит и пароль — шторкой входа (`GiveBuyerAccess`). */
     public function access(Request $request, User $user, GiveBuyerAccess $give)
     {
-        abort_unless($user->manager_id === $request->user()->id, 404);
+        abort_unless($user->manager_id === $request->user()->id && $user->isBuyer(), 404);
+        $sees = $request->validate(['buyer_sees' => ['nullable', 'in:all,picked']])['buyer_sees'] ?? 'all';
 
-        return back()->with('credentials', $give($user, $request->input('contact')));
+        return back()->with('credentials', $give($user, $request->input('contact'), $sees))->with('toast', 'Доступ открыт');
+    }
+
+    /** «Закрыть доступ»: войти не может и ничего не видит, покупателем остаётся (`CloseBuyerAccess`). */
+    public function closeAccess(Request $request, User $user, CloseBuyerAccess $close)
+    {
+        abort_unless($user->manager_id === $request->user()->id && $user->isBuyer(), 404);
+        $close($user);
+
+        return back()->with('toast', 'Доступ закрыт');
     }
 
     public function passwordLink(Request $request, User $user, IssuePasswordLink $issue)

@@ -30,8 +30,8 @@ class ShowingController
             'single' => $single,
             // Пустая группа показать некому — её нет в выборе (11.10.2026); уже отмеченная остаётся, чтобы снять показ.
             'groups' => $me->ownGroups()->withCount('members')->get()->filter(fn ($g) => $g->members_count > 0 || $current->contains('group_id', $g->id))->values(),
-            // Видящие всё (12.10.2026) и так видят — открывать вручную только «выбранным».
-            'buyers' => $me->buyers()->where('buyer_sees', 'picked')->with(User::withAvatar())->orderBy('name')->get(),
+            // Видящие всё (12.10.2026) и так видят — открывать вручную только «выбранным»; без доступа (11.11.2026) — некому.
+            'buyers' => $me->buyers()->where('buyer_sees', 'picked')->withBuyerAccess()->with(User::withAvatar())->orderBy('name')->get(),
             'checkedUsers' => $current->pluck('user_id')->filter()->all(),
             'checkedGroups' => $current->pluck('group_id')->filter()->all(),
             'showVin' => $current->contains('show_vin', true),

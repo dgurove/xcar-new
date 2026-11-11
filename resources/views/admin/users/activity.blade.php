@@ -14,14 +14,17 @@
     $days = $a->perDay();
     $max = max(1, $days->max('actions'));
     $online = $user->seen_at?->gt(now()->subMinutes(2));
+    // Покупатель без доступа (11.11.2026) войти не может — «ни разу не заходил» красным про него — ложная тревога.
+    $closed = ! $user->hasBuyerAccess();
     $status = match (true) {
         $online => 'В сети',
+        $closed && $absent === null => 'Без доступа, войти не может',
         $absent === null => 'Ни разу не заходил',
         $absent === 0 => 'Был сегодня в '.$last->format('H:i'),
         $absent === 1 => 'Был вчера в '.$last->format('H:i'),
         default => 'Не заходил '.$absent.' '.Plural::of($absent, ['день', 'дня', 'дней']),
     };
-    $away = $absent === null || $absent >= 7;
+    $away = ! $closed && ($absent === null || $absent >= 7);
     $dayName = fn ($d) => $d->isToday() ? 'Сегодня' : ($d->isYesterday() ? 'Вчера' : mb_convert_case($d->locale('ru')->isoFormat('dd'), MB_CASE_TITLE).', '.$d->format('d.m'));
     $span = fn ($from, $to) => $from->isSameDay($to) ? $dayName($from) : $from->format('d.m').' – '.($to->isToday() ? 'сегодня' : $to->format('d.m'));
     $seconds = $a->seconds();
