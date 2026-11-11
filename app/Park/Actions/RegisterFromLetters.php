@@ -7,7 +7,6 @@ use App\Mail\CandidateStage;
 use App\Mail\Message;
 use App\Park\DocState;
 use App\Park\EventType;
-use App\Park\Idle;
 use App\Park\Vehicle;
 use App\Park\VehicleState;
 use App\Park\Yard;
@@ -53,7 +52,6 @@ final class RegisterFromLetters
                 'flags' => $data['flags'] ?? [], 'docs_required' => $data['docs_required'] ?? [], 'value' => $data['value'] ?? null,
                 'state' => VehicleState::Stored, 'yard_id' => $yard?->id, 'spot' => $spot, 'accepted_at' => $acceptedAt ?? now(),
                 // Заводится задним числом: «стоит долго» о ней уже не новость, и пачка таких ТС не должна звонить всем сразу.
-                'idle_noticed_at' => ($acceptedAt ?? now())->lt(now()->subDays(Idle::warn())) ? now() : null,
             ]);
             $intake = $candidate?->stageOf(CandidateStage::Intake);
             $vehicle->log(EventType::Created, $by, $mark + ['letter_at' => $intake['at'] ?? null]);

@@ -9,11 +9,7 @@ use App\Park\Actions\AutoSale;
 use App\Park\Actions\ReleaseByLetters;
 use App\Park\Actions\ReportByLetters;
 use App\Park\Actions\StoreByLetters;
-use App\Park\Events\VehicleIdle;
-use App\Park\Idle;
 use App\Park\Listeners\ReportDelivery;
-use App\Park\Vehicle;
-use App\Park\VehicleState;
 use Illuminate\Console\Command;
 
 /**
@@ -31,16 +27,7 @@ class TickPark extends Command
 
     public function handle(AcceptByLetters $accept, StoreByLetters $store, ReleaseByLetters $release, ReportByLetters $report, AutoRequest $auto, AutoSale $sale, ReportDelivery $delivery): int
     {
-        $now = now();
-        $threshold = Idle::warn();
-        $idle = Vehicle::where('state', VehicleState::Stored)->whereNull('idle_noticed_at')
-            ->where('accepted_at', '<', $now->copy()->subDays($threshold))
-            // Не в продаже: у машины нет предложения, или оно черновик без слота, или в архиве, или снято.
-            ->whereDoesntHave('car.offer', fn ($o) => $o->where(fn ($w) => $w->whereNotIn('state', ['draft', 'archived', 'cancelled'])->orWhereNotNull('slot_at')))->get();
-        foreach ($idle as $v) {
-            $v->forceFill(['idle_noticed_at' => $now])->save();
-            VehicleIdle::dispatch($v, (int) $v->accepted_at->diffInDays($now));
-        }
+        // «Стоит дольше 30 дней» снято (11.11.2026, владелец: «это наоборот хорошо, халявные бабки капают, не проблема»).
         $stored = $store->all();
         // Сначала приём по нашим письмам, потом отчёт о приёме: `ReportByLetters` смотрит только принятые.
         $accepted = $accept->all();
@@ -50,7 +37,7 @@ class TickPark extends Command
         $swept = AutoScan::sweep();
         $sold = $sale->sweep();
         $settled = $delivery->settle();
-        $this->info("стоят долго {$idle->count()}, заведено по письмам {$stored}, принято по письмам {$accepted}, выдано по письмам {$released}, отчётов о приёме по письмам {$reported}, заявок из писем {$requested}, дочитываем {$swept}, в продажу {$sold}, застрявших отчётов {$settled}");
+        $this->info("заведено по письмам {$stored}, принято по письмам {$accepted}, выдано по письмам {$released}, отчётов о приёме по письмам {$reported}, заявок из писем {$requested}, дочитываем {$swept}, в продажу {$sold}, застрявших отчётов {$settled}");
 
         return self::SUCCESS;
     }

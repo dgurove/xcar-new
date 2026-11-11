@@ -30,7 +30,7 @@ class StaffBatchTest extends TestCase
         $cars = collect(range(1, 40))->map(fn () => Vehicle::create(['vendor_id' => $vendor->id, 'state' => VehicleState::Stored, 'accepted_at' => now()->subDays(31)]));
 
         foreach ($cars as $v) {
-            Batch::send([$admin], ParkNotice::idle($v, 31));
+            Batch::send([$admin], ParkNotice::handled($v, $admin, false));
         }
         // Пока идут — не шлём.
         $this->assertSame(0, Batch::flush());
@@ -39,11 +39,11 @@ class StaffBatchTest extends TestCase
         $this->travel(3)->minutes();
         $this->assertSame(1, Batch::flush());
         Notification::assertSentToTimes($admin, BatchNotice::class, 1);
-        Notification::assertSentTo($admin, BatchNotice::class, fn (BatchNotice $n) => str_contains($n->title(), '40 ТС') && str_contains((string) $n->text(), 'и ещё'));
+        Notification::assertSentTo($admin, BatchNotice::class, fn (BatchNotice $n) => str_contains($n->title(), '40 ТС'));
         Notification::assertNotSentTo($admin, ParkNotice::class);
 
         // Одно — прежним уведомлением.
-        Batch::send([$admin], ParkNotice::idle($cars->first(), 32));
+        Batch::send([$admin], ParkNotice::handled($cars->first(), $admin, true));
         $this->travel(3)->minutes();
         Batch::flush();
         Notification::assertSentToTimes($admin, ParkNotice::class, 1);

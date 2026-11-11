@@ -27,7 +27,6 @@ use App\Park\Events\VehicleAccepted;
 use App\Park\Events\VehicleReleased;
 use App\Park\Events\VehicleSold;
 use App\Park\EventType;
-use App\Park\Idle;
 use App\Park\Request;
 use App\Park\RequestState;
 use App\Park\Vehicle;
@@ -555,8 +554,7 @@ final class SpbFactCommand extends Command
     /** Ожидаемая ТС принята задним числом: без осмотра, заявки на приём закрыты, событие приёма с днём таблицы. */
     private function acceptPast(Vehicle $v, Carbon $at): void
     {
-        $v->forceFill(['state' => VehicleState::Stored, 'accepted_at' => $at, 'yard_id' => $v->yard_id ?? $this->yard->id,
-            'idle_noticed_at' => $at->lt(now()->subDays(Idle::warn())) ? now() : null])->save();
+        $v->forceFill(['state' => VehicleState::Stored, 'accepted_at' => $at, 'yard_id' => $v->yard_id ?? $this->yard->id])->save();
         $v->log(EventType::Accepted, null, ['yard' => $v->yard?->name, 'yard_id' => $v->yard_id, 'day' => $at->toDateString(), 'by_fact' => true]);
         Request::where('vehicle_id', $v->id)->whereIn('state', RequestState::open())->update(['state' => RequestState::Done, 'done_at' => now(), 'note' => 'принята по таблице Питера']);
     }

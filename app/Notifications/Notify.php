@@ -47,7 +47,6 @@ use App\Park\Events\CandidateArrived;
 use App\Park\Events\LetterArrived;
 use App\Park\Events\ReleasedWithoutQr;
 use App\Park\Events\VehicleAccepted;
-use App\Park\Events\VehicleIdle;
 use App\Park\Events\VehicleReleased;
 use App\Park\Events\VehicleSold;
 use App\Park\Request as ParkRequest;
@@ -104,7 +103,6 @@ final class Notify
             AccessDecided::class => 'accessDecided',
             CandidateArrived::class => 'candidateArrived',
             LetterArrived::class => 'parkMail',
-            VehicleIdle::class => 'parkIdle',
             VehicleSold::class => 'parkSold',
             VehicleAccepted::class => 'parkHandled',
             VehicleReleased::class => 'parkHandled',
@@ -430,11 +428,6 @@ final class Notify
     public function parkWithoutQr(ReleasedWithoutQr $e): void
     {
         NotifyOwner::dispatch(new \App\Telegram\Messages\ReleasedWithoutQr($e->vehicle->load(['vendor']), $e->by, $e->reason), park: true);
-    }
-
-    public function parkIdle(VehicleIdle $e): void
-    {
-        Batch::send($this->parkStaff()->filter->isParkAdmin(), ParkNotice::idle($e->vehicle, $e->days));
     }
 
     /**

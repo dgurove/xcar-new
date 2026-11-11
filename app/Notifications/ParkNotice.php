@@ -108,12 +108,6 @@ final class ParkNotice extends Notice
             '/cars/'.$v->id, $v->id, telegram: false, batch: 'park-handled', line: $by->shortName().' '.($released ? 'выдал' : 'принял').' '.$v->titleWithYear(), quiet: true))->variant('handled', 'Принял или выдал');
     }
 
-    public static function idle(Vehicle $v, int $days): self
-    {
-        return (new self('Стоит '.$days.' дн: '.$v->titleWithYear(), ($v->vendor?->name ?? '').($v->yard ? ', '.$v->yard->name : ''), '/cars/'.$v->id, $v->id, telegram: false,
-            batch: 'park-idle', line: $v->titleWithYear().', '.$days.' дн'))->variant('idle', 'Стоит дольше 30 дней');
-    }
-
     /** Покупатель заполнил анкету: прочитать ответ страховой и подтвердить. */
     public static function buyerForm(Vehicle $v, string $name, CarbonInterface $on): self
     {
