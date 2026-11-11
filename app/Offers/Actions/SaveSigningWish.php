@@ -15,9 +15,9 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 /**
- * Когда покупатель сможет подписать договор — дни и время, можно по нескольку (11.11.2026, Альфа: «напишите желаемую дату и
- * время»; владелец: «сначала дни — можно несколько, потом время — можно несколько»): `deals.signing_wish {days, times}`, в
- * письме записи — «в четверг 12.11 или в пятницу 13.11, в 11:00 или 15:00» (`Signing::wishWords`), какое подтвердили — вносим
+ * Когда покупатель сможет подписать договор — слоты «день + час», сколько угодно (11.11.2026, Альфа: «напишите желаемую дату и
+ * время»; владелец: «в одни дни может в 12 и 14, в другие только в 9 и 16»): `deals.signing_wish.slots`, в письме записи —
+ * «в четверг 12.11 в 12:00 или 14:00, в пятницу 13.11 в 9:00» (`Signing::wishWords`), какое подтвердили — вносим
  * шторкой «Запись подтверждена» (`ConfirmSigning`). Пока поставщик готовит договор — только сохраняем, «Время подписания»
  * потом пройдёт само (`ApplySigningWish`); на самом выборе — сразу ответ шага (`pass`). Менеджер или сотрудник за него.
  */
@@ -25,32 +25,19 @@ final class SaveSigningWish
 {
     public function __construct(private AnswerRequirement $answer, private TakeExit $take) {}
 
-    /**
-     * @param  list<string>  $days  Y-m-d
-     * @param  list<string>  $times  G:i
-     */
-    public function __invoke(Deal $deal, User $by, array $days, array $times, bool $staff = false): Deal
+    /** @param  list<string>  $slots  «2026-11-12 9:00» — только из сетки (`Signing::grid`) */
+    public function __invoke(Deal $deal, User $by, array $slots, bool $staff = false): Deal
     {
         abort_unless($deal->isActive() && $deal->signing_at === null, 404);
-        $allowed = Signing::times($deal);
-        $days = collect($days)->map(function ($d) {
-            try {
-                return Carbon::createFromFormat('Y-m-d', (string) $d, 'Europe/Moscow')->startOfDay();
-            } catch (\Throwable) {
-                return null;
-            }
-        })->filter(fn (?Carbon $d) => $d && $d->copy()->endOfDay()->isFuture())->unique(fn (Carbon $d) => $d->toDateString())->sort()->values();
-        $times = array_values(array_intersect($allowed, array_map(fn ($t) => preg_replace('/^0(\d)/', '$1', trim((string) $t)), $times)));
-        if ($days->isEmpty()) {
-            throw ValidationException::withMessages(['days' => 'Отметьте хотя бы один день']);
-        }
-        if ($times === []) {
-            throw ValidationException::withMessages(['times' => 'Отметьте хотя бы одно время']);
+        $grid = Signing::grid($deal)->flatten()->map(fn (Carbon $c) => Signing::slotKey($c))->all();
+        $slots = array_values(array_intersect($grid, array_map(fn ($s) => trim((string) $s), $slots)));
+        if ($slots === []) {
+            throw ValidationException::withMessages(['slots' => 'Отметьте хотя бы одно время']);
         }
 
-        return DB::transaction(function () use ($deal, $by, $days, $times, $staff) {
+        return DB::transaction(function () use ($deal, $by, $slots, $staff) {
             $deal->update([
-                'signing_wish' => ['days' => $days->map->toDateString()->all(), 'times' => $times, 'by' => $by->id, 'saved_at' => now()->toIso8601String()],
+                'signing_wish' => ['slots' => $slots, 'by' => $by->id, 'saved_at' => now()->toIso8601String()],
                 'signing_asked_at' => $deal->signing_asked_at ?? now(),
             ]);
             $deal->offer->log(OfferEventType::Note, $by, ['text' => 'Покупатель может подписать: '.Signing::wishLine($deal)]);

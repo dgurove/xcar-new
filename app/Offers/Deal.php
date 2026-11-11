@@ -150,7 +150,7 @@ class Deal extends Model
      * (ПРАЙМ без покупателя — без просьбы); реквизиты прислал фотографией — ход наш. То же правило в PHP — `managerTask()`.
      */
     public const MANAGER_TURN_SQL = "(exists (select 1 from reprice_asks a where a.deal_id = deals.id and a.state in ('pending', 'countered'))
-        or (deals.state = 'active' and deals.signing_asked_at is not null and deals.signing_at is null and coalesce(jsonb_array_length(deals.signing_wish->'times'), 0) = 0)
+        or (deals.state = 'active' and deals.signing_asked_at is not null and deals.signing_at is null and coalesce(jsonb_array_length(deals.signing_wish->'slots'), 0) = 0)
         or (deals.buyer_scans_at is null and (deals.buyer_asked_at is not null or exists (select 1 from requirements r where r.deal_id = deals.id and r.done_at is null)
         or (deals.state = 'active' and exists (select 1 from offer_positions p join workflow_stages s on s.id = p.stage_id where p.offer_id = deals.offer_id
             and p.track = 'sale' and coalesce(p.waits_for, s.waits_for) = 'manager')))))";

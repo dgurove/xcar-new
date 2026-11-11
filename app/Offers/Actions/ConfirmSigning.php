@@ -13,20 +13,24 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 /**
- * «Запись подтверждена» (11.11.2026): менеджер называл несколько дней и времён — поставщик записал на одно из них, его мы и
+ * «Запись подтверждена» (11.11.2026): менеджер называл несколько слотов — поставщик записал на один из них, его мы и
  * вносим (`deals.signing_at`), шаг — на «Подписание», у менеджера карточка встречи с «В календарь».
  */
 final class ConfirmSigning
 {
     public function __construct(private TakeExit $take) {}
 
-    public function __invoke(Deal $deal, Outcome $exit, User $by, string $day, string $time): Deal
+    /** @param  string  $at  «2026-11-12 9:00» (плитка) или «2026-11-12 09:00» (календарь) */
+    public function __invoke(Deal $deal, Outcome $exit, User $by, string $at): Deal
     {
         abort_unless(Signing::confirmExit($exit) && $deal->isActive() && $deal->offer?->position()?->stage_id === $exit->stage_id, 404);
         try {
-            $at = Carbon::createFromFormat('Y-m-d G:i', trim($day).' '.trim($time), 'Europe/Moscow');
+            $at = $at !== '' ? Carbon::parse($at, 'Europe/Moscow') : null;
         } catch (\Throwable) {
-            throw ValidationException::withMessages(['confirm' => 'Выберите день и время записи']);
+            $at = null;
+        }
+        if (! $at) {
+            throw ValidationException::withMessages(['confirm' => 'Выберите, на когда записали']);
         }
         if (! $at || $at->isPast()) {
             throw ValidationException::withMessages(['confirm' => 'Это время уже прошло']);

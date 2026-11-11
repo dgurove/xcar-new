@@ -78,20 +78,28 @@ final class Signing
     }
 
     /**
-     * Когда покупатель может подписать (`signing_wish`, 11.11.2026, владелец: «сначала дни — можно несколько, потом время —
-     * можно несколько»): ещё не прошедшие дни и время по порядку. Пусто — не названо.
+     * Когда покупатель может подписать (`signing_wish.slots`, 11.11.2026, владелец: «следующие 5 рабочих дней и по часам слоты,
+     * выбрать сколько угодно — в одни дни может в 12 и 14, в другие только в 9 и 16»): ещё не прошедшие слоты по порядку.
      *
-     * @return array{days: Collection<int, Carbon>, times: list<string>}|null
+     * @return Collection<int, Carbon>|null
      */
-    public static function wish(Deal $deal): ?array
+    public static function wish(Deal $deal): ?Collection
     {
-        $w = $deal->signing_wish ?? [];
-        $times = array_values(array_filter((array) ($w['times'] ?? []), fn ($t) => preg_match('/^\d{1,2}:\d{2}$/', (string) $t)));
-        usort($times, fn ($a, $b) => strcmp(sprintf('%05s', $a), sprintf('%05s', $b)));
-        $days = collect($w['days'] ?? [])->map(fn ($d) => Carbon::parse($d, 'Europe/Moscow')->startOfDay())
-            ->filter(fn (Carbon $d) => $d->copy()->endOfDay()->isFuture())->sort()->values();
+        $slots = collect($deal->signing_wish['slots'] ?? [])->map(function ($s) {
+            try {
+                return Carbon::createFromFormat('Y-m-d G:i', (string) $s, 'Europe/Moscow');
+            } catch (\Throwable) {
+                return null;
+            }
+        })->filter(fn (?Carbon $c) => $c?->isFuture())->sort()->values();
 
-        return $days->isNotEmpty() && $times !== [] ? ['days' => $days, 'times' => $times] : null;
+        return $slots->isNotEmpty() ? $slots : null;
+    }
+
+    /** Ключ слота в форме и в `signing_wish.slots`: «2026-11-12 9:00». */
+    public static function slotKey(Carbon $at): string
+    {
+        return $at->copy()->timezone('Europe/Moscow')->format('Y-m-d G:i');
     }
 
     /** Дело «Когда покупатель сможет подписать?»: спросили заранее, не ответил и время ещё не выбрано. */
@@ -100,34 +108,40 @@ final class Signing
         return $deal->signing_asked_at !== null && self::wish($deal) === null && $deal->signing_at === null && $deal->isActive();
     }
 
-    /** Все рабочие часы филиала отмечены — «в любое время». */
-    public static function anyTime(Deal $deal, array $times): bool
+    /**
+     * Слоты по дням: [день => [«9:00», …]], весь день филиала — «весь день» / «в любое время с … до …».
+     *
+     * @return list<array{day: Carbon, times: list<string>, all: bool}>
+     */
+    public static function byDay(Deal $deal): array
     {
-        return array_diff(self::times($deal), $times) === [];
+        $hours = self::times($deal);
+
+        return self::wish($deal)?->groupBy(fn (Carbon $c) => $c->toDateString())->map(function (Collection $g) use ($hours) {
+            $times = $g->map(fn (Carbon $c) => $c->format('G:i'))->values()->all();
+
+            return ['day' => $g->first()->copy()->startOfDay(), 'times' => $times, 'all' => array_diff($hours, $times) === []];
+        })->values()->all() ?? [];
     }
 
-    /** «чт 12.11 или пт 13.11, 11:00 или 15:00» — строкой шага и чата; null — не названо. */
+    /** «чт 12.11 в 12:00 или 14:00, пт 13.11 весь день» — строкой шага и чата; null — не названо. */
     public static function wishLine(Deal $deal): ?string
     {
-        if (! ($w = self::wish($deal))) {
-            return null;
-        }
-        $days = self::either($w['days']->map(fn (Carbon $d) => $d->locale('ru')->isoFormat('dd').' '.$d->format('d.m'))->all());
+        $days = array_map(fn ($d) => $d['day']->locale('ru')->isoFormat('dd').' '.$d['day']->format('d.m').' '.($d['all'] ? 'весь день' : 'в '.self::either($d['times'])), self::byDay($deal));
 
-        return $days.', '.(self::anyTime($deal, $w['times']) ? 'весь день' : self::either($w['times']));
+        return $days ? implode(', ', $days) : null;
     }
 
-    /** В письме поставщику: «в четверг 12.11 или в пятницу 13.11, в 11:00 или 15:00»; весь день — «в любое время с 9:00 до 18:00». */
+    /** В письме: «в четверг 12.11 в 12:00 или 14:00; в пятницу 13.11 в любое время с 9:00 до 18:00». */
     public static function wishWords(Deal $deal): string
     {
-        if (! ($w = self::wish($deal))) {
-            return '';
-        }
-        $days = self::either($w['days']->map(fn (Carbon $d) => self::on($d).' '.$d->format('d.m'))->all());
         $o = self::office($deal);
         $hm = fn (string $t) => preg_replace('/^0(\d)/', '$1', $t);
+        $days = array_map(fn ($d) => self::on($d['day']).' '.$d['day']->format('d.m').' '
+            .($d['all'] ? 'в любое время с '.$hm($o['from']).' до '.$hm($o['to']) : 'в '.self::either($d['times'])), self::byDay($deal));
 
-        return $days.', '.(self::anyTime($deal, $w['times']) ? 'в любое время с '.$hm($o['from']).' до '.$hm($o['to']) : 'в '.self::either($w['times']));
+        // Дни — через «;»: внутри дня уже «или» («в 12:00 или 14:00»).
+        return implode('; ', $days);
     }
 
     /** «a», «a или b», «a, b или c». @param list<string> $items */
@@ -195,8 +209,8 @@ final class Signing
         return $deal->signing_address ?? self::office($deal)['address'] ?? self::lastAddress($deal);
     }
 
-    /** @return Collection<int, Carbon> ближайшие рабочие дни филиала с завтра — плитки выбора дней */
-    public static function workdays(Deal $deal, int $count = 6): Collection
+    /** @return Collection<int, Carbon> ближайшие рабочие дни филиала с завтра — строки сетки времени */
+    public static function workdays(Deal $deal, int $count = 5): Collection
     {
         // С завтра: договор ещё готовят, сегодня подписать не выйдет.
         $office = self::office($deal);
@@ -209,6 +223,15 @@ final class Signing
         }
 
         return $out;
+    }
+
+    /** @return Collection<string, Collection<int, Carbon>> сетка выбора: 5 рабочих дней филиала с завтра × часы филиала */
+    public static function grid(Deal $deal): Collection
+    {
+        $times = self::times($deal);
+
+        return self::workdays($deal)->mapWithKeys(fn (Carbon $d) => [$d->toDateString() => collect($times)
+            ->map(fn (string $t) => Carbon::createFromFormat('Y-m-d G:i', $d->toDateString().' '.$t, 'Europe/Moscow'))]);
     }
 
     /** Время вне часов филиала — словами, иначе null. */

@@ -28,9 +28,9 @@ final class SigningController
     /** «Запись подтверждена» — на какое время записал поставщик (`ConfirmSigning`). */
     public function confirm(Request $request, Deal $deal, \App\Offers\Actions\ConfirmSigning $confirm)
     {
-        $data = $request->validate(['exit' => ['required', 'integer'], 'day' => ['required', 'string', 'max:10'], 'time' => ['required', 'string', 'max:5']],
-            ['day.required' => 'Выберите день', 'time.required' => 'Выберите время']);
-        $deal = $confirm($deal, Outcome::findOrFail($data['exit']), $request->user(), $data['day'], $data['time']);
+        $data = $request->validate(['exit' => ['required', 'integer'], 'at' => ['nullable', 'string', 'max:16'], 'other' => ['nullable', 'string', 'max:20']]);
+        $at = trim((string) ($data['other'] ?? '')) ?: trim((string) ($data['at'] ?? ''));
+        $deal = $confirm($deal, Outcome::findOrFail($data['exit']), $request->user(), $at);
 
         return back(fallback: '/work/deals/'.$deal->id)->with('toast', 'Записали на '.\App\Offers\Signing::short($deal->signing_at));
     }
@@ -47,9 +47,8 @@ final class SigningController
     public function wish(Request $request, Deal $deal, \App\Offers\Actions\SaveSigningWish $save)
     {
         abort_unless($request->user()->canManageCrm(), 403);
-        $data = $request->validate(['days' => ['required', 'array', 'max:14'], 'days.*' => ['string', 'max:10'], 'times' => ['required', 'array', 'max:24'], 'times.*' => ['string', 'max:5']],
-            ['days.required' => 'Отметьте хотя бы один день', 'times.required' => 'Отметьте хотя бы одно время']);
-        $deal = $save($deal, $request->user(), $data['days'], $data['times'], staff: true);
+        $data = $request->validate(['slots' => ['required', 'array', 'max:60'], 'slots.*' => ['string', 'max:16']], ['slots.required' => 'Отметьте хотя бы одно время']);
+        $deal = $save($deal, $request->user(), $data['slots'], staff: true);
 
         return back(fallback: '/work/deals/'.$deal->id)->with('toast', 'Покупатель может '.\App\Offers\Signing::wishLine($deal));
     }

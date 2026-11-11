@@ -230,13 +230,11 @@
                         @if (\App\Offers\Signing::wish($deal))
                             <x-deal.signing-when :deal="$deal" :action="'/work/deals/'.$deal->id.'/signing-wish'" class="mt-2"/>
                         @else
-                            <div data-controller="sheet" class="mt-3">
-                                <p class="text-sm text-ink-muted">Менеджер ещё не назвал время подписания</p>
-                                <div class="step-acts mt-2"><x-ui.button type="button" size="sm" variant="secondary" data-action="sheet#open">Время за менеджера</x-ui.button></div>
-                                <x-ui.sheet :id="'signing-for-'.$deal->id" title="Когда покупатель сможет подписать">
-                                    @include('cabinet.deals.signing-when-form', ['action' => '/work/deals/'.$deal->id.'/signing-wish', 'submit' => 'Сохранить'])
-                                </x-ui.sheet>
-                            </div>
+                            <p class="mt-3 text-sm text-ink-muted">Менеджер ещё не назвал время подписания</p>
+                            <details class="signing-edit mt-2">
+                                <summary class="step-acts"><span class="btn btn-s btn-secondary"><span class="signing-edit-open">Время за менеджера</span><span class="signing-edit-close">Свернуть</span></span></summary>
+                                <x-deal.signing-slots :deal="$deal" :action="'/work/deals/'.$deal->id.'/signing-wish'" submit="Сохранить" class="mt-3"/>
+                            </details>
                         @endif
                     @endif
                     {{-- Запись на подписание (`Offers\Signing`): менеджер выбирает время — его варианты плитками (за него), выбрано —

@@ -17,14 +17,7 @@
 @if ($r && $deal)
     <div class="msg-step">
         @if ($r->isOpen())
-            @if ($here && \App\Offers\Signing::picks($r->stage))
-                {{-- Выбор времени подписания (11.11.2026) — день и время плитками прямо в сообщении, а не «Открыть сделку». --}}
-                @if ($deal->signing_slots)
-                    <x-deal.signing-pick :deal="$deal" :action="'/deals/'.$deal->id.'/signing'" :other="'/deals/'.$deal->id.'/signing-wish'" :back="'/deals/chats/'.$chat->id"/>
-                @else
-                    <x-deal.signing-when :deal="$deal" :action="'/deals/'.$deal->id.'/signing-wish'" :back="'/deals/chats/'.$chat->id" picks/>
-                @endif
-            @elseif ($here)
+            @if ($here)
                 <x-deal.ask-action :ask="$ask" variant="keys" :back="'/deals/chats/'.$chat->id"/>
             @elseif ($manager)
                 <x-ui.button :href="$deal->href().'#step'" variant="secondary" block>Открыть сделку</x-ui.button>

@@ -1,6 +1,6 @@
 {{-- Под сообщением площадки «Когда покупатель сможет подписать?» (`AskSigningTime`, `chat_messages.ask = signing`, 11.11.2026,
-     владелец: «как „Берём?“ — кнопками в сообщении»): менеджеру, пока поставщик готовит договор и время не названо, — дни, потом
-     время плитками, по нескольку (`x-deal.signing-when`, ответ — `SaveSigningWish`, назад в чат). Названо — строкой с галкой; сотруднику —
+     владелец: «как „Берём?“ — кнопками в сообщении»): менеджеру, пока поставщик готовит договор и время не названо, — кнопка
+     «Выбрать время» на шаг сделки (сетка «день × час», `x-deal.signing-slots`; владелец: «в сообщении просто кнопка»). Названо — строкой с галкой; сотруднику —
      то же без нажатия, а пока ждём — «Ждём ответа менеджера». --}}
 @props(['chat', 'user' => null, 'readonly' => false])
 @php
@@ -14,9 +14,9 @@
 @if ($deal)
     <div class="msg-step">
         @if ($said)
-            <p class="msg-step-done"><x-ui.icon name="check" class="size-4 shrink-0"/><span class="min-w-0">{{ $said }}</span></p>
+            <p class="msg-step-done !items-start"><x-ui.icon name="check" class="mt-0.5 size-4 shrink-0"/>@if ($deal->signing_at)<span class="min-w-0">{{ $said }}</span>@else<x-deal.signing-wish-lines :deal="$deal"/>@endif</p>
         @elseif ($asks && $manager)
-            <x-deal.signing-when :deal="$deal" :action="'/deals/'.$deal->id.'/signing-wish'" :back="'/deals/chats/'.$chat->id"/>
+            <x-ui.button :href="$deal->href().'#step'" variant="primary" block>Выбрать время</x-ui.button>
         @elseif ($asks)
             <div class="msg-step-off"><span>Ждём ответа менеджера</span></div>
         @endif

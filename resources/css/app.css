@@ -3304,16 +3304,29 @@ html.kb-open { --home-gap: 0px; }
   .slot-check { position: absolute; top: .5rem; right: .5rem; opacity: 0; transition: opacity .15s; }
   .slot-pick:has(input:checked) .slot-check { opacity: 1; }
   .choice-s > span { @apply px-3 py-1.5; }
-  /* Шаги выбора дня и времени (`signing_when_controller`): вперёд — справа, назад — слева. */
-  .sw-step { @apply flex flex-col gap-3; }
-  .sw-hint { @apply text-sm text-ink-muted; }
-  .sw-back { @apply flex w-full items-center gap-2 rounded-(--radius-m) bg-surface-2 px-3 py-2.5 text-left font-medium; }
-  .msg-step .sw-back { background: var(--color-surface); }
-  .sw-in-next { animation: sw-in-next .22s var(--ease-sheet, ease-out); }
-  .sw-in-back { animation: sw-in-back .22s var(--ease-sheet, ease-out); }
-  @keyframes sw-in-next { from { opacity: 0; transform: translateX(24px); } }
-  @keyframes sw-in-back { from { opacity: 0; transform: translateX(-24px); } }
-  @media (prefers-reduced-motion: reduce) { .sw-in-next, .sw-in-back { animation: none; } }
+  /* Сетка «день × час» подписания (`x-deal.signing-slots`, 11.11.2026): ряд часов листается вбок до краёв карточки (`.box`
+     p-5 / sm:p-6), полосы нет, справа затухает, пока есть куда листать; на ПК 9 часов влезают — ряд обычный. */
+  .slot-days { @apply flex flex-col gap-4; }
+  .slot-day-head { @apply mb-2 flex items-baseline gap-3; }
+  .slot-all { @apply shrink-0 text-sm text-ink-muted; }
+  .slot-all.is-on { @apply text-ink; }
+  .slot-row { display: flex; gap: .5rem; overflow-x: auto; overscroll-behavior-x: contain; scroll-snap-type: x proximity; scrollbar-width: none;
+    -webkit-overflow-scrolling: touch; touch-action: pan-x pan-y; }
+  .slot-row::-webkit-scrollbar { display: none; }
+  .slot-row:not(.is-end) { -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 2rem), transparent); mask-image: linear-gradient(to right, #000 calc(100% - 2rem), transparent); }
+  .box .slot-row { margin-inline: -1.25rem; padding-inline: 1.25rem; scroll-padding-inline: 1.25rem; }
+  @media (min-width: 640px) { .box .slot-row { margin-inline: -1.5rem; padding-inline: 1.5rem; scroll-padding-inline: 1.5rem; } }
+  .time-chip { @apply relative shrink-0 cursor-pointer select-none; scroll-snap-align: start; }
+  .time-chip input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
+  .time-chip-face { @apply flex h-11 min-w-[4.25rem] items-center justify-center rounded-full bg-surface-2 px-3.5 text-base transition-colors; }
+  .time-chip:has(input:checked) .time-chip-face { background: var(--color-chrome); color: #fff; }
+  .dark .time-chip:has(input:checked) .time-chip-face { background: #fff; color: var(--color-chrome); }
+  .time-chip:has(input:focus-visible) .time-chip-face { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+  /* «Изменить» названное время — сетка раскрывается на месте (не шторкой: шторка перехватывает жесты ряда). */
+  .signing-edit > summary { list-style: none; cursor: pointer; }
+  .signing-edit > summary::-webkit-details-marker { display: none; }
+  .signing-edit[open] .signing-edit-open { display: none; }
+  .signing-edit:not([open]) .signing-edit-close { display: none; }
   .slot-pick-time .slot-time { @apply text-base; }
   .appt { @apply rounded-(--radius-m) bg-surface-2 p-4; }
   .appt-head { @apply flex items-center gap-4; }

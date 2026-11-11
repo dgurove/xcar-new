@@ -20,11 +20,10 @@
             @endforeach
         </div>
     @endif
-    <div data-controller="sheet" class="mt-3">
-        <button type="button" class="btn btn-ghost btn-s px-0 text-ink-muted" data-action="sheet#open">Другое время…</button>
-        <x-ui.sheet :id="'signing-other-'.$deal->id" title="Другое время">
-            <p class="mb-3 text-sm text-ink-muted">Спросим у поставщика, свободно ли</p>
-            @include('cabinet.deals.signing-when-form', ['action' => $other, 'submit' => 'Записать', 'back' => $back])
-        </x-ui.sheet>
-    </div>
+    {{-- Своё время — сетка на месте, не шторкой: шторка перехватывает жесты ряда часов. --}}
+    <details class="signing-edit mt-3">
+        <summary class="text-sm text-ink-muted"><span class="signing-edit-open">Другое время…</span><span class="signing-edit-close">Свернуть</span></summary>
+        <p class="mb-3 mt-2 text-sm text-ink-muted">Спросим у поставщика, свободно ли</p>
+        <x-deal.signing-slots :deal="$deal" :action="$other" :back="$back" submit="Записать"/>
+    </details>
 </div>

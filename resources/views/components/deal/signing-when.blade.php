@@ -1,24 +1,23 @@
-{{-- Когда покупатель сможет подписать договор — дни и время, по нескольку (`Offers\Signing`, 11.11.2026). Пока поставщик готовит
-     договор: не названо — выбор в два шага (`cabinet.deals.signing-when-form`); названо — строкой «Покупатель может чт 12.11
-     или пт 13.11, 11:00 или 15:00» с «Изменить» (шторка с тем же выбором). На шаге выбора — сразу выбор, «Записать».
-     `readonly` — только строка (письмо записи ушло). `action` — POST (сайт или CRM), `back` — куда вернуться (чат). --}}
-@props(['deal', 'action' => null, 'back' => null, 'picks' => false, 'readonly' => false])
+{{-- Когда покупатель сможет подписать договор (`Offers\Signing`, 11.11.2026). Не названо — сетка «день × час»
+     (`x-deal.signing-slots`); названо — строкой «Покупатель может чт 12.11 в 12:00 или 14:00, пт 13.11 в 9:00» с «Изменить»,
+     сетка раскрывается на месте. `picks` — шаг выбора: сразу сетка, «Записать». `readonly` — только строка (пишем поставщику).
+     `action` — POST (сайт или CRM), `back` — куда вернуться. --}}
+@props(['deal', 'action' => null, 'back' => null, 'picks' => false, 'readonly' => false, 'open' => false])
 @php $line = $picks ? null : \App\Offers\Signing::wishLine($deal); @endphp
 <div {{ $attributes }}>
     @if ($line && $readonly)
-        <div class="info-row"><x-ui.icon name="calendar" class="info-icon size-5"/><span class="min-w-0 flex-1">Просим записать: {{ $line }}</span></div>
+        <div class="info-row"><x-ui.icon name="calendar" class="info-icon size-5"/><x-deal.signing-wish-lines :deal="$deal" title="Просим записать"/></div>
     @elseif ($line)
-        <div data-controller="sheet">
-            <button type="button" class="info-row w-full text-left" data-action="sheet#open">
+        <details class="signing-edit">
+            <summary class="info-row">
                 <x-ui.icon name="calendar" class="info-icon size-5"/>
-                <span class="min-w-0 flex-1">Покупатель может {{ $line }}</span>
-                <span class="text-sm text-ink-muted">Изменить</span>
-            </button>
-            <x-ui.sheet :id="'signing-when-'.$deal->id" title="Когда покупатель сможет подписать">
-                @include('cabinet.deals.signing-when-form', ['submit' => 'Сохранить'])
-            </x-ui.sheet>
-        </div>
+                <x-deal.signing-wish-lines :deal="$deal"/>
+                <span class="signing-edit-open self-start text-sm text-ink-muted">Изменить</span>
+                <span class="signing-edit-close self-start text-sm text-ink-muted">Свернуть</span>
+            </summary>
+            <x-deal.signing-slots :deal="$deal" :action="$action" :back="$back" submit="Сохранить" class="mt-3"/>
+        </details>
     @elseif (! $readonly)
-        @include('cabinet.deals.signing-when-form', ['submit' => $picks ? 'Записать' : 'Отправить'])
+        <x-deal.signing-slots :deal="$deal" :action="$action" :back="$back" :submit="$picks ? 'Записать' : 'Отправить'"/>
     @endif
 </div>

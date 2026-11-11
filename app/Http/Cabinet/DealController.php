@@ -356,9 +356,8 @@ class DealController
     public function signingWish(Request $request, Deal $deal, \App\Offers\Actions\SaveSigningWish $save)
     {
         abort_unless($deal->buyer_id === $request->user()->id, 404);
-        $data = $request->validate(['days' => ['required', 'array', 'max:14'], 'days.*' => ['string', 'max:10'], 'times' => ['required', 'array', 'max:24'], 'times.*' => ['string', 'max:5']],
-            ['days.required' => 'Отметьте хотя бы один день', 'times.required' => 'Отметьте хотя бы одно время']);
-        $deal = $save($deal, $request->user(), $data['days'], $data['times']);
+        $data = $request->validate(['slots' => ['required', 'array', 'max:60'], 'slots.*' => ['string', 'max:16']], ['slots.required' => 'Отметьте хотя бы одно время']);
+        $deal = $save($deal, $request->user(), $data['slots']);
 
         return $this->back($request, $deal)->with('toast', 'Покупатель может '.\App\Offers\Signing::wishLine($deal));
     }
