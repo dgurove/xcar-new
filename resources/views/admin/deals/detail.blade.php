@@ -25,6 +25,10 @@
             {{-- Кто это — словом (03.11.2026, владелец: имя с телефоном без подписи читалось непонятно). --}}
             <x-slot:line><span>{{ $deal->auction_at ? 'Покупатель' : 'Менеджер' }} {{ $deal->buyer->name }}</span><x-ui.phone :user="$deal->buyer"/></x-slot:line>
         @endif
+        {{-- «Поделиться» — как у предложения, где бы машина ни была (11.11.2026, владелец: «в сделке тупо кнопки нету»). --}}
+        <x-slot:tools>
+            @include('admin.offers.detail-tools')
+        </x-slot:tools>
         <x-slot:aside><span class="nums text-lg font-semibold">{{ $deal->isGarage() ? 'В гараж' : \App\Support\Money::rub($deal->amount) }}</span></x-slot:aside>
         {{-- Ряд кнопок одним видом с окошком предложения (12.10.2026): «Чат» пилюлей вместо большой карточки, документы. --}}
         <x-slot:actions>

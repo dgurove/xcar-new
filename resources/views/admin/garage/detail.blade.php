@@ -13,9 +13,11 @@
                 <div class="text-xs text-ink-muted">{{ $line->caption }}</div>
             </x-slot:aside>
         @endif
-        @if ($garageView['more'])
-            <x-slot:tools><button type="button" class="bar-btn" data-controller="emit" data-action="emit#send" data-emit-event-param="car-more:open" aria-label="Ещё"><x-ui.icon name="more" class="size-[18px]"/></button></x-slot:tools>
-        @endif
+        {{-- «Поделиться» — и в гараже (11.11.2026, владелец), перед «⋯». --}}
+        <x-slot:tools>
+            @include('admin.offers.detail-tools')
+            @if ($garageView['more'])<button type="button" class="bar-btn" data-controller="emit" data-action="emit#send" data-emit-event-param="car-more:open" aria-label="Ещё"><x-ui.icon name="more" class="size-[18px]"/></button>@endif
+        </x-slot:tools>
         <x-slot:line>
             <span>{{ $car->manager?->shortName() ?? 'взяли под себя' }}</span>
             @if ($car->deal?->garagePayerLine())<span>{{ $car->deal->garagePayerLine() }}</span>@endif
