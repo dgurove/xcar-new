@@ -24,6 +24,10 @@
     // покупателя» и ДКП, хотя поставщик ещё не ответил, а менеджер не сказал «Беру»): «Выбрать покупателя» и ДКП рано.
     // Блок встанет после согласования (`Deal::agreed`).
     $tooEarly = $deal->isLive() && ! $deal->agreed();
+    // «Автомобиль» своей карточкой под шагом (11.11.2026): получение — не само дело шага (не «Заберите автомобиль», не чек-лист
+    // договора), а показать есть что — где он, кто везёт, «Забрал» / «Вывоз».
+    $carCard = $deal->isLive() && $handover && ! $contractStep && ! ($requirement && $position?->stage->isPickupStep())
+        && ((($handover->shows() || ($handover->park && $deal->releasable())) && ! $handover->withBuyer) || $handover->carrier || $handover->canRequest);
 @endphp
 <x-ui.shell :title="$offer->titleWithYear()" copy-title :back="['Сделки', '/deals']">
     <x-slot:badge><x-car.keys :count="$offer->keys_count" label/></x-slot:badge>
@@ -34,7 +38,8 @@
     <div data-deal-offer="{{ $offer->number }}" class="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[minmax(0,1fr)_22rem] lg:gap-8">
         <section class="contents lg:col-start-1 lg:row-start-1 lg:flex lg:min-w-0 lg:flex-col lg:gap-6">
             <x-offer.reprice-ask :deal="$deal" class="order-1 min-w-0"/>
-            <div class="order-1 min-w-0">@include('cabinet.deals.step', ['contractStep' => $contractStep, 'pickupSteps' => $pickupSteps])</div>
+            <div class="order-1 min-w-0">@include('cabinet.deals.step', ['contractStep' => $contractStep, 'pickupSteps' => $pickupSteps, 'carCard' => $carCard])</div>
+            @if ($carCard)<div class="order-1 min-w-0">@include('cabinet.deals.car-card')</div>@endif
             {{-- Закончилась без покупателя — «выберите покупателя» уже не о чем. --}}
             {{-- Покупатель не выбран или без данных — это дело менеджера: на телефоне сразу под задачей, над «Расчётом»
                  (05.11.2026); готов — на прежнем месте под ним. --}}

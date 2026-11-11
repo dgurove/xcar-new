@@ -5,15 +5,17 @@
     /** @var \App\Offers\Handover $handover */
     $map = $handover->address ? 'https://yandex.ru/maps/?text='.rawurlencode($handover->address) : null;
 @endphp
-<section class="handover mt-4" aria-label="Получение автомобиля">
+<section @class(['handover', 'mt-4' => $caption ?? true]) aria-label="Получение автомобиля">
     {{-- Не «От поставщика» (03.11.2026, владелец: менеджеру не говорим даже, что пришёл ответ страховой): сведения дал XCar —
          поля шага, вывоз, парковка, показанное админом (`Disclosure`). Значками, без колонки подписей (11.11.2026). --}}
-    <p class="handover-cap">От XCar</p>
+    @if ($caption ?? true)<p class="handover-cap">От XCar</p>@endif
     <x-ui.info>
         @if ($handover->where || $handover->address)
             <x-ui.info-row icon="map-pin" :href="$map" :sub="$handover->where ? $handover->address : null">{{ $handover->where ?: $handover->address }}</x-ui.info-row>
         @endif
         <x-ui.info-row icon="clock" class="nums">{{ $handover->dateLabel() }}</x-ui.info-row>
+        {{-- Кто везёт — строкой той же карточки (`car-card`). --}}
+        @if ($carrier ?? null)<x-ui.info-row icon="cat-truck">{{ $carrier }}</x-ui.info-row>@endif
         @if ($handover->name || $handover->phone)
             <div class="info-row">
                 <x-ui.icon name="user" class="info-icon size-5"/>

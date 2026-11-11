@@ -7,8 +7,9 @@
     $currentBlock = $position?->stage->exits->isNotEmpty() ? $position->stage->block_id : null;
     // Ответы — только его: шаги поставщика и наши менеджеру не пересказываем (03.11.2026), их видно по блокам с датой.
     $stageBlocks = $blocks->flatMap(fn ($b) => $b->stages->map(fn ($s) => [$s->id, $b->id]))->mapWithKeys(fn ($p) => [$p[0] => $p[1]]);
-    $answers = $deal->requirements->whereNotNull('done_at')->filter(fn ($r) => ! empty($r->answer['exit']))
+    $answers = $deal->requirements->loadMissing('stage.exits')->whereNotNull('done_at')->filter(fn ($r) => ! empty($r->answer['exit']))
         ->map(fn ($r) => [
+            'consent' => (bool) $r->stage?->asksConsent(),
             'block' => $stageBlocks->get($r->stage_id),
             'at' => $r->done_at,
             'title' => \App\Users\Wording::mine($r->answer['label'] ?? $r->answer['exit'])
@@ -18,15 +19,15 @@
             'note' => match ($r->answer['closed_by'] ?? null) { 'staff' => 'за вас', 'payment' => 'оплата отметилась сама', default => null },
             'files' => $r->getMedia('files'),
         ])->filter(fn ($a) => $a['block'] !== null)->sortBy('at')->values();
-    // Сделка началась — «Подтверждение принято» первым пунктом первого блока.
-    $first = $blocks->first()?->id;
-    if ($first && $deal->created_at) {
-        $answers->prepend(['block' => $first, 'at' => $deal->created_at, 'title' => 'Подтверждение принято', 'note' => null, 'files' => collect()]);
-    }
+    // До первого блока — своими пунктами пути (11.11.2026, владелец: «сначала принимается подтверждение, потом менеджер берёт
+    // в работу, и только после этого начинается согласование»): «Подтверждение принято» и «Беру в работу».
+    $lead = $answers->where('consent', true)->values()
+        ->prepend(['block' => null, 'at' => $deal->created_at, 'title' => 'Подтверждение принято', 'note' => null, 'files' => collect()]);
+    $answers = $answers->where('consent', false)->values();
 @endphp
 @if ($blocks->isNotEmpty())
     <section id="path" class="scroll-mt-4 min-w-0 {{ $class ?? '' }}">
         <h2 class="list-head">Путь сделки</h2>
-        <div><x-route.timeline :blocks="$blocks" :current="$currentBlock" :steps="$steps" :deal="$deal" :answers="$answers"/></div>
+        <div><x-route.timeline :blocks="$blocks" :current="$currentBlock" :steps="$steps" :deal="$deal" :answers="$answers" :lead="$lead"/></div>
     </section>
 @endif

@@ -1,7 +1,7 @@
 {{-- Путь сделки у менеджера по блокам — тем же видом, что путь в CRM и таймлайн дела ТС (.steps): пройдено галочкой с датой,
      текущий крупнее с «чей ход», впереди серым — и под ним, что там понадобится от менеджера (просьба первого его этапа
      блока: «Оплатите счёт», «Заберите автомобиль»). Без номеров — знаменателя нет. --}}
-@props(['blocks', 'current' => null, 'steps' => null, 'waiting' => null, 'deal' => null, 'answers' => null])
+@props(['blocks', 'current' => null, 'steps' => null, 'waiting' => null, 'deal' => null, 'answers' => null, 'lead' => null])
 @php
     $passed = true;
     // Этап, куда эта сделка не попадёт (все входы — чужой ветки: «забирает сам» у сделки, где отдаём мы), подсказкой не идёт.
@@ -9,6 +9,18 @@
     $reaches = fn ($s) => ! $incoming->has($s->id) || $incoming[$s->id]->contains(fn ($e) => $e->fits($deal));
 @endphp
 <div class="steps">
+    {{-- Пункты до блоков (`cabinet.deals.path`): «Подтверждение принято», «Беру в работу» — пройденными шагами с датой и временем. --}}
+    @foreach ($lead ?? [] as $a)
+        <div class="step step--done">
+            <span class="step-dot"><x-ui.icon name="check" class="size-3"/></span>
+            <div class="step-body">
+                <div class="step-head items-baseline">
+                    <span class="step-title flex-1">{{ $a['title'] }}@if ($a['note'])<span class="text-sm font-normal text-ink-muted">, {{ $a['note'] }}</span>@endif</span>
+                    <span class="nums shrink-0 text-sm text-ink-dim">{!! \App\Support\Ago::html($a['at'], true, words: false) !!}</span>
+                </div>
+            </div>
+        </div>
+    @endforeach
     @foreach ($blocks as $block)
         @php
             $isCurrent = $block->id === $current;

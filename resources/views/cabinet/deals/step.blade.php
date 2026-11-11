@@ -46,7 +46,8 @@
     $handover ??= null;
     // Машина уже у менеджера — «У вас» одним словом над чужой задачей (оплата, договор) ни о чём: получения больше нет.
     // Машина на нашей парковке — блок «Забрать с парковки», как только сделке можно забирать (и гаражной: у неё `open` нет).
-    $showHandover = ($handover?->shows() || ($handover?->park && $deal->releasable())) && ! $handover->withBuyer;
+    // Своей карточкой «Автомобиль» под шагом (`car-card`) — тогда здесь получения нет.
+    $showHandover = ! ($carCard ?? false) && ($handover?->shows() || ($handover?->park && $deal->releasable())) && ! $handover->withBuyer;
     // Поля шага, что показаны в получении (контакт, адрес, дата), второй раз в шаге не пишем.
     // Наши служебные поля про деньги поставщику (дата и номер платёжки, перевод с Р.О.С., сумма сделки страховой) —
     // не менеджеру; в остальных — без названия вендора (15.10.2026).
@@ -81,6 +82,9 @@
                  Заберите автомобиль“ — пользователь не тупой»): заголовок — само дело, под ним срок; имя этапа — только когда
                  делать менеджеру нечего (ждём, готовим счёт) или дело говорит чек-лист ниже. --}}
             @php
+                // Только «Ждём поставщика»: у наших этапов фраза — инструкция менеджеру («Свяжитесь с владельцем…»), не статус.
+                $statusLine = ! $requirement && $position->stage->ask_text && $position->waitsFor() === \App\Workflow\WaitsFor::Supplier
+                    ? \App\Users\Wording::mine($position->stage->ask_text).($position->entered_at ? ', с '.\App\Support\Ago::day($position->entered_at) : '') : null;
                 $heading = match (true) {
                     $consent => 'Берёте в работу?',
                     $photosSent => 'Реквизиты по фото у XCar',
@@ -94,12 +98,15 @@
                         : \App\Users\Wording::mine($requirement->title),
                     // Ждём поставщика или нас, а у этапа есть фраза для менеджера — она (11.11.2026, Альфа: «Оплата получена,
                     // поставщик готовит договор» вместо «Оформление документов»).
-                    ! $requirement && $position->stage->ask_text && $position->waitsFor() !== \App\Workflow\WaitsFor::Manager => \App\Users\Wording::mine($position->stage->ask_text),
+                    // Ждём поставщика или нас, а у этапа есть фраза: заголовком — чей ход, фраза с датой — строкой под ним
+                    // (11.11.2026, владелец: «уродство» — фраза заголовком и «Ждём … с …» под ней).
+                    $statusLine !== null => $position->waitsFor()->label(),
                     default => \App\Users\Wording::mine($position->stage->block?->name) ?? 'Идёт работа',
                 };
             @endphp
             <h2>{{ $heading }}</h2>
-            @unless ($noInvoice || $paidUp || $photosSent)<div class="mt-1 text-sm"><x-route.clock :position="$position" :bare="$consent || $position->waitsFor() === \App\Workflow\WaitsFor::Manager"/></div>@endunless
+            @if ($statusLine !== null)<p class="mt-1 text-sm text-ink-muted">{{ $statusLine }}</p>@endif
+            @unless ($noInvoice || $paidUp || $photosSent || $statusLine !== null)<div class="mt-1 text-sm"><x-route.clock :position="$position" :bare="$consent || $position->waitsFor() === \App\Workflow\WaitsFor::Manager"/></div>@endunless
             @if ($photosSent)
                 <p class="mt-2 text-sm text-ink-muted">Внесём сами, шаг пройдёт без вас</p>
             @elseif ($requirement && ! ($pickupSteps ?? null) && ! $needsBuyer && ! $needsPrice && ! $paidUp && ! $consent)
@@ -235,7 +242,7 @@
             @endif
             @endif
             {{-- В чек-листе договора с получением строка стоит под «Заберите автомобиль». --}}
-            @unless (($contractStep ?? false) && ($pickupSteps ?? null))@include('cabinet.deals.pickup-request')@endunless
+            @unless ((($contractStep ?? false) && ($pickupSteps ?? null)) || ($carCard ?? false))@include('cabinet.deals.pickup-request')@endunless
         </div>
     @elseif ($deal->isLive())
         <x-ui.empty>Сделка ещё не началась</x-ui.empty>
