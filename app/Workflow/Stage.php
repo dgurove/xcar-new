@@ -259,9 +259,20 @@ class Stage extends Model
         };
     }
 
-    public function managerTitle(): string
+    /**
+     * Подстановки шаблона писем в заголовке (11.11.2026, Альфа: «Подписание договора {{ signing }}» — время, что выбрал
+     * менеджер): со сделкой — значения, без неё — пусто.
+     */
+    public function managerTitle(?\App\Offers\Deal $deal = null): string
     {
-        return $this->ask_title ?: ($this->block?->name ?? $this->name);
+        $title = $this->ask_title ?: ($this->block?->name ?? $this->name);
+        if (! str_contains($title, '{{')) {
+            return $title;
+        }
+        $values = $deal?->offer ? \App\Http\Admin\MailController::placeholders($deal->offer) : [];
+        $title = (string) preg_replace_callback('/\{\{ ?(\w+) ?\}\}/u', fn ($m) => (string) ($values[$m[1]] ?? ''), $title);
+
+        return trim((string) preg_replace('/\s{2,}/u', ' ', $title));
     }
 
     public function managerText(): ?string
@@ -285,7 +296,7 @@ class Stage extends Model
                 $unique = "{$key}_{$n}";
             }
             $taken[] = $unique;
-            $result[] = ['key' => $unique, 'label' => $label, 'type' => in_array($field['type'] ?? '', ['text', 'number', 'date', 'textarea'], true) ? $field['type'] : 'text'];
+            $result[] = ['key' => $unique, 'label' => $label, 'type' => in_array($field['type'] ?? '', ['text', 'number', 'date', 'datetime', 'textarea'], true) ? $field['type'] : 'text'];
         }
 
         return $result;

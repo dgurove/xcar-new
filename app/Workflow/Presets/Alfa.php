@@ -19,7 +19,7 @@ final class Alfa extends Route
     public function blocks(): array
     {
         $blocks = $this->saleBlocks();
-        $blocks['signing']['text'] = 'Договор передаст поставщик или XCar, детали в чате';
+        $blocks['signing']['text'] = self::SIGNING_TEXT;
         // Счёт выставляет Альфа — по реквизитам, что мы ей пришлём (03.11.2026): между согласованием и оплатой.
         $at = array_search('payment', array_keys($blocks), true);
         $blocks = array_slice($blocks, 0, $at, true) + ['requisites' => self::REQUISITES_BLOCK] + array_slice($blocks, $at, null, true);
@@ -71,18 +71,71 @@ final class Alfa extends Route
             + ['confirmed' => $confirmed]
             + self::requisites()
             + $payment
-            // Документы у Альфы ходят по-разному (18.10.2026, владелец: «оригинал отдают нам, иногда скан, иногда напрямую
-            // покупателю… через интерфейс не реализуешь — обще „передача договора“, а дальше через чат»): один шаг без срока.
-            + ['contract' => [
-                'name' => 'Передача договора', 'block' => 'signing', 'waits_for' => 'manager',
-                'ask_title' => 'Получите договор', 'ask_text' => 'Оплата принята. Договор передаст поставщик или XCar, детали в чате',
-                'exits' => [['Договор у покупателя', 'manager', 'closed_won'], ['Договор передан', 'staff', 'closed_won']],
-            ]]
+            // После оплаты Альфа несколько дней готовит договор, потом запись на подписание (11.11.2026, BMW X6 № 2610041185;
+            // начальник: «филиал ответит, что договор готов, письмом; спросить свободные слоты и согласовать с покупателем»).
+            + self::signing()
             + $garage
             + $this->tail();
     }
 
     public const ASKS_REQUISITES = 'Поставщик просит реквизиты';
+
+    public const SIGNING_TEXT = 'Поставщик готовит договор, затем запись на подписание';
+
+    /** Ключ поля «Дата и время подписания» — по нему `{{ signing }}` в письме записи (`MailController::placeholders`). */
+    public const SIGNING_FIELD = 'data_i_vremia_podpisaniia';
+
+    /**
+     * Подготовка договора (ждём Альфу без срока) → письмо «свободное время» → менеджер выбирает с покупателем → письмо
+     * «запись» → подписание: подписывает по-разному, поэтому кнопка и за менеджера, и за нас.
+     */
+    public static function signing(): array
+    {
+        return [
+            'contract' => [
+                'name' => 'Подготовка договора', 'block' => 'signing', 'waits_for' => 'supplier',
+                'ask_text' => 'Оплата получена, поставщик готовит договор',
+                'exits' => [['Договор готов', 'staff', 'slots']],
+            ],
+            'slots' => [
+                'name' => 'Свободное время для подписания', 'block' => 'signing', 'waits_for' => 'supplier', 'limit_minutes' => self::DAY, 'letter' => 'slots',
+                'ask_text' => 'Договор готов, узнаём у поставщика свободное время для подписания',
+                'exits' => [['Поставщик прислал время', 'staff', 'signing_time']],
+            ],
+            'signing_time' => [
+                'name' => 'Время подписания', 'block' => 'signing', 'waits_for' => 'manager', 'limit_minutes' => self::DAY, 'asks' => 'fields',
+                'ask_title' => 'Согласуйте время подписания с покупателем', 'ask_text' => 'Свободное время поставщика — в информации по сделке. Впишите, когда может покупатель',
+                'fields' => [['label' => 'Дата и время подписания', 'type' => 'datetime', 'key' => self::SIGNING_FIELD]],
+                'exits' => [['Время согласовано', 'manager', 'appointment']],
+            ],
+            'appointment' => [
+                'name' => 'Запись на подписание', 'block' => 'signing', 'waits_for' => 'supplier', 'limit_minutes' => self::DAY, 'letter' => 'appointment',
+                'ask_text' => 'Записываем покупателя на подписание у поставщика',
+                'exits' => [['Запись подтверждена', 'staff', 'signing']],
+            ],
+            'signing' => [
+                'name' => 'Подписание', 'block' => 'signing', 'waits_for' => 'manager',
+                'ask_title' => 'Подписание договора {{ signing }}', 'ask_text' => 'Покупатель подписывает договор у поставщика в назначенное время',
+                'exits' => [['Договор подписан', 'manager', 'closed_won'], ['Договор подписан за менеджера', 'staff', 'closed_won']],
+            ],
+        ];
+    }
+
+    public function letters(): array
+    {
+        return parent::letters() + [
+            'slots' => [
+                'name' => 'Поставщику: время для подписания',
+                'subject' => '{{ claim_ref }}',
+                'body' => "Здравствуйте!\n\nПросим сообщить свободное время для записи на подписание договора купли-продажи {{ car }}, VIN {{ vin }} ({{ claim_ref }})\n\nС уважением,\nАндрей Кузнецов",
+            ],
+            'appointment' => [
+                'name' => 'Поставщику: запись на подписание',
+                'subject' => '{{ claim_ref }}',
+                'body' => "Здравствуйте!\n\nПросим записать покупателя на подписание договора купли-продажи {{ car }}, VIN {{ vin }} ({{ claim_ref }}): {{ signing }}\n\nС уважением,\nАндрей Кузнецов",
+            ],
+        ];
+    }
 
     /** Данные покупателя (его ход, админ может за него) → письмо с реквизитами (наш ход до отправки) → счёт поставщика. */
     public static function requisites(): array

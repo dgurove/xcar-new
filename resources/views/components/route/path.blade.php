@@ -121,7 +121,7 @@
                             @endforeach
                             @foreach ($answers as $r)
                                 <div class="text-sm"><span class="text-ink-muted">{{ $answerer($r) }}:</span> {{ $r->answer['label'] ?? $r->answer['exit'] ?? $r->title }}@if (($r->answer['closed_by'] ?? null) === 'staff') <span class="text-ink-muted">(за него {{ $answeredBy->get($r->answer['by'] ?? 0)?->shortName() ?? 'сотрудник' }})</span>@endif <span class="nums text-ink-dim">{{ \App\Support\Ago::html($r->done_at, true, words: false) }}</span></div>
-                                @foreach ($r->answer['fields'] ?? [] as $k => $v)<div class="text-sm"><span class="text-ink-muted">{{ collect($r->fields)->firstWhere('key', $k)['label'] ?? $k }}:</span> {{ is_array($v) ? implode(', ', $v) : $v }}</div>@endforeach
+                                @foreach ($r->answer['fields'] ?? [] as $k => $v)<div class="text-sm"><span class="text-ink-muted">{{ collect($r->fields)->firstWhere('key', $k)['label'] ?? $k }}:</span> {{ $r->shown($k, $v) }}</div>@endforeach
                                 @foreach ($r->getMedia('files') as $f)<x-ui.file :name="$f->file_name" :mime="$f->mime_type" :size="$f->humanReadableSize" href="/files/{{ $f->id }}" class="py-1"/>@endforeach
                             @endforeach
                             {{-- Назад — на последний этап блока, где предложение было, а не на первый. --}}
@@ -273,7 +273,7 @@
                         @unless ($doneNames->contains(mb_strtolower($r->answer['label'] ?? $r->answer['exit'] ?? '')))
                         <div class="mt-2 text-sm"><span class="text-ink-muted">{{ $answerer($r) }}:</span> «{{ $r->answer['label'] ?? $r->answer['exit'] ?? $r->title }}»@if (($r->answer['closed_by'] ?? null) === 'staff') <span class="text-ink-muted">(за него {{ $answeredBy->get($r->answer['by'] ?? 0)?->shortName() ?? 'сотрудник' }})</span>@endif @if ($r->done_at)<span class="nums text-ink-dim">{{ \App\Support\Ago::html($r->done_at, true, words: false) }}</span>@endif</div>
                         @endunless
-                        @foreach ($r->answer['fields'] ?? [] as $k => $v)<div class="text-sm"><span class="text-ink-muted">{{ collect($r->fields)->firstWhere('key', $k)['label'] ?? $k }}:</span> {{ is_array($v) ? implode(', ', $v) : $v }}</div>@endforeach
+                        @foreach ($r->answer['fields'] ?? [] as $k => $v)<div class="text-sm"><span class="text-ink-muted">{{ collect($r->fields)->firstWhere('key', $k)['label'] ?? $k }}:</span> {{ $r->shown($k, $v) }}</div>@endforeach
                         @foreach ($r->getMedia('files') as $f)<x-ui.file :name="$f->file_name" :mime="$f->mime_type" :size="$f->humanReadableSize" href="/files/{{ $f->id }}" class="py-1"/>@endforeach
                     @endforeach
                     @foreach ($claims as [$invoice, $p])

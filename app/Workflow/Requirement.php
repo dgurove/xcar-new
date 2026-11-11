@@ -50,6 +50,20 @@ class Requirement extends Model implements HasMedia
         });
     }
 
+    /** Ответ поля словами: дата со временем — «14.11 11:00», остальное как есть. */
+    public function shown(string $key, mixed $value): string
+    {
+        if (is_array($value)) {
+            return implode(', ', $value);
+        }
+        $type = collect($this->fields)->firstWhere('key', $key)['type'] ?? null;
+        if ($type === 'datetime' && preg_match('/^\d{4}-\d\d-\d\d[ T]\d\d:\d\d/', (string) $value)) {
+            return \App\Support\Ago::at(\Illuminate\Support\Carbon::parse($value), true, words: false);
+        }
+
+        return (string) $value;
+    }
+
     /** Закрыли или удалили просьбы запросом мимо модели (`EnterStage`, `SyncHandover`) — их кнопки в чате тоже перерисовать. */
     public static function redrawFor(iterable $ids): void
     {
@@ -129,7 +143,7 @@ class Requirement extends Model implements HasMedia
             'deal_id' => $deal->id,
             'stage_id' => $stage->id,
             'user_id' => $deal->buyer_id,
-            'title' => $stage->managerTitle(),
+            'title' => $stage->managerTitle($deal),
             // Гаражная сделка цены не называла: «по Вашей цене» из общего текста ей не про неё.
             'text' => $deal->isGarage() ? preg_replace('/ по Вашей цене/u', '', (string) $stage->managerText()) ?: null : $stage->managerText(),
             'asks' => $stage->asks,

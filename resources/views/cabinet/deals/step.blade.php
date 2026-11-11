@@ -92,6 +92,9 @@
                     $requirement && ! ($pickupSteps ?? null) => $direct
                         ? trim(preg_replace('/^Оплатить/u', 'Оплатите', (string) $deal->schemeOf()->payLabel()).' '.($deal->supplierPayment() ? \App\Support\Money::rub($deal->supplierPayment()) : ''))
                         : \App\Users\Wording::mine($requirement->title),
+                    // Ждём поставщика или нас, а у этапа есть фраза для менеджера — она (11.11.2026, Альфа: «Оплата получена,
+                    // поставщик готовит договор» вместо «Оформление документов»).
+                    ! $requirement && $position->stage->ask_text && $position->waitsFor() !== \App\Workflow\WaitsFor::Manager => \App\Users\Wording::mine($position->stage->ask_text),
                     default => \App\Users\Wording::mine($position->stage->block?->name) ?? 'Идёт работа',
                 };
             @endphp

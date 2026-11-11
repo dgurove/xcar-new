@@ -63,7 +63,7 @@
                         @foreach ($answered as $req)
                                 <div class="px-4 py-3">
                                     <div class="flex items-baseline justify-between gap-3">
-                                        <span class="min-w-0 break-words">{{ $req->title }}: «{{ $req->answer['label'] ?? $req->answer['exit'] }}»@if (!empty($req->answer['fields'])), {{ implode(', ', $req->answer['fields']) }}@endif</span>
+                                        <span class="min-w-0 break-words">{{ $req->title }}: «{{ $req->answer['label'] ?? $req->answer['exit'] }}»@if (!empty($req->answer['fields'])), {{ collect($req->answer['fields'])->map(fn ($v, $k) => $req->shown($k, $v))->implode(', ') }}@endif</span>
                                         <span class="nums shrink-0 text-sm font-normal text-ink-dim">{{ \App\Support\Ago::html($req->done_at, words: false) }}</span>
                                     </div>
                                     {{-- Приложенное остаётся видно и после ответа. Отдал наличными — его словами (`label`, 19.10.2026), а не «Платёжное поручение приложено». --}}

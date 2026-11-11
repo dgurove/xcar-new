@@ -36,6 +36,14 @@ final class AnswerRequirement
                     if ($value === '') {
                         throw ValidationException::withMessages(["fields.{$field['key']}" => 'Заполните']);
                     }
+                    // Дата со временем (Альфа, «Время подписания») — одним видом, словами её рисует `Requirement::shown`.
+                    if (($field['type'] ?? '') === 'datetime') {
+                        try {
+                            $value = \Illuminate\Support\Carbon::parse($value)->format('Y-m-d H:i');
+                        } catch (\Throwable) {
+                            throw ValidationException::withMessages(["fields.{$field['key']}" => 'Выберите дату и время']);
+                        }
+                    }
                     $answer[$field['key']] = $value;
                 }
             }

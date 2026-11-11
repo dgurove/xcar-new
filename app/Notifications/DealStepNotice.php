@@ -17,7 +17,7 @@ final class DealStepNotice extends Notice
 
     public function title(): string
     {
-        return ($this->deal->isGarage() ? 'В гараж № ' : 'Сделка № ').$this->deal->offer->number.': '.$this->stage->managerTitle();
+        return ($this->deal->isGarage() ? 'В гараж № ' : 'Сделка № ').$this->deal->offer->number.': '.$this->stage->managerTitle($this->deal);
     }
 
     public function text(): ?string

@@ -215,7 +215,7 @@ class Deal extends Model
             'buyer' => 'Укажите покупателя',
             'passport' => 'Приложите паспорт покупателя',
             'price' => 'Укажите цену продажи',
-            default => $position->stage->managerTitle(),
+            default => $position->stage->managerTitle($this),
         }, 'due' => $position->deadline_at, 'kind' => in_array($gap, ['buyer', 'passport', 'price'], true) ? $gap : 'step'];
     }
 
