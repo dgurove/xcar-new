@@ -91,6 +91,8 @@
                     $needsBuyer && ! $buyerStep => $gap === 'passport' ? 'Приложите паспорт покупателя' : 'Укажите покупателя',
                     $needsPrice => 'Укажите цену продажи',
                     $paidUp => 'Оплата получена',
+                    // Просит подписанный договор, а покупателя для него нет — сначала покупатель (`Deal::contractBuyerTask`).
+                    (bool) ($contractGap = $deal->contractBuyerTask($requirement)) => $contractGap['title'],
                     // Встреча записана — дата в карточке ниже, в заголовке её не повторяем.
                     $requirement && \App\Offers\Signing::booked($deal) => \App\Users\Wording::mine($position->stage->managerTitle()),
                     $requirement && ! ($pickupSteps ?? null) => $direct

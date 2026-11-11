@@ -37,7 +37,7 @@ final class CatalogQuery
 
     /**
      * city и category — чипы (`CatalogQuery::facets`), значения через запятую; марки, года и цены нет (03.10.2026).
-     * unread — «Не просмотренные» (`unreadFacet`): в адресе только выключенный `0`, в ссылках на предложение — и `1`.
+     * unread — «Не просмотренные» (`unreadFacet`): включённый — `1` в адресе.
      */
     public const FILTERS = ['city', 'category', 'unread', 'q', 'view', 'sort'];
 
@@ -221,10 +221,13 @@ final class CatalogQuery
             ->when($since, fn (QueryBuilder $w) => $w->where('r.read_at', '<', $since)));
     }
 
-    /** Чип «Не просмотренные»: включён каждый заход, выключают на этот раз (`?unread=0`), не запоминается. */
+    /**
+     * Чип «Не просмотренные»: включают сами (`?unread=1`), не запоминается. По умолчанию выключен (11.11.2026, владелец: был
+     * включён каждый заход — менеджеры не знали, что его снимают, и думали, что предложений нет, «вредит продажам»).
+     */
     public static function unreadFacet(User $user, CarbonInterface $since): Facet
     {
-        return Facet::toggle('unread', 'Не просмотренные', fn (Builder $q) => self::unreadOrOnly($q, $user, $since))->byDefault()->countSelf();
+        return Facet::toggle('unread', 'Не просмотренные', fn (Builder $q) => self::unreadOrOnly($q, $user, $since))->countSelf();
     }
 
     /**

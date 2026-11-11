@@ -188,6 +188,11 @@ class Deal extends Model
             if ($position?->stage->isPayStep() && $this->fullyPaid()) {
                 return null;
             }
+            // Просит подписанный договор, а договора ещё нет — не выбран покупатель или нет его данных (11.11.2026, владелец по
+            // Tucson Макарова: «приложите подписанный договор, а он даже реквизиты не указал — что подписывать»): дело — покупатель.
+            if ($gap = $this->contractBuyerTask($req)) {
+                return $gap + ['due' => $req->due_at];
+            }
             $pays = $req->stage && $this->paysSupplierOn($req->stage) && ($label = $this->schemeOf()->payLabel());
 
             // Заголовок шага — «Оплатить страховой»; дело — просьбой, как остальные: «Оплатите страховой 890 000 ₽».
@@ -217,6 +222,28 @@ class Deal extends Model
             'price' => 'Укажите цену продажи',
             default => $position->stage->managerTitle($this),
         }, 'due' => $position->deadline_at, 'kind' => in_array($gap, ['buyer', 'passport', 'price'], true) ? $gap : 'step'];
+    }
+
+    /**
+     * Шаг просит подписанный договор (документом), а договора без покупателя нет: что сначала — `title` и `kind`
+     * (`buyer` / `passport`, чем ответить — `ManagerAsk`). Иначе null.
+     *
+     * @return array{title: string, kind: string}|null
+     */
+    public function contractBuyerTask(?Requirement $req = null): ?array
+    {
+        $req ??= $this->openRequirement;
+        if (! $req || $req->asks !== Asks::Document || ! $this->hasContract()
+            || ! preg_match('/договор/iu', $req->stage?->name.' '.$req->title)) {
+            return null;
+        }
+
+        return match ($this->buyerGap()) {
+            null => null,
+            'Покупатель не выбран' => ['title' => 'Укажите покупателя', 'kind' => 'buyer'],
+            'Нет скана паспорта покупателя' => ['title' => 'Приложите паспорт покупателя', 'kind' => 'passport'],
+            default => ['title' => 'Заполните данные покупателя', 'kind' => 'buyer'],
+        };
     }
 
     /** Договор купли-продажи: собственника (ДКП) или ПРАЙМ с покупателем менеджера (`DealContract`). */

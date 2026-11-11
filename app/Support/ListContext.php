@@ -52,8 +52,8 @@ final class ListContext
     public function backUrl(): string
     {
         $query = array_diff_key($this->query(), ['list' => 1]);
-        // «Не просмотренные» включены и без параметра: адрес каталога без него — живые новые въезжают сверху.
-        if (($query['unread'] ?? null) === '1') {
+        // «Не просмотренные» по умолчанию выключены (11.11.2026): включённый `1` возвращается в адрес как есть, `0` — лишний.
+        if (($query['unread'] ?? null) === '0') {
             unset($query['unread']);
         }
 

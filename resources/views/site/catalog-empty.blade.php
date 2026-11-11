@@ -6,7 +6,7 @@
     @if ($manager)<div class="list mx-auto mt-4 max-w-sm"><x-ui.person-row :user="$manager" :size="44" class="row"/></div>@endif
 @elseif ($allSeen ?? false)
     {{-- «Не просмотренные» (21.10.2026): новых нет, а в продаже есть — весь список на этот раз. --}}
-    <x-ui.empty :href="$facets->url(['unread' => '0'])" link="Показать все" id="catalog-empty" data-turbo-prefetch="false">Все предложения просмотрены</x-ui.empty>
+    <x-ui.empty :href="$facets->url(['unread' => ''])" link="Показать все" id="catalog-empty" data-turbo-prefetch="false">Все предложения просмотрены</x-ui.empty>
 @else
 {{-- «Сбросить» снимает чипы пустыми значениями, иначе ListPrefs вернёт запомненный город; пилюля и поиск — тоже.
      Без предзагрузки: курсор над ссылкой стирал бы память фильтра. --}}

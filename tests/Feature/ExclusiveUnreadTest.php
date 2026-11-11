@@ -38,7 +38,8 @@ class ExclusiveUnreadTest extends TestCase
         $this->assertTrue(Offer::onlyFor($roma)->whereKey($exclusive->id)->exists());
         $this->assertFalse(Offer::onlyFor($roma)->whereKey($common->id)->exists());
 
-        $page = $this->actingAs($roma)->get('http://xcar.localhost/offers', ['Accept' => 'text/html'])->assertOk();
+        // «Не просмотренные» по умолчанию выключен (11.11.2026) — включаем сами.
+        $page = $this->actingAs($roma)->get('http://xcar.localhost/offers?unread=1', ['Accept' => 'text/html'])->assertOk();
         $page->assertSee('/offers/'.$exclusive->number, false);
         $page->assertDontSee('/offers/'.$common->number, false);
     }
