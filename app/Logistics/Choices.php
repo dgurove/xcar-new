@@ -38,7 +38,7 @@ final class Choices
 
         return array_diff_key(once(fn () => User::query()->whereNull('rejected_at')
             ->where(fn ($q) => $q->withRole(Role::Manager)->orWhere(fn ($c) => $c->withRole(Role::Contractor)->whereNull('logist_id')))
-            ->orderBy('name')->pluck('name', 'id')->all()), [$own => true]);
+            ->orderBy('name')->pluck('name', 'id')->all()), $own ? [$own => true] : []);
     }
 
     /** Может ли человек быть своим исполнителем (`Channel::Partner`): менеджер или исполнитель без логиста. */
