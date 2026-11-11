@@ -65,7 +65,7 @@
         @if ($events->isNotEmpty())
             <section class="mt-4">
                 <h2 class="detail-section">История</h2>
-                @include('admin.offers.history')
+                <x-car.history :events="$events"/>
             </section>
         @endif
     </x-ui.row-card>

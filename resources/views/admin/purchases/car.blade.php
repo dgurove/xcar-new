@@ -1,8 +1,9 @@
 @php use App\Cars\{Transmission, Fuel}; use App\Purchases\{Kind, ImportState}; use App\Offers\BidState; $n = $purchase->number; @endphp
 <x-ui.shell :title="$car->titleWithYear()" copy-title :back="['Закупка', '/purchases/'.$purchase->number]">
     <div class="mb-4 flex flex-wrap items-center gap-2">
-        <span class="chip">{{ str_starts_with(mb_strtoupper($car->dl), 'ДЛ') ? $car->dl : 'ДЛ '.$car->dl }}</span>
-        <span class="chip">№ {{ $car->ref }}</span>
+        {{-- Коды — чипами с копированием нажатием, как в окне (11.11.2026: на странице были без копирования). --}}
+        <span class="tag nums gap-1">ДЛ<x-ui.copy-code :value="preg_replace('/^ДЛ\s*/iu', '', (string) $car->dl)"/></span>
+        <span class="tag nums gap-1">№<x-ui.copy-code :value="(string) $car->ref"/></span>
         {{-- Коды — чипами, ссылки наружу — лаймовыми словами, не капсулами среди кодов (10.10.2026). --}}
         @if ($car->site_url)<a href="{{ $car->site_url }}" target="_blank" class="text-sm text-accent-text">Сайт поставщика</a>@endif
         @if ($car->cloud_url)<a href="{{ $car->cloud_url }}" target="_blank" class="text-sm text-accent-text">Облако</a>@endif

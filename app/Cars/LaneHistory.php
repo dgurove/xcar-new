@@ -10,6 +10,7 @@ use App\Park\EventType;
 use App\Park\Vehicle;
 use App\Park\VehicleEvent;
 use App\Support\Changes;
+use App\Users\User;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 
@@ -62,6 +63,17 @@ final class LaneHistory
 
                 return $fields ? new LaneEdit($e->created_at, $e->user, 'на парковке', $prefix.Changes::text($fields, $changes)) : null;
             })->filter()->values();
+    }
+
+    /**
+     * История ТС парковки целиком — одна для дела и окна (11.11.2026: окно показывало управляющему «связана с предложением»,
+     * дело — нет): свои события, без связи с продажей не админу CRM, и правки машины в CRM той же лентой.
+     */
+    public static function ofVehicle(Vehicle $vehicle, ?User $viewer): Collection
+    {
+        $own = $vehicle->events->reject(fn ($e) => ! $viewer?->isAdmin() && in_array($e->type, [EventType::Linked, EventType::Unlinked], true));
+
+        return self::merge($own, self::forVehicle($vehicle));
     }
 
     /**

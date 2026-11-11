@@ -200,7 +200,7 @@
                 $own = auth()->user()->canManageCrm() ? $offer->car->events : $offer->car->events->reject(fn ($e) => $e->adminOnly());
                 $events = \App\Cars\LaneHistory::merge($own->take(30), \App\Cars\LaneHistory::forOffer($offer)->take(30))->take(30);
             @endphp
-            <x-ui.card title="История" class="order-6">@include('admin.offers.history')</x-ui.card>
+            <x-ui.card title="История" class="order-6"><x-car.history :events="$events"/></x-ui.card>
         </div>
 
         {{-- Кадры письма прикрепляются после «Завести» (ImportThreadFiles): строка хода и заглушки в ряду, attach_controller

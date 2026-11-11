@@ -2,8 +2,8 @@
 @php use App\Support\Money; use App\Billing\InvoiceState; $i = $invoice; $href = '/money/invoices/'.$i->id; @endphp
 <x-ui.detail>
     <x-ui.row-card :href="$href" :title="$i->party->name" :photo="$i->vehicle?->mainPhoto()">
-        {{-- Состояние — у названия; фразой — какой счёт, от какого дня, за что и по какой ТС (ТС — ссылкой в дело). --}}
-        <x-slot:badge><x-billing.light :invoice="$i" class="title-state"/></x-slot:badge>
+        {{-- Состояние — посередине полосы окна (вариант D3, как у всех окон); фразой — какой счёт, от какого дня, за что и по какой ТС (ТС — ссылкой в дело). --}}
+        <x-slot:status><x-billing.light :invoice="$i"/></x-slot:status>
         <x-slot:line>
             <span class="nums">{{ $i->isOwed() ? 'мы должны' : $i->label() }} от {{ \App\Support\Ago::html($i->issued_at, words: false) }}</span>
             <span>{{ mb_strtolower($i->kind->label()) }}</span>

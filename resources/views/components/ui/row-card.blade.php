@@ -12,7 +12,7 @@
      blank=false — нет фото, нет и ленты (без серой заглушки с машинкой: парковка, 10.10.2026).
      status — состояние словом посередине полосы (парковка, логистика).
      head=false — без шапки с названием и метками: тело рисует свою (карточки «Оплат»: сумма крупно по центру). --}}
-@props(['offer' => null, 'status' => null, 'head' => true, 'href' => null, 'title', 'photos' => null, 'photo' => null, 'marks' => null, 'facts' => [], 'line' => null, 'aside' => null, 'actions' => null, 'action' => 'Открыть', 'tools' => null, 'media' => null, 'foot' => null, 'blank' => true])
+@props(['offer' => null, 'status' => null, 'badge' => null, 'head' => true, 'href' => null, 'title', 'photos' => null, 'photo' => null, 'marks' => null, 'facts' => [], 'line' => null, 'aside' => null, 'actions' => null, 'action' => 'Открыть', 'tools' => null, 'media' => null, 'foot' => null, 'blank' => true])
 <div class="detail-bar" data-action="pointerdown->detail#grab">
     <span class="detail-handle" aria-hidden="true"></span>
     <button type="button" class="bar-btn" data-action="detail#prev" aria-label="Предыдущая"><x-ui.icon name="chevron-down" class="size-[18px] rotate-180"/></button>
@@ -53,6 +53,9 @@
         @if ($marks && trim($marks) !== '')<div class="mt-1.5 flex flex-wrap items-center gap-1.5">{{ $marks }}</div>@endif
         @if ($line && trim($line) !== '')<div class="detail-line">{{ $line }}</div>@endif
     </div>
+    {{-- Главное число справа — и у карточки с одним кадром (11.11.2026: у счёта парковки с кнопками остаток пропадал — aside
+         стоял только рядом с запасной «Открыть»). --}}
+    @if ($aside && trim($aside) !== '')<div class="shrink-0 text-right">{{ $aside }}</div>@endif
 </div>
 @endif
 @if ($photos === null && ($facts = array_filter($facts)))<p class="mt-2 text-sm text-ink-muted">{{ implode(', ', $facts) }}</p>@endif
@@ -62,7 +65,6 @@
 @elseif ($action && $href)
     <div class="mt-3 flex items-center gap-3">
         <a href="{{ $href }}" class="btn btn-s btn-accent flex-1 whitespace-nowrap sm:flex-none">{{ $action }}</a>
-        @if ($aside && trim($aside) !== '' && $photos === null)<div class="ml-auto min-w-0 text-right">{{ $aside }}</div>@endif
     </div>
 @endif
 {{ $slot }}

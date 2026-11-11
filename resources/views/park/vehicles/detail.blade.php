@@ -25,7 +25,7 @@
         @if ($state !== VehicleState::Stored)
             <x-slot:status><x-ui.state :tone="$state->tone()">{{ mb_strtolower($state->label()) }}</x-ui.state></x-slot:status>
         @endif
-        <x-slot:badge>@if ($vehicle->plate)<x-ui.plate :value="$vehicle->plate" class="ml-1.5 align-[.15em] text-sm"/>@endif<x-ui.links :vehicle="$vehicle"/></x-slot:badge>
+        <x-slot:badge>@if ($vehicle->plate)<x-ui.plate :value="$vehicle->plate" class="ml-1.5 align-[.15em] text-sm" copy/>@endif<x-ui.links :vehicle="$vehicle"/></x-slot:badge>
         {{-- Кадры блоками по стадии с глазом (показ в продаже) и «Показать все»; добавляют и удаляют — в деле ТС. --}}
         @if ($vehicle->photos()->isNotEmpty() && ! ($fromRequests ?? false))
             <x-slot:media>@include('park.vehicles.detail-photos')</x-slot:media>
@@ -33,10 +33,7 @@
         {{-- Под названием — коды машины одним рядом (убыток с логотипом вендора, VIN; копируются нажатием, значков нет —
              `.detail-codes`) и что не так. Где, когда и сколько — полоской срока ниже (`x-park.stay`), ставки и долга у суммы нет. --}}
         <x-slot:marks>
-            @if ($vehicle->ref)<x-vendor.ref :vendor="$vehicle->vendor" :ref="$vehicle->ref" copy class="tag nums"/>
-            @elseif ($vehicle->vendor)<x-vendor.name :vendor="$vehicle->vendor" class="tag"/>@endif
-            <x-ui.vin-code :vin="$vehicle->vin" class="tag"/>
-            <x-park.alerts :vehicle="$vehicle" :skip="[\App\Park\Alerts::DOCS]" :place="false"/>
+            <x-car.codes :vendor-id="$vehicle->vendor?->id" :ref="$vehicle->ref" :vin="$vehicle->vin"><x-park.alerts :vehicle="$vehicle" :skip="[\App\Park\Alerts::DOCS]" :place="false"/></x-car.codes>
         </x-slot:marks>
         {{-- Главное действие карточки — одно и подвалом листа во всю ширину (10.10.2026, владелец: «кнопки действий справа
              выравнивают, а не слева»): открывает окно действия (`x-park.act-window`, 12.10.2026 — «разграничить машину и
@@ -55,12 +52,12 @@
             };
         @endphp
         @if ($foot)
-            <x-slot:foot><div class="detail-action"><x-park.act-button :vehicle="$vehicle" :step="$foot[0]" :label="$foot[1]" :advance="$advance" class="w-full"/></div></x-slot:foot>
+            <x-slot:foot><x-ui.detail-action><x-park.act-button :vehicle="$vehicle" :step="$foot[0]" :label="$foot[1]" :advance="$advance" class="w-full"/></x-ui.detail-action></x-slot:foot>
         @elseif ($releaseReport)
-            <x-slot:foot><div class="detail-action"><x-mail.window-button :url="$releaseReportUrl" label="Отправить акт выдачи" icon="mail" class="btn-accent w-full"/></div></x-slot:foot>
+            <x-slot:foot><x-ui.detail-action><x-mail.window-button :url="$releaseReportUrl" label="Отправить акт выдачи" icon="mail" class="btn-accent w-full"/></x-ui.detail-action></x-slot:foot>
         @elseif ($state === VehicleState::Released && ($unbilled ?? 0) > 0)
             {{-- Не выставленное хранение выданной — главной кнопкой, а не словом у суммы (09.11.2026, D3 владельца). --}}
-            <x-slot:foot><div class="detail-action"><a href="/cars/{{ $vehicle->id }}/invoices/new" data-turbo-frame="_top" class="btn btn-accent w-full">Выставить счёт на {{ \App\Support\Money::rub($unbilled) }}</a></div></x-slot:foot>
+            <x-slot:foot><x-ui.detail-action><a href="/cars/{{ $vehicle->id }}/invoices/new" data-turbo-frame="_top" class="btn btn-accent w-full">Выставить счёт на {{ \App\Support\Money::rub($unbilled) }}</a></x-ui.detail-action></x-slot:foot>
         @endif
         {{-- Долг — красной строкой над полоской, как всё, что не так с машиной (09.11.2026: у суммы слов нет). --}}
         @if ($debt > 0)<div class="detail-alert mt-3">Долг {{ \App\Support\Money::rub($debt) }}</div>@endif
@@ -138,17 +135,6 @@
             <input name="text" class="field-input field-s min-w-0 flex-1" placeholder="Заметка" required>
             <button class="btn btn-s btn-quiet shrink-0">Записать</button>
         </form>
-        @php $history = \App\Cars\LaneHistory::merge($vehicle->events, \App\Cars\LaneHistory::forVehicle($vehicle))->take(5); @endphp
-        @if ($history->isNotEmpty())
-            <div class="mt-3 flex flex-col gap-1.5 text-sm">
-                @foreach ($history as $event)
-                    <div class="flex gap-3">
-                        <span class="shrink-0 text-ink-dim nums">{{ \App\Support\Ago::html($event->created_at, true, words: false) }}</span>
-                        <span class="min-w-0">{{ $event->text() }}</span>
-                        @if ($event->user)<span class="ml-auto shrink-0 text-ink-muted">{{ $event->user->shortName() }}@if ($event instanceof \App\Cars\LaneEdit), {{ $event->where }}@endif</span>@endif
-                    </div>
-                @endforeach
-            </div>
-        @endif
+        <x-car.history :events="\App\Cars\LaneHistory::ofVehicle($vehicle, auth()->user())" class="mt-3"/>
     </x-ui.row-card>
 </x-ui.detail>

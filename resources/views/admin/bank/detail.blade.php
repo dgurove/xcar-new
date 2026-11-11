@@ -8,7 +8,7 @@
             @if ($tx->counterparty_inn)<span class="tag nums gap-1">ИНН<x-ui.copy-code :value="$tx->counterparty_inn"/></span>@endif
             @if ($tx->doc_number)<span class="tag nums">п/п {{ $tx->doc_number }}</span>@endif
         </x-slot:marks>
-        <x-slot:badge><x-ui.state :tone="$tx->tone()" class="title-state">{{ mb_strtolower($tx->stateLabel()) }}</x-ui.state></x-slot:badge>
+        <x-slot:status><x-ui.state :tone="$tx->tone()">{{ mb_strtolower($tx->stateLabel()) }}</x-ui.state></x-slot:status>
         <x-slot:line><span class="nums font-semibold">{{ Money::exact($tx->amount) }}</span><span class="nums text-ink-muted">{{ $tx->booked_at->format('d.m.Y') }}</span></x-slot:line>
         <x-slot:actions>
             @if ($tx->invoice)

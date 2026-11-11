@@ -3,7 +3,7 @@
      Письма — блоком над таймлайном (letters-card) и окном (x-mail.window); после приёма и выдачи окно открыто с черновиком вендору.
      07.10.2026: поля строками (.fields), кнопка .sheet-foot. --}}
 @php
-    use App\Park\{RequestType, RequestState, VehicleState, EventType, PhotoStage};
+    use App\Park\{RequestType, RequestState, VehicleState, PhotoStage};
     use App\Park\Actions\{UndoIntake, UndoRelease, UnwindVehicle};
     use App\Support\{Money, Surface};
     $state = $vehicle->state;
@@ -28,9 +28,8 @@
          телефон страхователя) и в «Деньгах» (начислено), тут не повторяется; ставка — здесь, у места, шторкой `x-park.rate` (12.10.2026). --}}
     {{-- Коды машины под названием, как в окошке (09.11.2026): госномер, убыток с логотипом вендора, VIN — копируются нажатием. --}}
     <div class="-mt-3 mb-3 flex flex-wrap items-center gap-1.5">
-        @if ($vehicle->plate)<x-ui.plate :value="$vehicle->plate" class="cursor-pointer text-sm" role="button" tabindex="0" title="Скопировать" data-controller="copy" :data-copy-text-value="$vehicle->plate" data-copy-done-value="Госномер в буфере" data-action="click->copy#copy:prevent:stop keydown.enter->copy#copy:prevent"/>@endif
-        @if ($vehicle->ref)<x-vendor.ref :vendor="$vehicle->vendor" :ref="$vehicle->ref" copy class="tag nums"/>@endif
-        <x-ui.vin-code :vin="$vehicle->vin" class="tag"/>
+        @if ($vehicle->plate)<x-ui.plate :value="$vehicle->plate" class="text-sm" copy/>@endif
+        <x-car.codes :vendor-id="$vehicle->vendor?->id" :ref="$vehicle->ref" :vin="$vehicle->vin"/>
     </div>
     <div class="mb-6 flex items-start gap-3">
         <div class="min-w-0 flex-1">
@@ -211,27 +210,8 @@
                 <input name="text" class="field-input flex-1" placeholder="Заметка" required>
                 <x-ui.button size="sm" variant="secondary">Записать</x-ui.button>
             </form>
-            {{-- Строка истории: текст во всю ширину (заметка — на подложке), под ним мелко одной строкой «когда кто»
-                 (владелец 07.10.2026: дата своей строкой и чип с именем справа — строка ради одной даты и ужатый текст). --}}
-            <div class="flex flex-col gap-3 text-sm">
-                {{-- Связь с продажей — дело админа CRM: управляющему «связана с предложением» ничего не говорит. --}}
-                {{-- Правки машины в CRM — той же лентой (`Cars\LaneHistory`): машина у дела и продажи одна. --}}
-                @foreach (\App\Cars\LaneHistory::merge($vehicle->events->reject(fn ($e) => ! auth()->user()->isAdmin() && in_array($e->type, [EventType::Linked, EventType::Unlinked], true)), \App\Cars\LaneHistory::forVehicle($vehicle)) as $event)
-                    @php $note = ! $event instanceof \App\Cars\LaneEdit && $event->type === EventType::Note; @endphp
-                    <div>
-                        @if ($note)
-                            <div class="history-note whitespace-pre-line">{{ $event->text() }}</div>
-                        @else
-                            <div class="leading-snug">{{ $event->text() }}</div>
-                        @endif
-                        <div class="mt-0.5 flex items-center gap-2 text-xs text-ink-dim">
-                            <span class="nums">{{ \App\Support\Ago::html($event->created_at, true, words: false) }}</span>
-                            @if ($event->user)<span>{{ $event->user->shortName() }}</span>@elseif ($note)<span>Система</span>@endif
-                            @if ($event instanceof \App\Cars\LaneEdit)<span>{{ $event->where }}</span>@endif
-                        </div>
-                    </div>
-                @endforeach
-            </div>
+            {{-- Лента — одна с окном и CRM (`x-car.history`, `LaneHistory::ofVehicle`): связь с продажей — только админу CRM. --}}
+            <x-car.history :events="\App\Cars\LaneHistory::ofVehicle($vehicle, auth()->user())"/>
         </x-ui.card>
     </div>
     </div>

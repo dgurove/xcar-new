@@ -5,8 +5,10 @@ namespace App\Http\Site;
 use App\Chats\Actions\MarkChatRead;
 use App\Chats\Chat;
 use App\Media\Actions\WarmPhotos;
+use App\Offers\Bid;
 use App\Offers\BidState;
 use App\Offers\CatalogQuery;
+use App\Offers\Interest;
 use App\Offers\Offer;
 use App\Offers\OfferState;
 use App\Offers\ReadOffer;
@@ -52,11 +54,8 @@ class OfferController
             'photos' => $offer->visiblePhotos(),
             'context' => $context,
             'position' => $position,
-            'myBid' => $user ? $offer->bids()->where('user_id', $user->id)->whereIn('state', [BidState::Active, BidState::Accepted])->latest('id')->first() : null,
-            'myInterest' => $user ? $offer->interests()->where('user_id', $user->id)->first() : null,
-            'chat' => $chat,
             // Шторка чата есть всегда; сам чат заведётся первым сообщением: менеджеру — с площадкой, покупателю — со своим менеджером.
-            'canChat' => $canChat,
+            ...self::mine($offer, $user, $chat, $canChat),
             'manager' => $user?->isBuyer() ? $user->manager : null,
             'showings' => $user?->isManager() ? $offer->showings()->where('manager_id', $user->id)->with(['user', ...User::withAvatar('user.media'), 'group'])->get() : collect(),
             'buyerInterests' => $user?->isManager() ? $offer->interests()->whereHas('user', fn ($u) => $u->where('manager_id', $user->id))->with(['user', ...User::withAvatar('user.media')])->get() : collect(),
@@ -89,11 +88,23 @@ class OfferController
         return view('site.offers.detail', [
             'offer' => $offer,
             'context' => ListContext::fromRequest($request),
+            ...self::mine($offer, $user, $canChat ? Chat::where('offer_id', $offer->id)->where('user_id', $user->id)->first() : null, $canChat),
+        ]);
+    }
+
+    /**
+     * Своё у предложения — одно на страницу и окно строки (11.11.2026: было скопировано): живое подтверждение, интерес, чат.
+     *
+     * @return array{myBid: ?Bid, myInterest: ?Interest, chat: ?Chat, canChat: bool}
+     */
+    private static function mine(Offer $offer, ?User $user, ?Chat $chat, bool $canChat): array
+    {
+        return [
             'myBid' => $user ? $offer->bids()->where('user_id', $user->id)->whereIn('state', [BidState::Active, BidState::Accepted])->latest('id')->first() : null,
             'myInterest' => $user ? $offer->interests()->where('user_id', $user->id)->first() : null,
-            'chat' => $canChat ? Chat::where('offer_id', $offer->id)->where('user_id', $user->id)->first() : null,
+            'chat' => $chat,
             'canChat' => $canChat,
-        ]);
+        ];
     }
 
     /** Лента чата для шторки — отдельным фреймом, по открытию. */

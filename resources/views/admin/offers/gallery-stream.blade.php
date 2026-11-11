@@ -2,7 +2,7 @@
      кнопки нет); из редактора — ряд и документы. --}}
 @if ($detail ?? false)
 <turbo-stream action="replace" target="detail-photos"><template>@include('admin.offers.detail-photos', ['offer' => $offer])</template></turbo-stream>
-<turbo-stream action="update" target="detail-tools"><template>@include('admin.offers.detail-tools', ['offer' => $offer])</template></turbo-stream>
+<turbo-stream action="replace" target="detail-share"><template>@include('admin.offers.detail-tools', ['offer' => $offer])</template></turbo-stream>
 {{-- Документ, брошенный в кадры, ложится в документы — их список в карточке тоже свежий. --}}
 <turbo-stream action="replace" target="papers"><template>@include('admin.offers.papers', ['offer' => $offer])</template></turbo-stream>
 @else
