@@ -95,21 +95,7 @@
         </section>
     @endif
 
-    <div class="steps mt-6">
-        @foreach ($t->steps() as $s)
-            @continue(in_array($s['key'], ['logist', 'executor'], true))
-            <div class="step step--{{ $s['status'] }}">
-                <span class="step-dot">@if ($s['status'] === 'done')<x-ui.icon name="check" class="size-3"/>@endif</span>
-                <div class="step-body">
-                    <div class="step-head">
-                        <span class="step-title flex-1">{{ $s['title'] }}</span>
-                        @if ($s['status'] === 'done' && $s['at'])<span class="nums shrink-0 text-sm text-ink-dim">{{ \App\Support\Ago::html($s['at'], time: true, short: true) }}</span>@endif
-                    </div>
-                    @if ($s['hint'])<p class="step-hint">{{ $s['hint'] }}</p>@endif
-                </div>
-            </div>
-        @endforeach
-    </div>
+    <x-logistics.steps :t="$t" :who="false" class="mt-6"/>
 
     @if ($errors->any())<x-ui.flash tone="danger" class="mt-4">{{ $errors->first() }}</x-ui.flash>@endif
 

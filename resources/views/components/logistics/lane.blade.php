@@ -91,24 +91,7 @@
             @if ($routed)<div class="mb-4"><x-logistics.route :t="$t" :me="auth()->user()" readonly/></div>@endif
         @endif
         @unless ($told)
-        <div class="steps">
-            @foreach ($t->steps() as $step)
-                @continue(! $manager && in_array($step['key'], ['logist', 'executor'], true) && $t->state !== TransportState::New)
-                <div class="step step--{{ $step['status'] === 'current' && $t->state === TransportState::New ? 'ask' : $step['status'] }}">
-                    <span class="step-dot">@if ($step['status'] === 'done')<x-ui.icon name="check" class="size-3"/>@endif</span>
-                    <div class="step-body">
-                        <div class="step-head">
-                            <span class="step-title flex-1">{{ $step['title'] }}</span>
-                            @if ($step['status'] === 'done' && $step['at'])<span class="nums shrink-0 text-sm text-ink-dim">{{ \App\Support\Ago::html($step['at'], words: false) }}</span>@endif
-                        </div>
-                        @if ($step['hint'])<p class="step-hint">{{ $step['hint'] }}</p>@endif
-                        @if ($step['key'] === 'executor' && $step['status'] === 'current' && $t->state === TransportState::New)
-                            <x-ui.button type="button" size="sm" class="mt-2" data-controller="emit" data-action="emit#send" data-emit-event-param="{{ $sheet }}:open">Выбрать</x-ui.button>
-                        @endif
-                    </div>
-                </div>
-            @endforeach
-        </div>
+        <x-logistics.steps :t="$t" ask extras="logistics.steps.lane" :with="['t' => $t, 'sheet' => $sheet]"/>
         @endunless
         @if ($t->state === TransportState::Cancelled)<p class="mt-2 text-sm text-ink-muted">Вывоз отменён{{ $t->cancel_reason ? ': '.$t->cancel_reason : '' }}</p>@endif
         @if ($events)
