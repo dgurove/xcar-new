@@ -1,12 +1,9 @@
 {{-- Путь сделки у менеджера по блокам — тем же видом, что путь в CRM и таймлайн дела ТС (.steps): пройдено галочкой с датой,
-     текущий крупнее с «чей ход», впереди серым — и под ним, что там понадобится от менеджера (просьба первого его этапа
-     блока: «Оплатите счёт», «Заберите автомобиль»). Без номеров — знаменателя нет. --}}
+     текущий крупнее с «чей ход», впереди серым одним названием — пояснений у ненаступивших этапов нет (11.11.2026, владелец:
+     «зачем писать „Оплатите счёт“, если этап оплаты ещё не наступил»). Без номеров — знаменателя нет. --}}
 @props(['blocks', 'current' => null, 'steps' => null, 'waiting' => null, 'deal' => null, 'answers' => null, 'lead' => null])
 @php
     $passed = true;
-    // Этап, куда эта сделка не попадёт (все входы — чужой ветки: «забирает сам» у сделки, где отдаём мы), подсказкой не идёт.
-    $incoming = $deal ? \App\Workflow\Outcome::whereIn('to_stage_id', $blocks->flatMap->stages->pluck('id'))->get()->groupBy('to_stage_id') : collect();
-    $reaches = fn ($s) => ! $incoming->has($s->id) || $incoming[$s->id]->contains(fn ($e) => $e->fits($deal));
 @endphp
 <div class="steps">
     {{-- Пункты до блоков (`cabinet.deals.path`): «Подтверждение принято», «Беру в работу» — пройденными шагами с датой и временем. --}}
@@ -54,9 +51,6 @@
                     </ol>
                 @endif
                 @if ($isCurrent && $waiting)<p class="step-hint">{{ $waiting }}</p>@endif
-                @if (! $isCurrent && ! $done && $deal && ($ask = $block->stages->first(fn ($s) => $s->ask_title && $s->awaitsManager($deal) && $reaches($s))))
-                    <p class="step-hint">{{ \App\Users\Wording::mine($ask->ask_title) }}</p>
-                @endif
             </div>
         </div>
     @endforeach
