@@ -134,6 +134,9 @@ http://127.0.0.1:2020 {
 	mercure {
 		publisher_jwt {$MERCURE_PUBLISHER_KEY}
 		subscriber_jwt {$MERCURE_SUBSCRIBER_KEY}
+		# FrankenPHP 1.13 (Mercure 0.21): ключи прямо в блоке — только в режиме совместимости, иначе Caddy не стартует
+		# (11.11.2026). Поведение то же, что было; «issuer»-блок — когда будем менять выдачу токенов.
+		protocol_version_compatibility 8
 	}
 
 	import app

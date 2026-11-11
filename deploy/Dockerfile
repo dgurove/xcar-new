@@ -49,9 +49,12 @@ RUN chmod +x /usr/local/bin/entrypoint
 
 # Конфиг сервера проверяем на сборке: опечатка не должна всплывать при старте.
 COPY deploy/Caddyfile /etc/frankenphp/Caddyfile
-RUN APP_PUBLIC_PATH=/app/public CADDY_SERVER_ADMIN_HOST=127.0.0.1 CADDY_SERVER_ADMIN_PORT=2019 \
+# FrankenPHP 1.13 проверяет и файл воркера — его кладёт Octane при запуске, на проверке — пустышка (11.11.2026).
+RUN mkdir -p /app/public && touch /app/public/frankenphp-worker.php \
+    && APP_PUBLIC_PATH=/app/public CADDY_SERVER_ADMIN_HOST=127.0.0.1 CADDY_SERVER_ADMIN_PORT=2019 \
     MERCURE_PUBLISHER_KEY=proverka MERCURE_SUBSCRIBER_KEY=proverka \
-    frankenphp validate --config /etc/frankenphp/Caddyfile
+    frankenphp validate --config /etc/frankenphp/Caddyfile \
+    && rm /app/public/frankenphp-worker.php
 
 # ------------------------------------------------------------- vendor
 FROM composer:${COMPOSER_VERSION} AS composer-bin
