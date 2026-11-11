@@ -10,7 +10,7 @@
     </a>
 
     @if ($unread)
-        <form method="post" action="/account/notifications/read" class="-mb-4 -mt-2 flex justify-end">@csrf<button class="btn btn-s btn-ghost text-accent-text">Всё прочитано</button></form>
+        <form method="post" action="/account/notifications/read" class="-mb-4 -mt-2 flex justify-end">@csrf<button class="btn btn-s btn-quiet"><x-ui.icon name="check" class="size-4"/> Всё прочитано</button></form>
     @endif
     @if ($items->isEmpty())
         <x-ui.empty>Уведомлений пока нет</x-ui.empty>

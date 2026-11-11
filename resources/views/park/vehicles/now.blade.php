@@ -50,7 +50,7 @@
                     </div>
                     <div class="flex flex-wrap items-center gap-2">
                         <x-park.pickup :vehicle="$vehicle" key="now" placeholder="Назначить день забора" class="btn btn-s btn-accent"/>
-                        @if ($vehicle->pickup_phone)<a href="tel:+{{ $vehicle->pickupPhoneDigits() }}" class="btn btn-s btn-quiet"><x-ui.icon name="phone" class="size-4"/> {{ $vehicle->pickup_phone }}</a>@endif
+                        @if ($vehicle->pickup_phone)<x-ui.tel :value="$vehicle->pickup_phone"/>@endif
                     </div>
                 </section>
             @elseif ($key === 'yard' && $vehicle->state === \App\Park\VehicleState::Stored && ! $vehicle->yard_id)

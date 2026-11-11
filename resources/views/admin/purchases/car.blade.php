@@ -72,7 +72,7 @@
                     @foreach ($live as $offer)<x-purchase.offer-chip :offer="$offer" :car="$car"/>@endforeach
                 </div>
                 @if ($chosen)
-                    <div class="mt-3 flex flex-wrap items-center gap-1.5"><x-ui.person :user="$chosen->user" full current/><a href="tel:+{{ $chosen->user->phone }}" class="nums whitespace-nowrap text-sm text-accent-text">{{ $chosen->user->phoneFormatted() }}</a></div>
+                    <div class="mt-3 flex flex-wrap items-center gap-1.5"><x-ui.person :user="$chosen->user" full current/><x-ui.tel :value="$chosen->user->phone" class="text-sm"/></div>
                 @endif
             </x-ui.card>
             @endif

@@ -16,7 +16,7 @@
                 <x-ui.icon name="user" class="info-icon size-5"/>
                 <span class="min-w-0 flex-1">
                     @foreach ($names as $item)<span class="block break-words">{{ $item['value'] }}</span>@endforeach
-                    @foreach ($phones as $item)<a href="tel:{{ preg_replace('/[^\d+]/', '', $item['value']) }}" class="handover-phone nums"><x-ui.icon name="phone" class="size-4"/>{{ $item['value'] }}</a>@endforeach
+                    @foreach ($phones as $item)<x-ui.tel :value="$item['value']" class="block w-fit"/>@endforeach
                 </span>
             </div>
         @endif

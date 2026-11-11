@@ -36,7 +36,7 @@
                                     <x-ui.field name="logistics_city" id="contractor-city-{{ $user->id }}" label="Город" :value="$user->logistics_city"/>
                                     <x-ui.field name="cdek_point" id="contractor-cdek-{{ $user->id }}" label="Пункт СДЭК" type="textarea" :value="$user->cdek_point"/>
                                 </div>
-                                @if ($user->phone)<a href="tel:{{ $user->phone }}" class="text-accent-text nums">{{ \App\Support\Phone::format(\App\Support\Phone::normalize($user->phone) ?? $user->phone) }}</a>@endif
+                                @if ($user->phone)<x-ui.tel :value="$user->phone"/>@endif
                                 <x-ui.sheet-foot>Сохранить</x-ui.sheet-foot>
                             </form>
                             <form method="post" action="/contractors/{{ $user->id }}/password" class="mt-2" data-turbo-confirm="Прежний пароль {{ $user->shortName() }} перестанет действовать">

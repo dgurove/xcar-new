@@ -1,5 +1,5 @@
-{{-- Группа: шапка-контакт с кружком, состав списком с галками (автосохранение), что видит группа.
-     «Изменить» в ряду действий — переименовать или удалить; «Открыть предложения» — в полосе внизу. --}}
+{{-- Группа: шапка-контакт с кружком, состав списком с галками (автосохранение), что открыто группе.
+     «Переименовать или удалить» — строкой после состава; «Открыть предложения» — в полосе внизу. --}}
 @php $n = $group->members->count(); @endphp
 <x-ui.cabinet :title="$group->name" :phone-heading="false">
 
@@ -9,24 +9,6 @@
                 <x-slot:chips>
                     <span class="nums text-sm text-ink-muted">{{ $n }} {{ \App\Support\Plural::of($n, ['человек', 'человека', 'человек']) }}</span>
                 </x-slot:chips>
-                <x-slot:acts>
-                    <div data-controller="sheet" class="contents">
-                        <button type="button" class="act" data-action="sheet#open"><span class="btn btn-quiet btn-round"><x-ui.icon name="edit"/></span>Изменить</button>
-                        <x-ui.sheet id="group-edit" :title="$group->name">
-                            <form method="post" action="/buyers/groups/{{ $group->id }}" class="flex flex-col gap-4">
-                                @csrf @method('put')
-                                <x-ui.field name="name" label="Название" :value="$group->name" required maxlength="60"/>
-                                <x-ui.button block>Сохранить</x-ui.button>
-                            </form>
-                            <form method="post" action="/buyers/groups/{{ $group->id }}" class="mt-2"
-                                data-turbo-confirm="Удалить группу «{{ $group->name }}»?" data-turbo-confirm-label="Удалить"
-                                data-turbo-confirm-text="Покупатели останутся у вас, но то, что было открыто им через группу, закроется.">
-                                @csrf @method('delete')
-                                <x-ui.button block variant="danger">Удалить группу</x-ui.button>
-                            </form>
-                        </x-ui.sheet>
-                    </div>
-                </x-slot:acts>
             </x-ui.contact>
 
             <section class="mt-6">
@@ -52,6 +34,29 @@
                         </div>
                     </form>
                 @endif
+            </section>
+            {{-- Переименовать и удалить — строкой в конце, а не одиноким кружком «Изменить» под названием (11.11.2026). --}}
+            <section class="mt-6" data-controller="sheet">
+                <div class="list">
+                    <x-ui.sheet-row>
+                        <x-ui.row-icon name="edit"/>
+                        <span class="min-w-0 flex-1 font-medium">Переименовать или удалить</span>
+                        <x-ui.chevron/>
+                    </x-ui.sheet-row>
+                </div>
+                <x-ui.sheet id="group-edit" :title="$group->name">
+                            <form method="post" action="/buyers/groups/{{ $group->id }}" class="flex flex-col gap-4">
+                                @csrf @method('put')
+                                <x-ui.field name="name" label="Название" :value="$group->name" required maxlength="60"/>
+                                <x-ui.button block>Сохранить</x-ui.button>
+                            </form>
+                            <form method="post" action="/buyers/groups/{{ $group->id }}" class="mt-2"
+                                data-turbo-confirm="Удалить группу «{{ $group->name }}»?" data-turbo-confirm-label="Удалить"
+                                data-turbo-confirm-text="Покупатели останутся у вас, но то, что было открыто им через группу, закроется.">
+                                @csrf @method('delete')
+                                <x-ui.button block variant="danger">Удалить группу</x-ui.button>
+                            </form>
+                        </x-ui.sheet>
             </section>
         </div>
 

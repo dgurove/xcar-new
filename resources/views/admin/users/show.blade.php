@@ -34,7 +34,8 @@
                     </div>
                 </x-slot:chips>
                 <x-slot:acts>
-                    @if ($user->email)<a href="mailto:{{ $user->email }}" class="act"><span class="btn btn-quiet btn-round"><x-ui.icon name="mail"/></span>Написать</a>@endif
+                    {{-- Почтой пишут сотруднику; покупателю — нет (11.11.2026, владелец: «„Написать“ — кому ты писать собирался»). --}}
+                    @if ($user->email && ! $user->isBuyer())<a href="mailto:{{ $user->email }}" class="act"><span class="btn btn-quiet btn-round"><x-ui.icon name="mail"/></span>Написать</a>@endif
                     @if ($me->isAdmin() && $user->telegram_chat_id && \App\Support\Surface::current() === \App\Support\Surface::Crm)<a href="/settings/telegram/{{ $user->telegram_chat_id }}" class="act"><span class="btn btn-quiet btn-round"><x-ui.icon name="chat"/></span>Переписка</a>@endif
                     @if ($edits)<button type="button" class="act" data-action="sheet#open"><span class="btn btn-quiet btn-round"><x-ui.icon name="edit"/></span>Изменить</button>@endif
                     @if (\App\Users\Impersonation::allowed($me, $user) && $user->isApproved())

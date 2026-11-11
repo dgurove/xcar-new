@@ -46,8 +46,8 @@
         @if ($t->ownerName() || $phone || $t->ownerPhone2())
             <div class="row items-center justify-between gap-4">
                 <span class="min-w-0"><span class="block text-sm text-ink-muted">У кого забрать</span><span class="block break-words">{{ $t->ownerName() ?? 'Имени нет' }}</span></span>
-                <span class="flex shrink-0 flex-col items-end gap-1.5">@if ($phone)<a href="tel:+{{ $phone }}" class="btn btn-s btn-accent shrink-0 nums"><x-ui.icon name="phone" class="size-4"/>{{ Phone::format($phone) }}</a>@endif
-                    @if ($t->ownerPhone2())<a href="tel:+{{ $t->ownerPhone2() }}" class="btn btn-s btn-quiet shrink-0 nums"><x-ui.icon name="phone" class="size-4"/>{{ Phone::format($t->ownerPhone2()) }}</a>@endif</span>
+                <span class="flex shrink-0 flex-col items-end gap-1.5">@if ($phone)<x-ui.tel :value="$phone"/>@endif
+                    @if ($t->ownerPhone2())<x-ui.tel :value="$t->ownerPhone2()"/>@endif</span>
             </div>
         @endif
         @if ($t->pickup_at)
@@ -59,7 +59,7 @@
                 @if ($t->isOrder() || $t->destination?->value === 'other')<span class="shrink-0 text-sm text-accent-text">Маршрут</span>@endif
             </a>
             @if ($t->to_phone)
-                <a href="tel:+{{ $t->to_phone }}" class="row justify-between gap-4"><span class="text-ink-muted">Телефон на месте</span><span class="nums text-accent-text">{{ Phone::format($t->to_phone) }}</span></a>
+                <div class="row justify-between gap-4"><span class="text-ink-muted">Телефон на месте</span><x-ui.tel :value="$t->to_phone"/></div>
             @endif
         @endif
         @if ($t->executor_cost)

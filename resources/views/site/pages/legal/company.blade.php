@@ -15,7 +15,7 @@
 
 <h2 class="list-head">Связь</h2>
 <div class="list">
-    <a href="tel:{{ preg_replace('/[^\d+]/', '', $c['phone']) }}" class="row justify-between gap-4"><span class="text-ink-muted">Телефон</span><span class="nums text-accent-text">{{ $c['phone'] }}</span></a>
+    <div class="row justify-between gap-4"><span class="text-ink-muted">Телефон</span><x-ui.tel :value="$c['phone']" :text="$c['phone']"/></div>
     <a href="mailto:{{ $c['email'] }}" class="row justify-between gap-4"><span class="text-ink-muted">Почта</span><span class="text-accent-text">{{ $c['email'] }}</span></a>
     <div class="row justify-between gap-4"><span class="text-ink-muted">Почтовый адрес</span><span class="text-right">{{ $c['address'] }}</span></div>
 </div>

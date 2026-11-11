@@ -53,7 +53,7 @@
                     @endif
                     @if ($d->phone || $where)
                         <div class="list mb-4">
-                            @if ($d->phone)<a href="tel:+{{ $d->phone }}" class="row"><span class="min-w-0 flex-1">{{ $d->contact_name ?? 'Телефон' }}</span><span class="nums text-accent-text">{{ Phone::format($d->phone) }}</span></a>@endif
+                            @if ($d->phone)<div class="row"><span class="min-w-0 flex-1">{{ $d->contact_name ?? 'Телефон' }}</span><x-ui.tel :value="$d->phone"/></div>@endif
                             @if ($where)<a href="https://yandex.ru/maps/?text={{ rawurlencode($where) }}" target="_blank" rel="noopener" class="row"><span class="min-w-0 flex-1 break-words">{{ $where }}</span><x-ui.icon name="map-pin" class="size-5 shrink-0 text-accent-text"/></a>@endif
                         </div>
                     @endif

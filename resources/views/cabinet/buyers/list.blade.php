@@ -86,7 +86,7 @@
                         <span class="block truncate font-medium">{{ $buyer->name }}</span>
                         <span class="row-sub">
                             @if ($buyer->login)<span class="tag nums">{{ $buyer->login }}</span>@endif
-                            @if ($buyer->phone)<span class="tag nums">{{ $buyer->phoneFormatted() }}</span>@endif
+                            @if ($buyer->phone)<x-ui.tel :value="$buyer->phone" class="tag relative z-10"/>@endif
                             @foreach ($buyer->groups as $g)<a href="/buyers/groups/{{ $g->id }}" class="tag relative z-10">{{ $g->name }}</a>@endforeach
                         </span>
                     </span>

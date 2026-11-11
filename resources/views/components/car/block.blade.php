@@ -101,7 +101,7 @@
                             <div class="mt-0.5 break-words">
                                 @if ($c === 'vin')<x-ui.vin-code :vin="$value" copy/>
                                 @elseif (CarFields::kind($c) === 'code' || $c === 'plate')<x-ui.copy-code :value="$value" class="break-all"/>
-                                @elseif (CarFields::kind($c) === 'tel')<a href="tel:{{ preg_replace('/[^\d+]/', '', $value) }}" class="text-accent-text">{{ $value }}</a>
+                                @elseif (CarFields::kind($c) === 'tel')<x-ui.tel :value="$value" :text="$value"/>
                                 @else{{ $value }}@endif
                             </div>
                         @endif

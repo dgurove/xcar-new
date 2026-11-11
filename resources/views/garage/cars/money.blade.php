@@ -90,7 +90,7 @@
         <div class="{{ $row }}"><span>Нам остаётся</span><span class="nums {{ $s['ours'] < 0 ? 'text-danger' : '' }}">{{ Money::exact($s['ours']) }}</span></div>
     @endif
     @if ($car->buyer_name || $car->buyer_phone)
-        <div class="{{ $row }}"><span class="shrink-0">Покупатель</span><span class="min-w-0 text-right"><span class="block break-words">{{ $car->buyer_name }}</span>@if ($car->buyer_phone)<a href="tel:{{ $car->buyer_phone }}" class="block text-accent-text nums">{{ $car->buyer_phone }}</a>@endif</span></div>
+        <div class="{{ $row }}"><span class="shrink-0">Покупатель</span><span class="min-w-0 text-right"><span class="block break-words">{{ $car->buyer_name }}</span>@if ($car->buyer_phone)<x-ui.tel :value="$car->buyer_phone" class="block"/>@endif</span></div>
     @endif
     {{-- Выплата, что уже крупно сверху, второй строкой не повторяется. --}}
     @if ($invoice && ! ($invoice->isOwed() && $unpaid && $invoice->is($current)))

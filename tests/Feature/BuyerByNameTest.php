@@ -43,7 +43,7 @@ class BuyerByNameTest extends TestCase
         $buyer = User::where('manager_id', $this->manager->id)->sole();
         $this->assertNull($buyer->phone);
         // Без доступа (11.11.2026): ни «видит все», ни входа — строка «Без доступа» и «Дать доступ».
-        $this->get('http://xcar.localhost/buyers/'.$buyer->id)->assertOk()->assertSee('Без доступа к предложениям')->assertDontSee('Видит все');
+        $this->get('http://xcar.localhost/buyers/'.$buyer->id)->assertOk()->assertSee('Дать доступ')->assertDontSee('Видит все');
         $this->assertFalse($buyer->fresh()->hasBuyerAccess());
 
         $this->post('http://xcar.localhost/buyers/'.$buyer->id.'/access', ['contact' => '+7 900 000-00-01'])->assertSessionHasErrors('contact');

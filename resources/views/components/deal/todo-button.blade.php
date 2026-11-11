@@ -5,7 +5,8 @@
 @if (isset($button['letters']))
     <button type="button" data-controller="emit" data-action="emit#send" data-emit-event-param="letters:open" data-emit-url-param="{{ $button['letters'] }}" class="{{ $class.$round }}" aria-label="{{ $button['label'] }}"><x-ui.icon name="mail" class="size-5"/><span @class(['max-sm:hidden' => ! $group])>{{ $button['label'] }}</span></button>
 @elseif (isset($button['tel']))
-    <a href="tel:{{ $button['tel'] }}" class="{{ $class }}">{{ $button['label'] }}</a>
+    {{-- Номер менеджера — номером, не кнопкой «Позвонить» (11.11.2026): нажатие — «Скопировать / Позвонить» (`tel.js`). --}}
+    <x-ui.tel :value="$button['tel']" class="text-sm"/>
 @elseif (isset($button['href']))
     <a href="{{ $button['href'] }}" data-turbo-frame="_top" class="{{ $class }}">{{ $button['label'] }}</a>
 @endif

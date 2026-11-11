@@ -45,7 +45,7 @@
             {{-- Логин и контакты — строкой текста (10.10.2026: «что-то чипами, что-то текстом»). --}}
             <div class="detail-line !mt-0 text-sm text-ink-muted">
                 @if ($user->login)<span class="nums">{{ $user->login }}</span>@endif
-                @if ($user->phone)<span class="nums whitespace-nowrap">{{ $user->phoneFormatted() }}</span>@endif
+                @if ($user->phone)<x-ui.tel :value="$user->phone"/>@endif
                 @if ($user->email)<span>{{ $user->email }}</span>@endif
             </div>
             <div class="fields">

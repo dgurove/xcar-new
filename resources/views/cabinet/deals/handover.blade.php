@@ -21,8 +21,8 @@
                 <x-ui.icon name="user" class="info-icon size-5"/>
                 <span class="min-w-0 flex-1">
                     @if ($handover->name)<span class="block break-words">{{ $handover->name }}</span>@endif
-                    @if ($handover->phone)<a href="tel:+{{ $handover->phone }}" class="handover-phone nums"><x-ui.icon name="phone" class="size-4"/>{{ $handover->phoneFormatted() }}</a>@endif
-                    @if ($handover->phone2)<a href="tel:+{{ $handover->phone2 }}" class="handover-phone nums"><x-ui.icon name="phone" class="size-4"/>{{ $handover->phone2Formatted() }}</a>@endif
+                    @if ($handover->phone)<x-ui.tel :value="$handover->phone" class="block w-fit"/>@endif
+                    @if ($handover->phone2)<x-ui.tel :value="$handover->phone2" class="block w-fit"/>@endif
                 </span>
             </div>
         @endif

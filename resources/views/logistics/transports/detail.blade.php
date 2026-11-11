@@ -131,7 +131,7 @@
             <div class="list mt-4">
                 <div class="row items-center justify-between gap-4">
                     <span class="min-w-0"><span class="block text-sm text-ink-muted">Заказчик</span><span class="block break-words">{{ $t->client->name }}</span>@if ($t->client->contact_name)<span class="block text-sm text-ink-muted">{{ $t->client->contact_name }}</span>@endif</span>
-                    @if ($t->client->phone)<a href="tel:+{{ $t->client->phone }}" class="btn btn-s btn-quiet shrink-0 nums"><x-ui.icon name="phone" class="size-4"/>{{ Phone::format($t->client->phone) }}</a>@endif
+                    @if ($t->client->phone)<x-ui.tel :value="$t->client->phone"/>@endif
                 </div>
             </div>
         @endif
@@ -144,7 +144,7 @@
                 @if ($fromDepot && ($fromDepot->contact_name || $fromDepot->phone))
                     <div class="row items-center justify-between gap-4">
                         <span class="min-w-0"><span class="block text-sm text-ink-muted">На стоянке</span><span class="block break-words">{{ $fromDepot->contact_name ?? 'Телефон' }}</span></span>
-                        @if ($fromDepot->phone)<a href="tel:+{{ $fromDepot->phone }}" class="btn btn-s btn-accent shrink-0 nums"><x-ui.icon name="phone" class="size-4"/>{{ Phone::format($fromDepot->phone) }}</a>@endif
+                        @if ($fromDepot->phone)<x-ui.tel :value="$fromDepot->phone"/>@endif
                     </div>
                 @endif
                 @if ($pickup && ($t->ownerName() || $phone || $t->ownerPhone2() || $editDetails))
@@ -157,8 +157,8 @@
                         @else
                         <span class="min-w-0"><span class="block text-sm text-ink-muted">{{ $order ? 'У кого забрать' : 'Владелец' }}</span><span class="block break-words">{{ $t->ownerName() ?? 'Имени нет' }}</span></span>
                         @endif
-                        <span class="flex shrink-0 flex-col items-end gap-1.5">@if ($phone)<a href="tel:+{{ $phone }}" class="btn btn-s btn-accent shrink-0 nums"><x-ui.icon name="phone" class="size-4"/>{{ Phone::format($phone) }}</a>@endif
-                    @if ($t->ownerPhone2())<a href="tel:+{{ $t->ownerPhone2() }}" class="btn btn-s btn-quiet shrink-0 nums"><x-ui.icon name="phone" class="size-4"/>{{ Phone::format($t->ownerPhone2()) }}</a>@endif</span>
+                        <span class="flex shrink-0 flex-col items-end gap-1.5">@if ($phone)<x-ui.tel :value="$phone"/>@endif
+                    @if ($t->ownerPhone2())<x-ui.tel :value="$t->ownerPhone2()"/>@endif</span>
                     </div>
                 @endif
                 @if ($from)
@@ -172,7 +172,7 @@
                 @if ($order && $t->to_address)
                     <div class="row items-center justify-between gap-4">
                         <span class="min-w-0"><span class="block text-sm text-ink-muted">Куда везти</span><span class="block break-words">{{ $t->to_address }}</span>@if ($t->to_contact)<span class="block text-sm text-ink-muted">принимает {{ $t->to_contact }}</span>@endif</span>
-                        @if ($t->to_phone)<a href="tel:+{{ $t->to_phone }}" class="btn btn-s btn-quiet shrink-0 nums"><x-ui.icon name="phone" class="size-4"/>{{ Phone::format($t->to_phone) }}</a>@endif
+                        @if ($t->to_phone)<x-ui.tel :value="$t->to_phone"/>@endif
                     </div>
                 @endif
                 <x-logistics.facts :t="$t" :me="$me" :brief="$solo" :route="$routed" :logist="$change['logist'] ? $change['logist'].'-'.$id.':open' : null"
@@ -227,7 +227,7 @@
                         @endif
                         @if ($s['key'] === 'docs' && $docsForm)
                             <div class="mt-2 text-sm text-ink-muted">
-                                {{ $t->executor?->name }}@if ($t->executor?->phone), <a href="tel:{{ $t->executor->phone }}" class="text-accent-text nums">{{ Phone::format(Phone::normalize($t->executor->phone) ?? $t->executor->phone) }}</a>@endif
+                                {{ $t->executor?->name }}@if ($t->executor?->phone), <x-ui.tel :value="$t->executor->phone"/>@endif
                                 @if ($t->executor?->cdek_point)<span class="block text-ink">СДЭК: {{ $t->executor->cdek_point }}</span>@endif
                             </div>
                             <form method="post" action="/transports/{{ $id }}/docs" class="mt-3 flex flex-col gap-2">

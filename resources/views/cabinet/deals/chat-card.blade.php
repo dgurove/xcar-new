@@ -23,7 +23,7 @@
                     <span @class(['truncate text-sm', 'text-ink-muted' => ! $unread])>{{ $chat->lastPreview(auth()->user()) }}</span>
                     @if ($unread)<span class="badge ml-auto">{{ $unread }}</span>@endif
                 @else
-                    <span class="text-sm text-accent-text">Написать сообщение</span>
+                    <span class="text-sm text-ink-muted">Сообщений пока нет</span>
                 @endif
             </span>
         </span>

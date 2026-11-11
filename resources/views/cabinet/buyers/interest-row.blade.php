@@ -26,7 +26,7 @@
                 <span class="row-sub">
                     @if ($person && $car)<span class="truncate">{{ $offer->titleWithYear() }}</span>@endif
                     @if ($car && $seen && $price->shown())<span class="nums font-semibold">{{ $price::money($price->to) }}&nbsp;₽</span>@endif
-                    @if ($person && $interest->user->phone)<span class="tag nums">{{ $interest->user->phoneFormatted() }}</span>@endif
+                    @if ($person && $interest->user->phone)<x-ui.tel :value="$interest->user->phone" class="tag relative z-10"/>@endif
                 </span>
             @endif
             @if ($interest->comment)<span class="mt-1.5 block text-sm">{{ $interest->comment }}</span>@endif

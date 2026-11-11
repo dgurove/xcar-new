@@ -14,6 +14,7 @@ import { onMorphAttribute, onMorphElement } from './lib/morph-guard';
 import { bump } from './lib/bump';
 import './flip';
 import { longPressMenu } from './longpress';
+import { telSheet } from './tel';
 import { setTheme, paintBar, chosenTheme } from './theme';
 import { keyboardInset, focusField } from './keyboard';
 import { actionRoom } from './lib/action-room';
@@ -196,6 +197,8 @@ neighbourDirection();
 noticeSeen();
 offerRead();
 longPressMenu();
+// Номер телефона — окошко «Скопировать / Позвонить» вместо звонка сразу (11.11.2026, `tel.js`).
+telSheet();
 heroTransition();
 timerDone();
 transitionsWhenAnimated();

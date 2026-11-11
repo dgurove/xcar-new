@@ -99,7 +99,7 @@
         @if ($deal->commission && ! $deal->withholds() && $party && ! $party->payoutReady())<x-ui.state tone="urgent">Реквизитов для выплаты нет</x-ui.state>@endif
         @if ($deal->isActive())
             {{-- Счета ставятся сами по схеме (`SyncDealInvoices`); здесь — только «Ещё счёт» для редкого ручного. --}}
-            @if ($issued->isNotEmpty())<a href="/work/invoices/new?offer={{ $offer->number }}" class="ml-auto text-sm text-accent-text">Ещё счёт</a>@endif
+            @if ($issued->isNotEmpty())<a href="/work/invoices/new?offer={{ $offer->number }}" class="btn btn-s btn-quiet ml-auto"><x-ui.icon name="plus" class="size-4"/> Ещё счёт</a>@endif
         @endif
     </div>
     {{-- Ссылки на оплату — одной группой строк `x-billing.link-row` (09.10.2026): ссылка счёта сделки и ручные, засчитанные

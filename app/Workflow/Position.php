@@ -226,7 +226,7 @@ class Position extends Model
 
         if ($due = $this->priceAskLate()) {
             return $todo('price-ask', 'Менеджер не ответил про закупочную', 0, $due,
-                ($phone = $this->deal?->buyer?->phone) ? ['label' => 'Позвонить', 'tel' => $phone] : ['label' => 'Открыть', 'href' => '/offers/'.$offer->number]);
+                ($phone = $this->deal?->buyer?->phone) ? ['label' => 'Телефон менеджера', 'tel' => $phone] : ['label' => 'Открыть', 'href' => '/offers/'.$offer->number]);
         }
 
         // Реквизиты фотографией — внести их за менеджера (10.11.2026): та же шторка покупателя, что «Заполнить».
@@ -259,7 +259,7 @@ class Position extends Model
                     ? Surface::Park->url('/money/parties') : '/offers/'.$offer->number.'?buyer=1#invoice-buyer']),
             in_array($letter, ['unsent', 'failed'], true) => $todo('letter', 'Написать поставщику', 1, button: $write('Написать')),
             $this->consentLate() => $todo('consent', 'Менеджер не ответил, берёт ли', 3, $this->deadline_at,
-                ($phone = $this->deal?->buyer?->phone) ? ['label' => 'Позвонить', 'tel' => $phone] : null),
+                ($phone = $this->deal?->buyer?->phone) ? ['label' => 'Телефон менеджера', 'tel' => $phone] : null),
             $this->stage->isRequestStep() => $todo('request:'.$offer->vendor_id, 'Отправить заявку поставщику', 4),
             default => $todo('stage:'.$this->stage->name, $this->stage->name, 5),
         };

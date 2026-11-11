@@ -48,9 +48,9 @@
         <div data-edit-card-target="view" @if ($editing) hidden @endif>
             @unless ($empty)<div class="mt-3 grid grid-cols-[minmax(0,1fr)_auto] gap-x-4 gap-y-2.5 leading-snug">
                 @if ($offer->insured_name)<div class="min-w-0"><div class="field-label">Владелец</div><div class="mt-0.5 break-words">{{ $offer->insured_name }}</div></div>@endif
-                @if ($offer->insured_phone)<div class="min-w-0"><div class="field-label">Телефон</div><a href="tel:{{ preg_replace('/[^\d+]/', '', $offer->insured_phone) }}" class="nums mt-0.5 block whitespace-nowrap text-accent-text">{{ $offer->insured_phone }}</a></div>@endif
+                @if ($offer->insured_phone)<div class="min-w-0"><div class="field-label">Телефон</div><x-ui.tel :value="$offer->insured_phone" :text="$offer->insured_phone" class="mt-0.5 block w-fit"/></div>@endif
                 {{-- Второй телефон владельца (19.10.2026) — тем же видом, под первым. --}}
-                @if ($offer->insured_phone2)<div class="col-start-2 min-w-0"><div class="field-label">Ещё телефон</div><a href="tel:{{ preg_replace('/[^\d+]/', '', $offer->insured_phone2) }}" class="nums mt-0.5 block whitespace-nowrap text-accent-text">{{ $offer->insured_phone2 }}</a></div>@endif
+                @if ($offer->insured_phone2)<div class="col-start-2 min-w-0"><div class="field-label">Ещё телефон</div><x-ui.tel :value="$offer->insured_phone2" :text="$offer->insured_phone2" class="mt-0.5 block w-fit"/></div>@endif
                 @if ($offer->inspection_address)<div class="col-span-2 min-w-0"><div class="field-label">Адрес</div><div class="mt-0.5 break-words">{{ $offer->inspection_address }}</div></div>@endif
             </div>@endunless
         </div>
