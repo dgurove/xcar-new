@@ -4,7 +4,10 @@ namespace App\Offers\Actions;
 
 use App\Notifications\BuyerAskNotice;
 use App\Offers\Deal;
+use App\Offers\DealState;
+use App\Workflow\Asks;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -35,6 +38,29 @@ final class AskBuyer
         }
 
         return true;
+    }
+
+    /**
+     * Сверка (11.11.2026, владелец: у Макарова Volvo XC60 после «Беру в работу» — «Ждём поставщика», дела нет): отметку
+     * ставил только живой переход «Беру в работу», а идущие и согласованные иначе (`AgreeDeal`, параллельные) оставались без
+     * неё. Все согласованные, где покупатель нужен и его нет, получают дело молча — уведомление только у живого согласия.
+     * Не на шаге «Нет реквизитов» (там покупатель — сама просьба шага), не на оплате и не на письме с реквизитами.
+     *
+     * @return Collection<int, Deal> те, кому дело поставили бы (`$apply = false`) или поставили
+     */
+    public function sweep(bool $apply = true): Collection
+    {
+        $deals = Deal::with(['buyer', 'offer', 'contract.buyer.party'])->where('state', DealState::Active)->whereNotNull('agreed_at')
+            ->whereNull('buyer_asked_at')->whereNotNull('buyer_id')->get()->filter(function (Deal $d) {
+                $stage = $d->offer?->stage();
+
+                return $stage && $stage->asks !== Asks::Buyer && ! $stage->isPayStep() && ! $stage->isRequisitesStep() && $d->buyerGap() !== null;
+            })->values();
+        if ($apply) {
+            $deals->each(fn (Deal $d) => $this->ask($d, notify: false));
+        }
+
+        return $deals;
     }
 
     public static function settle(Deal $deal): void

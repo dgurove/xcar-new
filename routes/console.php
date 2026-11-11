@@ -17,6 +17,8 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schedule;
 
 Schedule::command('offers:tick')->everyMinute()->withoutOverlapping();
+// Дело «Укажите покупателя» — и сделкам, согласованным не живым «Беру в работу» (11.11.2026, `AskBuyer::sweep`).
+Schedule::command('deals:ask-buyers')->everyTenMinutes()->withoutOverlapping();
 Schedule::command('park:tick')->everyFiveMinutes()->withoutOverlapping();
 // Номера «К запросу» письмом в 9:00 и 18:00 (`claims:digest`): каждые 5 минут — пропущенный слот уходит следующим проходом.
 Schedule::command('claims:digest')->everyFiveMinutes()->withoutOverlapping();
@@ -96,19 +98,10 @@ Artisan::command('deals:close-stale-reviews {--dry}', function () {
  * уже согласился, а покупателя нет или он без данных, получают дело «Укажите покупателя» (`AskBuyer`), как новые после «Беру в
  * работу». На шаге «Нет реквизитов» и оплаты — нет: там покупателя просит сам шаг.
  */
-Artisan::command('deals:ask-buyers {--dry}', function () {
-    $deals = \App\Offers\Deal::with(['buyer', 'offer', 'contract.buyer.party'])->where('state', DealState::Active)->whereNotNull('agreed_at')
-        ->whereNull('buyer_asked_at')->get()->filter(function ($d) {
-            $stage = $d->offer?->stage();
-
-            return $d->buyer && $stage && $stage->asks !== \App\Workflow\Asks::Buyer && ! $stage->isPayStep() && ! $stage->isRequisitesStep()
-                && $d->buyerGap() !== null;
-        });
+Artisan::command('deals:ask-buyers {--dry}', function (\App\Offers\Actions\AskBuyer $ask) {
+    $deals = $ask->sweep(! $this->option('dry'));
     foreach ($deals as $d) {
         $this->line($d->id.' '.$d->offer->number.' '.$d->offer->titleWithYear().', '.$d->buyer->shortName().', '.$d->offer->stage()->name.': '.$d->buyerGap());
     }
-    $this->info(($this->option('dry') ? 'Попросил бы: ' : 'Попросил: ').$deals->count());
-    if (! $this->option('dry')) {
-        $deals->each(fn ($d) => app(\App\Offers\Actions\AskBuyer::class)->ask($d));
-    }
-})->purpose('Дело «Укажите покупателя» сделкам, где менеджер уже согласился');
+    $this->info(($this->option('dry') ? 'Поставил бы: ' : 'Поставил молча: ').$deals->count());
+})->purpose('Дело «Укажите покупателя» всем согласованным без покупателя — молча (`AskBuyer::sweep`)');
