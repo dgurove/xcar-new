@@ -75,11 +75,11 @@ final class ManagerAsk
         $tap = $req && $req->asks === Asks::Nothing && $moves->isNotEmpty();
 
         return new self($deal, $req, $task['title'], $task['due'], $task['kind'], $tap ? $moves->values() : collect(),
-            $tap ? $retreats->values() : collect(), $tap ? null : self::linkLabel($deal, $task['kind'], $req), $blocker);
+            $tap ? $retreats->values() : collect(), $tap ? null : self::linkLabel($deal, $task['kind'], $req, $task['title']), $blocker);
     }
 
     /** Что сделать на шаге, когда одной кнопкой не ответить. */
-    private static function linkLabel(Deal $deal, string $kind, ?Requirement $req): string
+    private static function linkLabel(Deal $deal, string $kind, ?Requirement $req, string $title = ''): string
     {
         $stage = $req?->stage;
 
@@ -87,6 +87,8 @@ final class ManagerAsk
             $kind === 'reprice' => 'Назвать цену',
             $kind === 'price' => 'Указать цену',
             $kind === 'passport' => 'Приложить паспорт',
+            // Покупатель выбран, а данных для договора нет — «Заполнить данные», а не «Указать покупателя» (11.11.2026).
+            $kind === 'buyer' && str_starts_with($title, 'Заполните') => 'Заполнить данные',
             $kind === 'buyer', $req?->asks === Asks::Buyer => 'Указать покупателя',
             $req?->asks === Asks::Fields => 'Заполнить',
             $req?->asks === Asks::Document && (bool) preg_match('/договор/iu', $stage?->name.' '.$req->title) => 'Приложить договор',
