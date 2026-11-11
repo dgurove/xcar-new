@@ -12,7 +12,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
-/** «Поставщик прислал время»: свободное время и адрес филиала — сделке, шаг к менеджеру «Выберите время» (`Signing`). */
+/** «Поставщик предложил другое время»: его время и адрес филиала — сделке, шаг к менеджеру на выбор (`Signing`). */
 final class OfferSigningSlots
 {
     public function __construct(private TakeExit $take) {}
@@ -41,6 +41,8 @@ final class OfferSigningSlots
                 'signing_slots' => $times->map(fn (Carbon $c) => $c->format('Y-m-d H:i'))->all(),
                 'signing_address' => trim((string) $address) ?: null,
                 'signing_at' => null,
+                // Просили своё — поставщик предложил другое: выбирает менеджер, названное заранее больше не в силе.
+                'signing_wish' => null,
             ]);
             ($this->take)($deal->offer, $exit, Actor::Staff, $by);
 

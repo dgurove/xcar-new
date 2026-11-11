@@ -17,12 +17,12 @@ use Illuminate\Support\Facades\DB;
  */
 final class PlatformMessage
 {
-    public function __invoke(Chat $chat, string $text, ?Requirement $requirement = null): Message
+    public function __invoke(Chat $chat, string $text, ?Requirement $requirement = null, ?string $ask = null): Message
     {
-        $message = DB::transaction(function () use ($chat, $text, $requirement) {
+        $message = DB::transaction(function () use ($chat, $text, $requirement, $ask) {
             $chat = Chat::whereKey($chat->id)->lockForUpdate()->firstOrFail();
             $seq = $chat->messages_count + 1;
-            $message = $chat->messages()->create(['seq' => $seq, 'author_kind' => AuthorKind::Staff, 'text' => $text, 'requirement_id' => $requirement?->id]);
+            $message = $chat->messages()->create(['seq' => $seq, 'author_kind' => AuthorKind::Staff, 'text' => $text, 'requirement_id' => $requirement?->id, 'ask' => $ask]);
             $chat->update(['messages_count' => $seq, 'last_message_at' => now(), 'unread_for_user' => $chat->unread_for_user + 1,
                 'unread_for_staff' => 0, 'read_seq_staff' => $seq]);
 

@@ -83,9 +83,11 @@ final class Alfa extends Route
     public const SIGNING_TEXT = 'Поставщик готовит договор, затем запись на подписание';
 
     /**
-     * Подготовка договора (ждём Альфу без срока) → письмо «свободное время» → «Поставщик прислал время» — шторкой слоты и
-     * адрес (`deals.signing_slots|address`, `OfferSigningSlots`) → менеджер выбирает плиткой (`PickSigningTime`, `signing_at`) →
-     * письмо «запись» → подписание: подписывает по-разному, поэтому кнопка и за менеджера, и за нас. Вид — `x-deal.appointment`.
+     * Подготовка договора (ждём Альфу без срока; менеджер заранее называет дату и время — `SaveSigningWish`, чатом с
+     * кнопками) → «Договор готов» → «Время подписания» (менеджер; названное заранее проходит само — `ApplySigningWish`) →
+     * письмо «запишите на …» → «Запись подтверждена» или «Поставщик предложил другое время» (шторкой слоты — снова выбор) →
+     * подписание: подписывает по-разному, поэтому кнопка и за менеджера, и за нас. Вид — `x-deal.signing-when`,
+     * `x-deal.appointment`. 11.11.2026, Альфа: «напишите желаемую дату и время; свободно — запишем, нет — предложим другое».
      */
     public static function signing(): array
     {
@@ -93,22 +95,17 @@ final class Alfa extends Route
             'contract' => [
                 'name' => 'Подготовка договора', 'block' => 'signing', 'waits_for' => 'supplier',
                 'ask_text' => 'Оплата получена, поставщик готовит договор',
-                'exits' => [['Договор готов', 'staff', 'slots']],
-            ],
-            'slots' => [
-                'name' => 'Свободное время для подписания', 'block' => 'signing', 'waits_for' => 'supplier', 'limit_minutes' => self::DAY, 'letter' => 'slots',
-                'ask_text' => 'Договор готов, узнаём время для подписания',
-                'exits' => [['Поставщик прислал время', 'staff', 'signing_time']],
+                'exits' => [['Договор готов', 'staff', 'signing_time']],
             ],
             'signing_time' => [
                 'name' => 'Время подписания', 'block' => 'signing', 'waits_for' => 'manager', 'limit_minutes' => self::DAY,
-                'ask_title' => 'Выберите время подписания с покупателем', 'ask_text' => 'Свободное время поставщика — выберите, когда может покупатель',
+                'ask_title' => 'Когда покупатель сможет подписать договор?', 'ask_text' => 'Договор готов — назовите дату и время, запишем у поставщика',
                 'exits' => [['Время согласовано', 'manager', 'appointment']],
             ],
             'appointment' => [
                 'name' => 'Запись на подписание', 'block' => 'signing', 'waits_for' => 'supplier', 'limit_minutes' => self::DAY, 'letter' => 'appointment',
                 'ask_text' => 'Записываем на подписание',
-                'exits' => [['Запись подтверждена', 'staff', 'signing']],
+                'exits' => [['Запись подтверждена', 'staff', 'signing'], ['Поставщик предложил другое время', 'staff', 'signing_time']],
             ],
             'signing' => [
                 'name' => 'Подписание', 'block' => 'signing', 'waits_for' => 'manager',
@@ -121,15 +118,10 @@ final class Alfa extends Route
     public function letters(): array
     {
         return parent::letters() + [
-            'slots' => [
-                'name' => 'Поставщику: время для подписания',
-                'subject' => '{{ claim_ref }}',
-                'body' => "Здравствуйте!\n\nПросим сообщить свободное время для записи на подписание договора купли-продажи {{ car }}, VIN {{ vin }} ({{ claim_ref }}). {{ signing_days }}\n\nС уважением,\nАндрей Кузнецов",
-            ],
             'appointment' => [
                 'name' => 'Поставщику: запись на подписание',
                 'subject' => '{{ claim_ref }}',
-                'body' => "Здравствуйте!\n\nПросим записать покупателя на подписание договора купли-продажи {{ car }}, VIN {{ vin }} ({{ claim_ref }}): {{ signing }}, {{ signing_address }}\n\nС уважением,\nАндрей Кузнецов",
+                'body' => "Здравствуйте!\n\nПросим записать покупателя на подписание договора купли-продажи {{ car }}, VIN {{ vin }} ({{ claim_ref }}) {{ signing_when }}.\n\nС уважением,\nАндрей Кузнецов",
             ],
         ];
     }

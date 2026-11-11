@@ -352,15 +352,16 @@ class DealController
         return $this->back($request, $deal)->with('toast', 'Записываем на '.\App\Support\Ago::at($deal->signing_at, true, words: false));
     }
 
-    /** Когда покупатель сможет подписать договор (`SaveSigningWish`): дни и часть дня. */
+    /** Когда покупатель сможет подписать договор (`SaveSigningWish`): день и время — со страницы сделки и из чата. */
     public function signingWish(Request $request, Deal $deal, \App\Offers\Actions\SaveSigningWish $save)
     {
         abort_unless($deal->buyer_id === $request->user()->id, 404);
-        $data = $request->validate(['days' => ['required', 'array', 'max:14'], 'days.*' => ['string', 'max:10'], 'part' => ['nullable', 'string', 'max:20']],
-            ['days.required' => 'Отметьте хотя бы один день']);
-        $deal = $save($deal, $request->user(), $data['days'], $data['part'] ?? 'any');
+        $data = $request->validate(['day' => ['required', 'string', 'max:10'], 'time' => ['required', 'string', 'max:5']],
+            ['day.required' => 'Выберите день', 'time.required' => 'Выберите время']);
+        $deal = $save($deal, $request->user(), $data['day'], $data['time']);
+        $at = $deal->signing_at ?? \App\Offers\Signing::wishAt($deal);
 
-        return $this->back($request, $deal)->with('toast', 'Сохранили: '.\App\Offers\Signing::wishLine($deal));
+        return $this->back($request, $deal)->with('toast', ($deal->signing_at ? 'Записываем на ' : 'Покупатель может ').\App\Offers\Signing::short($at));
     }
 
     /** Встреча в календарь телефона: подписание на час, с адресом. */

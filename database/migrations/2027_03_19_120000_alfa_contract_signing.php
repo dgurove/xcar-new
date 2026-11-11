@@ -21,10 +21,11 @@ return new class extends Migration
 {
     public function up(): void
     {
-        $preset = new Alfa;
+        // Этапы и письма — как были 11.11.2026 (своей копией: `Alfa::signing` с тех пор другой, 2027_03_20_100000).
+        $old = self::letters();
         $letters = collect(['slots', 'appointment'])->mapWithKeys(fn ($k) => [$k => Template::firstOrCreate(
-            ['name' => $preset->letters()[$k]['name'], 'scope' => Scope::Offers], $preset->letters()[$k])->id]);
-        $rows = Alfa::signing();
+            ['name' => $old[$k]['name'], 'scope' => Scope::Offers], $old[$k])->id]);
+        $rows = self::rows();
 
         foreach (Vendor::where('pay_before_pickup', true)->whereNull('crm_vendor_id')->get() as $vendor) {
             $workflow = $vendor->workflow(Track::Sale);
@@ -74,4 +75,51 @@ return new class extends Migration
     }
 
     public function down(): void {}
+
+    private static function rows(): array
+    {
+        return [
+            'contract' => [
+                'name' => 'Подготовка договора', 'block' => 'signing', 'waits_for' => 'supplier',
+                'ask_text' => 'Оплата получена, поставщик готовит договор',
+                'exits' => [['Договор готов', 'staff', 'slots']],
+            ],
+            'slots' => [
+                'name' => 'Свободное время для подписания', 'block' => 'signing', 'waits_for' => 'supplier', 'limit_minutes' => 1440, 'letter' => 'slots',
+                'ask_text' => 'Договор готов, узнаём время для подписания',
+                'exits' => [['Поставщик прислал время', 'staff', 'signing_time']],
+            ],
+            'signing_time' => [
+                'name' => 'Время подписания', 'block' => 'signing', 'waits_for' => 'manager', 'limit_minutes' => 1440,
+                'ask_title' => 'Выберите время подписания с покупателем', 'ask_text' => 'Свободное время поставщика — выберите, когда может покупатель',
+                'exits' => [['Время согласовано', 'manager', 'appointment']],
+            ],
+            'appointment' => [
+                'name' => 'Запись на подписание', 'block' => 'signing', 'waits_for' => 'supplier', 'limit_minutes' => 1440, 'letter' => 'appointment',
+                'ask_text' => 'Записываем на подписание',
+                'exits' => [['Запись подтверждена', 'staff', 'signing']],
+            ],
+            'signing' => [
+                'name' => 'Подписание', 'block' => 'signing', 'waits_for' => 'manager',
+                'ask_title' => 'Подписание договора {{ signing }}', 'ask_text' => 'Покупатель подписывает договор у поставщика в назначенное время',
+                'exits' => [['Договор подписан', 'manager', 'closed_won'], ['Договор подписан за менеджера', 'staff', 'closed_won']],
+            ],
+        ];
+    }
+
+    private static function letters(): array
+    {
+        return [
+            'slots' => [
+                'name' => 'Поставщику: время для подписания',
+                'subject' => '{{ claim_ref }}',
+                'body' => "Здравствуйте!\n\nПросим сообщить свободное время для записи на подписание договора купли-продажи {{ car }}, VIN {{ vin }} ({{ claim_ref }}).\n\nС уважением,\nАндрей Кузнецов",
+            ],
+            'appointment' => [
+                'name' => 'Поставщику: запись на подписание',
+                'subject' => '{{ claim_ref }}',
+                'body' => "Здравствуйте!\n\nПросим записать покупателя на подписание договора купли-продажи {{ car }}, VIN {{ vin }} ({{ claim_ref }}): {{ signing }}, {{ signing_address }}\n\nС уважением,\nАндрей Кузнецов",
+            ],
+        ];
+    }
 };

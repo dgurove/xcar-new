@@ -7,7 +7,7 @@ use App\Offers\Signing;
 
 /**
  * Админам: поставщик пишет, что договор готов (11.11.2026, Альфа по BMW X6 № 2610041185 — письмо лежало в «Разобрать ответ»
- * молча, о нём сказал владелец). Наш ход — сразу письмо про время подписания с днями покупателя (`{{ signing_days }}`).
+ * молча, о нём сказал владелец). Наш ход — сразу письмо «запишите на …» со временем, что менеджер назвал заранее (`{{ signing_when }}`).
  */
 final class SupplierContractReadyNotice extends Notice
 {
@@ -25,9 +25,9 @@ final class SupplierContractReadyNotice extends Notice
 
     public function text(): ?string
     {
-        $wish = Signing::wishLine($this->deal);
+        $at = Signing::wishAt($this->deal);
 
-        return 'Напишите про время подписания'.($wish ? ', покупатель может '.$wish : '');
+        return $at ? 'Покупатель может '.Signing::short($at).' — напишите поставщику о записи' : 'Менеджер ещё не назвал время подписания';
     }
 
     public function href(): string

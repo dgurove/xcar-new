@@ -72,7 +72,8 @@ final class ManagerAsk
         if ($blocker) {
             $moves = $moves->reject(fn (Outcome $e) => Deal::closes($e));
         }
-        $tap = $req && $req->asks === Asks::Nothing && $moves->isNotEmpty();
+        // Выбор времени подписания — днём и временем, а не голой кнопкой «Время согласовано» (`Signing`, 11.11.2026).
+        $tap = $req && $req->asks === Asks::Nothing && $moves->isNotEmpty() && ! Signing::picks($stage);
 
         return new self($deal, $req, $task['title'], $task['due'], $task['kind'], $tap ? $moves->values() : collect(),
             $tap ? $retreats->values() : collect(), $tap ? null : self::linkLabel($deal, $task['kind'], $req, $task['title']), $blocker);
@@ -85,7 +86,7 @@ final class ManagerAsk
 
         return match (true) {
             $kind === 'reprice' => 'Назвать цену',
-            $kind === 'signing' => 'Выбрать дни',
+            $kind === 'signing', Signing::picks($req?->stage) => 'Выбрать время',
             $kind === 'price' => 'Указать цену',
             $kind === 'passport' => 'Приложить паспорт',
             // Покупатель выбран, а данных для договора нет — «Заполнить данные», а не «Указать покупателя» (11.11.2026).

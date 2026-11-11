@@ -150,7 +150,7 @@ class Deal extends Model
      * (ПРАЙМ без покупателя — без просьбы); реквизиты прислал фотографией — ход наш. То же правило в PHP — `managerTask()`.
      */
     public const MANAGER_TURN_SQL = "(exists (select 1 from reprice_asks a where a.deal_id = deals.id and a.state in ('pending', 'countered'))
-        or (deals.state = 'active' and deals.signing_asked_at is not null and deals.signing_at is null and coalesce(jsonb_array_length(deals.signing_wish->'days'), 0) = 0)
+        or (deals.state = 'active' and deals.signing_asked_at is not null and deals.signing_at is null and (deals.signing_wish->>'at') is null)
         or (deals.buyer_scans_at is null and (deals.buyer_asked_at is not null or exists (select 1 from requirements r where r.deal_id = deals.id and r.done_at is null)
         or (deals.state = 'active' and exists (select 1 from offer_positions p join workflow_stages s on s.id = p.stage_id where p.offer_id = deals.offer_id
             and p.track = 'sale' and coalesce(p.waits_for, s.waits_for) = 'manager')))))";
@@ -194,6 +194,10 @@ class Deal extends Model
             if ($gap = $this->contractBuyerTask($req)) {
                 return $gap + ['due' => $req->due_at];
             }
+            // Поставщик не смог в названное время и предложил своё (11.11.2026, `Signing`) — словами, что выбирать.
+            if ($this->signing_slots && Signing::picks($req->stage)) {
+                return ['title' => 'Поставщик предложил другое время — выберите', 'due' => $req->due_at, 'kind' => 'ask'];
+            }
             $pays = $req->stage && $this->paysSupplierOn($req->stage) && ($label = $this->schemeOf()->payLabel());
 
             // Заголовок шага — «Оплатить страховой»; дело — просьбой, как остальные: «Оплатите страховой 890 000 ₽».
@@ -207,7 +211,7 @@ class Deal extends Model
         if ($this->buyer_asked_at) {
             return ['title' => 'Укажите покупателя', 'due' => null, 'kind' => 'buyer'];
         }
-        // Поставщик готовит договор — когда покупатель сможет подписать (11.11.2026, `Signing::wishDue`).
+        // Поставщик готовит договор — когда покупатель сможет подписать, день и время (11.11.2026, `Signing::wishDue`).
         if (Signing::wishDue($this)) {
             return ['title' => 'Когда покупатель сможет подписать договор?', 'due' => null, 'kind' => 'signing'];
         }

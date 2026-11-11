@@ -132,6 +132,8 @@ class AppServiceProvider extends ServiceProvider
         foreach (self::PLAIN_COMPONENTS as $plain) {
             $blaze->add(resource_path("views/components/{$plain}.blade.php"), compile: false);
         }
+        // До `Notify`: «Время подписания», названное заранее, проходит само — «Ваш ход» по нему не уходит.
+        Event::subscribe(\App\Offers\Listeners\ApplySigningWish::class);
         Event::subscribe(Notify::class);
         Event::subscribe(NotifyLogistics::class);
         Event::subscribe(RecordOnOffer::class);

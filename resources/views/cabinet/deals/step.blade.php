@@ -85,9 +85,8 @@
                 // Только «Ждём поставщика»: у наших этапов фраза — инструкция менеджеру («Свяжитесь с владельцем…»), не статус.
                 $statusLine = ! $requirement && $position->stage->ask_text && $position->waitsFor() === \App\Workflow\WaitsFor::Supplier
                     ? \App\Users\Wording::mine($position->stage->ask_text).($position->entered_at ? ', с '.\App\Support\Ago::day($position->entered_at) : '') : null;
-                // Поставщик готовит договор или ждём от него время — когда покупатель сможет подписать (`Signing`, 11.11.2026).
-                $signingDays = ! $requirement && $deal->signing_at === null
-                    && (\App\Offers\Signing::asksDays($position->stage->loadMissing('exits.to.exits')) || \App\Offers\Signing::awaitsSlots($position->stage));
+                // Поставщик готовит договор — когда покупатель сможет подписать, день и время заранее (`Signing`, 11.11.2026).
+                $signingDays = ! $requirement && $deal->signing_at === null && \App\Offers\Signing::asksTime($position->stage->loadMissing('exits.to.exits'));
                 $heading = match (true) {
                     $consent => 'Берёте в работу?',
                     $signingDays && \App\Offers\Signing::wishDue($deal) => 'Когда покупатель сможет подписать договор?',
@@ -97,6 +96,8 @@
                     $paidUp => 'Оплата получена',
                     // Просит подписанный договор, а покупателя для него нет — сначала покупатель (`Deal::contractBuyerTask`).
                     (bool) ($contractGap = $deal->contractBuyerTask($requirement)) => $contractGap['title'],
+                    // Поставщик предложил своё время — выбрать из него (`Signing`, 11.11.2026).
+                    $requirement && $deal->signing_slots && \App\Offers\Signing::picks($position->stage) => 'Поставщик предложил другое время',
                     // Встреча записана — дата в карточке ниже, в заголовке её не повторяем.
                     $requirement && \App\Offers\Signing::booked($deal) => \App\Users\Wording::mine($position->stage->managerTitle()),
                     $requirement && ! ($pickupSteps ?? null) => $direct
@@ -113,7 +114,7 @@
             <h2>{{ $heading }}</h2>
             @if ($statusLine !== null)<p class="mt-1 text-sm text-ink-muted">{{ $statusLine }}</p>@endif
             @if ($signingDays)
-                <x-deal.signing-days :deal="$deal" :action="'/deals/'.$deal->id.'/signing-wish'" class="mt-4"/>
+                <x-deal.signing-when :deal="$deal" :action="'/deals/'.$deal->id.'/signing-wish'" class="mt-4"/>
             @endif
             @unless ($noInvoice || $paidUp || $photosSent || $statusLine !== null)<div class="mt-1 text-sm"><x-route.clock :position="$position" :bare="$consent || $position->waitsFor() === \App\Workflow\WaitsFor::Manager"/></div>@endunless
             @if ($photosSent)
@@ -200,8 +201,10 @@
             @endif
             {{-- Запись на подписание (`Offers\Signing`): выбрать время плиткой, потом — карточка встречи. --}}
             @php $signingPick = $requirement && \App\Offers\Signing::picks($position->stage); @endphp
-            @if ($signingPick)
-                <x-deal.signing-pick :deal="$deal" :action="'/deals/'.$deal->id.'/signing'" class="mt-4"/>
+            @if ($signingPick && $deal->signing_slots)
+                <x-deal.signing-pick :deal="$deal" :action="'/deals/'.$deal->id.'/signing'" :other="'/deals/'.$deal->id.'/signing-wish'" class="mt-4"/>
+            @elseif ($signingPick)
+                <x-deal.signing-when :deal="$deal" :action="'/deals/'.$deal->id.'/signing-wish'" picks class="mt-4"/>
             @elseif (\App\Offers\Signing::booked($deal))
                 <x-deal.appointment :deal="$deal" :confirmed="$position->waitsFor() === \App\Workflow\WaitsFor::Manager" :ics="'/deals/'.$deal->id.'/signing.ics'" class="mt-4"/>
             @endif

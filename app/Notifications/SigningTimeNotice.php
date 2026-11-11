@@ -7,10 +7,10 @@ use App\Offers\Signing;
 use App\Telegram\Text;
 
 /**
- * Менеджеру: когда покупатель сможет подписать договор (11.11.2026, `Offers\Signing::askDays`) — как только поставщик начал
+ * Менеджеру: когда покупатель сможет подписать договор (11.11.2026, `Offers\Actions\AskSigningTime`) — как только поставщик начал
  * готовить договор, чтобы на «договор готов» сразу написать ему про время. Ссылка — на шаг сделки с днями.
  */
-final class SigningDaysNotice extends Notice
+final class SigningTimeNotice extends Notice
 {
     public function __construct(private Deal $deal) {}
 
@@ -34,7 +34,7 @@ final class SigningDaysNotice extends Notice
 
     public function text(): ?string
     {
-        return 'Поставщик готовит договор. Отметьте удобные дни — сразу запишем';
+        return 'Поставщик готовит договор. Выберите день и время — сразу запишем';
     }
 
     public function href(): string
@@ -60,8 +60,8 @@ final class SigningDaysNotice extends Notice
     public function toTelegram(): ?array
     {
         return ['title' => 'Когда покупатель сможет подписать договор: '.$this->deal->offer->titleWithYear(),
-            'lines' => Text::lines($this->deal->offer, 'Поставщик готовит договор. Отметьте удобные дни — сразу запишем'),
-            'button' => 'Выбрать дни'];
+            'lines' => Text::lines($this->deal->offer, 'Поставщик готовит договор. Выберите день и время — сразу запишем'),
+            'button' => 'Выбрать время'];
     }
 
     public function speaksRoute(): bool

@@ -44,7 +44,8 @@ final class StepAsk
         }
         $task = $r->deal?->managerTask();
         $title = $task && $task['kind'] === 'ask' ? $task['title'] : $r->title;
-        $due = $r->due_at ? ', до '.Ago::day($r->due_at, true) : '';
+        // Вопрос («Когда покупатель сможет подписать договор?») — без «, до …» за знаком вопроса.
+        $due = $r->due_at && ! str_ends_with($title, '?') ? ', до '.Ago::day($r->due_at, true) : '';
 
         return 'Привет! '.Wording::for($r->deal?->buyer, $title).$due;
     }

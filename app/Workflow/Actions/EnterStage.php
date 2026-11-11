@@ -86,9 +86,10 @@ final class EnterStage
         if ($track === Track::Sale && $deal?->isActive() && $exit?->takes() && ! $back) {
             app(\App\Offers\Actions\AskBuyer::class)->ask($deal);
         }
-        // Поставщик начал готовить договор — сразу спросить менеджера, когда покупатель сможет подписать (11.11.2026, `Signing`).
-        if ($track === Track::Sale && $deal?->isActive() && ! $back && \App\Offers\Signing::asksDays($to->loadMissing('exits.to.exits'))) {
-            app(\App\Offers\Actions\AskSigningDays::class)($deal);
+        // Поставщик начал готовить договор — сразу спросить менеджера, когда покупатель сможет подписать: день и время, кнопками
+        // в чате (11.11.2026, `AskSigningTime`).
+        if ($track === Track::Sale && $deal?->isActive() && ! $back && \App\Offers\Signing::asksTime($to->loadMissing('exits.to.exits'))) {
+            app(\App\Offers\Actions\AskSigningTime::class)($deal);
         }
 
         // Заплатили поставщику — выход из этапа нашей оплаты («Поставщику оплачено», «Переведено поставщику»): срок

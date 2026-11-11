@@ -223,18 +223,31 @@
                     @if ($deal?->buyer_asked_at && $position->track === \App\Workflow\Track::Sale && auth()->user()?->canManageCrm())
                         <x-route.task-row icon="user" :href="'/offers/'.$offer->number.($deal->hasContract() ? '?dkp=1#dkp' : '?buyer=1#invoice-buyer')" data-turbo-frame="_top">{{ $deal->buyer_scans_at ? 'Реквизиты покупателя прислал фото, внести' : 'Менеджер не указал покупателя' }}</x-route.task-row>
                     @endif
-                    {{-- Дни покупателя для подписания (`Signing`, 11.11.2026): пока поставщик готовит договор или время — что назвал
-                         менеджер, или выбрать за него. --}}
+                    {{-- День и время подписания (`Signing`, 11.11.2026): пока поставщик готовит договор — что назвал менеджер, или
+                         выбрать за него. --}}
                     @if ($deal && $position->track === \App\Workflow\Track::Sale && $deal->signing_at === null && auth()->user()?->canManageCrm()
-                        && (\App\Offers\Signing::asksDays($position->stage->loadMissing('exits.to.exits')) || \App\Offers\Signing::awaitsSlots($position->stage)))
-                        @if (\App\Offers\Signing::wishDue($deal))<p class="mt-3 text-sm text-ink-muted">Менеджер не назвал дни для подписания, выбрать за него</p>@endif
-                        <x-deal.signing-days :deal="$deal" :action="'/work/deals/'.$deal->id.'/signing-wish'" class="mt-2"/>
+                        && \App\Offers\Signing::asksTime($position->stage->loadMissing('exits.to.exits')))
+                        @if (\App\Offers\Signing::wishAt($deal))
+                            <x-deal.signing-when :deal="$deal" :action="'/work/deals/'.$deal->id.'/signing-wish'" class="mt-2"/>
+                        @else
+                            <div data-controller="sheet" class="mt-3">
+                                <p class="text-sm text-ink-muted">Менеджер ещё не назвал время подписания</p>
+                                <div class="step-acts mt-2"><x-ui.button type="button" size="sm" variant="secondary" data-action="sheet#open">Время за менеджера</x-ui.button></div>
+                                <x-ui.sheet :id="'signing-for-'.$deal->id" title="Когда покупатель сможет подписать">
+                                    @include('cabinet.deals.signing-when-form', ['action' => '/work/deals/'.$deal->id.'/signing-wish', 'inSheet' => true])
+                                </x-ui.sheet>
+                            </div>
+                        @endif
                     @endif
                     {{-- Запись на подписание (`Offers\Signing`): менеджер выбирает время — его варианты плитками (за него), выбрано —
                          карточка встречи. --}}
                     @if ($deal && $position->track === \App\Workflow\Track::Sale && \App\Offers\Signing::picks($position->stage) && auth()->user()?->canManageCrm())
                         <p class="mt-3 text-sm text-ink-muted">Выбрать за менеджера</p>
-                        <x-deal.signing-pick :deal="$deal" :action="'/work/deals/'.$deal->id.'/signing'" class="mt-2"/>
+                        @if ($deal->signing_slots)
+                            <x-deal.signing-pick :deal="$deal" :action="'/work/deals/'.$deal->id.'/signing'" :other="'/work/deals/'.$deal->id.'/signing-wish'" class="mt-2"/>
+                        @else
+                            <x-deal.signing-when :deal="$deal" :action="'/work/deals/'.$deal->id.'/signing-wish'" picks class="mt-2"/>
+                        @endif
                     @elseif ($deal && $position->track === \App\Workflow\Track::Sale && \App\Offers\Signing::booked($deal))
                         <x-deal.appointment :deal="$deal" :confirmed="$position->waitsFor() === \App\Workflow\WaitsFor::Manager" :ics="'/work/deals/'.$deal->id.'/signing.ics'" class="mt-3"/>
                     @endif

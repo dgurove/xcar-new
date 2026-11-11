@@ -1,40 +1,30 @@
-{{-- Выбор времени подписания (`Offers\Signing`, 11.11.2026): свободное время поставщика плитками — нажатие спрашивает
-     «Записать на …?» и отвечает шаг (`PickSigningTime`); «Другое время…» — своё. `action` — адрес POST (сайт или CRM). --}}
-@props(['deal', 'action'])
-@php
-    $slots = \App\Offers\Signing::slots($deal);
-    // Дни, что назвал менеджер (`signing_wish`), — первой группой «Удобно покупателю» (11.11.2026).
-    $wishDays = \App\Offers\Signing::wishDays($deal)->map->toDateString();
-    [$fits, $rest] = $wishDays->isNotEmpty() ? $slots->partition(fn ($s) => $wishDays->contains($s->copy()->timezone('Europe/Moscow')->toDateString())) : [collect(), $slots];
-    $groups = array_filter(['Удобно покупателю' => $fits, ($fits->isNotEmpty() ? 'Ещё время' : '') => $rest], fn ($g) => $g->isNotEmpty());
-@endphp
+{{-- Поставщик предложил своё время (`Offers\Signing`, «Поставщик предложил другое время»): его варианты плитками — нажатие
+     спрашивает «Записать на …?» и отвечает шаг (`PickSigningTime`); «Другое время…» — день и время плитками (`other` —
+     адрес `SaveSigningWish`, на шаге выбора это тот же ответ). `action` — адрес POST плитки (сайт или CRM). --}}
+@props(['deal', 'action', 'other', 'back' => null])
+@php $slots = \App\Offers\Signing::slots($deal); @endphp
 <div {{ $attributes }}>
     @if ($deal->signing_address)<p class="mb-3 text-sm text-ink-muted"><x-ui.place>{{ $deal->signing_address }}</x-ui.place></p>@endif
-    @foreach ($groups as $label => $group)
-        @if ($label !== '')<p class="mb-2 text-sm text-ink-muted {{ $loop->first ? '' : 'mt-3' }}">{{ $label }}</p>@endif
+    @if ($slots->isNotEmpty())
+        <p class="mb-2 text-sm text-ink-muted">Свободно у поставщика</p>
         <div class="slot-grid">
-            @foreach ($group as $slot)
-                @php $m = $slot->copy()->timezone('Europe/Moscow'); $when = $m->isoFormat('dd').' '.$m->format('d.m H:i'); @endphp
+            @foreach ($slots as $slot)
+                @php $m = $slot->copy()->timezone('Europe/Moscow'); $when = \App\Offers\Signing::short($m); @endphp
                 <form method="post" action="{{ $action }}" data-turbo-confirm="Записать на {{ $when }}?" data-turbo-confirm-label="Записать">
-                    @csrf<input type="hidden" name="at" value="{{ $m->format('Y-m-d H:i') }}">
+                    @csrf<input type="hidden" name="at" value="{{ $m->format('Y-m-d H:i') }}">@if ($back)<input type="hidden" name="back" value="{{ $back }}">@endif
                     <button type="submit" class="slot">
                         <span class="slot-day">{{ $m->isoFormat('dd') }} {{ $m->format('d.m') }}</span>
-                        <span class="slot-time nums">{{ $m->format('H:i') }}</span>
+                        <span class="slot-time nums">{{ $m->format('G:i') }}</span>
                     </button>
                 </form>
             @endforeach
         </div>
-    @endforeach
+    @endif
     <div data-controller="sheet" class="mt-3">
         <button type="button" class="btn btn-ghost btn-s px-0 text-ink-muted" data-action="sheet#open">Другое время…</button>
         <x-ui.sheet :id="'signing-other-'.$deal->id" title="Другое время">
-            <form method="post" action="{{ $action }}" class="flex flex-col gap-4">
-                @csrf
-                <p class="text-sm text-ink-muted">Спросим у поставщика, свободно ли</p>
-                <div class="fields"><div class="field"><label class="field-label" for="signing-other-at-{{ $deal->id }}">Когда может покупатель</label><x-ui.date name="at" :id="'signing-other-at-'.$deal->id" time default-time="10:00" :min="now()" :clearable="false"/></div></div>
-                @error('at')<p class="field-error">{{ $message }}</p>@enderror
-                <x-ui.sheet-foot type="submit">Записать</x-ui.sheet-foot>
-            </form>
+            <p class="mb-3 text-sm text-ink-muted">Спросим у поставщика, свободно ли</p>
+            @include('cabinet.deals.signing-when-form', ['action' => $other, 'inSheet' => true, 'submit' => 'Записать', 'back' => $back])
         </x-ui.sheet>
     </div>
 </div>
