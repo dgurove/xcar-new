@@ -288,6 +288,15 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
      * Покупатель видит всё, что открыто его менеджеру (12.10.2026, владелец; `users.buyer_sees = all`, по умолчанию), а не
      * только открытое вручную (`picked`). Одна дверь видимости, «нового», VIN и уведомлений о новых предложениях.
      */
+    /**
+     * Может войти: есть логин, телефон или почта. Покупатель, заведённый по имени для сделки (`AddPerson` contact), — нет,
+     * пока менеджер не даст вход: он ничего не видит, и «видит все ваши предложения» у него — неправда (11.11.2026, владелец).
+     */
+    public function signsIn(): bool
+    {
+        return filled($this->login) || filled($this->phone) || filled($this->email);
+    }
+
     public function buyerSeesAll(): bool
     {
         return $this->isBuyer() && ($this->buyer_sees ?? 'all') !== 'picked';

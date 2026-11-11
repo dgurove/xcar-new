@@ -29,7 +29,7 @@
                             </x-ui.sheet>
                         </div>
                     @endif
-                    @if ($buyer->login || $buyer->phone || $buyer->email)
+                    @if ($buyer->signsIn())
                         <form method="post" action="/buyers/{{ $buyer->id }}/password" class="contents"
                             data-turbo-confirm="Выдать ссылку для нового пароля?" data-turbo-confirm-label="Выдать"
                             data-turbo-confirm-text="{{ $buyer->shortName() }} откроет её и придумает новый пароль. Действует сутки, один раз.">
@@ -65,6 +65,8 @@
             {{-- Что видит (12.10.2026, владелец: «менеджеры не понимают, как открывать покупателям доступ»): строка режима со
                  шторкой — «Все предложения» (всё открытое менеджеру, сразу с ценой) или «Выбранные» (открытое вручную, список
                  ниже и «Открыть предложения» внизу). --}}
+            {{-- Без входа (заведён по имени для сделки) — ничего не видит: строки «Что видит» нет, есть «Дать вход» в шапке (11.11.2026). --}}
+            @if ($buyer->signsIn())
             <section data-controller="sheet">
                 <div data-controller="sheet" class="list">
                     <x-ui.sheet-row>
@@ -115,6 +117,7 @@
                     </x-ui.action-bar>
                 @endunless
             </section>
+            @endif
 
             @if ($interests->isNotEmpty())
                 <section class="mt-6">
