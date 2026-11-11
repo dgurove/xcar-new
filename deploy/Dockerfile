@@ -4,8 +4,8 @@
 # app — FrankenPHP в режиме воркера (Laravel Octane): TLS, HTTP/3, статика,
 # PHP и хаб Mercure одним процессом. Node живёт только на стадии сборки.
 
-ARG FRANKENPHP_VERSION=1.13.5
-ARG PHP_VERSION=8.5.12
+ARG FRANKENPHP_VERSION=1.12.7
+ARG PHP_VERSION=8.5
 ARG NODE_VERSION=24
 ARG COMPOSER_VERSION=2.9.5
 
