@@ -55,26 +55,6 @@
                 </section>
             @endif
 
-            @php $answered = $deal->requirements->whereNotNull('done_at')->filter(fn ($r) => ! empty($r->answer['exit'])); @endphp
-            @if ($answered->isNotEmpty())
-                <section class="order-6 min-w-0">
-                    <h2 class="list-head">Ваши ответы</h2>
-                    <div class="list">
-                        @foreach ($answered as $req)
-                                <div class="px-4 py-3">
-                                    <div class="flex items-baseline justify-between gap-3">
-                                        <span class="min-w-0 break-words">{{ $req->title }}: «{{ $req->answer['label'] ?? $req->answer['exit'] }}»@if (!empty($req->answer['fields'])), {{ collect($req->answer['fields'])->map(fn ($v, $k) => $req->shown($k, $v))->implode(', ') }}@endif</span>
-                                        <span class="nums shrink-0 text-sm font-normal text-ink-dim">{{ \App\Support\Ago::html($req->done_at, words: false) }}</span>
-                                    </div>
-                                    {{-- Приложенное остаётся видно и после ответа. Отдал наличными — его словами (`label`, 19.10.2026), а не «Платёжное поручение приложено». --}}
-                                    @foreach ($req->getMedia('files') as $media)
-                                        <x-ui.file :name="$media->file_name" :mime="$media->mime_type" :size="$media->humanReadableSize" href="/files/{{ $media->id }}" :refs="[$offer->claim_ref]" class="mt-2"/>
-                                    @endforeach
-                                </div>
-                        @endforeach
-                    </div>
-                </section>
-            @endif
         </section>
 
         <aside class="contents lg:sticky lg:top-[calc(var(--stick-top)+1rem)] lg:col-start-2 lg:row-start-1 lg:flex lg:flex-col lg:gap-6 lg:self-start">

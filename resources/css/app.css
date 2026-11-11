@@ -4987,14 +4987,9 @@ dialog.lightbox:not(.lb-one) .lb-pill--bottom { bottom: calc(var(--lb-strip-bott
   .chat-step-chip > .chat-step-tick { opacity: 0; }
   .chat-step-chip:has(> .chat-step-box:checked) { color: var(--color-accent-text); }
   .chat-step-chip:has(> .chat-step-box:checked) > .chat-step-tick { opacity: 1; }
-  /* Полоса пути над задачей сделки (`x-route.strip`): отрезок на этап, пройдено — зелёным, сейчас — лаймом, впереди — серым. */
-  .route-strip { display: flex; gap: 4px; margin-bottom: 1rem; padding: 4px 0; }
-  .route-strip > span { flex: 1 1 0; height: 4px; border-radius: 2px; background: var(--color-surface-3); }
-  .route-strip > .is-done { background: var(--color-open); }
-  .route-strip > .is-now { background: var(--color-accent); }
-  /* Реквизиты фотографией (`x-deal.buyer-photos`): две плитки рядом — кружок значка, что снять, для кого. */
+  /* Реквизиты фотографией (`x-deal.buyer-photos`): две плитки рядом — значок слева, что снять и для кого (11.11.2026: без лаймовых кругов). */
   .buyer-photos { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; }
-  .buyer-photo { display: flex; flex-direction: column; align-items: center; gap: .375rem; padding: 1rem .5rem; border-radius: 16px; background: var(--color-surface-2); text-align: center; cursor: pointer; }
+  .buyer-photo { display: flex; align-items: center; gap: .75rem; padding: .75rem; border-radius: var(--radius-m); background: var(--color-surface-2); text-align: left; cursor: pointer; }
   @media (hover: hover) { .buyer-photo:hover { background: var(--color-hover); } }
   /* Кнопка ответа под строкой «Ваш ход» (`cabinet/deals/row`): под текстом, после кадра, без своей линии. */
   .row-ask { display: flex; flex-wrap: wrap; gap: .5rem; padding: 0 1rem .75rem calc(1rem + 4.5rem + .75rem); margin-top: -.375rem; }

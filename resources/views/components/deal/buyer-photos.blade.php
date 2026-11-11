@@ -9,9 +9,8 @@
             <input type="hidden" name="kind" value="{{ $kind }}">
             <label class="buyer-photo">
                 <input type="file" name="files[]" accept="image/*,application/pdf" multiple class="sr-only" data-action="change->autosubmit#submit">
-                <x-ui.row-icon name="{{ $icon }}" tone="accent"/>
-                <span class="font-medium">{{ $title }}</span>
-                <span class="text-sm text-ink-muted">{{ $sub }}</span>
+                <x-ui.row-icon name="{{ $icon === 'user' ? 'camera' : $icon }}" size="s"/>
+                <span class="min-w-0"><span class="block font-medium">{{ $title }}</span><span class="block text-sm text-ink-muted">{{ $sub }}</span></span>
             </label>
         </form>
     @endforeach
