@@ -31,6 +31,12 @@ class DisclosureController
         $items = Disclosures::picked(Disclosures::proposals($deal, $letters), $pick, $data['text'] ?? null);
         $step = isset($data['step']) ? Outcome::find($data['step']) : null;
         ['moved' => $moved] = $disclose($deal, $request->user(), $items, $step);
+        // Шаг ушёл на этап с нашим письмом («Договор готов» → «Свободное время для подписания», 11.11.2026) — сразу вопрос про
+        // письмо (`LetterPrompt`), как после «Принять»: черновик уже с днями покупателя.
+        $offer = $deal->offer->fresh();
+        if ($moved && $offer->position()?->letterStatus() === 'unsent' && ($url = $offer->vendorLetterUrl())) {
+            \App\Mail\LetterPrompt::ask($request->user(), $offer, $url.'&then=close');
+        }
 
         return back(fallback: '/work/deals/'.$deal->id)->with('toast', match (true) {
             $items !== [] => $moved ? 'Показано менеджеру, шаг пройден' : 'Показано менеджеру',

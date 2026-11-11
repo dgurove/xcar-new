@@ -13,6 +13,7 @@ use App\Offers\Disclosure;
 use App\Offers\InsurerReplies;
 use App\Offers\OfferEventType;
 use App\Offers\ReplyReview;
+use App\Offers\SigningLetter;
 use App\Offers\SupplierInvoice;
 use App\Support\Nav;
 use App\Users\User;
@@ -72,6 +73,8 @@ final class Disclose
             $letter = $reviews->max('message_id');
             $fits = $invoice ? $step?->stage_id === $deal->offer->position(Track::Sale)?->stage_id : $step?->is(self::stepExit($deal, $reviews->pluck('message')->filter()));
             $moved = $step && $fits && ($this->take)($deal->offer, $step, Actor::Staff, $by, $letter ? ['letter' => $letter] : []);
+            // «Договор готов» письмом (11.11.2026, `SigningLetter`): адрес филиала — сделке, а филиал — вендору, если пуст.
+            $moved && mb_strtolower(trim($step->label)) === 'договор готов' && self::keepOffice($deal, $reviews->pluck('message')->filter());
             $disclosure && $deal->offer->log(OfferEventType::Note, $by, ['text' => 'Показали менеджеру: '.$disclosure->summary()]);
 
             return [$disclosure, (bool) $moved, $moved ? Requirement::where('deal_id', $deal->id)->whereNull('done_at')->latest('id')->first() : null];
@@ -140,8 +143,23 @@ final class Disclose
     public static function stepByDefault(Outcome $exit, Collection $letters, ?Deal $deal = null): bool
     {
         return in_array(mb_strtolower(trim($exit->label)), self::REQUISITES, true)
+            || (mb_strtolower(trim($exit->label)) === 'договор готов' && $letters->contains(fn (Message $m) => SigningLetter::ready($m)))
             || SupplierInvoice::needs($deal, $exit)
             || $letters->contains(fn (Message $m) => InsurerReplies::hasContact($m));
+    }
+
+    /** @param  Collection<int, Message>  $letters */
+    private static function keepOffice(Deal $deal, Collection $letters): void
+    {
+        $office = $letters->filter(fn (Message $m) => SigningLetter::ready($m))->map(fn (Message $m) => SigningLetter::office($m))->filter()->last();
+        if (! $office) {
+            return;
+        }
+        $deal->signing_address || $deal->forceFill(['signing_address' => $office['address']])->save();
+        $vendor = $deal->offer->vendor;
+        if ($vendor && empty($vendor->signing_office['address'])) {
+            $vendor->forceFill(['signing_office' => $office])->save();
+        }
     }
 
     private function done(Collection $reviews, User $by): void

@@ -1246,6 +1246,8 @@ class MailController
             // Запись на подписание у Альфы (11.11.2026): время, что выбрал менеджер, и адрес филиала.
             'signing' => $offer->deal?->signing_at ? \App\Support\Ago::at($offer->deal->signing_at, true, words: false) : '',
             'signing_address' => $offer->deal?->signing_address ?? '',
+            // Дни, что назвал менеджер (`SaveSigningWish`): «Покупатель может подъехать в четверг 12.11 или в пятницу 13.11.»
+            'signing_days' => $offer->deal ? \App\Offers\Signing::letterLine($offer->deal) : '',
         ];
     }
 

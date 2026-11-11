@@ -1,17 +1,19 @@
 {{-- «Поставщик прислал время» (`Offers\Signing`, 11.11.2026): адрес филиала и свободное время из письма — менеджер выберет
-     плиткой. Адрес по умолчанию — прошлый у этого вендора. Строки времени — `repeater`. --}}
+     плиткой. Адрес по умолчанию — у сделки, филиал вендора, прошлый у вендора (`Signing::defaultAddress`). Строки времени — `repeater`. --}}
 @props(['id', 'deal', 'exit'])
 @php
     $mine = old('_sheet') === $id;
     $slots = $mine ? array_values(array_filter((array) old('slots'))) : [];
     $slots = $slots ?: [''];
-    $address = $mine ? old('address') : ($deal->signing_address ?? \App\Offers\Signing::lastAddress($deal));
+    $address = $mine ? old('address') : \App\Offers\Signing::defaultAddress($deal);
+    $wish = \App\Offers\Signing::wishLine($deal);
 @endphp
 <x-ui.sheet :id="$id" title="Свободное время поставщика" tall>
     <form method="post" action="/work/deals/{{ $deal->id }}/signing-slots" class="flex flex-col gap-4" data-controller="repeater">
         @csrf
         <input type="hidden" name="exit" value="{{ $exit->id }}">
         @if ($mine && $errors->first('slots'))<x-ui.flash tone="danger">{{ $errors->first('slots') }}</x-ui.flash>@endif
+        @if ($wish)<p class="text-sm text-ink-muted">Покупатель может {{ $wish }}</p>@endif
         <div class="fields">
             <x-ui.field name="address" label="Адрес филиала" :id="$id.'-address'" :value="$address" placeholder="Москва, ул. Шаболовка, 31"/>
         </div>

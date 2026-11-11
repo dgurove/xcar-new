@@ -2,6 +2,9 @@
 
 namespace App\Workflow\Actions;
 
+use App\Mail\Direction;
+use App\Mail\Message;
+
 use App\Offers\Actions\AgreeDeal;
 use App\Offers\Actions\ChangeOfferState;
 use App\Offers\Actions\DeclineBySupplier;
@@ -83,6 +86,10 @@ final class EnterStage
         if ($track === Track::Sale && $deal?->isActive() && $exit?->takes() && ! $back) {
             app(\App\Offers\Actions\AskBuyer::class)->ask($deal);
         }
+        // Поставщик начал готовить договор — сразу спросить менеджера, когда покупатель сможет подписать (11.11.2026, `Signing`).
+        if ($track === Track::Sale && $deal?->isActive() && ! $back && \App\Offers\Signing::asksDays($to->loadMissing('exits.to.exits'))) {
+            app(\App\Offers\Actions\AskSigningDays::class)($deal);
+        }
 
         // Заплатили поставщику — выход из этапа нашей оплаты («Поставщику оплачено», «Переведено поставщику»): срок
         // обязывающего предложения сделке больше не грозит (`Deal::supplierPaid`, 19.10.2026). Откат отметку не снимает.
@@ -98,8 +105,10 @@ final class EnterStage
         $needsBuyer = $noInvoice && $deal->managerGap();
         $ours = $noInvoice && ! $needsBuyer;
         // Этап с письмом поставщику (11.10.2026): пока письмо не ушло, ход наш и срока нет — сутки на ответ считаются от
-        // письма (`MarkSupplierLetter`). Шаг, сдвинутый самим письмом, и откат — не трогаем.
-        $awaitsLetter = $track === Track::Sale && $deal?->isActive() && $to->isLetterStep() && ! $letter && ! $back;
+        // письма (`MarkSupplierLetter`). Шаг, сдвинутый нашим письмом (заявка поставщику), и откат — не трогаем. Письмо
+        // поставщика («Договор готов» по «Показать менеджеру», 11.11.2026) — наше письмо этапа ещё впереди: ход наш.
+        $ownLetter = $letter && Message::whereKey($letter)->where('direction', Direction::Out->value)->exists();
+        $awaitsLetter = $track === Track::Sale && $deal?->isActive() && $to->isLetterStep() && ! $ownLetter && ! $back;
         // Шаг «Забрать автомобиль», а везёт логистика (17.10.2026): ход наш, без часов и просьбы «Заберите» —
         // шаг пройдёт сам по «Привёз» к нему (`SyncHandover`); сняли вывоз — ход снова его (`SyncHandover::turn`).
         $carried = $track === Track::Sale && $deal?->isActive() && $to->isPickupStep() && $deal->setRelation('offer', $offer->unsetRelation('pickupTask'))->carried();

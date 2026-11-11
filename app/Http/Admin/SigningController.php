@@ -33,6 +33,17 @@ final class SigningController
         return back(fallback: '/work/deals/'.$deal->id)->with('toast', 'Записываем на '.Ago::at($deal->signing_at, true, words: false));
     }
 
+    /** Дни покупателя за менеджера (`SaveSigningWish`). */
+    public function wish(Request $request, Deal $deal, \App\Offers\Actions\SaveSigningWish $save)
+    {
+        abort_unless($request->user()->canManageCrm(), 403);
+        $data = $request->validate(['days' => ['required', 'array', 'max:14'], 'days.*' => ['string', 'max:10'], 'part' => ['nullable', 'string', 'max:20']],
+            ['days.required' => 'Отметьте хотя бы один день']);
+        $deal = $save($deal, $request->user(), $data['days'], $data['part'] ?? 'any');
+
+        return back(fallback: '/work/deals/'.$deal->id)->with('toast', 'Покупатель может '.\App\Offers\Signing::wishLine($deal));
+    }
+
     public function ics(Deal $deal)
     {
         abort_unless(\App\Offers\Signing::booked($deal), 404);

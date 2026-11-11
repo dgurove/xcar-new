@@ -43,7 +43,7 @@ use Illuminate\Support\Carbon;
  * выплачиваем после оплаты или менеджер удерживает сам. Менеджер вознаграждение
  * не видит, пока по сделке нет живого счёта — `showsCommission()`.
  */
-#[Fillable(['offer_id', 'bid_id', 'buyer_id', 'amount', 'cost', 'supplier_cost', 'owner_price', 'share', 'commission', 'commission_mode', 'scheme', 'garage_payer', 'state', 'notes', 'closed_at', 'close_reason', 'close_note', 'agreed_at', 'buyer_scans_at', 'buyer_asked_at', 'signing_slots', 'signing_address', 'signing_at', 'prepaid_at', 'supplier_paid_at',
+#[Fillable(['offer_id', 'bid_id', 'buyer_id', 'amount', 'cost', 'supplier_cost', 'owner_price', 'share', 'commission', 'commission_mode', 'scheme', 'garage_payer', 'state', 'notes', 'closed_at', 'close_reason', 'close_note', 'agreed_at', 'buyer_scans_at', 'buyer_asked_at', 'signing_slots', 'signing_address', 'signing_at', 'signing_asked_at', 'signing_wish', 'prepaid_at', 'supplier_paid_at',
     'receiver_user_id', 'receiver_name', 'receiver_phone', 'receiver_at', 'auction_at', 'buyer_party_id', 'shadow_stage_id', 'shadow_at', 'reissue_at'])]
 class Deal extends Model
 {
@@ -52,7 +52,7 @@ class Deal extends Model
 
     protected function casts(): array
     {
-        return ['scheme_at' => 'datetime', 'state' => DealState::class, 'amount' => 'int', 'cost' => 'int', 'supplier_cost' => 'int', 'owner_price' => 'int', 'share' => 'int', 'commission' => 'int', 'commission_mode' => CommissionMode::class, 'scheme' => DealScheme::class, 'garage_payer' => GaragePayer::class, 'closed_at' => 'datetime', 'agreed_at' => 'datetime', 'buyer_scans_at' => 'datetime', 'buyer_asked_at' => 'datetime', 'signing_slots' => 'array', 'signing_at' => 'datetime', 'prepaid_at' => 'datetime', 'supplier_paid_at' => 'datetime', 'receiver_at' => 'datetime', 'auction_at' => 'datetime', 'shadow_at' => 'datetime', 'reissue_at' => 'datetime'];
+        return ['scheme_at' => 'datetime', 'state' => DealState::class, 'amount' => 'int', 'cost' => 'int', 'supplier_cost' => 'int', 'owner_price' => 'int', 'share' => 'int', 'commission' => 'int', 'commission_mode' => CommissionMode::class, 'scheme' => DealScheme::class, 'garage_payer' => GaragePayer::class, 'closed_at' => 'datetime', 'agreed_at' => 'datetime', 'buyer_scans_at' => 'datetime', 'buyer_asked_at' => 'datetime', 'signing_slots' => 'array', 'signing_at' => 'datetime', 'signing_asked_at' => 'datetime', 'signing_wish' => 'array', 'prepaid_at' => 'datetime', 'supplier_paid_at' => 'datetime', 'receiver_at' => 'datetime', 'auction_at' => 'datetime', 'shadow_at' => 'datetime', 'reissue_at' => 'datetime'];
     }
 
     public function offer(): BelongsTo
@@ -150,6 +150,7 @@ class Deal extends Model
      * (ПРАЙМ без покупателя — без просьбы); реквизиты прислал фотографией — ход наш. То же правило в PHP — `managerTask()`.
      */
     public const MANAGER_TURN_SQL = "(exists (select 1 from reprice_asks a where a.deal_id = deals.id and a.state in ('pending', 'countered'))
+        or (deals.state = 'active' and deals.signing_asked_at is not null and deals.signing_at is null and coalesce(jsonb_array_length(deals.signing_wish->'days'), 0) = 0)
         or (deals.buyer_scans_at is null and (deals.buyer_asked_at is not null or exists (select 1 from requirements r where r.deal_id = deals.id and r.done_at is null)
         or (deals.state = 'active' and exists (select 1 from offer_positions p join workflow_stages s on s.id = p.stage_id where p.offer_id = deals.offer_id
             and p.track = 'sale' and coalesce(p.waits_for, s.waits_for) = 'manager')))))";
@@ -205,6 +206,10 @@ class Deal extends Model
         // запросила»): шаг ждёт поставщика, а дело менеджера — покупатель (`AskBuyer`, `buyer_asked_at`).
         if ($this->buyer_asked_at) {
             return ['title' => 'Укажите покупателя', 'due' => null, 'kind' => 'buyer'];
+        }
+        // Поставщик готовит договор — когда покупатель сможет подписать (11.11.2026, `Signing::wishDue`).
+        if (Signing::wishDue($this)) {
+            return ['title' => 'Когда покупатель сможет подписать договор?', 'due' => null, 'kind' => 'signing'];
         }
         // Гаражная — дело только просьбой (как бейдж «Гаража», `Nav::asks`): «Укажите цену продажи» у неё — сама продажа
         // из гаража, она идёт неделями и в «Ваш ход» не встаёт (02.11.2026: 16 таких заслоняли настоящие дела).

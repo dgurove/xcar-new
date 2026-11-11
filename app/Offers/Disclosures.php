@@ -24,7 +24,7 @@ final class Disclosures
 
     /**
      * @param  Collection<int, Message>  $letters  письма разбора; пусто — показ руками
-     * @return array<string, array{kind: string, value: string, media: ?int}> ключ пункта → пункт
+     * @return array<string, array{kind: string, value: string, media: ?int, label?: string, pick?: bool}> ключ пункта → пункт
      */
     public static function proposals(Deal $deal, Collection $letters): array
     {
@@ -42,7 +42,16 @@ final class Disclosures
             $out[$key] ??= ['kind' => $kind, 'value' => $kind === 'phone' && Phone::normalize($value) ? Phone::format(Phone::normalize($value)) : $value, 'media' => $media];
         };
         $offer = $deal->offer;
-        foreach ($letters as $m) {
+        // «Договор готов» (11.11.2026, `SigningLetter`): страхователь, его телефоны, адрес осмотра и стоянка поставщика тут ни
+        // к чему — менеджеру где и как подписывать и что взять покупателю, отмечено сразу (`pick`).
+        $signing = $letters->first(fn (Message $m) => SigningLetter::ready($m));
+        if ($signing) {
+            $text = $signing->replyText();
+            foreach (array_filter([SigningLetter::line($signing), SigningLetter::documents($text)]) as $i => $line) {
+                $out['signing:'.$i] = ['kind' => 'text', 'value' => $line, 'media' => null, 'label' => $i === 0 ? 'Подписание' : 'Покупателю', 'pick' => true];
+            }
+        }
+        foreach ($signing ? [] : $letters as $m) {
             foreach (OwnerPhones::for($m) as $phone) {
                 $add('phone', $phone);
             }
@@ -50,10 +59,12 @@ final class Disclosures
             $add('name', $m->field('insured_name'));
             $add('address', VendorNames::strip($m->field('location')));
         }
-        $add('name', $offer->insured_name);
-        $add('phone', $offer->insured_phone);
-        $add('phone', $offer->insured_phone2);
-        $add('address', VendorNames::strip($offer->inspection_address));
+        if (! $signing) {
+            $add('name', $offer->insured_name);
+            $add('phone', $offer->insured_phone);
+            $add('phone', $offer->insured_phone2);
+            $add('address', VendorNames::strip($offer->inspection_address));
+        }
 
         $ids = $letters->pluck('id')->all();
         $offer->getMedia('papers')

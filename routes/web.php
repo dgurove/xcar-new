@@ -220,6 +220,7 @@ Route::middleware(['auth', 'wall'])->group(function () {
         Route::get('/deals/{deal}/chat', [DealController::class, 'chat']);
         Route::post('/deals/{deal}/reply', [DealController::class, 'answer']);
         Route::post('/deals/{deal}/signing', [DealController::class, 'signing']);
+        Route::post('/deals/{deal}/signing-wish', [DealController::class, 'signingWish']);
         Route::get('/deals/{deal}/signing.ics', [DealController::class, 'signingIcs']);
         Route::put('/deals/{deal}/receiver', [DealController::class, 'receiver']);
         Route::post('/deals/{deal}/pickup', [DealController::class, 'requestPickup']);

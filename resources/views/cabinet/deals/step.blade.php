@@ -85,8 +85,12 @@
                 // Только «Ждём поставщика»: у наших этапов фраза — инструкция менеджеру («Свяжитесь с владельцем…»), не статус.
                 $statusLine = ! $requirement && $position->stage->ask_text && $position->waitsFor() === \App\Workflow\WaitsFor::Supplier
                     ? \App\Users\Wording::mine($position->stage->ask_text).($position->entered_at ? ', с '.\App\Support\Ago::day($position->entered_at) : '') : null;
+                // Поставщик готовит договор или ждём от него время — когда покупатель сможет подписать (`Signing`, 11.11.2026).
+                $signingDays = ! $requirement && $deal->signing_at === null
+                    && (\App\Offers\Signing::asksDays($position->stage->loadMissing('exits.to.exits')) || \App\Offers\Signing::awaitsSlots($position->stage));
                 $heading = match (true) {
                     $consent => 'Берёте в работу?',
+                    $signingDays && \App\Offers\Signing::wishDue($deal) => 'Когда покупатель сможет подписать договор?',
                     $photosSent => 'Реквизиты по фото у XCar',
                     $needsBuyer && ! $buyerStep => $gap === 'passport' ? 'Приложите паспорт покупателя' : 'Укажите покупателя',
                     $needsPrice => 'Укажите цену продажи',
@@ -108,6 +112,9 @@
             @endphp
             <h2>{{ $heading }}</h2>
             @if ($statusLine !== null)<p class="mt-1 text-sm text-ink-muted">{{ $statusLine }}</p>@endif
+            @if ($signingDays)
+                <x-deal.signing-days :deal="$deal" :action="'/deals/'.$deal->id.'/signing-wish'" class="mt-4"/>
+            @endif
             @unless ($noInvoice || $paidUp || $photosSent || $statusLine !== null)<div class="mt-1 text-sm"><x-route.clock :position="$position" :bare="$consent || $position->waitsFor() === \App\Workflow\WaitsFor::Manager"/></div>@endunless
             @if ($photosSent)
                 <p class="mt-2 text-sm text-ink-muted">Внесём сами, шаг пройдёт без вас</p>

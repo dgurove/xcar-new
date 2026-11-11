@@ -1,12 +1,19 @@
 {{-- Выбор времени подписания (`Offers\Signing`, 11.11.2026): свободное время поставщика плитками — нажатие спрашивает
      «Записать на …?» и отвечает шаг (`PickSigningTime`); «Другое время…» — своё. `action` — адрес POST (сайт или CRM). --}}
 @props(['deal', 'action'])
-@php $slots = \App\Offers\Signing::slots($deal); @endphp
+@php
+    $slots = \App\Offers\Signing::slots($deal);
+    // Дни, что назвал менеджер (`signing_wish`), — первой группой «Удобно покупателю» (11.11.2026).
+    $wishDays = \App\Offers\Signing::wishDays($deal)->map->toDateString();
+    [$fits, $rest] = $wishDays->isNotEmpty() ? $slots->partition(fn ($s) => $wishDays->contains($s->copy()->timezone('Europe/Moscow')->toDateString())) : [collect(), $slots];
+    $groups = array_filter(['Удобно покупателю' => $fits, ($fits->isNotEmpty() ? 'Ещё время' : '') => $rest], fn ($g) => $g->isNotEmpty());
+@endphp
 <div {{ $attributes }}>
     @if ($deal->signing_address)<p class="mb-3 text-sm text-ink-muted"><x-ui.place>{{ $deal->signing_address }}</x-ui.place></p>@endif
-    @if ($slots->isNotEmpty())
+    @foreach ($groups as $label => $group)
+        @if ($label !== '')<p class="mb-2 text-sm text-ink-muted {{ $loop->first ? '' : 'mt-3' }}">{{ $label }}</p>@endif
         <div class="slot-grid">
-            @foreach ($slots as $slot)
+            @foreach ($group as $slot)
                 @php $m = $slot->copy()->timezone('Europe/Moscow'); $when = $m->isoFormat('dd').' '.$m->format('d.m H:i'); @endphp
                 <form method="post" action="{{ $action }}" data-turbo-confirm="Записать на {{ $when }}?" data-turbo-confirm-label="Записать">
                     @csrf<input type="hidden" name="at" value="{{ $m->format('Y-m-d H:i') }}">
@@ -17,7 +24,7 @@
                 </form>
             @endforeach
         </div>
-    @endif
+    @endforeach
     <div data-controller="sheet" class="mt-3">
         <button type="button" class="btn btn-ghost btn-s px-0 text-ink-muted" data-action="sheet#open">Другое время…</button>
         <x-ui.sheet :id="'signing-other-'.$deal->id" title="Другое время">

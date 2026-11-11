@@ -108,6 +108,11 @@ final class OnInsurerReply
             Notification::send(User::withRole(Role::Admin)->get(),
                 new SupplierInvoiceArrivedNotice($deal->load(['offer.vendor', 'buyer'])));
         }
+        // Договор готов — тоже громко (11.11.2026, `SupplierContractReadyNotice`): сразу письмо про время подписания.
+        if ($review->wasRecentlyCreated && ReplyKind::of($message) === ReplyKind::ContractReady) {
+            Notification::send(User::withRole(Role::Admin)->get(),
+                new \App\Notifications\SupplierContractReadyNotice($deal->load(['offer.vendor', 'buyer'])));
+        }
     }
 
     /**

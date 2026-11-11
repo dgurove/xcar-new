@@ -305,6 +305,12 @@ class VendorController
             'mail_account_id' => ['nullable', Rule::exists('mail_accounts', 'id')->where('scope', Scope::Offers->value)->whereNull('reply_account_id')],
             'senders' => ['nullable', 'string', 'max:2000'],
             'parser' => ['required', Rule::enum(Parser::class)],
+            // Филиал для подписания договора (11.11.2026, `Offers\Signing::office`).
+            'office_address' => ['nullable', 'string', 'max:300'],
+            'office_from' => ['nullable', 'date_format:H:i'],
+            'office_to' => ['nullable', 'date_format:H:i', 'after:office_from'],
+            'office_days' => ['nullable', 'array'], 'office_days.*' => ['integer', 'between:1,7'],
+            'office_contacts' => ['nullable', 'string', 'max:2000'],
         ] + SetLogo::RULES);
         $senders = Vendor::parseSenders($data['senders'] ?? null);
         if ($taken = Vendor::takenSender($senders, Scope::Offers, $vendor)) {
@@ -315,7 +321,10 @@ class VendorController
         // Ступени, равные умолчанию (у «Закупочная от оценочной» — `Pricing::RULES`, иначе +0), не свои: null.
         $floorRules = Pricing::clean($request->input('floor_rules'));
         $floorRules = $floorRules === ($request->boolean('floor_by_value') ? Pricing::RULES : Pricing::FLAT) ? null : $floorRules;
+        $office = $request->boolean('_office') ? self::office($request) : $vendor->signing_office;
+        $data = array_diff_key($data, array_flip(['office_address', 'office_from', 'office_to', 'office_days', 'office_contacts']));
         $vendor->update(array_merge($data, [
+            'signing_office' => $office,
             'floor_rules' => $request->has('floor_rules') ? $floorRules : $vendor->floor_rules,
             'audience_rules' => $request->filled('audience_rules') ? ($rules === AudienceRules::everyone() ? null : $rules) : $vendor->audience_rules,
             'senders' => $senders,
@@ -341,5 +350,30 @@ class VendorController
         }
 
         return back()->with('toast', 'Сохранено');
+    }
+
+    /** Филиал из формы: пустой адрес и без контактов — null (`Signing::office` возьмёт умолчания). */
+    private static function office(Request $request): ?array
+    {
+        $contacts = collect(preg_split('/\R/u', (string) $request->input('office_contacts')))->map(fn ($l) => trim($l))->filter()->map(function (string $l) {
+            preg_match('/вн\.?\s*(?:тел\.?\s*)?(\d{3,7})/iu', $l, $ext);
+            preg_match('/\+?[78][\d\s()\-]{9,}/u', $l, $phone);
+            $name = trim((string) preg_replace(['/вн\.?\s*(?:тел\.?\s*)?\d{3,7}/iu', '/\+?[78][\d\s()\-]{9,}/u'], '', $l), " ,;");
+
+            return ['name' => $name, 'phone' => isset($phone[0]) ? trim($phone[0]) : null, 'ext' => $ext[1] ?? null];
+        })->values()->all();
+        $address = trim((string) $request->input('office_address'));
+        if ($address === '' && $contacts === []) {
+            return null;
+        }
+
+        return [
+            'address' => $address ?: null,
+            'days' => array_values(array_map('intval', (array) $request->input('office_days', []))) ?: [1, 2, 3, 4, 5],
+            'from' => $request->input('office_from') ?: '09:00',
+            'to' => $request->input('office_to') ?: '18:00',
+            'by_appointment' => $request->boolean('office_by_appointment'),
+            'contacts' => $contacts,
+        ];
     }
 }

@@ -31,6 +31,10 @@ final class OfferSigningSlots
         if ($times->isEmpty()) {
             throw ValidationException::withMessages(['slots' => 'Добавьте хотя бы одно время']);
         }
+        // Часы филиала вендора (`vendors.signing_office`) — время вне них, скорее всего, опечатка.
+        if ($deal->offer?->vendor?->signing_office && ($why = $times->map(fn (Carbon $c) => Signing::outsideHours($deal, $c))->filter()->first())) {
+            throw ValidationException::withMessages(['slots' => ucfirst($why)]);
+        }
 
         return DB::transaction(function () use ($deal, $exit, $by, $times, $address) {
             $deal->update([

@@ -68,6 +68,24 @@
                         @endforeach
                     </div>
                 </div>
+                {{-- Филиал для подписания договора (11.11.2026, `Offers\Signing::office`): адрес по умолчанию в шторке слотов, рабочие
+                     дни — чипы дней покупателя, часы — проверка времени, контакты — строками в шаге записи. Заполняет и письмо
+                     «Договор готов», пока пусто. --}}
+                @php $office = $vendor->signing_office ?? []; $officeDays = $office['days'] ?? [1, 2, 3, 4, 5]; @endphp
+                <div class="list-head">Подписание договора</div>
+                <input type="hidden" name="_office" value="1">
+                <div class="fields">
+                    <x-ui.field name="office_address" label="Адрес филиала" :value="$office['address'] ?? null" placeholder="Москва, Золоторожский Вал, д. 11, стр. 38"/>
+                    <x-ui.field name="office_from" label="Работает с" :value="$office['from'] ?? '09:00'" placeholder="09:00"/>
+                    <x-ui.field name="office_to" label="До" :value="$office['to'] ?? '18:00'" placeholder="18:00"/>
+                    <x-ui.field name="office_contacts" label="Контакты, по одному в строке" type="textarea" :value="collect($office['contacts'] ?? [])->map(fn ($c) => trim($c['name'].($c['ext'] ? ', вн. '.$c['ext'] : '').($c['phone'] ? ', '.$c['phone'] : ''), ', '))->implode(PHP_EOL)" placeholder="Ткаченко Евгений, вн. 600428"/>
+                </div>
+                <div class="flex flex-wrap gap-1.5">
+                    @foreach ([1 => 'пн', 2 => 'вт', 3 => 'ср', 4 => 'чт', 5 => 'пт', 6 => 'сб', 7 => 'вс'] as $d => $name)
+                        <label class="choice"><input type="checkbox" name="office_days[]" value="{{ $d }}" @checked(in_array($d, $officeDays))><span>{{ $name }}</span></label>
+                    @endforeach
+                </div>
+                <x-ui.check name="office_by_appointment" :checked="$office['by_appointment'] ?? false">Только по записи</x-ui.check>
                 <div class="list-head">Почта</div>
                 <div class="fields">
                     <x-ui.field name="mail_account_id" label="Отвечаем с ящика" :options="$accounts" placeholder="Первый активный" :value="$vendor->mail_account_id"/>

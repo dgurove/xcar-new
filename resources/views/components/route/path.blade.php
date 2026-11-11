@@ -223,6 +223,13 @@
                     @if ($deal?->buyer_asked_at && $position->track === \App\Workflow\Track::Sale && auth()->user()?->canManageCrm())
                         <x-route.task-row icon="user" :href="'/offers/'.$offer->number.($deal->hasContract() ? '?dkp=1#dkp' : '?buyer=1#invoice-buyer')" data-turbo-frame="_top">{{ $deal->buyer_scans_at ? 'Реквизиты покупателя прислал фото, внести' : 'Менеджер не указал покупателя' }}</x-route.task-row>
                     @endif
+                    {{-- Дни покупателя для подписания (`Signing`, 11.11.2026): пока поставщик готовит договор или время — что назвал
+                         менеджер, или выбрать за него. --}}
+                    @if ($deal && $position->track === \App\Workflow\Track::Sale && $deal->signing_at === null && auth()->user()?->canManageCrm()
+                        && (\App\Offers\Signing::asksDays($position->stage->loadMissing('exits.to.exits')) || \App\Offers\Signing::awaitsSlots($position->stage)))
+                        @if (\App\Offers\Signing::wishDue($deal))<p class="mt-3 text-sm text-ink-muted">Менеджер не назвал дни для подписания, выбрать за него</p>@endif
+                        <x-deal.signing-days :deal="$deal" :action="'/work/deals/'.$deal->id.'/signing-wish'" class="mt-2"/>
+                    @endif
                     {{-- Запись на подписание (`Offers\Signing`): менеджер выбирает время — его варианты плитками (за него), выбрано —
                          карточка встречи. --}}
                     @if ($deal && $position->track === \App\Workflow\Track::Sale && \App\Offers\Signing::picks($position->stage) && auth()->user()?->canManageCrm())
@@ -230,6 +237,17 @@
                         <x-deal.signing-pick :deal="$deal" :action="'/work/deals/'.$deal->id.'/signing'" class="mt-2"/>
                     @elseif ($deal && $position->track === \App\Workflow\Track::Sale && \App\Offers\Signing::booked($deal))
                         <x-deal.appointment :deal="$deal" :confirmed="$position->waitsFor() === \App\Workflow\WaitsFor::Manager" :ics="'/work/deals/'.$deal->id.'/signing.ics'" class="mt-3"/>
+                    @endif
+                    {{-- Контакты филиала (`vendors.signing_office`, 11.11.2026) — кому звонить про запись, только в CRM. --}}
+                    @php $officeContacts = $deal && $position->track === \App\Workflow\Track::Sale && auth()->user()?->canManageCrm()
+                        && (\App\Offers\Signing::awaitsSlots($position->stage) || \App\Offers\Signing::picks($position->stage) || (\App\Offers\Signing::booked($deal) && $position->waitsFor() !== \App\Workflow\WaitsFor::Manager))
+                        ? \App\Offers\Signing::office($deal)['contacts'] : []; @endphp
+                    @if ($officeContacts)
+                        <x-ui.info class="mt-3">
+                            @foreach ($officeContacts as $c)
+                                <x-ui.info-row icon="user">{{ trim($c['name'].($c['ext'] ? ', вн. '.$c['ext'] : '').($c['phone'] ? ', '.$c['phone'] : ''), ', ') }}</x-ui.info-row>
+                            @endforeach
+                        </x-ui.info>
                     @endif
                     @if ($buyerData && auth()->user()?->canManageCrm())
                         <div class="step-acts mt-3"><a href="/offers/{{ $offer->number }}?buyer=1#invoice-buyer" class="btn btn-s btn-accent !h-auto min-h-9 whitespace-normal py-1.5" data-turbo-frame="_top">Заполнить за менеджера</a></div>

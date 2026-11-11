@@ -7,7 +7,7 @@
     // Ждём счёт поставщика, а в письме файл (10.11.2026) — он «Счёт поставщика», отмечен сам; без него шаг не пройти.
     $billed = $step && \App\Offers\SupplierInvoice::needs($deal, $step);
     $guess = $billed ? \App\Offers\SupplierInvoice::guess($deal->offer->getMedia('papers')->whereIn('id', collect($proposals)->pluck('media')->filter())->sortByDesc('id')) : null;
-    $picked = $picked ?: ($guess ? ['file:'.$guess->id] : []);
+    $picked = $picked ?: ($guess ? ['file:'.$guess->id] : array_keys(array_filter($proposals, fn ($p) => $p['pick'] ?? false)));
 @endphp
 {{-- `$line` — шторку открывает строка письма в шаге (10.11.2026): она и есть разбор — «Открыть» у письма, «Не нужно» в подвале,
      что уже показано — сверху. --}}
@@ -36,7 +36,7 @@
                             <span class="check mt-0.5"><input type="checkbox" id="{{ $box }}" name="on[]" value="{{ $key }}" @checked(in_array($key, $picked, true)) data-action="disclose#update"></span>
                             <div class="min-w-0 flex-1">
                                 <label for="{{ $box }}" class="block cursor-pointer">
-                                    <span class="block text-xs text-ink-muted">{{ $guess && $p['media'] === $guess->id ? 'Счёт поставщика' : Disclosures::KINDS[$p['kind']] }}</span>
+                                    <span class="block text-xs text-ink-muted">{{ $guess && $p['media'] === $guess->id ? 'Счёт поставщика' : ($p['label'] ?? Disclosures::KINDS[$p['kind']]) }}</span>
                                     <span class="block break-words" data-disclose-target="text">{{ $p['kind'] === 'file' ? $p['value'] : old('value.'.$key, $p['value']) }}</span>
                                 </label>
                                 @if ($p['kind'] !== 'file')

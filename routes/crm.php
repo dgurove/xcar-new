@@ -278,6 +278,7 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
         Route::post('/work/deals/{deal}/supplier-invoice', [DisclosureController::class, 'invoice']);
         Route::post('/work/deals/{deal}/signing-slots', [\App\Http\Admin\SigningController::class, 'slots']);
         Route::post('/work/deals/{deal}/signing', [\App\Http\Admin\SigningController::class, 'pick']);
+        Route::post('/work/deals/{deal}/signing-wish', [\App\Http\Admin\SigningController::class, 'wish']);
         Route::get('/work/deals/{deal}/signing.ics', [\App\Http\Admin\SigningController::class, 'ics']);
         // Документ об оплате поставщику за менеджера и одним PDF (10.11.2026, `PaymentProofController`).
         Route::post('/work/deals/{deal}/payment-proof', [PaymentProofController::class, 'store']);
