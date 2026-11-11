@@ -99,7 +99,11 @@
         @endif
         @if ($errors->has('state'))<x-ui.flash tone="danger" class="w-full">{{ $errors->first('state') }}</x-ui.flash>@endif
     </div>
-    <div class="mb-4 flex flex-col gap-4 empty:hidden">@include('admin.car.alerts')</div>
+    {{-- Плашки дел — блоком с отступом, только когда хоть одна есть (`:empty` не срабатывал: от вида остаются переводы строк). --}}
+    @php ob_start(); @endphp
+    @include('admin.car.alerts')
+    @php $alerts = trim(ob_get_clean()); @endphp
+    @if ($alerts !== '')<div class="mb-4 flex flex-col gap-4">{!! $alerts !!}</div>@endif
     {{-- Письмо на разбор не ждёт — «Показать менеджеру» руками, пилюлей. --}}
     @if ($admin && $offer->deal && ! \App\Offers\ReplyReview::pending()->where('deal_id', $offer->deal->id)->exists())<div class="mb-4"><x-deal.reply-review :deal="$offer->deal" pill/></div>@endif
 

@@ -42,11 +42,17 @@ final class CarView
 
     private array $vars = [];
 
-    private function __construct(public readonly Offer $offer, public readonly User $user, public readonly bool $page)
+    /** Окно открыли со строки прошлой сделки (отменённой или не последней) — окно о ней, а не о нынешней (12.11.2026). */
+    public readonly bool $pastDeal;
+
+    private function __construct(public readonly Offer $offer, public readonly User $user, public readonly bool $page, ?Deal $deal = null)
     {
         $this->admin = $user->canManageCrm();
         $this->load();
-        $this->deal = $this->admin ? $offer->lastDeal : null;
+        // Строка «Сделок» открывает окно своей сделки: «Закончены» — отменённая или прошлая, у машины уже другая (12.11.2026:
+        // окно показывало нынешнее состояние машины без суммы, менеджера и договора той сделки).
+        $this->pastDeal = $this->admin && $deal && ! $deal->isParallel() && $deal->id !== $offer->lastDeal?->id;
+        $this->deal = $this->admin ? ($this->pastDeal ? $deal->setRelation('offer', $offer) : $offer->lastDeal) : null;
         $this->garageCar = $this->admin ? GarageCar::forOffer($offer) : null;
         $this->garageView = $this->garageCar ? GarageView::for($this->garageCar, $user) : null;
         $this->chats = $this->admin ? Chat::withLast()->withCount('messages')->where('offer_id', $offer->id)->orderByDesc('last_message_at')->get() : collect();
@@ -55,17 +61,19 @@ final class CarView
         $this->decide();
     }
 
-    public static function for(Offer $offer, User $user, bool $page = false): self
+    public static function for(Offer $offer, User $user, bool $page = false, ?Deal $deal = null): self
     {
-        return new self($offer, $user, $page);
+        return new self($offer, $user, $page, $deal);
     }
 
     /** Одна выборка на окно и страницу: модератору — поля, кадры и документы, подтверждений, сделки и маршрута он не видит. */
     private function load(): void
     {
-        $this->offer->load(['settlement', 'media', 'vendor', ...($this->page ? ['car.events.user.vendor'] : []), ...($this->admin ? [
+        // Окно открывают и подгружают заранее соседям открытой строки — то, что нужно только странице (история, заявки парковки,
+        // сводка показов), грузит только страница (12.11.2026).
+        $this->offer->load(['settlement', 'media', 'vendor', ...($this->page ? ['car.events.user.vendor', 'parkVehicle.requests'] : []), ...($this->admin ? [
             'bids.user', 'interests.user.manager', 'interests.placer', 'purchaseCar.purchase', 'purchaseCar.bids.user',
-            'parkVehicle.yard', 'parkVehicle.requests', 'vendor.workflows', 'positions.stage.block', 'positions.stage.exits.to.block.stages',
+            'parkVehicle.yard', 'vendor.workflows', 'positions.stage.block', 'positions.stage.exits.to.block.stages',
             'positions.stage.workflow', 'deal.buyer', 'lastDeal.buyer', 'lastDeal.bid', 'lastDeal.requirements.media', 'dealAudience',
             'openEstimates.user', ...User::withAvatar('openEstimates.user.media'), 'declinedEstimates.user', ...User::withAvatar('declinedEstimates.user.media'),
         ] : [])])->loadCount(['activeBids', 'interests', 'activeBids as garage_bids_count' => fn ($b) => $b->where('kind', BidKind::Garage)])
@@ -110,8 +118,10 @@ final class CarView
         $publishItems = $admin && in_array($state, [OfferState::Draft, OfferState::Gallery], true) && ! $scheduled && $o->asking_price && ! $auction && ! $unsold;
         // Оценённый черновик — «Выставить в продажу» кнопкой в «Ценах» (19.10.2026), не пунктом меню.
         $publishButton = $steps && $publishItems;
-        // «Отдать…» (`Give`, 18.10.2026): в сделку ценой или в гараж — у черновика с ценой и в продаже; без цены — «В гараж» в «Ценах».
-        $giveMenu = $admin && ! $garageCar && ! $garageWay && in_array($state, [OfferState::Draft, OfferState::Gallery, OfferState::Open], true);
+        // «Отдать…» (`Give`, 18.10.2026): в сделку ценой или в гараж — из черновика, галереи и продажи. В окне у черновика без
+        // цены вместо него «В гараж» прямо в «Ценах» (`price-steps`); на странице таких кнопок нет — там «Отдать…» остаётся
+        // (12.11.2026: пропадал у черновика без цены на странице).
+        $giveMenu = $admin && ! $garageCar && ($this->page || ! $garageWay) && in_array($state, [OfferState::Draft, OfferState::Gallery, OfferState::Open], true);
         // «Вернуть в продажу» с новыми ценами — из сделки и из гаража (`ReturnToSale`, 11.10.2026).
         $resale = $admin && (in_array($state, [OfferState::Sold, OfferState::Garage], true) || $garageCar);
         // Кнопки состояния — только уместные (`stateActions`). Машину из гаража уводит только «Отдали по ошибке» в карточке
@@ -142,8 +152,9 @@ final class CarView
             'correct' => $correct,
             'floorFirst' => $floorFirst,
             'byValue' => $floorFirst && Pricing::valued($o),
-            'garage' => $garageWay,
-            'pickup' => $pickupWay,
+            // «В гараж» и «Вывоз» на месте полей «Цен» черновика без цены (`price-steps`) — не машина гаража (`garageCar`).
+            'garageWay' => $garageWay,
+            'pickupWay' => $pickupWay,
             'ways' => $garageWay || $pickupWay,
             'way' => session('errors')?->hasAny(['executor', 'executor_id', 'pickup']) ? 'pickup' : (old('to') === 'garage' ? 'garage' : 'rate'),
             'steps' => $steps,
@@ -159,7 +170,7 @@ final class CarView
             'tags' => $admin ? Tag::orderBy('sort')->get() : collect(),
             // Кому отдать на оценку — у черновика; «+ Интерес», «За менеджера» берут `People::managers`.
             'managers' => $admin && $state === OfferState::Draft && ! $scheduled ? User::withRole(Role::Manager)->with(User::withAvatar())->orderBy('name')->get() : collect(),
-            'showingSummary' => $admin ? Showing::summary($o) : collect(),
+            'showingSummary' => $admin && $this->page ? Showing::summary($o) : collect(),
         ] + $this->letters;
     }
 
@@ -183,12 +194,15 @@ final class CarView
      */
     public function status(): array
     {
+        if ($this->pastDeal) {
+            $line = DealLine::of($this->deal);
+
+            return [$line->word, $line->tone];
+        }
         $line = $this->admin && in_array($this->offer->state, [OfferState::Sold, OfferState::Delivered, OfferState::Garage, OfferState::Cancelled], true)
             ? DealLine::forOffer($this->offer) : null;
 
-        return $line ? [$line->word, $line->tone] : [$this->offer->crmTab(), match ($this->offer->state->tone()) {
-            'open' => 'text-accent-text', 'urgent' => 'text-urgent', 'danger' => 'text-danger', default => 'text-ink-muted',
-        }];
+        return $line ? [$line->word, $line->tone] : [$this->offer->crmTab(), $this->offer->state->textTone() ?: 'text-ink-muted'];
     }
 
     /**
@@ -205,11 +219,17 @@ final class CarView
             return $line->caption ? [Money::rub($line->value), $line->caption] : null;
         }
         $deal = $this->deal;
-        if ($deal && in_array($this->offer->state, [OfferState::Sold, OfferState::Delivered], true)) {
+        if ($deal && $this->showsDeal()) {
             return [$deal->isGarage() ? 'В гараж' : Money::rub($deal->amount), null];
         }
 
         return null;
+    }
+
+    /** Окно о сделке: машина в сделке или выдана, или открыли со строки прошлой сделки — у шапки её цена и менеджер. */
+    public function showsDeal(): bool
+    {
+        return $this->pastDeal || ($this->deal && in_array($this->offer->state, [OfferState::Sold, OfferState::Delivered], true));
     }
 
     /**
@@ -328,7 +348,7 @@ final class CarView
             }
             if ($v['resale']) {
                 // У сделки — одна «Отменить сделку» шторкой: в продажу или в черновики (12.10.2026); гараж — «Вернуть в продажу».
-                $red[] = $emit('resale', $state === OfferState::Sold && ! $this->garageCar && ! $o->garageCar ? 'Отменить сделку' : 'Вернуть в продажу', 'undo', true);
+                $red[] = $emit('resale', $state === OfferState::Sold && ! $this->garageCar ? 'Отменить сделку' : 'Вернуть в продажу', 'undo', true);
             }
             foreach ($danger as [$next, $label]) {
                 $red[] = $state === OfferState::Sold

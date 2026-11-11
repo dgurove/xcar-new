@@ -33,9 +33,14 @@
                 <span>{{ $garageCar->manager?->shortName() ?? 'взяли под себя' }}</span>
                 @if ($garageCar->deal?->garagePayerLine())<span>{{ $garageCar->deal->garagePayerLine() }}</span>@endif
                 @unless ($garageCar->isSold())<span>{{ \App\Garage\CarLine::days($garageCar->stageDays()) }} на этапе</span>@endunless
-            @elseif ($deal && in_array($offer->state, [OfferState::Sold, OfferState::Delivered], true))
+            @elseif ($car->showsDeal())
                 {{-- Кто это — словом (03.11.2026, владелец: имя с телефоном без подписи читалось непонятно). --}}
-                <span>{{ $deal->isAuction() ? 'Покупатель' : 'Менеджер' }} {{ $deal->buyer?->name }}</span>@if ($deal->buyer?->phone)<x-ui.phone :user="$deal->buyer"/>@endif
+                @if ($deal->isAuction())
+                    {{-- Продана на аукционе — менеджера нет, покупатель — контрагент сделки (`deals.buyer_party_id`). --}}
+                    @if ($deal->auctionBuyer)<span>покупатель {{ $deal->auctionBuyer->name }}</span>@endif
+                @elseif ($deal->buyer)
+                    <span>менеджер {{ $deal->buyer->name }}</span>@if ($deal->buyer->phone)<x-ui.phone :user="$deal->buyer"/>@endif
+                @endif
             @endif
             @if ($intake)
             @elseif ($left !== null && $left > 0)<span class="nums {{ $offer->isEndingSoon() ? 'text-urgent' : '' }}">приём <span data-controller="timer" data-timer-until-value="{{ $offer->bids_close_at->toIso8601String() }}" data-timer-done-value="закрыт" data-timer-coarse-value="true">{{ \App\Support\Ago::left($offer->bids_close_at, 'ещё') }}</span></span>
@@ -66,7 +71,7 @@
             {{-- Ряд пилюль: чат с менеджером сделки (пилюлей, живой), остальные чаты, документы, «Показать менеджеру». --}}
             @if ($dealChat || $otherChats->isNotEmpty() || $docs || ($admin && $deal?->isActive()))
                 <div class="flex w-full flex-wrap items-center gap-2">
-                    @if ($dealChat)<x-deal.chat-card :deal="$deal" compact/>@endif
+                    @if ($dealChat)<x-deal.chat-card :deal="$deal" :chat="$car->dealChat()" compact/>@endif
                     @if ($otherChats->isNotEmpty())<x-ui.pill :tone="$chatUnread ? 'urgent' : 'plain'" href="/work/chats?preset=all&q={{ $n }}" data-turbo-frame="_top"><x-ui.icon name="chat" class="size-4"/> {{ $otherChats->count() === 1 ? 'Чат' : 'Чаты' }}@if ($otherChats->count() > 1 && ! $chatUnread) <span class="nums text-ink-dim">{{ $otherChats->count() }}</span>@endif @if ($chatUnread) <span class="badge">{{ $chatUnread }}</span>@endif</x-ui.pill>@endif
                     @if ($docs)<x-ui.docs-pill :docs="$docs"/>@endif
                     @if ($admin && $deal?->isActive())<x-deal.reply-review :deal="$deal" pill/>@endif
@@ -103,7 +108,7 @@
                     @include('admin.offers.price-steps', ['plain' => true])
                     @if ($admin)<section>@include('admin.offers.fields.tags')</section>@endif
                 @endif
-                @unless ($steps || $intake || $unsold)<x-offer.showing :offer="$offer" :form="$form" :summary="$showingSummary" as="section"/>@endunless
+                @unless ($steps || $intake || $unsold)<x-offer.showing :offer="$offer" :form="$form" as="section"/>@endunless
                 @if ($selling)
                     <x-car.blocks :lane="$offer" :blocks="['car', 'papers', 'specs']" as="section"
                         :required="$offer->state === OfferState::Draft ? ['vendor_id', 'claim_ref', 'brand_id'] : []"/>

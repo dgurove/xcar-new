@@ -23,6 +23,8 @@ class EnsureOwn
             'deal' => ($deal = $request->route('deal')) instanceof Deal && $deal->buyer_id === $me->id,
             'buyer' => ($user = $request->route('user')) instanceof User && $user->manager_id === $me->id && $user->isBuyer(),
             'group' => ($group = $request->route('group')) instanceof BuyerGroup && $group->manager_id === $me->id,
+            // Опечатка в маршруте — ошибка разработчика словами, а не немой UnhandledMatchError.
+            default => throw new \LogicException("own:{$what} — нет такой проверки, есть own:deal, own:buyer, own:group"),
         };
         abort_unless($own, 404);
 

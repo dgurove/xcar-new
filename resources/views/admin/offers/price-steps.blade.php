@@ -8,7 +8,7 @@
 @php
     $form = 'detail-edit-'.$n;
     // Ошибка «В гараж» или «Вывоза» открывает их снова — если такая панель здесь есть.
-    $way = ($way === 'garage' && $garage) || ($way === 'pickup' && $pickup) ? $way : 'rate';
+    $way = ($way === 'garage' && $garageWay) || ($way === 'pickup' && $pickupWay) ? $way : 'rate';
     // Текущий шаг: нет закупочной — она, есть — цена продажи (админу); всё стоит — шагов нет, сохраняет «Сохранить изменения».
     $now = $floorFirst ? 'floor' : ($rate ? 'asking' : null);
     $plain ??= false;
@@ -36,8 +36,8 @@
         @elseif ($now)
             <div class="flex gap-2">
                 <button type="submit" form="{{ $form }}" name="then" value="advance" class="btn btn-s btn-accent min-w-0 flex-1">Сохранить и дальше</button>
-                @if ($garage)<label class="btn btn-s btn-quiet shrink-0" for="way-garage-{{ $n }}">В гараж</label>@endif
-                @if ($pickup)<label class="btn btn-s btn-quiet shrink-0" for="way-pickup-{{ $n }}">Вывоз</label>@endif
+                @if ($garageWay)<label class="btn btn-s btn-quiet shrink-0" for="way-garage-{{ $n }}">В гараж</label>@endif
+                @if ($pickupWay)<label class="btn btn-s btn-quiet shrink-0" for="way-pickup-{{ $n }}">Вывоз</label>@endif
             </div>
         @endif
         {{-- Оценки менеджеров (11.10.2026) — когда уже отдали; и под закупочной: оценку дают и без неё (14.10.2026). --}}
@@ -45,7 +45,7 @@
             @include('admin.offers.estimates')
         @endif
     </div>
-    @if ($garage)
+    @if ($garageWay)
         <input type="radio" name="_way-{{ $n }}" value="garage" class="sr-only" id="way-garage-{{ $n }}" data-action="reveal#pick" @checked($way === 'garage')>
         <div class="flex flex-col gap-3" data-reveal-target="pane" data-reveal-key="garage" @unless ($way === 'garage') hidden @endunless>
             <label class="flex items-center gap-1 self-start text-sm text-accent-text" for="way-rate-{{ $n }}"><x-ui.icon name="chevron-left" class="size-4"/>Цены</label>
@@ -53,7 +53,7 @@
             <x-offer.give-garage :offer="$offer" :prefix="'detail-'.$n" inline/>
         </div>
     @endif
-    @if ($pickup)
+    @if ($pickupWay)
         <input type="radio" name="_way-{{ $n }}" value="pickup" class="sr-only" id="way-pickup-{{ $n }}" data-action="reveal#pick" @checked($way === 'pickup')>
         <div class="flex flex-col gap-3" data-reveal-target="pane" data-reveal-key="pickup" @unless ($way === 'pickup') hidden @endunless>
             <label class="flex items-center gap-1 self-start text-sm text-accent-text" for="way-rate-{{ $n }}"><x-ui.icon name="chevron-left" class="size-4"/>Цены</label>

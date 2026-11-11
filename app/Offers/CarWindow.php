@@ -12,16 +12,19 @@ use Illuminate\View\View;
  */
 final class CarWindow
 {
-    public static function of(Request $request, ?Offer $offer): ?View
+    public static function of(Request $request, ?Offer $offer, ?Deal $deal = null): ?View
     {
         $user = $request->user();
 
-        return $offer && $user && $offer->isEditableBy($user) ? view('admin.car.window', CarView::for($offer, $user)->vars()) : null;
+        return $offer && $user && $offer->isEditableBy($user) ? view('admin.car.window', CarView::for($offer, $user, deal: $deal)->vars()) : null;
     }
 
-    /** Строка «Сделок» — окно её машины (параллельная своего окна не имеет: она в блоке «Параллельно» сделки машины). */
+    /**
+     * Строка «Сделок» — окно её машины о ней: идущая и последняя — как у всех, отменённая или прошлая — о той сделке
+     * (`CarView::$pastDeal`). Параллельная своего окна не имеет: она в блоке «Параллельно» сделки машины.
+     */
     public static function ofDeal(Request $request, ?Deal $deal): ?View
     {
-        return self::of($request, $deal?->offer);
+        return self::of($request, $deal?->offer, $deal);
     }
 }

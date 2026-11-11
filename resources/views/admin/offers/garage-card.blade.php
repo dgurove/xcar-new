@@ -12,7 +12,9 @@
             @if ($car->manager)<x-ui.person :user="$car->manager"/>@else<span class="text-ink-muted">взяли под себя</span>@endif
             @if ($car->deal?->garage_payer)<span class="text-ink-muted">{{ $car->deal->garagePayerLine() }}</span>@endif
         </div>
-        @if ($morePrep)<span class="shrink-0">@include('garage.cars.actions', ['buttons' => [], 'more' => $morePrep, 'bar' => false])</span>@endif
+        {{-- Пока ТС не продана, «Расчёта» нет — редкое продажи («Изменить цену покупателю») тоже здесь (12.11.2026: из окна оно пропало). --}}
+        @php $menu = $car->isSold() ? $morePrep : [...$morePrep, ...$moreSale]; @endphp
+        @if ($menu)<span class="shrink-0">@include('garage.cars.actions', ['buttons' => [], 'more' => $menu, 'bar' => false])</span>@endif
     </div>
     @error('car')<x-ui.flash tone="danger">{{ $message }}</x-ui.flash>@enderror
     {{-- Машина на нашей парковке (18.10.2026): кто заберёт и пропуск — как у обычной сделки в «Получении». --}}

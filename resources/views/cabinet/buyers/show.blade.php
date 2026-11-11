@@ -13,7 +13,7 @@
     $passportStatus = match (true) { (bool) $ready => 'заполнен', (bool) $party?->readyForContract() => 'нет скана', default => 'не заполнен' };
 @endphp
 <x-ui.cabinet :title="$buyer->name" heading="Покупатели" :back="$back" :phone-heading="false">
-<div class="mx-auto flex max-w-2xl flex-col gap-6">
+<div class="mx-auto flex w-full max-w-2xl flex-col gap-6">
     <x-ui.contact :name="$buyer->name" :user="$buyer">
         {{-- Строками, а не через запятую (владелец 11.11.2026): номер — своей строкой (нажатие — «Скопировать / Позвонить»),
              под ним кто он и с какого дня. Кнопок «Позвонить» и «Чат» нет: номер и так нажимается, чаты — строками ниже. --}}

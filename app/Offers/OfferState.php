@@ -53,6 +53,17 @@ enum OfferState: string
         };
     }
 
+    /**
+     * Цвет слова состояния текстом — строка CRM, плитка, полоса окна машины (12.11.2026: была копия в каждом виде, и они
+     * разошлись). Без своего тона — пусто: цвет решает место.
+     */
+    public function textTone(): string
+    {
+        return match ($this->tone()) {
+            'open' => 'text-accent-text', 'urgent' => 'text-urgent', 'danger' => 'text-danger', default => '',
+        };
+    }
+
     public function isPublic(): bool
     {
         return $this === self::Open;

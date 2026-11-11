@@ -4,6 +4,7 @@ namespace App\Http\Auth;
 
 use App\Notifications\TelegramChannel;
 use App\Notifications\TestNotice;
+use App\Support\SafeBack;
 use App\Telegram\Actions\UnlinkChat;
 use App\Telegram\Offers\LoginUrl;
 use App\Telegram\StartLink;
@@ -59,8 +60,8 @@ class TelegramController
      */
     public function go(Request $request)
     {
-        $to = (string) $request->query('to', '/');
-        $path = str_starts_with($to, '/') && ! str_starts_with($to, '//') && ! str_contains($to, '\\') ? $to : '/';
+        // Только свой путь (`SafeBack`): `/<TAB>/host` браузер читает как `//host` — чужой сайт по нашей ссылке (12.11.2026).
+        $path = SafeBack::path($request->query('to', '/')) ?? '/';
         $tgId = LoginUrl::verify($request->query(), (string) config('xcar.telegram.token'));
         if ($tgId && Cache::add('telegram:login:'.$request->query('hash'), true, 86400)
             && ($user = User::where('telegram_chat_id', $tgId)->first())) {

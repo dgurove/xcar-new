@@ -77,9 +77,7 @@ final class OfferRow
         $this->line = $this->admin && in_array($offer->state, [OfferState::Sold, OfferState::Delivered, OfferState::Garage, OfferState::Cancelled], true)
             ? DealLine::forOffer($offer) : null;
         $this->stateWord = $this->line?->word ?? $offer->crmTab();
-        $this->tone = $this->line?->tone ?? match ($offer->state->tone()) {
-            'open' => 'text-accent-text', 'urgent' => 'text-urgent', 'danger' => 'text-danger', default => '',
-        };
+        $this->tone = $this->line?->tone ?? $offer->state->textTone();
         $this->count = ! $this->admin ? 0 : ($gallery ? (int) ($offer->interests_count ?? 0) : (int) ($offer->active_bids_count ?? 0));
         $this->garageBids = $gallery ? 0 : min($this->count, (int) ($offer->garage_bids_count ?? 0));
         $this->priceBids = $this->count - $this->garageBids;
