@@ -4264,18 +4264,10 @@ html.kb-open { --home-gap: 0px; }
 .surface-park .cards .card--req .card-aside { flex-direction: row; white-space: nowrap; align-self: baseline; }
 /* Шаг словом — на линии букв названия: в выравнивании по базовой линии участвуют оба соседа по строке. */
 .surface-park .cards:not(.cards--grid) > .card--req > .card-body { align-self: baseline; }
-/* Госномер — на строке номера, а не у названия: название не режется до «Hyundai Sol…». */
-.surface-park .cards:not(.cards--grid) > .card--req .card-title .plate { display: none; }
-.card-sub-plate { margin-left: .375rem; font-size: var(--text-sm); }
-.cards--grid .card--req .card-sub-plate { display: none; }
-@media (min-width: 640px) { .cards:not(.cards--list) .card--req .card-sub-plate { display: none; } .surface-park .cards:not(.cards--list) > .card--req .card-title .plate { display: inline; } }
 .surface-park .cards .card-extra > .card-due { margin-left: auto; font-size: var(--text-sm); white-space: nowrap; }
 /* Откуда заявка (x-park.request-source) — своей строкой под номером, а не в ряд с ним. */
 .surface-park .cards .card-extra:has(> .card-source) { flex-wrap: wrap; overflow: visible; row-gap: .125rem; }
 .surface-park .cards .card-extra > .card-source { flex: 1 0 100%; min-width: 0; margin-top: 0; justify-content: flex-start; }
-/* В карточке правый край строки зависит от пилюли справа («нужен эвакуатор» шире «Выдачи»): время справа прыгало от
-   строки к строке. Здесь время первым, от левого края — под номером, ровно у всех. */
-.surface-park .cards .card-extra > .card-source > .req-source-when { order: -1; }
 /* Факты под названием — одной строкой текста (.card-sub), как во второй строке таблицы, а не рядом чипов. */
 .card-sub { display: block; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--text-sm); color: var(--color-ink-muted); }
 .card-sub > * + * { margin-left: .5rem; }
@@ -4784,7 +4776,22 @@ dialog.lightbox:not(.lb-one) .lb-pill--bottom { bottom: calc(var(--lb-strip-bott
      список упорядочен) и «От кого». */
   .req-source { display: flex; align-items: baseline; justify-content: space-between; gap: .75rem; min-width: 0; font-size: var(--text-xs); line-height: 1.3; margin-top: .125rem; }
   .req-source-who { min-width: 0; color: var(--color-ink-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .req-source-when { flex: none; color: var(--color-ink-dim); white-space: nowrap; }
+  .req-source-when { flex: none; margin-left: auto; color: var(--color-ink-dim); white-space: nowrap; }
+  /* Стоянка слева, дата и время справа — всегда (владелец 11.11.2026). На телефоне отправителя нет вовсе: «слева парковка,
+     справа дата и время»; на ПК он в плитках между ними и ужимается. */
+  .req-source-yard { flex: 0 1 auto; min-width: 0; color: var(--color-ink-muted); white-space: nowrap; }
+  /* Стоянка кнопкой (x-park.request-place): без рамки и фона, как текст; нет стоянки — «Указать парковку» цветом акцента.
+     Поле нажатия выше строки (::after), саму строку не раздвигает. */
+  .req-place { position: relative; display: inline-flex; min-width: 0; max-width: 100%; font: inherit; text-align: left; cursor: pointer; }
+  /* Фокус после закрытия шторки — без рамки поверх строки: подчёркиванием, как наведение. */
+  .req-place:focus { outline: none; }
+  .req-place:focus-visible .place-text { text-decoration: underline; text-underline-offset: 3px; }
+  .req-place::after { content: ""; position: absolute; inset: -.5rem -.25rem; }
+  .req-place .place { min-width: 0; }
+  .req-place .place-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .req-place.is-empty { color: var(--color-accent-text); }
+  @media (hover: hover) { .req-place:hover .place-text { text-decoration: underline dotted; text-underline-offset: 3px; } }
+  @media (max-width: 639.98px) { .req-source-who { display: none; } }
   @media (min-width: 640px) { .table td.grow > .cell-source { display: none; } }
   .table td.req-from { max-width: 13rem; }
   @media (min-width: 1280px) { .table td.req-from { max-width: 16rem; } }

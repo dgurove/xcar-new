@@ -15,11 +15,13 @@ use App\Mail\Scope as MailScope;
 use App\Park\Actions\CreateRequest;
 use App\Park\Actions\Intake;
 use App\Park\Actions\MarkSold;
+use App\Park\Actions\Move;
 use App\Park\Actions\RefuseRelease;
 use App\Park\Actions\RegisterCandidate;
 use App\Park\Actions\RegisterFromLetters;
 use App\Park\Actions\Release;
 use App\Park\Actions\SetDates;
+use App\Park\Actions\SetYard;
 use App\Park\Actions\StoreByLetters;
 use App\Park\Actions\UpdateVehicle;
 use App\Park\City;
@@ -46,7 +48,9 @@ use App\Support\Table\Table;
 use App\Vendors\Vendor;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\ViewErrorBag;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class RequestController
 {
@@ -374,6 +378,59 @@ class RequestController
     }
 
     /** Покупатель приехал и не взял: продажа снимается, ТС остаётся стоять, вендору уходит письмо об отказе. */
+    /**
+     * Шторка стоянки из строки заявки (11.11.2026, владелец: «вместо парковки удобная кнопка, чтобы быстро указать, и место»):
+     * ТС стоит со стоянкой — «Переставить» (`Move`), стоит без неё — «Указать парковку» (`SetYard`, правит приём), ещё едет —
+     * стоянка приёма у заявки (мест до приезда нет). Одна шторка на список, форма грузится по нажатию (`place_sheet_controller`).
+     */
+    public function place(Request $request, ParkRequest $req)
+    {
+        return $this->placeFrame($req);
+    }
+
+    private function placeFrame(ParkRequest $req, ?ViewErrorBag $errors = null)
+    {
+        $vehicle = $req->vehicle;
+        $yards = Yard::where('is_active', true)->orderBy('name')->get();
+        $stored = $vehicle->state === VehicleState::Stored;
+        // Ошибку поля компоненты (`x-ui.field`) берут из общего `$errors`, не из данных вида.
+        if ($errors) {
+            view()->share('errors', $errors);
+        }
+
+        return response()->view('park.requests.place-frame', [
+            'req' => $req, 'vehicle' => $vehicle, 'stored' => $stored,
+            'yards' => $yards->pluck('name', 'id'),
+            'yardRows' => $stored ? $yards->mapWithKeys(fn ($y) => [$y->id => $y->freeSpots()]) : [],
+        ], $errors ? 422 : 200);
+    }
+
+    /**
+     * Сохранить шторку стоянки — в самой шторке: место занято — ошибка там же (422, форма в рамке); удалось — тост и
+     * обновление страницы потоком `refresh`, шторку закрывает `place_sheet_controller`.
+     */
+    public function savePlace(Request $request, ParkRequest $req, Move $move, SetYard $setYard)
+    {
+        $vehicle = $req->vehicle;
+        try {
+            $data = $request->validate(['yard_id' => ['required', 'exists:park_yards,id'], 'spot' => ['nullable', 'string', 'max:16']]);
+            $yard = Yard::findOrFail($data['yard_id']);
+            $spot = $data['spot'] ?? null;
+            $toast = match (true) {
+                $vehicle->state !== VehicleState::Stored => $req->update(['yard_id' => $yard->id]) ? 'Парковка указана' : null,
+                (bool) $vehicle->yard_id => ($moved = $move($vehicle, $request->user(), $yard, $spot))->spot ? 'Переставлена на '.$moved->spot : 'Переставлена',
+                default => $setYard($vehicle, $request->user(), $yard, $spot) ? 'Парковка указана' : null,
+            };
+        } catch (ValidationException $e) {
+            $request->flashOnly(['yard_id', 'spot']);
+
+            return $this->placeFrame($req->fresh(), (new ViewErrorBag)->put('default', $e->validator->errors()));
+        }
+        session()->flash('toast', $toast);
+
+        return response('<turbo-stream action="refresh"></turbo-stream>')->header('Content-Type', 'text/vnd.turbo-stream.html');
+    }
+
     public function refuse(Request $request, ParkRequest $req, RefuseRelease $refuse)
     {
         abort_unless($request->user()->parkHandles(), 404);

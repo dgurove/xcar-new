@@ -84,9 +84,8 @@ class Request extends Model
             (bool) $this->letter => [NodeTitle::email($this->letter), null, $this->letter->date_at ?? $this->created_at],
             default => [null, $this->creator?->shortName(), $this->created_at],
         };
-        $day = $at?->isToday() ? 'сегодня' : ($at?->isYesterday() ? 'вчера' : $at?->translatedFormat($at->isCurrentYear() ? 'j M' : 'j M Y'));
-
-        return ['email' => $email, 'name' => $name, 'at' => $at, 'when' => $at ? $day.', '.$at->format('G:i') : null];
+        // Как столбец «Пришла» на ПК: «09.10 14:04», «вчера 12:30» (`Ago::at`), не «9 окт» (владелец 11.11.2026).
+        return ['email' => $email, 'name' => $name, 'at' => $at, 'when' => $at ? \App\Support\Ago::at($at, time: true) : null];
     }
 
     /** Сделка XCar, по которой выдача (`SyncParkRelease`). */

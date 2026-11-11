@@ -37,7 +37,7 @@
                 <span class="fit-core"><x-park.ref :vehicle="$v" class="sm:hidden"/><x-ui.plate :value="$v->plate" class="sub-plate"/></span>
             </span>
             {{-- Третий этаж — только в краткой таблице (телефон, ПК с открытой карточкой); на ПК — свой столбец. --}}
-            <x-park.request-source :req="$req" class="cell-source"/>
+            <x-park.request-source :req="$req" :place="true" class="cell-source"/>
         @endif
     </td>
         @break
@@ -61,7 +61,8 @@
     <td class="{{ $col->classes() }}"><x-park.request-type :type="$req->type"/></td>
         @break
         @case('yard')
-    <td class="{{ $col->classes() }}">@if ($yard = $req->yard ?? $v->yard)<x-ui.place>{{ $yard->name }}</x-ui.place>@endif</td>
+    {{-- Стоянка кнопкой со шторкой, как в строке телефона (`x-park.request-place`). --}}
+    <td class="{{ $col->classes() }}">@unless ($busy)<x-park.request-place :req="$req"/>@endunless</td>
         @break
         @endswitch
     @endforeach

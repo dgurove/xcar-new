@@ -51,6 +51,9 @@ Route::domain(config('xcar.park_host'))->middleware(['auth', 'section:park'])->g
     Route::post('/requests/{req}/intake', [RequestController::class, 'intake']);
     Route::post('/requests/{req}/release', [RequestController::class, 'release']);
     Route::post('/requests/{req}/refuse', [RequestController::class, 'refuse'])->middleware('ability:parkHandles');
+    // Стоянка из строки заявки (11.11.2026): шторка «Переставить» / «Указать парковку» / «Парковка приёма» (`x-park.request-place`).
+    Route::get('/requests/{req}/place', [RequestController::class, 'place']);
+    Route::post('/requests/{req}/place', [RequestController::class, 'savePlace']);
 
     Route::get('/cars', [VehicleController::class, 'index']);
     Route::get('/cars/export', [VehicleController::class, 'export'])->middleware('ability:parkMoney');

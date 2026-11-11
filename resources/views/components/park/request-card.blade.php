@@ -1,7 +1,10 @@
 {{-- Заявка в плитках и строках: карточка ТС целиком нажимается. Две строки: название с госномером и строка
-     текста — номер убытка; третья — откуда заявка. Справа — тип заявки. Пересказа под названием нет: «Выдать, реализовано 18 сен» — это то же, что тип
+     текста — номер убытка; третья — стоянка и время. Госномер — за названием, как в таблице (владелец 11.11.2026: «бред
+     номер тачки после номера убытка ставить»). Справа — тип заявки цветным кругом, как в таблице, и только где типы смешаны
+     (`mixed`: «Все», поиск): во вкладке «Приём» или «Выдача» его называет пилюля (владелец 11.11.2026: «нет смысла в каждой
+     строке писать слово»). Закрытая — словом её исход. Пересказа под названием нет: «Выдать, реализовано 18 сен» — это то же, что тип
      справа, а из-за лишней строки на экран влезало вдвое меньше заявок. Кнопок нет. --}}
-@props(['req', 'arrive' => null])
+@props(['req', 'arrive' => null, 'mixed' => true])
 @php
     // Заявку завела почта, документы ещё читаются — силуэт плитки (как строка таблицы, `x-park.request-row`).
     $state = $arrive['state'] ?? null;
@@ -26,7 +29,7 @@
         </span>
         <x-park.request-source :req="$req" class="card-source"/>
     </div>
-    <div class="card-aside"><x-ui.state tone="soft">{{ $req->type->label() }}</x-ui.state></div>
+    @if ($mixed)<div class="card-aside"><x-park.request-type :type="$req->type" :word="false"/></div>@endif
 </article>
 @else
 <x-park.card :vehicle="$v" :href="'/cars/'.$v->id" :facts="false" link
@@ -34,12 +37,13 @@
     {{-- Одна строка текста: госномер, логотип страховой с номером убытка (не влезают — строка ужимается,
          fitline) (телефона нет — владелец 07.10.2026: «на карточках не надо») — данные, хвост может уйти в многоточие. --}}
     <span class="card-sub" data-controller="fitline">
-        <span class="fit-core"><x-park.ref :vehicle="$v"/><x-ui.plate :value="$v->plate" class="card-sub-plate"/></span>
+        <span class="fit-core"><x-park.ref :vehicle="$v"/></span>
     </span>
     {{-- Откуда заявка — своей мелкой строкой: адрес и время письма или кто завёл (владелец 07.10.2026). --}}
-    <x-park.request-source :req="$req" class="card-source"/>
+    <x-park.request-source :req="$req" :place="true" class="card-source"/>
+    {{-- Слот есть всегда: без него `x-park.card` рисует свои «83 д». --}}
     <x-slot:aside>
-        <x-ui.state :tone="$tone">{{ $word ? mb_strtolower($word) : $req->type->label() }}</x-ui.state>
+        @if ($word)<x-ui.state :tone="$tone">{{ mb_strtolower($word) }}</x-ui.state>@elseif ($mixed)<x-park.request-type :type="$req->type" :word="false"/>@endif
     </x-slot:aside>
 </x-park.card>
 @endif

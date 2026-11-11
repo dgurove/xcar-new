@@ -20,4 +20,8 @@
     {{-- Окно писем для строк «Письма» в карточке заявки. --}}
     <x-mail.window/>
     <x-park.act-window/>
+    {{-- Стоянка строки — одна шторка на список, форма по нажатию (`x-park.request-place`, `place_sheet_controller`). --}}
+    <div class="contents" data-controller="sheet place-sheet" data-action="place:open@window->place-sheet#load place:open@window->sheet#open turbo:submit-end->place-sheet#saved">
+        <x-ui.sheet id="place-sheet-dialog" title="Парковка"><turbo-frame id="place-sheet" data-place-sheet-target="frame"></turbo-frame></x-ui.sheet>
+    </div>
 </x-ui.shell>
