@@ -1247,7 +1247,8 @@ class MailController
             'signing' => $offer->deal?->signing_at ? \App\Support\Ago::at($offer->deal->signing_at, true, words: false) : '',
             'signing_address' => $offer->deal?->signing_address ?? '',
             // Время записи словами для письма поставщику (11.11.2026): «в четверг 12.11 в 15:00».
-            'signing_when' => $offer->deal?->signing_at ? \App\Offers\Signing::words($offer->deal->signing_at) : '',
+            // Выбрано одно время — им, иначе дни и время, что назвал менеджер: «в четверг 12.11 или в пятницу 13.11, в 11:00 или 15:00».
+            'signing_when' => $offer->deal ? ($offer->deal->signing_at ? \App\Offers\Signing::words($offer->deal->signing_at) : \App\Offers\Signing::wishWords($offer->deal)) : '',
         ];
     }
 

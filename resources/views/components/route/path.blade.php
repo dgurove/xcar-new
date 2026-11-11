@@ -227,14 +227,14 @@
                          выбрать за него. --}}
                     @if ($deal && $position->track === \App\Workflow\Track::Sale && $deal->signing_at === null && auth()->user()?->canManageCrm()
                         && \App\Offers\Signing::asksTime($position->stage->loadMissing('exits.to.exits')))
-                        @if (\App\Offers\Signing::wishAt($deal))
+                        @if (\App\Offers\Signing::wish($deal))
                             <x-deal.signing-when :deal="$deal" :action="'/work/deals/'.$deal->id.'/signing-wish'" class="mt-2"/>
                         @else
                             <div data-controller="sheet" class="mt-3">
                                 <p class="text-sm text-ink-muted">Менеджер ещё не назвал время подписания</p>
                                 <div class="step-acts mt-2"><x-ui.button type="button" size="sm" variant="secondary" data-action="sheet#open">Время за менеджера</x-ui.button></div>
                                 <x-ui.sheet :id="'signing-for-'.$deal->id" title="Когда покупатель сможет подписать">
-                                    @include('cabinet.deals.signing-when-form', ['action' => '/work/deals/'.$deal->id.'/signing-wish', 'inSheet' => true])
+                                    @include('cabinet.deals.signing-when-form', ['action' => '/work/deals/'.$deal->id.'/signing-wish', 'submit' => 'Сохранить'])
                                 </x-ui.sheet>
                             </div>
                         @endif
@@ -248,6 +248,8 @@
                         @else
                             <x-deal.signing-when :deal="$deal" :action="'/work/deals/'.$deal->id.'/signing-wish'" picks class="mt-2"/>
                         @endif
+                    @elseif ($deal && $position->track === \App\Workflow\Track::Sale && ! $deal->signing_at && \App\Offers\Signing::awaitsSlots($position->stage))
+                        <x-deal.signing-when :deal="$deal" readonly class="mt-3"/>
                     @elseif ($deal && $position->track === \App\Workflow\Track::Sale && \App\Offers\Signing::booked($deal))
                         <x-deal.appointment :deal="$deal" :confirmed="$position->waitsFor() === \App\Workflow\WaitsFor::Manager" :ics="'/work/deals/'.$deal->id.'/signing.ics'" class="mt-3"/>
                     @endif
@@ -368,6 +370,12 @@
                                     <div data-controller="sheet">
                                         <x-ui.button type="button" size="sm" :variant="$variant" data-action="sheet#open">{{ $label($exit) }}</x-ui.button>
                                         <x-offer.publish-sheet :offer="$offer" id="exit-{{ $exit->id }}" action="/offers/{{ $n }}/exit/{{ $exit->id }}"/>
+                                    </div>
+                                @elseif ($deal && \App\Offers\Signing::confirmExit($exit))
+                                    {{-- «Запись подтверждена» — на какое из названных менеджером времён записал поставщик (`ConfirmSigning`). --}}
+                                    <div data-controller="sheet">
+                                        <x-ui.button type="button" size="sm" :variant="$variant" data-action="sheet#open" aria-controls="confirm-{{ $exit->id }}">{{ $label($exit) }}</x-ui.button>
+                                        <x-deal.signing-confirm-sheet :id="'confirm-'.$exit->id" :deal="$deal" :exit="$exit"/>
                                     </div>
                                 @elseif ($deal && \App\Offers\Signing::slotsExit($exit))
                                     {{-- Свободное время поставщика — шторкой: адрес и время, менеджер выберет плиткой (`Offers\Signing`). --}}

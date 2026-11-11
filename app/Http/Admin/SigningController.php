@@ -25,6 +25,16 @@ final class SigningController
         return back(fallback: '/work/deals/'.$deal->id)->with('toast', 'Время показано менеджеру: '.count($deal->signing_slots ?? []));
     }
 
+    /** «Запись подтверждена» — на какое время записал поставщик (`ConfirmSigning`). */
+    public function confirm(Request $request, Deal $deal, \App\Offers\Actions\ConfirmSigning $confirm)
+    {
+        $data = $request->validate(['exit' => ['required', 'integer'], 'day' => ['required', 'string', 'max:10'], 'time' => ['required', 'string', 'max:5']],
+            ['day.required' => 'Выберите день', 'time.required' => 'Выберите время']);
+        $deal = $confirm($deal, Outcome::findOrFail($data['exit']), $request->user(), $data['day'], $data['time']);
+
+        return back(fallback: '/work/deals/'.$deal->id)->with('toast', 'Записали на '.\App\Offers\Signing::short($deal->signing_at));
+    }
+
     public function pick(Request $request, Deal $deal, PickSigningTime $pick)
     {
         abort_unless($request->user()->canManageCrm(), 403);
@@ -37,12 +47,11 @@ final class SigningController
     public function wish(Request $request, Deal $deal, \App\Offers\Actions\SaveSigningWish $save)
     {
         abort_unless($request->user()->canManageCrm(), 403);
-        $data = $request->validate(['day' => ['required', 'string', 'max:10'], 'time' => ['required', 'string', 'max:5']],
-            ['day.required' => 'Выберите день', 'time.required' => 'Выберите время']);
-        $deal = $save($deal, $request->user(), $data['day'], $data['time'], staff: true);
-        $at = $deal->signing_at ?? \App\Offers\Signing::wishAt($deal);
+        $data = $request->validate(['days' => ['required', 'array', 'max:14'], 'days.*' => ['string', 'max:10'], 'times' => ['required', 'array', 'max:24'], 'times.*' => ['string', 'max:5']],
+            ['days.required' => 'Отметьте хотя бы один день', 'times.required' => 'Отметьте хотя бы одно время']);
+        $deal = $save($deal, $request->user(), $data['days'], $data['times'], staff: true);
 
-        return back(fallback: '/work/deals/'.$deal->id)->with('toast', ($deal->signing_at ? 'Записываем на ' : 'Покупатель может ').\App\Offers\Signing::short($at));
+        return back(fallback: '/work/deals/'.$deal->id)->with('toast', 'Покупатель может '.\App\Offers\Signing::wishLine($deal));
     }
 
     public function ics(Deal $deal)

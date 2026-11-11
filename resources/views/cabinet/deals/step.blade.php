@@ -83,7 +83,9 @@
                  делать менеджеру нечего (ждём, готовим счёт) или дело говорит чек-лист ниже. --}}
             @php
                 // Только «Ждём поставщика»: у наших этапов фраза — инструкция менеджеру («Свяжитесь с владельцем…»), не статус.
-                $statusLine = ! $requirement && $position->stage->ask_text && $position->waitsFor() === \App\Workflow\WaitsFor::Supplier
+                // «Запись на подписание» — и пока письмо не ушло (ждём XCar): «Записываем на подписание, с 11.11» (11.11.2026).
+                $statusLine = ! $requirement && $position->stage->ask_text
+                    && ($position->waitsFor() === \App\Workflow\WaitsFor::Supplier || \App\Offers\Signing::awaitsSlots($position->stage))
                     ? \App\Users\Wording::mine($position->stage->ask_text).($position->entered_at ? ', с '.\App\Support\Ago::day($position->entered_at) : '') : null;
                 // Поставщик готовит договор — когда покупатель сможет подписать, день и время заранее (`Signing`, 11.11.2026).
                 $signingDays = ! $requirement && $deal->signing_at === null && \App\Offers\Signing::asksTime($position->stage->loadMissing('exits.to.exits'));
@@ -107,7 +109,8 @@
                     // поставщик готовит договор» вместо «Оформление документов»).
                     // Ждём поставщика или нас, а у этапа есть фраза: заголовком — чей ход, фраза с датой — строкой под ним
                     // (11.11.2026, владелец: «уродство» — фраза заголовком и «Ждём … с …» под ней).
-                    $statusLine !== null => $position->waitsFor()->label(),
+                    // Менеджеру «мы» — XCar («Ждём XCar», как в «Сделках»).
+                    $statusLine !== null => $position->waitsFor() === \App\Workflow\WaitsFor::Us ? 'Ждём XCar' : $position->waitsFor()->label(),
                     default => \App\Users\Wording::mine($position->stage->block?->name) ?? 'Идёт работа',
                 };
             @endphp
@@ -205,6 +208,9 @@
                 <x-deal.signing-pick :deal="$deal" :action="'/deals/'.$deal->id.'/signing'" :other="'/deals/'.$deal->id.'/signing-wish'" class="mt-4"/>
             @elseif ($signingPick)
                 <x-deal.signing-when :deal="$deal" :action="'/deals/'.$deal->id.'/signing-wish'" picks class="mt-4"/>
+            @elseif (! $deal->signing_at && \App\Offers\Signing::awaitsSlots($position->stage))
+                {{-- Письмо записи: просим одно из названных — строкой, без «Изменить». --}}
+                <x-deal.signing-when :deal="$deal" readonly class="mt-4"/>
             @elseif (\App\Offers\Signing::booked($deal))
                 <x-deal.appointment :deal="$deal" :confirmed="$position->waitsFor() === \App\Workflow\WaitsFor::Manager" :ics="'/deals/'.$deal->id.'/signing.ics'" class="mt-4"/>
             @endif

@@ -58,7 +58,9 @@ final class Signing
      */
     public static function asksTime(?Stage $stage): bool
     {
-        return (bool) $stage?->loadedExits()->contains(fn (Outcome $e) => $e->to?->loadedExits()->contains(fn (Outcome $x) => self::pickExit($x)));
+        // «Запись на подписание» тоже ведёт на выбор («Поставщик предложил другое время») — но там уже пишем, не спрашиваем.
+        return $stage !== null && ! self::awaitsSlots($stage)
+            && $stage->loadedExits()->contains(fn (Outcome $e) => $e->to?->loadedExits()->contains(fn (Outcome $x) => self::pickExit($x)));
     }
 
     /** Этап, где ждём ответа поставщика на запись: у него исход «Поставщик предложил другое время». */
@@ -67,19 +69,79 @@ final class Signing
         return (bool) $stage?->loadedExits()->contains(fn (Outcome $e) => self::slotsExit($e));
     }
 
-    /** Время, что назвал менеджер заранее (`signing_wish.at`), если ещё не прошло. */
-    public static function wishAt(Deal $deal): ?Carbon
-    {
-        $at = $deal->signing_wish['at'] ?? null;
-        $at = $at ? Carbon::parse($at, 'Europe/Moscow') : null;
+    public const CONFIRM_EXIT = 'запись подтверждена';
 
-        return $at?->isFuture() ? $at : null;
+    /** Исход «Запись подтверждена»: только с временем, что подтвердил поставщик, — шторкой (`ConfirmSigning`). */
+    public static function confirmExit(?Outcome $exit): bool
+    {
+        return $exit !== null && $exit->actor === Actor::Staff && mb_strtolower(trim($exit->label)) === self::CONFIRM_EXIT;
     }
 
-    /** Дело «Когда покупатель сможет подписать?»: спросили заранее, времени нет и оно ещё не выбрано. */
+    /**
+     * Когда покупатель может подписать (`signing_wish`, 11.11.2026, владелец: «сначала дни — можно несколько, потом время —
+     * можно несколько»): ещё не прошедшие дни и время по порядку. Пусто — не названо.
+     *
+     * @return array{days: Collection<int, Carbon>, times: list<string>}|null
+     */
+    public static function wish(Deal $deal): ?array
+    {
+        $w = $deal->signing_wish ?? [];
+        $times = array_values(array_filter((array) ($w['times'] ?? []), fn ($t) => preg_match('/^\d{1,2}:\d{2}$/', (string) $t)));
+        usort($times, fn ($a, $b) => strcmp(sprintf('%05s', $a), sprintf('%05s', $b)));
+        $days = collect($w['days'] ?? [])->map(fn ($d) => Carbon::parse($d, 'Europe/Moscow')->startOfDay())
+            ->filter(fn (Carbon $d) => $d->copy()->endOfDay()->isFuture())->sort()->values();
+
+        return $days->isNotEmpty() && $times !== [] ? ['days' => $days, 'times' => $times] : null;
+    }
+
+    /** Дело «Когда покупатель сможет подписать?»: спросили заранее, не ответил и время ещё не выбрано. */
     public static function wishDue(Deal $deal): bool
     {
-        return $deal->signing_asked_at !== null && self::wishAt($deal) === null && $deal->signing_at === null && $deal->isActive();
+        return $deal->signing_asked_at !== null && self::wish($deal) === null && $deal->signing_at === null && $deal->isActive();
+    }
+
+    /** Все рабочие часы филиала отмечены — «в любое время». */
+    public static function anyTime(Deal $deal, array $times): bool
+    {
+        return array_diff(self::times($deal), $times) === [];
+    }
+
+    /** «чт 12.11 или пт 13.11, 11:00 или 15:00» — строкой шага и чата; null — не названо. */
+    public static function wishLine(Deal $deal): ?string
+    {
+        if (! ($w = self::wish($deal))) {
+            return null;
+        }
+        $days = self::either($w['days']->map(fn (Carbon $d) => $d->locale('ru')->isoFormat('dd').' '.$d->format('d.m'))->all());
+
+        return $days.', '.(self::anyTime($deal, $w['times']) ? 'весь день' : self::either($w['times']));
+    }
+
+    /** В письме поставщику: «в четверг 12.11 или в пятницу 13.11, в 11:00 или 15:00»; весь день — «в любое время с 9:00 до 18:00». */
+    public static function wishWords(Deal $deal): string
+    {
+        if (! ($w = self::wish($deal))) {
+            return '';
+        }
+        $days = self::either($w['days']->map(fn (Carbon $d) => self::on($d).' '.$d->format('d.m'))->all());
+        $o = self::office($deal);
+        $hm = fn (string $t) => preg_replace('/^0(\d)/', '$1', $t);
+
+        return $days.', '.(self::anyTime($deal, $w['times']) ? 'в любое время с '.$hm($o['from']).' до '.$hm($o['to']) : 'в '.self::either($w['times']));
+    }
+
+    /** «a», «a или b», «a, b или c». @param list<string> $items */
+    private static function either(array $items): string
+    {
+        return count($items) > 1 ? implode(', ', array_slice($items, 0, -1)).' или '.end($items) : (string) ($items[0] ?? '');
+    }
+
+    /** «в четверг», «во вторник», «в среду». */
+    private static function on(Carbon $c): string
+    {
+        return match ($c->dayOfWeekIso) {
+            1 => 'в понедельник', 2 => 'во вторник', 3 => 'в среду', 4 => 'в четверг', 5 => 'в пятницу', 6 => 'в субботу', default => 'в воскресенье',
+        };
     }
 
     /** «чт 12.11 в 15:00» — строкой шага и чата. */
@@ -94,11 +156,8 @@ final class Signing
     public static function words(Carbon $at): string
     {
         $m = $at->copy()->timezone('Europe/Moscow');
-        $day = match ($m->dayOfWeekIso) {
-            1 => 'в понедельник', 2 => 'во вторник', 3 => 'в среду', 4 => 'в четверг', 5 => 'в пятницу', 6 => 'в субботу', default => 'в воскресенье',
-        };
 
-        return $day.' '.$m->format('d.m').' в '.$m->format('G:i');
+        return self::on($m).' '.$m->format('d.m').' в '.$m->format('G:i');
     }
 
     /** @return list<string> «9:00» … «17:00» — по часу в часах филиала (последний — за час до закрытия) */

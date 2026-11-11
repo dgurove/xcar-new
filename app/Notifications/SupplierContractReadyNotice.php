@@ -25,9 +25,9 @@ final class SupplierContractReadyNotice extends Notice
 
     public function text(): ?string
     {
-        $at = Signing::wishAt($this->deal);
+        $wish = Signing::wishLine($this->deal);
 
-        return $at ? 'Покупатель может '.Signing::short($at).' — напишите поставщику о записи' : 'Менеджер ещё не назвал время подписания';
+        return $wish ? 'Покупатель может '.$wish.' — напишите поставщику о записи' : 'Менеджер ещё не назвал время подписания';
     }
 
     public function href(): string

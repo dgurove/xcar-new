@@ -3301,6 +3301,19 @@ html.kb-open { --home-gap: 0px; }
   .dark .slot-pick:has(input:checked) .slot-day { color: color-mix(in oklab, var(--color-chrome) 70%, transparent); }
   .slot-pick:has(input:focus-visible) { outline: 2px solid var(--color-accent); outline-offset: 2px; }
   .slot-pick-time { @apply py-2.5; }
+  .slot-check { position: absolute; top: .5rem; right: .5rem; opacity: 0; transition: opacity .15s; }
+  .slot-pick:has(input:checked) .slot-check { opacity: 1; }
+  .choice-s > span { @apply px-3 py-1.5; }
+  /* Шаги выбора дня и времени (`signing_when_controller`): вперёд — справа, назад — слева. */
+  .sw-step { @apply flex flex-col gap-3; }
+  .sw-hint { @apply text-sm text-ink-muted; }
+  .sw-back { @apply flex w-full items-center gap-2 rounded-(--radius-m) bg-surface-2 px-3 py-2.5 text-left font-medium; }
+  .msg-step .sw-back { background: var(--color-surface); }
+  .sw-in-next { animation: sw-in-next .22s var(--ease-sheet, ease-out); }
+  .sw-in-back { animation: sw-in-back .22s var(--ease-sheet, ease-out); }
+  @keyframes sw-in-next { from { opacity: 0; transform: translateX(24px); } }
+  @keyframes sw-in-back { from { opacity: 0; transform: translateX(-24px); } }
+  @media (prefers-reduced-motion: reduce) { .sw-in-next, .sw-in-back { animation: none; } }
   .slot-pick-time .slot-time { @apply text-base; }
   .appt { @apply rounded-(--radius-m) bg-surface-2 p-4; }
   .appt-head { @apply flex items-center gap-4; }

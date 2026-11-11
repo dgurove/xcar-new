@@ -17,12 +17,12 @@ use Illuminate\Support\Facades\DB;
  */
 final class AskSigningTime
 {
-    public const CHAT_TEXT = 'Привет! Поставщик готовит договор. Когда покупатель сможет подписать? Выберите день и время — сразу запишем';
+    public const CHAT_TEXT = 'Привет! Поставщик готовит договор. Когда покупатель сможет подписать? Отметьте дни и время — сразу запишем';
 
     public function __invoke(Deal $deal, bool $notify = true): bool
     {
         $deal->refresh();
-        if ($deal->signing_asked_at || Signing::wishAt($deal) || ! $deal->buyer_id || ! $deal->isActive()) {
+        if ($deal->signing_asked_at || Signing::wish($deal) || ! $deal->buyer_id || ! $deal->isActive()) {
             return false;
         }
         $deal->update(['signing_asked_at' => now()]);

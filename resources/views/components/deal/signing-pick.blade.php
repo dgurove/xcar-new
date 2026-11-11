@@ -24,7 +24,7 @@
         <button type="button" class="btn btn-ghost btn-s px-0 text-ink-muted" data-action="sheet#open">Другое время…</button>
         <x-ui.sheet :id="'signing-other-'.$deal->id" title="Другое время">
             <p class="mb-3 text-sm text-ink-muted">Спросим у поставщика, свободно ли</p>
-            @include('cabinet.deals.signing-when-form', ['action' => $other, 'inSheet' => true, 'submit' => 'Записать', 'back' => $back])
+            @include('cabinet.deals.signing-when-form', ['action' => $other, 'submit' => 'Записать', 'back' => $back])
         </x-ui.sheet>
     </div>
 </div>

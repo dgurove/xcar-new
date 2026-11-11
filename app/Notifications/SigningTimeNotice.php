@@ -34,7 +34,7 @@ final class SigningTimeNotice extends Notice
 
     public function text(): ?string
     {
-        return 'Поставщик готовит договор. Выберите день и время — сразу запишем';
+        return 'Поставщик готовит договор. Отметьте дни и время — сразу запишем';
     }
 
     public function href(): string
@@ -60,7 +60,7 @@ final class SigningTimeNotice extends Notice
     public function toTelegram(): ?array
     {
         return ['title' => 'Когда покупатель сможет подписать договор: '.$this->deal->offer->titleWithYear(),
-            'lines' => Text::lines($this->deal->offer, 'Поставщик готовит договор. Выберите день и время — сразу запишем'),
+            'lines' => Text::lines($this->deal->offer, 'Поставщик готовит договор. Отметьте дни и время — сразу запишем'),
             'button' => 'Выбрать время'];
     }
 

@@ -58,9 +58,13 @@ class RouteController
         }
         // Свободное время поставщика — шторкой слотов (`OfferSigningSlots`), время за менеджера — выбором (`PickSigningTime`).
         if (\App\Offers\Signing::slotsExit($exit)) {
-            throw ValidationException::withMessages(['exit' => 'Внесите свободное время поставщика']);
+            throw ValidationException::withMessages(['exit' => 'Внесите время, что предложил поставщик']);
         }
-        if (\App\Offers\Signing::pickExit($exit) && ! $offer->deal?->signing_at) {
+        // «Запись подтверждена» — с временем, что подтвердил поставщик (шторка, `ConfirmSigning`).
+        if (\App\Offers\Signing::confirmExit($exit) && ! $offer->deal?->signing_at) {
+            throw ValidationException::withMessages(['exit' => 'Выберите, на когда записали']);
+        }
+        if (\App\Offers\Signing::pickExit($exit) && ! $offer->deal?->signing_at && ! ($offer->deal && \App\Offers\Signing::wish($offer->deal))) {
             throw ValidationException::withMessages(['exit' => 'Сначала выберите время']);
         }
         $payload = [];

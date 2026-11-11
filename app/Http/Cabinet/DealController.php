@@ -356,12 +356,11 @@ class DealController
     public function signingWish(Request $request, Deal $deal, \App\Offers\Actions\SaveSigningWish $save)
     {
         abort_unless($deal->buyer_id === $request->user()->id, 404);
-        $data = $request->validate(['day' => ['required', 'string', 'max:10'], 'time' => ['required', 'string', 'max:5']],
-            ['day.required' => 'Выберите день', 'time.required' => 'Выберите время']);
-        $deal = $save($deal, $request->user(), $data['day'], $data['time']);
-        $at = $deal->signing_at ?? \App\Offers\Signing::wishAt($deal);
+        $data = $request->validate(['days' => ['required', 'array', 'max:14'], 'days.*' => ['string', 'max:10'], 'times' => ['required', 'array', 'max:24'], 'times.*' => ['string', 'max:5']],
+            ['days.required' => 'Отметьте хотя бы один день', 'times.required' => 'Отметьте хотя бы одно время']);
+        $deal = $save($deal, $request->user(), $data['days'], $data['times']);
 
-        return $this->back($request, $deal)->with('toast', ($deal->signing_at ? 'Записываем на ' : 'Покупатель может ').\App\Offers\Signing::short($at));
+        return $this->back($request, $deal)->with('toast', 'Покупатель может '.\App\Offers\Signing::wishLine($deal));
     }
 
     /** Встреча в календарь телефона: подписание на час, с адресом. */

@@ -47,8 +47,8 @@ final class AnswerRequirement
                     $answer[$field['key']] = $value;
                 }
             }
-            // Время подписания — только выбранным временем (`PickSigningTime` ставит его до ответа).
-            if (\App\Offers\Signing::pickExit($exit) && ! $requirement->deal?->signing_at) {
+            // Время подписания — только выбранным временем или названными днями и временем (`PickSigningTime`, `SaveSigningWish`).
+            if (\App\Offers\Signing::pickExit($exit) && ! $requirement->deal?->signing_at && ! ($requirement->deal && \App\Offers\Signing::wish($requirement->deal))) {
                 throw ValidationException::withMessages(['exit' => 'Сначала выберите время']);
             }
             if (Deal::closes($exit) && ($blocker = $requirement->deal?->closeBlocker())) {
