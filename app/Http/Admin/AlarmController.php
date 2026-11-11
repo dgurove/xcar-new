@@ -5,6 +5,7 @@ namespace App\Http\Admin;
 use App\Live\Rows;
 use App\Logistics\Transport;
 use App\Offers\Binding;
+use App\Offers\CarWindow;
 use App\Offers\Offer;
 use App\Offers\OfferNumber;
 use App\Support\Detail;
@@ -25,19 +26,19 @@ use Illuminate\Http\Request;
  */
 final class AlarmController
 {
-    public function index(Request $request, OfferController $offers)
+    public function index(Request $request)
     {
         $user = $request->user();
         abort_unless(Binding::alarmsFor($user), 404);
         $crm = Surface::current() === Surface::Crm;
         // Карточка рядом — та же, что у списка предложений; потушили (покупатель, оплата) — строка уходит.
-        $detail = Detail::of($request, function (string $key) use ($request, $offers, $user) {
+        $detail = Detail::of($request, function (string $key) use ($request, $user) {
             $offer = OfferNumber::find($key);
             if ($offer && ! Binding::alarmQuery($user)->whereKey($offer->id)->exists()) {
                 session()->now('detail-gone', true);
             }
 
-            return $offers->detailOf($request, $offer);
+            return CarWindow::of($request, $offer);
         });
         if ($crm && $detail->framed()) {
             return $detail->response();

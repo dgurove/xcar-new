@@ -7,6 +7,7 @@ use App\Offers\Actions\ApplyReprice;
 use App\Offers\Actions\DismissReprice;
 use App\Offers\Actions\ShowDealToAll;
 use App\Offers\Offer;
+use App\Offers\OfferEventType;
 use App\Offers\OfferState;
 use App\Offers\PriceGuard;
 use App\Offers\Reprice;
@@ -92,7 +93,7 @@ class RepriceController
         abort_unless($reprice->offer_id === $offer->id, 404);
         if (! $reprice->answered_at) {
             $reprice->update(['answered_at' => now(), 'answered_by' => $request->user()->id]);
-            $offer->log(\App\Offers\OfferEventType::Note, $request->user(), ['text' => 'Поставщику ответили про переоценку не письмом']);
+            $offer->log(OfferEventType::Note, $request->user(), ['text' => 'Поставщику ответили про переоценку не письмом']);
         }
 
         return back(fallback: "/offers/{$offer->number}")->with('toast', 'Отмечено: поставщику ответили');

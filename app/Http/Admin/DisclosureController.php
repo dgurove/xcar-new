@@ -2,6 +2,7 @@
 
 namespace App\Http\Admin;
 
+use App\Mail\LetterPrompt;
 use App\Offers\Actions\Disclose;
 use App\Offers\Deal;
 use App\Offers\Disclosures;
@@ -35,7 +36,7 @@ class DisclosureController
         // письмо (`LetterPrompt`), как после «Принять»: черновик уже с днями покупателя.
         $offer = $deal->offer->fresh();
         if ($moved && $offer->position()?->letterStatus() === 'unsent' && ($url = $offer->vendorLetterUrl())) {
-            \App\Mail\LetterPrompt::ask($request->user(), $offer, $url.'&then=close');
+            LetterPrompt::ask($request->user(), $offer, $url.'&then=close');
         }
 
         return back(fallback: '/work/deals/'.$deal->id)->with('toast', match (true) {

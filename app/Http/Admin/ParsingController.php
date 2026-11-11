@@ -6,6 +6,7 @@ use App\Cars\Car;
 use App\Cars\Sources\Values;
 use App\Cars\Sources\Variants;
 use App\Http\Cars\CarFieldController;
+use App\Offers\OfferState;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 
@@ -58,7 +59,7 @@ final class ParsingController
         return $query->with(['brand', 'model', 'offer.vendor', 'offer.deal', 'offer.lastDeal', 'vehicle.vendor', 'vehicle.yard', 'vehicle.requests'])->get()
             ->map(fn (Car $car) => ['car' => $car, 'variants' => Variants::all($car), 'rank' => self::RANK[match (true) {
                 (bool) $car->offer?->deal => 'deal',
-                $car->offer?->state === \App\Offers\OfferState::Open => 'open',
+                $car->offer?->state === OfferState::Open => 'open',
                 $car->vehicle && ! $car->vehicle->state->isFinal() => 'park',
                 default => 'other',
             }]])

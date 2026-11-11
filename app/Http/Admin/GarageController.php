@@ -6,8 +6,7 @@ use App\Garage\Car;
 use App\Garage\CarLine;
 use App\Garage\CarState;
 use App\Live\Rows;
-use App\Offers\Offer;
-use App\Offers\OfferFiles;
+use App\Offers\CarWindow;
 use App\Offers\OfferNumber;
 use App\Support\Detail;
 use App\Support\Facets\Common;
@@ -36,7 +35,7 @@ class GarageController
 
     public function index(Request $request)
     {
-        $detail = Detail::of($request, fn (string $key) => ($offer = OfferNumber::find($key)) ? $this->detail($offer) : null);
+        $detail = Detail::of($request, fn (string $key) => CarWindow::of($request, OfferNumber::find($key)));
         if ($detail->framed()) {
             return $detail->response();
         }
@@ -80,20 +79,6 @@ class GarageController
             'facets' => $facets,
             'sort' => $sort,
         ]);
-    }
-
-    /** Карточка строки: путь, деньги, расходы и действия сотрудника — как карточка «Гараж» редактора. */
-    public function detail(Offer $offer)
-    {
-        $offer->load(['media', 'positions.stage.block']);
-        $view = OfferController::garageView($offer, request()->user());
-        // «Отдали по ошибке» из этой же карточки: ответ вернулся сюда (DetailBack), а машины в гараже уже нет.
-        if (! $view) {
-            return view('admin.garage.gone', ['key' => $offer->number]);
-        }
-
-        // Письма по машине — как в карточке сделки и предложения (`OfferFiles::letters`): с почтой — тем, у кого она есть.
-        return view('admin.garage.detail', ['garageView' => $view] + (request()->user()->canCrmMail() ? OfferFiles::letters($offer, request()->user()) : ['letters' => 0]));
     }
 
     /**

@@ -3,6 +3,7 @@
 namespace App\Http\Admin;
 
 use App\Live\Rows;
+use App\Offers\CarWindow;
 use App\Offers\Offer;
 use App\Offers\OfferNumber;
 use App\Support\Detail;
@@ -30,9 +31,9 @@ class GalleryController
         'last' => ['Последний отклик', 'desc'], 'number' => ['Номер', 'desc'],
     ];
 
-    public function index(Request $request, OfferController $offers)
+    public function index(Request $request)
     {
-        $detail = Detail::of($request, fn (string $key) => $offers->detailOf($request, OfferNumber::find($key), gallery: true));
+        $detail = Detail::of($request, fn (string $key) => CarWindow::of($request, OfferNumber::find($key)));
         if ($detail->framed()) {
             return $detail->response();
         }

@@ -7,11 +7,11 @@ use App\Mail\Scope;
 use App\Offers\Actions\SendClaimRequest;
 use App\Offers\Actions\SyncViewers;
 use App\Offers\AudienceRules;
-use App\Offers\Pricing;
 use App\Offers\Binding;
 use App\Offers\Export\OffersXlsx;
 use App\Offers\Offer;
 use App\Offers\OfferState;
+use App\Offers\Pricing;
 use App\Offers\Tag;
 use App\Support\Facets\Facet;
 use App\Support\Facets\Facets;
@@ -22,8 +22,8 @@ use App\Support\Plural;
 use App\Support\Sort;
 use App\Support\Surface;
 use App\Users\Section;
-use App\Vendors\Actions\SetLogo;
 use App\Vendors\Actions\MailClaimDigest;
+use App\Vendors\Actions\SetLogo;
 use App\Vendors\ClaimRequest;
 use App\Vendors\DealFormat;
 use App\Vendors\Kind;
@@ -358,7 +358,7 @@ class VendorController
         $contacts = collect(preg_split('/\R/u', (string) $request->input('office_contacts')))->map(fn ($l) => trim($l))->filter()->map(function (string $l) {
             preg_match('/вн\.?\s*(?:тел\.?\s*)?(\d{3,7})/iu', $l, $ext);
             preg_match('/\+?[78][\d\s()\-]{9,}/u', $l, $phone);
-            $name = trim((string) preg_replace(['/вн\.?\s*(?:тел\.?\s*)?\d{3,7}/iu', '/\+?[78][\d\s()\-]{9,}/u'], '', $l), " ,;");
+            $name = trim((string) preg_replace(['/вн\.?\s*(?:тел\.?\s*)?\d{3,7}/iu', '/\+?[78][\d\s()\-]{9,}/u'], '', $l), ' ,;');
 
             return ['name' => $name, 'phone' => isset($phone[0]) ? trim($phone[0]) : null, 'ext' => $ext[1] ?? null];
         })->values()->all();

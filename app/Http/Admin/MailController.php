@@ -8,19 +8,19 @@ use App\Billing\ChargeKind;
 use App\Billing\Closing;
 use App\Billing\Documents\InvoicePdf;
 use App\Billing\Documents\PassportPdf;
-use App\Offers\Documents\PaymentProofPdf;
 use App\Billing\Documents\StorageActPdf;
 use App\Billing\Invoice;
 use App\Billing\InvoiceState;
+use App\Billing\PartyKind;
 use App\Live\Stream;
 use App\Mail\Account;
-use App\Mail\AddressKind;
 use App\Mail\Actions\ArchiveThread;
 use App\Mail\Actions\FreezeMessages;
 use App\Mail\Actions\LinkThread;
 use App\Mail\Actions\MarkThreadRead;
 use App\Mail\Actions\PromoteCandidate;
 use App\Mail\Actions\StoreOutboxFile;
+use App\Mail\AddressKind;
 use App\Mail\Attachment;
 use App\Mail\BodyRenderer;
 use App\Mail\Boxes;
@@ -47,12 +47,14 @@ use App\Media\PhotosPdf;
 use App\Media\Thumb;
 use App\Offers\Actions\AutoOffer;
 use App\Offers\Actions\MarkSupplierRequestSent;
+use App\Offers\Documents\PaymentProofPdf;
 use App\Offers\Intake\OpenDraft;
 use App\Offers\Offer;
 use App\Offers\OfferNumber;
 use App\Offers\OfferState;
 use App\Offers\Pricing;
 use App\Offers\Reprice;
+use App\Offers\Signing;
 use App\Offers\SupplierRequest;
 use App\Park\Actions\MarkDoc;
 use App\Park\Actions\PurgeLetters;
@@ -61,12 +63,13 @@ use App\Park\DocKind;
 use App\Park\DocState;
 use App\Park\Documents\ActPdf;
 use App\Park\EventType;
-use App\Park\RequestType;
 use App\Park\InspectionKind;
 use App\Park\PhotoStage;
+use App\Park\RequestType;
 use App\Park\Sale;
 use App\Park\Vehicle;
 use App\Park\VehicleState;
+use App\Support\Ago;
 use App\Support\Docs;
 use App\Support\Facets\Common;
 use App\Support\Facets\Facet;
@@ -534,7 +537,7 @@ class MailController
             // Продавец в теме сверки (09.11.2026, владелец: «Стоянка ИП Кузнецов А.В. отчет-акт за октябрь 2026 на сверку»):
             // ИП — «ИП Кузнецов А.В.», организация — названием.
             $seller = $doc->seller->party();
-            $registryValues = ['seller' => $seller->kind === \App\Billing\PartyKind::Entrepreneur ? 'ИП '.str_replace('. ', '.', (string) $seller->director) : $seller->name,
+            $registryValues = ['seller' => $seller->kind === PartyKind::Entrepreneur ? 'ИП '.str_replace('. ', '.', (string) $seller->director) : $seller->name,
                 'month' => mb_strtolower(($doc->month ?? now())->translatedFormat('F Y')), 'count' => (string) $doc->registryVehicles()->count(),
                 'invoice' => $doc->label(), 'sum' => Money::rub($doc->total),
                 'to' => $payer?->email(ContactRole::Accounting, ContactRole::Storage, ContactRole::Claims) ?? $doc->party->email ?? ''];
@@ -1244,11 +1247,11 @@ class MailController
             // Реквизиты для счёта поставщика (03.11.2026, Альфа): покупатель по договору, где платим мы — наше юрлицо.
             'buyer' => $offer->deal?->supplierInvoicee()?->requisitesText() ?? '',
             // Запись на подписание у Альфы (11.11.2026): время, что выбрал менеджер, и адрес филиала.
-            'signing' => $offer->deal?->signing_at ? \App\Support\Ago::at($offer->deal->signing_at, true, words: false) : '',
+            'signing' => $offer->deal?->signing_at ? Ago::at($offer->deal->signing_at, true, words: false) : '',
             'signing_address' => $offer->deal?->signing_address ?? '',
             // Время записи словами для письма поставщику (11.11.2026): «в четверг 12.11 в 15:00».
             // Выбрано одно время — им, иначе дни и время, что назвал менеджер: «в четверг 12.11 или в пятницу 13.11, в 11:00 или 15:00».
-            'signing_when' => $offer->deal ? ($offer->deal->signing_at ? \App\Offers\Signing::words($offer->deal->signing_at) : \App\Offers\Signing::wishWords($offer->deal)) : '',
+            'signing_when' => $offer->deal ? ($offer->deal->signing_at ? Signing::words($offer->deal->signing_at) : Signing::wishWords($offer->deal)) : '',
         ];
     }
 

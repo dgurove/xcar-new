@@ -11,9 +11,11 @@ use App\Logistics\Actions\StepBack as TransportStepBack;
 use App\Logistics\Channel;
 use App\Logistics\Transport;
 use App\Logistics\TransportEvent;
+use App\Mail\LetterPrompt;
 use App\Offers\Actions\ScheduleOffer;
 use App\Offers\Offer;
 use App\Offers\OfferState;
+use App\Offers\Signing;
 use App\Offers\Slots;
 use App\Offers\SupplierInvoice;
 use App\Support\Ago;
@@ -57,14 +59,14 @@ class RouteController
             throw ValidationException::withMessages(['exit' => 'Сначала выберите счёт поставщика — менеджер платит по нему']);
         }
         // Свободное время поставщика — шторкой слотов (`OfferSigningSlots`), время за менеджера — выбором (`PickSigningTime`).
-        if (\App\Offers\Signing::slotsExit($exit)) {
+        if (Signing::slotsExit($exit)) {
             throw ValidationException::withMessages(['exit' => 'Внесите время, что предложил поставщик']);
         }
         // «Запись подтверждена» — с временем, что подтвердил поставщик (шторка, `ConfirmSigning`).
-        if (\App\Offers\Signing::confirmExit($exit) && ! $offer->deal?->signing_at) {
+        if (Signing::confirmExit($exit) && ! $offer->deal?->signing_at) {
             throw ValidationException::withMessages(['exit' => 'Выберите, на когда записали']);
         }
-        if (\App\Offers\Signing::pickExit($exit) && ! $offer->deal?->signing_at && ! ($offer->deal && \App\Offers\Signing::wish($offer->deal))) {
+        if (Signing::pickExit($exit) && ! $offer->deal?->signing_at && ! ($offer->deal && Signing::wish($offer->deal))) {
             throw ValidationException::withMessages(['exit' => 'Сначала выберите время']);
         }
         $payload = [];
@@ -117,7 +119,7 @@ class RouteController
         $now = $offer->fresh()->stage();
         if (($exit->to?->asks === Asks::Buyer || $exit->to?->isRequisitesStep()) && $now?->isRequisitesStep()
             && in_array($offer->fresh()->position()?->letterStatus(), ['unsent', null], true) && ($url = $offer->fresh()->vendorLetterUrl($now))) {
-            \App\Mail\LetterPrompt::ask($request->user(), $offer, $url.'&then=close');
+            LetterPrompt::ask($request->user(), $offer, $url.'&then=close');
         }
 
         // Туда же, откуда нажали: страница сделки, редактор или карточка строки (DetailBack), а не всегда в редактор.

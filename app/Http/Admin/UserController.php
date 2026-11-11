@@ -28,6 +28,7 @@ use App\Support\OfficePreview;
 use App\Support\Phone;
 use App\Support\Sort;
 use App\Support\Surface;
+use App\Support\TempFile;
 use App\Telegram\Actions\UnlinkChat;
 use App\Users\Access\Lock;
 use App\Users\Access\RevokeDevices;
@@ -318,7 +319,7 @@ class UserController
     {
         abort_unless($request->user()->isAdmin() && $user->hasDeals(), 404);
         [$from, $to] = $this->period($request);
-        $path = $xlsx->write($user, $from, $to, \App\Support\TempFile::path('sdelki-', 'xlsx'));
+        $path = $xlsx->write($user, $from, $to, TempFile::path('sdelki-', 'xlsx'));
         $name = 'sdelki-'.$from->format('Y-m-d').'-'.$to->format('Y-m-d').'.xlsx';
         // Шторка документов просит Excel HTML-фрагментом.
         if ($request->boolean('preview')) {

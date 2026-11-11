@@ -9,13 +9,13 @@ use App\Offers\Actions\DeclineBySupplier;
 use App\Offers\Actions\SetReceiver;
 use App\Offers\Actions\UpdateDealMoney;
 use App\Offers\Binding;
+use App\Offers\CarWindow;
 use App\Offers\CommissionMode;
 use App\Offers\Deal;
 use App\Offers\DealScheme;
 use App\Offers\DealState;
 use App\Offers\DealWork;
 use App\Offers\InsurerReplies;
-use App\Offers\OfferFiles;
 use App\Offers\ReplyKind;
 use App\Offers\ReplyReview;
 use App\Offers\Reprice;
@@ -60,8 +60,8 @@ class DealController
 
     public function index(Request $request)
     {
-        // Параллельная (07.11.2026) своего окошка не имеет: открывается сделка её машины, где она в блоке «Параллельно».
-        $detail = Detail::of($request, fn (string $key) => ($deal = Deal::find($key)) ? $this->window($deal->isParallel() ? ($deal->offer->deal ?? $deal) : $deal) : null);
+        // Окно машины — одно на все списки (`CarWindow`); параллельная открывает машину, где она в блоке «Параллельно».
+        $detail = Detail::of($request, fn (string $key) => CarWindow::ofDeal($request, Deal::find($key)));
         if ($detail->framed()) {
             return $detail->response();
         }
@@ -437,33 +437,6 @@ class DealController
         abort_unless($deal->buyer, 404);
 
         return Blade::render('<x-deal.chat-card :deal="$deal" :compact="$compact"/>', ['deal' => $deal, 'compact' => $request->boolean('compact')]);
-    }
-
-    /**
-     * Карточка сделки рядом со списком (Detail): путь, деньги, письма, заметка — без истории. Её же открывает список
-     * предложений у машины в сделке (`OfferController::detail`, 08.11.2026: одна машина — одно окошко).
-     */
-    public function window(Deal $deal)
-    {
-        return view('admin.deals.detail', $this->data($deal));
-    }
-
-    /** Сделка целиком — одна выборка на страницу и карточку. */
-    private function data(Deal $deal): array
-    {
-        $deal->load(['buyer', 'bid', 'requirements.media', 'requirements.stage.block', 'offer', 'offer.media', 'offer.settlement',
-            'offer.vendor.workflows', 'offer.positions.stage.block', 'offer.positions.stage.exits.to', 'offer.positions.stage.workflow', 'offer.events.user']);
-        $offer = $deal->offer;
-
-        $threads = OfferFiles::threads($offer);
-
-        // Письма и документы — как в редакторе: письмо вендору, документы к подписанию и ответ страховой ведут отсюда.
-        return OfferFiles::letters($offer, auth()->user()) + [
-            'docs' => OfferFiles::docs($offer, $threads),
-            'deal' => $deal,
-            'offer' => $offer,
-            'events' => $offer->events->where('created_at', '>=', $deal->created_at),
-        ];
     }
 
     /** Деньги сделки — пока по ней нет счёта или есть только неоплаченный подбор по ДКП (`Deal::moneyEditable`). */

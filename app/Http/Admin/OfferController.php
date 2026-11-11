@@ -4,15 +4,10 @@ namespace App\Http\Admin;
 
 use App\Cars\Car;
 use App\Cars\Vin\Vin;
-use App\Chats\Chat;
-use App\Garage\Car as GarageCar;
-use App\Garage\GarageView;
 use App\Live\Rows;
 use App\Mail\Candidate;
 use App\Mail\Extraction\Code;
-use App\Mail\Jobs\ImportThreadFiles;
 use App\Mail\Scan\AutoScan;
-use App\Mail\Thread;
 use App\Media\Actions\WarmPhotos;
 use App\Offers\Actions\ChangeOfferState;
 use App\Offers\Actions\CreateOffer;
@@ -32,6 +27,8 @@ use App\Offers\Actions\UpdateOffer;
 use App\Offers\BidKind;
 use App\Offers\BidState;
 use App\Offers\Binding;
+use App\Offers\CarView;
+use App\Offers\CarWindow;
 use App\Offers\CatalogQuery;
 use App\Offers\Estimate;
 use App\Offers\EstimateState;
@@ -43,15 +40,12 @@ use App\Offers\LegacyClaim;
 use App\Offers\Margin;
 use App\Offers\Offer;
 use App\Offers\OfferEventType;
-use App\Offers\OfferFiles;
 use App\Offers\OfferNumber;
 use App\Offers\OfferState;
 use App\Offers\PriceGuard;
 use App\Offers\Pricing;
 use App\Offers\Reprice;
-use App\Offers\Showing;
 use App\Offers\Slots;
-use App\Offers\Tag;
 use App\Support\Ago;
 use App\Support\Detail;
 use App\Support\Facets\Common;
@@ -66,7 +60,6 @@ use App\Support\Sort;
 use App\Support\Table\ColRole;
 use App\Support\Table\Column;
 use App\Support\Table\Table;
-use App\Users\Role;
 use App\Users\User;
 use App\Vendors\Vendor;
 use Illuminate\Database\Eloquent\Builder;
@@ -209,7 +202,7 @@ class OfferController
             return redirect('/offers?'.http_build_query($query), 301);
         }
         // ?peek=номер — карточка строки рядом (first — первая строка без цены, адрес получает её номер ниже).
-        $detail = Detail::of($request, fn (string $key) => $this->detailOf($request, OfferNumber::find($key)));
+        $detail = Detail::of($request, fn (string $key) => CarWindow::of($request, OfferNumber::find($key)));
         if ($detail->framed()) {
             return $detail->response();
         }
@@ -776,17 +769,10 @@ class OfferController
 
     public function edit(Request $request, Offer $offer)
     {
-        // Модератору — поля, фото, документы и история: подтверждений, интереса, сделки, маршрута, чатов и круга показа
-        // он не видит, и грузить их незачем.
-        $admin = $request->user()->canManageCrm();
-        $offer->load(['settlement', 'media', 'car.events.user.vendor', ...($admin ? ['bids.user', 'purchaseCar.purchase', 'purchaseCar.bids.user', 'interests.user.manager', 'interests.placer', 'vendor.workflows', 'parkVehicle.yard', 'parkVehicle.requests',
-            'positions.stage.block', 'positions.stage.exits.to.block.stages', 'positions.stage.workflow', 'deal.buyer', 'dealAudience', 'lastDeal.buyer', 'lastDeal.bid'] : [])]);
         // Давно закрытое предложение лежит в холодном слое без конверсий — досчитать, раз открыли.
         if (in_array($offer->state, [OfferState::Archived, OfferState::Cancelled, OfferState::Delivered], true)) {
             app(WarmPhotos::class)($offer);
         }
-
-        $threads = Thread::where('offer_id', $offer->id)->get();
         $fromMail = $offer->state === OfferState::Draft && session()->has("mail-draft.{$offer->id}");
         // Пустой «+ Новый»: первым — поле для текста про машину; уйдут, ничего не внеся, — черновика нет. Открыли снова
         // (в том числе обновили страницу) — отметка, чтобы удаление по прошлому уходу его не тронуло.
@@ -795,38 +781,16 @@ class OfferController
             Offer::whereKey($offer->id)->update(['updated_at' => now()]);
         }
 
-        return view('admin.offers.edit', OfferFiles::letters($offer, $request->user()) + [
-            'offer' => $offer,
-            'admin' => $admin,
-            'threads' => $threads,
+        // Данные и решения — те же, что у окна машины (`CarView`, 11.11.2026): дорожки, плашки, меню, письма, чаты.
+        return view('admin.offers.edit', CarView::for($offer, $request->user(), page: true)->vars() + [
             // ?window= — открыть окно писем сразу (ссылка «Вся переписка» из шторки документов).
             'window' => str_starts_with((string) request()->query('window'), "/offers/{$offer->number}/letters") ? request()->query('window') : null,
-            'docs' => OfferFiles::docs($offer, $threads),
-            // Все чаты по машине одной выборкой: из неё же карточка чата сделки (`x-deal.chat-card`), без второго запроса.
-            'chats' => $admin ? Chat::withLast()->where('offer_id', $offer->id)->orderByDesc('last_message_at')->get() : collect(),
-            'import' => ImportThreadFiles::progressOf($offer),
-            'tags' => $admin ? Tag::orderBy('sort')->get() : collect(),
-            'managers' => $admin ? User::withRole(Role::Manager)->orderBy('name')->get() : collect(),
-            'showingSummary' => $admin ? Showing::summary($offer) : collect(),
             // Черновик только что заведён из писем и ещё ни разу не сохранён: внизу «Отменить» и «Не заявка».
             'fromMail' => $fromMail,
             // Только что заведён «Завести» из таблицы Кати: внизу «Отменить» — пока не сохранили.
             'fromLegacy' => ! $fromMail && $offer->state === OfferState::Draft && session()->has("legacy-draft.{$offer->id}"),
             'empty' => $empty,
-            // Машина в гараже ведётся здесь же, дорожкой «Гараж» (подготовка) и хвостом «Продажи»: путь, деньги, расходы и
-            // все действия сотрудника.
-            'garageView' => $admin ? self::garageView($offer, $request->user()) : null,
-            // Сделка — третьей дорожкой (страница сделки CRM с 06.10.2026 — этот редактор): идущая, иначе состоявшаяся.
-            'deal' => $admin ? $offer->lastDeal : null,
         ]);
-    }
-
-    /** Карточка «Гараж» в редакторе и в «Работе → Гараж»: что рисовать и какие действия доступны. */
-    public static function garageView(Offer $offer, User $user): ?array
-    {
-        $car = GarageCar::forOffer($offer);
-
-        return $car ? GarageView::for($car, $user) : null;
     }
 
     /**
@@ -861,36 +825,6 @@ class OfferController
         $moved = $merge($target, $offer, $request->user())['photos'];
 
         return redirect("/offers/{$target->number}")->with('toast', $moved ? "Это №{$target->number}, фото перенесены" : "Это №{$target->number}");
-    }
-
-    /** Карточка строки рядом со списком (Detail): чужое модератору — как не найдено. */
-    public function detailOf(Request $request, ?Offer $offer, bool $gallery = false)
-    {
-        return $offer && $offer->isEditableBy($request->user()) ? $this->detail($request, $offer, $gallery) : null;
-    }
-
-    /** Карточка строки: фото, метки, цена, действия, подтверждения, интерес; gallery — строка списка галереи. */
-    public function detail(Request $request, Offer $offer, ?bool $gallery = null)
-    {
-        $admin = $request->user()->canManageCrm();
-        // Машина в сделке — окошко сделки, а не предложения (08.11.2026, владелец: «нашёл в поиске — открылось
-        // предложение, жми ещё „Сделка“ — бред»): то же, что у «Сделок». Модератору сделок не видно — у него предложение.
-        if ($admin && ! $gallery && ($deal = $offer->dealNow())) {
-            return app(DealController::class)->window($deal);
-        }
-        $offer->load(['settlement', 'media', ...($admin ? ['bids.user', 'interests.user.manager', 'interests.placer', 'deal', 'purchaseCar.bids.user', 'purchaseCar.purchase', 'parkVehicle:id,car_id,state,yard_id,accepted_at,created_at', 'parkVehicle.yard:id,name', 'vendor.workflows', 'positions.stage', 'openEstimates.user', ...User::withAvatar('openEstimates.user.media'), 'declinedEstimates.user', ...User::withAvatar('declinedEstimates.user.media')] : [])])
-            ->loadCount(['activeBids', 'interests', 'activeBids as garage_bids_count' => fn ($b) => $b->where('kind', BidKind::Garage)])->loadMax('activeBids as top_bid', 'amount');
-
-        return view('admin.offers.detail', OfferFiles::letters($offer, $request->user()) + [
-            'offer' => $offer,
-            'admin' => $admin,
-            // Поля редактора в карточке — те же справочники, что у страницы; модератору денег, кроме закупочной, и круга нет.
-            'tags' => $admin ? Tag::orderBy('sort')->get() : collect(),
-            'chats' => $admin ? Chat::where('offer_id', $offer->id)->get(['id', 'unread_for_staff']) : collect(),
-            'list' => $gallery ?? $request->boolean('gallery'),
-            // Кому отдать на оценку — у черновика без цены; на корректировку — у оценённого, пока не в слоте.
-            'managers' => $admin && $offer->state === OfferState::Draft && ! $offer->isScheduled() ? User::withRole(Role::Manager)->with(User::withAvatar())->orderBy('name')->get() : collect(),
-        ]);
     }
 
     /**

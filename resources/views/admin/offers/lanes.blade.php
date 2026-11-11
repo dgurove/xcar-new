@@ -9,28 +9,16 @@
 @php
     use App\Offers\OfferState;
     use App\Workflow\Track;
+    // Какие дорожки — одно решение с окном (`CarView::lanes`); здесь только раскладка.
     $g = $garageView;
+    ['sale' => $saleLane, 'pickup' => $pickupLane, 'third' => $third] = $car->lanes();
     $salePos = $offer->position(Track::Sale);
-    $third = match (true) {
-        (bool) $g => 'garage',
-        (bool) $deal?->isAuction() => 'auction',
-        (bool) $deal => 'deal',
-        // Машина из закупки — цены менеджеров в закупке стоят в «Подтверждениях» и у черновика (29.10.2026).
-        $bids->isNotEmpty() || $offer->state === OfferState::Open || (auth()->user()->canManageCrm() && $offer->purchaseCar?->hasPrices()) => 'bids',
-        // Черновик в галерее: интерес и «+ Интерес» за менеджера (13.10.2026).
-        $offer->isGallery() || $offer->interests->isNotEmpty() => 'interest',
-        default => null,
-    };
-    // Вывоз — задача логистики (17.10.2026): идёт или был, или его заводят «Вывезти» — у гаражной, у сделки и у вендора,
-    // чьи машины вывозим всегда (Совкомбанк).
-    $pickupLane = $offer->pickup() || (! in_array($offer->state, [OfferState::Delivered, OfferState::Cancelled, OfferState::Archived], true)
-        && ($g || $deal || $offer->vendor?->pickup_on_arrival));
-    // Продана на аукционе — маршрута со страховой больше нет: всё в карточке «Продана на аукционе».
-    $saleLane = ($salePos && ! $deal?->isAuction()) || $g;
-    $count = (int) $saleLane + (int) $pickupLane + (int) ($third !== null);
     // Хвост пути продажи у гаражной машины: в продаже, продана, расчёт — с кнопками на текущем шаге.
     $tail = $g ? view('garage.cars.path', $g + ['set' => 'sale', 'bare' => true, 'buttonsHere' => $g['sale']])->render() : '';
-    $car = $g['car'] ?? null;
+    // Идущая сделка без вывоза — получение (контакт владельца, кто забирает) своим блоком под «Вывозом»: с вывозом оно
+    // внутри него (`x-logistics.lane`). До 11.11.2026 в редакторе без вывоза получения не было вовсе, в окне сделки — было.
+    $handover = $deal?->isActive() && ! $deal->isGarage() && ! $offer->pickup();
+    $count = (int) $saleLane + (int) ($pickupLane || $handover) + (int) ($third !== null);
 @endphp
 @if ($count)
     <div @class(['grid grid-cols-1 items-start gap-4', '@[34rem]/lanes:grid-cols-2' => $count > 1, '@[52rem]/lanes:grid-cols-3' => $count > 2])>
@@ -41,7 +29,7 @@
                 @else
                     <x-ui.card title="Продажа" id="sale"><div class="steps">{!! $tail !!}</div></x-ui.card>
                 @endif
-                @if ($car?->isSold())
+                @if ($garageCar?->isSold())
                     <x-ui.card title="Расчёт">
                         @if ($g['moreSale'])
                             <x-slot:actions>@include('garage.cars.actions', ['buttons' => [], 'more' => $g['moreSale'], 'bar' => false, 'menuKey' => '-sale'] + $g)</x-slot:actions>
@@ -52,16 +40,17 @@
             </div>
         @endif
 
-        @if ($pickupLane)
+        @if ($pickupLane || $handover)
             <div class="flex min-w-0 flex-col gap-4">
-                <x-logistics.lane :offer="$offer" :deal="$deal?->isActive() ? $deal : null"/>
+                @if ($pickupLane)<x-logistics.lane :offer="$offer" :deal="$deal?->isActive() ? $deal : null"/>@endif
+                @if ($handover)<x-deal.handover :deal="$deal" compact/>@endif
             </div>
         @endif
 
         @if ($third === 'garage')
             <div class="flex min-w-0 flex-col gap-4">
                 <x-ui.card title="Гараж" id="garage" class="scroll-mt-24">@include('admin.offers.garage-card')</x-ui.card>
-                @if ($car->deal)@include('admin.offers.deal-cards', ['deal' => $car->deal])@endif
+                @if ($garageCar->deal)@include('admin.offers.deal-cards', ['deal' => $garageCar->deal])@endif
                 {{-- Резерв гаражной сделки: передумал — «Отдать» другому подтвердившему. Интерес из галереи — рядом. --}}
                 @if ($offer->deal && $bids->where('state', \App\Offers\BidState::Active)->isNotEmpty())
                     <x-ui.card title="Подтверждения">@include('admin.offers.bids', ['inside' => true])</x-ui.card>
@@ -85,7 +74,6 @@
                 @include('admin.offers.deal-cards')
             </div>
         @elseif ($third === 'bids')
-            @php $waiting = $bids->where('state', \App\Offers\BidState::Active); @endphp
             <div class="flex min-w-0 flex-col gap-4">
                 <x-ui.card :title="'Подтверждения'.($waiting->isNotEmpty() ? ' '.$waiting->count() : '')" :class="$waiting->isNotEmpty() ? 'box-urgent' : ''">
                     @include('admin.offers.bids', ['inside' => true])

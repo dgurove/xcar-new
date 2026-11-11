@@ -1,35 +1,20 @@
-{{-- Дорожка «Гараж» редактора (06.10.2026: только подготовка) и карточка строки «Работы → Гаража» (`$routeHere`) из
-     `GarageView`: чья машина и кто платил поставщику, путь (в редакторе — ждёт машину, подготовка, готова; продажа —
-     хвостом дорожки «Продажа»; в карточке строки — весь путь с шагом сделки со страховой, пока она идёт), деньги,
-     расходы с «+ Расход», чат с менеджером. Шторки — те же, что на странице машины на сайте. --}}
+{{-- Дорожка «Гараж» окна машины и страницы (06.10.2026: только подготовка) из `GarageView`: чья машина и кто платил
+     поставщику, путь (ждёт машину, подготовка, готова; продажа — хвостом дорожки «Продажа», сделка со страховой — её путём
+     там же), деньги, расходы с «+ Расход», чат с менеджером. Шторки — те же, что на странице машины на сайте. С 11.11.2026
+     своей ветки для окна «Работы → Гаража» нет: окно машины одно (`CarView`), оно рисует те же дорожки. --}}
 @php
     extract($garageView);
-    $routeHere ??= false;
-    $salePosition = $routeHere && $car->dealOpen() ? $offer->position(\App\Workflow\Track::Sale) : null;
 @endphp
 <div class="flex flex-col gap-4">
-    {{-- В карточке строки чья, кто платит и этап — в шапке карточки, «⋯» — в её полосе (`admin/garage/detail`). --}}
-    @php $menu = $routeHere ? [] : $morePrep; @endphp
-    @if (! $routeHere || $menu)
     {{-- «⋯» справа своей колонкой: в узкой дорожке факты переносятся, а кнопка остаётся в первой строке. --}}
     <div class="flex items-start gap-3 text-sm">
         <div class="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-1.5 self-center">
-            @unless ($routeHere)
-                @if ($car->manager)<x-ui.person :user="$car->manager"/>@else<span class="text-ink-muted">взяли под себя</span>@endif
-                @if ($car->deal?->garage_payer)<span class="text-ink-muted">{{ $car->deal->garagePayerLine() }}</span>@endif
-            @endunless
+            @if ($car->manager)<x-ui.person :user="$car->manager"/>@else<span class="text-ink-muted">взяли под себя</span>@endif
+            @if ($car->deal?->garage_payer)<span class="text-ink-muted">{{ $car->deal->garagePayerLine() }}</span>@endif
         </div>
-        @if ($menu)<span class="shrink-0">@include('garage.cars.actions', ['buttons' => [], 'more' => $menu, 'bar' => false])</span>@endif
+        @if ($morePrep)<span class="shrink-0">@include('garage.cars.actions', ['buttons' => [], 'more' => $morePrep, 'bar' => false])</span>@endif
     </div>
-    @endif
     @error('car')<x-ui.flash tone="danger">{{ $message }}</x-ui.flash>@enderror
-    @if ($salePosition)
-        <section>
-            <div class="list-cap">Сделка со страховой</div>
-            <x-route.path :offer="$offer" :position="$salePosition"/>
-            @if ($errors->has('exit'))<p class="field-error mt-2">{{ $errors->first('exit') }}</p>@endif
-        </section>
-    @endif
     {{-- Машина на нашей парковке (18.10.2026): кто заберёт и пропуск — как у обычной сделки в «Получении». --}}
     @php $parked = $car->deal && $car->deal->state !== \App\Offers\DealState::Cancelled ? $offer->parkVehicle()->first() : null; @endphp
     @if ($parked && in_array($parked->state, [\App\Park\VehicleState::Stored, \App\Park\VehicleState::Expected], true) && ($car->deal->releasable() || $car->deal->passes()->exists()))
@@ -38,10 +23,10 @@
             <x-deal.park-release :deal="$car->deal" :vehicle="$parked"/>
         </section>
     @endif
-    @include('garage.cars.path', $routeHere ? ['set' => 'all', 'withDeal' => false, 'buttonsHere' => [...$prep, ...$sale]] : ['set' => 'prep', 'buttonsHere' => $prep])
-    @if ($money && ($routeHere || ! $car->isSold()))@include('garage.cars.money')@endif
+    @include('garage.cars.path', ['set' => 'prep', 'buttonsHere' => $prep])
+    @if ($money && ! $car->isSold())@include('garage.cars.money')@endif
     @include('garage.cars.costs')
-    {{-- В редакторе чат с ним — карточкой первой в правой колонке (`x-deal.chat-card`), здесь второй раз не нужен. --}}
-    @if ($car->manager && ($routeHere || ($deal ?? null)?->buyer_id !== $car->manager_id))<x-chat.staff-line :offer="$offer" :user="$car->manager"/>@endif
+    {{-- Чат с менеджером сделки — карточкой (`x-deal.chat-card`) у окна и страницы; здесь — только с другим менеджером. --}}
+    @if ($car->manager && ($deal ?? null)?->buyer_id !== $car->manager_id)<x-chat.staff-line :offer="$offer" :user="$car->manager"/>@endif
     @include('garage.cars.sheets')
 </div>

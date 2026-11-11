@@ -6,6 +6,8 @@ use App\Offers\Deal;
 use App\Offers\DealState;
 use App\Offers\Offer;
 use App\Offers\OfferState;
+use App\Park\Vehicle;
+use App\Park\VehicleState;
 use App\Support\CarLinks;
 use App\Users\Role;
 use App\Users\User;
@@ -36,16 +38,18 @@ class OfferDealOneTest extends TestCase
         $this->assertSame('/offers/'.$sold->number, $sold->crmPath());
         $this->assertSame('/offers/'.$draft->number, $draft->crmPath());
 
-        // Окошко списка предложений — сделка (то же, что у «Сделок»), без сделки — предложение.
-        $this->actingAs($admin)->get($crm.'/offers?preset=all&peek='.$sold->number, ['Turbo-Frame' => 'detail'])->assertOk()->assertSee('/work/deals/'.$deal->id, false)
-            ->assertDontSee('tone="open" href="/work/deals/', false);
-        $this->actingAs($admin)->get($crm.'/work/deals/'.$deal->id)->assertRedirect('/offers/'.$sold->number);
+        // Окно машины одно (11.11.2026, `CarWindow`): из «Предложений» и из «Сделок» — то же окно, с этапом сделки в полосе.
+        $fromOffers = $this->actingAs($admin)->get($crm.'/offers?preset=all&peek='.$sold->number, ['Turbo-Frame' => 'detail'])->assertOk()->assertSee('Иван Петров');
+        $fromDeals = $this->actingAs($admin)->get($crm.'/work/deals?preset=all&peek='.$deal->id, ['Turbo-Frame' => 'detail'])->assertOk()->assertSee('Иван Петров');
+        $card = fn ($r) => preg_replace('/data-peek="[^"]*"|peek=[^"&]*/', '', (string) $r->getContent());
+        $this->assertSame(preg_match_all('/class="detail-section"/', $card($fromOffers)), preg_match_all('/class="detail-section"/', $card($fromDeals)));
+        $this->actingAs($admin)->get($crm.'/work/deals/'.$deal->id)->assertRedirect('/offers/'.$deal->offer->fresh()->number);
 
         // Меню связей у ТС парковки той же машины: один пункт «Сделка» вместо «Продажа» и «Сделка».
-        $vehicle = \App\Park\Vehicle::forceCreate(['car_id' => $sold->car_id, 'state' => \App\Park\VehicleState::Expected]);
+        $vehicle = Vehicle::forceCreate(['car_id' => $sold->car_id, 'state' => VehicleState::Expected]);
         $titles = array_column(CarLinks::for($vehicle->fresh()), 'title');
         $this->assertContains('Сделка', $titles);
         $this->assertNotContains('Продажа', $titles);
-        $this->assertContains('Продажа', array_column(CarLinks::for(\App\Park\Vehicle::forceCreate(['car_id' => $draft->car_id, 'state' => \App\Park\VehicleState::Expected])->fresh()), 'title'));
+        $this->assertContains('Продажа', array_column(CarLinks::for(Vehicle::forceCreate(['car_id' => $draft->car_id, 'state' => VehicleState::Expected])->fresh()), 'title'));
     }
 }
