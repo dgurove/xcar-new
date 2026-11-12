@@ -2,6 +2,7 @@
 
 use App\Billing\Acquiring\Console\BackfillPayLinks;
 use App\Billing\Acquiring\Console\SyncAcquiring;
+use App\Billing\Bank\Console\MatchByVinCommand;
 use App\Billing\Bank\Console\PerpetualSecret;
 use App\Billing\Bank\Console\SyncBank;
 use App\Billing\Console\CloseMonthCommand;
@@ -160,6 +161,7 @@ return Application::configure(basePath: dirname(__DIR__))
         SyncAcquiring::class,
         BackfillPayLinks::class,
         SyncBank::class,
+        MatchByVinCommand::class,
         PerpetualSecret::class,
         SeedDemo::class,
         MergeCatalogCommand::class,

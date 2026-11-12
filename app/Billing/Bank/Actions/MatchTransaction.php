@@ -41,6 +41,11 @@ final class MatchTransaction
         }
         $invoice ??= $this->guess($tx);
         if (! $invoice) {
+            // Счёта нет, а VIN машины в назначении есть — в её сделку зачётом (`MatchByVin`, 12.11.2026). Только сам, не руками.
+            if ($by === null && app(MatchByVin::class)($tx)) {
+                return $tx->fresh();
+            }
+
             return $tx;
         }
         $manual = $by !== null;

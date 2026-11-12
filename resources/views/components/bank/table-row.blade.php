@@ -7,7 +7,9 @@
         <x-ui.row-link :key="$tx->id"><span class="cell-title flex items-center gap-2"><x-ui.avatar :name="\App\Billing\Bank\Actions\MatchTransaction::isPayout($tx) ? 'ЮMoney' : ($tx->counterparty ?: '?')" :size="24"/><span class="min-w-0 truncate">{{ $tx->counterparty ?: 'Плательщик не указан' }}</span></span></x-ui.row-link>
         <span class="cell-sub">
             <span class="text-{{ $tx->tone() }}">{{ mb_strtolower($tx->stateLabel()) }}</span>
-            @if ($tx->invoice)<span>счёт {{ $tx->invoice->label() }}</span>@elseif ($tx->note)<span>{{ mb_strtolower($tx->note) }}</span>@endif
+            {{-- По VIN в сделку (12.11.2026, `MatchByVin`): не разовый счёт, а сделка, куда легло. --}}
+            @if ($tx->note && str_starts_with($tx->note, 'по VIN'))<span>{{ $tx->note }}</span>
+            @elseif ($tx->invoice)<span>счёт {{ $tx->invoice->label() }}</span>@elseif ($tx->note)<span>{{ mb_strtolower($tx->note) }}</span>@endif
             <span class="sm:hidden">{{ \App\Support\Ago::html($tx->booked_at, words: false) }}</span>
         </span>
     </td>
