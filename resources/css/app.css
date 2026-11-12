@@ -2256,7 +2256,8 @@ html.kb-open { --home-gap: 0px; }
      телефоне; календарь Cally по киту через ::part — выбранный день лаймовым кругом, сегодня тоном, чужие дни бледно,
      без обводок и теней внутри. */
   .date-field { position: relative; }
-  .date-input { cursor: pointer; }
+  .date-input { cursor: pointer; display: block; width: 100%; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .date-input.date-empty { color: var(--color-ink-dim); }
   .date-pop { @apply rounded-(--radius-l) bg-surface text-ink shadow-(--shadow-drop); position: fixed; inset: auto; margin: 0; border: 0; padding: .5rem; width: 16.5rem; font-size: var(--text-sm); }
   .date-pop:popover-open { animation: dialog-in var(--dur) var(--ease-out); }
   .date-pop::backdrop { background: transparent; }

@@ -35,9 +35,11 @@
             <button type="button" id="{{ $id }}" class="{{ $attributes->get('class') }}" data-date-target="text" data-action="date#open:prevent:stop">{!! $chipHtml !!}</button>
         @endif
     @else
-        <input type="text" id="{{ $id }}" class="field-input date-input {{ $attributes->get('class') }}" autocomplete="off" spellcheck="false"
-            placeholder="{{ $placeholder ?? ($time ? 'Дата и время' : 'Дата') }}" @disabled($disabled) data-date-target="text"
-            data-action="click->date#open keydown->date#typed change->date#typed">
+        {{-- Не текстовое поле, а кнопка с видом поля (12.11.2026, владелец: «это не текстовое поле — по клику календарь»): дата и
+             время тусклее (`.when-t`), как у кнопки-даты; печатать дату больше нельзя. --}}
+        @php $fieldEmpty = $placeholder ?? ($time ? 'Дата и время' : 'Дата'); @endphp
+        <button type="button" id="{{ $id }}" class="field-input date-input {{ $v === '' ? 'date-empty' : '' }} {{ $attributes->get('class') }}" @disabled($disabled)
+            data-date-target="text" data-date-empty="{{ $fieldEmpty }}" data-action="date#open:prevent:stop">@if ($v === ''){{ $fieldEmpty }}@elseif ($time){{ \App\Support\Ago::day(\Illuminate\Support\Carbon::parse($v)) }} <span class="when-t">{{ \Illuminate\Support\Carbon::parse($v)->format('H:i') }}</span>@else{{ \App\Support\Ago::day(\Illuminate\Support\Carbon::parse($v)) }}@endif</button>
     @endif
     @if ($inline && $quick)<span class="date-quick date-quick--inline">{!! $chips() !!}</span>@endif
     {{-- Внутри <summary> (дата шага в деле) нажатие по всплывашке не должно сворачивать шаг — `date#inside`. --}}

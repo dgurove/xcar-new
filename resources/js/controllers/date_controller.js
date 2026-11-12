@@ -22,13 +22,9 @@ export default class extends Controller {
     static targets = ['value', 'text', 'pop', 'cal', 'time', 'clear', 'error', 'quick', 'source'];
     static values = { time: Boolean, defaultTime: { type: String, default: '12:00' }, min: String, max: String, limit: String, now: Boolean, prefix: String, submit: Boolean, placeholder: String, start: String };
 
-    get field() { return this.textTarget.tagName === 'INPUT'; }
-
     connect() {
         // Копия без кнопки (силуэт карточки `lib/ghost.js` и т. п.) — не выбор даты.
         if (!this.hasTextTarget || !this.hasValueTarget) return;
-        // Телефон — без клавиатуры: поле только открывает календарь.
-        if (this.field && matchMedia('(pointer: coarse)').matches) this.textTarget.readOnly = true;
         if (this.limitValue) {
             const last = this.limitValue.slice(0, 10);
             this.calTarget.isDateDisallowed = (d) => iso(d) > last;
@@ -66,17 +62,15 @@ export default class extends Controller {
         if (p) {
             text = `${day(p.date)}${this.timeValue && p.time ? ` ${p.time}` : ''}`;
         }
-        if (this.field) {
-            this.textTarget.value = text;
-            if (server) this.textTarget.defaultValue = text;
-        }
         // Пустая кнопка-дата — словом-приглашением («Указать»), а не пустым местом.
         // Со временем — время тусклее даты (`.when-t`), как везде в приложении.
-        else if (p && this.timeValue && p.time) {
+        if (p && this.timeValue && p.time) {
             this.textTarget.textContent = [this.prefixValue, day(p.date)].filter(Boolean).join(' ') + ' ';
             this.textTarget.append(Object.assign(document.createElement('span'), { className: 'when-t', textContent: p.time }));
         }
-        else this.textTarget.textContent = [this.prefixValue, text].filter(Boolean).join(' ') || this.placeholderValue;
+        else this.textTarget.textContent = [this.prefixValue, text].filter(Boolean).join(' ') || this.textTarget.dataset.dateEmpty || this.placeholderValue;
+        // Кнопка с видом поля: пустая — серой подсказкой, как placeholder.
+        if ('dateEmpty' in this.textTarget.dataset) this.textTarget.classList.toggle('date-empty', !p);
         // Подсказка того же дня, что стоит, — нажатой.
         this.quickTargets.forEach((b) => b.setAttribute('aria-pressed', String(!!p && b.dataset.dateValueParam.slice(0, 10) === p.date)));
     }
@@ -181,28 +175,6 @@ export default class extends Controller {
     clear() {
         this.set('');
         this.close();
-    }
-
-    // Набор на ПК: «8.9», «08.09.2025», «8.9 1730», «8/9/25 17:30»; год — текущий, время — по умолчанию.
-    typed(event) {
-        if (event.type === 'keydown') { if (event.key !== 'Enter') return; event.preventDefault(); }
-        const raw = this.textTarget.value.trim();
-        if (!raw) { this.set(''); return; }
-        const m = raw.match(/^(\d{1,2})[./-](\d{1,2})(?:[./-](\d{2,4}))?(?:[\s,]+(\d{1,2})[:.]?(\d{2}))?$/);
-        if (!m) { this.render(); return; }
-        // Двузначный год позже текущего — прошлый век: «8.9.85» — 1985 (дата рождения), «8.9.25» — 2025.
-        const now = new Date().getFullYear();
-        const yy = m[3]?.length === 2 ? 2000 + Number(m[3]) : null;
-        const year = m[3] ? (yy !== null ? (yy > now ? yy - 100 : yy) : Number(m[3])) : now;
-        const day = new Date(year, Number(m[2]) - 1, Number(m[1]));
-        if (day.getDate() !== Number(m[1])) { this.render(); return; }
-        // Набранное за границами поля — как у календаря, где такие дни не нажать: словами под полем, значение прежнее.
-        const out = (this.minValue && iso(day) < this.minValue) ? `Не раньше ${this.human(this.minValue)}` : (this.maxValue && iso(day) > this.maxValue ? `Не позже ${this.human(this.maxValue)}`
-            : (this.limitValue && iso(day) > this.limitValue.slice(0, 10) ? this.limitText() : null));
-        if (out) { this.fail(out); this.render(); return; }
-        const time = m[4] ? `${pad(Math.min(23, Number(m[4])))}:${pad(Math.min(59, Number(m[5])))}` : (this.parts?.time || this.defaultTimeValue);
-        this.set(this.timeValue ? `${iso(day)}T${time}` : iso(day));
-        if (event.type === 'keydown') this.close();
     }
 
     human(date) {
