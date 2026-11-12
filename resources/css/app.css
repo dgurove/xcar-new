@@ -3297,19 +3297,36 @@ html.kb-open { --home-gap: 0px; }
   /* Что не так, красной строкой с точкой: долг над полоской срока. */
   .detail-alert { @apply flex items-center gap-2 text-sm text-danger; }
   .detail-alert::before { content: ""; @apply size-[7px] shrink-0 rounded-full bg-danger; }
-  /* Полоска срока ТС (`x-park.stay`): где стоит и сумма, линия от приёма до выдачи (у стоящей — до «сегодня»), даты и дни. */
-  .stay { @apply flex flex-col gap-2 rounded-(--radius-l) bg-surface-2 px-3.5 py-3; }
-  .stay-top { @apply flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1; }
+  /* Шапка дела ТС на парковке (12.11.2026): одна сетка на обе ширины. Телефон — столбиком; ПК — слева название, коды и
+     пилюли, «⋯» у края названия, справа компактная карточка срока ровно над колонкой «Документы» (22rem), строки выдачи — под полосой. */
+  .park-head { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "title more" "info info" "stay stay" "lines lines"; align-items: start; gap: .75rem 1rem; }
+  .park-head-title { grid-area: title; }
+  .park-head-more { grid-area: more; padding-top: .25rem; }
+  .park-head-info { grid-area: info; }
+  .park-head-stay { grid-area: stay; }
+  .park-head-lines { grid-area: lines; }
+  @media (min-width: 1024px) {
+    .park-head { grid-template-columns: minmax(0, 1fr) auto 22rem; grid-template-rows: auto 1fr auto; grid-template-areas: "title more stay" "info info stay" "lines lines lines"; }
+  }
+  /* Полоска срока ТС (`x-park.stay`): где стоит и сумма, линия от приёма до выдачи (у стоящей — до «сегодня»), даты и дни.
+     Везде компактной карточкой D3 (12.11.2026, владелец: «три плитки — ваще не то, верни компактную»): где и сумма сверху,
+     линия с датами ниже. Фон — `--stay-bg`: им же обведены точки линии; `stay--light` — белая на сером фоне страницы. */
+  .stay { --stay-bg: var(--color-surface-2); display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "where money" "term term"; align-items: baseline; gap: .5rem .75rem; border-radius: var(--radius-l); background: var(--stay-bg); padding: .75rem .875rem; }
+  .stay--light { --stay-bg: var(--color-surface); }
+  .stay--nomoney { grid-template-areas: "where where" "term term"; }
+  .stay-where { grid-area: where; min-width: 0; }
+  .stay-money { grid-area: money; display: flex; align-items: baseline; justify-content: flex-end; }
+  .stay-term { grid-area: term; display: flex; flex-direction: column; gap: .5rem; }
   .stay-place { @apply min-w-0 font-medium; }
-  .stay-sum { @apply ml-auto inline-flex items-center gap-0.5 whitespace-nowrap font-bold; }
+  .stay-sum { @apply inline-flex items-center gap-0.5 whitespace-nowrap font-bold; }
   .stay-sum:hover { @apply text-accent-text; }
   .stay-track { @apply relative flex h-3.5 items-center; }
   .stay-line { @apply absolute inset-x-[5px] h-[3px] rounded-full bg-accent; }
   .stay-line.is-wait { background: repeating-linear-gradient(90deg, var(--color-ink-dim) 0 4px, transparent 4px 8px); }
-  .stay-dot { @apply absolute left-0 size-[11px] rounded-full bg-accent; box-shadow: 0 0 0 3px var(--color-surface-2); }
+  .stay-dot { @apply absolute left-0 size-[11px] rounded-full bg-accent; box-shadow: 0 0 0 3px var(--stay-bg); }
   .stay-dot + .stay-dot { left: auto; right: 0; }
-  .stay-dot.is-now { background: var(--color-surface-2); box-shadow: inset 0 0 0 2px var(--color-accent), 0 0 0 3px var(--color-surface-2); }
-  .stay-dot.is-hollow { background: var(--color-surface-2); box-shadow: inset 0 0 0 2px var(--color-ink-dim), 0 0 0 3px var(--color-surface-2); }
+  .stay-dot.is-now { background: var(--stay-bg); box-shadow: inset 0 0 0 2px var(--color-accent), 0 0 0 3px var(--stay-bg); }
+  .stay-dot.is-hollow { background: var(--stay-bg); box-shadow: inset 0 0 0 2px var(--color-ink-dim), 0 0 0 3px var(--stay-bg); }
   .stay-dates { @apply flex items-baseline justify-between gap-2 text-sm text-ink-muted; }
   .stay-dates > * { @apply min-w-0 flex-1; }
   .stay-dates > .stay-days { @apply flex-none text-center font-medium text-ink; }

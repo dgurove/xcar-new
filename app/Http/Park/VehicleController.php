@@ -259,12 +259,11 @@ class VehicleController
         $waiting = Thread::ofCar($vehicle, $request->user())->whereNotNull('needs_reply_at')->pluck('id');
         $asks = $messages->whereIn('thread_id', $waiting)->where('direction', Direction::In)->groupBy('thread_id')->map->last()->sortBy('date_at')->values();
 
-        return view('park.vehicles.detail', [
+        return view('park.vehicles.detail', \App\Park\Stay::of($vehicle, $request->user()) + [
             'asks' => $asks, 'tasks' => Tasks::of([$vehicle->id])[$vehicle->id] ?? [],
             'vehicle' => $vehicle, 'yards' => $yards->pluck('name', 'id'),
             // Свободные места парковок — шторке «Переставить» в карточке (spots_controller); приём и выдача — окном действия.
             'yardRows' => $vehicle->state === VehicleState::Stored ? $yards->mapWithKeys(fn ($y) => [$y->id => $y->freeSpots()]) : [],
-            'total' => $request->user()->parkMoney() ? (Accrual::totals([$vehicle])[$vehicle->id] ?? null) : null,
             // Из «Заявок» (заявку передали явно) главное — задача: кадры одной лентой, без блоков по стадиям над ней.
             'fromRequests' => $fromRequests, 'listed' => $listed,
             // Строка заявки, которую почта завела и документы ещё читаются, остаётся силуэтом с ходом, как в списке.
@@ -275,11 +274,7 @@ class VehicleController
             'releaseReportUrl' => $vehicle->state === VehicleState::Released && ActWindowController::billable($vehicle)
                 && ! $vehicle->events->contains(fn ($e) => $e->type === EventType::ReportSent && ($e->payload['what'] ?? null) === 'Акт выдачи')
                 ? $vehicle->reportUrl('release', "/cars/{$vehicle->id}") : null,
-            // «Долг» в карточке — неоплаченные счета; набежавшее стоит рядом отдельным числом.
-            'debt' => $request->user()->parkMoney() ? Ledger::vehicleDebt($vehicle) : 0,
             'debtBlocks' => ! ($vehicle->vendor?->release_without_payment ?? false),
-            // Набежало и не выставлено (с дня после `storage_billed_until`) — шторка «Хранение» и кнопка «Выставить счёт».
-            'unbilled' => $request->user()->parkMoney() && $vehicle->accepted_at ? round((float) Accrual::storage($vehicle)->sum('amount'), 2) : 0,
         ]);
     }
 
@@ -309,6 +304,8 @@ class VehicleController
         }
 
         return view('park.vehicles.show', CaseView::for($vehicle, $request->user(), (int) $request->query('req') ?: null) + [
+            // Полоска срока шапки — тем же расчётом, что в окне «Наличия» (`Park\Stay`, 12.11.2026).
+            'stay' => \App\Park\Stay::of($vehicle, $request->user()),
             'window' => preg_match('#^/(mail|cars)/#', $window) ? $window : null,
         ]);
     }

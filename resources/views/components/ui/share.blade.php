@@ -19,7 +19,11 @@
         @if ($icon)
             <button type="button" class="{{ $iconClass }}" aria-disabled="true" data-action="share#locked" aria-label="Поделиться" title="Поделиться" {{ $attributes->except('class') }}><x-ui.icon name="share" :class="$iconSize"/></button>
         @else
-            <x-ui.button type="button" :variant="$variant" :size="$size" aria-disabled="true" data-action="share#locked" {{ $attributes }}><x-ui.icon name="share" class="size-5"/> Поделиться</x-ui.button>
+            @if ($variant === 'pill')
+                <button type="button" {{ $attributes->merge(['class' => 'pill pill-plain gap-1.5']) }} aria-disabled="true" data-action="share#locked"><x-ui.icon name="share" class="size-4"/> Поделиться</button>
+            @else
+                <x-ui.button type="button" :variant="$variant" :size="$size" aria-disabled="true" data-action="share#locked" {{ $attributes }}><x-ui.icon name="share" class="size-5"/> Поделиться</x-ui.button>
+            @endif
         @endif
     </div>
 @else
@@ -27,7 +31,12 @@
     @if ($icon)
         <button type="button" class="{{ $iconClass }}" data-action="share#open" aria-label="Поделиться" title="Поделиться" {{ $attributes->except('class') }}><x-ui.icon name="share" :class="$iconSize"/></button>
     @else
-        <x-ui.button type="button" :variant="$variant" :size="$size" data-action="share#open" {{ $attributes }}><x-ui.icon name="share" class="size-5"/> Поделиться</x-ui.button>
+        {{-- pill — пилюлей в ряду «Документы» (шапка дела ТС, 12.11.2026). --}}
+        @if ($variant === 'pill')
+            <button type="button" {{ $attributes->merge(['class' => 'pill pill-plain gap-1.5']) }} data-action="share#open"><x-ui.icon name="share" class="size-4"/> Поделиться</button>
+        @else
+            <x-ui.button type="button" :variant="$variant" :size="$size" data-action="share#open" {{ $attributes }}><x-ui.icon name="share" class="size-5"/> Поделиться</x-ui.button>
+        @endif
     @endif
     <dialog id="{{ $id }}" class="sheet sheet-wide" data-share-target="dialog" data-action="click->share#backdrop">
         <div class="mb-4 flex items-center justify-between gap-4">

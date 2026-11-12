@@ -19,60 +19,74 @@
     $transport = \App\Logistics\Transport::openFor($vehicle);
     $transportLine = $transport ? implode(', ', array_filter([$transport->next(), $transport->carrier(), $transport->destinationLabel()])) : null;
 @endphp
-<x-ui.shell :title="$vehicle->titleWithYear()" copy-title cache="no-cache">
-    <x-slot:badge><x-car.keys :count="$vehicle->keys_count" label/><x-ui.links :vehicle="$vehicle"/></x-slot:badge>
-    {{-- Шапка — только положение и люди, текстом: состояние с местом и днями, что не так, долг красным словом; строкой ниже —
-         продажа страховой («На выдачу с 6 окт», кто заберёт — нажатие открывает шторку «Покупатель», телефон ссылкой).
-         Справа — только действия: документы и «⋯». Продажа в CRM — пунктами значка связи у названия (как в карточке
-         «Наличия», владелец 10.10.2026: «одно к машине относится, другое к фактам»). Всё, что есть в полях (номер, вендор,
-         телефон страхователя) и в «Деньгах» (начислено), тут не повторяется; ставка — здесь, у места, шторкой `x-park.rate` (12.10.2026). --}}
-    {{-- Коды машины под названием, как в окошке (09.11.2026): госномер, убыток с логотипом вендора, VIN — копируются нажатием. --}}
-    <div class="-mt-3 mb-3 flex flex-wrap items-center gap-1.5">
-        @if ($vehicle->plate)<x-ui.plate :value="$vehicle->plate" class="text-sm" copy/>@endif
-        <x-car.codes :vendor-id="$vehicle->vendor?->id" :ref="$vehicle->ref" :vin="$vehicle->vin"/>
-    </div>
-    <div class="mb-6 flex items-start gap-3">
-        <div class="min-w-0 flex-1">
-            <div class="flex flex-wrap items-center gap-1.5">
-                <x-park.state :vehicle="$vehicle" :move="$state === VehicleState::Stored"/>
-                {{-- Продажа — капсулой рядом с местом (11.10.2026, владелец: пункт в значке связи не находили). --}}
-                <x-park.sale :vehicle="$vehicle"/>
-                @if ($debt > 0 && $money)<a href="/money?preset=all&car={{ $vehicle->id }}" class="fact nums !text-danger">долг {{ Money::rub($debt) }}</a>@endif
-            </div>
-            <x-park.city-pick :vehicle="$vehicle" class="mt-2"/>
-            @php
-                // Выдача по сделке XCar (18.10.2026): получателя решает менеджер в сделке — здесь не правится; сделка идёт, а
-                // забирать ещё нельзя — словом, чтобы парковка знала, что машину ждёт наш покупатель.
-                $dealPass = $vehicle->dealPass();
-                $saleDeal = ! $vehicle->sold_at && in_array($vehicle->state, [\App\Park\VehicleState::Stored, \App\Park\VehicleState::Expected], true) ? $vehicle->offer?->deal : null;
-            @endphp
-            @if ($saleDeal)
-                <p class="mt-1 text-sm text-ink-muted">Идёт сделка XCar, выдача — когда можно будет забирать</p>
-            @endif
-            {{-- «На выдачу с …, кто заберёт» — только пока ТС ещё у нас (09.11.2026, владелец: «зачем спрашиваем, кто заберёт,
-                 если уже выдано»); выданной — кто забрал, словом. --}}
-            @if ($vehicle->sold_at && ! $vehicle->state->isFinal())
-                <p class="mt-1 text-sm">
-                    <span class="nums text-urgent">На выдачу с {{ \App\Support\Ago::html($vehicle->sold_at, words: false) }}</span>@if ($vehicle->pickup_name || $handles)<span class="text-ink-muted">, </span>@endif
-                    @if ($dealPass)<span>заберёт {{ $vehicle->pickup_name }}, по сделке XCar</span>@elseif ($handles)<button type="button" class="underline decoration-dotted decoration-ink-dim underline-offset-4" data-controller="emit" data-action="emit#send" data-emit-event-param="sold:open">{{ $vehicle->pickup_name ? 'заберёт '.$vehicle->pickup_name : 'кто заберёт' }}</button>@elseif ($vehicle->pickup_name)<span>заберёт {{ $vehicle->pickup_name }}</span>@endif
-                    @if ($vehicle->pickup_phone)<x-ui.tel :value="$vehicle->pickup_phone" class="ml-1"/>@endif
-                    {{-- День забора, о котором договорились (`x-park.pickup`); нет и продана давно — красным «не забирают 6 д». --}}
-                    @if ($vehicle->state === \App\Park\VehicleState::Stored)<span class="text-ink-muted">, забор </span><x-park.pickup :vehicle="$vehicle" key="head" class="nums underline decoration-dotted decoration-ink-dim underline-offset-4"/>@if ($late = $vehicle->pickupLate())<span class="ml-1 text-danger">{{ $late }}</span>@endif @endif
-                </p>
-            @elseif ($vehicle->state === \App\Park\VehicleState::Released && $vehicle->pickup_name)
-                <p class="mt-1 text-sm text-ink-muted">Забрал {{ $vehicle->pickup_name }}@if ($vehicle->pickup_phone) <x-ui.tel :value="$vehicle->pickup_phone"/>@endif</p>
-            @endif
-            @if ($transport)
-                <p class="mt-1 text-sm">
-                    @if (Surface::Logistics->opensFor(auth()->user()))<a href="{{ Surface::Logistics->url('/transports/'.$transport->id) }}" class="text-accent-text" data-turbo="false">Логистика</a>@else<span>Логистика</span>@endif<span class="text-ink-muted">, {{ $transportLine }}</span>
-                </p>
+<x-ui.shell :title="$vehicle->titleWithYear()" :heading="false" :back-row="false" cache="no-cache">
+    {{-- Шапка дела — своя, одной сеткой на обе ширины (12.11.2026, владелец после трёх вариантов: компактная карточка срока
+         «спокойно помещается сюда» — справа в полосе названия, а не строкой во всю ширину и не плитками). ПК: слева название с
+         госномером, коды и пилюли, справа карточка `x-park.stay` шириной колонки «Документы» (22rem) и «⋯»; телефон — столбиком:
+         название и «⋯», коды и пилюли, долг и карточка, строки выдачи. Состояние — на шкале карточки, у названия его нет.
+         «‹» на ПК — как у шелла (`Nav::backFor`), на телефоне — в шапке приложения. --}}
+    @php
+        $backTo = \App\Support\Nav::backFor('/'.ltrim(request()->path(), '/'), auth()->user());
+        // «Письмо» без файлов пилюлей не нужно (владелец: «зачем кнопка „Письмо“») — письма карточкой ниже; пилюля — только с файлами.
+        $files = collect($docs)->whereNotIn('type', ['letter', 'photos'])->isNotEmpty();
+        $shares = auth()->user()->sharesPark() && $vehicle->photos()->isNotEmpty();
+        $sells = auth()->user()->canManageCrm();
+    @endphp
+    <div class="park-head mb-2">
+        <div class="park-head-title has-back flex items-start gap-4">
+            @if ($backTo)<x-ui.back :back="$backTo"/>@endif
+            <h1 class="head-title min-w-0 text-xl sm:text-2xl"><x-ui.copy-text>{{ $vehicle->titleWithYear() }}</x-ui.copy-text><span class="whitespace-nowrap">@if ($vehicle->plate)<x-ui.plate :value="$vehicle->plate" class="ml-1.5 align-[.15em] text-sm" copy/>@endif<x-car.keys :count="$vehicle->keys_count" label/><x-ui.links :vehicle="$vehicle"/></span></h1>
+        </div>
+        {{-- «⋯» — отмены, перевод, логистика: всё управляющему; приёмщику пустой шторки не показываем. --}}
+        @if ($canManage)
+            <div class="park-head-more"><button type="button" class="more-pill more-pill--light" data-controller="emit" data-action="emit#send" data-emit-event-param="actions:open" aria-label="Действия"><x-ui.icon name="more" class="size-[22px]"/></button></div>
+        @endif
+        <div class="park-head-info flex min-w-0 flex-col gap-3">
+            {{-- Коды, как в окне: убыток с логотипом вендора, VIN и что не так (город — строкой ниже, `x-park.city-pick`). --}}
+            <div class="flex flex-wrap items-center gap-1.5"><x-car.codes :vendor-id="$vehicle->vendor?->id" :ref="$vehicle->ref" :vin="$vehicle->vin"><x-park.alerts :vehicle="$vehicle" :skip="[\App\Park\Alerts::DOCS, 'Город не определён']" :place="false"/></x-car.codes></div>
+            {{-- Пилюли одного вида: документы, «Поделиться» (админам и администраторам парковки, 02.11.2026), продажа (11.10.2026). --}}
+            @if ($files || $shares || $sells)
+                <div class="flex flex-wrap items-center gap-2">
+                    @if ($files)<x-ui.docs-pill :docs="$docs"/>@endif
+                    @if ($shares)<x-ui.share :subject="\App\Offers\Share\Subject::vehicle($vehicle)" variant="pill"/>@endif
+                    <x-park.sale :vehicle="$vehicle"/>
+                </div>
             @endif
         </div>
-        <x-ui.docs-pill :docs="$docs" class="!min-h-0 shrink-0 !py-1 text-xs"/>
-        {{-- «···» — отмены, перевод, логистика: всё управляющему; приёмщику пустой шторки не показываем. --}}
-        {{-- «Поделиться» — админам и администраторам парковки (02.11.2026, владелец: «почему шеринга нет?»). --}}
-        @if (auth()->user()->sharesPark() && $vehicle->photos()->isNotEmpty())<x-ui.share :subject="\App\Offers\Share\Subject::vehicle($vehicle)" icon/>@endif
-        @if ($canManage)<button type="button" class="more-pill more-pill--light shrink-0" data-controller="emit" data-action="emit#send" data-emit-event-param="actions:open" aria-label="Действия"><x-ui.icon name="more" class="size-[22px]"/></button>@endif
+        <div class="park-head-stay flex min-w-0 flex-col gap-2">
+            @if ($stay['debt'] > 0)<a href="/money?preset=all&car={{ $vehicle->id }}" class="detail-alert">Долг {{ Money::rub($stay['debt']) }}</a>@endif
+            <x-park.stay :vehicle="$vehicle" :total="$stay['total']" :debt="$stay['debt']" :unbilled="$stay['unbilled']" light/>
+        </div>
+        @php ob_start(); @endphp
+        @php
+                    // Выдача по сделке XCar (18.10.2026): получателя решает менеджер в сделке — здесь не правится; сделка идёт, а
+                    // забирать ещё нельзя — словом, чтобы парковка знала, что машину ждёт наш покупатель.
+                    $dealPass = $vehicle->dealPass();
+                    $saleDeal = ! $vehicle->sold_at && in_array($vehicle->state, [\App\Park\VehicleState::Stored, \App\Park\VehicleState::Expected], true) ? $vehicle->offer?->deal : null;
+                @endphp
+                <x-park.city-pick :vehicle="$vehicle"/>
+                @if ($saleDeal)
+                    {{-- «Идёт сделка» — пилюлей продажи рядом (админу CRM); здесь — что это значит для выдачи. --}}
+                    <p class="text-sm text-ink-muted">Сделка XCar: выдача — когда по ней можно будет забирать</p>
+                @endif
+                {{-- «На выдачу с …, кто заберёт» — только пока ТС ещё у нас (09.11.2026, владелец: «зачем спрашиваем, кто заберёт,
+                     если уже выдано»); выданной — кто забрал, словом. --}}
+                @if ($vehicle->sold_at && ! $vehicle->state->isFinal())
+                    <p class="text-sm">
+                        <span class="nums text-urgent">На выдачу с {{ \App\Support\Ago::html($vehicle->sold_at, words: false) }}</span>@if ($vehicle->pickup_name || $handles)<span class="text-ink-muted">, </span>@endif
+                        {{-- Одной строкой разметки: перевод строки между кусками давал пробел перед запятой («кто заберёт , забор»). «Не забирают N д» — меткой в ряду кодов. --}}
+                        @if ($dealPass)<span>заберёт {{ $vehicle->pickup_name }}, по сделке XCar</span>@elseif ($handles)<button type="button" class="underline decoration-dotted decoration-ink-dim underline-offset-4" data-controller="emit" data-action="emit#send" data-emit-event-param="sold:open">{{ $vehicle->pickup_name ? 'заберёт '.$vehicle->pickup_name : 'кто заберёт' }}</button>@elseif ($vehicle->pickup_name)<span>заберёт {{ $vehicle->pickup_name }}</span>@endif{{ "" }}@if ($vehicle->pickup_phone)<x-ui.tel :value="$vehicle->pickup_phone" class="ml-1"/>@endif{{ "" }}@if ($vehicle->state === \App\Park\VehicleState::Stored)<span class="text-ink-muted">, забор </span><x-park.pickup :vehicle="$vehicle" key="head" class="nums underline decoration-dotted decoration-ink-dim underline-offset-4"/>@endif
+                    </p>
+                @elseif ($vehicle->state === \App\Park\VehicleState::Released && $vehicle->pickup_name)
+                    <p class="text-sm text-ink-muted">Забрал {{ $vehicle->pickup_name }}@if ($vehicle->pickup_phone) <x-ui.tel :value="$vehicle->pickup_phone"/>@endif</p>
+                @endif
+                @if ($transport)
+                    <p class="text-sm">
+                        @if (Surface::Logistics->opensFor(auth()->user()))<a href="{{ Surface::Logistics->url('/transports/'.$transport->id) }}" class="text-accent-text" data-turbo="false">Логистика</a>@else<span>Логистика</span>@endif<span class="text-ink-muted">, {{ $transportLine }}</span>
+                    </p>
+                @endif
+        @php $lines = trim(ob_get_clean()); @endphp
+        @if ($lines !== '')<div class="park-head-lines flex flex-col gap-2">{!! $lines !!}</div>@endif
     </div>
     @if ($errors->any())<p class="field-error -mt-3 mb-4">{{ $errors->first() }}</p>@endif
 
