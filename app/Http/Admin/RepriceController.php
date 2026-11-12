@@ -15,6 +15,7 @@ use App\Offers\RepriceAsk;
 use App\Support\Money;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 /** Плашка и шторка «Переоценка» (`x-offer.reprice`, 28.10.2026): применить с решением по каждому подтвердившему или отклонить. */
 class RepriceController
@@ -80,11 +81,33 @@ class RepriceController
         return back(fallback: "/offers/{$offer->number}")->with('toast', $toast);
     }
 
+    /**
+     * «Опубликовать для других менеджеров…» из «⋯» идущей сделки (12.11.2026, владелец: машина в сделке у менеджера, а
+     * начальник хочет показать её остальным): срок приёма — до конца показа, не позже обязывающего.
+     */
+    public function startShow(Request $request, Offer $offer, ShowDealToAll $show)
+    {
+        $data = $request->validate(['until' => ['required', 'date', 'after:now']],
+            ['until.required' => 'До когда', 'until.after' => 'Срок уже прошёл']);
+        $until = \Illuminate\Support\Carbon::parse($data['until']);
+        $offer->loadMissing('deal');
+        if (! ShowDealToAll::allows($offer)) {
+            throw ValidationException::withMessages(['until' => 'Опубликовать так можно только машину в идущей сделке']);
+        }
+        if ($error = \App\Offers\Binding::closeError($offer, $until)) {
+            throw ValidationException::withMessages(['until' => $error]);
+        }
+        $show->stop($offer, $request->user(), 'Показ другим менеджерам продлён');
+        $show->start($offer->refresh(), $until, $request->user());
+
+        return back(fallback: "/offers/{$offer->number}")->with('toast', 'Опубликовано для других менеджеров до '.\App\Support\Ago::at($until, true, words: false));
+    }
+
     public function stopShow(Request $request, Offer $offer, ShowDealToAll $show)
     {
         $show->stop($offer, $request->user());
 
-        return back(fallback: "/offers/{$offer->number}")->with('toast', 'Показ всем снят');
+        return back(fallback: "/offers/{$offer->number}")->with('toast', 'Публикация для других менеджеров снята');
     }
 
     /** «Ответили не письмом» (шаг «Переоценка», 04.11.2026): поставщику ответили по телефону или из своей почты. */

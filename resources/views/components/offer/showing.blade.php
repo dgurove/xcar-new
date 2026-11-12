@@ -11,7 +11,8 @@
     $deal = $offer->deal;
     $mode = match (true) {
         ! auth()->user()->canManageCrm() => null,
-        $offer->state === OfferState::Sold && $deal && $deal->isActive() && ! $deal->isGarage() => 'deal',
+        // Гаражной тоже (12.11.2026, владелец: машину в гараже у менеджера публикуют для других, пока её не привезли).
+        $offer->state === OfferState::Sold && $deal && $deal->isActive() && ! $deal->isAuction() => 'deal',
         ! $deal && ! $offer->garageCar && in_array($offer->state, [OfferState::Draft, OfferState::Gallery, OfferState::Open], true) => 'offer',
         default => null,
     };
@@ -52,10 +53,10 @@
             <div class="col-span-2 flex flex-wrap items-center gap-x-3 gap-y-2">
                 <span class="min-w-0 flex-1">
                     <span class="block">Всем менеджерам до <span class="nums">{{ \App\Support\Ago::html($offer->deal_show_until, true, words: false) }}</span></span>
-                    <span class="block text-sm text-ink-muted">пока менеджер сделки думает о закупочной</span>
+                    @if (\App\Offers\RepriceAsk::where('deal_id', $deal->id)->whereIn('state', \App\Offers\RepriceAsk::OPEN)->exists())<span class="block text-sm text-ink-muted">пока менеджер сделки думает о закупочной</span>@endif
                 </span>
-                <form method="post" action="/offers/{{ $n }}/show-all" class="contents" data-turbo-confirm="Убрать машину из предложений у всех менеджеров?" data-turbo-confirm-label="Снять показ">
-                    @csrf @method('delete')<button type="submit" class="btn btn-s btn-quiet shrink-0 !h-8 rounded-full !px-3.5">Снять показ</button>
+                <form method="post" action="/offers/{{ $n }}/show-all" class="contents" data-turbo-confirm="Убрать из предложений у других менеджеров?" data-turbo-confirm-label="Снять">
+                    @csrf @method('delete')<button type="submit" class="btn btn-s btn-quiet shrink-0 !h-8 rounded-full !px-3.5">Снять публикацию</button>
                 </form>
             </div>
         @else

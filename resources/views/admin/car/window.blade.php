@@ -46,6 +46,8 @@
             @elseif ($left !== null && $left > 0)<span class="nums {{ $offer->isEndingSoon() ? 'text-urgent' : '' }}">приём <span data-controller="timer" data-timer-until-value="{{ $offer->bids_close_at->toIso8601String() }}" data-timer-done-value="закрыт" data-timer-coarse-value="true">{{ \App\Support\Ago::left($offer->bids_close_at, 'ещё') }}</span></span>
             @elseif (! $gallery && $selling && $offer->closed() && $admin)<span class="text-ink-muted">приём закрыт</span>@endif
             {{-- Окно галереи (08.10.2026): висит — сколько осталось, кончилось — до какого числа висело. --}}
+            {{-- Опубликована для других менеджеров поверх сделки (`ShowDealToAll`, 12.11.2026). --}}
+            @if ($offer->showsDealAsOpen())<span class="nums text-accent-text">у других менеджеров до {{ \App\Support\Ago::html($offer->deal_show_until, true, words: false) }}</span>@endif
             @if ($gallery)<span class="nums {{ $offer->isGalleryEndingSoon() ? 'text-urgent' : 'text-accent-text' }}">в галерее <span data-controller="timer" data-timer-until-value="{{ $offer->gallery_until->toIso8601String() }}" data-timer-done-value="закрыта" data-timer-coarse-value="true">{{ \App\Support\Ago::left($offer->gallery_until, 'ещё') }}</span></span>
             @elseif ($offer->gallery_from && $selling)<span class="nums text-ink-muted">в галерее до {{ \App\Support\Ago::html($offer->gallery_until, true, words: false) }}</span>@endif
         </x-slot:line>

@@ -239,6 +239,7 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
         Route::delete('/offers/{offer}/reprices/{reprice}', [RepriceController::class, 'dismiss']);
         Route::post('/offers/{offer}/reprice-asks/{ask}', [RepriceController::class, 'answer']);
         // Показ всем, пока менеджер сделки думает о закупочной (04.11.2026, `ShowDealToAll`): «Снять показ».
+        Route::post('/offers/{offer}/show-all', [RepriceController::class, 'startShow']);
         Route::delete('/offers/{offer}/show-all', [RepriceController::class, 'stopShow']);
         Route::post('/offers/{offer}/reprices/{reprice}/answered', [RepriceController::class, 'answered']);
         Route::post('/offers/{offer}/exit/{exit}', [RouteController::class, 'exit']);
