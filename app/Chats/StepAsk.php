@@ -6,10 +6,14 @@ use App\Chats\Actions\OpenChat;
 use App\Chats\Actions\PlatformMessage;
 use App\Notifications\Notify;
 use App\Offers\Deal;
+use App\Offers\SupplierInvoice;
 use App\Support\Ago;
+use App\Support\Money;
 use App\Users\Wording;
 use App\Workflow\Asks;
+use App\Workflow\Position;
 use App\Workflow\Requirement;
+use App\Workflow\Track;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
@@ -32,8 +36,14 @@ final class StepAsk
                 || Message::where('requirement_id', $r->id)->exists()) {
                 return;
             }
+            // Шаг уже ушёл (счёт закрылся пришедшими деньгами в той же транзакции) или деньги по сделке уже пришли — просить
+            // «оплатить» нечего (12.11.2026: пачка счетов по VIN разослала «нужно оплатить» по оплаченным, владелец: «позоришь»).
+            $current = Position::where('offer_id', $deal->offer_id)->where('track', Track::Sale)->value('stage_id');
+            if (($current && $current !== $r->stage_id) || ($r->stage?->isPayStep() && $deal->credited() > 0)) {
+                return;
+            }
             // Оплатить страховой — сразу и сам счёт вложением (11.11.2026, владелец).
-            $bill = $r->stage && $deal->paysSupplierOn($r->stage) ? \App\Offers\SupplierInvoice::shown($deal->offer)->take(1) : collect();
+            $bill = $r->stage && $deal->paysSupplierOn($r->stage) ? SupplierInvoice::shown($deal->offer)->take(1) : collect();
             app(PlatformMessage::class)(app(OpenChat::class)($deal->offer, $deal->buyer, greet: false), self::text($r), $r, media: $bill);
         });
     }
@@ -49,12 +59,13 @@ final class StepAsk
             return Notify::CONSENT_ASK;
         }
         $deal = $r->deal;
-        $due = $r->due_at ? Ago::day($r->due_at, true) : null;
+        // Срок в прошлом не пишется: «до 25.10» 12 ноября — не просьба, а упрёк.
+        $due = $r->due_at?->isFuture() ? Ago::day($r->due_at, true) : null;
         if ($deal && $r->stage && $deal->paysSupplierOn($r->stage)) {
             $sum = $deal->supplierPayment();
 
             // Без срока оплаты (11.11.2026, владелец): только что пришло и сколько, сам счёт — вложением.
-            return 'Привет, пришёл счёт от страховой'.($sum ? ' на '.\App\Support\Money::rub($sum) : '');
+            return 'Привет, пришёл счёт от страховой'.($sum ? ' на '.Money::rub($sum) : '');
         }
         $task = $deal?->managerTask();
         $title = Wording::neutral(Wording::for($deal?->buyer, $task && $task['kind'] === 'ask' ? $task['title'] : $r->title));

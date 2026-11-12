@@ -92,7 +92,7 @@ final class BuyerFromStatement
         $party = Party::forUser($user);
         $party->update(array_filter(['kind' => $party->inn ? null : $p['kind'], 'name' => $party->inn ? null : $p['name'], 'inn' => $party->inn ?: $p['inn'],
             'account' => $party->account ?: $tx->counterparty_account, 'bank_name' => $party->bank_name ?: $tx->counterparty_bank], fn ($v) => $v !== null && $v !== ''));
-        ($this->save)(DealContract::for($deal), ['buyer_id' => (string) $user->id, 'payer' => 'buyer'], $by);
+        ($this->save)(DealContract::for($deal), ['buyer_id' => (string) $user->id], $by);
         $deal->offer->log(OfferEventType::Note, $by, ['text' => 'Покупатель из выписки: '.$p['name'].($p['inn'] ? ', ИНН '.$p['inn'] : '')]);
 
         return $user;

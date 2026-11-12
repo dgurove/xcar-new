@@ -463,6 +463,10 @@ final class Notify
         if ($i->deal?->isGarage() && ! $i->deal->buyer?->seesGaragePrice()) {
             return;
         }
+        // Деньги по сделке уже пришли (зачёт по VIN, 12.11.2026) — счёт закрывается ими сам, «оплатить» менеджеру не пишем.
+        if ($i->deal?->credited() > 0) {
+            return;
+        }
         $i->deal?->buyer?->notify(MoneyNotice::invoiceIssued($i));
     }
 
