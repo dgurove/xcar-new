@@ -18,6 +18,17 @@ use Spatie\MediaLibrary\MediaCollections\Models\Media;
  */
 final class Docs
 {
+    /**
+     * Файлы набора — без писем и кадров: их считает пилюля «Документы N» (`x-ui.docs-pill`), и по ним решают, есть ли что
+     * показывать пилюлей (дело ТС на парковке — без файлов пилюли нет, 12.11.2026).
+     *
+     * @param  array<int, array<string, mixed>>|null  $docs
+     */
+    public static function files(?array $docs): Collection
+    {
+        return collect($docs ?? [])->whereNotIn('type', ['letter', 'photos'])->values();
+    }
+
     public static function type(?string $mime, ?string $name): string
     {
         $ext = strtolower(pathinfo((string) $name, PATHINFO_EXTENSION));

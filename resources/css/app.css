@@ -3307,6 +3307,8 @@ html.kb-open { --home-gap: 0px; }
   .park-head-lines { grid-area: lines; }
   @media (min-width: 1024px) {
     .park-head { grid-template-columns: minmax(0, 1fr) auto 22rem; grid-template-rows: auto 1fr auto; grid-template-areas: "title more stay" "info info stay" "lines lines lines"; }
+    /* Строк выдачи нет — третьей строки сетки тоже нет, иначе её промежуток — лишние 12 px под шапкой. */
+    .park-head:not(:has(> .park-head-lines)) { grid-template-rows: auto 1fr; grid-template-areas: "title more stay" "info info stay"; }
   }
   /* Полоска срока ТС (`x-park.stay`): где стоит и сумма, линия от приёма до выдачи (у стоящей — до «сегодня»), даты и дни.
      Везде компактной карточкой D3 (12.11.2026, владелец: «три плитки — ваще не то, верни компактную»): где и сумма сверху,

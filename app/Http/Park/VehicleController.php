@@ -303,9 +303,11 @@ class VehicleController
             $request->attributes->set('nav.tab', '/requests');
         }
 
-        return view('park.vehicles.show', CaseView::for($vehicle, $request->user(), (int) $request->query('req') ?: null) + [
-            // Полоска срока шапки — тем же расчётом, что в окне «Наличия» (`Park\Stay`, 12.11.2026).
-            'stay' => \App\Park\Stay::of($vehicle, $request->user()),
+        $case = CaseView::for($vehicle, $request->user(), (int) $request->query('req') ?: null);
+
+        return view('park.vehicles.show', $case + [
+            // Полоска срока шапки — тем же расчётом, что в окне «Наличия» (`Park\Stay`, 12.11.2026); долг — уже посчитанный.
+            'stay' => \App\Park\Stay::of($vehicle, $request->user(), $case['debt']),
             'window' => preg_match('#^/(mail|cars)/#', $window) ? $window : null,
         ]);
     }

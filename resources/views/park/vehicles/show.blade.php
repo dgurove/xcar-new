@@ -27,8 +27,8 @@
          «‹» на ПК — как у шелла (`Nav::backFor`), на телефоне — в шапке приложения. --}}
     @php
         $backTo = \App\Support\Nav::backFor('/'.ltrim(request()->path(), '/'), auth()->user());
-        // «Письмо» без файлов пилюлей не нужно (владелец: «зачем кнопка „Письмо“») — письма карточкой ниже; пилюля — только с файлами.
-        $files = collect($docs)->whereNotIn('type', ['letter', 'photos'])->isNotEmpty();
+        // «Письмо» без файлов пилюлей не нужно (владелец: «зачем кнопка „Письмо“») — письма карточкой ниже (`x-ui.docs-pill files`).
+        $files = \App\Support\Docs::files($docs)->isNotEmpty();
         $shares = auth()->user()->sharesPark() && $vehicle->photos()->isNotEmpty();
         $sells = auth()->user()->canManageCrm();
     @endphp
@@ -47,7 +47,7 @@
             {{-- Пилюли одного вида: документы, «Поделиться» (админам и администраторам парковки, 02.11.2026), продажа (11.10.2026). --}}
             @if ($files || $shares || $sells)
                 <div class="flex flex-wrap items-center gap-2">
-                    @if ($files)<x-ui.docs-pill :docs="$docs"/>@endif
+                    <x-ui.docs-pill :docs="$docs" files/>
                     @if ($shares)<x-ui.share :subject="\App\Offers\Share\Subject::vehicle($vehicle)" variant="pill"/>@endif
                     <x-park.sale :vehicle="$vehicle"/>
                 </div>

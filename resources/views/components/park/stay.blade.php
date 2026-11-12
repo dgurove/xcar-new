@@ -16,9 +16,12 @@
     $money = auth()->user()->parkMoney() && $total && ($total['amount'] ?? 0) > 0;
     $days = $on ? $vehicle->daysStored() : null;
     $sheet = 'storage-'.$vehicle->id;
+    // Начислять нечего (ставки нет, сумма 0) — справа ставка шторкой (`x-park.rate`): иначе её неоткуда поставить ни в
+    // окне, ни на странице дела (ревью 12.11.2026: шорткат ставки из шапки дела ушёл вместе с `x-park.state`).
+    $rate = ! $money && $stored && auth()->user()->parkMoney();
 @endphp
 {{-- `light` — белая на сером фоне страницы дела. --}}
-<div {{ $attributes->class(['stay', 'stay--light' => $light, 'stay--nomoney' => ! $money]) }}>
+<div {{ $attributes->class(['stay', 'stay--light' => $light, 'stay--nomoney' => ! $money && ! $rate]) }}>
     <div class="stay-where">
         @if ($vehicle->yard && $stored && $movable)
             <x-park.place-move :vehicle="$vehicle" :chevron="false" class="stay-place underline decoration-dotted decoration-ink-dim underline-offset-4"/>
@@ -33,6 +36,8 @@
             <button type="button" class="stay-sum nums" data-action="sheet#open">{{ \App\Support\Money::rub($total['amount']) }}<x-ui.icon name="chevron-right" class="size-4 text-ink-dim"/></button>
             <x-park.storage-sheet :id="$sheet" :vehicle="$vehicle" :total="$total" :debt="$debt" :unbilled="$unbilled"/>
         </div>
+    @elseif ($rate)
+        <div class="stay-money"><x-park.rate :vehicle="$vehicle" key="stay"/></div>
     @endif
     <div class="stay-term">
         @if ($on)
@@ -57,6 +62,9 @@
         @elseif ($state->isBefore())
             <div class="stay-track" aria-hidden="true"><span class="stay-line is-wait"></span><span class="stay-dot is-hollow"></span><span class="stay-dot is-hollow"></span></div>
             <div class="stay-dates"><span>ждём приёма</span></div>
+        @else
+            {{-- Дат нет (принята без даты приёма, выдана без даты выдачи) — состояние словом: больше его нигде нет. --}}
+            <div class="text-sm text-ink-muted">{{ mb_strtolower($state->label()) }}</div>
         @endif
     </div>
 </div>

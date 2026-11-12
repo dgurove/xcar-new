@@ -13,8 +13,12 @@ use App\Users\User;
  */
 final class Stay
 {
-    /** @return array{total: ?float, debt: float, unbilled: float} */
-    public static function of(Vehicle $vehicle, User $user): array
+    /**
+     * $debt — уже посчитанный долг (страница дела берёт его из `CaseView`), чтобы не считать второй раз.
+     *
+     * @return array{total: ?array, debt: int|float, unbilled: int|float}
+     */
+    public static function of(Vehicle $vehicle, User $user, int|float|null $debt = null): array
     {
         if (! $user->parkMoney()) {
             return ['total' => null, 'debt' => 0, 'unbilled' => 0];
@@ -23,7 +27,7 @@ final class Stay
         return [
             'total' => Accrual::totals([$vehicle])[$vehicle->id] ?? null,
             // «Долг» — неоплаченные счета; набежавшее стоит рядом отдельным числом.
-            'debt' => Ledger::vehicleDebt($vehicle),
+            'debt' => $debt ?? Ledger::vehicleDebt($vehicle),
             // Набежало и не выставлено (с дня после `storage_billed_until`) — шторка «Хранение» и кнопка «Выставить счёт».
             'unbilled' => $vehicle->accepted_at ? round((float) Accrual::storage($vehicle)->sum('amount'), 2) : 0,
         ];
