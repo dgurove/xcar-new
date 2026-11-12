@@ -65,13 +65,20 @@ export default class extends Controller {
             const on = this.keys(pane).includes(key);
             pane.hidden = !on;
             // Поля скрытой панели — своей, вложенной или внешнего reveal — так и остаются выключенными. Прочее скрытое
-            // снаружи не в счёт: шторка в плашке, что прячется до первой галочки (логистика: «Назначить (N)»), иначе
-            // выключала поля навсегда, и выбранный логист не уходил в запрос. Поле вендора (`by-vendor`: оценочная, срок
-            // обязывающего в «Ценах» окошка) прячется и показывается само при смене вендора — его не выключаем.
+            // (список, шторка, плашка, что прячет и показывает другой контроллер) reveal не трогает: выключенным оно
+            // оставалось навсегда — шторка «Назначить (N)» логистики не отдавала логиста, поле вендора в «Ценах», а
+            // 12.11.2026 — галочки менеджеров в «Показе» окна (список выбора «Кому» скрыт до «Выбранным»; начальник
+            // опубликовал «всем», потому что не смог отметить никого).
+            // Включает обратно только своё (`data-reveal-off`) и видимое; скрытое чужим контроллером выключенным (оценка
+            // менеджеров: `declared[…]` у неотмеченных) так и остаётся.
             for (const field of pane.querySelectorAll('input, select, textarea')) {
-                const hid = field.closest('[hidden]:not([data-controller~="by-vendor"])');
-                field.disabled = !on || !!field.closest('[data-reveal-target~="pane"][hidden]')
-                    || (!!hid && hid !== this.element && this.element.contains(hid));
+                if (!on || field.closest('[data-reveal-target~="pane"][hidden]')) {
+                    if (!field.disabled) field.dataset.revealOff = '';
+                    field.disabled = true;
+                } else if ('revealOff' in field.dataset || !field.closest('[hidden]')) {
+                    delete field.dataset.revealOff;
+                    field.disabled = false;
+                }
             }
         }
         if (label && this.labelSelectorValue) {

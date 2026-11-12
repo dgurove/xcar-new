@@ -1,5 +1,6 @@
 {{-- Экран «Горит» (19.10.2026, начальник: «зашёл — сразу видишь, что горит, в чём дело, провалился — потушил»;
-     `AlarmController`): два блока — «Сгорели» (срок обязывающего прошёл, свежее сверху) и «Вот-вот сгорят» (ближнее сверху),
+     `AlarmController`): два блока — «Срок обязывающего сгорел» (день и меньше или прошёл, свежее сверху) и «Горит срок обязывающего» (меньше
+     пяти дней, ближнее сверху; 12.11.2026, начальник),
      в каждом группы по причине (`Binding::REASONS`) липкими подзаголовками; строка — этап и срок (`x-alarm.row`). Чип
      «Менеджер» — менеджер идущей сделки, «Без менеджера» — машины без покупателя. Пустой блок не рисуется. --}}
 <x-ui.shell title="Горит" :count="$total" :detail="$detail">
@@ -9,7 +10,7 @@
             <x-ui.empty>Ничего не горит</x-ui.empty>
         @endif
         @php $columns = \App\Http\Admin\AlarmController::table(); @endphp
-        @foreach (['over' => ['Сгорели', 'text-danger', $over], 'burning' => ['Вот-вот сгорят', 'text-urgent', $burning]] as $key => [$title, $tone, $groups])
+        @foreach (['over' => ['Срок обязывающего сгорел', 'text-danger', $over], 'burning' => ['Горит срок обязывающего', 'text-urgent', $burning]] as $key => [$title, $tone, $groups])
             @continue($groups->isEmpty())
             <section data-search-group>
                 <h2 class="detail-section {{ $tone }}">{{ $title }} <span class="nums font-normal text-ink-dim">{{ $groups->flatten()->count() }}</span></h2>

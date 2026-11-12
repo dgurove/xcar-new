@@ -2,7 +2,6 @@
 
 namespace App\Offers;
 
-use App\Billing\WorkDays;
 use App\Live\Publisher;
 use App\Live\Topics;
 use App\Support\Ago;
@@ -21,7 +20,10 @@ use Illuminate\Support\HtmlString;
  * цену торгов (протокол CarXbid / SD-Assistance «Срок обязывающего предложения: 60 дней», Мигторг и БитАвто «Срок
  * действия предложения до …»; разбор — `DocumentFields::binding`). Поле продажи `offers.binding_until`.
  *
- * Паника — за `WORKDAYS` рабочих дня до срока и после него: у машины нет покупателя — ни живого подтверждения, ни сделки,
+ * «Горит срок обязывающего» — меньше `HOT_DAYS` дней до срока, «Срок обязывающего сгорел» — `BURNT_DAYS` день и меньше
+ * или прошёл (12.11.2026, начальник: прежде «горит» — за 2 рабочих дня, «вышел» — только прошедший).
+ *
+ * Паника — когда горит: у машины нет покупателя — ни живого подтверждения, ни сделки,
  * ни гаража (`panic`, `over`; владелец: «хотя бы подтверждение»), или сделка идёт, а поставщику ещё не заплатили (`deal`,
  * 19.10.2026: поставщик держит цену до срока, `Deal::supplierPaid`). Подтверждение есть, но не принято (`undecided`) —
  * только красная метка во вкладках подтверждений, без тревоги: решать админу. Одна дверь для CRM, логистики и звонка
@@ -29,7 +31,11 @@ use Illuminate\Support\HtmlString;
  */
 final class Binding
 {
-    public const WORKDAYS = 2;
+    /** Горит — до срока меньше стольких дней. */
+    public const HOT_DAYS = 5;
+
+    /** Сгорел — до срока столько дней или меньше (и прошедший). */
+    public const BURNT_DAYS = 1;
 
     /** Где покупателя ещё ищут: черновик, галерея, продажа. В сделке, гараже и архиве паники нет. */
     public const LIVE = [OfferState::Draft, OfferState::Gallery, OfferState::Open];
@@ -48,17 +54,16 @@ final class Binding
         ." and not exists (select 1 from deals d where d.offer_id = offers.id and d.state = 'active')"
         .' and not exists (select 1 from garage_cars g where g.offer_id = offers.id))';
 
-    /**
-     * Срок «горит», если он не позже этой границы: конец дня через два рабочих дня. Срок в четверг — паника со вторника
-     * с утра, а не со вторника с того же часа.
-     */
+    /** Срок «горит», если он не позже этой границы: через `HOT_DAYS` дней от сейчас. */
     public static function edge(): Carbon
     {
-        // Граница зависит только от дня — раз на день, а не на каждую строку списка (перебор рабочих дней на строку).
-        static $edges = [];
-        $now = now();
+        return now()->addDays(self::HOT_DAYS);
+    }
 
-        return ($edges[$now->format('Y-m-d')] ??= WorkDays::add($now, self::WORKDAYS)->endOfDay())->copy();
+    /** Срок «сгорел», если он не позже этой границы: через `BURNT_DAYS` день от сейчас (и прошедший). */
+    public static function burnt(): Carbon
+    {
+        return now()->addDays(self::BURNT_DAYS);
     }
 
     /** @return 'set'|'panic'|'over'|'deal'|'undecided'|null */
@@ -73,7 +78,7 @@ final class Binding
         // Списки считают горящее одним подзапросом (`select`) — без запросов на строку.
         if (array_key_exists('binding_panic', $offer->getAttributes())) {
             if ($offer->getAttribute('binding_panic')) {
-                return ! $live || self::unpaidDeal($offer) ? 'deal' : ($until->isPast() ? 'over' : 'panic');
+                return ! $live || self::unpaidDeal($offer) ? 'deal' : ($until->lte(self::burnt()) ? 'over' : 'panic');
             }
 
             return $burning && $live && self::undecided($offer) ? 'undecided' : 'set';
@@ -91,7 +96,7 @@ final class Binding
             return 'undecided';
         }
 
-        return self::hasBuyer($offer) ? 'set' : ($until->isPast() ? 'over' : 'panic');
+        return self::hasBuyer($offer) ? 'set' : ($until->lte(self::burnt()) ? 'over' : 'panic');
     }
 
     /** Горит всерьёз: нет покупателя или поставщику не заплачено — красная полоса, тревога, звонок. */
@@ -160,7 +165,7 @@ final class Binding
             'none' => $query->whereNull($col),
             'set' => $query->whereNotNull($col),
             'panic' => $query->whereRaw(self::panicSql($table)),
-            'over' => $query->whereRaw(self::panicSql($table))->whereRaw('not '.$sql(self::UNPAID_SQL))->where($col, '<', now()),
+            'over' => $query->whereRaw(self::panicSql($table))->whereRaw('not '.$sql(self::UNPAID_SQL))->where($col, '<=', self::burnt()),
             'deal' => $query->whereNotNull($col)->where($col, '<=', self::edge())->whereRaw($sql(self::UNPAID_SQL)),
             'undecided' => $query->whereNotNull($col)->where($col, '<=', self::edge())->whereIn("{$table}.state", self::liveValues())->whereRaw($sql(self::UNDECIDED_SQL)),
         };
@@ -181,14 +186,17 @@ final class Binding
      * всегда выше остальных, и в других вкладках тоже»): срок не позже `edge`, а машина ещё ищет покупателя — черновик,
      * галерея, продажа, и с подтверждением, которое не приняли (`undecided`: во «Есть подтверждения» такие тоже первыми).
      * Сделки, что не заплатили поставщику, — нет: их ведут в «Сделках» (на проде таких 96 — во «Всех» они закрыли бы
-     * собой машины без покупателя). Группа «Горит обязывающий» во вкладках предложений CRM.
+     * собой машины без покупателя). Группы «Срок обязывающего сгорел» (2) и «Горит срок обязывающего» (1) во вкладках
+     * предложений CRM, 0 — не горит.
      */
-    public static function soonSql(string $table = 'offers'): string
+    public static function levelSql(string $table = 'offers'): string
     {
         $states = implode(',', array_map(fn ($v) => "'{$v}'", self::liveValues()));
+        $col = "{$table}.binding_until";
 
-        return "({$table}.binding_until is not null and {$table}.binding_until <= '".self::edge()->toDateTimeString()."'"
-            ." and {$table}.state in ({$states}))";
+        return "(case when {$col} is null or {$table}.state not in ({$states}) then 0"
+            ." when {$col} <= '".self::burnt()->toDateTimeString()."' then 2"
+            ." when {$col} <= '".self::edge()->toDateTimeString()."' then 1 else 0 end)";
     }
 
     /** @return list<string> */
@@ -212,12 +220,12 @@ final class Binding
     {
         return "(case when {$table}.binding_until is null then 'empty'"
             .' when '.self::panicSql($table).' and '.str_replace('offers.', "{$table}.", self::UNPAID_SQL)." then 'deal'"
-            .' when '.self::panicSql($table)." and {$table}.binding_until < '".now()->toDateTimeString()."' then 'over'"
+            .' when '.self::panicSql($table)." and {$table}.binding_until <= '".self::burnt()->toDateTimeString()."' then 'over'"
             .' when '.self::panicSql($table)." then 'panic' else 'set' end)";
     }
 
     /** Подписи корзин — одни на чипы логистики и вендора. */
-    public const BUCKETS = ['panic' => 'Горит, нет покупателя', 'deal' => 'Горит, поставщику не заплачено', 'over' => 'Вышел, нет покупателя', 'set' => 'Есть срок', 'empty' => 'Нет срока'];
+    public const BUCKETS = ['panic' => 'Горит срок, нет покупателя', 'deal' => 'Горит срок, поставщику не заплачено', 'over' => 'Срок сгорел, нет покупателя', 'set' => 'Есть срок', 'empty' => 'Нет срока'];
 
     /** Срок обязывающего последней продажи машины задачи — сортировка «Вывоза». */
     public const UNTIL_SQL = "(select o.binding_until from offers o where o.car_id = transports.car_id and transports.origin <> 'park' order by o.id desc limit 1)";
@@ -258,7 +266,7 @@ final class Binding
      * письма»): последняя запись «Изменён» с ним — причина словом («Из письма», «Из документа «Протокол»», «Из настроек
      * вендора», «Из протокола торгов»), кто и когда; письмо — его номер, если запись его знает. Записи нет — null.
      *
-     * @return ?array{why: ?string, user: ?User, at: \Illuminate\Support\Carbon, letter: ?int}
+     * @return ?array{why: ?string, user: ?User, at: Carbon, letter: ?int}
      */
     public static function source(Offer $offer): ?array
     {

@@ -18,7 +18,7 @@ final class BindingPanicNotice extends Notice
 
     public function label(): string
     {
-        return 'Горит обязывающее';
+        return 'Горит срок обязывающего';
     }
 
     public function title(): string
@@ -30,7 +30,11 @@ final class BindingPanicNotice extends Notice
     {
         $until = $this->offer->binding_until;
 
-        return $until->isPast() ? 'Срок обязывающего предложения вышел '.Binding::date($until) : 'Обязывающее до '.Binding::date($until).', '.Binding::word($this->offer);
+        return match (true) {
+            $until->isPast() => 'Срок обязывающего сгорел '.Binding::date($until),
+            $until->lte(Binding::burnt()) => 'Срок обязывающего сгорел: до '.Binding::date($until).', '.Binding::word($this->offer),
+            default => 'Срок обязывающего до '.Binding::date($until).', '.Binding::word($this->offer),
+        };
     }
 
     public function href(): string

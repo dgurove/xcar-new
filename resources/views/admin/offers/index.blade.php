@@ -22,24 +22,28 @@
             => $offers->getCollection()->groupBy(fn ($o) => 'park'.($o->onPark() ? 0 : 1))->sortKeys(),
         default => collect(['' => $offers->getCollection()]),
     };
-    // Горит обязывающий — первой группой над группами вкладки (`OfferController::HOT`, 06.11.2026): строки уже первыми по
-    // порядку запроса; остальные — в своих группах, у вкладки без групп — «Остальные». Есть ли такие — по числам групп
-    // всего списка (порция их может не иметь) или по самим строкам.
+    // «Срок обязывающего сгорел» и «Горит срок обязывающего» — первыми группами над группами вкладки (`OfferController::HOT`,
+    // 06.11.2026; две группы — 12.11.2026, `binding_soon`: 2 — сгорел, 1 — горит): строки уже первыми по порядку запроса;
+    // остальные — в своих группах, у вкладки без групп — «Остальные». Есть ли такие — по числам групп всего списка (порция
+    // их может не иметь) или по самим строкам.
     $hotTab = ! $searching && $view !== \App\Support\ListView::GRID && in_array($preset, OfferController::HOT, true);
-    if ($hotTab && (($groupCounts['hot'] ?? 0) > 0 || $offers->getCollection()->contains(fn ($o) => $o->binding_soon))) {
+    if ($hotTab && (($groupCounts['burnt'] ?? 0) + ($groupCounts['hot'] ?? 0) > 0 || $offers->getCollection()->contains(fn ($o) => $o->binding_soon))) {
         $split = collect();
-        $hot = $groups->flatten(1)->filter(fn ($o) => $o->binding_soon)->values();
-        if ($hot->isNotEmpty()) $split->put('hot', $hot);
+        foreach (['burnt' => 2, 'hot' => 1] as $key => $level) {
+            $rows = $groups->flatten(1)->filter(fn ($o) => (int) $o->binding_soon === $level)->values();
+            if ($rows->isNotEmpty()) $split->put($key, $rows);
+        }
         // put, а не merge: у опубликованных ключи групп — числа, merge их перенумеровал бы.
         foreach ($groups as $key => $list) {
             $rest = $list->reject(fn ($o) => $o->binding_soon)->values();
             if ($rest->isNotEmpty()) $split->put($key === '' ? 'rest' : $key, $rest);
         }
         $groups = $split;
-        $groupCounts['rest'] ??= collect($groupCounts)->except('hot')->sum() ?: null;
+        $groupCounts['rest'] ??= collect($groupCounts)->except(['burnt', 'hot'])->sum() ?: null;
     }
     $groupTitle = fn ($key, $list) => match (true) {
         $key === '' => null,
+        $key === 'burnt' => OfferController::BURNT_GROUP,
         $key === 'hot' => OfferController::HOT_GROUP,
         $key === 'rest' => 'Остальные',
         $key === 'legacy' => $ghosts->isEmpty() ? null : 'Черновики',

@@ -56,8 +56,9 @@ final class AlarmController
         $tasks = $crm ? collect() : Transport::open()->whereIn('car_id', $all->pluck('car_id')->filter())->pluck('id', 'car_id');
 
         return view('admin.alarms.index', [
-            'over' => $group($all->filter(fn (Offer $o) => $o->binding_until->isPast())->sortByDesc('binding_until')),
-            'burning' => $group($all->filter(fn (Offer $o) => $o->binding_until->isFuture())),
+            // Сгорел — день и меньше до срока или прошёл (`Binding::burnt`, 12.11.2026), горит — меньше пяти дней.
+            'over' => $group($all->filter(fn (Offer $o) => $o->binding_until->lte(Binding::burnt()))->sortByDesc('binding_until')),
+            'burning' => $group($all->filter(fn (Offer $o) => $o->binding_until->gt(Binding::burnt()))),
             'total' => $all->count(),
             'facets' => $facets,
             'detail' => $crm ? $detail : null,

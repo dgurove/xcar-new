@@ -21,9 +21,11 @@ final class BindingPanic extends Message
     {
         $until = $this->offer->binding_until;
 
-        return Text::lines($this->offer, $until->isPast()
-            ? 'Срок обязывающего предложения вышел '.Binding::date($until)
-            : 'Обязывающее до '.Binding::date($until).', '.Binding::word($this->offer));
+        return Text::lines($this->offer, match (true) {
+            $until->isPast() => 'Срок обязывающего сгорел '.Binding::date($until),
+            $until->lte(Binding::burnt()) => 'Срок обязывающего сгорел: до '.Binding::date($until).', '.Binding::word($this->offer),
+            default => 'Горит срок обязывающего: до '.Binding::date($until).', '.Binding::word($this->offer),
+        });
     }
 
     protected function decisions(): array

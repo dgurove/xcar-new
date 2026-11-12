@@ -351,8 +351,8 @@ class OfferController
         }
         // Горит ли срок обязывающего — одним подзапросом на список, а не запросами на строку (`Binding::of`).
         Binding::select($q);
-        // Горит ли — для первой группы вкладки (`HOT`).
-        $q->selectRaw(Binding::soonSql().' as binding_soon');
+        // Горит ли срок обязывающего — для первых групп вкладки (`HOT`): 2 — сгорел, 1 — горит, 0 — нет.
+        $q->selectRaw(Binding::levelSql().' as binding_soon');
         // Ждущая переоценка закупочной (28.10.2026) — меткой у цены и чипом.
         if ($admin) {
             $q->withExists(['reprices as reprice_pending' => fn ($r) => $r->where('state', Reprice::PENDING)]);
@@ -471,14 +471,17 @@ class OfferController
     public const PICK_GROUPS = ['Выбрать', 'Идёт приём', 'Приём закрыт'];
 
     /**
-     * Горит обязывающий (`Binding::soonSql`) — первой группой во вкладках, где такие строки бывают (06.11.2026, владелец:
+     * Срок обязывающего сгорел и горит (`Binding::levelSql`; 12.11.2026, начальник: горит — меньше 5 дней, сгорел — день и
+     * меньше, отдельной подгруппой) — первыми группами во вкладках, где такие строки бывают (06.11.2026, владелец:
      * «всегда вверх поднимать, чтобы их в первую очередь обработали»), над группами самой вкладки и при любой сортировке.
-     * «Публикации» нет: там группы — время выхода. Ключ группы — `hot`, у остальных строк — прежний; у вкладки без своих
+     * «Публикации» нет: там группы — время выхода. Ключи групп — `burnt` и `hot`, у остальных строк — прежний; у вкладки без своих
      * групп — `rest` («Остальные»). Строке — колонка `binding_soon` (`listQuery`).
      */
     public const HOT = ['nofloor', 'unpriced', 'estimating', 'priced', 'published', 'bids', 'done', 'all'];
 
-    public const HOT_GROUP = 'Горит обязывающий';
+    public const HOT_GROUP = 'Горит срок обязывающего';
+
+    public const BURNT_GROUP = 'Срок обязывающего сгорел';
 
     /**
      * «Без продажной цены» админа — машины на нашей парковке первыми своей группой (22.10.2026, начальник: у них приоритет),
@@ -511,7 +514,7 @@ class OfferController
             $q->orderByRaw(self::PARK_GROUP);
         }
         if (in_array($preset, self::HOT, true)) {
-            $q->orderByRaw('('.Binding::soonSql().') desc');
+            $q->orderByRaw(Binding::levelSql().' desc');
         }
         if ($preset === 'estimating') {
             $q->orderByRaw(self::ESTIMATE_GROUP);
@@ -570,7 +573,8 @@ class OfferController
         };
         // Горящий обязывающий — своей группой поверх групп вкладки (`HOT`); без своих групп остальные — `rest`.
         if (in_array($preset, self::HOT, true)) {
-            $expr = 'case when '.Binding::soonSql()." then 'hot' else ".($expr === null ? "'rest'" : "'{$prefix}' || ({$expr})::text").' end';
+            $level = Binding::levelSql();
+            $expr = "case when {$level} = 2 then 'burnt' when {$level} = 1 then 'hot' else ".($expr === null ? "'rest'" : "'{$prefix}' || ({$expr})::text").' end';
             $prefix = '';
         }
         if ($expr === null) {
@@ -1264,7 +1268,7 @@ class OfferController
             }
 
             return $return($offer, $request->user(), $prices, filled($data['bids_close_at'] ?? null) ? Carbon::parse($data['bids_close_at']) : null, $audience,
-            stays: $request->boolean('stays'), where: array_intersect_key($data, array_flip(['settlement_id', 'inspection_address'])));
+                stays: $request->boolean('stays'), where: array_intersect_key($data, array_flip(['settlement_id', 'inspection_address'])));
         });
 
         return redirect("/offers/{$offer->number}")->with('toast', 'В продаже № '.$offer->number)->with(self::gone($request, $offer));
@@ -1277,7 +1281,7 @@ class OfferController
      */
     private static function bindingChange(Request $request, Offer $offer): array
     {
-        if (! $request->has('binding_until') || ! \App\Offers\Binding::applies($offer)) {
+        if (! $request->has('binding_until') || ! Binding::applies($offer)) {
             return [];
         }
         $at = filled($request->input('binding_until')) ? Carbon::parse($request->input('binding_until')) : null;

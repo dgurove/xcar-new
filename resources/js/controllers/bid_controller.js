@@ -5,14 +5,16 @@ import { confirmSheet } from '../confirm';
 // Форма подтверждения: видимое поле с разделителями, на сервер — число; кнопка
 // полной цены и скидок — готовой суммой с сервера (`Offer::bidDiscounts`: доля разницы заявленной и продажной, только
 // не ниже порога). Сам порог на клиенте не известен намеренно.
-// Можно в гараж — отправка сначала спрашивает, куда берёт (шторка `x-offer.bid-choice`): «Для покупателя за N ₽»
-// (без цены выключена) или «В гараж на подготовку» (цена не нужна). Enter в поле тоже ведёт в шторку.
+// Можно в гараж — отправка сначала спрашивает, куда берёт (шторка `x-offer.bid-choice`): «Для покупателя за N ₽» или
+// «В гараж на подготовку» (цена не нужна). Enter в поле тоже ведёт в шторку. «Для покупателя» жмётся и без цены
+// (12.11.2026, Сахиб: серая кнопка без объяснений): тогда второй панелью шторки — шаг «Цена для покупателя» с ценой машины,
+// чипами и своим полем (`ask`), оно и поле формы — одно значение.
 // Админ (staff) подтверждает за менеджера: шторка всегда, сверху «Менеджер» — без него кнопки выключены.
 // Зона цены (26.10.2026, `Offer::bidZone`) — только при отправке, вопросом серверу (check): ниже порога — «Вы уверены?»
 // янтарным листом и `low_ok`, недопустимая — поле красным с тряской, на сервер не уходит. На лету не спрашиваем — порог
 // не нащупать вводом.
 export default class extends Controller {
-    static targets = ['display', 'amount', 'submit', 'choice', 'buyer', 'sum', 'garage', 'low', 'error'];
+    static targets = ['display', 'amount', 'submit', 'choice', 'buyer', 'sum', 'garage', 'low', 'error', 'choicePane', 'pricePane', 'ask', 'askError', 'askSubmit'];
     static values = { asking: Number, garage: Boolean, staff: Boolean, check: String };
 
     connect() {
@@ -69,17 +71,94 @@ export default class extends Controller {
         this.amountTarget.value = value || '';
         if (this.hasSubmitTarget) this.submitTarget.disabled = !value && !this.garageValue;
         const noManager = this.staffValue && !this.element.querySelector('input[name="manager_id"]')?.value;
-        if (this.hasBuyerTarget) this.buyerTarget.disabled = !value || noManager;
+        // Без цены «Для покупателя» не выключается — ведёт на шаг цены (`buyer`).
+        if (this.hasBuyerTarget) this.buyerTarget.disabled = noManager;
+        if (this.hasAskSubmitTarget) this.askSubmitTarget.disabled = noManager;
         if (this.hasGarageTarget) this.garageTarget.disabled = noManager;
-        if (this.hasSumTarget) {
-            this.sumTarget.textContent = value ? ` за ${rub(value)}` : '';
-            this.sumTarget.hidden = !value;
+        this.sumTargets.forEach((sum) => {
+            sum.textContent = value ? ` за ${rub(value)}` : '';
+            sum.hidden = !value;
+        });
+        if (this.hasAskTarget && document.activeElement !== this.askTarget) this.askTarget.value = this.displayTarget.value;
+        if (value) this.askRefuse(null);
+    }
+
+    // «Для покупателя» в шторке: цены нет — шаг «Цена для покупателя» вместо отправки.
+    buyer(event) {
+        if (this.amountTarget.value || !this.hasPricePaneTarget) return;
+        event.preventDefault();
+        this.showPrice();
+    }
+
+    showPrice() {
+        this.choicePaneTarget.hidden = true;
+        this.pricePaneTarget.hidden = false;
+        this.title('Цена для покупателя');
+        this.askTarget.value = this.displayTarget.value;
+        this.askTarget.focus({ preventScroll: true });
+    }
+
+    // Шторку закрыли — в следующий раз снова выбор «куда».
+    showChoice() {
+        if (!this.hasPricePaneTarget) return;
+        this.pricePaneTarget.hidden = true;
+        this.choicePaneTarget.hidden = false;
+        this.title(this.choiceTarget.dataset.title);
+        this.askRefuse(null);
+    }
+
+    title(text) {
+        const h = this.choiceTarget.querySelector('.sheet-bar h2');
+        if (h && text) h.textContent = text;
+    }
+
+    choiceTargetConnected(el) {
+        this.onChoiceClose ??= () => this.showChoice();
+        el.querySelector('dialog')?.addEventListener('close', this.onChoiceClose);
+    }
+
+    choiceTargetDisconnected(el) {
+        el.querySelector('dialog')?.removeEventListener('close', this.onChoiceClose);
+    }
+
+    // Поле шага — то же значение, что поле формы: пишем туда и считаем как ввод руками.
+    askInput() {
+        this.displayTarget.value = this.askTarget.value;
+        this.input();
+        this.askTarget.value = this.displayTarget.value;
+        this.displayTarget.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+
+    get pricing() {
+        return this.hasPricePaneTarget && !this.pricePaneTarget.hidden && !!this.choiceTarget.querySelector('dialog')?.open;
+    }
+
+    askRefuse(message) {
+        if (!this.hasAskErrorTarget) return;
+        this.askErrorTarget.textContent = message || '';
+        this.askErrorTarget.hidden = !message;
+        if (message) {
+            this.askTarget.setAttribute('aria-invalid', 'true');
+            this.askTarget.classList.remove('is-shaking');
+            void this.askTarget.offsetWidth;
+            this.askTarget.classList.add('is-shaking');
+            this.askTarget.focus({ preventScroll: true });
+        } else if (this.askTarget.hasAttribute('aria-invalid')) {
+            this.askTarget.removeAttribute('aria-invalid');
         }
     }
 
     // Отправка мимо шторки (кнопка, Enter в поле) — сначала спросить, куда; цену для покупателя — сверить с зоной.
     guard(event) {
         if (this.passing) return;
+        // Шаг «Цена для покупателя»: Enter в его поле отправляет первой кнопкой формы — это тоже «для покупателя».
+        if (this.pricing && event.submitter?.value !== 'garage') {
+            event.preventDefault();
+            if (!this.amountTarget.value) return this.askRefuse('Укажите цену');
+            if (!this.checkValue) { this.passing = true; this.element.requestSubmit(this.askSubmitTarget); this.passing = false; return; }
+            this.verify(this.askSubmitTarget);
+            return;
+        }
         if ((this.garageValue || this.staffValue) && this.hasChoiceTarget && !this.choiceTarget.querySelector('dialog')?.open) {
             event.preventDefault();
             this.ask();
@@ -95,8 +174,11 @@ export default class extends Controller {
         this.busy = true;
         try {
             const zone = await this.zone();
-            // Шторка «куда берёт» закрывала бы ошибку под собой — ответ зоны рисуем уже без неё.
-            if (zone !== 'ok' && this.hasChoiceTarget && this.choiceTarget.querySelector('dialog')?.open) {
+            // На шаге цены ответ зоны — у его поля, шторка остаётся. Иначе шторка «куда берёт» закрывала бы ошибку под
+            // собой — ответ зоны рисуем уже без неё.
+            const pricing = this.pricing;
+            if (zone === 'bad' && pricing) return this.askRefuse('Цена недопустимая');
+            if (zone !== 'ok' && !pricing && this.hasChoiceTarget && this.choiceTarget.querySelector('dialog')?.open) {
                 this.application.getControllerForElementAndIdentifier(this.choiceTarget, 'sheet')?.close();
             }
             if (zone === 'bad') return this.refuse('Цена недопустимая');

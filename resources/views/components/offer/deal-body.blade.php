@@ -26,11 +26,11 @@
     <x-offer.estimate-form :offer="$offer" :estimate="$estimate"/>
 @else
 @if ($price->shown())
-    <div class="flex items-start gap-2">
-        <div class="nums min-w-0 flex-1 text-[32px] font-bold leading-tight" data-controller="fit">@if ($price->withFrom())<span class="text-[.7em] text-ink-muted">{{ $price::money($price->from) }}&nbsp;→</span> @endif{{ $price::money($price->to) }}&nbsp;₽@if ($price->vat) <span class="text-[.45em] font-normal text-ink-muted">с НДС</span>@endif</div>
-        @if ($closeInPrice)<button type="button" class="sheet-close -mr-2 -mt-1 lg:hidden" data-action="sheet#close" aria-label="Закрыть"><x-ui.icon name="x" class="size-[18px]"/></button>@endif
-    </div>
-    @if ($price->declared)<div class="mt-2"><span class="nums text-sm text-ink-dim">заявленная {{ $price::money($price->declared) }}</span></div>@endif
+    <x-offer.price-head :price="$price">
+        @if ($closeInPrice)
+            <x-slot:aside><button type="button" class="sheet-close -mr-2 -mt-1 lg:hidden" data-action="sheet#close" aria-label="Закрыть"><x-ui.icon name="x" class="size-[18px]"/></button></x-slot:aside>
+        @endif
+    </x-offer.price-head>
 @elseif ($gallery)
     {{-- Покупателю — прямо про цену (12.10.2026: в галерее спрашивали «Цена?»). --}}
     <div class="text-lg text-accent-text">{{ $user?->isBuyer() ? 'Цена при выходе в продажу' : 'Скоро в продаже' }}</div>
