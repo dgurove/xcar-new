@@ -34,13 +34,13 @@
             {{-- Без окошка (шторка «Отдать»): тот же чип, нажимать нечего. --}}
             <span {{ $attributes->merge(['class' => 'binding-chip']) }} title="Срок обязывающего предложения: {{ $past ? 'истёк ' : 'до ' }}{{ Binding::date($until) }}">
                 <x-ui.icon name="timer" @class(['size-4 shrink-0', 'text-danger' => $panic, 'text-urgent' => $level === 'undecided', 'text-ink-dim' => ! $hot])/>
-                <span class="nums">{{ \App\Support\Ago::at($at, false, words: false) }} ({{ $left }})</span>
+                <span class="nums">{{ \App\Support\Ago::at($at, false, words: false) }} <span class="when-t">({{ $left }})</span></span>
             </span>
         @else
         <span class="contents" data-controller="menu">
             <button type="button" {{ $attributes->merge(['class' => 'binding-chip']) }} data-action="menu#toggle" aria-haspopup="dialog" aria-controls="{{ $popId }}" aria-label="Срок обязывающего предложения">
                 <x-ui.icon name="timer" @class(['size-4 shrink-0', 'text-danger' => $panic, 'text-urgent' => $level === 'undecided', 'text-ink-dim' => ! $hot])/>
-                <span class="nums">{{ \App\Support\Ago::at($at, false, words: false) }} ({{ $left }})</span>
+                <span class="nums">{{ \App\Support\Ago::at($at, false, words: false) }} <span class="when-t">({{ $left }})</span></span>
             </button>
             <div id="{{ $popId }}" class="menu binding-pop" popover data-menu-target="list" data-align="end">
                 <div class="font-medium">Срок обязывающего предложения</div>
