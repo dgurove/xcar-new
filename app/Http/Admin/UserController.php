@@ -648,6 +648,9 @@ class UserController
         // Гараж по тумблеру — только у супер-покупателя (у покупателя — своя ветка `update`), остальным гараж даёт роль.
         $data['garage_enabled'] = in_array(Role::SuperBuyer, $data['roles'], true) && $request->boolean('garage_enabled');
         $data['garage_price_shown'] = in_array(Role::SuperBuyer, $data['roles'], true) && $request->boolean('garage_price_shown');
+        // Наша доля навара по гаражу (12.11.2026, у каждого менеджера своя): от неё вознаграждение при продаже, пусто — 60 %.
+        $share = $request->validate(['garage_share' => ['nullable', 'integer', 'min:0', 'max:100']], [], ['garage_share' => 'доля'])['garage_share'] ?? null;
+        $data['garage_share'] = in_array(Role::Manager, $data['roles'], true) && $share !== null && $share !== '' ? (int) $share : null;
 
         return $data;
     }

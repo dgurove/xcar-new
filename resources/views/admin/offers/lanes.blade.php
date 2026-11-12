@@ -41,7 +41,9 @@
                 @else
                     <x-ui.card title="Продажа" id="sale"><div @class(['steps', 'steps--compact' => $compact])>{!! $tail !!}@if ($compact)<x-route.fold/>@endif</div></x-ui.card>
                 @endif
-                @if ($garageCar?->isSold())
+                {{-- Совкомбанк — деньги одной карточкой «Деньги» сделки (12.11.2026, владелец: факт — один раз; «Расчёт» гаража
+                     повторял цену, закупочную и разницу), «Не продана» — в «⋯» «Гаража». --}}
+                @if ($garageCar?->isSold() && ! $garageCar->settledByDeal())
                     <x-ui.card title="Расчёт">
                         @if ($g['moreSale'])
                             <x-slot:actions>@include('garage.cars.actions', ['buttons' => [], 'more' => $g['moreSale'], 'bar' => false, 'menuKey' => '-sale'] + $g)</x-slot:actions>

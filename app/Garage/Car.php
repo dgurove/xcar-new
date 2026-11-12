@@ -234,12 +234,17 @@ class Car extends Model
         return round((float) $this->base() + ($this->forBuyer() ? $this->spent(Payer::Xcar) : $this->spent()), 2);
     }
 
-    /** Прибыль: цена продажи минус вложенное; не продана — null. У машины покупателя — его цена минус вложенное нами. */
+    /**
+     * Прибыль: цена продажи минус вложенное; не продана — null. У машины покупателя — его цена минус вложенное нами.
+     * Совкомбанк (`settledByDeal`): поставщику платит ПРАЙМ из денег покупателя — вложенного нет, но закупочная сделки
+     * вычитается (12.11.2026: «Прибыль» в «Расчёте» равнялась цене продажи).
+     */
     public function profit(): ?float
     {
         $price = $this->forBuyer() ? $this->buyer_price : $this->sold_price;
+        $supplier = $this->settledByDeal() ? (int) $this->deal->cost : 0;
 
-        return $price === null ? null : round($price - $this->invested(), 2);
+        return $price === null ? null : round($price - $this->invested() - $supplier, 2);
     }
 
     /** Сколько дней машина в гараже; проданная — по день продажи. */

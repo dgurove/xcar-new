@@ -22,8 +22,10 @@
     $garage = $deal->isGarage();
     $current = $isMe ? 'me' : $buyer?->id;
     // Ошибки формы открывают ту шторку, откуда она ушла: поля у новой и у данных одни (`buyer.*`), различает `buyer_id`.
-    $newErrors = $errors->any() && old('buyer_id') === 'new';
-    $dataErrors = $errors->any() && ! old('buyer_id') && ! old('payer');
+    // Только ошибки полей покупателя (12.11.2026: «Проверьте цену» шторки «Продаю» открывала в гараже «Данные для договора»).
+    $buyerErrors = collect($errors->keys())->contains(fn ($k) => str_starts_with($k, 'buyer.') || str_starts_with($k, 'new_buyer.'));
+    $newErrors = $buyerErrors && old('buyer_id') === 'new';
+    $dataErrors = $buyerErrors && ! old('buyer_id') && ! old('payer');
     $part ??= 'all';
     $embedded ??= false;
     $doc = new \App\Offers\DkpDocument($contract);

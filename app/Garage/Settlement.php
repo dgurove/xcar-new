@@ -19,7 +19,8 @@ final class Settlement
         $mine = $car->spent(Payer::Manager);
         $ours = $car->spent(Payer::Xcar);
         $profit = $car->profit();
-        $fee = (float) $car->commission;
+        // Совкомбанк — вознаграждение у сделки (`Deal::suggestedCommission` при «Продаю»), у машины его нет.
+        $fee = (float) ($car->settledByDeal() ? $car->deal->commission : $car->commission);
 
         return [
             'manager_costs' => $mine,

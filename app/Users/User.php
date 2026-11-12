@@ -9,6 +9,7 @@ use App\Garage\CarState;
 use App\Logistics\Channel;
 use App\Logistics\Transport;
 use App\Media\MediaUrl;
+use App\Notifications\Categories;
 use App\Notifications\PasswordResetLetter;
 use App\Offers\Actions\SyncViewers;
 use App\Offers\Interest;
@@ -45,7 +46,7 @@ use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\InteractsWithMedia;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
-#[Fillable(['name', 'first_name', 'last_name', 'phone', 'login', 'email', 'password', 'roles', 'access', 'notification_settings', 'approved_at', 'approved_by', 'rejected_at', 'manager_id', 'invite_id', 'contact_fields', 'park_readonly', 'party_id', 'park_city_id', 'park_requests_city_id', 'buyer_sees', 'buyer_show_vin', 'buyer_access_at', 'logist_id', 'logistics_city', 'cdek_point', 'garage_enabled', 'garage_price_shown', 'offer_regions', 'vendor_id'])]
+#[Fillable(['name', 'first_name', 'last_name', 'phone', 'login', 'email', 'password', 'roles', 'access', 'notification_settings', 'approved_at', 'approved_by', 'rejected_at', 'manager_id', 'invite_id', 'contact_fields', 'park_readonly', 'party_id', 'park_city_id', 'park_requests_city_id', 'buyer_sees', 'buyer_show_vin', 'buyer_access_at', 'logist_id', 'logistics_city', 'cdek_point', 'garage_enabled', 'garage_price_shown', 'garage_share', 'offer_regions', 'vendor_id'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
 {
@@ -83,10 +84,10 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
         });
         static::saved(function (self $user) {
             if (! $user->wasRecentlyCreated && $user->wasChanged('password')) {
-                \App\Users\SecurityLetter::passwordChanged($user);
+                SecurityLetter::passwordChanged($user);
             }
             if ($user->mailWas) {
-                \App\Users\SecurityLetter::emailChanged($user, $user->mailWas);
+                SecurityLetter::emailChanged($user, $user->mailWas);
                 $user->mailWas = null;
             }
         });
@@ -112,6 +113,7 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
             'buyer_show_vin' => 'bool',
             'buyer_access_at' => 'datetime',
             'garage_enabled' => 'bool',
+            'garage_share' => 'int',
             'garage_price_shown' => 'bool',
             'email_verified_at' => 'datetime',
             'approved_at' => 'datetime',
@@ -816,7 +818,7 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
     public function wantsMailFor(string $category): bool
     {
         return $this->mailVerified() && $this->wantsMail() && in_array($category, $this->notification_settings['mail_on'] ?? [], true)
-            && array_key_exists($category, \App\Notifications\Categories::mail($this));
+            && array_key_exists($category, Categories::mail($this));
     }
 
     /** Звук важных уведомлений в приложении — по умолчанию включён. */

@@ -16,6 +16,7 @@ use App\Offers\DealState;
 use App\Offers\OfferEventType;
 use App\Support\Money;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 /**
  * Поступление с VIN машины в назначении — в её идущую сделку зачётом (12.11.2026, владелец: «привязывать автоматически по vin
@@ -70,6 +71,13 @@ final class MatchByVin
         }
         $tx->update(['note' => 'по VIN в сделку '.$deal->offer->number]);
         $deal->offer->log(OfferEventType::Note, $by, ['text' => 'Поступление '.Money::rub((float) $tx->amount).' по VIN из выписки — зачётом в сделку']);
+
+        // Заплатил покупатель, а не менеджер — он и покупатель сделки (`BuyerFromStatement`, 12.11.2026). Не вышло — привязка остаётся.
+        try {
+            app(BuyerFromStatement::class)($tx, $deal->fresh(), $by);
+        } catch (\Throwable $e) {
+            Log::warning('bank: покупатель из выписки по сделке '.$deal->offer->number.' — '.$e->getMessage());
+        }
 
         return $deal;
     }

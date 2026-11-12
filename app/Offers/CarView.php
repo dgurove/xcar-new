@@ -5,9 +5,10 @@ namespace App\Offers;
 use App\Chats\Chat;
 use App\Garage\Car as GarageCar;
 use App\Garage\CarLine;
+use App\Garage\CarState;
 use App\Garage\GarageView;
-use App\Offers\Actions\ReturnToSale;
 use App\Offers\Actions\PublishDeal;
+use App\Offers\Actions\ReturnToSale;
 use App\Offers\Actions\SellAtAuction;
 use App\Support\Money;
 use App\Users\Role;
@@ -75,7 +76,7 @@ final class CarView
         $this->offer->load(['settlement', 'media', 'vendor', ...($this->page ? ['car.events.user.vendor', 'parkVehicle.requests'] : []), ...($this->admin ? [
             'bids.user', 'interests.user.manager', 'interests.placer', 'purchaseCar.purchase', 'purchaseCar.bids.user',
             'parkVehicle.yard', 'vendor.workflows', 'positions.stage.block', 'positions.stage.exits.to.block.stages',
-            'positions.stage.workflow', 'deal.buyer', 'lastDeal.buyer', 'lastDeal.bid', 'lastDeal.requirements.media', 
+            'positions.stage.workflow', 'deal.buyer', 'lastDeal.buyer', 'lastDeal.bid', 'lastDeal.requirements.media',
             'openEstimates.user', ...User::withAvatar('openEstimates.user.media'), 'declinedEstimates.user', ...User::withAvatar('declinedEstimates.user.media'),
         ] : [])])->loadCount(['activeBids', 'interests', 'activeBids as garage_bids_count' => fn ($b) => $b->where('kind', BidKind::Garage)])
             ->loadMax('activeBids as top_bid', 'amount');
@@ -313,7 +314,7 @@ final class CarView
             return [];
         }
         $car = $this->garageCar;
-        $menu = array_values(array_filter($car->isSold() ? $g['morePrep'] : [...$g['morePrep'], ...$g['moreSale']], fn ($m) => ($m[1] ?? null) !== 'resale'));
+        $menu = array_values(array_filter($car->isSold() && ! $car->settledByDeal() ? $g['morePrep'] : [...$g['morePrep'], ...$g['moreSale']], fn ($m) => ($m[1] ?? null) !== 'resale'));
         if ($g['staff'] && $g['canAdd'] && $car->costs->isEmpty()) {
             $menu[] = ['emit', 'cost-new', 'Добавить расход'];
         }
@@ -332,7 +333,7 @@ final class CarView
             return false;
         }
         $car = $this->garageCar;
-        $path = $car->state !== \App\Garage\CarState::Waiting && in_array($car->state, \App\Garage\CarState::prep(), true);
+        $path = $car->state !== CarState::Waiting && in_array($car->state, CarState::prep(), true);
         $money = $g['money'] && ! $car->isSold() && ! $car->priceFor($g['staff']);
         $chat = $car->manager && $this->deal?->buyer_id !== $car->manager_id;
 

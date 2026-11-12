@@ -8,6 +8,13 @@
     // Плательщик по продаже — любой контрагент или новый, как в счёте сделки.
     $parties = $staff && $car->state === \App\Garage\CarState::Sold && ! $invoice
         ? \App\Billing\Party::where('is_self', false)->orderBy('name')->pluck('name', 'id')->prepend('Новый плательщик', 'new') : collect();
+    // Продажа Совкомбанка (12.11.2026): под ценой — расчёт строками (`garage.cars.sell-split`), цена под вопросом —
+    // лист до отправки (`price-guard.js` режим `sold`), без скрипта — ошибка `price_check` и согласие на повтор.
+    $sellDeal = $car->settledByDeal() ? $car->deal : null;
+    $sellForm = fn () => ($sellDeal ? 'data-controller="sell-split" data-sell-split-cost-value="'.(int) $sellDeal->cost.'" data-sell-split-spent-value="'.$sellDeal->managerGarageCosts()
+        .'" data-sell-split-share-value="'.$sellDeal->ourGarageShare().'" data-sell-split-paid-value="'.$sellDeal->credited().'" ' : '')
+        .'data-price-guard="sold" data-price-guard-url="/garage/cars/'.$n.'/price-check"';
+    $sellAgain = $errors->has('price_check');
 @endphp
 
 @if ($canAdd)
@@ -26,10 +33,13 @@
     {{-- «Продаю»: только цена — её не отклоняем, вознаграждение и счёт дальше наши. --}}
     <div {!! $wrap('selling') !!}>
         <x-ui.sheet id="selling" title="Продаю">
-            <form method="post" action="/garage/cars/{{ $n }}/sold" class="flex flex-col gap-4">
-                @csrf
-                <x-ui.field name="sold_price" label="За сколько, ₽" :value="old('sold_price')" required autofocus/>
-                <x-ui.sheet-foot type="submit" variant="primary">Продаю</x-ui.sheet-foot>
+            <form method="post" action="/garage/cars/{{ $n }}/sold" class="flex flex-col gap-4" {!! $sellForm() !!}>
+                @csrf @if ($sellAgain)<input type="hidden" name="price_ok" value="1">@endif
+                <x-ui.field name="sold_price" label="За сколько, ₽" :value="old('sold_price')" required autofocus data-sell-split-target="price" data-action="input->sell-split#update"/>
+                @if ($sellDeal)
+                    <div class="list">@include('garage.cars.sell-split', ['deal' => $sellDeal, 'sale' => Money::rubles(old('sold_price')), 'live' => true])</div>
+                @endif
+                <x-ui.sheet-foot type="submit" variant="primary">{{ $sellAgain ? 'Всё верно, продаю' : 'Продаю' }}</x-ui.sheet-foot>
             </form>
         </x-ui.sheet>
     </div>
@@ -37,16 +47,22 @@
 
 @if ($staff && $car->state === \App\Garage\CarState::Selling)
     <div {!! $wrap('sold') !!}>
-        <x-ui.sheet id="sold" title="Продана">
-            <form method="post" action="/garage/cars/{{ $n }}/sold" class="flex flex-col gap-3">
-                @csrf
+        <x-ui.sheet id="sold" title="Продана" :open="request()->boolean('sold')">
+            <form method="post" action="/garage/cars/{{ $n }}/sold" class="flex flex-col gap-3" {!! $sellForm() !!}>
+                @csrf @if ($sellAgain)<input type="hidden" name="price_ok" value="1">@endif
                 <div class="fields">
-                    <x-ui.field name="sold_price" label="За сколько, ₽" :value="old('sold_price')" autofocus/>
+                    <x-ui.field name="sold_price" label="За сколько, ₽" :value="old('sold_price')" autofocus data-sell-split-target="price" data-action="input->sell-split#update"/>
                     <x-ui.field name="sold_at" label="Когда" type="date" :value="now()->toDateString()" max="{{ now()->toDateString() }}"/>
-                    <x-ui.field name="buyer_name" label="Покупатель" :value="old('buyer_name')" placeholder="Кому продал"/>
-                    <x-ui.field name="buyer_phone" label="Телефон" :value="old('buyer_phone')"/>
+                    {{-- Покупатель Совкомбанка — в сделке (договор и счёт), второго имени у машины не нужно. --}}
+                    @unless ($sellDeal)
+                        <x-ui.field name="buyer_name" label="Покупатель" :value="old('buyer_name')"/>
+                        <x-ui.field name="buyer_phone" label="Телефон" :value="old('buyer_phone')"/>
+                    @endunless
                 </div>
-                <x-ui.sheet-foot type="submit" variant="primary">Продана</x-ui.sheet-foot>
+                @if ($sellDeal)
+                    <div class="list">@include('garage.cars.sell-split', ['deal' => $sellDeal, 'sale' => Money::rubles(old('sold_price')), 'live' => true, 'dense' => true])</div>
+                @endif
+                <x-ui.sheet-foot type="submit" variant="primary">{{ $sellAgain ? 'Всё верно, продана' : 'Продана' }}</x-ui.sheet-foot>
             </form>
         </x-ui.sheet>
     </div>

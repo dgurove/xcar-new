@@ -21,6 +21,7 @@ use App\Garage\Actions\SettleGarageCar;
 use App\Garage\Car;
 use App\Garage\CarState;
 use App\Http\Cabinet\PayChoice;
+use App\Offers\Margin;
 use App\Offers\Offer;
 use App\Support\Money;
 use Illuminate\Http\Request;
@@ -41,10 +42,25 @@ class SettlementController
             'sold_at' => ['nullable', 'date', 'before_or_equal:today'],
             'buyer_name' => ['nullable', 'string', 'max:120'],
             'buyer_phone' => ['nullable', 'string', 'max:32'],
+            'price_ok' => ['nullable', 'boolean'],
         ]);
         $sold($car, ['sold_at' => now()] + array_filter($data), $request->user());
 
         return back()->with('toast', $car->forBuyer() ? 'Продана' : 'Продана за '.Money::rub($data['sold_price']));
+    }
+
+    /**
+     * Цена продажи под вопросом — до отправки (`price-guard.js`, режим `sold`): лишний ноль, в минус — по закупочной сделки,
+     * то же правило, что в `MarkGarageSold` (`Margin::check`). Ответ — как у `OfferController::priceCheck`.
+     */
+    public function priceCheck(Request $request, Offer $offer)
+    {
+        $car = $this->car($request, $offer);
+        $price = Money::rubles($request->input('sold_price'));
+        $check = $price && ! $car->forBuyer() ? Margin::check($price, $car->deal?->cost) : null;
+        $risky = $check && in_array($check['tone'], ['typo', 'loss'], true);
+
+        return response()->json(['warnings' => $risky ? [['name' => $offer->titleWithYear(), 'title' => $check['title'], 'text' => $check['text']]] : []]);
     }
 
     /**

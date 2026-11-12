@@ -25,7 +25,6 @@ use App\Logistics\Actions\PickUp as LogisticsPickUp;
 use App\Logistics\Channel;
 use App\Logistics\Point;
 use App\Logistics\Transport;
-use App\Notifications\InvoiceNeededNotice;
 use App\Offers\Actions\AcceptBid;
 use App\Offers\Actions\PlaceBid;
 use App\Offers\Actions\SaveDealContract;
@@ -211,15 +210,15 @@ class GarageByConfirmationTest extends TestCase
         $this->assertSame(CarState::Selling, $car->fresh()->state);
         app(MarkGarageSold::class)($car->fresh(), ['sold_price' => 1500000], $manager);
         $this->assertSame(1500000, (int) $deal->fresh()->amount);
+        // Вознаграждение — сразу по доле менеджера (12.11.2026, `Deal::suggestedCommission`), «Назначить» больше не ждёт.
+        $this->assertSame($deal->fresh()->suggestedCommission(), $deal->fresh()->commission);
         $this->assertSame('buyer', $deal->fresh()->invoiceGap());
 
         app(SaveDealContract::class)(DealContract::for($deal->fresh()), ['buyer_id' => 'new', 'new_buyer' => ['phone' => '+7 900 555-44-33'],
             'buyer' => ['kind' => 'person', 'name' => 'Покупаев Пётр Петрович', 'birth_at' => '1985-05-05', 'passport' => '11 11 111111',
                 'passport_issued' => 'ГУ МВД', 'passport_issued_at' => '2010-10-10', 'reg_address' => 'г. Москва']], $manager);
-        $this->assertSame('commission', $deal->fresh()->invoiceGap());
-        $this->assertSame(WaitsFor::Us, $offer->fresh()->position(Track::Sale)->waits_for);
-        // Ход наш — сотрудникам «Назначьте вознаграждение», а не тишина.
-        Notification::assertSentTo($admin, InvoiceNeededNotice::class);
+        // Вознаграждение уже есть — дальше скан паспорта покупателя; поправим его на 100 000, как правят в «Изменить».
+        $this->assertSame('passport', $deal->fresh()->invoiceGap());
 
         $deal->fresh()->update(['commission' => 100000]);
         app(SyncDealInvoices::class)($deal->fresh(), $admin);

@@ -12,6 +12,7 @@ use App\Billing\PaymentState;
 use App\Billing\Seller;
 use App\Garage\Car as GarageCar;
 use App\Garage\GaragePayer;
+use App\Garage\Payer;
 use App\Logistics\Channel;
 use App\Park\Pass;
 use App\Park\Vehicle;
@@ -776,6 +777,93 @@ class Deal extends Model
     public function garageCar(): HasOne
     {
         return $this->hasOne(GarageCar::class);
+    }
+
+    /** Наша доля навара по гаражу Совкомбанка, если у менеджера своей нет (`users.garage_share`, 12.11.2026). */
+    public const GARAGE_SHARE = 60;
+
+    /**
+     * Вознаграждение менеджеру гаражной Совкомбанка по его доле (12.11.2026, владелец: считали на калькуляторе в WhatsApp —
+     * Seltos «1000 − 905, 57 твои, 893 143 + 57 000 = 950 143»): навар — цена продажи минус закупочная минус его расходы по
+     * машине, наша часть — доля навара (до тысячи вверх); счёт ему — закупочная плюс наша часть, остальное от продажи — его
+     * (вознаграждение вместе с возвратом его расходов: счёт ПРАЙМ — продажа минус вознаграждение, `SyncDealInvoices`).
+     * Одна дверь: «Продаю» (`MarkGarageSold`), подсказка в «Назначить вознаграждение», расчёт в шторке «Продаю»
+     * (`commission_controller#suggested` — то же правило). Не Совкомбанк или без цены — null.
+     */
+    public function suggestedCommission(?int $sale = null): ?int
+    {
+        $sale ??= $this->amount;
+        if (! $this->namesBuyer() || $sale === null || $this->cost === null) {
+            return null;
+        }
+
+        return self::commissionFrom($sale - (int) $this->cost, $this->managerGarageCosts(), $this->ourGarageShare());
+    }
+
+    /** Расходы менеджера по машине гаража (эвакуатор, ремонт) — его, их он возвращает себе из продажи. */
+    public function managerGarageCosts(): int
+    {
+        return (int) round((float) $this->garageCar?->extraSpent(Payer::Manager));
+    }
+
+    /**
+     * Сколько пришло по сделке деньгами вне её счетов (выписка по VIN, разовые ссылки — `credited`) против того, что должно
+     * прийти (12.11.2026: Scania — 210 000 из 403 291): цена продажи известна — сумма счёта (продажа минус удержанное
+     * вознаграждение), нет — закупочная. Ничего не пришло или счёт уже встал (деньги в нём) — null.
+     *
+     * @return array{paid: float, due: int, diff: float, against: string}|null
+     */
+    public function arrivedBalance(): ?array
+    {
+        $paid = $this->credited();
+        if ($paid <= 0 || $this->issuedInvoices()->where('kind', ChargeKind::Sale)->where('state', '!=', InvoiceState::Void)->exists()) {
+            return null;
+        }
+        $split = $this->sellSplit();
+        $due = $split ? $split['payable'] : (int) $this->cost;
+
+        return ['paid' => $paid, 'due' => $due, 'diff' => round($paid - $due, 2), 'against' => $split ? 'invoice' : 'cost'];
+    }
+
+    /**
+     * Расчёт продажи гаражной Совкомбанка — одна дверь цифр (12.11.2026): шторки «Продаю» и «Продана», деньги гаража
+     * менеджера, «Деньги» CRM. Вознаграждение — записанное (при той же цене), иначе по доле (`suggestedCommission`); к оплате
+     * XCar — цена минус удержанное вознаграждение; пришло — зачёт по VIN; остаток — к оплате минус пришло. Цены нет — null.
+     *
+     * @return array{reward: int, payable: int, paid: float, rest: float}|null
+     */
+    public function sellSplit(?int $sale = null): ?array
+    {
+        $sale ??= $this->amount;
+        if (! $this->namesBuyer() || $sale === null) {
+            return null;
+        }
+        $recorded = $this->commission !== null && $sale === (int) $this->amount;
+        $reward = $recorded ? (int) $this->commission : $this->suggestedCommission($sale);
+        if ($reward === null) {
+            return null;
+        }
+        $payable = $sale - ($recorded && ! $this->withholds() ? 0 : $reward);
+        $paid = $this->credited();
+
+        return ['reward' => $reward, 'payable' => $payable, 'paid' => $paid, 'rest' => round($payable - $paid, 2)];
+    }
+
+    /** Наша доля навара у менеджера сделки, %. */
+    public function ourGarageShare(): int
+    {
+        return $this->buyer?->garage_share ?? self::GARAGE_SHARE;
+    }
+
+    /**
+     * Разница (продажа − закупочная), его расходы и наша доля → вознаграждение менеджеру: всё, кроме нашей части навара
+     * (то же правило — `commission_controller#suggested`).
+     */
+    public static function commissionFrom(int $margin, int $costs, int $share): int
+    {
+        $ours = $margin - $costs > 0 ? (int) (ceil(($margin - $costs) * $share / 100 / 1000) * 1000) : 0;
+
+        return max(0, $margin - $ours);
     }
 
     /** Наценка над закупочной поставщика для CRM (`Margin`): у идущей сделки с ценой подтверждения. */

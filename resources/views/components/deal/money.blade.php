@@ -11,7 +11,7 @@
     $offer = $deal->offer;
     $invoices = $deal->invoices()->with(['party', 'claims.media', 'payLinks.attempts', 'payLinks.creator', 'payLinks.payerUser', 'deal.offer'])->get();
     // Разовые оплаты по ссылке с машиной сделки (09.10.2026): их деньги лежат в счетах сделки зачётом, что не легло — сверх.
-    $credits = $deal->credits()->with(['party', 'offer', 'payLinks.attempts', 'payLinks.creator', 'payLinks.payerUser'])->get();
+    $credits = $deal->credits()->with(['party', 'offer', 'payments', 'payLinks.attempts', 'payLinks.creator', 'payLinks.payerUser'])->get();
     $extra = $credits->isNotEmpty() ? $deal->creditExtra() : 0;
     $fee = $invoices->first(fn ($i) => $i->isAgentFee());
     $issued = $invoices->reject(fn ($i) => $i->isOwed());
@@ -57,7 +57,9 @@
         $skips = fn (string $k) => in_array($k, $skip, true);
         if ($deal->isGarage()) {
             // Гаражная: цены нет, вознаграждение назначат при продаже из гаража; важно, кто платит поставщику.
-            if (! $skips('payer')) $rows[] = ['В гараж', $deal->garagePayerLine(), 'text-right font-medium', true];
+            // Совкомбанк после продажи — «без оплаты, счёт ПРАЙМ при продаже» уже случилось: цена продажи ниже, схема выше
+            // (12.11.2026; в узкой колонке строка шла в три этажа).
+            if (! $skips('payer') && ! ($deal->namesBuyer() && $deal->amount !== null)) $rows[] = ['В гараж', $deal->garagePayerLine(), 'text-right font-medium', true];
             if ($deal->namesBuyer() && $deal->amount !== null) $rows[] = ['Цена продажи', Money::rub($deal->amount), $dd.' font-medium', true];
         } elseif (! $skips('amount')) {
             $rows[] = [$deal->isAuction() ? 'Цена на аукционе' : 'Цена подтверждения', $deal->amount === null ? 'не указана' : Money::rub($deal->amount), $dd.' font-medium', true];
@@ -135,7 +137,15 @@
                 </x-billing.link-row>
             @endforeach
             @if ($extra > 0)
-                <div class="row">@if ($links->isEmpty())<span class="min-w-0 flex-1">Оплачено вручную<span class="row-sub">{{ $deal->agreed() && $issued->isNotEmpty() ? 'сверх сделки' : 'засчитаем, когда выставим счёт' }}</span></span>@else<span class="min-w-0 flex-1 text-ink-muted">{{ $deal->agreed() && $issued->isNotEmpty() ? 'Сверх сделки' : 'Засчитаем, когда выставим счёт' }}</span>@endif<span class="nums shrink-0">{{ Money::rub($extra) }}</span></div>
+                @php
+                    // Деньги по VIN из выписки (12.11.2026) — «По выписке» с датой, не «вручную»; счёта ещё нет — сходится ли
+                    // с ним: «не хватает» красным числом (`Deal::arrivedBalance`), до продажи — против закупочной.
+                    $bank = $credits->flatMap->payments->first(fn ($p) => $p->source === \App\Billing\PaymentSource::Bank);
+                    $arrived = $deal->arrivedBalance();
+                    $short = $arrived && $arrived['diff'] <= -1;
+                    $over = $arrived && $arrived['against'] === 'invoice' && $arrived['diff'] >= 1;
+                @endphp
+                <div class="row">@if ($links->isEmpty())<span class="min-w-0 flex-1"><span class="block">{{ $bank ? 'По выписке' : 'Оплачено вручную' }}@if ($bank && $bank->paid_at) <span class="text-ink-muted">{{ $bank->paid_at->format('d.m') }}</span>@endif</span><span class="row-sub">@if ($short)<span class="whitespace-nowrap">{{ $arrived['against'] === 'cost' ? 'до закупочной не хватает' : 'не хватает' }} <span class="nums text-danger">{{ Money::rub(abs($arrived['diff'])) }}</span></span>@elseif ($over)<span class="whitespace-nowrap">переплата <span class="nums">{{ Money::rub($arrived['diff']) }}</span></span>@else{{ $deal->agreed() && $issued->isNotEmpty() ? 'сверх сделки' : 'засчитаем, когда выставим счёт' }}@endif</span></span>@else<span class="min-w-0 flex-1 text-ink-muted">{{ $deal->agreed() && $issued->isNotEmpty() ? 'Сверх сделки' : 'Засчитаем, когда выставим счёт' }}</span>@endif<span class="nums shrink-0">{{ Money::rub($extra) }}</span></div>
             @endif
         </div>
     @endif

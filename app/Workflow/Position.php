@@ -2,6 +2,9 @@
 
 namespace App\Workflow;
 
+use App\Billing\ChargeKind;
+use App\Billing\Invoice;
+use App\Billing\InvoiceState;
 use App\Mail\Message;
 use App\Offers\Deal;
 use App\Offers\DealState;
@@ -124,7 +127,22 @@ class Position extends Model
     {
         return ($this->waitsFor() === WaitsFor::Us && ! $this->carried()) || in_array($this->letterStatus(), ['unsent', 'failed', 'bounced', 'replied'], true)
             || $this->consentLate() || $this->repricePending() || $this->priceAskLate() !== null || $this->priceOffered() !== null || $this->replyPending() !== null
-            || $this->repriceUnanswered() !== null || $this->buyerPhotos() !== null;
+            || $this->repriceUnanswered() !== null || $this->buyerPhotos() !== null || $this->moneyArrived() !== null;
+    }
+
+    /**
+     * Деньги по сделке пришли раньше её счёта (12.11.2026: 54 поступления по VIN, у 50 сделок счёта не было — цену продажи,
+     * вознаграждение и покупателя держали в WhatsApp): дело наше — дооформить. Когда пришло первое; счёт встал — null.
+     */
+    public function moneyArrived(): ?Carbon
+    {
+        $deal = $this->track === Track::Sale ? $this->deal : null;
+        if (! $deal || Invoice::where('deal_id', $deal->id)->where('kind', ChargeKind::Sale)->where('state', '!=', InvoiceState::Void)->exists()) {
+            return null;
+        }
+        $at = Invoice::where('credit_deal_id', $deal->id)->where('kind', ChargeKind::Service)->where('state', InvoiceState::Paid)->min('created_at');
+
+        return $at ? Carbon::parse($at) : null;
     }
 
     /** Менеджер прислал реквизиты покупателя фотографией (10.11.2026, `deals.buyer_scans_at`): внести их — наш ход. */
@@ -216,6 +234,21 @@ class Position extends Model
         $letter = $this->awaitsInvoice() ? null : $this->letterStatus();
         $todo = fn (string $key, string $title, int $rank, ?Carbon $at = null, ?array $button = null) => ['key' => $key, 'title' => $title, 'rank' => $rank, 'since' => $at ?? $since, 'button' => $button];
         $write = fn (string $label) => ($url = $offer->vendorLetterUrl($this->stage)) ? ['label' => $label, 'letters' => $url] : null;
+
+        // Деньги пришли, а счёта нет — что дооформить, прежними кнопками (12.11.2026): продажа — «Продана» гаража, вознаграждение
+        // — «Назначить», покупатель — «Заполнить за менеджера».
+        if ($at = $this->moneyArrived()) {
+            $gap = $this->deal->invoiceGap();
+            [$what, $label, $href] = match ($gap) {
+                'price' => ['записать продажу', 'Записать', '/offers/'.$offer->number.'?sold=1'],
+                'buyer' => ['нужен покупатель', 'Заполнить', '/offers/'.$offer->number.'?buyer=1#invoice-buyer'],
+                'passport' => ['нужен паспорт покупателя', 'Заполнить', '/offers/'.$offer->number.'?buyer=1#invoice-buyer'],
+                default => (fn ($a) => [mb_strtolower($a['title']), $a['button'], $a['url']])(self::gapAction($gap, $this->deal)),
+            };
+
+            // Ключ — по тому, чего не хватает: группа «Ваш ход» берёт заголовок у ключа, а не у строки.
+            return $todo('gap:paid-'.($gap ?? 'invoice'), 'Деньги пришли: '.$what, 1, $at, ['label' => $label, 'href' => $href]);
+        }
 
         if ($this->awaitsInvoice()) {
             $gap = $this->gap();
@@ -362,6 +395,9 @@ class Position extends Model
             where a.offer_id = offer_positions.offer_id and a.state = 'offered' and d.state = 'active'))
         or (offer_positions.track = 'sale' and exists (select 1 from deals bd where bd.offer_id = offer_positions.offer_id
             and bd.state = 'active' and bd.buyer_scans_at is not null))
+        or (offer_positions.track = 'sale' and exists (select 1 from deals md join billing_invoices ci on ci.credit_deal_id = md.id
+            and ci.kind = 'service' and ci.state = 'paid' where md.offer_id = offer_positions.offer_id and md.state = 'active'
+            and not exists (select 1 from billing_invoices si where si.deal_id = md.id and si.kind = 'sale' and si.state <> 'void')))
         or (offer_positions.track = 'sale' and exists (select 1 from offer_reprices r join deals d on d.offer_id = r.offer_id
             where r.offer_id = offer_positions.offer_id and r.state = 'applied' and r.source = 'letter' and r.answered_at is null
                 and d.state = 'active' and d.garage_payer is null and r.created_at >= d.created_at

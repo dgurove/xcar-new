@@ -83,6 +83,10 @@
     @else
         @if ($mine > 0)<div class="{{ $row }}"><span>Ваши расходы</span><span class="nums">{{ Money::exact($mine) }}</span></div>@endif
     @endif
+    {{-- Совкомбанк после «Продаю» (12.11.2026): те же строки, что были в шторке, — вознаграждение, к оплате, пришло, остаток. --}}
+    @if ($car->isSold() && $car->settledByDeal())
+        @include('garage.cars.sell-split', ['deal' => $car->deal, 'sale' => null])
+    @endif
     @if ($car->isSold() && $invoice && $car->manager)
         <div class="{{ $row }}"><span>{{ $staff ? 'Вознаграждение менеджеру' : 'Ваше вознаграждение' }}</span><span class="nums">{{ Money::rub($s['fee']) }}</span></div>
     @endif

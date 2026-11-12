@@ -20,7 +20,11 @@ export function priceGuard() {
         const action = new URL(event.submitter?.hasAttribute('formaction') ? event.submitter.formAction : form.action, location.href).pathname;
         if (mode === 'publish' && !/\/(schedule|state)$/.test(action)) return;
         const body = new FormData();
-        if (mode === 'publish') {
+        if (mode === 'sold') {
+            // Продажа из гаража (12.11.2026): цена против закупочной сделки — адрес у формы (`data-price-guard-url`).
+            if (!data.get('sold_price')) return;
+            body.append('sold_price', data.get('sold_price'));
+        } else if (mode === 'publish') {
             const ids = form.dataset.priceGuardOffer ? [form.dataset.priceGuardOffer] : data.getAll('offers[]');
             if (!ids.length) return;
             ids.forEach((id) => body.append('offers[]', id));
@@ -37,7 +41,7 @@ export function priceGuard() {
         event.preventDefault();
         event.stopImmediatePropagation();
         const submitter = event.submitter;
-        ask(body, mode).then((ok) => {
+        ask(body, mode, form.dataset.priceGuardUrl).then((ok) => {
             if (!ok) return;
             // Согласие — на эту отправку: Turbo собирает данные формы синхронно, дальше поле не нужно.
             const input = setOk(form);
@@ -47,10 +51,10 @@ export function priceGuard() {
     }, { capture: true });
 }
 
-async function ask(body, mode) {
+async function ask(body, mode, url = '/offers/price-check') {
     let warnings;
     try {
-        const r = await post('/offers/price-check', body, { quiet: true, timeout: 8000 });
+        const r = await post(url, body, { quiet: true, timeout: 8000 });
         warnings = r?.ok ? (await r.json()).warnings : null;
     } catch { warnings = null; }
     if (!warnings?.length) return true;
@@ -58,7 +62,7 @@ async function ask(body, mode) {
     const publish = mode === 'publish';
     return confirmSheet(one ? warnings[0].title : `Цена под вопросом у ${warnings.length} ${plural(warnings.length, ['ТС', 'ТС', 'ТС'])}`, {
         text: warnings.map((w) => (publish || !one ? `${w.name}\n${w.text}` : w.text)).join('\n'),
-        label: publish ? 'Всё равно опубликовать' : 'Да, сохранить',
+        label: publish ? 'Всё равно опубликовать' : mode === 'sold' ? 'Да, верно' : 'Да, сохранить',
         cancel: 'Исправить',
         danger: false,
         warn: true,

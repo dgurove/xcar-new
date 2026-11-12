@@ -292,6 +292,7 @@ Route::middleware(['auth', 'wall'])->group(function () {
         // Этапы: «Готова» — кнопкой; «Продаю» — менеджер ценой, итог и счёт — мы, об оплате сообщает он.
         Route::post('/cars/{offer}/stage', [GarageSettlementController::class, 'stage']);
         Route::post('/cars/{offer}/sold', [GarageSettlementController::class, 'sold']);
+        Route::post('/cars/{offer}/price-check', [GarageSettlementController::class, 'priceCheck'])->middleware('throttle:60,1');
         Route::delete('/cars/{offer}/sold', [GarageSettlementController::class, 'unsold']);
         Route::put('/cars/{offer}/buyer-price', [GarageSettlementController::class, 'buyerPrice']);
         Route::post('/cars/{offer}/settle', [GarageSettlementController::class, 'settle']);
