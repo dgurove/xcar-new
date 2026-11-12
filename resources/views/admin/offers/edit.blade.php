@@ -46,8 +46,9 @@
             <x-ui.pill :tone="$offer->state->tone()">{{ $offer->crmTab() }}</x-ui.pill>
         @endif
         <x-offer.margin :m="$offer->marginMark()" class="!ml-0"/>
-        {{-- Срок обязывающего предложения (19.10.2026): горит без покупателя — сплошным красным. --}}
-        <x-offer.binding :offer="$offer"/>
+        {{-- Срок обязывающего предложения — чипом «⏱ 14.11 (2д 5ч)» с окошком, как в окне (12.11.2026, владелец: мигающая красная
+             капсула и слово «обязывающее» — «агрессивно, нейрослоп»). --}}
+        <x-offer.binding :offer="$offer" aside/>
         {{-- Срочное (12.10.2026) — капсулой огня со сроком приёма. --}}
         @if ($offer->isUrgent())
             <span class="pill pill-fire"><x-ui.icon name="fire" fill class="size-4"/>Срочно, до {{ \App\Support\Ago::html($offer->bids_close_at, true, words: false) }}</span>

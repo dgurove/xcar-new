@@ -65,7 +65,7 @@
         @if (! $admin && ! $garageOnly)
             @php $bindingHot = $offer->binding_until && \App\Offers\Binding::word($offer); @endphp
             <span class="flex flex-wrap items-baseline gap-x-1 text-sm {{ $bindingHot ? 'text-danger' : 'text-ink-muted' }}" data-controller="by-vendor" data-by-vendor-ids-value="{{ json_encode(\App\Offers\Binding::vendorIds()) }}" @unless (\App\Offers\Binding::applies($offer)) hidden @endunless>
-                обязывающее до <x-ui.date name="binding_until" :id="$idp.'binding'" chip time default-time="23:59" :value="old('binding_until', $offer->binding_until?->format('Y-m-d\TH:i'))" :placeholder="$bindingDays ? 'по вендору '.$bindingDays.' дн' : 'указать'" :form="$form" class="nums underline decoration-dotted underline-offset-4"/>@if ($bindingHot)<span class="nums">, {{ \App\Offers\Binding::word($offer) }}</span>@endif
+                <x-ui.icon name="timer" class="size-4 shrink-0 self-center" title="Срок обязывающего предложения"/><x-ui.date name="binding_until" :id="$idp.'binding'" chip time default-time="23:59" :value="old('binding_until', $offer->binding_until?->format('Y-m-d\TH:i'))" :placeholder="$bindingDays ? 'по вендору '.$bindingDays.' дн' : 'указать'" :form="$form" class="nums underline decoration-dotted underline-offset-4"/>@if ($bindingHot)<span class="nums">, {{ \App\Offers\Binding::word($offer) }}</span>@endif
             </span>
             @error('binding_until')<span class="field-error">{{ $message }}</span>@enderror
         @endif

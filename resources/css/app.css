@@ -3239,6 +3239,13 @@ html.kb-open { --home-gap: 0px; }
   .detail-aside { grid-column: 2; grid-row: 1; text-align: right; }
   .detail-marks { grid-column: 1 / -1; margin-top: .375rem; }
   .detail-facts { grid-column: 1 / -1; margin-top: .375rem; }
+  /* Окно машины (12.11.2026): «⋯» — справа в строке названия, цена со сроком обязывающего — строкой ниже во всю ширину. */
+  .detail-menu { grid-column: 2; grid-row: 1; margin-block: -.25rem; }
+  .detail-head--stack .detail-aside { grid-column: 1 / -1; grid-row: 2; text-align: left; margin-top: .125rem; }
+  /* Срок обязывающего чипом справа от цены (`x-offer.binding aside`, 12.11.2026): серый, цвет — только у значка. */
+  .binding-chip { display: inline-flex; align-items: center; gap: .3rem; height: 1.75rem; padding-inline: .625rem; border-radius: 999px; background: var(--color-surface-2); color: var(--color-ink); font-size: var(--text-sm); white-space: nowrap; }
+  .binding-pop:popover-open { display: flex; }
+  .binding-pop { flex-direction: column; gap: .25rem; padding: .75rem 1rem; max-width: 18rem; text-align: left; font-size: var(--text-base); }
   /* Фраза положения под метками (row-card line): куски элементами, запятые ставит CSS — пробела перед ними не бывает. */
   /* flex: пробелы между кусками в разметке (перевод строки в blade) не рисуются, иначе перед запятой вставал пробел. */
   .detail-line { grid-column: 1 / -1; margin-top: .5rem; display: flex; flex-wrap: wrap; align-items: baseline; column-gap: .3em; }

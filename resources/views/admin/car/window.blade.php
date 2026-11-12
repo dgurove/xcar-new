@@ -20,28 +20,36 @@
     $form = 'detail-edit-'.$n;
 @endphp
 <x-ui.detail>
-    <x-ui.row-card :href="'/offers/'.$n" :title="$offer->titleWithYear()" :photos="$offer->visiblePhotos()" :facts="$selling ? array_slice($offer->facts(), 1) : []">
+    <x-ui.row-card stack :href="'/offers/'.$n" :title="$offer->titleWithYear()" :photos="$offer->visiblePhotos()" :facts="$selling ? array_slice($offer->facts(), 1) : []">
         <x-slot:status><span class="state {{ $statusTone }}">{{ $statusWord }}</span></x-slot:status>
-        <x-slot:badge>@if ($offer->auctionPlanned())<x-offer.auction/>@endif{{ "" }}@if ($admin && $offer->awaitingPark())<x-offer.awaiting/>@endif<x-car.keys :count="$offer->keys_count"/><x-ui.links :offer="$offer"/><x-offer.margin :m="$offer->marginMark()"/><x-offer.binding :offer="$offer" tag/></x-slot:badge>
+        <x-slot:badge>@if ($offer->auctionPlanned())<x-offer.auction/>@endif{{ "" }}@if ($admin && $offer->awaitingPark())<x-offer.awaiting/>@endif<x-car.keys :count="$offer->keys_count"/><x-ui.links :offer="$offer"/><x-offer.margin :m="$offer->marginMark()"/></x-slot:badge>
         <x-slot:media>@include('admin.offers.detail-photos')</x-slot:media>
         <x-slot:marks><x-car.codes :offer="$offer"/></x-slot:marks>
-        @if ($aside)
+        {{-- Строка цены (12.11.2026): слева главное число, справа срок обязывающего — дата и время (начальник). --}}
+        @if ($aside || \App\Offers\Binding::matters($offer))
             <x-slot:aside>
-                <div class="nums whitespace-nowrap text-lg font-semibold">{{ $aside[0] }}</div>
-                @if ($aside[1])<div class="text-xs text-ink-muted">{{ $aside[1] }}</div>@endif
+                <div class="flex items-start justify-between gap-3">
+                    @if ($aside)
+                        <div><div class="nums whitespace-nowrap text-lg font-semibold">{{ $aside[0] }}</div>@if ($aside[1])<div class="text-xs text-ink-muted">{{ $aside[1] }}</div>@endif</div>
+                    @endif
+                    <x-offer.binding :offer="$offer" aside class="ml-auto"/>
+                </div>
             </x-slot:aside>
         @endif
         <x-slot:tools>
             @include('admin.offers.detail-tools')
-            @if ($groups)
+        </x-slot:tools>
+        {{-- «⋯» — справа в строке названия (12.11.2026, владелец: в полосе тесно, этап в три строки). --}}
+        @if ($groups)
+            <x-slot:menu>
                 <div class="contents" data-controller="menu">
-                    <button type="button" class="bar-btn" data-action="menu#toggle" aria-label="Действия" aria-haspopup="menu" aria-controls="car-actions-{{ $n }}"><x-ui.icon name="more" class="size-[18px]"/></button>
+                    <button type="button" class="btn btn-s btn-quiet btn-round" data-action="menu#toggle" aria-label="Действия" aria-haspopup="menu" aria-controls="car-actions-{{ $n }}"><x-ui.icon name="more" class="size-[18px]"/></button>
                     <div id="car-actions-{{ $n }}" class="menu" popover data-menu-target="list" data-align="end" role="menu">
                         @include('admin.car.actions', ['mode' => 'menu'])
                     </div>
                 </div>
-            @endif
-        </x-slot:tools>
+            </x-slot:menu>
+        @endif
         <x-slot:actions>
             {{-- Где машина и кто её держит — строками со значком (`admin.car.facts`), а не фразой через запятую (12.11.2026). --}}
             @include('admin.car.facts')

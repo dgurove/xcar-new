@@ -24,9 +24,7 @@
     <x-ui.sheet :id="$id" :title="$title" tall>
         <div class="mb-4 flex flex-wrap items-center gap-1.5">@if ($bid)<x-ui.person :user="$bid->user" full/>@endif<span class="tag">{{ $offer->titleWithYear() }}</span>
             {{-- Срок обязывающего горит (19.10.2026): решать и платить поставщику — до него. --}}
-            @if ($bindingWord = \App\Offers\Binding::word($offer))
-                <span class="nums text-sm font-medium text-danger">обязывающее {{ $offer->binding_until->isPast() ? $bindingWord : 'до '.\App\Offers\Binding::date($offer->binding_until).', '.$bindingWord }}</span>
-            @endif
+            <x-offer.binding :offer="$offer" aside :pop="false"/>
         </div>
         @if ($twoWays)
             <div class="flex flex-col gap-4" data-controller="reveal">

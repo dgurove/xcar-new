@@ -253,6 +253,31 @@ final class Binding
         return Ago::html($at, $at->format('H:i') !== '23:59', words: false);
     }
 
+    /**
+     * Откуда срок (12.11.2026, владелец: «по клику — пояснение, что это срок обязывающего и исходя из какого документа или
+     * письма»): последняя запись «Изменён» с ним — причина словом («Из письма», «Из документа «Протокол»», «Из настроек
+     * вендора», «Из протокола торгов»), кто и когда; письмо — его номер, если запись его знает. Записи нет — null.
+     *
+     * @return ?array{why: ?string, user: ?User, at: \Illuminate\Support\Carbon, letter: ?int}
+     */
+    public static function source(Offer $offer): ?array
+    {
+        $event = OfferEvent::where('offer_id', $offer->id)->where('type', OfferEventType::Updated)
+            ->whereRaw("jsonb_exists(payload->'changes', 'binding_until')")->with('user')->latest('created_at')->latest('id')->first();
+        if (! $event) {
+            return null;
+        }
+        $p = $event->payload;
+        $why = match (true) {
+            ! empty($p['why']) => (string) $p['why'],
+            ($p['source'] ?? null) === 'migtorg' => 'С Мигторга',
+            ($p['source'] ?? null) === 'file' => 'По файлу'.(! empty($p['file']) ? ' «'.$p['file'].'»' : ''),
+            default => null,
+        };
+
+        return ['why' => $why, 'user' => $event->user, 'at' => $event->created_at, 'letter' => isset($p['letter']) ? (int) $p['letter'] : null];
+    }
+
     /** Фраза горящего срока: «осталось 1 д 5 ч» / «истёк 03.10». */
     public static function word(Offer $offer): ?string
     {

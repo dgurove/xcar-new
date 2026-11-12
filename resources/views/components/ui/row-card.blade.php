@@ -11,8 +11,10 @@
      line — фраза положения под метками (город, где ТС, сроки), куски — элементами, запятые ставит CSS.
      blank=false — нет фото, нет и ленты (без серой заглушки с машинкой: парковка, 10.10.2026).
      status — состояние словом посередине полосы (парковка, логистика).
-     head=false — без шапки с названием и метками: тело рисует свою (карточки «Оплат»: сумма крупно по центру). --}}
-@props(['offer' => null, 'status' => null, 'badge' => null, 'head' => true, 'href' => null, 'title', 'photos' => null, 'photo' => null, 'marks' => null, 'facts' => [], 'line' => null, 'aside' => null, 'actions' => null, 'action' => 'Открыть', 'tools' => null, 'media' => null, 'foot' => null, 'blank' => true])
+     head=false — без шапки с названием и метками: тело рисует свою (карточки «Оплат»: сумма крупно по центру).
+     menu — кнопка «⋯» справа в строке названия (окно машины CRM, 12.11.2026, владелец: в полосе было тесно, этап в три
+     строки); stack — шапка всегда в две строки: название с меню, под ним aside во всю ширину (цена слева, срок справа). --}}
+@props(['offer' => null, 'status' => null, 'badge' => null, 'head' => true, 'href' => null, 'title', 'photos' => null, 'photo' => null, 'marks' => null, 'facts' => [], 'line' => null, 'aside' => null, 'actions' => null, 'action' => 'Открыть', 'tools' => null, 'media' => null, 'foot' => null, 'blank' => true, 'menu' => null, 'stack' => false])
 <div class="detail-bar" data-action="pointerdown->detail#grab">
     <span class="detail-handle" aria-hidden="true"></span>
     <button type="button" class="bar-btn" data-action="detail#prev" aria-label="Предыдущая"><x-ui.icon name="chevron-down" class="size-[18px] rotate-180"/></button>
@@ -34,9 +36,10 @@
     @if ($media){{ $media }}@elseif ($blank || ($photos && $photos->isNotEmpty()))<x-offer.gallery :photos="$photos" :alt="$title" strip :offer="$offer"/>@endif
     {{-- Шапка с лентой: название, справа цена, под названием метки; на телефоне цена — своей строкой под названием,
          метки — во всю ширину рядом (узкая колонка рядом с ценой ставила их столбиком). --}}
-    <div class="detail-head mt-3">
+    <div @class(['detail-head mt-3', 'detail-head--stack' => $stack])>
         {{-- Название — копируется нажатием (09.11.2026, владелец); страницу открывает значок в полосе. --}}
         <div class="detail-title block text-lg leading-snug"><span class="line-clamp-2"><x-ui.copy-text>{{ $title }}</x-ui.copy-text>{{ $badge ?? '' }}</span></div>
+        @if ($menu && trim($menu) !== '')<div class="detail-menu">{{ $menu }}</div>@endif
         @if ($aside && trim($aside) !== '')<div class="detail-aside">{{ $aside }}</div>@endif
         {{-- Метки — чипами (коды, состояние); характеристики (пробег, коробка, привод) — строкой текста под ними: разное
              по смыслу — разным видом (владелец 10.10.2026: «одно к машине относится, другое к фактам»). --}}

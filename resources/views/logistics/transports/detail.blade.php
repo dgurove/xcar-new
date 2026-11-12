@@ -114,11 +114,9 @@
                     </span>
                     @if ($sale->manager)<x-ui.person :user="$sale->manager" class="shrink-0"/>@endif
                 </div>
-                @if ($offer?->binding_until)
-                    <div class="row items-center justify-between gap-3">
-                        <span class="text-sm text-ink-muted">Обязывающее до</span>
-                        <x-offer.binding :offer="$offer" plain class="text-right"/>
-                    </div>
+                {{-- Срок обязывающего — тем же чипом с окошком, что в CRM (12.11.2026, владелец: «обязывающее» словом — нейрослоп). --}}
+                @if ($offer?->binding_until && \App\Offers\Binding::matters($offer))
+                    <div class="row"><x-offer.binding :offer="$offer" aside/></div>
                 @endif
             </div>
         @endif
