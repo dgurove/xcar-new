@@ -97,7 +97,10 @@ class RepriceController
         if ($error = \App\Offers\Binding::closeError($offer, $until)) {
             throw ValidationException::withMessages(['until' => $error]);
         }
-        $show->stop($offer, $request->user(), 'Показ другим менеджерам продлён');
+        // Показ уже идёт — новый срок вместо прежнего; кончившийся или не начатый «продлённым» в «Истории» не называем.
+        if ($offer->showsDealAsOpen()) {
+            $show->stop($offer, $request->user(), 'Показ другим менеджерам продлён');
+        }
         $show->start($offer->refresh(), $until, $request->user());
 
         return back(fallback: "/offers/{$offer->number}")->with('toast', 'Опубликовано для других менеджеров до '.\App\Support\Ago::at($until, true, words: false));

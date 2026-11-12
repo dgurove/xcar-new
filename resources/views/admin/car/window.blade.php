@@ -13,7 +13,6 @@
     $aside = $car->aside();
     $selling = $car->selling();
     $groups = $car->actions($offer->isDeletableBy(auth()->user()));
-    $left = $gallery || ! $admin || ! $offer->state->acceptsBids() ? null : $offer->secondsLeft();
     $dealChat = $deal?->isActive() && $deal->buyer;
     $otherChats = $car->otherChats();
     $chatUnread = $otherChats->sum('unread_for_staff');
@@ -26,31 +25,6 @@
         <x-slot:badge>@if ($offer->auctionPlanned())<x-offer.auction/>@endif{{ "" }}@if ($admin && $offer->awaitingPark())<x-offer.awaiting/>@endif<x-car.keys :count="$offer->keys_count"/><x-ui.links :offer="$offer"/><x-offer.margin :m="$offer->marginMark()"/><x-offer.binding :offer="$offer" tag/></x-slot:badge>
         <x-slot:media>@include('admin.offers.detail-photos')</x-slot:media>
         <x-slot:marks><x-car.codes :offer="$offer"/></x-slot:marks>
-        <x-slot:line>
-            @if ($offer->settlement)<x-ui.place>{{ $offer->settlement->title() }}</x-ui.place>@endif
-            @if ($offer->car_place)<span>{{ mb_strtolower($offer->car_place->label()) }}</span>@endif
-            @if ($garageCar)
-                <span>{{ $garageCar->manager?->shortName() ?? 'взяли под себя' }}</span>
-                @if ($garageCar->deal?->garagePayerLine())<span>{{ $garageCar->deal->garagePayerLine() }}</span>@endif
-                @unless ($garageCar->isSold())<span>{{ \App\Garage\CarLine::days($garageCar->stageDays()) }} на этапе</span>@endunless
-            @elseif ($car->showsDeal())
-                {{-- Кто это — словом (03.11.2026, владелец: имя с телефоном без подписи читалось непонятно). --}}
-                @if ($deal->isAuction())
-                    {{-- Продана на аукционе — менеджера нет, покупатель — контрагент сделки (`deals.buyer_party_id`). --}}
-                    @if ($deal->auctionBuyer)<span>покупатель {{ $deal->auctionBuyer->name }}</span>@endif
-                @elseif ($deal->buyer)
-                    <span>менеджер {{ $deal->buyer->name }}</span>@if ($deal->buyer->phone)<x-ui.phone :user="$deal->buyer"/>@endif
-                @endif
-            @endif
-            @if ($intake)
-            @elseif ($left !== null && $left > 0)<span class="nums {{ $offer->isEndingSoon() ? 'text-urgent' : '' }}">приём <span data-controller="timer" data-timer-until-value="{{ $offer->bids_close_at->toIso8601String() }}" data-timer-done-value="закрыт" data-timer-coarse-value="true">{{ \App\Support\Ago::left($offer->bids_close_at, 'ещё') }}</span></span>
-            @elseif (! $gallery && $selling && $offer->closed() && $admin)<span class="text-ink-muted">приём закрыт</span>@endif
-            {{-- Окно галереи (08.10.2026): висит — сколько осталось, кончилось — до какого числа висело. --}}
-            {{-- Опубликована для других менеджеров поверх сделки (`ShowDealToAll`, 12.11.2026). --}}
-            @if ($offer->showsDealAsOpen())<span class="nums text-accent-text">у других менеджеров до {{ \App\Support\Ago::html($offer->deal_show_until, true, words: false) }}</span>@endif
-            @if ($gallery)<span class="nums {{ $offer->isGalleryEndingSoon() ? 'text-urgent' : 'text-accent-text' }}">в галерее <span data-controller="timer" data-timer-until-value="{{ $offer->gallery_until->toIso8601String() }}" data-timer-done-value="закрыта" data-timer-coarse-value="true">{{ \App\Support\Ago::left($offer->gallery_until, 'ещё') }}</span></span>
-            @elseif ($offer->gallery_from && $selling)<span class="nums text-ink-muted">в галерее до {{ \App\Support\Ago::html($offer->gallery_until, true, words: false) }}</span>@endif
-        </x-slot:line>
         @if ($aside)
             <x-slot:aside>
                 <div class="nums whitespace-nowrap text-lg font-semibold">{{ $aside[0] }}</div>
@@ -69,14 +43,19 @@
             @endif
         </x-slot:tools>
         <x-slot:actions>
+            {{-- Где машина и кто её держит — строками со значком (`admin.car.facts`), а не фразой через запятую (12.11.2026). --}}
+            @include('admin.car.facts')
             @include('admin.car.alerts')
-            {{-- Ряд пилюль: чат с менеджером сделки (пилюлей, живой), остальные чаты, документы, «Показать менеджеру». --}}
-            @if ($dealChat || $otherChats->isNotEmpty() || $docs || ($admin && $deal?->isActive()))
+            {{-- Ряд пилюль: чат с менеджером сделки (пилюлей, живой), остальные чаты, документы, «Показать менеджеру», ссылка
+                 менеджеру на его сделку или машину гаража (03.11.2026, владелец: карточкой посреди окна была непонятной). --}}
+            @php $personDeal = $admin ? ($garageCar?->deal ?? ($deal?->isActive() ? $deal : null)) : null; @endphp
+            @if ($dealChat || $otherChats->isNotEmpty() || $docs || ($admin && $deal?->isActive()) || $personDeal)
                 <div class="flex w-full flex-wrap items-center gap-2">
                     @if ($dealChat)<x-deal.chat-card :deal="$deal" :chat="$car->dealChat()" compact/>@endif
                     @if ($otherChats->isNotEmpty())<x-ui.pill :tone="$chatUnread ? 'urgent' : 'plain'" href="/work/chats?preset=all&q={{ $n }}" data-turbo-frame="_top"><x-ui.icon name="chat" class="size-4"/> {{ $otherChats->count() === 1 ? 'Чат' : 'Чаты' }}@if ($otherChats->count() > 1 && ! $chatUnread) <span class="nums text-ink-dim">{{ $otherChats->count() }}</span>@endif @if ($chatUnread) <span class="badge">{{ $chatUnread }}</span>@endif</x-ui.pill>@endif
                     @if ($docs)<x-ui.docs-pill :docs="$docs"/>@endif
                     @if ($admin && $deal?->isActive())<x-deal.reply-review :deal="$deal" pill/>@endif
+                    @if ($personDeal)<x-deal.person-link :deal="$personDeal" pill/>@endif
                 </div>
             @endif
             {{-- Что сейчас: черновик — «Цены» по шагам (метки — под блоком), открытое — «Приём», слот, аукцион, архив, «Без
@@ -94,8 +73,9 @@
         </x-slot:actions>
 
         <div class="mt-4 flex flex-col gap-5">
-            {{-- Дорожки — те же, что на странице (`admin.offers.lanes`): в узком окне столбиком. --}}
-            @if ($admin)<div class="@container/lanes min-w-0">@include('admin.offers.lanes')</div>@endif
+            {{-- Дорожки — те же, что на странице (`admin.offers.lanes`), но короче (`compact`, 12.11.2026, владелец: «информация по
+                 несколько раз дублируется»): путь — текущим шагом, вывоз — без лесенки, деньги — без числа шапки, без ДКП. --}}
+            @if ($admin)<div class="@container/lanes min-w-0">@include('admin.offers.lanes', ['compact' => true])</div>@endif
             {{-- Письма — все строками, как в «Почте»: по ним заполняют поля и оценивают (11.10.2026). --}}
             @if ($letters)
                 <section>
@@ -110,7 +90,8 @@
                     @include('admin.offers.price-steps', ['plain' => true])
                     @if ($admin)<section>@include('admin.offers.fields.tags')</section>@endif
                 @endif
-                @unless ($steps || $intake || $unsold)<x-offer.showing :offer="$offer" :form="$form" as="section"/>@endunless
+                {{-- «Показ» полями — у продающейся; у сделки и гаража публикация для других — строкой сведений и пунктом «⋯». --}}
+                @if ($selling && ! ($steps || $intake || $unsold))<x-offer.showing :offer="$offer" :form="$form" as="section"/>@endif
                 @if ($selling)
                     <x-car.blocks :lane="$offer" :blocks="['car', 'papers', 'specs']" as="section"
                         :required="$offer->state === OfferState::Draft ? ['vendor_id', 'claim_ref', 'brand_id'] : []"/>

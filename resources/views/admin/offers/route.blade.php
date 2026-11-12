@@ -8,7 +8,7 @@
 @endphp
 @if ($position)
     <x-ui.card :title="($untitled ?? false) ? null : Track::Sale->label()" class="{{ $cardClass ?? 'order-1' }}" id="sale">
-        <x-route.path :offer="$offer" :position="$position">{!! $tail ?? '' !!}</x-route.path>
+        <x-route.path :offer="$offer" :position="$position" :compact="$compact ?? false">{!! $tail ?? '' !!}</x-route.path>
         @if ($errors->has('exit'))<p class="field-error mt-2">{{ $errors->first('exit') }}</p>@endif
     </x-ui.card>
 @endif

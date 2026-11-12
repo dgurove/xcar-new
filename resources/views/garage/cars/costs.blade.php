@@ -1,4 +1,4 @@
-{{-- Расходы машины строками, итог — в заголовке; строку правят в её шторке. Сотруднику список виден всегда, «+ Расход»
+{{-- Расходы машины строками, итог — в заголовке (от двух строк: итог одной — она сама, 12.11.2026); строку правят в её шторке. Сотруднику список виден всегда, «+ Расход»
      — в заголовке (06.10.2026, владелец: «добавлять, убирать, корректировать»); менеджеру — когда есть что показать.
      07.10.2026: поля строками (.fields), кнопка .sheet-foot; «Убрать» ниже отдельной формой, отступ шире подложки кнопки. --}}
 @php
@@ -10,7 +10,7 @@
 @endphp
 @if ($costs->isNotEmpty() || ($staff && $canAdd))
     <section>
-        <h2 @class(['list-head lg:pt-0', '!items-center' => $staff && $canAdd])>Расходы@if ($costs->isNotEmpty())<span class="nums text-base font-normal text-ink-muted">{{ \App\Support\Money::exact($total) }}</span>@endif
+        <h2 @class(['list-head lg:pt-0', '!items-center' => $staff && $canAdd])>Расходы@if ($costs->count() > 1)<span class="nums text-base font-normal text-ink-muted">{{ \App\Support\Money::exact($total) }}</span>@endif
             @if ($staff && $canAdd)
                 <button type="button" class="btn btn-s btn-quiet ml-auto" data-controller="emit" data-action="emit#send" data-emit-event-param="cost-new:open"><x-ui.icon name="plus" class="size-4"/>Расход</button>
             @endif

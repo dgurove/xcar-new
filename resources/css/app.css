@@ -2478,6 +2478,22 @@ html.kb-open { --home-gap: 0px; }
   .step-details > summary > .step-chevron { position: absolute; right: 0; top: .4375rem; }
   .step--next .step-body, .step--todo .step-body { padding-bottom: .625rem; }
   .step--done .step-body { padding-bottom: .5rem; }
+  /* Окно машины (12.11.2026, владелец: «снизу куча навалено»): путь свёрнут до текущего шага, «Весь путь» (`x-route.fold`)
+     раскрывает его флажком. Текущего нет (путь пройден) — виден весь. Вывоз в окне — тоже только текущий шаг, без строки. */
+  .steps--compact > .step--done, .steps--compact > .step--next, .steps--compact > .step--todo, .steps--compact > .step--later { display: none; }
+  .steps--compact > .step::before { display: none; }
+  .steps--compact:has(> .steps-all > .steps-all-check:checked) > .step { display: grid; }
+  .steps--compact:has(> .steps-all > .steps-all-check:checked) > .step::before { display: block; }
+  .steps--compact:has(> .steps-all > .steps-all-check:checked) > .step:has(+ .steps-all)::before { display: none; }
+  .steps--compact:not(:has(> .step--current)):not(:has(> .step--ask)) > .step { display: grid; }
+  .steps--compact:not(:has(> .step--current)):not(:has(> .step--ask)) > .steps-all { display: none; }
+  .steps-all { display: flex; align-items: center; gap: .375rem; align-self: flex-start; margin-top: .25rem; cursor: pointer; font-size: var(--text-sm); color: var(--color-ink-muted); }
+  .steps-all-check { position: absolute; opacity: 0; pointer-events: none; width: 1px; height: 1px; }
+  .steps-all-close { display: none; }
+  .steps-all-chevron { transition: rotate var(--dur-fast); }
+  .steps-all:has(> .steps-all-check:checked) > .steps-all-open { display: none; }
+  .steps-all:has(> .steps-all-check:checked) > .steps-all-close { display: inline; }
+  .steps-all:has(> .steps-all-check:checked) > .steps-all-chevron { rotate: 180deg; }
 
   /* Шаг «Переоценка» (`x-route.reprice-step`, 04.11.2026): откуда, цены было → стало и вложенная лента подпунктов — цена,
      покупатель, ответ поставщику; сделано — лаймовая точка с галкой, сейчас — оранжевая, ждёт — серая. Люди — строкой с

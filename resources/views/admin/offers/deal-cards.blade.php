@@ -1,5 +1,9 @@
 {{-- Карточки сделки в третьей дорожке редактора — одни у «Сделки» и «Гаража» (07.10.2026, владелец: «гараж — это тоже как
      сделка, приводи к общему виду»): деньги и ДКП, если он у схемы есть. Заметка — в правой колонке под «Показом» (12.10.2026). --}}
-<x-deal.person-link :deal="$deal"/>
-<x-deal.money :deal="$deal" id="money"/>
-@if ($deal->hasContract())<x-deal.contract :deal="$deal"/>@elseif ($deal->collectsBuyer() || $deal->contract?->buyer_user_id)<x-deal.invoice-buyer :deal="$deal"/>@endif
+@php $compact ??= false; @endphp
+{{-- Окно (`compact`, 12.11.2026, владелец: «закупочная несколько раз»): ссылка менеджеру — пилюлей вверху окна, в деньгах нет
+     числа шапки (`CarView::moneySkip`), ДКП — на странице, а что в нём не готово, говорит строка дела в шаге. --}}
+@unless ($compact)<x-deal.person-link :deal="$deal"/>@endunless
+<x-deal.money :deal="$deal" id="money" :skip="$compact ? $car->moneySkip() : []"/>
+@if ($compact)
+@elseif ($deal->hasContract())<x-deal.contract :deal="$deal"/>@elseif ($deal->collectsBuyer() || $deal->contract?->buyer_user_id)<x-deal.invoice-buyer :deal="$deal"/>@endif

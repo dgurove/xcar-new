@@ -4,7 +4,8 @@
      без срока «ждём 3 д»), у письма поставщику — что с ним («письмо не отправлено», «письмо от 04.11, ждём 1д», «ответил 04.11»
      — нажатие открывает окно писем на нём), у нашего хода — часы. Под подпунктом «сейчас» в `x-route.path`, той же строкой
      в «Переоценке» (`.step-who`). --}}
-@props(['position', 'offer', 'deal' => null])
+{{-- named=false — окно машины (12.11.2026): менеджер сделки словом «Менеджер» без аватара, его имя и телефон — в сведениях шапки. --}}
+@props(['position', 'offer', 'deal' => null, 'named' => true])
 @php
     use App\Support\Ago;
     use App\Workflow\WaitsFor;
@@ -71,8 +72,10 @@
 @endphp
 @if ($side)
     <div {{ $attributes->class('step-who') }}>
-        @if ($manager)
+        @if ($manager && $named)
             <x-ui.avatar :user="$manager" :size="32"/>
+        @elseif ($manager)
+            <span class="step-who-icon"><x-ui.icon name="user" class="size-4"/></span>
         @elseif ($vendor)
             <span class="step-who-icon"><x-vendor.logo :vendor="$vendor" class="!size-6"/></span>
         @elseif ($driver)
@@ -83,7 +86,7 @@
             <span class="step-who-icon"><x-ui.icon name="user" class="size-4"/></span>
         @endif
         <div class="min-w-0">
-            <div class="truncate">{{ $manager?->shortName() ?? $driver?->shortName() ?? $vendor?->name ?? ($trip !== null || $position->carried() ? 'Вывоз' : null) ?? ($side === 'us' ? 'XCar' : ($deal?->isAuction() ? 'Аукцион' : 'Менеджер')) }}</div>
+            <div class="truncate">{{ ($named ? $manager?->shortName() : ($manager ? 'Менеджер' : null)) ?? $driver?->shortName() ?? $vendor?->name ?? ($trip !== null || $position->carried() ? 'Вывоз' : null) ?? ($side === 'us' ? 'XCar' : ($deal?->isAuction() ? 'Аукцион' : 'Менеджер')) }}</div>
             @if ($open)
                 <button type="button" class="state state-{{ $tone }} underline decoration-dotted underline-offset-4" data-controller="emit" data-action="emit#send" data-emit-event-param="letters:open" data-emit-url-param="{{ $open }}"><span>{!! $state !!}</span></button>
             @elseif ($asked)

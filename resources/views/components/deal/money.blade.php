@@ -5,7 +5,7 @@
      счётом — его ссылка на оплату строкой группы «Ссылки на оплату» с «Скопировать» (`x-billing.link-row`): начальник открыл
      сделку и сразу видит, оплатили ли и чем поделиться. Менеджеру ничего из этого не показывается. compact — карточка строки «Сделок»:
      цена и «Нам», остальной расклад свёрнут. 07.10.2026: кнопки шторок .sheet-foot. --}}
-@props(['deal', 'compact' => false])
+@props(['deal', 'compact' => false, 'skip' => []])
 @php
     use App\Support\Money; use App\Billing\InvoiceState; use App\Offers\CommissionState;
     $offer = $deal->offer;
@@ -52,15 +52,18 @@
         // остальное — под «Расклад» (07.10.2026, владелец: «слишком много»), на странице сделки — всё.
         $dd = 'nums text-right';
         $rows = [];
+        // skip — что окно машины уже сказало выше (12.11.2026, владелец: «закупочная несколько раз»): число шапки (`amount` —
+        // цена сделки, `cost` — закупочная гаража до продажи) и кто платит поставщику (`payer` — в сведениях под менеджером).
+        $skips = fn (string $k) => in_array($k, $skip, true);
         if ($deal->isGarage()) {
             // Гаражная: цены нет, вознаграждение назначат при продаже из гаража; важно, кто платит поставщику.
-            $rows[] = ['В гараж', $deal->garagePayerLine(), 'text-right font-medium', true];
+            if (! $skips('payer')) $rows[] = ['В гараж', $deal->garagePayerLine(), 'text-right font-medium', true];
             if ($deal->namesBuyer() && $deal->amount !== null) $rows[] = ['Цена продажи', Money::rub($deal->amount), $dd.' font-medium', true];
-        } else {
+        } elseif (! $skips('amount')) {
             $rows[] = [$deal->isAuction() ? 'Цена на аукционе' : 'Цена подтверждения', $deal->amount === null ? 'не указана' : Money::rub($deal->amount), $dd.' font-medium', true];
         }
         // Закупочная — закреплённая с подтверждения менеджера (её он видит); поставщик скинул после — своей строкой, нам.
-        $rows[] = [$deal->supplier_cost !== null ? 'Закупочная у менеджера' : 'Закупочная', $deal->cost === null ? 'не указана' : Money::rub($deal->cost), $dd, false];
+        if (! $skips('cost')) $rows[] = [$deal->supplier_cost !== null ? 'Закупочная у менеджера' : 'Закупочная', $deal->cost === null ? 'не указана' : Money::rub($deal->cost), $dd, false];
         if ($deal->supplier_cost !== null) $rows[] = ['Закупочная поставщика', Money::rub($deal->supplier_cost), $dd, false];
         if ($deal->isGarageManager()) {
             $rows[] = ['Наша доля', $deal->share ? Money::rub($deal->share) : 'не вписана', $dd, false];

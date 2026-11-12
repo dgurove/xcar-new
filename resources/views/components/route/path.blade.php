@@ -11,7 +11,10 @@
      кто действует строкой (`x-route.who`), под ней кнопки шага.
      10.11.2026: заголовок текущего шага — сам этап («Согласие менеджера»), блок — мелкой строкой над ним; пройденное в блоке —
      строками под заголовком, ждущее в блоке — серым в конце; ждущее письмо поставщика — строкой в шаге (`x-deal.reply-line`). --}}
-@props(['offer', 'position'])
+{{-- compact — окно машины (12.11.2026, владелец: «снизу куча навалено, менеджер несколько раз»): виден текущий шаг, пройденные
+     и впереди — под строкой «Весь путь» (`x-route.fold`); менеджер сделки — словом «Менеджер»: имя и телефон — в сведениях
+     шапки окна. --}}
+@props(['offer', 'position', 'compact' => false])
 @php
     use App\Billing\InvoiceState;
     use App\Support\Money;
@@ -76,7 +79,7 @@
     // из маршрута — он стоит перед ним текущим с «Оценить» (`/offers/{n}/rate`), а этап маршрута ждёт впереди серым.
     $pricing = $position->track === \App\Workflow\Track::Sale && $offer->state === \App\Offers\OfferState::Draft && ! $offer->asking_price && ! $offer->isScheduled() && auth()->user()?->canManageCrm();
 @endphp
-<div class="steps">
+<div @class(['steps', 'steps--compact' => $compact])>
     @if ($pricing)
         <div class="step step--{{ Path::CURRENT }}">
             <span class="step-dot"></span>
@@ -147,7 +150,7 @@
                         $place = $subs->where('state', \App\Workflow\Substeps::DONE)->count() + 1;
                         $doneBy = $many ? \App\Users\User::whereIn('id', $subs->pluck('user_id')->filter()->unique())->get()->keyBy('id') : collect();
                         $whoOf = fn ($s) => match ($s?->waits_for) {
-                            WaitsFor::Manager => $deal?->buyer?->shortName(),
+                            WaitsFor::Manager => $compact ? 'менеджер' : $deal?->buyer?->shortName(),
                             WaitsFor::Supplier => $offer->vendor?->name,
                             default => null,
                         };
@@ -216,7 +219,7 @@
                             @endforeach
                         </ol>
                     @endif
-                    <x-route.who :position="$position" :offer="$offer" :deal="$deal"/>
+                    <x-route.who :position="$position" :offer="$offer" :deal="$deal" :named="! $compact"/>
                     {{-- Письмо поставщика ждёт разбора — строкой в шаге, а не лаймовой плашкой над путём (10.11.2026). --}}
                     @if ($deal && $position->track === \App\Workflow\Track::Sale && auth()->user()?->canManageCrm())<x-deal.reply-review :deal="$deal" line/>@endif
                     {{-- Покупателя менеджер должен дать с согласия (10.11.2026, `AskBuyer`): пока не дал — строкой дела, внести за него. --}}
@@ -470,4 +473,8 @@
     @endforeach
     {{-- Хвост пути после маршрута: у гаражной машины — её продажа и расчёт (дорожка «Продажа», 06.10.2026). --}}
     {{ $slot }}
+    @if ($compact)
+        @php $stepsCount = count($path) + ($pricing ? 1 : 0) + substr_count((string) $slot, 'step step--'); @endphp
+        <x-route.fold :count="$stepsCount"/>
+    @endif
 </div>

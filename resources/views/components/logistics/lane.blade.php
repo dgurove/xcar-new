@@ -4,8 +4,10 @@
      ход лесенкой (`Transport::steps`, без шагов «кто» — они строками выше) и история свёрнутой строкой. В «···»: «Кто и
      куда», «Уже вывезли» (задним числом, `Logistics\Actions\Backdate`: ТС уже у нас или у менеджера — 20.10.2026, при «Отдать»
      ошиблись «У страховой»), отменить последний шаг (`Logistics\Actions\StepBack`), «Вывоз не нужен». Вывоза нет — «Вывезти». У сделки внутри
-     — получение (контакт владельца менеджеру, `x-deal.handover`). --}}
-@props(['offer', 'deal' => null, 'class' => ''])
+     — получение (контакт владельца менеджеру, `x-deal.handover`).
+     compact — окно машины (12.11.2026, владелец: «информация по несколько раз дублируется»): без лесенки «Забирает … → Забрать»
+     у менеджера, что забирает сам (кто он — в сведениях шапки), у логистики — только текущий шаг; история — на странице. --}}
+@props(['offer', 'deal' => null, 'class' => '', 'compact' => false])
 @php
     use App\Logistics\Channel;
     use App\Logistics\TransportState;
@@ -55,7 +57,8 @@
             {{-- Менеджер забирает сам — это не логистика (17.10.2026): ссылки туда нет, «Забрал» он жмёт в своей сделке. --}}
             @if (! $manager)
                 <a href="{{ Surface::Logistics->url('/transports/'.$t->id) }}" class="text-accent-text" data-turbo="false">Логистика</a>
-                <span class="{{ $t->isLate() ? 'text-danger' : $t->state->tone() }}">{{ $t->isLate() ? 'не вывезли в срок' : $t->next() }}</span>
+                {{-- Что дальше — в окне его говорит сам текущий шаг ниже, второй раз словом не пишем. --}}
+                @if ($t->isLate() || ! $compact)<span class="{{ $t->isLate() ? 'text-danger' : $t->state->tone() }}">{{ $t->isLate() ? 'не вывезли в срок' : $t->next() }}</span>@endif
             @elseif ($t->isLate())
                 <span class="text-danger">не забрал в срок</span>
             @endif
@@ -86,15 +89,19 @@
             {{-- Маршрут через стоянки (20.10.2026) — только смотреть: стоянки и исполнителей отрезков ставят в логистике. --}}
             @php $routed = $t->channel === Channel::Logist && $t->logist && $t->chain()->count() > 1; @endphp
             <div class="list mb-4">
-                <x-logistics.facts :t="$t" :route="$routed" :logist="$changeable ? $sheet.':open' : null" :who="$changeable && $t->channel !== Channel::Logist ? $sheet.':open' : null" :where="$changeable ? $sheet.':open' : null"/>
+                <x-logistics.facts :t="$t" :named="! $compact" :route="$routed" :logist="$changeable ? $sheet.':open' : null" :who="$changeable && $t->channel !== Channel::Logist ? $sheet.':open' : null" :where="$changeable ? $sheet.':open' : null"/>
             </div>
             @if ($routed)<div class="mb-4"><x-logistics.route :t="$t" :me="auth()->user()" readonly/></div>@endif
         @endif
-        @unless ($told)
-        <x-logistics.steps :t="$t" ask extras="logistics.steps.lane" :with="['t' => $t, 'sheet' => $sheet]"/>
+        @php
+            // В окне шаг «кто вывозит» — это строки «Логист» / «Исполнитель» выше (нажатием — то же окно): лесенку не рисуем.
+            $whoNow = $compact && in_array(collect($t->steps())->firstWhere('status', 'current')['key'] ?? null, ['logist', 'executor'], true);
+        @endphp
+        @unless ($told || ($compact && $manager) || $whoNow)
+        <x-logistics.steps :t="$t" ask extras="logistics.steps.lane" :with="['t' => $t, 'sheet' => $sheet]" :class="$compact ? 'steps--compact' : ''"/>
         @endunless
         @if ($t->state === TransportState::Cancelled)<p class="mt-2 text-sm text-ink-muted">Вывоз отменён{{ $t->cancel_reason ? ': '.$t->cancel_reason : '' }}</p>@endif
-        @if ($events)
+        @if ($events && ! $compact)
             <details class="group list mt-4">
                 <summary class="row cursor-pointer list-none items-center justify-between gap-4">
                     <span>История вывоза <span class="nums text-ink-dim">{{ $events }}</span></span>

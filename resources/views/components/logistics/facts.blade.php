@@ -3,7 +3,7 @@
      поменять, — нажатием открывает окно (`who` — событие окна «Кто вывозит» / исполнителя, `where` — «Куда везти»; null —
      только показ). Без обёртки `.list` — встаёт в группу карточки рядом с владельцем и «Где забрать». `brief` — исполнителю
      (владелец 18.10.2026: «упростить ему интерфейс»): только куда везти и комментарий, кто он и его логист — не нужно. --}}
-@props(['t', 'me' => null, 'logist' => null, 'who' => null, 'where' => null, 'comment' => null, 'brief' => false, 'route' => false])
+@props(['t', 'me' => null, 'logist' => null, 'who' => null, 'where' => null, 'comment' => null, 'brief' => false, 'route' => false, 'named' => true])
 @php
     $row = function (string $label, string $value, ?string $sub, ?string $event, string $tone = '') {
         $body = '<span class="min-w-0 flex-1"><span class="block text-sm text-ink-muted">'.e($label).'</span>'
@@ -16,7 +16,8 @@
     };
     $mine = fn (?\App\Users\User $u) => $u && $me && $u->is($me) ? 'вы' : $u?->shortName();
     $manager = $t->isSelfPickup();
-    $dest = $t->routeLabel();
+    // named=false — окно машины CRM: менеджер назван в шапке, здесь «Менеджеру» / «В гараж» (12.11.2026).
+    $dest = $t->routeLabel($named);
 @endphp
 {{-- Забрал аукцион (20.10.2026) — ни исполнителя, ни «куда»: шаг один, «Забрал аукцион». --}}
 @if ($t->channel !== \App\Logistics\Channel::Auction)

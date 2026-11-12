@@ -393,11 +393,14 @@ class Transport extends Model
         return count($this->call_attempts ?? []);
     }
 
-    /** Куда везёт словом: «В гараж Бородину», «К нам», «Краснопутиловская», адрес. */
-    public function destinationLabel(): ?string
+    /**
+     * Куда везёт словом: «В гараж Бородину», «К нам», «Краснопутиловская», адрес. named=false — без имени менеджера («В гараж»,
+     * «Менеджеру»): окно машины CRM, где он уже назван в шапке (12.11.2026).
+     */
+    public function destinationLabel(bool $named = true): ?string
     {
         return match ($this->destination) {
-            Point::Keeper => self::keeperLabel($this->saleOffer()) ?? Point::Keeper->label(),
+            Point::Keeper => self::keeperLabel($this->saleOffer(), $named) ?? Point::Keeper->label(),
             Point::Yard => ($this->toYard ? 'Парковка '.$this->toYard->name : null) ?? $this->to_address,
             Point::Other => $this->to_address,
             Point::Ours => trim(Point::Ours->label().($this->to_address ? ', '.$this->to_address : '')),
@@ -411,13 +414,13 @@ class Transport extends Model
      * считали по-своему): выбранная точка; у старой задачи сделки без точки — её менеджер; иначе null — «пока неизвестно»
      * (выбрали в окне назначения: тогда `reach` уже стоит, и менеджера за точку не выдаём).
      */
-    public function routeLabel(): ?string
+    public function routeLabel(bool $named = true): ?string
     {
-        return $this->destinationLabel() ?? ($this->reach === null && $this->forSale() ? self::keeperLabel($this->saleOffer()) : null);
+        return $this->destinationLabel($named) ?? ($this->reach === null && $this->forSale() ? self::keeperLabel($this->saleOffer(), $named) : null);
     }
 
-    /** Точка «к менеджеру»: гаражная — «В гараж Бородин Ф.», машина его покупателю — «Менеджеру Бородин Ф.». */
-    public static function keeperLabel(?Offer $offer): ?string
+    /** Точка «к менеджеру»: гаражная — «В гараж Бородин Ф.», машина его покупателю — «Менеджеру Бородин Ф.»; named=false — без имени. */
+    public static function keeperLabel(?Offer $offer, bool $named = true): ?string
     {
         $keeper = $offer ? Choices::managerOf($offer) : null;
         if (! $keeper) {
@@ -425,7 +428,7 @@ class Transport extends Model
         }
         $garage = $offer->relationLoaded('garageCar') ? $offer->garageCar !== null : $offer->garageCar()->exists();
 
-        return ($garage ? 'В гараж ' : 'Менеджеру ').$keeper->shortName();
+        return ($garage ? 'В гараж' : 'Менеджеру').($named ? ' '.$keeper->shortName() : '');
     }
 
     /**

@@ -227,6 +227,42 @@ final class CarView
         return null;
     }
 
+    /**
+     * Кто держит машину — одной строкой сведений шапки окна (12.11.2026, владелец: «менеджер несколько раз написан»): менеджер
+     * гаража с тем, кто платит поставщику, менеджер сделки, покупатель аукциона. Ниже в окне имя не повторяется — шаг пути
+     * говорит «Менеджер», вывоз — «забирает сам», ссылка — пилюлей.
+     *
+     * @return ?array{user: ?User, name: string, role: string}
+     */
+    public function holder(): ?array
+    {
+        if ($this->garageCar) {
+            return ['user' => $this->garageCar->manager, 'name' => $this->garageCar->manager?->shortName() ?? 'Взяли под себя',
+                'role' => implode(', ', array_filter(['гараж', $this->garageCar->deal?->garagePayerLine()]))];
+        }
+        $deal = $this->showsDeal() ? $this->deal : null;
+        if ($deal?->isAuction()) {
+            return $deal->auctionBuyer ? ['user' => null, 'name' => $deal->auctionBuyer->name, 'role' => 'покупатель на аукционе'] : null;
+        }
+
+        return $deal?->buyer ? ['user' => $deal->buyer, 'name' => $deal->buyer->shortName(), 'role' => 'менеджер сделки'] : null;
+    }
+
+    /**
+     * Что «Деньги» окна не повторяют (12.11.2026, владелец: «закупочная несколько раз»): число шапки (цена сделки или
+     * закупочная гаража до продажи) и кто платит поставщику — он в сведениях под менеджером.
+     *
+     * @return list<string> ключи строк `x-deal.money`: amount, cost, payer
+     */
+    public function moneySkip(): array
+    {
+        if ($this->garageCar) {
+            return $this->garageCar->isSold() ? ['payer'] : ['payer', 'cost'];
+        }
+
+        return $this->deal && $this->showsDeal() && ! $this->deal->isGarage() ? ['amount'] : [];
+    }
+
     /** Окно о сделке: машина в сделке или выдана, или открыли со строки прошлой сделки — у шапки её цена и менеджер. */
     public function showsDeal(): bool
     {
