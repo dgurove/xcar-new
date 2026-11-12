@@ -26,7 +26,7 @@ const root = document.documentElement;
 const ios = /iP(hone|ad|od)/.test(navigator.platform) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
 // Календарь и список — не клавиатура: их шторка viewport не ужимает, и сдвигать под неё ничего не надо.
-export const TYPED = 'input:not([type=date]):not([type=datetime-local]):not([type=time]):not([type=month]):not(.date-input):not([type=checkbox]):not([type=radio]):not([type=file]):not([type=range]):not([type=color]), textarea, [contenteditable="true"], trix-editor';
+export const TYPED = 'input:not([type=date]):not([type=datetime-local]):not([type=time]):not([type=month]):not([type=checkbox]):not([type=radio]):not([type=file]):not([type=range]):not([type=color]), textarea, [contenteditable="true"], trix-editor';
 const typing = () => document.activeElement?.matches?.(TYPED) ?? false;
 
 // Ожидаемая высота — по ориентации и виду клавиатуры: у цифровой, почты и текста с подсказками она разная, и

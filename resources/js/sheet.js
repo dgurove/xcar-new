@@ -199,6 +199,8 @@ export function dirty(d) {
     for (const form of d.querySelectorAll('form')) {
         if (form.method.toLowerCase() === 'get' || form.hasAttribute('data-sheet-clean')) continue;
         for (const el of form.elements) {
+            // Дата — кнопка, значение в скрытом поле (12.11.2026): сравнить с тем, что было при открытии (`prepareForms`).
+            if (el.type === 'hidden' && el.matches('[data-date-target="value"]') && 'sheetWas' in el.dataset) { if (el.value !== el.dataset.sheetWas) return true; continue; }
             if (el.disabled || el.type === 'hidden' || el.type === 'submit' || el.type === 'button') continue;
             if (el.type === 'checkbox' || el.type === 'radio') { if (el.checked !== el.defaultChecked) return true; continue; }
             if (el.tagName === 'SELECT') {

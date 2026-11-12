@@ -17,9 +17,14 @@ export default class extends Controller {
         const { event: name, wide, ...rest } = event.params;
         // Пункт шторки действий «⋯» (`x-ui.more`, `.sheet-actions-list`) — так же (12.11.2026, начальник: «Отдать на оценку»
         // перестал работать): `sheet#item` закрывал «⋯» после события, и закрытие снимало запись только что открытой шторки.
-        const closes = (this.element.dataset.action || '').includes('sheet#close') || this.element.closest('.sheet-actions-list');
-        const sheet = closes ? this.element.closest('dialog[open]') : null;
-        if (sheet) {
+        // Закрывается своя шторка «⋯», а не окно вокруг неё: на ПК она поповер (`showPopover`, без атрибута open), и
+        // `closest('dialog[open]')` находил окно писем, в котором стоит «⋯», — его и закрывал.
+        const actions = this.element.closest('.sheet-actions-list')?.closest('dialog');
+        const sheet = actions ?? ((this.element.dataset.action || '').includes('sheet#close') ? this.element.closest('dialog[open]') : null);
+        if (sheet?.matches(':popover-open')) {
+            event.stopImmediatePropagation();
+            sheet.hidePopover();
+        } else if (sheet?.open) {
             event.stopImmediatePropagation();
             await closeSheet(sheet);
         }

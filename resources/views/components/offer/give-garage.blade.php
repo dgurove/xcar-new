@@ -3,11 +3,11 @@
      он есть: у Совкомбанка и без гаражной ветки платит менеджер, `Offer::garagePayerFixed`), наша доля у «платит менеджер»
      (у Совкомбанка доли нет — нашу часть даёт продажа), где ТС и кто везёт (`x-offer.pickup-choice`). Себе — платим мы, ТС
      у страховой (везёт логистика) или уже у нас: про менеджера ничего. С подтверждением «В гараж» — его принятие: кому — из
-     него, «Себе» нет. Лист «Отдать» и «В гараж» в «Ценах» карточки черновика (`inline`). Поля спрятанного сценария reveal
+     него, «Себе» нет. Вкладка «В гараж» листа «Отдать» (`x-offer.give-sheet`). Поля спрятанного сценария reveal
      выключает — в запрос уходит только выбранное. «Покупателю» (20.10.2026) — покупатель или супер-покупатель с гаражом по
      тумблеру: поставщику платим мы, вместо «кто платит» — его цена (по умолчанию цена продажи), закупочной он не видит; так
      же при принятии гаражного подтверждения супер-покупателя. Есть, пока такие люди есть и поставщику можем платить мы. --}}
-@props(['offer', 'bid' => null, 'prefix' => 'give', 'inline' => false])
+@props(['offer', 'bid' => null, 'prefix' => 'give'])
 @php
     $branch = ! $offer->garagePayerFixed();
     $handOver = $offer->deal;
@@ -63,9 +63,5 @@
          выбранному «Кому» (`.give-garage`). --}}
     <x-offer.pickup-choice :offer="$offer" garage :manager="$bid?->user"/>
     @if ($handOver)<p class="text-sm text-ink-muted">Сделка с {{ $handOver->buyer?->shortName() }} отменится</p>@endif
-    @if ($inline)
-        <x-ui.button type="submit" variant="primary" block>Отдать в гараж</x-ui.button>
-    @else
-        <x-ui.sheet-foot type="submit" variant="primary">{{ $handOver ? 'Отдать' : 'В гараж' }}</x-ui.sheet-foot>
-    @endif
+    <x-ui.sheet-foot type="submit" variant="primary">{{ $handOver ? 'Отдать' : 'В гараж' }}</x-ui.sheet-foot>
 </form>

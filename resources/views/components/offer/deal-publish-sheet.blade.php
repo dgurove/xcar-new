@@ -18,8 +18,8 @@
 @endphp
 <div data-controller="sheet" data-action="deal-publish:open@window->sheet#open" class="contents">
     <x-ui.sheet id="deal-publish-{{ $n }}" :title="$on ? 'Публикация для других менеджеров' : 'Опубликовать для других менеджеров'">
-        <form method="post" action="/offers/{{ $n }}/deal-publication" class="flex flex-col gap-4" id="deal-publish-form-{{ $n }}" data-price-guard="whole" data-price-guard-offer="{{ $n }}">
-            @csrf
+        <form method="post" action="/offers/{{ $n }}/deal-publication" class="flex flex-col gap-4" id="deal-publish-form-{{ $n }}" data-price-guard="whole" data-price-guard-offer="{{ $n }}" @if ($on) data-price-guard-changed @endif>
+            @csrf @if ($errors->has('price_check'))<input type="hidden" name="price_ok" value="1">@endif
             <div class="grid grid-cols-2 gap-2">
                 <x-ui.field name="publish_price" label="Заявленная, ₽" :id="'deal-publish-declared-'.$n" :value="$offer->declaredPrice() ? Money::nums($offer->declaredPrice()) : null"/>
                 <x-ui.field name="asking_price" label="Цена продажи, ₽" :id="'deal-publish-asking-'.$n" :value="$offer->asking_price ? Money::nums($offer->asking_price) : null" required/>

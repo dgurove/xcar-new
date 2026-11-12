@@ -53,10 +53,10 @@ export default class extends Controller {
         return date ? { date, time: (time || '').slice(0, 5) } : null;
     }
 
-    // server — слова того значения, что пришло с сервера (подключение, морф): они же исходные у поля, иначе нетронутая
-    // шторка с датой спрашивала «Не сохранять?» (`sheet.js` сравнивает с defaultValue, 30.10.2026). Выбор человека и
-    // вписанное снаружи (`fill.js`) — правка.
+    // server — значение пришло с сервера (подключение, морф): оно и есть исходное для «Не сохранять?» шторки (`sheet.js`
+    // сравнивает скрытое поле даты с `data-sheet-was`). Выбор человека и вписанное снаружи (`fill.js`) — правка.
     render(server = false) {
+        if (server && 'sheetWas' in this.valueTarget.dataset) this.valueTarget.dataset.sheetWas = this.valueTarget.value;
         const p = this.parts;
         let text = '';
         if (p) {

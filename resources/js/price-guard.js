@@ -16,6 +16,11 @@ export function priceGuard() {
         const data = new FormData(form, event.submitter ?? undefined);
         if (data.get('price_ok') === '1') return;
         if (mode === 'publish' && data.has('state') && data.get('state') !== 'open') return;
+        // `data-price-guard-changed` — спрашивать, только когда цену продажи поправили (идущая публикация сделки: правят «Кому»).
+        if ('priceGuardChanged' in form.dataset) {
+            const asking = form.elements.namedItem('asking_price');
+            if (asking && asking.value === asking.defaultValue) return;
+        }
         // У формы галок другие кнопки (`formaction`: «Убрать из слота», «Удалить навсегда») — не публикация.
         const action = new URL(event.submitter?.hasAttribute('formaction') ? event.submitter.formAction : form.action, location.href).pathname;
         if (mode === 'publish' && !/\/(schedule|state)$/.test(action)) return;

@@ -114,9 +114,16 @@ class RepriceController
         if (! PublishDeal::allows($offer)) {
             throw ValidationException::withMessages(['until' => 'Опубликовать так можно только машину в идущей сделке']);
         }
+        if ($error = \App\Offers\Binding::closeError($offer, $until)) {
+            throw ValidationException::withMessages(['until' => $error]);
+        }
+        $running = $offer->showsDealAsOpen();
         // Цены — предложения, не сделки (12.11.2026, начальник): их видят те, кому публикуем; сделку держат `deals.amount` и
-        // `deals.cost`. Закупочная не правится — значит, и переоценки нет. Под вопросом против закупочной — «Точно?».
-        PriceGuard::assertPrices($data['asking_price'], $offer->floor_price, $request->boolean('price_ok'));
+        // `deals.cost`. Закупочная не правится — значит, и переоценки нет. Под вопросом против закупочной — «Точно?»: при
+        // публикации и когда цену продажи поменяли, а не при каждой правке «Кому» (шторка — `data-price-guard-changed`).
+        if (! $running || $data['asking_price'] !== $offer->asking_price) {
+            PriceGuard::assertPrices($data['asking_price'], $offer->floor_price, $request->boolean('price_ok'));
+        }
         // Заявленная стоит в поле числом (серая подсказка читалась как выключенное поле): не трогали расчёт от закупочной — пусто,
         // заявленная и дальше идёт за закупочной.
         $declared = $data['publish_price'] ?? null;
@@ -125,35 +132,15 @@ class RepriceController
         }
         $prices = array_filter(['publish_price' => $declared, 'asking_price' => $data['asking_price']],
             fn ($v, $k) => $v !== $offer->{$k}, ARRAY_FILTER_USE_BOTH);
-        $running = $offer->showsDealAsOpen();
         // Одной транзакцией: «Выберите, кому показывать» откатывает и цены.
         DB::transaction(function () use ($offer, $prices, $update, $publish, $data, $until, $request) {
             if ($prices) {
                 $update($offer, $prices, $request->user(), ['why' => 'Публикация для других менеджеров']);
             }
-            // Приём — не позже срока обязывающего.
-            if ($error = \App\Offers\Binding::closeError($offer, $until)) {
-                throw ValidationException::withMessages(['until' => $error]);
-            }
             $publish($offer, json_decode((string) ($data['audience_rules'] ?? ''), true) ?: [], $until, $request->user());
         });
 
         return back(fallback: "/offers/{$offer->number}")->with('toast', $running ? 'Публикация изменена' : 'Опубликовано для других менеджеров до '.\App\Support\Ago::at($until, true, words: false));
-    }
-
-    /**
-     * Срок обязывающего из шторки (`x-offer.binding-field`): поле пришло и вендор по комиссии — что поменялось; пусто — снять.
-     *
-     * @return array{binding_until?: ?Carbon}
-     */
-    public static function bindingChange(Request $request, Offer $offer): array
-    {
-        if (! $request->has('binding_until') || ! \App\Offers\Binding::applies($offer)) {
-            return [];
-        }
-        $at = filled($request->input('binding_until')) ? Carbon::parse($request->input('binding_until')) : null;
-
-        return $at?->format('Y-m-d H:i') === $offer->binding_until?->format('Y-m-d H:i') ? [] : ['binding_until' => $at];
     }
 
     public function unpublish(Request $request, Offer $offer, PublishDeal $publish)

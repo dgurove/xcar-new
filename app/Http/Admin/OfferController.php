@@ -1245,7 +1245,7 @@ class OfferController
         $audience = $request->has('audience_rules') ? (json_decode((string) $request->input('audience_rules'), true) ?: []) : null;
         // Срок обязывающего — то же поле, что в «Показе»; до возврата: приём сверяется уже с ним.
         $offer = DB::transaction(function () use ($request, $offer, $update, $return, $prices, $data, $audience) {
-            if ($binding = RepriceController::bindingChange($request, $offer)) {
+            if ($binding = self::bindingChange($request, $offer)) {
                 $update($offer, $binding, $request->user(), ['why' => 'Вернуть в продажу']);
             }
 
@@ -1254,6 +1254,21 @@ class OfferController
         });
 
         return redirect("/offers/{$offer->number}")->with('toast', 'В продаже № '.$offer->number)->with(self::gone($request, $offer));
+    }
+
+    /**
+     * Срок обязывающего из шторки «Вернуть в продажу» (`x-offer.binding-field`): поле пришло и вендор по комиссии — что поменялось; пусто — снять.
+     *
+     * @return array{binding_until?: ?Carbon}
+     */
+    private static function bindingChange(Request $request, Offer $offer): array
+    {
+        if (! $request->has('binding_until') || ! \App\Offers\Binding::applies($offer)) {
+            return [];
+        }
+        $at = filled($request->input('binding_until')) ? Carbon::parse($request->input('binding_until')) : null;
+
+        return $at?->format('Y-m-d H:i') === $offer->binding_until?->format('Y-m-d H:i') ? [] : ['binding_until' => $at];
     }
 
     /** Срок приёма «вернуть пачкой» (3 дня или неделя) — в час закрытия приёма, не позже обязывающего. */
