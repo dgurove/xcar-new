@@ -10,6 +10,8 @@
     $people = \App\Offers\AudienceRules::people();
     $mode = 'aud-'.\Illuminate\Support\Str::random(6);
     $count = $groups->count() + $people->count() + ($deal ? 0 : 1);
+    // Имя для поиска — как запрос в `audience#filter`: строчными и без «ё».
+    $key = fn ($name) => str_replace('ё', 'е', mb_strtolower($name));
 @endphp
 <div class="audience">
     <div class="segment" role="radiogroup" aria-label="Кому показывать">
@@ -29,21 +31,21 @@
         </div>
         <div class="list">
             @foreach ($groups as $g)
-                <label class="row row-check" data-audience-target="option" data-key="group:{{ $g->id }}" data-name="{{ mb_strtolower($g->name) }}">
+                <label class="row row-check" data-audience-target="option" data-key="group:{{ $g->id }}" data-name="{{ $key($g->name) }}">
                     <x-ui.row-icon name="users" size="s"/>
                     <span class="min-w-0 flex-1"><span class="block truncate">{{ $g->name }}</span><span class="row-sub nums">группа, {{ $g->members_count }} {{ \App\Support\Plural::of($g->members_count, ['человек', 'человека', 'человек']) }}</span></span>
                     <span class="check"><input type="checkbox" data-action="audience#toggle"></span>
                 </label>
             @endforeach
             @unless ($deal)
-                <label class="row row-check" data-audience-target="option" data-key="super:0" data-name="{{ mb_strtolower(\App\Offers\AudienceRules::SUPER_NAME) }}">
+                <label class="row row-check" data-audience-target="option" data-key="super:0" data-name="{{ $key(\App\Offers\AudienceRules::SUPER_NAME) }}">
                     <x-ui.row-icon name="user" size="s"/>
                     <span class="min-w-0 flex-1 truncate">{{ \App\Offers\AudienceRules::SUPER_NAME }}</span>
                     <span class="check"><input type="checkbox" data-action="audience#toggle"></span>
                 </label>
             @endunless
             @foreach ($people as $u)
-                <label class="row row-check" data-audience-target="option" data-key="user:{{ $u->id }}" data-name="{{ mb_strtolower($u->name) }}">
+                <label class="row row-check" data-audience-target="option" data-key="user:{{ $u->id }}" data-name="{{ $key($u->name) }}">
                     <x-ui.avatar :user="$u" :size="32"/>
                     <span class="min-w-0 flex-1 truncate">{{ $u->name }}</span>
                     <span class="check"><input type="checkbox" data-action="audience#toggle"></span>

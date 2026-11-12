@@ -774,8 +774,9 @@ html.kb-open { --home-gap: 0px; }
   .audience-chips { @apply flex flex-wrap gap-1.5; }
   .audience-chip, .audience-add { @apply min-h-8 gap-1.5 rounded-full px-3 text-sm; }
   .audience-chip > svg { @apply -mr-1 text-ink-dim; }
-  .audience-add { @apply self-start bg-transparent text-accent-text; box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--color-ink) 16%, transparent); }
-  .audience-add[aria-expanded="true"] { background: var(--color-surface-3); }
+  /* Добавить — тихим лаймовым текстом, без обводки (обводок в ките нет); пока список открыт, её нет. */
+  .audience-add { @apply self-start bg-transparent px-0 text-accent-text; }
+  .audience-chips > .audience-add { @apply px-1.5; }
   /* «+ Волна» — тихо: волны нужны редко, «Всем сразу» не должно выглядеть недоделанным. */
   .audience-more { @apply inline-flex items-center gap-1 self-start text-sm text-ink-muted; }
   .audience-more[aria-expanded="true"], .audience-more:hover { @apply text-ink; }
@@ -788,6 +789,11 @@ html.kb-open { --home-gap: 0px; }
   .dark .audience-pick { background: var(--color-surface-3); }
   .audience-pick-head { @apply sticky top-0 z-[1] flex items-center gap-2 px-1 pt-1; }
   .audience-pick .list { max-height: 22rem; overflow-y: auto; overscroll-behavior: contain; }
+  /* В шторке у списка своей прокрутки нет (12.11.2026, владелец: на телефоне прокрутка в прокрутке резала строки) — он едет
+     со шторкой, поиск с «Готово» прилипает к её верху. Вне шторки (форма вендора) — своя прокрутка, как было. */
+  .sheet .audience-pick .list { max-height: none; overflow: visible; }
+  .sheet .audience-pick-head { @apply z-[2] -mx-2 -mt-2 rounded-t-(--radius-l) bg-surface-2 px-3 pb-2 pt-3; }
+  .dark .sheet .audience-pick-head { background: var(--color-surface-3); }
   .pill[aria-pressed="true"] { background: var(--color-chrome); color: #fff; }
   .dark .pill[aria-pressed="true"] { background: #fff; color: var(--color-chrome); }
 

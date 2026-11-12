@@ -116,6 +116,16 @@ export default class extends Controller {
         }
     }
 
+    // В шторке поиск прилипает под её заголовком: тот тоже липкий (`.sheet-bar`, top −1.25rem) и бывает в две строки — отступ
+    // по его высоте за вычетом поля шторки.
+    stick() {
+        const sheet = this.element.closest('dialog.sheet');
+        const bar = sheet?.querySelector(':scope > .sheet-bar');
+        const head = this.pickTarget.querySelector('.audience-pick-head');
+        if (!bar || !head) return;
+        head.style.top = `${bar.offsetHeight - parseFloat(getComputedStyle(sheet).paddingTop)}px`;
+    }
+
     close() {
         this.picking = null;
         if (this.hasSearchTarget) this.searchTarget.value = '';
@@ -123,9 +133,12 @@ export default class extends Controller {
         this.render();
     }
 
+    // Поиск (12.11.2026, начальник не нашёл «Артем» — в имени «ё»): без «ё» и по словам — каждое слово запроса где-то в имени
+    // («матевосян артем», «арт мат»); имена в `data-name` уже такие же (`x-audience.editor`). Список — к началу.
     filter() {
-        const q = this.hasSearchTarget ? this.searchTarget.value.trim().toLowerCase() : '';
-        this.optionTargets.forEach((o) => { o.hidden = q !== '' && !o.dataset.name.includes(q); });
+        const words = this.hasSearchTarget ? norm(this.searchTarget.value).split(/\s+/).filter(Boolean) : [];
+        this.optionTargets.forEach((o) => { o.hidden = words.some((w) => !o.dataset.name.includes(w)); });
+        this.optionTargets[0]?.parentElement?.scrollTo?.({ top: 0 });
     }
 
     // Отметка в списке выбора: «Не видят» — строка с null, иначе — со временем (0, «сразу»). Был в другой стороне — переезжает.
@@ -191,6 +204,7 @@ export default class extends Controller {
         this.bodyTarget.replaceChildren(...parts);
         pick.hidden = !this.picking;
         if (this.picking) {
+            this.stick();
             const has = new Set(this.own.filter((r) => (r.delay === null) === (this.picking === 'hidden')).map((r) => `${r.type}:${r.id}`));
             this.optionTargets.forEach((o) => { o.querySelector('input').checked = has.has(o.dataset.key); });
             if (this.hasPickTitleTarget) this.pickTitleTarget.textContent = this.picking === 'hidden' ? 'Кому не показывать' : 'Кому показывать';
@@ -268,6 +282,8 @@ export default class extends Controller {
         const b = el('button', quiet ? 'audience-more' : 'chip audience-add');
         b.type = 'button';
         b.setAttribute('aria-expanded', String(this.picking === kind));
+        // Список открыт — кнопки нет: у списка свой «Готово», а кнопка над ним повторяла бы его.
+        b.hidden = !quiet && this.picking === kind;
         b.append(this.icon('plus'), label);
         b.addEventListener('click', () => this.open(kind));
         return b;
@@ -308,6 +324,7 @@ export default class extends Controller {
 }
 
 const DAY = 1440;
+const norm = (s) => s.toLowerCase().replaceAll('ё', 'е').trim();
 
 function el(tag, cls) {
     const e = document.createElement(tag);
