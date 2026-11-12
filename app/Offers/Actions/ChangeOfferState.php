@@ -185,8 +185,9 @@ final class ChangeOfferState
     public static function readyForGallery(Offer $offer): void
     {
         $missing = array_keys(array_filter([
-            'марка' => ! $offer->brand_id,
-            'модель' => ! $offer->model_id,
+            // «Марки нет» (12.11.2026): прицеп или кузов без шильдика — ни марки, ни модели не ждём.
+            'марка' => ! $offer->brand_id && ! $offer->no_brand,
+            'модель' => ! $offer->model_id && ! $offer->no_brand,
             'фотографии' => $offer->visiblePhotos()->isEmpty(),
         ]));
         if ($missing) {
@@ -210,7 +211,8 @@ final class ChangeOfferState
     public static function missing(Offer $offer): array
     {
         return array_keys(array_filter([
-            'марка' => ! $offer->brand_id,
+            // «Марки нет» (12.11.2026): прицеп или кузов без шильдика — марку не ждём.
+            'марка' => ! $offer->brand_id && ! $offer->no_brand,
             'цена продажи' => ! $offer->asking_price,
             'фотографии' => $offer->visiblePhotos()->isEmpty(),
         ]));

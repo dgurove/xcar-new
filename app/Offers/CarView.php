@@ -105,6 +105,9 @@ final class CarView
         $pickupWay = $rate && ($o->pickup()?->isOpen() || $o->vendor?->pickup_on_arrival) && ! $o->pickedUp();
         // Цены черновика — блоком по шагам сверху (19.10.2026); у остального — разделом «Цены» в форме.
         $steps = $state === OfferState::Draft && ! $scheduled && ! $auction && ! $unsold;
+        // Без марки не выставить (`ChangeOfferState::missing`) — марка и «Марки нет» сверху «Цен», а не в «ТС» внизу (12.11.2026,
+        // начальник: прицепы Альфы «нет марки» не уходили в продажу).
+        $brandTop = $admin && $steps && ! $o->brand_id && ! $o->no_brand;
         // Слот, аукцион, «Без подтверждений», архив — плашка «что сейчас» (`now-block`) с кнопками; у гаража её нет.
         $nowKind = ! $admin || $garageCar ? null : match (true) {
             $scheduled => 'slot',
@@ -159,6 +162,7 @@ final class CarView
             // «Вывоз» на месте полей «Цен» черновика без цены (`price-steps`); «Отдать» — кнопкой рядом.
             'pickupWay' => $pickupWay,
             'giveButton' => $giveButton,
+            'brandTop' => $brandTop,
             'ways' => $pickupWay,
             'way' => session('errors')?->hasAny(['executor', 'executor_id', 'pickup']) ? 'pickup' : 'rate',
             'steps' => $steps,

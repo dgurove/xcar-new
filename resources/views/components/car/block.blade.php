@@ -3,7 +3,7 @@
      своей стороны (у продажи — продажи, у парковки — парковки); имя поля — имя дорожки (`CarFields::name`). Новая
      машина (заявка руками, разбор письма) — значения из `$values`. Что у продажи своего — суффиксы номера убытка
      (Мигторг, «б/н»), глазик VIN, «С НДС» по вендору. --}}
-@props(['lane' => null, 'of' => null, 'block', 'values' => [], 'fold' => null, 'hints' => [], 'required' => [], 'as' => 'card', 'top' => null])
+@props(['lane' => null, 'of' => null, 'block', 'values' => [], 'fold' => null, 'hints' => [], 'required' => [], 'as' => 'card', 'top' => null, 'without' => []])
 @php
     use App\Cars\CarFields;
     use App\Offers\{Offer, OfferState};
@@ -138,7 +138,11 @@
                     <div class="col-span-full flex flex-col gap-2 empty:hidden" data-twins-target="box"></div>
                     @break
                 @case ('brand')
-                    <x-cars.brand-model :brand-id="$raw('brand_id')" :brand-text="$brand?->name" :model-id="$raw('model_id')" :model-text="$model?->name" :required="$req('brand_id')" :brand-pinned="$brandPinned" :model-pinned="$modelPinned">
+                    {{-- Марка уже стоит выше (`without`: «Цены» окна, когда без неё не выставить, 12.11.2026) — второй раз её нет. --}}
+                    @if (in_array('brand_id', $without, true))
+                        @break
+                    @endif
+                    <x-cars.brand-model :brand-id="$raw('brand_id')" :brand-text="$brand?->name" :model-id="$raw('model_id')" :model-text="$model?->name" :required="$req('brand_id')" :brand-placeholder="$car?->no_brand ? 'Марки нет' : null" :brand-pinned="$brandPinned" :model-pinned="$modelPinned">
                         <x-slot:hint><x-car.variant-hint :v="$hintOf('model_id')" :car="$car?->id"/></x-slot:hint>
                     </x-cars.brand-model>
                     @break

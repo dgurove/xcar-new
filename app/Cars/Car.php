@@ -44,7 +44,7 @@ class Car extends Model implements HasMedia
     public const FIELDS = ['claim_ref', 'vin', 'plate', 'brand_id', 'model_id', 'year', 'color', 'mileage', 'body', 'transmission',
         'drive', 'fuel', 'engine_volume', 'engine_power', 'category', 'oversize', 'damage_cause', 'damage_zones', 'damage_note',
         'incident_date', 'is_runnable', 'has_keys', 'keys_count', 'papers', 'pts', 'sts', 'policy_no', 'value', 'insured_name', 'insured_phone',
-        'flags', 'docs_required', 'holder', 'body_no', 'chassis_no', 'insured_phone2', 'steering', 'condition', 'place'];
+        'flags', 'docs_required', 'holder', 'body_no', 'chassis_no', 'insured_phone2', 'steering', 'condition', 'place', 'no_brand'];
 
     /** Производные колонки: пишет сама машина. */
     public const DERIVED = ['claim_ref_key'];
@@ -52,7 +52,7 @@ class Car extends Model implements HasMedia
     /** Марка и модель нужны почти всякому показу машины — грузятся с ней. */
     protected $with = ['brand', 'model'];
 
-    protected $attributes = ['damage_zones' => '[]', 'flags' => '[]', 'docs_required' => '[]', 'oversize' => false, 'active' => false, 'is_demo' => false];
+    protected $attributes = ['damage_zones' => '[]', 'flags' => '[]', 'docs_required' => '[]', 'oversize' => false, 'active' => false, 'is_demo' => false, 'no_brand' => false];
 
     protected function casts(): array
     {
@@ -61,7 +61,7 @@ class Car extends Model implements HasMedia
             'body' => Body::class, 'transmission' => Transmission::class, 'drive' => Drive::class, 'fuel' => Fuel::class,
             'damage_cause' => DamageCause::class, 'papers' => Papers::class, 'category' => Category::class, 'place' => CarPlace::class,
             'damage_zones' => 'array', 'flags' => 'array', 'docs_required' => 'array',
-            'oversize' => 'bool', 'is_runnable' => 'bool', 'has_keys' => 'bool', 'active' => 'bool', 'is_demo' => 'bool',
+            'oversize' => 'bool', 'no_brand' => 'bool', 'is_runnable' => 'bool', 'has_keys' => 'bool', 'active' => 'bool', 'is_demo' => 'bool',
             'incident_date' => 'date', 'field_sources' => 'array',
         ];
     }
@@ -78,6 +78,10 @@ class Car extends Model implements HasMedia
                 && $car->category === self::autoCategory(Body::tryFrom((string) $car->getRawOriginal('body')), $car->titleOf($car->getRawOriginal('brand_id'), $car->getRawOriginal('model_id')));
             if ($car->isDirty(['brand_id', 'model_id'])) {
                 $car->unsetRelation('brand')->unsetRelation('model');
+            }
+            // «Марки нет» (12.11.2026) — пока марку не вписали: вписали — признак снимается сам.
+            if ($car->brand_id && $car->no_brand) {
+                $car->no_brand = false;
             }
             if (! $car->isDirty('category') && $car->isDirty('body') && $car->body?->category() && ! ($car->category && $parked())) {
                 $car->category = $car->body->category();

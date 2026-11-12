@@ -109,7 +109,7 @@
                 {{-- «Показ» полями — у продающейся; у сделки и гаража публикация для других — строкой сведений и пунктом «⋯». --}}
                 @if ($selling && ! ($steps || $intake || $unsold))<x-offer.showing :offer="$offer" :form="$form" as="section"/>@endif
                 @if ($selling)
-                    <x-car.blocks :lane="$offer" :blocks="['car', 'papers', 'specs']" as="section"
+                    <x-car.blocks :lane="$offer" :blocks="['car', 'papers', 'specs']" as="section" :without="($brandTop ?? false) ? ['brand_id'] : []"
                         :required="$offer->state === OfferState::Draft ? ['vendor_id', 'claim_ref', 'brand_id'] : []"/>
                     @include('admin.offers.fields.sale', ['as' => 'section'])
                 @endif

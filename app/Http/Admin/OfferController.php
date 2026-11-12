@@ -984,6 +984,20 @@ class OfferController
     }
 
     /**
+     * «Марки нет» в «Ценах» окна (12.11.2026, начальник: прицепы Альфы без марки не уходили в продажу): марки у ТС нет вовсе —
+     * признак машины `no_brand`, публикация его принимает (`ChangeOfferState::missing`); вписали марку — снимается сам.
+     */
+    public function noBrand(Request $request, Offer $offer, UpdateOffer $update)
+    {
+        abort_unless($offer->isEditableBy($request->user()), 404);
+        if (! $offer->brand_id && ! $offer->no_brand) {
+            $update($offer, ['no_brand' => true], $request->user(), ['why' => 'Марки нет']);
+        }
+
+        return back()->with('toast', 'Без марки');
+    }
+
+    /**
      * «Закупочная» сверху карточки во вкладке «Без закупочной цены» (05.10.2026): модератор вписал закупочную (у Альфы —
      * оценочную, закупочная посчитана на лету) — машина уходит в «Без продажной цены», карточка — к следующей. Пустое
      * поле — просто дальше.

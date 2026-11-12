@@ -441,6 +441,8 @@ html.kb-open { --home-gap: 0px; }
   .price-more > summary { list-style: none; width: fit-content; }
   .price-more > summary::-webkit-details-marker { display: none; }
   .price-more[open] .price-more-chevron { rotate: 180deg; }
+  /* Марка сверху «Цен» (12.11.2026) — поля белым на плашке, как цены (`fields/money` `plate`). */
+  .price-brand .field-input { background-color: var(--color-surface); }
   /* Шкала наценки (x-offer.floor-rules, 08.11.2026, начальник: «шкалы красивые, динамичные»): полоса сегментов по корню от
      суммы, ручки границ, метка оценочной сверху, подписи границ снизу, правка выбранного сегмента под шкалой. Зазор между
      сегментами — цветом карточки, на которой шкала (теней и обводок нет); едет переходами, пока ручку не тянут. */
