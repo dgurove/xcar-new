@@ -70,7 +70,10 @@
         default => ['ждём '.$timer('since', $since), 'plain', null],
     };
 @endphp
-@if ($side)
+@if ($side === 'us' && ! $trip && ! $position->carried() && ! $open)
+    {{-- Наш ход — строки «[знак] XCar» нет (12.11.2026, владелец: «зачем сюда логотип икскара»): только часы под названием. --}}
+    <div {{ $attributes->class('step-who step-who--bare') }}><x-ui.state :tone="$tone"><span>{!! $state !!}</span></x-ui.state></div>
+@elseif ($side)
     <div {{ $attributes->class('step-who') }}>
         @if ($manager && $named)
             <x-ui.avatar :user="$manager" :size="32"/>
@@ -81,7 +84,8 @@
         @elseif ($driver)
             <x-ui.avatar :user="$driver" :size="32"/>
         @elseif ($side === 'us')
-            <span class="step-who-icon"><x-ui.logo mark class="size-5"/></span>
+            {{-- Вывоз нашей логистикой без водителя — грузовиком, не знаком XCar (12.11.2026). --}}
+            <span class="step-who-icon"><x-ui.icon name="cat-truck" class="size-4"/></span>
         @else
             <span class="step-who-icon"><x-ui.icon name="user" class="size-4"/></span>
         @endif

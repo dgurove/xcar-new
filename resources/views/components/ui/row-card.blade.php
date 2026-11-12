@@ -17,8 +17,9 @@
 @props(['offer' => null, 'status' => null, 'badge' => null, 'head' => true, 'href' => null, 'title', 'photos' => null, 'photo' => null, 'marks' => null, 'facts' => [], 'line' => null, 'aside' => null, 'actions' => null, 'action' => 'Открыть', 'tools' => null, 'media' => null, 'foot' => null, 'blank' => true, 'menu' => null, 'stack' => false])
 <div class="detail-bar" data-action="pointerdown->detail#grab">
     <span class="detail-handle" aria-hidden="true"></span>
-    <button type="button" class="bar-btn" data-action="detail#prev" aria-label="Предыдущая"><x-ui.icon name="chevron-down" class="size-[18px] rotate-180"/></button>
-    <button type="button" class="bar-btn" data-action="detail#next" aria-label="Следующая"><x-ui.icon name="chevron-down" class="size-[18px]"/></button>
+    {{-- Стрелки — уже остальных кнопок полосы (12.11.2026, владелец: «1 из / 1» переносилось — места не хватало). --}}
+    <button type="button" class="bar-btn bar-btn-s" data-action="detail#prev" aria-label="Предыдущая"><x-ui.icon name="chevron-down" class="size-4 rotate-180"/></button>
+    <button type="button" class="bar-btn bar-btn-s" data-action="detail#next" aria-label="Следующая"><x-ui.icon name="chevron-down" class="size-4"/></button>
     {{-- Состояние — посередине полосы (09.11.2026, владелец: «бесит, что статус после наименования пишется и из-за этого
          он то там, то там скачет»): слот status, место у него одно в любой карточке; без него счётчик прижимает кнопки вправо. --}}
     @if ($status && trim($status) !== '')

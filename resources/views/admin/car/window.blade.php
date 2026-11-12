@@ -24,7 +24,10 @@
         <x-slot:status><span class="state {{ $statusTone }}">{{ $statusWord }}</span></x-slot:status>
         <x-slot:badge>@if ($offer->auctionPlanned())<x-offer.auction/>@endif{{ "" }}@if ($admin && $offer->awaitingPark())<x-offer.awaiting/>@endif<x-car.keys :count="$offer->keys_count"/><x-ui.links :offer="$offer"/><x-offer.margin :m="$offer->marginMark()"/></x-slot:badge>
         <x-slot:media>@include('admin.offers.detail-photos')</x-slot:media>
-        <x-slot:marks><x-car.codes :offer="$offer"/></x-slot:marks>
+        {{-- Где машина — мелким текстом рядом с кодами, не плашкой (12.11.2026, владелец: «возле тегов так же мелко, даже не в
+             теге, а просто текстом»). --}}
+        @php $where = implode(', ', array_filter([$offer->settlement?->title(), $offer->car_place ? ($offer->settlement ? mb_strtolower($offer->car_place->label()) : $offer->car_place->label()) : null])); @endphp
+        <x-slot:marks><x-car.codes :offer="$offer"/>@if ($where !== '')<span class="detail-place"><x-ui.icon name="map-pin" class="size-4 shrink-0"/>{{ $where }}</span>@endif</x-slot:marks>
         {{-- Строка цены (12.11.2026): слева главное число, справа срок обязывающего — дата и время (начальник). --}}
         @if ($aside || \App\Offers\Binding::matters($offer))
             <x-slot:aside>
@@ -49,18 +52,22 @@
         @endif
         <x-slot:actions>
             {{-- Где машина и кто её держит — строками со значком (`admin.car.facts`), а не фразой через запятую (12.11.2026). --}}
+            {{-- «Показать менеджеру» и «Ссылка менеджеру» — тихими ссылками в плашке менеджера (12.11.2026, владелец: «встроить
+                 компактно в блок, где менеджер написан»); нет менеджера (аукцион) — пилюлями в ряду ниже, как было. --}}
+            @php
+                $personDeal = $admin ? ($garageCar?->deal ?? ($deal?->isActive() ? $deal : null)) : null;
+                $holderActs = $admin && ($car->holder()['user'] ?? null) !== null;
+            @endphp
             @include('admin.car.facts')
             @include('admin.car.alerts')
-            {{-- Ряд пилюль: чат с менеджером сделки (пилюлей, живой), остальные чаты, документы, «Показать менеджеру», ссылка
-                 менеджеру на его сделку или машину гаража (03.11.2026, владелец: карточкой посреди окна была непонятной). --}}
-            @php $personDeal = $admin ? ($garageCar?->deal ?? ($deal?->isActive() ? $deal : null)) : null; @endphp
-            @if ($dealChat || $otherChats->isNotEmpty() || $docs || ($admin && $deal?->isActive()) || $personDeal)
+            {{-- Ряд пилюль: чат с менеджером сделки (пилюлей, живой), остальные чаты, документы (03.11.2026). --}}
+            @if ($dealChat || $otherChats->isNotEmpty() || $docs || (! $holderActs && (($admin && $deal?->isActive()) || $personDeal)))
                 <div class="flex w-full flex-wrap items-center gap-2">
                     @if ($dealChat)<x-deal.chat-card :deal="$deal" :chat="$car->dealChat()" compact/>@endif
                     @if ($otherChats->isNotEmpty())<x-ui.pill :tone="$chatUnread ? 'urgent' : 'plain'" href="/work/chats?preset=all&q={{ $n }}" data-turbo-frame="_top"><x-ui.icon name="chat" class="size-4"/> {{ $otherChats->count() === 1 ? 'Чат' : 'Чаты' }}@if ($otherChats->count() > 1 && ! $chatUnread) <span class="nums text-ink-dim">{{ $otherChats->count() }}</span>@endif @if ($chatUnread) <span class="badge">{{ $chatUnread }}</span>@endif</x-ui.pill>@endif
                     @if ($docs)<x-ui.docs-pill :docs="$docs"/>@endif
-                    @if ($admin && $deal?->isActive())<x-deal.reply-review :deal="$deal" pill/>@endif
-                    @if ($personDeal)<x-deal.person-link :deal="$personDeal" pill/>@endif
+                    @if (! $holderActs && $admin && $deal?->isActive())<x-deal.reply-review :deal="$deal" pill/>@endif
+                    @if (! $holderActs && $personDeal)<x-deal.person-link :deal="$personDeal" pill/>@endif
                 </div>
             @endif
             {{-- Что сейчас: черновик — «Цены» по шагам (метки — под блоком), открытое — «Приём», слот, аукцион, архив, «Без

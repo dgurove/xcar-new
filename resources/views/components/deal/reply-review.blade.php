@@ -5,11 +5,13 @@
      из машины и её документы); пока письмо ждёт — пилюли нет, есть плашка. `compact` — только плашка (окошко предложения).
      `line` (10.11.2026, начальник по Volvo 01527: лаймовое «Показать менеджеру…» сверху окошка, пока ждём ответа самого менеджера) —
      строкой в текущем шаге пути (`x-route.path`) с тихими ссылками; плашки сверху у сделки с путём больше нет. --}}
-@props(['deal', 'compact' => false, 'pill' => false, 'line' => false])
+@props(['deal', 'compact' => false, 'pill' => false, 'line' => false, 'inline' => false])
 @php
     use App\Offers\Actions\Disclose;
     use App\Offers\Disclosures;
     use App\Support\Ago;
+    // inline — тихой ссылкой в плашке менеджера окна машины (12.11.2026, владелец: «встроить компактно в блок, где менеджер»).
+    $pill = $pill || $inline;
     $reviews = \App\Offers\ReplyReview::pending()->where('deal_id', $deal->id)->with('message.attachments')->orderByDesc('id')->get();
     $letters = $reviews->pluck('message')->filter()->values();
     $id = 'disclose-'.$deal->id;
@@ -30,7 +32,7 @@
     @endphp
     @if ($pill)
         <span class="contents" data-controller="sheet">
-            <button type="button" {{ $attributes->class('pill pill-plain gap-1.5') }} data-action="sheet#open" aria-controls="{{ $id }}"><x-ui.icon name="users" class="size-4"/>Показать менеджеру</button>
+            <button type="button" {{ $attributes->class($inline ? 'holder-act' : 'pill pill-plain gap-1.5') }} data-action="sheet#open" aria-controls="{{ $id }}">{{-- Это выбор, какие данные показать менеджеру, а не людей (12.11.2026, владелец): значок документа, «Что показываем». --}}<x-ui.icon :name="$inline ? 'file' : 'users'" class="size-4"/>{{ $inline ? 'Что показываем' : 'Показать менеджеру' }}</button>
             @include('admin.deals.reply-review-sheet', $sheet)
         </span>
     @elseif ($line)

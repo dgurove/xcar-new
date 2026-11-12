@@ -434,8 +434,8 @@ export default class extends Controller {
         const icon = (d) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="${d}"/></svg>`;
         const rows = Array.from({ length: 6 }, () => '<div class="blank-row"><i class="blank blank-label"></i><i class="blank blank-value"></i></div>').join('');
         card.innerHTML = '<div class="detail-bar" data-action="pointerdown->detail#grab"><span class="detail-handle" aria-hidden="true"></span>'
-            + `<button type="button" class="bar-btn" data-action="detail#prev" aria-label="Предыдущая">${icon('m18 15-6-6-6 6')}</button>`
-            + `<button type="button" class="bar-btn" data-action="detail#next" aria-label="Следующая">${icon('m6 9 6 6 6-6')}</button>`
+            + `<button type="button" class="bar-btn bar-btn-s" data-action="detail#prev" aria-label="Предыдущая">${icon('m18 15-6-6-6 6')}</button>`
+            + `<button type="button" class="bar-btn bar-btn-s" data-action="detail#next" aria-label="Следующая">${icon('m6 9 6 6 6-6')}</button>`
             + '<span class="detail-count nums mr-auto" data-detail-target="count"></span>'
             + `<button type="button" class="bar-btn" data-action="detail#close" aria-label="Закрыть">${icon('M18 6 6 18M6 6l12 12')}</button></div>`
             // Список без кадров у строк («Оплаты») — заготовка без ленты плиток.

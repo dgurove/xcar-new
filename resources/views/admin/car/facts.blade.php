@@ -5,20 +5,25 @@
 @php
     $holder = $car->holder();
     $left = $gallery || ! $admin || ! $offer->state->acceptsBids() ? null : $offer->secondsLeft();
-    $place = $offer->settlement?->title() ?? $offer->car_place?->label();
     ob_start();
 @endphp
-@if ($place)
-    <x-ui.info-row icon="map-pin" :sub="$offer->settlement && $offer->car_place ? mb_strtolower($offer->car_place->label()) : null">{{ $place }}</x-ui.info-row>
-@endif
+{{-- Где машина — текстом у кодов в шапке окна (12.11.2026), здесь не повторяется. --}}
 @if ($holder)
-    <div class="info-row">
+    <div class="info-row flex-wrap">
         @if ($holder['user'])<x-ui.avatar :user="$holder['user']" :size="20" class="mt-px shrink-0"/>@else<x-ui.icon name="user" class="info-icon size-5"/>@endif
         <span class="min-w-0 flex-1">
             <span class="block break-words">{{ $holder['name'] }}</span>
             <span class="info-sub">{{ $holder['role'] }}</span>
         </span>
         @if ($holder['user']?->phone)<x-ui.phone :user="$holder['user']" class="shrink-0 text-sm"/>@endif
+        {{-- Что показываем ему и ссылка на его сделку (гараж) — тихо, здесь же, одной строкой во всю ширину плашки (12.11.2026,
+             владелец: под именем узко, и они вставали друг под другом). --}}
+        @if ($holderActs ?? false)
+            <span class="holder-acts">
+                @if ($deal?->isActive())<x-deal.reply-review :deal="$deal" inline/>@endif
+                @if ($personDeal ?? null)<x-deal.person-link :deal="$personDeal" inline/>@endif
+            </span>
+        @endif
     </div>
 @endif
 @if (! $intake && $left !== null && $left > 0)

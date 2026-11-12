@@ -59,6 +59,8 @@ $doors = [
     ['resources/views', '/\.blade\.php$/', "/translatedFormat\\('j [MF](,? H:i)?'\\)/", [], 'дата — App\\Support\\Ago::html или x-ui.when'],
     ['app', '/\.php$/', "/translatedFormat\\('j [MF](,? H:i)?'\\)/", [], 'дата — App\\Support\\Ago::at'],
     ['resources/views', '/\.blade\.php$/', '/<x-ui\.sheet.* :open="\$errors->(has|hasAny|any)\((\[[^\]]*\]|\'[^\']*\')?\)"/', [], 'шторка с ошибками открывается сама — _sheet в sheet.js'],
+    // Директивы вплотную (12.11.2026: «@endif@else» в строке сделки печатал «@else» текстом с 10.11): Blade такое не узнаёт.
+    ['resources/views', '/\.blade\.php$/', '/@(endif|endunless|endforeach|endisset|else)@(else|elseif|endif|if|unless|isset|foreach)\b/', [], 'директивы Blade разводить: {{ "" }} или пробел'],
 ];
 foreach ($doors as [$where, $type, $pattern, $allowed, $door]) {
     $it = new RecursiveIteratorIterator(new RecursiveDirectoryIterator("$root/$where", FilesystemIterator::SKIP_DOTS));
