@@ -15,7 +15,10 @@ export default class extends Controller {
         event.preventDefault();
         // Остальные data-emit-*-param — тоже в detail («Выбрать вендора» несёт отправителя, название и домен).
         const { event: name, wide, ...rest } = event.params;
-        const sheet = (this.element.dataset.action || '').includes('sheet#close') ? this.element.closest('dialog[open]') : null;
+        // Пункт шторки действий «⋯» (`x-ui.more`, `.sheet-actions-list`) — так же (12.11.2026, начальник: «Отдать на оценку»
+        // перестал работать): `sheet#item` закрывал «⋯» после события, и закрытие снимало запись только что открытой шторки.
+        const closes = (this.element.dataset.action || '').includes('sheet#close') || this.element.closest('.sheet-actions-list');
+        const sheet = closes ? this.element.closest('dialog[open]') : null;
         if (sheet) {
             event.stopImmediatePropagation();
             await closeSheet(sheet);
