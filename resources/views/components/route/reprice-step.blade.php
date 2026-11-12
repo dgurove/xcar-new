@@ -25,22 +25,23 @@
     <div class="step-body">
         <div class="step-head !flex-nowrap !items-start">
             <span class="step-title min-w-0 flex-1">Переоценка</span>
-            <div class="contents" data-controller="menu">
-                <button type="button" class="btn btn-s btn-quiet btn-round -my-1 ml-auto shrink-0" data-action="menu#toggle" aria-label="Ещё" aria-haspopup="menu" aria-controls="{{ $menu }}"><x-ui.icon name="more" class="size-5"/></button>
-                <div id="{{ $menu }}" class="menu" popover data-menu-target="list" role="menu">
+            <x-ui.more :id="$menu" class="ml-auto mt-0.5 shrink-0">
+                    @if ($letter || ($answer && $answer !== RepriceFlow::DONE))<div class="menu-group">
                     @if ($letter)
                         <button type="button" class="menu-item w-full" role="menuitem" data-controller="emit" data-action="emit#send" data-emit-event-param="letters:open" data-emit-url-param="{{ $letters }}"><x-ui.icon name="mail" class="size-4"/>Письмо поставщика</button>
                     @endif
                     @if ($answer && $answer !== RepriceFlow::DONE)
                         <form method="post" action="/offers/{{ $n }}/reprices/{{ $reprice->id }}/answered" class="contents">@csrf<button class="menu-item w-full" role="menuitem">Ответили не письмом</button></form>
                     @endif
+                    </div>@endif
                     @if ($reprice->isPending())
+                        <div class="menu-group">
                         <form method="post" action="/offers/{{ $n }}/reprices/{{ $reprice->id }}" class="contents" data-turbo-confirm="Отклонить переоценку? Закупочная останется {{ Money::rub((int) $reprice->from_price) }}" data-turbo-confirm-label="Отклонить">
                             @csrf @method('delete')<button class="menu-item w-full text-danger" role="menuitem">Отклонить переоценку</button>
                         </form>
+                        </div>
                     @endif
-                </div>
-            </div>
+            </x-ui.more>
         </div>
 
         {{-- Откуда: вендор и письмо ссылкой в окно писем на нём. --}}

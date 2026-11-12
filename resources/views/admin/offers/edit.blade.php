@@ -261,8 +261,10 @@
             {{-- Контроллер шторки — только вместе с ней: у сделки «···» нет, и пустой контроллер падал в консоль. --}}
             <div class="contents" data-controller="sheet">
             <x-ui.button type="button" variant="secondary" round class="btn-lg" data-action="sheet#open" aria-label="Действия"><x-ui.icon name="more" class="size-6"/></x-ui.button>
-            <x-ui.sheet id="offer-actions" title="Предложение № {{ $n }}">
-                <div class="flex flex-col gap-2">@include('admin.car.actions', ['mode' => 'sheet'])</div>
+            {{-- Та же шторка действий, что у «⋯» окна (`x-ui.more`, 12.11.2026): кнопка — большая, рядом с главной в плашке. --}}
+            <x-ui.sheet id="offer-actions" anchor bare class="sheet-actions">
+                <div class="sheet-actions-list" data-action="click->sheet#item">@include('admin.car.actions', ['mode' => 'menu', 'close' => ''])</div>
+                <button type="button" class="sheet-actions-cancel" data-action="sheet#close">Отмена</button>
             </x-ui.sheet>
             </div>
         @endif

@@ -72,6 +72,12 @@ export default class extends Controller {
         else closeSheet(this.dialogTarget);
     }
 
+    // Шторка действий «⋯» (`x-ui.more`, 12.11.2026): нажали пункт — шторка закрывается, а само действие пункта (форма,
+    // событие другой шторки, ссылка) идёт своим ходом: событие клика пункта уже отработало, всплытие дошло сюда.
+    item(event) {
+        if (event.target instanceof Element && event.target.closest('.menu-item')) this.close();
+    }
+
     backdrop(event) {
         backdrop(this.dialogTarget, event);
     }

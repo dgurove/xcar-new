@@ -165,13 +165,14 @@
                             <span class="step-title block">{{ $stage->name }}</span>
                         </span>
                         @if ($breaks->isNotEmpty() || $undo || $extend || $forManager->isNotEmpty() || in_array($position->letterStatus(), ['unsent', 'failed', 'bounced'], true))
-                            <div class="contents" data-controller="menu">
-                                <button type="button" class="btn btn-s btn-quiet btn-round -my-1 ml-auto shrink-0" data-action="menu#toggle" aria-label="Ещё" aria-haspopup="menu" aria-controls="{{ $menu }}"><x-ui.icon name="more" class="size-5"/></button>
-                                <div id="{{ $menu }}" class="menu" popover data-menu-target="list" role="menu">
+                            {{-- «⋯» шага — общей пилюлей со шторкой действий (`x-ui.more`, 12.11.2026). --}}
+                            @php $stepGroup = $undo || $extend || in_array($position->letterStatus(), ['unsent', 'failed', 'bounced'], true); @endphp
+                            <x-ui.more :id="$menu" class="ml-auto mt-0.5 shrink-0">
+                                    @if ($stepGroup)<div class="menu-group">@endif
                                     {{-- Отмена шага, которым сюда пришли (StepBack); сразу после нажатия она же — «Отменить» в тосте. --}}
                                     @if ($undo)
                                         @php $undoText = $undo['label'] ? 'Отменить «'.$undo['label'].'»' : 'Вернуть на «'.$undo['to']->name.'»'; @endphp
-                                        <x-ui.step-back :action="'/offers/'.$n.'/back'" :label="$undoText" :track="$position->track->value" :text="'Вернётся «'.$undo['to']->name.'»'"/>
+                                        <x-ui.step-back close="" :action="'/offers/'.$n.'/back'" :label="$undoText" :track="$position->track->value" :text="'Вернётся «'.$undo['to']->name.'»'"/>
                                     @endif
                                     @if ($extend)
                                         @foreach ([1 => 'Продлить на день', 3 => 'Продлить на 3 дня'] as $days => $extendLabel)
@@ -183,6 +184,8 @@
                                     @if (in_array($position->letterStatus(), ['unsent', 'failed', 'bounced'], true))
                                         <form method="post" action="/offers/{{ $n }}/letter-skip" class="contents" data-turbo-confirm="Поставщику сообщили не письмом?" data-turbo-confirm-text="Шаг будет ждать ответа поставщика" data-turbo-confirm-label="Сообщили сами">@csrf<button class="menu-item w-full" role="menuitem">Без письма — сообщили сами</button></form>
                                     @endif
+                                    @if ($stepGroup)</div>@endif
+                                    @if ($forManager->isNotEmpty())<div class="menu-group">@endif
                                     @foreach ($forManager as $exit)
                                         {{-- Уход в продажу («Я передумал») отменяет сделку — переспрашиваем; остальное — сразу. --}}
                                         @php $retreat = $exit->isRetreat(); @endphp
@@ -191,11 +194,13 @@
                                             <button class="menu-item w-full {{ $retreat ? 'text-danger' : '' }}" role="menuitem"><x-ui.icon name="user" class="size-4"/>За менеджера: «{{ $exit->label }}»</button>
                                         </form>
                                     @endforeach
+                                    @if ($forManager->isNotEmpty())</div>@endif
+                                    @if ($breaks->isNotEmpty())<div class="menu-group">@endif
                                     @foreach ($breaks as $exit)
                                         <form method="post" action="/offers/{{ $n }}/exit/{{ $exit->id }}" class="contents" data-turbo-confirm="{{ $exit->confirm ?: $exit->label.'?' }}">@csrf<button class="menu-item w-full text-danger" role="menuitem">{{ $label($exit) }}</button></form>
                                     @endforeach
-                                </div>
-                            </div>
+                                    @if ($breaks->isNotEmpty())</div>@endif
+                            </x-ui.more>
                         @endif
                         @if ($extend)
                             <div class="contents" data-controller="sheet" data-action="deadline-{{ $position->id }}:open@window->sheet#open">

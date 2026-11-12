@@ -29,7 +29,7 @@
             <x-ui.toolbar :sort="$sort" :pills="$pills" :pill="$preset" pill-param="preset" :counts="$counts" :tones="['pay' => $overdue ? 'pill-danger' : '']" name="money" action="/account/money" class="toolbar--sort-head">
                 <x-slot:pillsExtra>
                     <div class="ml-1 shrink-0 self-center" data-controller="sheet">
-                        <button type="button" class="btn btn-s btn-quiet btn-round" data-action="sheet#open" aria-label="Реквизиты и документы"><x-ui.icon name="more" class="size-5"/></button>
+                        <button type="button" class="more-pill more-pill--light" data-action="sheet#open" aria-label="Реквизиты и документы"><x-ui.icon name="more" class="size-[22px]"/></button>
                         <x-ui.sheet id="money-more" title="Оплаты">
                             <div class="list">
                                 <a href="/account/money/details" class="row">

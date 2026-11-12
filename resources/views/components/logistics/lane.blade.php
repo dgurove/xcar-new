@@ -33,23 +33,27 @@
 <x-ui.card title="Вывоз" :class="$class" id="pickup">
     @if ($changeable || $undo || $backdate)
         <x-slot:actions>
-            <div class="contents" data-controller="menu">
-                <button type="button" class="btn btn-s btn-quiet btn-round shrink-0" data-action="menu#toggle" aria-label="Ещё" aria-haspopup="menu" aria-controls="pickup-more-{{ $offer->number }}"><x-ui.icon name="more" class="size-5"/></button>
-                <div id="pickup-more-{{ $offer->number }}" class="menu" popover data-menu-target="list" data-align="end" role="menu">
-                    @if ($changeable)
-                        <button type="button" class="menu-item w-full" role="menuitem" data-controller="emit" data-action="emit#send menu#close" data-emit-event-param="{{ $sheet }}:open"><x-ui.icon name="truck" class="size-5 text-ink-muted"/>Кто и куда</button>
-                    @endif
-                    @if ($backdate)
-                        <button type="button" class="menu-item w-full" role="menuitem" data-controller="emit" data-action="emit#send menu#close" data-emit-event-param="{{ $sheet }}-backdate:open"><x-ui.icon name="check" class="size-5 text-ink-muted"/>Уже вывезли</button>
-                    @endif
-                    @if ($undo)
-                        <x-ui.step-back :action="'/offers/'.$offer->number.'/pickup/back'" :label="$undoLabel" kind="transport"/>
-                    @endif
-                    @if ($changeable)
-                        <button type="button" class="menu-item w-full text-danger" role="menuitem" data-controller="emit" data-action="emit#send menu#close" data-emit-event-param="{{ $sheet }}-drop:open"><x-ui.icon name="x" class="size-5"/>Вывоз не нужен</button>
-                    @endif
-                </div>
-            </div>
+            {{-- «⋯» вывоза — общей пилюлей со шторкой действий (`x-ui.more`, 12.11.2026). --}}
+            <x-ui.more :id="'pickup-more-'.$offer->number" class="shrink-0">
+                @if ($changeable || $backdate || $undo)
+                    <div class="menu-group">
+                        @if ($changeable)
+                            <button type="button" class="menu-item w-full" role="menuitem" data-controller="emit" data-action="emit#send" data-emit-event-param="{{ $sheet }}:open"><x-ui.icon name="truck" class="size-5 text-ink-muted"/>Кто и куда</button>
+                        @endif
+                        @if ($backdate)
+                            <button type="button" class="menu-item w-full" role="menuitem" data-controller="emit" data-action="emit#send" data-emit-event-param="{{ $sheet }}-backdate:open"><x-ui.icon name="check" class="size-5 text-ink-muted"/>Уже вывезли</button>
+                        @endif
+                        @if ($undo)
+                            <x-ui.step-back close="" :action="'/offers/'.$offer->number.'/pickup/back'" :label="$undoLabel" kind="transport"/>
+                        @endif
+                    </div>
+                @endif
+                @if ($changeable)
+                    <div class="menu-group">
+                        <button type="button" class="menu-item w-full text-danger" role="menuitem" data-controller="emit" data-action="emit#send" data-emit-event-param="{{ $sheet }}-drop:open"><x-ui.icon name="x" class="size-5"/>Вывоз не нужен</button>
+                    </div>
+                @endif
+            </x-ui.more>
         </x-slot:actions>
     @endif
     @if ($t)

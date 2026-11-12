@@ -57,12 +57,9 @@
     <x-ui.row-card :title="$link->payerName()" :head="false" :photo="false" :action="false">
         @if ($other)
             <x-slot:tools>
-                <div class="contents" data-controller="menu">
-                    <button type="button" class="bar-btn" data-action="menu#toggle" aria-haspopup="menu" aria-controls="link-more-{{ $id }}" aria-label="Ещё"><x-ui.icon name="more" class="size-[18px]"/></button>
-                    <div id="link-more-{{ $id }}" class="menu" popover data-menu-target="list" role="menu">
-                        <button type="button" class="menu-item w-full" role="menuitem" data-controller="emit" data-action="menu#close emit#send" data-emit-event-param="link-{{ $id }}-amount:open">Другая сумма</button>
-                    </div>
-                </div>
+                <x-ui.more :id="'link-more-'.$id" bar>
+                    <button type="button" class="menu-item w-full" role="menuitem" data-controller="emit" data-action="emit#send" data-emit-event-param="link-{{ $id }}-amount:open">Другая сумма</button>
+                </x-ui.more>
             </x-slot:tools>
         @endif
 

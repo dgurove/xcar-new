@@ -11,18 +11,15 @@
         <div>
             <div class="flex items-center gap-2">
                 <h3 class="min-w-0 flex-1 text-base font-medium">{{ $thread->subject ?: '(без темы)' }}</h3>
-                <div class="contents" data-controller="menu">
-                    <button type="button" class="btn btn-s btn-quiet btn-round -my-1 -mr-2 shrink-0" data-action="menu#toggle" aria-label="Ещё" aria-haspopup="menu" aria-controls="{{ $menu }}"><x-ui.icon name="more" class="size-5"/></button>
-                    <div id="{{ $menu }}" class="menu" popover data-menu-target="list" role="menu">
-                        <button type="button" class="menu-item w-full" role="menuitem" data-action="menu#close unhide#show">{{ $linked ? 'Перепривязать' : ($park ? 'Привязать к ТС' : 'Привязать к предложению') }}</button>
+                <x-ui.more :id="$menu" class="shrink-0">
+                        <button type="button" class="menu-item w-full" role="menuitem" data-action="unhide#show">{{ $linked ? 'Перепривязать' : ($park ? 'Привязать к ТС' : 'Привязать к предложению') }}</button>
                         {{-- Вендор письма — выбрать или сменить: письма с этого адреса теперь его (x-mail.vendor-sheet). --}}
-                        @if ($pick)<button type="button" class="menu-item w-full" role="menuitem" data-controller="emit" data-action="menu#close emit#send"
+                        @if ($pick)<button type="button" class="menu-item w-full" role="menuitem" data-controller="emit" data-action="emit#send"
                             data-emit-event-param="vendor-pick:open" data-emit-url-param="{{ $pick['url'] }}" data-emit-sender-param="{{ $pick['sender'] }}" data-emit-name-param="{{ $pick['name'] }}" data-emit-domain-param="{{ $pick['domain'] }}">{{ $thread->vendor ? 'Сменить вендора' : 'Выбрать вендора' }}</button>@endif
                         <form method="post" action="{{ $base }}/{{ $thread->id }}/archive" data-turbo-frame="letters-frame" class="contents">@csrf<button class="menu-item w-full" role="menuitem">{{ $thread->archived_at ? 'Вернуть из архива' : 'В архив' }}</button></form>
                         <form method="post" action="{{ $base }}/{{ $thread->id }}/unread" data-turbo-frame="_top" class="contents">@csrf<button class="menu-item w-full" role="menuitem">Не прочитано</button></form>
                         @unless ($park)<a href="{{ $base }}/{{ $thread->id }}" class="menu-item" role="menuitem">Страница ветки</a>@endunless
-                    </div>
-                </div>
+                </x-ui.more>
             </div>
             {{-- Участники и ящик — текстом, ТС и предложение — ссылками туда (лаймовым словом, не капсулой среди фактов). --}}
             <div class="mt-2 flex flex-wrap items-center gap-1.5">

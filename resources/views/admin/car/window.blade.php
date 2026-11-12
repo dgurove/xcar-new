@@ -44,13 +44,7 @@
             <x-slot:menu>
                 {{-- «⋯» пилюлей вровень с названием, действия — шторкой снизу на телефоне и поповером из пилюли на ПК (12.11.2026,
                      владелец выбрал из вариантов: круг 44 px раздвигал строки, меню всплывало поверх фото). --}}
-                <div class="contents" data-controller="sheet">
-                    <button type="button" class="title-more" data-action="sheet#open" aria-label="Действия" aria-haspopup="dialog" aria-controls="car-actions-{{ $n }}"><x-ui.icon name="more" class="size-[18px]"/></button>
-                    <x-ui.sheet :id="'car-actions-'.$n" anchor bare class="sheet-actions">
-                        @include('admin.car.actions', ['mode' => 'menu', 'close' => 'sheet#close'])
-                        <button type="button" class="sheet-actions-cancel" data-action="sheet#close">Отмена</button>
-                    </x-ui.sheet>
-                </div>
+                <x-ui.more :id="'car-actions-'.$n" label="Действия">@include('admin.car.actions', ['mode' => 'menu', 'close' => ''])</x-ui.more>
             </x-slot:menu>
         @endif
         <x-slot:actions>

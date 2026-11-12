@@ -3,7 +3,7 @@
     <div class="has-back mb-5 flex flex-wrap items-center gap-x-3 gap-y-2" data-controller="sheet">
         <x-ui.back :back="['Закупки', '/purchases']"/>
         <h1 class="head-title text-xl sm:text-2xl">{{ $purchase->title ?: $purchase->publicTitle() }}</h1>
-        <button type="button" class="btn btn-s btn-quiet btn-round ml-auto shrink-0 sm:order-1" data-action="sheet#open" aria-label="Действия"><x-ui.icon name="more" class="size-5"/></button>
+        <button type="button" class="more-pill more-pill--light ml-auto shrink-0 sm:order-1" data-action="sheet#open" aria-label="Действия"><x-ui.icon name="more" class="size-[22px]"/></button>
         {{-- Состояние и срок — строкой текста, продление — лаймовыми словами (как в редакторе предложения, 10.10.2026). --}}
         <span class="flex basis-full flex-wrap items-baseline gap-x-3 gap-y-1 text-sm sm:basis-auto">
             @if ($purchase->closed())

@@ -2956,18 +2956,18 @@ html.kb-open { --home-gap: 0px; }
   }
   .sheet:popover-open::before { display: none; }
   .sheet:popover-open::backdrop { background: none; }
-  /* Шторка действий окна машины (12.11.2026, владелец выбрал из вариантов): на телефоне — как в iOS, группы белыми карточками
-     с промежутком, опасное — последней, ниже «Отмена» отдельной карточкой; на ПК — поповер из пилюли «⋯», одна карточка,
-     группы через тонкую линию, «Отмены» нет. Пункты — те же `.menu-item` (`admin.car.actions`). */
+  /* Шторка действий «⋯» (`x-ui.more`, 12.11.2026, владелец выбрал из вариантов): на телефоне — как в iOS, пункты одной белой
+     карточкой (`.sheet-actions-list`), группы через линию во всю ширину, опасное — последней, ниже «Отмена» отдельной
+     карточкой; на ПК — поповер из пилюли «⋯», та же карточка, «Отмены» нет. Пункты — `.menu-item`. */
   .sheet-actions { background: transparent; box-shadow: none; padding: 0 .5rem calc(.5rem + var(--home-gap, 0px)); }
   .sheet-actions::before { display: none; }
-  .sheet-actions .menu-group { overflow: hidden; border-radius: var(--radius-l); background: var(--color-surface); }
-  .sheet-actions .menu-group + .menu-group { border-top: 0; margin-top: .5rem; }
+  .sheet-actions-list { overflow: hidden; border-radius: var(--radius-l); background: var(--color-surface); }
+  .sheet-actions-list > .menu-item:first-child, .sheet-actions-list > form:first-child > .menu-item, .sheet-actions .menu-group > .menu-item:first-child { box-shadow: none; }
+  .sheet-actions .menu-group + .menu-group { margin-top: 0; border-top: 1px solid var(--color-line); }
   .sheet-actions .menu-item { min-height: 3.25rem; font-size: var(--text-base); }
   .sheet-actions-cancel { display: flex; align-items: center; justify-content: center; width: 100%; min-height: 3.25rem; margin-top: .5rem; border-radius: var(--radius-l); background: var(--color-surface); font-weight: 500; color: var(--color-ink); }
   .sheet-actions:popover-open { width: 17rem; padding: 0; background: var(--color-surface); box-shadow: var(--shadow-drop); }
-  .sheet-actions:popover-open .menu-group { border-radius: 0; background: none; }
-  .sheet-actions:popover-open .menu-group + .menu-group { margin-top: 0; border-top: 1px solid var(--color-line); }
+  .sheet-actions:popover-open .sheet-actions-list { border-radius: 0; }
   .sheet-actions:popover-open .menu-item { min-height: 2.75rem; font-size: var(--text-sm); }
   .sheet-actions:popover-open .sheet-actions-cancel { display: none; }
   /* Шторка постоянной высоты (форма с подсказкой под полем — «Создать ссылку», «ТС» ссылки): лист прижат к низу и рос
@@ -3255,12 +3255,15 @@ html.kb-open { --home-gap: 0px; }
   .detail-facts { grid-column: 1 / -1; margin-top: .375rem; }
   /* Окно машины (12.11.2026): «⋯» — справа в строке названия, цена со сроком обязывающего — строкой ниже во всю ширину. */
   .detail-menu { grid-column: 2; grid-row: 1; margin-block: -.125rem; }
-  /* «⋯» у названия окна машины — невысокой серой пилюлей вровень с первой строкой (12.11.2026, владелец: круг 44 px
-     «стрёмный», раздвигал строки); палец попадает по прозрачному краю ::before, раскладку он не трогает. */
-  .title-more { position: relative; display: inline-flex; align-items: center; justify-content: center; width: 2.5rem; height: 1.75rem; border-radius: 999px; background: var(--color-surface-2); color: var(--color-ink-muted); transition: background-color var(--dur-fast), color var(--dur-fast); }
-  .title-more::before { content: ''; position: absolute; inset: -.5rem -.25rem; }
-  .title-more:active, .title-more[aria-expanded="true"] { background: var(--color-surface-3); color: var(--color-ink); }
-  @media (hover: hover) { .title-more:hover { background: var(--color-surface-3); color: var(--color-ink); } }
+  /* «⋯» — невысокой серой пилюлей 40×28 с серыми залитыми точками (12.11.2026, владелец: круг 44 px «стрёмный», раздвигал
+     строки; «точки слишком мелкие», «серые же их обычно делают»): у названия окна машины, у шага пути, в «Вывозе», «Гараже»,
+     окне писем, карточках. Палец попадает по прозрачному краю ::before, раскладку он не трогает. */
+  .more-pill { position: relative; display: inline-flex; align-items: center; justify-content: center; width: 2.5rem; height: 1.75rem; border-radius: 999px; background: var(--color-surface-2); color: var(--color-ink-muted); transition: background-color var(--dur-fast), color var(--dur-fast); }
+  .more-pill::before { content: ''; position: absolute; inset: -.5rem -.25rem; }
+  /* На сером фоне страницы — белая, иначе сливается (владелец: «если фон серый, кнопка белая»). */
+  .more-pill--light { background: var(--color-surface); }
+  .more-pill:active, .more-pill[aria-expanded="true"] { background: var(--color-surface-3); color: var(--color-ink); }
+  @media (hover: hover) { .more-pill:hover { background: var(--color-surface-3); color: var(--color-ink); } }
   .detail-head--stack .detail-aside { grid-column: 1 / -1; grid-row: 2; text-align: left; margin-top: .125rem; }
   /* Срок обязывающего чипом справа от цены (`x-offer.binding aside`, 12.11.2026): серый, цвет — только у значка. */
   .binding-chip { display: inline-flex; align-items: center; gap: .3rem; height: 1.75rem; padding-inline: .625rem; border-radius: 999px; background: var(--color-surface-2); color: var(--color-ink); font-size: var(--text-sm); white-space: nowrap; }

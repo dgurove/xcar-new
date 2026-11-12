@@ -29,12 +29,12 @@
         @endif
         @if ($crm && ! $readonly && $chat?->exists && $user?->isAdmin())
             {{-- Спам и реклама — удалить чат целиком (06.10.2026). --}}
-            <div class="contents" data-controller="menu">
-                <button type="button" class="btn btn-ghost btn-round" data-action="menu#toggle" aria-haspopup="menu" aria-controls="chat-more-{{ $chat->id }}" aria-label="Ещё"><x-ui.icon name="more" class="size-5"/></button>
-                <div id="chat-more-{{ $chat->id }}" class="menu" popover data-menu-target="list" role="menu">
-                    <form method="post" action="/work/chats/{{ $chat->id }}" data-turbo-frame="_top" data-turbo-confirm="Удалить чат целиком? Вернуть его нельзя" data-turbo-confirm-label="Удалить">@csrf @method('delete')<button class="menu-item w-full text-danger" role="menuitem" data-action="menu#close">Удалить чат</button></form>
+            <x-ui.more :id="'chat-more-'.$chat->id" class="shrink-0">
+                <div class="menu-group">
+                    <form method="post" action="/work/chats/{{ $chat->id }}" data-turbo-frame="_top" data-turbo-confirm="Удалить чат целиком? Вернуть его нельзя" data-turbo-confirm-label="Удалить">@csrf @method('delete')<button class="menu-item w-full text-danger" role="menuitem">Удалить чат</button></form>
+                
                 </div>
-            </div>
+            </x-ui.more>
         @endif
         @if ($sheet)<x-chat.contact :user="$other" :name="$name" :status="$seen" :chats="$chats" :me="$user"/>@endif
     </div>

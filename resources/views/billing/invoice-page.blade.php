@@ -23,7 +23,7 @@
             @if ($i->sent_at)<span class="nums">отправлен {{ \App\Support\Ago::html($i->sent_at, words: false) }}</span>@endif
         </div>
         </div>
-        <button type="button" class="btn btn-s btn-quiet btn-round shrink-0" data-action="sheet#open" aria-label="Действия"><x-ui.icon name="more" class="size-5"/></button>
+        <button type="button" class="more-pill more-pill--light shrink-0" data-action="sheet#open" aria-label="Действия"><x-ui.icon name="more" class="size-[22px]"/></button>
         <x-ui.sheet id="invoice-actions" :title="$i->label()">
             <div class="flex flex-col gap-2">
                 {{-- Письмо — окном писем (28.10.2026, одна дверь): шторка «Действия» закрывается, окно открывается. --}}
