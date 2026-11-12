@@ -32,9 +32,10 @@ final class CancelDeal
     /**
      * $keepCar — машину из гаража уберёт вызывающий сам («Отдали по ошибке», `ReturnFromGarage`); $keepBid — подтверждение
      * победителя снова ждёт среди прочих (12.10.2026, владелец: «отменяешь сделку и возвращаешь в продажу — пусть
-     * подтверждение менеджера остаётся», `ReturnToSale`).
+     * подтверждение менеджера остаётся», `ReturnToSale`); $keepPickup — вывоз, заказанный под сделку, не отменяется
+     * (12.11.2026, владелец: «чтобы пока был вывоз — она продавалась», `ReturnToSale`).
      */
-    public function __invoke(Deal $deal, ?User $by = null, bool $keepCar = false, bool $keepBid = false): Deal
+    public function __invoke(Deal $deal, ?User $by = null, bool $keepCar = false, bool $keepBid = false, bool $keepPickup = false): Deal
     {
         // Машина гаражной уже у менеджера или по ней есть расходы — молча её не снять (владелец 06.10.2026): разбираемся
         // руками, сделка остаётся.
@@ -70,7 +71,7 @@ final class CancelDeal
             }
             // Вывоз заказали ради этой сделки (заведён после принятия), а вендор не из тех, чьи машины вывозим все, — без
             // сделки он не нужен: отменяется, а не висит «Без исполнителя» (18.10.2026: тестовая сделка Кати).
-            if (! $offer->vendor?->pickup_on_arrival && $open->created_at?->gte($deal->created_at) && ! $open->fresh()->taken()) {
+            if (! $keepPickup && ! $offer->vendor?->pickup_on_arrival && $open->created_at?->gte($deal->created_at) && ! $open->fresh()->taken()) {
                 app(Cancel::class)($open->fresh(), $by, 'Сделка отменена', system: true);
             }
         }

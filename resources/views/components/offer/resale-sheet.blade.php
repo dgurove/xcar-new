@@ -17,6 +17,8 @@
     $auction = $offer->onAuction();
     $closeAt = old('bids_close_at', \App\Offers\Binding::clampClose($offer, \App\Offers\Slots::closeFor(now()))->format('Y-m-d\TH:i'));
     $holder = $offer->car_place === \App\Offers\CarPlace::Keeper ? $offer->standsWith() : null;
+    // Вывоз идёт — не пропадает (12.11.2026, владелец: «чтобы пока был вывоз — она продавалась», `ReturnToSale`).
+    $pickup = ! $holder && ($t = \App\Logistics\Transport::openFor($offer)) && ! $t->taken();
     $confirm = $garage
         ? 'ТС уйдёт из гаража менеджера, гаражная сделка отменится, неоплаченные счета аннулируются'
         : 'Сделка отменится, подтверждение менеджера останется среди подтверждений, неоплаченные счета сделки аннулируются';
@@ -38,6 +40,9 @@
                             <x-ui.field name="asking_price" :id="'resale-asking-'.$n" label="Цена продажи, ₽" :value="old('asking_price', $offer->asking_price ? Money::nums($offer->asking_price) : null)" required/>
                         </div>
                     </div>
+                    @if ($pickup)
+                        <x-ui.info><x-ui.info-row icon="cat-truck">Вывоз продолжается, куда везти — решит логистика</x-ui.info-row></x-ui.info>
+                    @endif
                     @if ($holder)
                         <div>
                             <h3 class="list-head">Стоит у {{ $holder->shortName() }}</h3>

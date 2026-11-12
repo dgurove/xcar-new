@@ -4,6 +4,8 @@ namespace App\Offers\Actions;
 
 use App\Garage\Car as GarageCar;
 use App\Garage\Events\GarageChanged;
+use App\Logistics\Point;
+use App\Logistics\Transport;
 use App\Offers\AudienceRules;
 use App\Offers\Binding;
 use App\Offers\CarPlace;
@@ -76,12 +78,19 @@ final class ReturnToSale
             $deal = $car?->deal ?? $offer->deal()->first();
             if ($deal && $deal->state !== DealState::Cancelled) {
                 // Подтверждение победителя снова ждёт (12.10.2026): менеджер его не отзывал, сорвалась сделка.
-                ($this->cancel)($deal, $by, keepCar: true, keepBid: true);
+                // Вывоз не отменяется (12.11.2026, владелец: «чтобы пока был вывоз — она продавалась»).
+                ($this->cancel)($deal, $by, keepCar: true, keepBid: true, keepPickup: true);
                 $offer->unsetRelation('deal');
             }
             if ($car) {
                 $car->delete();
                 GarageChanged::dispatch($car);
+                // Везли к менеджеру гаража — его больше нет: куда везти, решат логистика и новая сделка («пока неизвестно»).
+                // Стоит у него и остаётся (`$holder`) — вывоз не трогаем.
+                $open = $holder ? null : Transport::openFor($offer);
+                if ($open && ! $open->taken() && $open->destination === Point::Keeper) {
+                    $open->update(['destination' => null]);
+                }
             }
             // Заявленная пустая — снова от закупочной (`Offer::declaredPrice`), поэтому null пишется как есть. Пустая
             // закупочная — прежняя: стереть её шторкой нельзя (приборка 26.10.2026).
