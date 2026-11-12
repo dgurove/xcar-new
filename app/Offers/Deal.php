@@ -685,7 +685,8 @@ class Deal extends Model
             // Р.О.С. без реквизитов (пришлёт владелец) — счёт выставить не от кого.
             $this->seller() === Seller::Ros && ! Party::seller(Seller::Ros)->billable() => 'ros_requisites',
             // Покупатель-физлицо без паспорта со сканом (11.10.2026): счёта ПРАЙМ нет, ход менеджера.
-            $this->isPrime() && ! $this->passportReady() => 'passport',
+            // Деньги уже пришли — счёт встаёт и без паспорта (`SyncDealInvoices::prime`, 12.11.2026).
+            $this->isPrime() && ! $this->passportReady() && $this->credited() <= 0 => 'passport',
             default => 'invoice',
         };
     }
