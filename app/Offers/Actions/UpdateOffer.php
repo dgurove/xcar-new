@@ -52,6 +52,12 @@ final class UpdateOffer
             && ($floor = Pricing::floorFor($offer->floor_price, $was, $offer->value, Pricing::autoRules($offer), $wasRules))) {
             $offer->floor_price = $floor;
         }
+        // Оценочная уже стояла, а закупочной нет (12.11.2026, 7703/046/00141/26: оценочная пришла с парковки 02.10, черновик
+        // завёл Мигторг 28.10 на ту же машину — оценочная не менялась, и закупочная не считалась): у вендора с оценочной
+        // закупочная от неё же при любом сохранении, пока её не вписали.
+        elseif (! $offer->floor_price && ! $offer->isDirty('floor_price') && $offer->value && Pricing::valued($offer)) {
+            $offer->floor_price = Pricing::floorFrom((int) $offer->value, Pricing::rulesFor($offer));
+        }
         // Сменили вендора, а НДС не прислали (у модератора галки нет) — НДС цен от вендора. Присланный — письмом или
         // галкой админа — не перетирается, даже если совпадает с прежним.
         if ($offer->isDirty('vendor_id') && ! array_key_exists('prices_include_vat', $data) && $offer->vendor_id) {
