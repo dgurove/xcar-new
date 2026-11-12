@@ -50,13 +50,18 @@ final class MatchByVin
     /** Привязать поступление к сделке по VIN; null — не нашлась одна сделка или уже разобрано. */
     public function __invoke(Transaction $tx): ?Deal
     {
-        if ($tx->state !== Transaction::UNMATCHED || ! ($deal = self::dealFor($tx)) || ! $deal->buyer) {
+        if ($tx->state !== Transaction::UNMATCHED || ! ($deal = self::dealFor($tx))) {
+            return null;
+        }
+        // Без менеджера («Себе», 12.11.2026) — зачёт на самого плательщика из выписки (`BuyerFromStatement::party`).
+        $party = $deal->buyer ? Party::forUser($deal->buyer) : BuyerFromStatement::party($tx, $deal);
+        if (! $party) {
             return null;
         }
         $by = Robot::user();
         $title = 'Оплата ТС '.$deal->offer->titleWithYear().' по выписке от '.$tx->booked_at->format('d.m.Y');
-        $invoice = DB::transaction(function () use ($tx, $deal, $by, $title) {
-            $invoice = ($this->issue)(Party::forUser($deal->buyer), $by, 'issued', ChargeKind::Service, WorkDays::add(now(), 3),
+        $invoice = DB::transaction(function () use ($tx, $deal, $by, $title, $party) {
+            $invoice = ($this->issue)($party, $by, 'issued', ChargeKind::Service, WorkDays::add(now(), 3),
                 lines: [['title' => $title, 'qty' => 1, 'unit' => 'svc', 'price' => round((float) $tx->amount, 2), 'kind' => ChargeKind::Service->value]],
                 offerId: $deal->offer_id);
             $invoice->update(['credit_deal_id' => $deal->id]);
@@ -74,7 +79,7 @@ final class MatchByVin
 
         // Заплатил покупатель, а не менеджер — он и покупатель сделки (`BuyerFromStatement`, 12.11.2026). Не вышло — привязка остаётся.
         try {
-            app(BuyerFromStatement::class)($tx, $deal->fresh(), $by);
+            $deal->buyer && app(BuyerFromStatement::class)($tx, $deal->fresh(), $by);
         } catch (\Throwable $e) {
             Log::warning('bank: покупатель из выписки по сделке '.$deal->offer->number.' — '.$e->getMessage());
         }

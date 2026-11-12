@@ -238,7 +238,9 @@ class Position extends Model
         // Деньги пришли, а счёта нет — что дооформить, прежними кнопками (12.11.2026): продажа — «Продана» гаража, вознаграждение
         // — «Назначить», покупатель — «Заполнить за менеджера».
         if ($at = $this->moneyArrived()) {
-            $gap = $this->deal->invoiceGap();
+            // «Себе» (без менеджера): пока ТС в гараже не продана — сначала продажа, счёт потом.
+            $car = $this->deal->buyer_id ? null : $this->deal->garageCar;
+            $gap = $car && ! $car->isSold() ? 'price' : $this->deal->invoiceGap();
             [$what, $label, $href] = match ($gap) {
                 'price' => ['записать продажу', 'Записать', '/offers/'.$offer->number.'?sold=1'],
                 'buyer' => ['нужен покупатель', 'Заполнить', '/offers/'.$offer->number.'?buyer=1#invoice-buyer'],

@@ -57,6 +57,22 @@ final class BuyerFromStatement
         return ['name' => $name, 'inn' => $kind === PartyKind::Person ? null : $inn, 'kind' => $kind];
     }
 
+    /**
+     * Плательщик контрагентом — у сделки без менеджера («Себе», 12.11.2026): деньги по VIN ложатся на него. Тот же по ИНН,
+     * иначе по имени; нет — новый с ИНН и счётом из выписки.
+     */
+    public static function party(Transaction $tx, Deal $deal): ?Party
+    {
+        if (! ($p = self::payer($tx, $deal))) {
+            return null;
+        }
+        $party = ($p['inn'] ? Party::where('is_self', false)->where('inn', $p['inn'])->first() : null)
+            ?? Party::where('is_self', false)->whereRaw('lower(name) = ?', [mb_strtolower($p['name'])])->first();
+
+        return $party ?? Party::create(array_filter(['kind' => $p['kind'], 'name' => $p['name'], 'inn' => $p['inn'],
+            'account' => $tx->counterparty_account, 'bank_name' => $tx->counterparty_bank], fn ($v) => $v !== null && $v !== ''));
+    }
+
     /** Поставить плательщика покупателем сделки; null — покупатель уже есть, платил сам менеджер или имени нет. */
     public function __invoke(Transaction $tx, Deal $deal, User $by): ?User
     {

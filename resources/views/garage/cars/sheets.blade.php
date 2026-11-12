@@ -45,7 +45,8 @@
     </div>
 @endif
 
-@if ($staff && $car->state === \App\Garage\CarState::Selling)
+{{-- Сотрудник вносит итог и с подготовки (`MarkGarageSold`: любой рабочий этап; 12.11.2026 — «Себе» Совкомбанка продали, пока готовили). --}}
+@if ($staff && ($car->state === \App\Garage\CarState::Selling || $car->state->isWorking() && ! $car->forBuyer()))
     <div {!! $wrap('sold') !!}>
         <x-ui.sheet id="sold" title="Продана" :open="request()->boolean('sold')">
             <form method="post" action="/garage/cars/{{ $n }}/sold" class="flex flex-col gap-3" {!! $sellForm() !!}>
