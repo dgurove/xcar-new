@@ -72,7 +72,7 @@ export default class extends Controller {
     touch(el) {
         if (el.closest('[data-controller~="audience"]')) {
             // В шторке «Кому» свои списки без имён — сохраняется только итог в скрытом поле: волны предложения
-            // (`audience_rules`) или белый список сделки (`deal_audience`).
+            // (`audience_rules`), у публикации сделки — то же поле.
             if (!el.matches('[data-audience-target="rules"]') || !el.name) return;
             this.dirty.add(el.name);
         } else if (el.name && !el.name.startsWith('_')) {

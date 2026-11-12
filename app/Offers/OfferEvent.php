@@ -214,7 +214,7 @@ class OfferEvent extends Model
         $what = Changes::text($fields, $changes);
 
         return match (true) {
-            // Показ всем менеджерам, пока менеджер сделки думает о закупочной (`ShowDealToAll`, 04.11.2026).
+            // Публикация машины в сделке для других менеджеров (`PublishDeal`): опубликовали, поправили, сняли.
             isset($p['show_all']) => $p['show_all'],
             ($p['source'] ?? null) === 'migtorg' => 'С Мигторга: '.match (true) {
                 isset($p['photos']) => $p['photos'].' фото',

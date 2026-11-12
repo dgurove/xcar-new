@@ -10,7 +10,6 @@ use App\Offers\Bid;
 use App\Offers\BidKind;
 use App\Offers\BidState;
 use App\Offers\Binding;
-use App\Offers\DealAudience;
 use App\Offers\Jobs\ImportMigtorgLot;
 use App\Offers\LegacyClaim;
 use App\Offers\Offer;
@@ -46,13 +45,6 @@ final class UpdateOffer
     {
         $was = $offer->value;
         $wasRules = Pricing::autoRules($offer);
-        // Показ сделки кончился, а его продлили — список снова видит её: уведомление всем, а не только новым.
-        $showWasOver = $offer->deal_show_until !== null && $offer->dealShowOver();
-        // Пока идёт показ всем менеджерам (`ShowDealToAll`, 04.11.2026), его срок и список ведёт он: «Показ» из старой вкладки
-        // («Никому», «Пока идёт сделка») показ не затирает — снимают его «Снять показ» и ответ менеджера.
-        if ($offer->deal_show_all_at) {
-            unset($data['deal_audience_users'], $data['deal_audience_groups'], $data['deal_show_until']);
-        }
         $offer->fill($data);
         // Сменили оценочную или ступени предложения, закупочную не трогали — закупочная от неё же по ступеням предложения,
         // если не вписана рукой (`Pricing::floorFor`).
@@ -122,22 +114,6 @@ final class UpdateOffer
         // Вендора поставили руками письму, отправителя которого разбор не знал, — запомнить его адрес у вендора.
         if (in_array('vendor_id', $changed, true) && $offer->vendor_id) {
             app(LearnSenders::class)($offer);
-        }
-        // Белый список «Кому показывать в сделке»: вновь добавленным — уведомление, как о новом.
-        $reopened = $showWasOver && in_array('deal_show_until', $changed, true) && ! $offer->dealShowOver();
-        if (array_key_exists('deal_audience_users', $data) || array_key_exists('deal_audience_groups', $data)) {
-            $sync = DealAudience::sync($offer,
-                (array) ($data['deal_audience_users'] ?? []),
-                (array) ($data['deal_audience_groups'] ?? []));
-            if ($sync['changed']) {
-                $offer->log(OfferEventType::Updated, $by, ['fields' => ['deal_audience']] + $log);
-            }
-            $notify = $reopened ? DealAudience::managerIds($offer) : $sync['added'];
-            if ($notify && ! $offer->dealShowOver()) {
-                app(NotifyDealAudience::class)->added($offer->refresh(), $notify);
-            }
-        } elseif ($reopened) {
-            app(NotifyDealAudience::class)->added($offer->refresh(), DealAudience::managerIds($offer));
         }
         if ($changed) {
             // Было → стало (`Changes`): ключ номера убытка — производная колонка, в истории это тот же «номер убытка».

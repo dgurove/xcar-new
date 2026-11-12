@@ -32,9 +32,9 @@
 @elseif ($offer->gallery_from && $car->selling())
     <x-ui.info-row icon="grid"><span class="nums text-ink-muted">в галерее до {{ \App\Support\Ago::html($offer->gallery_until, true, words: false) }}</span></x-ui.info-row>
 @endif
-{{-- Опубликована для других менеджеров поверх сделки (`ShowDealToAll`, 12.11.2026). --}}
+{{-- Опубликована для других менеджеров поверх сделки (`PublishDeal`, 12.11.2026): нажатие — шторка публикации (кому, срок, снять). --}}
 @if ($offer->showsDealAsOpen())
-    <x-ui.info-row icon="flag"><span class="nums text-accent-text">у других менеджеров до {{ \App\Support\Ago::html($offer->deal_show_until, true, words: false) }}</span></x-ui.info-row>
+    <x-ui.info-row icon="flag"><button type="button" class="nums text-left text-accent-text" data-controller="emit" data-action="emit#send" data-emit-event-param="deal-publish:open"><x-offer.published-for :offer="$offer"/></button></x-ui.info-row>
 @endif
 @php $rows = trim(ob_get_clean()); @endphp
 @if ($rows !== '')<x-ui.info :class="$class ?? 'w-full'">{!! $rows !!}</x-ui.info>@endif

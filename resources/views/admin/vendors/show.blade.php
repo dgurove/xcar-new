@@ -33,12 +33,7 @@
                     <x-ui.field name="binding_days" label="Срок предложения, дней" :value="$vendor->binding_days"/>
                 </div>
                 {{-- Волны показа его предложений, у которых нет своих: группы менеджеров и люди, через сколько. --}}
-                <div class="flex flex-col gap-1.5" data-controller="audience" data-audience-options-value="{{ json_encode($audienceOptions) }}"
-                    data-audience-effective-value="{{ json_encode(\App\Offers\AudienceRules::normalize($vendor->audience_rules ?: \App\Offers\AudienceRules::everyone())) }}">
-                    <span class="field-label">Кому показывать</span>
-                    <input type="hidden" name="audience_rules" value="{{ $vendor->audience_rules ? json_encode($vendor->audience_rules) : '' }}" data-audience-target="rules">
-                    <x-audience.editor/>
-                </div>
+                <x-audience.field :value="$vendor->audience_rules ? json_encode($vendor->audience_rules) : ''" :rules="$vendor->audience_rules" inline/>
                 <x-ui.check name="silence_means_buy" :checked="$vendor->silence_means_buy">Молчание означает покупку</x-ui.check>
                 <x-ui.check name="offers_include_vat" :checked="$vendor->offers_include_vat">Цены предложений с НДС</x-ui.check>
                 {{-- Сумма страховой — оценочная (Альфа): закупочная от неё по правилу `Offers\Pricing`, в CRM поле «Оценочная». --}}

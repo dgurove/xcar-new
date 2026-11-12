@@ -41,7 +41,11 @@ return new class extends Migration
         }
         DB::table('audiences')->where('name', 'Все сразу')->update(['name' => 'Всем сразу']);
 
-        app(SyncViewers::class)->all();
+        // Открытые — как было тогда; не `all()`: он теперь читает и публикации сделок, их колонок ещё нет (12.11.2026).
+        $people = null;
+        \App\Offers\Offer::whereIn('state', ['open', 'gallery'])->with('vendor')->lazyById()->each(function ($o) use (&$people) {
+            app(SyncViewers::class)($o, $people);
+        });
     }
 
     public function down(): void {}

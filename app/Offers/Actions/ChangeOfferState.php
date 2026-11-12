@@ -10,7 +10,6 @@ use App\Offers\Exclusive;
 use App\Offers\BidState;
 use App\Offers\Binding;
 use App\Offers\Deal;
-use App\Offers\DealAudience;
 use App\Offers\DealState;
 use App\Offers\Events\OfferPublished;
 use App\Offers\Events\OfferStateChanged;
@@ -141,10 +140,10 @@ final class ChangeOfferState
                 $exclusive->whereNull('exclusive_until')->each(fn (Estimate $e) => $e->update(['exclusive_until' => Exclusive::until($offer, $e)]));
                 $offer->log(OfferEventType::Note, $by, ['text' => Exclusive::words($exclusive)]);
             }
-            // Ушли из сделки куда угодно (продажа, черновик, архив) — белый список «Кому показывать в сделке»
+            // Ушли из сделки куда угодно (продажа, черновик, архив) — публикация для других менеджеров (`PublishDeal`)
             // стирается: дальше работают обычные волны. «Отдать» другому сделку не трогает — состояние то же.
             if ($from === OfferState::Sold && $next !== OfferState::Sold) {
-                DealAudience::clear($offer);
+                PublishDeal::clear($offer);
             }
             // Кто видит — до событий: уведомление о публикации берёт наступившие волны.
             app(SyncViewers::class)($offer);

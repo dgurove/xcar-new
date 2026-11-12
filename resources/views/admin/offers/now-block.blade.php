@@ -27,7 +27,7 @@
     @elseif ($kind === 'unsold')
         {{-- «Без подтверждений» (06.11.2026, владелец: «удобно сразу быстро либо вернуть, либо архивировать», «стремиться, чтобы
              список был пустой»): что было — когда кончился приём и сколько раз выставляли; решение — одной плашкой: цена
-             продажи с подсказками ниже (подтверждений не было — чаще всего дорого), срок приёма сегментом, кому — как в прошлый
+             продажи с подсказками ниже (подтверждений не было — чаще всего дорого), срок приёма и кому — теми же полями, что «Показ», кому — как в прошлый
              раз; «Вернуть в продажу» — сразу (`ReturnToSale`), «В архив» — без переспроса (из «Архива» вернут одной кнопкой).
              Строка уходит, карточка идёт к следующей (`OfferController::ADVANCE`). --}}
         @php
@@ -35,7 +35,6 @@
             $times = $offer->events()->where('type', \App\Offers\OfferEventType::StateChanged)->where('payload->to', OfferState::Open->value)->count();
             $cut = fn (float $k) => (int) (floor($asking * $k / 1000) * 1000);
             $hints = $asking ? array_filter(['−5 %' => $cut(.95), '−10 %' => $cut(.9), '−50 000' => $asking - 50000], fn ($v) => $v >= \App\Offers\Pricing::MIN) : [];
-            $day = \App\Offers\Binding::clampClose($offer, Slots::closeFor(now(), 7));
         @endphp
         {{-- Плотно, как «Цены» черновика (06.11.2026, владелец: «зачем огромный отступ, шрифт огромный»): дата — в строке
              заголовка, поля — подписью сверху на светлой плашке, а не строкой настроек. --}}
@@ -66,16 +65,9 @@
                     <p class="flex flex-wrap items-baseline gap-x-2 text-sm text-ink-muted"><span class="nums">закупочная {{ \App\Support\Money::rub($offer->floor_price) }}</span><x-offer.margin :m="$offer->marginMark()"/></p>
                 @endif
             </div>
-            <div class="unsold-term flex flex-col gap-1.5">
-                <span class="field-label">Срок показа</span>
-                <x-ui.segment name="term" :options="['3' => '3 дня', '7' => 'Неделя', 'day' => 'До даты']" :value="old('term', '3')"/>
-                <div class="unsold-day fields">
-                    <x-ui.field name="day" :id="'unsold-day-'.$n" label="Показывать до" type="datetime-local" default-time="17:30" :value="old('day', $day->format('Y-m-d\TH:i'))" :min="now()->format('Y-m-d\TH:i')" :limit="\App\Offers\Binding::closeLimit($offer)"/>
-                </div>
-                @error('day')<span class="text-sm text-danger">{{ $message }}</span>@enderror
-                @error('bids_close_at')<span class="text-sm text-danger">{{ $message }}</span>@enderror
-            </div>
-            <x-offer.audience-field :offer="$offer" key="unsold"/>
+            {{-- Срок и «Кому» — те же поля, что у «Показа» (12.11.2026): «3 дня», «Неделя», дата; кому — как в прошлый раз. --}}
+            <x-offer.close-field :offer="$offer" :id="'unsold-close-'.$n" :value="old('bids_close_at')"/>
+            <x-audience.field :value="$offer->audience_rules ? json_encode($offer->audience_rules) : ''" :rules="\App\Offers\AudienceRules::of($offer)" :sheet="'audience-'.$n.'-unsold'"/>
         </form>
         <div class="flex flex-wrap gap-2">
             <button form="unsold-{{ $n }}" class="btn btn-s btn-accent min-w-0 flex-1">Вернуть в продажу</button>

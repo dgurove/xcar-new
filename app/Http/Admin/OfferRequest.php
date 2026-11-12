@@ -8,7 +8,6 @@ use App\Cars\DamageZone;
 use App\Cars\Papers;
 use App\Mail\Extraction\Code;
 use App\Offers\AudienceRules;
-use App\Offers\DealAudience;
 use App\Offers\Flag;
 use App\Offers\Offer;
 use App\Offers\OfferState;
@@ -92,8 +91,6 @@ class OfferRequest extends FormRequest
             'recommended' => ['boolean'],
             'garage_allowed' => ['boolean'],
             'audience_rules' => ['nullable', 'json'],
-            'deal_audience' => ['nullable', 'json'],
-            'deal_show_for' => ['nullable', Rule::in(['keep', ...array_map('strval', array_keys(DealAudience::FOR))])],
             'vendor_id' => [$need(), 'exists:vendors,id'],
             'answer_by' => ['nullable', 'date'],
             'flags' => ['nullable', 'array'],
@@ -150,25 +147,9 @@ class OfferRequest extends FormRequest
             }
         }
         if ($sent('audience_rules') && $show) {
-            // Волны показа приходят JSON-строкой из шторки «Кому»; пустые — «как у вендора» (null).
-            $data['audience_rules'] = AudienceRules::normalize($this->input('audience_rules')) ?: null;
-        }
-        // Белый список «Кому показывать в сделке» — только когда его блок был в форме (`_deal_show`): в сделке
-        // редактор его рисует, остальные сохранения список не трогают. Всё снято — пусто («Никому»).
-        $dealShow = $only !== null || $this->has('_deal_show');
-        unset($data['deal_audience'], $data['deal_show_for']);
-        if ($dealShow && $this->user()->canManageCrm()) {
-            // Список — JSON из шторки модуля «Показ» (`[{type, id}]`), чужие id отбросит `DealAudience::rows`.
-            if ($sent('deal_audience') && $this->has('deal_audience')) {
-                $list = DealAudience::fromJson($this->input('deal_audience'));
-                $data['deal_audience_users'] = $list['users'];
-                $data['deal_audience_groups'] = $list['groups'];
-            }
-            // «Сколько показывать»: `keep` — срок не трогаем, пусто — пока идёт сделка, иначе минуты от сейчас.
-            $for = $this->input('deal_show_for');
-            if ($sent('deal_show_for') && $this->has('deal_show_for') && $for !== 'keep') {
-                $data['deal_show_until'] = filled($for) ? now()->addMinutes((int) $for) : null;
-            }
+            // Волны показа приходят JSON-строкой из шторки «Кому»; пустые или как у вендора — «как у вендора» (null).
+            $vendor = $this->filled('vendor_id') ? Vendor::find($this->integer('vendor_id')) : $this->route('offer')?->vendor;
+            $data['audience_rules'] = AudienceRules::own($this->input('audience_rules'), $vendor);
         }
         // Повреждений, «на ходу» и ключей в формах больше нет (блок «Состояние» убран, 30.09.2026): чего нет в запросе — не трогаем.
         if ($sent('damage_zones') && $this->has('damage_zones')) {

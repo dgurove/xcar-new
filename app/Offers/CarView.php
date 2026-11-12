@@ -7,7 +7,7 @@ use App\Garage\Car as GarageCar;
 use App\Garage\CarLine;
 use App\Garage\GarageView;
 use App\Offers\Actions\ReturnToSale;
-use App\Offers\Actions\ShowDealToAll;
+use App\Offers\Actions\PublishDeal;
 use App\Offers\Actions\SellAtAuction;
 use App\Support\Money;
 use App\Users\Role;
@@ -75,7 +75,7 @@ final class CarView
         $this->offer->load(['settlement', 'media', 'vendor', ...($this->page ? ['car.events.user.vendor', 'parkVehicle.requests'] : []), ...($this->admin ? [
             'bids.user', 'interests.user.manager', 'interests.placer', 'purchaseCar.purchase', 'purchaseCar.bids.user',
             'parkVehicle.yard', 'vendor.workflows', 'positions.stage.block', 'positions.stage.exits.to.block.stages',
-            'positions.stage.workflow', 'deal.buyer', 'lastDeal.buyer', 'lastDeal.bid', 'lastDeal.requirements.media', 'dealAudience',
+            'positions.stage.workflow', 'deal.buyer', 'lastDeal.buyer', 'lastDeal.bid', 'lastDeal.requirements.media', 
             'openEstimates.user', ...User::withAvatar('openEstimates.user.media'), 'declinedEstimates.user', ...User::withAvatar('declinedEstimates.user.media'),
         ] : [])])->loadCount(['activeBids', 'interests', 'activeBids as garage_bids_count' => fn ($b) => $b->where('kind', BidKind::Garage)])
             ->loadMax('activeBids as top_bid', 'amount');
@@ -353,11 +353,13 @@ final class CarView
                 $groups[] = [$emit('give-'.$n, 'Отдать…', 'deal')];
             }
             // Машина в сделке (и гаражной, пока не привезли) — показать остальным менеджерам поверх неё (12.11.2026, владелец:
-            // «она в сделке у этого менеджера, но начальник хочет опубликовать её для других»; `ShowDealToAll`).
-            if (ShowDealToAll::allows($o)) {
-                $groups[] = [$o->showsDealAsOpen()
-                    ? $post('/offers/'.$n.'/show-all', 'Снять публикацию', 'eye-off', [], false, 'Убрать из предложений у других менеджеров?', 'У тех, кто уже подтвердил, машина останется', method: 'delete', confirmLabel: 'Снять')
-                    : $emit('show-all', 'Опубликовать для других менеджеров…', 'flag')];
+            // «она в сделке у этого менеджера, но начальник хочет опубликовать её для других»; `PublishDeal`): идёт — та же
+            // шторка правит кому и срок, рядом «Снять публикацию».
+            if (PublishDeal::allows($o)) {
+                $groups[] = $o->showsDealAsOpen()
+                    ? [$emit('deal-publish', 'Публикация для других…', 'flag'),
+                        $post('/offers/'.$n.'/deal-publication', 'Снять публикацию', 'eye-off', [], false, PublishDeal::STOP_CONFIRM, PublishDeal::STOP_TEXT, method: 'delete', confirmLabel: 'Снять')]
+                    : [$emit('deal-publish', 'Опубликовать для других менеджеров…', 'flag')];
             }
             if (($v['publishItems'] && Exclusive::due($o)->isNotEmpty()) || ($state === OfferState::Open && Exclusive::running($o)->isNotEmpty())) {
                 $groups[] = [['kind' => 'view', 'view' => 'admin.car.exclusive-off']];

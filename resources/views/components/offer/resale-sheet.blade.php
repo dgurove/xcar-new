@@ -1,7 +1,7 @@
 {{-- «Отменить сделку» (12.10.2026, владелец: «спрашивает в черновики или в продажу, и если в продажу — кому показывать и до
      какого числа»; было — две разные кнопки и шторка с одними ценами, «очень неудобно»): одна шторка, сверху сегмент
      «В продажу | В черновики». В продажу (`ReturnToSale`): цены (подставлены нынешние, заявленная пусто — от закупочной),
-     «Показ» — срок приёма (по умолчанию через 3 дня в 17:00) и «Кому показывать» тем же куском, что в модуле «Показ»;
+     «Показ» — срок приёма и «Кому показывать» теми же полями, что «Показ» предложения (`x-offer.close-field`, `x-audience.field`);
      подтверждение менеджера остаётся ждать среди прочих. В черновики — состояние Draft: подтверждение отклоняется. У машины
      в гараже — только «Вернуть в продажу», без сегмента. Открывает событие resale:open (пункт «···» редактора, «Действий»
      карточки, красная строка карточки сделки и гаража) — шторка стоит вне меню: поповер прячет вложенное. Черновик на
@@ -15,7 +15,7 @@
     $garage = $offer->state === \App\Offers\OfferState::Garage || \App\Garage\Car::where('offer_id', $offer->id)->exists();
     $isDeal = ! $garage && $offer->state === \App\Offers\OfferState::Sold;
     $auction = $offer->onAuction();
-    $closeAt = old('bids_close_at', \App\Offers\Binding::clampClose($offer, \App\Offers\Slots::closeFor(now()))->format('Y-m-d\TH:i'));
+    $closeAt = old('bids_close_at');
     $holder = $offer->car_place === \App\Offers\CarPlace::Keeper ? $offer->standsWith() : null;
     // Вывоз идёт — не пропадает (12.11.2026, владелец: «чтобы пока был вывоз — она продавалась», `ReturnToSale`).
     $pickup = ! $holder && ($t = \App\Logistics\Transport::openFor($offer)) && ! $t->taken();
@@ -56,9 +56,9 @@
                     <div>
                         <h3 class="list-head">Показ</h3>
                         <div class="fields">
-                            <x-ui.field name="bids_close_at" :id="'resale-close-'.$n" label="Приём подтверждений до" type="datetime-local" default-time="17:30" :value="$closeAt" :limit="\App\Offers\Binding::closeLimit($offer)" required/>
-                            <x-offer.audience-field :offer="$offer" key="resale"/>
+                            <x-offer.close-field :offer="$offer" :id="'resale-close-'.$n" :value="$closeAt"/>
                         </div>
+                        <x-audience.field :value="$offer->audience_rules ? json_encode($offer->audience_rules) : ''" :rules="\App\Offers\AudienceRules::of($offer)" inline class="mt-4"/>
                     </div>
                     <x-ui.sheet-foot>Вернуть в продажу</x-ui.sheet-foot>
                 </form>

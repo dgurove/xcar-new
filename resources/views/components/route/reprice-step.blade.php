@@ -109,17 +109,19 @@
                         </div>
                     @endif
                     @if ($flow->showsToAll())
+                        {{-- Пока думает — опубликована для других менеджеров (`PublishDeal`): кому и до когда, нажатие — шторка публикации. --}}
+                        @php $publishedTo = \App\Offers\AudienceRules::summary(\App\Offers\AudienceRules::forDeal($offer)); @endphp
                         <div class="step-who">
                             <span class="step-who-icon"><x-ui.icon name="users" class="size-4"/></span>
-                            <div class="min-w-0">
-                                <div>Все менеджеры</div>
-                                <div class="flex flex-wrap items-center gap-x-2 gap-y-1">
+                            <button type="button" class="min-w-0 text-left" data-controller="emit" data-action="emit#send" data-emit-event-param="deal-publish:open">
+                                <span class="block">{{ $publishedTo }}</span>
+                                <span class="flex flex-wrap items-center gap-x-2 gap-y-1">
                                     <x-ui.state tone="accent" class="nums">видят до {{ Ago::at($offer->deal_show_until, true, words: false) }}</x-ui.state>
                                     @if ($flow->reserves)<span class="tag nums">{{ $flow->reserves }} {{ \App\Support\Plural::of($flow->reserves, ['подтверждение', 'подтверждения', 'подтверждений']) }}</span>@endif
-                                </div>
-                            </div>
-                            <form method="post" action="/offers/{{ $n }}/show-all" class="step-who-acts" data-turbo-confirm="Убрать из предложений у всех менеджеров?" data-turbo-confirm-label="Снять показ">
-                                @csrf @method('delete')<button type="submit" class="btn btn-s btn-quiet shrink-0 !h-8 rounded-full !px-3.5">Снять показ</button>
+                                </span>
+                            </button>
+                            <form method="post" action="/offers/{{ $n }}/deal-publication" class="step-who-acts" data-turbo-confirm="{{ \App\Offers\Actions\PublishDeal::STOP_CONFIRM }}" data-turbo-confirm-text="{{ \App\Offers\Actions\PublishDeal::STOP_TEXT }}" data-turbo-confirm-label="Снять">
+                                @csrf @method('delete')<button type="submit" class="btn btn-s btn-quiet shrink-0 !h-8 rounded-full !px-3.5">Снять публикацию</button>
                             </form>
                         </div>
                     @endif

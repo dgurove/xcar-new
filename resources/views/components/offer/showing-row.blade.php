@@ -22,17 +22,6 @@
     $who = AudienceRules::summary($rules).($marks ? ', '.implode(', ', $marks) : '');
     // Срок обязывающего — чипом в шапке окна и страницы (`x-offer.binding aside`, 12.11.2026), здесь второй раз нет; поле — в шторке.
     $id = 'showing-'.$offer->number.'-'.$form;
-    // У сделки (03.11.2026, владелец: в окошке сделки «Показ» во весь рост читался непонятно) — сколько и кому показывают её.
-    if ($offer->state === \App\Offers\OfferState::Sold) {
-        $until = $offer->deal_show_until;
-        $when = 'Показ: '.($until ? ($offer->dealShowOver() ? 'закончился ' : 'до ').\App\Support\Ago::day($until, true) : 'пока идёт сделка');
-        $who = \App\Offers\DealAudience::summary($offer);
-        // Показ всем, пока менеджер сделки думает о новой закупочной (`ShowDealToAll`, 04.11.2026).
-        if ($offer->showsDealAsOpen()) {
-            $when = 'Показ всем менеджерам до '.\App\Support\Ago::day($until, true);
-            $who = 'пока менеджер сделки думает о закупочной';
-        }
-    }
 @endphp
 @if (auth()->user()->canManageCrm())
 <div class="contents" data-controller="sheet">

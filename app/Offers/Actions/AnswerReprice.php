@@ -31,12 +31,12 @@ use Illuminate\Validation\ValidationException;
  *   `refuseCounter` — снова его цена (`offered`), решаем заново, как у контрпредложения по подтверждению.
  * - `decline`: менеджер отказался или админ отказал — подтверждение снимается; сделка отменяется, как «Я передумал» —
  *   предложение снова в продаже (`ChangeOfferState` → `Open`, внутри `CancelDeal`); к продаже не готово — в черновики.
- *   Показывали всем, пока думал (`ShowDealToAll`, 04.11.2026), — приём до конца показа.
+ *   Показывали всем, пока думал (`PublishDeal`, 04.11.2026), — приём до конца показа.
  * Админам — что ответил менеджер (`RepriceAnsweredNotice`), менеджеру — что решили мы (`RepriceDecidedNotice`).
  */
 final class AnswerReprice
 {
-    public function __construct(private ApplyReprice $apply, private ChangeOfferState $state, private ShowDealToAll $showAll) {}
+    public function __construct(private ApplyReprice $apply, private ChangeOfferState $state, private PublishDeal $publish) {}
 
     /** Менеджер (или админ за него) назвал новую цену подтверждения. */
     public function offer(RepriceAsk $ask, int $price, User $by, bool $lowOk = false): RepriceAsk
@@ -148,10 +148,17 @@ final class AnswerReprice
                 $offer->log(OfferEventType::BidWithdrawn, $by, ['bid_id' => $ask->bid_id, 'reprice' => true]);
             } else {
                 // Не готово к продаже (нет фото, марки) — в черновики: сделку отменить важнее, чем выставить.
-                // Показывали всем, пока думал (04.11.2026), — приём идёт до конца показа, резервы — живые подтверждения.
-                $until = $offer->showsDealAsOpen() ? $offer->deal_show_until : null;
+                // Публиковали для других, пока думал (04.11.2026), — приём идёт до конца публикации и тем же людям (кого
+                // исключили, тот и в продаже не видит), резервы — живые подтверждения.
+                $published = $offer->showsDealAsOpen();
+                $until = $published ? $offer->deal_show_until : null;
                 try {
-                    DB::transaction(fn () => ($this->state)($offer, OfferState::Open, $by));
+                    DB::transaction(function () use ($offer, $by, $published) {
+                        if ($published && $offer->deal_audience_rules) {
+                            $offer->forceFill(['audience_rules' => $offer->deal_audience_rules])->save();
+                        }
+                        ($this->state)($offer, OfferState::Open, $by);
+                    });
                     $until && $offer->refresh()->update(['bids_close_at' => Binding::clampClose($offer, $until)]);
                 } catch (ValidationException) {
                     ($this->state)($offer->fresh(), OfferState::Draft, $by);
@@ -173,7 +180,7 @@ final class AnswerReprice
         $this->notBelowCost($ask, $price);
         $this->apply->updateDeal($ask->deal, $ask->to_price, $by, $price);
         // Показывали всем, пока думал (04.11.2026), — сошлись: машина сразу уходит из предложений.
-        $this->showAll->stop($offer, $by, 'Сошлись с менеджером по новой цене — показ всем снят');
+        $this->publish->stop($offer, $by, 'Сошлись с менеджером по новой цене, публикация для других снята');
         $this->close($ask, $offer, $by, RepriceAsk::AGREED, $forManager, $price);
     }
 

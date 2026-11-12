@@ -1233,14 +1233,8 @@ class OfferController
     {
         $data = $request->validate(['floor_price' => ['nullable', 'string', 'max:20'], 'publish_price' => ['nullable', 'string', 'max:20'],
             'asking_price' => ['required', 'string', 'max:20'], 'bids_close_at' => ['nullable', 'date', 'after:now'], 'audience_rules' => ['nullable', 'json'],
-            'stays' => ['nullable', 'boolean'], 'settlement_id' => ['nullable', 'integer', 'exists:settlements,id'], 'inspection_address' => ['nullable', 'string', 'max:500'],
-            // Плашка «Без подтверждений»: срок сегментом — 3 дня, неделя или свой день (`day`).
-            'term' => ['nullable', 'in:3,7,day'], 'day' => ['required_if:term,day', 'nullable', 'date', 'after:now']],
-            ['asking_price.required' => 'Укажите цену продажи', 'bids_close_at.after' => 'Срок приёма — позже, чем сейчас', 'day.after' => 'Срок показа — позже, чем сейчас',
-                'day.required_if' => 'Укажите, до когда показывать']);
-        if (filled($data['term'] ?? null)) {
-            $data['bids_close_at'] = self::termClose($offer, $data['term'], $data['day'] ?? null)->format('Y-m-d H:i:s');
-        }
+            'stays' => ['nullable', 'boolean'], 'settlement_id' => ['nullable', 'integer', 'exists:settlements,id'], 'inspection_address' => ['nullable', 'string', 'max:500']],
+            ['asking_price.required' => 'Укажите цену продажи', 'bids_close_at.after' => 'Срок приёма — позже, чем сейчас']);
         $money = fn (?string $v) => Money::rubles($v) ?: null;
         $prices = array_map($money, array_intersect_key($data, array_flip(['floor_price', 'publish_price', 'asking_price'])) + ['floor_price' => null, 'publish_price' => null]);
         PriceGuard::assertPrices($prices['asking_price'], $prices['floor_price'] ?? $offer->floor_price, $request->boolean('price_ok'));
@@ -1251,12 +1245,10 @@ class OfferController
         return redirect("/offers/{$offer->number}")->with('toast', 'В продаже № '.$offer->number)->with(self::gone($request, $offer));
     }
 
-    /** Срок приёма по сегменту плашки «Без подтверждений»: 3 дня и неделя — в час закрытия приёма, не позже обязывающего. */
-    public static function termClose(Offer $offer, string $term, ?string $day = null): Carbon
+    /** Срок приёма «вернуть пачкой» (3 дня или неделя) — в час закрытия приёма, не позже обязывающего. */
+    public static function termClose(Offer $offer, string $term): Carbon
     {
-        $at = $term === 'day' ? Carbon::parse($day) : Slots::closeFor(now(), (int) $term);
-
-        return $term === 'day' ? $at : Binding::clampClose($offer, $at);
+        return Binding::clampClose($offer, Slots::closeFor(now(), (int) $term));
     }
 
     /**

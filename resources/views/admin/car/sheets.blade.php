@@ -6,5 +6,5 @@
 @if ($publishItems && ! $publishButton)<x-offer.urgent-sheet :offer="$offer"/><x-offer.day-sheet :offer="$offer"/>@endif
 @if ($askMenu && $managers->isNotEmpty())<x-offer.estimate-ask :offer="$offer" :managers="$managers" :trigger="false"/>@endif
 @if ($giveMenu)<x-offer.give-sheet :offer="$offer"/>@endif
-@if ($admin && \App\Offers\Actions\ShowDealToAll::allows($offer) && ! $offer->showsDealAsOpen())<x-offer.show-all-sheet :offer="$offer"/>@endif
+@if ($admin && \App\Offers\Actions\PublishDeal::allows($offer))<x-offer.deal-publish-sheet :offer="$offer"/>@endif
 @if ($publishButton)@include('admin.offers.publish-sheet-slot')@endif

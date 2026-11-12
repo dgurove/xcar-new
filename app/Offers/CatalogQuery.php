@@ -67,8 +67,8 @@ final class CatalogQuery
                 ." (select v.opens_at from offer_viewers v where v.offer_id = offers.id and v.user_id = {$manager}))";
         }
         if ($user->hasRole(Role::Manager, Role::SuperBuyer)) {
-            // Показ всем, пока менеджер сделки думает о закупочной (04.11.2026), — как новая публикация.
-            return "greatest(offers.published_at, (select v.opens_at from offer_viewers v where v.offer_id = offers.id and v.user_id = {$id}), offers.deal_show_all_at)";
+            // Сделка, опубликованная для других (`PublishDeal`), — как новая публикация: его волна идёт от неё.
+            return "greatest(offers.published_at, (select v.opens_at from offer_viewers v where v.offer_id = offers.id and v.user_id = {$id}))";
         }
 
         return 'offers.published_at';

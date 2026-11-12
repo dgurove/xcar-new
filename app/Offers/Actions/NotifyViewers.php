@@ -5,6 +5,7 @@ namespace App\Offers\Actions;
 use App\Live\Publisher;
 use App\Live\Topics;
 use App\Notifications\BuyerWaitedNotice;
+use App\Notifications\DealOpenedNotice;
 use App\Notifications\GalleryInterestOnSaleNotice;
 use App\Notifications\OfferPublishedNotice;
 use App\Notifications\SlotPublishedNotice;
@@ -37,6 +38,9 @@ use Illuminate\Support\Facades\Notification;
  * каталоге). Остальное — пачкой после 5 минут тишины, без ленты (`NotifyNewOffers`, 16.10.2026) по отметке `notified_at`,
  * что ставится здесь. Адресное «вы отмечали интерес» остаётся, «ТС из закупки, где вы называли цену» — нет; покупателям
  * общей рассылки тоже нет.
+ *
+ * Машина в сделке, опубликованная для других менеджеров (`PublishDeal`, 12.11.2026), — те же волны: каждому, чья волна
+ * наступила, — «Новое предложение» (`DealOpenedNotice`), покупателям менеджеров — ничего (публикация сделки не для них).
  */
 final class NotifyViewers
 {
@@ -44,16 +48,23 @@ final class NotifyViewers
 
     public function __invoke(Offer $offer, bool $live = false): int
     {
-        if ($offer->state !== OfferState::Open) {
+        if ($offer->state !== OfferState::Open && ! $offer->showsDealAsOpen()) {
             return 0;
         }
-        $due = OfferViewer::where('offer_id', $offer->id)->whereNull('notified_at')->where('opens_at', '<=', now())->pluck('user_id')->all();
+        $due = OfferViewer::where('offer_id', $offer->id)->whereNull('notified_at')->where('opens_at', '<=', now())
+            // У публикации сделки строки продажи — история, не волна (`SyncViewers`).
+            ->when($offer->state === OfferState::Sold, fn ($q) => $q->where('opens_at', '>=', $offer->deal_published_at))->pluck('user_id')->all();
         if (! $due) {
             return 0;
         }
         OfferViewer::where('offer_id', $offer->id)->whereIn('user_id', $due)->update(['notified_at' => now()]);
         $managers = User::whereIn('id', $due)->get();
         $this->badges($managers);
+        if ($offer->state === OfferState::Sold) {
+            $this->dealOpened($offer, $managers);
+
+            return count($due);
+        }
         // Срочное — всем одно громкое «Срочно: …» (12.10.2026), без «из закупки» и «вы отмечали интерес».
         if ($offer->isUrgent()) {
             // Из других регионов (22.10.2026) — без звонка: в его каталоге машины по умолчанию нет.
@@ -87,9 +98,11 @@ final class NotifyViewers
     {
         // Отметка и выборка одним запросом: публикация «сейчас» в другом процессе не напишет второй раз.
         $rows = collect(DB::select(
-            'update offer_viewers set notified_at = ? where notified_at is null and opens_at <= ?
-                and offer_id in (select id from offers where state = ? and is_demo = false) returning offer_id, user_id, opens_at',
-            [now(), now(), OfferState::Open->value],
+            'update offer_viewers v set notified_at = ? where v.notified_at is null and v.opens_at <= ?
+                and exists (select 1 from offers o where o.id = v.offer_id and o.is_demo = false and (o.state = ? or (o.state = ?
+                    and o.deal_published_at is not null and v.opens_at >= o.deal_published_at
+                    and (o.deal_show_until is null or o.deal_show_until > ?)))) returning v.offer_id, v.user_id, v.opens_at',
+            [now(), now(), OfferState::Open->value, OfferState::Sold->value, now()],
         ));
         if ($rows->isEmpty()) {
             return 0;
@@ -105,6 +118,11 @@ final class NotifyViewers
             }
             $ids = $viewers->pluck('user_id')->all();
             self::logWave($offer, $viewers);
+            if ($offer->state === OfferState::Sold) {
+                $this->dealOpened($offer, $users->only($ids)->values());
+
+                continue;
+            }
             if ($offer->isUrgent()) {
                 $users->only($ids)->filter(fn (User $u) => $offer->regionOpenTo($u))->each(fn (User $u) => $u->notify(new UrgentOfferNotice($offer, $u)));
                 $this->publish->card($offer->number, Topics::CATALOG);
@@ -124,9 +142,17 @@ final class NotifyViewers
         foreach ($fresh as $id => $list) {
             $users->get($id)?->notify(count($list) === 1 ? new OfferPublishedNotice($list[0]) : new SlotPublishedNotice(count($list)));
         }
-        $this->buyers($rows->groupBy('offer_id')->map(fn ($v) => $v->pluck('user_id')->all())->all(), $offers);
+        $open = $offers->filter(fn (Offer $o) => $o->state === OfferState::Open);
+        $this->buyers($rows->whereIn('offer_id', $open->keys())->groupBy('offer_id')->map(fn ($v) => $v->pluck('user_id')->all())->all(), $open);
 
         return $rows->count();
+    }
+
+    /** Сделку опубликовали для других — тем, чья волна наступила, «Новое предложение»; карточка въезжает в каталог. */
+    private function dealOpened(Offer $offer, Collection $managers): void
+    {
+        Notification::send($managers, new DealOpenedNotice($offer));
+        $this->publish->card($offer->number, Topics::CATALOG);
     }
 
     /** Волна открылась — число не просмотренных на табе «Предложения» у этих людей растёт сразу (`Nav::badges`). */
@@ -194,15 +220,17 @@ final class NotifyViewers
      */
     private static function logWave(Offer $offer, $viewers): void
     {
-        if (! $offer->published_at) {
+        $deal = $offer->state === OfferState::Sold;
+        $base = $deal ? $offer->deal_published_at : $offer->published_at;
+        if (! $base) {
             return;
         }
-        foreach ($viewers->groupBy(fn ($v) => (int) round(($offer->published_at->diffInSeconds(Carbon::parse($v->opens_at), false)) / 60)) as $delay => $wave) {
+        foreach ($viewers->groupBy(fn ($v) => (int) round(($base->diffInSeconds(Carbon::parse($v->opens_at), false)) / 60)) as $delay => $wave) {
             if ($delay < 1) {
                 continue;
             }
             $offer->log(OfferEventType::Wave, null, array_filter([
-                'who' => AudienceRules::waveNames(AudienceRules::of($offer), $delay) ?: null,
+                'who' => AudienceRules::waveNames($deal ? AudienceRules::forDeal($offer) : AudienceRules::of($offer), $delay) ?: null,
                 'after' => AudienceRules::when($delay),
                 'count' => $wave->count(),
             ]));

@@ -127,7 +127,6 @@ class VendorController
             'base' => "/settings/vendors/{$vendor->id}",
             // Ссылка на парковочную карточку — только тем, кого туда пустят.
             'park' => $request->user()->canAccess(Section::Park) ? Surface::Park->url("/vendors/{$vendor->id}") : null,
-            'audienceOptions' => AudienceRules::options(),
             'accounts' => Account::where('scope', Scope::Offers)->sending()->orderBy('title')->get()->mapWithKeys(fn ($a) => [$a->id => $a->title.' ('.$a->email.')']),
         ];
 

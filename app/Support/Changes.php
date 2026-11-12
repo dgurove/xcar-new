@@ -48,7 +48,9 @@ final class Changes
                 $now = $model->getAttribute($key);
                 $changes[$key] = match (true) {
                     // «Кому показывать» — словами шторки: «Роман Корабельников сразу, остальные через 5 дней» (07.11.2026).
-                    $key === 'audience_rules' => [$model->exists ? AudienceRules::summary((array) $was) : null, AudienceRules::summary((array) $now)],
+                    // Пусто — как у вендора (`AudienceRules::own`): словами его волн, а не «всем сразу».
+                    $key === 'audience_rules' => [$model->exists ? AudienceRules::summary((array) ($was ?: $model->vendor?->audience_rules)) : null,
+                        AudienceRules::summary((array) ($now ?: $model->vendor?->audience_rules))],
                     in_array($key, self::TEXT, true) => [null, filled($now) ? '«'.Str::limit(trim(preg_replace('/\s+/u', ' ', (string) $now)), self::EXCERPT).'»' : null],
                     default => [self::raw($was), self::raw($now)],
                 };

@@ -386,7 +386,7 @@ class RepriceTest extends TestCase
         app(UpdateOffer::class)($this->offer->fresh(), ['floor_price' => 650000], $this->admin);
         $this->assertFalse(Offer::dealOpenTo($this->denis)->exists());
 
-        app(ApplyReprice::class)($this->offer->fresh()->pendingReprice, $this->admin, 650000, [], 'ask', ['asking_price' => 1100000], showDays: 7);
+        app(ApplyReprice::class)($this->offer->fresh()->pendingReprice, $this->admin, 650000, [], 'ask', ['asking_price' => 1100000], publish: ['rules' => [], 'until' => now()->addDays(7)]);
         $offer = $this->offer->fresh();
         $this->assertTrue($offer->showsDealAsOpen());
         $this->assertSame(1100000, $offer->asking_price);
@@ -397,8 +397,8 @@ class RepriceTest extends TestCase
         // Денис подтверждает — резервом к идущей сделке.
         $reserve = app(PlaceBid::class)($offer, $this->denis, 1120000);
         $this->assertSame(BidState::Active, $reserve->state);
-        // «Показ» из старой вкладки («Никому», «Пока идёт сделка») показ всем не затирает.
-        app(UpdateOffer::class)($offer->fresh(), ['deal_audience_users' => [], 'deal_audience_groups' => [], 'deal_show_until' => null], $this->admin);
+        // Сохранение карточки публикацию не трогает: у неё своя шторка.
+        app(UpdateOffer::class)($offer->fresh(), ['description' => 'Без вмятин'], $this->admin);
         $this->assertTrue($this->offer->fresh()->showsDealAsOpen());
 
         // Роман назвал цену — показ ещё идёт; приняли — машины в предложениях больше нет, резерв жив.
@@ -419,7 +419,7 @@ class RepriceTest extends TestCase
         $this->offer->addMedia(\Illuminate\Http\UploadedFile::fake()->image('a.jpg', 800, 600))->toMediaCollection('photos');
         $deal = app(AcceptBid::class)(app(PlaceBid::class)($this->offer, $this->roman, 1050000), $this->admin, 20000, CommissionMode::Payout, scheme: DealScheme::Insurer);
         app(UpdateOffer::class)($this->offer->fresh(), ['floor_price' => 650000], $this->admin);
-        app(ApplyReprice::class)($this->offer->fresh()->pendingReprice, $this->admin, 650000, [], 'ask', showDays: 3);
+        app(ApplyReprice::class)($this->offer->fresh()->pendingReprice, $this->admin, 650000, [], 'ask', publish: ['rules' => [], 'until' => now()->addDays(3)]);
         $until = $this->offer->fresh()->deal_show_until;
 
         app(AnswerReprice::class)->decline(RepriceAsk::where('deal_id', $deal->id)->sole(), $this->roman);
@@ -427,7 +427,7 @@ class RepriceTest extends TestCase
         $this->assertSame(DealState::Cancelled, $deal->fresh()->state);
         $this->assertSame(OfferState::Open, $offer->state);
         $this->assertSame($until->timestamp, $offer->bids_close_at->timestamp);
-        $this->assertNull($offer->deal_show_all_at);
+        $this->assertNull($offer->deal_published_at);
     }
 
     public function test_accepting_bid_with_open_question_moves_it_to_deal(): void

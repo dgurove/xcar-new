@@ -38,19 +38,19 @@ final class ApplyReprice
 
     public const ASK = 'ask';
 
-    public function __construct(private UpdateOffer $update, private SyncDealInvoices $invoices, private ShowDealToAll $showAll) {}
+    public function __construct(private UpdateOffer $update, private SyncDealInvoices $invoices, private PublishDeal $publish) {}
 
     /**
      * @param  array<int|string, string>  $bids  id подтверждения → keep | update | ask
      * @param  array{publish_price?: ?int, asking_price?: ?int}  $prices
-     * @param  ?int  $showDays  по сделке «Спросить» — пока менеджер думает, показать машину всем менеджерам столько дней
-     *                          (`ShowDealToAll`, 04.11.2026); null — не показывать
+     * @param  ?array{rules: array, until: \Carbon\CarbonInterface}  $publish  по сделке «Спросить» — пока менеджер думает,
+     *                          опубликовать машину для других менеджеров (`PublishDeal`, 04.11.2026): кому и до когда; null — нет
      */
-    public function __invoke(Reprice $reprice, User $by, int $price, array $bids, ?string $deal, array $prices = [], ?int $showDays = null): void
+    public function __invoke(Reprice $reprice, User $by, int $price, array $bids, ?string $deal, array $prices = [], ?array $publish = null): void
     {
         $notify = [];
         $show = null;
-        DB::transaction(function () use ($reprice, $by, $price, $bids, $deal, $prices, $showDays, &$notify, &$show) {
+        DB::transaction(function () use ($reprice, $by, $price, $bids, $deal, $prices, $publish, &$notify, &$show) {
             $reprice = Reprice::whereKey($reprice->id)->lockForUpdate()->firstOrFail();
             $offer = Offer::whereKey($reprice->offer_id)->lockForUpdate()->firstOrFail();
             if (! $reprice->isPending()) {
@@ -95,7 +95,7 @@ final class ApplyReprice
                 if ($choices['deal'] !== self::KEEP && $dealWas !== $price) {
                     if ($choices['deal'] === self::ASK && ($ask = $this->ask($reprice, $offer, $liveDeal, $dealWas, $price, $asking))) {
                         $notify[] = $ask;
-                        $show = $showDays ? $offer : null;
+                        $show = $publish ? $offer : null;
                         $people[] = 'сделка '.($liveDeal->buyer?->shortName() ?? '').' — спросили: '.Money::plain($dealWas, sign: false).' → '.Money::plain($price);
                     } else {
                         $this->updateDeal($liveDeal, $price, $by);
@@ -112,7 +112,7 @@ final class ApplyReprice
         foreach ($notify as $ask) {
             $ask->user->notify(new RepriceAskNotice($ask->load(['offer', 'deal'])));
         }
-        $show && $this->showAll->start($show->fresh(), $showDays, $by);
+        $show && ($this->publish)($show->fresh(), $publish['rules'], $publish['until'], $by, 'Опубликовано для других, пока менеджер сделки думает');
     }
 
     /**

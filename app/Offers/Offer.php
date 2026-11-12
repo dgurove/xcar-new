@@ -63,7 +63,7 @@ use Illuminate\Support\Facades\DB;
     'asking_price', 'min_bid_price', 'min_bid_share', 'prices_include_vat', 'tags', 'tag_colors', 'bids_close_at', 'sort_weight',
     'chat_enabled', 'share_locked', 'share_locked_by_estimate', 'audience_rules', 'recommended', 'vendor_id', 'claim_ref', 'insurer_deadline_at', 'car_place',
     'answer_by', 'insured_name', 'insured_phone', 'insured_phone2', 'flags', 'holder', 'docs_required', 'contact_name', 'contact_email',
-    'garage_allowed', 'deal_show_until', 'deal_show_all_at', 'binding_until', 'held_by', 'plate', 'sts', 'pts', 'body_no', 'chassis_no', 'policy_no', 'vehicle_category', 'first_look_until', 'first_look_user_id', 'floor_rules',
+    'garage_allowed', 'deal_show_until', 'deal_published_at', 'deal_audience_rules', 'binding_until', 'held_by', 'plate', 'sts', 'pts', 'body_no', 'chassis_no', 'policy_no', 'vehicle_category', 'first_look_until', 'first_look_user_id', 'floor_rules',
 ])]
 class Offer extends Model
 {
@@ -229,7 +229,8 @@ class Offer extends Model
             'intake_closed_at' => 'datetime',
             'no_bids_alerted_for' => 'datetime',
             'deal_show_until' => 'datetime',
-            'deal_show_all_at' => 'datetime',
+            'deal_published_at' => 'datetime',
+            'deal_audience_rules' => 'array',
             'binding_until' => 'datetime',
             'binding_alerted_for' => 'datetime',
             'slot_at' => 'datetime',
@@ -452,15 +453,25 @@ class Offer extends Model
      */
     public function scopeOnlyFor(Builder $q, User $user): Builder
     {
-        return $q->whereHas('viewers', fn ($v) => $v->where('user_id', $user->id)->where('opens_at', '<=', now()))
-            ->whereDoesntHave('viewers', fn ($v) => $v->where('user_id', '!=', $user->id)->where('opens_at', '<=', now()));
+        return $q->whereHas('viewers', fn ($v) => self::liveViewer($v)->where('user_id', $user->id))
+            ->whereDoesntHave('viewers', fn ($v) => self::liveViewer($v)->where('user_id', '!=', $user->id));
     }
 
     /** Всё, кроме открытого только ему (`scopeOnlyFor`): основной список, когда «Открыты только Вам» стоит своей пачкой. */
     public function scopeNotOnlyFor(Builder $q, User $user): Builder
     {
-        return $q->where(fn ($w) => $w->whereDoesntHave('viewers', fn ($v) => $v->where('user_id', $user->id)->where('opens_at', '<=', now()))
-            ->orWhereHas('viewers', fn ($v) => $v->where('user_id', '!=', $user->id)->where('opens_at', '<=', now())));
+        return $q->where(fn ($w) => $w->whereDoesntHave('viewers', fn ($v) => self::liveViewer($v)->where('user_id', $user->id))
+            ->orWhereHas('viewers', fn ($v) => self::liveViewer($v)->where('user_id', '!=', $user->id)));
+    }
+
+    /**
+     * Строка показа, что открывает машину сейчас: волна наступила, а у сделки, опубликованной для других, — волна этой
+     * публикации (строки продажи остаются историей показа, `SyncViewers`).
+     */
+    private static function liveViewer($v)
+    {
+        return $v->where('opens_at', '<=', now())
+            ->where(fn ($w) => $w->whereRaw("offers.state <> 'sold'")->orWhereColumn('offer_viewers.opens_at', '>=', 'offers.deal_published_at'));
     }
 
     public function interests(): HasMany
@@ -666,64 +677,46 @@ class Offer extends Model
     }
 
     /**
-     * Белый список «Кому показывать в сделке»: менеджеры и группы, которым предложение в сделке видно в каталоге обычным
-     * предложением (DealAudience; о сделке ни слова — 05.11.2026). Пусто — никому.
-     */
-    public function dealAudience(): HasMany
-    {
-        return $this->hasMany(OfferDealAudience::class);
-    }
-
-    /**
-     * Видит ли человек сделку как предложение: идёт сделка и он в белом списке
-     * (сам или через группу). Участники сделки видят её своими дверями, не этой.
+     * Видит ли человек сделку как предложение: машину в сделке опубликовали для других менеджеров (`PublishDeal`) и его волна
+     * наступила (`offer_viewers`, те же правила «кто → когда», что у открытого). Участники сделки видят её своими дверями.
      */
     public function seesDeal(?User $user): bool
     {
-        if (! $user || $this->state !== OfferState::Sold) {
+        if (! $user || ! $user->hasRole(Role::Manager) || ! $this->showsDealAsOpen()) {
             return false;
         }
-        // Страница дёргает это несколько раз (кнопка, плашка, шторка) — связи грузятся раз.
-        $this->loadMissing(['deal', 'dealAudience']);
-        if (! $this->deal || $this->dealShowOver()) {
-            return false;
-        }
-
-        return ($this->deal_show_all_at && $user->hasRole(Role::Manager)) || DealAudience::visibleTo($this, $user);
+        // Строки продажи (до публикации) — история показа, не дверь: видит тот, чья волна публикации наступила.
+        return $this->viewers()->where('user_id', $user->id)->where('opens_at', '<=', now())->where('opens_at', '>=', $this->deal_published_at)->exists();
     }
 
     /**
-     * Показ всем менеджерам, пока менеджер сделки думает о новой закупочной (04.11.2026, `ApplyReprice`): им это обычное
-     * предложение — срок приёма до конца показа (`closesAt`), о сделке ни слова, подтверждение встаёт резервом.
+     * Машину в сделке (и гаражную, пока не привезли) опубликовали для других менеджеров и срок не вышел (`PublishDeal`): им
+     * это обычное предложение (05.11.2026, владелец: «визуально нигде ничем не отличается от других»), срок приёма — конец
+     * публикации (`closesAt`), подтверждение встаёт резервом.
      */
     public function showsDealAsOpen(): bool
     {
-        return $this->state === OfferState::Sold && $this->deal_show_all_at !== null && $this->deal_show_until?->isFuture() === true;
+        return $this->state === OfferState::Sold && $this->deal_published_at !== null
+            && ($this->deal_show_until === null || $this->deal_show_until->isFuture());
     }
 
     /**
-     * До когда идёт приём для витрины. Сделку, что показывают менеджеру, он видит обычным предложением (05.11.2026,
-     * владелец: «визуально нигде ничем не отличается от других»): показ всем — до конца показа; иначе — срок приёма, пока
-     * он впереди (резерв того, кого обошли до срока), дальше — «Сколько показывать» белого списка, пусто — без срока.
-     * Близнец запросом — `closesAtSql`.
+     * До когда идёт приём для витрины. Опубликованную сделку менеджер видит обычным предложением: до конца публикации; иначе
+     * (резерв того, кого обошли до срока) — срок приёма. Близнец запросом — `closesAtSql`.
      */
     public function closesAt(): ?Carbon
     {
         if ($this->state !== OfferState::Sold) {
             return $this->bids_close_at;
         }
-        if ($this->deal_show_all_at) {
-            return $this->deal_show_until;
-        }
 
-        return $this->bids_close_at?->isFuture() ? $this->bids_close_at : $this->deal_show_until;
+        return $this->deal_published_at ? $this->deal_show_until : $this->bids_close_at;
     }
 
     /** `closesAt` запросом: пачки и сортировки каталога. */
     public static function closesAtSql(): string
     {
-        return "(case when offers.state = 'sold' then case when offers.deal_show_all_at is not null then offers.deal_show_until"
-            .' when offers.bids_close_at > now() then offers.bids_close_at else offers.deal_show_until end else offers.bids_close_at end)';
+        return "(case when offers.state = 'sold' and offers.deal_published_at is not null then offers.deal_show_until else offers.bids_close_at end)";
     }
 
     /** Приём для этого человека идёт: открыт всем или машину в сделке показывают ему. */
@@ -732,13 +725,7 @@ class Offer extends Model
         return $this->bidsOpen() || $this->canBidInDeal($user);
     }
 
-    /** «Сколько показывать» сделку прошло (`deal_show_until`): список остаётся, но его никто не видит. Пусто — пока идёт сделка. */
-    public function dealShowOver(): bool
-    {
-        return $this->deal_show_until !== null && ! $this->deal_show_until->isFuture();
-    }
-
-    /** Может подтвердить в сделке резервом: идёт сделка и менеджер в белом списке. */
+    /** Может подтвердить в сделке резервом: сделку опубликовали для других и ему она открыта. */
     public function canBidInDeal(?User $user): bool
     {
         return ($user?->bidsOnSite() ?? false) && $this->seesDeal($user);
@@ -820,14 +807,16 @@ class Offer extends Model
                 $w->orWhere(fn ($m) => $m->where('state', OfferState::Open)
                     ->whereHas('viewers', fn ($v) => $v->where('user_id', $user->id)->where('opens_at', '<=', now())));
             }
-            // Сделка, открытая менеджеру белым списком: видна в предложениях обычным предложением.
+            // Сделка, опубликованная для других менеджеров (`PublishDeal`): видна в предложениях обычным предложением.
             if ($user->hasRole(Role::Manager)) {
                 $w->orWhere(fn ($m) => $m->dealOpenTo($user));
             }
             // Проверяющий: открытые, которые всем сразу и без исключений; без показов и менеджера.
             if ($user->hasRole(Role::Reviewer)) {
                 $any = true;
-                $w->orWhere(fn ($m) => $m->where('state', OfferState::Open)->where(fn ($r) => $r->whereNull('audience_rules')
+                // Свои пусты — значит, как у вендора: «всем сразу», только если и у вендора волн нет.
+                $w->orWhere(fn ($m) => $m->where('state', OfferState::Open)->where(fn ($r) => $r->where(fn ($n) => $n->whereNull('audience_rules')
+                    ->where(fn ($v) => $v->whereNull('vendor_id')->orWhereHas('vendor', fn ($x) => $x->whereNull('audience_rules'))))
                     ->orWhereRaw("audience_rules = '[{\"id\": null, \"type\": \"rest\", \"delay\": 0}]'::jsonb")));
             }
             if ($user->hasRole(Role::Buyer)) {
@@ -859,21 +848,19 @@ class Offer extends Model
     }
 
     /**
-     * Сделка, открытая менеджеру: идёт сделка и он в белом списке «Кому показывать
-     * в сделке» — сам или через группу. Та же дверь, что `seesDeal`, но запросом.
+     * Сделка, открытая менеджеру: опубликована для других, срок не вышел и его волна наступила. Та же дверь, что `seesDeal`,
+     * но запросом.
      */
     public function scopeDealOpenTo(Builder $q, ?User $user): Builder
     {
         if (! $user || ! $user->hasRole(Role::Manager)) {
             return $q->whereRaw('false');
         }
-        $groups = $user->userGroupIds();
 
-        return $q->where('state', OfferState::Sold)->whereHas('deal')
+        return $q->where('state', OfferState::Sold)->whereHas('deal')->whereNotNull('deal_published_at')
             ->where(fn ($w) => $w->whereNull('deal_show_until')->orWhere('deal_show_until', '>', now()))
-            ->where(fn ($w) => $w->whereNotNull('deal_show_all_at')
-                ->orWhereHas('dealAudience', fn ($a) => $a->where('audience_type', DealAudience::USER)->where('audience_id', $user->id))
-                ->orWhere(fn ($g) => $g->whereHas('dealAudience', fn ($a) => $a->where('audience_type', DealAudience::GROUP)->whereIn('audience_id', $groups ?: [0]))));
+            ->whereHas('viewers', fn ($v) => $v->where('user_id', $user->id)->where('opens_at', '<=', now())
+                ->whereColumn('offer_viewers.opens_at', '>=', 'offers.deal_published_at'));
     }
 
     /**

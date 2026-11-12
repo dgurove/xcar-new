@@ -99,7 +99,7 @@ final class ReturnToSale
                 unset($data['floor_price']);
             }
             if ($audience !== null) {
-                $data['audience_rules'] = AudienceRules::normalize($audience) ?: null;
+                $data['audience_rules'] = AudienceRules::own($audience, $offer->vendor);
             }
             if ($holder) {
                 $data += array_intersect_key($where, array_flip(['settlement_id', 'inspection_address']));

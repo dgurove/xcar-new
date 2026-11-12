@@ -5,7 +5,7 @@ namespace App\Http\Admin;
 use App\Offers\Actions\AnswerReprice;
 use App\Offers\Actions\ApplyReprice;
 use App\Offers\Actions\DismissReprice;
-use App\Offers\Actions\ShowDealToAll;
+use App\Offers\Actions\PublishDeal;
 use App\Offers\Offer;
 use App\Offers\OfferEventType;
 use App\Offers\OfferState;
@@ -14,6 +14,7 @@ use App\Offers\Reprice;
 use App\Offers\RepriceAsk;
 use App\Support\Money;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
@@ -32,8 +33,9 @@ class RepriceController
             'bids.*' => [Rule::in([ApplyReprice::KEEP, ApplyReprice::UPDATE, ApplyReprice::ASK])],
             'deal' => ['nullable', Rule::in([ApplyReprice::KEEP, ApplyReprice::UPDATE, ApplyReprice::ASK])],
             'show_all' => ['boolean'],
-            'show_days' => ['nullable', 'integer', Rule::in(ShowDealToAll::DAYS)],
-        ], ['price.required' => 'Новая закупочная']);
+            'show_until' => ['nullable', 'date', 'after:now'],
+            'audience_rules' => ['nullable', 'json'],
+        ], ['price.required' => 'Новая закупочная', 'show_until.after' => 'Срок публикации уже прошёл']);
         // Цена продажи — в любом состоянии (04.11.2026, владелец: «старая цена продажи ниже новой закупочной»): в сделке по
         // ней машину увидят все, если показывать, пока менеджер думает.
         $prices = array_filter(array_intersect_key($data, array_flip(['asking_price'])));
@@ -41,8 +43,20 @@ class RepriceController
         if ($offer->state === OfferState::Open) {
             PriceGuard::assertPrices($prices['asking_price'] ?? $offer->asking_price, $data['price'], $request->boolean('price_ok'));
         }
-        $showDays = ($data['deal'] ?? null) === ApplyReprice::ASK && $request->boolean('show_all') ? (int) ($data['show_days'] ?? 7) : null;
-        $apply($reprice, $request->user(), $data['price'], $data['bids'] ?? [], $data['deal'] ?? null, $prices, $showDays);
+        // Пока менеджер сделки думает — опубликовать для других (`PublishDeal`): тот же срок и «Кому», что в шторке публикации.
+        $publish = null;
+        if (($data['deal'] ?? null) === ApplyReprice::ASK && $request->boolean('show_all')) {
+            $until = filled($data['show_until'] ?? null) ? Carbon::parse($data['show_until']) : \App\Offers\Binding::clampClose($offer, \App\Offers\Slots::closeFor(now(), 7));
+            if ($error = \App\Offers\Binding::closeError($offer, $until)) {
+                throw ValidationException::withMessages(['show_until' => $error]);
+            }
+            $publish = ['rules' => json_decode((string) ($data['audience_rules'] ?? ''), true) ?: [], 'until' => $until];
+            // До переоценки, а не после: публикация идёт вслед за ней, и «никому» не должно оставить переоценку применённой наполовину.
+            if (\App\Offers\AudienceRules::nobody($publish['rules'] ?: \App\Offers\AudienceRules::everyone())) {
+                throw ValidationException::withMessages(['audience_rules' => 'Выберите, кому показывать']);
+            }
+        }
+        $apply($reprice, $request->user(), $data['price'], $data['bids'] ?? [], $data['deal'] ?? null, $prices, $publish);
 
         return back(fallback: "/offers/{$offer->number}")->with('toast', 'Переоценка применена');
     }
@@ -82,33 +96,31 @@ class RepriceController
     }
 
     /**
-     * «Опубликовать для других менеджеров…» из «⋯» идущей сделки (12.11.2026, владелец: машина в сделке у менеджера, а
-     * начальник хочет показать её остальным): срок приёма — до конца показа, не позже обязывающего.
+     * «Опубликовать для других менеджеров» из «⋯» идущей сделки и гаражной (12.11.2026, владелец: машина в сделке у менеджера,
+     * а начальник хочет показать её остальным; потом — «всем, кроме»): кому — правила «кто → когда», как волны предложения,
+     * и срок приёма, не позже обязывающего. Идёт — та же шторка правит кому и срок (`PublishDeal`).
      */
-    public function startShow(Request $request, Offer $offer, ShowDealToAll $show)
+    public function publish(Request $request, Offer $offer, PublishDeal $publish)
     {
-        $data = $request->validate(['until' => ['required', 'date', 'after:now']],
+        $data = $request->validate(['until' => ['required', 'date', 'after:now'], 'audience_rules' => ['nullable', 'json']],
             ['until.required' => 'До когда', 'until.after' => 'Срок уже прошёл']);
-        $until = \Illuminate\Support\Carbon::parse($data['until']);
+        $until = Carbon::parse($data['until']);
         $offer->loadMissing('deal');
-        if (! ShowDealToAll::allows($offer)) {
+        if (! PublishDeal::allows($offer)) {
             throw ValidationException::withMessages(['until' => 'Опубликовать так можно только машину в идущей сделке']);
         }
         if ($error = \App\Offers\Binding::closeError($offer, $until)) {
             throw ValidationException::withMessages(['until' => $error]);
         }
-        // Показ уже идёт — новый срок вместо прежнего; кончившийся или не начатый «продлённым» в «Истории» не называем.
-        if ($offer->showsDealAsOpen()) {
-            $show->stop($offer, $request->user(), 'Показ другим менеджерам продлён');
-        }
-        $show->start($offer->refresh(), $until, $request->user());
+        $running = $offer->showsDealAsOpen();
+        $publish($offer, json_decode((string) ($data['audience_rules'] ?? ''), true) ?: [], $until, $request->user());
 
-        return back(fallback: "/offers/{$offer->number}")->with('toast', 'Опубликовано для других менеджеров до '.\App\Support\Ago::at($until, true, words: false));
+        return back(fallback: "/offers/{$offer->number}")->with('toast', $running ? 'Публикация изменена' : 'Опубликовано для других менеджеров до '.\App\Support\Ago::at($until, true, words: false));
     }
 
-    public function stopShow(Request $request, Offer $offer, ShowDealToAll $show)
+    public function unpublish(Request $request, Offer $offer, PublishDeal $publish)
     {
-        $show->stop($offer, $request->user());
+        $publish->stop($offer, $request->user());
 
         return back(fallback: "/offers/{$offer->number}")->with('toast', 'Публикация для других менеджеров снята');
     }

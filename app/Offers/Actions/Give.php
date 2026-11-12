@@ -92,8 +92,8 @@ final class Give
                     BidDeclined::dispatch($previous->bid->refresh(), $by);
                 }
                 $offer->unsetRelation('deal');
-                // Публиковали для других поверх прежней сделки (`ShowDealToAll`) — выбрали, кому отдать: публикация снята.
-                app(ShowDealToAll::class)->stop($offer, $by, 'Отдали другому менеджеру — публикация для других снята');
+                // Публиковали для других поверх прежней сделки (`PublishDeal`) — выбрали, кому отдать: публикация снята.
+                app(PublishDeal::class)->stop($offer, $by, 'Отдали другому менеджеру, публикация для других снята');
             }
             $bid?->update(['state' => BidState::Accepted, 'decided_at' => now(), 'decided_by' => $by->id]);
 

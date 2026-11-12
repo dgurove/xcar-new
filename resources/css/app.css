@@ -722,9 +722,6 @@ html.kb-open { --home-gap: 0px; }
   .publish-choice:has(input[value="day"]:checked) [data-when="day"] { display: inline; }
   .publish-choice .publish-day { display: none; }
   .publish-choice:has(input[value="day"]:checked) .publish-day { display: block; }
-  /* «Без подтверждений» (06.11.2026): поле даты приёма — только при «До даты»; остальное сегментом. */
-  .unsold-term .unsold-day { display: none; }
-  .unsold-term:has(input[value="day"]:checked) .unsold-day { display: block; }
   /* «Срочно» (12.10.2026): поле «Приём до» — только когда выбрано, кнопка — огнём. */
   .btn-fire { background: var(--color-fire); color: #fff; }
   .pill-fire { gap: .25rem; background: var(--color-fire-soft); color: #d93a0b; }
@@ -764,10 +761,33 @@ html.kb-open { --home-gap: 0px; }
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%239a9a9a' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='m9 6 6 6-6 6'/%3E%3C/svg%3E");
     background-repeat: no-repeat; background-position: right center; background-size: 1rem; }
   .row-select:focus-visible { @apply text-ink; }
-  .audience-row { @apply cursor-pointer; }
-  /* Кнопка, под которой лежит системный выбор: нажатие открывает список, сама кнопка — только вид. */
-  .add-select { @apply relative inline-flex cursor-pointer items-center gap-1.5; }
-  .add-select select { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; font-size: 16px; }
+  /* «Кому показывать» (`x-audience.editor`, 12.11.2026): сегмент «Всем | Всем, кроме | Выбранным», ниже — кого не показывать
+     чипами, строки со временем (выбранные, волны, «Остальные»), список выбора с поиском прямо в окне. */
+  .audience-field { @apply flex flex-col gap-2; }
+  .audience { @apply flex flex-col gap-3; }
+  .audience .segment label { @apply whitespace-nowrap px-2; }
+  /* Переоценка «Спросить»: срок и «Кому» публикации — только с галкой «Пока думает — опубликовать». */
+  .reprice-publish:not(:has(input[name="show_all"]:checked)) .reprice-publish-fields { display: none; }
+  .audience-body { @apply flex flex-col gap-3; }
+  .audience-block { @apply flex flex-col gap-2; }
+  .audience-head { @apply text-sm text-ink-muted; }
+  .audience-chips { @apply flex flex-wrap gap-1.5; }
+  .audience-chip, .audience-add { @apply min-h-8 gap-1.5 rounded-full px-3 text-sm; }
+  .audience-chip > svg { @apply -mr-1 text-ink-dim; }
+  .audience-add { @apply self-start bg-transparent text-accent-text; box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--color-ink) 16%, transparent); }
+  .audience-add[aria-expanded="true"] { background: var(--color-surface-3); }
+  /* «+ Волна» — тихо: волны нужны редко, «Всем сразу» не должно выглядеть недоделанным. */
+  .audience-more { @apply inline-flex items-center gap-1 self-start text-sm text-ink-muted; }
+  .audience-more[aria-expanded="true"], .audience-more:hover { @apply text-ink; }
+  .audience-list .row { @apply min-h-12 gap-2; }
+  /* Ширина выбора времени — по выбранному («Сразу»), а не по самому длинному пункту: иначе имя обрезалось. */
+  .audience-list .row-select { field-sizing: content; }
+  .audience-x { @apply -mr-1 grid size-8 shrink-0 place-items-center rounded-full text-ink-dim; }
+  @media (hover: hover) { .audience-x:hover, .audience-chip:hover { @apply text-ink; } }
+  .audience-pick { @apply flex flex-col gap-2 rounded-(--radius-l) bg-surface-2 p-2; }
+  .dark .audience-pick { background: var(--color-surface-3); }
+  .audience-pick-head { @apply sticky top-0 z-[1] flex items-center gap-2 px-1 pt-1; }
+  .audience-pick .list { max-height: 22rem; overflow-y: auto; overscroll-behavior: contain; }
   .pill[aria-pressed="true"] { background: var(--color-chrome); color: #fff; }
   .dark .pill[aria-pressed="true"] { background: #fff; color: var(--color-chrome); }
 
@@ -2251,6 +2271,10 @@ html.kb-open { --home-gap: 0px; }
   .date-quick > .chip { @apply whitespace-nowrap px-3 py-1.5; }
   .date-quick--inline { margin: 0; flex-basis: 100%; }
   .date-field > .date-quick--inline { margin-top: .5rem; }
+  /* В строке `.fields` (срок приёма с «3 дня», «Неделя», 12.11.2026) — подсказки строкой под полем во всю ширину, справа. */
+  .fields .close-field > .date-field { display: contents; }
+  .fields .close-field > .date-field > .date-input { grid-column: 2; }
+  .fields .close-field > .date-field > .date-quick--inline { grid-column: 1 / -1; justify-content: flex-end; margin: 0 0 .625rem; }
   /* Свою переменную `--color-accent` Cally держит на `calendar-month` (чёрная по умолчанию) — даём ей лайм через `--date-accent`: напрямую
      `var(--color-accent)` ссылалась бы сама на себя. */
   .date-cal { display: block; width: 100%; --date-accent: var(--color-accent); }
