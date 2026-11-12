@@ -8,7 +8,7 @@
      свои `deals.amount` и `deals.cost`, закупочная тут не правится. У гаражной цены продажи часто нет — без неё не публикуем. --}}
 @props(['offer'])
 @php
-    use App\Offers\{AudienceRules, Binding, Offer, Slots};
+    use App\Offers\{AudienceRules, Binding, Slots};
     use App\Offers\Actions\PublishDeal;
     use App\Support\Money;
     $n = $offer->number;
@@ -21,8 +21,7 @@
         <form method="post" action="/offers/{{ $n }}/deal-publication" class="flex flex-col gap-4" id="deal-publish-form-{{ $n }}" data-price-guard="whole" data-price-guard-offer="{{ $n }}">
             @csrf
             <div class="grid grid-cols-2 gap-2">
-                <x-ui.field name="publish_price" label="Заявленная, ₽" :id="'deal-publish-declared-'.$n" :value="$offer->publish_price ? Money::nums($offer->publish_price) : null"
-                    :placeholder="$offer->floor_price ? Money::nums(Offer::declaredFrom($offer->floor_price)) : null"/>
+                <x-ui.field name="publish_price" label="Заявленная, ₽" :id="'deal-publish-declared-'.$n" :value="$offer->declaredPrice() ? Money::nums($offer->declaredPrice()) : null"/>
                 <x-ui.field name="asking_price" label="Цена продажи, ₽" :id="'deal-publish-asking-'.$n" :value="$offer->asking_price ? Money::nums($offer->asking_price) : null" required/>
             </div>
             <div class="fields">

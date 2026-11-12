@@ -120,7 +120,13 @@ class RepriceController
         // Цены — предложения, не сделки (12.11.2026, начальник): их видят те, кому публикуем; сделку держат `deals.amount` и
         // `deals.cost`. Закупочная не правится — значит, и переоценки нет. Под вопросом против закупочной — «Точно?».
         PriceGuard::assertPrices($data['asking_price'], $offer->floor_price, $request->boolean('price_ok'));
-        $prices = array_filter(['publish_price' => $data['publish_price'] ?? null, 'asking_price' => $data['asking_price']],
+        // Заявленная стоит в поле числом (серая подсказка читалась как выключенное поле): не трогали расчёт от закупочной — пусто,
+        // заявленная и дальше идёт за закупочной.
+        $declared = $data['publish_price'] ?? null;
+        if ($offer->publish_price === null && $declared === Offer::declaredFrom($offer->floor_price)) {
+            $declared = null;
+        }
+        $prices = array_filter(['publish_price' => $declared, 'asking_price' => $data['asking_price']],
             fn ($v, $k) => $v !== $offer->{$k}, ARRAY_FILTER_USE_BOTH);
         $running = $offer->showsDealAsOpen();
         // Одной транзакцией: «Выберите, кому показывать» откатывает и цены.
