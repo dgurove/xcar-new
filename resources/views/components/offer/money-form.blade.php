@@ -62,12 +62,12 @@
         @if ($supplierCost !== null && $supplierCost !== $costNow)<dt class="text-sm text-ink-dim">Закупочная поставщика</dt><dd class="nums text-right">{{ Money::rub($supplierCost) }}</dd>@endif
         @if ($margin !== null || $costEditable)<dt class="text-sm text-ink-dim" data-commission-target="oursOnly" @if ($dkp) hidden @endif>Разница</dt><dd class="nums text-right font-semibold {{ $margin < 0 ? 'text-danger' : '' }}" data-commission-target="oursOnly margin" @if ($dkp) hidden @endif>{{ $margin === null || ($priced && ! $amount) ? '' : Money::rub($margin) }}</dd>@endif
     </dl>
-    <div class="fields">
+    <div class="flex flex-col gap-3">
         @if ($costEditable)
             <div class="field @error('cost') field-invalid @enderror">
                 <label for="{{ $id }}-cost" class="field-label">Закупочная менеджера, ₽</label>
                 <input type="hidden" name="cost" data-commission-target="costAmount" value="{{ $costNow }}">
-                <input id="{{ $id }}-cost" type="text" inputmode="decimal" class="field-input nums text-lg" data-commission-target="costDisplay" data-action="input->commission#input" value="{{ $costNow ? Money::nums((int) $costNow) : '' }}" autocomplete="off">
+                <input id="{{ $id }}-cost" type="text" inputmode="decimal" class="field-input nums" data-commission-target="costDisplay" data-action="input->commission#input" value="{{ $costNow ? Money::nums((int) $costNow) : '' }}" autocomplete="off">
                 @error('cost')<p class="field-error">{{ $message }}</p>@enderror
             </div>
         @endif
@@ -75,7 +75,7 @@
             <div class="field @error('owner_price') field-invalid @enderror" data-commission-target="dkpOnly" @unless ($dkp) hidden @endunless>
                 <label for="{{ $id }}-owner" class="field-label"><span data-commission-target="payee">{{ $payee }}</span>, ₽</label>
                 <input type="hidden" name="owner_price" data-commission-target="ownerAmount" value="{{ $owner }}">
-                <input id="{{ $id }}-owner" type="text" class="field-input nums text-lg" data-commission-target="ownerDisplay" data-action="input->commission#input" value="{{ $owner ? Money::nums((int) $owner) : '' }}" autocomplete="off" @if ($ownerLocked) readonly @endif>
+                <input id="{{ $id }}-owner" type="text" class="field-input nums" data-commission-target="ownerDisplay" data-action="input->commission#input" value="{{ $owner ? Money::nums((int) $owner) : '' }}" autocomplete="off" @if ($ownerLocked) readonly @endif>
                 <p class="col-span-full pb-2 text-right text-sm text-ink-muted empty:hidden" data-commission-target="offset"></p>
                 @error('owner_price')<p class="field-error">{{ $message }}</p>@enderror
             </div>
@@ -83,7 +83,7 @@
         <div class="field @error('commission') field-invalid @enderror" @unless ($fee) hidden @endunless>
             <label for="{{ $id }}" class="field-label">Вознаграждение, ₽</label>
             <input type="hidden" name="commission" data-commission-target="amount" value="{{ $current }}">
-            <input id="{{ $id }}" type="text" class="field-input nums text-lg" data-commission-target="display" data-action="input->commission#input" value="{{ $current !== null && $current !== '' ? Money::nums((int) $current) : '' }}" autocomplete="off" placeholder="0">
+            <input id="{{ $id }}" type="text" class="field-input nums" data-commission-target="display" data-action="input->commission#input" value="{{ $current !== null && $current !== '' ? Money::nums((int) $current) : '' }}" autocomplete="off" placeholder="0">
             @error('commission')<p class="field-error">{{ $message }}</p>@enderror
         </div>
     </div>

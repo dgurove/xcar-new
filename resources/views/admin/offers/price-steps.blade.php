@@ -1,14 +1,14 @@
 {{-- «Цены» в окошке строки (19.10.2026, начальник: «в закупочной была продажная, а в закупочной 0», поля «поменялись
      местами»; владелец: «к унификации»). Поля — один кусок с редактором (`fields/money`): всё подписано и на своих местах.
      Черновик — плашкой сверху окошка, по шагам: текущий шаг лаймовой рамкой и с фокусом, последним — действие шага: без цены
-     «Сохранить и дальше» (`then=advance`: строка уходит, карточка — к следующей; пустое поле — просто дальше) и рядом «В
-     гараж» / «Вывоз» (их формы на месте полей, «‹ Цены» — назад); оценённый — «Выставить в продажу» и «Отдать». Над
+     «Сохранить и дальше» (`then=advance`: строка уходит, карточка — к следующей; пустое поле — просто дальше) и рядом «Отдать»
+     (шторка «В сделку | В гараж») / «Вывоз» (форма на месте полей, «‹ Цены» — назад); оценённый — «Выставить в продажу» и «Отдать». Над
      кнопками — «Показ» строкой (`x-offer.showing-row`, шторка со всем показом). Остальное
      (`plain`) — разделом формы без кнопок. Метки — под блоком, не в нём. --}}
 @php
     $form = 'detail-edit-'.$n;
-    // Ошибка «В гараж» или «Вывоза» открывает их снова — если такая панель здесь есть.
-    $way = ($way === 'garage' && $garageWay) || ($way === 'pickup' && $pickupWay) ? $way : 'rate';
+    // Ошибка «Вывоза» открывает его снова — если такая панель здесь есть.
+    $way = $way === 'pickup' && $pickupWay ? $way : 'rate';
     // Текущий шаг: нет закупочной — она, есть — цена продажи (админу); всё стоит — шагов нет, сохраняет «Сохранить изменения».
     $now = $floorFirst ? 'floor' : ($rate ? 'asking' : null);
     $plain ??= false;
@@ -26,7 +26,7 @@
         {{-- «Показ» строкой (срок приёма, кому, отметки) — нажатие открывает шторку со всем показом (`x-offer.showing-row`);
              у оценённого — решают перед «Выставить в продажу», поэтому прямо над ней. --}}
         @unless ($plain)<x-offer.showing-row :offer="$offer" :form="$form"/>@endunless
-        {{-- Действие шага — последним: без цены — «Сохранить и дальше» и «В гараж» / «Вывоз»; оценённый — «Выставить в
+        {{-- Действие шага — последним: без цены — «Сохранить и дальше» и «Отдать» / «Вывоз»; оценённый — «Выставить в
              продажу» (шторка слотов `publish-sheet-slot`, вне формы, событием) и «Отдать» (`x-offer.give-sheet`). --}}
         @if ($publishButton ?? false)
             <div class="flex gap-2">
@@ -36,7 +36,8 @@
         @elseif ($now)
             <div class="flex gap-2">
                 <button type="submit" form="{{ $form }}" name="then" value="advance" class="btn btn-s btn-accent min-w-0 flex-1">Сохранить и дальше</button>
-                @if ($garageWay)<label class="btn btn-s btn-quiet shrink-0" for="way-garage-{{ $n }}">В гараж</label>@endif
+                {{-- «Отдать» — в сделку ценой или в гараж одной шторкой (`x-offer.give-sheet`, 12.11.2026; было «В гараж» формой здесь). --}}
+                @if ($giveButton ?? false)<button type="button" class="btn btn-s btn-quiet shrink-0" data-controller="emit" data-action="emit#send" data-emit-event-param="give-{{ $n }}:open">Отдать</button>@endif
                 @if ($pickupWay)<label class="btn btn-s btn-quiet shrink-0" for="way-pickup-{{ $n }}">Вывоз</label>@endif
             </div>
         @endif
@@ -45,14 +46,6 @@
             @include('admin.offers.estimates')
         @endif
     </div>
-    @if ($garageWay)
-        <input type="radio" name="_way-{{ $n }}" value="garage" class="sr-only" id="way-garage-{{ $n }}" data-action="reveal#pick" @checked($way === 'garage')>
-        <div class="flex flex-col gap-3" data-reveal-target="pane" data-reveal-key="garage" @unless ($way === 'garage') hidden @endunless>
-            <label class="flex items-center gap-1 self-start text-sm text-accent-text" for="way-rate-{{ $n }}"><x-ui.icon name="chevron-left" class="size-4"/>Цены</label>
-            <h2 class="text-base font-medium">В гараж</h2>
-            <x-offer.give-garage :offer="$offer" :prefix="'detail-'.$n" inline/>
-        </div>
-    @endif
     @if ($pickupWay)
         <input type="radio" name="_way-{{ $n }}" value="pickup" class="sr-only" id="way-pickup-{{ $n }}" data-action="reveal#pick" @checked($way === 'pickup')>
         <div class="flex flex-col gap-3" data-reveal-target="pane" data-reveal-key="pickup" @unless ($way === 'pickup') hidden @endunless>

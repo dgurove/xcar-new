@@ -76,8 +76,11 @@ final class Give
             $cost = $g->cost ?? $bid?->frozenCost() ?? $offer->floor_price;
             // Не выше закупочной — только с согласия (14.10.2026: сделка 3308 ушла в минус молча). Закупочную могли поднять
             // после того, как открыли шторку, — тогда переспрашиваем.
+            // Форма сама переспрашивает «в минус?» и шлёт согласие (`commission_controller`); сюда доходит, только если закупочную
+            // подняли, пока шторка была открыта, — нажать ещё раз, форма спросит уже с новой.
             if (! $garage && ! $g->loss && $cost && $bid->amount <= $cost) {
-                throw ValidationException::withMessages(['give' => 'Цена '.Money::rub($bid->amount).' не выше закупочной '.Money::rub($cost).': отдайте ещё раз']);
+                $under = $cost - $bid->amount;
+                throw ValidationException::withMessages(['give' => ($under > 0 ? 'Сделка в минус '.Money::rub($under) : 'Без наценки').' при закупочной '.Money::rub($cost).': отдайте ещё раз']);
             }
 
             if ($g->parallel) {
@@ -187,8 +190,10 @@ final class Give
         }
         $errors = array_filter([
             'manager_id' => ! $manager ? 'Кому отдать' : (! $manager->canBid() ? 'В сделку отдают менеджеру' : null),
-            'give' => ! $offer->asking_price ? 'Сначала цена продажи' : null,
-            'amount' => ! $amount || $amount < 1 ? 'Цена менеджеру' : null,
+            // Цены продажи сделке не нужно — у неё своя цена и закупочная (12.11.2026, начальник: черновик «Без продажной цены»
+            // отдать в сделку было нельзя); закупочная нужна: от неё закупочная менеджера и «в минус».
+            'give' => ! $offer->floor_price ? 'Сначала закупочная' : null,
+            'amount' => ! $amount || $amount < 1 ? 'Цена подтверждения' : null,
         ]);
         if ($errors) {
             throw ValidationException::withMessages($errors);

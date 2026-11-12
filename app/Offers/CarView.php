@@ -101,8 +101,7 @@ final class CarView
         $correct = $admin && $state === OfferState::Draft && $o->asking_price && ! $scheduled && ! $auction;
         // Закупочной нет — сначала она (05.10.2026): у всех, и у модератора. У Альфы первой — оценочная.
         $floorFirst = $state === OfferState::Draft && ! $o->asking_price && ! $o->floor_price && ! $scheduled;
-        // Рядом с «Оценить» — «В гараж» и «Вывоз» (формы на месте полей «Цен»).
-        $garageWay = $rate && $state->allows(OfferState::Garage);
+        // Рядом с «Оценить» — «Вывоз» (форма на месте полей «Цен»); «В гараж» — вкладкой шторки «Отдать» (12.11.2026).
         $pickupWay = $rate && ($o->pickup()?->isOpen() || $o->vendor?->pickup_on_arrival) && ! $o->pickedUp();
         // Цены черновика — блоком по шагам сверху (19.10.2026); у остального — разделом «Цены» в форме.
         $steps = $state === OfferState::Draft && ! $scheduled && ! $auction && ! $unsold;
@@ -120,10 +119,11 @@ final class CarView
         $publishItems = $admin && in_array($state, [OfferState::Draft, OfferState::Gallery], true) && ! $scheduled && $o->asking_price && ! $auction && ! $unsold;
         // Оценённый черновик — «Выставить в продажу» кнопкой в «Ценах» (19.10.2026), не пунктом меню.
         $publishButton = $steps && $publishItems;
-        // «Отдать…» (`Give`, 18.10.2026): в сделку ценой или в гараж — из черновика, галереи и продажи. В окне у черновика без
-        // цены вместо него «В гараж» прямо в «Ценах» (`price-steps`); на странице таких кнопок нет — там «Отдать…» остаётся
-        // (12.11.2026: пропадал у черновика без цены на странице).
-        $giveMenu = $admin && ! $garageCar && ($this->page || ! $garageWay) && in_array($state, [OfferState::Draft, OfferState::Gallery, OfferState::Open], true);
+        // «Отдать…» (`Give`, 18.10.2026): в сделку ценой или в гараж — из черновика, галереи и продажи, и без цены продажи
+        // (12.11.2026, начальник: черновик «Без продажной цены» Зайцев сразу продал, а отдать можно было только в гараж). В окне у
+        // черновика без цены — кнопкой «Отдать» в «Ценах» (`price-steps`, рядом с «Сохранить и дальше»), тогда в «⋯» его нет.
+        $giveMenu = $admin && ! $garageCar && in_array($state, [OfferState::Draft, OfferState::Gallery, OfferState::Open], true);
+        $giveButton = $giveMenu && $rate && ! $this->page;
         // «Вернуть в продажу» с новыми ценами — из сделки и из гаража (`ReturnToSale`, 11.10.2026).
         $resale = $admin && (in_array($state, [OfferState::Sold, OfferState::Garage], true) || $garageCar);
         // Кнопки состояния — только уместные (`stateActions`). Машину из гаража уводит только «Отдали по ошибке» в карточке
@@ -154,11 +154,11 @@ final class CarView
             'correct' => $correct,
             'floorFirst' => $floorFirst,
             'byValue' => $floorFirst && Pricing::valued($o),
-            // «В гараж» и «Вывоз» на месте полей «Цен» черновика без цены (`price-steps`) — не машина гаража (`garageCar`).
-            'garageWay' => $garageWay,
+            // «Вывоз» на месте полей «Цен» черновика без цены (`price-steps`); «Отдать» — кнопкой рядом.
             'pickupWay' => $pickupWay,
-            'ways' => $garageWay || $pickupWay,
-            'way' => session('errors')?->hasAny(['executor', 'executor_id', 'pickup']) ? 'pickup' : (old('to') === 'garage' ? 'garage' : 'rate'),
+            'giveButton' => $giveButton,
+            'ways' => $pickupWay,
+            'way' => session('errors')?->hasAny(['executor', 'executor_id', 'pickup']) ? 'pickup' : 'rate',
             'steps' => $steps,
             'nowKind' => $nowKind,
             'intake' => $intake,
@@ -388,7 +388,7 @@ final class CarView
                 $groups[] = [['kind' => 'view', 'view' => 'admin.car.publish-items'],
                     $emit('publish-day', 'Другой день…', 'calendar'), $emit('urgent', 'Срочно…', 'fire') + ['fire' => true]];
             }
-            if ($v['giveMenu'] && ! $v['publishButton']) {
+            if ($v['giveMenu'] && ! $v['publishButton'] && ! $v['giveButton']) {
                 $groups[] = [$emit('give-'.$n, 'Отдать…', 'deal')];
             }
             // Машина в сделке (и гаражной, пока не привезли) — показать остальным менеджерам поверх неё (12.11.2026, владелец:

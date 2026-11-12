@@ -26,19 +26,19 @@
         </div>
     @endunless
     @if ($toBuyer)
-        <div class="fields" data-reveal-target="pane" data-reveal-key="buyer" @if ($whom !== 'buyer') hidden @endif>
+        <div class="flex flex-col gap-3" data-reveal-target="pane" data-reveal-key="buyer" @if ($whom !== 'buyer') hidden @endif>
             <x-people.pick name="manager_id" label="Покупатель" kind="garage-buyer" :people="\App\Support\People::garageBuyers()" title="Покупатель" placeholder="Кому отдаём"/>
             <x-ui.field name="buyer_price" label="Цена для покупателя, ₽" :value="old('buyer_price', $offer->asking_price)" :id="$prefix.'-garage-buyer-price'" required/>
         </div>
     @endif
     <div class="flex flex-col gap-4" data-reveal-target="pane" data-reveal-key="manager" @if ($whom !== 'manager') hidden @endif>
         @unless ($bid)
-            <div class="fields">
+            <div class="flex flex-col gap-3">
                 <x-people.pick name="manager_id" label="Менеджер" kind="manager" :people="\App\Support\People::managers()" title="Менеджер" placeholder="Кому отдаём"/>
             </div>
         @endunless
         @if ($buyerBid)
-            <div class="fields">
+            <div class="flex flex-col gap-3">
                 <x-ui.field name="buyer_price" label="Цена для покупателя, ₽" :value="old('buyer_price', $offer->asking_price)" :id="$prefix.'-garage-buyer-price'" required/>
             </div>
         @elseif ($branch)
@@ -52,7 +52,7 @@
                     </div>
                 </div>
                 @unless ($offer->vendor?->isCommission())
-                    <div class="fields" data-reveal-target="pane" data-reveal-key="manager" @if (old('payer', 'us') !== 'manager') hidden @endif>
+                    <div class="flex flex-col gap-3" data-reveal-target="pane" data-reveal-key="manager" @if (old('payer', 'us') !== 'manager') hidden @endif>
                         <x-ui.field name="share" label="Наша доля, ₽" :value="old('share')" :id="$prefix.'-garage-share'"/>
                     </div>
                 @endunless

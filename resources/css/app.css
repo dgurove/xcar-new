@@ -3043,8 +3043,12 @@ html.kb-open { --home-gap: 0px; }
   .people-new[data-mode="link"] :is(.people-person, .people-person-label),
   .people-new[data-mode="person"] :is(.people-link, .people-link-label) { display: none; }
   .people-done-mark { @apply flex size-14 items-center justify-center rounded-full bg-accent text-white; }
-  .people-value { display: flex; align-items: center; justify-content: flex-end; gap: .25rem; min-width: 0; cursor: pointer; }
-  .people-value > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  /* Поле с подписью сверху (12.11.2026, владелец: «Выбрать мен…» справа — «вёрстка хуйня»): выбранный или «Выбрать» слева,
+     стрелка справа; строкой `.fields` (подпись слева) — значение у правого края, как было. */
+  .people-value { display: flex; align-items: center; justify-content: space-between; gap: .25rem; min-width: 0; cursor: pointer; text-align: left; }
+  .people-value > span { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .fields .people-value { justify-content: flex-end; }
+  .fields .people-value > span { flex: initial; }
   @media (max-width: 639.98px) {
     :is(.sheet-steady, .sheet-steady-phone, .sheet-picking:not(.sheet-tall)):modal { height: calc(var(--vv-h, 100dvh) - var(--sheet-gap)); }
   }

@@ -107,7 +107,7 @@ class RepriceController
     {
         $request->merge(array_map(fn ($v) => blank($v) ? null : Money::rubles($v), $request->only(['publish_price', 'asking_price'])));
         $data = $request->validate(['until' => ['required', 'date', 'after:now'], 'audience_rules' => ['nullable', 'json'],
-            'publish_price' => ['nullable', 'integer', 'min:1'], 'asking_price' => ['required', 'integer', 'min:1'], 'binding_until' => ['nullable', 'date']],
+            'publish_price' => ['nullable', 'integer', 'min:1'], 'asking_price' => ['required', 'integer', 'min:1']],
             ['until.required' => 'До когда', 'until.after' => 'Срок уже прошёл', 'asking_price.required' => 'Укажите цену продажи']);
         $until = Carbon::parse($data['until']);
         $offer->loadMissing('deal');
@@ -125,15 +125,13 @@ class RepriceController
         }
         $prices = array_filter(['publish_price' => $declared, 'asking_price' => $data['asking_price']],
             fn ($v, $k) => $v !== $offer->{$k}, ARRAY_FILTER_USE_BOTH);
-        // Срок обязывающего — то же поле, что в «Показе» (`x-offer.binding-field`), только у вендора по комиссии.
-        $prices += self::bindingChange($request, $offer);
         $running = $offer->showsDealAsOpen();
         // Одной транзакцией: «Выберите, кому показывать» откатывает и цены.
         DB::transaction(function () use ($offer, $prices, $update, $publish, $data, $until, $request) {
             if ($prices) {
                 $update($offer, $prices, $request->user(), ['why' => 'Публикация для других менеджеров']);
             }
-            // Приём — не позже срока обязывающего, уже нового: поправили оба сразу — сверяем с вписанным.
+            // Приём — не позже срока обязывающего.
             if ($error = \App\Offers\Binding::closeError($offer, $until)) {
                 throw ValidationException::withMessages(['until' => $error]);
             }
