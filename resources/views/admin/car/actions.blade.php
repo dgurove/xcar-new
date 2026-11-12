@@ -1,6 +1,7 @@
 {{-- Пункты меню действий машины (`CarView::actions`) — одни в окне («⋯» в полосе, `mode=menu`: popover строками) и на
      странице («···» плашки действий, `mode=sheet`: кнопками шторки). Группы — как в iOS, опасное — красным последним. --}}
-@php $menu = ($mode ?? 'menu') === 'menu'; $close = $menu ? 'menu#close' : 'sheet#close'; @endphp
+{{-- close — чем закрыть то, где пункты стоят: поповер меню, шторку страницы или шторку действий окна (`sheet#close`, 12.11.2026). --}}
+@php $menu = ($mode ?? 'menu') === 'menu'; $close ??= $menu ? 'menu#close' : 'sheet#close'; @endphp
 @foreach ($groups as $group)
     <div @class(['menu-group' => $menu, 'flex flex-col gap-2' => ! $menu])>
         @foreach ($group as $item)

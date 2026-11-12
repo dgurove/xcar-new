@@ -42,11 +42,14 @@
         {{-- «⋯» — справа в строке названия (12.11.2026, владелец: в полосе тесно, этап в три строки). --}}
         @if ($groups)
             <x-slot:menu>
-                <div class="contents" data-controller="menu">
-                    <button type="button" class="btn btn-s btn-quiet btn-round" data-action="menu#toggle" aria-label="Действия" aria-haspopup="menu" aria-controls="car-actions-{{ $n }}"><x-ui.icon name="more" class="size-[18px]"/></button>
-                    <div id="car-actions-{{ $n }}" class="menu" popover data-menu-target="list" data-align="end" role="menu">
-                        @include('admin.car.actions', ['mode' => 'menu'])
-                    </div>
+                {{-- «⋯» пилюлей вровень с названием, действия — шторкой снизу на телефоне и поповером из пилюли на ПК (12.11.2026,
+                     владелец выбрал из вариантов: круг 44 px раздвигал строки, меню всплывало поверх фото). --}}
+                <div class="contents" data-controller="sheet">
+                    <button type="button" class="title-more" data-action="sheet#open" aria-label="Действия" aria-haspopup="dialog" aria-controls="car-actions-{{ $n }}"><x-ui.icon name="more" class="size-[18px]"/></button>
+                    <x-ui.sheet :id="'car-actions-'.$n" anchor bare class="sheet-actions">
+                        @include('admin.car.actions', ['mode' => 'menu', 'close' => 'sheet#close'])
+                        <button type="button" class="sheet-actions-cancel" data-action="sheet#close">Отмена</button>
+                    </x-ui.sheet>
                 </div>
             </x-slot:menu>
         @endif
