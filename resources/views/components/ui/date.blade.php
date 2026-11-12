@@ -9,7 +9,7 @@
      дата приёма парковки — `Park\AcceptHints`): нажатие ставит значение и закрывает выбор, при `submit` — сразу уходит;
      `inline` — те же чипы ещё и рядом с полем (одно нажатие без календаря). `source` — имя скрытого поля, куда ложится
      `source` нажатой подсказки (выбор в календаре его стирает). --}}
-@props(['name', 'id' => null, 'value' => null, 'time' => false, 'defaultTime' => '12:00', 'min' => null, 'max' => null, 'limit' => null, 'placeholder' => null, 'clearable' => true, 'now' => false, 'chip' => false, 'prefix' => null, 'submit' => false, 'quick' => [], 'inline' => false, 'source' => null, 'icon' => null])
+@props(['name', 'id' => null, 'value' => null, 'time' => false, 'defaultTime' => '12:00', 'min' => null, 'max' => null, 'limit' => null, 'placeholder' => null, 'clearable' => true, 'now' => false, 'chip' => false, 'prefix' => null, 'submit' => false, 'quick' => [], 'inline' => false, 'source' => null, 'icon' => null, 'years' => null, 'start' => null])
 @php
     $id ??= 'f-'.str_replace(['[', ']'], ['-', ''], $name);
     // Прежние значения бывают с секундами и пробелом («2026-10-09 17:30:00») — к виду поля.
@@ -24,7 +24,7 @@
     $chips = fn () => collect($quick)->map(fn ($q) => '<button type="button" class="chip nums" data-date-target="quick" data-action="date#quick" data-date-value-param="'.e($q['value']).'" data-date-source-param="'.e($q['source']).'" aria-pressed="'.(substr($q['value'], 0, 10) === substr($v, 0, 10) ? 'true' : 'false').'">'.e($q['label']).'</button>')->implode('');
 @endphp
 <{{ $chip ? 'span' : 'div' }} class="{{ $chip ? 'contents' : 'date-field' }}" data-controller="date" data-date-prefix-value="{{ $prefix }}" @if ($chip && $placeholder) data-date-placeholder-value="{{ $placeholder }}" @endif data-date-submit-value="{{ $submit ? 'true' : 'false' }}" data-date-time-value="{{ $time ? 'true' : 'false' }}" data-date-default-time-value="{{ $defaultTime }}" data-date-now-value="{{ $now ? 'true' : 'false' }}"
-    data-date-min-value="{{ $day($min) }}" data-date-max-value="{{ $day($max) }}" @if ($limit) data-date-limit-value="{{ $limit instanceof \DateTimeInterface ? $limit->format('Y-m-d\TH:i') : substr(str_replace(' ', 'T', (string) $limit), 0, 16) }}" @endif>
+    data-date-min-value="{{ $day($min) }}" data-date-max-value="{{ $day($max) }}" @if ($start) data-date-start-value="{{ $day($start) }}" @endif @if ($limit) data-date-limit-value="{{ $limit instanceof \DateTimeInterface ? $limit->format('Y-m-d\TH:i') : substr(str_replace(' ', 'T', (string) $limit), 0, 16) }}" @endif>
     <input type="hidden" name="{{ $name }}" value="{{ $v }}" data-date-target="value" {{ $attributes->except(['class', 'id', 'type', 'placeholder']) }}>
     @if ($source)<input type="hidden" name="{{ $source }}" value="" data-date-target="source" {{ $attributes->only('form') }}>@endif
     @if ($chip)
@@ -47,7 +47,7 @@
             @if ($day($min)) min="{{ $day($min) }}" @endif @if ($day($max)) max="{{ $day($max) }}" @endif>
             <x-ui.icon slot="previous" name="chevron-down" class="size-5 rotate-90" aria-label="Прошлый месяц"/>
             <x-ui.icon slot="next" name="chevron-down" class="size-5 -rotate-90" aria-label="Следующий месяц"/>
-            <div slot="heading" class="date-heading"><calendar-select-month format-month="long"><span slot="label">Месяц</span></calendar-select-month><calendar-select-year><span slot="label">Год</span></calendar-select-year></div>
+            <div slot="heading" class="date-heading"><calendar-select-month format-month="long"><span slot="label">Месяц</span></calendar-select-month><calendar-select-year @if ($years) max-years="{{ $years }}" @endif><span slot="label">Год</span></calendar-select-year></div>
             <calendar-month></calendar-month>
         </calendar-date>
         {{-- Необязательную дату можно стереть («Очистить»): на телефоне поле только открывает календарь. --}}

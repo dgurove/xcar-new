@@ -56,8 +56,19 @@
     @if (in_array($type, ['date', 'datetime-local'], true))
         {{-- Дата и время — свой выбор (`x-ui.date`, календарь), не системное поле: год текущий и время по умолчанию
              (`default-time`) уже стоят, день — одним нажатием (владелец 10.10.2026). --}}
+        {{-- Даты далеко в прошлом — по имени поля (12.11.2026, менеджер: «год рождения не выбирается, всего десять лет»): выбор
+             года у Cally — 20 лет вокруг открытого, открывался на сегодня. Рождение — 1920 … сегодня − 14 лет, пустое — на 1990;
+             выдача паспорта — с 1997; список годов — весь промежуток (`years`, Cally режет по min/max). --}}
+        @php
+            $past = match ($base) {
+                'birth_at' => ['min' => '1920-01-01', 'max' => now()->subYears(14)->toDateString(), 'start' => '1990-01-01'],
+                'passport_issued_at' => ['min' => '1997-01-01', 'max' => now()->toDateString(), 'start' => null],
+                default => null,
+            };
+        @endphp
         <x-ui.date :name="$name" :id="$id" :value="$bound" :time="$type === 'datetime-local'" :default-time="$attributes->get('default-time', '12:00')"
-            :min="$attributes->get('min')" :max="$attributes->get('max')" :limit="$attributes->get('limit')" :placeholder="$placeholder" :clearable="! $required" :now="$attributes->has('now')" {{ $attributes->except(['id', 'min', 'max', 'limit', 'default-time', 'now'])->merge($wiring) }}/>
+            :min="$attributes->get('min', $past['min'] ?? null)" :max="$attributes->get('max', $past['max'] ?? null)" :years="$past ? 200 : null" :start="$past['start'] ?? null"
+            :limit="$attributes->get('limit')" :placeholder="$placeholder" :clearable="! $required" :now="$attributes->has('now')" {{ $attributes->except(['id', 'min', 'max', 'limit', 'default-time', 'now'])->merge($wiring) }}/>
     @elseif ($options !== null)
         <select id="{{ $id }}" name="{{ $name }}" {{ $attributes->except('id')->merge(['class' => 'field-input'] + $wiring) }}>
             @if ($placeholder)<option value="">{{ $placeholder }}</option>@endif

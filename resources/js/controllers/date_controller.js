@@ -20,7 +20,7 @@ const moscow = () => { const [day, clock] = new Date().toLocaleString('sv-SE', {
 
 export default class extends Controller {
     static targets = ['value', 'text', 'pop', 'cal', 'time', 'clear', 'error', 'quick', 'source'];
-    static values = { time: Boolean, defaultTime: { type: String, default: '12:00' }, min: String, max: String, limit: String, now: Boolean, prefix: String, submit: Boolean, placeholder: String };
+    static values = { time: Boolean, defaultTime: { type: String, default: '12:00' }, min: String, max: String, limit: String, now: Boolean, prefix: String, submit: Boolean, placeholder: String, start: String };
 
     get field() { return this.textTarget.tagName === 'INPUT'; }
 
@@ -96,7 +96,8 @@ export default class extends Controller {
         this.opened = this.valueTarget.value;
         const p = this.parts;
         this.calTarget.value = p?.date || '';
-        this.calTarget.focusedDate = p?.date || iso(new Date());
+        // Пустое поле открывается на `start` (дата рождения — 1990, 12.11.2026), иначе на сегодня.
+        this.calTarget.focusedDate = p?.date || this.startValue || iso(new Date());
         // Пустое поле с `now` открывается с временем сейчас (выберут другой день — станет время по умолчанию).
         if (this.hasTimeTarget) this.timeTarget.value = p?.time || (this.nowValue ? moscow()[1] : this.defaultTimeValue);
         if (this.hasClearTarget) this.clearTarget.hidden = !p;
@@ -189,7 +190,10 @@ export default class extends Controller {
         if (!raw) { this.set(''); return; }
         const m = raw.match(/^(\d{1,2})[./-](\d{1,2})(?:[./-](\d{2,4}))?(?:[\s,]+(\d{1,2})[:.]?(\d{2}))?$/);
         if (!m) { this.render(); return; }
-        const year = m[3] ? (m[3].length === 2 ? 2000 + Number(m[3]) : Number(m[3])) : new Date().getFullYear();
+        // Двузначный год позже текущего — прошлый век: «8.9.85» — 1985 (дата рождения), «8.9.25» — 2025.
+        const now = new Date().getFullYear();
+        const yy = m[3]?.length === 2 ? 2000 + Number(m[3]) : null;
+        const year = m[3] ? (yy !== null ? (yy > now ? yy - 100 : yy) : Number(m[3])) : now;
         const day = new Date(year, Number(m[2]) - 1, Number(m[1]));
         if (day.getDate() !== Number(m[1])) { this.render(); return; }
         // Набранное за границами поля — как у календаря, где такие дни не нажать: словами под полем, значение прежнее.
