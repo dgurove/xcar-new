@@ -6,6 +6,7 @@ use App\Offers\Actions\AnswerReprice;
 use App\Offers\Actions\ApplyReprice;
 use App\Offers\Actions\DismissReprice;
 use App\Offers\Actions\PublishDeal;
+use App\Offers\Actions\UpdateOffer;
 use App\Offers\Offer;
 use App\Offers\OfferEventType;
 use App\Offers\OfferState;
@@ -15,6 +16,7 @@ use App\Offers\RepriceAsk;
 use App\Support\Money;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
@@ -98,12 +100,15 @@ class RepriceController
     /**
      * «Опубликовать для других менеджеров» из «⋯» идущей сделки и гаражной (12.11.2026, владелец: машина в сделке у менеджера,
      * а начальник хочет показать её остальным; потом — «всем, кроме»): кому — правила «кто → когда», как волны предложения,
-     * и срок приёма, не позже обязывающего. Идёт — та же шторка правит кому и срок (`PublishDeal`).
+     * и срок приёма, не позже обязывающего, сверху — заявленная и цена продажи предложения. Идёт — та же шторка правит всё это
+     * (`PublishDeal`).
      */
-    public function publish(Request $request, Offer $offer, PublishDeal $publish)
+    public function publish(Request $request, Offer $offer, PublishDeal $publish, UpdateOffer $update)
     {
-        $data = $request->validate(['until' => ['required', 'date', 'after:now'], 'audience_rules' => ['nullable', 'json']],
-            ['until.required' => 'До когда', 'until.after' => 'Срок уже прошёл']);
+        $request->merge(array_map(fn ($v) => blank($v) ? null : Money::rubles($v), $request->only(['publish_price', 'asking_price'])));
+        $data = $request->validate(['until' => ['required', 'date', 'after:now'], 'audience_rules' => ['nullable', 'json'],
+            'publish_price' => ['nullable', 'integer', 'min:1'], 'asking_price' => ['required', 'integer', 'min:1']],
+            ['until.required' => 'До когда', 'until.after' => 'Срок уже прошёл', 'asking_price.required' => 'Укажите цену продажи']);
         $until = Carbon::parse($data['until']);
         $offer->loadMissing('deal');
         if (! PublishDeal::allows($offer)) {
@@ -112,8 +117,19 @@ class RepriceController
         if ($error = \App\Offers\Binding::closeError($offer, $until)) {
             throw ValidationException::withMessages(['until' => $error]);
         }
+        // Цены — предложения, не сделки (12.11.2026, начальник): их видят те, кому публикуем; сделку держат `deals.amount` и
+        // `deals.cost`. Закупочная не правится — значит, и переоценки нет. Под вопросом против закупочной — «Точно?».
+        PriceGuard::assertPrices($data['asking_price'], $offer->floor_price, $request->boolean('price_ok'));
+        $prices = array_filter(['publish_price' => $data['publish_price'] ?? null, 'asking_price' => $data['asking_price']],
+            fn ($v, $k) => $v !== $offer->{$k}, ARRAY_FILTER_USE_BOTH);
         $running = $offer->showsDealAsOpen();
-        $publish($offer, json_decode((string) ($data['audience_rules'] ?? ''), true) ?: [], $until, $request->user());
+        // Одной транзакцией: «Выберите, кому показывать» откатывает и цены.
+        DB::transaction(function () use ($offer, $prices, $update, $publish, $data, $until, $request) {
+            if ($prices) {
+                $update($offer, $prices, $request->user(), ['why' => 'Публикация для других менеджеров']);
+            }
+            $publish($offer, json_decode((string) ($data['audience_rules'] ?? ''), true) ?: [], $until, $request->user());
+        });
 
         return back(fallback: "/offers/{$offer->number}")->with('toast', $running ? 'Публикация изменена' : 'Опубликовано для других менеджеров до '.\App\Support\Ago::at($until, true, words: false));
     }

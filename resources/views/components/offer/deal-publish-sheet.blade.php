@@ -3,11 +3,14 @@
      остаётся в сделке (и гаражная, пока не привезли), другим менеджерам — обычное предложение до срока, их подтверждения —
      резервом («Отдать» в «Подтверждениях»). Срок и «Кому» — те же поля, что у «Показа» предложения (`x-offer.close-field`,
      `x-audience.field deal`). Идёт — та же шторка: поправить и «Снять публикацию». `PublishDeal`, `POST|DELETE
-     /offers/{n}/deal-publication`; открывают пункт «⋯», строка «Показ» сделки и факт в шапке окна событием deal-publish:open. --}}
+     /offers/{n}/deal-publication`; открывают пункт «⋯», строка «Показ» сделки и факт в шапке окна событием deal-publish:open.
+     Сверху — заявленная и цена продажи (12.11.2026, начальник): цены предложения, их видят те, кому публикуем; сделку держат
+     свои `deals.amount` и `deals.cost`, закупочная тут не правится. У гаражной цены продажи часто нет — без неё не публикуем. --}}
 @props(['offer'])
 @php
-    use App\Offers\{AudienceRules, Binding, Slots};
+    use App\Offers\{AudienceRules, Binding, Offer, Slots};
     use App\Offers\Actions\PublishDeal;
+    use App\Support\Money;
     $n = $offer->number;
     $on = $offer->showsDealAsOpen();
     $until = old('until', $on ? $offer->deal_show_until?->format('Y-m-d\TH:i') : Binding::clampClose($offer, Slots::closeFor(now()))->format('Y-m-d\TH:i'));
@@ -15,10 +18,15 @@
 @endphp
 <div data-controller="sheet" data-action="deal-publish:open@window->sheet#open" class="contents">
     <x-ui.sheet id="deal-publish-{{ $n }}" :title="$on ? 'Публикация для других менеджеров' : 'Опубликовать для других менеджеров'">
-        <form method="post" action="/offers/{{ $n }}/deal-publication" class="flex flex-col gap-4" id="deal-publish-form-{{ $n }}">
+        <form method="post" action="/offers/{{ $n }}/deal-publication" class="flex flex-col gap-4" id="deal-publish-form-{{ $n }}" data-price-guard="whole" data-price-guard-offer="{{ $n }}">
             @csrf
+            <div class="grid grid-cols-2 gap-2">
+                <x-ui.field name="publish_price" label="Заявленная, ₽" :id="'deal-publish-declared-'.$n" :value="$offer->publish_price ? Money::nums($offer->publish_price) : null"
+                    :placeholder="$offer->floor_price ? Money::nums(Offer::declaredFrom($offer->floor_price)) : null"/>
+                <x-ui.field name="asking_price" label="Цена продажи, ₽" :id="'deal-publish-asking-'.$n" :value="$offer->asking_price ? Money::nums($offer->asking_price) : null" required/>
+            </div>
             <div class="fields">
-                <x-offer.close-field :offer="$offer" name="until" :id="'deal-publish-until-'.$n" :value="$until"/>
+                <x-offer.close-field :offer="$offer" name="until" label="Приём до" :id="'deal-publish-until-'.$n" :value="$until"/>
             </div>
             <x-audience.field :value="$offer->deal_audience_rules ? json_encode($offer->deal_audience_rules) : ''" :rules="$rules" inline deal/>
             @error('audience_rules')<p class="field-error">{{ $message }}</p>@enderror
