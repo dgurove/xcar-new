@@ -34,9 +34,11 @@
                     @csrf @if ($errors->has('price_check'))<input type="hidden" name="price_ok" value="1">@endif
                     <div>
                         <h3 class="list-head">Цены</h3>
-                        <div class="fields">
-                            <x-ui.field name="floor_price" :id="'resale-floor-'.$n" label="Закупочная, ₽" :value="old('floor_price', $offer->floor_price ? Money::nums($offer->floor_price) : null)"/>
-                            <x-ui.field name="publish_price" :id="'resale-publish-'.$n" label="Заявленная, ₽" :value="old('publish_price', $offer->publish_price ? Money::nums($offer->publish_price) : null)" :placeholder="$offer->floor_price ? Money::nums(\App\Offers\Offer::declaredFrom($offer->floor_price)) : null"/>
+                        {{-- Поля — как в «Показе» и шторке публикации: подпись сверху, заявленная и продажная рядом (12.11.2026, владелец:
+                             «почему поля по-разному сделаны, хотя смысл одинаковый»). Заявленная — числом, не серой подсказкой. --}}
+                        <div class="grid grid-cols-2 gap-2">
+                            <x-ui.field name="floor_price" :id="'resale-floor-'.$n" label="Закупочная, ₽" :value="old('floor_price', $offer->floor_price ? Money::nums($offer->floor_price) : null)" span="col-span-2"/>
+                            <x-ui.field name="publish_price" :id="'resale-publish-'.$n" label="Заявленная, ₽" :value="old('publish_price', $offer->declaredPrice() ? Money::nums($offer->declaredPrice()) : null)"/>
                             <x-ui.field name="asking_price" :id="'resale-asking-'.$n" label="Цена продажи, ₽" :value="old('asking_price', $offer->asking_price ? Money::nums($offer->asking_price) : null)" required/>
                         </div>
                     </div>
@@ -47,7 +49,7 @@
                         <div>
                             <h3 class="list-head">Стоит у {{ $holder->shortName() }}</h3>
                             <input type="hidden" name="stays" value="1">
-                            <div class="fields">
+                            <div class="flex flex-col gap-2">
                                 <x-ui.combobox name="settlement_id" label="Город" url="/reference/settlements" :value="old('settlement_id', $offer->settlement_id)" :text="$offer->settlement?->title()" :id="'resale-city-'.$n"/>
                                 <x-ui.field name="inspection_address" :id="'resale-address-'.$n" label="Адрес" :value="old('inspection_address', $offer->inspection_address)"/>
                             </div>
@@ -55,7 +57,8 @@
                     @endif
                     <div>
                         <h3 class="list-head">Показ</h3>
-                        <div class="fields">
+                        <div class="flex flex-col gap-4">
+                            <x-offer.binding-field :offer="$offer" :id="'resale-binding-'.$n"/>
                             <x-offer.close-field :offer="$offer" :id="'resale-close-'.$n" :value="$closeAt"/>
                         </div>
                         <x-audience.field :value="$offer->audience_rules ? json_encode($offer->audience_rules) : ''" :rules="\App\Offers\AudienceRules::of($offer)" inline class="mt-4"/>

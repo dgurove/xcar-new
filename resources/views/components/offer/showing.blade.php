@@ -45,13 +45,8 @@
     {{-- Блок пришёл в форме: снятые галки — снятые (`OfferRequest::payload`). --}}
     <input type="hidden" name="_show" value="1" form="{{ $form }}">
     <div class="grid grid-cols-[repeat(2,minmax(0,1fr))] gap-x-2 gap-y-3">
-        {{-- Срок обязывающего (19.10.2026, владелец: «туда хорошо подходит»): данность от страховой, до когда поставщик держит
-             закупочную; приём подтверждений — не позже. Только вендор по комиссии (Совкомбанк), сменили вендора — прячется. --}}
-        @php $bindingDays = $offer->vendorBindingDays(); @endphp
-        <div class="col-span-2" data-controller="by-vendor" data-by-vendor-ids-value="{{ json_encode(\App\Offers\Binding::vendorIds()) }}" @unless (\App\Offers\Binding::applies($offer)) hidden @endunless>
-            <x-ui.field name="binding_until" :id="'f-binding_until-'.$n.'-'.$as" label="Срок обязывающего предложения" type="datetime-local" default-time="23:59"
-                :value="$offer->binding_until?->format('Y-m-d\TH:i')" :placeholder="$bindingDays ? 'по вендору '.$bindingDays.' дн' : null" :form="$form"/>
-        </div>
+        {{-- Срок обязывающего (19.10.2026, владелец: «туда хорошо подходит») — общим куском `x-offer.binding-field`. --}}
+        <x-offer.binding-field :offer="$offer" :id="'f-binding_until-'.$n.'-'.$as" :form="$form" span="col-span-2"/>
         {{-- Не вписан — посчитает публикация (`Slots::closeFor`), поэтому без умолчания. --}}
         <x-offer.close-field :offer="$offer" :id="'f-bids_close_at-'.$n.'-'.$as" :value="$offer->bids_close_at?->format('Y-m-d\TH:i') ?? ''" :required="false" :form="$form" span="col-span-2"/>
         <x-audience.field :value="$offer->audience_rules ? json_encode($offer->audience_rules) : ''" :rules="AudienceRules::of($offer)" :form="$form"

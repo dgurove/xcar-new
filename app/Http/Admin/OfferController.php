@@ -1229,18 +1229,29 @@ class OfferController
      * (пусто — от закупочной) и цена продажи; сделка отменяется, строка гаража уходит (`ReturnToSale`). Машина у менеджера —
      * «Стоит у …» (`stays`, 21.10.2026): остаётся у него, город и адрес осмотра — его.
      */
-    public function resale(Request $request, Offer $offer, ReturnToSale $return)
+    public function resale(Request $request, Offer $offer, ReturnToSale $return, UpdateOffer $update)
     {
         $data = $request->validate(['floor_price' => ['nullable', 'string', 'max:20'], 'publish_price' => ['nullable', 'string', 'max:20'],
             'asking_price' => ['required', 'string', 'max:20'], 'bids_close_at' => ['nullable', 'date', 'after:now'], 'audience_rules' => ['nullable', 'json'],
-            'stays' => ['nullable', 'boolean'], 'settlement_id' => ['nullable', 'integer', 'exists:settlements,id'], 'inspection_address' => ['nullable', 'string', 'max:500']],
+            'binding_until' => ['nullable', 'date'], 'stays' => ['nullable', 'boolean'], 'settlement_id' => ['nullable', 'integer', 'exists:settlements,id'], 'inspection_address' => ['nullable', 'string', 'max:500']],
             ['asking_price.required' => 'Укажите цену продажи', 'bids_close_at.after' => 'Срок приёма — позже, чем сейчас']);
         $money = fn (?string $v) => Money::rubles($v) ?: null;
         $prices = array_map($money, array_intersect_key($data, array_flip(['floor_price', 'publish_price', 'asking_price'])) + ['floor_price' => null, 'publish_price' => null]);
+        // Заявленная стоит в поле числом: не трогали расчёт от прежней закупочной — пусто, пойдёт за новой.
+        if ($offer->publish_price === null && $prices['publish_price'] === Offer::declaredFrom($offer->floor_price)) {
+            $prices['publish_price'] = null;
+        }
         PriceGuard::assertPrices($prices['asking_price'], $prices['floor_price'] ?? $offer->floor_price, $request->boolean('price_ok'));
         $audience = $request->has('audience_rules') ? (json_decode((string) $request->input('audience_rules'), true) ?: []) : null;
-        $offer = $return($offer, $request->user(), $prices, filled($data['bids_close_at'] ?? null) ? Carbon::parse($data['bids_close_at']) : null, $audience,
+        // Срок обязывающего — то же поле, что в «Показе»; до возврата: приём сверяется уже с ним.
+        $offer = DB::transaction(function () use ($request, $offer, $update, $return, $prices, $data, $audience) {
+            if ($binding = RepriceController::bindingChange($request, $offer)) {
+                $update($offer, $binding, $request->user(), ['why' => 'Вернуть в продажу']);
+            }
+
+            return $return($offer, $request->user(), $prices, filled($data['bids_close_at'] ?? null) ? Carbon::parse($data['bids_close_at']) : null, $audience,
             stays: $request->boolean('stays'), where: array_intersect_key($data, array_flip(['settlement_id', 'inspection_address'])));
+        });
 
         return redirect("/offers/{$offer->number}")->with('toast', 'В продаже № '.$offer->number)->with(self::gone($request, $offer));
     }
