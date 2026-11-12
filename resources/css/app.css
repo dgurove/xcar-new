@@ -3156,7 +3156,7 @@ html.kb-open { --home-gap: 0px; }
   .detail-foot > .detail-action { @apply bg-surface px-4 pb-3 pt-3; box-shadow: inset 0 .5px 0 var(--color-line); }
   @media (min-width: 768px) { .save-bar--page { bottom: calc(var(--bottom-edge) + 1.5rem); } }
   /* «4 из 7» не переносится никогда (12.11.2026, владелец: «1 из / 1» — «сюр»): сжимается состояние рядом, а не счётчик. */
-  .detail-count { @apply ml-1 shrink-0 whitespace-nowrap text-xs leading-none text-ink-muted; }
+  .detail-count { @apply ml-1 shrink-0 whitespace-nowrap text-sm leading-none text-ink-muted; }
   .bar-btn { @apply relative flex size-8 shrink-0 items-center justify-center rounded-full text-ink-dim hover:bg-surface-3 hover:text-ink; }
   /* Пальцем — 40 px (07.10.2026, владелец: «половина кнопок не работает»): пять кнопок полосы влезают и в 375. */
   @media (pointer: coarse) { .bar-btn { width: 2.5rem; height: 2.5rem; } }
@@ -4639,11 +4639,17 @@ html::view-transition-image-pair(hero) { isolation: auto; }
   .is-choosing .photo-star--pick { display: flex; animation: fade var(--dur-fast) var(--ease-out); }
   .is-choosing .photo-star--main svg { transform: scale(1.12); }
   /* Заголовок раздела полей в карточке строки — как заголовок блока в шторке. */
-  .detail-section { @apply mb-2 text-base font-medium; }
+  /* Окна (12.11.2026, владелец: «размеры шрифтов странно скачут» — было шесть размеров, заголовок раздела мельче шага под
+     ним): три размера — 17 название и число, 15 содержимое (шаг, строки, кнопки), 13 подписи. Заголовок раздела — подписью
+     серым, как «Фото». */
+  .detail-section { @apply mb-2 text-sm font-medium text-ink-muted; }
   /* Карточки внутри карточки строки (дорожки, деньги, ДКП, заметка сделки) — разделами, а не белым по белому с полями:
      вровень с краем, заголовок — как у раздела (07.10.2026: дыры между дорожками и два вида заголовков). Чат — плашкой. */
   .detail-card .box:not(.deal-chat):not(.box-urgent) { padding: 0; border-radius: 0; background: none; }
-  .detail-card .box h2.box-title { font-size: var(--text-base); font-weight: 500; color: var(--color-ink); letter-spacing: normal; }
+  .detail-card .box h2.box-title { font-size: var(--text-sm); font-weight: 500; color: var(--color-ink-muted); letter-spacing: normal; }
+  .detail-body .step--current .step-title, .detail-body .step--ask .step-title { font-size: var(--text-base); }
+  .detail-body .btn-s { font-size: var(--text-base); }
+  .detail-body .vincode-text, .detail-body .letter-box { font-size: var(--text-sm); }
   .detail-card .deal-chat { background: var(--color-surface-2); }
   /* Поля в карточке строки: плотнее, чем в редакторе, и не шире своей колонки (дата-время и VIN распирали её). */
   .detail-edit .field { min-width: 0; gap: .25rem; }

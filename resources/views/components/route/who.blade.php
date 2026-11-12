@@ -70,7 +70,10 @@
         default => ['ждём '.$timer('since', $since), 'plain', null],
     };
 @endphp
-@if ($manager && ! $named && ! $asked && ! $open)
+@if (! $named && $trip && $trip->state !== \App\Logistics\TransportState::Delivered)
+    {{-- Окно: шаг везёт наша логистика — рейс со всем, что о нём, в дорожке «Вывоз» рядом; второй раз не пишем (12.11.2026,
+         владелец: «почему тут про вывоз несколько раз»). Страница — как было. --}}
+@elseif ($manager && ! $named && ! $asked && ! $open)
     {{-- Окно: менеджер — в шапке, здесь без значка и слова «Менеджер», только чего ждём (12.11.2026, владелец: «много мусора»). --}}
     <div {{ $attributes->class('step-who step-who--bare') }}><x-ui.state :tone="$tone"><span>{!! $debt ? 'менеджер '.$state : preg_replace('/ждём /u', 'ждём менеджера ', $state, 1) !!}</span></x-ui.state></div>
 @elseif ($side === 'us' && ! $trip && ! $position->carried() && ! $open)

@@ -15,7 +15,7 @@
             <span class="block break-words">{{ $holder['name'] }}</span>
             <span class="info-sub">{{ $holder['role'] }}</span>
         </span>
-        @if ($holder['user']?->phone)<x-ui.phone :user="$holder['user']" class="shrink-0 text-sm"/>@endif
+        @if ($holder['user']?->phone)<x-ui.phone :user="$holder['user']" class="shrink-0"/>@endif
         {{-- Что показываем ему и ссылка на его сделку (гараж) — тихо, здесь же, одной строкой во всю ширину плашки (12.11.2026,
              владелец: под именем узко, и они вставали друг под другом). --}}
         @if ($holderActs ?? false)
