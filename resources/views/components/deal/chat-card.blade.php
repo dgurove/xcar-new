@@ -5,7 +5,7 @@
      (`Admin\ChatController::start`). Новое сообщение по этой машине перечитывает карточку само (`reload` по `live:chat` с
      отбором по `offer`: сотрудникам идут сообщения всех чатов). chat — уже выбранный (редактор берёт из своих `$chats`),
      null — переписки нет; не передан — карточка выбирает сама. --}}
-@props(['deal', 'chat' => false, 'compact' => false])
+@props(['deal', 'chat' => false, 'compact' => false, 'inline' => false])
 @php
     $offer = $deal->offer;
     $buyer = $deal->buyer;
@@ -14,7 +14,17 @@
     }
     $unread = (int) ($chat?->unread_for_staff ?? 0);
 @endphp
-@if ($compact)
+@if ($inline)
+{{-- Тихой ссылкой «Чат» в плашке менеджера окна машины (12.11.2026, владелец: «кнопку чат в блок, где менеджер написан»):
+     непрочитанные — оранжевым со счётчиком; переписки нет — та же ссылка заводит чат. --}}
+<turbo-frame id="deal-chat-inline-{{ $deal->id }}" class="contents" data-controller="reload" data-reload-url-value="/work/deals/{{ $deal->id }}/chat?inline=1" data-reload-key-value="offer" data-reload-match-value="{{ $offer->id }}" data-action="live:chat@document->reload#load">
+    @if ($chat)
+        <a href="/work/chats/{{ $chat->id }}" data-turbo-frame="_top" @class(['holder-act', 'holder-act--hot' => $unread])><x-ui.icon name="chat" class="size-4"/>Чат@if ($unread) <span class="badge">{{ $unread }}</span>@endif</a>
+    @else
+        <form method="post" action="/work/chats/offer/{{ $offer->number }}/{{ $buyer->id }}" class="contents" data-turbo-frame="_top">@csrf<button type="submit" class="holder-act"><x-ui.icon name="chat" class="size-4"/>Чат</button></form>
+    @endif
+</turbo-frame>
+@elseif ($compact)
 {{-- Пилюлей «Чат» в ряду окошка сделки (12.10.2026, владелец: «Чат вот так красиво компактно везде и у сделок»): число
      непрочитанных — счётчиком, пилюля оранжевая; переписки нет — та же пилюля заводит чат. --}}
 <turbo-frame id="deal-chat-pill-{{ $deal->id }}" class="contents" data-controller="reload" data-reload-url-value="/work/deals/{{ $deal->id }}/chat?compact=1" data-reload-key-value="offer" data-reload-match-value="{{ $offer->id }}" data-action="live:chat@document->reload#load">

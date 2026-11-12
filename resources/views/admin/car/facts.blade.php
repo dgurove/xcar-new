@@ -20,6 +20,8 @@
              владелец: под именем узко, и они вставали друг под другом). --}}
         @if ($holderActs ?? false)
             <span class="holder-acts">
+                {{-- Чат с ним — первым (12.11.2026, владелец: «кнопку чат в блок, где менеджер»). --}}
+                @if ($dealChat ?? false)<x-deal.chat-card :deal="$deal" :chat="$car->dealChat()" inline/>@endif
                 @if ($deal?->isActive())<x-deal.reply-review :deal="$deal" inline/>@endif
                 @if ($personDeal ?? null)<x-deal.person-link :deal="$personDeal" inline/>@endif
             </span>

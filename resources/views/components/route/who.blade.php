@@ -70,7 +70,10 @@
         default => ['ждём '.$timer('since', $since), 'plain', null],
     };
 @endphp
-@if ($side === 'us' && ! $trip && ! $position->carried() && ! $open)
+@if ($manager && ! $named && ! $asked && ! $open)
+    {{-- Окно: менеджер — в шапке, здесь без значка и слова «Менеджер», только чего ждём (12.11.2026, владелец: «много мусора»). --}}
+    <div {{ $attributes->class('step-who step-who--bare') }}><x-ui.state :tone="$tone"><span>{!! $debt ? 'менеджер '.$state : preg_replace('/ждём /u', 'ждём менеджера ', $state, 1) !!}</span></x-ui.state></div>
+@elseif ($side === 'us' && ! $trip && ! $position->carried() && ! $open)
     {{-- Наш ход — строки «[знак] XCar» нет (12.11.2026, владелец: «зачем сюда логотип икскара»): только часы под названием. --}}
     <div {{ $attributes->class('step-who step-who--bare') }}><x-ui.state :tone="$tone"><span>{!! $state !!}</span></x-ui.state></div>
 @elseif ($side)

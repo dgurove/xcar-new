@@ -27,8 +27,6 @@
          «‹» на ПК — как у шелла (`Nav::backFor`), на телефоне — в шапке приложения. --}}
     @php
         $backTo = \App\Support\Nav::backFor('/'.ltrim(request()->path(), '/'), auth()->user());
-        // «Письмо» без файлов пилюлей не нужно (владелец: «зачем кнопка „Письмо“») — письма карточкой ниже (`x-ui.docs-pill files`).
-        $files = \App\Support\Docs::files($docs)->isNotEmpty();
         $shares = auth()->user()->sharesPark() && $vehicle->photos()->isNotEmpty();
         $sells = auth()->user()->canManageCrm();
     @endphp
@@ -45,9 +43,9 @@
             {{-- Коды, как в окне: убыток с логотипом вендора, VIN и что не так (город — строкой ниже, `x-park.city-pick`). --}}
             <div class="flex flex-wrap items-center gap-1.5"><x-car.codes :vendor-id="$vehicle->vendor?->id" :ref="$vehicle->ref" :vin="$vehicle->vin"><x-park.alerts :vehicle="$vehicle" :skip="[\App\Park\Alerts::DOCS, 'Город не определён']" :place="false"/></x-car.codes></div>
             {{-- Пилюли одного вида: документы, «Поделиться» (админам и администраторам парковки, 02.11.2026), продажа (11.10.2026). --}}
-            @if ($files || $shares || $sells)
+            {{-- Пилюли «Документы» нет (12.11.2026, владелец: «на странице дела уже есть блок с документами, зачем там чип»). --}}
+            @if ($shares || $sells)
                 <div class="flex flex-wrap items-center gap-2">
-                    <x-ui.docs-pill :docs="$docs" files/>
                     @if ($shares)<x-ui.share :subject="\App\Offers\Share\Subject::vehicle($vehicle)" variant="pill"/>@endif
                     <x-park.sale :vehicle="$vehicle"/>
                 </div>

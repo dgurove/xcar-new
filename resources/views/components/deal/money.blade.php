@@ -94,7 +94,8 @@
             </dl>
         </details>
     @endif
-    <div class="mt-3 flex flex-wrap items-center gap-1.5">
+    {{-- Пустая строка (ни режима, ни состояния, ни «Ещё счёт») не рисуется — под схемой была дыра (12.11.2026). --}}
+    @php ob_start(); @endphp
         {{-- Схема и режим вознаграждения — текстом, состояние словом, «Ещё счёт» — действием (10.10.2026). --}}
         {{-- Схема — строкой «Схема» выше (`x-deal.scheme`); здесь — аукцион вне системы и режим вознаграждения. --}}
         @if (($deal->isAuction() && $invoices->isEmpty()) || ($deal->commission && $deal->isPrime()))<span class="text-sm text-ink-muted">{{ $deal->isAuction() && $invoices->isEmpty() ? 'Счёт вне системы' : 'Вознаграждение: '.mb_strtolower($deal->commission_mode->label()) }}</span>@endif
@@ -104,7 +105,8 @@
             {{-- Счета ставятся сами по схеме (`SyncDealInvoices`); здесь — только «Ещё счёт» для редкого ручного. --}}
             @if ($issued->isNotEmpty())<a href="/work/invoices/new?offer={{ $offer->number }}" class="btn btn-s btn-quiet ml-auto"><x-ui.icon name="plus" class="size-4"/> Ещё счёт</a>@endif
         @endif
-    </div>
+    @php $chips = trim(ob_get_clean()); @endphp
+    @if ($chips !== '')<div class="mt-3 flex flex-wrap items-center gap-1.5">{!! $chips !!}</div>@endif
     {{-- Ссылки на оплату — одной группой строк `x-billing.link-row` (09.10.2026): ссылка счёта сделки и ручные, засчитанные
          в неё; у открытой — «Скопировать» в самой строке. Сверх сделки — строкой там же, словом, не красным (владелец:
          «может, дополнительно договорились»); до счёта — ляжет потом. --}}
@@ -116,11 +118,13 @@
         // 2610222547: ручная ссылка есть, счетов сделки нет — окно падало).
         $links = $issued->toBase()->map(fn ($i) => [$last($i, true), 'счёт '.$i->label()])
             ->merge($credits->map(fn ($c) => [$last($c, false), $c->state === InvoiceState::Paid ? 'вручную, в зачёт сделки' : 'вручную, засчитаем']))
-            ->filter(fn ($p) => $p[0]);
+            // Отменённая ссылка — мёртвая строка «отменена» рядом с теми же деньгами строкой ниже (12.11.2026, владелец: «мусор»).
+            ->filter(fn ($p) => $p[0] && $p[0]->state !== \App\Billing\Acquiring\PayLinkState::Canceled);
     @endphp
     @if ($links->isNotEmpty() || $extra > 0)
-        <div class="list-cap mt-4">Ссылки на оплату</div>
-        <div class="list">
+        {{-- Живых ссылок нет, только внесённое вручную — одна строка без подписи «Ссылки на оплату». --}}
+        @if ($links->isNotEmpty())<div class="list-cap mt-4">Ссылки на оплату</div>@endif
+        <div @class(['list', 'mt-4' => $links->isEmpty()])>
             @foreach ($links as [$l, $sub])
                 <x-billing.link-row :link="$l" :car="false" :sub="$sub">
                     @if ($l->isOpen())
@@ -131,7 +135,7 @@
                 </x-billing.link-row>
             @endforeach
             @if ($extra > 0)
-                <div class="row"><span class="min-w-0 flex-1 text-ink-muted">{{ $deal->agreed() && $issued->isNotEmpty() ? 'Сверх сделки' : 'Засчитаем, когда выставим счёт' }}</span><span class="nums shrink-0">{{ Money::rub($extra) }}</span></div>
+                <div class="row">@if ($links->isEmpty())<span class="min-w-0 flex-1">Оплачено вручную<span class="row-sub">{{ $deal->agreed() && $issued->isNotEmpty() ? 'сверх сделки' : 'засчитаем, когда выставим счёт' }}</span></span>@else<span class="min-w-0 flex-1 text-ink-muted">{{ $deal->agreed() && $issued->isNotEmpty() ? 'Сверх сделки' : 'Засчитаем, когда выставим счёт' }}</span>@endif<span class="nums shrink-0">{{ Money::rub($extra) }}</span></div>
             @endif
         </div>
     @endif

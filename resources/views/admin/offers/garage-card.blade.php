@@ -3,6 +3,8 @@
      там же), деньги, расходы с «+ Расход», чат с менеджером. Шторки — те же, что на странице машины на сайте. С 11.11.2026
      своей ветки для окна «Работы → Гаража» нет: окно машины одно (`CarView`), оно рисует те же дорожки. --}}
 @php
+    // Окно и страница машины — `CarView` в `$car` до `extract` (там `$car` — машина гаража).
+    $carView = $car instanceof \App\Offers\CarView ? $car : null;
     extract($garageView);
     $compact ??= false;
     // Пока ТС не продана, «Расчёта» нет — редкое продажи («Изменить цену покупателю») тоже здесь (12.11.2026: из окна оно пропало).
@@ -10,9 +12,9 @@
     // Окно (`compact`, 12.11.2026, владелец: «менеджер несколько раз, закупочная несколько раз»): чья машина и кто платит — в
     // сведениях шапки; пока её везут, «Ждёт ТС» — это и есть «Вывоз» рядом; закупочная до продажи — число шапки.
     $waiting = $car->state === \App\Garage\CarState::Waiting;
-    // «Вернуть в продажу» в окне — в «⋯» полосы (`CarView::actions`), второй раз в меню «Гаража» его нет.
-    if ($compact) {
-        $menu = array_values(array_filter($menu, fn ($m) => ($m[1] ?? null) !== 'resale'));
+    // Окно: «⋯» — `CarView::garageMenu` (без «Вернуть в продажу» — оно в «⋯» полосы; с «Добавить расход», пока расходов нет).
+    if ($compact && $carView) {
+        $menu = $carView->garageMenu();
     }
     ob_start();
 @endphp
@@ -35,15 +37,17 @@
             <x-deal.park-release :deal="$car->deal" :vehicle="$parked"/>
         </section>
     @endif
-    @unless ($compact && $waiting)@include('garage.cars.path', ['set' => 'prep', 'buttonsHere' => $prep])@endunless
+    {{-- Окно: подготовка пройдена (машина в продаже, продана) — её путь история, здесь его нет (12.11.2026, владелец: «мусор»). --}}
+    @unless ($compact && ($waiting || ! in_array($car->state, \App\Garage\CarState::prep(), true)))@include('garage.cars.path', ['set' => 'prep', 'buttonsHere' => $prep, 'compact' => $compact])@endunless
     {{-- Деньги машины: до продажи это закупочная — в окне она числом шапки, а не второй раз крупно. --}}
     @if ($money && ! $car->isSold() && ! ($compact && $car->priceFor($staff)))@include('garage.cars.money')@endif
-    @unless ($compact && $waiting && $car->costs->isEmpty())@include('garage.cars.costs')@endunless
+    @unless ($compact && $car->costs->isEmpty())@include('garage.cars.costs')@endunless
     {{-- Чат с менеджером сделки — карточкой (`x-deal.chat-card`) у окна и страницы; здесь — только с другим менеджером. --}}
     @if ($car->manager && ($deal ?? null)?->buyer_id !== $car->manager_id)<x-chat.staff-line :offer="$offer" :user="$car->manager"/>@endif
 @php $body = trim(ob_get_clean()); @endphp
 {{-- Пустой «Гараж» окну не нужен: машину ещё везут, расходов нет — всё сказали шапка и «Вывоз». --}}
-@if ($body !== '' || ! $compact || $menu)
+{{-- Окну показать нечего (`CarView::garageQuiet`) — раздела нет, его «⋯» — в «⋯» окна (12.11.2026, владелец: «мусор»). --}}
+@if ($body !== '' || ! $compact || ($menu && ! $carView?->garageQuiet()))
     <x-ui.card title="Гараж" id="garage" class="scroll-mt-24">
         @if ($compact && $menu)
             <x-slot:actions>@include('garage.cars.actions', ['buttons' => [], 'more' => $menu, 'bar' => false])</x-slot:actions>

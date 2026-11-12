@@ -461,7 +461,8 @@
                              под ней (10.11.2026, владелец: «месиво»). --}}
                     @endif
                     @if ($subs->where('state', \App\Workflow\Substeps::WAIT)->isNotEmpty())
-                        <ol class="substeps">
+                        {{-- Будущие подпункты — в свёрнутом пути окна их нет (12.11.2026): видны, когда раскрыли «Весь путь». --}}
+                        <ol class="substeps substeps--wait">
                             @foreach ($subs->where('state', \App\Workflow\Substeps::WAIT) as $sub)
                                 <li class="substep substep--wait">
                                     <span class="substep-dot"></span>

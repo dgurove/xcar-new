@@ -301,6 +301,44 @@ final class CarView
         ];
     }
 
+    /**
+     * «⋯» дорожки «Гараж» окна (12.11.2026): продажа и подготовка, без «Вернуть в продажу» (оно в «⋯» окна), и «Добавить
+     * расход», пока расходов нет (раздела тогда нет). Одно решение для заголовка «Гаража» и «⋯» окна.
+     *
+     * @return list<array>
+     */
+    public function garageMenu(): array
+    {
+        if (! $g = $this->garageView) {
+            return [];
+        }
+        $car = $this->garageCar;
+        $menu = array_values(array_filter($car->isSold() ? $g['morePrep'] : [...$g['morePrep'], ...$g['moreSale']], fn ($m) => ($m[1] ?? null) !== 'resale'));
+        if ($g['staff'] && $g['canAdd'] && $car->costs->isEmpty()) {
+            $menu[] = ['emit', 'cost-new', 'Добавить расход'];
+        }
+
+        return $menu;
+    }
+
+    /**
+     * Окну в «Гараже» показать нечего (12.11.2026, владелец: «много мусора»): подготовка пройдена или машину ещё везут, расходов
+     * нет, денег до продажи нет (число шапки), чата с другим менеджером нет — раздела нет, его действия — в «⋯» окна.
+     * Те же условия, что рисуют тело `admin.offers.garage-card` в окне.
+     */
+    public function garageQuiet(): bool
+    {
+        if (! $g = $this->garageView) {
+            return false;
+        }
+        $car = $this->garageCar;
+        $path = $car->state !== \App\Garage\CarState::Waiting && in_array($car->state, \App\Garage\CarState::prep(), true);
+        $money = $g['money'] && ! $car->isSold() && ! $car->priceFor($g['staff']);
+        $chat = $car->manager && $this->deal?->buyer_id !== $car->manager_id;
+
+        return ! $path && ! $money && ! $chat && $car->costs->isEmpty();
+    }
+
     /** Чат с менеджером сделки (тот, что карточкой и пилюлей «Чат») — из общей выборки, без своего запроса. */
     public function dealChat(): ?Chat
     {
@@ -363,6 +401,16 @@ final class CarView
             }
             if (($v['publishItems'] && Exclusive::due($o)->isNotEmpty()) || ($state === OfferState::Open && Exclusive::running($o)->isNotEmpty())) {
                 $groups[] = [['kind' => 'view', 'view' => 'admin.car.exclusive-off']];
+            }
+            // «Гараж» окну показать нечего — раздела нет, его действия здесь (12.11.2026).
+            if (! $this->page && $this->garageQuiet() && ($garage = $this->garageMenu())) {
+                $groups[] = array_map(fn ($m) => $m[0] === 'emit'
+                    ? $emit($m[1], $m[2], $m[1] === 'cost-new' ? 'plus' : 'edit')
+                    : $post($m[2], $m[3], 'edit', [], $m[1] === 'DELETE', ($m[4] ?? null) ?: null, method: in_array($m[1], ['POST', 'post'], true) ? null : strtolower($m[1])), $garage);
+            }
+            // Пустая заметка в окне не рисуется — пунктом «⋯»: нажатие показывает её поле на месте (12.11.2026, владелец: «мусор»).
+            if (($noteDeal = $this->garageCar?->deal ?? $this->deal) && blank($noteDeal->notes)) {
+                $groups[] = [$emit('deal-note-'.$noteDeal->id, 'Заметка', 'edit')];
             }
             if ($v['askMenu']) {
                 $groups[] = [$emit('estimate-ask-'.$n, $v['correct'] ? 'Спросить менеджеров' : 'Отдать на оценку', 'users')];

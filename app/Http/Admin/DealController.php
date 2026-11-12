@@ -436,7 +436,7 @@ class DealController
     {
         abort_unless($deal->buyer, 404);
 
-        return Blade::render('<x-deal.chat-card :deal="$deal" :compact="$compact"/>', ['deal' => $deal, 'compact' => $request->boolean('compact')]);
+        return Blade::render('<x-deal.chat-card :deal="$deal" :compact="$compact" :inline="$inline"/>', ['deal' => $deal, 'compact' => $request->boolean('compact'), 'inline' => $request->boolean('inline')]);
     }
 
     /** Деньги сделки — пока по ней нет счёта или есть только неоплаченный подбор по ДКП (`Deal::moneyEditable`). */

@@ -60,16 +60,20 @@
             @endphp
             @include('admin.car.facts')
             @include('admin.car.alerts')
-            {{-- Ряд пилюль: чат с менеджером сделки (пилюлей, живой), остальные чаты, документы (03.11.2026). --}}
-            @if ($dealChat || $otherChats->isNotEmpty() || $docs || (! $holderActs && (($admin && $deal?->isActive()) || $personDeal)))
+            {{-- Ряд пилюль: остальные чаты; чат с менеджером сделки, «Показать» и ссылка — пилюлями, только когда плашки менеджера
+                 нет (иначе они в ней, 12.11.2026). --}}
+            @php $pillChat = $dealChat && ! $holderActs; @endphp
+            @if ($pillChat || $otherChats->isNotEmpty() || (! $holderActs && (($admin && $deal?->isActive()) || $personDeal)))
                 <div class="flex w-full flex-wrap items-center gap-2">
-                    @if ($dealChat)<x-deal.chat-card :deal="$deal" :chat="$car->dealChat()" compact/>@endif
+                    @if ($pillChat)<x-deal.chat-card :deal="$deal" :chat="$car->dealChat()" compact/>@endif
                     @if ($otherChats->isNotEmpty())<x-ui.pill :tone="$chatUnread ? 'urgent' : 'plain'" href="/work/chats?preset=all&q={{ $n }}" data-turbo-frame="_top"><x-ui.icon name="chat" class="size-4"/> {{ $otherChats->count() === 1 ? 'Чат' : 'Чаты' }}@if ($otherChats->count() > 1 && ! $chatUnread) <span class="nums text-ink-dim">{{ $otherChats->count() }}</span>@endif @if ($chatUnread) <span class="badge">{{ $chatUnread }}</span>@endif</x-ui.pill>@endif
-                    @if ($docs)<x-ui.docs-pill :docs="$docs"/>@endif
                     @if (! $holderActs && $admin && $deal?->isActive())<x-deal.reply-review :deal="$deal" pill/>@endif
                     @if (! $holderActs && $personDeal)<x-deal.person-link :deal="$personDeal" pill/>@endif
                 </div>
             @endif
+            {{-- Документы — сами файлы чипами одной строкой с прокруткой вбок (12.11.2026, владелец: «реальные чипы документов,
+                 если pdf — то pdf, цвет и имя»), а не пилюлей «Документы N». --}}
+            @if ($docs)<x-ui.docs-chips :docs="$docs"/>@endif
             {{-- Что сейчас: черновик — «Цены» по шагам (метки — под блоком), открытое — «Приём», слот, аукцион, архив, «Без
                  подтверждений» — плашкой с кнопками; оценённый — ответы менеджеров на корректировку. --}}
             @if ($steps)
@@ -111,7 +115,7 @@
                 @endif
             </form>
             @php $noteDeal = $garageCar?->deal ?? $deal; @endphp
-            @if ($admin && $noteDeal)<x-deal.note :deal="$noteDeal"/>@endif
+            @if ($admin && $noteDeal)<x-deal.note :deal="$noteDeal" folded/>@endif
             @if ($selling)
                 <section>
                     <h2 class="detail-section">Документы</h2>

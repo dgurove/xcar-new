@@ -3,7 +3,13 @@
 @php
     // Имя без расширения с точкой в дате («Счёт поставщика от 10.11.2026») — тип по mime, а не «2026».
     $ext = strtolower(pathinfo($name, PATHINFO_EXTENSION));
-    $ext = $ext !== '' && ! ctype_digit($ext) ? $ext : (explode('/', (string) $mime)[1] ?? '');
+    // Без расширения — по mime; вложения письма «text/plain» и «message/rfc822» — «txt» и «eml», а не «plai» и «rfc8» (12.11.2026).
+    $ext = $ext !== '' && ! ctype_digit($ext) ? $ext : match ((string) $mime) {
+        'text/plain' => 'txt',
+        'message/rfc822' => 'eml',
+        'text/html' => 'html',
+        default => explode('/', (string) $mime)[1] ?? '',
+    };
     $kind = match (true) {
         $ext === 'pdf' => 'pdf',
         in_array($ext, ['xls', 'xlsx', 'csv', 'ods']) => 'sheet',

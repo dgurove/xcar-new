@@ -2515,6 +2515,9 @@ html.kb-open { --home-gap: 0px; }
      шаг одной колонкой, вровень с «Продажа»; раскрыли «Весь путь» — точки и линия на месте. */
   .steps--compact:is(:has(> .step--current), :has(> .step--ask)):not(:has(> .steps-all > .steps-all-check:checked)) > .step { grid-template-columns: minmax(0, 1fr); }
   .steps--compact:is(:has(> .step--current), :has(> .step--ask)):not(:has(> .steps-all > .steps-all-check:checked)) > .step > .step-dot { display: none; }
+  /* Свёрнутый — и без «Оплата, 1 из 2» над шагом и серых будущих подпунктов: это и есть «Весь путь». */
+  .steps--compact:not(:has(> .steps-all > .steps-all-check:checked)) .step-kicker,
+  .steps--compact:not(:has(> .steps-all > .steps-all-check:checked)) .substeps--wait { display: none; }
   .steps-all { display: flex; align-items: center; gap: .375rem; align-self: flex-start; margin-top: .25rem; cursor: pointer; font-size: var(--text-sm); color: var(--color-ink-muted); }
   .steps-all-check { position: absolute; opacity: 0; pointer-events: none; width: 1px; height: 1px; }
   .steps-all-close { display: none; }
@@ -3396,6 +3399,14 @@ html.kb-open { --home-gap: 0px; }
   /* «Показать» и «Ссылка» в плашке менеджера — тихие ссылки строкой под условиями. */
   .holder-acts { @apply -mt-1.5 flex basis-full flex-wrap gap-x-4 gap-y-1 pl-8; }
   .holder-act { @apply inline-flex items-center gap-1 text-[13px] text-accent-text; }
+  .holder-act--hot { @apply text-urgent; }
+  /* Документы окна машины чипами (12.11.2026): одна строка, прокрутка вбок без полосы, чип — значок типа и имя. */
+  .docs-chips { @apply -mx-4 flex w-[calc(100%+2rem)] gap-1.5 overflow-x-auto px-4; scrollbar-width: none; overscroll-behavior-x: contain; }
+  .docs-chips::-webkit-scrollbar { display: none; }
+  .doc-chip--add { @apply pl-2.5 text-accent-text; }
+  .doc-chip { @apply inline-flex min-h-[1.875rem] max-w-44 shrink-0 items-center gap-1.5 rounded-full bg-surface-3 py-1 pl-1 pr-3 text-sm text-ink; }
+  @media (hover: hover) { .doc-chip:hover { @apply bg-hover; } }
+  .holder-act .badge { @apply ml-0.5; }
   @media (hover: hover) { .holder-act:hover { @apply underline underline-offset-4; } }
   .handover-facts { @apply flex flex-wrap items-center gap-x-4 gap-y-1.5; }
   .handover-facts > span { @apply inline-flex min-w-0 items-center gap-1.5; }

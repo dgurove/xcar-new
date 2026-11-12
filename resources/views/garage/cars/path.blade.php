@@ -37,7 +37,9 @@
     // Весь путь менеджеру начинается со сделки со страховой: идёт — её блок текущим (ваш ход — оранжевым), закрыта — галочкой.
     $deal = $set === 'all' && ($withDeal ?? true) && $car->deal_id ? $car->deal : null;
 @endphp
-@unless ($bare)<div class="steps">@endunless
+{{-- compact — окно машины CRM (12.11.2026, владелец: «много мусора»): как путь «Продажи» — текущий шаг, «Весь путь» раскрывает. --}}
+@php $compact ??= false; $steps = $car->path($states); @endphp
+@unless ($bare)<div @class(['steps', 'steps--compact' => $compact])>@endunless
     @if ($deal)
         @php $open = $car->dealOpen(); @endphp
         <div class="step step--{{ $open ? ($asks ? 'ask' : 'current') : 'done' }}">
@@ -51,7 +53,7 @@
             </div>
         </div>
     @endif
-    @foreach ($car->path($states) as $p)
+    @foreach ($steps as $p)
         <div class="step step--{{ $p['status'] === 'current' && $p['state'] === CarState::Waiting && (str_starts_with($where, 'забрать') || $where === 'позвонить владельцу') ? 'ask' : $p['status'] }}">
             <span class="step-dot">@if ($p['status'] === 'done')<x-ui.icon name="check" class="size-3"/>@endif</span>
             <div class="step-body">
@@ -70,4 +72,4 @@
             </div>
         </div>
     @endforeach
-@unless ($bare)</div>@endunless
+@unless ($bare)@if ($compact)<x-route.fold :count="count($steps)"/>@endif</div>@endunless

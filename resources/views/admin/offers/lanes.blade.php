@@ -26,6 +26,10 @@
     if ($compact && ! $salePos && $garageCar && ! in_array($garageCar->state, \App\Garage\CarState::sale(), true)) {
         $saleLane = false;
     }
+    // Окно: вывоз закончен — его история на странице машины, здесь дорожки нет (12.11.2026, владелец: «много мусора»).
+    if ($compact && $offer->pickup()?->state === \App\Logistics\TransportState::Delivered) {
+        $pickupLane = false;
+    }
     $count = (int) $saleLane + (int) ($pickupLane || $handover) + (int) ($third !== null);
 @endphp
 @if ($count)

@@ -19,6 +19,13 @@ export default class extends Controller {
         if (this.editingValue) this.snapshot = this.serialize();
     }
 
+    // Пункт «Заметка» в «⋯» окна (12.11.2026): пустая карточка спрятана — показать её сразу с полем.
+    open() {
+        this.element.hidden = false;
+        if (!this.editingValue) this.toggle();
+        this.element.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    }
+
     toggle() {
         if (this.editingValue && this.changed()) {
             const button = this.buttonTarget;
