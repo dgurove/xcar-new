@@ -222,13 +222,17 @@ class AlfaPrepayTest extends TestCase
         $this->assertTrue($deal->fresh()->mayPickUp());
     }
 
-    /** Р.О.С. — только у предложения с НДС (18.10.2026, владелец: без НДС — «ошибка»). */
+    /**
+     * Р.О.С. по умолчанию — у предложения с НДС; без НДС его можно выбрать, но с переспросом (18.10.2026 без НДС на Р.О.С.
+     * было «ошибкой»; 12.11.2026 владелец: «либо прайм, либо рос — в любом случае»).
+     */
     public function test_ros_only_with_vat(): void
     {
         $offer = $this->offer(vat: false);
-        $this->assertNotContains(DealScheme::Ros, DealScheme::casesFor($offer->vendor, $offer));
-        $this->assertSame(DealScheme::Insurer, DealScheme::resolve($offer, DealScheme::Ros));
+        $this->assertSame(DealScheme::Insurer, DealScheme::forOffer($offer));
+        $this->assertStringContainsString('без НДС', DealScheme::unusual($offer, DealScheme::Ros));
         $offer->forceFill(['prices_include_vat' => true])->save();
-        $this->assertContains(DealScheme::Ros, DealScheme::casesFor($offer->vendor, $offer->fresh()));
+        $this->assertSame(DealScheme::Ros, DealScheme::forOffer($offer->fresh()));
+        $this->assertNull(DealScheme::unusual($offer->fresh(), DealScheme::Ros));
     }
 }

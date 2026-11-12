@@ -502,7 +502,7 @@ class Deal extends Model
             return null;
         }
         if ($this->isCommission()) {
-            return $this->garage_payer === GaragePayer::Manager ? 'без оплаты, счёт ПРАЙМ при продаже' : 'поставщику платим мы';
+            return $this->garage_payer === GaragePayer::Manager ? 'без оплаты, счёт '.$this->seller()->short().' при продаже' : 'поставщику платим мы';
         }
 
         return $this->garage_payer === GaragePayer::Us ? 'поставщику платим мы' : 'поставщику платит менеджер';

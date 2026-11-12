@@ -19,6 +19,9 @@ use App\Vendors\Vendor;
  * — «Р.О.С. по счёту» (10.10.2026, АльфаСтрахование с НДС): то же, что ПРАЙМ, только продаёт ООО «Р.О.С.» — оно и
  *   переводит Альфе. У Альфы (`vendors.pay_before_pickup`) схема по умолчанию — по НДС предложения (`forOffer`): с НДС
  *   Р.О.С., без — «Страховой напрямую».
+ * С 12.11.2026 (владелец, DAF XF Корабельникова: цены с НДС, а приняли через ПРАЙМ — галку не увидели) ПРАЙМ или Р.О.С.
+ * выбирают у любого поставщика: где по умолчанию ПРАЙМ, цены с НДС — Р.О.С.; опт (Каркаде, всегда «с НДС») — ПРАЙМ, Р.О.С.
+ * выбором. Сменили в сделке — счёт перевыставляется, договор перенумеровывается (`ChangeDealScheme`).
  */
 enum DealScheme: string
 {
@@ -37,7 +40,7 @@ enum DealScheme: string
             self::Prime => 'Через ПРАЙМ: ПРАЙМ продаёт покупателю',
             self::OwnerDkp => 'ДКП: собственник продаёт покупателю',
             self::Insurer => 'Напрямую: страховая продаёт покупателю',
-            self::Ros => 'Через Р.О.С., с НДС',
+            self::Ros => 'Через Р.О.С.: Р.О.С. продаёт покупателю, с НДС',
         };
     }
 
@@ -48,7 +51,7 @@ enum DealScheme: string
             self::Insurer => 'Покупатель платит страховой сам, нам — подбор по ссылке',
             self::OwnerDkp => 'Покупатель платит собственнику по ДКП, нам — подбор по ссылке',
             self::Prime => 'Покупатель платит ПРАЙМ по счёту, ПРАЙМ — поставщику, ДКП с ПРАЙМ',
-            self::Ros => 'То же через ООО «Р.О.С.», с НДС',
+            self::Ros => 'Покупатель платит Р.О.С. по счёту, Р.О.С. — поставщику, ДКП с Р.О.С.',
         };
     }
 
@@ -105,22 +108,27 @@ enum DealScheme: string
         if ($offer->vendor?->pay_before_pickup) {
             return $offer->prices_include_vat ? self::Ros : self::Insurer;
         }
+        $format = $offer->vendor?->deal_format;
+        $default = self::forVendor($format);
 
-        return self::forVendor($offer->vendor?->deal_format);
+        // Цены с НДС — продаёт Р.О.С. (12.11.2026); опт — ПРАЙМ при любом НДС.
+        return $default === self::Prime && $offer->prices_include_vat && $format !== DealFormat::Wholesale ? self::Ros : $default;
     }
 
     /**
-     * Схемы в шторке: Р.О.С. — только у Альфы и только у предложения с НДС (18.10.2026, владелец: 20 сделок без НДС на
-     * Р.О.С. — «ошибка»: его счёт с НДС 22 %). @return list<self>
+     * Схемы в шторке. ПРАЙМ и Р.О.С. — у всех (12.11.2026, владелец: «либо прайм, либо рос — в любом случае»); не по НДС —
+     * с переспросом (`unusual`; 18.10.2026 20 сделок без НДС на Р.О.С. были ошибкой — его счёт с НДС 22 %). Опт — только
+     * эти две. @return list<self>
      */
     public static function casesFor(?Vendor $vendor, ?Offer $offer = null): array
     {
         $alfa = (bool) $vendor?->pay_before_pickup;
+        $wholesale = $vendor?->deal_format === DealFormat::Wholesale;
         $cases = array_filter(self::cases(), fn (self $s) => match ($s) {
-            self::Ros => $alfa && (! $offer || $offer->prices_include_vat),
+            self::Prime, self::Ros => true,
             // ДКП собственника у Альфы не бывает — лишний вариант путал (03.11.2026).
-            self::OwnerDkp => ! $alfa,
-            default => true,
+            self::OwnerDkp => ! $alfa && ! $wholesale,
+            self::Insurer => ! $wholesale,
         });
         // Умолчание — первым, ПРАЙМ — последним, если он не умолчание (03.11.2026: ПРАЙМ стоял первым, его и принимали).
         $default = $offer ? self::forOffer($offer) : ($alfa ? self::Insurer : self::forVendor($vendor?->deal_format));
@@ -131,10 +139,15 @@ enum DealScheme: string
 
     private static function rank(self $s, self $default): int
     {
+        $pair = [self::Prime, self::Ros];
+
         return match (true) {
             $s === $default => 0,
+            // Умолчание — ПРАЙМ или Р.О.С.: второй из пары — сразу за ним, переключиться рядом (12.11.2026).
+            in_array($default, $pair, true) && in_array($s, $pair, true) => 1,
             $s === self::Prime => 9,
-            default => 1 + array_search($s, self::cases(), true),
+            $s === self::Ros => 8,
+            default => 2 + array_search($s, self::cases(), true),
         };
     }
 
@@ -144,8 +157,15 @@ enum DealScheme: string
     public static function unusual(Offer $offer, self $chosen): ?string
     {
         $default = self::forOffer($offer);
-        if ($chosen === $default || ! self::choiceFor($offer->vendor?->deal_format)) {
+        if ($chosen === $default || $offer->vendor?->deal_format === DealFormat::Wholesale) {
             return null;
+        }
+        // ПРАЙМ ↔ Р.О.С. — дело в НДС цен (12.11.2026).
+        if ($chosen === self::Prime && $offer->prices_include_vat) {
+            return 'Цены с НДС — обычно через Р.О.С. Точно продавать через ПРАЙМ?';
+        }
+        if ($chosen === self::Ros && ! $offer->prices_include_vat) {
+            return 'Цены без НДС, а счёт Р.О.С. — с НДС 22 %. Точно через Р.О.С.?';
         }
 
         return 'У поставщика «'.($offer->vendor?->name ?? '').'» обычно «'.$default->label().'». Точно «'.$chosen->label().'»?';
@@ -153,21 +173,21 @@ enum DealScheme: string
 
     /**
      * Схема сделки, которую заводит «Отдать» (`Give`): выбранная в шторке, если её можно выбрать у этого вендора
-     * (оптом — только ПРАЙМ, Р.О.С. — только у Альфы), иначе по умолчанию предложения.
+     * (`casesFor`), иначе по умолчанию предложения.
      */
     public static function resolve(Offer $offer, ?self $requested): self
     {
         $default = self::forOffer($offer);
-        if (! $requested || ! self::choiceFor($offer->vendor?->deal_format)) {
+        if (! $requested) {
             return $default;
         }
 
         return in_array($requested, self::casesFor($offer->vendor, $offer), true) ? $requested : $default;
     }
 
-    /** Схема на выбор в шторках «Принять» и «Деньги»: оптом схема одна — ПРАЙМ, выбирать нечего (null). */
+    /** Схема на выбор в шторках «Принять» и «Деньги» (оптом с 12.11.2026 тоже — ПРАЙМ или Р.О.С.). */
     public static function choiceFor(?DealFormat $format, ?self $current = null): ?self
     {
-        return $format === DealFormat::Wholesale ? null : ($current ?? self::forVendor($format));
+        return $current ?? self::forVendor($format);
     }
 }

@@ -1,13 +1,13 @@
 {{-- Схема сделки строкой (03.11.2026, владелец: у Альфы стоял «ПРАЙМ по счёту», «а кто нажал, что ПРАЙМ, я не понял; должна быть
      возможность поменять удобно и посмотреть, кто это выбрал»): схема, кто и когда выбрал (`deals.scheme_by|scheme_at`), нажатие —
      шторка «Схема сделки»: варианты строками с фразой, кто кому платит (`DealScheme::hint`), «Сменить» (`ChangeDealScheme`).
-     По счёту уже платили — без шторки, словом почему. Оптом схема одна — только строка. --}}
+     По счёту уже платили — без шторки, словом почему. С 12.11.2026 и оптом — ПРАЙМ или Р.О.С. --}}
 @props(['deal'])
 @php
     use App\Offers\DealScheme;
     $scheme = $deal->schemeOf();
     $who = $deal->schemeAuthor?->shortName();
-    $choices = DealScheme::choiceFor($deal->offer->vendor?->deal_format) ? DealScheme::casesFor($deal->offer->vendor, $deal->offer) : [];
+    $choices = DealScheme::casesFor($deal->offer->vendor, $deal->offer);
     $editable = $deal->isActive() && count($choices) > 1 && $deal->moneyEditable() && auth()->user()?->canManageCrm();
     $sheet = 'deal-scheme-'.$deal->id;
     // Кто и когда: «Андрей К., 06.10 17:30»; без человека — «автоматически»; сменить нельзя — почему.

@@ -20,7 +20,7 @@ final class ChangeDealScheme
     public function __invoke(Deal $deal, DealScheme $scheme, User $by, bool $ok = true): Deal
     {
         $deal->loadMissing('offer.vendor');
-        if (! DealScheme::choiceFor($deal->offer->vendor?->deal_format) || ! in_array($scheme, DealScheme::casesFor($deal->offer->vendor, $deal->offer), true)) {
+        if (! in_array($scheme, DealScheme::casesFor($deal->offer->vendor, $deal->offer), true)) {
             throw ValidationException::withMessages(['scheme' => 'Эту схему у этого поставщика выбрать нельзя']);
         }
         if (! $ok && ($ask = DealScheme::unusual($deal->offer, $scheme))) {
@@ -33,6 +33,11 @@ final class ChangeDealScheme
         ($this->money)($deal, $by, $deal->commission, $deal->commission_mode, $scheme, $deal->share, 'Схема: '.$was->label().' → '.$scheme->label());
         $deal = $deal->fresh(['offer', 'contract.buyer.party']);
         $this->advance->rehome($deal, $by);
+        // Сменился продавец (ПРАЙМ ↔ Р.О.С., 12.11.2026) — договор с номером прежнего продавца перенумеровывается под нового
+        // (`SettleContract`: номер из его ряда, «РОС-…»); счёт уже перевыставил `UpdateDealMoney` → `SyncDealInvoices`.
+        if ($was->seller() !== $scheme->seller() && $deal->contract?->number) {
+            app(SettleContract::class)($deal->contract);
+        }
 
         return $deal;
     }

@@ -257,8 +257,8 @@ class AlfaRequisitesTest extends TestCase
         $offer->viewers()->create(['user_id' => $this->manager->id, 'opens_at' => now()]);
         $offer = $offer->fresh();
 
-        // Без НДС: «Напрямую» первым и по умолчанию, ПРАЙМ последним, ДКП собственника у Альфы нет (03.11.2026).
-        $this->assertSame([DealScheme::Insurer, DealScheme::Prime], DealScheme::casesFor($vendor, $offer));
+        // Без НДС: «Напрямую» первым и по умолчанию, ПРАЙМ и Р.О.С. — в конце, ДКП собственника у Альфы нет (03.11.2026).
+        $this->assertSame([DealScheme::Insurer, DealScheme::Ros, DealScheme::Prime], DealScheme::casesFor($vendor, $offer));
         $this->assertNull(DealScheme::unusual($offer, DealScheme::Insurer));
         $this->assertStringContainsString('Напрямую', DealScheme::unusual($offer, DealScheme::Prime));
 

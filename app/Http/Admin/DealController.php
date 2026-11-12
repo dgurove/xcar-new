@@ -448,8 +448,8 @@ class DealController
             'share' => ['nullable', 'integer', 'min:1']]);
         // Поле вознаграждения пустое — вознаграждения нет; поля нет вовсе (гаражная доля) — прежнее.
         $commission = $request->has('commission') ? (isset($data['commission']) ? (int) $data['commission'] : null) : $deal->commission;
-        $scheme = DealScheme::choiceFor($deal->offer->vendor?->deal_format) ? DealScheme::tryFrom($data['scheme'] ?? '') : DealScheme::Prime;
-        // Р.О.С. — только у Альфы (`DealScheme::casesFor`), как в «Принять»: чужому вендору схему с запроса не берём.
+        $scheme = DealScheme::tryFrom($data['scheme'] ?? '');
+        // Схема не из этого вендора (`DealScheme::casesFor`), как в «Принять», — по умолчанию предложения.
         if ($scheme && ! in_array($scheme, DealScheme::casesFor($deal->offer->vendor, $deal->offer), true)) {
             $scheme = DealScheme::forOffer($deal->offer);
         }
