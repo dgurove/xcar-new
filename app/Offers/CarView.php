@@ -177,7 +177,8 @@ final class CarView
             'chats' => $this->chats,
             'tags' => $admin ? Tag::orderBy('sort')->get() : collect(),
             // Кому отдать на оценку — у черновика; «+ Интерес», «За менеджера» берут `People::managers`.
-            'managers' => $admin && $state === OfferState::Draft && ! $scheduled ? User::withRole(Role::Manager)->with(User::withAvatar())->orderBy('name')->get() : collect(),
+            // Тот же список, что у окна «Кому» (`AudienceRules::people`), — один запрос на окно.
+            'managers' => $admin && $state === OfferState::Draft && ! $scheduled ? AudienceRules::people() : collect(),
             'showingSummary' => $admin && $this->page ? Showing::summary($o) : collect(),
         ] + $this->letters;
     }

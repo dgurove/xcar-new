@@ -18,6 +18,7 @@ use App\Cars\Vin\VinText;
 use App\Mail\Extraction\Patterns;
 use App\Support\Money;
 use App\Support\Units;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Значение поля машины в одном виде для всех источников (07.11.2026): что записать (`write` — колонки машины), как
@@ -192,7 +193,7 @@ final class Values
         $value = $write[self::FIELDS[$field][1][0]] ?? null;
 
         return match ($field) {
-            'car' => trim((Brand::find($write['brand_id'])?->name ?? '').' '.(($write['model_id'] ?? null) ? CarModel::find($write['model_id'])?->name : ($write['model_name'] ?? ''))),
+            'car' => trim((self::name(Brand::class, $write['brand_id'] ?? null) ?? '').' '.(($write['model_id'] ?? null) ? self::name(CarModel::class, $write['model_id']) : ($write['model_name'] ?? ''))),
             'mileage' => Units::km($value) ?? '',
             'engine_volume' => Units::liters($value) ?? '',
             'engine_power' => Units::hp($value) ?? '',
@@ -200,10 +201,19 @@ final class Values
             'drive' => Drive::tryFrom((string) $value)?->label() ?? '',
             'fuel' => Fuel::tryFrom((string) $value)?->label() ?? '',
             'body' => Body::tryFrom((string) $value)?->label() ?? '',
-            'city' => ($s = Settlement::find($value)) ? $s->title() : '',
+            'city' => self::name(Settlement::class, $value) ?? '',
             'value' => Money::rub((int) $value),
             default => (string) $value,
         };
+    }
+
+    /**
+     * Название марки, модели, города по id — раз на запрос (`once` по аргументам): споры окна подписывают одну марку у
+     * каждого источника (12.11.2026: по 7 одинаковых запросов марки и модели на окно).
+     */
+    private static function name(string $class, mixed $id): ?string
+    {
+        return $id ? once(fn () => ($m = $class::find($id)) ? ($m instanceof Settlement ? $m->title() : $m->name) : null) : null;
     }
 
     private static function key(string $field, array $write): string
@@ -293,7 +303,7 @@ final class Values
     {
         return once(function () use ($carId) {
             $out = [];
-            foreach (\Illuminate\Support\Facades\DB::table('car_values')->where('car_id', $carId)->orderBy('id')->get()->groupBy('field') as $field => $rows) {
+            foreach (DB::table('car_values')->where('car_id', $carId)->orderBy('id')->get()->groupBy('field') as $field => $rows) {
                 $items = [];
                 foreach ($rows as $row) {
                     $at = collect(array_keys($items))->first(fn ($k) => self::same($field, (string) $k, $row->key)) ?? $row->key;
@@ -318,6 +328,7 @@ final class Values
      * Одноимённые города — с регионом словами (08.11.2026, владелец о «Донецк, 61» и «Донецк, 80»: «лол не понял» — код
      * региона ничего не говорит): у подписей, чьи названия совпадают, — «Донецк · Рост. обл.» и «Донецк · ДНР»
      * (`regions.short`), прочие — как были. Ключ города — id места. @param list<array{key: string, label: string}> $items
+     *
      * @return list<array>
      */
     public static function places(array $items): array

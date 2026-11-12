@@ -88,8 +88,16 @@ final class Variants
             return [];
         }
 
-        return array_intersect_key(self::for($lane->carRecord(), $lane), array_flip($fields));
+        // Блоки окна спрашивают по разу каждый (марка, кузов, двигатель, продажа) — споры считаются раз на дорожку
+        // (12.11.2026: четыре круга `car_values`, отказов и марок на открытие окна).
+        self::$seen ??= new \WeakMap;
+        $all = self::$seen[$lane] ??= self::for($lane->carRecord(), $lane);
+
+        return array_intersect_key($all, array_flip($fields));
     }
+
+    /** @var \WeakMap<Offer|Vehicle, array>|null споры дорожки на время запроса — модель живёт, пока жив запрос */
+    private static ?\WeakMap $seen = null;
 
     /** Правит ли вошедший машину дорожки: продажу — дверь `offer.edit`, ТС — `canManagePark`. */
     public static function can(Offer|Vehicle|null $lane): bool

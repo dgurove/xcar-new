@@ -6,6 +6,7 @@ use App\Users\Role;
 use App\Users\User;
 use App\Users\UserGroup;
 use App\Vendors\Vendor;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -238,7 +239,7 @@ final class AudienceRules
     }
 
     /** Группы менеджеров с числом людей — один запрос на страницу, сколько бы окон «Кому» на ней ни было. */
-    public static function groups(): \Illuminate\Support\Collection
+    public static function groups(): Collection
     {
         return once(fn () => UserGroup::ofKind(UserGroup::MANAGERS)->withCount('members')->get(['id', 'name']));
     }
@@ -261,10 +262,13 @@ final class AudienceRules
         ];
     }
 
-    /** Менеджеры для выбора по имени — один запрос на страницу, сколько бы окон «Кому» на ней ни было. */
-    public static function people(): \Illuminate\Support\Collection
+    /**
+     * Менеджеры для выбора по имени — один запрос на страницу, сколько бы окон «Кому» на ней ни было; аватары — тем же
+     * заходом (12.11.2026: в окне машины каждый аватар списка был своим запросом, 25–60 на открытие).
+     */
+    public static function people(): Collection
     {
-        return once(fn () => User::withRole(Role::Manager)->orderBy('name')->get());
+        return once(fn () => User::withRole(Role::Manager)->with(User::withAvatar())->orderBy('name')->get());
     }
 
     public static function when(?int $delay): string
