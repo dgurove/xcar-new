@@ -158,6 +158,13 @@ final class ChangeOfferState
                 app(CloseEstimates::class)($offer, $by);
             }
             $this->settleDeal($offer, $next, $by);
+            // Машина ушла в архив или отменена — вывозить нечего (13.11.2026, владелец: Geely Monjaro 934000/2025 «снята с продажи»
+            // висела в логистике «Без исполнителя»; так — 3 задачи Совкомбанка, чей вывоз заводится с письмом). Ещё не
+            // забранную задачу система отменяет; уже забранную везут дальше.
+            if (in_array($next, [OfferState::Archived, OfferState::Cancelled], true)
+                && ($open = \App\Logistics\Transport::openFor($offer)) && ! $open->taken()) {
+                app(\App\Logistics\Actions\Cancel::class)($open, $by, 'Предложение '.mb_strtolower($next->label()).': вывоз не нужен', system: true);
+            }
 
             OfferStateChanged::dispatch($offer, $by);
             if ($next === OfferState::Open) {
