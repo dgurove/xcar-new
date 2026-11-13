@@ -95,8 +95,13 @@ final class SaveDealContract
         }
 
         // Реквизиты, что менеджер прислал фотографией, внесли полностью — наш ход по ним кончился (`deals.buyer_scans_at`).
-        if ($deal->buyer_scans_at && $contract->fresh()->buyer?->party?->readyAsBuyer()) {
+        // Внесли всё, что было на фото, а для договора не хватает того, чего на фото не было (ИП прислал реквизиты, а паспорта
+        // нет — 13.11.2026), — ход снова менеджера, и просьба — именно этим: «Нужен паспорт ИП» (`AskBuyer::need`).
+        $party = $deal->buyer_scans_at ? $contract->fresh()->buyer?->party : null;
+        if ($party?->readyAsBuyer()) {
             $deal->update(['buyer_scans_at' => null]);
+        } elseif ($party?->readyForContract()) {
+            app(AskBuyer::class)->need($deal->refresh());
         }
 
         return ($this->settle)($contract);

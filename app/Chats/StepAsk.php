@@ -32,7 +32,7 @@ final class StepAsk
         DB::afterCommit(function () use ($id) {
             $r = Requirement::with(['deal.buyer', 'deal.offer', 'stage.exits'])->find($id);
             $deal = $r?->deal;
-            if (! $r || $r->done_at || ! $deal?->buyer || ! $deal->offer || ! $deal->offer->chatOpenFor($deal->buyer)
+            if (! $r || $r->done_at || $r->heldByPhotos() || ! $deal?->buyer || ! $deal->offer || ! $deal->offer->chatOpenFor($deal->buyer)
                 || Message::where('requirement_id', $r->id)->exists()) {
                 return;
             }

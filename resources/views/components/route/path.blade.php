@@ -228,8 +228,9 @@
                     {{-- Письмо поставщика ждёт разбора — строкой в шаге, а не лаймовой плашкой над путём (10.11.2026). --}}
                     @if ($deal && $position->track === \App\Workflow\Track::Sale && auth()->user()?->canManageCrm())<x-deal.reply-review :deal="$deal" line/>@endif
                     {{-- Покупателя менеджер должен дать с согласия (10.11.2026, `AskBuyer`): пока не дал — строкой дела, внести за него. --}}
-                    @if ($deal?->buyer_asked_at && $position->track === \App\Workflow\Track::Sale && auth()->user()?->canManageCrm())
-                        <x-route.task-row icon="user" :href="'/offers/'.$offer->number.($deal->hasContract() ? '?dkp=1#dkp' : '?buyer=1#invoice-buyer')" data-turbo-frame="_top">{{ $deal->buyer_scans_at ? 'Реквизиты покупателя прислал фото, внести' : 'Менеджер не указал покупателя' }}</x-route.task-row>
+                    {{-- Прислал фото (`buyer_scans_at`) — дело наше и на шаге «Нет реквизитов» тоже: менеджера там не спрашиваем (13.11.2026). --}}
+                    @if (($deal?->buyer_asked_at || $deal?->buyer_scans_at) && $position->track === \App\Workflow\Track::Sale && auth()->user()?->canManageCrm())
+                        <x-route.task-row icon="user" :href="'/offers/'.$offer->number.($deal->hasContract() ? '?dkp=1#dkp' : '?buyer=1#invoice-buyer')" data-turbo-frame="_top">{{ $deal->buyer_scans_at ? 'Внести реквизиты по фото' : (($need = $deal->buyerNeed()) ? str_replace(['Приложите', 'Укажите'], ['Менеджер не приложил', 'Менеджер не указал'], $need['title']) : 'Менеджер не указал покупателя') }}</x-route.task-row>
                     @endif
                     {{-- День и время подписания (`Signing`, 11.11.2026): пока поставщик готовит договор — что назвал менеджер, или
                          выбрать за него. --}}

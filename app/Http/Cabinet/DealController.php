@@ -314,25 +314,36 @@ class DealController
      * заполнить форму): новый покупатель менеджера встаёт в сделку, паспорт — сканом с чтением (`StorePassportScan` →
      * `ReadPassport`), карточка фирмы — в документы контрагента; внести и проверить — наш ход (`deals.buyer_scans_at`, «Ваш ход →
      * Внести реквизиты по фото»), у менеджера — «Ждём XCar».
+     *
+     * Вид — по покупателю, а не по документу (13.11.2026, Тужиков: ИП прислал «Карточкой фирмы», а нужен и паспорт): `passport` —
+     * физлицо, `company` — ООО, `ip` — ИП двумя частями (`part`: `passport` | `card`), одну можно прислать позже. Покупатель
+     * сделки уже его — следующие фото ложатся к нему, второго «Нового покупателя» нет.
      */
     public function buyerPhotos(Request $request, Deal $deal, AddPerson $add, IssueInvite $issue, StorePassportScan $store, SaveDealContract $save, PhotoIngest $ingest)
     {
         $me = $request->user();
         abort_unless($deal->isLive() && ! $me->isSuperBuyer(), 404);
-        $data = $request->validate(['kind' => ['required', 'in:passport,company'], 'files' => ['required', 'array', 'min:1', 'max:4'],
-            'files.*' => PassportScanController::FILE], ['files.required' => 'Сфотографируйте документ']);
+        $data = $request->validate(['kind' => ['required', 'in:passport,ip,company'], 'part' => ['nullable', 'in:passport,card'],
+            'files' => ['required', 'array', 'min:1', 'max:4'], 'files.*' => PassportScanController::FILE], ['files.required' => 'Сфотографируйте документ']);
         $files = array_values($request->file('files'));
-        [$user] = $add(fn () => $issue->buyer($me, $deal->id), ['first_name' => AddPerson::UNNAMED, 'last_name' => ''], contact: true);
+        $contract = DealContract::for($deal);
+        $user = $contract->buyer_user_id ? $contract->buyer()->first() : null;
+        if (! $user || $user->manager_id !== $me->id) {
+            [$user] = $add(fn () => $issue->buyer($me, $deal->id), ['first_name' => AddPerson::UNNAMED, 'last_name' => ''], contact: true);
+        }
         $party = Party::forUser($user);
-        if ($data['kind'] === 'passport') {
+        $passport = $data['kind'] === 'passport' || ($data['kind'] === 'ip' && ($data['part'] ?? 'passport') === 'passport');
+        $party->update(['kind' => match ($data['kind']) { 'ip' => PartyKind::Entrepreneur, 'company' => PartyKind::Company, default => $party->kind ?? PartyKind::Person }]);
+        if ($passport) {
             $store($party, 'main', $files, $me);
         } else {
-            $party->update(['kind' => PartyKind::Company]);
             foreach ($files as $file) {
                 str_starts_with((string) $file->getMimeType(), 'image/') ? $ingest->fromUpload($party, 'card', $file) : $party->addMedia($file)->toMediaCollection('card');
             }
         }
-        $save(DealContract::for($deal), ['buyer_id' => (string) $user->id], $me);
+        if ($contract->buyer_user_id !== $user->id) {
+            $save($contract, ['buyer_id' => (string) $user->id], $me);
+        }
         $deal->update(['buyer_scans_at' => now()]);
 
         return $this->back($request, $deal)->with('toast', 'Отправили, реквизиты внесём сами');

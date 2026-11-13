@@ -18,7 +18,9 @@ final class YourTurnNotice extends Notice
      */
     public function shouldSend(object $notifiable, string $channel): bool
     {
-        return Requirement::whereKey($this->requirement->id)->whereNull('done_at')->exists() && parent::shouldSend($notifiable, $channel);
+        $open = Requirement::with('deal')->whereKey($this->requirement->id)->whereNull('done_at')->first();
+
+        return $open && ! $open->heldByPhotos() && parent::shouldSend($notifiable, $channel);
     }
 
     public function label(): string
