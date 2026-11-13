@@ -27,7 +27,7 @@ export default class extends Controller {
         this.toggleReread(true);
         const data = await getJson(`${this.urlValue}/read`, { method: 'POST', quiet: true });
         if (data) this.apply(data);
-        else window.toast?.('Не получилось запустить распознавание');
+        else window.toast?.('Не получилось, попробуйте ещё раз');
     }
 
     toggleReread(busy) {
