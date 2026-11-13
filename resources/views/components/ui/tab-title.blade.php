@@ -6,8 +6,9 @@
      live.js и flip.js, вспыхивает само название (lib/bump.js). Бейдж в другой вкладке — точка после названия (CSS).
      У названия ни числа, ни стрелки рядом (владелец 22.10.2026: «криво, смещает всё»); что это выбор, говорит маленькая
      «›» в поле экрана слева — название не сдвигает (вечером того же дня). Колесо — tab_wheel_controller.
-     Вкладки нет в адресе (поиск) — fallback. --}}
-@props(['pills' => [], 'pill' => '', 'pillParam' => 'view', 'pillHome' => null, 'counts' => [], 'badges' => [], 'bumps' => [], 'fallback' => '', 'id' => 'tab-menu'])
+     Вкладки нет в адресе (поиск) — fallback. hrefs — вкладки разными адресами, а не параметром (разделы «Работы»: Сделки,
+     Гараж, Почта, Чаты, Оплаты — 13.11.2026, владелец: «такой же переключатель, как в предложениях»). --}}
+@props(['pills' => [], 'pill' => '', 'pillParam' => 'view', 'pillHome' => null, 'counts' => [], 'badges' => [], 'bumps' => [], 'fallback' => '', 'id' => 'tab-menu', 'hrefs' => []])
 @php
     $action = '/'.ltrim(request()->path(), '/');
     $query = request()->query();
@@ -23,7 +24,7 @@
         <x-ui.icon name="chevron-right" class="tab-wheel-chev size-3.5"/>
         <nav class="tab-wheel-scroll">
             @foreach ($pills as $key => $label)
-                <a href="{{ $url([$pillParam => $key === '' || $key === ($pillHome ?? array_key_first($pills)) ? null : $key, 'page' => null, 'rows' => null]) }}" class="tab-wheel-item text-xl sm:text-2xl" data-turbo-prefetch="false" @isset($bumps[$key]) data-pill-bump="{{ $key }}:{{ $counts[$bumps[$key]] ?? 0 }}" @endisset @if ((string) $pill === (string) $key) aria-current="true" @endif>
+                <a href="{{ $hrefs[$key] ?? $url([$pillParam => $key === '' || $key === ($pillHome ?? array_key_first($pills)) ? null : $key, 'page' => null, 'rows' => null]) }}" class="tab-wheel-item text-xl sm:text-2xl" data-turbo-prefetch="false" @isset($bumps[$key]) data-pill-bump="{{ $key }}:{{ $counts[$bumps[$key]] ?? 0 }}" @endisset @if ((string) $pill === (string) $key) aria-current="true" @endif>
                     <span class="tab-wheel-label">{{ $label }}</span>
                     <span class="tab-wheel-nums">
                         @isset($badges[$key])<span class="badge nums" data-pill-count="{{ $badges[$key] }}">{{ ($counts[$badges[$key]] ?? 0) ?: '' }}</span>@endisset
