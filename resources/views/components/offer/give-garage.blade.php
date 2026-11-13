@@ -53,7 +53,7 @@
                 </div>
                 @unless ($offer->vendor?->isCommission())
                     <div class="flex flex-col gap-3" data-reveal-target="pane" data-reveal-key="manager" @if (old('payer', $handOver?->garage_payer?->value ?? 'us') !== 'manager') hidden @endif>
-                        <x-ui.field name="share" label="Наша доля, ₽" :value="old('share')" :id="$prefix.'-garage-share'"/>
+                        <x-ui.field name="share" label="Наша доля, ₽" :value="old('share', $handOver?->isGarage() ? $handOver->share : null)" :id="$prefix.'-garage-share'"/>
                     </div>
                 @endunless
             </div>
@@ -62,6 +62,7 @@
     {{-- Где ТС и кто везёт — один кусок на оба сценария: «Себе» — «Уже у нас» и без «Везёт» (только логистика), CSS по
          выбранному «Кому» (`.give-garage`). --}}
     <x-offer.pickup-choice :offer="$offer" garage :manager="$bid?->user"/>
-    @if ($handOver)<p class="text-sm text-ink-muted">{{ $handOver->buyer ? 'Сделка с '.$handOver->buyer->shortName().' отменится' : 'Прежняя сделка отменится' }}</p>@endif
-    <x-ui.sheet-foot type="submit" variant="primary">{{ $handOver ? 'Отдать' : 'В гараж' }}</x-ui.sheet-foot>
+    {{-- У гаражной строки об отмене нет (13.11.2026): тому же менеджеру чаще меняют условия гаража, а не отбирают машину. --}}
+    @if ($handOver && ! $handOver->isGarage())<p class="text-sm text-ink-muted">{{ $handOver->buyer ? 'Сделка с '.$handOver->buyer->shortName().' отменится' : 'Прежняя сделка отменится' }}</p>@endif
+    <x-ui.sheet-foot type="submit" variant="primary">{{ $handOver?->isGarage() ? 'Сохранить' : ($handOver ? 'Отдать' : 'В гараж') }}</x-ui.sheet-foot>
 </form>

@@ -318,11 +318,17 @@ class DealController
         $me = $request->user();
         abort_unless($deal->isLive() && ! $me->isSuperBuyer(), 404);
         $kind = $request->validate(['kind' => ['required', 'in:person,ip,company']])['kind'];
-        [$user] = $add(fn () => $issue->buyer($me, $deal->id), ['first_name' => AddPerson::UNNAMED, 'last_name' => ''], contact: true);
+        // Передумал вид или нажал дважды — тот же незаполненный покупатель сделки, без второго «Нового покупателя».
+        $user = DealContract::for($deal)->buyer;
+        if (! $user || $user->name !== AddPerson::UNNAMED || $user->manager_id !== $me->id || $user->party?->readyForContract()) {
+            [$user] = $add(fn () => $issue->buyer($me, $deal->id), ['first_name' => AddPerson::UNNAMED, 'last_name' => ''], contact: true);
+        }
         Party::forUser($user)->update(['name' => '', 'kind' => match ($kind) {
             'ip' => PartyKind::Entrepreneur, 'company' => PartyKind::Company, default => PartyKind::Person,
         }]);
-        $save(DealContract::for($deal), ['buyer_id' => (string) $user->id], $me);
+        if (DealContract::for($deal)->buyer_user_id !== $user->id) {
+            $save(DealContract::for($deal), ['buyer_id' => (string) $user->id], $me);
+        }
 
         return $this->back($request, $deal)->with('open_sheet', 'deal-buyer-data');
     }

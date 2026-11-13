@@ -131,8 +131,11 @@ class ManagerAsksTest extends TestCase
         $this->exit($offer, 'Поставщик просит реквизиты');
         $this->assertSame('Нет реквизитов', $offer->fresh()->stage()->name);
 
+        // Передумал вид — тот же покупатель, а не второй «Новый покупатель».
+        $this->actingAs($this->manager)->post("http://xcar.localhost/deals/{$deal->id}/buyer-new", ['kind' => 'company'])->assertRedirect();
         $this->actingAs($this->manager)->post("http://xcar.localhost/deals/{$deal->id}/buyer-new", ['kind' => 'ip'])
             ->assertRedirect()->assertSessionHas('open_sheet', 'deal-buyer-data');
+        $this->assertSame(1, User::where('name', \App\Users\Actions\AddPerson::UNNAMED)->count());
         $deal = $deal->fresh();
         $buyer = DealContract::for($deal)->buyer;
         $this->assertNotNull($buyer, 'покупатель встал в сделку');

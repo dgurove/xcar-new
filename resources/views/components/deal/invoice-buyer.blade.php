@@ -1,8 +1,8 @@
 {{-- Покупатель для счёта поставщика (03.11.2026, Альфа «страховой напрямую»: «Просьба прислать реквизиты для выставления
      счёта»): договора у нас нет, а счёт поставщик выставит на покупателя — тот же выбор и «Данные для счёта» со сканом, что у
      менеджера (`x-deal.buyer`). Данные со сканом есть — шаг «Нет реквизитов» проходит сам (`AdvanceOnBuyerData`). --}}
-@props(['deal'])
-<x-ui.card title="Покупатель для счёта" id="invoice-buyer" class="scroll-mt-24" {{ $attributes }}>
+@props(['deal', 'title' => 'Покупатель для счёта'])
+<x-ui.card :title="$title" id="invoice-buyer" class="scroll-mt-24" {{ $attributes }}>
     <div class="list">
         <x-deal.buyer :deal="$deal"/>
     </div>

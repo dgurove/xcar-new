@@ -12,9 +12,13 @@
     $deal = (bool) ($offer->floor_price || $offer->asking_price);
     // У сделки покупателя — два пути (07.11.2026, начальник): передать полностью (прежняя отменится) или поручить
     // параллельно (прежняя остаётся, никто не знает о другом, `Parallels`).
+    // Гаражную открывают на «В гараж» (13.11.2026): её меняют, а не переводят в сделку.
+    $to = old('to', $handOver && $offer->deal->isGarage() ? 'garage' : 'deal');
     $twoWays = $handOver && $bid && ! $bid->isGarage() && ! $offer->deal->isGarage() && ! $offer->deal->isAuction();
     $title = match (true) {
         $twoWays => 'Отдать',
+        // Гаражная, что ещё едет (13.11.2026): чаще всего тому же менеджеру меняют, кто платит поставщику.
+        $handOver && $offer->deal->isGarage() => 'Изменить гараж',
         $handOver => 'Отдать другому',
         $bid?->isGarage() => 'Отдать в гараж',
         (bool) $bid => 'Принять подтверждение',
@@ -47,12 +51,12 @@
         @else
             <div class="flex flex-col gap-4" @if ($deal) data-controller="reveal" @endif>
                 @if ($deal)
-                    <x-ui.segment name="_to" :options="['deal' => 'В сделку', 'garage' => 'В гараж']" :value="old('to', 'deal')" pick/>
-                    <div data-reveal-target="pane" data-reveal-key="deal" @if (old('to') === 'garage') hidden @endif>
+                    <x-ui.segment name="_to" :options="['deal' => 'В сделку', 'garage' => 'В гараж']" :value="$to" pick/>
+                    <div data-reveal-target="pane" data-reveal-key="deal" @if ($to === 'garage') hidden @endif>
                         <x-offer.give-deal :offer="$offer" :prefix="$id"/>
                     </div>
                 @endif
-                <div data-reveal-target="pane" data-reveal-key="garage" @if ($deal && old('to') !== 'garage') hidden @endif>
+                <div data-reveal-target="pane" data-reveal-key="garage" @if ($deal && $to !== 'garage') hidden @endif>
                     <x-offer.give-garage :offer="$offer" :prefix="$id"/>
                 </div>
             </div>
