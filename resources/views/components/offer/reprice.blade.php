@@ -40,7 +40,7 @@
     @endunless
     <x-ui.sheet :id="$id" title="Переоценка" tall :open="$mine || old('_reprice') == $reprice->id">
         <form method="post" action="/offers/{{ $offer->number }}/reprices/{{ $reprice->id }}" class="flex flex-col gap-4" data-controller="reprice" @if ($offer->state === \App\Offers\OfferState::Open) data-price-guard="whole" data-price-guard-offer="{{ $offer->number }}" data-price-guard-floor="price" @endif
-              data-reprice-from-value="{{ (int) $reprice->from_price }}">
+              data-reprice-from-value="{{ (int) $reprice->from_price }}" data-reprice-publish-value="{{ (int) $offer->publish_price }}" @if ($offer->min_bid_share) data-reprice-share-value="{{ $offer->min_bid_share }}" @endif>
             @csrf @if ($errors->has('price_check'))<input type="hidden" name="price_ok" value="1">@endif
             <input type="hidden" name="_reprice" value="{{ $reprice->id }}">
             @error('reprice')<x-ui.flash tone="danger">{{ $message }}</x-ui.flash>@enderror
@@ -61,7 +61,12 @@
                 {{-- Цена продажи — всегда (04.11.2026, владелец: «старая цена продажи ниже новой закупочной»). --}}
                 <x-ui.field name="asking_price" label="Цена продажи, ₽" :value="$offer->asking_price ? Money::nums($offer->asking_price) : null" :id="$id.'-asking'"
                     data-reprice-target="asking" data-action="input->reprice#update"/>
+                {{-- Минимальная — тут же (13.11.2026, владелец: «опубликовать за 2 300 000, ниже 2 250 000 не принимать»):
+                     пусто — по доле от цены продажи, как в «Ценах». --}}
+                <x-ui.field name="min_bid_price" label="Минимальная, ₽" :value="($min = old('min_bid_price', $offer->min_bid_price)) ? Money::nums(Money::rubles((string) $min)) : null" :id="$id.'-min'"
+                    data-reprice-target="min"/>
             </div>
+            @error('min_bid_price')<p class="-mt-2 field-error">{{ $message }}</p>@enderror
             <p class="-mt-2 text-sm text-danger" data-reprice-target="askingLoss" hidden></p>
             @if ($bids->isNotEmpty() || $deal)
                 <div class="flex flex-wrap items-center justify-between gap-2">

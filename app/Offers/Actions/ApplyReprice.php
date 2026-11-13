@@ -42,7 +42,7 @@ final class ApplyReprice
 
     /**
      * @param  array<int|string, string>  $bids  id подтверждения → keep | update | ask
-     * @param  array{publish_price?: ?int, asking_price?: ?int}  $prices
+     * @param  array{publish_price?: ?int, asking_price?: ?int, min_bid_price?: ?int}  $prices
      * @param  ?array{rules: array, until: \Carbon\CarbonInterface}  $publish  по сделке «Спросить» — пока менеджер думает,
      *                          опубликовать машину для других менеджеров (`PublishDeal`, 04.11.2026): кому и до когда; null — нет
      */
@@ -66,7 +66,7 @@ final class ApplyReprice
             // Оценочная из письма (Альфа) — вместе с закупочной, и когда в шторке выбрали «+5%» или вписали свою: оценочная —
             // факт письма. Закупочную оставили прежней — и оценочную не трогаем, иначе закупочная пересчиталась бы от неё.
             $value = $reprice->value !== null && $price !== $from ? ['value' => $reprice->value] : [];
-            $data = ['floor_price' => $price] + $value + array_intersect_key($prices, array_flip(['publish_price', 'asking_price']));
+            $data = ['floor_price' => $price] + $value + array_intersect_key($prices, array_flip(['publish_price', 'asking_price', 'min_bid_price']));
             // Цена продажи до и после — менеджеру в вопросе (было → стало парами, 10.11.2026).
             $asking = ['from' => $offer->asking_price === null ? null : (int) $offer->asking_price];
             ($this->update)($offer, $data, $by, ['why' => $reprice->why()], repricing: true);

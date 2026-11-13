@@ -36,7 +36,8 @@ export default class extends Controller {
         const share = shareRaw !== '' && !Number.isNaN(Number(shareRaw)) ? Number(shareRaw) : DEFAULT_SHARE;
         const publish = this.root.querySelector('[name="publish_price"]');
         if (publish) publish.placeholder = floor ? nums(floor) : '';
-        const min = this.root.querySelector('[name="min_bid_price"]');
+        // Минимальная шторки переоценки — своя подсказка от новой закупочной (`reprice_controller`).
+        const min = this.root.querySelector('[name="min_bid_price"]:not([data-reprice-target])');
         if (!min) return;
         let value = null;
         if (asking && from && asking > from) value = Math.round((from + (asking - from) * share) / 1000) * 1000;

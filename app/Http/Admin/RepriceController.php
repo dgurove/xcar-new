@@ -26,11 +26,12 @@ class RepriceController
     public function apply(Request $request, Offer $offer, Reprice $reprice, ApplyReprice $apply)
     {
         abort_unless($reprice->offer_id === $offer->id, 404);
-        $request->merge(array_map(fn ($v) => blank($v) ? null : Money::rubles($v), $request->only(['price', 'publish_price', 'asking_price'])));
+        $request->merge(array_map(fn ($v) => blank($v) ? null : Money::rubles($v), $request->only(['price', 'publish_price', 'asking_price', 'min_bid_price'])));
         $data = $request->validate([
             'price' => ['required', 'integer', 'min:1'],
             'publish_price' => ['nullable', 'integer', 'min:1'],
             'asking_price' => ['nullable', 'integer', 'min:1'],
+            'min_bid_price' => ['nullable', 'integer', 'min:1'],
             'bids' => ['array'],
             'bids.*' => [Rule::in([ApplyReprice::KEEP, ApplyReprice::UPDATE, ApplyReprice::ASK])],
             'deal' => ['nullable', Rule::in([ApplyReprice::KEEP, ApplyReprice::UPDATE, ApplyReprice::ASK])],
@@ -41,6 +42,14 @@ class RepriceController
         // Цена продажи — в любом состоянии (04.11.2026, владелец: «старая цена продажи ниже новой закупочной»): в сделке по
         // ней машину увидят все, если показывать, пока менеджер думает.
         $prices = array_filter(array_intersect_key($data, array_flip(['asking_price'])));
+        // Минимальная — как в «Ценах»: стёрли — снова по доле. Выше цены продажи — подтверждение по цене продажи не примется.
+        if ($request->has('min_bid_price')) {
+            $prices['min_bid_price'] = $data['min_bid_price'] ?? null;
+            $asking = $prices['asking_price'] ?? $offer->asking_price;
+            if ($prices['min_bid_price'] && $asking && $prices['min_bid_price'] > $asking) {
+                throw ValidationException::withMessages(['min_bid_price' => 'Минимальная выше цены продажи']);
+            }
+        }
         // Открытое: новая закупочная против цены продажи — «Точно?» (`PriceGuard`), её правят тут же в шторке.
         if ($offer->state === OfferState::Open) {
             PriceGuard::assertPrices($prices['asking_price'] ?? $offer->asking_price, $data['price'], $request->boolean('price_ok'));

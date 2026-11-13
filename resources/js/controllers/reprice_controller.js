@@ -1,12 +1,14 @@
 import { Controller } from '@hotwired/stimulus';
 import { nums, rubles } from '../lib/money';
+import { ceilThousand } from '../lib/floor';
 
 // Шторка «Переоценка» (28.10.2026, `x-offer.reprice`): по каждому, кто подтвердил, и по сделке — «Оставить | Обновить |
 // Спросить» в любую сторону (03.11.2026, владелец: спрашивать менеджера — только решением админа); заранее не отмечено
 // ничего, «Применить» живая, когда решено по всем. Новая цена правится — «→ N» и «станет ниже закупочной» идут за ней.
 // «Всем оставить / обновить / спросить» — одним нажатием (недоступное у строки не трогается).
 export default class extends Controller {
-    static targets = ['price', 'asking', 'askingLoss', 'show', 'row', 'to', 'loss', 'submit'];
+    static targets = ['price', 'asking', 'askingLoss', 'min', 'show', 'row', 'to', 'loss', 'submit'];
+    static values = { publish: Number, share: { type: Number, default: 0.6 } };
 
     connect() {
         this.update();
@@ -54,6 +56,14 @@ export default class extends Controller {
             const low = Boolean(asking && price && asking <= price);
             this.askingLossTarget.hidden = !low;
             this.askingLossTarget.textContent = low ? (asking < price ? `Цена продажи ниже новой закупочной на ${nums(price - asking)}` : 'Цена продажи равна новой закупочной') : '';
+        }
+        // Пустая минимальная — серой подсказкой, как в «Ценах» (`Offer::minBid`): заявленная (пустая — новая закупочная вверх до
+        // тысячи) плюс доля разницы до цены продажи.
+        if (this.hasMinTarget) {
+            const asking = this.hasAskingTarget ? rubles(this.askingTarget.value) : null;
+            const from = this.publishValue || (price ? ceilThousand(price) : null);
+            const min = asking && from && asking > from ? Math.round((from + (asking - from) * this.shareValue) / 1000) * 1000 : asking;
+            this.minTarget.placeholder = min ? nums(min) : '';
         }
         // «Пока думает — показать всем» — только когда по сделке выбрано «Спросить».
         if (this.hasShowTarget) {
