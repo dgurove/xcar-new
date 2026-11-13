@@ -210,6 +210,10 @@ class RouteController
      */
     public function pickup(Request $request, Offer $offer, OpenPickup $open, AssignExecutor $assign, SetRoute $route)
     {
+        // Тумблер «Забирает сам» у менеджера (13.11.2026, `x-logistics.assign-form`): «Кто вывозит» и «Куда везти» тогда скрыты.
+        if ($request->boolean('self')) {
+            $request->merge(['channel' => Channel::Manager->value]);
+        }
         $request->validate(['channel' => ['nullable', Rule::enum(Channel::class)]]);
         $pick = AssignExecutor::fromRequest($request, self: true);
         // Окно «Кто вывозит» — и куда везти, дальность, комментарий (18.10.2026); «Вывезти» без окна их не шлёт. Забирает

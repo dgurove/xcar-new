@@ -411,6 +411,10 @@ class TransportController
     public function executor(Request $request, Transport $transport, AssignExecutor $assign, SetRoute $route)
     {
         abort_unless($request->user()->leadsLogistics(), 404);
+        // Тумблер «Забирает сам» у менеджера (13.11.2026, `x-logistics.assign-form`): остальное в окне тогда скрыто и не нужно.
+        if ($request->boolean('self')) {
+            $request->merge(['channel' => Channel::Manager->value]);
+        }
         $request->validate(['channel' => ['required', Rule::in([Channel::Manager->value, Channel::Logist->value, Channel::Staff->value, Channel::Partner->value])]], ['channel.required' => 'Кто вывозит']);
         // «Иван Петров сам» (13.11.2026): менеджер сделки или гаража забирает сам — как в CRM, везёт к себе, точка встаёт сама.
         $self = $request->input('channel') === Channel::Manager->value;

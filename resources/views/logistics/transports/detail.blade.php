@@ -333,7 +333,7 @@
     @if ($admin && ! $order && $open && ! $t->state->picked())
         <div data-controller="sheet" data-action="executor-{{ $id }}:open@window->sheet#open" class="contents">
             <x-ui.sheet :id="'executor-'.$id" :title="$t->channel ? 'Вывоз' : 'Назначить вывоз'" tall>
-                <x-logistics.assign-form :transport="$t" :action="'/transports/'.$id.'/executor'" :prefix="'executor-'.$id">@method('put')</x-logistics.assign-form>
+                <x-logistics.assign-form :transport="$t" :action="'/transports/'.$id.'/executor'" :prefix="'executor-'.$id" context>@method('put')</x-logistics.assign-form>
             </x-ui.sheet>
         </div>
         @if (($sale = $t->saleOffer()) && $t->isPickup() && \App\Offers\Actions\SellAtAuction::allows($sale, auth()->user()))

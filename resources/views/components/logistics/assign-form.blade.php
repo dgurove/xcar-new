@@ -33,7 +33,12 @@
         (bool) $transport?->channel => $transport->channel->value,
         default => count($logists) ? Channel::Logist->value : Channel::Staff->value,
     });
-    $current = $transport?->channel === Channel::Logist ? $transport->logist_id : $transport?->executor_id;
+    // Кто стоит сейчас — только в поле своего вида: менеджер «сам» не подставляется логистом или исполнителем.
+    $current = match ($transport?->channel) {
+        Channel::Logist => $transport->logist_id,
+        Channel::Manager, null => null,
+        default => $transport->executor_id,
+    };
     $options = array_filter([
         // Пусто — сегмент всё равно есть: «+ Новый логист / сотрудник» в шторке выбора (18.10.2026).
         Channel::Logist->value => Channel::Logist->short(),
@@ -73,12 +78,15 @@
     @endif
     @if ($holder)
         <x-ui.info class="assign-self">
+            {{-- Человек — аватаром, без значка рядом (владелец: «зачем иконка человечка, если у него уже есть аватарка»). --}}
             <div class="info-row items-center">
-                <x-ui.icon name="user" class="info-icon size-5"/>
-                <span class="flex min-w-0 flex-1 flex-wrap items-center gap-2"><x-ui.person :user="$holder" full/><span class="text-sm text-ink-muted">{{ $garageOf ? 'гараж' : 'сделка' }}</span></span>
+                <x-ui.avatar :user="$holder" :size="36"/>
+                <span class="min-w-0 flex-1">
+                    <span class="block truncate font-medium">{{ $holder->name }}</span>
+                    <span class="info-sub mt-0">{{ $garageOf ? 'Менеджер, в гараж' : 'Менеджер сделки' }}</span>
+                </span>
             </div>
             <label class="info-row cursor-pointer items-center">
-                <x-ui.icon name="cat-truck" class="info-icon size-5"/>
                 <span class="min-w-0 flex-1">Забирает сам</span>
                 <input type="checkbox" name="self" value="1" class="switch" @checked($self)>
             </label>

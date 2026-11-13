@@ -3432,6 +3432,9 @@ html.kb-open { --home-gap: 0px; }
   .info-row + .info-row { border-top: 1px solid var(--color-line); }
   .info-icon { @apply mt-px shrink-0 text-ink-dim; }
   .info-sub { @apply mt-0.5 block break-words text-sm text-ink-muted; }
+  /* «Назначить вывоз» (13.11.2026): тумблер «Забирает сам» у менеджера включён — «Кто вывозит» и «Куда везти» уходят. */
+  .assign-others { display: flex; flex-direction: column; gap: 1rem; }
+  .assign-form:has(.assign-self .switch:checked) .assign-others { display: none; }
   /* Окно машины (12.11.2026, владелец: «размеры шрифтов скачут»): сведения — 15 px, подписи — 13 px, рядом с названием 18 px. */
   .detail-body .info-row { font-size: 15px; }
   .detail-body .info-sub { font-size: 13px; }

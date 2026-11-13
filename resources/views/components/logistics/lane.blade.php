@@ -125,7 +125,7 @@
 @if ($open)
     <div data-controller="sheet" data-action="{{ $sheet }}:open@window->sheet#open" class="contents">
         <x-ui.sheet :id="$sheet" :title="$t->channel ? 'Вывоз' : 'Назначить вывоз'" tall>
-            <x-logistics.assign-form :transport="$t" :offer="$offer" :action="'/offers/'.$offer->number.'/pickup'" :prefix="$sheet"/>
+            <x-logistics.assign-form :transport="$t" :offer="$offer" :action="'/offers/'.$offer->number.'/pickup'" :prefix="$sheet" context/>
         </x-ui.sheet>
     </div>
     @if ($backdate)
