@@ -16,6 +16,8 @@
     // Строка — как в «Покупателях» (06.11.2026, владелец: «Покупатель  Гамидов Та…» — подпись слева съедала ФИО): аватар, имя во
     // всю строку, под ним состояние; у ИП и организации — вид словом.
     $who = $buyer ? ($buyer->party?->name ?: $buyer->name) : null;
+    // Менеджер оформляет на себя (13.11.2026, `Deal::selfBuy`) — словом в строке, а не «, менеджер» у имени.
+    $selfWord = $isManager ? 'на себя, ' : '';
     $kindWord = match ($buyer?->party?->kind) { \App\Billing\PartyKind::Entrepreneur => 'ИП, ', \App\Billing\PartyKind::Company => 'организация, ', default => '' };
     $dataSheet = 'deal-buyer-data-'.$deal->id;
     // «Заполнить» / «Заполнить за менеджера» из шага пути и «Ваш ход» (`?buyer=1`, 06.11.2026: ссылка на `#invoice-buyer` только
@@ -37,7 +39,7 @@
     <div data-controller="sheet" class="contents">
         <x-ui.sheet-row>
             <x-ui.avatar :user="$buyer" :size="36"/>
-            <span class="min-w-0 flex-1"><span class="block truncate">{{ $who }}{{ $isManager ? ', менеджер' : '' }}</span>@if ($ready)<span class="row-sub text-open">{{ $kindWord }}данные есть</span>@else<span class="row-sub text-urgent">{{ $gap ?? 'нужны данные для '.$for }}</span>@endif</span>
+            <span class="min-w-0 flex-1"><span class="block truncate">{{ $who }}</span>@if ($ready)<span class="row-sub text-open">{{ $selfWord }}{{ $kindWord }}данные есть</span>@else<span class="row-sub text-urgent">{{ $selfWord }}{{ $gap ?? 'нужны данные для '.$for }}</span>@endif</span>
             <x-ui.chevron/>
         </x-ui.sheet-row>
         <x-ui.sheet :id="$dataSheet" :title="$ready ? 'Данные покупателя' : 'Данные для '.$for" :open="session('open_sheet') === $dataSheet || $errors->hasAny(['buyer.*']) || $ask" tall>
@@ -71,7 +73,7 @@
 @elseif ($buyer || ! $live)
     <div class="row">
         @if ($buyer)<x-ui.avatar :user="$buyer" :size="36"/>@endif
-        <span class="min-w-0 flex-1">@if ($buyer)<span class="block truncate">{{ $who }}{{ $isManager ? ', менеджер' : '' }}</span>@if ($ready)<span class="row-sub text-open">{{ $kindWord }}данные есть</span>@endif @else<span class="text-ink-muted">Покупатель не выбран</span>@endif</span>
+        <span class="min-w-0 flex-1">@if ($buyer)<span class="block truncate">{{ $who }}</span>@if ($ready)<span class="row-sub text-open">{{ $selfWord }}{{ $kindWord }}данные есть</span>@elseif ($isManager)<span class="row-sub">на себя</span>@endif @else<span class="text-ink-muted">Покупатель не выбран</span>@endif</span>
     </div>
     @if ($scanPdf)
         <x-ui.doc :doc="$scanPdf" class="row">
@@ -103,7 +105,7 @@
 @endif
 @if ($live && ! ($deal->isGarage() && $buyer))
     @php
-        $rows = \App\Support\People::contractBuyers($manager, $manager->name.', менеджер', 'сам покупает');
+        $rows = \App\Support\People::contractBuyers($manager, $manager->name, 'на себя, нужен паспорт', 'на себя, данные есть');
     @endphp
     <form method="post" action="/work/deals/{{ $deal->id }}/contract" class="contents">
         @csrf @method('put')

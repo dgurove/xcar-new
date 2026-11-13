@@ -75,6 +75,15 @@ class Deal extends Model
             if ($deal->commission !== null && $deal->isDirect()) {
                 $deal->commission = null;
             }
+            // Вознаграждение по доле менеджера идёт за деньгами (13.11.2026): поменялись цена или закупочная (переоценка,
+            // контрпредложение, «Цена за менеджера»), а вознаграждение равно доле от прежних чисел — доля от новых. Вписанное
+            // руками (не равное доле) не трогается.
+            if ($deal->exists && $deal->isDirty(['amount', 'cost']) && ! $deal->isDirty('commission') && $deal->commission !== null) {
+                $was = $deal->defaultCommission($deal->getOriginal('amount'), $deal->getOriginal('cost'));
+                if ($was !== null && $was === $deal->commission && ($now = $deal->defaultCommission()) !== null) {
+                    $deal->commission = $now;
+                }
+            }
             // Кто и когда выбрал схему (03.11.2026, владелец: «а кто нажал, что ПРАЙМ, я не понял») — любая дверь:
             // «Принять», «Отдать», «Схема» в CRM. Без человека (часы, консоль) — пусто, «автоматически».
             if (! $deal->exists || $deal->isDirty('scheme')) {
@@ -206,7 +215,10 @@ class Deal extends Model
         // Покупатель — с согласия (10.11.2026, владелец: «реквизиты требовать сразу, как взял в работу, а не когда страховая
         // запросила»): шаг ждёт поставщика, а дело менеджера — покупатель (`AskBuyer`, `buyer_asked_at`).
         if ($this->buyer_asked_at) {
-            return ['title' => 'Укажите покупателя', 'due' => null, 'kind' => 'buyer'];
+            // Оформляет на себя (13.11.2026) — не хватает только его паспорта.
+            return $this->contract?->buyer_user_id && $this->selfBuy()
+                ? ['title' => 'Приложите свой паспорт', 'due' => null, 'kind' => 'passport']
+                : ['title' => 'Укажите покупателя', 'due' => null, 'kind' => 'buyer'];
         }
         // Поставщик готовит договор — когда покупатель сможет подписать, день и время (11.11.2026, `Signing::wishDue`).
         if (Signing::wishDue($this)) {
@@ -224,7 +236,7 @@ class Deal extends Model
 
         return ['title' => match ($gap) {
             'buyer' => 'Укажите покупателя',
-            'passport' => 'Приложите паспорт покупателя',
+            'passport' => $this->selfBuy() ? 'Приложите свой паспорт' : 'Приложите паспорт покупателя',
             'price' => 'Укажите цену продажи',
             default => $position->stage->managerTitle($this),
         }, 'due' => $position->deadline_at, 'kind' => in_array($gap, ['buyer', 'passport', 'price'], true) ? $gap : 'step'];
@@ -248,6 +260,7 @@ class Deal extends Model
             null => null,
             'Покупатель не выбран' => ['title' => 'Укажите покупателя', 'kind' => 'buyer'],
             'Нет скана паспорта покупателя' => ['title' => 'Приложите паспорт покупателя', 'kind' => 'passport'],
+            'Нет паспорта менеджера', 'Нет скана паспорта менеджера' => ['title' => 'Приложите свой паспорт', 'kind' => 'passport'],
             default => ['title' => 'Заполните данные покупателя', 'kind' => 'buyer'],
         };
     }
@@ -595,6 +608,14 @@ class Deal extends Model
             return null;
         }
         $party = $this->contract?->buyer?->party;
+        // Оформляет на себя (13.11.2026) — нужен его же паспорт, а не «покупатель».
+        if ($this->contract?->buyer && $this->selfBuy()) {
+            return match (true) {
+                ! $party?->readyForContract() => 'Нет паспорта менеджера',
+                ! $party->readyAsBuyer() => $party->buyerGap() === 'нужен банк ИП' ? 'Нет банка ИП менеджера' : 'Нет скана паспорта менеджера',
+                default => null,
+            };
+        }
 
         return match (true) {
             ! $this->contract?->buyer => 'Покупатель не выбран',
@@ -638,6 +659,14 @@ class Deal extends Model
             return Party::seller($this->seller())->filled() ? null : 'Нет реквизитов '.$this->seller()->short();
         }
         $party = $this->contract?->buyer?->party;
+        // Оформляет на себя (13.11.2026) — нужен его же паспорт, а не «покупатель».
+        if ($this->contract?->buyer && $this->selfBuy()) {
+            return match (true) {
+                ! $party?->readyForContract() => 'Нет паспорта менеджера',
+                ! $party->readyAsBuyer() => $party->buyerGap() === 'нужен банк ИП' ? 'Нет банка ИП менеджера' : 'Нет скана паспорта менеджера',
+                default => null,
+            };
+        }
 
         return match (true) {
             ! $this->contract?->buyer => 'Покупатель не выбран',
@@ -849,6 +878,39 @@ class Deal extends Model
         $paid = $this->credited();
 
         return ['reward' => $reward, 'payable' => $payable, 'paid' => $paid, 'rest' => round($payable - $paid, 2)];
+    }
+
+    /**
+     * Вознаграждение по умолчанию — доля менеджера от разницы (13.11.2026, владелец: «у Сахиба по умолчанию 50:50 от разницы
+     * закупочной и продажной», 1 480 000 − 1 275 000 → 102 500; `users.deal_share`): целыми рублями, без округления до тысячи.
+     * Доли нет, цены или закупочной нет, гаражная и супер-покупателя (у них свои деньги) — null.
+     */
+    public function defaultCommission(?int $amount = null, ?int $cost = null): ?int
+    {
+        $share = $this->buyer?->deal_share;
+        $amount ??= $this->amount;
+        $cost ??= $this->cost;
+        if ($share === null || $amount === null || $cost === null || $this->isGarage() || $this->isDirect()) {
+            return null;
+        }
+
+        return self::shareOf($amount - $cost, $share);
+    }
+
+    /** Доля от разницы, целыми рублями; разницы нет — 0. Одна дверь с `commission_controller#share`. */
+    public static function shareOf(int $margin, int $share): int
+    {
+        return max(0, (int) round($margin * $share / 100));
+    }
+
+    /**
+     * Менеджер оформляет на себя (13.11.2026, владелец: Сахиб, 8192/046/06663/26 — «покупатель с другого региона, договор и
+     * оплату на меня, он у меня заберёт»): покупатель по договору — сам менеджер, его покупателя в системе нет. Вознаграждение
+     * тогда всегда вычитается из того, что он платит (`SaveDealContract`). Гаражная и супер-покупателя — не эта схема.
+     */
+    public function selfBuy(): bool
+    {
+        return $this->buyer_id !== null && $this->contract?->buyer_user_id === $this->buyer_id && ! $this->isGarage() && ! $this->isDirect();
     }
 
     /** Наша доля навара у менеджера сделки, %. */

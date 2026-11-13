@@ -232,6 +232,10 @@ final class Give
     {
         $scheme = DealScheme::resolve($offer, $g->scheme);
         [$commission, $mode, $payer, $share] = [$g->commission, $g->mode, null, null];
+        // Не вписали — доля менеджера от разницы, если она у него задана (13.11.2026, `users.deal_share`, `Deal::shareOf`).
+        if ($commission === null && $manager?->deal_share !== null && $bid?->amount !== null && $cost !== null && ! $manager->isSuperBuyer()) {
+            $commission = Deal::shareOf($bid->amount - $cost, $manager->deal_share);
+        }
         if ($garage) {
             // Без менеджера — «взяли под себя»: поставщику платим мы. Совкомбанк (менеджер платит ПРАЙМ по счёту) и маршрут
             // без гаражной ветки (Т-Страхование) — платит менеджер, путём обычной сделки (`Offer::garagePayerFixed`).

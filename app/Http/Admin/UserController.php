@@ -651,6 +651,9 @@ class UserController
         // Наша доля навара по гаражу (12.11.2026, у каждого менеджера своя): от неё вознаграждение при продаже, пусто — 60 %.
         $share = $request->validate(['garage_share' => ['nullable', 'integer', 'min:0', 'max:100']], [], ['garage_share' => 'доля'])['garage_share'] ?? null;
         $data['garage_share'] = in_array(Role::Manager, $data['roles'], true) && $share !== null && $share !== '' ? (int) $share : null;
+        // Менеджеру от разницы в сделке (13.11.2026): вознаграждение по умолчанию при принятии, пусто — не подставляется.
+        $dealShare = $request->validate(['deal_share' => ['nullable', 'integer', 'min:0', 'max:100']], [], ['deal_share' => 'доля'])['deal_share'] ?? null;
+        $data['deal_share'] = in_array(Role::Manager, $data['roles'], true) && $dealShare !== null && $dealShare !== '' ? (int) $dealShare : null;
 
         return $data;
     }

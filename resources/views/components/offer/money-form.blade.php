@@ -12,9 +12,12 @@
      `data-commission-target="price"`): разница и «нам остаётся» считаются по ходу набора, цена не выше закупочной —
      форма переспрашивает и шлёт согласие `loss`.
      28.10.2026: `costEditable` — закупочная менеджера полем (админ при принятии, владелец: «можешь поменять закупочную,
-     которая будет у него в сделке»): по умолчанию с подтверждения, разница, взаимозачёт и согласие `loss` идут за ней. --}}
+     которая будет у него в сделке»): по умолчанию с подтверждения, разница, взаимозачёт и согласие `loss` идут за ней.
+     13.11.2026: `share` — доля менеджера от разницы (`users.deal_share`, владелец: «у Сахиба по умолчанию 50:50»): чип
+     «Менеджеру 50 % — 102 500» под вознаграждением, идёт за ценой и закупочной; `prefill` (принятие) — пустое поле сразу
+     долей, и поле идёт за разницей, пока его не правили руками. --}}
 @props(['action', 'amount', 'cost' => null, 'commission' => null, 'mode' => \App\Offers\CommissionMode::Payout, 'submit' => 'Принять', 'confirm' => null, 'method' => 'post', 'id' => null, 'note' => null,
-    'scheme' => null, 'schemes' => null, 'ownerPrice' => null, 'fee' => true, 'ownerLocked' => false, 'supplierCost' => null, 'priced' => false, 'costEditable' => false, 'schemeLocked' => false, 'offer' => null])
+    'scheme' => null, 'schemes' => null, 'ownerPrice' => null, 'fee' => true, 'ownerLocked' => false, 'supplierCost' => null, 'priced' => false, 'costEditable' => false, 'schemeLocked' => false, 'offer' => null, 'share' => null, 'prefill' => false])
 @php
     use App\Offers\CommissionMode;
     use App\Offers\DealScheme;
@@ -28,9 +31,13 @@
     $owner = old('owner_price', $ownerPrice ?? $cost);
     $costNow = $costEditable ? (Money::rubles(old('cost')) ?: $cost) : $cost;
     $margin = $costNow === null ? null : (int) $amount - $costNow;
+    $share = $fee ? $share : null;
+    if ($prefill && $share !== null && ($current === null || $current === '') && $margin !== null && ($amount || ! $priced)) {
+        $current = \App\Offers\Deal::shareOf($margin, $share);
+    }
 @endphp
 <form method="post" action="{{ $action }}" class="flex flex-col gap-4" data-scheme-guard data-controller="commission" data-commission-amount-value="{{ $amount }}" @if ($costNow !== null) data-commission-cost-value="{{ $costNow }}" @endif
-    @if ($margin !== null) data-commission-margin-value="{{ $margin }}" @endif @if ($confirm) data-turbo-confirm="{{ $confirm }}" @endif>
+    @if ($margin !== null) data-commission-margin-value="{{ $margin }}" @endif @if ($share !== null) data-commission-share-value="{{ $share }}" @endif @if ($confirm) data-turbo-confirm="{{ $confirm }}" @endif>
     @csrf
     @if ($method !== 'post')@method($method)@endif
     @if ($priced || $costEditable)<input type="hidden" name="loss" value="" data-commission-target="loss">@endif
@@ -86,6 +93,9 @@
             <input id="{{ $id }}" type="text" class="field-input nums" data-commission-target="display" data-action="input->commission#input" value="{{ $current !== null && $current !== '' ? Money::nums((int) $current) : '' }}" autocomplete="off" placeholder="0">
             @error('commission')<p class="field-error">{{ $message }}</p>@enderror
         </div>
+        @if ($share !== null)
+            <div class="sheet-chips -mt-1"><button type="button" class="chip nums" data-commission-target="share" data-action="commission#share" hidden></button></div>
+        @endif
     </div>
     @if ($margin !== null || $scheme)
         <dl class="grid grid-cols-[auto_1fr] items-baseline gap-x-4">

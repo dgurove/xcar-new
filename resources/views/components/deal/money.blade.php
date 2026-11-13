@@ -41,7 +41,7 @@
                     @else
                         {{-- Схема — своей строкой «Схема» (`x-deal.scheme`, 03.11.2026): здесь только вознаграждение. --}}
                         <x-offer.money-form :action="'/work/deals/'.$deal->id.'/money'" method="put" :amount="$deal->amount" :cost="$deal->cost" :commission="$deal->commission" :fee="! $deal->isDirect()" :mode="$deal->commission_mode"
-                            :scheme="\App\Offers\DealScheme::choiceFor($deal->offer->vendor?->deal_format, $deal->schemeOf())" scheme-locked :owner-price="$deal->owner_price" :owner-locked="true" :supplier-cost="$deal->supplier_cost" submit="Сохранить"/>
+                            :scheme="\App\Offers\DealScheme::choiceFor($deal->offer->vendor?->deal_format, $deal->schemeOf())" scheme-locked :owner-price="$deal->owner_price" :owner-locked="true" :supplier-cost="$deal->supplier_cost" :share="$deal->isGarage() ? null : $deal->buyer?->deal_share" submit="Сохранить"/>
                     @endif
                 </x-ui.sheet>
             </div>
@@ -100,7 +100,12 @@
     @php ob_start(); @endphp
         {{-- Схема и режим вознаграждения — текстом, состояние словом, «Ещё счёт» — действием (10.10.2026). --}}
         {{-- Схема — строкой «Схема» выше (`x-deal.scheme`); здесь — аукцион вне системы и режим вознаграждения. --}}
-        @if (($deal->isAuction() && $invoices->isEmpty()) || ($deal->commission && $deal->isPrime()))<span class="text-sm text-ink-muted">{{ $deal->isAuction() && $invoices->isEmpty() ? 'Счёт вне системы' : 'Вознаграждение: '.mb_strtolower($deal->commission_mode->label()) }}</span>@endif
+        {{-- Оформляет на себя (13.11.2026): вознаграждение вычитается из того, что он платит, — словами, при любой схеме. --}}
+        @if ($deal->selfBuy() && $deal->commission)
+            <span class="text-sm text-ink-muted">На себя, вознаграждение вычтено из оплаты</span>
+        @elseif (($deal->isAuction() && $invoices->isEmpty()) || ($deal->commission && $deal->isPrime()))
+            <span class="text-sm text-ink-muted">{{ $deal->isAuction() && $invoices->isEmpty() ? 'Счёт вне системы' : 'Вознаграждение: '.mb_strtolower($deal->commission_mode->label()) }}</span>
+        @endif
         @if (! in_array($state, [CommissionState::Hidden, CommissionState::Withheld]))<x-ui.state :tone="$state->tone()">{{ mb_strtolower($state->label()) }}{{ $state === CommissionState::Payable && $fee ? ' до '.\App\Support\Ago::day($fee->due_at) : '' }}{{ $state === CommissionState::Paid && $fee?->paid_at ? ' '.\App\Support\Ago::day($fee->paid_at) : '' }}</x-ui.state>@endif
         @if ($deal->commission && ! $deal->withholds() && $party && ! $party->payoutReady())<x-ui.state tone="urgent">Реквизитов для выплаты нет</x-ui.state>@endif
         @if ($deal->isActive())

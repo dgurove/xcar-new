@@ -257,7 +257,8 @@ final class CarView
             return $deal->auctionBuyer ? ['user' => null, 'name' => $deal->auctionBuyer->name, 'role' => 'покупатель на аукционе'] : null;
         }
 
-        return $deal?->buyer ? ['user' => $deal->buyer, 'name' => $deal->buyer->shortName(), 'role' => 'менеджер сделки'] : null;
+        // Оформляет на себя (13.11.2026) — словом под именем: покупатель по договору он сам.
+        return $deal?->buyer ? ['user' => $deal->buyer, 'name' => $deal->buyer->shortName(), 'role' => $deal->selfBuy() ? 'менеджер сделки, на себя' : 'менеджер сделки'] : null;
     }
 
     /**

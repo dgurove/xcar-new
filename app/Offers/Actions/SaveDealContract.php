@@ -6,8 +6,10 @@ use App\Billing\Actions\SaveBuyerData;
 use App\Billing\Party;
 use App\Billing\PartyKind;
 use App\Notifications\BuyerContractDataNotice;
+use App\Offers\CommissionMode;
 use App\Offers\DealContract;
 use App\Offers\OfferEventType;
+use App\Support\Money;
 use App\Support\Phone;
 use App\Users\Role;
 use App\Users\User;
@@ -24,7 +26,7 @@ use Illuminate\Validation\ValidationException;
  */
 final class SaveDealContract
 {
-    public function __construct(private SyncDealInvoices $invoices, private UpdateOffer $offers, private SettleContract $settle, private SaveBuyerData $buyerData) {}
+    public function __construct(private SyncDealInvoices $invoices, private UpdateOffer $offers, private SettleContract $settle, private SaveBuyerData $buyerData, private UpdateDealMoney $money) {}
 
     public function __invoke(DealContract $contract, array $data, User $by): DealContract
     {
@@ -85,6 +87,14 @@ final class SaveDealContract
             $deal->offer->log(OfferEventType::Note, $by, ['text' => $what !== '' ? 'ДКП: '.$what : 'ДКП изменён']);
         });
         $picked = $contract->wasChanged('buyer_user_id');
+        // Оформляет на себя (13.11.2026, владелец: «комиссию менеджера из счёта на оплату сразу вычитать»): вознаграждение —
+        // «Оставляет себе», пустое — доля менеджера от разницы (`Deal::defaultCommission`); пока по счетам не платили.
+        $fresh = $deal->fresh(['buyer', 'contract']);
+        if ($picked && $fresh->selfBuy() && $fresh->moneyEditable() && ($fresh->commission_mode !== CommissionMode::Withheld || $fresh->commission === null)) {
+            $commission = $fresh->commission ?? $fresh->defaultCommission();
+            ($this->money)($fresh, $by, $commission, CommissionMode::Withheld,
+                note: 'Оформляет на себя: вознаграждение '.($commission ? Money::rub($commission) : 'нет').', вычитается из оплаты');
+        }
         // Плательщик или его данные сменились — счёт ПРАЙМ встаёт сам (или перевыставляется, если за него не платили).
         ($this->invoices)($deal->fresh(['offer', 'buyer', 'contract.buyer']), $by);
         $contract = $contract->fresh(['seller', 'buyer.party', 'deal.offer', 'deal.buyer']);

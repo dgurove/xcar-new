@@ -84,7 +84,12 @@
                 <x-admin.group-picker :groups="\App\Users\UserGroup::ofKind(\App\Users\UserGroup::MANAGERS)->get()" :user="$user" name="manager"/>
                 {{-- Наша доля навара по гаражу (12.11.2026): от неё вознаграждение при продаже (`Deal::suggestedCommission`). Не
                      задана — стоит общая `Deal::GARAGE_SHARE` значением, а не серой подсказкой: подсказка читалась как данные. --}}
-                <div class="fields"><x-ui.field name="garage_share" label="Наша доля навара в гараже, %" :value="old('garage_share', $user->garage_share ?? \App\Offers\Deal::GARAGE_SHARE)"/></div>
+                {{-- Менеджеру от разницы в сделке (13.11.2026, владелец: «у Сахиба по умолчанию 50:50»): вознаграждение по умолчанию
+                     при принятии (`Deal::defaultCommission`). Пусто — не подставляется. --}}
+                <div class="fields">
+                    <x-ui.field name="garage_share" label="Наша доля навара в гараже, %" :value="old('garage_share', $user->garage_share ?? \App\Offers\Deal::GARAGE_SHARE)"/>
+                    <x-ui.field name="deal_share" :id="'deal-share-'.$user->id" label="Менеджеру от разницы, %" :value="old('deal_share', $user->deal_share)"/>
+                </div>
             </div>
             <div data-super class="flex flex-col gap-3">
                 <x-admin.garage-toggle :user="$user"/>

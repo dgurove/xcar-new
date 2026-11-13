@@ -33,7 +33,10 @@ final class DealLine
             default => [$deal->offer->crmTab(), 'text-ink-muted'],
         };
 
-        return new self($word, $tone, $deal->isAuction() ? 'Аукцион' : $deal->buyer?->shortName(), $deal->isAuction() ? null : $deal->buyer);
+        // Оформляет на себя (13.11.2026) — у имени: покупатель по договору он сам (договор списки берут сразу, без него — молча).
+        $self = $deal->relationLoaded('contract') && $deal->selfBuy() ? ', на себя' : '';
+
+        return new self($word, $tone, $deal->isAuction() ? 'Аукцион' : ($deal->buyer ? $deal->buyer->shortName().$self : null), $deal->isAuction() ? null : $deal->buyer);
     }
 
     /**
