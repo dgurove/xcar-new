@@ -35,7 +35,7 @@ final class SigningReply
         if (! $last) {
             return null;
         }
-        $text = mb_strtolower($last->replyText());
+        $text = self::own($last);
         $base = $last->date_at ?? now();
         if (preg_match('/никто\s+не\s+просил|не\s+записан|записи\s+нет|не\s+смогли\s+записать/u', $text)) {
             return new self('none', $last);
@@ -45,8 +45,8 @@ final class SigningReply
             if (! $at) {
                 // «записали» без времени — на то, что мы назвали последним ответом, в день из его предложения.
                 $ours = $letters->filter(fn (Message $m) => $m->direction === Direction::Out && $m->date_at < $last->date_at)->last();
-                $offer = $theirs->filter(fn (Message $m) => $m->date_at < $last->date_at)->map(fn (Message $m) => self::offered(mb_strtolower($m->replyText()), $m->date_at))->filter()->last();
-                $at = $ours ? self::when(mb_strtolower($ours->replyText()), $base, $offer[0] ?? null) : null;
+                $offer = $theirs->filter(fn (Message $m) => $m->date_at < $last->date_at)->map(fn (Message $m) => self::offered(self::own($m), $m->date_at))->filter()->last();
+                $at = $ours ? self::when(self::own($ours), $base, $offer[0] ?? null) : null;
             }
 
             return new self('booked', $last, $at);
@@ -56,6 +56,12 @@ final class SigningReply
         }
 
         return null;
+    }
+
+    /** Своё письма без шапки цитаты («Исходное письмо, 12.11.2026 13:32, …», «From: … Sent: …») — её дата не наша. */
+    private static function own(Message $m): string
+    {
+        return preg_split('/\n\s*(?:исходное\s+письмо|from:|sent:|-{3,}|отправлено\s+из|\d{1,2}\.\d{1,2}\.\d{4},?\s+\d{1,2}:\d{2},?\s+\S+.*пишет)/u', mb_strtolower($m->replyText()))[0];
     }
 
     /** Время в тексте: «13.11 в 13:00», «13.11.2026 13:00», «на 13:00» (день — `$day` или из письма). */

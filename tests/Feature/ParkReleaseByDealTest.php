@@ -166,7 +166,8 @@ class ParkReleaseByDealTest extends TestCase
             'text_body' => $text, 'date_at' => now()->addMinutes((int) $at)]);
         $letter('in', 'Добрый день! Есть на '.now()->addDay()->format('d.m.Y').' 11,12,13 На какое записать?', '1');
         $this->assertSame('slots', \App\Offers\SigningReply::of($deal->fresh())->kind);
-        $letter('out', '13:00', '2');
+        // Своё «13:00» с шапкой цитаты: её дата («12.11.2026 13:32») — не день записи (13.11.2026, ошибка на проде).
+        $letter('out', "13:00 \nИсходное письмо, ".now()->format('d.m.Y')." 13:32, Ткаченко Евгений Валериевич <tkachenkoev@alfastrah.ru>:\n> Есть на ...", '2');
         $letter('in', 'записали', '3');
 
         $reply = \App\Offers\SigningReply::of($deal->fresh());
