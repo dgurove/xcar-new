@@ -1,9 +1,13 @@
 {{-- «Поставщик предложил другое время» (`Offers\Signing`, 11.11.2026): адрес филиала и свободное время из письма — менеджер выберет
      плиткой. Адрес по умолчанию — у сделки, филиал вендора, прошлый у вендора (`Signing::defaultAddress`). Строки времени — `repeater`. --}}
-@props(['id', 'deal', 'exit'])
+@props(['id', 'deal', 'exit', 'reply' => null])
 @php
     $mine = old('_sheet') === $id;
     $slots = $mine ? array_values(array_filter((array) old('slots'))) : [];
+    // «Есть на 13.11 11, 12, 13» из письма поставщика (`SigningReply`, 13.11.2026) — строки уже заполнены.
+    if (! $mine && $reply?->kind === 'slots') {
+        $slots = array_map(fn ($s) => $s->format('Y-m-d\TH:i'), $reply->slots);
+    }
     $slots = $slots ?: [''];
     $address = $mine ? old('address') : \App\Offers\Signing::defaultAddress($deal);
 @endphp

@@ -71,6 +71,12 @@ final class Signing
 
     public const CONFIRM_EXIT = 'запись подтверждена';
 
+    /** Шаг ждёт подтверждения записи от поставщика («Запись на подписание»: есть исход «Запись подтверждена»). */
+    public static function confirmable(?Stage $stage): bool
+    {
+        return (bool) $stage?->loadedExits()->contains(fn (Outcome $e) => self::confirmExit($e));
+    }
+
     /** Исход «Запись подтверждена»: только с временем, что подтвердил поставщик, — шторкой (`ConfirmSigning`). */
     public static function confirmExit(?Outcome $exit): bool
     {

@@ -145,11 +145,19 @@ final class OnMessage
                 // перетирает — но людям решать, кому отдавать: парковке громко (управляющим и администраторам), в CRM — строкой
                 // в истории предложения.
                 if ($message->intent === Intent::Sold->value && ($pass = $vehicle->dealPass())) {
-                    Notification::send(
-                        app(Notify::class)->parkManagersOf($vehicle->city_id)
-                            ->merge(User::withRole(Role::ParkAdmin)->whereNotNull('approved_at')->get())->unique('id'),
-                        ParkNotice::insurerSoldDeal($vehicle, $pass));
-                    $vehicle->offer?->log(OfferEventType::Note, null, ['text' => 'Страховая прислала «продано» по ТС, а по нашей сделке ждём '.$pass->name.': сверить, кому выдавать']);
+                    // Оплату поставщик уже подтвердил (`prepaid_at`) — «реализовано» и есть наша продажа (13.11.2026, Альфа по X6
+                    // № 2610041185: подписали в 13:00, в 13:20 «Данное ТС реализовано, покупатель сегодня планирует вывоз»):
+                    // не конфликт — строкой в истории, выдача по пропуску сделки.
+                    $deal = $vehicle->offer?->deal;
+                    if ($deal?->isActive() && $deal->prepaid_at) {
+                        $vehicle->offer->log(OfferEventType::Note, null, ['text' => 'Поставщик: ТС реализовано, выдача по пропуску — '.$pass->name]);
+                    } else {
+                        Notification::send(
+                            app(Notify::class)->parkManagersOf($vehicle->city_id)
+                                ->merge(User::withRole(Role::ParkAdmin)->whereNotNull('approved_at')->get())->unique('id'),
+                            ParkNotice::insurerSoldDeal($vehicle, $pass));
+                        $vehicle->offer?->log(OfferEventType::Note, null, ['text' => 'Страховая прислала «продано» по ТС, а по нашей сделке ждём '.$pass->name.': сверить, кому выдавать']);
+                    }
                 }
             }
             $paths[] = "/cars/{$vehicle->id}";

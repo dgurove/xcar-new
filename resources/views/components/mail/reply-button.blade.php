@@ -31,7 +31,8 @@
             @if (($message->thread?->needs_reply_at || $replied) && \App\Mail\Threads::canAnswer(auth()->user()))
                 <form method="post" action="{{ $base }}/{{ $message->thread_id }}/answered" data-turbo-frame="_top" class="contents">@csrf<button class="btn btn-quiet">Ответ не нужен</button></form>
             @endif
-            @if ($deal)
+            {{-- Поставщик уже подтвердил оплату (`prepaid_at`) — машина продана нам: «продал другому» не к месту (13.11.2026). --}}
+            @if ($deal && ! $deal->prepaid_at)
                 <form method="post" action="/work/deals/{{ $deal->id }}/declined" data-turbo-frame="_top" class="contents"
                       data-turbo-confirm="Поставщик продал другому?" data-turbo-confirm-text="Сделка закроется: отказ поставщика, предложение — в архив с пометкой, менеджеру придёт уведомление" data-turbo-confirm-label="Закрыть сделку">
                     @csrf

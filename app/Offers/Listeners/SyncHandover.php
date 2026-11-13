@@ -134,6 +134,16 @@ final class SyncHandover
     /** Выдали с нашей парковки менеджеру сделки (13.11.2026, `SyncOffer::released`): вывоза нет — шаг получения проходит так. */
     public function handedFromPark(Deal $deal, User $by): void
     {
+        $offer = $deal->offer->unsetRelation('positions');
+        $stage = $offer->position(Track::Sale)?->stage;
+        // Альфа: машину выдают у нас только после подписания ДКП (13.11.2026, X6 № 2610041185 — «ТС передаётся покупателю при
+        // предъявлении паспорта» после договора). Шаг «Подписание» ещё ждёт «Договор подписан» — выдача и есть его конец.
+        $signed = $stage?->exitsFor(Actor::Staff, $deal)->first(fn ($x) => mb_strtolower(trim($x->label)) === 'договор подписан за менеджера');
+        if ($signed) {
+            ($this->take)($offer, $signed, Actor::Staff, $by);
+
+            return;
+        }
         $this->pressSale($deal, $by);
     }
 

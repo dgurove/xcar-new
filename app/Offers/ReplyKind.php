@@ -18,6 +18,7 @@ enum ReplyKind: string
     case Requisites = 'requisites';
     case Sale = 'sale';
     case ContractReady = 'contract';
+    case Booking = 'booking';
     case Handover = 'handover';
     case Docs = 'docs';
     case Files = 'files';
@@ -30,6 +31,7 @@ enum ReplyKind: string
             self::Requisites => 'Просят реквизиты',
             self::Sale => 'ГОТС поступили на реализацию',
             self::ContractReady => 'Договор готов',
+            self::Booking => 'Запись на подписание',
             self::Handover => 'Готовы передать',
             self::Docs => 'Просят документы',
             self::Files => 'Прислали документы',
@@ -48,6 +50,8 @@ enum ReplyKind: string
             preg_match('/поступил\w*\s+на\s+реализаци|до\s+переигровки/u', $text) === 1 => self::Sale,
             // Альфа: «ДКП подготовлен. Для подписания ДКП приглашаем Вас в офис» (11.11.2026) — до «Готовы передать»: в нём и стоянка.
             SigningLetter::ready($message) => self::ContractReady,
+            // Ответ на запись (13.11.2026, `SigningReply`): «записали», «есть на 13.11 11,12,13 на какое записать», «не записан».
+            preg_match('/запис(?:али|ал|ан[аы]?)\b|на\s+какое\s+(?:время\s+)?записать|никто\s+не\s+просил\s+запись/u', $text) === 1 => self::Booking,
             preg_match('/готов\w*\s+(?:к\s+)?переда|для\s+(?:оплаты\s+и\s+)?вывоза\s+\S+\s*,?\s*прошу\s+связаться|контактное\s+лицо|кто\s+будет\s+передавать/u', $text) === 1
                 || OwnerPhones::for($message) !== [] => self::Handover,
             preg_match('/(?:пришлите|прислать|направьте|направить|предоставьте|предоставить|просьба\s+дать|жд(?:у|[её]м))[^.!?\n]{0,80}(?:\bдкп?\b|\bапп\b|\bакт|документ|скан|подписанн|\bос\b)|подтверждающее\s+письмо|вывезли\s+тс\s+или\s+нет|где\s+находятся\s+[^.!?\n]{0,20}оригинал/u', $text) === 1 => self::Docs,

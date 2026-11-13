@@ -368,6 +368,12 @@
                                     </x-ui.sheet>
                                 </div>
                             @endforeach
+                            {{-- Ответ поставщика на запись (13.11.2026, `SigningReply`): «записали», «есть на 13.11 11, 12, 13», «не записан» —
+                                 строкой над кнопками; шторки «Запись подтверждена» / «Поставщик предложил другое время» — уже заполнены. --}}
+                            @php $signingReply = $deal && \App\Offers\Signing::confirmable($position->stage) ? \App\Offers\SigningReply::of($deal) : null; @endphp
+                            @if ($signingReply)
+                                <p @class(['signing-reply w-full text-sm', 'text-urgent' => $signingReply->kind === 'none'])>{{ $signingReply->line() }} <span class="text-ink-muted">письмо {{ \App\Support\Ago::at($signingReply->message->date_at) }}</span></p>
+                            @endif
                             @foreach ($moves->values() as $i => $exit)
                                 {{-- Письмо поставщику не ушло — главное «Написать поставщику», исходы серыми. --}}
                                 @php $variant = $i === 0 && ! $wantsInvoice && $payNow->isEmpty() && $position->letterStatus() !== 'unsent' ? 'primary' : 'secondary'; @endphp
@@ -381,13 +387,13 @@
                                     {{-- «Запись подтверждена» — на какое из названных менеджером времён записал поставщик (`ConfirmSigning`). --}}
                                     <div data-controller="sheet">
                                         <x-ui.button type="button" size="sm" :variant="$variant" data-action="sheet#open" aria-controls="confirm-{{ $exit->id }}">{{ $label($exit) }}</x-ui.button>
-                                        <x-deal.signing-confirm-sheet :id="'confirm-'.$exit->id" :deal="$deal" :exit="$exit"/>
+                                        <x-deal.signing-confirm-sheet :id="'confirm-'.$exit->id" :deal="$deal" :exit="$exit" :reply="$signingReply"/>
                                     </div>
                                 @elseif ($deal && \App\Offers\Signing::slotsExit($exit))
                                     {{-- Свободное время поставщика — шторкой: адрес и время, менеджер выберет плиткой (`Offers\Signing`). --}}
                                     <div data-controller="sheet">
                                         <x-ui.button type="button" size="sm" :variant="$variant" data-action="sheet#open" aria-controls="slots-{{ $exit->id }}">{{ $label($exit) }}</x-ui.button>
-                                        <x-deal.signing-slots-sheet :id="'slots-'.$exit->id" :deal="$deal" :exit="$exit"/>
+                                        <x-deal.signing-slots-sheet :id="'slots-'.$exit->id" :deal="$deal" :exit="$exit" :reply="$signingReply"/>
                                     </div>
                                 @elseif (\App\Offers\SupplierInvoice::needs($deal, $exit))
                                     {{-- На оплату поставщику менеджером — только со счётом: шторка выбора счёта (`SupplierInvoice`). --}}

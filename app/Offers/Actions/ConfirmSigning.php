@@ -21,7 +21,8 @@ final class ConfirmSigning
     public function __construct(private TakeExit $take) {}
 
     /** @param  string  $at  «2026-11-12 9:00» (плитка) или «2026-11-12 09:00» (календарь) */
-    public function __invoke(Deal $deal, Outcome $exit, User $by, string $at): Deal
+    /** @param  bool  $past  внести задним числом (запись уже прошла — правка по письмам, 13.11.2026) */
+    public function __invoke(Deal $deal, Outcome $exit, User $by, string $at, bool $past = false): Deal
     {
         abort_unless(Signing::confirmExit($exit) && $deal->isActive() && $deal->offer?->position()?->stage_id === $exit->stage_id, 404);
         try {
@@ -32,7 +33,7 @@ final class ConfirmSigning
         if (! $at) {
             throw ValidationException::withMessages(['confirm' => 'Выберите, на когда записали']);
         }
-        if (! $at || $at->isPast()) {
+        if (! $at || ($at->isPast() && ! $past)) {
             throw ValidationException::withMessages(['confirm' => 'Это время уже прошло']);
         }
 

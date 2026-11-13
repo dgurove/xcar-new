@@ -128,6 +128,52 @@ class ParkReleaseByDealTest extends TestCase
         $this->assertNull($deal->fresh()->closeBlocker());
     }
 
+    /** Альфа: подписали ДКП, машину выдали у нас по пропуску сделки — шаг «Подписание» закрывается сам (13.11.2026, X6 № 2610041185). */
+    public function test_release_at_signing_closes_the_deal(): void
+    {
+        [$offer, $deal, $vehicle] = $this->deal();
+        $this->paid($offer, $deal);
+        foreach (['Договор готов', 'Время согласовано', 'Запись подтверждена'] as $label) {
+            $o = $offer->fresh();
+            $exit = $o->stage()->exits->first(fn ($e) => $e->label === $label);
+            $this->assertNotNull($exit, 'нет «'.$label.'» на «'.$o->stage()->name.'»');
+            app(TakeExit::class)($o, $exit, $exit->actor, $exit->actor === Actor::Manager ? $this->manager : $this->admin);
+        }
+        $this->assertSame('Подписание', $offer->fresh()->stage()->name);
+
+        $pass = $vehicle->fresh()->dealPass();
+        app(Release::class)($vehicle->fresh(), $this->keeper, now(), qr: ['pass' => $pass->code]);
+
+        $this->assertSame(\App\Offers\DealState::Done, $deal->fresh()->state);
+    }
+
+    /** Ответы Альфы на запись (тексты с прода): «есть на 13.11 11,12,13» → наше «13:00» → «записали» — запись на 13.11 13:00. */
+    public function test_signing_reply_booked_from_our_answer(): void
+    {
+        [$offer, $deal] = $this->deal();
+        $this->paid($offer, $deal);
+        foreach (['Договор готов', 'Время согласовано'] as $label) {
+            $o = $offer->fresh();
+            $exit = $o->stage()->exits->first(fn ($e) => $e->label === $label);
+            app(TakeExit::class)($o, $exit, $exit->actor, $exit->actor === Actor::Manager ? $this->manager : $this->admin);
+        }
+        $this->assertSame('Запись на подписание', $offer->fresh()->stage()->name);
+        $account = DB::table('mail_accounts')->insertGetId(['slug' => 'deal', 'title' => 'deal', 'email' => 'deal@xcar.ru', 'scope' => 'sales',
+            'imap_host' => 'x', 'imap_username' => 'x', 'imap_password' => 'x', 'smtp_host' => 'x', 'smtp_username' => 'x', 'smtp_password' => 'x']);
+        $thread = \App\Mail\Thread::create(['account_id' => $account, 'subject' => '0790/046/09068/26', 'offer_id' => $offer->id]);
+        $letter = fn (string $dir, string $text, string $at) => \App\Mail\Message::create(['account_id' => $account, 'thread_id' => $thread->id,
+            'direction' => $dir, 'from_email' => $dir === 'in' ? 'tkachenkoev@alfastrah.ru' : 'deal@xcar.ru', 'subject' => 'RE: 0790/046/09068/26',
+            'text_body' => $text, 'date_at' => now()->addMinutes((int) $at)]);
+        $letter('in', 'Добрый день! Есть на '.now()->addDay()->format('d.m.Y').' 11,12,13 На какое записать?', '1');
+        $this->assertSame('slots', \App\Offers\SigningReply::of($deal->fresh())->kind);
+        $letter('out', '13:00', '2');
+        $letter('in', 'записали', '3');
+
+        $reply = \App\Offers\SigningReply::of($deal->fresh());
+        $this->assertSame('booked', $reply->kind);
+        $this->assertSame(now()->addDay()->format('Y-m-d').' 13:00', $reply->at->format('Y-m-d H:i'));
+    }
+
     public function test_old_pass_is_refused_at_the_gate(): void
     {
         [$offer, $deal, $vehicle] = $this->deal();

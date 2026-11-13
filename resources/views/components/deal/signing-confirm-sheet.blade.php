@@ -1,13 +1,18 @@
 {{-- «Запись подтверждена» (`ConfirmSigning`, 11.11.2026): на какое время записал поставщик — плитками из того, что называл
      менеджер (одно — отмечено само; выбрано одно время — оно), или «Другое время» календарём, если записали иначе. --}}
-@props(['id', 'deal', 'exit'])
+@props(['id', 'deal', 'exit', 'reply' => null])
 @php
     use App\Offers\Signing;
     $slots = Signing::wish($deal) ?? collect();
+    // Поставщик написал «записали» (`SigningReply`, 13.11.2026) — это время плиткой и отмечено.
+    $booked = $reply?->kind === 'booked' ? $reply->at : null;
+    if ($booked && ! $slots->contains(fn ($c) => $c->equalTo($booked))) {
+        $slots = $slots->push($booked->copy()->timezone('Europe/Moscow'))->sort()->values();
+    }
     if ($deal->signing_at && ! $slots->contains(fn ($c) => $c->equalTo($deal->signing_at))) {
         $slots = $slots->push($deal->signing_at->copy()->timezone('Europe/Moscow'))->sort()->values();
     }
-    $pick = $deal->signing_at ? Signing::slotKey($deal->signing_at) : ($slots->count() === 1 ? Signing::slotKey($slots->first()) : null);
+    $pick = $booked ? Signing::slotKey($booked) : ($deal->signing_at ? Signing::slotKey($deal->signing_at) : ($slots->count() === 1 ? Signing::slotKey($slots->first()) : null));
 @endphp
 <x-ui.sheet :id="$id" title="На когда записали" tall>
     <form method="post" action="/work/deals/{{ $deal->id }}/signing-confirm" class="flex flex-col gap-4">
