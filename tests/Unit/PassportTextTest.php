@@ -28,6 +28,22 @@ class PassportTextTest extends TestCase
         $this->assertSame('САМАРСКАЯ ОБЛ, ГОР. САМАРА, МОЛОДОГВАРДЕЙСКАЯ, Д. 151, КВ. 23', PassportText::registration($text)['fields']['reg_address']);
     }
 
+    /** Дата штампа месяцем словом в адрес не попадает (13.11.2026, Мишин: «23 АПРЕЛЯ 2004Г., ЗНАМЕНСКИЕ САДКИ УЛ., …»). */
+    public function test_registration_date_in_words(): void
+    {
+        $text = "ЗАРЕГИСТРИРОВАН\n23 апреля 2004г.\nЗНАМЕНСКИЕ САДКИ УЛ.\nД. 1, КВ. 56";
+
+        $this->assertSame('ЗНАМЕНСКИЕ САДКИ УЛ., Д. 1, КВ. 56', PassportText::registration($text)['fields']['reg_address']);
+    }
+
+    /** Греческая «Φ» от OCR — кириллицей: «РΦ ГОР. МОСКВА» → «РФ …». */
+    public function test_greek_lookalikes(): void
+    {
+        $fields = PassportText::main(str_replace('ГОР. МАХАЧКАЛА', 'РΦ ГОР. МАХАЧКАЛА', $this->main()))['fields'];
+
+        $this->assertStringNotContainsString('Φ', (string) ($fields['birth_place'] ?? ''));
+    }
+
     /** Серия и номер из обрезанных отпечатков, прочитанных поперёк: «07 512946» сверху, «82 07 5129» снизу. */
     public function test_series_and_number_from_cut_prints(): void
     {

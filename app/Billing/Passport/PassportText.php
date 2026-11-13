@@ -34,8 +34,17 @@ final class PassportText
     /**
      * @return array{fields: array<string, string>, checked: list<string>}
      */
+    /** Греческие двойники кириллицы, что ставит OCR (13.11.2026: место рождения «РΦ ГОР. МОСКВА» у Мишина). */
+    private const GREEK = ['Α' => 'А', 'Β' => 'В', 'Γ' => 'Г', 'Ε' => 'Е', 'Η' => 'Н', 'Κ' => 'К', 'Λ' => 'Л', 'Μ' => 'М', 'Ν' => 'Н',
+        'Ο' => 'О', 'Π' => 'П', 'Ρ' => 'Р', 'Τ' => 'Т', 'Υ' => 'У', 'Φ' => 'Ф', 'Χ' => 'Х', 'ο' => 'о', 'α' => 'а', 'ε' => 'е'];
+
+    /** Месяцы словом в штампе прописки: «23 АПРЕЛЯ 2004Г.». */
+    private const MONTHS = ['ЯНВАР' => 1, 'ФЕВРАЛ' => 2, 'МАРТ' => 3, 'АПРЕЛ' => 4, 'МА[ЯЙ]' => 5, 'ИЮН' => 6, 'ИЮЛ' => 7, 'АВГУСТ' => 8,
+        'СЕНТЯБР' => 9, 'ОКТЯБР' => 10, 'НОЯБР' => 11, 'ДЕКАБР' => 12];
+
     public static function main(string $text): array
     {
+        $text = strtr($text, self::GREEK);
         $lines = self::lines(explode(self::ACROSS, $text, 2)[0]);
         $mrz = self::mrz($lines);
         $fields = [];
@@ -192,6 +201,7 @@ final class PassportText
      */
     public static function registration(string $text): array
     {
+        $text = strtr($text, self::GREEK);
         $lines = self::lines(explode(self::ACROSS, $text, 2)[0]);
         $stamps = [];
         $current = null;
@@ -250,6 +260,14 @@ final class PassportText
         if (preg_match('/(?<!\d)(\d{2})[.,\s]?(\d{2})[.,\s]{1,4}((?:19|20)\d{2})(?!\d)/u', preg_replace('/[OО]/u', '0', $line), $m)
             && (int) $m[1] >= 1 && (int) $m[1] <= 31 && (int) $m[2] >= 1 && (int) $m[2] <= 12) {
             return "{$m[3]}-{$m[2]}-{$m[1]}";
+        }
+        // Месяц словом (13.11.2026: «23 АПРЕЛЯ 2004Г.» вставало в адрес) — только строка-дата, без адреса рядом.
+        $up = self::cyr(mb_strtoupper($line));
+        foreach (self::MONTHS as $word => $month) {
+            if (preg_match('/(?<!\d)(\d{1,2})\s*[«"]?\s*'.$word.'\p{L}*\s*((?:19|20)\d{2})/u', $up, $m) && (int) $m[1] >= 1 && (int) $m[1] <= 31
+                && mb_strlen(preg_replace('/[^А-ЯЁA-Z]/u', '', str_replace($m[0], '', $up))) <= 3) {
+                return sprintf('%s-%02d-%02d', $m[2], $month, (int) $m[1]);
+            }
         }
 
         return null;

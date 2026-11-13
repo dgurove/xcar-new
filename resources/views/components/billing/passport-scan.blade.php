@@ -34,5 +34,9 @@
             <span class="passport-tile-state"><x-ui.spark class="scan-spark size-4"/><span class="scan-failed">не прочитано</span></span>
         </div>
     @endforeach
+    {{-- «Распознать заново» (13.11.2026): прочитать оба скана снова, прочитанное — поверх полей; без скачивания и повторной
+         загрузки. Есть скан и не читается — видна. --}}
+    @php $any = collect($pages)->contains(fn ($p) => $p['media']); $busy = collect($pages)->contains(fn ($p) => $p['state'] === 'reading'); @endphp
+    <button type="button" class="passport-reread" data-passport-scan-target="reread" data-action="passport-scan#reread" @if (! $any || $busy) hidden @endif><x-ui.spark class="size-4"/>Распознать заново</button>
 </div>
 @endif

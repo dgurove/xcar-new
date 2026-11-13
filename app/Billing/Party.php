@@ -149,6 +149,32 @@ class Party extends Model implements HasMedia
         return $this->getMedia('passport')->first(fn (Media $m) => $m->getCustomProperty('page') === $page);
     }
 
+    /** Поля паспорта, что пишет скан (`ReadPassport`); ФИО — своей дверью (`ReadPassport::passportName`). */
+    public const SCAN_FIELDS = ['passport', 'passport_issued', 'passport_issued_at', 'passport_code', 'birth_at', 'birth_place', 'reg_address'];
+
+    /**
+     * Прочитанное со скана — в данные (13.11.2026, владелец по Мишину: «фотки прикреплены, а поля не распознались» — прочитанное
+     * вставало только в открытую форму, закрыли раньше — лежало в файле): пустые поля заполняются, вписанное руками не трогается;
+     * `$over` — «Распознать заново»: прочитанное поверх. Было что записать — true.
+     */
+    public function fillFromScan(bool $over = false): bool
+    {
+        $read = [];
+        foreach (array_keys(self::PASSPORT_PAGES) as $page) {
+            $media = $this->passportScan($page);
+            if ($media?->getCustomProperty('read') === 'done') {
+                $read += array_intersect_key((array) $media->getCustomProperty('fields', []), array_flip(self::SCAN_FIELDS));
+            }
+        }
+        $set = array_filter($read, fn ($v, $k) => filled($v) && ($over || blank($this->getRawOriginal($k))), ARRAY_FILTER_USE_BOTH);
+        if ($set === []) {
+            return false;
+        }
+        $this->fill($set)->save();
+
+        return $this->wasChanged();
+    }
+
     /** Физлицо (и самозанятый): у него паспорт, у организации и ИП — реквизиты. */
     public function isPerson(): bool
     {

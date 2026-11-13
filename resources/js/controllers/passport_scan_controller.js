@@ -9,11 +9,29 @@ import { openLightbox } from '../lightbox';
 export default class extends Controller {
     static values = { url: String, form: String, prefix: String };
 
-    static targets = ['tile'];
+    static targets = ['tile', 'reread'];
 
     connect() {
         this.filled = new Set();
         if (this.tileTargets.some((t) => t.dataset.state === 'reading')) this.poll();
+        // Прочитано раньше, а поля формы пустые (13.11.2026: закрыли окно до конца чтения) — подставить сразу, в пустые.
+        else if (this.tileTargets.some((t) => t.dataset.state === 'done')) getJson(`${this.urlValue}/live`, { quiet: true }).then((data) => data && this.apply(data));
+    }
+
+    // «Распознать заново» (13.11.2026, владелец: «скачивать и заново закидывать — ебанистика»): обе страницы читаются снова,
+    // прочитанное — поверх полей формы (и данных на сервере, `ReadPassport::apply`).
+    async reread() {
+        this.over = true;
+        this.filled.clear();
+        for (const tile of this.tileTargets) if (tile.classList.contains('passport-tile--on')) { tile.dataset.state = 'reading'; tile.classList.add('spark-busy'); }
+        this.toggleReread(true);
+        const data = await getJson(`${this.urlValue}/read`, { method: 'POST', quiet: true });
+        if (data) this.apply(data);
+        else window.toast?.('Не получилось запустить распознавание');
+    }
+
+    toggleReread(busy) {
+        if (this.hasRereadTarget) this.rereadTarget.hidden = busy || !this.tileTargets.some((t) => t.classList.contains('passport-tile--on'));
     }
 
     disconnect() {
@@ -92,7 +110,9 @@ export default class extends Controller {
                 this.fill(page.fields || {}, page.checked || []);
             }
         }
+        this.toggleReread(!!data.reading);
         if (data.reading) this.poll();
+        else this.over = false;
     }
 
     // ФИО и сверенное контрольными цифрами (серия и номер, даты, код) — поверх введённого: скан главнее ручного ввода
@@ -103,7 +123,7 @@ export default class extends Controller {
         if (!form) return;
         const name = (key) => (this.prefixValue ? `${this.prefixValue}[${key}]` : key);
         const sure = filler(form, { overwrite: true });
-        const rest = filler(form);
+        const rest = this.over ? sure : filler(form);
         for (let [key, value] of Object.entries(fields)) {
             const to = key === 'name' || checked.includes(key) ? sure : rest;
             if (key === 'name') value = spelled(value, form.elements[name('name')]?.value);

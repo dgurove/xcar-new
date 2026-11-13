@@ -146,6 +146,7 @@ Route::middleware(['auth', 'wall'])->group(function () {
         // Скан паспорта покупателя (11.10.2026): загрузка страницы и опрос распознанного.
         Route::post('/parties/{party}/passport/{page}', [PassportScanController::class, 'upload'])->whereIn('page', ['main', 'reg'])->middleware('throttle:30,1');
         Route::get('/parties/{party}/passport/live', [PassportScanController::class, 'live']);
+        Route::post('/parties/{party}/passport/read', [PassportScanController::class, 'read'])->middleware('throttle:10,1');
         Route::get('/parties/{party}/passport.pdf', [PassportScanController::class, 'pdf']);
     });
 

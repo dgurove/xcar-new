@@ -894,6 +894,10 @@ html.kb-open { --home-gap: 0px; }
   /* Скан паспорта (x-billing.passport-scan, 11.10.2026): две плитки над полями — разворот с фото и прописка. Пустая —
      значок камеры на мягком фоне, с файлом — миниатюра; подпись под ней, справа искра, пока читаем. */
   .passport-scan { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .75rem; margin-bottom: 1rem; }
+  /* «Распознать заново» под плитками скана (13.11.2026): тихая лаймовая ссылка с искрой во всю ширину сетки. */
+  .passport-reread { grid-column: 1 / -1; justify-self: start; display: inline-flex; align-items: center; gap: .375rem; margin-top: -.25rem;
+    font-size: var(--text-sm); color: var(--color-accent-text); }
+  @media (hover: hover) { .passport-reread:hover { text-decoration: underline; } }
   /* Серия и номер паспорта одной строкой (07.11.2026): «серия ____ номер ______», слова приглушены, как подписи. */
   /* Слова — того же размера, что значение (класс поля даёт им тот же шрифт на любой поверхности), одной линией по базовой
      (07.11.2026, владелец: «разные размеры шрифтов и текст на разных уровнях»). */

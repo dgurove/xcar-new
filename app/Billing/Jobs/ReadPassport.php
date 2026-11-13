@@ -58,6 +58,36 @@ final class ReadPassport implements ShouldQueue
             $media->setCustomProperty('read', 'failed')->save();
         }
         self::passportName($media);
+        self::apply($media->fresh());
+    }
+
+    /**
+     * Обе страницы дочитаны — прочитанное в данные контрагента (`Party::fillFromScan`, 13.11.2026): не зависит от того, открыта
+     * ли форма. «Распознать заново» (`over` у страницы) — поверх вписанного. Данные стали полными — счёт и договор встают сами.
+     */
+    public static function apply(?Media $media): void
+    {
+        $party = $media?->model;
+        if (! $party instanceof Party) {
+            return;
+        }
+        $party->load('media');
+        $pages = $party->getMedia('passport');
+        if ($pages->contains(fn (Media $m) => $m->getCustomProperty('read') === 'reading')) {
+            return;
+        }
+        $over = $pages->contains(fn (Media $m) => (bool) $m->getCustomProperty('over'));
+        foreach ($pages->filter(fn (Media $m) => $m->getCustomProperty('over')) as $m) {
+            $m->forgetCustomProperty('over')->save();
+        }
+        if (! $party->fillFromScan($over)) {
+            return;
+        }
+        $user = User::where('party_id', $party->id)->first();
+        $by = User::find($media->getCustomProperty('by')) ?? User::withRole(\App\Users\Role::Admin)->orderBy('id')->first();
+        if ($user && $by) {
+            \App\Http\Cabinet\PassportScanController::resyncFor($user, $by, app(\App\Offers\Actions\SyncDealInvoices::class));
+        }
     }
 
     /**

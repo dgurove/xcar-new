@@ -4,6 +4,7 @@ namespace App\Http\Cabinet;
 
 use App\Billing\Documents\PassportPdf;
 use App\Billing\Actions\StorePassportScan;
+use App\Billing\Jobs\ReadPassport;
 use App\Billing\Party;
 use App\Live\RefreshDeal;
 use App\Offers\Actions\SettleContract;
@@ -30,6 +31,25 @@ class PassportScanController
         $this->resync($party, $me, $invoices);
 
         return response()->json($this->state($party));
+    }
+
+    /**
+     * «Распознать заново» (13.11.2026, владелец: «скачивать и заново закидывать, чтобы распознавание запустилось — ебанистика»):
+     * обе страницы читаются снова, прочитанное — поверх полей (`over`, `ReadPassport::apply`); шторка опрашивает `live`, как
+     * после загрузки.
+     */
+    public function read(Request $request, Party $party)
+    {
+        $me = $request->user();
+        abort_unless($me->isAdmin() || $party->managedBy($me), 404);
+        $pages = $party->getMedia('passport');
+        abort_if($pages->isEmpty(), 404);
+        foreach ($pages as $media) {
+            $media->setCustomProperty('read', 'reading')->setCustomProperty('over', true)->save();
+            ReadPassport::dispatch($media->id);
+        }
+
+        return response()->json($this->state($party->fresh()));
     }
 
     /** Файл страницы скана: фото (и HEIC с айфона) или PDF. */
