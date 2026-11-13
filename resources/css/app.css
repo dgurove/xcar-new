@@ -5232,6 +5232,9 @@ dialog.lightbox:not(.lb-one) .lb-pill--bottom { bottom: calc(var(--lb-strip-bott
   .buyer-kind { display: flex; flex-direction: column; align-items: flex-start; gap: .5rem; width: 100%; height: 100%; padding: .75rem; border-radius: var(--radius-m); background: var(--color-surface-2); text-align: left; cursor: pointer; }
   @media (hover: hover) { .buyer-kind:hover { background: var(--color-hover); } }
   /* Кнопка ответа под строкой «Ваш ход» (`cabinet/deals/row`): под текстом, после кадра, без своей линии. */
+  /* Кнопка дела «Ваш ход» на телефоне — само время «3д 21ч» (`x-deal.todo-button wait`, 13.11.2026): одной ширины во всех строках,
+     ниже обычной — строка в две строки. */
+  @media (max-width: 639.98px) { .btn.todo-btn { width: 5.75rem; height: 2rem; min-height: 0; padding-inline: .5rem; font-size: var(--text-sm); justify-content: center; } }
   .row-ask { display: flex; flex-wrap: wrap; gap: .5rem; padding: 0 1rem .75rem calc(1rem + 4.5rem + .75rem); margin-top: -.375rem; }
   .row-ask .ask-action-form { display: flex; flex-wrap: wrap; gap: .5rem; }
   @media (max-width: 639px) { .row-ask { padding-inline-start: calc(1rem + 3.5rem + .75rem); } }

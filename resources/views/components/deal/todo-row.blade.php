@@ -9,6 +9,9 @@
     $at = $late ? $position->deadline_at : $todo['since'];
     $wait = $at ? ($late ? 'просрочено ' : 'ждёт ').'<span class="nums" data-controller="timer" data-timer-since-value="'.$at->toIso8601String().'" data-timer-coarse-value="true"></span>' : null;
     $tone = $late ? 'text-danger' : 'text-ink-muted';
+    // На телефоне время — в самой кнопке (`x-deal.todo-button wait`, 13.11.2026): строка в две строки. Без кнопки или у номера
+    // телефона — по-прежнему строкой под названием.
+    $inButton = $at && $todo['button'] && ! isset($todo['button']['tel']);
 @endphp
 <tr data-detail-key="{{ $deal->id }}" data-search-row id="deal-{{ $deal->id }}">
     @foreach ($table->columns as $key => $col)
@@ -16,7 +19,7 @@
         @case('title')
     <td class="{{ $col->classes() }}">
         <x-cell.title :key="$deal->id" :offer="$offer"/>
-        <span class="cell-sub sm:hidden"><x-vendor.ref :vendor-id="$offer->vendor_id" :ref="$offer->claim_ref"/>@if ($wait) <span class="inline-block whitespace-nowrap {{ $tone }}">{!! $wait !!}</span>@endif</span>
+        <span class="cell-sub sm:hidden"><x-vendor.ref :vendor-id="$offer->vendor_id" :ref="$offer->claim_ref"/>@if ($wait && ! $inButton) <span class="inline-block whitespace-nowrap {{ $tone }}">{!! $wait !!}</span>@endif</span>
     </td>
         @break
         @case('vendor')
@@ -29,7 +32,7 @@
     <td class="{{ $col->classes() }} whitespace-nowrap {{ $tone }}">{!! $wait !!}</td>
         @break
         @case('action')
-    <td class="{{ $col->classes() }}">@if ($todo['button'])<x-deal.todo-button :button="$todo['button']"/>@endif</td>
+    <td class="{{ $col->classes() }}">@if ($todo['button'])<x-deal.todo-button :button="$todo['button']" :wait="$inButton ? $at : null" :late="$late"/>@endif</td>
         @break
         @endswitch
     @endforeach
