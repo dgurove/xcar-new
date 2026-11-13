@@ -48,7 +48,7 @@
         <div class="flex flex-col">
             @foreach ($papers as $m)
                 @php $open = $who ? FileAccess::sees($m, $who) : true; @endphp
-                <x-ui.file :name="$m->file_name" :mime="$m->mime_type" :size="$m->humanReadableSize" :href="'/files/'.$m->id">
+                <x-ui.file :name="$m->file_name" :mime="$m->mime_type" :bytes="$m->size" :href="'/files/'.$m->id">
                     @if ($who)
                         {{-- Глаз как у «Видно менеджеру» в CRM: открыт — лаймовый, закрыт — серый. --}}
                         <form method="post" action="/transports/{{ $t->id }}/files/{{ $m->id }}/eye" class="contents">@csrf

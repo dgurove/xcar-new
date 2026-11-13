@@ -25,7 +25,7 @@
         @endforeach
         @if ($files->isNotEmpty())
             <div class="info-row flex-col !gap-0 !py-1">
-                @foreach ($files as $media)<x-ui.file :name="$media->file_name" :mime="$media->mime_type" :size="$media->humanReadableSize" href="/files/{{ $media->id }}"/>@endforeach
+                @foreach ($files as $media)<x-ui.file :name="$media->file_name" :mime="$media->mime_type" :bytes="$media->size" href="/files/{{ $media->id }}"/>@endforeach
             </div>
         @endif
     </x-ui.info>

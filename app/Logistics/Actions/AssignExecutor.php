@@ -137,7 +137,7 @@ final class AssignExecutor
     public static function fromRequest(Request $request, bool $self = false): ?array
     {
         $kind = Channel::tryFrom((string) $request->input('channel'));
-        // В логистике менеджера формой не назначают: «забирает сам» — не логистика (17.10.2026).
+        // «Забирает сам» — только где вызывающий это разрешил (`self`): CRM и окно задачи логистики (13.11.2026), не пачкой.
         if (! $kind || $kind === Channel::Auction || ($kind === Channel::Manager && ! $self)) {
             return null;
         }

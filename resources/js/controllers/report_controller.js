@@ -104,10 +104,15 @@ export default class extends Controller {
         if (extra.scan) { this.page(slot, kind, file, label, extra); return; }
         const row = document.createElement('div');
         row.className = 'file-row report-file is-uploading';
-        const icon = Object.assign(document.createElement('span'), { className: 'file-icon' });
-        if (file.type.startsWith('image/')) icon.append(Object.assign(document.createElement('img'), { src: URL.createObjectURL(file), alt: '' }));
-        else icon.textContent = (file.name.split('.').pop() || '?').slice(0, 4).toLowerCase();
-        row.append(icon, Object.assign(document.createElement('span'), { className: 'min-w-0 flex-1 truncate', textContent: label }));
+        // Значок как у готовой строки (`x-ui.file-icon`): расширение и под ним вес, без миниатюры.
+        const icon = Object.assign(document.createElement('span'), { className: 'file-icon file-icon-sized' });
+        const ext = (file.name.split('.').pop() || '?').toLowerCase().replace('jpeg', 'jpg').slice(0, 4);
+        icon.append(Object.assign(document.createElement('span'), { className: 'file-icon-ext', textContent: ext }),
+            Object.assign(document.createElement('span'), { className: 'file-icon-size', textContent: weight(file.size) }));
+        const name = Object.assign(document.createElement('span'), { className: 'file-name' });
+        name.append(Object.assign(document.createElement('span'), { textContent: label }));
+        name.firstChild.dataset.fileName = '';
+        row.append(icon, name);
         slot.querySelector('[data-chips]').append(row);
         this.enqueue({
             file, kind, extra, node: row,
@@ -222,4 +227,11 @@ export default class extends Controller {
         }
         this.submitTarget.disabled = this.pending > 0 || failed > 0 || !(photos || docs);
     }
+}
+
+// Вес как `App\Support\FileSize::short`: «812 б», «384 Кб», «2,4 Мб».
+function weight(bytes) {
+    if (bytes >= 1048576) return `${String(Math.round(bytes / 104857.6) / 10).replace('.', ',')}\u00A0Мб`;
+    if (bytes >= 1024) return `${Math.round(bytes / 1024)}\u00A0Кб`;
+    return `${bytes}\u00A0б`;
 }

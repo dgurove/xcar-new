@@ -411,10 +411,13 @@ class TransportController
     public function executor(Request $request, Transport $transport, AssignExecutor $assign, SetRoute $route)
     {
         abort_unless($request->user()->leadsLogistics(), 404);
-        $request->validate(['channel' => ['required', Rule::in([Channel::Logist->value, Channel::Staff->value, Channel::Partner->value])]], ['channel.required' => 'Кто вывозит']);
-        [$kind, $who, $cdek] = AssignExecutor::fromRequest($request);
+        $request->validate(['channel' => ['required', Rule::in([Channel::Manager->value, Channel::Logist->value, Channel::Staff->value, Channel::Partner->value])]], ['channel.required' => 'Кто вывозит']);
+        // «Иван Петров сам» (13.11.2026): менеджер сделки или гаража забирает сам — как в CRM, везёт к себе, точка встаёт сама.
+        $self = $request->input('channel') === Channel::Manager->value;
+        abort_if($self && ! ($transport->isPickup() && \App\Logistics\Choices::managerOf($transport)), 422);
+        [$kind, $who, $cdek] = AssignExecutor::fromRequest($request, self: $self);
         // Куда, дальность и комментарий — в том же окне (18.10.2026); у перевода парковки точка решена при отправке.
-        $data = $transport->isPickup() ? $request->validate(SetRoute::rules(), SetRoute::messages()) : null;
+        $data = $transport->isPickup() && ! $self ? $request->validate(SetRoute::rules(), SetRoute::messages()) : null;
         DB::transaction(function () use ($transport, $assign, $kind, $who, $request, $cdek, $route, $data) {
             $assign($transport, $kind, $who, $request->user(), $cdek);
             if ($data) {

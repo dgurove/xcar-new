@@ -86,9 +86,8 @@
             <div class="flex flex-col">
                 @foreach ($carPapers as $m)
                     <a href="{{ $base }}/files/{{ $m->id }}" target="_blank" rel="noopener" class="file-row">
-                        <x-ui.file-icon :name="$m->file_name" :mime="$m->mime_type"/>
+                        <x-ui.file-icon :name="$m->file_name" :mime="$m->mime_type" :bytes="$m->size"/>
                         <span class="min-w-0 flex-1 truncate">{{ $m->file_name }}</span>
-                        <span class="shrink-0 text-sm text-ink-muted">{{ $m->humanReadableSize }}</span>
                     </a>
                 @endforeach
             </div>

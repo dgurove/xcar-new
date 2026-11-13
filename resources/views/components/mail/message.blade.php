@@ -69,8 +69,8 @@
         <div class="mt-3 flex flex-wrap gap-2">
             @foreach ($documents as $file)
                 <a href="{{ $base }}/attachments/{{ $file->id }}" target="_blank" class="flex max-w-full items-center gap-2 rounded-(--radius-m) bg-surface-2 p-2 pr-3" data-doc="{{ \App\Support\Docs::type($file->mime, $file->filename) }}" data-doc-name="{{ \App\Support\Docs::label($file->filename) }}" title="{{ $file->filename }}">
-                    <x-ui.file-icon :name="$file->filename" :mime="$file->mime"/>
-                    <span class="min-w-0"><span class="block truncate text-sm">{{ $file->filename }}</span><span class="text-xs text-ink-muted">{{ $file->humanSize() }}</span></span>
+                    <x-ui.file-icon :name="$file->filename" :mime="$file->mime" :bytes="$file->size"/>
+                    <span class="min-w-0 truncate text-sm">{{ $file->filename }}</span>
                 </a>
             @endforeach
         </div>

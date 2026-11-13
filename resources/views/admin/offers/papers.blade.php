@@ -4,7 +4,7 @@
 <div id="papers" class="flex flex-col">
     @foreach ($offer->papers() as $media)
         @php $docName = \App\Media\DocName::of($media); @endphp
-        <x-ui.file :name="$docName" :mime="$media->mime_type" :size="$media->humanReadableSize" href="/files/{{ $media->id }}" data-scan-key="{{ $media->getCustomProperty('sha') }}">
+        <x-ui.file :name="$docName" :mime="$media->mime_type" :bytes="$media->size" href="/files/{{ $media->id }}" data-scan-key="{{ $media->getCustomProperty('sha') }}">
             @if ($admin)
                 @php $open = \App\Media\ForManagers::is($media); @endphp
                 <form method="post" action="/offers/{{ $offer->number }}/media/{{ $media->id }}/managers" class="contents">@csrf

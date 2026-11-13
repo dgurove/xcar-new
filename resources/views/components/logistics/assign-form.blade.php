@@ -20,7 +20,9 @@
     $logists = Choices::logists();
     $staff = Choices::staff();
     $partners = Choices::partners($transport ?? $offer);
-    $holder = $offer && \App\Support\Surface::current() === \App\Support\Surface::Crm && $transport?->isPickup() !== false ? Choices::managerOf($offer) : null;
+    // Менеджер сделки или гаража «сам» — и в логистике (13.11.2026, владелец: «почему нельзя самого менеджера выбрать, чтобы он
+    // сам вывоз осуществил»); пачкой (`route` false) — нет: у машин разные менеджеры.
+    $holder = $route && ($offer || $transport) && $transport?->isPickup() !== false ? Choices::managerOf($offer ?? $transport) : null;
     $kind = old('channel', match (true) {
         $transport?->channel === Channel::Manager => $holder ? Channel::Manager->value : (count($logists) ? Channel::Logist->value : Channel::Staff->value),
         (bool) $transport?->channel => $transport->channel->value,

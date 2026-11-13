@@ -43,7 +43,7 @@
                                 <div class="substep-body">
                                     <div class="substep-head"><span class="substep-title">{{ $a['title'] }}</span><span class="substep-meta nums">@if ($a['note']){{ $a['note'] }}, @endif{!! \App\Support\Ago::html($a['at'], true, words: false) !!}</span></div>
                                     @foreach ($a['files'] as $media)
-                                        <x-ui.file :name="$media->file_name" :mime="$media->mime_type" :size="$media->humanReadableSize" href="/files/{{ $media->id }}" class="mt-1 pl-5"/>
+                                        <x-ui.file :name="$media->file_name" :mime="$media->mime_type" :bytes="$media->size" href="/files/{{ $media->id }}" class="mt-1 pl-5"/>
                                     @endforeach
                                 </div>
                             </li>

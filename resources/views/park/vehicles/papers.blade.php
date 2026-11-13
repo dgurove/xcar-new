@@ -6,7 +6,7 @@
 <div id="{{ ($papersStage ?? null) ? 'papers-'.$papersStage->value : 'papers' }}" class="papers-list flex flex-col" @if ($papers->isEmpty()) hidden @endif>
     @foreach ($papers as $media)
         @php $docName = \App\Media\DocName::of($media); @endphp
-        <x-ui.file :name="$docName" :mime="$media->mime_type" :size="$media->humanReadableSize" href="/files/{{ $media->id }}" data-scan-key="{{ $media->getCustomProperty('sha') }}">
+        <x-ui.file :name="$docName" :mime="$media->mime_type" :bytes="$media->size" href="/files/{{ $media->id }}" data-scan-key="{{ $media->getCustomProperty('sha') }}">
             {{-- Переименовать — всем людям парковки (13.11.2026, Сергей); удалить — управляющему (`park.manage`). --}}
             <x-ui.file-rename :action="'/cars/'.$vehicle->id.'/media/'.$media->id" :name="$docName"/>
             @if (auth()->user()->canManagePark())<form method="post" action="/cars/{{ $vehicle->id }}/media/{{ $media->id }}" data-turbo-confirm="Удалить документ?">@csrf @method('delete')<button class="btn btn-ghost btn-s px-2 text-ink-muted" aria-label="Удалить"><x-ui.icon name="trash" class="size-5"/></button></form>@endif

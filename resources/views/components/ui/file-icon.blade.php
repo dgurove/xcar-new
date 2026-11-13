@@ -1,5 +1,7 @@
-{{-- Квадрат с расширением файла, цвет по типу; картинка — миниатюрой, если есть. --}}
-@props(['name', 'mime' => null, 'thumb' => null])
+{{-- Квадрат файла, цвет по типу: расширение и под ним мелко вес (13.11.2026, владелец: «[PDF] над [383 Кб] — всё в
+     квадратик»; миниатюр у фото нет — тоже «JPG» с весом). bytes — вес; без него — одно расширение по центру. Маленький
+     (`file-icon-s`, чипы) — без веса. --}}
+@props(['name', 'mime' => null, 'bytes' => null])
 @php
     // Имя без расширения с точкой в дате («Счёт поставщика от 10.11.2026») — тип по mime, а не «2026».
     $ext = strtolower(pathinfo($name, PATHINFO_EXTENSION));
@@ -18,9 +20,9 @@
         str_starts_with((string) $mime, 'image/') || in_array($ext, ['jpg', 'jpeg', 'png', 'webp', 'heic', 'heif', 'gif']) => 'image',
         default => 'other',
     };
+    $size = $bytes !== null ? \App\Support\FileSize::short((int) $bytes) : '';
 @endphp
-<span {{ $attributes->merge(['class' => 'file-icon'.($kind !== 'image' && $kind !== 'other' ? " file-icon-$kind" : '')]) }}>
-    @if ($kind === 'image' && $thumb)<img src="{{ $thumb }}" alt="" loading="lazy">
-    @elseif ($kind === 'image')<x-ui.icon name="photo" class="size-5"/>
-    @else{{ mb_substr($ext, 0, 4) ?: '?' }}@endif
+<span {{ $attributes->merge(['class' => 'file-icon'.($kind !== 'other' ? " file-icon-$kind" : '').($size !== '' ? ' file-icon-sized' : '')]) }}>
+    <span class="file-icon-ext">{{ mb_substr($ext === 'jpeg' ? 'jpg' : $ext, 0, 4) ?: '?' }}</span>
+    @if ($size !== '')<span class="file-icon-size">{{ $size }}</span>@endif
 </span>
