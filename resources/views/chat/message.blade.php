@@ -23,9 +23,9 @@
     @else
         <div class="msg-bubble" @if ($m->text && !$deleted) data-text="{{ $m->text }}" @endif>
             {{-- Имя над чужим пузырём — где на той стороне могут быть разные люди (площадка) или читает сотрудник; покупателю и его менеджеру имя говорит полоса сверху. --}}
-            @if (!$cont && ($readonly || (!$mine && !$chat->isBuyerChat())))<div class="msg-author">{{ $m->authorName($chat) }}</div>@endif
+            @if (!$cont && ($readonly || (!$mine && !$chat->isBuyerChat())))<div class="msg-author">{{ $m->authorName($chat, $user) }}</div>@endif
             @if ($reply)
-                <button type="button" class="msg-quote" data-action="chat#jump" data-seq="{{ $reply->seq }}"><span class="msg-quote-name">{{ $reply->authorName($chat) }}</span>{{ $reply->preview(80) }}</button>
+                <button type="button" class="msg-quote" data-action="chat#jump" data-seq="{{ $reply->seq }}"><span class="msg-quote-name">{{ $reply->authorName($chat, $user) }}</span>{{ $reply->preview(80) }}</button>
             @endif
             @if ($images->isNotEmpty())
                 <div class="msg-photos {{ $images->count() > 1 ? 'is-grid' : '' }}">

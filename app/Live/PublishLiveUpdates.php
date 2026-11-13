@@ -200,7 +200,7 @@ final class PublishLiveUpdates
         $sides = [$other, $chat->user_id ? Topics::user($chat->user_id) : Topics::chat($chat->id)];
         // Кому какой адрес: участнику — его экран, второй стороне — свой; тост берёт по своей теме.
         // Карточка — готовой разметкой: кто написал (аватар автора), что, куда вести.
-        $card = fn (string $from, string $href, ?Surface $surface = null) => ['from' => $from, 'href' => $href, 'banner' => Banner::chat($from, $m->preview(120), $href, $m->author_id ? $m->author : null, $chat->id, $surface)];
+        $card = fn (string $from, string $href, ?Surface $surface = null) => ['from' => $from, 'href' => $href, 'banner' => Banner::chat($from, $m->preview(120), $href, $m->author_id && ! $m->hidesAuthorFrom($chat, null) ? $m->author : null, $chat->id, $surface)];
         ($this->publish)($sides[1], 'chat', $data + $card($chat->manager?->shortName() ?? Chat::PLATFORM, ChatNotice::hrefFor($chat, false)));
         // Карточка второй стороне — только когда пишет участник. Ответ сотрудника в чате площадки остальным сотрудникам —
         // одни данные для ленты, без карточки (06.10.2026, владелец: «уведомлять надо только если нам пишут»).

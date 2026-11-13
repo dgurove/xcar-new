@@ -6,6 +6,7 @@ use App\Offers\Actions\AnswerReprice;
 use App\Offers\Actions\ApplyReprice;
 use App\Offers\Actions\DismissReprice;
 use App\Offers\Actions\PublishDeal;
+use App\Offers\Actions\UpdateDealMoney;
 use App\Offers\Actions\UpdateOffer;
 use App\Offers\Offer;
 use App\Offers\OfferEventType;
@@ -26,12 +27,13 @@ class RepriceController
     public function apply(Request $request, Offer $offer, Reprice $reprice, ApplyReprice $apply)
     {
         abort_unless($reprice->offer_id === $offer->id, 404);
-        $request->merge(array_map(fn ($v) => blank($v) ? null : Money::rubles($v), $request->only(['price', 'publish_price', 'asking_price', 'min_bid_price'])));
+        $request->merge(array_map(fn ($v) => blank($v) ? null : Money::rubles($v), $request->only(['price', 'publish_price', 'asking_price', 'min_bid_price', 'commission'])));
         $data = $request->validate([
             'price' => ['required', 'integer', 'min:1'],
             'publish_price' => ['nullable', 'integer', 'min:1'],
             'asking_price' => ['nullable', 'integer', 'min:1'],
             'min_bid_price' => ['nullable', 'integer', 'min:1'],
+            'commission' => ['nullable', 'integer', 'min:0'],
             'bids' => ['array'],
             'bids.*' => [Rule::in([ApplyReprice::KEEP, ApplyReprice::UPDATE, ApplyReprice::ASK])],
             'deal' => ['nullable', Rule::in([ApplyReprice::KEEP, ApplyReprice::UPDATE, ApplyReprice::ASK])],
@@ -67,7 +69,19 @@ class RepriceController
                 throw ValidationException::withMessages(['audience_rules' => 'Выберите, кому показывать']);
             }
         }
-        $apply($reprice, $request->user(), $data['price'], $data['bids'] ?? [], $data['deal'] ?? null, $prices, $publish);
+        // Вознаграждение сделки — поле шторки (13.11.2026): поменяли — `UpdateDealMoney` вслед за переоценкой, одной транзакцией.
+        $deal = $request->has('commission') ? $offer->costDeal() : null;
+        $commission = isset($data['commission']) ? (int) $data['commission'] : null;
+        $reward = $deal && $deal->moneyEditable() && $commission !== $deal->commission;
+        if ($reward && $commission !== null && $deal->amount !== null && $commission > $deal->amount) {
+            throw ValidationException::withMessages(['commission' => 'Не больше цены подтверждения '.Money::rub($deal->amount)]);
+        }
+        DB::transaction(function () use ($apply, $reprice, $request, $data, $prices, $publish, $reward, $deal, $commission) {
+            $apply($reprice, $request->user(), $data['price'], $data['bids'] ?? [], $data['deal'] ?? null, $prices, $publish);
+            if ($reward && ($deal = $deal->fresh()) && $deal->isActive()) {
+                app(UpdateDealMoney::class)($deal, $request->user(), $commission, $deal->commission_mode);
+            }
+        });
 
         return back(fallback: "/offers/{$offer->number}")->with('toast', 'Переоценка применена');
     }

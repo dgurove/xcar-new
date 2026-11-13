@@ -76,9 +76,24 @@ class Message extends Model
     }
 
     /** Имя автора для чужого пузыря и цитаты. */
-    public function authorName(Chat $chat): string
+    /**
+     * Имя над пузырём и в цитате. Администрация XCar для менеджера и покупателя обезличена (13.11.2026, владелец: «видят, кто им
+     * пишет — Андрей, Дмитрий или Катя, так не должно быть, администрация везде обезличена»): сотрудник в чате площадки — «Администрация
+     * XCar» всем, кроме сотрудников.
+     */
+    public function authorName(Chat $chat, ?User $viewer = null): string
     {
+        if ($this->hidesAuthorFrom($chat, $viewer)) {
+            return Chat::PLATFORM;
+        }
+
         return $this->author?->name ?? ($this->author_kind === AuthorKind::Staff ? Chat::PLATFORM : ($chat->guest_name ?? ''));
+    }
+
+    /** Писал сотрудник площадки, а читает не сотрудник: ни имени, ни аватара. */
+    public function hidesAuthorFrom(Chat $chat, ?User $viewer): bool
+    {
+        return $this->author_kind === AuthorKind::Staff && ! $chat->manager_id && ! $viewer?->isStaff();
     }
 
     /** Строка превью: список чатов, цитата, тост. */

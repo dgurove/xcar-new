@@ -14,6 +14,8 @@
     $mine = session('reprice-open') == $reprice->id;
     $dealLocked = $deal && ! $deal->moneyEditable();
     $open = $offer->state === \App\Offers\OfferState::Open;
+    // Вознаграждение правится, где его показывают «Деньги» сделки (`x-deal.money`) и по счёту ещё не платили.
+    $rewardEditable = $deal && ! $dealLocked && ! $deal->isAuction() && (! $deal->isGarage() || ($deal->namesBuyer() && $deal->amount !== null));
 @endphp
 {{-- `reprice:open` — «Разобрать переоценку» из шага маршрута (`x-route.path`). --}}
 {{-- `sheet-only` — пока идёт сделка, переоценку показывает шаг пути «Переоценка» (`x-route.reprice-step`, 04.11.2026): здесь
@@ -116,6 +118,14 @@
                                 @endif
                             </div>
                             <p class="text-sm text-danger" data-reprice-target="loss" hidden></p>
+                            {{-- Вознаграждение — тут же (13.11.2026, владелец: в переоценке его «оч не хватает»): то же поле, что в
+                                 «Деньгах» сделки (`UpdateDealMoney`), пока по счёту не платили. --}}
+                            @if ($rewardEditable)
+                                <div class="fields !bg-surface-3">
+                                    <x-ui.field name="commission" label="Вознаграждение, ₽" :value="($c = old('commission', $deal->commission)) ? Money::nums(Money::rubles((string) $c)) : null" :id="$id.'-commission'" placeholder="нет"/>
+                                </div>
+                                @error('commission')<p class="field-error">{{ $message }}</p>@enderror
+                            @endif
                             {{-- «Спросить» по сделке — пока менеджер думает, машину публикуют для других менеджеров обычным предложением
                                  (`PublishDeal`, 04.11.2026; галка стоит сразу — владелец): тот же срок и «Кому», что в шторке
                                  «Опубликовать для других менеджеров» (12.11.2026). Согласится — публикация снимется сама. --}}

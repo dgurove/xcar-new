@@ -21,7 +21,11 @@ final class Banner
     /** @return Payload */
     public static function of(Notice $notice, string $id, ?User $reader = null, bool $sound = false): array
     {
-        return self::make($id, $notice->titleFor($reader), $notice->textFor($reader), $notice->href(), $notice->actor(), $notice->icon(),
+        // Сотрудник XCar на карточке менеджера и покупателя — без лица (13.11.2026, владелец: администрация везде обезличена).
+        $actor = $notice->actor();
+        $actor = $actor?->isStaff() && ! $reader?->isStaff() ? null : $actor;
+
+        return self::make($id, $notice->titleFor($reader), $notice->textFor($reader), $notice->href(), $actor, $notice->icon(),
             $notice->important(), $notice->subject(), $notice->surface(), $sound, $notice->alarm(), notice: true);
     }
 

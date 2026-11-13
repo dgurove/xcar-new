@@ -23,7 +23,7 @@ final class BidCorrectedNotice extends Notice
 
     public function text(): ?string
     {
-        return $this->bid->offer->titleWithYear().', № '.$this->bid->offer->number.' — поправил '.$this->by->shortName();
+        return $this->bid->offer->titleWithYear().', № '.$this->bid->offer->number.' — поправил XCar';
     }
 
     public function href(): string
