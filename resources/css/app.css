@@ -2638,6 +2638,8 @@ html.kb-open { --home-gap: 0px; }
   /* Кружок центрирует флекс на всю колонку, а не строчный блок в узле 24 px: иначе в Safari он съезжал с линии. */
   .letter-face { position: relative; z-index: 1; display: flex; justify-content: center; align-items: flex-start; margin-top: .1875rem; height: 24px; line-height: 0; }
   .letter-body { min-width: 0; padding-bottom: .75rem; }
+  /* Кружок и точка на линии тоже раскрывают письмо (`chain_controller`, 13.11.2026). */
+  .chain .letter-face, .chain .letter-dot { cursor: pointer; }
   /* Строка письма: на телефоне две строки (кто и дата, заголовок и скрепка), от 640 — одна. */
   .letter-head { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: .5rem; align-items: baseline; min-height: 1.875rem; cursor: pointer; list-style: none; }
   .letter-head::-webkit-details-marker { display: none; }

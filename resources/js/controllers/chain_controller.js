@@ -19,9 +19,19 @@ export default class extends Controller {
         this.element.removeEventListener('click', this.onClick);
     }
 
+    // Раскрывает и шапка письма, и всё вокруг неё в узле — кружок отправителя, точка, линия слева, промежуток до текста
+    // (13.11.2026, начальник снова: «ничего не происходит» — жал, похоже, по кружкам на линии). Внутри раскрытого письма
+    // нажатия свои (фото, файлы, «Исходное письмо»).
     click(e) {
-        const head = e.target.closest('summary.letter-head');
-        const details = head?.parentElement;
+        if (e.target.closest('a, button, input, label, textarea, select')) return;
+        const head = e.target.closest('summary');
+        let details = head?.parentElement;
+        if (head && !head.matches('.letter-head')) return;
+        if (!head) {
+            const node = e.target.closest('.letter');
+            details = node?.querySelector(':scope > details.letter-body');
+            if (!details || details.contains(e.target)) return;
+        }
         if (!details?.matches('details.letter-body') || !this.element.contains(details)) return;
         e.preventDefault();
         if (details.dataset.moving) return;
