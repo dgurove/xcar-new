@@ -2447,13 +2447,13 @@ html.kb-open { --home-gap: 0px; }
   /* Файл строкой: квадрат с расширением, имя, размер, действия. */
   /* Строка файла (13.11.2026, владелец: «не надо кучу места другими элементами отнимать»): вес — в значке, значок 36 px,
      до имени 8 px, кнопки действий узкие и вплотную — имя занимает всё остальное и режется «…» только правда длинное. */
-  .file-row { @apply flex items-center gap-2 py-1.5; }
+  .file-row { @apply flex items-center gap-2 py-0.5; }
   .file-name { @apply flex min-w-0 flex-1 flex-col; }
   .file-name > [data-file-name] { @apply truncate; }
   .file-sub { @apply truncate text-sm text-ink-muted; }
-  .file-acts { @apply -mr-1 flex shrink-0 items-center; }
-  /* Иконки действий вплотную: кнопка шириной с иконку и 4 px полей, а не 44 px — высота пальцу остаётся. */
-  .file-acts .btn-s { padding-inline: .25rem !important; }
+  .file-acts { @apply -mr-1 flex shrink-0 items-center gap-1.5; }
+  /* Иконки действий: кнопка шириной с иконку и 4 px полей, между ними 6 px, высота 36 px — строки плотнее (13.11.2026). */
+  .file-acts .btn-s { padding-inline: .25rem !important; height: 2.25rem; }
   .file-icon { @apply flex size-9 shrink-0 flex-col items-center justify-center gap-0.5 overflow-hidden rounded-(--radius-s) bg-surface-3 text-[10px] font-bold uppercase leading-none tracking-wide text-ink-muted; }
   .file-icon-ext { line-height: 1; }
   .file-icon-size { @apply font-normal normal-case tracking-normal whitespace-nowrap; font-size: 8px; line-height: 1; opacity: .8; }
