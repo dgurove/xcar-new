@@ -118,14 +118,15 @@
             ->sortByDesc('id')->first()?->setRelation('invoice', $i);
         // `toBase`: пустой список счетов — коллекция моделей, и её `merge` брал ключ модели у массива ручной ссылки (05.11.2026,
         // 2610222547: ручная ссылка есть, счетов сделки нет — окно падало).
-        $links = $issued->toBase()->map(fn ($i) => [$last($i, true), 'счёт '.$i->label()])
-            ->merge($credits->map(fn ($c) => [$last($c, false), $c->state === InvoiceState::Paid ? 'вручную, в зачёт сделки' : 'вручную, засчитаем']))
+        // Ссылка счёта сделки — в самой карточке счёта ниже (13.11.2026, владелец: «почему это два разных блока»); здесь —
+        // только оплаты вне счёта: разовые ссылки с машиной сделки.
+        $links = $credits->toBase()->map(fn ($c) => [$last($c, false), $c->state === InvoiceState::Paid ? 'вручную, в зачёт сделки' : 'вручную, засчитаем'])
             // Отменённая ссылка — мёртвая строка «отменена» рядом с теми же деньгами строкой ниже (12.11.2026, владелец: «мусор»).
             ->filter(fn ($p) => $p[0] && $p[0]->state !== \App\Billing\Acquiring\PayLinkState::Canceled);
     @endphp
     @if ($links->isNotEmpty() || $extra > 0)
         {{-- Живых ссылок нет, только внесённое вручную — одна строка без подписи «Ссылки на оплату». --}}
-        @if ($links->isNotEmpty())<div class="list-cap mt-4">Ссылки на оплату</div>@endif
+        @if ($links->isNotEmpty())<div class="list-cap mt-4">Оплаты вне счёта</div>@endif
         <div @class(['list', 'mt-4' => $links->isEmpty()])>
             @foreach ($links as [$l, $sub])
                 <x-billing.link-row :link="$l" :car="false" :sub="$sub">
@@ -154,12 +155,18 @@
              справа сумма; «Выплатить» — только у вознаграждения к выплате. --}}
         <div class="list mt-4">
             @foreach ($invoices as $i)
+                @php
+                    // Ссылка счёта — в его же карточке: её состояние вместо светофора, «Скопировать» и «Отправить» под строкой.
+                    $link = ! $i->isOwed() && $i->state !== InvoiceState::Paid ? $last($i, true) : null;
+                    [$linkState, $linkTone] = $link ? \App\Http\Admin\MoneyLinks::short($link) : [null, null];
+                    $manual = ! $i->isOwed() && $i->state === InvoiceState::Issued && $i->remaining() > 0 && ! $payStep && auth()->user()?->canManageCrm();
+                @endphp
                 <div class="row">
                     <a href="/work/money/invoices/{{ $i->id }}" class="min-w-0 flex-1">
                         <span class="block">{{ $i->isOwed() ? 'Выплата менеджеру' : 'Счёт '.$i->label() }}</span>
                         {{-- Кому — своей строкой и целиком (06.11.2026: рядом с суммой «Макаров Дмитрий Сергее…»). --}}
                         @unless ($i->isOwed())<x-vendor.name :party="$i->party" class="vendor-name-wrap text-sm text-ink-muted"/>@endunless
-                        <span class="row-sub"><x-billing.light :invoice="$i"/>@if ($i->isPartial())<span class="tag nums">из {{ Money::rub($i->total) }}</span>@endif</span>
+                        <span class="row-sub">@if ($linkState)<span class="{{ $linkTone }}">ссылка: {{ $linkState }}</span>@else<x-billing.light :invoice="$i"/>@endif @if ($i->isPartial())<span class="tag nums">из {{ Money::rub($i->total) }}</span>@endif</span>
                     </a>
                     <span class="nums shrink-0 font-semibold">{{ Money::rub($i->remaining() > 0 ? $i->remaining() : $i->total) }}</span>
                     @if ($i->isAgentFee() && $i->state === InvoiceState::Issued)
@@ -169,13 +176,18 @@
                         </span>
                     @endif
                 </div>
-                {{-- Ссылка счёта — строкой в «Ссылках на оплату» выше; открытой нет, а остаток есть — «Новая ссылка на оплату» здесь
-                     (`pay-status` сам решает, можно ли её взять). --}}
-                @if (! $i->isOwed() && $i->state === InvoiceState::Issued && $i->remaining() > 0 && ! $payStep && auth()->user()?->canManageCrm())
-                    {{-- Деньги пришли мимо менеджера — строкой под счётом, как «+ Интерес» и «Отдать ещё»; на шаге оплаты — в самом шаге. --}}
-                    <div data-controller="sheet" class="contents">
-                        <button type="button" class="row w-full text-left text-accent-text" data-action="sheet#open"><x-ui.row-icon name="check" tone="accent" size="s"/><span class="min-w-0 flex-1">Деньги пришли</span></button>
-                        <x-ui.sheet id="paid-{{ $i->id }}" :title="'Оплата по счёту '.$i->label()"><x-billing.pay-form :invoice="$i" :action="'/work/money/invoices/'.$i->id.'/payments'" sheet/></x-ui.sheet>
+                {{-- Под счётом — что с ним делать (13.11.2026, владелец: «Деньги пришли» с галкой читалось как «оплачено»): ссылка —
+                     «Скопировать» и «Отправить», оплатили мимо неё — тихой кнопкой «Оплатили без ссылки…» (шторка оплаты; на шаге оплаты
+                     её несёт шаг). Открытой ссылки нет, а остаток есть — «Новая ссылка на оплату» (`pay-status`). --}}
+                @if (($link && $link->isOpen()) || $manual)
+                    <div class="invoice-acts">
+                        @if ($link && $link->isOpen())<x-ui.share-link variant="buttons" class="!ml-0" :url="$link->url()" title="Оплата по ссылке" :text="$link->message()"/>@endif
+                        @if ($manual)
+                            <span data-controller="sheet" class="contents">
+                                <button type="button" class="act-quiet ml-auto" data-action="sheet#open">Оплатили без ссылки…</button>
+                                <x-ui.sheet id="paid-{{ $i->id }}" :title="'Оплата по счёту '.$i->label()"><x-billing.pay-form :invoice="$i" :action="'/work/money/invoices/'.$i->id.'/payments'" sheet/></x-ui.sheet>
+                            </span>
+                        @endif
                     </div>
                 @endif
                 @if (! $i->isOwed() && ! $i->openLink())<x-billing.pay-status :invoice="$i" staff/>@endif

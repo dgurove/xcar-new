@@ -1632,6 +1632,10 @@ html.kb-open { --home-gap: 0px; }
      первая .row в обёртке, а не первый ребёнок (у формы первым идёт скрытый _token). */
   .list > * + .contents > .row:first-of-type, .list > * + .contents > .contents > .row:first-of-type { position: relative; }
   .list > .contents::after { content: none; }
+  /* Действия счёта в «Деньгах» сделки — продолжение его строки, без линии сверху (13.11.2026): «Скопировать», «Отправить»
+     ссылку и тихое «Оплатили без ссылки…». */
+  .invoice-acts { @apply flex flex-wrap items-center gap-2 px-4 pb-3 -mt-1; }
+  .list > .invoice-acts::after { content: none; }
   /* Форма-группа (form.list): @csrf и @method идут первыми детьми — строка за ними не «вторая», линии над ней нет. */
   .list > input[type="hidden"] + :not(input)::after { content: none; }
   /* Линия между строками со значком — от текста, как в iOS, а не от края значка. */
