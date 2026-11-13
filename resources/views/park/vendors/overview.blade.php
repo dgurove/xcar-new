@@ -38,7 +38,7 @@
         @if ($contract)
             <div class="row justify-between">
                 <a href="/files/{{ $contract->id }}" class="flex min-w-0 items-center gap-2" target="_blank" data-doc="{{ \App\Support\Docs::type($contract->mime_type, $contract->file_name) }}" data-doc-name="Договор" title="{{ $contract->file_name }}"><x-ui.icon name="file" class="size-5 shrink-0 text-ink-dim"/><span class="truncate">{{ $contract->file_name }}</span></a>
-                @if (auth()->user()->isParkAdmin())<form method="post" action="{{ $base }}/contract" data-turbo-confirm="Убрать файл договора?">@csrf @method('delete')<button class="btn btn-ghost btn-round btn-s text-ink-muted" aria-label="Убрать"><x-ui.icon name="trash" class="size-4"/></button></form>@endif
+                @if (auth()->user()->isParkAdmin())<form method="post" action="{{ $base }}/contract" data-turbo-confirm="Убрать файл договора?">@csrf @method('delete')<button class="btn btn-ghost btn-round btn-s text-ink-muted" aria-label="Убрать"><x-ui.icon name="x" class="size-4"/></button></form>@endif
             </div>
         @endif
         @if (auth()->user()->isParkAdmin())

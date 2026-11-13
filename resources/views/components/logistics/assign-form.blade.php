@@ -12,8 +12,12 @@
      мы для него»): вернуть «забирает сам» после логистики; куда везти тогда не спрашиваем — к нему. У вывоза машины вендора
      по комиссии (Совкомбанк, 20.10.2026), пока её не везут, админу — «Аукцион»: покупатель аукциона забрал сам, это не
      назначение, а «Продана на аукционе» своей шторкой (`x-offer.auction-sale-sheet`: в логистике — рядом с шторкой «Назначить
-     вывоз» карточки задачи, в CRM — у редактора и окошка). --}}
-@props(['transport' => null, 'offer' => null, 'action', 'prefix' => 'assign', 'route' => true])
+     вывоз» карточки задачи, в CRM — у редактора и окошка).
+     13.11.2026 (владелец: «над тумблером — что за машина, для кого вывоз, откуда, куда; в тумблерах — только то, что к ним
+     относится»): сверху — машина (`context`, только в шторках: в окне машины CRM она и так в шапке) — название, госномер,
+     коды, откуда и владелец; ниже — для кого: менеджер сделки или гаража тегом и тумблер «Забирает сам» (`self`); включён —
+     «Кто вывозит» и «Куда везти» (`.assign-others`) уходят: везёт он, к себе. Менеджера среди сегментов больше нет. --}}
+@props(['transport' => null, 'offer' => null, 'action', 'prefix' => 'assign', 'route' => true, 'context' => false])
 @php
     use App\Logistics\Choices;
     use App\Logistics\Channel;
@@ -23,14 +27,14 @@
     // Менеджер сделки или гаража «сам» — и в логистике (13.11.2026, владелец: «почему нельзя самого менеджера выбрать, чтобы он
     // сам вывоз осуществил»); пачкой (`route` false) — нет: у машин разные менеджеры.
     $holder = $route && ($offer || $transport) && $transport?->isPickup() !== false ? Choices::managerOf($offer ?? $transport) : null;
+    $self = $holder && (bool) old('self', $transport?->channel === Channel::Manager);
     $kind = old('channel', match (true) {
-        $transport?->channel === Channel::Manager => $holder ? Channel::Manager->value : (count($logists) ? Channel::Logist->value : Channel::Staff->value),
+        $transport?->channel === Channel::Manager => count($logists) ? Channel::Logist->value : Channel::Staff->value,
         (bool) $transport?->channel => $transport->channel->value,
         default => count($logists) ? Channel::Logist->value : Channel::Staff->value,
     });
     $current = $transport?->channel === Channel::Logist ? $transport->logist_id : $transport?->executor_id;
     $options = array_filter([
-        Channel::Manager->value => $holder ? $holder->shortName().' сам' : null,
         // Пусто — сегмент всё равно есть: «+ Новый логист / сотрудник» в шторке выбора (18.10.2026).
         Channel::Logist->value => Channel::Logist->short(),
         Channel::Staff->value => Channel::Staff->short(),
@@ -43,11 +47,44 @@
         $options[Channel::Auction->value] = Channel::Auction->short();
     }
     // Галка вида: что прислали с ошибкой, иначе как у задачи (если вид тот же), иначе — только логисту.
+    $car = $transport?->car ?? $offer?->car;
+    $carTitle = $transport?->title() ?? $offer?->titleWithYear();
+    $from = $transport ? array_filter([$transport->city(), $transport->fromAddress()]) : array_filter([$offer?->settlement?->title(), $offer?->inspection_address]);
+    $owner = $transport?->ownerName() ?? $car?->insured_name;
+    $dest = $transport && $transport->channel !== Channel::Manager ? $transport->destinationLabel() : null;
+    $garageOf = $holder && ($sale ?? $offer ?? $transport?->saleOffer())?->garageCar()->exists();
     $cdekOn = fn (string $k) => old("cdek.$k") !== null ? (bool) old("cdek.$k") : ($transport?->channel?->value === $k ? $transport->docs_by_cdek : $k === Channel::Logist->value);
 @endphp
 <form method="post" action="{{ $action }}" {{ $attributes->class(['assign-form flex flex-col gap-4']) }} data-controller="reveal">
     @csrf
     {{ $slot }}
+    @if ($context && $carTitle)
+        <x-ui.info class="assign-car">
+            <div class="info-row">
+                <x-ui.cat-icon :category="$car?->category" class="info-icon size-5"/>
+                <span class="min-w-0 flex-1">
+                    <span class="flex flex-wrap items-center gap-x-2 gap-y-1"><span class="font-medium">{{ $carTitle }}</span><x-ui.plate :value="$car?->plate"/></span>
+                    <span class="mt-1.5 flex flex-wrap gap-1.5"><x-car.codes :vendor-id="$transport?->vendorId() ?? $offer?->vendor_id" :ref="$car?->claim_ref" :vin="$car?->vin"/></span>
+                </span>
+            </div>
+            <x-ui.info-row icon="map-pin" :sub="$owner ? 'Владелец: '.$owner : null">{{ $from ? implode(', ', $from) : 'Адрес не указан' }}</x-ui.info-row>
+            @if ($dest)<x-ui.info-row icon="flag">{{ $dest }}</x-ui.info-row>@endif
+        </x-ui.info>
+    @endif
+    @if ($holder)
+        <x-ui.info class="assign-self">
+            <div class="info-row items-center">
+                <x-ui.icon name="user" class="info-icon size-5"/>
+                <span class="flex min-w-0 flex-1 flex-wrap items-center gap-2"><x-ui.person :user="$holder" full/><span class="text-sm text-ink-muted">{{ $garageOf ? 'гараж' : 'сделка' }}</span></span>
+            </div>
+            <label class="info-row cursor-pointer items-center">
+                <x-ui.icon name="cat-truck" class="info-icon size-5"/>
+                <span class="min-w-0 flex-1">Забирает сам</span>
+                <input type="checkbox" name="self" value="1" class="switch" @checked($self)>
+            </label>
+        </x-ui.info>
+    @endif
+    <div class="assign-others">
     @if ($options)
         <h3 class="list-head -mb-2">Кто вывозит</h3>
         <x-ui.segment name="channel" :options="$options" :value="$kind" pick/>
@@ -90,6 +127,7 @@
         @endif
         </div>
     @endif
+    </div>
     @if ($options)
         <x-ui.button type="submit" variant="primary" block class="assign-submit">{{ $transport?->channel && $transport->channel !== Channel::Manager ? 'Сохранить' : 'Назначить' }}</x-ui.button>
     @endif

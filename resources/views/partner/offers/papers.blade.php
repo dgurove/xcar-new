@@ -11,7 +11,7 @@
         @foreach ($papers as $i => $media)
             <x-ui.file :name="\App\Http\Partner\MediaController::paperName($media, $i + 1)" :mime="$media->mime_type" :bytes="$media->size" href="/files/{{ $media->id }}">
                 @if ((int) $media->getCustomProperty('partner') === $me)
-                    <form method="post" action="/offers/{{ $offer->id }}/media/{{ $media->id }}" data-turbo-confirm="Удалить документ?">@csrf @method('delete')<button class="btn btn-ghost btn-s px-2 text-ink-muted" aria-label="Удалить"><x-ui.icon name="trash" class="size-5"/></button></form>
+                    <form method="post" action="/offers/{{ $offer->id }}/media/{{ $media->id }}" data-turbo-confirm="Удалить документ?">@csrf @method('delete')<button class="btn btn-ghost btn-s px-2 text-ink-muted" aria-label="Удалить"><x-ui.icon name="x" class="size-5"/></button></form>
                 @endif
             </x-ui.file>
         @endforeach
