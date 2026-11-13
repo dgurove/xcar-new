@@ -1247,6 +1247,13 @@ html.kb-open { --home-gap: 0px; }
      10rem ему не остаётся — кнопки встают строкой ниже, справа (22.10.2026: четыре круглые кнопки «Без закупочной цены»
      влезают рядом на телефоне, название — в две строки). */
   .title-row { @apply mb-4 flex flex-wrap items-start gap-x-3 gap-y-2; }
+  /* Заголовок в тулбаре (`x-ui.toolbar` слот lead — разделы «Работы», 13.11.2026): строка «название — кнопки списка справа»,
+     первой и во всю ширину; название нажимается во всю свою часть строки — короткие «Гараж», «Чаты» пальцем попадать легче. */
+  .toolbar-head { display: flex; align-items: center; gap: .75rem; width: 100%; order: -10000; }
+  .toolbar-lead { min-width: 0; flex: 1 1 auto; }
+  .toolbar-lead .tab-title-btn { width: 100%; min-height: 2.75rem; }
+  .toolbar-head .toolbar-tools { display: flex; align-items: center; gap: .5rem; flex-shrink: 0; margin-left: auto; }
+  .toolbar[data-searching] .toolbar-head { display: none; }
   .tab-title { flex: 1 1 10rem; }
   .title-actions { @apply ml-auto flex shrink-0 items-center gap-1.5; }
   .title-actions .title-filter { @apply gap-1; height: 2rem; padding-inline: .625rem; }

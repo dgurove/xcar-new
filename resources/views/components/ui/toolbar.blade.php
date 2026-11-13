@@ -14,7 +14,9 @@
      слот sub — второй ряд вкладок под пилюлями (дела «Сделок» CRM, `x-deal.work-tabs`), до чипов; pillDrop — параметры этого
      ряда, которые пилюля снимает (`todo`, `what`, `sub`: у другой пилюли свои вкладки);
      слот extra — кнопки экрана в левой группе после сортировки (переключатель вида),
-     слот actions — у правого края («+», «Из писем»).
+     слот actions — у правого края («+», «Из писем»);
+     слот lead — заголовок экрана в одну строку с кнопками настройки списка (разделы «Работы», 13.11.2026, владелец: «справа от
+     заголовка тупо пустое место — туда сортировку, лупу, вид»): строка `.toolbar-head` — первой, над пилюлями.
      Сортировка — окошко x-ui.sort: поле и направление (владелец 06.10.2026: «кнопка сортировки, окошко — выбор
      критерия и ascending/descending»); прежнего меню исходов словами («Сначала дешёвые») больше нет. --}}
 @props(['sort' => null, 'sortParam' => 'sort', 'pills' => [], 'dots' => [], 'pill' => '', 'pillParam' => 'view', 'pillDefault' => true, 'pillHome' => null, 'pillDrop' => [], 'counts' => [], 'badges' => [], 'bumps' => [], 'tones' => [], 'name' => 'list', 'action' => null, 'search' => null, 'searchTarget' => '#list', 'searchUrl' => null, 'q' => null, 'facets' => null, 'searchOpen' => false, 'sortToggles' => [], 'facetsReset' => true])
@@ -40,6 +42,26 @@
         @unless ($searchOpen)<button type="button" class="toolbar-cancel" data-action="live-search#cancel">Отмена</button>@endunless
     @endif
 
+    @isset($lead)
+        <div class="toolbar-head">
+            <div class="toolbar-lead">{{ $lead }}</div>
+        @if ($sort || isset($extra) || ($search && ! $searchOpen))
+    <div class="toolbar-tools">
+        @if ($sort)
+            <x-ui.sort :sort="$sort" :url="$sortUrl" :name="$name" :toggles="$sortToggles"/>
+        @endif
+
+        {{-- Кнопки экрана (переключатель вида) — после сортировки: сначала то, чем список настраивают; лупа — за ними. --}}
+        {{ $extra ?? '' }}
+
+        @if ($search && ! $searchOpen)
+            <button type="button" class="btn btn-s btn-quiet btn-round shrink-0 toolbar-lens" data-action="live-search#open" aria-label="Поиск"><x-ui.icon name="search" class="size-5"/></button>
+        @endif
+    </div>
+        @endif
+        </div>
+    @endisset
+
     @if ($pills)
         <div class="toolbar-pills min-w-0 flex-1 snap-x overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden max-md:order-first max-md:-mx-4 max-md:flex-initial max-md:px-4" data-title-anchor>
             <div class="flex flex-nowrap items-center gap-2">
@@ -62,7 +84,7 @@
 
     {{-- Кнопки настройки списка — группой: на телефоне переносятся целиком, а не по одной (сортировка у пилюль, вид и
          лупа рядом ниже); на ПК обёртки нет (`contents`). --}}
-    @if ($sort || isset($extra) || ($search && ! $searchOpen))
+    @if (! isset($lead) && ($sort || isset($extra) || ($search && ! $searchOpen)))
     <div class="toolbar-tools">
         @if ($sort)
             <x-ui.sort :sort="$sort" :url="$sortUrl" :name="$name" :toggles="$sortToggles"/>

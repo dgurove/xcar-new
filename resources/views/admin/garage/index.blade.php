@@ -7,8 +7,8 @@
     $user = auth()->user();
 @endphp
 <x-ui.shell title="Гараж" :heading="false" :detail="$detail">
-    <x-admin.work-titles current="garage" :count="$total"/>
-    <x-ui.toolbar class="mt-5" :sort="$sort" :pills="\App\Http\Admin\GarageController::PRESETS" :pill="$preset" pill-param="preset" name="garage" :facets="$facets">
+    <x-ui.toolbar :sort="$sort" :pills="\App\Http\Admin\GarageController::PRESETS" :pill="$preset" pill-param="preset" name="garage" :facets="$facets">
+        <x-slot:lead><x-admin.work-titles current="garage" :count="$total"/></x-slot:lead>
         <x-slot:extra><x-ui.view-switch :current="$view" :views="ListView::SHELVED"/></x-slot:extra>
     </x-ui.toolbar>
 

@@ -4,8 +4,8 @@
     $table = \App\Http\Admin\DealController::table($groups !== null, $stages !== null, $facets->searching() ? null : $preset, $waiting !== null);
 @endphp
 <x-ui.shell title="Сделки" :heading="false" :detail="$detail">
-    <x-admin.work-titles current="deals" :count="$deals->total()"/>
-    <x-ui.toolbar class="mt-5" :sort="$sort" :pills="\App\Http\Admin\DealController::PRESETS" :pill="$preset" pill-param="preset" :pill-drop="['todo', 'what', 'sub']" :counts="$counts" name="deals" :facets="$facets" search="Номер, марка, VIN, менеджер">
+    <x-ui.toolbar :sort="$sort" :pills="\App\Http\Admin\DealController::PRESETS" :pill="$preset" pill-param="preset" :pill-drop="['todo', 'what', 'sub']" :counts="$counts" name="deals" :facets="$facets" search="Номер, марка, VIN, менеджер">
+        <x-slot:lead><x-admin.work-titles current="deals" :count="$deals->total()"/></x-slot:lead>
         <x-slot:extra><x-ui.view-switch :views="['list', 'table', 'wide']" :current="$view"/></x-slot:extra>
         {{-- Вкладки дел «Ваш ход» и чего ждём во «Ждём …» (09.11.2026, `DealController::todo|waiting`). --}}
         @if ($work)

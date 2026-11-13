@@ -12,9 +12,9 @@
     $view = ListView::fromRequest(request()) === ListView::LIST ? ListView::LIST : ListView::TABLE;
 @endphp
 <x-ui.shell title="Оплаты" :heading="false" :detail="$detail">
-    <x-admin.work-titles current="money"/>
-    <x-ui.toolbar class="mt-5 max-sm:mt-3" name="money" :sort="$sort" :pills="MoneyController::TABS" :pill="$tab" pill-param="tab" :counts="$counts['counts']" :tones="$counts['tones']"
+    <x-ui.toolbar name="money" :sort="$sort" :pills="MoneyController::TABS" :pill="$tab" pill-param="tab" :counts="$counts['counts']" :tones="$counts['tones']"
         :facets="$facets" search="Имя, ТС, номер" search-target="#money-feed">
+        <x-slot:lead><x-admin.work-titles current="money"/></x-slot:lead>
         {{-- На телефоне обе раскладки — строки: переключателя нет, шапка в два ряда (09.10.2026). --}}
         <x-slot:extra><span class="contents max-sm:hidden"><x-ui.view-switch :views="[ListView::TABLE, ListView::LIST]" :current="$view"/></span></x-slot:extra>
         @if (auth()->user()->isAdmin() && app(\App\Billing\Acquiring\Gateway::class)->configured())
