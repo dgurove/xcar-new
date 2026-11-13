@@ -3,6 +3,7 @@
 namespace App\Park;
 
 use App\Offers\Offer;
+use App\Offers\OfferState;
 use App\Users\User;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
@@ -21,6 +22,27 @@ final class Sale
     {
         $vehicle = $offer->car_id ? Vehicle::withoutGlobalScope(City::SCOPE)->where('car_id', $offer->car_id)->first() : null;
         $vehicle?->log(EventType::Unlinked, $by ?? auth()->user(), ['number' => $offer->number]);
+    }
+
+    /**
+     * Продана не через нас (13.11.2026, владелец: «есть заявка на выдачу — тачка уже продана, нет смысла заводить, и даже
+     * заведённую надо убирать, даже опубликованную; в сделке — не убирать, главное не выйти на самих себя»): у ТС заявка на
+     * выдачу (любого состояния) или она уже выдана, а выдача не наша — у заявки нет сделки XCar (`deal_id`, ставят
+     * `SyncParkRelease`) и продажа машины не в сделке и не в гараже.
+     */
+    public static function soldElsewhere(Vehicle $vehicle): bool
+    {
+        $releases = fn () => Request::withoutGlobalScope(City::SCOPE)->where('vehicle_id', $vehicle->id)->where('type', RequestType::Release);
+        if ($vehicle->state !== VehicleState::Released && ! $releases()->exists()) {
+            return false;
+        }
+        if ($releases()->whereNotNull('deal_id')->exists()) {
+            return false;
+        }
+        $offer = $vehicle->car_id ? Offer::withoutGlobalScopes()->where('car_id', $vehicle->car_id)->latest('id')->first() : null;
+
+        return ! ($offer && (in_array($offer->state, [OfferState::Sold, OfferState::Garage, OfferState::Delivered], true)
+            || $offer->deal()->exists() || $offer->garageCar()->exists()));
     }
 
     /**

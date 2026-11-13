@@ -11,6 +11,7 @@ use App\Offers\Offer;
 use App\Offers\OfferState;
 use App\Offers\Pricing;
 use App\Park\EventType;
+use App\Park\Sale;
 use App\Park\Vehicle;
 use App\Park\VehicleState;
 use App\Users\User;
@@ -32,6 +33,10 @@ final class PutOnSale
     {
         if ($vehicle->offer) {
             return $vehicle->offer;
+        }
+        // Заявка на выдачу без нашей сделки — машина продана, в CRM ей не место (13.11.2026, `Sale::soldElsewhere`).
+        if (Sale::soldElsewhere($vehicle)) {
+            throw ValidationException::withMessages(['vehicle' => 'По этой ТС заявка на выдачу — она продана']);
         }
         $car = $vehicle->carRecord();
         [$offer, $outcome] = ($this->open)(new DraftSource('park', car: $car, fields: [

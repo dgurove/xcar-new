@@ -89,6 +89,8 @@ final class AutoSale
             ->whereHas('vendor', fn ($q) => $q->where('auto_sale', true))
             // Отклонили или сняли с продажи — больше сама не выставляется.
             ->whereDoesntHave('events', fn ($q) => $q->where('type', EventType::Unlinked))
+            // Заявка на выдачу — продана не через нас (13.11.2026, владелец: «нет смысла заводить»; `Sale::soldElsewhere`).
+            ->whereDoesntHave('requests', fn ($q) => $q->withoutGlobalScope(City::SCOPE)->where('type', RequestType::Release))
             ->whereHas('requests', fn ($q) => $q->withoutGlobalScope(City::SCOPE)->where('type', RequestType::Intake)
                 ->whereNotNull('letter_id')->where('created_at', '>', now()->subDays(self::DAYS)));
     }

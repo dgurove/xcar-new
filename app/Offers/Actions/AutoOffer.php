@@ -20,6 +20,8 @@ use App\Offers\LegacyClaim;
 use App\Offers\Offer;
 use App\Offers\OfferState;
 use App\Offers\Pricing;
+use App\Park\Sale;
+use App\Park\Vehicle;
 use App\Support\Nav;
 use App\Vendors\Vendor;
 use Illuminate\Support\Carbon;
@@ -107,6 +109,12 @@ final class AutoOffer
         }
         if (! Vin::full((string) $candidate->value('vin')) && ! ($candidate->value('brand') && Brand::known((string) $candidate->value('brand')))) {
             return 'машины нет: ни VIN, ни марки';
+        }
+        // Та же машина на парковке с заявкой на выдачу — продана не через нас (13.11.2026, `Park\Sale::soldElsewhere`).
+        $vin = Vin::full((string) $candidate->value('vin')) ? (string) $candidate->value('vin') : null;
+        $parked = Identity::vehicleFor(Vehicle::keyFor((string) $candidate->code) ?: null, $vin);
+        if ($parked && Sale::soldElsewhere($parked)) {
+            return 'ТС на парковке уже на выдачу';
         }
 
         return null;

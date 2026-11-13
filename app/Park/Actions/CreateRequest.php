@@ -6,6 +6,7 @@ use App\Cars\Brand;
 use App\Cars\CarModel;
 use App\Cars\Identity;
 use App\Cars\IdentityTaken;
+use App\Park\City;
 use App\Park\Events\VehicleRestored;
 use App\Park\EventType;
 use App\Park\Request;
@@ -45,7 +46,7 @@ final class CreateRequest
         }
         Nav::forgetStaffCounts();
 
-        return DB::transaction(function () use ($by, $type, $vehicle, $data) {
+        $request = DB::transaction(function () use ($by, $type, $vehicle, $data) {
             if (! $vehicle) {
                 $brand = ! empty($data['brand']) ? Brand::resolve($data['brand']) : (! empty($data['brand_id']) ? Brand::find($data['brand_id']) : null);
                 $model = $brand && ! empty($data['model']) ? CarModel::resolve($brand, $data['model']) : (! empty($data['model_id']) ? CarModel::find($data['model_id']) : null);
@@ -78,5 +79,12 @@ final class CreateRequest
                 'deal_id' => $data['deal_id'] ?? null,
             ]);
         });
+        // Заявка на выдачу — машина продана; не через нас — её продажа уходит из CRM (`WithdrawSold`, 13.11.2026). После
+        // общей транзакции: выдачу заводят и внутри своей (`MarkSold`), откат не должен оставить предложение в архиве.
+        if ($type === RequestType::Release) {
+            DB::afterCommit(fn () => ($v = $request->vehicle()->withoutGlobalScope(City::SCOPE)->first()) && app(WithdrawSold::class)($v));
+        }
+
+        return $request;
     }
 }
