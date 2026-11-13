@@ -1,7 +1,9 @@
 {{-- Лента писем о ТС: по времени сверху вниз, на линии слева, как история посылки. Узел — письмо (x-mail.letter):
      на линии кружок отправителя (у «ч.2» и свёрнутых — точка), этап и письмо без ответа видны по заголовку; автоответы и
      бухгалтерия подряд свёрнуты в один узел «3 служебных». Тема пишется строкой-разделителем, когда меняется
-     (subjects). Раскрыты непрочитанные и последнее, к ним и прокрутка (focus; id письма — раскрыто и в фокусе оно). reply — один «Ответить {кому}» внизу,
+     (subjects). Раскрыто одно письмо — в фокусе (focus: id письма, иначе первое непрочитанное, иначе последнее), к нему и
+     прокрутка; нажатие раскрывает другое, прежнее сворачивается, с анимацией (`chain_controller`, 13.11.2026, начальник: с
+     телефона письма не раскрывались, «раскрывалось одно, остальные сворачивались»). reply — один «Ответить {кому}» внизу,
      редактор во фрейме reply на месте кнопки. candidate — этапы для заголовков узлов.
      «Ч.2» того же письма (те же слова от того же адреса в сутки) — узел «Ещё файлы к письму» без текста.
      fold — разбор письма: раскрыты только письмо-заявка и то, что ждёт ответа, прочие подряд идущие письма свёрнуты
@@ -53,7 +55,7 @@
     $topic = fn (Message $m) => ($m->isForwardedByStaff() ? \App\Mail\Extraction\QuotationStripper::forwardedSubject($m->text_body) : null)
         ?? trim((string) preg_replace('/^\s*(?:(?:fwd|fw|re|пересылка|пересл)\s*:\s*)+/ui', '', (string) $m->subject));
 @endphp
-<div {{ $attributes->merge(['class' => 'chain']) }} @if ($focusId) data-controller="chain" @endif>
+<div {{ $attributes->merge(['class' => 'chain']) }} data-controller="chain" @if ($fold) data-chain-many-value="true" @endif>
     @forelse ($nodes as $node)
         @php $first = is_array($node) ? $node['items'][0] : $node; @endphp
         @if ($subjects && $first->subject_normalized !== $subject && ! isset($continued[$first->id]))
@@ -75,9 +77,9 @@
             </div>
         @else
             @if (isset($continued[$node->id]))
-                <x-mail.letter :message="$node" :replying="$node->id === $replyTo?->id" :base="$base" title="Ещё файлы к письму" :kind="$own($node) ? 'ours' : ''" :open="! $node->is_seen || $node->id === $lastId || $node->id === $focusId" :focus="$node->id === $focusId" :reply="$reply" continuation/>
+                <x-mail.letter :message="$node" :replying="$node->id === $replyTo?->id" :base="$base" title="Ещё файлы к письму" :kind="$own($node) ? 'ours' : ''" :open="$node->id === ($focusId ?? $lastId)" :focus="$node->id === $focusId" :reply="$reply" continuation/>
             @else
-                <x-mail.letter :message="$node" :replying="$node->id === $replyTo?->id" :base="$base" :title="NodeTitle::for($node, $candidate)" :titled="NodeTitle::titled($node, $candidate)" :kind="$kind($node)" :dismiss="$reply && in_array($node->id, $asks, true) && $node->thread_id !== $replyTo?->thread_id" :open="! $node->is_seen || $node->id === $focusId || ($fold ? in_array($node->id, $keep, true) : $node->id === $lastId)" :focus="$node->id === $focusId" :reply="$reply"/>
+                <x-mail.letter :message="$node" :replying="$node->id === $replyTo?->id" :base="$base" :title="NodeTitle::for($node, $candidate)" :titled="NodeTitle::titled($node, $candidate)" :kind="$kind($node)" :dismiss="$reply && in_array($node->id, $asks, true) && $node->thread_id !== $replyTo?->thread_id" :open="$fold ? (! $node->is_seen || $node->id === $focusId || in_array($node->id, $keep, true)) : $node->id === ($focusId ?? $lastId)" :focus="$node->id === $focusId" :reply="$reply"/>
             @endif
         @endif
     @empty

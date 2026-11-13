@@ -295,7 +295,9 @@ abstract class Template
 
     protected function price(string $text): ?int
     {
-        $text = self::plain($text);
+        // Перенос строки посреди фразы — пробел (13.11.2026, ИНСАЙТ, пересылка с почты Mail: «максимальное предложение у нас
+        // 805\n000 руб.» — разряды разорвал перенос, и закупочная не встала); абзацы — пустой строкой — остаются.
+        $text = (string) preg_replace('/(?<!\n)\n(?!\n)/u', ' ', self::plain($text));
         if ($text === '') {
             return null;
         }
