@@ -28,6 +28,9 @@
     // невозможно посмотреть и скачать в админке»).
     $scanPdf = $buyer?->party?->needsPassportScan() && $buyer->party->getMedia('passport')->isNotEmpty()
         ? ['url' => '/parties/'.$buyer->party->id.'/passport.pdf', 'type' => 'pdf', 'name' => \App\Billing\Documents\PassportPdf::fileName($buyer->party), 'label' => 'Паспорт'] : null;
+    // Реквизиты фотографией (`x-deal.buyer-photos`, «Карточка фирмы»): снимки, что прислал менеджер, — здесь же, чтобы внести
+    // данные с них (13.11.2026, Тужиков прислал реквизиты фото, а в CRM их не было видно нигде: «не вижу ни в чате, ни в сделке»).
+    $cards = $buyer?->party ? $buyer->party->getMedia('card') : collect();
 @endphp
 {{-- Данные есть — та же шторка: посмотреть, поправить, скан PDF (05.11.2026). --}}
 @if ($buyer && $live)
@@ -39,6 +42,12 @@
         </x-ui.sheet-row>
         <x-ui.sheet :id="$dataSheet" :title="$ready ? 'Данные покупателя' : 'Данные для '.$for" :open="session('open_sheet') === $dataSheet || $errors->hasAny(['buyer.*']) || $ask" tall>
             @php $buyerParty = $buyer->party ?? \App\Billing\Party::forUser($buyer); @endphp
+            {{-- Снимки реквизитов от менеджера — над полями: вносят, глядя на них. --}}
+            @if ($cards->isNotEmpty())
+                <div class="list mb-3">
+                    @foreach ($cards as $n => $card)<x-ui.doc :doc="\App\Support\Docs::media($card)" class="row"><x-ui.row-icon name="file" size="s" tone="urgent"/><span class="min-w-0 flex-1">Реквизиты от менеджера, фото{{ $cards->count() > 1 ? ' '.($n + 1) : '' }}</span><x-ui.chevron/></x-ui.doc>@endforeach
+                </div>
+            @endif
             <form method="post" action="/work/deals/{{ $deal->id }}/contract" class="flex flex-col gap-3" id="{{ $dataSheet }}-form">
                 @csrf @method('put')
                 <x-billing.buyer-fields :party="$buyerParty" :key="'crm-buyer-'.$deal->id" :scan="$dataSheet.'-form'" :fallback="$buyer->name">
@@ -72,6 +81,13 @@
         </x-ui.doc>
     @endif
 @endif
+@foreach ($cards as $n => $card)
+    <x-ui.doc :doc="\App\Support\Docs::media($card)" class="row">
+        <x-ui.row-icon name="file" size="s" tone="urgent"/>
+        <span class="min-w-0 flex-1"><span class="block">Реквизиты от менеджера, фото{{ $cards->count() > 1 ? ' '.($n + 1) : '' }}</span>@if (! $ready)<span class="row-sub text-urgent">внести данные покупателя</span>@endif</span>
+        <x-ui.chevron/>
+    </x-ui.doc>
+@endforeach
 @if ($live && $buyer && ! $isManager && $deal->isPrime())
     <form method="post" action="/work/deals/{{ $deal->id }}/contract" class="contents" data-controller="autosubmit">
         @csrf @method('put')
