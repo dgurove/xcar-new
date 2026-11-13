@@ -4,6 +4,8 @@ namespace App\Billing\Actions;
 
 use App\Billing\Party;
 use App\Billing\PartyKind;
+use App\Users\Actions\AddPerson;
+use App\Users\User;
 
 /**
  * Данные покупателя для договора и счёта — одна дверь шторки CRM, ДКП менеджера и «Данных для договора» (06.11.2026,
@@ -41,6 +43,14 @@ final class SaveBuyerData
         };
         $keep = $keepKind && $kind === 'person' && in_array($party->kind, [PartyKind::Entrepreneur, PartyKind::SelfEmployed], true);
         $party->fill(($keep ? [] : ['kind' => $as]) + $fields)->save();
+        // Покупатель, заведённый плиткой вида без имени («Новый покупатель», `Cabinet\DealController::buyerNew`), — имя из
+        // полей (13.11.2026): ФИО «Фамилия Имя Отчество» → «Имя Фамилия», организация — названием.
+        $name = trim((string) $party->name);
+        $user = $name !== '' ? User::where('party_id', $party->id)->where('name', AddPerson::UNNAMED)->first() : null;
+        if ($user) {
+            $w = preg_split('/\s+/u', $name);
+            $user->update(['name' => $as === PartyKind::Company || count($w) < 2 ? $name : trim($w[1].' '.$w[0])]);
+        }
 
         return $party;
     }

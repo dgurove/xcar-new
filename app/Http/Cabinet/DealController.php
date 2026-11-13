@@ -2,7 +2,6 @@
 
 namespace App\Http\Cabinet;
 
-use App\Billing\Actions\StorePassportScan;
 use App\Billing\Invoice;
 use App\Billing\InvoiceState;
 use App\Billing\Party;
@@ -13,7 +12,6 @@ use App\Live\RefreshDeal;
 use App\Live\Stream;
 use App\Logistics\Actions\RequestPickup;
 use App\Logistics\Actions\SelfPickup;
-use App\Media\PhotoIngest;
 use App\Offers\Actions\PickSigningTime;
 use App\Offers\Actions\SaveDealContract;
 use App\Offers\Actions\SaveSigningWish;
@@ -109,8 +107,7 @@ class DealController
         $mine = $mine->sortBy(fn (Deal $d) => $tasks[$d->id]['due']?->getTimestamp() ?? PHP_INT_MAX)->values();
         // Гаражная, где ход его без просьбы, — продаёт из гаража: своим разделом, а не «Идёт сделка».
         // Ответ поставщика менеджеру не виден и тут: сделка остаётся в «Ждём поставщика» (`waitsForManager`, 03.11.2026).
-        // Реквизиты прислал фотографией — вносим мы: «Ждём XCar» (10.11.2026).
-        $who = fn (Deal $d) => $d->buyer_scans_at ? 'us' : match ($d->offer->position()?->waitsForManager()) {
+        $who = fn (Deal $d) => match ($d->offer->position()?->waitsForManager()) {
             WaitsFor::Supplier => 'supplier',
             WaitsFor::Us => 'us',
             WaitsFor::Manager => $d->isGarage() ? 'garage' : 'other',
@@ -310,32 +307,24 @@ class DealController
     }
 
     /**
-     * Реквизиты покупателя фотографией (10.11.2026, владелец: «не прикрепляют реквизиты»; паспорт сфотографировать проще, чем
-     * заполнить форму): новый покупатель менеджера встаёт в сделку, паспорт — сканом с чтением (`StorePassportScan` →
-     * `ReadPassport`), карточка фирмы — в документы контрагента; внести и проверить — наш ход (`deals.buyer_scans_at`, «Ваш ход →
-     * Внести реквизиты по фото»), у менеджера — «Ждём XCar».
+     * Новый покупатель по виду (13.11.2026, владелец: «"внесём сами" не катит, они сами должны поля заполнять; паспорт — ладно,
+     * скан нужен»): плитка «Физлицо» / «ИП» / «Организация» (`x-deal.buyer-kind`) заводит покупателя менеджера с контрагентом
+     * этого вида, ставит его в договор и сразу открывает «Данные для договора» (`cabinet.deals.contract`, `x-billing.buyer-fields`):
+     * поля, у физлица и ИП — скан паспорта с чтением. Имя аккаунта — из полей при сохранении (`SaveBuyerData`). Прежние
+     * «Реквизиты фотографией» (10.11.2026: фото, а вносили мы) сняты.
      */
-    public function buyerPhotos(Request $request, Deal $deal, AddPerson $add, IssueInvite $issue, StorePassportScan $store, SaveDealContract $save, PhotoIngest $ingest)
+    public function buyerNew(Request $request, Deal $deal, AddPerson $add, IssueInvite $issue, SaveDealContract $save)
     {
         $me = $request->user();
         abort_unless($deal->isLive() && ! $me->isSuperBuyer(), 404);
-        $data = $request->validate(['kind' => ['required', 'in:passport,company'], 'files' => ['required', 'array', 'min:1', 'max:4'],
-            'files.*' => PassportScanController::FILE], ['files.required' => 'Сфотографируйте документ']);
-        $files = array_values($request->file('files'));
+        $kind = $request->validate(['kind' => ['required', 'in:person,ip,company']])['kind'];
         [$user] = $add(fn () => $issue->buyer($me, $deal->id), ['first_name' => AddPerson::UNNAMED, 'last_name' => ''], contact: true);
-        $party = Party::forUser($user);
-        if ($data['kind'] === 'passport') {
-            $store($party, 'main', $files, $me);
-        } else {
-            $party->update(['kind' => PartyKind::Company]);
-            foreach ($files as $file) {
-                str_starts_with((string) $file->getMimeType(), 'image/') ? $ingest->fromUpload($party, 'card', $file) : $party->addMedia($file)->toMediaCollection('card');
-            }
-        }
+        Party::forUser($user)->update(['name' => '', 'kind' => match ($kind) {
+            'ip' => PartyKind::Entrepreneur, 'company' => PartyKind::Company, default => PartyKind::Person,
+        }]);
         $save(DealContract::for($deal), ['buyer_id' => (string) $user->id], $me);
-        $deal->update(['buyer_scans_at' => now()]);
 
-        return $this->back($request, $deal)->with('toast', 'Отправили, реквизиты внесём сами');
+        return $this->back($request, $deal)->with('open_sheet', 'deal-buyer-data');
     }
 
     /** «Ещё нет» и закрытие вопроса при входе (`x-deal.ask-sheet`): до завтра не спрашиваем (`requirements.prompted_at`). */

@@ -28,7 +28,7 @@
     // невозможно посмотреть и скачать в админке»).
     $scanPdf = $buyer?->party?->needsPassportScan() && $buyer->party->getMedia('passport')->isNotEmpty()
         ? ['url' => '/parties/'.$buyer->party->id.'/passport.pdf', 'type' => 'pdf', 'name' => \App\Billing\Documents\PassportPdf::fileName($buyer->party), 'label' => 'Паспорт'] : null;
-    // Реквизиты фотографией (`x-deal.buyer-photos`, «Карточка фирмы»): снимки, что прислал менеджер, — здесь же, чтобы внести
+    // Прежние «Реквизиты фотографией» (10–13.11.2026, «Карточка фирмы»): снимки, что прислал менеджер, — здесь же, чтобы внести
     // данные с них (13.11.2026, Тужиков прислал реквизиты фото, а в CRM их не было видно нигде: «не вижу ни в чате, ни в сделке»).
     $cards = $buyer?->party ? $buyer->party->getMedia('card') : collect();
 @endphp

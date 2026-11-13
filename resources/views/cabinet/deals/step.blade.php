@@ -26,10 +26,7 @@
     // проходит сам, когда данные со сканом есть (`AdvanceOnBuyerData`). Письма поставщика менеджер не видит.
     $buyerStep = $deal->isLive() && $requirement?->asks === Asks::Buyer;
     $needsBuyer = $needsBuyer || $buyerStep;
-    // Реквизиты прислал фотографией — вносим мы (10.11.2026, `deals.buyer_scans_at`): ни выбора, ни часов, одно слово.
-    $photosSent = $needsBuyer && $deal->buyer_scans_at;
-    $needsBuyer = $needsBuyer && ! $photosSent;
-    // Покупатель ещё не выбран — сначала плитки «Паспорт» / «Карточка фирмы» (`x-deal.buyer-photos`).
+    // Покупатель ещё не выбран — сначала плитки «Физлицо» / «ИП» / «Организация» (`x-deal.buyer-kind`).
     $photoTiles = $needsBuyer && ! \App\Offers\DealContract::for($deal)->buyer_user_id;
     // Гаражная Совкомбанка: счёт и договор — когда менеджер продаст (`Deal::namesBuyer`): цену он пишет «Продаю».
     $needsPrice = $gap === 'price';
@@ -92,7 +89,6 @@
                 $heading = match (true) {
                     $consent => 'Берёте в работу?',
                     $signingDays && \App\Offers\Signing::wishDue($deal) => 'Когда покупатель сможет подписать договор?',
-                    $photosSent => 'Реквизиты по фото у XCar',
                     $needsBuyer && ! $buyerStep => $gap === 'passport' ? 'Приложите паспорт покупателя' : 'Укажите покупателя',
                     $needsPrice => 'Укажите цену продажи',
                     $paidUp => 'Оплата получена',
@@ -119,10 +115,8 @@
             @if ($signingDays)
                 <x-deal.signing-when :deal="$deal" :action="'/deals/'.$deal->id.'/signing-wish'" class="mt-4"/>
             @endif
-            @unless ($noInvoice || $paidUp || $photosSent || $statusLine !== null)<div class="mt-1 text-sm"><x-route.clock :position="$position" :bare="$consent || $position->waitsFor() === \App\Workflow\WaitsFor::Manager"/></div>@endunless
-            @if ($photosSent)
-                <p class="mt-2 text-sm text-ink-muted">Внесём сами, шаг пройдёт без вас</p>
-            @elseif ($requirement && ! ($pickupSteps ?? null) && ! $needsBuyer && ! $needsPrice && ! $paidUp && ! $consent)
+            @unless ($noInvoice || $paidUp || $statusLine !== null)<div class="mt-1 text-sm"><x-route.clock :position="$position" :bare="$consent || $position->waitsFor() === \App\Workflow\WaitsFor::Manager"/></div>@endunless
+            @if ($requirement && ! ($pickupSteps ?? null) && ! $needsBuyer && ! $needsPrice && ! $paidUp && ! $consent)
                 @if ($rejected)<p class="mt-2 font-medium text-urgent">Оплата <span class="nums">{{ \App\Support\Money::rub($rejected->amount) }}</span> от <span class="nums">{{ \App\Support\Ago::html($rejected->paid_at, words: false) }}</span> не поступила{{ $rejected->reject_reason ? ': '.$rejected->reject_reason : '' }}</p>@endif
                 {{-- Срок просьбы — тот же, что часы под заголовком: второй раз его не пишем. --}}
                 @if ($requirement->due_at && ! ($position->deadline_at && abs($position->deadline_at->diffInMinutes($requirement->due_at)) < 1))
@@ -234,10 +228,10 @@
 
             {{-- Действия — после всего, что нужно прочитать. --}}
             @if ($needsBuyer)
-                @if ($photoTiles)<div class="mt-4"><x-deal.buyer-photos :deal="$deal"/></div>@endif
+                @if ($photoTiles)<div class="mt-4"><x-deal.buyer-kind :deal="$deal"/></div>@endif
                 <div class="mt-4">@include('cabinet.deals.contract', ['part' => 'buyer', 'embedded' => true])</div>
             @endif
-            @if ($requirement && ! $needsBuyer && ! $photosSent && (! $selectionPay || $direct) && ! $paidUp && ! $signingPick)
+            @if ($requirement && ! $needsBuyer && (! $selectionPay || $direct) && ! $paidUp && ! $signingPick)
                 @if ($payStep && $unpaid->isNotEmpty() && ! $direct)
                     @if ($claimable->isNotEmpty())
                         {{-- Та же шторка, что в «Деньгах»: ссылкой (кто платит), по счёту с платёжкой, наличными. Ответ — сюда же. --}}

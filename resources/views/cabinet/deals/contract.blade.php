@@ -60,7 +60,7 @@
                         @php $buyerParty = $buyer->party ?? \App\Billing\Party::forUser($buyer); @endphp
                         <form method="post" action="/deals/{{ $deal->id }}/contract" class="flex flex-col gap-3" id="deal-buyer-data-form">
                             @csrf @method('put')
-                            <x-billing.buyer-fields :party="$buyerParty" key="buyer-now" scan="deal-buyer-data-form" :fallback="$buyer->name"/>
+                            <x-billing.buyer-fields :party="$buyerParty" key="buyer-now" scan="deal-buyer-data-form" :fallback="$buyer->name === \App\Users\Actions\AddPerson::UNNAMED ? null : $buyer->name"/>
                             <x-ui.sheet-foot>Сохранить</x-ui.sheet-foot>
                         </form>
                     </x-ui.sheet>

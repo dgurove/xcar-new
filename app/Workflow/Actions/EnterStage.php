@@ -64,8 +64,6 @@ final class EnterStage
             // Кнопки этих просьб в чате сделки — ответом «Шаг пройден» (`Chats\StepAsk`).
             Requirement::redrawFor($closing);
         }
-        // Реквизиты фотографией (`deals.buyer_scans_at`) шаг больше не гасит (10.11.2026): их присылают с согласия, задолго до
-        // «Нет реквизитов» — гасит только `SaveDealContract`, когда данные внесли.
 
         if ($track === Track::Sale && $to->offer_state === OfferState::Open
             && (! $offer->bids_close_at || $offer->bids_close_at->isPast())) {

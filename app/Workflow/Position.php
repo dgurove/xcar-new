@@ -127,7 +127,7 @@ class Position extends Model
     {
         return ($this->waitsFor() === WaitsFor::Us && ! $this->carried()) || in_array($this->letterStatus(), ['unsent', 'failed', 'bounced', 'replied'], true)
             || $this->consentLate() || $this->repricePending() || $this->priceAskLate() !== null || $this->priceOffered() !== null || $this->replyPending() !== null
-            || $this->repriceUnanswered() !== null || $this->buyerPhotos() !== null || $this->moneyArrived() !== null;
+            || $this->repriceUnanswered() !== null || $this->moneyArrived() !== null;
     }
 
     /**
@@ -143,12 +143,6 @@ class Position extends Model
         $at = Invoice::where('credit_deal_id', $deal->id)->where('kind', ChargeKind::Service)->where('state', InvoiceState::Paid)->min('created_at');
 
         return $at ? Carbon::parse($at) : null;
-    }
-
-    /** Менеджер прислал реквизиты покупателя фотографией (10.11.2026, `deals.buyer_scans_at`): внести их — наш ход. */
-    public function buyerPhotos(): ?Carbon
-    {
-        return $this->track === Track::Sale ? $this->deal?->buyer_scans_at : null;
     }
 
     /**
@@ -262,11 +256,6 @@ class Position extends Model
         if ($due = $this->priceAskLate()) {
             return $todo('price-ask', 'Менеджер не ответил про закупочную', 0, $due,
                 ($phone = $this->deal?->buyer?->phone) ? ['label' => 'Телефон менеджера', 'tel' => $phone] : ['label' => 'Открыть', 'href' => '/offers/'.$offer->number]);
-        }
-
-        // Реквизиты фотографией — внести их за менеджера (10.11.2026): та же шторка покупателя, что «Заполнить».
-        if ($at = $this->buyerPhotos()) {
-            return $todo('gap:photos', 'Внести реквизиты по фото', 2, $at, ['label' => 'Внести', 'href' => '/offers/'.$offer->number.'?buyer=1#invoice-buyer']);
         }
 
         if ($at = $this->priceOffered()) {
@@ -395,8 +384,6 @@ class Position extends Model
             where a.offer_id = offer_positions.offer_id and a.state in ('pending', 'countered') and a.due_at < now() and d.state = 'active'))
         or (offer_positions.track = 'sale' and exists (select 1 from reprice_asks a join deals d on d.id = a.deal_id
             where a.offer_id = offer_positions.offer_id and a.state = 'offered' and d.state = 'active'))
-        or (offer_positions.track = 'sale' and exists (select 1 from deals bd where bd.offer_id = offer_positions.offer_id
-            and bd.state = 'active' and bd.buyer_scans_at is not null))
         or (offer_positions.track = 'sale' and exists (select 1 from deals md join billing_invoices ci on ci.credit_deal_id = md.id
             and ci.kind = 'service' and ci.state = 'paid' where md.offer_id = offer_positions.offer_id and md.state = 'active'
             and not exists (select 1 from billing_invoices si where si.deal_id = md.id and si.kind = 'sale' and si.state <> 'void')))

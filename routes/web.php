@@ -231,7 +231,7 @@ Route::middleware(['auth', 'wall'])->group(function () {
             Route::get('/deals/{deal}/dkp.pdf', [DealContractController::class, 'show']);
             Route::post('/deals/{deal}/files', [DealController::class, 'upload']);
             Route::post('/deals/{deal}/chat-files', [DealController::class, 'chatFiles']);
-            Route::post('/deals/{deal}/buyer-photos', [DealController::class, 'buyerPhotos']);
+            Route::post('/deals/{deal}/buyer-new', [DealController::class, 'buyerNew']);
             Route::post('/deals/{deal}/later', [DealController::class, 'later']);
             Route::delete('/deals/{deal}/files/{media}', [DealController::class, 'removeFile']);
         });

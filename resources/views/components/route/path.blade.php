@@ -229,7 +229,7 @@
                     @if ($deal && $position->track === \App\Workflow\Track::Sale && auth()->user()?->canManageCrm())<x-deal.reply-review :deal="$deal" line/>@endif
                     {{-- Покупателя менеджер должен дать с согласия (10.11.2026, `AskBuyer`): пока не дал — строкой дела, внести за него. --}}
                     @if ($deal?->buyer_asked_at && $position->track === \App\Workflow\Track::Sale && auth()->user()?->canManageCrm())
-                        <x-route.task-row icon="user" :href="'/offers/'.$offer->number.($deal->hasContract() ? '?dkp=1#dkp' : '?buyer=1#invoice-buyer')" data-turbo-frame="_top">{{ $deal->buyer_scans_at ? 'Реквизиты покупателя прислал фото, внести' : 'Менеджер не указал покупателя' }}</x-route.task-row>
+                        <x-route.task-row icon="user" :href="'/offers/'.$offer->number.($deal->hasContract() ? '?dkp=1#dkp' : '?buyer=1#invoice-buyer')" data-turbo-frame="_top">Менеджер не указал покупателя</x-route.task-row>
                     @endif
                     {{-- День и время подписания (`Signing`, 11.11.2026): пока поставщик готовит договор — что назвал менеджер, или
                          выбрать за него. --}}

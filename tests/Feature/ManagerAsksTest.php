@@ -119,31 +119,33 @@ class ManagerAsksTest extends TestCase
         $this->assertTrue($deal->openRequirement()->first()->prompted_at->isToday());
     }
 
-    public function test_requisites_by_photo_make_it_our_turn(): void
+    /**
+     * Покупатель — поля заполняет менеджер (13.11.2026, владелец: «"внесём сами" не катит»): плитка «ИП» заводит покупателя вида
+     * ИП, ставит в договор и открывает «Данные для договора»; дело остаётся у менеджера, пока поля и скан не внесены; имя
+     * аккаунта — из полей.
+     */
+    public function test_buyer_kind_tile_opens_fields_and_keeps_task_with_manager(): void
     {
         [$offer, $deal] = $this->deal();
         $this->exit($offer, 'Беру в работу');
         $this->exit($offer, 'Поставщик просит реквизиты');
         $this->assertSame('Нет реквизитов', $offer->fresh()->stage()->name);
-        $this->assertNotNull(ManagerAsk::for($deal->fresh()));
-        // Остальные шаги — сообщением с кнопками, но без второго уведомления: о ходе сказал `YourTurnNotice`.
-        $step = Message::where('requirement_id', $deal->openRequirement()->firstOrFail()->id)->firstOrFail();
-        $this->assertStringStartsWith('Привет, ', $step->text);
-        Notification::assertNotSentTo($this->manager, ChatNotice::class, fn ($n) => $n->message()->is($step));
 
-        $this->actingAs($this->manager)->post("http://xcar.localhost/deals/{$deal->id}/buyer-photos", [
-            'kind' => 'company', 'files' => [UploadedFile::fake()->image('card.jpg', 800, 600)],
-        ])->assertRedirect();
+        $this->actingAs($this->manager)->post("http://xcar.localhost/deals/{$deal->id}/buyer-new", ['kind' => 'ip'])
+            ->assertRedirect()->assertSessionHas('open_sheet', 'deal-buyer-data');
         $deal = $deal->fresh();
-        $this->assertNotNull($deal->buyer_scans_at);
         $buyer = DealContract::for($deal)->buyer;
         $this->assertNotNull($buyer, 'покупатель встал в сделку');
         $this->assertSame($this->manager->id, $buyer->manager_id);
-        $this->assertCount(1, $buyer->party->getMedia('card'));
-        // У менеджера дела нет, у нас — «Внести реквизиты по фото».
-        $this->assertNull($deal->managerTask());
-        $this->assertFalse(Deal::whereKey($deal->id)->whereRaw(Deal::MANAGER_TURN_SQL)->exists());
-        $this->assertSame('gap:photos', $offer->fresh()->position(Track::Sale)->todo()['key']);
+        $this->assertSame(\App\Billing\PartyKind::Entrepreneur, $buyer->party->kind);
+        $this->assertSame('', $buyer->party->name, 'ФИО не «Новый покупатель»');
+        $this->assertNotNull($deal->managerTask(), 'заполнить — дело менеджера');
+        $this->actingAs($this->manager)->get("http://xcar.localhost/deals/{$deal->id}")->assertOk()->assertSee('ОГРНИП');
+
+        $this->actingAs($this->manager)->put("http://xcar.localhost/deals/{$deal->id}/contract", ['buyer' => ['kind' => 'ip',
+            'name' => 'Рысьева Анна Игоревна', 'inn' => '781234567890', 'ogrn' => '312784700012345', 'legal_address' => 'Санкт-Петербург',
+            'account' => '40802810000000000001', 'bank_name' => 'Точка', 'bik' => '044525104']])->assertRedirect();
+        $this->assertSame('Анна Рысьева', $buyer->fresh()->name);
     }
 
     public function test_chat_photo_goes_into_step_files_and_stays_in_chat(): void
