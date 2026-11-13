@@ -125,7 +125,11 @@ final class CarView
         // «Отдать…» (`Give`, 18.10.2026): в сделку ценой или в гараж — из черновика, галереи и продажи, и без цены продажи
         // (12.11.2026, начальник: черновик «Без продажной цены» Зайцев сразу продал, а отдать можно было только в гараж). В окне у
         // черновика без цены — кнопкой «Отдать» в «Ценах» (`price-steps`, рядом с «Сохранить и дальше»), тогда в «⋯» его нет.
-        $giveMenu = $admin && ! $garageCar && in_array($state, [OfferState::Draft, OfferState::Gallery, OfferState::Open], true);
+        $giveMenu = $admin && ((! $garageCar && in_array($state, [OfferState::Draft, OfferState::Gallery, OfferState::Open], true))
+            // Гаражная, пока машина едет и денег по ней не было (13.11.2026, владелец: Сергей Николаев взял в гараж «платим мы», а
+            // Альфе платит он сам) — отдать заново: другому, другим плательщиком или в сделку (`Give`, этап — `handOver`).
+            || ($state === OfferState::Sold && $garageCar?->state === \App\Garage\CarState::Waiting && $o->deal?->isGarage()
+                && ! $o->deal->supplier_paid_at && $o->deal->credited() == 0));
         // Кнопка — только где «Цены» по шагам (`$steps`): у черновика на аукционе или «Без подтверждений» без цены «Цены» — разделом
         // без кнопок, и «Отдать…» остаётся в «⋯».
         $giveButton = $giveMenu && $rate && $steps && ! $this->page;

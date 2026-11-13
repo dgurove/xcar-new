@@ -556,12 +556,18 @@ class Deal extends Model
 
     /**
      * Покупателя дать менеджеру (10.11.2026): договор собираем мы (ДКП, ПРАЙМ) или впереди шаг «Нет реквизитов» (`buyerAhead`).
-     * Гаражной, супер-покупателю, аукциону и параллельной — нет: покупатель у них свой или его нет.
+     * Супер-покупателю, аукциону и параллельной — нет: покупатель у них свой или его нет; гаражной — только «платит менеджер» с
+     * шагом покупателя впереди.
      */
     public function needsBuyer(): bool
     {
-        if (! $this->isActive() || $this->isGarage() || $this->forGarageBuyer() || $this->isDirect() || $this->isAuction() || $this->isParallel()) {
+        if (! $this->isActive() || $this->forGarageBuyer() || $this->isDirect() || $this->isAuction() || $this->isParallel()) {
             return false;
+        }
+        // Гаражная «платит менеджер» у «страховой напрямую» (13.11.2026, Сергей Николаев берёт себе, Альфе платит сам): счёт
+        // поставщик выставит на покупателя — его указывают так же; «платим мы» — на наше юрлицо, покупатель не нужен.
+        if ($this->isGarage()) {
+            return $this->isGarageManager() && ! $this->hasContract() && $this->buyerAhead();
         }
 
         return $this->hasContract() || $this->buyerAhead();

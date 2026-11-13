@@ -13,7 +13,11 @@
     $already = $manager && $t?->executor_id === $manager->id;
     $byManager = $garage ? (! $t?->executor_id || $already) : $already;
     $pick = old('pickup', $byManager ? 'manager' : ($garage ? 'us' : 'later'));
-    $shows = $garage ? ! $offer->pickedUp() && $offer->parkVehicle?->state !== \App\Park\VehicleState::Stored : $offer->pickupChoosable();
+    // ТС стоит на нашей парковке (13.11.2026, владелец: «не хватает варианта „у нас на стоянке“, нам же это известно») — у гаража
+    // «Где ТС» третьим вариантом с её названием, отмечен сам; «Везёт в гараж» тогда нет — со стоянки её выдают заявкой парковки.
+    $stored = $offer->parkVehicle?->state === \App\Park\VehicleState::Stored;
+    $shows = $garage ? ! $offer->pickedUp() || $stored : $offer->pickupChoosable();
+    $where = old('where', $stored ? 'park' : 'owner');
 @endphp
 @php
     $when = old('arrived_at', now()->format('Y-m-d\TH:i'));
@@ -25,8 +29,9 @@
         <div class="flex flex-col gap-1.5">
             <span class="field-label">Где ТС</span>
             <div class="flex flex-wrap gap-2">
-                <label class="choice"><input type="radio" name="where" value="owner" @checked(old('where', 'owner') === 'owner')><span>У страховой</span></label>
-                <label class="choice"><input type="radio" name="where" value="arrived" @checked(old('where') === 'arrived')><span><span class="give-to-manager">{{ $manager?->holdsAsBuyer() ? 'Уже у покупателя' : 'Уже у менеджера' }}</span><span class="give-to-buyer">Уже у покупателя</span><span class="give-to-self">Уже у нас</span></span></label>
+                <label class="choice"><input type="radio" name="where" value="owner" @checked($where === 'owner')><span>У страховой</span></label>
+                @if ($stored)<label class="choice"><input type="radio" name="where" value="park" @checked($where === 'park')><span class="inline-flex items-center gap-1.5"><x-park.mark/>{{ $offer->parkVehicle->yard?->name ?? 'На нашей стоянке' }}</span></label>@endif
+                <label class="choice"><input type="radio" name="where" value="arrived" @checked($where === 'arrived')><span><span class="give-to-manager">{{ $manager?->holdsAsBuyer() ? 'Уже у покупателя' : 'Уже у менеджера' }}</span><span class="give-to-buyer">Уже у покупателя</span><span class="give-to-self">Уже у нас</span></span></label>
             </div>
         </div>
         <div class="give-carry">

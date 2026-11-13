@@ -34,7 +34,7 @@
     <div class="flex flex-col gap-4" data-reveal-target="pane" data-reveal-key="manager" @if ($whom !== 'manager') hidden @endif>
         @unless ($bid)
             <div class="flex flex-col gap-3">
-                <x-people.pick name="manager_id" label="Менеджер" kind="manager" :people="\App\Support\People::managers()" title="Менеджер" placeholder="Кому отдаём"/>
+                <x-people.pick name="manager_id" label="Менеджер" kind="manager" :people="\App\Support\People::managers()" title="Менеджер" placeholder="Кому отдаём" :value="old('manager_id', $handOver?->isGarage() ? $handOver->buyer_id : null)"/>
             </div>
         @endunless
         @if ($buyerBid)
@@ -47,12 +47,12 @@
                     <span class="field-label">Платит поставщику</span>
                     <div class="flex flex-wrap gap-2">
                         @foreach (\App\Garage\GaragePayer::cases() as $payer)
-                            <label class="choice"><input type="radio" name="payer" value="{{ $payer->value }}" @checked(old('payer', 'us') === $payer->value) data-action="reveal#pick"><span>{{ $payer === \App\Garage\GaragePayer::Manager ? $managerName : $payer->label() }}</span></label>
+                            <label class="choice"><input type="radio" name="payer" value="{{ $payer->value }}" @checked(old('payer', $handOver?->garage_payer?->value ?? 'us') === $payer->value) data-action="reveal#pick"><span>{{ $payer === \App\Garage\GaragePayer::Manager ? $managerName : $payer->label() }}</span></label>
                         @endforeach
                     </div>
                 </div>
                 @unless ($offer->vendor?->isCommission())
-                    <div class="flex flex-col gap-3" data-reveal-target="pane" data-reveal-key="manager" @if (old('payer', 'us') !== 'manager') hidden @endif>
+                    <div class="flex flex-col gap-3" data-reveal-target="pane" data-reveal-key="manager" @if (old('payer', $handOver?->garage_payer?->value ?? 'us') !== 'manager') hidden @endif>
                         <x-ui.field name="share" label="Наша доля, ₽" :value="old('share')" :id="$prefix.'-garage-share'"/>
                     </div>
                 @endunless
@@ -62,6 +62,6 @@
     {{-- Где ТС и кто везёт — один кусок на оба сценария: «Себе» — «Уже у нас» и без «Везёт» (только логистика), CSS по
          выбранному «Кому» (`.give-garage`). --}}
     <x-offer.pickup-choice :offer="$offer" garage :manager="$bid?->user"/>
-    @if ($handOver)<p class="text-sm text-ink-muted">Сделка с {{ $handOver->buyer?->shortName() }} отменится</p>@endif
+    @if ($handOver)<p class="text-sm text-ink-muted">{{ $handOver->buyer ? 'Сделка с '.$handOver->buyer->shortName().' отменится' : 'Прежняя сделка отменится' }}</p>@endif
     <x-ui.sheet-foot type="submit" variant="primary">{{ $handOver ? 'Отдать' : 'В гараж' }}</x-ui.sheet-foot>
 </form>

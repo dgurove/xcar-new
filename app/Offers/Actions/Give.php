@@ -28,6 +28,7 @@ use App\Support\Money;
 use App\Users\User;
 use App\Workflow\Actions\EnterStage;
 use App\Workflow\Actor;
+use App\Workflow\Stage;
 use App\Workflow\Track;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
@@ -293,7 +294,11 @@ final class Give
     {
         $stage = $offer->stage();
         if ($stage && $previous->isGarageUs() !== $deal->isGarageUs()) {
-            $stage = $stage->workflow->dealEntry($deal) ?? $stage;
+            // Поставщик уже согласовал (маршрут за «Согласием менеджера») — снова на согласие: менеджер жмёт исход своей ветки
+            // («Беру в работу» / «Забираю в гараж»), письмо о покупке заново не пишется (13.11.2026, гараж Сергея Николаева:
+            // «платим мы» сменили на «платит менеджер»). Иначе — вход сделки ветки.
+            $confirm = Stage::where('workflow_id', $stage->workflow_id)->with(['exits', 'block'])->get()->first(fn (Stage $s) => $s->asksConsent());
+            $stage = $confirm && Parallels::rank($stage) > Parallels::rank($confirm) ? $confirm : ($stage->workflow->dealEntry($deal) ?? $stage);
         }
 
         return $stage ? ($this->enter)($offer, $stage, $by) : $offer;
