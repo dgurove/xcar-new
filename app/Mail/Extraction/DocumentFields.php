@@ -39,7 +39,10 @@ final class DocumentFields
 
         // Номер убытка — протокол торгов SD-Assistance «Номер дела/убытка: У-034-000264/26» (Энергогарант, 05.11.2026: в
         // письме и теме номера нет, только в протоколе).
-        foreach (self::values($text, 'Номер\s+(?:дела\s*\/\s*)?убытка|Номер\s+дела') as $value) {
+        // Номер, разорванный переносом после дефиса («У-053-\n000522/26», протокол CarXbid FAW, 13.11.2026: черновик не
+        // завёлся сам — номера убытка «не было»), склеивается.
+        $joined = (string) preg_replace('/(?<=[-–])[ \t]*\n[ \t]*(?=\d)/u', '', $text);
+        foreach (self::values($joined, 'Номер\s+(?:дела\s*\/\s*)?убытка|Номер\s+дела') as $value) {
             if ($code = (new CodeMatcher)->findAll($value)[0] ?? null) {
                 $put('code', $code);
                 break;
