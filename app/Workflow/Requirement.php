@@ -95,16 +95,6 @@ class Requirement extends Model implements HasMedia
         return $this->belongsTo(Deal::class);
     }
 
-    /**
-     * Просьба данных покупателя, а реквизиты менеджер уже прислал фотографией (`deals.buyer_scans_at`, 13.11.2026, Тужиков: через
-     * две минуты после «внесём сами» чат попросил его «заполнить данные покупателя»): ход наш — менеджеру ни уведомления, ни
-     * сообщения в чат (`YourTurnNotice`, `Chats\StepAsk`), пока не внесём.
-     */
-    public function heldByPhotos(): bool
-    {
-        return $this->asks === Asks::Buyer && (bool) $this->deal?->buyer_scans_at;
-    }
-
     public function stage(): BelongsTo
     {
         return $this->belongsTo(Stage::class);

@@ -196,10 +196,6 @@ class Deal extends Model
             if ($gap = $this->contractBuyerTask($req)) {
                 return $gap + ['due' => $req->due_at];
             }
-            // «Нет реквизитов», а данные уже есть и не хватает одного (паспорт ИП, банк) — им, а не «Заполните данные» (13.11.2026).
-            if ($req->asks === Asks::Buyer && ($need = $this->buyerNeed())) {
-                return $need + ['due' => $req->due_at];
-            }
             // Поставщик не смог в названное время и предложил своё (11.11.2026, `Signing`) — словами, что выбирать.
             if ($this->signing_slots && Signing::picks($req->stage)) {
                 return ['title' => 'Поставщик предложил другое время для подписания', 'due' => $req->due_at, 'kind' => 'ask'];
@@ -215,7 +211,7 @@ class Deal extends Model
         // Покупатель — с согласия (10.11.2026, владелец: «реквизиты требовать сразу, как взял в работу, а не когда страховая
         // запросила»): шаг ждёт поставщика, а дело менеджера — покупатель (`AskBuyer`, `buyer_asked_at`).
         if ($this->buyer_asked_at) {
-            return ($this->buyerNeed() ?? ['title' => 'Укажите покупателя', 'kind' => 'buyer']) + ['due' => null];
+            return ['title' => 'Укажите покупателя', 'due' => null, 'kind' => 'buyer'];
         }
         // Поставщик готовит договор — когда покупатель сможет подписать, день и время (11.11.2026, `Signing::wishDue`).
         if (Signing::wishDue($this)) {
@@ -603,23 +599,6 @@ class Deal extends Model
             ! $this->contract?->buyer => 'Покупатель не выбран',
             ! $party?->readyForContract() => 'Нет данных покупателя',
             ! $party->readyAsBuyer() => $party->buyerGap() === 'нужен банк ИП' ? 'Нет банка ИП покупателя' : 'Нет скана паспорта покупателя',
-            default => null,
-        };
-    }
-
-    /**
-     * Данные покупателя внесены, а для договора не хватает одного — словами этого (13.11.2026, Тужиков: ИП прислал реквизиты, а
-     * паспорт ИП ему никто не назвал): «Приложите паспорт ИП» / «… покупателя», «Укажите банк ИП». Иначе null.
-     *
-     * @return array{title: string, kind: string}|null
-     */
-    public function buyerNeed(): ?array
-    {
-        $party = $this->contract?->buyer?->party;
-
-        return match ($this->buyerGap()) {
-            'Нет скана паспорта покупателя' => ['title' => $party?->kind === \App\Billing\PartyKind::Entrepreneur ? 'Приложите паспорт ИП' : 'Приложите паспорт покупателя', 'kind' => 'passport'],
-            'Нет банка ИП покупателя' => ['title' => 'Укажите банк ИП', 'kind' => 'buyer'],
             default => null,
         };
     }

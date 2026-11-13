@@ -31,8 +31,7 @@ final class AskBuyer
             $id = $deal->id;
             DB::afterCommit(function () use ($id) {
                 $deal = Deal::with(['buyer', 'offer'])->find($id);
-                // Реквизиты уже прислал фотографией — ход наш, просить нечего (13.11.2026).
-                if ($deal?->buyer_asked_at && $deal->buyer && ! $deal->buyer_scans_at) {
+                if ($deal?->buyer_asked_at && $deal->buyer) {
                     $deal->buyer->notify(new BuyerAskNotice($deal));
                 }
             });
@@ -62,23 +61,6 @@ final class AskBuyer
         }
 
         return $deals;
-    }
-
-    /**
-     * Реквизиты с фото внесли, а покупателю не хватает того, чего на фото не было (13.11.2026: ИП прислал карточку, паспорта
-     * нет): фото больше не у нас, дело менеджера — словами недостающего (`Deal::buyerNeed`: «Приложите паспорт ИП»), ему
-     * важным уведомлением, чтобы не искал, что «заполнить».
-     */
-    public function need(Deal $deal): void
-    {
-        $deal->forceFill(['buyer_scans_at' => null, 'buyer_asked_at' => $deal->buyer_asked_at ?? now()])->save();
-        $id = $deal->id;
-        DB::afterCommit(function () use ($id) {
-            $deal = Deal::with(['buyer', 'offer', 'contract.buyer.party'])->find($id);
-            if ($deal?->buyer && ($need = $deal->buyerNeed())) {
-                $deal->buyer->notify(new BuyerAskNotice($deal, $need['title']));
-            }
-        });
     }
 
     public static function settle(Deal $deal): void

@@ -146,43 +146,6 @@ class ManagerAsksTest extends TestCase
         $this->assertSame('gap:photos', $offer->fresh()->position(Track::Sale)->todo()['key']);
     }
 
-    /**
-     * ИП прислал реквизиты фото до просьбы поставщика (13.11.2026, Тужиков): «Нет реквизитов» менеджеру не пишет ни уведомлением,
-     * ни в чат; внесли реквизиты без паспорта — дело менеджера «Приложите паспорт ИП», паспорт ложится тому же покупателю.
-     */
-    public function test_ip_photos_keep_manager_quiet_then_ask_exact_passport(): void
-    {
-        [$offer, $deal] = $this->deal();
-        $this->exit($offer, 'Беру в работу');
-        $this->actingAs($this->manager)->post("http://xcar.localhost/deals/{$deal->id}/buyer-photos", [
-            'kind' => 'ip', 'part' => 'card', 'files' => [UploadedFile::fake()->image('card.jpg', 800, 600)],
-        ])->assertRedirect();
-        $buyer = DealContract::for($deal->fresh())->buyer;
-        $this->assertSame(\App\Billing\PartyKind::Entrepreneur, $buyer->party->kind);
-
-        $this->exit($offer, 'Поставщик просит реквизиты');
-        $this->assertSame('Нет реквизитов', $offer->fresh()->stage()->name);
-        $requirement = $deal->openRequirement()->firstOrFail();
-        $this->assertFalse(Message::where('requirement_id', $requirement->id)->exists(), 'в чат «заполнить данные» не пишем');
-        Notification::assertNotSentTo($this->manager, \App\Notifications\YourTurnNotice::class, fn ($n) => (fn () => $this->requirement->id)->call($n) === $requirement->id);
-        $this->assertNull($deal->fresh()->managerTask());
-
-        // Внесли реквизиты с фото, паспорта нет — ход менеджера, словами недостающего.
-        $buyer->party->update(['name' => 'Рысьева Анна Игоревна', 'inn' => '781234567890', 'ogrn' => '312784700012345',
-            'reg_address' => 'Санкт-Петербург', 'bank_name' => 'Точка', 'account' => '40802810000000000001', 'bik' => '044525104']);
-        app(\App\Offers\Actions\SaveDealContract::class)(DealContract::for($deal->fresh()), [], $this->admin);
-        $deal = $deal->fresh();
-        $this->assertNull($deal->buyer_scans_at);
-        $this->assertSame('Приложите паспорт ИП', $deal->managerTask()['title']);
-        Notification::assertSentTo($this->manager, \App\Notifications\BuyerAskNotice::class, fn ($n) => $n->label() === 'Приложите паспорт ИП');
-
-        $this->actingAs($this->manager)->post("http://xcar.localhost/deals/{$deal->id}/buyer-photos", [
-            'kind' => 'ip', 'part' => 'passport', 'files' => [UploadedFile::fake()->image('p1.jpg', 800, 600), UploadedFile::fake()->image('p2.jpg', 800, 600)],
-        ])->assertRedirect();
-        $this->assertSame($buyer->id, DealContract::for($deal->fresh())->buyer_user_id, 'тот же покупатель');
-        $this->assertSame(1, User::where('name', \App\Users\Actions\AddPerson::UNNAMED)->count());
-    }
-
     public function test_chat_photo_goes_into_step_files_and_stays_in_chat(): void
     {
         [$offer, $deal] = $this->deal();

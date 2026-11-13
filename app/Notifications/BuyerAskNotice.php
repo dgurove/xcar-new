@@ -11,33 +11,32 @@ use App\Telegram\Text;
  */
 final class BuyerAskNotice extends Notice
 {
-    /** @param  ?string  $need  чего не хватает после внесения фото («Приложите паспорт ИП», `AskBuyer::need`) */
-    public function __construct(private Deal $deal, private ?string $need = null) {}
+    public function __construct(private Deal $deal) {}
 
-    /** Покупателя указали или прислали его реквизиты фотографией раньше, чем дошла очередь, — не шлём. */
+    /** Покупателя указали раньше, чем дошла очередь, — не шлём. */
     public function shouldSend(object $notifiable, string $channel): bool
     {
-        return Deal::whereKey($this->deal->id)->whereNotNull('buyer_asked_at')->whereNull('buyer_scans_at')->exists() && parent::shouldSend($notifiable, $channel);
+        return Deal::whereKey($this->deal->id)->whereNotNull('buyer_asked_at')->exists() && parent::shouldSend($notifiable, $channel);
     }
 
     public function label(): string
     {
-        return $this->need ?? 'Укажите покупателя';
+        return 'Укажите покупателя';
     }
 
     public function title(): string
     {
-        return ($this->need ?? 'Укажите покупателя').' — № '.$this->deal->offer->number;
+        return 'Укажите покупателя — № '.$this->deal->offer->number;
     }
 
     public function text(): ?string
     {
-        return $this->need ? 'Реквизиты с фото внесли' : 'Страховая попросит реквизиты, отправим сразу';
+        return 'Страховая попросит реквизиты, отправим сразу';
     }
 
     public function href(): string
     {
-        return $this->deal->href().($this->need ? '' : '?buyer=1');
+        return $this->deal->href().'?buyer=1';
     }
 
     public function offerNumber(): ?int
@@ -57,9 +56,9 @@ final class BuyerAskNotice extends Notice
 
     public function toTelegram(): ?array
     {
-        return ['title' => ($this->need ?? 'Укажите покупателя').': '.$this->deal->offer->titleWithYear(),
-            'lines' => Text::lines($this->deal->offer, $this->text()),
-            'button' => $this->need ? 'Открыть сделку' : 'Указать покупателя'];
+        return ['title' => 'Укажите покупателя: '.$this->deal->offer->titleWithYear(),
+            'lines' => Text::lines($this->deal->offer, 'Страховая попросит реквизиты, отправим сразу'),
+            'button' => 'Указать покупателя'];
     }
 
     public function speaksRoute(): bool
