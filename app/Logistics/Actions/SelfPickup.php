@@ -26,7 +26,9 @@ final class SelfPickup
     public function __invoke(Offer $offer, User $manager, User $by): ?Transport
     {
         $t = Transport::openFor($offer);
-        if (! $t || ! $t->isPickup() || $t->state->picked()) {
+        // ТС у нас на стоянке — забирают выдачей с парковки, а не «Забрал» (13.11.2026): машина ещё стоит у нас, вывоз не
+        // закрываем и место не двигаем (кнопки «Забрал» при этом нет — `GarageView`, `Handover`).
+        if (! $t || ! $t->isPickup() || $t->state->picked() || $offer->fresh('parkVehicle')->onPark()) {
             return $t;
         }
         if ($t->channel !== null && $t->channel !== Channel::Manager) {

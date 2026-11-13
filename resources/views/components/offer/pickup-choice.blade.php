@@ -15,7 +15,8 @@
     $pick = old('pickup', $byManager ? 'manager' : ($garage ? 'us' : 'later'));
     // ТС стоит на нашей парковке (13.11.2026, владелец: «не хватает варианта „у нас на стоянке“, нам же это известно») — у гаража
     // «Где ТС» третьим вариантом с её названием, отмечен сам; «Везёт в гараж» тогда нет — со стоянки её выдают заявкой парковки.
-    $stored = $offer->parkVehicle?->state === \App\Park\VehicleState::Stored;
+    $stored = $offer->onPark();
+    $coming = $offer->parkVehicle?->state === \App\Park\VehicleState::Expected;
     $shows = $garage ? ! $offer->pickedUp() || $stored : $offer->pickupChoosable();
     $where = old('where', $stored ? 'park' : 'owner');
 @endphp
@@ -30,7 +31,7 @@
             <span class="field-label">Где ТС</span>
             <div class="flex flex-wrap gap-2">
                 <label class="choice"><input type="radio" name="where" value="owner" @checked($where === 'owner')><span>У страховой</span></label>
-                @if ($stored)<label class="choice"><input type="radio" name="where" value="park" @checked($where === 'park')><span class="inline-flex items-center gap-1.5"><x-park.mark/>{{ $offer->parkVehicle->yard?->name ?? 'На нашей стоянке' }}</span></label>@endif
+                @if ($stored)<label class="choice"><input type="radio" name="where" value="park" @checked($where === 'park')><span class="inline-flex items-center gap-1.5"><x-park.mark/>{{ $coming ? 'Едет к нам на стоянку' : ($offer->parkVehicle->yard?->name ?? 'На нашей стоянке') }}</span></label>@endif
                 <label class="choice"><input type="radio" name="where" value="arrived" @checked($where === 'arrived')><span><span class="give-to-manager">{{ $manager?->holdsAsBuyer() ? 'Уже у покупателя' : 'Уже у менеджера' }}</span><span class="give-to-buyer">Уже у покупателя</span><span class="give-to-self">Уже у нас</span></span></label>
             </div>
         </div>

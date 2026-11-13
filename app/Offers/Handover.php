@@ -138,6 +138,9 @@ final class Handover
         $atYard = $vehicle?->state === VehicleState::Stored && $vehicle->yard;
         // Машину ждём на нашей парковке (Альфа везёт к нам, 18.10.2026): забирать её будут оттуда, не у страхователя.
         $toYard = $vehicle?->state === VehicleState::Expected;
+        // Стоит у нас или едет к нам — хоть парковка и не указана (13.11.2026: у ТС 708 `yard_id` пуст, и «Забрал» / «Нужен
+        // вывоз» оставались): забирают выдачей с парковки, вывоза и «Забрал» нет.
+        $parked = $atYard || in_array($vehicle?->state, [VehicleState::Stored, VehicleState::Expected], true);
         // Выдача у поставщика (Каркаде): забирает сам менеджер — шаг «Забрать у поставщика» ждёт его «Забрал».
         $atSupplier = $sale && ! $pickup && $sale->stage->workflow->stages->contains(fn (Stage $s) => in_array('адрес выдачи', self::labels($s), true));
         // Шаг продажи сам просит его «Автомобиль забрал» (Совкомбанк, Т-Страхование) — забирает он, а не мы.
@@ -215,8 +218,8 @@ final class Handover
             carrier: $open && $carried ? self::carrierLine($pickup) : null,
             // Стоит на нашей парковке — выдаёт парковка по пропуску (18.10.2026): ни «Нужен вывоз», ни «Автомобиль забрал» сам.
             // Едет к нам — кнопки остаются: страховая бывает и не довозит, тогда забирают у владельца.
-            canRequest: $open && $picks && ! $atYard && (bool) $pickup?->isOpen() && ! $pickup->taken(),
-            canPick: $open && $picks && ! $atYard && ! $deal->isGarage() && $saleExit === null && (bool) $pickup?->isOpen() && ! $pickup->taken()
+            canRequest: $open && $picks && ! $parked && (bool) $pickup?->isOpen() && ! $pickup->taken(),
+            canPick: $open && $picks && ! $parked && ! $deal->isGarage() && $saleExit === null && (bool) $pickup?->isOpen() && ! $pickup->taken()
                 && $sale && ! self::routePicks($sale->stage),
             keys: $keys,
             park: ($atYard || $toYard) && ! $withBuyer ? $vehicle : null,

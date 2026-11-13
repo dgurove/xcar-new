@@ -131,6 +131,12 @@ final class SyncHandover
         }
     }
 
+    /** Выдали с нашей парковки менеджеру сделки (13.11.2026, `SyncOffer::released`): вывоза нет — шаг получения проходит так. */
+    public function handedFromPark(Deal $deal, User $by): void
+    {
+        $this->pressSale($deal, $by);
+    }
+
     private function pressSale(Deal $deal, User $by): void
     {
         /** @var Offer $offer */

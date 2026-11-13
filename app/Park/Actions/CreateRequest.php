@@ -81,6 +81,13 @@ final class CreateRequest
         });
         // Заявка на выдачу — машина продана; не через нас — её продажа уходит из CRM (`WithdrawSold`, 13.11.2026). После
         // общей транзакции: выдачу заводят и внутри своей (`MarkSold`), откат не должен оставить предложение в архиве.
+        // Заявка на приём — машина едет к нам: вывоз ей не нужен, выдадим по заявке (13.11.2026, `SyncOffer::dropPickup`).
+        if ($type === RequestType::Intake) {
+            DB::afterCommit(function () use ($request, $by) {
+                $offer = $request->vehicle()->withoutGlobalScope(City::SCOPE)->first()?->offer()->first();
+                $offer && \App\Park\Listeners\SyncOffer::dropPickup($offer, $by);
+            });
+        }
         if ($type === RequestType::Release) {
             DB::afterCommit(fn () => ($v = $request->vehicle()->withoutGlobalScope(City::SCOPE)->first()) && app(WithdrawSold::class)($v));
         }

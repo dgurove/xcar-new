@@ -203,17 +203,20 @@ class ParkReleaseByDealTest extends TestCase
         $this->assertNull($vehicle->fresh()->dealPass());
     }
 
-    /** Машину ждём на парковке, а страховая не довезла — сделку это не держит, забрать можно у владельца. */
+    /**
+     * Машину ждём на парковке (заявка на приём) — она едет к нам: вывоза менеджеру не заводится, «Забрал» нет (13.11.2026,
+     * владелец: «зачем задача на вывоз, если тачка у нас на стоянке»), сделку это не держит. Страховая не довезла — приём
+     * отменяют на парковке, и машина снова «у владельца».
+     */
     public function test_expected_car_does_not_block_closing(): void
     {
         [$offer, $deal] = $this->deal(VehicleState::Expected);
         app(\App\Offers\Actions\AssignDealPickup::class)($offer->fresh(), $deal->fresh(), 'manager', $this->admin);
         $this->paid($offer, $deal);
-        // Держит только его собственный вывоз (отметить «Забрал»), а не парковка; кнопка у него есть. Контакт владельца —
-        // только показанный админом из писем страховой (`Disclosure`, 03.11.2026): сам страхователь менеджеру не идёт.
-        $this->assertSame('Сначала отметьте «Автомобиль забрал»', $deal->fresh()->closeBlocker());
+        $this->assertNull(\App\Logistics\Transport::openFor($offer->fresh()));
+        $this->assertNull($deal->fresh()->closeBlocker());
         $h = Handover::for($deal->fresh());
-        $this->assertTrue($h->canPick);
+        $this->assertFalse($h->canPick);
         $this->assertNull($h->name);
     }
 

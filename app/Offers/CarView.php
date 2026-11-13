@@ -303,7 +303,9 @@ final class CarView
             default => null,
         };
         // Вывоз — идёт или был, или его заводят «Вывезти» — у гаражной, у сделки и у вендора, чьи машины вывозим всегда.
-        $pickup = $o->pickup() || (! in_array($o->state, [OfferState::Delivered, OfferState::Cancelled, OfferState::Archived], true)
+        // ТС у нас на стоянке или едет к нам (13.11.2026) — вывоза нет и не будет: дорожки нет, только идущий (старый) вывоз.
+        $pickup = (bool) $o->pickup()?->isOpen() || ($o->pickup() && ! $o->onPark()) || (! $o->onPark()
+            && ! in_array($o->state, [OfferState::Delivered, OfferState::Cancelled, OfferState::Archived], true)
             && ($this->garageView || $deal || $o->vendor?->pickup_on_arrival));
 
         return [

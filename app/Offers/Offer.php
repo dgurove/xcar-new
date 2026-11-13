@@ -637,7 +637,7 @@ class Offer extends Model
     /** Можно ли при принятии подтверждения поручить вывоз менеджеру: ТС ещё у владельца, не у нас на парковке. */
     public function pickupChoosable(): bool
     {
-        return ! $this->pickedUp() && $this->parkVehicle?->state !== VehicleState::Stored
+        return ! $this->pickedUp() && ! $this->onPark()
             && ! in_array($this->state, [OfferState::Delivered, OfferState::Cancelled, OfferState::Archived], true);
     }
 
@@ -1396,7 +1396,14 @@ class Offer extends Model
     }
 
     /** ТС этого предложения ещё ждём на парковке (заявка на приём): метка «Ждём приём». */
-    /** ТС этой машины на нашей парковке — ждёт приёма или стоит (группа «На парковке» в «Без продажной цены»). */
+    /**
+     * ТС этой машины на нашей парковке — ждёт приёма или стоит (группа «На парковке» в «Без продажной цены»). Это же правило
+     * «у нас — выдача, а не вывоз» (13.11.2026, владелец: «зачем задача на вывоз, если тачка у нас на стоянке стоит; покупатель
+     * оплачивает Альфе, Альфа присылает заявку на выдачу, человек у нас со стоянки забирает»): вывоз такой машине не заводится
+     * нигде (`OpenPickup::blocker`, `PARKED`), получение — выдачей с парковки.
+     */
+    public const PARKED = 'ТС на нашей стоянке — выдача по заявке';
+
     public function onPark(): bool
     {
         return in_array($this->parkVehicle?->state, [VehicleState::Expected, VehicleState::Stored], true);

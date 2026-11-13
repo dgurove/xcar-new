@@ -16,7 +16,7 @@
     $t = $offer->pickup();
     $open = $t?->isOpen();
     $canOpen = ! $t?->isOpen() && ! $offer->pickedUp() && ! in_array($offer->state, [OfferState::Delivered, OfferState::Cancelled, OfferState::Archived], true)
-        && $offer->parkVehicle?->state !== \App\Park\VehicleState::Stored;
+        && ! $offer->onPark();
     $sheet = 'pickup-'.$offer->number;
     $keys = $offer->car?->keys_count;
     $manager = (bool) $t?->isSelfPickup();

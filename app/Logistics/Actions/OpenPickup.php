@@ -77,7 +77,8 @@ final class OpenPickup
     {
         return match (true) {
             in_array($offer->state, [OfferState::Delivered, OfferState::Cancelled, OfferState::Archived], true) => 'Предложение '.mb_strtolower($offer->state->label()).', вывоз не нужен',
-            $offer->pickedUp() || $offer->parkVehicle?->state === VehicleState::Stored => 'ТС уже не у владельца',
+            $offer->onPark() => Offer::PARKED,
+            $offer->pickedUp() => 'ТС уже не у владельца',
             default => null,
         };
     }

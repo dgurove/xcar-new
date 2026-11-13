@@ -111,6 +111,10 @@ class CarController
         if ($hold = $car->deal?->isActive() ? $car->deal->pickupHold() : null) {
             return back()->with('toast-danger', 'Забирать рано: '.$hold);
         }
+        // ТС у нас на стоянке (13.11.2026) — забирают выдачей с парковки, гараж двинется сам (`SyncOffer::released`).
+        if ($offer->onPark()) {
+            return back()->with('toast-danger', Offer::PARKED);
+        }
         $self($offer, $request->user(), $request->user());
 
         return back()->with('toast', 'Автомобиль забрал');

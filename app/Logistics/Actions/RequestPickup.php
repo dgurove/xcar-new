@@ -22,6 +22,9 @@ final class RequestPickup
     public function __invoke(Offer $offer, User $by): Transport
     {
         $t = Transport::openFor($offer);
+        if ($offer->onPark()) {
+            throw ValidationException::withMessages(['pickup' => Offer::PARKED]);
+        }
         if ($t?->state->picked()) {
             throw ValidationException::withMessages(['pickup' => 'ТС уже забрали']);
         }

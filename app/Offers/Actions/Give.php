@@ -132,6 +132,10 @@ final class Give
             if ($g->pickup) {
                 ($this->pickup)($offer, $deal->fresh(), $g->pickup, $by, $g->where, $previous, $g->arrivedAt);
             }
+            // ТС у нас на стоянке (13.11.2026): получение — выдачей; гаражной без маршрута `EnterStage` её не заведёт — заводим тут.
+            if ($deal->isGarage() && $offer->fresh('parkVehicle')->onPark()) {
+                app(SyncParkRelease::class)($deal->fresh(['offer']), $by);
+            }
             // Вывоз уже у логиста или водителя — им кому и куда теперь везти (10.11.2026); «Менеджер сам» говорит смена исполнителя.
             self::tellPickupWorkers($offer, $deal, $by);
             // Покупателю с гаражом у Совкомбанка счёт на его цену — сразу (`SyncDealInvoices`): ждать «да» там нечего.

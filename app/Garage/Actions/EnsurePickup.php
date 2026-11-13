@@ -37,7 +37,8 @@ final class EnsurePickup
     {
         $offer = $offer->fresh(['parkVehicle', 'garageCar.manager']);
         $car = $offer->garageCar;
-        if (! $car || $offer->parkVehicle?->state === VehicleState::Stored || $where === 'park') {
+        // ТС у нас на стоянке или едет к нам (`Offer::onPark`) — выдача по заявке, не вывоз (13.11.2026).
+        if (! $car || $offer->onPark() || $where === 'park') {
             return $offer;
         }
         // Без менеджера («взяли под себя») — куда везти, решают при назначении: «к нам» без адреса — не место (18.10.2026).
