@@ -51,6 +51,9 @@ Route::domain(config('xcar.park_host'))->middleware(['auth', 'section:park'])->g
     Route::post('/requests/{req}/intake', [RequestController::class, 'intake']);
     Route::post('/requests/{req}/release', [RequestController::class, 'release']);
     Route::post('/requests/{req}/refuse', [RequestController::class, 'refuse'])->middleware('ability:parkHandles');
+    // Осмотр (13.11.2026): «Осмотрели» закрывает заявку, «Договорились на …» — дата осмотра.
+    Route::post('/requests/{req}/inspected', [RequestController::class, 'inspected']);
+    Route::post('/requests/{req}/plan', [RequestController::class, 'plan']);
     // Стоянка из строки заявки (11.11.2026): шторка «Переставить» / «Указать парковку» / «Парковка приёма» (`x-park.request-place`).
     Route::get('/requests/{req}/place', [RequestController::class, 'place']);
     Route::post('/requests/{req}/place', [RequestController::class, 'savePlace']);
@@ -77,6 +80,8 @@ Route::domain(config('xcar.park_host'))->middleware(['auth', 'section:park'])->g
     Route::post('/cars/{vehicle}/media/{media}/hide', [VehicleController::class, 'hideMedia'])->middleware('ability:isAdmin');
     Route::post('/cars/{vehicle}/media/{media}/rotate', [VehicleController::class, 'rotateMedia'])->middleware('park.manage');
     Route::delete('/cars/{vehicle}/media/{media}', [VehicleController::class, 'destroyMedia'])->middleware('park.manage');
+    // Переименовать документ (13.11.2026, Сергей): всем людям парковки, как добавить; удалить — управляющему.
+    Route::patch('/cars/{vehicle}/media/{media}', [VehicleController::class, 'renameMedia']);
     Route::post('/cars/{vehicle}/note', [VehicleController::class, 'note']);
     // Отчёт о приёме вендору: письмо из формы и «Уже отправили» (12.10.2026).
     // Окно действия (x-park.act-window): шаги приёма, выдачи и письма вендору; приём и выдача без заявки заводят её сами.

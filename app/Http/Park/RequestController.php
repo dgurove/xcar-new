@@ -25,6 +25,7 @@ use App\Park\Actions\SetYard;
 use App\Park\Actions\StoreByLetters;
 use App\Park\Actions\UpdateVehicle;
 use App\Park\City;
+use App\Park\EventType;
 use App\Park\Inspection;
 use App\Park\ReleasedTo;
 use App\Park\Request as ParkRequest;
@@ -35,12 +36,14 @@ use App\Park\VehicleFields;
 use App\Park\VehicleRate;
 use App\Park\VehicleState;
 use App\Park\Yard;
+use App\Support\Ago;
 use App\Support\Detail;
 use App\Support\Docs;
 use App\Support\Facets\Common;
 use App\Support\Facets\Facets;
 use App\Support\ListPrefs;
 use App\Support\ListView;
+use App\Support\Nav;
 use App\Support\Sort;
 use App\Support\Table\ColRole;
 use App\Support\Table\Column;
@@ -429,6 +432,28 @@ class RequestController
         session()->flash('toast', $toast);
 
         return response('<turbo-stream action="refresh"></turbo-stream>')->header('Content-Type', 'text/vnd.turbo-stream.html');
+    }
+
+    /** «Осмотрели»: заявка «Осмотр» (и прочие открытые осмотры той же ТС) — сделано, в истории ТС «Осмотрели». */
+    public function inspected(Request $request, ParkRequest $req)
+    {
+        abort_unless($req->type === RequestType::Inspect && $req->isOpen() && $req->vehicle, 404);
+        ParkRequest::closeOpen($req->vehicle, [RequestType::Inspect], $request->user(), $req);
+        $req->vehicle->log(EventType::Note, $request->user(), ['text' => 'Осмотрели']);
+        Nav::forgetStaffCounts();
+
+        return back(fallback: '/requests?preset=inspect')->with('toast', 'Осмотр отмечен');
+    }
+
+    /** «Договорились на …» у осмотра: дата и время (пусто — снять). */
+    public function plan(Request $request, ParkRequest $req)
+    {
+        abort_unless($req->type === RequestType::Inspect && $req->isOpen(), 404);
+        $at = $request->validate(['planned_at' => ['nullable', 'date']])['planned_at'] ?? null;
+        $req->update(['planned_at' => $at ? Carbon::parse($at)->second(0) : null]);
+        $req->vehicle?->log(EventType::Note, $request->user(), ['text' => $at ? 'Осмотр договорились на '.Ago::at(Carbon::parse($at), true, words: false) : 'Дата осмотра снята']);
+
+        return back(fallback: '/requests?preset=inspect')->with('toast', $at ? 'Дата осмотра записана' : 'Дата осмотра снята');
     }
 
     public function refuse(Request $request, ParkRequest $req, RefuseRelease $refuse)

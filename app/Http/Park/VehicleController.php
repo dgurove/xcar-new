@@ -20,6 +20,7 @@ use App\Mail\Scan\AutoScan;
 use App\Mail\Thread;
 use App\Mail\Threads;
 use App\Media\Actions\RotatePhoto;
+use App\Media\DocName;
 use App\Media\Hidden;
 use App\Media\PhotoBlocks;
 use App\Media\PhotoIngest;
@@ -53,6 +54,7 @@ use App\Park\OutMoney;
 use App\Park\PhotoStage;
 use App\Park\Request as ParkRequest;
 use App\Park\RequestType;
+use App\Park\Stay;
 use App\Park\Tasks;
 use App\Park\Vehicle;
 use App\Park\VehicleExport;
@@ -259,7 +261,7 @@ class VehicleController
         $waiting = Thread::ofCar($vehicle, $request->user())->whereNotNull('needs_reply_at')->pluck('id');
         $asks = $messages->whereIn('thread_id', $waiting)->where('direction', Direction::In)->groupBy('thread_id')->map->last()->sortBy('date_at')->values();
 
-        return view('park.vehicles.detail', \App\Park\Stay::of($vehicle, $request->user()) + [
+        return view('park.vehicles.detail', Stay::of($vehicle, $request->user()) + [
             'asks' => $asks, 'tasks' => Tasks::of([$vehicle->id])[$vehicle->id] ?? [],
             'vehicle' => $vehicle, 'yards' => $yards->pluck('name', 'id'),
             // Свободные места парковок — шторке «Переставить» в карточке (spots_controller); приём и выдача — окном действия.
@@ -307,7 +309,7 @@ class VehicleController
 
         return view('park.vehicles.show', $case + [
             // Полоска срока шапки — тем же расчётом, что в окне «Наличия» (`Park\Stay`, 12.11.2026); долг — уже посчитанный.
-            'stay' => \App\Park\Stay::of($vehicle, $request->user(), $case['debt']),
+            'stay' => Stay::of($vehicle, $request->user(), $case['debt']),
             'window' => preg_match('#^/(mail|cars)/#', $window) ? $window : null,
         ]);
     }
@@ -468,6 +470,19 @@ class VehicleController
         return $photo ? $this->gallery($vehicle, $photo->value) : $this->papers($vehicle);
     }
 
+    /** Переименовать документ ТС (`x-ui.file-rename`, `Media\DocName`): ответ — новое имя, в истории ТС было → стало. */
+    public function renameMedia(Request $request, Vehicle $vehicle, Media $media)
+    {
+        abort_unless($this->owns($vehicle, $media) && $media->collection_name === 'papers', 404);
+        $data = $request->validate(['name' => ['nullable', 'string', 'max:200']]);
+        [$was, $now] = DocName::rename($media, (string) ($data['name'] ?? ''));
+        if ($was !== $now) {
+            $vehicle->log(EventType::Note, $request->user(), ['text' => 'Переименован документ: '.$was.' → '.$now]);
+        }
+
+        return $request->expectsJson() ? response()->json(['name' => $now]) : back()->with('toast', 'Переименовано');
+    }
+
     public function note(Request $request, Vehicle $vehicle)
     {
         $data = $request->validate(['text' => ['required', 'string', 'max:2000']]);
@@ -602,7 +617,7 @@ class VehicleController
     public function rate(Request $request, Vehicle $vehicle, UpdateVehicle $update)
     {
         if ($request->input('mode') === 'total') {
-            abort_unless($vehicle->state === \App\Park\VehicleState::Released, 422);
+            abort_unless($vehicle->state === VehicleState::Released, 422);
             $request->merge(['storage_total' => str_replace([' ', ' ', ','], ['', '', '.'], (string) $request->input('storage_total'))]);
             $data = $request->validate([
                 'storage_total' => ['required', 'numeric', 'min:0', 'max:100000000'],
@@ -610,7 +625,7 @@ class VehicleController
             ], ['storage_total.required' => 'Впишите сумму']);
             $update($vehicle, ['storage_total' => (float) $data['storage_total']] + array_intersect_key($data, ['storage_rate_note' => 1]), $request->user());
 
-            return back()->with('toast', 'Хранение '.\App\Support\Money::rub($vehicle->storage_total));
+            return back()->with('toast', 'Хранение '.Money::rub($vehicle->storage_total));
         }
         $data = VehicleRate::from($request);
         if ($request->input('mode') === 'rate') {

@@ -6,6 +6,8 @@ use App\Mail\Attachment;
 use App\Mail\Extraction\ArchivePhotoExtractor;
 use App\Mail\Extraction\AttachmentClassifier;
 use App\Mail\Message;
+use App\Media\DocName;
+use App\Media\DocumentScan;
 use App\Media\MediaUrl;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
@@ -77,8 +79,11 @@ final class Docs
         // HEIC с айфона Chrome не показывает — сервер отдаёт JPEG (`FileController`, `?jpeg=1`).
         $heic = preg_match('/\.hei[cf]$/i', $m->file_name) === 1 || in_array($m->mime_type, ['image/heic', 'image/heif'], true);
 
-        return ['url' => "/files/{$m->id}", 'type' => self::type($m->mime_type, $m->file_name), 'name' => $m->file_name, 'src' => $heic ? "/files/{$m->id}?jpeg=1" : null,
-            'label' => $m->name ?: self::label($m->file_name)];
+        // Переименованный человеком документ (`Media\DocName`, 13.11.2026) — его имя; иначе как было.
+        $title = $m->getCustomProperty('title') ? DocName::of($m) : null;
+
+        return ['url' => "/files/{$m->id}", 'type' => self::type($m->mime_type, $m->file_name), 'name' => $title ?? $m->file_name, 'src' => $heic ? "/files/{$m->id}?jpeg=1" : null,
+            'label' => $title ? self::label($title) : ($m->name ?: self::label($m->file_name))];
     }
 
     /** @return array<string, mixed> */
@@ -139,7 +144,7 @@ final class Docs
         $docs = [];
         $photos = [];
         $messages = collect($messages);
-        \App\Media\DocumentScan::prime($messages->flatMap(fn ($m) => $m->files())->pluck('blob_sha'));
+        DocumentScan::prime($messages->flatMap(fn ($m) => $m->files())->pluck('blob_sha'));
         foreach ($messages as $m) {
             foreach ($m->files() as $a) {
                 $key = $a->fileKey();

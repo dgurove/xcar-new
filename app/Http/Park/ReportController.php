@@ -14,6 +14,7 @@ use App\Media\PhotosPdf;
 use App\Park\Actions\MarkReportSent;
 use App\Park\IntakeReport;
 use App\Park\Jobs\BuildIntakeReport;
+use App\Park\PhotoStage;
 use App\Park\Report;
 use App\Park\ReportDoc;
 use App\Park\Vehicle;
@@ -105,8 +106,11 @@ class ReportController
                 ? (trim((string) preg_replace('/[^\p{L}\p{N}._ -]+/u', '_', pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME))) ?: 'dokument')
                 : $kind->value;
             $adder = $path !== $file->getRealPath() ? $vehicle->addMedia($path) : $vehicle->addMedia($file);
+            // Имя для людей (13.11.2026, Сергей: «5456269815564673091.jp» — имя из мессенджера): у слота — его подпись
+            // («СТС», «СТС 2»), в «Прочем» — имя файла. Снимок «Снять» — страница будущего PDF, ему имя не нужно.
+            $title = ! empty($data['scan']) ? null : ($kind === ReportDoc::Other ? $base : self::slotTitle($vehicle, $kind));
             $m = $adder->usingFileName(mb_substr($base, 0, 120).'-'.uniqid().'.'.$ext)
-                ->withCustomProperties(array_filter(['report_doc' => $kind->value, 'source' => 'app', 'scan' => $data['scan'] ?? null, 'page' => $data['page'] ?? null], fn ($v) => $v !== null))
+                ->withCustomProperties(array_filter(['report_doc' => $kind->value, 'source' => 'app', 'scan' => $data['scan'] ?? null, 'page' => $data['page'] ?? null, 'title' => $title], fn ($v) => $v !== null))
                 ->toMediaCollection('papers');
         } catch (HttpException $e) {
             throw $e;
@@ -114,7 +118,18 @@ class ReportController
             return response()->json(['message' => 'Файл не сохранился: '.$e->getMessage()], 422);
         }
 
-        return response()->json(['id' => $m->id]);
+        // Документ — строкой слота (`x-park.report-file`), как PDF из фото; снимок «Снять» — чипом страницы в браузере.
+        return response()->json(['id' => $m->id] + (empty($data['scan'])
+            ? ['html' => view('components.park.report-file', ['doc' => $m, 'kind' => $kind->value, 'pick' => $kind === ReportDoc::Other, 'checked' => true, 'vehicle' => $vehicle])->render()]
+            : []));
+    }
+
+    /** «СТС», второй такой же — «СТС 2»: подпись слота с номером, если в слоте уже есть документы. */
+    private static function slotTitle(Vehicle $vehicle, ReportDoc $kind): string
+    {
+        $n = $vehicle->getMedia('papers')->filter(fn ($m) => $m->getCustomProperty('report_doc') === $kind->value && ! $m->getCustomProperty('scan'))->count();
+
+        return $n ? $kind->label().' '.($n + 1) : $kind->label();
     }
 
     /**
@@ -144,8 +159,8 @@ class ReportController
         }
 
         return response()->json(['id' => $m->id, 'name' => $made['name'], 'label' => $made['label'], 'pages' => $made['pages']] + ($stage
-            ? ['stream' => view('park.vehicles.papers-stream', ['vehicle' => $vehicle->fresh(), 'stage' => \App\Park\PhotoStage::from($stage)])->render()]
-            : ['html' => view('components.park.report-file', ['doc' => $m, 'kind' => $kind->value])->render()]));
+            ? ['stream' => view('park.vehicles.papers-stream', ['vehicle' => $vehicle->fresh(), 'stage' => PhotoStage::from($stage)])->render()]
+            : ['html' => view('components.park.report-file', ['doc' => $m, 'kind' => $kind->value, 'vehicle' => $vehicle])->render()]));
     }
 
     /**

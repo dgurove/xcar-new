@@ -5,6 +5,7 @@ namespace App\Http\Admin;
 use App\Mail\Extraction\ArchivePhotoExtractor;
 use App\Media\Actions\RotatePhoto;
 use App\Media\Actions\UnmarkPhoto;
+use App\Media\DocName;
 use App\Media\ForManagers;
 use App\Media\Hidden;
 use App\Media\PdfPhotos;
@@ -17,6 +18,7 @@ use App\Offers\Jobs\ImportMigtorgLot;
 use App\Offers\Jobs\ImportOfferArchive;
 use App\Offers\Migtorg;
 use App\Offers\Offer;
+use App\Offers\OfferEventType;
 use App\Park\PhotoStage;
 use App\Park\Sale;
 use Illuminate\Http\Request;
@@ -255,6 +257,20 @@ class OfferPhotoController
         $media->delete();
 
         return $this->gallery($offer->refresh());
+    }
+
+    /** Переименовать документ предложения (`x-ui.file-rename`, `Media\DocName`); документ парковки — на парковке. */
+    public function rename(Request $request, Offer $offer, Media $media)
+    {
+        $this->own($offer, $media);
+        abort_if($media->collection_name !== 'papers' || Sale::parkOwned($media), 403);
+        $data = $request->validate(['name' => ['nullable', 'string', 'max:200']]);
+        [$was, $now] = DocName::rename($media, (string) ($data['name'] ?? ''));
+        if ($was !== $now) {
+            $offer->log(OfferEventType::Note, $request->user(), ['text' => 'Переименован документ: '.$was.' → '.$now]);
+        }
+
+        return $request->expectsJson() ? response()->json(['name' => $now]) : back()->with('toast', 'Переименовано');
     }
 
     /** Кадр по содержимому: картинка или HEIC (его mime бывает любым). */

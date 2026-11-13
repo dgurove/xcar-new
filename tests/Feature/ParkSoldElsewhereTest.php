@@ -91,6 +91,21 @@ class ParkSoldElsewhereTest extends TestCase
         $this->assertFalse(Sale::soldElsewhere($this->vehicle->fresh()));
     }
 
+    /** Письмо «покупатель хочет осмотреть» по стоящей ТС — заявка «Осмотр», одна на ТС; «Осмотрели» её закрывает. */
+    public function test_inspect_letter_opens_one_inspect_request(): void
+    {
+        $letter = new \App\Mail\Message(['intent' => \App\Mail\Extraction\Intent::Inspect->value, 'direction' => \App\Mail\Direction::In,
+            'from_email' => 'buyer@example.ru', 'from_name' => 'Покупатель', 'date_at' => now()]);
+        $first = app(\App\Park\Actions\InspectByLetter::class)($this->vehicle, $letter);
+        $again = app(\App\Park\Actions\InspectByLetter::class)($this->vehicle->fresh(), $letter);
+
+        $this->assertNotNull($first);
+        $this->assertSame($first->id, $again->id);
+        $this->assertSame(RequestType::Inspect, $first->type);
+        \App\Park\Request::closeOpen($this->vehicle, [RequestType::Inspect], User::create(['name' => 'Сергей', 'phone' => '79000000003', 'roles' => [Role::Parking], 'approved_at' => now()]), $first);
+        $this->assertFalse($first->fresh()->isOpen());
+    }
+
     public function test_sold_vehicle_does_not_go_on_sale(): void
     {
         app(CreateRequest::class)(null, RequestType::Release, $this->vehicle, []);

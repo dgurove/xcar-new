@@ -131,6 +131,7 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
         Route::post('/offers/{offer}/media/{media}/mark', [OfferPhotoController::class, 'unmark']);
         Route::post('/offers/{offer}/media/{media}/learn', [OfferPhotoController::class, 'learn']);
         Route::delete('/offers/{offer}/media/{media}', [OfferPhotoController::class, 'destroy']);
+        Route::patch('/offers/{offer}/media/{media}', [OfferPhotoController::class, 'rename']);
     });
     Route::prefix('work/mail')->middleware('ability:canCrmMail')->group(function () {
         Route::get('/', [MailController::class, 'index']);

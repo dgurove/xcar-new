@@ -75,13 +75,13 @@
                             </label>
                             <div class="flex w-full flex-wrap gap-2 empty:hidden" data-chips>
                                 @foreach ($docs as $doc)
-                                    @if ($doc->getCustomProperty('title'))
-                                        <x-park.report-file :doc="$doc" :kind="$kind"/>
-                                        @continue
+                                    {{-- Снимок «Снять», что ещё не ушёл (PDF из него собирает отправка), — «снимок N» со своим выбором; остальное —
+                                         строкой документа: PDF из фото, файл, снимок «Файлом» (13.11.2026, Сергей: были обрезанные чипы). --}}
+                                    @if ($scan = $doc->getCustomProperty('scan'))
+                                        <label class="choice report-chip" data-scan="{{ $scan }}"><input type="checkbox" name="docs[{{ $kind }}][]" value="{{ $doc->id }}" @checked($k !== ReportDoc::Other) data-action="report#count" data-report-target="doc"><span class="max-w-[10rem] truncate">снимок {{ (int) $doc->getCustomProperty('page') + 1 }}</span></label>
+                                    @else
+                                        <x-park.report-file :doc="$doc" :kind="$kind" :pick="$k === ReportDoc::Other && ! $doc->getCustomProperty('title')" :vehicle="$vehicle"/>
                                     @endif
-                                    {{-- Снимок «Снять», что ещё не ушёл (PDF из него собирает отправка), — «снимок N» со своим выбором; файл — без хвоста-номера. --}}
-                                    @php $scan = $doc->getCustomProperty('scan'); @endphp
-                                    <label class="choice report-chip" @if ($scan) data-scan="{{ $scan }}" @endif><input type="checkbox" name="docs[{{ $kind }}][]" value="{{ $doc->id }}" @checked($k !== ReportDoc::Other) data-action="report#count" data-report-target="doc"><span class="max-w-[10rem] truncate">{{ $scan ? 'снимок '.((int) $doc->getCustomProperty('page') + 1) : preg_replace('/-[a-z0-9]{13}(\.[^.]+)$/i', '$1', $doc->file_name) }}</span></label>
                                 @endforeach
                             </div>
                         </div>

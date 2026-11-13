@@ -290,6 +290,10 @@
                         </form>
                     @endif
                 @endif
+                {{-- Запросили осмотр по телефону — заявка «Осмотр» руками (13.11.2026); из письма она заводится сама. --}}
+                @if ($state === VehicleState::Stored && ! $vehicle->requests->contains(fn ($r) => $r->type === \App\Park\RequestType::Inspect && $r->isOpen()))
+                    <form method="post" action="/requests">@csrf<input type="hidden" name="type" value="inspect"><input type="hidden" name="vehicle_id" value="{{ $vehicle->id }}"><x-ui.button variant="secondary" block>Запросили осмотр</x-ui.button></form>
+                @endif
                 {{-- Логистика (10.10.2026): перевод в другой город и любая перевозка ТС — перевозкой на logistics.xcar.ru; идущая — в шапке. --}}
                 @if (! $transport && $canManage && in_array($state, [VehicleState::Stored, VehicleState::Expected], true))
                     <x-ui.button type="button" variant="secondary" block data-controller="emit" data-action="emit#send" data-emit-event-param="logistics:open">В логистику</x-ui.button>

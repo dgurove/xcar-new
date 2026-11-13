@@ -5,8 +5,8 @@ namespace App\Mail;
 use App\Live\Publisher;
 use App\Live\Topics;
 use App\Mail\Actions\LinkThread;
-use App\Mail\Actions\SettleServiceLetter;
 use App\Mail\Actions\MarkThreadRead;
+use App\Mail\Actions\SettleServiceLetter;
 use App\Mail\Chains\ChainBuilder;
 use App\Mail\Events\MessageFailed;
 use App\Mail\Events\MessageParsed;
@@ -25,6 +25,7 @@ use App\Offers\Listeners\OnInsurerReply;
 use App\Offers\Offer;
 use App\Offers\OfferEventType;
 use App\Park\Actions\AcceptByLetters;
+use App\Park\Actions\InspectByLetter;
 use App\Park\Actions\MarkSold;
 use App\Park\Actions\ReleaseByLetters;
 use App\Park\Actions\ReportByLetters;
@@ -136,6 +137,10 @@ final class OnMessage
                 ($this->sold)($vehicle, null, $message->date_at ?? now(), $sold['name'], $sold['phone'], $message, $sold['free_until']);
             } elseif (! Intent::silent($message->intent)) {
                 LetterArrived::dispatch($vehicle, $message);
+                // Запрос осмотра стоящей ТС — заявка «Осмотр» (13.11.2026, вкладка в «Заявках»).
+                if ($message->account->scope === Scope::Park && $message->intent === Intent::Inspect->value) {
+                    app(InspectByLetter::class)($vehicle, $message);
+                }
                 // Страховая продала машину, по которой у нас живой пропуск сделки (18.10.2026): продажу сделки письмо не
                 // перетирает — но людям решать, кому отдавать: парковке громко (управляющим и администраторам), в CRM — строкой
                 // в истории предложения.

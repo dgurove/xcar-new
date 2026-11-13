@@ -49,7 +49,10 @@
                 default => null,
             };
         @endphp
-        @if ($foot)
+        @if ($task && $task->type === \App\Park\RequestType::Inspect && $task->isOpen())
+            {{-- Осмотр (13.11.2026): главная кнопка — «Осмотрели», заявка закрыта. --}}
+            <x-slot:foot><x-ui.detail-action><form method="post" action="/requests/{{ $task->id }}/inspected" data-turbo-frame="_top" class="w-full">@csrf<button class="btn btn-accent w-full">Осмотрели</button></form></x-ui.detail-action></x-slot:foot>
+        @elseif ($foot)
             <x-slot:foot><x-ui.detail-action><x-park.act-button :vehicle="$vehicle" :step="$foot[0]" :label="$foot[1]" :advance="$advance" class="w-full"/></x-ui.detail-action></x-slot:foot>
         @elseif ($releaseReport)
             <x-slot:foot><x-ui.detail-action><x-mail.window-button :url="$releaseReportUrl" label="Отправить акт выдачи" icon="mail" class="btn-accent w-full"/></x-ui.detail-action></x-slot:foot>

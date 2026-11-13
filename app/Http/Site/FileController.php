@@ -7,6 +7,7 @@ use App\Cars\Car;
 use App\Logistics\FileAccess;
 use App\Logistics\Transport;
 use App\Logistics\TransportState;
+use App\Media\DocName;
 use App\Media\ForManagers;
 use App\Media\PhotoIngest;
 use App\Media\Thumb;
@@ -65,7 +66,7 @@ final class FileController
             // пересылают тому, кто платит (10.11.2026).
             'Content-Disposition' => ($inline ? 'inline' : 'attachment')."; filename*=UTF-8''".rawurlencode($media->getCustomProperty('supplier_invoice') && $media->name
                 ? $media->name.'.'.pathinfo($media->file_name, PATHINFO_EXTENSION)
-                : (Surface::current() === Surface::Site ? InternalRefs::fileName($media->file_name, InternalRefs::refsOf($media->model)) : $media->file_name)),
+                : (Surface::current() === Surface::Site ? InternalRefs::fileName(DocName::of($media), InternalRefs::refsOf($media->model)) : DocName::of($media))),
             'X-Content-Type-Options' => 'nosniff',
             'Cache-Control' => 'private, max-age=86400',
         ]);

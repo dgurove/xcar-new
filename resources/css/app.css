@@ -131,6 +131,7 @@
   /* Тип заявки парковки (30.10.2026, владелец): приём — голубой Telegram, выдача — бордовый. */
   --color-req-intake: #229ed9;
   --color-req-release: #9b2c4a;
+  --color-req-inspect: #b8650a;
 
   --radius-s: 8px;
   --radius-m: 12px;
@@ -272,6 +273,7 @@ html.kb-open { --home-gap: 0px; }
   --color-closed-soft: #3a3a3c;
   --color-danger-soft: #45101b;
   --color-req-release: #d0587a;
+  --color-req-inspect: #f0a54a;
   --color-warn: #fcd34d;
   --color-warn-soft: #3f2606;
   --shadow-drop: 0 0 1px 0 rgb(0 0 0 / .5), 0 2px 6px 0 rgb(0 0 0 / .5),
@@ -2406,6 +2408,7 @@ html.kb-open { --home-gap: 0px; }
   .req-type { display: inline-flex; align-items: center; gap: .375rem; white-space: nowrap; color: var(--req); }
   .req-type--intake { --req: var(--color-req-intake); }
   .req-type--release { --req: var(--color-req-release); }
+  .req-type--inspect { --req: var(--color-req-inspect); }
   .req-type-mark { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; width: 1.25rem; height: 1.25rem; border-radius: 999px; background: color-mix(in oklab, var(--req) 16%, transparent); }
   .req-type-mark > svg { width: .75rem; height: .75rem; }
   .cell-title > .req-type { margin-right: .375rem; align-self: center; }
@@ -2885,6 +2888,19 @@ html.kb-open { --home-gap: 0px; }
   .report-shot.is-failed > img { opacity: .35; }
   .report-shot.is-failed::before { content: 'повторить'; position: absolute; inset: auto 0 0 0; padding: .125rem; background: var(--color-danger); color: #fff; font-size: var(--text-xs); text-align: center; }
   .report-chip { position: relative; overflow: hidden; }
+  /* Строка документа отчёта, пока грузится и при сбое (13.11.2026): полоса хода снизу, красное имя и «×» — как у чипа. */
+  .report-file.is-uploading, .report-file.is-failed { position: relative; overflow: hidden; }
+  .report-file.is-uploading { opacity: .7; }
+  .report-file.is-uploading::after { content: ''; position: absolute; left: 0; bottom: 0; height: 3px; width: calc(var(--p, 0) * 100%); background: var(--color-accent); transition: width .2s; }
+  .report-file.is-failed { color: var(--color-danger); cursor: pointer; }
+  .report-file .report-drop { position: static; flex: none; width: 1.5rem; height: 1.5rem; }
+  /* «Прочее»: прикладывать ли — круглой галкой слева от действий. */
+  .report-pick { position: relative; display: grid; place-items: center; flex: none; width: 1.5rem; height: 1.5rem; cursor: pointer; }
+  .report-pick-box { appearance: none; position: absolute; inset: 0; margin: 0; border-radius: 999px; box-shadow: inset 0 0 0 2px var(--color-line); cursor: pointer; }
+  .report-pick-box:checked { background: var(--color-accent); box-shadow: none; }
+  .report-pick-icon { position: relative; pointer-events: none; color: transparent; }
+  .report-pick-box:checked + .report-pick-icon { color: #fff; }
+  .file-rename-input { min-width: 0; flex: 1 1 auto; height: 2rem; }
   .report-chip.is-failed { color: var(--color-danger); cursor: pointer; }
   .report-drop { position: absolute; top: .125rem; right: .125rem; display: grid; place-items: center; width: 1.5rem; height: 1.5rem; border-radius: 999px; background: var(--color-danger); color: #fff; font-size: var(--text-base); line-height: 1; }
   .report-chip .report-drop { position: static; width: 1.25rem; height: 1.25rem; }

@@ -88,19 +88,43 @@ export default class extends Controller {
         this.count();
     }
 
-    // «Файл» — каждый своим документом.
+    // «Файл» — каждый своим документом: строкой, как PDF из фото (13.11.2026, Сергей: снимки висели обрезанными чипами
+    // «5456269815564673091.jp»). Пока грузится — заготовка строки с подписью слота, готово — строка с сервера.
     files(e) {
         const files = [...e.target.files];
         e.target.value = '';
-        files.forEach((file) => this.doc(e.target, file, file.name, {}));
+        const slot = e.target.closest('[data-report-target="slot"]');
+        const title = slot.dataset.kind === 'other' ? null : slot.querySelector(':scope > span')?.textContent.trim();
+        files.forEach((file) => this.doc(e.target, file, title || file.name, {}));
     }
 
     doc(input, file, label, extra) {
         const slot = input.closest('[data-report-target="slot"]');
         const kind = slot.dataset.kind;
+        if (extra.scan) { this.page(slot, kind, file, label, extra); return; }
+        const row = document.createElement('div');
+        row.className = 'file-row report-file is-uploading';
+        const icon = Object.assign(document.createElement('span'), { className: 'file-icon' });
+        if (file.type.startsWith('image/')) icon.append(Object.assign(document.createElement('img'), { src: URL.createObjectURL(file), alt: '' }));
+        else icon.textContent = (file.name.split('.').pop() || '?').slice(0, 4).toLowerCase();
+        row.append(icon, Object.assign(document.createElement('span'), { className: 'min-w-0 flex-1 truncate', textContent: label }));
+        slot.querySelector('[data-chips]').append(row);
+        this.enqueue({
+            file, kind, extra, node: row,
+            done: (id, answer) => {
+                if (answer?.html) { row.insertAdjacentHTML('afterend', answer.html); row.remove(); return; }
+                const box = Object.assign(document.createElement('input'), { type: 'checkbox', name: `docs[${kind}][]`, value: id, checked: true, className: 'sr-only' });
+                box.dataset.reportTarget = 'doc';
+                row.append(box);
+            },
+        });
+    }
+
+    // Снимок «Снять» — страница будущего PDF: чипом «снимок N» со своим выбором.
+    page(slot, kind, file, label, extra) {
         const chip = document.createElement('label');
         chip.className = 'choice report-chip is-uploading';
-        if (extra.scan) chip.dataset.scan = extra.scan;
+        chip.dataset.scan = extra.scan;
         chip.append(Object.assign(document.createElement('span'), { className: 'max-w-[10rem] truncate', textContent: label }));
         slot.querySelector('[data-chips]').append(chip);
         this.enqueue({
@@ -145,7 +169,7 @@ export default class extends Controller {
             if (!r || !r.ok || !answer?.id) throw new Error(answer?.message || (r ? 'Не загрузилось' : 'Нет связи'));
             node.classList.remove('is-uploading');
             node.style.removeProperty('--p');
-            job.done(answer.id);
+            job.done(answer.id, answer);
         } catch (e) {
             node.classList.remove('is-uploading');
             node.classList.add('is-failed');
