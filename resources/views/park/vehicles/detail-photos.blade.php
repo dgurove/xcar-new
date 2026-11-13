@@ -3,9 +3,9 @@
      добавляют и удаляют — в деле ТС. Просмотр листает все блоки подряд (группа). Подписи — когда блоков больше одного. --}}
 @php $blocks = \App\Media\PhotoBlocks::of($vehicle->photos()); $admin = auth()->user()->isAdmin(); @endphp
 <div id="detail-photos" class="photo-blocks">
-    @foreach ($blocks as $i => ['stage' => $stage, 'photos' => $photos])
+    @foreach ($blocks as $i => ['stage' => $stage, 'photos' => $photos, 'when' => $when])
         <div class="photo-block" data-controller="photos" data-photos-url-value="/cars/{{ $vehicle->id }}/media" data-photos-stage-value="{{ $stage->value }}" data-photos-group-value="car-{{ $vehicle->id }}" data-photos-order="{{ $i }}">
-            <div class="photos-over"><x-ui.photos-expand :title="count($blocks) > 1 ? $stage->label() : null"/>@if ($admin)<x-ui.photos-all/>@endif</div>
+            <div class="photos-over"><x-ui.photos-expand :title="count($blocks) > 1 ? $stage->label() : null" :when="$when"/>@if ($admin)<x-ui.photos-all/>@endif</div>
             <x-ui.photos :photos="$photos" :add="false" :deletable="false" :hide="$admin" :rotatable="auth()->user()->canManagePark()" :main="false" :id="'detail-photos-'.$stage->value"/>
         </div>
     @endforeach

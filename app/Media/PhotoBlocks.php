@@ -3,6 +3,8 @@
 namespace App\Media;
 
 use App\Park\PhotoStage;
+use App\Support\Ago;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
@@ -15,8 +17,11 @@ use Spatie\MediaLibrary\MediaCollections\Models\Media;
 final class PhotoBlocks
 {
     /**
+     * `when` — день, в который загружено больше всего кадров блока (13.11.2026, начальник: «Фото от страховой 10.11»,
+     * «Фото при приёме 12.11»); поровну — более поздний; пустой блок — null.
+     *
      * @param  list<PhotoStage>  $always  блоки, что стоят и пустыми (куда добавляют: `PhotoStage::addable`)
-     * @return list<array{stage: PhotoStage, photos: Collection<int, Media>}>
+     * @return list<array{stage: PhotoStage, photos: Collection<int, Media>, when: ?string}>
      */
     public static function of(Collection $photos, array $always = []): array
     {
@@ -24,11 +29,25 @@ final class PhotoBlocks
         foreach (PhotoStage::cases() as $stage) {
             $own = $photos->filter(fn (Media $m) => PhotoStage::of($m) === $stage)->values();
             if ($own->isNotEmpty() || in_array($stage, $always, true)) {
-                $blocks[] = ['stage' => $stage, 'photos' => $own];
+                $blocks[] = ['stage' => $stage, 'photos' => $own, 'when' => self::day($own)];
             }
         }
 
-        return $blocks ?: [['stage' => PhotoStage::Vendor, 'photos' => collect()]];
+        return $blocks ?: [['stage' => PhotoStage::Vendor, 'photos' => collect(), 'when' => null]];
+    }
+
+    /** «10.11» — день большинства кадров (`Ago::day`, в другом году с годом). */
+    public static function day(Collection $photos): ?string
+    {
+        $days = $photos->filter(fn (Media $m) => $m->created_at)
+            ->countBy(fn (Media $m) => $m->created_at->copy()->timezone(config('app.timezone'))->toDateString());
+        if ($days->isEmpty()) {
+            return null;
+        }
+        $top = $days->max();
+        $day = $days->filter(fn (int $n) => $n === $top)->keys()->sortDesc()->first();
+
+        return Ago::day(Carbon::parse($day));
     }
 
     /**

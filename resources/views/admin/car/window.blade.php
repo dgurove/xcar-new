@@ -25,9 +25,13 @@
         <x-slot:badge>@if ($offer->auctionPlanned())<x-offer.auction/>@endif{{ "" }}@if ($admin && $offer->awaitingPark())<x-offer.awaiting/>@endif<x-car.keys :count="$offer->keys_count"/><x-ui.links :offer="$offer"/><x-offer.margin :m="$offer->marginMark()"/></x-slot:badge>
         <x-slot:media>@include('admin.offers.detail-photos')</x-slot:media>
         {{-- Где машина — мелким текстом рядом с кодами, не плашкой (12.11.2026, владелец: «возле тегов так же мелко, даже не в
-             теге, а просто текстом»). --}}
-        @php $where = implode(', ', array_filter([$offer->settlement?->title(), $offer->car_place ? ($offer->settlement ? mb_strtolower($offer->car_place->label()) : $offer->car_place->label()) : null])); @endphp
-        <x-slot:marks><x-car.codes :offer="$offer"/>@if ($where !== '')<span class="detail-place"><x-ui.icon name="map-pin" class="size-4 shrink-0"/>{{ $where }}</span>@endif</x-slot:marks>
+             теге, а просто текстом»). На нашей парковке — какой: знак «P» и название (13.11.2026, начальник: «Санкт-Петербург,
+             78, [P] Краснопутиловская»). --}}
+        @php
+            $yard = $offer->car_place === \App\Offers\CarPlace::Ours ? $offer->parkVehicle?->yard : null;
+            $where = implode(', ', array_filter([$offer->settlement?->title(), $yard ? null : ($offer->car_place ? ($offer->settlement ? mb_strtolower($offer->car_place->label()) : $offer->car_place->label()) : null)]));
+        @endphp
+        <x-slot:marks><x-car.codes :offer="$offer"/>@if ($where !== '' || $yard)<span class="detail-place"><x-ui.icon name="map-pin" class="size-4 shrink-0"/>{{ $where }}@if ($yard){{ $where !== '' ? ',' : '' }} <x-park.mark/>{{ $yard->name }}@endif</span>@endif</x-slot:marks>
         {{-- Строка цены (12.11.2026): слева главное число, справа срок обязывающего — дата и время (начальник). --}}
         @if ($aside || \App\Offers\Binding::matters($offer))
             <x-slot:aside>

@@ -642,7 +642,8 @@ class OfferController
                 ? new Column('floor', 'Закупочная', num: true, sort: 'floor', cell: 'nums', rem: 5.5)
                 : new Column('floor', 'Закупочная', from: 'sm', num: true, aside: true, sort: 'floor', cell: 'nums', rem: 5.5)),
             $has('price') ? new Column('price', 'Цена', num: true, sort: 'price', cell: 'nums', rem: 6) : null,
-            $when ? new Column('when', $when[1], from: 'sm', aside: true, sort: $when[0], cell: 'nums whitespace-nowrap', role: ColRole::When, rem: $when[2]) : null,
+            // Дата — и при открытом окне (13.11.2026, начальник: «Во вкладке» пропадало); не влезает — уходит последней (`Table::DROP`).
+            $when ? new Column('when', $when[1], from: 'sm', sort: $when[0], cell: 'nums whitespace-nowrap', role: ColRole::When, rem: $when[2]) : null,
         ], ['mixed' => $all, 'when' => $when[0] ?? null, 'floorSide' => $floorSide]);
     }
 
