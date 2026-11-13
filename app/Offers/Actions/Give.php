@@ -91,7 +91,10 @@ final class Give
             // Отдаём другому: прежняя сделка отменяется, прежний победитель узнаёт об этом.
             $previous = $offer->deal()->with('bid')->first();
             if ($previous) {
-                ($this->cancelDeal)($previous, $by);
+                // Гаражную меняют тому же менеджеру (плательщик, доля — «Изменить гараж», 13.11.2026): его вывоз и место в гараже
+                // остаются — машину не отбирают (было: вывоз Сергея Николаева отменился «Сделка отменена»).
+                $same = $previous->isGarage() && $garage && $manager && $previous->buyer_id === $manager->id;
+                ($this->cancelDeal)($previous, $by, keepCar: $same, keepPickup: $same, same: $same);
                 if ($previous->bid) {
                     BidDeclined::dispatch($previous->bid->refresh(), $by);
                 }

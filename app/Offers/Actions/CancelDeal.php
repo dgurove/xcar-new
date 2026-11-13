@@ -33,9 +33,10 @@ final class CancelDeal
      * $keepCar — машину из гаража уберёт вызывающий сам («Отдали по ошибке», `ReturnFromGarage`); $keepBid — подтверждение
      * победителя снова ждёт среди прочих (12.10.2026, владелец: «отменяешь сделку и возвращаешь в продажу — пусть
      * подтверждение менеджера остаётся», `ReturnToSale`); $keepPickup — вывоз, заказанный под сделку, не отменяется
-     * (12.11.2026, владелец: «чтобы пока был вывоз — она продавалась», `ReturnToSale`).
+     * (12.11.2026, владелец: «чтобы пока был вывоз — она продавалась», `ReturnToSale`); $same — гаражную меняют тому же
+     * менеджеру («Изменить гараж», 13.11.2026): машина, вывоз и его исполнитель остаются.
      */
-    public function __invoke(Deal $deal, ?User $by = null, bool $keepCar = false, bool $keepBid = false, bool $keepPickup = false): Deal
+    public function __invoke(Deal $deal, ?User $by = null, bool $keepCar = false, bool $keepBid = false, bool $keepPickup = false, bool $same = false): Deal
     {
         // Машина гаражной уже у менеджера или по ней есть расходы — молча её не снять (владелец 06.10.2026): разбираемся
         // руками, сделка остаётся.
@@ -63,7 +64,8 @@ final class CancelDeal
         $offer = $deal->offer;
         $open = $offer ? Transport::openFor($offer) : null;
         if ($open && ! $open->taken()) {
-            if ($open->channel === Channel::Manager && $open->executor_id === $deal->buyer_id) {
+            // «Изменить гараж» тому же менеджеру (`$same`, 13.11.2026) — его вывоз остаётся за ним.
+            if ($open->channel === Channel::Manager && $open->executor_id === $deal->buyer_id && ! $same) {
                 app(AssignExecutor::class)->release($open, $by);
             }
             if ($car && ! $keepCar && $open->destination === Point::Keeper) {

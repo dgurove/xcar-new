@@ -65,6 +65,16 @@ class GaragePayerSwitchTest extends TestCase
         $take('Поставщик согласовал', Actor::Staff, $admin);
         $take('Забираю в гараж', Actor::Manager, $manager);
         $this->assertSame('Оформляем на нас', $offer->fresh()->stage()->block->name);
+        // Письмо «подтверждаем актуальность» на гаражном шаге ушло; вывоз — сам менеджер.
+        $account = \Illuminate\Support\Facades\DB::table('mail_accounts')->insertGetId(['slug' => 'sales', 'title' => 'sales', 'email' => 'sales@xcar.ru', 'scope' => 'sales',
+            'imap_host' => 'x', 'imap_username' => 'x', 'imap_password' => 'x', 'smtp_host' => 'x', 'smtp_username' => 'x', 'smtp_password' => 'x']);
+        $thread = \App\Mail\Thread::create(['account_id' => $account, 'subject' => 'Z', 'offer_id' => $offer->id]);
+        $sent = \App\Mail\Message::create(['account_id' => $account, 'thread_id' => $thread->id, 'direction' => 'out', 'from_email' => 'sales@xcar.ru',
+            'subject' => 'RE: Z', 'text_body' => 'Подтверждаем актуальность', 'date_at' => now()]);
+        $offer->fresh()->log(\App\Offers\OfferEventType::SupplierLetter, $admin, ['letter' => $sent->id]);
+        app(\App\Garage\Actions\EnsurePickup::class)($offer->fresh(), $admin, $manager);
+        $pickup = \App\Logistics\Transport::openFor($offer->fresh());
+        $this->assertSame($manager->id, $pickup->executor_id);
 
         $deal = app(Give::class)(new Giving($offer->fresh(), $manager, garage: true, scheme: DealScheme::Insurer, payer: GaragePayer::Manager), $admin);
 
@@ -72,11 +82,14 @@ class GaragePayerSwitchTest extends TestCase
         $this->assertSame(GaragePayer::Manager, $deal->garage_payer);
         $this->assertSame(1, Car::where('offer_id', $offer->id)->where('state', CarState::Waiting)->count());
         $this->assertSame('Согласие менеджера', $offer->fresh()->stage()->name);
+        $this->assertSame($manager->id, $pickup->fresh()->executor_id, 'вывоз остался за ним');
+        $this->assertNotSame(\App\Logistics\TransportState::Cancelled, $pickup->fresh()->state);
 
         $old = $deal;
         $take('Беру в работу', Actor::Manager, $manager);
         $deal = $deal->fresh();
         $this->assertTrue($deal->needsBuyer(), 'покупатель для счёта Альфы');
+        $this->assertSame('sent', $offer->fresh()->position(Track::Sale)->letterStatus(), 'письмо гаражного шага засчитано');
         $this->assertNotNull($deal->buyer_asked_at);
 
         app(SaveDealContract::class)(DealContract::for($deal), ['buyer_id' => 'me'], $manager);

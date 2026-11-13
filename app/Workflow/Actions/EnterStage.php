@@ -11,6 +11,7 @@ use App\Offers\Actions\DeclineBySupplier;
 use App\Offers\Actions\SyncParkRelease;
 use App\Offers\Binding;
 use App\Offers\Offer;
+use App\Offers\Listeners\MarkSupplierLetter;
 use App\Offers\OfferEventType;
 use App\Offers\OfferState;
 use App\Offers\Slots;
@@ -132,6 +133,13 @@ final class EnterStage
             'payload' => $payload ?: null,
         ]);
         $offer->unsetRelation('positions');
+        // Письмо этого шага уже ушло на двойнике другой ветки (гараж сменили, `MarkSupplierLetter::carried`, 13.11.2026) —
+        // засчитывается: ход поставщику, срок от того письма.
+        if ($awaitsLetter && ($sent = MarkSupplierLetter::carried($offer, $to))) {
+            $at = $sent->sent_at ?? $sent->date_at ?? $now;
+            $position->update(['waits_for' => null, 'deadline_at' => $to->deadlineFor($offer, $at->copy()),
+                'payload' => [...($position->payload ?? []), 'letter_id' => $sent->id, 'letter_at' => $at->toIso8601String()]]);
+        }
 
         // Оплата за ТС подтверждена (поставщик получил, «платим мы» — оплатили сами): у Альфы только теперь можно забирать
         // (`Deal::mayPickUp`, 10.10.2026). Откат шага отметку не снимает — деньги уже ушли.

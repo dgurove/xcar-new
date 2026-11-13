@@ -70,6 +70,45 @@ final class MarkSupplierLetter
         }
     }
 
+    /**
+     * Письмо этого шага уже ушло на его двойнике другой ветки (13.11.2026, Сергей Николаев: «подтверждаем актуальность» ушло
+     * на «Подтверждение покупки, в гараж», потом гараж сменили на «платит менеджер» — сделка через «Согласие менеджера»
+     * встала на обычное «Подтверждение покупки», и шаг снова ждал нашего письма). Назад по истории: только согласие
+     * менеджера между ними, ответа поставщика после письма не было, тот же шаблон — то письмо и засчитывается.
+     */
+    public static function carried(\App\Offers\Offer $offer, \App\Workflow\Stage $to): ?Message
+    {
+        if (! $to->template_id) {
+            return null;
+        }
+        $events = \App\Offers\OfferEvent::where('offer_id', $offer->id)
+            ->whereIn('type', [OfferEventType::StageEntered->value, OfferEventType::SupplierLetter->value, OfferEventType::InsurerReplied->value])
+            ->orderByDesc('id')->limit(12)->get();
+        $letter = null;
+        foreach ($events as $e) {
+            if ($e->type === OfferEventType::InsurerReplied) {
+                return null;
+            }
+            if ($e->type === OfferEventType::SupplierLetter) {
+                $letter ??= $e->payload['letter'] ?? null;
+
+                continue;
+            }
+            $stage = \App\Workflow\Stage::with('exits')->find($e->payload['to_id'] ?? 0);
+            if (! $stage) {
+                return null;
+            }
+            if ($stage->asksConsent()) {
+                continue;
+            }
+
+            return $stage->id !== $to->id && $stage->template_id === $to->template_id && $letter
+                ? Message::whereKey($letter)->where('direction', Direction::Out->value)->first() : null;
+        }
+
+        return null;
+    }
+
     /** Не ушло: шаг красным; уведомление — один раз на письмо («Повторить» с тем же сбоем не звенит снова). */
     public function failed(MessageFailed $e): void
     {
