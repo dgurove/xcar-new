@@ -5235,8 +5235,11 @@ dialog.lightbox:not(.lb-one) .lb-pill--bottom { bottom: calc(var(--lb-strip-bott
   .chat-step-chip:has(> .chat-step-box:checked) { color: var(--color-accent-text); }
   .chat-step-chip:has(> .chat-step-box:checked) > .chat-step-tick { opacity: 1; }
   /* Новый покупатель по виду (`x-deal.buyer-kind`, 13.11.2026): три плитки в ряд — значок сверху, вид и что понадобится. */
-  .buyer-kinds { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .5rem; }
-  .buyer-kind { display: flex; flex-direction: column; align-items: flex-start; gap: .5rem; width: 100%; height: 100%; padding: .75rem; border-radius: var(--radius-m); background: var(--color-surface-2); text-align: left; cursor: pointer; }
+  /* Колонки — по самому длинному слову (14.11.2026: «Организация» на телефоне вылезала за равную треть): узкая «ИП» отдаёт
+     место широкой; уже 360 px (iPhone SE первый) — строками одна под другой. */
+  .buyer-kinds { display: grid; grid-template-columns: repeat(3, minmax(min-content, 1fr)); gap: .375rem; }
+  .buyer-kind { display: flex; flex-direction: column; align-items: flex-start; gap: .5rem; width: 100%; height: 100%; padding: .625rem; border-radius: var(--radius-m); background: var(--color-surface-2); text-align: left; cursor: pointer; }
+  @media (max-width: 359px) { .buyer-kinds { grid-template-columns: minmax(0, 1fr); } .buyer-kind { flex-direction: row; align-items: center; } }
   @media (hover: hover) { .buyer-kind:hover { background: var(--color-hover); } }
   /* Кнопка ответа под строкой «Ваш ход» (`cabinet/deals/row`): под текстом, после кадра, без своей линии. */
   /* Кнопка дела «Ваш ход» на телефоне — само время «3д 21ч» (`x-deal.todo-button wait`, 13.11.2026): одной ширины во всех строках,
