@@ -97,7 +97,8 @@ export function schemeGuard() {
         event.stopImmediatePropagation();
         const submitter = event.submitter;
         confirmSheet(ask, { label: 'Да, так и есть', cancel: 'Исправить', danger: false, warn: true }).then((ok) => {
-            if (!ok) return;
+            // «Исправить» — сегмент схемы (`x-deal.scheme`, отправка сразу по выбору) возвращается на прежнюю схему.
+            if (!ok) { if (form.hasAttribute('data-controller') && form.dataset.controller.includes('autosubmit')) form.reset(); return; }
             const input = document.createElement('input');
             Object.assign(input, { type: 'hidden', name: 'scheme_ok', value: '1' });
             form.append(input);

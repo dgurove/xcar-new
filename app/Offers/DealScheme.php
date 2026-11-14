@@ -44,6 +44,17 @@ enum DealScheme: string
         };
     }
 
+    /** Коротко — надпись сегмента «Кто продаёт» в «Деньгах» (14.11.2026). */
+    public function short(): string
+    {
+        return match ($this) {
+            self::Prime => 'ПРАЙМ',
+            self::Ros => 'Р.О.С.',
+            self::Insurer => 'Напрямую',
+            self::OwnerDkp => 'ДКП',
+        };
+    }
+
     /** Кто кому платит — одной фразой в шторке «Схема сделки» (03.11.2026, владелец: «кто нажал ПРАЙМ, не понял»). */
     public function hint(): string
     {
@@ -109,6 +120,10 @@ enum DealScheme: string
             return $offer->prices_include_vat ? self::Ros : self::Insurer;
         }
         $format = $offer->vendor?->deal_format;
+        // Совкомбанк (по комиссии) — всегда через ПРАЙМ (14.11.2026, владелец): ПРАЙМ — его комиссионер.
+        if ($format === DealFormat::Commission) {
+            return self::Prime;
+        }
         $default = self::forVendor($format);
 
         // Цены с НДС — продаёт Р.О.С. (12.11.2026); опт — ПРАЙМ при любом НДС.
@@ -122,6 +137,10 @@ enum DealScheme: string
      */
     public static function casesFor(?Vendor $vendor, ?Offer $offer = null): array
     {
+        // По комиссии (Совкомбанк) — только ПРАЙМ: договор комиссии у него с ПРАЙМ (14.11.2026, владелец: «всегда через прайм»).
+        if ($vendor?->deal_format === DealFormat::Commission) {
+            return [self::Prime];
+        }
         $alfa = (bool) $vendor?->pay_before_pickup;
         $wholesale = $vendor?->deal_format === DealFormat::Wholesale;
         $cases = array_filter(self::cases(), fn (self $s) => match ($s) {

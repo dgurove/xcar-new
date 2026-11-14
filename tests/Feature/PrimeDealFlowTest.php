@@ -156,7 +156,8 @@ class PrimeDealFlowTest extends TestCase
 
     public function test_insurer_direct_selection_by_link(): void
     {
-        $offer = $this->offer(779000);
+        // Не по комиссии: у Совкомбанка с 14.11.2026 только ПРАЙМ (`DealScheme::casesFor`).
+        $offer = $this->offer(779000, 'supplier');
         $deal = app(AcceptBid::class)(app(PlaceBid::class)($offer, $this->manager, 1050000), $this->admin, 20000, CommissionMode::Payout, scheme: DealScheme::Insurer, ownerPrice: 750000);
         $this->pickedUp($offer);
 

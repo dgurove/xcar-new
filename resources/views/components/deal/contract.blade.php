@@ -4,8 +4,8 @@
      формы продавца нет. Договор — PDF в шторке
      документов (`DealContractController::document`). Свёрнуто — договор и покупатель строками, сканы и поля — по «Изменить»
      (07.10.2026, владелец: «слишком много полей»; `edit_card_controller`), ошибка формы открывает их сама.
-     ДКП ПРАЙМ (14.11.2026): строкой — собственник по договору комиссии (сам из письма, `FillCommissionOwner`) и НДС сегментом
-     «Без НДС | 5 % | 22 %» (сразу, `DealContract::vatRate`); под «Изменить» — собственник полями паспорта и № договора комиссии. --}}
+     ДКП ПРАЙМ (14.11.2026): строкой — собственник по договору комиссии (сам из письма, `FillCommissionOwner`); под «Изменить» —
+     собственник полями паспорта и № договора комиссии. НДС договора — рядом со схемой в «Деньгах» (`x-deal.scheme`). --}}
 @props(['deal'])
 @php
     use App\Offers\DealContract;
@@ -59,13 +59,6 @@
                 <x-ui.chevron/>
             </button>
         @endif
-        @unless ($contract->form() === 'owner')
-            <form method="post" action="/work/deals/{{ $deal->id }}/contract" class="row" data-controller="autosubmit">
-                @csrf @method('put')
-                <span class="min-w-0 flex-1 text-ink-muted">НДС</span>
-                <x-ui.segment name="vat_rate" :options="[0 => 'Без НДС', 5 => '5 %', 22 => '22 %']" :value="$contract->vatRate()" class="shrink-0" data-action="change->autosubmit#submit"/>
-            </form>
-        @endunless
         <x-deal.buyer :deal="$deal" :contract="$contract"/>
     </div>
     <form method="post" action="/work/deals/{{ $deal->id }}/contract" id="dkp-date-{{ $deal->id }}" class="hidden">@csrf @method('put')</form>

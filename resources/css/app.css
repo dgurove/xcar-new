@@ -2271,6 +2271,8 @@ html.kb-open { --home-gap: 0px; }
   .segment input { @apply absolute inset-0 opacity-0; }
   .segment label:has(input:checked) { @apply text-ink; background: color-mix(in oklab, var(--color-ink) 14%, var(--color-surface-3)); }
   /* Сегмент ссылками (направление сортировки, x-ui.sort): тот же вид, выбранное — aria-current. */
+  /* «Кто продаёт» в «Деньгах» (`x-deal.scheme`): до четырёх вариантов в узкой колонке ПК — плотнее и без переносов. */
+  .deal-scheme .segment label { @apply whitespace-nowrap px-2; }
   .segment a { @apply flex min-h-9 items-center justify-center gap-1.5 whitespace-nowrap rounded-full px-3 text-sm text-ink-muted; }
   .segment a[aria-current] { @apply text-ink; background: color-mix(in oklab, var(--color-ink) 14%, var(--color-surface-3)); }
   @media (hover: hover) { .segment a:not([aria-current]):hover { @apply text-ink; } }

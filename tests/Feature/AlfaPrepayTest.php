@@ -127,7 +127,7 @@ class AlfaPrepayTest extends TestCase
         $this->assertNull($invoice->openLink());
 
         // «Поступило» на Р.О.С. — громко сотрудникам, сделка на нашем переводе Альфе, забирать всё ещё рано.
-        app(RecordPayment::class)($invoice->fresh(), $this->admin, (float) $invoice->total, now(), PaymentSource::Bank);
+        app(RecordPayment::class)($invoice->fresh(), $this->admin, (float) $invoice->fresh()->remaining(), now(), PaymentSource::Bank);
         Notification::assertSentTo($this->admin, MoneyNotice::class, fn (MoneyNotice $n) => str_contains($n->title(), 'с Р.О.С.') && $n->important());
         $this->assertSame('Перевод поставщику', $offer->fresh()->stage()->name);
         $this->assertFalse($deal->fresh()->mayPickUp());
@@ -213,7 +213,7 @@ class AlfaPrepayTest extends TestCase
         $invoice = $deal->fresh()->issuedInvoices()->sole();
         $this->assertSame(Seller::Prime, $invoice->seller);
 
-        app(RecordPayment::class)($invoice->fresh(), $this->admin, (float) $invoice->total, now(), PaymentSource::Bank);
+        app(RecordPayment::class)($invoice->fresh(), $this->admin, (float) $invoice->fresh()->remaining(), now(), PaymentSource::Bank);
         $this->assertSame('Перевод поставщику', $offer->fresh()->stage()->name);
         Notification::assertSentTo($this->admin, MoneyNotice::class, fn (MoneyNotice $n) => str_contains($n->title(), 'с ПРАЙМ'));
         $this->assertFalse($deal->fresh()->mayPickUp());
