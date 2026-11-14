@@ -40,7 +40,7 @@ final class PromoteCandidate
     public function promote(Candidate $candidate, ?User $by): array
     {
         [$offer, $outcome] = ($this->open)(new DraftSource('mail', $candidate->code, $candidate->value('vin'), $this->data($candidate),
-            created: $by ? [] : ['mail' => true], why: 'Из письма', reopenCancelled: false), $by);
+            created: $by ? [] : ['mail' => true], why: 'Из письма', reopenCancelled: false, reopenArchived: $by !== null), $by);
         $candidate->update(['state' => CandidateState::Promoted, 'offer_id' => $offer->id]);
         // Ветки — после заведения: импорт файлов берёт уникальную блокировку в базе, и если прежний импорт этой ветки
         // ещё в очереди (черновик завели, отменили и завели снова), неудачная вставка блокировки обрывала транзакцию.

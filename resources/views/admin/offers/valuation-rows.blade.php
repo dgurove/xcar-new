@@ -15,7 +15,9 @@
     $groups = collect([
         'fill' => ['Заполним', $all->whereIn('status', ['conflict', 'fill'])->sortBy(fn ($i) => ($i['status'] === 'conflict' || $i['gaps']) ? 0 : ($i['suspicious'] ? 1 : 2))->values()],
         'check' => ['Проверьте', $all->whereIn('status', ['check', 'dispute'])->values()],
-        'absent' => ['Нет в CRM', $all->whereIn('status', ['absent', 'missing'])->sortBy(fn ($i) => $i['suspicious'] ? 0 : 1)->values()],
+        'absent' => ['Нет в CRM', $all->whereIn('status', ['absent', 'missing'])->filter(fn ($i) => ! $i['archived'])->sortBy(fn ($i) => $i['suspicious'] ? 0 : 1)->values()],
+        // Убранные в архив — своей группой без галки (14.11.2026, владелец: «мы их убираем, а они снова появляются»).
+        'archived' => ['В архиве', $all->whereIn('status', ['absent', 'missing'])->filter(fn ($i) => $i['archived'])->values()],
         'same' => ['Уже так', $all->where('status', 'same')->values()],
     ])->filter(fn ($g) => $g[1]->isNotEmpty());
     $first = $groups->keys()->first();
@@ -44,7 +46,7 @@
                     @php
                         $lot = $item['lot'];
                         $what = match (true) {
-                            (bool) $item['archived'] => 'вернём из архива',
+                            (bool) $item['archived'] => 'в архиве'.($item['archived']->tab_at ? ' с '.\App\Support\Ago::day($item['archived']->tab_at) : '').($item['archived']->tabBy ? ', убрал '.$item['archived']->tabBy->shortName() : '').', галка — вернуть',
                             ! $lot => 'новый черновик, на Мигторге пока нет',
                             (bool) $lot->gone_at => 'новый черновик, на Мигторге снят с торгов',
                             default => 'новый черновик с Мигторга',
@@ -57,7 +59,7 @@
                                 <span class="block truncate">{{ $lot?->title ?: $item['ref'] }}</span>
                                 <span class="row-sub"><x-vendor.ref :vendor-id="$item['vendor']" :ref="$item['ref']" copy/>@if ($lot?->city)<x-ui.place>{{ $lot->city }}</x-ui.place>@endif</span>
                             </span>
-                            @if ($status === 'absent')<label class="check shrink-0" aria-label="Завести"><input type="checkbox" name="create[]" value="{{ $item['key'] }}" @checked(! $item['suspicious']) data-action="valuation#count"></label>@endif
+                            @if ($status === 'absent')<label class="check shrink-0" aria-label="Завести"><input type="checkbox" name="create[]" value="{{ $item['key'] }}" @checked(! $item['suspicious'] && ! $item['archived']) data-action="valuation#count"></label>@endif
                         </div>
                         <p class="valuation-facts">
                             @if ($status === 'missing')

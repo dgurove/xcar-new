@@ -28,6 +28,8 @@ final class DraftSource
         public readonly array $created = [],
         public readonly ?string $why = null,
         public readonly bool $reopenCancelled = true,
+        // Архивное снова черновиком (14.11.2026, владелец: «мы их убираем, а они снова появляются»): без человека — нет.
+        public readonly bool $reopenArchived = true,
     ) {}
 
     public function claimKey(): ?string

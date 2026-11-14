@@ -23,7 +23,7 @@ use Illuminate\Support\Facades\DB;
  * - `check` — VIN в сообщении не тот, что у предложения, или номер Т-Страхования нашёлся только без года
  *   (`ref_differs`: в СМС AUT-26-1103537, в CRM AUT-25-1103537 — 26.10.2026, владелец): без галки, решает человек;
  * - `dispute` — тот же номер дважды с разными суммами: не берётся;
- * - `absent` — предложения нет (или оно в архиве): из окна заводится черновик с закупочной из текста (26.10.2026, владелец:
+ * - `absent` — предложения нет (или оно в архиве — тогда группой «В архиве» без галки): из окна заводится черновик с закупочной из текста (26.10.2026, владелец:
  *   «неудобно потом по тем, которых нет, отдельно идти создавать»). Лот на Мигторге есть — поля и фото с него
  *   (`ImportMigtorgLot`), нет — черновик по номеру, лот возьмёт `migtorg:sync`, когда появится (`ImportMigtorgLot::auto`);
  * - `missing` — предложения нет, а сумм в тексте две разные: не заводим, непонятно, какая.
@@ -70,9 +70,10 @@ final class MatchValuations
         // Лот Мигторга по номеру: живой важнее ушедшего, свежий — прежнего.
         $lots = $absent ? DB::table('migtorg_lots')->whereIn('claim_ref_key', $absent)->orderByRaw('gone_at is not null')->orderByDesc('id')
             ->get(['id', 'claim_ref_key', 'title', 'city', 'vin', 'gone_at'])->unique('claim_ref_key')->keyBy('claim_ref_key') : collect();
-        // Предложение по номеру в архиве — заводить второе нельзя (машина одна), его вернут в черновики.
+        // Предложение по номеру в архиве — заводить второе нельзя (машина одна). Вернуть его в черновики — только галкой в окне
+        // (группа «В архиве», без галки; 14.11.2026, владелец: «мы их убираем, а они снова появляются»), бот — никогда.
         $archived = $absent ? Offer::query()->inCrm($user)->whereCar(fn ($c) => $c->whereIn('claim_ref_key', $absent))
-            ->whereIn('state', [OfferState::Archived, OfferState::Cancelled])->latest('id')->get()->unique('claim_ref_key')->keyBy('claim_ref_key') : collect();
+            ->whereIn('state', [OfferState::Archived, OfferState::Cancelled])->with('tabBy')->latest('id')->get()->unique('claim_ref_key')->keyBy('claim_ref_key') : collect();
 
         // Вендор черновика с Мигторга — по виду номера (`CarText::vendorOf` — два запроса): один раз на вид, а не на строку.
         $vendors = [];

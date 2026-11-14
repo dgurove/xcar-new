@@ -99,15 +99,17 @@ final class ValuationFromChat implements ShouldQueue
         foreach ($items as $i) {
             $car = $i['offer'] ? e($i['offer']->titleWithYear()) : null;
             $floor = $i['offer'] && $i['amount'] ? (Pricing::fromAmount($i['offer']->vendor_id, (int) $i['amount'], $i['offer'])['floor_price'] ?? null) : null;
-            $lines[] = $i['suspicious'] && in_array($i['status'], ['fill', 'absent'], true)
-                ? '⚠️ '.e($i['ref']).($car ? ' — '.$car : '').': '.e($i['suspicious']).', решите в окне оценки'
-                : match ($i['status']) {
+            $lines[] = match (true) {
+                $i['status'] === 'absent' && $i['archived'] => '🗄 '.e($i['ref']).': в архиве, вернуть — в окне оценки',
+                $i['suspicious'] && in_array($i['status'], ['fill', 'absent'], true) => '⚠️ '.e($i['ref']).($car ? ' — '.$car : '').': '.e($i['suspicious']).', решите в окне оценки',
+                default => match ($i['status']) {
                     'fill' => '✅ '.e($i['ref']).($car ? ' — '.$car : '').': закупочная '.Money::rub((int) $floor),
                     'same' => '☑️ '.e($i['ref']).($car ? ' — '.$car : '').': уже так',
                     'conflict' => '⚠️ '.e($i['ref']).($car ? ' — '.$car : '').': в CRM вписано иначе, решите в окне оценки',
                     'absent' => '➕ '.e($i['ref']).': нет в CRM, '.Money::rub((int) $i['amount']),
                     default => '❓ '.e($i['ref']).($car ? ' — '.$car : '').': проверьте в окне оценки',
-                };
+                },
+            };
         }
 
         return '<b>'.e($title).'</b>'."\n".implode("\n", $lines);
@@ -117,7 +119,8 @@ final class ValuationFromChat implements ShouldQueue
     public static function buttons(int $id, array $items): array
     {
         // Подозрительные суммы кнопками не берутся (`MatchValuations::suspicious`).
-        $by = collect($items)->reject(fn ($i) => $i['suspicious'])->countBy('status');
+        // Архивные — тоже: их возвращают только галкой в окне (14.11.2026).
+        $by = collect($items)->reject(fn ($i) => $i['suspicious'] || ($i['status'] === 'absent' && $i['archived']))->countBy('status');
         $row = array_values(array_filter([
             ($by['fill'] ?? 0) ? ['text' => 'Проставить '.$by['fill'], 'callback_data' => "valuation:{$id}:apply"] : null,
             ($by['absent'] ?? 0) ? ['text' => 'Завести '.$by['absent'], 'callback_data' => "valuation:{$id}:create"] : null,

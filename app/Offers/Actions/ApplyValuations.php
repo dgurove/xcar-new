@@ -49,6 +49,8 @@ final class ApplyValuations
             // Нет в CRM: что заводить по галке — номер, сумма и лот Мигторга, если он есть.
             'create' => collect($items)->where('status', 'absent')->mapWithKeys(fn ($i) => [$i['key'] => [
                 'ref' => $i['ref'], 'amount' => $i['amount'], 'lot' => $i['lot']?->id, 'suspicious' => (bool) $i['suspicious'],
+                // В архиве — вернуть только галкой человека в окне (14.11.2026, владелец: «убираем, а они снова появляются»).
+                'archived' => (bool) $i['archived'],
             ]])->all(),
         ];
     }

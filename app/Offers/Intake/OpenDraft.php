@@ -86,6 +86,11 @@ final class OpenDraft
     /** @return array{0: Offer, 1: string} */
     private function reopen(Offer $offer, DraftSource $source, ?User $by): array
     {
+        // Убранное в архив само не возвращается (письмо без человека, `AutoOffer`): письма ложатся к нему, оно в архиве.
+        if (! $source->reopenArchived && in_array($offer->state, [OfferState::Archived, OfferState::Cancelled], true)) {
+            return [$offer, self::EXISTING];
+        }
+
         return $this->reopenArchived($offer, $by, $source->reopenCancelled);
     }
 

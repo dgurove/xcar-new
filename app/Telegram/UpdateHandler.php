@@ -358,7 +358,8 @@ final class UpdateHandler
         try {
             $saved = Cache::get("valuation-bot:{$press->id}") ?? $saved;
             // Подозрительные суммы кнопкой не берутся — их решают в окне оценки (`MatchValuations::suspicious`).
-            $sure = array_keys(array_filter($saved['create'] ?? [], fn ($row) => ! ($row['suspicious'] ?? false)));
+            // Архивное — тоже нет (14.11.2026): убранное возвращают только галкой в окне.
+            $sure = array_keys(array_filter($saved['create'] ?? [], fn ($row) => ! ($row['suspicious'] ?? false) && ! ($row['archived'] ?? false)));
             // «Завести N» заводит черновики и только: VIN и город найденных машин пишет «Проставить» (и только своих строк).
             $r = $create
                 ? app(ApplyValuations::class)($user, ['vin' => [], 'city' => []] + $saved, [], create: $sure)
