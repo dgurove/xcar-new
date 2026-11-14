@@ -48,7 +48,9 @@ final class ImportStatement
             $in = ($row['direction'] ?? '') === 'CREDIT';
             $t = $row['rurTransfer'] ?? [];
             // Старое без машины не храним (14.11.2026, владелец: «то, что не сопоставится из старого до июня, можно не хранить»).
-            if ($history && $day->lt(Carbon::parse(Transaction::HISTORY_KEEP_FROM)) && ! CarMatch::of($row['paymentPurpose'] ?? null)) {
+            // Машину ищем один раз — для решения хранить и для привязки.
+            $hit = $history ? (CarMatch::of($row['paymentPurpose'] ?? null) ?? false) : null;
+            if ($history && ! $hit && $day->lt(Carbon::parse(Transaction::HISTORY_KEEP_FROM))) {
                 continue;
             }
             $tx = Transaction::createOrFirst(['external_id' => $id], [
@@ -72,7 +74,7 @@ final class ImportStatement
                 }
             }
             // Машина по назначению — к её сделке, даты «Продано» / «Оплачено» (`LinkTransaction`).
-            ($this->link)($tx);
+            ($this->link)($tx, hit: $hit);
         }
         // История — сколько операций было за день у банка (пустые дни подряд — счёт ещё не открыт, `bank:history`).
         if ($history) {

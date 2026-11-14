@@ -487,6 +487,7 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
             Route::get('/bank/statement', [BankController::class, 'index']);
             Route::post('/bank/statement/{transaction}/match', [BankController::class, 'match']);
             Route::post('/bank/statement/{transaction}/ignore', [BankController::class, 'ignore']);
+            Route::post('/bank/statement/{transaction}/car', [BankController::class, 'car']);
 
             // Переписка бота (Настройки → «Бот Telegram»).
             Route::prefix('telegram')->group(function () {

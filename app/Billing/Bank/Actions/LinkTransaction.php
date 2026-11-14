@@ -15,13 +15,15 @@ final class LinkTransaction
 {
     public function __construct(private StampDealMoney $stamp) {}
 
-    public function __invoke(Transaction $tx, bool $stamp = true): ?Deal
+    /** @param  array{deal: Deal, by: string}|false|null  $hit  уже найденное `CarMatch` (false — искали, не нашли), null — искать */
+    public function __invoke(Transaction $tx, bool $stamp = true, array|false|null $hit = null): ?Deal
     {
         if ($tx->matched_by === 'hand') {
             return $tx->deal;
         }
         $invoiceDeal = $tx->invoice ? ($tx->invoice->deal_id ?? $tx->invoice->credit_deal_id) : null;
-        $hit = $invoiceDeal ? ['deal' => Deal::find($invoiceDeal), 'by' => 'invoice'] : CarMatch::of($tx->purpose);
+        $hit = $invoiceDeal ? ['deal' => Deal::find($invoiceDeal), 'by' => 'invoice'] : ($hit ?? CarMatch::of($tx->purpose));
+        $hit = $hit ?: null;
         $deal = $hit['deal'] ?? null;
         if ($tx->deal_id !== $deal?->id || $tx->matched_by !== ($hit['by'] ?? null)) {
             $was = $tx->deal_id;

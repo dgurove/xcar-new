@@ -75,5 +75,6 @@ class BankDatesTest extends TestCase
         Offer::create(['claim_ref' => '777777/2026', 'vin' => 'XTA21140064999999'])->forceFill(['state' => OfferState::Draft])->save();
         $this->assertNull(CarMatch::of('vin XTA21140064123456 и XTA21140064999999'));
         $this->assertSame('claim', CarMatch::of('по договору комиссии № 238163/2026')['by'] ?? null);
+        $this->assertSame('claim', CarMatch::of('по договору комиссии № 238163 /2026. НДС не облагается')['by'] ?? null, 'пробел у дроби');
     }
 }

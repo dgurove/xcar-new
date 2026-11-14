@@ -12,6 +12,7 @@ use App\Logistics\Actions\Cancel;
 use App\Logistics\Transport;
 use App\Offers\CarPlace;
 use App\Offers\Deal;
+use App\Offers\DealDates;
 use App\Offers\FastForward;
 use App\Offers\Offer;
 use App\Offers\OfferEventType;
@@ -117,6 +118,11 @@ final class MarkSoldDeal
                 }
                 if ($deal->refresh()->fullyPaid()) {
                     ($this->fee)($deal->setRelation('offer', $offer), $by);
+                }
+                // Счёта нет (ПРАЙМ без покупателя), а «заплатил» сказал человек — «Продано» его датой, руками: оплаты, по которой
+                // `StampDealMoney` её бы поставил, нет.
+                if ($bills->isEmpty() && DealDates::soldColumn($deal) === 'paid_in_at' && ! $deal->paid_in_at) {
+                    $deal->forceFill(['paid_in_at' => $at, 'dates_by_hand' => array_values(array_unique([...($deal->dates_by_hand ?? []), 'paid_in_at']))])->save();
                 }
             }
             $stamps = array_filter([

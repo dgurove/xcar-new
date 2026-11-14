@@ -11,7 +11,9 @@
         <x-slot:status><x-ui.state :tone="$tx->tone()">{{ mb_strtolower($tx->stateLabel()) }}</x-ui.state></x-slot:status>
         <x-slot:line><span class="nums font-semibold">{{ Money::exact($tx->amount) }}</span><span class="nums text-ink-muted">{{ $tx->booked_at->format('d.m.Y') }}</span></x-slot:line>
         <x-slot:actions>
-            @if ($tx->invoice)
+            {{-- Списание и прошлое — не про счета: «Не наше» и «Вернуть» только у живых поступлений. --}}
+            @if (! $tx->isIncoming() || $tx->state === \App\Billing\Bank\Transaction::HISTORY)
+            @elseif ($tx->invoice)
                 <a href="/work/money/invoices/{{ $tx->invoice_id }}" class="btn btn-s btn-quiet">Счёт {{ $tx->invoice->label() }}, {{ $tx->invoice->party->name }}</a>
             @elseif ($tx->state === \App\Billing\Bank\Transaction::IGNORED)
                 <form method="post" action="{{ $href }}/ignore" class="contents">@csrf<button class="btn btn-s btn-quiet">Вернуть в непривязанные</button></form>
@@ -20,6 +22,16 @@
             @endif
         </x-slot:actions>
         @if ($tx->purpose)<div class="mt-4 text-sm">{{ $tx->purpose }}</div>@endif
+        {{-- Машина платежа (14.11.2026, `CarMatch`): по ней «Продано» / «Оплачено» сделки. Не узналась или узналась не та —
+             руками: № предложения, VIN или номер убытка; пусто — отвязать (руками отвязанное само больше не привяжется). --}}
+        <form method="post" action="{{ $href }}/car" class="mt-4 flex items-end gap-2">
+            @csrf
+            <div class="min-w-0 flex-1"><x-ui.field name="car" :id="'tx-car-'.$tx->id" label="Машина" placeholder="№ предложения, VIN или номер убытка" :value="$tx->deal?->offer?->number"/></div>
+            <button class="btn btn-s btn-quiet">{{ $tx->deal ? 'Перепривязать' : 'Привязать' }}</button>
+        </form>
+        @if ($tx->deal?->offer)
+            <p class="mt-2 text-sm text-ink-muted"><a href="/offers/{{ $tx->deal->offer->number }}" class="underline decoration-dotted underline-offset-4" data-turbo-frame="_top">{{ $tx->deal->offer->titleWithYear() }}</a>{{ match ($tx->matched_by) { 'vin' => ', по VIN', 'claim' => ', по номеру убытка', 'plate' => ', по госномеру', 'invoice' => ', по счёту', 'hand' => ', привязано руками', default => '' } }}</p>
+        @endif
         @if (\App\Billing\Bank\Actions\MatchTransaction::isPayout($tx) && $tx->note)
             <div class="list mt-4">
                 <x-money.line :icon="$payouts->isEmpty() ? 'clock' : 'check'" :title="$tx->note" :tone="$payouts->isEmpty() ? 'urgent' : 'open'"/>

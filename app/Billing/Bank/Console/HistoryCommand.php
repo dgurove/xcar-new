@@ -36,20 +36,30 @@ final class HistoryCommand extends Command
         $to = $this->option('to') ? Carbon::parse($this->option('to')) : Carbon::parse(Transaction::whereNot('state', 'history')->min('booked_at') ?? now())->subDay();
         $from = $this->option('from') ? Carbon::parse($this->option('from')) : null;
 
-        return $this->holdingSingleRun('bank:sync', function () use ($connection, $import, $to, $from) {
+        // Свой замок: живая выписка каждые 10 минут идёт, пока история догружается (строки — `createOrFirst` по id банка).
+        return $this->holdingSingleRun('bank:history', function () use ($connection, $import, $to, $from) {
             $empty = 0;
+            $failed = 0;
             for ($day = $to->copy()->startOfDay(); ! $from || $day->gte($from); $day->subDay()) {
                 try {
                     $rows = $import($connection, $day->copy(), history: true);
                 } catch (Throwable $e) {
                     Log::warning('bank:history '.$day->toDateString().' — '.$e->getMessage());
                     $this->error($day->toDateString().': '.$e->getMessage());
-                    $rows = null;
-                    $empty++;
+                    // Сбой — не «пустой день»: иначе обрыв связи выглядел бы как конец выписки. Десять подряд — стоп.
+                    if (++$failed >= 10) {
+                        $this->error('10 сбоев подряд — остановлено на '.$day->toDateString());
+
+                        return self::FAILURE;
+                    }
+
+                    continue;
                 }
+                $failed = 0;
                 $count = Transaction::where('state', 'history')->whereDate('booked_at', $day)->count();
                 $this->line($day->toDateString().': операций '.($rows?->count() ?? '?').', сохранено '.$count);
-                $empty = $rows !== null && $rows->isNotEmpty() ? 0 : $empty + 1;
+                // Банк ещё готовит выписку (null) — не пустой день.
+                $empty = $rows === null || $rows->isNotEmpty() ? 0 : $empty + 1;
                 if (! $from && $empty >= 60) {
                     $this->info('60 дней пусто — дальше выписки нет');
                     break;

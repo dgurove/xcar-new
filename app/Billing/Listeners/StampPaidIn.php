@@ -23,7 +23,8 @@ final class StampPaidIn
         }
         foreach (array_filter(array_unique([$invoice->deal_id, $invoice->credit_deal_id])) as $id) {
             if ($deal = Deal::find($id)) {
-                ($this->stamp)($deal);
+                // Только «Продано»: шаг поставщика из записи оплаты не двигаем (он — от выписки и `bank:link`).
+                ($this->stamp)($deal, supplier: false);
             }
         }
     }

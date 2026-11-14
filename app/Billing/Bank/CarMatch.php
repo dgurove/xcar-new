@@ -52,7 +52,8 @@ final class CarMatch
     private static function byClaim(string $text): array
     {
         // Номер убытка — кусок с цифрами и «/» или «-» («238163/2026», «0790/046/09068/26», «AUT-26-979366»).
-        preg_match_all('/(?<![\p{L}\p{N}])[\p{L}\p{N}]*\d[\p{L}\p{N}]*(?:[\/\-][\p{L}\p{N}]+)+/u', $text, $m);
+        // Пробел у дроби бывает («по договору комиссии № 201184 /2026», выписка 14.11.2026).
+        preg_match_all('/(?<![\p{L}\p{N}])[\p{L}\p{N}]*\d[\p{L}\p{N}]*(?:\s?[\/\-]\s?[\p{L}\p{N}]+)+/u', $text, $m);
         $keys = array_values(array_filter(array_unique(array_map(fn ($c) => Code::key($c), $m[0])), fn ($k) => $k && mb_strlen($k) >= 6));
 
         return $keys ? DB::table('cars')->whereIn('claim_ref_key', $keys)->pluck('id')->all() : [];

@@ -8,10 +8,15 @@ use App\Billing\Bank\Actions\ImportStatement;
 use App\Billing\Bank\Actions\MatchTransaction;
 use App\Billing\Bank\Actions\ReconcilePayout;
 use App\Billing\Bank\Actions\SetBankAccount;
+use App\Billing\Bank\CarMatch;
 use App\Billing\Bank\Connection;
 use App\Billing\Bank\SberApi;
 use App\Billing\Bank\Transaction;
 use App\Billing\Invoice;
+use App\Offers\Actions\StampDealMoney;
+use App\Offers\Deal;
+use App\Offers\DealState;
+use App\Offers\Offer;
 use App\Support\Detail;
 use App\Support\ListPrefs;
 use App\Support\ListView;
@@ -19,6 +24,7 @@ use App\Support\Money;
 use App\Support\Sort;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\ValidationException;
 use Throwable;
 
 /**
@@ -70,6 +76,32 @@ class BankController
             'suggestions' => $transaction->state === Transaction::UNMATCHED && ! MatchTransaction::isPayout($transaction) ? MatchTransaction::suggestions($transaction)->take(12) : collect(),
             'payouts' => MatchTransaction::isPayout($transaction) ? ReconcilePayout::payments($transaction) : collect(),
         ]);
+    }
+
+    /**
+     * Машина платежа руками (14.11.2026): № предложения, VIN или номер убытка (`CarMatch`) → её последняя сделка; пусто —
+     * отвязать. Руками решённое (`matched_by = hand`) `bank:link` больше не трогает; даты обеих сделок пересчитываются.
+     */
+    public function car(Request $request, Transaction $transaction, StampDealMoney $stamp)
+    {
+        $text = trim((string) $request->validate(['car' => ['nullable', 'string', 'max:100']])['car']);
+        $deal = null;
+        if ($text !== '') {
+            $offer = ctype_digit($text) ? Offer::where('number', (int) $text)->first() : null;
+            $deal = $offer
+                ? Deal::where('offer_id', $offer->id)->whereIn('state', [DealState::Active, DealState::Done])->latest('id')->first()
+                : (CarMatch::of($text)['deal'] ?? null);
+            if (! $deal) {
+                throw ValidationException::withMessages(['car' => 'Сделки с такой машиной не нашлось']);
+            }
+        }
+        $was = $transaction->deal_id;
+        $transaction->forceFill(['deal_id' => $deal?->id, 'matched_by' => 'hand', 'decided_by' => $request->user()->id, 'decided_at' => now()])->save();
+        foreach (Deal::whereKey(array_filter([$was, $deal?->id]))->get() as $d) {
+            $stamp($d);
+        }
+
+        return back()->with('toast', $deal ? 'Привязано к '.$deal->offer->titleWithYear() : 'Отвязано');
     }
 
     public function match(Request $request, Transaction $transaction, MatchTransaction $match)

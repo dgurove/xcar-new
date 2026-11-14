@@ -6,6 +6,7 @@ use App\Billing\Bank\Actions\LinkTransaction;
 use App\Billing\Bank\CarMatch;
 use App\Billing\Bank\Transaction;
 use App\Offers\Actions\StampDealMoney;
+use App\Offers\Deal;
 use App\Offers\DealDates;
 use Illuminate\Console\Command;
 
@@ -23,7 +24,10 @@ final class LinkCommand extends Command
     {
         $dry = (bool) $this->option('dry');
         $by = ['in' => [], 'out' => []];
+        $touched = [];
         foreach (Transaction::orderBy('id')->lazy() as $tx) {
+            // Прежняя сделка строки тоже пересчитывается: её дата могла держаться только на этой строке.
+            $tx->deal_id && $touched[] = $tx->deal_id;
             $hit = $dry ? CarMatch::of($tx->purpose) : null;
             $deal = $dry ? ($hit['deal'] ?? null) : $link($tx, stamp: false);
             $key = $dry ? ($hit['by'] ?? 'нет') : ($tx->fresh()->matched_by ?? 'нет');
@@ -37,7 +41,7 @@ final class LinkCommand extends Command
         }
         $before = ['sold' => 0, 'paid' => 0];
         $after = ['sold' => 0, 'paid' => 0];
-        foreach (StampDealMoney::dealsWithMoney() as $deal) {
+        foreach (StampDealMoney::dealsWithMoney()->merge(Deal::whereKey(array_unique($touched))->get())->unique('id') as $deal) {
             DealDates::sold($deal) && $before['sold']++;
             DealDates::paid($deal) && $before['paid']++;
             $deal = $stamp($deal);

@@ -28,7 +28,8 @@ final class StampDealMoney
 {
     public function __construct(private SetDealDate $set) {}
 
-    public function __invoke(Deal $deal): Deal
+    /** @param  bool  $supplier  и «Оплачено» с проходом шага; оплата счёта (`StampPaidIn`) шаг поставщика не двигает */
+    public function __invoke(Deal $deal, bool $supplier = true): Deal
     {
         if (! in_array($deal->state, [DealState::Active, DealState::Done], true)) {
             return $deal;
@@ -43,7 +44,7 @@ final class StampDealMoney
             }
         }
         $paid = DealDates::paidColumn($deal);
-        if ($paid === 'supplier_paid_at' && ! in_array('supplier_paid_at', $hand, true) && ($tx = self::firstOut($deal))) {
+        if ($supplier && $paid === 'supplier_paid_at' && ! in_array('supplier_paid_at', $hand, true) && ($tx = self::firstOut($deal))) {
             $at = Carbon::parse($tx->booked_at)->setTime(12, 0);
             if (! $deal->supplier_paid_at || $deal->supplier_paid_at->gt($at)) {
                 // Сделка на шаге нашей оплаты — пройдёт (`SetDealDate`), иначе только дата.
@@ -61,7 +62,10 @@ final class StampDealMoney
             ->where(fn ($q) => $q->where('deal_id', $deal->id)->orWhere('credit_deal_id', $deal->id))->pluck('id');
         $payments = $invoices->isEmpty() ? null : DB::table('billing_payments')->whereIn('invoice_id', $invoices)
             ->where('state', PaymentState::Confirmed->value)->min('paid_at');
-        $bank = Transaction::where('deal_id', $deal->id)->where('direction', 'in')->min('booked_at');
+        // Выписка — не раньше месяца до сделки (сделки заводили и задним числом) и не от самого поставщика (возврат): деньги
+        // за прежнюю продажу этой машины или возврат страховой продажей не считаются.
+        $bank = Transaction::where('deal_id', $deal->id)->where('direction', 'in')->whereDate('booked_at', '>=', self::since($deal))
+            ->where(fn ($q) => $q->whereNull('counterparty_inn')->orWhereNotIn('counterparty_inn', self::supplierInns($deal)))->min('booked_at');
         $first = collect([$payments, $bank])->filter()->map(fn ($d) => Carbon::parse($d))->min();
 
         return $first?->setTime(12, 0);
@@ -70,13 +74,25 @@ final class StampDealMoney
     /** Первый наш платёж поставщику за эту машину из выписки. */
     public static function firstOut(Deal $deal): ?Transaction
     {
-        $inns = array_keys(config('xcar.bank.supplier_inns', []));
+        return Transaction::where('deal_id', $deal->id)->where('direction', 'out')->whereIn('counterparty_inn', self::supplierInns($deal))
+            ->whereDate('booked_at', '>=', self::since($deal))->orderBy('booked_at')->orderBy('id')->first();
+    }
+
+    /** С какого дня выписка — про эту сделку: месяц до неё. */
+    private static function since(Deal $deal): string
+    {
+        return $deal->created_at->copy()->subDays(30)->toDateString();
+    }
+
+    /** Кому мы платим за машину этой сделки: ИНН вендора и «платим за поставщика» (`xcar.bank.supplier_inns`). */
+    public static function supplierInns(Deal $deal): array
+    {
+        $inns = array_map('strval', array_keys(config('xcar.bank.supplier_inns', [])));
         if ($inn = $deal->offer?->vendor?->party?->inn) {
             $inns[] = $inn;
         }
 
-        return Transaction::where('deal_id', $deal->id)->where('direction', 'out')->whereIn('counterparty_inn', $inns)
-            ->orderBy('booked_at')->orderBy('id')->first();
+        return $inns;
     }
 
     /** Все сделки, к которым привязана выписка или есть оплаты, — пересчёт (`bank:link`). */
