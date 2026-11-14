@@ -7,6 +7,7 @@ use App\Offers\Actions\AcceptBid;
 use App\Offers\Actions\MarkContractSigned;
 use App\Offers\Actions\MarkSoldDeal;
 use App\Offers\Actions\PlaceBid;
+use App\Offers\Actions\ReopenDeal;
 use App\Offers\CarPlace;
 use App\Offers\CommissionMode;
 use App\Offers\Deal;
@@ -87,6 +88,23 @@ class AlreadySoldTest extends TestCase
         $this->assertSame(DealState::Active, $deal->state);
         $this->assertTrue($deal->offer->fresh()->stage()->aboutContract(), 'встала на «'.$deal->offer->fresh()->stage()->name.'»');
         $this->assertNull($deal->contract_signed_at);
+    }
+
+    public function test_reopen_undoes_already_sold(): void
+    {
+        $deal = $this->deal();
+        $from = $deal->offer->stage();
+        $deal = app(MarkSoldDeal::class)($deal, $this->admin, true, null, true, Carbon::today());
+        $this->assertTrue(ReopenDeal::allows($deal->fresh('offer'), $this->admin));
+
+        $deal = app(ReopenDeal::class)($deal, $from, $this->admin);
+
+        $this->assertSame(DealState::Active, $deal->state);
+        $this->assertNull($deal->closed_at);
+        $this->assertNull($deal->contract_signed_at, 'отметку «Уже продана» откатили');
+        $offer = $deal->offer->fresh();
+        $this->assertSame(OfferState::Sold, $offer->state);
+        $this->assertTrue($offer->stage()->is($from));
     }
 
     public function test_contract_signed_drops_buyer_ask(): void

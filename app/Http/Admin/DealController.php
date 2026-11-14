@@ -8,12 +8,15 @@ use App\Offers\Actions\ChangeDealScheme;
 use App\Offers\Actions\DeclineBySupplier;
 use App\Offers\Actions\MarkContractSigned;
 use App\Offers\Actions\MarkSoldDeal;
+use App\Offers\Actions\ReopenDeal;
+use App\Offers\Actions\SetDealDate;
 use App\Offers\Actions\SetReceiver;
 use App\Offers\Actions\UpdateDealMoney;
 use App\Offers\Binding;
 use App\Offers\CarWindow;
 use App\Offers\CommissionMode;
 use App\Offers\Deal;
+use App\Offers\DealDates;
 use App\Offers\DealScheme;
 use App\Offers\DealState;
 use App\Offers\DealWork;
@@ -41,6 +44,7 @@ use App\Workflow\Actor;
 use App\Workflow\Asks;
 use App\Workflow\Outcome;
 use App\Workflow\Position;
+use App\Workflow\Stage;
 use App\Workflow\Track;
 use App\Workflow\WaitsFor;
 use Illuminate\Http\Request;
@@ -495,12 +499,40 @@ class DealController
     public function sold(Request $request, Deal $deal, MarkSoldDeal $mark)
     {
         abort_unless($request->user()->canManageCrm(), 403);
-        $data = $request->validate(['signed' => ['required', Rule::in(['yes', 'no'])], 'manager_paid' => ['nullable', Rule::in(['yes', 'no'])],
-            'supplier_paid' => ['nullable', Rule::in(['yes', 'no'])], 'sold_on' => ['required', 'date', 'before_or_equal:today']], [], ['sold_on' => 'когда продали']);
+        // Про деньги — только явным ответом (14.11.2026, 666916: «Да» по умолчанию подтверждали не глядя).
+        $asksMoney = MarkSoldDeal::unpaid($deal)->isNotEmpty() || ! $deal->agreed();
+        $data = $request->validate(['signed' => ['required', Rule::in(['yes', 'no'])],
+            'manager_paid' => [$asksMoney ? 'required' : 'nullable', Rule::in(['yes', 'no'])],
+            'supplier_paid' => [MarkSoldDeal::asksSupplier($deal) ? 'required' : 'nullable', Rule::in(['yes', 'no'])],
+            'sold_on' => ['required', 'date', 'before_or_equal:today']],
+            ['manager_paid.required' => 'Ответьте: менеджер заплатил?', 'supplier_paid.required' => 'Ответьте: мы заплатили поставщику?'], ['sold_on' => 'когда продали']);
         $deal = $mark($deal, $request->user(), $data['signed'] === 'yes', isset($data['manager_paid']) ? $data['manager_paid'] === 'yes' : null,
             isset($data['supplier_paid']) ? $data['supplier_paid'] === 'yes' : null, Carbon::parse($data['sold_on'], 'Europe/Moscow'));
 
         return back()->with('toast', $deal->isActive() ? 'Встала на «'.$deal->offer->stage()?->name.'»' : 'Сделка закрыта');
+    }
+
+    /** «Продано» / «Оплачено» нажатием во «Все» (14.11.2026, `SetDealDate`): пустое — очистить. */
+    public function dates(Request $request, Deal $deal, SetDealDate $set)
+    {
+        abort_unless($request->user()->canManageCrm(), 403);
+        $data = $request->validate(['what' => ['required', Rule::in([DealDates::SOLD, DealDates::PAID])],
+            'at' => ['nullable', 'date', 'before_or_equal:today']]);
+        $deal = $set($deal, $data['what'], filled($data['at'] ?? null) ? Carbon::parse($data['at'], 'Europe/Moscow') : null, $request->user());
+
+        return back()->with('toast', ($data['what'] === 'sold' ? 'Продано' : 'Оплачено').': '.(filled($data['at'] ?? null) ? Carbon::parse($data['at'])->format('d.m.Y') : 'снято')
+            .($deal->isActive() && $data['what'] === 'paid' && blank($data['at'] ?? null) ? ', сделка снова в работе' : ''));
+    }
+
+    /** «Вернуть сделку в работу…» (14.11.2026, `ReopenDeal`). */
+    public function reopen(Request $request, Deal $deal, ReopenDeal $reopen)
+    {
+        abort_unless($request->user()->canManageCrm(), 403);
+        $data = $request->validate(['stage_id' => ['required', 'integer'], 'undo_sold' => ['nullable', 'boolean']]);
+        $stage = Stage::findOrFail($data['stage_id']);
+        $reopen($deal, $stage, $request->user(), $request->boolean('undo_sold', true));
+
+        return back()->with('toast', 'Сделка снова в работе: «'.$stage->name.'»');
     }
 
     /** «Договор уже подписан» (14.11.2026): покупателя и его данных не просим, шаги договора — пройдены (`MarkContractSigned`). */

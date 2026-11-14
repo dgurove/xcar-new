@@ -24,6 +24,8 @@
     };
     // Не оплатили поставщику — сделка встанет на шаге нашей оплаты: туда (договор подписан) и пишем.
     $payStop = $asksSupplier ? MarkSoldDeal::run($deal, true, false)?->stop : null;
+    // Кому платим — по имени («Мы заплатили Совкомбанку»): «поставщику» читали не глядя (14.11.2026, 666916).
+    $vendor = $offer?->vendor?->name ? 'поставщику, '.$offer->vendor->name : 'поставщику';
 @endphp
 <div data-controller="sheet" data-action="sold:open@window->sheet#open" class="contents">
     <x-ui.sheet id="sold-{{ $deal->id }}" title="Уже продана">
@@ -36,7 +38,8 @@
             @if ($asksMoney)
                 <div>
                     <h3 class="list-head">Менеджер нам заплатил{{ $owed ? ', '.Money::rub($owed) : '' }}</h3>
-                    <x-ui.segment name="manager_paid" :options="['yes' => 'Да', 'no' => 'Нет, пусть висит долг']" :value="old('manager_paid', 'yes')"/>
+                    <x-ui.segment name="manager_paid" :options="['yes' => 'Да', 'no' => 'Нет, пусть висит долг']" :value="old('manager_paid')"/>
+                    @error('manager_paid')<p class="field-error">{{ $message }}</p>@enderror
                 </div>
             @endif
             <div data-controller="reveal" class="flex flex-col gap-3">
@@ -50,10 +53,11 @@
             @if ($asksSupplier)
                 <div data-controller="reveal" class="flex flex-col gap-3">
                     <div>
-                        <h3 class="list-head">Поставщику оплачено</h3>
-                        <x-ui.segment name="supplier_paid" :options="['yes' => 'Да', 'no' => 'Ещё нет']" :value="old('supplier_paid', 'yes')" pick/>
+                        <h3 class="list-head">Мы заплатили {{ $vendor }}</h3>
+                        <x-ui.segment name="supplier_paid" :options="['yes' => 'Да', 'no' => 'Ещё нет']" :value="old('supplier_paid')" pick/>
+                        @error('supplier_paid')<p class="field-error">{{ $message }}</p>@enderror
                     </div>
-                    @if ($payStop)<p class="text-sm text-ink-muted" data-reveal-target="pane" data-reveal-key="no" hidden>Сделка встанет на «{{ $payStop->name }}» — оплату отметите там</p>@endif
+                    @if ($payStop)<p class="text-sm text-ink-muted" data-reveal-target="pane" data-reveal-key="no" hidden>Сделка встанет на «{{ $payStop->name }}» и будет ждать нашу оплату</p>@endif
                 </div>
             @endif
             <div class="fields">

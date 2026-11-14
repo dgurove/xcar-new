@@ -20,6 +20,7 @@ use App\Billing\Listeners\PassTurnOnInvoice;
 use App\Billing\Listeners\PayoutWhenPaid;
 use App\Billing\Listeners\ReturnOnReject;
 use App\Billing\Listeners\RevokeAgentFee;
+use App\Billing\Listeners\StampPaidIn;
 use App\Billing\Listeners\StartSelectionDue;
 use App\Cars\Car;
 use App\Cars\Events\CarChanged;
@@ -39,6 +40,7 @@ use App\Logistics\Listeners\NotifyLogistics;
 use App\Logistics\Listeners\RecordHistory;
 use App\Logistics\Listeners\RecordOnOffer;
 use App\Logistics\Listeners\RefreshLogistics;
+use App\Mail\Events\MessageSent;
 use App\Mail\Extraction\AttachmentReader;
 use App\Mail\Extraction\TextAttachmentReader;
 use App\Mail\Jobs\ImportThreadFiles;
@@ -50,6 +52,7 @@ use App\Notifications\RecordDelivery;
 use App\Offers\Actions\AdvanceOnBuyerData;
 use App\Offers\Events\OfferPublished;
 use App\Offers\Events\OfferStateChanged;
+use App\Offers\Listeners\ApplySigningWish;
 use App\Offers\Listeners\CloseReviews;
 use App\Offers\Listeners\FollowParallels;
 use App\Offers\Listeners\MarkSupplierLetter;
@@ -70,6 +73,7 @@ use App\Users\Access\EnrollOnLogin;
 use App\Users\Auth\WebAuthnProvider;
 use App\Users\Listeners\RecordLogin;
 use App\Users\Passkeys;
+use App\Vendors\Actions\MailClaimDigest;
 use App\Workflow\Events\StageEntered;
 use ArrayObject;
 use Illuminate\Auth\Events\Login;
@@ -133,7 +137,7 @@ class AppServiceProvider extends ServiceProvider
             $blaze->add(resource_path("views/components/{$plain}.blade.php"), compile: false);
         }
         // До `Notify`: «Время подписания», названное заранее, проходит само — «Ваш ход» по нему не уходит.
-        Event::subscribe(\App\Offers\Listeners\ApplySigningWish::class);
+        Event::subscribe(ApplySigningWish::class);
         Event::subscribe(Notify::class);
         Event::subscribe(NotifyLogistics::class);
         Event::subscribe(RecordOnOffer::class);
@@ -148,7 +152,7 @@ class AppServiceProvider extends ServiceProvider
         Event::subscribe(SyncOffer::class);
         Event::subscribe(ReportDelivery::class);
         // Письмо «Согласование реализации» ушло — владельцу в Telegram (`MailClaimDigest`, 14.11.2026).
-        Event::listen(\App\Mail\Events\MessageSent::class, [\App\Vendors\Actions\MailClaimDigest::class, 'sent']);
+        Event::listen(MessageSent::class, [MailClaimDigest::class, 'sent']);
         Event::subscribe(SyncHandover::class);
         Event::subscribe(OnInsurerReply::class);
         Event::listen(StageEntered::class, [AdvanceOnBuyerData::class, 'entered']);
@@ -163,6 +167,7 @@ class AppServiceProvider extends ServiceProvider
         Event::listen(PaymentRecorded::class, PayoutWhenPaid::class);
         Event::listen(PaymentRecorded::class, PayoutWhenBuyerPaid::class);
         Event::listen(PaymentRecorded::class, CloseWhenPaid::class);
+        Event::listen([PaymentRecorded::class, PaymentVoided::class], StampPaidIn::class);
         Event::listen(PaymentClaimed::class, AdvanceOnClaim::class);
         Event::listen(PaymentConfirmed::class, AdvanceOnPayment::class);
         Event::listen(StageEntered::class, [AdvanceOnPayment::class, 'entered']);

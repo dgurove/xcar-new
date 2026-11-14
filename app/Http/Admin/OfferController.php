@@ -30,6 +30,7 @@ use App\Offers\Binding;
 use App\Offers\CarView;
 use App\Offers\CarWindow;
 use App\Offers\CatalogQuery;
+use App\Offers\DealDates;
 use App\Offers\Estimate;
 use App\Offers\EstimateState;
 use App\Offers\Exclusive;
@@ -44,8 +45,8 @@ use App\Offers\OfferNumber;
 use App\Offers\OfferState;
 use App\Offers\PriceGuard;
 use App\Offers\Pricing;
-use App\Offers\SaleCity;
 use App\Offers\Reprice;
+use App\Offers\SaleCity;
 use App\Offers\Slots;
 use App\Support\Ago;
 use App\Support\Detail;
@@ -155,6 +156,8 @@ class OfferController
         'price' => ['Цена продажи', 'asc'],
         'bids' => ['Подтверждения', 'desc'],
         'binding' => ['Срок обязывающего', 'asc'],
+        'sold' => ['Продано', 'desc'],
+        'paid' => ['Оплачено', 'desc'],
     ];
 
     /**
@@ -543,6 +546,8 @@ class OfferController
             'price' => $q->orderByRaw("offers.asking_price {$dir} nulls last"),
             'bids' => $q->orderByRaw("{$bids} {$dir}"),
             'binding' => $q->orderByRaw("offers.binding_until {$dir} nulls last"),
+            'sold' => $q->orderByRaw(DealDates::sortSql(DealDates::SOLD)." {$dir} nulls last"),
+            'paid' => $q->orderByRaw(DealDates::sortSql(DealDates::PAID)." {$dir} nulls last"),
             default => $q->orderBy('offers.id', $dir),
         };
         $q->orderByDesc('offers.id');
@@ -635,7 +640,8 @@ class OfferController
             // Во «Все» город — с 1024: место отдано этапу сделки и менеджеру в «Состоянии» (27.10.2026; с 29.10.2026 таблица
             // плотнее, и с 1536 — слишком поздно).
             $has('city') ? new Column('city', 'Город', from: $preset === 'all' ? 'lg' : 'sm', aside: true, clip: true, role: ColRole::Place, rem: max(5, $cityCh * .5 + 2.5)) : null,
-            $has('state') ? new Column('state', ! $all && $has('bids') ? 'Приём' : 'Состояние', from: 'sm', sort: 'closing', cell: 'whitespace-normal', role: ColRole::State, rem: 10) : null,
+            // Во «Все» состояние — главное (14.11.2026, владелец: с окном справа оно уходило по ширине — «ничего не понятно»).
+            $has('state') ? new Column('state', ! $all && $has('bids') ? 'Приём' : 'Состояние', from: 'sm', sort: 'closing', cell: 'whitespace-normal', role: ColRole::State, rem: 10, main: $preset === 'all') : null,
             // Подтверждения принимает только админ — модератору столбца нет.
             $has('bids') && $user->canManageCrm() ? new Column('bids', 'Подтверждения', from: 'sm', num: true, sort: 'bids', cell: 'nums', rem: 7) : null,
             ! $all && $has('value') ? new Column('value', 'Оценочная', from: 'sm', num: true, aside: true, cell: 'nums', rem: 5.5) : null,
@@ -643,6 +649,9 @@ class OfferController
                 ? new Column('floor', 'Закупочная', num: true, sort: 'floor', cell: 'nums', rem: 5.5)
                 : new Column('floor', 'Закупочная', from: 'sm', num: true, aside: true, sort: 'floor', cell: 'nums', rem: 5.5)),
             $has('price') ? new Column('price', 'Цена', num: true, sort: 'price', cell: 'nums', rem: 6) : null,
+            // «Продано» / «Оплачено» (`DealDates`) — нажатием правятся (`SetDealDate`), с окном справа остаются.
+            ! $all && $has('sold') ? new Column('sold', 'Продано', from: 'sm', sort: 'sold', cell: 'nums whitespace-nowrap', role: ColRole::When, rem: 6, main: true) : null,
+            ! $all && $has('paid') ? new Column('paid', 'Оплачено', from: 'sm', sort: 'paid', cell: 'nums whitespace-nowrap', role: ColRole::When, rem: 6, main: true) : null,
             // Дата — и при открытом окне (13.11.2026, начальник: «Во вкладке» пропадало); не влезает — уходит последней (`Table::DROP`).
             $when ? new Column('when', $when[1], from: 'sm', sort: $when[0], cell: 'nums whitespace-nowrap', role: ColRole::When, rem: $when[2]) : null,
         ], ['mixed' => $all, 'when' => $when[0] ?? null, 'floorSide' => $floorSide]);
@@ -679,7 +688,9 @@ class OfferController
             // В «Опубликованных» у админа подтверждений нет по определению — столбца тоже.
             'published' => ['vendor', 'city', ...($admin ? ['state'] : []), 'floor', 'price', 'published'],
             'bids' => ['vendor', 'city', 'state', 'bids', 'floor', 'price', 'published'],
-            // «Все» и «Архив»: где предложение сейчас — словом вкладки (`Offer::crmTab`: «Сделки», «Гараж»).
+            // «Все»: ещё когда нам заплатили и когда мы поставщику (14.11.2026, владелец: «ваще непонятно, что с ними», `DealDates`).
+            'all' => ['vendor', 'city', 'state', 'floor', 'price', 'sold', 'paid', 'created'],
+            // «Архив»: где предложение сейчас — словом вкладки (`Offer::crmTab`: «Сделки», «Гараж»).
             default => ['vendor', 'city', 'state', 'floor', 'price', 'created'],
         };
 

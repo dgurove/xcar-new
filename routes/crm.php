@@ -278,6 +278,8 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
         Route::post('/work/deals/{deal}/declined', [DealController::class, 'declined']);
         Route::post('/work/deals/{deal}/sold', [DealController::class, 'sold']);
         Route::post('/work/deals/{deal}/contract-signed', [DealController::class, 'contractSigned']);
+        Route::post('/work/deals/{deal}/dates', [DealController::class, 'dates']);
+        Route::post('/work/deals/{deal}/reopen', [DealController::class, 'reopen']);
         // Параллельные сделки (07.11.2026, `Offers\Parallels`): переключиться на эту — «Взять в работу», закрыть одну — «Снять».
         Route::post('/work/deals/{deal}/take', [ParallelController::class, 'take']);
         Route::post('/work/deals/{deal}/drop', [ParallelController::class, 'drop']);

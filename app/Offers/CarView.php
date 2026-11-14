@@ -10,6 +10,7 @@ use App\Garage\GarageView;
 use App\Offers\Actions\MarkContractSigned;
 use App\Offers\Actions\MarkSoldDeal;
 use App\Offers\Actions\PublishDeal;
+use App\Offers\Actions\ReopenDeal;
 use App\Offers\Actions\ReturnToSale;
 use App\Offers\Actions\SellAtAuction;
 use App\Support\Money;
@@ -460,6 +461,13 @@ final class CarView
             }
             if ($v['resale'] && $state === OfferState::Sold && MarkContractSigned::allows($o->deal)) {
                 $sold[] = $post('/work/deals/'.$o->deal->id.'/contract-signed', 'Договор уже подписан', 'file', [], confirm: 'Договор с покупателем уже подписан?', text: 'Данные покупателя больше не нужны, шаги договора отметятся', confirmLabel: 'Подписан');
+            }
+            // Закрыли по ошибке («Уже продана» случайно, шаги прокликали руками) — снова в работу (`ReopenDeal`).
+            if ($me = auth()->user()) {
+                $closed = $o->lastDeal;
+                if ($closed && ReopenDeal::allows($closed, $me)) {
+                    $sold[] = $emit('reopen', 'Вернуть сделку в работу…', 'undo');
+                }
             }
             if ($sold) {
                 $groups[] = $sold;

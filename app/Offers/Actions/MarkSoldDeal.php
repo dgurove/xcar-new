@@ -94,7 +94,9 @@ final class MarkSoldDeal
                 throw ValidationException::withMessages(['deal' => 'Маршрут сделки дальше не идёт — проведите шаг вручную']);
             }
             $closes = $run->closes();
-            $open = $closes ? Transport::openFor($offer) : null;
+            // Продана и договор подписан — ТС у покупателя, даже если сделка ещё ждёт нашей оплаты поставщику.
+            $handed = $closes || $signed;
+            $open = $handed ? Transport::openFor($offer) : null;
             if ($open && (! $open->isPickup() || $open->taken())) {
                 throw ValidationException::withMessages(['deal' => 'ТС везут — сначала закройте вывоз']);
             }
@@ -103,13 +105,15 @@ final class MarkSoldDeal
             ($this->agree)($deal, $by);
             $deal->refresh()->setRelation('offer', $offer);
             $bills = self::unpaid($deal);
+            // Снимок для «Вернуть сделку в работу» (`ReopenDeal`): что сделала именно она, то и откатывается.
+            $snap = ['deal' => $deal->id, 'from' => $stage->id, 'place' => $offer->car_place?->value, 'payments' => []];
             // Долг держит только выставленный счёт («Нам должны» — по счетам, `DealDebt`): без него «долг» потерялся бы молча.
             if ($managerPaid === false && $bills->isEmpty()) {
                 throw ValidationException::withMessages(['deal' => 'Счёта менеджеру по сделке нет — долгу не на чем висеть: выставьте счёт в «Деньгах» сделки или ответьте «Да»']);
             }
             if ($managerPaid) {
                 foreach ($bills as $bill) {
-                    ($this->pay)($bill, $by, $bill->remaining(), $at, PaymentSource::Bank, note: 'Уже продана: оплачено вне системы');
+                    $snap['payments'][] = ($this->pay)($bill, $by, $bill->remaining(), $at, PaymentSource::Bank, note: 'Уже продана: оплачено вне системы')->id;
                 }
                 if ($deal->refresh()->fullyPaid()) {
                     ($this->fee)($deal->setRelation('offer', $offer), $by);
@@ -120,23 +124,27 @@ final class MarkSoldDeal
                 'prepaid_at' => ! $deal->prepaid_at && $run->passesPayment() ? $at : null,
             ]);
             $stamps && $deal->forceFill($stamps)->save();
-            if ($signed) {
+            $snap['stamps'] = array_keys($stamps);
+            if ($signed && ! $deal->contractSigned()) {
                 MarkContractSigned::mark($deal, $by, $at);
+                $snap['contract'] = true;
             }
 
-            if ($closes) {
+            if ($handed) {
                 if ($open) {
+                    $snap['transport'] = ['id' => $open->id, 'state' => $open->state->value];
                     ($this->cancel)($open, $by, 'Уже продана: вывоз не нужен', system: true);
                 }
                 $vehicle = $offer->parkVehicle()->first();
                 if ($vehicle && in_array($vehicle->state, [VehicleState::Stored, VehicleState::Expected], true)) {
                     ($this->markSold)($vehicle, $by, $at, $deal->buyer?->name, null);
+                    $snap['vehicle'] = $vehicle->id;
                 } else {
                     ($this->carPlace)($offer->fresh(), CarPlace::Buyer, $by);
                 }
             }
 
-            $offer->log(OfferEventType::Note, $by, ['text' => self::summary($signed, $managerPaid, $bills, $run, $at)]);
+            $offer->log(OfferEventType::Note, $by, ['text' => self::summary($signed, $managerPaid, $bills, $run, $at), 'sold' => $snap]);
             Requirement::closeOpen($deal, $stage->id, ['closed_by' => 'staff', 'by' => $by->id, 'exit' => 'Уже продана']);
             if ($run->stop->id !== $stage->id) {
                 ($this->place)($offer->fresh(), $run->stop, $by, payload: ['label' => 'Уже продана', ...($closes ? ['quiet' => true] : [])]);

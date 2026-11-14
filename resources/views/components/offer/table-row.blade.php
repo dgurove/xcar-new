@@ -147,6 +147,27 @@
         @elseif ($offer->floor_price && $has('floor') && ! ($correcting && $waits))<span class="cell-sub sm:hidden" @if ($busy) data-arrive-count @endif>{{ \App\Support\Money::nums($offer->floor_price) }}</span>@endif
     </td>
         @break
+        @case('sold')
+        @case('paid')
+    {{-- «Продано» — когда нам за неё заплатили, «Оплачено» — когда мы поставщику (14.11.2026, `DealDates`): нажатие — календарь,
+         дата уходит сразу (`SetDealDate`); нужна, а нет — «нет» (красным у закрытой); сделки нет или не нужна — пусто. --}}
+    <td class="{{ $col->classes() }}">
+        @php
+            $dd = $offer->lastDeal;
+            $dcol = $dd ? ($col->key === 'sold' ? \App\Offers\DealDates::soldColumn($dd) : \App\Offers\DealDates::paidColumn($dd)) : null;
+            $dval = $dcol ? $dd->{$dcol} : null;
+            // «нет» красным — только у закрытой: у идущей оплата может быть ещё впереди, серым.
+            $dmiss = $dd?->state === \App\Offers\DealState::Done ? 'text-danger' : 'text-ink-dim';
+        @endphp
+        @if ($dcol && $admin)
+            <form method="post" action="/work/deals/{{ $dd->id }}/dates" class="contents">@csrf<input type="hidden" name="what" value="{{ $col->key }}">
+                <x-ui.date name="at" :id="'deal-'.$col->key.'-'.$dd->id" :value="$dval?->toDateString()" chip submit placeholder="нет" :max="now()->toDateString()" :class="$dval ? 'nums' : $dmiss"/>
+            </form>
+        @elseif ($dcol)
+            @if ($dval){{ \App\Support\Ago::html($dval) }}@else<span class="{{ $dmiss }}">нет</span>@endif
+        @endif
+    </td>
+        @break
         @case('when')
     {{-- Когда заведено (черновик — когда начали): последним, приглушённо и в одну строку; в карточке справа столбца нет.
          Аватаром у даты (у правого края, `.face`): во вкладке шага — кто перевёл сюда, иначе кто завёл черновик. --}}
