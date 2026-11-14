@@ -862,7 +862,7 @@ class VehicleController
     {
         $title = new Column('title', 'Марка, модель', grow: true, sort: 'name');
         $yard = new Column('yard', 'Парковка', from: 'sm', sort: 'yard', role: ColRole::Place, rem: 8);
-        $vendor = new Column('vendor', 'Вендор, № убытка', from: 'sm', sort: 'vendor', role: ColRole::Code, rem: 10);
+        $vendor = new Column('vendor', '№ убытка', from: 'sm', sort: 'vendor', role: ColRole::Code, rem: 10);
         $accepted = new Column('accepted', 'Принята', from: 'lg', aside: true, sort: 'accepted', cell: 'nums', role: ColRole::When, rem: 6.5);
         $docs = $wide ? [new Column('vin', 'VIN', cell: 'text-sm', role: ColRole::Code, rem: 11), new Column('sts', 'СТС', cell: 'text-sm', role: ColRole::Code, rem: 7),
             new Column('pts', 'ПТС', cell: 'text-sm', role: ColRole::Code, rem: 8), new Column('policy', '№ полиса', cell: 'text-sm', role: ColRole::Code, rem: 9),

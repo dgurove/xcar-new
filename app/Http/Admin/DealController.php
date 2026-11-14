@@ -381,7 +381,7 @@ class DealController
         $title = new Column('title', 'Марка, модель', grow: true);
         // Ширина у каждого столбца (29.10.2026): без неё `x-ui.table :rest` гадали числом в виде, и название то резалось, то
         // оставляло дыру.
-        $vendor = new Column('vendor', 'Вендор, № убытка', from: 'sm', role: ColRole::Code, rem: 10);
+        $vendor = new Column('vendor', '№ убытка', from: 'sm', role: ColRole::Code, rem: 10);
         $manager = new Column('manager', 'Менеджер', from: 'sm', role: ColRole::Who, rem: 9);
 
         return match (true) {

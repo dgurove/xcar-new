@@ -634,18 +634,19 @@ class OfferController
         return new Table([
             self::pickable($user, $preset, $searching) ? new Column('pick', pick: true, rem: 2.5) : null,
             new Column('title', 'Марка, модель', grow: true),
-            $has('vendor') ? new Column('vendor', 'Вендор, № убытка', from: 'sm', sort: 'vendor', role: ColRole::Code, rem: max(8.5, $refCh * .55 + 3)) : null,
+            $has('vendor') ? new Column('vendor', '№ убытка', from: 'sm', sort: 'vendor', role: ColRole::Code, rem: max(8.5, $refCh * .55 + 3)) : null,
             // Номера предложения столбцом нет (14.11.2026, владелец: «бесполезный, лучше номер убытка с логотипом страховой» —
-            // он в «Вендор, № убытка»); сортировка «Номер» осталась в окошке, номер — в окне и поиске.
+            // он в «№ убытка» с логотипом вендора); сортировка «Номер» осталась в окошке, номер — в окне и поиске.
             // Во «Все» город — с 1024: место отдано этапу сделки и менеджеру в «Состоянии» (27.10.2026; с 29.10.2026 таблица
             // плотнее, и с 1536 — слишком поздно).
             $has('city') ? new Column('city', 'Город', from: $preset === 'all' ? 'lg' : 'sm', aside: true, clip: true, role: ColRole::Place, rem: max(5, $cityCh * .5 + 2.5)) : null,
             // Во «Все» состояние — главное (14.11.2026, владелец: с окном справа оно уходило по ширине — «ничего не понятно»).
-            $has('state') ? new Column('state', ! $all && $has('bids') ? 'Приём' : 'Состояние', from: 'sm', sort: 'closing', cell: 'whitespace-normal', role: ColRole::State, rem: 10, main: $preset === 'all') : null,
-            // Менеджер сделки или гаража — во «Все», и при открытом окне (14.11.2026, владелец).
+            // «Менеджер» — третьим, после номера убытка, по левому краю, аватар слева (14.11.2026, владелец).
             // Ширина постоянная (`fixed`): по первой сотне строк её не посчитать — наверху «Все» сгоревшие сроки без сделок, и
             // столбец сжимался до заголовка, имена ниже резались до «Ива…» (14.11.2026, владелец).
-            ! $all && $has('manager') ? new Column('manager', 'Менеджер', from: 'sm', cell: 'whitespace-nowrap', role: ColRole::Who, rem: 12.5, main: true, fixed: true) : null,
+            ! $all && $has('manager') ? new Column('manager', 'Менеджер', from: 'sm', cell: 'whitespace-nowrap', role: ColRole::State, rem: 12.5, main: true, fixed: true) : null,
+            $has('state') ? new Column('state', ! $all && $has('bids') ? 'Приём' : 'Состояние', from: 'sm', sort: 'closing', cell: 'whitespace-normal', role: ColRole::State, rem: 10, main: $preset === 'all') : null,
+            // Менеджер сделки или гаража — во «Все», и при открытом окне (14.11.2026, владелец).
             // Подтверждения принимает только админ — модератору столбца нет.
             $has('bids') && $user->canManageCrm() ? new Column('bids', 'Подтверждения', from: 'sm', num: true, sort: 'bids', cell: 'nums', rem: 7) : null,
             ! $all && $has('value') ? new Column('value', 'Оценочная', from: 'sm', num: true, aside: true, cell: 'nums', rem: 5.5) : null,

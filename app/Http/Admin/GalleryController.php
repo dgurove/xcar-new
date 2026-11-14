@@ -110,7 +110,7 @@ class GalleryController
     {
         return Table::of(
             new Column('title', 'Марка, модель', grow: true),
-            new Column('vendor', 'Вендор, № убытка', from: 'sm', role: ColRole::Code, rem: 9),
+            new Column('vendor', '№ убытка', from: 'sm', role: ColRole::Code, rem: 9),
             new Column('city', 'Город', from: 'sm', aside: true, rem: 6, clip: true, role: ColRole::Place),
             new Column('interest', 'Интерес', num: true, sort: 'interest', cell: 'nums', rem: 4.5),
             new Column('from', 'Появилось', from: 'sm', aside: true, sort: 'fresh', cell: 'nums whitespace-nowrap', role: ColRole::When, rem: 6.5),

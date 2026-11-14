@@ -37,7 +37,7 @@ class DocumentController
     {
         return Table::of(
             new Column('title', 'Марка, модель', grow: true),
-            new Column('vendor', 'Вендор, № убытка', from: 'sm', role: ColRole::Code, rem: 10),
+            new Column('vendor', '№ убытка', from: 'sm', role: ColRole::Code, rem: 10),
             // Где документы — своим столбцом от 640 (29.10.2026), а не вторым этажом названия; в пути — с трек-номером.
             new Column('docs', 'Документы', from: 'sm', role: ColRole::State, rem: 12),
             new Column('to', 'Кому', from: 'sm', role: ColRole::Who, rem: 12),

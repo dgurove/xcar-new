@@ -90,7 +90,7 @@ class GarageController
         return Table::of(
             // Название — шириной в самое длинное (`title-cap`), остальное — «Этапу» (29.10.2026).
             new Column('title', 'Марка, модель', grow: true),
-            new Column('vendor', 'Вендор, № убытка', from: 'sm', role: ColRole::Code, rem: 10),
+            new Column('vendor', '№ убытка', from: 'sm', role: ColRole::Code, rem: 10),
             // Этап — своим столбцом от 640 (29.10.2026), как «Что сейчас» в «Сделках»; был вторым этажом названия.
             new Column('stage', 'Этап', from: 'sm', role: ColRole::State, rem: 11),
             new Column('taken', 'В гараже с', from: 'xl', aside: true, cell: 'nums', role: ColRole::When, rem: 5.5),

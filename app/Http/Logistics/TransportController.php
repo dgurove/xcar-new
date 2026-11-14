@@ -196,7 +196,7 @@ class TransportController
             'pick' => new Column('pick', pick: true, rem: 2.5),
             'title' => new Column('title', 'Марка, модель', grow: true, sort: 'title'),
             'client' => new Column('client', 'Заказчик', from: 'sm', role: ColRole::Who, rem: 8),
-            'vendor' => new Column('vendor', 'Вендор, № убытка', from: 'sm', sort: 'vendor', role: ColRole::Code, rem: 10),
+            'vendor' => new Column('vendor', '№ убытка', from: 'sm', sort: 'vendor', role: ColRole::Code, rem: 10),
             'sale' => new Column('sale', 'Продажа', from: 'sm', sort: 'sale', role: ColRole::State, rem: 9),
             'binding' => new Column('binding', 'Обязывающее до', from: 'sm', sort: 'binding', cell: 'nums whitespace-nowrap', role: ColRole::When, rem: 7),
             'to' => new Column('to', 'Кому везти', from: 'sm', role: ColRole::Place, rem: 9),
