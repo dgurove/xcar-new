@@ -173,6 +173,21 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
     Route::get('/reference/vendors', [ReferenceController::class, 'vendors']);
     Route::post('/reference/vendors', [ReferenceController::class, 'createVendor'])->middleware('ability:canManageCrm');
 
+    // Сделки для документов (14.11.2026, владелец: «админам и модераторам вручную менять сумму договора и счёта»): модератору —
+    // список «Сделок» с окном документов, сумма договора, данные ДКП и паспорт покупателя; прочее по сделке — только админу.
+    Route::middleware('ability:canEditDeals')->group(function () {
+            Route::get('/work/deals', [DealController::class, 'index']);
+            Route::get('/work/deals/{deal}', [DealController::class, 'show']);
+            Route::put('/work/deals/{deal}/contract', [DealContractController::class, 'update']);
+            Route::post('/parties/{party}/passport/{page}', [PassportScanController::class, 'upload'])->whereIn('page', ['main', 'reg'])->middleware('throttle:30,1');
+            Route::get('/parties/{party}/passport/live', [PassportScanController::class, 'live']);
+            Route::post('/parties/{party}/passport/read', [PassportScanController::class, 'read'])->middleware('throttle:10,1');
+            Route::get('/parties/{party}/passport.pdf', [PassportScanController::class, 'pdf']);
+            Route::get('/work/deals/{deal}/dkp', [DealContractController::class, 'show']);
+            Route::get('/work/deals/{deal}/dkp.pdf', [DealContractController::class, 'show']);
+        Route::put('/work/deals/{deal}/contract-price', [DealContractController::class, 'price']);
+    });
+
     Route::middleware('ability:canManageCrm')->group(function () {
         Route::get('/work/invoices/new', [InvoiceController::class, 'create']);
         Route::post('/work/invoices', [InvoiceController::class, 'store']);
@@ -271,8 +286,6 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
 
         // Работа: сделки, почта и чаты под одним заголовком.
         Route::redirect('/work', '/work/deals');
-        Route::get('/work/deals', [DealController::class, 'index']);
-        Route::get('/work/deals/{deal}', [DealController::class, 'show']);
         Route::post('/work/deals/supplier-answer', [DealController::class, 'supplierAnswer']);
         Route::put('/work/deals/{deal}/receiver', [DealController::class, 'receiver']);
         Route::post('/work/deals/{deal}/declined', [DealController::class, 'declined']);
@@ -304,14 +317,7 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
         Route::post('/work/deals/{deal}/note', [DealController::class, 'note']);
         Route::put('/work/deals/{deal}/money', [DealController::class, 'money']);
         Route::post('/work/deals/{deal}/scheme', [DealController::class, 'scheme']);
-        Route::put('/work/deals/{deal}/contract', [DealContractController::class, 'update']);
         // Скан паспорта покупателя, которого админ указывает за менеджера (20.10.2026) — та же загрузка, что в кабинете.
-        Route::post('/parties/{party}/passport/{page}', [PassportScanController::class, 'upload'])->whereIn('page', ['main', 'reg'])->middleware('throttle:30,1');
-        Route::get('/parties/{party}/passport/live', [PassportScanController::class, 'live']);
-        Route::post('/parties/{party}/passport/read', [PassportScanController::class, 'read'])->middleware('throttle:10,1');
-        Route::get('/parties/{party}/passport.pdf', [PassportScanController::class, 'pdf']);
-        Route::get('/work/deals/{deal}/dkp', [DealContractController::class, 'show']);
-        Route::get('/work/deals/{deal}/dkp.pdf', [DealContractController::class, 'show']);
         // Оплаты — вкладки «По ссылкам / Нам должны / Мы должны» (07.10.2026); карточка счёта — общая со стоянкой.
         Route::get('/work/money', [MoneyController::class, 'index']);
         Route::get('/work/money/managers', [MoneyController::class, 'managers']); // бывшие «Расчёты с менеджерами» — редирект

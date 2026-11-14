@@ -85,6 +85,8 @@
     @endphp
     {{-- Схема — первой строкой: кто кому платит решает всё ниже (03.11.2026). --}}
     @unless ($deal->isAuction())<x-deal.scheme :deal="$deal"/>@endunless
+    {{-- Что и куда переводим поставщику по договору комиссии (14.11.2026). --}}
+    @if ($deal->isCommission() && $deal->contract)<x-deal.supplier-pay :deal="$deal"/>@endif
     <dl class="grid grid-cols-[auto_1fr] items-baseline gap-x-4 gap-y-1.5">
         @foreach ($shown as [$dt, $value, $class])<dt class="text-sm text-ink-dim">{{ $dt }}</dt><dd class="text-right {{ $class }}">{{ $value }}</dd>@endforeach
     </dl>

@@ -74,7 +74,7 @@ class RepriceTest extends TestCase
         $this->admin = User::create(['name' => 'Катя', 'phone' => '79000000030', 'roles' => [Role::Admin], 'approved_at' => now()]);
         $this->roman = User::create(['name' => 'Роман', 'phone' => '79000000017', 'roles' => [Role::Manager], 'approved_at' => now()]);
         $this->denis = User::create(['name' => 'Денис', 'phone' => '79000000002', 'roles' => [Role::Manager], 'approved_at' => now()]);
-        $vendor = Vendor::create(['name' => 'Совкомбанк тест', 'deal_format' => 'commission']);
+        $vendor = Vendor::create(['name' => 'Совкомбанк тест', 'deal_format' => 'supplier']);
         app(ApplyPreset::class)($vendor->workflowOrNew(Track::Sale), Preset::Sovcombank);
         $offer = Offer::create(['vendor_id' => $vendor->id, 'floor_price' => 594762, 'asking_price' => 1050000, 'bids_close_at' => now()->addDay()]);
         $offer->forceFill(['state' => OfferState::Open])->save();

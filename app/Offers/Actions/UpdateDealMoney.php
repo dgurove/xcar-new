@@ -2,8 +2,12 @@
 
 namespace App\Offers\Actions;
 
+use App\Billing\Actions\VoidInvoice;
+use App\Billing\ChargeKind;
+use App\Billing\InvoiceState;
 use App\Offers\CommissionMode;
 use App\Offers\Deal;
+use App\Offers\DealContract;
 use App\Offers\DealScheme;
 use App\Offers\OfferEventType;
 use App\Support\Money;
@@ -47,11 +51,12 @@ final class UpdateDealMoney
             // Ушли со схемы, где менеджер платит подбор, или стёрли гаражную долю — неоплаченный подбор гаснет (ссылка с ним).
             $fresh = $deal->fresh();
             // Договор — по новым деньгам: сумма собственнику или схема сменились, ДКП с прежней ценой не печатаем.
-            $fresh->contract?->update(['price' => \App\Offers\DealContract::priceFor($fresh)]);
+            // Сумма договора, вписанная руками (`SetContractPrice`), остаётся.
+            $fresh->contract && ! $fresh->contract->price_manual && $fresh->contract->update(['price' => DealContract::priceFor($fresh)]);
             if (($wasSelection && ! $fresh->paysSelection()) || ($fresh->isGarageManager() && ! $fresh->share)) {
-                foreach ($deal->issuedInvoices()->where('kind', \App\Billing\ChargeKind::Selection)->where('state', \App\Billing\InvoiceState::Issued)->get() as $old) {
+                foreach ($deal->issuedInvoices()->where('kind', ChargeKind::Selection)->where('state', InvoiceState::Issued)->get() as $old) {
                     if ($old->paidMoney() == 0) {
-                        app(\App\Billing\Actions\VoidInvoice::class)($old, $by, 'Схема оплаты изменена');
+                        app(VoidInvoice::class)($old, $by, 'Схема оплаты изменена');
                     }
                 }
             }

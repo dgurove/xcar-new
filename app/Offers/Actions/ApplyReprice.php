@@ -12,6 +12,7 @@ use App\Offers\Reprice;
 use App\Offers\RepriceAsk;
 use App\Support\Money;
 use App\Users\User;
+use Carbon\CarbonInterface;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -43,8 +44,8 @@ final class ApplyReprice
     /**
      * @param  array<int|string, string>  $bids  id подтверждения → keep | update | ask
      * @param  array{publish_price?: ?int, asking_price?: ?int, min_bid_price?: ?int}  $prices
-     * @param  ?array{rules: array, until: \Carbon\CarbonInterface}  $publish  по сделке «Спросить» — пока менеджер думает,
-     *                          опубликовать машину для других менеджеров (`PublishDeal`, 04.11.2026): кому и до когда; null — нет
+     * @param  ?array{rules: array, until: CarbonInterface}  $publish  по сделке «Спросить» — пока менеджер думает,
+     *                                                                 опубликовать машину для других менеджеров (`PublishDeal`, 04.11.2026): кому и до когда; null — нет
      */
     public function __invoke(Reprice $reprice, User $by, int $price, array $bids, ?string $deal, array $prices = [], ?array $publish = null): void
     {
@@ -207,7 +208,8 @@ final class ApplyReprice
             'owner_price' => $deal->owner_price !== null && (int) $deal->owner_price === $was ? $price : $deal->owner_price,
         ])->save();
         $fresh = $deal->fresh();
-        $fresh->contract?->update(['price' => DealContract::priceFor($fresh)]);
+        // Сумма договора, вписанная руками (`SetContractPrice`), остаётся.
+        $fresh->contract && ! $fresh->contract->price_manual && $fresh->contract->update(['price' => DealContract::priceFor($fresh)]);
         ($this->invoices)($fresh, $by);
         if ($amount !== null && $amount !== $amountWas) {
             // Подтверждение, по которому сделка, — та же цена: карточка «Сделка» в CRM показывает его сумму (10.11.2026, владелец:

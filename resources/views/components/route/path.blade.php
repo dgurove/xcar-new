@@ -288,6 +288,11 @@
                             <x-deal.supplier-invoice-sheet :id="'invoice-pay-'.$position->id" :deal="$deal"/>
                         </div>
                     @endif
+                    {{-- Оплата поставщику по договору комиссии (14.11.2026): назначенная им сумма не та, что мы переведём, — строкой дела,
+                         к блоку «… по договору комиссии» в «Деньгах» (там обе суммы, назначение и реквизиты). --}}
+                    @if ($deal && $stage->paysOut() && auth()->user()?->canManageCrm() && ($sp = $deal->contract?->supplier_price) !== null && ($sc = $deal->supplierCost()) !== null && $sp !== $sc)
+                        <x-route.task-row icon="file" urgent href="#money">По договору комиссии {{ \App\Support\Money::rub($sp) }}, у нас {{ \App\Support\Money::rub($sc) }}</x-route.task-row>
+                    @endif
                     {{-- Менеджер уже приложил, но шаг ещё не отметил — файл видно сразу. --}}
                     @if ($req && $req->getMedia('files')->isNotEmpty())
                         <div class="mt-2 flex flex-col gap-1">@foreach ($req->getMedia('files') as $f)<x-ui.file :name="$f->file_name" :mime="$f->mime_type" :bytes="$f->size" href="/files/{{ $f->id }}" class="py-1"/>@endforeach</div>

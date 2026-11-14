@@ -63,6 +63,15 @@ enum Role: string
         return in_array($this, [self::Admin], true);
     }
 
+    /**
+     * Сделки CRM для документов (14.11.2026, владелец: «админам и модераторам вручную менять сумму договора»): модератору —
+     * список «Сделок», своё окно сделки (`admin/deals/docs-window`), сумма договора и данные ДКП; остальное — `canManageCrm`.
+     */
+    public function canEditDeals(): bool
+    {
+        return in_array($this, [self::Admin, self::Moderator], true);
+    }
+
     /** Цену продажи видят все, кроме посетителя; что стоит перед стрелкой — решает PriceView. */
     public function canSeePrices(): bool
     {

@@ -496,6 +496,12 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
         return $this->roleCan('canManageCrm');
     }
 
+    /** Сделки для документов — сумма договора и ДКП (`Role::canEditDeals`): админ и модератор. */
+    public function canEditDeals(): bool
+    {
+        return $this->roleCan('canEditDeals');
+    }
+
     public function isModerator(): bool
     {
         return $this->hasRole(Role::Moderator);

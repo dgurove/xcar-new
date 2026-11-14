@@ -61,7 +61,8 @@ final class SyncDealInvoices
         }
         $deal->loadMissing(['offer', 'buyer', 'contract.buyer']);
         // Гаражная Совкомбанка: цена договора идёт за счётом — плательщик, цена и вознаграждение меняются по ходу (27.10.2026).
-        if ($deal->namesBuyer() && $deal->contract && $deal->contract->price !== ($price = DealContract::priceFor($deal))) {
+        // Сумма, вписанная руками (14.11.2026, `SetContractPrice`), не перетирается.
+        if ($deal->namesBuyer() && $deal->contract && ! $deal->contract->price_manual && $deal->contract->price !== ($price = DealContract::priceFor($deal))) {
             $deal->contract->update(['price' => $price]);
         }
         DB::transaction(function () use ($deal, $by) {
@@ -154,6 +155,10 @@ final class SyncDealInvoices
                 : null;
         }
         $contract = $deal->contract;
+        // Ставка НДС счёта за ТС — ставка договора (14.11.2026, блок «НДС» в «Деньгах», `DealContract::vatRate`).
+        $vat = $contract ? $contract->vatRate() : null;
+        // Сумма договора, вписанная руками (14.11.2026, «всякое бывает»), — счёт идёт за ней.
+        $manual = $contract?->price_manual && $contract->price !== null ? (int) $contract->price : null;
         // Гаражной Совкомбанка ещё и вознаграждение: его назначаем мы, когда менеджер назвал цену продажи.
         if (! $contract?->buyer_user_id || $deal->amount === null || ($deal->namesBuyer() && $deal->commission === null)) {
             return null;
@@ -174,17 +179,17 @@ final class SyncDealInvoices
         // менеджера, когда платит он (13.10.2026): счёт с разбивкой показал бы ему закупочную и долю менеджера.
         // Гаражная Совкомбанка, платит покупатель — без вознаграждения менеджера: его покупатель отдаёт ему сам (27.10.2026).
         if ($deal->isDirect() || ! $managerPays) {
-            $price = $deal->buyerPaysReward() ? max(0, (int) $deal->amount - (int) $deal->commission) : (int) $deal->amount;
+            $price = $manual ?? ($deal->buyerPaysReward() ? max(0, (int) $deal->amount - (int) $deal->commission) : (int) $deal->amount);
 
-            return ['party' => $party, 'offset' => 0.0, 'lines' => [['title' => $car, 'qty' => 1, 'unit' => 'pc', 'price' => (float) $price, 'kind' => ChargeKind::Sale->value]]];
+            return ['party' => $party, 'offset' => 0.0, 'vat' => $vat, 'lines' => [['title' => $car, 'qty' => 1, 'unit' => 'pc', 'price' => (float) $price, 'kind' => ChargeKind::Sale->value]]];
         }
-        $fee = max(0, (int) $deal->amount - (int) $deal->cost);
+        $fee = max(0, ($manual ?? (int) $deal->amount) - (int) $deal->cost);
         $lines = [['title' => $car, 'qty' => 1, 'unit' => 'pc', 'price' => (float) $deal->cost, 'kind' => ChargeKind::Sale->value]];
         if ($fee > 0) {
             $lines[] = ['title' => 'Агентское вознаграждение', 'qty' => 1, 'unit' => 'pc', 'price' => (float) $fee, 'kind' => ChargeKind::AgentFee->value];
         }
 
-        return ['party' => $party, 'lines' => $lines, 'offset' => $managerPays && $deal->withholds() ? (float) min((int) $deal->commission, $fee) : 0.0];
+        return ['party' => $party, 'lines' => $lines, 'vat' => $vat, 'offset' => $managerPays && $deal->withholds() ? (float) min((int) $deal->commission, $fee) : 0.0];
     }
 
     private function slot(Deal $deal, User $by, ChargeKind $kind, ?array $want): void
@@ -199,6 +204,9 @@ final class SyncDealInvoices
         $total = $want ? round(array_sum(array_map(fn ($l) => $l['price'] * $l['qty'], $want['lines'])), 2) : null;
         // Сверяем строки, а не итог: у плательщика с «НДС сверху» итог больше строк.
         $seller = $kind === ChargeKind::Sale && ! $deal->forGarageBuyer() ? $deal->seller() : Seller::Prime;
+        // Ставка НДС, которой счёт должен стоять (`vat` — ставка договора, иначе продавца), как её хранит `IssueInvoice`.
+        $rate = (($want['vat'] ?? null) ?? $seller->vatRate()) ?: null;
+        $vatFits = fn (Invoice $i) => ($i->vat_rate ?: null) === $rate;
         // Сменили схему ПРАЙМ ↔ Р.О.С. — счёт другого продавца перевыставляется.
         $fits = fn (Invoice $i) => $want && $i->seller === $seller && $i->party_id === $want['party']->id && abs((float) $i->charges->whereNull('voided_at')->sum(fn ($c) => $c->price * $c->qty) - $total) < 0.01
             && abs($i->payments->where('source', PaymentSource::Offset)->sum('amount') - $want['offset']) < 0.01;
@@ -206,6 +214,17 @@ final class SyncDealInvoices
         $paid = fn (Invoice $i) => $i->claims->isNotEmpty() || $i->payments->contains(fn ($p) => ! $p->source->isSoft());
 
         $keep = $current->first(fn (Invoice $i) => $fits($i) || $paid($i));
+        // Сменилась только ставка НДС, а не платили — тот же счёт с новой ставкой, без новой нумерации (14.11.2026). НДС
+        // «сверху» меняет итог — такой перевыставляется.
+        if ($keep && ! $paid($keep) && ! $vatFits($keep)) {
+            if ($keep->vat_on_top || ($rate && $keep->party?->vat_on_top)) {
+                $keep = null;
+            } else {
+                $keep->update(['vat' => (bool) $rate, 'vat_rate' => $rate]);
+                $this->pdf->attach($keep->fresh(['charges', 'party', 'payments']));
+                $deal->offer->log(OfferEventType::Note, $by, ['text' => 'Счёт '.$keep->label().': '.($rate ? 'НДС '.$rate.' %' : 'без НДС')]);
+            }
+        }
         foreach ($current as $invoice) {
             if ($invoice->isNot($keep) && ! $paid($invoice)) {
                 ($this->void)($invoice, $by, 'Деньги сделки изменены');
@@ -214,7 +233,7 @@ final class SyncDealInvoices
         if ($keep) {
             return;
         }
-        $invoice = ($this->issue)($want['party'], $by, 'issued', $kind, $this->dueFor($deal, $kind), lines: $want['lines'], dealId: $deal->id, offerId: $deal->offer_id, seller: $seller);
+        $invoice = ($this->issue)($want['party'], $by, 'issued', $kind, $this->dueFor($deal, $kind), lines: $want['lines'], dealId: $deal->id, offerId: $deal->offer_id, seller: $seller, vatRate: $want['vat'] ?? null);
         if ($want['offset'] > 0) {
             ($this->record)($invoice, $by, $want['offset'], null, PaymentSource::Offset, null, 'Удержано агентское вознаграждение');
             $this->pdf->attach($invoice->fresh(['charges', 'party', 'payments']));

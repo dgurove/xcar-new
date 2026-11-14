@@ -4,6 +4,7 @@ namespace App\Http\Admin;
 
 use App\Billing\PartyRules;
 use App\Offers\Actions\SaveDealContract;
+use App\Offers\Actions\SetContractPrice;
 use App\Offers\Deal;
 use App\Offers\DealContract;
 use App\Offers\DkpDocument;
@@ -49,6 +50,8 @@ class DealContractController
         abort_unless($deal->hasContract(), 404);
         // НДС договора — сегментом в карточке ДКП, сразу (14.11.2026, владелец: «бывает и без НДС, и 5 %, и 22 %»).
         if ($request->has('vat_rate') && ! $request->has('vehicle')) {
+            // НДС — деньги ПРАЙМ: только админ (модератору — сумма договора и данные ДКП).
+            abort_unless($request->user()->canManageCrm(), 403);
             $data = $request->validate(['vat_rate' => ['required', 'integer', Rule::in(DealContract::VAT_RATES)]], [], ['vat_rate' => 'НДС']);
             $contract = $save(DealContract::for($deal), $data, $request->user());
 
@@ -60,7 +63,8 @@ class DealContractController
 
             return back()->with('toast', 'Дата договора '.Ago::day($contract->signed_at));
         }
-        $request->merge(['vehicle' => array_merge((array) $request->input('vehicle'), ['price' => Money::rubles($request->input('vehicle.price')) ?: null])]);
+        // «Цена по ДКП» — только в форме ДКП собственника: у ПРАЙМ и Р.О.С. сумма — своей шторкой (`price`), без поля её не трогаем.
+        $request->has('vehicle.price') && $request->merge(['vehicle' => array_merge((array) $request->input('vehicle'), ['price' => Money::rubles($request->input('vehicle.price')) ?: null])]);
         // Продавец вносится у ДКП (собственник по сканам) и собственник у ПРАЙМ (комитент по договору комиссии, 14.11.2026) —
         // если его вписали: пустые поля собственника (ещё не пришёл договор комиссии) цену и город сохранить не мешают;
         // собственник-организация (из договора комиссии) полями паспорта не правится.
@@ -76,6 +80,20 @@ class DealContractController
         $save(DealContract::for($deal), $data, $request->user());
 
         return back()->with('toast', 'ДКП сохранён');
+    }
+
+    /**
+     * Сумма договора руками (14.11.2026, `SetContractPrice`): шторка «Сумма договора» в «Деньгах» и в окне документов
+     * модератора. «Как в сделке» (`auto`) — снова по деньгам сделки.
+     */
+    public function price(Request $request, Deal $deal, SetContractPrice $set)
+    {
+        $auto = $request->boolean('auto');
+        $request->merge(['price' => Money::rubles($request->input('price')) ?: null]);
+        $data = $auto ? [] : $request->validate(['price' => ['required', 'integer', 'min:1']], [], ['price' => 'сумма договора']);
+        $contract = $set($deal, $auto ? null : (int) $data['price'], $request->user());
+
+        return back()->with('toast', 'Сумма договора '.Money::rub((int) $contract->price).($auto ? ', как в сделке' : ''));
     }
 
     public function show(Request $request, Deal $deal)

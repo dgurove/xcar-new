@@ -69,7 +69,9 @@ class DealController
     public function index(Request $request)
     {
         // Окно машины — одно на все списки (`CarWindow`); параллельная открывает машину, где она в блоке «Параллельно».
-        $detail = Detail::of($request, fn (string $key) => CarWindow::ofDeal($request, Deal::find($key)));
+        // Модератору (14.11.2026, `canEditDeals`) — своё окно документов: сумма договора и ДКП, без действий админа.
+        $detail = Detail::of($request, fn (string $key) => $request->user()->canManageCrm() ? CarWindow::ofDeal($request, Deal::find($key))
+            : (($d = Deal::with(['offer', 'buyer', 'contract'])->find($key)) && ! $d->isParallel() ? view('admin.deals.docs-window', ['deal' => $d]) : null));
         if ($detail->framed()) {
             return $detail->response();
         }
@@ -434,8 +436,13 @@ class DealController
      * Сделка целиком — это редактор предложения (06.10.2026: одна страница, три дорожки — «Продажа», «Вывоз», «Сделка»
      * с деньгами, ДКП и заметкой). Старые ссылки и уведомления ведут сюда — отсюда туда.
      */
-    public function show(Deal $deal)
+    public function show(Request $request, Deal $deal)
     {
+        // Модератору страницы машины нет — окно документов в «Сделках».
+        if (! $request->user()->canManageCrm()) {
+            return redirect('/work/deals?peek='.$deal->id);
+        }
+
         return redirect('/offers/'.$deal->offer->number.($deal->isGarage() ? '#garage' : ''));
     }
 

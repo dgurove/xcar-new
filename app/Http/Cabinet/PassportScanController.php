@@ -2,14 +2,15 @@
 
 namespace App\Http\Cabinet;
 
-use App\Billing\Documents\PassportPdf;
 use App\Billing\Actions\StorePassportScan;
+use App\Billing\Documents\PassportPdf;
 use App\Billing\Jobs\ReadPassport;
 use App\Billing\Party;
 use App\Live\RefreshDeal;
 use App\Offers\Actions\SettleContract;
 use App\Offers\Actions\SyncDealInvoices;
 use App\Offers\Deal;
+use App\Offers\DealContract;
 use App\Offers\DealState;
 use App\Users\User;
 use Illuminate\Http\Request;
@@ -25,7 +26,7 @@ class PassportScanController
     public function upload(Request $request, Party $party, string $page, StorePassportScan $store, SyncDealInvoices $invoices)
     {
         $me = $request->user();
-        abort_unless(isset(Party::PASSPORT_PAGES[$page]) && ($me->isAdmin() || $party->managedBy($me)), 404);
+        abort_unless(isset(Party::PASSPORT_PAGES[$page]) && (self::staff($me, $party) || $party->managedBy($me)), 404);
         $request->validate(['file' => ['required', ...self::FILE]]);
         $store($party, $page, [$request->file('file')], $me);
         $this->resync($party, $me, $invoices);
@@ -41,7 +42,7 @@ class PassportScanController
     public function read(Request $request, Party $party)
     {
         $me = $request->user();
-        abort_unless($me->isAdmin() || $party->managedBy($me), 404);
+        abort_unless(self::staff($me, $party) || $party->managedBy($me), 404);
         $pages = $party->getMedia('passport');
         abort_if($pages->isEmpty(), 404);
         foreach ($pages as $media) {
@@ -59,7 +60,7 @@ class PassportScanController
     public function pdf(Request $request, Party $party)
     {
         $me = $request->user();
-        abort_unless($me->isAdmin() || $party->managedBy($me), 404);
+        abort_unless(self::staff($me, $party) || $party->managedBy($me), 404);
         $pdf = PassportPdf::render($party);
         abort_unless($pdf, 404);
 
@@ -70,9 +71,17 @@ class PassportScanController
     public function live(Request $request, Party $party)
     {
         $me = $request->user();
-        abort_unless($me->isAdmin() || $party->managedBy($me), 404);
+        abort_unless(self::staff($me, $party) || $party->managedBy($me), 404);
 
         return response()->json($this->state($party));
+    }
+
+    /**
+     * Сотрудник CRM: админ — любой; модератор (14.11.2026, `canEditDeals`: данные ДКП) — только покупателя по договору сделки.
+     */
+    private static function staff(User $me, Party $party): bool
+    {
+        return $me->isAdmin() || ($me->canEditDeals() && DealContract::whereHas('buyer', fn ($q) => $q->where('party_id', $party->id))->exists());
     }
 
     private function state(Party $party): array

@@ -78,7 +78,10 @@
         @endif
         <div class="list-cap">Договор</div>
         <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <x-ui.field name="vehicle[price]" label="Цена по ДКП, ₽" :value="$contract->price ? \App\Support\Money::nums($contract->price) : null"/>
+            {{-- У ПРАЙМ и Р.О.С. сумма договора — строкой «Сумма договора» в «Деньгах» (`x-deal.contract-price`, 14.11.2026). --}}
+            @unless ($prime || $contract->form() === 'ros')
+                <x-ui.field name="vehicle[price]" label="Цена по ДКП, ₽" :value="$contract->price ? \App\Support\Money::nums($contract->price) : null"/>
+            @endunless
             <x-ui.field name="vehicle[city]" label="Город договора" :value="$contract->city" :placeholder="$doc->city()"/>
             @if ($prime)
                 <x-ui.field name="commission_no" label="Договор комиссии №" :value="$contract->commission_no" :placeholder="$contract->commissionNo() ?? 'нет'"/>

@@ -23,7 +23,7 @@ class CommissionOwnersCommand extends Command
         $apply = (bool) $this->option('apply');
         $none = [];
         $deals = Deal::with(['offer.vendor', 'contract'])->where('state', DealState::Active)->get()
-            ->filter(fn (Deal $d) => $d->hasContract() && ! $d->isDkp() && $d->seller() === Seller::Prime && ! $d->contract?->seller_party_id);
+            ->filter(fn (Deal $d) => $d->hasContract() && ! $d->isDkp() && $d->seller() === Seller::Prime && ! ($d->contract?->seller_party_id && $d->contract->supplier_price !== null));
         foreach ($deals as $deal) {
             $found = $fill($deal, $apply);
             $title = "сделка {$deal->id} {$deal->offer->claim_ref} ({$deal->offer->vendor?->name})";
@@ -33,7 +33,8 @@ class CommissionOwnersCommand extends Command
                 continue;
             }
             $p = $found['party'];
-            $this->line($title.': № '.($found['number'] ?? '—').', '.$p['name'].', '.($p['passport'] ?? 'ИНН '.($p['inn'] ?? '—')));
+            $this->line($title.': № '.($found['number'] ?? '—').', '.$p['name'].', '.($p['passport'] ?? 'ИНН '.($p['inn'] ?? '—'))
+                .', поставщику '.($found['payment']['price'] ?? '—'));
         }
         $this->info(($apply ? 'Вписано' : 'Найдётся').': '.($deals->count() - count($none)).' из '.$deals->count());
         foreach ($none as $t) {

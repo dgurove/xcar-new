@@ -3,8 +3,8 @@
      Сегмент «ПРАЙМ | Р.О.С. | Напрямую | ДКП» (`DealScheme::short`, варианты поставщика — `casesFor`, умолчание первым)
      меняет схему сразу (`ChangeDealScheme`; не как обычно у поставщика — «Точно?» `data-scheme-guard`, «Исправить» возвращает
      прежнюю). Под ним — кто кому платит (`hint`) и кто выбрал. Совкомбанк — всегда ПРАЙМ (`casesFor`): без выбора, словом.
-     По счёту уже платили — тоже словом. НДС — у договора нашего юрлица (ПРАЙМ, Р.О.С.): «Без НДС | 5 % | 22 %»
-     (`DealContract::vatRate`), сразу. --}}
+     По счёту уже платили — тоже словом. У договора нашего юрлица (ПРАЙМ, Р.О.С.) — сумма договора (`x-deal.contract-price`,
+     правят и модераторы) и НДС «Без НДС | 5 % | 22 %» (`DealContract::vatRate`, сразу) — и в договоре, и в счёте. --}}
 @props(['deal'])
 @php
     use App\Offers\DealContract;
@@ -22,7 +22,7 @@
         $deal->isActive() && ! $deal->moneyEditable() && count($choices) > 1 => 'по счёту уже платили, сменить нельзя',
         default => null,
     };
-    $contract = $deal->hasContract() && $scheme->paysCar() ? DealContract::for($deal) : null;
+    $contract = $deal->hasContract() && $scheme->paysCar() ? DealContract::for($deal)->loadMissing('priceAuthor') : null;
     $vatEditable = $contract && $deal->isActive() && $admin;
     $nb = fn (string $s) => str_replace(' ', "\u{00A0}", $s);
 @endphp
@@ -47,8 +47,9 @@
         @if ($editable)<span class="row-sub">{{ $by }}</span>@endif
     </div>
     @if ($contract)
+        <x-deal.contract-price :deal="$deal" :contract="$contract"/>
         <div class="row flex-col items-stretch gap-1.5">
-            <span class="text-sm text-ink-muted">НДС в договоре</span>
+            <span class="text-sm text-ink-muted">НДС в договоре и счёте</span>
             @if ($vatEditable)
                 <form method="post" action="/work/deals/{{ $deal->id }}/contract" data-controller="autosubmit">
                     @csrf @method('put')

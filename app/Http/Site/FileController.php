@@ -11,6 +11,7 @@ use App\Media\DocName;
 use App\Media\ForManagers;
 use App\Media\PhotoIngest;
 use App\Media\Thumb;
+use App\Offers\DealContract;
 use App\Park\Vehicle;
 use App\Support\InternalRefs;
 use App\Support\OfficePreview;
@@ -87,8 +88,13 @@ final class FileController
         if ($car && Transport::where('car_id', $car->id)->where('state', '!=', TransportState::Cancelled)->get()->contains(fn (Transport $t) => FileAccess::belongs($t, $media) && FileAccess::visible($t, $user, $media))) {
             return true;
         }
-        // Модератору — документы и фото только тех предложений, что ему можно открыть в CRM.
+        // Модератору — документы и фото только тех предложений, что ему можно открыть в CRM; скан паспорта — покупателя по
+        // договору сделки (14.11.2026: модератор ведёт данные ДКП, `canEditDeals`).
         if ($user->isModerator()) {
+            if ($media->model_type === Party::class) {
+                return $user->canEditDeals() && DealContract::whereHas('buyer', fn ($q) => $q->where('party_id', $media->model_id))->exists();
+            }
+
             return (bool) $offer?->isEditableBy($user);
         }
         // Файлы ТС — менеджеру, который с ней работает как продавец (гараж, сделка); документы — только отмеченные админом.

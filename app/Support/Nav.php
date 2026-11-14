@@ -28,8 +28,8 @@ use App\Offers\DealState;
 use App\Offers\Interest;
 use App\Offers\InterestState;
 use App\Offers\Offer;
-use App\Offers\Partner\PartnerOffers;
 use App\Offers\OfferState;
+use App\Offers\Partner\PartnerOffers;
 use App\Park\City;
 use App\Park\Request;
 use App\Park\RequestState;
@@ -99,10 +99,12 @@ final class Nav
             return $user ? [self::item('Предложения', '/offers')] : [];
         }
 
-        // Модератор: черновики, почта по галке и профиль — остальное в CRM админу.
+        // Модератор: черновики, сделки для документов (14.11.2026: сумма договора и ДКП), почта по галке и профиль — остальное
+        // в CRM админу.
         if ($surface === Surface::Crm && ! $user?->canManageCrm()) {
             return array_values(array_filter([
                 self::item('Предложения', '/offers'),
+                $user?->canEditDeals() ? self::item('Сделки', '/work/deals') : null,
                 $user?->canCrmMail() ? self::item('Почта', '/work/mail') : null,
                 self::item('Настройки', '/settings', ['/settings', '/account'], tab: false, capsule: false),
             ]));
@@ -210,7 +212,9 @@ final class Nav
                 }
             }
         }
-        $tabs[] = self::item(match ($surface) { Surface::Crm => 'Настройки', Surface::Partner => 'Профиль', default => 'Кабинет' }, $root, array_values(array_unique($match)));
+        $tabs[] = self::item(match ($surface) {
+            Surface::Crm => 'Настройки', Surface::Partner => 'Профиль', default => 'Кабинет'
+        }, $root, array_values(array_unique($match)));
 
         return $tabs;
     }
@@ -443,7 +447,9 @@ final class Nav
         foreach (self::cabinetFor($user, 'phone', $surface) as $links) {
             foreach ($links as $l) {
                 if ($l['href'] === $path) {
-                    return [match ($surface) { Surface::Crm => 'Настройки', Surface::Partner => 'Профиль', default => 'Кабинет' }, self::cabinetRoot($surface)];
+                    return [match ($surface) {
+                        Surface::Crm => 'Настройки', Surface::Partner => 'Профиль', default => 'Кабинет'
+                    }, self::cabinetRoot($surface)];
                 }
             }
         }
