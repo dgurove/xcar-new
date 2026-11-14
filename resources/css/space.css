@@ -40,7 +40,7 @@
   /* 14.11.2026, владелец: «тень не нравится — просто тёмная заливка всего фона, чёрная с прозрачностью поверх фото»:
      ровная заливка без градиентов, дымки за блоками и полосы под шапкой больше нет. */
   .space-photo::before { content: ""; position: absolute; inset: 0; background: rgb(255 255 255 / .42); }
-  .dark .space-photo::before { background: rgb(0 0 0 / .55); }
+  .dark .space-photo::before { background: rgb(0 0 0 / .7); }  /* фото — оригинал (`parking-*.webp`), темнит только эта заливка */
   .space-marks { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 
   /* Начало мира — центр сцены, доска стоит от него обычной раскладкой; transform слоя — камера. */
