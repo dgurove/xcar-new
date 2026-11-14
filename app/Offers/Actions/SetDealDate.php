@@ -40,6 +40,10 @@ final class SetDealDate
             }
             $was = $deal->{$column};
             $at = $at ? ($at->isToday() ? now() : $at->copy()->setTime(12, 0)) : null;
+            // Та же дата (или снова пусто) — ничего не делаем и в «Историю» не пишем.
+            if ($was?->toDateString() === $at?->toDateString()) {
+                return $deal;
+            }
 
             if ($what === DealDates::SOLD && $column === 'paid_in_at') {
                 if ($at && ! $was) {
