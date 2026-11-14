@@ -148,6 +148,11 @@ final class Give
                 app(ApplyReprice::class)->carryToDeal($bid, $deal->fresh(), $by, $g->cost !== null);
                 BidAccepted::dispatch($bid, $by);
             }
+            // Совкомбанк (по комиссии): согласовывать с поставщиком нечего — покупатель дело менеджера сразу с принятия, как у Альфы
+            // с «Беру в работу» (14.11.2026, владелец: «у Совкома не сделали, срочно»; `Deal::buyerOpen`).
+            if ($deal->isCommission()) {
+                app(AskBuyer::class)->ask($deal);
+            }
 
             return $deal;
         });

@@ -45,7 +45,7 @@ use Illuminate\Support\Carbon;
  * выплачиваем после оплаты или менеджер удерживает сам. Менеджер вознаграждение
  * не видит, пока по сделке нет живого счёта — `showsCommission()`.
  */
-#[Fillable(['offer_id', 'bid_id', 'buyer_id', 'amount', 'cost', 'supplier_cost', 'owner_price', 'share', 'commission', 'commission_mode', 'scheme', 'garage_payer', 'state', 'notes', 'closed_at', 'close_reason', 'close_note', 'agreed_at', 'buyer_asked_at', 'signing_slots', 'signing_address', 'signing_at', 'signing_asked_at', 'signing_wish', 'prepaid_at', 'supplier_paid_at',
+#[Fillable(['offer_id', 'bid_id', 'buyer_id', 'amount', 'cost', 'supplier_cost', 'owner_price', 'share', 'commission', 'commission_mode', 'scheme', 'garage_payer', 'state', 'notes', 'closed_at', 'close_reason', 'close_note', 'agreed_at', 'buyer_asked_at', 'signing_slots', 'signing_address', 'signing_at', 'signing_asked_at', 'signing_wish', 'prepaid_at', 'supplier_paid_at', 'contract_signed_at', 'contract_signed_by',
     'receiver_user_id', 'receiver_name', 'receiver_phone', 'receiver_at', 'auction_at', 'buyer_party_id', 'shadow_stage_id', 'shadow_at', 'reissue_at'])]
 class Deal extends Model
 {
@@ -54,7 +54,7 @@ class Deal extends Model
 
     protected function casts(): array
     {
-        return ['scheme_at' => 'datetime', 'state' => DealState::class, 'amount' => 'int', 'cost' => 'int', 'supplier_cost' => 'int', 'owner_price' => 'int', 'share' => 'int', 'commission' => 'int', 'commission_mode' => CommissionMode::class, 'scheme' => DealScheme::class, 'garage_payer' => GaragePayer::class, 'closed_at' => 'datetime', 'agreed_at' => 'datetime', 'buyer_asked_at' => 'datetime', 'signing_slots' => 'array', 'signing_at' => 'datetime', 'signing_asked_at' => 'datetime', 'signing_wish' => 'array', 'prepaid_at' => 'datetime', 'supplier_paid_at' => 'datetime', 'receiver_at' => 'datetime', 'auction_at' => 'datetime', 'shadow_at' => 'datetime', 'reissue_at' => 'datetime'];
+        return ['scheme_at' => 'datetime', 'state' => DealState::class, 'amount' => 'int', 'cost' => 'int', 'supplier_cost' => 'int', 'owner_price' => 'int', 'share' => 'int', 'commission' => 'int', 'commission_mode' => CommissionMode::class, 'scheme' => DealScheme::class, 'garage_payer' => GaragePayer::class, 'closed_at' => 'datetime', 'agreed_at' => 'datetime', 'buyer_asked_at' => 'datetime', 'signing_slots' => 'array', 'signing_at' => 'datetime', 'signing_asked_at' => 'datetime', 'signing_wish' => 'array', 'prepaid_at' => 'datetime', 'supplier_paid_at' => 'datetime', 'contract_signed_at' => 'datetime', 'receiver_at' => 'datetime', 'auction_at' => 'datetime', 'shadow_at' => 'datetime', 'reissue_at' => 'datetime'];
     }
 
     public function offer(): BelongsTo
@@ -278,6 +278,16 @@ class Deal extends Model
     public function agreed(): bool
     {
         return $this->agreed_at !== null;
+    }
+
+    /**
+     * Покупателя уже спрашиваем у менеджера (14.11.2026, владелец: 2611053661 — у Совкомбанка блока «Покупатель» не было): после
+     * согласования, а у вендора по комиссии (Совкомбанк) — сразу: согласовывать с поставщиком нечего, `agreed_at` у него
+     * встаёт лишь после «Автомобиль забрал» (`invoiceNotYet`).
+     */
+    public function buyerOpen(): bool
+    {
+        return $this->agreed() || $this->isCommission();
     }
 
     /**
@@ -574,7 +584,8 @@ class Deal extends Model
      */
     public function needsBuyer(): bool
     {
-        if (! $this->isActive() || $this->forGarageBuyer() || $this->isDirect() || $this->isAuction() || $this->isParallel()) {
+        // Договор подписан вне системы (`contractSigned`) — покупатель и его данные больше не нужны.
+        if (! $this->isActive() || $this->contractSigned() || $this->forGarageBuyer() || $this->isDirect() || $this->isAuction() || $this->isParallel()) {
             return false;
         }
         // Гаражная «платит менеджер» у «страховой напрямую» (13.11.2026, Сергей Николаев берёт себе, Альфе платит сам): счёт
@@ -586,10 +597,19 @@ class Deal extends Model
         return $this->hasContract() || $this->buyerAhead();
     }
 
+    /**
+     * Договор с покупателем подписан вне системы (14.11.2026, «Договор уже подписан», «Уже продана…»): покупателя, его данных
+     * и паспорта не просим — `needsBuyer`, `buyerAhead`, а за ними `buyerGap`, `contractBuyerTask`, `AskBuyer`.
+     */
+    public function contractSigned(): bool
+    {
+        return $this->contract_signed_at !== null;
+    }
+
     /** «Страховой напрямую» (Альфа): впереди по маршруту шаг `Asks::Buyer` — счёт поставщик выставит на покупателя. */
     public function buyerAhead(): bool
     {
-        if ($this->hasContract() || $this->schemeOf()->paysCar() || $this->isGarageUs()) {
+        if ($this->contractSigned() || $this->hasContract() || $this->schemeOf()->paysCar() || $this->isGarageUs()) {
             return false;
         }
         $stage = $this->offer?->stage();

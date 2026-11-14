@@ -50,7 +50,9 @@ final class AskBuyer
      */
     public function sweep(bool $apply = true): Collection
     {
-        $deals = Deal::with(['buyer', 'offer', 'contract.buyer.party'])->where('state', DealState::Active)->whereNotNull('agreed_at')
+        // Согласованные — и у вендора по комиссии (Совкомбанк) сразу: согласования у него нет (14.11.2026, `Deal::buyerOpen`).
+        $deals = Deal::with(['buyer', 'offer.vendor', 'contract.buyer.party'])->where('state', DealState::Active)
+            ->where(fn ($q) => $q->whereNotNull('agreed_at')->orWhereHas('offer.vendor', fn ($v) => $v->where('deal_format', \App\Vendors\DealFormat::Commission->value)))
             ->whereNull('buyer_asked_at')->whereNotNull('buyer_id')->get()->filter(function (Deal $d) {
                 $stage = $d->offer?->stage();
 
