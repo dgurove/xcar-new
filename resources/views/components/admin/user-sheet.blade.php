@@ -2,10 +2,12 @@
      ниже «Войти как», ссылка на новый пароль, закрыть доступ или удалить. Открывается сам, если ссылка на пароль только что выдана.
      07.10.2026: поля строками (.fields), кнопка .sheet-foot. На парковке (31.10.2026) — контакты у всех, вместо ролей CRM —
      роль на парковке и город (себе не меняют), внизу «Закрыть доступ к парковке». --}}
-@props(['user', 'managers', 'link' => null, 'base', 'me'])
+@props(['user', 'managers', 'link' => null, 'base', 'me', 'toManagerBlockers' => null])
 @php
     use App\Http\Admin\UserController;
     $park = \App\Support\Surface::current() === \App\Support\Surface::Park;
+    // Блокеры перехода в менеджеры приходят пачкой на список; карточка может не передать их вовсе.
+    $toManagerBlockers = is_array($toManagerBlockers) ? $toManagerBlockers : [];
 @endphp
 {{-- Не прошло проверку — шторка этого человека открывается снова с ошибками (old('_user')). --}}
 <x-ui.sheet id="user-{{ $user->id }}" :title="$user->name" tall :open="($link['user'] ?? null) === $user->id || (int) old('_user') === $user->id">
@@ -111,6 +113,15 @@
             <p class="text-sm text-ink-muted">Покупатель — не роль сотрудника: у него один менеджер и своя карточка.</p>
             <x-ui.button type="button" variant="secondary" size="sm" class="self-start" data-action="sheet#open">Сделать покупателем…</x-ui.button>
             <x-admin.to-buyer-sheet :user="$user" :managers="$managers" :base="$base"/>
+        </div>
+    @endif
+    @if (! $park && $user->isBuyer() && ! $user->is($me) && ! $user->isOwner())
+        {{-- Обратная дверь (14.11.2026): покупатель становится менеджером. Группы менеджера — уже в карточке, чтобы
+             переход не смешивал покупательские и менеджерские группы. --}}
+        <div class="mt-3 flex flex-col gap-2" data-controller="sheet">
+            <p class="text-sm text-ink-muted">Менеджер видит цены, подтверждает, ведёт сделки и заводит своих покупателей.</p>
+            <x-ui.button type="button" variant="secondary" size="sm" class="self-start" data-action="sheet#open">Сделать менеджером…</x-ui.button>
+            <x-admin.to-manager-sheet :user="$user" :base="$base" :blockers="$toManagerBlockers[$user->id] ?? null"/>
         </div>
     @endif
     @if (\App\Users\Impersonation::allowed($me, $user) && $user->isApproved())

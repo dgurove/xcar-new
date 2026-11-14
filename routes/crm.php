@@ -400,6 +400,7 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
             Route::put('/users/{user}/regions', [RegionController::class, 'update']);
             Route::post('/users/{user}/access', [UserController::class, 'decide']);
             Route::post('/users/{user}/buyer', [UserController::class, 'toBuyer']);
+            Route::post('/users/{user}/manager', [UserController::class, 'toManager']);
             Route::delete('/users/{user}', [UserController::class, 'destroy']);
             Route::post('/users/{user}/password', [UserController::class, 'passwordLink']);
             Route::post('/users/{user}/telegram/unlink', [UserController::class, 'unlinkTelegram']);

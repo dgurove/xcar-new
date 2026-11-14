@@ -41,6 +41,7 @@ use App\Users\Actions\IssueInvite;
 use App\Users\Actions\IssuePasswordLink;
 use App\Users\Actions\LinkAccounts;
 use App\Users\Actions\MakeBuyer;
+use App\Users\Actions\MakeManager;
 use App\Users\Actions\RevokePark;
 use App\Users\Actions\SetParkRole;
 use App\Users\Actions\TransferBuyer;
@@ -205,8 +206,12 @@ class UserController
             unset($pills['invites']);
         }
 
+        $users = $q->paginate(ListView::perPage($request, ListView::PER_ROWS))->withQueryString();
+
         return view('admin.users.index', [
-            'users' => $q->paginate(ListView::perPage($request, ListView::PER_ROWS))->withQueryString(),
+            'users' => $users,
+            // Блокеры перехода «Покупатель → менеджер» — пачкой на всю страницу, а не по две выборки на человека.
+            'toManagerBlockers' => MakeManager::forUsers($users->pluck('id')),
             'preset' => $preset,
             'pills' => $pills,
             'counts' => $counts,
@@ -292,6 +297,7 @@ class UserController
             // Без доступа (11.11.2026) — не «видит N», а «без доступа».
             'seen' => $user->isBuyer() && $user->hasBuyerAccess() ? Offer::where('state', OfferState::Open)->visibleTo($user)->count() : null,
             'managers' => $me->isAdmin() && ! self::onPark() ? User::withRole(Role::Manager)->orderBy('name')->get() : collect(),
+            'toManagerBlockers' => $user->isBuyer() ? MakeManager::forUsers([$user->id]) : [],
             'link' => session('password_link'),
         ]);
     }
@@ -580,6 +586,33 @@ class UserController
 
         return redirect(self::base().'?preset=buyers&manager='.$manager->id)
             ->with('toast', $user->shortName().' — покупатель '.$manager->shortName());
+    }
+
+    /**
+     * Сделать покупателя менеджером (14.11.2026): обратная дверь к «Сделать покупателем…». Снимает покупательские
+     * группы и показы, ставит менеджерские роли; группы менеджера админ выбирает уже в карточке. Если у покупателя
+     * ещё нет пароля — сразу выдаём ссылку на новый и показываем её в карточке.
+     */
+    public function toManager(Request $request, User $user, MakeManager $makeManager, IssuePasswordLink $issue)
+    {
+        $me = $request->user();
+        abort_unless(self::manages($me, $user) && ! $user->is($me) && $user->isApproved() && $user->isBuyer() && ! self::onPark(), 404);
+
+        $data = $request->validate([
+            'contact' => [Rule::requiredIf(fn () => ! $user->hasSignInContact()), 'nullable', 'string', 'max:190'],
+            'password' => ['nullable', 'boolean'],
+        ], [
+            'contact.required' => 'Телефон или почта — чем он будет входить',
+        ]);
+
+        $makeManager($user, $me, $data['contact'] ?? null);
+
+        $redirect = redirect(self::base().'/'.$user->id)->with('toast', $user->shortName().' — менеджер');
+        if ($request->boolean('password')) {
+            $redirect->with('password_link', ['user' => $user->id, 'url' => $issue($user, $me)]);
+        }
+
+        return $redirect;
     }
 
     /**

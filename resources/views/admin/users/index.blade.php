@@ -104,7 +104,7 @@
                         <x-admin.user-access :user="$user" :base="$base"/>
                     @endif
                     <button type="button" class="btn btn-ghost btn-s px-2" data-action="sheet#open" aria-label="Изменить"><x-ui.icon name="edit" class="size-5"/></button>
-                    <x-admin.user-sheet :user="$user" :managers="$managers" :link="$link" :base="$base" :me="$me"/>
+                    <x-admin.user-sheet :user="$user" :managers="$managers" :link="$link" :base="$base" :me="$me" :to-manager-blockers="$toManagerBlockers"/>
                 </div>
             @endforeach
         </div>

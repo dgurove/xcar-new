@@ -78,7 +78,7 @@
             @if ($me->isAdmin() && ! $park && !$user->isApproved() && !$user->is($me))
                 <div class="mt-4 flex lg:justify-center"><x-admin.user-access :user="$user" :base="$base"/></div>
             @endif
-            @if ($edits)<x-admin.user-sheet :user="$user" :managers="$managers" :link="$link" :base="$base" :me="$me"/>@endif
+            @if ($edits)<x-admin.user-sheet :user="$user" :managers="$managers" :link="$link" :base="$base" :me="$me" :to-manager-blockers="$toManagerBlockers"/>@endif
         </div>
 
         <div class="min-w-0 lg:col-start-1 lg:row-start-1">
