@@ -466,6 +466,19 @@
                         {{-- Что будет после кнопки (03.11.2026, «сотрудникам страшно нажимать») — в переспросе кнопки, а не строкой «Дальше:»
                              под ней (10.11.2026, владелец: «месиво»). --}}
                     @endif
+                    {{-- Ход менеджера, а у нас кнопок нет (14.11.2026, владелец по 2611043624 «Связаться с владельцем»: «непонятно, что от
+                         нас требуется, и не можем за него прокликать» — ответ за него жил только в «···» шага): его ответы — тихими
+                         кнопками под шагом, та же форма, что пункт «···» (`RouteController::forManager`). Уход из сделки — только в «···». --}}
+                    {{-- Данные покупателя — своей кнопкой «Заполнить за менеджера»; без них ответ за него можно, только если договор
+                         уже подписан (`Deal::contractSigned`). --}}
+                    @php $forKeys = $stage->asks === \App\Workflow\Asks::Buyer && ! $deal?->contractSigned() ? collect() : $forManager->reject(fn ($x) => $x->isRetreat()); @endphp
+                    @if ($forKeys->isNotEmpty() && ! $takeFor && ! ($wantsInvoice || $moves->isNotEmpty() || $stage->template_id || $requests || $payNow->isNotEmpty()))
+                        <div class="step-acts mt-3">
+                            @foreach ($forKeys as $exit)
+                                <form method="post" action="/offers/{{ $n }}/exit/{{ $exit->id }}">@csrf<input type="hidden" name="for" value="manager"><button class="btn btn-s btn-quiet w-full">За менеджера: {{ $exit->label }}</button></form>
+                            @endforeach
+                        </div>
+                    @endif
                     @if ($subs->where('state', \App\Workflow\Substeps::WAIT)->isNotEmpty())
                         {{-- Будущие подпункты — в свёрнутом пути окна их нет (12.11.2026): видны, когда раскрыли «Весь путь». --}}
                         <ol class="substeps substeps--wait">

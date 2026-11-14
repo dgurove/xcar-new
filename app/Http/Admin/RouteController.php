@@ -138,7 +138,7 @@ class RouteController
             throw ValidationException::withMessages(['exit' => 'Это не ответ менеджера']);
         }
         // Данные покупателя для счёта (03.11.2026) — «за менеджера» без них письмо поставщику ушло бы пустым.
-        if ($exit->from?->asks === Asks::Buyer && ! $deal->contract?->buyer?->party?->readyAsBuyer()) {
+        if ($exit->from?->asks === Asks::Buyer && ! $deal->contractSigned() && ! $deal->contract?->buyer?->party?->readyAsBuyer()) {
             throw ValidationException::withMessages(['exit' => 'Сначала данные покупателя со сканом паспорта — «Покупатель для счёта»']);
         }
         Requirement::closeOpen($deal, $exit->stage_id, ['exit' => $exit->label, 'closed_by' => 'staff', 'by' => $by->id]);

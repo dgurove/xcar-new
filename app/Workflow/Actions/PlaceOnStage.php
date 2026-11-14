@@ -12,12 +12,13 @@ final class PlaceOnStage
 {
     public function __construct(private EnterStage $enter) {}
 
-    public function __invoke(Offer $offer, Stage $stage, User $by, bool $back = false): Offer
+    /** @param  array<string, mixed>  $payload  как у `EnterStage`: `label` — подпись в «Истории», `quiet` — без уведомлений */
+    public function __invoke(Offer $offer, Stage $stage, User $by, bool $back = false, array $payload = []): Offer
     {
-        return DB::transaction(function () use ($offer, $stage, $by, $back) {
+        return DB::transaction(function () use ($offer, $stage, $by, $back, $payload) {
             $offer = Offer::whereKey($offer->id)->lockForUpdate()->firstOrFail();
 
-            return ($this->enter)($offer, $stage, $by, back: $back);
+            return ($this->enter)($offer, $stage, $by, $payload, back: $back);
         });
     }
 }

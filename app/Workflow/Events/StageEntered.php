@@ -23,5 +23,6 @@ final class StageEntered
         public ?User $by = null,
         public ?Deal $deal = null,
         public ?int $letter = null,   // шаг сдвинул админ, показывая письмо менеджеру (`Disclose`): менеджеру пишет оно само
+        public bool $quiet = false,   // «Уже продана…» закрыла давно проданную (`MarkSoldDeal`): менеджеру и сотрудникам ничего
     ) {}
 }

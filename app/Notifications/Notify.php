@@ -248,6 +248,9 @@ final class Notify
 
     public function stageEntered(StageEntered $e): void
     {
+        if ($e->quiet) {
+            return;
+        }
         $deal = $e->deal ?? $e->offer->deal()->with('buyer')->first();
         // Дошли до оплаты без счёта (`EnterStage`): счета ставятся сами, так что ход наш — только когда гаражной не вписана
         // доля или счёт не встал (сотрудникам и владельцу — словами того, что нужно); ПРАЙМ без покупателя — ход менеджера.

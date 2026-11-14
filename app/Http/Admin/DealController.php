@@ -6,6 +6,8 @@ use App\Billing\DealDebt;
 use App\Live\Rows;
 use App\Offers\Actions\ChangeDealScheme;
 use App\Offers\Actions\DeclineBySupplier;
+use App\Offers\Actions\MarkContractSigned;
+use App\Offers\Actions\MarkSoldDeal;
 use App\Offers\Actions\SetReceiver;
 use App\Offers\Actions\UpdateDealMoney;
 use App\Offers\Binding;
@@ -36,12 +38,14 @@ use App\Users\User;
 use App\Vendors\Vendor;
 use App\Workflow\Actions\TakeExit;
 use App\Workflow\Actor;
+use App\Workflow\Asks;
 use App\Workflow\Outcome;
 use App\Workflow\Position;
 use App\Workflow\Track;
 use App\Workflow\WaitsFor;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\DB;
@@ -485,6 +489,29 @@ class DealController
         $decline($deal, $data['note'], $request->user(), dropPickup: ($data['pickup'] ?? 'keep') === 'drop');
 
         return back()->with('toast', 'Сделка закрыта: отказ поставщика');
+    }
+
+    /** «Уже продана…» (14.11.2026): шаги до закрытия или до неподписанного договора — одним нажатием (`MarkSoldDeal`). */
+    public function sold(Request $request, Deal $deal, MarkSoldDeal $mark)
+    {
+        abort_unless($request->user()->canManageCrm(), 403);
+        $data = $request->validate(['signed' => ['required', Rule::in(['yes', 'no'])], 'manager_paid' => ['nullable', Rule::in(['yes', 'no'])],
+            'supplier_paid' => ['nullable', Rule::in(['yes', 'no'])], 'sold_on' => ['required', 'date', 'before_or_equal:today']], [], ['sold_on' => 'когда продали']);
+        $deal = $mark($deal, $request->user(), $data['signed'] === 'yes', isset($data['manager_paid']) ? $data['manager_paid'] === 'yes' : null,
+            isset($data['supplier_paid']) ? $data['supplier_paid'] === 'yes' : null, Carbon::parse($data['sold_on'], 'Europe/Moscow'));
+
+        return back()->with('toast', $deal->isActive() ? 'Встала на «'.$deal->offer->stage()?->name.'»' : 'Сделка закрыта');
+    }
+
+    /** «Договор уже подписан» (14.11.2026): покупателя и его данных не просим, шаги договора — пройдены (`MarkContractSigned`). */
+    public function contractSigned(Request $request, Deal $deal, MarkContractSigned $mark)
+    {
+        abort_unless($request->user()->canManageCrm(), 403);
+        $deal = $mark($deal, $request->user());
+        $stage = $deal->offer->stage();
+
+        return back()->with('toast', $stage?->aboutContract() || $stage?->asks === Asks::Buyer
+            ? 'Договор подписан. Закрыть сделку — «Уже продана…»' : 'Договор подписан, сделка на «'.$stage?->name.'»');
     }
 
     /**

@@ -7,6 +7,8 @@ use App\Garage\Car as GarageCar;
 use App\Garage\CarLine;
 use App\Garage\CarState;
 use App\Garage\GarageView;
+use App\Offers\Actions\MarkContractSigned;
+use App\Offers\Actions\MarkSoldDeal;
 use App\Offers\Actions\PublishDeal;
 use App\Offers\Actions\ReturnToSale;
 use App\Offers\Actions\SellAtAuction;
@@ -128,7 +130,7 @@ final class CarView
         $giveMenu = $admin && ((! $garageCar && in_array($state, [OfferState::Draft, OfferState::Gallery, OfferState::Open], true))
             // Гаражная, пока машина едет и денег по ней не было (13.11.2026, владелец: Сергей Николаев взял в гараж «платим мы», а
             // Альфе платит он сам) — отдать заново: другому, другим плательщиком или в сделку (`Give`, этап — `handOver`).
-            || ($state === OfferState::Sold && $garageCar?->state === \App\Garage\CarState::Waiting && $o->deal?->isGarage()
+            || ($state === OfferState::Sold && $garageCar?->state === CarState::Waiting && $o->deal?->isGarage()
                 && ! $o->deal->supplier_paid_at && $o->deal->credited() == 0));
         // Кнопка — только где «Цены» по шагам (`$steps`): у черновика на аукционе или «Без подтверждений» без цены «Цены» — разделом
         // без кнопок, и «Отдать…» остаётся в «⋯».
@@ -449,6 +451,18 @@ final class CarView
             };
             if ($calm->isNotEmpty()) {
                 $groups[] = $calm->map(fn ($t) => $post('/offers/'.$n.'/state', $t[1], $icon($t[0]), ['state' => $t[0]->value], guard: true))->values()->all();
+            }
+            // Давно проданная висит на шагах (14.11.2026, владелец): «Уже продана…» — шаги одним нажатием, «Договор уже
+            // подписан» — покупатель не нужен (`MarkSoldDeal`, `MarkContractSigned`).
+            $sold = [];
+            if ($v['resale'] && MarkSoldDeal::allows($o->deal)) {
+                $sold[] = $emit('sold', 'Уже продана…', 'check');
+            }
+            if ($v['resale'] && $state === OfferState::Sold && MarkContractSigned::allows($o->deal)) {
+                $sold[] = $post('/work/deals/'.$o->deal->id.'/contract-signed', 'Договор уже подписан', 'file', [], confirm: 'Договор с покупателем уже подписан?', text: 'Данные покупателя больше не нужны, шаги договора отметятся', confirmLabel: 'Подписан');
+            }
+            if ($sold) {
+                $groups[] = $sold;
             }
             $red = [];
             if ($v['resale'] && $state === OfferState::Sold && $o->deal?->isActive()) {

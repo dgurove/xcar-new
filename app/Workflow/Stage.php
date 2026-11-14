@@ -3,6 +3,7 @@
 namespace App\Workflow;
 
 use App\Billing\WorkDays;
+use App\Http\Admin\MailController;
 use App\Mail\Template;
 use App\Offers\CarPlace;
 use App\Offers\Deal;
@@ -76,6 +77,16 @@ class Stage extends Model
     public function exitsFor(Actor $actor, ?Deal $deal = null): Collection
     {
         return $this->loadedExits()->where('actor', $actor)->filter(fn (Outcome $e) => $e->fits($deal))->values();
+    }
+
+    /**
+     * Шаг договора с покупателем (14.11.2026, «Уже продана…» / «Договор уже подписан»): «Подписанный договор» (ПСБ, Т-Банк,
+     * Совкомбанк), «Подготовка договора», «Время подписания», «Запись на подписание», «Подписание» (Альфа), «Подписание
+     * документов» (общий маршрут) — по названию и заголовку просьбы; здесь «Уже продана» с неподписанным договором встаёт.
+     */
+    public function aboutContract(): bool
+    {
+        return (bool) preg_match('/договор|подписан/iu', $this->name.' '.$this->ask_title);
     }
 
     /**
@@ -263,13 +274,13 @@ class Stage extends Model
      * Подстановки шаблона писем в заголовке (11.11.2026, Альфа: «Подписание договора {{ signing }}» — время, что выбрал
      * менеджер): со сделкой — значения, без неё — пусто.
      */
-    public function managerTitle(?\App\Offers\Deal $deal = null): string
+    public function managerTitle(?Deal $deal = null): string
     {
         $title = $this->ask_title ?: ($this->block?->name ?? $this->name);
         if (! str_contains($title, '{{')) {
             return $title;
         }
-        $values = $deal?->offer ? \App\Http\Admin\MailController::placeholders($deal->offer) : [];
+        $values = $deal?->offer ? MailController::placeholders($deal->offer) : [];
         $title = (string) preg_replace_callback('/\{\{ ?(\w+) ?\}\}/u', fn ($m) => (string) ($values[$m[1]] ?? ''), $title);
 
         return trim((string) preg_replace('/\s{2,}/u', ' ', $title));

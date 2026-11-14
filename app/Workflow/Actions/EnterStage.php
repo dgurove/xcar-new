@@ -4,16 +4,18 @@ namespace App\Workflow\Actions;
 
 use App\Mail\Direction;
 use App\Mail\Message;
-
 use App\Offers\Actions\AgreeDeal;
+use App\Offers\Actions\AskBuyer;
+use App\Offers\Actions\AskSigningTime;
 use App\Offers\Actions\ChangeOfferState;
 use App\Offers\Actions\DeclineBySupplier;
 use App\Offers\Actions\SyncParkRelease;
 use App\Offers\Binding;
-use App\Offers\Offer;
 use App\Offers\Listeners\MarkSupplierLetter;
+use App\Offers\Offer;
 use App\Offers\OfferEventType;
 use App\Offers\OfferState;
+use App\Offers\Signing;
 use App\Offers\Slots;
 use App\Users\User;
 use App\Workflow\Events\StageEntered;
@@ -48,7 +50,9 @@ final class EnterStage
         $said = isset($payload['label']) ? (string) $payload['label'] : null;
         // Исход менеджера нажал сотрудник (`RouteController::forManager`) — «за менеджера» в «Истории».
         $for = isset($payload['for']) ? (string) $payload['for'] : null;
-        unset($payload['letter'], $payload['out'], $payload['label'], $payload['for']);
+        // Без уведомлений («Уже продана…» закрывает давно проданную, `MarkSoldDeal`): `StageEntered::$quiet`.
+        $quiet = ! empty($payload['quiet']);
+        unset($payload['letter'], $payload['out'], $payload['label'], $payload['for'], $payload['quiet']);
         $to->loadMissing(['workflow', 'block', 'exits.to']);
         $track = $to->workflow->track;
         $now = Carbon::now();
@@ -83,12 +87,12 @@ final class EnterStage
         }
         // «Беру в работу» — сразу дело «Укажите покупателя» (10.11.2026, `AskBuyer`), а не когда страховая попросит реквизиты.
         if ($track === Track::Sale && $deal?->isActive() && $exit?->takes() && ! $back) {
-            app(\App\Offers\Actions\AskBuyer::class)->ask($deal);
+            app(AskBuyer::class)->ask($deal);
         }
         // Поставщик начал готовить договор — сразу спросить менеджера, когда покупатель сможет подписать: день и время, кнопками
         // в чате (11.11.2026, `AskSigningTime`).
-        if ($track === Track::Sale && $deal?->isActive() && ! $back && \App\Offers\Signing::asksTime($to->loadMissing('exits.to.exits'))) {
-            app(\App\Offers\Actions\AskSigningTime::class)($deal);
+        if ($track === Track::Sale && $deal?->isActive() && ! $back && Signing::asksTime($to->loadMissing('exits.to.exits'))) {
+            app(AskSigningTime::class)($deal);
         }
 
         // Заплатили поставщику — выход из этапа нашей оплаты («Поставщику оплачено», «Переведено поставщику»): срок
@@ -157,7 +161,7 @@ final class EnterStage
             }
         }
 
-        if (! $noInvoice && ! $carried && $deal && $deal->isActive() && $deal->buyer_id && $to->awaitsManager($deal)) {
+        if (! $quiet && ! $noInvoice && ! $carried && $deal && $deal->isActive() && $deal->buyer_id && $to->awaitsManager($deal)) {
             Requirement::askFor($deal, $to, $position);
         }
 
@@ -166,7 +170,7 @@ final class EnterStage
             'from_id' => $from?->id, 'to_id' => $to->id, ...($back ? ['back' => true] : []), ...($letter ? ['letter' => $letter] : []),
             ...($out ? ['fields' => $out] : []), ...($said ? ['label' => $said] : []), ...($for ? ['for' => $for] : []),
         ]);
-        StageEntered::dispatch($offer, $track, $from, $to, $exit, $by, $deal, $letter);
+        StageEntered::dispatch($offer, $track, $from, $to, $exit, $by, $deal, $letter, $quiet);
         // Машина сделки на нашей парковке: стало можно забирать — выдача, пропуск, получатель (18.10.2026, одна дверь).
         if ($track === Track::Sale && $deal) {
             DB::afterCommit(function () use ($deal, $by) {
