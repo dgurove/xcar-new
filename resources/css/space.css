@@ -37,10 +37,10 @@
      сходит на нет (владелец: «такой же под шапкой — единообразие»). Тёмная 06.11.2026 вечером — фото темнее (владелец: «только фотку на фоне»,
      дымка за блоками прежняя): затемнение — заливка в неподвижном слое фото, растеризуется один раз. Ни
      `filter: brightness()` (пересчёт картинки), ни нового полноэкранного слоя — на кадр это не влияет. */
-  .space-photo::before, .space-photo::after { content: ""; position: absolute; inset: 0; }
-  .space-photo::before { background: linear-gradient(rgb(255 255 255 / .48), rgb(255 255 255 / .32) 45%, rgb(255 255 255 / .52)); }
-  .dark .space-photo::before { background: radial-gradient(120% 90% at 46% 40%, rgb(0 0 0 / .32), rgb(0 0 0 / .5)); }
-  .space-photo::after { bottom: auto; height: 7rem; background: linear-gradient(var(--b-veil), transparent); }
+  /* 14.11.2026, владелец: «тень не нравится — просто тёмная заливка всего фона, чёрная с прозрачностью поверх фото»:
+     ровная заливка без градиентов, дымки за блоками и полосы под шапкой больше нет. */
+  .space-photo::before { content: ""; position: absolute; inset: 0; background: rgb(255 255 255 / .42); }
+  .dark .space-photo::before { background: rgb(0 0 0 / .55); }
   .space-marks { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 
   /* Начало мира — центр сцены, доска стоит от него обычной раскладкой; transform слоя — камера. */
@@ -89,19 +89,9 @@
      мягкими краями. Заливка с краем маской из двух градиентов, а не размытой тенью: тень 40 px — свёртка на каждой
      растеризации доски, а у 18 этих пятен это было главное в цене перерисовки; размытие фона под блоками
      (`backdrop-filter`) пересчитывалось бы каждый кадр. */
-  .space { --b-veil: rgb(234 235 237 / .84); }  /* светлая — чуть серее белого: белые карточки на ней не теряют край */
-  .dark .space { --b-veil: rgb(18 20 24 / .34); }  /* тёмная — так же еле заметно, как светлая: чёрная была «чернотой» (владелец) */
   .conveyor { isolation: isolate; }
   .stage-head, .stage-steps { position: relative; }
   .stage-steps { align-self: start; }
-  .stage-head::before, .stage-steps::before {
-    --edge: linear-gradient(to right, transparent, #000 2.75rem, #000 calc(100% - 2.75rem), transparent);
-    content: ""; position: absolute; z-index: -1; inset: -3rem; background: var(--b-veil);
-    -webkit-mask-image: var(--edge), linear-gradient(transparent, #000 2.75rem, #000 calc(100% - 2.75rem), transparent);
-    -webkit-mask-composite: source-in;
-    mask-image: var(--edge), linear-gradient(transparent, #000 2.75rem, #000 calc(100% - 2.75rem), transparent);
-    mask-composite: intersect;
-  }
 
   /* Подэтап — плашка кита: глагол, справа число; горит — красная капсула и красная полоса у левого края (06.11.2026: вместо обводки со свечением) (владелец: «ахтунг
      — красным, красиво»). Без дела — тихая, бледным текстом. Нажатие — его список. */
