@@ -642,6 +642,8 @@ class OfferController
             $has('city') ? new Column('city', 'Город', from: $preset === 'all' ? 'lg' : 'sm', aside: true, clip: true, role: ColRole::Place, rem: max(5, $cityCh * .5 + 2.5)) : null,
             // Во «Все» состояние — главное (14.11.2026, владелец: с окном справа оно уходило по ширине — «ничего не понятно»).
             $has('state') ? new Column('state', ! $all && $has('bids') ? 'Приём' : 'Состояние', from: 'sm', sort: 'closing', cell: 'whitespace-normal', role: ColRole::State, rem: 10, main: $preset === 'all') : null,
+            // Менеджер сделки или гаража — во «Все», и при открытом окне (14.11.2026, владелец).
+            ! $all && $has('manager') ? new Column('manager', 'Менеджер', from: 'sm', cell: 'whitespace-nowrap', role: ColRole::Who, rem: 10, main: true) : null,
             // Подтверждения принимает только админ — модератору столбца нет.
             $has('bids') && $user->canManageCrm() ? new Column('bids', 'Подтверждения', from: 'sm', num: true, sort: 'bids', cell: 'nums', rem: 7) : null,
             ! $all && $has('value') ? new Column('value', 'Оценочная', from: 'sm', num: true, aside: true, cell: 'nums', rem: 5.5) : null,
@@ -694,7 +696,7 @@ class OfferController
             // Даты заведения столбцом нет (14.11.2026, владелец): сортировать по ней можно (`sortFor`), видеть — не нужно.
             // Города и закупочной нет: столбцы больше не уходят по ширине (таблица листается вбок), и они выталкивали срок и
             // даты за край — город есть в окне, закупочная в «Ценах».
-            'all' => ['vendor', 'state', 'price', 'binding', 'sold', 'paid'],
+            'all' => ['vendor', 'state', 'manager', 'price', 'binding', 'sold', 'paid'],
             // «Архив»: где предложение сейчас — словом вкладки (`Offer::crmTab`: «Сделки», «Гараж»).
             default => ['vendor', 'city', 'state', 'floor', 'price', 'created'],
         };

@@ -98,7 +98,7 @@
         @case('state')
     <td class="{{ $col->classes() }}">
         {{-- Кто ведёт — аватаром перед этапом (имя — подсказкой): именем строка не влезала в ширину. --}}
-        @if ($line)<span class="inline-flex max-w-full items-center gap-1.5 align-middle" @if ($line->who) title="{{ $line->who }}" @endif>@if ($line->person)<x-ui.avatar :user="$line->person" :size="22"/>@endif<span class="{{ $tone }}">{{ $stateWord }}</span></span>
+        @if ($line)<span class="inline-flex max-w-full items-center gap-1.5 align-middle" @if ($line->who) title="{{ $line->who }}" @endif>@if ($line->person && ! $has('manager'))<x-ui.avatar :user="$line->person" :size="22"/>@endif<span class="{{ $tone }}">{{ $stateWord }}</span></span>
         @elseif ($mixed)<span class="{{ $tone }}{{ $draft ? ' text-ink-dim' : '' }}">{{ $stateWord }}</span>
         @elseif ($timer)<span class="nums {{ $offer->isEndingSoon() ? 'text-urgent' : 'text-accent-text' }}" data-controller="timer" data-timer-until-value="{{ $offer->bids_close_at->toIso8601String() }}" data-timer-done-value="Приём закрыт" data-timer-coarse-value="true">{{ \App\Support\Ago::left($offer->bids_close_at) }}</span>
         @elseif ($slot)<span class="text-accent-text">{{ $slot }}</span>
@@ -149,6 +149,11 @@
         @if ($count)<span class="cell-sub sm:hidden nums {{ $gallery ? '!text-accent-text' : '!text-urgent' }}">{{ $countWord }}</span>
         @elseif ($offer->floor_price && $has('floor') && ! ($correcting && $waits))<span class="cell-sub sm:hidden" @if ($busy) data-arrive-count @endif>{{ \App\Support\Money::nums($offer->floor_price) }}</span>@endif
     </td>
+        @break
+        @case('manager')
+    {{-- Менеджер сделки, иначе гаража (14.11.2026, «Все»). --}}
+    @php $mgr = $offer->lastDeal?->buyer ?? $offer->garageCar?->manager; @endphp
+    <td class="{{ $col->classes() }}">@if ($mgr)<span class="face flex items-center gap-2" title="{{ $mgr->name }}"><x-ui.avatar :user="$mgr" :size="22"/><span class="truncate">{{ $mgr->shortName() }}</span></span>@endif</td>
         @break
         @case('binding')
     {{-- Срок обязывающего своим столбцом («Все», 14.11.2026): горит — красным, ждёт решения — оранжевым. --}}
