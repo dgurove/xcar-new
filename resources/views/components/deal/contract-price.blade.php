@@ -17,11 +17,12 @@
 <div @if ($editable) data-controller="sheet" @endif class="contents">
     @if ($editable)
         <x-ui.sheet-row>
-            <span class="min-w-0 flex-1">
-                <span class="block">Сумма договора</span>
+            {{-- Подпись сверху, сумма под ней — как «Кто продаёт» и «НДС» рядом: в узкой колонке ПК строкой не помещалось. --}}
+            <span class="flex min-w-0 flex-1 flex-col gap-0.5">
+                <span class="text-sm text-ink-muted">Сумма договора</span>
+                <span class="nums">{{ $contract->price ? Money::rub($contract->price) : 'нет' }}</span>
                 @if ($sub)<span class="row-sub">{{ $sub }}</span>@endif
             </span>
-            <span class="nums shrink-0">{{ $contract->price ? Money::rub($contract->price) : 'нет' }}</span>
             <x-ui.chevron/>
         </x-ui.sheet-row>
         <x-ui.sheet :id="$id" title="Сумма договора">
@@ -46,11 +47,12 @@
         </x-ui.sheet>
     @else
         <div class="row">
-            <span class="min-w-0 flex-1">
-                <span class="block">Сумма договора</span>
+            {{-- Подпись сверху, сумма под ней — как «Кто продаёт» и «НДС» рядом: в узкой колонке ПК строкой не помещалось. --}}
+            <span class="flex min-w-0 flex-1 flex-col gap-0.5">
+                <span class="text-sm text-ink-muted">Сумма договора</span>
+                <span class="nums">{{ $contract->price ? Money::rub($contract->price) : 'нет' }}</span>
                 @if ($sub)<span class="row-sub">{{ $sub }}</span>@endif
             </span>
-            <span class="nums shrink-0">{{ $contract->price ? Money::rub($contract->price) : 'нет' }}</span>
         </div>
     @endif
 </div>

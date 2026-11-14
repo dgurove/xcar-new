@@ -18,7 +18,7 @@
 @endphp
 @if ($price !== null || $purpose || $rows)
     <div class="mb-3">
-        <div class="list-cap">Поставщику по договору комиссии</div>
+        <div class="list-cap">По договору комиссии</div>
         <div class="list" data-controller="sheet">
             @if ($price !== null)
                 <div class="row">
@@ -32,7 +32,7 @@
             @if ($purpose)
                 <div class="row flex-col items-stretch gap-0.5">
                     <span class="text-sm text-ink-muted">Назначение платежа</span>
-                    <x-ui.copy-text done="Назначение в буфере">{{ $purpose }}</x-ui.copy-text>
+                    <x-ui.copy-text class="text-sm" done="Назначение в буфере">{{ $purpose }}</x-ui.copy-text>
                 </div>
             @endif
             @if ($rows)
