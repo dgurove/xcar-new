@@ -650,6 +650,7 @@ class OfferController
                 : new Column('floor', 'Закупочная', from: 'sm', num: true, aside: true, sort: 'floor', cell: 'nums', rem: 5.5)),
             $has('price') ? new Column('price', 'Цена', num: true, sort: 'price', cell: 'nums', rem: 6) : null,
             // «Продано» / «Оплачено» (`DealDates`) — нажатием правятся (`SetDealDate`), с окном справа остаются.
+            ! $all && $has('binding') ? new Column('binding', 'Срок обязывающего', from: 'sm', sort: 'binding', cell: 'nums whitespace-nowrap', role: ColRole::When, rem: 8) : null,
             ! $all && $has('sold') ? new Column('sold', 'Продано', from: 'sm', sort: 'sold', cell: 'nums whitespace-nowrap', role: ColRole::When, rem: 6, main: true) : null,
             ! $all && $has('paid') ? new Column('paid', 'Оплачено', from: 'sm', sort: 'paid', cell: 'nums whitespace-nowrap', role: ColRole::When, rem: 6, main: true) : null,
             // Дата — и при открытом окне (13.11.2026, начальник: «Во вкладке» пропадало); не влезает — уходит последней (`Table::DROP`).
@@ -689,7 +690,8 @@ class OfferController
             'published' => ['vendor', 'city', ...($admin ? ['state'] : []), 'floor', 'price', 'published'],
             'bids' => ['vendor', 'city', 'state', 'bids', 'floor', 'price', 'published'],
             // «Все»: ещё когда нам заплатили и когда мы поставщику (14.11.2026, владелец: «ваще непонятно, что с ними», `DealDates`).
-            'all' => ['vendor', 'city', 'state', 'floor', 'price', 'sold', 'paid', 'created'],
+            // Срок обязывающего — своим столбцом, а не значком у названия (14.11.2026, владелец: «у названия — неудобно и непонятно»).
+            'all' => ['vendor', 'city', 'state', 'floor', 'price', 'binding', 'sold', 'paid', 'created'],
             // «Архив»: где предложение сейчас — словом вкладки (`Offer::crmTab`: «Сделки», «Гараж»).
             default => ['vendor', 'city', 'state', 'floor', 'price', 'created'],
         };
