@@ -2,6 +2,7 @@
 
 namespace App\Billing\Bank\Actions;
 
+use App\Billing\Bank\CarMatch;
 use App\Billing\Bank\Connection;
 use App\Billing\Bank\SberApi;
 use App\Billing\Bank\Transaction;
@@ -18,12 +19,18 @@ use Throwable;
  */
 final class ImportStatement
 {
-    public function __construct(private SberApi $api, private MatchTransaction $match) {}
+    public function __construct(private SberApi $api, private MatchTransaction $match, private LinkTransaction $link) {}
 
-    public function __invoke(Connection $connection, Carbon $day): ?Collection
+    /**
+     * @param  bool  $history  прошлое (`bank:history`): строки только для дат сделок — без счетов и оплат (`Transaction::HISTORY`),
+     *                         до 01.06.2026 без машины не хранятся
+     */
+    public function __invoke(Connection $connection, Carbon $day, bool $history = false): ?Collection
     {
         try {
             $rows = $this->api->transactions($connection, $day);
+            // История идёт ровно день за днём — банк не перегружаем.
+            $history && usleep(300_000);
         } catch (Throwable $e) {
             $connection->update(['last_error' => mb_substr($e->getMessage(), 0, 500), 'failed_at' => $connection->failed_at ?? now()]);
 
@@ -40,6 +47,10 @@ final class ImportStatement
             }
             $in = ($row['direction'] ?? '') === 'CREDIT';
             $t = $row['rurTransfer'] ?? [];
+            // Старое без машины не храним (14.11.2026, владелец: «то, что не сопоставится из старого до июня, можно не хранить»).
+            if ($history && $day->lt(Carbon::parse(Transaction::HISTORY_KEEP_FROM)) && ! CarMatch::of($row['paymentPurpose'] ?? null)) {
+                continue;
+            }
             $tx = Transaction::createOrFirst(['external_id' => $id], [
                 'account' => $connection->account,
                 'booked_at' => Carbon::parse($row['operationDate'] ?? $row['documentDate'] ?? $day)->toDateString(),
@@ -49,17 +60,23 @@ final class ImportStatement
                 'counterparty_account' => $in ? ($t['payerAccount'] ?? null) : ($t['payeeAccount'] ?? null),
                 'counterparty_bank' => $in ? ($t['payerBankName'] ?? null) : ($t['payeeBankName'] ?? null),
                 'doc_number' => $row['number'] ?? null, 'purpose' => $row['paymentPurpose'] ?? null,
-                'state' => $in ? Transaction::UNMATCHED : Transaction::OUTGOING, 'payload' => $row,
+                'state' => $history ? Transaction::HISTORY : ($in ? Transaction::UNMATCHED : Transaction::OUTGOING), 'payload' => $row,
             ]);
             if (! $tx->wasRecentlyCreated) {
                 continue;
             }
-            if ($in) {
+            if ($in && ! $history) {
                 $tx = ($this->match)($tx);
                 if ($tx->state === Transaction::UNMATCHED) {
                     $fresh->push($tx);
                 }
             }
+            // Машина по назначению — к её сделке, даты «Продано» / «Оплачено» (`LinkTransaction`).
+            ($this->link)($tx);
+        }
+        // История — сколько операций было за день у банка (пустые дни подряд — счёт ещё не открыт, `bank:history`).
+        if ($history) {
+            return collect($rows);
         }
         $connection->update(['synced_at' => now(), 'last_error' => null, 'failed_at' => null]);
         Nav::forgetStaffCounts();

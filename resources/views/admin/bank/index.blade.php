@@ -13,7 +13,7 @@
         <x-ui.empty class="mt-6">{{ $q !== '' ? 'Ничего не нашлось' : ($preset === 'unmatched' ? 'Все поступления разобраны' : 'Поступлений нет') }}</x-ui.empty>
     @else
         <x-ui.table id="bank" class="mt-6" :view="$view">
-            <x-slot:head><tr><x-ui.th :sort="$sort" key="payer" class="grow">Плательщик</x-ui.th><th class="cell-dim col-detail-hide hidden lg:table-cell">Назначение</th><x-ui.th :sort="$sort" key="booked" class="hidden sm:table-cell">Дата</x-ui.th><x-ui.th :sort="$sort" key="amount" class="num">Сумма</x-ui.th></tr></x-slot:head>
+            <x-slot:head><tr><x-ui.th :sort="$sort" key="payer" class="grow">{{ in_array($preset, ['out'], true) ? 'Получатель' : 'Плательщик' }}</x-ui.th><th class="cell-dim col-detail-hide hidden lg:table-cell">Назначение</th><x-ui.th :sort="$sort" key="booked" class="hidden sm:table-cell">Дата</x-ui.th><x-ui.th :sort="$sort" key="amount" class="num">Сумма</x-ui.th></tr></x-slot:head>
             @foreach ($transactions as $tx)<x-bank.table-row :tx="$tx"/>@endforeach
         </x-ui.table>
     @endif

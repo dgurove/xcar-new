@@ -27,7 +27,9 @@ use Throwable;
  */
 class BankController
 {
-    public const PRESETS = ['unmatched' => 'Не привязаны', 'matched' => 'Привязаны', 'ignored' => 'Не наше', 'all' => 'Все входящие'];
+    // «Исходящие» и «Прошлое» (14.11.2026): списания с машиной, к которой привязаны (оплата поставщику → «Оплачено» сделки),
+    // и выписка за прошлое (`bank:history`) — только для дат сделок.
+    public const PRESETS = ['unmatched' => 'Не привязаны', 'matched' => 'Привязаны', 'ignored' => 'Не наше', 'all' => 'Все входящие', 'out' => 'Исходящие', 'history' => 'Прошлое'];
 
     public const SORTS = ['booked' => ['Дата', 'desc'], 'amount' => ['Сумма', 'desc'], 'payer' => ['Плательщик', 'asc']];
 
@@ -41,9 +43,12 @@ class BankController
         $sort = Sort::from($request->query('sort'), self::SORTS, '-booked');
         $preset = array_key_exists($request->query('preset', ''), self::PRESETS) ? $request->query('preset') : 'unmatched';
         $qs = trim((string) $request->query('q'));
-        $q = Transaction::where('direction', 'in')->with('invoice')
+        $q = Transaction::with(['invoice', 'deal.offer'])
+            ->when($preset === 'out', fn ($w) => $w->where('direction', 'out')->where('state', Transaction::OUTGOING))
+            ->when($preset === 'history', fn ($w) => $w->where('state', Transaction::HISTORY))
+            ->when(! in_array($preset, ['out', 'history'], true), fn ($w) => $w->where('direction', 'in')->where('state', '!=', Transaction::HISTORY))
             // Лупа — по всем поступлениям, мимо пилюли.
-            ->when($preset !== 'all' && $qs === '', fn ($w) => $w->where('state', $preset))
+            ->when(! in_array($preset, ['all', 'out', 'history'], true) && $qs === '', fn ($w) => $w->where('state', $preset))
             ->search($qs)
             ->when($sort->key === 'amount', fn ($w) => $w->orderBy('amount', $sort->dir()))
             ->when($sort->key === 'payer', fn ($w) => $w->orderBy('counterparty', $sort->dir()))

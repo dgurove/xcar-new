@@ -4,6 +4,7 @@ namespace App\Billing\Bank;
 
 use App\Billing\Invoice;
 use App\Billing\Payment;
+use App\Offers\Deal;
 use App\Search\Term;
 use App\Support\FastAttributes;
 use App\Users\User;
@@ -15,10 +16,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 /**
  * Операция по расчётному счёту из выписки. Входящая узнаётся по номеру счёта в назначении и становится
  * оплатой (`matched`); не узнанная ждёт сотрудника (`unmatched`): привязать к счёту или «не наше» (`ignored`).
- * Исходящие хранятся для полноты и ничего не двигают (`outgoing`).
+ * Исходящие — `outgoing`. И те и другие привязываются к машине по назначению (`CarMatch` → `deal_id`): по ним «Продано» и
+ * «Оплачено» сделки (`StampDealMoney`, 14.11.2026).
  */
 #[Fillable(['external_id', 'account', 'booked_at', 'direction', 'amount', 'counterparty', 'counterparty_inn', 'counterparty_account', 'counterparty_bank', 'doc_number', 'purpose',
-    'state', 'note', 'invoice_id', 'payment_id', 'decided_by', 'decided_at', 'payload'])]
+    'state', 'note', 'invoice_id', 'payment_id', 'decided_by', 'decided_at', 'payload', 'deal_id', 'matched_by'])]
 class Transaction extends Model
 {
     use FastAttributes;
@@ -30,6 +32,12 @@ class Transaction extends Model
     public const IGNORED = 'ignored';
 
     public const OUTGOING = 'outgoing';
+
+    /** Выписка за прошлое (`bank:history`): только для дат сделок, счетов и оплат не трогает. */
+    public const HISTORY = 'history';
+
+    /** Раньше этого дня строку истории храним, только если она про нашу машину. */
+    public const HISTORY_KEEP_FROM = '2026-06-01';
 
     protected $table = 'billing_bank_transactions';
 
@@ -57,6 +65,11 @@ class Transaction extends Model
         return $this->belongsTo(Payment::class);
     }
 
+    public function deal(): BelongsTo
+    {
+        return $this->belongsTo(Deal::class);
+    }
+
     public function decider(): BelongsTo
     {
         return $this->belongsTo(User::class, 'decided_by');
@@ -73,6 +86,7 @@ class Transaction extends Model
             self::MATCHED => 'Привязано',
             self::UNMATCHED => 'Не привязано',
             self::IGNORED => 'Не наше',
+            self::HISTORY => 'Прошлое',
             default => 'Списание',
         };
     }

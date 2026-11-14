@@ -28,9 +28,14 @@ final class SetDealDate
 {
     public function __construct(private RecordPayment $pay, private IssueAgentFee $fee, private TakeExit $take, private ReopenDeal $reopen) {}
 
-    public function __invoke(Deal $deal, string $what, ?Carbon $at, User $by): Deal
+    /**
+     * @param  ?User  $by  null — система (выписка, `StampDealMoney`): дата не помечается «руками», счета не трогаются
+     * @param  ?string  $why  откуда — в «Историю» («по выписке Сбера, платёжка № 512»)
+     * @param  ?string  $doc  номер платёжки — в поле шага оплаты поставщику
+     */
+    public function __invoke(Deal $deal, string $what, ?Carbon $at, ?User $by, ?string $why = null, ?string $doc = null): Deal
     {
-        return DB::transaction(function () use ($deal, $what, $at, $by) {
+        return DB::transaction(function () use ($deal, $what, $at, $by, $why, $doc) {
             $deal = Deal::whereKey($deal->id)->lockForUpdate()->firstOrFail();
             $offer = Offer::findOrFail($deal->offer_id);
             $deal->setRelation('offer', $offer);
@@ -45,7 +50,7 @@ final class SetDealDate
                 return $deal;
             }
 
-            if ($what === DealDates::SOLD && $column === 'paid_in_at') {
+            if ($by && $what === DealDates::SOLD && $column === 'paid_in_at') {
                 if ($at && ! $was) {
                     foreach (MarkSoldDeal::unpaid($deal) as $bill) {
                         ($this->pay)($bill, $by, $bill->remaining(), $at, PaymentSource::Bank, note: 'Оплачено: дата во «Все»');
@@ -55,23 +60,31 @@ final class SetDealDate
                     throw ValidationException::withMessages(['at' => 'Счета оплачены — оплату отменяют в «Деньгах» сделки']);
                 }
             }
-            if ($what === DealDates::PAID && ! $at && $was && $deal->state === DealState::Done && ReopenDeal::allows($deal, $by)) {
+            if ($by && $what === DealDates::PAID && ! $at && $was && $deal->state === DealState::Done && ReopenDeal::allows($deal, $by)) {
                 // Закрытая: оплата поставщику снова впереди — сделка возвращается на этот шаг.
                 $step = ReopenDeal::stages($deal)->last(fn ($row) => $row['stage']->paysOut())['stage'] ?? null;
                 if ($step) {
                     return ($this->reopen)($deal, $step, $by, undoSold: false);
                 }
             }
-            $deal->refresh()->forceFill([$column => $at])->save();
+            // Вписанное человеком выписка больше не трогает (`StampDealMoney`).
+            $hand = $by ? array_values(array_unique([...($deal->dates_by_hand ?? []), $column])) : $deal->dates_by_hand;
+            $deal->refresh()->forceFill([$column => $at, 'dates_by_hand' => $hand])->save();
             $offer->log(OfferEventType::Note, $by, ['text' => ($what === DealDates::SOLD ? 'Продано' : 'Оплачено поставщику').': '
-                .($was?->format('d.m.Y') ?? 'нет').' → '.($at?->format('d.m.Y') ?? 'нет')]);
+                .($was?->format('d.m.Y') ?? 'нет').' → '.($at?->format('d.m.Y') ?? 'нет').($why ? ', '.$why : '')]);
 
             // Оплатили поставщику, а сделка на шаге нашей оплаты — шаг проходит («Поставщику оплачено» с этой датой).
             $stage = $offer->stage();
             if ($what === DealDates::PAID && $at && $deal->isActive() && $stage?->paysOut()
                 && ($exit = $stage->exitsFor(Actor::Staff, $deal)->first(fn ($e) => ! $e->to?->block?->isDeadEnd()))) {
-                $field = $stage->payFields()[0]['label'] ?? null;
-                ($this->take)($offer, $exit, Actor::Staff, $by, $field ? ['out' => [$field => $at->translatedFormat('j F Y')]] : []);
+                // Поля шага: дата — первое, номер платёжки — поле со словом «номер» / «платёж».
+                $out = [];
+                foreach ($stage->payFields() as $i => $f) {
+                    $isNo = preg_match('/номер|№/iu', $f['label']);
+                    $value = $isNo ? $doc : ($i === 0 || preg_match('/дат/iu', $f['label']) ? $at->translatedFormat('j F Y') : null);
+                    $value && $out[$f['label']] = $value;
+                }
+                ($this->take)($offer, $exit, Actor::Staff, $by, $out ? ['out' => $out] : []);
                 $deal->refresh()->forceFill([$column => $at])->save();
             }
 
