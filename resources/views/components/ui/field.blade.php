@@ -66,9 +66,14 @@
                 default => null,
             };
         @endphp
+        @if ($past && $type === 'date')
+            {{-- Паспортные даты — текстом «дд.мм.гггг» (14.11.2026, менеджеры: «не календарик, а текстовый ввод»). --}}
+            <x-ui.day-input :name="$name" :id="$id" :value="$bound" :min="$past['min']" :max="$past['max']" {{ $attributes->only(['form', 'disabled']) }}/>
+        @else
         <x-ui.date :name="$name" :id="$id" :value="$bound" :time="$type === 'datetime-local'" :default-time="$attributes->get('default-time', '12:00')"
             :min="$attributes->get('min', $past['min'] ?? null)" :max="$attributes->get('max', $past['max'] ?? null)" :years="$past ? 200 : null" :start="$past['start'] ?? null"
             :limit="$attributes->get('limit')" :placeholder="$placeholder" :clearable="! $required" :now="$attributes->has('now')" {{ $attributes->except(['id', 'min', 'max', 'limit', 'default-time', 'now'])->merge($wiring) }}/>
+        @endif
     @elseif ($options !== null)
         <select id="{{ $id }}" name="{{ $name }}" {{ $attributes->except('id')->merge(['class' => 'field-input'] + $wiring) }}>
             @if ($placeholder)<option value="">{{ $placeholder }}</option>@endif

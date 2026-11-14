@@ -139,6 +139,7 @@ export default class extends Controller {
         await rest.run();
         // Даты — скрытое поле под календарём (`date_controller`): видимый текст перерисовывается им самим.
         for (const el of form.querySelectorAll('[data-controller~="date"]')) this.application.getControllerForElementAndIdentifier(el, 'date')?.render();
+        for (const el of form.querySelectorAll('[data-controller~="day-input"]')) this.application.getControllerForElementAndIdentifier(el, 'day-input')?.render();
     }
 
     preview(tile, src, type) {
