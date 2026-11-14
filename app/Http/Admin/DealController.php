@@ -518,6 +518,10 @@ class DealController
         abort_unless($request->user()->canManageCrm(), 403);
         $data = $request->validate(['what' => ['required', Rule::in([DealDates::SOLD, DealDates::PAID])],
             'at' => ['nullable', 'date', 'before_or_equal:today']]);
+        // «Очистить» в шторке — та же форма с `clear`: дата в поле остаётся, но снимается.
+        if ($request->boolean('clear')) {
+            $data['at'] = null;
+        }
         $deal = $set($deal, $data['what'], filled($data['at'] ?? null) ? Carbon::parse($data['at'], 'Europe/Moscow') : null, $request->user());
 
         return back()->with('toast', ($data['what'] === 'sold' ? 'Продано' : 'Оплачено').': '.(filled($data['at'] ?? null) ? Carbon::parse($data['at'])->format('d.m.Y') : 'снято')

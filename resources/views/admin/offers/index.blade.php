@@ -209,6 +209,10 @@
             @endif
         @endif
     </div>
+    {{-- «Продано» / «Оплачено» во «Все» — одна шторка на страницу (ячейки строк её открывают). --}}
+    @if ($preset === 'all' && auth()->user()->canManageCrm())<x-deal.dates-sheet/>@endif
     {{-- Окно писем для карточки «Письма» в карточке строки. --}}
     <x-mail.window/>
+    {{-- «Продано» / «Оплачено» во «Все» — одна шторка на страницу (ячейки строк её открывают, `deal_dates_controller`). --}}
+    @if (request()->query('preset') === 'all' && auth()->user()->canManageCrm())<x-deal.dates-sheet/>@endif
 </x-ui.shell>

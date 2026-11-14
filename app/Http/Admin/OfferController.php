@@ -635,8 +635,8 @@ class OfferController
             self::pickable($user, $preset, $searching) ? new Column('pick', pick: true, rem: 2.5) : null,
             new Column('title', 'Марка, модель', grow: true),
             $has('vendor') ? new Column('vendor', 'Вендор, № убытка', from: 'sm', sort: 'vendor', role: ColRole::Code, rem: max(8.5, $refCh * .55 + 3)) : null,
-            // Номер предложения есть во всех вкладках (10.10.2026); у черновика пусто.
-            new Column('number', '№', from: 'sm', aside: true, cell: 'nums', role: ColRole::Code, rem: 7),
+            // Номера предложения столбцом нет (14.11.2026, владелец: «бесполезный, лучше номер убытка с логотипом страховой» —
+            // он в «Вендор, № убытка»); сортировка «Номер» осталась в окошке, номер — в окне и поиске.
             // Во «Все» город — с 1024: место отдано этапу сделки и менеджеру в «Состоянии» (27.10.2026; с 29.10.2026 таблица
             // плотнее, и с 1536 — слишком поздно).
             $has('city') ? new Column('city', 'Город', from: $preset === 'all' ? 'lg' : 'sm', aside: true, clip: true, role: ColRole::Place, rem: max(5, $cityCh * .5 + 2.5)) : null,
@@ -650,7 +650,7 @@ class OfferController
                 : new Column('floor', 'Закупочная', from: 'sm', num: true, aside: true, sort: 'floor', cell: 'nums', rem: 5.5)),
             $has('price') ? new Column('price', 'Цена', num: true, sort: 'price', cell: 'nums', rem: 6) : null,
             // «Продано» / «Оплачено» (`DealDates`) — нажатием правятся (`SetDealDate`), с окном справа остаются.
-            ! $all && $has('binding') ? new Column('binding', 'Срок обязывающего', from: 'sm', sort: 'binding', cell: 'nums whitespace-nowrap', role: ColRole::When, rem: 8) : null,
+            ! $all && $has('binding') ? new Column('binding', 'Срок обязывающего', from: 'sm', sort: 'binding', cell: 'nums whitespace-nowrap', role: ColRole::When, rem: 5, main: true) : null,
             ! $all && $has('sold') ? new Column('sold', 'Продано', from: 'sm', sort: 'sold', cell: 'nums whitespace-nowrap', role: ColRole::When, rem: 6, main: true) : null,
             ! $all && $has('paid') ? new Column('paid', 'Оплачено', from: 'sm', sort: 'paid', cell: 'nums whitespace-nowrap', role: ColRole::When, rem: 6, main: true) : null,
             // Дата — и при открытом окне (13.11.2026, начальник: «Во вкладке» пропадало); не влезает — уходит последней (`Table::DROP`).
@@ -691,7 +691,10 @@ class OfferController
             'bids' => ['vendor', 'city', 'state', 'bids', 'floor', 'price', 'published'],
             // «Все»: ещё когда нам заплатили и когда мы поставщику (14.11.2026, владелец: «ваще непонятно, что с ними», `DealDates`).
             // Срок обязывающего — своим столбцом, а не значком у названия (14.11.2026, владелец: «у названия — неудобно и непонятно»).
-            'all' => ['vendor', 'city', 'state', 'floor', 'price', 'binding', 'sold', 'paid', 'created'],
+            // Даты заведения столбцом нет (14.11.2026, владелец): сортировать по ней можно (`sortFor`), видеть — не нужно.
+            // Города и закупочной нет: столбцы больше не уходят по ширине (таблица листается вбок), и они выталкивали срок и
+            // даты за край — город есть в окне, закупочная в «Ценах».
+            'all' => ['vendor', 'state', 'price', 'binding', 'sold', 'paid'],
             // «Архив»: где предложение сейчас — словом вкладки (`Offer::crmTab`: «Сделки», «Гараж»).
             default => ['vendor', 'city', 'state', 'floor', 'price', 'created'],
         };

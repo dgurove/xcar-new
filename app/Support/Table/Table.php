@@ -96,21 +96,14 @@ final class Table
     private const STEPS = ['sm' => 1, 'md' => 2, 'lg' => 3, 'xl' => 4, '2xl' => 5];
 
     /**
-     * В каком порядке столбцы уходят, когда таблица не влезает, — первым самый неважный: позже всех видимый на узком экране
-     * (`from`: 2xl → sm), дальше по роли — кто, где, тип, состояние, сумма, код, дата. Название и галочка не уходят.
-     */
-    private const DROP = [ColRole::Who, ColRole::Place, ColRole::Kind, ColRole::State, ColRole::Amount, ColRole::Code, ColRole::When];
-
-    /**
      * Столбцы сеткой на ПК (29.10.2026, «Все» CRM — 749 строк: открыть карточку строки — полсекунды): от 640 каждая строка
      * таблицы — сетка с одними и теми же столбцами, и строка за экраном не считается вовсе (`content-visibility`, `.is-grid`).
      * Строки совпадают столбцами без общей раскладки, только если ширины не зависят от содержимого строки, — они из данных
      * всего списка (`Widths::of` — сервер считает один раз, браузер ничего не меряет).
      *
      * Строка на ПК всегда одна линия, и с открытой карточкой тоже (30.10.2026, владелец: «пихаем всё в три строки, когда у
-     * нас ещё куча свободного места» — была «краткая, как на телефоне»). Не влезают столбцы — уходят по одному (`DROP`), как
-     * в Linear и Finder: каждый вариант влезает с какой-то ширины таблицы, и `@container` по обёртке выбирает его сам — по
-     * ширине самой таблицы, а не экрана, поэтому карточка рядом и узкое окно — одно правило. Отдаёт `<style>` для обёртки с
+     * нас ещё куча свободного места» — была «краткая, как на телефоне»). Не влезают столбцы — таблица листается вбок
+     * (14.11.2026, `chain`); `@container` по обёртке выбирает только, полные ли прочие. Отдаёт `<style>` для обёртки с
      * классом `$cls`; с открытой карточкой справа (от 1024) — своя цепочка без `aside` (это и так написано в карточке).
      *
      * @param  array<string, float>  $core  ширина, ниже которой столбец не ужимается, rem (`Widths::of`)
@@ -121,16 +114,16 @@ final class Table
         $desk = array_filter($this->columns, fn (Column $c) => ! $c->phone);
 
         return '@media (min-width: 640px) { '.$this->chain(".{$cls}", $desk, $core, $full).' } '
-            .'@media (min-width: 1024px) { '.$this->chain(".split[data-open] .{$cls}", array_filter($desk, fn (Column $c) => ! $c->aside), $core, $full, reset: true).' }';
+            .'@media (min-width: 1024px) { '.$this->chain(".split[data-open] .{$cls}", array_filter($desk, fn (Column $c) => ! $c->aside), $core, $full, reset: true)
+            .$this->hideAside(".split[data-open] .{$cls}", $desk).' }';
     }
 
     /**
-     * Набор столбцов под ширину таблицы: по важности (обратно `DROP`, главный — `Column::$main` — первым), пока влезают —
-     * название ядром по 95 % значений, прочие целиком, в одну строку (лишний столбец не стоит строки в два этажа). Не
-     * цепочка «убрать по одному»: ушёл широкий — вернётся неважный, которому теперь хватает места (30.10.2026, «Вывоз»:
-     * ушли «Кому везти» и «Исполнитель», справа пустовала треть строки, а кто везёт — не видно). Ширины проходятся от полной
-     * до нуля шагом .25rem, правило — на каждый промежуток с одним набором (`@container` с нижней и верхней границей:
-     * наборы не вложены друг в друга).
+     * Столбцы под ширину таблицы (14.11.2026, владелец: «почему в таблицах нет горизонтального скролла — столбцов много, это
+     * нормально»; до того не влезшие уходили по одному, как в Linear и Finder, и «Срок обязывающего», «№ убытка» пропадали
+     * при открытом окне): все столбцы всегда, ядром (`Widths`); не влезли — таблица шире плашки (`min-width`) и листается
+     * вбок (`table_scroll_controller` → `is-scroll`), название закреплено слева (app.css); влезают целиком — прочие полные
+     * (`variant`).
      *
      * @param  array<string, Column>  $shown
      * @param  array<string, float>  $core
@@ -139,53 +132,21 @@ final class Table
      */
     private function chain(string $scope, array $shown, array $core, array $full, bool $reset = false): string
     {
-        $width = fn (Column $c) => $core[$c->key] ?? ($c->rem > 0 ? $c->rem : 6);
-        $fixed = array_filter($shown, fn (Column $c) => $c->grow || $c->pick);
-        $rest = array_values(array_filter($shown, fn (Column $c) => ! $c->grow && ! $c->pick));
-        $rank = array_flip(array_map(fn (ColRole $r) => $r->value, self::DROP));
-        $at = array_flip(array_map(fn (Column $c) => $c->key, $rest));
-        // Важнее — раньше: главный, потом видимый с узкого экрана (`from`), потом по роли с конца `DROP`, потом объявленный раньше.
-        usort($rest, fn (Column $a, Column $b) => [(int) $b->main, $a->from === null ? 0 : self::STEPS[$a->from], $rank[$b->role()->value] ?? 0, $at[$a->key]]
-            <=> [(int) $a->main, $b->from === null ? 0 : self::STEPS[$b->from], $rank[$a->role()->value] ?? 0, $at[$b->key]]);
-
-        // Прочему — полная ширина (кроме растяжки): столбец встаёт, только если строка с ним остаётся одной линией.
-        $whole = fn (Column $c) => $c->fill ? $width($c) : max($full[$c->key] ?? 0, $width($c));
-        $base = array_sum(array_map($width, $fixed));
-        $pick = function (float $room) use ($rest, $whole, $base): array {
-            $left = $room - $base;
-            $keys = [];
-            foreach ($rest as $c) {
-                if ($whole($c) <= $left) {
-                    $keys[] = $c->key;
-                    $left -= $whole($c);
-                }
-            }
-
-            return $keys;
-        };
-        // Промежутки ширин с одним набором: [от, до, ключи], сверху вниз.
-        $ranges = [];
-        $top = ceil(($base + array_sum(array_map($whole, $rest))) * 4) / 4;
-        for ($room = $top; $room >= 0; $room -= .25) {
-            $keys = $pick($room);
-            if ($ranges && end($ranges)[2] === $keys) {
-                $ranges[array_key_last($ranges)][0] = $room;
-            } else {
-                $ranges[] = [$room, $ranges ? end($ranges)[0] : null, $keys];
-            }
-        }
-        $ranges[array_key_last($ranges)][0] = 0;
-
-        // С карточкой — своя цепочка поверх той, что без неё: её столбцы снова видны, сколько бы та ни спрятала по ширине.
+        // Название ужимается до 12rem («…» — данные извне), прежде чем таблица начнёт листаться: иначе крайние столбцы уезжали
+        // за край и там, где места хватало.
+        $width = fn (Column $c) => ($w = $core[$c->key] ?? ($c->rem > 0 ? $c->rem : 6)) && $c->grow ? min($w, 12) : $w;
+        $min = round(array_sum(array_map($width, $shown)), 2);
         $css = $reset ? implode(', ', array_map(fn (Column $c) => "{$scope} .col-{$c->key}", $shown)).' { display: block !important; } ' : '';
-        foreach ($ranges as [$from, $below, $keys]) {
-            $cols = array_filter($shown, fn (Column $c) => isset($fixed[$c->key]) || in_array($c->key, $keys, true));
-            $gone = array_diff_key($shown, $cols);
-            $hide = $gone ? ' '.implode(', ', array_map(fn (Column $c) => "{$scope} .col-{$c->key}", $gone)).' { display: none !important; }' : '';
-            $css .= $this->variant($scope, $cols, $core, $full, $from, $below, $hide, ! $keys);
-        }
 
-        return $css;
+        return $css."{$scope} .table { min-width: {$min}rem; }".$this->variant($scope, $shown, $core, $full, 0, null, '', true);
+    }
+
+    /** С карточкой справа столбцы `aside` не рисуются — это и так написано в карточке. */
+    private function hideAside(string $scope, array $desk): string
+    {
+        $aside = array_filter($desk, fn (Column $c) => $c->aside);
+
+        return $aside ? ' '.implode(', ', array_map(fn (Column $c) => "{$scope} .col-{$c->key}", $aside)).' { display: none !important; }' : '';
     }
 
     /**
@@ -236,7 +197,8 @@ final class Table
                 // Название ужимается ниже ядра (до 12rem) только в последнем варианте — раньше уходят столбцы.
                 $c->grow => 'minmax('.($last ? min($w, 12) : $w).'rem, '.($fill ? ($roomy ? $max : $w).'rem' : '1fr').')',
                 // Состояние — по значениям; места мало — не шире 12rem: длиннее переносится второй строкой, а не отнимает место.
-                $c->fill => 'minmax('.($c->role() === ColRole::State && ! $roomy ? max($c->rem ?: 6, min($w, 12)) : $w).'rem, 1fr)',
+                // Таблица листается вбок (`chain` — `$last`): состояние одной строкой важнее длинного названия, ужимается название.
+                $c->fill => 'minmax('.($c->role() === ColRole::State && ! $roomy && ! $last ? max($c->rem ?: 6, min($w, 12)) : $w).'rem, 1fr)',
                 $roomy => "{$max}rem",
                 $max > $w => "minmax({$w}rem, {$max}rem)",
                 default => "{$w}rem",

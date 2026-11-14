@@ -113,7 +113,13 @@ final class Widths
             if ($v = $values[$c->key] ?? []) {
                 sort($v);
                 // «95 %» — на выборке от 40 строк; в коротком списке два длинных значения из двадцати — не редкость.
-                $data = $clip && count($v) >= 40 ? $v[(int) floor((count($v) - 1) * .95)] : end($v);
+                // Код (номер убытка, ДЛ) — по половине строк (14.11.2026, владелец: «отступ после номера убытка огромный — пусть
+                // помещается медиана, длиннее режется»): номер длиннее медианы режется «…», копируется целиком в окне.
+                $data = match (true) {
+                    $c->role() === ColRole::Code && ! $c->grow && count($v) >= 10 => $v[(int) floor((count($v) - 1) * .5)],
+                    $clip && count($v) >= 40 => $v[(int) floor((count($v) - 1) * .95)],
+                    default => end($v),
+                };
             }
             $cap = $c->grow ? self::MAX_TITLE : self::MAX;
             $want[$c->key] = round(min(max($head, $data) + $pad, $cap), 2);

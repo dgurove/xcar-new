@@ -60,7 +60,7 @@
         @if ($busy && ! $offer->brand_id)
         <x-ui.row-link :key="$n"><span class="cell-title"><span class="skeleton arrive-bar w-40 max-w-full"></span></span></x-ui.row-link>
         @else
-        <x-ui.row-link :key="$n"><span class="cell-title"><x-ui.cat-icon :category="$offer->category()"/><span class="cell-name arrive-late">{{ $offer->titleWithYear() }}</span>@if ($offer->recommended)<x-offer.recommended/>@endif{{ "" }}@if ($offer->isUrgent())<x-offer.urgent/>@endif{{ "" }}@if ($offer->auctionPlanned())<x-offer.auction/>@endif{{ "" }}@if ($admin && $offer->proposed())<span class="ml-1.5 inline-flex shrink-0 text-accent-text" title="Предложено из заявок на приём" aria-label="Предложено из заявок на приём"><x-ui.spark class="size-4"/></span>@endif{{ "" }}@if ($admin && $offer->awaitingPark())<x-offer.awaiting/>@endif<x-car.keys :count="$offer->keys_count"/><x-ui.links :offer="$offer"/>@if ($noVin)<span class="ml-1.5 text-sm text-danger">Нет VIN</span>@endif{{ "" }}@if ($offer->intake_closed_at && $offer->state === \App\Offers\OfferState::Draft && request()->query('preset') !== 'done')<span class="ml-1.5 shrink-0 text-sm text-urgent">приём закрыт</span>@endif{{ "" }}@if ($offer->partner_price_at)<span class="ml-1.5 shrink-0 text-sm text-ink-muted" title="Поставщик вписал цену, но ещё не отправил — может поправить">у поставщика</span>@endif{{ "" }}@unless ($has('binding'))<x-offer.binding :offer="$offer" icon/>@endunless</span></x-ui.row-link>
+        <x-ui.row-link :key="$n"><span class="cell-title"><x-ui.cat-icon :category="$offer->category()"/><span class="cell-name arrive-late">{{ $offer->titleWithYear() }}</span>@if ($offer->recommended)<x-offer.recommended/>@endif{{ "" }}@if ($offer->isUrgent())<x-offer.urgent/>@endif{{ "" }}@if ($offer->auctionPlanned())<x-offer.auction/>@endif{{ "" }}@if ($admin && $offer->proposed())<span class="ml-1.5 inline-flex shrink-0 text-accent-text" title="Предложено из заявок на приём" aria-label="Предложено из заявок на приём"><x-ui.spark class="size-4"/></span>@endif{{ "" }}@if ($admin && $offer->awaitingPark())<x-offer.awaiting/>@endif<x-car.keys :count="$offer->keys_count"/><x-ui.links :offer="$offer"/>@if ($noVin)<span class="ml-1.5 text-sm text-danger">Нет VIN</span>@endif{{ "" }}@if ($offer->intake_closed_at && $offer->state === \App\Offers\OfferState::Draft && request()->query('preset') !== 'done' && ! $has('state'))<span class="ml-1.5 shrink-0 text-sm text-urgent">приём закрыт</span>@endif{{ "" }}@if ($offer->partner_price_at)<span class="ml-1.5 shrink-0 text-sm text-ink-muted" title="Поставщик вписал цену, но ещё не отправил — может поправить">у поставщика</span>@endif{{ "" }}@unless ($has('binding'))<x-offer.binding :offer="$offer" icon/>@endunless</span></x-ui.row-link>
         @endif
         {{-- Телефон: строка переносится, а не режется «…» (владелец 04.10.2026: «поля не должны исчезать»); город, даты и
              прочие столбцы — в «Подробной таблице». --}}
@@ -128,6 +128,10 @@
              телефона непонятно, что когда создано и кем; слева всегда номер убытка, под ценой — подтверждения). Сегодня —
              время, иначе дата, за ней аватар. Столбец «Создано» в краткой таблице спрятан. --}}
         @if ($when)<span class="num-meta sm:hidden">{{ \App\Support\Ago::html($when, short: true) }}@if ($who)<x-ui.avatar :user="$who" :size="16" title="{{ $who->name }}"/>@elseif ($system)<x-ui.system-avatar :via="$offer->created_via" :size="16"/>@endif</span>@endif
+        {{-- Переоценка — перед ценой (14.11.2026, владелец: после цены и чипа «Оценить» строки скакали). --}}
+        @if ($admin && $offer->reprice_pending)<span class="mr-1.5 text-sm text-urgent">переоценка</span>@endif
+        {{-- Во «Все» чипа «Оценить» нет: «Состояние» и так «Без продажной цены», лаймом на сотне строк — шум (14.11.2026). --}}
+        @php $rate = $rate && ! ($has('state') && request()->query('preset') === 'all'); @endphp
         @if ($busy && $rate)<span class="skeleton arrive-bar w-16"></span>
         @elseif ($rate)<x-offer.rate-chip :offer="$offer"/>
         @elseif ($unpriced)
@@ -142,39 +146,42 @@
              04.10.2026: «самое важное, никогда нельзя скрывать»). Есть подтверждения — они вместо закупочной. --}}
         {{-- В минус или почти без наценки (`Offers\Margin`, 14.10.2026) — под ценой, только в CRM админу. --}}
         @if ($admin && ! $busy && ($margin = $offer->marginMark()))<x-offer.margin :m="$margin" class="cell-sub max-sm:!ml-0"/>@endif
-        @if ($admin && $offer->reprice_pending)<span class="cell-sub !text-urgent">переоценка</span>@endif
         @if ($count)<span class="cell-sub sm:hidden nums {{ $gallery ? '!text-accent-text' : '!text-urgent' }}">{{ $countWord }}</span>
         @elseif ($offer->floor_price && $has('floor') && ! ($correcting && $waits))<span class="cell-sub sm:hidden" @if ($busy) data-arrive-count @endif>{{ \App\Support\Money::nums($offer->floor_price) }}</span>@endif
     </td>
         @break
         @case('binding')
-    {{-- Срок обязывающего своим столбцом («Все», 14.11.2026): дата и сколько осталось; горит — красным, ждёт решения — оранжевым. --}}
+    {{-- Срок обязывающего своим столбцом («Все», 14.11.2026): горит — красным, ждёт решения — оранжевым. --}}
     <td class="{{ $col->classes() }}">
         @if ($offer->binding_until && \App\Offers\Binding::matters($offer))
-            @php $blevel = \App\Offers\Binding::of($offer); @endphp
-            {{-- Истёк — одной строкой «истёк 04.03», горит — дата и «осталось 1д 5ч» под ней. --}}
-            <span @class(['text-danger' => in_array($blevel, ['panic', 'over', 'deal'], true), 'text-urgent' => $blevel === 'undecided'])>@if ($offer->binding_until->isPast())истёк {{ \App\Offers\Binding::html($offer->binding_until) }}@else{{ \App\Offers\Binding::html($offer->binding_until) }}@if ($bword = \App\Offers\Binding::word($offer))<span class="block text-xs">{{ $bword }}</span>@endif{{ "" }}@endif</span>
+            {{-- Только дата (14.11.2026, владелец: «истёк» и время — колхоз, цвет и так говорит): «04.03», другой год — «04.03.2025». --}}
+            @php $blevel = \App\Offers\Binding::of($offer); $bat = $offer->binding_until->copy()->timezone(config('app.timezone')); @endphp
+            <span @class(['nums', 'text-danger' => in_array($blevel, ['panic', 'over', 'deal'], true), 'text-urgent' => $blevel === 'undecided'])>{{ $bat->format($bat->isCurrentYear() ? 'd.m' : 'd.m.Y') }}</span>
         @endif
     </td>
         @break
         @case('sold')
         @case('paid')
-    {{-- «Продано» — когда нам за неё заплатили, «Оплачено» — когда мы поставщику (14.11.2026, `DealDates`): нажатие — календарь,
-         дата уходит сразу (`SetDealDate`); нужна, а нет — «нет» (красным у закрытой); сделки нет или не нужна — пусто. --}}
+    {{-- «Продано» — когда нам за неё заплатили, «Оплачено» — когда мы поставщику (14.11.2026, `DealDates`); нажатие — шторка
+         `x-deal.dates-sheet` (`SetDealDate`). Пусто — сделки нет (14.11.2026, владелец: «что значит „нет“ и пусто?» — словами):
+         денег ещё нет — «ждём» у идущей, «не оплачено» красным у закрытой; поставщику платит менеджер (ДКП собственника) —
+         «у менеджера». --}}
     <td class="{{ $col->classes() }}">
         @php
             $dd = $offer->lastDeal;
             $dcol = $dd ? ($col->key === 'sold' ? \App\Offers\DealDates::soldColumn($dd) : \App\Offers\DealDates::paidColumn($dd)) : null;
             $dval = $dcol ? $dd->{$dcol} : null;
-            // «нет» красным — только у закрытой: у идущей оплата может быть ещё впереди, серым.
-            $dmiss = $dd?->state === \App\Offers\DealState::Done ? 'text-danger' : 'text-ink-dim';
+            $dclosed = $dd?->state === \App\Offers\DealState::Done;
+            $dword = $dclosed ? 'не оплачено' : 'ждём';
+            $dmiss = $dclosed ? 'text-danger' : 'text-ink-dim';
         @endphp
-        @if ($dcol && $admin)
-            <form method="post" action="/work/deals/{{ $dd->id }}/dates" class="contents">@csrf<input type="hidden" name="what" value="{{ $col->key }}">
-                <x-ui.date name="at" :id="'deal-'.$col->key.'-'.$dd->id" :value="$dval?->toDateString()" chip submit placeholder="нет" :max="now()->toDateString()" :class="$dval ? 'nums' : $dmiss"/>
-            </form>
+        @if ($dd && ! $dcol)
+            <span class="text-ink-dim">у менеджера</span>
+        @elseif ($dcol && $admin)
+            <button type="button" @class(['date-cell underline decoration-dotted underline-offset-4', 'nums' => $dval, $dmiss => ! $dval])
+                data-deal-dates="{{ $dd->id }}" data-what="{{ $col->key }}" data-value="{{ $dval?->toDateString() }}" data-car="{{ $offer->titleWithYear() }}">@if ($dval){{ \App\Support\Ago::html($dval) }}@else{{ $dword }}@endif</button>
         @elseif ($dcol)
-            @if ($dval){{ \App\Support\Ago::html($dval) }}@else<span class="{{ $dmiss }}">нет</span>@endif
+            @if ($dval){{ \App\Support\Ago::html($dval) }}@else<span class="{{ $dmiss }}">{{ $dword }}</span>@endif
         @endif
     </td>
         @break
