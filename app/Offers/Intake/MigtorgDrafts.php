@@ -20,12 +20,15 @@ use Throwable;
 
 /**
  * Новый лот Мигторга — черновик сам (26.10.2026, владелец: модераторы открывали все лоты вкладками и заводили Альфу и
- * Т-Страхование по номеру руками). Шаг `migtorg:sync` после индекса: живой лот с номером дела, по которому предложения нет
- * ни в каком состоянии (архив и отмена — решение человека), лот из раздела КАСКО, а вендор по виду номера (`CarText::vendorOf`) — с галкой
+ * Т-Страхование по номеру руками). Шаг `migtorg:sync` после индекса: живой лот с номером дела, по которому живого предложения
+ * нет, лот из раздела КАСКО, а вендор по виду номера (`CarText::vendorOf`) — с галкой
  * «Черновики с Мигторга» (`vendors.drafts_from_migtorg`). Заводит дверь `OpenDraft` (`migtorg`, без автора), поля — из
  * индекса, кадры — `ImportMigtorgLot`; входа на Мигторг нет — черновик с полями, кадры возьмёт `migtorg:sync`, когда вход
  * вернётся (`ImportMigtorgLot::auto`). Лот, по которому заводили, отмечен `drafted_at`: удалённый человеком черновик не
- * возвращается. Заведено — всплывашка сотрудникам CRM (событие `migtorg` темы `staff`, `x-migtorg.island`).
+ * возвращается. **Архивное — снова черновиком** (14.11.2026, владелец: «если тачку опубликовали на Мигторге, она снова
+ * актуальная — из архива доставать автоматически»): новый лот (перевыставленный — новым номером лота, `drafted_at` у него
+ * пуст) по номеру архивного предложения возвращает его в черновики с полями и кадрами лота, в «Истории» — «Снова на
+ * Мигторге»; отменённое (снятое поставщиком) — нет. Заведено — всплывашка сотрудникам CRM (событие `migtorg` темы `staff`, `x-migtorg.island`).
  *
  * Только КАСКО (30.10.2026, владелец: «ПВУ это не наше», «с Минторга только с раздела каско, остальное мусор», «и Тинь
  * только из каско» — по ОСАГО ни цен, ни передач): из 552 черновиков первых четырёх дней ~80% были ОСАГО. ОСАГО-лот сам
@@ -47,7 +50,9 @@ final class MigtorgDrafts
             return 0;
         }
         $lots = DB::table('migtorg_lots as l')->whereNull('l.gone_at')->whereNull('l.drafted_at')->where('l.section', 'casco')->whereNotNull('l.claim_ref_key')
-            ->whereNotExists(fn ($q) => $q->from('cars')->join('offers', 'offers.car_id', '=', 'cars.id')->whereColumn('cars.claim_ref_key', 'l.claim_ref_key'))
+            // Живое предложение по номеру есть — лот ему не нужен; архивное — вернётся (`OpenDraft`), отменённое останется.
+            ->whereNotExists(fn ($q) => $q->from('cars')->join('offers', 'offers.car_id', '=', 'cars.id')->whereColumn('cars.claim_ref_key', 'l.claim_ref_key')
+                ->where('offers.state', '!=', \App\Offers\OfferState::Archived->value))
             ->orderBy('l.id')->get();
         $ready = Migtorg::ready();
         // Т-Страхование: тот же убыток с другим годом в номере (AUT-25 в CRM, AUT-26 на Мигторге) — та же машина, второй не
@@ -69,7 +74,7 @@ final class MigtorgDrafts
             }
             try {
                 [$offer, $outcome] = app(OpenDraft::class)(new DraftSource('migtorg', $lot->claim_ref, fields: ['vendor_id' => $vendor],
-                    created: ['migtorg' => $lot->id], why: 'Новый лот Мигторга'), null);
+                    created: ['migtorg' => $lot->id], why: 'Новый лот Мигторга', reopenCancelled: false), null);
             } catch (IdentityTaken) {
                 // Номер или VIN — у другой машины: решать человеку, сам больше не пробуем.
                 self::mark($lot->id);
@@ -82,8 +87,11 @@ final class MigtorgDrafts
                 continue;
             }
             self::mark($lot->id);
-            if ($outcome !== OpenDraft::CREATED) {
+            if ($outcome === OpenDraft::EXISTING) {
                 continue;
+            }
+            if ($outcome === OpenDraft::REOPENED) {
+                $offer->log(\App\Offers\OfferEventType::Note, null, ['text' => 'Снова на Мигторге (лот '.$lot->id.') — вернули из архива']);
             }
             $offer->refresh();
             $ready ? ImportMigtorgLot::start($offer, $lot) : app(FillCar::class)($offer, ImportMigtorgLot::fieldsOf($lot), null, FillCar::EMPTY, log: ['source' => 'migtorg', 'lot' => $lot->id]);

@@ -7,6 +7,7 @@ use App\Offers\Console\MigtorgSync;
 use App\Offers\Intake\MigtorgDrafts;
 use App\Offers\Migtorg;
 use App\Offers\Offer;
+use App\Offers\OfferState;
 use App\Users\Role;
 use App\Users\User;
 use App\Vendors\Vendor;
@@ -59,6 +60,31 @@ class MigtorgDraftsTest extends TestCase
         $this->assertSame(1, MigtorgDrafts::run());
         $this->assertSame('migtorg', $this->offerOf('0592/046/00002/26')?->created_via);
         $this->assertNull($this->offerOf('0592/046/00003/26'));
+    }
+
+    /**
+     * Убранное в архив и снова выставленное на Мигторге — снова черновик (14.11.2026, владелец: «опубликовали на Мигторге —
+     * снова актуальная»); отменённое — нет; лот, по которому уже заводили, второй раз не возвращает.
+     */
+    public function test_new_lot_brings_archived_draft_back(): void
+    {
+        $this->lot(1, '0592/046/00002/26', 'casco');
+        MigtorgDrafts::run();
+        $offer = $this->offerOf('0592/046/00002/26');
+        app(\App\Offers\Actions\ChangeOfferState::class)($offer, OfferState::Archived, $this->admin);
+        $this->assertSame(0, MigtorgDrafts::run(), 'прежний лот уже разобран');
+        $this->assertSame(OfferState::Archived, $offer->refresh()->state);
+
+        $this->lot(2, '0592/046/00002/26', 'casco');
+        $this->assertSame(1, MigtorgDrafts::run());
+        $this->assertSame(OfferState::Draft, $offer->refresh()->state);
+        $this->assertTrue($offer->events()->where('payload->text', 'like', 'Снова на Мигторге%')->exists());
+
+        $cancelled = Offer::create(['vendor_id' => $this->alfa->id, 'claim_ref' => '0592/046/00005/26']);
+        $cancelled->forceFill(['state' => OfferState::Cancelled])->save();
+        $this->lot(3, '0592/046/00005/26', 'casco');
+        $this->assertSame(0, MigtorgDrafts::run());
+        $this->assertSame(OfferState::Cancelled, $cancelled->refresh()->state);
     }
 
     public function test_drop_osago_deletes_only_untouched_osago_drafts(): void
