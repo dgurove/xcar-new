@@ -57,6 +57,6 @@ abstract class EstimateNotice extends Notice
         // Заявленную менеджеру скрыли при просьбе — и в уведомлении её нет (11.10.2026).
         $declared = $this->estimate->showsDeclared() ? $offer->declaredPrice() : null;
 
-        return array_values(array_filter([Text::vin($offer), $offer->settlement?->title(), $declared ? 'Заявленная '.Money::rub($declared) : null, ...$middle]));
+        return array_values(array_filter([Text::vin($offer), $offer->saleCity()?->title(), $declared ? 'Заявленная '.Money::rub($declared) : null, ...$middle]));
     }
 }

@@ -10,6 +10,7 @@ use App\Mail\Extraction\Code;
 use App\Offers\AudienceRules;
 use App\Offers\Flag;
 use App\Offers\Offer;
+use App\Offers\SaleCity;
 use App\Offers\OfferState;
 use App\Offers\Pricing;
 use App\Offers\Tag;
@@ -153,10 +154,12 @@ class OfferRequest extends FormRequest
             $vendor = $this->filled('vendor_id') ? Vendor::find($this->integer('vendor_id')) : $this->route('offer')?->vendor;
             $data['audience_rules'] = AudienceRules::own($this->input('audience_rules'), $vendor);
         }
-        // Город продажи — галка «Продаём там же» и город (`x-offer.sale-city`): тронули любое — решает `Offer::saleCityFrom`.
+        // Город продажи — галка «Продаём там же» и город (`x-offer.sale-city`): тронули любое — решает `SaleCity::from` (город факта — тоже «совпадает»).
         unset($data['sale_city_same']);
         if (($sent('sale_city_same') || $sent('sale_settlement_id')) && $this->has('sale_city_same')) {
-            $data['sale_settlement_id'] = Offer::saleCityFrom($this->all());
+            // Город факта — вписанный этой же правкой, иначе нынешний: он же «совпадает».
+            $fact = $this->has('settlement_id') ? ($this->integer('settlement_id') ?: null) : $this->route('offer')?->settlement_id;
+            $data['sale_settlement_id'] = SaleCity::from($this->all(), $fact);
         }
         // Повреждений, «на ходу» и ключей в формах больше нет (блок «Состояние» убран, 30.09.2026): чего нет в запросе — не трогаем.
         if ($sent('damage_zones') && $this->has('damage_zones')) {

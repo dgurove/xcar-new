@@ -138,7 +138,8 @@ class Offer extends Model
                 $o->sale_settlement_id = null;
             }
             if (! $o->exists || $o->isDirty(['settlement_id', 'sale_settlement_id', 'inspection_address'])) {
-                $o->region_id = $o->sale_settlement_id ? Region::of($o->sale_settlement_id, null) : Region::of($o->settlement_id, $o->inspection_address);
+                // Город продажи без региона (только что заведённый справочником) — регион города факта, а не «вся Россия».
+                $o->region_id = ($o->sale_settlement_id ? Region::of($o->sale_settlement_id, null) : null) ?? Region::of($o->settlement_id, $o->inspection_address);
             }
             // Шаг работы сменился — предложение пришло в новую вкладку CRM: там оно первым (`tab_at`, 15.10.2026).
             $now = $o->getAttributes();
@@ -372,16 +373,6 @@ class Offer extends Model
     public function sellsElsewhere(): bool
     {
         return $this->sale_settlement_id !== null && (int) $this->sale_settlement_id !== (int) $this->settlement_id;
-    }
-
-    /**
-     * Из формы (`x-offer.sale-city`): галка «Продаём там же» или пустой город — совпадает (null); другой — его id.
-     *
-     * @param  array<string, mixed>  $input
-     */
-    public static function saleCityFrom(array $input): ?int
-    {
-        return filter_var($input['sale_city_same'] ?? true, FILTER_VALIDATE_BOOL) ? null : ((int) ($input['sale_settlement_id'] ?? 0) ?: null);
     }
 
     public function moderator(): BelongsTo

@@ -115,7 +115,7 @@
                 @if ($selling)
                     <x-car.blocks :lane="$offer" :blocks="['car', 'papers', 'specs']" as="section" :without="($brandTop ?? false) ? ['brand_id'] : []"
                         :required="$offer->state === OfferState::Draft ? ['vendor_id', 'claim_ref', 'brand_id'] : []"/>
-                    @include('admin.offers.fields.sale', ['as' => 'section', 'saleCity' => ! $admin])
+                    @include('admin.offers.fields.sale', ['as' => 'section'])
                 @endif
             </form>
             @php $noteDeal = $garageCar?->deal ?? $deal; @endphp

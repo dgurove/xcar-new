@@ -44,6 +44,7 @@ use App\Offers\OfferNumber;
 use App\Offers\OfferState;
 use App\Offers\PriceGuard;
 use App\Offers\Pricing;
+use App\Offers\SaleCity;
 use App\Offers\Reprice;
 use App\Offers\Slots;
 use App\Support\Ago;
@@ -741,7 +742,7 @@ class OfferController
      */
     public static function facets(): array
     {
-        return [Common::vendor('offers.vendor_id')->none('Без вендора'), Common::city('offers.settlement_id'), Common::category(Car::sql('offers', 'category')),
+        return [Common::vendor('offers.vendor_id')->none('Без вендора'), Common::city('coalesce(offers.sale_settlement_id, offers.settlement_id)'), Common::category(Car::sql('offers', 'category')),
             Facet::dates('created', 'Заведено', 'offers.created_at')];
     }
 
@@ -1174,13 +1175,16 @@ class OfferController
         }
         if ($next === OfferState::Open && in_array($offer->state, [OfferState::Draft, OfferState::Gallery], true)) {
             PriceGuard::assertPublish([$offer], $request->boolean('price_ok'));
-            $this->saleCity($request, $offer);
-            // «Выставить всем…» (`all=1`, 09.11.2026): эксклюзив за оценку снимается осознанно, после предупреждения; без него
-            // выход ставит оценщика сразу, остальных — после (`Exclusive`).
-            if ($request->boolean('all')) {
-                Exclusive::waive($offer, $request->user());
-            }
-            $offer = $schedule($offer, $this->when($request, Slots::NOW), $request->user(), until: Slots::urgentUntil($request->input('urgent_until')));
+            $offer = DB::transaction(function () use ($request, $offer, $schedule) {
+                $offer = $this->saleCity($request, $offer);
+                // «Выставить всем…» (`all=1`, 09.11.2026): эксклюзив за оценку снимается осознанно, после предупреждения; без него
+                // выход ставит оценщика сразу, остальных — после (`Exclusive`).
+                if ($request->boolean('all')) {
+                    Exclusive::waive($offer, $request->user());
+                }
+
+                return $schedule($offer, $this->when($request, Slots::NOW), $request->user(), until: Slots::urgentUntil($request->input('urgent_until')));
+            });
 
             return redirect("/offers/{$offer->number}")->with('toast', $this->published($offer))->with(self::gone($request, $offer));
         }
@@ -1190,20 +1194,17 @@ class OfferController
     }
 
     /**
-     * Город продажи из шторки (`x-offer.sale-city`: «Выставить в продажу», «Вернуть в продажу»): не пришёл — не трогаем,
-     * пришёл другим — через `UpdateOffer`, было → стало в «Истории».
+     * Город продажи из шторки (`x-offer.sale-city`: «Выставить в продажу», «Вернуть в продажу»): не пришёл или тот же — не
+     * трогаем, другой — через `UpdateOffer`, было → стало в «Истории». Вызывать в транзакции действия: не вышло выставить —
+     * и город прежний.
      */
-    private function saleCity(Request $request, Offer $offer, ?string $why = null): void
+    private function saleCity(Request $request, Offer $offer, ?string $why = null): Offer
     {
-        if (! $request->has('sale_city_same')) {
-            return;
+        if ($change = SaleCity::input($request, $offer)) {
+            return app(UpdateOffer::class)($offer, $change, $request->user(), $why ? ['why' => $why] : []);
         }
-        $request->validate(['sale_settlement_id' => ['nullable', 'exists:settlements,id']]);
-        $city = Offer::saleCityFrom($request->all());
-        if ($city !== $offer->sale_settlement_id) {
-            app(UpdateOffer::class)($offer, ['sale_settlement_id' => $city], $request->user(), $why ? ['why' => $why] : []);
-            $offer->refresh();
-        }
+
+        return $offer;
     }
 
     /**
@@ -1285,7 +1286,7 @@ class OfferController
             if ($binding = self::bindingChange($request, $offer)) {
                 $update($offer, $binding, $request->user(), ['why' => 'Вернуть в продажу']);
             }
-            $this->saleCity($request, $offer, 'Вернуть в продажу');
+            $offer = $this->saleCity($request, $offer, 'Вернуть в продажу');
 
             return $return($offer, $request->user(), $prices, filled($data['bids_close_at'] ?? null) ? Carbon::parse($data['bids_close_at']) : null, $audience,
                 stays: $request->boolean('stays'), where: array_intersect_key($data, array_flip(['settlement_id', 'inspection_address'])));

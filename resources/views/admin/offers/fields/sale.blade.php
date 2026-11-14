@@ -5,8 +5,6 @@
 @php
     $as ??= 'card';
     $fold ??= null;
-    // Город продажи — здесь, у «Города факт»; в окне админу он у «Цен» (`price-steps`), там `saleCity` = false.
-    $saleCity ??= true;
     $keys = ['settlement_id', 'sale_settlement_id', 'inspection_address', 'description'];
     if ($fold && ! str_starts_with((string) old('_form'), 'handover-') && $errors->hasAny($keys)) {
         $fold = false;
@@ -51,7 +49,8 @@
         <x-ui.combobox name="settlement_id" label="Город факт" url="/reference/settlements" create="/reference/settlements" :value="$offer->settlement_id" :text="$offer->settlement?->title()" :pinned="$cityPinned">
             <x-slot:hint><x-car.variant-hint :v="$city" :car="$offer->car_id"/></x-slot:hint>
         </x-ui.combobox>
-        @if ($saleCity)<x-offer.sale-city :offer="$offer" class="col-span-2 min-w-0 self-end"/>@endif
+        {{-- Форма — окна (`$form`) или редактора (`offer-form`): в ней поле одно, у кого раньше (`SaleCity::claim`). --}}
+        <x-offer.sale-city :offer="$offer" :form="$form ?? 'offer-form'" class="col-span-2 min-w-0 self-end"/>
         <x-ui.field name="inspection_address" label="Адрес осмотра" :value="$offer->inspection_address" span="col-span-2">
             <x-slot:after-label><x-ui.eye-check name="show_address" :checked="$offer->show_address"/></x-slot:after-label>
         </x-ui.field>

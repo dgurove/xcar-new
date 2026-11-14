@@ -54,7 +54,8 @@ final class OfferColumns
             'model' => fn (Offer $o) => $o->carRecord()->title() ?: null,
             'year' => fn (Offer $o) => $o->year,
             'vin' => fn (Offer $o) => $o->vin,
-            'city' => fn (Offer $o) => $o->saleCity()?->title(),
+            // Как в строке CRM: город факта, продают в другом — «Новосибирск, 54 → Москва, 77».
+            'city' => fn (Offer $o) => $o->settlement ? $o->settlement->title().($o->sellsElsewhere() ? ' → '.$o->saleSettlement?->title() : '') : null,
             'state' => fn (Offer $o) => $o->crmTab(),
             'floor' => fn (Offer $o) => $o->floor_price ? (int) $o->floor_price : null,
             'price' => fn (Offer $o) => $o->asking_price ? (int) $o->asking_price : null,
@@ -109,7 +110,7 @@ final class OfferColumns
 
         return $q->when($has('vendor'), fn ($q) => $q->with('vendor:id,name'))
             ->when($has('author'), fn ($q) => $q->with('moderator:id,name'))
-            ->when($list === 'vendor' && $has('city'), fn ($q) => $q->with(['settlement', 'saleSettlement']))
+            ->when($has('city'), fn ($q) => $q->with(['settlement', 'saleSettlement']))
             ->when($list === 'crm' && $has('state'), fn ($q) => $q->with('bids:id,offer_id,state'))
             ->when($list === 'crm' && $has('requested'), fn ($q) => $q->with('claimRequest:id,created_at'))
             ->when($list === 'crm' && $has('bids'), fn ($q) => $q->withCount('bids'))

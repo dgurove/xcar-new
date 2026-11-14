@@ -11,6 +11,7 @@ use App\Offers\Actions\UpdateOffer;
 use App\Offers\AudienceRules;
 use App\Offers\Binding;
 use App\Offers\Offer;
+use App\Offers\SaleCity;
 use App\Offers\OfferEventType;
 use App\Offers\OfferState;
 use App\Offers\PriceGuard;
@@ -158,9 +159,8 @@ class RepriceController
             $declared = null;
         }
         // Город продажи (`x-offer.sale-city`, 14.11.2026) — тоже предложения: его видят те, кому публикуем.
-        $sale = $request->has('sale_city_same') ? ['sale_settlement_id' => Offer::saleCityFrom($request->validate(['sale_settlement_id' => ['nullable', 'exists:settlements,id']]) + $request->all())] : [];
-        $prices = array_filter(['publish_price' => $declared, 'asking_price' => $data['asking_price']] + $sale,
-            fn ($v, $k) => $v !== $offer->{$k}, ARRAY_FILTER_USE_BOTH);
+        $prices = array_filter(['publish_price' => $declared, 'asking_price' => $data['asking_price']],
+            fn ($v, $k) => $v !== $offer->{$k}, ARRAY_FILTER_USE_BOTH) + (SaleCity::input($request, $offer) ?? []);
         // Одной транзакцией: «Выберите, кому показывать» откатывает и цены.
         DB::transaction(function () use ($offer, $prices, $update, $publish, $data, $until, $request) {
             if ($prices) {

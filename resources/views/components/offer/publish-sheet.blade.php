@@ -51,7 +51,7 @@
             </div>
         @endif
         {{-- Где продаём (14.11.2026): своей формой — здесь; у редактора поле уже в его форме, у «Города факт». --}}
-        @if ($offer && ! $move && $action)<x-offer.sale-city :offer="$offer" :id="$id.'-sale-city'" suggest/>@endif
+        @if ($offer && ! $move && $action)<x-offer.sale-city :offer="$offer" :id="$id.'-sale-city'"/>@endif
         {{-- Шторка закрывается сразу: ошибка поля (номер убытка, фото) должна быть видна, а не под шторкой. --}}
         <x-ui.button block :form="$form" :name="array_key_first($submit)" :value="$submit ? reset($submit) : null" data-action="sheet#close">
             @foreach ($choices as $c)<span data-when="{{ $c['when'] }}">{{ $c['at'] ? ($move ? 'Перенести на ' : 'Выставить ').\App\Offers\Slots::phrase($c['at']) : 'Выставить сейчас' }}</span>@endforeach
