@@ -74,8 +74,7 @@
             {{-- Телефон, «Опубликованные»: у ждущих решения важнее число подтверждений, дата закрытия — у остальных. --}}
             @elseif ($pick && ! $mixed && ! $count)<span class="sm:hidden nums text-ink-muted">закрыт {{ \App\Support\Ago::html($offer->bids_close_at, true, words: false) }}</span>
             @endif
-            {{-- Черновик висит в галерее (08.10.2026) — видно и в шагах работы, с числом интереса. --}}
-            @if (! $gallery && $offer->isGallery())<span class="text-accent-text nums">в галерее@if ($offer->interests_count), {{ $offer->interests_count }} {{ \App\Support\Plural::of($offer->interests_count, ['интерес', 'интереса', 'интересов']) }}@endif</span>@endif
+            {{-- «в галерее» в строке убрано (14.11.2026, владелец: «нахер не нужна») — это видно в окне. --}}
             @if ($missing)<span class="text-danger">{{ implode(', ', $missing) }}</span>@endif
             @if ($late)<span class="binding-tag nums" title="Срок обязывающего предложения раньше ближайшего выхода"><x-ui.icon name="timer" class="size-3.5 shrink-0"/>{{ \App\Support\Ago::at($offer->insurer_deadline_at, false, words: false) }}</span>@endif
         </span>
