@@ -1,10 +1,13 @@
-{{-- «Осмотр» — поля продажи, а не машины (19.10.2026: «Транспортное средство» теперь один блок с парковкой): город, адрес
+{{-- «Осмотр» — поля продажи, а не машины (19.10.2026: «Транспортное средство» теперь один блок с парковкой): город факт и
+     город продажи (`x-offer.sale-city`, 14.11.2026), адрес
      осмотра с глазиком «на сайте», описание. Та же карточка блока машины (`x-car.card`): с публикации — «Изменить / Готово»,
      в окошке строки — разделом. Ошибка формы «Получения» (адрес — общее поле) блок не раскрывает. --}}
 @php
     $as ??= 'card';
     $fold ??= null;
-    $keys = ['settlement_id', 'inspection_address', 'description'];
+    // Город продажи — здесь, у «Города факт»; в окне админу он у «Цен» (`price-steps`), там `saleCity` = false.
+    $saleCity ??= true;
+    $keys = ['settlement_id', 'sale_settlement_id', 'inspection_address', 'description'];
     if ($fold && ! str_starts_with((string) old('_form'), 'handover-') && $errors->hasAny($keys)) {
         $fold = false;
     }
@@ -28,9 +31,15 @@
             <div class="{{ $grid }} !gap-y-2.5 leading-snug">
                 @if ($offer->settlement || $city)
                     <div class="min-w-0">
-                        <div class="field-label">Город</div>
+                        <div class="field-label">Город факт</div>
                         @if ($offer->settlement)<div class="mt-0.5 break-words"><x-ui.place>{{ $offer->settlement->title() }}</x-ui.place></div>@endif
                         <x-car.variant-hint :v="$city" :car="$offer->car_id"/>
+                    </div>
+                @endif
+                @if ($offer->sellsElsewhere())
+                    <div class="min-w-0">
+                        <div class="field-label">Город продажи</div>
+                        <div class="mt-0.5 break-words"><x-ui.place>{{ $offer->saleSettlement?->title() }}</x-ui.place></div>
                     </div>
                 @endif
                 @if (filled($offer->inspection_address))<div class="col-span-2 min-w-0"><div class="field-label">Адрес осмотра</div><div class="mt-0.5 break-words">{{ $offer->inspection_address }}</div></div>@endif
@@ -39,9 +48,10 @@
         @endunless
     </x-slot:view>
     <div class="{{ $grid }}">
-        <x-ui.combobox name="settlement_id" label="Город" url="/reference/settlements" create="/reference/settlements" :value="$offer->settlement_id" :text="$offer->settlement?->title()" :pinned="$cityPinned">
+        <x-ui.combobox name="settlement_id" label="Город факт" url="/reference/settlements" create="/reference/settlements" :value="$offer->settlement_id" :text="$offer->settlement?->title()" :pinned="$cityPinned">
             <x-slot:hint><x-car.variant-hint :v="$city" :car="$offer->car_id"/></x-slot:hint>
         </x-ui.combobox>
+        @if ($saleCity)<x-offer.sale-city :offer="$offer" class="col-span-2 min-w-0 self-end"/>@endif
         <x-ui.field name="inspection_address" label="Адрес осмотра" :value="$offer->inspection_address" span="col-span-2">
             <x-slot:after-label><x-ui.eye-check name="show_address" :checked="$offer->show_address"/></x-slot:after-label>
         </x-ui.field>

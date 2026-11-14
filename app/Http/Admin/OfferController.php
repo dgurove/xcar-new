@@ -342,7 +342,7 @@ class OfferController
         $carcadeHidden = ! $searching && ! $request->query->has('vendor') && $this->hideCarcade($request, $preset);
 
         // Пустой «+ Новый» в списке не стоит: его либо заполнят, либо он удалится, как только из него уйдут.
-        $q = Offer::query()->inCrm($request->user())->notEmptyDraft()->with(['settlement', 'vendor', 'parkVehicle:id,car_id,state,accepted_at,created_at', 'deal', 'garageCar'])
+        $q = Offer::query()->inCrm($request->user())->notEmptyDraft()->with(['settlement', 'saleSettlement', 'vendor', 'parkVehicle:id,car_id,state,accepted_at,created_at', 'deal', 'garageCar'])
             ->withCount(['activeBids', 'interests', 'activeBids as garage_bids_count' => fn ($b) => $b->where('kind', BidKind::Garage)])->withMax('activeBids as top_bid', 'amount');
         // Строка с галочкой спрашивает «нет фото» (`ChangeOfferState::missing`) — кадры одним запросом на список, а не на
         // строку (10.11.2026: «Без подтверждений» — 216 запросов кадров, секунда на сервере).
@@ -614,7 +614,7 @@ class OfferController
         $has = fn (string $k) => $all || in_array($k, $cols, true);
         $rows ??= collect();
         $refCh = (int) $rows->max(fn ($o) => mb_strlen((string) $o->claim_ref));
-        $cityCh = (int) $rows->max(fn ($o) => mb_strlen((string) $o->settlement?->name));
+        $cityCh = (int) $rows->max(fn ($o) => mb_strlen((string) $o->settlement?->name.($o->sellsElsewhere() ? ' → '.$o->saleSettlement?->name : '')));
         // Дата справа: в «Опубликованных» — когда вышло, во вкладках шага — когда пришло во вкладку, иначе — когда заведено.
         $when = match (true) {
             ! $all && $has('published') => ['published', 'Вышло', 6.5],
@@ -1174,6 +1174,7 @@ class OfferController
         }
         if ($next === OfferState::Open && in_array($offer->state, [OfferState::Draft, OfferState::Gallery], true)) {
             PriceGuard::assertPublish([$offer], $request->boolean('price_ok'));
+            $this->saleCity($request, $offer);
             // «Выставить всем…» (`all=1`, 09.11.2026): эксклюзив за оценку снимается осознанно, после предупреждения; без него
             // выход ставит оценщика сразу, остальных — после (`Exclusive`).
             if ($request->boolean('all')) {
@@ -1186,6 +1187,23 @@ class OfferController
         $change($offer, $next, $request->user());
 
         return redirect("/offers/{$offer->number}")->with('toast', $next->label())->with(self::gone($request, $offer));
+    }
+
+    /**
+     * Город продажи из шторки (`x-offer.sale-city`: «Выставить в продажу», «Вернуть в продажу»): не пришёл — не трогаем,
+     * пришёл другим — через `UpdateOffer`, было → стало в «Истории».
+     */
+    private function saleCity(Request $request, Offer $offer, ?string $why = null): void
+    {
+        if (! $request->has('sale_city_same')) {
+            return;
+        }
+        $request->validate(['sale_settlement_id' => ['nullable', 'exists:settlements,id']]);
+        $city = Offer::saleCityFrom($request->all());
+        if ($city !== $offer->sale_settlement_id) {
+            app(UpdateOffer::class)($offer, ['sale_settlement_id' => $city], $request->user(), $why ? ['why' => $why] : []);
+            $offer->refresh();
+        }
     }
 
     /**
@@ -1267,6 +1285,7 @@ class OfferController
             if ($binding = self::bindingChange($request, $offer)) {
                 $update($offer, $binding, $request->user(), ['why' => 'Вернуть в продажу']);
             }
+            $this->saleCity($request, $offer, 'Вернуть в продажу');
 
             return $return($offer, $request->user(), $prices, filled($data['bids_close_at'] ?? null) ? Carbon::parse($data['bids_close_at']) : null, $audience,
                 stays: $request->boolean('stays'), where: array_intersect_key($data, array_flip(['settlement_id', 'inspection_address'])));

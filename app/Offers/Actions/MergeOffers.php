@@ -26,7 +26,7 @@ use Illuminate\Validation\ValidationException;
 final class MergeOffers
 {
     /** Поля продажи, которые второе заполняет у оставшегося, если там пусто (поля машины сливает `JoinCars`). */
-    private const FILL = ['description', 'settlement_id', 'inspection_address', 'floor_price', 'owner_price', 'publish_price', 'asking_price',
+    private const FILL = ['description', 'settlement_id', 'sale_settlement_id', 'inspection_address', 'floor_price', 'owner_price', 'publish_price', 'asking_price',
         'min_bid_price', 'vendor_id', 'insurer_deadline_at', 'answer_by', 'contact_name', 'contact_email'];
 
     public function __construct(private JoinCars $join) {}

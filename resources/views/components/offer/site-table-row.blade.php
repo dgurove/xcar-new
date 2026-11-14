@@ -30,7 +30,7 @@
     $href = $context?->offerUrl($offer) ?? '/offers/'.$n;
     // Сколько прошло — с тех пор, как открылось этому человеку (волна, показ), как и точка «новое».
     $since = $offer->openedAt() ?? $offer->created_at;
-    $city = $offer->settlement?->title();
+    $city = $offer->saleCity()?->title();
 @endphp
 <tr data-detail-key="{{ $n }}" data-search-row id="offer-{{ $n }}" data-offer-number="{{ $n }}" @if ($user) data-viewed-key="{{ $n }}" @endif @if ($offer->viewed) data-viewed @endif>
     @foreach ($table->columns as $key => $col)

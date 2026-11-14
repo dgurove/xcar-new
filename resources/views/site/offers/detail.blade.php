@@ -29,7 +29,7 @@
             <x-offer.tags :offer="$offer" :facts="false" :vat="false"/>
         </x-slot:marks>
         <x-slot:line>
-            @if ($offer->settlement)<x-ui.place>{{ $offer->settlement->title() }}</x-ui.place>@endif
+            @if ($offer->saleCity())<x-ui.place>{{ $offer->saleCity()->title() }}</x-ui.place>@endif
             @if ($left !== null && $left > 0)<span class="nums {{ $offer->isEndingSoon() ? 'text-urgent' : '' }}">приём <span data-controller="timer" data-timer-until-value="{{ $offer->closesAt()->toIso8601String() }}" data-timer-done-value="закрыт" data-timer-coarse-value="true">{{ \App\Support\Ago::left($offer->closesAt(), 'ещё') }}</span></span>@elseif ($bids && !$gallery && !$offer->openFor($user))<span class="text-ink-muted">приём закрыт</span>@endif
         </x-slot:line>
         {{-- Избранное — рядом с «Поделиться» в полосе окошка (21.10.2026, владелец: в окошке его не находили). --}}

@@ -44,7 +44,7 @@ final class Caption
             ['model', 'Марка, модель, год', $offer->titleWithYear(), true],
             // VIN — сразу под машиной (владелец 05.10.2026: «вин повыше»), без слова «VIN».
             ['vin', 'VIN', $offer->vin ? ($staff ? $offer->vin : $offer->vinFor($user)) : null, true],
-            ['city', 'Город', $offer->settlement?->title(), true],
+            ['city', 'Город', $offer->saleCity()?->title(), true],
             // Характеристики — одной строкой через «; » (группа `tech`, склеивает клиент): «Автоматическая, Полный; Бензин; 1,5 л; 72 000 км».
             ['specs', 'КПП, привод, кузов', implode(', ', array_filter([$offer->transmission?->label(), $offer->drive?->label(), $offer->body?->label()])) ?: null, true, 'tech'],
             // Топливо — своей галкой, по умолчанию включена (владелец 05.10.2026: «это важно»).

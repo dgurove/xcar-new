@@ -55,6 +55,7 @@
                             </div>
                         </div>
                     @endif
+                    <x-offer.sale-city :offer="$offer" :id="'resale-sale-city-'.$n" suggest/>
                     <div>
                         <h3 class="list-head">Показ</h3>
                         <div class="flex flex-col gap-4">

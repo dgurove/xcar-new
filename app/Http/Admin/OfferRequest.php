@@ -29,7 +29,7 @@ class OfferRequest extends FormRequest
      */
     public const MODERATOR = [
         'brand_id', 'model_id', 'year', 'mileage', 'vin', 'show_vin', 'show_address', 'body', 'transmission', 'drive', 'fuel',
-        'engine_volume', 'engine_power', 'color', 'settlement_id', 'inspection_address', 'description', 'floor_price', 'value', 'vendor_id', 'claim_ref',
+        'engine_volume', 'engine_power', 'color', 'settlement_id', 'sale_settlement_id', 'inspection_address', 'description', 'floor_price', 'value', 'vendor_id', 'claim_ref',
         'prices_include_vat', 'vehicle_category', 'plate', 'pts', 'sts', 'policy_no', 'body_no', 'chassis_no', 'binding_until', 'floor_rules',
     ];
 
@@ -68,6 +68,8 @@ class OfferRequest extends FormRequest
             'incident_date' => ['nullable', 'date'],
             'description' => ['nullable', 'string', 'max:5000'],
             'settlement_id' => ['nullable', 'exists:settlements,id'],
+            'sale_city_same' => ['nullable', 'boolean'],
+            'sale_settlement_id' => ['nullable', 'exists:settlements,id'],
             'inspection_address' => ['nullable', 'string', 'max:255'],
             // Владелец и его телефоны — карточка «Получение» (19.10.2026: без правил форма молча их отбрасывала).
             'insured_name' => ['nullable', 'string', 'max:120'],
@@ -150,6 +152,11 @@ class OfferRequest extends FormRequest
             // Волны показа приходят JSON-строкой из шторки «Кому»; пустые или как у вендора — «как у вендора» (null).
             $vendor = $this->filled('vendor_id') ? Vendor::find($this->integer('vendor_id')) : $this->route('offer')?->vendor;
             $data['audience_rules'] = AudienceRules::own($this->input('audience_rules'), $vendor);
+        }
+        // Город продажи — галка «Продаём там же» и город (`x-offer.sale-city`): тронули любое — решает `Offer::saleCityFrom`.
+        unset($data['sale_city_same']);
+        if (($sent('sale_city_same') || $sent('sale_settlement_id')) && $this->has('sale_city_same')) {
+            $data['sale_settlement_id'] = Offer::saleCityFrom($this->all());
         }
         // Повреждений, «на ходу» и ключей в формах больше нет (блок «Состояние» убран, 30.09.2026): чего нет в запросе — не трогаем.
         if ($sent('damage_zones') && $this->has('damage_zones')) {

@@ -30,7 +30,7 @@
                 <form method="post" action="/offers/{{ $n }}/no-brand" class="self-start">@csrf<button class="btn btn-s btn-quiet">Марки нет</button></form>
             </div>
         @endif
-        @include('admin.offers.fields.money', ['form' => $form, 'now' => $now, 'idp' => 'price-'.$n.'-', 'plate' => ! $plain])
+        @include('admin.offers.fields.money', ['saleCity' => true, 'form' => $form, 'now' => $now, 'idp' => 'price-'.$n.'-', 'plate' => ! $plain])
         {{-- «Показ» строкой (срок приёма, кому, отметки) — нажатие открывает шторку со всем показом (`x-offer.showing-row`);
              у оценённого — решают перед «Выставить в продажу», поэтому прямо над ней. --}}
         @unless ($plain)<x-offer.showing-row :offer="$offer" :form="$form"/>@endunless

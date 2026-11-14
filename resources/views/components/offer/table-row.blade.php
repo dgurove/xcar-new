@@ -90,7 +90,7 @@
         @break
         @case('city')
     {{-- Город — именем без номера региона: столбец узкий, регион виден в карточке. --}}
-    <td class="{{ $col->classes() }} arrive-late">@if ($busy && ! $offer->settlement)<span class="skeleton arrive-bar w-16"></span>@elseif ($offer->settlement)<x-ui.place class="whitespace-nowrap text-ink-muted">{{ $offer->settlement->name }}</x-ui.place>@endif</td>
+    <td class="{{ $col->classes() }} arrive-late">@if ($busy && ! $offer->settlement)<span class="skeleton arrive-bar w-16"></span>@elseif ($offer->settlement)<x-ui.place class="whitespace-nowrap text-ink-muted">{{ $offer->settlement->name }}@if ($offer->sellsElsewhere()) → {{ $offer->saleSettlement?->name }}@endif</x-ui.place>@endif</td>
         @break
         @case('gap')
     <td class="{{ $col->classes() }}"></td>

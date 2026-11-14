@@ -59,7 +59,7 @@ use Illuminate\Support\Facades\DB;
 #[Fillable([
     'brand_id', 'no_brand', 'model_id', 'year', 'mileage', 'vin', 'show_vin', 'body', 'transmission', 'drive', 'fuel',
     'engine_volume', 'engine_power', 'color', 'damage_cause', 'damage_zones', 'is_runnable', 'has_keys', 'papers',
-    'incident_date', 'description', 'settlement_id', 'inspection_address', 'show_address', 'floor_price', 'owner_price', 'value', 'publish_price',
+    'incident_date', 'description', 'settlement_id', 'sale_settlement_id', 'inspection_address', 'show_address', 'floor_price', 'owner_price', 'value', 'publish_price',
     'asking_price', 'min_bid_price', 'min_bid_share', 'prices_include_vat', 'tags', 'tag_colors', 'bids_close_at', 'sort_weight',
     'chat_enabled', 'share_locked', 'share_locked_by_estimate', 'audience_rules', 'recommended', 'vendor_id', 'claim_ref', 'insurer_deadline_at', 'car_place',
     'answer_by', 'insured_name', 'insured_phone', 'insured_phone2', 'flags', 'holder', 'docs_required', 'contact_name', 'contact_email',
@@ -132,9 +132,13 @@ class Offer extends Model
             }
             // Вендор встал черновику — его метки по умолчанию (11.10.2026).
             VendorTags::apply($o);
-            // Регион машины (22.10.2026, регионы менеджера): город продажи, иначе названный в адресе осмотра.
-            if (! $o->exists || $o->isDirty(['settlement_id', 'inspection_address'])) {
-                $o->region_id = Region::of($o->settlement_id, $o->inspection_address);
+            // Регион продажи (22.10.2026, регионы менеджера): город продажи, без него — город машины, иначе названный в адресе
+            // осмотра. Везут из Новосибирска продавать в Москву — видят московские (14.11.2026); вывоз — по городу машины.
+            if ($o->sale_settlement_id && (int) $o->sale_settlement_id === (int) $o->settlement_id) {
+                $o->sale_settlement_id = null;
+            }
+            if (! $o->exists || $o->isDirty(['settlement_id', 'sale_settlement_id', 'inspection_address'])) {
+                $o->region_id = $o->sale_settlement_id ? Region::of($o->sale_settlement_id, null) : Region::of($o->settlement_id, $o->inspection_address);
             }
             // Шаг работы сменился — предложение пришло в новую вкладку CRM: там оно первым (`tab_at`, 15.10.2026).
             $now = $o->getAttributes();
@@ -348,6 +352,36 @@ class Offer extends Model
     public function settlement(): BelongsTo
     {
         return $this->belongsTo(Settlement::class);
+    }
+
+    /** Город продажи, если он не город машины (`sale_settlement_id`, 14.11.2026). Читать — `saleCity()`. */
+    public function saleSettlement(): BelongsTo
+    {
+        return $this->belongsTo(Settlement::class, 'sale_settlement_id');
+    }
+
+    /**
+     * Город продажи — его видит xcar.ru, по нему регион и договор с покупателем: вписанный, иначе город машины
+     * (`settlement_id` — где она: вывоз, поставщик, источники). Как заявленная с закупочной.
+     */
+    public function saleCity(): ?Settlement
+    {
+        return $this->sale_settlement_id ? $this->saleSettlement : $this->settlement;
+    }
+
+    public function sellsElsewhere(): bool
+    {
+        return $this->sale_settlement_id !== null && (int) $this->sale_settlement_id !== (int) $this->settlement_id;
+    }
+
+    /**
+     * Из формы (`x-offer.sale-city`): галка «Продаём там же» или пустой город — совпадает (null); другой — его id.
+     *
+     * @param  array<string, mixed>  $input
+     */
+    public static function saleCityFrom(array $input): ?int
+    {
+        return filter_var($input['sale_city_same'] ?? true, FILTER_VALIDATE_BOOL) ? null : ((int) ($input['sale_settlement_id'] ?? 0) ?: null);
     }
 
     public function moderator(): BelongsTo
@@ -685,6 +719,7 @@ class Offer extends Model
         if (! $user || ! $user->hasRole(Role::Manager) || ! $this->showsDealAsOpen()) {
             return false;
         }
+
         // Строки продажи (до публикации) — история показа, не дверь: видит тот, чья волна публикации наступила.
         return $this->viewers()->where('user_id', $user->id)->where('opens_at', '<=', now())->where('opens_at', '>=', $this->deal_published_at)->exists();
     }

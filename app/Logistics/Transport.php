@@ -19,6 +19,7 @@ use App\Support\FastAttributes;
 use App\Support\Phone;
 use App\Support\Plural;
 use App\Support\Surface;
+use App\Users\Role;
 use App\Users\User;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
@@ -409,6 +410,16 @@ class Transport extends Model
         };
     }
 
+    /** Город, куда везут (парковка или стоянка): подсказка «Город продажи» (`x-offer.sale-city`, 14.11.2026). */
+    public function toSettlementId(): ?int
+    {
+        return match ($this->destination) {
+            Point::Yard => $this->toYard?->settlement_id,
+            Point::Depot => $this->depot?->settlement_id,
+            default => null,
+        };
+    }
+
     /**
      * Куда везти — одной фразой для карточки, строки, страницы исполнителя и текста «Отправить» (18.10.2026: три места
      * считали по-своему): выбранная точка; у старой задачи сделки без точки — её менеджер; иначе null — «пока неизвестно»
@@ -631,7 +642,7 @@ class Transport extends Model
     {
         // Держатель — исполнитель вывоза (21.10.2026): свою машину он везёт задачей логистики (`isSelfPickup`).
         return $q->where(fn ($w) => $w->whereNull('channel')->orWhere('channel', '!=', Channel::Manager->value)
-            ->orWhereIn('executor_id', User::withRole(\App\Users\Role::Contractor)->select('id')));
+            ->orWhereIn('executor_id', User::withRole(Role::Contractor)->select('id')));
     }
 
     /**

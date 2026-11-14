@@ -16,6 +16,7 @@ use App\Cars\Settlement;
 use App\Cars\Transmission;
 use App\Offers\CarPlace;
 use App\Offers\Flag;
+use App\Offers\Pricing;
 use App\Park\Yard;
 use App\Vendors\DocRequirement;
 use App\Vendors\Vendor;
@@ -45,7 +46,7 @@ final class FieldLabels
         'brand_id' => 'марка', 'model_id' => 'модель', 'mileage' => 'пробег', 'body' => 'кузов', 'transmission' => 'КПП', 'drive' => 'привод', 'fuel' => 'топливо',
         'engine_volume' => 'объём двигателя', 'engine_power' => 'мощность', 'damage_cause' => 'причина повреждений', 'damage_zones' => 'повреждения', 'damage_note' => 'что заметили',
         'is_runnable' => 'на ходу', 'has_keys' => 'ключи', 'papers' => 'документы', 'incident_date' => 'дата события', 'description' => 'описание',
-        'car_place' => 'где ТС', 'settlement_id' => 'город', 'inspection_address' => 'адрес осмотра', 'floor_price' => 'закупочная цена', 'owner_price' => 'собственнику по ДКП', 'value' => 'оценочная стоимость', 'publish_price' => 'заявленная цена', 'asking_price' => 'цена продажи',
+        'car_place' => 'где ТС', 'settlement_id' => 'город', 'sale_settlement_id' => 'город продажи', 'inspection_address' => 'адрес осмотра', 'floor_price' => 'закупочная цена', 'owner_price' => 'собственнику по ДКП', 'value' => 'оценочная стоимость', 'publish_price' => 'заявленная цена', 'asking_price' => 'цена продажи',
         'min_bid_price' => 'минимальная цена', 'min_bid_share' => 'доля от цены', 'prices_include_vat' => 'НДС', 'tags' => 'метки', 'tag_colors' => 'цвета меток', 'bids_close_at' => 'срок приёма', 'first_look_until' => 'только оценившему до',
         'chat_enabled' => 'чат', 'share_locked' => 'запрет шеринга', 'recommended' => 'рекомендуем', 'managers_limited' => 'круг менеджеров', 'managers' => 'менеджеры', 'audience_rules' => 'кому показывать', 'floor_rules' => 'наценка к оценочной', 'audience_id' => 'шаблон показа', 'deal_audience' => 'кому показывать в сделке', 'deal_show_until' => 'сколько показывать в сделке',
         'vendor_id' => 'вендор', 'answer_by' => 'ответ до', 'insured_name' => 'страхователь', 'insured_phone' => 'телефон страхователя', 'insured_phone2' => 'ещё телефон страхователя', 'flags' => 'признаки', 'holder' => 'держатель',
@@ -76,7 +77,8 @@ final class FieldLabels
     public static function value(string $field, mixed $value): ?string
     {
         if ($value === null || $value === '' || $value === []) {
-            return null;
+            // Город продажи пустой — значит, совпадает с городом ТС (`Offer::saleCity`).
+            return $field === 'sale_settlement_id' ? 'как город ТС' : null;
         }
         if (self::isMoney($field)) {
             return Money::rub((int) $value);
@@ -95,12 +97,12 @@ final class FieldLabels
 
             return (string) ($class::withoutGlobalScopes()->whereKey($value)->value($column) ?? $value);
         }
-        if ($field === 'settlement_id') {
+        if ($field === 'settlement_id' || $field === 'sale_settlement_id') {
             return Settlement::find($value)?->title() ?? (string) $value;
         }
         // Диапазоны наценки (07.11.2026): «до 500 000 +50 000 ₽, до 2 000 000 +10%, дальше +200 000 ₽».
-        if ($field === 'floor_rules' && ($rules = \App\Offers\Pricing::clean($value))) {
-            return \App\Offers\Pricing::rulesLabel($rules);
+        if ($field === 'floor_rules' && ($rules = Pricing::clean($value))) {
+            return Pricing::rulesLabel($rules);
         }
         if (is_array($value)) {
             return implode(', ', array_map(fn ($v) => is_scalar($v) ? (string) $v : json_encode($v, JSON_UNESCAPED_UNICODE), $value));

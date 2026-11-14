@@ -100,7 +100,7 @@ final class CatalogQuery
         $q = Offer::query()
             // Карточкам нужны только фото и своя закладка: все медиа (с документами) и чужое избранное по
             // каждому предложению поднимались зря; таблице фото не нужны вовсе — их снимает контроллер (`without`).
-            ->with(['settlement',
+            ->with(['settlement', 'saleSettlement',
                 'media' => fn ($m) => $m->where('collection_name', 'photos'),
                 'favorites' => fn ($f) => $f->where('user_id', $user?->id ?? 0)])
             ->select('offers.*')->selectRaw(self::openedAtSql($user).' as opened_at');
@@ -279,7 +279,7 @@ final class CatalogQuery
             ? [Facet::toggle('regions', 'Все регионы', fn (Builder $q) => $q->inRegionsOf($user))->byDefault()->within('city')]
             : [];
 
-        return [Common::city('offers.settlement_id'), Common::category(Car::sql('offers', 'category')), ...$regions];
+        return [Common::city('coalesce(offers.sale_settlement_id, offers.settlement_id)'), Common::category(Car::sql('offers', 'category')), ...$regions];
     }
 
     /** Действующая сортировка: то, что в адресе, если она разрешена, иначе по умолчанию. */

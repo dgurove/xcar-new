@@ -25,6 +25,13 @@ export default class extends Controller {
         if (checked) this.show(checked.value, checked.dataset.revealLabel);
         const select = [...this.element.querySelectorAll('select[data-action*="reveal#choose"]')].find((s) => this.owns(s));
         if (select) this.show(select.value);
+        const box = [...this.element.querySelectorAll('input[type=checkbox][data-action*="reveal#check"]')].find((c) => this.owns(c));
+        if (box) this.show(box.checked ? '' : box.dataset.revealKeyParam);
+    }
+
+    // Галка «совпадает» прячет свою панель, снятая — открывает (`data-reveal-key-param`): «Продаём там же» → «Город продажи».
+    check(event) {
+        this.show(event.currentTarget.checked ? '' : event.params.key);
     }
 
     // Выбор списком открывает панель своего значения («Откуда срок» этапа: свой — «Сколько ждём», срок приёма — дни приёма).

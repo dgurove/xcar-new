@@ -8,12 +8,16 @@ use App\Offers\Actions\DismissReprice;
 use App\Offers\Actions\PublishDeal;
 use App\Offers\Actions\UpdateDealMoney;
 use App\Offers\Actions\UpdateOffer;
+use App\Offers\AudienceRules;
+use App\Offers\Binding;
 use App\Offers\Offer;
 use App\Offers\OfferEventType;
 use App\Offers\OfferState;
 use App\Offers\PriceGuard;
 use App\Offers\Reprice;
 use App\Offers\RepriceAsk;
+use App\Offers\Slots;
+use App\Support\Ago;
 use App\Support\Money;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -59,13 +63,13 @@ class RepriceController
         // Пока менеджер сделки думает — опубликовать для других (`PublishDeal`): тот же срок и «Кому», что в шторке публикации.
         $publish = null;
         if (($data['deal'] ?? null) === ApplyReprice::ASK && $request->boolean('show_all')) {
-            $until = filled($data['show_until'] ?? null) ? Carbon::parse($data['show_until']) : \App\Offers\Binding::clampClose($offer, \App\Offers\Slots::closeFor(now(), 7));
-            if ($error = \App\Offers\Binding::closeError($offer, $until)) {
+            $until = filled($data['show_until'] ?? null) ? Carbon::parse($data['show_until']) : Binding::clampClose($offer, Slots::closeFor(now(), 7));
+            if ($error = Binding::closeError($offer, $until)) {
                 throw ValidationException::withMessages(['show_until' => $error]);
             }
             $publish = ['rules' => json_decode((string) ($data['audience_rules'] ?? ''), true) ?: [], 'until' => $until];
             // До переоценки, а не после: публикация идёт вслед за ней, и «никому» не должно оставить переоценку применённой наполовину.
-            if (\App\Offers\AudienceRules::nobody($publish['rules'] ?: \App\Offers\AudienceRules::everyone())) {
+            if (AudienceRules::nobody($publish['rules'] ?: AudienceRules::everyone())) {
                 throw ValidationException::withMessages(['audience_rules' => 'Выберите, кому показывать']);
             }
         }
@@ -137,7 +141,7 @@ class RepriceController
         if (! PublishDeal::allows($offer)) {
             throw ValidationException::withMessages(['until' => 'Опубликовать так можно только машину в идущей сделке']);
         }
-        if ($error = \App\Offers\Binding::closeError($offer, $until)) {
+        if ($error = Binding::closeError($offer, $until)) {
             throw ValidationException::withMessages(['until' => $error]);
         }
         $running = $offer->showsDealAsOpen();
@@ -153,7 +157,9 @@ class RepriceController
         if ($offer->publish_price === null && $declared === Offer::declaredFrom($offer->floor_price)) {
             $declared = null;
         }
-        $prices = array_filter(['publish_price' => $declared, 'asking_price' => $data['asking_price']],
+        // Город продажи (`x-offer.sale-city`, 14.11.2026) — тоже предложения: его видят те, кому публикуем.
+        $sale = $request->has('sale_city_same') ? ['sale_settlement_id' => Offer::saleCityFrom($request->validate(['sale_settlement_id' => ['nullable', 'exists:settlements,id']]) + $request->all())] : [];
+        $prices = array_filter(['publish_price' => $declared, 'asking_price' => $data['asking_price']] + $sale,
             fn ($v, $k) => $v !== $offer->{$k}, ARRAY_FILTER_USE_BOTH);
         // Одной транзакцией: «Выберите, кому показывать» откатывает и цены.
         DB::transaction(function () use ($offer, $prices, $update, $publish, $data, $until, $request) {
@@ -163,7 +169,7 @@ class RepriceController
             $publish($offer, json_decode((string) ($data['audience_rules'] ?? ''), true) ?: [], $until, $request->user());
         });
 
-        return back(fallback: "/offers/{$offer->number}")->with('toast', $running ? 'Публикация изменена' : 'Опубликовано для других менеджеров до '.\App\Support\Ago::at($until, true, words: false));
+        return back(fallback: "/offers/{$offer->number}")->with('toast', $running ? 'Публикация изменена' : 'Опубликовано для других менеджеров до '.Ago::at($until, true, words: false));
     }
 
     public function unpublish(Request $request, Offer $offer, PublishDeal $publish)

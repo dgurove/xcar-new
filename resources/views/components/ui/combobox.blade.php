@@ -9,8 +9,8 @@
      @if ($pinned) data-combobox-pinned-value="{{ json_encode(array_values($pinned), JSON_UNESCAPED_UNICODE) }}" @endif
      data-action="combobox:reset->combobox#reset">
     @if ($label !== '')<label for="{{ $id }}" class="field-label">{{ $label }}@if ($required)<x-ui.req/>@endif</label>@endif
-    <input id="{{ $id }}" type="text" class="field-input" @if ($textName) name="{{ $textName }}" @if ($form) form="{{ $form }}" @endif @endif @if ($placeholder) placeholder="{{ $placeholder }}" @endif value="{{ $textName ? old($textName, $text) : $text }}" autocomplete="off" autocorrect="off" autocapitalize="words" data-combobox-target="input"
-           data-action="input->combobox#search focus->combobox#open" {{ $attributes }}>
+    <input id="{{ $id }}" type="text" @if ($textName) name="{{ $textName }}" @if ($form) form="{{ $form }}" @endif @endif @if ($placeholder) placeholder="{{ $placeholder }}" @endif value="{{ $textName ? old($textName, $text) : $text }}" autocomplete="off" autocorrect="off" autocapitalize="words" data-combobox-target="input"
+           data-action="input->combobox#search focus->combobox#open" {{ $attributes->class(['field-input']) }}>
     <input type="hidden" name="{{ $name }}" value="{{ old($name, $value) }}" data-combobox-target="hidden" @if ($form) form="{{ $form }}" @endif>
     <div class="combobox-list" data-combobox-target="list" popover="manual" hidden></div>
     {{ $hint ?? '' }}
