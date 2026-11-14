@@ -12,6 +12,7 @@ use App\Support\Money;
 use App\Support\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 
 /**
  * ДКП сделки в CRM (05.10.2026): сотрудник по сканам страховой вносит продавца — собственника по СТС — и документы ТС;
@@ -46,6 +47,13 @@ class DealContractController
                 });
         }
         abort_unless($deal->hasContract(), 404);
+        // НДС договора — сегментом в карточке ДКП, сразу (14.11.2026, владелец: «бывает и без НДС, и 5 %, и 22 %»).
+        if ($request->has('vat_rate') && ! $request->has('vehicle')) {
+            $data = $request->validate(['vat_rate' => ['required', 'integer', Rule::in(DealContract::VAT_RATES)]], [], ['vat_rate' => 'НДС']);
+            $contract = $save(DealContract::for($deal), $data, $request->user());
+
+            return back()->with('toast', $contract->vat_rate ? 'ДКП: НДС '.$contract->vat_rate.' %' : 'ДКП без НДС');
+        }
         // Дата договора — своей формой из строки-календаря карточки (19.10.2026).
         if ($request->has('signed_at') && ! $request->has('vehicle')) {
             $contract = $save(DealContract::for($deal), $request->validate(['signed_at' => ['required', 'date']], [], ['signed_at' => 'дата договора']), $request->user());
@@ -53,13 +61,17 @@ class DealContractController
             return back()->with('toast', 'Дата договора '.Ago::day($contract->signed_at));
         }
         $request->merge(['vehicle' => array_merge((array) $request->input('vehicle'), ['price' => Money::rubles($request->input('vehicle.price')) ?: null])]);
-        // Продавец вносится только у ДКП (собственник по сканам); у ПРАЙМ продавец — ПРАЙМ.
-        $deal->isDkp() && PartyRules::squeeze($request, 'seller');
-        $data = $request->validate(($deal->isDkp() ? PartyRules::passport('seller') : []) + [
+        // Продавец вносится у ДКП (собственник по сканам) и собственник у ПРАЙМ (комитент по договору комиссии, 14.11.2026) —
+        // если его вписали: пустые поля собственника (ещё не пришёл договор комиссии) цену и город сохранить не мешают;
+        // собственник-организация (из договора комиссии) полями паспорта не правится.
+        $prime = DealContract::for($deal)->form() === 'prime';
+        $owner = $deal->isDkp() || ($prime && filled($request->input('seller.name')));
+        $owner && PartyRules::squeeze($request, 'seller');
+        $data = $request->validate(($owner ? PartyRules::passport('seller') : []) + ($prime ? ['commission_no' => ['nullable', 'string', 'max:40']] : []) + [
             'vehicle' => ['required', 'array'], 'vehicle.price' => ['nullable', 'integer', 'min:1'], 'vehicle.city' => ['nullable', 'string', 'max:80'],
         ] + collect(DealContract::VEHICLE)->keys()->mapWithKeys(fn ($k) => ["vehicle.{$k}" => ['nullable', 'string', 'max:40']])->all(),
             // Подписи полей ТС — те же, что в форме: «Кузов №», а не «vehicle.body_no» (07.10.2026).
-            [], ['seller.name' => 'ФИО продавца', 'vehicle.price' => 'цена по ДКП', 'vehicle.city' => 'город договора']
+            [], ['seller.name' => $prime ? 'ФИО собственника' : 'ФИО продавца', 'commission_no' => 'номер договора комиссии', 'vehicle.price' => 'цена по ДКП', 'vehicle.city' => 'город договора']
                 + collect(DealContract::VEHICLE)->mapWithKeys(fn ($label, $k) => ["vehicle.{$k}" => $label])->all());
         $save(DealContract::for($deal), $data, $request->user());
 
@@ -81,7 +93,10 @@ class DealContractController
     {
         $contract = DealContract::for($deal)->load(['seller', 'buyer.party', 'deal.offer.car', 'deal.buyer']);
         $doc = new DkpDocument($contract);
-        $view = $contract->form() === 'owner' ? 'deals.docs.dkp.owner' : 'deals.docs.dkp.sale';
+        // ПРАЙМ — новый шаблон с договором комиссии (14.11.2026), Р.О.С. — прежний.
+        $view = match ($contract->form()) {
+            'owner' => 'deals.docs.dkp.owner', 'prime' => 'deals.docs.dkp.prime', default => 'deals.docs.dkp.sale'
+        };
         if (! $pdf) {
             return view($view, ['doc' => $doc]);
         }

@@ -184,6 +184,47 @@ final class DkpDocument
         ]));
     }
 
+    // ——— Договор комиссии (ДКП ПРАЙМ с 14.11.2026) ———
+
+    /** ПРАЙМ продаёт «за счёт и по поручению собственника» по договору комиссии (`DealContract::commissioned`). */
+    public function commissioned(): bool
+    {
+        return $this->contract->commissioned();
+    }
+
+    public function commissionNo(): ?string
+    {
+        return $this->contract->commissionNo();
+    }
+
+    /** Собственник (комитент): «Избицкий Александр Николаевич (Паспорт 71 19 № 505765)», организация — «… (ИНН 5250056647)». */
+    public function owner(): HtmlString
+    {
+        $o = $this->contract->seller;
+        if (! $o) {
+            return new HtmlString($this->v(null, 60).' (Паспорт '.$this->v(null, 15).' № '.$this->v(null, 22).')');
+        }
+        if ($o->kind !== PartyKind::Person) {
+            return new HtmlString(e($o->full_name ?: $o->name).' (ИНН '.$this->v($o->inn, 30).')');
+        }
+        [$series, $number] = $o->passportParts();
+        $series = $series && preg_match('/^\d{4}$/', $series) ? substr($series, 0, 2).' '.substr($series, 2) : $series;
+
+        return new HtmlString($this->v($o->name, 60).' (Паспорт '.$this->v($series, 15).' № '.$this->v($number, 22).')');
+    }
+
+    /** Подпись как в шаблоне ПРАЙМ: «Кузнецов А.В.»; у организации — её руководитель. */
+    public function signShort(?Party $p): ?string
+    {
+        $parts = preg_split('/\s+/u', trim((string) $this->signer($p))) ?: [];
+        if (count($parts) < 2) {
+            return ($parts[0] ?? '') ?: null;
+        }
+        $initials = preg_split('/(?<=\.)(?=\S)|\s+/u', implode(' ', array_slice($parts, 1)));
+
+        return $parts[0].' '.implode('', array_map(fn ($w) => mb_substr($w, 0, 1).'.', array_filter($initials)));
+    }
+
     // ——— Машина ———
 
     /** Марка и модель заглавными, как в ПТС: «CHERY TIGGO 7 PRO». */
@@ -286,10 +327,10 @@ final class DkpDocument
             .str_pad((string) $kop, 2, '0', STR_PAD_LEFT).' '.Plural::of($kop, ['копейка', 'копейки', 'копеек']);
     }
 
-    /** Ставка НДС продавца-юрлица (как в его счёте): ПРАЙМ 5 %, Р.О.С. 22 %; 0 — без НДС. */
+    /** Ставка НДС договора — выбранная в CRM, иначе по ценам предложения (`DealContract::vatRate`); 0 — без НДС. */
     public function vatRate(): int
     {
-        return $this->form() === 'owner' ? 0 : $this->deal->seller()->vatRate();
+        return $this->contract->vatRate();
     }
 
     /** НДС внутри цены — той же дверью, что у счёта. */

@@ -71,6 +71,13 @@ final class SaveDealContract
             if (array_key_exists('signed_at', $data)) {
                 $contract->signed_at = $data['signed_at'];
             }
+            // ДКП ПРАЙМ (14.11.2026): номер договора комиссии и ставка НДС — выбором сотрудника в карточке ДКП.
+            if (array_key_exists('commission_no', $data)) {
+                $contract->commission_no = filled($data['commission_no']) ? trim($data['commission_no']) : null;
+            }
+            if (array_key_exists('vat_rate', $data)) {
+                $contract->vat_rate = $data['vat_rate'] === null ? null : (int) $data['vat_rate'];
+            }
             if (in_array($data['payer'] ?? null, ['buyer', 'manager'], true)) {
                 $contract->payer = $data['payer'];
             }
@@ -81,7 +88,9 @@ final class SaveDealContract
             $contract->save();
             // Ничего из названного не тронули (кто платит, скан) — «ДКП изменён», а не пустое «ДКП: » (07.11.2026).
             $what = implode(', ', array_filter([
-                isset($data['seller']) ? 'продавец' : null, isset($data['vehicle']) ? 'ТС' : null, isset($data['signed_at']) ? 'дата '.$contract->signed_at?->format('d.m.Y') : null, $contract->wasChanged('buyer_user_id') ? 'покупатель '.$contract->buyer?->name : null,
+                isset($data['seller']) ? ($deal->isDkp() ? 'продавец' : 'собственник') : null, isset($data['vehicle']) ? 'ТС' : null,
+                $contract->wasChanged('commission_no') ? 'договор комиссии '.($contract->commission_no ?? 'по номеру убытка') : null,
+                $contract->wasChanged('vat_rate') ? ($contract->vat_rate ? 'НДС '.$contract->vat_rate.' %' : 'без НДС') : null, isset($data['signed_at']) ? 'дата '.$contract->signed_at?->format('d.m.Y') : null, $contract->wasChanged('buyer_user_id') ? 'покупатель '.$contract->buyer?->name : null,
                 isset($data['buyer']) && ! $contract->wasChanged('buyer_user_id') ? 'паспорт покупателя' : null,
             ]));
             $deal->offer->log(OfferEventType::Note, $by, ['text' => $what !== '' ? 'ДКП: '.$what : 'ДКП изменён']);

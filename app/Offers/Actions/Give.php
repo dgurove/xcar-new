@@ -153,6 +153,8 @@ final class Give
             if ($deal->isCommission()) {
                 app(AskBuyer::class)->ask($deal);
             }
+            // ДКП ПРАЙМ «за счёт собственника» (14.11.2026): комитент — сам из договора комиссии в письмах, после записи сделки.
+            DB::afterCommit(fn () => app(FillCommissionOwner::class)($deal->fresh(['offer.vendor', 'contract'])));
 
             return $deal;
         });

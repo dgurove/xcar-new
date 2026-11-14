@@ -3,6 +3,7 @@
 namespace App\Offers;
 
 use App\Billing\Party;
+use App\Billing\PartyKind;
 use App\Billing\Seller;
 use App\Cars\Car;
 use App\Support\FastAttributes;
@@ -19,18 +20,24 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * менеджер за вычетом вознаграждения. Всё про машину (марка, VIN, госномер, СТС, (Э)ПТС, кузов, шасси, ключи) — у
  * машины (`Cars\Car`), тут только цена, город, дата и номер. Вид документа — `form()`: `owner` — физлицо физлицу
  * (Т-Страхование), `prime` / `ros` — ДКП и акт от нашего юрлица; номер у юрлица свой за год (`NumberContract`).
+ * ПРАЙМ с 14.11.2026 продаёт «за счёт и по поручению собственника» по договору комиссии (`commissioned`): собственник —
+ * тот же `seller` (сам из договора комиссии Совкомбанка — `FillCommissionOwner`), номер — `commissionNo`. НДС договора —
+ * выбором в CRM (`vatRate`).
  */
-#[Fillable(['deal_id', 'seller_party_id', 'buyer_user_id', 'payer', 'price', 'city', 'signed_at', 'ready_at', 'issuer', 'number', 'year'])]
+#[Fillable(['deal_id', 'seller_party_id', 'buyer_user_id', 'payer', 'price', 'city', 'signed_at', 'ready_at', 'issuer', 'number', 'year', 'commission_no', 'vat_rate'])]
 class DealContract extends Model
 {
     use FastAttributes;
 
     /** Документы ТС для договора — поля машины, правит сотрудник в карточке ДКП. */
+    /** Ставки НДС на выбор в карточке ДКП (14.11.2026, владелец: «бывает и без НДС, и 5 %, и 22 %»). */
+    public const VAT_RATES = [0, 5, 22];
+
     public const VEHICLE = ['plate' => 'Госномер', 'sts' => 'СТС', 'pts' => 'ПТС или ЭПТС', 'body_no' => 'Кузов №', 'chassis_no' => 'Шасси (рама) №'];
 
     protected function casts(): array
     {
-        return ['price' => 'int', 'signed_at' => 'date', 'ready_at' => 'datetime', 'issuer' => Seller::class, 'number' => 'int', 'year' => 'int'];
+        return ['price' => 'int', 'signed_at' => 'date', 'ready_at' => 'datetime', 'issuer' => Seller::class, 'number' => 'int', 'year' => 'int', 'vat_rate' => 'int'];
     }
 
     /** Вид документа: физлицо физлицу (ДКП собственника) или ДКП с актом от нашего юрлица. */
@@ -99,6 +106,42 @@ class DealContract extends Model
         };
     }
 
+    /**
+     * ПРАЙМ продаёт по договору комиссии: у вендора по комиссии (Совкомбанк) всегда, у остальных — если собственника вписали.
+     * Нет — в договоре нет куска «за счёт и по поручению собственника … на основании Договора комиссии» (Каркаде).
+     */
+    public function commissioned(): bool
+    {
+        return $this->form() === Seller::Prime->value && ($this->deal->isCommission() || $this->seller_party_id !== null);
+    }
+
+    /** Номер договора комиссии: вписанный (или разобранный из файла), у вендора по комиссии — номер убытка, как у Совкомбанка. */
+    public function commissionNo(): ?string
+    {
+        return $this->commission_no ?: ($this->deal->isCommission() ? ($this->deal->offer->claim_ref ?: null) : null);
+    }
+
+    /**
+     * Ставка НДС договора — одна дверь: выбранная в CRM (`VAT_RATES`); не выбрана — по ценам предложения: «С НДС» — ставка
+     * продавца (ПРАЙМ 5 %, Р.О.С. 22 %), без — без НДС. У ДКП собственника НДС нет.
+     */
+    public function vatRate(): int
+    {
+        if ($this->form() === 'owner') {
+            return 0;
+        }
+
+        return $this->vat_rate ?? ($this->deal->offer->prices_include_vat ? $this->deal->seller()->vatRate() : 0);
+    }
+
+    /** Собственник для договора комиссии: ФИО и серия с номером паспорта, у организации — название и ИНН; больше шаблон о нём не пишет. */
+    public function ownerReady(): bool
+    {
+        $s = $this->seller;
+
+        return filled($s?->name) && ($s->kind === PartyKind::Person ? filled($s->passport) : filled($s->inn));
+    }
+
     /** Продавец: у ДКП — собственник по СТС (вносит сотрудник), у ПРАЙМ — сам ПРАЙМ. */
     public function sellerParty(): ?Party
     {
@@ -121,6 +164,7 @@ class DealContract extends Model
     {
         return array_values(array_filter([
             $this->deal->isDkp() && ! $this->seller?->readyForContract() ? 'данные продавца' : null,
+            $this->commissioned() && ! $this->ownerReady() ? 'данные собственника' : null,
             // ДКП от Р.О.С. — продавец Р.О.С.: без его реквизитов (пришлёт владелец) договор не печатаем с прочерками.
             $this->deal->seller() === Seller::Ros && ! Party::seller(Seller::Ros)->readyForContract() ? 'данные продавца' : null,
             // (Э)ПТС стоит в обоих видах договора: у собственника — ещё и основание права собственности.

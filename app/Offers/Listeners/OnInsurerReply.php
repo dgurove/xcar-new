@@ -5,8 +5,10 @@ namespace App\Offers\Listeners;
 use App\Mail\Composer;
 use App\Mail\Direction;
 use App\Mail\Message;
+use App\Notifications\SupplierContractReadyNotice;
 use App\Notifications\SupplierInvoiceArrivedNotice;
 use App\Offers\Actions\Disclose;
+use App\Offers\Actions\FillCommissionOwner;
 use App\Offers\Deal;
 use App\Offers\Events\InsurerReplied;
 use App\Offers\InsurerReplies;
@@ -60,6 +62,8 @@ final class OnInsurerReply
         $offer->log(OfferEventType::InsurerReplied, null, array_filter(['letter' => $message->id, 'contact' => $contact, 'files' => $files, 'asked' => $asked]));
         if ($files) {
             ShareReplyFiles::dispatch($message->id);
+            // Договор комиссии пришёл после принятия — собственник для ДКП ПРАЙМ из него (14.11.2026).
+            app(FillCommissionOwner::class)($deal);
         }
         // Поставщик ответил на наше письмо — ход наш: отметить исход (11.10.2026, `Position::letterStatus`). Его срок снимается
         // (19.01.2027): иначе шаг краснел «на нас» за срок поставщика. Менеджер видит прежнее «Ждём поставщика»
@@ -111,7 +115,7 @@ final class OnInsurerReply
         // Договор готов — тоже громко (11.11.2026, `SupplierContractReadyNotice`): сразу письмо про время подписания.
         if ($review->wasRecentlyCreated && ReplyKind::of($message) === ReplyKind::ContractReady) {
             Notification::send(User::withRole(Role::Admin)->get(),
-                new \App\Notifications\SupplierContractReadyNotice($deal->load(['offer.vendor', 'buyer'])));
+                new SupplierContractReadyNotice($deal->load(['offer.vendor', 'buyer'])));
         }
     }
 
