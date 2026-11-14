@@ -147,6 +147,8 @@ class AppServiceProvider extends ServiceProvider
         Event::subscribe(OnMessage::class);
         Event::subscribe(SyncOffer::class);
         Event::subscribe(ReportDelivery::class);
+        // Письмо «Согласование реализации» ушло — владельцу в Telegram (`MailClaimDigest`, 14.11.2026).
+        Event::listen(\App\Mail\Events\MessageSent::class, [\App\Vendors\Actions\MailClaimDigest::class, 'sent']);
         Event::subscribe(SyncHandover::class);
         Event::subscribe(OnInsurerReply::class);
         Event::listen(StageEntered::class, [AdvanceOnBuyerData::class, 'entered']);

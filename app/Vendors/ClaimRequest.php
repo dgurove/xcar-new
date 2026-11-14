@@ -18,7 +18,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * или подтверждение): кто, когда и снимок номеров (`refs`) — его копирует история, даже если номер потом вернули в
  * «К запросу». У отправленного предложения — `offers.claim_request_id`.
  */
-#[Fillable(['vendor_id', 'user_id', 'refs'])]
+#[Fillable(['vendor_id', 'user_id', 'refs', 'message_id'])]
 class ClaimRequest extends Model
 {
     use FastAttributes;
@@ -42,6 +42,12 @@ class ClaimRequest extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    /** Письмо «Согласование реализации», которым номера ушли вендору (`MailClaimDigest`, 14.11.2026). */
+    public function message(): BelongsTo
+    {
+        return $this->belongsTo(\App\Mail\Message::class);
     }
 
     public function offers(): HasMany

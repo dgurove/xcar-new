@@ -189,10 +189,10 @@ class VendorController
         $n = $sent ? count($sent->refs) : 0;
         // Номера, что уходят письмом по расписанию, — письмом сразу и сейчас (06.11.2026, владелец: в 18 — только новые).
         $mailed = $sent && MailClaimDigest::covers($vendor) && app(MailClaimDigest::class)->mail($sent);
-        $to = $mailed ? MailClaimDigest::recipient() : null;
         $toast = match (true) {
             $n === 0 => 'Эти номера уже отправлены',
-            (bool) $to => 'Отправлено '.$n.' '.Plural::of($n, ['номер', 'номера', 'номеров']).': в буфере, '.($request->user()->telegram_chat_id ? 'в Telegram ' : '').'и '.$to->shortName().' на почту',
+            // С 14.11.2026 письмом «Согласование реализации» самому вендору (`MailClaimDigest::mail`).
+            $mailed => 'Отправлено '.$n.' '.Plural::of($n, ['номер', 'номера', 'номеров']).': письмом '.$vendor->name.', в буфере'.($request->user()->telegram_chat_id ? ' и в Telegram' : ''),
             ! $request->user()->telegram_chat_id => 'Отправлено '.$n.' '.Plural::of($n, ['номер', 'номера', 'номеров']).', Telegram не привязан',
             default => 'Отправлено '.$n.' '.Plural::of($n, ['номер', 'номера', 'номеров']).', они в буфере и в Telegram',
         };

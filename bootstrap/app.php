@@ -88,6 +88,7 @@ use App\Users\Console\CreateUser;
 use App\Users\Console\SeedDemo;
 use App\Users\Console\TelegramAvatars;
 use App\Vendors\Console\ClaimDigestCommand;
+use App\Vendors\Console\MailClaimRequestsCommand;
 use App\WhatsApp\Console\Poll as WhatsAppPoll;
 use App\WhatsApp\Console\Status as WhatsAppStatus;
 use App\WhatsApp\Console\Test as WhatsAppTest;
@@ -136,6 +137,7 @@ return Application::configure(basePath: dirname(__DIR__))
         ReleaseByLettersCommand::class,
         TickBilling::class,
         ClaimDigestCommand::class,
+        MailClaimRequestsCommand::class,
         CloseMonthCommand::class,
         LogisticsTick::class,
         MergeCancelledCommand::class,
