@@ -170,7 +170,7 @@
     {{-- «Продано» — когда нам за неё заплатили, «Оплачено» — когда мы поставщику (14.11.2026, `DealDates`); нажатие — шторка
          `x-deal.dates-sheet` (`SetDealDate`). Пусто — сделки нет (14.11.2026, владелец: «что значит „нет“ и пусто?» — словами):
          денег ещё нет — «ждём» у идущей, «не оплачено» красным у закрытой; поставщику платит менеджер (ДКП собственника) —
-         «у менеджера». --}}
+         «менеджер». --}}
     <td class="{{ $col->classes() }}">
         @php
             $dd = $offer->lastDeal;
@@ -181,7 +181,7 @@
             $dmiss = $dclosed ? 'text-danger' : 'text-ink-dim';
         @endphp
         @if ($dd && ! $dcol)
-            <span class="text-ink-dim">у менеджера</span>
+            <span class="text-ink-dim" title="Поставщику платит менеджер">менеджер</span>
         @elseif ($dcol && $admin)
             <button type="button" @class(['date-cell underline decoration-dotted underline-offset-4', 'nums' => $dval, $dmiss => ! $dval])
                 data-deal-dates="{{ $dd->id }}" data-what="{{ $col->key }}" data-value="{{ $dval?->toDateString() }}" data-car="{{ $offer->titleWithYear() }}">@if ($dval){{ \App\Support\Ago::html($dval) }}@else{{ $dword }}@endif</button>

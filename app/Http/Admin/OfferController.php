@@ -643,7 +643,9 @@ class OfferController
             // Во «Все» состояние — главное (14.11.2026, владелец: с окном справа оно уходило по ширине — «ничего не понятно»).
             $has('state') ? new Column('state', ! $all && $has('bids') ? 'Приём' : 'Состояние', from: 'sm', sort: 'closing', cell: 'whitespace-normal', role: ColRole::State, rem: 10, main: $preset === 'all') : null,
             // Менеджер сделки или гаража — во «Все», и при открытом окне (14.11.2026, владелец).
-            ! $all && $has('manager') ? new Column('manager', 'Менеджер', from: 'sm', cell: 'whitespace-nowrap', role: ColRole::Who, rem: 10, main: true) : null,
+            // Ширина постоянная (`fixed`): по первой сотне строк её не посчитать — наверху «Все» сгоревшие сроки без сделок, и
+            // столбец сжимался до заголовка, имена ниже резались до «Ива…» (14.11.2026, владелец).
+            ! $all && $has('manager') ? new Column('manager', 'Менеджер', from: 'sm', cell: 'whitespace-nowrap', role: ColRole::Who, rem: 12.5, main: true, fixed: true) : null,
             // Подтверждения принимает только админ — модератору столбца нет.
             $has('bids') && $user->canManageCrm() ? new Column('bids', 'Подтверждения', from: 'sm', num: true, sort: 'bids', cell: 'nums', rem: 7) : null,
             ! $all && $has('value') ? new Column('value', 'Оценочная', from: 'sm', num: true, aside: true, cell: 'nums', rem: 5.5) : null,
@@ -651,10 +653,11 @@ class OfferController
                 ? new Column('floor', 'Закупочная', num: true, sort: 'floor', cell: 'nums', rem: 5.5)
                 : new Column('floor', 'Закупочная', from: 'sm', num: true, aside: true, sort: 'floor', cell: 'nums', rem: 5.5)),
             $has('price') ? new Column('price', 'Цена', num: true, sort: 'price', cell: 'nums', rem: 6) : null,
-            // «Продано» / «Оплачено» (`DealDates`) — нажатием правятся (`SetDealDate`), с окном справа остаются.
-            ! $all && $has('binding') ? new Column('binding', 'Срок обязывающего', from: 'sm', sort: 'binding', cell: 'nums whitespace-nowrap', role: ColRole::When, rem: 5, main: true) : null,
-            ! $all && $has('sold') ? new Column('sold', 'Продано', from: 'sm', sort: 'sold', cell: 'nums whitespace-nowrap', role: ColRole::When, rem: 6, main: true) : null,
-            ! $all && $has('paid') ? new Column('paid', 'Оплачено', from: 'sm', sort: 'paid', cell: 'nums whitespace-nowrap', role: ColRole::When, rem: 6, main: true) : null,
+            // «Продано» / «Оплачено» (`DealDates`) — нажатием правятся (`SetDealDate`), с окном справа остаются. Ширины срока и
+            // дат постоянные (`fixed`): первая сотня строк «Все» — черновики без сделок, по ней их не посчитать.
+            ! $all && $has('binding') ? new Column('binding', 'Срок', from: 'sm', sort: 'binding', cell: 'nums whitespace-nowrap', role: ColRole::When, rem: 6, main: true, fixed: true) : null,
+            ! $all && $has('sold') ? new Column('sold', 'Продано', from: 'sm', sort: 'sold', cell: 'nums whitespace-nowrap', role: ColRole::When, rem: 6.5, main: true, fixed: true) : null,
+            ! $all && $has('paid') ? new Column('paid', 'Оплачено', from: 'sm', sort: 'paid', cell: 'nums whitespace-nowrap', role: ColRole::When, rem: 6.5, main: true, fixed: true) : null,
             // Дата — и при открытом окне (13.11.2026, начальник: «Во вкладке» пропадало); не влезает — уходит последней (`Table::DROP`).
             $when ? new Column('when', $when[1], from: 'sm', sort: $when[0], cell: 'nums whitespace-nowrap', role: ColRole::When, rem: $when[2]) : null,
         ], ['mixed' => $all, 'when' => $when[0] ?? null, 'floorSide' => $floorSide]);
