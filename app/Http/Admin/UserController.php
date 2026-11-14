@@ -40,6 +40,7 @@ use App\Users\Actions\IssueImpersonation;
 use App\Users\Actions\IssueInvite;
 use App\Users\Actions\IssuePasswordLink;
 use App\Users\Actions\LinkAccounts;
+use App\Users\Actions\MakeBuyer;
 use App\Users\Actions\RevokePark;
 use App\Users\Actions\SetParkRole;
 use App\Users\Actions\TransferBuyer;
@@ -540,6 +541,45 @@ class UserController
         }
 
         return back()->with('toast', 'Сохранено');
+    }
+
+    /**
+     * Сделать сотрудника покупателем (14.11.2026, Олег Данилин): отдельная дверь, потому что покупатель — не роль
+     * сотрудника. Собирает менеджера, что он видит и есть ли доступ; при живых делах и своих покупателях не
+     * сохраняет, пока их не передадут.
+     */
+    public function toBuyer(Request $request, User $user, MakeBuyer $makeBuyer)
+    {
+        $me = $request->user();
+        abort_unless(self::manages($me, $user) && ! $user->is($me) && $user->isApproved() && ! $user->isBuyer() && ! self::onPark(), 404);
+
+        $data = $request->validate([
+            'manager_id' => ['required', Rule::exists('users', 'id')
+                ->whereNot('id', $user->id)
+                ->whereNotNull('approved_at')
+                ->where(fn ($q) => $q->whereJsonContains('roles', Role::Manager->value))],
+            'buyer_sees' => ['required', Rule::in(['all', 'picked'])],
+            'access' => ['nullable', 'boolean'],
+            'contact' => ['nullable', 'string', 'max:190'],
+            // Свои покупатели не остаются без менеджера: к кому перейдут — обязательный выбор.
+            'transfer_to' => [Rule::requiredIf(fn () => $user->buyers()->exists()), 'nullable', Rule::exists('users', 'id')
+                ->whereNot('id', $user->id)
+                ->whereNotNull('approved_at')
+                ->where(fn ($q) => $q->whereJsonContains('roles', Role::Manager->value))],
+        ], [
+            'manager_id.required' => 'Выберите менеджера',
+            'transfer_to.required' => 'Выберите менеджера, к которому перейдут покупатели',
+        ]);
+        if ($request->boolean('access') && ! $user->hasSignInContact() && ! filled($data['contact'] ?? null)) {
+            throw ValidationException::withMessages(['contact' => 'Телефон или почта — чем он будет входить']);
+        }
+
+        $manager = User::findOrFail($data['manager_id']);
+        $transferTo = isset($data['transfer_to']) ? User::find($data['transfer_to']) : null;
+        $makeBuyer($user, $manager, $data['buyer_sees'], $request->boolean('access'), $transferTo, $data['contact'] ?? null);
+
+        return redirect(self::base().'?preset=buyers&manager='.$manager->id)
+            ->with('toast', $user->shortName().' — покупатель '.$manager->shortName());
     }
 
     /**

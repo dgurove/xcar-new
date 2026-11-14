@@ -105,6 +105,14 @@
         @endif
         <x-ui.sheet-foot>Сохранить</x-ui.sheet-foot>
     </form>
+    @if (! $park && ! $user->isBuyer() && ! $user->is($me) && ! $user->isOwner() && $user->isApproved())
+        {{-- Покупатель — отдельная дверь, а не ещё одна галка ролей (14.11.2026): у него менеджер и своя карточка. --}}
+        <div class="mt-3 flex flex-col gap-2" data-controller="sheet">
+            <p class="text-sm text-ink-muted">Покупатель — не роль сотрудника: у него один менеджер и своя карточка.</p>
+            <x-ui.button type="button" variant="secondary" size="sm" class="self-start" data-action="sheet#open">Сделать покупателем…</x-ui.button>
+            <x-admin.to-buyer-sheet :user="$user" :managers="$managers" :base="$base"/>
+        </div>
+    @endif
     @if (\App\Users\Impersonation::allowed($me, $user) && $user->isApproved())
         <form method="post" action="{{ $base }}/{{ $user->id }}/impersonate" class="mt-3">
             @csrf
