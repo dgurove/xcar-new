@@ -23,7 +23,8 @@
     <div {{ $attributes->class(['sale-city flex flex-col gap-2']) }} data-controller="reveal">
         <input type="hidden" name="_sale_city" value="{{ $key }}" @if ($form) form="{{ $form }}" @endif>
         <input type="hidden" name="sale_city_same" value="0" @if ($form) form="{{ $form }}" @endif>
-        <x-ui.check name="sale_city_same" :checked="$same" :old="false" data-action="reveal#check" data-reveal-key-param="other" :form="$form">Продаём там же, {{ $fact->title() }}</x-ui.check>
+        {{-- Той же маленькой галкой и размером, что «С НДС» (`.flags`, 16.11.2026: две галки разного размера в одном блоке). --}}
+        <span class="flags pt-0"><x-ui.check name="sale_city_same" :checked="$same" :old="false" data-action="reveal#check" data-reveal-key-param="other" :form="$form">Продаём там же, {{ $fact->title() }}</x-ui.check></span>
         <div data-reveal-target="pane" data-reveal-key="other" @if ($same) hidden @endif>
             <x-ui.combobox name="sale_settlement_id" :id="$key" label="Город продажи" url="/reference/settlements" create="/reference/settlements" :value="$sale?->id" :text="$sale?->title()" :pinned="$pinned" :form="$form" :old="false" placeholder="Начните вводить город" :class="$plate ? '!bg-surface' : null"/>
         </div>

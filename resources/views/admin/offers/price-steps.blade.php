@@ -19,7 +19,9 @@
     @endif
     <div class="flex flex-col gap-2.5" data-reveal-target="pane" data-reveal-key="rate" @if ($way !== 'rate') hidden @endif>
         <div class="flex items-center gap-3">
-            <h2 @class(['text-base font-medium' => ! $plain, 'detail-section !mb-0' => $plain])>Цены</h2>
+            {{-- Подписью раздела 13 серым, как «Фото» и «Документы» (16.11.2026, владелец: «размеры шрифтов неадекватно скачут» —
+                 заголовок 15 был мельче цифр в полях). --}}
+            <h2 class="detail-section !mb-0">Цены</h2>
             <span class="ml-auto">@include('admin.offers.fields.vat-check', ['form' => $form])</span>
         </div>
         {{-- Без марки не выставить (12.11.2026, начальник): марка и модель — тут, полями формы окна; у прицепа или кузова без
