@@ -50,6 +50,8 @@ final class Collect
         });
         if ($fill) {
             app(Pick::class)->fillEmpty($car);
+            // Заявка поставщика свежее нынешней оценочной — она и встаёт (`Offers\Valuations`, 15.11.2026).
+            \App\Offers\Valuations::fromDocuments($car->refresh());
         }
         Variants::recount($car->refresh());
     }

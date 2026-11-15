@@ -11,6 +11,7 @@ use App\Offers\OfferEventType;
 use App\Offers\OfferState;
 use App\Offers\Pricing;
 use App\Offers\Reprice;
+use App\Offers\Valuations;
 use App\Users\Role;
 use App\Users\User;
 use Illuminate\Support\Facades\Notification;
@@ -59,6 +60,11 @@ final class DetectReprice
             $bid !== null => ['floor_price' => Pricing::rebid($bid)],
             default => null,
         };
+
+        // Оценочная письма старше нынешней (заявка поставщика пришла позже, `Valuations`) — переоценивать нечем.
+        if (isset($prices['value']) && Valuations::older($offer, $message->date_at)) {
+            return null;
+        }
 
         return $prices && (int) $prices['floor_price'] !== (int) $offer->floor_price ? $prices : null;
     }

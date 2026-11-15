@@ -30,6 +30,10 @@ final class DocumentFields
         if (trim($text) === '') {
             return [];
         }
+        // VIN, слипшийся с моделью в ячейке таблицы («TOYOTA HIGHLANDERLVGEU76A4TG060116 Черный 2026 3.033.000,00», заявка Альфы
+        // 0790/046/10760/26, 15.11.2026: строка с машиной не находилась, и оценочная заявки не читалась вовсе) — отдельным словом.
+        $text = (string) preg_replace_callback('/(?<=[A-Za-zА-Яа-яЁё])([A-HJ-NPR-Z0-9]{17})(?![A-Za-z0-9])/u',
+            fn ($m) => VinText::labelled($m[1]) ? ' '.$m[1] : $m[0], $text);
         $f = [];
         $put = function (string $field, mixed $value) use (&$f) {
             if ($value !== null && $value !== '' && ! isset($f[$field])) {
@@ -233,6 +237,41 @@ final class DocumentFields
         if (self::priced($text) && preg_match('/(?<![\d.,\/])(?:'.Patterns::YEAR.')\s+(\d{5,9})(?![\d.,\-])/u', $after, $m) && (int) $m[1] >= 10_000) {
             $put('value', (int) $m[1]);
         }
+    }
+
+    /**
+     * Дата документа — заявки («Заявка на Приемку/Выдачу Товара № … от «23» октября 2026 года», «от 23.10.2026»): на этот день
+     * верна его оценочная (`Offers\Valuations`). Месяц OCR потерял («от «23»1_2026») — даты нет, берут дату письма.
+     */
+    public static function dated(string $text): ?Carbon
+    {
+        $text = str_replace(["\u{00A0}", '«', '»', '"', '“', '”'], ' ', $text);
+        // Первая «от …» — часто дата договора, к которому приложение («к договору Е240020/06/03/22 от «16» февраля 2022 г.»):
+        // сначала — дата после слова «Заявка».
+        if (preg_match('/Заявк\S*[^\n]{0,120}?(\bот\s+\d[^\n]{0,30})/iu', $text, $z)) {
+            $text = $z[1];
+        }
+        if (preg_match('/\bот\s+(\d{1,2})\s*\.\s*(\d{1,2})\s*\.\s*(20\d{2})/u', $text, $m)) {
+            [$d, $mo, $y] = [(int) $m[1], (int) $m[2], (int) $m[3]];
+        } elseif (preg_match('/\bот\s+(\d{1,2})\s+([а-яё]+)\s+(20\d{2})/iu', $text, $m)) {
+            $word = mb_strtolower($m[2]);
+            $mo = collect(self::MONTHS)->first(fn ($n, $root) => str_starts_with($word, $root) && ($root !== 'ма' || str_starts_with($word, 'мая') || $word === 'май'));
+            [$d, $y] = [(int) $m[1], (int) $m[3]];
+        }
+        if (empty($mo) || ! checkdate($mo, $d, $y)) {
+            return null;
+        }
+
+        return Carbon::create($y, $mo, $d, 0, 0, 0, 'Europe/Moscow');
+    }
+
+    /**
+     * Документ — заявка поставщика на приём или выдачу (своя оценочная поставщика), а не акт: акт несёт оценочную из нашей же
+     * карточки, и подписанный, вернувшийся позже, выдал бы старую сумму за свежую (`Offers\Valuations`).
+     */
+    public static function isRequest(string $text): bool
+    {
+        return self::priced($text) || (bool) preg_match('/Заявк\S*\s+на\s+(?:при[её]м|выдач)/iu', $text);
     }
 
     /** В документе есть столбец стоимости — заявка Альфы «Стоимость в соответствии с п.1.8, руб.». */

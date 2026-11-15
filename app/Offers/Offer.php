@@ -92,8 +92,8 @@ class Offer extends Model
     protected $with = ['car'];
 
     /**
-     * Оценочная у продажи своя (15.11.2026, `Offers\ParkValue`): `cars.value` — оценочная ТС парковки, по ней ставка
-     * хранения; с Мигторгом оценочная с заявки продаже неактуальна.
+     * Оценочная у продажи своя (15.11.2026): `cars.value` — оценочная ТС парковки, по ней ставка хранения; какая верна —
+     * самая свежая по дате источника (`Offers\Valuations`, `value_at`).
      */
     protected static function carOwnFields(): array
     {
@@ -102,8 +102,8 @@ class Offer extends Model
 
     protected static function booted(): void
     {
-        // Оценочная продажи с парковки (`ParkValue`): новая продажа машины, что стоит у нас и ещё не на Мигторге, берёт
-        // оценочную ТС; сменили её не с парковки — она уже не «с парковки».
+        // Оценочная продажи с парковки (`ParkValue`): новая продажа машины, что стоит у нас, берёт оценочную ТС с её датой;
+        // сменили её не с парковки — она уже не «с парковки».
         static::creating(fn (self $o) => ParkValue::inherit($o));
         static::saving(function (self $o) {
             if ($o->isDirty('value') && ! ParkValue::$writing) {
@@ -245,6 +245,7 @@ class Offer extends Model
             'audience_rules' => 'array',
             'floor_rules' => 'array',
             'value' => 'int',
+            'value_at' => 'datetime',
             'partner_price_at' => 'datetime',
             'published_at' => 'datetime',
             'bids_close_at' => 'datetime',

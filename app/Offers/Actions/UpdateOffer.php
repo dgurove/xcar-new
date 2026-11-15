@@ -17,9 +17,9 @@ use App\Offers\OfferEventType;
 use App\Offers\AudienceRules;
 use App\Offers\Exclusive;
 use App\Offers\OfferState;
-use App\Offers\ParkValue;
 use App\Offers\Pricing;
 use App\Offers\Reprice;
+use App\Offers\Valuations;
 use App\Support\Changes;
 use App\Users\User;
 use App\Vendors\Actions\LearnSenders;
@@ -31,6 +31,7 @@ use App\Workflow\DeadlineSource;
 use App\Workflow\Outcome;
 use App\Workflow\Position;
 use App\Workflow\Track;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -44,6 +45,15 @@ final class UpdateOffer
      */
     public function __invoke(Offer $offer, array $data, ?User $by, array $log = [], bool $repricing = false): Offer
     {
+        // На какой день верна новая оценочная (`Valuations`, 15.11.2026: свежее побеждает, откуда бы ни пришло). Старше
+        // нынешней — не встаёт, и закупочная, посчитанная от неё, тоже. Решение админа по переоценке (`repricing`) — встаёт.
+        $asOf = isset($log['as_of']) ? Carbon::parse($log['as_of']) : null;
+        if (! $repricing && $asOf && array_key_exists('value', $data) && $data['value'] !== null && Valuations::older($offer, $asOf)) {
+            unset($data['value'], $data['floor_price']);
+        }
+        if ($asOf) {
+            $log['as_of'] = $asOf->toDateTimeString();
+        }
         $was = $offer->value;
         $wasRules = Pricing::autoRules($offer);
         $offer->fill($data);
@@ -79,6 +89,9 @@ final class UpdateOffer
                 $repriceValue = $offer->value !== null ? (int) $offer->value : null;
                 $offer->value = $offer->getOriginal('value');
             }
+        }
+        if ($offer->isDirty('value')) {
+            $offer->value_at = $offer->value === null ? null : ($asOf ?? now());
         }
         // Новая закупочная у предложения с идущей сделкой — только закупочная поставщика (`UpdateDealCost`): цена
         // менеджера в сделке закреплена с его подтверждения (15.10.2026), сменить её — «Обновить» в переоценке.
@@ -222,10 +235,6 @@ final class UpdateOffer
             // Лоты прежнего номера больше не этого предложения — свободны для своего.
             DB::table('migtorg_lots')->where('offer_id', $offer->id)->where(fn ($q) => $q->whereNull('claim_ref_key')->orWhere('claim_ref_key', '!=', (string) $offer->claim_ref_key))->update(['offer_id' => null]);
             ImportMigtorgLot::auto($offer);
-            // Новый номер уже на Мигторге — оценочная с парковки неактуальна (`ParkValue`).
-            if ($offer->state === OfferState::Draft && ! $offer->isScheduled() && ! $offer->onAuction()) {
-                ParkValue::drop($offer->refresh());
-            }
         }
     }
 }

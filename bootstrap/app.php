@@ -65,7 +65,7 @@ use App\Offers\Console\MigtorgDropOsago;
 use App\Offers\Console\MigtorgSync;
 use App\Offers\Console\PruneEmptyDrafts;
 use App\Offers\Console\RepricesFromLettersCommand;
-use App\Offers\Console\StaleParkValues;
+use App\Offers\Console\ValuationsCommand;
 use App\Offers\Console\TickOffers;
 use App\Offers\Share\Console\PreparePdfs;
 use App\Park\Console\AcceptByLettersCommand;
@@ -133,7 +133,7 @@ return Application::configure(basePath: dirname(__DIR__))
         MigtorgSync::class,
         MigtorgArchive::class,
         MigtorgDropOsago::class,
-        StaleParkValues::class,
+        ValuationsCommand::class,
         RefillVendors::class,
         TickPark::class,
         StoreByLettersCommand::class,

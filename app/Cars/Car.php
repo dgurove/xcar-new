@@ -57,7 +57,7 @@ class Car extends Model implements HasMedia
     protected function casts(): array
     {
         return [
-            'year' => 'int', 'mileage' => 'int', 'keys_count' => 'int', 'engine_volume' => 'int', 'engine_power' => 'int', 'value' => 'int',
+            'year' => 'int', 'mileage' => 'int', 'keys_count' => 'int', 'engine_volume' => 'int', 'engine_power' => 'int', 'value' => 'int', 'value_at' => 'datetime',
             'body' => Body::class, 'transmission' => Transmission::class, 'drive' => Drive::class, 'fuel' => Fuel::class,
             'damage_cause' => DamageCause::class, 'papers' => Papers::class, 'category' => Category::class, 'place' => CarPlace::class,
             'damage_zones' => 'array', 'flags' => 'array', 'docs_required' => 'array',

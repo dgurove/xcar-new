@@ -9,6 +9,7 @@ use App\Park\EventType;
 use App\Park\Vehicle;
 use App\Support\Changes;
 use App\Users\User;
+use Illuminate\Support\Carbon;
 
 /**
  * Правка карточки ТС. Договор комиссии, вписанный после приёма, рождает обязательство перед вендором
@@ -22,12 +23,18 @@ final class UpdateVehicle
 {
     public function __construct(private IssueTransferObligation $transfer) {}
 
-    /** @param list<string> $sources имена документов и «письмо», откуда взяты поля */
-    public function __invoke(Vehicle $vehicle, array $data, ?User $by, array $sources = []): Vehicle
+    /**
+     * @param  list<string>  $sources  имена документов и «письмо», откуда взяты поля
+     * @param  ?Carbon  $asOf  на какой день верна оценочная из документа (`Offers\Valuations`); без него — сейчас
+     */
+    public function __invoke(Vehicle $vehicle, array $data, ?User $by, array $sources = [], ?Carbon $asOf = null): Vehicle
     {
         $vehicle->fill($data);
         $diff = Changes::ofLane($vehicle);
         $changed = [...array_keys($vehicle->getDirty()), ...$vehicle->carDirty()];
+        if (in_array('value', $changed, true)) {
+            $vehicle->carRecord()->value_at = $vehicle->value ? ($asOf ?? now()) : null;
+        }
         $vehicle->relationLoaded('car') && $vehicle->getRelation('car')?->stamp($by, $sources ? ['sources' => $sources] : []);
         $vehicle->save();
         if (! $changed) {
@@ -48,8 +55,7 @@ final class UpdateVehicle
         if ($by && $vehicle->accepted_at && array_intersect($changed, ['contract_kind', 'assigned_price', 'contract_no'])) {
             ($this->transfer)($vehicle, $by);
         }
-        // Оценочная ТС — в продажу (`ParkValue::follows`): пока у продажи оценочная с парковки (или её нет) и машины нет на
-        // Мигторге; закупочная — за ней, если не вписана рукой (`UpdateOffer` → `Pricing::floorFor`). Машина уже в сделке
+        // Оценочная ТС — в продажу (`ParkValue::follows`): пока у продажи оценочная с парковки (или её нет); закупочная — за ней, если не вписана рукой (`UpdateOffer` → `Pricing::floorFor`). Машина уже в сделке
         // или гараже — правка парковки закупочную не трогает: новую закупочную поставщика вписывают в CRM.
         if (in_array('value', $changed, true) && ($offer = $vehicle->offer) && $vehicle->value) {
             ParkValue::follow($offer, (int) $vehicle->value, $by);

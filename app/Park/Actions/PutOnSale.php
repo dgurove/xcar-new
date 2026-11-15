@@ -45,7 +45,7 @@ final class PutOnSale
             'settlement_id' => $vehicle->yard?->settlement_id ?? $vehicle->city_id,
             'car_place' => $vehicle->state === VehicleState::Stored ? CarPlace::Ours : null,
             'vendor_id' => $vehicle->vendor_id,
-            // Оценочная продаже — с парковки, пока машины нет на Мигторге (`ParkValue`; её ставит `Offer::creating`).
+            // Оценочная продаже — с парковки (`ParkValue`; её ставит `Offer::creating`), закупочная — от неё.
             'floor_price' => ParkValue::usable($car) ? Pricing::floorFrom((int) $car->value) : null,
         ], created: ['park' => $vehicle->id], why: 'С парковки', reopenCancelled: false), $by);
         // Отказ поставщика — не продажа: сказать как есть (было «уже продана» и для отменённой).

@@ -70,7 +70,7 @@ final class ApplyReprice
             $data = ['floor_price' => $price] + $value + array_intersect_key($prices, array_flip(['publish_price', 'asking_price', 'min_bid_price']));
             // Цена продажи до и после — менеджеру в вопросе (было → стало парами, 10.11.2026).
             $asking = ['from' => $offer->asking_price === null ? null : (int) $offer->asking_price];
-            ($this->update)($offer, $data, $by, ['why' => $reprice->why()], repricing: true);
+            ($this->update)($offer, $data, $by, ['why' => $reprice->why()] + ($value && $reprice->message?->date_at ? ['as_of' => $reprice->message->date_at] : []), repricing: true);
             $asking['to'] = ($a = $offer->fresh()->asking_price) === null ? null : (int) $a;
 
             // Прежние вопросы по этим подтверждениям и сделке гаснут: решается заново по новой переоценке.
