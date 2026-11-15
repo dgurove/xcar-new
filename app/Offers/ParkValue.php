@@ -46,7 +46,10 @@ final class ParkValue
     /** Правка оценочной на парковке идёт в продажу: у продажи оценочной нет или она с парковки, а машины нет на Мигторге. */
     public static function follows(Offer $offer): bool
     {
-        return ($offer->value === null || $offer->value_from === self::PARK) && ! Valuations::lotAt($offer->claim_ref_key);
+        // Сняли как неактуальную (`DropValuation`: оценочной нет, дата снятия есть) — ждём новую от поставщика, парковка не вписывает.
+        $dropped = $offer->value === null && $offer->value_at !== null;
+
+        return ! $dropped && ($offer->value === null || $offer->value_from === self::PARK) && ! Valuations::lotAt($offer->claim_ref_key);
     }
 
     /** Новая оценочная ТС — в продажу, если она туда идёт (`follows`); закупочная — за ней, если не вписана рукой. */

@@ -9,6 +9,7 @@ use App\Mail\Direction;
 use App\Mail\Extraction\DocumentFields;
 use App\Mail\Extraction\DocumentText;
 use App\Mail\Extraction\ScanFields;
+use App\Offers\Actions\DropValuation;
 use App\Offers\Actions\UpdateOffer;
 use App\Park\Actions\UpdateVehicle;
 use App\Support\Ago;
@@ -45,8 +46,9 @@ final class Valuations
     /** На какой день верна нынешняя оценочная продажи. До `value_at` — последняя правка оценочной в «Истории». */
     public static function at(Offer $offer): ?Carbon
     {
+        // Оценочную сняли как неактуальную (`DropValuation`) — её дата остаётся: что старше, не встаёт.
         if ($offer->value === null) {
-            return null;
+            return $offer->value_at;
         }
         if ($offer->value_at) {
             return $offer->value_at;
@@ -129,16 +131,11 @@ final class Valuations
      */
     public static function drop(Offer $offer): bool
     {
-        if ($offer->state !== OfferState::Draft || $offer->isScheduled() || $offer->onAuction() || $offer->costDeal() || ! self::stale($offer)
-            || $offer->bids()->whereIn('state', [BidState::Active, BidState::Accepted])->exists()) {
+        if (! self::stale($offer) || ! DropValuation::allows($offer)) {
             return false;
         }
-        $value = (int) $offer->value;
-        $floor = $offer->floor_price ? (int) $offer->floor_price : null;
-        $auto = ! $floor || in_array($floor, [$value, Pricing::floorFrom($value), Pricing::floorFrom($value, Pricing::rulesFor($offer))], true);
         $at = self::at($offer);
-        app(UpdateOffer::class)($offer, ['value' => null] + ($auto ? ['floor_price' => null] : []), null,
-            ['why' => 'Появилось на Мигторге после оценочной'.($at ? ' от '.Ago::day($at) : '').' — она неактуальна']);
+        app(DropValuation::class)($offer, null, 'Появилось на Мигторге после оценочной'.($at ? ' от '.Ago::day($at) : '').' — она неактуальна');
 
         return true;
     }

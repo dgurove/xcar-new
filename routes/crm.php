@@ -236,6 +236,8 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
         Route::post('/offers/{offer}/rate', [OfferController::class, 'rate']);
         // «Марки нет» (12.11.2026): прицеп или кузов без шильдика — публикация марку не ждёт.
         Route::post('/offers/{offer}/no-brand', [OfferController::class, 'noBrand']);
+        // «Оценочная неактуальна» (15.11.2026): ждём новую от поставщика — черновик в «Без закупочной».
+        Route::post('/offers/{offer}/value-stale', [OfferController::class, 'dropValue']);
         // Оценка менеджером (11.10.2026): «Отдать менеджеру на оценку», «Взять», «Отклонить», «×».
         Route::post('/offers/{offer}/estimates', [OfferEstimateController::class, 'store']);
         Route::post('/offers/{offer}/estimates/keep', [OfferEstimateController::class, 'keep']);

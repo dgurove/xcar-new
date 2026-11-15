@@ -9,6 +9,7 @@ use App\Mail\Candidate;
 use App\Mail\Extraction\Code;
 use App\Mail\Scan\AutoScan;
 use App\Media\Actions\WarmPhotos;
+use App\Offers\Actions\DropValuation;
 use App\Offers\Actions\ChangeOfferState;
 use App\Offers\Actions\CreateOffer;
 use App\Offers\Actions\MergeOffers;
@@ -1025,6 +1026,18 @@ class OfferController
         }
 
         return back()->with('toast', 'Без марки');
+    }
+
+    /**
+     * «Оценочная неактуальна» — пункт «⋯» (15.11.2026, владелец по 0760/046/13173/26: «ждать цены от Альфы»): оценочная и
+     * закупочная от неё снимаются, черновик встаёт в «Без закупочной» (`DropValuation`).
+     */
+    public function dropValue(Request $request, Offer $offer, DropValuation $drop)
+    {
+        abort_unless($offer->isEditableBy($request->user()), 404);
+        $drop($offer, $request->user(), 'Оценочная неактуальна — ждём новую от поставщика');
+
+        return back()->with('toast', 'Оценочная снята — в «Без закупочной»')->with(self::gone($request, $offer->refresh()));
     }
 
     /**

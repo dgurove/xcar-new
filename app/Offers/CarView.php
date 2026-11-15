@@ -7,6 +7,7 @@ use App\Garage\Car as GarageCar;
 use App\Garage\CarLine;
 use App\Garage\CarState;
 use App\Garage\GarageView;
+use App\Offers\Actions\DropValuation;
 use App\Offers\Actions\MarkContractSigned;
 use App\Offers\Actions\MarkSoldDeal;
 use App\Offers\Actions\PublishDeal;
@@ -429,6 +430,11 @@ final class CarView
             // Пустая заметка в окне не рисуется — пунктом «⋯»: нажатие показывает её поле на месте (12.11.2026, владелец: «мусор»).
             if (($noteDeal = $this->garageCar?->deal ?? $this->deal) && blank($noteDeal->notes)) {
                 $groups[] = [$emit('deal-note-'.$noteDeal->id, 'Заметка', 'edit')];
+            }
+            // Оценочная неактуальна (15.11.2026, владелец: «надо ждать цены от Альфы») — снять её и закупочную от неё, в «Без закупочной».
+            if (DropValuation::allows($o) && auth()->user() && $o->isEditableBy(auth()->user())) {
+                $groups[] = [$post('/offers/'.$n.'/value-stale', 'Оценочная неактуальна', 'undo', [], confirm: 'Оценочная неактуальна?',
+                    text: 'Оценочная и закупочная от неё снимутся, ТС уйдёт в «Без закупочной» до новой оценки', confirmLabel: 'Снять')];
             }
             if ($v['askMenu']) {
                 $groups[] = [$emit('estimate-ask-'.$n, $v['correct'] ? 'Спросить менеджеров' : 'Отдать на оценку', 'users')];
