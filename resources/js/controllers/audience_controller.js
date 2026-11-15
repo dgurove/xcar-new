@@ -12,7 +12,7 @@ import { Controller } from '@hotwired/stimulus';
 // вендора»). Сводка — те же слова, что AudienceRules::summary. deal — публикация машины в сделке: супер-покупателей нет.
 export default class extends Controller {
     static targets = ['rules', 'summary', 'body', 'pick', 'search', 'option', 'icons', 'pickTitle', 'end'];
-    static values = { options: Object, effective: Array, deal: Boolean, base: String };
+    static values = { options: Object, effective: Array, deal: Boolean, base: String, blank: Boolean };
 
     connect() {
         this.reset();
@@ -42,6 +42,13 @@ export default class extends Controller {
         // Значение с сервера: у скрытого поля присвоение value меняет и defaultValue — сравнивать не с чем.
         this.initial = this.rulesTarget.value;
         this.waves = this.decode(this.clean(this.parse(this.rulesTarget.value) ?? this.effectiveValue ?? []));
+        // Своих правил нет, а действуют «всем сразу» — не выбираем «Всем» за человека (16.11.2026, владелец: «сначала три
+        // кнопки, и только нажатием „Всем“ становится выбранным»): одна волна «Сразу» с вопросом «Кому?». Не ответил — поле
+        // пустое, как было (по умолчанию — всем сразу; публикация сделки ответа требует).
+        if (this.blankValue && !this.rulesTarget.value) {
+            this.waves = [{ delay: 0, kind: null, who: [], except: [], carry: [] }];
+            this.never = [];
+        }
         this.picking = null; // { wave, mode: 'who' | 'except' }
         this.edited = false;
         this.render();
@@ -348,7 +355,8 @@ export default class extends Controller {
             if (this.hasSearchTarget) this.searchTarget.placeholder = title;
             this.stick();
         }
-        if (this.hasSummaryTarget) this.summaryTarget.textContent = this.summary();
+        // Не трогали — сводка с сервера («Всем сразу»), а не «Никому» от неотвеченной волны.
+        if (this.hasSummaryTarget && this.rulesTarget.value) this.summaryTarget.textContent = this.summary();
     }
 
     wave(w, i) {

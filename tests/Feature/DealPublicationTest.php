@@ -70,6 +70,23 @@ class DealPublicationTest extends TestCase
         app(PlaceBid::class)($offer, $this->armen, 1050000);
     }
 
+    /** Шторка публикации (16.11.2026): «Кому» само не выбирается — без ответа ошибка; минимальная и доля сохраняются. */
+    public function test_sheet_requires_audience_and_saves_min_bid(): void
+    {
+        $offer = $this->setupCase();
+        $url = \App\Support\Surface::Crm->url('/offers/'.$offer->number.'/deal-publication');
+        $form = ['until' => now()->addDays(2)->format('Y-m-d\TH:i'), 'asking_price' => '1 150 000', 'min_bid_price' => '1 100 000', 'min_bid_share' => '0,7'];
+
+        $this->actingAs($this->admin)->post($url, $form)->assertSessionHasErrors('audience_rules');
+        $this->assertFalse($offer->fresh()->showsDealAsOpen());
+
+        $this->actingAs($this->admin)->post($url, $form + ['audience_rules' => json_encode(AudienceRules::everyone())])->assertSessionHasNoErrors();
+        $offer = $offer->fresh();
+        $this->assertTrue($offer->showsDealAsOpen());
+        $this->assertSame(1100000, $offer->min_bid_price);
+        $this->assertEqualsWithDelta(0.7, $offer->min_bid_share, 0.0001);
+    }
+
     public function test_publication_to_chosen_full_cycle(): void
     {
         $offer = $this->setupCase();

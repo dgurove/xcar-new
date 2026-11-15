@@ -133,9 +133,11 @@ class RepriceController
      */
     public function publish(Request $request, Offer $offer, PublishDeal $publish, UpdateOffer $update)
     {
-        $request->merge(array_map(fn ($v) => blank($v) ? null : Money::rubles($v), $request->only(['publish_price', 'asking_price'])));
+        $request->merge(array_map(fn ($v) => blank($v) ? null : Money::rubles($v), $request->only(['publish_price', 'asking_price', 'min_bid_price'])));
+        $request->has('min_bid_share') && $request->merge(['min_bid_share' => blank($request->input('min_bid_share')) ? null : str_replace(',', '.', trim((string) $request->input('min_bid_share')))]);
         $data = $request->validate(['until' => ['required', 'date', 'after:now'], 'audience_rules' => ['nullable', 'json'],
-            'publish_price' => ['nullable', 'integer', 'min:1'], 'asking_price' => ['required', 'integer', 'min:1']],
+            'publish_price' => ['nullable', 'integer', 'min:1'], 'asking_price' => ['required', 'integer', 'min:1'],
+            'min_bid_price' => ['nullable', 'integer', 'min:1'], 'min_bid_share' => ['nullable', 'numeric', 'between:0,1']],
             ['until.required' => 'До когда', 'until.after' => 'Срок уже прошёл', 'asking_price.required' => 'Укажите цену продажи']);
         $until = Carbon::parse($data['until']);
         $offer->loadMissing('deal');
@@ -146,6 +148,10 @@ class RepriceController
             throw ValidationException::withMessages(['until' => $error]);
         }
         $running = $offer->showsDealAsOpen();
+        // Новая публикация — «Кому» обязательно (16.11.2026, владелец: «Всем» не выбирается само, сначала вопрос «Кому?»).
+        if (! $running && blank($data['audience_rules'] ?? null)) {
+            throw ValidationException::withMessages(['audience_rules' => 'Выберите, кому показывать']);
+        }
         // Цены — предложения, не сделки (12.11.2026, начальник): их видят те, кому публикуем; сделку держат `deals.amount` и
         // `deals.cost`. Закупочная не правится — значит, и переоценки нет. Под вопросом против закупочной — «Точно?»: при
         // публикации и когда цену продажи поменяли, а не при каждой правке «Кому» (шторка — `data-price-guard-changed`).
@@ -159,8 +165,11 @@ class RepriceController
             $declared = null;
         }
         // Город продажи (`x-offer.sale-city`, 14.11.2026) — тоже предложения: его видят те, кому публикуем.
-        $prices = array_filter(['publish_price' => $declared, 'asking_price' => $data['asking_price']],
-            fn ($v, $k) => $v !== $offer->{$k}, ARRAY_FILTER_USE_BOTH) + (SaleCity::input($request, $offer) ?? []);
+        // Минимальная и доля (16.11.2026) — тоже предложения: пусто — по доле между заявленной и продажной.
+        $mins = array_intersect_key($data, array_flip(['min_bid_price', 'min_bid_share']));
+        isset($mins['min_bid_share']) && $mins['min_bid_share'] = (float) $mins['min_bid_share'];
+        $prices = array_filter(['publish_price' => $declared, 'asking_price' => $data['asking_price']] + $mins,
+            fn ($v, $k) => $v != $offer->{$k} || ($v === null) !== ($offer->{$k} === null), ARRAY_FILTER_USE_BOTH) + (SaleCity::input($request, $offer) ?? []);
         // Одной транзакцией: «Выберите, кому показывать» откатывает и цены.
         DB::transaction(function () use ($offer, $prices, $update, $publish, $data, $until, $request) {
             if ($prices) {

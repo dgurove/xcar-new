@@ -19,8 +19,10 @@ export default class extends Controller {
         this.root.removeEventListener('input', this.onInput);
     }
 
+    // Сначала свой блок (шторки публикации и «Вернуть в продажу», 16.11.2026: в окне машины рядом — поля «Цен» того же
+    // предложения), потом вся страница (цена продажи «Оценки» вне формы полей).
     value(name) {
-        for (const el of this.root.querySelectorAll(`[name="${name}"]`)) {
+        for (const el of [...this.element.querySelectorAll(`[name="${name}"]`), ...this.root.querySelectorAll(`[name="${name}"]`)]) {
             const v = rubles(el.value);
             if (v) return v;
         }
@@ -32,12 +34,12 @@ export default class extends Controller {
         const floor = raw ? ceilThousand(raw) : null;
         const from = this.value('publish_price') ?? floor;
         const asking = this.value('asking_price');
-        const shareRaw = this.root.querySelector('[name="min_bid_share"]')?.value.replace(',', '.').trim();
+        const shareRaw = (this.element.querySelector('[name="min_bid_share"]') ?? this.root.querySelector('[name="min_bid_share"]'))?.value.replace(',', '.').trim();
         const share = shareRaw !== '' && !Number.isNaN(Number(shareRaw)) ? Number(shareRaw) : DEFAULT_SHARE;
-        const publish = this.root.querySelector('[name="publish_price"]');
+        const publish = this.element.querySelector('[name="publish_price"]') ?? this.root.querySelector('[name="publish_price"]');
         if (publish) publish.placeholder = floor ? nums(floor) : '';
         // Минимальная шторки переоценки — своя подсказка от новой закупочной (`reprice_controller`).
-        const min = this.root.querySelector('[name="min_bid_price"]:not([data-reprice-target])');
+        const min = this.element.querySelector('[name="min_bid_price"]:not([data-reprice-target])') ?? this.root.querySelector('[name="min_bid_price"]:not([data-reprice-target])');
         if (!min) return;
         let value = null;
         if (asking && from && asking > from) value = Math.round((from + (asking - from) * share) / 1000) * 1000;

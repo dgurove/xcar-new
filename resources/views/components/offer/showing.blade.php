@@ -54,7 +54,7 @@
         @endphp
         @if ($as === 'sheet')
             <x-audience.field :value="$offer->audience_rules ? json_encode($offer->audience_rules) : ''" :rules="AudienceRules::of($offer)" :form="$form"
-                inline :base="$base" :sheet="'audience-'.$n.'-'.$as" class="col-span-2">
+                inline :base="$base" :fresh="$offer->state !== OfferState::Open" :sheet="'audience-'.$n.'-'.$as" class="col-span-2">
                 <x-slot:end>
                     <x-offer.close-field :offer="$offer" :id="'f-bids_close_at-'.$n.'-'.$as" :value="$offer->bids_close_at?->format('Y-m-d\TH:i') ?? ''" :required="false" :form="$form" label="Конец приёма"/>
                 </x-slot:end>
@@ -62,7 +62,7 @@
         @else
             <x-offer.close-field :offer="$offer" :id="'f-bids_close_at-'.$n.'-'.$as" :value="$offer->bids_close_at?->format('Y-m-d\TH:i') ?? ''" :required="false" :form="$form" span="col-span-2"/>
             <x-audience.field :value="$offer->audience_rules ? json_encode($offer->audience_rules) : ''" :rules="AudienceRules::of($offer)" :form="$form"
-                :sheet="'audience-'.$n.'-'.$as" class="col-span-2"/>
+                :fresh="$offer->state !== OfferState::Open" :sheet="'audience-'.$n.'-'.$as" class="col-span-2"/>
         @endif
         @if (($summary ?? collect())->isNotEmpty())
             <div class="col-span-2 flex flex-col gap-1.5 text-sm">

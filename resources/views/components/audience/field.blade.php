@@ -4,8 +4,10 @@
      нажатие — шторка с окном (плашка «Без подтверждений», карточка «Показ» страницы). value — что хранится (JSON; пусто — как у
      вендора или всем сразу), rules — что действует сейчас (с ним окно открывается); form — id формы, когда поле вне неё;
      с form у строки-сводки «Сохранить» отправляет её сразу, без — «Готово». deal — публикация машины в сделке. Слот end — поле
-     конца приёма (публикации) концом ленты волн; base — когда был выход (открытое, идущая публикация): у волн тогда даты. --}}
-@props(['name' => 'audience_rules', 'value' => '', 'rules' => null, 'form' => null, 'inline' => false, 'deal' => false, 'sheet' => null, 'label' => 'Кому показывать', 'base' => null])
+     конца приёма (публикации) концом ленты волн; base — когда был выход (открытое, идущая публикация): у волн тогда даты.
+     Своих правил нет и действуют «всем сразу» — лента начинается вопросом «Кому?» без выбранного (blank, 16.11.2026); fresh=false —
+     показ уже идёт (открытое, идущая публикация): там видно, что действует. --}}
+@props(['name' => 'audience_rules', 'value' => '', 'rules' => null, 'form' => null, 'inline' => false, 'deal' => false, 'sheet' => null, 'label' => 'Кому показывать', 'base' => null, 'fresh' => true])
 @php
     use App\Offers\AudienceRules;
     $rules = AudienceRules::normalize($rules ?: AudienceRules::everyone());
@@ -14,7 +16,8 @@
 @endphp
 <div {{ $attributes->class([$inline ? 'audience-field' : 'field']) }} data-controller="audience{{ $inline ? '' : ' sheet' }}" data-audience-options-value="{{ json_encode($options) }}"
     data-audience-effective-value="{{ json_encode($rules) }}" data-audience-deal-value="{{ $deal ? 'true' : 'false' }}"
-    @if ($base) data-audience-base-value="{{ $base->toIso8601String() }}" @endif>
+    @if ($base) data-audience-base-value="{{ $base->toIso8601String() }}" @endif
+    @if ($fresh && $value === '' && AudienceRules::isEveryone($rules)) data-audience-blank-value="true" @endif>
     <span class="field-label">{{ $label }}</span>
     <input type="hidden" name="{{ $name }}" value="{{ $value }}" @if ($form) form="{{ $form }}" @endif data-audience-target="rules">
     @if ($inline)

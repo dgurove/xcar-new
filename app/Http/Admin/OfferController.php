@@ -1308,10 +1308,19 @@ class OfferController
     {
         $data = $request->validate(['floor_price' => ['nullable', 'string', 'max:20'], 'publish_price' => ['nullable', 'string', 'max:20'],
             'asking_price' => ['required', 'string', 'max:20'], 'bids_close_at' => ['nullable', 'date', 'after:now'], 'audience_rules' => ['nullable', 'json'],
-            'binding_until' => ['nullable', 'date'], 'stays' => ['nullable', 'boolean'], 'settlement_id' => ['nullable', 'integer', 'exists:settlements,id'], 'inspection_address' => ['nullable', 'string', 'max:500']],
+            'binding_until' => ['nullable', 'date'], 'stays' => ['nullable', 'boolean'], 'settlement_id' => ['nullable', 'integer', 'exists:settlements,id'], 'inspection_address' => ['nullable', 'string', 'max:500'],
+            'min_bid_price' => ['nullable', 'string', 'max:20'], 'min_bid_share' => ['nullable', 'string', 'max:10']],
             ['asking_price.required' => 'Укажите цену продажи', 'bids_close_at.after' => 'Срок приёма — позже, чем сейчас']);
         $money = fn (?string $v) => Money::rubles($v) ?: null;
-        $prices = array_map($money, array_intersect_key($data, array_flip(['floor_price', 'publish_price', 'asking_price'])) + ['floor_price' => null, 'publish_price' => null]);
+        $prices = array_map($money, array_intersect_key($data, array_flip(['floor_price', 'publish_price', 'asking_price', 'min_bid_price'])) + ['floor_price' => null, 'publish_price' => null]);
+        // Доля до продажной (16.11.2026): «0,6» → 0.6, пусто — по умолчанию; поле не пришло — не трогаем.
+        if ($request->has('min_bid_share')) {
+            $share = blank($data['min_bid_share'] ?? null) ? null : (float) str_replace(',', '.', (string) $data['min_bid_share']);
+            if ($share !== null && ($share < 0 || $share > 1)) {
+                throw ValidationException::withMessages(['min_bid_share' => 'Доля — от 0 до 1, например 0,6']);
+            }
+            $prices['min_bid_share'] = $share;
+        }
         // Заявленная стоит в поле числом: не трогали расчёт от прежней закупочной — пусто, пойдёт за новой.
         if ($offer->publish_price === null && $prices['publish_price'] === Offer::declaredFrom($offer->floor_price)) {
             $prices['publish_price'] = null;

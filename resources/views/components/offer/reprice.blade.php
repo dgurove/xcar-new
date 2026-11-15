@@ -143,7 +143,7 @@
                                 <div class="reprice-publish flex flex-col gap-3" data-reprice-target="show" hidden>
                                     <x-ui.check name="show_all" :checked="true">Опубликовать для других, пока думает</x-ui.check>
                                     <div class="reprice-publish-fields flex flex-col gap-4">
-                                        <x-audience.field :value="$showRules" :rules="\App\Offers\AudienceRules::forDeal($offer)" inline deal>
+                                        <x-audience.field :value="$showRules" :rules="\App\Offers\AudienceRules::forDeal($offer)" inline deal :fresh="! $offer->showsDealAsOpen()">
                                             <x-slot:end><x-offer.close-field :offer="$offer" name="show_until" :id="$id.'-show-until'" :value="$showUntil" label="Конец публикации"/></x-slot:end>
                                         </x-audience.field>
                                         @error('audience_rules')<p class="field-error">{{ $message }}</p>@enderror

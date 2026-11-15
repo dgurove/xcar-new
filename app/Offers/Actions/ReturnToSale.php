@@ -35,7 +35,7 @@ final class ReturnToSale
     public function __construct(private UpdateOffer $update, private ChangeOfferState $change, private CancelDeal $cancel) {}
 
     /**
-     * @param  array{floor_price?: ?int, publish_price?: ?int, asking_price?: ?int}  $prices
+     * @param  array{floor_price?: ?int, publish_price?: ?int, asking_price?: ?int, min_bid_price?: ?int, min_bid_share?: ?float}  $prices
      * @param  ?CarbonInterface  $closeAt  до когда приём (шторка «Отменить сделку → В продажу»); пусто — через 3 дня в 17:00
      * @param  ?array  $audience  волны «Кому показывать» (`AudienceRules`); null — не трогать, [] — как у вендора
      * @param  array{settlement_id?: ?int, inspection_address?: ?string}  $where  где машина стоит, когда она остаётся у менеджера
@@ -95,7 +95,7 @@ final class ReturnToSale
             }
             // Заявленная пустая — снова от закупочной (`Offer::declaredPrice`), поэтому null пишется как есть. Пустая
             // закупочная — прежняя: стереть её шторкой нельзя (приборка 26.10.2026).
-            $data = array_intersect_key($prices, array_flip(['floor_price', 'publish_price', 'asking_price']));
+            $data = array_intersect_key($prices, array_flip(['floor_price', 'publish_price', 'asking_price', 'min_bid_price', 'min_bid_share']));
             if (($data['floor_price'] ?? null) === null) {
                 unset($data['floor_price']);
             }

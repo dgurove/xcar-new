@@ -36,10 +36,13 @@
                         <h3 class="list-head">Цены</h3>
                         {{-- Поля — как в «Показе» и шторке публикации: подпись сверху, заявленная и продажная рядом (12.11.2026, владелец:
                              «почему поля по-разному сделаны, хотя смысл одинаковый»). Заявленная — числом, не серой подсказкой. --}}
-                        <div class="grid grid-cols-2 gap-2">
+                        <div class="grid grid-cols-2 gap-2" data-controller="min-bid">
                             <x-ui.field name="floor_price" :id="'resale-floor-'.$n" label="Закупочная, ₽" :value="old('floor_price', $offer->floor_price ? Money::nums($offer->floor_price) : null)" span="col-span-2"/>
                             <x-ui.field name="publish_price" :id="'resale-publish-'.$n" label="Заявленная, ₽" :value="old('publish_price', $offer->declaredPrice() ? Money::nums($offer->declaredPrice()) : null)"/>
                             <x-ui.field name="asking_price" :id="'resale-asking-'.$n" label="Цена продажи, ₽" :value="old('asking_price', $offer->asking_price ? Money::nums($offer->asking_price) : null)" required/>
+                            {{-- Минимальная и доля (16.11.2026) — как в «Ценах»; пусто — по доле, подсказкой на ходу. --}}
+                            <x-ui.field name="min_bid_price" :id="'resale-min-'.$n" label="Минимальная, ₽" :value="old('min_bid_price', $offer->min_bid_price ? Money::nums($offer->min_bid_price) : null)" :placeholder="$offer->minBid() ? Money::nums($offer->minBid()) : null"/>
+                            <x-ui.field name="min_bid_share" :id="'resale-share-'.$n" label="Доля до продажной" :value="old('min_bid_share', $offer->min_bid_share)" placeholder="0,6"/>
                         </div>
                     </div>
                     @if ($pickup)

@@ -20,12 +20,16 @@
     <x-ui.sheet id="deal-publish-{{ $n }}" :title="$on ? 'Публикация для других менеджеров' : 'Опубликовать для других менеджеров'">
         <form method="post" action="/offers/{{ $n }}/deal-publication" class="flex flex-col gap-4" id="deal-publish-form-{{ $n }}" data-price-guard="whole" data-price-guard-offer="{{ $n }}" @if ($on) data-price-guard-changed @endif>
             @csrf @if ($errors->has('price_check'))<input type="hidden" name="price_ok" value="1">@endif
-            <div class="grid grid-cols-2 gap-2">
+            {{-- Минимальная и доля — как в «Ценах» перед публикацией (16.11.2026, владелец: «очень не хватает»); пусто — по доле
+                 (0,6) между заявленной и продажной, серой подсказкой на ходу (`min_bid_controller`). --}}
+            <div class="grid grid-cols-2 gap-2" data-controller="min-bid">
                 <x-ui.field name="publish_price" label="Заявленная, ₽" :id="'deal-publish-declared-'.$n" :value="$offer->declaredPrice() ? Money::nums($offer->declaredPrice()) : null"/>
                 <x-ui.field name="asking_price" label="Цена продажи, ₽" :id="'deal-publish-asking-'.$n" :value="$offer->asking_price ? Money::nums($offer->asking_price) : null" required/>
+                <x-ui.field name="min_bid_price" label="Минимальная, ₽" :id="'deal-publish-min-'.$n" :value="old('min_bid_price', $offer->min_bid_price ? Money::nums($offer->min_bid_price) : null)" :placeholder="$offer->minBid() ? Money::nums($offer->minBid()) : null"/>
+                <x-ui.field name="min_bid_share" label="Доля до продажной" :id="'deal-publish-share-'.$n" :value="old('min_bid_share', $offer->min_bid_share)" placeholder="0,6"/>
             </div>
             <x-offer.sale-city :offer="$offer" :id="'deal-publish-sale-city-'.$n"/>
-            <x-audience.field :value="$offer->deal_audience_rules ? json_encode($offer->deal_audience_rules) : ''" :rules="$rules" inline deal :base="$on ? $offer->deal_published_at : null">
+            <x-audience.field :value="$offer->deal_audience_rules ? json_encode($offer->deal_audience_rules) : ''" :rules="$rules" inline deal :fresh="! $on" :base="$on ? $offer->deal_published_at : null">
                 <x-slot:end><x-offer.close-field :offer="$offer" name="until" :id="'deal-publish-until-'.$n" :value="$until" label="Конец публикации"/></x-slot:end>
             </x-audience.field>
             @error('audience_rules')<p class="field-error">{{ $message }}</p>@enderror
