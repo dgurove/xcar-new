@@ -52,7 +52,7 @@
         @break
         @case('title')
     <td class="{{ $col->classes() }}">
-        <x-ui.row-link :key="$key" :with="$preset ? ['preset' => $preset] : []"><span class="cell-title"><x-ui.cat-icon :category="$t->category()"/><span class="cell-name">{{ $t->title() }}</span><x-car.keys :count="$t->car?->keys_count"/><x-ui.links :transport="$t"/>@if ($ahead)<span class="row-signal" title="Дальше без исполнителя" aria-label="Дальше без исполнителя"><span class="size-2 rounded-full bg-urgent"></span></span>@endif @if ($binding)<x-offer.binding :offer="$binding" icon class="sm:hidden"/>@endif</span></x-ui.row-link>
+        <x-ui.row-link :key="$key" :with="$preset ? ['preset' => $preset] : []"><span class="cell-title"><x-ui.cat-icon :category="$t->category()"/><span class="cell-name">{{ $t->title() }}</span><x-car.keys :count="$t->car?->keys_count"/><x-ui.links :transport="$t"/>@if ($ahead)<span class="row-signal" title="Дальше без исполнителя" aria-label="Дальше без исполнителя"><span class="size-2 rounded-full bg-urgent"></span></span>@endif @if ($binding)<x-offer.binding :offer="$binding" icon class="sm:hidden"/>@endif{{ "" }}@if ($has('created'))<span class="line-end sm:hidden">{{ \App\Support\Ago::html($t->created_at, time: true) }}</span>@endif</span></x-ui.row-link>
         {{-- Вторая строка — одна линия (20.10.2026, владелец: «строки — чтобы быстро найти, а не печатать всю информацию»): что
              дальше цветным словом целиком и куда — режется «…». Номер убытка, путь через стоянки, кто вывозит — в карточке и
              столбцах ПК, межрегион — чипом-фильтром и в карточке; «дальше без исполнителя» — оранжевой точкой у названия. --}}
@@ -88,7 +88,8 @@
     <td class="{{ $col->classes() }}">@if ($who)<x-ui.person :user="$who"/>@elseif ($logist)<span class="text-ink-muted">у логиста {{ $logist->shortName() }}</span>@endif</td>
         @break
         @case('created')
-    <td class="{{ $col->classes() }}">{{ \App\Support\Ago::html($t->created_at, time: true) }}</td>
+    {{-- Телефон: дата — концом строки названия, а не столбцом (15.11.2026): вторая строка («→ Иван Петров») — во всю ширину. --}}
+    <td class="{{ $col->classes() }} phone-off">{{ \App\Support\Ago::html($t->created_at, time: true) }}</td>
         @break
         @case('when')
     <td class="{{ $col->classes() }} {{ $late ? '!text-danger' : '' }}">{{ $t->shownLabel() }}</td>

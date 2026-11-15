@@ -12,7 +12,7 @@
         @switch($key)
         @case('title')
     <td class="{{ $col->classes() }}">
-        <x-ui.row-link :key="$invoice->id" :with="['tab' => $tab]"><span class="cell-title"><span class="cell-name">{{ $title }}</span></span></x-ui.row-link>
+        <x-ui.row-link :key="$invoice->id" :with="['tab' => $tab]"><span class="cell-title"><span class="cell-name">{{ $title }}</span>@if ($table->has('amount'))<span class="line-end sm:hidden {{ $amountTone }}">{{ \App\Support\Money::nums($amount) }}</span>@endif</span></x-ui.row-link>
         <span class="cell-sub sm:hidden"><span class="{{ $tone }}">{{ $now }}</span>@if ($what)<span class="cell-car">{{ $what }}</span>@endif @if ($phone)<span class="{{ $phone[1] }}">{{ $phone[0] }}</span>@endif</span>
     </td>
         @break
@@ -32,7 +32,8 @@
     <td class="{{ $col->classes() }}">{{ \App\Support\Ago::html($invoice->created_at, true) }}</td>
         @break
         @case('amount')
-    <td class="{{ $col->classes() }} {{ $amountTone }}">{{ \App\Support\Money::nums($amount) }}</td>
+    {{-- Телефон: сумма — концом строки имени (15.11.2026, владелец: «не резать, если справа есть место»). --}}
+    <td class="{{ $col->classes() }} phone-off {{ $amountTone }}">{{ \App\Support\Money::nums($amount) }}</td>
         @break
         @endswitch
     @endforeach

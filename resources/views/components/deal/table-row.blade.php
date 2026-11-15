@@ -27,7 +27,14 @@
     // Отказ поставщика (28.10.2026) — с причиной: «Отказ поставщика: продаёт сам». Этап — свой текст: не режется, а
     // переносится (29.10.2026; было max-w-52 с «…»).
     if ($deal->declinedBySupplier() && $deal->close_note && $deal->close_note !== $word) $word .= ': '.mb_lcfirst($deal->close_note);
+    // Телефон: столбца суммы нет — сумма концом строки названия, срок оплаты и «в минус» — концом второй (`phone-off`).
+    $ends = $table->has('amount');
+    $amountText = $deal->isGarage() ? 'В гараж' : ($deal->amount === null ? '' : \App\Support\Money::rub($deal->amount));
+    $loss = ($deal->marginMark()['tone'] ?? null) === 'loss';
 @endphp
+@php ob_start(); @endphp
+@if ($debt && ! $debt->paid())<span class="{{ $debt->tone() }}">{{ $debt->word() }}</span>@endif{{ "" }}@if ($loss)<x-offer.margin :m="$deal->marginMark()"/>@endif
+@php $subEndHtml = ob_get_clean(); @endphp
 <tr data-detail-key="{{ $deal->id }}" data-search-row id="deal-{{ $deal->id }}">
     @foreach ($table->columns as $key => $col)
         @switch($key)
@@ -39,10 +46,12 @@
             @if ($burning)<x-offer.binding :offer="$offer" icon/>@endif
             {{-- Параллельные этой машины (07.11.2026): метка у названия — столбец менеджера на узком экране уходит. --}}
             @if ($deal->parallels_count)<span class="tag ml-1.5" title="Параллельно ещё {{ $deal->parallels_count }}">+{{ $deal->parallels_count }} параллельно</span>@endif
+            {{-- Телефон: сумма — концом строки названия, а не столбцом (15.11.2026, владелец: «не резать, если справа есть место»). --}}
+            @if ($ends)<span class="line-end sm:hidden">{{ $amountText }}</span>@endif
         </x-cell.title>
         {{-- На телефоне второй строкой — срок шага и этап (20.10.2026, как в «Вывозе»; 27.10.2026 — этап здесь, а не справа:
              там он резался). Не влез — переносится. Срок оплаты — под суммой, здесь этап без него. --}}
-        <span class="cell-sub sm:hidden">@if ($active && $position)<x-route.term :position="$position"/>@php $stageName = str_replace(', в гараж', '', $position->stage->name); @endphp@if (mb_strtolower($stageName) !== mb_strtolower((string) $group)) <span class="inline-block whitespace-nowrap text-ink-muted">{{ mb_lcfirst($stageName) }}</span>@endif{{ "" }}@else<span class="{{ $tone }}">{{ $word }}</span>@endif</span>
+        <span class="cell-sub cell-sub--wrap sm:hidden">@if ($ends && ($subEnd = trim($subEndHtml)) !== '')<span class="line-end order-last">{!! $subEnd !!}</span>@endif{{ "" }}@if ($active && $position)<x-route.term :position="$position"/>@php $stageName = str_replace(', в гараж', '', $position->stage->name); @endphp@if (mb_strtolower($stageName) !== mb_strtolower((string) $group)) <span class="inline-block whitespace-nowrap text-ink-muted">{{ mb_lcfirst($stageName) }}</span>@endif{{ "" }}@else<span class="{{ $tone }}">{{ $word }}</span>@endif</span>
     </td>
         @break
         @case('vendor')
@@ -67,7 +76,7 @@
     </td>
         @break
         @case('amount')
-    <td class="{{ $col->classes() }}">
+    <td class="{{ $col->classes() }} phone-off">
         {{ $deal->isGarage() ? 'В гараж' : ($deal->amount === null ? '' : \App\Support\Money::rub($deal->amount)) }}
         @if ($debt && ! $debt->paid())<span class="cell-sub sm:hidden {{ $debt->tone() }}">{{ $debt->word() }}</span>@endif
         {{-- Только «в минус» (27.10.2026, владелец: «+251 000» в строке ни к чему и сдвигает сумму). --}}

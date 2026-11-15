@@ -2043,7 +2043,7 @@ html.kb-open { --home-gap: 0px; }
     .table-wrap:not(.is-wide) .table .cell-title > .cat-icon > svg { position: absolute; left: 0; width: var(--lead-w) !important; height: var(--lead-w) !important; bottom: calc(.5cap - var(--lead-w) / 2 + var(--cy, 0) * var(--lead-w)); }
     /* Рисунок типа ТС в своём поле сидит чуть ниже середины (замер `getBBox` по спрайту) — доля поля, на которую поднять. */
     .table-wrap:not(.is-wide) .table .cat-passenger { --cy: .031; } .table-wrap:not(.is-wide) .table .cat-light { --cy: .016; }
-    .table-wrap:not(.is-wide) .table .cat-truck { --cy: .047; } .table-wrap:not(.is-wide) .table .cat-trailer { --cy: .065; } .table-wrap:not(.is-wide) .table .cat-long { --cy: .02; } .table-wrap:not(.is-wide) .table .cat-moto { --cy: -.016; }
+    .table-wrap:not(.is-wide) .table .cat-truck { --cy: .047; } .table-wrap:not(.is-wide) .table .cat-trailer { --cy: .047; } .table-wrap:not(.is-wide) .table .cat-moto { --cy: -.016; }
     /* Логотип страховой — квадрат 1rem в коробке той же ширины, что иконка типа, когда она есть (`--lead-box`; без иконки —
        коробка в размер логотипа, он вровень с названием; `inline-flex` у строки номера убирает
        пробел из разметки между логотипом и номером — иначе номер начинался бы правее названия). */
@@ -2074,6 +2074,10 @@ html.kb-open { --home-gap: 0px; }
     .table-wrap:not(.is-wide) .table .cell-title > .line-end { align-self: baseline; }
     .table-wrap:not(.is-wide) .table .line-end > .text-sm { position: relative; top: round(calc(.5cap - var(--lc)), 1px); }
     .table-wrap:not(.is-wide) .table .cell-sub > .line-break { flex-basis: 100%; height: 0; }
+    .table-wrap:not(.is-wide) .table .cell-extra > .line-end { padding-left: .5rem; flex-shrink: 1; min-width: 0; }
+    .table-wrap:not(.is-wide) .table .cell-extra > .line-end > .place { min-width: 0; }
+    /* Место концом строки — значок справа от названия (15.11.2026, владелец: парковка справа в третьей строке). */
+    .place.place--end { flex-direction: row-reverse; }
     .table-wrap.is-wide .line-end, .table-wrap.is-wide .line-break { display: none !important; }
     .table-wrap:not(.is-wide) .table .num-main { display: block; margin-top: 2px; font-size: var(--text-sm); line-height: 1.125rem; --lc: .5cap; }
     .table-wrap:not(.is-wide) .table .cell-main { position: relative; top: round(calc(.5cap - var(--lc)), 1px); font-size: var(--text-base); line-height: 1; color: var(--color-ink); }

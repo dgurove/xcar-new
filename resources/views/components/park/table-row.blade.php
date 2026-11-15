@@ -27,6 +27,13 @@
     $money = $out && $table->has('storage') ? \App\Park\OutMoney::of($vehicle) : null;
     // «Нет парковки» — пустой столбец и задача «Указать парковку» в «Статусе».
     $hasAlerts = ! $out && collect(\App\Park\Alerts::of($vehicle))->reject(fn ($a) => $a['label'] === 'Нет типа' || $a['label'] === 'Нет парковки')->isNotEmpty();
+    // Телефон (15.11.2026, владелец: «не вижу смысла обрезать, если справа есть место»): правых столбцов нет — ставка и сумма
+    // концом первой строки, дни (у выданной — дата выдачи) и долг — второй, парковка со значком справа — третьей; столбцы
+    // `days` и `amount` на телефоне скрыты (`phone-off`), на ПК и в подробной — как были.
+    $ends = ! $out && ! $doc;
+    // Выданная — так же: хранение концом первой строки, «не отправлено» / «не оплачено» — второй, «выдана …» и парковка — третьей.
+    $outEnds = $out && ! $doc && $table->has('storage');
+    $moneyWord = $debt > 0 ? ['text-urgent', 'не оплачено '.Money::nums($debt)] : ($money && ($money !== 'unbilled' || $amount > 0) ? [\App\Park\OutMoney::TONES[$money], mb_strtolower(\App\Park\OutMoney::LABELS[$money])] : null);
 @endphp
 {{-- `data-todo` — ТС, которой парковку указывают прямо в карточке: указали — карточка к следующей такой. --}}
 <tr data-detail-key="{{ $vehicle->id }}" data-search-row id="vehicle-{{ $vehicle->id }}" @if ($state === VehicleState::Stored && ! $vehicle->yard_id) data-todo @endif @class(['is-dim' => ! $out && $state === VehicleState::Released])>
@@ -34,11 +41,12 @@
         @switch($key)
         @case('title')
     <td class="{{ $col->classes() }}">
-        <x-ui.row-link :key="$vehicle->id"><span class="cell-title"><span class="cat-icon {{ $vehicle->category ? 'cat-'.$vehicle->category->value : 'cat-unknown' }}" title="{{ $vehicle->category?->label() ?? 'Тип не указан' }}"><x-ui.icon :name="$vehicle->category?->icon() ?? 'cat-unknown'" class="size-full"/></span><span class="cell-name">{{ $vehicle->titleWithYear() }}</span><x-car.keys :count="$vehicle->keys_count"/>@unless ($doc)<x-ui.plate :value="$vehicle->plate" class="title-plate"/>@endunless<x-ui.links :vehicle="$vehicle"/></span></x-ui.row-link>
-        <span class="cell-sub" data-controller="fitline">
+        <x-ui.row-link :key="$vehicle->id"><span class="cell-title"><span class="cat-icon {{ $vehicle->category ? 'cat-'.$vehicle->category->value : 'cat-unknown' }}" title="{{ $vehicle->category?->label() ?? 'Тип не указан' }}"><x-ui.icon :name="$vehicle->category?->icon() ?? 'cat-unknown'" class="size-full"/></span><span class="cell-name">{{ $vehicle->titleWithYear() }}</span><x-car.keys :count="$vehicle->keys_count"/>@unless ($doc)<x-ui.plate :value="$vehicle->plate" class="title-plate"/>@endunless<x-ui.links :vehicle="$vehicle"/>{{ "" }}@if ($ends)<span class="line-end sm:hidden">@if ($rate)<span class="text-sm text-ink-muted">{{ Money::rub($rate) }}/д{{ $vehicle->storage_rate !== null ? ', своя' : '' }}</span>@elseif ($state === VehicleState::Stored)<span class="text-sm text-urgent">нет ставки</span>@endif{{ "" }}@if ($amount > 0)<span>{{ Money::rub($amount) }}</span>@endif</span>@elseif ($outEnds && $amount > 0)<span class="line-end sm:hidden"><span>{{ Money::rub($amount) }}</span></span>@endif</span></x-ui.row-link>
+        <span @class(['cell-sub', 'cell-sub--wrap' => $ends || $outEnds]) data-controller="fitline">
             {{-- Номера, потом ошибки данных («нет VIN», «нет тарифа»); тип не указан — знак вопроса вместо иконки, не слово.
                  Статус — своим столбцом; в краткой таблице телефона его нет, там то, что требует действия, — третьей строкой. --}}
             <span class="fit-core"><x-park.ref :vehicle="$vehicle" class="sm:hidden"/>@unless ($doc)<x-ui.plate :value="$vehicle->plate" class="sub-plate"/>@endunless</span>
+            @if ($ends)<span class="line-end sm:hidden">@if ($debt > 0)<span class="text-danger">долг {{ Money::nums($debt) }}</span>@endif{{ "" }}@if ($state === VehicleState::Released && $vehicle->released_at)<span>выдана {{ \App\Support\Ago::html($vehicle->released_at) }}</span>@elseif ($days !== null)<span class="nums">{{ $days }}&nbsp;д</span>@endif</span><span class="line-break sm:hidden"></span>@elseif ($outEnds && $moneyWord)<span class="line-end sm:hidden {{ $moneyWord[0] }}">{{ $moneyWord[1] }}</span><span class="line-break sm:hidden"></span>@endif
             @if ($hasAlerts)<span class="alerts-inline"><x-park.alerts :vehicle="$vehicle" plain :place="false" :skip="['Нет типа']"/></span>@endif
             {{-- Выданная на телефоне: когда и сколько стояла — здесь, а не третьим столбцом (30.10.2026, название сжималось до «Geely…»). --}}
             @if ($doc)
@@ -52,15 +60,22 @@
                     <x-park.rate :vehicle="$vehicle" key="ph"/>
                 </span>
             @else
-                @if ($out && $vehicle->released_at)<span class="whitespace-nowrap sm:hidden">выдана {{ \App\Support\Ago::html($vehicle->released_at) }}@if ($days !== null), {{ $days }}&nbsp;д@endif</span>@endif
-                @if ($vehicle->yard)<x-ui.place class="sm:hidden">{{ $vehicle->yard->name }}</x-ui.place>@endif
+                @if ($out && $vehicle->released_at && ! $outEnds)<span class="whitespace-nowrap sm:hidden">выдана {{ \App\Support\Ago::html($vehicle->released_at) }}@if ($days !== null), {{ $days }}&nbsp;д@endif</span>@endif
+                @if ($vehicle->yard && ! $ends && ! $outEnds)<x-ui.place class="sm:hidden">{{ $vehicle->yard->name }}</x-ui.place>@endif
             @endif
         </span>
+        @if ($outEnds && ($vehicle->released_at || $vehicle->yard))
+            <span class="cell-extra">
+                @if ($vehicle->released_at)<span class="whitespace-nowrap text-ink-muted">выдана {{ \App\Support\Ago::html($vehicle->released_at) }}@if ($days !== null), {{ $days }}&nbsp;д@endif</span>@endif
+                @if ($vehicle->yard)<span class="line-end"><x-ui.place class="place--end text-ink-muted">{{ $vehicle->yard->name }}</x-ui.place></span>@endif
+            </span>
+        @endif
         {{-- Краткая таблица телефона: задача с точкой, как в столбце «Статус», и значок «что не так» — третьей строкой. --}}
-        @if (! $out && ($status['act'] || $hasAlerts))
+        @if (! $out && ($status['act'] || $hasAlerts || ($ends && $vehicle->yard)))
             <span class="cell-extra">
                 @if ($status['act'])<span @class(['status-cell', 'is-act', 'is-late' => $status['late']])>{{ $status['label'] }}</span>@endif
                 @if ($hasAlerts)<x-park.alerts :vehicle="$vehicle" plain :place="false" :skip="['Нет типа']" at="phone"/>@endif
+                @if ($ends && $vehicle->yard)<span class="line-end"><x-ui.place class="place--end text-ink-muted">{{ $vehicle->yard->name }}</x-ui.place></span>@endif
             </span>
         @endif
     </td>
@@ -117,7 +132,7 @@
     @endif
         @break
         @case('storage')
-    <td class="{{ $col->classes() }}">
+    <td class="{{ $col->classes() }}{{ $outEnds ? ' phone-off' : '' }}">
         @if ($amount > 0)<span class="block">{{ Money::rub($amount) }}</span>@endif
         @if ($debt > 0)<span class="cell-sub text-urgent">не оплачено {{ Money::nums($debt) }}</span>
         @elseif ($money && ($money !== 'unbilled' || $amount > 0))<span class="cell-sub {{ \App\Park\OutMoney::TONES[$money] }}">{{ mb_strtolower(\App\Park\OutMoney::LABELS[$money]) }}</span>@endif
@@ -127,7 +142,7 @@
     <td class="{{ $col->classes() }}">@if ($amount > 0){{ Money::rub($amount) }}@endif</td>
         @break
         @case('days')
-    <td class="{{ $col->classes() }}">
+    <td class="{{ $col->classes() }}{{ $ends ? ' phone-off' : '' }}">
         @if ($state === VehicleState::Released && $vehicle->released_at)
             <time datetime="{{ $vehicle->released_at->toIso8601String() }}">{{ \App\Support\Ago::html($vehicle->released_at) }}</time>
         @elseif ($days !== null)
@@ -145,7 +160,7 @@
     @endif
         @break
         @case('amount')
-    <td class="{{ $col->classes() }}">
+    <td class="{{ $col->classes() }}{{ $ends ? ' phone-off' : '' }}">
         @if ($amount > 0)<span class="block">{{ Money::rub($amount) }}</span>@endif
         @if ($debt > 0)<span class="cell-sub text-danger">долг {{ Money::nums($debt) }}</span>
         @elseif ($rate)<span class="cell-sub sm:hidden">{{ Money::rub($rate) }}/д{{ $vehicle->storage_rate !== null ? ', своя' : '' }}</span>@endif

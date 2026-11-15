@@ -31,19 +31,23 @@
     // Сколько прошло — с тех пор, как открылось этому человеку (волна, показ), как и точка «новое».
     $since = $offer->openedAt() ?? $offer->created_at;
     $city = $offer->saleCity()?->title();
+    // Телефон (15.11.2026, владелец: «не резать, если справа есть место»): обычная цена — концами строк названия и номера, без
+    // столбца; оценка и галерея (кнопки) — столбцом, как было.
+    $plainEnd = $table->has('price') && ! $estimate && ! $gallery;
 @endphp
 <tr data-detail-key="{{ $n }}" data-search-row id="offer-{{ $n }}" data-offer-number="{{ $n }}" @if ($user) data-viewed-key="{{ $n }}" @endif @if ($offer->viewed) data-viewed @endif>
     @foreach ($table->columns as $key => $col)
         @switch($key)
         @case('title')
     <td class="{{ $col->classes() }}">
-        <x-ui.row-link :key="$n"><span class="cell-title">@if ($tone && $tone !== 'urgent')<span class="card-tone card-tone--{{ $tone }}" aria-label="{{ $estimate ? 'Нужно оценить' : match ($tone) { 'only' => 'Только вам', 'hot' => 'Горящее', 'urgent' => 'Срочно', default => 'Новое' } }}"></span>@endif{{ $offer->titleWithYear() }}@if ($offer->recommended)<x-offer.recommended/>@endif{{ "" }}@if ($offer->isUrgent())<x-offer.urgent/>@endif</span></x-ui.row-link>
-        <span class="cell-sub">
+        <x-ui.row-link :key="$n"><span class="cell-title">@if ($tone && $tone !== 'urgent')<span class="card-tone card-tone--{{ $tone }}" aria-label="{{ $estimate ? 'Нужно оценить' : match ($tone) { 'only' => 'Только вам', 'hot' => 'Горящее', 'urgent' => 'Срочно', default => 'Новое' } }}"></span>@endif<span class="cell-name">{{ $offer->title() }}@if ($year = $offer->carRecord()->year)<span class="cell-year"> {{ $year }}</span>@endif</span>@if ($offer->recommended)<x-offer.recommended/>@endif{{ "" }}@if ($offer->isUrgent())<x-offer.urgent/>@endif{{ "" }}@if ($plainEnd)<span class="line-end sm:hidden">@if ($price->shown()){{ $price::money($price->to) }}@else<span class="text-accent-text">Узнать</span>@endif</span>@endif</span></x-ui.row-link>
+        <span @class(['cell-sub', 'cell-sub--wrap' => $plainEnd])>
             @unless ($estimate)<span class="sm:hidden">№ {{ $n }}</span>@endunless
             @if ($estimate)@unless ($estimate->isGiven())<span class="cell-timer sm:hidden"><x-ui.icon name="timer" class="size-3.5"/><x-offer.estimate-left :estimate="$estimate" word=""/></span>@endunless
             @elseif ($gallery)<x-offer.gallery-left :offer="$offer" word="" class="sm:hidden"/>
             @elseif ($left !== null && $left > 0)<span class="cell-timer sm:hidden {{ $offer->isEndingSoon() ? 'text-urgent' : 'text-ink-muted' }}"><x-ui.icon name="timer" class="size-3.5"/><span class="nums" data-controller="timer" data-timer-until-value="{{ $offer->closesAt()->toIso8601String() }}" data-timer-done-value="приём закрыт" data-timer-coarse-value="true" data-timer-word-value="">{{ \App\Support\Ago::left($offer->closesAt(), '') }}</span></span>
             @elseif ($bids && !$offer->openFor($user))<span class="sm:hidden">приём закрыт</span>@endif
+            @if ($plainEnd && ($price->withFrom() && $price->shown() || $myBid))<span class="line-end sm:hidden">@if ($price->shown() && $price->withFrom())<span>{{ $price::money($price->from) }}</span>@endif{{ "" }}@if ($myBid?->hasPendingCounter())<span class="text-accent-text">контр {{ $price::money($myBid->counter_amount) }}</span>@elseif ($myBid)<span>{{ $myBid->isGarage() ? 'в гараж' : 'ваша '.$price::money($myBid->amount) }}</span>@endif</span><span class="line-break sm:hidden"></span>@endif
             @if ($city)<x-ui.place class="sm:hidden">{{ $city }}</x-ui.place>@endif
             {{-- Открывал — «просмотрено» (`ReadOffer`); показывает `data-viewed` строки, его же ставит клик (`app.js`). --}}
             @if ($user)<span class="row-viewed">просмотрено</span>@endif
@@ -65,7 +69,7 @@
     <td class="{{ $col->classes() }}">@if ($city)<x-ui.place class="whitespace-nowrap text-ink-muted">{{ $city }}</x-ui.place>@endif</td>
         @break
         @case('price')
-    <td class="{{ $col->classes() }}">
+    <td class="{{ $col->classes() }}{{ $plainEnd ? ' phone-off' : '' }}">
         {{-- На оценке: «Оценить» в строке, оценил — его сумма; под ней заявленная — ориентир (закупочной на сайте нет). --}}
         {{-- Корректировка — цена XCar числом, как цена в строке; оценка — кнопкой. Под ними заявленная. --}}
         @if ($estimate)
