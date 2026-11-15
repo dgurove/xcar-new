@@ -206,6 +206,8 @@ export default class extends Controller {
             this.picking = { wave: i, mode: 'who' };
         } else {
             if (was !== 'all') Object.assign(w, { kind: 'all', who: [], except: [], carry: [] });
+            // «Всем» — без исключений; «Всем, кроме» — прежние исключения остаются, список открыт добавить.
+            if (kind === 'all') w.except = [];
             this.picking = kind === 'except' ? { wave: i, mode: 'except' } : null;
         }
         this.asking = kind === 'all' ? -1 : i;
@@ -360,20 +362,19 @@ export default class extends Controller {
             late.textContent = 'Начнётся после конца приёма';
             item.append(late);
         }
+        // Кому — заголовком «Всем ⌄» / «Всем, кроме ⌄» / «Выбранным ⌄» (нажатие — снова «Кому?»), под ним люди и группы по
+        // одному в строке с аватаркой и ×, последней — «+ Ещё» / «+ Добавить». У «Всем» под заголовком ничего (15.11.2026,
+        // владелец: «Кроме…» не нужно — нажмут «Всем» и выберут «Всем, кроме»).
         if (!w.kind || this.asking === i) item.append(this.ask(w, i));
-        if (w.kind === 'only') item.append(this.chips(i, 'who', w.who, null, 'Добавить'));
-        // «Всем ⌄ кроме Иван × + Ещё» — одной строкой; нажатие на «Всем» — снова «Кому?».
-        if (w.kind === 'all') {
-            const row = w.except.length ? this.chips(i, 'except', w.except, 'кроме', 'Ещё') : this.chips(i, 'except', [], null, 'Кроме…');
-            if (this.asking !== i) {
-                const all = el('button', 'wave-all');
-                all.type = 'button';
-                all.append('Всем', this.icon('chevron'));
-                all.addEventListener('click', () => { this.asking = i; this.picking = null; this.render(); });
-                row.prepend(all);
-            }
-            item.append(row);
+        else {
+            const who = el('button', 'wave-who');
+            who.type = 'button';
+            who.append(w.kind === 'only' ? 'Выбранным' : w.except.length ? 'Всем, кроме' : 'Всем', this.icon('chevron'));
+            who.addEventListener('click', () => { this.asking = i; this.picking = null; this.render(); });
+            item.append(who);
         }
+        if (w.kind === 'only') item.append(...this.people(i, 'who', w.who, 'Добавить'));
+        if (w.kind === 'all' && w.except.length) item.append(...this.people(i, 'except', w.except, 'Ещё'));
         if (this.picking && this.picking.wave === i) item.append(this.pickTarget);
         return item;
     }
@@ -387,7 +388,8 @@ export default class extends Controller {
             box.append(q);
         }
         const row = el('div', 'wave-ask-row');
-        const now = this.picking && this.picking.wave === i ? (this.picking.mode === 'except' ? 'except' : 'only') : null;
+        const now = this.picking && this.picking.wave === i ? (this.picking.mode === 'except' ? 'except' : 'only')
+            : w.kind === 'only' ? 'only' : w.kind === 'all' ? (w.except.length ? 'except' : 'all') : null;
         for (const [kind, label] of [['all', 'Всем'], ['except', 'Всем, кроме'], ['only', 'Выбранным']]) {
             const b = el('button', 'wave-ask-btn');
             b.type = 'button';
@@ -437,30 +439,53 @@ export default class extends Controller {
         return Number.isNaN(d.getTime()) ? null : d;
     }
 
-    chips(i, list, keys, lead, more) {
-        const row = el('div', 'wave-chips');
-        if (lead) {
-            const t = el('span', 'wave-lead');
-            t.textContent = lead;
-            row.append(t);
-        }
-        for (const k of keys) {
-            const chip = el('button', 'chip wave-chip');
-            chip.type = 'button';
-            chip.setAttribute('aria-label', `Убрать: ${this.name(k)}`);
-            chip.append(this.name(k) ?? '—', this.icon('x'));
-            chip.addEventListener('click', () => this.drop(i, list, k));
-            row.append(chip);
-        }
+    // Строки людей волны: аватарка (клон из строки списка выбора — там уже фото или инициалы), у группы — её значок и
+    // «группа, N человек», имя, ×; последней — «+ Ещё» / «+ Добавить», пока список не открыт.
+    people(i, list, keys, more) {
+        const rows = keys.map((k) => {
+            const row = el('div', 'wave-person');
+            row.append(this.face(k));
+            const name = el('span', 'wave-person-name');
+            const title = el('span', 'block truncate');
+            title.textContent = this.name(k) ?? '—';
+            name.append(title);
+            const group = k.startsWith('group:') && (this.optionsValue.groups || []).find((g) => `group:${g.id}` === k);
+            if (group) {
+                const sub = el('span', 'wave-person-sub');
+                sub.textContent = `группа, ${group.count} ${plural(group.count, ['человек', 'человека', 'человек'])}`;
+                name.append(sub);
+            }
+            const x = el('button', 'wave-x');
+            x.type = 'button';
+            x.setAttribute('aria-label', `Убрать: ${this.name(k)}`);
+            x.append(this.icon('x'));
+            x.addEventListener('click', () => this.drop(i, list, k));
+            row.append(name, x);
+            return row;
+        });
         const open = this.picking && this.picking.wave === i && this.picking.mode === list;
-        if (!open && !(this.asking === i)) {
+        if (!open && this.asking !== i) {
             const add = el('button', 'wave-more');
             add.type = 'button';
             add.append(this.icon('plus'), more);
             add.addEventListener('click', () => this.openPick(i, list));
-            row.append(add);
+            rows.push(add);
         }
-        return row;
+        return rows;
+    }
+
+    face(k) {
+        const source = this.pickTarget.querySelector(`[data-key="${k}"] .avatar, [data-key="${k}"] .row-icon`);
+        if (source) {
+            const face = source.cloneNode(true);
+            if (face.classList.contains('avatar')) Object.assign(face.style, { width: '28px', height: '28px', fontSize: '11px' });
+            return face;
+        }
+        // Нет в выборе (уже не менеджер) — кружок с первой буквой.
+        const face = el('span', 'avatar');
+        Object.assign(face.style, { width: '28px', height: '28px', fontSize: '11px' });
+        face.textContent = (this.name(k) ?? '·').slice(0, 1).toUpperCase();
+        return face;
     }
 
     // В шторке поиск прилипает под её заголовком: тот тоже липкий (`.sheet-bar`) и бывает в две строки.

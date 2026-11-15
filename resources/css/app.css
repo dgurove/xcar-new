@@ -784,7 +784,7 @@ html.kb-open { --home-gap: 0px; }
   /* Переоценка «Спросить»: срок и «Кому» публикации — только с галкой «Пока думает — опубликовать». */
   .reprice-publish:not(:has(input[name="show_all"]:checked)) .reprice-publish-fields { display: none; }
   .waves { @apply flex flex-col; }
-  .wave { @apply relative flex flex-col items-start gap-1.5 pb-4 pl-6; }
+  .wave { @apply relative flex flex-col items-start gap-1 pb-4 pl-6; }
   .wave > * { @apply max-w-full; }
   .wave::before { content: ""; @apply absolute left-[5px] top-4 -bottom-2.5 w-0.5 rounded-full bg-surface-3; }
   .wave-add::before { @apply top-0; }
@@ -805,19 +805,18 @@ html.kb-open { --home-gap: 0px; }
   .wave-ask-row { @apply grid w-full grid-cols-[1fr_1.3fr_1.3fr] gap-1.5; }
   .wave-ask-btn { @apply min-h-10 whitespace-nowrap rounded-(--radius-m) bg-surface-3 px-1 text-accent-text; }
   .wave-ask-btn[aria-pressed="true"] { @apply text-ink; background: color-mix(in oklab, var(--color-ink) 14%, var(--color-surface-3)); }
-  .wave-all { @apply mr-1 inline-flex min-h-8 items-center gap-0.5; }
-  .wave-all > svg { @apply text-ink-dim; }
-  .wave-chips { @apply flex flex-wrap items-center gap-1.5; }
-  .wave-lead { @apply text-sm text-ink-muted; }
-  .wave-chip { @apply min-h-8 max-w-full gap-1.5 rounded-full px-3 text-sm; }
-  .wave-chip > svg { @apply -mr-1 shrink-0 text-ink-dim; }
-  .wave-more { @apply inline-flex min-h-8 items-center gap-1 px-1.5 text-sm text-accent-text; }
-  .wave-chips > .wave-more:first-child { @apply px-0; }
-  .wave-ask + .wave-chips:empty { display: none; }
+  .wave-who { @apply inline-flex min-h-8 items-center gap-0.5; }
+  .wave-who > svg { @apply text-ink-dim; }
+  .wave-person { @apply flex min-h-9 w-full items-center gap-2.5; }
+  .wave-person > .row-icon { @apply size-7; }
+  .wave-person > .row-icon > svg { @apply size-4; }
+  .wave-person-name { @apply min-w-0 flex-1; }
+  .wave-person-sub { @apply block text-sm text-ink-muted; }
+  .wave-more { @apply inline-flex min-h-8 items-center gap-1 text-sm text-accent-text; }
   .wave-add-btn { @apply flex min-h-11 w-full items-center justify-center gap-1.5 rounded-(--radius-m) bg-surface-3 text-accent-text; }
   .wave-end .field-label { @apply text-base text-ink; }
   .wave .audience-pick { @apply w-full; }
-  @media (hover: hover) { .wave-x:hover, .wave-chip:hover, .wave-all:hover { @apply text-ink; } .wave-ask-btn:hover, .wave-add-btn:hover { @apply text-ink; } }
+  @media (hover: hover) { .wave-x:hover, .wave-who:hover { @apply text-ink; } .wave-ask-btn:hover, .wave-add-btn:hover { @apply text-ink; } }
   .audience-pick { @apply flex flex-col gap-2 rounded-(--radius-l) bg-surface-2 p-2; }
   .dark .audience-pick { background: var(--color-surface-3); }
   .audience-pick-head { @apply sticky top-0 z-[1] flex items-center gap-2 px-1 pt-1; }
