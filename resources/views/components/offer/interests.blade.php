@@ -14,13 +14,15 @@
             <div class="row">
                 <x-ui.avatar :user="$interest->user" :size="36"/>
                 <div class="min-w-0 flex-1">
-                    <span class="block truncate font-medium">{{ $interest->user->is($me) ? 'Вы' : $interest->user->name }}</span>
+                    {{-- Когда — справа в строке имени (16.11.2026, владелец: «тогда будет две строки, а не три»). --}}
+                    <span class="flex items-baseline gap-2"><span class="min-w-0 flex-1 truncate font-medium">{{ $interest->user->is($me) ? 'Вы' : $interest->user->name }}</span><span class="nums shrink-0 whitespace-nowrap text-sm text-ink-dim">{{ \App\Support\Ago::html($interest->created_at, true, words: false) }}</span></span>
+                    @if ($interest->user->manager || $interest->placer || $interest->state === InterestState::Closed)
                     <span class="row-sub">
                         @if ($interest->user->manager)<span>покупатель {{ $interest->user->manager->shortName() }}</span>@endif
                         @if ($interest->placer)<span>{{ $interest->placer->is($me) ? 'вы внесли' : 'внёс '.$interest->placer->shortName() }}</span>@endif
-                        <span class="nums whitespace-nowrap">{{ \App\Support\Ago::html($interest->created_at, true, words: false) }}</span>
                         @if ($interest->state === InterestState::Closed)<x-ui.state tone="closed">закрыт</x-ui.state>@endif
                     </span>
+                    @endif
                     @if ($interest->comment)<span class="mt-1 block text-sm">{{ $interest->comment }}</span>@endif
                     {{-- Без телефона и без «Мы связались» (16.11.2026, владелец: «кнопка не нужна», «номера телефонов тут не нужны»);
                          «Закрыть» — только у отмеченных раньше «связались». --}}

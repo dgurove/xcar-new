@@ -41,16 +41,14 @@
         @if ($buyer)
             @if ($ready || ! $editable)
                 <a href="{{ $isMe ? '/account/money/details' : '/buyers/'.$buyer->id }}" class="row">
-                    <x-ui.avatar :user="$buyer" :size="36"/>
-                    <span class="min-w-0 flex-1"><span class="block truncate">{{ $isMe ? ($garage ? 'Ваши данные' : 'Я сам') : ($buyer->party?->name ?: $buyer->name) }}</span>
+                    <span class="min-w-0 flex-1"><span class="block truncate">{{ $isMe ? ($garage ? 'Ваши данные' : 'Я сам') : (\App\Support\OrgName::short($buyer->party?->name) ?: $buyer->name) }}</span>
                         <span class="row-sub">@if ($ready)<span class="text-open">данные есть</span>@else<span class="text-urgent">нужны данные для {{ $for }}</span>@endif</span></span>
                     <x-ui.chevron/>
                 </a>
             @else
                 <div data-controller="sheet" class="contents">
                     <x-ui.sheet-row>
-                        <x-ui.avatar :user="$buyer" :size="36"/>
-                        <span class="min-w-0 flex-1"><span class="block truncate">{{ $isMe ? ($garage ? 'Ваши данные' : 'Я сам') : ($buyer->party?->name ?: $buyer->name) }}</span>
+                        <span class="min-w-0 flex-1"><span class="block truncate">{{ $isMe ? ($garage ? 'Ваши данные' : 'Я сам') : (\App\Support\OrgName::short($buyer->party?->name) ?: $buyer->name) }}</span>
                             <span class="row-sub text-urgent">{{ $gap ?? 'нужны данные для '.$for }}</span></span>
                         <x-ui.chevron/>
                     </x-ui.sheet-row>
