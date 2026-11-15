@@ -1672,6 +1672,16 @@ html.kb-open { --home-gap: 0px; }
     background: var(--color-urgent); color: #fff; font-weight: 600; font-size: 1.25rem; }
   .field-input.is-shaking { animation: vin-shake .4s ease-in-out 1; }
   .list .row { border-radius: 0; background: transparent; min-height: 3.5rem; padding: .625rem 1rem; gap: .75rem; }
+  /* Окно машины — шкала окна (16.11.2026, владелец: «в „Продаже“ шрифты неадекватно огромные, всё скачет»): строки списков ниже и
+     плотнее, как строки шага. */
+  .detail-card .list .row, .sale-card .list .row { min-height: 2.75rem; padding: .5rem .75rem; }
+  /* Строка «Продажи» (`x-deal.sale-row`): подпись серым слева, значение справа, красное — чего нет. */
+  .sale-row { width: 100%; text-align: left; }
+  .sale-row-label { min-width: 0; flex: 1 1 auto; color: var(--color-ink-muted); }
+  .sale-row-value { flex-shrink: 0; max-width: 65%; text-align: right; }
+  .signed-add.sale-row { cursor: pointer; }
+  /* Сумма к переводу поставщику — числом окна (17), не 26: была крупнее всего в окне. */
+  .pay-sum { font-size: var(--text-lg); font-weight: 600; }
   .list > * + * { position: relative; }
   /* Строка внутри двух обёрток `contents` (форма вокруг `x-people.pick` — «Выбрать покупателя» в ДКП) — тоже с линией. */
   .list > * + *::after, .list > * + .contents > .row:first-of-type::after, .list > * + .contents > .contents > .row:first-of-type::after { content: ''; position: absolute; top: 0; left: 1rem; right: 0; height: 1px; background: color-mix(in oklab, var(--color-line) 70%, transparent); pointer-events: none; z-index: 1; }
@@ -2743,14 +2753,14 @@ html.kb-open { --home-gap: 0px; }
   .steps-all:has(> .steps-all-check:checked) > .steps-all-close { display: inline; }
   .steps-all:has(> .steps-all-check:checked) > .steps-all-chevron { rotate: 180deg; }
 
-  /* Шаг «Переоценка» (`x-route.reprice-step`, 04.11.2026): откуда, цены было → стало и вложенная лента подпунктов — цена,
-     покупатель, ответ поставщику; сделано — лаймовая точка с галкой, сейчас — оранжевая, ждёт — серая. Люди — строкой с
-     аватаром, а не фразой (владелец: «тупо текстом — это не дизайн»). */
-  .reprice-from { display: flex; flex-wrap: wrap; align-items: center; gap: .25rem .75rem; margin-top: .125rem; font-size: var(--text-sm); color: var(--color-ink-muted); }
-  .reprice-prices { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: .25rem 1rem; align-items: baseline; margin-top: .75rem; padding: .625rem .875rem; border-radius: var(--radius-m); background: var(--color-surface-2); }
-  .reprice-prices > dt { font-size: var(--text-sm); color: var(--color-ink-muted); }
-  .reprice-prices > dd { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: baseline; gap: 0 .5rem; text-align: right; }
-  .reprice-prices > dd > s { font-size: var(--text-sm); color: var(--color-ink-dim); }
+  /* Шаг «Переоценка» (16.11.2026, вариант Б): фраза о цене 15, подписи и сделанное 13 серым, кнопки строкой. */
+  .reprice-line { margin-top: .125rem; }
+  .reprice-line > b { font-weight: 500; }
+  .reprice-line > s, .reprice-meta s { color: var(--color-ink-dim); }
+  .reprice-meta { display: flex; flex-wrap: wrap; align-items: baseline; gap: .125rem .75rem; margin-top: .125rem; font-size: var(--text-sm); color: var(--color-ink-muted); }
+  .reprice-letter { color: inherit; }
+  .reprice-done, .reprice-later { margin-top: .5rem; font-size: var(--text-sm); color: var(--color-ink-muted); }
+  .reprice-acts { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: .75rem; }
   /* Подшаги этапа — строками внутри шага, без своей второй полоски (05.11.2026, владелец: «какой сакральный смысл во второй
      полоске, которая всё сдвигает — в итоге нихера места не остаётся»): точка — в строке названия, всё под ним (кто, кнопки)
      — от левого края шага, во всю ширину дорожки. */

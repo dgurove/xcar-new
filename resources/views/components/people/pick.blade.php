@@ -48,11 +48,16 @@
     @else
         {{-- Строкой списка — действие («Выбрать покупателя», «Другой покупатель»): кто выбран, пишет строка над ней. Никого
              нет — лаймовым плюсом, как «Новый покупатель» в шторке (05.11.2026); выбран — тише, это уже не главное. --}}
+        @if ($label && $value === null)
+            {{-- С подписью — строкой «Продажи» «Покупатель — не выбран ›» (`x-deal.sale-row`, 16.11.2026). --}}
+            <x-deal.sale-row :label="$label" :value="$placeholder" tone="danger" class="w-full text-left" data-action="sheet#open"/>
+        @else
         <button type="button" class="row w-full text-left" data-action="sheet#open">
             @if ($value === null)<x-ui.row-icon name="plus" size="s" tone="accent"/>@endif
             <span @class(['min-w-0 flex-1', 'font-medium text-accent-text' => $value === null, 'text-sm text-ink-muted' => $value !== null])>{{ $placeholder }}</span>
             <x-ui.chevron/>
         </button>
+        @endif
     @endif
     @unless ($only)<input type="hidden" name="{{ $name }}" value="{{ old($name, $value) }}" data-people-pick-target="hidden">@endunless
     @if ($error && $variant === 'field')<p class="field-error">{{ $error }}</p>@endif

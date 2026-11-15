@@ -17,7 +17,7 @@
     // Вознаграждение правится, где его показывают «Деньги» сделки (`x-deal.money`) и по счёту ещё не платили.
     $rewardEditable = $deal && ! $dealLocked && ! $deal->isAuction() && (! $deal->isGarage() || ($deal->namesBuyer() && $deal->amount !== null));
 @endphp
-{{-- `reprice:open` — «Разобрать переоценку» из шага маршрута (`x-route.path`). --}}
+{{-- `reprice:open` — «Принять…» из шага «Переоценка» (`x-route.path`). --}}
 {{-- `sheet-only` — пока идёт сделка, переоценку показывает шаг пути «Переоценка» (`x-route.reprice-step`, 04.11.2026): здесь
      только шторка, которую открывает его «Разобрать». --}}
 <div {{ $attributes->class($sheetOnly ? 'contents' : 'proposal reprice') }} data-controller="sheet" data-action="reprice:open@window->sheet#open">

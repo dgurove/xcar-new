@@ -278,7 +278,7 @@ class DealController
             str_starts_with($sub, 'stage:') => substr($sub, 6),
             str_starts_with($sub, 'request:') => 'Отправить заявку поставщику',
             default => [
-                'reprice' => 'Разобрать переоценку', 'reprice-answer' => 'Ответить поставщику про переоценку',
+                'reprice' => 'Решить по переоценке', 'reprice-answer' => 'Ответить поставщику про переоценку',
                 'price-ask' => 'Менеджер не ответил про закупочную', 'letter' => 'Написать поставщику',
                 'bounced' => 'Письмо поставщику не дошло', 'consent' => 'Менеджер не ответил, берёт ли',
                 'gap:share' => 'Вписать нашу долю', 'gap:commission' => 'Назначить вознаграждение',

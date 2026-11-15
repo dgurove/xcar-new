@@ -47,7 +47,7 @@
     $sum = fn ($v) => $v === null ? 'уточним' : Money::rub((int) $v);
 @endphp
 @if ($kind)
-    <x-ui.card :title="$kind === 'owner' ? 'Оплата владельцу' : 'Оплата поставщику'" {{ $attributes }}>
+    <x-ui.card :title="$kind === 'owner' ? 'Оплата владельцу' : 'Оплата поставщику'" {{ $attributes->class('sale-card') }}>
         @if ($kind === 'we' || $kind === 'insurer')
             <x-slot:actions>
                 @php [$word, $tone] = $kind === 'we' ? $paidState : $insurerState; @endphp
@@ -62,7 +62,7 @@
                     @if ($plain)<span class="block break-words">{{ $to }}</span>@endif
                     @if ($scheme === DealScheme::Ros)<span class="block text-sm text-ink-muted">переводит Р.О.С.</span>@elseif ($plain && $basis && ! $contract?->supplier_purpose)<span class="block text-sm text-ink-muted">{{ $basis }}</span>@endif
                     @if ($amount !== null)
-                        <x-ui.copy-text class="nums mt-1 block w-fit text-2xl font-semibold {{ $diff !== 0 ? 'text-danger' : '' }}" :value="(string) $amount" done="Сумма в буфере">{{ Money::rub($amount) }}</x-ui.copy-text>
+                        <x-ui.copy-text class="nums mt-1 block w-fit pay-sum {{ $diff !== 0 ? 'text-danger' : '' }}" :value="(string) $amount" done="Сумма в буфере">{{ Money::rub($amount) }}</x-ui.copy-text>
                         @if ($diff !== 0)<span class="block text-sm text-danger">у нас {{ Money::rub($ours) }}, разница {{ Money::rub(abs($diff)) }}</span>@endif
                         @if ($deal->supplier_cost !== null && $deal->cost !== null && (int) $deal->cost !== (int) $amount)<span class="block text-sm text-ink-muted">у менеджера закупочная {{ Money::rub($deal->cost) }}</span>@endif
                     @endif
@@ -93,7 +93,7 @@
                 <div>
                     <span class="block">{{ $offer->vendor?->name ?? 'Страховая' }}</span>
                     <span class="block text-sm text-ink-muted">платит покупатель напрямую</span>
-                    <span class="nums mt-1 block text-2xl font-semibold">{{ $deal->isDirect() && $deal->owner_price === null ? 'уточним' : Money::rub((int) $deal->ownerPrice()) }}</span>
+                    <span class="nums mt-1 block pay-sum">{{ $deal->isDirect() && $deal->owner_price === null ? 'уточним' : Money::rub((int) $deal->ownerPrice()) }}</span>
                 </div>
                 @if ($bill)
                     <div class="list">
@@ -108,14 +108,14 @@
                 <div>
                     <span class="block break-words">{{ $scheme->payeeName($offer, $contract?->seller?->name) }}</span>
                     <span class="block text-sm text-ink-muted">платит покупатель по ДКП</span>
-                    <span class="nums mt-1 block text-2xl font-semibold">{{ $sum($deal->ownerPrice()) }}</span>
+                    <span class="nums mt-1 block pay-sum">{{ $sum($deal->ownerPrice()) }}</span>
                     @if ($deal->offset())<span class="block text-sm text-ink-muted">взаимозачёт со страховой −{{ Money::rub($deal->offset()) }}</span>@endif
                 </div>
             @else
                 <div>
                     <span class="block">{{ $offer->vendor?->name ?? 'Поставщик' }}</span>
                     <span class="block text-sm text-ink-muted">платит менеджер</span>
-                    <span class="nums mt-1 block text-2xl font-semibold">{{ $sum($deal->supplierCost()) }}</span>
+                    <span class="nums mt-1 block pay-sum">{{ $sum($deal->supplierCost()) }}</span>
                 </div>
             @endif
         </div>

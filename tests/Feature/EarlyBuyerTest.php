@@ -104,7 +104,8 @@ class EarlyBuyerTest extends TestCase
         $this->assertNotNull($deal->fresh()->buyer_asked_at);
         // Не дал — запрос страховой, как раньше, ведёт на «Нет реквизитов» у менеджера.
         $this->actingAs($this->admin)->get(\App\Support\Surface::Crm->url('/offers/'.$offer->number))->assertOk()
-            ->assertSee('Указать покупателя')->assertDontSee('Отправить реквизиты');
+            // Покупатель — строкой «Продажи» «Покупатель — не выбран» (16.11.2026), не делом шага.
+            ->assertSee('не выбран')->assertDontSee('Указать покупателя')->assertDontSee('Отправить реквизиты');
         $this->exit($offer, 'Поставщик просит реквизиты');
         $this->assertSame('Нет реквизитов', $offer->fresh()->stage()->name);
         $deal->fresh()->update(['state' => \App\Offers\DealState::Cancelled]);

@@ -37,7 +37,7 @@
     $withContract = ! $window && $deal->hasContract() && ! $deal->isAuction();
     $withBuyer = ! $withContract && $deal->isLive() && ($deal->collectsBuyer() || $deal->contract?->buyer_user_id) && (! $window || $deal->buyerGap() !== null);
 @endphp
-<x-ui.card title="Продажа" {{ $attributes }}>
+<x-ui.card title="Продажа" {{ $attributes->class('sale-card') }}>
     @php
         // Редкое со счетами — в «⋯» карточки (15.11.2026, владелец выбрал «счёт файлом, как документ»): «Оплатили без ссылки…»
         // (шторка оплаты ниже, событием `paid-{id}:open`; на шаге оплаты её несёт шаг), «Ещё счёт», страница счёта.
@@ -132,6 +132,8 @@
     @php ob_start(); @endphp
     @unless ($deal->isAuction())<x-deal.scheme :deal="$deal" bare :price="false"/>@endunless
     @if ($withContract)<x-deal.contract :deal="$deal" bare/>@elseif ($withBuyer)<x-deal.buyer :deal="$deal"/>@endif
+    {{-- Чего не хватает договору с нашей стороны — владелец, ПТС, сумма (16.11.2026: было делами в «Ходе сделки»). --}}
+    <x-deal.contract-gaps :deal="$deal" :price-row="$contractRow"/>
     @if ($contractRow)<x-deal.contract-price :deal="$deal" :contract="\App\Offers\DealContract::for($deal)->loadMissing('priceAuthor')"/>@endif
     {{-- Подписанный договор вне системы (15.11.2026) — строками той же группы. --}}
     @if (auth()->user()?->canEditDeals())<x-deal.signed-contract :deal="$deal" :base="'/work/deals/'.$deal->id" bare/>@endif

@@ -268,7 +268,7 @@ class Position extends Model
 
         // Переоценка — раньше «Разобрать ответ» (04.11.2026, владелец: острый вопрос — она, а не письмо).
         if ($this->repricePending()) {
-            return $todo('reprice', 'Разобрать переоценку', 0, $offer->pendingReprice->created_at, ['label' => 'Открыть', 'href' => '/offers/'.$offer->number]);
+            return $todo('reprice', 'Решить по переоценке', 0, $offer->pendingReprice->created_at, ['label' => 'Открыть', 'href' => '/offers/'.$offer->number]);
         }
 
         if ($answer = $this->repriceUnanswered()) {
@@ -302,8 +302,9 @@ class Position extends Model
         return $this->overdue_at !== null && $this->waitsFor() === WaitsFor::Manager && $this->stage->asksConsent();
     }
 
+    // `letter_by_hand` — «Без письма — сообщили сами» (`SkipLetter`): печатался в шаге строкой «letter_by_hand: 1» (16.11.2026).
     /** Служебные ключи позиции (письмо поставщику) — не поля этапа: на экране их нет. */
-    public const LETTER_KEYS = ['letter_id', 'letter_at', 'reply_at', 'letter_failed', 'letter_bounced'];
+    public const LETTER_KEYS = ['letter_id', 'letter_at', 'reply_at', 'letter_failed', 'letter_bounced', 'letter_by_hand'];
 
     /** Поля этапа, что вписали люди (адрес, дата вывоза…), — без служебных ключей. */
     public function fields(): array

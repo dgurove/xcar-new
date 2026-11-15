@@ -40,10 +40,11 @@
              с письмом, «Показать менеджеру» и «Не нужно». Показанное раньше — строкой дела под ней. --}}
         @if ($letters->isNotEmpty())
             <div class="contents" data-controller="sheet">
-                {{-- Логотип вместо имени поставщика (10.11.2026, владелец: «название нахер надо, логотип въебать и всё»). --}}
-                <x-route.task-row icon="mail" :vendor="$offer->vendor" urgent aria-controls="{{ $id }}">
-                    @php $what = $step && \App\Offers\SupplierInvoice::needs($deal, $step) ? 'Счёт' : 'Письмо'; @endphp
-                    {{ $letters->count() > 1 ? $letters->count().' '.\App\Support\Plural::of($letters->count(), ['письмо', 'письма', 'писем']).', последнее' : $what }} от <span class="nums whitespace-nowrap">{!! Ago::html($letters->first()->date_at, true, words: false) !!}</span>
+                {{-- Без логотипа и числа писем (16.11.2026, владелец: «зачем в ходе показано, сколько писем от страховой, и её логотип —
+                     очень странно выглядит»; поставщик — в шапке окна): что пришло и когда, нажатие — шторка разбора. --}}
+                <x-route.task-row icon="mail" urgent aria-controls="{{ $id }}">
+                    @php $what = $step && \App\Offers\SupplierInvoice::needs($deal, $step) ? 'Новый счёт поставщика' : 'Новое письмо поставщика'; @endphp
+                    {{ $what }} от <span class="nums whitespace-nowrap">{!! Ago::html($letters->first()->date_at, true, words: false) !!}</span>
                 </x-route.task-row>
                 @include('admin.deals.reply-review-sheet', $sheet + ['line' => true])
             </div>

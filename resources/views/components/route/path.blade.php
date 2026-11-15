@@ -230,16 +230,8 @@
                     <x-route.who :position="$position" :offer="$offer" :deal="$deal" :named="! $compact"/>
                     {{-- Письмо поставщика ждёт разбора — строкой в шаге, а не лаймовой плашкой над путём (10.11.2026). --}}
                     @if ($deal && $position->track === \App\Workflow\Track::Sale && auth()->user()?->canManageCrm())<x-deal.reply-review :deal="$deal" line/>@endif
-                    {{-- Покупателя менеджер должен дать с согласия (10.11.2026, `AskBuyer`): пока не дал — строкой дела, внести за него. --}}
-                    {{-- Слова — от того, чего правда нет (15.11.2026: покупатель выбран без данных, а строка говорила «не указал»).
-                         В окне строки нет, когда ниже стоит блок «Покупатель для договора» (`admin.offers.deal-cards`) — то же дело. --}}
-                    @php
-                        $buyerGap = $deal?->buyer_asked_at ? $deal->buyerGap() : null;
-                        $buyerBlock = $compact && $deal?->isLive() && ($deal->collectsBuyer() || $deal->contract?->buyer_user_id) && $buyerGap !== null;
-                    @endphp
-                    @if ($deal?->buyer_asked_at && ! $buyerBlock && $position->track === \App\Workflow\Track::Sale && auth()->user()?->canManageCrm())
-                        <x-route.task-row icon="user" urgent :href="'/offers/'.$offer->number.($deal->hasContract() ? '?dkp=1#dkp' : '?buyer=1#invoice-buyer')" data-turbo-frame="_top">{{ match ($buyerGap) { null, 'Покупатель не выбран' => 'Указать покупателя', 'Нет скана паспорта покупателя' => 'Приложить скан паспорта покупателя', 'Нет данных покупателя' => 'Заполнить данные покупателя', default => $buyerGap } }}</x-route.task-row>
-                    @endif
+                    {{-- Покупатель и чего не хватает договору — строками «Продажи» (`x-deal.buyer`, `x-deal.contract-gaps`), не делами шага
+                         (16.11.2026, владелец: «как будто мы эти данные от менеджера ждём»). --}}
                     {{-- Машину забирает менеджер, а контакт владельца ему не показан — строкой дела с шторкой «Показать менеджеру» (15.11.2026). --}}
                     @if ($deal?->isActive() && $position->track === \App\Workflow\Track::Sale && $deal->buyerPicksUp())
                         <x-deal.contact-shown :deal="$deal" as="task"/>
@@ -321,17 +313,6 @@
                     @endif
                     @if ($payProof && ($stage->isPayStep() || ($stage->waits_for === WaitsFor::Supplier && $stage->template_id && $position->letterStatus() !== 'sent')))
                         <a href="/work/deals/{{ $deal->id }}/payment-proof.pdf" target="_blank" class="mt-2 flex items-center gap-2 text-sm text-accent-text"><x-ui.file-icon name="Оплата.pdf" class="file-icon-s"/>Документ об оплате, PDF</a>
-                    @endif
-                    {{-- ДКП: что вписываем мы (продавец по СТС, документы ТС, цена) — прямо в шаге, «Заполнить» открывает карточку «ДКП»
-                         сразу полями (17.10.2026, владелец: «нет возможности указать данные продавца, всё встало» — поля жили за
-                         «Изменить» внизу дорожки «Сделка»). Покупателя вносит менеджер — его тут нет. --}}
-                    @if ($deal?->isActive() && $deal->hasContract() && auth()->user()?->canManageCrm()
-                        && ($ours = array_values(array_diff(\App\Offers\DealContract::for($deal)->missing(), ['покупатель', 'данные покупателя', 'скан паспорта покупателя']))))
-                        {{-- Каждое дело глаголом своей строкой (15.11.2026, владелец: «ДКП не готов: (Э)ПТС» рыжим списком — «непонятно, что хотят»):
-                             ПТС — к карточке «ПТС и СТС», остальное — шторкой «Данные договора». --}}
-                        @foreach ($ours as $gap)
-                            <x-route.task-row icon="file" urgent :href="'/offers/'.$offer->number.($gap === '(Э)ПТС' ? '#car-docs' : '?dkp=1#dkp')" data-turbo-frame="_top">{{ match ($gap) { '(Э)ПТС' => 'Внести ПТС для договора', 'данные продавца' => 'Заполнить данные продавца для договора', 'данные собственника' => 'Заполнить данные владельца для договора', 'цена' => 'Указать сумму договора', default => 'Договор: '.$gap } }}</x-route.task-row>
-                        @endforeach
                     @endif
                     @if ($position->fields())
                         <div class="mt-2 text-sm">@foreach ($position->fields() as $k => $v)<div><span class="text-ink-muted">{{ collect($stage->staff_fields)->firstWhere('key', $k)['label'] ?? $k }}:</span> {{ $v }}</div>@endforeach</div>

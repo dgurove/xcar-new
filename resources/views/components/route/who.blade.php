@@ -81,14 +81,22 @@
 @elseif ($side === 'us' && ! $trip && ! $position->carried() && ! $open)
     {{-- Наш ход — строки «[знак] XCar» нет (12.11.2026, владелец: «зачем сюда логотип икскара»): только часы под названием. --}}
     <div {{ $attributes->class('step-who step-who--bare') }}><x-ui.state :tone="$tone"><span>{!! $state !!}</span></x-ui.state></div>
+@elseif ($vendor)
+    {{-- Поставщик — без логотипа и имени (16.11.2026, владелец: «зачем в ходе логотип страховой, очень странно выглядит»): он в шапке
+         окна и страницы, здесь — только что с письмом; письмо открывается нажатием. --}}
+    <div {{ $attributes->class('step-who step-who--bare') }}>
+        @if ($open)
+            <button type="button" class="state state-{{ $tone }} underline decoration-dotted underline-offset-4" data-controller="emit" data-action="emit#send" data-emit-event-param="letters:open" data-emit-url-param="{{ $open }}"><span>{!! $state !!}</span></button>
+        @else
+            <x-ui.state :tone="$tone"><span>{!! $letter === 'unsent' ? 'наш ход: письмо поставщику' : $state !!}</span></x-ui.state>
+        @endif
+    </div>
 @elseif ($side)
     <div {{ $attributes->class('step-who') }}>
         @if ($manager && $named)
             <x-ui.avatar :user="$manager" :size="32"/>
         @elseif ($manager)
             <span class="step-who-icon"><x-ui.icon name="user" class="size-4"/></span>
-        @elseif ($vendor)
-            <span class="step-who-icon"><x-vendor.logo :vendor="$vendor" class="!size-6"/></span>
         @elseif ($driver)
             <x-ui.avatar :user="$driver" :size="32"/>
         @elseif ($side === 'us')

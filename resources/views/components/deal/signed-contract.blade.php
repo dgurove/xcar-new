@@ -21,10 +21,15 @@
         @if ($can)
             <form method="post" action="{{ $base }}/signed" enctype="multipart/form-data" class="contents signed-upload" data-controller="autosubmit">
                 @csrf
-                <label class="row signed-add">
+                <label @class(['row signed-add', 'sale-row' => $bare && $files->isEmpty()])>
                     <input type="file" name="files[]" multiple accept=".pdf,.jpg,.jpeg,.png,.webp,.heic,.heif,.doc,.docx" class="sr-only" data-action="change->autosubmit#submit">
-                    <x-ui.icon name="clip" class="size-5 shrink-0"/>
-                    <span class="min-w-0 flex-1">{{ $files->isEmpty() ? ($bare ? 'Приложить подписанный договор' : 'Приложить') : 'Приложить ещё' }}</span>
+                    {{-- Строкой «Продажи» «Подписанный договор — Приложить» (16.11.2026, `x-deal.sale-row`). --}}
+                    @if ($bare && $files->isEmpty())
+                        <span class="sale-row-label">Подписанный договор</span><span class="sale-row-value text-accent-text">Приложить</span>
+                    @else
+                        <x-ui.icon name="clip" class="size-5 shrink-0"/>
+                        <span class="min-w-0 flex-1">{{ $files->isEmpty() ? 'Приложить' : 'Приложить ещё' }}</span>
+                    @endif
                 </label>
             </form>
         @endif
