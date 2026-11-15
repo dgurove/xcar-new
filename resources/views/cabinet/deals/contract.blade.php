@@ -114,7 +114,12 @@
         @if ($part !== 'buyer')
             {{-- ДКП — документ, а не строка «Расчёта»: только готовый — открыть и распечатать (15.11.2026, владелец: «ЗАЧЕМ мы
                  показываем договор, если он НЕ ГОТОВ»; прежде — «ДКП готовим: (Э)ПТС»). --}}
-            @if (! $missing)
+            @if (! $missing && $labels)
+                {{-- В «Договоре и счёте» — файлом PDF со «Скачать» (16.11.2026, владелец: «чтобы поняли, что это файл»). --}}
+                <x-ui.file :name="'Договор купли-продажи'.($doc->number() ? ' № '.$doc->number() : '')" mime="application/pdf" :href="'/deals/'.$deal->id.'/dkp.pdf'" download class="row"/>
+            @elseif ($labels)
+                <div class="row sale-row"><span class="sale-row-label">Договор</span><span class="sale-row-value text-ink-muted">{{ $ready ? 'готовим' : 'ждём данные' }}</span></div>
+            @elseif (! $missing)
                 <x-ui.doc :doc="$pdf" class="row sale-row">
                     <span class="sale-row-label text-ink">{{ $prime ? 'ДКП '.$deal->seller()->short() : 'ДКП' }}{{ $doc->number() ? ' № '.$doc->number() : '' }}</span>
                     <span class="sale-row-value text-open">готов</span>

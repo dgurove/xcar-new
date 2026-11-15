@@ -44,14 +44,16 @@
                  (05.11.2026); готов — на прежнем месте под ним. --}}
             {{-- С согласия — и у «страховой напрямую» (10.11.2026, `Deal::needsBuyer`); на шаге «Нет реквизитов» покупатель в задаче. --}}
             @php $buyerHere = ($deal->hasContract() || $deal->buyerAhead()) && $requirement?->asks !== \App\Workflow\Asks::Buyer; @endphp
-            {{-- «Договор» сразу под шагом (16.11.2026, владелец выбрал вариант А: «не замечают, где этот блок»): покупатель, готовый ДКП
-                 и «Подписанный договор» одной карточкой — приложение договора жило внизу правой колонки под заметкой. --}}
+            {{-- «Договор и счёт» сразу под шагом (16.11.2026, владелец выбрал вариант А: «не замечают, где этот блок»): покупатель, наш
+                 договор и счёт файлами; «Договор уже подписан?» — своей карточкой следом. --}}
             @php
                 $withBuyer = $buyerHere && ! $contractStep && ! $needsBuyer && ! $tooEarly && ($deal->isLive() || $deal->contract?->buyer_user_id);
                 $signStep = $deal->openRequirement?->asks === \App\Workflow\Asks::Document && $deal->openRequirement?->stage?->aboutContract();
                 $withSigned = ! $signStep && \App\Offers\Actions\AttachSignedContract::allows($deal) || $deal->getMedia('signed_contract')->isNotEmpty();
             @endphp
-            @if ($withBuyer || $withSigned)<div class="order-1 min-w-0">@include('cabinet.deals.buyer-block', ['withBuyer' => $withBuyer, 'withSigned' => $withSigned && ! $signStep])</div>@endif
+            @if ($withBuyer)<div class="order-1 min-w-0">@include('cabinet.deals.buyer-block', ['withBuyer' => $withBuyer])</div>@endif
+            {{-- Подписанный без нас — своей карточкой-вопросом, отдельно от нашего договора (16.11.2026). --}}
+            @if ($withSigned && ! $signStep)<x-deal.signed-contract :deal="$deal" :base="'/deals/'.$deal->id" ask class="order-1"/>@endif
             @if ($deal->buyer_asked_at && $deal->isLive())<x-deal.buyer-ask-sheet :deal="$deal"/>@endif
             @include('cabinet.deals.path', ['class' => 'order-5'])
 

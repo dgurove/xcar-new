@@ -20,16 +20,20 @@ final class InternalRefs
         $refs = array_values(array_unique(array_filter(array_map(fn ($r) => trim((string) $r), $refs), fn ($r) => mb_strlen($r) >= 4)));
         foreach ($refs as $ref) {
             // Только целым словом: номер «12345» внутри телефона «9161234567» — не он (раньше вырезался и портил телефон).
-            $text = (string) preg_replace('/(?<![\p{L}\p{N}])(?:ДЛ\s*)?'.preg_quote($ref, '/').'(?![\p{L}\p{N}])/iu', '', $text);
+            $text = (string) preg_replace('/(?<![\p{L}\p{N}])(?:ДЛ\s*)?'.preg_quote($ref, '/').'(?![\p{L}\p{N}])/iu', "\0", $text);
         }
         // Слово с разделителями «/», «-», «№» или длинное число — номер, если подходит под форму убытка целиком или это
         // номер машины в другой записи («8991-046-00754-25» в имени файла при «8991/046/00754/25» в карточке).
         $keys = array_filter(array_map(fn ($r) => Code::key($r), $refs));
         $text = (string) preg_replace_callback('/(?<![\p{L}\p{N}])(?:[\p{L}\p{N}]+(?:[\/\-№][\p{L}\p{N}]+)+|\p{N}{8,})(?![\p{L}\p{N}])/u',
-            fn ($m) => CodeMatcher::patternOf((string) Code::normalize($m[0])) || in_array(Code::key($m[0]), $keys, true) ? '' : $m[0], $text);
+            fn ($m) => CodeMatcher::patternOf((string) Code::normalize($m[0])) || in_array(Code::key($m[0]), $keys, true) ? "\0" : $m[0], $text);
 
-        // Хвосты от вырезанного: «№» без номера, двойные пробелы, пробел перед знаком препинания, пустые скобки.
-        return trim((string) preg_replace(['/№[ \t]*(?=[\s,.;:)_]|$)/mu', '/\([ \t]*\)/u', '/[ \t]{2,}/u', '/[ \t]+([,.;:)])/u'], ['', '', ' ', '$1'], $text));
+        // Хвосты от вырезанного (вырезанное помечено «\0»): «№» перед ним (16.11.2026: прежнее правило «№ без цифры» откатом
+        // съедало «№» и в «Счёт № 170», и в «№ ПР-4/2026»), «№» в конце или перед знаком, двойные пробелы, пробел перед знаком
+        // препинания, пустые скобки.
+        $text = (string) preg_replace('/(?:№[ \t]*)?\x00/u', '', $text);
+
+        return trim((string) preg_replace(['/№[ \t]*+(?=[,.;:)_]|$)/mu', '/\([ \t]*\)/u', '/[ \t]{2,}/u', '/[ \t]+([,.;:)])/u'], ['', '', ' ', '$1'], $text));
     }
 
     /** Имя файла: «473697-26.pdf» — не «.pdf», а «Документ.pdf». */

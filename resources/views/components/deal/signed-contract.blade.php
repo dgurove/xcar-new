@@ -4,12 +4,27 @@
      подписан» (`AttachSignedContract`). base — адрес сделки на этой поверхности (`/deals/5`, `/work/deals/5`); bare — строки без
      своей группы и заголовка (внутри группы «Деньги» CRM), файл подписан «подписанный договор»; card — карточкой, как «Договор»
      окна модератора. --}}
-@props(['deal', 'base', 'bare' => false, 'card' => false, 'label' => 'Подписанный договор'])
+@props(['deal', 'base', 'bare' => false, 'card' => false, 'label' => 'Подписанный договор', 'ask' => false])
 @php
     $files = $deal->getMedia('signed_contract');
     $can = \App\Offers\Actions\AttachSignedContract::allows($deal);
 @endphp
-@if ($files->isNotEmpty() || $can)
+@if ($ask && $files->isEmpty() && $can)
+    {{-- Менеджеру на сайте — вопросом своей карточкой (16.11.2026, владелец: «договор и счёт сформируем мы по данным
+         покупателя, а если уже подписали — можно приложить, разделить эти понятия, а то будут просить скинуть договор»). --}}
+    <section {{ $attributes->class(['list deal-form min-w-0']) }}>
+        <form method="post" action="{{ $base }}/signed" enctype="multipart/form-data" class="contents signed-upload" data-controller="autosubmit">
+            @csrf
+            <label class="row sale-row signed-add">
+                <input type="file" name="files[]" multiple accept=".pdf,.jpg,.jpeg,.png,.webp,.heic,.heif,.doc,.docx" class="sr-only" data-action="change->autosubmit#submit">
+                <span class="sale-row-label"><span class="block">Договор уже подписан?</span><span class="block text-sm text-ink-muted">Приложите скан, если подписали без нас</span></span>
+                <span class="sale-row-value text-accent-text">Приложить</span><x-ui.icon name="clip" class="size-5 shrink-0 text-ink-dim"/>
+            </label>
+        </form>
+        @error('files')<p class="field-error">{{ $message }}</p>@enderror
+        @error('files.*')<p class="field-error">{{ $message }}</p>@enderror
+    </section>
+@elseif ($files->isNotEmpty() || $can)
     @php ob_start(); @endphp
         @foreach ($files as $media)
             <x-ui.file :name="\App\Media\DocName::of($media)" :mime="$media->mime_type" :bytes="$media->size" href="/files/{{ $media->id }}" class="row" :refs="[$deal->offer?->claim_ref]" :size="$bare ? 'подписанный договор' : null">
@@ -37,7 +52,7 @@
     @php $rows = ob_get_clean(); @endphp
     @if ($bare)
         {!! $rows !!}
-    @elseif ($card)
+    @elseif ($card || $ask)
         <x-ui.card title="Подписанный договор" {{ $attributes }}>
             <div class="list">{!! $rows !!}</div>
         </x-ui.card>
