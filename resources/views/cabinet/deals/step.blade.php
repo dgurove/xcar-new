@@ -223,10 +223,14 @@
                 {{-- Счёт, который ждёт оплаты, — платежом (15.11.2026, тот же кусок, что в «Платежах»): кому, за что, сумма, файл и
                      «Оплатить»; ссылка на оплату — в шторке по кнопке. Ждёт подтверждения — словом в платеже. --}}
                 <div class="mt-5 flex flex-col gap-3">
-                    @php $payable = $unpaid->reject(fn ($i) => $i->kind === \App\Billing\ChargeKind::Reward); @endphp
+                    @php
+                        $payable = $unpaid->reject(fn ($i) => $i->kind === \App\Billing\ChargeKind::Reward);
+                        // Кому — юрлицом счёта («ООО «ПРАЙМ»», 16.11.2026); два счёта одного юрлица — различаем, за что.
+                        $sameSeller = $payable->pluck('seller')->unique()->count() < $payable->count();
+                    @endphp
                     @foreach ($payable as $i)
                         @include('cabinet.deals.payment', [
-                            'title' => $payable->count() > 1 ? ($i->kind === \App\Billing\ChargeKind::Selection ? 'Подбор' : 'Автомобиль') : null,
+                            'title' => $payable->count() > 1 ? ($sameSeller ? ($i->kind === \App\Billing\ChargeKind::Selection ? 'Подбор' : 'Автомобиль') : $i->seller->config()['name']) : null,
                             'nested' => true,
                             'amount' => \App\Support\Money::rub($i->remaining()),
                             'state' => null,
@@ -250,7 +254,7 @@
             @if ($direct && $selectionPay)
                 {{-- Наш подбор — своей группой под платежом поставщику, вторичной кнопкой. --}}
                 {{-- Здесь главное — платёж поставщику выше, наш подбор — вторичной кнопкой. --}}
-                <div class="mt-6">@include('cabinet.deals.payment', ['title' => 'Подбор', 'nested' => true, 'amount' => \App\Support\Money::rub($selectionPay->remaining()), 'state' => null, 'invoice' => $selectionPay, 'pay' => true])</div>
+                <div class="mt-6">@include('cabinet.deals.payment', ['title' => $selectionPay->seller->config()['name'], 'nested' => true, 'amount' => \App\Support\Money::rub($selectionPay->remaining()), 'state' => null, 'invoice' => $selectionPay, 'pay' => true])</div>
             @endif
             @endif
             {{-- В чек-листе договора с получением строка стоит под «Заберите автомобиль». --}}

@@ -219,7 +219,7 @@ class Deal extends Model implements HasMedia
             }
             $pays = $req->stage && $this->paysSupplierOn($req->stage) && ($label = $this->schemeOf()->payLabel());
 
-            // Заголовок шага — «Оплатить страховой»; дело — просьбой, как остальные: «Оплатите страховой 890 000 ₽».
+            // Заголовок шага — «Оплатить поставщику»; дело — просьбой, как остальные: «Оплатите поставщику 890 000 ₽».
             $label = $pays ? preg_replace('/^Оплатить/u', 'Оплатите', $label) : null;
 
             return ['title' => $pays ? trim($label.' '.($this->supplierPayment() ? Money::rub($this->supplierPayment()) : '')) : $req->title,
