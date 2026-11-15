@@ -150,7 +150,7 @@ export function openSheet(d, { history: withHistory = true } = {}) {
         d.addEventListener('cancel', (e) => { e.preventDefault(); dismiss(d); });
     }
     // «Назад» закрывает шторку, а не страницу (overlays.js); набранное — с вопросом.
-    if (withHistory && d.id) overlays.open(`sheet:${d.id}`, { close: () => closeSheet(d, 0, true), guard: () => dirty(d) && leave(d) });
+    if (withHistory && d.id) overlays.open(`sheet:${d.id}`, { close: () => closeSheet(d, 0, true), guard: () => dirty(d) && leave(d), alive: () => d.isConnected && d.open });
 }
 
 // Возвращает обещание: история приведена в порядок (запись шторки снята).

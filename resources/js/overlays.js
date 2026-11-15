@@ -18,6 +18,12 @@ let page = 0;     // страница, которой принадлежат з�
 let mine = [];    // свои шаги history.go(), чьи popstate ещё не пришли: их пропускаем молча
 let settled = []; // ждут, когда свои шаги дошли
 let seq = 0;
+// Свои шаги назад, чей popstate так и не пришёл за полсекунды (15.11.2026, начальник: «жму „Написать письмо“ — открывается
+// „Отдано“, письма не уходят»). Safari откладывает history.go() без жеста до следующего касания: шторка «Принять» закрылась
+// шагом назад, тем временем само открылось окно письма своей записью — и касание по нему доводило старый шаг, снимало
+// запись окна и закрывало его. Такой опоздавший шаг не «Назад» человека: записи открытых после него слоёв возвращаются.
+let stray = 0;
+let strayAt = 0;
 const flush = () => { if (mine.length) return; const done = settled; settled = []; done.forEach((fn) => fn()); };
 
 const mark = (depth, id) => ({ ...(history.state || {}), overlay: { page, depth, id } });
@@ -39,6 +45,15 @@ addEventListener('popstate', (event) => {
         return;
     }
     const here = own(event.state);
+    if (stray && performance.now() - strayAt > 60000) stray = 0;
+    if (stray) {
+        stray--;
+        if (stack.length > here) {
+            event.stopImmediatePropagation();
+            for (let depth = here + 1; depth <= stack.length; depth++) history.pushState(mark(depth, stack[depth - 1].id), '');
+            return;
+        }
+    }
     if (stack.length > here) {
         event.stopImmediatePropagation();
         const top = stack[stack.length - 1];
@@ -89,6 +104,8 @@ function go(delta) {
     setTimeout(() => {
         if (!mine.includes(step)) return;
         mine = mine.filter((s) => s !== step);
+        stray++;
+        strayAt = performance.now();
         flush();
     }, 500);
 }
@@ -100,13 +117,19 @@ document.addEventListener('turbo:visit', (e) => {
     const same = e.detail.action === 'replace' && new URL(e.detail.url, location.href).pathname === location.pathname;
     if (same) return;
     stack.length = 0;
+    stray = 0;
     page++;
 });
 
-export function open(id, { close, guard } = {}) {
+// alive() — слой ещё на экране. Шторку, закрытую мимо shut (ответ формы заменил карточку вместе с ней — «Принять» в окне
+// машины), стек иначе держал бы под новыми слоями, и её запоздалое закрытие снимало бы всё, что выше, — окно письма
+// (15.11.2026). Перед новым слоем такие выбрасываются, а запись верхней из них в истории отдаётся новому слою.
+export function open(id, { close, guard, alive } = {}) {
+    for (let i = stack.length - 1; i >= 0; i--) if (stack[i].alive && !stack[i].alive()) stack.splice(i, 1);
     if (stack.some((o) => o.id === id)) return;
-    stack.push({ id, close: close ?? (() => {}), guard });
-    history.pushState(mark(stack.length, id), '');
+    stack.push({ id, close: close ?? (() => {}), guard, alive });
+    if (own(history.state) >= stack.length) replace(mark(stack.length, id), '');
+    else history.pushState(mark(stack.length, id), '');
 }
 
 export function shut(id) {

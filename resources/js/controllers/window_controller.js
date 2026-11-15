@@ -17,7 +17,22 @@ export default class extends Controller {
     connect() {
         this.dirty = false;
         this.onEnd = (e) => { if (this.reloadValue && e.detail?.success && this.element.contains(e.target)) this.dirty = true; };
-        this.onClose = () => { if (this.dirty) { this.dirty = false; Turbo.visit(location.href, { action: 'replace' }); } };
+        // Окно закрылось — `letters:closed`: сделано ли в нём дело (письмо ушло, «Без письма» — поток letters-close) и что в
+        // нём было. Письмо шага не ушло и окно закрыл не человек крестиком или «Отменой» — отчёт (15.11.2026, начальник:
+        // «жму „Написать письмо“ — открывается „Отдано“», письма неделю не уходили, причину на сервере не видно).
+        this.onClose = () => {
+            const url = this.frameTarget.getAttribute('src') || '';
+            const handled = !!this.handled, byUser = !!this.byUser;
+            this.handled = this.byUser = false;
+            window.dispatchEvent(new CustomEvent('letters:closed', { detail: { handled, url } }));
+            if (!handled && !byUser && /\/letter-ask|\/work\/mail\/new/.test(url)) {
+                const token = document.querySelector('meta[name="csrf-token"]')?.content;
+                navigator.sendBeacon?.('/client/failed', new Blob([JSON.stringify({ _token: token, kind: 'letter-closed', url: url.slice(0, 500), frame: 'letters-frame' })], { type: 'application/json' }));
+            }
+            if (this.dirty) { this.dirty = false; Turbo.visit(location.href, { action: 'replace' }); }
+        };
+        // Закрыл человек: «×», «Отмена» окна или редактора, Esc.
+        this.onUser = (e) => { if (e.type === 'cancel' || e.target.closest?.('.sheet-close, .compose-cancel, [data-action~="window#close"]')) this.byUser = true; };
         this.onLoad = (e) => { if (e.target === this.frameTarget) this.tools(); };
         // Окно не загрузилось (нет связи) — словами и «Повторить», а не вечная заготовка.
         this.onError = (e) => {
@@ -36,6 +51,8 @@ export default class extends Controller {
         document.addEventListener('turbo:frame-load', this.onLoad);
         document.addEventListener('turbo:fetch-request-error', this.onError);
         this.element.querySelector('dialog')?.addEventListener('close', this.onClose);
+        this.element.querySelector('dialog')?.addEventListener('click', this.onUser, true);
+        this.element.querySelector('dialog')?.addEventListener('cancel', this.onUser, true);
         this.ready = true;
         if (this.urlValue) this.load(this.urlValue);
     }
@@ -77,6 +94,7 @@ export default class extends Controller {
     // уже ушла, карточка уже следующая.
     close() {
         this.dirty = false;
+        this.handled = true;
         const d = this.element.querySelector('dialog');
         if (d?.open) this.sheet?.close();
     }

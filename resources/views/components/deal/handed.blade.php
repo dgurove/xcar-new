@@ -8,6 +8,11 @@
     <div class="contents" data-controller="sheet handed" @if ($h['wait'] ?? false) data-handed-wait-value="true" @endif>
         <x-ui.sheet id="handed" :title="'Отдано: '.$h['name']">
             <div class="flex flex-col gap-4">
+                {{-- Окно письма закрылось, письмо не ушло (`handed_controller`). --}}
+                <div class="flex flex-col gap-2" data-handed-target="letter" hidden>
+                    <p class="doc-alert !mb-0">Письмо поставщику не ушло</p>
+                    <button type="button" class="btn btn-accent w-full" data-action="handed#letter"><x-ui.icon name="send" class="size-4"/>Написать письмо</button>
+                </div>
                 <div class="list">
                     <div class="row"><span class="shrink-0 text-ink-muted">ТС</span><span class="min-w-0 flex-1 break-words text-right">{{ $h['title'] }}</span></div>
                     <div class="row"><span class="shrink-0 text-ink-muted">Ссылка</span><span class="min-w-0 flex-1 break-all text-right">{{ preg_replace('#^https?://#', '', $h['url']) }}</span></div>
