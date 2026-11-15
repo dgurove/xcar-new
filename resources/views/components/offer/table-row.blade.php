@@ -48,6 +48,45 @@
     $system = ! $who && ($byTab ? (bool) $offer->tab_at?->gte('2026-10-18') : (bool) $offer->created_via);
     $late = $checkable && $draft && $offer->insurer_deadline_at && $offer->insurer_deadline_at->copy()->endOfDay()->lt($offer->slot_at ?? \App\Offers\Slots::nearest());
 @endphp
+{{-- Правый край строки. На ПК — ячейка цены (и закупочной у «Без закупочной»), на телефоне — концы двух строк ячейки названия
+     (15.11.2026, владелец: «зачем обрезается, если до „вчера“ ещё куча места»): столбец справа был шириной в самую длинную цену
+     и резал название над коротким «вчера»; теперь каждая строка сама решает, сколько места у текста. Наверху — дата (или срок
+     обязывающего), «переоценка» и цена; внизу — «в минус», подтверждения или закупочная. Цена считается один раз (`$main`). --}}
+@php
+    $rate = $rate && ! ($has('state') && request()->query('preset') === 'all');
+    $endCol = $floorSide ? 'floor' : ($table->has('price') ? 'price' : null);
+    ob_start();
+@endphp
+        @if ($busy && $rate)
+
+        @elseif ($rate)<x-offer.rate-chip :offer="$offer" :chip="false"/>
+        @elseif ($unpriced)
+        {{-- Корректировка («Оцененные», 11.10.2026): своя цена менеджера — «620 000 → пилюля», как «закупочная → продажи»;
+             согласились — галочка с числом у цены; ждём — аватары и срок под ценой вместо закупочной. --}}
+        @elseif ($price->shown() && $correcting)
+            @if ($proposes)<span class="text-ink-muted">{{ $price::money($price->to) }}&nbsp;→</span> <x-offer.correction-chip :offer="$offer" part="proposal"/>@else{{ $price::money($price->to) }} <x-offer.correction-chip :offer="$offer" part="agreed"/>@endif
+            @if ($waits)<span class="mt-1 flex justify-end sm:mt-0 sm:ml-1.5 sm:inline-flex"><x-offer.correction-chip :offer="$offer" part="waiting"/></span>@endif
+        @elseif ($price->shown()){{ $price::money($price->to) }}
+        @elseif ($gallery)<span class="text-accent-text">Скоро</span>@endif
+@php
+    $main = ob_get_clean();
+    ob_start();
+@endphp
+@if ($endCol === 'price')<x-offer.row-meta :offer="$offer" :when="$when" :binding="! $has('binding')"/>@if ($admin && $offer->reprice_pending)<span class="text-sm text-urgent">переоценка</span>@endif{!! $main !!}@elseif ($endCol === 'floor')<x-offer.row-meta :offer="$offer" :when="$when" :binding="! $has('binding')"/>@endif
+@php
+    $endTop = ob_get_clean();
+    // В строке названия копия лежит внутри ссылки строки — ссылок в ссылке не бывает (чипы оценок и корректировок ведут на ту же
+    // строку): у копии они просто метки, нажатие по строке и так открывает окно.
+    $endTopLine = preg_replace(['/<a\s[^>]*?class="/', '/<\/a>/'], ['<span class="', '</span>'], $endTop);
+    ob_start();
+@endphp
+@if ($endCol === 'price')
+    @if ($admin && ! $busy && ($margin = $offer->marginMark()))<x-offer.margin :m="$margin"/>@endif
+    @if ($count)<span class="nums {{ $gallery ? 'text-accent-text' : 'text-urgent' }}">{{ $countWord }}</span>
+    @elseif ($offer->floor_price && $has('floor') && ! ($correcting && $waits))<span @class(['cell-main' => $unpriced]) @if ($busy) data-arrive-count @endif>{{ \App\Support\Money::nums($offer->floor_price) }}</span>@endif
+@elseif ($endCol === 'floor' && $offer->floor_price)<span class="cell-main" @if ($busy) data-arrive-count @endif>{{ \App\Support\Money::nums($offer->floor_price) }}</span>
+@endif
+@php $endBottom = trim(ob_get_clean()); @endphp
 <tr data-detail-key="{{ $n }}" data-search-row id="{{ ($gallery ? 'gallery-' : 'admin-offer-') }}{{ $n }}" data-offer-number="{{ $n }}" @if ($todo) data-todo @endif @if ($offer->claim_ref_key) data-flip="c:{{ $offer->claim_ref_key }}" @endif @if ($arrive) data-controller="arrive" data-arrive-state-value="{{ $arriving }}" data-arrive-subject-value="o:{{ $offer->id }}" @endif @class(['arrive arrive--offer' => $arrive, 'arrive--'.$arriving => $busy, 'arrive--busy' => $busy])>
     {{-- Ячейки — в порядке и с классами описания (`OfferController::table`): шапка и группы сходятся с ними всегда. --}}
     @foreach ($table->columns as $key => $col)
@@ -60,13 +99,14 @@
         @if ($busy && ! $offer->brand_id)
         <x-ui.row-link :key="$n"><span class="cell-title"><span class="skeleton arrive-bar w-40 max-w-full"></span></span></x-ui.row-link>
         @else
-        <x-ui.row-link :key="$n"><span class="cell-title"><x-ui.cat-icon :category="$offer->category()"/><span class="cell-name arrive-late">{{ $offer->title() }}@if ($year = $offer->carRecord()->year)<span class="cell-year"> {{ $year }}</span>@endif</span>@if ($offer->recommended)<x-offer.recommended/>@endif{{ "" }}@if ($offer->isUrgent())<x-offer.urgent/>@endif{{ "" }}@if ($offer->auctionPlanned())<x-offer.auction/>@endif{{ "" }}@if ($admin && $offer->proposed())<span class="ml-1.5 inline-flex shrink-0 text-accent-text" title="Предложено из заявок на приём" aria-label="Предложено из заявок на приём"><x-ui.spark class="size-4"/></span>@endif{{ "" }}@if ($admin && $offer->awaitingPark())<x-offer.awaiting/>@endif<x-car.keys :count="$offer->keys_count"/><x-ui.links :offer="$offer"/>@if ($noVin && ! $has('manager'))<s class="ml-1.5 shrink-0 text-sm text-ink-dim" title="VIN нет">VIN</s>@endif{{ "" }}@if ($offer->intake_closed_at && $offer->state === \App\Offers\OfferState::Draft && request()->query('preset') !== 'done' && ! $has('state'))<span class="ml-1.5 shrink-0 text-sm text-urgent">приём закрыт</span>@endif{{ "" }}@if ($offer->partner_price_at)<span class="ml-1.5 shrink-0 text-sm text-ink-muted" title="Поставщик вписал цену, но ещё не отправил — может поправить">у поставщика</span>@endif{{ "" }}@unless ($has('binding'))<x-offer.binding :offer="$offer" icon class="max-sm:hidden"/>@endunless</span></x-ui.row-link>
+        <x-ui.row-link :key="$n"><span class="cell-title"><x-ui.cat-icon :category="$offer->category()"/><span class="cell-name arrive-late">{{ $offer->title() }}@if ($year = $offer->carRecord()->year)<span class="cell-year"> {{ $year }}</span>@endif</span>@if ($offer->recommended)<x-offer.recommended/>@endif{{ "" }}@if ($offer->isUrgent())<x-offer.urgent/>@endif{{ "" }}@if ($offer->auctionPlanned())<x-offer.auction/>@endif{{ "" }}@if ($admin && $offer->proposed())<span class="ml-1.5 inline-flex shrink-0 text-accent-text" title="Предложено из заявок на приём" aria-label="Предложено из заявок на приём"><x-ui.spark class="size-4"/></span>@endif{{ "" }}@if ($admin && $offer->awaitingPark())<x-offer.awaiting/>@endif<x-car.keys :count="$offer->keys_count"/><x-ui.links :offer="$offer"/>@if ($noVin && ! $has('manager'))<s class="ml-1.5 shrink-0 text-sm text-ink-dim" title="VIN нет">VIN</s>@endif{{ "" }}@if ($offer->intake_closed_at && $offer->state === \App\Offers\OfferState::Draft && request()->query('preset') !== 'done' && ! $has('state'))<span class="ml-1.5 shrink-0 text-sm text-urgent">приём закрыт</span>@endif{{ "" }}@if ($offer->partner_price_at)<span class="ml-1.5 shrink-0 text-sm text-ink-muted" title="Поставщик вписал цену, но ещё не отправил — может поправить">у поставщика</span>@endif{{ "" }}@unless ($has('binding'))<x-offer.binding :offer="$offer" icon class="max-sm:hidden"/>@endunless{{ "" }}@if ($endCol)<span class="line-end sm:hidden">{!! $endTopLine !!}</span>@endif</span></x-ui.row-link>
         @endif
         {{-- Телефон: строка переносится, а не режется «…» (владелец 04.10.2026: «поля не должны исчезать»); город, даты и
              прочие столбцы — в «Подробной таблице». --}}
         <span class="cell-sub cell-sub--wrap" data-controller="fitline">
             {{-- Номера — одним неразрывным куском: не влезают — строка ужимается (fitline), а не переносится. --}}
             <span class="fit-core sm:hidden @if ($busy) arrive-type @endif"><x-vendor.ref :vendor="$vendor" :ref="$offer->claim_ref"/></span>
+            @if ($endCol && $endBottom !== '')<span class="line-end sm:hidden">{!! $endBottom !!}</span><span class="line-break sm:hidden"></span>@endif
             @if ($busy)<x-offer.arrive-line :arrive="$arrive"/>@endif
             @if ($mixed || $line)<span class="sub-phrase sm:hidden {{ $tone }}">{{ $stateWord }}@if ($line?->who)<span class="text-ink-muted">, {{ $line->who }}</span>@endif</span>
             @elseif ($timer)<span class="nums sm:hidden {{ $offer->isEndingSoon() ? 'text-urgent' : 'text-accent-text' }}" data-controller="timer" data-timer-until-value="{{ $offer->bids_close_at->toIso8601String() }}" data-timer-done-value="приём закрыт" data-timer-coarse-value="true" data-timer-word-value="">{{ \App\Support\Ago::left($offer->bids_close_at, '') }}</span>
@@ -116,13 +156,13 @@
         @case('floor')
     @if ($floorSide)
     {{-- Закупочная на месте цены («Без закупочной цены») — кто завёл и когда стоит при ней, как при цене. --}}
-    <td class="{{ $col->classes() }}"><x-offer.row-meta :offer="$offer" :when="$when" :binding="! $has('binding')"/> @if ($busy && $nofloor)<span class="skeleton arrive-bar w-16"></span>@elseif ($offer->floor_price)<span class="num-main"><span class="cell-main" @if ($busy) data-arrive-count @endif>{{ \App\Support\Money::nums($offer->floor_price) }}</span></span>@endif</td>
+    <td class="{{ $col->classes() }} phone-off">@if ($busy && $nofloor)<span class="skeleton arrive-bar w-16"></span>@elseif ($offer->floor_price)<span @if ($busy) data-arrive-count @endif>{{ \App\Support\Money::nums($offer->floor_price) }}</span>@endif</td>
     @else
     <td class="{{ $col->classes() }}">@if ($offer->floor_price)<span @if ($busy) data-arrive-count @endif>{{ \App\Support\Money::nums($offer->floor_price) }}</span>@endif</td>
     @endif
         @break
         @case('price')
-    <td class="{{ $col->classes() }} arrive-late {{ $admin && ($offer->marginMark()['tone'] ?? null) === 'loss' ? 'text-danger' : '' }}">
+    <td class="{{ $col->classes() }} phone-off arrive-late {{ $admin && ($offer->marginMark()['tone'] ?? null) === 'loss' ? 'text-danger' : '' }}">
         {{-- Телефон: когда заведено — вплотную слева от цены (10.10.2026, начальник: с телефона непонятно, что когда создано);
              сегодня — время, иначе дата; аватара нет (15.11.2026, владелец); горит срок обязывающего — он вместо даты
              (`x-offer.row-meta`). Столбец «Создано» в краткой таблице спрятан. --}}
@@ -133,17 +173,7 @@
         {{-- Чипа «Оценить» в строке нет (15.11.2026, владелец): во вкладках без цены оценить нужно каждую строку — лаймом на
              каждой строке шум и строка в три этажа; нажатие на строку открывает окно с полем цены. Справа — дата и закупочная;
              оценки менеджеров (аватар и сумма, «ждём») — по-прежнему (`rate-chip :chip=false`). --}}
-        @php $rate = $rate && ! ($has('state') && request()->query('preset') === 'all'); @endphp
-        @if ($busy && $rate)
-        @elseif ($rate)<x-offer.rate-chip :offer="$offer" :chip="false"/>
-        @elseif ($unpriced)
-        {{-- Корректировка («Оцененные», 11.10.2026): своя цена менеджера — «620 000 → пилюля», как «закупочная → продажи»;
-             согласились — галочка с числом у цены; ждём — аватары и срок под ценой вместо закупочной. --}}
-        @elseif ($price->shown() && $correcting)
-            @if ($proposes)<span class="text-ink-muted">{{ $price::money($price->to) }}&nbsp;→</span> <x-offer.correction-chip :offer="$offer" part="proposal"/>@else{{ $price::money($price->to) }} <x-offer.correction-chip :offer="$offer" part="agreed"/>@endif
-            @if ($waits)<span class="mt-1 flex justify-end sm:mt-0 sm:ml-1.5 sm:inline-flex"><x-offer.correction-chip :offer="$offer" part="waiting"/></span>@endif
-        @elseif ($price->shown()){{ $price::money($price->to) }}
-        @elseif ($gallery)<span class="text-accent-text">Скоро</span>@endif
+        {!! $main !!}
         {{-- Телефон: подтверждения — под ценой, а не в конце второй строки: там их съедало «…» за номерами (владелец
              04.10.2026: «самое важное, никогда нельзя скрывать»). Есть подтверждения — они вместо закупочной. --}}
         {{-- В минус или почти без наценки (`Offers\Margin`, 14.10.2026) — под ценой, только в CRM админу. --}}

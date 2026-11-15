@@ -2068,6 +2068,14 @@ html.kb-open { --home-gap: 0px; }
     .table-wrap:not(.is-wide) .table .num-meta .when-word { position: relative; top: round(calc(.5ex - .5cap), 1px); }
     .table-wrap:not(.is-wide) .table .num-meta .meta-ico { position: relative; display: inline-block; align-self: baseline; width: .8125rem; height: 0; margin-right: .125rem; }
     .table-wrap:not(.is-wide) .table .num-meta .meta-ico > svg { position: absolute; left: 0; width: .8125rem !important; height: .8125rem !important; bottom: calc(var(--lc) - .40625rem + round(calc(.5cap - var(--lc)), 1px)); }
+    /* Строка предложения: правого столбца на телефоне нет — дата и цена концами строк (`.line-end`), и название занимает всё
+       место до даты, а не до левого края самой длинной цены в столбце. Подробная таблица — со столбцами, копий в строках нет. */
+    .table-wrap:not(.is-wide) .table td.phone-off { display: none; }
+    .table-wrap:not(.is-wide) .table .line-end { display: inline-flex; align-items: baseline; gap: .375rem; flex-shrink: 0; margin-left: auto; padding-left: .5rem; white-space: nowrap; }
+    .table-wrap:not(.is-wide) .table .cell-title > .line-end { align-self: baseline; }
+    .table-wrap:not(.is-wide) .table .line-end > .text-sm { position: relative; top: round(calc(.5cap - var(--lc)), 1px); }
+    .table-wrap:not(.is-wide) .table .cell-sub > .line-break { flex-basis: 100%; height: 0; }
+    .table-wrap.is-wide .line-end, .table-wrap.is-wide .line-break { display: none !important; }
     .table-wrap:not(.is-wide) .table .num-main { display: block; margin-top: 2px; font-size: var(--text-sm); line-height: 1.125rem; --lc: .5cap; }
     .table-wrap:not(.is-wide) .table .cell-main { position: relative; top: round(calc(.5cap - var(--lc)), 1px); font-size: var(--text-base); line-height: 1; color: var(--color-ink); }
 
@@ -2086,12 +2094,30 @@ html.kb-open { --home-gap: 0px; }
     .table-wrap:not(.is-wide) .table td.grow > .cell-sub .ref-line > .vendor-tip { margin-left: calc(-1 * var(--lead-in, 0px)); }
     /* Правое поле — у последней видимой ячейки (за ней в разметке бывают столбцы ПК, на телефоне скрытые `.hidden`): 12 px,
        как слева, и полоса кончается там же. */
-    .table-wrap:not(.is-wide) .table tbody tr:not(.table-group) > td:nth-last-child(1 of :not(.hidden)) { padding-right: .75rem; }
-    .table-wrap:not(.is-wide) .table tbody tr + tr > td:nth-last-child(1 of :not(.hidden)),
-    .table-wrap:not(.is-wide) .table tbody.table-part + tbody.table-part > tr:first-child:not(.table-group) > td:nth-last-child(1 of :not(.hidden)) { background-size: calc(100% - .75rem) 1px; }
-    .table-wrap:not(.is-wide) .table tbody tr + tr > td.grow:nth-last-child(1 of :not(.hidden)) { background-size: calc(100% - var(--sep-x, .75rem) - .75rem) 1px; }
+    .table-wrap:not(.is-wide) .table tbody tr:not(.table-group) > td:nth-last-child(1 of :not(.hidden, .phone-off)) { padding-right: .75rem; }
+    .table-wrap:not(.is-wide) .table tbody tr + tr > td:nth-last-child(1 of :not(.hidden, .phone-off)),
+    .table-wrap:not(.is-wide) .table tbody.table-part + tbody.table-part > tr:first-child:not(.table-group) > td:nth-last-child(1 of :not(.hidden, .phone-off)) { background-size: calc(100% - .75rem) 1px; }
+    .table-wrap:not(.is-wide) .table tbody tr + tr > td.grow:nth-last-child(1 of :not(.hidden, .phone-off)) { background-size: calc(100% - var(--sep-x, .75rem) - .75rem) 1px; }
     .table-wrap:not(.is-wide) .table tbody tr + tr > td.pick-cell,
     .table-wrap:not(.is-wide) .table tbody tr.table-group + tr > td { background-image: none; }
+  }
+  /* ПК — так же: полоса от начала текста названия (после иконки типа) до правого поля последней ячейки, у галочки её нет
+     (15.11.2026, владелец: «почему на ПК разделительные полосы от начала до конца»). У названия отсчёт — его поле слева
+     (`--sep-pad`: первый столбец и за галочкой — .75rem, иначе 1rem) и иконка типа (`--sep-in`).  */
+  @media (min-width: 640px) {
+    .table { --sep: color-mix(in oklab, var(--color-line) 70%, transparent); }
+    .table tbody tr + tr > td,
+    .table tbody.table-part + tbody.table-part > tr:first-child:not(.table-group) > td {
+      border-top: 0; background-image: linear-gradient(var(--sep), var(--sep)); background-repeat: no-repeat; background-size: 100% 1px; background-position: 0 0;
+    }
+    .table tbody tr + tr > td.grow,
+    .table tbody.table-part + tbody.table-part > tr:first-child:not(.table-group) > td.grow { background-position: calc(var(--sep-pad, 1rem) + var(--sep-in, 0px)) 0; }
+    .table td.grow:first-child, .table .pick-cell + td.grow { --sep-pad: .75rem; }
+    .table td.grow:has(> a > .cell-title > .cat-icon) { --sep-in: 1.55em; }
+    .table tbody tr + tr > td:last-child,
+    .table tbody.table-part + tbody.table-part > tr:first-child:not(.table-group) > td:last-child { background-size: calc(100% - .75rem) 1px; }
+    .table tbody tr + tr > td.grow:last-child { background-size: calc(100% - var(--sep-pad, 1rem) - var(--sep-in, 0px) - .75rem) 1px; }
+    .table tbody tr + tr > td.pick-cell, .table tbody tr.table-group + tr > td { background-image: none; }
   }
   /* Копирование номера — по наведению: иконка в каждой строке была шумом. На телефоне — в карточке. */
   .table td .vincode > svg { opacity: 0; transition: opacity var(--dur-fast); }
@@ -4591,6 +4617,20 @@ html.kb-open { --home-gap: 0px; }
   .surface-crm .cards:not(.cards--grid), .surface-park .cards:not(.cards--grid) { gap: 0; border-radius: var(--radius-l); overflow: clip; background: var(--color-surface); }
   .surface-crm .cards:not(.cards--grid) > .card, .surface-park .cards:not(.cards--grid) > .card { border-radius: 0; }
   .surface-crm .cards:not(.cards--grid) > .card + .card, .surface-park .cards:not(.cards--grid) > .card + .card { border-top: 1px solid color-mix(in oklab, var(--color-line) 70%, transparent); }
+}
+/* Полоса между строками-карточками — от начала текста (поле, миниатюра, зазор) до правого поля, а не во всю ширину
+   (15.11.2026, владелец: «почему на парковке разделительные полосы от начала до конца»). Фоном, а не рамкой: рамку не укоротить. */
+.surface-crm .cards, .surface-park .cards { --sep-l: calc(.5rem + var(--media-w) + .625rem); --sep-r: .625rem; }
+@media (min-width: 640px) { .surface-crm .cards, .surface-park .cards { --sep-l: calc(.5rem + var(--media-w) + .75rem); --sep-r: .75rem; } }
+.surface-crm .cards--list > .card + .card, .surface-park .cards--list > .card + .card {
+  border-top: 0; background-image: linear-gradient(color-mix(in oklab, var(--color-line) 70%, transparent), color-mix(in oklab, var(--color-line) 70%, transparent));
+  background-repeat: no-repeat; background-size: calc(100% - var(--sep-l) - var(--sep-r)) 1px; background-position: var(--sep-l) 0;
+}
+@media (max-width: 639.98px) {
+  .surface-crm .cards:not(.cards--grid) > .card + .card, .surface-park .cards:not(.cards--grid) > .card + .card {
+    border-top: 0; background-image: linear-gradient(color-mix(in oklab, var(--color-line) 70%, transparent), color-mix(in oklab, var(--color-line) 70%, transparent));
+    background-repeat: no-repeat; background-size: calc(100% - var(--sep-l) - var(--sep-r)) 1px; background-position: var(--sep-l) 0;
+  }
 }
 /* Пустой список (поиск по ходу набора подменяет содержимое того же контейнера) — фраза на фоне экрана: плашки
    строк под ней нет, в плитках она во всю ширину, а не в первой клетке. */
