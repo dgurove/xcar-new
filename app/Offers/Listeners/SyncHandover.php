@@ -15,6 +15,7 @@ use App\Offers\Handover;
 use App\Offers\Offer;
 use App\Users\Role;
 use App\Users\User;
+use App\Workflow\Actions\PlaceOnStage;
 use App\Workflow\Actions\TakeExit;
 use App\Workflow\Actor;
 use App\Workflow\Events\StageEntered;
@@ -39,7 +40,7 @@ use Illuminate\Support\Facades\DB;
  */
 final class SyncHandover
 {
-    public function __construct(private TakeExit $take, private SelfPickup $self) {}
+    public function __construct(private TakeExit $take, private SelfPickup $self, private PlaceOnStage $place) {}
 
     public function subscribe(Dispatcher $events): array
     {
@@ -64,6 +65,10 @@ final class SyncHandover
         $handed = $e->step === 'delivered' && $t->destination === Point::Keeper && $offer->keeper()?->id === $deal->buyer_id;
         if (($e->step === 'picked' && $own) || $handed) {
             $this->pressSale($deal, $e->by ?? $this->system());
+        }
+        // Привезли к нам, а продажа ждёт получения — шаг проходит сам (15.11.2026).
+        if ($e->step === 'delivered' && ! $handed && $this->passIfWithUs($deal->fresh()->setRelation('offer', $offer->fresh()), $e->by ?? $this->system())) {
+            return;
         }
         $this->turn($offer->fresh());
     }
@@ -91,6 +96,10 @@ final class SyncHandover
             return;
         }
         if (! $deal?->isActive() || $offer->car_place !== CarPlace::Keeper || $offer->standsWith()?->id !== $deal->buyer_id) {
+            // Машина у нас (парковка, «Стоит у нас») — шаг получения проходит сам (15.11.2026, владелец).
+            if ($deal && $e->to->isPickupStep() && $this->passIfWithUs($deal->setRelation('offer', $offer), $e->by ?? $this->system())) {
+                return;
+            }
             if ($deal && $e->to->isPickupStep()) {
                 $this->turn($offer, $deal);
             }
@@ -145,6 +154,30 @@ final class SyncHandover
             return;
         }
         $this->pressSale($deal, $by);
+    }
+
+    /**
+     * Машина у нас, а продажа на шаге получения (15.11.2026, владелец: «почему горит, что менеджер должен забрать автомобиль,
+     * если мы его уже вывезли», 2610131943 — выбрал «шаг проходит сам»): продажа идёт дальше тем же путём, что «Автомобиль
+     * передан», но без исхода — «Менеджер забрал автомобиль» было бы неправдой и закрыло бы вывоз «у него». Просьба «Заберите
+     * автомобиль» закрывается. Не трогаем, где переход закрывает сделку (своя машина — ждёт выдачи с парковки) и параллельную.
+     */
+    public function passIfWithUs(Deal $deal, User $by): bool
+    {
+        $offer = $deal->offer->unsetRelation('positions');
+        $stage = $offer->position(Track::Sale)?->stage;
+        if (! $deal->isActive() || ! $stage?->isPickupStep() || ! $deal->carWithUs()) {
+            return false;
+        }
+        $exit = $stage->exitsFor(Actor::Staff, $deal)->first(fn ($x) => self::handsOver($x))
+            ?? $stage->exitsFor(Actor::Manager, $deal)->first(fn ($x) => Handover::picked($x));
+        if (! $exit?->to || Deal::closes($exit)) {
+            return false;
+        }
+        Requirement::closeOpen($deal, $stage->id, ['closed_by' => 'system', 'exit' => 'Автомобиль у нас']);
+        ($this->place)($offer, $exit->to, $by, payload: ['label' => '«'.$stage->name.'» пройден: автомобиль у нас']);
+
+        return true;
     }
 
     private function pressSale(Deal $deal, User $by): void

@@ -1186,6 +1186,19 @@ class Deal extends Model implements HasMedia
      * (`EnterStage`, `SyncHandover::turn`), в сделке — «Везёт …» (`Handover`). Вывоз читается из связи `pickupTask`: кто
      * только что его завёл или назначил, снимает её до вызова.
      */
+    /**
+     * Машина у нас (15.11.2026, 2610131943: привезли на парковку Шоссе Энтузиастов, а шаг «Забрать автомобиль» просил менеджера
+     * связаться с владельцем): место «На нашей парковке» / «Стоит у нас» или ТС парковки стоит. Шаг получения тогда проходит сам
+     * (`SyncHandover::passIfWithUs`).
+     */
+    public function carWithUs(): bool
+    {
+        $offer = $this->offer;
+
+        return in_array($offer?->car_place, [CarPlace::Ours, CarPlace::WithUs], true)
+            || $offer?->parkVehicle?->state === \App\Park\VehicleState::Stored;
+    }
+
     public function carried(): bool
     {
         return (bool) $this->offer?->pickup()?->isOpen() && ! $this->buyerPicksUp();

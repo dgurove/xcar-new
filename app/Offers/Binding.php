@@ -325,7 +325,9 @@ final class Binding
         $until = $offer->binding_until;
         // Шаг оплаты — срок менеджера (14 дней от «Забрал», `Deal::payDue`, 27.10.2026), не наш срок оплаты поставщику: у
         // старых сделок срок обязывающего давно прошёл, и менеджер «был должен» с марта.
-        if (! $until || $stage?->isPayStep() || ! $deal?->isActive() || $waits === WaitsFor::Supplier || $deal->setRelation('offer', $offer)->supplierPaid()) {
+        // Срок обязывающего уже прошёл — шаг им не режем (15.11.2026, 2610131943: «Забрать автомобиль» без своего срока получил
+        // 21.03 и «просрочено на 239д»): тревога «сгорел» и так горит, как и в `closeLimit`.
+        if (! $until || $until->isPast() || $stage?->isPayStep() || ! $deal?->isActive() || $waits === WaitsFor::Supplier || $deal->setRelation('offer', $offer)->supplierPaid()) {
             return $own;
         }
 
