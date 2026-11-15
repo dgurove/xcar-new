@@ -58,6 +58,14 @@
         </span>
         <span @class(['nums shrink-0', 'text-lg font-semibold' => $strong ?? false])>{{ $amount }}</span>
     </{{ $head }}>
+    @elseif ($nested)
+    {{-- В задаче шага — одной строкой: кому слева, сумма справа (16.11.2026, владелец: «зачем сумму вбок забил» — подпись
+         сверху и сумма отдельной строкой под ней). --}}
+    <{{ $head }} @if ($head === 'a') href="{{ $href }}" @endif class="flex items-baseline gap-3">
+        <span class="min-w-0 flex-1">{{ $title ?? 'К оплате' }}</span>
+        <span class="nums shrink-0 text-lg font-semibold">{{ $amount }}</span>
+    </{{ $head }}>
+    @if ($state)<span @class(['-mt-2 block text-sm', $state[1] ?: 'text-ink-muted'])>{{ $state[0] }}</span>@endif
     @else
     <{{ $head }} @if ($head === 'a') href="{{ $href }}" @endif class="block">
         @if ($title)<span class="mb-0.5 block text-sm text-ink-muted">{{ $title }}</span>@endif
