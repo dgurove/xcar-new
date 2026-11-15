@@ -43,21 +43,21 @@
              когда подписывают; правит и менеджер у себя. --}}
         <div class="row">
             <span class="shrink-0 text-ink-muted">Дата договора</span>
-            <span class="min-w-0 flex-1 text-right"><x-ui.date chip submit :clearable="false" name="signed_at" :id="'dkp-date-field-'.$deal->id" :value="$contract->signed_at" :form="'dkp-date-'.$deal->id" placeholder="Указать" class="text-accent-text"/></span>
+            <span class="min-w-0 flex-1 text-right"><x-ui.date chip submit :clearable="false" name="signed_at" :id="'dkp-date-field-'.$deal->id" :value="$contract->signed_at" :form="'dkp-date-'.$deal->id" placeholder="Указать" class="{{ $contract->signed_at ? '' : 'text-accent-text' }}"/></span>
         </div>
         @if ($prime && $contract->commissioned())
-            <button type="button" class="row text-left" data-action="edit-card#toggle">
+            {{-- Строкой без шеврона (15.11.2026: править можно было и «Изменить», и строкой) — поля собственника под «Изменить». --}}
+            <div class="row">
                 <span class="min-w-0 flex-1">
                     @if ($contract->ownerReady())
-                        <span class="block truncate">{{ $owner->name }}</span>
+                        <span class="block break-words">{{ $owner->name }}</span>
                         <span class="row-sub">собственник, договор комиссии <span class="whitespace-nowrap">№ {{ $contract->commissionNo() ?? 'не указан' }}</span></span>
                     @else
                         <span class="block">Собственник</span>
                         <span class="row-sub text-urgent">нет данных из договора комиссии</span>
                     @endif
                 </span>
-                <x-ui.chevron/>
-            </button>
+            </div>
         @endif
         <x-deal.buyer :deal="$deal" :contract="$contract"/>
     </div>

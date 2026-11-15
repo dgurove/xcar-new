@@ -12,6 +12,7 @@
     </button>
 @elseif ($url && $deal->buyer)
     <div {{ $attributes->class(['list']) }}>
-        <x-ui.share-link variant="row" :url="$url" :title="$deal->offer->titleWithYear()" done="Ссылка в буфере" :text="$deal->personText()" :label="'Ссылка для '.$deal->buyer->shortName()"/>
+        {{-- Подпись без имени (15.11.2026: «Ссылка для Виталий Зайцев» — падеж; строка стоит под чатом с ним же). --}}
+        <x-ui.share-link variant="row" :url="$url" :title="$deal->offer->titleWithYear()" done="Ссылка в буфере" :text="$deal->personText()" label="Ссылка менеджеру"/>
     </div>
 @endif

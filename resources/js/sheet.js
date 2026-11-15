@@ -20,6 +20,13 @@ addEventListener('keydown', () => { byPointer = false; }, { capture: true, passi
 // holdBackground). Класс, а не html:has(dialog.sheet:modal): тот WebKit пересчитывал на каждую правку DOM.
 const syncOpen = () => document.documentElement.classList.toggle('sheet-open', !!document.querySelector('dialog.sheet:modal'));
 document.addEventListener('close', syncOpen, true);
+// Закрытый диалог возвращает фокус на кнопку, что его открыла, и строка-кнопка в .list рисует лаймовое кольцо полосами сверху
+// и снизу (15.11.2026, «Сумма договора» на телефоне). Пальцем и мышью — снимаем, клавиатуре оставляем.
+document.addEventListener('close', (e) => {
+    if (!(e.target instanceof HTMLDialogElement)) return;
+    const a = document.activeElement;
+    if ((byPointer || matchMedia('(hover: none)').matches) && a instanceof HTMLElement && a.matches('button, a') && !e.target.contains(a)) a.blur();
+}, true);
 // Открытая шторка ушла из DOM без close (подмена фрейма, поток replace) — класс иначе остался бы, и страница на телефоне
 // не листалась бы до следующего визита.
 for (const name of ['turbo:render', 'turbo:frame-render', 'turbo:load']) document.addEventListener(name, syncOpen);

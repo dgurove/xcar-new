@@ -351,7 +351,9 @@ html.kb-open { --home-gap: 0px; }
      мельче: иначе страница приближается к полю. По главному указателю (pointer), а не по наведению: iPad с трекпадом
      наводит (hover: hover), но палец у него главный — и зумит так же. !important — поверх утилит text-sm в разметке. */
   @media (pointer: coarse) {
-    :is(input:not([type=checkbox], [type=radio], [type=range]), select, textarea, trix-editor) { font-size: 16px !important; }
+    /* Крупная сумма (`.pay-amount`, 30 px) — мимо: iOS приближает только поля мельче 16 px, а прижатая к 16 сумма выходила
+       мельче знака ₽ рядом (15.11.2026). */
+    :is(input:not([type=checkbox], [type=radio], [type=range], .pay-amount), select, textarea, trix-editor) { font-size: 16px !important; }
   }
   button { font: inherit; }
 
@@ -2702,6 +2704,9 @@ html.kb-open { --home-gap: 0px; }
   .steps--compact:is(:has(> .step--current), :has(> .step--ask)):not(:has(> .steps-all > .steps-all-check:checked)) > .step { grid-template-columns: minmax(0, 1fr); }
   .steps--compact:is(:has(> .step--current), :has(> .step--ask)):not(:has(> .steps-all > .steps-all-check:checked)) > .step > .step-dot { display: none; }
   /* Свёрнутый — и без «Оплата, 1 из 2» над шагом и серых будущих подпунктов: это и есть «Весь путь». */
+  /* Окно сделки (15.11.2026): этап — посередине полосы окна; свёрнутый путь его не повторяет, «⋯» шага — в строке «Продажа». */
+  .steps--compact:not(:has(> .steps-all > .steps-all-check:checked)) .step-title--bar { display: none; }
+  .steps--compact:not(:has(> .steps-all > .steps-all-check:checked)) > .step--current .step-head--bar { position: absolute; top: -2.5rem; right: 0; margin: 0; }
   .steps--compact:not(:has(> .steps-all > .steps-all-check:checked)) .step-kicker,
   .steps--compact:not(:has(> .steps-all > .steps-all-check:checked)) .substeps--wait { display: none; }
   .steps-all { display: flex; align-items: center; gap: .375rem; align-self: flex-start; margin-top: .25rem; cursor: pointer; font-size: var(--text-sm); color: var(--color-ink-muted); }

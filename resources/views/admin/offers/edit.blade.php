@@ -143,7 +143,15 @@
         <div class="contents @4xl:col-start-2 @4xl:row-start-1 @4xl:flex @4xl:flex-col @4xl:gap-4">
             {{-- Чат с менеджером сделки — верхом колонки, на телефоне самым верхом страницы, как на странице сделки на xcar
                  (07.10.2026, владелец: «чуть ли не самая важная кнопка во время сделки»). --}}
-            @if ($dealChat)<x-deal.chat-card :deal="$deal" :chat="$car->dealChat()" class="order-first"/>@endif
+            {{-- Ссылка менеджеру на его сделку или машину в гараже — под чатом с ним (15.11.2026, владелец: «ссылку я бы перенёс к
+                 блоку чата»; была карточкой «Ссылка для …» посреди третьей дорожки). --}}
+            @php $personDeal = $admin ? ($garageCar?->deal ?? $deal) : null; @endphp
+            @if ($dealChat || $personDeal?->buyer)
+                <div class="order-first flex flex-col gap-2">
+                    @if ($dealChat)<x-deal.chat-card :deal="$deal" :chat="$car->dealChat()"/>@endif
+                    @if ($personDeal)<x-deal.person-link :deal="$personDeal"/>@endif
+                </div>
+            @endif
             {{-- Что сейчас и что с этим сделать — верхом правой колонки, на телефоне сразу под шапкой. --}}
             @if ($intake || $nowKind)
                 <div class="order-first flex flex-col gap-4">

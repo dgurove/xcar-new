@@ -31,88 +31,91 @@
     $fee = $deal->agentFee;
     $onPayStep = $requirement && $position?->stage->isPayStep();
 @endphp
+{{-- 15.11.2026 (владелец: «всем кажется, что это три разных счёта… на нормальных платформах вообще не так делают блок оплаты»):
+     «Расчёт» — откуда деньги, без кнопок; «Платежи» — кому и сколько заплатить, каждый платёж одной плашкой
+     (`cabinet.deals.payment`: кому, за что, сумма, состояние, файл счёта, одна «Оплатить»). На шаге оплаты платежи с кнопкой —
+     в задаче шага, здесь только расчёт. --}}
+@php
+    $supplierState = null;
+    if ($deal->paysSelection()) {
+        // Платёж поставщику у Альфы (оплата до вывоза) — подтверждает поставщик: «оплачено», пока ждём — что платёжка у нас.
+        $supplierState = $deal->offer?->vendor?->pay_before_pickup ? match (true) {
+            $deal->prepaid_at !== null => ['оплачено', 'text-open'],
+            \App\Workflow\Requirement::where('deal_id', $deal->id)->whereNotNull('done_at')->whereIn('answer->exit', \App\Offers\Documents\PaymentProofPdf::EXITS)->exists() => ['ждём подтверждения поставщика', ''],
+            default => null,
+        } : null;
+    }
+    $ownerSum = $deal->isDirect() && $deal->owner_price === null ? 'уточним' : Money::rub((int) $deal->ownerPrice());
+    // Наш счёт: словом, когда кнопки нет (оплачен, ждёт подтверждения, ещё не выставлен).
+    $invoiceState = fn ($i, string $none) => match (true) {
+        ! $i => [$none, ''],
+        $i->state === InvoiceState::Paid => ['оплачено', 'text-open'],
+        $i->claimed() > 0 => ['оплата ждёт подтверждения', ''],
+        default => null,
+    };
+    $sumOf = fn ($i) => Money::rub($i->state === InvoiceState::Paid ? $i->total : $i->remaining());
+    $cancelledEmpty = $deal->state === \App\Offers\DealState::Cancelled && ! $sale && ! $selection;
+@endphp
+<div class="flex flex-col gap-4">
 <div class="box" id="money">
+    <h2 class="box-title mb-3">Расчёт</h2>
     <a href="/offers/{{ $offer->number }}" class="nums block text-[32px] font-bold leading-none">{{ Money::rub($deal->amount) }}</a>
     <span class="mt-1 block text-sm text-ink-muted">продажа</span>
     @if ($deal->paysSelection())
-        {{-- Деньги по порядку (06.10.2026, владелец: «+20 вознаграждения и оплатите 80 — покажется, что выйдет −60»):
-             закупочная, взаимозачёт, «Оплатить собственнику по ДКП», под ними остаток — вся разница; ниже, как она
-             делится: «Ваша доля» и «Оплата услуг подбора», и одна кнопка «Оплатить» (`cabinet.deals.selection-pay`). --}}
+        {{-- Деньги по порядку (06.10.2026, владелец: «+20 вознаграждения и оплатите 80 — покажется, что выйдет −60»): закупочная,
+             взаимозачёт, остаток — вся разница; ниже, как она делится: «Ваша доля» и подбор XCar. Платить — в «Платежах». --}}
         <div class="list mt-4">
             {{-- Супер-покупателю закупочной нет (`Deal::isDirect`): только что платит собственнику. --}}
             @unless ($deal->isDirect())
-            <div class="row"><span class="min-w-0 flex-1 text-ink-muted">Закупочная</span><span class="nums">{{ Money::rub((int) $deal->cost) }}</span></div>
+                <div class="row"><span class="min-w-0 flex-1 text-ink-muted">Закупочная</span><span class="nums">{{ Money::rub((int) $deal->cost) }}</span></div>
             @endunless
             @if ($deal->offset() && ! $deal->isDirect())
                 <div class="row"><span class="min-w-0 flex-1 text-ink-muted">Взаимозачёт со страховой</span><span class="nums text-ink-muted">−{{ Money::rub($deal->offset()) }}</span></div>
             @endif
-            @php
-                // Платёж поставщику у Альфы (оплата до вывоза) — подтверждает поставщик: «оплачено», пока ждём — что платёжка у нас.
-                $paidSupplier = $deal->offer?->vendor?->pay_before_pickup ? match (true) {
-                    $deal->prepaid_at !== null => ['оплачено', 'text-open'],
-                    \App\Workflow\Requirement::where('deal_id', $deal->id)->whereNotNull('done_at')->whereIn('answer->exit', \App\Offers\Documents\PaymentProofPdf::EXITS)->exists() => ['ждём подтверждения поставщика', ''],
-                    default => null,
-                } : null;
-            @endphp
-            <div class="row"><span class="min-w-0 flex-1"><span class="block">{{ $deal->schemeOf()->payLabel() }}</span>@if ($paidSupplier)<span @class(['row-sub', $paidSupplier[1]])>{{ $paidSupplier[0] }}</span>@endif</span><span class="nums font-semibold">@if ($deal->isDirect() && $deal->owner_price === null)уточним@else{{ Money::rub((int) $deal->ownerPrice()) }}@endif</span></div>
-        </div>
-        @if ($deal->selectionBase() !== null)
-            <div class="mt-3 flex items-baseline justify-between gap-3 px-4"><span class="text-ink-muted">Остаток</span><span class="nums font-semibold">{{ Money::rub((int) $deal->selectionBase()) }}</span></div>
-        @endif
-        <div class="list mt-3">
+            {{-- Страховой / собственнику — строкой, только когда это не та же закупочная (взаимозачёт, супер-покупатель). --}}
+            @if ($deal->isDirect() || $deal->offset())
+                <div class="row"><span class="min-w-0 flex-1 text-ink-muted">{{ $deal->schemeOf()->payeeLabel() }}</span><span class="nums">{{ $ownerSum }}</span></div>
+            @endif
+            @if ($deal->selectionBase() !== null)
+                <div class="row"><span class="min-w-0 flex-1 font-medium">Остаток</span><span class="nums font-semibold">{{ Money::rub((int) $deal->selectionBase()) }}</span></div>
+            @endif
             @if ($deal->commission)
                 <div class="row profit"><span class="min-w-0 flex-1 font-medium">Ваша доля</span><span class="profit-sum nums">+{{ Money::rub((int) $deal->commission) }}</span></div>
+                {{-- Без доли остаток и есть подбор — тем же числом второй раз не пишем. --}}
+                <div class="row"><span class="min-w-0 flex-1 text-ink-muted">Подбор XCar</span><span class="nums">{{ Money::rub($selection ? $selection->total : (int) $deal->ours()) }}</span></div>
             @endif
-            <div @if ($selection) data-controller="sheet" class="contents" @else class="row" @endif>
-                @if ($selection)<button type="button" class="row w-full text-left" data-action="sheet#open">@endif
-                <span class="min-w-0 flex-1">
-                    <span class="block">Оплата услуг подбора</span>
-                    @php
-                        $when = match (true) {
-                            ! $selection => $deal->agreed() ? 'готовим счёт' : $notYet,
-                            $selection->state === InvoiceState::Paid => 'оплачено',
-                            $selection->claimed() > 0 => 'оплата ждёт подтверждения',
-                            default => null,
-                        };
-                    @endphp
-                    @if ($when)<span @class(['row-sub', 'text-open' => $selection?->state === InvoiceState::Paid])>{{ $when }}</span>
-                    @elseif ($selection->due_at)<span class="row-sub"><x-billing.light :invoice="$selection"/></span>@endif
-                </span>
-                <span class="nums font-semibold">{{ Money::rub($selection ? ($selection->state === InvoiceState::Paid ? $selection->total : $selection->remaining()) : (int) $deal->ours()) }}</span>
-                @if ($selection)<x-ui.chevron/></button>@include('cabinet.deals.invoice-sheet', ['invoice' => $selection])@endif
-            </div>
         </div>
-        {{-- На шаге оплаты «Оплатить» стоит в задаче (`cabinet.deals.step`) — тут его второй раз нет. --}}
-        @if ($selection && ! $onPayStep)
-            @include('cabinet.deals.selection-pay', ['invoice' => $selection])
-        @endif
-    @else
-        {{-- Отменённая — ни счёта «укажите покупателя», ни вознаграждения «к выплате»: только сумма. --}}
-        @unless ($deal->state === \App\Offers\DealState::Cancelled && ! $sale)
+    @elseif ($deal->commission)
         <div class="list mt-4">
-            <div @if ($sale) data-controller="sheet" class="contents" @else class="contents" @endif>
-            @if ($sale)<button type="button" class="row w-full text-left" data-action="sheet#open">@else<a href="#dkp-buyer" class="row">@endif
-                <span class="min-w-0 flex-1">
-                    <span class="block">{{ 'Счёт '.$deal->seller()->short().($sale ? ' '.$sale->label() : '') }}</span>
-                    <span class="row-sub">@if (! $sale && ! $deal->agreed()){{ $notYet }}@elseif (! $sale)<span class="text-urgent">{{ $deal->invoiceGap() === 'passport' ? 'нужны данные покупателя' : 'укажите покупателя' }}</span>@elseif ($sale->state === InvoiceState::Paid)<span class="text-open">оплачен</span>@else<x-billing.light :invoice="$sale"/> платит {{ $sale->party?->name }}@endif</span>
-                </span>
-                @if ($sale)<span class="nums font-semibold">{{ Money::rub($sale->state === InvoiceState::Paid ? $sale->total : $sale->remaining()) }}</span><x-ui.chevron/>@endif
-            @if ($sale)</button>@include('cabinet.deals.invoice-sheet', ['invoice' => $sale])@else</a>@endif
+            <div class="row profit">
+                <span class="min-w-0 flex-1"><span class="block font-medium">Вознаграждение</span><span class="row-sub">{{ $feeWord }}</span></span>
+                <span class="profit-sum nums">+{{ Money::rub((int) $deal->commission) }}</span>
             </div>
-            @if ($deal->commission)
-                <div class="row profit">
-                    <span class="min-w-0 flex-1"><span class="block font-medium">Ваше вознаграждение</span><span class="row-sub">{{ $feeWord }}</span></span>
-                    <span class="profit-sum nums">+{{ Money::rub((int) $deal->commission) }}</span>
-                </div>
-                @foreach ($fee?->payments ?? [] as $p)
-                    <x-money.payment :payment="$p" title="Выплачено" icon="wallet" :slip="'/account/money/invoices/'.$fee->id.'/payments/'.$p->id.'/slip'"/>
-                @endforeach
-            @endif
+            @foreach ($fee?->payments ?? [] as $p)
+                <x-money.payment :payment="$p" title="Выплачено" icon="wallet" :slip="'/account/money/invoices/'.$fee->id.'/payments/'.$p->id.'/slip'"/>
+            @endforeach
         </div>
-        {{-- Оплатить счёт ПРАЙМ — той же кнопкой, что подбор; на шаге оплаты она в задаче. --}}
-        @if ($sale && ! $onPayStep)
-            @include('cabinet.deals.selection-pay', ['invoice' => $sale])
-        @endif
-        @endunless
     @endif
+</div>
+@unless ($onPayStep || $cancelledEmpty)
+    <section class="flex min-w-0 flex-col gap-3" aria-label="Платежи">
+        <h2 class="list-head">Платежи</h2>
+        @if ($deal->paysSelection())
+            {{-- За ТС — не нам: страховой или собственнику напрямую; платёжку прикладывают в задаче, подтверждает поставщик. --}}
+            @include('cabinet.deals.payment', [
+                'title' => $deal->schemeOf() === \App\Offers\DealScheme::Insurer ? ($offer->vendor?->name ?? 'Страховой') : 'Собственнику',
+                'amount' => $ownerSum, 'state' => $supplierState, 'invoice' => null])
+            @include('cabinet.deals.payment', [
+                'title' => 'Подбор',
+                'amount' => $selection ? $sumOf($selection) : Money::rub((int) $deal->ours()),
+                'state' => $invoiceState($selection, $deal->agreed() ? 'готовим счёт' : $notYet), 'invoice' => $selection, 'pay' => true])
+        @else
+            {{-- Счёт за автомобиль — ПРАЙМ или Р.О.С.; нет покупателя — ведёт к нему. --}}
+            @include('cabinet.deals.payment', [
+                'amount' => $sale ? $sumOf($sale) : Money::rub((int) $deal->amount),
+                'state' => $sale ? $invoiceState($sale, '') : (! $deal->agreed() ? [$notYet, ''] : [$deal->invoiceGap() === 'passport' ? 'нужны данные покупателя' : 'укажите покупателя', 'text-urgent']),
+                'invoice' => $sale, 'pay' => true, 'href' => $sale || ! $deal->agreed() ? null : '#dkp-buyer'])
+        @endif
+    </section>
+@endunless
 </div>

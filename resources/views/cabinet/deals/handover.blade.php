@@ -25,6 +25,10 @@
                     @if ($handover->phone2)<x-ui.tel :value="$handover->phone2" class="block w-fit"/>@endif
                 </span>
             </div>
+        @elseif ($handover->buyerPicks)
+            {{-- Контакт ещё не показали (15.11.2026, владелец: у менеджера было только «заберите у владельца» — он не знал, что
+                 контакт будет): ждать, а не искать. --}}
+            <x-ui.info-row icon="user"><span class="text-ink-muted">Контакт владельца пришлём</span></x-ui.info-row>
         @endif
     </x-ui.info>
 </section>

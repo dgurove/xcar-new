@@ -13,6 +13,8 @@
     $sheet = $offer->pickup()?->isOpen() && ! $offer->pickedUp();
     $keys = ['insured_name', 'insured_phone', 'insured_phone2', 'inspection_address'];
     $empty = ! $offer->insured_name && ! $offer->insured_phone && ! $offer->inspection_address;
+    // Ни владельца, ни телефона — «Добавить», даже если адрес есть (15.11.2026: «Контакт владельца — Изменить» над одним адресом).
+    $noContact = ! $offer->insured_name && ! $offer->insured_phone;
     $form = 'handover-'.$deal->id;
     // Адрес — то же поле, что в «Транспортном средстве» редактора: открываться только на ошибку своей формы (`_form`).
     $editing = old('_form') === $form && $errors->hasAny($keys);
@@ -38,7 +40,7 @@
                 @if ($sheet && ! $lane)
                     <button type="button" class="btn btn-s btn-quiet" data-controller="emit" data-action="emit#send" data-emit-event-param="pickup-{{ $offer->number }}:open">Кто забирает</button>
                 @endif
-                @unless ($handover->park)<button type="button" class="edit-card-toggle" data-edit-card-target="button" data-action="edit-card#toggle" @if ($empty) data-idle="Добавить" @endif>{{ $editing ? 'Готово' : ($empty ? 'Добавить' : 'Изменить') }}</button>@endunless
+                @unless ($handover->park)<button type="button" class="edit-card-toggle" data-edit-card-target="button" data-action="edit-card#toggle" @if ($noContact) data-idle="Добавить" @endif>{{ $editing ? 'Готово' : ($noContact ? 'Добавить' : 'Изменить') }}</button>@endunless
             </span>
         </div>
         @if ($handover->park)
@@ -53,6 +55,8 @@
                 @if ($offer->insured_phone2)<div class="col-start-2 min-w-0"><div class="field-label">Ещё телефон</div><x-ui.tel :value="$offer->insured_phone2" :text="$offer->insured_phone2" class="mt-0.5 block w-fit"/></div>@endif
                 @if ($offer->inspection_address)<div class="col-span-2 min-w-0"><div class="field-label">Адрес</div><div class="mt-0.5 break-words">{{ $offer->inspection_address }}</div></div>@endif
             </div>@endunless
+            {{-- Видит ли его менеджер и «Показать менеджеру» — прямо под контактом (15.11.2026). --}}
+            <x-deal.contact-shown :deal="$deal" class="mt-3"/>
         </div>
         <div data-edit-card-target="edit" @unless ($editing) hidden @endunless>
             <form method="post" action="/offers/{{ $offer->number }}" id="{{ $form }}" class="mt-3 grid grid-cols-1 gap-3 {{ $compact ? '' : 'sm:grid-cols-2' }}" data-controller="save-bar">

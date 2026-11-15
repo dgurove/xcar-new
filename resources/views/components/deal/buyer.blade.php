@@ -39,7 +39,7 @@
     <div data-controller="sheet" class="contents">
         <x-ui.sheet-row>
             <x-ui.avatar :user="$buyer" :size="36"/>
-            <span class="min-w-0 flex-1"><span class="block truncate">{{ $who }}</span>@if ($ready)<span class="row-sub text-open">{{ $selfWord }}{{ $kindWord }}данные есть</span>@else<span class="row-sub text-urgent">{{ $selfWord }}{{ $gap ?? 'нужны данные для '.$for }}</span>@endif</span>
+            <span class="min-w-0 flex-1"><span class="block break-words">{{ $who }}</span>@if ($ready)<span class="row-sub text-open">{{ $selfWord }}{{ $kindWord }}данные есть</span>@else<span class="row-sub text-urgent">{{ $selfWord }}{{ $gap ?? 'нужны данные для '.$for }}</span>@endif</span>
             <x-ui.chevron/>
         </x-ui.sheet-row>
         <x-ui.sheet :id="$dataSheet" :title="$ready ? 'Данные покупателя' : 'Данные для '.$for" :open="session('open_sheet') === $dataSheet || $errors->hasAny(['buyer.*']) || $ask" tall>
@@ -73,7 +73,7 @@
 @elseif ($buyer || ! $live)
     <div class="row">
         @if ($buyer)<x-ui.avatar :user="$buyer" :size="36"/>@endif
-        <span class="min-w-0 flex-1">@if ($buyer)<span class="block truncate">{{ $who }}</span>@if ($ready)<span class="row-sub text-open">{{ $selfWord }}{{ $kindWord }}данные есть</span>@elseif ($isManager)<span class="row-sub">на себя</span>@endif @else<span class="text-ink-muted">Покупатель не выбран</span>@endif</span>
+        <span class="min-w-0 flex-1">@if ($buyer)<span class="block break-words">{{ $who }}</span>@if ($ready)<span class="row-sub text-open">{{ $selfWord }}{{ $kindWord }}данные есть</span>@elseif ($isManager)<span class="row-sub">на себя</span>@endif @else<span class="text-ink-muted">Покупатель не выбран</span>@endif</span>
     </div>
     @if ($scanPdf)
         <x-ui.doc :doc="$scanPdf" class="row">
@@ -91,16 +91,11 @@
     </x-ui.doc>
 @endforeach
 @if ($live && $buyer && ! $isManager && $deal->isPrime())
-    <form method="post" action="/work/deals/{{ $deal->id }}/contract" class="contents" data-controller="autosubmit">
+    {{-- Кто платит по счёту ПРАЙМ — одним сегментом (15.11.2026: галка и кружок двумя строками на один выбор). --}}
+    <form method="post" action="/work/deals/{{ $deal->id }}/contract" class="row" data-controller="autosubmit">
         @csrf @method('put')
-        <label class="row row-check">
-            <span class="min-w-0 flex-1">Платит покупатель</span>
-            <span class="check"><input type="radio" name="payer" value="buyer" @checked(! $contract->managerPays()) data-action="change->autosubmit#submit"></span>
-        </label>
-        <label class="row row-check">
-            <span class="min-w-0 flex-1">Платит менеджер</span>
-            <span class="check"><input type="radio" name="payer" value="manager" @checked($contract->managerPays()) data-action="change->autosubmit#submit"></span>
-        </label>
+        <span class="min-w-0 flex-1 text-ink-muted">Платит</span>
+        <x-ui.segment name="payer" :options="['buyer' => 'Покупатель', 'manager' => 'Менеджер']" :value="$contract->managerPays() ? 'manager' : 'buyer'" class="shrink-0" data-action="change->autosubmit#submit"/>
     </form>
 @endif
 @if ($live && ! ($deal->isGarage() && $buyer))

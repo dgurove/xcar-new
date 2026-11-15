@@ -159,10 +159,13 @@
                         $buyerData = $req?->asks === \App\Workflow\Asks::Buyer;
                     @endphp
                     {{-- «···» — справа от названия и в узкой колонке: длинное название переносится, а не выталкивает кнопку. --}}
-                    <div class="step-head !flex-nowrap !items-start">
+                    {{-- Окно сделки (15.11.2026): этап уже посередине полосы окна (`DealLine`), здесь заголовок не повторяется, пока
+                         «Весь путь» свёрнут; «⋯» шага — в строке подписи «Продажа» (CSS `.step-head--bar`). --}}
+                    @php $bar = $compact && $deal && $position->track === \App\Workflow\Track::Sale; @endphp
+                    <div @class(['step-head !flex-nowrap !items-start', 'step-head--bar' => $bar])>
                         <span class="min-w-0 flex-1">
                             @if ($many && $blockName($block) !== $stage->name)<span class="step-kicker">{{ $blockName($block) }}, {{ $place }} из {{ $subs->count() }}</span>@endif
-                            <span class="step-title block">{{ $stage->name }}</span>
+                            <span @class(['step-title', 'block' => ! $bar, 'step-title--bar' => $bar])>{{ $stage->name }}</span>
                         </span>
                         @if ($breaks->isNotEmpty() || $undo || $extend || $forManager->isNotEmpty() || in_array($position->letterStatus(), ['unsent', 'failed', 'bounced'], true))
                             {{-- «⋯» шага — общей пилюлей со шторкой действий (`x-ui.more`, 12.11.2026). --}}
@@ -228,8 +231,18 @@
                     {{-- Письмо поставщика ждёт разбора — строкой в шаге, а не лаймовой плашкой над путём (10.11.2026). --}}
                     @if ($deal && $position->track === \App\Workflow\Track::Sale && auth()->user()?->canManageCrm())<x-deal.reply-review :deal="$deal" line/>@endif
                     {{-- Покупателя менеджер должен дать с согласия (10.11.2026, `AskBuyer`): пока не дал — строкой дела, внести за него. --}}
-                    @if ($deal?->buyer_asked_at && $position->track === \App\Workflow\Track::Sale && auth()->user()?->canManageCrm())
-                        <x-route.task-row icon="user" :href="'/offers/'.$offer->number.($deal->hasContract() ? '?dkp=1#dkp' : '?buyer=1#invoice-buyer')" data-turbo-frame="_top">Менеджер не указал покупателя</x-route.task-row>
+                    {{-- Слова — от того, чего правда нет (15.11.2026: покупатель выбран без данных, а строка говорила «не указал»).
+                         В окне строки нет, когда ниже стоит блок «Покупатель для договора» (`admin.offers.deal-cards`) — то же дело. --}}
+                    @php
+                        $buyerGap = $deal?->buyer_asked_at ? $deal->buyerGap() : null;
+                        $buyerBlock = $compact && $deal?->isLive() && ($deal->collectsBuyer() || $deal->contract?->buyer_user_id) && $buyerGap !== null;
+                    @endphp
+                    @if ($deal?->buyer_asked_at && ! $buyerBlock && $position->track === \App\Workflow\Track::Sale && auth()->user()?->canManageCrm())
+                        <x-route.task-row icon="user" :href="'/offers/'.$offer->number.($deal->hasContract() ? '?dkp=1#dkp' : '?buyer=1#invoice-buyer')" data-turbo-frame="_top">{{ in_array($buyerGap, [null, 'Покупатель не выбран'], true) ? 'Менеджер не указал покупателя' : $buyerGap }}</x-route.task-row>
+                    @endif
+                    {{-- Машину забирает менеджер, а контакт владельца ему не показан — строкой дела с шторкой «Показать менеджеру» (15.11.2026). --}}
+                    @if ($deal?->isActive() && $position->track === \App\Workflow\Track::Sale && \App\Offers\Handover::for($deal, staff: true)->buyerPicks)
+                        <x-deal.contact-shown :deal="$deal" as="task"/>
                     @endif
                     {{-- День и время подписания (`Signing`, 11.11.2026): пока поставщик готовит договор — что назвал менеджер, или
                          выбрать за него. --}}

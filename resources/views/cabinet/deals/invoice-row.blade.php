@@ -12,4 +12,6 @@
         <x-ui.chevron/>
     </button>
     @include('cabinet.deals.invoice-sheet', ['invoice' => $invoice])
+    {{-- «Скачать PDF» — под строкой на виду, а не последней строкой шторки (15.11.2026). --}}
+    @if ($invoice->getFirstMedia('file') && $invoice->state !== \App\Billing\InvoiceState::Void)<x-billing.pdf-button :invoice="$invoice" :url="'/account/invoices/'.$invoice->id.'/pdf'"/>@endif
 </div>

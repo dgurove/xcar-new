@@ -217,13 +217,22 @@
                     @foreach ($stepInvoices as $i)@include('cabinet.deals.invoice-row', ['invoice' => $i])<x-billing.pay-status :invoice="$i" compact/>@endforeach
                 </div>
             @elseif ($selectionPay && ! $direct)
-                {{-- Подбор по ДКП и «страховой напрямую» — та же группа, что в «Расчёте» (там её на этом шаге нет). --}}
-                @include('cabinet.deals.selection-pay', ['invoice' => $selectionPay])
+                {{-- Подбор по ДКП и «страховой напрямую» — тем же платежом, что в «Платежах» (там их на этом шаге нет, 15.11.2026). --}}
+                <div class="mt-5">@include('cabinet.deals.payment', ['nested' => true, 'amount' => \App\Support\Money::rub($selectionPay->remaining()), 'state' => null, 'invoice' => $selectionPay, 'pay' => true])</div>
             @elseif ($payStep && $unpaid->isNotEmpty())
-                {{-- Ссылка на оплату — тут, с «Отправить»; ждёт подтверждения — словом. --}}
-                @php $links = $unpaid->filter(fn ($i) => $i->openLink() || \App\Billing\Acquiring\PayLink::eligible($i)); @endphp
-                @if ($links->isNotEmpty())<div class="list mt-5">@foreach ($links as $i)<x-billing.pay-status :invoice="$i" compact/>@endforeach</div>@endif
-                @if ($claimable->isEmpty())<p class="mt-4 font-medium">Оплата ждёт подтверждения</p>@endif
+                {{-- Счёт, который ждёт оплаты, — платежом (15.11.2026, тот же кусок, что в «Платежах»): кому, за что, сумма, файл и
+                     «Оплатить»; ссылка на оплату — в шторке по кнопке. Ждёт подтверждения — словом в платеже. --}}
+                <div class="mt-5 flex flex-col gap-3">
+                    @php $payable = $unpaid->reject(fn ($i) => $i->kind === \App\Billing\ChargeKind::Reward); @endphp
+                    @foreach ($payable as $i)
+                        @include('cabinet.deals.payment', [
+                            'title' => $payable->count() > 1 ? ($i->kind === \App\Billing\ChargeKind::Selection ? 'Подбор' : 'Автомобиль') : null,
+                            'nested' => true,
+                            'amount' => \App\Support\Money::rub($i->remaining()),
+                            'state' => $i->claimed() > 0 ? ['оплата ждёт подтверждения', ''] : null,
+                            'invoice' => $i, 'pay' => true])
+                    @endforeach
+                </div>
             @endif
 
             {{-- Действия — после всего, что нужно прочитать. --}}
@@ -233,24 +242,15 @@
             @endif
             @if ($requirement && ! $needsBuyer && (! $selectionPay || $direct) && ! $paidUp && ! $signingPick)
                 @if ($payStep && $unpaid->isNotEmpty() && ! $direct)
-                    @if ($claimable->isNotEmpty())
-                        {{-- Та же шторка, что в «Деньгах»: ссылкой (кто платит), по счёту с платёжкой, наличными. Ответ — сюда же. --}}
-                        <div data-controller="sheet" class="mt-5">
-                            <x-ui.button type="button" block data-action="sheet#open">Оплатить{!! $claimable->count() === 1 ? ' <span class="nums">'.\App\Support\Money::rub($claimable->first()->remaining() - $claimable->first()->claimed()).'</span>' : '' !!}</x-ui.button>
-                            <x-billing.pay-sheet :invoices="$claimable" :action="'/account/money/deals/'.$deal->id.'/pay'" pdf="/account/invoices/{id}/pdf"
-                                :buyers="\App\Support\People::buyersOf(auth()->user())" :open="($errors->any() && old('way')) || request()->boolean('pay')"/>
-                        </div>
-                    @endif
+                    {{-- «Оплатить» — в платеже выше (15.11.2026). --}}
                 @else
                     @include('cabinet.deals.answer', $direct ? ['attachLabel' => 'Приложить чек или платёжку'] : [])
                 @endif
             @endif
             @if ($direct && $selectionPay)
                 {{-- Наш подбор — своей группой под платежом поставщику, вторичной кнопкой. --}}
-                <div class="mt-6 border-t border-line pt-5">
-                    <h4 class="font-medium">Оплата услуг подбора</h4>
-                    @include('cabinet.deals.selection-pay', ['invoice' => $selectionPay, 'variant' => 'secondary', 'class' => 'mt-3'])
-                </div>
+                {{-- Здесь главное — платёж поставщику выше, наш подбор — вторичной кнопкой. --}}
+                <div class="mt-6">@include('cabinet.deals.payment', ['title' => 'Подбор', 'nested' => true, 'amount' => \App\Support\Money::rub($selectionPay->remaining()), 'state' => null, 'invoice' => $selectionPay, 'pay' => true])</div>
             @endif
             @endif
             {{-- В чек-листе договора с получением строка стоит под «Заберите автомобиль». --}}

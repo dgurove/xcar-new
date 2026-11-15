@@ -6,7 +6,7 @@
      плательщика сам заводит новую ссылку, и она тут же, с «Скопировать» и «Отправить».
      Поля в скрытых панелях reveal выключает; обязательность проверяет сервер, `required` на них заблокировал бы отправку.
      07.10.2026: поля строками (.fields), кнопка .sheet-foot. --}}
-@props(['id' => 'pay', 'invoices', 'action', 'pdf', 'buyers' => collect(), 'open' => false, 'otherName' => null, 'offline' => false])
+@props(['id' => 'pay', 'invoices', 'action', 'pdf', 'buyers' => collect(), 'open' => false, 'otherName' => null, 'offline' => false, 'pick' => null, 'only' => false])
 @php
     use App\Support\Money; use App\Billing\Acquiring\PayLink;
     $first = $invoices->first();
@@ -21,19 +21,25 @@
     $max = (float) config('xcar.yookassa.max_amount');
     $fmt = fn ($v) => Money::nums($v, fmod($v, 1) ? 2 : 0);
     // Поле не зовётся `method`: оно перекрыло бы form.method, и Turbo с обработчиками отправки ломались бы.
-    $way = old('way', $online ? 'link' : 'transfer');
+    // pick + only (15.11.2026, квитанция платежа `cabinet.deals.payment`): способ выбран строкой «Как оплатить» — шторка сразу на
+    // нём, без сегмента и без панелей других способов.
+    $way = $only && $pick ? $pick : old('way', $pick ?? ($online ? 'link' : 'transfer'));
     $ways = array_filter(['link' => $online ? ['По ссылке', 'Получить ссылку'] : null, 'transfer' => ['По счёту', 'Я оплатил'], 'cash' => ['Наличными', 'Отдал наличными']]);
     $payer = (string) old('payer', $current?->payer_kind === \App\Billing\Acquiring\PayerKind::Buyer && $current->payer_user_id ? (string) $current->payer_user_id : 'self');
     $me = auth()->user();
 @endphp
-<x-ui.sheet :id="$id" title="Оплатить" :open="$open">
+<x-ui.sheet :id="$id" :title="$only ? (['link' => 'Оплата онлайн', 'transfer' => 'Перевод по счёту', 'cash' => 'Наличными'][$way] ?? 'Оплатить') : 'Оплатить'" :open="$open">
     <form method="post" action="{{ $action }}" enctype="multipart/form-data" class="flex flex-col gap-4" data-controller="reveal pay-amount autosubmit">
         @csrf
+        @if ($only)
+            <input type="hidden" name="way" value="{{ $way }}">
+        @else
         <div class="segment">
             @foreach ($ways as $k => [$label, $verb])
                 <label><input type="radio" name="way" value="{{ $k }}" @checked($way === $k) data-action="reveal#pick"><span>{{ $label }}</span></label>
             @endforeach
         </div>
+        @endif
 
         @if ($one)
             <input type="hidden" name="invoice" value="{{ $first->id }}">
@@ -57,7 +63,7 @@
             @error('amount')<div class="text-sm text-danger">{{ $message }}</div>@enderror
         </div>
 
-        @if ($online)
+        @if ($online && (! $only || $way === 'link'))
             <div class="flex flex-col gap-3" data-reveal-target="pane" data-reveal-key="link" @if ($way !== 'link') hidden @endif>
                 {{-- Кто платит — выбор сразу заводит новую ссылку на него, прежняя гаснет (`CreatePayLink`, 06.10.2026,
                      владелец); новому покупателю — после ФИО, кнопкой. Ниже — сама ссылка. --}}
@@ -74,12 +80,14 @@
             </div>
         @endif
 
+        @if (! $only || $way === 'transfer')
         <div class="flex flex-col gap-3" data-reveal-target="pane" data-reveal-key="transfer" @if ($way !== 'transfer') hidden @endif>
             @if ($pdf && $one)
                 <div class="list">
                     <x-ui.doc :doc="['url' => str_replace('{id}', $first->id, $pdf), 'type' => 'pdf', 'name' => 'schet-'.$first->number.'.pdf', 'label' => 'Счёт '.$first->label()]" class="row">
-                        <x-ui.row-icon name="qr" size="s"/>
-                        <span class="min-w-0 flex-1">Счёт {{ $first->label() }} с QR для банка</span>
+                        {{-- Тем же видом, что способ «Счёт» в квитанции платежа (15.11.2026): значок PDF с весом и номер. --}}
+                        <x-ui.file-icon name="schet.pdf" :bytes="$first->getFirstMedia('file')?->size"/>
+                        <span class="min-w-0 flex-1">Счёт {{ $first->label() }}</span>
                         <x-ui.chevron/>
                     </x-ui.doc>
                 </div>
@@ -91,12 +99,15 @@
             </div>
             <x-ui.sheet-foot>Я оплатил</x-ui.sheet-foot>
         </div>
+        @endif
 
+        @if (! $only || $way === 'cash')
         <div class="flex flex-col gap-3" data-reveal-target="pane" data-reveal-key="cash" @if ($way !== 'cash') hidden @endif>
             <div class="fields">
                 <x-ui.field name="paid_at" id="{{ $id }}-date-cash" label="Когда отдали" type="date" :value="now()->toDateString()" max="{{ now()->toDateString() }}"/>
             </div>
             <x-ui.sheet-foot>Отдал наличными</x-ui.sheet-foot>
         </div>
+        @endif
     </form>
 </x-ui.sheet>
