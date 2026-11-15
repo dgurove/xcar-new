@@ -115,20 +115,9 @@
                     <span class="min-w-0 flex-1"><span class="block">{{ $prime ? 'ДКП '.$deal->seller()->short() : 'ДКП' }}{{ $doc->number() ? ' № '.$doc->number() : '' }}</span><span class="row-sub text-open">готов, распечатайте</span></span>
                     <x-ui.chevron/>
                 </x-ui.doc>
-                {{-- Дату договора менеджер ставит сам (19.10.2026, владелец): подписывают в тот день, когда встретились. У ДКП
-                     юрлица она встаёт сама, когда договор собрался, у ДКП собственника — пусто до «Указать». --}}
-                <div class="row">
-                    <span class="min-w-0 flex-1">Дата договора</span>
-                    @if ($editable)
-                        <form method="post" action="/deals/{{ $deal->id }}/contract" id="dkp-date-{{ $deal->id }}" class="hidden">@csrf @method('put')</form>
-                        <x-ui.date chip submit :clearable="false" name="signed_at" :id="'dkp-date-field-'.$deal->id" :value="$contract->signed_at" :form="'dkp-date-'.$deal->id" placeholder="Указать" class="shrink-0 text-accent-text"/>
-                    @else
-                        <span class="shrink-0 text-ink-muted">{{ $contract->signed_at?->format('d.m.Y') ?? 'не указана' }}</span>
-                    @endif
-                </div>
-            @elseif ($ours)
-                {{-- Не готов по нашей части — что готовим; по покупателю его строка выше уже говорит (05.11.2026: «выберите
-                     покупателя» стояло трижды — в «Расчёте», у выбора и у ДКП). --}}
+            @elseif ($ours && $contract->buyerReady())
+                {{-- Не готов по нашей части — что готовим; и только при заполненном покупателе (15.11.2026, владелец: «PDF — только
+                     если покупатель заполнен»), без него строка покупателя выше уже говорит, что делать. --}}
                 <div class="row">
                     <x-ui.row-icon name="file" size="s" tone="muted"/>
                     <span class="min-w-0 flex-1"><span class="block text-ink-muted">{{ $prime ? 'ДКП '.$deal->seller()->short() : 'ДКП' }}</span>

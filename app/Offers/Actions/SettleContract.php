@@ -52,7 +52,7 @@ final class SettleContract
         $today = now('Europe/Moscow');
         Cache::lock('contract-number:'.$seller->value, 10)->block(10, function () use ($contract, $seller, $today) {
             $next = (int) DB::table('deal_contracts')->where('issuer', $seller->value)->where('year', $today->year)->max('number') + 1;
-            $contract->forceFill(['issuer' => $seller, 'year' => $today->year, 'number' => $next, 'signed_at' => $contract->signed_at ?? $today->toDateString()])->save();
+            $contract->forceFill(['issuer' => $seller, 'year' => $today->year, 'number' => $next])->save();
         });
     }
 }

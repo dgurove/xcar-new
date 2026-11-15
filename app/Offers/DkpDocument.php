@@ -82,10 +82,13 @@ final class DkpDocument
         return $this->form() !== 'owner' && $this->contract->issuer === $this->deal->seller() ? $this->contract->numberLabel() : null;
     }
 
-    /** Дата договора «19.10.2026». */
+    /**
+     * Дата договора — всегда пустой линией (15.11.2026, владелец: «его всегда печатают без даты и вписывают рукой по факту,
+     * нам эта дата не интересна»): в шапке ДКП и в акте — линия под руку (`v()`).
+     */
     public function date(): ?string
     {
-        return $this->contract->signed_at?->format('d.m.Y');
+        return null;
     }
 
     /** Город договора: вписанный, у юрлица — Москва (так в шаблонах), у собственника — город машины. */

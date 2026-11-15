@@ -8,7 +8,6 @@ use App\Offers\Actions\SaveDealContract;
 use App\Offers\Deal;
 use App\Offers\DealContract;
 use App\Offers\DealState;
-use App\Support\Ago;
 use Illuminate\Http\Request;
 
 /**
@@ -22,7 +21,7 @@ class DealContractController
         // Покупатель для счёта поставщика без договора — тоже здесь (03.11.2026, `Deal::collectsBuyer`).
         abort_unless(($deal->collectsBuyer() || $deal->contract?->buyer_user_id) && $deal->isLive(), 404);
         $new = $request->input('buyer_id') === 'new';
-        $rules = ['buyer_id' => ['nullable', 'string'], 'payer' => ['nullable', 'in:buyer,manager'], 'signed_at' => ['sometimes', 'required', 'date']];
+        $rules = ['buyer_id' => ['nullable', 'string'], 'payer' => ['nullable', 'in:buyer,manager']];
         if ($new) {
             $rules += ['new_buyer.phone' => ['nullable', 'string', 'max:20']];
         }
@@ -30,7 +29,7 @@ class DealContractController
             $rules += PartyRules::passport('buyer');
         }
         PartyRules::squeeze($request);
-        $data = $request->validate($rules, [], ['buyer.name' => 'ФИО покупателя', 'signed_at' => 'дата договора'] + PartyRules::buyerLabels());
+        $data = $request->validate($rules, [], ['buyer.name' => 'ФИО покупателя'] + PartyRules::buyerLabels());
         if ($new) {
             $data['new_buyer'] = ['phone' => $request->input('new_buyer.phone')];
             unset($data['buyer_id']);
@@ -41,7 +40,6 @@ class DealContractController
 
         return back()->with('open_sheet', $needs ? 'deal-buyer-data' : null)->with('toast', match (true) {
             $new => 'Покупатель добавлен',
-            isset($data['signed_at']) => 'Дата договора '.Ago::day($contract->signed_at),
             $deal->isPrime() && $deal->fresh()->hasManagerInvoice() => 'Сохранено, счёт выставлен',
             default => 'Сохранено',
         });

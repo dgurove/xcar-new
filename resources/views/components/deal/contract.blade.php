@@ -22,9 +22,10 @@
     $ownerFields = $deal->isDkp() || ($prime && (! $owner || $owner->kind === \App\Billing\PartyKind::Person));
 @endphp
 @php ob_start(); @endphp
-    {{-- Договор — файлом, как документ: значок PDF и номер; чего не хватает — красным под ним. Подписанный вне системы уже
-         приложен (`x-deal.signed-contract`), а свой не собран — своего «не готов» не рисуем: он не нужен (15.11.2026). --}}
-    @unless ($missing && $deal->getMedia('signed_contract')->isNotEmpty())
+    {{-- Договор — файлом, как документ: значок PDF и номер, «готов» / «не готов». Только когда покупатель заполнен (15.11.2026,
+         владелец: «зачем отображать PDF, если он не готов — пусть появляется, только если покупатель заполнен»), и не когда
+         подписанный вне системы уже приложен (`x-deal.signed-contract`), а свой не собран. --}}
+    @if ($contract->buyerReady() && ! ($missing && $deal->getMedia('signed_contract')->isNotEmpty()))
     <x-ui.doc :doc="$pdf" class="row">
         <x-ui.file-icon name="dkp.pdf"/>
         <span class="min-w-0 flex-1">
@@ -35,17 +36,10 @@
         </span>
         <x-ui.chevron/>
     </x-ui.doc>
-    @endunless
-    {{-- Дата договора — сама календарь (19.10.2026): у ДКП юрлица встаёт сама, когда договор собрался, у собственника —
-         когда подписывают; правит и менеджер у себя. --}}
-    <div class="row">
-        <span class="shrink-0 text-ink-muted">Дата договора</span>
-        <span class="min-w-0 flex-1 text-right"><x-ui.date chip submit :clearable="false" name="signed_at" :id="'dkp-date-field-'.$deal->id" :value="$contract->signed_at" :form="'dkp-date-'.$deal->id" placeholder="Указать" class="{{ $contract->signed_at ? '' : 'text-accent-text' }}"/></span>
-    </div>
+    @endif
     <x-deal.buyer :deal="$deal" :contract="$contract"/>
 @php $rows = ob_get_clean(); @endphp
 @php ob_start(); @endphp
-    <form method="post" action="/work/deals/{{ $deal->id }}/contract" id="dkp-date-{{ $deal->id }}" class="hidden">@csrf @method('put')</form>
     <div class="contents" data-controller="sheet" data-action="dkp-{{ $deal->id }}:open@window->sheet#open">
         <x-ui.sheet :id="'dkp-sheet-'.$deal->id" title="Данные договора" :open="$editing">
             <form method="post" action="/work/deals/{{ $deal->id }}/contract" id="{{ $form }}" class="flex flex-col gap-4">

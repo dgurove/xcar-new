@@ -18,8 +18,8 @@ use Illuminate\Validation\ValidationException;
 
 /**
  * Данные ДКП (05.10.2026). Сотрудник по сканам страховой вносит продавца (`seller`: паспорт собственника) и ТС
- * (`vehicle`: госномер, СТС, (Э)ПТС, кузов, шасси — в машину; цена и город — в договор), дату договора (`signed_at`) —
- * и менеджер, и сотрудник. Менеджер — покупателя: своего (`buyer_id`), себя
+ * (`vehicle`: госномер, СТС, (Э)ПТС, кузов, шасси — в машину; цена и город — в договор). Даты договора нет (15.11.2026,
+ * владелец: «печатают без даты, вписывают рукой») — в документе линия. Менеджер — покупателя: своего (`buyer_id`), себя
  * (`me`) или нового (`new_buyer`: заводится в его «Покупателях» без пароля), с паспортом или реквизитами организации
  * (`buyer`, `SaveBuyerData`: физлицо, ИП или организация), и у ПРАЙМ — кто платит по счёту (`payer`). Счёт ПРАЙМ ставится тут же сам (`SyncDealInvoices`). Договор
  * собрался впервые — менеджеру «ДКП готов».
@@ -67,10 +67,6 @@ final class SaveDealContract
                     ?? throw ValidationException::withMessages(['buyer_id' => 'Это не ваш покупатель']);
                 $contract->buyer_user_id = $buyer->id;
             }
-            // Дата договора — менеджер ставит сам (19.10.2026): подписывают в тот день, когда встретились.
-            if (array_key_exists('signed_at', $data)) {
-                $contract->signed_at = $data['signed_at'];
-            }
             // ДКП ПРАЙМ (14.11.2026): номер договора комиссии и ставка НДС — выбором сотрудника в карточке ДКП.
             if (array_key_exists('commission_no', $data)) {
                 $contract->commission_no = filled($data['commission_no']) ? trim($data['commission_no']) : null;
@@ -90,7 +86,7 @@ final class SaveDealContract
             $what = implode(', ', array_filter([
                 isset($data['seller']) ? ($deal->isDkp() ? 'продавец' : 'собственник') : null, isset($data['vehicle']) ? 'ТС' : null,
                 $contract->wasChanged('commission_no') ? 'договор комиссии '.($contract->commission_no ?? 'по номеру убытка') : null,
-                $contract->wasChanged('vat_rate') ? ($contract->vat_rate ? 'НДС '.$contract->vat_rate.' %' : 'без НДС') : null, isset($data['signed_at']) ? 'дата '.$contract->signed_at?->format('d.m.Y') : null, $contract->wasChanged('buyer_user_id') ? 'покупатель '.$contract->buyer?->name : null,
+                $contract->wasChanged('vat_rate') ? ($contract->vat_rate ? 'НДС '.$contract->vat_rate.' %' : 'без НДС') : null, $contract->wasChanged('buyer_user_id') ? 'покупатель '.$contract->buyer?->name : null,
                 isset($data['buyer']) && ! $contract->wasChanged('buyer_user_id') ? 'паспорт покупателя' : null,
             ]));
             $deal->offer->log(OfferEventType::Note, $by, ['text' => $what !== '' ? 'ДКП: '.$what : 'ДКП изменён']);

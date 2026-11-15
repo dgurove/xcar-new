@@ -182,6 +182,12 @@ class DealContract extends Model
         ]));
     }
 
+    /** Покупатель для договора заполнен (выбран, данные и скан паспорта) — только тогда строка договора видна (15.11.2026). */
+    public function buyerReady(): bool
+    {
+        return array_intersect($this->missing(), ['покупатель', 'данные покупателя', 'скан паспорта покупателя']) === [];
+    }
+
     public function isReady(): bool
     {
         return $this->missing() === [];
