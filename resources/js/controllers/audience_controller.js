@@ -288,7 +288,28 @@ export default class extends Controller {
         this.commit();
     }
 
+    // Волна «Всем», когда к ней видят уже все (перед ней была «Всем» без «кроме»), ничего не добавляет — её нет: иначе
+    // «Сразу: Всем», «Через 1 день: Всем» (перед последней «Всем» вставили волну и ответили «Всем»).
+    prune() {
+        let all = false;
+        let pending = new Set();
+        this.waves = this.waves.filter((w, i) => {
+            if (w.kind === 'only') w.who.forEach((k) => pending.delete(k));
+            if (w.kind !== 'all') return true;
+            if (!all) {
+                all = true;
+                pending = new Set(w.except);
+                return true;
+            }
+            if (!pending.size && !w.except.length && this.asking !== i) return false;
+            pending = new Set([...pending].filter((k) => w.except.includes(k)));
+            return true;
+        });
+        if (this.asking >= this.waves.length) this.asking = -1;
+    }
+
     commit() {
+        this.prune();
         this.edited = true;
         const value = JSON.stringify(this.encode());
         if (this.rulesTarget.value !== value) {
@@ -359,7 +380,9 @@ export default class extends Controller {
         item.append(head);
         if (at?.late) {
             const late = el('p', 'wave-late');
-            late.textContent = 'Начнётся после конца приёма';
+            // «…после конца приёма» / «…после конца публикации» — по подписи конца ленты.
+            const end = this.endTarget.querySelector('.field-label')?.firstChild?.textContent.trim().replace(/^Конец/, 'конца');
+            late.textContent = `Начнётся после ${end || 'конца приёма'}`;
             item.append(late);
         }
         // Кому — заголовком «Всем ⌄» / «Всем, кроме ⌄» / «Выбранным ⌄» (нажатие — снова «Кому?»), под ним люди и группы по
