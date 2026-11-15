@@ -34,7 +34,7 @@
     @endphp
     {{-- Шапка — две строки (16.11.2026, владелец: «что с вёрсткой??? столько места экрана тупо впустую» — было пять рядов и ~300 px
          до первой карточки): справа от названия — «Снять с продажи» и «Поделиться» (`actions`), под ним одной строкой (`sub`)
-         коды (`x-car.codes`, как в окне), состояние, метки, приём, чаты и «Показать менеджеру». --}}
+         коды (`x-car.codes`, как в окне), состояние, метки и приём. --}}
     @if ($admin)
         <x-slot:actions class="!w-auto ml-auto max-md:!order-1">
                 @if ($offer->parkVehicle && ! $offer->proposed() && \App\Offers\Actions\UnlistParkOffer::allowed($offer))
@@ -84,10 +84,9 @@
                 </x-ui.sheet>
             </div>
         @endif
-        {{-- Сроки и переписка — текстом в той же строке (владелец 10.10.2026: «что-то чипами, что-то текстом»): приём
-             ещё сколько или закрыт с какого времени, продление лаймовыми словами, чаты ссылкой. --}}
-        @php $chatUnread = $otherChats->sum('unread_for_staff'); @endphp
-        @if (($admin && ! $intake && $offer->closed()) || $otherChats->isNotEmpty())
+        {{-- Приём — текстом в той же строке (владелец 10.10.2026: «что-то чипами, что-то текстом»). Чаты — карточками справа под
+             чатом сделки, «Показать менеджеру» — в ходе сделки (16.11.2026, владелец). --}}
+        @if ($admin && ! $intake && $offer->closed())
             <span class="contents text-sm">
                 @if (! $admin || $intake)
                 @elseif ($offer->closed())
@@ -95,11 +94,8 @@
                 @elseif ($offer->bids_close_at && $offer->state === OfferState::Open)
                     <span class="nums">Приём <span data-controller="timer" data-timer-until-value="{{ $offer->bids_close_at->toIso8601String() }}" data-timer-done-value="закрыт" data-timer-coarse-value="true">{{ \App\Support\Ago::left($offer->bids_close_at, 'ещё') }}</span></span>
                 @endif
-                @if ($otherChats->isNotEmpty())<a href="/work/chats?preset=all&q={{ $offer->number }}" class="inline-flex items-center gap-1 {{ $chatUnread ? 'text-urgent' : 'text-accent-text' }}"><x-ui.icon name="chat" class="size-4"/>{{ $otherChats->count() === 1 ? 'Чат' : 'Чатов: '.$otherChats->count() }}@if ($chatUnread) <span class="badge">{{ $chatUnread }}</span>@endif</a>@endif
             </span>
         @endif
-        {{-- Письмо на разбор не ждёт — «Показать менеджеру» руками, пилюлей. --}}
-        @if ($admin && $offer->deal && ! \App\Offers\ReplyReview::pending()->where('deal_id', $offer->deal->id)->exists())<x-deal.reply-review :deal="$offer->deal" pill/>@endif
     </x-slot:sub>
     @if ($errors->has('state'))<x-ui.flash tone="danger" class="mb-4">{{ $errors->first('state') }}</x-ui.flash>@endif
     {{-- Плашки дел — блоком с отступом, только когда хоть одна есть (`:empty` не срабатывал: от вида остаются переводы строк). --}}
@@ -146,9 +142,16 @@
             {{-- Ссылка менеджеру на его сделку или машину в гараже — под чатом с ним (15.11.2026, владелец: «ссылку я бы перенёс к
                  блоку чата»; была карточкой «Ссылка для …» посреди третьей дорожки). --}}
             @php $personDeal = $admin ? ($garageCar?->deal ?? $deal) : null; @endphp
-            @if ($dealChat || $personDeal?->buyer)
+            {{-- Остальные чаты машины — той же карточкой под чатом сделки (16.11.2026, владелец: «„Чатов: 2“ убрать, лучше бы все чаты
+                 отображал, как чат с менеджером, под него»); карточки «Чаты» ниже больше нет. --}}
+            @if ($dealChat || $personDeal?->buyer || $otherChats->isNotEmpty())
                 <div class="order-first flex flex-col gap-2">
                     @if ($dealChat)<x-deal.chat-card :deal="$deal" :chat="$car->dealChat()"/>@endif
+                    @foreach ($otherChats as $chat)
+                        <a href="/work/chats/{{ $chat->id }}" class="box deal-chat" aria-label="Чат с {{ $chat->displayName() }}">
+                            <x-chat.card-body :chat="$chat" :title="$chat->displayName()" :unread="(int) $chat->unread_for_staff" :user="$chat->user"/>
+                        </a>
+                    @endforeach
                     @if ($personDeal)<x-deal.person-link :deal="$personDeal"/>@endif
                 </div>
             @endif
@@ -189,22 +192,6 @@
             @php $noteDeal = $garageCar?->deal ?? $deal; @endphp
             @if ($admin && $noteDeal)<x-deal.note :deal="$noteDeal" id="deal-note" class="order-3"/>@endif
 
-            @if ($otherChats->isNotEmpty())
-            <x-ui.card title="Чаты" class="order-5">
-                <div class="flex flex-col divide-y divide-line/40">
-                    @foreach ($otherChats as $chat)
-                        <a href="/work/chats/{{ $chat->id }}" class="flex items-center gap-3 py-2">
-                            <x-ui.avatar :user="$chat->user" :size="36"/>
-                            <div class="min-w-0 flex-1">
-                                <div class="flex items-baseline gap-2"><span class="truncate {{ $chat->unread_for_staff ? 'font-medium' : '' }}">{{ $chat->displayName() }}</span><span class="ml-auto shrink-0 text-sm text-ink-dim">{{ \App\Support\Ago::html($chat->last_message_at, short: true) }}</span></div>
-                                <div class="truncate text-sm text-ink-muted">{{ $chat->lastPreview(auth()->user()) }}</div>
-                            </div>
-                            @if ($chat->unread_for_staff)<span class="badge">{{ $chat->unread_for_staff }}</span>@endif
-                        </a>
-                    @endforeach
-                </div>
-            </x-ui.card>
-            @endif
 
             {{-- История — последние четыре записи, остальное по «Ещё N»: лента в тридцать строк занимала экран. История машины,
                  а не одной продажи (29.10.2026): с закупки — кто сколько называл, наша цена — до сделки и гаража. --}}

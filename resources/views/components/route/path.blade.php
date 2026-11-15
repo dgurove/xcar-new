@@ -229,7 +229,7 @@
                     @endif
                     <x-route.who :position="$position" :offer="$offer" :deal="$deal" :named="! $compact"/>
                     {{-- Письмо поставщика ждёт разбора — строкой в шаге, а не лаймовой плашкой над путём (10.11.2026). --}}
-                    @if ($deal && $position->track === \App\Workflow\Track::Sale && auth()->user()?->canManageCrm())<x-deal.reply-review :deal="$deal" line/>@endif
+                    @if ($deal && $position->track === \App\Workflow\Track::Sale && auth()->user()?->canManageCrm())<x-deal.reply-review :deal="$deal" line :manual="! $compact"/>@endif
                     {{-- Покупатель и чего не хватает договору — строками «Продажи» (`x-deal.buyer`, `x-deal.contract-gaps`), не делами шага
                          (16.11.2026, владелец: «как будто мы эти данные от менеджера ждём»). --}}
                     {{-- Машину забирает менеджер, а контакт владельца ему не показан — строкой дела с шторкой «Показать менеджеру» (15.11.2026). --}}

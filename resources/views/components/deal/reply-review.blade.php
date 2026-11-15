@@ -5,7 +5,7 @@
      из машины и её документы); пока письмо ждёт — пилюли нет, есть плашка. `compact` — только плашка (окошко предложения).
      `line` (10.11.2026, начальник по Volvo 01527: лаймовое «Показать менеджеру…» сверху окошка, пока ждём ответа самого менеджера) —
      строкой в текущем шаге пути (`x-route.path`) с тихими ссылками; плашки сверху у сделки с путём больше нет. --}}
-@props(['deal', 'compact' => false, 'pill' => false, 'line' => false, 'inline' => false])
+@props(['deal', 'compact' => false, 'pill' => false, 'line' => false, 'inline' => false, 'manual' => false])
 @php
     use App\Offers\Actions\Disclose;
     use App\Offers\Disclosures;
@@ -47,6 +47,13 @@
                     {{ $what }} от <span class="nums whitespace-nowrap">{!! Ago::html($letters->first()->date_at, true, words: false) !!}</span>
                 </x-route.task-row>
                 @include('admin.deals.reply-review-sheet', $sheet + ['line' => true])
+            </div>
+        @elseif ($manual)
+            {{-- Писем на разбор нет — «Показать менеджеру» руками тихой кнопкой в шаге (16.11.2026, владелец: «не в шапке, она в ходе
+                 сделки»); на странице — `manual`, в окне то же — «Что показываем» в плашке менеджера. --}}
+            <div class="contents" data-controller="sheet">
+                <div class="step-acts mt-2"><button type="button" class="btn btn-s btn-quiet" data-action="sheet#open" aria-controls="{{ $id }}"><x-ui.icon name="file" class="size-4"/>Показать менеджеру</button></div>
+                @include('admin.deals.reply-review-sheet', $sheet)
             </div>
         @endif
         @if ($shown->isNotEmpty())
