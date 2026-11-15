@@ -3,8 +3,10 @@
      и сортировка остаются те же, вид — таблица, страницы нет: таблица целиком на одной. Предзагрузка ни к чему.
      label «Заполнить» — то же у закупочной во вкладке «Без закупочной цены».
      Отдано менеджерам на оценку (11.10.2026): оценил — вместо «Оценить» лаймовая пилюля с аватаром и суммой (лучшая, «+1»
-     у второй), ждём — аватары и срок серым (вышел — красным «просрочено»); склонять имя не нужно. --}}
-@props(['offer', 'label' => 'Оценить'])
+     у второй), ждём — аватары и срок серым (вышел — красным «просрочено»); склонять имя не нужно.
+     chip=false — строка списка (15.11.2026, владелец: лаймовый «Оценить» на каждой строке — шум): оценки менеджеров есть —
+     они, нет — ничего, оценить — нажатием на строку. --}}
+@props(['offer', 'label' => 'Оценить', 'chip' => true])
 @php
     $href = '/offers?'.http_build_query(array_filter(array_merge(request()->query(), ['vid' => 'table', 'peek' => $offer->number, 'page' => null]), fn ($v) => is_string($v) || is_int($v) ? $v !== '' : false));
     $estimates = $offer->relationLoaded('openEstimates') ? $offer->openEstimates : collect();
@@ -20,6 +22,6 @@
         <span class="flex -space-x-1.5">@foreach ($waiting->take(3) as $e)<x-ui.avatar :user="$e->user" :size="18" class="ring-2 ring-surface"/>@endforeach</span>
         <x-offer.estimate-left :estimate="$first" word="" short/>
     </a>
-@else
+@elseif ($chip)
 <a href="{{ $href }}" {{ $attributes->class(['pill pill-accent !min-h-6 !py-0 !px-3 text-sm']) }} data-turbo-action="replace" data-turbo-prefetch="false">{{ $label }}</a>
 @endif

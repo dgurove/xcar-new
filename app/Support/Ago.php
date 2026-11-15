@@ -111,7 +111,11 @@ final class Ago
             default => $day,
         };
 
-        return new HtmlString('<time class="when" datetime="'.$at->toIso8601String().'" title="'.$at->format('d.m.Y H:i').'">'.$text.'</time>');
+        // Слово строчными («вчера», «сегодня») — классом: в строке таблицы на телефоне его ставят по середине строчных, а не
+        // заглавных (`.when-word`), иначе оно кажется ниже цифр соседних строк.
+        $word = $text === $day && preg_match('/^\p{Ll}/u', $day) ? ' when-word' : '';
+
+        return new HtmlString('<time class="when'.$word.'" datetime="'.$at->toIso8601String().'" title="'.$at->format('d.m.Y H:i').'">'.$text.'</time>');
     }
 
     /** Строка чата и ленты: сегодня — время, остальные дни — дата; с временем — дата и время. Текстом. */
