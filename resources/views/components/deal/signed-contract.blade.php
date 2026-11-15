@@ -25,7 +25,8 @@
                     <input type="file" name="files[]" multiple accept=".pdf,.jpg,.jpeg,.png,.webp,.heic,.heif,.doc,.docx" class="sr-only" data-action="change->autosubmit#submit">
                     {{-- Строкой «Продажи» «Подписанный договор — Приложить» (16.11.2026, `x-deal.sale-row`). --}}
                     @if ($bare && $files->isEmpty())
-                        <span class="sale-row-label">Подписанный договор</span><span class="sale-row-value text-accent-text">Приложить</span>
+                        {{-- Справа — зелёная скрепка на месте «›» (16.11.2026, владелец: слово «Приложить» сбивало правый край). --}}
+                        <span class="sale-row-label">Подписанный договор</span><x-ui.icon name="clip" class="size-5 shrink-0 text-accent-text" aria-label="Приложить"/>
                     @else
                         <x-ui.icon name="clip" class="size-5 shrink-0"/>
                         <span class="min-w-0 flex-1">{{ $files->isEmpty() ? 'Приложить' : 'Приложить ещё' }}</span>

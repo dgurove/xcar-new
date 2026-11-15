@@ -29,13 +29,16 @@
     $inGarage = $garage ? (int) ($parked[$bid->user_id] ?? 0) : 0;
 @endphp
 <div @class(['px-4 py-3', 'bid-row--loss' => ($loss && $active) || $high, 'bid-row--low' => $low && ! ($loss && $active), 'bid-row--ok' => $active && ! $garage && ! $low && ! $loss && ! $high])>
-    <div class="flex flex-wrap items-center gap-x-2 gap-y-1">
+    {{-- Строка суммы (16.11.2026, владелец): сумма слева, справа когда и карандаш «Поправить цену»; под суммой — разница и
+         тревоги; ниже кто — без телефона («номера телефонов тут не нужны»). --}}
+    <div class="flex items-center gap-2">
         <span class="bid-amount nums whitespace-nowrap text-lg font-semibold">{{ $garage ? 'В гараж' : Money::rub($price) }}</span>
-        {{-- Опечатка в цене (02.11.2026, «9 400 000 вместо 940 000») — карандаш у суммы: поправить, а не отклонять. --}}
+        <span class="nums ml-auto whitespace-nowrap text-sm text-ink-dim">{{ \App\Support\Ago::html($bid->created_at, true, words: false) }}</span>
+        {{-- Опечатка в цене (02.11.2026, «9 400 000 вместо 940 000») — карандаш справа в строке суммы: поправить, а не отклонять. --}}
         @if ($active && ! $garage && $bid->amount)
             @php $tenth = (int) round($bid->amount / 10, -3); @endphp
             <span class="contents" data-controller="sheet">
-                <button type="button" class="btn btn-ghost btn-s -my-1 px-1.5" data-action="sheet#open" aria-label="Поправить цену" title="Поправить цену"><x-ui.icon name="edit" class="size-4"/></button>
+                <button type="button" class="btn btn-ghost btn-s -my-1 -mr-1.5 px-1.5" data-action="sheet#open" aria-label="Поправить цену" title="Поправить цену"><x-ui.icon name="edit" class="size-4"/></button>
                 <x-ui.sheet :id="'bid-amount-'.$bid->id" title="Поправить цену">
                     <form method="post" action="/confirmations/{{ $bid->id }}/amount" class="flex flex-col gap-4" data-put-scope>
                         @csrf
@@ -59,15 +62,17 @@
                 </x-ui.sheet>
             </span>
         @endif
-        @if ($inGarage)<span class="nums text-sm text-ink-dim">в гараже {{ $inGarage }}</span>@endif
-        @if ($diff)<span class="nums whitespace-nowrap text-sm text-ink-dim">{{ $diff > 0 ? '+' : '−' }}{{ Money::nums(abs($diff)) }} от цены</span>@endif
-        @if ($high)<x-ui.state tone="danger">больше чем вдвое выше цены — проверьте сумму</x-ui.state>@endif
-        @if ($loss && $active)<x-ui.state tone="danger">{{ $under > 0 ? 'ниже закупочной на '.Money::nums($under) : 'равна закупочной' }}</x-ui.state>@endif
-        @if (! $active)<x-ui.state :tone="$bid->state === BidState::Accepted ? 'open' : ($bid->state === BidState::Declined ? 'danger' : 'closed')">{{ $bid->state->label() }}</x-ui.state>@endif
-        <span class="nums ml-auto whitespace-nowrap text-sm text-ink-dim">{{ \App\Support\Ago::html($bid->created_at, true, words: false) }}</span>
     </div>
-    {{-- Кто — человеком, телефон ссылкой и когда — текстом (10.10.2026: «что-то чипами, что-то текстом»). --}}
-    <div class="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm"><x-ui.person :user="$bid->user" full/>@if ($bid->user->isSuperBuyer())<span class="text-ink-dim">супер-покупатель</span>@endif @if ($bid->user->phone)<x-ui.phone :user="$bid->user"/>@endif @if ($bid->byStaff())<span class="text-ink-dim">внёс {{ $bid->placedBy?->shortName() }}</span>@endif</div>
+    @if ($inGarage || $diff || $high || ($loss && $active) || ! $active)
+        <div class="flex flex-wrap items-center gap-x-2 gap-y-1">
+            @if ($inGarage)<span class="nums text-sm text-ink-dim">в гараже {{ $inGarage }}</span>@endif
+            @if ($diff)<span class="nums whitespace-nowrap text-sm text-ink-dim">{{ $diff > 0 ? '+' : '−' }}{{ Money::nums(abs($diff)) }} от цены</span>@endif
+            @if ($high)<x-ui.state tone="danger">больше чем вдвое выше цены, проверьте сумму</x-ui.state>@endif
+            @if ($loss && $active)<x-ui.state tone="danger">{{ $under > 0 ? 'ниже закупочной на '.Money::nums($under) : 'равна закупочной' }}</x-ui.state>@endif
+            @if (! $active)<x-ui.state :tone="$bid->state === BidState::Accepted ? 'open' : ($bid->state === BidState::Declined ? 'danger' : 'closed')">{{ $bid->state->label() }}</x-ui.state>@endif
+        </div>
+    @endif
+    <div class="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm"><x-ui.person :user="$bid->user" full/>@if ($bid->user->isSuperBuyer())<span class="text-ink-dim">супер-покупатель</span>@endif @if ($bid->byStaff())<span class="text-ink-dim">внёс {{ $bid->placedBy?->shortName() }}</span>@endif</div>
     @if ($bid->comment)<div class="mt-1 text-sm">{{ $bid->comment }}</div>@endif
     {{-- Контрпредложение (26.10.2026): ждём ответа — акцентной строкой с «Отозвать», отказался — серым. --}}
     @if ($bid->hasPendingCounter())
