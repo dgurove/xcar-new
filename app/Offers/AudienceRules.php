@@ -14,8 +14,9 @@ use Illuminate\Support\Facades\DB;
  * (0 — сразу), null — не показывать. Строка `rest` («Остальные») одна и последняя. Кто когда видит: своя строка
  * менеджера важнее его групп, группа важнее «Остальных»; в нескольких группах — самое раннее время, но «не показывать»
  * у любой из них сильнее (12.11.2026, владелец: «всем, кроме» — исключённый не видит, в какой бы ещё группе ни был).
- * Окно выбора одно (`x-audience.editor`): «Всем | Всем, кроме | Выбранным» — это те же строки: «кроме» — строки с null,
- * «выбранным» — у «Остальных» null. Те же правила у публикации машины в сделке для других (`deal_audience_rules`,
+ * Окно выбора одно (`x-audience.editor`) — лентой волн (15.11.2026): «Роман сразу, через 5 дней всем, кроме Ивана, ещё через
+ * 3 дня всем» — те же строки (Роман 0, остальные 7200, Иван 11520); волны — только вид, `audience_controller` переводит их
+ * в строки и обратно, время — любые минуты. Те же правила у публикации машины в сделке для других (`deal_audience_rules`,
  * `Actions\PublishDeal`) и волны вендора по умолчанию.
  * Супер-покупатели (10.10.2026, владелец: «пусть все супер-покупатели будут как один менеджер») — один менеджер на
  * всех: своя строка `super`, в группе — галкой `user_groups.with_super`, «Остальные» и «Все менеджеры» — и они тоже.
@@ -26,15 +27,7 @@ final class AudienceRules
 
     public const SUPER_NAME = 'Супер-покупатели';
 
-    /**
-     * Время у строки: минуты => подпись. null — «Не показывать». Дни (от суток) выбор рисует группой «Через несколько
-     * дней»: 1–5 (11.10.2026, начальнику не хватало 3 и 5 дней).
-     */
-    public const DELAYS = [0 => 'Сразу', 30 => 'Через 30 минут', 60 => 'Через 1 час', 120 => 'Через 2 часа', 180 => 'Через 3 часа',
-        360 => 'Через 6 часов', 720 => 'Через 12 часов', 1440 => 'Через 1 день', 2880 => 'Через 2 дня', 4320 => 'Через 3 дня',
-        5760 => 'Через 4 дня', 7200 => 'Через 5 дней', 10080 => 'Через 7 дней'];
-
-    /** С какой задержки выбор — «Через несколько дней». */
+    /** Сутки в минутах. */
     public const DAY = 1440;
 
     public static function everyone(): array
@@ -108,7 +101,12 @@ final class AudienceRules
             }
         }
 
-        return [...array_values($rows), $rest];
+        // Порядок строк смысла не несёт — по времени: окно волн пишет их в своём порядке, а сравнения (`own`, «как у вендора»)
+        // идут по `===`.
+        $rows = array_values($rows);
+        usort($rows, fn ($a, $b) => [$a['delay'] === null, $a['delay'], $a['type'], $a['id']] <=> [$b['delay'] === null, $b['delay'], $b['type'], $b['id']]);
+
+        return [...$rows, $rest];
     }
 
     /**
@@ -171,8 +169,8 @@ final class AudienceRules
     }
 
     /**
-     * Сводка одной строкой словами окна: «Всем сразу», «Всем, кроме Роман К., Регионы», «Только Москва, Роман К.»,
-     * волны — «Свои сразу, остальные через 2 дня»; «Никому». Близнец — `audience_controller.js` `summary`.
+     * Сводка одной строкой: «Всем сразу», «Всем, кроме Роман К., Регионы», «Только Москва, Роман К.», волны по времени —
+     * «Роман К. сразу, остальные через 5 дней, Иван П. через 8 дней»; «Никому». Близнец — `audience_controller.js` `summary`.
      */
     public static function summary(array $rules): string
     {
@@ -195,13 +193,15 @@ final class AudienceRules
                 return 'Никому';
             }
 
-            return 'Только '.($shown->every(fn ($r) => $r['delay'] === 0) ? $words($shown) : $timed($shown));
+            return 'Только '.($shown->every(fn ($r) => $r['delay'] === 0) ? $words($shown) : $timed($shown->sortBy('delay')));
         }
         $except = $hidden->isNotEmpty() ? ', кроме '.$words($hidden) : '';
         if ($shown->isEmpty()) {
             return 'Всем'.($rest['delay'] === 0 && $except ? '' : ' '.self::when($rest['delay'])).$except;
         }
-        $text = $timed($shown).', остальные '.self::when($rest['delay']).$except;
+        $items = $shown->map(fn ($r) => $r + ['rest' => 0])->push(['name' => 'остальные', 'delay' => $rest['delay'], 'rest' => 1])
+            ->sortBy([['delay', 'asc'], ['rest', 'asc']]);
+        $text = $timed($items).$except;
 
         return mb_strtoupper(mb_substr($text, 0, 1)).mb_substr($text, 1);
     }
@@ -234,7 +234,9 @@ final class AudienceRules
             'groups' => self::groups()->map(fn ($g) => ['id' => $g->id, 'name' => $g->name, 'count' => (int) $g->members_count])->values()->all(),
             'managers' => self::people()->map(fn ($u) => ['id' => $u->id, 'name' => $u->shortName()])->values()->all(),
             'super' => self::SUPER_NAME,
-            'delays' => collect(self::DELAYS)->map(fn ($label, $min) => [$min, $label])->values()->all(),
+            // Кто в группе — окну волн: кто уже видит по прежней волне, тому новая его не называет.
+            'members' => DB::table('user_group_user')->whereIn('group_id', self::groups()->pluck('id'))->get(['group_id', 'user_id'])
+                ->groupBy('group_id')->map(fn ($r) => $r->pluck('user_id')->map(fn ($id) => (int) $id)->values())->all(),
         ];
     }
 
@@ -271,8 +273,27 @@ final class AudienceRules
         return once(fn () => User::withRole(Role::Manager)->with(User::withAvatar())->orderBy('name')->get());
     }
 
+    /** «сразу», «через 5 дней», «через 1 день 6 часов»; null — «не показывать». Близнец — `whenWords` в `audience_controller.js`. */
     public static function when(?int $delay): string
     {
-        return $delay === null ? 'не показывать' : mb_strtolower(self::DELAYS[$delay] ?? 'через '.$delay.' минут');
+        return match (true) {
+            $delay === null => 'не показывать',
+            $delay === 0 => 'сразу',
+            default => 'через '.self::span($delay),
+        };
+    }
+
+    /** Минуты словами: «5 дней», «1 день 6 часов», «30 минут». */
+    public static function span(int $minutes): string
+    {
+        $d = intdiv($minutes, self::DAY);
+        $h = intdiv($minutes % self::DAY, 60);
+        $m = $minutes % 60;
+
+        return implode(' ', array_filter([
+            $d ? $d.' '.\App\Support\Plural::of($d, ['день', 'дня', 'дней']) : null,
+            $h ? $h.' '.\App\Support\Plural::of($h, ['час', 'часа', 'часов']) : null,
+            $m ? $m.' '.\App\Support\Plural::of($m, ['минуту', 'минуты', 'минут']) : null,
+        ]));
     }
 }

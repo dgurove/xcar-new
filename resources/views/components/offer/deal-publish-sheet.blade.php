@@ -25,8 +25,9 @@
                 <x-ui.field name="asking_price" label="Цена продажи, ₽" :id="'deal-publish-asking-'.$n" :value="$offer->asking_price ? Money::nums($offer->asking_price) : null" required/>
             </div>
             <x-offer.sale-city :offer="$offer" :id="'deal-publish-sale-city-'.$n"/>
-            <x-offer.close-field :offer="$offer" name="until" :id="'deal-publish-until-'.$n" :value="$until"/>
-            <x-audience.field :value="$offer->deal_audience_rules ? json_encode($offer->deal_audience_rules) : ''" :rules="$rules" inline deal/>
+            <x-audience.field :value="$offer->deal_audience_rules ? json_encode($offer->deal_audience_rules) : ''" :rules="$rules" inline deal :base="$on ? $offer->deal_published_at : null">
+                <x-slot:end><x-offer.close-field :offer="$offer" name="until" :id="'deal-publish-until-'.$n" :value="$until" label="Конец публикации"/></x-slot:end>
+            </x-audience.field>
             @error('audience_rules')<p class="field-error">{{ $message }}</p>@enderror
         </form>
         <div class="sheet-foot flex flex-col gap-2">

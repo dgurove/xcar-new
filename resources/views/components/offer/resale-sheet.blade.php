@@ -58,11 +58,10 @@
                     <x-offer.sale-city :offer="$offer" :id="'resale-sale-city-'.$n"/>
                     <div>
                         <h3 class="list-head">Показ</h3>
-                        <div class="flex flex-col gap-4">
-                            <x-offer.binding-field :offer="$offer" :id="'resale-binding-'.$n"/>
-                            <x-offer.close-field :offer="$offer" :id="'resale-close-'.$n" :value="$closeAt"/>
-                        </div>
-                        <x-audience.field :value="$offer->audience_rules ? json_encode($offer->audience_rules) : ''" :rules="\App\Offers\AudienceRules::of($offer)" inline class="mt-4"/>
+                        <x-offer.binding-field :offer="$offer" :id="'resale-binding-'.$n"/>
+                        <x-audience.field :value="$offer->audience_rules ? json_encode($offer->audience_rules) : ''" :rules="\App\Offers\AudienceRules::of($offer)" inline class="mt-4">
+                            <x-slot:end><x-offer.close-field :offer="$offer" :id="'resale-close-'.$n" :value="$closeAt" label="Конец приёма"/></x-slot:end>
+                        </x-audience.field>
                     </div>
                     <x-ui.sheet-foot>Вернуть в продажу</x-ui.sheet-foot>
                 </form>

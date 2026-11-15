@@ -776,30 +776,48 @@ html.kb-open { --home-gap: 0px; }
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%239a9a9a' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='m9 6 6 6-6 6'/%3E%3C/svg%3E");
     background-repeat: no-repeat; background-position: right center; background-size: 1rem; }
   .row-select:focus-visible { @apply text-ink; }
-  /* «Кому показывать» (`x-audience.editor`, 12.11.2026): сегмент «Всем | Всем, кроме | Выбранным», ниже — кого не показывать
-     чипами, строки со временем (выбранные, волны, «Остальные»), список выбора с поиском прямо в окне. */
+  /* «Кому показывать» лентой волн (`x-audience.editor`, 15.11.2026): точка и линия слева, у волны срок пилюлей и кому —
+     «Всем» с «кроме» или выбранные чипами; у новой — «Кому?» тремя кнопками; «Добавить волну» — кнопкой во всю колонку, линия
+     идёт мимо неё к концу приёма (кольцо). Список выбора с поиском — под волной. */
   .audience-field { @apply flex flex-col gap-2; }
-  .audience { @apply flex flex-col gap-3; }
-  .audience .segment label { @apply whitespace-nowrap px-2; }
+  .audience { @apply flex flex-col; }
   /* Переоценка «Спросить»: срок и «Кому» публикации — только с галкой «Пока думает — опубликовать». */
   .reprice-publish:not(:has(input[name="show_all"]:checked)) .reprice-publish-fields { display: none; }
-  .audience-body { @apply flex flex-col gap-3; }
-  .audience-block { @apply flex flex-col gap-2; }
-  .audience-head { @apply text-sm text-ink-muted; }
-  .audience-chips { @apply flex flex-wrap gap-1.5; }
-  .audience-chip, .audience-add { @apply min-h-8 gap-1.5 rounded-full px-3 text-sm; }
-  .audience-chip > svg { @apply -mr-1 text-ink-dim; }
-  /* Добавить — тихим лаймовым текстом, без обводки (обводок в ките нет); пока список открыт, её нет. */
-  .audience-add { @apply self-start bg-transparent px-0 text-accent-text; }
-  .audience-chips > .audience-add { @apply px-1.5; }
-  /* «+ Волна» — тихо: волны нужны редко, «Всем сразу» не должно выглядеть недоделанным. */
-  .audience-more { @apply inline-flex items-center gap-1 self-start text-sm text-ink-muted; }
-  .audience-more[aria-expanded="true"], .audience-more:hover { @apply text-ink; }
-  .audience-list .row { @apply min-h-12 gap-2; }
-  /* Ширина выбора времени — по выбранному («Сразу»), а не по самому длинному пункту: иначе имя обрезалось. */
-  .audience-list .row-select { field-sizing: content; }
-  .audience-x { @apply -mr-1 grid size-8 shrink-0 place-items-center rounded-full text-ink-dim; }
-  @media (hover: hover) { .audience-x:hover, .audience-chip:hover { @apply text-ink; } }
+  .waves { @apply flex flex-col; }
+  .wave { @apply relative flex flex-col items-start gap-1.5 pb-4 pl-6; }
+  .wave > * { @apply max-w-full; }
+  .wave::before { content: ""; @apply absolute left-[5px] top-4 -bottom-2.5 w-0.5 rounded-full bg-surface-3; }
+  .wave-add::before { @apply top-0; }
+  .audience--bare .waves > .wave:last-child::before, .wave-end::before { display: none; }
+  .audience--bare .waves > .wave:last-child { @apply pb-0; }
+  .wave-end { @apply pb-0; }
+  .wave-dot { @apply absolute left-0 top-2.5 size-3 rounded-full; background: var(--color-accent); }
+  .wave-end > .wave-dot { @apply top-[5px]; background: none; box-shadow: inset 0 0 0 2px var(--color-accent); }
+  .wave-head { @apply flex min-h-8 w-full items-center gap-2; }
+  .wave-when { @apply h-8 shrink-0 cursor-pointer appearance-none rounded-full bg-surface-3 pl-3 pr-7 text-ink outline-none; font-size: 16px; field-sizing: content;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%239a9a9a' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right .5rem center; background-size: 1rem; }
+  .wave-date { @apply min-w-0 truncate text-sm text-ink-muted; }
+  .wave-x { @apply -mr-1 ml-auto grid size-8 shrink-0 place-items-center rounded-full text-ink-dim; }
+  .wave-late { @apply text-sm text-danger; }
+  .wave-ask { @apply flex w-full flex-col gap-1.5; }
+  .wave-q { @apply text-sm text-ink-muted; }
+  .wave-ask-row { @apply grid w-full grid-cols-[1fr_1.3fr_1.3fr] gap-1.5; }
+  .wave-ask-btn { @apply min-h-10 whitespace-nowrap rounded-(--radius-m) bg-surface-3 px-1 text-accent-text; }
+  .wave-ask-btn[aria-pressed="true"] { @apply text-ink; background: color-mix(in oklab, var(--color-ink) 14%, var(--color-surface-3)); }
+  .wave-all { @apply mr-1 inline-flex min-h-8 items-center gap-0.5; }
+  .wave-all > svg { @apply text-ink-dim; }
+  .wave-chips { @apply flex flex-wrap items-center gap-1.5; }
+  .wave-lead { @apply text-sm text-ink-muted; }
+  .wave-chip { @apply min-h-8 max-w-full gap-1.5 rounded-full px-3 text-sm; }
+  .wave-chip > svg { @apply -mr-1 shrink-0 text-ink-dim; }
+  .wave-more { @apply inline-flex min-h-8 items-center gap-1 px-1.5 text-sm text-accent-text; }
+  .wave-chips > .wave-more:first-child { @apply px-0; }
+  .wave-ask + .wave-chips:empty { display: none; }
+  .wave-add-btn { @apply flex min-h-11 w-full items-center justify-center gap-1.5 rounded-(--radius-m) bg-surface-3 text-accent-text; }
+  .wave-end .field-label { @apply text-base text-ink; }
+  .wave .audience-pick { @apply w-full; }
+  @media (hover: hover) { .wave-x:hover, .wave-chip:hover, .wave-all:hover { @apply text-ink; } .wave-ask-btn:hover, .wave-add-btn:hover { @apply text-ink; } }
   .audience-pick { @apply flex flex-col gap-2 rounded-(--radius-l) bg-surface-2 p-2; }
   .dark .audience-pick { background: var(--color-surface-3); }
   .audience-pick-head { @apply sticky top-0 z-[1] flex items-center gap-2 px-1 pt-1; }

@@ -1,6 +1,6 @@
 {{-- «Показ» — один модуль (12.10.2026, владелец: «бесит, что „Кому показывать“ в одном месте, а в сделке в другом»; 12.11.2026 —
      «это всё одно и то же», не хватало срока и «всем, кроме»). У предложения: срок обязывающего (у вендора по комиссии), «Приём
-     подтверждений до» (`x-offer.close-field`), «Кому показывать» (`x-audience.field`: «Всем | Всем, кроме | Выбранным», волны),
+     подтверждений до» (`x-offer.close-field`), «Кому показывать» (`x-audience.field`: лента волн, в шторке конец приёма — её концом),
      ниже галки показа. У машины в сделке (и гаражной, пока не привезли) — публикация для других менеджеров строкой: идёт — до
      когда и кому, нет — «Не опубликована»; нажатие — шторка `x-offer.deal-publish-sheet` с теми же полями. Архив и прочее — модуля нет.
      Стоит справа под «Ценами» в редакторе (`as=card`) и разделом в окошках (`as=section`); у черновика и открытого — полями
@@ -47,10 +47,23 @@
     <div class="grid grid-cols-[repeat(2,minmax(0,1fr))] gap-x-2 gap-y-3">
         {{-- Срок обязывающего (19.10.2026, владелец: «туда хорошо подходит») — общим куском `x-offer.binding-field`. --}}
         <x-offer.binding-field :offer="$offer" :id="'f-binding_until-'.$n.'-'.$as" :form="$form" span="col-span-2"/>
-        {{-- Не вписан — посчитает публикация (`Slots::closeFor`), поэтому без умолчания. --}}
-        <x-offer.close-field :offer="$offer" :id="'f-bids_close_at-'.$n.'-'.$as" :value="$offer->bids_close_at?->format('Y-m-d\TH:i') ?? ''" :required="false" :form="$form" span="col-span-2"/>
-        <x-audience.field :value="$offer->audience_rules ? json_encode($offer->audience_rules) : ''" :rules="AudienceRules::of($offer)" :form="$form"
-            :inline="$as === 'sheet'" :sheet="'audience-'.$n.'-'.$as" class="col-span-2"/>
+        {{-- Не вписан — посчитает публикация (`Slots::closeFor`), поэтому без умолчания. В шторке — концом ленты волн
+             (15.11.2026: последняя волна идёт до него), в карточке — своим полем над строкой «Кому». --}}
+        @php
+            $base = $offer->state === OfferState::Open ? $offer->published_at : $offer->slot_at;
+        @endphp
+        @if ($as === 'sheet')
+            <x-audience.field :value="$offer->audience_rules ? json_encode($offer->audience_rules) : ''" :rules="AudienceRules::of($offer)" :form="$form"
+                inline :base="$base" :sheet="'audience-'.$n.'-'.$as" class="col-span-2">
+                <x-slot:end>
+                    <x-offer.close-field :offer="$offer" :id="'f-bids_close_at-'.$n.'-'.$as" :value="$offer->bids_close_at?->format('Y-m-d\TH:i') ?? ''" :required="false" :form="$form" label="Конец приёма"/>
+                </x-slot:end>
+            </x-audience.field>
+        @else
+            <x-offer.close-field :offer="$offer" :id="'f-bids_close_at-'.$n.'-'.$as" :value="$offer->bids_close_at?->format('Y-m-d\TH:i') ?? ''" :required="false" :form="$form" span="col-span-2"/>
+            <x-audience.field :value="$offer->audience_rules ? json_encode($offer->audience_rules) : ''" :rules="AudienceRules::of($offer)" :form="$form"
+                :sheet="'audience-'.$n.'-'.$as" class="col-span-2"/>
+        @endif
         @if (($summary ?? collect())->isNotEmpty())
             <div class="col-span-2 flex flex-col gap-1.5 text-sm">
                 @foreach ($summary as $row)

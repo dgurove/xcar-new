@@ -1,25 +1,22 @@
-{{-- Окно «Кому показывать» (12.11.2026, владелец: показ менеджерам, волны и «Опубликовать для других» — одно и то же, а «всем,
-     кроме» не было нигде): сверху «Всем | Всем, кроме | Выбранным», ниже — кого не показывать чипами, выбранные строками со
-     временем, волны («+ Волна» — группа или менеджер в другое время, чем остальные). «Добавить» — список групп и менеджеров с
-     поиском прямо здесь, можно отметить нескольких. Внутри — те же строки «кто → когда» (`AudienceRules`), строки рисует
-     `audience_controller`, список выбора — здесь. Одно на предложение, публикацию сделки, «Вернуть в продажу», переоценку и
-     вендора; deal — публикация машины в сделке: супер-покупателей в выборе нет. --}}
-@props(['deal' => false])
+{{-- Окно «Кому показывать» лентой волн (15.11.2026, владелец: «невозможно одному менеджеру 5 дней, потом остальным», «сначала
+     выбранным 5 дней, потом всем, кроме — 3 дня, потом всем до такого-то числа»; прежнее «Всем | Всем, кроме | Выбранным» на всё
+     окно — с 12.11.2026). Волны рисует `audience_controller` (срок пилюлей, «Всем» с «кроме» или выбранные чипами, «Кому?» тремя
+     кнопками у новой, «Добавить волну»), список групп и менеджеров с поиском — здесь, его ставят под волну. Конец ленты — слот
+     `end` (конец приёма или публикации). Одно на предложение, публикацию сделки, «Вернуть в продажу», переоценку и вендора;
+     deal — публикация машины в сделке: супер-покупателей в выборе нет. --}}
+@props(['deal' => false, 'end' => null])
 @php
     $groups = \App\Offers\AudienceRules::groups();
     $people = \App\Offers\AudienceRules::people();
-    $mode = 'aud-'.\Illuminate\Support\Str::random(6);
     $count = $groups->count() + $people->count() + ($deal ? 0 : 1);
     // Имя для поиска — как запрос в `audience#filter`: строчными и без «ё».
     $key = fn ($name) => str_replace('ё', 'е', mb_strtolower($name));
 @endphp
-<div class="audience">
-    <div class="segment" role="radiogroup" aria-label="Кому показывать">
-        @foreach (['all' => 'Всем', 'except' => 'Всем, кроме', 'only' => 'Выбранным'] as $value => $label)
-            <label><input type="radio" name="_{{ $mode }}" value="{{ $value }}" data-audience-target="mode" data-action="audience#mode">{{ $label }}</label>
-        @endforeach
-    </div>
-    <div class="audience-body" data-audience-target="body"></div>
+<div @class(["audience", "audience--bare" => ! $end])>
+    <div class="waves" data-audience-target="body"></div>
+    @if ($end)
+        <div class="wave wave-end" data-audience-target="end"><span class="wave-dot"></span>{{ $end }}</div>
+    @endif
     <div class="audience-pick" data-audience-target="pick" hidden>
         <div class="audience-pick-head">
             @if ($count > 8)
@@ -53,5 +50,5 @@
             @endforeach
         </div>
     </div>
-    <template data-audience-target="icons"><x-ui.icon name="x" class="size-4" data-icon="x"/><x-ui.icon name="plus" class="size-4" data-icon="plus"/></template>
+    <template data-audience-target="icons"><x-ui.icon name="x" class="size-4" data-icon="x"/><x-ui.icon name="plus" class="size-4" data-icon="plus"/><x-ui.icon name="chevron-down" class="size-4" data-icon="chevron"/></template>
 </div>

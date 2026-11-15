@@ -3,8 +3,9 @@
      переоценка, вендор — шторки в шторке нет); иначе — строка-сводка,
      нажатие — шторка с окном (плашка «Без подтверждений», карточка «Показ» страницы). value — что хранится (JSON; пусто — как у
      вендора или всем сразу), rules — что действует сейчас (с ним окно открывается); form — id формы, когда поле вне неё;
-     с form у строки-сводки «Сохранить» отправляет её сразу, без — «Готово». deal — публикация машины в сделке. --}}
-@props(['name' => 'audience_rules', 'value' => '', 'rules' => null, 'form' => null, 'inline' => false, 'deal' => false, 'sheet' => null, 'label' => 'Кому показывать'])
+     с form у строки-сводки «Сохранить» отправляет её сразу, без — «Готово». deal — публикация машины в сделке. Слот end — поле
+     конца приёма (публикации) концом ленты волн; base — когда был выход (открытое, идущая публикация): у волн тогда даты. --}}
+@props(['name' => 'audience_rules', 'value' => '', 'rules' => null, 'form' => null, 'inline' => false, 'deal' => false, 'sheet' => null, 'label' => 'Кому показывать', 'base' => null])
 @php
     use App\Offers\AudienceRules;
     $rules = AudienceRules::normalize($rules ?: AudienceRules::everyone());
@@ -12,11 +13,12 @@
     $sheet ??= 'audience-'.\Illuminate\Support\Str::random(6);
 @endphp
 <div {{ $attributes->class([$inline ? 'audience-field' : 'field']) }} data-controller="audience{{ $inline ? '' : ' sheet' }}" data-audience-options-value="{{ json_encode($options) }}"
-    data-audience-effective-value="{{ json_encode($rules) }}" data-audience-deal-value="{{ $deal ? 'true' : 'false' }}">
+    data-audience-effective-value="{{ json_encode($rules) }}" data-audience-deal-value="{{ $deal ? 'true' : 'false' }}"
+    @if ($base) data-audience-base-value="{{ $base->toIso8601String() }}" @endif>
     <span class="field-label">{{ $label }}</span>
     <input type="hidden" name="{{ $name }}" value="{{ $value }}" @if ($form) form="{{ $form }}" @endif data-audience-target="rules">
     @if ($inline)
-        <x-audience.editor :deal="$deal"/>
+        <x-audience.editor :deal="$deal" :end="$end ?? null"/>
     @else
         <button type="button" class="field-input flex w-full items-center gap-3 text-left" data-action="sheet#open">
             <x-ui.icon name="users" class="size-5 shrink-0 text-ink-muted"/>
