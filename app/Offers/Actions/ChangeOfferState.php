@@ -220,6 +220,8 @@ final class ChangeOfferState
         return array_keys(array_filter([
             // «Марки нет» (12.11.2026): прицеп или кузов без шильдика — марку не ждём.
             'марка' => ! $offer->brand_id && ! $offer->no_brand,
+            // Закупочной нет — продавать не от чего (15.11.2026: оценочная с парковки снята, Альфа ещё не прислала новую).
+            'закупочная' => ! $offer->floor_price,
             'цена продажи' => ! $offer->asking_price,
             'фотографии' => $offer->visiblePhotos()->isEmpty(),
         ]));

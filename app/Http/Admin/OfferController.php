@@ -436,13 +436,15 @@ class OfferController
         return match ($preset) {
             'legacy' => LegacyClaim::onList($q->where('offers.state', OfferState::Draft)),
             'auction' => $q->where('offers.state', OfferState::Draft)->whereNotNull('offers.auction_at'),
-            'nofloor' => $q->where('offers.state', OfferState::Draft)->whereNull('slot_at')->where(fn ($p) => $p->whereNull('asking_price')->orWhere('asking_price', 0))
-                ->where(fn ($p) => $p->whereNull('floor_price')->orWhere('floor_price', 0)),
+            // Без закупочной — и с ценой продажи (15.11.2026, владелец: оценочная с парковки, а машина на Мигторге, — «пусть
+            // останется цена продажи, но пока нет оценочной и закупочной, они черновики без закупочной»; `ParkValue`).
+            // И приём закрывался без подтверждений — сначала закупочная («Без подтверждений» — только с ней).
+            'nofloor' => $q->where('offers.state', OfferState::Draft)->whereNull('slot_at')->where(fn ($p) => $p->whereNull('floor_price')->orWhere('floor_price', 0)),
             'unpriced' => $q->where('offers.state', OfferState::Draft)->whereNull('slot_at')->where(fn ($p) => $p->whereNull('asking_price')->orWhere('asking_price', 0))->where('floor_price', '>', 0),
             // Без цены продажи, а менеджер думает или уже оценил (просьба `asked` | `given`); корректировка цены — в «Оцененных».
             'estimating' => self::estimating($q),
             // Приём кончился без подтверждений — в «Без подтверждений» (29.10.2026, начальник), модератору — здесь же: той вкладки у него нет.
-            'priced' => $q->where('offers.state', OfferState::Draft)->whereNull('slot_at')->where('asking_price', '>', 0)
+            'priced' => $q->where('offers.state', OfferState::Draft)->whereNull('slot_at')->where('asking_price', '>', 0)->where('floor_price', '>', 0)
                 ->when($admin, fn ($o) => $o->whereNull('offers.intake_closed_at')),
             'slots' => $q->scheduled(),
             // Идёт приём (срок не прошёл или его нет); у админа — ещё без подтверждений, они в «Есть подтверждения». Модератору
@@ -452,7 +454,7 @@ class OfferController
                     ->whereDoesntHave('bids', $bids)),
             // «Без подтверждений» (06.11.2026, владелец; до того «Завершённые» с группой «В работе» — сделки и гараж, им там не
             // место): приём кончился без подтверждений — решить, вернуть в продажу или в архив. Список держат пустым.
-            'done' => $q->where('offers.state', OfferState::Draft)->whereNull('slot_at')->whereNotNull('offers.intake_closed_at'),
+            'done' => $q->where('offers.state', OfferState::Draft)->whereNull('slot_at')->whereNotNull('offers.intake_closed_at')->where('floor_price', '>', 0),
             'bids' => $q->where('offers.state', OfferState::Open)->whereHas('bids', $bids),
             // «Все» (21.10.2026, владелец: «все, в том числе завершённые и перешедшие в сделку, короче все кроме архивных»).
             'all' => $q->whereNotIn('offers.state', [OfferState::Archived, OfferState::Cancelled]),

@@ -1400,9 +1400,9 @@ class Offer extends Model
             ($a['auction_at'] ?? null) !== null && $state === OfferState::Draft->value => 'auction',
             ($a['slot_at'] ?? null) !== null => 'slots',
             $state === OfferState::Gallery->value => 'gallery',
+            (int) ($a['floor_price'] ?? 0) <= 0 => 'nofloor',
             (int) ($a['asking_price'] ?? 0) > 0 => 'priced',
-            (int) ($a['floor_price'] ?? 0) > 0 => 'unpriced',
-            default => 'nofloor',
+            default => 'unpriced',
         };
     }
 
@@ -1417,6 +1417,8 @@ class Offer extends Model
                 $this->state === OfferState::Draft && LegacyClaim::has($this->claim_ref_key) => $presets['legacy'],
                 $this->slot_at !== null => $presets['slots'],
                 $this->state === OfferState::Gallery => 'Галерея',
+                // Без закупочной — «Без закупочной», и с ценой продажи и закрытым приёмом (`OfferController::scopeFor`).
+                ! ($this->floor_price > 0) => $presets['nofloor'],
                 $this->intake_closed_at !== null && $user?->canManageCrm() => $presets['done'],
                 $this->asking_price > 0 => $presets['priced'],
                 $user?->canManageCrm() && $this->onEstimate() => $presets['estimating'],

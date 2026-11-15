@@ -20,8 +20,9 @@ use Illuminate\Support\Facades\DB;
  *
  * - `inherit` — новая продажа машины, что стоит у нас и ещё не на Мигторге, берёт оценочную ТС;
  * - `follow` — правка оценочной на парковке идёт в продажу (`UpdateVehicle`), пока оценочная продажи с парковки и лота нет;
- * - `drop` / `sweep` — лот появился: оценочная с парковки и закупочная от неё по правилу снимаются, черновик уходит из
- *   «Без продажной цены» в «Без закупочной» (часы `migtorg:sync`, смена номера убытка — `UpdateOffer::identityChanged`).
+ * - `drop` / `sweep` — лот появился: оценочная с парковки и закупочная от неё по правилу снимаются, черновик встаёт в
+ *   «Без закупочной», цена продажи, если была, остаётся (часы `migtorg:sync`, смена номера убытка —
+ *   `UpdateOffer::identityChanged`). Опубликованные и сделки — не сами.
  */
 final class ParkValue
 {
@@ -89,14 +90,16 @@ final class ParkValue
         return true;
     }
 
-    /** Черновики без цены продажи и подтверждений, у которых оценочная с парковки, а машина уже на Мигторге. */
-    public static function stale(): Builder
+    /**
+     * Черновики без слота и подтверждений (цена продажи — не помеха: остаётся, черновик встаёт в «Без закупочной»), у
+     * которых оценочная с парковки, а машина уже на Мигторге. `$state` — опубликованные (разово, `offers:stale-park-values --open`).
+     */
+    public static function stale(OfferState $state = OfferState::Draft): Builder
     {
         $keys = DB::table('migtorg_lots')->whereNotNull('claim_ref_key')->select('claim_ref_key');
 
         return Offer::query()->where('offers.value_from', self::PARK)->where('offers.value', '>', 0)
-            ->where('offers.state', OfferState::Draft)->whereNull('offers.slot_at')
-            ->where(fn ($p) => $p->whereNull('offers.asking_price')->orWhere('offers.asking_price', 0))
+            ->where('offers.state', $state)->whereNull('offers.slot_at')->whereNull('offers.auction_at')
             ->whereDoesntHave('bids', fn ($b) => $b->whereIn('state', [BidState::Active, BidState::Accepted]))
             ->whereCar(fn ($c) => $c->whereIn('claim_ref_key', $keys));
     }

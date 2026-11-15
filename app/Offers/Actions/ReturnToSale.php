@@ -46,7 +46,8 @@ final class ReturnToSale
      */
     public static function unsold(Offer $offer): bool
     {
-        return $offer->state === OfferState::Draft && $offer->intake_closed_at !== null && ! $offer->slot_at && ! $offer->onAuction();
+        // Без закупочной (оценочная с парковки снята, `ParkValue`) — сначала «Цены» по шагам, как у «Без закупочной».
+        return $offer->state === OfferState::Draft && $offer->intake_closed_at !== null && $offer->floor_price > 0 && ! $offer->slot_at && ! $offer->onAuction();
     }
 
     public function __invoke(Offer $offer, User $by, array $prices, ?CarbonInterface $closeAt = null, ?array $audience = null, bool $stays = false, array $where = []): Offer

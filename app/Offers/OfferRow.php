@@ -85,7 +85,7 @@ final class OfferRow
             : implode(', ', array_filter([$this->priceBids ? $this->priceBids.' подтв.' : null, $this->garageBids ? $this->garageBids.' в гараж' : null]));
         $this->slot = $offer->isScheduled() ? 'выйдет '.Slots::phrase($offer->slot_at) : null;
         $this->missing = $checkable && $this->draft && ! $this->slot ? array_map(fn ($m) => 'нет '.match ($m) {
-            'фотографии' => 'фото', 'марка' => 'марки', 'цена продажи' => 'цены', default => $m,
+            'фотографии' => 'фото', 'марка' => 'марки', 'цена продажи' => 'цены', 'закупочная' => 'закупочной', default => $m,
         }, ChangeOfferState::missing($offer)) : [];
         $this->todo = $user && OfferController::todo($offer, $user);
         // Логотип — из одной выборки вендоров на страницу, а не связью на каждую строку.

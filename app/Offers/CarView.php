@@ -122,7 +122,7 @@ final class CarView
         // Открытое — блок «Приём» сверху (`intake-block`): срок и продление кнопками.
         $intake = $admin && ! $garageCar && $state === OfferState::Open && $o->bids_close_at;
         // «Выставить в продажу» у черновика и галереи; без цены продажи публиковать нечего.
-        $publishItems = $admin && in_array($state, [OfferState::Draft, OfferState::Gallery], true) && ! $scheduled && $o->asking_price && ! $auction && ! $unsold;
+        $publishItems = $admin && in_array($state, [OfferState::Draft, OfferState::Gallery], true) && ! $scheduled && $o->asking_price && $o->floor_price && ! $auction && ! $unsold;
         // Оценённый черновик — «Выставить в продажу» кнопкой в «Ценах» (19.10.2026), не пунктом меню.
         $publishButton = $steps && $publishItems;
         // «Отдать…» (`Give`, 18.10.2026): в сделку ценой или в гараж — из черновика, галереи и продажи, и без цены продажи

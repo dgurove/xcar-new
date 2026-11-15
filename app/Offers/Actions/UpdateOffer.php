@@ -223,7 +223,7 @@ final class UpdateOffer
             DB::table('migtorg_lots')->where('offer_id', $offer->id)->where(fn ($q) => $q->whereNull('claim_ref_key')->orWhere('claim_ref_key', '!=', (string) $offer->claim_ref_key))->update(['offer_id' => null]);
             ImportMigtorgLot::auto($offer);
             // Новый номер уже на Мигторге — оценочная с парковки неактуальна (`ParkValue`).
-            if ($offer->state === OfferState::Draft && ! $offer->asking_price) {
+            if ($offer->state === OfferState::Draft && ! $offer->isScheduled() && ! $offer->onAuction()) {
                 ParkValue::drop($offer->refresh());
             }
         }
