@@ -70,6 +70,9 @@ class MigtorgArchive extends Command
 
                 continue;
             }
+            // Архив — старые лоты: «впервые видели сейчас» было бы ложью и сделало бы старую оценочную неактуальной; дату
+            // оценит `Valuations::lotAt` по соседним номерам.
+            $row['first_seen_at'] = null;
             DB::table('migtorg_lots')->upsert([$row], ['id'], MigtorgSync::updates());
             MigtorgSync::media([$id => $lot['photos']], newest: false);
             if ($row['claim_ref_key']) {

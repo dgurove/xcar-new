@@ -15,9 +15,9 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Сверка оценочных по датам (15.11.2026, `Offers\Valuations`): прошлому — `value_at` по «Истории», и где заявка поставщика во
- * вложении письма свежее нынешней оценочной (0790/046/10760/26: из текста 18.10 — 5 862 856, заявка 23.10 — 3 033 000), —
- * поставить её. Текст документов — только прочитанный (кеш, текстовый слой), OCR не запускается.
+ * Сверка оценочных по датам (15.11.2026, `Offers\Valuations`): прошлому — `value_at` по «Истории»; где заявка поставщика во
+ * вложении письма свежее нынешней оценочной и появления лота на Мигторге (0790/046/10760/26: из текста 18.10 — 5 862 856, заявка
+ * 26.10 — 3 033 000, лот 13.10), — поставить её; где лот появился позже оценочной черновика — снять. Текст документов — только прочитанный (кеш, текстовый слой), OCR не запускается.
  * `--dry` — только список, ничего не пишет.
  */
 final class ValuationsCommand extends Command
@@ -58,6 +58,12 @@ final class ValuationsCommand extends Command
         }
         $bar->finish();
         $this->newLine();
+        // Лот появился позже оценочной — снять (`Valuations::sweep`).
+        foreach (Valuations::staleDrafts() as $offer) {
+            $rows[] = [$offer->claim_ref ?: '№ '.$offer->number, 'снять, продажа '.$offer->state->label(), self::was((int) $offer->value, Valuations::at($offer)),
+                'лот на Мигторге с '.Ago::day(Valuations::lotAt($offer->claim_ref_key)), 'закупочная '.($offer->floor_price ? Money::rub((int) $offer->floor_price) : 'нет')];
+            $dry || Valuations::drop($offer);
+        }
         $this->table(['Машина', 'Где', 'Было', 'Свежее', 'Цены'], $rows);
         $this->line(($dry ? 'Встанет: ' : 'Поставлено: ').count($rows));
 

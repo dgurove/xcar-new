@@ -235,6 +235,8 @@ final class UpdateOffer
             // Лоты прежнего номера больше не этого предложения — свободны для своего.
             DB::table('migtorg_lots')->where('offer_id', $offer->id)->where(fn ($q) => $q->whereNull('claim_ref_key')->orWhere('claim_ref_key', '!=', (string) $offer->claim_ref_key))->update(['offer_id' => null]);
             ImportMigtorgLot::auto($offer);
+            // Новый номер уже на Мигторге, и лот появился позже оценочной — она неактуальна (`Valuations`).
+            Valuations::drop($offer->refresh());
         }
     }
 }

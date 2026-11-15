@@ -23,10 +23,15 @@ use Throwable;
  * Какая оценочная верна — самая свежая по дате источника (15.11.2026, владелец по 0790/046/10760/26: «18 октября Альфа прислала
  * оценку 6 млн, 26 октября — заявку на приём, в ней уже 3 млн. Получается, это более свежая оценка! Мы оценки с парковки
  * отметали и опирались на оценку от Альфы, но это был неверный подход»). Тип источника ничего не решает, Мигторг сам по себе
- * ничего не отменяет — только дата, на которую сумма верна (`offers.value_at`, `cars.value_at`):
+ * решает дата, на которую сумма верна (`offers.value_at`, `cars.value_at`):
  * - заявка поставщика во вложении письма — дата документа («от «23» октября 2026»), не прочлась — дата письма;
  * - письмо о переоценке — дата письма (`DetectReprice`);
  * - «Оценить из текста», бот, правка рукой — момент записи.
+ * Мигторг — тоже дата: лот появился позже оценочной — она неактуальна (владелец, тот же день: «появление на Мигторге произошло
+ * ПОСЛЕ заявки на приём, а значит та оценка уже не актуальна»; Альфа выставляет машину на торги и потом присылает новую
+ * оценку). Такая не встаёт (`older`), а стоящая снимается, когда лот появился (`sweep`, часы `migtorg:sync`); новая оценочная
+ * после лота («Оценить из текста», бот, свежая заявка) встаёт как обычно. Появление лота — `migtorg_lots.first_seen_at`
+ * (`lotAt`).
  *
  * Пишет только `UpdateOffer` (`$log['as_of']`): оценочная старше нынешней не встаёт (`older`), закупочная идёт за оценочной по
  * правилу, если не вписана рукой, при подтвердивших — переоценка на решение. Документы машины — после каждого чтения
@@ -73,12 +78,88 @@ final class Valuations
         return $at ? Carbon::parse($at) : $car->created_at;
     }
 
-    /** Сумма на `$asOf` старше нынешней оценочной — не встаёт. */
+    /**
+     * Когда машина с этим номером убытка последний раз появилась на Мигторге (новый лот — новые торги). Дата начала лота у
+     * Мигторга не отдаётся: `first_seen_at` — первая встреча синхронизации; у лота из архива её нет — дата ближайшего более
+     * нового лота с известной датой (номера идут по порядку: появился не позже), иначе «видели последний раз».
+     */
+    public static function lotAt(?string $claimRefKey): ?Carbon
+    {
+        if ($claimRefKey === null || $claimRefKey === '') {
+            return null;
+        }
+        $at = null;
+        foreach (DB::table('migtorg_lots')->where('claim_ref_key', $claimRefKey)->get(['id', 'first_seen_at', 'seen_at']) as $lot) {
+            $seen = $lot->first_seen_at ?? DB::table('migtorg_lots')->where('id', '>=', $lot->id)->min('first_seen_at') ?? $lot->seen_at;
+            $seen && ($at === null || $seen > $at) && $at = $seen;
+        }
+
+        return $at ? Carbon::parse($at) : null;
+    }
+
+    /**
+     * Сумма на `$asOf` раньше появления лота на Мигторге — неактуальна. Час допуска: черновик с лота и оценочная из СМС
+     * заводятся одним движением («Оценить из текста» → «Нет в CRM» → лот), и дата лота у нас — не раньше этого движения.
+     */
+    public static function beforeLot(?string $claimRefKey, ?Carbon $asOf): bool
+    {
+        $lot = $asOf ? self::lotAt($claimRefKey) : null;
+
+        return $lot && $asOf->lt($lot->copy()->subHour());
+    }
+
+    /** Сумма на `$asOf` старше нынешней оценочной или появления лота на Мигторге — не встаёт. */
     public static function older(Offer $offer, ?Carbon $asOf): bool
     {
         $at = self::at($offer);
 
-        return $asOf && $at && $asOf->lt($at);
+        return $asOf && (($at && $asOf->lt($at)) || self::beforeLot($offer->claim_ref_key, $asOf));
+    }
+
+    /** Нынешняя оценочная продажи раньше появления лота — неактуальна. */
+    public static function stale(Offer $offer): bool
+    {
+        return $offer->value !== null && self::beforeLot($offer->claim_ref_key, self::at($offer));
+    }
+
+    /**
+     * Снять неактуальную оценочную (`stale`) и закупочную, посчитанную от неё (вписанная рукой остаётся); цена продажи остаётся —
+     * черновик встаёт в «Без закупочной». Только черновик без слота, аукциона и подтверждений: опубликованное и сделки — решение
+     * человека. Сняли — true.
+     */
+    public static function drop(Offer $offer): bool
+    {
+        if ($offer->state !== OfferState::Draft || $offer->isScheduled() || $offer->onAuction() || $offer->costDeal() || ! self::stale($offer)
+            || $offer->bids()->whereIn('state', [BidState::Active, BidState::Accepted])->exists()) {
+            return false;
+        }
+        $value = (int) $offer->value;
+        $floor = $offer->floor_price ? (int) $offer->floor_price : null;
+        $auto = ! $floor || in_array($floor, [$value, Pricing::floorFrom($value), Pricing::floorFrom($value, Pricing::rulesFor($offer))], true);
+        $at = self::at($offer);
+        app(UpdateOffer::class)($offer, ['value' => null] + ($auto ? ['floor_price' => null] : []), null,
+            ['why' => 'Появилось на Мигторге после оценочной'.($at ? ' от '.Ago::day($at) : '').' — она неактуальна']);
+
+        return true;
+    }
+
+    /**
+     * Черновики с оценочной, у которых лот появился позже неё (часы `migtorg:sync`, смена номера убытка, `offers:valuations`).
+     *
+     * @return Collection<int, Offer>
+     */
+    public static function staleDrafts(): Collection
+    {
+        return Offer::query()->where('offers.state', OfferState::Draft)->where('offers.value', '>', 0)
+            ->whereNull('offers.slot_at')->whereNull('offers.auction_at')
+            ->whereCar(fn ($c) => $c->whereExists(fn ($q) => $q->from('migtorg_lots')->whereColumn('migtorg_lots.claim_ref_key', 'cars.claim_ref_key')
+                ->whereRaw('coalesce(migtorg_lots.first_seen_at, migtorg_lots.seen_at) > coalesce(offers.value_at, offers.created_at)')))
+            ->get()->filter(fn (Offer $o) => self::stale($o))->values();
+    }
+
+    public static function sweep(): int
+    {
+        return self::staleDrafts()->filter(fn (Offer $o) => self::drop($o))->count();
     }
 
     /**
