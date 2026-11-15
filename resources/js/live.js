@@ -125,7 +125,7 @@ function open() {
     on('chat', chat);
     // Что-то поменялось у сотрудников — числа конвейера на главной CRM перечитываются (`space_controller`, ещё по `badges:updated`).
     ['refresh', 'rows'].forEach((name) => on(name, () => document.dispatchEvent(new CustomEvent('live:changed'))));
-    ['telegram', 'offers-bot', 'whatsapp', 'scan', 'lock', 'files', 'lots'].forEach((name) => on(name, (detail) => document.dispatchEvent(new CustomEvent(`live:${name}`, { detail }))));
+    ['telegram', 'offers-bot', 'whatsapp', 'scan', 'lock', 'files', 'lots', 'mail-sent'].forEach((name) => on(name, (detail) => document.dispatchEvent(new CustomEvent(`live:${name}`, { detail }))));
     ['chat-edit', 'chat-read', 'chat-typing', 'tg-chat', 'tg-chat-edit'].forEach((name) => on(name, (detail) => document.dispatchEvent(new CustomEvent(`live:${name}`, { detail }))));
     source.onopen = () => {
         document.documentElement.removeAttribute('data-net');

@@ -907,12 +907,11 @@ class MailController
             ? $sentRequest(array_map('intval', explode(',', $data['request_deals'])), $message, $request->user()) : null;
 
         if ($inWindow) {
-            // Письмо вендору после «Принять» — окно закрывается само (поток letters без адреса в admin/mail/window).
-            if ($request->input('then') === 'close') {
-                return redirect("{$this->base}/{$message->thread_id}/window")->with('toast', $requested !== null ? "Заявка поставщику в очереди, {$requested} ТС" : 'Письмо вендору в очереди')->with('letters-close', true);
-            }
-
-            return redirect("{$this->base}/{$message->thread_id}/window")->with('toast', 'Письмо в очереди');
+            // Окно не закрывается сразу (15.11.2026, начальник «постоянно переживает, отправлено письмо или нет»): экран
+            // «Отправляем…» ждёт настоящей отправки и рисует зелёную галку (`sent`, `mail_sent_controller`); после «Принять»
+            // (`then=close`) окно закрывается само уже после галки.
+            return redirect("{$this->base}/messages/{$message->id}/sent".($request->input('then') === 'close' ? '?then=close' : ''))
+                ->with('toast', $requested !== null ? "Заявка поставщику: {$requested} ТС" : null);
         }
 
         // Не из окна (форма без фрейма) — ветка письма.
@@ -1189,6 +1188,29 @@ class MailController
         ParseMessage::dispatch($message->id);
 
         return back()->with('toast', 'Разбор поставлен в очередь');
+    }
+
+    /**
+     * Экран отправки письма в окне (15.11.2026): «Отправляем…» → зелёная галка «Письмо ушло», когда SMTP принял
+     * (`send_state = sent`), или «Не ушло» с причиной и «Отправить снова». Ждёт события автору `mail-sent` и опрашивает
+     * `state` — галка только по базе.
+     */
+    public function sent(Request $request, Message $message)
+    {
+        $this->guardMessage($message);
+        abort_unless($message->isOutgoing(), 404);
+
+        return view('admin.mail.sent-frame', ['message' => $message->load('addresses'), 'base' => $this->base,
+            'close' => $request->query('then') === 'close', 'state' => $message->sendStatus()]);
+    }
+
+    /** Состояние отправки письма для экрана отправки (`mail_sent_controller`). */
+    public function state(Message $message)
+    {
+        $this->guardMessage($message);
+        abort_unless($message->isOutgoing(), 404);
+
+        return response()->json($message->fresh()->sendStatus());
     }
 
     public function resend(Message $message)

@@ -1485,6 +1485,32 @@ html.kb-open { --home-gap: 0px; }
   .valuation-ok circle { stroke-dasharray: 176; stroke-dashoffset: 176; animation: valuation-draw .5s ease-out forwards; }
   .valuation-ok path { stroke-dasharray: 44; stroke-dashoffset: 44; animation: valuation-draw .3s .35s ease-out forwards; }
   .valuation-done-body { @apply flex flex-1 flex-col items-center justify-center gap-2 py-10 text-center; }
+
+  /* Экран отправки письма (15.11.2026, `admin/mail/sent-frame`): кольцо крутится, пока письмо в очереди; ушло — круг заливается
+     зелёным «готов» и галка дорисовывается штрихом с пружинкой; не ушло — красный круг и «!». */
+  .mail-sent { @apply flex flex-col items-center gap-1.5 px-2 pt-3 pb-1 text-center; }
+  .mail-sent-mark { @apply mb-2 size-20; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+  .mail-sent-track { stroke: color-mix(in oklab, var(--color-ink) 10%, transparent); stroke-width: 4; }
+  .mail-sent-ring { stroke: var(--color-open); stroke-width: 4; stroke-dasharray: 176; stroke-dashoffset: 132; transform-origin: 32px 32px; animation: spin .9s linear infinite; transition: stroke-dashoffset .45s var(--ease-out), fill .3s .3s, stroke .2s; }
+  .mail-sent-tick, .mail-sent-bang { stroke: #fff; stroke-width: 5; stroke-dasharray: 44; stroke-dashoffset: 44; }
+  .mail-sent-title { @apply text-lg font-medium; }
+  .mail-sent-to { @apply max-w-full break-words text-sm text-ink-muted; }
+  .mail-sent-note { @apply min-h-5 text-sm text-ink-muted; }
+  .mail-sent-acts { @apply mt-3 flex w-full flex-col gap-2; }
+  .mail-sent[data-state="sent"] .mail-sent-ring { animation: none; stroke-dashoffset: 0; fill: var(--color-open); }
+  .mail-sent[data-state="sent"] .mail-sent-mark { animation: pop .5s .35s var(--ease-spring); }
+  .mail-sent[data-state="sent"] .mail-sent-tick { animation: valuation-draw .35s .5s var(--ease-out) forwards; }
+  .mail-sent[data-state="sent"] .mail-sent-title { color: var(--color-open); }
+  .mail-sent[data-state="failed"] .mail-sent-ring { animation: none; stroke-dashoffset: 0; stroke: var(--color-danger); fill: var(--color-danger); }
+  .mail-sent[data-state="failed"] .mail-sent-bang { animation: valuation-draw .3s .3s var(--ease-out) forwards; }
+  .mail-sent[data-state="failed"] .mail-sent-title { color: var(--color-danger); }
+  .mail-sent.is-still .mail-sent-ring, .mail-sent.is-still .mail-sent-mark { animation: none; transition: none; }
+  .mail-sent.is-still[data-state="sent"] .mail-sent-tick, .mail-sent.is-still[data-state="failed"] .mail-sent-bang { animation: none; stroke-dashoffset: 0; }
+  @media (prefers-reduced-motion: reduce) {
+    .mail-sent-ring { animation-duration: 2.4s; }
+    .mail-sent[data-state] .mail-sent-mark { animation: none; }
+    .mail-sent[data-state="sent"] .mail-sent-tick, .mail-sent[data-state="failed"] .mail-sent-bang { animation: none; stroke-dashoffset: 0; }
+  }
   .valuation-done-body h3 { @apply mt-2 text-lg; }
   .valuation-done:has(.valuation-created:not([hidden])) .valuation-done-body { @apply flex-none py-6; }
   .valuation-created { @apply mx-4 mb-4 min-h-0 overflow-y-auto; }

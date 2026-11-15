@@ -238,6 +238,8 @@ Route::domain(config('xcar.park_host'))->middleware(['auth', 'section:park'])->g
     Route::post('/mail/messages/{message}/flag', [MailController::class, 'flag']);
     Route::post('/mail/messages/{message}/parse', [MailController::class, 'reparse']);
     Route::post('/mail/messages/{message}/retry', [MailController::class, 'resend']);
+    Route::get('/mail/messages/{message}/sent', [MailController::class, 'sent']);
+    Route::get('/mail/messages/{message}/state', [MailController::class, 'state']);
     Route::get('/mail/{thread}', [MailController::class, 'show'])->middleware('park.manage');
     Route::get('/mail/{thread}/window', [MailController::class, 'window']);
     Route::get('/mail/{thread}/reply/{message}', [MailController::class, 'reply']);

@@ -74,6 +74,16 @@ class Message extends Model
         return $this->hasMany(Attachment::class, 'message_id')->orderBy('position')->chaperone('message');
     }
 
+    /**
+     * Ушло ли наше письмо — экрану отправки (`admin/mail/sent-frame`, `MailController::state`, событие автору из
+     * `SendMessage::tellAuthor`). @return array{state: string, error: ?string, at: ?string}
+     */
+    public function sendStatus(): array
+    {
+        return ['state' => $this->send_state?->value ?? SendState::Sent->value, 'error' => SendError::words($this->send_error),
+            'at' => $this->sent_at ? \App\Support\Ago::at($this->sent_at, true) : null];
+    }
+
     public function isOutgoing(): bool
     {
         return $this->direction === Direction::Out;

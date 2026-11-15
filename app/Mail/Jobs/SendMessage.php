@@ -10,6 +10,8 @@ use App\Mail\SendState;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Log;
+use App\Live\Publisher;
+use App\Live\Topics;
 use Throwable;
 
 final class SendMessage implements ShouldQueue
@@ -45,12 +47,28 @@ final class SendMessage implements ShouldQueue
             } else {
                 Log::error('Почта: письмо не ушло', ['message' => $message->id, 'error' => $e->getMessage()]);
                 $message->forceFill(['send_state' => SendState::Failed, 'send_error' => mb_substr($e->getMessage(), 0, 2000)])->save();
+                self::tellAuthor($message);
                 MessageFailed::dispatch($message);
 
                 return;
             }
         }
+        // Автору — сразу, до слушателей: экран отправки рисует галку (15.11.2026, `mail_sent_controller`).
+        self::tellAuthor($message);
         MessageSent::dispatch($message);
+    }
+
+    /** Экрану отправки у автора: ушло или нет (`live:mail-sent`); опрос `state` — запасной путь. */
+    public static function tellAuthor(Message $message): void
+    {
+        if (! $message->created_by) {
+            return;
+        }
+        try {
+            app(Publisher::class)(Topics::user((int) $message->created_by), 'mail-sent', ['id' => $message->id] + $message->sendStatus());
+        } catch (Throwable $e) {
+            Log::warning('Почта: экран отправки не узнал', ['message' => $message->id, 'error' => $e->getMessage()]);
+        }
     }
 
     /**
@@ -64,7 +82,8 @@ final class SendMessage implements ShouldQueue
         $n = 0;
         foreach (Message::where('send_state', SendState::Sending->value)->where('updated_at', '<', now()->subMinutes(15))->get() as $message) {
             if (Message::whereKey($message->id)->where('send_state', SendState::Sending->value)->update(['send_state' => SendState::Failed->value, 'send_error' => 'Отправка прервалась — проверьте «Отправленные» и повторите, если письма там нет', 'updated_at' => now()])) {
-                MessageFailed::dispatch($message->refresh());
+                self::tellAuthor($message->refresh());
+                MessageFailed::dispatch($message);
                 $n++;
             }
         }

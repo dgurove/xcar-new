@@ -145,6 +145,8 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
         Route::post('/messages/{message}/flag', [MailController::class, 'flag']);
         Route::post('/messages/{message}/parse', [MailController::class, 'reparse']);
         Route::post('/messages/{message}/retry', [MailController::class, 'resend']);
+        Route::get('/messages/{message}/sent', [MailController::class, 'sent']);
+        Route::get('/messages/{message}/state', [MailController::class, 'state']);
         Route::get('/{thread}', [MailController::class, 'show']);
         Route::get('/{thread}/window', [MailController::class, 'window']);
         Route::get('/{thread}/reply/{message}', [MailController::class, 'reply']);

@@ -8,6 +8,7 @@ use App\Mail\Events\MessageParsed;
 use App\Mail\Events\MessageSent;
 use App\Mail\Extraction\Intent;
 use App\Mail\Message;
+use App\Live\RefreshDeal;
 use App\Mail\Scope;
 use App\Notifications\SupplierLetterNotice;
 use App\Offers\Deal;
@@ -64,6 +65,8 @@ final class MarkSupplierLetter
             'payload' => [...$payload, 'letter_id' => $message->id, 'letter_at' => $at->toIso8601String()],
         ]);
         $offer->log(OfferEventType::SupplierLetter, $message->author, ['letter' => $message->id]);
+        // Шаг на открытой странице — сразу «Письмо ушло» (15.11.2026, начальник не был уверен, что ушло).
+        RefreshDeal::of($offer->deal);
         // Письмо «перевыставить счёт» ушло (`TakeParallel`) — дальше у шага снова обычный шаблон.
         if ($position->stage->isRequisitesStep()) {
             Deal::where('offer_id', $offer->id)->where('state', DealState::Active)->whereNotNull('reissue_at')->update(['reissue_at' => null]);
@@ -118,6 +121,7 @@ final class MarkSupplierLetter
         }
         $again = ($position->payload['letter_failed']['id'] ?? null) === $e->message->id;
         $position->update(['payload' => [...($position->payload ?? []), 'letter_failed' => ['id' => $e->message->id, 'error' => self::reason((string) $e->message->send_error)]]]);
+        RefreshDeal::of($position->offer->deal);
         if (! $again) {
             $e->message->author?->notify(new SupplierLetterNotice($position->offer, 'failed'));
         }
