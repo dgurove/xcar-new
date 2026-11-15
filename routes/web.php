@@ -153,6 +153,8 @@ Route::middleware(['auth', 'wall'])->group(function () {
     Route::get('/account/invoices/{invoice}/pdf', [MoneyController::class, 'pdf']);
     // Документы и файлы с закрытого диска — на любом хосте.
     Route::get('/files/{media}', [FileController::class, 'show']);
+    // Кадр медиатеки JPEG-ом для «Скачать» в просмотре фото (`/media`, `/hot` — webp с диска мимо PHP).
+    Route::get('/jpg/{path}', [\App\Http\Site\JpegController::class, 'show'])->where('path', '(media|hot)/.+\.webp');
 
     Route::get('/account/notifications', [NotificationController::class, 'index']);
     Route::get('/account/notifications/latest', [NotificationController::class, 'latest']);

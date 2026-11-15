@@ -22,21 +22,18 @@
     $ownerFields = $deal->isDkp() || ($prime && (! $owner || $owner->kind === \App\Billing\PartyKind::Person));
 @endphp
 @php ob_start(); @endphp
-    {{-- Договор — файлом, как документ: значок PDF и номер, «готов» / «не готов». Только когда покупатель заполнен (15.11.2026,
-         владелец: «зачем отображать PDF, если он не готов — пусть появляется, только если покупатель заполнен»), и не когда
-         подписанный вне системы уже приложен (`x-deal.signed-contract`), а свой не собран. --}}
-    @if ($contract->buyerReady() && ! ($missing && $deal->getMedia('signed_contract')->isNotEmpty()))
+    {{-- Договор — файлом, как документ: значок PDF и номер. Только готовый (15.11.2026, владелец: «ЗАЧЕМ мы показываем
+         договор, если он НЕ ГОТОВ»): чего не хватает — делами в «Ходе сделки». --}}
+    @unless ($missing)
     <x-ui.doc :doc="$pdf" class="row">
         <x-ui.file-icon name="dkp.pdf"/>
         <span class="min-w-0 flex-1">
             <span class="block">Договор{{ $doc->number() ? ' № '.$doc->number() : ' купли-продажи' }}</span>
-            {{-- Готов ли — словом; чего не хватает, делами в «Ходе сделки» (15.11.2026, владелец: рыжий список «нет: (Э)ПТС,
-                 покупатель» и «Внести ПТС» под ним — «куча рыжего непонятного текста, ещё и с дубликатами»). --}}
-            <span @class(['row-sub', 'text-open' => ! $missing])>{{ $missing ? 'не готов' : 'готов' }}</span>
+            <span class="row-sub text-open">готов</span>
         </span>
         <x-ui.chevron/>
     </x-ui.doc>
-    @endif
+    @endunless
     <x-deal.buyer :deal="$deal" :contract="$contract"/>
 @php $rows = ob_get_clean(); @endphp
 @php ob_start(); @endphp

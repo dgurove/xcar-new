@@ -50,7 +50,8 @@ final class CarLine
         $word = match (true) {
             $pay => 'оплатите счёт',
             (bool) $asks => 'ваш ход: '.mb_strtolower($asks->title),
-            $pickWord !== null => 'ждёт ТС, '.$pickWord,
+            // Без «ждёт ТС,» (15.11.2026, владелец: «что это за надпись, зачем она»): слово вывоза и так говорит, что машины ещё нет.
+            $pickWord !== null => $pickWord,
             default => mb_strtolower($car->state->label()),
         };
         $when = match ($car->state) {

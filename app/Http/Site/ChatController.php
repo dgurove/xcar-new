@@ -17,6 +17,7 @@ use App\Chats\StepAsk;
 use App\Live\Publisher;
 use App\Live\Topics;
 use App\Media\Thumb;
+use App\Media\WebpJpeg;
 use App\Offers\Offer;
 use App\Support\OfficePreview;
 use Illuminate\Http\Exceptions\HttpResponseException;
@@ -172,6 +173,12 @@ class ChatController
             if ($disk->exists($file->path) && ($small = Thumb::of($disk->path($file->path), false, "chat-thumb-{$file->id}"))) {
                 return response()->file($small, ['Content-Type' => 'image/webp', 'Cache-Control' => 'private, max-age=86400']);
             }
+        }
+        // Кадр чата — webp на нашем диске: наружу JPEG (`WebpJpeg`).
+        if (WebpJpeg::is($file->mime, $file->name) && Storage::disk('private')->exists($file->path)
+            && ($jpeg = WebpJpeg::of(Storage::disk('private')->path($file->path), 'chat'.$file->id))) {
+            return response()->file($jpeg, ['Content-Type' => 'image/jpeg', 'Content-Disposition' => "inline; filename*=UTF-8''".rawurlencode(WebpJpeg::name($file->name)),
+                'X-Content-Type-Options' => 'nosniff', 'Cache-Control' => 'private, max-age=86400']);
         }
         $contents = $file->contents();
         abort_if($contents === null, 404);

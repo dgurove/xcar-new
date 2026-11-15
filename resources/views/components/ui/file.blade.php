@@ -4,6 +4,8 @@
      как только страница показана. --}}
 @props(['name', 'href' => null, 'size' => null, 'bytes' => null, 'mime' => null, 'download' => false, 'auto' => false, 'refs' => []])
 @php
+    // webp открывается и скачивается JPEG-ом (`Media\WebpJpeg`) — и в строке «.jpg», 15.11.2026.
+    $name = \App\Media\WebpJpeg::name((string) $name);
     // На xcar в имени файла нет номера убытка и ДЛ (`InternalRefs`); refs — номера этой машины
     // в той форме, что в карточке; тип файла — по настоящему имени.
     $shown = \App\Support\Surface::current() === \App\Support\Surface::Site ? \App\Support\InternalRefs::fileName($name, $refs) : $name;

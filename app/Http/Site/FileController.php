@@ -11,6 +11,7 @@ use App\Media\DocName;
 use App\Media\ForManagers;
 use App\Media\PhotoIngest;
 use App\Media\Thumb;
+use App\Media\WebpJpeg;
 use App\Offers\Deal;
 use App\Offers\DealContract;
 use App\Park\Vehicle;
@@ -50,6 +51,15 @@ final class FileController
             if (is_file($jpeg)) {
                 return response()->file($jpeg, ['Content-Type' => 'image/jpeg', 'Cache-Control' => 'private, max-age=86400']);
             }
+        }
+        // webp наружу — JPEG (15.11.2026, владелец: «всех бесит этот webp»): открыть, скачать, переслать — `.jpg`.
+        if (! $request->boolean('thumb') && WebpJpeg::is($media->mime_type, $media->file_name) && ($jpeg = WebpJpeg::of($media->getPath(), 'm'.$media->id))) {
+            return response()->file($jpeg, [
+                'Content-Type' => 'image/jpeg',
+                'Content-Disposition' => "inline; filename*=UTF-8''".rawurlencode(WebpJpeg::name(Surface::current() === Surface::Site ? InternalRefs::fileName(DocName::of($media), InternalRefs::refsOf($media->model)) : DocName::of($media))),
+                'X-Content-Type-Options' => 'nosniff',
+                'Cache-Control' => 'private, max-age=86400',
+            ]);
         }
         $image = (str_starts_with((string) $media->mime_type, 'image/') && $media->mime_type !== 'image/svg+xml') || preg_match('/\.hei[cf]$/i', $media->file_name) === 1;
         $pdf = $media->mime_type === 'application/pdf';

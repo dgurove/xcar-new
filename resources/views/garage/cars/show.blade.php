@@ -8,7 +8,13 @@
 <x-ui.shell :title="$offer->titleWithYear()" copy-title :back="['Гараж', '/garage']">
     {{-- Состояние — мелким цветным словом у названия (`.title-state`, как у карточек), чья и «Сделка в CRM» — строкой
          справа; на ПК слово больше не висит в углу шапки оторванно от названия (10.10.2026). --}}
-    <x-slot:badge><x-car.keys :count="$car->offer->keys_count" label/><x-ui.state :tone="$car->state->tone()" class="title-state">{{ mb_lcfirst($car->state->label()) }}</x-ui.state></x-slot:badge>
+    {{-- «Ждёт ТС» у названия не пишем (15.11.2026, владелец: «что это за надпись, зачем она»): что с вывозом — путь ниже. --}}
+    <x-slot:badge>
+        <x-car.keys :count="$car->offer->keys_count" label/>
+        @unless ($car->isWaiting())
+            <x-ui.state :tone="$car->state->tone()" class="title-state">{{ mb_lcfirst($car->state->label()) }}</x-ui.state>
+        @endunless
+    </x-slot:badge>
     @if ($staff)
         <x-slot:actions>
         <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1.5 text-sm">

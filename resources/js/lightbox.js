@@ -239,7 +239,12 @@ export async function openLightbox({ items, index = 0, actions = [], download = 
                             const u = new URL(href, location.href);
                             return u.origin !== location.origin && /^\/(media|hot)\//.test(u.pathname) ? u.pathname + u.search : u.href;
                         };
-                        const sync = () => { const d = p.currSlide?.data; if (d) el.href = own(d.item.download || d.full); };
+                        // Кадр медиатеки — webp: скачивают JPEG того же кадра (`/jpg/media/…`, 15.11.2026, владелец: «всех бесит webp»).
+                        const jpeg = (href) => {
+                            const u = new URL(href, location.href);
+                            return /^\/(media|hot)\/.+\.webp$/i.test(u.pathname) ? `/jpg${u.pathname}` : own(href);
+                        };
+                        const sync = () => { const d = p.currSlide?.data; if (d) el.href = jpeg(d.item.download || d.full); };
                         p.on('change', sync);
                         sync();
                     },

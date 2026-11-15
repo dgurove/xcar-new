@@ -69,6 +69,8 @@ final class Gc extends Command
         $this->step('неотправленные файлы старше '.self::OUTBOX_DAYS.' дн.', fn () => $this->sweep('cache', 'outbox', self::OUTBOX_DAYS,
             Attachment::whereNotNull('path')->whereIn('message_id', DB::table('mail_messages')->where('send_state', '!=', SendState::Sent->value)->whereNotNull('send_state')->select('id'))->pluck('path')->flip()->all()));
         $this->step('временные файлы старше суток', fn () => $this->sweep('cache', 'tmp', 1));
+        // JPEG из webp и HEIC для открытия и скачивания (`Media\WebpJpeg`, HEIC шторки документов) — посчитаются заново.
+        $this->step('JPEG файлов старше '.self::MAIL_CACHE_DAYS.' дн.', fn () => $this->sweep('cache', 'files', self::MAIL_CACHE_DAYS));
 
         $this->step('файлы писем отвязанных веток старше '.self::UNPINNED_DAYS.' дн.', function () {
             // Ветки кандидатов, которые ещё ждут заведения, не в счёт: их вложения нужны при «Завести».

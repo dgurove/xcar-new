@@ -31,8 +31,6 @@
     $doc = new \App\Offers\DkpDocument($contract);
     $pdf = ['url' => '/deals/'.$deal->id.'/dkp.pdf', 'type' => 'pdf', 'name' => $doc->fileName(), 'label' => 'ДКП'];
     $missing = $contract->missing();
-    // Покупатель — пункт менеджера выше; у договора называем то, что вносим мы (продавец, документы ТС, цена).
-    $ours = array_values(array_diff($missing, ['покупатель', 'данные покупателя', 'скан паспорта покупателя']));
     // Без договора — покупатель для счёта поставщика (03.11.2026, Альфа): «данные для счёта».
     $for = $deal->hasContract() ? 'договора' : 'счёта';
 @endphp
@@ -107,22 +105,14 @@
         @endif
         @endif
         @if ($part !== 'buyer')
-            {{-- ДКП — документ, а не строка «Расчёта»: готов — открыть и распечатать; не готов — строка без ссылки и чего не
-                 хватает (06.10.2026, владелец: «почему даём скачать договор, если не указан покупатель»). --}}
+            {{-- ДКП — документ, а не строка «Расчёта»: только готовый — открыть и распечатать (15.11.2026, владелец: «ЗАЧЕМ мы
+                 показываем договор, если он НЕ ГОТОВ»; прежде — «ДКП готовим: (Э)ПТС»). --}}
             @if (! $missing)
                 <x-ui.doc :doc="$pdf" class="row">
                     <x-ui.row-icon name="file" size="s" tone="open"/>
                     <span class="min-w-0 flex-1"><span class="block">{{ $prime ? 'ДКП '.$deal->seller()->short() : 'ДКП' }}{{ $doc->number() ? ' № '.$doc->number() : '' }}</span><span class="row-sub text-open">готов, распечатайте</span></span>
                     <x-ui.chevron/>
                 </x-ui.doc>
-            @elseif ($ours && $contract->buyerReady())
-                {{-- Не готов по нашей части — что готовим; и только при заполненном покупателе (15.11.2026, владелец: «PDF — только
-                     если покупатель заполнен»), без него строка покупателя выше уже говорит, что делать. --}}
-                <div class="row">
-                    <x-ui.row-icon name="file" size="s" tone="muted"/>
-                    <span class="min-w-0 flex-1"><span class="block text-ink-muted">{{ $prime ? 'ДКП '.$deal->seller()->short() : 'ДКП' }}</span>
-                        <span class="row-sub !whitespace-normal">готовим: {{ implode(', ', $ours) }}</span></span>
-                </div>
             @endif
         @endif
     </div>
