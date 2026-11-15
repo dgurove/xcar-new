@@ -20,6 +20,7 @@ use Illuminate\Support\Facades\DB;
  *
  * - `inherit` — новая продажа машины, что стоит у нас и ещё не на Мигторге, берёт оценочную ТС;
  * - `follow` — правка оценочной на парковке идёт в продажу (`UpdateVehicle`), пока оценочная продажи с парковки и лота нет;
+ * - `confirm` — поставщик прислал ту же сумму («уже так» в «Оценить из текста» и у бота): оценочная подтверждена;
  * - `drop` / `sweep` — лот появился: оценочная с парковки и закупочная от неё по правилу снимаются, черновик встаёт в
  *   «Без закупочной», цена продажи, если была, остаётся (часы `migtorg:sync`, смена номера убытка —
  *   `UpdateOffer::identityChanged`). Опубликованные и сделки — не сами.
@@ -73,6 +74,26 @@ final class ParkValue
             app(UpdateOffer::class)($offer, ['value' => $value, 'value_from' => self::PARK], $by, ['why' => 'Оценочная на парковке']);
         } finally {
             self::$writing = false;
+        }
+    }
+
+    /**
+     * Сумма поставщика («Оценить из текста», бот) совпала с оценочной с парковки — оценочная подтверждена: метка «с
+     * парковки» снимается, в «Истории» — «Оценка из текста: оценочная N». Только уверенные строки (`same`, `fill`): спор
+     * сумм, другой VIN или номер с другим годом — нет.
+     *
+     * @param  list<array<string, mixed>>  $items  строки `MatchValuations`
+     */
+    public static function confirm(array $items, User $by): void
+    {
+        foreach ($items as $i) {
+            $offer = $i['offer'] ?? null;
+            if (! $offer || $i['direct'] || ! in_array($i['status'], ['same', 'fill'], true) || $offer->value_from !== self::PARK
+                || (int) $offer->value !== (int) $i['amount']) {
+                continue;
+            }
+            $offer->forceFill(['value_from' => null])->saveQuietly();
+            $offer->log(OfferEventType::Updated, $by, ['source' => 'valuation', 'value' => (int) $i['amount'], 'why' => 'Поставщик подтвердил оценочную']);
         }
     }
 

@@ -8,6 +8,7 @@ use App\Mail\Extraction\Code;
 use App\Mail\Extraction\CodeMatcher;
 use App\Offers\Offer;
 use App\Offers\OfferState;
+use App\Offers\ParkValue;
 use App\Offers\Pricing;
 use App\Support\Money;
 use App\Users\User;
@@ -133,6 +134,10 @@ final class MatchValuations
             }
         }
         usort($out, fn ($a, $b) => array_search($a['status'], self::ORDER, true) <=> array_search($b['status'], self::ORDER, true));
+        // Поставщик прислал ту же оценочную, что пришла с парковки, — она подтверждена: записать уже сейчас, «Сохранить» её
+        // не пишет (нечего менять), а без отметки часы `ParkValue` сняли бы её, когда машина на Мигторге (15.11.2026, Ford
+        // Kuga 0810/046/02362/26: таблица Альфы 09.11 — «уже так», 15.11 оценочная снята как неактуальная).
+        ParkValue::confirm($out, $user);
 
         return $out;
     }
