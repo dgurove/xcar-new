@@ -25,7 +25,8 @@ use Throwable;
 class CropPages extends Command
 {
     protected $signature = 'media:crop-pages {--apply : обрезать, без него — только список} {--offer=* : номера или id предложений}
-        {--migtorg : лежачие листы Мигторга — по оригиналу с их EXIF (кадр, где сбоку почти белая треть)}';
+        {--migtorg : лежачие листы Мигторга — по оригиналу с их EXIF (кадр, где сбоку почти белая треть)}
+        {--after=0 : продолжить с кадра после этого id (номер — в строке прогресса)}';
 
     protected $description = 'Обрезать листы со снимками (белые поля, подпись) у уже загруженных фото';
 
@@ -36,8 +37,13 @@ class CropPages extends Command
     {
         $apply = (bool) $this->option('apply');
         $fromLot = (bool) $this->option('migtorg');
-        [$found, $added] = [0, 0];
+        [$found, $added, $seen] = [0, 0, 0];
         foreach ($this->photos() as $media) {
+            // Прогресс каждые 200 кадров (15.11.2026: прогон по 55 тысячам шёл молча и умер без следа) — с id, чтобы продолжить.
+            if (++$seen % 200 === 0) {
+                $this->line("Проверено {$seen}, до кадра {$media->id}, листов {$found}");
+                gc_collect_cycles();
+            }
             $path = $media->getCustomProperty('watermarked', false) ? Watermark::cleanPath($media) : $media->getPath();
             if (! is_file($path)) {
                 continue;
@@ -131,6 +137,7 @@ class CropPages extends Command
         // Кадры живут у машины (`Cars\Car`, 29.10.2026) — до 15.11.2026 список был по прежним хозяевам, и общий прогон молча
         // ничего не находил.
         return Media::where('collection_name', 'photos')->whereIn('model_type', [CarRecord::class, Offer::class, Vehicle::class, Car::class])
+            ->where('id', '>', (int) $this->option('after'))
             ->when($this->option('migtorg'), fn ($q) => $q->whereRaw("jsonb_exists(custom_properties::jsonb, 'migtorg')")
                 ->whereRaw("not jsonb_exists(custom_properties::jsonb, 'page_sha')"))
             ->lazyById(200);
