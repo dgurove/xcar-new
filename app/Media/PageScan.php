@@ -97,13 +97,34 @@ final class PageScan
             return [];
         }
 
-        $page = $this->upright($page, $contents);
+        $upright = $this->upright($page, $contents);
+        $photos = $this->looksLikePage($upright) ? $this->cutBands($upright) : [];
+        if ($photos !== []) {
+            return $photos;
+        }
 
-        if (! $this->looksLikePage($page)) {
+        // Лист стоит как есть, а EXIF — от вставленного снимка (15.11.2026, Т-Страхование на Мигторге, AUT-26-1157090: лист
+        // 1240×1754 со снимком сверху и подписью снизу, снимок вставлен боком, Orientation 6). Повёрнутый по EXIF лист ложится
+        // набок с белой половиной, и полей «листа» у него уже нет. Режем лист без поворота, поворачиваем вырезанные снимки.
+        $byExif = $this->exifRotation($contents);
+        if ($byExif === 0 || ! $this->looksLikePage($page)) {
             return [];
         }
 
-        return $this->cutBands($page);
+        return array_values(array_filter(array_map(fn (string $jpeg) => $this->turned($jpeg, $byExif), $this->cutBands($page))));
+    }
+
+    /** Вырезанный снимок, повёрнутый на угол EXIF листа. */
+    private function turned(string $jpeg, int $degrees): ?string
+    {
+        $image = @imagecreatefromstring($jpeg);
+        if ($image === false) {
+            return null;
+        }
+        ob_start();
+        imagejpeg($this->rotate($image, $degrees), null, self::JPEG_QUALITY);
+
+        return (string) ob_get_clean() ?: null;
     }
 
     // ------------------------------------------------------------- поворот

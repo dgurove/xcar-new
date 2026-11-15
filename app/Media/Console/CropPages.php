@@ -5,6 +5,7 @@ namespace App\Media\Console;
 use App\Media\Actions\UnmarkPhoto;
 use App\Media\PhotoIngest;
 use App\Media\Watermark;
+use App\Offers\Migtorg;
 use App\Offers\Offer;
 use App\Offers\OfferNumber;
 use App\Park\Vehicle;
@@ -22,23 +23,46 @@ use Throwable;
  */
 class CropPages extends Command
 {
-    protected $signature = 'media:crop-pages {--apply : обрезать, без него — только список} {--offer=* : номера или id предложений}';
+    protected $signature = 'media:crop-pages {--apply : обрезать, без него — только список} {--offer=* : номера или id предложений}
+        {--migtorg : лежачие листы Мигторга — по оригиналу с их EXIF (кадр, где сбоку почти белая треть)}';
 
     protected $description = 'Обрезать листы со снимками (белые поля, подпись) у уже загруженных фото';
 
     /** Свойства кадра, что переходят к вырезкам с того же листа. */
     private const KEEP = ['migtorg', 'stage', 'source', 'offer'];
 
-    public function handle(PhotoIngest $ingest, UnmarkPhoto $unmark): int
+    public function handle(PhotoIngest $ingest, UnmarkPhoto $unmark, Migtorg $migtorg): int
     {
         $apply = (bool) $this->option('apply');
+        $fromLot = (bool) $this->option('migtorg');
         [$found, $added] = [0, 0];
         foreach ($this->photos() as $media) {
             $path = $media->getCustomProperty('watermarked', false) ? Watermark::cleanPath($media) : $media->getPath();
             if (! is_file($path)) {
                 continue;
             }
-            $bands = $ingest->pages($path);
+            // Лежачий лист Мигторга (15.11.2026, AUT-26-1157090): сохранённый уже повёрнут по EXIF вставленного снимка, и по
+            // картинке его не отличить от листа на боку — режем оригинал, где EXIF ещё есть (`PageScan::crop`).
+            $original = null;
+            if ($fromLot) {
+                $uuid = $media->getCustomProperty('migtorg');
+                if (! is_string($uuid) || $media->getCustomProperty('page_sha') || ! self::sideBlank($path)) {
+                    continue;
+                }
+                $original = tempnam(sys_get_temp_dir(), 'lot-');
+                try {
+                    $migtorg->download($uuid, $original);
+                } catch (Throwable $e) {
+                    @unlink($original);
+                    $this->warn("Кадр {$media->id}: оригинал не скачался — {$e->getMessage()}");
+
+                    continue;
+                }
+            }
+            $bands = $ingest->pages($original ?? $path);
+            if ($original) {
+                @unlink($original);
+            }
             if (! $bands) {
                 continue;
             }
@@ -66,6 +90,33 @@ class CropPages extends Command
         $this->info(($apply ? 'Обрезано' : 'Листов найдено')." {$found}".($added ? ", новых кадров {$added}" : ''));
 
         return self::SUCCESS;
+    }
+
+    /** Сбоку почти белая треть кадра — лежачий лист со снимком на другой половине. */
+    private static function sideBlank(string $path): bool
+    {
+        $image = @imagecreatefromstring((string) file_get_contents($path));
+        if ($image === false || imagesx($image) <= imagesy($image)) {
+            return false;
+        }
+        $probe = imagescale($image, 200);
+        [$w, $h] = [imagesx($probe), imagesy($probe)];
+        $white = function (int $from, int $to) use ($probe, $h): float {
+            [$n, $all] = [0, 0];
+            for ($x = $from; $x < $to; $x++) {
+                for ($y = 0; $y < $h; $y += 2) {
+                    $rgb = imagecolorat($probe, $x, $y);
+                    $l = (($rgb >> 16 & 255) * 299 + ($rgb >> 8 & 255) * 587 + ($rgb & 255) * 114) / 1000;
+                    $all++;
+                    $l >= 240 && $n++;
+                }
+            }
+
+            return $all ? $n / $all : 0;
+        };
+        $third = intdiv($w, 3);
+
+        return $white(0, $third) >= 0.95 || $white($w - $third, $w) >= 0.95;
     }
 
     /** @return iterable<Media> */
