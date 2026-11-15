@@ -53,6 +53,7 @@ use App\Offers\Actions\AdvanceOnBuyerData;
 use App\Offers\Events\OfferPublished;
 use App\Offers\Events\OfferStateChanged;
 use App\Offers\Listeners\ApplySigningWish;
+use App\Offers\Listeners\MarkSupplierLetterWait;
 use App\Offers\Listeners\CloseReviews;
 use App\Offers\Listeners\FollowParallels;
 use App\Offers\Listeners\MarkSupplierLetter;
@@ -138,6 +139,8 @@ class AppServiceProvider extends ServiceProvider
         }
         // До `Notify`: «Время подписания», названное заранее, проходит само — «Ваш ход» по нему не уходит.
         Event::subscribe(ApplySigningWish::class);
+        // «Ждём письмо поставщика», а письмо уже есть — ход наш, «Спросить менеджера» (`SupplierLetterWait`).
+        Event::subscribe(MarkSupplierLetterWait::class);
         Event::subscribe(Notify::class);
         Event::subscribe(NotifyLogistics::class);
         Event::subscribe(RecordOnOffer::class);

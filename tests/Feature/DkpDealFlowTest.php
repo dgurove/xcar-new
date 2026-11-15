@@ -57,10 +57,10 @@ class DkpDealFlowTest extends TestCase
         $offer->viewers()->create(['user_id' => $this->manager->id, 'opens_at' => now()]);
         app(EnterStage::class)($offer, Stage::where('workflow_id', $vendor->fresh()->workflow(Track::Sale)->id)->where('name', 'Приём подтверждений')->firstOrFail());
         $deal = app(AcceptBid::class)(app(PlaceBid::class)($offer->fresh(), $this->manager, 850000), $this->admin, 20000, CommissionMode::Payout, scheme: DealScheme::OwnerDkp);
-        // Пока поставщик не согласовал — ни счёта, ни ссылки. Сначала согласие менеджера, потом письмо (15.11.2026,
-        // `TBankConsentTest`); ответ с контактом — сразу контакты менеджеру.
+        // Пока поставщик не согласовал — ни счёта, ни ссылки. Сначала письмо поставщика, по нему согласие менеджера, потом наше
+        // письмо (15.11.2026, `TBankConsentTest`); ответ с контактом — сразу контакты менеджеру.
         $this->assertFalse($deal->fresh()->issuedInvoices()->exists());
-        $this->assertSame('Согласие менеджера', $offer->fresh()->stage()->name);
+        $this->assertSame('Ждём письмо поставщика', $offer->fresh()->stage()->name);
         $this->walkTo($offer, $deal->fresh(), 'Связаться с владельцем');
 
         return [$offer, $deal->fresh()];

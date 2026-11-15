@@ -161,8 +161,9 @@ class Stage extends Model
      */
     public function isAgreement(): bool
     {
+        // «Ждём письмо поставщика» (Т-Страхование, `SupplierLetterWait`, 15.11.2026) — тоже согласование: счёта ещё нет.
         return $this->loadedExits()->contains(fn (Outcome $e) => preg_match('/^поставщик (согласовал|отказал)/u', mb_strtolower($e->label)) === 1
-            || $e->takes());
+            || $e->takes() || $e->label === \App\Offers\SupplierLetterWait::EXIT);
     }
 
     /** Выход менеджера «Оплатил, документ приложен» этого этапа — его жмут заявка об оплате и сама оплата. */

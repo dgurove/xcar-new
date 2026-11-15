@@ -43,7 +43,19 @@ class TBankConsentTest extends TestCase
 
     private User $manager;
 
-    private function accepted(): array
+    /** Письмо Т-Страхования «Предлагаем принять участие в оценке ТС» по этой машине — с VIN в теме. */
+    private function tbankLetter(Offer $offer, string $vin = 'WDD2050402R514538'): Message
+    {
+        $account = DB::table('mail_accounts')->where('slug', 'deal')->value('id') ?? DB::table('mail_accounts')->insertGetId(['slug' => 'deal', 'title' => 'deal', 'email' => 'deal@xcar.ru', 'scope' => 'offers',
+            'imap_host' => 'x', 'imap_username' => 'x', 'imap_password' => 'x', 'smtp_host' => 'x', 'smtp_username' => 'x', 'smtp_password' => 'x']);
+        $thread = \App\Mail\Thread::create(['account_id' => $account, 'subject' => $offer->claim_ref, 'offer_id' => $offer->id, 'last_message_at' => now()]);
+
+        return Message::create(['account_id' => $account, 'thread_id' => $thread->id, 'direction' => 'in', 'from_email' => 'p.roevnev@tbank.ru', 'date_at' => now(),
+            'subject' => $offer->claim_ref.' || 2019 Mercedes-Benz C-class (Р380КХ774 / '.$vin.') || Москва',
+            'parsed' => ['keys' => ['code:'.Code::key($offer->claim_ref)], 'fields' => ['vin' => ['value' => $vin, 'source' => 'subject'], 'floor_price' => ['value' => 833000, 'source' => 'body']]]]);
+    }
+
+    private function accepted(bool $letter = true, ?string $vin = 'WDD2050402R514538'): array
     {
         Storage::fake('private');
         Notification::fake();
@@ -51,19 +63,26 @@ class TBankConsentTest extends TestCase
         $this->manager = User::create(['name' => 'Менеджер', 'phone' => '79000000002', 'roles' => [Role::Manager], 'approved_at' => now()]);
         $vendor = Vendor::create(['name' => 'Т-Страхование тест']);
         app(ApplyPreset::class)($vendor->workflowOrNew(Track::Sale), Preset::TBank);
-        $offer = Offer::create(['vendor_id' => $vendor->id, 'claim_ref' => 'AUT-26-781222', 'vin' => 'WDD2050402R514538', 'floor_price' => 500000,
+        $offer = Offer::create(['vendor_id' => $vendor->id, 'claim_ref' => 'AUT-26-781222', 'vin' => $vin, 'floor_price' => 500000,
             'owner_price' => 500000, 'asking_price' => 650000, 'bids_close_at' => now()->addDay()]);
         $offer->forceFill(['state' => OfferState::Open])->save();
         $offer->viewers()->create(['user_id' => $this->manager->id, 'opens_at' => now()]);
         app(EnterStage::class)($offer, Stage::where('workflow_id', $vendor->fresh()->workflow(Track::Sale)->id)->where('name', 'Приём подтверждений')->firstOrFail());
+        $letter && $this->tbankLetter($offer);
         $deal = app(AcceptBid::class)(app(PlaceBid::class)($offer->fresh(), $this->manager, 600000), $this->admin, 0, CommissionMode::Withheld, scheme: DealScheme::OwnerDkp);
 
         return [$offer->fresh(), $deal->fresh()];
     }
 
-    public function test_manager_is_asked_with_vin_before_any_letter_and_letter_is_contacts_request(): void
+    public function test_staff_asks_manager_with_vin_then_letter_with_lot_price(): void
     {
         [$offer, $deal] = $this->accepted();
+        // Письмо Т-Страхования уже есть — ход наш, но менеджера спрашивает сотрудник кнопкой, как у Альфы.
+        $this->assertSame('Ждём письмо поставщика', $offer->stage()->name);
+        $this->assertSame(\App\Workflow\WaitsFor::Us, $offer->position(Track::Sale)->waits_for);
+        $this->assertFalse(ChatMessage::whereNotNull('requirement_id')->exists(), 'само менеджера не спрашиваем');
+        app(TakeExit::class)($offer, $offer->stage()->exitsFor(Actor::Staff, $deal)->firstWhere('label', \App\Offers\SupplierLetterWait::EXIT), Actor::Staff, $this->admin);
+        $offer = $offer->fresh();
         $stage = $offer->stage();
         $this->assertSame('Согласие менеджера', $stage->name);
         // Письма поставщику на этом шаге нет — ни кнопки, ни окна после «Принять».
@@ -77,13 +96,39 @@ class TBankConsentTest extends TestCase
         $position = $offer->position(Track::Sale);
         $this->assertSame('Письмо о покупке', $position->stage->name);
         $this->assertSame('unsent', $position->letterStatus());
-        // Одинаковый текст, без суммы, машины и номера.
-        $this->assertSame("Добрый день!\n\nПрошу прислать контакты и данные для организации сделки.\n\nС уважением,\nАндрей Кузнецов", $position->stage->template->body);
+        // Как пишет начальник: машина, VIN, номер и «Цена за Лот» из письма Т-Страхования (833 000), а не закупочная (500 000).
+        $this->assertSame("Здравствуйте!\n\nВыражаем готовность к покупке {{ car }}, VIN {{ vin }} ({{ claim_ref }}) за {{ lot }}\nПросим прислать контакты и данные для организации сделки.\n\nС уважением,\nАндрей Кузнецов", $position->stage->template->body);
+        $this->assertSame(\App\Support\Money::rub(833000), \App\Http\Admin\MailController::placeholders($offer)['lot']);
+    }
+
+    public function test_without_supplier_letter_manager_is_not_asked_until_it_arrives_with_vin(): void
+    {
+        [$offer, $deal] = $this->accepted(letter: false, vin: null);
+        $this->assertSame('Ждём письмо поставщика', $offer->stage()->name);
+        $this->assertFalse(ChatMessage::whereNotNull('requirement_id')->exists(), 'без письма менеджера не спрашиваем');
+
+        $this->assertNotSame(\App\Workflow\WaitsFor::Us, $offer->position(Track::Sale)->waits_for);
+
+        // Пришло письмо (как в `OnMessage`): VIN — в машину, ход — наш; сам шаг не уходит.
+        $message = $this->tbankLetter($offer);
+        app(FillFromLetter::class)($offer->fresh(), $message, read: false);
+        $this->assertTrue(\App\Offers\SupplierLetterWait::mark($offer->fresh()));
+        $this->assertSame('Ждём письмо поставщика', $offer->fresh()->stage()->name);
+        $this->assertSame(\App\Workflow\WaitsFor::Us, $offer->fresh()->position(Track::Sale)->waits_for);
+        $this->assertFalse(ChatMessage::whereNotNull('requirement_id')->exists());
+
+        // «Спросить менеджера» — вопрос с VIN из письма.
+        $o = $offer->fresh();
+        app(TakeExit::class)($o, $o->stage()->exitsFor(Actor::Staff, $deal)->firstWhere('label', \App\Offers\SupplierLetterWait::EXIT), Actor::Staff, $this->admin);
+        $this->assertSame('Согласие менеджера', $offer->fresh()->stage()->name);
+        $this->assertStringContainsString('VIN WDD2050402R514538', ChatMessage::whereNotNull('requirement_id')->latest('id')->firstOrFail()->text);
     }
 
     public function test_changed_mind_leads_back_to_bidding(): void
     {
         [$offer, $deal] = $this->accepted();
+        app(TakeExit::class)($offer, $offer->stage()->exitsFor(Actor::Staff, $deal)->firstWhere('label', \App\Offers\SupplierLetterWait::EXIT), Actor::Staff, $this->admin);
+        $offer = $offer->fresh();
         $exits = $offer->stage()->exitsFor(Actor::Manager, $deal);
         $this->assertSame(['Беру в работу', 'Я передумал'], $exits->pluck('label')->all());
         $this->assertSame('Приём подтверждений', $exits->firstWhere('label', 'Я передумал')->to->name);

@@ -18,6 +18,7 @@ use App\Notifications\Notify;
 use App\Notifications\ParkNotice;
 use App\Offers\Actions\DetectReprice;
 use App\Offers\Actions\FillFromLetter;
+use App\Offers\SupplierLetterWait;
 use App\Offers\Actions\ShowInGallery;
 use App\Offers\Events\InsurerReplied;
 use App\Offers\InsurerReplies;
@@ -93,6 +94,8 @@ final class OnMessage
                 app(FillFromLetter::class)($offer, $message);
                 // «Новая стоимость – 433 200 руб.» по машине с закупочной — переоценка на решение админа, сама цена не меняется.
                 app(DetectReprice::class)($offer->refresh(), $message);
+                // Сделка ждала письма поставщика (Т-Страхование) — VIN уже в машине, ход наш: «Спросить менеджера» (`SupplierLetterWait`).
+                SupplierLetterWait::mark($offer->refresh());
             } catch (Throwable $e) {
                 Log::warning('fill-from-letter: '.$e->getMessage(), ['offer' => $offer->id, 'message' => $message->id]);
             }
