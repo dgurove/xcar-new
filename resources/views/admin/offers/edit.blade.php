@@ -32,10 +32,19 @@
         $own = $offer->tag_colors ?? [];
         $tagStyle = fn (string $name) => \App\Offers\Tag::style(\App\Offers\Tag::colorOf($name, $own));
     @endphp
-    {{-- Коды машины под названием, как в окне (09.11.2026, владелец: «не листать до полей»): номер, убыток или ДЛ, VIN —
-         копируются нажатием (`x-car.codes`, одни с окном). --}}
-    <div class="-mt-3 mb-3 flex flex-wrap items-center gap-1.5"><x-car.codes :offer="$offer"/></div>
-    <div class="offer-head mb-4 flex flex-wrap items-center gap-1.5">
+    {{-- Шапка — две строки (16.11.2026, владелец: «что с вёрсткой??? столько места экрана тупо впустую» — было пять рядов и ~300 px
+         до первой карточки): справа от названия — «Снять с продажи» и «Поделиться» (`actions`), под ним одной строкой (`sub`)
+         коды (`x-car.codes`, как в окне), состояние, метки, приём, чаты и «Показать менеджеру». --}}
+    @if ($admin)
+        <x-slot:actions class="!w-auto ml-auto max-md:!order-1">
+                @if ($offer->parkVehicle && ! $offer->proposed() && \App\Offers\Actions\UnlistParkOffer::allowed($offer))
+                    <form method="post" action="/offers/{{ $n }}/unlist" class="contents" data-turbo-confirm="Снять с продажи? Черновик удалится, ТС останется на парковке">@csrf<button type="submit" class="btn btn-s btn-quiet">Снять с продажи</button></form>
+                @endif
+                @include('admin.offers.share-button')
+        </x-slot:actions>
+    @endif
+    <x-slot:sub class="offer-head flex flex-wrap items-center gap-1.5">
+        <x-car.codes :offer="$offer"/>
         @if ($garageCar)
             {{-- Отданная в гараж — «в гараже», как в сделке, пока идут и бумаги со страховой (владелец 06.10.2026). --}}
             <x-ui.pill tone="plain" href="#garage">В гараже, {{ $garageCar->manager?->shortName() ?? 'взяли под себя' }}</x-ui.pill>
@@ -75,20 +84,11 @@
                 </x-ui.sheet>
             </div>
         @endif
-        {{-- Сроки и переписка — строкой текста под капсулами (владелец 10.10.2026: «что-то чипами, что-то текстом»): приём
+        {{-- Сроки и переписка — текстом в той же строке (владелец 10.10.2026: «что-то чипами, что-то текстом»): приём
              ещё сколько или закрыт с какого времени, продление лаймовыми словами, чаты ссылкой. --}}
         @php $chatUnread = $otherChats->sum('unread_for_staff'); @endphp
-        {{-- Действия с предложением целиком — справа в строке капсул (19.10.2026, владелец: своей строкой «всё съезжает»). --}}
-        @if ($admin)
-            <span class="ml-auto flex items-center gap-1">
-                @if ($offer->parkVehicle && ! $offer->proposed() && \App\Offers\Actions\UnlistParkOffer::allowed($offer))
-                    <form method="post" action="/offers/{{ $n }}/unlist" class="contents" data-turbo-confirm="Снять с продажи? Черновик удалится, ТС останется на парковке">@csrf<button type="submit" class="btn btn-s btn-quiet">Снять с продажи</button></form>
-                @endif
-                @include('admin.offers.share-button')
-            </span>
-        @endif
         @if (($admin && ! $intake && $offer->closed()) || $otherChats->isNotEmpty())
-            <div class="flex w-full flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+            <span class="contents text-sm">
                 @if (! $admin || $intake)
                 @elseif ($offer->closed())
                     <span class="nums text-ink-muted">Приём закрыт с {{ \App\Support\Ago::html($offer->bids_close_at, true, words: false) }}</span>
@@ -96,17 +96,17 @@
                     <span class="nums">Приём <span data-controller="timer" data-timer-until-value="{{ $offer->bids_close_at->toIso8601String() }}" data-timer-done-value="закрыт" data-timer-coarse-value="true">{{ \App\Support\Ago::left($offer->bids_close_at, 'ещё') }}</span></span>
                 @endif
                 @if ($otherChats->isNotEmpty())<a href="/work/chats?preset=all&q={{ $offer->number }}" class="inline-flex items-center gap-1 {{ $chatUnread ? 'text-urgent' : 'text-accent-text' }}"><x-ui.icon name="chat" class="size-4"/>{{ $otherChats->count() === 1 ? 'Чат' : 'Чатов: '.$otherChats->count() }}@if ($chatUnread) <span class="badge">{{ $chatUnread }}</span>@endif</a>@endif
-            </div>
+            </span>
         @endif
-        @if ($errors->has('state'))<x-ui.flash tone="danger" class="w-full">{{ $errors->first('state') }}</x-ui.flash>@endif
-    </div>
+        {{-- Письмо на разбор не ждёт — «Показать менеджеру» руками, пилюлей. --}}
+        @if ($admin && $offer->deal && ! \App\Offers\ReplyReview::pending()->where('deal_id', $offer->deal->id)->exists())<x-deal.reply-review :deal="$offer->deal" pill/>@endif
+    </x-slot:sub>
+    @if ($errors->has('state'))<x-ui.flash tone="danger" class="mb-4">{{ $errors->first('state') }}</x-ui.flash>@endif
     {{-- Плашки дел — блоком с отступом, только когда хоть одна есть (`:empty` не срабатывал: от вида остаются переводы строк). --}}
     @php ob_start(); @endphp
     @include('admin.car.alerts')
     @php $alerts = trim(ob_get_clean()); @endphp
     @if ($alerts !== '')<div class="mb-4 flex flex-col gap-4">{!! $alerts !!}</div>@endif
-    {{-- Письмо на разбор не ждёт — «Показать менеджеру» руками, пилюлей. --}}
-    @if ($admin && $offer->deal && ! \App\Offers\ReplyReview::pending()->where('deal_id', $offer->deal->id)->exists())<div class="mb-4"><x-deal.reply-review :deal="$offer->deal" pill/></div>@endif
 
     {{-- Раскладка (06.10.2026, владелец): слева «Транспортное средство», под ним дорожки в ряд (`admin.offers.lanes`:
          «Продажа», «Вывоз», «Гараж» / «Сделка» / «Подтверждения») — в основной колонке, правую не занимают (07.10.2026);
