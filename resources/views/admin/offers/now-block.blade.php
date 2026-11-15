@@ -88,11 +88,12 @@
     @else
         @php $declined = $offer->state === OfferState::Cancelled ? $offer->declinedDeal : null; @endphp
         @if ($declined)
-            {{-- Отказ поставщика (28.10.2026): когда, кто отметил, менеджер сделки и причина словами. --}}
+            {{-- Отказ поставщика (28.10.2026): когда, кто отметил, менеджер сделки и причина словами. В окне менеджер уже в плашке
+                 сведений над этим (`admin.car.facts`) — тогда «сделка …» не повторяем (15.11.2026). --}}
             @php $by = $offer->events()->where('type', \App\Offers\OfferEventType::SupplierDeclined)->with('user')->first(); @endphp
             <div>
                 <h2 class="text-base font-medium text-danger">Поставщик отказал{{ $declined->closed_at ? ' '.\App\Support\Ago::day($declined->closed_at) : '' }}</h2>
-                <p class="text-sm text-ink-muted">{{ collect([$declined->buyer ? 'сделка '.$declined->buyer->shortName() : null, $by?->user ? 'отметил '.$by->user->shortName() : null])->filter()->implode(', ') }}</p>
+                <p class="text-sm text-ink-muted">{{ collect([$declined->buyer && ! (($holderActs ?? false) && ($car->holder()['user'] ?? null)?->id === $declined->buyer_id) ? 'сделка '.$declined->buyer->shortName() : null, $by?->user ? 'отметил '.$by->user->shortName() : null])->filter()->implode(', ') }}</p>
                 @if ($declined->close_note)<p class="mt-2">{{ $declined->close_note }}</p>@endif
             </div>
         @else

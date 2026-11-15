@@ -23,22 +23,25 @@
     }
 @endphp
 @if ($live && ! ($as === 'task' && $shownAt))
-    @php
-        $id = 'disclose-contact-'.$as.'-'.$deal->id;
-        $proposals = Disclosures::proposals($deal, collect());
-        $picked = array_values(array_filter(array_keys($proposals), fn ($k) => preg_match('/^(name|phone|address):/', $k)));
-    @endphp
-    <div class="contents" data-controller="sheet">
-        @if ($as === 'task')
-            <x-route.task-row icon="user" urgent aria-controls="{{ $id }}">Менеджер не видит контакт владельца</x-route.task-row>
-        @elseif ($shownAt)
-            <p {{ $attributes->class('text-sm text-open') }}>Менеджер видит с <span class="nums">{{ \App\Support\Ago::day($shownAt) }}</span></p>
-        @else
-            <div {{ $attributes->class('flex flex-wrap items-center gap-x-3 gap-y-2') }}>
-                <span class="min-w-0 flex-1 text-sm text-urgent">Менеджер не видит контакт</span>
-                <button type="button" class="btn btn-s btn-accent" data-action="sheet#open" aria-controls="{{ $id }}">Показать менеджеру</button>
-            </div>
-        @endif
-        @include('admin.deals.reply-review-sheet', ['id' => $id, 'deal' => $deal, 'letters' => collect(), 'proposals' => $proposals, 'step' => null, 'picked' => $picked])
-    </div>
+    @if ($shownAt)
+        <p {{ $attributes->class('text-sm text-open') }}>Менеджер видит с <span class="nums">{{ \App\Support\Ago::day($shownAt) }}</span></p>
+    @else
+        {{-- Пункты и шторка — только когда «Показать менеджеру» правда есть: разбор документов машины не бесплатный. --}}
+        @php
+            $id = 'disclose-contact-'.$as.'-'.$deal->id;
+            $proposals = Disclosures::proposals($deal, collect());
+            $picked = array_values(array_filter(array_keys($proposals), fn ($k) => preg_match('/^(name|phone|address):/', $k)));
+        @endphp
+        <div class="contents" data-controller="sheet">
+            @if ($as === 'task')
+                <x-route.task-row icon="user" urgent aria-controls="{{ $id }}">Менеджер не видит контакт владельца</x-route.task-row>
+            @else
+                <div {{ $attributes->class('flex flex-wrap items-center gap-x-3 gap-y-2') }}>
+                    <span class="min-w-0 flex-1 text-sm text-urgent">Менеджер не видит контакт</span>
+                    <button type="button" class="btn btn-s btn-accent" data-action="sheet#open" aria-controls="{{ $id }}">Показать менеджеру</button>
+                </div>
+            @endif
+            @include('admin.deals.reply-review-sheet', ['id' => $id, 'deal' => $deal, 'letters' => collect(), 'proposals' => $proposals, 'step' => null, 'picked' => $picked])
+        </div>
+    @endif
 @endif

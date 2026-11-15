@@ -1,18 +1,15 @@
-{{-- ДКП сделки «страхователю по ДКП» для сотрудника (05.10.2026): чего договору не хватает, сканы из писем страховой
-     (паспорт собственника, СТС, ПТС) и форма — продавец и ТС; покупателя вносит менеджер или админ за него (20.10.2026,
+{{-- ДКП сделки «страхователю по ДКП» для сотрудника (05.10.2026): чего договору не хватает и форма — продавец и ТС; покупателя вносит менеджер или админ за него (20.10.2026,
      шторкой `x-people.pick`). У ПРАЙМ продавец — ПРАЙМ,
      формы продавца нет. Договор — PDF в шторке
-     документов (`DealContractController::document`). Свёрнуто — договор и покупатель строками, сканы и поля — по «Изменить»
+     документов (`DealContractController::document`). Свёрнуто — договор и покупатель строками, поля — по «Изменить»
      (07.10.2026, владелец: «слишком много полей»; `edit_card_controller`), ошибка формы открывает их сама.
      ДКП ПРАЙМ (14.11.2026): строкой — собственник по договору комиссии (сам из письма, `FillCommissionOwner`); под «Изменить» —
      собственник полями паспорта и № договора комиссии. НДС договора — рядом со схемой в «Деньгах» (`x-deal.scheme`). --}}
 @props(['deal'])
 @php
     use App\Offers\DealContract;
-    use App\Support\Docs;
     $contract = DealContract::for($deal)->loadMissing(['seller', 'buyer.party']);
     $missing = $contract->missing();
-    $scans = $deal->offer->papers()->filter(fn ($m) => $m->getCustomProperty('letter'))->values();
     // Открыта полями: ошибка формы или «Заполнить» из шага пути (`?dkp=1`), пока чего-то не хватает — сохранили всё, и та же ссылка
     // (`back()` с `?dkp=1`) показывает договор готовым.
     $editing = $errors->hasAny(['seller.*', 'vehicle.*']) || (request()->boolean('dkp') && $missing);
@@ -64,19 +61,15 @@
     <form method="post" action="/work/deals/{{ $deal->id }}/contract" id="dkp-date-{{ $deal->id }}" class="hidden">@csrf @method('put')</form>
     <div data-edit-card-target="view" @if ($editing) hidden @endif></div>
     <div data-edit-card-target="edit" @unless ($editing) hidden @endunless>
-    @if ($scans->isNotEmpty())
-        <div class="list-cap mt-4">Сканы страховой</div>
-        <div class="list">
-            @foreach ($scans as $m)<x-ui.doc :doc="Docs::media($m)" class="row"><span class="min-w-0 flex-1 truncate">{{ $m->file_name }}</span><x-ui.icon name="file" class="size-4 shrink-0 text-ink-dim"/></x-ui.doc>@endforeach
-        </div>
-    @endif
+    {{-- «Сканы страховой» списком здесь больше нет (15.11.2026, владелец: «у нас уже есть блок с документами внизу, это дубликат
+         ненужный вредный»). --}}
     <form method="post" action="/work/deals/{{ $deal->id }}/contract" id="{{ $form }}" class="mt-4 flex flex-col gap-4" data-controller="save-bar">
         @csrf @method('put')
         @if ($ownerFields)
-            <div class="list-cap">{{ $deal->isDkp() ? 'Продавец, собственник по СТС' : 'Собственник, комитент по договору комиссии' }}</div>
+            <div class="list-cap !px-0">{{ $deal->isDkp() ? 'Продавец, собственник по СТС' : 'Собственник, комитент по договору комиссии' }}</div>
             <x-billing.passport-fields :party="$contract->seller" prefix="seller"/>
         @endif
-        <div class="list-cap">Договор</div>
+        <div class="list-cap !px-0">Договор</div>
         <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
             {{-- У ПРАЙМ и Р.О.С. сумма договора — строкой «Сумма договора» в «Деньгах» (`x-deal.contract-price`, 14.11.2026). --}}
             @unless ($prime || $contract->form() === 'ros')

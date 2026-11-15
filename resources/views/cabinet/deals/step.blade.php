@@ -36,7 +36,6 @@
     // Подбор (ДКП, «страховой напрямую») на шаге оплаты — группой «Оплатите XCar за подбор», как в «Расчёте».
     $selectionPay = $payStep && ! ($withInvoices ?? false) && $deal->paysSelection()
         ? $unpaid->first(fn ($i) => $i->kind === \App\Billing\ChargeKind::Selection) : null;
-    $claimable = $payStep ? $unpaid->filter(fn ($i) => $i->kind !== \App\Billing\ChargeKind::Reward && $i->remaining() - $i->claimed() > 0)->values() : collect();
     // Вернули на оплату («Оплата не поступила») — менеджер видит почему, пока не сообщил об оплате заново.
     $rejected = $payStep && $unpaid->every(fn ($i) => $i->claimed() == 0)
         ? \App\Billing\Payment::whereIn('invoice_id', $unpaid->pluck('id'))->where('state', \App\Billing\PaymentState::Rejected)->latest('id')->first() : null;
@@ -229,7 +228,7 @@
                             'title' => $payable->count() > 1 ? ($i->kind === \App\Billing\ChargeKind::Selection ? 'Подбор' : 'Автомобиль') : null,
                             'nested' => true,
                             'amount' => \App\Support\Money::rub($i->remaining()),
-                            'state' => $i->claimed() > 0 ? ['оплата ждёт подтверждения', ''] : null,
+                            'state' => null,
                             'invoice' => $i, 'pay' => true])
                     @endforeach
                 </div>

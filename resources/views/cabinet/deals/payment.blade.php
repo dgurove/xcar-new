@@ -35,7 +35,8 @@
         $openWay = match (true) {
             $errors->any() && old('way') && old('invoice') == $invoice->id => old('way'),
             $link && session('open-link') === $link->id => 'link',
-            request()->boolean('pay') => array_key_first($ways),
+            // Уведомление о счёте ведёт сюда с `?invoice={id}` (`MoneyNotice::url`) — к оплате этого счёта.
+            request()->boolean('pay') || (int) request('invoice') === $invoice->id => array_key_first($ways),
             default => null,
         };
     }
@@ -55,6 +56,14 @@
             <span class="mt-1 flex flex-wrap gap-x-2 text-sm text-ink-muted">@if ($sub)<span>{{ $sub }}</span>@endif @if ($invoice && $invoice->state === InvoiceState::Issued && $invoice->due_at && ! $nested)<x-billing.light :invoice="$invoice"/>@endif</span>
         @endif
     </{{ $head }}>
+    {{-- Что уже внесено — оплатами с платёжками, «ждёт подтверждения» (15.11.2026: было только в шторке счёта, которой больше нет). --}}
+    @if ($invoice && $invoice->relationLoaded('allPayments') && $invoice->allPayments->isNotEmpty())
+        <div @class(['list', 'bg-surface' => $nested])>
+            @foreach ($invoice->allPayments as $p)
+                <x-money.payment :payment="$p" :slip="'/account/money/invoices/'.$invoice->id.'/payments/'.$p->id.'/slip'"/>
+            @endforeach
+        </div>
+    @endif
     @if ($canPay)
         <div>
             <div class="list-cap !px-0">Выберите способ оплаты</div>

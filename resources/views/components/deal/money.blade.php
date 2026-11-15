@@ -37,13 +37,15 @@
     @if ($schemeFixed)
         <x-slot:chips>
             <span class="tag">{{ $scheme->short() }}</span>
+            {{-- Выбор был, но по счёту уже платили — почему сегмента нет (у Совкомбанка выбора нет никогда, там без слов). --}}
+            @if ($deal->isActive() && ! $deal->moneyEditable() && count(\App\Offers\DealScheme::casesFor($offer->vendor, $offer)) > 1)<span class="text-sm text-ink-muted">по счёту платили, сменить нельзя</span>@endif
         </x-slot:chips>
     @endif
     @php
         // Редкое со счетами — в «⋯» карточки (15.11.2026, владелец выбрал «счёт файлом, как документ»): «Оплатили без ссылки…»
         // (шторка оплаты ниже, событием `paid-{id}:open`; на шаге оплаты её несёт шаг), «Ещё счёт», страница счёта.
         $paidBy = $invoices->filter(fn ($i) => ! $i->isOwed() && $i->state === InvoiceState::Issued && $i->remaining() > 0 && ! $payStep && auth()->user()?->canManageCrm());
-        $pages = $invoices->reject(fn ($i) => $i->isOwed());
+        $pages = $invoices->reject(fn ($i) => $i->isOwed() || $i->state === InvoiceState::Void);
         $editMoney = $deal->isActive() && $deal->moneyEditable() && (! $deal->isGarage() || $deal->isGarageManager() || ($deal->namesBuyer() && $deal->amount !== null));
         $moreMoney = $paidBy->isNotEmpty() || $pages->isNotEmpty() || ($deal->isActive() && $issued->isNotEmpty());
     @endphp

@@ -46,13 +46,8 @@
         } : null;
     }
     $ownerSum = $deal->isDirect() && $deal->owner_price === null ? 'уточним' : Money::rub((int) $deal->ownerPrice());
-    // Наш счёт: словом, когда кнопки нет (оплачен, ждёт подтверждения, ещё не выставлен).
-    $invoiceState = fn ($i, string $none) => match (true) {
-        ! $i => [$none, ''],
-        $i->state === InvoiceState::Paid => ['оплачено', 'text-open'],
-        $i->claimed() > 0 => ['оплата ждёт подтверждения', ''],
-        default => null,
-    };
+    // Счёта ещё нет — словом, почему. Оплачен или ждёт подтверждения — это говорят строки оплат в самой квитанции.
+    $invoiceState = fn ($i, string $none) => $i ? null : [$none, ''];
     $sumOf = fn ($i) => Money::rub($i->state === InvoiceState::Paid ? $i->total : $i->remaining());
     $cancelledEmpty = $deal->state === \App\Offers\DealState::Cancelled && ! $sale && ! $selection;
 @endphp

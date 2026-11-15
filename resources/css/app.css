@@ -2718,7 +2718,11 @@ html.kb-open { --home-gap: 0px; }
   /* Свёрнутый — и без «Оплата, 1 из 2» над шагом и серых будущих подпунктов: это и есть «Весь путь». */
   /* Окно сделки (15.11.2026): этап — посередине полосы окна; свёрнутый путь его не повторяет, «⋯» шага — в строке «Продажа». */
   .steps--compact:not(:has(> .steps-all > .steps-all-check:checked)) .step-title--bar { display: none; }
-  .steps--compact:not(:has(> .steps-all > .steps-all-check:checked)) > .step--current .step-head--bar { position: absolute; top: -2.5rem; right: 0; margin: 0; }
+  /* «⋯» — от карточки, а не от шага: строки над шагом (переоценка) её не двигают. Свёрнутый путь бывает только в окне, где
+     у карточки нет отступов: пилюля 28 px серединой на строке заголовка `.box-title` (15 px) — сдвиг вверх на 6.5 px. */
+  .box:has(> .steps--compact) { position: relative; }
+  .steps--compact:not(:has(> .steps-all > .steps-all-check:checked)) > .step--current:has(.step-head--bar) { position: static; }
+  .steps--compact:not(:has(> .steps-all > .steps-all-check:checked)) > .step--current .step-head--bar { position: absolute; top: -6.5px; right: 0; margin: 0; }
   .steps--compact:not(:has(> .steps-all > .steps-all-check:checked)) .step-kicker,
   .steps--compact:not(:has(> .steps-all > .steps-all-check:checked)) .substeps--wait { display: none; }
   .steps-all { display: flex; align-items: center; gap: .375rem; align-self: flex-start; margin-top: .25rem; cursor: pointer; font-size: var(--text-sm); color: var(--color-ink-muted); }

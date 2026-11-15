@@ -19,12 +19,14 @@
         {{-- Что показываем ему и ссылка на его сделку (гараж) — тихо, здесь же, одной строкой во всю ширину плашки (12.11.2026,
              владелец: под именем узко, и они вставали друг под другом). --}}
         @if ($holderActs ?? false)
-            <span class="holder-acts">
+            @php ob_start(); @endphp
                 {{-- Чат с ним — первым (12.11.2026, владелец: «кнопку чат в блок, где менеджер»). --}}
                 @if ($dealChat ?? false)<x-deal.chat-card :deal="$deal" :chat="$car->dealChat()" inline/>@endif
                 @if ($deal?->isActive())<x-deal.reply-review :deal="$deal" inline/>@endif
                 @if ($personDeal ?? null)<x-deal.person-link :deal="$personDeal" inline/>@endif
-            </span>
+            @php $acts = trim(ob_get_clean()); @endphp
+            {{-- Пустая строка действий (отменённая сделка: ни чата, ни ссылки) — не рисуется, иначе пустая полоса внизу плашки. --}}
+            @if ($acts !== '')<span class="holder-acts">{!! $acts !!}</span>@endif
         @endif
     </div>
 @endif
