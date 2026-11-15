@@ -16,6 +16,8 @@
     @foreach (old('closing_files', $closingFiles ?? []) as $f)<input type="hidden" name="closing_files[]" value="{{ $f }}">@endforeach
 @endif
 <input type="hidden" name="retry" value="{{ request()->getRequestUri() }}">
+{{-- Неудачное письмо этого редактора — повторная отправка его заменяет (`DropFailed`); ставит `compose_send_controller`. --}}
+<input type="hidden" name="replaces" value="" data-compose-send-target="replaces">
 @if ($then ?? null)<input type="hidden" name="then" value="{{ $then }}">@endif
 {{-- Заявка поставщику: сделки её файла — отправили письмо, они идут дальше «Заявка отправлена». --}}
 @if ($requestDeals ?? null)<input type="hidden" name="request_deals" value="{{ old('request_deals', $requestDeals) }}">@endif
@@ -101,8 +103,15 @@
             <div class="h-1.5 overflow-hidden rounded-full bg-surface-3"><div class="h-full bg-accent transition-[width]" data-bar style="width:0"></div></div>
         </div>
     </div>
+    {{-- Почтовый сервер не принял письмо — причина словами (`SendError`), текст и вложения на месте (`compose_send_controller`). --}}
+    <p class="compose-status" role="alert" data-compose-send-target="error" hidden></p>
     <div class="compose-foot">
-        <x-ui.button size="sm">Отправить</x-ui.button>
+        {{-- «Отправить» ждёт настоящей отправки (15.11.2026, владелец: «пока письмо не отправилось, редактор тупо не закрывается,
+             анимация — в редакторе при нажатии на „Отправить“»): крутилка «Отправляем», ушло — зелёная с галкой «Отправлено». --}}
+        <button type="submit" class="btn btn-accent btn-s compose-send" data-compose-send-target="button">
+            <svg class="compose-send-mark" viewBox="0 0 24 24" aria-hidden="true"><circle class="compose-send-ring" cx="12" cy="12" r="9"/><path class="compose-send-tick" d="M7.5 12.4l3 3 6-6.4"/></svg>
+            <span class="compose-send-label" data-compose-send-target="label">Отправить</span>
+        </button>
         <button type="button" class="compose-tool" data-action="photos#pick" aria-label="Приложить файл" title="Приложить файл"><x-ui.icon name="clip" class="size-5"/></button>
         {{-- Документ из фото одним PDF (06.11.2026, Сергей: акт выдачи проще сфоткать) — письма парковки о машине. --}}
         @if (($vehicle ?? null) && $mode !== 'forward')
@@ -112,6 +121,6 @@
         <button type="button" class="compose-tool compose-format" aria-label="Форматирование" title="Форматирование"
                 onclick="this.closest('.compose').toggleAttribute('data-format'); this.classList.toggle('is-on')">Aa</button>
         {{-- Новое письмо без ветки — «Отмена» закрывает окно (`letters:close`). --}}
-        @if ($cancel)<a href="{{ $cancel[0] }}" class="compose-cancel" data-turbo-frame="{{ $cancel[1] }}">Отмена</a>@else<button type="button" class="compose-cancel" data-controller="emit" data-action="emit#send" data-emit-event-param="letters:close">Отмена</button>@endif
+        @if ($cancel)<a href="{{ $cancel[0] }}" class="compose-cancel" data-turbo-frame="{{ $cancel[1] }}" data-compose-send-target="cancel">Отмена</a>@else<button type="button" class="compose-cancel" data-controller="emit" data-action="emit#send" data-emit-event-param="letters:close" data-compose-send-target="cancel">Отмена</button>@endif
     </div>
 </div>

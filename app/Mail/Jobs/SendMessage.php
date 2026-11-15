@@ -58,7 +58,7 @@ final class SendMessage implements ShouldQueue
         MessageSent::dispatch($message);
     }
 
-    /** Экрану отправки у автора: ушло или нет (`live:mail-sent`); опрос `state` — запасной путь. */
+    /** Редактору у автора, что ждёт галки: ушло или нет (`live:mail-sent`, `compose_send_controller`); опрос `state` — запасной путь. */
     public static function tellAuthor(Message $message): void
     {
         if (! $message->created_by) {
@@ -67,7 +67,7 @@ final class SendMessage implements ShouldQueue
         try {
             app(Publisher::class)(Topics::user((int) $message->created_by), 'mail-sent', ['id' => $message->id] + $message->sendStatus());
         } catch (Throwable $e) {
-            Log::warning('Почта: экран отправки не узнал', ['message' => $message->id, 'error' => $e->getMessage()]);
+            Log::warning('Почта: редактор не узнал об отправке', ['message' => $message->id, 'error' => $e->getMessage()]);
         }
     }
 

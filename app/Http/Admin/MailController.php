@@ -15,6 +15,7 @@ use App\Billing\PartyKind;
 use App\Live\Stream;
 use App\Mail\Account;
 use App\Mail\Actions\ArchiveThread;
+use App\Mail\Actions\DropFailed;
 use App\Mail\Actions\FreezeMessages;
 use App\Mail\Actions\LinkThread;
 use App\Mail\Actions\MarkThreadRead;
@@ -826,6 +827,10 @@ class MailController
         $boxes = Account::where('scope', $this->scope)->pluck('id');
         $parent = ! empty($data['parent']) ? Message::with(['thread', 'attachments', 'account'])->whereIn('account_id', $boxes)->find($data['parent']) : null;
         $thread = ! empty($data['thread']) ? Thread::where('account_id', $account->id)->find($data['thread']) : null;
+        // Повторная отправка из того же редактора после «не ушло» (`compose_send_controller`): неудачное письмо уступает место,
+        // новое ложится в его ветку.
+        $dropped = app(DropFailed::class)(ctype_digit((string) $request->input('replaces')) ? (int) $request->input('replaces') : null, $request->user());
+        $thread ??= $dropped && $dropped->account_id === $account->id && $dropped->messages()->exists() ? $dropped : null;
 
         // Файл, которого нет в outbox, письмо не заводит (`Composer::attach`, 29.10.2026: «Письмо пришло без вложения»), а
         // «Отправить», пока файлы грузятся, редактор не пускает (`photos_controller`) — возвращаемся в редактор с ошибкой.
@@ -907,11 +912,11 @@ class MailController
             ? $sentRequest(array_map('intval', explode(',', $data['request_deals'])), $message, $request->user()) : null;
 
         if ($inWindow) {
-            // Окно не закрывается сразу (15.11.2026, начальник «постоянно переживает, отправлено письмо или нет»): экран
-            // «Отправляем…» ждёт настоящей отправки и рисует зелёную галку (`sent`, `mail_sent_controller`); после «Принять»
-            // (`then=close`) окно закрывается само уже после галки.
+            // Редактор не закрывается, пока письмо не ушло (15.11.2026, начальник «постоянно переживает, отправлено письмо или
+            // нет»; владелец: «как в нормальных почтовых клиентах»): `compose_send_controller` узнаёт ответ по адресу
+            // `messages/{id}/sent`, не даёт Turbo его рисовать и ждёт `send_state = sent` — галка на кнопке «Отправить».
             return redirect("{$this->base}/messages/{$message->id}/sent".($request->input('then') === 'close' ? '?then=close' : ''))
-                ->with('toast', $requested !== null ? "Заявка поставщику: {$requested} ТС" : null);
+                ->with('mail-requested', $requested);
         }
 
         // Не из окна (форма без фрейма) — ветка письма.
@@ -1191,26 +1196,35 @@ class MailController
     }
 
     /**
-     * Экран отправки письма в окне (15.11.2026): «Отправляем…» → зелёная галка «Письмо ушло», когда SMTP принял
-     * (`send_state = sent`), или «Не ушло» с причиной и «Отправить снова». Ждёт события автору `mail-sent` и опрашивает
-     * `state` — галка только по базе.
+     * Куда ведёт отправка из окна писем (15.11.2026). Редактор (`compose_send_controller`) этот ответ не рисует: ждёт
+     * настоящей отправки и сам закрывает окно или открывает ветку. Без него (старая вкладка, нет скриптов) — как было до
+     * галки: после «Принять» (`then=close`) окно закрывается, иначе ветка в окне.
      */
     public function sent(Request $request, Message $message)
     {
         $this->guardMessage($message);
         abort_unless($message->isOutgoing(), 404);
+        $requested = session('mail-requested');
+        // Редактор ждёт галки (`compose_send_controller` шлёт заголовок, fetch несёт его и через редирект `send`): состояние сразу.
+        if ($request->hasHeader('X-Compose-Send')) {
+            return response()->json(['id' => $message->id] + $message->sendStatus() + ['thread' => "{$this->base}/{$message->thread_id}/window",
+                'toast' => $requested !== null ? "Заявка поставщику: {$requested} ТС" : null]);
+        }
+        $window = redirect("{$this->base}/{$message->thread_id}/window");
+        if ($request->query('then') === 'close') {
+            return $window->with('toast', $requested !== null ? "Заявка поставщику в очереди, {$requested} ТС" : 'Письмо вендору в очереди')->with('letters-close', true);
+        }
 
-        return view('admin.mail.sent-frame', ['message' => $message->load('addresses'), 'base' => $this->base,
-            'close' => $request->query('then') === 'close', 'state' => $message->sendStatus()]);
+        return $window->with('toast', 'Письмо в очереди');
     }
 
-    /** Состояние отправки письма для экрана отправки (`mail_sent_controller`). */
+    /** Состояние отправки письма для редактора, что ждёт галки (`compose_send_controller`); `thread` — ветка в окне после. */
     public function state(Message $message)
     {
         $this->guardMessage($message);
         abort_unless($message->isOutgoing(), 404);
 
-        return response()->json($message->fresh()->sendStatus());
+        return response()->json($message->fresh()->sendStatus() + ['thread' => "{$this->base}/{$message->thread_id}/window"]);
     }
 
     public function resend(Message $message)

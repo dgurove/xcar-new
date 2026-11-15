@@ -22,7 +22,8 @@ export default class extends Controller {
         this.onOuter = (e) => e.target.form === this.element && !this.element.contains(e.target) && this.onInput();
         this.onHide = () => document.visibilityState === 'hidden' && this.save();
         this.onCache = () => this.save();
-        this.onEnd = (e) => e.detail.success && this.clear();
+        // Редактор письма ждёт настоящей отправки (`compose_send_controller`, `data-draft-keep`) — стирает он сам, когда ушло.
+        this.onEnd = (e) => e.detail.success && !('draftKeep' in this.element.dataset) && this.clear();
         this.element.addEventListener('input', this.onInput);
         this.element.addEventListener('change', this.onInput);
         this.element.addEventListener('trix-change', this.onInput);

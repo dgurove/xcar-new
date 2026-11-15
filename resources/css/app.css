@@ -1486,31 +1486,6 @@ html.kb-open { --home-gap: 0px; }
   .valuation-ok path { stroke-dasharray: 44; stroke-dashoffset: 44; animation: valuation-draw .3s .35s ease-out forwards; }
   .valuation-done-body { @apply flex flex-1 flex-col items-center justify-center gap-2 py-10 text-center; }
 
-  /* Экран отправки письма (15.11.2026, `admin/mail/sent-frame`): кольцо крутится, пока письмо в очереди; ушло — круг заливается
-     зелёным «готов» и галка дорисовывается штрихом с пружинкой; не ушло — красный круг и «!». */
-  .mail-sent { @apply flex flex-col items-center gap-1.5 px-2 pt-3 pb-1 text-center; }
-  .mail-sent-mark { @apply mb-2 size-20; fill: none; stroke-linecap: round; stroke-linejoin: round; }
-  .mail-sent-track { stroke: color-mix(in oklab, var(--color-ink) 10%, transparent); stroke-width: 4; }
-  .mail-sent-ring { stroke: var(--color-open); stroke-width: 4; stroke-dasharray: 176; stroke-dashoffset: 132; transform-origin: 32px 32px; animation: spin .9s linear infinite; transition: stroke-dashoffset .45s var(--ease-out), fill .3s .3s, stroke .2s; }
-  .mail-sent-tick, .mail-sent-bang { stroke: #fff; stroke-width: 5; stroke-dasharray: 44; stroke-dashoffset: 44; }
-  .mail-sent-title { @apply text-lg font-medium; }
-  .mail-sent-to { @apply max-w-full break-words text-sm text-ink-muted; }
-  .mail-sent-note { @apply min-h-5 text-sm text-ink-muted; }
-  .mail-sent-acts { @apply mt-3 flex w-full flex-col gap-2; }
-  .mail-sent[data-state="sent"] .mail-sent-ring { animation: none; stroke-dashoffset: 0; fill: var(--color-open); }
-  .mail-sent[data-state="sent"] .mail-sent-mark { animation: pop .5s .35s var(--ease-spring); }
-  .mail-sent[data-state="sent"] .mail-sent-tick { animation: valuation-draw .35s .5s var(--ease-out) forwards; }
-  .mail-sent[data-state="sent"] .mail-sent-title { color: var(--color-open); }
-  .mail-sent[data-state="failed"] .mail-sent-ring { animation: none; stroke-dashoffset: 0; stroke: var(--color-danger); fill: var(--color-danger); }
-  .mail-sent[data-state="failed"] .mail-sent-bang { animation: valuation-draw .3s .3s var(--ease-out) forwards; }
-  .mail-sent[data-state="failed"] .mail-sent-title { color: var(--color-danger); }
-  .mail-sent.is-still .mail-sent-ring, .mail-sent.is-still .mail-sent-mark { animation: none; transition: none; }
-  .mail-sent.is-still[data-state="sent"] .mail-sent-tick, .mail-sent.is-still[data-state="failed"] .mail-sent-bang { animation: none; stroke-dashoffset: 0; }
-  @media (prefers-reduced-motion: reduce) {
-    .mail-sent-ring { animation-duration: 2.4s; }
-    .mail-sent[data-state] .mail-sent-mark { animation: none; }
-    .mail-sent[data-state="sent"] .mail-sent-tick, .mail-sent[data-state="failed"] .mail-sent-bang { animation: none; stroke-dashoffset: 0; }
-  }
   .valuation-done-body h3 { @apply mt-2 text-lg; }
   .valuation-done:has(.valuation-created:not([hidden])) .valuation-done-body { @apply flex-none py-6; }
   .valuation-created { @apply mx-4 mb-4 min-h-0 overflow-y-auto; }
@@ -5066,8 +5041,10 @@ dialog.lightbox:not(.lb-one) .lb-pill--bottom { bottom: calc(var(--lb-strip-bott
      под «Кому» на телефоне): без фокуса при адресах — вне потока (нажатие по строке ставит в него курсор), с фокусом — не уже
      6rem, при тесноте — новой строкой. */
   .recipients-input { @apply h-7 min-w-0 flex-1 basis-0 bg-transparent py-0 text-base text-ink outline-none; border: 0; }
-  .recipients-input:focus { @apply min-w-24; }
-  .recipients:has(.recipient) > .recipients-input:not(:focus) { position: absolute; width: 1px; opacity: 0; }
+  /* Пустое поле в фокусе места не держит, схлопывается только пустое (15.11.2026: на телефоне адрес + поле в 6rem уходили
+     второй строкой, уход фокуса по нажатию «Отправить» схлопывал её — кнопка уезжала из-под пальца, письмо не уходило). */
+  .recipients-input:focus:not(:placeholder-shown) { @apply min-w-24; }
+  .recipients:has(.recipient) > .recipients-input:not(:focus):placeholder-shown { position: absolute; width: 1px; opacity: 0; }
   .recipient { @apply inline-flex h-7 max-w-full items-center rounded-full bg-surface-3 text-ink; }
   .recipient-label { @apply truncate pl-3; }
   .recipient-x { @apply grid h-full place-items-center px-2 text-ink-muted hover:text-ink; }
@@ -5109,6 +5086,30 @@ dialog.lightbox:not(.lb-one) .lb-pill--bottom { bottom: calc(var(--lb-strip-bott
   .compose-format { @apply text-sm font-medium; }
   .compose-format.is-on { @apply bg-surface-3 text-ink; }
   .compose-cancel { @apply -mr-2 ml-auto rounded-full px-3 py-2 text-sm text-ink-muted hover:bg-surface-3 hover:text-ink; }
+  /* «Отправить» ждёт настоящей отправки (15.11.2026, `compose_send_controller`; владелец: «как в нормальных почтовых клиентах —
+     редактор не закрывается, анимация на кнопке»): «Отправляем» с кольцом, поля замирают; ушло — кнопка заливается зелёным
+     «готов», кольцо смыкается и галка рисуется штрихом с пружинкой, «Отправлено». Общее кольцо `aria-busy` кнопке не нужно —
+     своё в svg. Ширина одна во всех состояниях. */
+  .compose-send { @apply relative justify-center gap-1.5; min-width: 9.25rem; transition: background-color .3s var(--ease-out), color .3s var(--ease-out); }
+  .btn.compose-send[aria-busy="true"] { color: inherit; }
+  .btn.compose-send[aria-busy="true"]::after { content: none; }
+  .compose-send-mark { @apply hidden size-[18px] shrink-0; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; overflow: visible; }
+  .btn.compose-send[data-state] .compose-send-mark { display: block; visibility: visible; }
+  .compose-send-ring { stroke-dasharray: 57; stroke-dashoffset: 40; transform-origin: 12px 12px; animation: spin .8s linear infinite; transition: stroke-dashoffset .35s var(--ease-out); }
+  .compose-send-tick { stroke-dasharray: 14; stroke-dashoffset: 14; }
+  .btn.compose-send:disabled { opacity: 1; }
+  .btn.compose-send[data-state="sent"] { background: var(--color-open); color: #fff; }
+  .compose-send[data-state="sent"] .compose-send-ring { animation: none; stroke-dashoffset: 0; }
+  .compose-send[data-state="sent"] .compose-send-mark { animation: pop .5s .2s var(--ease-spring); }
+  .compose-send[data-state="sent"] .compose-send-tick { animation: valuation-draw .3s .3s var(--ease-out) forwards; }
+  .compose-status { @apply px-4 pb-1 text-sm text-danger; }
+  .compose-status.is-quiet { @apply text-ink-muted; }
+  .compose.is-sending > [inert] { opacity: .55; transition: opacity .2s; }
+  @media (prefers-reduced-motion: reduce) {
+    .compose-send-ring { animation-duration: 2.4s; }
+    .compose-send[data-state="sent"] .compose-send-mark { animation: none; }
+    .compose-send[data-state="sent"] .compose-send-tick { animation: none; stroke-dashoffset: 0; }
+  }
   /* Исходное письмо под полем ответа (`compose-fields`): свёрнуто строкой с галкой, раскрыто — цитата серым со своей
      прокруткой. Разметку цитаты пишет `Composer::quote` для почтовых клиентов — тут её поля и цвет приводим к своим. */
   .compose-quote > summary::-webkit-details-marker { display: none; }

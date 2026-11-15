@@ -3,9 +3,9 @@
 namespace App\Mail;
 
 /**
- * Почему письмо не ушло — словами для экрана отправки (`admin/mail/sent-frame`, 15.11.2026): ответ почтового сервера
- * («Expected response code 250 but got 550 …») начальнику ничего не говорит. Частые случаи — фразой, остальное — первой
- * строкой ответа как есть.
+ * Почему письмо не ушло — словами над кнопкой «Отправить» (`compose_send_controller`, 15.11.2026): ответ почтового сервера
+ * («Expected response code 250 but got 550 …») начальнику ничего не говорит. Частые случаи — фразой, своё по-русски
+ * (прервалась на выкладке) — как есть, остальное — общей фразой; ответ сервера целиком остаётся в `send_error`.
  */
 final class SendError
 {
@@ -22,7 +22,8 @@ final class SendError
             (bool) preg_match('/\b535\b|authenticat|password/i', $line) => 'Почта не приняла пароль ящика, напишите владельцу',
             (bool) preg_match('/timed? ?out|connection (refused|could not)|unable to connect|getaddrinfo/i', $line) => 'Нет связи с почтовым сервером, попробуйте снова',
             (bool) preg_match('/прервалась/u', $line) => $line,
-            default => mb_substr(preg_replace('/^Expected response code \S+ but got (code )?"?\d+"?,?( with message ")?/u', '', $line), 0, 200),
+            (bool) preg_match('/\p{Cyrillic}/u', $line) => mb_substr($line, 0, 200),
+            default => 'Письмо не ушло, попробуйте ещё раз',
         };
     }
 }
