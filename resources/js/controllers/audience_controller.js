@@ -43,7 +43,6 @@ export default class extends Controller {
         this.initial = this.rulesTarget.value;
         this.waves = this.decode(this.clean(this.parse(this.rulesTarget.value) ?? this.effectiveValue ?? []));
         this.picking = null; // { wave, mode: 'who' | 'except' }
-        this.asking = this.waves.findIndex((w) => !w.kind);
         this.edited = false;
         this.render();
     }
@@ -177,10 +176,8 @@ export default class extends Controller {
             const at = this.waves.length - 1;
             this.waves.splice(at, 0, { ...blank, delay: last.delay });
             last.delay += DAY;
-            this.asking = at;
         } else {
             this.waves.push({ ...blank, delay: last.delay + DAY });
-            this.asking = this.waves.length - 1;
         }
         this.picking = null;
         this.render();
@@ -188,8 +185,6 @@ export default class extends Controller {
 
     removeWave(i) {
         this.waves.splice(i, 1);
-        if (this.asking === i) this.asking = -1;
-        else if (this.asking > i) this.asking -= 1;
         this.picking = null;
         if (!this.waves.length) this.waves = [{ delay: 0, kind: null, who: [], except: [], carry: [] }];
         this.commit();
@@ -210,7 +205,6 @@ export default class extends Controller {
             if (kind === 'all') w.except = [];
             this.picking = kind === 'except' ? { wave: i, mode: 'except' } : null;
         }
-        this.asking = kind === 'all' ? -1 : i;
         this.commit();
         if (this.picking) this.focusPick();
     }
@@ -242,7 +236,6 @@ export default class extends Controller {
         if (p) {
             const w = this.waves[p.wave];
             if (w.kind === 'only' && !w.who.length) w.kind = null;
-            this.asking = w.kind ? -1 : p.wave;
         }
         this.commit();
     }
@@ -283,7 +276,6 @@ export default class extends Controller {
         w[list] = w[list].filter((x) => x !== k);
         if (w.kind === 'only' && !w.who.length && !(this.picking && this.picking.wave === i)) {
             w.kind = null;
-            this.asking = i;
         }
         this.commit();
     }
@@ -301,11 +293,12 @@ export default class extends Controller {
                 pending = new Set(w.except);
                 return true;
             }
-            if (!pending.size && !w.except.length && this.asking !== i) return false;
+            // Пока у прежней «Всем» открыт список «кроме» — не убирать: исключат кого-то, и эта волна понадобится.
+            const choosing = this.picking && this.picking.mode === 'except' && this.picking.wave < i;
+            if (!pending.size && !w.except.length && !choosing) return false;
             pending = new Set([...pending].filter((k) => w.except.includes(k)));
             return true;
         });
-        if (this.asking >= this.waves.length) this.asking = -1;
     }
 
     commit() {
@@ -334,7 +327,7 @@ export default class extends Controller {
         const pick = this.pickTarget;
         this.bodyTarget.parentElement.append(pick);
         const parts = this.waves.map((w, i) => this.wave(w, i));
-        if (this.waves.every((w) => w.kind) && this.asking < 0 && !this.picking) {
+        if (this.waves.every((w) => w.kind) && !this.picking) {
             const item = el('div', 'wave wave-add');
             const b = el('button', 'wave-add-btn');
             b.type = 'button';
@@ -385,44 +378,44 @@ export default class extends Controller {
             late.textContent = `Начнётся после ${end || 'конца приёма'}`;
             item.append(late);
         }
-        // Кому — заголовком «Всем ⌄» / «Всем, кроме ⌄» / «Выбранным ⌄» (нажатие — снова «Кому?»), под ним люди и группы по
-        // одному в строке с аватаркой и ×, последней — «+ Ещё» / «+ Добавить». У «Всем» под заголовком ничего (15.11.2026,
-        // владелец: «Кроме…» не нужно — нажмут «Всем» и выберут «Всем, кроме»).
-        if (!w.kind || this.asking === i) item.append(this.ask(w, i));
-        else {
-            const who = el('button', 'wave-who');
-            who.type = 'button';
-            who.append(w.kind === 'only' ? 'Выбранным' : w.except.length ? 'Всем, кроме' : 'Всем', this.icon('chevron'));
-            who.addEventListener('click', () => { this.asking = i; this.picking = null; this.render(); });
-            item.append(who);
-        }
-        if (w.kind === 'only') item.append(...this.people(i, 'who', w.who, 'Добавить'));
-        if (w.kind === 'all' && w.except.length) item.append(...this.people(i, 'except', w.except, 'Ещё'));
+        // Кому — выпадающим списком «Всем ⌄» / «Всем, кроме ⌄» / «Выбранным ⌄» (16.11.2026, владелец: заголовок, что
+        // превращался в три кнопки, — «нелогично», «должен быть просто дропдаун»), под ним люди и группы по одному в строке с
+        // аватаркой и ×, последней — «+ Добавить». У «Всем» под заголовком ничего. Три кнопки «Кому?» — только у новой волны.
+        if (!w.kind) item.append(this.ask(i));
+        else item.append(this.whoSelect(w, i));
+        if (w.kind === 'only') item.append(...this.people(i, 'who', w.who));
+        if (w.kind === 'all' && w.except.length) item.append(...this.people(i, 'except', w.except));
         if (this.picking && this.picking.wave === i) item.append(this.pickTarget);
         return item;
     }
 
-    // «Кому?» — три кнопки; выбранный ответ (пока открыт его список) — подсвечен.
-    ask(w, i) {
+    // «Кому?» новой волны — три кнопки.
+    ask(i) {
         const box = el('div', 'wave-ask');
-        if (!w.kind) {
-            const q = el('span', 'wave-q');
-            q.textContent = 'Кому?';
-            box.append(q);
-        }
+        const q = el('span', 'wave-q');
+        q.textContent = 'Кому?';
+        box.append(q);
         const row = el('div', 'wave-ask-row');
-        const now = this.picking && this.picking.wave === i ? (this.picking.mode === 'except' ? 'except' : 'only')
-            : w.kind === 'only' ? 'only' : w.kind === 'all' ? (w.except.length ? 'except' : 'all') : null;
         for (const [kind, label] of [['all', 'Всем'], ['except', 'Всем, кроме'], ['only', 'Выбранным']]) {
             const b = el('button', 'wave-ask-btn');
             b.type = 'button';
             b.textContent = label;
-            b.setAttribute('aria-pressed', String(now === kind));
             b.addEventListener('click', () => this.answer(i, kind));
             row.append(b);
         }
         box.append(row);
         return box;
+    }
+
+    // Кому у готовой волны — системный выбор тем же текстом с шевроном; пока открыт список выбора — по нему.
+    whoSelect(w, i) {
+        const now = this.picking && this.picking.wave === i ? (this.picking.mode === 'except' ? 'except' : 'only')
+            : w.kind === 'only' ? 'only' : w.except.length ? 'except' : 'all';
+        const sel = el('select', 'wave-who');
+        sel.setAttribute('aria-label', 'Кому');
+        for (const [kind, label] of [['all', 'Всем'], ['except', 'Всем, кроме'], ['only', 'Выбранным']]) sel.append(new Option(label, kind, false, kind === now));
+        sel.addEventListener('change', () => this.answer(i, sel.value));
+        return sel;
     }
 
     // Пилюля срока — системный выбор: у первой «Сразу» и «Через N» от выхода, у следующих — от предыдущей
@@ -463,8 +456,8 @@ export default class extends Controller {
     }
 
     // Строки людей волны: аватарка (клон из строки списка выбора — там уже фото или инициалы), у группы — её значок и
-    // «группа, N человек», имя, ×; последней — «+ Ещё» / «+ Добавить», пока список не открыт.
-    people(i, list, keys, more) {
+    // «группа, N человек», имя, ×; последней — «+ Добавить», пока список не открыт.
+    people(i, list, keys) {
         const rows = keys.map((k) => {
             const row = el('div', 'wave-person');
             row.append(this.face(k));
@@ -487,10 +480,10 @@ export default class extends Controller {
             return row;
         });
         const open = this.picking && this.picking.wave === i && this.picking.mode === list;
-        if (!open && this.asking !== i) {
+        if (!open) {
             const add = el('button', 'wave-more');
             add.type = 'button';
-            add.append(this.icon('plus'), more);
+            add.append(this.icon('plus'), 'Добавить');
             add.addEventListener('click', () => this.openPick(i, list));
             rows.push(add);
         }

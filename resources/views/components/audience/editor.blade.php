@@ -50,5 +50,5 @@
             @endforeach
         </div>
     </div>
-    <template data-audience-target="icons"><x-ui.icon name="x" class="size-4" data-icon="x"/><x-ui.icon name="plus" class="size-4" data-icon="plus"/><x-ui.icon name="chevron-down" class="size-4" data-icon="chevron"/></template>
+    <template data-audience-target="icons"><x-ui.icon name="x" class="size-4" data-icon="x"/><x-ui.icon name="plus" class="size-4" data-icon="plus"/></template>
 </div>
