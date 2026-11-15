@@ -51,7 +51,7 @@ final class ValuationsCommand extends Command
             $sale && $rows[] = [$name, 'продажа '.$offer->state->label().($offer->bids()->whereIn('state', [\App\Offers\BidState::Active, \App\Offers\BidState::Accepted])->exists() ? ', есть подтверждения' : ''),
                 self::was($sale['was'], $sale['was_at']), Money::rub($sale['value']).' '.$sale['title'],
                 'закупочная '.($offer->floor_price ? Money::rub((int) $offer->floor_price) : 'нет').' → '.Money::rub(Pricing::floorFrom($sale['value'], Pricing::rulesFor($offer)))];
-            $park && $rows[] = [$name, 'парковка', self::was($park['was'], $car->value_at), Money::rub($park['value']).' '.$park['title'], ''];
+            $park && $rows[] = [$name, 'парковка', self::was($park['was'], Valuations::carAt($car)), Money::rub($park['value']).' '.$park['title'], ''];
             if (! $dry) {
                 Valuations::fromDocuments($car);
             }
@@ -79,15 +79,13 @@ final class ValuationsCommand extends Command
                 $n++;
             }
         });
-        $cars = DB::update(<<<'SQL'
-            update cars c set value_at = coalesce(
-                (select max(e.created_at) from park_vehicle_events e join park_vehicles v on v.id = e.vehicle_id
-                  where v.car_id = c.id and jsonb_exists(e.payload->'changes', 'value')),
-                (select min(r.letter_at) from park_requests r join park_vehicles v on v.id = r.vehicle_id where v.car_id = c.id),
-                (select max(e.created_at) from car_events e where e.car_id = c.id and jsonb_exists(e.payload->'changes', 'value')),
-                c.created_at)
-            where c.value is not null and c.value_at is null
-            SQL);
+        $cars = 0;
+        Car::query()->whereNotNull('value')->whereNull('value_at')->orderBy('id')->chunkById(500, function ($list) use (&$cars) {
+            foreach ($list as $car) {
+                $car->forceFill(['value_at' => Valuations::carAt($car)])->saveQuietly();
+                $cars++;
+            }
+        });
         $this->line("Даты оценочных: продаж {$n}, машин {$cars}");
     }
 }

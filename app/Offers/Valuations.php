@@ -51,6 +51,23 @@ final class Valuations
         return $at ? Carbon::parse($at) : $offer->created_at;
     }
 
+    /** На какой день верна оценочная ТС парковки. До `value_at` — правка на парковке, заявка, правка машины в «Истории». */
+    public static function carAt(Car $car): ?Carbon
+    {
+        if (! $car->value) {
+            return null;
+        }
+        if ($car->value_at) {
+            return $car->value_at;
+        }
+        $at = DB::table('park_vehicle_events')->join('park_vehicles', 'park_vehicles.id', '=', 'park_vehicle_events.vehicle_id')
+            ->where('park_vehicles.car_id', $car->id)->whereRaw("jsonb_exists(park_vehicle_events.payload->'changes', 'value')")->max('park_vehicle_events.created_at')
+            ?? DB::table('park_requests')->join('park_vehicles', 'park_vehicles.id', '=', 'park_requests.vehicle_id')->where('park_vehicles.car_id', $car->id)->min('park_requests.letter_at')
+            ?? DB::table('car_events')->where('car_id', $car->id)->whereRaw("jsonb_exists(payload->'changes', 'value')")->max('created_at');
+
+        return $at ? Carbon::parse($at) : $car->created_at;
+    }
+
     /** Сумма на `$asOf` старше нынешней оценочной — не встаёт. */
     public static function older(Offer $offer, ?Carbon $asOf): bool
     {
@@ -129,7 +146,8 @@ final class Valuations
             return null;
         }
         $doc = self::latestDocument($car);
-        if (! $doc || (int) $car->value === $doc['value'] || ($car->value && $car->value_at && $doc['as_of']->lte($car->value_at))) {
+        $at = self::carAt($car);
+        if (! $doc || (int) $car->value === $doc['value'] || ($car->value && $at && $doc['as_of']->lte($at))) {
             return null;
         }
 
