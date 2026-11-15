@@ -8,20 +8,15 @@
     $stage = $requirement->stage;
     $attachLabel ??= match (true) {
         (bool) preg_match('/договор/iu', $stage?->name.' '.$requirement->title) => 'Приложить договор',
-        // Оплата — чек кассы, скан или файл платёжки (10.11.2026, владелец: «не всегда сфотографировать»).
-        (bool) $stage?->isPayStep() || (bool) preg_match('/плат[её]ж/iu', (string) $requirement->title) => 'Приложить чек или платёжку',
+        // Оплата — платёжка: одна кнопка, телефон сам предлагает снять фото, медиатеку или файл (16.11.2026, владелец выбрал
+        // вариант А: «чтобы на странице сделки было понятно и удобно»; прежде «Сфотографировать чек» и мелкое «или файл»).
+        (bool) $stage?->isPayStep() || (bool) preg_match('/плат[её]ж/iu', (string) $requirement->title) => 'Приложить платёжку',
         default => 'Приложить документ',
     };
-    // Оплата — сначала камера: в кассе дают чек, его снимают (10.11.2026, владелец: «не прикрепляют чеки»), файл платёжки — строкой.
-    $cheque = $attachLabel === 'Приложить чек или платёжку';
 @endphp
 <div id="requirement-attach">
     @if ($has)
-        <button type="button" class="retreat-link mt-1 flex items-center justify-center gap-1.5" data-action="{{ $cheque ? 'photos#camera' : 'photos#pick' }}"><x-ui.icon name="{{ $cheque ? 'camera' : 'clip' }}" class="size-4"/>{{ $cheque ? 'Сфотографировать ещё' : 'Приложить ещё' }}</button>
-        @if ($cheque)<button type="button" class="retreat-link -mt-2" data-action="photos#pick">Приложить файл платёжки</button>@endif
-    @elseif ($cheque)
-        <x-ui.button type="button" block data-action="photos#camera"><x-ui.icon name="camera" class="size-5"/> Сфотографировать чек</x-ui.button>
-        <button type="button" class="retreat-link mt-1" data-action="photos#pick">или приложить файл платёжки</button>
+        <button type="button" class="retreat-link mt-1 flex items-center justify-center gap-1.5" data-action="photos#pick"><x-ui.icon name="clip" class="size-4"/>Приложить ещё</button>
     @else
         <x-ui.button type="button" block data-action="photos#pick"><x-ui.icon name="clip" class="size-5"/> {{ $attachLabel }}</x-ui.button>
     @endif

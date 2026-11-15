@@ -43,7 +43,9 @@
         };
     }
 @endphp
-<div class="{{ $row ? 'deal-money-row' : ($nested ? 'box-nested' : 'box') }} flex flex-col gap-3">
+{{-- В задаче шага — без своей плашки (16.11.2026, владелец: «убогая вёрстка»: плашка в плашке в плашке, «Оплата по ссылке» в три
+     строки): сумма и способы прямо на карточке шага. --}}
+<div class="{{ $row ? 'deal-money-row' : ($nested ? '' : 'box') }} flex flex-col gap-3">
     @php $head = $href && ! $invoice ? 'a' : 'div'; @endphp
     @if ($row)
     <{{ $head }} @if ($head === 'a') href="{{ $href }}" @endif class="flex items-start gap-3">
@@ -73,7 +75,7 @@
     @endif
     {{-- Что уже внесено — оплатами с платёжками, «ждёт подтверждения» (15.11.2026: было только в шторке счёта, которой больше нет). --}}
     @if ($invoice && $invoice->relationLoaded('allPayments') && $invoice->allPayments->isNotEmpty())
-        <div @class(['list', 'bg-surface' => $nested])>
+        <div class="list">
             @foreach ($invoice->allPayments as $p)
                 <x-money.payment :payment="$p" :slip="'/account/money/invoices/'.$invoice->id.'/payments/'.$p->id.'/slip'"/>
             @endforeach
@@ -82,7 +84,7 @@
     @if ($canPay)
         <div>
             <div class="list-cap !px-0">Выберите способ оплаты</div>
-            <div @class(['list', 'bg-surface' => $nested])>
+            <div class="list">
                 @foreach ($ways as $way => [$icon, $label, $hint])
                     <div class="contents" data-controller="sheet">
                         <button type="button" class="row w-full text-left" data-action="sheet#open">
@@ -95,6 +97,19 @@
                     </div>
                 @endforeach
             </div>
+            {{-- Уже заплатили переводом — платёжку сразу сюда, без шторки (16.11.2026, владелец: «подгрузку платёжки сделать
+                 красивой и удобной, заколебали в чат платёжки кидать»): файл — «Я оплатил» на остаток сегодняшним днём
+                 (`PayChoice`, `way=transfer`, платёжка — `slip`), дальше «ждёт подтверждения». --}}
+            <form method="post" action="/account/money/deals/{{ $deal->id }}/pay" enctype="multipart/form-data" data-controller="autosubmit" class="list mt-2">
+                @csrf
+                <input type="hidden" name="way" value="transfer"><input type="hidden" name="invoice" value="{{ $invoice->id }}">
+                <label class="row w-full cursor-pointer">
+                    <x-ui.row-icon name="clip" size="s"/>
+                    <span class="min-w-0 flex-1 text-accent-text">Приложить платёжку</span>
+                    <input type="file" name="slip" accept="image/*,.pdf,.heic" class="sr-only" tabindex="-1" data-action="change->autosubmit#submit">
+                </label>
+            </form>
+            @error('slip')<p class="field-error mt-1">{{ $message }}</p>@enderror
         </div>
     @endif
 </div>

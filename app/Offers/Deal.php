@@ -424,6 +424,44 @@ class Deal extends Model implements HasMedia
             || ($this->prepaid_at !== null && (bool) $this->offer?->vendor?->pay_before_pickup);
     }
 
+    /**
+     * Договор поставщик отдаёт только после оплаты (16.11.2026, владелец: «по Альфе договор не скидывают, пока счёт не
+     * оплатят — нет смысла писать, что ждём договор, и прикладывать подписанный»): вендор с оплатой до вывоза, а поставщик
+     * оплату ещё не подтвердил (`prepaid_at`, тот же признак, что `pickupHold`).
+     */
+    public function contractAfterPay(): bool
+    {
+        return $this->prepaid_at === null && (bool) $this->offer?->vendor?->pay_before_pickup;
+    }
+
+    /**
+     * Единственный ход менеджера на шаге — его берёт платёжка сама (16.11.2026, владелец: «как-то очень удобно, менеджеры не
+     * соображают, заколебали в чат платёжки кидать»): приложил файл на шаге оплаты — шаг сделан, второй кнопки «Оплатил,
+     * документ приложен» нет. Так же «Это чек об оплате» под файлом в чате.
+     */
+    public function soleMove(?Stage $stage): ?Outcome
+    {
+        $moves = $this->managerExits($stage)->reject(fn (Outcome $e) => $e->isRetreat() || self::closes($e))->values();
+
+        return $moves->count() === 1 ? $moves->first() : null;
+    }
+
+    /**
+     * Платёжка ушла, поставщик (собственник) оплату ещё не подтвердил: просьба шага оплаты, с которой сделка перешла на
+     * нынешний этап. В неё до подтверждения можно доложить файл и убрать лишний (`Cabinet\DealController::upload`), на странице
+     * — карточка «Оплачено поставщику» (`cabinet.deals.step`).
+     */
+    public function sentPaymentProof(): ?Requirement
+    {
+        if (! $this->isLive() || ! $this->paysSelection() || $this->prepaid_at !== null || $this->openRequirement) {
+            return null;
+        }
+        $stage = $this->offer?->position(Track::Sale)?->stage;
+        $proof = \App\Offers\Documents\PaymentProofPdf::requirement($this);
+
+        return $stage && $proof?->stage?->isPayStep() && $proof->stage->exits->contains(fn (Outcome $e) => $e->to_stage_id === $stage->id) ? $proof : null;
+    }
+
     public function paysSupplierOn(?Stage $stage): bool
     {
         return $stage !== null && $this->paysSelection() && $stage->isPayStep()

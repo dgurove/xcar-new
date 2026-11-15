@@ -17,15 +17,19 @@
     $ours = in_array($scheme, [DealScheme::Prime, DealScheme::Ros], true);
     // Счёт за ТС от ПРАЙМ / Р.О.С. — файлом, когда выставлен.
     $sale = $ours ? $deal->invoices()->where('kind', \App\Billing\ChargeKind::Sale)->where('state', '!=', \App\Billing\InvoiceState::Void->value)->with('media')->latest('id')->first() : null;
-    $docsReady = $deal->hasContract() ? ($contract->missing() === [] && (! $ours || $sale)) : true;
+    // У Альфы договор — после подтверждённой оплаты (`Deal::contractAfterPay`): до неё строки «Договор» нет, только покупатель и счёт.
+    $later = $deal->hasContract() && $deal->contractAfterPay();
+    $docsReady = $deal->hasContract() ? (($later || $contract->missing() === []) && (! $ours || $sale)) : true;
     $title = match (true) {
         $withBuyer && $asked && ! $chosen => 'Укажите покупателя',
         $deal->isGarage() => 'Договор купли-продажи',
+        $ours && $later => 'Покупатель и счёт',
         $ours => 'Договор и счёт',
         $deal->hasContract() => 'Договор',
         default => 'Покупатель',
     };
     $hint = $docsReady ? null : match (true) {
+        $ours && $later => 'Счёт выставим по данным покупателя',
         $ours => 'Подготовим сами по данным покупателя',
         $deal->hasContract() => 'Подготовим договор по данным покупателя',
         default => null,
@@ -47,7 +51,7 @@
     @if ($hint)<p class="mt-1">{{ $hint }}</p>@endif
     @if ($withBuyer)
         @if (! $chosen && $deal->isLive())<div class="mt-3"><x-deal.buyer-kind :deal="$deal"/></div>@endif
-        <div class="mt-2">@include('cabinet.deals.contract', ['part' => $deal->hasContract() ? 'all' : 'buyer', 'embedded' => true, 'after' => $saleRow, 'labels' => true])</div>
+        <div class="mt-2">@include('cabinet.deals.contract', ['part' => $deal->hasContract() && ! $later ? 'all' : 'buyer', 'embedded' => true, 'after' => $saleRow, 'labels' => true])</div>
     @elseif ($saleRow !== '')
         <div class="list mt-2">{!! $saleRow !!}</div>
     @endif

@@ -8,7 +8,7 @@
     {{-- Сведения значками, как «От XCar» (11.11.2026): текст, человек с телефонами, адрес с картой. --}}
     <x-ui.info>
         @foreach ($items->where('kind', 'text') as $item)
-            <x-ui.info-row icon="chat" class="whitespace-pre-line">{{ $item['value'] }}</x-ui.info-row>
+            <x-ui.info-row icon="chat" pre>{{ $item['value'] }}</x-ui.info-row>
         @endforeach
         @php $names = $items->where('kind', 'name'); $phones = $items->where('kind', 'phone'); @endphp
         @if ($names->isNotEmpty() || $phones->isNotEmpty())

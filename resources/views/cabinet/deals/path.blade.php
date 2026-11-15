@@ -18,7 +18,10 @@
                     : (mb_strtolower($r->answer['exit']) === \App\Offers\Signing::PICK_EXIT && $deal->signing_at ? ': '.\App\Support\Ago::at($deal->signing_at, true, words: false) : '')),
             'note' => match ($r->answer['closed_by'] ?? null) { 'staff' => 'за вас', 'payment' => 'оплата отметилась сама', default => null },
             'files' => $r->getMedia('files'),
-        ])->filter(fn ($a) => $a['block'] !== null)->sortBy('at')->values();
+        ])->filter(fn ($a) => $a['block'] !== null)->sortBy('at')->values()
+        // Один и тот же ответ без файлов несколько раз («Время согласовано: 13.11 13:00» ×5 — переписка с поставщиком) — одной
+        // строкой, последней (16.11.2026, владелец: «ищи ещё подобные косяки»).
+        ->reverse()->unique(fn ($a) => $a['files']->isEmpty() ? $a['block'].'|'.$a['title'] : spl_object_id($a['files']))->reverse()->values();
     // До первого блока — своими пунктами пути (11.11.2026, владелец: «сначала принимается подтверждение, потом менеджер берёт
     // в работу, и только после этого начинается согласование»): «Подтверждение принято» и «Беру в работу».
     $lead = $answers->where('consent', true)->values()

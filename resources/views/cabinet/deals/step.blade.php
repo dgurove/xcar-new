@@ -13,6 +13,9 @@
     // За ТС платят не нам, а поставщику или собственнику (Альфа, «Страховой напрямую»; 18.10.2026): задача — заплатить им и
     // приложить платёжку, её и подтверждает поставщик. Наш подбор — отдельной строкой ниже, шаг он не держит.
     $direct = $payStep && $deal->paysSupplierOn($position->stage);
+    // Платёжка ушла, поставщик ещё не подтвердил (16.11.2026, `Deal::sentPaymentProof`): та же карточка — «Оплачено поставщику»,
+    // платёжка и счёт файлами, «Приложить ещё».
+    $sent = ! $requirement && $deal->isLive() ? $deal->sentPaymentProof() : null;
     $unpaid = $invoices->filter(fn ($i) => ! $i->isOwed() && $i->state === \App\Billing\InvoiceState::Issued);
     // Шаг оплаты, а счета уже оплачены (оплатили по ссылке, маршрут ещё не догнал) — «Оплатите» с «Приложить» тут врут.
     $paidUp = $payStep && ! $direct && $unpaid->isEmpty() && $deal->fullyPaid();
@@ -80,13 +83,14 @@
             @php
                 // Только «Ждём поставщика»: у наших этапов фраза — инструкция менеджеру («Свяжитесь с владельцем…»), не статус.
                 // «Запись на подписание» — и пока письмо не ушло (ждём XCar): «Записываем на подписание, с 11.11» (11.11.2026).
-                $statusLine = ! $requirement && $position->stage->ask_text
+                $statusLine = $sent ? 'Ждём подтверждения оплаты' : (! $requirement && $position->stage->ask_text
                     && ($position->waitsFor() === \App\Workflow\WaitsFor::Supplier || \App\Offers\Signing::awaitsSlots($position->stage))
-                    ? \App\Users\Wording::mine($position->stage->ask_text) : null;
+                    ? \App\Users\Wording::mine($position->stage->ask_text) : null);
                 // Поставщик готовит договор — когда покупатель сможет подписать, день и время заранее (`Signing`, 11.11.2026).
                 $signingDays = ! $requirement && $deal->signing_at === null && \App\Offers\Signing::asksTime($position->stage->loadMissing('exits.to.exits'));
                 $heading = match (true) {
                     $consent => 'Берёте в работу?',
+                    (bool) $sent => trim(preg_replace('/^Оплатить/u', 'Оплачено', (string) $deal->schemeOf()->payLabel()).' '.($deal->supplierPayment() ? \App\Support\Money::rub($deal->supplierPayment()) : '')),
                     $signingDays && \App\Offers\Signing::wishDue($deal) => 'Когда покупатель сможет подписать договор?',
                     $needsBuyer && ! $buyerStep => $gap === 'passport' ? 'Приложите паспорт покупателя' : 'Укажите покупателя',
                     $needsPrice => 'Укажите цену продажи',
@@ -184,17 +188,40 @@
             @else
             {{-- Платит поставщику сам — его счёт тут же, первым (10.11.2026, 0790/046/11079/26: счёт был в «Информации по сделке»
                  номером со сканера, а на шаге «Оплатить страховой» его не было). Пока не показали — словом. --}}
-            @php $supplierBills = $direct ? \App\Offers\SupplierInvoice::shown($deal->offer) : collect(); @endphp
+            @php $supplierBills = $direct || $sent ? \App\Offers\SupplierInvoice::shown($deal->offer) : collect(); @endphp
             @if ($direct && \App\Offers\SupplierInvoice::onPay($deal, $position->stage))
                 @if ($supplierBills->isNotEmpty())
                     <div class="list mt-4">
                         {{-- Счёт — своим именем и с «Поделиться» (10.11.2026: менеджеры не узнавали счёт в файле со сканера и не могли
                              переслать его тому, кто платит); чек — кнопкой ниже, с камеры. --}}
-                        @foreach ($supplierBills as $f)<x-ui.file name="Счёт поставщика" :mime="$f->mime_type" :size="'от '.$f->created_at->timezone('Europe/Moscow')->format('d.m')" href="/files/{{ $f->id }}" download/>@endforeach
+                        @foreach ($supplierBills as $f)<x-ui.file name="Счёт поставщика" :mime="$f->mime_type" :bytes="$f->size" :size="'от '.$f->created_at->timezone('Europe/Moscow')->format('d.m')" href="/files/{{ $f->id }}" download class="row"/>@endforeach
                     </div>
                 @else
                     <p class="mt-3 text-ink-muted">Счёт поставщика пришлём сюда</p>
                 @endif
+            @endif
+            @if ($sent)
+                {{-- Платёжка ушла (16.11.2026): она и счёт файлами; пока поставщик не подтвердил — «Приложить ещё» и × (последний файл
+                     не убрать). Загрузка перечитывает страницу (`reload`). --}}
+                @php $proofs = $sent->getMedia('files'); @endphp
+                <div class="mt-4" data-controller="photos" data-photos-url-value="/deals/{{ $deal->id }}/files" data-photos-reload-value="true">
+                    <input type="file" accept="image/*,.pdf,.heic" multiple class="sr-only" tabindex="-1" data-photos-target="input" data-action="change->photos#upload">
+                    <div class="list">
+                        @foreach ($proofs as $m)
+                            <x-ui.file name="Платёжка" :mime="$m->mime_type" :bytes="$m->size" :size="\App\Support\Ago::at($m->created_at, true, words: false)" href="/files/{{ $m->id }}" class="row">
+                                @if ($proofs->count() > 1)
+                                    <form method="post" action="/deals/{{ $deal->id }}/files/{{ $m->id }}">@csrf @method('delete')<button class="btn btn-ghost btn-s px-2 text-ink-muted" aria-label="Убрать"><x-ui.icon name="x" class="size-5"/></button></form>
+                                @endif
+                            </x-ui.file>
+                        @endforeach
+                        @foreach ($supplierBills as $f)<x-ui.file name="Счёт поставщика" :mime="$f->mime_type" :bytes="$f->size" :size="'от '.$f->created_at->timezone('Europe/Moscow')->format('d.m')" href="/files/{{ $f->id }}" download class="row"/>@endforeach
+                    </div>
+                    <div hidden data-photos-target="progress" class="my-2">
+                        <div class="mb-1 text-sm text-ink-muted" data-label></div>
+                        <div class="h-1.5 overflow-hidden rounded-full bg-surface-3"><div class="h-full bg-accent transition-[width]" data-bar style="width:0"></div></div>
+                    </div>
+                    <button type="button" class="retreat-link mt-1 flex w-full items-center justify-center gap-1.5" data-action="photos#pick"><x-ui.icon name="clip" class="size-4"/>Приложить ещё</button>
+                </div>
             @endif
             {{-- Запись на подписание (`Offers\Signing`): выбрать время плиткой, потом — карточка встречи. --}}
             @php $signingPick = $requirement && \App\Offers\Signing::picks($position->stage); @endphp
@@ -219,7 +246,7 @@
             @elseif ($selectionPay && ! $direct)
                 {{-- Подбор по ДКП и «страховой напрямую» — тем же платежом, что в «Платежах» (там их на этом шаге нет, 15.11.2026). --}}
                 <div class="mt-5">@include('cabinet.deals.payment', ['nested' => true, 'amount' => \App\Support\Money::rub($selectionPay->remaining()), 'state' => null, 'invoice' => $selectionPay, 'pay' => true])</div>
-            @elseif ($payStep && $unpaid->isNotEmpty())
+            @elseif ($payStep && ! $direct && $unpaid->isNotEmpty())
                 {{-- Счёт, который ждёт оплаты, — платежом (15.11.2026, тот же кусок, что в «Платежах»): кому, за что, сумма, файл и
                      «Оплатить»; ссылка на оплату — в шторке по кнопке. Ждёт подтверждения — словом в платеже. --}}
                 <div class="mt-5 flex flex-col gap-3">
@@ -248,7 +275,7 @@
                 @if ($payStep && $unpaid->isNotEmpty() && ! $direct)
                     {{-- «Оплатить» — в платеже выше (15.11.2026). --}}
                 @else
-                    @include('cabinet.deals.answer', $direct ? ['attachLabel' => 'Приложить чек или платёжку'] : [])
+                    @include('cabinet.deals.answer', $direct ? ['attachLabel' => 'Приложить платёжку'] : [])
                 @endif
             @endif
             @if ($direct && $selectionPay)

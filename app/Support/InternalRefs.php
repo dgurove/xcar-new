@@ -42,6 +42,10 @@ final class InternalRefs
         $ext = pathinfo($name, PATHINFO_EXTENSION);
         $base = self::hide($ext !== '' ? mb_substr($name, 0, -mb_strlen($ext) - 1) : $name, $refs);
         $base = trim($base, " \t_-.,");
+        // Имя со сканера или почты без единой буквы («2026110912425020261109124214.pdf») — не имя (16.11.2026, владелец).
+        if (! preg_match('/\p{L}/u', $base)) {
+            $base = '';
+        }
 
         return ($base !== '' ? $base : 'Документ').($ext !== '' ? '.'.$ext : '');
     }

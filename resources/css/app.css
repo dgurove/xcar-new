@@ -2297,10 +2297,11 @@ html.kb-open { --home-gap: 0px; }
   /* Пропуск: QR на плашке, состояние полосой сверху; факты и действия — плашками .list строками .row. */
   .pass-card { @apply overflow-clip rounded-(--radius-xl) bg-surface; }
   .pass-state { @apply flex items-center gap-2 px-4 py-3 font-medium; }
-  .pass-state--open { @apply bg-open-soft text-open; }
-  .pass-state--urgent { @apply bg-urgent-soft text-urgent; }
-  .pass-state--closed { @apply bg-closed-soft text-closed; }
-  .pass-state--danger { @apply bg-danger-soft text-danger; }
+  /* Без заливки (16.11.2026, правило «блоки цветом не заливаются»): цвет — у значка и слов. */
+  .pass-state--open { @apply text-open; }
+  .pass-state--urgent { @apply text-urgent; }
+  .pass-state--closed { @apply text-closed; }
+  .pass-state--danger { @apply text-danger; }
   .pass-qr { @apply m-4 rounded-(--radius-l) bg-white p-3; }
   .pass-qr > svg { display: block; width: 100%; height: auto; aspect-ratio: 1; }
   .pass-done { @apply m-4 flex aspect-[4/3] flex-col items-center justify-center gap-3 rounded-(--radius-l) bg-surface-2 text-ink-muted; }

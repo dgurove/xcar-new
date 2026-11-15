@@ -17,7 +17,7 @@
             @csrf
             <label class="row sale-row signed-add">
                 <input type="file" name="files[]" multiple accept=".pdf,.jpg,.jpeg,.png,.webp,.heic,.heif,.doc,.docx" class="sr-only" data-action="change->autosubmit#submit">
-                <span class="sale-row-label"><span class="block">Договор уже подписан?</span><span class="block text-sm text-ink-muted">Приложите скан, если подписали без нас</span></span>
+                <span class="sale-row-label"><span class="block">Договор уже подписан?</span><span class="block text-sm text-ink-muted">Если подписали без нас</span></span>
                 <span class="sale-row-value text-accent-text">Приложить</span><x-ui.icon name="clip" class="size-5 shrink-0 text-ink-dim"/>
             </label>
         </form>

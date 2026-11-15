@@ -297,14 +297,13 @@ class DealController
         if ($attach($requirement, $message) === 0) {
             return $this->back($request, $deal)->with('toast', 'Файл не нашёлся, приложите его на шаге');
         }
-        $exits = $deal->managerExits($requirement->stage);
-        $moves = $exits->reject(fn (Outcome $e) => $e->isRetreat() || Deal::closes($e))->values();
-        if ($moves->count() !== 1) {
+        $move = $deal->soleMove($requirement->stage);
+        if (! $move) {
             return redirect($deal->href().'#step')->with('toast', 'Приложено, ответьте на шаге');
         }
-        $answer($requirement->fresh(), $moves->first(), $me);
+        $answer($requirement->fresh(), $move, $me);
 
-        return $this->back($request, $deal->refresh())->with('toast', Wording::mine($moves->first()->label));
+        return $this->back($request, $deal->refresh())->with('toast', Wording::mine($move->label));
     }
 
     /**
@@ -402,9 +401,15 @@ class DealController
         return redirect($deal->href())->with('toast', 'Автомобиль забрал');
     }
 
-    public function upload(Request $request, Deal $deal)
+    /**
+     * Файл в просьбу шага. На шаге оплаты платёжка — и ответ (16.11.2026, `Deal::soleMove`): шаг сделан, страницу перечитывает
+     * `photos_controller` (`reload`). Платёжка ушла, поставщик ещё не подтвердил — файл ложится к ней же
+     * (`Deal::sentPaymentProof`): «Приложить ещё» и остальные файлы той же пачки.
+     */
+    public function upload(Request $request, Deal $deal, AnswerRequirement $answer)
     {
-        $requirement = $deal->openRequirement()->firstOrFail();
+        $requirement = $deal->openRequirement()->first() ?? $deal->sentPaymentProof();
+        abort_unless($requirement, 404);
         $request->validate(['file' => ['required', 'file', 'max:30720']]);
         $file = $request->file('file');
         try {
@@ -412,17 +417,26 @@ class DealController
         } catch (\Throwable $e) {
             return response()->json(['message' => $e->getMessage()], 422);
         }
+        if (! $requirement->done_at && $requirement->asks === Asks::Document && $requirement->stage?->isPayStep()
+            && ($move = $deal->soleMove($requirement->stage))) {
+            $answer($requirement->fresh(), $move, $request->user());
+            session()->flash('toast', 'Платёжка приложена');
+
+            return Stream::response('');
+        }
 
         return $this->filesStream($deal, $requirement);
     }
 
     public function removeFile(Request $request, Deal $deal, Media $media)
     {
-        $requirement = $deal->openRequirement()->firstOrFail();
-        abort_unless($media->model_id === $requirement->id && $media->model_type === $requirement::class, 404);
+        $requirement = $deal->openRequirement()->first() ?? $deal->sentPaymentProof();
+        abort_unless($requirement && $media->model_id === $requirement->id && $media->model_type === $requirement::class, 404);
+        // Ушедшая платёжка остаётся хотя бы одним файлом: убрать последний — значит отозвать оплату, а это не сюда.
+        abort_if($requirement->done_at && $requirement->getMedia('files')->count() < 2, 422);
         $media->delete();
 
-        return $this->filesStream($deal, $requirement);
+        return $requirement->done_at ? redirect($deal->href().'#step') : $this->filesStream($deal, $requirement);
     }
 
     /** Файлы шага, его кнопки (появляются с первым файлом) и галка «Подписанный договор» — одним потоком. */

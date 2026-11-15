@@ -49,7 +49,8 @@
             @php
                 $withBuyer = $buyerHere && ! $contractStep && ! $needsBuyer && ! $tooEarly && ($deal->isLive() || $deal->contract?->buyer_user_id);
                 $signStep = $deal->openRequirement?->asks === \App\Workflow\Asks::Document && $deal->openRequirement?->stage?->aboutContract();
-                $withSigned = ! $signStep && \App\Offers\Actions\AttachSignedContract::allows($deal) || $deal->getMedia('signed_contract')->isNotEmpty();
+                // У Альфы договор — после подтверждённой оплаты: до неё просить подписанный не о чем (`Deal::contractAfterPay`).
+                $withSigned = ! $signStep && ! $deal->contractAfterPay() && \App\Offers\Actions\AttachSignedContract::allows($deal) || $deal->getMedia('signed_contract')->isNotEmpty();
             @endphp
             @if ($withBuyer)<div class="order-1 min-w-0">@include('cabinet.deals.buyer-block', ['withBuyer' => $withBuyer])</div>@endif
             {{-- Подписанный без нас — своей карточкой-вопросом, отдельно от нашего договора (16.11.2026). --}}
