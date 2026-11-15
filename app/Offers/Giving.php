@@ -24,6 +24,9 @@ final readonly class Giving
      */
     public const PICKUP = ['later', 'manager', 'us', 'taken'];
 
+    /** Гаражная «платит менеджер»: вознаграждение съело всю разницу (16.11.2026, ползунок `x-deal.reward-split`). */
+    public const SHARE_LEFT = 'Вознаграждение больше разницы — нам по ссылке ничего не остаётся';
+
     public function __construct(
         public Offer $offer,
         public ?User $manager = null,

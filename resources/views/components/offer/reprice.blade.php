@@ -119,18 +119,21 @@
                             </div>
                             <p class="text-sm text-danger" data-reprice-target="loss" hidden></p>
                             {{-- Вознаграждение — тут же (13.11.2026, владелец: в переоценке его «оч не хватает»): то же поле, что в
-                                 «Деньгах» сделки (`UpdateDealMoney`), пока по счёту не платили. --}}
+                                 «Деньгах» сделки (`UpdateDealMoney`), пока по счёту не платили. С 16.11.2026 — ползунком, суммой
+                                 или процентом от разницы (`x-deal.reward-split`): разница — цена сделки минус закупочная, при
+                                 «Обновить» — новая (`reprice#update`); равное доле менеджера (`users.deal_share`) идёт за ней. --}}
                             @if ($rewardEditable)
-                                <div class="fields !bg-surface-3">
-                                    <x-ui.field name="commission" label="Вознаграждение, ₽" :value="($c = old('commission', $deal->commission)) ? Money::nums(Money::rubles((string) $c)) : null" :id="$id.'-commission'" placeholder="нет" data-reprice-target="reward" data-action="input->reprice#update"/>
+                                @php
+                                    $rc = old('commission', $deal->commission);
+                                    $rc = $rc === null || $rc === '' ? null : Money::rubles((string) $rc);
+                                    $rMargin = $deal->amount !== null && $deal->cost !== null ? (int) $deal->amount - (int) $deal->cost : null;
+                                    $rShare = $deal->isGarage() ? null : $deal->buyer?->deal_share;
+                                @endphp
+                                <div class="contents" data-reprice-target="rewardBox" data-amount="{{ (int) $deal->amount }}" data-cost="{{ (int) $deal->cost }}">
+                                    <x-deal.reward-split name="commission" :id="$id.'-commission'" :value="$rc" :margin="$rMargin" placeholder="нет"
+                                        :follow="$rShare !== null && $rc !== null && $rMargin !== null && $rc === \App\Offers\Deal::shareOf($rMargin, $rShare)"
+                                        data-reprice-target="reward" data-action="input->reprice#update"/>
                                 </div>
-                                @error('commission')<p class="field-error">{{ $message }}</p>@enderror
-                                {{-- Доля менеджера от разницы (13.11.2026, `users.deal_share`): чип по новой закупочной при «Обновить»,
-                                     по прежней — иначе; поле, равное доле, идёт за ним само. --}}
-                                @if (! $deal->isGarage() && $deal->amount !== null && ($dealShare = $deal->buyer?->deal_share) !== null)
-                                    <div class="sheet-chips"><button type="button" class="chip nums" data-reprice-target="share" data-action="reprice#share"
-                                        data-share="{{ $dealShare }}" data-amount="{{ (int) $deal->amount }}" data-cost="{{ (int) $deal->cost }}" hidden></button></div>
-                                @endif
                             @endif
                             {{-- «Спросить» по сделке — пока менеджер думает, машину публикуют для других менеджеров обычным предложением
                                  (`PublishDeal`, 04.11.2026; галка стоит сразу — владелец): тот же срок и «Кому», что в шторке

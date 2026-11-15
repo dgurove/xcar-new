@@ -13,9 +13,9 @@
      форма переспрашивает и шлёт согласие `loss`.
      28.10.2026: `costEditable` — закупочная менеджера полем (админ при принятии, владелец: «можешь поменять закупочную,
      которая будет у него в сделке»): по умолчанию с подтверждения, разница, взаимозачёт и согласие `loss` идут за ней.
-     13.11.2026: `share` — доля менеджера от разницы (`users.deal_share`, владелец: «у Сахиба по умолчанию 50:50»): чип
-     «Менеджеру 50 % — 102 500» под вознаграждением, идёт за ценой и закупочной; `prefill` (принятие) — пустое поле сразу
-     долей, и поле идёт за разницей, пока его не правили руками. --}}
+     13.11.2026: `share` — доля менеджера от разницы (`users.deal_share`, владелец: «у Сахиба по умолчанию 50:50»);
+     `prefill` (принятие) — пустое поле сразу долей, и поле идёт за разницей, пока его не правили руками.
+     16.11.2026: вознаграждение — ползунком, суммой или процентом от разницы (`x-deal.reward-split`; чипа доли больше нет). --}}
 @props(['action', 'amount', 'cost' => null, 'commission' => null, 'mode' => \App\Offers\CommissionMode::Payout, 'submit' => 'Принять', 'confirm' => null, 'method' => 'post', 'id' => null, 'note' => null,
     'scheme' => null, 'schemes' => null, 'ownerPrice' => null, 'fee' => true, 'ownerLocked' => false, 'supplierCost' => null, 'priced' => false, 'costEditable' => false, 'schemeLocked' => false, 'offer' => null, 'share' => null, 'prefill' => false])
 @php
@@ -37,7 +37,7 @@
     }
 @endphp
 <form method="post" action="{{ $action }}" class="flex flex-col gap-4" data-scheme-guard data-controller="commission" data-commission-amount-value="{{ $amount }}" @if ($costNow !== null) data-commission-cost-value="{{ $costNow }}" @endif
-    @if ($margin !== null) data-commission-margin-value="{{ $margin }}" @endif @if ($share !== null) data-commission-share-value="{{ $share }}" @endif @if ($confirm) data-turbo-confirm="{{ $confirm }}" @endif>
+    @if ($margin !== null) data-commission-margin-value="{{ $margin }}" @endif @if ($confirm) data-turbo-confirm="{{ $confirm }}" @endif>
     @csrf
     @if ($method !== 'post')@method($method)@endif
     @if ($priced || $costEditable)<input type="hidden" name="loss" value="" data-commission-target="loss">@endif
@@ -87,18 +87,18 @@
                 @error('owner_price')<p class="field-error">{{ $message }}</p>@enderror
             </div>
         @endif
-        <div class="field @error('commission') field-invalid @enderror" @unless ($fee) hidden @endunless>
-            <label for="{{ $id }}" class="field-label">Вознаграждение, ₽</label>
-            <input type="hidden" name="commission" data-commission-target="amount" value="{{ $current }}">
-            <input id="{{ $id }}" type="text" class="field-input nums" data-commission-target="display" data-action="input->commission#input" value="{{ $current !== null && $current !== '' ? Money::nums((int) $current) : '' }}" autocomplete="off" placeholder="0">
-            @error('commission')<p class="field-error">{{ $message }}</p>@enderror
+        {{-- Вознаграждение ползунком, суммой или процентом от разницы (`x-deal.reward-split`, 16.11.2026); доля менеджера
+             `users.deal_share` — предзаполнением, поле идёт за разницей процентом, пока сумму не вписали руками. --}}
+        <div @unless ($fee) hidden @endunless>
+            <x-deal.reward-split name="commission" :id="$id" :value="$current === null || $current === '' ? null : (int) $current" :margin="$margin !== null && ($amount || ! $priced) ? $margin : null"
+                :follow="$prefill && $share !== null && $current !== null && $margin !== null && (int) $current === \App\Offers\Deal::shareOf($margin, $share)" :share="$prefill ? $share : null"
+                :show-margin="false" :hidden="['data-commission-target' => 'amount']" data-commission-target="display" data-action="input->commission#input"/>
         </div>
-        @if ($share !== null)
-            <div class="sheet-chips -mt-1"><button type="button" class="chip nums" data-commission-target="share" data-action="commission#share" hidden></button></div>
-        @endif
     </div>
     @if ($margin !== null || $scheme)
-        <dl class="grid grid-cols-[auto_1fr] items-baseline gap-x-4">
+        {{-- «Нам остаётся» у ПРАЙМ — уже подписью «Нам» на полосе вознаграждения (16.11.2026): строкой — только у ДКП и
+             «страховой напрямую» («Менеджер платит нам» — не из разницы) и без вознаграждения (супер-покупатель). --}}
+        <dl class="grid grid-cols-[auto_1fr] items-baseline gap-x-4" @if ($fee) data-commission-target="dkpOnly" @unless ($dkp) hidden @endunless @endif>
             <dt class="text-sm text-ink-dim" data-commission-target="oursLabel" data-ours="Нам остаётся" data-dkp="Менеджер платит нам">{{ $dkp ? 'Менеджер платит нам' : 'Нам остаётся' }}</dt>
             <dd class="nums text-right text-lg font-semibold" data-commission-target="ours">{{ $margin !== null && ($amount || ! $priced) ? Money::rub($margin - (int) $current) : '' }}</dd>
         </dl>

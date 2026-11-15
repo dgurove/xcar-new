@@ -7,7 +7,7 @@ import { ceilThousand } from '../lib/floor';
 // ничего, «Применить» живая, когда решено по всем. Новая цена правится — «→ N» и «станет ниже закупочной» идут за ней.
 // «Всем оставить / обновить / спросить» — одним нажатием (недоступное у строки не трогается).
 export default class extends Controller {
-    static targets = ['price', 'asking', 'askingLoss', 'min', 'show', 'row', 'to', 'loss', 'submit', 'reward', 'share'];
+    static targets = ['price', 'asking', 'askingLoss', 'min', 'show', 'row', 'to', 'loss', 'submit', 'reward', 'rewardBox'];
     static values = { publish: Number, share: { type: Number, default: 0.6 } };
 
     connect() {
@@ -34,29 +34,17 @@ export default class extends Controller {
         this.update();
     }
 
-    // Доля менеджера от разницы (13.11.2026, `Deal::shareOf`): «Обновить» — от новой закупочной, иначе от прежней; поле
-    // вознаграждения, равное прежней доле, идёт за ней, вписанное руками — нет.
-    shareChip(price) {
-        if (!this.hasShareTarget || !this.hasRewardTarget) return;
-        const chip = this.shareTarget;
+    // Разница вознаграждения (16.11.2026, `x-deal.reward-split`): цена сделки минус закупочная — новая при «Обновить»,
+    // иначе прежняя; ползунок и процент идут за ней.
+    rewardMargin(price) {
+        if (!this.hasRewardBoxTarget) return;
+        const box = this.rewardBoxTarget;
+        const el = box.querySelector('[data-controller~="reward"]');
+        if (!el || !Number(box.dataset.amount)) return;
         const update = this.element.querySelector('input[name="deal"]:checked')?.value === 'update';
-        const cost = update && price ? price : Number(chip.dataset.cost);
-        const value = Math.max(0, Math.round((Number(chip.dataset.amount) - cost) * Number(chip.dataset.share) / 100));
-        const typed = rubles(this.rewardTarget.value);
-        if (this.lastShare === undefined) this.lastShare = Math.max(0, Math.round((Number(chip.dataset.amount) - Number(chip.dataset.cost)) * Number(chip.dataset.share) / 100));
-        if (typed === this.lastShare && value !== typed) {
-            this.rewardTarget.value = nums(value);
-        }
-        this.lastShare = value;
-        chip.hidden = rubles(this.rewardTarget.value) === value;
-        chip.textContent = `Менеджеру ${chip.dataset.share} % — ${nums(value)}`;
-        chip.dataset.value = value;
-    }
-
-    share() {
-        this.rewardTarget.value = nums(Number(this.shareTarget.dataset.value));
-        this.lastShare = Number(this.shareTarget.dataset.value);
-        this.shareTarget.hidden = true;
+        const cost = update && price ? price : Number(box.dataset.cost);
+        const m = String(Number(box.dataset.amount) - cost);
+        if (el.dataset.rewardMarginValue !== m) el.dataset.rewardMarginValue = m;
     }
 
     update() {
@@ -90,7 +78,7 @@ export default class extends Controller {
             const min = asking && from && asking > from ? Math.round((from + (asking - from) * this.shareValue) / 1000) * 1000 : asking;
             this.minTarget.placeholder = min ? nums(min) : '';
         }
-        this.shareChip(price);
+        this.rewardMargin(price);
         // «Пока думает — показать всем» — только когда по сделке выбрано «Спросить».
         if (this.hasShowTarget) {
             this.showTarget.hidden = this.element.querySelector('input[name="deal"]:checked')?.value !== 'ask';

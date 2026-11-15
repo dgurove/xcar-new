@@ -621,6 +621,18 @@ html.kb-open { --home-gap: 0px; }
   /* Поле в фокусе — тоном, как строка формы в .fields (обводок в ките нет): у одиночного поля фокус не был виден ничем. */
   .field-input:focus:not(.fields *) { background: color-mix(in oklab, var(--color-accent) 8%, var(--color-surface-3)); }
   .field-error { @apply text-sm text-danger; }
+  /* Вознаграждение ползунком (`x-deal.reward-split`, 16.11.2026): полоса высотой с поле, лаймом слева — доля менеджера,
+     подписи «Менеджеру N» и «Нам M» по краям; над заливкой те же подписи белым (копия, обрезанная заливкой, — читается
+     при любой доле). Сам ползунок прозрачный поверх: тянуть и нажимать можно по всей полосе. */
+  .reward-bar { position: relative; height: 2.75rem; border-radius: var(--radius-m); background: var(--color-surface-3); overflow: hidden; container-type: inline-size; touch-action: pan-y; }
+  .reward-bar-fill { position: absolute; inset: 0 auto 0 0; width: var(--p, 0%); background: var(--color-accent); overflow: hidden; }
+  .reward-bar.is-over .reward-bar-fill { background: var(--color-danger); }
+  .reward-bar-text { position: absolute; inset: 0 auto 0 0; width: 100cqw; display: flex; align-items: center; justify-content: space-between; gap: .75rem; padding-inline: .875rem; font-size: var(--text-sm); white-space: nowrap; color: var(--color-ink); pointer-events: none; }
+  .reward-bar-text > :last-child { color: var(--color-ink-muted); }
+  .reward-bar-fill .reward-bar-text, .reward-bar-fill .reward-bar-text > :last-child { color: #fff; }
+  .reward-bar-range { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; -webkit-appearance: none; appearance: none; }
+  .reward-bar-range::-webkit-slider-thumb { -webkit-appearance: none; width: 2.75rem; height: 2.75rem; }
+  .reward-bar-range::-moz-range-thumb { width: 2.75rem; height: 2.75rem; border: 0; }
   /* Голое поле без x-ui.field (вход, цена) помечает своя проверка формы (formCheck в app.js) — aria-invalid. */
   .field-invalid .field-input, .field-input[aria-invalid="true"] { @apply ring-2 ring-danger/60; }
   /* Подпись пальцем: холст того же тона, что поле; линия — цветом текста. */

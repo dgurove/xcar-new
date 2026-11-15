@@ -352,7 +352,7 @@ class Position extends Model
         $money = Surface::Crm->url('/work/deals/'.$deal->id.'#money');
 
         return match ($gap) {
-            'share' => ['title' => 'Впишите нашу долю', 'button' => 'Вписать нашу долю', 'url' => $money],
+            'share' => ['title' => 'Впишите вознаграждение менеджера', 'button' => 'Вписать вознаграждение', 'url' => $money],
             'commission' => ['title' => 'Назначьте вознаграждение', 'button' => 'Назначить вознаграждение', 'url' => $money],
             // Реквизиты продавцов правятся на парковке («Реквизиты»), Р.О.С. — первой строкой «мы».
             'ros_requisites' => ['title' => 'Заполните реквизиты Р.О.С.', 'button' => 'Заполнить реквизиты Р.О.С.', 'url' => Surface::Park->url('/money/parties')],

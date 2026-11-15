@@ -16,7 +16,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 /**
- * Поправить деньги сделки: схему оплаты, вознаграждение, режим, гаражной — нашу долю. Закупочная и сумма собственнику
+ * Поправить деньги сделки: схему оплаты, вознаграждение, режим, гаражной — сколько нам по ссылке. Закупочная и сумма собственнику
  * закреплены с принятия и здесь не правятся (15.10.2026).
  * Пока за наши счета не платили (`Deal::moneyEditable`): счета, что ставятся сами, перевыставит `SyncDealInvoices`.
  */
@@ -44,7 +44,10 @@ final class UpdateDealMoney
                     // Сумма собственнику закреплена с принятия, как и закупочная (15.10.2026, владелец: «никогда»).
                     'owner_price' => $selection ? ($deal->owner_price ?? $deal->cost) : null]);
             $deal->offer->log(OfferEventType::Note, $by, ['text' => $note ?? match (true) {
-                $garage => 'Наша доля: '.($deal->share ? Money::rub($deal->share) : 'нет'),
+                // Гаражная «платит менеджер» — словами вознаграждения (16.11.2026): от разницы цены продажи и закупочной.
+                $garage => ($deal->share && $deal->offer->asking_price && $deal->cost !== null
+                    ? 'Вознаграждение менеджеру '.Money::rub((int) $deal->offer->asking_price - (int) $deal->cost - (int) $deal->share).', ' : '')
+                    .'нам по ссылке '.($deal->share ? Money::rub($deal->share) : 'нет'),
                 $selection => $scheme->payeeLabel().' '.Money::rub((int) $deal->ownerPrice()).', вознаграждение '.($commission ? Money::rub($commission) : 'нет'),
                 default => $scheme->label().', вознаграждение '.($commission ? Money::rub($commission) : 'нет').', '.mb_strtolower($deal->commission_mode->label()),
             }]);

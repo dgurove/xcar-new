@@ -1,6 +1,6 @@
 {{-- «Отдать» в гараж (`Give`, 18.10.2026) — по сценарию (19.10.2026, владелец: «если мы под себя берём, то о каком менеджере
      речь — непонятно»): сначала «Кому» — «Менеджеру» или «Себе». Менеджеру: кто, кто платит поставщику (выбор — только где
-     он есть: у Совкомбанка и без гаражной ветки платит менеджер, `Offer::garagePayerFixed`), наша доля у «платит менеджер»
+     он есть: у Совкомбанка и без гаражной ветки платит менеджер, `Offer::garagePayerFixed`), вознаграждение менеджеру у «платит менеджер»
      (у Совкомбанка доли нет — нашу часть даёт продажа), где ТС и кто везёт (`x-offer.pickup-choice`). Себе — платим мы, ТС
      у страховой (везёт логистика) или уже у нас: про менеджера ничего. С подтверждением «В гараж» — его принятие: кому — из
      него, «Себе» нет. Вкладка «В гараж» листа «Отдать» (`x-offer.give-sheet`). Поля спрятанного сценария reveal
@@ -53,7 +53,16 @@
                 </div>
                 @unless ($offer->vendor?->isCommission())
                     <div class="flex flex-col gap-3" data-reveal-target="pane" data-reveal-key="manager" @if (old('payer', $handOver?->garage_payer?->value ?? 'us') !== 'manager') hidden @endif>
-                        <x-ui.field name="share" label="Наша доля, ₽" :value="old('share', $handOver?->isGarage() ? $handOver->share : null)" :id="$prefix.'-garage-share'"/>
+                        {{-- Вознаграждение менеджеру (16.11.2026, владелец: «мы всегда писали вознаграждение менеджеру»; «Наша доля»
+                             с 05.10 — поле со стороны наших денег): ползунком, суммой или процентом от разницы — цена продажи
+                             минус закупочная; в форму по-прежнему «нам по ссылке» (`deals.share`), счёт со ссылкой тот же. Цены
+                             продажи нет — одно поле «Нам по ссылке». --}}
+                        @php
+                            $gCost = $handOver?->isGarage() && $handOver->cost !== null ? (int) $handOver->cost : $offer->floor_price;
+                            $gShare = old('share', $handOver?->isGarage() ? $handOver->share : null);
+                        @endphp
+                        <x-deal.reward-split name="share" mode="ours" :id="$prefix.'-garage-share'" :value="$gShare === null || $gShare === '' ? null : \App\Support\Money::rubles((string) $gShare)"
+                            :margin="$offer->asking_price && $gCost ? (int) $offer->asking_price - (int) $gCost : null"/>
                     </div>
                 @endunless
             </div>

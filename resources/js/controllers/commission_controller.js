@@ -8,11 +8,11 @@ import { nums, rub, rubles } from '../lib/money';
 // его покупатель: его расходы (spent) плюс вознаграждение. price — цену вписывают тут же («Отдать» без подтверждения):
 // разница и «нам остаётся» идут за ней, не выше закупочной — форма переспрашивает и шлёт согласие loss. costDisplay —
 // закупочную менеджера вписывает админ при принятии (28.10.2026): разница, взаимозачёт и согласие loss идут за ней.
-// share — доля менеджера от разницы (13.11.2026, `users.deal_share`, то же правило — `Deal::shareOf`): чип «Менеджеру 50 % —
-// 102 500» вписывает её в поле; поле, равное прежней доле, идёт за ценой и закупочной, вписанное руками — нет.
+// Вознаграждение — ползунком, суммой или процентом от разницы (16.11.2026, `reward_controller`): разницу ему отдаёт
+// shareMargin, доля менеджера `users.deal_share` — предзаполнением куска.
 export default class extends Controller {
-    static targets = ['display', 'amount', 'ours', 'oursLabel', 'due', 'dueLabel', 'payout', 'oursOnly', 'dkpOnly', 'ownerDisplay', 'ownerAmount', 'offset', 'payee', 'price', 'margin', 'loss', 'costDisplay', 'costAmount', 'share'];
-    static values = { margin: Number, base: Number, spent: Number, amount: Number, cost: Number, share: Number };
+    static targets = ['display', 'amount', 'ours', 'oursLabel', 'due', 'dueLabel', 'payout', 'oursOnly', 'dkpOnly', 'ownerDisplay', 'ownerAmount', 'offset', 'payee', 'price', 'margin', 'loss', 'costDisplay', 'costAmount'];
+    static values = { margin: Number, base: Number, spent: Number, amount: Number, cost: Number };
 
     connect() {
         this.input();
@@ -42,7 +42,7 @@ export default class extends Controller {
         if (this.hasCostDisplayTarget) this.cost();
         const priced = this.hasPriceTarget ? this.price() : true;
         if (this.hasCostDisplayTarget && !this.hasPriceTarget) this.guard(this.amountValue);
-        this.suggest(priced);
+        this.shareMargin(priced);
         this.sums();
         if (!priced) {
             if (this.hasOursTarget) this.oursTarget.textContent = '';
@@ -50,25 +50,19 @@ export default class extends Controller {
         }
     }
 
-    suggest(priced) {
-        if (!this.hasShareTarget || !this.hasShareValue) return;
-        const value = priced && this.hasMarginValue && this.element.dataset.commissionMarginValue !== undefined
-            ? Math.max(0, Math.round(this.marginValue * this.shareValue / 100)) : null;
-        const typed = rubles(this.displayTarget.value);
-        if (value !== null && this.lastShare != null && typed === this.lastShare && value !== typed) this.displayTarget.value = nums(value);
-        if (value !== null) this.lastShare = value;
-        // Поле уже равно доле — чип не повторяет его.
-        this.shareTarget.hidden = value === null || rubles(this.displayTarget.value) === value;
-        this.shareTarget.textContent = value === null ? '' : `Менеджеру ${this.shareValue} % — ${nums(value)}`;
-        this.shareTarget.dataset.value = value ?? '';
-    }
-
-    share() {
-        const value = Number(this.shareTarget.dataset.value);
-        this.displayTarget.value = nums(value);
-        this.lastShare = value;
-        this.shareTarget.hidden = true;
-        this.sums();
+    // Разница — куску вознаграждения (`reward_controller`, 16.11.2026): ползунок и процент идут за ней. Цены ещё нет —
+    // разницы тоже.
+    shareMargin(priced) {
+        const el = this.element.querySelector('[data-controller~="reward"]');
+        // Своей разницы у формы нет (выплата гаража) — у куска она с сервера.
+        if (!el || (!this.hasPriceTarget && !this.hasCostDisplayTarget && this.element.dataset.commissionMarginValue === undefined)) return;
+        const known = priced && this.element.dataset.commissionMarginValue !== undefined;
+        if (!known) {
+            if (el.hasAttribute('data-reward-margin-value')) el.removeAttribute('data-reward-margin-value');
+            return;
+        }
+        const m = String(this.marginValue);
+        if (el.dataset.rewardMarginValue !== m) el.dataset.rewardMarginValue = m;
     }
 
     // Цена вписана здесь: от неё разница, а цена не выше закупочной — вопрос перед отправкой и согласие loss.

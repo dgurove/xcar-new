@@ -82,14 +82,9 @@
                     <div class="row justify-between"><span>Прибыль</span><span class="nums font-semibold {{ $s['profit'] < 0 ? 'text-danger' : '' }}">{{ Money::exact($s['profit']) }}</span></div>
                 </div>
                 @if ($car->manager)
-                    <div class="fields">
-                        <div class="field @error('commission') field-invalid @enderror">
-                            <label for="fee" class="field-label">Вознаграждение, ₽</label>
-                            <input type="hidden" name="commission" data-commission-target="amount" value="{{ old('commission', $car->commission) }}">
-                            <input id="fee" type="text" class="field-input nums text-lg" data-commission-target="display" data-action="input->commission#input" value="{{ $car->commission ? Money::nums($car->commission) : '' }}" autocomplete="off" placeholder="0">
-                            @error('commission')<p class="field-error">{{ $message }}</p>@enderror
-                        </div>
-                    </div>
+                    {{-- Ползунком, суммой или процентом от прибыли (16.11.2026, `x-deal.reward-split`). --}}
+                    <x-deal.reward-split name="commission" id="fee" :value="old('commission', $car->commission)" :margin="$s['profit'] === null ? null : (int) round($s['profit'])"
+                        :hidden="['data-commission-target' => 'amount']" data-commission-target="display" data-action="input->commission#input"/>
                     <div class="list">
                         <div class="row justify-between"><span>Нам остаётся</span><span class="nums font-semibold" data-commission-target="ours">{{ Money::exact($s['ours']) }}</span></div>
                         {{-- Платит менеджер — сколько он отдаёт нам; платит покупатель — сколько выплатим менеджеру после оплаты. --}}
@@ -129,13 +124,8 @@
         <x-ui.sheet id="payout" title="Выплата менеджеру">
             <form method="post" action="/garage/cars/{{ $n }}/payout" class="flex flex-col gap-3" data-controller="commission" data-commission-spent-value="{{ $s['manager_costs'] }}">
                 @csrf
-                <div class="fields">
-                    <div class="field">
-                        <label for="payout-fee" class="field-label">Вознаграждение, ₽</label>
-                        <input type="hidden" name="commission" data-commission-target="amount" value="{{ $car->commission }}">
-                        <input id="payout-fee" type="text" class="field-input nums text-lg" data-commission-target="display" data-action="input->commission#input" value="{{ $car->commission ? Money::nums($car->commission) : '' }}" autocomplete="off" placeholder="0" @unless ($car->commission) autofocus @endunless>
-                    </div>
-                </div>
+                <x-deal.reward-split name="commission" id="payout-fee" :value="$car->commission" :margin="$s['profit'] === null ? null : (int) round($s['profit'])"
+                    :hidden="['data-commission-target' => 'amount']" data-commission-target="display" data-action="input->commission#input"/>
                 <div class="list">
                     <div class="row justify-between"><span>Его расходы</span><span class="nums">{{ Money::exact($s['manager_costs']) }}</span></div>
                     <div class="row justify-between"><span>Выплатим</span><span class="nums font-semibold" data-commission-target="payout">{{ Money::exact($s['payout']) }}</span></div>

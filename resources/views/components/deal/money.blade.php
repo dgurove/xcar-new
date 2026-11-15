@@ -55,7 +55,7 @@
                 <x-ui.more :id="'money-more-'.$deal->id">
                     @if ($editMoney || $withContract)
                         <div class="menu-group">
-                            @if ($editMoney)<button type="button" class="menu-item w-full" data-controller="emit" data-action="emit#send" data-emit-event-param="deal-money-{{ $deal->id }}:open">{{ match (true) { $deal->isGarageManager() => 'Наша доля…', $deal->namesBuyer() && $deal->commission === null => 'Назначить вознаграждение…', default => 'Вознаграждение менеджера…' } }}</button>@endif
+                            @if ($editMoney)<button type="button" class="menu-item w-full" data-controller="emit" data-action="emit#send" data-emit-event-param="deal-money-{{ $deal->id }}:open">{{ match (true) { $deal->namesBuyer() && $deal->commission === null => 'Назначить вознаграждение…', default => 'Вознаграждение менеджера…' } }}</button>@endif
                             @if ($withContract)<button type="button" class="menu-item w-full" data-controller="emit" data-action="emit#send" data-emit-event-param="dkp-{{ $deal->id }}:open">Данные договора…</button>@endif
                         </div>
                     @endif
@@ -77,10 +77,11 @@
             <div data-controller="sheet" class="contents" data-action="deal-money-{{ $deal->id }}:open@window->sheet#open">
                 <x-ui.sheet id="deal-money-{{ $deal->id }}" title="Деньги сделки">
                     @if ($deal->isGarageManager())
-                        {{-- Гаражная «платит менеджер»: наша доля — счёт со ссылкой встаёт сам (`SyncDealInvoices`). --}}
+                        {{-- Гаражная «платит менеджер»: вознаграждение менеджеру ползунком (16.11.2026), в форму — «нам по ссылке», счёт со
+                             ссылкой встаёт сам (`SyncDealInvoices`). --}}
                         <form method="post" action="/work/deals/{{ $deal->id }}/money" class="flex flex-col gap-4">
                             @csrf @method('put')
-                            <x-ui.field name="share" label="Наша доля, ₽" :value="$deal->share ? Money::nums($deal->share) : null"/>
+                            <x-deal.reward-split name="share" mode="ours" :id="'deal-share-'.$deal->id" :value="$deal->share" :margin="$deal->offer?->asking_price && $deal->cost !== null ? (int) $deal->offer->asking_price - (int) $deal->cost : null"/>
                             <x-ui.sheet-foot>Сохранить</x-ui.sheet-foot>
                         </form>
                     @else
@@ -106,7 +107,7 @@
             // Гаражная: цены нет, вознаграждение назначат при продаже из гаража; важно, кто платит поставщику.
             if (! $skips('payer') && ! ($deal->namesBuyer() && $deal->amount !== null)) $rows[] = ['В гараж', $deal->garagePayerLine(), 'text-right font-medium', true];
             if ($deal->namesBuyer() && $deal->amount !== null) $rows[] = ['Цена продажи', Money::rub($deal->amount), $dd.' font-medium', true];
-            if ($deal->isGarageManager()) $rows[] = ['Наша доля', $deal->share ? Money::rub($deal->share) : 'не вписана', $dd, false];
+            if ($deal->isGarageManager()) $rows[] = ['Нам по ссылке', $deal->share ? Money::rub($deal->share) : 'не вписано', $dd, false];
         } elseif ($deal->isAuction() && ! $skips('amount')) {
             $rows[] = ['Цена на аукционе', $deal->amount === null ? 'не указана' : Money::rub($deal->amount), $dd.' font-medium', true];
         }

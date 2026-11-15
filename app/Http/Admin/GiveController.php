@@ -61,7 +61,7 @@ class GiveController
             'pickup' => ['nullable', Rule::in(Giving::PICKUP)],
             'where' => ['nullable', Rule::in(array_keys(Giving::WHERE))],
             'arrived_at' => ['nullable', 'date', 'before_or_equal:now'],
-        ], ['arrived_at.before_or_equal' => 'Не позже, чем сейчас']);
+        ], ['arrived_at.before_or_equal' => 'Не позже, чем сейчас', 'share.min' => Giving::SHARE_LEFT]);
         // Дата — только когда ТС уже не у владельца: «Уже у …» в гараж или «Уже забрал» в сделку.
         $already = ($garage && ($data['where'] ?? null) === 'arrived') || (! $garage && ($data['pickup'] ?? null) === 'taken');
         $arrivedAt = $already && ! empty($data['arrived_at']) ? Carbon::parse($data['arrived_at']) : null;

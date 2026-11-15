@@ -53,7 +53,7 @@ final class FieldLabels
         'contact_name' => 'контакт', 'contact_phone' => 'телефон', 'contact_email' => 'почта ответственного', 'insurer_deadline_at' => 'срок от вендора', 'binding_until' => 'срок обязывающего предложения',
         'category' => 'категория', 'oversize' => 'негабарит', 'no_brand' => 'марки нет', 'value' => 'оценочная стоимость', 'policy_no' => '№ полиса', 'contract_kind' => 'основание', 'contract_no' => 'номер договора', 'contract_at' => 'дата договора',
         'assigned_price' => 'назначенная цена', 'pts' => 'ПТС', 'sts' => 'СТС', 'body_no' => 'номер кузова', 'chassis_no' => 'номер шасси', 'owner_party_id' => 'комитент', 'storage_rate' => 'своя ставка', 'storage_total' => 'своя сумма хранения', 'storage_rate_note' => 'почему своя', 'billing_cadence' => 'счёт за хранение', 'sold_at' => 'продано', 'pickup_name' => 'кто заберёт', 'pickup_phone' => 'телефон покупателя',
-        'cost' => 'закупочная в сделке', 'supplier_cost' => 'закупочная поставщика', 'deal_owner_price' => 'собственнику в сделке', 'amount' => 'цена подтверждения', 'commission' => 'вознаграждение', 'share' => 'наша доля',
+        'cost' => 'закупочная в сделке', 'supplier_cost' => 'закупочная поставщика', 'deal_owner_price' => 'собственнику в сделке', 'amount' => 'цена подтверждения', 'commission' => 'вознаграждение', 'share' => 'нам по ссылке',
         'notes' => 'заметки', 'yard_id' => 'парковка', 'spot' => 'место', 'docs_required' => 'документы вендору', 'state' => 'состояние', 'offer_id' => 'предложение',
     ];
 

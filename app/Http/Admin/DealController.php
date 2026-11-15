@@ -281,7 +281,7 @@ class DealController
                 'reprice' => 'Решить по переоценке', 'reprice-answer' => 'Ответить поставщику про переоценку',
                 'price-ask' => 'Менеджер не ответил про закупочную', 'letter' => 'Написать поставщику',
                 'bounced' => 'Письмо поставщику не дошло', 'consent' => 'Менеджер не ответил, берёт ли',
-                'gap:share' => 'Вписать нашу долю', 'gap:commission' => 'Назначить вознаграждение',
+                'gap:share' => 'Вписать вознаграждение', 'gap:commission' => 'Назначить вознаграждение',
                 'gap:ros_requisites' => 'Заполнить реквизиты Р.О.С.', 'gap:invoice' => 'Выставить счёт',
             ][$sub] ?? 'Группа',
         };
@@ -459,10 +459,11 @@ class DealController
     /** Деньги сделки — пока по ней нет счёта или есть только неоплаченный подбор по ДКП (`Deal::moneyEditable`). */
     public function money(Request $request, Deal $deal, UpdateDealMoney $update)
     {
-        $request->merge(['share' => Money::rubles($request->input('share')) ?: null]);
+        // «Нам по ссылке» из ползунка вознаграждения (16.11.2026): ноль — вознаграждение съело всю разницу, это ошибка, а не «стереть».
+        $request->merge(['share' => blank($request->input('share')) ? null : Money::rubles($request->input('share'))]);
         $data = $request->validate(['commission' => ['nullable', 'integer', 'min:0'], 'mode' => ['nullable', Rule::enum(CommissionMode::class)],
             'scheme' => ['nullable', Rule::enum(DealScheme::class)],
-            'share' => ['nullable', 'integer', 'min:1']]);
+            'share' => ['nullable', 'integer', 'min:1']], ['share.min' => \App\Offers\Giving::SHARE_LEFT]);
         // Поле вознаграждения пустое — вознаграждения нет; поля нет вовсе (гаражная доля) — прежнее.
         $commission = $request->has('commission') ? (isset($data['commission']) ? (int) $data['commission'] : null) : $deal->commission;
         $scheme = DealScheme::tryFrom($data['scheme'] ?? '');

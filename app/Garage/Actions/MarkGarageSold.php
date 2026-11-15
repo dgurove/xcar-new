@@ -60,7 +60,7 @@ final class MarkGarageSold
             // висело у четырёх продаж; поправить — прежней шторкой «Изменить» в CRM. Счета пересобирает `UpdateDealMoney`.
             $deal = $deal->fresh();
             if (($deal->commission === null || $repriced) && $deal->moneyEditable() && ($fee = $deal->suggestedCommission()) !== null) {
-                app(UpdateDealMoney::class)($deal, $by, $fee, CommissionMode::Withheld, note: 'Вознаграждение '.Money::rub($fee).': наша доля навара '.$deal->ourGarageShare().' %');
+                app(UpdateDealMoney::class)($deal, $by, $fee, CommissionMode::Withheld, note: 'Вознаграждение '.Money::rub($fee).': менеджеру '.(100 - $deal->ourGarageShare()).' % навара');
             } else {
                 app(SyncDealInvoices::class)($deal, $by);
             }
