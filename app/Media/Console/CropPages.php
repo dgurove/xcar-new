@@ -2,6 +2,7 @@
 
 namespace App\Media\Console;
 
+use App\Cars\Car as CarRecord;
 use App\Media\Actions\UnmarkPhoto;
 use App\Media\PhotoIngest;
 use App\Media\Watermark;
@@ -127,6 +128,11 @@ class CropPages extends Command
             return $offers->flatMap(fn (Offer $o) => $o->photos());
         }
 
-        return Media::where('collection_name', 'photos')->whereIn('model_type', [Offer::class, Vehicle::class, Car::class])->lazyById(200);
+        // Кадры живут у машины (`Cars\Car`, 29.10.2026) — до 15.11.2026 список был по прежним хозяевам, и общий прогон молча
+        // ничего не находил.
+        return Media::where('collection_name', 'photos')->whereIn('model_type', [CarRecord::class, Offer::class, Vehicle::class, Car::class])
+            ->when($this->option('migtorg'), fn ($q) => $q->whereRaw("jsonb_exists(custom_properties::jsonb, 'migtorg')")
+                ->whereRaw("not jsonb_exists(custom_properties::jsonb, 'page_sha')"))
+            ->lazyById(200);
     }
 }
