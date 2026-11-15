@@ -84,6 +84,8 @@ final class RepriceFlow
     {
         return match (true) {
             $this->reprice->source !== 'letter' => null,
+            // Т-Страхование: «Цена за Лот» пришла до нашего «Письма о покупке» — ответом будет оно (`SupplierLetterWait`).
+            $this->reprice->answered_at === null && SupplierLetterWait::beforeOurLetter($this->offer) => null,
             $this->reprice->answered_at !== null => self::DONE,
             $this->buyer() === self::DONE => self::NOW,
             default => self::WAIT,

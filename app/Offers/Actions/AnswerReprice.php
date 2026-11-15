@@ -182,6 +182,8 @@ final class AnswerReprice
         // Показывали всем, пока думал (04.11.2026), — сошлись: машина сразу уходит из предложений.
         $this->publish->stop($offer, $by, 'Сошлись с менеджером по новой цене, публикация для других снята');
         $this->close($ask, $offer, $by, RepriceAsk::AGREED, $forManager, $price);
+        // Т-Страхование до нашего письма: согласие на цену — и есть «Беру в работу» (`ConsentByReprice`, 15.11.2026).
+        app(ConsentByReprice::class)($ask->deal->setRelation('offer', $offer), $by);
     }
 
     private function close(RepriceAsk $ask, Offer $offer, User $by, string $state, bool $forManager, ?int $price = null): void

@@ -41,18 +41,20 @@ final class SupplierLetterWait
     }
 
     /**
-     * «Цена за Лот» из последнего письма поставщика об этой машине (15.11.2026: в ответ Т-Страхованию начальник ставит её, а не
-     * закупочную — по Omoda AUT-26-920056 исправил 550 444 на 561 918 руками; по Mercedes ушла закупочная 500 000 при лоте 833 000).
+     * Сделка маршрута с ожиданием письма поставщика (Т-Страхование) ещё не дошла до нашего ответа: стоит на ожидании, на
+     * согласии или на «Письме о покупке», которое не ушло. Переоценке по их письму тогда свой «Ответ поставщику» не нужен —
+     * ответом будет это письмо с новой закупочной (`RepriceFlow::answer`, 15.11.2026).
      */
-    public static function lotPrice(Offer $offer): ?int
+    public static function beforeOurLetter(Offer $offer): bool
     {
-        $threads = Thread::where('offer_id', $offer->id)->select('id');
+        $position = $offer->position(Track::Sale);
+        $stage = $position?->stage;
+        if (! $stage || ! Stage::where('workflow_id', $stage->workflow_id)->where('name', self::STAGE)->exists()) {
+            return false;
+        }
 
-        $price = Message::whereIn('thread_id', $threads)->where('direction', Direction::In->value)->orderByDesc('date_at')->get()
-            ->filter(fn (Message $m) => ($m->isFromVendor() || $m->isForwardedByStaff()) && FillFromLetter::about($offer, $m))
-            ->map(fn (Message $m) => (int) $m->field('floor_price'))->first(fn (int $p) => $p >= Pricing::MIN);
-
-        return $price ?: null;
+        return self::exitOf($stage) || $stage->asksConsent()
+            || ($stage->isLetterStep() && in_array($position->letterStatus(), ['unsent', 'failed', 'bounced'], true));
     }
 
     /** Сделка ждёт письма, а оно есть — ход наш: «Спросить менеджера». Отметили — true. */

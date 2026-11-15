@@ -196,6 +196,10 @@ class Position extends Model
         if (! $deal || ! $deal->isActive() || $deal->isGarage() || $this->letterRepriceKnown === false) {
             return null;
         }
+        // Т-Страхование до нашего «Письма о покупке»: ответом на их «Цену за Лот» будет оно (`SupplierLetterWait`, 15.11.2026).
+        if ($this->offer && \App\Offers\SupplierLetterWait::beforeOurLetter($this->offer)) {
+            return null;
+        }
 
         return Reprice::where('offer_id', $this->offer_id)->where('state', Reprice::APPLIED)->where('source', 'letter')->whereNull('answered_at')
             ->where('created_at', '>=', $deal->created_at)
@@ -390,7 +394,11 @@ class Position extends Model
         or (offer_positions.track = 'sale' and exists (select 1 from offer_reprices r join deals d on d.offer_id = r.offer_id
             where r.offer_id = offer_positions.offer_id and r.state = 'applied' and r.source = 'letter' and r.answered_at is null
                 and d.state = 'active' and d.garage_payer is null and r.created_at >= d.created_at
-                and not exists (select 1 from reprice_asks a where a.deal_id = d.id and a.state in ('pending', 'offered', 'countered')))), false)";
+                and not exists (select 1 from reprice_asks a where a.deal_id = d.id and a.state in ('pending', 'offered', 'countered'))
+                and not exists (select 1 from workflow_stages ws where ws.id = offer_positions.stage_id
+                    and ws.name in ('Ждём письмо поставщика', 'Согласие менеджера', 'Письмо о покупке')
+                    and (offer_positions.payload->>'letter_at') is null
+                    and exists (select 1 from workflow_stages w2 where w2.workflow_id = ws.workflow_id and w2.name = 'Ждём письмо поставщика')))), false)";
 
     /** Позиции, где нужно наше действие, — `needsUs()` в SQL. */
     public function scopeNeedsUs($q)

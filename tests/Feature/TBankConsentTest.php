@@ -52,7 +52,8 @@ class TBankConsentTest extends TestCase
 
         return Message::create(['account_id' => $account, 'thread_id' => $thread->id, 'direction' => 'in', 'from_email' => 'p.roevnev@tbank.ru', 'date_at' => now(),
             'subject' => $offer->claim_ref.' || 2019 Mercedes-Benz C-class (Р380КХ774 / '.$vin.') || Москва',
-            'parsed' => ['keys' => ['code:'.Code::key($offer->claim_ref)], 'fields' => ['vin' => ['value' => $vin, 'source' => 'subject'], 'floor_price' => ['value' => 833000, 'source' => 'body']]]]);
+            'parsed' => ['keys' => ['code:'.Code::key($offer->claim_ref)], 'fields' => ['vin' => ['value' => $vin, 'source' => 'subject'], 'floor_price' => ['value' => 833000, 'source' => 'body']],
+                'own_text' => "Уважаемые партнеры, добрый день!\nПредлагаем принять участие в оценке ТС. Ответ просьба дать к 17.11 до 15:00\n*Цена за Лот* 833 000 *р.\nТС не кредитное, ограничений ГИБДД нет."]]);
     }
 
     private function accepted(bool $letter = true, ?string $vin = 'WDD2050402R514538'): array
@@ -96,9 +97,8 @@ class TBankConsentTest extends TestCase
         $position = $offer->position(Track::Sale);
         $this->assertSame('Письмо о покупке', $position->stage->name);
         $this->assertSame('unsent', $position->letterStatus());
-        // Как пишет начальник: машина, VIN, номер и «Цена за Лот» из письма Т-Страхования (833 000), а не закупочная (500 000).
-        $this->assertSame("Здравствуйте!\n\nВыражаем готовность к покупке {{ car }}, VIN {{ vin }} ({{ claim_ref }}) за {{ lot }}\nПросим прислать контакты и данные для организации сделки.\n\nС уважением,\nАндрей Кузнецов", $position->stage->template->body);
-        $this->assertSame(\App\Support\Money::rub(833000), \App\Http\Admin\MailController::placeholders($offer)['lot']);
+        // Как пишет начальник: машина, VIN, номер и закупочная (после переоценки, если «Цена за Лот» была другой).
+        $this->assertSame("Здравствуйте!\n\nВыражаем готовность к покупке {{ car }}, VIN {{ vin }} ({{ claim_ref }}) за {{ floor }}\nПросим прислать контакты и данные для организации сделки.\n\nС уважением,\nАндрей Кузнецов", $position->stage->template->body);
     }
 
     public function test_without_supplier_letter_manager_is_not_asked_until_it_arrives_with_vin(): void
@@ -122,6 +122,31 @@ class TBankConsentTest extends TestCase
         app(TakeExit::class)($o, $o->stage()->exitsFor(Actor::Staff, $deal)->firstWhere('label', \App\Offers\SupplierLetterWait::EXIT), Actor::Staff, $this->admin);
         $this->assertSame('Согласие менеджера', $offer->fresh()->stage()->name);
         $this->assertStringContainsString('VIN WDD2050402R514538', ChatMessage::whereNotNull('requirement_id')->latest('id')->firstOrFail()->text);
+    }
+
+    public function test_lot_price_differs_is_reprice_and_manager_agreeing_on_price_takes_the_deal(): void
+    {
+        [$offer, $deal] = $this->accepted();
+        $message = Message::latest('id')->firstOrFail();
+        // «Цена за Лот» 833 000 при закупочной 500 000 — переоценка на решение, сама цена не меняется.
+        $this->assertSame(833000, \App\Mail\Extraction\Templates\Template::lotPrice($message->ownText()));
+        $reprice = app(\App\Offers\Actions\DetectReprice::class)($offer->fresh(), $message);
+        $this->assertSame([500000, 833000], [$reprice->from_price, $reprice->to_price]);
+        $this->assertSame(500000, $offer->fresh()->floor_price);
+        // В сделке — шаг «Переоценка» без «Ответа поставщику»: ответом будет наше «Письмо о покупке».
+        $flow = \App\Offers\RepriceFlow::for($offer->fresh());
+        $this->assertNotNull($flow);
+        $this->assertNull($flow->answer());
+
+        // «Спросить» менеджера по сделке → он назвал цену → приняли: это и есть «Беру в работу».
+        app(\App\Offers\Actions\ApplyReprice::class)($reprice->fresh(), $this->admin, 833000, [], \App\Offers\Actions\ApplyReprice::ASK);
+        $ask = \App\Offers\RepriceAsk::where('deal_id', $deal->id)->latest('id')->firstOrFail();
+        app(\App\Offers\Actions\AnswerReprice::class)->offer($ask, 900000, $this->manager, lowOk: true);
+        app(\App\Offers\Actions\AnswerReprice::class)->accept($ask->fresh(), $this->admin);
+        $this->assertSame('Письмо о покупке', $offer->fresh()->stage()->name);
+        $this->assertSame(833000, $deal->fresh()->cost);
+        $this->assertFalse(ChatMessage::where('text', 'like', Notify::CONSENT_ASK.'%')->exists(), 'второго вопроса «берём в работу?» нет');
+        $this->assertNull(\App\Offers\RepriceFlow::for($offer->fresh()));
     }
 
     public function test_changed_mind_leads_back_to_bidding(): void

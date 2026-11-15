@@ -25,7 +25,7 @@ return new class extends Migration
 
     public function up(): void
     {
-        // Письмо шага — как на скриншоте владельца: «Здравствуйте», машина, VIN, номер и «Цена за Лот» (`{{ lot }}`).
+        // Письмо шага — как на скриншоте владельца: «Здравствуйте», машина, VIN, номер и закупочная (`{{ floor }}`).
         $letter = (new \App\Workflow\Presets\TBank)->letters()['contacts'];
         DB::table('mail_templates')->where('name', $letter['name'])->where('scope', 'offers')->update(['body' => $letter['body']]);
 
