@@ -54,8 +54,8 @@
 <div class="flex flex-col gap-4">
 <div class="box" id="money">
     <h2 class="box-title mb-3">Расчёт</h2>
-    <a href="/offers/{{ $offer->number }}" class="nums block text-[32px] font-bold leading-none">{{ Money::rub($deal->amount) }}</a>
-    <span class="mt-1 block text-sm text-ink-muted">продажа</span>
+    {{-- Цена — строкой, числом окна (16.11.2026, вариант А: пять крупных сумм подряд — 32 и 24 px — «всё скачет»). --}}
+    <a href="/offers/{{ $offer->number }}" class="flex items-baseline justify-between gap-3"><span class="text-ink-muted">Цена продажи</span><span class="nums text-lg font-semibold">{{ Money::rub($deal->amount) }}</span></a>
     @if ($deal->paysSelection())
         {{-- Деньги по порядку (06.10.2026, владелец: «+20 вознаграждения и оплатите 80 — покажется, что выйдет −60»): закупочная,
              взаимозачёт, остаток — вся разница; ниже, как она делится: «Ваша доля» и подбор XCar. Платить — в «Платежах». --}}

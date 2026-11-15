@@ -45,7 +45,7 @@
     @php $head = $href && ! $invoice ? 'a' : 'div'; @endphp
     <{{ $head }} @if ($head === 'a') href="{{ $href }}" @endif class="block">
         @if ($title)<span class="mb-0.5 block text-sm text-ink-muted">{{ $title }}</span>@endif
-        <span class="nums block text-2xl font-semibold">{{ $amount }}</span>
+        <span class="nums block text-lg font-semibold">{{ $amount }}</span>
         @if ($state)
             <span @class(['mt-1 block text-sm', $state[1] ?: 'text-ink-muted'])>{{ $state[0] }}</span>
         {{-- Срок счёта — только в «Платежах»: в задаче шага срок уже в её заголовке («Просрочено на 4д 20ч»), второй был бы

@@ -42,10 +42,16 @@
             {{-- Закончилась без покупателя — «выберите покупателя» уже не о чем. --}}
             {{-- Покупатель не выбран или без данных — это дело менеджера: на телефоне сразу под задачей, над «Расчётом»
                  (05.11.2026); готов — на прежнем месте под ним. --}}
-            @php $buyerTodo = $deal->isLive() && ! $deal->contract?->buyer?->party?->readyAsBuyer(); @endphp
             {{-- С согласия — и у «страховой напрямую» (10.11.2026, `Deal::needsBuyer`); на шаге «Нет реквизитов» покупатель в задаче. --}}
             @php $buyerHere = ($deal->hasContract() || $deal->buyerAhead()) && $requirement?->asks !== \App\Workflow\Asks::Buyer; @endphp
-            @if ($buyerHere && ! $contractStep && ! $needsBuyer && ! $tooEarly && ($deal->isLive() || $deal->contract?->buyer_user_id))<div class="{{ $buyerTodo || $deal->buyer_asked_at ? 'order-1' : 'order-3' }} min-w-0">@include('cabinet.deals.buyer-block')</div>@endif
+            {{-- «Договор» сразу под шагом (16.11.2026, владелец выбрал вариант А: «не замечают, где этот блок»): покупатель, готовый ДКП
+                 и «Подписанный договор» одной карточкой — приложение договора жило внизу правой колонки под заметкой. --}}
+            @php
+                $withBuyer = $buyerHere && ! $contractStep && ! $needsBuyer && ! $tooEarly && ($deal->isLive() || $deal->contract?->buyer_user_id);
+                $signStep = $deal->openRequirement?->asks === \App\Workflow\Asks::Document && $deal->openRequirement?->stage?->aboutContract();
+                $withSigned = ! $signStep && \App\Offers\Actions\AttachSignedContract::allows($deal) || $deal->getMedia('signed_contract')->isNotEmpty();
+            @endphp
+            @if ($withBuyer || $withSigned)<div class="order-1 min-w-0">@include('cabinet.deals.buyer-block', ['withBuyer' => $withBuyer, 'withSigned' => $withSigned && ! $signStep])</div>@endif
             @if ($deal->buyer_asked_at && $deal->isLive())<x-deal.buyer-ask-sheet :deal="$deal"/>@endif
             @include('cabinet.deals.path', ['class' => 'order-5'])
 
@@ -83,10 +89,6 @@
                 @endif
             </div>
             <x-offer.my-note :offer="$offer" class="order-3 min-w-0"/>
-            {{-- Подписанный договор вне системы — в любой сделке и на любом шаге (15.11.2026); на шаге, что сам просит договор, —
-                 его кнопка «Приложить договор», второй не нужно. --}}
-            @php $signStep = $deal->openRequirement?->asks === \App\Workflow\Asks::Document && $deal->openRequirement?->stage?->aboutContract(); @endphp
-            @unless ($signStep)<x-deal.signed-contract :deal="$deal" :base="'/deals/'.$deal->id" class="order-6"/>@endunless
             <x-offer.facts :offer="$offer" :full="true" class="order-7"/>
             @if ($docs->isNotEmpty())
                 <section class="order-8 min-w-0">

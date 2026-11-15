@@ -3,12 +3,26 @@
      нет — сначала плитки «Физлицо» / «ИП» / «Организация» (поля заполняет менеджер, 13.11.2026), ниже выбор из своих
      (`cabinet.deals.contract`). Окно «Кто покупатель?» сразу после «Беру в работу» — `x-deal.buyer-ask-sheet`. Белой карточкой (11.11.2026, владелец:
      «висит в воздухе — тут как раз нужен блок»): плитки и выбор внутри неё серыми. --}}
+{{-- С 16.11.2026 — карточка «Договор» под шагом (вариант А): покупатель (`withBuyer`), готовый ДКП и «Подписанный договор»
+     (`withSigned`, `x-deal.signed-contract bare`) — то, что для договора, в одном месте. --}}
 @php
     $asked = $deal->buyer_asked_at;
     $chosen = (bool) \App\Offers\DealContract::for($deal)->buyer_user_id;
+    $withBuyer ??= true;
+    $withSigned ??= false;
+    $title = match (true) {
+        $withBuyer && $asked && ! $chosen => 'Укажите покупателя',
+        $deal->hasContract() || ! $withBuyer => $deal->isGarage() ? 'Договор купли-продажи' : 'Договор',
+        default => 'Покупатель',
+    };
 @endphp
 <section class="box min-w-0">
-    <h2>{{ $asked && ! $chosen ? 'Укажите покупателя' : ($deal->isGarage() ? 'Договор купли-продажи' : 'Покупатель') }}</h2>
-    @if (! $chosen && $deal->isLive())<div class="mt-3"><x-deal.buyer-kind :deal="$deal"/></div>@endif
-    <div class="mt-2">@include('cabinet.deals.contract', ['part' => $deal->hasContract() ? 'all' : 'buyer', 'embedded' => true])</div>
+    <h2>{{ $title }}</h2>
+    @if ($withBuyer)
+        @if (! $chosen && $deal->isLive())<div class="mt-3"><x-deal.buyer-kind :deal="$deal"/></div>@endif
+        <div class="mt-2">@include('cabinet.deals.contract', ['part' => $deal->hasContract() ? 'all' : 'buyer', 'embedded' => true])</div>
+    @endif
+    @if ($withSigned)
+        <div class="list mt-2"><x-deal.signed-contract :deal="$deal" :base="'/deals/'.$deal->id" bare/></div>
+    @endif
 </section>

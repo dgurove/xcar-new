@@ -26,8 +26,17 @@
     $answers = $answers->where('consent', false)->values();
 @endphp
 @if ($blocks->isNotEmpty())
-    <section id="path" class="scroll-mt-4 min-w-0 {{ $class ?? '' }}">
+    {{-- На телефоне свёрнут в «Весь путь N» (16.11.2026, вариант А): текущий шаг — карточкой сверху, путь его повторял. На ПК —
+         развёрнут: левая колонка под шагом и «Договором» иначе пустая. --}}
+    @php ob_start(); @endphp
+    <x-route.timeline :blocks="$blocks" :current="$currentBlock" :steps="$steps" :deal="$deal" :answers="$answers" :lead="$lead"/>
+    @php $timeline = ob_get_clean(); @endphp
+    <details class="path-fold min-w-0 lg:hidden {{ $class ?? '' }}">
+        <summary class="list-head path-fold-head">Весь путь <span class="nums text-ink-dim">{{ $blocks->count() }}</span><x-ui.icon name="chevron-down" class="path-fold-chevron size-4"/></summary>
+        <div class="mt-2">{!! $timeline !!}</div>
+    </details>
+    <section id="path" class="scroll-mt-4 min-w-0 max-lg:hidden {{ $class ?? '' }}">
         <h2 class="list-head">Путь сделки</h2>
-        <div><x-route.timeline :blocks="$blocks" :current="$currentBlock" :steps="$steps" :deal="$deal" :answers="$answers" :lead="$lead"/></div>
+        <div>{!! $timeline !!}</div>
     </section>
 @endif

@@ -1682,6 +1682,11 @@ html.kb-open { --home-gap: 0px; }
   .signed-add.sale-row { cursor: pointer; }
   /* Сумма к переводу поставщику — числом окна (17), не 26: была крупнее всего в окне. */
   .pay-sum { font-size: var(--text-lg); font-weight: 600; }
+  /* «Весь путь N» на странице сделки менеджера (`cabinet.deals.path`, 16.11.2026): свёрнут, раскрывается нажатием. */
+  .path-fold-head { display: flex; align-items: center; gap: .375rem; cursor: pointer; list-style: none; }
+  .path-fold-head::-webkit-details-marker { display: none; }
+  .path-fold-chevron { color: var(--color-ink-dim); transition: transform .2s; }
+  .path-fold[open] .path-fold-chevron { transform: rotate(180deg); }
   .list > * + * { position: relative; }
   /* Строка внутри двух обёрток `contents` (форма вокруг `x-people.pick` — «Выбрать покупателя» в ДКП) — тоже с линией. */
   .list > * + *::after, .list > * + .contents > .row:first-of-type::after, .list > * + .contents > .contents > .row:first-of-type::after { content: ''; position: absolute; top: 0; left: 1rem; right: 0; height: 1px; background: color-mix(in oklab, var(--color-line) 70%, transparent); pointer-events: none; z-index: 1; }
