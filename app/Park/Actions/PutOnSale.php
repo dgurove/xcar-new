@@ -9,6 +9,7 @@ use App\Offers\Intake\DraftSource;
 use App\Offers\Intake\OpenDraft;
 use App\Offers\Offer;
 use App\Offers\OfferState;
+use App\Offers\ParkValue;
 use App\Offers\Pricing;
 use App\Park\EventType;
 use App\Park\Sale;
@@ -20,8 +21,8 @@ use Illuminate\Validation\ValidationException;
 
 /**
  * «В продажу» в деле ТС: черновик продажи этой машины (`Cars\Car`): тождество, фото и документы у них общие. Город —
- * город парковки (без неё — город ТС), вендор — парковки (у продажи он свой: `Vendor::forCrm`), закупочная — по правилу
- * от оценочной (`Pricing::floorFrom`), пока её не вписали. Продажа этой машины уже была (снимали, архив) — она и
+ * город парковки (без неё — город ТС), вендор — парковки (у продажи он свой: `Vendor::forCrm`), оценочная — ТС, закупочная
+ * — по правилу от неё (`Pricing::floorFrom`), пока её не вписали; машина уже на Мигторге — ни той, ни другой (`ParkValue`). Продажа этой машины уже была (снимали, архив) — она и
  * возвращается в черновики, второй не заводится. Письма CRM о той же машине едут к ней. Обратно — «Убрать из продажи»
  * (`TakeOffSale`). Без человека (`by` null) — сама, `AutoSale`.
  */
@@ -44,7 +45,8 @@ final class PutOnSale
             'settlement_id' => $vehicle->yard?->settlement_id ?? $vehicle->city_id,
             'car_place' => $vehicle->state === VehicleState::Stored ? CarPlace::Ours : null,
             'vendor_id' => $vehicle->vendor_id,
-            'floor_price' => $car->value ? Pricing::floorFrom((int) $car->value) : null,
+            // Оценочная продаже — с парковки, пока машины нет на Мигторге (`ParkValue`; её ставит `Offer::creating`).
+            'floor_price' => ParkValue::usable($car) ? Pricing::floorFrom((int) $car->value) : null,
         ], created: ['park' => $vehicle->id], why: 'С парковки', reopenCancelled: false), $by);
         // Отказ поставщика — не продажа: сказать как есть (было «уже продана» и для отменённой).
         if (in_array($offer->state, [OfferState::Cancelled, OfferState::Delivered], true)) {

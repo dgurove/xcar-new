@@ -17,6 +17,7 @@ use App\Offers\OfferEventType;
 use App\Offers\AudienceRules;
 use App\Offers\Exclusive;
 use App\Offers\OfferState;
+use App\Offers\ParkValue;
 use App\Offers\Pricing;
 use App\Offers\Reprice;
 use App\Support\Changes;
@@ -221,6 +222,10 @@ final class UpdateOffer
             // Лоты прежнего номера больше не этого предложения — свободны для своего.
             DB::table('migtorg_lots')->where('offer_id', $offer->id)->where(fn ($q) => $q->whereNull('claim_ref_key')->orWhere('claim_ref_key', '!=', (string) $offer->claim_ref_key))->update(['offer_id' => null]);
             ImportMigtorgLot::auto($offer);
+            // Новый номер уже на Мигторге — оценочная с парковки неактуальна (`ParkValue`).
+            if ($offer->state === OfferState::Draft && ! $offer->asking_price) {
+                ParkValue::drop($offer->refresh());
+            }
         }
     }
 }

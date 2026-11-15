@@ -63,7 +63,7 @@ use Illuminate\Support\Facades\DB;
     'asking_price', 'min_bid_price', 'min_bid_share', 'prices_include_vat', 'tags', 'tag_colors', 'bids_close_at', 'sort_weight',
     'chat_enabled', 'share_locked', 'share_locked_by_estimate', 'audience_rules', 'recommended', 'vendor_id', 'claim_ref', 'insurer_deadline_at', 'car_place',
     'answer_by', 'insured_name', 'insured_phone', 'insured_phone2', 'flags', 'holder', 'docs_required', 'contact_name', 'contact_email',
-    'garage_allowed', 'deal_show_until', 'deal_published_at', 'deal_audience_rules', 'binding_until', 'held_by', 'plate', 'sts', 'pts', 'body_no', 'chassis_no', 'policy_no', 'vehicle_category', 'first_look_until', 'first_look_user_id', 'floor_rules',
+    'garage_allowed', 'deal_show_until', 'deal_published_at', 'deal_audience_rules', 'binding_until', 'held_by', 'plate', 'sts', 'pts', 'body_no', 'chassis_no', 'policy_no', 'vehicle_category', 'first_look_until', 'first_look_user_id', 'floor_rules', 'value_from',
 ])]
 class Offer extends Model
 {
@@ -91,8 +91,25 @@ class Offer extends Model
     /** Машина (`Cars\Car`) — с каждым предложением: название, VIN, фото. */
     protected $with = ['car'];
 
+    /**
+     * Оценочная у продажи своя (15.11.2026, `Offers\ParkValue`): `cars.value` — оценочная ТС парковки, по ней ставка
+     * хранения; с Мигторгом оценочная с заявки продаже неактуальна.
+     */
+    protected static function carOwnFields(): array
+    {
+        return ['value'];
+    }
+
     protected static function booted(): void
     {
+        // Оценочная продажи с парковки (`ParkValue`): новая продажа машины, что стоит у нас и ещё не на Мигторге, берёт
+        // оценочную ТС; сменили её не с парковки — она уже не «с парковки».
+        static::creating(fn (self $o) => ParkValue::inherit($o));
+        static::saving(function (self $o) {
+            if ($o->isDirty('value') && ! ParkValue::$writing) {
+                $o->value_from = null;
+            }
+        });
         // `opened_at` — вычисленное каталогом (`CatalogQuery::openedAtSql`), колонки нет: в запись не уходит.
         static::saving(fn (self $o) => $o->offsetUnset('opened_at'));
         // `viewed` — «Просмотрено» из каталога (`CatalogQuery::cards`), тоже без колонки.
@@ -227,6 +244,7 @@ class Offer extends Model
             'garage_allowed' => 'bool',
             'audience_rules' => 'array',
             'floor_rules' => 'array',
+            'value' => 'int',
             'partner_price_at' => 'datetime',
             'published_at' => 'datetime',
             'bids_close_at' => 'datetime',

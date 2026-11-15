@@ -56,8 +56,8 @@ use App\Media\Console\TuneWatermarks;
 use App\Media\Console\UnmarkPhotos;
 use App\Offers\Console\AutoDraftsCommand;
 use App\Offers\Console\BindingFromDocsCommand;
-use App\Offers\Console\DealAgreementFixCommand;
 use App\Offers\Console\CommissionOwnersCommand;
+use App\Offers\Console\DealAgreementFixCommand;
 use App\Offers\Console\DealCarDocsCommand;
 use App\Offers\Console\FillFromLettersCommand;
 use App\Offers\Console\MigtorgArchive;
@@ -65,6 +65,7 @@ use App\Offers\Console\MigtorgDropOsago;
 use App\Offers\Console\MigtorgSync;
 use App\Offers\Console\PruneEmptyDrafts;
 use App\Offers\Console\RepricesFromLettersCommand;
+use App\Offers\Console\StaleParkValues;
 use App\Offers\Console\TickOffers;
 use App\Offers\Share\Console\PreparePdfs;
 use App\Park\Console\AcceptByLettersCommand;
@@ -132,6 +133,7 @@ return Application::configure(basePath: dirname(__DIR__))
         MigtorgSync::class,
         MigtorgArchive::class,
         MigtorgDropOsago::class,
+        StaleParkValues::class,
         RefillVendors::class,
         TickPark::class,
         StoreByLettersCommand::class,

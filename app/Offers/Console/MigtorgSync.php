@@ -8,6 +8,7 @@ use App\Offers\Intake\MigtorgDrafts;
 use App\Offers\Jobs\ImportMigtorgLot;
 use App\Offers\Migtorg;
 use App\Offers\Offer;
+use App\Offers\ParkValue;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -122,7 +123,9 @@ class MigtorgSync extends Command
         $started = Offer::whereIn('state', ImportMigtorgLot::STATES)->whereCar(fn ($c) => $c->whereIn('claim_ref_key', $keys))->get()
             ->filter(fn (Offer $offer) => ImportMigtorgLot::auto($offer))->count();
         $drafted = MigtorgDrafts::run();
-        $this->line('Лотов: '.count($rows).", ушли: {$gone}, взяты предложениями: {$started}, новых черновиков: {$drafted}");
+        // Машина появилась на Мигторге — оценочная с заявки на приём продаже неактуальна (`ParkValue`).
+        $stale = ParkValue::sweep();
+        $this->line('Лотов: '.count($rows).", ушли: {$gone}, взяты предложениями: {$started}, новых черновиков: {$drafted}, оценочная с парковки снята: {$stale}");
 
         return self::SUCCESS;
     }

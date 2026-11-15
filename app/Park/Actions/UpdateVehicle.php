@@ -4,7 +4,7 @@ namespace App\Park\Actions;
 
 use App\Billing\Actions\IssueTransferObligation;
 use App\Offers\Actions\UpdateOffer;
-use App\Offers\Pricing;
+use App\Offers\ParkValue;
 use App\Park\EventType;
 use App\Park\Vehicle;
 use App\Support\Changes;
@@ -48,12 +48,11 @@ final class UpdateVehicle
         if ($by && $vehicle->accepted_at && array_intersect($changed, ['contract_kind', 'assigned_price', 'contract_no'])) {
             ($this->transfer)($vehicle, $by);
         }
-        // Оценочная у машины одна: машина в продаже — закупочная от новой оценочной, если её не вписывали рукой
-        // (`Pricing::floorFor`, владелец 04.10.2026). Машина уже в сделке или гараже — правка парковки закупочную не трогает:
-        // новую закупочную поставщика вписывают в CRM (`UpdateOffer` → `UpdateDealCost`).
-        if (in_array('value', $changed, true) && ($offer = $vehicle->offer) && ! $offer->costDeal()
-            && ($floor = Pricing::floorFor($offer->floor_price, $diff['changes']['value'][0] ?? null, $vehicle->value))) {
-            app(UpdateOffer::class)($offer, ['floor_price' => $floor], $by, ['why' => 'Оценочная на парковке']);
+        // Оценочная ТС — в продажу (`ParkValue::follows`): пока у продажи оценочная с парковки (или её нет) и машины нет на
+        // Мигторге; закупочная — за ней, если не вписана рукой (`UpdateOffer` → `Pricing::floorFor`). Машина уже в сделке
+        // или гараже — правка парковки закупочную не трогает: новую закупочную поставщика вписывают в CRM.
+        if (in_array('value', $changed, true) && ($offer = $vehicle->offer) && $vehicle->value) {
+            ParkValue::follow($offer, (int) $vehicle->value, $by);
         }
 
         return $vehicle;
