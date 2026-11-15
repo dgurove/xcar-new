@@ -1688,11 +1688,10 @@ html.kb-open { --home-gap: 0px; }
   .deal-money-row { padding-block: .625rem; }
   .deal-money-rows > .deal-money-row + .deal-money-row { border-top: 1px solid var(--color-line); }
   .deal-money-card .profit-sum { font-size: var(--text-lg); }
-  /* «Весь путь N» на странице сделки менеджера (`cabinet.deals.path`, 16.11.2026): свёрнут, раскрывается нажатием. */
-  .path-fold-head { display: flex; align-items: center; gap: .375rem; cursor: pointer; list-style: none; }
-  .path-fold-head::-webkit-details-marker { display: none; }
-  .path-fold-chevron { color: var(--color-ink-dim); transition: transform .2s; }
-  .path-fold[open] .path-fold-chevron { transform: rotate(180deg); }
+  /* «Платит — Покупатель | Я» в «Оформлении» сделки менеджера: переключатель ниже, вровень с соседними строками. */
+  .deal-form .sale-row-label { color: var(--color-ink); }
+  .deal-pay .segment { padding: .125rem; }
+  .deal-pay .segment label { min-height: 1.75rem; padding-inline: .75rem; }
   .list > * + * { position: relative; }
   /* Строка внутри двух обёрток `contents` (форма вокруг `x-people.pick` — «Выбрать покупателя» в ДКП) — тоже с линией. */
   .list > * + *::after, .list > * + .contents > .row:first-of-type::after, .list > * + .contents > .contents > .row:first-of-type::after { content: ''; position: absolute; top: 0; left: 1rem; right: 0; height: 1px; background: color-mix(in oklab, var(--color-line) 70%, transparent); pointer-events: none; z-index: 1; }

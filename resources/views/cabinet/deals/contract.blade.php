@@ -43,7 +43,13 @@
         @if ($buyer)
             @if ($ready || ! $editable)
                 {{-- Строкой «Покупатель — имя ›», состояние под подписью (16.11.2026, «Договор» одной карточкой). --}}
+                {{-- В «Оформлении» покупатель — одна строка (16.11.2026, владелец: «выбор покупателя — одно поле, а не два»): данные
+                     есть — нажатие открывает выбор покупателя; нет — их шторку, «Другой покупатель» в ней. --}}
+                @if ($labels && $editable && ! ($garage && $buyer) && ! $me->isSuperBuyer())
+                <button type="button" class="row sale-row" data-controller="emit" data-action="emit#send" data-emit-event-param="buyer:open">
+                @else
                 <a href="{{ $isMe ? '/account/money/details' : '/buyers/'.$buyer->id }}" @class(['row', 'sale-row' => $labels])>
+                @endif
                     @if ($labels)
                         <span class="sale-row-label"><span class="block text-ink">Покупатель</span><span @class(['block text-sm', 'text-open' => $ready, 'text-urgent' => ! $ready])>{{ $ready ? 'данные есть' : 'нужны данные' }}</span></span>
                         <span class="sale-row-value truncate">{{ $isMe ? ($garage ? 'Ваши данные' : 'Я сам') : (\App\Support\OrgName::short($buyer->party?->name) ?: $buyer->name) }}</span>
@@ -51,7 +57,11 @@
                         <span class="min-w-0 flex-1"><span class="block truncate">{{ $isMe ? ($garage ? 'Ваши данные' : 'Я сам') : (\App\Support\OrgName::short($buyer->party?->name) ?: $buyer->name) }}</span><span @class(['block text-sm', 'text-open' => $ready, 'text-urgent' => ! $ready])>{{ $ready ? 'данные есть' : 'нужны данные' }}</span></span>
                     @endif
                     <x-ui.chevron/>
+                @if ($labels && $editable && ! ($garage && $buyer) && ! $me->isSuperBuyer())
+                </button>
+                @else
                 </a>
+                @endif
             @else
                 <div data-controller="sheet" class="contents">
                     <x-ui.sheet-row @class(['sale-row' => $labels])>
@@ -70,13 +80,16 @@
                             <x-billing.buyer-fields :party="$buyerParty" key="buyer-now" scan="deal-buyer-data-form" :fallback="$buyer->name === \App\Users\Actions\AddPerson::UNNAMED ? null : $buyer->name"/>
                             <x-ui.sheet-foot>Сохранить</x-ui.sheet-foot>
                         </form>
+                        @if ($labels && ! ($garage && $buyer) && ! $me->isSuperBuyer())
+                            <button type="button" class="btn btn-quiet btn-s mt-3 w-full" data-controller="emit" data-action="sheet#close emit#send" data-emit-event-param="buyer:open">Другой покупатель</button>
+                        @endif
                     </x-ui.sheet>
                 </div>
             @endif
             @if ($prime && ! $isMe && $editable)
                 {{-- Кто платит по счёту — одной строкой с переключателем (16.11.2026, «Договор» одной карточкой; было две строки с
                      галками и суммами). --}}
-                <form method="post" action="/deals/{{ $deal->id }}/contract" class="row" data-controller="autosubmit">
+                <form method="post" action="/deals/{{ $deal->id }}/contract" class="row deal-pay" data-controller="autosubmit">
                     @csrf @method('put')
                     <span class="flex-1 whitespace-nowrap">Платит</span>
                     <x-ui.segment name="payer" :options="['buyer' => 'Покупатель', 'manager' => 'Я']" :value="$contract->managerPays() ? 'manager' : 'buyer'" class="shrink-0" data-action="change->autosubmit#submit"/>
@@ -92,7 +105,7 @@
             @endphp
             <form method="post" action="/deals/{{ $deal->id }}/contract" class="contents">
                 @csrf @method('put')
-                <x-people.pick name="buyer_id" kind="buyer" passport variant="row" :people="$rows" :value="$current" title="Покупатель" :deal="$deal->id" link autosubmit
+                <x-people.pick name="buyer_id" kind="buyer" passport :variant="$labels && $buyer ? 'none' : 'row'" :people="$rows" :value="$current" title="Покупатель" :deal="$deal->id" link autosubmit
                     :placeholder="$buyer ? 'Другой покупатель' : ($labels ? 'не выбран' : 'Выбрать покупателя')" :label="$buyer || ! $labels ? null : 'Покупатель'" finish="Выбрать" data-action="buyer:open@window->sheet#open"/>
             </form>
             @error('buyer_id')<p class="field-error px-4 py-2">{{ $message }}</p>@enderror

@@ -12,16 +12,17 @@
     $withSigned ??= false;
     $title = match (true) {
         $withBuyer && $asked && ! $chosen => 'Укажите покупателя',
-        $deal->hasContract() || ! $withBuyer => $deal->isGarage() ? 'Договор купли-продажи' : 'Договор',
+        // «Оформление», а не «Договор» (16.11.2026): внутри покупатель, кто платит, ДКП и «Подписанный договор» — слово не повторяется.
+        $deal->hasContract() || ! $withBuyer => $deal->isGarage() ? 'Договор купли-продажи' : 'Оформление',
         default => 'Покупатель',
     };
 @endphp
 {{-- Заголовок — как у всех карточек страницы (13 серым, `box-title`), договор и подписанный — строками без повтора слова. --}}
-<section class="box min-w-0">
+<section class="box deal-form min-w-0">
     <h2 class="box-title">{{ $title }}</h2>
     @php
         // «Подписанный» — строкой той же группы, что покупатель и ДКП, а не второй плашкой.
-        $signedRow = $withSigned ? \Illuminate\Support\Facades\Blade::render('<x-deal.signed-contract :deal="$deal" :base="$base" bare label="Подписанный"/>', ['deal' => $deal, 'base' => '/deals/'.$deal->id]) : '';
+        $signedRow = $withSigned ? \Illuminate\Support\Facades\Blade::render('<x-deal.signed-contract :deal="$deal" :base="$base" bare/>', ['deal' => $deal, 'base' => '/deals/'.$deal->id]) : '';
     @endphp
     @if ($withBuyer)
         @if (! $chosen && $deal->isLive())<div class="mt-3"><x-deal.buyer-kind :deal="$deal"/></div>@endif
