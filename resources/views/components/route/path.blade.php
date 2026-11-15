@@ -85,7 +85,7 @@
             <span class="step-dot"></span>
             <div class="step-body">
                 <div class="step-head"><span class="step-title">Назначение цены</span></div>
-                <p class="step-hint text-urgent">Ждём нас</p>
+                <p class="step-hint text-ink-muted">Ждём нас</p>
                 <form method="post" action="/offers/{{ $n }}/rate" class="mt-3 flex max-w-sm gap-2" data-controller="bid" data-bid-asking-value="0" data-price-guard="edit" data-price-guard-offer="{{ $n }}">
                     @csrf @if ($errors->has('price_check'))<input type="hidden" name="price_ok" value="1">@endif
                     <input type="hidden" name="asking_price" data-bid-target="amount" value="">
@@ -238,7 +238,7 @@
                         $buyerBlock = $compact && $deal?->isLive() && ($deal->collectsBuyer() || $deal->contract?->buyer_user_id) && $buyerGap !== null;
                     @endphp
                     @if ($deal?->buyer_asked_at && ! $buyerBlock && $position->track === \App\Workflow\Track::Sale && auth()->user()?->canManageCrm())
-                        <x-route.task-row icon="user" :href="'/offers/'.$offer->number.($deal->hasContract() ? '?dkp=1#dkp' : '?buyer=1#invoice-buyer')" data-turbo-frame="_top">{{ in_array($buyerGap, [null, 'Покупатель не выбран'], true) ? 'Менеджер не указал покупателя' : $buyerGap }}</x-route.task-row>
+                        <x-route.task-row icon="user" urgent :href="'/offers/'.$offer->number.($deal->hasContract() ? '?dkp=1#dkp' : '?buyer=1#invoice-buyer')" data-turbo-frame="_top">{{ match ($buyerGap) { null, 'Покупатель не выбран' => 'Указать покупателя', 'Нет скана паспорта покупателя' => 'Приложить скан паспорта покупателя', 'Нет данных покупателя' => 'Заполнить данные покупателя', default => $buyerGap } }}</x-route.task-row>
                     @endif
                     {{-- Машину забирает менеджер, а контакт владельца ему не показан — строкой дела с шторкой «Показать менеджеру» (15.11.2026). --}}
                     @if ($deal?->isActive() && $position->track === \App\Workflow\Track::Sale && $deal->buyerPicksUp())
@@ -327,7 +327,11 @@
                          «Изменить» внизу дорожки «Сделка»). Покупателя вносит менеджер — его тут нет. --}}
                     @if ($deal?->isActive() && $deal->hasContract() && auth()->user()?->canManageCrm()
                         && ($ours = array_values(array_diff(\App\Offers\DealContract::for($deal)->missing(), ['покупатель', 'данные покупателя', 'скан паспорта покупателя']))))
-                        <x-route.task-row icon="file" urgent :href="'/offers/'.$offer->number.'?dkp=1#dkp'" data-turbo-frame="_top">ДКП не готов: {{ implode(', ', $ours) }}</x-route.task-row>
+                        {{-- Каждое дело глаголом своей строкой (15.11.2026, владелец: «ДКП не готов: (Э)ПТС» рыжим списком — «непонятно, что хотят»):
+                             ПТС — к карточке «ПТС и СТС», остальное — шторкой «Данные договора». --}}
+                        @foreach ($ours as $gap)
+                            <x-route.task-row icon="file" urgent :href="'/offers/'.$offer->number.($gap === '(Э)ПТС' ? '#car-docs' : '?dkp=1#dkp')" data-turbo-frame="_top">{{ match ($gap) { '(Э)ПТС' => 'Внести ПТС для договора', 'данные продавца' => 'Заполнить данные продавца для договора', 'данные собственника' => 'Заполнить данные владельца для договора', 'цена' => 'Указать сумму договора', default => 'Договор: '.$gap } }}</x-route.task-row>
+                        @endforeach
                     @endif
                     @if ($position->fields())
                         <div class="mt-2 text-sm">@foreach ($position->fields() as $k => $v)<div><span class="text-ink-muted">{{ collect($stage->staff_fields)->firstWhere('key', $k)['label'] ?? $k }}:</span> {{ $v }}</div>@endforeach</div>
@@ -373,7 +377,7 @@
                                 @php $action = \App\Workflow\Position::gapAction($position->gap(), $deal); @endphp
                                 {{-- Реквизиты Р.О.С. правятся на парковке: у кого её нет, кнопка вела бы в стену (18.10.2026). --}}
                                 @if ($position->gap() === 'ros_requisites' && ! auth()->user()?->isParkAdmin())
-                                    <p class="text-sm font-medium text-urgent">Ждём реквизиты Р.О.С.</p>
+                                    <p class="text-sm text-ink-muted">Ждём реквизиты Р.О.С.</p>
                                 @else
                                     <a href="{{ $action['url'] }}" class="btn btn-s btn-accent" data-turbo-frame="_top">{{ $action['button'] }}</a>
                                 @endif
@@ -459,7 +463,7 @@
                                 $requisitesGap = $stage->isRequisitesStep() && $deal ? $deal->requisitesGap() : null;
                             @endphp
                             @if ($requisitesGap)
-                                <p class="order-first w-full text-sm font-medium text-urgent">{{ $requisitesGap }} — письмо поставщику пока не написать @if (auth()->user()?->canManageCrm())<a href="{{ $deal->schemeOf()->paysCar() || $deal->isGarageUs() ? \App\Support\Surface::Park->url('/money/parties') : '/offers/'.$offer->number.'?buyer=1#invoice-buyer' }}" class="btn btn-s btn-quiet ml-1" data-turbo-frame="_top">Заполнить</a>@endif</p>
+                                <p class="order-first w-full text-sm text-ink-muted">{{ $requisitesGap }}, письмо поставщику пока не написать @if (auth()->user()?->canManageCrm())<a href="{{ $deal->schemeOf()->paysCar() || $deal->isGarageUs() ? \App\Support\Surface::Park->url('/money/parties') : '/offers/'.$offer->number.'?buyer=1#invoice-buyer' }}" class="btn btn-s btn-quiet ml-1" data-turbo-frame="_top">Заполнить</a>@endif</p>
                             @elseif ($stage->template_id)
                                 {{-- Письмо не ушло — это и есть дело шага: лаймовой первой; ушло — серой «Написать ещё». --}}
                                 @if ($position->letterStatus() === 'failed' && ($failedId = $position->payload['letter_failed']['id'] ?? null))

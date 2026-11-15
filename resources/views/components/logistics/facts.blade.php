@@ -3,7 +3,7 @@
      поменять, — нажатием открывает окно (`who` — событие окна «Кто вывозит» / исполнителя, `where` — «Куда везти»; null —
      только показ). Без обёртки `.list` — встаёт в группу карточки рядом с владельцем и «Где забрать». `brief` — исполнителю
      (владелец 18.10.2026: «упростить ему интерфейс»): только куда везти и комментарий, кто он и его логист — не нужно. --}}
-@props(['t', 'me' => null, 'logist' => null, 'who' => null, 'where' => null, 'comment' => null, 'brief' => false, 'route' => false, 'named' => true])
+@props(['t', 'me' => null, 'logist' => null, 'who' => null, 'where' => null, 'comment' => null, 'brief' => false, 'route' => false, 'named' => true, 'lane' => false, 'compact' => false])
 @php
     $row = function (string $label, string $value, ?string $sub, ?string $event, string $tone = '') {
         $body = '<span class="min-w-0 flex-1"><span class="block text-sm text-ink-muted">'.e($label).'</span>'
@@ -28,10 +28,20 @@
 @if (! $manager && ! $brief && ! $route)
     {{-- Вывоз закончен — пустой исполнитель уже не дело: серым «не указан», без оранжевого (12.11.2026). --}}
     @php $done = $t->state === \App\Logistics\TransportState::Delivered; @endphp
-    {!! $row('Исполнитель', $mine($t->executor) ?? ($done ? 'не указан' : ($t->logist && ! ($me && $t->hasLogist($me)) ? 'выбирает логист' : ($t->undecided ? 'не определено' : 'не выбран'))), null, $who, $t->executor || $done ? '' : 'text-urgent') !!}
+    {{-- Исполнителя нет — строки нет: выбрать его — шаг «Кто вывозит» ниже (15.11.2026: «не определено» трижды). Выбирает
+         логист — серым, это ответ, а не дело. --}}
+    @php $choosing = $t->logist && ! ($me && $t->hasLogist($me)); @endphp
+    @if (! $lane)
+        {!! $row('Исполнитель', $mine($t->executor) ?? ($done ? 'не указан' : ($choosing ? 'выбирает логист' : ($t->undecided ? 'не определено' : 'не выбран'))), null, $who, $t->executor || $done ? '' : 'text-urgent') !!}
+    @elseif ($t->executor || $done || $choosing)
+        {!! $row('Исполнитель', $mine($t->executor) ?? ($done ? 'не указан' : 'выбирает логист'), null, $who, '') !!}
+    @elseif ($compact)
+        {{-- В окне лесенки «Кто вывозит» нет — выбрать его здесь, действием (лаймом), а не «не определено». --}}
+        {!! $row('Исполнитель', 'Выбрать', null, $who, 'text-accent-text') !!}
+    @endif
 @endif
 @if (($t->isPickup() || $t->from_depot_id) && ! $t->isOrder() && ! $route)
-    {!! $row('Куда везти', $dest ?? 'пока неизвестно', $t->reach ? $t->reach->label() : null, $where, $dest ? '' : 'text-urgent') !!}
+    {!! $row('Куда везти', $dest ?? 'пока неизвестно', $t->reach ? $t->reach->label() : null, $where, $dest ? '' : 'text-ink-muted') !!}
 @endif
 {{-- Комментарий — нажатием шторка (логисту и ведущим, `comment`); пустой — строка «Добавить». --}}
 @if ($t->comment || $comment)

@@ -7,7 +7,8 @@
     $position = $offer->position(Track::Sale);
 @endphp
 @if ($position)
-    <x-ui.card :title="($untitled ?? false) ? null : Track::Sale->label()" class="{{ $cardClass ?? 'order-1' }}" id="sale">
+    {{-- «Ход сделки» (15.11.2026): «Продажа» теперь — блок договора, покупателя и наших счетов (`x-deal.money`). --}}
+    <x-ui.card :title="($untitled ?? false) ? null : ($offer->deal || $offer->lastDeal ? 'Ход сделки' : Track::Sale->label())" class="{{ $cardClass ?? 'order-1' }}" id="sale">
         <x-route.path :offer="$offer" :position="$position" :compact="$compact ?? false">{!! $tail ?? '' !!}</x-route.path>
         @if ($errors->has('exit'))<p class="field-error mt-2">{{ $errors->first('exit') }}</p>@endif
     </x-ui.card>

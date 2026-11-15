@@ -1,86 +1,79 @@
 {{-- ДКП сделки «страхователю по ДКП» для сотрудника (05.10.2026): чего договору не хватает и форма — продавец и ТС; покупателя вносит менеджер или админ за него (20.10.2026,
      шторкой `x-people.pick`). У ПРАЙМ продавец — ПРАЙМ,
      формы продавца нет. Договор — PDF в шторке
-     документов (`DealContractController::document`). Свёрнуто — договор и покупатель строками, поля — по «Изменить»
-     (07.10.2026, владелец: «слишком много полей»; `edit_card_controller`), ошибка формы открывает их сама.
+     документов (`DealContractController::document`). Договор и покупатель — строками (в CRM — внутри «Продажи», `bare`), поля — шторкой «Данные договора» (15.11.2026; до того
+     «Изменить» карточки «ДКП ПРАЙМ»), ошибка формы открывает её сама.
      ДКП ПРАЙМ (14.11.2026): строкой — собственник по договору комиссии (сам из письма, `FillCommissionOwner`); под «Изменить» —
      собственник полями паспорта и № договора комиссии. НДС договора — рядом со схемой в «Деньгах» (`x-deal.scheme`). --}}
-@props(['deal'])
+@props(['deal', 'bare' => false])
 @php
     use App\Offers\DealContract;
     $contract = DealContract::for($deal)->loadMissing(['seller', 'buyer.party']);
     $missing = $contract->missing();
-    // Открыта полями: ошибка формы или «Заполнить» из шага пути (`?dkp=1`), пока чего-то не хватает — сохранили всё, и та же ссылка
-    // (`back()` с `?dkp=1`) показывает договор готовым.
+    // Поля договора — шторкой «Данные договора» (15.11.2026): открыта сама при ошибке формы или «Заполнить» из шага пути (`?dkp=1`),
+    // пока чего-то не хватает; иначе — пунктом «⋯» «Продажи» (`dkp-{id}:open`) или «Изменить» окна модератора.
     $editing = $errors->hasAny(['seller.*', 'vehicle.*']) || (request()->boolean('dkp') && $missing);
     $form = 'dkp-'.$deal->id;
     $doc = new \App\Offers\DkpDocument($contract);
-    $car = $contract->car();
     $pdf = ['url' => '/work/deals/'.$deal->id.'/dkp.pdf', 'type' => 'pdf', 'name' => $doc->fileName(), 'label' => 'ДКП'];
     $prime = $contract->form() === 'prime';
     $owner = $contract->seller;
     // Собственник-организация (из договора комиссии) полями паспорта не правится.
     $ownerFields = $deal->isDkp() || ($prime && (! $owner || $owner->kind === \App\Billing\PartyKind::Person));
 @endphp
-<x-ui.card :title="$deal->isPrime() ? 'ДКП '.$deal->seller()->short() : 'ДКП'" id="dkp" class="scroll-mt-24" {{ $attributes }} data-controller="edit-card" :data-edit-card-form-value="$form" :data-edit-card-editing-value="$editing ? 'true' : null">
-    <x-slot:actions><button type="button" class="edit-card-toggle" data-edit-card-target="button" data-action="edit-card#toggle">{{ $editing ? 'Готово' : 'Изменить' }}</button></x-slot:actions>
-    <div class="list">
-        <x-ui.doc :doc="$pdf" class="row">
-            <span class="min-w-0 flex-1">
-                <span class="block">Договор купли-продажи{{ $doc->number() ? ' № '.$doc->number() : '' }}</span>
-                <span class="row-sub">@if ($missing)<span class="text-urgent">нет: {{ implode(', ', $missing) }}</span>@else<span class="text-open">готов</span>@endif</span>
-            </span>
-            <x-ui.icon name="file" class="size-4 shrink-0 text-ink-dim"/>
-        </x-ui.doc>
-        {{-- Договор ждёт ПТС — к его карточке «ПТС и СТС» под «Транспортным средством» (19.10.2026). --}}
-        @if (in_array('(Э)ПТС', $missing, true))
-            <a href="#car-docs" class="row"><span class="min-w-0 flex-1 text-urgent">Внести ПТС и СТС</span><x-ui.chevron/></a>
-        @endif
-        {{-- Дата договора — сама календарь (19.10.2026): у ДКП юрлица встаёт сама, когда договор собрался, у собственника —
-             когда подписывают; правит и менеджер у себя. --}}
-        <div class="row">
-            <span class="shrink-0 text-ink-muted">Дата договора</span>
-            <span class="min-w-0 flex-1 text-right"><x-ui.date chip submit :clearable="false" name="signed_at" :id="'dkp-date-field-'.$deal->id" :value="$contract->signed_at" :form="'dkp-date-'.$deal->id" placeholder="Указать" class="{{ $contract->signed_at ? '' : 'text-accent-text' }}"/></span>
-        </div>
-        @if ($prime && $contract->commissioned())
-            {{-- Строкой без шеврона (15.11.2026: править можно было и «Изменить», и строкой) — поля собственника под «Изменить». --}}
-            <div class="row">
-                <span class="min-w-0 flex-1">
-                    @if ($contract->ownerReady())
-                        <span class="block break-words">{{ $owner->name }}</span>
-                        <span class="row-sub">собственник, договор комиссии <span class="whitespace-nowrap">№ {{ $contract->commissionNo() ?? 'не указан' }}</span></span>
-                    @else
-                        <span class="block">Собственник</span>
-                        <span class="row-sub text-urgent">нет данных из договора комиссии</span>
-                    @endif
-                </span>
-            </div>
-        @endif
-        <x-deal.buyer :deal="$deal" :contract="$contract"/>
+@php ob_start(); @endphp
+    {{-- Договор — файлом, как документ: значок PDF и номер; чего не хватает — красным под ним. --}}
+    <x-ui.doc :doc="$pdf" class="row">
+        <x-ui.file-icon name="dkp.pdf"/>
+        <span class="min-w-0 flex-1">
+            <span class="block">Договор{{ $doc->number() ? ' № '.$doc->number() : ' купли-продажи' }}</span>
+            {{-- Готов ли — словом; чего не хватает, делами в «Ходе сделки» (15.11.2026, владелец: рыжий список «нет: (Э)ПТС,
+                 покупатель» и «Внести ПТС» под ним — «куча рыжего непонятного текста, ещё и с дубликатами»). --}}
+            <span @class(['row-sub', 'text-open' => ! $missing])>{{ $missing ? 'не готов' : 'готов' }}</span>
+        </span>
+        <x-ui.chevron/>
+    </x-ui.doc>
+    {{-- Дата договора — сама календарь (19.10.2026): у ДКП юрлица встаёт сама, когда договор собрался, у собственника —
+         когда подписывают; правит и менеджер у себя. --}}
+    <div class="row">
+        <span class="shrink-0 text-ink-muted">Дата договора</span>
+        <span class="min-w-0 flex-1 text-right"><x-ui.date chip submit :clearable="false" name="signed_at" :id="'dkp-date-field-'.$deal->id" :value="$contract->signed_at" :form="'dkp-date-'.$deal->id" placeholder="Указать" class="{{ $contract->signed_at ? '' : 'text-accent-text' }}"/></span>
     </div>
+    <x-deal.buyer :deal="$deal" :contract="$contract"/>
+@php $rows = ob_get_clean(); @endphp
+@php ob_start(); @endphp
     <form method="post" action="/work/deals/{{ $deal->id }}/contract" id="dkp-date-{{ $deal->id }}" class="hidden">@csrf @method('put')</form>
-    <div data-edit-card-target="view" @if ($editing) hidden @endif></div>
-    <div data-edit-card-target="edit" @unless ($editing) hidden @endunless>
-    {{-- «Сканы страховой» списком здесь больше нет (15.11.2026, владелец: «у нас уже есть блок с документами внизу, это дубликат
-         ненужный вредный»). --}}
-    <form method="post" action="/work/deals/{{ $deal->id }}/contract" id="{{ $form }}" class="mt-4 flex flex-col gap-4" data-controller="save-bar">
-        @csrf @method('put')
-        @if ($ownerFields)
-            <div class="list-cap !px-0">{{ $deal->isDkp() ? 'Продавец, собственник по СТС' : 'Собственник, комитент по договору комиссии' }}</div>
-            <x-billing.passport-fields :party="$contract->seller" prefix="seller"/>
-        @endif
-        <div class="list-cap !px-0">Договор</div>
-        <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            {{-- У ПРАЙМ и Р.О.С. сумма договора — строкой «Сумма договора» в «Деньгах» (`x-deal.contract-price`, 14.11.2026). --}}
-            @unless ($prime || $contract->form() === 'ros')
-                <x-ui.field name="vehicle[price]" label="Цена по ДКП, ₽" :value="$contract->price ? \App\Support\Money::nums($contract->price) : null"/>
-            @endunless
-            <x-ui.field name="vehicle[city]" label="Город договора" :value="$contract->city" :placeholder="$doc->city()"/>
-            @if ($prime)
-                <x-ui.field name="commission_no" label="Договор комиссии №" :value="$contract->commission_no" :placeholder="$contract->commissionNo() ?? 'нет'"/>
-            @endif
-        </div>
-        <x-ui.save-bar page/>
-    </form>
+    <div class="contents" data-controller="sheet" data-action="dkp-{{ $deal->id }}:open@window->sheet#open">
+        <x-ui.sheet :id="'dkp-sheet-'.$deal->id" title="Данные договора" :open="$editing">
+            <form method="post" action="/work/deals/{{ $deal->id }}/contract" id="{{ $form }}" class="flex flex-col gap-4">
+                @csrf @method('put')
+                @if ($ownerFields)
+                    <div class="list-cap !px-0">{{ $deal->isDkp() ? 'Продавец, собственник по СТС' : 'Собственник, комитент по договору комиссии' }}</div>
+                    <x-billing.passport-fields :party="$contract->seller" prefix="seller"/>
+                @endif
+                <div class="grid grid-cols-1 gap-3">
+                    {{-- У ПРАЙМ и Р.О.С. сумма договора — строкой «Сумма» в «Продаже» (`x-deal.contract-price`, 14.11.2026). --}}
+                    @unless ($prime || $contract->form() === 'ros')
+                        <x-ui.field name="vehicle[price]" label="Цена по ДКП, ₽" :value="$contract->price ? \App\Support\Money::nums($contract->price) : null"/>
+                    @endunless
+                    <x-ui.field name="vehicle[city]" label="Город договора" :value="$contract->city" :placeholder="$doc->city()"/>
+                    @if ($prime)
+                        <x-ui.field name="commission_no" label="Договор комиссии №" :value="$contract->commission_no" :placeholder="$contract->commissionNo() ?? 'нет'"/>
+                    @endif
+                </div>
+                <x-ui.sheet-foot>Сохранить</x-ui.sheet-foot>
+            </form>
+        </x-ui.sheet>
     </div>
-</x-ui.card>
+@php $sheet = ob_get_clean(); @endphp
+@if ($bare)
+    {{-- Внутри «Продажи» (`x-deal.money`): строки её списка, шторка — по пункту «⋯» «Данные договора…». --}}
+    <div class="contents" id="dkp">{!! $rows !!}</div>
+    {!! $sheet !!}
+@else
+    <x-ui.card title="Договор" id="dkp" class="scroll-mt-24" {{ $attributes }}>
+        <x-slot:actions><button type="button" class="edit-card-toggle" data-controller="emit" data-action="emit#send" data-emit-event-param="dkp-{{ $deal->id }}:open">Изменить</button></x-slot:actions>
+        <div class="list">{!! $rows !!}</div>
+        {!! $sheet !!}
+    </x-ui.card>
+@endif

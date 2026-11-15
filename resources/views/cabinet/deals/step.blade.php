@@ -124,7 +124,7 @@
             @elseif ($noInvoice)
                 <p class="mt-3 font-medium">Готовим счёт</p>
             @elseif ($consentAhead)
-                <p class="mt-3 text-sm text-ink-muted">Дальше спросим, берёте ли вы в работу, — здесь и в Telegram</p>
+                <p class="mt-3 text-sm text-ink-muted">Дальше спросим здесь и в Telegram, берёте ли вы в работу</p>
             @endif
 
             @if ($contractStep ?? false)

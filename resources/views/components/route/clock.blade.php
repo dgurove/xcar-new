@@ -27,7 +27,7 @@
     $letter = $side === 'staff' && ! $invoice ? $position->letterStatus() : null;
 @endphp
 @if ($letter)
-    <p {{ $attributes->merge(['class' => 'text-sm '.(in_array($letter, ['failed', 'bounced'], true) ? 'text-danger' : ($letter === 'sent' && ! $position->isOverdue() ? 'text-ink-muted' : 'text-urgent'))]) }}>
+    <p {{ $attributes->merge(['class' => 'text-sm '.(in_array($letter, ['failed', 'bounced'], true) ? 'text-danger' : ($position->isOverdue() ? 'text-urgent' : 'text-ink-muted'))]) }}>
         {{-- Доставка (18.10.2026): не ушло с нашей стороны — причина; почтовый сервер вернул отказ — куда не дошло. --}}
         @if ($letter === 'failed')Письмо поставщику не ушло{{ ($e = $position->payload['letter_failed']['error'] ?? '') !== '' ? ': '.$e : '' }}
         @elseif ($letter === 'bounced')Письмо не доставлено{{ ($to = $position->payload['letter_bounced']['to'] ?? '') !== '' ? ' на '.$to : '' }}
@@ -40,7 +40,7 @@
     {{-- С какого числа ждём (27.10.2026: BMW X6 22 дня «ждём поставщика» без даты — непонятно, давно ли). --}}
     @if ($who)<p {{ $attributes->merge(['class' => 'text-sm text-ink-muted']) }}>{{ $who }}@if ($position->block_entered_at) с <span class="nums">{{ \App\Support\Ago::html($position->block_entered_at, words: false) }}</span>@endif</p>@endif
 @elseif ($who && ! ($bare && ! $position->deadline_at))
-    <p {{ $attributes->merge(['class' => 'text-sm '.($overdue || ($invoice && $side !== 'manager') || ($side === 'manager' && ! $foreign) ? 'text-urgent' : 'text-ink-muted')]) }}>
+    <p {{ $attributes->merge(['class' => 'text-sm '.($overdue || ($side === 'manager' && ! $foreign) ? 'text-urgent' : 'text-ink-muted')]) }}>
         @if ($bare)@if ($overdue)Просрочено на <span class="nums font-medium" data-controller="timer" data-timer-since-value="{{ $position->deadline_at->toIso8601String() }}" data-timer-coarse-value="true"></span>@else Осталось <span class="nums font-medium" data-controller="timer" data-timer-until-value="{{ $position->deadline_at->toIso8601String() }}" data-timer-done-value="-" data-timer-coarse-value="true" data-timer-word-value="">{{ \App\Support\Ago::left($position->deadline_at, '') }}</span>@endif
         @else{{ $who }}@if ($position->deadline_at && $overdue), просрочено на <span class="nums font-medium" data-controller="timer" data-timer-since-value="{{ $position->deadline_at->toIso8601String() }}" data-timer-coarse-value="true"></span>@elseif ($position->deadline_at), осталось <span class="nums font-medium" data-controller="timer" data-timer-until-value="{{ $position->deadline_at->toIso8601String() }}" data-timer-done-value="-" data-timer-coarse-value="true" data-timer-word-value="">{{ \App\Support\Ago::left($position->deadline_at, '') }}</span>@elseif ($stage->timerMode() === 'stopwatch'), идёт <span class="nums font-medium" data-controller="timer" data-timer-since-value="{{ $position->block_entered_at->toIso8601String() }}" data-timer-coarse-value="true"></span>@endif
         @endif

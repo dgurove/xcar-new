@@ -24,7 +24,7 @@
 @endphp
 @if ($live && ! ($as === 'task' && $shownAt))
     @if ($shownAt)
-        <p {{ $attributes->class('text-sm text-open') }}>Менеджер видит с <span class="nums">{{ \App\Support\Ago::day($shownAt) }}</span></p>
+        <p {{ $attributes->class('text-sm text-ink-muted') }}>Менеджер видит контакт с <span class="nums">{{ \App\Support\Ago::day($shownAt) }}</span></p>
     @else
         {{-- Пункты и шторка — только когда «Показать менеджеру» правда есть: разбор документов машины не бесплатный. --}}
         @php
@@ -34,12 +34,10 @@
         @endphp
         <div class="contents" data-controller="sheet">
             @if ($as === 'task')
-                <x-route.task-row icon="user" urgent aria-controls="{{ $id }}">Менеджер не видит контакт владельца</x-route.task-row>
+                <x-route.task-row icon="eye" urgent aria-controls="{{ $id }}">Показать контакт менеджеру</x-route.task-row>
             @else
-                <div {{ $attributes->class('flex flex-wrap items-center gap-x-3 gap-y-2') }}>
-                    <span class="min-w-0 flex-1 text-sm text-urgent">Менеджер не видит контакт</span>
-                    <button type="button" class="btn btn-s btn-accent" data-action="sheet#open" aria-controls="{{ $id }}">Показать менеджеру</button>
-                </div>
+                {{-- Делом одной строкой, как в шаге (15.11.2026, владелец: рыжая надпись и большая кнопка — «непонятно, что хотят»). --}}
+                <div {{ $attributes }}><x-route.task-row icon="eye" urgent aria-controls="{{ $id }}">Показать контакт менеджеру</x-route.task-row></div>
             @endif
             @include('admin.deals.reply-review-sheet', ['id' => $id, 'deal' => $deal, 'letters' => collect(), 'proposals' => $proposals, 'step' => null, 'picked' => $picked])
         </div>

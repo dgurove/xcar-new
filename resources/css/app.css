@@ -605,6 +605,10 @@ html.kb-open { --home-gap: 0px; }
     padding-block: .875rem;
     min-height: 3.25rem;
   }
+  /* Поле, из которого копируют (`x-ui.copy-field`): тот же вид, что у поля ввода, но кнопка — нажатие кладёт значение в буфер. */
+  .copy-field { @apply flex w-full items-start gap-2 rounded-(--radius-m) bg-surface-3 px-4 py-2.5 text-left text-ink; }
+  .sheet .copy-field, .box .box-nested .copy-field { @apply bg-surface; }
+  @media (hover: hover) { .copy-field:hover { @apply text-accent-text; } }
   /* Поле не шире своего места — и в сетке, и во флексе: без min-width: 0 содержимое распирает колонку. */
   .field { min-width: 0; }
   .field-input { min-width: 0; max-width: 100%; }
@@ -2414,7 +2418,6 @@ html.kb-open { --home-gap: 0px; }
   .segment label:has(input:checked) { @apply text-ink; background: color-mix(in oklab, var(--color-ink) 14%, var(--color-surface-3)); }
   /* Сегмент ссылками (направление сортировки, x-ui.sort): тот же вид, выбранное — aria-current. */
   /* «Кто продаёт» в «Деньгах» (`x-deal.scheme`): до четырёх вариантов в узкой колонке ПК — плотнее и без переносов. */
-  .deal-scheme .segment label { @apply whitespace-nowrap px-2; }
   .segment a { @apply flex min-h-9 items-center justify-center gap-1.5 whitespace-nowrap rounded-full px-3 text-sm text-ink-muted; }
   .segment a[aria-current] { @apply text-ink; background: color-mix(in oklab, var(--color-ink) 14%, var(--color-surface-3)); }
   @media (hover: hover) { .segment a:not([aria-current]):hover { @apply text-ink; } }
@@ -2682,7 +2685,8 @@ html.kb-open { --home-gap: 0px; }
   .step--danger .step-dot { background: var(--color-danger); }
   .step--current .step-dot { width: 1.125rem; height: 1.125rem; margin-top: .375rem; background: var(--color-accent); box-shadow: 0 0 0 4px var(--color-accent-soft); }
   /* Письмо, которое ждёт ответа: точка оранжевая, заголовок обычный — дело есть, но форма у текущего шага. */
-  .step--ask .step-dot { width: 1.125rem; height: 1.125rem; margin-top: .375rem; background: var(--color-urgent); }
+  /* Шаг-вопрос («Кто вывозит» с «Выбрать») — лаймовой точкой, как текущий шаг: рыжий — только просрочка (15.11.2026). */
+  .step--ask .step-dot { width: 1.125rem; height: 1.125rem; margin-top: .375rem; background: var(--color-accent); }
   .step--ask .step-title { color: var(--color-ink); font-weight: 500; }
   .step--current::before { background: var(--color-line); }
   .step-body { min-width: 0; padding-bottom: 1rem; }

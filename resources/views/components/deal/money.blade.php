@@ -5,9 +5,9 @@
      счётом — его ссылка на оплату строкой группы «Ссылки на оплату» с «Скопировать» (`x-billing.link-row`): начальник открыл
      сделку и сразу видит, оплатили ли и чем поделиться. Менеджеру ничего из этого не показывается. compact — карточка строки «Сделок»:
      цена и «Нам», остальной расклад свёрнут. 07.10.2026: кнопки шторок .sheet-foot. --}}
-@props(['deal', 'compact' => false, 'skip' => []])
+@props(['deal', 'compact' => false, 'skip' => [], 'window' => false])
 @php
-    use App\Support\Money; use App\Billing\InvoiceState; use App\Offers\CommissionState;
+    use App\Support\Money; use App\Billing\InvoiceState; use App\Offers\CommissionState; use App\Offers\CommissionMode;
     $offer = $deal->offer;
     $invoices = $deal->invoices()->with(['party', 'media', 'claims.media', 'payLinks.attempts', 'payLinks.creator', 'payLinks.payerUser', 'deal.offer'])->get();
     // Разовые оплаты по ссылке с машиной сделки (09.10.2026): их деньги лежат в счетах сделки зачётом, что не легло — сверх.
@@ -24,30 +24,27 @@
     // Первый счёт на этапе оплаты предлагает сам шаг пути — здесь его второй раз не ставим.
 @endphp
 @php
-    // Продавец без выбора (Совкомбанк — всегда ПРАЙМ, по счёту платили, аукцион) — меткой у заголовка, а не строкой со
-    // «у Совкомбанка всегда» и абзацем (15.11.2026, владелец: «ты реально считаешь, что это хороший дизайн?»).
     $scheme = $deal->schemeOf();
-    $schemeFixed = ! $deal->isAuction() && ! ($deal->isActive() && count(\App\Offers\DealScheme::casesFor($offer->vendor, $offer)) > 1 && $deal->moneyEditable() && auth()->user()?->canManageCrm());
-    // Договор нашего юрлица — строкой «Договор» (`x-deal.contract-price`): цена сделки ниже его не повторяет.
+    // Договор нашего юрлица — строкой «Сумма» (`x-deal.contract-price`: сумма и НДС шторкой).
     $contractRow = ! $deal->isAuction() && $deal->hasContract() && $scheme->paysCar();
-    // «Поставщику» по договору комиссии — то же число, что закупочная: тогда «Закупочной» в раскладке нет.
-    $supplierPrice = $deal->isCommission() ? $deal->contract?->supplier_price : null;
 @endphp
-<x-ui.card title="Деньги" {{ $attributes }}>
-    @if ($schemeFixed)
-        <x-slot:chips>
-            <span class="tag">{{ $scheme->short() }}</span>
-            {{-- Выбор был, но по счёту уже платили — почему сегмента нет (у Совкомбанка выбора нет никогда, там без слов). --}}
-            @if ($deal->isActive() && ! $deal->moneyEditable() && count(\App\Offers\DealScheme::casesFor($offer->vendor, $offer)) > 1)<span class="text-sm text-ink-muted">по счёту платили, сменить нельзя</span>@endif
-        </x-slot:chips>
-    @endif
+{{-- «Продажа» (15.11.2026, владелец: «„Деньги“ — нейрослопово», «один блок „Продажа“, второй „Оплата поставщику“»): кто продаёт,
+     договор и покупатель (`x-deal.contract bare`, `x-deal.buyer`), сумма договора, наши счета и сколько остаётся нам. Что уходит за
+     машину — соседним блоком `x-deal.supplier-payment`. --}}
+@php
+    // Договор и покупатель — строками этого блока: на странице всегда, в окне — покупатель, пока его данных нет.
+    // `window` — окно машины (13.11.2026: там покупатель, пока его данных нет; договор целиком — на странице).
+    $withContract = ! $window && $deal->hasContract() && ! $deal->isAuction();
+    $withBuyer = ! $withContract && $deal->isLive() && ($deal->collectsBuyer() || $deal->contract?->buyer_user_id) && (! $window || $deal->buyerGap() !== null);
+@endphp
+<x-ui.card title="Продажа" {{ $attributes }}>
     @php
         // Редкое со счетами — в «⋯» карточки (15.11.2026, владелец выбрал «счёт файлом, как документ»): «Оплатили без ссылки…»
         // (шторка оплаты ниже, событием `paid-{id}:open`; на шаге оплаты её несёт шаг), «Ещё счёт», страница счёта.
         $paidBy = $invoices->filter(fn ($i) => ! $i->isOwed() && $i->state === InvoiceState::Issued && $i->remaining() > 0 && ! $payStep && auth()->user()?->canManageCrm());
         $pages = $invoices->reject(fn ($i) => $i->isOwed() || $i->state === InvoiceState::Void);
         $editMoney = $deal->isActive() && $deal->moneyEditable() && (! $deal->isGarage() || $deal->isGarageManager() || ($deal->namesBuyer() && $deal->amount !== null));
-        $moreMoney = $paidBy->isNotEmpty() || $pages->isNotEmpty() || ($deal->isActive() && $issued->isNotEmpty());
+        $moreMoney = $editMoney || $withContract || $paidBy->isNotEmpty() || $pages->isNotEmpty() || ($deal->isActive() && $issued->isNotEmpty());
     @endphp
     {{-- «Изменить» — лаймовым словом в заголовке, как у ТС, цен, ДКП и заметки (07.10.2026), а не чипом среди схемы. --}}
     {{-- Гаражная Совкомбанка (`namesBuyer`): вознаграждение назначаем, когда менеджер назвал цену продажи. --}}
@@ -56,6 +53,12 @@
             <span class="flex items-center gap-3">
             @if ($moreMoney)
                 <x-ui.more :id="'money-more-'.$deal->id">
+                    @if ($editMoney || $withContract)
+                        <div class="menu-group">
+                            @if ($editMoney)<button type="button" class="menu-item w-full" data-controller="emit" data-action="emit#send" data-emit-event-param="deal-money-{{ $deal->id }}:open">{{ match (true) { $deal->isGarageManager() => 'Наша доля…', $deal->namesBuyer() && $deal->commission === null => 'Назначить вознаграждение…', default => 'Вознаграждение менеджера…' } }}</button>@endif
+                            @if ($withContract)<button type="button" class="menu-item w-full" data-controller="emit" data-action="emit#send" data-emit-event-param="dkp-{{ $deal->id }}:open">Данные договора…</button>@endif
+                        </div>
+                    @endif
                     <div class="menu-group">
                         @foreach ($paidBy as $i)
                             <button type="button" class="menu-item w-full" data-controller="emit" data-action="emit#send" data-emit-event-param="paid-{{ $i->id }}:open">Оплатили без ссылки{{ $paidBy->count() > 1 ? ' по счёту '.$i->label() : '' }}…</button>
@@ -70,8 +73,8 @@
                 </x-ui.more>
             @endif
             @if ($editMoney)
-            <div data-controller="sheet" class="contents">
-                <button type="button" class="edit-card-toggle" data-action="sheet#open">{{ match (true) { $deal->isGarageManager() && ! $deal->share => 'Вписать долю', $deal->namesBuyer() && $deal->commission === null => 'Назначить вознаграждение', default => 'Изменить' } }}</button>
+            {{-- Шторка денег сделки — пунктом «⋯» (15.11.2026: «Изменить» в заголовке «Продажи» было непонятно, что меняет). --}}
+            <div data-controller="sheet" class="contents" data-action="deal-money-{{ $deal->id }}:open@window->sheet#open">
                 <x-ui.sheet id="deal-money-{{ $deal->id }}" title="Деньги сделки">
                     @if ($deal->isGarageManager())
                         {{-- Гаражная «платит менеджер»: наша доля — счёт со ссылкой встаёт сам (`SyncDealInvoices`). --}}
@@ -101,36 +104,25 @@
         $skips = fn (string $k) => in_array($k, $skip, true);
         if ($deal->isGarage()) {
             // Гаражная: цены нет, вознаграждение назначат при продаже из гаража; важно, кто платит поставщику.
-            // Совкомбанк после продажи — «без оплаты, счёт ПРАЙМ при продаже» уже случилось: цена продажи ниже, схема выше
-            // (12.11.2026; в узкой колонке строка шла в три этажа).
             if (! $skips('payer') && ! ($deal->namesBuyer() && $deal->amount !== null)) $rows[] = ['В гараж', $deal->garagePayerLine(), 'text-right font-medium', true];
             if ($deal->namesBuyer() && $deal->amount !== null) $rows[] = ['Цена продажи', Money::rub($deal->amount), $dd.' font-medium', true];
-        } elseif (! $skips('amount') && ! $contractRow) {
-            $rows[] = [$deal->isAuction() ? 'Цена на аукционе' : 'Цена подтверждения', $deal->amount === null ? 'не указана' : Money::rub($deal->amount), $dd.' font-medium', true];
+            if ($deal->isGarageManager()) $rows[] = ['Наша доля', $deal->share ? Money::rub($deal->share) : 'не вписана', $dd, false];
+        } elseif ($deal->isAuction() && ! $skips('amount')) {
+            $rows[] = ['Цена на аукционе', $deal->amount === null ? 'не указана' : Money::rub($deal->amount), $dd.' font-medium', true];
         }
-        // Закупочная — закреплённая с подтверждения менеджера (её он видит); поставщик скинул после — своей строкой, нам.
-        if (! $skips('cost') && ! ($deal->supplier_cost === null && $supplierPrice !== null && (int) $supplierPrice === (int) $deal->cost)) $rows[] = [$deal->supplier_cost !== null ? 'Закупочная у менеджера' : 'Закупочная', $deal->cost === null ? 'не указана' : Money::rub($deal->cost), $dd, false];
-        if ($deal->supplier_cost !== null) $rows[] = ['Закупочная поставщика', Money::rub($deal->supplier_cost), $dd, false];
-        if ($deal->isGarageManager()) {
-            $rows[] = ['Наша доля', $deal->share ? Money::rub($deal->share) : 'не вписана', $dd, false];
-        } elseif ($deal->paysSelection()) {
-            // ДКП и страховой: покупатель платит не нам, меньше закупочной — взаимозачёт со страховой.
-            if ($deal->offset()) $rows[] = ['Взаимозачёт', Money::rub($deal->offset()), $dd, false];
-            $rows[] = [$deal->schemeOf()->payeeLabel(), Money::rub((int) $deal->ownerPrice()), $dd, false];
-            $rows[] = ['Разница', Money::rub((int) $deal->selectionBase()), $dd.($deal->selectionBase() < 0 ? ' text-danger' : ''), false];
-        } elseif ($deal->margin() !== null) {
-            $rows[] = ['Разница', Money::rub($deal->margin()), $dd.($deal->margin() < 0 ? ' text-danger' : ''), false];
-        }
-        // Вознаграждения нет — строки нет; «Разница», равная «Нам», — тоже (15.11.2026: «160 952» дважды подряд).
-        // Как платится вознаграждение и есть ли куда — вторым этажом его же строки, а не фразой под «Нам» (15.11.2026).
-        $feeHow = $deal->selfBuy() ? 'вычтено из оплаты' : ($deal->isPrime() ? mb_strtolower($deal->commission_mode->label()) : null);
+        // Закупочная, разница, «страховой» — в «Оплате поставщику»; вознаграждение — вторым этажом «Нам» (15.11.2026: раскладка
+        // из пяти строк повторяла соседние блоки).
+        // Вознаграждение — своей строкой над «Нам», как платится — в её подписи (15.11.2026, владелец: «кривая вёрстка» — подпись
+        // под «Нам» в три этажа). Реквизитов для выплаты нет — меткой ниже.
         $feeNoPayout = $deal->commission && ! $deal->withholds() && $party && ! $party->payoutReady();
-        if ($deal->commission && ! $deal->isAuction() && (! $deal->isGarage() || ($deal->namesBuyer() && $deal->amount !== null))) $rows[] = ['Вознаграждение', Money::rub($deal->commission), $dd, false, $compact ? [] : array_filter([$feeHow ? [$feeHow, ''] : null, $feeNoPayout ? ['реквизитов для выплаты нет', 'text-urgent'] : null])];
+        $feeShown = $deal->commission && ! $deal->isAuction() && (! $deal->isGarage() || ($deal->namesBuyer() && $deal->amount !== null));
+        if ($feeShown) $rows[] = [match (true) {
+            $deal->selfBuy() => 'Вычтено из оплаты менеджера',
+            $deal->isPrime() && $deal->commission_mode === CommissionMode::Withheld => 'Менеджер оставляет себе',
+            $deal->isPrime() => 'Выплачиваем менеджеру',
+            default => 'Вознаграждение менеджера',
+        }, Money::rub($deal->commission), $dd, false];
         $ours = $deal->ours() === null ? null : $deal->ours() + $deal->supplierGain();
-        if ($ours !== null) $rows = array_values(array_filter($rows, fn ($r) => ! ($r[0] === 'Разница' && $r[1] === Money::rub($ours))));
-        // «Страховой» / «Собственнику по ДКП» той же суммой, что закупочная, — закупочной строкой не повторяем.
-        $payee = $deal->paysSelection() ? $deal->schemeOf()->payeeLabel() : null;
-        if ($payee && $deal->supplier_cost === null && (int) $deal->ownerPrice() === (int) $deal->cost) $rows = array_values(array_filter($rows, fn ($r) => $r[0] !== 'Закупочная'));
         if ($ours !== null) $rows[] = ['Нам', Money::rub($ours), $dd.' text-lg font-semibold'.($ours < 0 ? ' text-danger' : ''), true];
         $rest = $compact ? array_filter($rows, fn ($r) => ! $r[3]) : [];
         $shown = $compact ? array_filter($rows, fn ($r) => $r[3]) : $rows;
@@ -138,23 +130,11 @@
     {{-- Кто продаёт (когда есть выбор), договор и что переводим поставщику по договору комиссии — одной группой строк
          (15.11.2026; было две плашки и подпись «По договору комиссии» между ними). --}}
     @php ob_start(); @endphp
-    @unless ($deal->isAuction())<x-deal.scheme :deal="$deal" bare :fixed="false"/>@endunless
-    @if ($deal->isCommission() && $deal->contract)<x-deal.supplier-pay :deal="$deal"/>@endif
+    @unless ($deal->isAuction())<x-deal.scheme :deal="$deal" bare :price="false"/>@endunless
+    @if ($withContract)<x-deal.contract :deal="$deal" bare/>@elseif ($withBuyer)<x-deal.buyer :deal="$deal"/>@endif
+    @if ($contractRow)<x-deal.contract-price :deal="$deal" :contract="\App\Offers\DealContract::for($deal)->loadMissing('priceAuthor')"/>@endif
     @php $top = trim(ob_get_clean()); @endphp
     @if ($top !== '')<div class="list mb-3 last:mb-0">{!! $top !!}</div>@endif
-    @if ($shown)
-        <dl class="grid grid-cols-[auto_1fr] items-baseline gap-x-4 gap-y-1.5">
-            @foreach ($shown as $r)<dt class="text-sm text-ink-dim">{{ $r[0] }}@foreach ($r[4] ?? [] as [$subText, $subTone])<span class="block {{ $subTone }}">{{ $subText }}</span>@endforeach</dt><dd class="text-right {{ $r[2] }}">{{ $r[1] }}</dd>@endforeach
-        </dl>
-    @endif
-    @if ($rest)
-        <details class="group mt-1.5">
-            <summary class="flex cursor-pointer list-none items-center gap-1 text-sm text-ink-muted">Расклад<x-ui.icon name="chevron-down" class="size-4 transition-transform group-open:rotate-180"/></summary>
-            <dl class="mt-1.5 grid grid-cols-[auto_1fr] items-baseline gap-x-4 gap-y-1.5">
-                @foreach ($rest as [$dt, $value, $class])<dt class="text-sm text-ink-dim">{{ $dt }}</dt><dd class="text-right {{ $class }}">{{ $value }}</dd>@endforeach
-            </dl>
-        </details>
-    @endif
     {{-- Пустая строка (ни режима, ни состояния, ни «Ещё счёт») не рисуется — под схемой была дыра (12.11.2026). --}}
     @php ob_start(); @endphp
         {{-- Схема и режим вознаграждения — текстом, состояние словом, «Ещё счёт» — действием (10.10.2026). --}}
@@ -169,7 +149,7 @@
             <span class="text-sm text-ink-muted">Вознаграждение: {{ mb_strtolower($deal->commission_mode->label()) }}</span>
         @endif
         @if (! in_array($state, [CommissionState::Hidden, CommissionState::Withheld]))<x-ui.state :tone="$state->tone()">{{ mb_strtolower($state->label()) }}{{ $state === CommissionState::Payable && $fee ? ' до '.\App\Support\Ago::day($fee->due_at) : '' }}{{ $state === CommissionState::Paid && $fee?->paid_at ? ' '.\App\Support\Ago::day($fee->paid_at) : '' }}</x-ui.state>@endif
-        @if ($compact && $feeNoPayout)<x-ui.state tone="urgent">Реквизитов для выплаты нет</x-ui.state>@endif
+        @if ($feeNoPayout)<span class="text-sm text-ink-muted">Реквизитов для выплаты нет</span>@endif
     @php $chips = trim(ob_get_clean()); @endphp
     @if ($chips !== '')<div class="mt-3 flex flex-wrap items-center gap-1.5">{!! $chips !!}</div>@endif
     {{-- Ссылки на оплату — одной группой строк `x-billing.link-row` (09.10.2026): ссылка счёта сделки и ручные, засчитанные
@@ -275,4 +255,18 @@
             <x-ui.sheet id="paid-{{ $i->id }}" :title="'Оплата по счёту '.$i->label()"><x-billing.pay-form :invoice="$i" :action="'/work/money/invoices/'.$i->id.'/payments'" sheet/></x-ui.sheet>
         </div>
     @endforeach
+    {{-- Итог — последним: сначала договор и счета, потом сколько остаётся нам (15.11.2026). --}}
+    @if ($shown)
+        <dl class="mt-4 grid grid-cols-[auto_1fr] items-baseline gap-x-4 gap-y-1.5">
+            @foreach ($shown as $r)<dt class="text-sm text-ink-dim">{{ $r[0] }}@foreach ($r[4] ?? [] as [$subText, $subTone])<span class="block {{ $subTone }}">{{ $subText }}</span>@endforeach</dt><dd class="text-right {{ $r[2] }}">{{ $r[1] }}</dd>@endforeach
+        </dl>
+    @endif
+    @if ($rest)
+        <details class="group mt-1.5">
+            <summary class="flex cursor-pointer list-none items-center gap-1 text-sm text-ink-muted">Расклад<x-ui.icon name="chevron-down" class="size-4 transition-transform group-open:rotate-180"/></summary>
+            <dl class="mt-1.5 grid grid-cols-[auto_1fr] items-baseline gap-x-4 gap-y-1.5">
+                @foreach ($rest as [$dt, $value, $class])<dt class="text-sm text-ink-dim">{{ $dt }}</dt><dd class="text-right {{ $class }}">{{ $value }}</dd>@endforeach
+            </dl>
+        </details>
+    @endif
 </x-ui.card>

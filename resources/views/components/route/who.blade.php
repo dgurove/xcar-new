@@ -49,7 +49,9 @@
         default => 'договаривается с владельцем',
     };
     [$state, $tone, $open] = match (true) {
-        $letter === 'unsent' => ['письмо не отправлено', $overdue ? 'danger' : 'urgent', null],
+        // Рыжий — только срочность по времени (15.11.2026, владелец: «рыжее меня всегда бесило, непонятно, что хотят»): нехватка
+        // и ожидание — обычным серым, просрочка — красным.
+        $letter === 'unsent' => ['письмо не отправлено', $overdue ? 'danger' : 'plain', null],
         $letter === 'failed' => ['письмо не ушло', 'danger', null],
         $letter === 'bounced' => ['письмо не доставлено', 'danger', null],
         $letter === 'replied' => ['ответил '.Ago::html($position->replyAt(), true, words: false), 'accent', $letters],
@@ -58,15 +60,15 @@
         $letter === 'sent' && ! empty($position->payload['letter_by_hand']) => ['сообщили сами '.Ago::html($position->letterAt(), words: false).', <span class="whitespace-nowrap">ждём '.$timer('since', $position->letterAt()).'</span>', $overdue ? 'urgent' : 'plain', null],
         $letter === 'sent' => ['письмо от '.Ago::html($position->letterAt(), words: false).', <span class="whitespace-nowrap">ждём '.$timer('since', $position->letterAt()).'</span>', $overdue ? 'urgent' : 'plain',
             $letters.(isset($position->payload['letter_id']) ? '?at='.$position->payload['letter_id'] : '')],
-        $invoice => ['счёт не выставлен', 'urgent', null],
-        $position->carried() => [e($tripState), $trip && in_array($trip->state, [\App\Logistics\TransportState::New, \App\Logistics\TransportState::Logist], true) ? 'urgent' : 'plain', null],
+        $invoice => ['счёт не выставлен', $overdue ? 'danger' : 'plain', null],
+        $position->carried() => [e($tripState), 'plain', null],
         (bool) $debt => ['должен&nbsp;'.e($debt->amount()).', '.e($debt->word()), $debt->late() ? 'danger' : 'plain', null],
         // Ждём менеджера — сколько ждём и срок одной строкой (10.11.2026: «до 11.11» без «ждём» не говорило, что ход его).
         $side === 'manager' && (bool) $position->deadline_at => ['<span class="whitespace-nowrap">ждём '.$timer('since', $since).'</span>, '.($overdue ? '<span class="whitespace-nowrap">просрочено на '.$timer('since', $position->deadline_at).'</span>' : 'срок '.e(Ago::at($position->deadline_at, true, words: false))), $overdue ? 'danger' : 'plain', null],
         $overdue && (bool) $position->deadline_at => ['просрочено '.$timer('since', $position->deadline_at), 'danger', null],
-        $side === 'us' && (bool) $position->deadline_at => ['осталось '.$timer('until', $position->deadline_at), 'urgent', null],
-        (bool) $position->deadline_at => ['до '.e(Ago::at($position->deadline_at, true, words: false)), 'urgent', null],
-        $side === 'us' => ['наш ход', 'urgent', null],
+        $side === 'us' && (bool) $position->deadline_at => ['осталось '.$timer('until', $position->deadline_at), 'plain', null],
+        (bool) $position->deadline_at => ['до '.e(Ago::at($position->deadline_at, true, words: false)), 'plain', null],
+        $side === 'us' => ['наш ход', 'plain', null],
         default => ['ждём '.$timer('since', $since), 'plain', null],
     };
 @endphp

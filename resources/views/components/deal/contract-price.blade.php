@@ -21,7 +21,7 @@
 <div @if ($editable || $vatEditable) data-controller="sheet" @endif class="contents">
     @php ob_start(); @endphp
         <span class="min-w-0 flex-1">
-            <span class="block">Договор</span>
+            <span class="block">Сумма</span>
             <span class="row-sub"><span>{{ $vat }}</span>@if ($sub)<span>{{ $sub }}</span>@endif</span>
         </span>
         <span class="nums shrink-0">{{ $contract->price ? Money::rub($contract->price) : 'нет суммы' }}</span>

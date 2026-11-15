@@ -15,7 +15,8 @@
                     <span class="step-title flex-1">{{ $s['title'] }}</span>
                     @if ($s['status'] === 'done' && $s['at'])<span class="nums shrink-0 text-sm text-ink-dim">{{ \App\Support\Ago::html($s['at'], time: true, short: true) }}</span>@endif
                 </div>
-                @if ($s['hint'])<p class="step-hint">{{ $s['hint'] }}</p>@endif
+                {{-- Вопросом с «Выбрать» (CRM) подсказка «не определено» лишняя: кнопка сама говорит, что выбора ещё нет (15.11.2026). --}}
+                @if ($s['hint'] && ! ($ask && $s['status'] === 'current' && $new))<p class="step-hint">{{ $s['hint'] }}</p>@endif
                 @if ($extras)@include($extras, ['s' => $s] + $with)@endif
             </div>
         </div>

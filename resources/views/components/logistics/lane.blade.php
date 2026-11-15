@@ -62,7 +62,9 @@
             @if (! $manager)
                 <a href="{{ Surface::Logistics->url('/transports/'.$t->id) }}" class="text-accent-text" data-turbo="false">Логистика</a>
                 {{-- Что дальше — в окне его говорит сам текущий шаг ниже, второй раз словом не пишем. --}}
-                @if ($t->isLate() || ! $compact)<span class="{{ $t->isLate() ? 'text-danger' : $t->state->tone() }}">{{ $t->isLate() ? 'не вывезли в срок' : $t->next() }}</span>@endif
+                {{-- Что дальше («кто вывозит, не определено») говорит шаг лесенки ниже — словом здесь только просрочка
+                     (15.11.2026, владелец: «кто вывозит не определено, исполнитель не определено — мы ж тупые»). --}}
+                @if ($t->isLate())<span class="text-danger">не вывезли в срок</span>@endif
             @elseif ($t->isLate())
                 <span class="text-danger">не забрал в срок</span>
             @endif
@@ -93,7 +95,7 @@
             {{-- Маршрут через стоянки (20.10.2026) — только смотреть: стоянки и исполнителей отрезков ставят в логистике. --}}
             @php $routed = $t->channel === Channel::Logist && $t->logist && $t->chain()->count() > 1; @endphp
             <div class="list mb-4">
-                <x-logistics.facts :t="$t" :named="! $compact" :route="$routed" :logist="$changeable ? $sheet.':open' : null" :who="$changeable && $t->channel !== Channel::Logist ? $sheet.':open' : null" :where="$changeable ? $sheet.':open' : null"/>
+                <x-logistics.facts lane :compact="$compact" :t="$t" :named="! $compact" :route="$routed" :logist="$changeable ? $sheet.':open' : null" :who="$changeable && $t->channel !== Channel::Logist ? $sheet.':open' : null" :where="$changeable ? $sheet.':open' : null"/>
             </div>
             @if ($routed)<div class="mb-4"><x-logistics.route :t="$t" :me="auth()->user()" readonly/></div>@endif
         @endif

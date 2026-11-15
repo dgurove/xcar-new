@@ -26,7 +26,7 @@
                 <div>
                     <h3 class="list-head">Вывоз</h3>
                     <x-ui.segment name="pickup" :options="['keep' => 'Вывозим', 'drop' => 'Не нужен']" :value="old('pickup', $keep ? 'keep' : 'drop')"/>
-                    <p class="mt-2 text-sm text-ink-muted">{{ $keep ? 'По контракту машину вывозим всё равно, покупатель поставщика заберёт её у нас' : 'Не нужен — задача вывоза отменится' }}</p>
+                    <p class="mt-2 text-sm text-ink-muted">{{ $keep ? 'По контракту машину вывозим всё равно, покупатель поставщика заберёт её у нас' : 'Не нужен, задача вывоза отменится' }}</p>
                 </div>
             @endif
             <x-ui.sheet-foot type="submit" variant="danger">Закрыть сделку</x-ui.sheet-foot>

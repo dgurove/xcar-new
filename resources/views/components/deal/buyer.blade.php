@@ -39,7 +39,7 @@
     <div data-controller="sheet" class="contents">
         <x-ui.sheet-row>
             <x-ui.avatar :user="$buyer" :size="36"/>
-            <span class="min-w-0 flex-1"><span class="block break-words">{{ $who }}</span>@if ($ready)<span class="row-sub text-open">{{ $selfWord }}{{ $kindWord }}данные есть</span>@else<span class="row-sub text-urgent">{{ $selfWord }}{{ $gap ?? 'нужны данные для '.$for }}</span>@endif</span>
+            <span class="min-w-0 flex-1"><span class="block break-words">{{ $who }}</span>@if ($ready)<span class="row-sub text-open">{{ $selfWord }}{{ $kindWord }}данные есть</span>@else<span class="row-sub">{{ $selfWord }}{{ $gap ?? 'нужны данные для '.$for }}</span>@endif</span>
             <x-ui.chevron/>
         </x-ui.sheet-row>
         <x-ui.sheet :id="$dataSheet" :title="$ready ? 'Данные покупателя' : 'Данные для '.$for" :open="session('open_sheet') === $dataSheet || $errors->hasAny(['buyer.*']) || $ask" tall>
@@ -86,7 +86,7 @@
 @foreach ($cards as $n => $card)
     <x-ui.doc :doc="\App\Support\Docs::media($card)" class="row">
         <x-ui.row-icon name="file" size="s" tone="urgent"/>
-        <span class="min-w-0 flex-1"><span class="block">Реквизиты от менеджера, фото{{ $cards->count() > 1 ? ' '.($n + 1) : '' }}</span>@if (! $ready)<span class="row-sub text-urgent">внести данные покупателя</span>@endif</span>
+        <span class="min-w-0 flex-1"><span class="block">Реквизиты от менеджера, фото{{ $cards->count() > 1 ? ' '.($n + 1) : '' }}</span>@if (! $ready)<span class="row-sub">внести данные покупателя</span>@endif</span>
         <x-ui.chevron/>
     </x-ui.doc>
 @endforeach
