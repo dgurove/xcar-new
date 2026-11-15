@@ -108,12 +108,12 @@
             {{-- Уже заплатили переводом — платёжку сразу сюда, без шторки (16.11.2026, владелец: «подгрузку платёжки сделать
                  красивой и удобной, заколебали в чат платёжки кидать»): файл — «Я оплатил» на остаток сегодняшним днём
                  (`PayChoice`, `way=transfer`, платёжка — `slip`), дальше «ждёт подтверждения». --}}
-            <form method="post" action="/account/money/deals/{{ $deal->id }}/pay" enctype="multipart/form-data" data-controller="autosubmit" class="list mt-2">
+            {{-- Та же зелёная кнопка, что у платежа поставщику (16.11.2026, владелец: «два блока оплаты по-разному оформлены, кнопки
+                 приложить платёжку должны быть одинаковые, зелёная больше нравится»). --}}
+            <form method="post" action="/account/money/deals/{{ $deal->id }}/pay" enctype="multipart/form-data" data-controller="autosubmit" class="mt-3">
                 @csrf
                 <input type="hidden" name="way" value="transfer"><input type="hidden" name="invoice" value="{{ $invoice->id }}">
-                <label class="row w-full cursor-pointer">
-                    <x-ui.row-icon name="clip" size="s"/>
-                    <span class="min-w-0 flex-1 text-accent-text">Приложить платёжку</span>
+                <label class="btn btn-accent btn-block cursor-pointer"><x-ui.icon name="clip" class="size-5"/> Приложить платёжку
                     <input type="file" name="slip" accept="image/*,.pdf,.heic" class="sr-only" tabindex="-1" data-action="change->autosubmit#submit">
                 </label>
             </form>

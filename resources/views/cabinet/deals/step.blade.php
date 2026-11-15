@@ -90,6 +90,8 @@
                 $signingDays = ! $requirement && $deal->signing_at === null && \App\Offers\Signing::asksTime($position->stage->loadMissing('exits.to.exits'));
                 $heading = match (true) {
                     $consent => 'Берёте в работу?',
+                    // Два платежа — поставщику и наш подбор — два одинаковых блока под общим «Оплата» (16.11.2026).
+                    $direct && $selectionPay && $requirement && ! $paidUp => 'Оплата',
                     (bool) $sent => trim(preg_replace('/^Оплатить/u', 'Оплачено', (string) $deal->schemeOf()->payLabel()).' '.($deal->supplierPayment() ? \App\Support\Money::rub($deal->supplierPayment()) : '')),
                     $signingDays && \App\Offers\Signing::wishDue($deal) => 'Когда покупатель сможет подписать договор?',
                     $needsBuyer && ! $buyerStep => $gap === 'passport' ? 'Приложите паспорт покупателя' : 'Укажите покупателя',
@@ -189,6 +191,10 @@
             {{-- Платит поставщику сам — его счёт тут же, первым (10.11.2026, 0790/046/11079/26: счёт был в «Информации по сделке»
                  номером со сканера, а на шаге «Оплатить страховой» его не было). Пока не показали — словом. --}}
             @php $supplierBills = $direct || $sent ? \App\Offers\SupplierInvoice::shown($deal->offer) : collect(); @endphp
+            @if ($direct && $selectionPay)
+                {{-- Блок «кому — сумма», как у платежа ПРАЙМ ниже (`cabinet.deals.payment` в шаге). --}}
+                <div class="mt-4 flex items-baseline gap-3"><span class="min-w-0 flex-1">{{ mb_ucfirst(preg_replace('/^Оплатить\s+/u', '', (string) $deal->schemeOf()->payLabel())) }}</span><span class="nums shrink-0 text-lg font-semibold">{{ \App\Support\Money::rub($deal->supplierPayment()) }}</span></div>
+            @endif
             @if ($direct && \App\Offers\SupplierInvoice::onPay($deal, $position->stage))
                 @if ($supplierBills->isNotEmpty())
                     <div class="list mt-4">
@@ -199,6 +205,10 @@
                 @else
                     <p class="mt-3 text-ink-muted">Счёт поставщика пришлём сюда</p>
                 @endif
+            @endif
+            {{-- Платёжка поставщику — сразу под его счётом, до нашего подбора: два блока одного вида (16.11.2026). --}}
+            @if ($direct && $requirement && ! $needsBuyer && ! $paidUp)
+                @include('cabinet.deals.answer', ['attachLabel' => 'Приложить платёжку'])
             @endif
             @if ($sent)
                 {{-- Платёжка ушла (16.11.2026): она и счёт файлами; пока поставщик не подтвердил — «Приложить ещё» и × (последний файл
@@ -271,17 +281,17 @@
                 @if ($photoTiles)<div class="mt-4"><x-deal.buyer-kind :deal="$deal"/></div>@endif
                 <div class="mt-4">@include('cabinet.deals.contract', ['part' => 'buyer', 'embedded' => true, 'labels' => false, 'after' => ''])</div>
             @endif
-            @if ($requirement && ! $needsBuyer && (! $selectionPay || $direct) && ! $paidUp && ! $signingPick)
+            @if ($requirement && ! $needsBuyer && ! $selectionPay && ! $direct && ! $paidUp && ! $signingPick)
                 @if ($payStep && $unpaid->isNotEmpty() && ! $direct)
                     {{-- «Оплатить» — в платеже выше (15.11.2026). --}}
                 @else
-                    @include('cabinet.deals.answer', $direct ? ['attachLabel' => 'Приложить платёжку'] : [])
+                    @include('cabinet.deals.answer')
                 @endif
             @endif
             @if ($direct && $selectionPay)
                 {{-- Наш подбор — своей группой под платежом поставщику, вторичной кнопкой. --}}
                 {{-- Здесь главное — платёж поставщику выше, наш подбор — вторичной кнопкой. --}}
-                <div class="mt-6">@include('cabinet.deals.payment', ['title' => $selectionPay->seller->config()['name'], 'nested' => true, 'amount' => \App\Support\Money::rub($selectionPay->remaining()), 'state' => null, 'invoice' => $selectionPay, 'pay' => true])</div>
+                <div class="pay-split">@include('cabinet.deals.payment', ['title' => $selectionPay->seller->config()['name'], 'nested' => true, 'amount' => \App\Support\Money::rub($selectionPay->remaining()), 'state' => null, 'invoice' => $selectionPay, 'pay' => true])</div>
             @endif
             @endif
             {{-- В чек-листе договора с получением строка стоит под «Заберите автомобиль». --}}

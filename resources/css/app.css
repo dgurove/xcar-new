@@ -558,6 +558,8 @@ html.kb-open { --home-gap: 0px; }
   /* «Цена»: оценочная крупным полем, наценка строкой, закупочная итогом — главный показатель экрана (правило 6). */
   .partner-price-panel { display: flex; flex-direction: column; gap: 1rem; }
   .partner-price-panel .box-title { margin-bottom: -.25rem; }
+  /* Второй платёж шага (наш подбор под платежом поставщику) — волосяной линией, а не плашкой (16.11.2026). */
+  .pay-split { margin-top: 1.5rem; padding-top: 1.25rem; border-top: var(--hairline) solid var(--color-hairline); }
   .partner-floor { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; padding-top: 1rem; border-top: var(--hairline) solid var(--color-hairline); }
   .partner-floor-sum { font-size: 28px; font-weight: 600; line-height: 1.1; }
   .partner-floor-sum:empty::before { content: '—'; color: var(--color-ink-dim); font-weight: 400; }
