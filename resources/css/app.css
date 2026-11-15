@@ -804,6 +804,10 @@ html.kb-open { --home-gap: 0px; }
   .wave-ask-row { @apply grid w-full grid-cols-[1fr_1.3fr_1.3fr] gap-1.5; }
   .wave-ask-btn { @apply min-h-10 whitespace-nowrap rounded-(--radius-m) bg-surface-3 px-1 text-accent-text; }
   /* «Кому» готовой волны — системный выбор тем же текстом, шеврон фоном справа (16px — iOS не зумит). */
+  /* «Подписанный договор» (`x-deal.signed-contract`, 15.11.2026): строка «Приложить…» — лаймовым текстом со скрепкой, пока
+     файлы уходят (Turbo ставит форме aria-busy) — бледная. */
+  .signed-add { @apply cursor-pointer gap-3 text-accent-text; }
+  .signed-upload[aria-busy="true"] .signed-add { @apply pointer-events-none opacity-50; }
   .wave-who { @apply min-h-8 cursor-pointer appearance-none bg-transparent pr-6 text-ink outline-none; font-size: 16px; field-sizing: content;
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%239a9a9a' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
     background-repeat: no-repeat; background-position: right .25rem center; background-size: 1rem; }

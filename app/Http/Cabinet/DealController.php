@@ -12,6 +12,7 @@ use App\Live\RefreshDeal;
 use App\Live\Stream;
 use App\Logistics\Actions\RequestPickup;
 use App\Logistics\Actions\SelfPickup;
+use App\Offers\Actions\AttachSignedContract;
 use App\Offers\Actions\PickSigningTime;
 use App\Offers\Actions\SaveDealContract;
 use App\Offers\Actions\SaveSigningWish;
@@ -434,5 +435,28 @@ class DealController
         // Кнопки — шага этой просьбы (у параллельной — её теневого), а не шага машины.
         return Stream::view('cabinet.deals.files-stream', ['requirement' => $requirement, 'deal' => $deal,
             'exits' => $deal->managerExits($requirement->stage)]);
+    }
+
+    /**
+     * Подписанный договор, сделанный вне системы (15.11.2026, `AttachSignedContract`): приложить на любом шаге, без
+     * покупателя; файлов можно несколько (страницы фотографиями).
+     */
+    public function signed(Request $request, Deal $deal, AttachSignedContract $attach)
+    {
+        $request->validate(['files' => ['required', 'array', 'max:20'], 'files.*' => ['file', 'max:30720']],
+            ['files.required' => 'Выберите файл договора', 'files.*.max' => 'Файл больше 30 МБ']);
+        foreach ($request->file('files') as $file) {
+            $attach($deal, $file, $request->user());
+        }
+
+        return back()->with('toast', 'Подписанный договор приложен');
+    }
+
+    public function removeSigned(Request $request, Deal $deal, Media $media)
+    {
+        abort_unless(AttachSignedContract::allows($deal), 404);
+        AttachSignedContract::remove($deal, $media, $request->user());
+
+        return back()->with('toast', 'Файл договора убран');
     }
 }

@@ -133,6 +133,8 @@
     @unless ($deal->isAuction())<x-deal.scheme :deal="$deal" bare :price="false"/>@endunless
     @if ($withContract)<x-deal.contract :deal="$deal" bare/>@elseif ($withBuyer)<x-deal.buyer :deal="$deal"/>@endif
     @if ($contractRow)<x-deal.contract-price :deal="$deal" :contract="\App\Offers\DealContract::for($deal)->loadMissing('priceAuthor')"/>@endif
+    {{-- Подписанный договор вне системы (15.11.2026) — строками той же группы. --}}
+    @if (auth()->user()?->canEditDeals())<x-deal.signed-contract :deal="$deal" :base="'/work/deals/'.$deal->id" bare/>@endif
     @php $top = trim(ob_get_clean()); @endphp
     @if ($top !== '')<div class="list mb-3 last:mb-0">{!! $top !!}</div>@endif
     {{-- Пустая строка (ни режима, ни состояния, ни «Ещё счёт») не рисуется — под схемой была дыра (12.11.2026). --}}

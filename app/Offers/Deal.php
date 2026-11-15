@@ -37,6 +37,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Carbon;
+use Spatie\MediaLibrary\HasMedia;
+use Spatie\MediaLibrary\InteractsWithMedia;
 
 /**
  * Сделка: чьё подтверждение принято и почём. Деньги — `cost` (закупочная, какой её видел менеджер, когда подтверждал,
@@ -47,10 +49,21 @@ use Illuminate\Support\Carbon;
  */
 #[Fillable(['offer_id', 'bid_id', 'buyer_id', 'amount', 'cost', 'supplier_cost', 'owner_price', 'share', 'commission', 'commission_mode', 'scheme', 'garage_payer', 'state', 'notes', 'closed_at', 'close_reason', 'close_note', 'agreed_at', 'buyer_asked_at', 'signing_slots', 'signing_address', 'signing_at', 'signing_asked_at', 'signing_wish', 'prepaid_at', 'supplier_paid_at', 'contract_signed_at', 'contract_signed_by', 'paid_in_at', 'dates_by_hand',
     'receiver_user_id', 'receiver_name', 'receiver_phone', 'receiver_at', 'auction_at', 'buyer_party_id', 'shadow_stage_id', 'shadow_at', 'reissue_at'])]
-class Deal extends Model
+class Deal extends Model implements HasMedia
 {
     use FastAttributes;
     use HidesDemo;
+    use InteractsWithMedia;
+
+    /**
+     * Подписанный договор, сделанный вне системы (15.11.2026, владелец: «ОБЯЗАТЕЛЬНО возможность прикрепить подписанный
+     * договор сразу, без покупателя»): файлы у самой сделки, а не у просьбы шага — приложить можно на любом шаге
+     * (`Actions\AttachSignedContract`).
+     */
+    public function registerMediaCollections(): void
+    {
+        $this->addMediaCollection('signed_contract')->useDisk('private');
+    }
 
     protected function casts(): array
     {

@@ -4,6 +4,7 @@ namespace App\Http\Admin;
 
 use App\Billing\DealDebt;
 use App\Live\Rows;
+use App\Offers\Actions\AttachSignedContract;
 use App\Offers\Actions\ChangeDealScheme;
 use App\Offers\Actions\DeclineBySupplier;
 use App\Offers\Actions\MarkContractSigned;
@@ -48,6 +49,7 @@ use App\Workflow\Stage;
 use App\Workflow\Track;
 use App\Workflow\WaitsFor;
 use Illuminate\Http\Request;
+use Spatie\MediaLibrary\MediaCollections\Models\Media;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -584,5 +586,28 @@ class DealController
         $deal->update($request->validate(['notes' => ['nullable', 'string', 'max:5000']]));
 
         return back()->with('toast', 'Заметка сохранена');
+    }
+
+    /**
+     * Подписанный договор, сделанный вне системы (15.11.2026, `AttachSignedContract`): приложить на любом шаге, без
+     * покупателя; файлов можно несколько (страницы фотографиями).
+     */
+    public function signed(Request $request, Deal $deal, AttachSignedContract $attach)
+    {
+        $request->validate(['files' => ['required', 'array', 'max:20'], 'files.*' => ['file', 'max:30720']],
+            ['files.required' => 'Выберите файл договора', 'files.*.max' => 'Файл больше 30 МБ']);
+        foreach ($request->file('files') as $file) {
+            $attach($deal, $file, $request->user());
+        }
+
+        return back()->with('toast', 'Подписанный договор приложен');
+    }
+
+    public function removeSigned(Request $request, Deal $deal, Media $media)
+    {
+        abort_unless(AttachSignedContract::allows($deal), 404);
+        AttachSignedContract::remove($deal, $media, $request->user());
+
+        return back()->with('toast', 'Файл договора убран');
     }
 }

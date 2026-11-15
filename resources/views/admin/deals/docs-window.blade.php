@@ -19,6 +19,7 @@
             @endif
             <x-deal.scheme :deal="$deal"/>
             @if ($deal->hasContract())<x-deal.contract :deal="$deal"/>@endif
+            <x-deal.signed-contract :deal="$deal" :base="'/work/deals/'.$deal->id" card/>
         </div>
     </x-ui.row-card>
 </x-ui.detail>

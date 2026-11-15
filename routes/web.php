@@ -237,6 +237,8 @@ Route::middleware(['auth', 'wall'])->group(function () {
             Route::post('/deals/{deal}/buyer-new', [DealController::class, 'buyerNew']);
             Route::post('/deals/{deal}/later', [DealController::class, 'later']);
             Route::delete('/deals/{deal}/files/{media}', [DealController::class, 'removeFile']);
+            Route::post('/deals/{deal}/signed', [DealController::class, 'signed']);
+            Route::delete('/deals/{deal}/signed/{media}', [DealController::class, 'removeSigned']);
         });
     });
 

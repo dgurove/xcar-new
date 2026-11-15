@@ -138,7 +138,7 @@ class Requirement extends Model implements HasMedia
     /** Просьба менеджеру сделки на этапе, со сроком позиции. Зовут вход в этап и выставленный счёт на этапе оплаты. */
     public static function askFor(Deal $deal, Stage $stage, Position $position): self
     {
-        return self::create([
+        $req = self::create([
             'offer_id' => $deal->offer_id,
             'deal_id' => $deal->id,
             'stage_id' => $stage->id,
@@ -150,5 +150,14 @@ class Requirement extends Model implements HasMedia
             'fields' => $stage->fields ?? [],
             'due_at' => $position->deadline_at,
         ]);
+        // Подписанный договор уже приложили к сделке (`AttachSignedContract`) — шаг, что просит договор, получает его сразу:
+        // менеджеру остаётся нажать «Договор приложен».
+        if ($req->asks === Asks::Document && $stage->aboutContract()) {
+            foreach ($deal->getMedia('signed_contract') as $media) {
+                $media->copy($req, 'files', 'private');
+            }
+        }
+
+        return $req;
     }
 }

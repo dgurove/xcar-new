@@ -186,6 +186,8 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
             Route::get('/work/deals/{deal}/dkp', [DealContractController::class, 'show']);
             Route::get('/work/deals/{deal}/dkp.pdf', [DealContractController::class, 'show']);
         Route::put('/work/deals/{deal}/contract-price', [DealContractController::class, 'price']);
+        Route::post('/work/deals/{deal}/signed', [DealController::class, 'signed']);
+        Route::delete('/work/deals/{deal}/signed/{media}', [DealController::class, 'removeSigned']);
     });
 
     Route::middleware('ability:canManageCrm')->group(function () {

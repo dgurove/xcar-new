@@ -11,6 +11,7 @@ use App\Media\DocName;
 use App\Media\ForManagers;
 use App\Media\PhotoIngest;
 use App\Media\Thumb;
+use App\Offers\Deal;
 use App\Offers\DealContract;
 use App\Park\Vehicle;
 use App\Support\InternalRefs;
@@ -90,6 +91,10 @@ final class FileController
         }
         // Модератору — документы и фото только тех предложений, что ему можно открыть в CRM; скан паспорта — покупателя по
         // договору сделки (14.11.2026: модератор ведёт данные ДКП, `canEditDeals`).
+        // Подписанный договор сделки (`AttachSignedContract`) — сотрудникам, что ведут документы сделок, и её менеджеру.
+        if ($media->model_type === Deal::class) {
+            return $user->canEditDeals() || Deal::whereKey($media->model_id)->where('buyer_id', $user->id)->exists();
+        }
         if ($user->isModerator()) {
             if ($media->model_type === Party::class) {
                 return $user->canEditDeals() && DealContract::whereHas('buyer', fn ($q) => $q->where('party_id', $media->model_id))->exists();

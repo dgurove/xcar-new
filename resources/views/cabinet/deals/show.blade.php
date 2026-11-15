@@ -83,6 +83,10 @@
                 @endif
             </div>
             <x-offer.my-note :offer="$offer" class="order-3 min-w-0"/>
+            {{-- Подписанный договор вне системы — в любой сделке и на любом шаге (15.11.2026); на шаге, что сам просит договор, —
+                 его кнопка «Приложить договор», второй не нужно. --}}
+            @php $signStep = $deal->openRequirement?->asks === \App\Workflow\Asks::Document && $deal->openRequirement?->stage?->aboutContract(); @endphp
+            @unless ($signStep)<x-deal.signed-contract :deal="$deal" :base="'/deals/'.$deal->id" class="order-6"/>@endunless
             <x-offer.facts :offer="$offer" :full="true" class="order-7"/>
             @if ($docs->isNotEmpty())
                 <section class="order-8 min-w-0">

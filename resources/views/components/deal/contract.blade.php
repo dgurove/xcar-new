@@ -22,7 +22,9 @@
     $ownerFields = $deal->isDkp() || ($prime && (! $owner || $owner->kind === \App\Billing\PartyKind::Person));
 @endphp
 @php ob_start(); @endphp
-    {{-- Договор — файлом, как документ: значок PDF и номер; чего не хватает — красным под ним. --}}
+    {{-- Договор — файлом, как документ: значок PDF и номер; чего не хватает — красным под ним. Подписанный вне системы уже
+         приложен (`x-deal.signed-contract`), а свой не собран — своего «не готов» не рисуем: он не нужен (15.11.2026). --}}
+    @unless ($missing && $deal->getMedia('signed_contract')->isNotEmpty())
     <x-ui.doc :doc="$pdf" class="row">
         <x-ui.file-icon name="dkp.pdf"/>
         <span class="min-w-0 flex-1">
@@ -33,6 +35,7 @@
         </span>
         <x-ui.chevron/>
     </x-ui.doc>
+    @endunless
     {{-- Дата договора — сама календарь (19.10.2026): у ДКП юрлица встаёт сама, когда договор собрался, у собственника —
          когда подписывают; правит и менеджер у себя. --}}
     <div class="row">
