@@ -1262,14 +1262,13 @@ html.kb-open { --home-gap: 0px; }
   .title-actions .title-filter { @apply gap-1; height: 2rem; padding-inline: .625rem; }
   .title-actions .btn-s { height: 2rem; padding-inline: .75rem; }
   .title-actions .btn-round { width: 2rem; height: 2rem; }
-  /* Телефон: кружки тулбара (сортировка, вид, лупа), чипы фильтров и кнопки строки названия («Скачать», письма, «+») — одной
-     высоты 36 px, кружки той же белой заливки, что чипы (15.11.2026, владелец: 44 px кружков рядом с 30 px чипов — ряд
-     рваный). */
-  @media (max-width: 767.98px) {
-    .toolbar-tools .btn-round, .title-actions .btn-round { width: 2.25rem; height: 2.25rem; }
-    .toolbar-tools .btn-quiet, .title-actions .btn-quiet { background: var(--color-surface); }
-    .toolbar-chips .pill, .title-actions .title-filter { min-height: 2.25rem; }
-  }
+  /* Кружки тулбара (сортировка, вид, лупа), действия справа («Скачать»), чипы фильтров и кнопки строки названия (письма,
+     «+») — на любой ширине одной высоты 36 px, кружки той же белой заливки, что чипы (15.11.2026, владелец: кружки рядом с
+     30 px чипов — ряд рваный; сначала было только до 768 px, а на ПК и планшете остались серые). */
+  .toolbar-tools .btn-round, .title-actions .btn-round, .toolbar-actions .btn-round { width: 2.25rem; height: 2.25rem; }
+  .toolbar-actions .btn-s { height: 2.25rem; }
+  .toolbar-tools .btn-quiet, .title-actions .btn-quiet, .toolbar-actions .btn-quiet { background: var(--color-surface); }
+  .toolbar-chips .pill, .title-actions .title-filter { min-height: 2.25rem; }
   /* Заголовок — одно название, без числа и стрелки (владелец: «криво, смещает всё»): число вкладки — в списке. */
   .tab-title-btn { @apply relative rounded-(--radius-s) text-left; font: inherit; color: inherit; transition: color var(--dur-fast); }
   /* «›» — в поле экрана слева от названия, у самого края: видно, что это выбор, а название стоит на месте. Открыт список —
@@ -1279,11 +1278,7 @@ html.kb-open { --home-gap: 0px; }
   /* Строка ушла в другую вкладку (lib/bump.js) — название коротко загорается лаймом, без раздувания. */
   @media (prefers-reduced-motion: no-preference) { .tab-title-btn.is-bumped { animation: title-bump .9s cubic-bezier(.2,.8,.2,1) 1; } }
   @keyframes title-bump { 25% { color: var(--color-accent-text); } }
-  /* Лаймовый бейдж в другой вкладке (оценки менеджеров ждут) — точкой после названия: числа живые, точка вместе с ними. */
-  .tab-title:has(.tab-wheel-item:not([aria-current]) .badge:not(:empty)) .tab-title-btn::after {
-    content: ''; display: inline-block; width: .5rem; height: .5rem; margin-inline-start: .375rem; vertical-align: .6em;
-    border-radius: 999px; background: var(--color-accent);
-  }
+  /* Точки у названия за бейдж другой вкладки нет (15.11.2026, владелец: «в зелёной точке нет смысла») — числа в колесе. */
   /* Колесо вкладок (30.10.2026, владелец: «как в iOS, как на Apple Watch» — выбранная на месте заголовка чёрным, остальные
      мельче и приглушённые, без разделителей; `tab_wheel_controller`; вечером: «в полтора раза плотнее», «кружок не
      подходит» — заливка проявляется и угасает, у выбранной та же «›», что у заголовка). Заливка — поверх шапки и таб-бара; пункт растёт и чернеет у линии фокуса (место заголовка) анимацией по прокрутке — считает браузер в такт
@@ -2053,6 +2048,10 @@ html.kb-open { --home-gap: 0px; }
        коробка в размер логотипа, он вровень с названием; `inline-flex` у строки номера убирает
        пробел из разметки между логотипом и номером — иначе номер начинался бы правее названия). */
     .table-wrap:not(.is-wide) .table .cell-sub .ref-line { display: inline-flex; align-items: baseline; gap: 0; }
+    /* Длинный номер не ужимает шрифт строки (`fitline` в таблице выключен), а режется «…». */
+    .table-wrap:not(.is-wide) .table .cell-sub .fit-core { min-width: 0; max-width: 100%; }
+    .table-wrap:not(.is-wide) .table .cell-sub .ref-line { max-width: 100%; min-width: 0; }
+    .table-wrap:not(.is-wide) .table .cell-sub .ref-line > span:last-child { min-width: 0; overflow: clip; text-overflow: ellipsis; white-space: nowrap; }
     .table-wrap:not(.is-wide) .table .cell-sub .ref-line > .vendor-tip { position: relative; display: inline-block; align-self: baseline; flex-shrink: 0; width: var(--lead-box, 1rem); height: 0; margin-right: var(--lead-gap); }
     .table-wrap:not(.is-wide) .table .cell-sub .ref-line > .vendor-tip > .vendor-logo { position: absolute; left: calc((var(--lead-box, 1rem) - 1rem) / 2); bottom: calc(.5cap - .5rem); width: 1rem; height: 1rem; vertical-align: baseline; }
     /* Значок связи — 13 px, вплотную за названием (4 px), серединой на середине заглавных. */
@@ -5123,7 +5122,7 @@ dialog.lightbox:not(.lb-one) .lb-pill--bottom { bottom: calc(var(--lb-strip-bott
   /* Откуда заявка строкой (x-park.request-source), как отправитель в почте: слева кто, справа время. Мелким третьим
      этажом краткой таблицы и строк или плиток; на ПК в таблице — столбцы «Пришла» (время цветом текста, по нему
      список упорядочен) и «От кого». */
-  .req-source { display: flex; align-items: baseline; justify-content: space-between; gap: .75rem; min-width: 0; font-size: var(--text-xs); line-height: 1.3; margin-top: .125rem; }
+  .req-source { display: flex; align-items: baseline; justify-content: space-between; gap: .75rem; min-width: 0; font-size: var(--text-sm); line-height: 1.125rem; margin-top: 2px; /* 13, как этажи строки (15.11.2026, владелец: «размеры шрифтов скачут»). */ }
   .req-source-who { min-width: 0; color: var(--color-ink-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .req-source-when { flex: none; margin-left: auto; color: var(--color-ink-dim); white-space: nowrap; }
   /* Стоянка слева, дата и время справа — всегда (владелец 11.11.2026). На телефоне отправителя нет вовсе: «слева парковка,

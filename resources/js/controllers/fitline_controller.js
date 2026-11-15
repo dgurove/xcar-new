@@ -27,8 +27,10 @@ export default class extends Controller {
         this.on = false;
     }
 
+    // В таблице не ужимается и на телефоне (15.11.2026, владелец: «размеры шрифтов скачут» — номер в одной строке 13 px,
+    // в соседней 11 и 9,9): длинный номер — данные извне, режется «…» (`.table .cell-sub .fit-core`), шрифт везде один.
     toggle() {
-        const on = !(this.inTable && desktop.matches);
+        const on = !this.inTable;
         if (on && !this.on) watch(this.item);
         if (!on && this.on) { unwatch(this.item); this.element.style.fontSize = ''; }
         this.on = on;
