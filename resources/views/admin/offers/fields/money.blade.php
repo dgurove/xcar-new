@@ -32,14 +32,8 @@
                 data-controller="digits" data-action="input->digits#format input->value-floor#sync" data-value-floor-target="value" value="{{ old('value', $offer->value ? \App\Support\Money::nums($offer->value) : '') }}"
                 @if ($now === 'floor' && $valued) data-detail-focus @endif>
         </div>
-        {{-- Диапазоны наценки — свёрнутой строкой под оценочной: ступени словами, нажатие — правка (как у поставщика). --}}
-        @if ($valued && ! $garageOnly)
-            <details class="price-more" @if ($errors->has('floor_rules')) open @endif>
-                <summary class="flex items-center gap-1 text-sm text-ink-muted"><span class="min-w-0">{{ \App\Offers\Pricing::rulesLabel($rules) }}</span> <x-ui.icon name="chevron-down" class="price-more-chevron size-4 shrink-0"/></summary>
-                <div class="mt-2"><x-offer.floor-rules :rules="$rules" :default="\App\Offers\Pricing::rulesFor($offer->vendor_id)" :form="$form" :id="$idp.'rules'"/></div>
-                @error('floor_rules')<span class="field-error">{{ $message }}</span>@enderror
-            </details>
-        @endif
+        {{-- Диапазонов наценки в CRM нет (16.11.2026, владелец: «это только для partner.xcar»): ступени предложения считают
+             закупочную от оценочной на ходу (`value-floor`), правят их поставщик и шторка вендора. --}}
         {{-- Закупочная и цена продажи — рядом (19.10.2026, владелец: «компактнее»). --}}
         <div class="grid grid-cols-2 gap-2">
             <div @class(['field', 'field-invalid' => $errors->has('floor_price'), 'col-span-2' => ! $admin || $garageOnly])>
