@@ -60,10 +60,15 @@ final class Valuations
         if ($car->value_at) {
             return $car->value_at;
         }
-        $at = DB::table('park_vehicle_events')->join('park_vehicles', 'park_vehicles.id', '=', 'park_vehicle_events.vehicle_id')
-            ->where('park_vehicles.car_id', $car->id)->whereRaw("jsonb_exists(park_vehicle_events.payload->'changes', 'value')")->max('park_vehicle_events.created_at')
-            ?? DB::table('park_requests')->join('park_vehicles', 'park_vehicles.id', '=', 'park_requests.vehicle_id')->where('park_vehicles.car_id', $car->id)->min('park_requests.letter_at')
-            ?? DB::table('car_events')->where('car_id', $car->id)->whereRaw("jsonb_exists(payload->'changes', 'value')")->max('created_at');
+        // Последняя правка оценочной — на парковке или у продажи (до 15.11.2026 «Оценить из текста» писала и в ТС); правок не
+        // было — она с заявки на приём.
+        $edits = array_filter([
+            DB::table('park_vehicle_events')->join('park_vehicles', 'park_vehicles.id', '=', 'park_vehicle_events.vehicle_id')
+                ->where('park_vehicles.car_id', $car->id)->whereRaw("jsonb_exists(park_vehicle_events.payload->'changes', 'value')")->max('park_vehicle_events.created_at'),
+            DB::table('car_events')->where('car_id', $car->id)->whereRaw("jsonb_exists(payload->'changes', 'value')")->max('created_at'),
+        ]);
+        $at = $edits ? max($edits)
+            : DB::table('park_requests')->join('park_vehicles', 'park_vehicles.id', '=', 'park_requests.vehicle_id')->where('park_vehicles.car_id', $car->id)->min('park_requests.letter_at');
 
         return $at ? Carbon::parse($at) : $car->created_at;
     }
