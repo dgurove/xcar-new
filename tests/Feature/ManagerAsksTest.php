@@ -85,10 +85,11 @@ class ManagerAsksTest extends TestCase
         $requirement = $deal->openRequirement()->firstOrFail();
         $message = Message::where('requirement_id', $requirement->id)->first();
         $this->assertNotNull($message, 'ход менеджера — сообщением с кнопками в чате сделки');
-        $this->assertSame(Notify::CONSENT_ASK, $message->text);
+        // «Привет, берём в работу?» и строкой ниже машина с VIN (15.11.2026).
+        $this->assertStringStartsWith(Notify::CONSENT_ASK."\n".$offer->titleWithYear(), $message->text);
         $this->assertSame(1, Message::where('requirement_id', $requirement->id)->count());
         // Вопрос «Берём?» — и уведомлением чата, как с 06.11.2026.
-        Notification::assertSentTo($this->manager, ChatNotice::class, fn ($n) => $n->message()->text === Notify::CONSENT_ASK);
+        Notification::assertSentTo($this->manager, ChatNotice::class, fn ($n) => str_starts_with($n->message()->text, Notify::CONSENT_ASK));
 
         $chat = $message->chat;
         $this->actingAs($this->manager)->get("http://xcar.localhost/chats/{$chat->id}/messages?after=0")->assertOk()

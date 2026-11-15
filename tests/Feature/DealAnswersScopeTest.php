@@ -56,10 +56,12 @@ class DealAnswersScopeTest extends TestCase
         $new = app(AcceptBid::class)(app(PlaceBid::class)($offer->fresh(), $second, 860000), $admin, 20000, scheme: DealScheme::OwnerDkp);
         $stage = $offer->fresh()->stage();
         Requirement::create(['offer_id' => $offer->id, 'deal_id' => $old->id, 'stage_id' => $stage->id, 'user_id' => $first->id, 'title' => 'Согласие',
-            'done_at' => now(), 'answer' => ['exit' => 'Я передумал', 'fields' => []]]);
+            'done_at' => now(), 'answer' => ['exit' => 'Отказался от покупки', 'fields' => []]]);
 
+        // С 15.11.2026 у Т-Страхования текущий шаг — «Согласие менеджера» со своей кнопкой «Я передумал»: ответ старой
+        // сделки — словом, которого на шаге нет.
         $page = fn () => $this->actingAs($admin)->get(Surface::Crm->url('/offers/'.$offer->number))->assertOk();
-        $page()->assertDontSee('Я передумал');
+        $page()->assertDontSee('Отказался от покупки');
 
         Requirement::create(['offer_id' => $offer->id, 'deal_id' => $new->id, 'stage_id' => $stage->id, 'user_id' => $second->id, 'title' => 'Согласие',
             'done_at' => now(), 'answer' => ['exit' => 'Беру в работу', 'fields' => []]]);
@@ -101,7 +103,7 @@ class DealAnswersScopeTest extends TestCase
         app(TakeExit::class)($offer->fresh(), $position()->stage->exits->firstWhere('label', 'Поставщик согласовал'), Actor::Staff, $admin);
         // «Спросить менеджера» — ещё и сообщением от «Администрации XCar» в его чате по машине (06.11.2026).
         $asked = fn (User $m) => \App\Chats\Chat::platformWith($offer, $m)->first()?->messages()->where('author_kind', \App\Chats\AuthorKind::Staff)
-            ->whereNull('author_id')->where('text', \App\Notifications\Notify::CONSENT_ASK)->count();
+            ->whereNull('author_id')->where('text', 'like', \App\Notifications\Notify::CONSENT_ASK.'%')->count();
         $this->assertSame(1, $asked($first));
         $this->assertSame(1, \App\Chats\Chat::platformWith($offer, $first)->first()->unread_for_user);
         $refuse($first);
@@ -110,8 +112,8 @@ class DealAnswersScopeTest extends TestCase
         $this->assertSame('Согласие менеджера', $position()->stage->name);
         $this->assertSame($second->id, Requirement::where('deal_id', $deal->id)->whereNull('done_at')->sole()->user_id);
         $this->assertSame(1, $asked($second), 'вопрос встал сам — и сообщение тоже');
-        Notification::assertSentTo($second, \App\Notifications\ChatNotice::class, fn ($n) => $n->message()->text === \App\Notifications\Notify::CONSENT_ASK
-            && in_array(\App\Notifications\Notify::CONSENT_ASK, $n->toTelegram()['lines'] ?? [], true));
+        Notification::assertSentTo($second, \App\Notifications\ChatNotice::class, fn ($n) => str_starts_with($n->message()->text, \App\Notifications\Notify::CONSENT_ASK)
+            && collect($n->toTelegram()['lines'] ?? [])->contains(fn ($l) => str_starts_with((string) $l, \App\Notifications\Notify::CONSENT_ASK)));
         // Сотрудник ответил в чате — вопрос остаётся (стирается только автоответ).
         app(\App\Chats\Actions\PostMessage::class)(\App\Chats\Chat::platformWith($offer, $second)->first(), $admin, 'Ждём ответа');
         $this->assertSame(1, $asked($second));

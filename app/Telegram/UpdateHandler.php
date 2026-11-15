@@ -176,7 +176,9 @@ final class UpdateHandler
     /** Строки уведомления — HTML-текстом сообщения бота: заголовок жирным, строки, ниже строка итога. */
     private static function body(string $title, array $lines): callable
     {
-        $lines = implode("\n", array_map(fn ($l) => e((string) $l), array_filter($lines, fn ($l) => $l !== null && $l !== '')));
+        // VIN — готовый HTML (`Text::vin`, <code>): приведение к строке его экранировало, и после нажатия кнопки в сообщении
+        // вместо моноширинного VIN стояло «&lt;code&gt;».
+        $lines = implode("\n", array_map(fn ($l) => $l instanceof \Illuminate\Contracts\Support\Htmlable ? $l->toHtml() : e((string) $l), array_filter($lines, fn ($l) => $l !== null && $l !== '')));
 
         return fn (string $status) => '<b>'.e($title).'</b>'."\n".$lines.($status !== '' ? "\n\n".$status : '');
     }

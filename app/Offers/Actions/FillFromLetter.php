@@ -47,6 +47,14 @@ final class FillFromLetter
             }
         }
         $log = ['letter' => $message->id];
+        // VIN из письма поставщика об этой машине — в пустое поле сразу, в любом состоянии и из ответа «RE:» (15.11.2026,
+        // владелец: «в письме от Т-Страхования VIN сообщается, его надо парсить и в машину добавлять автоматически»; у сделки и
+        // ответа он вставал только позже, через источники). Вписанный человеком и VIN другой машины `FillCar` не трогает.
+        $vin = $message->fields()['vin'] ?? null;
+        if ($vin && blank($offer->vin) && ($offer->state !== OfferState::Draft || AutoOffer::notAnOffer((string) $message->subject, '', []))) {
+            ($this->car)($offer, ['vin' => $vin], null, FillCar::EMPTY, log: $log);
+            $offer->refresh();
+        }
         if ($offer->state !== OfferState::Draft) {
             $data && ($this->update)($offer, $data, null, $log);
 

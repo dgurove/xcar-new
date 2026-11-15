@@ -43,6 +43,7 @@ use App\Logistics\Console\TickCommand as LogisticsTick;
 use App\Mail\Console\ArchiveStaleCandidates;
 use App\Mail\Console\BackfillMail;
 use App\Mail\Console\PriceMisses;
+use App\Mail\Console\PurgeSentCommand;
 use App\Mail\Console\ReadMail;
 use App\Mail\Console\RebuildChains;
 use App\Mail\Console\ReconcileMail;
@@ -152,6 +153,7 @@ return Application::configure(basePath: dirname(__DIR__))
         ReconcileMail::class,
         ReadMail::class,
         PriceMisses::class,
+        PurgeSentCommand::class,
         RebuildChains::class,
         BackfillMail::class,
         ArchiveStaleCandidates::class,

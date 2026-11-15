@@ -355,7 +355,8 @@ final class Notify
         // Ход менеджера в чате (`StepAsk`): о нём уже сказал `YourTurnNotice` — второе уведомление о том же не нужно. Кроме
         // «Привет, подтверждаешь? Берём?» — оно и уведомлением чата с 06.11.2026 (владелец: «чтобы они точно увидели»).
         // Вопрос «Когда покупатель сможет подписать?» (`ask`) — о нём сказал `SigningTimeNotice`.
-        if ((($e->message->requirement_id && $e->message->text !== self::CONSENT_ASK) || $e->message->ask) && ! $e->message->author_id) {
+        // Вопрос о согласии — с машиной и VIN строкой ниже (`StepAsk::text`), поэтому по началу.
+        if ((($e->message->requirement_id && ! str_starts_with((string) $e->message->text, self::CONSENT_ASK)) || $e->message->ask) && ! $e->message->author_id) {
             return;
         }
         if ($e->message->author_kind === AuthorKind::Participant) {
