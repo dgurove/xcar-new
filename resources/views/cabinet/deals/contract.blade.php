@@ -28,6 +28,8 @@
     $dataErrors = $buyerErrors && ! old('buyer_id') && ! old('payer');
     $part ??= 'all';
     $embedded ??= false;
+    // Подписи строк («Покупатель — имя ›») — в карточке «Договор» (`labels`); в чек-листе шага пункт уже называется «Покупатель».
+    $labels ??= false;
     $doc = new \App\Offers\DkpDocument($contract);
     $pdf = ['url' => '/deals/'.$deal->id.'/dkp.pdf', 'type' => 'pdf', 'name' => $doc->fileName(), 'label' => 'ДКП'];
     $missing = $contract->missing();
@@ -40,16 +42,25 @@
         @if ($part !== 'doc')
         @if ($buyer)
             @if ($ready || ! $editable)
-                <a href="{{ $isMe ? '/account/money/details' : '/buyers/'.$buyer->id }}" class="row">
-                    <span class="min-w-0 flex-1"><span class="block truncate">{{ $isMe ? ($garage ? 'Ваши данные' : 'Я сам') : (\App\Support\OrgName::short($buyer->party?->name) ?: $buyer->name) }}</span>
-                        <span class="row-sub">@if ($ready)<span class="text-open">данные есть</span>@else<span class="text-urgent">нужны данные для {{ $for }}</span>@endif</span></span>
+                {{-- Строкой «Покупатель — имя ›», состояние под подписью (16.11.2026, «Договор» одной карточкой). --}}
+                <a href="{{ $isMe ? '/account/money/details' : '/buyers/'.$buyer->id }}" @class(['row', 'sale-row' => $labels])>
+                    @if ($labels)
+                        <span class="sale-row-label"><span class="block text-ink">Покупатель</span><span @class(['block text-sm', 'text-open' => $ready, 'text-urgent' => ! $ready])>{{ $ready ? 'данные есть' : 'нужны данные' }}</span></span>
+                        <span class="sale-row-value truncate">{{ $isMe ? ($garage ? 'Ваши данные' : 'Я сам') : (\App\Support\OrgName::short($buyer->party?->name) ?: $buyer->name) }}</span>
+                    @else
+                        <span class="min-w-0 flex-1"><span class="block truncate">{{ $isMe ? ($garage ? 'Ваши данные' : 'Я сам') : (\App\Support\OrgName::short($buyer->party?->name) ?: $buyer->name) }}</span><span @class(['block text-sm', 'text-open' => $ready, 'text-urgent' => ! $ready])>{{ $ready ? 'данные есть' : 'нужны данные' }}</span></span>
+                    @endif
                     <x-ui.chevron/>
                 </a>
             @else
                 <div data-controller="sheet" class="contents">
-                    <x-ui.sheet-row>
-                        <span class="min-w-0 flex-1"><span class="block truncate">{{ $isMe ? ($garage ? 'Ваши данные' : 'Я сам') : (\App\Support\OrgName::short($buyer->party?->name) ?: $buyer->name) }}</span>
-                            <span class="row-sub text-urgent">{{ $gap ?? 'нужны данные для '.$for }}</span></span>
+                    <x-ui.sheet-row @class(['sale-row' => $labels])>
+                        @if ($labels)
+                            <span class="sale-row-label"><span class="block text-ink">Покупатель</span><span class="block text-sm text-urgent">{{ $gap ?? 'нужны данные' }}</span></span>
+                            <span class="sale-row-value truncate">{{ $isMe ? ($garage ? 'Ваши данные' : 'Я сам') : (\App\Support\OrgName::short($buyer->party?->name) ?: $buyer->name) }}</span>
+                        @else
+                            <span class="min-w-0 flex-1"><span class="block truncate">{{ $isMe ? ($garage ? 'Ваши данные' : 'Я сам') : (\App\Support\OrgName::short($buyer->party?->name) ?: $buyer->name) }}</span><span class="block text-sm text-urgent">{{ $gap ?? 'нужны данные' }}</span></span>
+                        @endif
                         <x-ui.chevron/>
                     </x-ui.sheet-row>
                     <x-ui.sheet id="deal-buyer-data" :title="'Данные для '.$for" :open="$dataErrors || session('open_sheet') === 'deal-buyer-data'" tall>
@@ -63,27 +74,12 @@
                 </div>
             @endif
             @if ($prime && ! $isMe && $editable)
-                {{-- Кто платит по счёту ПРАЙМ: покупатель (вознаграждение выплатим) или сам менеджер за вычетом своего. На
-                     вариантах — суммы (06.10.2026): без пояснений видно, что «я» платит меньше. Вознаграждение менеджеру
-                     открыто со счёта — до него суммы не пишем. --}}
-                @php
-                    $full = $deal->showsCommission() && $deal->amount ? (int) $deal->amount : null;
-                    $net = $full !== null && $deal->commission_mode === \App\Offers\CommissionMode::Withheld ? $full - min((int) $deal->commission, max(0, $full - (int) $deal->cost)) : $full;
-                @endphp
-                {{-- Кто платит по счёту — две строки с галкой, как в Настройках (17.10.2026: пилюли «покупатель 980 000 ₽» и
-                     «я 980 000 ₽» не влезали в ширину телефона, вторая обрезалась). --}}
-                <form method="post" action="/deals/{{ $deal->id }}/contract" class="contents" data-controller="autosubmit">
+                {{-- Кто платит по счёту — одной строкой с переключателем (16.11.2026, «Договор» одной карточкой; было две строки с
+                     галками и суммами). --}}
+                <form method="post" action="/deals/{{ $deal->id }}/contract" class="row" data-controller="autosubmit">
                     @csrf @method('put')
-                    <label class="row row-check">
-                        <span class="min-w-0 flex-1">Платит покупатель</span>
-                        @if ($full)<span class="nums shrink-0 text-ink-muted">{{ \App\Support\Money::rub($full) }}</span>@endif
-                        <span class="check"><input type="radio" name="payer" value="buyer" @checked(! $contract->managerPays()) data-action="change->autosubmit#submit"></span>
-                    </label>
-                    <label class="row row-check">
-                        <span class="min-w-0 flex-1">Плачу я</span>
-                        @if ($net)<span class="nums shrink-0 text-ink-muted">{{ \App\Support\Money::rub($net) }}</span>@endif
-                        <span class="check"><input type="radio" name="payer" value="manager" @checked($contract->managerPays()) data-action="change->autosubmit#submit"></span>
-                    </label>
+                    <span class="flex-1 whitespace-nowrap">Платит</span>
+                    <x-ui.segment name="payer" :options="['buyer' => 'Покупатель', 'manager' => 'Я']" :value="$contract->managerPays() ? 'manager' : 'buyer'" class="shrink-0" data-action="change->autosubmit#submit"/>
                 </form>
             @endif
         @endif
@@ -97,7 +93,7 @@
             <form method="post" action="/deals/{{ $deal->id }}/contract" class="contents">
                 @csrf @method('put')
                 <x-people.pick name="buyer_id" kind="buyer" passport variant="row" :people="$rows" :value="$current" title="Покупатель" :deal="$deal->id" link autosubmit
-                    :placeholder="$buyer ? 'Другой покупатель' : 'Выбрать покупателя'" finish="Выбрать" data-action="buyer:open@window->sheet#open"/>
+                    :placeholder="$buyer ? 'Другой покупатель' : ($labels ? 'не выбран' : 'Выбрать покупателя')" :label="$buyer || ! $labels ? null : 'Покупатель'" finish="Выбрать" data-action="buyer:open@window->sheet#open"/>
             </form>
             @error('buyer_id')<p class="field-error px-4 py-2">{{ $message }}</p>@enderror
         @endif
@@ -106,12 +102,14 @@
             {{-- ДКП — документ, а не строка «Расчёта»: только готовый — открыть и распечатать (15.11.2026, владелец: «ЗАЧЕМ мы
                  показываем договор, если он НЕ ГОТОВ»; прежде — «ДКП готовим: (Э)ПТС»). --}}
             @if (! $missing)
-                <x-ui.doc :doc="$pdf" class="row">
-                    <x-ui.row-icon name="file" size="s" tone="open"/>
-                    <span class="min-w-0 flex-1"><span class="block">{{ $prime ? 'ДКП '.$deal->seller()->short() : 'ДКП' }}{{ $doc->number() ? ' № '.$doc->number() : '' }}</span><span class="row-sub text-open">готов, распечатайте</span></span>
+                <x-ui.doc :doc="$pdf" class="row sale-row">
+                    <span class="sale-row-label text-ink">{{ $prime ? 'ДКП '.$deal->seller()->short() : 'ДКП' }}{{ $doc->number() ? ' № '.$doc->number() : '' }}</span>
+                    <span class="sale-row-value text-open">готов</span>
                     <x-ui.chevron/>
                 </x-ui.doc>
             @endif
         @endif
+        {{-- Строки, что карточка «Договор» добавляет в ту же группу («Подписанный — Приложить», `cabinet.deals.buyer-block`). --}}
+        {!! $after ?? '' !!}
     </div>
 </section>

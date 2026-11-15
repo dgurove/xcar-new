@@ -38,7 +38,9 @@
     </p>
 @elseif ($foreign && ! $bare)
     {{-- С какого числа ждём (27.10.2026: BMW X6 22 дня «ждём поставщика» без даты — непонятно, давно ли). --}}
-    @if ($who)<p {{ $attributes->merge(['class' => 'text-sm text-ink-muted']) }}>{{ $who }}@if ($position->block_entered_at) с <span class="nums">{{ \App\Support\Ago::html($position->block_entered_at, words: false) }}</span>@endif</p>@endif
+    {{-- Чужой ход — сколько ждём живым счётчиком, а не «с 12.11» (16.11.2026, владелец: «не „ждём поставщика с …“, а просто
+         счётчик»). --}}
+    @if ($who)<p {{ $attributes->merge(['class' => 'text-sm text-ink-muted']) }}>{{ $who }}@if ($position->block_entered_at) <span class="nums" data-controller="timer" data-timer-since-value="{{ $position->block_entered_at->toIso8601String() }}" data-timer-coarse-value="true">{{ \App\Support\Ago::since($position->block_entered_at) }}</span>@endif</p>@endif
 @elseif ($who && ! ($bare && ! $position->deadline_at))
     <p {{ $attributes->merge(['class' => 'text-sm '.($overdue || ($side === 'manager' && ! $foreign) ? 'text-urgent' : 'text-ink-muted')]) }}>
         @if ($bare)@if ($overdue)Просрочено на <span class="nums font-medium" data-controller="timer" data-timer-since-value="{{ $position->deadline_at->toIso8601String() }}" data-timer-coarse-value="true"></span>@else Осталось <span class="nums font-medium" data-controller="timer" data-timer-until-value="{{ $position->deadline_at->toIso8601String() }}" data-timer-done-value="-" data-timer-coarse-value="true" data-timer-word-value="">{{ \App\Support\Ago::left($position->deadline_at, '') }}</span>@endif

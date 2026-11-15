@@ -16,13 +16,17 @@
         default => 'Покупатель',
     };
 @endphp
+{{-- Заголовок — как у всех карточек страницы (13 серым, `box-title`), договор и подписанный — строками без повтора слова. --}}
 <section class="box min-w-0">
-    <h2>{{ $title }}</h2>
+    <h2 class="box-title">{{ $title }}</h2>
+    @php
+        // «Подписанный» — строкой той же группы, что покупатель и ДКП, а не второй плашкой.
+        $signedRow = $withSigned ? \Illuminate\Support\Facades\Blade::render('<x-deal.signed-contract :deal="$deal" :base="$base" bare label="Подписанный"/>', ['deal' => $deal, 'base' => '/deals/'.$deal->id]) : '';
+    @endphp
     @if ($withBuyer)
         @if (! $chosen && $deal->isLive())<div class="mt-3"><x-deal.buyer-kind :deal="$deal"/></div>@endif
-        <div class="mt-2">@include('cabinet.deals.contract', ['part' => $deal->hasContract() ? 'all' : 'buyer', 'embedded' => true])</div>
-    @endif
-    @if ($withSigned)
-        <div class="list mt-2"><x-deal.signed-contract :deal="$deal" :base="'/deals/'.$deal->id" bare/></div>
+        <div class="mt-2">@include('cabinet.deals.contract', ['part' => $deal->hasContract() ? 'all' : 'buyer', 'embedded' => true, 'after' => $signedRow, 'labels' => true])</div>
+    @elseif ($signedRow !== '')
+        <div class="list mt-2">{!! $signedRow !!}</div>
     @endif
 </section>

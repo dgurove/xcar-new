@@ -17,8 +17,10 @@
     // Подпись «кому» — только когда платежей несколько и их надо различить (15.11.2026, владелец: «„ПРАЙМ, за автомобиль“ —
     // нейрослоп, реквизиты и так в счёте»); номер счёта — только в самом файле.
     $title ??= null;
-    // Внутри задачи шага — вложенной плашкой, в «Платежах» — своей карточкой.
+    // Внутри задачи шага — вложенной плашкой; в «Деньгах» (`row`, 16.11.2026) — строкой карточки: подпись слева, сумма справа,
+    // факт второй строкой под подписью, способы оплаты и внесённое — под строкой.
     $nested ??= false;
+    $row ??= false;
     $left = $invoice ? round($invoice->remaining() - $invoice->claimed(), 2) : 0;
     $canPay = $pay && $invoice && $deal->buyer_id === auth()->id() && $invoice->state === InvoiceState::Issued && $left > 0;
     if ($canPay) {
@@ -41,8 +43,20 @@
         };
     }
 @endphp
-<div class="{{ $nested ? 'box-nested' : 'box' }} flex flex-col gap-3">
+<div class="{{ $row ? 'deal-money-row' : ($nested ? 'box-nested' : 'box') }} flex flex-col gap-3">
     @php $head = $href && ! $invoice ? 'a' : 'div'; @endphp
+    @if ($row)
+    <{{ $head }} @if ($head === 'a') href="{{ $href }}" @endif class="flex items-start gap-3">
+        <span class="min-w-0 flex-1">
+            <span class="block">{{ $title }}</span>
+            @if ($state)<span @class(['block text-sm', $state[1] ?: 'text-ink-muted'])>{{ $state[0] }}</span>
+            @elseif ($sub || ($invoice && $invoice->state === InvoiceState::Issued && $invoice->due_at))
+                <span class="flex flex-wrap gap-x-2 text-sm text-ink-muted">@if ($sub)<span>{{ $sub }}</span>@endif @if ($invoice && $invoice->state === InvoiceState::Issued && $invoice->due_at)<x-billing.light :invoice="$invoice"/>@endif</span>
+            @endif
+        </span>
+        <span @class(['nums shrink-0', 'text-lg font-semibold' => $strong ?? false])>{{ $amount }}</span>
+    </{{ $head }}>
+    @else
     <{{ $head }} @if ($head === 'a') href="{{ $href }}" @endif class="block">
         @if ($title)<span class="mb-0.5 block text-sm text-ink-muted">{{ $title }}</span>@endif
         <span class="nums block text-lg font-semibold">{{ $amount }}</span>
@@ -56,6 +70,7 @@
             <span class="mt-1 flex flex-wrap gap-x-2 text-sm text-ink-muted">@if ($sub)<span>{{ $sub }}</span>@endif @if ($invoice && $invoice->state === InvoiceState::Issued && $invoice->due_at && ! $nested)<x-billing.light :invoice="$invoice"/>@endif</span>
         @endif
     </{{ $head }}>
+    @endif
     {{-- Что уже внесено — оплатами с платёжками, «ждёт подтверждения» (15.11.2026: было только в шторке счёта, которой больше нет). --}}
     @if ($invoice && $invoice->relationLoaded('allPayments') && $invoice->allPayments->isNotEmpty())
         <div @class(['list', 'bg-surface' => $nested])>

@@ -58,7 +58,7 @@
             @if ($pastInvoices->isNotEmpty())
                 {{-- Счета и ответы — группами строк, как в «Настройках», а не списком внутри коробки. --}}
                 <section class="order-6 min-w-0">
-                    <h2 class="list-head">Счета</h2>
+                    <h2 class="mb-2 px-1 text-sm font-medium text-ink-dim">Счета</h2>
                     <div class="list">
                         @foreach ($pastInvoices as $i)@include('cabinet.deals.invoice-row', ['invoice' => $i])@endforeach
                     </div>
@@ -92,7 +92,7 @@
             <x-offer.facts :offer="$offer" :full="true" class="order-7"/>
             @if ($docs->isNotEmpty())
                 <section class="order-8 min-w-0">
-                    <h2 class="list-head lg:pt-0">Документы</h2>
+                    <h2 class="mb-2 px-1 text-sm font-medium text-ink-dim">Документы</h2>
                     <div class="flex flex-col">
                         @foreach ($docs as $media)
                             <x-ui.file :name="$media->file_name" :mime="$media->mime_type" :bytes="$media->size" href="/files/{{ $media->id }}" :refs="[$offer->claim_ref]"/>
@@ -102,7 +102,7 @@
             @endif
             @if ($photos->isNotEmpty())
                 <section class="order-9 min-w-0">
-                    <h2 class="list-head lg:pt-0">Фото <span class="nums">{{ $photos->count() }}</span></h2>
+                    <h2 class="mb-2 px-1 text-sm font-medium text-ink-dim">Фото <span class="nums">{{ $photos->count() }}</span></h2>
                     <x-offer.gallery :photos="$photos" :alt="$offer->titleWithYear()" tiles :offer="$offer"/>
                 </section>
             @endif

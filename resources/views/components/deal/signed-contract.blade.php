@@ -4,7 +4,7 @@
      подписан» (`AttachSignedContract`). base — адрес сделки на этой поверхности (`/deals/5`, `/work/deals/5`); bare — строки без
      своей группы и заголовка (внутри группы «Деньги» CRM), файл подписан «подписанный договор»; card — карточкой, как «Договор»
      окна модератора. --}}
-@props(['deal', 'base', 'bare' => false, 'card' => false])
+@props(['deal', 'base', 'bare' => false, 'card' => false, 'label' => 'Подписанный договор'])
 @php
     $files = $deal->getMedia('signed_contract');
     $can = \App\Offers\Actions\AttachSignedContract::allows($deal);
@@ -26,7 +26,7 @@
                     {{-- Строкой «Продажи» «Подписанный договор — Приложить» (16.11.2026, `x-deal.sale-row`). --}}
                     @if ($bare && $files->isEmpty())
                         {{-- «Приложить» зелёным по краю значений других строк, серая скрепка — на месте «›» (16.11.2026, владелец). --}}
-                        <span class="sale-row-label">Подписанный договор</span><span class="sale-row-value text-accent-text">Приложить</span><x-ui.icon name="clip" class="size-5 shrink-0 text-ink-dim"/>
+                        <span class="sale-row-label">{{ $label }}</span><span class="sale-row-value text-accent-text">Приложить</span><x-ui.icon name="clip" class="size-5 shrink-0 text-ink-dim"/>
                     @else
                         <x-ui.icon name="clip" class="size-5 shrink-0"/>
                         <span class="min-w-0 flex-1">{{ $files->isEmpty() ? 'Приложить' : 'Приложить ещё' }}</span>

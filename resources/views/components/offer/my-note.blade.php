@@ -9,11 +9,12 @@
     $readonly = \App\Users\Impersonation::active();
 @endphp
 @if ($user?->keepsNotes() && ($text !== '' || ! $readonly))
-    {{-- Одна плашка: значок и поле, без заголовка и плашки в плашке (19.10.2026, владелец: «улучши вёрстку на телефонах»). --}}
+    {{-- Одна плашка: значок и поле, без заголовка и плашки в плашке (19.10.2026, владелец: «улучши вёрстку на телефонах»).
+         Подсказка короткая, текст размером строк страницы (16.11.2026, владелец: «везде слишком большой шрифт»). --}}
     <label {{ $attributes->class(['note-card', 'note-card--bare' => $bare]) }}>
         <x-ui.icon name="edit" class="note-card-icon size-[18px]"/>
         <textarea class="note-field" rows="1" maxlength="{{ \App\Offers\OfferNote::MAX }}" aria-label="Заметка"
-            placeholder="Добавьте свою заметку по этому ТС. Она будет видна только Вам."
+            placeholder="Заметка, видна только вам"
             @if ($readonly) readonly @else data-controller="note" data-note-url-value="/offers/{{ $offer->number }}/note" data-action="input->note#changed blur->note#flush" @endif>{{ $text }}</textarea>
     </label>
 @endif

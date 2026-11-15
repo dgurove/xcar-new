@@ -82,7 +82,7 @@
                 // «Запись на подписание» — и пока письмо не ушло (ждём XCar): «Записываем на подписание, с 11.11» (11.11.2026).
                 $statusLine = ! $requirement && $position->stage->ask_text
                     && ($position->waitsFor() === \App\Workflow\WaitsFor::Supplier || \App\Offers\Signing::awaitsSlots($position->stage))
-                    ? \App\Users\Wording::mine($position->stage->ask_text).($position->entered_at ? ', с '.\App\Support\Ago::day($position->entered_at) : '') : null;
+                    ? \App\Users\Wording::mine($position->stage->ask_text) : null;
                 // Поставщик готовит договор — когда покупатель сможет подписать, день и время заранее (`Signing`, 11.11.2026).
                 $signingDays = ! $requirement && $deal->signing_at === null && \App\Offers\Signing::asksTime($position->stage->loadMissing('exits.to.exits'));
                 $heading = match (true) {
@@ -110,7 +110,8 @@
                 };
             @endphp
             <h2>{{ $heading }}</h2>
-            @if ($statusLine !== null)<p class="mt-1 text-sm text-ink-muted">{{ $statusLine }}</p>@endif
+            {{-- Фраза этапа и сколько уже идёт счётчиком, без «с 12.11» (16.11.2026). --}}
+            @if ($statusLine !== null)<p class="mt-1 text-sm text-ink-muted">{{ $statusLine }}@if ($position->entered_at) <span class="nums whitespace-nowrap" data-controller="timer" data-timer-since-value="{{ $position->entered_at->toIso8601String() }}" data-timer-coarse-value="true">{{ \App\Support\Ago::since($position->entered_at) }}</span>@endif</p>@endif
             @if ($signingDays)
                 <x-deal.signing-when :deal="$deal" :action="'/deals/'.$deal->id.'/signing-wish'" class="mt-4"/>
             @endif
@@ -170,9 +171,9 @@
                                     @include('cabinet.deals.payload')
                                     @if ($disclosures->isNotEmpty())@include('cabinet.deals.disclosures')@endif
                                 @elseif ($key === 'buyer')
-                                    @include('cabinet.deals.contract', ['part' => 'buyer', 'embedded' => true])
+                                    @include('cabinet.deals.contract', ['part' => 'buyer', 'embedded' => true, 'labels' => false, 'after' => ''])
                                 @elseif ($key === 'doc')
-                                    @include('cabinet.deals.contract', ['part' => 'doc', 'embedded' => true])
+                                    @include('cabinet.deals.contract', ['part' => 'doc', 'embedded' => true, 'labels' => false, 'after' => ''])
                                 @endif
                                 @if ($key === $here)@include('cabinet.deals.answer')@endif
                                 @if ($key === 'pickup')@include('cabinet.deals.pickup-request', ['inline' => true])@endif
@@ -237,7 +238,7 @@
             {{-- Действия — после всего, что нужно прочитать. --}}
             @if ($needsBuyer)
                 @if ($photoTiles)<div class="mt-4"><x-deal.buyer-kind :deal="$deal"/></div>@endif
-                <div class="mt-4">@include('cabinet.deals.contract', ['part' => 'buyer', 'embedded' => true])</div>
+                <div class="mt-4">@include('cabinet.deals.contract', ['part' => 'buyer', 'embedded' => true, 'labels' => false, 'after' => ''])</div>
             @endif
             @if ($requirement && ! $needsBuyer && (! $selectionPay || $direct) && ! $paidUp && ! $signingPick)
                 @if ($payStep && $unpaid->isNotEmpty() && ! $direct)
