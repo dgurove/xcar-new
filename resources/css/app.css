@@ -6029,7 +6029,9 @@ dialog.lightbox:not(.lb-one) .lb-pill--bottom { bottom: calc(var(--lb-strip-bott
   }
 
   .mail-pane { padding: 1.25rem 1.5rem 1.5rem; }
-  .pane-topic { margin-bottom: 1rem; font-size: var(--text-sm); line-height: 1.25rem; color: var(--color-ink-muted); overflow-wrap: anywhere; }
+  .pane-head { display: flex; align-items: flex-start; gap: 1rem; margin-bottom: 1rem; }
+  .pane-topic { flex: 1 1 auto; min-width: 0; font-size: var(--text-sm); line-height: 1.25rem; color: var(--color-ink-muted); overflow-wrap: anywhere; }
+  .letter-car.pane-car { flex: 0 1 auto; margin-top: 0; max-width: 50%; }
 
   /* Цепочка писем (x-mail.chain) — одна на все места (17.11.2026, владелец: «объединить в одну цепочку», «везде одинаково»):
      кружок отправителя 24 px на линии, как было. Раскрытое письмо — вид, выбранный по макетам: имя и адрес рядом, «кому» и дата одним
