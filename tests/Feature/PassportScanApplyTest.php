@@ -65,4 +65,20 @@ class PassportScanApplyTest extends TestCase
         ReadPassport::apply($party->fresh()->passportScan('main'));
         $this->assertSame('770-121', $party->fresh()->passport_code);
     }
+
+    /** ФИО поменялось любым путём — имя и фамилия покупателя за ним; менеджера не трогаем (16.11.2026, Файзулаев). */
+    public function test_buyer_name_follows_passport_name(): void
+    {
+        $party = Party::create(['kind' => 'person', 'name' => 'Комил Отчестае Ахмеджонович']);
+        $buyer = User::create(['first_name' => 'Отчестае', 'last_name' => 'Комил', 'phone' => '79000000002', 'roles' => [Role::Buyer], 'party_id' => $party->id, 'approved_at' => now()]);
+        $managerParty = Party::create(['kind' => 'person', 'name' => 'Петров Иван']);
+        $manager = User::create(['first_name' => 'Иван', 'last_name' => 'Петров', 'phone' => '79000000003', 'roles' => [Role::Manager], 'party_id' => $managerParty->id, 'approved_at' => now()]);
+
+        $party->update(['name' => 'Файзулаев Комил Ахмеджонович']);
+        $managerParty->update(['name' => 'Сидоров Пётр Ильич']);
+
+        $buyer->refresh();
+        $this->assertSame(['Комил', 'Файзулаев', 'Комил Файзулаев'], [$buyer->first_name, $buyer->last_name, $buyer->name]);
+        $this->assertSame('Иван Петров', $manager->fresh()->name);
+    }
 }

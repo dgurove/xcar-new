@@ -6,11 +6,13 @@ use App\Billing\Party;
 use App\Billing\PartyKind;
 use App\Billing\Passport\PassportScan;
 use App\Billing\Passport\PassportText;
+use App\Http\Cabinet\PassportScanController;
 use App\Mail\Extraction\DocumentText;
 use App\Mail\Parts;
 use App\Media\Actions\RotatePhoto;
 use App\Media\Thumb;
-use App\Users\Actions\AddPerson;
+use App\Offers\Actions\SyncDealInvoices;
+use App\Users\Role;
 use App\Users\User;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -85,9 +87,9 @@ final class ReadPassport implements ShouldQueue
             return;
         }
         $user = User::where('party_id', $party->id)->first();
-        $by = User::find($media->getCustomProperty('by')) ?? User::withRole(\App\Users\Role::Admin)->orderBy('id')->first();
+        $by = User::find($media->getCustomProperty('by')) ?? User::withRole(Role::Admin)->orderBy('id')->first();
         if ($user && $by) {
-            \App\Http\Cabinet\PassportScanController::resyncFor($user, $by, app(\App\Offers\Actions\SyncDealInvoices::class));
+            PassportScanController::resyncFor($user, $by, app(SyncDealInvoices::class));
         }
     }
 
@@ -158,11 +160,7 @@ final class ReadPassport implements ShouldQueue
         if ($name !== $party->name) {
             $party->update(['name' => $name]);
         }
-        $user = User::where('party_id', $party->id)->first();
-        if ($user && $user->name === AddPerson::UNNAMED) {
-            $w = preg_split('/\s+/u', $name);
-            $user->update(['name' => trim(($w[1] ?? '').' '.$w[0])]);
-        }
+        // Имя покупателя за ФИО — само сохранение контрагента (`Party::booted` → `SaveBuyerData::renameBuyer`).
     }
 
     /** Слово паспорта той же длины, что вписанное, и с одной другой буквой — вписанным написанием: «Фусейн» → «Гусейн». */

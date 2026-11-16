@@ -43,8 +43,8 @@ final class SaveBuyerData
         };
         $keep = $keepKind && $kind === 'person' && in_array($party->kind, [PartyKind::Entrepreneur, PartyKind::SelfEmployed], true);
         $party->fill(($keep ? [] : ['kind' => $as]) + $fields)->save();
-        // Покупатель, заведённый плиткой вида без имени («Новый покупатель», `Cabinet\DealController::buyerNew`), — имя из
-        // полей (13.11.2026): ФИО «Фамилия Имя Отчество» → «Имя Фамилия», организация — названием.
+        // Имя покупателя из ФИО ставит само сохранение контрагента (`Party::booted` → `renameBuyer`); здесь — на случай,
+        // когда ФИО не менялось, а имя уже разошлось.
         self::renameBuyer($party);
 
         return $party;
@@ -53,19 +53,23 @@ final class SaveBuyerData
     /**
      * Имя покупателя — из ФИО его данных: заведённый без имени и покупатель — при каждом сохранении данных, если имя разошлось с ФИО (16.11.2026, Видов:
      * сканер прочитал «Виеов», сотрудник исправил в данных, а в «Кто заберёт» и «Кто платит» остался «Александр Виеов»).
-     * ФИО «Фамилия Имя Отчество» → «Имя Фамилия», организация — названием. Менеджера и сотрудников не переименовываем.
+     * ФИО «Фамилия Имя Отчество» → имя и фамилия, организация — названием. Менеджера и сотрудников не переименовываем.
+     * Зовёт само сохранение контрагента при смене ФИО (`Party::booted`), так что путь правки не важен.
      */
     public static function renameBuyer(Party $party): void
     {
-        $name = trim((string) $party->name);
-        $user = $name === '' ? null : User::where('party_id', $party->id)->first();
-        if (! $user || ! ($user->name === AddPerson::UNNAMED || $user->isBuyer())) {
+        $name = trim(preg_replace('/\s+/u', ' ', (string) $party->name));
+        if ($name === '') {
             return;
         }
-        $w = preg_split('/\s+/u', $name);
-        $short = $party->kind === PartyKind::Company || count($w) < 2 ? $name : trim($w[1].' '.$w[0]);
-        if ($user->name !== $short) {
-            $user->update(['name' => $short]);
+        $w = explode(' ', $name);
+        [$first, $last] = $party->kind === PartyKind::Company || count($w) < 2 ? [$name, ''] : [$w[1], $w[0]];
+        $users = User::where('party_id', $party->id)->get()
+            ->filter(fn (User $u) => $u->name === AddPerson::UNNAMED || $u->isBuyer() || $u->isSuperBuyer());
+        foreach ($users as $user) {
+            if ($user->first_name !== $first || (string) $user->last_name !== $last) {
+                $user->update(['first_name' => mb_substr($first, 0, 60), 'last_name' => mb_substr($last, 0, 60)]);
+            }
         }
     }
 }

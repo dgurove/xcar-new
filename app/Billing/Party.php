@@ -2,6 +2,7 @@
 
 namespace App\Billing;
 
+use App\Billing\Actions\SaveBuyerData;
 use App\Park\Vehicle;
 use App\Support\Demo\HidesDemo;
 use App\Support\FastAttributes;
@@ -32,6 +33,9 @@ class Party extends Model implements HasMedia
     protected static function booted(): void
     {
         static::saved(fn (self $p) => $p->is_self ? null : Closing::forgetPending());
+        // ФИО поменялось любым путём (форма, скан, «Распознать заново») — имя покупателя за ним (16.11.2026, владелец:
+        // «строго должны соответствовать паспорту»; скан Файзулаева исправил ФИО, а покупатель остался «Отчестае Комил»).
+        static::saved(fn (self $p) => $p->wasChanged('name') ? SaveBuyerData::renameBuyer($p) : null);
     }
 
     use HidesDemo;
