@@ -46,14 +46,15 @@
         <button type="button" class="toolbar-cancel" data-action="live-search#cancel">Отмена</button>
     @endif
     <div class="toolbar-bar">
+        {{-- Слева лупа, сортировка, вид; справа «Фильтр» (17.11.2026, владелец). --}}
         <div class="toolbar-side">
-            @if ($sort)<x-ui.sort :sort="$sort" :url="$sortUrl" :name="$name" :toggles="$sortToggles"/>@endif
             @if ($search)<button type="button" class="btn btn-s btn-quiet btn-round shrink-0 toolbar-lens" data-action="live-search#open" aria-label="Поиск"><x-ui.icon name="search" class="size-5"/></button>@endif
-        </div>
-        <div class="toolbar-side toolbar-side--end">
+            @if ($sort)<x-ui.sort :sort="$sort" :url="$sortUrl" :name="$name" :toggles="$sortToggles"/>@endif
             {{ $extra ?? '' }}
-            @if ($facets && $facets->all())<x-ui.filter-button :facets="$facets"/>@endif
         </div>
+        @if ($facets && $facets->all())
+            <div class="toolbar-side toolbar-side--end"><x-ui.filter-button :facets="$facets"/></div>
+        @endif
     </div>
     @if ($facets && ! request()->headers->has('X-List'))
         <x-ui.facets :facets="$facets" :name="$name" part="quick"/>

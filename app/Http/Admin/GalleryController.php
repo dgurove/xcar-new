@@ -53,12 +53,8 @@ class GalleryController
         }
         $preset = array_key_exists((string) $request->query('preset'), self::PRESETS) ? (string) $request->query('preset') : 'gallery';
         $searching = filled($request->query('q'));
-        // Шапка вкладки (17.11.2026): быстрые — вендор, город, тип ТС; «Заведено» и параметры машины, денег и сроков
-        // (`OfferFilters`) — в шторке «Фильтр».
+        // Шапка вкладки (17.11.2026): все чипы и параметры машины, денег и сроков (`OfferFilters`) — в окне «Фильтр».
         $base = OfferController::facets();
-        foreach (array_slice($base, 0, 3) as $f) {
-            $f->quick();
-        }
         $facets = Facets::for($request, 'crm-gallery', ...$base, ...OfferFilters::for('offers.id', $request->user()->canManageCrm()))->saving('offers');
         ListPrefs::sync($request, 'crm-gallery', keep: array_values(array_diff($facets->keys(), OfferController::ONCE)));
         $sort = Sort::from($request->query('sort'), self::SORTS, $preset === 'interest' ? '-last' : '-fresh');

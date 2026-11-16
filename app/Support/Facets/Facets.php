@@ -292,7 +292,7 @@ final class Facets
         }
         // Есть быстрые чипы — ряд считает только их (и переключатели вкладки) и выбранное; варианты остальных — по открытию
         // «Фильтра».
-        $lazy = ! $all && $this->quick();
+        $lazy = ! $all && ($this->quick() || $this->saved !== null);
 
         $chips = collect($this->facets)->when($only !== null, fn ($c) => $c->only([$only]))->map(function (Facet $f, string $key) use ($lazy, $all) {
             // Переключатель внутри шторки другого чипа (`Facet::within`) — не в ряду: его рисует тот чип.

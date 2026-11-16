@@ -17,7 +17,10 @@
     <div class="{{ $part ? 'toolbar-row toolbar-row--'.$part : 'toolbar-chips' }}">
         <div class="flex flex-nowrap items-center gap-2">
             @foreach ($chips as $chip)
-                @if ($part === 'quick' && ! $chip->facet->quick)
+                @if ($part === 'quick' && ! $chip->on)
+                    {{-- Шапка вкладок колеса: выпадающих быстрых чипов нет (17.11.2026, владелец: «не нужны, выбирать в фильтре») —
+                         только выбранное, чипом с ×. --}}
+                @elseif ($part === 'quick')
                     @php $f = $chip->facet; $text = $f->range || $f->dates ? $f->title.': '.mb_strtolower(mb_substr($chip->label, 0, 1)).mb_substr($chip->label, 1) : $chip->label; @endphp
                     <span class="pill facet-on" aria-current="true">
                         <a href="{{ \App\Support\Detail::url(\App\Support\Detail::FILTER) }}" class="facet-open" data-action="detail#filter" data-turbo-prefetch="false">{{ $text }}</a>
