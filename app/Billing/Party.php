@@ -234,6 +234,27 @@ class Party extends Model implements HasMedia
         };
     }
 
+    /**
+     * Чего не хватает покупателю словами — первым, что мешает договору и счёту (16.11.2026, владелец по сделке 412: «должно
+     * писаться, что реквизитов нет, если прописки нет»): «нет прописки», «нет паспорта и прописки», дальше скан и банк ИП
+     * (`buyerGap`); null — всё есть.
+     */
+    public function gapWord(): ?string
+    {
+        $missing = array_keys(array_filter(match ($this->kind) {
+            PartyKind::Company => ['названия' => blank($this->name), 'ИНН' => blank($this->inn), 'адреса' => blank($this->legal_address), 'директора' => blank($this->director)],
+            PartyKind::Entrepreneur => ['ФИО' => blank($this->name), 'ИНН' => blank($this->inn), 'ОГРНИП' => blank($this->ogrn), 'адреса' => blank($this->legal_address ?: $this->reg_address)],
+            default => ['ФИО' => blank($this->name), 'даты рождения' => ! $this->birth_at,
+                'паспорта' => blank($this->passport) || blank($this->passport_issued) || ! $this->passport_issued_at, 'прописки' => blank($this->reg_address)],
+        }));
+
+        return match (true) {
+            $missing === [] => $this->buyerGap(),
+            count($missing) > 2 => 'нет данных',
+            default => 'нет '.implode(' и ', $missing),
+        };
+    }
+
     /** Чей это контрагент на сайте: сам человек (его `party_id`) или его менеджер — им можно прикреплять и смотреть скан. */
     public function managedBy(User $me): bool
     {

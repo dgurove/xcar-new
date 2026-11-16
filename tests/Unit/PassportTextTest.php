@@ -2,6 +2,7 @@
 
 namespace Tests\Unit;
 
+use App\Billing\Actions\SaveBuyerData;
 use App\Billing\Jobs\ReadPassport;
 use App\Billing\Passport\PassportText;
 use PHPUnit\Framework\TestCase;
@@ -89,6 +90,26 @@ class PassportTextTest extends TestCase
         $text = "MECTO ЖИТЕАЬСТВА\nЗАРЕГИСТРИРСЕАН\n16 ihebprahe dody\nP-H\nПункт   winp\nyn.\nМП Н 4 отлол по вопросам миграции\nMYМВД   \"Балашихинское”\nподпись";
 
         $this->assertSame([], PassportText::registration($text)['fields']);
+    }
+
+    /** Имя и фамилия покупателя из ФИО — порядок по отчеству, словарю имён и окончанию фамилии (16.11.2026, прод). */
+    public function test_name_parts_from_fio(): void
+    {
+        $cases = [
+            ['Файзулаев Комил Ахмеджонович', '', ['Комил', 'Файзулаев']],
+            ['Ибрагимов Дашдамир Байрам оглы', '', ['Дашдамир', 'Ибрагимов']],
+            ['Ирина Васильевна Холопова', '', ['Ирина', 'Холопова']],
+            ['Индивидуальный Предприниматель Комаров Алексей Александрович', '', ['Алексей', 'Комаров']],
+            ['Олег Данилин', 'Олег Данилин', ['Олег', 'Данилин']],
+            ['МАКСИМ ГРИГОРЬЕВ', '', ['МАКСИМ', 'ГРИГОРЬЕВ']],
+            ['Гамидов Тагир', '', ['Тагир', 'Гамидов']],
+            ['Ekaterina Самохина', '', ['Ekaterina', 'Самохина']],
+            ['Sergei Mak', 'Sergei Mak', null],
+            ['Саулите Улдис', 'Саулите Улдис', null],
+        ];
+        foreach ($cases as [$fio, $current, $expected]) {
+            $this->assertSame($expected, SaveBuyerData::nameParts($fio, $current), $fio);
+        }
     }
 
     /** ФИО паспорта поверх вписанного, буква OCR — по вписанному: «Фусейн» → «Гусейн». */

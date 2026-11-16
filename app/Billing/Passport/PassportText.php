@@ -483,7 +483,7 @@ final class PassportText
     }
 
     /** Есть ли имя в словаре частых имён (`resources/data/first-names.txt`). */
-    private static function isName(string $w): bool
+    public static function isName(string $w): bool
     {
         static $names = null;
         $names ??= array_flip(array_filter(array_map('trim', @file(__DIR__.'/../../../resources/data/first-names.txt') ?: [])));

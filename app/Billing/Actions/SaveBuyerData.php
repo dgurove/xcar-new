@@ -4,6 +4,7 @@ namespace App\Billing\Actions;
 
 use App\Billing\Party;
 use App\Billing\PartyKind;
+use App\Billing\Passport\PassportText;
 use App\Users\Actions\AddPerson;
 use App\Users\User;
 
@@ -62,14 +63,56 @@ final class SaveBuyerData
         if ($name === '') {
             return;
         }
-        $w = explode(' ', $name);
-        [$first, $last] = $party->kind === PartyKind::Company || count($w) < 2 ? [$name, ''] : [$w[1], $w[0]];
         $users = User::where('party_id', $party->id)->get()
             ->filter(fn (User $u) => $u->name === AddPerson::UNNAMED || $u->isBuyer() || $u->isSuperBuyer());
         foreach ($users as $user) {
+            $parts = $party->kind === PartyKind::Company ? [$name, ''] : self::nameParts($name, (string) $user->name);
+            if ($parts === null) {
+                continue;
+            }
+            [$first, $last] = $parts;
             if ($user->first_name !== $first || (string) $user->last_name !== $last) {
                 $user->update(['first_name' => mb_substr($first, 0, 60), 'last_name' => mb_substr($last, 0, 60)]);
             }
         }
+    }
+
+    /**
+     * Имя и фамилия из ФИО. Паспортный порядок — «Фамилия Имя Отчество»; но два слова часто стоят «Имя Фамилия» (контрагента
+     * заводили из имени аккаунта), поэтому порядок — по отчеству, словарю имён и окончанию фамилии. Не понять — `null`:
+     * два слова, что уже стоят в имени в другом порядке, не переставляем («Sergei Mak», «Саулите Улдис»).
+     *
+     * @return array{0: string, 1: string}|null
+     */
+    public static function nameParts(string $fio, string $current = ''): ?array
+    {
+        $fio = trim(preg_replace('/^(ИНДИВИДУАЛЬНЫЙ\s+ПРЕДПРИНИМАТЕЛЬ|ИП)\s+/iu', '', trim($fio)));
+        $w = array_values(array_filter(explode(' ', preg_replace('/\s+/u', ' ', $fio))));
+        if (count($w) < 2) {
+            return $w ? [$w[0], ''] : null;
+        }
+        $up = fn (string $x) => mb_strtoupper($x);
+        $patronymic = fn (string $x) => (bool) preg_match('/(ВИЧ|ВНА|ИЧНА|ОГЛЫ|КЫЗЫ)$/u', $up($x));
+        $surname = fn (string $x) => (bool) preg_match('/(ОВ|ЕВ|ЁВ|ИН|ЫН|СКИЙ|ЦКИЙ|ОВА|ЕВА|ЁВА|ИНА|ЫНА|СКАЯ|ЦКАЯ)$/u', $up($x));
+        $name = fn (string $x) => PassportText::isName($up($x));
+        if (count($w) >= 3) {
+            // «Имя Отчество Фамилия» — отчество вторым; иначе паспортный порядок.
+            return $patronymic($w[1]) && ! $patronymic($w[2]) ? [$w[0], $w[2]] : [$w[1], $w[0]];
+        }
+        [$a, $b] = $w;
+        $order = match (true) {
+            $name($a) && ! $name($b), $surname($b) && ! $surname($a) => [$a, $b],
+            $name($b) && ! $name($a), $surname($a) && ! $surname($b) => [$b, $a],
+            default => null,
+        };
+        if ($order) {
+            return $order;
+        }
+        $have = preg_split('/\s+/u', $up(trim($current)));
+        sort($have);
+        $both = [$up($a), $up($b)];
+        sort($both);
+
+        return $have === $both ? null : [$b, $a];
     }
 }
