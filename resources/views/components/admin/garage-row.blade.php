@@ -18,7 +18,8 @@
     $price = $car->price();
     // Сделка со страховой идёт — её шаг и чей ход строкой ниже, как в «Сделках».
     $sale = $car->dealOpen() ? $offer->positions->first(fn ($p) => $p->track === \App\Workflow\Track::Sale) : null;
-    // Срок обязывающего, пока поставщику не заплачено (19.10.2026): только горящий — красной меткой у названия.
+    // Срок обязывающего, пока поставщику не заплачено (19.10.2026): только горящий — красной меткой справа от номера убытка
+    // (17.11.2026, владелец: у названия «скачет»); номера нет — у названия.
     $binding = $sale && \App\Offers\Binding::matters($offer);
 @endphp
 <tr data-detail-key="{{ $offer->number }}" id="garage-{{ $offer->number }}">
@@ -26,12 +27,12 @@
         @switch($key)
         @case('title')
     <td class="{{ $col->classes() }}">
-        <x-cell.title :key="$offer->number" :offer="$offer">@if ($binding)<x-offer.binding :offer="$offer" icon/>@endif</x-cell.title>
-        <span class="cell-sub"><span class="sm:hidden"><span class="{{ $line->tone }}">{{ $line->word }}</span>, @if ($sale)<x-route.term :position="$sale"/>@else{{ $line->when }}@endif</span>@if ($hasRef)<span class="block sm:hidden"><x-vendor.ref :vendor="$vendor" :ref="$offer->claim_ref"/></span>@endif</span>
+        <x-cell.title :key="$offer->number" :offer="$offer">@if ($binding && ! $hasRef)<x-offer.binding :offer="$offer" icon/>@endif</x-cell.title>
+        <span class="cell-sub"><span class="sm:hidden"><span class="{{ $line->tone }}">{{ $line->word }}</span>, @if ($sale)<x-route.term :position="$sale"/>@else{{ $line->when }}@endif</span>@if ($hasRef)<span class="block sm:hidden"><x-vendor.ref :vendor="$vendor" :ref="$offer->claim_ref">@if ($binding)<x-offer.binding :offer="$offer" icon/>@endif</x-vendor.ref></span>@endif</span>
     </td>
         @break
         @case('vendor')
-    <td class="{{ $col->classes() }}"><x-vendor.ref :vendor="$vendor" :ref="$offer->claim_ref" cell/></td>
+    <td class="{{ $col->classes() }}"><x-vendor.ref :vendor="$vendor" :ref="$offer->claim_ref" cell>@if ($binding)<x-offer.binding :offer="$offer" icon/>@endif</x-vendor.ref></td>
         @break
         @case('stage')
     <td class="{{ $col->classes() }}"><span class="whitespace-normal"><span class="{{ $line->tone }}">{{ $line->word }}</span>, @if ($sale)<x-route.term :position="$sale"/>@else{{ $line->when }}@endif</span></td>

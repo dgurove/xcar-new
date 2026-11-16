@@ -43,7 +43,8 @@
         {{-- Слот и @if — не вплотную (CLAUDE.md): условие внутри слота. --}}
         <x-cell.title :key="$deal->offer->number" :offer="$offer" :strong="$replied">
             <x-slot:before>@if ($replied)<span class="card-tone card-tone--reply" aria-label="Поставщик ответил"></span>@endif</x-slot:before>
-            @if ($burning)<x-offer.binding :offer="$offer" icon/>@endif
+            {{-- Таймер срока обязывающего на ПК — справа от номера убытка (17.11.2026, владелец); на телефоне номера в строке нет. --}}
+            @if ($burning)<x-offer.binding :offer="$offer" icon :class="$table->has('vendor') ? 'sm:hidden' : ''"/>@endif
             {{-- Параллельные этой машины (07.11.2026): метка у названия — столбец менеджера на узком экране уходит. --}}
             @if ($deal->parallels_count)<span class="tag ml-1.5" title="Параллельно ещё {{ $deal->parallels_count }}">+{{ $deal->parallels_count }} параллельно</span>@endif
             {{-- Телефон: сумма — концом строки названия, а не столбцом (15.11.2026, владелец: «не резать, если справа есть место»). --}}
@@ -55,7 +56,7 @@
     </td>
         @break
         @case('vendor')
-    <td class="{{ $col->classes() }}"><x-vendor.ref :vendor-id="$offer->vendor_id" :ref="$offer->claim_ref" cell/></td>
+    <td class="{{ $col->classes() }}"><x-vendor.ref :vendor-id="$offer->vendor_id" :ref="$offer->claim_ref" cell>@if ($burning)<x-offer.binding :offer="$offer" icon/>@endif</x-vendor.ref></td>
         @break
         @case('number')
     <td class="{{ $col->classes() }}">{{ $offer->number }}</td>

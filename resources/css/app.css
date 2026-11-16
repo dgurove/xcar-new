@@ -1300,6 +1300,8 @@ html.kb-open { --home-gap: 0px; }
   .tab-step .bar-btn[aria-disabled] { opacity: .35; pointer-events: none; }
   /* На телефоне ˄ ˅ нет (17.11.2026, владелец): там колесо листается пальцем. */
   @media (max-width: 1023.98px) { .tab-step { display: none; } }
+  /* На ПК при ˄ ˅ «›» у названия нет (владелец): выбор и так виден; в колесе у выбранной «›» остаётся. */
+  @media (min-width: 1024px) { .tab-title.has-step .tab-title-chev { display: none; } }
   .title-actions { @apply ml-auto flex shrink-0 items-center gap-1.5; }
   .title-actions .btn-s { height: 2rem; padding-inline: .75rem; }
   .title-actions .btn-round { width: 2rem; height: 2rem; }
@@ -2701,6 +2703,11 @@ html.kb-open { --home-gap: 0px; }
   /* Столбец «Вендор, № убытка»: логотип с именем и номер в одну строку. Логотип перед названием ТС — только пока
      этого столбца нет (краткая таблица телефона). */
   .vendor-ref { display: inline-flex; align-items: baseline; gap: .5em; min-width: 0; max-width: 100%; }
+  /* Таймер срока обязывающего справа от номера (17.11.2026, владелец: у названия «скачет»): вплотную за номером, по середине
+     строки; в ячейке таблицы места не занимает — висит в зазоре до следующего столбца, номер из-за него не режется. */
+  .vendor-ref > .row-signal, .ref-line > .row-signal { margin-left: 0; align-self: center; vertical-align: middle; }
+  .vendor-ref > .row-signal { width: 0; overflow: visible; }
+  .vendor-ref > .row-signal > svg { flex: none; }
   /* Один логотип без номера — опорной линии текста нет, и коробка вставала выше строки: по середине. */
   .vendor-ref:has(> .vendor-tip:only-child) { vertical-align: middle; }
   /* Логотип в кнопке подсказки — по центру строки номера: по базовой линии кнопка-flex садилась низом на линию букв, и
