@@ -35,6 +35,13 @@ final class Composer
                     $cc[] = mb_strtolower($address->email);
                 }
             }
+            // Участники всей ветки, а не только этого письма (16.11.2026, Skoda Rapid: наш прошлый ответ ушёл без копии, страховая
+            // ответила уже без неё — и копия терялась насовсем). Входящие ветки: кто писал, кому и кого ставили в копию.
+            if ($parent->thread_id) {
+                $incoming = Message::where('thread_id', $parent->thread_id)->where('direction', Direction::In)->whereKeyNot($parent->id)->pluck('id');
+                $cc = [...$cc, ...Address::whereIn('message_id', $incoming)->whereIn('kind', [AddressKind::From, AddressKind::To, AddressKind::Cc])
+                    ->pluck('email')->map(fn ($e) => mb_strtolower((string) $e))->all()];
+            }
             if ($vendor = $parent->thread?->vendor) {
                 array_push($cc, ...array_map('mb_strtolower', $vendor->ccEmails(sale: $parent->account->scope !== Scope::Park)));
             }

@@ -62,6 +62,19 @@ class ParkReplyRecipientsTest extends TestCase
         $this->assertSame('', app(Composer::class)->reply($this->letter($thread, '2026-11-10 16:00'), all: false)['cc']);
     }
 
+    /** Наш ответ ушёл без копии, страховая ответила уже без неё — копия всё равно из участников ветки. */
+    public function test_lost_copy_comes_back_from_the_thread(): void
+    {
+        $this->setUpCar();
+        $thread = Thread::create(['account_id' => $this->account, 'subject' => '0770/046/01145/26 ч.1', 'vehicle_id' => $this->car->id]);
+        $this->letter($thread, '2026-11-10 15:58');
+        $latest = $this->letter($thread, '2026-11-16 16:10', []);
+
+        $reply = app(Composer::class)->reply($latest);
+        $this->assertSame('tkachenkoev@alfastrah.ru', $reply['to']);
+        $this->assertEqualsCanonicalizing(['6691111@mail.ru', 'fartushniakd@alfastrah.ru'], array_map('trim', explode(',', $reply['cc'])));
+    }
+
     public function test_same_letter_in_two_threads_is_one_waiting_block(): void
     {
         $this->setUpCar();
