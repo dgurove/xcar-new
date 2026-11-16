@@ -111,7 +111,7 @@
             <span class="fit-core sm:hidden @if ($busy) arrive-type @endif"><x-vendor.ref :vendor="$vendor" :ref="$offer->claim_ref"/></span>
             @if ($endCol && $endBottom !== '')<span class="line-end sm:hidden">{!! $endBottom !!}</span><span class="line-break sm:hidden"></span>@endif
             @if ($busy)<x-offer.arrive-line :arrive="$arrive"/>@endif
-            @if ($mixed || $line)<span class="sub-phrase sm:hidden {{ $tone }}">{{ $tabWord ?? $stateWord }}@if ($line?->who)<span class="text-ink-muted">, {{ $line->who }}</span>@endif</span>
+            @if ($mixed || $line)<span class="sub-phrase sm:hidden {{ $tone }}">{{ $tabWord ?? $stateWord }}@if ($tabWord && $offer->isGallery())<span class="text-ink-muted">, в галерее</span>@endif{{ "" }}@if ($line?->who)<span class="text-ink-muted">, {{ $line->who }}</span>@endif</span>
             @elseif ($timer)<span class="nums sm:hidden {{ $offer->isEndingSoon() ? 'text-urgent' : 'text-accent-text' }}" data-controller="timer" data-timer-until-value="{{ $offer->bids_close_at->toIso8601String() }}" data-timer-done-value="приём закрыт" data-timer-coarse-value="true" data-timer-word-value="">{{ \App\Support\Ago::left($offer->bids_close_at, '') }}</span>
             @elseif ($slot && $has('state'))<span class="sm:hidden text-accent-text">{{ $slot }}</span>
             {{-- Телефон, «Опубликованные»: у ждущих решения важнее число подтверждений, дата закрытия — у остальных. --}}
@@ -140,7 +140,8 @@
         @case('state')
     <td class="{{ $col->classes() }}">
         {{-- Кто ведёт — аватаром перед этапом (имя — подсказкой): именем строка не влезала в ширину. --}}
-        @if ($tabWord)<span class="{{ $tone }}{{ $draft ? ' text-ink-dim' : '' }}">{{ $tabWord }}</span>
+        {{-- Галерея — окно показа черновика параллельно его вкладке (16.11.2026): тихой меткой после вкладки. --}}
+        @if ($tabWord)<span class="{{ $tone }}{{ $draft ? ' text-ink-dim' : '' }}">{{ $tabWord }}</span>@if ($offer->isGallery())<span class="ml-1.5 whitespace-nowrap text-sm text-ink-muted">в галерее</span>@endif
         @elseif ($line)<span class="inline-flex max-w-full items-center gap-1.5 align-middle" @if ($line->who) title="{{ $line->who }}" @endif>@if ($line->person && ! $has('manager'))<x-ui.avatar :user="$line->person" :size="22"/>@endif<span class="{{ $tone }}">{{ $stateWord }}</span></span>
         @elseif ($mixed)<span class="{{ $tone }}{{ $draft ? ' text-ink-dim' : '' }}">{{ $stateWord }}</span>
         @elseif ($timer)<span class="nums {{ $offer->isEndingSoon() ? 'text-urgent' : 'text-accent-text' }}" data-controller="timer" data-timer-until-value="{{ $offer->bids_close_at->toIso8601String() }}" data-timer-done-value="Приём закрыт" data-timer-coarse-value="true">{{ \App\Support\Ago::left($offer->bids_close_at) }}</span>

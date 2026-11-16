@@ -87,7 +87,7 @@ final class Conveyor
         'ready' => ['Выставить в продажу', '/offers?preset=priced'],
         'unsold' => ['Вернуть или в архив', '/offers?preset=done'],
         'estimate' => ['На оценке', '/offers?preset=estimating'],
-        'gallery' => ['Выразить интерес', '/gallery'],
+        'gallery' => ['Выразить интерес', '/offers?preset=gallery'],
         'confirm' => ['Подтвердить предложения', '/offers?preset=published'],
         'bids' => ['Принять подтверждения', '/offers?preset=bids', ['bids-closed' => 'Приём закрыт', 'bids-open' => 'Приём ещё идёт']],
         'claims' => ['Отправить отклики', null],

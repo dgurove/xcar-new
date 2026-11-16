@@ -17,7 +17,7 @@
         @switch($key)
         @case('title')
     <td class="{{ $col->classes() }}">
-        <x-ui.row-link :key="$n"><span class="cell-title"><x-ui.cat-icon :category="$offer->category()"/><span class="cell-name">{{ $offer->titleWithYear() }}</span><x-ui.links :offer="$offer"/></span></x-ui.row-link>
+        <x-cell.title :key="$n" :offer="$offer"><x-ui.links :offer="$offer"/></x-cell.title>
         <span class="cell-sub cell-sub--wrap" data-controller="fitline">
             <span class="fit-core sm:hidden"><x-vendor.ref :vendor-id="$offer->vendor_id" :ref="$offer->claim_ref"/></span>
             @if ($offer->gallery_from)<span class="nums sm:hidden">с {{ \App\Support\Ago::html($offer->gallery_from, true, words: false) }}</span>@endif

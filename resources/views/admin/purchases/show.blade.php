@@ -1,7 +1,7 @@
 @php use App\Purchases\{Kind, PurchaseState}; $n = $purchase->number; $ctl = \App\Http\Admin\PurchaseController::class; $view = \App\Support\ListView::pick(request(), $cars->total()); @endphp
-<x-ui.shell :title="$purchase->title ?: $purchase->publicTitle()" :heading="false" :back="['Закупки', '/purchases']" :back-row="false" :detail="$detail">
+<x-ui.shell :title="$purchase->title ?: $purchase->publicTitle()" :heading="false" :back="['Закупки', '/offers?preset=purchases']" :back-row="false" :detail="$detail">
     <div class="has-back mb-5 flex flex-wrap items-center gap-x-3 gap-y-2" data-controller="sheet">
-        <x-ui.back :back="['Закупки', '/purchases']"/>
+        <x-ui.back :back="['Закупки', '/offers?preset=purchases']"/>
         <h1 class="head-title text-xl sm:text-2xl">{{ $purchase->title ?: $purchase->publicTitle() }}</h1>
         <button type="button" class="more-pill more-pill--light ml-auto shrink-0 sm:order-1" data-action="sheet#open" aria-label="Действия"><x-ui.icon name="more" class="size-[22px]"/></button>
         {{-- Состояние и срок — строкой текста, продление — лаймовыми словами (как в редакторе предложения, 10.10.2026). --}}

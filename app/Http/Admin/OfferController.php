@@ -35,6 +35,8 @@ use App\Offers\DealDates;
 use App\Garage\CarState;
 use App\Offers\DealTabs;
 use App\Offers\OfferTabs;
+use App\Purchases\Purchase;
+use App\Purchases\PurchaseState;
 use App\Offers\Estimate;
 use App\Offers\EstimateState;
 use App\Offers\Exclusive;
@@ -90,7 +92,11 @@ class OfferController
      */
     public const PRESETS = [
         'all' => 'Все',
+        // Закупка и галерея — тоже этапы (16.11.2026, владелец): из закупки машины попадают в черновики, в галерею черновики —
+        // параллельно, оставаясь черновиками. Строки рисуют `PurchaseController::tab` и `GalleryController::tab`.
+        'purchases' => 'Закупки',
         'nofloor' => 'Без закупочной цены', 'unpriced' => 'Без продажной цены', 'estimating' => 'На оценке у менеджеров', 'priced' => 'Оцененные',
+        ...GalleryController::PRESETS,
         'slots' => 'Публикация', 'published' => 'Опубликованные', 'bids' => 'Есть подтверждения', 'done' => 'Без подтверждений',
         ...self::DEAL_TABS,
         'archive' => 'Архив', 'legacy' => 'Из таблицы Кати', 'auction' => 'На аукцион',
@@ -109,7 +115,13 @@ class OfferController
      * Разделы колеса (16.11.2026, владелец выбрал вариант А: «между вариантами подзаголовки, которые не выбираются, а
      * пролистываются»): первая вкладка раздела → подпись (`x-ui.tab-title :sections`). «Все» — над разделами.
      */
-    public const SECTIONS = ['nofloor' => 'Черновик', 'slots' => 'Предложение', 'reprice' => 'Сделка', 'archive' => 'Архив'];
+    public const SECTIONS = ['purchases' => 'Закупка', 'nofloor' => 'Черновик', 'gallery' => 'Галерея', 'slots' => 'Предложение', 'reprice' => 'Сделка', 'archive' => 'Архив'];
+
+    /** Вкладки, чьи строки рисует свой контроллер: сделки, гараж, галерея, закупки. */
+    public static function ownTab(?string $preset): bool
+    {
+        return self::dealTab($preset) || in_array($preset, ['purchases', 'gallery', 'interest'], true);
+    }
 
     /** Зелёные числа колеса: ключ вкладки → ключ числа в `counts` (оценки менеджеров, наши дела по этапам сделки). */
     public static function badges(): array
@@ -142,7 +154,9 @@ class OfferController
         if ($user->canManageCrm()) {
             return self::PRESETS;
         }
-        $hidden = ['estimating' => true, 'bids' => true, 'done' => true, 'all' => true, 'legacy' => true, 'auction' => true];
+        // Закупки и галерея — админу (их разделы в CRM у модератора закрыты и прежде).
+        $hidden = ['estimating' => true, 'bids' => true, 'done' => true, 'all' => true, 'legacy' => true, 'auction' => true,
+            'purchases' => true, 'gallery' => true, 'interest' => true];
 
         // Модератору (14.11.2026, `canEditDeals`) — сделки для документов: этапы и «Завершённые»; гаража у него нет.
         return array_diff_key(self::PRESETS, $hidden + ['garage' => true] + ($user->canEditDeals() ? [] : self::DEAL_TABS));
@@ -263,9 +277,15 @@ class OfferController
             return redirect('/offers?'.http_build_query($query), 301);
         }
         // Вкладки сделки (16.11.2026: сделка — состояние предложения) — строки сделок с их группами (`DealController::tab`).
-        if (self::dealTab($request->query('preset')) && isset(self::presets($request->user())[$request->query('preset')])) {
-            return $request->query('preset') === 'garage' ? app(GarageController::class)->tab($request)
-                : app(DealController::class)->tab($request, (string) $request->query('preset'));
+        // Закупки и галерея (16.11.2026) — тоже своими контроллерами.
+        $own = (string) $request->query('preset');
+        if (self::ownTab($own) && isset(self::presets($request->user())[$own])) {
+            return match ($own) {
+                'garage' => app(GarageController::class)->tab($request),
+                'purchases' => app(PurchaseController::class)->tab($request),
+                'gallery', 'interest' => app(GalleryController::class)->tab($request),
+                default => app(DealController::class)->tab($request, $own),
+            };
         }
         // ?peek=номер — карточка строки рядом (first — первая строка без цены, адрес получает её номер ниже).
         $detail = Detail::of($request, fn (string $key) => CarWindow::of($request, OfferNumber::find($key)));
@@ -532,6 +552,9 @@ class OfferController
             'reprice', 'letter', 'answered', 'agree', 'invoice', 'paying', 'payout', 'pickup', 'docs' => $q->whereIn('offers.id', DealTabs::ids($preset)),
             // «В гараже» — маршрут со страховой пройден, расчёт ещё не закрыт; закрыт — в «Завершённых» вместе с выданными.
             'garage' => $q->where('offers.state', OfferState::Garage)->whereHas('garageCar', fn ($c) => $c->where('state', '!=', CarState::Settled)),
+            // Галерея — окно показа черновика (`GalleryController::scopeFor`); закупки — не предложения: строк-предложений нет.
+            'gallery', 'interest' => GalleryController::scopeFor($preset, $q),
+            'purchases' => $q->whereRaw('false'),
             'finished' => $q->where(fn ($w) => $w->where('offers.state', OfferState::Delivered)
                 ->orWhere(fn ($g) => $g->where('offers.state', OfferState::Garage)->whereHas('garageCar', fn ($c) => $c->where('state', CarState::Settled)))),
             default => $q->whereIn('offers.state', [OfferState::Archived, OfferState::Cancelled]),
@@ -805,6 +828,12 @@ class OfferController
         $base = fn () => Offer::inCrm($user)->notEmptyDraft();
         $counts = [];
         foreach (array_diff(array_keys(self::presets($user)), ['archive']) as $key) {
+            // «Закупки» — открытые закупки, как прежнее число таб-бара.
+            if ($key === 'purchases') {
+                $counts[$key] = Purchase::where('state', PurchaseState::Open)->count();
+
+                continue;
+            }
             $q = self::scopeFor($key, $base(), $user->canManageCrm());
             // Без чипов (поток после «Оценить») «Без цены» считается как вид по умолчанию — без Каркаде.
             if (! $facets && in_array($key, self::TODO, true) && ($carcade = self::carcadeId())) {
@@ -1465,14 +1494,12 @@ class OfferController
             return [];
         }
         $preset = array_key_exists((string) ($q['preset'] ?? ''), self::presets($request->user())) ? (string) $q['preset'] : self::home($request->user());
-        $still = match ($ref['path'] ?? '/offers') {
-            '/offers' => self::scopeFor($preset, Offer::whereKey($offer->id), $request->user()->canManageCrm())->exists(),
-            '/gallery' => GalleryController::listed($q['preset'] ?? null, $offer->fresh()),
-            default => true,
-        };
+        // Галерея с 16.11.2026 — вкладки колеса (`gallery`, `interest`): её условие — в `scopeFor`, как у остальных.
+        $still = ($ref['path'] ?? '/offers') !== '/offers'
+            || self::scopeFor($preset, Offer::whereKey($offer->id), $request->user()->canManageCrm())->exists();
 
         // На вкладках дела карточка идёт к следующей строке, на остальных строка просто уходит.
-        $counts = ($ref['path'] ?? '/offers') === '/gallery' ? GalleryController::counts() : self::counts($request->user());
+        $counts = self::counts($request->user());
 
         return $still ? [] : ['detail-gone' => true, 'detail-counts' => $counts]
             + (($ref['path'] ?? '/offers') === '/offers' && in_array($preset, self::ADVANCE, true) ? ['detail-advance' => true] : []);

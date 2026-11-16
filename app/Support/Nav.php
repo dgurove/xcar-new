@@ -38,7 +38,6 @@ use App\Park\Vehicle;
 use App\Park\VehicleState;
 use App\Park\Yard;
 use App\Purchases\Purchase;
-use App\Purchases\PurchaseState;
 use App\Space\Conveyor;
 use App\Users\Role;
 use App\Users\User;
@@ -110,12 +109,14 @@ final class Nav
             ]));
         }
 
+        // 16.11.2026, владелец: галерея и закупки — разделы колеса «Предложений» (это тоже этапы), а в таб-баре вместо «Галерея ·
+        // Работа · Закупки» — Почта, Чаты, Оплаты. Страница закупки и прежний адрес галереи — под «Предложениями».
         if ($surface === Surface::Crm) {
             return [
-                self::item('Предложения', '/offers'),
-                self::item('Галерея', '/gallery'),
-                self::item('Работа', '/work'),
-                self::item('Закупки', '/purchases'),
+                self::item('Предложения', '/offers', ['/offers', '/purchases', '/gallery']),
+                self::item('Почта', '/work/mail'),
+                self::item('Чаты', '/work/chats'),
+                self::item('Оплаты', '/work/money'),
                 // Кабинет CRM — это «Настройки»: профиль первой пилюлей, уведомления — под /account. В шапке ПК его
                 // ведёт аватар, на телефоне — последний таб: отдельной капсулой он был бы вторым входом рядом.
                 self::item('Настройки', '/settings', ['/settings', '/account'], tab: false, capsule: false),
@@ -576,8 +577,6 @@ final class Nav
                 return ['totals' => [
                     // Как список без вкладки — «Без продажной цены», вместе с черновиками из закупок.
                     '/offers' => OfferController::scopeFor(OfferController::home($user), Offer::notEmptyDraft())->count(),
-                    '/gallery' => Offer::inGallery()->count(),
-                    '/purchases' => Purchase::where('state', PurchaseState::Open)->count(),
                 ], 'fresh' => []];
             }
             // Таб «Предложения» — то же, что в каталоге (`Offer::siteList`: открытое без сделки плюс
@@ -775,10 +774,6 @@ final class Nav
                 // Деньги горят делом в «Оплатах»: менеджер пишет, что оплатил; не прошла по ссылке; выплатить. Выписки нет.
                 '/work/money' => MoneyController::todo(),
             ];
-            // На табе «Работа» — только непрочитанные чаты, числом чатов, а не сообщений (владелец, 11.10.2026: «сделок у нас
-            // всегда будет дофига, этот счётчик не имеет смысла»); сделки, почта и деньги горят у своих разделов.
-            $badges['/work'] = $badges['/work/chats'];
-
             return $badges;
         });
     }

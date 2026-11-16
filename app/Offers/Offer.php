@@ -212,7 +212,7 @@ class Offer extends Model
             // прежний: на экранах строка ещё с ним. После коммита — `Publisher`.
             if ($o->wasChanged(self::ROW_FIELDS)) {
                 $keys = array_filter([$o->number, $o->wasChanged('number') ? $o->getOriginal('number') : null]);
-                app(Publisher::class)->rowsSoon(Topics::STAFF, ['/offers' => $keys, '/gallery' => $keys]);
+                app(Publisher::class)->rowsSoon(Topics::STAFF, ['/offers' => $keys]);
                 // Поставщики вендора (partner.xcar.ru, 07.11.2026) — сигнал перечитать свой список, без полей; только вендорам,
                 // у которых поставщики есть.
                 foreach (array_unique(array_filter([$o->vendor_id, $o->wasChanged('vendor_id') ? $o->getOriginal('vendor_id') : null])) as $vendor) {
@@ -220,7 +220,7 @@ class Offer extends Model
                 }
             }
         });
-        static::deleted(fn (self $o) => $o->number ? app(Publisher::class)->rowsSoon(Topics::STAFF, ['/offers' => [$o->number], '/gallery' => [$o->number]]) : null);
+        static::deleted(fn (self $o) => $o->number ? app(Publisher::class)->rowsSoon(Topics::STAFF, ['/offers' => [$o->number]]) : null);
         // Черновик удаляют (бросили, «Отменить», ночная уборка) — так же, записью в истории ТС; у архивного и снятого она
         // уже есть.
         static::deleting(fn (self $o) => in_array($o->state, [OfferState::Archived, OfferState::Cancelled], true) ? null : Sale::end($o));

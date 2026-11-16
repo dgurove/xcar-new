@@ -41,7 +41,7 @@ final class ListsCheck extends Command
         return [
             ...array_map(fn ($p) => $crm('/offers?preset='.$p), [...array_keys(DealTabs::TABS), 'finished']),
             ...array_map(fn ($p) => $crm('/offers?preset='.$p.'&vid=table'), $offers),
-            $crm('/gallery?preset=live&vid=table'), $crm('/gallery?preset=interest&vid=table'),
+            $crm('/offers?preset=gallery&vid=table'), $crm('/offers?preset=interest&vid=table'),
             $crm('/alarms'),
             $crm('/settings/deliveries'), $crm('/settings/deliveries?view=people'),
             $crm('/offers?preset=garage&vid=table'),

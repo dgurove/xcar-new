@@ -22,8 +22,9 @@ class PwaController
             Surface::Site => ['Предложения, сделки, закупки, гараж', [
                 ['Предложения', '/offers', 'cat-car'], ['Уведомления', '/account/notifications', 'bell'],
             ]],
-            Surface::Crm => ['Предложения, галерея, работа, закупки', [
-                ['Предложения', '/offers', 'cat-car'], ['Галерея', '/gallery', 'photo'], ['Работа', '/work', 'deal'], ['Закупки', '/purchases', 'cart'],
+            // Как таб-бар CRM с 16.11.2026: галерея и закупки — вкладки «Предложений», внизу — Почта, Чаты, Оплаты.
+            Surface::Crm => ['Предложения, почта, чаты, оплаты', [
+                ['Предложения', '/offers', 'cat-car'], ['Почта', '/work/mail', 'mail'], ['Чаты', '/work/chats', 'chat'], ['Оплаты', '/work/money', 'deal'],
             ]],
             Surface::Park => ['Заявки, ТС, парковки', [
                 ['Заявки', '/requests', 'flag'], ['ТС', '/cars', 'cat-car'],

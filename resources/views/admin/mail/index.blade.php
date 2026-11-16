@@ -8,17 +8,12 @@
      (x-mail.window); ?window=id — открыть окно сразу (ссылки из уведомлений).
      Этим же видом стоит «Из писем» ($forced): выборка «надо завести» вшита, пилюль нет и снять её нечем. --}}
 @php $title = $forced ? 'Из писем' : 'Почта'; @endphp
-<x-ui.shell :title="$title" :count="$crm && ! $forced ? null : $threads->total()" :heading="$crm && ! $forced ? false : $title">
-    {{-- Кнопки стоят в строке заголовка и на телефоне: своей строки они не стоят. В CRM заголовок — строка
-         разделов «Работы» (x-admin.work-titles), кнопки справа в ней же. --}}
-    @if ($crm && ! $forced)
-        <div class="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
-            <x-admin.work-titles current="mail"/>
-            @include('admin.mail.actions')
-        </div>
-    @elseif (! $forced)
+<x-ui.shell :title="$title" :count="$crm && ! $forced ? null : $threads->total()">
+    {{-- Кнопки стоят в строке заголовка и на телефоне: своей строки они не стоят. В CRM с 16.11.2026 — тоже обычный заголовок
+         «Почта»: разделы переключает таб-бар (Предложения · Почта · Чаты · Оплаты). --}}
+    @unless ($forced)
         <x-slot:actions class="!ml-auto !w-auto">@include('admin.mail.actions')</x-slot:actions>
-    @endif
+    @endunless
 
     {{-- Ящик (13.10.2026, владелец: «письма только с offer и только с deal»): сегмент над пилюлями, выбран — дела и письма
          в них только этого ящика. offer@ только принимает — «Отправленных» у него нет. --}}

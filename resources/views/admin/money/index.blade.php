@@ -11,9 +11,7 @@
     // Таблица по умолчанию (07.10.2026, владелец: «гораздо удобнее табличные»), строки — пунктом меню вида.
     $view = ListView::fromRequest(request()) === ListView::LIST ? ListView::LIST : ListView::TABLE;
 @endphp
-<x-ui.shell title="Оплаты" :heading="false" :detail="$detail">
-    {{-- Заголовки «Работы» — своей строкой (16.11.2026): в строке тулбара на телефоне они налезали на кнопки. --}}
-    <div class="title-row"><x-admin.work-titles current="money"/></div>
+<x-ui.shell title="Оплаты" :detail="$detail">
     <x-ui.toolbar name="money" :sort="$sort" :pills="MoneyController::TABS" :pill="$tab" pill-param="tab" :counts="$counts['counts']" :tones="$counts['tones']"
         :facets="$facets" search="Имя, ТС, номер" search-target="#money-feed">
         {{-- На телефоне обе раскладки — строки: переключателя нет, шапка в два ряда (09.10.2026). --}}

@@ -1358,12 +1358,6 @@ html.kb-open { --home-gap: 0px; }
   /* Зелёное число у названия вкладки — частью названия: растёт и тает вместе с ним. */
   .tab-wheel-badge { margin-inline-start: .35em; font-size: .5em; line-height: 1.5; padding-inline: .45em; min-width: 1.5em; vertical-align: .35em; letter-spacing: 0; }
   .table-group.is-ours .table-group-name { color: var(--color-accent-text); }
-  /* Заголовки «Работы» (16.11.2026, `x-admin.work-titles`): три слова рядом размером заголовка экрана, текущее — цветом текста. */
-  .work-tabs { display: flex; align-items: baseline; gap: 1rem; white-space: nowrap; font-size: var(--text-xl); font-weight: 500; line-height: 1.2; }
-  .work-tab { color: var(--color-ink-muted); transition: color .15s; -webkit-tap-highlight-color: transparent; }
-  .work-tab[aria-current] { color: var(--color-ink); }
-  @media (hover: hover) { .work-tab:hover { color: var(--color-ink); } }
-  @media (min-width: 640px) { .work-tabs { gap: 1.5rem; font-size: var(--text-2xl); } }
   .tab-wheel-nums { margin-inline-start: auto; display: flex; align-items: center; gap: .5rem; font-size: var(--text-sm); color: var(--color-ink-dim); }
   @supports (animation-timeline: view()) {
     .tab-wheel-item .tab-wheel-label, .tab-wheel-item[aria-current] .tab-wheel-label {

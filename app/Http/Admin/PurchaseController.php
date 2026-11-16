@@ -53,16 +53,31 @@ class PurchaseController
     /** Закупки — новые сверху (номер сквозной); число ТС — выбором. */
     public const LIST_SORTS = ['number' => ['Номер', 'desc'], 'cars' => ['Число ТС', 'desc']];
 
+    /** Прежний адрес списка закупок — во вкладку «Закупки» колеса «Предложений» (16.11.2026). */
     public function index(Request $request)
+    {
+        return redirect('/offers?'.http_build_query(['preset' => 'purchases'] + $request->except('preset')), 301);
+    }
+
+    /**
+     * «Закупки» — первый раздел колеса «Предложений» (16.11.2026, владелец: «закупки — это как этапы тоже, из закупки тачки
+     * попадают в черновики»): список закупок со своей сортировкой, «Кому что не показывать» и «+ Закупка». Закупку
+     * открывают — её страница `/purchases/{n}` с машинами, «назад» — сюда.
+     */
+    public function tab(Request $request)
     {
         ListPrefs::sync($request, 'crm-purchases');
         $sort = Sort::from($request->query('sort'), self::LIST_SORTS, '-number');
+        $user = $request->user();
 
         return view('admin.purchases.index', [
             'purchases' => Purchase::withCount(['cars' => fn ($c) => $c->whereDoesntHave('offer')])
                 ->orderBy($sort->key === 'cars' ? 'cars_count' : 'number', $sort->dir())->orderByDesc('number')->get(),
             'restricted' => Restriction::count(),
             'sort' => $sort,
+            'presets' => OfferController::presets($user),
+            'sections' => OfferController::sections($user),
+            'counts' => OfferController::counts($user),
         ]);
     }
 

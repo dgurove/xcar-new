@@ -14,7 +14,7 @@ const BLACK = '#000000';
 const SURFACES = ['site', 'crm', 'park', 'logistics', 'partner'];
 
 // Ярлыки манифеста по поверхностям → иконки кита; тот же список — в PwaController::manifest.
-const SHORTCUT_ICONS = { site: ['cat-car', 'bell'], crm: ['cat-car', 'photo', 'deal', 'cart'], park: ['flag', 'cat-car'], logistics: ['cat-car'], partner: ['cat-car'] };
+const SHORTCUT_ICONS = { site: ['cat-car', 'bell'], crm: ['cat-car', 'mail', 'chat', 'deal'], park: ['flag', 'cat-car'], logistics: ['cat-car'], partner: ['cat-car'] };
 
 // Экраны iPhone в точках и плотности; тот же список — в components/ui/startup.blade.php.
 const SCREENS = [
@@ -38,15 +38,15 @@ function ico(pngs) {
     return Buffer.concat([head, ...pngs.map((p) => p.buf)]);
 }
 
-// Заливки кита из icon.blade.php: $filled в сетке 24 и $solid (Phosphor) в сетке 256, где у
-// каждой иконки пара — берём обычную. Иконка кита предпочитает $solid, здесь так же: иначе
-// ярлык отличался бы от того, что человек видит на экране.
+// Заливки кита из App\Support\Icons (с 21.10.2026 пути там, а не в icon.blade.php): FILLED в сетке 24 и SOLID (Phosphor)
+// в сетке 256, где у каждой иконки пара — берём обычную. Иконка кита предпочитает SOLID, здесь так же: иначе ярлык
+// отличался бы от того, что человек видит на экране.
 function kitIcons() {
-    const blade = readFileSync(at('../resources/views/components/ui/icon.blade.php'), 'utf8');
+    const src = readFileSync(at('../app/Support/Icons.php'), 'utf8');
     const icons = {};
-    const filled = blade.slice(blade.indexOf('$filled = ['), blade.indexOf('$solid = ['));
+    const filled = src.slice(src.indexOf('const FILLED = ['), src.indexOf('const SOLID = ['));
     for (const [, name, d] of filled.matchAll(/'([\w-]+)' => '([^']+)'/g)) icons[name] ??= { box: 24, d };
-    const solid = blade.slice(blade.indexOf('$solid = ['));
+    const solid = src.slice(src.indexOf('const SOLID = [')).split('\n    ];')[0];
     for (const [, name, d] of solid.matchAll(/'([\w-]+)' => \['([^']+)'/g)) icons[name] = { box: 256, d };
     return icons;
 }

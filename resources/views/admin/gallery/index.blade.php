@@ -1,7 +1,11 @@
 {{-- Галерея CRM (08.10.2026): «В галерее» — черновики в окне показа, когда появились и сколько осталось; «Отклики» —
-     у кого есть интерес, кто и что — в карточке строки. Только таблица. --}}
-<x-ui.shell title="Галерея" :count="$offers->total()" :phone-heading="false" :detail="$detail">
-    <x-ui.toolbar :sort="$sort" :pills="\App\Http\Admin\GalleryController::PRESETS" :pill="$preset" pill-param="preset" :counts="$counts" name="gallery" :facets="$facets" search="Номер, марка, VIN, убыток"/>
+     у кого есть интерес, кто и что — в карточке строки. Только таблица. С 16.11.2026 — раздел «Галерея» колеса «Предложений»
+     (`GalleryController::tab`): заголовок — колесо вкладок, свои пилюли ушли в него. --}}
+<x-ui.shell :title="$presets[$preset] ?? 'Галерея'" :heading="false" :detail="$detail">
+    <div class="title-row">
+        <x-ui.tab-title :pills="$presets" :pill="$preset" pill-param="preset" pill-home="" :counts="$counts" :badges="\App\Http\Admin\OfferController::badges()" :bumps="['legacy' => 'legacy_drafts']" :sections="$sections" :drop="['todo', 'what', 'sub', 'turn']" fallback="Предложения" id="offers-tabs"/>
+    </div>
+    <x-ui.toolbar :sort="$sort" name="gallery" :facets="$facets" search="Номер, марка, VIN, убыток"/>
 
     <div class="mt-6" id="list">
         @if ($offers->isEmpty())

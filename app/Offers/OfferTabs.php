@@ -18,10 +18,14 @@ final class OfferTabs
 
     private const CACHE = 'offer-tabs';
 
-    /** Вкладки, по которым раскладываются машины «Всех», по порядку колеса. @return list<string> */
+    /**
+     * Вкладки, по которым раскладываются машины «Всех», по порядку колеса. Закупки — не предложения, галерея — окно показа
+     * черновика параллельно его вкладке (16.11.2026): машина остаётся в группе своего черновика, у строки — метка «в галерее».
+     * @return list<string>
+     */
     public static function keys(): array
     {
-        return array_values(array_diff(array_keys(OfferController::PRESETS), ['all', 'archive']));
+        return array_values(array_diff(array_keys(OfferController::PRESETS), ['all', 'archive', 'purchases', 'gallery', 'interest']));
     }
 
     /** `offer_id` → ключ вкладки. @return array<int, string> */

@@ -18,7 +18,7 @@
         @switch($key)
         @case('title')
     <td class="{{ $col->classes() }}">
-        <x-ui.row-link :key="$car->ref"><span class="cell-title"><x-ui.cat-icon :category="$car->kind->category()"/>{{ $car->titleWithYear() }}</span></x-ui.row-link>
+        <x-cell.title :key="$car->ref" :title="$car->title()" :year="$car->carRecord()->year" :category="$car->kind->category()"/>
         <span class="cell-sub">
             @if ($note)<span class="{{ $flag ? 'text-urgent' : '' }}">{{ $note }}</span>@endif
             <span class="sm:hidden">{{ $car->dl }}</span>

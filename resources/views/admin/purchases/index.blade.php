@@ -1,6 +1,10 @@
-{{-- Слева сортировка, справа действия экрана: настройка «Кому что не показывать» (тихая, с числом ограничений) и
+{{-- «Закупки» — первый раздел колеса «Предложений» (16.11.2026, `PurchaseController::tab`): заголовок — колесо вкладок.
+     Слева сортировка, справа действия экрана: настройка «Кому что не показывать» (тихая, с числом ограничений) и
      «+ Закупка» — не пилюлей слева, где её читали как фильтр списка. --}}
-<x-ui.shell title="Закупки">
+<x-ui.shell :title="$presets['purchases'] ?? 'Закупки'" :heading="false">
+    <div class="title-row">
+        <x-ui.tab-title :pills="$presets" pill="purchases" pill-param="preset" pill-home="" :counts="$counts" :badges="\App\Http\Admin\OfferController::badges()" :bumps="['legacy' => 'legacy_drafts']" :sections="$sections" :drop="['todo', 'what', 'sub', 'turn', 'sort']" fallback="Предложения" id="offers-tabs"/>
+    </div>
     <div class="mb-6 flex flex-wrap items-center gap-2" data-controller="sheet">
         <x-ui.sort :sort="$sort" :url="fn ($v) => \App\Support\Sort::url($v)" name="purchases"/>
         <a href="/purchases/limits" class="btn btn-s btn-quiet ml-auto rounded-full">Кому что не показывать@if ($restricted) <span class="nums text-ink-dim">{{ $restricted }}</span>@endif</a>

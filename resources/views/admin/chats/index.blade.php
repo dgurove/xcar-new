@@ -8,8 +8,9 @@
     $qs = request()->getQueryString() ? '?'.request()->getQueryString() : '';
 @endphp
 <x-ui.shell :title="$chat ? $chat->displayName() : 'Чаты'" :heading="false" :back="$chat ? ['Чаты', '/work/chats'.$qs] : null" :back-row="false">
+    {{-- Заголовок раздела (16.11.2026: «Чаты» — свой таб таб-бара CRM); открыт чат на телефоне — прячется. --}}
     <div class="chat-crm-top">
-        <x-admin.work-titles current="chats"/>
+        <h1 class="head-title text-xl sm:text-2xl">Чаты</h1>
     </div>
     <div class="chat-split chat-split-crm mt-6 {{ $current ? 'has-current' : '' }}" data-controller="split">
         <div class="chat-rows" id="chat-rows">
