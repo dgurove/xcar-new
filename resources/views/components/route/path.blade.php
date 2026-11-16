@@ -62,7 +62,10 @@
     // Этап оплаты без счёта — ход наш (`Position::awaitsInvoice`): «Выставить счёт» первой кнопкой.
     $wantsInvoice = $deal && $position->awaitsInvoice();
     $paidExit = fn ($x) => preg_match('/^оплата (получена|не поступила)/u', mb_strtolower($x->label)) === 1;
-    $claims = $moves->contains($paidExit) ? $invoices->flatMap(fn ($i) => $i->claims->map(fn ($p) => [$i, $p])) : collect();
+    // «Поступило / Не поступила» по сообщению менеджера — только где оплату проверяем мы. На «Подтверждении оплаты» страховой
+    // (ждём поставщика) — нет (16.11.2026, владелец: «мы этого не знаем: сначала платёжку отправляем в Альфу, они отвечают,
+    // что оплачено»): там «Отправить страховой», после письма — её ответ кнопками шага.
+    $claims = $moves->contains($paidExit) && $stage->waits_for !== WaitsFor::Supplier ?$invoices->flatMap(fn ($i) => $i->claims->map(fn ($p) => [$i, $p])) : collect();
     if ($claims->isNotEmpty()) {
         $moves = $moves->reject($paidExit);
     }
