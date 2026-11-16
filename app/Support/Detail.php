@@ -2,6 +2,7 @@
 
 namespace App\Support;
 
+use App\Support\Facets\Facets;
 use Closure;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\Request;
@@ -18,6 +19,13 @@ use Illuminate\Support\HtmlString;
 final class Detail
 {
     public const FRAME = 'detail';
+
+    /**
+     * «Фильтр» вкладок колеса — тем же окном, что карточка строки (17.11.2026, владелец: «фильтр можно на тот же модуль
+     * посадить»): `?peek=filter`. Окно рисует `Facets` (варианты считаются по списку вкладки с её чипами), поэтому
+     * контроллер строит выборку как обычно — `framed()` при этом ключе «нет», ответ фрейму отдаёт `Facets::apply`.
+     */
+    public const FILTER = 'filter';
 
     private View|HtmlString|null $html = null;
 
@@ -39,7 +47,7 @@ final class Detail
 
     public function framed(): bool
     {
-        return $this->request->header('Turbo-Frame') === self::FRAME;
+        return $this->request->header('Turbo-Frame') === self::FRAME && self::key($this->request) !== self::FILTER;
     }
 
     /** Фрейм с карточкой или пустой: пустой фрейм — таблица во всю ширину. */
@@ -48,8 +56,13 @@ final class Detail
         if (! $this->rendered) {
             $this->rendered = true;
             $key = self::key($this->request);
-            // Ключи строк — номера и id: прочее (first, мусор в адресе) карточки не даёт и в запрос не идёт.
-            $this->html = $key === null || ! ctype_digit($key) ? null : ($this->resolve)($key);
+            // Ключи строк — номера и id: прочее (first, мусор в адресе) карточки не даёт и в запрос не идёт. Фильтр — окно
+            // чипов списка (`Facets::panel`), если список их сузил.
+            $this->html = match (true) {
+                $key === self::FILTER => $this->request->attributes->get(Facets::class)?->panel(),
+                $key === null || ! ctype_digit($key) => null,
+                default => ($this->resolve)($key),
+            };
         }
 
         return $this->html ?? self::empty();

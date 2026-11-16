@@ -16,6 +16,8 @@ import { ghostFor, ghostKey, rememberGhost } from '../lib/ghost';
 // коробкой ровно видимой части, в движении — сдвигом transform (app.css .split-detail, pin), тянут за полосу (grab), тело
 // карточки листается внутри само.
 const reduce = matchMedia('(prefers-reduced-motion: reduce)');
+// Окно «Фильтр» вкладок колеса (`?peek=filter`, `App\Support\Detail::FILTER`, 17.11.2026) — в том же фрейме, без строки.
+const FILTER = 'filter';
 
 // Карточки заранее (07.10.2026, владелец: «быстрее и плавнее»): запрос уходит при касании строки (палец стоит 70 мс или
 // уже отпущен), при наведении мышью 120 мс и за соседей открытой — к нажатию ответ уже в пути или в руках. Лежит 30 с,
@@ -128,7 +130,11 @@ export default class extends Controller {
         this.onMorphElement = (e) => {
             if (e.target.localName !== 'turbo-frame' || e.target !== this.frameTarget) return;
             const incoming = e.detail.newElement?.querySelector?.('.detail-card')?.dataset.peek ?? '';
-            if (this.frameTarget.hasAttribute('busy') || this.frameTarget.hasAttribute('aria-busy') || incoming !== (this.chosen ?? '')) e.preventDefault();
+            // Своё действие окна «Фильтр» (`filter_controller`: «Показать» на ПК, формы «Мои фильтры» — `data-fresh`) — окно
+            // перерисовывается тем, что пришло (свежим или пустым); осталось открытым — снова своя запись «Назад».
+            if (this.frameTarget.dataset.fresh) { delete this.frameTarget.dataset.fresh; this.reopen = true; return; }
+            // Окно «Фильтр» живой морф не трогает никогда: выбор в нём — только в браузере, обновление списка сбросило бы его.
+            if (this.frameTarget.hasAttribute('busy') || this.frameTarget.hasAttribute('aria-busy') || incoming !== (this.chosen ?? '') || incoming === FILTER) e.preventDefault();
         };
         this.offMorphElement = onMorphElement(this.onMorphElement);
         // Уход со страницы с несохранённым в карточке (таб-бар, «Открыть страницу», ссылка) — тот же вопрос, что у листа.
@@ -173,7 +179,12 @@ export default class extends Controller {
         ['turbo:load', 'turbo:morph'].forEach((n) => document.addEventListener(n, this.onMark));
         // После морфа раскладка — по тому, что в фрейме на самом деле: карточку убрали с сервера (предложение удалили) —
         // data-open снимается, иначе список оставался бледным с отступом под листом, которого нет.
-        this.onMorphed = () => this.settle(this.element.hasAttribute('data-open'));
+        this.onMorphed = () => {
+            this.settle(this.element.hasAttribute('data-open'));
+            if (!this.reopen) return;
+            this.reopen = false;
+            if (this.open) overlays.open('detail', { close: () => this.close(undefined, true), guard: () => this.dirty && this.leave() });
+        };
         document.addEventListener('turbo:morph', this.onMorphed);
         this.rowsSeen = new MutationObserver((records) => {
             if (records.some((r) => [...r.addedNodes].some((n) => n.nodeType === 1 && n.matches('[data-detail-key]')))) this.mark();
@@ -279,7 +290,8 @@ export default class extends Controller {
     snapNow() {
         const run = () => {
             const card = this.frameTarget.querySelector('.detail-card:not(.detail-blank)');
-            if (card?.isConnected && !this.frameTarget.hasAttribute('data-moving')) rememberGhost(ghostKey(this.wide.matches), card);
+            // Окно «Фильтр» — не карточка строки: заготовкой машин его не снимаем.
+            if (card?.isConnected && card.dataset.peek !== FILTER && !this.frameTarget.hasAttribute('data-moving')) rememberGhost(ghostKey(this.wide.matches), card);
         };
         window.requestIdleCallback ? requestIdleCallback(run, { timeout: 1500 }) : setTimeout(run, 300);
     }
@@ -415,6 +427,47 @@ export default class extends Controller {
             overlays.open('detail', { close: () => this.close(undefined, true), guard: () => this.dirty && this.leave() });
         }
         this.frameTarget.src = url.pathname + url.search;
+    }
+
+    // «Фильтр» (кнопка шапки, чип выбранного параметра): то же окно, что карточка, без строки — лист выезжает с заготовкой,
+    // окно грузится во фрейм, своя запись «Назад»; открыт фильтр — нажатие его закрывает, открыта машина — фильтр встаёт
+    // на её место (несохранённое — с вопросом).
+    async filter(event) {
+        event.preventDefault();
+        if (this.open && this.chosen === FILTER) { this.close(); return; }
+        if (!(await this.leave())) return;
+        const url = new URL(location.href);
+        for (const key of ['q', 'page', 'part']) url.searchParams.delete(key);
+        url.searchParams.set('peek', FILTER);
+        this.shut = false;
+        this.swap = true;
+        this.released = false;
+        this.keep();
+        this.current?.removeAttribute('aria-selected');
+        this.lastKey = null;
+        this.address(url);
+        const opened = !!this.frameTarget.querySelector('.detail-card');
+        this.frameTarget.replaceChildren(this.filterBlank());
+        if (!opened) {
+            this.settle(false);
+            this.waitOpening();
+            overlays.open('detail', { close: () => this.close(undefined, true), guard: () => this.dirty && this.leave() });
+        }
+        this.frameTarget.src = url.pathname + url.search;
+    }
+
+    // Заготовка окна «Фильтр»: полоса с «Закрыть» и строки параметров плашкой.
+    filterBlank() {
+        const card = document.createElement('div');
+        card.className = 'detail-card detail-blank';
+        card.dataset.peek = FILTER;
+        card.setAttribute('aria-busy', 'true');
+        const rows = Array.from({ length: 8 }, () => '<div class="blank-row"><i class="blank blank-label"></i><i class="blank blank-value"></i></div>').join('');
+        card.innerHTML = '<div class="detail-bar" data-action="pointerdown->detail#grab"><span class="detail-handle" aria-hidden="true"></span>'
+            + '<span class="detail-bar-title mr-auto">Фильтр</span>'
+            + '<button type="button" class="bar-btn" data-action="detail#close" aria-label="Закрыть"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>'
+            + `<div class="detail-body"><div class="blank-list">${rows}</div></div>`;
+        return card;
     }
 
     // Адрес страницы без визита Turbo: запись та же, у Turbo — тот же ключ восстановления.

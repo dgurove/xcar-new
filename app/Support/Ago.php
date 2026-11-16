@@ -46,10 +46,15 @@ final class Ago
         return 'просрочено '.self::span(max(60, (int) floor($until->diffInSeconds(now(), false))));
     }
 
-    /** Сколько прошло с момента — слитно, как просил владелец: «2д 14ч», «3ч 5мин», «12мин». */
-    public static function since(Carbon $from): string
+    /**
+     * Сколько прошло с момента — слитно, как просил владелец: «2д 14ч», «3ч 5мин», «12мин». hours — дни и часы без минут
+     * («Во вкладке», 17.11.2026, владелец: «сколько дней и часов»): строка списка не меняется каждую минуту.
+     */
+    public static function since(Carbon $from, bool $hours = false): string
     {
-        return self::span(max(60, (int) floor($from->diffInSeconds(now(), false))));
+        $s = max(60, (int) floor($from->diffInSeconds(now(), false)));
+
+        return $hours && $s >= 3600 ? self::span(intdiv($s, 3600) * 3600) : self::span($s);
     }
 
     /** Длительность тем же видом: «1 ч 48 мин», «2 д 4 ч» — «обычно открывает через» (`ManagerResponse`). */

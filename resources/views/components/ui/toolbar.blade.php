@@ -20,7 +20,7 @@
      Сортировка — окошко x-ui.sort: поле и направление (владелец 06.10.2026: «кнопка сортировки, окошко — выбор
      критерия и ascending/descending»); прежнего меню исходов словами («Сначала дешёвые») больше нет.
      rows — шапка вкладок колеса «Предложений» (`x-admin.tab-head`, 17.11.2026, владелец): ряд кнопок (слева сортировка и лупа,
-     справа вид из слота `extra` и «Фильтр» — `x-ui.filter-sheet`), под ним быстрые чипы (`Facet::quick`) и выбранное в
+     справа вид из слота `extra` и «Фильтр» — `x-ui.filter-button`, окно во фрейме карточки), под ним быстрые чипы (`Facet::quick`) и выбранное в
      «Фильтре», ниже переключатели; на ПК — одной строкой. Пилюль, действий и «Сбросить» в этом виде нет. --}}
 @props(['rows' => false, 'sort' => null, 'sortParam' => 'sort', 'pills' => [], 'dots' => [], 'pill' => '', 'pillParam' => 'view', 'pillDefault' => true, 'pillHome' => null, 'pillDrop' => [], 'counts' => [], 'badges' => [], 'bumps' => [], 'tones' => [], 'name' => 'list', 'action' => null, 'search' => null, 'searchTarget' => '#list', 'searchUrl' => null, 'q' => null, 'facets' => null, 'searchOpen' => false, 'sortToggles' => [], 'facetsReset' => true])
 @php
@@ -52,7 +52,7 @@
         </div>
         <div class="toolbar-side toolbar-side--end">
             {{ $extra ?? '' }}
-            @if ($facets && $facets->all())<x-ui.filter-sheet :facets="$facets" :name="$name"/>@endif
+            @if ($facets && $facets->all())<x-ui.filter-button :facets="$facets"/>@endif
         </div>
     </div>
     @if ($facets && ! request()->headers->has('X-List'))

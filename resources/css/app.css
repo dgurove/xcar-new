@@ -1437,9 +1437,9 @@ html.kb-open { --home-gap: 0px; }
   .filter-btn .facet-open { @apply inline-flex min-w-0 items-center gap-1.5; }
   .filter-btn:not(.facet-on) .facet-open { @apply pr-3.5; }
   .filter-btn .facet-open .nums { @apply rounded-full bg-black/10 px-1.5 text-xs; }
-  /* Шторка «Фильтр»: параметры строками, варианты — своим экраном той же шторки; низ с «Показать N» липнет. */
-  .sheet-filter { min-width: 22rem; }
-  .filter-body .list-head { @apply mb-1.5; }
+  /* Окно «Фильтр» (`ui/filter-body` во фрейме карточки, 17.11.2026): параметры строками, варианты — экраном того же окна;
+     «Сбросить» и «Показать N» — подвалом окна (`.detail-foot`), всегда на экране. */
+  .detail-bar-title { @apply ml-1 text-base font-medium; }
   .filter-value { @apply text-sm text-ink-muted; }
   /* Подпись — целиком (свой текст не режется), поля «от» и «до» делят остаток строки. */
   .filter-range { @apply gap-2; }
@@ -1449,8 +1449,10 @@ html.kb-open { --home-gap: 0px; }
   .filter-more { @apply -mr-1 flex size-9 shrink-0 items-center justify-center rounded-full text-ink-dim; }
   @media (hover: hover) { .filter-more:hover { @apply text-ink; } }
   .filter-edit { @apply flex flex-col gap-2 px-3 pb-3; }
-  .filter-foot { @apply sticky bottom-0 z-10 -mx-1 mt-4 flex items-center gap-2 px-1 pb-1 pt-2; background: var(--color-surface); box-shadow: 0 1.5rem 0 var(--color-surface); }
+  .detail-foot > .filter-foot { display: flex; align-items: center; gap: .5rem; }
   .filter-foot [aria-busy] .nums { opacity: .5; }
+  .filter-main + .filter-form { margin-top: 0; }
+  .filter-main { margin-top: .25rem; }
   /* Окно «Выгрузка» (`x-offer.export-sheet`): столбцы — пилюлями-галками (отмеченная — лаймовая, как выбранная пилюля),
      образец первых строк — таблицей в плашке, вбок листается сам, страница — нет. */
   .export-cols { @apply mb-4 flex flex-wrap gap-2; }
@@ -3981,8 +3983,6 @@ html.kb-open { --home-gap: 0px; }
 .sheet:popover-open .segment a, .sheet:popover-open .segment label { min-height: 1.75rem; padding-inline: .5rem; gap: .25rem; font-size: var(--text-xs); }
 .sheet:popover-open .segment svg { flex-shrink: 0; width: .875rem; height: .875rem; }
 .sheet.sheet-sort:popover-open { width: 18rem; }
-.sheet.sheet-filter:popover-open { width: 24rem; }
-.sheet:popover-open .filter-foot .btn { height: 2.25rem; font-size: var(--text-sm); border-radius: var(--radius-m); }
 .sheet.sheet-export:popover-open { width: 26rem; }
 
 /* ------------------------------------------------------------- каркас */

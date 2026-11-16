@@ -86,7 +86,7 @@
     $endTopLine = preg_replace(['/<a\s[^>]*?class="/', '/<\/a>/'], ['<span class="', '</span>'], $endTop);
     ob_start();
 @endphp
-@if ($since)<span class="nums text-ink-muted" title="Во вкладке с {{ $since->format('d.m.Y H:i') }}">{{ \App\Support\Ago::since($since) }}</span>
+@if ($since)<span class="nums text-ink-muted" title="Во вкладке с {{ $since->format('d.m.Y H:i') }}">{{ \App\Support\Ago::since($since, hours: true) }}</span>
 @elseif ($endCol === 'price')
     @if ($admin && ! $busy && ($margin = $offer->marginMark()))<x-offer.margin :m="$margin"/>@endif
     @if ($count)<span class="nums {{ $gallery ? 'text-accent-text' : 'text-urgent' }}">{{ $countWord }}</span>
@@ -208,7 +208,7 @@
         @break
         @case('since')
     {{-- Сколько во вкладке («Все», 17.11.2026): «6д 5ч», с какого момента — подсказкой. --}}
-    <td class="{{ $col->classes() }}">@if ($since)<span title="Во вкладке с {{ $since->format('d.m.Y H:i') }}">{{ \App\Support\Ago::since($since) }}</span>@endif</td>
+    <td class="{{ $col->classes() }}">@if ($since)<span title="Во вкладке с {{ $since->format('d.m.Y H:i') }}">{{ \App\Support\Ago::since($since, hours: true) }}</span>@endif</td>
         @break
         @case('sold')
         @case('paid')

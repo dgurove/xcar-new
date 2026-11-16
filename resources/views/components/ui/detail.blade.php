@@ -8,5 +8,6 @@
      строки, на которую уже перешли (`detail_controller` onMorphElement), иначе «Оценить» уходило в прошлую машину. --}}
 {{-- Закрытый фрейм несёт только потоки (карточки больше нет — `Detail::response`): Turbo берёт из ответа лишь сам фрейм, а
      сыгранный поток себя убирает, и фрейм снова :empty. --}}
+{{-- Свои атрибуты — у `.detail-card` (окно «Фильтр»: `data-controller="filter"`, 17.11.2026). --}}
 @props(['open' => true])
-<turbo-frame id="detail" class="split-detail" target="_top" data-detail-target="frame">@if ($open)<div class="detail-card" role="region" aria-label="Карточка" data-peek="{{ is_string($peek = request()->query('peek')) ? $peek : '' }}">{{ $slot }}</div>@else{{ $slot }}@endif</turbo-frame>
+<turbo-frame id="detail" class="split-detail" target="_top" data-detail-target="frame">@if ($open)<div {{ $attributes->except('aria-label')->merge(['class' => 'detail-card']) }} role="region" aria-label="{{ $attributes->get('aria-label', 'Карточка') }}" data-peek="{{ is_string($peek = request()->query('peek')) ? $peek : '' }}">{{ $slot }}</div>@else{{ $slot }}@endif</turbo-frame>

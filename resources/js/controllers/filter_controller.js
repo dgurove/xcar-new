@@ -2,16 +2,17 @@ import { Controller } from '@hotwired/stimulus';
 import * as Turbo from '@hotwired/turbo';
 import { debounce } from '../lib/debounce';
 import { getJson, request } from '../lib/http';
-import { closeSheet } from '../sheet';
+import * as overlays from '../overlays';
 
-// Шторка «Фильтр» шапки вкладок колеса (`x-ui.filter-sheet`, 17.11.2026): тело грузится по открытию — тот же адрес списка с
-// `X-Filters` (`ui/filter-body`). Параметр со списком — строка, варианты открываются в той же шторке (`push`/`pop`); галки — тем
-// же правилом, что шторка чипа (`facets_controller`): отмечено всё — без фильтра, снятых меньше — «кроме» (`!a,b`). Числа
-// «от–до» — `от~до`; даты — быстрый вариант словом или `с~по`. «Показать N» переспрашивает тот же адрес с `X-Count`.
-// В адрес уходит выбранное; пустое — только у того, что было выбрано (`data-orig`): иначе `ListPrefs` подставит прошлое.
-// Сохранить и «Сохранить выбранное сюда» — тот же набор в JSON со всеми ключами (`stamp`).
+// Окно «Фильтр» вкладок колеса (`ui/filter-body` во фрейме карточки, `?peek=filter`, 17.11.2026): параметр со списком — строка,
+// варианты грузятся по нажатию (`X-Filter-Pane`) и открываются экраном того же окна (`push`/`pop`); галки — тем же правилом,
+// что шторка чипа (`facets_controller`): отмечено всё — без фильтра, снятых меньше — «кроме» (`!a,b`). Числа «от–до» —
+// `от~до`; даты — быстрый вариант словом или `с~по`. «Показать N» переспрашивает тот же адрес с `X-Count`. В адрес уходит
+// только тронутое и стоявшее в адресе (`url`). Применили — запись окна в истории снимается до перехода (иначе «Назад» после
+// закрытия вернул бы прежний список), на ПК окно остаётся рядом со списком, на телефоне закрывается. Сохранить и «Сохранить
+// выбранное сюда» — тот же набор в JSON со всеми ключами (`stamp`).
 export default class extends Controller {
-    static targets = ['button', 'body', 'main', 'form', 'pane', 'panes', 'submit'];
+    static targets = ['main', 'form', 'pane', 'panes', 'submit'];
     static values = { url: String };
 
     connect() {
@@ -22,26 +23,12 @@ export default class extends Controller {
     disconnect() {
         this.later.cancel();
         this.pending?.abort();
-        this.loading?.abort();
     }
 
-    // Чип выбранного параметра в ряду шапки открывает шторку.
-    show() {
-        this.buttonTarget.click();
-    }
-
-    async load() {
-        this.loading?.abort();
-        this.loading = new AbortController();
-        const r = await request(this.urlValue, { headers: { 'X-Filters': '1' }, accept: 'text/html', signal: this.loading.signal });
-        if (!r) return;
-        this.bodyTarget.innerHTML = await r.text();
-    }
-
-    // Варианты параметра грузятся, когда его открыли (`X-Filter-Pane`), и остаются до закрытия шторки.
+    // Варианты параметра грузятся, когда его открыли (`X-Filter-Pane`), и остаются до закрытия окна.
     async push({ params: { pane } }) {
         if (!this.paneTargets.some((p) => p.dataset.pane === pane)) {
-            const r = await request(this.urlValue, { headers: { 'X-Filters': '1', 'X-Filter-Pane': pane }, accept: 'text/html', signal: this.loading?.signal });
+            const r = await request(this.urlValue, { headers: { 'X-Filter-Pane': pane }, accept: 'text/html' });
             if (!r || !this.hasPanesTarget) return;
             this.panesTarget.insertAdjacentHTML('beforeend', await r.text());
         }
@@ -57,9 +44,7 @@ export default class extends Controller {
     }
 
     top() {
-        const dialog = this.element.querySelector('dialog');
-        dialog?.scrollTo?.({ top: 0 });
-        this.bodyTarget.closest('.sheet-scroll, dialog')?.scrollTo?.({ top: 0 });
+        this.element.querySelector('.detail-body')?.scrollTo({ top: 0 });
     }
 
     // «⋯» у сохранённого и «Сохранить фильтр…» — строка правки под строкой.
@@ -203,7 +188,8 @@ export default class extends Controller {
     // Каркаде» по умолчанию после «Показать» стало бы выбранным, и «Фильтр» считал бы его.
     url() {
         const url = new URL(this.formTarget.action, location.href);
-        const shown = new URL(this.urlValue, location.href).searchParams;
+        // Стоявшее в адресе — адрес страницы, а не окна: окно рисуется по выборке, куда контроллер уже подставил умолчания.
+        const shown = new URL(location.href).searchParams;
         const orig = new Map();
         this.formTarget.querySelectorAll('[data-orig]').forEach((i) => { if (!orig.has(i.name)) orig.set(i.name, i.dataset.orig); });
         for (const [k, v] of this.params()) {
@@ -239,13 +225,42 @@ export default class extends Controller {
         this.leave(event.currentTarget.href);
     }
 
-    // Сначала закрыть шторку (её запись в истории снимается шагом назад), потом перейти: иначе запоздалое закрытие уводило
-    // «Назад» на прежний адрес, и выбор пропадал.
-    async leave(url) {
-        const dialog = this.element.querySelector('dialog');
-        if (dialog?.matches(':popover-open')) dialog.hidePopover();
-        else if (dialog?.open) await closeSheet(dialog);
-        Turbo.visit(url, { action: 'replace' });
+    // Перейти к выбранному. Переход Turbo тут — морф страницы, а окно фильтра морф не трогает (`detail_controller`): на ПК
+    // своё применение помечается (`data-fresh`) — окно перерисуется свежим рядом с отфильтрованным списком; на телефоне лист
+    // сначала закрывается как обычно (запись «Назад» снимается, адрес без ?peek), потом переход — список во весь экран.
+    async leave(href) {
+        const url = new URL(href, location.href);
+        const frame = this.element.closest('turbo-frame');
+        const split = frame?.closest('[data-controller~="detail"]');
+        const detail = split && this.application.getControllerForElementAndIdentifier(split, 'detail');
+        if (matchMedia('(min-width: 1024px)').matches) {
+            url.searchParams.set('peek', 'filter');
+            if (frame) frame.dataset.fresh = '1';
+            await overlays.shut('detail');
+        } else {
+            url.searchParams.delete('peek');
+            if (detail) {
+                await detail.close(0);
+                for (let i = 0; i < 20 && detail.open; i++) await new Promise((r) => setTimeout(r, 30));
+            } else await overlays.shut('detail');
+        }
+        Turbo.visit(url.toString(), { action: 'replace' });
+    }
+
+    // Формы «Мои фильтры» (сохранить, переименовать, сохранить выбранное сюда, удалить) — всей страницей: запись окна «Назад»
+    // снимается до отправки, окно помечается на перерисовку (`data-fresh`) — ответ морфом его иначе не тронул бы, и названия
+    // стояли бы прежние. Второй проход — та же форма уже без перехвата.
+    async send(event) {
+        if (this.sending) return;
+        event.preventDefault();
+        const form = event.target;
+        this.stamp(event);
+        const frame = this.element.closest('turbo-frame');
+        if (frame) frame.dataset.fresh = '1';
+        await overlays.shut('detail');
+        this.sending = true;
+        form.requestSubmit();
+        this.sending = false;
     }
 
     // Сохранить: в скрытое `query` — вкладка и все ключи шторки (пустые явно — при открытии фильтра память не подмешается).

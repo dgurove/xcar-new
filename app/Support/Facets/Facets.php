@@ -2,12 +2,14 @@
 
 namespace App\Support\Facets;
 
+use App\Support\Detail;
 use App\Support\Plural;
 use App\Support\Portion;
 use App\Support\ListPrefs;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Http\Exceptions\HttpResponseException;
+use Illuminate\Contracts\View\View;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 
@@ -66,7 +68,13 @@ final class Facets
         return $this;
     }
 
-    /** Сохранённые фильтры человека в шторке «Фильтр» — общий список колеса (`offers`). */
+    /** Окно «Фильтр» во фрейме карточки (`x-ui.detail`, 17.11.2026). */
+    public function panel(): View
+    {
+        return view('ui.filter-body', ['facets' => $this, 'pane' => null]);
+    }
+
+    /** Сохранённые фильтры человека в окне «Фильтр» — общий список колеса (`offers`). */
     public function saving(string $list): self
     {
         $this->saved = $list;
@@ -215,15 +223,20 @@ final class Facets
         }
         $this->applied = clone $b;
         $this->state = $this->snapshot();
+        // Окно «Фильтр» (`?peek=filter`, `Detail::FILTER`) рисует шелл по этой выборке — `Detail::html`.
+        $this->request->attributes->set(self::class, $this);
         if ($this->request->headers->has('X-Count')) {
             throw new HttpResponseException(response()->json(['count' => $this->total()]));
         }
-        // Шторка «Фильтр» грузится по открытию (17.11.2026): варианты всех чипов считаются, только когда их смотрят.
-        // Варианты параметра — ещё одним запросом, когда его открыли (`X-Filter-Pane`): модели, города и марки списком сразу
-        // весили бы сотни килобайт.
-        if ($this->request->headers->has('X-Filters')) {
-            $pane = $this->request->headers->get('X-Filter-Pane');
-            throw new HttpResponseException(response()->view('ui.filter-body', ['facets' => $this, 'pane' => is_string($pane) && isset($this->facets[$pane]) ? $pane : null]));
+        // Варианты параметра — запросом, когда его открыли (`X-Filter-Pane`): модели, города и марки сразу весили бы сотни
+        // килобайт.
+        $pane = $this->request->headers->get('X-Filter-Pane');
+        if (is_string($pane) && isset($this->facets[$pane])) {
+            throw new HttpResponseException(response()->view('ui.filter-body', ['facets' => $this, 'pane' => $pane]));
+        }
+        // Окно «Фильтр» просит фрейм карточки — отвечаем им сразу, без страниц списка.
+        if (Detail::key($this->request) === Detail::FILTER && $this->request->header('Turbo-Frame') === Detail::FRAME) {
+            throw new HttpResponseException(response($this->panel()->render()));
         }
 
         return $q;

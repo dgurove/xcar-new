@@ -5,7 +5,7 @@
 @props(['facets', 'name' => 'list', 'reset' => true, 'part' => null])
 @php
     // Шапка вкладок колеса (`x-ui.toolbar rows`, 17.11.2026): ряд `quick` — быстрые чипы и выбранное в «Фильтре» (чипом с ×,
-    // нажатие открывает «Фильтр»), ряд `toggles` — переключатели; «Сбросить» там — у кнопки «Фильтр».
+    // нажатие открывает окно «Фильтр», `detail#filter`), ряд `toggles` — переключатели; «Сбросить» там — у кнопки «Фильтр».
     $chips = $facets->chips();
     $chips = match ($part) {
         'quick' => $chips->reject(fn ($c) => $c->facet->toggle),
@@ -20,7 +20,7 @@
                 @if ($part === 'quick' && ! $chip->facet->quick)
                     @php $f = $chip->facet; $text = $f->range || $f->dates ? $f->title.': '.mb_strtolower(mb_substr($chip->label, 0, 1)).mb_substr($chip->label, 1) : $chip->label; @endphp
                     <span class="pill facet-on" aria-current="true">
-                        <button type="button" class="facet-open" data-controller="emit" data-action="emit#send" data-emit-event-param="filter:open">{{ $text }}</button>
+                        <a href="{{ \App\Support\Detail::url(\App\Support\Detail::FILTER) }}" class="facet-open" data-action="detail#filter" data-turbo-prefetch="false">{{ $text }}</a>
                         <a href="{{ $facets->url([$f->key => '']) }}" class="facet-x" data-turbo-action="replace" data-turbo-prefetch="false" aria-label="Снять «{{ $f->title }}»"><x-ui.icon name="x" class="size-3.5"/></a>
                     </span>
                 @elseif ($chip->facet->toggle)
