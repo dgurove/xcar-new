@@ -27,11 +27,14 @@
 @elseif ($files->isNotEmpty() || $can)
     @php ob_start(); @endphp
         @foreach ($files as $media)
-            <x-ui.file :name="\App\Media\DocName::of($media)" :mime="$media->mime_type" :bytes="$media->size" href="/files/{{ $media->id }}" class="row" :refs="[$deal->offer?->claim_ref]" :size="$bare ? 'подписанный договор' : null">
+            {{-- Тем же видом, что счета и договор (16.11.2026, `x-deal.doc-row`): «Подписанный договор от 16.11», «Скачать», крестик. --}}
+            <x-deal.doc-row :href="'/files/'.$media->id" title="Подписанный договор" :date="\App\Support\Ago::day($media->created_at)" :name="$media->file_name" :mime="$media->mime_type" :bytes="$media->size" :file="\App\Media\DocName::of($media)">
                 @if ($can)
-                    <form method="post" action="{{ $base }}/signed/{{ $media->id }}" data-turbo-confirm="Убрать файл договора?">@csrf @method('delete')<button class="btn btn-ghost btn-s px-2 text-ink-muted" aria-label="Убрать"><x-ui.icon name="x" class="size-5"/></button></form>
+                    <x-slot:acts>
+                        <form method="post" action="{{ $base }}/signed/{{ $media->id }}" data-turbo-confirm="Убрать файл договора?">@csrf @method('delete')<button class="btn btn-ghost btn-s px-2 text-ink-muted" aria-label="Убрать"><x-ui.icon name="x" class="size-5"/></button></form>
+                    </x-slot:acts>
                 @endif
-            </x-ui.file>
+            </x-deal.doc-row>
         @endforeach
         @if ($can)
             <form method="post" action="{{ $base }}/signed" enctype="multipart/form-data" class="contents signed-upload" data-controller="autosubmit">

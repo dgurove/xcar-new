@@ -29,6 +29,28 @@ class DealContractController
         return back()->with('toast', 'Платит '.$party->name);
     }
 
+    /** Кому платят услуги подбора — ПРАЙМ или Р.О.С. (`SetFeeSeller`, строка «Плательщик платит» в «Продаже», 16.11.2026). */
+    public function feeSeller(Request $request, Deal $deal, \App\Offers\Actions\SetFeeSeller $set)
+    {
+        abort_unless($request->user()->canManageCrm() && $deal->isActive(), 404);
+        $value = $request->validate(['fee_seller' => ['required', 'in:prime,ros']])['fee_seller'];
+        $seller = \App\Billing\Seller::from($value);
+        $set($deal, $request->user(), $seller);
+
+        return back()->with('toast', 'Услуги подбора: '.($seller->config()['name'] ?? $value));
+    }
+
+    /** Договор от страховой руками («страховой напрямую», 16.11.2026): файл к машине, открыт менеджеру (`SupplierContract`). */
+    public function supplierContract(Request $request, Deal $deal)
+    {
+        abort_unless($request->user()->canManageCrm() && \App\Offers\SupplierContract::applies($deal), 404);
+        $file = $request->validate(['file' => ['required', 'file', 'max:20480', 'mimes:pdf,jpg,jpeg,png,heic,doc,docx']], ['file.required' => 'Выберите файл'])['file'];
+        \App\Offers\SupplierContract::attach($deal->offer, $file);
+        $deal->offer->log(\App\Offers\OfferEventType::Note, $request->user(), ['text' => 'Договор от страховой приложен']);
+
+        return back()->with('toast', 'Договор от страховой приложен');
+    }
+
     public function update(Request $request, Deal $deal, SaveDealContract $save)
     {
         // Покупатель для счёта поставщика без договора (03.11.2026, `Deal::collectsBuyer`) — только его часть, без ДКП.

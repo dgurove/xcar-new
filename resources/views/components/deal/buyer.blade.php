@@ -55,7 +55,7 @@
 @if ($buyer && $live)
     <div data-controller="sheet" class="contents">
         {{-- Данные для договора — своей строкой того же вида, под «Плательщиком» (16.11.2026). --}}
-        <x-deal.sale-row :label="'Данные для '.$for" :value="$ready ? trim($kindWord.'есть', ', ') : ($gap ?? 'нужны')" :tone="$ready ? null : 'danger'" class="w-full text-left" data-action="sheet#open"/>
+        <x-deal.sale-row :label="'Реквизиты'" :value="$ready ? trim($kindWord.'есть', ', ') : ($gap ?? 'нужны')" :tone="$ready ? null : 'danger'" class="w-full text-left" data-action="sheet#open"/>
         <x-ui.sheet :id="$dataSheet" :title="$ready ? 'Данные покупателя' : 'Данные для '.$for" :open="session('open_sheet') === $dataSheet || $errors->hasAny(['buyer.*']) || $ask" tall>
             @php $buyerParty = $buyer->party ?? \App\Billing\Party::forUser($buyer); @endphp
             {{-- Снимки реквизитов от менеджера — над полями: вносят, глядя на них. --}}

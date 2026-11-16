@@ -25,14 +25,10 @@
     {{-- Договор — файлом, как документ: значок PDF и номер. Только готовый (15.11.2026, владелец: «ЗАЧЕМ мы показываем
          договор, если он НЕ ГОТОВ»): чего не хватает — делами в «Ходе сделки». --}}
     @unless ($missing)
-    <x-ui.doc :doc="$pdf" class="row">
-        <x-ui.file-icon name="dkp.pdf"/>
-        <span class="min-w-0 flex-1">
-            <span class="block">Договор{{ $doc->number() ? ' № '.$doc->number() : ' купли-продажи' }}</span>
-            <span class="row-sub text-open">готов</span>
-        </span>
-        <x-ui.chevron/>
-    </x-ui.doc>
+    {{-- Тем же видом, что счета (16.11.2026, `x-deal.doc-row`): значок, номер, «Скачать» справа. --}}
+    <x-deal.doc-row :href="$pdf['url']" :title="'Договор'.($doc->number() ? ' № '.$doc->number() : ' купли-продажи')" name="dkp.pdf" :file="$pdf['name']">
+        <span class="text-open">готов</span>
+    </x-deal.doc-row>
     @endunless
     <x-deal.buyer :deal="$deal" :contract="$contract"/>
 @php $rows = ob_get_clean(); @endphp

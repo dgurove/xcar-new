@@ -61,6 +61,9 @@
     $sum = fn ($v) => $v === null ? 'уточним' : Money::rub((int) $v);
 @endphp
 @if ($kind)
+    {{-- Поставщику или собственнику платит покупатель («страховой напрямую», ДКП) — карточки нет (16.11.2026, владелец: «блок не
+         нужен, если поставщику платим не мы»): счёт и платёжка — в блоке «Поставщику» «Продажи» (`admin/deals/supplier-rows`). --}}
+    @if (! in_array($kind, ['insurer', 'owner'], true))
     <x-ui.card :title="$kind === 'owner' ? 'Оплата владельцу' : 'Оплата поставщику'" {{ $attributes->class('sale-card') }}>
         @if ($kind === 'we' || $kind === 'insurer')
             <x-slot:actions>
@@ -114,4 +117,5 @@
             @endif
         </div>
     </x-ui.card>
+    @endif
 @endif

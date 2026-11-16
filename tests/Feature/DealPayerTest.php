@@ -159,6 +159,31 @@ class DealPayerTest extends TestCase
         $this->assertSame('p@mail.ru', $invoice->fresh()->party->email);
     }
 
+    /** «Плательщик платит — ООО «Р.О.С.»» (16.11.2026): счёт подбора от Р.О.С., без ссылки; обратно ПРАЙМ — со ссылкой; оплатили — не меняется. */
+    public function test_fee_seller_switches_selection_invoice(): void
+    {
+        $deal = $this->deal(CommissionMode::Payout, DealScheme::Insurer, 'supplier');
+        \App\Billing\Party::seller(\App\Billing\Seller::Ros)->forceFill(['inn' => '7700000001', 'bank_name' => 'Банк', 'account' => '40702810000000000001', 'bik' => '044525000'])->save();
+        $first = $deal->issuedInvoices()->sole();
+        $this->assertSame(\App\Billing\Seller::Prime, $first->seller);
+
+        app(\App\Offers\Actions\SetFeeSeller::class)($deal, $this->admin, \App\Billing\Seller::Ros);
+        $ros = $deal->fresh()->issuedInvoices()->where('state', '!=', InvoiceState::Void)->sole();
+        $this->assertSame(\App\Billing\Seller::Ros, $ros->seller);
+        $this->assertEqualsWithDelta($first->total, $ros->total, 0.01);
+        $this->assertNull($ros->openLink());
+        $this->assertNull($first->fresh()->openLink());
+
+        app(\App\Offers\Actions\SetFeeSeller::class)($deal->fresh(), $this->admin, \App\Billing\Seller::Prime);
+        $prime = $deal->fresh()->issuedInvoices()->where('state', '!=', InvoiceState::Void)->sole();
+        $this->assertSame(\App\Billing\Seller::Prime, $prime->seller);
+        $this->assertNotNull($prime->openLink());
+
+        app(RecordPayment::class)($prime, $this->admin, 1000, now(), PaymentSource::Bank);
+        $this->expectException(ValidationException::class);
+        app(\App\Offers\Actions\SetFeeSeller::class)($deal->fresh(), $this->admin, \App\Billing\Seller::Ros);
+    }
+
     public function test_paid_invoice_keeps_its_payer(): void
     {
         $deal = $this->managerDeal();

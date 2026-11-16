@@ -29,7 +29,7 @@
         <div data-controller="sheet" class="contents">
             <x-ui.sheet-row>
                 {{-- Название целиком: переносится подпись слева, а не «АльфаСтрахов-ание» посреди слова. --}}
-                <span class="min-w-0 flex-1 text-ink-muted">Покупатель платит</span>
+                <span class="min-w-0 flex-1 text-ink-muted">Кому</span>
                 <span class="max-w-[65%] shrink-0 text-right">{{ $payee }}</span>
                 <x-ui.chevron/>
             </x-ui.sheet-row>
@@ -53,8 +53,9 @@
     @elseif ($fixed)
         {{-- Выбора нет (Совкомбанк, по счёту платили) — та же строка без «›». --}}
         <div class="row">
-            <span class="min-w-0 flex-1 text-ink-muted">Покупатель платит</span>
+            <span class="min-w-0 flex-1 text-ink-muted">Кому</span>
             <span class="max-w-[65%] shrink-0 text-right">{{ $payee }}@if ($locked)<span class="row-sub">сменить нельзя, по счёту платили</span>@endif</span>
+            <x-ui.chevron-space/>
         </div>
     @endif
     @if ($contract && $price)<x-deal.contract-price :deal="$deal" :contract="$contract"/>@endif

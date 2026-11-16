@@ -52,7 +52,7 @@ use Spatie\MediaLibrary\InteractsWithMedia;
  * не видит, пока по сделке нет живого счёта — `showsCommission()`.
  */
 #[Fillable(['offer_id', 'bid_id', 'buyer_id', 'amount', 'cost', 'supplier_cost', 'owner_price', 'share', 'commission', 'commission_mode', 'scheme', 'garage_payer', 'parallel', 'notes', 'closed_at', 'cancelled_at', 'close_reason', 'close_note', 'agreed_at', 'buyer_asked_at', 'signing_slots', 'signing_address', 'signing_at', 'signing_asked_at', 'signing_wish', 'prepaid_at', 'supplier_paid_at', 'contract_signed_at', 'contract_signed_by', 'paid_in_at', 'dates_by_hand',
-    'receiver_user_id', 'receiver_name', 'receiver_phone', 'receiver_at', 'auction_at', 'buyer_party_id', 'payer_party_id', 'shadow_stage_id', 'shadow_at', 'reissue_at'])]
+    'receiver_user_id', 'receiver_name', 'receiver_phone', 'receiver_at', 'auction_at', 'buyer_party_id', 'payer_party_id', 'fee_seller', 'shadow_stage_id', 'shadow_at', 'reissue_at'])]
 class Deal extends Model implements HasMedia
 {
     use FastAttributes;
@@ -312,6 +312,12 @@ class Deal extends Model implements HasMedia
         $contract = $this->contract;
 
         return $sale && $contract?->buyer && ! $contract->managerPays() ? $contract->buyer : $this->buyer;
+    }
+
+    /** Кому платят услуги подбора — ООО «ПРАЙМ» (по умолчанию) или ООО «Р.О.С.» (`deals.fee_seller`, `SetFeeSeller`, 16.11.2026). */
+    public function feeSeller(): \App\Billing\Seller
+    {
+        return \App\Billing\Seller::tryFrom((string) $this->fee_seller) ?? \App\Billing\Seller::Prime;
     }
 
     /** Платит сам менеджер (его сторона) — тогда счёт с разбивкой и удержанием вознаграждения. */

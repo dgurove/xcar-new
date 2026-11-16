@@ -24,6 +24,7 @@
     <div class="row sale-row">
         <span class="sale-row-label">Плательщик</span>
         <span class="sale-row-value">{{ $value }}</span>
+        <x-ui.chevron-space/>
     </div>
 @else
 <div class="contents" data-controller="sheet">

@@ -81,6 +81,8 @@ final class ShareReplyFiles implements ShouldQueue
                 @unlink($path);
             }
         }
+        // Договор от страховой («страховой напрямую») — строкой в «Продаже», открыт менеджеру (`SupplierContract`, 16.11.2026).
+        \App\Offers\SupplierContract::detect($offer->fresh(), $message->id);
         OfferStateChanged::dispatch($offer->fresh());
     }
 

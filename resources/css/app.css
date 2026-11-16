@@ -1711,10 +1711,10 @@ html.kb-open { --home-gap: 0px; }
   .deal-pay .segment label { min-height: 1.75rem; padding-inline: .75rem; }
   .list > * + * { position: relative; }
   /* Строка внутри двух обёрток `contents` (форма вокруг `x-people.pick` — «Выбрать покупателя» в ДКП) — тоже с линией. */
-  .list > * + *::after, .list > * + .contents > .row:first-of-type::after, .list > * + .contents > .contents > .row:first-of-type::after { content: ''; position: absolute; top: 0; left: 1rem; right: 0; height: 1px; background: color-mix(in oklab, var(--color-line) 70%, transparent); pointer-events: none; z-index: 1; }
+  .list > * + *::after, .list > * + .contents > .row:first-of-type::after, .list > * + .contents > .contents > .row:first-of-type::after, .list > * + .contents > .contents > .contents > .row:first-of-type::after { content: ''; position: absolute; top: 0; left: 1rem; right: 0; height: 1px; background: color-mix(in oklab, var(--color-line) 70%, transparent); pointer-events: none; z-index: 1; }
   /* Строка со шторкой или форма обёрнута в .contents (у обёртки своей коробки нет): линию рисует сама строка —
      первая .row в обёртке, а не первый ребёнок (у формы первым идёт скрытый _token). */
-  .list > * + .contents > .row:first-of-type, .list > * + .contents > .contents > .row:first-of-type { position: relative; }
+  .list > * + .contents > .row:first-of-type, .list > * + .contents > .contents > .row:first-of-type, .list > * + .contents > .contents > .contents > .row:first-of-type { position: relative; }
   .list > .contents::after { content: none; }
   /* Действия счёта в «Деньгах» сделки — продолжение его строки, без линии сверху (13.11.2026): «Скопировать», «Отправить»
      ссылку и тихое «Оплатили без ссылки…». */

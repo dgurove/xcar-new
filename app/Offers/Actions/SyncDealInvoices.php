@@ -123,6 +123,10 @@ final class SyncDealInvoices
         if ($due <= 0 || ! $deal->buyer) {
             return null;
         }
+        // Услуги подбора от Р.О.С. (`Deal::feeSeller`) без его реквизитов — счёт с прочерками не выставляем, как у продажи.
+        if ($deal->feeSeller() !== Seller::Prime && ! Party::seller($deal->feeSeller())->billable()) {
+            return null;
+        }
 
         // Плательщик — выбранный по сделке (`Deal::payerParty`, 16.11.2026), по умолчанию менеджер.
         return ['party' => $deal->payerParty(), 'offset' => 0.0,
@@ -205,7 +209,12 @@ final class SyncDealInvoices
             ->with(['payments', 'claims', 'charges'])->get();
         $total = $want ? round(array_sum(array_map(fn ($l) => $l['price'] * $l['qty'], $want['lines'])), 2) : null;
         // Сверяем строки, а не итог: у плательщика с «НДС сверху» итог больше строк.
-        $seller = $kind === ChargeKind::Sale && ! $deal->forGarageBuyer() ? $deal->seller() : Seller::Prime;
+        $seller = match (true) {
+            $kind === ChargeKind::Sale && ! $deal->forGarageBuyer() => $deal->seller(),
+            // Услуги подбора — продавцом, что выбран строкой «Плательщик платит» (16.11.2026); не тот — счёт перевыставляется (`$fits`).
+            $kind === ChargeKind::Selection => $deal->feeSeller(),
+            default => Seller::Prime,
+        };
         // Ставка НДС, которой счёт должен стоять (`vat` — ставка договора, иначе продавца), как её хранит `IssueInvoice`.
         $rate = (($want['vat'] ?? null) ?? $seller->vatRate()) ?: null;
         $vatFits = fn (Invoice $i) => ($i->vat_rate ?: null) === $rate;

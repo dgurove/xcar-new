@@ -182,6 +182,8 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
             Route::get('/work/deals/{deal}', [DealController::class, 'show']);
             Route::put('/work/deals/{deal}/contract', [DealContractController::class, 'update']);
             Route::put('/work/deals/{deal}/payer', [DealContractController::class, 'payer']);
+            Route::put('/work/deals/{deal}/fee-seller', [DealContractController::class, 'feeSeller']);
+            Route::post('/work/deals/{deal}/supplier-contract', [DealContractController::class, 'supplierContract']);
             Route::post('/parties/{party}/passport/{page}', [PassportScanController::class, 'upload'])->whereIn('page', ['main', 'reg'])->middleware('throttle:30,1');
             Route::get('/parties/{party}/passport/live', [PassportScanController::class, 'live']);
             Route::post('/parties/{party}/passport/read', [PassportScanController::class, 'read'])->middleware('throttle:10,1');

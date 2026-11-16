@@ -134,9 +134,12 @@
     @endphp
     {{-- Кто продаёт (когда есть выбор), договор и что переводим поставщику по договору комиссии — одной группой строк
          (15.11.2026; было две плашки и подпись «По договору комиссии» между ними). --}}
+    @php $supplierBlock = in_array($deal->schemeOf(), [\App\Offers\DealScheme::Insurer, \App\Offers\DealScheme::OwnerDkp], true) && $deal->buyer_id && ! $deal->isAuction(); @endphp
     @php ob_start(); @endphp
     @unless ($deal->isAuction())<x-deal.scheme :deal="$deal" bare :price="false"/>@endunless
     @if ($withContract)<x-deal.contract :deal="$deal" bare/>@elseif ($withBuyer)<x-deal.buyer :deal="$deal"/>@endif
+    {{-- Покупатель платит поставщику сам — его счёт и платёжка здесь, под «Реквизитами» (карточки «Оплата поставщику» тогда нет). --}}
+    @if ($supplierBlock)@include('admin.deals.supplier-rows')@endif
     {{-- Чего не хватает договору с нашей стороны — владелец, ПТС, сумма (16.11.2026: было делами в «Ходе сделки»). --}}
     <x-deal.contract-gaps :deal="$deal" :price-row="$contractRow"/>
     @if ($contractRow)<x-deal.contract-price :deal="$deal" :contract="\App\Offers\DealContract::for($deal)->loadMissing('priceAuthor')"/>@endif
@@ -145,7 +148,6 @@
     @php $top = trim(ob_get_clean()); @endphp
     {{-- Покупатель платит поставщику или собственнику сам («страховой напрямую», ДКП) — эта группа и есть блок «Поставщику»:
          заголовок с суммой, как у блока «ООО «ПРАЙМ»» ниже (16.11.2026, владелец: оба плательщика — одним видом). --}}
-    @php $supplierBlock = in_array($deal->schemeOf(), [\App\Offers\DealScheme::Insurer, \App\Offers\DealScheme::OwnerDkp], true) && $deal->buyer_id && ! $deal->isAuction(); @endphp
     @if ($top !== '' && $supplierBlock)
         <div class="mb-2 flex items-baseline gap-3 px-3">
             <span class="min-w-0 flex-1 font-medium">{{ $deal->schemeOf() === \App\Offers\DealScheme::OwnerDkp ? 'Собственнику' : 'Поставщику' }}</span>
@@ -225,12 +227,15 @@
         @endphp
         @if ($ourSeller)
             <div class="mt-4 flex items-baseline gap-3 px-3">
-                <span class="min-w-0 flex-1 font-medium">{{ $ourSeller->config()['name'] }}</span>
+                {{-- Заголовок — за что платят, а не кому (16.11.2026, владелец: «не „ООО «ПРАЙМ» 98 000“, а „Услуги подбора 98 000“
+                     по аналогии с „Поставщику“»); кому — строкой «Плательщик платит» (у подбора) или «Покупатель платит» вверху. --}}
+                <span class="min-w-0 flex-1 font-medium">{{ match ($ourBills->first()->kind) { \App\Billing\ChargeKind::Selection => 'Услуги подбора', \App\Billing\ChargeKind::Sale => 'Транспортное средство', default => $ourSeller->config()['name'] } }}</span>
                 <span class="nums shrink-0">{{ Money::rub($ourBills->sum(fn ($i) => $i->state === InvoiceState::Paid ? $i->total : $i->remaining())) }}</span>
             </div>
         @endif
         <div @class(['list', 'mt-2' => $ourSeller, 'mt-4' => ! $ourSeller])>
             {{-- Плательщик — один на счёт и ссылку, строкой над ними (16.11.2026, `x-deal.payer`). --}}
+            @if ($ourBills->contains(fn ($i) => $i->kind === \App\Billing\ChargeKind::Selection) && $deal->buyer_id)<x-deal.fee-seller :deal="$deal"/>@endif
             @if ($payerRow)<x-deal.payer :deal="$deal" :action="'/work/deals/'.$deal->id.'/payer'" :editable="auth()->user()?->canManageCrm()"/>@endif
             @foreach ($invoices as $i)
                 @php
@@ -254,17 +259,9 @@
                     {{-- Счёт — файлом, как документ (15.11.2026, владелец: «счёт должен быть не страницей, а кнопкой „Скачать PDF“»;
                          из вариантов выбрал «файлом»): значок PDF с весом, «Счёт № 184 от 13.11», ниже кто платит и сумма; нажатие —
                          PDF в шторке документов, справа — «Скачать». Файла нет — строка ведёт на страницу счёта. --}}
-                    <div class="row">
-                        <a href="{{ $pdf ?? '/work/money/invoices/'.$i->id }}" class="flex min-w-0 flex-1 items-center gap-3" @if ($pdf) data-doc="pdf" data-doc-name="Счёт {{ $i->label() }}" target="_blank" @endif>
-                            <x-ui.file-icon name="schet.pdf" :bytes="$media?->size"/>
-                            <span class="min-w-0 flex-1">
-                                <span class="block">Счёт {{ $i->label() }} <span class="text-ink-muted">от {{ \App\Support\Ago::day($i->issued_at) }}</span></span>
-                                <span class="row-sub">@if (! $payerRow || $i->party_id !== $payerId)<span>{{ $i->party?->title() }}</span>@endif<span class="nums whitespace-nowrap">{{ $i->isPartial() && $i->remaining() > 0 ? 'осталось '.Money::rub($i->remaining()).' из '.Money::rub($i->total) : Money::rub($i->total) }}</span></span>
-                                @unless ($link && $link->isOpen())<span class="row-sub"><x-billing.light :invoice="$i"/></span>@endunless
-                            </span>
-                        </a>
-                        @if ($pdf)<a href="{{ $pdf }}" download class="btn btn-ghost btn-s shrink-0 px-1.5 text-ink-muted" aria-label="Скачать PDF" title="Скачать PDF" data-controller="file" data-action="file#share" data-file-name="Счёт {{ $i->label() }}.pdf"><x-ui.icon name="download" class="size-5"/></a>@endif
-                    </div>
+                    <x-deal.doc-row :href="$pdf ?? '/work/money/invoices/'.$i->id" :title="'Счёт '.$i->label()" :date="\App\Support\Ago::day($i->issued_at)" name="schet.pdf" :bytes="$media?->size" :download="(bool) $pdf">
+                        @if (! $payerRow || $i->party_id !== $payerId)<span>{{ $i->party?->title() }}</span>@endif<span class="nums whitespace-nowrap">{{ $i->isPartial() && $i->remaining() > 0 ? 'осталось '.Money::rub($i->remaining()).' из '.Money::rub($i->total) : Money::rub($i->total) }}</span>
+                    </x-deal.doc-row>
                     {{-- Ссылка на оплату — своей строкой под счётом: её состояние и «Скопировать» / «Отправить». --}}
                     @if ($link && $link->isOpen())
                         <x-ui.share-link variant="row" :url="$link->url()" title="Оплата по ссылке" :text="$link->message()" label="Ссылка на оплату" :sub="$linkState" done="Ссылка на оплату в буфере"/>

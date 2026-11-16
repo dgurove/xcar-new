@@ -20,14 +20,12 @@
 @endphp
 <div @if ($editable || $vatEditable) data-controller="sheet" @endif class="contents">
     @php ob_start(); @endphp
-        <span class="min-w-0 flex-1">
-            <span class="block">Сумма</span>
-            <span class="row-sub"><span>{{ $vat }}</span>@if ($sub)<span>{{ $sub }}</span>@endif</span>
-        </span>
-        <span class="nums shrink-0">{{ $contract->price ? Money::rub($contract->price) : 'нет суммы' }}</span>
+        {{-- Видом строки «Продажи» (16.11.2026): подпись серым слева, сумма справа, НДС и кто вписал — мелко под суммой. --}}
+        <span class="sale-row-label">Сумма договора</span>
+        <span class="sale-row-value"><span class="nums block">{{ $contract->price ? Money::rub($contract->price) : 'нет суммы' }}</span><span class="block text-sm text-ink-muted">{{ $vat }}@if ($sub), {{ $sub }}@endif</span></span>
     @php $line = ob_get_clean(); @endphp
     @if ($editable || $vatEditable)
-        <x-ui.sheet-row>{!! $line !!}<x-ui.chevron/></x-ui.sheet-row>
+        <x-ui.sheet-row class="sale-row">{!! $line !!}<x-ui.chevron/></x-ui.sheet-row>
         <x-ui.sheet :id="$id" title="Договор">
             <div class="flex flex-col gap-5">
                 @if ($editable)
@@ -64,6 +62,6 @@
             </div>
         </x-ui.sheet>
     @else
-        <div class="row">{!! $line !!}</div>
+        <div class="row sale-row">{!! $line !!}<x-ui.chevron-space/></div>
     @endif
 </div>
