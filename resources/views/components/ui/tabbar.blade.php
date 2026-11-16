@@ -22,7 +22,7 @@
         <a href="{{ $tab['href'] }}" class="tab" data-turbo-action="replace" data-action="tabbar#tap" @if ($tab['href'] === $current) aria-current="page" @endif>
             <span class="tab-mark">
                 @if ($loop->last && $user)
-                    <x-ui.avatar :user="$user" :size="22"/>
+                    <x-ui.avatar :user="$user" :size="26"/>
                 @elseif ($tab['icon'] ?? null)
                     {{-- Раздел со значком (CRM, 16.11.2026): у текущего тот же значок зелёным, как в iOS; числа позиций нет. --}}
                     <x-ui.tab-icon :name="$tab['icon']"/>
