@@ -63,6 +63,6 @@ final class DealDates
             ? "case when d.scheme in ('prime', 'ros', 'owner_dkp') then d.paid_in_at else d.prepaid_at end"
             : "case when d.scheme in ('prime', 'ros') or d.garage_payer = 'us' then d.supplier_paid_at when d.scheme = 'owner_dkp' then null else d.prepaid_at end";
 
-        return "(select {$expr} from deals d where d.offer_id = offers.id and d.state in ('active', 'done') order by d.id desc limit 1)";
+        return "(select {$expr} from deals d where d.id = offers.deal_id)";
     }
 }

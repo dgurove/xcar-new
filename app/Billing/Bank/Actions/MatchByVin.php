@@ -12,7 +12,6 @@ use App\Billing\Party;
 use App\Billing\Robot;
 use App\Billing\WorkDays;
 use App\Offers\Deal;
-use App\Offers\DealState;
 use App\Offers\OfferEventType;
 use App\Support\Money;
 use Illuminate\Support\Facades\DB;
@@ -41,7 +40,7 @@ final class MatchByVin
         if ($vins->isEmpty()) {
             return null;
         }
-        $deals = Deal::whereIn('state', [DealState::Active, DealState::Parallel])
+        $deals = Deal::live()
             ->whereHas('offer.car', fn ($c) => $c->whereIn(DB::raw('upper(vin)'), $vins->all()))->with('offer', 'buyer')->get();
 
         return $deals->count() === 1 ? $deals->first() : null;

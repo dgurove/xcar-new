@@ -4,7 +4,6 @@ namespace App\Billing\Bank;
 
 use App\Mail\Extraction\Code;
 use App\Offers\Deal;
-use App\Offers\DealState;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -81,7 +80,7 @@ final class CarMatch
     /** Последняя идущая или состоявшаяся сделка машины. */
     private static function dealOf(int $carId): ?Deal
     {
-        return Deal::whereIn('state', [DealState::Active, DealState::Done])
+        return Deal::held()
             ->whereHas('offer', fn ($o) => $o->where('car_id', $carId))->latest('id')->first();
     }
 }

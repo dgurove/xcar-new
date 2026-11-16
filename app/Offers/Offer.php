@@ -540,25 +540,30 @@ class Offer extends Model
         return $this->belongsTo(ClaimRequest::class);
     }
 
+    /**
+     * Идущая сделка (16.11.2026: сделка — состояние предложения): не закрытая и не параллельная — такая у машины одна
+     * (индекс `deals_one_active`), её же держит `offers.deal_id`. По фактам, а не по указателю: указатель в памяти бывает
+     * устаревшим посреди действия. Сделка знает своё предложение без запроса (`chaperone`): гараж и списки звали
+     * `$deal->offer` строкой на строку.
+     */
     public function deal(): HasOne
     {
-        // Сделка знает своё предложение без запроса (`chaperone`): гараж и списки звали `$deal->offer` строкой на строку.
-        return $this->hasOne(Deal::class)->where('state', DealState::Active)->chaperone('offer');
+        return $this->hasOne(Deal::class)->whereNull('deals.closed_at')->where('deals.parallel', false)->chaperone('offer');
     }
 
-    /**
-     * Сделка, что сейчас идёт, иначе последняя состоявшаяся — дорожка «Сделка» редактора показывает и выданную
-     * (деньги, вознаграждение, ДКП остаются видны). Сорванные — только «Историей».
-     */
     /** Сделка, которую закрыл отказ поставщика (28.10.2026): архив «отказ поставщика» с причиной. */
     public function declinedDeal(): HasOne
     {
         return $this->hasOne(Deal::class)->ofMany(['id' => 'max'], fn ($q) => $q->where('close_reason', 'supplier'));
     }
 
+    /**
+     * Текущие условия машины (`offers.deal_id`): идущая сделка или та, по которой машину продали. Сорванные — только
+     * «Историей».
+     */
     public function lastDeal(): HasOne
     {
-        return $this->hasOne(Deal::class)->ofMany(['id' => 'max'], fn ($q) => $q->whereIn('state', [DealState::Active, DealState::Done]));
+        return $this->hasOne(Deal::class, 'id', 'deal_id')->chaperone('offer');
     }
 
     /**
@@ -702,14 +707,14 @@ class Offer extends Model
     public function managedBy(User $user): bool
     {
         return Car::where('offer_id', $this->id)->where('manager_id', $user->id)->exists()
-            || Deal::where('offer_id', $this->id)->where('buyer_id', $user->id)->whereIn('state', [DealState::Active, DealState::Done])->exists();
+            || Deal::where('offer_id', $this->id)->where('buyer_id', $user->id)->held()->exists();
     }
 
     public function worksWith(User $user): bool
     {
         return Transport::where('car_id', $this->car_id)->where('executor_id', $user->id)->where('state', '!=', TransportState::Cancelled)->exists()
             || Car::where('offer_id', $this->id)->where('manager_id', $user->id)->exists()
-            || Deal::where('offer_id', $this->id)->where('buyer_id', $user->id)->whereIn('state', [DealState::Active, DealState::Done])->exists();
+            || Deal::where('offer_id', $this->id)->where('buyer_id', $user->id)->held()->exists();
     }
 
     public function favorites(): HasMany

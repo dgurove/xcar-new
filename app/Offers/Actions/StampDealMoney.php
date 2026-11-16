@@ -98,7 +98,7 @@ final class StampDealMoney
     /** Все сделки, к которым привязана выписка или есть оплаты, — пересчёт (`bank:link`). */
     public static function dealsWithMoney(): Collection
     {
-        return Deal::whereIn('state', [DealState::Active, DealState::Done])->where(fn ($q) => $q
+        return Deal::held()->where(fn ($q) => $q
             ->whereIn('id', Transaction::whereNotNull('deal_id')->select('deal_id'))
             ->orWhereIn('id', Invoice::whereNotNull('deal_id')->select('deal_id'))
             ->orWhereIn('id', Invoice::whereNotNull('credit_deal_id')->select('credit_deal_id')))->get();

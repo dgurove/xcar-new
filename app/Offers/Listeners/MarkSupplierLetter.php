@@ -2,19 +2,21 @@
 
 namespace App\Offers\Listeners;
 
+use App\Live\RefreshDeal;
 use App\Mail\Direction;
 use App\Mail\Events\MessageFailed;
 use App\Mail\Events\MessageParsed;
 use App\Mail\Events\MessageSent;
 use App\Mail\Extraction\Intent;
 use App\Mail\Message;
-use App\Live\RefreshDeal;
 use App\Mail\Scope;
 use App\Notifications\SupplierLetterNotice;
 use App\Offers\Deal;
-use App\Offers\DealState;
+use App\Offers\Offer;
+use App\Offers\OfferEvent;
 use App\Offers\OfferEventType;
 use App\Workflow\Position;
+use App\Workflow\Stage;
 use App\Workflow\Track;
 use App\Workflow\WaitsFor;
 use Illuminate\Events\Dispatcher;
@@ -69,7 +71,7 @@ final class MarkSupplierLetter
         RefreshDeal::of($offer->deal);
         // Письмо «перевыставить счёт» ушло (`TakeParallel`) — дальше у шага снова обычный шаблон.
         if ($position->stage->isRequisitesStep()) {
-            Deal::where('offer_id', $offer->id)->where('state', DealState::Active)->whereNotNull('reissue_at')->update(['reissue_at' => null]);
+            Deal::where('offer_id', $offer->id)->active()->whereNotNull('reissue_at')->update(['reissue_at' => null]);
         }
     }
 
@@ -79,12 +81,12 @@ final class MarkSupplierLetter
      * встала на обычное «Подтверждение покупки», и шаг снова ждал нашего письма). Назад по истории: только согласие
      * менеджера между ними, ответа поставщика после письма не было, тот же шаблон — то письмо и засчитывается.
      */
-    public static function carried(\App\Offers\Offer $offer, \App\Workflow\Stage $to): ?Message
+    public static function carried(Offer $offer, Stage $to): ?Message
     {
         if (! $to->template_id) {
             return null;
         }
-        $events = \App\Offers\OfferEvent::where('offer_id', $offer->id)
+        $events = OfferEvent::where('offer_id', $offer->id)
             ->whereIn('type', [OfferEventType::StageEntered->value, OfferEventType::SupplierLetter->value, OfferEventType::InsurerReplied->value])
             ->orderByDesc('id')->limit(12)->get();
         $letter = null;
@@ -97,7 +99,7 @@ final class MarkSupplierLetter
 
                 continue;
             }
-            $stage = \App\Workflow\Stage::with('exits')->find($e->payload['to_id'] ?? 0);
+            $stage = Stage::with('exits')->find($e->payload['to_id'] ?? 0);
             if (! $stage) {
                 return null;
             }

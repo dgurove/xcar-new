@@ -8,7 +8,6 @@ use App\Notifications\BuyerJoinedNotice;
 use App\Offers\Bid;
 use App\Offers\BidState;
 use App\Offers\Deal;
-use App\Offers\DealState;
 use App\Users\Invite;
 use App\Users\Role;
 use App\Users\User;
@@ -100,7 +99,7 @@ final class MakeBuyer
             $items[] = 'подтверждений: '.$bids;
         }
         if ($deals = Deal::whereHas('bid', fn ($q) => $q->where('user_id', $user->id))
-            ->whereIn('state', [DealState::Active->value, DealState::Parallel->value])->count()) {
+            ->live()->count()) {
             $items[] = 'сделок: '.$deals;
         }
         if ($cars = Car::where('manager_id', $user->id)->where('state', '!=', CarState::Settled->value)->count()) {

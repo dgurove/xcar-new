@@ -17,7 +17,7 @@
         ->whereNotIn('state', [\App\Garage\CarState::Sold, \App\Garage\CarState::Settled])->selectRaw('manager_id, count(*) as n')->groupBy('manager_id')->pluck('n', 'manager_id');
     $accepted = $deal ? $offer->bids->firstWhere('id', $deal->bid_id) : null;
     // Подтверждения параллельных сделок — их блоком «Параллельно» (07.11.2026), не в «Ещё».
-    $parallelBids = \App\Offers\Deal::where('offer_id', $offer->id)->where('state', \App\Offers\DealState::Parallel)->pluck('bid_id')->filter();
+    $parallelBids = \App\Offers\Deal::where('offer_id', $offer->id)->parallel()->pluck('bid_id')->filter();
     // Заменённое новой ценой — не отдельное подтверждение: смена цены видна в «Истории».
     $rest = $offer->bids->reject(fn ($b) => in_array($b->state, [BidState::Active, BidState::Replaced], true) || $b->is($accepted) || $parallelBids->contains($b->id))->sortByDesc('created_at')->values();
 @endphp

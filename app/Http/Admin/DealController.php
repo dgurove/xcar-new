@@ -19,8 +19,8 @@ use App\Offers\CommissionMode;
 use App\Offers\Deal;
 use App\Offers\DealDates;
 use App\Offers\DealScheme;
-use App\Offers\DealState;
 use App\Offers\DealWork;
+use App\Offers\Giving;
 use App\Offers\InsurerReplies;
 use App\Offers\ReplyKind;
 use App\Offers\ReplyReview;
@@ -49,13 +49,13 @@ use App\Workflow\Stage;
 use App\Workflow\Track;
 use App\Workflow\WaitsFor;
 use Illuminate\Http\Request;
-use Spatie\MediaLibrary\MediaCollections\Models\Media;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
+use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
 class DealController
 {
@@ -89,7 +89,7 @@ class DealController
                 ->whereRaw('left(md5(coalesce(b.name, s.name)), 8) in ('.implode(',', array_fill(0, max(count($keys), 1), '?')).')', $keys ?: [''])
                 ->get()->mapWithKeys(fn ($r) => [$r->k => new Option($r->k, $r->name)])->all()),
             // Срок — шаг сделки просрочен или нет; у закрытых сделок срока нет — «в срок».
-            Facet::column('due', 'Срок', ['срок', 'срока', 'сроков'], "(case when deals.state = 'active' and exists (select 1 from offer_positions p
+            Facet::column('due', 'Срок', ['срок', 'срока', 'сроков'], '(case when '.Deal::ACTIVE_SQL." and exists (select 1 from offer_positions p
                 where p.offer_id = deals.offer_id and p.track = 'sale' and p.deadline_at < now()) then 'late' else 'ok' end)")
                 ->labels(fn (array $keys) => array_intersect_key(['late' => new Option('late', 'Просрочено'), 'ok' => new Option('ok', 'В срок')], array_flip($keys))),
             // Срок обязывающего горит, а поставщику не заплачено (19.10.2026, `Offers\Binding`).
@@ -111,7 +111,7 @@ class DealController
         // Гаражные — тоже сделки (27.10.2026, владелец: «в сделках их стоит отображать»; с 13.10 их здесь не было).
         $q = Deal::query()->with(['offer', 'offer.vendor', 'offer.media', 'offer.positions.stage.block', 'offer.positions.stage.exits.to', 'offer.pendingReprice', 'buyer', ...User::withAvatar('buyer.media'), 'openRequirement', 'invoices.claims', 'invoices.party', 'contract'])->withCount('parallels')
             // Параллельные (07.11.2026) — не свои строки: они в сделке своей машины, у строки метка «+N параллельно».
-            ->where('deals.state', '!=', DealState::Parallel->value);
+            ->where(fn ($w) => $w->where('deals.parallel', false)->orWhereNotNull('deals.closed_at'));
         if ($searching) {
             // Лупа — по всем сделкам: номер предложения, VIN, марка, убыток, менеджер.
             $term = trim((string) $request->query('q'));
@@ -421,7 +421,7 @@ class DealController
      */
     private static function scope($q, string $preset)
     {
-        $sale = fn ($f) => $q->where('state', DealState::Active)->whereHas('offer.positions', fn ($p) => $f($p->where('track', 'sale')));
+        $sale = fn ($f) => $q->active()->whereHas('offer.positions', fn ($p) => $f($p->where('track', 'sale')));
 
         return match ($preset) {
             'us' => $sale(fn ($p) => $p->needsUs()),
@@ -429,8 +429,8 @@ class DealController
             // Чей ход — позиции (`Position::waiting`): этап оплаты без счёта ждёт нас, а не менеджера.
             'manager' => $sale(fn ($p) => $p->waiting(WaitsFor::Manager)->whereNot(fn ($n) => $n->needsUs())),
             'pay' => $q->whereRaw(DealDebt::OWES_SQL),
-            'done' => $q->whereIn('state', [DealState::Done, DealState::Cancelled]),
-            default => $q->where('state', DealState::Active), // all
+            'done' => $q->whereNotNull('deals.closed_at'),
+            default => $q->active(), // all
         };
     }
 
@@ -463,7 +463,7 @@ class DealController
         $request->merge(['share' => blank($request->input('share')) ? null : Money::rubles($request->input('share'))]);
         $data = $request->validate(['commission' => ['nullable', 'integer', 'min:0'], 'mode' => ['nullable', Rule::enum(CommissionMode::class)],
             'scheme' => ['nullable', Rule::enum(DealScheme::class)],
-            'share' => ['nullable', 'integer', 'min:1']], ['share.min' => \App\Offers\Giving::SHARE_LEFT]);
+            'share' => ['nullable', 'integer', 'min:1']], ['share.min' => Giving::SHARE_LEFT]);
         // Поле вознаграждения пустое — вознаграждения нет; поля нет вовсе (гаражная доля) — прежнее.
         $commission = $request->has('commission') ? (isset($data['commission']) ? (int) $data['commission'] : null) : $deal->commission;
         $scheme = DealScheme::tryFrom($data['scheme'] ?? '');
@@ -568,7 +568,7 @@ class DealController
     {
         $answers = collect($request->validate(['answers' => ['array'], 'answers.*' => ['nullable', Rule::in(['agreed', 'declined'])]])['answers'] ?? [])->filter();
         $done = ['agreed' => 0, 'declined' => 0];
-        foreach (Deal::whereKey($answers->keys())->where('state', DealState::Active)->with('offer.positions.stage.exits.to')->get() as $deal) {
+        foreach (Deal::whereKey($answers->keys())->active()->with('offer.positions.stage.exits.to')->get() as $deal) {
             $prefix = $answers[$deal->id] === 'agreed' ? 'поставщик согласовал' : 'поставщик отказал';
             $exit = $deal->offer->position(Track::Sale)?->stage->exitsFor(Actor::Staff, $deal)->first(fn (Outcome $e) => str_starts_with(mb_strtolower($e->label), $prefix));
             if ($exit) {

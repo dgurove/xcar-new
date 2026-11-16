@@ -6,7 +6,6 @@ use App\Billing\Bank\Actions\BuyerFromStatement;
 use App\Billing\Bank\Transaction;
 use App\Billing\Robot;
 use App\Offers\Deal;
-use App\Offers\DealState;
 use Illuminate\Console\Command;
 
 /**
@@ -24,7 +23,7 @@ final class BuyersFromStatementCommand extends Command
         $n = 0;
         foreach (Transaction::where('note', 'like', 'по VIN%')->orderBy('booked_at')->orderBy('id')->get() as $tx) {
             $number = (int) preg_replace('/\D/', '', (string) $tx->note);
-            $deal = Deal::whereHas('offer', fn ($o) => $o->where('number', $number))->whereIn('state', [DealState::Active, DealState::Parallel])
+            $deal = Deal::whereHas('offer', fn ($o) => $o->where('number', $number))->live()
                 ->with(['offer', 'buyer', 'contract'])->first();
             if (! $deal || $deal->contract?->buyer_user_id || ! $deal->collectsBuyer() || ! ($p = BuyerFromStatement::payer($tx, $deal))) {
                 continue;

@@ -18,8 +18,8 @@ final class DealCredit
     /** Сделка машины: живая, иначе последняя не отменённая. */
     public static function dealFor(Offer $offer): ?Deal
     {
-        return Deal::where('offer_id', $offer->id)->where('state', DealState::Active)->first()
-            ?? Deal::where('offer_id', $offer->id)->where('state', '!=', DealState::Cancelled)->latest('id')->first();
+        return Deal::where('offer_id', $offer->id)->active()->first()
+            ?? Deal::where('offer_id', $offer->id)->notCancelled()->latest('id')->first();
     }
 
     /** Остаток по счетам сделки, куда ложится зачёт (как `ApplyDealCredits`); null — счёта ещё нет. */
@@ -50,6 +50,7 @@ final class DealCredit
      * Что будет, если ручной счёт привязать к этой ТС (шторка «ТС», до записи): подпись кнопки — исход («Засчитать
      * 53 000 ₽», «Привязать к сделке», «Сохранить ТС») и строка у выбранной машины — что с деньгами («останется
      * 5 000 ₽», «сверх сделки 3 000 ₽»). Без имени в падеже: строка стоит у самой машины.
+     *
      * @return array{label: string, note: ?string}
      */
     public static function outcome(Invoice $manual, ?Offer $offer, string $text = ''): array

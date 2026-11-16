@@ -60,14 +60,15 @@ use App\Offers\Console\BindingFromDocsCommand;
 use App\Offers\Console\CommissionOwnersCommand;
 use App\Offers\Console\DealAgreementFixCommand;
 use App\Offers\Console\DealCarDocsCommand;
+use App\Offers\Console\DealReconcileCommand;
 use App\Offers\Console\FillFromLettersCommand;
 use App\Offers\Console\MigtorgArchive;
 use App\Offers\Console\MigtorgDropOsago;
 use App\Offers\Console\MigtorgSync;
 use App\Offers\Console\PruneEmptyDrafts;
 use App\Offers\Console\RepricesFromLettersCommand;
-use App\Offers\Console\ValuationsCommand;
 use App\Offers\Console\TickOffers;
+use App\Offers\Console\ValuationsCommand;
 use App\Offers\Share\Console\PreparePdfs;
 use App\Park\Console\AcceptByLettersCommand;
 use App\Park\Console\AutoRequestsCommand;
@@ -128,6 +129,7 @@ return Application::configure(basePath: dirname(__DIR__))
         FillFromLettersCommand::class,
         RepricesFromLettersCommand::class,
         DealCarDocsCommand::class,
+        DealReconcileCommand::class,
         CommissionOwnersCommand::class,
         BindingFromDocsCommand::class,
         PruneEmptyDrafts::class,

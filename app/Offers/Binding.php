@@ -42,16 +42,16 @@ final class Binding
 
     /** Есть покупатель — то же, что `hasBuyer`. */
     private const BUYER_SQL = "(exists (select 1 from bids b where b.offer_id = offers.id and b.state = 'active')"
-        ." or exists (select 1 from deals d where d.offer_id = offers.id and d.state = 'active')"
+        .' or exists (select 1 from deals d where d.offer_id = offers.id and '.Deal::ACTIVE_D.')'
         .' or exists (select 1 from garage_cars g where g.offer_id = offers.id))';
 
     /** Идёт сделка, а поставщику не заплачено — то же, что `Deal::supplierPaid`. */
-    private const UNPAID_SQL = "exists (select 1 from deals d where d.offer_id = offers.id and d.state = 'active' and d.supplier_paid_at is null"
+    private const UNPAID_SQL = 'exists (select 1 from deals d where d.offer_id = offers.id and '.Deal::ACTIVE_D.' and d.supplier_paid_at is null'
         .' and not (d.prepaid_at is not null and exists (select 1 from vendors v where v.id = offers.vendor_id and v.pay_before_pickup)))';
 
     /** Подтверждение есть, а сделки и гаража нет. */
     private const UNDECIDED_SQL = "(exists (select 1 from bids b where b.offer_id = offers.id and b.state = 'active')"
-        ." and not exists (select 1 from deals d where d.offer_id = offers.id and d.state = 'active')"
+        .' and not exists (select 1 from deals d where d.offer_id = offers.id and '.Deal::ACTIVE_D.')'
         .' and not exists (select 1 from garage_cars g where g.offer_id = offers.id))';
 
     /** Срок «горит», если он не позже этой границы: через `HOT_DAYS` дней от сейчас. */
@@ -421,7 +421,7 @@ final class Binding
     }
 
     /** Менеджер идущей сделки — чип «Менеджер» экрана «Горит» (машина без покупателя — «Без менеджера»). */
-    public const MANAGER_SQL = "(select d.buyer_id from deals d where d.offer_id = offers.id and d.state = 'active' order by d.id desc limit 1)";
+    public const MANAGER_SQL = '(select d.buyer_id from deals d where d.offer_id = offers.id and '.Deal::ACTIVE_D.' order by d.id desc limit 1)';
 
     /** @return Collection<int, Offer> по сроку, ближние сверху */
     public static function alarms(User $user): Collection

@@ -14,7 +14,6 @@ use App\Offers\CommissionMode;
 use App\Offers\Deal;
 use App\Offers\DealContract;
 use App\Offers\DealScheme;
-use App\Offers\DealState;
 use App\Offers\Events\BidAccepted;
 use App\Offers\Events\BidDeclined;
 use App\Offers\Giving;
@@ -235,7 +234,7 @@ final class Give
         }
     }
 
-    private function deal(Offer $offer, Giving $g, ?Bid $bid, ?User $manager, bool $garage, ?int $cost, DealState $state = DealState::Active): Deal
+    private function deal(Offer $offer, Giving $g, ?Bid $bid, ?User $manager, bool $garage, ?int $cost, bool $parallel = false): Deal
     {
         $scheme = DealScheme::resolve($offer, $g->scheme);
         [$commission, $mode, $payer, $share] = [$g->commission, $g->mode, null, null];
@@ -258,10 +257,14 @@ final class Give
             $mode = CommissionMode::Withheld;
         }
 
-        return Deal::create(['offer_id' => $offer->id, 'bid_id' => $bid?->id, 'buyer_id' => $manager?->id, 'amount' => $bid?->amount, 'state' => $state,
+        // С машиной в памяти: новая идущая ставит указатель и у этого `$offer` (`Deal::saved`), а не только в базе.
+        $deal = new Deal(['offer_id' => $offer->id, 'bid_id' => $bid?->id, 'buyer_id' => $manager?->id, 'amount' => $bid?->amount, 'parallel' => $parallel,
             'cost' => $cost, 'supplier_cost' => $offer->floor_price && $offer->floor_price !== $cost ? $offer->floor_price : null,
             'owner_price' => $scheme->paysSelection() && ! $garage ? ($g->ownerPrice ?? $offer->owner_price ?? $cost) : null,
             'share' => $share, 'commission' => $commission, 'commission_mode' => $mode, 'scheme' => $scheme, 'garage_payer' => $payer]);
+        $deal->setRelation('offer', $offer)->save();
+
+        return $deal;
     }
 
     /**
@@ -278,14 +281,14 @@ final class Give
             ! $main || $offer->state !== OfferState::Sold => 'Параллельно — только когда ТС уже в сделке',
             $bid->isGarage() => 'В гараж параллельно не поручить',
             $main->buyer_id === $manager?->id => 'Сделка и так у этого менеджера',
-            Deal::where('offer_id', $offer->id)->where('buyer_id', $manager?->id)->where('state', DealState::Parallel)->exists() => 'Ему уже поручено параллельно',
+            Deal::where('offer_id', $offer->id)->where('buyer_id', $manager?->id)->parallel()->exists() => 'Ему уже поручено параллельно',
             default => Parallels::locked($main),
         };
         if ($error) {
             throw ValidationException::withMessages(['give' => $error]);
         }
         $bid->update(['state' => BidState::Accepted, 'decided_at' => now(), 'decided_by' => $by->id]);
-        $deal = $this->deal($offer, $g, $bid, $manager, false, $cost, DealState::Parallel);
+        $deal = $this->deal($offer, $g, $bid, $manager, false, $cost, parallel: true);
         $deal->setRelation('offer', $offer);
         if ($deal->isDirect()) {
             DealContract::for($deal);

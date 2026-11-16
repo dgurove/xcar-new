@@ -4,15 +4,16 @@ namespace App\Offers\Actions;
 
 use App\Garage\Actions\CloseGarageDeal;
 use App\Garage\Car as GarageCar;
+use App\Logistics\Actions\Cancel;
+use App\Logistics\Transport;
 use App\Offers\AudienceRules;
-use App\Offers\Estimate;
-use App\Offers\Exclusive;
 use App\Offers\BidState;
 use App\Offers\Binding;
 use App\Offers\Deal;
-use App\Offers\DealState;
+use App\Offers\Estimate;
 use App\Offers\Events\OfferPublished;
 use App\Offers\Events\OfferStateChanged;
+use App\Offers\Exclusive;
 use App\Offers\Offer;
 use App\Offers\OfferEventType;
 use App\Offers\OfferNumber;
@@ -56,8 +57,8 @@ final class ChangeOfferState
             // отмена (`UndoAuctionSale`) — обратно в черновик. Руками «Выдан» так не поставить: нужна идущая сделка аукциона.
             $auction = $auction && (($next === OfferState::Delivered && in_array($from, [OfferState::Draft, OfferState::Gallery, OfferState::Open], true)
                 && $offer->deal()->first()?->isAuction()) || ($from === OfferState::Delivered && $next === OfferState::Draft
-                && Deal::where('offer_id', $offer->id)->whereNotNull('auction_at')->where('state', DealState::Cancelled)->exists()
-                && ! Deal::where('offer_id', $offer->id)->where('state', DealState::Done)->whereNull('auction_at')->exists()));
+                && Deal::where('offer_id', $offer->id)->whereNotNull('auction_at')->cancelled()->exists()
+                && ! Deal::where('offer_id', $offer->id)->done()->whereNull('auction_at')->exists()));
             if (! $auction && ! $from->allows($next)) {
                 throw ValidationException::withMessages(['state' => "Из «{$from->label()}» нельзя в «{$next->label()}»"]);
             }
@@ -162,8 +163,8 @@ final class ChangeOfferState
             // висела в логистике «Без исполнителя»; так — 3 задачи Совкомбанка, чей вывоз заводится с письмом). Ещё не
             // забранную задачу система отменяет; уже забранную везут дальше.
             if (in_array($next, [OfferState::Archived, OfferState::Cancelled], true)
-                && ($open = \App\Logistics\Transport::openFor($offer)) && ! $open->taken()) {
-                app(\App\Logistics\Actions\Cancel::class)($open, $by, 'Предложение '.mb_strtolower($next->label()).': вывоз не нужен', system: true);
+                && ($open = Transport::openFor($offer)) && ! $open->taken()) {
+                app(Cancel::class)($open, $by, 'Предложение '.mb_strtolower($next->label()).': вывоз не нужен', system: true);
             }
 
             OfferStateChanged::dispatch($offer, $by);
@@ -249,7 +250,7 @@ final class ChangeOfferState
             return;
         }
         if ($next === OfferState::Delivered || $garage) {
-            $deal->update(['state' => DealState::Done, 'closed_at' => now()]);
+            $deal->finish(now());
             Requirement::where('deal_id', $deal->id)->whereNull('done_at')->update(['done_at' => now(), 'answer' => json_encode(['closed_by' => 'deal'])]);
             if ($garage) {
                 app(CloseGarageDeal::class)($deal, $by);

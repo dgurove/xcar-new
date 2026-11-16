@@ -3,10 +3,10 @@
 namespace App\Logistics;
 
 use App\Offers\Binding;
+use App\Offers\Deal;
 use App\Offers\OfferState;
 use App\Support\Ago;
 use App\Users\User;
-use Illuminate\Database\Eloquent\Builder;
 
 /**
  * Где продажа машины — для того, кто решает, кому отдать вывоз (18.10.2026, владелец: «сразу видеть, что эти только
@@ -23,7 +23,7 @@ final readonly class SaleState
     /** Ключ продажи: park (перевод парковки), none (продажи нет), garage, deal, sold (продана: сделка закрыта, аукцион), open, draft, off (снята). Демо-сделки не в счёт — их прячет `HidesDemo`. */
     public const KEY_SQL = "(case when transports.origin = 'park' then 'park' else coalesce((select case
         when exists (select 1 from garage_cars g where g.offer_id = o.id) then 'garage'
-        when exists (select 1 from deals d where d.offer_id = o.id and d.state = 'active' and not d.is_demo) then 'deal'
+        when exists (select 1 from deals d where d.offer_id = o.id and ".Deal::ACTIVE_D." and not d.is_demo) then 'deal'
         when o.state = 'delivered' then 'sold'
         when o.state = 'open' then 'open'
         when o.state in ('draft', 'gallery') then 'draft'
@@ -36,9 +36,9 @@ final readonly class SaleState
     public const RANK_SQL = '(case '.self::KEY_SQL." when 'garage' then 4 when 'deal' then 4 when 'sold' then 3 when 'open' then 2 when 'draft' then 1 when 'none' then 1 when 'off' then 0 else -1 end)";
 
     /** Кому везти — менеджер: держатель гаража, иначе покупатель идущей сделки, если он менеджер (`Choices::managerOf`). */
-    public const MANAGER_SQL = "(select coalesce(
+    public const MANAGER_SQL = '(select coalesce(
         (select g.manager_id from garage_cars g where g.offer_id = o.id order by g.id desc limit 1),
-        (select d.buyer_id from deals d join users u on u.id = d.buyer_id where d.offer_id = o.id and d.state = 'active' and not d.is_demo
+        (select d.buyer_id from deals d join users u on u.id = d.buyer_id where d.offer_id = o.id and '.Deal::ACTIVE_D." and not d.is_demo
             and (u.roles @> '[\"manager\"]'::jsonb or u.roles @> '[\"super_buyer\"]'::jsonb) order by d.id desc limit 1))
         from offers o where o.car_id = transports.car_id and transports.origin <> 'park' order by o.id desc limit 1)";
 

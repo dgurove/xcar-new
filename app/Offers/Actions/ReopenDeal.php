@@ -107,7 +107,7 @@ final class ReopenDeal
             $snap = $undoSold ? self::snapshot($deal) : null;
             $dropped = [];
 
-            $deal->forceFill(['state' => DealState::Active, 'closed_at' => null])->save();
+            $deal->activate();
             $from = $offer->state;
             $offer->forceFill(['state' => OfferState::Sold])->save();
             $offer->log(OfferEventType::StateChanged, $by, ['from' => $from->value, 'to' => OfferState::Sold->value, 'reopen' => true]);

@@ -20,8 +20,8 @@ use App\Billing\Payment;
 use App\Billing\PaymentSource;
 use App\Billing\PaymentState;
 use App\Http\Billing\InvoiceActions;
+use App\Offers\Deal;
 use App\Offers\DealCredit;
-use App\Offers\DealState;
 use App\Offers\Offer;
 use App\Offers\OfferNumber;
 use App\Support\Detail;
@@ -289,7 +289,7 @@ class MoneyController
             return response()->json([]);
         }
         $offers = Offer::query()->with(['deal.buyer'])->searchCrm($q)
-            ->orderByRaw('exists (select 1 from deals d where d.offer_id = offers.id and d.state = ?) desc', [DealState::Active->value])
+            ->orderByRaw('exists (select 1 from deals d where d.offer_id = offers.id and '.Deal::ACTIVE_D.') desc')
             ->latest('updated_at')->limit(max(1, min(20, (int) $request->query('limit', 20))))->get();
 
         return response()->json($offers->map(fn (Offer $o) => [

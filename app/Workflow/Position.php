@@ -7,11 +7,11 @@ use App\Billing\Invoice;
 use App\Billing\InvoiceState;
 use App\Mail\Message;
 use App\Offers\Deal;
-use App\Offers\DealState;
 use App\Offers\Offer;
 use App\Offers\ReplyReview;
 use App\Offers\Reprice;
 use App\Offers\RepriceAsk;
+use App\Offers\SupplierLetterWait;
 use App\Support\FastAttributes;
 use App\Support\Surface;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -19,6 +19,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 
 /**
  * Где оффер стоит на ветке маршрута. Чей ход — `waitsFor()`: этап задаёт его, позиция может перебить (`waits_for`) —
@@ -150,8 +151,8 @@ class Position extends Model
         return $at ? Carbon::parse($at) : null;
     }
 
-    /** @return \Illuminate\Support\Collection<int, Carbon> сделка → первая оплаченная разовая ссылка, засчитанная в неё */
-    private static function firstCredits(): \Illuminate\Support\Collection
+    /** @return Collection<int, Carbon> сделка → первая оплаченная разовая ссылка, засчитанная в неё */
+    private static function firstCredits(): Collection
     {
         return once(fn () => Invoice::whereNotNull('credit_deal_id')->where('kind', ChargeKind::Service)->where('state', InvoiceState::Paid)
             ->selectRaw('credit_deal_id, min(created_at) as at')->groupBy('credit_deal_id')
@@ -210,7 +211,7 @@ class Position extends Model
             return null;
         }
         // Т-Страхование до нашего «Письма о покупке»: ответом на их «Цену за Лот» будет оно (`SupplierLetterWait`, 15.11.2026).
-        if ($this->offer && \App\Offers\SupplierLetterWait::beforeOurLetter($this->offer)) {
+        if ($this->offer && SupplierLetterWait::beforeOurLetter($this->offer)) {
             return null;
         }
 
@@ -376,7 +377,7 @@ class Position extends Model
     /** Идущая сделка оффера этой позиции. */
     public function deal(): HasOne
     {
-        return $this->hasOne(Deal::class, 'offer_id', 'offer_id')->where('state', DealState::Active);
+        return $this->hasOne(Deal::class, 'offer_id', 'offer_id')->active();
     }
 
     /** `needsUs()` одним SQL-условием над `offer_positions` — для скоупа, сортировок и подзапросов. */
@@ -396,18 +397,18 @@ class Position extends Model
             and exists (select 1 from workflow_exits x where x.stage_id = offer_positions.stage_id
                 and x.actor = 'manager' and lower(x.label) in ('беру в работу', 'покупаю')))
         or (offer_positions.track = 'sale' and exists (select 1 from offer_reprices r where r.offer_id = offer_positions.offer_id and r.state = 'pending'))
-        or (offer_positions.track = 'sale' and exists (select 1 from reply_reviews rr join deals rd on rd.id = rr.deal_id
-            where rr.offer_id = offer_positions.offer_id and rr.state = 'pending' and rd.state = 'active'))
+        or (offer_positions.track = 'sale' and exists (select 1 from reply_reviews rr join deals d on d.id = rr.deal_id
+            where rr.offer_id = offer_positions.offer_id and rr.state = 'pending' and ".Deal::ACTIVE_D."))
         or (offer_positions.track = 'sale' and exists (select 1 from reprice_asks a join deals d on d.id = a.deal_id
-            where a.offer_id = offer_positions.offer_id and a.state in ('pending', 'countered') and a.due_at < now() and d.state = 'active'))
+            where a.offer_id = offer_positions.offer_id and a.state in ('pending', 'countered') and a.due_at < now() and ".Deal::ACTIVE_D."))
         or (offer_positions.track = 'sale' and exists (select 1 from reprice_asks a join deals d on d.id = a.deal_id
-            where a.offer_id = offer_positions.offer_id and a.state = 'offered' and d.state = 'active'))
-        or (offer_positions.track = 'sale' and exists (select 1 from deals md join billing_invoices ci on ci.credit_deal_id = md.id
-            and ci.kind = 'service' and ci.state = 'paid' where md.offer_id = offer_positions.offer_id and md.state = 'active'
-            and not exists (select 1 from billing_invoices si where si.deal_id = md.id and si.kind = 'sale' and si.state <> 'void')))
+            where a.offer_id = offer_positions.offer_id and a.state = 'offered' and ".Deal::ACTIVE_D."))
+        or (offer_positions.track = 'sale' and exists (select 1 from deals d join billing_invoices ci on ci.credit_deal_id = d.id
+            and ci.kind = 'service' and ci.state = 'paid' where d.offer_id = offer_positions.offer_id and ".Deal::ACTIVE_D."
+            and not exists (select 1 from billing_invoices si where si.deal_id = d.id and si.kind = 'sale' and si.state <> 'void')))
         or (offer_positions.track = 'sale' and exists (select 1 from offer_reprices r join deals d on d.offer_id = r.offer_id
             where r.offer_id = offer_positions.offer_id and r.state = 'applied' and r.source = 'letter' and r.answered_at is null
-                and d.state = 'active' and d.garage_payer is null and r.created_at >= d.created_at
+                and ".Deal::ACTIVE_D." and d.garage_payer is null and r.created_at >= d.created_at
                 and not exists (select 1 from reprice_asks a where a.deal_id = d.id and a.state in ('pending', 'offered', 'countered'))
                 and not exists (select 1 from workflow_stages ws where ws.id = offer_positions.stage_id
                     and ws.name in ('Ждём письмо поставщика', 'Согласие менеджера', 'Письмо о покупке')

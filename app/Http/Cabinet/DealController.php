@@ -78,7 +78,7 @@ class DealController
         // Ход менеджера — просьба к нему или этап, где ждут его (ПРАЙМ без покупателя — без просьбы): просроченное, потом остальное.
         $turn = Deal::MANAGER_TURN_SQL;
         // Параллельная (07.11.2026) — его сделка, как идущая: со своим теневым шагом (`Parallels::dress`).
-        $deals = self::deals($me)->whereIn('state', [DealState::Active, DealState::Parallel])
+        $deals = self::deals($me)->live()
             ->orderByRaw("case when {$turn} then 0 else 1 end")
             ->orderByRaw('(select min(r.due_at) from requirements r where r.deal_id = deals.id and r.done_at is null) asc nulls last')
             ->when($sort->key === 'amount', fn ($d) => $d->orderByRaw("coalesce(amount, cost) {$sort->dir()} nulls last"))->orderBy('created_at', $sort->key === 'fresh' ? $sort->dir() : 'desc')->orderByDesc('id');
@@ -90,7 +90,7 @@ class DealController
         // Админ подтверждения решает в CRM — строки «Мои подтверждения» и «Ждут решения» у него нет.
         $bids = $me->hasDeals() ? self::waiting($me)->count() : 0;
         $pending = $me->hasDeals() ? self::pending($me)->get()->sortByDesc(fn (Bid $b) => $b->offer->bids_close_at?->getTimestamp())->values() : collect();
-        $archived = self::deals($me)->whereNotIn('state', [DealState::Active, DealState::Parallel])->notSuperseded()->count();
+        $archived = self::deals($me)->whereNotNull('deals.closed_at')->notSuperseded()->count();
 
         return view('cabinet.deals.index', ['deals' => $deals, 'sections' => $sections, 'pending' => $pending, 'bids' => $bids, 'archived' => $archived, 'sort' => $sort]);
     }
@@ -139,13 +139,13 @@ class DealController
     private function archive(Request $request)
     {
         $me = $request->user();
-        $closed = self::deals($me)->whereNotIn('state', [DealState::Active, DealState::Parallel])->notSuperseded()
+        $closed = self::deals($me)->whereNotNull('deals.closed_at')->notSuperseded()
             ->orderByRaw('coalesce(closed_at, updated_at) desc')->orderByDesc('id')->limit(self::ARCHIVE)->get();
 
         // Закрытая параллельная — без шага машины (`Parallels::dress`).
         $closed->each(fn (Deal $d) => Parallels::dress($d));
 
-        return view('cabinet.deals.archive', ['done' => $closed->where('state', DealState::Done)->values(), 'failed' => $closed->where('state', DealState::Cancelled)->values()]);
+        return view('cabinet.deals.archive', ['done' => $closed->filter(fn (Deal $d) => $d->state === DealState::Done)->values(), 'failed' => $closed->filter(fn (Deal $d) => $d->state === DealState::Cancelled)->values()]);
     }
 
     /** Сделки экрана с тем, что нужно строке; гаражные тоже (02.11.2026) — машина гаража нужна ссылке строки. */

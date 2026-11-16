@@ -19,7 +19,6 @@ use App\Offers\Actions\AnswerReprice;
 use App\Offers\Actions\ApplyValuations;
 use App\Offers\Bid;
 use App\Offers\Deal;
-use App\Offers\DealState;
 use App\Offers\RepriceAsk;
 use App\Offers\ValuationSheet;
 use App\Offers\ValuationText;
@@ -41,6 +40,7 @@ use App\Users\Access\DecideCode;
 use App\Users\User;
 use App\Workflow\Actions\AnswerRequirement;
 use App\Workflow\Requirement;
+use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -178,7 +178,7 @@ final class UpdateHandler
     {
         // VIN — готовый HTML (`Text::vin`, <code>): приведение к строке его экранировало, и после нажатия кнопки в сообщении
         // вместо моноширинного VIN стояло «&lt;code&gt;».
-        $lines = implode("\n", array_map(fn ($l) => $l instanceof \Illuminate\Contracts\Support\Htmlable ? $l->toHtml() : e((string) $l), array_filter($lines, fn ($l) => $l !== null && $l !== '')));
+        $lines = implode("\n", array_map(fn ($l) => $l instanceof Htmlable ? $l->toHtml() : e((string) $l), array_filter($lines, fn ($l) => $l !== null && $l !== '')));
 
         return fn (string $status) => '<b>'.e($title).'</b>'."\n".$lines.($status !== '' ? "\n\n".$status : '');
     }
@@ -650,7 +650,7 @@ final class UpdateHandler
         if (! $user->hasDeals()) {
             return ['Сюда придут оплаты, выплаты и просроченные счета с кнопкой решения', $this->open()];
         }
-        $deals = Deal::where('buyer_id', $user->id)->where('state', DealState::Active)->with('openRequirement')->get();
+        $deals = Deal::where('buyer_id', $user->id)->active()->with('openRequirement')->get();
         if ($deals->isEmpty()) {
             return ['Напишем, когда подтверждение выберут', $this->open()];
         }

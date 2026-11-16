@@ -8,7 +8,6 @@ use App\Notifications\BuyerJoinedNotice;
 use App\Offers\Bid;
 use App\Offers\BidState;
 use App\Offers\Deal;
-use App\Offers\DealState;
 use App\Offers\Offer;
 use App\Users\Invite;
 use App\Users\Role;
@@ -17,6 +16,7 @@ use App\Users\UserGroup;
 use App\Vendors\Vendor;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Testing\TestResponse;
 use Tests\TestCase;
 
 /**
@@ -49,7 +49,7 @@ class MakeBuyerTest extends TestCase
         $this->other = User::create(['name' => 'Иван Другой', 'phone' => '79000000004', 'roles' => [Role::Manager], 'approved_at' => now()]);
     }
 
-    private function convert(array $data = [], ?User $user = null, string $base = self::CRM.'/settings/users'): \Illuminate\Testing\TestResponse
+    private function convert(array $data = [], ?User $user = null, string $base = self::CRM.'/settings/users'): TestResponse
     {
         return $this->actingAs($this->admin)->post($base.'/'.($user ?? $this->manager)->id.'/buyer', array_merge([
             'manager_id' => $this->boss->id,
@@ -143,7 +143,7 @@ class MakeBuyerTest extends TestCase
     {
         $offer = $this->offer();
         $bid = Bid::create(['offer_id' => $offer->id, 'user_id' => $this->manager->id, 'amount' => 900000, 'state' => BidState::Declined]);
-        Deal::create(['offer_id' => $offer->id, 'bid_id' => $bid->id, 'buyer_id' => $this->manager->id, 'state' => DealState::Active, 'cost' => 800000, 'amount' => 900000]);
+        Deal::create(['offer_id' => $offer->id, 'bid_id' => $bid->id, 'buyer_id' => $this->manager->id, 'cost' => 800000, 'amount' => 900000]);
 
         $this->convert()->assertSessionHasErrors('user');
         $this->assertTrue($this->manager->fresh()->isManager());
@@ -171,7 +171,7 @@ class MakeBuyerTest extends TestCase
     {
         $offer = $this->offer();
         $bid = Bid::create(['offer_id' => $offer->id, 'user_id' => $this->manager->id, 'amount' => 900000, 'state' => BidState::Declined]);
-        Deal::create(['offer_id' => $offer->id, 'bid_id' => $bid->id, 'buyer_id' => $this->manager->id, 'state' => DealState::Done, 'cost' => 800000, 'amount' => 900000]);
+        Deal::create(['offer_id' => $offer->id, 'bid_id' => $bid->id, 'buyer_id' => $this->manager->id, 'cost' => 800000, 'amount' => 900000])->finish();
 
         $this->convert()->assertSessionHasNoErrors();
         $this->assertTrue($this->manager->fresh()->isBuyer());

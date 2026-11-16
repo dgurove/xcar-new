@@ -14,6 +14,7 @@ use App\Garage\Car as GarageCar;
 use App\Garage\GaragePayer;
 use App\Garage\Payer;
 use App\Logistics\Channel;
+use App\Offers\Documents\PaymentProofPdf;
 use App\Park\Pass;
 use App\Park\Vehicle;
 use App\Park\VehicleState;
@@ -31,12 +32,15 @@ use App\Workflow\Track;
 use App\Workflow\WaitsFor;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\InteractsWithMedia;
 
@@ -47,7 +51,7 @@ use Spatie\MediaLibrary\InteractsWithMedia;
  * выплачиваем после оплаты или менеджер удерживает сам. Менеджер вознаграждение
  * не видит, пока по сделке нет живого счёта — `showsCommission()`.
  */
-#[Fillable(['offer_id', 'bid_id', 'buyer_id', 'amount', 'cost', 'supplier_cost', 'owner_price', 'share', 'commission', 'commission_mode', 'scheme', 'garage_payer', 'state', 'notes', 'closed_at', 'close_reason', 'close_note', 'agreed_at', 'buyer_asked_at', 'signing_slots', 'signing_address', 'signing_at', 'signing_asked_at', 'signing_wish', 'prepaid_at', 'supplier_paid_at', 'contract_signed_at', 'contract_signed_by', 'paid_in_at', 'dates_by_hand',
+#[Fillable(['offer_id', 'bid_id', 'buyer_id', 'amount', 'cost', 'supplier_cost', 'owner_price', 'share', 'commission', 'commission_mode', 'scheme', 'garage_payer', 'parallel', 'notes', 'closed_at', 'cancelled_at', 'close_reason', 'close_note', 'agreed_at', 'buyer_asked_at', 'signing_slots', 'signing_address', 'signing_at', 'signing_asked_at', 'signing_wish', 'prepaid_at', 'supplier_paid_at', 'contract_signed_at', 'contract_signed_by', 'paid_in_at', 'dates_by_hand',
     'receiver_user_id', 'receiver_name', 'receiver_phone', 'receiver_at', 'auction_at', 'buyer_party_id', 'payer_party_id', 'shadow_stage_id', 'shadow_at', 'reissue_at'])]
 class Deal extends Model implements HasMedia
 {
@@ -67,7 +71,7 @@ class Deal extends Model implements HasMedia
 
     protected function casts(): array
     {
-        return ['scheme_at' => 'datetime', 'state' => DealState::class, 'amount' => 'int', 'cost' => 'int', 'supplier_cost' => 'int', 'owner_price' => 'int', 'share' => 'int', 'commission' => 'int', 'commission_mode' => CommissionMode::class, 'scheme' => DealScheme::class, 'garage_payer' => GaragePayer::class, 'closed_at' => 'datetime', 'agreed_at' => 'datetime', 'buyer_asked_at' => 'datetime', 'signing_slots' => 'array', 'signing_at' => 'datetime', 'signing_asked_at' => 'datetime', 'signing_wish' => 'array', 'prepaid_at' => 'datetime', 'supplier_paid_at' => 'datetime', 'contract_signed_at' => 'datetime', 'paid_in_at' => 'datetime', 'dates_by_hand' => 'array', 'receiver_at' => 'datetime', 'auction_at' => 'datetime', 'shadow_at' => 'datetime', 'reissue_at' => 'datetime'];
+        return ['scheme_at' => 'datetime', 'parallel' => 'bool', 'amount' => 'int', 'cost' => 'int', 'supplier_cost' => 'int', 'owner_price' => 'int', 'share' => 'int', 'commission' => 'int', 'commission_mode' => CommissionMode::class, 'scheme' => DealScheme::class, 'garage_payer' => GaragePayer::class, 'closed_at' => 'datetime', 'cancelled_at' => 'datetime', 'agreed_at' => 'datetime', 'buyer_asked_at' => 'datetime', 'signing_slots' => 'array', 'signing_at' => 'datetime', 'signing_asked_at' => 'datetime', 'signing_wish' => 'array', 'prepaid_at' => 'datetime', 'supplier_paid_at' => 'datetime', 'contract_signed_at' => 'datetime', 'paid_in_at' => 'datetime', 'dates_by_hand' => 'array', 'receiver_at' => 'datetime', 'auction_at' => 'datetime', 'shadow_at' => 'datetime', 'reissue_at' => 'datetime'];
     }
 
     public function offer(): BelongsTo
@@ -104,16 +108,147 @@ class Deal extends Model implements HasMedia
                 $deal->scheme_at = now();
             }
         });
-        // Сделка — покупатель есть: тревога «нет покупателя» гаснет; отменили — может загореться (`Binding`).
+        // Прежняя колонка `deals.state` живёт одну выкладку (16.11.2026, переход без простоя): старые контейнеры, что ещё
+        // работают, пока идёт выкладка, читают её — пишем туда выведенное состояние. Следующая выкладка колонку снимает.
+        static::saving(function (self $deal) {
+            if (self::$legacyState ??= Schema::hasColumn('deals', 'state')) {
+                $deal->attributes['state'] = $deal->state->value;
+            }
+        });
         static::saved(function (self $deal) {
-            if ($deal->wasRecentlyCreated || $deal->wasChanged('state')) {
+            $moved = $deal->wasRecentlyCreated || $deal->wasChanged(['closed_at', 'cancelled_at', 'parallel']);
+            // Идущие условия — текущие у машины (`offers.deal_id`): новая сделка, переоткрытая, взятая в работу параллельная.
+            if ($moved && $deal->isActive()) {
+                self::pointer($deal->offer_id)->where(fn ($q) => $q->whereNull('deal_id')->orWhere('deal_id', '!=', $deal->id))->update(['deal_id' => $deal->id]);
+                $deal->pointOffer($deal->id);
+            }
+            // Сделка — покупатель есть: тревога «нет покупателя» гаснет; отменили — может загореться (`Binding`).
+            if ($moved) {
                 Binding::touch(Offer::find($deal->offer_id));
             }
             // Сделка ушла — дело «Укажите покупателя» гаснет (10.11.2026, `AskBuyer`).
-            if ($deal->wasChanged('state') && $deal->buyer_asked_at && ! $deal->isActive()) {
+            if ($moved && $deal->buyer_asked_at && ! $deal->isActive()) {
                 $deal->forceFill(['buyer_asked_at' => null])->saveQuietly();
             }
         });
+    }
+
+    /** Есть ли ещё прежняя колонка `deals.state` (снимается следующей выкладкой). */
+    private static ?bool $legacyState = null;
+
+    /**
+     * Состояние условий — не своё поле, а факты (16.11.2026, начальник: «сделка — лишь состояние предложения»; миграция
+     * `deal_state_into_offer`): закрыта ли (`closed_at`), сорвалась ли (`cancelled_at`), параллельная ли (`parallel`).
+     * Идёт — не закрыта и не параллельная; завершена — закрыта и не сорвалась (по ней машину продали); отменена —
+     * сорвалась. Текущие условия машины — `offers.deal_id` (идущие или те, по которым продали). Слово и сравнения —
+     * `DealState`, как раньше; писать — только дверями ниже (`finish`, `cancel`, `activate`, `makeParallel`).
+     */
+    protected function state(): Attribute
+    {
+        return Attribute::get(fn () => match (true) {
+            $this->cancelled_at !== null => DealState::Cancelled,
+            $this->closed_at !== null => DealState::Done,
+            (bool) $this->parallel => DealState::Parallel,
+            default => DealState::Active,
+        });
+    }
+
+    /** SQL «сделка идёт» — у таблицы `deals` и у её псевдонима `d`. */
+    public const ACTIVE_SQL = '(deals.closed_at is null and not deals.parallel)';
+
+    public const ACTIVE_D = '(d.closed_at is null and not d.parallel)';
+
+    /**
+     * Указатель машины (`offers.deal_id`) — запросом мимо области демо-записей: часы и консоль (`demo:seed`) их не видят,
+     * а указатель демо-машине нужен так же.
+     */
+    private static function pointer(int $offerId): Builder
+    {
+        return Offer::withoutGlobalScopes()->whereKey($offerId);
+    }
+
+    /** Указатель машины в памяти — вслед за базой (у загруженного предложения), не делая его несохранённым. */
+    private function pointOffer(?int $id): void
+    {
+        if ($this->relationLoaded('offer') && $this->offer) {
+            $this->offer->setAttribute('deal_id', $id)->syncOriginalAttribute('deal_id');
+        }
+    }
+
+    /** Продали по этим условиям: закрыть, оставив текущими (`closed_at` — дата продажи, если её знают). */
+    public function finish(?\DateTimeInterface $at = null): void
+    {
+        DB::transaction(function () use ($at) {
+            $this->forceFill(['closed_at' => $at ?? $this->closed_at ?? now(), 'cancelled_at' => null, 'parallel' => false])->save();
+            self::pointer($this->offer_id)->update(['deal_id' => $this->id]);
+        });
+        $this->pointOffer($this->id);
+    }
+
+    /** Условия сорвались: закрыть отменой и снять с машины (параллельную — просто закрыть). */
+    public function cancel(): void
+    {
+        DB::transaction(function () {
+            $this->forceFill(['closed_at' => now(), 'cancelled_at' => now()])->save();
+            self::pointer($this->offer_id)->where('deal_id', $this->id)->update(['deal_id' => null]);
+        });
+        if ($this->relationLoaded('offer') && (int) $this->offer?->deal_id === (int) $this->id) {
+            $this->pointOffer(null);
+        }
+    }
+
+    /** Снова идёт: открыть и сделать текущими условиями машины (переоткрыть, взять параллельную в работу). */
+    public function activate(array $fill = []): void
+    {
+        $this->forceFill(['closed_at' => null, 'cancelled_at' => null, 'parallel' => false, ...$fill])->save();
+    }
+
+    /** Стала параллельной (главную переключили на другого менеджера, `TakeParallel`). */
+    public function makeParallel(array $fill = []): void
+    {
+        $this->forceFill(['closed_at' => null, 'cancelled_at' => null, 'parallel' => true, ...$fill])->save();
+    }
+
+    /** Идущие: не закрыты и не параллельные. */
+    public function scopeActive(Builder $q): Builder
+    {
+        return $q->whereNull('deals.closed_at')->where('deals.parallel', false);
+    }
+
+    /** Живые для менеджера: идущие и параллельные. */
+    public function scopeLive(Builder $q): Builder
+    {
+        return $q->whereNull('deals.closed_at');
+    }
+
+    /** Параллельные, что идут. */
+    public function scopeParallel(Builder $q): Builder
+    {
+        return $q->whereNull('deals.closed_at')->where('deals.parallel', true);
+    }
+
+    /** Завершённые: закрыты и не сорвались. */
+    public function scopeDone(Builder $q): Builder
+    {
+        return $q->whereNotNull('deals.closed_at')->whereNull('deals.cancelled_at');
+    }
+
+    /** Отменённые. */
+    public function scopeCancelled(Builder $q): Builder
+    {
+        return $q->whereNotNull('deals.cancelled_at');
+    }
+
+    /** Не отменённые: идущие, параллельные и завершённые. */
+    public function scopeNotCancelled(Builder $q): Builder
+    {
+        return $q->whereNull('deals.cancelled_at');
+    }
+
+    /** Идущие или завершённые — прежнее `state in ('active', 'done')`. */
+    public function scopeHeld(Builder $q): Builder
+    {
+        return $q->whereNull('deals.cancelled_at')->where(fn ($w) => $w->whereNotNull('deals.closed_at')->orWhere('deals.parallel', false));
     }
 
     /** Кто выбрал схему (`scheme_by`, 03.11.2026). */
@@ -139,7 +274,7 @@ class Deal extends Model implements HasMedia
     /** Состоявшиеся продажи на аукционе. */
     public function scopeAuctionSold(Builder $q): Builder
     {
-        return $q->where('deals.state', DealState::Done)->whereNotNull('deals.auction_at');
+        return $q->done()->whereNotNull('deals.auction_at');
     }
 
     public function auctionBuyer(): BelongsTo
@@ -216,9 +351,9 @@ class Deal extends Model implements HasMedia
      * (ПРАЙМ без покупателя — без просьбы). То же правило в PHP — `managerTask()`.
      */
     public const MANAGER_TURN_SQL = "(exists (select 1 from reprice_asks a where a.deal_id = deals.id and a.state in ('pending', 'countered'))
-        or (deals.state = 'active' and deals.signing_asked_at is not null and deals.signing_at is null and coalesce(jsonb_array_length(deals.signing_wish->'slots'), 0) = 0)
+        or (".self::ACTIVE_SQL." and deals.signing_asked_at is not null and deals.signing_at is null and coalesce(jsonb_array_length(deals.signing_wish->'slots'), 0) = 0)
         or deals.buyer_asked_at is not null or exists (select 1 from requirements r where r.deal_id = deals.id and r.done_at is null)
-        or (deals.state = 'active' and exists (select 1 from offer_positions p join workflow_stages s on s.id = p.stage_id where p.offer_id = deals.offer_id
+        or (".self::ACTIVE_SQL." and exists (select 1 from offer_positions p join workflow_stages s on s.id = p.stage_id where p.offer_id = deals.offer_id
             and p.track = 'sale' and coalesce(p.waits_for, s.waits_for) = 'manager')))";
 
     /**
@@ -408,7 +543,7 @@ class Deal extends Model implements HasMedia
     /** Активные сделки вендора, чей этап продажи уходит исходом с такой подписью (ilike). */
     private static function onExit(int $vendorId, string $label): Collection
     {
-        return self::where('state', DealState::Active)
+        return self::active()
             ->whereHas('offer', fn (Builder $o) => $o->where('vendor_id', $vendorId)->whereHas('positions', fn (Builder $p) => $p->where('track', 'sale')
                 ->whereHas('stage.exits', fn (Builder $e) => $e->where('label', 'ilike', $label))))
             ->with(['offer', 'offer.settlement', 'buyer'])->orderBy('id')->get();
@@ -499,7 +634,7 @@ class Deal extends Model implements HasMedia
             return null;
         }
         $stage = $this->offer?->position(Track::Sale)?->stage;
-        $proof = \App\Offers\Documents\PaymentProofPdf::requirement($this);
+        $proof = PaymentProofPdf::requirement($this);
 
         return $stage && $proof?->stage?->isPayStep() && $proof->stage->exits->contains(fn (Outcome $e) => $e->to_stage_id === $stage->id) ? $proof : null;
     }
@@ -1046,7 +1181,7 @@ class Deal extends Model implements HasMedia
     /** Наценка над закупочной поставщика для CRM (`Margin`): у идущей сделки с ценой подтверждения. */
     public function marginMark(): ?array
     {
-        return $this->state === DealState::Active && ! $this->isGarage() ? Margin::of($this->amount, $this->supplierCost()) : null;
+        return $this->isActive() && ! $this->isGarage() ? Margin::of($this->amount, $this->supplierCost()) : null;
     }
 
     /** Наша закупка у поставщика — только админу (маржа, оплата поставщику); новой не было — закреплённая `cost`. */
@@ -1129,7 +1264,7 @@ class Deal extends Model implements HasMedia
      */
     public function scopeNotSuperseded(Builder $q): Builder
     {
-        return $q->where(fn ($w) => $w->where('deals.state', '!=', DealState::Cancelled->value)->orWhereNotExists(fn ($n) => $n->selectRaw('1')
+        return $q->where(fn ($w) => $w->whereNull('deals.cancelled_at')->orWhereNotExists(fn ($n) => $n->selectRaw('1')
             ->from('deals as later')->whereColumn('later.offer_id', 'deals.offer_id')->whereColumn('later.buyer_id', 'deals.buyer_id')
             ->whereColumn('later.id', '>', 'deals.id')));
     }
@@ -1187,7 +1322,7 @@ class Deal extends Model implements HasMedia
 
     public function isActive(): bool
     {
-        return $this->state === DealState::Active;
+        return $this->closed_at === null && ! $this->parallel;
     }
 
     /**
@@ -1196,7 +1331,7 @@ class Deal extends Model implements HasMedia
      */
     public function isParallel(): bool
     {
-        return $this->state === DealState::Parallel;
+        return $this->closed_at === null && (bool) $this->parallel;
     }
 
     /**
@@ -1229,13 +1364,13 @@ class Deal extends Model implements HasMedia
     /** Живая для менеджера: идущая или параллельная — его страница, строки и «Ваш ход» рисуют её одинаково. */
     public function isLive(): bool
     {
-        return $this->isActive() || $this->isParallel();
+        return $this->closed_at === null;
     }
 
     /** Параллельные той же машины (у главной): метка «+N» в «Сделках» CRM. */
     public function parallels(): HasMany
     {
-        return $this->hasMany(self::class, 'offer_id', 'offer_id')->where('state', DealState::Parallel);
+        return $this->hasMany(self::class, 'offer_id', 'offer_id')->whereNull('closed_at')->where('parallel', true);
     }
 
     /** Теневой шаг параллельной — где она у менеджера, пока машину ведёт главная. */
@@ -1276,7 +1411,7 @@ class Deal extends Model implements HasMedia
         $offer = $this->offer;
 
         return in_array($offer?->car_place, [CarPlace::Ours, CarPlace::WithUs], true)
-            || $offer?->parkVehicle?->state === \App\Park\VehicleState::Stored;
+            || $offer?->parkVehicle?->state === VehicleState::Stored;
     }
 
     public function carried(): bool

@@ -25,7 +25,6 @@ use App\Mail\CandidateState;
 use App\Mail\Scope;
 use App\Offers\Actions\NotifyViewers;
 use App\Offers\Deal;
-use App\Offers\DealState;
 use App\Offers\Estimate;
 use App\Offers\Events\BidAccepted;
 use App\Offers\Events\CounterAnswered;
@@ -169,7 +168,7 @@ final class Notify
     public function bidAccepted(BidAccepted $e): void
     {
         // Сделка этого подтверждения, а не машины: у параллельной (07.11.2026) идущая — чужая, её номер и сумма ему ни о чём.
-        $deal = Deal::where('bid_id', $e->bid->id)->whereIn('state', [DealState::Active, DealState::Parallel])->latest('id')->first();
+        $deal = Deal::where('bid_id', $e->bid->id)->live()->latest('id')->first();
         if ($deal) {
             $e->bid->user->notify(new BidAcceptedNotice($deal->load('offer')));
         }

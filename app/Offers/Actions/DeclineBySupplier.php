@@ -7,7 +7,6 @@ use App\Logistics\Transport;
 use App\Notifications\SupplierDeclinedNotice;
 use App\Offers\BidState;
 use App\Offers\Deal;
-use App\Offers\DealState;
 use App\Offers\OfferEventType;
 use App\Offers\OfferState;
 use App\Users\User;
@@ -70,7 +69,7 @@ final class DeclineBySupplier
         }
         // Параллельные, закрытые тем же уходом машины из сделки (`ChangeOfferState::settleDeal`, причина `gone`), — тоже
         // «Поставщик отказал». Снятые руками и «Я передумал» — свои причины, их отказ не трогает.
-        Deal::where('offer_id', $deal->offer_id)->where('state', DealState::Cancelled)->where('close_reason', 'gone')
+        Deal::where('offer_id', $deal->offer_id)->cancelled()->where('close_reason', 'gone')
             ->where('closed_at', '>=', now()->subMinutes(5))->update(['close_reason' => 'supplier', 'close_note' => $note ?? $deal->close_note]);
     }
 }

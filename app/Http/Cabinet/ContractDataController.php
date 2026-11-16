@@ -8,7 +8,6 @@ use App\Billing\PartyKind;
 use App\Billing\PartyRules;
 use App\Offers\Actions\SyncDealInvoices;
 use App\Offers\DealContract;
-use App\Offers\DealState;
 use App\Users\User;
 use Illuminate\Http\Request;
 
@@ -22,7 +21,7 @@ class ContractDataController
     /** Покупатель по договору хотя бы одной идущей сделки — пункт кабинета и экран есть только ему. */
     public static function opensFor(User $user): bool
     {
-        return ! $user->isManager() && DealContract::where('buyer_user_id', $user->id)->whereHas('deal', fn ($q) => $q->whereIn('state', [DealState::Active, DealState::Parallel]))->exists();
+        return ! $user->isManager() && DealContract::where('buyer_user_id', $user->id)->whereHas('deal', fn ($q) => $q->live())->exists();
     }
 
     public function show(Request $request)

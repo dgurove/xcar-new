@@ -11,7 +11,6 @@ use App\Offers\Actions\SettleContract;
 use App\Offers\Actions\SyncDealInvoices;
 use App\Offers\Deal;
 use App\Offers\DealContract;
-use App\Offers\DealState;
 use App\Users\User;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\HeaderUtils;
@@ -115,7 +114,7 @@ class PassportScanController
     /** Сделки, где этот человек — покупатель по договору или сам менеджер-покупатель: пересобрать счёт и готовность ДКП. */
     public static function resyncFor(User $user, User $by, SyncDealInvoices $invoices): void
     {
-        $deals = Deal::whereIn('state', [DealState::Active, DealState::Parallel])->where(fn ($q) => $q->whereHas('contract', fn ($c) => $c->where('buyer_user_id', $user->id))->orWhere('buyer_id', $user->id))->get();
+        $deals = Deal::live()->where(fn ($q) => $q->whereHas('contract', fn ($c) => $c->where('buyer_user_id', $user->id))->orWhere('buyer_id', $user->id))->get();
         foreach ($deals as $deal) {
             $invoices($deal->fresh(['offer', 'buyer', 'contract.buyer']), $by);
             if ($contract = $deal->contract?->fresh(['seller', 'buyer.party', 'deal.offer', 'deal.buyer'])) {

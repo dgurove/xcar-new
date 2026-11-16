@@ -5,7 +5,6 @@ namespace App\Offers\Console;
 use App\Billing\Seller;
 use App\Offers\Actions\FillCommissionOwner;
 use App\Offers\Deal;
-use App\Offers\DealState;
 use Illuminate\Console\Command;
 
 /**
@@ -22,7 +21,7 @@ class CommissionOwnersCommand extends Command
     {
         $apply = (bool) $this->option('apply');
         $none = [];
-        $deals = Deal::with(['offer.vendor', 'contract'])->where('state', DealState::Active)->get()
+        $deals = Deal::with(['offer.vendor', 'contract'])->active()->get()
             ->filter(fn (Deal $d) => $d->hasContract() && ! $d->isDkp() && $d->seller() === Seller::Prime && ! ($d->contract?->seller_party_id && $d->contract->supplier_price !== null));
         foreach ($deals as $deal) {
             $found = $fill($deal, $apply);

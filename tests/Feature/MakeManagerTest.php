@@ -6,7 +6,6 @@ use App\Garage\Car;
 use App\Garage\CarState;
 use App\Offers\Deal;
 use App\Offers\DealContract;
-use App\Offers\DealState;
 use App\Offers\Offer;
 use App\Offers\Showing;
 use App\Users\BuyerGroup;
@@ -159,7 +158,7 @@ class MakeManagerTest extends TestCase
 
     public function test_live_buyer_deal_blocks_conversion(): void
     {
-        $deal = Deal::create(['offer_id' => $this->offer()->id, 'buyer_id' => $this->boss->id, 'state' => DealState::Active, 'cost' => 800000, 'amount' => 900000]);
+        $deal = Deal::create(['offer_id' => $this->offer()->id, 'buyer_id' => $this->boss->id, 'cost' => 800000, 'amount' => 900000]);
         DealContract::create(['deal_id' => $deal->id, 'buyer_user_id' => $this->buyer->id]);
 
         $this->convert()->assertSessionHasErrors('user');
@@ -168,7 +167,8 @@ class MakeManagerTest extends TestCase
 
     public function test_finished_buyer_deal_does_not_block(): void
     {
-        $deal = Deal::create(['offer_id' => $this->offer()->id, 'buyer_id' => $this->boss->id, 'state' => DealState::Done, 'cost' => 800000, 'amount' => 900000]);
+        $deal = Deal::create(['offer_id' => $this->offer()->id, 'buyer_id' => $this->boss->id, 'cost' => 800000, 'amount' => 900000]);
+        $deal->finish();
         DealContract::create(['deal_id' => $deal->id, 'buyer_user_id' => $this->buyer->id]);
 
         $this->convert()->assertSessionHasNoErrors();

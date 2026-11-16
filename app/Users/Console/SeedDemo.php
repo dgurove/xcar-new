@@ -154,8 +154,12 @@ final class SeedDemo extends Command
     private function deal(User $user, Offer $offer, int $amount, int $cost, int $commission, DealState $state): Deal
     {
         $deal = new Deal(['offer_id' => $offer->id, 'buyer_id' => $user->id, 'amount' => $amount, 'cost' => $cost, 'commission' => $commission,
-            'commission_mode' => CommissionMode::Payout, 'state' => $state, 'closed_at' => $state === DealState::Done ? now()->subDays(9) : null]);
+            'commission_mode' => CommissionMode::Payout]);
         $deal->forceFill(['is_demo' => true])->save();
+        // Завершённая — закрыта и остаётся текущими условиями машины (`Deal::finish`).
+        if ($state === DealState::Done) {
+            $deal->finish(now()->subDays(9));
+        }
 
         return $deal;
     }

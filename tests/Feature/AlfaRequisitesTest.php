@@ -2,21 +2,30 @@
 
 namespace Tests\Feature;
 
+use App\Billing\Documents\PassportPdf;
+use App\Billing\Jobs\ReadPassport;
 use App\Billing\Party;
+use App\Billing\PartyKind;
 use App\Billing\Seller;
 use App\Http\Admin\MailController;
+use App\Http\Cabinet\PassportScanController;
 use App\Mail\Message;
+use App\Notifications\DealInfoNotice;
+use App\Notifications\OurTurnNotice;
 use App\Offers\Actions\AcceptBid;
 use App\Offers\Actions\ChangeDealScheme;
 use App\Offers\Actions\PlaceBid;
 use App\Offers\Actions\SaveDealContract;
+use App\Offers\Actions\SyncDealInvoices;
 use App\Offers\CommissionMode;
-use App\Offers\Deal;
 use App\Offers\DealContract;
 use App\Offers\DealScheme;
+use App\Offers\Documents\PaymentProofPdf;
 use App\Offers\InsurerReplies;
 use App\Offers\Offer;
 use App\Offers\OfferState;
+use App\Offers\SupplierInvoice;
+use App\Support\Surface;
 use App\Users\Role;
 use App\Users\User;
 use App\Vendors\Vendor;
@@ -26,12 +35,15 @@ use App\Workflow\Actions\EnterStage;
 use App\Workflow\Actions\TakeExit;
 use App\Workflow\Actor;
 use App\Workflow\Asks;
+use App\Workflow\Path;
 use App\Workflow\Preset;
 use App\Workflow\Stage;
+use App\Workflow\Substeps;
 use App\Workflow\Track;
 use App\Workflow\WaitsFor;
-use App\Offers\Documents\PaymentProofPdf;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
@@ -89,18 +101,18 @@ class AlfaRequisitesTest extends TestCase
     {
         [$offer] = $this->deal(vat: false);
         $position = $offer->position(Track::Sale);
-        $subs = \App\Workflow\Substeps::for($position, \App\Workflow\Path::journal($offer, Track::Sale), $offer->deal);
+        $subs = Substeps::for($position, Path::journal($offer, Track::Sale), $offer->deal);
         $this->assertSame([['Поставщик согласовал', 'done'], ['Беру в работу', 'done'], ['Подтверждение покупки', 'now']],
             $subs->map(fn ($s) => [$s['name'], $s['state']])->all());
         $this->assertSame([$this->admin->id, $this->manager->id], $subs->take(2)->pluck('user_id')->all());
 
         $this->exit($offer, 'Поставщик просит реквизиты');
         $offer = $offer->fresh();
-        $subs = \App\Workflow\Substeps::for($offer->position(Track::Sale), \App\Workflow\Path::journal($offer, Track::Sale), $offer->deal);
+        $subs = Substeps::for($offer->position(Track::Sale), Path::journal($offer, Track::Sale), $offer->deal);
         $this->assertSame('Реквизиты для счёта', $offer->stage()->block->name);
         $this->assertSame([['Нет реквизитов', 'now'], ['Письмо с реквизитами', 'wait']], $subs->map(fn ($s) => [$s['name'], $s['state']])->all());
 
-        $page = $this->actingAs($this->admin)->get('http://'.\App\Support\Surface::Crm->host().'/work/deals?preset=manager')->assertOk();
+        $page = $this->actingAs($this->admin)->get('http://'.Surface::Crm->host().'/work/deals?preset=manager')->assertOk();
         $page->assertSee('Денис Трофимов')->assertSee('Нет реквизитов')->assertDontSee('tel:79000000002', false); // «Позвонить» снята 10.11.2026
     }
 
@@ -134,7 +146,7 @@ class AlfaRequisitesTest extends TestCase
 
         // «Заполнить за менеджера» ведёт с `?buyer=1` — шторка выбора покупателя открыта сразу (06.11.2026: ссылка только
         // прокручивала к карточке).
-        $crm = fn (string $path) => $this->actingAs($this->admin)->get(\App\Support\Surface::Crm->url($path))->assertOk();
+        $crm = fn (string $path) => $this->actingAs($this->admin)->get(Surface::Crm->url($path))->assertOk();
         $crm('/offers/'.$offer->number)->assertSee('?buyer=1#invoice-buyer', false)->assertDontSee('data-sheet-open-value', false);
         $crm('/offers/'.$offer->number.'?buyer=1')->assertSee('data-sheet-open-value', false);
 
@@ -148,7 +160,7 @@ class AlfaRequisitesTest extends TestCase
         $this->assertSame('Письмо с реквизитами', $offer->stage()->name);
         $this->assertSame(WaitsFor::Us, $offer->position(Track::Sale)->waits_for);
         // Данные есть — сотрудникам громко «напишите поставщику» (05.11.2026, владелец: «вот тут уведомление уместно»).
-        Notification::assertSentTo($this->admin, \App\Notifications\OurTurnNotice::class, fn ($n) => str_contains((string) $n->text(), 'Напишите поставщику'));
+        Notification::assertSentTo($this->admin, OurTurnNotice::class, fn ($n) => str_contains((string) $n->text(), 'Напишите поставщику'));
         $this->assertNull($deal->fresh()->contract->ready_at, 'договора у «страховой напрямую» нет — «ДКП готов» не шлём');
 
         // В письме — реквизиты покупателя, скан — у него же (вложение черновика).
@@ -161,10 +173,10 @@ class AlfaRequisitesTest extends TestCase
         $party = $deal->fresh()->supplierInvoicee();
         $party->getMedia('passport')->each->delete();
         foreach (array_keys(Party::PASSPORT_PAGES) as $page) {
-            $party->addMedia(\Illuminate\Http\UploadedFile::fake()->image($page.'.jpg', 400, 300))->withCustomProperties(['page' => $page, 'read' => 'done'])->toMediaCollection('passport');
+            $party->addMedia(UploadedFile::fake()->image($page.'.jpg', 400, 300))->withCustomProperties(['page' => $page, 'read' => 'done'])->toMediaCollection('passport');
         }
-        $this->assertStringStartsWith('%PDF', (string) \App\Billing\Documents\PassportPdf::render($party->fresh()));
-        $this->actingAs($this->admin)->get(\App\Support\Surface::Crm->url('/parties/'.$party->id.'/passport.pdf'))
+        $this->assertStringStartsWith('%PDF', (string) PassportPdf::render($party->fresh()));
+        $this->actingAs($this->admin)->get(Surface::Crm->url('/parties/'.$party->id.'/passport.pdf'))
             ->assertOk()->assertHeader('Content-Type', 'application/pdf');
 
         $this->exit($offer, 'Счёт от поставщика получен');
@@ -177,7 +189,7 @@ class AlfaRequisitesTest extends TestCase
      */
     public function test_passport_name_replaces_typed_one(): void
     {
-        $read = fn (Party $party, string $name) => \App\Billing\Jobs\ReadPassport::passportName($party->addMediaFromString('scan')->usingFileName('main.jpg')
+        $read = fn (Party $party, string $name) => ReadPassport::passportName($party->addMediaFromString('scan')->usingFileName('main.jpg')
             ->withCustomProperties(['page' => 'main', 'read' => 'done', 'fields' => ['name' => $name]])->toMediaCollection('passport')->fresh());
 
         $party = Party::create(['kind' => 'person', 'name' => 'Роман Мирошников']);
@@ -289,13 +301,13 @@ class AlfaRequisitesTest extends TestCase
     {
         [$offer, $deal] = $this->deal(vat: false);
         $exit = $offer->stage()->exits->first(fn ($e) => $e->label === 'Поставщик сразу выставил счёт' && $e->fits($deal));
-        $this->assertTrue(\App\Offers\SupplierInvoice::needs($deal, $exit));
-        $crm = fn (string $path) => \App\Support\Surface::Crm->url($path);
+        $this->assertTrue(SupplierInvoice::needs($deal, $exit));
+        $crm = fn (string $path) => Surface::Crm->url($path);
 
         $this->actingAs($this->admin)->post($crm('/offers/'.$offer->number.'/exit/'.$exit->id))->assertSessionHasErrors('exit');
         $this->assertSame('Подтверждение покупки', $offer->fresh()->stage()->name);
 
-        $pdf = $offer->addMedia(\Illuminate\Http\UploadedFile::fake()->create('20261109174014.pdf', 20, 'application/pdf'))
+        $pdf = $offer->addMedia(UploadedFile::fake()->create('20261109174014.pdf', 20, 'application/pdf'))
             ->withCustomProperties(['letter' => 1])->toMediaCollection('papers');
         $this->actingAs($this->admin)->post($crm('/work/deals/'.$deal->id.'/supplier-invoice'), ['media' => $pdf->id, 'exit' => $exit->id, 'text' => 'Только от плательщика'])
             ->assertSessionHasNoErrors();
@@ -303,11 +315,11 @@ class AlfaRequisitesTest extends TestCase
         $pdf->refresh();
         $this->assertTrue((bool) $pdf->getCustomProperty('managers'));
         $this->assertStringStartsWith('Счёт поставщика от ', $pdf->name);
-        Notification::assertSentTo($this->manager, \App\Notifications\DealInfoNotice::class);
+        Notification::assertSentTo($this->manager, DealInfoNotice::class);
 
-        $this->actingAs($this->manager)->get(\App\Support\Surface::Site->url('/deals/'.$deal->id))->assertOk()->assertSee('Счёт поставщика')->assertSee('от '.$pdf->created_at->timezone('Europe/Moscow')->format('d.m'))->assertSee('Только от плательщика');
+        $this->actingAs($this->manager)->get(Surface::Site->url('/deals/'.$deal->id))->assertOk()->assertSee('Счёт поставщика')->assertSee('от '.$pdf->created_at->timezone('Europe/Moscow')->format('d.m'))->assertSee('Только от плательщика');
         $this->actingAs($this->admin)->followingRedirects()->get($crm('/work/deals/'.$deal->id))->assertOk()->assertDontSee('Менеджер не видит счёт поставщика');
-        $pdf->forgetCustomProperty(\App\Offers\SupplierInvoice::PROP)->save();
+        $pdf->forgetCustomProperty(SupplierInvoice::PROP)->save();
         $this->actingAs($this->admin)->followingRedirects()->get($crm('/work/deals/'.$deal->id))->assertSee('Менеджер не видит счёт поставщика');
     }
 
@@ -318,9 +330,9 @@ class AlfaRequisitesTest extends TestCase
     public function test_admin_attaches_payment_proof_and_letter_gets_one_pdf(): void
     {
         [$offer, $deal] = $this->deal(vat: false);
-        $crm = fn (string $path) => \App\Support\Surface::Crm->url($path);
+        $crm = fn (string $path) => Surface::Crm->url($path);
         $exit = $offer->stage()->exits->first(fn ($e) => $e->label === 'Поставщик сразу выставил счёт' && $e->fits($deal));
-        $pdf = $offer->addMedia(\Illuminate\Http\UploadedFile::fake()->create('schet.pdf', 20, 'application/pdf'))->withCustomProperties(['letter' => 1])->toMediaCollection('papers');
+        $pdf = $offer->addMedia(UploadedFile::fake()->create('schet.pdf', 20, 'application/pdf'))->withCustomProperties(['letter' => 1])->toMediaCollection('papers');
         $this->actingAs($this->admin)->post($crm('/work/deals/'.$deal->id.'/supplier-invoice'), ['media' => $pdf->id, 'exit' => $exit->id])->assertSessionHasNoErrors();
         $this->assertSame('Оплата счёта', $offer->fresh()->stage()->name);
 
@@ -328,7 +340,7 @@ class AlfaRequisitesTest extends TestCase
         $this->actingAs($this->admin)->post($crm('/work/deals/'.$deal->id.'/payment-proof'), ['pass' => 1])->assertSessionHasErrors('payment_proof');
         $this->actingAs($this->admin)->followingRedirects()->get($crm('/work/deals/'.$deal->id))->assertSee('Приложить за менеджера');
 
-        $files = [\Illuminate\Http\UploadedFile::fake()->image('chek-1.jpg', 600, 900), \Illuminate\Http\UploadedFile::fake()->image('chek-2.jpg', 640, 960)];
+        $files = [UploadedFile::fake()->image('chek-1.jpg', 600, 900), UploadedFile::fake()->image('chek-2.jpg', 640, 960)];
         $this->actingAs($this->admin)->post($crm('/work/deals/'.$deal->id.'/payment-proof'), ['files' => $files, 'pass' => 1])->assertSessionHasNoErrors();
         $this->assertSame('Подтверждение оплаты', $offer->fresh()->stage()->name);
         $deal = $deal->fresh();
@@ -341,10 +353,10 @@ class AlfaRequisitesTest extends TestCase
         $this->actingAs($this->admin)->get($crm('/work/deals/'.$deal->id.'/payment-proof.pdf'))->assertOk()->assertHeader('Content-Type', 'application/pdf');
 
         // Письмо шага — с одним PDF вместо россыпи снимков; кнопка шага — «Отправить страховой».
-        \Illuminate\Support\Facades\DB::table('mail_accounts')->insert(['slug' => 'deal', 'title' => 'deal', 'email' => 'deal@xcar.ru', 'scope' => 'offers', 'is_active' => true,
+        DB::table('mail_accounts')->insert(['slug' => 'deal', 'title' => 'deal', 'email' => 'deal@xcar.ru', 'scope' => 'offers', 'is_active' => true,
             'imap_host' => 'x', 'imap_username' => 'x', 'imap_password' => 'x', 'smtp_host' => 'x', 'smtp_username' => 'x', 'smtp_password' => 'x']);
         $stage = $offer->fresh()->stage();
-        $this->actingAs($this->admin)->followingRedirects()->get($crm('/work/deals/'.$deal->id))->assertSee('Отправить страховой')->assertSee('Документ об оплате, PDF');
+        $this->actingAs($this->admin)->followingRedirects()->get($crm('/work/deals/'.$deal->id))->assertSee('Отправить страховой')->assertSee('Документ об оплате')->assertSee('PDF для страховой');
         $this->actingAs($this->admin)->withHeaders(['Turbo-Frame' => 'letters-frame'])->get($crm('/work/mail/new?offer='.$offer->number.'&template='.$stage->template_id))->assertOk()
             ->assertSee(PaymentProofPdf::fileName($deal))->assertDontSee('chek-1')->assertSee('Документ об оплате во вложении');
     }
@@ -359,8 +371,8 @@ class AlfaRequisitesTest extends TestCase
         $this->exit($offer, 'Поставщик просит реквизиты');
         $buyer = User::create(['name' => 'Тагир Гамидов', 'roles' => [Role::Buyer], 'manager_id' => $this->manager->id, 'approved_at' => now()]);
         app(SaveDealContract::class)(DealContract::for($deal->fresh()), ['buyer_id' => (string) $buyer->id], $this->admin);
-        $put = fn (array $data) => $this->actingAs($this->admin)->from(\App\Support\Surface::Crm->url('/offers/'.$offer->number))
-            ->put(\App\Support\Surface::Crm->url('/work/deals/'.$deal->id.'/contract'), ['buyer' => $data]);
+        $put = fn (array $data) => $this->actingAs($this->admin)->from(Surface::Crm->url('/offers/'.$offer->number))
+            ->put(Surface::Crm->url('/work/deals/'.$deal->id.'/contract'), ['buyer' => $data]);
 
         $put(['kind' => 'person', 'name' => 'Гамидов Тагир Гасинович', 'birth_at' => '1995-08-17', 'passport' => '82 15 693772',
             'passport_issued' => 'ТП УФМС России по Респ. Дагестан', 'passport_issued_at' => '2015-09-02', 'reg_address' => 'Московская обл., г. Химки'])->assertSessionHasNoErrors();
@@ -369,14 +381,14 @@ class AlfaRequisitesTest extends TestCase
         $put($ip + ['account' => '4080 2810 6000 0844 2681', 'bank_name' => 'АО «ТБанк»', 'bik' => '044525974', 'corr_account' => '30101810145250000974'])->assertSessionHasNoErrors();
 
         $party = $buyer->fresh()->party;
-        $this->assertSame(\App\Billing\PartyKind::Entrepreneur, $party->kind);
+        $this->assertSame(PartyKind::Entrepreneur, $party->kind);
         $this->assertSame(['82 15 693772', 'Московская обл., г. Химки', '40802810600008442681'], [$party->passport, $party->legal_address, $party->account], 'паспорт на месте, адрес ИП — прописка');
         $this->assertSame('Нет скана паспорта покупателя', $deal->fresh()->requisitesGap());
 
         foreach (array_keys(Party::PASSPORT_PAGES) as $page) {
-            $party->addMedia(\Illuminate\Http\UploadedFile::fake()->image($page.'.jpg', 400, 300))->withCustomProperties(['page' => $page, 'read' => 'done'])->toMediaCollection('passport');
+            $party->addMedia(UploadedFile::fake()->image($page.'.jpg', 400, 300))->withCustomProperties(['page' => $page, 'read' => 'done'])->toMediaCollection('passport');
         }
-        \App\Http\Cabinet\PassportScanController::resyncFor($buyer->fresh(), $this->admin, app(\App\Offers\Actions\SyncDealInvoices::class));
+        PassportScanController::resyncFor($buyer->fresh(), $this->admin, app(SyncDealInvoices::class));
         $this->assertNull($deal->fresh()->requisitesGap());
         $this->assertSame('Письмо с реквизитами', $offer->fresh()->stage()->name);
 
@@ -389,6 +401,6 @@ class AlfaRequisitesTest extends TestCase
 
         // Обратно в физлицо — паспорт тот же, ИНН и банк ИП в базе остались.
         $put(['kind' => 'person', 'name' => 'Гамидов Тагир Гасинович', 'passport' => '82 15 693772'])->assertSessionHasNoErrors();
-        $this->assertSame([\App\Billing\PartyKind::Person, '052601687270', '1995-08-17'], [$party->fresh()->kind, $party->fresh()->inn, $party->fresh()->birth_at->toDateString()]);
+        $this->assertSame([PartyKind::Person, '052601687270', '1995-08-17'], [$party->fresh()->kind, $party->fresh()->inn, $party->fresh()->birth_at->toDateString()]);
     }
 }

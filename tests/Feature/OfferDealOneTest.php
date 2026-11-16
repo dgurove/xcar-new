@@ -3,7 +3,6 @@
 namespace Tests\Feature;
 
 use App\Offers\Deal;
-use App\Offers\DealState;
 use App\Offers\Offer;
 use App\Offers\OfferState;
 use App\Park\Vehicle;
@@ -28,7 +27,7 @@ class OfferDealOneTest extends TestCase
         $manager = User::create(['name' => 'Иван Петров', 'phone' => '79000000041', 'roles' => [Role::Manager], 'approved_at' => now()]);
         $sold = Offer::create(['vin' => 'XTA21099000000778', 'year' => 2024, 'asking_price' => 900000]);
         $sold->forceFill(['state' => OfferState::Sold])->save();
-        $deal = Deal::create(['offer_id' => $sold->id, 'buyer_id' => $manager->id, 'state' => DealState::Active, 'cost' => 800000, 'amount' => 900000]);
+        $deal = Deal::create(['offer_id' => $sold->id, 'buyer_id' => $manager->id, 'cost' => 800000, 'amount' => 900000]);
         $draft = Offer::create(['vin' => 'XTA21099000000779', 'year' => 2023]);
         [$sold, $draft] = [$sold->fresh(), $draft->fresh()];
         $crm = 'http://'.config('xcar.crm_host');

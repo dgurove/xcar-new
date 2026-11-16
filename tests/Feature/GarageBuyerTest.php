@@ -14,12 +14,13 @@ use App\Garage\GaragePayer;
 use App\Logistics\Channel;
 use App\Logistics\Transport;
 use App\Offers\Actions\AgreeDeal;
-use App\Offers\DealState;
+use App\Offers\CarPlace;
 use App\Offers\Offer;
 use App\Users\Role;
 use App\Users\User;
 use App\Vendors\Vendor;
 use App\Workflow\Actions\ApplyPreset;
+use App\Workflow\Actions\SetCarPlace;
 use App\Workflow\Actions\StartRoute;
 use App\Workflow\Preset;
 use App\Workflow\Track;
@@ -122,7 +123,7 @@ class GarageBuyerTest extends TestCase
         $this->actingAs($this->buyer)->get(self::SITE.'/account/chats/offer/'.$n)->assertOk();
 
         // Продана — отметкой без суммы; счёт оплачен — расчёт закрыт.
-        $deal->update(['state' => DealState::Done]);
+        $deal->finish();
         $car->moveTo(CarState::Selling);
         $this->actingAs($this->buyer)->post(self::SITE.'/garage/cars/'.$n.'/sold')->assertSessionHasNoErrors();
         $this->assertSame(CarState::Sold, $car->fresh()->state);
@@ -253,12 +254,12 @@ class GarageBuyerTest extends TestCase
     {
         $this->buyer->update(['garage_enabled' => true]);
         $offer = $this->draft();
-        app(\App\Workflow\Actions\SetCarPlace::class)($offer, \App\Offers\CarPlace::Elsewhere, $this->admin);
+        app(SetCarPlace::class)($offer, CarPlace::Elsewhere, $this->admin);
         $this->actingAs($this->admin)->post(self::CRM.'/offers/'.$offer->number.'/give', [
             'to' => 'garage', 'whom' => 'buyer', 'manager_id' => $this->buyer->id, 'buyer_price' => '900 000', 'where' => 'arrived', 'pickup' => 'manager',
         ])->assertSessionHasNoErrors();
         $this->assertSame(CarState::Repair, Car::where('offer_id', $offer->id)->firstOrFail()->state);
-        $this->assertSame(\App\Offers\CarPlace::Keeper, $offer->fresh()->car_place);
+        $this->assertSame(CarPlace::Keeper, $offer->fresh()->car_place);
     }
 
     public function test_super_buyer_garage_bid_only_with_toggle(): void

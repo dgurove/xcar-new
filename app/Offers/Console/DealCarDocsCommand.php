@@ -8,7 +8,6 @@ use App\Mail\Scan\OfferSubject;
 use App\Offers\Actions\SettleContract;
 use App\Offers\Deal;
 use App\Offers\DealContract;
-use App\Offers\DealState;
 use Illuminate\Console\Command;
 use Throwable;
 
@@ -26,7 +25,7 @@ class DealCarDocsCommand extends Command
     public function handle(SettleContract $settle): int
     {
         $apply = (bool) $this->option('apply');
-        foreach (Deal::with('offer.car')->where('state', DealState::Active)->get()->filter(fn (Deal $d) => $d->hasContract()) as $deal) {
+        foreach (Deal::with('offer.car')->active()->get()->filter(fn (Deal $d) => $d->hasContract()) as $deal) {
             $car = $deal->offer->car;
             if (! $car || ($car->pts && $car->sts && $car->plate)) {
                 continue;

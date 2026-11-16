@@ -63,7 +63,7 @@ class ReplyReview extends Model
     public static function waiting(): Collection
     {
         // Только идущие сделки: разбор отменённой или закрытой не держит машину в «Ваш ход» и не липнет к следующей сделке.
-        $load = fn () => self::pending()->whereHas('deal', fn ($q) => $q->where('state', DealState::Active))
+        $load = fn () => self::pending()->whereHas('deal', fn ($q) => $q->active())
             ->selectRaw('offer_id, min(created_at) as at')->groupBy('offer_id')
             ->pluck('at', 'offer_id')->map(fn ($at) => Carbon::parse($at));
 

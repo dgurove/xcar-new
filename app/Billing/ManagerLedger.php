@@ -5,7 +5,6 @@ namespace App\Billing;
 use App\Garage\Car as GarageCar;
 use App\Logistics\Transport;
 use App\Offers\Deal;
-use App\Offers\DealState;
 use App\Support\Surface;
 use App\Users\User;
 use Carbon\CarbonInterface;
@@ -42,7 +41,7 @@ final class ManagerLedger
             // Гаражная сделка без счёта — не расчёт (там страховая, деньги — в гараже); со счётом (Каркаде, платит
             // менеджер) — как любая.
             $this->all = Deal::where('buyer_id', $this->manager->id)
-                ->where(fn ($q) => $q->where('state', DealState::Active)->orWhereHas('invoices'))
+                ->where(fn ($q) => $q->active()->orWhereHas('invoices'))
                 ->where(fn ($q) => $q->whereNull('garage_payer')->orWhereHas('invoices'))
                 // Покупателю с гаражом без галки цены — гаражных расчётов нет: он видит только цену продажи (21.10.2026).
                 ->when(! $this->staff && ! $this->manager->seesGaragePrice(), fn ($q) => $q->whereNull('garage_payer'))
@@ -192,7 +191,7 @@ final class ManagerLedger
     /** Сделки за период для выгрузки: цена, счёт, оплачено, вознаграждение, выплачено. */
     public function dealsBetween(CarbonInterface $from, CarbonInterface $to): Collection
     {
-        return Deal::where('buyer_id', $this->manager->id)->whereBetween('created_at', [$from, $to])->whereIn('state', [DealState::Active, DealState::Done])
+        return Deal::where('buyer_id', $this->manager->id)->whereBetween('created_at', [$from, $to])->held()
             ->with(['offer', 'invoices.allPayments', 'agentFee'])->orderBy('created_at')->get();
     }
 }

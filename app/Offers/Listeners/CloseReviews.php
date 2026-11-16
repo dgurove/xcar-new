@@ -5,7 +5,6 @@ namespace App\Offers\Listeners;
 use App\Mail\Direction;
 use App\Mail\Events\MessageSent;
 use App\Offers\Deal;
-use App\Offers\DealState;
 use App\Offers\Offer;
 use App\Offers\OfferEventType;
 use App\Offers\ReplyReview;
@@ -46,7 +45,7 @@ final class CloseReviews
         if ($m->direction !== Direction::Out || ! ($by = $m->author) || ! $by->isStaff() || ! ($offer = $m->thread?->offer)) {
             return;
         }
-        $deal = Deal::where('offer_id', $offer->id)->where('state', DealState::Active)->first();
+        $deal = Deal::where('offer_id', $offer->id)->active()->first();
         $at = $m->sent_at ?? $m->date_at ?? now();
         $deal && self::close($offer, ReplyReview::pending()->where('deal_id', $deal->id)
             ->whereHas('message', fn ($q) => $q->where('thread_id', $m->thread_id)->where('date_at', '<=', $at)), $by, 'ответом поставщику');

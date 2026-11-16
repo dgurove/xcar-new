@@ -35,7 +35,7 @@ final class Parallels
     /** Живые параллельные сделки машины, по порядку поручения. */
     public static function of(Offer|int $offer): Collection
     {
-        return Deal::where('offer_id', $offer instanceof Offer ? $offer->id : $offer)->where('state', DealState::Parallel)
+        return Deal::where('offer_id', $offer instanceof Offer ? $offer->id : $offer)->parallel()
             ->with(['buyer', 'bid', 'shadowStage.block', 'contract.buyer.party'])->orderBy('id')->get();
     }
 

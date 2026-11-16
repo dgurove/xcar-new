@@ -9,7 +9,6 @@ use App\Logistics\Transport;
 use App\Offers\Bid;
 use App\Offers\BidState;
 use App\Offers\Deal;
-use App\Offers\DealState;
 use App\Offers\Offer;
 use App\Offers\OfferState;
 use App\Park\Request as ParkRequest;
@@ -202,7 +201,7 @@ class SmokeRoutesTest extends TestCase
             }
         }
         $offers[2]->forceFill(['state' => OfferState::Sold])->save();
-        Deal::create(['offer_id' => $offers[2]->id, 'buyer_id' => $manager->id, 'state' => DealState::Active, 'cost' => 502000, 'amount' => 615000]);
+        Deal::create(['offer_id' => $offers[2]->id, 'buyer_id' => $manager->id, 'cost' => 502000, 'amount' => 615000]);
         // Вывозы: без исполнителя, у логиста, у нашего человека с созвоном и документами СДЭКом.
         Transport::create(['car_id' => $offers[0]->car_id, 'origin' => 'sale', 'kind' => 'pickup', 'state' => 'new']);
         Transport::create(['car_id' => $offers[1]->car_id, 'origin' => 'sale', 'kind' => 'pickup', 'state' => 'logist', 'channel' => 'logist', 'logist_id' => $logist->id]);

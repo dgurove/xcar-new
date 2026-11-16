@@ -4,7 +4,7 @@ namespace App\Offers\Actions;
 
 use App\Notifications\BuyerAskNotice;
 use App\Offers\Deal;
-use App\Offers\DealState;
+use App\Vendors\DealFormat;
 use App\Workflow\Asks;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -51,8 +51,8 @@ final class AskBuyer
     public function sweep(bool $apply = true): Collection
     {
         // Согласованные — и у вендора по комиссии (Совкомбанк) сразу: согласования у него нет (14.11.2026, `Deal::buyerOpen`).
-        $deals = Deal::with(['buyer', 'offer.vendor', 'contract.buyer.party'])->where('state', DealState::Active)
-            ->where(fn ($q) => $q->whereNotNull('agreed_at')->orWhereHas('offer.vendor', fn ($v) => $v->where('deal_format', \App\Vendors\DealFormat::Commission->value)))
+        $deals = Deal::with(['buyer', 'offer.vendor', 'contract.buyer.party'])->active()
+            ->where(fn ($q) => $q->whereNotNull('agreed_at')->orWhereHas('offer.vendor', fn ($v) => $v->where('deal_format', DealFormat::Commission->value)))
             ->whereNull('buyer_asked_at')->whereNotNull('buyer_id')->get()->filter(function (Deal $d) {
                 $stage = $d->offer?->stage();
 

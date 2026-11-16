@@ -13,7 +13,6 @@ use App\Offers\Actions\AcceptBid;
 use App\Offers\Actions\PlaceBid;
 use App\Offers\Deal;
 use App\Offers\DealScheme;
-use App\Offers\DealState;
 use App\Offers\Offer;
 use App\Offers\OfferState;
 use App\Offers\ReplyReview;
@@ -89,7 +88,7 @@ class InsurerLetterHiddenTest extends TestCase
         Notification::assertSentToTimes($this->manager, DealInfoNotice::class, 1);
         Notification::assertSentTo($this->manager, DealInfoNotice::class, fn (DealInfoNotice $n) => str_contains($n->text(), '+7 900 123-45-67')
             && str_contains($n->text(), 'Пётр') && ! str_contains($n->text(), 'Петров') && ! str_contains($n->text(), '555-66-77')
-            && str_contains($n->text(), 'Звонить после 12') && str_contains($n->text(), 'Документы: 1') && str_contains($n->text(), 'Ваш ход'));
+            && str_contains($n->text(), 'Звонить после 12') && str_contains($n->text(), 'Документы: 1') && str_contains($n->text(), 'Дело: '));
         Notification::assertNotSentTo($this->manager, YourTurnNotice::class);
         $this->assertSame('Согласие менеджера', $stage());
         $this->assertSame(0, ReplyReview::pending()->count());
@@ -121,9 +120,9 @@ class InsurerLetterHiddenTest extends TestCase
         // Неразобранное письмо отменённой сделки машину в «Разобрать ответ» не держит.
         $this->letter("Добрый день! Ещё контакт +7 900 765-43-22\r\n");
         $this->assertSame('Разобрать ответ', $this->offer->fresh()->position(Track::Sale)->todo()['title'] ?? null);
-        $this->deal->forceFill(['state' => DealState::Cancelled])->save();
+        $this->deal->cancel();
         $this->assertNotSame('Разобрать ответ', $this->offer->fresh()->position(Track::Sale)?->todo()['title'] ?? null);
-        $this->assertFalse(Position::where('offer_id', $this->offer->id)->where('track', 'sale')->whereRaw("exists (select 1 from reply_reviews rr join deals rd on rd.id = rr.deal_id where rr.offer_id = offer_positions.offer_id and rr.state = 'pending' and rd.state = 'active')")->exists());
+        $this->assertFalse(Position::where('offer_id', $this->offer->id)->where('track', 'sale')->whereRaw("exists (select 1 from reply_reviews rr join deals rd on rd.id = rr.deal_id where rr.offer_id = offer_positions.offer_id and rr.state = 'pending' and rd.closed_at is null and not rd.parallel)")->exists());
     }
 
     /** Сотрудник сдвинул шаг после письма — разбор закрыт, в «Истории» строка (10.11.2026, Volvo 01527); шаг менеджера — нет. */

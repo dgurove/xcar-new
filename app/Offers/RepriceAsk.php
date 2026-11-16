@@ -138,7 +138,7 @@ class RepriceAsk extends Model
      */
     public static function dealDue(): Collection
     {
-        $load = fn () => self::whereIn('reprice_asks.state', self::HIS_TURN)->whereNotNull('deal_id')->whereHas('deal', fn ($q) => $q->where('state', DealState::Active))
+        $load = fn () => self::whereIn('reprice_asks.state', self::HIS_TURN)->whereNotNull('deal_id')->whereHas('deal', fn ($q) => $q->active())
             ->pluck('due_at', 'offer_id')->map(fn ($at) => Carbon::parse($at));
 
         return app()->runningInConsole() ? $load() : once($load);
@@ -147,7 +147,7 @@ class RepriceAsk extends Model
     /** Менеджер назвал цену по идущей сделке — решаем мы: offer_id → когда назвал. Одним запросом, как `dealDue`. */
     public static function dealOffered(): Collection
     {
-        $load = fn () => self::where('reprice_asks.state', self::OFFERED)->whereNotNull('deal_id')->whereHas('deal', fn ($q) => $q->where('state', DealState::Active))
+        $load = fn () => self::where('reprice_asks.state', self::OFFERED)->whereNotNull('deal_id')->whereHas('deal', fn ($q) => $q->active())
             ->pluck('offered_at', 'offer_id')->map(fn ($at) => Carbon::parse($at));
 
         return app()->runningInConsole() ? $load() : once($load);

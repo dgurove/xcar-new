@@ -9,7 +9,6 @@ use App\Billing\PaymentSource;
 use App\Offers\CommissionMode;
 use App\Offers\Deal;
 use App\Offers\DealScheme;
-use App\Offers\DealState;
 use App\Support\Money;
 use App\Users\Role;
 use App\Users\User;
@@ -45,7 +44,7 @@ class DealAgreementFixCommand extends Command
             return self::FAILURE;
         }
 
-        $deals = Deal::where('state', DealState::Active)->with(['offer.vendor', 'offer.positions.stage.exits', 'buyer'])->orderBy('id')->get();
+        $deals = Deal::active()->with(['offer.vendor', 'offer.positions.stage.exits', 'buyer'])->orderBy('id')->get();
         foreach ($deals as $deal) {
             $offer = $deal->offer;
             $stage = $offer->position(Track::Sale)?->stage;

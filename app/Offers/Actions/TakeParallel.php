@@ -8,7 +8,6 @@ use App\Logistics\Channel;
 use App\Logistics\Transport;
 use App\Notifications\YourTurnNotice;
 use App\Offers\Deal;
-use App\Offers\DealState;
 use App\Offers\Offer;
 use App\Offers\OfferEventType;
 use App\Offers\OfferState;
@@ -69,7 +68,7 @@ final class TakeParallel
         $mainConsent = $stage?->asksConsent() && Requirement::where('deal_id', $main->id)->where('stage_id', $stage->id)->whereNull('done_at')->exists();
 
         // Прежняя главная — параллельная, сразу со своим теневым шагом: пока маршрут ниже сдвигается, она уже тень.
-        $main->forceFill(['state' => DealState::Parallel, 'shadow_stage_id' => null, 'shadow_at' => null, 'reissue_at' => null])->save();
+        $main->makeParallel(['shadow_stage_id' => null, 'shadow_at' => null, 'reissue_at' => null]);
         Requirement::where('deal_id', $main->id)->whereNull('done_at')->update(['done_at' => now(), 'answer' => json_encode(['closed_by' => 'parallel'])]);
         CancelDeal::voidUnpaid($main, $by, 'Сделку взял другой менеджер');
         // Забирать должен был он сам и ещё не забрал — поручение снимается, кто вывозит, решает админ (как при отмене).
@@ -84,8 +83,7 @@ final class TakeParallel
         }
 
         // Параллельная — главная, на том же шаге; согласование — как было у машины.
-        $deal->forceFill(['state' => DealState::Active, 'shadow_stage_id' => null, 'shadow_at' => null, 'agreed_at' => $main->agreed_at,
-            'reissue_at' => $sent ? now() : null])->save();
+        $deal->activate(['shadow_stage_id' => null, 'shadow_at' => null, 'agreed_at' => $main->agreed_at, 'reissue_at' => $sent ? now() : null]);
         Requirement::where('deal_id', $deal->id)->whereNull('done_at')->update(['done_at' => now(), 'answer' => json_encode(['closed_by' => 'parallel'])]);
         $offer->unsetRelation('deal')->unsetRelation('positions');
         $offer->log(OfferEventType::Parallel, $by, ['do' => 'taken', 'deal' => $deal->id, 'manager' => $deal->buyer_id, 'main' => $main->id,
@@ -135,7 +133,7 @@ final class TakeParallel
             throw ValidationException::withMessages(['take' => 'ТС уже не в продаже — в работу не взять']);
         }
         $shadow = $deal->shadowStage;
-        $deal->forceFill(['state' => DealState::Active, 'shadow_stage_id' => null, 'shadow_at' => null, 'agreed_at' => null])->save();
+        $deal->activate(['shadow_stage_id' => null, 'shadow_at' => null, 'agreed_at' => null]);
         Requirement::where('deal_id', $deal->id)->whereNull('done_at')->update(['done_at' => now(), 'answer' => json_encode(['closed_by' => 'parallel'])]);
         $offer->log(OfferEventType::Parallel, $by, ['do' => 'taken', 'deal' => $deal->id, 'manager' => $deal->buyer_id]);
         $offer = $this->give->promote($offer, $deal->setRelation('offer', $offer), $by);

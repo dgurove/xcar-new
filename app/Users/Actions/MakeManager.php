@@ -4,7 +4,6 @@ namespace App\Users\Actions;
 
 use App\Garage\Car;
 use App\Offers\DealContract;
-use App\Offers\DealState;
 use App\Offers\Showing;
 use App\Users\Role;
 use App\Users\User;
@@ -103,7 +102,7 @@ final class MakeManager
 
         $cars = Car::whereIn('manager_id', $ids)->selectRaw('manager_id, count(*) as n')->groupBy('manager_id')->pluck('n', 'manager_id');
         $deals = DealContract::whereIn('buyer_user_id', $ids)
-            ->whereHas('deal', fn ($q) => $q->whereIn('state', [DealState::Active->value, DealState::Parallel->value]))
+            ->whereHas('deal', fn ($q) => $q->live())
             ->selectRaw('buyer_user_id, count(*) as n')->groupBy('buyer_user_id')->pluck('n', 'buyer_user_id');
 
         $blockers = [];

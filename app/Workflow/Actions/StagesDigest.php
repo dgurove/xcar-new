@@ -3,7 +3,6 @@
 namespace App\Workflow\Actions;
 
 use App\Notifications\HotStagesNotice;
-use App\Offers\DealState;
 use App\Users\Role;
 use App\Users\User;
 use App\Workflow\Position;
@@ -23,7 +22,7 @@ final class StagesDigest
         if ($now->hour < 10 || ! Cache::add('stages:digest:'.$now->toDateString(), true, now()->addDays(2))) {
             return;
         }
-        $hot = Position::where('track', 'sale')->whereHas('offer.deal', fn ($d) => $d->where('state', DealState::Active))
+        $hot = Position::where('track', 'sale')->whereHas('offer.deal', fn ($d) => $d->active())
             ->where(fn ($w) => $w->where('deadline_at', '<', now())->orWhere(fn ($x) => $x->waiting(WaitsFor::Us)));
         $total = (clone $hot)->count();
         if ($total === 0) {

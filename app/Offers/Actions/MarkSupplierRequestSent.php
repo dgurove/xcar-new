@@ -4,7 +4,6 @@ namespace App\Offers\Actions;
 
 use App\Mail\Message;
 use App\Offers\Deal;
-use App\Offers\DealState;
 use App\Users\User;
 use App\Workflow\Actions\TakeExit;
 use App\Workflow\Actor;
@@ -25,7 +24,7 @@ final class MarkSupplierRequestSent
     {
         $moved = 0;
         $vendorId = null;
-        foreach (Deal::whereKey($ids)->where('state', DealState::Active)->with('offer.positions.stage.exits.to')->get() as $deal) {
+        foreach (Deal::whereKey($ids)->active()->with('offer.positions.stage.exits.to')->get() as $deal) {
             $exit = $deal->offer->position(Track::Sale)?->stage->exitsFor(Actor::Staff, $deal)->first(fn (Outcome $e) => mb_strtolower($e->label) === 'заявка отправлена');
             if ($exit) {
                 ($this->take)($deal->offer, $exit, Actor::Staff, $by, ['letter' => $message->id]);

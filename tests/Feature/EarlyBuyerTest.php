@@ -10,6 +10,7 @@ use App\Offers\Deal;
 use App\Offers\DealScheme;
 use App\Offers\Offer;
 use App\Offers\OfferState;
+use App\Support\Surface;
 use App\Users\Role;
 use App\Users\User;
 use App\Vendors\Vendor;
@@ -92,7 +93,7 @@ class EarlyBuyerTest extends TestCase
         $this->assertNull($deal->fresh()->managerTask());
 
         // Страховая просит реквизиты — у нас «Отправить реквизиты», «Нет реквизитов» проходит сам.
-        $this->actingAs($this->admin)->get(\App\Support\Surface::Crm->url('/offers/'.$offer->number))->assertOk()->assertSee('Отправить реквизиты');
+        $this->actingAs($this->admin)->get(Surface::Crm->url('/offers/'.$offer->number))->assertOk()->assertSee('Отправить реквизиты');
         $this->exit($offer, 'Поставщик просит реквизиты');
         $this->assertSame('Письмо с реквизитами', $offer->fresh()->stage()->name);
     }
@@ -103,12 +104,12 @@ class EarlyBuyerTest extends TestCase
         $this->exit($offer, 'Беру в работу');
         $this->assertNotNull($deal->fresh()->buyer_asked_at);
         // Не дал — запрос страховой, как раньше, ведёт на «Нет реквизитов» у менеджера.
-        $this->actingAs($this->admin)->get(\App\Support\Surface::Crm->url('/offers/'.$offer->number))->assertOk()
+        $this->actingAs($this->admin)->get(Surface::Crm->url('/offers/'.$offer->number))->assertOk()
             // Покупатель — строкой «Продажи» «Покупатель — не выбран» (16.11.2026), не делом шага.
             ->assertSee('не выбран')->assertDontSee('Указать покупателя')->assertDontSee('Отправить реквизиты');
         $this->exit($offer, 'Поставщик просит реквизиты');
         $this->assertSame('Нет реквизитов', $offer->fresh()->stage()->name);
-        $deal->fresh()->update(['state' => \App\Offers\DealState::Cancelled]);
+        $deal->fresh()->cancel();
         $this->assertNull($deal->fresh()->buyer_asked_at);
     }
 }

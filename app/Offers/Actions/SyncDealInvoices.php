@@ -15,7 +15,6 @@ use App\Billing\Seller;
 use App\Notifications\Notify;
 use App\Offers\Deal;
 use App\Offers\DealContract;
-use App\Offers\DealState;
 use App\Offers\OfferEventType;
 use App\Support\Money;
 use App\Users\User;
@@ -112,7 +111,7 @@ final class SyncDealInvoices
         if ($party) {
             Invoice::where('offer_id', $deal->offer_id)->where('kind', ChargeKind::Service)->whereNull('deal_id')->whereNull('vehicle_id')
                 ->where('party_id', $party)->where('state', '!=', InvoiceState::Void)
-                ->whereIn('credit_deal_id', Deal::where('offer_id', $deal->offer_id)->where('state', DealState::Cancelled)->select('id'))
+                ->whereIn('credit_deal_id', Deal::where('offer_id', $deal->offer_id)->cancelled()->select('id'))
                 ->update(['credit_deal_id' => $deal->id]);
         }
     }

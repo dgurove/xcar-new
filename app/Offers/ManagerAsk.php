@@ -51,7 +51,7 @@ final class ManagerAsk
         $key = $me->id.':'.spl_object_id(request());
 
         return $seen[$key] ??= Deal::with(['offer.media', 'offer.positions.stage.block', 'offer.positions.stage.exits.to', 'openRequirement.stage.exits.to', 'garageCar.offer'])
-            ->where('buyer_id', $me->id)->whereIn('state', [DealState::Active, DealState::Parallel])->whereRaw(Deal::MANAGER_TURN_SQL)->get()
+            ->where('buyer_id', $me->id)->live()->whereRaw(Deal::MANAGER_TURN_SQL)->get()
             ->each(fn (Deal $d) => Parallels::dress($d->loadMissing('shadowStage')))
             ->map(fn (Deal $d) => self::for($d))->filter()
             ->sortBy(fn (self $a) => $a->due?->getTimestamp() ?? PHP_INT_MAX)->values();

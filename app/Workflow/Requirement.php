@@ -5,13 +5,14 @@ namespace App\Workflow;
 use App\Chats\Events\ChatMessageChanged;
 use App\Chats\Message;
 use App\Offers\Deal;
-use App\Offers\DealState;
 use App\Offers\Offer;
+use App\Support\Ago;
 use App\Support\FastAttributes;
 use App\Users\User;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Spatie\MediaLibrary\HasMedia;
@@ -58,7 +59,7 @@ class Requirement extends Model implements HasMedia
         }
         $type = collect($this->fields)->firstWhere('key', $key)['type'] ?? null;
         if ($type === 'datetime' && preg_match('/^\d{4}-\d\d-\d\d[ T]\d\d:\d\d/', (string) $value)) {
-            return \App\Support\Ago::at(\Illuminate\Support\Carbon::parse($value), true, words: false);
+            return Ago::at(Carbon::parse($value), true, words: false);
         }
 
         return (string) $value;
@@ -112,7 +113,7 @@ class Requirement extends Model implements HasMedia
     public function scopeOfRoute($q)
     {
         return $q->where(fn ($w) => $w->whereNull('deal_id')->orWhereNotExists(fn ($d) => $d->selectRaw('1')->from('deals')
-            ->whereColumn('deals.id', 'requirements.deal_id')->where('deals.state', DealState::Parallel->value)));
+            ->whereColumn('deals.id', 'requirements.deal_id')->whereNull('deals.closed_at')->where('deals.parallel', true)));
     }
 
     public function isOpen(): bool

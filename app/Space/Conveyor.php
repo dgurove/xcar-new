@@ -10,10 +10,8 @@ use App\Mail\Scope;
 use App\Offers\Binding;
 use App\Offers\CatalogQuery;
 use App\Offers\Deal;
-use App\Offers\DealState;
 use App\Offers\DealWork;
 use App\Offers\Offer;
-use App\Offers\OfferState;
 use App\Support\Surface;
 use App\Users\User;
 use App\Vendors\ClaimRequest;
@@ -176,7 +174,9 @@ final class Conveyor
                 in_array($key, self::GROUPS, true) => collect([['type' => 'icon', 'icon' => 'users', 'label' => 'Менеджеры', 'key' => 'group:managers']]),
                 default => collect($snap['people'][$key] ?? [])
                     ->map(fn ($p) => [...$p,
-                        'key' => match (true) { $p['type'] === 'vendor' => 'group:vendors', $key === 'drive' => 'group:drivers', default => 'user:'.$p['id'] },
+                        'key' => match (true) {
+                            $p['type'] === 'vendor' => 'group:vendors', $key === 'drive' => 'group:drivers', default => 'user:'.$p['id']
+                        },
                         'model' => $p['type'] === 'vendor' ? $vendors->get($p['id']) : $users->get($p['id'])])
                     ->sortByDesc('n'),
             };
@@ -361,7 +361,7 @@ final class Conveyor
     private static function deals(?int $carcade, array &$steps, array &$people): void
     {
         $letters = Owners::letterVendors();
-        $deals = Deal::where('state', DealState::Active)
+        $deals = Deal::active()
             ->whereHas('offer', fn ($o) => self::withoutCarcade($o, $carcade))
             ->with(['offer', 'offer.positions.stage.block', 'offer.positions.stage.exits.to', 'offer.pendingReprice'])->get();
         // Наш ход одним SQL (`NEEDS_US_SQL`): `todo()` — только у них, он спрашивал бы переоценку по каждой сделке.

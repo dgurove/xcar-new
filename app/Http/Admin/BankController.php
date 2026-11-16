@@ -15,7 +15,6 @@ use App\Billing\Bank\Transaction;
 use App\Billing\Invoice;
 use App\Offers\Actions\StampDealMoney;
 use App\Offers\Deal;
-use App\Offers\DealState;
 use App\Offers\Offer;
 use App\Support\Detail;
 use App\Support\ListPrefs;
@@ -89,7 +88,7 @@ class BankController
         if ($text !== '') {
             $offer = ctype_digit($text) ? Offer::where('number', (int) $text)->first() : null;
             $deal = $offer
-                ? Deal::where('offer_id', $offer->id)->whereIn('state', [DealState::Active, DealState::Done])->latest('id')->first()
+                ? Deal::where('offer_id', $offer->id)->held()->latest('id')->first()
                 : (CarMatch::of($text)['deal'] ?? null);
             if (! $deal) {
                 throw ValidationException::withMessages(['car' => 'Сделки с такой машиной не нашлось']);

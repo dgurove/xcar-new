@@ -8,10 +8,10 @@ use App\Billing\ChargeKind;
 use App\Billing\Party;
 use App\Billing\PartyKind;
 use App\Logistics\Actions\AuctionPickup;
+use App\Logistics\Transport;
 use App\Offers\CarPlace;
 use App\Offers\Deal;
 use App\Offers\DealScheme;
-use App\Offers\DealState;
 use App\Offers\Offer;
 use App\Offers\OfferEventType;
 use App\Offers\OfferState;
@@ -88,12 +88,13 @@ final class SellAtAuction
                 throw ValidationException::withMessages(['offer' => 'Отметить продажу на аукционе сейчас нельзя']);
             }
             // Машину везёт отрезок не от владельца (со стоянки логиста, перевод парковки) — сначала его довезти или отменить.
-            if (($open = \App\Logistics\Transport::openFor($offer)) && ! $open->isPickup()) {
+            if (($open = Transport::openFor($offer)) && ! $open->isPickup()) {
                 throw ValidationException::withMessages(['offer' => 'ТС везут со стоянки логиста: сначала отмените или довезите этот отрезок']);
             }
             $party = $this->party($data);
-            $deal = Deal::create(['offer_id' => $offer->id, 'buyer_id' => null, 'amount' => $price, 'cost' => $offer->floor_price,
-                'scheme' => DealScheme::Prime, 'state' => DealState::Active, 'auction_at' => $at, 'buyer_party_id' => $party?->id]);
+            $deal = new Deal(['offer_id' => $offer->id, 'buyer_id' => null, 'amount' => $price, 'cost' => $offer->floor_price,
+                'scheme' => DealScheme::Prime, 'auction_at' => $at, 'buyer_party_id' => $party?->id]);
+            $deal->setRelation('offer', $offer)->save();
             $wasPlace = $offer->car_place;
 
             // Вывоз ещё не начинали — забрал покупатель аукциона; уже везут — довезут, он заберёт у нас.

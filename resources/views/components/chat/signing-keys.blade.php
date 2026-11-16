@@ -6,7 +6,7 @@
 @php
     use App\Offers\Signing;
     $deal = $chat->offer_id && $chat->user_id && ! $chat->manager_id
-        ? \App\Offers\Deal::where('offer_id', $chat->offer_id)->where('buyer_id', $chat->user_id)->where('state', 'active')->latest('id')->first() : null;
+        ? \App\Offers\Deal::where('offer_id', $chat->offer_id)->where('buyer_id', $chat->user_id)->active()->latest('id')->first() : null;
     $manager = $user && $deal && $deal->buyer_id === $user->id && ! $readonly;
     $said = $deal ? ($deal->signing_at ? 'Записываем на '.Signing::short($deal->signing_at) : (($w = Signing::wishLine($deal)) ? 'Покупатель может '.$w : null)) : null;
     $asks = $deal && ! $said && Signing::asksTime($deal->offer?->position()?->stage?->loadMissing('exits.to.exits'));

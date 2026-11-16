@@ -155,8 +155,12 @@ final class MarkSoldDeal
             if ($run->stop->id !== $stage->id) {
                 ($this->place)($offer->fresh(), $run->stop, $by, payload: ['label' => 'Уже продана', ...($closes ? ['quiet' => true] : [])]);
             }
+            // Дата продажи — только у закрытой маршрутом сделки: `closed_at` и есть закрытие (16.11.2026), на идущей он закрыл бы
+            // её мимо машины.
             if ($closes) {
-                $deal->refresh()->forceFill(['closed_at' => $at])->save();
+                if ($deal->refresh()->closed_at !== null) {
+                    $deal->forceFill(['closed_at' => $at])->save();
+                }
                 $offer->positions()->where('track', Track::Sale->value)->update(['deadline_at' => null, 'waits_for' => null]);
             }
 

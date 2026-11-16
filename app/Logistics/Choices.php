@@ -2,7 +2,6 @@
 
 namespace App\Logistics;
 
-use App\Offers\DealState;
 use App\Offers\Offer;
 use App\Park\City;
 use App\Park\Yard;
@@ -62,7 +61,7 @@ final class Choices
         if ($garage?->manager) {
             return $garage->manager;
         }
-        $deal = $offer->relationLoaded('deal') ? $offer->deal : $offer->deal()->where('state', DealState::Active)->with('buyer')->first();
+        $deal = $offer->relationLoaded('deal') ? $offer->deal : $offer->deal()->active()->with('buyer')->first();
 
         return $deal?->buyer && ($deal->buyer->isManager() || $deal->buyer->isSuperBuyer()) ? $deal->buyer : null;
     }

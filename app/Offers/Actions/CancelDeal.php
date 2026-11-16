@@ -17,7 +17,6 @@ use App\Logistics\Transport;
 use App\Offers\Bid;
 use App\Offers\BidState;
 use App\Offers\Deal;
-use App\Offers\DealState;
 use App\Offers\Jobs\RetractDealNotices;
 use App\Users\User;
 use App\Workflow\Requirement;
@@ -46,7 +45,7 @@ final class CancelDeal
                 ? 'По ТС уже есть расходы: сначала уберите их'
                 : 'ТС уже у менеджера: сделку так не отменить']);
         }
-        $deal->update(['state' => DealState::Cancelled, 'closed_at' => now()]);
+        $deal->cancel();
         // Отмена — тихо (как отказ): «принято», ход и сроки этой сделки у менеджера стираются из ленты и Telegram.
         RetractDealNotices::dispatch($deal->id);
         if ($deal->bid?->state === BidState::Accepted) {

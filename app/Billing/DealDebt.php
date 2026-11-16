@@ -25,8 +25,8 @@ final class DealDebt
         and billing_invoices.kind <> 'reward' and billing_invoices.total > billing_invoices.paid";
 
     /** Сделка должна нам: открытый счёт или ожидаемый платёж (то же правило, что `of`). */
-    public const OWES_SQL = '(exists (select 1 from billing_invoices where '.self::OPEN_SQL.")
-        or (deals.state = 'active' and coalesce(deals.amount, deals.cost) > 0
+    public const OWES_SQL = '(exists (select 1 from billing_invoices where '.self::OPEN_SQL.')
+        or ('.Deal::ACTIVE_SQL." and coalesce(deals.amount, deals.cost) > 0
             and not (deals.garage_payer = 'manager' and deals.amount is null and exists (select 1 from offers o join vendors v on v.id = o.vendor_id
                 where o.id = deals.offer_id and v.deal_format = 'commission'))
             and not exists (select 1 from billing_invoices i where i.deal_id = deals.id and i.direction = 'issued' and i.state <> 'void' and i.kind <> 'reward')

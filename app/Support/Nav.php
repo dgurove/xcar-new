@@ -24,7 +24,6 @@ use App\Offers\Bid;
 use App\Offers\BidState;
 use App\Offers\CatalogQuery;
 use App\Offers\Deal;
-use App\Offers\DealState;
 use App\Offers\Interest;
 use App\Offers\InterestState;
 use App\Offers\Offer;
@@ -577,7 +576,7 @@ final class Nav
                     // Как список без вкладки — «Без продажной цены», вместе с черновиками из закупок.
                     '/offers' => OfferController::scopeFor(OfferController::home($user), Offer::notEmptyDraft())->count(),
                     '/gallery' => Offer::inGallery()->count(),
-                    '/work' => Deal::where('state', DealState::Active)->count(),
+                    '/work' => Deal::active()->count(),
                     '/purchases' => Purchase::where('state', PurchaseState::Open)->count(),
                 ], 'fresh' => []];
             }
@@ -596,9 +595,9 @@ final class Nav
                 '/deals' => match (true) {
                     // Только сделки в работе, как в списке (11.10.2026): подтверждения и закончившееся — строками в конце.
                     // Плюс «Ждут решения» (02.11.2026): срок приёма вышел, его подтверждение ждёт выбора — строки того же экрана.
-                    $user->hasDeals() => Deal::where('buyer_id', $user->id)->whereIn('state', [DealState::Active, DealState::Parallel])->count()
+                    $user->hasDeals() => Deal::where('buyer_id', $user->id)->live()->count()
                         + DealController::pending($user)->count(),
-                    $user->isAdmin() => Deal::where('state', DealState::Active)->count(),
+                    $user->isAdmin() => Deal::active()->count(),
                     default => null,
                 },
                 '/buyers' => $user->isManager() ? User::where('manager_id', $user->id)->count() : null,
@@ -648,7 +647,7 @@ final class Nav
             // гаража пишет «ваш ход» только по ним (цену продажи Совкомбанка называет «Продаю»).
             // Сделки, а не просьбы (27.10.2026: «Укажите покупателя» — ход без просьбы — в число не входил, бейдж 1 при двух делах).
             // Параллельная (07.11.2026) — его сделка, как идущая: ход по её просьбе (`MANAGER_TURN_SQL`).
-            $asks = Deal::where('buyer_id', $user->id)->whereIn('state', [DealState::Active, DealState::Parallel])->whereRaw(Deal::MANAGER_TURN_SQL)
+            $asks = Deal::where('buyer_id', $user->id)->live()->whereRaw(Deal::MANAGER_TURN_SQL)
                 ->selectRaw('count(*) filter (where garage_payer is null) as deals, count(*) filter (where garage_payer is not null and (exists (select 1 from requirements r
                     where r.deal_id = deals.id and r.done_at is null) or exists (select 1 from reprice_asks a where a.deal_id = deals.id and a.state in (\'pending\', \'countered\')))) as garage')->first();
             $paid = self::paidPayAsks($user);
@@ -734,7 +733,7 @@ final class Nav
     private static function hotDeals(?bool $garage = null): int
     {
         return Position::where('track', 'sale')
-            ->whereHas('offer.deal', fn ($d) => $d->where('state', DealState::Active)->when($garage, fn ($g) => $g->whereNotNull('garage_payer')))
+            ->whereHas('offer.deal', fn ($d) => $d->active()->when($garage, fn ($g) => $g->whereNotNull('garage_payer')))
             ->needsUs()
             ->count();
     }

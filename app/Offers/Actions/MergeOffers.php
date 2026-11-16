@@ -4,7 +4,6 @@ namespace App\Offers\Actions;
 
 use App\Cars\Actions\JoinCars;
 use App\Offers\Deal;
-use App\Offers\DealState;
 use App\Offers\Offer;
 use App\Offers\OfferEventType;
 use App\Offers\OfferState;
@@ -35,7 +34,7 @@ final class MergeOffers
     public static function pick(Collection $offers): Offer
     {
         return $offers->sortByDesc(fn (Offer $o) => [
-            Deal::where('offer_id', $o->id)->where('state', DealState::Active)->exists() ? 2 : (Deal::where('offer_id', $o->id)->exists() ? 1 : 0),
+            Deal::where('offer_id', $o->id)->active()->exists() ? 2 : (Deal::where('offer_id', $o->id)->exists() ? 1 : 0),
             match ($o->state) {
                 OfferState::Archived, OfferState::Cancelled => 0,
                 OfferState::Draft => 1,
@@ -62,7 +61,7 @@ final class MergeOffers
 
     public static function guard(Offer $keep, Offer $drop): void
     {
-        if (Deal::where('offer_id', $keep->id)->where('state', DealState::Active)->exists() && Deal::where('offer_id', $drop->id)->where('state', DealState::Active)->exists()) {
+        if (Deal::where('offer_id', $keep->id)->active()->exists() && Deal::where('offer_id', $drop->id)->active()->exists()) {
             throw ValidationException::withMessages(['offer' => 'Сделка идёт у обоих, объединять руками']);
         }
     }
@@ -78,6 +77,13 @@ final class MergeOffers
         $colors = ($keep->tag_colors ?? []) + ($drop->tag_colors ?? []);
         foreach (Rows::referencing('offers') as [$table, $column]) {
             Rows::repoint($table, $column, $drop->id, $keep->id);
+        }
+        // Текущие условия (`offers.deal_id`, 16.11.2026) — из базы, не из памяти: идущая сделка второго переезжает вместе с ним
+        // (у оставшегося идущей нет — `guard`); иначе — свои, а без своих — второго. Завершённая остаётся завершённой
+        // (`cancelled_at` пуст), указатель решает только, чьи условия текущие.
+        [$keepDeal, $dropDeal] = [Offer::withoutGlobalScopes()->whereKey($keep->id)->value('deal_id'), Offer::withoutGlobalScopes()->whereKey($drop->id)->value('deal_id')];
+        if ($dropDeal && (Deal::whereKey($dropDeal)->active()->exists() || ! $keepDeal)) {
+            $fill['deal_id'] = $dropDeal;
         }
         foreach (['subject', 'href'] as $key) {
             DatabaseNotification::where("data->{$key}", '/offers/'.$dropNumber)->get()

@@ -14,7 +14,6 @@ use App\Mail\CandidateState;
 use App\Mail\Scope;
 use App\Mail\Thread;
 use App\Offers\Deal;
-use App\Offers\DealState;
 use App\Offers\LegacyClaim;
 use App\Offers\Offer;
 use App\Park\Vehicle;
@@ -118,7 +117,7 @@ final class Search
         // Свои сделки и гараж — выше витрины: это машины менеджера, о них и спрашивают.
         if ($user->hasDeals()) {
             // Отменённые — нет: такая сделка машину уже не открывает.
-            Deal::of($user)->whereIn('state', [DealState::Active, DealState::Parallel, DealState::Done])->whereHas('offer', fn ($o) => $o->search($t))->with(['offer'])->latest('id')->limit(6)->get()
+            Deal::of($user)->notCancelled()->whereHas('offer', fn ($o) => $o->search($t))->with(['offer'])->latest('id')->limit(6)->get()
                 ->each(fn (Deal $d) => $cars->siteDeal($d));
         }
         if ($user->canGarage()) {
