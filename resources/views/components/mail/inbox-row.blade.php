@@ -1,5 +1,5 @@
 {{-- Письмо строкой во «Входящих» и «Отправленных» (17.11.2026, макет выбран владельцем): кто (в «Отправленных» — «Кому:»),
-     скрепка и дата; тема как есть; машина — значок типа ТС и «марка модель, год», без номера убытка и этапа (владелец:
+     скрепка и дата; машина (значок типа ТС и «марка модель, год») или тема; первые слова. Без номера убытка и этапа (владелец:
      «этап писать не нужно», «номер убытка не писать»). У цепочки «Из писем» — её название, у письма без машины — первые
      слова. Непрочитанное — жирным. Строка — ссылка на письмо справа (`Detail`, ключ — id письма); наше письмо, что не ушло
      или упало, — словом у даты. Метки ящика у строки нет: ящик выбирают чипом над списком. Дата — со временем; справа внизу
@@ -49,15 +49,17 @@
         @if ($unsent)<span class="inbox-unsent {{ $unsent === \App\Mail\SendState::Failed ? 'text-danger' : 'text-urgent' }}">{{ $unsent->label() }}</span>@endif
         <span class="inbox-when nums">{{ $when }}</span>
     </span>
-    {{-- Тема без «RE: / Fwd:» и «ч.2» — в узкой колонке приставки съедали место. --}}
-    <span class="inbox-subj">{{ \App\Mail\Topic::clean($m->subject) ?: '(без темы)' }}</span>
-    @if ($car)<span class="inbox-lead inbox-lead--car"><x-ui.cat-icon :category="$car[0] ?? \App\Cars\Category::Passenger"/></span>@endif
+    {{-- Вторая строка — машина, если узнана (значок типа ТС и «марка модель, год»), иначе тема без «RE: / Fwd:» и «ч.2»; третья —
+         всегда первые слова письма (17.11.2026, владелец: «не видно текста у писем, где распозналась машина — пусть машина
+         вместо темы, а не вместо текста»). --}}
+    @if ($car)
+        <span class="inbox-lead inbox-lead--car"><x-ui.cat-icon :category="$car[0] ?? \App\Cars\Category::Passenger"/></span>
+        <span class="inbox-subj inbox-car"><span class="truncate">{{ $car[1] }}</span></span>
+    @else
+        <span class="inbox-subj">{{ \App\Mail\Topic::clean($m->subject) ?: '(без темы)' }}</span>
+    @endif
     <span class="inbox-l3">
-        @if ($car)
-            <span class="inbox-car"><span class="truncate">{{ $car[1] }}</span></span>
-        @else
-            <span class="inbox-snip">{{ NodeTitle::words($m, 160) ?: 'Без своих слов' }}</span>
-        @endif
+        <span class="inbox-snip">{{ NodeTitle::words($m, 160) ?: ($files ? 'Только вложения' : 'Без своих слов') }}</span>
         @if ($size > 1)<span class="inbox-count nums" title="Писем по машине">{{ $size }}</span>@endif
     </span>
 </a>
