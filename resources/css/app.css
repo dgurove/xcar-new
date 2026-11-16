@@ -2591,8 +2591,9 @@ html.kb-open { --home-gap: 0px; }
   .legal a { @apply text-accent-text hover:underline; }
 
   /* Аватар: фото или инициалы. */
-  .avatar { @apply inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-surface-3 text-ink-muted font-semibold select-none; }
-  .avatar img { @apply size-full object-cover; }
+  .avatar { @apply relative inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-surface-3 text-ink-muted font-semibold select-none; }
+  /* Фото — поверх инициалов: не загрузилось — его снимают (`lib/avatar-fallback.js`), и видны инициалы (16.11.2026). */
+  .avatar img { @apply absolute inset-0 size-full object-cover; }
   /* Система вместо человека (x-ui.system-avatar): лайм, белый значок. */
   .avatar-system { background: var(--color-accent); color: #fff; }
   .avatar-system > svg { flex-shrink: 0; }

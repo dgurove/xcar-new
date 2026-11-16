@@ -15,5 +15,6 @@
     }
 @endphp
 <span {{ $attributes->merge(['class' => 'avatar'.($online ? ' is-online' : '').($hue ? ' avatar-hue-'.$hue : '')]) }} style="width: {{ $size }}px; height: {{ $size }}px; font-size: {{ max(9, (int) round($size * .4)) }}px">
-    @if ($url)<img src="{{ $url }}" alt="" width="{{ $size }}" height="{{ $size }}" @if ($size > 28) loading="lazy" @endif decoding="async">@else{{ $text ?: '·' }}@endif
+    {{-- Заглушка (16.11.2026, владелец): фото не загрузилось — картинку снимает `lib/avatar-fallback.js`, под ней инициалы. --}}
+    {{ $text ?: '·' }}@if ($url)<img src="{{ $url }}" alt="" width="{{ $size }}" height="{{ $size }}" @if ($size > 28) loading="lazy" @endif decoding="async">@endif
 </span>

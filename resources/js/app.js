@@ -24,6 +24,7 @@ import { pullToRefresh } from './lib/pull';
 import { keepPosition, onScroll as onPageScroll, quietHover, scrollTop, scrollToY } from './lib/scroller';
 import { keepPush } from './push-sync';
 import { csrf } from './lib/http';
+import avatarFallback from './lib/avatar-fallback';
 
 // Потоки из ответа карточки строки (x-ui.row-card): тост flash-сообщения и «следующий без цены» (detail_controller).
 Turbo.StreamActions.toast = function () {
@@ -188,6 +189,7 @@ keepPosition();
 quietHover();
 stalePage();
 keyboardInset();
+avatarFallback();
 actionRoom();
 systemTheme();
 headerState();
