@@ -5,11 +5,12 @@
      «Изменить» карточки «ДКП ПРАЙМ»), ошибка формы открывает её сама.
      ДКП ПРАЙМ (14.11.2026): строкой — собственник по договору комиссии (сам из письма, `FillCommissionOwner`); под «Изменить» —
      собственник полями паспорта и № договора комиссии. НДС договора — рядом со схемой в «Деньгах» (`x-deal.scheme`). --}}
-@props(['deal', 'bare' => false])
+@props(['deal', 'bare' => false, 'docRow' => true])
 @php
     use App\Offers\DealContract;
     $contract = DealContract::for($deal)->loadMissing(['seller', 'buyer.party']);
     $missing = $contract->missing();
+    $doc_row = $docRow;
     // Поля договора — шторкой «Данные договора» (15.11.2026): открыта сама при ошибке формы или «Заполнить» из шага пути (`?dkp=1`),
     // пока чего-то не хватает; иначе — пунктом «⋯» «Продажи» (`dkp-{id}:open`) или «Изменить» окна модератора.
     $editing = $errors->hasAny(['seller.*', 'vehicle.*']) || (request()->boolean('dkp') && $missing);
@@ -22,14 +23,8 @@
     $ownerFields = $deal->isDkp() || ($prime && (! $owner || $owner->kind === \App\Billing\PartyKind::Person));
 @endphp
 @php ob_start(); @endphp
-    {{-- Договор — файлом, как документ: значок PDF и номер. Только готовый (15.11.2026, владелец: «ЗАЧЕМ мы показываем
-         договор, если он НЕ ГОТОВ»): чего не хватает — делами в «Ходе сделки». --}}
-    @unless ($missing)
-    {{-- Тем же видом, что счета (16.11.2026, `x-deal.doc-row`): значок, номер, «Скачать» справа. --}}
-    <x-deal.doc-row :href="$pdf['url']" :title="'Договор'.($doc->number() ? ' № '.$doc->number() : ' купли-продажи')" name="dkp.pdf" :file="$pdf['name']">
-        <span class="text-open">готов</span>
-    </x-deal.doc-row>
-    @endunless
+    {{-- Договор — файлом (`x-deal.contract-doc`); в «Продаже» его ставит `x-deal.money` над «Подписанным договором». --}}
+    @if ($doc_row)<x-deal.contract-doc :deal="$deal"/>@endif
     <x-deal.buyer :deal="$deal" :contract="$contract"/>
 @php $rows = ob_get_clean(); @endphp
 @php ob_start(); @endphp

@@ -93,10 +93,12 @@ class DealPayerTest extends TestCase
         $invoice = $this->sale($deal);
         $this->assertSame($party->id, $invoice->party_id);
         $this->assertSame(InvoiceState::Void, $before->fresh()->state);
-        // Посторонний — одна строка на цену сделки и без удержания: разбивка показала бы закупочную и долю менеджера.
-        $this->assertSame([1050000.0], $invoice->charges()->pluck('price')->map(fn ($p) => (float) $p)->all());
-        $this->assertEqualsWithDelta(1050000, $invoice->remaining(), 0.01);
-        $this->assertFalse($deal->fresh()->withholds());
+        // Посторонний — одна строка (разбивка показала бы закупочную и долю менеджера) за вычетом вознаграждения: «удерживает
+        // сам» — менеджер берёт его с покупателя (16.11.2026, владелец по сделке 412 Совкомбанка), договор — на ту же сумму.
+        $this->assertSame([1020000.0], $invoice->charges()->pluck('price')->map(fn ($p) => (float) $p)->all());
+        $this->assertEqualsWithDelta(1020000, $invoice->remaining(), 0.01);
+        $this->assertTrue($deal->fresh()->withholds());
+        $this->assertTrue($deal->fresh()->buyerPaysReward());
 
         // Ссылка (по счёту продажи её заводят руками) — на плательщика счёта.
         $link = app(\App\Billing\Acquiring\Actions\EnsurePayLink::class)($invoice) ?? app(\App\Billing\Acquiring\Actions\CreatePayLink::class)($invoice, $this->manager, 100000,

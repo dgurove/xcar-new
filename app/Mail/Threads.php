@@ -122,7 +122,7 @@ final class Threads
         if (! $last->isForwardedByStaff() && ! Vendor::forSender($last->from_email, Scope::Offers)) {
             return false;
         }
-        $own = trim((string) preg_replace('/\s+/u', ' ', Message::find($last->id)?->ownText() ?? ''));
+        $own = trim((string) preg_replace('/\s+/u', ' ', Message::find($last->id)?->shownText() ?? ''));
 
         return ! preg_match('/^(?:\pL+[,!]?\s*){0,3}(?:спасибо|благодарю|принято|понял[аи]?|хорошо|ок|ok)[\s.!)]*$/iu', $own);
     }

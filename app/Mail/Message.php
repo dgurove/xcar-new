@@ -112,6 +112,12 @@ class Message extends Model
         return $this->parsed['own_text'] ?? Extraction\Intent::excerpt($this->text_body ?: strip_tags((string) $this->html_body), 2000);
     }
 
+    /** Свои слова для показа — без подписи (`Extraction\Signature`, 16.11.2026): строка почты, лента, плашки. Разбор берёт `ownText`. */
+    public function shownText(): string
+    {
+        return Extraction\Signature::cut($this->ownText(), $this->from_name);
+    }
+
     /** Ответ вендора текстом до подписи — менеджеру сделки (`Intent::reply`). */
     public function replyText(bool $marks = false): string
     {

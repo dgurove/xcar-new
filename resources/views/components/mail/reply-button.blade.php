@@ -10,7 +10,7 @@
     $deal = auth()->user()?->canManageCrm() && ! $message->isOurs() ? $message->thread?->offer?->deal : null;
     $deal = $deal?->isActive() ? $deal : null;
     $replied = $deal && $message->thread->offer->position(\App\Workflow\Track::Sale)?->letterStatus() === 'replied';
-    $said = $deal && ! $message->isOurs() ? trim(\Illuminate\Support\Str::limit(preg_replace('/\s+/u', ' ', (string) $message->ownText()), 60, '…')) : '';
+    $said = $deal && ! $message->isOurs() ? trim(\Illuminate\Support\Str::limit(preg_replace('/\s+/u', ' ', (string) $message->shownText()), 60, '…')) : '';
     // Не доставлено (02.11.2026): отвечать почтовому серверу незачем — письмо пересылают на верный адрес.
     $bounce = $message->intent === \App\Mail\Extraction\Intent::Bounce->value;
     $editor = $base.'/'.$message->thread_id.'/reply/'.$message->id.($bounce ? '?mode=forward' : '');

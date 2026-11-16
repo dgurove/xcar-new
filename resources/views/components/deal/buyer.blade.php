@@ -12,7 +12,7 @@
     $live = $deal->isLive() && ! $deal->isDirect() && $manager?->isManager();
     $isManager = $buyer && $buyer->id === $deal->buyer_id;
     $ready = $buyer?->party?->readyAsBuyer();
-    $gap = $buyer?->party?->buyerGap();
+    $gap = $buyer?->party?->gapWord();
     // Строка (06.11.2026, владелец: «Покупатель  Гамидов Та…» — подпись слева съедала ФИО): имя во всю строку, под ним состояние;
     // у ИП и организации — вид словом. Без аватара и с формой коротко — «ООО …» (16.11.2026, владелец: «зачем здесь аватарка»).
     $who = $buyer ? (\App\Support\OrgName::short($buyer->party?->name) ?: $buyer->name) : null;

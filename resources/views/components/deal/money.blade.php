@@ -137,12 +137,14 @@
     @php $supplierBlock = in_array($deal->schemeOf(), [\App\Offers\DealScheme::Insurer, \App\Offers\DealScheme::OwnerDkp], true) && $deal->buyer_id && ! $deal->isAuction(); @endphp
     @php ob_start(); @endphp
     @unless ($deal->isAuction())<x-deal.scheme :deal="$deal" bare :price="false"/>@endunless
-    @if ($withContract)<x-deal.contract :deal="$deal" bare/>@elseif ($withBuyer)<x-deal.buyer :deal="$deal"/>@endif
+    @if ($withContract)<x-deal.contract :deal="$deal" bare :doc-row="false"/>@elseif ($withBuyer)<x-deal.buyer :deal="$deal"/>@endif
     {{-- Покупатель платит поставщику сам — его счёт и платёжка здесь, под «Реквизитами» (карточки «Оплата поставщику» тогда нет). --}}
     @if ($supplierBlock)@include('admin.deals.supplier-rows')@endif
     {{-- Чего не хватает договору с нашей стороны — владелец, ПТС, сумма (16.11.2026: было делами в «Ходе сделки»). --}}
     <x-deal.contract-gaps :deal="$deal" :price-row="$contractRow"/>
     @if ($contractRow)<x-deal.contract-price :deal="$deal" :contract="\App\Offers\DealContract::for($deal)->loadMissing('priceAuthor')"/>@endif
+    {{-- Готовый договор — сразу над подписанным (16.11.2026, владелец). --}}
+    @if ($withContract)<x-deal.contract-doc :deal="$deal"/>@endif
     {{-- Подписанный договор вне системы (15.11.2026) — строками той же группы. --}}
     @if (auth()->user()?->canEditDeals())<x-deal.signed-contract :deal="$deal" :base="'/work/deals/'.$deal->id" bare/>@endif
     @php $top = trim(ob_get_clean()); @endphp

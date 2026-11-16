@@ -2939,12 +2939,14 @@ html.kb-open { --home-gap: 0px; }
   /* Раскрытая шапка — просто строка текста: высота под нажатие нужна свёрнутой, а у раскрытой конверт «От…» вставал
      через лишнюю пустую строку. */
   .letter-body[open] > .letter-head { min-height: 0; }
-  .letter-body[open] > .letter-head .letter-title { white-space: normal; }
-  .letter-body[open] > .letter-head .letter-title--words { display: none; }
+  /* Раскрытое — справа от имени тема письма вместо заголовка (16.11.2026, владелец): имя целиком, тема режется «…». */
+  .letter-topic { display: none; grid-column: 1; grid-row: 2; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--color-ink-muted); }
+  .letter-body[open] > .letter-head .letter-title { display: none; }
+  .letter-body[open] > .letter-head .letter-topic { display: block; }
   @media (min-width: 640px) {
-    .letter-head { display: flex; flex-wrap: wrap; gap: .125rem .5rem; }
-    .letter-who { flex: 0 0 auto; max-width: 14rem; }
-    .letter-title { flex: 1 1 12rem; }
+    .letter-head { display: flex; flex-wrap: nowrap; gap: .5rem; }
+    .letter-who { flex: 0 0 auto; max-width: none; }
+    .letter-title, .letter-topic { flex: 1 1 0; }
     .letter-when { margin-left: auto; }
   }
   /* Цепочка в «Из писем» — карточка, как беседа в почтовом приложении (.chain-card): шапка x-mail.chain-head (ТС; под ней
@@ -3127,7 +3129,7 @@ html.kb-open { --home-gap: 0px; }
   @container (min-width: 36rem) {
     .rail .letter-body { padding-bottom: .375rem; }
     .rail .letter-head { display: flex; flex-wrap: nowrap; gap: .75rem; }
-    .rail .letter-who { flex: 0 1 auto; max-width: 14rem; }
+    .rail .letter-who { flex: 0 0 auto; max-width: none; }
     .rail .letter-title { flex: 1 1 0; }
   }
   .letter-text { font-size: var(--text-base); line-height: 1.45; }
@@ -3209,8 +3211,11 @@ html.kb-open { --home-gap: 0px; }
   .letter-env-more > summary::-webkit-details-marker { display: none; }
   .letter-env-more[open] > summary { display: none; }
   .letter-when-full { display: none; }
-  .letter-body[open] > .letter-head .letter-when-full { display: inline; }
-  .letter-body[open] > .letter-head .letter-when-short { display: none; }
+  /* На телефоне раскрытое — та же короткая дата: длинная съедала имя («Кузнецова Татьяна Анатол…»). */
+  @media (min-width: 640px) {
+    .letter-body[open] > .letter-head .letter-when-full { display: inline; }
+    .letter-body[open] > .letter-head .letter-when-short { display: none; }
+  }
   .letter--ours .letter-text { padding: .75rem; border-radius: var(--radius-l); background: var(--color-surface-2); }
   .letter--service .letter-body { padding-bottom: .5rem; }
   .letter--service .letter { grid-template-columns: 0 minmax(0, 1fr); column-gap: 0; }

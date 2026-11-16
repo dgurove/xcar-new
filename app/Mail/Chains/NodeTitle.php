@@ -83,7 +83,7 @@ final class NodeTitle
             return $to ? 'Не дошло до '.$to : 'Письмо не дошло';
         }
 
-        return Str::limit(trim((string) preg_replace('/\s+/u', ' ', $m->ownText())), $limit, '…');
+        return Str::limit(trim((string) preg_replace('/\s+/u', ' ', $m->shownText())), $limit, '…');
     }
 
     /** Сколько строк у писем в ленте (x-mail.rail): «ч.2» склеена со своим письмом — число в заголовке «Письма N» с ними сходится. */

@@ -24,7 +24,7 @@ final class VendorLetter extends Message
 
     protected function lines(): array
     {
-        $words = Str::limit(trim((string) preg_replace('/\s+/u', ' ', $this->letter->ownText())), 600);
+        $words = Str::limit(trim((string) preg_replace('/\s+/u', ' ', $this->letter->shownText())), 600);
 
         return Text::lines($this->offer,
             'От '.trim(($this->letter->from_name ? $this->letter->from_name.' ' : '').'<'.$this->letter->from_email.'>'),

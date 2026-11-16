@@ -14,7 +14,7 @@
     $when = \App\Support\Ago::stamp($m->date_at);
     $files = $m->files();
     [$pictures, $documents] = $files->partition(fn ($f) => $f->isImage() && $f->mime !== 'image/svg+xml');
-    $text = trim($m->ownText());
+    $text = trim($m->shownText());
     // Конверт раскрытого письма: от кого — адресом, полная дата, кому и копия (владелец 07.10.2026: почту «нигде
     // невозможно посмотреть и скопировать»). Адреса ленте грузит x-mail.chain одним запросом.
     $from = NodeTitle::email($m);
@@ -28,6 +28,8 @@
         <summary class="letter-head">
             <span class="letter-who" title="{{ $from }}">{{ $who }}</span>
             <span class="letter-title{{ $titled ? '' : ' letter-title--words' }}">{{ $title }}</span>
+            {{-- Раскрытое — тема справа от имени, длинная режется «…» (16.11.2026, владелец: «темы писать справа от имени, имя не сокращать»). --}}
+            @if (! $continuation && ($topic = \App\Mail\Extraction\Patterns::cleanSubject($m->subject)) !== '' && mb_strtolower($topic) !== 'без темы')<span class="letter-topic" title="{{ $topic }}">{{ $topic }}</span>@endif
             @if ($files->isNotEmpty())<span class="letter-clip nums"><x-ui.icon name="clip" class="size-3.5"/>{{ $files->count() }}</span>@endif
             {{-- Раскрыто — полная дата («21 сентября, 14:26»), свёрнуто — короткая. --}}
             <span class="letter-when nums"><span class="letter-when-short">{{ $when }}</span><span class="letter-when-full">{{ $m->date_at?->isoFormat($m->date_at->isCurrentYear() ? 'D MMMM, H:mm' : 'D MMMM YYYY, H:mm') }}</span></span>
@@ -66,11 +68,9 @@
                  (16.11.2026, владелец: «у писем не хватает темы», «что красным — должно быть красным»; `BodyRenderer::own`).
                  Песочница iframe грузится, только когда письмо раскрыто (`loading="lazy"`). --}}
             @php
-                $subject = \App\Mail\Extraction\Patterns::cleanSubject($m->subject);
                 $own = app(\App\Mail\BodyRenderer::class);
                 $doc = $own->own($m, $base);
             @endphp
-            @if ($subject !== '' && mb_strtolower($subject) !== 'без темы')<div class="letter-subject">{{ $subject }}</div>@endif
             @if ($doc)
                 <div data-controller="frame" class="letter-own overflow-hidden rounded-(--radius-m) {{ $own->isPlain($m) ? '' : 'bg-white' }}">
                     <iframe sandbox="allow-same-origin allow-popups allow-popups-to-escape-sandbox" srcdoc="{{ $doc }}" title="Письмо" loading="lazy" class="block w-full" style="height:60px" data-frame-target="frame" data-action="load->frame#fit"></iframe>

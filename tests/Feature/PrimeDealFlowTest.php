@@ -190,7 +190,11 @@ class PrimeDealFlowTest extends TestCase
         $this->assertSame($stage, $offer->fresh()->stage()->name);
     }
 
-    /** ПРАЙМ «удерживает сам», а платит покупатель — вознаграждение к выплате; вернули «плачу я» — снова за вычетом. */
+    /**
+     * ПРАЙМ «удерживает сам», платит покупатель — счёт и договор за вычетом вознаграждения, его менеджер берёт с покупателя сам,
+     * выплаты нет (16.11.2026, владелец по сделке 412 Совкомбанка; до того платёж шёл целиком на ПРАЙМ и вознаграждение
+     * выплачивали). «Плачу я» — тоже за вычетом, зачётом.
+     */
     public function test_prime_withheld_follows_payer(): void
     {
         $offer = $this->offer();
@@ -198,8 +202,10 @@ class PrimeDealFlowTest extends TestCase
         $this->pickedUp($offer);
         app(SaveDealContract::class)(DealContract::for($deal->fresh()), $this->buyerData(), $this->manager);
         $this->passportFor($deal->fresh()->contract->buyer);
-        $this->assertEqualsWithDelta(1050000, $deal->fresh()->issuedInvoices()->sole()->remaining(), 0.01);
-        $this->assertFalse($deal->fresh()->withholds());
+        $this->assertEqualsWithDelta(1020000, $deal->fresh()->issuedInvoices()->sole()->remaining(), 0.01);
+        $this->assertTrue($deal->fresh()->withholds());
+        $this->assertSame(1020000, (int) $deal->fresh()->contract->price);
+        $this->assertNull($deal->fresh()->agentFee);
 
         app(SaveDealContract::class)(DealContract::for($deal->fresh()), ['payer' => 'manager'], $this->manager);
         $this->assertSame(CommissionMode::Withheld, $deal->fresh()->commission_mode);

@@ -59,9 +59,9 @@ final class SyncDealInvoices
             return;
         }
         $deal->loadMissing(['offer', 'buyer', 'contract.buyer']);
-        // Гаражная Совкомбанка: цена договора идёт за счётом — плательщик, цена и вознаграждение меняются по ходу (27.10.2026).
-        // Сумма, вписанная руками (14.11.2026, `SetContractPrice`), не перетирается.
-        if ($deal->namesBuyer() && $deal->contract && ! $deal->contract->price_manual && $deal->contract->price !== ($price = DealContract::priceFor($deal))) {
+        // Цена договора ПРАЙМ идёт за счётом — плательщик, цена и вознаграждение меняются по ходу (гаражная Совкомбанка
+        // 27.10.2026, продажа — 16.11.2026: платит покупатель — минус вознаграждение). Вписанная руками (`SetContractPrice`) не перетирается.
+        if (($deal->namesBuyer() || $deal->isPrime()) && $deal->contract && ! $deal->contract->price_manual && $deal->contract->price !== ($price = DealContract::priceFor($deal))) {
             $deal->contract->update(['price' => $price]);
         }
         DB::transaction(function () use ($deal, $by) {
@@ -175,7 +175,8 @@ final class SyncDealInvoices
         if (! $deal->passportReady() && $deal->credited() <= 0) {
             return null;
         }
-        // Платит покупатель — удерживать не из чего, `Deal::withholds` тогда ложь: вознаграждение выплачиваем после оплаты.
+        // Платит покупатель: «удерживает сам» — счёт за вычетом вознаграждения, его менеджер берёт с покупателя
+        // (`Deal::buyerPaysReward`); «выплачиваем» — счёт на всю цену, вознаграждение выплачиваем после оплаты.
         // Кто платит — одна дверь `Deal::payerParty` (16.11.2026): выбранный по сделке, иначе менеджер или покупатель по
         // договору. Не менеджер — одной строкой: разбивка показала бы закупочную и долю менеджера.
         $managerPays = $deal->managerPays();
@@ -183,7 +184,6 @@ final class SyncDealInvoices
         // Супер-покупатель (`isDirect`) закупочную не видит нигде: ему одна строка на цену сделки, без разбивки на
         // «Транспортное средство» по закупочной и «Агентское вознаграждение» — разница выдала бы её. Так же покупателю
         // менеджера, когда платит он (13.10.2026): счёт с разбивкой показал бы ему закупочную и долю менеджера.
-        // Гаражная Совкомбанка, платит покупатель — без вознаграждения менеджера: его покупатель отдаёт ему сам (27.10.2026).
         if ($deal->isDirect() || ! $managerPays) {
             $price = $manual ?? ($deal->buyerPaysReward() ? max(0, (int) $deal->amount - (int) $deal->commission) : (int) $deal->amount);
 

@@ -26,13 +26,14 @@ final class BodyRenderer
     {
         $html = trim((string) $message->html_body);
         if ($html === '') {
-            $text = Extraction\QuotationStripper::ownText($message->text_body);
+            $text = Extraction\Signature::cut(Extraction\QuotationStripper::ownText($message->text_body), $message->from_name);
 
             return $text === '' ? null : $this->wrap($message, '<pre class="plain">'.e($text).'</pre>', false, $base);
         }
         if (! $message->isForwardedByStaff()) {
             $html = $this->withoutQuote($html) ?? $html;
         }
+        $html = $this->withoutSignature($html, $message->from_name) ?? $html;
 
         return self::blank($html) ? null : $this->wrap($message, $html, false, $base);
     }
@@ -45,7 +46,7 @@ final class BodyRenderer
     {
         $html = trim((string) $message->html_body);
         if ($html === '') {
-            return Extraction\QuotationStripper::ownText($message->text_body);
+            return Extraction\Signature::cut(Extraction\QuotationStripper::ownText($message->text_body), $message->from_name);
         }
         if (! $message->isForwardedByStaff()) {
             $html = $this->withoutQuote($html) ?? $html;
@@ -59,6 +60,7 @@ final class BodyRenderer
         if (! $body) {
             return '';
         }
+        Extraction\Signature::cutDom($dom, $body, $message->from_name);
         foreach (['style', 'script', 'head', 'title'] as $tag) {
             foreach (iterator_to_array($dom->getElementsByTagName($tag)) as $n) {
                 $n->parentNode?->removeChild($n);
@@ -105,6 +107,22 @@ final class BodyRenderer
      * (Outlook `divRplyFwdMsg` и черта `border-top: solid #E1E1E1`, Gmail, Thunderbird, Yahoo), `<hr>`, абзац «От: / From: /
      * -----Original Message-----». Пустые абзацы в начале и в конце (Outlook ставит по два) — тоже. Признака нет — null.
      */
+    /** Тело без подписи (`Extraction\Signature`); подписи нет — null. */
+    private function withoutSignature(string $html, ?string $name): ?string
+    {
+        $dom = new \DOMDocument;
+        $errors = libxml_use_internal_errors(true);
+        $loaded = $dom->loadHTML('<?xml encoding="utf-8"?>'.self::ascii($html), LIBXML_HTML_NODEFDTD | LIBXML_NONET);
+        libxml_clear_errors();
+        libxml_use_internal_errors($errors);
+        $body = $dom->getElementsByTagName('body')->item(0);
+        if (! $loaded || ! $body instanceof \DOMElement || ! Extraction\Signature::cutDom($dom, $body, $name)) {
+            return null;
+        }
+
+        return self::save($dom);
+    }
+
     private function withoutQuote(string $html): ?string
     {
         $dom = new \DOMDocument;
@@ -164,6 +182,21 @@ final class BodyRenderer
                     break;
                 }
                 $p->parentNode->removeChild($p);
+            }
+        }
+
+        return self::save($dom);
+    }
+
+    /**
+     * Документ обратно в HTML — UTF-8. Без этого libxml пишет в кодировке `<meta charset>` письма: у Совкомбанка koi8-r, и в ленте
+     * вместо текста были «������» (16.11.2026, срезка подписи).
+     */
+    private static function save(\DOMDocument $dom): string
+    {
+        foreach (iterator_to_array($dom->getElementsByTagName('meta')) as $meta) {
+            if ($meta->hasAttribute('charset') || strcasecmp($meta->getAttribute('http-equiv'), 'content-type') === 0) {
+                $meta->parentNode?->removeChild($meta);
             }
         }
 

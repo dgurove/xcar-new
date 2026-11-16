@@ -22,7 +22,7 @@
                     <h2 class="text-base font-medium">{{ $words($m) }}</h2>
                     {{-- То же письмо в нескольких ветках — одним блоком (`Mail\Twins`), сколько веток — словом. --}}
                     <span class="text-sm text-ink-muted">{{ \App\Mail\Chains\NodeTitle::who($m) }}, <span class="nums">{{ \App\Support\Ago::html($m->date_at, short: true) }}</span>@if (($m->twins ?? 1) > 1), в {{ $m->twins }} {{ $m->twins < 5 ? 'ветки' : 'веток' }}@endif</span>
-                    @if ($text = trim($m->ownText()))<p class="truncate text-sm">{{ $text }}</p>@endif
+                    @if ($text = trim($m->shownText()))<p class="truncate text-sm">{{ $text }}</p>@endif
                 </div>
                 <div class="flex gap-2">
                     {{-- Просят фото и документы принятой ТС — форма отчёта ответом на это письмо (29.10.2026: из пустого
