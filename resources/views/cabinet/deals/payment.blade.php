@@ -104,7 +104,7 @@
     @if ($buyerPays ?? false)
         @php $cb = $deal->contract?->buyer; @endphp
         <div class="list">
-            <x-deal.sale-row label="Плательщик" :value="$cb ? ($cb->id === $deal->buyer_id ? 'Вы' : $cb->name) : 'покупатель не выбран'" :tone="$cb ? null : 'danger'"
+            <x-deal.sale-row label="Плательщик" :value="$cb ? ($cb->id === $deal->buyer_id ? 'Вы' : $cb->name) : 'не выбран'" :tone="$cb ? null : 'danger'"
                 data-controller="emit" data-action="emit#send" data-emit-event-param="buyer:open"/>
         </div>
     @endif
