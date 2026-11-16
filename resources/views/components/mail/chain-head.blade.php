@@ -11,7 +11,7 @@
 @endphp
 <div class="chain-head">
     <div class="min-w-0 flex-1">
-        <div class="chain-head-title {{ $c->hasCar() ? '' : 'text-ink-muted' }}">{{ $c->title() }}</div>
+        <div class="chain-head-title {{ $c->hasCar() ? '' : 'text-ink-muted' }}">@if ($c->hasCar())<x-ui.cat-icon :category="\App\Cars\Category::guess($c->title()) ?? \App\Cars\Category::Passenger"/>@endif{{ $c->title() }}</div>
         <div class="chain-head-sub">
             @if (! $c->vendor)<x-mail.vendor-pick :pick="\App\Mail\VendorPick::of(auth()->user(), $park ? \App\Mail\Scope::Park : \App\Mail\Scope::Offers, $park ? '/mail' : '/work/mail', $c->thread, $c->relationLoaded('messages') ? $c->messages : [], $c)"/>@endif
             {{-- Без номера — с именем вендора: у одного логотипа нет базовой линии, и на ПК строка садилась ниже названия. --}}

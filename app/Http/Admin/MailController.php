@@ -410,28 +410,6 @@ class MailController
         return redirect(strtok($back, '?').($query ? '?'.http_build_query($query) : ''))->with('toast', $read ? 'Прочитано' : 'Не прочитано');
     }
 
-    /** «Скачать все» — файлы письма одним архивом, имя — тема письма. */
-    public function files(Message $message)
-    {
-        $this->guardMessage($message);
-        $files = $message->files()->filter(fn (Attachment $a) => $a->contents() !== null);
-        abort_if($files->isEmpty(), 404);
-        $zip = new \ZipArchive;
-        $path = tempnam(sys_get_temp_dir(), 'mail-zip');
-        $zip->open($path, \ZipArchive::OVERWRITE);
-        $names = [];
-        foreach ($files as $a) {
-            $name = $a->filename ?: 'file-'.$a->id;
-            // Одинаковые имена в письме бывают («image.jpg» ×20) — второй и дальше с номером.
-            $names[$name] = ($names[$name] ?? 0) + 1;
-            $zip->addFromString($names[$name] > 1 ? pathinfo($name, PATHINFO_FILENAME).' ('.$names[$name].').'.pathinfo($name, PATHINFO_EXTENSION) : $name, $a->contents());
-        }
-        $zip->close();
-        $title = trim((string) preg_replace('/[\\\/:*?"<>|]+/u', ' ', \App\Mail\Extraction\Patterns::cleanSubject($message->subject) ?: 'Файлы письма'));
-
-        return response()->download($path, \Illuminate\Support\Str::limit($title, 80, '').'.zip')->deleteFileAfterSend();
-    }
-
     /** «Заявка ›» (CRM: «Предложение ›») у нераспознанного письма: кандидат из ветки как есть, дальше обычная дверь заведения. */
     public function candidate(Request $request, Thread $thread)
     {

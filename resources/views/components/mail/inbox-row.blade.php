@@ -1,9 +1,11 @@
 {{-- Письмо строкой во «Входящих» и «Отправленных» (17.11.2026, макет выбран владельцем): кто (в «Отправленных» — «Кому:»),
-     скрепка и дата; тема как есть; машина — логотип вендора и «марка модель, год», без номера убытка и этапа (владелец:
+     скрепка и дата; тема как есть; машина — значок типа ТС и «марка модель, год», без номера убытка и этапа (владелец:
      «этап писать не нужно», «номер убытка не писать»). У цепочки «Из писем» — её название, у письма без машины — первые
      слова. Непрочитанное — жирным. Строка — ссылка на письмо справа (`Detail`, ключ — id письма); наше письмо, что не ушло
      или упало, — словом у даты. Метки ящика у строки нет: ящик выбирают чипом над списком. Дата — со временем; справа внизу
-     кружок — сколько писем во всей переписке по машине (size). На телефоне строка открывает окно писем дела, как из сделки
+     кружок — сколько писем во всей переписке по машине (size). Слева столбцом одной ширины — кружок отправителя (логотип
+     страховой, `x-mail.sender-avatar`) у имени и значок типа ТС у машины: имя, тема и машина начинаются с одной линии
+     (17.11.2026, владелец). На телефоне строка открывает окно писем дела, как из сделки
      (letters — его адрес, `mail_row_controller`), а не лист справа. --}}
 @props(['message', 'files' => 0, 'sent' => false, 'park' => false, 'size' => 1, 'base' => '/work/mail', 'queue' => '/offers/from-mail'])
 @php
@@ -14,13 +16,16 @@
     $vehicle = $park ? $t?->vehicle : null;
     $chain = ! $offer && ! $vehicle ? $t?->candidate : null;
     $car = match (true) {
-        (bool) $offer => [$offer->vendor, $offer->titleWithYear()],
-        (bool) $vehicle => [$vehicle->vendor, $vehicle->titleWithYear()],
-        (bool) $chain => [$chain->vendor, $chain->title()],
+        (bool) $offer => [$offer->category(), $offer->titleWithYear()],
+        (bool) $vehicle => [$vehicle->category ?? \App\Cars\Category::guess($vehicle->titleWithYear()), $vehicle->titleWithYear()],
+        (bool) $chain => [\App\Cars\Category::guess($chain->title()), $chain->title()],
         default => null,
     };
     $to = $sent ? $m->addresses->where('kind', 'to')->sortBy('position')->first() : null;
-    $who = $sent ? ($to ? ($to->name ?: $to->email) : trim((string) $m->to_preview)) : NodeTitle::who($m);
+    // Кружок — кто писал; в «Отправленных» — кому (страховая — её логотипом, как у отправителя).
+    $toVendor = $to ? \App\Vendors\Vendor::forSender($to->email, $park ? \App\Mail\Scope::Park : \App\Mail\Scope::Offers) : null;
+    // «Кому:» — адресом, не именем (17.11.2026, владелец: «почты, а не погоняла»).
+    $who = $sent ? ($to ? mb_strtolower((string) ($to->email ?: $to->name)) : trim((string) $m->to_preview)) : NodeTitle::who($m);
     $unread = ! $sent && ! $m->is_seen;
     $when = $m->date_at?->isToday() ? $m->date_at->format('H:i') : \App\Support\Ago::at($m->date_at, true);
     // Окно писем дела на этом письме — тот же адрес, что у карточек «Все делами».
@@ -33,6 +38,11 @@
     $unsent = $m->isOurs() && $m->send_state && $m->send_state !== \App\Mail\SendState::Sent ? $m->send_state : null;
 @endphp
 <a href="{{ \App\Support\Detail::url($m->id) }}" @class(['inbox-row', 'is-unread' => $unread]) id="inbox-{{ $m->id }}" data-detail-key="{{ $m->id }}" data-detail-link data-turbo-frame="detail" data-turbo-prefetch="false" data-letters="{{ $letters }}" data-search-row>
+    <span class="inbox-lead">
+        @if (! $sent)<x-mail.sender-avatar :message="$m" :size="20"/>
+        @elseif ($toVendor?->logoUrl())<span class="avatar avatar-vendor" style="width: 20px; height: 20px" title="{{ $toVendor->name }}"><img src="{{ $toVendor->logoUrl() }}" alt="" width="20" height="20" decoding="async"></span>
+        @else<x-ui.avatar :name="$to?->name" :email="$to?->email ?? $who" :size="20"/>@endif
+    </span>
     <span class="inbox-l1">
         <span class="inbox-who">@if ($sent)<span class="inbox-to">Кому:</span> @endif{{ $who ?: '—' }}</span>
         @if ($files)<x-ui.icon name="clip" class="inbox-clip size-4"/>@endif
@@ -41,9 +51,10 @@
     </span>
     {{-- Тема без «RE: / Fwd:» и «ч.2» — в узкой колонке приставки съедали место. --}}
     <span class="inbox-subj">{{ \App\Mail\Topic::clean($m->subject) ?: '(без темы)' }}</span>
+    @if ($car)<span class="inbox-lead inbox-lead--car"><x-ui.cat-icon :category="$car[0] ?? \App\Cars\Category::Passenger"/></span>@endif
     <span class="inbox-l3">
         @if ($car)
-            <span class="inbox-car">@if ($car[0])<x-vendor.logo :vendor="$car[0]"/>@endif<span class="truncate">{{ $car[1] }}</span></span>
+            <span class="inbox-car"><span class="truncate">{{ $car[1] }}</span></span>
         @else
             <span class="inbox-snip">{{ NodeTitle::words($m, 160) ?: 'Без своих слов' }}</span>
         @endif

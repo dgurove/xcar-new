@@ -77,10 +77,11 @@ final class QuotationStripper
             return null;
         }
         $headers = 'От|От кого|From';
-        if (preg_match('/^\s*(?:'.$headers.')\s*:.*?<([^<>@\s]+@[^<>@\s]+)>/umi', $text, $m)) {
+        // Ссылка-адрес «<mailto:ivan@mail.ru>» (почта на телефоне, 17.11.2026: адрес с «mailto:» не узнавался) — без приставки.
+        if (preg_match('/^\s*(?:'.$headers.')\s*:.*?<(?:mailto:)?([^<>@\s:]+@[^<>@\s]+)>/umi', $text, $m)) {
             return mb_strtolower($m[1]);
         }
-        if (preg_match('/^\s*(?:'.$headers.')\s*:\s*([^<>@\s]+@[^<>@\s]+)/umi', $text, $m)) {
+        if (preg_match('/^\s*(?:'.$headers.')\s*:\s*(?:mailto:)?([^<>@\s:]+@[^<>@\s]+)/umi', $text, $m)) {
             return mb_strtolower(rtrim($m[1], '.,;'));
         }
 
@@ -100,7 +101,7 @@ final class QuotationStripper
 
     /**
      * Кому и когда писал сам поставщик — из шапки пересылки (17.11.2026, владелец: «не „переслал“ и не наш ящик, а
-     * оригинальное кому и во сколько»): «Кому» и «Копия» — имена (без имени — адрес), «Дата» — «пятница, 30 октября 2026 г.
+     * оригинальное кому и во сколько»): «Кому» и «Копия» — адреса (без адреса — имя), «Дата» — «пятница, 30 октября 2026 г.
      * в 17:18 +03:00», «Пятница, 6 ноября 2026, 13:26 +03:00», «Fri, Oct 30, 2026 at 5:18 PM». Не прочлось — null.
      *
      * @return array{to: list<string>, date: ?\Illuminate\Support\Carbon}|null
@@ -127,7 +128,7 @@ final class QuotationStripper
                 foreach ($all as $a) {
                     $name = trim($a[2]);
                     $mail = trim($a[3] ?? '');
-                    $who = $name !== '' && mb_strtolower($name) !== mb_strtolower($mail) ? $name : ($mail ?: $name);
+                    $who = $mail !== '' ? mb_strtolower((string) preg_replace('/^mailto:/i', '', $mail)) : (str_contains($name, '@') ? mb_strtolower($name) : $name);
                     if ($who !== '' && ! in_array($who, $to, true)) {
                         $to[] = $who;
                     }

@@ -4,8 +4,9 @@
      Свёрнуто — строка: кто, этап или первые слова (непрочитанное полужирным), скрепка, дата.
      Раскрыто — вид, выбранный владельцем по макетам:
      - имя и серым адрес рядом; темы у письма нет — общая тема в заголовке окна (17.11.2026, владелец);
-     - «кому: …» и дата «14.11 12:58» одним серым текстом, переносится; у пересылки сотрудника — кому и когда писал поставщик;
-     - машина ссылкой (логотип, марка, модель, год); у незаведённой цепочки «Из писем» — «Завести», у ветки без машины —
+     - «кому: …» (адреса, не имена — 17.11.2026, владелец: «почты, а не погоняла») и дата «14.11 12:58» одним серым текстом,
+       переносится; у пересылки сотрудника — кому и когда писал поставщик;
+     - машина ссылкой (значок типа ТС, как в списке предложений, — логотип страховой уже у отправителя; марка, модель, год); у незаведённой цепочки «Из писем» — «Завести», у ветки без машины —
        «Привязать»;
      - справа вверху значки «Ответить» (изогнутая стрелка) и «Переслать» (прямая), как в Spark, и «⋯» (x-mail.letter-menu);
      - текст на белом без пустых строк, подпись — «› Подпись» (`BodyRenderer::own flat`), «Не ушло / Отправить снова»;
@@ -25,7 +26,7 @@
     $text = trim($m->shownText());
     $from = NodeTitle::email($m);
     $to = $m->addresses->whereIn('kind', [\App\Mail\AddressKind::To->value, \App\Mail\AddressKind::Cc->value])->sortBy('position')
-        ->map(fn ($a) => $a->name ?: $a->email)->unique()->values();
+        ->map(fn ($a) => mb_strtolower((string) ($a->email ?: $a->name)))->filter()->unique()->values();
     // Пересылка сотрудника — кому и когда писал сам поставщик, из шапки пересылки (17.11.2026, владелец: «не „переслал“ и не
     // наш ящик, а оригинальное кому и во сколько»).
     $head = $m->isForwardedByStaff() ? \App\Mail\Extraction\QuotationStripper::forwardedHead($m->text_body ?: app(\App\Mail\Parser::class)->htmlToText((string) $m->html_body)) : null;
@@ -39,8 +40,8 @@
     // Машина письма — по стороне его ветки: предложение в CRM, ТС на парковке; на чужую сторону — ссылкой без Turbo.
     $showCar = $car;
     $car = ! $showCar ? null : match (true) {
-        (bool) $thread?->offer => ['href' => $thread->offer->crmUrl(), 'vendor' => $thread->offer->vendor, 'name' => $thread->offer->titleWithYear(), 'cross' => $park],
-        (bool) $thread?->vehicle => ['href' => \App\Support\Surface::Park->url('/cars/'.$thread->vehicle->id), 'vendor' => $thread->vehicle->vendor, 'name' => $thread->vehicle->titleWithYear(), 'cross' => ! $park],
+        (bool) $thread?->offer => ['href' => $thread->offer->crmUrl(), 'cat' => $thread->offer->category(), 'name' => $thread->offer->titleWithYear(), 'cross' => $park],
+        (bool) $thread?->vehicle => ['href' => \App\Support\Surface::Park->url('/cars/'.$thread->vehicle->id), 'cat' => $thread->vehicle->category ?? \App\Cars\Category::guess($thread->vehicle->titleWithYear()) ?? \App\Cars\Category::Passenger, 'name' => $thread->vehicle->titleWithYear(), 'cross' => ! $park],
         default => null,
     };
     $chainNew = ! $car && $thread?->candidate?->state === \App\Mail\CandidateState::New ? $thread->candidate : null;
@@ -80,7 +81,7 @@
                 <span class="nums whitespace-nowrap">{{ \App\Support\Ago::at($sentAt, true) }}</span>
             </div>
             @if ($car)
-                <a href="{{ $car['href'] }}" class="letter-car" data-turbo-frame="_top" @if ($car['cross']) data-turbo="false" @endif>@if ($car['vendor'])<x-vendor.logo :vendor="$car['vendor']"/>@endif<span class="truncate">{{ $car['name'] }}</span><x-ui.icon name="chevron-right" class="size-3.5 shrink-0"/></a>
+                <a href="{{ $car['href'] }}" class="letter-car" data-turbo-frame="_top" @if ($car['cross']) data-turbo="false" @endif><x-ui.cat-icon :category="$car['cat']"/><span class="truncate">{{ $car['name'] }}</span><x-ui.icon name="chevron-right" class="size-3.5 shrink-0"/></a>
             @elseif ($showCar && $chainNew && $sameSide)
                 @if ($park)<a href="/requests/new?candidate={{ $chainNew->id }}" class="letter-car letter-car--do" data-turbo-frame="_top">Завести: {{ $chainNew->title() }}</a>
                 @else<form method="post" action="/offers/from-mail/{{ $chainNew->id }}/create" class="contents" data-turbo-frame="_top">@csrf<button class="letter-car letter-car--do">Завести: {{ $chainNew->title() }}</button></form>@endif

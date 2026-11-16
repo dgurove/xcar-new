@@ -37,12 +37,12 @@ final class BodyRenderer
             if ($text === '') {
                 return null;
             }
-            // Без пустых строк, подпись — свёрнутой «› Подпись» (17.11.2026, владелец: «пустые строки убирай везде»).
+            // Без пустых строк, подпись — свёрнутой «Подпись ›» (17.11.2026, владелец: «пустые строки убирай везде»).
             $lines = fn (string $t) => implode("\n", array_filter(preg_split('/\R/u', $t) ?: [], fn ($l) => trim(str_replace("\u{00A0}", ' ', $l)) !== ''));
             $sign = $lines($sign);
 
             return $this->wrap($message, '<pre class="plain">'.e($lines($text)).'</pre>'
-                .($sign !== '' ? '<details class="sig"><summary>Подпись</summary><pre class="plain sig-body">'.e($sign).'</pre></details>' : ''), false, $base, $flat);
+                .($sign !== '' ? '<details class="sig"><summary class="sig-sum"></summary><pre class="plain sig-body">'.e($sign).'</pre></details>' : ''), false, $base, $flat);
         }
         if ($forward) {
             $html = self::unforwarded($html) ?? $html;
@@ -55,7 +55,7 @@ final class BodyRenderer
 
     /**
      * Письмо везде — справа во «Входящих», в ленте окна писем, в «Показать менеджеру» (17.11.2026, владелец): подпись не
-     * срезается, а сворачивается в «› Подпись» в конце письма; пустых строк нет — пустые абзацы и блоки уходят, `<br>` подряд —
+     * срезается, а сворачивается в «Подпись ›» в конце письма; пустых строк нет — пустые абзацы и блоки уходят, `<br>` подряд —
      * один, в начале и в конце блока — ни одного.
      */
     private function tidy(string $html, ?string $name): ?string
@@ -77,7 +77,9 @@ final class BodyRenderer
         if (trim(str_replace("\u{00A0}", ' ', $sign->textContent)) !== '' || $sign->getElementsByTagName('img')->length) {
             $details = $dom->createElement('details');
             $details->setAttribute('class', 'sig');
-            $details->appendChild($dom->createElement('summary', 'Подпись'));
+            $summary = $dom->createElement('summary');
+            $summary->setAttribute('class', 'sig-sum');
+            $details->appendChild($summary);
             $details->appendChild($sign);
             $body->appendChild($details);
         }
@@ -362,6 +364,8 @@ final class BodyRenderer
         $body = preg_replace('/\sdir\s*=\s*(["\'])\s*rtl\s*\1/i', '', $body) ?? $body;
         $body = preg_replace('/\bdirection\s*:\s*rtl\b/i', 'direction:ltr', $body) ?? $body;
         $body = $this->inlineImages($message, $body, $base);
+        // «Подпись ›» — та же стрелка, что у подзаголовка ленты кадров (`x-ui.photos-expand`, `chevron-right`), 17.11.2026, владелец.
+        $body = str_replace('<summary class="sig-sum"></summary>', '<summary class="sig-sum">Подпись<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></summary>', $body);
 
         $images = "'self' data:".($remoteImages ? ' https: http:' : '');
         $csp = "default-src 'none'; img-src {$images}; style-src 'unsafe-inline'; font-src data:; form-action 'none'";
@@ -381,15 +385,22 @@ final class BodyRenderer
         $dark = fn (string $root) => "{$root}{color-scheme:dark}{$root},{$root} body{background:transparent;color:#ededed}"
             ."{$root} a{color:#a6cf3a}{$root} blockquote{border-left-color:#38383a;color:#a3a3a3}";
         $themed = $plain ? $dark('html.dark').'@media (prefers-color-scheme:dark){'.$dark('html:not(.light)').'}' : '';
-        $class = $plain && $theme ? ' class="'.$theme.'"' : '';
+        // Свёрстанное письмо в тёмной теме (17.11.2026, владелец: «фон в чёрный, текст обрабатывать, не выкидывая форматирование»):
+        // цвета перекрашивает `lib/mail-dark.js` по вычисленным стилям (`data-styled`), здесь — только чтобы до него не мигнул белый
+        // лист: фон прозрачный, текст светлый, схема тёмная (иначе браузер стелет под рамку непрозрачный белый).
+        if (! $plain) {
+            $styled = fn (string $root) => "{$root}{color-scheme:dark}{$root},{$root} body{background:transparent;color:#ededed}";
+            $themed .= $styled('html.dark').'@media (prefers-color-scheme:dark){'.$styled('html:not(.light)').'}';
+        }
+        $class = ($theme ? ' class="'.$theme.'"' : '').($plain ? '' : ' data-styled');
 
         return '<!doctype html><html lang="ru"'.$class.'><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="'.$csp.'">'
-            .($plain ? '<meta name="color-scheme" content="'.($theme ?? 'light dark').'">' : '')
+            .'<meta name="color-scheme" content="'.($theme ?? 'light dark').'">'
             .'<base target="_blank"><style>html{margin:0;padding:0;'.$colors.'}body{margin:0;padding:'.($flat ? '0' : '12px').';'.$colors.';font-family:Onest,system-ui,-apple-system,sans-serif;font-size:15px;line-height:1.45;word-break:break-word}'
             .'img{max-width:100%;height:auto}table{max-width:100%;border-collapse:collapse}a{color:#669709}pre.plain{white-space:pre-wrap;font-family:inherit;margin:0}'
             .'blockquote{margin:0;padding-left:12px;border-left:2px solid #d0d0d0;color:#808080}'
             .('p{margin:0}.sig{margin-top:10px}.sig>summary{cursor:pointer;list-style:none;font-size:13px;color:#8a8a8a}.sig>summary::-webkit-details-marker{display:none}'
-                .'.sig>summary::before{content:"›";display:inline-block;width:12px;transition:transform .15s}.sig[open]>summary::before{transform:rotate(90deg)}'
+                .'.sig>summary{display:inline-flex;align-items:center;gap:2px}.sig>summary svg{width:16px;height:16px;fill:none;stroke:#a3a3a3;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round;transition:transform .15s}.sig[open]>summary svg{transform:rotate(90deg)}'
                 .'.sig-body{margin-top:6px;color:#8a8a8a;font-size:13px}')
             .$themed.'</style></head><body>'.$body.'</body></html>';
     }
@@ -426,7 +437,10 @@ final class BodyRenderer
         foreach ($message->attachments->whereNotNull('content_id') as $attachment) {
             $map['cid:'.$attachment->content_id] = "{$base}/attachments/{$attachment->id}";
         }
+        $html = $map ? strtr($html, $map) : $html;
 
-        return $map ? strtr($html, $map) : $html;
+        // Картинка на вложение, которого в письме нет (подпись, скопированная из старого письма, 17.11.2026), — не показать:
+        // вместо неё торчали битый значок и «cid:image002.png@01DA79E9…». Долой.
+        return (string) (preg_replace('/<img\b[^>]*\bsrc\s*=\s*(["\']?)cid:[^>]*>/i', '', $html) ?? $html);
     }
 }

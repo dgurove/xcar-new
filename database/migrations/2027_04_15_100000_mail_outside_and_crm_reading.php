@@ -67,6 +67,19 @@ return new class extends Migration
             $parsed['own_text'] = \App\Mail\Extraction\Intent::withoutOurQuote((string) $parsed['own_text']);
             DB::table('mail_messages')->where('id', $m->id)->update(['parsed' => json_encode($parsed, JSON_UNESCAPED_UNICODE)]);
         }
+        // Адрес пересылки с приставкой «mailto:» (`QuotationStripper::forwardedSender`) — без неё, вендор отправителя — по адресу.
+        // Письмо заново не перечитывается: цепочки не трогаем.
+        foreach (Message::whereRaw("parsed->'fields'->'sender'->>'value' ilike 'mailto:%'")->get(['id', 'parsed', 'account_id']) as $m) {
+            $parsed = $m->parsed;
+            $sender = mb_strtolower((string) preg_replace('/^mailto:/i', '', (string) $parsed['fields']['sender']['value']));
+            $parsed['fields']['sender']['value'] = $sender;
+            $scope = \App\Mail\Account::find($m->account_id)?->scope ?? \App\Mail\Scope::Offers;
+            if (empty($parsed['fields']['vendor_id']) && ($vendor = \App\Vendors\Vendor::forSender($sender, $scope))) {
+                $parsed['fields']['vendor_id'] = ['value' => $vendor->id, 'source' => 'sender'];
+                $parsed['fields']['vendor'] = ['value' => $vendor->name, 'source' => 'sender'];
+            }
+            DB::table('mail_messages')->where('id', $m->id)->update(['parsed' => json_encode($parsed, JSON_UNESCAPED_UNICODE)]);
+        }
         // Число непрочитанных у ветки — тем же правилом, что `Threads::refresh` (входящие, не прочитаны).
         DB::statement("update mail_threads t set unread_count = (select count(*) from mail_messages m where m.thread_id = t.id
             and m.direction = 'in' and not m.is_seen)");

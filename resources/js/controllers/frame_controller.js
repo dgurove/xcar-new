@@ -1,8 +1,10 @@
 import { Controller } from '@hotwired/stimulus';
+import { darken, restore } from '../lib/mail-dark';
 
 // Письмо в песочнице iframe: высота по содержимому. Письмо в закрытой шторке грузится невидимым
 // (высота нулевая) — подгоняется заново, когда рамка получает ширину. Простое письмо рисуется цветами темы
-// (BodyRenderer): класс dark / light у письма — тот же, что у приложения, и при смене темы на лету.
+// (BodyRenderer): класс dark / light у письма — тот же, что у приложения, и при смене темы на лету; свёрстанное в тёмной
+// теме перекрашивает `lib/mail-dark.js`.
 export default class extends Controller {
     static targets = ['frame'];
 
@@ -29,6 +31,10 @@ export default class extends Controller {
             const dark = document.documentElement.classList.contains('dark');
             root?.classList.toggle('dark', dark);
             root?.classList.toggle('light', !dark);
+            // Свёрстанное письмо — своими цветами: в тёмной теме перекрашивается (`lib/mail-dark.js`), в светлой — как было.
+            if (root?.hasAttribute('data-styled')) {
+                if (dark) darken(root.ownerDocument, this.frameTarget); else restore(root.ownerDocument);
+            }
         } catch {}
     }
 

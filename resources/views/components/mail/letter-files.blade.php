@@ -1,5 +1,5 @@
-{{-- Файлы раскрытого письма (17.11.2026, владелец выбрал из макетов): «N документов и M фото» и «Скачать все» (архивом),
-     документы — компактными карточками в две колонки (значок типа с весом, имя целиком), фото — одной карточкой «N фото» без
+{{-- Файлы раскрытого письма (17.11.2026, владелец выбрал из макетов; вечером того же дня: без «N документов», «Скачать все» и
+     черты — карточки прямо под текстом письма): документы — компактными карточками в две колонки (значок типа с весом, имя целиком), фото — одной карточкой «N фото» без
      миниатюр: просмотр грузит кадр, когда до него долистали («фотки почти юзлесс, они и так уходят в предложение»). Архив с
      записями — кадрами и документами внутри (`x-mail.archive`). Старое письмо (файлы не скачаны, `filesFrozen`) — карточки
      без веса, нажатие достаёт файл из ящика. --}}
@@ -15,10 +15,6 @@
 @endphp
 @if ($files->isNotEmpty())
     <div class="letter-files">
-        <div class="letter-files-head">
-            <span>{{ $docs ? $docs.' '.\App\Support\Plural::of($docs, ['документ', 'документа', 'документов']) : '' }}{{ $docs && $pictures->isNotEmpty() ? ' и ' : '' }}{{ $pictures->isNotEmpty() ? $pictures->count().' фото' : '' }}</span>
-            @unless ($frozen)<a href="{{ $base }}/messages/{{ $m->id }}/files.zip" class="letter-files-all" download data-turbo="false">Скачать все</a>@endunless
-        </div>
         <div class="letter-docs">
             @foreach ($frozen ? $files : $documents as $file)
                 <a href="{{ $base }}/attachments/{{ $file->id }}" target="_blank" class="letter-doc" data-doc="{{ \App\Support\Docs::type($file->mime, $file->filename) }}" data-doc-name="{{ \App\Support\Docs::label($file->filename) }}" title="{{ $file->filename }}">
