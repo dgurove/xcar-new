@@ -26,7 +26,7 @@ final class FastForward
     /** @param  callable(Stage): bool  $stop */
     public static function from(Deal $deal, Stage $current, callable $stop): self
     {
-        $all = $current->workflow->stages()->with(['exits.to.block', 'block.stages.exits'])->get();
+        $all = self::stagesOf($current);
         $rank = $all->pluck('id')->flip();
         $passed = [];
         $seen = [$current->id => true];
@@ -43,6 +43,21 @@ final class FastForward
             $seen[$next->id] = true;
             $stage = $next;
         }
+    }
+
+    /** @var array<int, Collection<int, Stage>> маршрут → его шаги, на один запрос (шторка «Уже продана» спрашивает трижды) */
+    private static array $stages = [];
+
+    private static ?int $stagesFor = null;
+
+    /** @return Collection<int, Stage> */
+    private static function stagesOf(Stage $current): Collection
+    {
+        if (self::$stagesFor !== spl_object_id(request())) {
+            [self::$stages, self::$stagesFor] = [[], spl_object_id(request())];
+        }
+
+        return self::$stages[$current->workflow_id] ??= $current->workflow->stages()->with(['exits.to.block', 'block.stages.exits'])->get();
     }
 
     /** @param  Collection<int, Stage>  $all */

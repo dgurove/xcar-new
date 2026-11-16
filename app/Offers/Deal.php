@@ -1296,7 +1296,22 @@ class Deal extends Model implements HasMedia
      */
     public function hasManagerInvoice(): bool
     {
+        // Списки грузят счета заранее (`DealController::index`) — по ним, без запроса на строку (16.11.2026).
+        if ($this->relationLoaded('invoices')) {
+            return $this->invoices->contains(fn (Invoice $i) => $i->direction === 'issued' && $i->kind !== ChargeKind::Reward);
+        }
+
         return $this->issuedInvoices()->where('kind', '!=', ChargeKind::Reward)->exists();
+    }
+
+    /** Есть ли живой счёт продажи — по загруженным счетам, иначе запросом. */
+    public function hasSaleInvoice(): bool
+    {
+        if ($this->relationLoaded('invoices')) {
+            return $this->invoices->contains(fn (Invoice $i) => $i->kind === ChargeKind::Sale);
+        }
+
+        return Invoice::where('deal_id', $this->id)->where('kind', ChargeKind::Sale)->where('state', '!=', InvoiceState::Void)->exists();
     }
 
     public function hasInvoices(): bool

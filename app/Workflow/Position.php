@@ -137,12 +137,25 @@ class Position extends Model
     public function moneyArrived(): ?Carbon
     {
         $deal = $this->track === Track::Sale ? $this->deal : null;
-        if (! $deal || Invoice::where('deal_id', $deal->id)->where('kind', ChargeKind::Sale)->where('state', '!=', InvoiceState::Void)->exists()) {
+        if (! $deal || $deal->hasSaleInvoice()) {
             return null;
+        }
+        // Первая оплата по ссылке — одним запросом на все сделки списка (16.11.2026: было по запросу на строку), как
+        // `RepriceAsk::dealDue`; в очереди и консоли — запросом.
+        if (! app()->runningInConsole()) {
+            return self::firstCredits()->get($deal->id);
         }
         $at = Invoice::where('credit_deal_id', $deal->id)->where('kind', ChargeKind::Service)->where('state', InvoiceState::Paid)->min('created_at');
 
         return $at ? Carbon::parse($at) : null;
+    }
+
+    /** @return \Illuminate\Support\Collection<int, Carbon> сделка → первая оплаченная разовая ссылка, засчитанная в неё */
+    private static function firstCredits(): \Illuminate\Support\Collection
+    {
+        return once(fn () => Invoice::whereNotNull('credit_deal_id')->where('kind', ChargeKind::Service)->where('state', InvoiceState::Paid)
+            ->selectRaw('credit_deal_id, min(created_at) as at')->groupBy('credit_deal_id')
+            ->pluck('at', 'credit_deal_id')->map(fn ($at) => Carbon::parse($at)));
     }
 
     /**

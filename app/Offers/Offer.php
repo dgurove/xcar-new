@@ -345,6 +345,11 @@ class Offer extends Model
     /** Где оффер стоит на ветке маршрута; null — маршрута на ветке нет. */
     public function position(Track $track = Track::Sale): ?Position
     {
+        // На показ (GET в вебе) — запомнить у предложения: окно сделки спрашивало шаг пять раз (16.11.2026). В действиях и
+        // очереди — заново: шаг меняется посреди запроса.
+        if (! $this->relationLoaded('positions') && ! app()->runningInConsole() && request()->isMethod('GET')) {
+            $this->load('positions.stage.block', 'positions.stage.exits.to');
+        }
         $positions = $this->relationLoaded('positions') ? $this->positions : $this->positions()->with('stage.block', 'stage.exits.to')->get();
 
         // Позиция знает своё предложение без запроса: её проверки («ждёт переоценка», письма) читают его связи.

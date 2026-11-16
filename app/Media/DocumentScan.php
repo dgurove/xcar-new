@@ -29,12 +29,23 @@ final class DocumentScan
         }
         $verdict = self::measure($contents);
         Cache::forever(self::key($sha), $verdict ? 1 : 0);
+        self::$memo[$sha] = $verdict;
 
         return $verdict;
     }
 
     /** @var array<string, bool> вердикты не меняются — память процесса, пусто не кладётся */
     private static array $memo = [];
+
+    /**
+     * Чего `prime` не нашёл в кэше — только на этот запрос (16.11.2026: окно сделки спрашивало кэш ещё раз по каждому
+     * такому файлу, 40 запросов): вердикт может появиться позже, поэтому не в памяти процесса.
+     *
+     * @var array<string, true>
+     */
+    private static array $missing = [];
+
+    private static ?int $missingFor = null;
 
     /** Вердикт без расчёта: true — скан, false — фото, null — ещё не смотрели. */
     public static function known(?string $sha): ?bool
@@ -44,6 +55,9 @@ final class DocumentScan
         }
         if (isset(self::$memo[$sha])) {
             return self::$memo[$sha];
+        }
+        if (isset(self::$missing[$sha]) && self::$missingFor === spl_object_id(request())) {
+            return null;
         }
         $v = Cache::get(self::key($sha));
 
@@ -66,9 +80,14 @@ final class DocumentScan
         if (! $keys) {
             return;
         }
+        if (self::$missingFor !== spl_object_id(request())) {
+            [self::$missing, self::$missingFor] = [[], spl_object_id(request())];
+        }
         foreach (Cache::many(array_keys($keys)) as $key => $v) {
             if ($v !== null) {
                 self::$memo[$keys[$key]] = (bool) $v;
+            } else {
+                self::$missing[$keys[$key]] = true;
             }
         }
     }

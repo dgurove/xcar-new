@@ -8,6 +8,8 @@
     use App\Offers\Actions\MarkSoldDeal;
     use App\Support\Money;
     $offer = $deal->offer;
+    // Шторка трижды спрашивает, куда встанет сделка (`MarkSoldDeal::run`): позиции — один раз (16.11.2026, окно сделки).
+    $offer?->loadMissing(['positions.stage.block', 'positions.stage.exits.to']);
     $bills = MarkSoldDeal::unpaid($deal);
     $owed = (int) round($bills->sum(fn ($i) => $i->remaining()));
     $asksMoney = $bills->isNotEmpty() || ! $deal->agreed();
