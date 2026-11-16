@@ -16,7 +16,7 @@
         @if ($tall)<button type="button" class="sheet-close sheet-back -ml-2" data-action="sheet#close" aria-label="Назад"><x-ui.icon name="chevron-left" class="size-5"/></button>@endif
         {{-- Высокое окно: заголовок слева у «‹», даже когда крестик на телефоне спрятан и справа ничего нет; не режется — переносится,
              на телефоне начинается вровень с текстом окна (17.11.2026, владелец: тема писем целиком, «отступ неадекватный»). --}}
-        @if ($title)<h2 @class(['text-lg', 'sheet-title min-w-0 flex-1' => $tall])>{{ $title }}</h2>@endif
+        @if ($title)<h2 @class(['text-lg' => ! $tall, 'sheet-title min-w-0 flex-1' => $tall])>{{ $title }}</h2>@endif
         @if ($tools)<span class="ml-auto flex items-center gap-2">{{ $tools }}</span>@endif
         <button type="button" class="sheet-close{{ $tools ? '' : ' ml-auto' }}{{ $tall ? ' sheet-x' : '' }}" data-action="sheet#close" aria-label="Закрыть"><x-ui.icon name="x" class="size-[18px]"/></button>
     </div>
