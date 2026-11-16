@@ -24,7 +24,6 @@ use App\Mail\Actions\PromoteCandidate;
 use App\Mail\Actions\StoreOutboxFile;
 use App\Mail\AddressKind;
 use App\Mail\Attachment;
-use App\Mail\BodyRenderer;
 use App\Mail\Boxes;
 use App\Mail\Candidate;
 use App\Mail\CandidateState;
@@ -238,7 +237,7 @@ class MailController
         $own = $park ? 'vehicle_id' : 'offer_id';
         $owners = $sections->whereIn('kind', ['v', 'o'])->pluck('id')->map(fn ($id) => (int) $id)->all();
         $byOwner = $owners ? Thread::whereIn('account_id', $boxAccounts->pluck('id'))->whereIn($own, $owners)
-            ->with(['messages.attachments', 'messages.author'])->get()->groupBy($own) : collect();
+            ->with([$park ? 'vehicle' : 'offer', 'messages.attachments', 'messages.author'])->get()->groupBy($own) : collect();
         (new EloquentCollection($sections->pluck('candidate')->filter()->unique('id')->values()->all()))->load(['messages.attachments', 'messages.author']);
         (new EloquentCollection($sections->where('kind', 't')->flatMap(fn ($s) => $s['threads'])->all()))->load(['messages.attachments', 'messages.author']);
         $sections = $sections->map(fn ($s) => $s + ['letters' => match (true) {
@@ -305,7 +304,9 @@ class MailController
         )->countBy('count(*)');
         $query = Boxes::letters($boxAccounts->pluck('id'), $box, $all);
         $facets->apply($query);
-        $page = $query->with(['account', 'author', 'attachments', 'addresses', 'thread.offer.vendor', 'thread.offer.car', 'thread.vendor', 'thread.candidate.vendor'])
+        // ТС парковки — тоже сразу: строка берёт марку и вендора (17.11.2026: на парковке ТС грузилось на каждую строку отдельно).
+        $page = $query->with(['account', 'author', 'attachments', 'addresses', 'thread.offer.vendor', 'thread.offer.car', 'thread.vendor', 'thread.candidate.vendor',
+            ...($data['park'] ? ['thread.vehicle.vendor'] : [])])
             ->orderByDesc('mail_messages.date_at')->orderByDesc('mail_messages.id')->simplePaginate(50)->withQueryString();
         // «Ч.2» того же письма (те же слова от того же адреса в сутки) — одной строкой с первой частью, файлы суммой.
         $continued = [];
@@ -602,7 +603,7 @@ class MailController
     public function window(Request $request, Thread $thread, MarkThreadRead $markRead)
     {
         $this->guard($thread);
-        $thread->load(['account', 'offer', 'vehicle', 'messages.account', 'messages.thread', 'messages.attachments', 'messages.addresses', 'messages.author']);
+        $thread->load(['account', 'offer', 'vehicle', 'candidate', 'messages.account', 'messages.thread', 'messages.attachments', 'messages.addresses', 'messages.author']);
         if (! str_contains($request->header('Sec-Purpose', $request->header('X-Sec-Purpose', '')), 'prefetch')) {
             $markRead($thread);
         }
@@ -630,10 +631,10 @@ class MailController
         ]);
     }
 
-    public function show(Request $request, Thread $thread, MarkThreadRead $markRead, BodyRenderer $renderer)
+    public function show(Request $request, Thread $thread, MarkThreadRead $markRead)
     {
         $this->guard($thread);
-        $thread->load(['account', 'offer', 'vehicle', 'messages.account', 'messages.thread', 'messages.attachments', 'messages.addresses', 'messages.author']);
+        $thread->load(['account', 'offer', 'vehicle', 'candidate', 'messages.account', 'messages.thread', 'messages.attachments', 'messages.addresses', 'messages.author']);
         // Касание строки — ещё не чтение: префетч Turbo идёт с Sec-Purpose: prefetch.
         if (! str_contains($request->header('Sec-Purpose', $request->header('X-Sec-Purpose', '')), 'prefetch')) {
             $markRead($thread);
@@ -641,9 +642,6 @@ class MailController
 
         return view('admin.mail.thread', [
             'thread' => $thread,
-            'messages' => $thread->messages,
-            'renderer' => $renderer,
-            'documents' => fn (Message $m) => $renderer->document($m, $request->boolean('images'), $this->base),
             'base' => $this->base,
         ]);
     }
@@ -1253,15 +1251,6 @@ class MailController
         $markRead($thread, false);
 
         return redirect($this->base)->with('toast', 'Не прочитано');
-    }
-
-    /** Исходное письмо целиком (фрейм body-{id} в ленте): тело в песочнице iframe, ?images=1 — с картинками из сети. */
-    public function body(Request $request, Message $message, BodyRenderer $renderer)
-    {
-        $this->guard($message->thread);
-
-        return view('admin.mail.body-frame', ['message' => $message, 'base' => $this->base, 'renderer' => $renderer,
-            'document' => $renderer->document($message, $request->boolean('images'), $this->base), 'images' => $request->boolean('images')]);
     }
 
     public function flag(Message $message)

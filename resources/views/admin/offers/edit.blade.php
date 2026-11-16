@@ -216,7 +216,7 @@
 
         {{-- Письма — под документами, как в деле ТС: все строками, как в «Почте»; письмо и ответ — окном поверх редактора. --}}
         @if ($letters && auth()->user()->canCrmMail())
-            <x-ui.card title="Письма" :count="$dealLetters ?: null" class="order-4 @4xl:order-none @4xl:col-span-2">
+            <x-ui.card class="order-4 @4xl:order-none @4xl:col-span-2">
                 <x-mail.letters :messages="$messages" :url="'/offers/'.$n.'/letters'" :asks="$asks" :stages="$stages" split/>
             </x-ui.card>
         @endif

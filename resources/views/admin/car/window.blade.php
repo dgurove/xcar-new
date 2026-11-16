@@ -99,7 +99,6 @@
             {{-- Письма — все строками, как в «Почте»: по ним заполняют поля и оценивают (11.10.2026). --}}
             @if ($letters)
                 <section>
-                    <h2 class="detail-section">Письма @if ($dealLetters)<span class="nums font-normal text-ink-dim">{{ $dealLetters }}</span>@endif</h2>
                     <x-mail.letters :messages="$messages" :url="'/offers/'.$n.'/letters'" :asks="$asks" :stages="$stages" split/>
                 </section>
             @endif

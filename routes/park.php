@@ -234,7 +234,6 @@ Route::domain(config('xcar.park_host'))->middleware(['auth', 'section:park'])->g
     // «Проверить почту» стоит и на «Из писем» — у заявок он без раздела «Почта».
     Route::post('/mail/sync', [MailController::class, 'sync']);
     Route::get('/mail/attachments/{attachment}', [MailController::class, 'attachment']);
-    Route::get('/mail/messages/{message}/body', [MailController::class, 'body']);
     Route::post('/mail/messages/{message}/flag', [MailController::class, 'flag']);
     // «Входящие»: прочитано по письму, файлы письма архивом (17.11.2026).
     Route::post('/mail/messages/{message}/seen', [MailController::class, 'seen'])->middleware('park.manage');

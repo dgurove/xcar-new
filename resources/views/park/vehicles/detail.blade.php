@@ -81,7 +81,6 @@
         @if (! $task && $messages->isNotEmpty())
             {{-- Без заявки — письма ТС той же лентой, что в задаче и деле (x-mail.letters). --}}
             <section class="mt-3">
-                <h2 class="detail-section">Письма <span class="nums font-normal text-ink-dim">{{ \App\Mail\Chains\NodeTitle::count($messages) }}</span></h2>
                 <x-mail.letters :messages="$messages" :url="'/cars/'.$vehicle->id.'/letters'" :reply="! $state->isFinal()"/>
             </section>
         @endif

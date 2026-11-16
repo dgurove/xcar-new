@@ -6043,6 +6043,9 @@ dialog.lightbox:not(.lb-one) .lb-pill--bottom { bottom: calc(var(--lb-strip-bott
   .chain--full .letter-body[open] > .letter-head .letter-who { flex: 1 1 auto; white-space: normal; overflow-wrap: anywhere; font-weight: 600; color: var(--color-ink); }
   .chain--full .letter-body[open] > .letter-head .letter-when, .chain--full .letter-body[open] > .letter-head .letter-clip { display: none; }
   .chain--full .letter-body--acts[open] > .letter-head { padding-right: 7.5rem; }
+  /* Заголовок карточки писем (x-mail.letters): тема писем и число, справа значок «Ответить». */
+  .letters-head { display: flex; align-items: center; gap: .75rem; margin-bottom: .5rem; }
+  .letters-head > h2 { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; font-size: var(--text-sm); line-height: 1.125rem; font-weight: 500; color: var(--color-ink-muted); }
   .letter-acts { display: none; position: absolute; top: -.375rem; right: 0; align-items: center; gap: .125rem; }
   .letter-body[open] > .letter-acts { display: flex; }
   .letter-ib { display: grid; place-items: center; width: 2.25rem; height: 2.25rem; border-radius: 9999px; color: var(--color-ink-muted); }

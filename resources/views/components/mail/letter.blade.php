@@ -110,7 +110,9 @@
                 </div>
             @endif
             @if ($m->parse_state === ParseState::Failed)
-                <div class="mb-2 text-sm text-ink-muted"><span class="text-danger">Не разобралось</span> {{ $m->parse_error }}</div>
+                {{-- Разобрать снова — здесь же (было только на странице ветки старым видом, 17.11.2026). --}}
+                <div class="mb-3 flex flex-wrap items-center gap-2"><span class="text-sm text-danger">Не разобралось</span><span class="text-sm text-ink-muted">{{ $m->parse_error }}</span>
+                    <form method="post" action="{{ $base }}/messages/{{ $m->id }}/parse" data-turbo-frame="_top">@csrf<x-ui.button size="sm" variant="secondary">Разобрать снова</x-ui.button></form></div>
             @elseif ($m->parse_state === ParseState::Pending)
                 <div class="text-sm text-ink-muted">Разбирается…</div>
             @elseif (! $continuation)

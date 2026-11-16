@@ -13,7 +13,7 @@
         @if ($talk)
             <x-ui.card title="Переписка" :count="\App\Mail\Chains\NodeTitle::count($letters)">
                 <x-slot:actions><x-mail.window-button :url="$lettersUrl.'?reply=1'" :label="$ours ? 'Написать' : 'Ответить'" :icon="$ours ? 'mail' : 'reply'" class="btn-s btn-quiet"/></x-slot:actions>
-                <x-mail.rail :messages="$letters->sortBy(fn ($m) => $m->date_at?->getTimestamp() ?? 0)->values()" :url="$lettersUrl"/>
+                <x-mail.rail :messages="$letters" :url="$lettersUrl"/>
             </x-ui.card>
         @endif
         @if ($showFiles)

@@ -18,6 +18,19 @@
     // Шапка раскрытого письма (x-mail.letter): адреса, вложения, автор, машина ветки — одним запросом на ленту.
     \Illuminate\Database\Eloquent\Collection::make($messages->all())->loadMissing(['addresses', 'attachments', 'author', 'account',
         'thread.account', 'thread.offer.vendor', 'thread.vehicle.vendor', 'thread.candidate', 'thread.vendor']);
+    // Одна ветка — один экземпляр: «⋯» письма спрашивает письма ветки (выбор вендора) — раз на ветку, а не на каждое письмо.
+    $sharedThreads = [];
+    foreach ($messages as $m) {
+        if ($m->thread_id && $m->relationLoaded('thread') && $m->thread) {
+            $m->setRelation('thread', $sharedThreads[$m->thread_id] ??= $m->thread);
+        }
+    }
+    // Лента — вся переписка этих веток: письма ветки берутся из неё, а не запросом на каждую.
+    foreach ($sharedThreads as $id => $t) {
+        if (! $t->relationLoaded('messages')) {
+            $t->setRelation('messages', \Illuminate\Database\Eloquent\Collection::make($messages->where('thread_id', $id)->values()->all()));
+        }
+    }
     $lastId = $messages->last()?->id;
     // focus — id письма (строка списка, «Из писем» открывает окно на нём) или true: первое непрочитанное, иначе самое новое.
     $focusId = is_numeric($focus) && $messages->contains('id', (int) $focus) ? (int) $focus
@@ -48,7 +61,8 @@
     // Одно служебное письмо подряд — обычный узел; при fold свёрнутое остаётся свёрнутым и в одиночку.
     $nodes = array_map(fn ($n) => is_array($n) && count($n['items']) === 1 && ! $fold ? $n['items'][0] : $n, $nodes);
     if ($newest) {
-        $nodes = array_reverse($nodes);
+        // Свежие сверху — и внутри свёрнутой пачки служебных тоже.
+        $nodes = array_map(fn ($n) => is_array($n) ? ['service' => $n['service'], 'items' => array_reverse($n['items'])] : $n, array_reverse($nodes));
     }
     // Окно писем предложения: «Ответить» внизу — в ветку сделки (offer@, deal@), не парковки (09.11.2026: письмо storage@ о
     // приёме ТС свежее, и «Написать» по сделке открывало ответ со storage@). Ответ парковке — у самого её письма.
@@ -75,7 +89,8 @@
         @php
             $first = is_array($node) ? $node['items'][0] : $node;
             // Подряд от того же отправителя — точка вместо кружка (как в строках писем сделки); пачка служебных цепь рвёт.
-            $who = is_array($node) ? null : NodeTitle::email($node);
+            // «ч.2» — то же письмо: цепь «подряд» она не рвёт и не начинает.
+            $who = is_array($node) ? null : (isset($continued[$node->id]) ? $prevWho : NodeTitle::email($node));
             $repeat = $who !== null && $who === $prevWho;
             $prevWho = $who;
         @endphp
