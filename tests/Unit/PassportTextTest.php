@@ -83,6 +83,14 @@ class PassportTextTest extends TestCase
         $this->assertSame('2918 916342', $fields['passport']);
     }
 
+    /** Штамп от руки: OCR даёт латинский мусор — адреса нет, а не мусор в договоре (16.11.2026). */
+    public function test_handwritten_registration_gives_no_address(): void
+    {
+        $text = "MECTO ЖИТЕАЬСТВА\nЗАРЕГИСТРИРСЕАН\n16 ihebprahe dody\nP-H\nПункт   winp\nyn.\nМП Н 4 отлол по вопросам миграции\nMYМВД   \"Балашихинское”\nподпись";
+
+        $this->assertSame([], PassportText::registration($text)['fields']);
+    }
+
     /** ФИО паспорта поверх вписанного, буква OCR — по вписанному: «Фусейн» → «Гусейн». */
     public function test_passport_name_keeps_typed_spelling(): void
     {

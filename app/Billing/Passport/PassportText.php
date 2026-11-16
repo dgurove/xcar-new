@@ -244,7 +244,7 @@ final class PassportText
         $address = self::address($stamps[0]['lines']);
         if ($address === '') {
             // Над словом — не больше пяти строк вплотную к нему, без заголовка страницы «Место жительства».
-            $before = array_values(array_filter($stamps[0]['before'], fn ($l) => ! preg_match('/МЕСТО|ЖИТЕЛЬСТВ|^\W*\d{1,2}\W*$/u', self::cyr(mb_strtoupper($l)))));
+            $before = array_values(array_filter($stamps[0]['before'], fn ($l) => ! preg_match('/МЕСТО|ЖИТЕ.?.?ЬСТВ|^\W*\d{1,2}\W*$/u', self::cyr(mb_strtoupper($l), true))));
             $address = self::address(array_slice($before, -5));
         }
 
@@ -319,7 +319,11 @@ final class PassportText
             }
         }
 
-        return implode(', ', array_filter($parts));
+        // Рукопись OCR читает латиницей («16 IHEBPRAHE DODY», «WINP», 16.11.2026, Файзулаев): в адресе штампа латиницы
+        // не бывает — такой кусок не адрес; без русского слова адреса нет вовсе (мусор хуже пустого поля).
+        $parts = array_filter($parts, fn ($p) => $p !== '' && ! (preg_match('/[A-Z]/', $p) && ! preg_match('/[А-ЯЁ]/u', $p)));
+
+        return preg_match('/[А-ЯЁ]{3,}/u', implode(' ', $parts)) ? implode(', ', $parts) : '';
     }
 
     /**
