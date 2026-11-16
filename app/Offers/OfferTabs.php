@@ -19,6 +19,9 @@ final class OfferTabs
 
     private const CACHE = 'offer-tabs';
 
+    /** @var array<string, mixed> выражения по нынешней раскладке (`sql`, `sinceSql`) */
+    private static array $memo = [];
+
     /**
      * Вкладки, по которым раскладываются машины «Всех», по порядку колеса. Закупки — не предложения, галерея — окно показа
      * черновика параллельно его вкладке (16.11.2026): машина остаётся в группе своего черновика, у строки — метка «в галерее».
@@ -64,8 +67,21 @@ final class OfferTabs
     /** Ключ вкладки выражением SQL по номеру предложения (`offers.id`, у гаража — `garage_cars.offer_id`); номера — целые из своей раскладки. */
     public static function sql(string $column = 'offers.id'): string
     {
+        // Выражение одно на раскладку: «Все» зовёт его по нескольку раз на запрос (выборка, порядок, группы, чипы, «Во
+        // вкладке»). Octane живёт между запросами — сменилась раскладка (кэш 30 с), строится заново.
+        $map = self::map();
+        if ((self::$memo['map'] ?? null) !== $map) {
+            self::$memo = ['map' => $map];
+        }
+
+        return self::$memo['sql:'.$column] ??= self::build($map, $column);
+    }
+
+    /** @param array<int, string> $map */
+    private static function build(array $map, string $column): string
+    {
         $by = [];
-        foreach (self::map() as $id => $key) {
+        foreach ($map as $id => $key) {
             $by[$key][] = (int) $id;
         }
         $cases = collect(self::keys())->filter(fn ($k) => isset($by[$k]))
@@ -81,12 +97,19 @@ final class OfferTabs
      */
     public static function sinceSql(): string
     {
+        $sql = self::sql();
+
+        return self::$memo['since'] ??= self::since($sql);
+    }
+
+    private static function since(string $sql): string
+    {
         $deal = "(select coalesce(p.block_entered_at, p.entered_at) from offer_positions p where p.offer_id = offers.id and p.track = '".Track::Sale->value."' limit 1)";
         $whens = collect(array_keys(DealTabs::TABS))->map(fn ($k) => "when '{$k}' then {$deal}")->implode(' ');
         $garage = '(select coalesce(g.stage_at, g.taken_at) from garage_cars g where g.offer_id = offers.id limit 1)';
         $bids = "(select min(b.created_at) from bids b where b.offer_id = offers.id and b.state = '".BidState::Active->value."')";
 
-        return 'coalesce((case '.self::sql()." {$whens} when 'garage' then {$garage} when 'bids' then {$bids} end), offers.tab_at, offers.created_at)";
+        return 'coalesce((case '.$sql." {$whens} when 'garage' then {$garage} when 'bids' then {$bids} end), offers.tab_at, offers.created_at)";
     }
 
     /** Порядок вкладки по колесу выражением SQL: 0, 1, 2… «Прочее» — последним. */
@@ -100,5 +123,6 @@ final class OfferTabs
     public static function forget(): void
     {
         Cache::forget(self::CACHE);
+        self::$memo = [];
     }
 }

@@ -6,10 +6,7 @@
 @props(['facets'])
 @php
     $n = $facets->activeCount();
-    $user = auth()->user();
-    $saved = $facets->saved && $user ? \App\Support\Facets\SavedFilter::of($user, $facets->saved) : collect();
-    $carry = collect(request()->query())->only(['preset'])->filter(fn ($v) => is_string($v) && $v !== '')->all();
-    $match = $saved->first(fn ($f) => $f->matches([...$carry, ...$facets->state()]));
+    $match = $facets->savedHere();
     $on = $n > 0 || $match;
 @endphp
 <span @class(['pill filter-btn', 'facet-on' => $on]) @if ($on) aria-current="true" @endif>

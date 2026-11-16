@@ -41,8 +41,19 @@ final class Facets
     /** @var array<string, list<string>> исключение, развёрнутое в варианты (для своего условия `apply`) */
     private array $resolved = [];
 
-    /** @var array<string, string>|null значения чипов на момент выборки (до того, как контроллер снял умолчания из адреса) */
+    /** @var array<string, string>|null значения чипов на момент выборки */
     private ?array $state = null;
+
+    /**
+     * @var array<string, string> умолчание экрана, которого нет в адресе («Кроме Каркаде» у предложений CRM): действует, пока
+     * ключа нет в адресе, в ссылки не едет, «Фильтр N» его не считает, окно «Фильтр» показывает его выбранным (17.11.2026: прежде
+     * контроллер ставил его в адрес и снимал до вида — окно, нарисованное страницей, видело «Все», и первое же «Показать» писало
+     * `vendor=` в память — Каркаде возвращались насовсем).
+     */
+    private array $implied = [];
+
+    /** @var \Illuminate\Support\Collection<int, SavedFilter>|null */
+    private ?Collection $savedFilters = null;
 
     /** Список сохранённых фильтров (`SavedFilter::list`) — у шапки вкладок колеса «Предложений»; пусто — сохранения нет. */
     public ?string $saved = null;
@@ -68,6 +79,56 @@ final class Facets
         return $this;
     }
 
+    /** Умолчание экрана для ключа, пока его нет в адресе (`$implied`). */
+    public function implied(string $key, string $value): self
+    {
+        $this->implied[$key] = $value;
+        $this->chips = null;
+
+        return $this;
+    }
+
+    /** Значение ключа стоит как умолчание экрана — в адресе его нет или там ровно оно. */
+    public function isImplied(string $key): bool
+    {
+        return isset($this->implied[$key]) && $this->raw($key) === $this->implied[$key];
+    }
+
+    /** Значение чипа: из адреса, иначе умолчание экрана. */
+    private function raw(string $key): mixed
+    {
+        return $this->request->query->has($key) ? $this->request->query($key) : ($this->implied[$key] ?? null);
+    }
+
+    /** Сохранённые фильтры человека для окна и кнопки «Фильтр» — один запрос на запрос. @return Collection<int, SavedFilter> */
+    public function savedFilters(): Collection
+    {
+        $user = $this->request->user();
+
+        return $this->savedFilters ??= $this->saved && $user ? SavedFilter::of($user, $this->saved) : collect();
+    }
+
+    /**
+     * Что сейчас на экране для сравнения с сохранённым фильтром (`SavedFilter::matches`): вкладка и прочие параметры адреса, кроме
+     * того, что в сохранённый не идёт (`SavedFilter::DROP`: вид, страница, поиск…), и все чипы на момент выборки.
+     *
+     * @return array<string, string>
+     */
+    public function current(): array
+    {
+        $carry = collect($this->request->query())->except([...$this->keys(), ...SavedFilter::DROP])->filter(fn ($v) => is_string($v) && $v !== '')->all();
+
+        return [...$carry, ...$this->state()];
+    }
+
+    /** Открытый сохранённый фильтр — тот, чей выбор совпадает с экраном. */
+    public function savedHere(): ?SavedFilter
+    {
+        $current = $this->current();
+
+        return $this->savedFilters()->first(fn (SavedFilter $f) => $f->matches($current));
+    }
+
     /** Окно «Фильтр» во фрейме карточки (`x-ui.detail`, 17.11.2026). */
     public function panel(): View
     {
@@ -82,7 +143,7 @@ final class Facets
         return $this;
     }
 
-    /** Есть ли быстрые чипы: тогда остальные — только в шторке «Фильтр» (и чипом, пока выбраны). */
+    /** Есть ли переключатели шапки вкладки: тогда остальные чипы — только в окне «Фильтр». */
     public function quick(): bool
     {
         return array_any($this->facets, fn (Facet $f) => $f->quick);
@@ -91,7 +152,7 @@ final class Facets
     /** Сколько чипов выбрано не по умолчанию — число на кнопке «Фильтр». */
     public function activeCount(): int
     {
-        return count(array_filter($this->keys(), fn ($k) => $this->on($k) !== $this->facets[$k]->byDefault));
+        return count(array_filter($this->keys(), fn ($k) => $this->on($k) !== $this->facets[$k]->byDefault && ! $this->isImplied($k)));
     }
 
     /**
@@ -108,7 +169,7 @@ final class Facets
     /** @return array<string, string> */
     private function snapshot(): array
     {
-        return collect($this->keys())->mapWithKeys(fn ($k) => [$k => is_string($v = $this->request->query($k)) ? $v : ''])->all();
+        return collect($this->keys())->mapWithKeys(fn ($k) => [$k => is_string($v = $this->raw($k)) ? $v : ''])->all();
     }
 
     /** @return array<string, Facet> */
@@ -159,7 +220,7 @@ final class Facets
     /** Исключённое (`?vendor=!22`) или null — выбор обычный. @return list<string>|null */
     public function excluded(string $key): ?array
     {
-        $raw = $this->request->query($key);
+        $raw = $this->raw($key);
         if (! is_string($raw) || ! str_starts_with($raw, '!') || ! isset($this->facets[$key]) || $this->facets[$key]->toggle || $this->facets[$key]->single || $this->facets[$key]->dates || $this->facets[$key]->range) {
             return null;
         }
@@ -170,7 +231,7 @@ final class Facets
     /** @return list<string> выбранное; у исключения — все варианты списка, кроме исключённых */
     public function selected(string $key): array
     {
-        $raw = $this->request->query($key);
+        $raw = $this->raw($key);
         if (($this->facets[$key] ?? null)?->byDefault) {
             return $raw === '0' ? [] : ['1'];
         }
@@ -205,7 +266,7 @@ final class Facets
     /** Выбрано не по умолчанию: включённый сам «Не просмотренные» — не выбор, «Сбросить» из-за него нет. */
     public function active(): bool
     {
-        return array_any($this->keys(), fn ($k) => $this->on($k) !== $this->facets[$k]->byDefault);
+        return $this->activeCount() > 0;
     }
 
     /**
@@ -290,8 +351,7 @@ final class Facets
         if ($this->base === null) {
             return $all ? collect() : $this->chips = collect();
         }
-        // Есть быстрые чипы — ряд считает только их (и переключатели вкладки) и выбранное; варианты остальных — по открытию
-        // «Фильтра».
+        // Шапка вкладок колеса — ряд считает только переключатели вкладки; варианты остальных — по открытию «Фильтра».
         $lazy = ! $all && ($this->quick() || $this->saved !== null);
 
         $chips = collect($this->facets)->when($only !== null, fn ($c) => $c->only([$only]))->map(function (Facet $f, string $key) use ($lazy, $all) {

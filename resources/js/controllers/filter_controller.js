@@ -26,12 +26,22 @@ export default class extends Controller {
         this.pending?.abort();
     }
 
-    // Варианты параметра грузятся, когда его открыли (`X-Filter-Pane`), и остаются до закрытия окна.
+    // Варианты параметра грузятся, когда его открыли (`X-Filter-Pane`), — по выбору в окне, а не по странице: выбрали марку —
+    // в «Модели» только её модели, числа — при прочем выбранном. Выбор с тех пор поменялся — экран спрашивается заново.
     async push({ params: { pane } }) {
-        if (!this.paneTargets.some((p) => p.dataset.pane === pane)) {
-            const r = await request(this.urlValue, { headers: { 'X-Filter-Pane': pane }, accept: 'text/html' });
-            if (!r || !this.hasPanesTarget) return;
-            this.panesTarget.insertAdjacentHTML('beforeend', await r.text());
+        if (pane !== 'saved') {
+            const url = this.url().toString();
+            const have = this.paneTargets.find((p) => p.dataset.pane === pane);
+            if (!have || have.dataset.loaded !== url) {
+                const r = await request(url, { headers: { 'X-Filter-Pane': pane }, accept: 'text/html' });
+                if (!r || !this.hasPanesTarget) return;
+                const html = await r.text();
+                this.paneTargets.find((p) => p.dataset.pane === pane)?.remove();
+                this.panesTarget.insertAdjacentHTML('beforeend', html);
+                const fresh = this.paneTargets.find((p) => p.dataset.pane === pane);
+                if (!fresh) return;
+                fresh.dataset.loaded = url;
+            }
         }
         this.paneTargets.forEach((p) => { p.hidden = p.dataset.pane !== pane; });
         this.mainTargets.forEach((m) => { m.hidden = true; });
@@ -163,7 +173,17 @@ export default class extends Controller {
             const digits = input.value.replace(/\D+/g, '').slice(0, 12);
             if (input.dataset.money !== undefined) {
                 const pretty = digits.replace(/\B(?=(\d{3})+(?!\d))/g, '\u00a0');
-                if (input.value !== pretty) input.value = pretty;
+                if (input.value !== pretty) {
+                    // Курсор — после того же числа цифр, что и до разрядов: правка в середине не уводит его в конец.
+                    const focused = document.activeElement === input;
+                    const before = focused ? input.value.slice(0, input.selectionStart ?? input.value.length).replace(/\D+/g, '').length : 0;
+                    input.value = pretty;
+                    if (focused) {
+                        let at = 0;
+                        for (let seen = 0; at < pretty.length && seen < before; at++) if (/\d/.test(pretty[at])) seen++;
+                        input.setSelectionRange(at, at);
+                    }
+                }
             }
             return digits;
         });

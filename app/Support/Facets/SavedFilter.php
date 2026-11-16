@@ -23,6 +23,9 @@ final class SavedFilter extends Model
     /** Сколько фильтров у человека в одном списке. */
     public const LIMIT = 20;
 
+    /** Что в сохранённый адрес не идёт и в сравнении не участвует: страница, порция, поиск, карточка, сброс, вид. */
+    public const DROP = ['page', 'part', 'rows', 'q', 'peek', 'reset', 'vid', 'per'];
+
     /** Адрес списка (`list`) — колесо «Предложений». */
     public const PATHS = ['offers' => '/offers'];
 
@@ -44,7 +47,7 @@ final class SavedFilter extends Model
     /** Тот же выбор, что сейчас на экране: вкладка и чипы (сортировка — не выбор, по ней фильтр не «другой»). */
     public function matches(array $query): bool
     {
-        $norm = fn (array $q) => collect($q)->except(['sort'])->map(fn ($v) => (string) $v)->filter(fn ($v) => $v !== '')->sortKeys()->all();
+        $norm = fn (array $q) => collect($q)->except(['sort', ...self::DROP])->map(fn ($v) => (string) $v)->filter(fn ($v) => $v !== '')->sortKeys()->all();
 
         return $norm($this->query) === $norm($query);
     }

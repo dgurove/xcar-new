@@ -7,23 +7,20 @@
      полями в строке; переключатели — свитчами. Логику держит `filter_controller` тем же правилом, что шторка чипа: отмечено
      всё — без фильтра, снятых меньше — «кроме»; в адрес — только тронутое и стоявшее в адресе. --}}
 @php
-    use App\Support\Facets\SavedFilter;
     $pane ??= null;
     $chips = $facets->chips(true, $pane);
-    $user = auth()->user();
-    $saved = $facets->saved && $user ? SavedFilter::of($user, $facets->saved) : collect();
     $state = $facets->state();
     $carry = collect(request()->query())->except([...$facets->keys(), 'page', 'q', 'peek', 'part', 'rows', 'reset'])->filter(fn ($v) => is_string($v) && $v !== '')->all();
-    $current = [...$carry, ...$state];
-    $tabs = \App\Http\Admin\OfferController::PRESETS;
-    // Подсказка названия — что выбрано сейчас: «Иван Петров, горит срок».
-    // Умолчание экрана «Кроме Каркаде» — не выбор: в подсказку не идёт.
-    $carcade = '!'.\App\Http\Admin\OfferController::carcadeId();
-    $hint = $chips->filter(fn ($c) => ($c->on ?? $c->selected !== []) && ! $c->facet->byDefault && ! ($c->facet->key === 'vendor' && ($c->value ?? '') === $carcade))
-        ->map(fn ($c) => $c->facet->toggle ? mb_strtolower($c->facet->title) : ($c->facet->range || $c->facet->dates ? $c->facet->title.' '.mb_strtolower($c->label) : $c->label))
-        ->take(3)->implode(', ');
-    $hint = $hint !== '' ? mb_strtoupper(mb_substr($hint, 0, 1)).mb_substr($hint, 1) : ($tabs[request()->query('preset')] ?? 'Мой фильтр');
     $panes = $chips->reject(fn ($c) => $c->facet->toggle || $c->facet->range);
+    if ($pane === null) {
+        $saved = $facets->savedFilters();
+        $here = $facets->savedHere();
+        // Подсказка названия — что выбрано сейчас: «Иван Петров, горит срок». Умолчание экрана «Кроме Каркаде» — не выбор.
+        $hint = $chips->filter(fn ($c) => ($c->on ?? $c->selected !== []) && ! $c->facet->byDefault && ! $facets->isImplied($c->facet->key))
+            ->map(fn ($c) => $c->facet->toggle ? mb_strtolower($c->facet->title) : ($c->facet->range || $c->facet->dates ? $c->facet->title.' '.mb_strtolower($c->label) : $c->label))
+            ->take(3)->implode(', ');
+        $hint = $hint !== '' ? mb_strtoupper(mb_substr($hint, 0, 1)).mb_substr($hint, 1) : (\App\Http\Admin\OfferController::PRESETS[request()->query('preset')] ?? 'Мой фильтр');
+    }
 @endphp
 @if ($pane === null)
 <x-ui.detail data-controller="filter" :data-filter-url-value="$facets->url([])" aria-label="Фильтр">
@@ -38,7 +35,6 @@
      одной строкой, у открытого галка; ниже «Сохранить текущий…» и для открытого — «Переименовать…», «Обновить выбранным»,
      «Удалить». Панель — вне GET-формы фильтра (в ней свои формы). Формы — всей страницей (`_top`): формы окна иначе отвечают
      в само окно (`DetailBack`); `filter#send` снимает запись окна «Назад» и помечает окно на перерисовку. --}}
-@php $here = $saved->first(fn ($sf) => $sf->matches($current)); @endphp
 @if ($facets->saved)
     <div class="filter-main list mb-4" data-filter-target="main">
         <button type="button" class="row w-full text-left" data-action="filter#push" data-filter-pane-param="saved">

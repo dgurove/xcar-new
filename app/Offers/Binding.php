@@ -171,6 +171,22 @@ final class Binding
         };
     }
 
+    /**
+     * Срок что-то значит (`matters`) одним SQL: вендор со сроком, и машина ищет покупателя или сделка не заплатила поставщику.
+     * Чип «Срок обязывающего» окна «Фильтр» (17.11.2026): иначе «Прошёл» во «Всех» собирал проданные с давним сроком.
+     */
+    public static function mattersSql(string $table = 'offers'): string
+    {
+        $vendors = self::vendorIds();
+        if ($vendors === []) {
+            return 'false';
+        }
+        $states = implode(',', array_map(fn ($v) => "'{$v}'", self::liveValues()));
+
+        return "({$table}.binding_until is not null and {$table}.vendor_id in (".implode(',', array_map('intval', $vendors)).')'
+            ." and ({$table}.state in ({$states}) or ".str_replace('offers.', "{$table}.", self::UNPAID_SQL).'))';
+    }
+
     /** Горит всерьёз одним SQL — колонка списков, сортировка и подзапрос логистики. */
     public static function panicSql(string $table = 'offers'): string
     {

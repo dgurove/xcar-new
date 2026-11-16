@@ -307,10 +307,6 @@ class OfferController
             'carcadeHidden' => $carcadeHidden] = $this->listQuery($request);
         // Числа вкладок — с тем же выбором, что и список (и «кроме Каркаде» по умолчанию).
         $counts = self::counts($request->user(), $facets, $carcadeHidden);
-        if ($carcadeHidden) {
-            $facets->chips();
-            $request->query->remove('vendor');
-        }
 
         $count = $q->count();
         // Вид — на любой вкладке (начальник 04.10.2026: «вернуть кнопку видов»); по умолчанию в CRM таблица, поиск — таблицей.
@@ -447,8 +443,13 @@ class OfferController
         $searching = $facets->searching();
         // Вендор ни разу не выбирали — все, кроме Каркаде (их десятки из закупки, оценивают отдельно), на любой вкладке:
         // фильтр при переключении вкладок не меняется (владелец 04.10.2026). Сняли чип — ListPrefs помнит пустое, и
-        // умолчание больше не встаёт. В ссылки вкладок оно не едет: после чипов параметр убирается (ниже).
-        $carcadeHidden = ! $searching && ! $request->query->has('vendor') && $this->hideCarcade($request, $preset);
+        // умолчание больше не встаёт. Умолчание — значением `Facets::implied`, а не в адресе: в ссылки не едет, «Фильтр N» его
+        // не считает, окно фильтра видит его выбранным, как бы ни было нарисовано (фреймом или страницей).
+        $given = $request->query('vendor');
+        if (! $searching && ($given === null || (is_string($given) && str_starts_with($given, '!'))) && ($carcade = $this->carcadeDefault($request, $preset))) {
+            $facets->implied('vendor', $carcade);
+        }
+        $carcadeHidden = $facets->isImplied('vendor');
 
         // Пустой «+ Новый» в списке не стоит: его либо заполнят, либо он удалится, как только из него уйдут.
         $q = Offer::query()->inCrm($request->user())->notEmptyDraft()->with(['settlement', 'saleSettlement', 'vendor', 'parkVehicle:id,car_id,state,accepted_at,created_at', 'deal', 'garageCar'])
@@ -502,21 +503,20 @@ class OfferController
         return Vendor::whereRaw("name ilike '%каркаде%' or name ilike '%carcade%'")->value('id');
     }
 
-    /** Подставить в запрос «все, кроме Каркаде» (`!id` — исключение, Facets); Каркаде на вкладке нет — false. */
-    private function hideCarcade(Request $request, string $preset): bool
+    /** Умолчание вкладки «все, кроме Каркаде» (`!id` — исключение, Facets); Каркаде на вкладке нет — null. */
+    private function carcadeDefault(Request $request, string $preset): ?string
     {
         // «Есть подтверждения» — всё, что подтвердили менеджеры (11.10.2026, владелец: подтверждения Армена на Каркаде
         // админ не видел): умолчание «Кроме Каркаде» на этой вкладке не встаёт.
         if ($preset === 'bids') {
-            return false;
+            return null;
         }
         $carcade = self::carcadeId();
         if (! $carcade || ! self::scopeFor($preset, Offer::visibleTo($request->user())->notEmptyDraft(), $request->user()->canManageCrm())->where('vendor_id', $carcade)->exists()) {
-            return false;
+            return null;
         }
-        $request->query->set('vendor', '!'.$carcade);
 
-        return true;
+        return '!'.$carcade;
     }
 
     /**

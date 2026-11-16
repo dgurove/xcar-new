@@ -33,7 +33,10 @@ final class OfferFilters
                 Facet::range('floor', 'Закупочная', self::offer($id, 'floor_price'))->money()->icon('cart'),
                 Facet::range('asking', 'Цена продажи', self::offer($id, 'asking_price'))->money()->icon('tag'),
             ] : []),
-            Facet::dates('until', 'Срок обязывающего', self::offer($id, 'binding_until'))->ahead()->icon('timer'),
+            // Только пока срок что-то значит (`Binding::mattersSql`): у проданной давний срок — не «Прошёл».
+            Facet::dates('until', 'Срок обязывающего', $id === 'offers.id'
+                ? '(case when '.Binding::mattersSql().' then offers.binding_until end)'
+                : '(select case when '.Binding::mattersSql('o').' then o.binding_until end from offers o where o.id = '.$id.')')->ahead()->icon('timer'),
             Facet::range('days', 'Во вкладке', 'floor(extract(epoch from now() - ('.($since ?? 'coalesce('.self::offer($id, 'tab_at').', '.self::offer($id, 'created_at').')').')) / 86400)', 'д')->icon('hourglass'),
             // На парковке — ТС той же машины ждёт приёма или стоит (`Offer::onPark`).
             Facet::toggle('park', 'На парковке', fn ($q) => $q->whereRaw('exists (select 1 from park_vehicles pv where pv.car_id = '.self::offer($id, 'car_id')
