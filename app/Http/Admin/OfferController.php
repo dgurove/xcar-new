@@ -99,28 +99,29 @@ class OfferController
         ...GalleryController::PRESETS,
         'slots' => 'Публикация', 'published' => 'Опубликованные', 'bids' => 'Есть подтверждения', 'done' => 'Без подтверждений',
         ...self::DEAL_TABS,
+        // Гараж — все гаражные машины до расчёта, параллельно их вкладкам сделки, как галерея (16.11.2026, начальник: «всего 5
+        // машин»; владелец: своим разделом). Строки рисует `GarageController::tab`.
+        'garage' => 'Гараж',
         'archive' => 'Архив', 'legacy' => 'Из таблицы Кати', 'auction' => 'На аукцион',
     ];
 
     /**
      * Сделка — состояние предложения (16.11.2026, начальник; владелец выбрал вкладки «по этапам маршрута», «Ваш ход» — разложить
      * по этапам): вкладки сделки здесь же, а не в «Работе → Сделки». Этапы по порядку маршрута — `DealTabs`, «Завершённые» —
-     * выданные и гаражные с закрытым расчётом. Строки рисует `DealController::tab`. «В гараже» (16.11.2026, владелец: «гараж — та же
-     * сделка, просто у неё есть доп вкладка, когда она в гараже стоит»; «когда этапы пройдены») — гаражная, чей маршрут со
-     * страховой пройден, до расчёта; строки рисует `GarageController::tab`.
+     * выданные и гаражные с закрытым расчётом. Строки рисует `DealController::tab`. «Гараж» — свой раздел после сделки (`PRESETS`).
      */
-    public const DEAL_TABS = [...DealTabs::TABS, 'garage' => 'В гараже', 'finished' => 'Завершённые'];
+    public const DEAL_TABS = [...DealTabs::TABS, 'finished' => 'Завершённые'];
 
     /**
      * Разделы колеса (16.11.2026, владелец выбрал вариант А: «между вариантами подзаголовки, которые не выбираются, а
      * пролистываются»): первая вкладка раздела → подпись (`x-ui.tab-title :sections`). «Все» — над разделами.
      */
-    public const SECTIONS = ['purchases' => 'Закупка', 'nofloor' => 'Черновик', 'gallery' => 'Галерея', 'slots' => 'Предложение', 'reprice' => 'Сделка', 'archive' => 'Архив'];
+    public const SECTIONS = ['purchases' => 'Закупка', 'nofloor' => 'Черновик', 'gallery' => 'Галерея', 'slots' => 'Предложение', 'reprice' => 'Сделка', 'garage' => 'Гараж', 'archive' => 'Архив'];
 
     /** Вкладки, чьи строки рисует свой контроллер: сделки, гараж, галерея, закупки. */
     public static function ownTab(?string $preset): bool
     {
-        return self::dealTab($preset) || in_array($preset, ['purchases', 'gallery', 'interest'], true);
+        return self::dealTab($preset) || in_array($preset, ['purchases', 'gallery', 'interest', 'garage'], true);
     }
 
     /** Зелёные числа колеса: ключ вкладки → ключ числа в `counts` (оценки менеджеров, наши дела по этапам сделки). */
@@ -550,8 +551,8 @@ class OfferController
             'all' => $q->whereNotIn('offers.state', [OfferState::Archived, OfferState::Cancelled]),
             // Сделка (16.11.2026): этап — раскладка `DealTabs`, «Завершённые» — выданные.
             'reprice', 'letter', 'answered', 'agree', 'invoice', 'paying', 'payout', 'pickup', 'docs' => $q->whereIn('offers.id', DealTabs::ids($preset)),
-            // «В гараже» — маршрут со страховой пройден, расчёт ещё не закрыт; закрыт — в «Завершённых» вместе с выданными.
-            'garage' => $q->where('offers.state', OfferState::Garage)->whereHas('garageCar', fn ($c) => $c->where('state', '!=', CarState::Settled)),
+            // «Гараж» — все гаражные машины до расчёта, в любом этапе сделки (16.11.2026); расчёт закрыт — в «Завершённых».
+            'garage' => $q->whereHas('garageCar', fn ($c) => $c->where('state', '!=', CarState::Settled)),
             // Галерея — окно показа черновика (`GalleryController::scopeFor`); закупки — не предложения: строк-предложений нет.
             'gallery', 'interest' => GalleryController::scopeFor($preset, $q),
             'purchases' => $q->whereRaw('false'),

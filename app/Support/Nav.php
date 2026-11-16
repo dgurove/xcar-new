@@ -113,10 +113,11 @@ final class Nav
         // Работа · Закупки» — Почта, Чаты, Оплаты. Страница закупки и прежний адрес галереи — под «Предложениями».
         if ($surface === Surface::Crm) {
             return [
-                self::item('Предложения', '/offers', ['/offers', '/purchases', '/gallery']),
-                self::item('Почта', '/work/mail'),
-                self::item('Чаты', '/work/chats'),
-                self::item('Оплаты', '/work/money'),
+                // Значки разделов (16.11.2026, владелец: «красивые иконки, заполненные»): лента, письмо, пузыри, монета.
+                self::item('Предложения', '/offers', ['/offers', '/purchases', '/gallery'], icon: 'feed'),
+                self::item('Почта', '/work/mail', icon: 'mail'),
+                self::item('Чаты', '/work/chats', icon: 'chats'),
+                self::item('Оплаты', '/work/money', icon: 'coin'),
                 // Кабинет CRM — это «Настройки»: профиль первой пилюлей, уведомления — под /account. В шапке ПК его
                 // ведёт аватар, на телефоне — последний таб: отдельной капсулой он был бы вторым входом рядом.
                 self::item('Настройки', '/settings', ['/settings', '/account'], tab: false, capsule: false),
@@ -920,9 +921,10 @@ final class Nav
         return $best;
     }
 
-    private static function item(string $label, string $href, string|array|null $match = null, bool $tab = true, bool $capsule = true): array
+    /** icon — значок в таб-баре (`x-ui.tab-icon`): у разделов CRM вместо капсулы с числом. */
+    private static function item(string $label, string $href, string|array|null $match = null, bool $tab = true, bool $capsule = true, ?string $icon = null): array
     {
-        return ['label' => $label, 'href' => $href, 'match' => $match ?? $href, 'tab' => $tab, 'capsule' => $capsule];
+        return ['label' => $label, 'href' => $href, 'match' => $match ?? $href, 'tab' => $tab, 'capsule' => $capsule, 'icon' => $icon];
     }
 
     /**

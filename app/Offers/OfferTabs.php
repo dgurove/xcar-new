@@ -54,25 +54,25 @@ final class OfferTabs
         return OfferController::PRESETS[$key] ?? 'Прочее';
     }
 
-    /** Ключ вкладки выражением SQL (`offers.id`); номера — целые из своей раскладки. */
-    public static function sql(): string
+    /** Ключ вкладки выражением SQL по номеру предложения (`offers.id`, у гаража — `garage_cars.offer_id`); номера — целые из своей раскладки. */
+    public static function sql(string $column = 'offers.id'): string
     {
         $by = [];
         foreach (self::map() as $id => $key) {
             $by[$key][] = (int) $id;
         }
         $cases = collect(self::keys())->filter(fn ($k) => isset($by[$k]))
-            ->map(fn ($k) => "when offers.id in (".implode(',', $by[$k]).") then '{$k}'")->implode(' ');
+            ->map(fn ($k) => "when {$column} in (".implode(',', $by[$k]).") then '{$k}'")->implode(' ');
 
         return $cases === '' ? "'".self::OTHER."'" : "(case {$cases} else '".self::OTHER."' end)";
     }
 
     /** Порядок вкладки по колесу выражением SQL: 0, 1, 2… «Прочее» — последним. */
-    public static function orderSql(): string
+    public static function orderSql(string $column = 'offers.id'): string
     {
         $cases = collect(self::keys())->map(fn ($k, $i) => "when '{$k}' then {$i}")->implode(' ');
 
-        return '(case '.self::sql()." {$cases} else 999 end)";
+        return '(case '.self::sql($column)." {$cases} else 999 end)";
     }
 
     public static function forget(): void

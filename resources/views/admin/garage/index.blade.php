@@ -1,13 +1,13 @@
-{{-- «В гараже» — вкладка раздела «Сделка» в «Предложениях» (16.11.2026, `GarageController::tab`): гаражная, чей маршрут со
-     страховой пройден, до расчёта — группами по менеджеру (взятые под себя — последними), в видах, как остальные списки CRM:
+{{-- «Гараж» — свой раздел колеса «Предложений» (16.11.2026, `GarageController::tab`): все гаражные машины до расчёта, группами по
+     этапу сделки (как во «Все»), сделка закрыта — по этапу гаража; менеджер — столбцом. Виды — как у остальных списков CRM:
      таблица (по умолчанию), подробная, ленты, плитки и строки (`x-garage.card`). Нажатие — окно машины: путь, деньги, расходы и
-     действия. Заголовок — колесо вкладок «Предложений» с разделами, как у вкладок сделки. --}}
+     действия. Заголовок — колесо вкладок «Предложений» с разделами. --}}
 @php
     use App\Support\ListView;
     $view = ListView::pick(request(), $total, shelves: true);
     $user = auth()->user();
 @endphp
-<x-ui.shell :title="$presets['garage'] ?? 'В гараже'" :heading="false" :detail="$detail">
+<x-ui.shell :title="$presets['garage'] ?? 'Гараж'" :heading="false" :detail="$detail">
     <div class="title-row">
         <x-ui.tab-title :pills="$presets" pill="garage" pill-param="preset" pill-home="" :counts="$counts" :badges="\App\Http\Admin\OfferController::badges()" :bumps="['legacy' => 'legacy_drafts']" :sections="$sections" :drop="['todo', 'what', 'sub', 'turn']" fallback="Предложения" id="offers-tabs"/>
     </div>
@@ -21,8 +21,8 @@
         @php $columns = \App\Http\Admin\GarageController::table(); @endphp
         <x-ui.table :table="$columns" id="garage-table" class="mt-4" :view="$view">
             <x-slot:head><x-table.head :table="$columns" :sort="$sort"/></x-slot:head>
-            @foreach ($groups as $who => $cars)
-                <x-table.group :table="$columns" :key="'m'.($cars->first()->manager_id ?? 0)" :title="$cars->first()->manager?->name ?? 'Взяли под себя'" :count="$cars->count()"/>
+            @foreach ($groups as $key => $cars)
+                <x-table.group :table="$columns" :key="'g-'.str_replace(':', '-', $key)" :title="\App\Http\Admin\GarageController::groupTitle($key)" :count="$cars->count()"/>
                 @foreach ($cars as $car)<x-admin.garage-row :car="$car" :table="$columns"/>@endforeach
             @endforeach
         </x-ui.table>
@@ -37,8 +37,8 @@
         </div>
     @else
         <div class="mt-4 flex flex-col">
-            @foreach ($groups as $cars)
-                @php $who = $cars->first()->manager?->name ?? 'Взяли под себя'; @endphp
+            @foreach ($groups as $key => $cars)
+                @php $who = \App\Http\Admin\GarageController::groupTitle($key); @endphp
                 {{-- «Лентами» пачка менеджера — лентой вбок (x-ui.shelf, 11.10.2026), строками — как была. --}}
                 @if ($view === ListView::SHELF)
                     <x-ui.shelf :title="$who" :count="$cars->count()" data-controller="ticker">

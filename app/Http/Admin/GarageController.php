@@ -5,14 +5,16 @@ namespace App\Http\Admin;
 use App\Garage\Car;
 use App\Garage\CarLine;
 use App\Garage\CarState;
+use App\Garage\GaragePayer;
 use App\Live\Rows;
 use App\Offers\CarWindow;
 use App\Offers\OfferNumber;
-use App\Offers\OfferState;
+use App\Offers\OfferTabs;
 use App\Support\Detail;
 use App\Support\Facets\Common;
 use App\Support\Facets\Facet;
 use App\Support\Facets\Facets;
+use App\Support\Facets\Option;
 use App\Support\ListPrefs;
 use App\Support\Sort;
 use App\Support\Table\ColRole;
@@ -21,10 +23,10 @@ use App\Support\Table\Table;
 use Illuminate\Http\Request;
 
 /**
- * «В гараже» — вкладка раздела «Сделка» в «Предложениях» (16.11.2026, владелец: «гараж — та же сделка с теми же этапами, просто
- * у неё есть доп вкладка, когда она в гараже стоит»; «когда этапы пройдены»): гаражная, чей маршрут со страховой пройден
- * (`offers.state = garage`), до закрытого расчёта — группами по менеджеру, этап гаража и дни на нём в строке. Пока маршрут
- * идёт — машина во вкладке своего этапа (`DealTabs`), расчёт закрыт — в «Завершённых». «Работы → Гаража» нет: `/work/garage` — 301.
+ * «Гараж» — свой раздел колеса «Предложений» (16.11.2026; начальник: «в гараже всего 5 машин»; владелец: «как в галерее, все машины,
+ * несмотря на то что они в других этапах», «разбивку на этапы, как во «Все»»): все гаражные машины до расчёта, группами по этапу
+ * сделки (`OfferTabs`: «Менеджер должен нам», «Мы должны поставщику»…), сделка закрыта — по этапу гаража («Сделка закрыта:
+ * подготовка»); менеджер — столбцом и чипом. Расчёт закрыт — в «Завершённых». «Работы → Гаража» нет: `/work/garage` — 301.
  */
 class GarageController
 {
@@ -46,22 +48,33 @@ class GarageController
         if ($detail->framed()) {
             return $detail->response();
         }
+        // Фильтры (16.11.2026, владелец: «фильтры хорошие»): этап сделки (группы вкладки), менеджер, этап гаража, кто платит
+        // поставщику, вендор.
         $facets = Facets::for($request, 'crm-garage',
+            Facet::column('tab', 'Этап', ['этап', 'этапа', 'этапов'], OfferTabs::sql('garage_cars.offer_id'))->natural()
+                ->labels(fn (array $keys) => collect([...OfferTabs::keys(), OfferTabs::OTHER])->filter(fn ($k) => in_array($k, $keys, true))
+                    ->mapWithKeys(fn ($k) => [$k => new Option($k, self::tabLabel($k))])->all()),
             Common::manager('garage_cars.manager_id')->none('Взяли под себя'),
-            Facet::column('stage', 'Этап', ['этап', 'этапа', 'этапов'], 'garage_cars.state')->enum(CarState::class)->natural(),
+            Facet::column('stage', 'Этап гаража', ['этап', 'этапа', 'этапов'], 'garage_cars.state')->enum(CarState::class)->natural(),
+            Facet::column('payer', 'Кто платит поставщику', ['вариант', 'варианта', 'вариантов'], '(select d.garage_payer from deals d where d.id = garage_cars.deal_id)')
+                ->enum(GaragePayer::class)->natural(),
+            Common::vendor('(select o.vendor_id from offers o where o.id = garage_cars.offer_id)'),
         );
         ListPrefs::sync($request, 'crm-garage', keep: $facets->keys());
         $sort = Sort::from($request->query('sort'), self::SORTS, 'stage');
 
-        $q = Car::with(['offer', 'offer.media', 'offer.vendor', 'offer.deal', 'offer.positions.stage.block', 'offer.positions.stage.exits', 'offer.parkVehicle', 'offer.pickupTask.executor', 'manager', 'costs', 'invoice', 'payoutInvoice', 'deal.offer'])
-            ->where('state', '!=', CarState::Settled)->whereHas('offer', fn ($o) => $o->where('offers.state', OfferState::Garage));
+        // Все гаражные машины до расчёта, в любом этапе сделки (16.11.2026, начальник: «всего 5 машин»).
+        $q = Car::with(['offer', 'offer.media', 'offer.vendor', 'offer.deal', 'offer.positions.stage.block', 'offer.positions.stage.exits', 'offer.parkVehicle', 'offer.pickupTask.executor', 'manager', 'manager.media', 'costs', 'invoice', 'payoutInvoice', 'deal.offer'])
+            ->where('state', '!=', CarState::Settled)->whereHas('offer');
         $cars = $facets->apply($q)->orderBy('stage_at')->get();
         $total = $cars->count();
         // Живое обновление строкой (`Live\Rows`): машин в гараже десятки — сужаем уже выбранное.
         $cars = Rows::filter($cars, fn (Car $c) => $c->offer?->number);
 
-        // Группы — менеджеры по имени, взятые под себя — последними; внутри — выбранная сортировка.
+        // Группы — этап сделки, как во «Все» (`OfferTabs`, порядок колеса); сделка закрыта — по этапу гаража. Внутри — выбранная
+        // сортировка.
         $user = $request->user();
+        $order = array_flip(OfferTabs::keys());
         $groups = $cars->sortBy(fn (Car $c) => match ($sort->key) {
             'created' => [$c->created_at?->timestamp ?? 0, $c->id],
             'days' => [$c->stageDays(), $c->id],
@@ -69,8 +82,8 @@ class GarageController
             'price' => [(float) $c->price(), $c->id],
             default => [$c->state->order(), $c->stage_at?->timestamp ?? 0],
         }, SORT_REGULAR, $sort->desc)
-            ->groupBy(fn (Car $c) => $c->manager_id ?? 0)
-            ->sortBy(fn ($rows, $id) => $id ? $rows->first()->manager->name : "\u{FFFF}");
+            ->groupBy(fn (Car $c) => self::groupKey($c))
+            ->sortBy(fn ($rows, string $key) => [$order[strtok($key, ':')] ?? 999, $rows->first()->state->order()]);
 
         return view('admin.garage.index', [
             'detail' => $detail,
@@ -85,8 +98,30 @@ class GarageController
         ]);
     }
 
+    /** Группа машины: вкладка сделки (`OfferTabs`), сделка закрыта — `garage:<этап гаража>`. */
+    public static function groupKey(Car $car): string
+    {
+        $tab = $car->offer ? OfferTabs::of($car->offer) : OfferTabs::OTHER;
+
+        return $tab === 'garage' ? 'garage:'.$car->state->value : $tab;
+    }
+
+    /** Заголовок группы: этап сделки словом вкладки, после сделки — «Сделка закрыта: подготовка». */
+    public static function groupTitle(string $key): string
+    {
+        return str_starts_with($key, 'garage:')
+            ? 'Сделка закрыта: '.(fn ($l) => mb_strtolower(mb_substr($l, 0, 1)).mb_substr($l, 1))(CarState::from(substr($key, 7))->label())
+            : self::tabLabel($key);
+    }
+
+    /** Подпись этапа в чипе: вкладка сделки, «Гараж» здесь — «Сделка закрыта». */
+    private static function tabLabel(string $key): string
+    {
+        return $key === 'garage' ? 'Сделка закрыта' : OfferTabs::label($key);
+    }
+
     /**
-     * Таблица «В гараже» — одно описание на шапку, строки `x-admin.garage-row` и заголовки менеджеров. На телефоне
+     * Таблица «Гаража» — одно описание на шапку, строки `x-admin.garage-row` и заголовки групп. На телефоне
      * вместо денежных столбцов — одно главное число этапа («Сумма»).
      */
     public static function table(): Table
@@ -97,6 +132,8 @@ class GarageController
             new Column('vendor', '№ убытка', from: 'sm', role: ColRole::Code, rem: 10),
             // Этап — своим столбцом от 640 (29.10.2026), как «Что сейчас» в «Сделках»; был вторым этажом названия.
             new Column('stage', 'Этап', from: 'sm', role: ColRole::State, rem: 11),
+            // Менеджер — столбцом (16.11.2026: группы теперь по этапу сделки, а не по менеджеру); «под себя» — словом.
+            new Column('manager', 'Менеджер', from: 'sm', cell: 'whitespace-nowrap', role: ColRole::Who, rem: 11),
             new Column('taken', 'В гараже с', from: 'xl', aside: true, cell: 'nums', role: ColRole::When, rem: 5.5),
             new Column('price', 'Закупочная', from: 'sm', num: true, sort: 'price', cell: 'nums', rem: 6.5),
             new Column('spent', 'Расходы', from: 'sm', num: true, cell: 'nums', rem: 5.5),

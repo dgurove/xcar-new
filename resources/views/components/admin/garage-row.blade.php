@@ -4,7 +4,8 @@
      одно главное число этапа (`CarLine`: закупочная, к оплате, продана за). От 640 вместо него — столбцы, каждый своё:
      вендор, «Закупочная», «Расходы», «Цена продажи»; шире — «В гараже с». Строка в одну линию: кто платил расходы и
      что с деньгами по продаже — в карточке. Нажатие — карточка с путём, деньгами и расходами. Срок обязывающего, пока сделка не
-     заплатила поставщику, — меткой у названия, только когда горит. --}}
+     заплатила поставщику, — меткой у названия, только когда горит. На телефоне номер убытка — своей строкой (16.11.2026: длинный этап
+     переносился, и логотип наезжал на срок). --}}
 @props(['car', 'table'])
 @php
     use App\Support\Money;
@@ -26,7 +27,7 @@
         @case('title')
     <td class="{{ $col->classes() }}">
         <x-cell.title :key="$offer->number" :offer="$offer">@if ($binding)<x-offer.binding :offer="$offer" icon/>@endif</x-cell.title>
-        <span class="cell-sub"><span class="sm:hidden"><span class="{{ $line->tone }}">{{ $line->word }}</span>, @if ($sale)<x-route.term :position="$sale"/>@else{{ $line->when }}@endif</span>@if ($hasRef)<span class="fit-core sm:hidden"><x-vendor.ref :vendor="$vendor" :ref="$offer->claim_ref"/></span>@endif</span>
+        <span class="cell-sub"><span class="sm:hidden"><span class="{{ $line->tone }}">{{ $line->word }}</span>, @if ($sale)<x-route.term :position="$sale"/>@else{{ $line->when }}@endif</span>@if ($hasRef)<span class="block sm:hidden"><x-vendor.ref :vendor="$vendor" :ref="$offer->claim_ref"/></span>@endif</span>
     </td>
         @break
         @case('vendor')
@@ -34,6 +35,9 @@
         @break
         @case('stage')
     <td class="{{ $col->classes() }}"><span class="whitespace-normal"><span class="{{ $line->tone }}">{{ $line->word }}</span>, @if ($sale)<x-route.term :position="$sale"/>@else{{ $line->when }}@endif</span></td>
+        @break
+        @case('manager')
+    <td class="{{ $col->classes() }}">@if ($car->manager)<x-cell.person :user="$car->manager" from="lg"/>@else<span class="text-ink-muted">под себя</span>@endif</td>
         @break
         @case('taken')
     <td class="{{ $col->classes() }}">{{ \App\Support\Ago::html($car->taken_at) }}</td>
