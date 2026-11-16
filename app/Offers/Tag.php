@@ -20,7 +20,7 @@ class Tag extends Model
     public const PALETTE = [
         'lime' => ['#f0f7d8', '#669709', '#1a2605', '#a6cf3a'],
         'orange' => ['#fff3e0', '#c26a00', '#2a1a00', '#ffb15c'],
-        'red' => ['#ffe8ec', '#d10030', '#33000a', '#ff6b8a'],
+        'red' => ['#ffebe9', '#e0281e', '#3b1311', '#ff6961'], // красный iOS, как токен `--color-danger` (16.11.2026)
         'blue' => ['#e3ecfb', '#2456b3', '#101c33', '#8ab4ff'],
         'grey' => ['#ececec', '#666666', '#242424', '#9a9a9a'],
         'amber' => ['#fef3c7', '#92400e', '#3f2606', '#fcd34d'],

@@ -17,7 +17,8 @@
     --space-bg: #dfe1e3;
     --b-ink: var(--color-ink); --b-dim: var(--b-ink);
     --b-idle: var(--color-surface); --b-idle-ink: #9a9a98; --b-idle-hover: var(--color-surface-3); --b-face: #d6d7d9;
-    --b-red: #ff2d55; --b-red-text: #ff6b85;
+    /* Красный — общий токен (16.11.2026). */
+    --b-red: var(--color-danger); --b-red-text: var(--color-danger);
     position: absolute; inset: 0; overflow: hidden; background: var(--space-bg);
     touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
     cursor: grab;

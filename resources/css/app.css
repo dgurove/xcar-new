@@ -117,8 +117,10 @@
   --color-urgent-soft: #fff3e0;
   --color-closed: #808080;
   --color-closed-soft: #ececec;
-  --color-danger: #ff0037;
-  --color-danger-soft: #ffe8ec;
+  /* Красный — один токен на все хосты (16.11.2026, владелец: «приятный красный, как на iOS, везде; розово-красный бесит»): системный
+     красный iOS, в тёмной теме — его тёмный вариант. Своих красных мимо токена нет. */
+  --color-danger: #ff3b30;
+  --color-danger-soft: #ffebe9;
   /* Ниже порога, но можно (26.10.2026): жёлтым — подтверждение у админа, «Вы уверены?» у менеджера. */
   --color-warn: #b7791f;
   --color-warn-soft: #fef3c7;
@@ -274,7 +276,8 @@ html.kb-open { --home-gap: 0px; }
   --color-urgent-soft: #3a2504;
   --color-closed: #a3a3a3;
   --color-closed-soft: #3a3a3c;
-  --color-danger-soft: #45101b;
+  --color-danger: #ff453a;
+  --color-danger-soft: #3b1311;
   --color-req-release: #d0587a;
   --color-req-inspect: #f0a54a;
   --color-warn: #fcd34d;
@@ -4169,11 +4172,12 @@ html.kb-open { --home-gap: 0px; }
   .tab[aria-current="page"] .avatar { box-shadow: 0 0 0 2px var(--color-accent); }
   .tab .badge { position: absolute; top: -6px; left: calc(100% - 8px); box-shadow: 0 0 0 2px var(--color-bar); transition: background-color var(--dur-fast), color var(--dur-fast); }
   .tab[aria-current="page"] .badge { background: var(--color-ink); color: var(--color-bar); }
-  /* Бейдж разделов CRM — красный, как в iOS, и на текущем разделе тот же (16.11.2026, владелец: «на iOS счётчик не пропадает,
-     когда в раздел заходят», «красные, но не вырвиглазно, приятно, как на iOS»): системный красный iOS, в тёмной теме — его
-     тёмный вариант. */
-  .surface-crm .tabbar .badge, .surface-crm .tabbar .tab[aria-current="page"] .badge { background: #ff3b30; color: #fff; }
-  .dark .surface-crm .tabbar .badge, .dark .surface-crm .tabbar .tab[aria-current="page"] .badge { background: #ff453a; }
+  /* Счётчики CRM — красные, как в iOS, и на текущем разделе те же (16.11.2026, владелец: «на iOS счётчик не пропадает, когда в
+     раздел заходят», «красные, но не вырвиглазно», «в шапке на компьютере тоже»): таб-бар и шапка — токен красного. */
+  .surface-crm .tabbar .badge, .surface-crm .tabbar .tab[aria-current="page"] .badge,
+  .surface-crm .header .badge, .surface-crm .header [aria-current="page"] .badge { background: var(--color-danger); color: #fff; }
+  /* «Горит» — сама красная кнопка: её счётчик белый с красным, как был. */
+  .surface-crm .header .alarm-btn .alarm-badge { background: #fff; color: var(--color-danger); }
 }
 
 /* ------------------------------------------------------------- полоса действий */
