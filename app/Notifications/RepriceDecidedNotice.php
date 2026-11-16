@@ -46,7 +46,7 @@ final class RepriceDecidedNotice extends Notice
     public function text(): ?string
     {
         return match ($this->what) {
-            self::ACCEPTED => 'Ваша цена '.Money::rub((int) $this->ask->offered_price).', счёт и договор обновятся',
+            self::ACCEPTED => 'Цена '.Money::rub((int) $this->ask->offered_price).', счёт и договор обновятся',
             self::COUNTERED => 'Предлагаем '.Money::rub((int) $this->ask->counter_price).' вместо '.Money::rub((int) $this->ask->offered_price).'. Ответьте до '.Ago::day($this->ask->due_at->setTimezone('Europe/Moscow'), true),
             default => 'По цене '.Money::rub((int) $this->ask->offered_price).' не договорились',
         };

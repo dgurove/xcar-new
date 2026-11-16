@@ -23,7 +23,7 @@ final class GalleryInterestOnSaleNotice extends Notice
 
     public function title(): string
     {
-        return 'В продаже, вы отмечали интерес: '.$this->offer->titleWithYear();
+        return 'В продаже, был интерес: '.$this->offer->titleWithYear();
     }
 
     public function text(): ?string

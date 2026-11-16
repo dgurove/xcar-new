@@ -16,12 +16,12 @@ final class BuyerNeededNotice extends Notice
 
     public function label(): string
     {
-        return 'Укажите покупателя';
+        return 'Указать покупателя';
     }
 
     public function title(): string
     {
-        return ($this->passport ? 'Приложите паспорт покупателя: ' : 'Укажите покупателя: ').$this->deal->offer->titleWithYear();
+        return ($this->passport ? 'Приложить паспорт покупателя: ' : 'Указать покупателя: ').$this->deal->offer->titleWithYear();
     }
 
     public function text(): ?string

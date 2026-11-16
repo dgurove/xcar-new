@@ -19,7 +19,7 @@
             <input type="hidden" name="back" value="{{ $back }}">
             @foreach (in_array($variant, ['row', 'card'], true) ? $ask->moves->take(1) : $ask->moves as $exit)
                 <x-ui.button name="exit" :value="$exit->id" :size="$size" :variant="$loop->first ? 'primary' : 'secondary'" :block="$variant !== 'row'"
-                    :data-turbo-confirm="Wording::mine($exit->confirm) ?: ($exit->takes() ? 'Берёте в работу? После этого отказаться нельзя' : null)">{{ Wording::mine($exit->label) }}</x-ui.button>
+                    :data-turbo-confirm="Wording::mine($exit->confirm) ?: ($exit->takes() ? 'Взять в работу? После этого отказаться нельзя' : null)">{{ Wording::mine($exit->label) }}</x-ui.button>
             @endforeach
             {{-- В строке и в плитке «Ждут вас» — одна кнопка: плитки одной высоты, кнопки в ряд (10.11.2026, владелец: «всё скачет»);
                  «Передумал» и «Попросить вывоз…» — в чате, в сделке и в вопросе при входе. --}}

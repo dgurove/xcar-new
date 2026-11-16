@@ -15,7 +15,7 @@ final class OfferPublishedNotice extends Notice
 
     public function label(): string
     {
-        return 'Открыто только вам';
+        return 'Открыто персонально';
     }
 
     public function title(): string

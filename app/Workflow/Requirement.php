@@ -144,8 +144,8 @@ class Requirement extends Model implements HasMedia
             'stage_id' => $stage->id,
             'user_id' => $deal->buyer_id,
             'title' => $stage->managerTitle($deal),
-            // Гаражная сделка цены не называла: «по Вашей цене» из общего текста ей не про неё.
-            'text' => $deal->isGarage() ? preg_replace('/ по Вашей цене/u', '', (string) $stage->managerText()) ?: null : $stage->managerText(),
+            // Гаражная сделка цены не называла: «по цене подтверждения» (до 16.11.2026 — «по Вашей цене») ей не про неё.
+            'text' => $deal->isGarage() ? preg_replace('/ по (Вашей цене|цене подтверждения)/u', '', (string) $stage->managerText()) ?: null : $stage->managerText(),
             'asks' => $stage->asks,
             'fields' => $stage->fields ?? [],
             'due_at' => $position->deadline_at,

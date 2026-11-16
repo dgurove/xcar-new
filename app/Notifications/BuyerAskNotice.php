@@ -21,12 +21,12 @@ final class BuyerAskNotice extends Notice
 
     public function label(): string
     {
-        return 'Укажите покупателя';
+        return 'Указать покупателя';
     }
 
     public function title(): string
     {
-        return 'Укажите покупателя — № '.$this->deal->offer->number;
+        return 'Указать покупателя — № '.$this->deal->offer->number;
     }
 
     public function text(): ?string
@@ -56,7 +56,7 @@ final class BuyerAskNotice extends Notice
 
     public function toTelegram(): ?array
     {
-        return ['title' => 'Укажите покупателя: '.$this->deal->offer->titleWithYear(),
+        return ['title' => 'Указать покупателя: '.$this->deal->offer->titleWithYear(),
             'lines' => Text::lines($this->deal->offer, 'Страховая попросит реквизиты, отправим сразу'),
             'button' => 'Указать покупателя'];
     }

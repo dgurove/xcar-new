@@ -120,7 +120,7 @@ final class UpdateHandler
         }
         // Кнопки лежат в чатах владельца и админов, но переслать сообщение и нажать может кто угодно.
         if (! in_array($press->fromId, $this->bot->ownerChats(), true)) {
-            $this->bot->answer($press->queryId, 'Эта кнопка не для вас.');
+            $this->bot->answer($press->queryId, 'Кнопка не для этого аккаунта');
 
             return;
         }
@@ -192,7 +192,7 @@ final class UpdateHandler
         $bid = Bid::with('offer')->find($press->id);
         $user = User::where('telegram_chat_id', $press->fromId)->first();
         if (! $bid || ! $user || $bid->user_id !== $user->id) {
-            $this->bot->answer($press->queryId, 'Эта кнопка не для вас.');
+            $this->bot->answer($press->queryId, 'Кнопка не для этого аккаунта');
 
             return;
         }
@@ -218,7 +218,7 @@ final class UpdateHandler
                 $deal = $agree ? $bid->offer->deal()->first() : null;
 
                 return [$agree ? 'Сделка открыта' : 'Отказались',
-                    $agree ? 'Вы согласились '.Ago::day(now(), true).', сделка открыта' : 'Вы отказались, ваша цена в силе',
+                    $agree ? 'Согласие '.Ago::day(now(), true).', сделка открыта' : 'Отказ, прежняя цена в силе',
                     $deal ? [[TelegramChannel::button('Открыть сделку', Surface::Site->url($deal->href()))]] : $open];
             }, ['sure' => 'sureyes']);
     }
@@ -232,7 +232,7 @@ final class UpdateHandler
         $ask = RepriceAsk::with(['offer', 'deal', 'bid'])->find($press->id);
         $user = User::where('telegram_chat_id', $press->fromId)->first();
         if (! $ask || ! $user || $ask->user_id !== $user->id) {
-            $this->bot->answer($press->queryId, 'Эта кнопка не для вас.');
+            $this->bot->answer($press->queryId, 'Кнопка не для этого аккаунта');
 
             return;
         }
@@ -253,7 +253,7 @@ final class UpdateHandler
                 }
                 app(AnswerReprice::class)->decline($ask, $user);
 
-                return ['Отказались', 'Вы отказались — '.Ago::day(now(), true)];
+                return ['Отказались', 'Отказ — '.Ago::day(now(), true)];
             });
     }
 
@@ -267,7 +267,7 @@ final class UpdateHandler
         $r = Requirement::with(['offer', 'deal', 'stage'])->find($press->id);
         $user = User::where('telegram_chat_id', $press->fromId)->first();
         if (! $r || ! $user || $r->user_id !== $user->id) {
-            $this->bot->answer($press->queryId, 'Эта кнопка не для вас.');
+            $this->bot->answer($press->queryId, 'Кнопка не для этого аккаунта');
 
             return;
         }
@@ -276,7 +276,7 @@ final class UpdateHandler
         if (! $r->isOpen()) {
             $this->bot->answer($press->queryId, 'Уже отвечено');
             // Ответил за него админ — так и пишем (`Requirement::closeOpen`, `closed_by: staff`).
-            $who = ($r->answer['closed_by'] ?? null) === 'staff' ? 'Ответили за вас: ' : 'Уже отвечено: ';
+            $who = ($r->answer['closed_by'] ?? null) === 'staff' ? 'Ответили за менеджера: ' : 'Уже отвечено: ';
             $this->bot->edit($press->chatId, $press->messageId, $text($who.mb_lcfirst((string) ($r->answer['exit'] ?? ''))), $open);
 
             return;
@@ -339,7 +339,7 @@ final class UpdateHandler
         $user = User::where('telegram_chat_id', $press->fromId)->first();
         $saved = Cache::get("valuation-bot:{$press->id}");
         if (! $user?->isAdmin() || ! $saved || $saved['user'] !== $user->id) {
-            $this->bot->answer($press->queryId, $saved ? 'Эта кнопка не для вас.' : 'Разбор устарел, пришлите фото ещё раз');
+            $this->bot->answer($press->queryId, $saved ? 'Кнопка не для этого аккаунта' : 'Разбор устарел, пришлите фото ещё раз');
 
             return;
         }
@@ -477,7 +477,7 @@ final class UpdateHandler
     {
         $access = AccessCode::with('user')->find($id);
         if (! $access || $access->purpose !== 'link' || ! $access->isLive() || $access->approved_at || ! $access->user) {
-            $this->reply($chatId, 'Ссылка устарела, нажмите «Подключить Telegram» ещё раз', null);
+            $this->reply($chatId, 'Ссылка устарела — нужно ещё раз нажать «Подключить Telegram»', null);
 
             return;
         }
@@ -529,8 +529,8 @@ final class UpdateHandler
             $out = app(LogoutTelegram::class)($chatId);
             $this->reply($chatId, match (true) {
                 $out === LogoutTelegram::LOCKED => 'Выйти нельзя, пока вход в XCar только через Telegram',
-                $out instanceof User => 'Вы вышли из аккаунта '.e($out->name),
-                default => 'Вы не вошли',
+                $out instanceof User => 'Выход из аккаунта '.e($out->name),
+                default => 'Вход не выполнен',
             }, $out === LogoutTelegram::LOCKED ? null : [[['text' => 'Войти через XCar', 'url' => ConnectLink::url(ConnectLink::MAIN)]]]);
 
             return;
@@ -603,7 +603,7 @@ final class UpdateHandler
     {
         $link = StartLink::parse($payload);
         if ($link === null) {
-            $this->reply($chatId, 'Ссылка не подходит, нажмите «Привязать» в профиле ещё раз', [[$this->profile()]]);
+            $this->reply($chatId, 'Ссылка не подходит — нужно ещё раз нажать «Привязать» в профиле', [[$this->profile()]]);
 
             return;
         }
@@ -620,7 +620,7 @@ final class UpdateHandler
         [, $userId, $expired] = $link;
         $user = User::find($userId);
         if (! $user || $expired) {
-            $this->reply($chatId, 'Ссылка устарела, нажмите «Привязать» в профиле ещё раз', [[$this->profile()]]);
+            $this->reply($chatId, 'Ссылка устарела — нужно ещё раз нажать «Привязать» в профиле', [[$this->profile()]]);
 
             return;
         }
@@ -652,12 +652,12 @@ final class UpdateHandler
         }
         $deals = Deal::where('buyer_id', $user->id)->where('state', DealState::Active)->with('openRequirement')->get();
         if ($deals->isEmpty()) {
-            return ['Напишем, когда выберут ваше подтверждение', $this->open()];
+            return ['Напишем, когда подтверждение выберут', $this->open()];
         }
         $waiting = $deals->filter(fn (Deal $d) => $d->openRequirement !== null);
         $line = 'В работе '.$deals->count().' '.Plural::of($deals->count(), ['сделка', 'сделки', 'сделок'])
             .match ($waiting->count()) {
-                0 => '', 1 => ', в одной ждут ваш ответ', default => ', в '.$waiting->count().' ждут ваш ответ'
+                0 => '', 1 => ', в одной ждут ответа', default => ', в '.$waiting->count().' ждут ответа'
             };
 
         return $waiting->isEmpty()
@@ -671,12 +671,12 @@ final class UpdateHandler
         $attempt = StartLink::attempt($token);
         $user = User::where('telegram_chat_id', $chatId)->first();
         if (! $user) {
-            $this->reply($chatId, 'Этот Telegram не привязан к xcar.ru. Войдите по паролю и привяжите его в профиле', [[['text' => 'Войти по паролю', 'url' => Surface::Site->url('/login')]]]);
+            $this->reply($chatId, 'Этот Telegram не привязан к xcar.ru: нужно войти по паролю и привязать его в профиле', [[['text' => 'Войти по паролю', 'url' => Surface::Site->url('/login')]]]);
 
             return;
         }
         if (! $attempt || $attempt['state'] !== 'wait') {
-            $this->reply($chatId, 'Ссылка устарела, нажмите «Войти через Telegram» ещё раз', null);
+            $this->reply($chatId, 'Ссылка устарела — нужно ещё раз нажать «Войти через Telegram»', null);
 
             return;
         }

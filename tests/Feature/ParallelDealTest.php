@@ -131,7 +131,7 @@ class ParallelDealTest extends TestCase
         $this->assertSame(DealState::Parallel, $par->state);
         $this->assertSame(BidState::Accepted, $this->reserve->fresh()->state);
         $this->assertSame('Нет реквизитов', $par->shadowStage->name);
-        $this->assertSame('Заполните данные покупателя', $par->openRequirement()->first()?->title);
+        $this->assertSame('Заполнить данные покупателя', $par->openRequirement()->first()?->title);
         $this->assertTrue($main->fresh()->isActive());
         $this->assertNotNull($main->openRequirement()->first(), 'просьба главной на месте');
         Notification::assertSentTo($this->second, BidAcceptedNotice::class, fn ($n) => $n->href() === '/deals/'.$par->id);
@@ -144,12 +144,12 @@ class ParallelDealTest extends TestCase
         $this->assertSame('Оплата счёта', $this->offer->fresh()->stage()->name);
         $this->assertSame('Нет реквизитов', $par->fresh()->shadowStage->name);
         $html = $this->page($this->second, $par);
-        $this->assertStringContainsString('Заполните данные покупателя', $html);
+        $this->assertStringContainsString('Заполнить данные покупателя', $html);
         foreach (['Тужиков', 'Оплата счёта', 'Платёжное поручение', 'Счёт от поставщика'] as $leak) {
             $this->assertStringNotContainsString($leak, $html, 'параллельный видит: '.$leak);
         }
         // Его «Сделки»: своя строка в «Ваш ход».
-        $this->actingAs($this->second)->get(Surface::Site->url('/deals'))->assertOk()->assertSee('Ваш ход')->assertSee('Заполните данные покупателя');
+        $this->actingAs($this->second)->get(Surface::Site->url('/deals'))->assertOk()->assertSee('Ваш ход')->assertSee('Заполнить данные покупателя');
 
         // Второй прислал реквизиты: у него «Письмо с реквизитами» (письма нет), нам — громко; машина не сдвинулась.
         $this->fillBuyer($par, $this->second);

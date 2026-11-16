@@ -18,10 +18,10 @@ final class BidAcceptedNotice extends Notice
     public function title(): string
     {
         if ($this->deal->isGarage()) {
-            return 'ТС ваша, в гараж: № '.$this->deal->offer->number;
+            return 'ТС в гараж: № '.$this->deal->offer->number;
         }
 
-        return 'Ваше подтверждение '.Money::plain($this->deal->amount).' принято: № '.$this->deal->offer->number;
+        return 'Подтверждение '.Money::plain($this->deal->amount).' принято: № '.$this->deal->offer->number;
     }
 
     public function text(): ?string

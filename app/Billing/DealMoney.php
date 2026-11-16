@@ -110,7 +110,7 @@ final class DealMoney
         if ($issued->isEmpty() && $deal->isActive() && in_array($gap = $deal->invoiceGap(), ['buyer', 'passport'], true)) {
             return $staff
                 ? new self($gap === 'passport' ? 'Ждём паспорт покупателя' : 'Ждём покупателя', $base, 'plain', 'open', mb_strtolower($label))
-                : new self($gap === 'passport' ? 'Приложите паспорт покупателя' : 'Укажите покупателя', $base, 'urgent', 'open', $label);
+                : new self($gap === 'passport' ? 'Приложить паспорт покупателя' : 'Указать покупателя', $base, 'urgent', 'open', $label);
         }
         if ($issued->isEmpty()) {
             return $deal->state === DealState::Done

@@ -15,7 +15,7 @@
     // Гаражная — ход только просьбой (`Deal::managerTask`): продажа из гаража без просьбы — не «Укажите цену продажи» рыжим.
     $mine = $active && ! $req && ! $paidUp && ! $deal->isGarage() && $position && $position->waitsFor() === \App\Workflow\WaitsFor::Manager && ! $position->awaitsInvoice();
     $gap = $mine && $position->stage->isPayStep() && $deal->hasContract() ? $deal->invoiceGap() : null;
-    $ask = $mine ? match ($gap) { 'buyer' => 'Укажите покупателя', 'passport' => 'Приложите паспорт покупателя', 'price' => 'Укажите цену продажи', default => $position->stage->managerTitle() } : null;
+    $ask = $mine ? match ($gap) { 'buyer' => 'Указать покупателя', 'passport' => 'Приложить паспорт покупателя', 'price' => 'Указать цену продажи', default => $position->stage->managerTitle() } : null;
     $staff = auth()->user()->isAdmin() && $deal->buyer_id !== auth()->id();
     // Гаражная (02.11.2026, «гаражные тоже в сделках»): цена — закупочная менеджера (закреплена при подтверждении), метка
     // «Гараж», строка ведёт в машину гаража — там и шаг сделки.

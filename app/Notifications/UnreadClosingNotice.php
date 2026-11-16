@@ -47,14 +47,14 @@ final class UnreadClosingNotice extends Notice
             return match (true) {
                 $this->favorites > 0 => 'В избранном, подтверждения нет',
                 $this->noBids > 0 => 'Ни одного подтверждения',
-                default => 'Вы его ещё не открывали',
+                default => 'Ещё не открывали',
             };
         }
         $brands = NewOffersNotice::brandsLine($this->brands);
         // В заголовке — первое из избранного, без подтверждений, непросмотренных; остальное — строкой.
         $rest = array_filter([
             $this->favorites > 0 && $this->noBids > 0 ? $this->noBids.' без подтверждений' : null,
-            ($this->favorites > 0 || $this->noBids > 0) && $this->unread > 0 ? $this->unread.' вы не открывали' : null,
+            ($this->favorites > 0 || $this->noBids > 0) && $this->unread > 0 ? $this->unread.' не открывали' : null,
         ]);
 
         return $rest ? 'Ещё '.implode(', ', $rest).($brands ? ': '.$brands : '') : $brands;

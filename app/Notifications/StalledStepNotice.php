@@ -29,7 +29,7 @@ final class StalledStepNotice extends Notice
         }
         $n = count($this->items);
 
-        return 'Ждут вас: '.$n.' '.Plural::of($n, ['сделка', 'сделки', 'сделок']);
+        return 'Ждут ответа: '.$n.' '.Plural::of($n, ['сделка', 'сделки', 'сделок']);
     }
 
     public function text(): ?string

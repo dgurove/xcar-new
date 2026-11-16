@@ -314,7 +314,7 @@ class WhatsAppTest extends TestCase
         $this->assertSame('79000000601@s.whatsapp.net', $this->sent[0]['to']);
         $this->assertSame([], $this->sent[0]['files']);
         $this->assertStringStartsWith('*Нужна оценка*', $this->sent[0]['caption']);
-        $this->assertStringContainsString('После оценки — 5 дней только вам', $this->sent[0]['caption']);
+        $this->assertStringContainsString('После оценки — 5 дней персонально', $this->sent[0]['caption']);
         $this->assertMatchesRegularExpression('~/offers/\d+$~', $this->sent[0]['caption']);
         // Оценил или закрыли — не шлём; второй раз ту же — тоже.
         $this->later();

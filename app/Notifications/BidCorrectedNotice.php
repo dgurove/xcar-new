@@ -18,7 +18,7 @@ final class BidCorrectedNotice extends Notice
 
     public function title(): string
     {
-        return 'Ваше подтверждение: '.Money::plain($this->bid->amount).' вместо '.Money::plain($this->was);
+        return 'Подтверждение: '.Money::plain($this->bid->amount).' вместо '.Money::plain($this->was);
     }
 
     public function text(): ?string

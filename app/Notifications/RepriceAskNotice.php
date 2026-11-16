@@ -36,7 +36,7 @@ final class RepriceAskNotice extends Notice
     {
         $p = $this->ask->pairs();
 
-        return 'Было '.$p['was'].', стало '.$p['now'].'. Назовите новую цену подтверждения до '.Ago::day($this->ask->due_at->setTimezone('Europe/Moscow'), true);
+        return 'Было '.$p['was'].', стало '.$p['now'].'. Нужна новая цена подтверждения до '.Ago::day($this->ask->due_at->setTimezone('Europe/Moscow'), true);
     }
 
     public function href(): string
@@ -87,6 +87,6 @@ final class RepriceAskNotice extends Notice
     {
         $p = $ask->pairs();
 
-        return Text::lines($ask->offer, 'Было: '.$p['was'], 'Стало: '.$p['now'], 'Назовите новую цену подтверждения до '.Ago::day($ask->due_at->setTimezone('Europe/Moscow'), true));
+        return Text::lines($ask->offer, 'Было: '.$p['was'], 'Стало: '.$p['now'], 'Нужна новая цена подтверждения до '.Ago::day($ask->due_at->setTimezone('Europe/Moscow'), true));
     }
 }

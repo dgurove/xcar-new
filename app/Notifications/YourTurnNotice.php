@@ -23,7 +23,7 @@ final class YourTurnNotice extends Notice
 
     public function label(): string
     {
-        return 'Ваш ход в сделке';
+        return 'Ход в сделке';
     }
 
     public function title(): string

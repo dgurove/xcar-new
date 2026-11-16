@@ -99,7 +99,7 @@ final class Alfa extends Route
             ],
             'signing_time' => [
                 'name' => 'Время подписания', 'block' => 'signing', 'waits_for' => 'manager', 'limit_minutes' => self::DAY,
-                'ask_title' => 'Когда покупатель сможет подписать договор?', 'ask_text' => 'Договор готов — назовите дату и время, запишем у поставщика',
+                'ask_title' => 'Когда покупатель сможет подписать договор?', 'ask_text' => 'Договор готов — нужны дата и время, запишем у поставщика',
                 'exits' => [['Время согласовано', 'manager', 'appointment']],
             ],
             'appointment' => [
@@ -132,7 +132,7 @@ final class Alfa extends Route
         return [
             'buyer_data' => [
                 'name' => 'Нет реквизитов', 'block' => 'requisites', 'waits_for' => 'manager', 'limit_minutes' => self::DAY, 'asks' => 'buyer',
-                'ask_title' => 'Заполните данные покупателя', 'ask_text' => 'Поставщик выставит счёт на покупателя: нужны паспорт со сканом или реквизиты организации',
+                'ask_title' => 'Заполнить данные покупателя', 'ask_text' => 'Поставщик выставит счёт на покупателя: нужны паспорт со сканом или реквизиты организации',
                 'exits' => [['Данные покупателя заполнены', 'manager', 'requisites']],
             ],
             'requisites' => [

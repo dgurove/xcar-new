@@ -56,7 +56,7 @@ class GarageInDealsTest extends TestCase
         $this->assertSame(['deals' => 0, 'garage' => 0], Nav::asks($manager));
 
         Requirement::create(['offer_id' => $offer->id, 'deal_id' => $deal->id, 'stage_id' => $offer->fresh()->position()?->stage_id,
-            'user_id' => $manager->id, 'title' => 'Заберите автомобиль', 'due_at' => now()->addDay()]);
+            'user_id' => $manager->id, 'title' => 'Забрать ТС', 'due_at' => now()->addDay()]);
         Cache::flush();
         $this->app->forgetScopedInstances();
         $deal = Deal::with('openRequirement')->find($deal->id);

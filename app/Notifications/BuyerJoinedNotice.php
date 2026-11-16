@@ -18,7 +18,7 @@ final class BuyerJoinedNotice extends Notice
     public function title(): string
     {
         // Админ завёл за менеджера (без ссылки) или передал от другого — «в ваших покупателях», а не «принял приглашение».
-        return $this->buyer->name.($this->transferred || $this->buyer->invite?->manual ? ' в ваших покупателях' : ' принял приглашение');
+        return $this->buyer->name.($this->transferred || $this->buyer->invite?->manual ? ' среди покупателей' : ' принял приглашение');
     }
 
     public function text(): ?string
@@ -27,7 +27,7 @@ final class BuyerJoinedNotice extends Notice
         // делать ничего не нужно, «Выбранные» — ждут менеджера.
         return match (true) {
             ! $this->buyer->hasBuyerAccess() => 'Без доступа к предложениям',
-            $this->buyer->buyerSeesAll() => 'Видит все ваши предложения',
+            $this->buyer->buyerSeesAll() => 'Видит все предложения',
             default => 'Откройте ему предложения',
         };
     }

@@ -50,7 +50,7 @@ final class Stock extends Route
             'claimed' => $claimed,
             'invoice' => [
                 'name' => 'Оплата счёта', 'block' => 'payment', 'waits_for' => 'manager', 'limit_minutes' => 14 * self::DAY, 'asks' => 'document',
-                'ask_title' => 'Оплатите счёт', 'ask_text' => 'Оплатите счёт и приложите платёжное поручение',
+                'ask_title' => 'Оплатить счёт', 'ask_text' => 'После оплаты счёта нужно приложить платёжное поручение',
                 'exits' => [['Оплатил, документ приложен', 'manager', 'payment_check']],
             ],
             'payment_check' => [
@@ -65,7 +65,7 @@ final class Stock extends Route
             ],
             'pickup' => [
                 'name' => 'Забрать у поставщика', 'block' => 'handover', 'waits_for' => 'manager', 'limit_minutes' => 5 * self::DAY,
-                'ask_title' => 'Заберите автомобиль', 'ask_text' => 'Автомобиль оплачен поставщику. Заберите его у поставщика и отметьте, что забрали',
+                'ask_title' => 'Забрать ТС', 'ask_text' => 'ТС оплачено поставщику, можно забирать — потом отметить, что забрали',
                 'staff_fields' => [['label' => 'Адрес выдачи', 'type' => 'textarea'], ['label' => 'Контакт на выдаче'], ['label' => 'Дата выдачи']],
                 'exits' => [['Автомобиль забрал', 'manager', 'closed_won'], ['Автомобиль передан', 'staff', 'closed_won']],
             ],

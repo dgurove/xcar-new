@@ -80,10 +80,10 @@ class EarlyBuyerTest extends TestCase
         $deal = $deal->fresh();
         $this->assertNotNull($deal->buyer_asked_at);
         $this->assertSame('Подтверждение покупки', $offer->fresh()->stage()->name);
-        $this->assertSame(['Укажите покупателя', 'buyer'], [$deal->managerTask()['title'], $deal->managerTask()['kind']]);
+        $this->assertSame(['Указать покупателя', 'buyer'], [$deal->managerTask()['title'], $deal->managerTask()['kind']]);
         $this->assertTrue(Deal::whereKey($deal->id)->whereRaw(Deal::MANAGER_TURN_SQL)->exists(), 'в «Ваш ход» и бейдж');
         Notification::assertSentTo($this->manager, BuyerAskNotice::class);
-        $this->actingAs($this->manager)->get('/deals/'.$deal->id)->assertOk()->assertSee('Укажите покупателя')->assertSee('Кто покупатель?');
+        $this->actingAs($this->manager)->get('/deals/'.$deal->id)->assertOk()->assertSee('Указать покупателя')->assertSee('Кто покупатель?');
 
         // Покупатель до запроса страховой — сохраняется (раньше 404), паспорт со сканом — дело гаснет.
         $this->actingAs($this->manager)->put('/deals/'.$deal->id.'/contract', ['buyer_id' => 'me'])->assertSessionHasNoErrors();

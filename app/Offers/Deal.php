@@ -201,7 +201,7 @@ class Deal extends Model implements HasMedia
         $position = $this->offer?->position();
         // Выросла закупочная — сначала ответ про цену (28.10.2026, `RepriceAsk`).
         if ($due = RepriceAsk::dealDue()->get($this->offer_id)) {
-            return ['title' => 'Назовите новую цену', 'due' => $due, 'kind' => 'reprice'];
+            return ['title' => 'Назвать новую цену', 'due' => $due, 'kind' => 'reprice'];
         }
         $req = $this->openRequirement;
         if ($req) {
@@ -219,8 +219,8 @@ class Deal extends Model implements HasMedia
             }
             $pays = $req->stage && $this->paysSupplierOn($req->stage) && ($label = $this->schemeOf()->payLabel());
 
-            // Заголовок шага — «Оплатить поставщику»; дело — просьбой, как остальные: «Оплатите поставщику 890 000 ₽».
-            $label = $pays ? preg_replace('/^Оплатить/u', 'Оплатите', $label) : null;
+            // Дело — действием, как заголовок шага: «Оплатить поставщику 890 000 ₽» (16.11.2026, без «Оплатите»).
+            $label = $pays ? $label : null;
 
             return ['title' => $pays ? trim($label.' '.($this->supplierPayment() ? Money::rub($this->supplierPayment()) : '')) : $req->title,
                 'due' => $req->due_at, 'kind' => 'ask'];
@@ -230,8 +230,8 @@ class Deal extends Model implements HasMedia
         if ($this->buyer_asked_at) {
             // Оформляет на себя (13.11.2026) — не хватает только его паспорта.
             return $this->contract?->buyer_user_id && $this->selfBuy()
-                ? ['title' => 'Приложите свой паспорт', 'due' => null, 'kind' => 'passport']
-                : ['title' => 'Укажите покупателя', 'due' => null, 'kind' => 'buyer'];
+                ? ['title' => 'Приложить свой паспорт', 'due' => null, 'kind' => 'passport']
+                : ['title' => 'Указать покупателя', 'due' => null, 'kind' => 'buyer'];
         }
         // Поставщик готовит договор — когда покупатель сможет подписать, день и время (11.11.2026, `Signing::wishDue`).
         if (Signing::wishDue($this)) {
@@ -248,9 +248,9 @@ class Deal extends Model implements HasMedia
         $gap = $position->stage->isPayStep() && $this->hasContract() ? $this->invoiceGap() : null;
 
         return ['title' => match ($gap) {
-            'buyer' => 'Укажите покупателя',
-            'passport' => $this->selfBuy() ? 'Приложите свой паспорт' : 'Приложите паспорт покупателя',
-            'price' => 'Укажите цену продажи',
+            'buyer' => 'Указать покупателя',
+            'passport' => $this->selfBuy() ? 'Приложить свой паспорт' : 'Приложить паспорт покупателя',
+            'price' => 'Указать цену продажи',
             default => $position->stage->managerTitle($this),
         }, 'due' => $position->deadline_at, 'kind' => in_array($gap, ['buyer', 'passport', 'price'], true) ? $gap : 'step'];
     }
@@ -271,10 +271,10 @@ class Deal extends Model implements HasMedia
 
         return match ($this->buyerGap()) {
             null => null,
-            'Покупатель не выбран' => ['title' => 'Укажите покупателя', 'kind' => 'buyer'],
-            'Нет скана паспорта покупателя' => ['title' => 'Приложите паспорт покупателя', 'kind' => 'passport'],
-            'Нет паспорта менеджера', 'Нет скана паспорта менеджера' => ['title' => 'Приложите свой паспорт', 'kind' => 'passport'],
-            default => ['title' => 'Заполните данные покупателя', 'kind' => 'buyer'],
+            'Покупатель не выбран' => ['title' => 'Указать покупателя', 'kind' => 'buyer'],
+            'Нет скана паспорта покупателя' => ['title' => 'Приложить паспорт покупателя', 'kind' => 'passport'],
+            'Нет паспорта менеджера', 'Нет скана паспорта менеджера' => ['title' => 'Приложить свой паспорт', 'kind' => 'passport'],
+            default => ['title' => 'Заполнить данные покупателя', 'kind' => 'buyer'],
         };
     }
 

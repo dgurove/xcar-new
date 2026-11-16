@@ -123,7 +123,7 @@ class AlfaRequisitesTest extends TestCase
         $this->assertSame(Asks::Buyer, $stage->asks);
         $this->assertTrue($deal->fresh()->collectsBuyer());
         $requirement = $deal->fresh()->openRequirement()->firstOrFail();
-        $this->assertSame('Заполните данные покупателя', $requirement->title);
+        $this->assertSame('Заполнить данные покупателя', $requirement->title);
 
         // Кнопкой без данных шаг не пройти — письмо ушло бы пустым.
         try {

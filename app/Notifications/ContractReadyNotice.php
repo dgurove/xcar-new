@@ -22,7 +22,7 @@ final class ContractReadyNotice extends Notice
 
     public function text(): ?string
     {
-        return $this->deal->isDkp() ? 'Скачайте, распечатайте в трёх экземплярах и подпишите с собственником' : 'Скачайте и распечатайте в трёх экземплярах';
+        return $this->deal->isDkp() ? 'Скачать, распечатать в трёх экземплярах и подписать с собственником' : 'Скачать и распечатать в трёх экземплярах';
     }
 
     public function href(): string

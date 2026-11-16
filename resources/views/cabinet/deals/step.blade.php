@@ -89,13 +89,13 @@
                 // Поставщик готовит договор — когда покупатель сможет подписать, день и время заранее (`Signing`, 11.11.2026).
                 $signingDays = ! $requirement && $deal->signing_at === null && \App\Offers\Signing::asksTime($position->stage->loadMissing('exits.to.exits'));
                 $heading = match (true) {
-                    $consent => 'Берёте в работу?',
+                    $consent => 'Взять в работу?',
                     // Два платежа — поставщику и наш подбор — два одинаковых блока под общим «Оплата» (16.11.2026).
                     $direct && $selectionPay && $requirement && ! $paidUp => 'Оплата',
                     (bool) $sent => trim(preg_replace('/^Оплатить/u', 'Оплачено', (string) $deal->schemeOf()->payLabel()).' '.($deal->supplierPayment() ? \App\Support\Money::rub($deal->supplierPayment()) : '')),
                     $signingDays && \App\Offers\Signing::wishDue($deal) => 'Когда покупатель сможет подписать договор?',
-                    $needsBuyer && ! $buyerStep => $gap === 'passport' ? 'Приложите паспорт покупателя' : 'Укажите покупателя',
-                    $needsPrice => 'Укажите цену продажи',
+                    $needsBuyer && ! $buyerStep => $gap === 'passport' ? 'Приложить паспорт покупателя' : 'Указать покупателя',
+                    $needsPrice => 'Указать цену продажи',
                     $paidUp => 'Оплата получена',
                     // Просит подписанный договор, а покупателя для него нет — сначала покупатель (`Deal::contractBuyerTask`).
                     (bool) ($contractGap = $deal->contractBuyerTask($requirement)) => $contractGap['title'],
@@ -104,7 +104,7 @@
                     // Встреча записана — дата в карточке ниже, в заголовке её не повторяем.
                     $requirement && \App\Offers\Signing::booked($deal) => \App\Users\Wording::mine($position->stage->managerTitle()),
                     $requirement && ! ($pickupSteps ?? null) => $direct
-                        ? trim(preg_replace('/^Оплатить/u', 'Оплатите', (string) $deal->schemeOf()->payLabel()).' '.($deal->supplierPayment() ? \App\Support\Money::rub($deal->supplierPayment()) : ''))
+                        ? trim((string) $deal->schemeOf()->payLabel().' '.($deal->supplierPayment() ? \App\Support\Money::rub($deal->supplierPayment()) : ''))
                         : \App\Users\Wording::mine($requirement->title),
                     // Ждём поставщика или нас, а у этапа есть фраза для менеджера — она (11.11.2026, Альфа: «Оплата получена,
                     // поставщик готовит договор» вместо «Оформление документов»).
@@ -131,7 +131,7 @@
             @elseif ($noInvoice)
                 <p class="mt-3 font-medium">Готовим счёт</p>
             @elseif ($consentAhead)
-                <p class="mt-3 text-sm text-ink-muted">Дальше спросим здесь и в Telegram, берёте ли вы в работу</p>
+                <p class="mt-3 text-sm text-ink-muted">Дальше здесь и в Telegram спросим, берётся ли ТС в работу</p>
             @endif
 
             @if ($contractStep ?? false)
@@ -148,13 +148,13 @@
                     $signedFiles = $requirement->asks === Asks::Document && $requirement->getMedia('files')->isNotEmpty();
                     $state = fn (bool $done) => $done ? 'done' : 'open';
                     $items = array_values(array_filter($flow ? [
-                        ['contact', 'Свяжитесь с владельцем', $flow['contact']],
-                        ['pickup', 'Заберите автомобиль', $flow['pickup']],
+                        ['contact', 'Связаться с владельцем', $flow['contact']],
+                        ['pickup', 'Забрать ТС', $flow['pickup']],
                         ['buyer', 'Покупатель по ДКП', $state((bool) $contract->buyer?->party?->readyAsBuyer())],
                         ['doc', 'Договор купли-продажи', $state($contract->isReady())],
                         ['signed', 'Подписанный договор', $flow['signed'] === 'current' && $signedFiles ? 'done' : $flow['signed']],
                     ] : [
-                        $contact ? ['contact', $handover?->where === 'У владельца' || $ownerPhone ? 'Свяжитесь с владельцем' : 'Где автомобиль', 'open'] : null,
+                        $contact ? ['contact', $handover?->where === 'У владельца' || $ownerPhone ? 'Связаться с владельцем' : 'Где ТС', 'open'] : null,
                         ['buyer', $deal->isPrime() ? 'Покупатель' : 'Покупатель по ДКП', $state((bool) $contract->buyer?->party?->readyAsBuyer())],
                         ['doc', 'Договор купли-продажи', $state($contract->isReady())],
                         ['signed', 'Подписанный договор', $state($signedFiles)],

@@ -90,9 +90,9 @@ final class MoneyNotice extends Notice
     /** Расчёт по машине в гараже: счёт к оплате или то, что мы должны ему, — ведёт на машину. */
     public static function garageInvoice(Invoice $i, Car $car): self
     {
-        return (new self($i->isOwed() ? 'Вам к выплате '.Money::exact($i->remaining()).' за '.$car->offer->titleWithYear() : 'Счёт '.$i->label().' на '.Money::exact($i->remaining()).', оплатить до '.Ago::day($i->due_at),
+        return (new self($i->isOwed() ? 'К выплате '.Money::exact($i->remaining()).' за '.$car->offer->titleWithYear() : 'Счёт '.$i->label().' на '.Money::exact($i->remaining()).', оплатить до '.Ago::day($i->due_at),
             $car->offer->titleWithYear(), $car->url(), $car->offer->number))
-            ->tg($i, $i->isOwed() ? 'Вам к выплате по :car' : 'Счёт по :car', 'Счёт '.$i->label(),
+            ->tg($i, $i->isOwed() ? 'К выплате по :car' : 'Счёт по :car', 'Счёт '.$i->label(),
                 Money::exact($i->remaining()).($i->isOwed() ? '' : ', оплатить до '.Ago::day($i->due_at)), 'Открыть')->variant('garage-invoice', 'Расчёт по гаражу');
     }
 
@@ -117,8 +117,8 @@ final class MoneyNotice extends Notice
     {
         $i = $p->invoice;
 
-        return (new self('Оплата '.Money::rub($p->amount).' по счёту '.$i->label().' не поступила', $p->reject_reason ?: 'Проверьте платёж и сообщите снова', self::path($i), $i->deal?->offer?->number))
-            ->tg($i, 'Оплата по :car не поступила', 'Оплата по счёту '.$i->label().' не поступила', Money::rub($p->amount).', '.mb_lcfirst($p->reject_reason ?: 'Проверьте платёж и сообщите снова'))->about($i)->variant('payment-rejected', 'Оплата не поступила');
+        return (new self('Оплата '.Money::rub($p->amount).' по счёту '.$i->label().' не поступила', $p->reject_reason ?: 'Нужно проверить платёж и сообщить снова', self::path($i), $i->deal?->offer?->number))
+            ->tg($i, 'Оплата по :car не поступила', 'Оплата по счёту '.$i->label().' не поступила', Money::rub($p->amount).', '.mb_lcfirst($p->reject_reason ?: 'Нужно проверить платёж и сообщить снова'))->about($i)->variant('payment-rejected', 'Оплата не поступила');
     }
 
     public static function payout(Payment $p): self

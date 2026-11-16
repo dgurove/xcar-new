@@ -17,11 +17,11 @@ final class EstimateDueNotice extends EstimateNotice
 
     public function text(): ?string
     {
-        return 'Оцените '.$this->due();
+        return 'Оценить '.$this->due();
     }
 
     public function toTelegram(): ?array
     {
-        return ['title' => 'Оцените '.$this->estimate->offer->titleWithYear().' '.$this->due(), 'lines' => $this->lines(), 'button' => 'Оценить'];
+        return ['title' => 'Оценить '.$this->estimate->offer->titleWithYear().' '.$this->due(), 'lines' => $this->lines(), 'button' => 'Оценить'];
     }
 }

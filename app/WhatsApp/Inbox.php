@@ -37,7 +37,7 @@ final class Inbox
 
         return implode("\n", array_filter([
             "Готово, {$user->firstName()}: WhatsApp подключён к XCar",
-            'Сюда придут предложения, открытые только вам, и просьбы оценить',
+            'Сюда придут предложения, открытые персонально, и просьбы оценить',
             Sender::open() && $group['invite'] ? 'Все новые — в группе «'.($group['name'] ?: 'XCar | Предложения').'»: '.$group['invite'] : null,
         ]));
     }

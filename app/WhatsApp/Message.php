@@ -57,7 +57,7 @@ final class Message
         $lines = $estimate->isCorrection()
             ? ['*Проверьте цену*', $offer->titleWithYear(), $city, Money::rub($estimate->base_price).', '.$due]
             : ['*Нужна оценка*', $offer->titleWithYear(), $city, 'Оценить '.$due,
-                $estimate->exclusive_days ? 'После оценки — '.Estimate::daysWord($estimate->exclusive_days).' только вам' : null];
+                $estimate->exclusive_days ? 'После оценки — '.Estimate::daysWord($estimate->exclusive_days).' персонально' : null];
         $lines[] = Surface::Site->url('/offers/'.$offer->number);
 
         return new self('estimate:'.$estimate->id, self::ESTIMATE, implode("\n", array_filter($lines)),

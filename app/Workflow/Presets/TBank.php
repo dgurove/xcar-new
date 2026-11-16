@@ -54,8 +54,8 @@ final class TBank extends Route
             'exits' => [[SupplierLetterWait::EXIT, 'staff', 'manager_confirm']],
         ], 'manager_confirm' => [
             'name' => 'Согласие менеджера', 'block' => 'agreement', 'waits_for' => 'manager', 'deadline_source' => 'next_day_17', 'offer_state' => 'sold',
-            'ask_title' => 'Подтвердите, что берёте в работу',
-            'ask_text' => 'Подтверждение принято. Подтвердите, что берёте автомобиль в работу, после этого напишем поставщику',
+            'ask_title' => 'Взять в работу',
+            'ask_text' => 'Подтверждение принято. Когда ТС взято в работу, напишем поставщику',
             // Отказ — в приём: вход туда отменяет сделку и отклоняет подтверждение.
             'exits' => [['Беру в работу', 'manager', 'claimed'], ['Я передумал', 'manager', 'bidding']],
         ]] + $head;
@@ -66,20 +66,20 @@ final class TBank extends Route
             // задачи (`cabinet.deals.step`), подписывают при передаче.
             'owner_contact' => [
                 'name' => 'Связаться с владельцем', 'block' => 'pickup', 'waits_for' => 'manager', 'limit_minutes' => self::DAY,
-                'ask_title' => 'Свяжитесь с владельцем',
-                'ask_text' => 'Свяжитесь с владельцем автомобиля и договоритесь о передаче',
+                'ask_title' => 'Связаться с владельцем',
+                'ask_text' => 'Связаться с владельцем ТС и договориться о передаче',
                 'staff_fields' => [['label' => 'Владелец'], ['label' => 'Телефон владельца'], ['label' => 'Адрес автомобиля', 'type' => 'textarea']],
                 'exits' => [['Связался с владельцем', 'manager', 'buyer_pickup']],
             ],
             'buyer_pickup' => [
                 'name' => 'Забрать автомобиль', 'block' => 'pickup', 'waits_for' => 'manager', 'limit_minutes' => 3 * self::DAY,
-                'ask_title' => 'Заберите автомобиль', 'ask_text' => 'Заберите автомобиль у владельца',
+                'ask_title' => 'Забрать ТС', 'ask_text' => 'Забрать ТС у владельца',
                 'exits' => [['Автомобиль забрал', 'manager', 'dkp_signed'], ['Автомобиль передан', 'staff', 'dkp_signed']],
             ],
             'dkp_signed' => [
                 'name' => 'Подписанный договор', 'block' => 'pickup', 'waits_for' => 'manager', 'limit_minutes' => 2 * self::DAY, 'asks' => 'document',
-                'ask_title' => 'Приложите подписанный договор',
-                'ask_text' => 'Приложите ДКП, подписанный собственником и покупателем. Без него сделка не закроется',
+                'ask_title' => 'Приложить подписанный договор',
+                'ask_text' => 'Нужен ДКП, подписанный собственником и покупателем, — без него сделка не закроется',
                 'exits' => [['Договор приложен', 'manager', 'selection_pay']],
             ],
         ] + $this->selectionSegment('closed_won') + $this->tail();

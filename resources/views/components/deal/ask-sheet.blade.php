@@ -18,7 +18,7 @@
         $offer = $deal->offer;
         $stage = $ask->requirement->stage;
         $question = match (true) {
-            $stage->asksConsent() => 'Берёте в работу?',
+            $stage->asksConsent() => 'Взять в работу?',
             $stage->isPickupStep() => 'Забрали автомобиль?',
             (bool) preg_match('/связал/iu', (string) $ask->moves->first()?->label) => 'Связались с владельцем?',
             default => \App\Users\Wording::mine($ask->title),

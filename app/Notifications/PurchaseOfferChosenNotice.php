@@ -16,12 +16,12 @@ final class PurchaseOfferChosenNotice extends Notice
 
     public function title(): string
     {
-        return 'Ваша цена '.Money::plain($this->offer->amount).' за '.$this->offer->purchaseCar->titleWithYear().' выбрана';
+        return 'Цена '.Money::plain($this->offer->amount).' за '.$this->offer->purchaseCar->titleWithYear().' выбрана';
     }
 
     public function text(): ?string
     {
-        return $this->offer->purchaseCar->purchase->publicTitle().', с вами свяжутся';
+        return $this->offer->purchaseCar->purchase->publicTitle().', свяжемся';
     }
 
     public function href(): string

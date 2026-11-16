@@ -64,7 +64,7 @@ final class DealInfoNotice extends Notice
         return array_values(array_filter([
             ...$items->where('kind', '!=', 'file')->pluck('value')->all(),
             $files ? 'Документы: '.$files : null,
-            $this->turn ? 'Ваш ход: '.$this->turn->title : null,
+            $this->turn ? 'Дело: '.$this->turn->title : null,
         ]));
     }
 }

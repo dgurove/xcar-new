@@ -57,11 +57,11 @@ final class RemindStalled
     public static function ask(Position $position, Deal $deal): ?string
     {
         return match (true) {
-            $position->stage->isPickupStep() => 'Заберите автомобиль',
+            $position->stage->isPickupStep() => 'Забрать ТС',
             $position->stage->isPayStep() => match ($deal->invoiceGap()) {
-                'buyer' => 'Укажите покупателя',
-                'price' => 'Укажите цену продажи',
-                'passport' => 'Приложите паспорт покупателя',
+                'buyer' => 'Указать покупателя',
+                'price' => 'Указать цену продажи',
+                'passport' => 'Приложить паспорт покупателя',
                 default => null,
             },
             default => null,

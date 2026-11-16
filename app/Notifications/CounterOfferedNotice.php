@@ -23,7 +23,7 @@ final class CounterOfferedNotice extends Notice
 
     public function text(): ?string
     {
-        return $this->bid->offer->titleWithYear().', ваша цена '.Money::plain($this->bid->amount);
+        return $this->bid->offer->titleWithYear().', цена подтверждения '.Money::plain($this->bid->amount);
     }
 
     public function href(): string

@@ -19,13 +19,13 @@ final class EstimateRejectedNotice extends EstimateNotice
 
     public function text(): ?string
     {
-        return ($this->estimate->isCorrection() ? 'Предложите снова ' : 'Оцените ещё раз ').$this->due();
+        return ($this->estimate->isCorrection() ? 'Предложить снова ' : 'Оценить ещё раз ').$this->due();
     }
 
     public function toTelegram(): ?array
     {
         return ['title' => $this->title(), 'lines' => $this->lines(
-            $this->estimate->rejected_amount ? 'Ваша '.($this->estimate->isCorrection() ? 'цена ' : 'оценка ').Money::rub($this->estimate->rejected_amount) : null,
+            $this->estimate->rejected_amount ? 'Прежняя '.($this->estimate->isCorrection() ? 'цена ' : 'оценка ').Money::rub($this->estimate->rejected_amount) : null,
             $this->text(),
         ), 'button' => $this->estimate->isCorrection() ? 'Проверить' : 'Оценить'];
     }

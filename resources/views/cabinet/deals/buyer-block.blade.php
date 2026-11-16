@@ -21,7 +21,7 @@
     $later = $deal->hasContract() && $deal->contractAfterPay();
     $docsReady = $deal->hasContract() ? (($later || $contract->missing() === []) && (! $ours || $sale)) : true;
     $title = match (true) {
-        $withBuyer && $asked && ! $chosen => 'Укажите покупателя',
+        $withBuyer && $asked && ! $chosen => 'Указать покупателя',
         $deal->isGarage() => 'Договор купли-продажи',
         $ours && $later => 'Покупатель и счёт',
         $ours => 'Договор и счёт',

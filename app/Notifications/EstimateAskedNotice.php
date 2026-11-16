@@ -18,14 +18,14 @@ final class EstimateAskedNotice extends EstimateNotice
 
     public function title(): string
     {
-        return ($this->estimate->isCorrection() ? 'Проверьте цену ' : 'Оцените ').$this->estimate->offer->titleWithYear();
+        return ($this->estimate->isCorrection() ? 'Проверить цену ' : 'Оценить ').$this->estimate->offer->titleWithYear();
     }
 
     public function text(): ?string
     {
         return $this->estimate->isCorrection()
             ? Money::rub($this->estimate->base_price).', срок '.$this->due()
-            : 'Срок '.$this->due().($this->estimate->exclusive_days ? ', после оценки — '.Estimate::daysWord($this->estimate->exclusive_days).' только вам в продаже' : '');
+            : 'Срок '.$this->due().($this->estimate->exclusive_days ? ', после оценки — '.Estimate::daysWord($this->estimate->exclusive_days).' персонально в продаже' : '');
     }
 
     public function toTelegram(): ?array
@@ -35,7 +35,7 @@ final class EstimateAskedNotice extends EstimateNotice
         return ['title' => $this->title(), 'lines' => $this->lines(
             $correction ? 'Цена XCar '.Money::rub($this->estimate->base_price) : null,
             'Срок '.$this->due(),
-            ! $correction && $this->estimate->exclusive_days ? 'После оценки — '.Estimate::daysWord($this->estimate->exclusive_days).' только вам' : null,
+            ! $correction && $this->estimate->exclusive_days ? 'После оценки — '.Estimate::daysWord($this->estimate->exclusive_days).' персонально' : null,
         ), 'button' => $correction ? 'Проверить' : 'Оценить'];
     }
 }

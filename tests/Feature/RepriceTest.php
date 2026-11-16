@@ -258,7 +258,7 @@ class RepriceTest extends TestCase
         $this->assertSame(1150000, $ask->asking_to);
         Notification::assertSentTo($this->roman, RepriceAskNotice::class, fn (RepriceAskNotice $n) => $n->critical()
             && collect($n->toTelegram()['keyboard'][0])->pluck('text')->all() === ['Отказываюсь'] && $n->toTelegram()['button'] === 'Ввести цену');
-        $this->assertSame('Назовите новую цену', $deal->fresh()->managerTask()['title']);
+        $this->assertSame('Назвать новую цену', $deal->fresh()->managerTask()['title']);
         $this->actingAs($this->roman)->get('http://xcar.localhost/deals/'.$deal->id)->assertOk()
             ->assertSee('Новая цена подтверждения')->assertSee(\App\Support\Money::nums(594762), false)->assertSee(\App\Support\Money::nums(1150000), false);
 
@@ -282,14 +282,14 @@ class RepriceTest extends TestCase
         $position = $this->offer->fresh()->position();
         $this->assertSame('price-offer', $position->todo()['key']);
         $this->assertTrue(\App\Workflow\Position::whereKey($position->id)->needsUs()->exists());
-        $this->assertNotSame('Назовите новую цену', $deal->fresh()->managerTask()['title'] ?? null);
+        $this->assertNotSame('Назвать новую цену', $deal->fresh()->managerTask()['title'] ?? null);
         Notification::assertSentTo($this->admin, RepriceAnsweredNotice::class, fn (RepriceAnsweredNotice $n) => $n->important() && str_contains($n->title(), 'предлагает'));
 
         // Контрпредложение — ход снова его; не согласен — снова его цена.
         $this->actingAs($this->admin)->post('http://crm.xcar.localhost/offers/'.$this->offer->number.'/reprice-asks/'.$ask->id, ['do' => 'counter', 'counter_price' => '1 150 000'])->assertRedirect();
         $this->assertSame([RepriceAsk::COUNTERED, 1150000], [$ask->fresh()->state, $ask->fresh()->counter_price]);
         Notification::assertSentTo($this->roman, RepriceDecidedNotice::class, fn (RepriceDecidedNotice $n) => str_starts_with($n->title(), 'Контрпредложение'));
-        $this->assertSame('Назовите новую цену', $deal->fresh()->managerTask()['title']);
+        $this->assertSame('Назвать новую цену', $deal->fresh()->managerTask()['title']);
         $this->actingAs($this->roman)->get('http://xcar.localhost/deals/'.$deal->id)->assertSee('Контрпредложение')->assertSee(\App\Support\Money::nums(1150000), false);
         $this->actingAs($this->roman)->post('http://xcar.localhost/reprice-asks/'.$ask->id, ['do' => 'refuse'])->assertRedirect();
         $this->assertSame(RepriceAsk::OFFERED, $ask->fresh()->state);

@@ -54,7 +54,7 @@ class PickupWithUsTest extends TestCase
         $deal = $this->deal(CarPlace::Ours);
         $position = $deal->offer->fresh()->position(Track::Sale);
         $this->assertNotSame('Забрать автомобиль', $position->stage->name, 'машина у нас — шаг получения пройден');
-        $this->assertFalse($deal->fresh()->requirements()->whereNull('done_at')->where('title', 'Заберите автомобиль')->exists());
+        $this->assertFalse($deal->fresh()->requirements()->whereNull('done_at')->where('title', 'Забрать ТС')->exists());
     }
 
     public function test_pickup_step_waits_for_manager_without_burnt_binding_deadline(): void

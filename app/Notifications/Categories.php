@@ -26,18 +26,18 @@ final class Categories
         if ($user->hasRole(Role::Manager)) {
             $add([
                 'on' => ['offers' => 'Новые предложения', 'purchases' => 'Новые закупки', 'interest' => 'Интерес покупателей', 'people' => 'Новые покупатели', 'chats' => 'Чаты'],
-                'always' => ['Ответ на подтверждение', 'Сделки: ваш ход и сроки', 'Счета и вознаграждение', 'Выбор вашей цены в закупке'],
+                'always' => ['Ответ на подтверждение', 'Сделки: дела и сроки', 'Счета и вознаграждение', 'Выбор вашей цены в закупке'],
             ]);
         }
         if ($user->hasRole(Role::SuperBuyer)) {
-            $add(['on' => ['offers' => 'Новые предложения', 'chats' => 'Чаты'], 'always' => ['Ответ на подтверждение', 'Сделки: ваш ход и сроки', 'Счета']]);
+            $add(['on' => ['offers' => 'Новые предложения', 'chats' => 'Чаты'], 'always' => ['Ответ на подтверждение', 'Сделки: дела и сроки', 'Счета']]);
         }
         if ($user->hasRole(Role::Buyer)) {
             $add(['on' => ['offers' => 'Новые предложения для вас', 'chats' => 'Чаты'], 'always' => []]);
         }
         // Покупатель с гаражом (20.10.2026): по машинам гаража — сделка и его счёт, как у супер-покупателя.
         if ($user->holdsAsBuyer() && $user->canGarage()) {
-            $add(['on' => [], 'always' => ['Сделки: ваш ход и сроки', 'Счета']]);
+            $add(['on' => [], 'always' => ['Сделки: дела и сроки', 'Счета']]);
         }
         // Модератору — только новые цепочки «Из писем», и то с галкой почты: денег, сделок и чатов у него нет.
         if ($user->hasRole(Role::Moderator) && $user->canCrmMail()) {
@@ -86,7 +86,7 @@ final class Categories
     public static function mail(User $user): array
     {
         return [
-            ...($user->hasRole(Role::Manager, Role::SuperBuyer) || ($user->holdsAsBuyer() && $user->canGarage()) ? ['deals' => 'Сделки: ваш ход, счета', 'bids' => 'Выбрали ваше подтверждение'] : []),
+            ...($user->hasRole(Role::Manager, Role::SuperBuyer) || ($user->holdsAsBuyer() && $user->canGarage()) ? ['deals' => 'Сделки: дела, счета', 'bids' => 'Выбрали ваше подтверждение'] : []),
             ...($user->hasRole(Role::Admin) ? ['deals' => 'Сделки: ход за нами', 'money' => 'Деньги'] : []),
             ...($user->hasRole(Role::Parking, Role::ParkAdmin) ? ['park' => 'Парковка: заявки и письма', ...($user->hasRole(Role::ParkAdmin) || $user->parkMoney() ? ['park_money' => 'Парковка: оплаты'] : [])] : []),
             ...($user->hasRole(Role::Logist, Role::Driver, Role::Contractor) || $user->carriesForLogistics() ? ['logistics' => 'Вывоз поручен вам'] : []),
