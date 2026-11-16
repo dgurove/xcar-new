@@ -3,7 +3,9 @@
 namespace App\Http\Admin;
 
 use App\Billing\Acquiring\PayMethod;
+use App\Billing\ChargeKind;
 use App\Billing\Invoice;
+use App\Billing\PartyName;
 use App\Billing\PaymentSource;
 use App\Support\Ago;
 use App\Users\User;
@@ -26,13 +28,23 @@ final class MoneyRows
     /** «Плательщик, машина». */
     public static function line(Invoice $i): string
     {
-        return implode(', ', array_filter([$i->party->name, self::what($i)]));
+        return implode(', ', array_filter([PartyName::short($i->party->name), self::what($i)]));
     }
 
-    /** Менеджер коротким именем; нет менеджера — плательщик. */
+    /** Менеджер коротким именем; нет менеджера — плательщик или получатель (логист) коротким видом (`PartyName`). */
     public static function who(Invoice $i): string
     {
-        return $i->manager()?->shortName() ?? $i->party->name;
+        return $i->manager()?->shortName() ?? PartyName::short($i->party->name);
+    }
+
+    /** За что выплата — строкой в группе получателя «Мы должны»: «Вознаграждение», «Вывоз» (в CRM вывоз, не «эвакуация»). */
+    public static function payoutKind(Invoice $i): string
+    {
+        return match ($i->kind) {
+            ChargeKind::AgentFee => 'Вознаграждение',
+            ChargeKind::Tow => 'Вывоз',
+            default => $i->kind->label(),
+        };
     }
 
     /** Платит покупатель менеджера, а не он сам — менеджер, иначе null. */

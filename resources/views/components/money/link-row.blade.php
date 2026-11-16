@@ -1,6 +1,6 @@
 {{-- Строка «По ссылкам» таблицей (`admin/money/links-table`): ссылка на оплату (`MoneyLinks`). На ПК — кто платит, ТС с
      номером серым, статус коротким словом цветом, когда и кто взял, сумма; на телефоне — как строка банка: имя и сумма, под
-     ними ТС и статус. time — время в группе дня, иначе дата. Столбцы — `MoneyController::table('links')`. --}}
+     ними ТС и статус. Имя — коротким видом (`PartyName`). time — время в группе дня, иначе дата. Столбцы — `MoneyController::table('links')`. --}}
 @props(['table', 'link', 'time' => false])
 @php
     use App\Http\Admin\MoneyLinks as L; use App\Billing\Acquiring\PayLinkState;
@@ -13,12 +13,13 @@
         @switch($key)
         @case('title')
     <td class="{{ $col->classes() }}">
-        <x-ui.row-link :key="$link->id" :with="['tab' => 'links']"><span class="cell-title"><span class="cell-name">{{ $link->payerName() }}</span>@if ($table->has('amount'))<span class="line-end sm:hidden nums {{ $paid ? 'text-open' : '' }}">{{ \App\Support\Money::nums($link->amount) }}</span>@endif</span></x-ui.row-link>
+        <x-ui.row-link :key="$link->id" :with="['tab' => 'links']"><span class="cell-title"><span class="cell-name">{{ \App\Billing\PartyName::short($link->payerName()) }}</span>@if ($table->has('amount'))<span class="line-end sm:hidden nums {{ $paid ? 'text-open' : '' }}">{{ \App\Support\Money::nums($link->amount) }}</span>@endif</span></x-ui.row-link>
         <span class="cell-sub cell-sub--wrap sm:hidden"><span class="min-w-0 truncate">@if ($car){{ $car }}@if ($number)<span class="nums">, № {{ $number }}</span>@endif @else{{ L::who($link) }}@endif</span>@if ($table->has('amount'))<span class="line-end {{ $tone }}">{{ $state }}</span>@endif</span>
     </td>
         @break
         @case('car')
-    <td class="{{ $col->classes() }}">@if ($car){{ $car }}@if ($number)<span class="nums text-ink-dim"> {{ $number }}</span>@endif @else<span class="text-ink-dim">не указано</span>@endif</td>
+    {{-- Одной строкой (17.11.2026: «Lynk & Co / 900 / 2610051187» в три этажа рвали таблицу): номер серым следом, длинное — «…». --}}
+    <td class="{{ $col->classes() }}">@if ($car)<span class="block truncate" title="{{ $car }}{{ $number ? ' '.$number : '' }}">{{ $car }}@if ($number)<span class="nums text-ink-dim"> {{ $number }}</span>@endif</span>@else<span class="text-ink-dim">не указано</span>@endif</td>
         @break
         @case('status')
     <td class="{{ $col->classes() }} {{ $tone }}">{{ $state }}</td>

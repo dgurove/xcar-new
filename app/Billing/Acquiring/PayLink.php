@@ -33,7 +33,7 @@ class PayLink extends Model
 {
     use FastAttributes;
 
-    /** Ссылку завели, оплатили, отменили — вкладка «По ссылкам» перечитывается у всех (18.10.2026). */
+    /** Ссылку завели, оплатили, отменили — вкладка «Ссылки» перечитывается у всех (18.10.2026). */
     protected static function booted(): void
     {
         static::saved(fn (self $l) => $l->wasRecentlyCreated || $l->wasChanged('state') ? app(Publisher::class)->refreshSoon(Topics::STAFF, ['/work/money']) : null);
@@ -50,7 +50,7 @@ class PayLink extends Model
     }
 
     /**
-     * Поиск ссылки на оплату — лупа «По ссылкам» и шапка CRM: плательщик (двойные пробелы не мешают), код ссылки и счёт
+     * Поиск ссылки на оплату — лупа «Ссылки» и шапка CRM: плательщик (двойные пробелы не мешают), код ссылки и счёт
      * (`Invoice::search`: плательщик, менеджер, ТС словами у ручной). `deep: false` — без счёта: в шапке счета уже
      * найдены своим запросом, второй раз весь `Invoice::search` вложенным EXISTS не нужен.
      */

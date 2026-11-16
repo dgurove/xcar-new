@@ -43,7 +43,7 @@ use Illuminate\Validation\Rule;
 /**
  * «Оплаты» в CRM — три вкладки по трём вопросам начальника (07.10.2026, владелец: «начальник не догадается вниз
  * пролистать»; до того 06.10 — лента «Надо сделать / Ждём деньги / История»):
- * - «По ссылкам» — все ссылки на оплату одним списком (09.10.2026, `MoneyLinks`): сделок, гаража, взятые менеджером и
+ * - «Ссылки» — все ссылки на оплату одним списком (09.10.2026, `MoneyLinks`): сделок, гаража, взятые менеджером и
  *   кнопкой «Создать ссылку», свежие сверху; карточка — сама ссылка (`?tab=links&peek={ссылка}`);
  * - «Нам должны» — счета менеджерам и их покупателям по сделкам и гаражу: пишет, что оплатил; ждём; оплачено;
  * - «Мы должны» — вознаграждения менеджерам и перевозки (партнёру, перевозчику): выплатить и выплачено.
@@ -54,7 +54,8 @@ class MoneyController
 {
     use InvoiceActions;
 
-    public const TABS = ['links' => 'По ссылкам', 'owed' => 'Нам должны', 'payouts' => 'Мы должны'];
+    /** «Ссылки» (до 17.11.2026 «По ссылкам»): три пилюли влезают в строку телефона, третья не уходит за край. */
+    public const TABS = ['links' => 'Ссылки', 'owed' => 'Нам должны', 'payouts' => 'Мы должны'];
 
     /** «Мы должны»: вознаграждения менеджерам и перевозки партнёрам и перевозчикам (логистика, 10.10.2026). */
     public const PAYOUTS = [ChargeKind::AgentFee, ChargeKind::Tow];
@@ -77,7 +78,7 @@ class MoneyController
 
     public function index(Request $request)
     {
-        // Ключ карточки на «По ссылкам» — ссылка (строки ссылок всегда несут `tab=links`, и нажатие мимо имени тоже —
+        // Ключ карточки на «Ссылки» — ссылка (строки ссылок всегда несут `tab=links`, и нажатие мимо имени тоже —
         // `detail_controller#urlFor`); без вкладки — счёт, у разовой оплаты — её последняя ссылка: старые адреса
         // `?peek={счёт}` в уведомлениях. Номера ссылок и счетов пересекаются, угадывать по одному числу нельзя.
         $detail = Detail::of($request, fn (string $key) => $request->query('tab') === 'links'
@@ -90,7 +91,7 @@ class MoneyController
         $facets = Facets::for($request, 'crm-money', Common::manager(self::MANAGER));
         $links = MoneyLinks::facets($request);
         ListPrefs::sync($request, 'crm-money', keep: $tab === 'links' ? $links->keys() : $facets->keys());
-        // Варианты чипа — менеджеры счетов двух вкладок с менеджером («Нам должны», «Мы должны»). На «По ссылкам» свои
+        // Варианты чипа — менеджеры счетов двух вкладок с менеджером («Нам должны», «Мы должны»). На «Ссылки» свои
         // чипы (`MoneyLinks::facets`): «сколько будет» из их шторки отвечает там.
         $tab === 'links' || $facets->apply(Invoice::crmMoney()->where(fn ($w) => $w->where(fn ($x) => $x->where('direction', 'issued')->whereNot(self::oneOff()))
             ->orWhere(fn ($x) => $x->where('direction', 'owed')->whereIn('kind', self::PAYOUTS))));
@@ -115,7 +116,7 @@ class MoneyController
 
     /**
      * Счета вкладки: нам по сделкам и гаражу, что платят по счёту (с чипом менеджера), выплаты менеджерам (с чипом).
-     * Счёт со ссылкой на оплату живёт в «По ссылкам» (`MoneyLinks`), здесь его нет (09.10.2026, владелец: «тут должны быть
+     * Счёт со ссылкой на оплату живёт в «Ссылки» (`MoneyLinks`), здесь его нет (09.10.2026, владелец: «тут должны быть
      * ссылки, а там то, что по счёту»); `links` — с ними: заявка менеджера «оплатил» по такому счёту всё равно здесь.
      */
     private static function of(string $tab, ?Facets $facets = null, bool $links = false)
@@ -174,7 +175,10 @@ class MoneyController
         };
     }
 
-    /** Числа пилюль — сколько открытого; tones — где есть дело: не прошла по ссылке, пишет, что оплатил, выплатить. */
+    /**
+     * Числа пилюль — сколько открытого; tones — где есть дело: не прошла по ссылке, пишет, что оплатил, выплатить. Дело —
+     * красной точкой у названия (`pill-todo`, 17.11.2026), а не рыжей заливкой пилюли: блоки цветом не заливаются.
+     */
     private static function counts(Facets $facets): array
     {
         $open = fn (string $t) => self::of($t, $facets)->where('state', InvoiceState::Issued);
@@ -182,9 +186,9 @@ class MoneyController
         return [
             'counts' => ['links' => MoneyLinks::openCount(), 'owed' => $open('owed')->count(), 'payouts' => $n = $open('payouts')->count()],
             'tones' => array_filter([
-                'links' => MoneyLinks::tried() ? 'pill-urgent' : '',
-                'owed' => self::of('owed', $facets, links: true)->where('state', InvoiceState::Issued)->whereHas('claims')->exists() ? 'pill-urgent' : '',
-                'payouts' => $n ? 'pill-urgent' : '',
+                'links' => MoneyLinks::tried() ? 'pill-todo' : '',
+                'owed' => self::of('owed', $facets, links: true)->where('state', InvoiceState::Issued)->whereHas('claims')->exists() ? 'pill-todo' : '',
+                'payouts' => $n ? 'pill-todo' : '',
             ]),
         ];
     }
@@ -199,7 +203,7 @@ class MoneyController
         return '/work/money?tab='.($i->isOwed() ? 'payouts' : 'owed').'&peek='.$i->id;
     }
 
-    /** Ссылка на оплату в «Оплатах» — её карточка на «По ссылкам». */
+    /** Ссылка на оплату в «Оплатах» — её карточка на «Ссылки». */
     public static function linkUrl(PayLink $link): string
     {
         return '/work/money?tab=links&peek='.$link->id;
@@ -311,7 +315,7 @@ class MoneyController
         return $link ? view('admin.money.link-exists', ['link' => $link]) : response('');
     }
 
-    /** Карточка ссылки на «По ссылкам»: кто платит, ТС, откуда, что с ней, QR и текст, попытки, счёт. */
+    /** Карточка ссылки на «Ссылки»: кто платит, ТС, откуда, что с ней, QR и текст, попытки, счёт. */
     public function link(PayLink $link)
     {
         $link->load(MoneyLinks::WITH);
@@ -349,14 +353,15 @@ class MoneyController
 
     /**
      * Таблицы «Оплат» — одно описание на шапку, строки (`x-money.table-row`, `x-money.link-row`) и заголовки групп. «Нам
-     * должны» — плательщик, менеджер и номер счёта; «Мы должны» — менеджер первым; «По ссылкам» — кто платит.
+     * должны» — плательщик, менеджер и номер счёта; «Мы должны» — менеджер первым; «Ссылки» — кто платит.
      */
     public static function table(string $tab): Table
     {
         $created = new Column('created', 'Создано', from: 'sm', aside: true, sort: 'created', cell: 'nums', role: ColRole::When, rem: 6.5);
         $amount = new Column('amount', 'Сумма', num: true, sort: 'amount', cell: 'nums', rem: 7);
         // Счёт и ТС — что это за долг (код, приглушённо), статус — что с ним; менеджер — справа, кто.
-        $car = new Column('car', 'ТС', from: 'sm', role: ColRole::Code, rem: 12);
+        // ТС — одной строкой, длинное режется «…» (17.11.2026: «Lynk & Co / 900 / номер» в три этажа рвали таблицу).
+        $car = new Column('car', 'ТС', from: 'sm', role: ColRole::Code, rem: 12, clip: true);
         $status = new Column('status', 'Статус', from: 'sm', sort: 'due', role: ColRole::State, rem: 12);
 
         return match ($tab) {
@@ -364,7 +369,8 @@ class MoneyController
                 new Column('status', 'Статус', from: 'sm', role: ColRole::State, rem: 12), $created, $amount),
             'owed' => Table::of(new Column('title', 'Плательщик', grow: true, sort: 'payer'), new Column('manager', 'Менеджер', from: 'lg', aside: true, role: ColRole::Who, rem: 9),
                 new Column('number', 'Счёт', from: 'lg', aside: true, sort: 'number', role: ColRole::Code, rem: 6), $car, $status, $created, $amount),
-            default => Table::of(new Column('title', 'Менеджер', grow: true, sort: 'payer'), $car, $status, $created, $amount),
+            // «Мы должны»: открытые — группами по получателю (менеджер, логист), строка — за что; выплаченные — получателем.
+            default => Table::of(new Column('title', 'Кому', grow: true, sort: 'payer'), $car, $status, $created, $amount),
         };
     }
 }

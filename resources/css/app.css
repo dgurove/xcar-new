@@ -1169,6 +1169,8 @@ html.kb-open { --home-gap: 0px; }
     .toolbar-pills .pill { padding-inline: 1rem; }
     /* В кабинете разделы уже названы своей лентой пилюль — пилюли тулбара остаются обычными. */
     [data-title-anchor] .toolbar-pills .pill { padding-inline: .875rem; }
+    /* Три пилюли в строку («Оплаты», 17.11.2026): третья не уходит за край экрана. */
+    .toolbar--tight .toolbar-pills .pill { padding-inline: .625rem; }
   }
   /* Кнопка с подписью, спрятанной на телефоне («+ Новый», «Из писем») — круглая, как соседи. Только до 640:
      от 640 подпись уже видна (sm:inline), и в круге 2,75rem она вылезала на соседнюю кнопку. */
@@ -1545,6 +1547,9 @@ html.kb-open { --home-gap: 0px; }
   .dark .pill-tag { background: var(--tag-bg-d); color: var(--tag-text-d); }
   .pill-open  { @apply bg-open-soft text-open; }
   .pill-urgent { @apply bg-urgent-soft text-urgent; }
+  /* Во вкладке есть наше дело («Оплаты», 17.11.2026) — красная точка перед названием, пилюля без заливки: рыжая подложка
+     читалась как ещё одна выбранная вкладка, а блоки цветом не заливаются. */
+  .pill-todo::before { content: ''; width: .375rem; height: .375rem; flex: none; border-radius: 999px; background: var(--color-danger); }
   .pill-closed { @apply bg-closed-soft text-closed; }
   .pill-danger { @apply bg-danger-soft text-danger; }
   .pill-soft   { @apply bg-accent-soft text-accent-text; }
@@ -1849,6 +1854,8 @@ html.kb-open { --home-gap: 0px; }
   .money-row-sub { @apply mt-0.5 text-sm text-ink-muted; }
   /* Кто платит — переносится, а не «Гамидов Т…» (06.11.2026: в окошке сделки имя съедали сумма и кнопки). */
   .money-row-line > .money-row-title { white-space: normal; overflow: visible; overflow-wrap: break-word; }
+  /* Справа в заголовке группы получателя «Мы должны»: «реквизитов нет» и сколько ему всего. */
+  .table tr.table-group .table-group-aside { @apply ml-auto inline-flex items-baseline gap-3 font-normal; }
   /* Машина во второй строке ленты «Оплат» — не рвётся посреди названия («Kia / Avella»), длинная режется «…»: это данные. */
   .cell-car { display: inline-block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: bottom; }
   /* Своя фраза («Менеджер пишет, что оплатил») не режется — переносится, сумма остаётся на первой линии. */
@@ -1861,7 +1868,9 @@ html.kb-open { --home-gap: 0px; }
   .money-hero-sum { @apply font-semibold leading-none tracking-tight; font-size: 2.5rem; }
   .money-hero-sum small { @apply text-2xl font-medium text-ink-muted; }
   .money-hero-state { @apply mt-2 text-sm font-medium; }
-  .money-hero-who { @apply mt-3 max-w-full truncate text-base; }
+  /* Кто платит — целиком, до двух строк (17.11.2026: «ОБЩЕСТВО С ОГРАНИЧЕННОЙ ОТВЕТСТВЕННО…» резалось и в карточке, где места
+     на две строки); строки ровные по длине. */
+  .money-hero-who { @apply mt-3 max-w-full text-base; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; text-wrap: balance; overflow-wrap: anywhere; }
   .money-hero-car { @apply max-w-full truncate text-sm text-ink-muted; }
   /* Ряд круглых действий (.acts, .act — как на странице человека) под суммой: по центру, круги крупнее, подпись темнее. */
   .acts-hero { @apply mt-5 justify-center gap-6; }
@@ -3036,7 +3045,6 @@ html.kb-open { --home-gap: 0px; }
   .letter-clip { grid-column: 2; grid-row: 2; justify-self: end; display: inline-flex; align-items: baseline; gap: .125rem; font-size: var(--text-sm); color: var(--color-ink-dim); }
   .letter-clip > svg { align-self: center; }
   .letter--stage .letter-title, .letter--ask .letter-title, .letter--unread .letter-title { color: var(--color-ink); }
-  .letter--unread .letter-title { font-weight: 500; }
   /* Раскрытая шапка — просто строка текста: высота под нажатие нужна свёрнутой, а у раскрытой конверт «От…» вставал
      через лишнюю пустую строку. */
   .letter-body[open] > .letter-head { min-height: 0; }
@@ -6012,9 +6020,8 @@ dialog.lightbox:not(.lb-one) .lb-pill--bottom { bottom: calc(var(--lb-strip-bott
   .inbox-box { color: var(--color-ink-muted); }
   .inbox-when { flex: none; font-size: var(--text-sm); color: var(--color-ink-muted); }
   .inbox-subj { display: block; margin-top: .125rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--text-base); line-height: 1.25rem; }
-  /* Имя — как в цепочке: полужирное, непрочитанное — чёрным; у непрочитанного ещё полужирные вторая строка и время. */
-  .inbox-row.is-unread .inbox-subj { font-weight: 600; }
-  .inbox-row.is-unread .inbox-when { color: var(--color-ink); font-weight: 600; }
+  /* Непрочитанное: имя чёрным полужирным, слова письма и время — чёрным обычным (17.11.2026, владелец). */
+  .inbox-row.is-unread .inbox-snip, .inbox-row.is-unread .inbox-when { color: var(--color-ink); }
   /* Три строки — один кегль и одна высота строки (17.11.2026, владелец: «межстрочные и размеры одинаковые должны быть»). */
   .inbox-l3 { display: flex; align-items: center; gap: .5rem; min-width: 0; margin-top: .125rem; }
   .inbox-car { display: flex; align-items: center; min-width: 0; }

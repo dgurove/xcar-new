@@ -30,7 +30,7 @@
             @foreach ($s['open'] as $i)
                 @php $due = R::due($i); @endphp
                 @if ($key === 'payouts')
-                    <x-money.feed-row :key="$i->id" :with="['tab' => $key]" :title="R::who($i).', вознаграждение'" :amount="Money::rub($i->remaining())" action="Выплатить">
+                    <x-money.feed-row :key="$i->id" :with="['tab' => $key]" :title="R::who($i).', '.mb_strtolower(R::payoutKind($i))" :amount="Money::rub($i->remaining())" action="Выплатить">
                         @if (R::what($i))<span class="cell-car">{{ R::what($i) }}</span>@endif
                         @if ($due)<span class="{{ $due[1] }}">{{ $due[0] }}</span>@endif
                         @unless ($i->party->payoutReady())<span class="text-danger">реквизитов нет</span>@endunless
@@ -54,7 +54,7 @@
         <div class="list">
             @foreach ($paidItems as $i)
                 @if ($key === 'payouts')
-                    <x-money.feed-row :key="$i->id" :with="['tab' => $key]" :title="R::who($i).', вознаграждение'" :amount="Money::rub($i->total)">
+                    <x-money.feed-row :key="$i->id" :with="['tab' => $key]" :title="R::who($i).', '.mb_strtolower(R::payoutKind($i))" :amount="Money::rub($i->total)">
                         @if (R::what($i))<span class="cell-car">{{ R::what($i) }}</span>@endif
                         @if ($h = R::paidOut($i))<span>{{ $h }}</span>@endif
                     </x-money.feed-row>

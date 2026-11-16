@@ -2,8 +2,8 @@
      чувствоваться как приложение»): сверху кто кому («должен нам», «должны ему») и остаток крупно, «из N ₽» при частичной,
      светофор словом, плательщик; круглые кнопки «Деньги пришли» / «Выплатить» (шторка оплаты) и «PDF»; строки счёта —
      номер и дата, вид, ТС, менеджер (срок — словом под суммой). Ниже: заявки менеджера с «Поступило» / «Не поступила», ссылка на оплату
-     строкой `x-billing.link-row` (нет — «Новая ссылка», `x-billing.pay-status`), состав с итогом и НДС, оплаты (у ссылки —
-     способ, комиссия, «Вернуть»), переплата по ссылке; «Аннулировать» — красной строкой внизу. --}}
+     строкой `x-billing.link-row` (нет — «Новая ссылка», `x-billing.pay-status`), состав с итогом и НДС, своей группой оплаты
+     (у ссылки — способ, комиссия, «Вернуть») и переплата по ссылке; срок под суммой — словами строки списка (`MoneyRows::due`); «Аннулировать» — красной строкой внизу. --}}
 @php
     use App\Support\Money; use App\Billing\InvoiceState; use App\Billing\PaymentSource;
     $i = $invoice; $href = '/work/money/invoices/'.$i->id; $offer = $i->deal?->offer ?? $i->offer; $manager = $i->manager();
@@ -20,8 +20,15 @@
             @if ($issued)<div class="money-hero-cap">{{ $i->isOwed() ? 'должны ему' : 'должен нам' }}</div>@endif
             <div class="money-hero-sum nums">{{ Money::nums($sum, fmod($sum, 1) ? 2 : 0) }}<small> ₽</small></div>
             @if ($i->isPartial())<div class="money-hero-car nums">из {{ Money::rub($i->total) }}</div>@endif
-            <x-billing.light :invoice="$i" class="money-hero-state !text-sm"/>
-            <div class="money-hero-who">{{ $i->party->name }}</div>
+            {{-- Срок — теми же словами, что в строке списка (17.11.2026: в списке «срок прошёл 10.11», здесь было «Просрочен на 7д»). --}}
+            @if ($issued)
+                @php [$word, $tone] = \App\Http\Admin\MoneyRows::due($i) ?? ['срок '.$i->laterLabel(), '']; @endphp
+                <div class="money-hero-state {{ $tone }}">{{ \Illuminate\Support\Str::ucfirst($word) }}</div>
+            @else
+                <x-billing.light :invoice="$i" class="money-hero-state !text-sm"/>
+            @endif
+            {{-- Тем же видом, что в строке списка (`PartyName`): «ООО «СТАР»», а не «ОБЩЕСТВО С ОГРАНИЧЕННОЙ…» прописными. --}}
+            <div class="money-hero-who">{{ \App\Billing\PartyName::short($i->party->name) }}</div>
         </div>
 
         @if ($issued || $i->number)
@@ -94,6 +101,12 @@
                 <span class="min-w-0 flex-1">Итого@if ($i->vatRate())<span class="row-sub">{{ mb_strtolower($i->vatLabel()) }} {{ Money::rub($i->vatAmount()) }}</span>@endif</span>
                 <span class="nums shrink-0 font-semibold">{{ Money::rub($i->total) }}</span>
             </div>
+        </div>
+
+        {{-- Оплаты — своей группой, а не строками «Состава» после «Итого» (17.11.2026). --}}
+        @if ($i->payments->isNotEmpty() || $overpaid->isNotEmpty())
+        <div class="list-cap mt-5">{{ $i->isOwed() ? 'Выплаты' : 'Оплаты' }}</div>
+        <div class="list">
             @foreach ($i->payments as $p)
                 @php $a = $p->source === PaymentSource::Acquiring ? $attempts->firstWhere('payment_id', $p->id) : null; @endphp
                 <x-money.payment :payment="$p" :attempt="$a" :slip="$href.'/payments/'.$p->id.'/slip'" staff>
@@ -112,6 +125,7 @@
                 </x-money.line>
             @endforeach
         </div>
+        @endif
 
         @if ($voidable)
             <form method="post" action="{{ $href }}/void" class="list mt-5" data-turbo-confirm="Аннулировать {{ $i->isOwed() ? 'выплату' : 'счёт' }}?">

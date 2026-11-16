@@ -47,7 +47,8 @@ final class PartyName
         if (mb_strtoupper($s) === $s) {
             $s = mb_convert_case(mb_strtolower($s), MB_CASE_TITLE);
         }
-        $parts = SaveBuyerData::nameParts($s);
+        // Своё же имя «текущим»: два слова, порядок которых не понять, остаются как записаны («Армен Хачан» не перевернётся).
+        $parts = SaveBuyerData::nameParts($s, $s);
 
         return $parts ? trim($parts[0].' '.$parts[1]) : $s;
     }
