@@ -6023,6 +6023,9 @@ dialog.lightbox:not(.lb-one) .lb-pill--bottom { bottom: calc(var(--lb-strip-bott
   @media (min-width: 1024px) {
     .split--mail .split-main { flex: 0 0 26rem; }
     .split--mail .split-detail { flex: 1 1 auto; width: auto; min-width: 0; }
+    /* Лист письма — по высоте переписки, длинная листается внутри (17.11.2026, владелец: «блок впустую идёт далеко вниз»);
+       пустой — во всю высоту, с подсказкой посередине. */
+    .split--mail .split-detail:not(:empty) { height: auto; max-height: calc(100dvh - var(--header-edge) - 3rem); }
     /* Письмо не выбрано — тихая подсказка на месте письма, раскладка не прыгает. */
     .split--mail .split-detail:empty { display: grid; place-items: center; }
     .split--mail .split-detail:empty::before { content: "Выберите письмо"; font-size: var(--text-base); color: var(--color-ink-dim); }
