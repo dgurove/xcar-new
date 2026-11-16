@@ -33,7 +33,8 @@ class Thread extends Model
     protected static function booted(): void
     {
         static::addGlobalScope(City::SCOPE, fn (Builder $q) => ($city = City::viewing()) ? City::threads($q, $city) : null);
-        // Ветка легла к делу — «Ждёт ответа» без дела (`Threads::strayVendorLetter`) пересчитывается: дальше её ведёт дело.
+        // Ветка легла к делу — «ждёт ответа» пересчитывается: наш ответ в соседней ветке того же ТС снимает вопрос
+        // (`Threads::answeredElsewhere`).
         static::updated(function (self $thread) {
             if ($thread->needs_reply_at && $thread->wasChanged(['offer_id', 'vehicle_id', 'candidate_id'])) {
                 app(Threads::class)->refresh($thread);

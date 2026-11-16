@@ -19,7 +19,6 @@ use App\Logistics\Transport;
 use App\Logistics\TransportState;
 use App\Mail\Boxes;
 use App\Mail\Scope;
-use App\Mail\Thread;
 use App\Offers\Bid;
 use App\Offers\BidState;
 use App\Offers\CatalogQuery;
@@ -770,7 +769,8 @@ final class Nav
                 // Наш ход по сделкам отдельно — бейдж «Сделок» админа на сайте (`badges`).
                 'deals' => $hot,
                 '/offers/from-mail' => Boxes::registerCount(Scope::Offers),
-                '/work/mail' => Thread::where('unread_count', '>', 0)->whereNull('archived_at')->whereHas('account', fn ($a) => $a->where('scope', Scope::Offers))->count(),
+                // Непрочитанные письма «Входящих» (17.11.2026: письма, а не ветки — то же число, что у пилюли).
+                '/work/mail' => Boxes::unreadCount(Scope::Offers),
                 '/work/chats' => Chat::whereNull('manager_id')->where('unread_for_staff', '>', 0)->count(),
                 // Деньги горят делом в «Оплатах»: менеджер пишет, что оплатил; не прошла по ссылке; выплатить. Выписки нет.
                 '/work/money' => MoneyController::todo(),

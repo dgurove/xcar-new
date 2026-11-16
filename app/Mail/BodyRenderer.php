@@ -22,20 +22,21 @@ final class BodyRenderer
      * переписки ниже (`withoutQuote`); пересылка сотрудника — целиком; письмо без HTML — текстом до цитаты
      * (`QuotationStripper::ownText`). Своих слов нет (только вложения) — null.
      */
-    public function own(Message $message, string $base = '/work/mail'): ?string
+    /** flat — письмо справа во «Входящих» (17.11.2026): прямо на белом, без листа и поля — серая плашка там была бы заливкой блока. */
+    public function own(Message $message, string $base = '/work/mail', bool $flat = false): ?string
     {
         $html = trim((string) $message->html_body);
         if ($html === '') {
             $text = Extraction\Signature::cut(Extraction\QuotationStripper::ownText($message->text_body), $message->from_name);
 
-            return $text === '' ? null : $this->wrap($message, '<pre class="plain">'.e($text).'</pre>', false, $base);
+            return $text === '' ? null : $this->wrap($message, '<pre class="plain">'.e($text).'</pre>', false, $base, $flat);
         }
         if (! $message->isForwardedByStaff()) {
             $html = $this->withoutQuote($html) ?? $html;
         }
         $html = $this->withoutSignature($html, $message->from_name) ?? $html;
 
-        return self::blank($html) ? null : $this->wrap($message, $html, false, $base);
+        return self::blank($html) ? null : $this->wrap($message, $html, false, $base, $flat);
     }
 
     /**
@@ -214,7 +215,7 @@ final class BodyRenderer
     }
 
     /** Документ для iframe: без скриптов и форм, CSP, лист или цвета темы. */
-    private function wrap(Message $message, string $body, bool $remoteImages, string $base): string
+    private function wrap(Message $message, string $body, bool $remoteImages, string $base, bool $flat = false): string
     {
         foreach (self::FORBIDDEN as $tag) {
             $body = preg_replace('#<'.$tag.'\b[^>]*>.*?</'.$tag.'\s*>#is', '', $body) ?? $body;
@@ -229,7 +230,13 @@ final class BodyRenderer
         $images = "'self' data:".($remoteImages ? ' https: http:' : '');
         $csp = "default-src 'none'; img-src {$images}; style-src 'unsafe-inline'; font-src data:; form-action 'none'";
         // Письмо — лист: чуть тёплый белый и поле 12px, чтобы текст не липнул к краю рамки в тёмной теме.
-        $colors = 'background:#f7f7f5;color:#1d1d1b';
+        // Справа во «Входящих» (`flat`) простое письмо — на фоне панели, свёрстанное со своими цветами — на белом (в тёмной теме
+        // прозрачный фон под тёмными буквами письма был бы нечитаем).
+        $colors = match (true) {
+            $flat && $this->isPlain($message) => 'background:transparent;color:#1d1d1b',
+            $flat => 'background:#fff;color:#1d1d1b',
+            default => 'background:#f7f7f5;color:#1d1d1b',
+        };
         // Простое письмо (текст или HTML без своих цветов) в тёмной теме — без листа, цветами темы: белый лист
         // горел посреди чёрного экрана. Тему знает cookie (класс на <html>), без неё — система; frame_controller
         // сверяет класс с приложением после загрузки и при смене темы. Свёрстанное письмо остаётся листом.
@@ -242,7 +249,7 @@ final class BodyRenderer
 
         return '<!doctype html><html lang="ru"'.$class.'><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="'.$csp.'">'
             .($plain ? '<meta name="color-scheme" content="'.($theme ?? 'light dark').'">' : '')
-            .'<base target="_blank"><style>html{margin:0;padding:0;'.$colors.'}body{margin:0;padding:12px;'.$colors.';font-family:Onest,system-ui,-apple-system,sans-serif;font-size:15px;line-height:1.45;word-break:break-word}'
+            .'<base target="_blank"><style>html{margin:0;padding:0;'.$colors.'}body{margin:0;padding:'.($flat ? '0' : '12px').';'.$colors.';font-family:Onest,system-ui,-apple-system,sans-serif;font-size:15px;line-height:1.45;word-break:break-word}'
             .'img{max-width:100%;height:auto}table{max-width:100%;border-collapse:collapse}a{color:#669709}pre.plain{white-space:pre-wrap;font-family:inherit;margin:0}'
             .'blockquote{margin:0;padding-left:12px;border-left:2px solid #d0d0d0;color:#808080}'.$themed.'</style></head><body>'.$body.'</body></html>';
     }

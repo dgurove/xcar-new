@@ -5992,3 +5992,71 @@ dialog.lightbox:not(.lb-one) .lb-pill--bottom { bottom: calc(var(--lb-strip-bott
   @media (min-width: 640px) { .plan-bar { right: auto; left: 50%; translate: -50% 0; width: min(30rem, calc(100% - 7rem)); } }
   .btn.is-busy { opacity: .6; pointer-events: none; }
 }
+
+/* Почта: «Входящие» и «Отправленные» — письма строками слева, открытое письмо справа (17.11.2026, вид выбран владельцем по
+   макетам: как Gmail, письмо без шапки — «как в Spark»). Строка — кто, тема, машина; непрочитанное жирным, выбранное —
+   полосой слева, как строка списка. Письмо: кружок, имя, адрес-кому-дата одним серым текстом (переносится), машина ссылкой,
+   справа значки ответа и пересылки; текст и вложения — с отступом под имя; документы карточками в две колонки. */
+@layer components {
+  .toolbar-sep { flex: none; width: 1px; height: 1.25rem; margin-inline: .25rem; background: var(--color-line); }
+  .inbox-list { overflow: hidden; border-radius: var(--radius-l); background: var(--color-surface); }
+  .inbox-row { display: block; position: relative; padding: .625rem 1rem .6875rem 1.125rem; color: var(--color-ink); }
+  .inbox-row + .inbox-row { box-shadow: inset 0 .5px 0 var(--color-line); }
+  @media (hover: hover) { .inbox-row:hover { background: var(--color-hover); } }
+  .inbox-row[aria-selected="true"], .inbox-row[aria-selected="true"]:hover { background: var(--color-surface-3); box-shadow: inset 4px 0 0 var(--color-accent); }
+  .inbox-l1 { display: flex; align-items: center; gap: .5rem; min-width: 0; font-size: var(--text-base); line-height: 1.25rem; }
+  .inbox-who { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .inbox-to { color: var(--color-ink-muted); }
+  .inbox-clip { flex: none; color: var(--color-ink-muted); }
+  .inbox-unsent, .inbox-box { flex: none; font-size: var(--text-sm); }
+  .inbox-box { color: var(--color-ink-muted); }
+  .inbox-when { flex: none; font-size: var(--text-sm); color: var(--color-ink-muted); }
+  .inbox-subj { display: block; margin-top: .125rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--text-base); line-height: 1.25rem; }
+  .inbox-row.is-unread .inbox-who, .inbox-row.is-unread .inbox-subj { font-weight: 600; }
+  .inbox-row.is-unread .inbox-when { color: var(--color-ink); font-weight: 600; }
+  .inbox-car, .inbox-snip { display: flex; align-items: center; gap: .375rem; min-width: 0; margin-top: .25rem; font-size: var(--text-sm); line-height: 1.125rem; }
+  .inbox-car .vendor-logo { flex: none; width: 1.125rem; height: 1.125rem; }
+  .inbox-snip { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--color-ink-muted); }
+  .inbox-more { padding: 1rem; text-align: center; font-size: var(--text-sm); color: var(--color-ink-dim); }
+
+  @media (min-width: 1024px) {
+    .split--mail .split-main { flex: 0 0 26rem; }
+    .split--mail .split-detail { flex: 1 1 auto; width: auto; min-width: 0; }
+    /* Письмо не выбрано — тихая подсказка на месте письма, раскладка не прыгает. */
+    .split--mail .split-detail:empty { display: grid; place-items: center; }
+    .split--mail .split-detail:empty::before { content: "Выберите письмо"; font-size: var(--text-base); color: var(--color-ink-dim); }
+  }
+
+  .mail-pane { padding: 1.25rem 1.5rem 1.5rem; }
+  .pane-letter + .pane-fold, .pane-fold + .pane-letter, .pane-fold + .pane-fold { border-top: .5px solid var(--color-line); }
+  .pane-fold + .pane-letter { padding-top: 1rem; }
+  .pane-letter + .pane-fold { margin-top: 1.25rem; }
+  .pane-head { display: flex; align-items: flex-start; gap: .75rem; }
+  .pane-who { font-size: var(--text-base); line-height: 1.25rem; font-weight: 600; }
+  .pane-env { display: flex; flex-wrap: wrap; column-gap: .75rem; margin-top: .125rem; font-size: var(--text-sm); line-height: 1.125rem; color: var(--color-ink-muted); overflow-wrap: anywhere; }
+  .pane-car { display: inline-flex; align-items: center; gap: .375rem; max-width: 100%; margin-top: .375rem; font-size: var(--text-sm); line-height: 1.125rem; color: var(--color-ink); }
+  .pane-car .vendor-logo { flex: none; width: 1.125rem; height: 1.125rem; }
+  .pane-car .i { color: var(--color-ink-muted); }
+  .pane-car--do { color: var(--color-accent-text); font-weight: 500; }
+  @media (hover: hover) { .pane-car:hover { color: var(--color-accent-text); } }
+  .pane-acts { display: flex; flex: none; align-items: center; gap: .125rem; margin: -.25rem -.5rem 0 0; }
+  .pane-ib { display: grid; place-items: center; width: 2.25rem; height: 2.25rem; border-radius: 9999px; color: var(--color-ink-muted); }
+  @media (hover: hover) { .pane-ib:hover { background: var(--color-hover); color: var(--color-ink); } }
+  .pane-link { display: flex; align-items: flex-end; gap: .5rem; margin: .75rem 0 0 3.25rem; }
+  .pane-body { margin: 1rem 0 0 3.25rem; font-size: var(--text-base); line-height: 1.375rem; }
+  .pane-files { margin-top: 1.25rem; padding-top: 1rem; box-shadow: inset 0 .5px 0 var(--color-line); }
+  .pane-files-head { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; margin-bottom: .625rem; font-size: var(--text-sm); color: var(--color-ink-muted); }
+  .pane-files-all { color: var(--color-accent-text); font-weight: 500; }
+  .pane-docs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .5rem; }
+  .pane-doc { display: flex; align-items: center; gap: .625rem; min-width: 0; height: 3.25rem; padding: 0 .75rem 0 .5rem; border-radius: var(--radius-m); background: var(--color-surface-2); font-size: var(--text-base); color: var(--color-ink); }
+  @media (hover: hover) { .pane-doc:hover { background: var(--color-surface-3); } }
+  .pane-photos-icon { display: grid; flex: none; place-items: center; width: 2.25rem; height: 2.25rem; border-radius: var(--radius-s); background: var(--color-surface); color: var(--color-ink-muted); }
+  .pane-fold { padding: .625rem 0; }
+  .pane-fold-head { display: grid; grid-template-columns: 2rem auto minmax(0, 1fr) auto; align-items: center; column-gap: .75rem; cursor: pointer; list-style: none; font-size: var(--text-base); }
+  .pane-fold-head::-webkit-details-marker { display: none; }
+  .pane-fold-who { font-weight: 500; white-space: nowrap; }
+  .pane-fold-snip { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--color-ink-muted); }
+  .pane-fold-when { font-size: var(--text-sm); color: var(--color-ink-muted); white-space: nowrap; }
+  .pane-fold[open] .pane-fold-snip { visibility: hidden; }
+  .pane-body--folded { margin-top: .5rem; margin-left: 2.75rem; }
+}

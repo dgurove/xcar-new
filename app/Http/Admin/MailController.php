@@ -18,6 +18,7 @@ use App\Mail\Actions\ArchiveThread;
 use App\Mail\Actions\DropFailed;
 use App\Mail\Actions\FreezeMessages;
 use App\Mail\Actions\LinkThread;
+use App\Mail\Actions\MarkMessageRead;
 use App\Mail\Actions\MarkThreadRead;
 use App\Mail\Actions\PromoteCandidate;
 use App\Mail\Actions\StoreOutboxFile;
@@ -28,6 +29,7 @@ use App\Mail\Boxes;
 use App\Mail\Candidate;
 use App\Mail\CandidateState;
 use App\Mail\Chains\ChainBuilder;
+use App\Mail\Chains\NodeTitle;
 use App\Mail\Composer;
 use App\Mail\Direction;
 use App\Mail\Extraction\ArchivePhotoExtractor;
@@ -71,6 +73,7 @@ use App\Park\Sale;
 use App\Park\Vehicle;
 use App\Park\VehicleState;
 use App\Support\Ago;
+use App\Support\Detail;
 use App\Support\Docs;
 use App\Support\Facets\Common;
 use App\Support\Facets\Facet;
@@ -87,10 +90,12 @@ use App\Vendors\Contact;
 use App\Vendors\ContactRole;
 use App\Vendors\Kind;
 use App\Vendors\Vendor;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
@@ -137,8 +142,8 @@ class MailController
         $accounts = Account::where('scope', $this->scope)->orderBy('title')
             // Не админу в CRM — только ящики, что принимают (`Thread::crmMailFor`): deal@ ему не виден.
             ->when($this->scope === Scope::Offers && ! $request->user()->isAdmin(), fn ($a) => $a->whereNotNull('reply_account_id'))->get();
-        // Открывается «Все» — почта прежде всего почта; «Требуют внимания» стоит первой пилюлей рядом.
-        $box = $forced ?? (array_key_exists($request->query('box', ''), Boxes::BOXES) ? $request->query('box') : 'all');
+        // Открываются «Входящие» (17.11.2026, как в Gmail); `?box=attention` в CRM, где этой пилюли больше нет, — тоже они.
+        $box = $forced ?? (array_key_exists($request->query('box', ''), Boxes::boxes($this->scope)) ? $request->query('box') : 'in');
         // Везде по умолчанию — свежие сверху (04.10.2026, владелец: «странная, логики нет»); «дольше ждут» — по возрастанию.
         $sort = Sort::from($request->query('sort') === 'waiting' ? 'fresh' : $request->query('sort'), Boxes::SORTS, '-fresh');
         $q = trim((string) $request->query('q'));
@@ -166,6 +171,10 @@ class MailController
 
         $all = Thread::query()->whereIn('account_id', $boxAccounts->pluck('id'))->where('messages_count', '>', 0)
             ->when($this->scope === Scope::Offers, fn ($t) => $t->crmMailFor($request->user()));
+        // «Входящие» и «Отправленные» — письма строками, письмо справа; лупа ищет делами, как во «Все».
+        if (! $forced && in_array($box, Boxes::LETTERS, true) && $q === '') {
+            return $this->letters($request, $box, $list, $boxAccounts, $all, ['sort' => $sort, 'accounts' => $accounts, 'mailbox' => $mailbox, 'park' => $park]);
+        }
         // Ветки пилюли: по ним выбираются дела. Письма дела потом берутся все — действие требуется от дела,
         // а не от одного письма, поэтому секция не должна разваливаться под фильтром.
         $pick = fn (string $box) => match ($box) {
@@ -261,9 +270,10 @@ class MailController
 
         // Счётчики пилюль — число дел, одним правилом на все (раньше «Входящие» считали ветки с непрочитанными,
         // а «Ждут ответа» — все ветки, и числа были несравнимы).
-        $counts = $forced ? [] : [
-            'attention' => (int) $facets->applyTo($pick('attention'))->selectRaw('count(distinct '.$group.') as n')->value('n'),
-        ];
+        $counts = $forced ? [] : array_filter([
+            'attention' => $park ? (int) $facets->applyTo($pick('attention'))->selectRaw('count(distinct '.$group.') as n')->value('n') : 0,
+            'in' => $this->inboxUnread($boxAccounts, $all),
+        ]);
 
         return view('admin.mail.index', $data + [
             'sort' => $sort,
@@ -275,6 +285,142 @@ class MailController
                 // ?compose= — редактор письма (`inWindow`): только новое письмо или ответ своей почты, не любой её адрес.
                 : (preg_match('#^'.preg_quote($this->base, '#').'/(new(\?|$)|\d+/reply/\d+)#', (string) $request->query('compose')) ? (string) $request->query('compose') : null),
         ]);
+    }
+
+    /**
+     * «Входящие» и «Отправленные» (17.11.2026, владелец: «во входящих только входящие, в отправленных только отправленные,
+     * без цепочек, классический красивый gmail»; макет выбран 17.11): письма строками слева — кто, тема, машина; открытое
+     * письмо справа (`Detail`, ключ — id письма), ↑/↓ листают. Чипы — вендор, непрочитанные, с файлами.
+     */
+    private function letters(Request $request, string $box, string $list, Collection $boxAccounts, Builder $all, array $data)
+    {
+        $detail = Detail::of($request, fn (string $id) => $this->pane((int) $id, $boxAccounts, $all));
+        if ($detail->framed()) {
+            return $detail->response();
+        }
+        $facets = Facets::for($request, $list,
+            Common::vendor('mail_threads.vendor_id'),
+            Facet::toggle('unread', 'Непрочитанные', fn ($m) => $m->where('mail_messages.is_seen', false)),
+            Facet::toggle('files', 'С файлами', fn ($m) => $m->where('mail_messages.has_attachments', true)),
+        )->countBy('count(*)');
+        $query = Boxes::letters($boxAccounts->pluck('id'), $box, $all);
+        $facets->apply($query);
+        $page = $query->with(['account', 'author', 'attachments', 'addresses', 'thread.offer.vendor', 'thread.offer.car', 'thread.vendor', 'thread.candidate.vendor'])
+            ->orderByDesc('mail_messages.date_at')->orderByDesc('mail_messages.id')->simplePaginate(50)->withQueryString();
+        // «Ч.2» того же письма (те же слова от того же адреса в сутки) — одной строкой с первой частью, файлы суммой.
+        $continued = [];
+        foreach (collect($page->items())->groupBy('thread_id') as $letters) {
+            $continued += NodeTitle::continued($letters->sortBy(fn (Message $m) => $m->date_at?->getTimestamp() ?? 0)->values());
+        }
+        $files = [];
+        foreach ($page->items() as $m) {
+            $head = $continued[$m->id] ?? $m->id;
+            $files[$head] = ($files[$head] ?? 0) + $m->files()->count();
+        }
+        $rows = collect($page->items())->reject(fn (Message $m) => isset($continued[$m->id]))->values();
+        $view = ['rows' => $rows, 'page' => $page, 'files' => $files, 'box' => $box, 'base' => $this->base, 'park' => $data['park'],
+            'filtered' => $facets->active()];
+        if ($request->header('X-List')) {
+            return response()->view('admin.mail.letters', $view + ['more' => true]);
+        }
+
+        return view('admin.mail.index', $view + $data + [
+            'detail' => $detail,
+            'letters' => true,
+            'threads' => $page,
+            'q' => '',
+            'facets' => $facets,
+            'queue' => $this->queue,
+            'crm' => ! $data['park'],
+            'forced' => null,
+            'counts' => array_filter(['in' => $this->inboxUnread($boxAccounts, $all), 'attention' => $data['park'] ? Boxes::attentionCount(Scope::Park) : 0]),
+            'window' => null,
+        ]);
+    }
+
+    /** Непрочитанные «Входящие» ящиков экрана — число пилюли. */
+    private function inboxUnread(Collection $boxAccounts, Builder $all): int
+    {
+        return (int) Boxes::letters($boxAccounts->pluck('id'), 'in', $all)->where('mail_messages.is_seen', false)->count();
+    }
+
+    /**
+     * Письмо справа: ветка этого письма, оно раскрыто, остальные свёрнуты. Чужое письмо (другой ящик, ветка не видна,
+     * город) — пусто. Прочитанным его делает показ (`mail_seen_controller` → `seen`), не этот ответ: его же берёт
+     * предзагрузка соседних строк.
+     */
+    private function pane(int $id, Collection $boxAccounts, Builder $all)
+    {
+        // Ветка в архиве — письма нет: «В архив» справа уводит к следующему (`detail-gone`).
+        $message = Message::whereIn('account_id', $boxAccounts->pluck('id'))->whereIn('thread_id', (clone $all)->whereNull('archived_at')->select('mail_threads.id'))->find($id);
+        if (! $message) {
+            return null;
+        }
+        $thread = $message->thread->load(['account', 'offer.vendor', 'offer.car', 'vehicle.vendor', 'candidate.vendor', 'vendor',
+            'messages.account', 'messages.thread', 'messages.attachments', 'messages.addresses', 'messages.author']);
+
+        return view('admin.mail.pane', ['message' => $thread->messages->firstWhere('id', $message->id) ?? $message, 'thread' => $thread, 'base' => $this->base,
+            'park' => $this->scope === Scope::Park]);
+    }
+
+    /**
+     * Прочитано / не прочитано — одно письмо, открытое справа (`read=0` — «Не прочитано» в «⋯»). Прочитанным становится и всё,
+     * что пришло в ветку раньше: открыли письмо — видели и переписку над ним (как в Gmail).
+     */
+    public function seen(Request $request, Message $message, MarkMessageRead $mark)
+    {
+        $this->guardMessage($message);
+        $read = $request->boolean('read', true);
+        $ids = $mark($message, $read);
+        // Показ письма справа (`mail_seen_controller`) — без перехода: строки, которым сменили флаг, и число «Входящих».
+        if ($request->expectsJson()) {
+            return response()->json(['ids' => $ids, 'read' => $read, 'unread' => Boxes::unreadCount($this->scope)]);
+        }
+
+        // «Не прочитано» справа — письмо закрывается (иначе показ снова сделал бы его прочитанным), список остаётся.
+        $back = url()->previous();
+        parse_str((string) parse_url($back, PHP_URL_QUERY), $query);
+        unset($query['peek']);
+
+        return redirect(strtok($back, '?').($query ? '?'.http_build_query($query) : ''))->with('toast', $read ? 'Прочитано' : 'Не прочитано');
+    }
+
+    /** «Прочитать все» — все непрочитанные «Входящие» под текущими ящиком и чипами. */
+    public function readAll(Request $request, MarkMessageRead $mark)
+    {
+        $accounts = Account::where('scope', $this->scope)->when($this->scope === Scope::Offers && ! $request->user()->isAdmin(), fn ($a) => $a->whereNotNull('reply_account_id'))->get();
+        $mailbox = $accounts->count() > 1 ? $accounts->firstWhere('slug', (string) $request->input('account')) : null;
+        $boxAccounts = $mailbox ? collect([$mailbox]) : $accounts;
+        $all = Thread::query()->whereIn('account_id', $boxAccounts->pluck('id'))->where('messages_count', '>', 0)
+            ->when($this->scope === Scope::Offers, fn ($t) => $t->crmMailFor($request->user()));
+        $query = Boxes::letters($boxAccounts->pluck('id'), 'in', $all)->where('mail_messages.is_seen', false)
+            ->when($request->input('vendor'), fn ($m, $v) => $m->whereIn('mail_threads.vendor_id', array_map('intval', explode(',', (string) $v))))
+            ->when($request->boolean('files'), fn ($m) => $m->where('mail_messages.has_attachments', true));
+        $n = $mark->all($query->pluck('mail_messages.id')->all());
+
+        return back()->with('toast', $n ? 'Прочитано: '.$n : 'Непрочитанных нет');
+    }
+
+    /** «Скачать все» — файлы письма одним архивом, имя — тема письма. */
+    public function files(Message $message)
+    {
+        $this->guardMessage($message);
+        $files = $message->files()->filter(fn (Attachment $a) => $a->contents() !== null);
+        abort_if($files->isEmpty(), 404);
+        $zip = new \ZipArchive;
+        $path = tempnam(sys_get_temp_dir(), 'mail-zip');
+        $zip->open($path, \ZipArchive::OVERWRITE);
+        $names = [];
+        foreach ($files as $a) {
+            $name = $a->filename ?: 'file-'.$a->id;
+            // Одинаковые имена в письме бывают («image.jpg» ×20) — второй и дальше с номером.
+            $names[$name] = ($names[$name] ?? 0) + 1;
+            $zip->addFromString($names[$name] > 1 ? pathinfo($name, PATHINFO_FILENAME).' ('.$names[$name].').'.pathinfo($name, PATHINFO_EXTENSION) : $name, $a->contents());
+        }
+        $zip->close();
+        $title = trim((string) preg_replace('/[\\\/:*?"<>|]+/u', ' ', \App\Mail\Extraction\Patterns::cleanSubject($message->subject) ?: 'Файлы письма'));
+
+        return response()->download($path, \Illuminate\Support\Str::limit($title, 80, '').'.zip')->deleteFileAfterSend();
     }
 
     /** «Заявка ›» (CRM: «Предложение ›») у нераспознанного письма: кандидат из ветки как есть, дальше обычная дверь заведения. */
@@ -306,6 +452,10 @@ class MailController
         $thread->archived_at ? $archive->restoreWithCandidate($thread) : $archive($thread);
         if ($request->header('Turbo-Frame') === 'letters-frame') {
             return redirect("{$this->base}/{$thread->id}/window");
+        }
+        // Письмо справа во «Входящих»: строка уходит, справа — следующее (`Detail`).
+        if ($request->header('Turbo-Frame') === Detail::FRAME) {
+            return back()->with('detail-gone', true)->with('detail-advance', true)->with('toast', $thread->archived_at ? 'В архиве' : 'Снова во входящих');
         }
 
         return back()->with('toast', $thread->archived_at ? 'В архиве' : 'Снова во входящих')->with('toast-undo-url', $thread->archived_at ? request()->url() : null);

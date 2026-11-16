@@ -121,6 +121,8 @@ final class Icons
         'print' => 'M7 9V4h10v5M7 17H5a1 1 0 0 1-1-1v-6a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1h-2M7 14h10v6H7v-6Z',
         'archive' => 'M3 4h18v4H3zM5 8v11a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8M10 12h4',
         'undo' => 'M9 14 4 9l5-5M4 9h10a6 6 0 0 1 0 12h-3',
+        // «Переслать» письма — Tabler `arrow-big-right` (MIT), пара к `mail-reply` в `SOLID24`.
+        'mail-forward' => 'M4 9h8V5.414a1 1 0 0 1 1.707-.707l6.586 6.586a1 1 0 0 1 0 1.414l-6.586 6.586A1 1 0 0 1 12 18.586V15H4a1 1 0 0 1-1-1v-4a1 1 0 0 1 1-1',
         'sound' => 'M11 5 6 9H3v6h3l5 4V5Zm4.5 3.5a5 5 0 0 1 0 7M18.5 5.5a9.5 9.5 0 0 1 0 13',
         'settings' => 'M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm7.4-3a7.4 7.4 0 0 0-.1-1.1l2-1.5-2-3.4-2.3.9a7.5 7.5 0 0 0-1.9-1.1L14.7 3H9.3l-.4 2.8a7.5 7.5 0 0 0-1.9 1.1l-2.3-.9-2 3.4 2 1.5a7.4 7.4 0 0 0 0 2.2l-2 1.5 2 3.4 2.3-.9a7.5 7.5 0 0 0 1.9 1.1l.4 2.8h5.4l.4-2.8a7.5 7.5 0 0 0 1.9-1.1l2.3.9 2-3.4-2-1.5c.1-.4.1-.7.1-1.1Z',
     ];
@@ -135,6 +137,15 @@ final class Icons
         'flag' => 'M5 3a1 1 0 0 1 1 1v.3L17 4l-2 4 2 4H6v9a1 1 0 1 1-2 0V4a1 1 0 0 1 1-1Z',
         'chat' => 'M4 4h16a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1h-8l-5 4v-4H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1Z',
         'login' => 'M13 3h6a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-6a1 1 0 1 1 0-2h6V5h-6a1 1 0 1 1 0-2Zm-2.7 5.3a1 1 0 0 1 1.4 0l3 3a1 1 0 0 1 0 1.4l-3 3a1 1 0 0 1-1.4-1.4l1.3-1.3H3a1 1 0 1 1 0-2h8.6l-1.3-1.3a1 1 0 0 1 0-1.4Z',
+    ];
+
+    /**
+     * Залитые в поле 24 — готовые контуры, что обводкой не нарисовать. «Ответить» и «Переслать» письма (17.11.2026, владелец:
+     * «как в Spark», «одна изогнутая, другая прямая», выбрал мягкие из сравнения): «Ответить» — Majesticons `reply-line`
+     * (MIT), контур залитой фигурой; «Переслать» — Tabler `arrow-big-right` обводкой, он в `PATHS` (`mail-forward`).
+     */
+    public const SOLID24 = [
+        'mail-reply' => 'M10.383 4.076A1 1 0 0 1 11 5v3.028c4.117.23 6.861 1.885 8.58 4.035C21.403 14.339 22 17.075 22 19a1 1 0 1 1-2 0c0-.502-.235-.942-.802-1.366c-.592-.443-1.477-.805-2.565-1.076c-1.804-.45-3.941-.594-5.633-.583V19a1 1 0 0 1-1.707.707l-7-7a1 1 0 0 1 0-1.414l7-7a1 1 0 0 1 1.09-.217zm8.843 11.267a8.762 8.762 0 0 0-1.207-2.03C16.574 11.505 14.122 10 10 10a1 1 0 0 1-1-1V7.414L4.414 12L9 16.586V15a1 1 0 0 1 .955-.999c1.888-.086 4.743.014 7.162.616a11.6 11.6 0 0 1 2.11.726z',
     ];
 
     public const SOLID = [
@@ -168,6 +179,7 @@ final class Icons
     {
         return match (true) {
             isset(self::SOLID[$name]) => ['i-'.$name.($fill ? '-f' : ''), '0 0 256 256', true, self::SOLID[$name][$fill && isset(self::SOLID[$name][1]) ? 1 : 0]],
+            isset(self::SOLID24[$name]) => ['i-'.$name, '0 0 24 24', true, self::SOLID24[$name]],
             $fill && isset(self::FILLED[$name]) => ['i-'.$name.'-f', '0 0 24 24', true, self::FILLED[$name]],
             isset(self::PATHS[$name]) => ['i-'.$name, '0 0 24 24', false, self::PATHS[$name]],
             default => null,
@@ -211,6 +223,9 @@ final class Icons
         }
         foreach (array_keys(self::FILLED) as $name) {
             $symbols[] = self::symbol($name, true);
+        }
+        foreach (array_keys(self::SOLID24) as $name) {
+            $symbols[] = self::symbol($name);
         }
         foreach (self::SOLID as $name => $pair) {
             $symbols[] = self::symbol($name);

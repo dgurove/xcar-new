@@ -9,8 +9,22 @@ namespace App\Mail;
  */
 final class Boxes
 {
-    /** Пилюли почты. `register` сюда не входит: это вшитая выборка «Из писем», снять её нечем. */
-    public const BOXES = ['attention' => 'Требуют внимания', 'all' => 'Все', 'sent' => 'Отправленные', 'archive' => 'Архив'];
+    /**
+     * Пилюли почты своей стороны. `register` сюда не входит: это вшитая выборка «Из писем», снять её нечем.
+     * «Входящие» и «Отправленные» — письмами, без цепочек, как в Gmail; «Все делами» и «Архив» — делами (17.11.2026, владелец:
+     * «во входящих только входящие, в отправленных только отправленные», «во „Все“ оставить как щас цепочки»). В CRM
+     * «Требуют внимания» нет — только прочитанные и непрочитанные; на парковке остаются: там это задачи (осмотр, документы).
+     *
+     * @return array<string, string>
+     */
+    public static function boxes(Scope $scope): array
+    {
+        return ($scope === Scope::Park ? ['attention' => 'Требуют внимания'] : [])
+            + ['in' => 'Входящие', 'sent' => 'Отправленные', 'all' => 'Все делами', 'archive' => 'Архив'];
+    }
+
+    /** Пилюли, где строка — письмо, а не дело. */
+    public const LETTERS = ['in', 'sent'];
 
     /** По последнему письму: по возрастанию — бывшее «Дольше ждут». */
     public const SORTS = ['fresh' => ['Последнее письмо', 'desc']];
@@ -68,6 +82,26 @@ final class Boxes
             ->where('messages_count', '>', 0)->whereNull('archived_at')
             ->where(fn ($w) => self::register($w, $scope))
             ->selectRaw('count(distinct '.self::group($scope).') as n')->value('n');
+    }
+
+    /**
+     * Письма пилюли «Входящие» или «Отправленные»: ящики, ветка жива (не в архиве), извне или наше. Ветку не-админу CRM
+     * сужает `Thread::crmMailFor` — им же и `$threads`.
+     */
+    public static function letters($accounts, string $box, $threads)
+    {
+        return Message::query()->select('mail_messages.*')->join('mail_threads', 'mail_threads.id', '=', 'mail_messages.thread_id')
+            ->whereIn('mail_messages.account_id', $accounts)->whereNull('mail_threads.archived_at')
+            ->whereIn('mail_messages.thread_id', (clone $threads)->select('mail_threads.id'))
+            ->where('mail_messages.outside', $box === 'in');
+    }
+
+    /** Непрочитанные «Входящие» — число вкладки «Почта» CRM и пилюли (письма, не ветки, 17.11.2026). */
+    public static function unreadCount(Scope $scope): int
+    {
+        return (int) Message::query()->join('mail_threads', 'mail_threads.id', '=', 'mail_messages.thread_id')
+            ->whereIn('mail_messages.account_id', Account::where('scope', $scope)->select('id'))
+            ->whereNull('mail_threads.archived_at')->where('mail_messages.outside', true)->where('mail_messages.is_seen', false)->count();
     }
 
     /** Сколько дел в «Требуют внимания» — бейдж почты парковки, то же число, что у пилюли. */

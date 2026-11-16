@@ -16,9 +16,10 @@ use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 /**
- * Письма ящика предложений, которые ни к чему не легли (04.11.2026, «почему так много неразобранных»): Совкомбанк просит
- * документы по делу, которого в CRM нет, — «Ждёт ответа», а не «Прочее»; «RE: 631351-25» ложится к 631351/2026; номер без
- * года берёт год из имени договора. Ошибка тихая: письмо лежит, его никто не видит, переоценка теряется.
+ * Письма ящика предложений, которые ни к чему не легли (04.11.2026, «почему так много неразобранных»): «RE: 631351-25»
+ * ложится к 631351/2026; номер без года берёт год из имени договора. С 17.11.2026 в CRM «Ждёт ответа» нет вовсе (владелец:
+ * «от „Требуют внимания“ избавиться, работать с прочитанными и непрочитанными»; правило «письмо вендора без машины ждёт
+ * ответа» ловило автоответы «я в отпуске») — такое письмо видно непрочитанным во «Входящих».
  */
 class StrayVendorLettersTest extends TestCase
 {
@@ -44,22 +45,22 @@ class StrayVendorLettersTest extends TestCase
         return $thread->refresh();
     }
 
-    public function test_vendor_request_without_offer_waits_for_reply(): void
+    public function test_crm_letter_waits_for_nothing_and_lands_in_inbox(): void
     {
         $t = $this->letter('495181-2026', 'Добрый день коллеги просьба прислать документы, договор + п/передачи тс');
-        $this->assertNotNull($t->needs_reply_at);
-        $this->assertNull($this->letter('RE: 495181-2026', 'Спасибо!')->needs_reply_at);
-        $this->assertNull($this->letter('Привет', 'Как дела?', 'friend@gmail.com')->needs_reply_at, 'не вендор — не наше дело');
+        $this->assertNull($t->needs_reply_at, 'в CRM «ждёт ответа» нет');
+        $letter = Message::where('thread_id', $t->id)->first();
+        $this->assertTrue($letter->outside, 'письмо извне — во «Входящих»');
+        $this->assertFalse($letter->is_seen);
+        $this->assertSame(1, \App\Mail\Boxes::unreadCount(\App\Mail\Scope::Offers));
     }
 
-    public function test_linked_thread_stops_waiting(): void
+    public function test_reply_with_other_year_links_to_offer(): void
     {
         $thread = $this->letter('RE: 631351-25', 'Всем привет! Новая стоимость – 98 095 руб.');
-        $this->assertNotNull($thread->needs_reply_at);
         $offer = app(CreateOffer::class)(null);
         app(UpdateOffer::class)($offer, ['claim_ref' => '631351/2026', 'vendor_id' => Vendor::first()->id], null);
         $this->assertSame($offer->id, app(LinkThread::class)->auto(Message::where('thread_id', $thread->id)->first()->load('account', 'thread'))?->id, 'тот же номер с другим годом');
-        $this->assertNull($thread->refresh()->needs_reply_at);
     }
 
     public function test_bare_number_takes_year_from_contract_name(): void

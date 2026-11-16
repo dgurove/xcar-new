@@ -77,10 +77,6 @@ final class OnMessage
             // эвакуацию по новой цепочке завела сама цепочка (`ChainBuilder::attach` → `AutoRequest`).
             ($this->store)($candidate);
         }
-        // Ветку пересчитали до цепочки: письмо, что легло в «Из писем», — не «Ждёт ответа» без дела (`Threads::strayVendorLetter`).
-        if ($thread?->needs_reply_at && $thread->fresh()?->candidate_id) {
-            app(Threads::class)->refresh($thread->fresh());
-        }
         if ($e->quiet) {
             return; // история ящика: в базу легло, людей не дёргаем
         }

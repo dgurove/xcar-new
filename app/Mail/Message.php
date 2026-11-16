@@ -24,6 +24,21 @@ class Message extends Model
 
     protected $table = 'mail_messages';
 
+    /**
+     * Письмо извне (`outside`) — колонкой: по ней стоят «Входящие» и «Отправленные» почты (17.11.2026). Пересылку
+     * сотрудника видно только после разбора (`parsed.fields.sender`) — поэтому на каждой записи, а не при создании.
+     */
+    protected static function booted(): void
+    {
+        // Письмо, прочитанное не целиком (`get(['id', 'is_seen'])`), признак не трогает: без адреса и разбора он вышел бы ложным.
+        static::saving(function (self $message) {
+            $raw = $message->getAttributes();
+            if (! $message->exists || (array_key_exists('direction', $raw) && array_key_exists('from_email', $raw) && array_key_exists('parsed', $raw))) {
+                $message->outside = $message->isFromVendor();
+            }
+        });
+    }
+
     protected function casts(): array
     {
         return [
@@ -38,7 +53,7 @@ class Message extends Model
             'appended_to_sent_at' => 'datetime',
             'frozen_at' => 'datetime',
             'is_seen' => 'bool', 'is_answered' => 'bool', 'is_flagged' => 'bool', 'is_draft' => 'bool', 'is_deleted' => 'bool',
-            'has_attachments' => 'bool',
+            'has_attachments' => 'bool', 'outside' => 'bool',
             'imap_uid' => 'int', 'uid_validity' => 'int',
         ];
     }
