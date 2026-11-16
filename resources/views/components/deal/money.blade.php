@@ -207,7 +207,19 @@
     @if ($invoices->isNotEmpty())
         {{-- Счета — одной группой строк через линию, как список в приложении: слева счёт и его состояние словом,
              справа сумма; «Выплатить» — только у вознаграждения к выплате. --}}
-        <div class="list mt-4">
+        {{-- Блок «ООО «ПРАЙМ»» / «Р.О.С.» (16.11.2026, вариант Б, владелец: «оплата поставщику — у него свой покупатель, оплата
+             ООО «ПРАЙМ» — у него свой плательщик»): заголовок — кому платят по нашим счетам и сколько ещё, под ним плательщик и счета. --}}
+        @php
+            $ourBills = $invoices->reject(fn ($i) => $i->isOwed() || $i->state === InvoiceState::Void);
+            $ourSeller = $ourBills->first()?->seller;
+        @endphp
+        @if ($ourSeller)
+            <div class="mt-4 flex items-baseline gap-3 px-3">
+                <span class="min-w-0 flex-1 font-medium">{{ $ourSeller->config()['name'] }}</span>
+                <span class="nums shrink-0">{{ Money::rub($ourBills->sum(fn ($i) => $i->state === InvoiceState::Paid ? $i->total : $i->remaining())) }}</span>
+            </div>
+        @endif
+        <div @class(['list', 'mt-2' => $ourSeller, 'mt-4' => ! $ourSeller])>
             {{-- Плательщик — один на счёт и ссылку, строкой над ними (16.11.2026, `x-deal.payer`). --}}
             @if ($payerRow)<x-deal.payer :deal="$deal" :action="'/work/deals/'.$deal->id.'/payer'" :editable="auth()->user()?->canManageCrm()"/>@endif
             @foreach ($invoices as $i)

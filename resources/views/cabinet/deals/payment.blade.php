@@ -47,12 +47,14 @@
 @endphp
 {{-- В задаче шага — без своей плашки (16.11.2026, владелец: «убогая вёрстка»: плашка в плашке в плашке, «Оплата по ссылке» в три
      строки): сумма и способы прямо на карточке шага. --}}
-<div class="{{ $row ? 'deal-money-row' : ($nested ? '' : 'box') }} flex flex-col gap-3">
+{{-- `block` (16.11.2026, вариант Б): платёж — блоком «Деньги» со своим заголовком и своей группой строк («Платит» / «Плательщик»,
+     способы оплаты), блоки разделены линией — чтобы плательщик ПРАЙМ не читался плательщиком поставщика. --}}
+<div class="{{ $row ? 'deal-money-row' : ($nested ? '' : 'box') }} {{ ($block ?? false) ? 'deal-money-block' : '' }} flex flex-col gap-3">
     @php $head = $href && ! $invoice ? 'a' : 'div'; @endphp
     @if ($row)
     <{{ $head }} @if ($head === 'a') href="{{ $href }}" @endif class="flex items-start gap-3">
         <span class="min-w-0 flex-1">
-            <span class="block">{{ $title }}</span>
+            <span @class(['block', 'font-medium' => $block ?? false])>{{ $title }}</span>
             @if ($state)<span @class(['block text-sm', $state[1] ?: 'text-ink-muted'])>{{ $state[0] }}</span>
             @elseif ($sub || ($invoice && $invoice->state === InvoiceState::Issued && $invoice->due_at))
                 <span class="flex flex-wrap gap-x-2 text-sm text-ink-muted">@if ($sub)<span>{{ $sub }}</span>@endif @if ($invoice && $invoice->state === InvoiceState::Issued && $invoice->due_at)<x-billing.light :invoice="$invoice"/>@endif</span>
@@ -91,15 +93,26 @@
             @endforeach
         </div>
     @endif
-    {{-- Плательщик — один на счёт и ссылку, над способами оплаты (16.11.2026, владелец: «это два способа оплаты одной суммы»):
-         кто платит по счёту, тот и по ссылке; менеджер меняет его сам (`x-deal.payer`). --}}
-    @if ($showPayer)
+    {{-- Плательщик — один на счёт и ссылку (16.11.2026, владелец: «это два способа оплаты одной суммы»): первой строкой той же
+         группы, что и способы оплаты, — под заголовком своего блока («ООО «ПРАЙМ»»), а не над всей карточкой: у оплаты поставщику
+         свой плательщик — покупатель по договору (вариант Б, владелец: «два блока, у каждого свой плательщик»). --}}
+    @if ($showPayer && ! $canPay)
         <div class="list"><x-deal.payer :deal="$deal" :action="'/deals/'.$deal->id.'/payer'" :id="'deal-payer-'.$deal->id.'-'.($invoice?->id ?? 'new')"/></div>
+    @endif
+    {{-- Оплата поставщику или собственнику — платит покупатель по договору (свой, не плательщик счёта ПРАЙМ): строкой «Платит»,
+         нажатие — выбор покупателя (`buyer:open`, шторка «Договора»). --}}
+    @if ($buyerPays ?? false)
+        @php $cb = $deal->contract?->buyer; @endphp
+        <div class="list">
+            <x-deal.sale-row label="Платит" :value="$cb ? ($cb->id === $deal->buyer_id ? 'Вы' : $cb->name) : 'покупатель не выбран'" :tone="$cb ? null : 'danger'"
+                data-controller="emit" data-action="emit#send" data-emit-event-param="buyer:open"/>
+        </div>
     @endif
     @if ($canPay)
         <div>
-            <div class="list-cap !px-0">Выберите способ оплаты</div>
+            @unless ($row)<div class="list-cap !px-0">Выберите способ оплаты</div>@endunless
             <div class="list">
+                @if ($showPayer)<x-deal.payer :deal="$deal" :action="'/deals/'.$deal->id.'/payer'" :id="'deal-payer-'.$deal->id.'-'.$invoice->id"/>@endif
                 @foreach ($ways as $way => [$icon, $label, $hint])
                     <div class="contents" data-controller="sheet">
                         <button type="button" class="row w-full text-left" data-action="sheet#open">

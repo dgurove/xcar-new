@@ -14,6 +14,13 @@
     use App\Offers\DealScheme;
     use App\Support\Money;
     $offer = $deal->offer;
+    // Кто платит поставщику или собственнику — покупатель по договору (16.11.2026, вариант Б): свой, не плательщик счёта ПРАЙМ.
+    $cb = $deal->contract?->buyer;
+    $buyerWho = match (true) {
+        ! $cb => 'покупатель',
+        $cb->id === $deal->buyer_id => 'менеджер '.$cb->name,
+        default => $cb->name,
+    };
     $scheme = $deal->schemeOf();
     $contract = $deal->contract;
     $paid = $deal->supplierPaid();
@@ -67,7 +74,7 @@
             @elseif ($kind === 'insurer')
                 <div>
                     <span class="block">{{ $offer->vendor?->name ?? 'Страховая' }}</span>
-                    <span class="block text-sm text-ink-muted">платит покупатель напрямую</span>
+                    <span class="block text-sm text-ink-muted">платит {{ $buyerWho }} напрямую</span>
                     <span class="nums mt-1 block pay-sum">{{ $deal->isDirect() && $deal->owner_price === null ? 'уточним' : Money::rub((int) $deal->ownerPrice()) }}</span>
                 </div>
                 @if ($bill)
@@ -82,7 +89,7 @@
             @elseif ($kind === 'owner')
                 <div>
                     <span class="block break-words">{{ $scheme->payeeName($offer, $contract?->seller?->name) }}</span>
-                    <span class="block text-sm text-ink-muted">платит покупатель по ДКП</span>
+                    <span class="block text-sm text-ink-muted">платит {{ $buyerWho }} по ДКП</span>
                     <span class="nums mt-1 block pay-sum">{{ $sum($deal->ownerPrice()) }}</span>
                     @if ($deal->offset())<span class="block text-sm text-ink-muted">взаимозачёт со страховой −{{ Money::rub($deal->offset()) }}</span>@endif
                 </div>

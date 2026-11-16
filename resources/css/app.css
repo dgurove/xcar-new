@@ -1702,6 +1702,9 @@ html.kb-open { --home-gap: 0px; }
   .deal-money-row { padding-block: .625rem; }
   .deal-money-rows > .deal-money-row + .deal-money-row { border-top: 1px solid var(--color-line); }
   .deal-money-card .profit-sum { font-size: var(--text-lg); }
+  /* Платёж блоком (16.11.2026, вариант Б): над и под ним — линия толще строчной, между заголовком и группой строк — воздух. */
+  .deal-money-rows > .deal-money-block { padding-block: .875rem; }
+  .deal-money-rows > .deal-money-row + .deal-money-block, .deal-money-rows > .deal-money-block + .deal-money-row { border-top-width: 2px; }
   /* «Платит — Покупатель | Я» в «Оформлении» сделки менеджера: переключатель ниже, вровень с соседними строками. */
   .deal-form .sale-row-label { color: var(--color-ink); }
   .deal-pay .segment { padding: .125rem; }
