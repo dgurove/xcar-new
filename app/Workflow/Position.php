@@ -354,7 +354,7 @@ class Position extends Model
         // Через связь: списки, где часы стоят в каждой строке, грузят её разом (`with('deal')`).
         $gap = $this->deal?->invoiceGap();
 
-        return in_array($gap, ['share', 'commission', 'ros_requisites'], true) ? $gap : 'invoice';
+        return in_array($gap, ['share', 'commission', 'ros_requisites', 'send'], true) ? $gap : 'invoice';
     }
 
     /**
@@ -368,6 +368,8 @@ class Position extends Model
         return match ($gap) {
             'share' => ['title' => 'Вписать вознаграждение менеджера', 'button' => 'Вписать вознаграждение', 'url' => $money],
             'commission' => ['title' => 'Назначить вознаграждение', 'button' => 'Назначить вознаграждение', 'url' => $money],
+            // Счёт готов, менеджер его не видит, пока сотрудник не проверит и не отправит (16.11.2026).
+            'send' => ['title' => 'Отправить счёт менеджеру', 'button' => 'Отправить счёт', 'url' => $money],
             // Реквизиты продавцов правятся на парковке («Реквизиты»), Р.О.С. — первой строкой «мы».
             'ros_requisites' => ['title' => 'Заполнить реквизиты Р.О.С.', 'button' => 'Заполнить реквизиты Р.О.С.', 'url' => Surface::Park->url('/money/parties')],
             default => ['title' => 'Выставить счёт', 'button' => 'Выставить счёт', 'url' => Surface::Crm->url('/work/invoices/new?offer='.$deal->offer->number)],

@@ -110,6 +110,7 @@ final class Notify
             ReleasedWithoutQr::class => 'parkWithoutQr',
             InvoiceOverdue::class => 'invoiceOverdue',
             InvoiceIssued::class => 'invoiceIssued',
+            \App\Billing\Events\InvoiceShown::class => 'invoiceIssued',
             PaymentClaimed::class => 'paymentClaimed',
             PaymentConfirmed::class => 'paymentConfirmed',
             PaymentRejected::class => 'paymentRejected',
@@ -456,10 +457,11 @@ final class Notify
     }
 
     /** Счёт по сделке выставлен — менеджеру сделки (платит он или его покупатель — всё равно ему). */
-    public function invoiceIssued(InvoiceIssued $e): void
+    public function invoiceIssued(InvoiceIssued|\App\Billing\Events\InvoiceShown $e): void
     {
         $i = $e->invoice;
-        if ($i->isOwed() || ! $i->deal_id || $i->kind === ChargeKind::Reward) {
+        // Счёт сделки менеджер узнаёт, когда его отправил сотрудник (`InvoiceShown`, 16.11.2026), а не когда он встал.
+        if ($i->isOwed() || ! $i->deal_id || $i->kind === ChargeKind::Reward || ! $i->shown_at) {
             return;
         }
         $i->load(['party', 'deal.offer', 'deal.buyer']);

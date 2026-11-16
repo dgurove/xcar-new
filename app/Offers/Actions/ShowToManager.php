@@ -1,0 +1,70 @@
+<?php
+
+namespace App\Offers\Actions;
+
+use App\Billing\Events\InvoiceShown;
+use App\Billing\Invoice;
+use App\Billing\InvoiceState;
+use App\Notifications\ContractReadyNotice;
+use App\Offers\Deal;
+use App\Offers\DealContract;
+use App\Offers\OfferEventType;
+use App\Users\User;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
+
+/**
+ * «Отправить менеджеру» у счёта и договора сделки в CRM (16.11.2026, владелец: «чтобы сотрудники могли проверить всё ли верно,
+ * перед тем как отправляется»; «даже если срок оплаты наступил, договор и счёт ему не отправляются, пока сотрудники не нажмут»).
+ * До того менеджер видит «Счёт готовится» / «Договор готовится» (`Invoice::shownToManager`, `DealContract::shownToManager`).
+ * Счёт: уведомление, ссылка подбору, на шаге оплаты — ход менеджера (слушатели `InvoiceShown`). Договор — `ContractReadyNotice`.
+ */
+final class ShowToManager
+{
+    public function invoice(Deal $deal, Invoice $invoice, User $by): Invoice
+    {
+        $shown = DB::transaction(function () use ($deal, $invoice, $by) {
+            $invoice = Invoice::whereKey($invoice->id)->lockForUpdate()->firstOrFail();
+            if ($invoice->deal_id !== $deal->id || $invoice->direction !== 'issued' || $invoice->state === InvoiceState::Void) {
+                throw ValidationException::withMessages(['show' => 'Этот счёт уже не действует']);
+            }
+            if ($invoice->shown_at) {
+                return null;
+            }
+            $invoice->update(['shown_at' => now(), 'shown_by' => $by->id]);
+            $deal->offer->log(OfferEventType::Note, $by, ['text' => 'Счёт '.$invoice->label().' отправлен менеджеру']);
+
+            return $invoice;
+        });
+        if ($shown) {
+            InvoiceShown::dispatch($shown->fresh(), $by);
+            Disclose::publish($deal);
+        }
+
+        return $shown ?? $invoice->fresh();
+    }
+
+    public function contract(Deal $deal, User $by): DealContract
+    {
+        $contract = DealContract::for($deal);
+        if (! $contract->isReady()) {
+            throw ValidationException::withMessages(['show' => 'Договор ещё не готов: '.implode(', ', $contract->missing())]);
+        }
+        $fresh = DB::transaction(function () use ($contract, $deal, $by) {
+            $c = DealContract::whereKey($contract->id)->lockForUpdate()->firstOrFail();
+            if ($c->shown_at) {
+                return null;
+            }
+            $c->update(['shown_at' => now(), 'shown_by' => $by->id]);
+            $deal->offer->log(OfferEventType::Note, $by, ['text' => 'Договор отправлен менеджеру']);
+
+            return $c;
+        });
+        if ($fresh) {
+            $deal->buyer?->notify(new ContractReadyNotice($deal));
+            Disclose::publish($deal);
+        }
+
+        return $fresh ?? $contract->fresh();
+    }
+}

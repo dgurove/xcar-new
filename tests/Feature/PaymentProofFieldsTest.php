@@ -78,6 +78,7 @@ class PaymentProofFieldsTest extends TestCase
         app(TakeExit::class)($this->offer, $this->offer->position(Track::Sale)->stage->exits->firstWhere('label', 'Автомобиль забрал'), Actor::Manager, $this->manager);
         app(SaveDealContract::class)(DealContract::for($this->deal->fresh()), ['buyer_id' => 'me'], $this->manager);
         $this->passportFor($this->manager);
+        $this->sendToManager($this->deal);
         $invoice = $this->deal->fresh()->issuedInvoices()->sole();
 
         app(ClaimPayment::class)($invoice, $this->manager, $invoice->remaining(), now(), null, null, PaymentSource::Cash);

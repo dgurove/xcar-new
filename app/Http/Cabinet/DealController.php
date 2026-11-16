@@ -244,7 +244,8 @@ class DealController
             // Из писем страховой — только то, что показал админ (`Offers\Disclosure`, 03.11.2026, владелец: «менеджеру вообще
             // ничего не показываем, пока админ не нажмёт»), новое сверху. Самих писем и их телефонов здесь нет.
             'disclosures' => Disclosures::shown($deal),
-            'invoices' => Invoice::where('deal_id', $deal->id)->where('direction', 'issued')->where('state', '!=', InvoiceState::Void)
+            // Неотправленный менеджеру счёт (кнопка в CRM, 16.11.2026) — не его: «Счёт готовится».
+            'invoices' => Invoice::where('deal_id', $deal->id)->where('direction', 'issued')->where('state', '!=', InvoiceState::Void)->shownToManager()
                 // Шторка счёта (`cabinet.deals.invoice-sheet`): строки, оплаты с платёжками, ссылка — сразу, не по запросу на счёт.
                 ->with(['claims', 'party', 'charges', 'allPayments.media', 'payLinks.attempts', 'media'])->orderBy('id')->get()
                 ->each(fn (Invoice $i) => $i->setRelation('deal', $deal)),

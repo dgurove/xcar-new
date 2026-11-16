@@ -37,7 +37,7 @@ use Spatie\MediaLibrary\InteractsWithMedia;
  * без своей ТС: машины — строками хранения со своим `vehicle_id`, долг машины — её доля (`Ledger::shareOf`).
  */
 #[Fillable(['seller', 'park', 'direction', 'year', 'number', 'code', 'revision', 'external_no', 'kind', 'month', 'party_id', 'vehicle_id', 'deal_id', 'offer_id', 'issued_at', 'due_at', 'vat', 'vat_rate', 'vat_on_top', 'total', 'paid', 'state', 'paid_at',
-    'overdue_at', 'reminded_at', 'sent_at', 'sent_by', 'sent_message_id', 'voided_at', 'void_reason', 'notes', 'created_by', 'car_title', 'credit_deal_id'])]
+    'overdue_at', 'reminded_at', 'sent_at', 'sent_by', 'sent_message_id', 'voided_at', 'void_reason', 'notes', 'created_by', 'car_title', 'credit_deal_id', 'shown_at', 'shown_by'])]
 class Invoice extends Model implements HasMedia
 {
     use FastAttributes;
@@ -68,7 +68,7 @@ class Invoice extends Model implements HasMedia
     protected function casts(): array
     {
         return ['seller' => Seller::class, 'kind' => ChargeKind::class, 'state' => InvoiceState::class, 'month' => 'date', 'issued_at' => 'date', 'due_at' => 'date', 'paid_at' => 'date', 'vat' => 'bool', 'vat_rate' => 'int', 'vat_on_top' => 'bool', 'park' => 'bool',
-            'total' => 'float', 'paid' => 'float', 'revision' => 'int', 'overdue_at' => 'datetime', 'reminded_at' => 'datetime', 'sent_at' => 'datetime', 'voided_at' => 'datetime'];
+            'total' => 'float', 'paid' => 'float', 'revision' => 'int', 'overdue_at' => 'datetime', 'reminded_at' => 'datetime', 'sent_at' => 'datetime', 'voided_at' => 'datetime', 'shown_at' => 'datetime'];
     }
 
     public function registerMediaCollections(): void
@@ -294,14 +294,32 @@ class Invoice extends Model implements HasMedia
             ->when($user->party_id, fn ($x) => $x->where('party_id', $user->party_id), fn ($x) => $x->whereRaw('false'))
             ->orWhereHas('deal', fn ($d) => $d->where('buyer_id', $user->id)))
             // Покупателю с гаражом без галки цены — ни одного гаражного счёта, и своим плательщиком тоже (21.10.2026).
-            ->when(! $user->seesGaragePrice(), fn ($x) => $x->where(fn ($g) => $g->whereNull('billing_invoices.deal_id')->orWhereHas('deal', fn ($d) => $d->whereNull('garage_payer'))));
+            ->when(! $user->seesGaragePrice(), fn ($x) => $x->where(fn ($g) => $g->whereNull('billing_invoices.deal_id')->orWhereHas('deal', fn ($d) => $d->whereNull('garage_payer'))))
+            ->shownToManager();
     }
 
     public function isVisibleToManager(User $user): bool
     {
         return $this->kind !== ChargeKind::Reward
             && (($user->party_id && $this->party_id === $user->party_id) || ($this->deal_id && $this->deal?->buyer_id === $user->id))
-            && ($user->seesGaragePrice() || ! $this->deal?->isGarage());
+            && ($user->seesGaragePrice() || ! $this->deal?->isGarage())
+            && $this->isShownToManager();
+    }
+
+    /**
+     * Счёт сделки менеджеру — только после «Отправить менеджеру» в CRM (16.11.2026, владелец: сотрудники проверяют, потом
+     * отправляют; до того у него «Счёт готовится»). Счета без сделки (парковка, вендору) и выплаты ему — как были.
+     */
+    public function scopeShownToManager($q)
+    {
+        return $q->where(fn ($w) => $w->whereNull('billing_invoices.deal_id')->orWhere('billing_invoices.direction', '!=', 'issued')->orWhereNotNull('billing_invoices.shown_at')
+            ->orWhere('billing_invoices.paid', '>', 0));
+    }
+
+    /** Наш счёт сделки (`issued`) — после отправки или первой оплаты (деньги пришли — проверять поздно); выплата ему и счета без сделки — сразу. */
+    public function isShownToManager(): bool
+    {
+        return ! $this->deal_id || $this->direction !== 'issued' || $this->shown_at !== null || (float) $this->paid > 0;
     }
 
     public function isOwed(): bool

@@ -49,6 +49,11 @@ final class DealMoney
     public static function of(Deal $deal, bool $staff = false): self
     {
         $invoices = $deal->relationLoaded('invoices') ? $deal->invoices : $deal->invoices()->with('claims')->get();
+        // Менеджеру — только отправленные ему счета (16.11.2026): вставший, но не отправленный — «Счёт готовится»
+        // (`Deal::invoiceNotYet` ниже).
+        if (! $staff) {
+            $invoices = $invoices->filter(fn (Invoice $i) => $i->isShownToManager())->values();
+        }
         $issued = $invoices->reject(fn (Invoice $i) => $i->isOwed());
         $open = self::payable($invoices);
         $fee = $invoices->first(fn (Invoice $i) => $i->isAgentFee() && $i->state !== InvoiceState::Void);
@@ -68,8 +73,9 @@ final class DealMoney
         // Подбор до шага оплаты срока не имеет (`SyncDealInvoices::dueFor`): он не должник, пока не продал (06.10.2026).
         if ($open->isNotEmpty() && $open->every(fn (Invoice $i) => ! $i->due_at && $i->claimed() == 0)) {
             $later = $open->first()->laterLabel(true);
+            $what = $open->contains(fn (Invoice $i) => $i->kind === ChargeKind::Selection) ? 'подбор ' : 'счёт ';
 
-            return new self(($staff ? 'Оплатит подбор ' : 'Оплатите подбор ').$later,
+            return new self(($staff ? 'Оплатит ' : 'Оплатите ').$what.$later,
                 round($open->sum(fn (Invoice $i) => $i->remaining()), 2), 'plain', 'open', $staff ? 'будет должен' : 'К оплате позже');
         }
         if ($open->isNotEmpty()) {
@@ -102,8 +108,7 @@ final class DealMoney
 
             return new self($phrase.$date($first->due_at).$also, $left, $first->light() === 'urgent' ? 'urgent' : 'plain', 'pay', $caption, ...$money);
         }
-        // Счёта ещё не может быть — поставщик не ответил (у Совкомбанка — до «Забрал»): серым, когда встанет, а не оранжевое
-        // «Укажите покупателя» (11.10.2026: в «Сделках» — «Ждём XCar», а в «Оплатах» — «ваш ход»).
+        // Счёт встал, но менеджеру не отправлен — «Счёт готовится» серым, а не оранжевое «Укажите покупателя».
         if ($issued->isEmpty() && $deal->isActive() && ($notYet = $deal->invoiceNotYet()) !== null) {
             return new self('Счёт '.$notYet, $base, 'plain', 'open', $staff ? mb_strtolower($label) : $label);
         }

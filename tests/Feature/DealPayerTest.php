@@ -63,6 +63,7 @@ class DealPayerTest extends TestCase
             ownerPrice: $scheme === DealScheme::Insurer ? 750000 : null);
         $exit = $offer->fresh()->position(Track::Sale)->stage->exits->firstWhere('label', 'Автомобиль забрал');
         app(TakeExit::class)($offer->fresh(), $exit, Actor::Manager, $this->manager);
+        $this->sendToManager($deal);
 
         return $deal->fresh();
     }
@@ -127,6 +128,7 @@ class DealPayerTest extends TestCase
         $buyer = User::create(['name' => 'Александр Видов', 'roles' => [Role::Buyer], 'manager_id' => $this->manager->id, 'approved_at' => now(), 'access' => []]);
 
         app(SetDealPayer::class)($deal, $this->manager, ['payer' => 'user:'.$buyer->id]);
+        $this->sendToManager($deal);
         $now = $deal->fresh()->issuedInvoices()->where('state', '!=', InvoiceState::Void)->sole();
         $this->assertSame($buyer->fresh()->party_id, $now->party_id);
         $this->assertEqualsWithDelta($invoice->total, $now->total, 0.01);
@@ -177,6 +179,7 @@ class DealPayerTest extends TestCase
         $this->assertNull($first->fresh()->openLink());
 
         app(\App\Offers\Actions\SetFeeSeller::class)($deal->fresh(), $this->admin, \App\Billing\Seller::Prime);
+        $this->sendToManager($deal);
         $prime = $deal->fresh()->issuedInvoices()->where('state', '!=', InvoiceState::Void)->sole();
         $this->assertSame(\App\Billing\Seller::Prime, $prime->seller);
         $this->assertNotNull($prime->openLink());

@@ -40,6 +40,24 @@ class DealContractController
         return back()->with('toast', 'Услуги подбора: '.($seller->config()['name'] ?? $value));
     }
 
+    /** «Отправить менеджеру» у счёта сделки (16.11.2026): до того у менеджера «Счёт готовится». */
+    public function showInvoice(Request $request, Deal $deal, \App\Billing\Invoice $invoice, \App\Offers\Actions\ShowToManager $show)
+    {
+        abort_unless($invoice->deal_id === $deal->id && $deal->buyer_id, 404);
+        $show->invoice($deal, $invoice, $request->user());
+
+        return back()->with('toast', 'Счёт '.$invoice->label().' отправлен менеджеру');
+    }
+
+    /** «Отправить менеджеру» у договора (16.11.2026): до того у менеджера «Договор готовится». */
+    public function showContract(Request $request, Deal $deal, \App\Offers\Actions\ShowToManager $show)
+    {
+        abort_unless($deal->hasContract() && $deal->buyer_id, 404);
+        $show->contract($deal, $request->user());
+
+        return back()->with('toast', 'Договор отправлен менеджеру');
+    }
+
     /** Договор от страховой руками («страховой напрямую», 16.11.2026): файл к машине, открыт менеджеру (`SupplierContract`). */
     public function supplierContract(Request $request, Deal $deal)
     {
@@ -72,7 +90,7 @@ class DealContractController
 
             return back()->with('open_sheet', $needs ? 'deal-buyer-data-'.$deal->id : null)
                 ->with('toast', match (true) {
-                    $deal->isPrime() && $deal->fresh()->hasManagerInvoice() => 'Покупатель указан, счёт выставлен',
+                    $deal->isPrime() && $deal->fresh()->hasManagerInvoice(sent: false) => 'Покупатель указан, счёт сформирован',
                     $request->has('buyer') => 'Данные покупателя сохранены',
                     default => 'Покупатель указан',
                 });

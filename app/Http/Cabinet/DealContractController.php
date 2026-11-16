@@ -60,6 +60,8 @@ class DealContractController
         abort_if($deal->state === DealState::Cancelled, 404);
         // Менеджеру — только готовый договор: с прочерками вместо покупателя его не печатают (06.10.2026).
         abort_unless(DealContract::for($deal)->isReady(), 404);
+        // И только отправленный кнопкой в CRM (16.11.2026): до того у менеджера «Договор готовится». Сотрудник видит всегда.
+        abort_unless($request->user()?->isAdmin() || DealContract::for($deal)->shownToManager(), 404);
 
         return Document::document($deal, str_ends_with($request->path(), '.pdf'));
     }

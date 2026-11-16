@@ -24,7 +24,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * тот же `seller` (сам из договора комиссии Совкомбанка — `FillCommissionOwner`), номер — `commissionNo`. НДС договора —
  * выбором в CRM (`vatRate`).
  */
-#[Fillable(['deal_id', 'seller_party_id', 'buyer_user_id', 'payer', 'price', 'city', 'signed_at', 'ready_at', 'issuer', 'number', 'year', 'commission_no', 'vat_rate', 'price_manual', 'price_by', 'price_at', 'supplier_price', 'supplier_purpose', 'supplier_requisites'])]
+#[Fillable(['deal_id', 'seller_party_id', 'buyer_user_id', 'payer', 'price', 'city', 'signed_at', 'ready_at', 'issuer', 'number', 'year', 'commission_no', 'vat_rate', 'price_manual', 'price_by', 'price_at', 'supplier_price', 'supplier_purpose', 'supplier_requisites', 'shown_at', 'shown_by'])]
 class DealContract extends Model
 {
     use FastAttributes;
@@ -37,7 +37,7 @@ class DealContract extends Model
 
     protected function casts(): array
     {
-        return ['price' => 'int', 'signed_at' => 'date', 'ready_at' => 'datetime', 'issuer' => Seller::class, 'number' => 'int', 'year' => 'int', 'vat_rate' => 'int', 'price_manual' => 'bool', 'price_at' => 'datetime', 'supplier_price' => 'int', 'supplier_requisites' => 'array'];
+        return ['price' => 'int', 'signed_at' => 'date', 'ready_at' => 'datetime', 'issuer' => Seller::class, 'number' => 'int', 'year' => 'int', 'vat_rate' => 'int', 'price_manual' => 'bool', 'price_at' => 'datetime', 'supplier_price' => 'int', 'supplier_requisites' => 'array', 'shown_at' => 'datetime'];
     }
 
     /** Вид документа: физлицо физлицу (ДКП собственника) или ДКП с актом от нашего юрлица. */
@@ -192,5 +192,11 @@ class DealContract extends Model
     public function isReady(): bool
     {
         return $this->missing() === [];
+    }
+
+    /** Менеджеру договор виден: готов и отправлен кнопкой «Отправить менеджеру» в CRM (16.11.2026); иначе — «Договор готовится». */
+    public function shownToManager(): bool
+    {
+        return $this->shown_at !== null && $this->isReady();
     }
 }

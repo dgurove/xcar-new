@@ -63,6 +63,8 @@ class DkpDealFlowTest extends TestCase
         $this->assertSame('Ждём письмо поставщика', $offer->fresh()->stage()->name);
         $this->walkTo($offer, $deal->fresh(), 'Связаться с владельцем');
 
+        $this->sendToManager($deal);
+
         return [$offer, $deal->fresh()];
     }
 
@@ -139,6 +141,8 @@ class DkpDealFlowTest extends TestCase
         $this->assertSame($invoice->party->name, $invoice->fresh()->openLink()->payer_name);
 
         $this->actingAs($this->manager)->put('/deals/'.$deal->id.'/payer', ['payer' => 'new', 'kind' => 'person', 'name' => 'Покупаев Пётр'])->assertSessionHasNoErrors();
+        // Новый плательщик — новый счёт: менеджеру снова после «Отправить менеджеру» (16.11.2026).
+        $this->sendToManager($deal);
         $now = $deal->fresh()->issuedInvoices()->where('state', '!=', \App\Billing\InvoiceState::Void)->sole();
         $this->assertSame('Покупаев Пётр', $now->party->name);
         $this->assertSame('Покупаев Пётр', $now->openLink()->payer_name);

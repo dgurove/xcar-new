@@ -129,7 +129,7 @@
                     <p class="mt-2 text-sm {{ $requirement->due_at->isPast() ? 'text-urgent' : 'text-ink-muted' }}">до {{ \App\Support\Ago::html($requirement->due_at, true, words: false) }}, <span class="nums font-medium" data-controller="timer" data-timer-until-value="{{ $requirement->due_at->toIso8601String() }}" data-timer-done-value="срок вышел"></span></p>
                 @endif
             @elseif ($noInvoice)
-                <p class="mt-3 font-medium">Готовим счёт</p>
+                <p class="mt-3 font-medium">Счёт готовится</p>
             @elseif ($consentAhead)
                 <p class="mt-3 text-sm text-ink-muted">Дальше здесь и в Telegram спросим, берётся ли ТС в работу</p>
             @endif
@@ -151,12 +151,12 @@
                         ['contact', 'Связаться с владельцем', $flow['contact']],
                         ['pickup', 'Забрать ТС', $flow['pickup']],
                         ['buyer', 'Покупатель по ДКП', $state((bool) $contract->buyer?->party?->readyAsBuyer())],
-                        ['doc', 'Договор купли-продажи', $state($contract->isReady())],
+                        ['doc', 'Договор купли-продажи', $state($contract->shownToManager())],
                         ['signed', 'Подписанный договор', $flow['signed'] === 'current' && $signedFiles ? 'done' : $flow['signed']],
                     ] : [
                         $contact ? ['contact', $handover?->where === 'У владельца' || $ownerPhone ? 'Связаться с владельцем' : 'Где ТС', 'open'] : null,
                         ['buyer', $deal->isPrime() ? 'Покупатель' : 'Покупатель по ДКП', $state((bool) $contract->buyer?->party?->readyAsBuyer())],
-                        ['doc', 'Договор купли-продажи', $state($contract->isReady())],
+                        ['doc', 'Договор купли-продажи', $state($contract->shownToManager())],
                         ['signed', 'Подписанный договор', $state($signedFiles)],
                     ]));
                     // Кнопка шага — у пункта, что сейчас: «Связался», «Забрал» или «Договор приложен».

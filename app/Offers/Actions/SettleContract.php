@@ -3,7 +3,6 @@
 namespace App\Offers\Actions;
 
 use App\Live\RefreshDeal;
-use App\Notifications\ContractReadyNotice;
 use App\Offers\DealContract;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -32,8 +31,8 @@ final class SettleContract
         if ($contract->isReady()) {
             $this->number($contract);
             if (! $contract->ready_at) {
+                // Менеджеру — не сейчас, а кнопкой «Отправить менеджеру» в CRM (`ShowToManager::contract`, 16.11.2026).
                 $contract->update(['ready_at' => now()]);
-                $contract->deal->buyer?->notify(new ContractReadyNotice($contract->deal));
             }
         }
         // Покупатель готов — дело «Укажите покупателя» гаснет (10.11.2026).

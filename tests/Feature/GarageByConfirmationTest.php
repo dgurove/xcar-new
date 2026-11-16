@@ -231,6 +231,7 @@ class GarageByConfirmationTest extends TestCase
         $this->assertTrue($deal->fresh()->buyerPaysReward());
         // Договор — на ту же сумму, что счёт (27.10.2026).
         $this->assertSame(1400000, $deal->fresh()->contract->price);
+        $this->sendToManager($deal);
         $this->assertNull($offer->fresh()->position(Track::Sale)->waits_for);
 
         app(RecordPayment::class)($invoice->fresh(), $admin, 1400000, now(), PaymentSource::Bank);

@@ -147,6 +147,7 @@ class AlfaPrepayTest extends TestCase
         $this->toPayStep($offer, $deal);
 
         // Подбор — ПРАЙМ со ссылкой; покупатель платит Альфе сам, перевода с Р.О.С. нет.
+        $this->sendToManager($deal);
         $selection = $deal->fresh()->issuedInvoices()->sole();
         $this->assertSame(Seller::Prime, $selection->seller);
         $this->assertNotNull($selection->openLink());

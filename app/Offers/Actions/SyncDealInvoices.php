@@ -54,10 +54,9 @@ final class SyncDealInvoices
             return;
         }
         $this->adopt($deal);
-        // Покупатель с гаражом у Совкомбанка: «да» поставщика там нет вовсе — счёт на его цену сразу, долгом (20.10.2026).
-        if (! $deal->agreed() && ! ($deal->forGarageBuyer() && $deal->isCommission())) {
-            return;
-        }
+        // Счёт — сразу, как есть реквизиты, и до ответа поставщика (16.11.2026, владелец по сделке 412: «счёт должен сразу
+        // формироваться, даже если этап оплаты ещё не наступил»; до того ждали `agreed()`). Менеджер его не видит, пока
+        // сотрудник не нажмёт «Отправить менеджеру» (`ShowToManager`), срока до шага оплаты нет (`dueFor`).
         $deal->loadMissing(['offer', 'buyer', 'contract.buyer']);
         // Цена договора ПРАЙМ идёт за счётом — плательщик, цена и вознаграждение меняются по ходу (гаражная Совкомбанка
         // 27.10.2026, продажа — 16.11.2026: платит покупатель — минус вознаграждение). Вписанная руками (`SetContractPrice`) не перетирается.
@@ -253,9 +252,9 @@ final class SyncDealInvoices
     }
 
     /**
-     * Срок счёта. Подбор не гаражной сделки — без срока, пока маршрут не дошёл до шага оплаты (06.10.2026, владелец: до
-     * договора с покупателем менеджер нам не должник): срок поставит сам шаг (`StartSelectionDue`). На шаге оплаты — его
-     * часы; маршрут без шага оплаты — 14 дней.
+     * Срок счёта. До шага оплаты — без срока (16.11.2026, владелец: «по срокам ему мозг не выносить, в счёте без строки про
+     * срок оплаты»; подбор так и жил с 06.10.2026): срок и строку «Оплатить до» ставит сам шаг (`StartInvoiceDue`). На шаге
+     * оплаты — его часы; гаражная и маршрут без шага оплаты — 14 дней.
      */
     private function dueFor(Deal $deal, ChargeKind $kind): ?Carbon
     {
@@ -269,11 +268,17 @@ final class SyncDealInvoices
         if ($position?->stage->isPayStep()) {
             return $deal->payDue() ?? $position->deadline_at ?? $default;
         }
-        if ($kind !== ChargeKind::Selection || $deal->isGarage() || ! $position) {
+        // Гаражная: машину и долю менеджер платит за себя, срок — как был, 14 дней.
+        if (! $position || $deal->isGarage()) {
             return $default;
         }
-        $stages = Stage::where('workflow_id', $position->stage->workflow_id)->with('exits')->get();
 
-        return $stages->contains(fn (Stage $s) => $s->isPayStep()) ? null : $default;
+        return self::routePays($position) ? null : $default;
+    }
+
+    /** В маршруте позиции есть шаг оплаты — тогда срок счёту ставит он. */
+    public static function routePays(Position $position): bool
+    {
+        return Stage::where('workflow_id', $position->stage->workflow_id)->with('exits')->get()->contains(fn (Stage $s) => $s->isPayStep());
     }
 }

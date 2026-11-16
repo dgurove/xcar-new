@@ -77,6 +77,7 @@ class ManualLinkCreditTest extends TestCase
                 : app(TakeExit::class)($o, $stage->exitsFor(Actor::Staff, $deal)->first(fn ($e) => ! str_contains(mb_strtolower($e->label), 'отказ') && ! str_contains(mb_strtolower($e->label), 'не поступила')), Actor::Staff, $this->admin);
         }
         $this->assertSame($name, $this->offer->fresh()->stage()->name);
+        $this->sendToManager($deal);
     }
 
     private function manual(float $amount, ?Offer $offer = null, string $name = 'Тужиков Евгений Сергеевич'): Invoice

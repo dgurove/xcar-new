@@ -247,6 +247,7 @@ class RepriceTest extends TestCase
     {
         $deal = app(AcceptBid::class)(app(PlaceBid::class)($this->offer, $this->roman, 1050000), $this->admin, 20000, CommissionMode::Payout, scheme: DealScheme::Insurer);
         $this->pickedUp();
+        $this->sendToManager($deal);
         $first = $deal->fresh()->issuedInvoices()->sole();
 
         // Закупочная выросла, админ выбрал «Спросить» — цена у менеджера прежняя, ему вопрос, у нас — ждём.

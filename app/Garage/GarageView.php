@@ -22,6 +22,8 @@ final class GarageView
         $buyerCar = $car->forBuyer();
         $asBuyer = $buyerCar && ! $staff;
         $holderInvoice = $buyerCar ? $car->holderInvoice() : null;
+        // Не отправленный ему счёт (кнопка в CRM, 16.11.2026) — «Счёт готовится» (`Deal::invoiceNotYet`).
+        $holderInvoice = $asBuyer && $holderInvoice && ! $holderInvoice->isShownToManager() ? null : $holderInvoice;
         $holderDue = $asBuyer && ! $car->hidesBuyerPrice() && $holderInvoice && $holderInvoice->remaining() - $holderInvoice->claimed() > 0;
         $n = $offer->number;
         $invoice = $car->invoice;

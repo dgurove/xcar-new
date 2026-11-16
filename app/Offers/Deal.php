@@ -487,21 +487,12 @@ class Deal extends Model implements HasMedia
     }
 
     /**
-     * Когда встанет счёт, пока поставщик не согласовал (`agreed`): одна фраза для «Расчёта» сделки и строки «Оплат» —
-     * у Совкомбанка после «Автомобиль забрал», где спрашиваем менеджера — после «Беру в работу», иначе после ответа
-     * поставщика. null — согласовано, счёт ставится сам.
+     * Счёт сделки встал, а менеджеру его ещё не отправили (`ShowToManager`, 16.11.2026) — менеджеру «Счёт готовится». До того
+     * (с 09.10.2026) счёт ждал ответа поставщика, и фраза говорила, после чего встанет; теперь он встаёт сразу с реквизитами.
      */
     public function invoiceNotYet(): ?string
     {
-        if ($this->agreed()) {
-            return null;
-        }
-
-        return match (true) {
-            $this->isCommission() => 'после получения автомобиля',
-            (bool) $this->offer?->position(Track::Sale)?->stage->asksConsent() => 'после «Беру в работу»',
-            default => 'после ответа поставщика',
-        };
+        return $this->hasManagerInvoice(sent: false) && ! $this->hasManagerInvoice() ? 'готовится' : null;
     }
 
     /**
@@ -958,6 +949,10 @@ class Deal extends Model implements HasMedia
     {
         if ($this->hasManagerInvoice()) {
             return null;
+        }
+        // Счёт сформирован, но менеджеру ещё не отправлен — проверить и отправить (16.11.2026).
+        if ($this->hasManagerInvoice(sent: false)) {
+            return 'send';
         }
 
         return match (true) {
@@ -1479,17 +1474,18 @@ class Deal extends Model implements HasMedia
     /** Менеджеру вознаграждение открывается с первого живого счёта по сделке. */
     /** Есть ли живой счёт — для экранов: по загруженным счетам, если они уже есть (списки «Денег»), иначе запросом. */
     /**
-     * Есть ли счёт, который платит менеджер (или его покупатель): наш, живой, не вознаграждение от вендора. Без него
-     * этап оплаты ждёт нас — выставить счёт (`Position::awaitsInvoice`).
+     * Есть ли у менеджера счёт, который платит он (или его покупатель): наш, живой, не вознаграждение от вендора и **отправленный
+     * ему** кнопкой в CRM (`shown_at`, 16.11.2026). Без него этап оплаты ждёт нас — выставить или отправить счёт
+     * (`Position::awaitsInvoice`, `invoiceGap` = `send`).
      */
-    public function hasManagerInvoice(): bool
+    public function hasManagerInvoice(bool $sent = true): bool
     {
         // Списки грузят счета заранее (`DealController::index`) — по ним, без запроса на строку (16.11.2026).
         if ($this->relationLoaded('invoices')) {
-            return $this->invoices->contains(fn (Invoice $i) => $i->direction === 'issued' && $i->kind !== ChargeKind::Reward);
+            return $this->invoices->contains(fn (Invoice $i) => $i->direction === 'issued' && $i->kind !== ChargeKind::Reward && (! $sent || $i->isShownToManager()));
         }
 
-        return $this->issuedInvoices()->where('kind', '!=', ChargeKind::Reward)->exists();
+        return $this->issuedInvoices()->where('kind', '!=', ChargeKind::Reward)->when($sent, fn ($q) => $q->shownToManager())->exists();
     }
 
     /** Есть ли живой счёт продажи — по загруженным счетам, иначе запросом. */

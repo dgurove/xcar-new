@@ -183,6 +183,9 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
             Route::put('/work/deals/{deal}/contract', [DealContractController::class, 'update']);
             Route::put('/work/deals/{deal}/payer', [DealContractController::class, 'payer']);
             Route::put('/work/deals/{deal}/fee-seller', [DealContractController::class, 'feeSeller']);
+            // «Отправить менеджеру» у счёта и договора (16.11.2026): сотрудник проверил — менеджер видит.
+            Route::post('/work/deals/{deal}/invoices/{invoice}/show', [DealContractController::class, 'showInvoice']);
+            Route::post('/work/deals/{deal}/contract/show', [DealContractController::class, 'showContract']);
             Route::post('/work/deals/{deal}/supplier-contract', [DealContractController::class, 'supplierContract']);
             Route::post('/parties/{party}/passport/{page}', [PassportScanController::class, 'upload'])->whereIn('page', ['main', 'reg'])->middleware('throttle:30,1');
             Route::get('/parties/{party}/passport/live', [PassportScanController::class, 'live']);

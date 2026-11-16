@@ -97,6 +97,7 @@ class MoneyDirectionTest extends TestCase
         $offer = $this->offer(1300000, 'supplier');
         $this->passportFor($this->manager);
         $deal = app(AcceptBid::class)(app(PlaceBid::class)($offer, $this->manager, null, kind: BidKind::Garage), $this->admin, payer: GaragePayer::Manager, scheme: DealScheme::Prime, share: 50000);
+        $this->sendToManager($deal);
 
         $ledger = new ManagerLedger($this->manager);
         $row = $ledger->rows()->firstWhere('id', $deal->id);

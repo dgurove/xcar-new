@@ -116,6 +116,9 @@ class PrimeDealFlowTest extends TestCase
         // ему закупочную и долю менеджера. Выплата менеджеру от строк не зависит — она своим счётом `agent_fee`.
         $this->assertSame([1050000.0], $invoice->charges()->orderBy('id')->pluck('price')->map(fn ($p) => (float) $p)->all());
         $this->assertNull($invoice->openLink());
+        // Счёт встал — ход наш, пока сотрудник не отправит его менеджеру (16.11.2026); отправил — ход менеджера.
+        $this->assertSame(WaitsFor::Us, Position::whereKey($position->id)->first()->waits_for);
+        $this->sendToManager($deal);
         $this->assertNull(Position::whereKey($position->id)->value('waits_for'));
 
         app(RecordPayment::class)($invoice->fresh(), $this->admin, 1050000, now(), PaymentSource::Bank);
@@ -160,6 +163,7 @@ class PrimeDealFlowTest extends TestCase
         $offer = $this->offer(779000, 'supplier');
         $deal = app(AcceptBid::class)(app(PlaceBid::class)($offer, $this->manager, 1050000), $this->admin, 20000, CommissionMode::Payout, scheme: DealScheme::Insurer, ownerPrice: 750000);
         $this->pickedUp($offer);
+        $this->sendToManager($deal);
 
         $invoice = $deal->fresh()->issuedInvoices()->sole();
         $this->assertSame(ChargeKind::Selection, $invoice->kind);
@@ -176,6 +180,7 @@ class PrimeDealFlowTest extends TestCase
         $this->passportFor($this->manager);
         $bid = app(PlaceBid::class)($offer, $this->manager, null, kind: BidKind::Garage);
         $deal = app(AcceptBid::class)($bid, $this->admin, payer: GaragePayer::Manager, scheme: DealScheme::Prime, share: 50000);
+        $this->sendToManager($deal);
 
         $invoices = $deal->fresh()->issuedInvoices()->get()->keyBy(fn ($i) => $i->kind->value);
         $this->assertEqualsWithDelta(1300000, $invoices['sale']->total, 0.01);
