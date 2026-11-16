@@ -72,6 +72,8 @@ final class SettleAcquiring
             return $attempt;
         });
         if ($paid) {
+            // Вписал на странице оплаты другое имя — плательщик счёта и сделки он (16.11.2026).
+            rescue(fn () => \App\Offers\Actions\SetDealPayer::paidBy(Invoice::withoutGlobalScope('demo')->find($paid[1]->invoice_id), $paid[0]->fresh()), report: true);
             PaidOnline::dispatch(...$paid);
             // Заплатили часть (лимит одного платежа) — на остаток сразу следующая ссылка; `KeepPayLink` на оплату
             // сработал ещё внутри транзакции, когда эта ссылка была открыта.

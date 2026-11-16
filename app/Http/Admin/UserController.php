@@ -302,6 +302,14 @@ class UserController
         ]);
     }
 
+    /** Паспорт покупателя из его карточки в CRM (16.11.2026) — то же, что менеджер правит в кабинете (`Cabinet\BuyerController::passport`). */
+    public function passport(Request $request, User $user)
+    {
+        abort_unless($request->user()->canManageCrm() && $user->isBuyer(), 404);
+
+        return app(\App\Http\Cabinet\BuyerController::class)->passport($request, $user);
+    }
+
     /** Реквизиты менеджера — сотрудник правит те же, что менеджер в кабинете. */
     public function party(Request $request, User $user)
     {

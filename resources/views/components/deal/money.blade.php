@@ -9,6 +9,9 @@
 @php
     use App\Support\Money; use App\Billing\InvoiceState; use App\Offers\CommissionState; use App\Offers\CommissionMode;
     $offer = $deal->offer;
+    // Строка «Плательщик» (`x-deal.payer`, 16.11.2026) — у идущей сделки с менеджером: над счетами, без счёта — своей группой.
+    $payerRow = $deal->buyer_id && $deal->isActive() && ! $deal->isAuction();
+    $payerId = $payerRow ? ($deal->payer_party_id ?? $deal->payerUser(sale: $deal->isPrime())?->party_id) : null;
     $invoices = $deal->invoices()->with(['party', 'media', 'claims.media', 'payLinks.attempts', 'payLinks.creator', 'payLinks.payerUser', 'deal.offer'])->get();
     // Разовые оплаты по ссылке с машиной сделки (09.10.2026): их деньги лежат в счетах сделки зачётом, что не легло — сверх.
     $credits = $deal->credits()->with(['party', 'offer', 'payments', 'payLinks.attempts', 'payLinks.creator', 'payLinks.payerUser'])->get();
@@ -198,10 +201,15 @@
             @endif
         </div>
     @endif
+    @if ($payerRow && $invoices->isEmpty())
+        <div class="list mt-4"><x-deal.payer :deal="$deal" :action="'/work/deals/'.$deal->id.'/payer'" :editable="auth()->user()?->canManageCrm()"/></div>
+    @endif
     @if ($invoices->isNotEmpty())
         {{-- Счета — одной группой строк через линию, как список в приложении: слева счёт и его состояние словом,
              справа сумма; «Выплатить» — только у вознаграждения к выплате. --}}
         <div class="list mt-4">
+            {{-- Плательщик — один на счёт и ссылку, строкой над ними (16.11.2026, `x-deal.payer`). --}}
+            @if ($payerRow)<x-deal.payer :deal="$deal" :action="'/work/deals/'.$deal->id.'/payer'" :editable="auth()->user()?->canManageCrm()"/>@endif
             @foreach ($invoices as $i)
                 @php
                     $link = ! $i->isOwed() && $i->state !== InvoiceState::Paid ? $last($i, true) : null;
@@ -229,7 +237,7 @@
                             <x-ui.file-icon name="schet.pdf" :bytes="$media?->size"/>
                             <span class="min-w-0 flex-1">
                                 <span class="block">Счёт {{ $i->label() }} <span class="text-ink-muted">от {{ \App\Support\Ago::day($i->issued_at) }}</span></span>
-                                <span class="row-sub"><span>{{ $i->party?->title() }}</span><span class="nums whitespace-nowrap">{{ $i->isPartial() && $i->remaining() > 0 ? 'осталось '.Money::rub($i->remaining()).' из '.Money::rub($i->total) : Money::rub($i->total) }}</span></span>
+                                <span class="row-sub">@if (! $payerRow || $i->party_id !== $payerId)<span>{{ $i->party?->title() }}</span>@endif<span class="nums whitespace-nowrap">{{ $i->isPartial() && $i->remaining() > 0 ? 'осталось '.Money::rub($i->remaining()).' из '.Money::rub($i->total) : Money::rub($i->total) }}</span></span>
                                 @unless ($link && $link->isOpen())<span class="row-sub"><x-billing.light :invoice="$i"/></span>@endunless
                             </span>
                         </a>

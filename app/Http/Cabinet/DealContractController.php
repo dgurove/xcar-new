@@ -16,6 +16,15 @@ use Illuminate\Http\Request;
  */
 class DealContractController
 {
+    /** Плательщик сделки — один на счёт и ссылку (`SetDealPayer`, строка «Плательщик», 16.11.2026): менеджер выбирает сам. */
+    public function payer(Request $request, Deal $deal, \App\Offers\Actions\SetDealPayer $set)
+    {
+        abort_unless($deal->buyer_id === $request->user()->id && $deal->isActive(), 404);
+        $party = $set($deal, $request->user(), $request->validate(\App\Offers\Actions\SetDealPayer::rules(), \App\Offers\Actions\SetDealPayer::messages()));
+
+        return back()->with('toast', $party->id === $request->user()->party_id ? 'Платите вы' : 'Платит '.$party->name);
+    }
+
     public function update(Request $request, Deal $deal, SaveDealContract $save)
     {
         // Покупатель для счёта поставщика без договора — тоже здесь (03.11.2026, `Deal::collectsBuyer`).

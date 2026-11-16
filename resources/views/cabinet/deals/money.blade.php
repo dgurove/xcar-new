@@ -50,7 +50,7 @@
                 'amount' => $ownerSum, 'state' => $supplierState, 'invoice' => null])
             @include('cabinet.deals.payment', ['row' => true, 'title' => ($selection?->seller ?? \App\Billing\Seller::Prime)->config()['name'],
                 'amount' => $selection ? $sumOf($selection) : Money::rub((int) $deal->ours()),
-                'state' => null, 'invoice' => $selection, 'pay' => $payHere])
+                'state' => null, 'invoice' => $selection, 'pay' => $payHere, 'payerHere' => $payHere])
             @if ($deal->commission)
                 <div class="deal-money-row flex items-start gap-3"><span class="min-w-0 flex-1">Ваша доля</span><span class="profit-sum nums shrink-0">+{{ Money::rub((int) $deal->commission) }}</span></div>
             @endif
@@ -58,7 +58,7 @@
             {{-- ПРАЙМ / Р.О.С. (Совкомбанк, Carcade, часть Альфы): покупатель платит нашему юрлицу — строкой с его названием и ценой
                  (она же счёт); счёт выставлен — его оплаты и способы под ней. --}}
             @include('cabinet.deals.payment', ['row' => true, 'title' => ($sale?->seller ?? $deal->seller())->config()['name'], 'strong' => true,
-                'amount' => Money::rub((int) $deal->amount), 'state' => null, 'invoice' => $sale, 'pay' => $payHere])
+                'amount' => Money::rub((int) $deal->amount), 'state' => null, 'invoice' => $sale, 'pay' => $payHere, 'payerHere' => $payHere])
             @if ($deal->commission)
                 <div class="deal-money-row flex flex-col gap-2">
                     <div class="flex items-start gap-3">

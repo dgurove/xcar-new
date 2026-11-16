@@ -159,9 +159,16 @@ class DealContract extends Model
         return $this->buyer?->party;
     }
 
-    /** По счёту ПРАЙМ платит сам менеджер (за вычетом своего вознаграждения) — он же покупатель или нет. */
+    /**
+     * По счёту ПРАЙМ платит сам менеджер (за вычетом своего вознаграждения) — он же покупатель или нет. Плательщик выбран
+     * своей стороной (`deals.payer_party_id`, `SetDealPayer`, 16.11.2026) — менеджер, только если это его сторона.
+     */
     public function managerPays(): bool
     {
+        if ($this->deal->payer_party_id) {
+            return $this->deal->buyer !== null && $this->deal->payer_party_id === $this->deal->buyer->party_id;
+        }
+
         return $this->payer === 'manager' || ($this->buyer_user_id !== null && $this->buyer_user_id === $this->deal->buyer_id);
     }
 

@@ -121,8 +121,12 @@ class DkpDealFlowTest extends TestCase
         $this->assertSame('Сделка закрыта', $offer->fresh()->stage()->name);
     }
 
-    /** Ссылка после согласования — на менеджера и ровно 80 000; менеджер переделывает её на нового покупателя по ФИО и почте (телефон ссылке не нужен). */
-    public function test_link_is_80_and_manager_picks_new_buyer_as_payer(): void
+    /**
+     * Ссылка после согласования — на менеджера и ровно 80 000. Плательщик ссылки — всегда плательщик счёта (16.11.2026, владелец:
+     * «два способа оплаты одной суммы»): «Получить ссылку» с другим именем её не переписывает; другой плательщик — строкой
+     * «Плательщик» (`SetDealPayer`), и тогда счёт и ссылка уходят на него вместе.
+     */
+    public function test_link_is_80_and_follows_invoice_payer(): void
     {
         config(['xcar.yookassa.shop_id' => '1', 'xcar.yookassa.secret' => 'test']);
         [, $deal] = $this->deal();
@@ -131,13 +135,14 @@ class DkpDealFlowTest extends TestCase
 
         $this->actingAs($this->manager)->post('/account/money/deals/'.$deal->id.'/pay', ['invoice' => $invoice->id, 'way' => 'link', 'payer' => 'other', 'name' => 'Покупаев Пётр', 'email' => 'petr@example.test'])
             ->assertSessionHasNoErrors();
+        $this->assertSame(0, User::where('email', 'petr@example.test')->count());
+        $this->assertSame($invoice->party->name, $invoice->fresh()->openLink()->payer_name);
 
-        $buyer = User::where('email', 'petr@example.test')->sole();
-        $this->assertSame($this->manager->id, $buyer->manager_id);
-        $this->assertTrue($buyer->isBuyer());
-        $link = $invoice->fresh()->openLink();
-        $this->assertSame($buyer->id, $link->payer_user_id);
-        $this->assertEqualsWithDelta(80000, $link->amount, 0.01);
+        $this->actingAs($this->manager)->put('/deals/'.$deal->id.'/payer', ['payer' => 'new', 'kind' => 'person', 'name' => 'Покупаев Пётр'])->assertSessionHasNoErrors();
+        $now = $deal->fresh()->issuedInvoices()->where('state', '!=', \App\Billing\InvoiceState::Void)->sole();
+        $this->assertSame('Покупаев Пётр', $now->party->name);
+        $this->assertSame('Покупаев Пётр', $now->openLink()->payer_name);
+        $this->assertEqualsWithDelta(80000, $now->openLink()->amount, 0.01);
     }
 
     public function test_cancelled_deal_voids_unpaid_selection_invoice(): void

@@ -45,13 +45,27 @@ final class SaveBuyerData
         $party->fill(($keep ? [] : ['kind' => $as]) + $fields)->save();
         // Покупатель, заведённый плиткой вида без имени («Новый покупатель», `Cabinet\DealController::buyerNew`), — имя из
         // полей (13.11.2026): ФИО «Фамилия Имя Отчество» → «Имя Фамилия», организация — названием.
-        $name = trim((string) $party->name);
-        $user = $name !== '' ? User::where('party_id', $party->id)->where('name', AddPerson::UNNAMED)->first() : null;
-        if ($user) {
-            $w = preg_split('/\s+/u', $name);
-            $user->update(['name' => $as === PartyKind::Company || count($w) < 2 ? $name : trim($w[1].' '.$w[0])]);
-        }
+        self::renameBuyer($party);
 
         return $party;
+    }
+
+    /**
+     * Имя покупателя — из ФИО его данных: заведённый без имени и покупатель — при каждом сохранении данных, если имя разошлось с ФИО (16.11.2026, Видов:
+     * сканер прочитал «Виеов», сотрудник исправил в данных, а в «Кто заберёт» и «Кто платит» остался «Александр Виеов»).
+     * ФИО «Фамилия Имя Отчество» → «Имя Фамилия», организация — названием. Менеджера и сотрудников не переименовываем.
+     */
+    public static function renameBuyer(Party $party): void
+    {
+        $name = trim((string) $party->name);
+        $user = $name === '' ? null : User::where('party_id', $party->id)->first();
+        if (! $user || ! ($user->name === AddPerson::UNNAMED || $user->isBuyer())) {
+            return;
+        }
+        $w = preg_split('/\s+/u', $name);
+        $short = $party->kind === PartyKind::Company || count($w) < 2 ? $name : trim($w[1].' '.$w[0]);
+        if ($user->name !== $short) {
+            $user->update(['name' => $short]);
+        }
     }
 }

@@ -88,14 +88,7 @@
         <x-ui.chevron/>
     </x-ui.doc>
 @endforeach
-@if ($live && $buyer && ! $isManager && $deal->isPrime())
-    {{-- Кто платит по счёту ПРАЙМ — одним сегментом (15.11.2026: галка и кружок двумя строками на один выбор). --}}
-    <form method="post" action="/work/deals/{{ $deal->id }}/contract" class="row" data-controller="autosubmit">
-        @csrf @method('put')
-        <span class="min-w-0 flex-1 text-ink-muted">Платит</span>
-        <x-ui.segment name="payer" :options="['buyer' => 'Покупатель', 'manager' => 'Менеджер']" :value="$contract->managerPays() ? 'manager' : 'buyer'" class="shrink-0" data-action="change->autosubmit#submit"/>
-    </form>
-@endif
+{{-- Кто платит по счёту — не здесь, а строкой «Плательщик» над счётом (`x-deal.payer`, 16.11.2026). --}}
 @if ($live && ! ($deal->isGarage() && $buyer))
     @php
         $rows = \App\Support\People::contractBuyers($manager, $manager->name, 'на себя, нужен паспорт', 'на себя, данные есть');

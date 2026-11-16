@@ -23,6 +23,8 @@
     $row ??= false;
     $left = $invoice ? round($invoice->remaining() - $invoice->claimed(), 2) : 0;
     $canPay = $pay && $invoice && $deal->buyer_id === auth()->id() && $invoice->state === InvoiceState::Issued && $left > 0;
+    // Строка «Плательщик» — менеджеру сделки, пока она идёт: где платят (по умолчанию — где выбор способа) или где счёт ещё ждут.
+    $showPayer = ($payerHere ?? $canPay) && $deal->buyer_id === auth()->id() && $deal->isActive() && ! $deal->isDirect();
     if ($canPay) {
         $online = app(\App\Billing\Acquiring\Gateway::class)->configured() && PayLink::eligible($invoice);
         $ways = array_filter([
@@ -88,6 +90,11 @@
                 <x-money.payment :payment="$p" :slip="'/account/money/invoices/'.$invoice->id.'/payments/'.$p->id.'/slip'"/>
             @endforeach
         </div>
+    @endif
+    {{-- Плательщик — один на счёт и ссылку, над способами оплаты (16.11.2026, владелец: «это два способа оплаты одной суммы»):
+         кто платит по счёту, тот и по ссылке; менеджер меняет его сам (`x-deal.payer`). --}}
+    @if ($showPayer)
+        <div class="list"><x-deal.payer :deal="$deal" :action="'/deals/'.$deal->id.'/payer'" :id="'deal-payer-'.$deal->id.'-'.($invoice?->id ?? 'new')"/></div>
     @endif
     @if ($canPay)
         <div>

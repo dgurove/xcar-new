@@ -80,6 +80,28 @@ final class People
     }
 
     /** @return Collection<int, Row> */
+    /**
+     * Где поправить человека из строки выбора (16.11.2026, владелец: «в списке при выборе покупателя его никак нельзя
+     * отредактировать — карандашик, чтобы сразу проваливаться»): в CRM — карточка человека, на сайте менеджеру — его
+     * покупатель или свой профиль. Чужой — без карандаша.
+     */
+    public static function editUrl(User $person, ?User $viewer = null): ?string
+    {
+        $viewer ??= auth()->user();
+        if (! $viewer) {
+            return null;
+        }
+        if (\App\Support\Surface::current() === \App\Support\Surface::Crm) {
+            return $viewer->canManageCrm() ? '/settings/users/'.$person->id : null;
+        }
+
+        return match (true) {
+            $person->id === $viewer->id => '/account',
+            $person->manager_id === $viewer->id => '/buyers/'.$person->id,
+            default => null,
+        };
+    }
+
     public static function rows(iterable $people): Collection
     {
         return collect($people)->map(fn ($p) => self::row($p))->values();

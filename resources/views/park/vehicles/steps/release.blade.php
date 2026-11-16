@@ -13,8 +13,8 @@
 {{-- Шаг «Выдача». По QR первым — «Сканировать QR» (сначала убедиться, что приехал покупатель), его место занимает
      итог скана. Дальше одна плашка: когда (по умолчанию сейчас) и деньги строками. «Кому» и «Кто получил» не
      спрашиваются: получатель — из пропуска или письма о продаже (`Release` вписывает его в акт), подпись ставят ручкой
-     на бумаге. Фото при выдаче — свёрнутым блоком. Внизу «Выдать» (по QR — только когда код подошёл), «Покупатель
-     отказался» и маленькой серой «Выдать без QR» — шторкой с причиной. --}}
+     на бумаге. Фото при выдаче — свёрнутым блоком. Внизу «Выдать» (по QR — только когда код подошёл), под ним
+     серым текстом «Выдать без QR» (шторка с причиной) и «Покупатель отказался». --}}
 <div @class(['act-fill' => $win]) @if ($qr) data-controller="qr-release" data-qr-release-check-url-value="/cars/{{ $vehicle->id }}/pass-check" data-qr-release-preset-value="{{ $scannedPass }}" @endif>
 @if ($qr)
     <input type="hidden" name="pass" data-qr-release-target="pass">
@@ -70,19 +70,23 @@
         @endif
     @endif
     @if ($vendorDue > 0 && $money)
-        <div class="row justify-between"><span class="text-ink-muted">Вендору — в счёт месяца</span><span class="nums text-ink-muted">{{ Money::rub($vendorDue) }}</span></div>
+        <div class="row justify-between"><span class="text-ink-muted">Хранение в счёте вендору за {{ now()->locale('ru')->isoFormat('MMMM') }}</span><span class="nums text-ink-muted">{{ Money::rub($vendorDue) }}</span></div>
     @endif
 </div>
 <x-park.photos :vehicle="$vehicle" :stage="PhotoStage::Release" nested :collapsed="! $win" edit :files="$win" class="mt-3"/>
-<div class="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center">
-    @if ($vehicle->sold_at && $handles)
-        {{-- Редкий исход — маленькой серой, как «Выдать без QR», а не второй кнопкой ростом с «Выдать» (10.10.2026). --}}
-        <button type="button" class="btn btn-s btn-quiet self-center sm:ml-auto" data-controller="emit" data-action="emit#send" data-emit-event-param="{{ $ev }}refusal:open">Покупатель отказался</button>
-    @endif
-    @if ($qr && $handles)
-        <button type="button" class="btn btn-s btn-quiet self-center sm:ml-auto" data-controller="emit" data-action="emit#send" data-emit-event-param="{{ $ev }}without-qr:open">Выдать без QR</button>
-    @endif
-</div>
+{{-- Редкие исходы — серым текстом в одну строку по центру, как второстепенные действия внизу листа в приложениях (16.11.2026,
+     владелец: пилюли «Покупатель отказался» и «Выдать без QR» стояли вразнобой и «по-дурацки»). В окне — в подвале под «Выдать». --}}
+@php
+    $rare = array_filter([
+        $qr && $handles ? ['Выдать без QR', 'without-qr'] : null,
+        $vehicle->sold_at && $handles ? ['Покупатель отказался', 'refusal'] : null,
+    ]);
+@endphp
+@if ($rare && ! $win)
+    <div class="mt-3 flex flex-wrap justify-center gap-x-2">
+        @foreach ($rare as [$label, $sheet])<button type="button" class="act-quiet" data-controller="emit" data-action="emit#send" data-emit-event-param="{{ $ev }}{{ $sheet }}:open">{{ $label }}</button>@endforeach
+    </div>
+@endif
 {{-- Окно действия: кнопки подвалом листа; по QR — появляются, когда код подошёл. --}}
 @if ($win)
     <div class="sheet-foot flex flex-col items-center gap-1">
@@ -91,6 +95,11 @@
             <button type="submit" name="then" value="none" class="act-quiet" @if ($qr) data-qr-release-target="submit" hidden @endif>Выдать без письма</button>
         @else
             <button type="submit" class="btn btn-accent w-full" @if ($qr) data-qr-release-target="submit" hidden @endif>Выдать</button>
+        @endif
+        @if ($rare)
+            <div class="flex flex-wrap justify-center gap-x-2">
+                @foreach ($rare as [$label, $sheet])<button type="button" class="act-quiet" data-controller="emit" data-action="emit#send" data-emit-event-param="{{ $ev }}{{ $sheet }}:open">{{ $label }}</button>@endforeach
+            </div>
         @endif
     </div>
 @endif

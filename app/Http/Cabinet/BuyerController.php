@@ -172,6 +172,8 @@ class BuyerController
         $data = $request->validate(PartyRules::passport('buyer'), [], ['buyer.name' => 'ФИО'])['buyer'];
         $party = Party::forUser($user);
         $party->fill(['kind' => PartyKind::Person] + array_map(fn ($v) => is_string($v) && trim($v) === '' ? null : $v, $data))->save();
+        // Поправили ФИО — имя покупателя в списках за ним (`SaveBuyerData::renameBuyer`).
+        \App\Billing\Actions\SaveBuyerData::renameBuyer($party);
         // Паспорт со сканом готов — счёт и договор его сделок встают сами.
         PassportScanController::resyncFor($user, $request->user(), app(SyncDealInvoices::class));
 

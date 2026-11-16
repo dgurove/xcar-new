@@ -17,6 +17,7 @@
     // offline — ссылка уже стоит рядом (расчёт сделки): здесь только «по счёту» и «наличными».
     $online = ! $offline && app(\App\Billing\Acquiring\Gateway::class)->configured() && $invoices->every(fn ($i) => PayLink::eligible($i));
     $current = $one ? $first->openLink() : null;
+    $dealInvoice = $one && \App\Offers\Actions\SetDealPayer::follows($first);
     $left = $one ? max(0, round($first->remaining() - $first->claimed(), 2)) : null;
     $max = (float) config('xcar.yookassa.max_amount');
     $fmt = fn ($v) => Money::nums($v, fmod($v, 1) ? 2 : 0);
@@ -67,7 +68,14 @@
             <div class="flex flex-col gap-3" data-reveal-target="pane" data-reveal-key="link" @if ($way !== 'link') hidden @endif>
                 {{-- Кто платит — выбор сразу заводит новую ссылку на него, прежняя гаснет (`CreatePayLink`, 06.10.2026,
                      владелец); новому покупателю — после ФИО, кнопкой. Ниже — сама ссылка. --}}
-                <x-billing.payer-pick :id="$id" :buyers="$buyers" :payer="$payer" :other-name="$otherName" autosubmit/>
+                {{-- Счёт сделки (16.11.2026): плательщик один на счёт и ссылку — выбирается строкой «Плательщик» над способами
+                     оплаты (`x-deal.payer`), здесь только ссылка на него. Гараж и прочее — как было, выбором. --}}
+                @if ($dealInvoice)
+                    <input type="hidden" name="payer" value="invoice">
+                    <p class="text-sm text-ink-muted">Платит {{ $first->party?->name }}</p>
+                @else
+                    <x-billing.payer-pick :id="$id" :buyers="$buyers" :payer="$payer" :other-name="$otherName" autosubmit/>
+                @endif
                 @if ($current)
                     @php [$state] = $current->stateLine(); @endphp
                     <div>

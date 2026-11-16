@@ -23,7 +23,7 @@
     <div class="list max-h-72 overflow-y-auto">
         <x-people.option :picker="false" :person="['id' => 'self', 'name' => 'Я сам'] + \App\Support\People::row($me, $me->email)" name="payer" :checked="$payer === 'self'" :action="$go" />
         @foreach ($buyers as $b)
-            <x-people.option :picker="false" :person="\App\Support\People::row($b, $b->email)" name="payer" :checked="$picked($b)" :action="$go"/>
+            <x-people.option :picker="false" :person="\App\Support\People::row($b, $b->email)" name="payer" :checked="$picked($b)" :action="$go" :edit="\App\Support\People::editUrl($b)"/>
         @endforeach
         <label class="row row-check">
             <x-ui.row-icon name="plus" size="s" tone="accent"/>

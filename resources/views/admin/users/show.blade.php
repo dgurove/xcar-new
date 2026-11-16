@@ -58,6 +58,27 @@
                     </a>
                 </div>
             @endif
+            {{-- Паспорт покупателя (16.11.2026, владелец: из «Кто заберёт» и «Кто платит» — карандашом сюда, править данные): та же
+                 шторка со сканом, что у менеджера в кабинете (`cabinet/buyers/show`), сохранение — `UserController::passport`. --}}
+            @if ($me->canManageCrm() && ! $park && $user->isBuyer())
+                @php $bp = $user->party; $bpReady = $bp?->readyAsBuyer(); @endphp
+                <div class="list mt-4" data-controller="sheet">
+                    <x-ui.sheet-row>
+                        <x-ui.row-icon name="file" size="s"/>
+                        <span class="min-w-0 flex-1">Паспорт</span>
+                        <span @class(['text-ink-muted' => ! $bpReady, 'text-open' => $bpReady])>{{ match (true) { (bool) $bpReady => 'заполнен', (bool) $bp?->readyForContract() => 'нет скана', default => 'не заполнен' } }}</span>
+                        <x-ui.chevron/>
+                    </x-ui.sheet-row>
+                    <x-ui.sheet id="passport" title="Паспорт" :open="request()->boolean('passport') || $errors->has('buyer.*')">
+                        <x-billing.passport-scan :party="$bp" form="crm-buyer-passport-form"/>
+                        <form method="post" action="/settings/users/{{ $user->id }}/passport" class="flex flex-col gap-3" id="crm-buyer-passport-form">
+                            @csrf @method('put')
+                            <x-billing.passport-fields :party="$bp ?? new \App\Billing\Party(['name' => $user->name])" prefix="buyer" rows/>
+                            <x-ui.sheet-foot>Сохранить</x-ui.sheet-foot>
+                        </form>
+                    </x-ui.sheet>
+                </div>
+            @endif
             {{-- Второй аккаунт того же человека (02.11.2026): управляющий парковки ↔ менеджер xcar — один вход, на каждом хосте свой
                  аккаунт и свой Telegram (`LinkAccounts`, `UseLinkedAccount`). --}}
             @if ($me->isAdmin() && ! $park && \App\Support\Surface::current() === \App\Support\Surface::Crm && $user->isApproved() && ! $user->isBuyer() && ! $user->isSuperBuyer())

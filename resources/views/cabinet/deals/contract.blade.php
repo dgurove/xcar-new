@@ -86,15 +86,7 @@
                     </x-ui.sheet>
                 </div>
             @endif
-            @if ($prime && ! $isMe && $editable)
-                {{-- Кто платит по счёту — одной строкой с переключателем (16.11.2026, «Договор» одной карточкой; было две строки с
-                     галками и суммами). --}}
-                <form method="post" action="/deals/{{ $deal->id }}/contract" class="row deal-pay" data-controller="autosubmit">
-                    @csrf @method('put')
-                    <span class="flex-1 whitespace-nowrap">Платит</span>
-                    <x-ui.segment name="payer" :options="['buyer' => 'Покупатель', 'manager' => 'Я']" :value="$contract->managerPays() ? 'manager' : 'buyer'" class="shrink-0" data-action="change->autosubmit#submit"/>
-                </form>
-            @endif
+            {{-- Кто платит по счёту — строкой «Плательщик» в «Деньгах» над способами оплаты (`x-deal.payer`, 16.11.2026). --}}
         @endif
         @if ($editable && ! ($garage && $buyer) && ! $me->isSuperBuyer())
             {{-- Выбор покупателя — шторкой `x-people.pick` (18.10.2026, владелец: «покупателя ещё нет — приходится идти в кабинет

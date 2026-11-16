@@ -54,6 +54,11 @@ final class PayChoice
         if ($me->isSuperBuyer() && $request->input('way') === 'link') {
             $request->merge(['payer' => 'self']);
         }
+        // Счёт сделки (16.11.2026): ссылка — на плательщика счёта, он выбирается строкой «Плательщик» (`SetDealPayer`).
+        if ($request->input('way') === 'link' && \App\Offers\Actions\SetDealPayer::follows($invoice)) {
+            $request->merge(['payer' => 'other', 'name' => $invoice->party?->name, 'email' => $request->input('email') ?: $invoice->party?->email]);
+            $follow = true;
+        }
         // Покупатель в шторке — строкой списка: радио «кто платит» несёт его id вместо слова.
         if (ctype_digit((string) $request->input('payer'))) {
             $request->merge(['payer_user_id' => $request->input('payer'), 'payer' => 'buyer']);
@@ -82,7 +87,7 @@ final class PayChoice
             $kind = PayerKind::from($data['payer']);
             $buyer = $kind === PayerKind::Buyer ? User::find($data['payer_user_id']) : null;
             // Новый покупатель — сразу в «Покупатели» менеджера (05.10.2026): платит он, а не безымянный «другой человек».
-            if ($kind === PayerKind::Other) {
+            if ($kind === PayerKind::Other && ! ($follow ?? false)) {
                 [$buyer, $kind] = [$this->newBuyer($me, $data['name'], $data['email'] ?? null), PayerKind::Buyer];
             }
             $link = ($this->link)($invoice, $me, $amount, $kind, $buyer, $data['name'] ?? null, null, $data['email'] ?? null);

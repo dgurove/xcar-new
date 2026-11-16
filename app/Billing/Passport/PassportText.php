@@ -549,7 +549,8 @@ final class PassportText
             }
         }
 
-        return $out ? implode(' ', $out) : null;
+        // «г.» сканер читает латинской «r.» / «R.» (16.11.2026, Видов: «R. МОСКВА») — сокращение города назад кириллицей.
+        return $out ? preg_replace('/^[rR]\.\s*/u', 'Г. ', implode(' ', $out)) : null;
     }
 
     /** @return list<string> даты текста в Y-m-d по порядку */

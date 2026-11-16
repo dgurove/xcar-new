@@ -48,7 +48,7 @@ use Spatie\MediaLibrary\InteractsWithMedia;
  * не видит, пока по сделке нет живого счёта — `showsCommission()`.
  */
 #[Fillable(['offer_id', 'bid_id', 'buyer_id', 'amount', 'cost', 'supplier_cost', 'owner_price', 'share', 'commission', 'commission_mode', 'scheme', 'garage_payer', 'state', 'notes', 'closed_at', 'close_reason', 'close_note', 'agreed_at', 'buyer_asked_at', 'signing_slots', 'signing_address', 'signing_at', 'signing_asked_at', 'signing_wish', 'prepaid_at', 'supplier_paid_at', 'contract_signed_at', 'contract_signed_by', 'paid_in_at', 'dates_by_hand',
-    'receiver_user_id', 'receiver_name', 'receiver_phone', 'receiver_at', 'auction_at', 'buyer_party_id', 'shadow_stage_id', 'shadow_at', 'reissue_at'])]
+    'receiver_user_id', 'receiver_name', 'receiver_phone', 'receiver_at', 'auction_at', 'buyer_party_id', 'payer_party_id', 'shadow_stage_id', 'shadow_at', 'reissue_at'])]
 class Deal extends Model implements HasMedia
 {
     use FastAttributes;
@@ -145,6 +145,48 @@ class Deal extends Model implements HasMedia
     public function auctionBuyer(): BelongsTo
     {
         return $this->belongsTo(Party::class, 'buyer_party_id');
+    }
+
+    /** Плательщик, выбранный своей стороной (`SetDealPayer`); пусто — по умолчанию, см. `payerParty`. */
+    public function payer(): BelongsTo
+    {
+        return $this->belongsTo(Party::class, 'payer_party_id');
+    }
+
+    /**
+     * Кто платит по счетам сделки — один на счёт и ссылку (16.11.2026, владелец: «два способа оплаты одной суммы»):
+     * выбранная сторона (`deals.payer_party_id`), иначе как было — у продажи ПРАЙМ менеджер или покупатель по договору
+     * (`DealContract::managerPays`, `$sale`), у подбора и гаража — менеджер. Без менеджера (аукцион) — null.
+     */
+    public function payerParty(bool $sale = false): ?Party
+    {
+        if ($this->payer_party_id) {
+            return $this->payer;
+        }
+        $user = $this->payerUser($sale);
+
+        return $user ? Party::forUser($user) : null;
+    }
+
+    /** Плательщик по умолчанию человеком (без выбранной стороны): покупатель по договору у продажи ПРАЙМ или менеджер. */
+    public function payerUser(bool $sale = false): ?User
+    {
+        if ($this->payer_party_id || ! $this->buyer) {
+            return null;
+        }
+        $contract = $this->contract;
+
+        return $sale && $contract?->buyer && ! $contract->managerPays() ? $contract->buyer : $this->buyer;
+    }
+
+    /** Платит сам менеджер (его сторона) — тогда счёт с разбивкой и удержанием вознаграждения. */
+    public function managerPays(): bool
+    {
+        if ($this->payer_party_id) {
+            return $this->buyer !== null && $this->payer_party_id === $this->buyer->party_id;
+        }
+
+        return ! $this->contract?->buyer_user_id || $this->contract->managerPays();
     }
 
     /** Сделка супер-покупателя: он покупает сам, без вознаграждения; покупатель и плательщик по договору — он же. */
@@ -1268,7 +1310,7 @@ class Deal extends Model implements HasMedia
      */
     public function buyerPaysReward(): bool
     {
-        return $this->namesBuyer() && $this->contract?->buyer_user_id && ! $this->contract->managerPays();
+        return $this->namesBuyer() && ! $this->managerPays();
     }
 
     /**
@@ -1285,7 +1327,7 @@ class Deal extends Model implements HasMedia
             return false;
         }
 
-        return ! ($this->isPrime() && (! $this->isGarage() || $this->namesBuyer()) && $this->contract?->buyer_user_id && ! $this->contract->managerPays());
+        return ! ($this->isPrime() && (! $this->isGarage() || $this->namesBuyer()) && ! $this->managerPays());
     }
 
     /** Менеджеру вознаграждение открывается с первого живого счёта по сделке. */

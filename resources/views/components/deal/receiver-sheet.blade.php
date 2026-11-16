@@ -19,10 +19,10 @@
         @csrf @method('PUT')
         <div class="list max-h-72 overflow-y-auto">
             @if ($manager)
-                <x-people.option :picker="false" :person="['id' => 'me'] + ($mine ? ['name' => 'Я сам'] : []) + \App\Support\People::row($manager, $mine ? '' : 'менеджер')" name="who" :checked="$who === 'me'" action="reveal#pick"/>
+                <x-people.option :picker="false" :person="['id' => 'me'] + ($mine ? ['name' => 'Я сам'] : []) + \App\Support\People::row($manager, $mine ? '' : 'менеджер')" name="who" :checked="$who === 'me'" action="reveal#pick" :edit="\App\Support\People::editUrl($manager)"/>
             @endif
             @foreach ($buyers as $b)
-                <x-people.option :picker="false" :person="\App\Support\People::row($b, $b->phone ? \App\Support\Phone::format($b->phone) : '')" name="who" :checked="$who === (string) $b->id" action="reveal#pick"/>
+                <x-people.option :picker="false" :person="\App\Support\People::row($b, $b->phone ? \App\Support\Phone::format($b->phone) : 'покупатель')" name="who" :checked="$who === (string) $b->id" action="reveal#pick" :edit="\App\Support\People::editUrl($b)"/>
             @endforeach
             <label class="row row-check">
                 <x-ui.row-icon name="plus" size="s" tone="accent"/>

@@ -3170,7 +3170,7 @@ html.kb-open { --home-gap: 0px; }
   .act-fill { flex: 1 0 auto; display: flex; flex-direction: column; }
   .act-fill > .sheet-foot { margin-top: auto; padding-top: 1.5rem; }
   .act-quiet { padding: .5rem 1rem; font-size: var(--text-sm); color: var(--color-ink-muted); }
-  .act-quiet:hover { color: var(--color-ink); }
+  @media (hover: hover) { .act-quiet:hover { color: var(--color-ink); } }
   .report { container-type: inline-size; }
   /* Конверт раскрытого письма (x-mail.letter): «От адрес», «Переслал адрес», «Кому адрес, адрес» — строками текста,
      подпись через пробел (владелец: «зачем огромный отступ от "От", если достаточно пробела»). Каждый адрес берётся

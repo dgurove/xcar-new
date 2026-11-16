@@ -125,7 +125,8 @@ final class SyncDealInvoices
             return null;
         }
 
-        return ['party' => Party::forUser($deal->buyer), 'offset' => 0.0,
+        // Плательщик — выбранный по сделке (`Deal::payerParty`, 16.11.2026), по умолчанию менеджер.
+        return ['party' => $deal->payerParty(), 'offset' => 0.0,
             'lines' => [['title' => 'Подбор ТС '.$deal->offer->titleWithYear(), 'qty' => 1, 'unit' => 'pc', 'price' => (float) $due, 'kind' => ChargeKind::Selection->value]]];
     }
 
@@ -136,7 +137,7 @@ final class SyncDealInvoices
         if ($deal->forGarageBuyer()) {
             $price = $deal->garageCar()->value('buyer_price');
 
-            return $price ? ['party' => Party::forUser($deal->buyer), 'offset' => 0.0,
+            return $price ? ['party' => $deal->payerParty(), 'offset' => 0.0,
                 'lines' => [['title' => 'Транспортное средство '.$deal->offer->titleWithYear(), 'qty' => 1, 'unit' => 'pc', 'price' => (float) $price, 'kind' => ChargeKind::Sale->value]]] : null;
         }
         if (! $deal->isPrime() || $deal->cost === null || ! $deal->buyer) {
@@ -151,7 +152,7 @@ final class SyncDealInvoices
         // Гаражная Совкомбанка (`namesBuyer`) — как обычная ПРАЙМ: счёт на цену продажи тому, кого назвал менеджер.
         if ($deal->isGarage() && ! $deal->namesBuyer()) {
             return $deal->isGarageManager() && $deal->passportReady()
-                ? ['party' => Party::forUser($deal->buyer), 'offset' => 0.0, 'lines' => [['title' => $car, 'qty' => 1, 'unit' => 'pc', 'price' => (float) $deal->cost, 'kind' => ChargeKind::Sale->value]]]
+                ? ['party' => $deal->payerParty(), 'offset' => 0.0, 'lines' => [['title' => $car, 'qty' => 1, 'unit' => 'pc', 'price' => (float) $deal->cost, 'kind' => ChargeKind::Sale->value]]]
                 : null;
         }
         $contract = $deal->contract;
@@ -172,8 +173,10 @@ final class SyncDealInvoices
             return null;
         }
         // Платит покупатель — удерживать не из чего, `Deal::withholds` тогда ложь: вознаграждение выплачиваем после оплаты.
-        $managerPays = $contract->managerPays();
-        $party = Party::forUser($managerPays ? $deal->buyer : $contract->buyer);
+        // Кто платит — одна дверь `Deal::payerParty` (16.11.2026): выбранный по сделке, иначе менеджер или покупатель по
+        // договору. Не менеджер — одной строкой: разбивка показала бы закупочную и долю менеджера.
+        $managerPays = $deal->managerPays();
+        $party = $deal->payerParty(sale: true);
         // Супер-покупатель (`isDirect`) закупочную не видит нигде: ему одна строка на цену сделки, без разбивки на
         // «Транспортное средство» по закупочной и «Агентское вознаграждение» — разница выдала бы её. Так же покупателю
         // менеджера, когда платит он (13.10.2026): счёт с разбивкой показал бы ему закупочную и долю менеджера.

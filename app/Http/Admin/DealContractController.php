@@ -20,6 +20,15 @@ use Illuminate\Validation\Rule;
  */
 class DealContractController
 {
+    /** Плательщик сделки — один на счёт и ссылку (`SetDealPayer`, строка «Плательщик» в «Продаже», 16.11.2026). */
+    public function payer(Request $request, Deal $deal, \App\Offers\Actions\SetDealPayer $set)
+    {
+        abort_unless($request->user()->canManageCrm() && $deal->buyer_id && $deal->isActive(), 404);
+        $party = $set($deal, $request->user(), $request->validate(\App\Offers\Actions\SetDealPayer::rules(), \App\Offers\Actions\SetDealPayer::messages()));
+
+        return back()->with('toast', 'Платит '.$party->name);
+    }
+
     public function update(Request $request, Deal $deal, SaveDealContract $save)
     {
         // Покупатель для счёта поставщика без договора (03.11.2026, `Deal::collectsBuyer`) — только его часть, без ДКП.
