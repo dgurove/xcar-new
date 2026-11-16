@@ -2705,7 +2705,10 @@ html.kb-open { --home-gap: 0px; }
   .vendor-ref { display: inline-flex; align-items: baseline; gap: .5em; min-width: 0; max-width: 100%; }
   /* Таймер срока обязывающего справа от номера (17.11.2026, владелец: у названия «скачет»): вплотную за номером, по середине
      строки; в ячейке таблицы места не занимает — висит в зазоре до следующего столбца, номер из-за него не режется. */
-  .vendor-ref > .row-signal, .ref-line > .row-signal { margin-left: 0; align-self: center; vertical-align: middle; }
+  .vendor-ref > .row-signal, .ref-line > .row-signal { margin-left: -.25em; align-self: center; vertical-align: middle; }
+  /* Значок копирования (в таблице прозрачный, но с местом) отодвигал таймер от номера — при таймере его нет, номер копируется
+     нажатием как прежде. */
+  .vendor-ref:has(> .row-signal) .vincode-ico, .ref-line:has(> .row-signal) .vincode-ico { display: none; }
   .vendor-ref > .row-signal { width: 0; overflow: visible; }
   .vendor-ref > .row-signal > svg { flex: none; }
   /* Один логотип без номера — опорной линии текста нет, и коробка вставала выше строки: по середине. */
