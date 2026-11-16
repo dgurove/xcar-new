@@ -39,6 +39,13 @@ final class Composer
             // ответила уже без неё — и копия терялась насовсем). Входящие ветки: кто писал, кому и кого ставили в копию.
             if ($parent->thread_id) {
                 $incoming = Message::where('thread_id', $parent->thread_id)->where('direction', Direction::In)->whereKeyNot($parent->id)->pluck('id');
+                // Письмо о машине на парковке — ещё и все, кто был в заявке на приём (16.11.2026, владелец: «пришла заявка на трёх
+                // получателей, потом письмо только для нас — акт о приёме должен уйти тем, кто был в заявке, а не в последнем»):
+                // страховая пишет по одной машине в разные ветки (ч.1, ч.3, «RE: … СРОЧНО»), и копия одной ветки их теряла.
+                if ($vehicleId = $parent->thread?->vehicle_id) {
+                    $intake = \App\Park\Request::where('vehicle_id', $vehicleId)->where('type', \App\Park\RequestType::Intake)->whereNotNull('letter_id')->orderBy('id')->value('letter_id');
+                    $incoming = $intake && (int) $intake !== $parent->id ? $incoming->push((int) $intake) : $incoming;
+                }
                 $cc = [...$cc, ...Address::whereIn('message_id', $incoming)->whereIn('kind', [AddressKind::From, AddressKind::To, AddressKind::Cc])
                     ->pluck('email')->map(fn ($e) => mb_strtolower((string) $e))->all()];
             }

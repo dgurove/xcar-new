@@ -75,6 +75,27 @@ class ParkReplyRecipientsTest extends TestCase
         $this->assertEqualsCanonicalizing(['6691111@mail.ru', 'fartushniakd@alfastrah.ru'], array_map('trim', explode(',', $reply['cc'])));
     }
 
+    /**
+     * Владелец 16.11.2026: заявка на приём пришла на трёх получателей, потом в другой ветке письмо только нам — акт о приёме и
+     * любой ответ по машине уходят всем из заявки, а не только тому, кто написал последним.
+     */
+    public function test_reply_in_other_thread_keeps_intake_request_people(): void
+    {
+        $this->setUpCar();
+        $first = Thread::create(['account_id' => $this->account, 'subject' => 'Направление на хранение', 'vehicle_id' => $this->car->id]);
+        $request = $this->letter($first, '2026-11-10 15:58');
+        \App\Park\Request::withoutEvents(fn () => \App\Park\Request::create(['vehicle_id' => $this->car->id, 'type' => \App\Park\RequestType::Intake, 'letter_id' => $request->id]));
+        $later = Thread::create(['account_id' => $this->account, 'subject' => 'RE: Направление на хранение СРОЧНО', 'vehicle_id' => $this->car->id]);
+        $onlyUs = $this->letter($later, '2026-11-12 10:00', []);
+
+        $reply = app(Composer::class)->reply($onlyUs);
+        $this->assertSame('tkachenkoev@alfastrah.ru', $reply['to']);
+        $this->assertEqualsCanonicalizing(['6691111@mail.ru', 'fartushniakd@alfastrah.ru'], array_map('trim', explode(',', $reply['cc'])));
+        // «Дослать фото и документы» на позднее письмо — та же копия.
+        $report = \App\Park\IntakeReport::for($this->car->fresh(), $onlyUs);
+        $this->assertEqualsCanonicalizing(['6691111@mail.ru', 'fartushniakd@alfastrah.ru'], array_map('trim', explode(',', $report->cc)));
+    }
+
     public function test_same_letter_in_two_threads_is_one_waiting_block(): void
     {
         $this->setUpCar();
