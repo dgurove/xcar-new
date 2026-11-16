@@ -333,7 +333,7 @@
                         </x-route.task-row>
                     @endif
                     {{-- Письмо поставщика ждёт разбора — строкой в шаге, а не лаймовой плашкой над путём (10.11.2026). --}}
-                    @if ($deal && $position->track === \App\Workflow\Track::Sale && auth()->user()?->canManageCrm())<x-deal.reply-review :deal="$deal" line :manual="! $compact && ! $billShown"/>@endif
+                    @if ($deal && $position->track === \App\Workflow\Track::Sale && auth()->user()?->canManageCrm())<x-deal.reply-review :deal="$deal" line :manual="false"/>@endif
                     {{-- Менеджер платит поставщику по его счёту, а счёта не видит (10.11.2026, 0790/046/11079/26) — красной строкой. --}}
                     @if ($deal && \App\Offers\SupplierInvoice::onPay($deal, $stage) && auth()->user()?->canManageCrm() && \App\Offers\SupplierInvoice::shown($offer)->isEmpty())
                         <div class="contents" data-controller="sheet">
@@ -443,7 +443,10 @@
                             @endif
                             @foreach ($moves->values() as $i => $exit)
                                 {{-- Письмо поставщику не ушло — главное «Написать поставщику», исходы серыми. --}}
-                                @php $variant = $i === 0 && ! $wantsInvoice && $payNow->isEmpty() && $position->letterStatus() !== 'unsent' ? 'primary' : 'secondary'; @endphp
+                                {{-- Ждём ответа поставщика на ушедшее письмо (платёжка, заявка) — его исходы серыми (16.11.2026, владелец: «„Оплата
+                                     получена“ нажимать нежелательно — ждём подтверждения в письме поставщика»). --}}
+                                @php $variant = $i === 0 && ! $wantsInvoice && $payNow->isEmpty() && $position->letterStatus() !== 'unsent'
+                                    && ! ($stage->waits_for === WaitsFor::Supplier && $position->letterStatus() === 'sent') ? 'primary' : 'secondary'; @endphp
                                 @if ($exit->to?->offer_state === \App\Offers\OfferState::Open && in_array($offer->state, [\App\Offers\OfferState::Draft, \App\Offers\OfferState::Gallery], true))
                                     {{-- «Выставить в продажу» — сейчас или в слот, как кнопка редактора. --}}
                                     <div data-controller="sheet">
