@@ -98,8 +98,7 @@ class GiveController
         $before = $this->stageId($offer);
         $deal = $give($giving, $request->user());
         if ($deal->isParallel()) {
-            return back()->with('toast', 'Поручили параллельно: '.$deal->buyer?->shortName())
-                ->with('handed', ['name' => $deal->buyer?->shortName(), 'title' => $offer->titleWithYear(), 'url' => $deal->personUrl(), 'text' => $deal->personText(), 'wait' => false]);
+            return back()->with('toast', 'Поручили параллельно: '.$deal->buyer?->shortName());
         }
 
         return $this->done($request, $offer, $deal, $handOver ? null : $before, $handOver);
@@ -120,11 +119,9 @@ class GiveController
             default => 'В сделку: '.$who.', '.Money::rub($deal->amount),
         };
 
-        // Ссылка тому, кому отдали (28.10.2026): шторка `x-deal.handed`; с окном письма поставщику — после него.
-        $handed = ($url = $deal->personUrl()) ? ['name' => $who, 'title' => $offer->titleWithYear(), 'url' => $url,
-            'text' => $deal->personText(), 'wait' => (bool) $letter] : null;
-
-        return back()->with('toast', $toast)->with(OfferController::gone($request, $offer))->with('handed', $handed);
+        // Шторки «Отдано: …» со ссылкой больше нет (16.11.2026, владелец: «бесполезная, её не надо открывать»; она же ждала окно
+        // письма и вставала вместо редактора) — ссылка тому, кому отдали, строкой «Ссылка» в окне машины (`x-deal.person-link`).
+        return back()->with('toast', $toast)->with(OfferController::gone($request, $offer));
     }
 
     /** Этап продажи предложения — только номер: сравнить до и после. */
