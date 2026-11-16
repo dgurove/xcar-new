@@ -56,7 +56,7 @@
                         </div>
                         @error('without_qr_reason')<p class="field-error">{{ $message }}</p>@enderror
                     </div>
-                    <div class="sheet-foot"><button type="submit" form="{{ $formId }}" name="without_qr" value="1" class="btn btn-danger btn-block disabled:opacity-50" data-min-length-target="submit" data-action="min-length#guard" data-turbo-confirm="Выдать ТС без QR-кода? Об этом узнает владелец">Выдать без QR</button></div>
+                    <div class="sheet-foot"><button type="submit" form="{{ $formId }}" name="without_qr" value="1" class="btn btn-danger btn-block disabled:opacity-50" data-min-length-target="submit" data-action="min-length#guard" data-turbo-confirm="Выдать ТС без QR-кода?">Выдать без QR</button></div>
                 </div>
             </x-ui.sheet>
         </div>
