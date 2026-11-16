@@ -1,14 +1,17 @@
-{{-- «Работа → Гараж»: у кого что стоит и во что обошлось — группами по менеджеру (взятые под себя — последними), в четырёх
-     видах, как остальные списки CRM: таблица (по умолчанию), подробная, ленты, плитки и строки (`x-garage.card`). Нажатие — карточка
-     рядом: путь машины, деньги, расходы и действия; «Открыть страницу» — редактор предложения с карточкой «Гараж». --}}
+{{-- «В гараже» — вкладка раздела «Сделка» в «Предложениях» (16.11.2026, `GarageController::tab`): гаражная, чей маршрут со
+     страховой пройден, до расчёта — группами по менеджеру (взятые под себя — последними), в видах, как остальные списки CRM:
+     таблица (по умолчанию), подробная, ленты, плитки и строки (`x-garage.card`). Нажатие — окно машины: путь, деньги, расходы и
+     действия. Заголовок — колесо вкладок «Предложений» с разделами, как у вкладок сделки. --}}
 @php
     use App\Support\ListView;
     $view = ListView::pick(request(), $total, shelves: true);
     $user = auth()->user();
 @endphp
-<x-ui.shell title="Гараж" :heading="false" :detail="$detail">
-    <x-ui.toolbar :sort="$sort" :pills="\App\Http\Admin\GarageController::PRESETS" :pill="$preset" pill-param="preset" name="garage" :facets="$facets">
-        <x-slot:lead><x-admin.work-titles current="garage" :count="$total"/></x-slot:lead>
+<x-ui.shell :title="$presets['garage'] ?? 'В гараже'" :heading="false" :detail="$detail">
+    <div class="title-row">
+        <x-ui.tab-title :pills="$presets" pill="garage" pill-param="preset" pill-home="" :counts="$counts" :badges="\App\Http\Admin\OfferController::badges()" :bumps="['legacy' => 'legacy_drafts']" :sections="$sections" :drop="['todo', 'what', 'sub', 'turn']" fallback="Предложения" id="offers-tabs"/>
+    </div>
+    <x-ui.toolbar :sort="$sort" name="garage" :facets="$facets">
         <x-slot:extra><x-ui.view-switch :current="$view" :views="ListView::SHELVED"/></x-slot:extra>
     </x-ui.toolbar>
 

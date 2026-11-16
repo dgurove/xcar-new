@@ -716,8 +716,8 @@ final class Nav
             }
         }
         if ($user->isAdmin() && ! $user->isManager()) {
-            // Админу «Сделки» горят тем же, что «Работа → Сделки» в CRM: просрочено или ход наш.
-            $badges['/deals'] = self::staffCounts(Surface::Crm)['/work/deals'];
+            // Админу «Сделки» горят тем же, что сделки в CRM: ход наш.
+            $badges['/deals'] = self::staffCounts(Surface::Crm)['deals'] ?? 0;
         }
         if ($user->canChat() || $user->isAdmin()) {
             // Свои чаты плюс чаты покупателей, где менеджер — вторая сторона; сотруднику — и площадки.
@@ -727,12 +727,11 @@ final class Nav
         return array_filter($badges);
     }
 
-    /** Сделки, где просрочено или ход наш: обычные — у «Сделок», гаражные — у «Гаража». */
-    /** Наш ход по сделкам: null — все (CRM «Сделки» с 27.10.2026 показывают и гаражные), true — только гаражные. */
-    private static function hotDeals(?bool $garage = null): int
+    /** Наш ход по идущим сделкам, и гаражным тоже, — бейдж «Предложений» (сделки — их вкладками с 16.11.2026). */
+    private static function hotDeals(): int
     {
         return Position::where('track', 'sale')
-            ->whereHas('offer.deal', fn ($d) => $d->active()->when($garage, fn ($g) => $g->whereNotNull('garage_payer')))
+            ->whereHas('offer.deal', fn ($d) => $d->active())
             ->needsUs()
             ->count();
     }
@@ -760,18 +759,18 @@ final class Nav
                     '/mail' => Boxes::attentionCount(Scope::Park),
                 ];
             }
+            $hot = self::hotDeals();
             $badges = [
                 // Раздел «Предложения» горит и подтверждениями, и оценками менеджеров, ждущими решения (11.10.2026).
-                // С 16.11.2026 — и делами «Ваш ход»: сделки живут вкладками «Предложений».
+                // С 16.11.2026 — и нашим ходом по сделкам: сделки живут вкладками «Предложений».
                 '/offers' => Bid::where('state', BidState::Active)->count()
                     + Offer::where('state', OfferState::Draft)->whereHas('estimates', fn ($e) => $e->needsDecision())->count()
-                    + self::hotDeals(),
+                    + $hot,
+                // Наш ход по сделкам отдельно — бейдж «Сделок» админа на сайте (`badges`).
+                'deals' => $hot,
                 '/offers/from-mail' => Boxes::registerCount(Scope::Offers),
                 '/work/mail' => Thread::where('unread_count', '>', 0)->whereNull('archived_at')->whereHas('account', fn ($a) => $a->where('scope', Scope::Offers))->count(),
                 '/work/chats' => Chat::whereNull('manager_id')->where('unread_for_staff', '>', 0)->count(),
-                // Горит то же, что «Ваш ход» в списке; гаражные сделки — у «Гаража», не у «Сделок» (13.10.2026).
-                '/work/deals' => self::hotDeals(),
-                '/work/garage' => self::hotDeals(garage: true),
                 // Деньги горят делом в «Оплатах»: менеджер пишет, что оплатил; не прошла по ссылке; выплатить. Выписки нет.
                 '/work/money' => MoneyController::todo(),
             ];
@@ -865,7 +864,7 @@ final class Nav
             }
         }
         if ($surface === Surface::Crm) {
-            array_push($items, self::link('Гараж', '/work/garage'), self::link('Почта', '/work/mail'), self::link('Чаты', '/work/chats'), self::link('Оплаты', '/work/money'));
+            array_push($items, self::link('Почта', '/work/mail'), self::link('Чаты', '/work/chats'), self::link('Оплаты', '/work/money'));
         }
 
         // Сам корень раздела или экран с пилюлями кабинета — «назад» не нужен.

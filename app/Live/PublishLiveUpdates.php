@@ -179,7 +179,7 @@ final class PublishLiveUpdates
         $n = $e->offer->number;
         $this->publish->refresh(Topics::STAFF, ["/offers/{$n}"]);
         // Строка машины во вкладках «Предложений» (и в «Все» — этап там раньше не обновлялся вживую).
-        $this->publish->rows(Topics::STAFF, ['/offers' => [$n], '/work/garage' => [$n]]);
+        $this->publish->rows(Topics::STAFF, ['/offers' => [$n]]);
         // Шаг сделки двигает и «Продажу» вывоза: «после оплаты» / «ждём поставщика» снимаются здесь, а не сменой состояния.
         $this->logistics($e->offer);
         if (($deal = $e->deal ?? $e->offer->deal()->first()) && $deal->buyer_id) {
@@ -259,7 +259,7 @@ final class PublishLiveUpdates
         $n = $e->car->offer->number;
         $paths = ['/garage', "/garage/cars/{$n}"];
         $this->publish->refresh(Topics::STAFF, [...$paths, "/offers/{$n}"]);
-        $this->publish->rows(Topics::STAFF, ['/work/garage' => [$n]]);
+        $this->publish->rows(Topics::STAFF, ['/offers' => [$n]]);
         $this->logistics($e->car->offer);
         if ($e->car->manager_id) {
             $this->publish->refresh(Topics::user($e->car->manager_id), $paths);
@@ -293,7 +293,7 @@ final class PublishLiveUpdates
         if ($garage = GarageCar::ofInvoice($invoice)) {
             $n = $garage->offer->number;
             $this->publish->refreshSoon(Topics::STAFF, ["/offers/{$n}"]);
-            $this->publish->rows(Topics::STAFF, ['/work/garage' => [$n]]);
+            $this->publish->rows(Topics::STAFF, ['/offers' => [$n]]);
             if ($garage->manager_id) {
                 $this->publish->refresh(Topics::user($garage->manager_id), ['/account/money', '/garage', "/garage/cars/{$n}"]);
             }

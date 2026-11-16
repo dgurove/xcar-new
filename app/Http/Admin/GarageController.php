@@ -8,6 +8,7 @@ use App\Garage\CarState;
 use App\Live\Rows;
 use App\Offers\CarWindow;
 use App\Offers\OfferNumber;
+use App\Offers\OfferState;
 use App\Support\Detail;
 use App\Support\Facets\Common;
 use App\Support\Facets\Facet;
@@ -20,20 +21,26 @@ use App\Support\Table\Table;
 use Illuminate\Http\Request;
 
 /**
- * «Работа → Гараж»: у кого что стоит в гараже и во что обошлось — группами по менеджеру, этап и дни на нём в строке.
- * Машину ведут здесь же, в карточке строки, или в редакторе предложения (карточка «Гараж»); ждущую страховую — в сделке.
+ * «В гараже» — вкладка раздела «Сделка» в «Предложениях» (16.11.2026, владелец: «гараж — та же сделка с теми же этапами, просто
+ * у неё есть доп вкладка, когда она в гараже стоит»; «когда этапы пройдены»): гаражная, чей маршрут со страховой пройден
+ * (`offers.state = garage`), до закрытого расчёта — группами по менеджеру, этап гаража и дни на нём в строке. Пока маршрут
+ * идёт — машина во вкладке своего этапа (`DealTabs`), расчёт закрыт — в «Завершённых». «Работы → Гаража» нет: `/work/garage` — 301.
  */
 class GarageController
 {
-    public const PRESETS = ['work' => 'В работе', 'sold' => 'Проданы', 'settled' => 'Рассчитались', 'all' => 'Все'];
-
     /**
      * Внутри группы менеджера: «Этап» — по этапу, потом дольше стоящие; «Дата» — когда машина пришла в гараж; «Дней» — сколько
      * на этапе; «Закупочная» — `Car::price`; «Сумма» — главное число строки (`CarLine`: закупочная, к оплате, цена продажи).
      */
     public const SORTS = ['stage' => ['Этап', 'asc'], 'created' => ['Дата', 'desc'], 'days' => ['Дней на этапе', 'desc'], 'price' => ['Закупочная', 'desc'], 'amount' => ['Сумма', 'desc']];
 
+    /** Прежний адрес «Работы → Гаража» (уведомления, закладки) — во вкладку «В гараже», с открытой машиной. */
     public function index(Request $request)
+    {
+        return redirect('/offers?'.http_build_query(array_filter(['preset' => 'garage', 'peek' => $request->query('peek')])), 301);
+    }
+
+    public function tab(Request $request)
     {
         $detail = Detail::of($request, fn (string $key) => CarWindow::of($request, OfferNumber::find($key)));
         if ($detail->framed()) {
@@ -44,16 +51,10 @@ class GarageController
             Facet::column('stage', 'Этап', ['этап', 'этапа', 'этапов'], 'garage_cars.state')->enum(CarState::class)->natural(),
         );
         ListPrefs::sync($request, 'crm-garage', keep: $facets->keys());
-        $preset = array_key_exists($request->query('preset', ''), self::PRESETS) ? $request->query('preset') : 'work';
         $sort = Sort::from($request->query('sort'), self::SORTS, 'stage');
 
-        $q = Car::with(['offer', 'offer.media', 'offer.vendor', 'offer.deal', 'offer.positions.stage.block', 'offer.positions.stage.exits', 'offer.parkVehicle', 'offer.pickupTask.executor', 'manager', 'costs', 'invoice', 'payoutInvoice', 'deal.offer']);
-        match ($preset) {
-            'sold' => $q->where('state', CarState::Sold),
-            'settled' => $q->where('state', CarState::Settled),
-            'all' => $q,
-            default => $q->whereIn('state', [CarState::Waiting, CarState::Repair, CarState::Ready, CarState::Selling]),
-        };
+        $q = Car::with(['offer', 'offer.media', 'offer.vendor', 'offer.deal', 'offer.positions.stage.block', 'offer.positions.stage.exits', 'offer.parkVehicle', 'offer.pickupTask.executor', 'manager', 'costs', 'invoice', 'payoutInvoice', 'deal.offer'])
+            ->where('state', '!=', CarState::Settled)->whereHas('offer', fn ($o) => $o->where('offers.state', OfferState::Garage));
         $cars = $facets->apply($q)->orderBy('stage_at')->get();
         $total = $cars->count();
         // Живое обновление строкой (`Live\Rows`): машин в гараже десятки — сужаем уже выбранное.
@@ -75,14 +76,17 @@ class GarageController
             'detail' => $detail,
             'groups' => $groups,
             'total' => $total,
-            'preset' => $preset,
             'facets' => $facets,
             'sort' => $sort,
+            // Колесо — вкладки «Предложений» с разделами (как у вкладок сделки).
+            'presets' => OfferController::presets($user),
+            'sections' => OfferController::sections($user),
+            'counts' => OfferController::counts($user),
         ]);
     }
 
     /**
-     * Таблица «Работы → Гаража» — одно описание на шапку, строки `x-admin.garage-row` и заголовки менеджеров. На телефоне
+     * Таблица «В гараже» — одно описание на шапку, строки `x-admin.garage-row` и заголовки менеджеров. На телефоне
      * вместо денежных столбцов — одно главное число этапа («Сумма»).
      */
     public static function table(): Table

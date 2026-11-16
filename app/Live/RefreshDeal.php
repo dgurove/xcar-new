@@ -32,8 +32,8 @@ final class RefreshDeal
         $n = $offer->number;
         $garage = $deal->isGarage();
         $this->publish->refreshSoon(Topics::STAFF, ["/offers/{$n}", '/work/money']);
-        // Строка машины — во вкладках «Предложений» (сделка — состояние предложения, 16.11.2026) и в «Гараже».
-        $this->publish->rowsSoon(Topics::STAFF, ['/offers' => [$n], ...($garage ? ['/work/garage' => [$n]] : [])]);
+        // Строка машины — во вкладках «Предложений» (сделка — состояние предложения, 16.11.2026; гараж — вкладка «В гараже»).
+        $this->publish->rowsSoon(Topics::STAFF, ['/offers' => [$n]]);
         if ($deal->buyer_id) {
             $this->publish->refreshSoon(Topics::user($deal->buyer_id), $garage
                 ? ['/garage', "/garage/cars/{$n}", '/deals', '/account/money']

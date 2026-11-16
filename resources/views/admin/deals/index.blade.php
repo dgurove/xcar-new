@@ -29,7 +29,7 @@
             <x-ui.table :table="$table" id="deals" class="mt-6" view="table">
                 <x-slot:head><x-table.head :table="$table"/></x-slot:head>
                 @foreach ($groups as $key => $group)
-                    <x-table.group :table="$table" :key="$key" :title="$group['title']" :count="$group['size']" :ours="$group['ours']">@if ($group['button'])<x-deal.todo-button :button="$group['button']" group/>@endif</x-table.group>
+                    <x-table.group :table="$table" :key="$key" :title="$group['title']" :count="$group['size']" :ours="$group['ours']"/>
                     @foreach ($group['rows'] as $row)<x-deal.todo-row :deal="$row['deal']" :todo="$row['todo']" :table="$table"/>@endforeach
                 @endforeach
             </x-ui.table>

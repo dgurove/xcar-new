@@ -25,7 +25,7 @@
         @switch($key)
         @case('title')
     <td class="{{ $col->classes() }}">
-        <x-ui.row-link :key="$offer->number"><span class="cell-title"><x-ui.cat-icon :category="$offer->category()"/>{{ $offer->titleWithYear() }}@if ($binding)<x-offer.binding :offer="$offer" icon/>@endif</span></x-ui.row-link>
+        <x-cell.title :key="$offer->number" :offer="$offer">@if ($binding)<x-offer.binding :offer="$offer" icon/>@endif</x-cell.title>
         <span class="cell-sub"><span class="sm:hidden"><span class="{{ $line->tone }}">{{ $line->word }}</span>, @if ($sale)<x-route.term :position="$sale"/>@else{{ $line->when }}@endif</span>@if ($hasRef)<span class="fit-core sm:hidden"><x-vendor.ref :vendor="$vendor" :ref="$offer->claim_ref"/></span>@endif</span>
     </td>
         @break

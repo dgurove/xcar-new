@@ -49,7 +49,7 @@ final class RefreshCar
         $n = $offer->number;
         $this->publish->refreshSoon(Topics::STAFF, ["/offers/{$n}"]);
         // Списки CRM — строкой машины (`Rows`): в «Сделках» ключ — сделка, у машины их бывает несколько.
-        $this->publish->rowsSoon(Topics::STAFF, ['/offers' => [$n], '/gallery' => [$n], '/work/garage' => $offer->garageCar ? [$n] : []]);
+        $this->publish->rowsSoon(Topics::STAFF, ['/offers' => [$n], '/gallery' => [$n]]);
         // На сайте — где её видят: в продаже, в галерее, в сделке (белый список); плитка — только та, что на экране.
         if (in_array($offer->state, [OfferState::Open, OfferState::Sold], true) || $offer->isGallery()) {
             $seers = [Topics::CATALOG, ...Showing::seersOf($offer)->map(fn ($id) => Topics::user($id))->all()];

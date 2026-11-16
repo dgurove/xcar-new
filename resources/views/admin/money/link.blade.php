@@ -105,7 +105,7 @@
                     @if ($dealUrl)<x-ui.chevron/>@endif
                 </a>
             @elseif (! $manual)
-                <a @if ($dealUrl) href="{{ $dealUrl }}" @elseif ($offer) href="/work/garage?preset=all&peek={{ $offer->number }}" @endif class="row" data-turbo-frame="_top">
+                <a @if ($dealUrl) href="{{ $dealUrl }}" @elseif ($offer) href="{{ $offer->crmPath() }}" @endif class="row" data-turbo-frame="_top">
                     <span class="shrink-0 text-ink-muted">{{ $link->origin() === 'deal' ? 'Сделка' : 'Гараж' }}</span>
                     <span class="min-w-0 flex-1 truncate text-right nums">{{ $i->manager()?->shortName() ?? ($offer ? '№ '.$offer->number : '') }}</span>
                     <x-ui.chevron/>

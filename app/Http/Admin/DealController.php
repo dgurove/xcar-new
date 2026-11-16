@@ -188,10 +188,10 @@ class DealController
     }
 
     /**
-     * Группы вкладки этапа: наши дела по тому, что сделать (`Position::todo`, заголовок — дело; заявка поставщику — с кнопкой
-     * «Отправить заявку» на всех), дальше кого ждём. Внутри — кто дольше ждёт.
+     * Группы вкладки этапа: наши дела по тому, что сделать (`Position::todo`, заголовок — дело), дальше кого ждём. Внутри — кто
+     * дольше ждёт. Кнопки «Отправить заявку» у группы заявки поставщику нет (16.11.2026, владелец: «не нужна эта кнопка вообще»).
      *
-     * @return Collection<string, array{title: string, ours: bool, size: int, button: ?array, rows: Collection}>
+     * @return Collection<string, array{title: string, ours: bool, size: int, rows: Collection}>
      */
     private static function stageGroups(Collection $deals, ?array $live): Collection
     {
@@ -201,16 +201,12 @@ class DealController
             ->map(function (Collection $rows, string $key) use ($wait) {
                 $first = $rows->first();
                 $ours = str_starts_with($key, 'do:');
-                $button = null;
-                if ($ours && str_starts_with($first['todo']['key'], 'request:') && ($vendor = $first['deal']->offer->vendor)) {
-                    $button = ['label' => 'Отправить заявку', 'letters' => '/work/mail/new?request='.$vendor->id.'&then=close'];
-                }
                 $since = fn (array $r) => ($r['todo']['since'] ?? $r['deal']->offer?->position()?->entered_at)?->getTimestamp() ?? PHP_INT_MAX;
 
                 return [
                     'title' => $ours ? (DealTabs::TODO_TITLES[$first['todo']['title']] ?? $first['todo']['title']) : $wait[substr($key, 5)],
                     'ours' => $ours, 'rank' => $ours ? $first['todo']['rank'] : 1000 + array_search(substr($key, 5), array_keys($wait), true),
-                    'size' => $rows->count(), 'button' => $button,
+                    'size' => $rows->count(),
                     'rows' => $rows->sortBy($since)->map(fn (array $r) => ['deal' => $r['deal'], 'todo' => $r['todo'] ?? ['key' => '', 'title' => '', 'rank' => 0, 'since' => null, 'button' => null]])->values(),
                 ];
             })->sortBy([['rank', 'asc'], ['title', 'asc']]);

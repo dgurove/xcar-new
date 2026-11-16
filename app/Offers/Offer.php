@@ -9,6 +9,7 @@ use App\Cars\OnCar;
 use App\Cars\Region;
 use App\Cars\Settlement;
 use App\Garage\Car;
+use App\Garage\CarState;
 use App\Garage\GaragePayer;
 use App\Http\Admin\OfferController;
 use App\Live\Publisher;
@@ -596,7 +597,8 @@ class Offer extends Model
     public function crmPlace(?User $user = null): string
     {
         return match ($this->state) {
-            OfferState::Garage => 'Гараж',
+            // Гаражная после маршрута — «В гараже», расчёт закрыт — «Завершённые» (16.11.2026).
+            OfferState::Garage => $this->garageCar?->state === CarState::Settled ? $presets['finished'] : $presets['garage'],
             OfferState::Sold, OfferState::Delivered => 'Сделка',
             default => $this->crmTab($user),
         };
@@ -1438,10 +1440,11 @@ class Offer extends Model
             },
             OfferState::Open => $user?->canManageCrm() && ($this->relationLoaded('bids') ? $this->bids->contains('state', BidState::Active) : self::hasActiveBids($this->id))
                 ? $presets['bids'] : $presets['published'],
-            // Сделка — вкладкой этапа (16.11.2026: сделка — состояние предложения), выданная — «Закрыты».
+            // Сделка — вкладкой этапа (16.11.2026: сделка — состояние предложения), выданная — «Завершённые».
             OfferState::Sold => $presets[DealTabs::map()[$this->id][0] ?? 'agree'] ?? 'Сделка',
             OfferState::Delivered => $presets['finished'],
-            OfferState::Garage => 'Гараж',
+            // Гаражная после маршрута — «В гараже», расчёт закрыт — «Завершённые» (16.11.2026).
+            OfferState::Garage => $this->garageCar?->state === CarState::Settled ? $presets['finished'] : $presets['garage'],
             // Отказ поставщика (28.10.2026, владелец: «архив с пометкой»): в архиве, но словом причины, а не «Архив».
             OfferState::Cancelled => $this->declinedDeal ? $presets['archive'].', отказ поставщика' : $presets['archive'],
             default => $presets['archive'],

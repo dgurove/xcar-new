@@ -122,7 +122,7 @@ final class DealTabs
 
     /** Связи, что нужны делу шага (`Position::todo`) и строкам. */
     public const WITH = ['offer', 'offer.vendor', 'offer.media', 'offer.positions.stage.block', 'offer.positions.stage.exits.to', 'offer.pendingReprice',
-        'buyer', 'openRequirement', 'invoices.claims', 'invoices.party', 'contract'];
+        'buyer', 'openRequirement', 'invoices.claims', 'invoices.party', 'contract', 'garageCar'];
 
     /** Группы сделок без нашего дела, по порядку. */
     public const WAITS = ['manager' => 'Ждём менеджера', 'supplier' => 'Ждём поставщика', 'transport' => 'Везёт наша логистика', 'other' => 'Прочее'];

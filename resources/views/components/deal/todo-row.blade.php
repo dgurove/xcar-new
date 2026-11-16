@@ -12,13 +12,16 @@
     // На телефоне время — в самой кнопке (`x-deal.todo-button wait`, 13.11.2026): строка в две строки. Без кнопки или у номера
     // телефона — по-прежнему строкой под названием.
     $inButton = $at && $todo['button'] && ! isset($todo['button']['tel']);
+    // Гаражная (16.11.2026, владелец: «гараж — та же сделка с теми же этапами»): пока маршрут идёт, она во вкладке этапа, а что
+    // с машиной у менеджера — словом у названия («гараж: подготовка»).
+    $garage = $deal->garageCar?->state;
 @endphp
 <tr data-detail-key="{{ $deal->offer->number }}" data-search-row id="deal-{{ $deal->id }}">
     @foreach ($table->columns as $key => $col)
         @switch($key)
         @case('title')
     <td class="{{ $col->classes() }}">
-        <x-cell.title :key="$deal->offer->number" :offer="$offer"/>
+        <x-cell.title :key="$deal->offer->number" :offer="$offer">@if ($garage)<span class="ms-1.5 whitespace-nowrap text-sm text-ink-muted">гараж: {{ mb_strtolower(mb_substr($garage->label(), 0, 1)).mb_substr($garage->label(), 1) }}</span>@endif</x-cell.title>
         <span class="cell-sub sm:hidden"><x-vendor.ref :vendor-id="$offer->vendor_id" :ref="$offer->claim_ref"/>@if ($wait && ! $inButton) <span class="inline-block whitespace-nowrap {{ $tone }}">{!! $wait !!}</span>@endif</span>
     </td>
         @break
