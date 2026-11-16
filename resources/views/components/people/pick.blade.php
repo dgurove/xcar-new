@@ -50,9 +50,10 @@
     @else
         {{-- Строкой списка — действие («Выбрать покупателя», «Другой покупатель»): кто выбран, пишет строка над ней. Никого
              нет — лаймовым плюсом, как «Новый покупатель» в шторке (05.11.2026); выбран — тише, это уже не главное. --}}
-        @if ($label && $value === null)
-            {{-- С подписью — строкой «Продажи» «Покупатель — не выбран ›» (`x-deal.sale-row`, 16.11.2026). --}}
-            <x-deal.sale-row :label="$label" :value="$placeholder" tone="danger" class="w-full text-left" data-action="sheet#open"/>
+        @if ($label)
+            {{-- С подписью — строкой «Продажи»: «Покупатель — не выбран ›», выбран — «Плательщик — Александр Видов ›» (`x-deal.sale-row`,
+                 16.11.2026: плательщик поставщику и плательщик ПРАЙМ — одним видом). --}}
+            <x-deal.sale-row :label="$label" :value="$chosen['name'] ?? $placeholder" :tone="$chosen ? null : 'danger'" class="w-full text-left" data-action="sheet#open"/>
         @else
         <button type="button" class="row w-full text-left" data-action="sheet#open">
             @if ($value === null)<x-ui.row-icon name="plus" size="s" tone="accent"/>@endif

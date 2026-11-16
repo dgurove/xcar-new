@@ -142,6 +142,15 @@
     {{-- Подписанный договор вне системы (15.11.2026) — строками той же группы. --}}
     @if (auth()->user()?->canEditDeals())<x-deal.signed-contract :deal="$deal" :base="'/work/deals/'.$deal->id" bare/>@endif
     @php $top = trim(ob_get_clean()); @endphp
+    {{-- Покупатель платит поставщику или собственнику сам («страховой напрямую», ДКП) — эта группа и есть блок «Поставщику»:
+         заголовок с суммой, как у блока «ООО «ПРАЙМ»» ниже (16.11.2026, владелец: оба плательщика — одним видом). --}}
+    @php $supplierBlock = in_array($deal->schemeOf(), [\App\Offers\DealScheme::Insurer, \App\Offers\DealScheme::OwnerDkp], true) && $deal->buyer_id && ! $deal->isAuction(); @endphp
+    @if ($top !== '' && $supplierBlock)
+        <div class="mb-2 flex items-baseline gap-3 px-3">
+            <span class="min-w-0 flex-1 font-medium">{{ $deal->schemeOf() === \App\Offers\DealScheme::OwnerDkp ? 'Собственнику' : 'Поставщику' }}</span>
+            <span class="nums shrink-0">{{ $deal->isDirect() && $deal->owner_price === null ? 'уточним' : Money::rub((int) $deal->ownerPrice()) }}</span>
+        </div>
+    @endif
     @if ($top !== '')<div class="list mb-3 last:mb-0">{!! $top !!}</div>@endif
     {{-- Пустая строка (ни режима, ни состояния, ни «Ещё счёт») не рисуется — под схемой была дыра (12.11.2026). --}}
     @php ob_start(); @endphp

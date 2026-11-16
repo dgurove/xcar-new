@@ -20,6 +20,9 @@
     $selfWord = $isManager ? 'на себя, ' : '';
     $kindWord = match ($buyer?->party?->kind) { \App\Billing\PartyKind::Entrepreneur => 'ИП, ', \App\Billing\PartyKind::Company => 'организация, ', default => '' };
     $dataSheet = 'deal-buyer-data-'.$deal->id;
+    // Покупатель платит поставщику или собственнику сам — он и «Плательщик» блока «Поставщику» (16.11.2026).
+    $paysSupplier = in_array($deal->schemeOf(), [\App\Offers\DealScheme::Insurer, \App\Offers\DealScheme::OwnerDkp], true);
+    $rowLabel = $paysSupplier ? 'Плательщик' : 'Покупатель';
     // «Заполнить» / «Заполнить за менеджера» из шага пути и «Ваш ход» (`?buyer=1`, 06.11.2026: ссылка на `#invoice-buyer` только
     // прокручивала к карточке — шторку надо было ещё найти): данных нет — сразу их шторка, покупателя нет — его выбор.
     // Покупатели параллельных на той же странице сами не открываются (`autoOpen` = false): `?buyer=1` — про главную сделку.
@@ -34,13 +37,25 @@
     // данные с них (13.11.2026, Тужиков прислал реквизиты фото, а в CRM их не было видно нигде: «не вижу ни в чате, ни в сделке»).
     $cards = $buyer?->party ? $buyer->party->getMedia('card') : collect();
 @endphp
+{{-- Покупатель по договору — строкой «Продажи» (16.11.2026, владелец: «там „Платит“, а там „Плательщик“, и выглядят по-разному»):
+     в «страховой напрямую» и ДКП он и платит поставщику или собственнику — «Плательщик — имя ›», как у блока ПРАЙМ; в ПРАЙМ —
+     «Покупатель». Кто платит по счёту ПРАЙМ — строкой «Плательщик» над счётом (`x-deal.payer`). --}}
+@if ($live && ! ($deal->isGarage() && $buyer))
+    @php
+        $rows = \App\Support\People::contractBuyers($manager, $manager->name, 'на себя, нужен паспорт', 'на себя, данные есть');
+    @endphp
+    <form method="post" action="/work/deals/{{ $deal->id }}/contract" class="contents">
+        @csrf @method('put')
+        <x-people.pick name="buyer_id" kind="buyer" passport variant="row" :people="$rows" :value="$isManager ? 'me' : $buyer?->id" title="Покупатель" :deal="$deal->id" link autosubmit :open="$ask && ! $buyer"
+            :placeholder="'не выбран'" :label="$rowLabel" finish="Выбрать"/>
+    </form>
+    @error('buyer_id')<p class="field-error px-4 py-2">{{ $message }}</p>@enderror
+@endif
 {{-- Данные есть — та же шторка: посмотреть, поправить, скан PDF (05.11.2026). --}}
 @if ($buyer && $live)
     <div data-controller="sheet" class="contents">
-        <x-ui.sheet-row>
-            <span class="min-w-0 flex-1"><span class="block break-words">{{ $who }}</span>@if ($ready)<span class="row-sub text-open">{{ $selfWord }}{{ $kindWord }}данные есть</span>@else<span class="row-sub">{{ $selfWord }}{{ $gap ?? 'нужны данные для '.$for }}</span>@endif</span>
-            <x-ui.chevron/>
-        </x-ui.sheet-row>
+        {{-- Данные для договора — своей строкой того же вида, под «Плательщиком» (16.11.2026). --}}
+        <x-deal.sale-row :label="'Данные для '.$for" :value="$ready ? trim($kindWord.'есть', ', ') : ($gap ?? 'нужны')" :tone="$ready ? null : 'danger'" class="w-full text-left" data-action="sheet#open"/>
         <x-ui.sheet :id="$dataSheet" :title="$ready ? 'Данные покупателя' : 'Данные для '.$for" :open="session('open_sheet') === $dataSheet || $errors->hasAny(['buyer.*']) || $ask" tall>
             @php $buyerParty = $buyer->party ?? \App\Billing\Party::forUser($buyer); @endphp
             {{-- Снимки реквизитов от менеджера — над полями: вносят, глядя на них. --}}
@@ -88,15 +103,3 @@
         <x-ui.chevron/>
     </x-ui.doc>
 @endforeach
-{{-- Кто платит по счёту — не здесь, а строкой «Плательщик» над счётом (`x-deal.payer`, 16.11.2026). --}}
-@if ($live && ! ($deal->isGarage() && $buyer))
-    @php
-        $rows = \App\Support\People::contractBuyers($manager, $manager->name, 'на себя, нужен паспорт', 'на себя, данные есть');
-    @endphp
-    <form method="post" action="/work/deals/{{ $deal->id }}/contract" class="contents">
-        @csrf @method('put')
-        <x-people.pick name="buyer_id" kind="buyer" passport variant="row" :people="$rows" :value="$isManager ? 'me' : $buyer?->id" title="Покупатель" :deal="$deal->id" link autosubmit :open="$ask && ! $buyer"
-            :placeholder="$buyer ? 'Другой покупатель' : 'не выбран'" :label="$buyer ? null : 'Покупатель'" finish="Выбрать"/>
-    </form>
-    @error('buyer_id')<p class="field-error px-4 py-2">{{ $message }}</p>@enderror
-@endif
