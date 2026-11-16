@@ -24,6 +24,29 @@ final class Numbering
         return (int) DB::table('billing_invoices')->where('seller', $seller->value)->where('year', $year)->max('number') + 1;
     }
 
+    /**
+     * Номер счёта сделки — когда его отправили менеджеру (`Offers\Actions\ShowToManager`, 16.11.2026, владелец: «счёт тоже должен
+     * номер получать только тогда, когда он отправлен, а не когда сформирован») или когда по нему пришли настоящие деньги раньше
+     * отправки (`RecordPayment`). Дата счёта — тот же день. Счёт без номера (перевыставили до отправки) номера не съедает.
+     * Звать в транзакции под замком строки счёта; true — номер выдан сейчас (PDF перерисовать).
+     */
+    public static function assign(Invoice $invoice): bool
+    {
+        if ($invoice->number || $invoice->direction !== 'issued' || $invoice->code) {
+            return false;
+        }
+        $year = (int) now()->format('Y');
+        $invoice->forceFill(['year' => $year, 'number' => self::next($invoice->seller, $year), 'issued_at' => now()->toDateString()])->save();
+
+        return true;
+    }
+
+    /** Счёт сделки менеджера ждёт номера до отправки ему; аукцион (без менеджера), парковка и прочие — номер сразу. */
+    public static function deferred(bool $issued, bool $park, ?int $dealId): bool
+    {
+        return $issued && ! $park && $dealId && \App\Offers\Deal::whereKey($dealId)->whereNotNull('buyer_id')->exists();
+    }
+
     /** Номер документа парковки за день; вызывать в той же транзакции после `next()` — замок года уже взят. */
     public static function code(Seller $seller, CarbonInterface $day): string
     {

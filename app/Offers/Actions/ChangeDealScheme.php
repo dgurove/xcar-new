@@ -33,11 +33,8 @@ final class ChangeDealScheme
         ($this->money)($deal, $by, $deal->commission, $deal->commission_mode, $scheme, $deal->share, 'Схема: '.$was->label().' → '.$scheme->label());
         $deal = $deal->fresh(['offer', 'contract.buyer.party']);
         $this->advance->rehome($deal, $by);
-        // Сменился продавец (ПРАЙМ ↔ Р.О.С., 12.11.2026) — договор с номером прежнего продавца перенумеровывается под нового
-        // (`SettleContract`: номер из его ряда, «РОС-…»); счёт уже перевыставил `UpdateDealMoney` → `SyncDealInvoices`.
-        if ($was->seller() !== $scheme->seller() && $deal->contract?->number) {
-            app(SettleContract::class)($deal->contract);
-        }
+        // Сменился продавец (ПРАЙМ ↔ Р.О.С.) — номер договора прежний: очередь одна на обоих, выданный номер не меняется
+        // (`ContractNumber`, 16.11.2026); счёт уже перевыставил `UpdateDealMoney` → `SyncDealInvoices`.
 
         return $deal;
     }

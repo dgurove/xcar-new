@@ -44,6 +44,8 @@ class DealInvoiceReleaseTest extends TestCase
     {
         Storage::fake('private');
         Notification::fake();
+        // Заход пишет в pgsql_async; в тесте это то же соединение, иначе транзакция теста строк не увидит.
+        $this->app['db']->extend('pgsql_async', fn () => $this->app['db']->connection('pgsql'));
         $admin = User::create(['name' => 'Владелец', 'phone' => '79000000001', 'roles' => [Role::Admin], 'approved_at' => now()]);
         $manager = User::create(['name' => 'Армен Хачян', 'phone' => '79000000002', 'roles' => [Role::Manager], 'approved_at' => now()]);
         $vendor = Vendor::create(['name' => 'Совкомбанк тест', 'deal_format' => 'commission']);
@@ -63,6 +65,9 @@ class DealInvoiceReleaseTest extends TestCase
         $this->assertEqualsWithDelta(1020000, $invoice->total, 0.01);
         $this->assertNull($invoice->due_at);
         $this->assertNull($invoice->shown_at);
+        // Номер — только при отправке: до неё «без номера», перевыставление номеров не съедает.
+        $this->assertNull($invoice->number);
+        $this->assertSame('без номера', $invoice->label());
         $this->assertFalse($invoice->isVisibleToManager($manager));
         $this->assertSame(0, Invoice::visibleToManager($manager)->count());
         $this->assertSame('Счёт готовится', \App\Billing\DealMoney::of($deal->fresh())->phrase);
@@ -81,10 +86,18 @@ class DealInvoiceReleaseTest extends TestCase
         $this->assertSame(WaitsFor::Us, $position->waits_for);
         $this->assertSame('send', $deal->fresh()->invoiceGap());
         Notification::assertNotSentTo($manager, MoneyNotice::class);
+        // В ходе сделки на шаге оплаты — строка «Менеджер не видит счёт» со шторкой отправки (`x-deal.send-task` в `x-route.path`).
+        $this->actingAs($admin);
+        $row = fn () => \Illuminate\Support\Facades\Blade::render('<x-deal.send-task :deal="$deal" :invoice="$invoice"/>', ['deal' => $deal->fresh(), 'invoice' => $invoice->fresh()]);
+        $this->assertStringContainsString('Менеджер не видит счёт без номера', $row());
+        $this->assertStringContainsString('/work/deals/'.$deal->id.'/invoices/'.$invoice->id.'/show', $row());
 
         // «Отправить менеджеру» — видит, уведомление, ход его.
         app(ShowToManager::class)->invoice($deal->fresh(), $invoice, $admin);
+        $this->assertSame(1, $invoice->fresh()->number);
         $this->assertTrue($invoice->fresh()->isVisibleToManager($manager));
+        $this->assertStringContainsString('Счёт № 1 у менеджера', $row());
+        $this->assertStringNotContainsString('Менеджер не видит', $row());
         Notification::assertSentTo($manager, MoneyNotice::class);
         $this->assertNull($position->fresh()->waits_for);
 

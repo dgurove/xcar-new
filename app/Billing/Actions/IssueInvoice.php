@@ -70,8 +70,10 @@ final class IssueInvoice
             // Ставка — продавца; счёт за ТС сделки — ставкой договора (14.11.2026, `DealContract::vatRate`: блок «НДС» в «Деньгах»).
             $vatRate = $issued ? (($vatRate ?? $seller->vatRate()) ?: null) : null;
             $vatOnTop = $vatRate && $party->vat_on_top;
+            // Счёт сделки менеджера — без номера до «Отправить менеджеру» (`Numbering::assign`, 16.11.2026).
+            $numbered = $issued && ! Numbering::deferred($issued, $park, $dealId);
             $invoice = Invoice::create([
-                'seller' => $seller, 'park' => $park, 'direction' => $direction, 'year' => $issued ? $year : null, 'number' => $issued ? Numbering::next($seller, $year) : null,
+                'seller' => $seller, 'park' => $park, 'direction' => $direction, 'year' => $numbered ? $year : null, 'number' => $numbered ? Numbering::next($seller, $year) : null,
                 // Исправленный документ (`FixClosingDocument` с прежним номером) — тот же номер и следующая редакция.
                 'code' => $issued && $park ? ($code ?? Numbering::code($seller, now())) : null, 'revision' => $revision,
                 'external_no' => $externalNo, 'kind' => $kind, 'month' => $registry && $month ? Carbon::instance($month)->startOfMonth()->toDateString() : null, 'party_id' => $party->id, 'vehicle_id' => $vehicle?->id, 'deal_id' => $dealId, 'offer_id' => $offerId,

@@ -337,6 +337,16 @@
                             <x-deal.supplier-invoice-sheet :id="'invoice-pay-'.$position->id" :deal="$deal"/>
                         </div>
                     @endif
+                    {{-- Наш счёт и договор на шаге оплаты (16.11.2026, владелец: «чтобы не удивлялись, почему не платят по счёту»): не
+                         отправлены менеджеру — рыжей строкой со шторкой «Отправить менеджеру», отправлены — строкой с галкой. --}}
+                    @if ($deal && $stage->isPayStep() && $deal->buyer_id && auth()->user()?->canEditDeals())
+                        @foreach ($invoices->filter(fn ($i) => $i->direction === 'issued' && $i->kind !== \App\Billing\ChargeKind::Reward) as $i)
+                            <x-deal.send-task :deal="$deal" :invoice="$i"/>
+                        @endforeach
+                        @if ($deal->hasContract() && \App\Offers\DealContract::for($deal)->isReady())
+                            <x-deal.send-task :deal="$deal"/>
+                        @endif
+                    @endif
                     {{-- Оплата поставщику по договору комиссии (14.11.2026): назначенная им сумма не та, что мы переведём, — строкой дела,
                          к блоку «… по договору комиссии» в «Деньгах» (там обе суммы, назначение и реквизиты). --}}
                     @if ($deal && $stage->paysOut() && auth()->user()?->canManageCrm() && ($sp = $deal->contract?->supplier_price) !== null && ($sc = $deal->supplierCost()) !== null && $sp !== $sc)
@@ -390,7 +400,8 @@
                             @if ($requests)
                                 <x-mail.window-button :url="'/work/mail/new?request='.$offer->vendor_id.'&then=close'" :label="'Заявка поставщику ('.$requests.')'" class="btn-s btn-accent"/>
                             @endif
-                            @if ($wantsInvoice)
+                            {{-- «Отправить счёт» — строкой дела выше со шторкой (`x-deal.send-task`), кнопкой здесь не дублируем. --}}
+                            @if ($wantsInvoice && $position->gap() !== 'send')
                                 {{-- Счета ставятся сами (`SyncDealInvoices`); гаражной не хватает нашей доли — вписать её в «Деньгах» сделки. --}}
                                 @php $action = \App\Workflow\Position::gapAction($position->gap(), $deal); @endphp
                                 {{-- Реквизиты Р.О.С. правятся на парковке: у кого её нет, кнопка вела бы в стену (18.10.2026). --}}

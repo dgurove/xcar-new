@@ -123,6 +123,10 @@ class AlfaPrepayTest extends TestCase
         $this->passportFor($this->manager);
         $invoice = $deal->fresh()->issuedInvoices()->sole();
         $this->assertSame(Seller::Ros, $invoice->seller);
+        // Номер — при отправке менеджеру (16.11.2026), своей нумерацией Р.О.С.
+        $this->assertNull($invoice->number);
+        $this->sendToManager($deal);
+        $invoice = $invoice->fresh();
         $this->assertSame(1, $invoice->number);
         $this->assertNull($invoice->openLink());
 

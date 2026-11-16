@@ -312,14 +312,15 @@ class Invoice extends Model implements HasMedia
      */
     public function scopeShownToManager($q)
     {
+        // Деньги — настоящие: зачёт удержанного вознаграждения (`Offset`) оплатой не считается.
         return $q->where(fn ($w) => $w->whereNull('billing_invoices.deal_id')->orWhere('billing_invoices.direction', '!=', 'issued')->orWhereNotNull('billing_invoices.shown_at')
-            ->orWhere('billing_invoices.paid', '>', 0));
+            ->orWhereRaw("billing_invoices.paid > coalesce((select sum(p.amount) from billing_payments p where p.invoice_id = billing_invoices.id and p.source = 'offset'), 0) + 0.005"));
     }
 
     /** Наш счёт сделки (`issued`) — после отправки или первой оплаты (деньги пришли — проверять поздно); выплата ему и счета без сделки — сразу. */
     public function isShownToManager(): bool
     {
-        return ! $this->deal_id || $this->direction !== 'issued' || $this->shown_at !== null || (float) $this->paid > 0;
+        return ! $this->deal_id || $this->direction !== 'issued' || $this->shown_at !== null || $this->paidMoney() > 0;
     }
 
     public function isOwed(): bool
@@ -475,7 +476,9 @@ class Invoice extends Model implements HasMedia
 
     public function label(): string
     {
-        return $this->code ? '№ '.$this->code.($this->revision ? ', ред. '.$this->revision : '') : ($this->number ? '№ '.$this->number : ($this->external_no ? $this->external_no : $this->kind->label()));
+        // Наш счёт сделки до «Отправить менеджеру» номера не имеет (`Numbering::assign`): «Счёт без номера».
+        return $this->code ? '№ '.$this->code.($this->revision ? ', ред. '.$this->revision : '') : ($this->number ? '№ '.$this->number : ($this->external_no ? $this->external_no
+            : ($this->direction === 'issued' && $this->deal_id ? 'без номера' : $this->kind->label())));
     }
 
     /**

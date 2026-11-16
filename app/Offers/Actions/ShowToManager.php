@@ -31,12 +31,15 @@ final class ShowToManager
             if ($invoice->shown_at) {
                 return null;
             }
+            // Номер и дата счёта — днём отправки (`Numbering::assign`, 16.11.2026): до неё счёт без номера.
+            \App\Billing\Numbering::assign($invoice);
             $invoice->update(['shown_at' => now(), 'shown_by' => $by->id]);
             $deal->offer->log(OfferEventType::Note, $by, ['text' => 'Счёт '.$invoice->label().' отправлен менеджеру']);
 
             return $invoice;
         });
         if ($shown) {
+            app(\App\Billing\Documents\InvoicePdf::class)->attach($shown->fresh(['charges', 'party', 'payments']));
             InvoiceShown::dispatch($shown->fresh(), $by);
             Disclose::publish($deal);
         }
@@ -55,8 +58,10 @@ final class ShowToManager
             if ($c->shown_at) {
                 return null;
             }
+            // Номер — днём отправки (`ContractNumber`): в той же транзакции, сорвалась отправка — номер не выдан.
+            $code = \App\Offers\ContractNumber::assign($c);
             $c->update(['shown_at' => now(), 'shown_by' => $by->id]);
-            $deal->offer->log(OfferEventType::Note, $by, ['text' => 'Договор отправлен менеджеру']);
+            $deal->offer->log(OfferEventType::Note, $by, ['text' => 'Договор'.($code ? ' № '.$code : '').' отправлен менеджеру']);
 
             return $c;
         });

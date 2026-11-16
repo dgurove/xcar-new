@@ -41,6 +41,8 @@ final class RecordPayment
             } else {
                 $payment = Payment::create($row + ['created_by' => $by->id]);
             }
+            // Настоящие деньги по счёту сделки раньше «Отправить менеджеру» — номер ему сейчас (`Numbering::assign`); зачёт удержанного — не деньги.
+            $numbered = $source !== PaymentSource::Offset && \App\Billing\Numbering::assign($invoice);
             $paid = round($invoice->paid + $amount, 2);
             $invoice->update(['paid' => $paid] + ($paid >= $invoice->total - 0.005 ? ['state' => InvoiceState::Paid, 'paid_at' => $payment->paid_at] : []));
             $invoice->vehicle?->log(EventType::Paid, $by, ['label' => $invoice->label(), 'amount' => $amount, 'left' => $invoice->fresh()->remaining()]);
@@ -54,8 +56,10 @@ final class RecordPayment
                 }
             }
 
-            return $payment;
+            return [$payment, $numbered];
         });
+        [$payment, $numbered] = $payment;
+        $numbered && app(\App\Billing\Documents\InvoicePdf::class)->attach($invoice->fresh(['charges', 'party', 'payments']));
         PaymentRecorded::dispatch($invoice->fresh(), $by);
 
         return $payment;

@@ -79,7 +79,7 @@ final class DkpDocument
     /** «ПР-15/2026» — только номер нынешнего продавца: сменили ПРАЙМ на Р.О.С., а договор не пересобран — номера нет. */
     public function number(): ?string
     {
-        return $this->form() !== 'owner' && $this->contract->issuer === $this->deal->seller() ? $this->contract->numberLabel() : null;
+        return $this->form() !== 'owner' ? $this->contract->numberLabel() : null;
     }
 
     /**

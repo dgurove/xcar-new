@@ -4,8 +4,6 @@ namespace App\Offers\Actions;
 
 use App\Live\RefreshDeal;
 use App\Offers\DealContract;
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\DB;
 
 /**
  * Договор собрался — одна дверь для всех путей (данные ДКП, скан паспорта покупателя): впервые готов — `ready_at` и
@@ -28,8 +26,8 @@ final class SettleContract
 
             return $contract;
         }
+        // Номер договор получает не здесь, а при «Отправить менеджеру» (`ContractNumber`, 16.11.2026).
         if ($contract->isReady()) {
-            $this->number($contract);
             if (! $contract->ready_at) {
                 // Менеджеру — не сейчас, а кнопкой «Отправить менеджеру» в CRM (`ShowToManager::contract`, 16.11.2026).
                 $contract->update(['ready_at' => now()]);
@@ -40,18 +38,5 @@ final class SettleContract
         RefreshDeal::of($contract->deal);
 
         return $contract;
-    }
-
-    private function number(DealContract $contract): void
-    {
-        $seller = $contract->deal->seller();
-        if ($contract->form() === 'owner' || ($contract->number && $contract->issuer === $seller)) {
-            return;
-        }
-        $today = now('Europe/Moscow');
-        Cache::lock('contract-number:'.$seller->value, 10)->block(10, function () use ($contract, $seller, $today) {
-            $next = (int) DB::table('deal_contracts')->where('issuer', $seller->value)->where('year', $today->year)->max('number') + 1;
-            $contract->forceFill(['issuer' => $seller, 'year' => $today->year, 'number' => $next])->save();
-        });
     }
 }

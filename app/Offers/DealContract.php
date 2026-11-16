@@ -24,7 +24,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * тот же `seller` (сам из договора комиссии Совкомбанка — `FillCommissionOwner`), номер — `commissionNo`. НДС договора —
  * выбором в CRM (`vatRate`).
  */
-#[Fillable(['deal_id', 'seller_party_id', 'buyer_user_id', 'payer', 'price', 'city', 'signed_at', 'ready_at', 'issuer', 'number', 'year', 'commission_no', 'vat_rate', 'price_manual', 'price_by', 'price_at', 'supplier_price', 'supplier_purpose', 'supplier_requisites', 'shown_at', 'shown_by'])]
+#[Fillable(['deal_id', 'seller_party_id', 'buyer_user_id', 'payer', 'price', 'city', 'signed_at', 'ready_at', 'issuer', 'number', 'year', 'commission_no', 'vat_rate', 'price_manual', 'price_by', 'price_at', 'supplier_price', 'supplier_purpose', 'supplier_requisites', 'shown_at', 'shown_by', 'code', 'numbered_on'])]
 class DealContract extends Model
 {
     use FastAttributes;
@@ -37,7 +37,7 @@ class DealContract extends Model
 
     protected function casts(): array
     {
-        return ['price' => 'int', 'signed_at' => 'date', 'ready_at' => 'datetime', 'issuer' => Seller::class, 'number' => 'int', 'year' => 'int', 'vat_rate' => 'int', 'price_manual' => 'bool', 'price_at' => 'datetime', 'supplier_price' => 'int', 'supplier_requisites' => 'array', 'shown_at' => 'datetime'];
+        return ['price' => 'int', 'signed_at' => 'date', 'ready_at' => 'datetime', 'issuer' => Seller::class, 'number' => 'int', 'year' => 'int', 'vat_rate' => 'int', 'price_manual' => 'bool', 'price_at' => 'datetime', 'supplier_price' => 'int', 'supplier_requisites' => 'array', 'shown_at' => 'datetime', 'numbered_on' => 'date'];
     }
 
     /** Вид документа: физлицо физлицу (ДКП собственника) или ДКП с актом от нашего юрлица. */
@@ -46,14 +46,10 @@ class DealContract extends Model
         return $this->deal->isDkp() ? 'owner' : $this->deal->seller()->value;
     }
 
-    /** Номер для договора и акта: «ПР-15/2026»; номера ещё нет (договор не готов) — null. */
+    /** Номер для договора и акта: «20261116-01» (`ContractNumber`); не отправлен менеджеру — номера ещё нет, null. */
     public function numberLabel(): ?string
     {
-        if (! $this->number || ! $this->issuer) {
-            return null;
-        }
-
-        return ($this->issuer->config()['contract_prefix'] ?? $this->issuer->short()).'-'.$this->number.'/'.$this->year;
+        return $this->code;
     }
 
     /** Машина договора — одна запись на все дорожки. */
