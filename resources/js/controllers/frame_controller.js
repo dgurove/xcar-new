@@ -36,19 +36,29 @@ export default class extends Controller {
         this.paint();
         try {
             const doc = this.frameTarget.contentDocument;
-            // «› Подпись» в письме раскрыли или свернули — высота по телу письма (по документу рамка не сжималась бы).
+            // «› Подпись» в письме раскрыли или свернули — высота заново.
             if (doc && !doc.__fitToggle) {
                 doc.__fitToggle = true;
-                doc.addEventListener('toggle', () => {
-                    const body = doc.body?.getBoundingClientRect().height;
-                    if (body) this.frameTarget.style.height = Math.min(Math.max(Math.ceil(body) + 8, 60), 4000) + 'px';
-                }, true);
+                doc.addEventListener('toggle', () => this.size(doc), true);
             }
-            const height = Math.max(doc.documentElement.scrollHeight, doc.body?.scrollHeight || 0);
-            if (!height) return;
-            this.frameTarget.style.height = Math.min(Math.max(height + 8, 60), 4000) + 'px';
+            this.size(doc);
         } catch {
             this.frameTarget.style.height = '480px';
         }
+    }
+
+    // Высота — по низу содержимого, а не по документу: документ не ниже самой рамки, и короткое письмо («Отлично! Спасибо!»)
+    // оставляло под собой пустоту до прежних 60 px (17.11.2026, в цепочке писем это дыра между письмами).
+    size(doc) {
+        const body = doc?.body;
+        if (!body) return;
+        const margin = (el) => parseFloat(getComputedStyle(el).marginBottom) || 0;
+        let bottom = body.getBoundingClientRect().bottom + margin(body);
+        for (const el of body.children) {
+            const r = el.getBoundingClientRect();
+            if (r.height > 0) bottom = Math.max(bottom, r.bottom + margin(el));
+        }
+        const height = Math.ceil(bottom + (doc.defaultView?.scrollY || 0));
+        if (height > 0) this.frameTarget.style.height = Math.min(Math.max(height + 2, 20), 4000) + 'px';
     }
 }

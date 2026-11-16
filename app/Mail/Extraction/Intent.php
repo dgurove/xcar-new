@@ -300,6 +300,20 @@ enum Intent: string
     }
 
     /** Тело без цитат, пересланных заголовков и подписи. */
+    /**
+     * Без нашей же цитаты (`Composer::quote`: «Исходное письмо, 14.11.2026 10:14, Марина <…>:» и письмо под ней; 17.11.2026 — она
+     * стояла в строке нашего письма в ленте): свои слова — над шапкой; своих нет (пересылка без приписки) — письмо под ней.
+     */
+    public static function withoutOurQuote(string $text): string
+    {
+        $parts = preg_split('/^\s*(?:Исходное|Пересылаемое) письмо,\s*\d{2}\.\d{2}\.\d{4}[^\n]*$/imu', $text, 2) ?: [$text];
+        if (count($parts) < 2) {
+            return $text;
+        }
+
+        return trim(trim($parts[0]) !== '' ? $parts[0] : $parts[1]);
+    }
+
     private static function body(?string $body): string
     {
         $text = QuotationStripper::strip($body);
@@ -308,7 +322,9 @@ enum Intent: string
         if (count($parts) === 2 && mb_strlen(trim((string) preg_replace('/Отправлено из.*$/imu', '', $parts[0]))) < 40) {
             $text = (string) preg_replace('/^\s*(?:От|Кому|Копия|Дата|Тема|From|To|Cc|Date|Subject)\s*:.*$/imu', '', $parts[1]);
         }
-        $text = (string) preg_split('/^\s*(?:С\s+уважением|C уважением|Best regards|--\s*$|From:|От кого:|От:|Отправлено из|-------- Пересылаемое)/imu', $text)[0];
+        $text = self::withoutOurQuote($text);
+        // Цитата ниже своих слов, и «…, Марина пишет:» почтовых программ тоже.
+        $text = (string) preg_split('/^\s*(?:С\s+уважением|C уважением|Best regards|--\s*$|From:|От кого:|От:|Отправлено из|-------- Пересылаемое|.{0,160}\b(?:пишет|написал|написала|wrote)\s*:\s*$)/imu', $text)[0];
         // Приписка Альфы под каждым письмом — не свои слова.
         $text = (string) preg_replace('/^\s*\*\s*прошу\s+(?:не\s+изменять|отвечать)[^\n]*$/imu', '', $text);
 

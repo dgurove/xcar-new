@@ -1,123 +1,137 @@
-{{-- Письмо в ленте: свёрнуто — строка «кто, заголовок, скрепка, когда» (заголовок — этап, смысл или первые свои слова,
-     непрочитанное полужирным); раскрыто — свои слова письма без цитат и подписи, вложения (фото лентой, документы
-     строкой, открываются в шторке документов), «Ответить на это» — редактор
-     во фрейме под письмом. На линии — кружок отправителя (x-mail.sender-avatar); kind: stage (этап),
-     ask (без нашего ответа) — заголовок светлее, ours (наше) — фон у текста. --}}
+{{-- Письмо в цепочке (x-mail.chain) — единственный вид письма (17.11.2026, владелец: «объединить в одну цепочку», «везде
+     одинаково»: справа во «Входящих», в окне писем предложения, сделки, ТС, ветки, на телефоне). На линии — кружок
+     отправителя 24 px (у «ч.2» и у письма того же отправителя подряд — точка, repeat).
+     Свёрнуто — строка: кто, этап или первые слова (непрочитанное полужирным), скрепка, дата.
+     Раскрыто — вид, выбранный владельцем по макетам:
+     - имя и серым адрес рядом; тема — только если не совпадает с общей темой переписки (common, она в заголовке окна);
+     - «кому: …» и дата «14.11 12:58» одним серым текстом, переносится; у пересылки сотрудника — кто переслал;
+     - машина ссылкой (логотип, марка, модель, год); у незаведённой цепочки «Из писем» — «Завести», у ветки без машины —
+       «Привязать»;
+     - справа вверху значки «Ответить» (изогнутая стрелка) и «Переслать» (прямая), как в Spark, и «⋯» (x-mail.letter-menu);
+     - текст на белом без пустых строк, подпись — «› Подпись» (`BodyRenderer::own flat`), «Не ушло / Отправить снова»;
+     - файлы — x-mail.letter-files; под письмом фрейм ответа `reply-pane-{id}` (editor — открыть редактор сразу:
+       «Ответить поставщику» в шаге «Переоценка»).
+     reply — есть действия (значки и меню); kind: stage (этап), ask (без нашего ответа), ours (наше) — оттенки строки;
+     context — pane (справа во «Входящих») или window; car=false — окно писем самой машины (предложения, ТС) или цепочки «Из писем» со своим «Завести»: ссылка на неё же лишняя; dismiss — «Ответ не нужен» в меню (ждёт ответа в соседней ветке). --}}
 {{-- continuation — «ч.2» того же письма (те же слова, другие файлы): текст не повторяется, только вложения. --}}
-@props(['message', 'base' => '/mail', 'title', 'titled' => true, 'kind' => '', 'open' => false, 'focus' => false, 'reply' => false, 'continuation' => false, 'dismiss' => false, 'replying' => false, 'common' => null])
+@props(['message', 'base' => '/mail', 'title', 'titled' => true, 'kind' => '', 'open' => false, 'focus' => false, 'reply' => false, 'continuation' => false, 'dismiss' => false, 'common' => null, 'context' => 'window', 'editor' => null, 'car' => true, 'repeat' => false])
 @php
     use App\Mail\{ParseState, SendState};
     use App\Mail\Chains\NodeTitle;
     $m = $message;
     $ours = $m->isOurs();
     $who = NodeTitle::who($m);
-    $when = \App\Support\Ago::stamp($m->date_at);
     $files = $m->files();
-    [$pictures, $documents] = $files->partition(fn ($f) => $f->isImage() && $f->mime !== 'image/svg+xml');
     $text = trim($m->shownText());
-    // Конверт раскрытого письма: от кого — адресом, полная дата, кому и копия (владелец 07.10.2026: почту «нигде
-    // невозможно посмотреть и скопировать»). Адреса ленте грузит x-mail.chain одним запросом.
     $from = NodeTitle::email($m);
-    $to = $m->addresses->whereIn('kind', [\App\Mail\AddressKind::To->value, \App\Mail\AddressKind::Cc->value])->sortBy('position')->pluck('email')->unique()->values();
+    $to = $m->addresses->whereIn('kind', [\App\Mail\AddressKind::To->value, \App\Mail\AddressKind::Cc->value])->sortBy('position')
+        ->map(fn ($a) => $a->name ?: $a->email)->unique()->values();
     $forwarder = $m->isForwardedByStaff() ? mb_strtolower((string) $m->from_email) : null;
+    $park = $base === '/mail';
+    $thread = $m->thread;
+    $threadPark = $thread?->account?->scope === \App\Mail\Scope::Park;
+    // Машина письма — по стороне его ветки: предложение в CRM, ТС на парковке; на чужую сторону — ссылкой без Turbo.
+    $showCar = $car;
+    $car = ! $showCar ? null : match (true) {
+        (bool) $thread?->offer => ['href' => $thread->offer->crmUrl(), 'vendor' => $thread->offer->vendor, 'name' => $thread->offer->titleWithYear(), 'cross' => $park],
+        (bool) $thread?->vehicle => ['href' => \App\Support\Surface::Park->url('/cars/'.$thread->vehicle->id), 'vendor' => $thread->vehicle->vendor, 'name' => $thread->vehicle->titleWithYear(), 'cross' => ! $park],
+        default => null,
+    };
+    $chainNew = ! $car && $thread?->candidate?->state === \App\Mail\CandidateState::New ? $thread->candidate : null;
+    $sameSide = $threadPark === $park;
+    $bounce = $m->intent === \App\Mail\Extraction\Intent::Bounce->value;
+    $reply = $reply && $thread && ! $continuation;
+    $editorUrl = $base.'/'.$m->thread_id.'/reply/'.$m->id;
+    $unread = ! $m->is_seen && $m->outside;
 @endphp
-<div class="letter{{ $kind ? ' '.implode(' ', array_map(fn ($k) => 'letter--'.$k, explode(' ', $kind))) : '' }}{{ $m->is_seen ? '' : ' letter--unread' }}" id="msg-{{ $m->id }}" @if ($focus) data-chain-target="focus" @endif>
-    {{-- Узел на линии — кружок отправителя; продолжение «ч.2» — точка, это то же письмо. --}}
-    @if ($continuation)<span class="letter-dot"></span>@else<span class="letter-face"><x-mail.sender-avatar :message="$m" :size="24"/></span>@endif
-    <details class="letter-body" @if ($open) open @endif>
+<div class="letter{{ $kind ? ' '.implode(' ', array_map(fn ($k) => 'letter--'.$k, explode(' ', $kind))) : '' }}{{ $repeat && ! $continuation ? ' letter--repeat' : '' }}{{ $m->is_seen ? '' : ' letter--unread' }}" id="msg-{{ $m->id }}" data-message="{{ $m->id }}" @if ($unread) data-unread @endif @if ($focus) data-chain-target="focus" @endif data-controller="unhide">
+    {{-- Узел на линии — кружок отправителя 24 px; продолжение «ч.2» — точка, это то же письмо; подряд от того же отправителя
+         (repeat) — точка, как в строках писем сделки (`x-mail.rail`), раскрыли — снова кружок (17.11.2026, владелец). --}}
+    @if ($continuation)<span class="letter-dot"></span>@else
+        @if ($repeat)<span class="letter-dot"></span>@endif
+        <span class="letter-face"><x-mail.sender-avatar :message="$m" :size="24"/></span>
+    @endif
+    <details class="letter-body{{ $reply ? ' letter-body--acts' : '' }}" @if ($open) open @endif>
         <summary class="letter-head">
-            <span class="letter-who" title="{{ $from }}">{{ $who }}</span>
+            <span class="letter-who" title="{{ $from }}">{{ $who }}@unless ($continuation)<span class="letter-from"> {{ $from }}</span>@endunless</span>
             <span class="letter-title{{ $titled ? '' : ' letter-title--words' }}">{{ $title }}</span>
-            {{-- Раскрытое — тема справа от имени, длинная режется «…» (16.11.2026, владелец: «темы писать справа от имени, имя не сокращать»);
-                 та же, что общая тема в заголовке окна (common, 17.11.2026), — не повторяется. --}}
             @if (! $continuation && ($topic = \App\Mail\Topic::clean($m->subject)) !== '' && mb_strtolower($topic) !== 'без темы' && ! \App\Mail\Topic::same($m->subject, $common))<span class="letter-topic" title="{{ $topic }}">{{ $topic }}</span>@endif
             @if ($files->isNotEmpty())<span class="letter-clip nums"><x-ui.icon name="clip" class="size-3.5"/>{{ $files->count() }}</span>@endif
-            {{-- Раскрыто — дата со временем («14.11 12:58», без «14 ноября», 17.11.2026), свёрнуто — короткая. --}}
-            <span class="letter-when nums"><span class="letter-when-short">{{ $when }}</span><span class="letter-when-full">{{ \App\Support\Ago::at($m->date_at, true) }}</span></span>
+            <span class="letter-when nums">{{ \App\Support\Ago::stamp($m->date_at) }}</span>
         </summary>
-        @unless ($continuation)
-            {{-- Конверт: подпись через пробел, адреса текстом через запятую; каждый берётся нажатием. Сразу под шапкой — следующей
-             строкой, и у нашего письма над подложкой, а не в ней. --}}
-            <div class="letter-env">
-                <div class="letter-env-row"><span class="letter-env-label">От</span> <x-mail.address :email="$from"/></div>
-                @if ($forwarder && $forwarder !== $from)<div class="letter-env-row"><span class="letter-env-label">Переслал</span> <x-mail.address :email="$forwarder"/></div>@endif
-                @if ($to->isNotEmpty())
-                    <div class="letter-env-row"><span class="letter-env-label">Кому</span> <span class="letter-env-to">@foreach ($to->take(3) as $address)<x-mail.address :email="$address"/>@endforeach @if ($to->count() > 3)<details class="letter-env-more letter-env-to"><summary>и ещё {{ $to->count() - 3 }}</summary>@foreach ($to->slice(3) as $address)<x-mail.address :email="$address"/>@endforeach</details>@endif</span></div>
-                @endif
+        @if ($reply)
+            {{-- Значки без подписей, как в Spark (17.11.2026, владелец выбрал из сравнения): ответ — изогнутая, пересылка — прямая.
+                 Недоставку не «отвечают» почтовому серверу — пересылают на верный адрес. --}}
+            <div class="letter-acts">
+                <a href="{{ $editorUrl }}{{ $bounce ? '?mode=forward' : '' }}" class="letter-ib" data-turbo-frame="reply-pane-{{ $m->id }}" title="{{ $bounce ? 'Переслать' : 'Ответить' }}" aria-label="{{ $bounce ? 'Переслать' : 'Ответить' }}"><x-ui.icon name="mail-reply" class="size-5"/></a>
+                <a href="{{ $editorUrl }}?mode=forward" class="letter-ib" data-turbo-frame="reply-pane-{{ $m->id }}" title="Переслать" aria-label="Переслать"><x-ui.icon name="mail-forward" class="size-5"/></a>
+                <x-mail.letter-menu :message="$m" :base="$base" :context="$context" :park="$park" :dismiss="$dismiss"/>
             </div>
+        @endif
+        @unless ($continuation)
+            {{-- Кому и дата — одним серым текстом: не влезло — переносится, дата целиком. --}}
+            <div class="letter-env">
+                @if ($forwarder && $forwarder !== $from)<span>переслал: {{ $forwarder }}</span>@endif
+                @if ($to->isNotEmpty())<span>кому: {{ $to->take(3)->join(', ') }}{{ $to->count() > 3 ? ' и ещё '.($to->count() - 3) : '' }}</span>@endif
+                <span class="nums whitespace-nowrap">{{ \App\Support\Ago::at($m->date_at, true) }}</span>
+            </div>
+            @if ($car)
+                <a href="{{ $car['href'] }}" class="letter-car" data-turbo-frame="_top" @if ($car['cross']) data-turbo="false" @endif>@if ($car['vendor'])<x-vendor.logo :vendor="$car['vendor']"/>@endif<span class="truncate">{{ $car['name'] }}</span><x-ui.icon name="chevron-right" class="size-3.5 shrink-0"/></a>
+            @elseif ($showCar && $chainNew && $sameSide)
+                @if ($park)<a href="/requests/new?candidate={{ $chainNew->id }}" class="letter-car letter-car--do" data-turbo-frame="_top">Завести: {{ $chainNew->title() }}</a>
+                @else<form method="post" action="/offers/from-mail/{{ $chainNew->id }}/create" class="contents" data-turbo-frame="_top">@csrf<button class="letter-car letter-car--do">Завести: {{ $chainNew->title() }}</button></form>@endif
+            @elseif ($showCar && $thread && $sameSide && $reply)
+                <button type="button" class="letter-car letter-car--do" data-action="unhide#show">{{ $park ? 'Привязать к ТС' : 'Привязать к предложению' }}</button>
+            @endif
+            @if ($thread && $reply)
+                <form method="post" action="{{ $base }}/{{ $thread->id }}/link" class="letter-link-form" data-turbo-frame="_top" data-unhide-target="block" hidden>
+                    @csrf
+                    @if ($park)
+                        <div class="min-w-0 flex-1"><x-ui.combobox name="vehicle_id" label="Транспортное средство" url="/reference/cars" :value="$thread->vehicle_id" :text="$thread->vehicle?->titleWithYear()"/></div>
+                    @else
+                        <x-ui.field name="number" label="Номер предложения" :value="$thread->offer?->number" span="flex-1"/>
+                    @endif
+                    <x-ui.button size="sm">Привязать</x-ui.button>
+                    @if ($car)<x-ui.button variant="ghost" size="sm" name="{{ $park ? 'vehicle_id' : 'number' }}" value="">Отвязать</x-ui.button>@endif
+                </form>
+            @endif
         @endunless
         <div class="letter-text">
             @if ($ours && $m->send_state && $m->send_state !== SendState::Sent)
-                <div class="mb-2 flex flex-wrap items-center gap-2">
-                    <span class="chip {{ $m->send_state === SendState::Failed ? 'bg-danger-soft text-danger' : 'bg-urgent-soft text-urgent' }}">{{ $m->send_state?->label() }}</span>
+                <div class="mb-3 flex flex-wrap items-center gap-2">
+                    <span class="{{ $m->send_state === SendState::Failed ? 'text-danger' : 'text-urgent' }} font-medium">{{ $m->send_state->label() }}</span>
                     @if ($m->send_error)<span class="text-sm text-danger">{{ $m->send_error }}</span>@endif
-                    {{-- Не ушло — отправить снова прямо из окна писем (04.11.2026: в окне была только красная причина). --}}
+                    {{-- Не ушло — отправить снова прямо из письма (04.11.2026: в окне была только красная причина). --}}
                     @if ($m->send_state === SendState::Failed)<form method="post" action="{{ $base }}/messages/{{ $m->id }}/retry" data-turbo-frame="_top">@csrf<x-ui.button size="sm" variant="secondary">Отправить снова</x-ui.button></form>@endif
                 </div>
             @endif
             @if ($m->parse_state === ParseState::Failed)
-                <div class="mb-2 flex flex-wrap items-center gap-2"><span class="chip bg-danger-soft text-danger">Не разобралось</span><span class="text-sm text-ink-muted">{{ $m->parse_error }}</span></div>
+                <div class="mb-2 text-sm text-ink-muted"><span class="text-danger">Не разобралось</span> {{ $m->parse_error }}</div>
             @elseif ($m->parse_state === ParseState::Pending)
                 <div class="text-sm text-ink-muted">Разбирается…</div>
-            @elseif ($continuation)
-            @else
-            @if ($note = $m->forwardNote())
-                {{-- Примечание сотрудника над пересылкой — репликой, как заметка в истории. --}}
-                <div class="history-note mb-2"><div class="text-sm text-ink-muted">{{ \App\Mail\Chains\NodeTitle::forwarder($m) }}</div><div class="whitespace-pre-line break-words">{{ $note }}</div></div>
-            @endif
-            {{-- Тема над письмом и свои слова как прислали — с приветствием, цветом и жирным, без цитаты прежней переписки
-                 (16.11.2026, владелец: «у писем не хватает темы», «что красным — должно быть красным»; `BodyRenderer::own`).
-                 Песочница iframe грузится, только когда письмо раскрыто (`loading="lazy"`). --}}
-            @php
-                $own = app(\App\Mail\BodyRenderer::class);
-                $doc = $own->own($m, $base);
-            @endphp
-            @if ($doc)
-                <div data-controller="frame" class="letter-own overflow-hidden rounded-(--radius-m) {{ $own->isPlain($m) ? '' : 'bg-white' }}">
-                    <iframe sandbox="allow-same-origin allow-popups allow-popups-to-escape-sandbox" srcdoc="{{ $doc }}" title="Письмо" loading="lazy" class="block w-full" style="height:60px" data-frame-target="frame" data-action="load->frame#fit"></iframe>
-                </div>
-            @elseif ($text !== '')
-                <div class="whitespace-pre-line break-words">{{ $text }}</div>
-            @else
-                <div class="text-sm text-ink-muted">{{ $m->has_attachments ? 'Только вложения' : 'Без своих слов' }}</div>
-            @endif
-            @endif
-
-            @if ($files->isNotEmpty() && $m->filesFrozen())
-                {{-- Старое письмо: файлы не скачаны (Файлы из писем с), только имена; клик достаёт файл из ящика. --}}
-                <details class="mt-2">
-                    <summary class="letter-link">{{ $files->count() }} {{ \App\Support\Plural::of($files->count(), ['файл в ящике', 'файла в ящике', 'файлов в ящике']) }}</summary>
-                    <div class="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-sm">
-                        @foreach ($files as $file)<a href="{{ $base }}/attachments/{{ $file->id }}" target="_blank" class="truncate text-ink-muted hover:text-ink" data-doc="{{ \App\Support\Docs::type($file->mime, $file->filename) }}" data-doc-name="{{ \App\Support\Docs::label($file->filename) }}" title="{{ $file->filename }}">{{ $file->filename }} <span class="text-xs text-ink-dim">{{ $file->humanSize() }}</span></a>@endforeach
+            @elseif (! $continuation)
+                @if ($note = $m->forwardNote())
+                    {{-- Примечание сотрудника над пересылкой — репликой, как заметка в истории. --}}
+                    <div class="history-note mb-3"><div class="text-sm text-ink-muted">{{ NodeTitle::forwarder($m) }}</div><div class="whitespace-pre-line break-words">{{ $note }}</div></div>
+                @endif
+                {{-- Свои слова как прислали — с приветствием, цветом и жирным, без цитаты прежней переписки и пустых строк; подпись
+                     свёрнута. Песочница iframe грузится, только когда письмо раскрыто (`loading="lazy"`). --}}
+                @php $doc = app(\App\Mail\BodyRenderer::class)->own($m, $base, flat: true); @endphp
+                @if ($doc)
+                    <div data-controller="frame" class="letter-own overflow-hidden">
+                        <iframe sandbox="allow-same-origin allow-popups allow-popups-to-escape-sandbox" srcdoc="{{ $doc }}" title="Письмо" loading="lazy" class="block w-full" style="height:22px" data-frame-target="frame" data-action="load->frame#fit"></iframe>
                     </div>
-                </details>
-            @else
-            @if ($pictures->isNotEmpty())<x-mail.photo-strip :files="$pictures" :base="$base"/>@endif
-            @php
-                // Архив с записями — кадрами и документами внутри (`x-mail.archive`), а не строкой-файлом.
-                $archives = $documents->filter(fn ($f) => \App\Support\Docs::archive($f));
-                $documents = $documents->diff($archives);
-            @endphp
-            @foreach ($archives as $file)<x-mail.archive :file="$file" :entries="\App\Support\Docs::archive($file)" :base="$base"/>@endforeach
-            @if ($documents->isNotEmpty())
-                <div class="mt-3 flex flex-wrap gap-2">
-                    @foreach ($documents as $file)
-                        <a href="{{ $base }}/attachments/{{ $file->id }}" target="_blank" class="flex max-w-full items-center gap-2 rounded-(--radius-m) bg-surface-2 p-2 pr-3" data-doc="{{ \App\Support\Docs::type($file->mime, $file->filename) }}" data-doc-name="{{ \App\Support\Docs::label($file->filename) }}" title="{{ $file->filename }}">
-                            <x-ui.file-icon :name="$file->filename" :mime="$file->mime" :bytes="$file->size"/>
-                            <span class="min-w-0 truncate text-sm">{{ $file->filename }}</span>
-                        </a>
-                    @endforeach
-                </div>
+                @elseif ($text !== '')
+                    <div class="whitespace-pre-line break-words">{{ $text }}</div>
+                @else
+                    <div class="text-sm text-ink-muted">{{ $files->isNotEmpty() ? 'Только вложения' : 'Без своих слов' }}</div>
+                @endif
             @endif
+            <x-mail.letter-files :message="$m" :base="$base"/>
+            @if ($reply)
+                {{-- Ответ и пересылка — редактором здесь, под письмом; «Отмена» снова пустой фрейм. --}}
+                <turbo-frame id="reply-pane-{{ $m->id }}" class="mt-4 block empty:hidden" @if ($editor) src="{{ $editor }}" @endif></turbo-frame>
             @endif
-
-            <div data-controller="unhide">
-                <div class="letter-foot" @if ($replying) data-replying @endif>
-                    @if ($reply)<x-mail.reply-button :message="$m" :base="$base" :frame="'reply-'.$m->id"/>@endif
-                    {{-- Переписка ждёт ответа, а «Ответ не нужен» внизу ленты — у другой (окно писем ТС, несколько веток). --}}
-                    @if ($dismiss && \App\Mail\Threads::canAnswer(auth()->user()))<form method="post" action="{{ $base }}/{{ $m->thread_id }}/answered" data-turbo-frame="_top" class="contents">@csrf<button class="letter-link">Ответ не нужен</button></form>@endif
-                </div>
-            </div>
         </div>
     </details>
 </div>

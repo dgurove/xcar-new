@@ -1,55 +1,10 @@
-{{-- Окно ветки: тема, участники, ТС или предложение, лента писем (x-mail.chain) с одним «Ответить» внизу.
-     Привязка, архив, «Не прочитано» и в CRM ссылка на страницу ветки — в меню «···». Страницы ветки на стоянке нет. --}}
-@php $park = $base === '/mail'; $who = collect($thread->counterparts())->map(fn ($p) => $p['name'] ?: $p['email'])->take(3); $linked = $park ? $thread->vehicle : $thread->offer; $thread->loadMissing('candidate'); $menu = 'thread-menu-'.$thread->id;
-    $pick = \App\Mail\VendorPick::of(auth()->user(), $park ? \App\Mail\Scope::Park : \App\Mail\Scope::Offers, $base, $thread, $thread->messages, $thread->candidate); @endphp
+{{-- Окно ветки: одна цепочка писем (x-mail.chain), как везде (17.11.2026, владелец: «везде одинаково»). Тема — в заголовке окна,
+     привязка, вендор, архив, «Не прочитано», страница ветки — в «⋯» раскрытого письма, машина — ссылкой в его шапке. --}}
 <turbo-frame id="letters-frame" target="_top">
     {{-- Ответ действия из окна: тост здесь, страница под окном его не нарисует; letters-close — письмо после «Принять»,
          окно закрывается. --}}
     <x-ui.flash-stream/>
     @if (session('letters-close'))<turbo-stream action="letters-close"></turbo-stream>@endif
-    <div class="flex flex-col gap-4" data-controller="unhide">
-        <div>
-            <div class="flex items-center gap-2">
-                {{-- Тема — в заголовке окна (`Mail\Topic`, 17.11.2026); здесь только меню ветки справа. --}}
-                <span class="min-w-0 flex-1"></span>
-                <x-ui.more :id="$menu" class="shrink-0">
-                        <button type="button" class="menu-item w-full" role="menuitem" data-action="unhide#show">{{ $linked ? 'Перепривязать' : ($park ? 'Привязать к ТС' : 'Привязать к предложению') }}</button>
-                        {{-- Вендор письма — выбрать или сменить: письма с этого адреса теперь его (x-mail.vendor-sheet). --}}
-                        @if ($pick)<button type="button" class="menu-item w-full" role="menuitem" data-controller="emit" data-action="emit#send"
-                            data-emit-event-param="vendor-pick:open" data-emit-url-param="{{ $pick['url'] }}" data-emit-sender-param="{{ $pick['sender'] }}" data-emit-name-param="{{ $pick['name'] }}" data-emit-domain-param="{{ $pick['domain'] }}">{{ $thread->vendor ? 'Сменить вендора' : 'Выбрать вендора' }}</button>@endif
-                        <form method="post" action="{{ $base }}/{{ $thread->id }}/archive" data-turbo-frame="letters-frame" class="contents">@csrf<button class="menu-item w-full" role="menuitem">{{ $thread->archived_at ? 'Вернуть из архива' : 'В архив' }}</button></form>
-                        <form method="post" action="{{ $base }}/{{ $thread->id }}/unread" data-turbo-frame="_top" class="contents">@csrf<button class="menu-item w-full" role="menuitem">Не прочитано</button></form>
-                        @unless ($park)<a href="{{ $base }}/{{ $thread->id }}" class="menu-item" role="menuitem">Страница ветки</a>@endunless
-                </x-ui.more>
-            </div>
-            {{-- Участники и ящик — текстом, ТС и предложение — ссылками туда (лаймовым словом, не капсулой среди фактов). --}}
-            <div class="mt-2 flex flex-wrap items-center gap-1.5">
-                @foreach ($who as $name)<span class="fact">{{ $name }}</span>@endforeach
-                @if ($thread->vehicle)<a href="{{ \App\Support\Surface::Park->url('/cars/'.$thread->vehicle->id) }}" class="text-sm text-accent-text" @unless ($park) data-turbo="false" @endunless>{{ $thread->vehicle->titleWithYear() }}@if ($thread->vehicle->ref && $thread->vehicle->brand_id) <span class="nums text-ink-muted ml-1">{{ $thread->vehicle->ref }}</span>@endif</a>@endif
-                @if ($thread->offer)<a href="{{ $thread->offer->crmUrl() }}" class="text-sm text-accent-text" @if ($park) data-turbo="false" @endif>{{ $thread->offer->title() }} <span class="nums text-ink-muted">№ {{ $thread->offer->number }}</span></a>@endif
-                <span class="fact">{{ $thread->account->title }}</span>
-                @if ($thread->candidate && ! $linked)
-                    @if ($thread->candidate->state === \App\Mail\CandidateState::Rejected)<span class="fact">Кандидат в архиве</span>
-                    @elseif ($thread->candidate->state === \App\Mail\CandidateState::Closed)<span class="fact">Цепочка закрыта</span>
-                    @elseif ($park)<a href="/requests/new?candidate={{ $thread->candidate->id }}" class="chip" data-turbo-frame="_top">Завести ›</a>
-                    @else<form method="post" action="/offers/from-mail/{{ $thread->candidate->id }}/create" class="contents" data-turbo-frame="_top">@csrf<button class="chip">Завести ›</button></form>@endif
-                @elseif (! $linked)
-                    {{-- Одно действие — одно слово: «Завести» и у цепочки, и у письма, которому машину не нашли. --}}
-                    <form method="post" action="{{ $base }}/{{ $thread->id }}/candidate" class="contents" data-turbo-frame="_top">@csrf<button class="chip">Завести ›</button></form>
-                @endif
-            </div>
-            <form method="post" action="{{ $base }}/{{ $thread->id }}/link" class="mt-3 flex items-end gap-2" data-turbo-frame="letters-frame" data-unhide-target="block" @unless ($errors->any()) hidden @endunless>
-                @csrf
-                @if ($park)
-                    <div class="min-w-0 flex-1"><x-ui.combobox name="vehicle_id" label="Транспортное средство" url="/reference/cars" :value="$thread->vehicle_id" :text="$thread->vehicle?->titleWithYear()"/></div>
-                @else
-                    <x-ui.field name="number" label="Номер предложения" :value="$thread->offer?->number" span="flex-1"/>
-                @endif
-                <x-ui.button size="sm">Привязать</x-ui.button>
-                @if ($linked)<x-ui.button variant="ghost" size="sm" name="{{ $park ? 'vehicle_id' : 'number' }}" value="">Отвязать</x-ui.button>@endif
-            </form>
-            @if ($errors->any())<p class="field-error mt-2">{{ $errors->first() }}</p>@endif
-        </div>
-        <x-mail.chain :messages="$thread->messages" :base="$base" :candidate="$thread->candidate" :subjects="false" :focus="(int) request('at') ?: true" reply/>
-    </div>
+    @if ($errors->any())<p class="field-error mb-3">{{ $errors->first() }}</p>@endif
+    <x-mail.chain :messages="$thread->messages" :base="$base" :candidate="$thread->candidate" :focus="(int) request('at') ?: true" reply/>
 </turbo-frame>

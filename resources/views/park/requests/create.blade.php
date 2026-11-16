@@ -151,7 +151,7 @@
         @if ($letters)
             <div class="flex min-w-0 flex-col gap-4 @4xl:col-start-1 @4xl:row-start-1">
                 <x-ui.card title="Письма" :count="$messages->count()">
-                    <x-mail.chain :messages="$messages" :candidate="$candidate" :focus="false" fold reply/>
+                    <x-mail.chain :messages="$messages" :candidate="$candidate" :focus="false" :car="false" fold reply/>
                 </x-ui.card>
             </div>
         @endif

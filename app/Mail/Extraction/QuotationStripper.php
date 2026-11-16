@@ -5,7 +5,7 @@ namespace App\Mail\Extraction;
 /** Письма приходят пересылкой: настоящий отправитель и тема сидят в теле за «От:» и «Тема:». */
 final class QuotationStripper
 {
-    private const FORWARD_MARK = '-+\s*(?:Пересылаемое сообщение|Forwarded message|Begin forwarded message)\s*-+';
+    public const FORWARD_MARK = '-+\s*(?:Пересылаемое сообщение|Forwarded message|Begin forwarded message)\s*-+';
 
     public static function strip(?string $body): string
     {
@@ -86,6 +86,35 @@ final class QuotationStripper
 
         return null;
     }
+
+    /** Имя настоящего отправителя пересылки («От: Марина Кардышева <…>») — подпись письма узнаётся по нему. */
+    public static function forwardedName(?string $body): ?string
+    {
+        $text = self::forwardedBody($body);
+        if ($text === null || ! preg_match('/^\s*(?:От|От кого|From)\s*:\s*"?([^"<>\n@]+?)"?\s*</umi', $text, $m)) {
+            return null;
+        }
+
+        return trim($m[1]) ?: null;
+    }
+
+    /** Письмо пересылки без шапки «От / Кому / Копия / Дата / Тема» — для показа. */
+    public static function forwardedLetter(?string $body): ?string
+    {
+        $text = self::forwardedBody($body);
+        if ($text === null) {
+            return null;
+        }
+        $lines = preg_split('/\R/u', $text) ?: [];
+        while ($lines && (preg_match(self::HEADER_LINE, $lines[0]) || trim($lines[0]) === '')) {
+            array_shift($lines);
+        }
+
+        return trim(implode("\n", $lines));
+    }
+
+    /** Строка шапки пересылки или цитаты. */
+    public const HEADER_LINE = '/^\s*(?:От|От кого|Кому|Копия|Дата|Тема|Отправлено|From|To|Cc|Date|Subject|Sent)\s*:/iu';
 
     public static function forwardedSubject(?string $body): ?string
     {

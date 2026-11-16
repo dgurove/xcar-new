@@ -27,8 +27,13 @@ final class BodyRenderer
     public function own(Message $message, string $base = '/work/mail', bool $flat = false): ?string
     {
         $html = trim((string) $message->html_body);
+        // Письмо поставщика, пересланное сотрудником с личного ящика (17.11.2026): показываем само письмо — без шапки пересылки
+        // «От / Кому / Дата / Тема» (кто переслал — в конверте, его примечание — над письмом) и без полосы цитаты; подпись — его.
+        $forward = $message->isForwardedByStaff();
+        $name = $forward ? (Extraction\QuotationStripper::forwardedName($message->text_body) ?? $message->from_name) : $message->from_name;
         if ($html === '') {
-            [$text, $sign] = Extraction\Signature::split(Extraction\QuotationStripper::ownText($message->text_body), $message->from_name);
+            $source = $forward ? Extraction\QuotationStripper::forwardedLetter($message->text_body) : null;
+            [$text, $sign] = Extraction\Signature::split($source ?? Extraction\QuotationStripper::ownText($message->text_body), $name);
             if ($text === '') {
                 return null;
             }
@@ -39,10 +44,11 @@ final class BodyRenderer
             return $this->wrap($message, '<pre class="plain">'.e($lines($text)).'</pre>'
                 .($sign !== '' ? '<details class="sig"><summary>Подпись</summary><pre class="plain sig-body">'.e($sign).'</pre></details>' : ''), false, $base, $flat);
         }
-        if (! $message->isForwardedByStaff()) {
-            $html = $this->withoutQuote($html) ?? $html;
+        if ($forward) {
+            $html = self::unforwarded($html) ?? $html;
         }
-        $html = $this->tidy($html, $message->from_name) ?? $html;
+        $html = $this->withoutQuote($html) ?? $html;
+        $html = $this->tidy($html, $name) ?? $html;
 
         return self::blank($html) ? null : $this->wrap($message, $html, false, $base, $flat);
     }
@@ -77,6 +83,79 @@ final class BodyRenderer
         }
 
         return self::save($dom);
+    }
+
+    /**
+     * Пересылка: всё до пометки «-------- Пересылаемое сообщение --------» (примечание сотрудника, пустые строки), сама пометка и
+     * шапка строками до первого блока письма — вон; письмо в `<blockquote>` (mail.ru) — без цитаты; дальше, как у любого письма,
+     * без цитаты прежней переписки (`withoutQuote`). Пометки нет — как есть.
+     */
+    private static function unforwarded(string $html): ?string
+    {
+        $dom = new \DOMDocument;
+        $errors = libxml_use_internal_errors(true);
+        $loaded = $dom->loadHTML('<?xml encoding="utf-8"?>'.self::ascii($html), LIBXML_HTML_NODEFDTD | LIBXML_NONET);
+        libxml_clear_errors();
+        libxml_use_internal_errors($errors);
+        $body = $dom->getElementsByTagName('body')->item(0);
+
+        // Письма за шапкой не нашлось — как прислали, с шапкой.
+        return $loaded && $body instanceof \DOMElement && self::unforward($dom, $body) ? self::save($dom) : null;
+    }
+
+    private static function unforward(\DOMDocument $dom, \DOMElement $body): bool
+    {
+        $mark = null;
+        foreach ((new \DOMXPath($dom))->query('//body//text()') as $t) {
+            if (preg_match('/'.Extraction\QuotationStripper::FORWARD_MARK.'/iu', (string) $t->nodeValue)) {
+                $mark = $t;
+                break;
+            }
+        }
+        if (! $mark) {
+            return false;
+        }
+        for ($n = $mark; $n && $n !== $body; $n = $n->parentNode) {
+            while ($n->previousSibling) {
+                $n->parentNode->removeChild($n->previousSibling);
+            }
+        }
+        $blocks = ['div', 'p', 'blockquote', 'table', 'ul', 'ol', 'section', 'article', 'center', 'h1', 'h2', 'h3', 'h4', 'pre'];
+        $blank = fn (\DOMNode $x) => trim(str_replace("\u{00A0}", ' ', $x->textContent)) === ''
+            && ! ($x instanceof \DOMElement && ($x->localName === 'img' || $x->getElementsByTagName('img')->length));
+        for ($n = $mark; $n && $n !== $body;) {
+            $parent = $n->parentNode;
+            $next = $n->nextSibling;
+            $parent->removeChild($n);
+            for ($s = $next; $s; $s = $next) {
+                $next = $s->nextSibling;
+                if ($s instanceof \DOMElement && in_array(strtolower($s->localName), $blocks, true)
+                    && ! $blank($s) && ! preg_match(Extraction\QuotationStripper::HEADER_LINE, $s->textContent)) {
+                    // Цитата письма — бывает в обёртке (`composeWebView_previouse_content` почты mail.ru на телефоне).
+                    $q = $s;
+                    while (strtolower($q->localName) !== 'blockquote') {
+                        $kids = array_values(array_filter(iterator_to_array($q->childNodes), fn ($c) => ! $blank($c)));
+                        if (count($kids) !== 1 || ! $kids[0] instanceof \DOMElement) {
+                            break;
+                        }
+                        $q = $kids[0];
+                    }
+                    if (strtolower($q->localName) === 'blockquote') {
+                        while ($q->firstChild) {
+                            $q->parentNode->insertBefore($q->firstChild, $q);
+                        }
+                        $q->parentNode->removeChild($q);
+                    }
+
+                    return true;
+                }
+                $parent->removeChild($s);
+            }
+            // Шапка кончилась вместе со своим блоком — письмо дальше, у родителя.
+            $n = $parent;
+        }
+
+        return false;
     }
 
     /** Без пустых строк: пустые блоки (без текста, картинок и таблиц) — вон, `<br>` подряд — один, у краёв блока — ни одного. */

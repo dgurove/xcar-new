@@ -1,24 +1,25 @@
-{{-- Лента писем о ТС: по времени сверху вниз, на линии слева, как история посылки. Узел — письмо (x-mail.letter):
-     на линии кружок отправителя (у «ч.2» и свёрнутых — точка), этап и письмо без ответа видны по заголовку; автоответы и
-     бухгалтерия подряд свёрнуты в один узел «3 служебных». Строк-тем нет: общая тема (`Mail\Topic`) — в заголовке окна
-     (с 17.11.2026; `subjects` больше ничего не меняет). Раскрыто одно письмо — в фокусе (focus: id письма, иначе первое непрочитанное, иначе последнее), к нему и
-     прокрутка; нажатие раскрывает другое, прежнее сворачивается, с анимацией (`chain_controller`, 13.11.2026, начальник: с
-     телефона письма не раскрывались, «раскрывалось одно, остальные сворачивались»). reply — один «Ответить {кому}» внизу,
-     редактор во фрейме reply на месте кнопки. candidate — этапы для заголовков узлов.
-     «Ч.2» того же письма (те же слова от того же адреса в сутки) — узел «Ещё файлы к письму» без текста.
-     fold — разбор письма: раскрыты только письмо-заявка и то, что ждёт ответа, прочие подряд идущие письма свёрнуты
-     в узел «Ещё N писем» на своём месте в ленте.
-     newest — от новых к старым, closed — все свёрнуты (переписка по машине под письмом справа во «Входящих», 17.11.2026). --}}
-@props(['messages', 'base' => '/mail', 'candidate' => null, 'reply' => false, 'subjects' => true, 'focus' => true, 'replyOpen' => false, 'replyText' => null, 'fold' => false, 'newest' => false, 'closed' => false])
+{{-- Цепочка писем — одна на все места (17.11.2026, владелец: «объединить в одну цепочку», «везде одинаково»): справа во
+     «Входящих», в окне писем предложения, сделки, ТС, ветки, цепочки «Из писем», в разборе письма. Узел — письмо
+     (x-mail.letter) на линии с кружком отправителя (у «ч.2» и свёрнутых пачек — точка); этап и письмо без ответа видны по
+     заголовку; автоответы и бухгалтерия подряд свёрнуты в один узел «3 служебных». От новых к старым (newest, по умолчанию).
+     Раскрыто одно письмо в полном виде — в фокусе (focus: id письма, иначе первое непрочитанное, иначе самое новое), к нему
+     прокрутка; нажатие раскрывает другое, прежнее сворачивается в строку (`chain_controller`). Строк-тем нет: общая тема
+     (`Mail\Topic`) — в заголовке окна. Нижнего ряда «Ответить / Показать менеджеру» нет — значки и «⋯» у самого письма;
+     reply-open — редактор сразу открыт у письма, на которое отвечаем (с готовым текстом reply-text). candidate — этапы для
+     заголовков. «Ч.2» того же письма — узел «Ещё файлы к письму» без текста. fold — разбор письма: раскрыты письмо-заявка и
+     то, что ждёт ответа, прочие подряд свёрнуты в «Ещё N писем». closed — все свёрнуты. context — pane или window
+     (x-mail.letter-menu). --}}
+@props(['messages', 'base' => '/mail', 'candidate' => null, 'reply' => false, 'subjects' => false, 'focus' => true, 'replyOpen' => false, 'replyText' => null, 'fold' => false, 'newest' => true, 'closed' => false, 'context' => 'window', 'car' => true])
 @php
     use App\Mail\Chains\NodeTitle;
     use App\Mail\Extraction\Intent;
     use App\Mail\Message;
     $messages = collect($messages)->sortBy(fn (Message $m) => $m->date_at?->getTimestamp() ?? 0)->values();
-    // Адреса «Кому» в конверте раскрытого письма (x-mail.letter) — одним запросом на ленту.
-    \Illuminate\Database\Eloquent\Collection::make($messages->all())->loadMissing('addresses');
+    // Шапка раскрытого письма (x-mail.letter): адреса, вложения, автор, машина ветки — одним запросом на ленту.
+    \Illuminate\Database\Eloquent\Collection::make($messages->all())->loadMissing(['addresses', 'attachments', 'author', 'account',
+        'thread.account', 'thread.offer.vendor', 'thread.vehicle.vendor', 'thread.candidate', 'thread.vendor']);
     $lastId = $messages->last()?->id;
-    // focus — id письма (строка «Из писем» открывает окно на нём) или true: первое непрочитанное, иначе последнее.
+    // focus — id письма (строка списка, «Из писем» открывает окно на нём) или true: первое непрочитанное, иначе самое новое.
     $focusId = is_numeric($focus) && $messages->contains('id', (int) $focus) ? (int) $focus
         : ($focus ? ($messages->first(fn (Message $m) => ! $m->is_seen && ! $m->isOurs())?->id ?? $lastId) : null);
     $staged = collect($candidate?->stages ?? [])->pluck('message_id')->all();
@@ -56,14 +57,28 @@
     // Открыли на письме (`?at=`, «Ответить» из «Ждут ответа» на парковке, 16.11.2026: по Skoda Rapid ответ из блока ч.1 уходил в
     // ветку ч.3 — последнего письма машины) — отвечаем на него, а не на самое новое.
     $atLetter = is_int($focus) ? $messages->first(fn (Message $m) => $m->id === $focus && ! $own($m)) : null;
-    $replyTo = $reply ? ($atLetter ?? $pool->last(fn (Message $m) => ! $own($m)) ?? $pool->last()) : null;
+    $replyTo = $reply && $replyOpen ? ($atLetter ?? $pool->last(fn (Message $m) => ! $own($m)) ?? $pool->last()) : null;
+    // Окно открыли сразу на ответ — редактор у этого письма открыт, оно раскрыто (готовый текст — только в ответ, не в пересылку).
+    $editor = null;
+    if ($replyTo) {
+        $focusId = $replyTo->id;
+        $bounce = $replyTo->intent === Intent::Bounce->value;
+        $editor = $base.'/'.$replyTo->thread_id.'/reply/'.$replyTo->id.($bounce ? '?mode=forward' : (filled($replyText) ? '?'.http_build_query(['text' => $replyText]) : ''));
+    }
 @endphp
-<div {{ $attributes->merge(['class' => 'chain']) }} data-controller="chain" @if ($fold) data-chain-many-value="true" @endif>
+<div {{ $attributes->merge(['class' => 'chain chain--full']) }} data-controller="chain" @if ($fold) data-chain-many-value="true" @endif>
     {{-- Общая тема переписки — в заголовок окна писем вместо «Письма» (`window_controller#tools`); строк-тем внутри ленты нет
          (17.11.2026, владелец). --}}
     @if ($windowTitle = \App\Mail\Topic::of($messages))<template data-window-title>{{ $windowTitle }}</template>@endif
+    @php $prevWho = null; @endphp
     @forelse ($nodes as $node)
-        @php $first = is_array($node) ? $node['items'][0] : $node; @endphp
+        @php
+            $first = is_array($node) ? $node['items'][0] : $node;
+            // Подряд от того же отправителя — точка вместо кружка (как в строках писем сделки); пачка служебных цепь рвёт.
+            $who = is_array($node) ? null : NodeTitle::email($node);
+            $repeat = $who !== null && $who === $prevWho;
+            $prevWho = $who;
+        @endphp
         @if (is_array($node))
             <div class="letter letter--service">
                 <span class="letter-dot"></span>
@@ -72,22 +87,19 @@
                     <summary class="letter-head"><span class="letter-who font-normal text-ink-muted">{{ $node['service'] ? $n.' '.\App\Support\Plural::of($n, ['служебное', 'служебных', 'служебных']) : 'Ещё '.$n.' '.\App\Support\Plural::of($n, ['письмо', 'письма', 'писем']) }}</span><span class="letter-when">{{ \App\Support\Ago::html(end($node['items'])->date_at, words: false) }}</span></summary>
                     <div class="letter-text">
                         @foreach ($node['items'] as $m)
-                            <x-mail.letter :common="$windowTitle" :message="$m" :replying="$m->id === $replyTo?->id" :base="$base" :title="NodeTitle::for($m, $candidate)" :titled="NodeTitle::titled($m, $candidate)" :kind="$own($m) ? 'ours' : ''" :reply="$reply"/>
+                            <x-mail.letter :common="$windowTitle" :message="$m" :base="$base" :context="$context" :car="$car" :title="NodeTitle::for($m, $candidate)" :titled="NodeTitle::titled($m, $candidate)" :kind="$own($m) ? 'ours' : ''" :reply="$reply" :editor="$m->id === $replyTo?->id ? $editor : null"/>
                         @endforeach
                     </div>
                 </details>
             </div>
         @else
             @if (isset($continued[$node->id]))
-                <x-mail.letter :common="$windowTitle" :message="$node" :replying="$node->id === $replyTo?->id" :base="$base" title="Ещё файлы к письму" :kind="$own($node) ? 'ours' : ''" :open="! $closed && $node->id === ($focusId ?? $lastId)" :focus="$node->id === $focusId" :reply="$reply" continuation/>
+                <x-mail.letter :common="$windowTitle" :message="$node" :base="$base" :context="$context" :car="$car" title="Ещё файлы к письму" :kind="$own($node) ? 'ours' : ''" :open="! $closed && $node->id === ($focusId ?? $lastId)" :focus="$node->id === $focusId" :reply="$reply" continuation/>
             @else
-                <x-mail.letter :common="$windowTitle" :message="$node" :replying="$node->id === $replyTo?->id" :base="$base" :title="NodeTitle::for($node, $candidate)" :titled="NodeTitle::titled($node, $candidate)" :kind="$kind($node)" :dismiss="$reply && in_array($node->id, $asks, true) && $node->thread_id !== $replyTo?->thread_id" :open="! $closed && ($fold ? (! $node->is_seen || $node->id === $focusId || in_array($node->id, $keep, true)) : $node->id === ($focusId ?? $lastId))" :focus="$node->id === $focusId" :reply="$reply"/>
+                <x-mail.letter :common="$windowTitle" :message="$node" :base="$base" :context="$context" :car="$car" :editor="$node->id === $replyTo?->id ? $editor : null" :title="NodeTitle::for($node, $candidate)" :titled="NodeTitle::titled($node, $candidate)" :kind="$kind($node)" :repeat="$repeat" :dismiss="$reply && in_array($node->id, $asks, true)" :open="! $closed && ($fold ? (! $node->is_seen || $node->id === $focusId || in_array($node->id, $keep, true)) : $node->id === ($focusId ?? $lastId))" :focus="$node->id === $focusId" :reply="$reply"/>
             @endif
         @endif
     @empty
         <x-ui.empty>Писем нет</x-ui.empty>
     @endforelse
-    @if ($replyTo)
-        <div class="chain-reply"><x-mail.reply-button :message="$replyTo" :base="$base" :open="$replyOpen" :text="$replyText"/></div>
-    @endif
 </div>
