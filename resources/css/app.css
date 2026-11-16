@@ -3025,9 +3025,10 @@ html.kb-open { --home-gap: 0px; }
   .letter-head::-webkit-details-marker { display: none; }
   .letter-who { grid-column: 1; grid-row: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   /* Полужирным — только непрочитанное: имя и заголовок; прочитанное письмо обычным начертанием. */
-  /* Имя отправителя — везде одно: чёрным обычным — и в строке, и в раскрытом письме, и у нашего письма (17.11.2026,
-     владелец: «тремя разными способами», полужирное — «слишком жирно»). Непрочитанное говорят слова строки — они полужирные. */
-  .letter-who { font-weight: 400; color: var(--color-ink); }
+  /* Имя отправителя — везде одно: полужирное; непрочитанное — чёрным, прочитанное — серым (17.11.2026, владелец). Так в строке,
+     в раскрытом письме и в списке «Входящих». */
+  .letter-who { font-weight: 500; color: var(--color-ink-muted); }
+  .letter--unread .letter-who { color: var(--color-ink); }
   .letter-when { grid-column: 2; grid-row: 1; font-size: var(--text-sm); color: var(--color-ink-dim); white-space: nowrap; }
   .letter-title { grid-column: 1; grid-row: 2; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--color-ink-muted); }
   /* Скрепка с числом: базовая линия — число, а не низ иконки (у inline-flex её даёт первый элемент) — иначе «40» стояло
@@ -6003,14 +6004,15 @@ dialog.lightbox:not(.lb-one) .lb-pill--bottom { bottom: calc(var(--lb-strip-bott
   @media (hover: hover) { .inbox-row:hover { background: var(--color-hover); } }
   .inbox-row[aria-selected="true"], .inbox-row[aria-selected="true"]:hover { background: var(--color-surface-3); box-shadow: inset 4px 0 0 var(--color-accent); }
   .inbox-l1 { display: flex; align-items: center; gap: .5rem; min-width: 0; font-size: var(--text-base); line-height: 1.25rem; }
-  .inbox-who { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .inbox-who { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; color: var(--color-ink-muted); }
+  .inbox-row.is-unread .inbox-who { color: var(--color-ink); }
   .inbox-to { color: var(--color-ink-muted); }
   .inbox-clip { flex: none; color: var(--color-ink-muted); }
   .inbox-unsent, .inbox-box { flex: none; font-size: var(--text-sm); }
   .inbox-box { color: var(--color-ink-muted); }
   .inbox-when { flex: none; font-size: var(--text-sm); color: var(--color-ink-muted); }
   .inbox-subj { display: block; margin-top: .125rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--text-base); line-height: 1.25rem; }
-  /* Имя — как в цепочке, обычным; непрочитанное — полужирная вторая строка и время. */
+  /* Имя — как в цепочке: полужирное, непрочитанное — чёрным; у непрочитанного ещё полужирные вторая строка и время. */
   .inbox-row.is-unread .inbox-subj { font-weight: 600; }
   .inbox-row.is-unread .inbox-when { color: var(--color-ink); font-weight: 600; }
   /* Три строки — один кегль и одна высота строки (17.11.2026, владелец: «межстрочные и размеры одинаковые должны быть»). */
