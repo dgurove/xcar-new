@@ -40,13 +40,13 @@ final class Ago
         return $word === '' ? $text : "{$word} {$text}";
     }
 
-    /** Сколько прошло с момента — слитно, как просил владелец: «2д 14ч», «3ч 5мин», «12мин». */
-    /** «просрочено 2 д 4 ч» — сколько прошло после срока, тем же видом, что `left` («осталось 1 д 5 ч»). */
+    /** «просрочено 2д 4ч» — сколько прошло после срока, тем же видом, что `left` («осталось 1д 5ч»). */
     public static function overdue(Carbon $until): string
     {
         return 'просрочено '.self::span(max(60, (int) floor($until->diffInSeconds(now(), false))));
     }
 
+    /** Сколько прошло с момента — слитно, как просил владелец: «2д 14ч», «3ч 5мин», «12мин». */
     public static function since(Carbon $from): string
     {
         return self::span(max(60, (int) floor($from->diffInSeconds(now(), false))));

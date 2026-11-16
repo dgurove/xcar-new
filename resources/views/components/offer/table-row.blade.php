@@ -58,6 +58,9 @@
 @php
     $rate = $rate && ! ($has('state') && request()->query('preset') === 'all');
     $endCol = $floorSide ? 'floor' : ($table->has('price') ? 'price' : null);
+    // «Все» (17.11.2026, владелец: «справа лучше не цену, а дату и время обязывающего с иконкой и сколько дней и часов она уже в
+    // этой вкладке»): наверху срок обязывающего, внизу — сколько во вкладке (`OfferTabs::sinceSql`, столбец «Во вкладке»).
+    $since = $has('since') && $offer->tab_since ? \Illuminate\Support\Carbon::parse($offer->tab_since) : null;
     ob_start();
 @endphp
         @if ($busy && $rate)
@@ -75,7 +78,7 @@
     $main = ob_get_clean();
     ob_start();
 @endphp
-@if ($endCol === 'price')<x-offer.row-meta :offer="$offer" :when="$when" :binding="! $has('binding')"/>@if ($admin && $offer->reprice_pending)<span class="text-sm text-urgent">переоценка</span>@endif{!! $main !!}@elseif ($endCol === 'floor')<x-offer.row-meta :offer="$offer" :when="$when" :binding="! $has('binding')"/>@endif
+@if ($since)<x-offer.row-meta :offer="$offer" always/>@elseif ($endCol === 'price')<x-offer.row-meta :offer="$offer" :when="$when" :binding="! $has('binding')"/>@if ($admin && $offer->reprice_pending)<span class="text-sm text-urgent">переоценка</span>@endif{!! $main !!}@elseif ($endCol === 'floor')<x-offer.row-meta :offer="$offer" :when="$when" :binding="! $has('binding')"/>@endif
 @php
     $endTop = ob_get_clean();
     // В строке названия копия лежит внутри ссылки строки — ссылок в ссылке не бывает (чипы оценок и корректировок ведут на ту же
@@ -83,7 +86,8 @@
     $endTopLine = preg_replace(['/<a\s[^>]*?class="/', '/<\/a>/'], ['<span class="', '</span>'], $endTop);
     ob_start();
 @endphp
-@if ($endCol === 'price')
+@if ($since)<span class="nums text-ink-muted" title="Во вкладке с {{ $since->format('d.m.Y H:i') }}">{{ \App\Support\Ago::since($since) }}</span>
+@elseif ($endCol === 'price')
     @if ($admin && ! $busy && ($margin = $offer->marginMark()))<x-offer.margin :m="$margin"/>@endif
     @if ($count)<span class="nums {{ $gallery ? 'text-accent-text' : 'text-urgent' }}">{{ $countWord }}</span>
     @elseif ($offer->floor_price && $has('floor') && ! ($correcting && $waits))<span @class(['cell-main' => $unpriced]) @if ($busy) data-arrive-count @endif>{{ \App\Support\Money::nums($offer->floor_price) }}</span>@endif
@@ -201,6 +205,10 @@
             <span @class(['nums', 'text-danger' => in_array($blevel, ['panic', 'over', 'deal'], true), 'text-urgent' => $blevel === 'undecided'])>{{ $bat->format($bat->isCurrentYear() ? 'd.m' : 'd.m.Y') }}</span>
         @endif
     </td>
+        @break
+        @case('since')
+    {{-- Сколько во вкладке («Все», 17.11.2026): «6д 5ч», с какого момента — подсказкой. --}}
+    <td class="{{ $col->classes() }}">@if ($since)<span title="Во вкладке с {{ $since->format('d.m.Y H:i') }}">{{ \App\Support\Ago::since($since) }}</span>@endif</td>
         @break
         @case('sold')
         @case('paid')

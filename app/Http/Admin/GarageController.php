@@ -51,7 +51,7 @@ class GarageController
         // Фильтры (16.11.2026, владелец: «фильтры хорошие»): этап сделки (группы вкладки), менеджер, этап гаража, кто платит
         // поставщику, вендор.
         $facets = Facets::for($request, 'crm-garage',
-            Facet::column('tab', 'Этап', ['этап', 'этапа', 'этапов'], OfferTabs::sql('garage_cars.offer_id'))->natural()
+            Facet::column('tab', 'Состояние', ['состояние', 'состояния', 'состояний'], OfferTabs::sql('garage_cars.offer_id'))->natural()
                 ->labels(fn (array $keys) => collect([...OfferTabs::keys(), OfferTabs::OTHER])->filter(fn ($k) => in_array($k, $keys, true))
                     ->mapWithKeys(fn ($k) => [$k => new Option($k, self::tabLabel($k))])->all()),
             Common::manager('garage_cars.manager_id')->none('Взяли под себя'),

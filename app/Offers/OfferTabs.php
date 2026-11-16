@@ -3,6 +3,7 @@
 namespace App\Offers;
 
 use App\Http\Admin\OfferController;
+use App\Workflow\Track;
 use Illuminate\Support\Facades\Cache;
 
 /**
@@ -49,6 +50,12 @@ final class OfferTabs
         return self::map()[$offer->id] ?? self::OTHER;
     }
 
+    /** Номера предложений, что раскладка кладёт в эти вкладки. @param list<string> $keys @return list<int> */
+    public static function ids(array $keys): array
+    {
+        return array_keys(array_filter(self::map(), fn ($key) => in_array($key, $keys, true)));
+    }
+
     public static function label(string $key): string
     {
         return OfferController::PRESETS[$key] ?? 'Прочее';
@@ -65,6 +72,21 @@ final class OfferTabs
             ->map(fn ($k) => "when {$column} in (".implode(',', $by[$k]).") then '{$k}'")->implode(' ');
 
         return $cases === '' ? "'".self::OTHER."'" : "(case {$cases} else '".self::OTHER."' end)";
+    }
+
+    /**
+     * С какого момента машина в своей вкладке — выражением SQL по `offers` (17.11.2026, владелец: «сколько дней и часов она уже в
+     * этой вкладке»): этап сделки — вход в блок шага продажи (вкладка сделки — блок, `DealTabs::BLOCKS`), гараж после сделки —
+     * вход в этап гаража, «Есть подтверждения» — первое живое подтверждение, остальное — `tab_at` (`Offer::tabKeyOf`).
+     */
+    public static function sinceSql(): string
+    {
+        $deal = "(select coalesce(p.block_entered_at, p.entered_at) from offer_positions p where p.offer_id = offers.id and p.track = '".Track::Sale->value."' limit 1)";
+        $whens = collect(array_keys(DealTabs::TABS))->map(fn ($k) => "when '{$k}' then {$deal}")->implode(' ');
+        $garage = '(select coalesce(g.stage_at, g.taken_at) from garage_cars g where g.offer_id = offers.id limit 1)';
+        $bids = "(select min(b.created_at) from bids b where b.offer_id = offers.id and b.state = '".BidState::Active->value."')";
+
+        return 'coalesce((case '.self::sql()." {$whens} when 'garage' then {$garage} when 'bids' then {$bids} end), offers.tab_at, offers.created_at)";
     }
 
     /** Порядок вкладки по колесу выражением SQL: 0, 1, 2… «Прочее» — последним. */

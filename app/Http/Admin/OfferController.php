@@ -118,6 +118,9 @@ class OfferController
      */
     public const SECTIONS = ['purchases' => 'Закупка', 'nofloor' => 'Черновик', 'gallery' => 'Галерея', 'slots' => 'Предложение', 'reprice' => 'Сделка', 'garage' => 'Гараж', 'archive' => 'Архив'];
 
+    /** Вкладки, машин которых во «Все» нет (17.11.2026, владелец): работа модератора и законченное. */
+    public const ALL_HIDDEN = ['nofloor', 'finished'];
+
     /** Вкладки, чьи строки рисует свой контроллер: сделки, гараж, галерея, закупки. */
     public static function ownTab(?string $preset): bool
     {
@@ -252,7 +255,7 @@ class OfferController
             // Срок обязывающего — без столбца (19.10.2026, владелец: «засрали интерфейс»): только в окошке сортировки.
             'binding' => $cols !== null,
             'closing' => in_array($preset, self::OPEN, true),
-            'tab' => in_array($preset, self::BY_TAB, true),
+            'tab' => in_array($preset, self::BY_TAB, true) || $preset === 'all',
             // Во вкладках шагов время, порядок и аватар — про приход во вкладку (18.10.2026, начальник: сортировал по
             // заведению, а в столбце время прихода — «непонятно, что значит»). Запомненная «Дата заведения» тут — умолчание.
             'created' => ! in_array($preset, self::BY_TAB, true),
@@ -410,7 +413,7 @@ class OfferController
             // вкладка (та же раскладка, что группы, `OfferTabs`) и менеджер, кто держит машину (сделка по текущим условиям, иначе
             // гараж); дальше вендор, город, тип. «Заведено» здесь нет — даты заведения во «Все» нет и столбцом.
             'all' => [
-                Facet::column('tab', 'Вкладка', ['вкладка', 'вкладки', 'вкладок'], OfferTabs::sql())->natural()
+                Facet::column('tab', 'Состояние', ['состояние', 'состояния', 'состояний'], OfferTabs::sql())->natural()
                     ->labels(fn (array $keys) => collect([...OfferTabs::keys(), OfferTabs::OTHER])->filter(fn ($k) => in_array($k, $keys, true))
                         ->mapWithKeys(fn ($k) => [$k => new Option($k, OfferTabs::label($k))])->all()),
                 Common::manager(self::HOLDER_SQL)->none('Без менеджера'),
@@ -448,6 +451,10 @@ class OfferController
         Binding::select($q);
         // Горит ли срок обязывающего — для первых групп вкладки (`HOT`): 2 — сгорел, 1 — горит, 0 — нет.
         $q->selectRaw(Binding::levelSql().' as binding_soon');
+        // «Все» — с какого момента машина в своей вкладке (17.11.2026, `OfferTabs::sinceSql`): «6д 5ч» справа в строке и столбцом.
+        if ($preset === 'all' && ! $searching) {
+            $q->selectRaw(OfferTabs::sinceSql().' as tab_since');
+        }
         // Ждущая переоценка закупочной (28.10.2026) — меткой у цены и чипом.
         if ($admin) {
             $q->withExists(['reprices as reprice_pending' => fn ($r) => $r->where('state', Reprice::PENDING)]);
@@ -547,8 +554,11 @@ class OfferController
             // место): приём кончился без подтверждений — решить, вернуть в продажу или в архив. Список держат пустым.
             'done' => $q->where('offers.state', OfferState::Draft)->whereNull('slot_at')->whereNotNull('offers.intake_closed_at')->where('floor_price', '>', 0),
             'bids' => $q->where('offers.state', OfferState::Open)->whereHas('bids', $bids),
-            // «Все» (21.10.2026, владелец: «все, в том числе завершённые и перешедшие в сделку, короче все кроме архивных»).
-            'all' => $q->whereNotIn('offers.state', [OfferState::Archived, OfferState::Cancelled]),
+            // «Все» (21.10.2026, владелец: «все, в том числе завершённые и перешедшие в сделку, короче все кроме архивных»). Без
+            // «Без закупочной цены» и «Завершённых» (17.11.2026, владелец: «во „Все“ не надо отображать без закупочной цены,
+            // завершённые и всё, что в архиве») — по той же раскладке, что группы (`OfferTabs`).
+            'all' => $q->whereNotIn('offers.state', [OfferState::Archived, OfferState::Cancelled])
+                ->when(OfferTabs::ids(self::ALL_HIDDEN), fn ($w, $ids) => $w->whereIntegerNotInRaw('offers.id', $ids)),
             // Сделка (16.11.2026): этап — раскладка `DealTabs`, «Завершённые» — выданные.
             'reprice', 'letter', 'answered', 'agree', 'invoice', 'paying', 'payout', 'pickup', 'docs' => $q->whereIn('offers.id', DealTabs::ids($preset)),
             // «Гараж» — все гаражные машины до расчёта, в любом этапе сделки (16.11.2026); расчёт закрыт — в «Завершённых».
@@ -643,7 +653,7 @@ class OfferController
         }
         $bids = "(select count(*) from bids where bids.offer_id = offers.id and bids.state = '".BidState::Active->value."')";
         match ($sort->key) {
-            'tab' => $q->orderByRaw("offers.tab_at {$dir} nulls last"),
+            'tab' => $q->orderByRaw(($preset === 'all' ? OfferTabs::sinceSql() : 'offers.tab_at')." {$dir} nulls last"),
             'published' => $q->orderByRaw("published_at {$dir} nulls last"),
             'closing' => $q->orderByRaw("bids_close_at {$dir} nulls last"),
             'number' => $q->orderBy('offers.number', $dir),
@@ -753,6 +763,8 @@ class OfferController
             // столбец сжимался до заголовка, имена ниже резались до «Ива…» (14.11.2026, владелец).
             ! $all && $has('manager') ? new Column('manager', 'Менеджер', from: 'sm', cell: 'whitespace-nowrap', role: ColRole::State, rem: 12.5, main: true, fixed: true) : null,
             $has('state') ? new Column('state', ! $all && $has('bids') ? 'Приём' : 'Состояние', from: 'sm', sort: 'closing', cell: 'whitespace-normal', role: ColRole::State, rem: 10, main: $preset === 'all') : null,
+            // «Во вкладке» — длительностью «6д 5ч», рядом с «Состоянием» (17.11.2026, «Все»): про него и говорит.
+            ! $all && $has('since') ? new Column('since', 'Во вкладке', from: 'sm', sort: 'tab', cell: 'nums whitespace-nowrap', role: ColRole::State, rem: 6.5, main: true, fixed: true) : null,
             // Менеджер сделки или гаража — во «Все», и при открытом окне (14.11.2026, владелец).
             // Подтверждения принимает только админ — модератору столбца нет.
             $has('bids') && $user->canManageCrm() ? new Column('bids', 'Подтверждения', from: 'sm', num: true, sort: 'bids', cell: 'nums', rem: 7) : null,
@@ -809,7 +821,8 @@ class OfferController
             // Даты заведения столбцом нет (14.11.2026, владелец): сортировать по ней можно (`sortFor`), видеть — не нужно.
             // Города и закупочной нет: столбцы больше не уходят по ширине (таблица листается вбок), и они выталкивали срок и
             // даты за край — город есть в окне, закупочная в «Ценах».
-            'all' => ['vendor', 'state', 'manager', 'price', 'binding', 'sold', 'paid'],
+            // Сколько во вкладке — за «Состоянием» (17.11.2026, владелец: «сколько дней и часов она уже в этой вкладке»).
+            'all' => ['vendor', 'state', 'since', 'manager', 'price', 'binding', 'sold', 'paid'],
             // «Архив»: где предложение сейчас — словом вкладки (`Offer::crmTab`: «Сделки», «Гараж»).
             default => ['vendor', 'city', 'state', 'floor', 'price', 'created'],
         };
