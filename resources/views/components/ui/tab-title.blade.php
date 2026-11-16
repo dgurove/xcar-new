@@ -28,7 +28,7 @@
         <nav class="tab-wheel-scroll">
             @foreach ($pills as $key => $label)
                 @isset($sections[$key])
-                    <div class="tab-wheel-sec" aria-hidden="true">{{ $sections[$key] }}</div>
+                    <div class="tab-wheel-sec" aria-hidden="true"><span class="tab-wheel-sec-line"></span><span class="tab-wheel-sec-name">{{ $sections[$key] }}</span></div>
                 @endisset
                 <a href="{{ $hrefs[$key] ?? $url([$pillParam => $key === '' || $key === ($pillHome ?? array_key_first($pills)) ? null : $key, 'page' => null, 'rows' => null]) }}" class="tab-wheel-item text-xl sm:text-2xl" data-turbo-prefetch="false" @isset($bumps[$key]) data-pill-bump="{{ $key }}:{{ $counts[$bumps[$key]] ?? 0 }}" @endisset @if ((string) $pill === (string) $key) aria-current="true" @endif>
                     <span class="tab-wheel-label">{{ $label }}</span>
