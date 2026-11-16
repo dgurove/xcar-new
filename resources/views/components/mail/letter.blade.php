@@ -4,7 +4,7 @@
      Свёрнуто — строка: кто, этап или первые слова (непрочитанное полужирным), скрепка, дата.
      Раскрыто — вид, выбранный владельцем по макетам:
      - имя и серым адрес рядом; тема — только если не совпадает с общей темой переписки (common, она в заголовке окна);
-     - «кому: …» и дата «14.11 12:58» одним серым текстом, переносится; у пересылки сотрудника — кто переслал;
+     - «кому: …» и дата «14.11 12:58» одним серым текстом, переносится; у пересылки сотрудника — кому и когда писал поставщик;
      - машина ссылкой (логотип, марка, модель, год); у незаведённой цепочки «Из писем» — «Завести», у ветки без машины —
        «Привязать»;
      - справа вверху значки «Ответить» (изогнутая стрелка) и «Переслать» (прямая), как в Spark, и «⋯» (x-mail.letter-menu);
@@ -26,7 +26,13 @@
     $from = NodeTitle::email($m);
     $to = $m->addresses->whereIn('kind', [\App\Mail\AddressKind::To->value, \App\Mail\AddressKind::Cc->value])->sortBy('position')
         ->map(fn ($a) => $a->name ?: $a->email)->unique()->values();
-    $forwarder = $m->isForwardedByStaff() ? mb_strtolower((string) $m->from_email) : null;
+    // Пересылка сотрудника — кому и когда писал сам поставщик, из шапки пересылки (17.11.2026, владелец: «не „переслал“ и не
+    // наш ящик, а оригинальное кому и во сколько»).
+    $head = $m->isForwardedByStaff() ? \App\Mail\Extraction\QuotationStripper::forwardedHead($m->text_body ?: app(\App\Mail\Parser::class)->htmlToText((string) $m->html_body)) : null;
+    if ($head && $head['to']) {
+        $to = collect($head['to']);
+    }
+    $sentAt = $head['date'] ?? $m->date_at;
     $park = $base === '/mail';
     $thread = $m->thread;
     $threadPark = $thread?->account?->scope === \App\Mail\Scope::Park;
@@ -71,9 +77,8 @@
         @unless ($continuation)
             {{-- Кому и дата — одним серым текстом: не влезло — переносится, дата целиком. --}}
             <div class="letter-env">
-                @if ($forwarder && $forwarder !== $from)<span>переслал: {{ $forwarder }}</span>@endif
                 @if ($to->isNotEmpty())<span>кому: {{ $to->take(3)->join(', ') }}{{ $to->count() > 3 ? ' и ещё '.($to->count() - 3) : '' }}</span>@endif
-                <span class="nums whitespace-nowrap">{{ \App\Support\Ago::at($m->date_at, true) }}</span>
+                <span class="nums whitespace-nowrap">{{ \App\Support\Ago::at($sentAt, true) }}</span>
             </div>
             @if ($car)
                 <a href="{{ $car['href'] }}" class="letter-car" data-turbo-frame="_top" @if ($car['cross']) data-turbo="false" @endif>@if ($car['vendor'])<x-vendor.logo :vendor="$car['vendor']"/>@endif<span class="truncate">{{ $car['name'] }}</span><x-ui.icon name="chevron-right" class="size-3.5 shrink-0"/></a>
