@@ -121,9 +121,9 @@
                         @if ($f->icon)<x-ui.icon :name="$f->icon" class="filter-ico size-[18px]"/>@endif
                         <span class="mr-auto">{{ $f->title }}</span>
                         <input type="hidden" name="{{ $key }}" value="{{ $chip->value }}" data-orig="{{ $orig }}" data-filter-range="{{ $key }}">
-                        <input type="text" inputmode="numeric" class="field-input field-s filter-num" placeholder="от" value="{{ $chip->from !== null ? ($f->money ? \App\Support\Money::nums($chip->from) : $chip->from) : '' }}" form="filter-none" data-filter-edge="{{ $key }}" @if ($f->money) data-money @endif aria-label="{{ $f->title }} от" autocomplete="off">
+                        <input type="text" inputmode="numeric" class="field-input field-s filter-num" placeholder="от" value="{{ $chip->from !== null ? ($f->money || $f->unit === 'км' ? \App\Support\Money::nums($chip->from) : $chip->from) : '' }}" form="filter-none" data-filter-edge="{{ $key }}" @if ($f->money || $f->unit === 'км') data-money @endif aria-label="{{ $f->title }} от" autocomplete="off">
                         <span class="text-ink-dim">–</span>
-                        <input type="text" inputmode="numeric" class="field-input field-s filter-num" placeholder="до" value="{{ $chip->to !== null ? ($f->money ? \App\Support\Money::nums($chip->to) : $chip->to) : '' }}" form="filter-none" data-filter-edge="{{ $key }}" @if ($f->money) data-money @endif aria-label="{{ $f->title }} до" autocomplete="off">
+                        <input type="text" inputmode="numeric" class="field-input field-s filter-num" placeholder="до" value="{{ $chip->to !== null ? ($f->money || $f->unit === 'км' ? \App\Support\Money::nums($chip->to) : $chip->to) : '' }}" form="filter-none" data-filter-edge="{{ $key }}" @if ($f->money || $f->unit === 'км') data-money @endif aria-label="{{ $f->title }} до" autocomplete="off">
                     </div>
                 @else
                     <button type="button" class="row w-full text-left" data-action="filter#push" data-filter-pane-param="{{ $key }}">

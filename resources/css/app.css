@@ -1442,9 +1442,12 @@ html.kb-open { --home-gap: 0px; }
   .detail-bar-title { @apply ml-1 text-base font-medium; }
   .filter-value { @apply text-sm text-ink-muted; }
   /* Подпись — целиком (свой текст не режется), поля «от» и «до» делят остаток строки. */
-  .filter-range { @apply gap-2; }
-  .filter-range > span:first-child { flex: none; white-space: nowrap; }
-  .filter-num { flex: 1 1 0; min-width: 0; max-width: 7rem; text-align: right; }
+  /* Поля «от» и «до» — компактные и рядом (17.11.2026, владелец: «не такими огромными, поближе друг к другу»); шрифт 16 px —
+     иначе iOS приближает страницу. */
+  .filter-range { @apply gap-1; }
+  .filter-range > :not(input):not(svg) { flex: none; white-space: nowrap; }
+  .filter-range .filter-num { flex: 0 1 5.75rem; width: 5.75rem; min-width: 4.5rem; min-height: 0; height: 2rem; padding-inline: .375rem; text-align: right; letter-spacing: -.02em; border-radius: var(--radius-s); }
+  .filter-range > .text-ink-dim { margin-inline: -.125rem; font-size: var(--text-sm); }
   .filter-back { @apply -ml-1 mb-3 flex items-center gap-1 py-1 text-base font-medium; }
   /* Значок строки (`Facet::icon`) — серым, без подложки (правило «блоки цветом не заливаются»). */
   .filter-ico { @apply shrink-0 text-ink-muted; width: 18px; height: 18px; }
