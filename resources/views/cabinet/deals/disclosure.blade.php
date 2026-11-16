@@ -23,9 +23,18 @@
         @foreach ($items->where('kind', 'address') as $item)
             <x-ui.info-row icon="map-pin" :href="'https://yandex.ru/maps/?text='.rawurlencode($item['value'])">{{ $item['value'] }}</x-ui.info-row>
         @endforeach
-        @if ($files->isNotEmpty())
+        {{-- Фото письма — сеткой миниатюр, а не двадцатью строками файлов (16.11.2026, «Показать менеджеру» отдаёт кадры письма разом). --}}
+        @php [$shots, $docs] = $files->partition(fn ($m) => str_starts_with((string) $m->mime_type, 'image/')); @endphp
+        @if ($docs->isNotEmpty())
             <div class="info-row flex-col !gap-0 !py-1">
-                @foreach ($files as $media)<x-ui.file :name="$media->file_name" :mime="$media->mime_type" :bytes="$media->size" href="/files/{{ $media->id }}"/>@endforeach
+                @foreach ($docs as $media)<x-ui.file :name="$media->file_name" :mime="$media->mime_type" :bytes="$media->size" href="/files/{{ $media->id }}"/>@endforeach
+            </div>
+        @endif
+        @if ($shots->isNotEmpty())
+            <div class="info-row !py-2">
+                <div class="grid w-full grid-cols-4 gap-1.5">
+                    @foreach ($shots as $media)<a href="/files/{{ $media->id }}" target="_blank" class="block aspect-square overflow-hidden rounded-(--radius-s) bg-surface-3"><img src="/files/{{ $media->id }}" alt="" loading="lazy" class="size-full object-cover"></a>@endforeach
+                </div>
             </div>
         @endif
     </x-ui.info>

@@ -79,6 +79,13 @@ class Disclosure extends Model
     /** Строкой для истории и CRM — то, что видит менеджер: «+7 999 123-45-67, Иван, паспорт.pdf». */
     public function summary(): string
     {
-        return implode(', ', array_map(fn ($i) => Str::limit((string) $i['value'], 60), $this->items ?? []));
+        // Фото письма — числом, а не двадцатью именами кадров (16.11.2026).
+        $items = collect($this->items ?? []);
+        $photos = $items->where('photo', true)->count();
+
+        return implode(', ', array_merge(
+            $items->reject(fn ($i) => $i['photo'] ?? false)->map(fn ($i) => Str::limit((string) $i['value'], 60))->all(),
+            $photos ? [$photos.' фото'] : [],
+        ));
     }
 }

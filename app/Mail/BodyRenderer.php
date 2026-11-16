@@ -37,12 +37,56 @@ final class BodyRenderer
         return self::blank($html) ? null : $this->wrap($message, $html, false, $base);
     }
 
+    /**
+     * Свои слова письма текстом — то же, что `own()`, но строками (16.11.2026, «Показать менеджеру»: старый разбор текста не узнавал
+     * цитату Совкомбанка, и в «Текст письма» ехала вся переписка). Абзацы и `<br>` — переводами строк.
+     */
+    public function ownText(Message $message): string
+    {
+        $html = trim((string) $message->html_body);
+        if ($html === '') {
+            return Extraction\QuotationStripper::ownText($message->text_body);
+        }
+        if (! $message->isForwardedByStaff()) {
+            $html = $this->withoutQuote($html) ?? $html;
+        }
+        $dom = new \DOMDocument;
+        $errors = libxml_use_internal_errors(true);
+        $dom->loadHTML('<?xml encoding="utf-8"?>'.self::ascii($html), LIBXML_HTML_NODEFDTD | LIBXML_NONET);
+        libxml_clear_errors();
+        libxml_use_internal_errors($errors);
+        $body = $dom->getElementsByTagName('body')->item(0);
+        if (! $body) {
+            return '';
+        }
+        foreach (['style', 'script', 'head', 'title'] as $tag) {
+            foreach (iterator_to_array($dom->getElementsByTagName($tag)) as $n) {
+                $n->parentNode?->removeChild($n);
+            }
+        }
+        foreach (iterator_to_array($dom->getElementsByTagName('br')) as $br) {
+            $br->parentNode?->replaceChild($dom->createTextNode("\u{2028}"), $br);
+        }
+        foreach (['p', 'div', 'li', 'tr', 'h1', 'h2', 'h3', 'blockquote'] as $tag) {
+            foreach (iterator_to_array($dom->getElementsByTagName($tag)) as $n) {
+                $n->appendChild($dom->createTextNode("\u{2028}"));
+            }
+        }
+        // Переводы строк исходника HTML — пробелы (Outlook рвёт строки посреди фразы), строки — только от `<br>` и блоков.
+        $text = str_replace(["\u{00A0}", "\r\n", "\r"], [' ', ' ', ' '], $body->textContent);
+        $text = str_replace("\n", ' ', $text);
+        $text = str_replace("\u{2028}", "\n", $text);
+        $text = (string) preg_replace(['/[ \t]+/u', '/ *\n */u', "/\n{3,}/u"], [' ', "\n", "\n\n"], $text);
+
+        return trim($text);
+    }
+
     /** В теле ни слова и ни картинки (стили и заголовок не в счёт) — только вложения. Разбором, не регуляркой: письма по 100 КБ. */
     private static function blank(string $html): bool
     {
         $dom = new \DOMDocument;
         $errors = libxml_use_internal_errors(true);
-        $dom->loadHTML('<?xml encoding="utf-8"?>'.$html, LIBXML_HTML_NODEFDTD | LIBXML_NONET);
+        $dom->loadHTML('<?xml encoding="utf-8"?>'.self::ascii($html), LIBXML_HTML_NODEFDTD | LIBXML_NONET);
         libxml_clear_errors();
         libxml_use_internal_errors($errors);
         $body = $dom->getElementsByTagName('body')->item(0);
@@ -65,7 +109,7 @@ final class BodyRenderer
     {
         $dom = new \DOMDocument;
         $errors = libxml_use_internal_errors(true);
-        $loaded = $dom->loadHTML('<?xml encoding="utf-8"?>'.$html, LIBXML_HTML_NODEFDTD | LIBXML_NONET);
+        $loaded = $dom->loadHTML('<?xml encoding="utf-8"?>'.self::ascii($html), LIBXML_HTML_NODEFDTD | LIBXML_NONET);
         libxml_clear_errors();
         libxml_use_internal_errors($errors);
         $body = $dom->getElementsByTagName('body')->item(0);
@@ -124,6 +168,16 @@ final class BodyRenderer
         }
 
         return (string) preg_replace('/^<\?xml[^>]*>\s*/', '', (string) $dom->saveHTML());
+    }
+
+    /**
+     * HTML для разбора: всё не-ASCII — числовыми сущностями. Тело в базе уже UTF-8, а `<meta charset=koi8-r>` из письма libxml
+     * слушает охотнее, чем `<?xml encoding>`, — текст превращался в «п░п╫п…» (16.11.2026, письма Совкомбанка в «Показать
+     * менеджеру»). Сущностям кодировка документа не важна.
+     */
+    private static function ascii(string $html): string
+    {
+        return mb_encode_numericentity($html, [0x80, 0x10FFFF, 0, 0x1FFFFF], 'UTF-8');
     }
 
     /** Документ для iframe: без скриптов и форм, CSP, лист или цвета темы. */

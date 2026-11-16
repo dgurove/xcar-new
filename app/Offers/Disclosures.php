@@ -20,17 +20,24 @@ use Spatie\MediaLibrary\MediaCollections\Models\Media;
  */
 final class Disclosures
 {
-    public const KINDS = ['phone' => 'Телефон', 'name' => 'Имя', 'address' => 'Адрес', 'file' => 'Документ', 'text' => 'Сообщение'];
+    public const KINDS = ['phone' => 'Телефон', 'name' => 'Имя', 'address' => 'Адрес', 'file' => 'Документ', 'text' => 'Сообщение', 'photos' => 'Фото'];
+
+    /** Группа пунктов без письма — из карточки ТС. */
+    public const CARD = 'card';
 
     /**
+     * Пункты по письмам (16.11.2026, владелец: «окно абсолютно безобразное, особенно документы», «по письмам группировать»): у каждого
+     * `group` — `letter:{id}` или `card` («Из карточки ТС», только то, чего нет в письмах); фото письма — одним пунктом
+     * `photos:{id}` (все кадры разом), документы — по одному.
+     *
      * @param  Collection<int, Message>  $letters  письма разбора; пусто — показ руками
      * @param  bool  $text  «Показать менеджеру» из окна писем (16.11.2026): текст письма отмечен сразу
-     * @return array<string, array{kind: string, value: string, media: ?int, label?: string, pick?: bool}> ключ пункта → пункт
+     * @return array<string, array{kind: string, value: string, media: int|list<int>|null, group: string, label?: string, pick?: bool}> ключ пункта → пункт
      */
     public static function proposals(Deal $deal, Collection $letters, bool $text = false): array
     {
         $out = [];
-        $add = function (string $kind, ?string $value, ?int $media = null) use (&$out) {
+        $add = function (string $kind, ?string $value, string $group, ?int $media = null) use (&$out) {
             $value = trim((string) $value);
             if ($value === '') {
                 return;
@@ -40,48 +47,117 @@ final class Disclosures
                 'file' => 'file:'.$media,
                 default => $kind.':'.md5(mb_strtolower($value)),
             };
-            $out[$key] ??= ['kind' => $kind, 'value' => $kind === 'phone' && Phone::normalize($value) ? Phone::format(Phone::normalize($value)) : $value, 'media' => $media];
+            $out[$key] ??= ['kind' => $kind, 'value' => $kind === 'phone' && Phone::normalize($value) ? Phone::format(Phone::normalize($value)) : $value, 'media' => $media, 'group' => $group];
         };
         $offer = $deal->offer;
+        $letters = $letters->sortByDesc(fn (Message $m) => $m->date_at)->values();
         // «Договор готов» (11.11.2026, `SigningLetter`): страхователь, его телефоны, адрес осмотра и стоянка поставщика тут ни
         // к чему — менеджеру где и как подписывать и что взять покупателю, отмечено сразу (`pick`).
         $signing = $letters->first(fn (Message $m) => SigningLetter::ready($m));
         if ($signing) {
-            $text = $signing->replyText();
-            foreach (array_filter([SigningLetter::line($signing), SigningLetter::documents($text)]) as $i => $line) {
-                $out['signing:'.$i] = ['kind' => 'text', 'value' => $line, 'media' => null, 'label' => $i === 0 ? 'Подписание' : 'Покупателю', 'pick' => true];
+            foreach (array_filter([SigningLetter::line($signing), SigningLetter::documents($signing->replyText())]) as $i => $line) {
+                $out['signing:'.$i] = ['kind' => 'text', 'value' => $line, 'media' => null, 'group' => 'letter:'.$signing->id, 'label' => $i === 0 ? 'Подписание' : 'Покупателю', 'pick' => true];
             }
         }
-        // Текст письма — пунктом «Текст письма» (16.11.2026, владелец: «пришло письмо, текст которого хочу показать менеджеру»):
-        // свои слова до подписи (`replyText`) без названия вендора, править можно; до 2000 знаков (`picked`).
+        $papers = $offer->getMedia('papers')->reject(fn (Media $m) => ForManagers::is($m));
         foreach ($signing ? [] : $letters as $m) {
-            $said = trim((string) VendorNames::strip($m->replyText()));
-            if ($said !== '') {
-                $out['letter:'.$m->id] = ['kind' => 'text', 'value' => mb_substr($said, 0, 2000), 'media' => null, 'label' => 'Текст письма', 'pick' => $text];
+            $group = 'letter:'.$m->id;
+            if (($said = self::letterText($m)) !== '') {
+                $out['letter:'.$m->id] = ['kind' => 'text', 'value' => mb_substr($said, 0, 2000), 'media' => null, 'group' => $group, 'label' => 'Текст письма', 'pick' => $text];
             }
-        }
-        foreach ($signing ? [] : $letters as $m) {
             foreach (OwnerPhones::for($m) as $phone) {
-                $add('phone', $phone);
+                $add('phone', $phone, $group);
             }
-            $add('phone', $m->field('insured_phone'));
-            $add('name', $m->field('insured_name'));
-            $add('address', VendorNames::strip($m->field('location')));
+            $add('phone', $m->field('insured_phone'), $group);
+            $add('name', $m->field('insured_name'), $group);
+            $add('address', VendorNames::strip($m->field('location')), $group);
+            [$pictures, $documents] = $papers->filter(fn (Media $f) => (int) $f->getCustomProperty('letter') === $m->id)
+                ->partition(fn (Media $f) => str_starts_with((string) $f->mime_type, 'image/'));
+            $documents->each(fn (Media $f) => $add('file', $f->name ?: $f->file_name, $group, $f->id));
+            if ($pictures->isNotEmpty()) {
+                $out['photos:'.$m->id] = ['kind' => 'photos', 'value' => 'Фото '.$pictures->count(), 'media' => $pictures->pluck('id')->values()->all(), 'group' => $group];
+            }
         }
         if (! $signing) {
-            $add('name', $offer->insured_name);
-            $add('phone', $offer->insured_phone);
-            $add('phone', $offer->insured_phone2);
-            $add('address', VendorNames::strip($offer->inspection_address));
+            $add('name', $offer->insured_name, self::CARD);
+            $add('phone', $offer->insured_phone, self::CARD);
+            $add('phone', $offer->insured_phone2, self::CARD);
+            $add('address', VendorNames::strip($offer->inspection_address), self::CARD);
+        }
+        // Без писем (показ руками) — все документы машины; с письмами — только письма, остальное в «Из карточки» не тянем:
+        // там 20 кадров с Мигторга строками и были «безобразием».
+        if ($letters->isEmpty()) {
+            $papers->each(fn (Media $f) => $add('file', $f->name ?: $f->file_name, self::CARD, $f->id));
         }
 
-        $ids = $letters->pluck('id')->all();
-        $offer->getMedia('papers')
-            ->reject(fn (Media $m) => ForManagers::is($m))
-            ->filter(fn (Media $m) => $ids === [] || in_array((int) $m->getCustomProperty('letter'), $ids, true))
-            ->each(fn (Media $m) => $add('file', $m->name ?: $m->file_name, $m->id));
-
         return $out;
+    }
+
+    /**
+     * Группы шторки — по письмам, новое сверху, и «Из карточки ТС» последней: [key, letter, items (ключ → пункт), open]. Раскрыта
+     * одна — `$open` (письмо, с которого открыли), иначе самое новое.
+     *
+     * @return list<array{key: string, letter: ?Message, items: array<string, array>, open: bool}>
+     */
+    public static function groups(array $proposals, Collection $letters, ?int $open = null): array
+    {
+        $letters = $letters->sortByDesc(fn (Message $m) => $m->date_at)->values();
+        $open ??= $letters->first()?->id;
+        $groups = [];
+        foreach ($letters as $m) {
+            $groups[] = ['key' => 'letter:'.$m->id, 'letter' => $m, 'items' => array_filter($proposals, fn ($p) => $p['group'] === 'letter:'.$m->id), 'open' => $m->id === $open];
+        }
+        $card = array_filter($proposals, fn ($p) => $p['group'] === self::CARD);
+        if ($card) {
+            $groups[] = ['key' => self::CARD, 'letter' => null, 'items' => $card, 'open' => $letters->isEmpty()];
+        }
+
+        return $groups;
+    }
+
+    /** Что в группе — словами для свёрнутой строки: «текст, 2 телефона, акт, 21 фото». */
+    public static function summary(array $items): string
+    {
+        $items = collect($items);
+        $count = fn (string $kind) => $items->where('kind', $kind)->count();
+        $plural = fn (int $n, array $forms) => $n.' '.\App\Support\Plural::of($n, $forms);
+
+        return implode(', ', array_filter([
+            $items->contains(fn ($p) => $p['kind'] === 'text') ? 'текст' : null,
+            $count('phone') ? ($count('phone') === 1 ? 'телефон' : $plural($count('phone'), ['телефон', 'телефона', 'телефонов'])) : null,
+            $count('name') ? 'имя' : null,
+            $count('address') ? 'адрес' : null,
+            $count('file') ? ($count('file') === 1 ? 'документ' : $plural($count('file'), ['документ', 'документа', 'документов'])) : null,
+            ($photos = $items->firstWhere('kind', 'photos')) ? count($photos['media']).' фото' : null,
+        ]));
+    }
+
+    /**
+     * Текст письма менеджеру (16.11.2026, владелец: в шторке было «<mailto:…>», «[cid:image002…]» и абзац «Информация, содержащаяся в
+     * настоящем электронном сообщении…»): свои слова до подписи (`replyText`) без хвостов ссылок почтовиков и оговорок о
+     * конфиденциальности, без названия вендора.
+     */
+    public static function letterText(Message $m): string
+    {
+        $text = app(\App\Mail\BodyRenderer::class)->ownText($m);
+        // Подпись: «С уважением» и всё ниже; иначе — со строки, где только имя отправителя («Александр Лапшин» у «Лапшин Александр»).
+        $text = (string) preg_split('/^\s*(?:С\s+уважением|C\s+уважением|Best\s+regards|--\s*$|Отправлено\s+из)/imu', $text)[0];
+        $name = collect(preg_split('/\s+/u', mb_strtolower((string) \App\Mail\Chains\NodeTitle::who($m))))->filter(fn ($w) => mb_strlen($w) > 2);
+        if ($name->count() >= 2) {
+            $lines = preg_split('/\R/u', $text) ?: [];
+            foreach ($lines as $i => $line) {
+                $words = collect(preg_split('/\s+/u', mb_strtolower(trim($line), 'UTF-8')))->filter();
+                if ($i > 0 && $words->count() >= 2 && $words->count() <= 3 && $words->every(fn ($w) => $name->contains(trim($w, '.,')))) {
+                    $text = implode("\n", array_slice($lines, 0, $i));
+                    break;
+                }
+            }
+        }
+        $text = (string) preg_replace(['/<(?:mailto|tel|https?):[^>]*>/iu', '/\[cid:[^\]]*\]/iu', '/\[(?:https?:)?[^\]\s]*\]/iu', '/<https?:[^>]*>/iu'], '', $text);
+        $text = (string) preg_split('/(?:Информация,\s+содержащаяся\s+в\s+настоящем|Это\s+электронное\s+письмо\s+строго\s+конфиденциально|Настоящее\s+(?:электронное\s+)?сообщение\s+(?:и\s+все\s+приложения\s+к\s+нему\s+)?(?:является\s+)?конфиденциальн|This\s+e-?mail\s+(?:and\s+any|is\s+confidential|message))/iu', $text)[0];
+        $text = (string) preg_replace(['/[ \t]+$/mu', "/\n{2,}/u"], ['', "\n"], $text);
+
+        return trim((string) VendorNames::strip($text));
     }
 
     /**
@@ -98,6 +174,14 @@ final class Disclosures
             $item = $proposals[$key] ?? throw ValidationException::withMessages(['disclose' => 'Пункты изменились — откройте шторку заново']);
             if ($item['kind'] === 'file') {
                 $items[] = ['kind' => 'file', 'value' => $item['value'], 'media' => $item['media']];
+
+                continue;
+            }
+            // Фото письма — все кадры документами по одному: менеджер получает их так же, как любой файл.
+            if ($item['kind'] === 'photos') {
+                foreach (Media::whereIn('id', $item['media'])->get(['id', 'name', 'file_name']) as $f) {
+                    $items[] = ['kind' => 'file', 'value' => $f->name ?: $f->file_name, 'media' => $f->id, 'photo' => true];
+                }
 
                 continue;
             }

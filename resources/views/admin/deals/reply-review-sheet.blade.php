@@ -1,5 +1,6 @@
-{{-- Шторка «Показать менеджеру» (`x-deal.reply-review`): текст писем разбора (только админу), пункты `Disclosures::proposals`
-     с галками и карандашом, своё сообщение, галка шага. Ждёт переменные компонента: $id, $deal, $letters, $proposals, $step, $picked. --}}
+{{-- Шторка «Показать менеджеру» (`x-deal.reply-review`, окно писем): пункты `Disclosures::proposals` карточками писем
+     (`Disclosures::groups`) с галками и карандашом, своё сообщение, галка шага. Ждёт: $id, $deal, $letters, $proposals, $step, $picked,
+     необязательно $message (письмо, с которого открыли), $line, $top. --}}
 @php
     use App\Offers\Actions\Disclose;
     use App\Offers\Disclosures;
@@ -21,51 +22,72 @@
         @csrf
         @error('disclose')<x-ui.flash tone="danger">{{ $message }}</x-ui.flash>@enderror
         @if ($message ?? null)<input type="hidden" name="message" value="{{ $message->id }}">@endif
-        @foreach ($letters as $m)
-            {{-- Тема и письмо как прислали — с цветом и жирным, без цитаты (`BodyRenderer::own`, 16.11.2026); длинное листается внутри
-                 себя, пункты видны сразу. --}}
-            @php $renderer = app(\App\Mail\BodyRenderer::class); $doc = $renderer->own($m, '/work/mail'); $subject = \App\Mail\Extraction\Patterns::cleanSubject($m->subject); @endphp
-            <div>
-                <p class="mb-1 flex items-baseline gap-3 text-sm text-ink-muted"><span class="min-w-0 flex-1">Письмо {{ Ago::html($m->date_at, true, words: false) }} — видно только вам</span>@if ($line)<button type="button" class="shrink-0 text-accent-text" data-controller="emit" data-action="emit#send sheet#close" data-emit-event-param="letters:open" data-emit-url-param="/offers/{{ $deal->offer->number }}/letters?at={{ $m->id }}">Открыть</button>@endif</p>
-                @if ($subject !== '' && mb_strtolower($subject) !== 'без темы')<p class="letter-subject">{{ $subject }}</p>@endif
-                @if ($doc)
-                    <div class="max-h-72 overflow-y-auto rounded-(--radius-m) {{ $renderer->isPlain($m) ? 'bg-surface-2' : 'bg-white' }}" data-controller="frame">
-                        <iframe sandbox="allow-same-origin allow-popups allow-popups-to-escape-sandbox" srcdoc="{{ $doc }}" title="Письмо" class="block w-full" style="height:120px" data-frame-target="frame" data-action="load->frame#fit"></iframe>
-                    </div>
-                @else
-                    <p class="text-sm text-ink-muted">{{ $m->has_attachments ? 'Только вложения' : 'Без своих слов' }}</p>
-                @endif
-            </div>
-        @endforeach
-        @if ($proposals)
-            <div>
-                <p class="field-label mb-2">Что показать менеджеру</p>
-                <div class="list">
-                    @foreach ($proposals as $key => $p)
-                        @php $box = $id.'-'.$loop->index; @endphp
-                        <div class="row items-start gap-3" data-disclose-target="row">
-                            <span class="check mt-0.5"><input type="checkbox" id="{{ $box }}" name="on[]" value="{{ $key }}" @checked(in_array($key, $picked, true)) data-action="disclose#update"></span>
-                            <div class="min-w-0 flex-1">
-                                <label for="{{ $box }}" class="block cursor-pointer">
-                                    <span class="block text-xs text-ink-muted">{{ $guess && $p['media'] === $guess->id ? 'Счёт поставщика' : ($p['label'] ?? Disclosures::KINDS[$p['kind']]) }}</span>
-                                    @php $long = str_starts_with($key, 'letter:'); @endphp
-                                    <span @class(['block break-words', 'whitespace-pre-line' => $long]) data-disclose-target="text">{{ $p['kind'] === 'file' ? $p['value'] : old('value.'.$key, $p['value']) }}</span>
-                                </label>
-                                @if ($long)
-                                    {{-- Текст письма — полем в несколько строк: правят, что увидит менеджер. --}}
-                                    <textarea name="value[{{ $key }}]" rows="6" class="field-input mt-1" hidden data-disclose-target="input" data-action="input->disclose#typed">{{ old('value.'.$key, $p['value']) }}</textarea>
-                                @elseif ($p['kind'] !== 'file')
-                                    <input type="text" name="value[{{ $key }}]" value="{{ old('value.'.$key, $p['value']) }}" class="field-input mt-1" hidden data-disclose-target="input" data-action="input->disclose#typed">
-                                @endif
-                            </div>
-                            @if ($p['kind'] === 'file')
-                                <a href="/files/{{ $p['media'] }}" class="btn btn-ghost btn-s -my-1 px-1.5 text-ink-muted" aria-label="Открыть документ"><x-ui.icon name="eye" class="size-5"/></a>
-                            @else
-                                <button type="button" class="btn btn-ghost btn-s -my-1 px-1.5 text-ink-muted" aria-label="Изменить" data-action="disclose#edit"><x-ui.icon name="edit" class="size-4"/></button>
+        {{-- По письмам карточками (16.11.2026, владелец: «абсолютно безобразное, особенно документы», «по письмам группировать»,
+             «должны раскрываться, а не все раскрытые»): раскрыта одна — письмо, с которого открыли, иначе самое новое; свёрнутая —
+             кто и когда, что в ней есть; кружок слева — отмечено всё, часть или ничего, нажатие — отметить всё письмо. --}}
+        @php $groups = Disclosures::groups($proposals, $letters, isset($message) ? $message->id : null); @endphp
+        @if ($groups)
+            <div class="flex flex-col gap-2">
+                @foreach ($groups as $g)
+                    @php
+                        $m = $g['letter'];
+                        $sum = Disclosures::summary($g['items']);
+                        // Имя ящика («implementation») — не человек: тогда только дата.
+                        $who = $m ? \App\Mail\Chains\NodeTitle::who($m) : null;
+                        $who = $who && str_contains(trim($who), ' ') ? $who : null;
+                        // Вторая строка: что в письме, кроме текста, а если только текст — его начало без приветствия.
+                        $rest = trim(preg_replace('/^текст(, )?/u', '', $sum));
+                        $said = collect($g['items'])->firstWhere('kind', 'text')['value'] ?? '';
+                        $preview = collect(preg_split('/\R/u', $said))->map(fn ($l) => trim($l))->first(fn ($l) => $l !== '' && ! preg_match('/^(добрый|здравствуй|коллеги|привет)/iu', $l)) ?? '';
+                        $photos = collect($g['items'])->firstWhere('kind', 'photos');
+                    @endphp
+                    <details class="disclose-group" data-disclose-target="group" @if ($g['open'] || count($groups) === 1) open @endif>
+                        <summary class="disclose-head">
+                            <button type="button" class="disclose-mark" data-action="disclose#all" aria-label="Отметить всё письмо" @disabled(! $g['items'])></button>
+                            <span class="min-w-0 flex-1">
+                                <span class="block truncate">@if ($m)<span class="nums">{!! Ago::html($m->date_at, true, words: false) !!}</span>@if ($who), {{ $who }}@endif @else Из карточки ТС @endif</span>
+                                <span class="block truncate text-ink-muted">{{ $rest !== '' ? $rest : ($preview !== '' ? $preview : 'нечего показать') }}</span>
+                            </span>
+                            <x-ui.icon name="chevron-down" class="disclose-chev size-4 shrink-0 text-ink-dim"/>
+                        </summary>
+                        <div class="disclose-body">
+                            @foreach ($g['items'] as $key => $p)
+                                @php $box = $id.'-'.md5($key); $long = $p['kind'] === 'text'; @endphp
+                                <div @class(['disclose-item', 'disclose-item--text' => $long]) data-disclose-target="row">
+                                    <span class="check"><input type="checkbox" id="{{ $box }}" name="on[]" value="{{ $key }}" @checked(in_array($key, $picked, true)) data-action="disclose#update"></span>
+                                    @if ($p['kind'] === 'photos')
+                                        {{-- Все кадры письма одной строкой: по одному их не выбирают, смотрят в письме. --}}
+                                        <label for="{{ $box }}" class="disclose-photos">
+                                            @foreach (\Spatie\MediaLibrary\MediaCollections\Models\Media::whereIn('id', array_slice($p['media'], 0, 4))->get() as $f)
+                                                <img src="/files/{{ $f->id }}" alt="" loading="lazy">
+                                            @endforeach
+                                            <span class="min-w-0 flex-1 truncate">Фото {{ count($p['media']) }}</span>
+                                        </label>
+                                    @else
+                                        <label for="{{ $box }}" class="min-w-0 flex-1 cursor-pointer">
+                                            @unless ($long)<span class="disclose-kind">{{ $guess && $p['media'] === $guess->id ? 'Счёт поставщика' : ($p['label'] ?? Disclosures::KINDS[$p['kind']]) }}</span>@endunless
+                                            <span @class(['break-words', 'block' => ! $long, 'disclose-text' => $long, 'truncate' => $p['kind'] === 'file']) data-disclose-target="text">{{ $p['kind'] === 'file' ? $p['value'] : old('value.'.$key, $p['value']) }}</span>
+                                        </label>
+                                        @if ($long)
+                                            <textarea name="value[{{ $key }}]" rows="6" class="field-input mt-1 w-full" hidden data-disclose-target="input" data-action="input->disclose#typed">{{ old('value.'.$key, $p['value']) }}</textarea>
+                                        @elseif ($p['kind'] !== 'file')
+                                            <input type="text" name="value[{{ $key }}]" value="{{ old('value.'.$key, $p['value']) }}" class="field-input mt-1 w-full" hidden data-disclose-target="input" data-action="input->disclose#typed">
+                                        @endif
+                                        @if ($p['kind'] === 'file')
+                                            <a href="/files/{{ $p['media'] }}" target="_blank" class="disclose-tool" aria-label="Открыть документ"><x-ui.icon name="eye" class="size-4"/></a>
+                                        @else
+                                            <button type="button" class="disclose-tool" aria-label="Изменить" data-action="disclose#edit"><x-ui.icon name="edit" class="size-4"/></button>
+                                        @endif
+                                    @endif
+                                </div>
+                                @if ($long)<button type="button" class="disclose-more" data-action="disclose#more">Весь текст</button>@endif
+                            @endforeach
+                            @if ($m)
+                                <button type="button" class="disclose-more" data-controller="emit" data-action="emit#send sheet#close" data-emit-event-param="letters:open" data-emit-url-param="/offers/{{ $deal->offer->number }}/letters?at={{ $m->id }}">Открыть письмо</button>
                             @endif
                         </div>
-                    @endforeach
-                </div>
+                    </details>
+                @endforeach
             </div>
         @endif
         <div class="fields">
