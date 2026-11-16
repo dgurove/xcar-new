@@ -53,7 +53,7 @@ final class GarageView
         $sale = array_values(array_filter(match (true) {
             $buyerCar && $car->state === CarState::Selling => [['post', "/garage/cars/{$n}/sold", 'Продана', 'Отметить, что ТС продана?']],
             $asBuyer && $holderDue => [['emit', 'pay', 'Оплатить']],
-            $staff && $buyerCar && $unpaid => [['emit', 'paid', 'Поступило']],
+            $staff && $buyerCar && $unpaid => [['emit', 'paid', 'Поступила']],
             $buyerCar => [],
             ! $staff && $car->state === CarState::Selling => [['emit', 'selling', 'Продаю']],
             ! $staff && $unpaid && ! $current->isOwed() && $car->invoice_to !== 'buyer' && $current->remaining() - $current->claimed() > 0 => [['emit', 'pay', 'Оплатить']],
@@ -61,7 +61,7 @@ final class GarageView
             // Совкомбанк: счёт ПРАЙМ покупателю выставляет сделка, расчёта по машине нет.
             $staff && $car->state === CarState::Sold && ! $invoice && ! $car->settledByDeal() => [['emit', 'settle', $car->manager ? 'Выставить счёт' : 'Закрыть расчёт']],
             $staff && $car->awaitsPayout() => [['emit', 'payout', 'Выплата менеджеру']],
-            $staff && $unpaid => [['emit', 'paid', $current->isOwed() ? 'Выплатили' : 'Поступило']],
+            $staff && $unpaid => [['emit', 'paid', $current->isOwed() ? 'Выплатили' : 'Поступила']],
             default => [],
         }));
         // Редкое — в «⋯» своей дорожки: снять итог и аннулировать — у продажи, «Отдали по ошибке» — у гаража.

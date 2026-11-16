@@ -57,7 +57,7 @@
                 @foreach ($i->claims as $p)
                     <x-money.payment :payment="$p" :slip="$href.'/payments/'.$p->id.'/slip'" staff>
                         <x-slot:acts>
-                            <form method="post" action="/work/payments/{{ $p->id }}/confirm" class="contents" data-turbo-confirm="Поступило {{ Money::rub($p->amount) }}?">@csrf<button class="btn btn-s btn-accent">Поступило</button></form>
+                            <form method="post" action="/work/payments/{{ $p->id }}/confirm" class="contents" data-turbo-confirm="Поступила {{ Money::rub($p->amount) }}?">@csrf<button class="btn btn-s btn-accent">Поступила</button></form>
                             <span data-controller="sheet" class="contents">
                                 <button type="button" class="btn btn-s btn-quiet" data-action="sheet#open">Не поступила</button>
                                 <x-ui.sheet :id="'reject-'.$p->id" title="Не поступила">

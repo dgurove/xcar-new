@@ -178,22 +178,22 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
     // Сделки для документов (14.11.2026, владелец: «админам и модераторам вручную менять сумму договора и счёта»): модератору —
     // список «Сделок» с окном документов, сумма договора, данные ДКП и паспорт покупателя; прочее по сделке — только админу.
     Route::middleware('ability:canEditDeals')->group(function () {
-            Route::get('/work/deals', [DealController::class, 'index']);
-            Route::get('/work/deals/{deal}', [DealController::class, 'show']);
-            Route::put('/work/deals/{deal}/contract', [DealContractController::class, 'update']);
-            Route::put('/work/deals/{deal}/payer', [DealContractController::class, 'payer']);
-            Route::put('/work/deals/{deal}/fee-seller', [DealContractController::class, 'feeSeller']);
-            // «Отправить менеджеру» у счёта и договора (16.11.2026): сотрудник проверил — менеджер видит.
-            Route::post('/work/deals/{deal}/invoices/{invoice}/show', [DealContractController::class, 'showInvoice']);
-            Route::post('/work/deals/{deal}/contract/show', [DealContractController::class, 'showContract']);
-            Route::post('/work/deals/{deal}/supplier-contract', [DealContractController::class, 'supplierContract']);
-            Route::post('/parties/{party}/passport/{page}', [PassportScanController::class, 'upload'])->whereIn('page', ['main', 'reg'])->middleware('throttle:30,1');
-            Route::get('/parties/{party}/passport/live', [PassportScanController::class, 'live']);
-            Route::post('/parties/{party}/passport/read', [PassportScanController::class, 'read'])->middleware('throttle:10,1');
-            Route::post('/parties/{party}/passport/{page}/rotate', [PassportScanController::class, 'rotate'])->whereIn('page', ['main', 'reg'])->middleware('throttle:30,1');
-            Route::get('/parties/{party}/passport.pdf', [PassportScanController::class, 'pdf']);
-            Route::get('/work/deals/{deal}/dkp', [DealContractController::class, 'show']);
-            Route::get('/work/deals/{deal}/dkp.pdf', [DealContractController::class, 'show']);
+        Route::get('/work/deals', [DealController::class, 'index']);
+        Route::get('/work/deals/{deal}', [DealController::class, 'show']);
+        Route::put('/work/deals/{deal}/contract', [DealContractController::class, 'update']);
+        Route::put('/work/deals/{deal}/payer', [DealContractController::class, 'payer']);
+        Route::put('/work/deals/{deal}/fee-seller', [DealContractController::class, 'feeSeller']);
+        // «Отправить менеджеру» у счёта и договора (16.11.2026): сотрудник проверил — менеджер видит.
+        Route::post('/work/deals/{deal}/invoices/{invoice}/show', [DealContractController::class, 'showInvoice']);
+        Route::post('/work/deals/{deal}/contract/show', [DealContractController::class, 'showContract']);
+        Route::post('/work/deals/{deal}/supplier-contract', [DealContractController::class, 'supplierContract']);
+        Route::post('/parties/{party}/passport/{page}', [PassportScanController::class, 'upload'])->whereIn('page', ['main', 'reg'])->middleware('throttle:30,1');
+        Route::get('/parties/{party}/passport/live', [PassportScanController::class, 'live']);
+        Route::post('/parties/{party}/passport/read', [PassportScanController::class, 'read'])->middleware('throttle:10,1');
+        Route::post('/parties/{party}/passport/{page}/rotate', [PassportScanController::class, 'rotate'])->whereIn('page', ['main', 'reg'])->middleware('throttle:30,1');
+        Route::get('/parties/{party}/passport.pdf', [PassportScanController::class, 'pdf']);
+        Route::get('/work/deals/{deal}/dkp', [DealContractController::class, 'show']);
+        Route::get('/work/deals/{deal}/dkp.pdf', [DealContractController::class, 'show']);
         Route::put('/work/deals/{deal}/contract-price', [DealContractController::class, 'price']);
         Route::post('/work/deals/{deal}/signed', [DealController::class, 'signed']);
         Route::delete('/work/deals/{deal}/signed/{media}', [DealController::class, 'removeSigned']);
@@ -320,6 +320,7 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
         Route::post('/work/deals/{deal}/payment-proof', [PaymentProofController::class, 'store']);
         Route::delete('/work/deals/{deal}/payment-proof/{media}', [PaymentProofController::class, 'remove']);
         Route::get('/work/deals/{deal}/payment-proof.pdf', [PaymentProofController::class, 'pdf']);
+        Route::post('/work/deals/{deal}/payment-proof/to-invoice', [PaymentProofController::class, 'toInvoice']);
         Route::post('/work/deals/{deal}/reviews/done', [DisclosureController::class, 'dismiss']);
         // У кого что в гараже и во что обошлось.
         Route::get('/work/garage', [GarageController::class, 'index']);
@@ -342,6 +343,7 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
         Route::get('/work/money/links/{link}/attach', [PayLinkController::class, 'attach'])->middleware('ability:isAdmin');
         Route::post('/work/payments/{payment}/confirm', [MoneyController::class, 'confirm']);
         Route::post('/work/payments/{payment}/reject', [MoneyController::class, 'reject']);
+        Route::post('/work/payments/{payment}/to-supplier', [MoneyController::class, 'toSupplier']);
         Route::post('/work/money/invoices/{invoice}/links', [PayLinkController::class, 'store']);
         Route::delete('/work/money/links/{link}', [PayLinkController::class, 'destroy']);
         Route::put('/work/money/links/{link}/email', [PayLinkController::class, 'email']);

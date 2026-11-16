@@ -746,6 +746,11 @@ html.kb-open { --home-gap: 0px; }
   .row-check .check input:checked { background-color: var(--color-accent); box-shadow: none; }
   .row-check .check input:focus-visible { box-shadow: 0 0 0 2px color-mix(in oklab, var(--color-accent) 60%, transparent); }
   .row-check:has(input:disabled) { @apply cursor-default opacity-60; }
+  /* Снимок чека в шторке «За что этот чек?» (`cabinet.deals.receipt`): целиком, не выше трети экрана. */
+  /* «Поступила / Не поступила / Это за другое» у сообщения менеджера об оплате — одним рядом поровну (`x-deal.money`). */
+  .claim-acts { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: .5rem; width: 100%; }
+  .claim-acts > .btn, .claim-acts > form > .btn, .claim-acts > div > .btn { @apply w-full px-2; }
+  .receipt-shot { @apply mb-4 block w-full rounded-(--radius-m) bg-surface-2 object-contain; max-height: 34dvh; }
   /* «Опубликовать»: кнопка называет исход отмеченной строки — «сейчас», «сегодня в 16:00», «завтра в 16:00». */
   .publish-choice [data-when] { display: none; }
   .publish-choice:has(input[value="now"]:checked) [data-when="now"],
@@ -5539,8 +5544,9 @@ dialog.lightbox:not(.lb-one) .lb-pill--bottom { bottom: calc(var(--lb-strip-bott
   /* Кнопка дела «Ваш ход» на телефоне — само время «3д 21ч» (`x-deal.todo-button wait`, 13.11.2026): одной ширины во всех строках,
      ниже обычной — строка в две строки. */
   @media (max-width: 639.98px) { .btn.todo-btn { width: 5.75rem; height: 2rem; min-height: 0; padding-inline: .5rem; font-size: var(--text-sm); justify-content: center; } }
-  .row-ask { display: flex; flex-wrap: wrap; gap: .5rem; padding: 0 1rem .75rem calc(1rem + 4.5rem + .75rem); margin-top: -.375rem; }
-  .row-ask .ask-action-form { display: flex; flex-wrap: wrap; gap: .5rem; }
+  /* Кнопка ответа под строкой сделки — справа (16.11.2026, владелец: «все нормальные люди кнопку справа размещают»). */
+  .row-ask { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: .5rem; padding: 0 1rem .75rem calc(1rem + 4.5rem + .75rem); margin-top: -.375rem; }
+  .row-ask .ask-action-form { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: .5rem; }
   @media (max-width: 639px) { .row-ask { padding-inline-start: calc(1rem + 3.5rem + .75rem); } }
   /* «Ждут вас» на «Предложениях» (`x-deal.ask-card`): кадр с названием и ценой, что сделать и срок, кнопка внизу. */
   .ask-card { display: flex; flex-direction: column; gap: .75rem; height: 100%; padding: .875rem; border-radius: 16px; background: var(--color-surface); }

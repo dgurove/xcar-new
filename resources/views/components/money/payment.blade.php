@@ -1,6 +1,6 @@
 {{-- Оплата счёта строкой `x-money.line`: способ иконкой, что и когда, у ссылки — чем заплатили; сотруднику ещё комиссия
      и зачислено ли на счёт. Заявка менеджера — оранжевым «ждёт подтверждения», отклонённая — зачёркнутой с причиной.
-     slip — адрес платёжки: чипом под строкой, открывается шторкой документов. title и icon — у выплаты свои.
+     slip — адрес платёжки: строкой файла под строкой, открывается шторкой документов. title и icon — у выплаты свои.
      Слот `acts` уходит строке как есть. --}}
 @props(['payment', 'attempt' => null, 'staff' => false, 'slip' => null, 'title' => null, 'icon' => null])
 @php
@@ -25,7 +25,8 @@
     @if ($file || isset($acts))
         <x-slot:acts>
             @if ($file)
-                <x-ui.doc :doc="['url' => $slip, 'type' => \App\Support\Docs::type($file->mime_type, $file->file_name), 'name' => $file->file_name, 'label' => 'Платёжка']" class="chip"><x-ui.icon name="file" class="size-3.5"/>платёжка</x-ui.doc>
+                {{-- Платёжка — строкой файла, как все документы (16.11.2026, владелец: чип «платёжка» — «это файл»). --}}
+                <x-ui.file name="Платёжка" :mime="$file->mime_type" :bytes="$file->size" :size="\App\Support\Ago::at($file->created_at, true, words: false)" :href="$slip" class="w-full"/>
             @endif
             {{ $acts ?? '' }}
         </x-slot:acts>

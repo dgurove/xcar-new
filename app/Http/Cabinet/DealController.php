@@ -2,10 +2,13 @@
 
 namespace App\Http\Cabinet;
 
+use App\Billing\Actions\ClaimPayment;
+use App\Billing\ChargeKind;
 use App\Billing\Invoice;
 use App\Billing\InvoiceState;
 use App\Billing\Party;
 use App\Billing\PartyKind;
+use App\Billing\PaymentSource;
 use App\Chats\AuthorKind;
 use App\Chats\Message;
 use App\Live\RefreshDeal;
@@ -427,6 +430,40 @@ class DealController
         }
 
         return $this->filesStream($deal, $requirement);
+    }
+
+    /**
+     * «Приложить чек» на шаге оплаты «страховой напрямую» (16.11.2026, вариант Б, `cabinet.deals.receipt`): `for` — за что чек.
+     * Поставщику — платёжка шага (PDF, шаг пройден, как `upload`); ООО «ПРАЙМ» — «я оплатил» на остаток счёта с этим чеком (`ClaimPayment`, как «По счёту» в шторке оплаты).
+     */
+    public function receipt(Request $request, Deal $deal, AnswerRequirement $answer, ClaimPayment $claim)
+    {
+        $me = $request->user();
+        $data = $request->validate([
+            'file' => ['required', 'file', 'max:20480', 'mimes:pdf,jpg,jpeg,png,heic,heif,webp'],
+            'for' => ['required', 'string', 'regex:/^(supplier|invoice:\d+)$/'],
+        ], ['file.required' => 'Выберите файл чека', 'file.mimes' => 'Нужен снимок или PDF', 'file.max' => 'Файл больше 20 МБ', 'for.required' => 'Выберите, за что чек']);
+        if ($data['for'] === 'supplier') {
+            $requirement = $deal->openRequirement()->first();
+            if (! $requirement || ! AttachRequirementFiles::paysOn($requirement) || ! $deal->paysSupplierOn($requirement->stage)) {
+                return redirect($deal->href())->with('toast', 'Оплата поставщику уже приложена');
+            }
+            app(AttachRequirementFiles::class)($requirement, $request->file('file'));
+            if ($move = $deal->proofMove($requirement->stage)) {
+                $answer($requirement->fresh(), $move, $me);
+            }
+
+            return redirect($deal->href())->with('toast', 'Чек приложен к оплате поставщику');
+        }
+        $invoice = $deal->issuedInvoices()->whereKey((int) substr($data['for'], 8))->firstOrFail();
+        abort_unless($invoice->isVisibleToManager($me) && ! $invoice->isOwed() && $invoice->kind !== ChargeKind::Reward, 404);
+        $left = round($invoice->remaining() - $invoice->claimed(), 2);
+        if ($left <= 0) {
+            return redirect($deal->href())->with('toast', 'По этому счёту оплата уже приложена');
+        }
+        $claim($invoice, $me, $left, null, $request->file('file'), null, PaymentSource::Bank);
+
+        return redirect($deal->href())->with('toast', 'Чек приложен к оплате '.($invoice->seller->config()['name'] ?? 'по счёту'));
     }
 
     public function removeFile(Request $request, Deal $deal, Media $media)

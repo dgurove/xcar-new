@@ -35,7 +35,7 @@ final class PaymentClaimed extends Message
 
     protected function decisions(): array
     {
-        return [['text' => 'Поступило', 'callback_data' => 'claim:'.$this->payment->id.':ok']];
+        return [['text' => 'Поступила', 'callback_data' => 'claim:'.$this->payment->id.':ok']];
     }
 
     protected function link(): array

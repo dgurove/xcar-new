@@ -442,8 +442,8 @@ final class UpdateHandler
         }
         $owner = Robot::user();
         app(ConfirmPayment::class)($payment, $owner);
-        $this->bot->answer($press->queryId, 'Поступило.');
-        $this->bot->edit($press->chatId, $press->messageId, $message->text('Поступило '.Ago::day(now(), true)), $message->afterDecision());
+        $this->bot->answer($press->queryId, 'Поступила.');
+        $this->bot->edit($press->chatId, $press->messageId, $message->text('Поступила '.Ago::day(now(), true)), $message->afterDecision());
     }
 
     /** «Войти» или «Это не я» под «Вход на xcar.ru». */

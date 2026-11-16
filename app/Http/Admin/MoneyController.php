@@ -11,6 +11,7 @@ use App\Billing\Acquiring\PayLinkState;
 use App\Billing\Actions\ConfirmPayment;
 use App\Billing\Actions\IssueServiceInvoice;
 use App\Billing\Actions\RejectPayment;
+use App\Billing\Actions\SwapPaymentProof;
 use App\Billing\ChargeKind;
 use App\Billing\Invoice;
 use App\Billing\InvoiceState;
@@ -329,6 +330,14 @@ class MoneyController
         $confirm($payment, $request->user());
 
         return back()->with('toast', 'Оплата принята');
+    }
+
+    /** «Это за другое»: чек сообщения об оплате ПРАЙМ — на самом деле оплата поставщику (`SwapPaymentProof`, 16.11.2026). */
+    public function toSupplier(Request $request, Payment $payment, SwapPaymentProof $swap)
+    {
+        $swap->toSupplier($payment, $request->user());
+
+        return back()->with('toast', 'Чек перенесли в оплату поставщику');
     }
 
     public function reject(Request $request, Payment $payment, RejectPayment $reject)

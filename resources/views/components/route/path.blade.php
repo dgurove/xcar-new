@@ -363,6 +363,13 @@
                             Документ об оплате
                             <x-slot:sub>PDF для страховой</x-slot:sub>
                         </x-route.task-row>
+                        {{-- Платёжка на самом деле — чек нашего счёта (16.11.2026, «Это за другое»): пока письмо страховой не ушло. --}}
+                        @if (! $stage->isPayStep() && ($primeBill = \App\Billing\Actions\SwapPaymentProof::invoiceTarget($deal)))
+                            @php $primeName = $primeBill->seller->config()['name'] ?? 'по счёту'; @endphp
+                            <form method="post" action="/work/deals/{{ $deal->id }}/payment-proof/to-invoice" class="mt-2" data-turbo-confirm="Это чек оплаты {{ $primeName }}? Он ляжет сообщением об оплате счёта {{ $primeBill->label() }}, шаг вернётся на «Оплату» и снова будет ждать чек поставщику" data-turbo-confirm-label="Перенести">
+                                @csrf<x-ui.button size="sm" variant="secondary">Это оплата {{ $primeName }}</x-ui.button>
+                            </form>
+                        @endif
                     @endif
                     @if ($position->fields())
                         <div class="mt-2 text-sm">@foreach ($position->fields() as $k => $v)<div><span class="text-ink-muted">{{ collect($stage->staff_fields)->firstWhere('key', $k)['label'] ?? $k }}:</span> {{ $v }}</div>@endforeach</div>
@@ -383,14 +390,18 @@
                                 <span class="nums font-semibold">{{ Money::rub($p->amount) }}</span>
                                 <span class="nums text-sm text-ink-dim">{{ \App\Support\Ago::html($p->paid_at, words: false) }}@if ($p->ref), № {{ $p->ref }}@endif</span>
                             </div>
-                            <div class="mt-2 flex flex-wrap items-center gap-2">
-                                <form method="post" action="/work/payments/{{ $p->id }}/confirm" class="contents" data-turbo-confirm="Поступило {{ Money::rub($p->amount) }}?">@csrf<x-ui.button size="sm">Поступило</x-ui.button></form>
+                            @if ($slip = $p->slip())<x-ui.file name="Платёжка" :mime="$slip->mime_type" :bytes="$slip->size" :size="\App\Support\Ago::at($slip->created_at, true, words: false)" :href="\App\Support\Docs::media($slip)['url']" class="mt-2"/>@endif
+                            <div class="claim-acts mt-2">
+                                <form method="post" action="/work/payments/{{ $p->id }}/confirm" class="contents" data-turbo-confirm="Поступила {{ Money::rub($p->amount) }}?">@csrf<x-ui.button size="sm">Поступила</x-ui.button></form>
                                 <div data-controller="sheet" class="contents">
                                     <x-ui.button type="button" size="sm" variant="secondary" data-action="sheet#open">Не поступила</x-ui.button>
                                     <x-ui.sheet id="reject-{{ $p->id }}" title="Оплата не поступила">
                                         <form method="post" action="/work/payments/{{ $p->id }}/reject" class="flex flex-col gap-3">@csrf<x-ui.field name="reason" label="Что не так" placeholder="Денег на счёте нет, платёжка не читается"/><x-ui.sheet-foot variant="secondary">Не поступила</x-ui.sheet-foot></form>
                                     </x-ui.sheet>
                                 </div>
+                                <x-deal.claim-other :payment="$p"/>
+                            </div>
+                                <x-deal.claim-other :payment="$p"/>
                                 @if ($slip = $p->slip())<x-ui.doc :doc="\App\Support\Docs::media($slip)" class="btn btn-s btn-ghost"><x-ui.icon name="file" class="size-4"/>Платёжка</x-ui.doc>@endif
                             </div>
                         </div>

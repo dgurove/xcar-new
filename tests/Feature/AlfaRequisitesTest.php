@@ -2,10 +2,12 @@
 
 namespace Tests\Feature;
 
+use App\Billing\ChargeKind;
 use App\Billing\Documents\PassportPdf;
 use App\Billing\Jobs\ReadPassport;
 use App\Billing\Party;
 use App\Billing\PartyKind;
+use App\Billing\Payment;
 use App\Billing\Seller;
 use App\Http\Admin\MailController;
 use App\Http\Cabinet\PassportScanController;
@@ -369,6 +371,70 @@ class AlfaRequisitesTest extends TestCase
         $this->actingAs($this->admin)->followingRedirects()->get($crm('/work/deals/'.$deal->id))->assertSee('Отправить страховой')->assertSee('Документ об оплате')->assertSee('PDF для страховой');
         $this->actingAs($this->admin)->withHeaders(['Turbo-Frame' => 'letters-frame'])->get($crm('/work/mail/new?offer='.$offer->number.'&template='.$stage->template_id))->assertOk()
             ->assertSee(PaymentProofPdf::fileName($deal))->assertDontSee('chek-1')->assertSee('Документ об оплате во вложении');
+    }
+
+    /** Сделка на «Оплате счёта» со счётом поставщика и счётом ПРАЙМ за подбор, отправленным менеджеру. */
+    private function payStep(): array
+    {
+        [$offer, $deal] = $this->deal(vat: false);
+        $exit = $offer->stage()->exits->first(fn ($e) => $e->label === 'Поставщик сразу выставил счёт' && $e->fits($deal));
+        $pdf = $offer->addMedia(UploadedFile::fake()->create('schet.pdf', 20, 'application/pdf'))->withCustomProperties(['letter' => 1])->toMediaCollection('papers');
+        $this->actingAs($this->admin)->post(Surface::Crm->url('/work/deals/'.$deal->id.'/supplier-invoice'), ['media' => $pdf->id, 'exit' => $exit->id])->assertSessionHasNoErrors();
+        $deal = $deal->fresh();
+        $prime = $deal->issuedInvoices()->where('kind', ChargeKind::Selection)->first();
+        $this->assertNotNull($prime, 'нет счёта ПРАЙМ за подбор');
+        $this->sendToManager($deal);
+
+        return [$offer->fresh(), $deal->fresh(), $prime->fresh()];
+    }
+
+    /**
+     * «Приложить чек» у менеджера (16.11.2026, вариант Б, 2611134025): две оплаты — шторка «За что?»; ПРАЙМ — сообщение об оплате
+     * счёта с чеком, шаг ждёт чек поставщику; поставщику — PDF, шаг пройден.
+     */
+    public function test_manager_receipt_goes_where_he_says(): void
+    {
+        [$offer, $deal, $prime] = $this->payStep();
+        $page = $this->actingAs($this->manager)->get(Surface::Site->url('/deals/'.$deal->id))->assertOk();
+        $page->assertSee('Приложить чек')->assertSee('За что этот чек?')->assertDontSee('Приложить платёжку');
+
+        $this->actingAs($this->manager)->post(Surface::Site->url('/deals/'.$deal->id.'/receipt'), ['file' => UploadedFile::fake()->image('chek.jpg', 500, 800)])->assertSessionHasErrors('for');
+        $this->actingAs($this->manager)->post(Surface::Site->url('/deals/'.$deal->id.'/receipt'), ['file' => UploadedFile::fake()->image('chek.jpg', 500, 800), 'for' => 'invoice:'.$prime->id])->assertRedirect();
+        $claim = $prime->fresh()->claims()->sole();
+        $this->assertNotNull($claim->slip());
+        $this->assertSame('Оплата счёта', $offer->fresh()->stage()->name);
+
+        // ПРАЙМ заявлен — чек остаётся только поставщику, вопроса нет.
+        $this->actingAs($this->manager)->get(Surface::Site->url('/deals/'.$deal->id))->assertSee('Приложить чек')->assertDontSee('За что этот чек?');
+        $this->actingAs($this->manager)->post(Surface::Site->url('/deals/'.$deal->id.'/receipt'), ['file' => UploadedFile::fake()->image('chek-2.jpg', 500, 800), 'for' => 'supplier'])->assertRedirect();
+        $this->assertSame('Подтверждение оплаты', $offer->fresh()->stage()->name);
+        $this->assertSame(['application/pdf'], PaymentProofPdf::files($deal->fresh())->pluck('mime_type')->all());
+    }
+
+    /** «Это за другое» (16.11.2026): чек поставщику, приложенный к ПРАЙМ, — в платёжку поставщику и обратно. */
+    public function test_staff_moves_receipt_between_supplier_and_prime(): void
+    {
+        [$offer, $deal, $prime] = $this->payStep();
+        $crm = fn (string $path) => Surface::Crm->url($path);
+        $this->actingAs($this->manager)->post(Surface::Site->url('/deals/'.$deal->id.'/receipt'), ['file' => UploadedFile::fake()->image('alfa.jpg', 500, 800), 'for' => 'invoice:'.$prime->id])->assertRedirect();
+        $claim = $prime->fresh()->claims()->sole();
+
+        $this->actingAs($this->admin)->followingRedirects()->get($crm('/work/deals/'.$deal->id))->assertSee('Это за другое')->assertSee('Поступила')->assertDontSee('>Поступило<', false);
+        $this->actingAs($this->admin)->post($crm('/work/payments/'.$claim->id.'/to-supplier'))->assertSessionHasNoErrors();
+        $this->assertNull(Payment::find($claim->id));
+        $this->assertSame('Подтверждение оплаты', $offer->fresh()->stage()->name);
+        $deal = $deal->fresh();
+        $this->assertSame(['application/pdf'], PaymentProofPdf::files($deal)->pluck('mime_type')->all());
+        $this->assertSame('staff', PaymentProofPdf::requirement($deal)->answer['closed_by']);
+
+        // Обратно: платёжка поставщику — чек ПРАЙМ, шаг снова «Оплата счёта» и ждёт чек поставщику.
+        $this->actingAs($this->admin)->followingRedirects()->get($crm('/work/deals/'.$deal->id))->assertSee('Это оплата ООО');
+        $this->actingAs($this->admin)->post($crm('/work/deals/'.$deal->id.'/payment-proof/to-invoice'))->assertSessionHasNoErrors();
+        $this->assertSame('Оплата счёта', $offer->fresh()->stage()->name);
+        $back = $prime->fresh()->claims()->sole();
+        $this->assertSame('application/pdf', $back->slip()->mime_type);
+        $this->assertSame([], PaymentProofPdf::files($deal->fresh())->all());
+        $this->assertNotNull($deal->fresh()->openRequirement);
     }
 
     /**

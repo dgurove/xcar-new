@@ -33,6 +33,7 @@ use App\Http\Site\EstimateController;
 use App\Http\Site\FavoriteController;
 use App\Http\Site\FileController;
 use App\Http\Site\InterestController;
+use App\Http\Site\JpegController;
 use App\Http\Site\LandingController;
 use App\Http\Site\NoteController;
 use App\Http\Site\OfferController;
@@ -155,7 +156,7 @@ Route::middleware(['auth', 'wall'])->group(function () {
     // Документы и файлы с закрытого диска — на любом хосте.
     Route::get('/files/{media}', [FileController::class, 'show']);
     // Кадр медиатеки JPEG-ом для «Скачать» в просмотре фото (`/media`, `/hot` — webp с диска мимо PHP).
-    Route::get('/jpg/{path}', [\App\Http\Site\JpegController::class, 'show'])->where('path', '(media|hot)/.+\.webp');
+    Route::get('/jpg/{path}', [JpegController::class, 'show'])->where('path', '(media|hot)/.+\.webp');
 
     Route::get('/account/notifications', [NotificationController::class, 'index']);
     Route::get('/account/notifications/latest', [NotificationController::class, 'latest']);
@@ -237,6 +238,7 @@ Route::middleware(['auth', 'wall'])->group(function () {
             Route::get('/deals/{deal}/dkp', [DealContractController::class, 'show']);
             Route::get('/deals/{deal}/dkp.pdf', [DealContractController::class, 'show']);
             Route::post('/deals/{deal}/files', [DealController::class, 'upload']);
+            Route::post('/deals/{deal}/receipt', [DealController::class, 'receipt']);
             Route::post('/deals/{deal}/chat-files', [DealController::class, 'chatFiles']);
             Route::post('/deals/{deal}/buyer-new', [DealController::class, 'buyerNew']);
             Route::post('/deals/{deal}/later', [DealController::class, 'later']);

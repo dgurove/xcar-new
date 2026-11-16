@@ -23,7 +23,8 @@
     // Этап «Проверка оплаты» сам показывает заявку менеджера с «Поступило» — здесь она только строкой, без второй пары кнопок.
     // Шаг оплаты сам несёт «Деньги пришли» (`x-route.path`) — у строки счёта её тогда нет.
     $payStep = $deal->isActive() && $offer->position()?->stage->isPayStep();
-    $inStep = $deal->isActive() && $offer->position()?->stage->exitsFor(\App\Workflow\Actor::Staff, $deal)->contains(fn ($x) => str_starts_with(mb_strtolower($x->label), 'оплата получена'));
+    // На «Подтверждении оплаты» страховой шаг заявку не показывает (оплату подтверждает поставщик) — кнопки здесь.
+    $inStep = $deal->isActive() && $offer->position()?->stage->waits_for !== \App\Workflow\WaitsFor::Supplier && $offer->position()?->stage->exitsFor(\App\Workflow\Actor::Staff, $deal)->contains(fn ($x) => str_starts_with(mb_strtolower($x->label), 'оплата получена'));
     // Первый счёт на этапе оплаты предлагает сам шаг пути — здесь его второй раз не ставим.
 @endphp
 @php
@@ -281,8 +282,12 @@
                     <x-money.payment :payment="$p" :slip="'/work/money/invoices/'.$i->id.'/payments/'.$p->id.'/slip'" staff>
                         @unless ($inStep)
                             <x-slot:acts>
-                                <form method="post" action="/work/payments/{{ $p->id }}/confirm" class="contents" data-turbo-confirm="Поступило {{ Money::rub($p->amount) }}?">@csrf<x-ui.button size="sm">Поступило</x-ui.button></form>
-                                <a href="/work/money/invoices/{{ $i->id }}" class="btn btn-s btn-quiet">Не поступила</a>
+                                {{-- Три ответа одним рядом во всю ширину, чип платёжки — над ними (16.11.2026). --}}
+                                <div class="claim-acts">
+                                    <form method="post" action="/work/payments/{{ $p->id }}/confirm" class="contents" data-turbo-confirm="Поступила {{ Money::rub($p->amount) }}?">@csrf<x-ui.button size="sm">Поступила</x-ui.button></form>
+                                    <a href="/work/money/invoices/{{ $i->id }}" class="btn btn-s btn-quiet">Не поступила</a>
+                                    <x-deal.claim-other :payment="$p"/>
+                                </div>
                             </x-slot:acts>
                         @endunless
                     </x-money.payment>

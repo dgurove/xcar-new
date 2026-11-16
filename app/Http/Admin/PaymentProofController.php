@@ -2,6 +2,7 @@
 
 namespace App\Http\Admin;
 
+use App\Billing\Actions\SwapPaymentProof;
 use App\Chats\Message;
 use App\Offers\Deal;
 use App\Offers\Documents\PaymentProofPdf;
@@ -51,6 +52,15 @@ final class PaymentProofController
         $take($deal->offer, $exit, Actor::Manager, $request->user(), ['for' => 'manager']);
 
         return back()->with('toast', 'Платёжка приложена');
+    }
+
+    /** «Это оплата ООО «ПРАЙМ»»: платёжка поставщику — на самом деле чек нашего счёта (`SwapPaymentProof`, 16.11.2026). */
+    public function toInvoice(Request $request, Deal $deal, SwapPaymentProof $swap)
+    {
+        abort_unless($request->user()->canManageCrm(), 403);
+        $swap->toInvoice($deal, $request->user());
+
+        return back()->with('toast', 'Чек перенесли в оплату по счёту, шаг снова «Оплата»');
     }
 
     public function remove(Request $request, Deal $deal, Media $media)

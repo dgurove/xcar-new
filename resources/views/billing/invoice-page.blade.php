@@ -91,9 +91,9 @@
                                 <span class="nums font-semibold">{{ Money::rub($p->amount) }}</span>
                                 <span class="tag nums">{{ $p->paid_at->format('d.m.Y') }}</span>
                                 @if ($p->ref)<span class="tag nums">№ {{ $p->ref }}</span>@endif
-                                @if ($slip = $p->slip())<x-ui.doc :doc="['url' => $base.'/payments/'.$p->id.'/slip', 'type' => \App\Support\Docs::type($slip->mime_type, $slip->file_name), 'name' => $slip->file_name, 'label' => 'Платёжка']" class="chip"><x-ui.icon name="file" class="size-3.5"/>платёжка</x-ui.doc>@endif
+                                @if ($slip = $p->slip())<x-ui.file name="Платёжка" :mime="$slip->mime_type" :bytes="$slip->size" :href="$base.'/payments/'.$p->id.'/slip'" class="w-full"/>@endif
                                 @if ($claims ?? null)
-                                    <form method="post" action="{{ $claims }}/{{ $p->id }}/confirm" class="ml-auto contents" data-turbo-confirm="Поступило {{ Money::rub($p->amount) }}?">@csrf<x-ui.button size="sm">Поступило</x-ui.button></form>
+                                    <form method="post" action="{{ $claims }}/{{ $p->id }}/confirm" class="ml-auto contents" data-turbo-confirm="Поступила {{ Money::rub($p->amount) }}?">@csrf<x-ui.button size="sm">Поступила</x-ui.button></form>
                                     <div data-controller="sheet" class="contents">
                                         <x-ui.button type="button" size="sm" variant="ghost" data-action="sheet#open">Не поступила</x-ui.button>
                                         <x-ui.sheet id="reject-{{ $p->id }}" title="Оплата не поступила">
@@ -115,13 +115,14 @@
                 <div class="flex flex-col divide-y divide-line/40">
                     @foreach ($i->payments as $p)
                         <div class="flex items-center gap-3 py-2">
-                            <span class="min-w-0 flex-1">{{ $p->source->label() }}{{ $p->ref ? ' № '.$p->ref : '' }}{{ $p->note ? ', '.$p->note : '' }}@if ($slip = $p->slip()) <x-ui.doc :doc="['url' => $base.'/payments/'.$p->id.'/slip', 'type' => \App\Support\Docs::type($slip->mime_type, $slip->file_name), 'name' => $slip->file_name, 'label' => 'Платёжка']" class="chip"><x-ui.icon name="file" class="size-3.5"/>платёжка</x-ui.doc>@endif</span>
+                            <span class="min-w-0 flex-1">{{ $p->source->label() }}{{ $p->ref ? ' № '.$p->ref : '' }}{{ $p->note ? ', '.$p->note : '' }}</span>
                             <span class="nums text-sm text-ink-muted">{{ $p->paid_at->format('d.m.Y') }}</span>
                             <span class="nums font-semibold">{{ Money::rub($p->amount) }}</span>
                             @if ($canManage)
                                 <form method="post" action="{{ $base }}/payments/{{ $p->id }}" class="contents" data-turbo-confirm="Отменить {{ $i->isOwed() ? 'перечисление' : 'оплату' }} {{ Money::rub($p->amount) }}?">@csrf @method('delete')<button class="btn btn-ghost btn-s px-2 text-ink-muted" aria-label="Отменить"><x-ui.icon name="x" class="size-4"/></button></form>
                             @endif
                         </div>
+                        @if ($slip = $p->slip())<x-ui.file name="Платёжка" :mime="$slip->mime_type" :bytes="$slip->size" :href="$base.'/payments/'.$p->id.'/slip'" class="!border-0 pb-2"/>@endif
                     @endforeach
                     @foreach ($i->allPayments->where('state', \App\Billing\PaymentState::Rejected) as $p)
                         <div class="flex items-center gap-3 py-2 text-ink-muted"><span class="min-w-0 flex-1">Не поступила{{ $p->reject_reason ? ': '.$p->reject_reason : '' }}</span><span class="nums text-sm">{{ $p->paid_at->format('d.m.Y') }}</span><span class="nums line-through">{{ Money::rub($p->amount) }}</span></div>

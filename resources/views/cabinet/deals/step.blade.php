@@ -191,11 +191,12 @@
             {{-- Платит поставщику сам — его счёт тут же, первым (10.11.2026, 0790/046/11079/26: счёт был в «Информации по сделке»
                  номером со сканера, а на шаге «Оплатить страховой» его не было). Пока не показали — словом. --}}
             @php $supplierBills = $direct || $sent ? \App\Offers\SupplierInvoice::shown($deal->offer) : collect(); @endphp
-            @if ($direct && $selectionPay)
-                {{-- Блок «кому — сумма», как у платежа ПРАЙМ ниже (`cabinet.deals.payment` в шаге). --}}
-                <div class="mt-4 flex items-baseline gap-3"><span class="min-w-0 flex-1">{{ mb_ucfirst(preg_replace('/^Оплатить\s+/u', '', (string) $deal->schemeOf()->payLabel())) }}</span><span class="nums shrink-0 text-lg font-semibold">{{ \App\Support\Money::rub($deal->supplierPayment()) }}</span></div>
+            {{-- Поставщику и ООО «ПРАЙМ» — строками одной группы и одна «Приложить чек» с вопросом «За что?» (16.11.2026, вариант Б). --}}
+            @php $receipt = $direct && $selectionPay && $requirement && ! $needsBuyer && ! $paidUp; @endphp
+            @if ($receipt)
+                @include('cabinet.deals.receipt')
             @endif
-            @if ($direct && \App\Offers\SupplierInvoice::onPay($deal, $position->stage))
+            @if ($direct && ! $receipt && \App\Offers\SupplierInvoice::onPay($deal, $position->stage))
                 @if ($supplierBills->isNotEmpty())
                     <div class="list mt-4">
                         {{-- Счёт — своим именем и с «Поделиться» (10.11.2026: менеджеры не узнавали счёт в файле со сканера и не могли
@@ -207,7 +208,7 @@
                 @endif
             @endif
             {{-- Платёжка поставщику — сразу под его счётом, до нашего подбора: два блока одного вида (16.11.2026). --}}
-            @if ($direct && $requirement && ! $needsBuyer && ! $paidUp)
+            @if ($direct && ! $receipt && $requirement && ! $needsBuyer && ! $paidUp)
                 @include('cabinet.deals.answer', ['attachLabel' => 'Приложить платёжку'])
             @endif
             @if ($sent)
@@ -288,7 +289,7 @@
                     @include('cabinet.deals.answer')
                 @endif
             @endif
-            @if ($direct && $selectionPay)
+            @if ($direct && $selectionPay && ! $receipt)
                 {{-- Наш подбор — своей группой под платежом поставщику, вторичной кнопкой. --}}
                 {{-- Здесь главное — платёж поставщику выше, наш подбор — вторичной кнопкой. --}}
                 <div class="pay-split">@include('cabinet.deals.payment', ['title' => $selectionPay->seller->config()['name'], 'nested' => true, 'amount' => \App\Support\Money::rub($selectionPay->remaining()), 'state' => null, 'invoice' => $selectionPay, 'pay' => true])</div>

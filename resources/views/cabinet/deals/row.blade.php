@@ -1,4 +1,4 @@
-{{-- Сделка строкой в кабинете: фото, название, №; ниже — просьба к менеджеру оранжевым, если она есть, иначе чей ход
+{{-- Сделка строкой в кабинете: фото, название (номера нет с 16.11.2026); ниже — просьба к менеджеру оранжевым, если она есть, иначе чей ход
      с часами. Справа сумма и этап (у закончившейся — состояние); на телефоне правого столбика нет — сумма второй строкой,
      этап называет строка ниже. Админу — чья сделка рядом с номером, и строка ведёт в CRM: там он её и ведёт. --}}
 @php
@@ -37,19 +37,18 @@
 <a href="{{ $staff ? $deal->crmUrl() : ($garage ? $deal->href() : '/deals/'.$deal->id) }}" class="row" @if ($staff) data-turbo="false" @endif>
     <span class="row-photo max-sm:!h-[2.625rem] max-sm:!w-14"><x-offer.photo :media="$offer->mainPhoto()" sizes="72px"/></span>
     <span class="min-w-0 flex-1">
-        <span class="block truncate font-medium">{{ $offer->titleWithYear() }}</span>
-        <span class="row-sub max-sm:!hidden">@if ($garageTag)<span class="tag tag-accent">Гараж</span>@endif<span class="tag nums">№ {{ $offer->number }}</span>@if ($staff) {{ $deal->buyer?->shortName() }}@endif</span>
-        {{-- Телефон: цена — второй строкой рядом с номером, а не колонкой справа: колонка забирала треть строки, и
-             название с просьбой сжимались в узкий столбик (07.10.2026, владелец: «текст сжатый, нечитабельный»). --}}
-        <span class="mt-0.5 flex items-baseline gap-x-2 sm:hidden">
-            <span class="nums shrink-0 font-medium">{{ $price }}</span>
-            @if ($garageTag)<span class="tag tag-accent shrink-0">Гараж</span>@endif
-            <span class="nums shrink-0 text-sm text-ink-muted">№ {{ $offer->number }}</span>
-            @if ($staff)<span class="min-w-0 truncate text-sm text-ink-muted">{{ $deal->buyer?->shortName() }}</span>@endif
+        {{-- Телефон: сумма — справа в строке названия, что сейчас — под ним во всю ширину (16.11.2026: в строке статуса она
+             сжимала длинную просьбу в столбик). --}}
+        <span class="flex items-baseline gap-x-3">
+            <span class="min-w-0 flex-1 truncate font-medium">{{ $offer->titleWithYear() }}</span>
+            <span class="nums shrink-0 font-medium sm:hidden">{{ $price }}</span>
         </span>
-        {{-- В архиве исход называет раздел («Закончены», «Отменены») — у строки только когда. --}}
-        @unless ($active)<span class="nums mt-1 block text-sm text-ink-muted sm:hidden">{{ \App\Support\Ago::html(($deal->closed_at ?? $deal->updated_at), words: false) }}</span>@endunless
+        {{-- Номера нет (16.11.2026, владелец: «номер в списке не нужен»): метка «Гараж» и (админу) чья сделка — строкой под названием. --}}
+        @if ($garageTag || $staff)
+            <span class="mt-0.5 flex items-baseline gap-x-2 text-sm text-ink-muted">@if ($garageTag)<span class="tag tag-accent shrink-0">Гараж</span>@endif @if ($staff)<span class="min-w-0 truncate">{{ $deal->buyer?->shortName() }}</span>@endif</span>
+        @endif
         @if ($deal->declinedBySupplier())<span class="mt-1 block text-sm text-danger">Поставщик отказал в продаже</span>@endif
+        @unless ($active)<span class="nums mt-1 block text-sm text-ink-muted sm:hidden">{{ \App\Support\Ago::html(($deal->closed_at ?? $deal->updated_at), words: false) }}</span>@endunless
         @if ($task)
             @php $late = $task['due']?->isPast(); @endphp
             <span class="mt-1 block text-sm"><span class="font-medium">{{ \App\Users\Wording::mine($task['title']) }}</span>@if ($late)<span class="text-danger">, просрочено на <span class="nums whitespace-nowrap" data-controller="timer" data-timer-since-value="{{ $task['due']->toIso8601String() }}" data-timer-coarse-value="true"></span></span>@elseif ($task['due'])<span class="text-ink-muted">, <span class="nums whitespace-nowrap">до {{ \App\Support\Ago::html($task['due'], true, words: false) }}</span></span>@endif</span>
