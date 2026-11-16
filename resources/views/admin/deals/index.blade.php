@@ -17,7 +17,7 @@
     <div id="list">
     @if ($groups !== null)
         @if ($debts && $debts['owed'] > 0)
-            {{-- «Менеджер платит нам» — кто сколько должен нам (27.10.2026, `DealDebt`). --}}
+            {{-- «Менеджер должен нам» — кто сколько должен нам (27.10.2026, `DealDebt`). --}}
             <div class="mt-5 flex flex-wrap items-baseline gap-x-5 gap-y-1">
                 <span>Должны нам <span class="nums font-semibold">{{ \App\Support\Money::rub($debts['owed']) }}</span></span>
                 @if ($debts['overdue'] > 0)<span class="text-danger">просрочено <span class="nums font-semibold">{{ \App\Support\Money::rub($debts['overdue']) }}</span></span>@endif
