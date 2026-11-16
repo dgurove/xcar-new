@@ -298,7 +298,7 @@ class DealController
         if ($attach($requirement, $message) === 0) {
             return $this->back($request, $deal)->with('toast', 'Файл не нашёлся, приложите его на шаге');
         }
-        $move = $deal->soleMove($requirement->stage);
+        $move = $requirement->stage?->isPayStep() ? $deal->proofMove($requirement->stage) : $deal->soleMove($requirement->stage);
         if (! $move) {
             return redirect($deal->href().'#step')->with('toast', 'Приложено, ответьте на шаге');
         }
@@ -403,7 +403,7 @@ class DealController
     }
 
     /**
-     * Файл в просьбу шага. На шаге оплаты платёжка — и ответ (16.11.2026, `Deal::soleMove`): шаг сделан, страницу перечитывает
+     * Файл в просьбу шага. На шаге оплаты платёжка — и ответ (16.11.2026, `Deal::proofMove`): шаг сделан, страницу перечитывает
      * `photos_controller` (`reload`). Платёжка ушла, поставщик ещё не подтвердил — файл ложится к ней же
      * (`Deal::sentPaymentProof`): «Приложить ещё» и остальные файлы той же пачки.
      */
@@ -419,7 +419,7 @@ class DealController
             return response()->json(['message' => $e->getMessage()], 422);
         }
         if (! $requirement->done_at && $requirement->asks === Asks::Document && $requirement->stage?->isPayStep()
-            && ($move = $deal->soleMove($requirement->stage))) {
+            && ($move = $deal->proofMove($requirement->stage))) {
             $answer($requirement->fresh(), $move, $request->user());
             session()->flash('toast', 'Платёжка приложена');
 

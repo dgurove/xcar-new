@@ -1,6 +1,7 @@
 {{-- «Приложить за менеджера» на шаге оплаты (10.11.2026, владелец: «чтобы админы за него могли прикрепить, если он как-то
      по-другому админам отправил»): чек кассы, скан или файл платёжки — сколько угодно файлов; уже приложенные — строками с ×.
-     «Оплата приложена, шаг пройден» — его ответ шага за него (`PaymentProofController`); страховой уйдёт одним PDF. --}}
+     «Приложить» — и его ответ шага за него (`PaymentProofController`), отдельной кнопки «шаг пройден» нет (16.11.2026,
+     владелец: «сразу должна быть кнопка отправить без этого дебильного этапа»); снимки ложатся PDF, страховой уйдёт одним PDF. --}}
 @props(['id', 'deal', 'requirement'])
 @php $files = $requirement->getMedia('files'); $mine = old('_sheet') === $id; @endphp
 <x-ui.sheet :id="$id" title="Документ об оплате">
@@ -21,6 +22,6 @@
             <x-ui.file-field name="files[]" :label="$files->isEmpty() ? 'Чек, скан или файл платёжки' : 'Добавить ещё'" accept=".pdf,.jpg,.jpeg,.png,.heic,.webp,image/*" multiple/>
         </div>
         <p class="text-sm text-ink-muted">Страховой уйдёт одним PDF</p>
-        <x-ui.sheet-foot type="submit">Оплата приложена, шаг пройден</x-ui.sheet-foot>
+        <x-ui.sheet-foot type="submit">{{ $files->isEmpty() ? 'Приложить' : 'Готово' }}</x-ui.sheet-foot>
     </form>
 </x-ui.sheet>

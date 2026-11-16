@@ -10,7 +10,6 @@ use App\Workflow\Actions\AttachRequirementFiles;
 use App\Workflow\Actions\TakeExit;
 use App\Workflow\Actor;
 use App\Workflow\Asks;
-use App\Workflow\Outcome;
 use App\Workflow\Requirement;
 use App\Workflow\Track;
 use Illuminate\Http\Request;
@@ -44,14 +43,14 @@ final class PaymentProofController
         if (! $request->boolean('pass')) {
             return back()->with('toast', 'Документ приложен');
         }
-        $exit = $requirement->stage->exitsFor(Actor::Manager, $deal)->first(fn (Outcome $x) => in_array($x->label, PaymentProofPdf::EXITS, true));
+        $exit = $deal->proofMove($requirement->stage);
         if (! $exit) {
             throw ValidationException::withMessages(['payment_proof' => 'У шага нет ответа «Оплатил, документ приложен»']);
         }
         Requirement::closeOpen($deal, $exit->stage_id, ['exit' => $exit->label, 'closed_by' => 'staff', 'by' => $request->user()->id]);
         $take($deal->offer, $exit, Actor::Manager, $request->user(), ['for' => 'manager']);
 
-        return back()->with('toast', 'Оплата приложена, шаг пройден');
+        return back()->with('toast', 'Платёжка приложена');
     }
 
     public function remove(Request $request, Deal $deal, Media $media)

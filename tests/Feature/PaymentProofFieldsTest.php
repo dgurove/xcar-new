@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Billing\Actions\ClaimPayment;
+use App\Billing\Invoice;
 use App\Billing\PaymentSource;
 use App\Offers\Actions\AcceptBid;
 use App\Offers\Actions\PlaceBid;
@@ -11,6 +12,7 @@ use App\Offers\CommissionMode;
 use App\Offers\Deal;
 use App\Offers\DealContract;
 use App\Offers\DealScheme;
+use App\Offers\Documents\PaymentProofPdf;
 use App\Offers\Offer;
 use App\Offers\OfferEventType;
 use App\Offers\OfferState;
@@ -92,6 +94,33 @@ class PaymentProofFieldsTest extends TestCase
         $this->assertContains('Этап: Проверка оплаты («Отдал наличными»)', $history);
     }
 
+    /**
+     * Платёжка менеджера на шаге оплаты (16.11.2026, владелец): снимок ложится PDF, шаг пройден ответом «Оплатил, документ
+     * приложен» без второго нажатия ни у него, ни в CRM.
+     */
+    public function test_manager_photo_becomes_pdf_and_passes_pay_step(): void
+    {
+        app(TakeExit::class)($this->offer, $this->offer->position(Track::Sale)->stage->exits->firstWhere('label', 'Автомобиль забрал'), Actor::Manager, $this->manager);
+        app(SaveDealContract::class)(DealContract::for($this->deal->fresh()), ['buyer_id' => 'me'], $this->manager);
+        $this->passportFor($this->manager);
+        $this->sendToManager($this->deal);
+        $this->assertSame('Оплата счёта', $this->offer->fresh()->stage()->name);
+        $requirement = $this->deal->fresh()->openRequirement;
+        $this->assertNotNull($requirement);
+
+        $this->actingAs($this->manager)->post('http://xcar.localhost/deals/'.$this->deal->id.'/files', ['file' => UploadedFile::fake()->image('chek.jpg', 600, 900)])->assertOk();
+
+        $requirement->refresh();
+        $this->assertNotNull($requirement->done_at);
+        $this->assertSame('Оплатил, документ приложен', $requirement->answer['exit']);
+        $files = $requirement->getMedia('files');
+        $this->assertSame(['application/pdf'], $files->pluck('mime_type')->all());
+        $this->assertStringStartsWith('Оплата-', $files->first()->file_name);
+        $this->assertSame([], $requirement->getMedia('scan')->all());
+        $this->assertNotSame('Оплата счёта', $this->offer->fresh()->stage()->name);
+        $this->assertStringStartsWith('%PDF', (string) PaymentProofPdf::render($this->deal->fresh()));
+    }
+
     public function test_payment_proof_asked_on_leaving_payment_stage(): void
     {
         // Подписание — как было: приём и трек на входе. «Договор получен» нашей платёжки не спрашивает.
@@ -135,7 +164,7 @@ class PaymentProofFieldsTest extends TestCase
         $this->assertStringContainsString('№ операции', $html);
     }
 
-    private function primeInvoice(): \App\Billing\Invoice
+    private function primeInvoice(): Invoice
     {
         app(TakeExit::class)($this->offer, $this->offer->position(Track::Sale)->stage->exits->firstWhere('label', 'Автомобиль забрал'), Actor::Manager, $this->manager);
         app(SaveDealContract::class)(DealContract::for($this->deal->fresh()), ['buyer_id' => 'me'], $this->manager);

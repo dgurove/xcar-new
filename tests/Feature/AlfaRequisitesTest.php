@@ -20,6 +20,7 @@ use App\Offers\Actions\SyncDealInvoices;
 use App\Offers\CommissionMode;
 use App\Offers\DealContract;
 use App\Offers\DealScheme;
+use App\Offers\DealTabs;
 use App\Offers\Documents\PaymentProofPdf;
 use App\Offers\InsurerReplies;
 use App\Offers\Offer;
@@ -47,6 +48,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
+use Symfony\Component\Process\ExecutableFinder;
 use Tests\TestCase;
 
 /**
@@ -113,8 +115,8 @@ class AlfaRequisitesTest extends TestCase
         $this->assertSame([['Нет реквизитов', 'now'], ['Письмо с реквизитами', 'wait']], $subs->map(fn ($s) => [$s['name'], $s['state']])->all());
 
         // Вкладка — этап «Ждём счёт от поставщика» (`DealTabs`, 16.11.2026), строка — с менеджером, без кнопки «Позвонить» (снята 10.11.2026).
-        \App\Offers\DealTabs::forget();
-        $this->assertSame('invoice', \App\Offers\DealTabs::map()[$offer->id][0] ?? null);
+        DealTabs::forget();
+        $this->assertSame('invoice', DealTabs::map()[$offer->id][0] ?? null);
         $page = $this->actingAs($this->admin)->get('http://'.Surface::Crm->host().'/offers?preset=invoice')->assertOk();
         $page->assertSee('Денис Трофимов')->assertDontSee('tel:79000000002', false);
     }
@@ -350,6 +352,11 @@ class AlfaRequisitesTest extends TestCase
         $this->assertCount(2, PaymentProofPdf::files($deal));
         $this->assertSame('Оплатил, документ приложен', PaymentProofPdf::requirement($deal)->answer['exit']);
 
+        // Снимки легли PDF (16.11.2026); склеивает их `pdfunite` — он есть в образе, на машине разработки его может не быть.
+        $this->assertSame(['application/pdf', 'application/pdf'], PaymentProofPdf::files($deal)->pluck('mime_type')->all());
+        if (! (new ExecutableFinder)->find('pdfunite')) {
+            return;
+        }
         $doc = PaymentProofPdf::render($deal);
         $this->assertStringStartsWith('%PDF', $doc);
         $this->assertSame(2, preg_match_all('#/Type\s*/Page[^s]#', $doc));

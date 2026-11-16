@@ -315,9 +315,9 @@ class Deal extends Model implements HasMedia
     }
 
     /** Кому платят услуги подбора — ООО «ПРАЙМ» (по умолчанию) или ООО «Р.О.С.» (`deals.fee_seller`, `SetFeeSeller`, 16.11.2026). */
-    public function feeSeller(): \App\Billing\Seller
+    public function feeSeller(): Seller
     {
-        return \App\Billing\Seller::tryFrom((string) $this->fee_seller) ?? \App\Billing\Seller::Prime;
+        return Seller::tryFrom((string) $this->fee_seller) ?? Seller::Prime;
     }
 
     /** Платит сам менеджер (его сторона) — тогда счёт с разбивкой и удержанием вознаграждения. */
@@ -613,6 +613,19 @@ class Deal extends Model implements HasMedia
      * соображают, заколебали в чат платёжки кидать»): приложил файл на шаге оплаты — шаг сделан, второй кнопки «Оплатил,
      * документ приложен» нет. Так же «Это чек об оплате» под файлом в чате.
      */
+    /**
+     * Ответ, который делает приложенная платёжка на шаге оплаты (16.11.2026, владелец: «сразу должна считаться платёжкой, без
+     * дебильного этапа»): «Оплатил, документ приложен» (`PaymentProofPdf::EXITS`), иначе единственный ход менеджера.
+     */
+    public function proofMove(?Stage $stage): ?Outcome
+    {
+        if (! $stage?->isPayStep()) {
+            return null;
+        }
+
+        return $this->managerExits($stage)->first(fn (Outcome $e) => in_array($e->label, PaymentProofPdf::EXITS, true)) ?? $this->soleMove($stage);
+    }
+
     public function soleMove(?Stage $stage): ?Outcome
     {
         $moves = $this->managerExits($stage)->reject(fn (Outcome $e) => $e->isRetreat() || self::closes($e))->values();

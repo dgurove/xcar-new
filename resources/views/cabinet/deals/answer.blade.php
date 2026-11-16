@@ -3,7 +3,7 @@
 @php use App\Workflow\Asks; @endphp
 @if ($requirement->asks === Asks::Document)
     {{-- Шаг оплаты: платёжка сама закрывает шаг (`DealController::upload`) — после загрузки страница перечитывается. --}}
-    <div class="mt-5" data-controller="photos" data-photos-url-value="/deals/{{ $deal->id }}/files" @if ($requirement->stage?->isPayStep() && $deal->soleMove($requirement->stage)) data-photos-reload-value="true" @endif>
+    <div class="mt-5" data-controller="photos" data-photos-url-value="/deals/{{ $deal->id }}/files" @if ($deal->proofMove($requirement->stage)) data-photos-reload-value="true" @endif>
         <input type="file" accept="image/*,.pdf,.heic" multiple class="sr-only" tabindex="-1" data-photos-target="input" data-action="change->photos#upload">
         @include('cabinet.deals.files', ['requirement' => $requirement])
         <div hidden data-photos-target="progress" class="my-2">

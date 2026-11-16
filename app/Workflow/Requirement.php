@@ -84,6 +84,8 @@ class Requirement extends Model implements HasMedia
     public function registerMediaCollections(): void
     {
         $this->addMediaCollection('files')->useDisk('private');
+        // Снимок платёжки на миг, пока из него собирается PDF (`AttachRequirementFiles`), — тоже закрытым.
+        $this->addMediaCollection('scan')->useDisk('private');
     }
 
     public function offer(): BelongsTo

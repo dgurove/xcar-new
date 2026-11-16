@@ -46,6 +46,10 @@ final class PaymentProofPdf
     {
         $files = self::files($deal);
         $pdfs = $files->filter(fn (Media $m) => $m->mime_type === 'application/pdf' && is_file($m->getPath()))->values();
+        // Один PDF (с 16.11.2026 снимок платёжки и ложится PDF, `AttachRequirementFiles`) — он и есть документ.
+        if ($files->count() === 1 && $pdfs->count() === 1) {
+            return (string) file_get_contents($pdfs->first()->getPath());
+        }
         $unite = (new ExecutableFinder)->find('pdfunite');
         $pages = [];
         foreach ($files as $m) {
