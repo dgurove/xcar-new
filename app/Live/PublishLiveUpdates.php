@@ -90,7 +90,7 @@ final class PublishLiveUpdates
         $this->publish->refresh([Topics::CATALOG, ...$buyers], ["/offers/{$n}"]);
         $this->publish->refresh(Topics::STAFF, ["/offers/{$n}"]);
         // Списки CRM — строкой: ушла из вкладки — уходит с экрана, во вкладку пришла — там перечитывается страница.
-        $this->publish->rows(Topics::STAFF, ['/offers' => [$n], '/gallery' => [$n], '/work/deals' => RefreshCar::deals($e->offer)]);
+        $this->publish->rows(Topics::STAFF, ['/offers' => [$n], '/gallery' => [$n]]);
         $this->logistics($e->offer);
     }
 
@@ -138,7 +138,7 @@ final class PublishLiveUpdates
         // Отклонили последнее — машина возвращается из «Есть подтверждения» в «Опубликованные»: строка уходит, а там
         // перечитывается страница.
         $this->publish->refresh(Topics::STAFF, ["/offers/{$n}"]);
-        $this->publish->rows(Topics::STAFF, ['/offers' => [$n], '/work/deals' => RefreshCar::deals($e->bid->offer)]);
+        $this->publish->rows(Topics::STAFF, ['/offers' => [$n]]);
     }
 
     /**
@@ -178,7 +178,8 @@ final class PublishLiveUpdates
     {
         $n = $e->offer->number;
         $this->publish->refresh(Topics::STAFF, ["/offers/{$n}"]);
-        $this->publish->rows(Topics::STAFF, ['/work/deals' => RefreshCar::deals($e->offer), '/work/garage' => [$n]]);
+        // Строка машины во вкладках «Предложений» (и в «Все» — этап там раньше не обновлялся вживую).
+        $this->publish->rows(Topics::STAFF, ['/offers' => [$n], '/work/garage' => [$n]]);
         // Шаг сделки двигает и «Продажу» вывоза: «после оплаты» / «ждём поставщика» снимаются здесь, а не сменой состояния.
         $this->logistics($e->offer);
         if (($deal = $e->deal ?? $e->offer->deal()->first()) && $deal->buyer_id) {

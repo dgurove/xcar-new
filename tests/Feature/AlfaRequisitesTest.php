@@ -112,7 +112,7 @@ class AlfaRequisitesTest extends TestCase
         $this->assertSame('Реквизиты для счёта', $offer->stage()->block->name);
         $this->assertSame([['Нет реквизитов', 'now'], ['Письмо с реквизитами', 'wait']], $subs->map(fn ($s) => [$s['name'], $s['state']])->all());
 
-        $page = $this->actingAs($this->admin)->get('http://'.Surface::Crm->host().'/work/deals?preset=manager')->assertOk();
+        $page = $this->actingAs($this->admin)->get('http://'.Surface::Crm->host().'/offers?preset=paying&turn=manager')->assertOk();
         $page->assertSee('Денис Трофимов')->assertSee('Нет реквизитов')->assertDontSee('tel:79000000002', false); // «Позвонить» снята 10.11.2026
     }
 

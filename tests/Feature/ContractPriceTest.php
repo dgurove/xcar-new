@@ -88,7 +88,8 @@ class ContractPriceTest extends TestCase
         $crm = 'http://'.config('xcar.crm_host');
         $moderator = User::create(['name' => 'Модератор', 'phone' => '79000000003', 'roles' => [Role::Moderator], 'approved_at' => now()]);
 
-        $this->actingAs($moderator)->get($crm.'/work/deals')->assertOk();
+        $this->actingAs($moderator)->get($crm.'/work/deals')->assertRedirect();
+        $this->actingAs($moderator)->get($crm.'/offers?preset=agree')->assertOk();
         $this->actingAs($moderator)->put($crm.'/work/deals/'.$deal->id.'/contract-price', ['price' => '990 000'])->assertRedirect();
         $contract = $deal->fresh()->contract;
         $this->assertSame(990000, $contract->price);

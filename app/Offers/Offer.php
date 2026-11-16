@@ -1438,7 +1438,9 @@ class Offer extends Model
             },
             OfferState::Open => $user?->canManageCrm() && ($this->relationLoaded('bids') ? $this->bids->contains('state', BidState::Active) : self::hasActiveBids($this->id))
                 ? $presets['bids'] : $presets['published'],
-            OfferState::Sold, OfferState::Delivered => 'Сделки',
+            // Сделка — вкладкой этапа (16.11.2026: сделка — состояние предложения), выданная — «Закрыты».
+            OfferState::Sold => $presets[DealWork::tabOf($this->position())] ?? 'Сделка',
+            OfferState::Delivered => $presets['finished'],
             OfferState::Garage => 'Гараж',
             // Отказ поставщика (28.10.2026, владелец: «архив с пометкой»): в архиве, но словом причины, а не «Архив».
             OfferState::Cancelled => $this->declinedDeal ? $presets['archive'].', отказ поставщика' : $presets['archive'],

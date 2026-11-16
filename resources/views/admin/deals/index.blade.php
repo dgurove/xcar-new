@@ -3,9 +3,13 @@
     // Столбцы — одно описание на шапку, строки и заголовки групп (`DealController::table`).
     $table = \App\Http\Admin\DealController::table($groups !== null, $stages !== null, $facets->searching() ? null : $preset, $waiting !== null);
 @endphp
-<x-ui.shell title="Сделки" :heading="false" :detail="$detail">
-    <x-ui.toolbar :sort="$sort" :pills="\App\Http\Admin\DealController::PRESETS" :pill="$preset" pill-param="preset" :pill-drop="['todo', 'what', 'sub']" :counts="$counts" name="deals" :facets="$facets" search="Номер, марка, VIN, менеджер">
-        <x-slot:lead><x-admin.work-titles current="deals" :count="$deals->total()"/></x-slot:lead>
+{{-- Вкладки сделки в «Предложениях» (16.11.2026: сделка — состояние предложения, `OfferController::DEAL_TABS`): то же колесо
+     с разделами, что у предложений; строки — сделки, ключ строки и окна — номер машины. --}}
+<x-ui.shell :title="$presets[$preset] ?? 'Предложения'" :heading="false" :detail="$detail">
+    <div class="title-row">
+        <x-ui.tab-title :pills="$presets" :pill="$preset" pill-param="preset" pill-home="" :counts="$counts" :badges="['estimating' => 'estimating_given', 'priced' => 'priced_given', 'us' => 'us']" :bumps="['legacy' => 'legacy_drafts']" :sections="$sections" :drop="['todo', 'what', 'sub', 'turn']" fallback="Предложения" id="offers-tabs"/>
+    </div>
+    <x-ui.toolbar :sort="$sort" name="deals" :facets="$facets" search="Номер, марка, VIN, менеджер">
         <x-slot:extra><x-ui.view-switch :views="['list', 'table', 'wide']" :current="$view"/></x-slot:extra>
         {{-- Вкладки дел «Ваш ход» и чего ждём во «Ждём …» (09.11.2026, `DealController::todo|waiting`). --}}
         @if ($work)
@@ -32,7 +36,7 @@
     @elseif ($debts !== null)
         {{-- «Оплата» — кто сколько должен нам и когда (27.10.2026, `DealController::debts`): итог, группы по менеджеру. --}}
         @if ($debts['groups']->isEmpty())
-            <x-ui.empty class="mt-6">Никто ничего не должен</x-ui.empty>
+            <x-ui.empty class="mt-6">На оплате сделок нет</x-ui.empty>
         @else
             <div class="mt-5 flex flex-wrap items-baseline gap-x-5 gap-y-1">
                 <span>Должны нам <span class="nums font-semibold">{{ \App\Support\Money::rub($debts['owed']) }}</span></span>
@@ -50,7 +54,7 @@
         {{-- «Ждём менеджера» / «Ждём поставщика» — группами по тому, кого ждём (`DealController::waiting`, 04.11.2026): менеджер
              с аватаром или вендор с логотипом, сколько просрочено; в строке — что ждём и срок. --}}
         @if ($waiting->isEmpty())
-            <x-ui.empty class="mt-6">{{ $work['tab'] !== 'all' ? 'Здесь никого не ждём' : ($preset === 'manager' ? 'Менеджеров не ждём' : 'Поставщиков не ждём') }}</x-ui.empty>
+            <x-ui.empty class="mt-6">{{ $work['tab'] !== 'all' ? 'Здесь никого не ждём' : (request()->query('turn') === 'manager' ? 'Менеджеров не ждём' : 'Поставщиков не ждём') }}</x-ui.empty>
         @else
             <x-ui.table :table="$table" id="deals" class="mt-6" view="table">
                 <x-slot:head><x-table.head :table="$table" :sort="$sort"/></x-slot:head>
@@ -63,19 +67,23 @@
                 @endforeach
             </x-ui.table>
         @endif
-    @elseif ($deals->isEmpty())
-        <x-ui.empty class="mt-6">Сделок нет</x-ui.empty>
-    @else
-        @if ($stages !== null)
-            {{-- «Все» — воронка: группы по этапу в порядке маршрута (`DealController::stages`). --}}
-            <x-ui.table :table="$table" id="deals" class="mt-6" :view="$view">
+    @elseif ($stages !== null)
+        {{-- Вкладка этапа — группами по шагу маршрута в его порядке (`DealController::steps`, 16.11.2026). --}}
+        @if ($stages->isEmpty())
+            <x-ui.empty class="mt-6">Сделок на этом этапе нет</x-ui.empty>
+        @else
+            <x-ui.table :table="$table" id="deals" class="mt-6" view="table">
                 <x-slot:head><x-table.head :table="$table" :sort="$sort"/></x-slot:head>
                 @foreach ($stages as $key => $stage)
-                    <x-table.group :table="$table" :key="'stage:'.$stage['title']" :title="$stage['title']" :count="$stage['rows']->count()"/>
+                    <x-table.group :table="$table" :key="'step:'.$stage['title']" :title="$stage['title']" :count="$stage['rows']->count()"/>
                     @foreach ($stage['rows'] as $deal)<x-deal.table-row :deal="$deal" :table="$table" :group="$stage['title']"/>@endforeach
                 @endforeach
             </x-ui.table>
-        @elseif (\App\Support\ListView::isTable($view))
+        @endif
+    @elseif ($deals->isEmpty())
+        <x-ui.empty class="mt-6">Сделок нет</x-ui.empty>
+    @else
+        @if (\App\Support\ListView::isTable($view))
             <x-ui.table :table="$table" id="deals" class="mt-6" :view="$view" :portion="$deals">
                 <x-slot:head><x-table.head :table="$table" :sort="$sort"/></x-slot:head>
                 @foreach ($deals as $deal)<x-deal.table-row :deal="$deal" :table="$table"/>@endforeach

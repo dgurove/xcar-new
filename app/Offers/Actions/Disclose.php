@@ -112,7 +112,7 @@ final class Disclose
     public static function publish(Deal $deal): void
     {
         $live = app(Publisher::class);
-        $live->rows(Topics::STAFF, ['/work/deals' => [$deal->id]]);
+        $live->rows(Topics::STAFF, ['/offers' => [$deal->offer->number]]);
         $live->refresh(Topics::STAFF, ['/offers/'.$deal->offer->number]);
         $deal->buyer_id && $live->refresh(Topics::user($deal->buyer_id), [$deal->href(), '/deals']);
         Nav::forgetStaffCounts();

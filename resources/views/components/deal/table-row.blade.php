@@ -35,13 +35,13 @@
 @php ob_start(); @endphp
 @if ($debt && ! $debt->paid())<span class="{{ $debt->tone() }}">{{ $debt->word() }}</span>@endif{{ "" }}@if ($loss)<x-offer.margin :m="$deal->marginMark()"/>@endif
 @php $subEndHtml = ob_get_clean(); @endphp
-<tr data-detail-key="{{ $deal->id }}" data-search-row id="deal-{{ $deal->id }}">
+<tr data-detail-key="{{ $deal->offer->number }}" data-search-row id="deal-{{ $deal->id }}">
     @foreach ($table->columns as $key => $col)
         @switch($key)
         @case('title')
     <td class="{{ $col->classes() }}">
         {{-- Слот и @if — не вплотную (CLAUDE.md): условие внутри слота. --}}
-        <x-cell.title :key="$deal->id" :offer="$offer" :strong="$replied">
+        <x-cell.title :key="$deal->offer->number" :offer="$offer" :strong="$replied">
             <x-slot:before>@if ($replied)<span class="card-tone card-tone--reply" aria-label="Поставщик ответил"></span>@endif</x-slot:before>
             @if ($burning)<x-offer.binding :offer="$offer" icon/>@endif
             {{-- Параллельные этой машины (07.11.2026): метка у названия — столбец менеджера на узком экране уходит. --}}

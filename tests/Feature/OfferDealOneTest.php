@@ -39,7 +39,7 @@ class OfferDealOneTest extends TestCase
 
         // Окно машины одно (11.11.2026, `CarWindow`): из «Предложений» и из «Сделок» — то же окно, с этапом сделки в полосе.
         $fromOffers = $this->actingAs($admin)->get($crm.'/offers?preset=all&peek='.$sold->number, ['Turbo-Frame' => 'detail'])->assertOk()->assertSee('Иван Петров');
-        $fromDeals = $this->actingAs($admin)->get($crm.'/work/deals?preset=all&peek='.$deal->id, ['Turbo-Frame' => 'detail'])->assertOk()->assertSee('Иван Петров');
+        $fromDeals = $this->actingAs($admin)->get($crm.'/offers?preset=agree&peek='.$sold->number, ['Turbo-Frame' => 'detail'])->assertOk()->assertSee('Иван Петров');
         $card = fn ($r) => preg_replace('/data-peek="[^"]*"|peek=[^"&]*/', '', (string) $r->getContent());
         $this->assertSame(preg_match_all('/class="detail-section"/', $card($fromOffers)), preg_match_all('/class="detail-section"/', $card($fromDeals)));
         $this->actingAs($admin)->get($crm.'/work/deals/'.$deal->id)->assertRedirect('/offers/'.$deal->offer->fresh()->number);

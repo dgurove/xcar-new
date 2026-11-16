@@ -294,7 +294,7 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
         Route::post('/interests/{interest}', [InterestController::class, 'update']);
 
         // Работа: сделки, почта и чаты под одним заголовком.
-        Route::redirect('/work', '/work/deals');
+        Route::redirect('/work', '/work/mail');
         Route::post('/work/deals/supplier-answer', [DealController::class, 'supplierAnswer']);
         Route::put('/work/deals/{deal}/receiver', [DealController::class, 'receiver']);
         Route::post('/work/deals/{deal}/declined', [DealController::class, 'declined']);

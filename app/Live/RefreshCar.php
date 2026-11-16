@@ -6,7 +6,6 @@ use App\Cars\Car;
 use App\Cars\Events\CarChanged;
 use App\Logistics\Listeners\RefreshLogistics;
 use App\Logistics\Transport;
-use App\Offers\Deal;
 use App\Offers\Offer;
 use App\Offers\OfferState;
 use App\Offers\Showing;
@@ -50,7 +49,7 @@ final class RefreshCar
         $n = $offer->number;
         $this->publish->refreshSoon(Topics::STAFF, ["/offers/{$n}"]);
         // Списки CRM — строкой машины (`Rows`): в «Сделках» ключ — сделка, у машины их бывает несколько.
-        $this->publish->rowsSoon(Topics::STAFF, ['/offers' => [$n], '/gallery' => [$n], '/work/deals' => self::deals($offer), '/work/garage' => $offer->garageCar ? [$n] : []]);
+        $this->publish->rowsSoon(Topics::STAFF, ['/offers' => [$n], '/gallery' => [$n], '/work/garage' => $offer->garageCar ? [$n] : []]);
         // На сайте — где её видят: в продаже, в галерее, в сделке (белый список); плитка — только та, что на экране.
         if (in_array($offer->state, [OfferState::Open, OfferState::Sold], true) || $offer->isGallery()) {
             $seers = [Topics::CATALOG, ...Showing::seersOf($offer)->map(fn ($id) => Topics::user($id))->all()];
@@ -64,12 +63,6 @@ final class RefreshCar
         if ($manager = $offer->garageCar?->manager_id) {
             $this->publish->refreshSoon(Topics::user($manager), ['/garage', "/garage/cars/{$n}"]);
         }
-    }
-
-    /** @return list<int> сделки машины — строки «Работы → Сделки» */
-    public static function deals(Offer $offer): array
-    {
-        return Deal::where('offer_id', $offer->id)->pluck('id')->all();
     }
 
     /**

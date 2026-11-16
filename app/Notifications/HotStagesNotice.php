@@ -27,7 +27,7 @@ final class HotStagesNotice extends Notice
 
     public function href(): string
     {
-        return Surface::Crm->url('/work/deals?preset=us');
+        return Surface::Crm->url('/offers?preset=us');
     }
 
     public function category(): string

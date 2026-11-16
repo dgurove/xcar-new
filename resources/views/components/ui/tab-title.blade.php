@@ -7,11 +7,14 @@
      У названия ни числа, ни стрелки рядом (владелец 22.10.2026: «криво, смещает всё»); что это выбор, говорит маленькая
      «›» в поле экрана слева — название не сдвигает (вечером того же дня). Колесо — tab_wheel_controller.
      Вкладки нет в адресе (поиск) — fallback. hrefs — вкладки разными адресами, а не параметром (разделы «Работы»: Сделки,
-     Гараж, Почта, Чаты, Оплаты — 13.11.2026, владелец: «такой же переключатель, как в предложениях»). --}}
-@props(['pills' => [], 'pill' => '', 'pillParam' => 'view', 'pillHome' => null, 'counts' => [], 'badges' => [], 'bumps' => [], 'fallback' => '', 'id' => 'tab-menu', 'hrefs' => []])
+     Гараж, Почта, Чаты, Оплаты — 13.11.2026, владелец: «такой же переключатель, как в предложениях»). sections — подзаголовки
+     разделов в колесе (16.11.2026, владелец выбрал вариант А макета: «между вариантами подзаголовки, которые не выбираются, а
+     пролистываются»): ключ первой вкладки раздела → подпись; снап на них не встаёт (`tab_wheel_controller`). drop — параметры
+     адреса, что не переносятся в другую вкладку (дела «Ваш ход» `todo`, `sub`). --}}
+@props(['pills' => [], 'pill' => '', 'pillParam' => 'view', 'pillHome' => null, 'counts' => [], 'badges' => [], 'bumps' => [], 'fallback' => '', 'id' => 'tab-menu', 'hrefs' => [], 'sections' => [], 'drop' => []])
 @php
     $action = '/'.ltrim(request()->path(), '/');
-    $query = request()->query();
+    $query = array_diff_key(request()->query(), array_flip($drop));
     $url = fn (array $set) => $action.'?'.str_replace('%2C', ',', http_build_query(array_filter(array_merge($query, $set), fn ($v) => $v !== null && $v !== '')));
 @endphp
 <div {{ $attributes->merge(['class' => 'tab-title']) }} data-controller="tab-wheel">
@@ -24,11 +27,15 @@
         <x-ui.icon name="chevron-right" class="tab-wheel-chev size-3.5"/>
         <nav class="tab-wheel-scroll">
             @foreach ($pills as $key => $label)
+                @isset($sections[$key])
+                    <div class="tab-wheel-sec" aria-hidden="true">{{ $sections[$key] }}</div>
+                @endisset
                 <a href="{{ $hrefs[$key] ?? $url([$pillParam => $key === '' || $key === ($pillHome ?? array_key_first($pills)) ? null : $key, 'page' => null, 'rows' => null]) }}" class="tab-wheel-item text-xl sm:text-2xl" data-turbo-prefetch="false" @isset($bumps[$key]) data-pill-bump="{{ $key }}:{{ $counts[$bumps[$key]] ?? 0 }}" @endisset @if ((string) $pill === (string) $key) aria-current="true" @endif>
                     <span class="tab-wheel-label">{{ $label }}</span>
                     <span class="tab-wheel-nums">
                         @isset($badges[$key])<span class="badge nums" data-pill-count="{{ $badges[$key] }}">{{ ($counts[$badges[$key]] ?? 0) ?: '' }}</span>@endisset
-                        @if (array_key_exists($key, $counts))<span class="nums" data-pill-count="{{ $key }}">{{ $counts[$key] ?: '' }}</span>@endif
+                        {{-- Бейдж и есть число вкладки («Ваш ход») — второй раз серым его нет. --}}
+                        @if (array_key_exists($key, $counts) && ($badges[$key] ?? null) !== $key)<span class="nums" data-pill-count="{{ $key }}">{{ $counts[$key] ?: '' }}</span>@endif
                     </span>
                 </a>
             @endforeach

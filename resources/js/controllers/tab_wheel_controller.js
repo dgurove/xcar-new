@@ -72,7 +72,11 @@ export default class extends Controller {
             a.style.setProperty('--wheel-d', String(Math.abs(i - this.current)));
             a.style.setProperty('--wheel-dir', String(Math.sign(i - this.current)));
         });
-        this.scroll.scrollTop = this.current * row;
+        // Место каждой вкладки — её верх у линии фокуса: между разделами стоят подзаголовки (`.tab-wheel-sec`, 16.11.2026),
+        // поэтому не «номер × строка». Снап встаёт только на вкладки — подзаголовки пролистываются.
+        this.focus = focus;
+        this.tops = this.items.map((a) => a.offsetTop - focus);
+        this.scroll.scrollTop = this.pos(this.current);
         this.listen();
         overlays.open(ID, { close: () => this.close(true) });
         button.setAttribute('aria-expanded', 'true');
@@ -106,8 +110,16 @@ export default class extends Controller {
         document.addEventListener('turbo:fetch-request-error', () => this.failed(), opts);
     }
 
+    pos(i) {
+        return this.tops[i] ?? i * this.row;
+    }
+
+    // Вкладка у линии фокуса — ближайшая по месту.
     index() {
-        return Math.max(0, Math.min(this.items.length - 1, Math.round(this.scroll.scrollTop / this.row)));
+        const y = this.scroll.scrollTop;
+        let best = 0;
+        this.tops.forEach((t, i) => { if (Math.abs(t - y) < Math.abs(this.tops[best] - y)) best = i; });
+        return best;
     }
 
     // Колесо встало: на другой вкладке — через SETTLE грузим её, на текущей — загрузку отменяем.
@@ -122,6 +134,8 @@ export default class extends Controller {
     }
 
     tap(event) {
+        // Подзаголовок раздела — не вкладка: нажатие по нему ничего не делает (и колесо не закрывает).
+        if (event.target.closest('.tab-wheel-sec')) { event.preventDefault(); return; }
         const item = event.target.closest('.tab-wheel-item');
         if (event.metaKey || event.ctrlKey || event.shiftKey) return;
         event.preventDefault();
@@ -151,7 +165,7 @@ export default class extends Controller {
     // Пункт доезжает к фокусу своей кривой: системная плавная прокрутка медленная и у каждого браузера своя.
     glide(i, then) {
         this.stopGlide();
-        const s = this.scroll, from = s.scrollTop, to = i * this.row;
+        const s = this.scroll, from = s.scrollTop, to = this.pos(i);
         this.target = i;
         if (reducedMotion() || Math.abs(to - from) < 1) { s.scrollTop = to; then(); return; }
         const time = Math.min(420, 200 + 40 * Math.abs(to - from) / this.row);

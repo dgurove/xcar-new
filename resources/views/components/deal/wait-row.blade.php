@@ -11,12 +11,12 @@
     $payDue = $debt && ! $debt->paid() && $position?->stage->isPayStep();
     $what = $position ? $position->stage->name : $deal->state->label();
 @endphp
-<tr data-detail-key="{{ $deal->id }}" data-search-row id="deal-{{ $deal->id }}">
+<tr data-detail-key="{{ $deal->offer->number }}" data-search-row id="deal-{{ $deal->id }}">
     @foreach ($table->columns as $key => $col)
         @switch($key)
         @case('title')
     <td class="{{ $col->classes() }}">
-        <x-cell.title :key="$deal->id" :offer="$offer"/>
+        <x-cell.title :key="$deal->offer->number" :offer="$offer"/>
         <span class="cell-sub sm:hidden"><span class="text-ink">{{ $what }}</span>@if ($payDue) <span class="inline-block whitespace-nowrap {{ $debt->tone() }}">{{ $debt->word() }}</span>@elseif ($position) <x-route.term :position="$position" :waiting="false" idle class="inline-block"/>@endif</span>
     </td>
         @break

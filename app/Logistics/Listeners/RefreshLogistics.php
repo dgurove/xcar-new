@@ -3,7 +3,6 @@
 namespace App\Logistics\Listeners;
 
 use App\Live\Publisher;
-use App\Live\RefreshCar;
 use App\Live\Topics;
 use App\Logistics\Events\TransportAssigned;
 use App\Logistics\Events\TransportMoved;
@@ -44,7 +43,7 @@ final class RefreshLogistics
             if ($offer) {
                 $n = $offer->number;
                 $this->publish->refreshSoon(Topics::STAFF, ["/offers/{$n}"]);
-                $this->publish->rowsSoon(Topics::STAFF, ['/work/deals' => RefreshCar::deals($offer), '/work/garage' => $offer->garageCar ? [$n] : []]);
+                $this->publish->rowsSoon(Topics::STAFF, ['/offers' => [$n], '/work/garage' => $offer->garageCar ? [$n] : []]);
                 if (($deal = $offer->deal) && $deal->buyer_id) {
                     $this->publish->refreshSoon(Topics::user($deal->buyer_id), ['/deals', "/deals/{$deal->id}", '/garage', "/garage/cars/{$n}"]);
                 }

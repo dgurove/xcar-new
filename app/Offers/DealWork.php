@@ -58,6 +58,45 @@ final class DealWork
     ];
 
     /**
+     * Вкладки этапов сделки в «Предложениях» CRM (16.11.2026, владелец выбрал «по этапам маршрута»): ключ → подпись. Блок
+     * маршрута — во вкладку по имени (`TAB_BLOCKS`, имена у всех вендоров из пресетов одни); блок не из таблицы и шаг без
+     * блока — в первую, «Согласование».
+     */
+    public const TABS = ['agree' => 'Согласование', 'paying' => 'Оплата', 'docs' => 'Документы', 'pickup' => 'Получение', 'settle' => 'Расчёт', 'self' => 'Под себя'];
+
+    public const TAB_BLOCKS = [
+        'paying' => ['Реквизиты для счёта', 'Оплата'],
+        'docs' => ['Договор', 'Оформление документов'],
+        'pickup' => ['Получение автомобиля'],
+        'settle' => ['Расчёт с поставщиком'],
+        'self' => ['Взяли под себя', 'Оформляем на нас'],
+    ];
+
+    /** Вкладка этапа по шагу продажи: блок по имени, не из таблицы — «Согласование». */
+    public static function tabOf(?Position $position): string
+    {
+        $name = $position?->stage?->block?->name ?? $position?->stage?->name;
+        foreach (self::TAB_BLOCKS as $tab => $blocks) {
+            if (in_array($name, $blocks, true)) {
+                return $tab;
+            }
+        }
+
+        return 'agree';
+    }
+
+    /** SQL-условие вкладки этапа у предложения (`offers`): блок шага продажи из её списка, у «Согласования» — не из чужих. */
+    public static function tabSql(string $tab): string
+    {
+        $names = $tab === 'agree' ? array_merge(...array_values(self::TAB_BLOCKS)) : self::TAB_BLOCKS[$tab];
+        $list = implode(', ', array_map(fn (string $n) => "'".str_replace("'", "''", $n)."'", $names));
+
+        // «Согласование» — всё, что не в чужих вкладках, и шаг без позиции тоже: сделка не теряется ни в одной.
+        return ($tab === 'agree' ? 'not ' : '')."exists (select 1 from offer_positions tp join workflow_stages ts on ts.id = tp.stage_id
+            left join workflow_blocks tb on tb.id = ts.block_id where tp.offer_id = offers.id and tp.track = 'sale' and coalesce(tb.name, ts.name) in ({$list}))";
+    }
+
+    /**
      * Раздел «Ваш ход» по ключу дела (`Position::todo`). Переоценка — с «менеджер не ответил про закупочную», как на схеме;
      * реквизиты покупателя перед письмом — в «Написать поставщику»: без них письмо не уходит.
      */

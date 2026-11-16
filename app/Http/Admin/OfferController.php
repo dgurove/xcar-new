@@ -9,9 +9,9 @@ use App\Mail\Candidate;
 use App\Mail\Extraction\Code;
 use App\Mail\Scan\AutoScan;
 use App\Media\Actions\WarmPhotos;
-use App\Offers\Actions\DropValuation;
 use App\Offers\Actions\ChangeOfferState;
 use App\Offers\Actions\CreateOffer;
+use App\Offers\Actions\DropValuation;
 use App\Offers\Actions\MergeOffers;
 use App\Offers\Actions\NoBidsAlarm;
 use App\Offers\Actions\PurgeOffer;
@@ -32,6 +32,7 @@ use App\Offers\CarView;
 use App\Offers\CarWindow;
 use App\Offers\CatalogQuery;
 use App\Offers\DealDates;
+use App\Offers\DealWork;
 use App\Offers\Estimate;
 use App\Offers\EstimateState;
 use App\Offers\Exclusive;
@@ -85,9 +86,31 @@ class OfferController
      * у него нет, «Опубликованные» — всё открытое (`presets`).
      */
     public const PRESETS = [
-        'nofloor' => 'Без закупочной цены', 'unpriced' => 'Без продажной цены', 'estimating' => 'На оценке у менеджеров', 'priced' => 'Оцененные', 'slots' => 'Публикация', 'published' => 'Опубликованные',
-        'bids' => 'Есть подтверждения', 'done' => 'Без подтверждений', 'all' => 'Все', 'archive' => 'Архив', 'legacy' => 'Из таблицы Кати', 'auction' => 'На аукцион',
+        'all' => 'Все',
+        'nofloor' => 'Без закупочной цены', 'unpriced' => 'Без продажной цены', 'estimating' => 'На оценке у менеджеров', 'priced' => 'Оцененные',
+        'slots' => 'Публикация', 'published' => 'Опубликованные', 'bids' => 'Есть подтверждения', 'done' => 'Без подтверждений',
+        ...self::DEAL_TABS,
+        'archive' => 'Архив', 'legacy' => 'Из таблицы Кати', 'auction' => 'На аукцион',
     ];
+
+    /**
+     * Сделка — состояние предложения (16.11.2026, начальник; владелец выбрал вкладки «по этапам маршрута»): вкладки сделки —
+     * здесь же, а не в «Работе → Сделки». «Ваш ход» — дела (`DealController::todo`), дальше этапы маршрута (`DealWork::TABS`),
+     * «Закрыты» — выданные. Строки рисует `DealController::tab` — те же группы и строки, что были в «Сделках».
+     */
+    public const DEAL_TABS = ['us' => 'Ваш ход', ...DealWork::TABS, 'finished' => 'Закрыты'];
+
+    /**
+     * Разделы колеса (16.11.2026, владелец выбрал вариант А: «между вариантами подзаголовки, которые не выбираются, а
+     * пролистываются»): первая вкладка раздела → подпись (`x-ui.tab-title :sections`). «Все» — над разделами.
+     */
+    public const SECTIONS = ['nofloor' => 'Черновик', 'slots' => 'Предложение', 'us' => 'Сделка', 'archive' => 'Архив'];
+
+    /** Вкладка ли сделки: строки — сделки (`DealController::tab`). */
+    public static function dealTab(?string $preset): bool
+    {
+        return isset(self::DEAL_TABS[(string) $preset]);
+    }
 
     /**
      * Опубликованное: «Опубликованные» и «Есть подтверждения» — одни правила сортировки и чипов. Вкладки «Приём закрыт»
@@ -105,7 +128,29 @@ class OfferController
      */
     public static function presets(User $user): array
     {
-        return $user->canManageCrm() ? self::PRESETS : array_diff_key(self::PRESETS, ['estimating' => true, 'bids' => true, 'done' => true, 'all' => true, 'legacy' => true, 'auction' => true]);
+        if ($user->canManageCrm()) {
+            return self::PRESETS;
+        }
+        $hidden = ['estimating' => true, 'bids' => true, 'done' => true, 'all' => true, 'legacy' => true, 'auction' => true];
+
+        // Модератору (14.11.2026, `canEditDeals`) — сделки для документов: этапы и «Закрыты», без дел админа «Ваш ход».
+        return array_diff_key(self::PRESETS, $hidden + ['us' => true] + ($user->canEditDeals() ? [] : self::DEAL_TABS));
+    }
+
+    /** Разделы колеса человека — только у разделов, где есть его вкладки. */
+    public static function sections(User $user): array
+    {
+        $presets = self::presets($user);
+        $out = [];
+        $section = null;
+        foreach (array_keys(self::PRESETS) as $key) {
+            $section = self::SECTIONS[$key] ?? $section;
+            if (isset($presets[$key]) && $section && ! in_array($section, $out, true)) {
+                $out[$key] = $section;
+            }
+        }
+
+        return $out;
     }
 
     /** Прежние пилюли — в новые вкладки: ссылки из Telegram, закладки, `LegacyAdmin`. */
@@ -205,6 +250,10 @@ class OfferController
             $query = ['preset' => $legacy] + ($request->query('preset') === 'recommended' ? ['recommended' => '1'] : []) + $request->except(['preset', 'sort']);
 
             return redirect('/offers?'.http_build_query($query), 301);
+        }
+        // Вкладки сделки (16.11.2026: сделка — состояние предложения) — строки сделок с их группами (`DealController::tab`).
+        if (self::dealTab($request->query('preset')) && isset(self::presets($request->user())[$request->query('preset')])) {
+            return app(DealController::class)->tab($request, (string) $request->query('preset'));
         }
         // ?peek=номер — карточка строки рядом (first — первая строка без цены, адрес получает её номер ниже).
         $detail = Detail::of($request, fn (string $key) => CarWindow::of($request, OfferNumber::find($key)));
@@ -459,6 +508,10 @@ class OfferController
             'bids' => $q->where('offers.state', OfferState::Open)->whereHas('bids', $bids),
             // «Все» (21.10.2026, владелец: «все, в том числе завершённые и перешедшие в сделку, короче все кроме архивных»).
             'all' => $q->whereNotIn('offers.state', [OfferState::Archived, OfferState::Cancelled]),
+            // Сделка (16.11.2026): «Ваш ход» — шаг продажи ждёт нас; этапы — блок шага продажи; «Закрыты» — выданные.
+            'us' => $q->where('offers.state', OfferState::Sold)->whereHas('deal')->whereHas('positions', fn ($p) => $p->where('track', 'sale')->needsUs()),
+            'agree', 'paying', 'docs', 'pickup', 'settle', 'self' => $q->where('offers.state', OfferState::Sold)->whereHas('deal')->whereRaw(DealWork::tabSql($preset)),
+            'finished' => $q->where('offers.state', OfferState::Delivered),
             default => $q->whereIn('offers.state', [OfferState::Archived, OfferState::Cancelled]),
         };
     }

@@ -13,12 +13,12 @@
     // телефона — по-прежнему строкой под названием.
     $inButton = $at && $todo['button'] && ! isset($todo['button']['tel']);
 @endphp
-<tr data-detail-key="{{ $deal->id }}" data-search-row id="deal-{{ $deal->id }}">
+<tr data-detail-key="{{ $deal->offer->number }}" data-search-row id="deal-{{ $deal->id }}">
     @foreach ($table->columns as $key => $col)
         @switch($key)
         @case('title')
     <td class="{{ $col->classes() }}">
-        <x-cell.title :key="$deal->id" :offer="$offer"/>
+        <x-cell.title :key="$deal->offer->number" :offer="$offer"/>
         <span class="cell-sub sm:hidden"><x-vendor.ref :vendor-id="$offer->vendor_id" :ref="$offer->claim_ref"/>@if ($wait && ! $inButton) <span class="inline-block whitespace-nowrap {{ $tone }}">{!! $wait !!}</span>@endif</span>
     </td>
         @break

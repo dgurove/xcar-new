@@ -22,6 +22,8 @@ use App\Offers\DealScheme;
 use App\Offers\DealWork;
 use App\Offers\Giving;
 use App\Offers\InsurerReplies;
+use App\Offers\OfferNumber;
+use App\Offers\OfferState;
 use App\Offers\ReplyKind;
 use App\Offers\ReplyReview;
 use App\Offers\Reprice;
@@ -47,7 +49,6 @@ use App\Workflow\Outcome;
 use App\Workflow\Position;
 use App\Workflow\Stage;
 use App\Workflow\Track;
-use App\Workflow\WaitsFor;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Carbon;
@@ -60,26 +61,64 @@ use Spatie\MediaLibrary\MediaCollections\Models\Media;
 class DealController
 {
     // «Ваш ход» вместо «Горит» (27.10.2026, владелец: рыжее только когда от нас что-то нужно; чужая просрочка — не наш ход).
-    // «Все» вместо «В работе» (27.10.2026, владелец: «в работе то, что есть в других вкладках, — бред», «очень не хватает
-    // „Все“»): все идущие, группами по этапу. Гаражные — тоже сделки, скрываются чипом «Гараж».
-    // «Оплата» (27.10.2026, владелец: «не понимаю, кто сколько должен заплатить и когда») — кто сколько должен нам: группы
-    // по менеджеру с суммой и просрочкой (`DealController::debts`, `Billing\DealDebt`).
-    public const PRESETS = ['us' => 'Ваш ход', 'manager' => 'Ждём менеджера', 'supplier' => 'Ждём поставщика', 'pay' => 'Оплата', 'all' => 'Все', 'done' => 'Закончены'];
-
+    // С 16.11.2026 сделка — состояние предложения: вкладки сделки живут в «Предложениях» (`OfferController::DEAL_TABS`), этот
+    // контроллер рисует их строки (`tab`), прежний адрес `/work/deals` отвечает 301 (`index`).
     public const SORTS = ['deadline' => ['Срок', 'asc'], 'binding' => ['Срок обязывающего', 'asc'], 'fresh' => ['Дата', 'desc'], 'amount' => ['Сумма', 'desc']];
 
+    /** Вкладки этапов — с группами по шагу маршрута и чипом «Чей ход». */
+    private const STAGED = ['agree', 'paying', 'docs', 'pickup', 'settle', 'self'];
+
+    /**
+     * Прежние «Сделки» (`/work/deals`) — 301 в вкладки «Предложений»: «Ваш ход» с делами, «Ждём менеджера / поставщика» —
+     * «Согласование» с чипом «Чей ход», «Оплата», «Все» — «Все» предложений, «Закончены» — «Закрыты»; `?peek=` сделки —
+     * номером машины.
+     */
     public function index(Request $request)
     {
-        // Окно машины — одно на все списки (`CarWindow`); параллельная открывает машину, где она в блоке «Параллельно».
-        // Модератору (14.11.2026, `canEditDeals`) — своё окно документов: сумма договора и ДКП, без действий админа.
-        $detail = Detail::of($request, fn (string $key) => $request->user()->canManageCrm() ? CarWindow::ofDeal($request, Deal::find($key))
-            : (($d = Deal::with(['offer', 'buyer', 'contract'])->find($key)) && ! $d->isParallel() ? view('admin.deals.docs-window', ['deal' => $d]) : null));
+        $preset = (string) $request->query('preset', 'us');
+        $to = match ($preset) {
+            'manager', 'supplier' => ['preset' => 'agree', 'turn' => $preset],
+            'pay' => ['preset' => 'paying'],
+            'all', 'active' => ['preset' => 'all'],
+            'done' => ['preset' => 'finished'],
+            default => ['preset' => 'us'],
+        };
+        $keep = array_intersect_key($request->query(), array_flip(['todo', 'sub', 'q', 'manager', 'vendor']));
+        if (($peek = $request->query('peek')) && ($deal = Deal::with('offer')->find($peek))) {
+            $keep['peek'] = $deal->offer?->number;
+        }
+
+        return redirect('/offers?'.http_build_query($to + $keep), 301);
+    }
+
+    /** Окно строки вкладки сделки: ключ — номер машины; модератору — окно документов её сделки. */
+    private static function window(Request $request, string $key): mixed
+    {
+        $offer = OfferNumber::find($key);
+        if ($request->user()->canManageCrm()) {
+            return CarWindow::of($request, $offer);
+        }
+        $deal = $offer?->lastDeal()->with(['offer', 'buyer', 'contract'])->first();
+
+        return $deal && ! $deal->isParallel() ? view('admin.deals.docs-window', ['deal' => $deal]) : null;
+    }
+
+    public function tab(Request $request, string $preset)
+    {
+        // Окно машины — одно на все списки (`CarWindow`); модератору (14.11.2026, `canEditDeals`) — окно документов.
+        $detail = Detail::of($request, fn (string $key) => self::window($request, $key));
         if ($detail->framed()) {
             return $detail->response();
         }
         $stage = "(select left(md5(coalesce(b.name, s.name)), 8) from offer_positions p join workflow_stages s on s.id = p.stage_id
             left join workflow_blocks b on b.id = s.block_id where p.offer_id = deals.offer_id and p.track = 'sale' order by p.id limit 1)";
-        $facets = Facets::for($request, 'crm-deals',
+        $staged = in_array($preset, self::STAGED, true);
+        $facets = Facets::for($request, 'crm-deals', ...[
+            // Чей ход (16.11.2026, вместо вкладок «Ждём менеджера» / «Ждём поставщика»): с «Менеджер» — группы по менеджеру, с
+            // «Поставщик» — по вендору, как было (`waiting`, 04.11.2026: «кого и чего ждём»).
+            ...($staged ? [Facet::column('turn', 'Чей ход', ['ход', 'хода', 'ходов'], self::TURN_SQL)->single()
+                ->labels(fn (array $keys) => array_intersect_key(['us' => new Option('us', 'Наш'), 'manager' => new Option('manager', 'Ждём менеджера'),
+                    'supplier' => new Option('supplier', 'Ждём поставщика')], array_flip($keys)))] : []),
             Common::manager('deals.buyer_id'),
             Common::vendor('(select vendor_id from offers where offers.id = deals.offer_id)'),
             // Этап — блок маршрута по имени (как в строке): у разных вендоров одноимённые блоки — один вариант.
@@ -96,17 +135,14 @@ class DealController
             Facet::toggle('binding', 'Горит срок обязывающего', fn ($q) => $q->whereHas('offer', fn ($o) => Binding::scope($o, 'deal')))->dot('danger'),
             Facet::column('garage', 'Гараж', ['вид', 'вида', 'видов'], "(case when deals.garage_payer is null then 'deal' else 'garage' end)")
                 ->labels(fn (array $keys) => array_intersect_key(['deal' => new Option('deal', 'Без гаража'), 'garage' => new Option('garage', 'Гаражные')], array_flip($keys))),
-        );
+        ]);
         $askedSort = $request->query('sort');
-        ListPrefs::sync($request, 'crm-deals', keep: $facets->keys());
+        // «Чей ход» не запоминается: вкладки прежде были вкладками, не фильтром — в соседней вкладке он путал бы.
+        ListPrefs::sync($request, 'crm-deals', keep: array_values(array_diff($facets->keys(), ['turn'])));
         OfferController::forgetBindingSort($request, $askedSort);
-        $preset = $request->query('preset', 'us');
-        // Старые ссылки («Горит» утренней сводки) — на «Ваш ход», «В работе» — на «Все».
-        $preset = match ($preset) {
-            'hot' => 'us', 'active' => 'all', default => array_key_exists($preset, self::PRESETS) ? $preset : 'us'
-        };
         $searching = $facets->searching();
         $sort = Sort::from($request->query('sort'), self::SORTS, 'deadline');
+        $turn = $staged ? (string) $request->query('turn') : '';
 
         // Гаражные — тоже сделки (27.10.2026, владелец: «в сделках их стоит отображать»; с 13.10 их здесь не было).
         $q = Deal::query()->with(['offer', 'offer.vendor', 'offer.media', 'offer.positions.stage.block', 'offer.positions.stage.exits.to', 'offer.pendingReprice', 'buyer', ...User::withAvatar('buyer.media'), 'openRequirement', 'invoices.claims', 'invoices.party', 'contract'])->withCount('parallels')
@@ -121,8 +157,6 @@ class DealController
             self::scope($q, $preset);
         }
         $facets->apply($q);
-        // Числа пилюль — с чипами (10.10.2026: «Горит» без числа, а таб «Работа» горел им же — владелец не понимал, откуда 26).
-        $counts = collect(['us', 'manager', 'supplier', 'pay', 'all'])->mapWithKeys(fn (string $p) => [$p => self::scope($facets->applyTo(Deal::query()), $p)->count()])->all();
         $dir = $sort->dir();
         match ($sort->key) {
             'fresh' => $q->orderBy('created_at', $dir),
@@ -132,50 +166,64 @@ class DealController
             default => $q->orderByRaw(self::turnRank())->orderByRaw("(select min(deadline_at) from offer_positions where offer_positions.offer_id = deals.offer_id) {$dir} nulls last"),
         };
         $q->orderByDesc('deals.id');
-        // Вкладки дел и «чего ждём» — по всему списку, до сужения строк живого обновления (`Rows::only`): их числа клиент
-        // берёт из того же ответа (`data-pill-count`), а строки рисуются только запрошенные.
-        $work = ! $searching && in_array($preset, ['us', 'manager', 'supplier'], true) ? (clone $q)->get() : null;
-        Rows::only($q, 'deals.id');
+        // Группы собираются в памяти по всему списку, до сужения строк живого обновления (`Rows::only`): числа вкладок дел
+        // клиент берёт из того же ответа (`data-pill-count`), а строки рисуются только запрошенные. Ключ строки — номер машины.
+        $whole = ! $searching && ($preset === 'us' || $staged) ? (clone $q)->get() : null;
+        Rows::only($q, fn ($q, array $keys) => $q->whereHas('offer', fn ($o) => $o->whereIn('offers.number', $keys)));
         $live = Rows::keys();
-        $link = fn (array $set) => '/work/deals?'.str_replace('%2C', ',', http_build_query(array_filter(
-            array_merge(array_diff_key($request->query(), array_flip(['page', 'rows', 'part', 'peek', 'sub'])), $set), fn ($v) => $v !== null && $v !== '')));
+        $link = fn (array $set) => '/offers?'.str_replace('%2C', ',', http_build_query(array_filter(
+            array_merge(array_diff_key($request->query(), array_flip(['page', 'rows', 'part', 'peek', 'sub'])), $set, ['preset' => $preset]), fn ($v) => $v !== null && $v !== '')));
         $work = match (true) {
-            $work && $preset === 'us' => self::todo($work, $sort->key === 'deadline', $request, $link, $live) + ['all' => $work->count()],
-            $work !== null => self::waiting($work, $preset, $request, $link, $live) + ['all' => $work->count()],
+            $whole === null => null,
+            $preset === 'us' => self::todo($whole, $sort->key === 'deadline', $request, $link, $live),
+            in_array($turn, ['manager', 'supplier'], true) => self::waiting($whole, $turn, $request, $link, $live),
             default => null,
         };
-        $total = $work['all'] ?? null;
         $groups = $preset === 'us' ? $work['groups'] ?? null : null;
         $waiting = $preset !== 'us' ? $work['groups'] ?? null : null;
-        $paying = $preset === 'pay' && ! $searching ? $q->get() : null;
-        $debts = $paying ? self::debts($paying) : null;
-        // Таблица — порциями по сотне (`Portion`), «Все» — целиком: группы по этапу собираются в памяти, порция их порвала бы;
-        // строками — постранично. Дела, «Ждём …» и «Оплата» уже загружены целиком — вторая выборка страницы с теми же тяжёлыми
-        // связями не нужна (11.11.2026: сотня строк грузилась и не рисовалась), виду нужно только число.
+        // «Оплата» (27.10.2026, владелец: «не понимаю, кто сколько должен заплатить и когда») — по менеджеру с суммой и
+        // просрочкой; с 16.11.2026 это вкладка этапа: и те, у кого счёта ещё нет.
+        $debts = $whole !== null && $work === null && $preset === 'paying' ? self::debts(self::liveOnly($whole, $live), all: true) : null;
+        // Этапы — группами по шагу маршрута в его порядке (16.11.2026).
+        $steps = $whole !== null && $work === null && $debts === null ? self::steps(self::liveOnly($whole, $live)) : null;
         $table = ListView::isTable(ListView::pick($request, 0));
         $deals = match (true) {
-            $total !== null => new LengthAwarePaginator([], $total, 1),
-            $paying !== null => new LengthAwarePaginator([], $paying->count(), 1),
-            $table => ListView::paginate($request, $q, whole: $preset === 'all' && ! $searching),
+            $whole !== null => new LengthAwarePaginator([], $whole->count(), 1),
+            $table => ListView::paginate($request, $q),
             default => $q->paginate(ListView::perPage($request, ListView::PER_ROWS))->withQueryString(),
         };
+        $user = $request->user();
 
         return view('admin.deals.index', [
             'groups' => $groups,
-            // «Все» таблицей — группами по этапу.
-            'stages' => $preset === 'all' && ! $searching && $table ? self::stages($deals->getCollection()) : null,
+            'stages' => $steps,
             'debts' => $debts,
             'waiting' => $waiting,
             // Вкладки дел второго ряда (`x-deal.work-tabs`) и выбранный подзаголовок.
             'work' => $work,
             'deals' => $deals,
             'preset' => $preset,
-            'counts' => $counts,
+            // Колесо — вкладки «Предложений» с разделами (16.11.2026).
+            'presets' => OfferController::presets($user),
+            'sections' => OfferController::sections($user),
+            'counts' => OfferController::counts($user),
             'sort' => $sort,
             'facets' => $facets,
             'detail' => $detail,
         ]);
     }
+
+    /** Строки живого обновления — только запрошенные (номера машин). */
+    private static function liveOnly(Collection $deals, ?array $live): Collection
+    {
+        return $live === null ? $deals : $deals->filter(fn (Deal $d) => in_array((string) $d->offer?->number, $live, true))->values();
+    }
+
+    /** Чей ход по шагу продажи: «наш» (`Position::NEEDS_US_SQL`), менеджера или поставщика — чип «Чей ход» вкладок этапов. */
+    private const TURN_SQL = '(select case when '.Position::NEEDS_US_SQL." then 'us'
+        when coalesce(offer_positions.waits_for, (select s.waits_for from workflow_stages s where s.id = offer_positions.stage_id)) = 'manager' then 'manager'
+        when coalesce(offer_positions.waits_for, (select s.waits_for from workflow_stages s where s.id = offer_positions.stage_id)) = 'supplier' then 'supplier'
+        else 'us' end from offer_positions where offer_positions.offer_id = deals.offer_id and offer_positions.track = 'sale' order by offer_positions.id limit 1)";
 
     /**
      * «Ваш ход» — список дел (27.10.2026, владелец: «не видно, что нужно сделать, а что просто просрочено»): группы по тому,
@@ -233,7 +281,7 @@ class DealController
             }
             // Подзаголовок — ссылка на свою группу во вкладке раздела, скрепка — её адрес для начальника.
             $group['href'] = $link(['preset' => null, 'todo' => $section, 'sub' => $sub]);
-            $group['link'] = Surface::Crm->url('/work/deals?'.http_build_query(['todo' => $section, 'sub' => $sub]));
+            $group['link'] = Surface::Crm->url('/offers?'.http_build_query(['preset' => 'us', 'todo' => $section, 'sub' => $sub]));
 
             return $group;
         })->sortBy([['section', 'asc'], ['rank', 'asc'], ['title', 'asc']]);
@@ -263,7 +311,7 @@ class DealController
             $groups = $groups->only([$sub]);
         }
         if ($live !== null) {
-            $groups = $groups->map(fn (array $g) => [...$g, 'rows' => $g['rows']->filter(fn ($r) => in_array((string) ($r instanceof Deal ? $r : $r['deal'])->id, $live, true))->values()])
+            $groups = $groups->map(fn (array $g) => [...$g, 'rows' => $g['rows']->filter(fn ($r) => in_array((string) ($r instanceof Deal ? $r : $r['deal'])->offer?->number, $live, true))->values()])
                 ->filter(fn (array $g) => $g['rows']->isNotEmpty());
         }
 
@@ -342,33 +390,33 @@ class DealController
      *
      * @return array{owed: float, overdue: float, groups: Collection<string, array>}
      */
-    private static function debts(Collection $deals): array
+    private static function debts(Collection $deals, bool $all = false): array
     {
-        $rows = $deals->map(fn (Deal $deal) => ['deal' => $deal, 'debt' => DealDebt::of($deal)])->filter(fn ($r) => $r['debt'] && ! $r['debt']->paid());
+        // Вкладка «Оплата» (`all`, 16.11.2026) — и те, у кого долга нет: счёта ещё нет или оплачено, ждём поставщика.
+        $rows = $deals->map(fn (Deal $deal) => ['deal' => $deal, 'debt' => DealDebt::of($deal)])->filter(fn ($r) => $all || ($r['debt'] && ! $r['debt']->paid()));
         $groups = $rows->groupBy(fn ($r) => $r['deal']->isAuction() ? 'auction' : 'manager:'.$r['deal']->buyer_id)->map(fn (Collection $rows) => [
             'title' => $rows->first()['deal']->isAuction() ? 'Аукцион' : ($rows->first()['deal']->buyer?->name ?? 'Без менеджера'),
-            'owed' => $rows->sum(fn ($r) => $r['debt']->owed),
-            'overdue' => $rows->sum(fn ($r) => $r['debt']->overdue),
-            'rows' => $rows->sortBy(fn ($r) => [$r['debt']->late() ? 0 : 1, $r['debt']->due?->getTimestamp() ?? PHP_INT_MAX])->values(),
+            'owed' => $rows->sum(fn ($r) => $r['debt']?->owed ?? 0),
+            'overdue' => $rows->sum(fn ($r) => $r['debt']?->overdue ?? 0),
+            'rows' => $rows->sortBy(fn ($r) => [$r['debt']?->late() ? 0 : 1, $r['debt']?->due?->getTimestamp() ?? PHP_INT_MAX])->values(),
         ])->sortBy([['overdue', 'desc'], ['owed', 'desc']]);
 
         return ['owed' => $groups->sum('owed'), 'overdue' => $groups->sum('overdue'), 'groups' => $groups];
     }
 
     /**
-     * «Все» — воронка (27.10.2026): группы по этапу (блок маршрута, одноимённые у разных вендоров — одна группа) в
-     * порядке маршрута; видно, где сделки стоят. Сделка без шага продажи — последней группой. @return Collection<string, array>
+     * Вкладка этапа — группами по шагу маршрута в его порядке (16.11.2026, владелец выбрал вкладки «по этапам маршрута»):
+     * «Письмо о покупке», «Согласие менеджера»… Пометку гаражной ветки «, в гараж» говорит строка. Без шага — последней.
      */
-    private static function stages(Collection $deals): Collection
+    private static function steps(Collection $deals): Collection
     {
         return $deals->groupBy(function (Deal $deal) {
             $stage = $deal->offer?->position()?->stage;
 
-            return $stage ? ($stage->block?->name ?? $stage->name) : 'Без этапа';
+            return $stage ? str_replace(', в гараж', '', $stage->name) : 'Без шага';
         })->map(fn (Collection $rows, string $name) => [
             'title' => $name,
-            // Место блока у вендоров разное (Совкомбанк забирает до оплаты) — среднее по сделкам группы.
-            'rank' => $rows->avg(fn (Deal $d) => ($s = $d->offer?->position()?->stage) ? ($s->block?->position ?? 50) : 99),
+            'rank' => $rows->avg(fn (Deal $d) => ($s = $d->offer?->position()?->stage) ? ($s->block?->position ?? 50) * 1000 + $s->position : PHP_INT_MAX),
             'rows' => $rows->values(),
         ])->sortBy([['rank', 'asc'], ['title', 'asc']]);
     }
@@ -394,7 +442,7 @@ class DealController
                 new Column('term', 'Срок', from: 'sm', role: ColRole::When, rem: 9),
                 new Column('amount', 'Сумма', num: true, class: 'nums', rem: 7)),
             // «Оплата» — что с оплатой, сколько должен и срок (`x-deal.pay-row`); менеджер — заголовком группы.
-            $preset === 'pay' => Table::of($title, $vendor, new Column('status', 'Что с оплатой', from: 'sm', role: ColRole::State, rem: 12),
+            $preset === 'paying' => Table::of($title, $vendor, new Column('status', 'Что с оплатой', from: 'sm', role: ColRole::State, rem: 12),
                 new Column('owed', 'Должен', num: true, class: 'nums', rem: 7), new Column('due', 'Срок', from: 'sm', role: ColRole::When, rem: 6)),
             default => new Table([$title, $vendor, new Column('number', '№', from: '2xl', class: 'nums', role: ColRole::Code, rem: 7), $manager,
                 // «Все» сгруппированы по этапу — этап говорит заголовок группы, столбца нет (и таблица влезает с «Оплатой»).
@@ -421,16 +469,13 @@ class DealController
      */
     private static function scope($q, string $preset)
     {
-        $sale = fn ($f) => $q->active()->whereHas('offer.positions', fn ($p) => $f($p->where('track', 'sale')));
-
         return match ($preset) {
-            'us' => $sale(fn ($p) => $p->needsUs()),
-            'supplier' => $sale(fn ($p) => $p->waiting(WaitsFor::Supplier)->whereNot(fn ($n) => $n->needsUs())),
-            // Чей ход — позиции (`Position::waiting`): этап оплаты без счёта ждёт нас, а не менеджера.
-            'manager' => $sale(fn ($p) => $p->waiting(WaitsFor::Manager)->whereNot(fn ($n) => $n->needsUs())),
-            'pay' => $q->whereRaw(DealDebt::OWES_SQL),
-            'done' => $q->whereNotNull('deals.closed_at'),
-            default => $q->active(), // all
+            // «Ваш ход» — нужно наше действие (`Position::needsUs`; им же число у «Предложений» в таб-баре, `Nav::staffCounts`).
+            'us' => $q->active()->whereHas('offer.positions', fn ($p) => $p->where('track', 'sale')->needsUs()),
+            // «Закрыты» — выданные (16.11.2026): продажа на аукционе, «Сделка закрыта».
+            'finished' => $q->done()->whereHas('offer', fn ($o) => $o->where('offers.state', OfferState::Delivered)),
+            // Этап — блок шага продажи (`DealWork::tabSql`).
+            default => $q->active()->whereHas('offer', fn ($o) => $o->where('offers.state', OfferState::Sold)->whereRaw(DealWork::tabSql($preset))),
         };
     }
 
@@ -442,7 +487,7 @@ class DealController
     {
         // Модератору страницы машины нет — окно документов в «Сделках».
         if (! $request->user()->canManageCrm()) {
-            return redirect('/work/deals?peek='.$deal->id);
+            return redirect('/offers?'.http_build_query(['preset' => 'agree', 'peek' => $deal->offer->number]));
         }
 
         return redirect('/offers/'.$deal->offer->number.($deal->isGarage() ? '#garage' : ''));
@@ -568,7 +613,8 @@ class DealController
     {
         $answers = collect($request->validate(['answers' => ['array'], 'answers.*' => ['nullable', Rule::in(['agreed', 'declined'])]])['answers'] ?? [])->filter();
         $done = ['agreed' => 0, 'declined' => 0];
-        foreach (Deal::whereKey($answers->keys())->active()->with('offer.positions.stage.exits.to')->get() as $deal) {
+        $deals = Deal::whereKey($answers->keys())->active()->with('offer.positions.stage.exits.to')->get();
+        foreach ($deals as $deal) {
             $prefix = $answers[$deal->id] === 'agreed' ? 'поставщик согласовал' : 'поставщик отказал';
             $exit = $deal->offer->position(Track::Sale)?->stage->exitsFor(Actor::Staff, $deal)->first(fn (Outcome $e) => str_starts_with(mb_strtolower($e->label), $prefix));
             if ($exit) {
@@ -579,7 +625,8 @@ class DealController
         $toast = collect(['отдаёт '.$done['agreed'] => $done['agreed'], 'отказал '.$done['declined'] => $done['declined']])->filter()->keys()->implode(', ');
 
         // Строки остальных сделок списка — у автора тоже (своё событие `rows` он пропускает): поток `rows` ответа карточки.
-        return back(fallback: '/work/deals')->with('toast', $toast ? 'Отмечено: '.$toast : 'Ничего не отмечено')->with('live-rows', $answers->keys()->all());
+        return back(fallback: '/offers?preset=us')->with('toast', $toast ? 'Отмечено: '.$toast : 'Ничего не отмечено')
+            ->with('live-rows', $deals->map(fn (Deal $d) => $d->offer->number)->all());
     }
 
     public function note(Request $request, Deal $deal)

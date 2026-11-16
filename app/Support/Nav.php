@@ -103,7 +103,6 @@ final class Nav
         if ($surface === Surface::Crm && ! $user?->canManageCrm()) {
             return array_values(array_filter([
                 self::item('Предложения', '/offers'),
-                $user?->canEditDeals() ? self::item('Сделки', '/work/deals') : null,
                 $user?->canCrmMail() ? self::item('Почта', '/work/mail') : null,
                 self::item('Настройки', '/settings', ['/settings', '/account'], tab: false, capsule: false),
             ]));
@@ -576,7 +575,6 @@ final class Nav
                     // Как список без вкладки — «Без продажной цены», вместе с черновиками из закупок.
                     '/offers' => OfferController::scopeFor(OfferController::home($user), Offer::notEmptyDraft())->count(),
                     '/gallery' => Offer::inGallery()->count(),
-                    '/work' => Deal::active()->count(),
                     '/purchases' => Purchase::where('state', PurchaseState::Open)->count(),
                 ], 'fresh' => []];
             }
@@ -763,8 +761,10 @@ final class Nav
             }
             $badges = [
                 // Раздел «Предложения» горит и подтверждениями, и оценками менеджеров, ждущими решения (11.10.2026).
+                // С 16.11.2026 — и делами «Ваш ход»: сделки живут вкладками «Предложений».
                 '/offers' => Bid::where('state', BidState::Active)->count()
-                    + Offer::where('state', OfferState::Draft)->whereHas('estimates', fn ($e) => $e->needsDecision())->count(),
+                    + Offer::where('state', OfferState::Draft)->whereHas('estimates', fn ($e) => $e->needsDecision())->count()
+                    + self::hotDeals(),
                 '/offers/from-mail' => Boxes::registerCount(Scope::Offers),
                 '/work/mail' => Thread::where('unread_count', '>', 0)->whereNull('archived_at')->whereHas('account', fn ($a) => $a->where('scope', Scope::Offers))->count(),
                 '/work/chats' => Chat::whereNull('manager_id')->where('unread_for_staff', '>', 0)->count(),
@@ -816,7 +816,6 @@ final class Nav
             $paths[] = '/deals/asks';
         }
         if ($surface === Surface::Crm) {
-            $paths[] = '/work/deals';
             $paths[] = '/work/mail';
             $paths[] = '/work/chats';
             $paths[] = '/work/money';
@@ -864,7 +863,7 @@ final class Nav
             }
         }
         if ($surface === Surface::Crm) {
-            array_push($items, self::link('Сделки', '/work/deals'), self::link('Гараж', '/work/garage'), self::link('Почта', '/work/mail'), self::link('Чаты', '/work/chats'), self::link('Оплаты', '/work/money'));
+            array_push($items, self::link('Гараж', '/work/garage'), self::link('Почта', '/work/mail'), self::link('Чаты', '/work/chats'), self::link('Оплаты', '/work/money'));
         }
 
         // Сам корень раздела или экран с пилюлями кабинета — «назад» не нужен.
