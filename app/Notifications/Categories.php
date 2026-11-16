@@ -102,11 +102,13 @@ final class Categories
     public static function telegram(User $user): array
     {
         $keys = [
-            ...($user->hasRole(Role::Manager, Role::Admin, Role::SuperBuyer) ? ['chats'] : []),
+            // Чаты в Telegram выключает только сотрудник: менеджеру и покупателю приходит каждое сообщение (`ChatNotice::via`,
+            // 16.11.2026, владелец: «всё, что в чат приходит, — в телегу»), переключатель им ничего бы не выключал.
+            ...($user->hasRole(Role::Admin) ? ['chats'] : []),
             // Новые предложения пачкой (21.10.2026, владелец: «менеджеры не видят, когда приходят новые машины»).
             ...($user->hasRole(Role::Manager, Role::SuperBuyer) ? ['offers'] : []),
             // Покупателю — машины, что открыл менеджер, и его сообщения (12.10.2026).
-            ...($user->hasRole(Role::Buyer) ? ['offers', 'chats'] : []),
+            ...($user->hasRole(Role::Buyer) ? ['offers'] : []),
             ...($user->hasRole(Role::Parking) ? ['park', 'park_money'] : []),
             ...($user->hasRole(Role::Admin, Role::Moderator, Role::Logist) ? ['logistics'] : []),
         ];

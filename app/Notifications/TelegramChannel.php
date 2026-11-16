@@ -62,6 +62,28 @@ final class TelegramChannel
             return Sent::failed($e->getMessage());
         }
 
+        // Файлы сообщения чата — вслед за текстом, ответом на него (`ChatNotice::telegramFiles`, 16.11.2026). Не ушёл файл — в лог,
+        // текст уже доставлен.
+        if ($sent && method_exists($notice, 'telegramFiles')) {
+            foreach ($notice->telegramFiles() as $file) {
+                $this->sendFile($user, $file, (int) $sent->message_id);
+            }
+        }
+
         return $sent ? Sent::ok() : Sent::failed('Telegram не ответил');
+    }
+
+    private function sendFile(User $user, \App\Chats\File $file, int $replyTo): void
+    {
+        try {
+            $disk = \Illuminate\Support\Facades\Storage::disk('private');
+            if (! $disk->exists($file->path)) {
+                return;
+            }
+            $upload = new \Illuminate\Http\UploadedFile($disk->path($file->path), $file->name ?: basename($file->path), $file->mime, null, true);
+            $this->bot->sendFile((int) $user->telegram_chat_id, $upload, null, $replyTo ?: null);
+        } catch (Throwable $e) {
+            Log::warning('Telegram: файл чата не ушёл', ['user' => $user->id, 'file' => $file->id, 'error' => $e->getMessage()]);
+        }
     }
 }

@@ -352,11 +352,12 @@ final class Notify
     public function chat(ChatMessagePosted $e): void
     {
         $chat = $e->message->chat;
-        // Ход менеджера в чате (`StepAsk`): о нём уже сказал `YourTurnNotice` — второе уведомление о том же не нужно. Кроме
-        // «Привет, подтверждаешь? Берём?» — оно и уведомлением чата с 06.11.2026 (владелец: «чтобы они точно увидели»).
-        // Вопрос «Когда покупатель сможет подписать?» (`ask`) — о нём сказал `SigningTimeNotice`.
-        // Вопрос о согласии — с машиной и VIN строкой ниже (`StepAsk::text`), поэтому по началу.
-        if ((($e->message->requirement_id && ! str_starts_with((string) $e->message->text, self::CONSENT_ASK)) || $e->message->ask) && ! $e->message->author_id) {
+        // Каждое сообщение чата — и ход менеджера от площадки (`StepAsk`: «Привет, нужно указать покупателя», счёт вложением) —
+        // уведомлением чата, а значит и в Telegram целиком (16.11.2026, владелец: «всё, что ему в чат приходит, — в телегу»); короткое
+        // «Указать покупателя: …» у `YourTurnNotice` в Telegram тогда не идёт (`YourTurnNotice::via`).
+        // Вопрос «Когда покупатель сможет подписать?» (`ask`) приходит в Telegram своим `SigningTimeNotice` — с кнопкой «Выбрать
+        // время»: тот же вопрос вторым сообщением не шлём.
+        if ($e->message->ask && ! $e->message->author_id) {
             return;
         }
         if ($e->message->author_kind === AuthorKind::Participant) {

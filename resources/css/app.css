@@ -2815,29 +2815,21 @@ html.kb-open { --home-gap: 0px; }
   .step-acts > p { flex-basis: 100%; }
   /* Строка дела в шаге (`x-route.task-row`, 10.11.2026): письмо, ДКП, счёт — одним видом, как строка `.list`; цвет — только точкой. */
   /* 13, а не 15 (16.11.2026, владелец: «размер шрифта чуть меньше»): строка дела — подпись к шагу, вторая строка — приглушённо. */
-  /* «Показать менеджеру» — карточки писем (16.11.2026, вариант А, свёрнутые): шапка — кружок отмеченного, кто и когда, что внутри;
-     тело — пункты строками 13, текст письма — 4 строки до «Весь текст», фото письма — одной строкой с миниатюрами. */
-  .disclose-group { border-radius: var(--radius-l); background: var(--color-surface-2); }
-  .disclose-head { display: flex; align-items: center; gap: .75rem; padding: .625rem .75rem; cursor: pointer; list-style: none; font-size: var(--text-sm); line-height: 1.125rem; }
-  .disclose-head::-webkit-details-marker { display: none; }
-  .disclose-group[open] .disclose-chev { rotate: 180deg; }
-  .disclose-chev { transition: rotate var(--dur-fast); }
-  .disclose-mark { width: 1.25rem; height: 1.25rem; flex: none; border-radius: 999px; box-shadow: inset 0 0 0 1.5px var(--color-ink-dim); background: none; }
-  .disclose-group[data-picked="part"] .disclose-mark { box-shadow: inset 0 0 0 1.5px var(--color-accent), inset 0 0 0 5px var(--color-surface-2), inset 0 0 0 10px var(--color-accent); }
-  .disclose-group[data-picked="all"] .disclose-mark { background: var(--color-accent); box-shadow: none; }
-  .disclose-body { display: flex; flex-direction: column; padding: 0 .75rem .625rem; }
-  .disclose-item { display: flex; flex-wrap: wrap; align-items: flex-start; gap: .25rem .75rem; padding: .5rem 0; border-top: var(--hairline) solid var(--color-hairline); font-size: var(--text-sm); line-height: 1.125rem; }
-  .disclose-item > .check { margin-top: .0625rem; }
-  .disclose-item > textarea, .disclose-item > input[type=text] { flex-basis: 100%; }
+  /* «Показать менеджеру» (16.11.2026, сначала готовое сообщение): «Приложить» и «Другие письма» — плашкой строками 13, подпись письма
+     над его пунктами, фото письма — одной строкой с миниатюрами. */
+  .disclose-list { border-radius: var(--radius-l); background: var(--color-surface-2); padding: 0 .75rem; }
+  .disclose-sub { padding: .5rem 0 .125rem; font-size: var(--text-xs); color: var(--color-ink-muted); }
+  .disclose-item { display: flex; flex-wrap: wrap; align-items: center; gap: .25rem .75rem; padding: .5rem 0; font-size: var(--text-sm); line-height: 1.125rem; }
+  .disclose-item + .disclose-item, .disclose-other + .disclose-other { border-top: var(--hairline) solid var(--color-hairline); }
+  .disclose-item > input[type=text] { flex-basis: 100%; }
   .disclose-kind { display: block; font-size: var(--text-xs); color: var(--color-ink-muted); }
-  .disclose-text { white-space: pre-line; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
-  .disclose-text.is-open { display: block; -webkit-line-clamp: unset; }
   .disclose-tool { display: flex; align-items: center; justify-content: center; width: 1.75rem; height: 1.75rem; margin: -.25rem -.25rem -.25rem 0; border-radius: 999px; color: var(--color-ink-muted); }
   .disclose-photos { display: flex; align-items: center; gap: .375rem; min-width: 0; flex: 1; cursor: pointer; }
   .disclose-photos > img { width: 2.25rem; height: 2.25rem; border-radius: var(--radius-s); object-fit: cover; flex: none; }
   .disclose-photos > span { margin-left: .25rem; }
-  .disclose-more { align-self: flex-start; margin: -.25rem 0 .375rem 2rem; font-size: var(--text-sm); color: var(--color-accent-text); }
-  .disclose-body > .disclose-more:last-child { margin: .375rem 0 0; }
+  .disclose-other { display: flex; align-items: center; gap: .75rem; padding: .5rem 0; font-size: var(--text-sm); line-height: 1.125rem; }
+  .disclose-add { flex: none; font-size: var(--text-sm); color: var(--color-accent-text); }
+  .disclose-add:disabled { color: var(--color-ink-muted); }
   /* Ряд под цепочкой писем (16.11.2026, вариант Б, как в Gmail): мелкие кнопки по ширине подписи, «⋯» той же высоты. */
   .reply-acts { display: flex; flex-wrap: wrap; align-items: center; gap: .375rem; }
   .reply-acts .btn { height: 2rem; gap: .375rem; padding-inline: .75rem; font-size: var(--text-sm); font-weight: 500; }

@@ -21,6 +21,20 @@ final class YourTurnNotice extends Notice
         return Requirement::whereKey($this->requirement->id)->whereNull('done_at')->exists() && parent::shouldSend($notifiable, $channel);
     }
 
+    /**
+     * Дело шага приходит менеджеру и сообщением в чат сделки (`StepAsk::post`), а оно — в Telegram целиком (`ChatNotice`, 16.11.2026):
+     * второе сообщение об одном и том же в Telegram не шлём. Кроме согласия «Берём в работу?» — у этого кнопки «Беру в работу /
+     * Передумал» (и владелец 06.11: «чтобы точно увидели»).
+     */
+    public function via(\App\Users\User $user): array
+    {
+        $via = parent::via($user);
+        $deal = $this->requirement->deal;
+        $inChat = ! $this->consent() && $deal?->buyer && $deal->offer?->chatOpenFor($deal->buyer);
+
+        return $inChat ? array_values(array_diff($via, [TelegramChannel::class])) : $via;
+    }
+
     public function label(): string
     {
         return 'Ход в сделке';

@@ -34,7 +34,7 @@
                 @php
                     $shown = collect([$message]);
                     $sheetId = 'disclose-letter-'.$message->id;
-                    $proposals = \App\Offers\Disclosures::proposals($deal, $shown, true);
+                    $proposals = \App\Offers\Disclosures::proposals($deal, $shown, $message->id);
                 @endphp
                 {{-- Справа вместе с «⋯» (16.11.2026, владелец): слева — ответ, справа — что ещё сделать с письмом. --}}
                 <div class="contents" data-controller="sheet">

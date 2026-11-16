@@ -23,8 +23,30 @@ final class ChatNotice extends Notice
     public function via(User $user): array
     {
         $via = parent::via($user);
+        $via = $this->first ? array_values($via) : array_values(array_intersect($via, [WebPushChannel::class, TelegramChannel::class]));
+        // Менеджеру (и покупателю) — в Telegram каждое сообщение чата, кто бы ни писал, даже с выключенными чатами в настройках
+        // (16.11.2026, владелец: «всё, что ему в чат приходит, — в телегу: администратор, модератор, покупатель»). Сотрудникам —
+        // по их настройкам, как было.
+        if ($this->toManagerSide($user) && $user->wantsTelegram() && ! in_array(TelegramChannel::class, $via, true) && $this->toTelegram() !== null) {
+            $via[] = TelegramChannel::class;
+        }
 
-        return $this->first ? array_values($via) : array_values(array_intersect($via, [WebPushChannel::class, TelegramChannel::class]));
+        return $via;
+    }
+
+    /** Адресат — не сотрудник площадки: менеджер чата (ему пишет покупатель или площадка) или покупатель. */
+    private function toManagerSide(User $user): bool
+    {
+        return ! $this->forStaff || ($this->message->chat->manager_id !== null && $this->message->chat->manager_id === $user->id);
+    }
+
+    /**
+     * Файлы сообщения — в Telegram вслед за текстом, ответом на него (`TelegramChannel`, 16.11.2026: «всё в телегу» — и счёт
+     * страховой вложением, и фото от покупателя). @return \Illuminate\Support\Collection<int, \App\Chats\File>
+     */
+    public function telegramFiles(): \Illuminate\Support\Collection
+    {
+        return $this->message->loadMissing('files')->files->take(10)->values();
     }
 
     public function message(): Message
@@ -66,8 +88,8 @@ final class ChatNotice extends Notice
 
         // VIN строкой — только открытый у предложения и не покупателю: скрытый ушёл бы в Telegram целиком (13.10.2026).
         $lines = $toBuyer || (! $this->forStaff && ! $chat->offer?->show_vin)
-            ? array_values(array_filter([$m->preview(1000), $chat->offer?->number ? Text::tag($chat->offer) : null]))
-            : Text::lines($chat->offer, $m->preview(1000));
+            ? array_values(array_filter([$m->preview(3500), $chat->offer?->number ? Text::tag($chat->offer) : null]))
+            : Text::lines($chat->offer, $m->preview(3500));
 
         return ['title' => $title, 'lines' => $lines, 'button' => 'Открыть чат'];
     }

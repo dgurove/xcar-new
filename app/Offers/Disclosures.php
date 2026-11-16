@@ -31,10 +31,11 @@ final class Disclosures
      * `photos:{id}` (все кадры разом), документы — по одному.
      *
      * @param  Collection<int, Message>  $letters  письма разбора; пусто — показ руками
-     * @param  bool  $text  «Показать менеджеру» из окна писем (16.11.2026): текст письма отмечен сразу
+     * @param  ?int  $open  письмо, чей текст в поле сообщения (из окна писем — то, с которого открыли; иначе самое новое): его
+     *                     документы отмечены сразу
      * @return array<string, array{kind: string, value: string, media: int|list<int>|null, group: string, label?: string, pick?: bool}> ключ пункта → пункт
      */
-    public static function proposals(Deal $deal, Collection $letters, bool $text = false): array
+    public static function proposals(Deal $deal, Collection $letters, ?int $open = null): array
     {
         $out = [];
         $add = function (string $kind, ?string $value, string $group, ?int $media = null) use (&$out) {
@@ -51,6 +52,7 @@ final class Disclosures
         };
         $offer = $deal->offer;
         $letters = $letters->sortByDesc(fn (Message $m) => $m->date_at)->values();
+        $open ??= $letters->first()?->id;
         // «Договор готов» (11.11.2026, `SigningLetter`): страхователь, его телефоны, адрес осмотра и стоянка поставщика тут ни
         // к чему — менеджеру где и как подписывать и что взять покупателю, отмечено сразу (`pick`).
         $signing = $letters->first(fn (Message $m) => SigningLetter::ready($m));
@@ -62,9 +64,8 @@ final class Disclosures
         $papers = $offer->getMedia('papers')->reject(fn (Media $m) => ForManagers::is($m));
         foreach ($signing ? [] : $letters as $m) {
             $group = 'letter:'.$m->id;
-            if (($said = self::letterText($m)) !== '') {
-                $out['letter:'.$m->id] = ['kind' => 'text', 'value' => mb_substr($said, 0, 2000), 'media' => null, 'group' => $group, 'label' => 'Текст письма', 'pick' => $text];
-            }
+            // Текст письма — не пунктом, а полем сообщения сверху шторки (`draft`, 16.11.2026, владелец: «не понимаю, что нажать, чтобы
+            // отправить менеджеру текст письма и отредактировать перед отправкой»).
             foreach (OwnerPhones::for($m) as $phone) {
                 $add('phone', $phone, $group);
             }
@@ -73,7 +74,12 @@ final class Disclosures
             $add('address', VendorNames::strip($m->field('location')), $group);
             [$pictures, $documents] = $papers->filter(fn (Media $f) => (int) $f->getCustomProperty('letter') === $m->id)
                 ->partition(fn (Media $f) => str_starts_with((string) $f->mime_type, 'image/'));
-            $documents->each(fn (Media $f) => $add('file', $f->name ?: $f->file_name, $group, $f->id));
+            $documents->each(function (Media $f) use ($add, $group, $m, $open, &$out) {
+                $add('file', $f->name ?: $f->file_name, $group, $f->id);
+                if ($m->id === $open && isset($out['file:'.$f->id])) {
+                    $out['file:'.$f->id]['pick'] = true;
+                }
+            });
             if ($pictures->isNotEmpty()) {
                 $out['photos:'.$m->id] = ['kind' => 'photos', 'value' => 'Фото '.$pictures->count(), 'media' => $pictures->pluck('id')->values()->all(), 'group' => $group];
             }
@@ -156,8 +162,31 @@ final class Disclosures
         $text = (string) preg_replace(['/<(?:mailto|tel|https?):[^>]*>/iu', '/\[cid:[^\]]*\]/iu', '/\[(?:https?:)?[^\]\s]*\]/iu', '/<https?:[^>]*>/iu'], '', $text);
         $text = (string) preg_split('/(?:Информация,\s+содержащаяся\s+в\s+настоящем|Это\s+электронное\s+письмо\s+строго\s+конфиденциально|Настоящее\s+(?:электронное\s+)?сообщение\s+(?:и\s+все\s+приложения\s+к\s+нему\s+)?(?:является\s+)?конфиденциальн|This\s+e-?mail\s+(?:and\s+any|is\s+confidential|message))/iu', $text)[0];
         $text = (string) preg_replace(['/[ \t]+$/mu', "/\n{2,}/u"], ['', "\n"], $text);
+        // Приветствие первой строкой — не нужно менеджеру: «Добрый день!», «Андрей, Екатерина, добрый день!», «Коллеги,».
+        $text = (string) preg_replace('/^\s*[^\n]{0,60}?(?:добр(?:ый|ое|ого)\s+(?:день|вечер|утро|дня)|здравствуй\w*|привет\w*|коллеги|уважаем\w+\s+коллеги)[!,.\s]*\n/iu', '', ltrim($text), 1);
+        // Второе приветствие отдельной строкой — дальше вставленное прежнее письмо без заголовка цитаты (Совкомбанк кладёт под свой текст
+        // описание лота «Добрый день / МАРКА МОДЕЛЬ: …»).
+        $lines = preg_split('/\R/u', $text) ?: [];
+        foreach ($lines as $i => $line) {
+            if ($i > 0 && preg_match('/^\s*(?:добр(?:ый|ое)\s+(?:день|вечер|утро)|здравствуйте)[!,.\s]*$/iu', $line)) {
+                $text = implode("\n", array_slice($lines, 0, $i));
+                break;
+            }
+        }
 
         return trim((string) VendorNames::strip($text));
+    }
+
+    /**
+     * Текст поля «Сообщение менеджеру»: письмо `$open` (с которого открыли), иначе самое новое — без приветствия и подписи.
+     *
+     * @param  Collection<int, Message>  $letters
+     */
+    public static function draft(Collection $letters, ?int $open = null): string
+    {
+        $letter = ($open ? $letters->firstWhere('id', $open) : null) ?? $letters->sortByDesc(fn (Message $m) => $m->date_at)->first();
+
+        return $letter ? mb_substr(self::letterText($letter), 0, 5000) : '';
     }
 
     /**
@@ -187,11 +216,11 @@ final class Disclosures
             }
             $value = trim((string) $value);
             if ($value !== '') {
-                $items[] = ['kind' => $item['kind'], 'value' => mb_substr($value, 0, str_starts_with($key, 'letter:') ? 2000 : 300)];
+                $items[] = ['kind' => $item['kind'], 'value' => mb_substr($value, 0, 300)];
             }
         }
         if (($text = trim((string) $text)) !== '') {
-            $items[] = ['kind' => 'text', 'value' => mb_substr($text, 0, 2000)];
+            $items[] = ['kind' => 'text', 'value' => mb_substr($text, 0, 5000)];
         }
 
         return $items;
