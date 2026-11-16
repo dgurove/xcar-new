@@ -72,7 +72,7 @@ class InsurerLetterHiddenTest extends TestCase
         // Админ — в «Разобрать ответ», видит письмо и пункты.
         $this->assertSame(1, ReplyReview::pending()->where('deal_id', $this->deal->id)->count());
         $this->assertSame('Прочитать ответ поставщика', $this->offer->fresh()->position(Track::Sale)->todo()['title']);
-        $this->actingAs($this->admin)->withHeaders(['Turbo-Frame' => 'detail'])->get("http://crm.xcar.localhost/offers?preset=us&peek={$this->offer->fresh()->number}")->assertOk()
+        $this->actingAs($this->admin)->withHeaders(['Turbo-Frame' => 'detail'])->get("http://crm.xcar.localhost/offers?preset=answered&peek={$this->offer->fresh()->number}")->assertOk()
             ->assertSee('Письмо от Альфа тест')->assertSee('Иванов Иван')->assertSee('+7 900 123-45-67')->assertSee('паспорт.pdf')
             ->assertSee('Пройти шаг «Поставщик согласовал»');
 

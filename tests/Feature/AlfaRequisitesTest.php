@@ -341,7 +341,7 @@ class AlfaRequisitesTest extends TestCase
 
         // Без файла — нельзя.
         $this->actingAs($this->admin)->post($crm('/work/deals/'.$deal->id.'/payment-proof'), ['pass' => 1])->assertSessionHasErrors('payment_proof');
-        $this->actingAs($this->admin)->followingRedirects()->get($crm('/work/deals/'.$deal->id))->assertSee('Приложить за менеджера');
+        $this->actingAs($this->admin)->followingRedirects()->get($crm('/work/deals/'.$deal->id))->assertSee('Приложить платёжку за менеджера');
 
         $files = [UploadedFile::fake()->image('chek-1.jpg', 600, 900), UploadedFile::fake()->image('chek-2.jpg', 640, 960)];
         $this->actingAs($this->admin)->post($crm('/work/deals/'.$deal->id.'/payment-proof'), ['files' => $files, 'pass' => 1])->assertSessionHasNoErrors();
