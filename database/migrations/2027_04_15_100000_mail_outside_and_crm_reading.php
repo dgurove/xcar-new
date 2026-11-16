@@ -62,9 +62,11 @@ return new class extends Migration
             app(\App\Mail\Threads::class)->refresh($thread);
         }
         // Наша цитата в своих словах письма («Исходное письмо, 14.11.2026 10:14, …:» и письмо под ней) — долой (`Intent::withoutOurQuote`).
-        foreach (Message::whereRaw("parsed->>'own_text' ~ '(Исходное|Пересылаемое) письмо, [0-9]{2}\\.'")->get(['id', 'parsed']) as $m) {
+        // И шапка цитаты mail.ru («Четверг, 12 ноября 2026, 12:29 +03:00 от …») — `Intent::withoutQuoteHeader`.
+        foreach (Message::whereRaw("parsed->>'own_text' ~ '(Исходное|Пересылаемое) письмо, [0-9]{2}\\.'")
+            ->orWhereRaw("parsed->>'own_text' ~* '(понедельник|вторник|среда|четверг|пятница|суббота|воскресенье), [0-9]{1,2} [а-яё]+ [0-9]{4}'")->get(['id', 'parsed']) as $m) {
             $parsed = $m->parsed;
-            $parsed['own_text'] = \App\Mail\Extraction\Intent::withoutOurQuote((string) $parsed['own_text']);
+            $parsed['own_text'] = \App\Mail\Extraction\Intent::withoutQuoteHeader(\App\Mail\Extraction\Intent::withoutOurQuote((string) $parsed['own_text']));
             DB::table('mail_messages')->where('id', $m->id)->update(['parsed' => json_encode($parsed, JSON_UNESCAPED_UNICODE)]);
         }
         // Адрес пересылки с приставкой «mailto:» (`QuotationStripper::forwardedSender`) — без неё, вендор отправителя — по адресу.

@@ -314,6 +314,17 @@ enum Intent: string
         return trim(trim($parts[0]) !== '' ? $parts[0] : $parts[1]);
     }
 
+    /**
+     * Без цитаты под шапкой почты mail.ru и Яндекса («Четверг, 12 ноября 2026, 12:29 +03:00 от Кузнецова Татьяна <…>:»,
+     * «12.11.2026, 12:29, Татьяна пишет:»; 17.11.2026 — стояла в строке письма в ленте). Своих слов над ней нет — как было.
+     */
+    public static function withoutQuoteHeader(string $text): string
+    {
+        $parts = preg_split('/^\s*(?:(?:понедельник|вторник|среда|четверг|пятница|суббота|воскресенье),\s*\d{1,2}\s+\pL+\s+\d{4}|\d{1,2}\.\d{1,2}\.\d{4},?\s+\d{1,2}:\d{2}).*$/imu', $text, 2) ?: [$text];
+
+        return count($parts) === 2 && trim($parts[0]) !== '' ? rtrim($parts[0]) : $text;
+    }
+
     private static function body(?string $body): string
     {
         $text = QuotationStripper::strip($body);
@@ -322,7 +333,7 @@ enum Intent: string
         if (count($parts) === 2 && mb_strlen(trim((string) preg_replace('/Отправлено из.*$/imu', '', $parts[0]))) < 40) {
             $text = (string) preg_replace('/^\s*(?:От|Кому|Копия|Дата|Тема|From|To|Cc|Date|Subject)\s*:.*$/imu', '', $parts[1]);
         }
-        $text = self::withoutOurQuote($text);
+        $text = self::withoutQuoteHeader(self::withoutOurQuote($text));
         // Цитата ниже своих слов, и «…, Марина пишет:» почтовых программ тоже.
         $text = (string) preg_split('/^\s*(?:С\s+уважением|C уважением|Best regards|--\s*$|From:|От кого:|От:|Отправлено из|-------- Пересылаемое|.{0,160}\b(?:пишет|написал|написала|wrote)\s*:\s*$)/imu', $text)[0];
         // Приписка Альфы под каждым письмом — не свои слова.
