@@ -1410,9 +1410,9 @@ html.kb-open { --home-gap: 0px; }
   .facet-day { @apply flex min-w-0 items-center gap-2; }
   .facet-day > :last-child { @apply min-w-0 flex-1; }
 
-  /* Шапка вкладок колеса «Предложений» (`x-ui.toolbar rows`, `x-admin.tab-head`, 17.11.2026, владелец): на телефоне рядами —
-     кнопки (слева сортировка и лупа, справа вид и «Фильтр»), быстрые чипы, переключатели; ряды чипов листаются вбок от края
-     до края. На ПК — одной строкой: кнопки по краям, чипы между ними; не влезли — переносятся. Пустой ряд не рисуется. */
+  /* Шапка вкладок колеса «Предложений» (`x-ui.toolbar rows`, `x-admin.tab-head`, 17.11.2026, владелец): рядами — кнопки (слева
+     сортировка и лупа, справа вид и «Фильтр»), быстрые чипы, переключатели; на телефоне ряды чипов листаются вбок от края до
+     края. Пустой ряд не рисуется. */
   .toolbar--rows { display: flex; flex-direction: column; flex-wrap: nowrap; align-items: stretch; gap: .5rem; }
   .toolbar--rows[data-searching] { flex-direction: row; align-items: center; }
   .toolbar-bar { display: flex; align-items: center; gap: .5rem; }
@@ -1423,13 +1423,11 @@ html.kb-open { --home-gap: 0px; }
   .toolbar-row { min-width: 0; overflow-x: auto; scrollbar-width: none; overscroll-behavior-x: contain; margin-inline: -1rem; padding-inline: 1rem; scroll-padding-inline: 1rem; }
   .toolbar-row::-webkit-scrollbar { display: none; }
   .toolbar-row .pill { min-height: 2.25rem; }
+  /* ПК — те же ряды (17.11.2026, владелец выбрал «ряды, как на телефоне»: одной строкой вид и «Фильтр» падали одни на вторую);
+     ряды чипов в поле контейнера и переносятся, а не листаются — мышью прокрутку вбок не найти. */
   @media (min-width: 768px) {
-    .toolbar--rows { flex-direction: row; flex-wrap: wrap; align-items: center; row-gap: .5rem; }
-    .toolbar--rows > .toolbar-bar { display: contents; }
-    .toolbar-row { order: 1; overflow: visible; margin: 0; padding: 0; }
+    .toolbar-row { overflow: visible; margin: 0; padding: 0; }
     .toolbar-row > div { flex-wrap: wrap; }
-    .toolbar-row--toggles { order: 2; }
-    .toolbar--rows .toolbar-side--end { order: 3; }
   }
   /* «Фильтр» — капсула с подписью; выбрано не по умолчанию — лаймовая с числом и × (как выбранный чип). */
   .filter-btn { max-width: 14rem; }
