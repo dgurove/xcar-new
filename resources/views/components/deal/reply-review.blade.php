@@ -43,9 +43,16 @@
                 {{-- Без логотипа и числа писем (16.11.2026, владелец: «зачем в ходе показано, сколько писем от страховой, и её логотип —
                      очень странно выглядит»; поставщик — в шапке окна): что пришло и когда, нажатие — шторка разбора. --}}
                 <x-route.task-row icon="mail" urgent aria-controls="{{ $id }}">
-                    @php $what = $step && \App\Offers\SupplierInvoice::needs($deal, $step) ? 'Новый счёт поставщика' : 'Новое письмо поставщика'; @endphp
+                    {{-- Двумя строками помельче (16.11.2026, владелец): «Письмо от 16.11 10:26» и ниже приглушённо, что с ним сделать. --}}
+                    @php $what = $step && \App\Offers\SupplierInvoice::needs($deal, $step) ? 'Счёт' : 'Письмо'; @endphp
                     {{ $what }} от <span class="nums whitespace-nowrap">{!! Ago::html($letters->first()->date_at, true, words: false) !!}</span>
+                    <x-slot:sub>Показать менеджеру?</x-slot:sub>
                 </x-route.task-row>
+                {{-- Письмо не для менеджера (16.11.2026, владелец: «нас в копию поставили, а мне красным — будто ответить должен»): закрыть
+                     разбор видной кнопкой, не открывая шторку; «Не нужно» в её подвале — то же. --}}
+                <form method="post" action="/work/deals/{{ $deal->id }}/reviews/done" class="step-task-acts" data-turbo-confirm="Пропустить письмо?" data-turbo-confirm-text="Менеджер о нём не узнает" data-turbo-confirm-label="Пропустить">
+                    @csrf<button class="btn btn-s btn-quiet">Пропустить письмо</button>
+                </form>
                 @include('admin.deals.reply-review-sheet', $sheet + ['line' => true])
             </div>
         @elseif ($manual)
@@ -57,7 +64,11 @@
             </div>
         @endif
         @if ($shown->isNotEmpty())
-            <p class="step-task-note">Менеджеру показано {!! Ago::html($shown->first()->created_at, true, words: false) !!}: <span class="text-ink">{{ $shown->first()->summary() }}</span></p>
+            {{-- Строкой дела, как остальное в шаге (16.11.2026, единый вид): что показали — заголовком, когда — ниже серым. --}}
+            <x-route.task-row icon="check" static>
+                Показано менеджеру: {{ $shown->first()->summary() }}
+                <x-slot:sub>{!! Ago::html($shown->first()->created_at, true, words: false) !!}</x-slot:sub>
+            </x-route.task-row>
         @endif
     @elseif ($letters->isNotEmpty() || $shown->isNotEmpty())
     <div {{ $attributes }} data-controller="sheet">

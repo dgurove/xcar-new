@@ -42,7 +42,7 @@
                 @if ($salePos)
                     @include('admin.offers.route', ['only' => Track::Sale, 'cardClass' => '', 'tail' => $tail, 'compact' => $compact])
                 @else
-                    <x-ui.card title="Ход сделки" id="sale"><div @class(['steps', 'steps--compact' => $compact])>{!! $tail !!}@if ($compact)<x-route.fold/>@endif</div></x-ui.card>
+                    <x-ui.card title="Ход сделки" id="sale"><div class="steps">{!! $tail !!}</div></x-ui.card>
                 @endif
                 {{-- Совкомбанк — деньги одной карточкой «Деньги» сделки (12.11.2026, владелец: факт — один раз; «Расчёт» гаража
                      повторял цену, закупочную и разницу), «Не продана» — в «⋯» «Гаража». --}}

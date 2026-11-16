@@ -11,9 +11,8 @@
      кто действует строкой (`x-route.who`), под ней кнопки шага.
      10.11.2026: заголовок текущего шага — сам этап («Согласие менеджера»), блок — мелкой строкой над ним; пройденное в блоке —
      строками под заголовком, ждущее в блоке — серым в конце; ждущее письмо поставщика — строкой в шаге (`x-deal.reply-line`). --}}
-{{-- compact — окно машины (12.11.2026, владелец: «снизу куча навалено, менеджер несколько раз»): виден текущий шаг, пройденные
-     и впереди — под строкой «Весь путь» (`x-route.fold`); менеджер сделки — словом «Менеджер»: имя и телефон — в сведениях
-     шапки окна. --}}
+{{-- compact — окно машины: менеджер сделки — словом «Менеджер» (имя и телефон — в сведениях шапки окна). Путь — целиком: свёрнутый
+     до текущего шага с «Весь путь» (12.11.2026) не прижился (16.11.2026, владелец: «непонятно, на каком этапе»). --}}
 @props(['offer', 'position', 'compact' => false])
 @php
     use App\Billing\InvoiceState;
@@ -79,7 +78,7 @@
     // из маршрута — он стоит перед ним текущим с «Оценить» (`/offers/{n}/rate`), а этап маршрута ждёт впереди серым.
     $pricing = $position->track === \App\Workflow\Track::Sale && $offer->state === \App\Offers\OfferState::Draft && ! $offer->asking_price && ! $offer->isScheduled() && auth()->user()?->canManageCrm();
 @endphp
-<div @class(['steps', 'steps--compact' => $compact])>
+<div class="steps">
     @if ($pricing)
         <div class="step step--{{ Path::CURRENT }}">
             <span class="step-dot"></span>
@@ -146,8 +145,7 @@
                         $subs = \App\Workflow\Substeps::for($position, $step['stages'], $deal);
                         $many = $subs->count() > 1;
                         // 10.11.2026 (начальник по Volvo 01527: «почему согласование с поставщиком, если ждём Макарова»): в CRM
-                        // заголовок — сам этап, блок — мелкой строкой над ним с местом в блоке; блоки — язык менеджера.
-                        $place = $subs->where('state', \App\Workflow\Substeps::DONE)->count() + 1;
+                        // заголовок — сам этап, блок — мелкой строкой над ним; блоки — язык менеджера.
                         $doneBy = $many ? \App\Users\User::whereIn('id', $subs->pluck('user_id')->filter()->unique())->get()->keyBy('id') : collect();
                         $whoOf = fn ($s) => match ($s?->waits_for) {
                             WaitsFor::Manager => $compact ? 'менеджер' : $deal?->buyer?->shortName(),
@@ -159,13 +157,11 @@
                         $buyerData = $req?->asks === \App\Workflow\Asks::Buyer;
                     @endphp
                     {{-- «···» — справа от названия и в узкой колонке: длинное название переносится, а не выталкивает кнопку. --}}
-                    {{-- Окно сделки (15.11.2026): этап уже посередине полосы окна (`DealLine`), здесь заголовок не повторяется, пока
-                         «Весь путь» свёрнут; «⋯» шага — в строке подписи «Продажа» (CSS `.step-head--bar`). --}}
-                    @php $bar = $compact && $deal?->isActive() && $position->track === \App\Workflow\Track::Sale; @endphp
-                    <div @class(['step-head !flex-nowrap !items-start', 'step-head--bar' => $bar])>
+                    <div class="step-head !flex-nowrap !items-start">
                         <span class="min-w-0 flex-1">
-                            @if ($many && $blockName($block) !== $stage->name)<span class="step-kicker">{{ $blockName($block) }}, {{ $place }} из {{ $subs->count() }}</span>@endif
-                            <span @class(['step-title', 'block' => ! $bar, 'step-title--bar' => $bar])>{{ $stage->name }}</span>
+                            {{-- Блок над этапом — словом, без «1 из 2» (16.11.2026, владелец: «достаточно просто „Оплата“»). --}}
+                            @if ($many && $blockName($block) !== $stage->name)<span class="step-kicker">{{ $blockName($block) }}</span>@endif
+                            <span class="step-title block">{{ $stage->name }}</span>
                         </span>
                         @if ($breaks->isNotEmpty() || $undo || $extend || $forManager->isNotEmpty() || in_array($position->letterStatus(), ['unsent', 'failed', 'bounced'], true))
                             {{-- «⋯» шага — общей пилюлей со шторкой действий (`x-ui.more`, 12.11.2026). --}}
@@ -227,9 +223,50 @@
                             @endforeach
                         </ol>
                     @endif
-                    <x-route.who :position="$position" :offer="$offer" :deal="$deal" :named="! $compact"/>
-                    {{-- Письмо поставщика ждёт разбора — строкой в шаге, а не лаймовой плашкой над путём (10.11.2026). --}}
-                    @if ($deal && $position->track === \App\Workflow\Track::Sale && auth()->user()?->canManageCrm())<x-deal.reply-review :deal="$deal" line :manual="! $compact"/>@endif
+                    {{-- Ход менеджера (14.11.2026, владелец по 2611043624 «Связаться с владельцем»: «непонятно, что от нас требуется, и не можем
+                         за него прокликать»): его ответы — кнопками за него, когда у нас своих нет; уход из сделки — только в «···». Данные
+                         покупателя — своей кнопкой; без них ответ за него можно, только если договор уже подписан (`Deal::contractSigned`). --}}
+                    @php
+                        $forKeys = $stage->asks === \App\Workflow\Asks::Buyer && ! $deal?->contractSigned() ? collect() : $forManager->reject(fn ($x) => $x->isRetreat());
+                        $forKeys = ! $takeFor && ! ($wantsInvoice || $moves->isNotEmpty() || $stage->template_id || $requests || $payNow->isNotEmpty()) ? $forKeys : collect();
+                        $proofFor = $req && $req->asks === \App\Workflow\Asks::Document && $stage->isPayStep() && auth()->user()?->canManageCrm();
+                        $reqFiles = $req ? $req->getMedia('files') : collect();
+                    @endphp
+                    {{-- Всё, что за менеджера, — под строкой «Менеджер» (16.11.2026, владелец: «„Беру в работу за менеджера“ должно быть под
+                         „Менеджер“, а так они разорваны»): что он уже приложил, данные покупателя, документ об оплате, его ответы. --}}
+                    <x-route.who :position="$position" :offer="$offer" :deal="$deal" :named="! $compact">
+                        <x-slot:acts>
+                            @if ($reqFiles->isNotEmpty())
+                                {{-- Строкой дела, как остальное в шаге (16.11.2026): имя файла с телефона — набор цифр, важно, что он есть. --}}
+                                <div class="w-full">
+                                    @foreach ($reqFiles as $f)
+                                        <x-route.task-row icon="file" :href="'/files/'.$f->id" target="_blank" class="!mt-0">
+                                            Менеджер приложил файл
+                                            <x-slot:sub>{{ mb_strtoupper(pathinfo($f->file_name, PATHINFO_EXTENSION)) }}, {{ \App\Support\FileSize::short($f->size) }}</x-slot:sub>
+                                        </x-route.task-row>
+                                    @endforeach
+                                </div>
+                            @endif
+                            @if ($buyerData && auth()->user()?->canManageCrm())
+                                <a href="/offers/{{ $offer->number }}?buyer=1#invoice-buyer" class="btn btn-s btn-quiet" data-turbo-frame="_top">Данные покупателя за менеджера</a>
+                            @endif
+                            @if ($proofFor)
+                                <div data-controller="sheet">
+                                    <x-ui.button type="button" size="sm" variant="secondary" data-action="sheet#open">{{ $reqFiles->isEmpty() ? 'Приложить за менеджера' : 'Документ об оплате' }}</x-ui.button>
+                                    <x-deal.payment-proof-sheet :id="'payment-proof-'.$position->id" :deal="$deal" :requirement="$req"/>
+                                </div>
+                            @endif
+                            @if ($takeFor)
+                                <form method="post" action="/offers/{{ $n }}/exit/{{ $takeFor->id }}">
+                                    @csrf<input type="hidden" name="for" value="manager">
+                                    <x-ui.button size="sm" variant="secondary">«{{ $takeFor->label }}» за менеджера</x-ui.button>
+                                </form>
+                            @endif
+                            @foreach ($forKeys as $exit)
+                                <form method="post" action="/offers/{{ $n }}/exit/{{ $exit->id }}">@csrf<input type="hidden" name="for" value="manager"><x-ui.button size="sm" variant="secondary">За менеджера: {{ $exit->label }}</x-ui.button></form>
+                            @endforeach
+                        </x-slot:acts>
+                    </x-route.who>
                     {{-- Покупатель и чего не хватает договору — строками «Продажи» (`x-deal.buyer`, `x-deal.contract-gaps`), не делами шага
                          (16.11.2026, владелец: «как будто мы эти данные от менеджера ждём»). --}}
                     {{-- Машину забирает менеджер, а контакт владельца ему не показан — строкой дела с шторкой «Показать менеджеру» (15.11.2026). --}}
@@ -245,7 +282,7 @@
                         @else
                             <p class="mt-3 text-sm text-ink-muted">Менеджер ещё не назвал время подписания</p>
                             <details class="signing-edit mt-2">
-                                <summary class="step-acts"><span class="btn btn-s btn-secondary"><span class="signing-edit-open">Время за менеджера</span><span class="signing-edit-close">Свернуть</span></span></summary>
+                                <summary class="step-acts"><span class="btn btn-s btn-quiet"><span class="signing-edit-open">Время за менеджера</span><span class="signing-edit-close">Свернуть</span></span></summary>
                                 <x-deal.signing-slots :deal="$deal" :action="'/work/deals/'.$deal->id.'/signing-wish'" submit="Сохранить" class="mt-3"/>
                             </details>
                         @endif
@@ -275,17 +312,8 @@
                             @endforeach
                         </x-ui.info>
                     @endif
-                    @if ($buyerData && auth()->user()?->canManageCrm())
-                        <div class="step-acts mt-3"><a href="/offers/{{ $offer->number }}?buyer=1#invoice-buyer" class="btn btn-s btn-accent !h-auto min-h-9 whitespace-normal py-1.5" data-turbo-frame="_top">Заполнить за менеджера</a></div>
-                    @endif
-                    {{-- Согласие менеджера: чаще всего он уже сказал «да» устно — «Беру в работу» за него видной тихой кнопкой. --}}
-                    @if ($takeFor)
-                        <form method="post" action="/offers/{{ $n }}/exit/{{ $takeFor->id }}" class="step-acts mt-2">
-                            @csrf<input type="hidden" name="for" value="manager">
-                            {{-- В узкой дорожке подпись переносится, а не вылезает за карточку. --}}
-                            <x-ui.button size="sm" variant="secondary" class="!h-auto min-h-9 w-full whitespace-normal py-1.5">«{{ $takeFor->label }}» за менеджера</x-ui.button>
-                        </form>
-                    @endif
+                    {{-- Письмо поставщика ждёт разбора — строкой в шаге, а не лаймовой плашкой над путём (10.11.2026). --}}
+                    @if ($deal && $position->track === \App\Workflow\Track::Sale && auth()->user()?->canManageCrm())<x-deal.reply-review :deal="$deal" line :manual="! $compact"/>@endif
                     {{-- Менеджер платит поставщику по его счёту, а счёта не видит (10.11.2026, 0790/046/11079/26) — красной строкой. --}}
                     @if ($deal && \App\Offers\SupplierInvoice::onPay($deal, $stage) && auth()->user()?->canManageCrm() && \App\Offers\SupplierInvoice::shown($offer)->isEmpty())
                         <div class="contents" data-controller="sheet">
@@ -298,21 +326,14 @@
                     @if ($deal && $stage->paysOut() && auth()->user()?->canManageCrm() && ($sp = $deal->contract?->supplier_price) !== null && ($sc = $deal->supplierCost()) !== null && $sp !== $sc)
                         <x-route.task-row icon="file" urgent href="#money">По договору комиссии {{ \App\Support\Money::rub($sp) }}, у нас {{ \App\Support\Money::rub($sc) }}</x-route.task-row>
                     @endif
-                    {{-- Менеджер уже приложил, но шаг ещё не отметил — файл видно сразу. --}}
-                    @if ($req && $req->getMedia('files')->isNotEmpty())
-                        <div class="mt-2 flex flex-col gap-1">@foreach ($req->getMedia('files') as $f)<x-ui.file :name="$f->file_name" :mime="$f->mime_type" :bytes="$f->size" href="/files/{{ $f->id }}" class="py-1"/>@endforeach</div>
-                    @endif
                     {{-- Документ об оплате (10.11.2026): на шаге оплаты админ прикладывает за менеджера (чек прислал в чат), дальше — одним
                          PDF для страховой (`PaymentProofPdf`), пока письмо об оплате не ушло. --}}
                     @php $payProof = $deal && auth()->user()?->canManageCrm() ? \App\Offers\Documents\PaymentProofPdf::files($deal)->isNotEmpty() : false; @endphp
-                    @if ($req && $req->asks === \App\Workflow\Asks::Document && $stage->isPayStep() && auth()->user()?->canManageCrm())
-                        <div class="step-acts mt-2" data-controller="sheet">
-                            <x-ui.button type="button" size="sm" variant="secondary" data-action="sheet#open">{{ $req->getMedia('files')->isEmpty() ? 'Приложить за менеджера' : 'Документ об оплате' }}</x-ui.button>
-                            <x-deal.payment-proof-sheet :id="'payment-proof-'.$position->id" :deal="$deal" :requirement="$req"/>
-                        </div>
-                    @endif
                     @if ($payProof && ($stage->isPayStep() || ($stage->waits_for === WaitsFor::Supplier && $stage->template_id && $position->letterStatus() !== 'sent')))
-                        <a href="/work/deals/{{ $deal->id }}/payment-proof.pdf" target="_blank" class="mt-2 flex items-center gap-2 text-sm text-accent-text"><x-ui.file-icon name="Оплата.pdf" class="file-icon-s"/>Документ об оплате, PDF</a>
+                        <x-route.task-row icon="file" :href="'/work/deals/'.$deal->id.'/payment-proof.pdf'" target="_blank">
+                            Документ об оплате
+                            <x-slot:sub>PDF для страховой</x-slot:sub>
+                        </x-route.task-row>
                     @endif
                     @if ($position->fields())
                         <div class="mt-2 text-sm">@foreach ($position->fields() as $k => $v)<div><span class="text-ink-muted">{{ collect($stage->staff_fields)->firstWhere('key', $k)['label'] ?? $k }}:</span> {{ $v }}</div>@endforeach</div>
@@ -469,21 +490,7 @@
                         {{-- Что будет после кнопки (03.11.2026, «сотрудникам страшно нажимать») — в переспросе кнопки, а не строкой «Дальше:»
                              под ней (10.11.2026, владелец: «месиво»). --}}
                     @endif
-                    {{-- Ход менеджера, а у нас кнопок нет (14.11.2026, владелец по 2611043624 «Связаться с владельцем»: «непонятно, что от
-                         нас требуется, и не можем за него прокликать» — ответ за него жил только в «···» шага): его ответы — тихими
-                         кнопками под шагом, та же форма, что пункт «···» (`RouteController::forManager`). Уход из сделки — только в «···». --}}
-                    {{-- Данные покупателя — своей кнопкой «Заполнить за менеджера»; без них ответ за него можно, только если договор
-                         уже подписан (`Deal::contractSigned`). --}}
-                    @php $forKeys = $stage->asks === \App\Workflow\Asks::Buyer && ! $deal?->contractSigned() ? collect() : $forManager->reject(fn ($x) => $x->isRetreat()); @endphp
-                    @if ($forKeys->isNotEmpty() && ! $takeFor && ! ($wantsInvoice || $moves->isNotEmpty() || $stage->template_id || $requests || $payNow->isNotEmpty()))
-                        <div class="step-acts mt-3">
-                            @foreach ($forKeys as $exit)
-                                <form method="post" action="/offers/{{ $n }}/exit/{{ $exit->id }}">@csrf<input type="hidden" name="for" value="manager"><button class="btn btn-s btn-quiet w-full">За менеджера: {{ $exit->label }}</button></form>
-                            @endforeach
-                        </div>
-                    @endif
                     @if ($subs->where('state', \App\Workflow\Substeps::WAIT)->isNotEmpty())
-                        {{-- Будущие подпункты — в свёрнутом пути окна их нет (12.11.2026): видны, когда раскрыли «Весь путь». --}}
                         <ol class="substeps substeps--wait">
                             @foreach ($subs->where('state', \App\Workflow\Substeps::WAIT) as $sub)
                                 <li class="substep substep--wait">
@@ -501,8 +508,4 @@
     @endforeach
     {{-- Хвост пути после маршрута: у гаражной машины — её продажа и расчёт (дорожка «Продажа», 06.10.2026). --}}
     {{ $slot }}
-    @if ($compact)
-        @php $stepsCount = count($path) + ($pricing ? 1 : 0) + substr_count((string) $slot, 'step step--'); @endphp
-        <x-route.fold :count="$stepsCount"/>
-    @endif
 </div>

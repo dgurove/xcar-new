@@ -68,7 +68,8 @@ final class OfferFiles
             $letter ? Docs::letter($letter, '/work/mail', $thread) : null,
             ...$papers->map(fn ($m) => Docs::media($m))->all(),
             ...array_filter($files, fn ($d) => ! in_array(Docs::norm($d['name']), $names, true)),
-            $photos->isNotEmpty() ? Docs::photos($photos) : Docs::photos($pictures, '/work/mail'),
+            // Свои фото — лентой сверху окна, чипа «Фото 98» нет (16.11.2026, владелец: «юзлес»); своих нет — картинки из писем чипом.
+            $photos->isNotEmpty() ? null : Docs::photos($pictures, '/work/mail'),
         ]));
     }
 

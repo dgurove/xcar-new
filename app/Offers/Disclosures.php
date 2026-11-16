@@ -24,9 +24,10 @@ final class Disclosures
 
     /**
      * @param  Collection<int, Message>  $letters  письма разбора; пусто — показ руками
+     * @param  bool  $text  «Показать менеджеру» из окна писем (16.11.2026): текст письма отмечен сразу
      * @return array<string, array{kind: string, value: string, media: ?int, label?: string, pick?: bool}> ключ пункта → пункт
      */
-    public static function proposals(Deal $deal, Collection $letters): array
+    public static function proposals(Deal $deal, Collection $letters, bool $text = false): array
     {
         $out = [];
         $add = function (string $kind, ?string $value, ?int $media = null) use (&$out) {
@@ -49,6 +50,14 @@ final class Disclosures
             $text = $signing->replyText();
             foreach (array_filter([SigningLetter::line($signing), SigningLetter::documents($text)]) as $i => $line) {
                 $out['signing:'.$i] = ['kind' => 'text', 'value' => $line, 'media' => null, 'label' => $i === 0 ? 'Подписание' : 'Покупателю', 'pick' => true];
+            }
+        }
+        // Текст письма — пунктом «Текст письма» (16.11.2026, владелец: «пришло письмо, текст которого хочу показать менеджеру»):
+        // свои слова до подписи (`replyText`) без названия вендора, править можно; до 2000 знаков (`picked`).
+        foreach ($signing ? [] : $letters as $m) {
+            $said = trim((string) VendorNames::strip($m->replyText()));
+            if ($said !== '') {
+                $out['letter:'.$m->id] = ['kind' => 'text', 'value' => mb_substr($said, 0, 2000), 'media' => null, 'label' => 'Текст письма', 'pick' => $text];
             }
         }
         foreach ($signing ? [] : $letters as $m) {
@@ -94,7 +103,7 @@ final class Disclosures
             }
             $value = trim((string) $value);
             if ($value !== '') {
-                $items[] = ['kind' => $item['kind'], 'value' => mb_substr($value, 0, 300)];
+                $items[] = ['kind' => $item['kind'], 'value' => mb_substr($value, 0, str_starts_with($key, 'letter:') ? 2000 : 300)];
             }
         }
         if (($text = trim((string) $text)) !== '') {

@@ -62,7 +62,20 @@
                 {{-- Примечание сотрудника над пересылкой — репликой, как заметка в истории. --}}
                 <div class="history-note mb-2"><div class="text-sm text-ink-muted">{{ \App\Mail\Chains\NodeTitle::forwarder($m) }}</div><div class="whitespace-pre-line break-words">{{ $note }}</div></div>
             @endif
-            @if ($text !== '')
+            {{-- Тема над письмом и свои слова как прислали — с приветствием, цветом и жирным, без цитаты прежней переписки
+                 (16.11.2026, владелец: «у писем не хватает темы», «что красным — должно быть красным»; `BodyRenderer::own`).
+                 Песочница iframe грузится, только когда письмо раскрыто (`loading="lazy"`). --}}
+            @php
+                $subject = \App\Mail\Extraction\Patterns::cleanSubject($m->subject);
+                $own = app(\App\Mail\BodyRenderer::class);
+                $doc = $own->own($m, $base);
+            @endphp
+            @if ($subject !== '' && mb_strtolower($subject) !== 'без темы')<div class="letter-subject">{{ $subject }}</div>@endif
+            @if ($doc)
+                <div data-controller="frame" class="letter-own overflow-hidden rounded-(--radius-m) {{ $own->isPlain($m) ? '' : 'bg-white' }}">
+                    <iframe sandbox="allow-same-origin allow-popups allow-popups-to-escape-sandbox" srcdoc="{{ $doc }}" title="Письмо" loading="lazy" class="block w-full" style="height:60px" data-frame-target="frame" data-action="load->frame#fit"></iframe>
+                </div>
+            @elseif ($text !== '')
                 <div class="whitespace-pre-line break-words">{{ $text }}</div>
             @else
                 <div class="text-sm text-ink-muted">{{ $m->has_attachments ? 'Только вложения' : 'Без своих слов' }}</div>

@@ -1,9 +1,10 @@
 {{-- «Оплата поставщику» — всё, что уходит за машину, своим блоком рядом с «Продажей» (15.11.2026, владелец: «один блок „Продажа“,
-     второй „Оплата поставщику“»; «Деньги» и «ДКП ПРАЙМ» были непонятны). Кому, сколько, оплачено ли — и, пока не оплачено, назначение
-     и реквизиты полями для копирования (`x-ui.copy-field`, владелец: «поля, из которых копируют, выглядят как поля»).
+     второй „Оплата поставщику“»; «Деньги» и «ДКП ПРАЙМ» были непонятны). Кому, сколько, оплачено ли и, пока не оплачено, назначение
+     платежа полем для копирования (оно своё у каждой сделки). Реквизитов нет (16.11.2026, владелец: «в банке получателя выбираем —
+     всё предзаполняется»; посмотреть — карточка вендора).
      - ПРАЙМ / Р.О.С. (платим мы): получатель и сумма из «Договора комиссии» (`deal_contracts.supplier_*`, `FillCommissionOwner`),
        иначе поставщик и `Deal::supplierCost`; не сходится с нашей суммой — красным; оплачено — `Deal::supplierPaid`
-       (`supplier_paid_at`), реквизиты тогда шторкой. Р.О.С. переводит сам — словом под получателем.
+       (`supplier_paid_at`). Р.О.С. переводит сам — словом под получателем.
      - «Страховой напрямую»: платит покупатель, реквизитов нет — счёт страховой файлом (`SupplierInvoice::shown`), состояние как у
        менеджера (платёжка у нас, подтвердил поставщик).
      - ДКП собственника: «Оплата собственнику» — кому по ДКП и взаимозачёт.
@@ -29,10 +30,7 @@
         $ours = $deal->supplierCost();
         $amount = $price ?? $ours;
         $diff = $price !== null && $ours !== null ? $ours - $price : 0;
-        $payee = $contract?->supplier_requisites ?: [];
-        $fields = array_filter(['Получатель' => $payee['name'] ?? null, 'ИНН' => $payee['inn'] ?? null, 'КПП' => $payee['kpp'] ?? null,
-            'Счёт' => $payee['account'] ?? null, 'БИК' => $payee['bik'] ?? null, 'Корр. счёт' => $payee['corr'] ?? null, 'Банк' => $payee['bank'] ?? null]);
-        $to = $payee['name'] ?? $offer->vendor?->name ?? 'Поставщик';
+        $to = $contract?->supplier_requisites['name'] ?? $offer->vendor?->name ?? 'Поставщик';
         $basis = $contract?->commissioned() && $contract->commissionNo() ? 'договор комиссии № '.$contract->commissionNo() : null;
     }
     if ($kind === 'insurer') {
@@ -56,39 +54,16 @@
         @endif
         <div class="flex flex-col gap-3">
             @if ($kind === 'we')
-                {{-- Реквизиты на экране — получатель и основание уже в полях «Получатель» и «Назначение»: сверху только сумма. --}}
-                @php $plain = $paid || ! $fields; @endphp
                 <div>
-                    @if ($plain)<span class="block break-words">{{ $to }}</span>@endif
-                    @if ($scheme === DealScheme::Ros)<span class="block text-sm text-ink-muted">переводит Р.О.С.</span>@elseif ($plain && $basis && ! $contract?->supplier_purpose)<span class="block text-sm text-ink-muted">{{ $basis }}</span>@endif
+                    <span class="block break-words">{{ $to }}</span>
+                    @if ($scheme === DealScheme::Ros)<span class="block text-sm text-ink-muted">переводит Р.О.С.</span>@elseif ($basis && ($paid || ! $contract?->supplier_purpose))<span class="block text-sm text-ink-muted">{{ $basis }}</span>@endif
                     @if ($amount !== null)
                         <x-ui.copy-text class="nums mt-1 block w-fit pay-sum {{ $diff !== 0 ? 'text-danger' : '' }}" :value="(string) $amount" done="Сумма в буфере">{{ Money::rub($amount) }}</x-ui.copy-text>
                         @if ($diff !== 0)<span class="block text-sm text-danger">у нас {{ Money::rub($ours) }}, разница {{ Money::rub(abs($diff)) }}</span>@endif
                         @if ($deal->supplier_cost !== null && $deal->cost !== null && (int) $deal->cost !== (int) $amount)<span class="block text-sm text-ink-muted">у менеджера закупочная {{ Money::rub($deal->cost) }}</span>@endif
                     @endif
                 </div>
-                @if (! $paid)
-                    @if ($contract?->supplier_purpose)<x-ui.copy-field label="Назначение платежа" done="Назначение в буфере">{{ $contract->supplier_purpose }}</x-ui.copy-field>@endif
-                    @if ($fields)
-                        {{-- ИНН и КПП — парой, остальное во всю ширину: длинные номера счёта в половину не влезают. --}}
-                        <div class="grid grid-cols-2 gap-3">
-                            @foreach ($fields as $label => $value)
-                                <x-ui.copy-field :label="$label" :value="$value" :done="$label.' в буфере'" class="nums {{ in_array($label, ['ИНН', 'КПП'], true) ? '' : 'col-span-2' }}"/>
-                            @endforeach
-                        </div>
-                    @endif
-                @elseif ($fields || $contract?->supplier_purpose)
-                    {{-- Оплачено — реквизиты не нужны каждый день: шторкой. --}}
-                    <div class="list" data-controller="sheet">
-                        <x-ui.sheet-row><span class="min-w-0 flex-1">Реквизиты и назначение</span><x-ui.chevron/></x-ui.sheet-row>
-                        <x-ui.sheet :id="'supplier-pay-'.$deal->id" title="Реквизиты">
-                            <div class="flex flex-col gap-3">
-                                @if ($contract?->supplier_purpose)<x-ui.copy-field label="Назначение платежа" done="Назначение в буфере">{{ $contract->supplier_purpose }}</x-ui.copy-field>@endif
-                                @foreach ($fields as $label => $value)<x-ui.copy-field :label="$label" :value="$value" :done="$label.' в буфере'" class="nums"/>@endforeach
-                            </div>
-                        </x-ui.sheet>
-                    </div>
-                @endif
+                @if (! $paid && $contract?->supplier_purpose)<x-ui.copy-field label="Назначение платежа" done="Назначение в буфере">{{ $contract->supplier_purpose }}</x-ui.copy-field>@endif
             @elseif ($kind === 'insurer')
                 <div>
                     <span class="block">{{ $offer->vendor?->name ?? 'Страховая' }}</span>

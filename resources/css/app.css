@@ -2735,7 +2735,8 @@ html.kb-open { --home-gap: 0px; }
   .step-head { display: flex; flex-wrap: wrap; align-items: baseline; align-content: center; gap: .25rem .5rem; min-height: 1.875rem; }
   .step-title { font-weight: 500; font-size: var(--text-base); }
   .step--next .step-title, .step--todo .step-title { color: var(--color-ink-muted); font-weight: 400; }
-  .step--current .step-title { font-size: var(--text-lg); }
+  /* Текущий шаг — 15 весом 500, как в окне (16.11.2026: 17 читалось заголовком другой карточки). */
+  .step--current .step-title { font-size: var(--text-base); font-weight: 500; }
   .step-hint { margin-top: .125rem; font-size: var(--text-sm); color: var(--color-ink-muted); }
   /* Блок над этапом текущего шага в CRM («Согласование с поставщиком · 2 из 3», 10.11.2026). */
   .step-kicker { display: block; font-size: var(--text-sm); color: var(--color-ink-muted); }
@@ -2748,36 +2749,15 @@ html.kb-open { --home-gap: 0px; }
   .step-details > summary > .step-chevron { position: absolute; right: 0; top: .4375rem; }
   .step--next .step-body, .step--todo .step-body { padding-bottom: .625rem; }
   .step--done .step-body { padding-bottom: .5rem; }
-  /* Окно машины (12.11.2026, владелец: «снизу куча навалено»): путь свёрнут до текущего шага, «Весь путь» (`x-route.fold`)
-     раскрывает его флажком. Текущего нет (путь пройден) — виден весь. Вывоз в окне — тоже только текущий шаг, без строки. */
+  /* Вывоз в окне машины (`x-logistics.lane compact`, 12.11.2026): только текущий шаг одной колонкой, без точки и линии; текущего нет —
+     виден весь. Путь «Продажи» в окне — целиком (16.11.2026, владелец: свёрнутый с «Весь путь» не прижился). */
   .steps--compact > .step--done, .steps--compact > .step--next, .steps--compact > .step--todo, .steps--compact > .step--later { display: none; }
   .steps--compact > .step::before { display: none; }
-  .steps--compact:has(> .steps-all > .steps-all-check:checked) > .step { display: grid; }
-  .steps--compact:has(> .steps-all > .steps-all-check:checked) > .step::before { display: block; }
-  .steps--compact:has(> .steps-all > .steps-all-check:checked) > .step:has(+ .steps-all)::before { display: none; }
   .steps--compact:not(:has(> .step--current)):not(:has(> .step--ask)) > .step { display: grid; }
-  .steps--compact:not(:has(> .step--current)):not(:has(> .step--ask)) > .steps-all { display: none; }
-  /* Свёрнут до одного шага — линии нет, и колонка точки — пустой отступ (12.11.2026, владелец: «отступ слева не имеет смысла»):
-     шаг одной колонкой, вровень с «Продажа»; раскрыли «Весь путь» — точки и линия на месте. */
-  .steps--compact:is(:has(> .step--current), :has(> .step--ask)):not(:has(> .steps-all > .steps-all-check:checked)) > .step { grid-template-columns: minmax(0, 1fr); }
-  .steps--compact:is(:has(> .step--current), :has(> .step--ask)):not(:has(> .steps-all > .steps-all-check:checked)) > .step > .step-dot { display: none; }
-  /* Свёрнутый — и без «Оплата, 1 из 2» над шагом и серых будущих подпунктов: это и есть «Весь путь». */
-  /* Окно сделки (15.11.2026): этап — посередине полосы окна; свёрнутый путь его не повторяет, «⋯» шага — в строке «Продажа». */
-  .steps--compact:not(:has(> .steps-all > .steps-all-check:checked)) .step-title--bar { display: none; }
-  /* «⋯» — от карточки, а не от шага: строки над шагом (переоценка) её не двигают. Свёрнутый путь бывает только в окне, где
-     у карточки нет отступов: пилюля 28 px серединой на строке заголовка `.box-title` (15 px) — сдвиг вверх на 6.5 px. */
-  .box:has(> .steps--compact) { position: relative; }
-  .steps--compact:not(:has(> .steps-all > .steps-all-check:checked)) > .step--current:has(.step-head--bar) { position: static; }
-  .steps--compact:not(:has(> .steps-all > .steps-all-check:checked)) > .step--current .step-head--bar { position: absolute; top: -6.5px; right: 0; margin: 0; }
-  .steps--compact:not(:has(> .steps-all > .steps-all-check:checked)) .step-kicker,
-  .steps--compact:not(:has(> .steps-all > .steps-all-check:checked)) .substeps--wait { display: none; }
-  .steps-all { display: flex; align-items: center; gap: .375rem; align-self: flex-start; margin-top: .25rem; cursor: pointer; font-size: var(--text-sm); color: var(--color-ink-muted); }
-  .steps-all-check { position: absolute; opacity: 0; pointer-events: none; width: 1px; height: 1px; }
-  .steps-all-close { display: none; }
-  .steps-all-chevron { transition: rotate var(--dur-fast); }
-  .steps-all:has(> .steps-all-check:checked) > .steps-all-open { display: none; }
-  .steps-all:has(> .steps-all-check:checked) > .steps-all-close { display: inline; }
-  .steps-all:has(> .steps-all-check:checked) > .steps-all-chevron { rotate: 180deg; }
+  .steps--compact:has(> .step--current) > .step { grid-template-columns: minmax(0, 1fr); }
+  .steps--compact:has(> .step--ask) > .step { grid-template-columns: minmax(0, 1fr); }
+  .steps--compact:has(> .step--current) > .step > .step-dot { display: none; }
+  .steps--compact:has(> .step--ask) > .step > .step-dot { display: none; }
 
   /* Шаг «Переоценка» (16.11.2026, вариант Б): фраза о цене 15, подписи и сделанное 13 серым, кнопки строкой. */
   .reprice-line { margin-top: .125rem; }
@@ -2800,18 +2780,31 @@ html.kb-open { --home-gap: 0px; }
   .substep-body { min-width: 0; }
   .substep-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: .125rem .5rem; min-height: 1.375rem; padding-left: 1.25rem; }
   .substep--wait .substep-dot { left: .1875rem; }
+  /* Подпункты шага — 13, как строки дел под ним (16.11.2026, пропорции). */
+  .substep-head { font-size: var(--text-sm); }
   .substep-title { font-weight: 500; }
   .substep--wait .substep-title { font-weight: 400; color: var(--color-ink-muted); }
   .substep-meta { font-size: var(--text-sm); color: var(--color-ink-muted); }
-  /* Кто действует — аватар (логотип вендора, знак XCar) и имя с состоянием строкой, кнопки — под именем
-     своей строкой: в узкой дорожке редактора и на телефоне рядом с ними имя сжималось до «Вла…». Одна строка на «Переоценку»
-     и подпункт «сейчас» любого шага пути (`x-route.who`, 04.11.2026). */
+  /* Кто действует — аватар (логотип вендора, знак XCar) и имя с состоянием строкой, кнопки — под ними своей строкой во всю ширину
+     шага (16.11.2026, владелец: «аватарка кнопке никак не мешает»): в узкой дорожке редактора и на телефоне рядом с ними имя
+     сжималось до «Вла…». Одна строка на «Переоценку» и подпункт «сейчас» любого шага пути (`x-route.who`, 04.11.2026). */
+  /* Тема раскрытого письма в ленте (16.11.2026) — строкой над его словами. */
+  .letter-subject { margin-bottom: .375rem; font-weight: 500; overflow-wrap: anywhere; }
   .step-who { display: grid; grid-template-columns: 2rem minmax(0, 1fr) auto; align-items: center; gap: .5rem .625rem; margin-top: .625rem; }
-  .step-who-acts { grid-column: 2 / -1; display: flex; flex-wrap: wrap; gap: .5rem; }
+  .step-who-acts { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: .5rem; }
   .step-who-acts > form, .step-who-acts > div, .step-who-acts > button, .step-who-acts > a { flex: 1 1 auto; min-width: 0; }
   .step-who-acts > form > .btn, .step-who-acts > div > .btn { width: 100%; }
-  /* Состояние — своя фраза («должен 1 050 000 ₽ · просрочено 10 д»): в узкой дорожке переносится, а не лезет вправо. */
-  .step-who .state { white-space: normal; }
+  /* Кнопки за менеджера — без строки «Менеджер» (ждём менеджера словом) своим рядом под состоянием. */
+  .step-who-acts--bare { margin-top: .5rem; }
+  /* Действия строки дела («Пропустить письмо» под письмом, 16.11.2026) — во всю ширину шага, как кнопки под «Менеджер». */
+  .step-task-acts { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: .5rem; }
+  .step-task-acts > form, .step-task-acts > div, .step-task-acts > a, .step-task-acts > button { flex: 1 1 auto; min-width: 0; }
+  .step-who-acts .btn, .step-task-acts .btn { width: 100%; }
+  /* Состояние — своя фраза («должен 1 050 000 ₽ · просрочено 10 д»): в узкой дорожке переносится, а не лезет вправо. Отдельной
+     строкой сразу под именем (16.11.2026, владелец: «под словом „Менеджер“ странный отступ» — `inline-flex` в строке имени 22,5 px
+     давал ~10 px зазора). */
+  .step-who .state { display: block; margin-top: .125rem; white-space: normal; }
+  .step-who > .min-w-0 > .truncate { line-height: 1.25rem; }
   /* Состояние письма — кнопкой (открывает окно писем): строкой текста слева, а не текстом кнопки по центру — в узкой дорожке
      «ушло 03.11 · ждём 1 д 14 ч» переносилось и разъезжалось под именем поставщика (05.11.2026). */
   .step-who button.state { display: inline; text-align: left; }
@@ -2821,11 +2814,19 @@ html.kb-open { --home-gap: 0px; }
   .step-acts > form > .btn, .step-acts > div > .btn { width: 100%; }
   .step-acts > p { flex-basis: 100%; }
   /* Строка дела в шаге (`x-route.task-row`, 10.11.2026): письмо, ДКП, счёт — одним видом, как строка `.list`; цвет — только точкой. */
-  .step-task { margin-top: .5rem; display: flex; width: 100%; align-items: center; gap: .625rem; text-align: left; font-size: var(--text-base); color: var(--color-ink); }
+  /* 13, а не 15 (16.11.2026, владелец: «размер шрифта чуть меньше»): строка дела — подпись к шагу, вторая строка — приглушённо. */
+  /* Ряд под цепочкой писем (16.11.2026, вариант Б, как в Gmail): мелкие кнопки по ширине подписи, «⋯» той же высоты. */
+  .reply-acts { display: flex; flex-wrap: wrap; align-items: center; gap: .375rem; }
+  .reply-acts .btn { height: 2rem; gap: .375rem; padding-inline: .75rem; font-size: var(--text-sm); font-weight: 500; }
+  .reply-acts .more-pill { height: 2rem; width: 2.5rem; }
+  /* «Показать менеджеру» и «⋯» — прижаты вправо (первый из них сдвигает себя и следующих). */
+  .reply-acts .reply-acts-end { margin-left: auto; }
+  .step-task { margin-top: .5rem; display: flex; width: 100%; align-items: center; gap: .625rem; text-align: left; font-size: var(--text-sm); line-height: 1.125rem; color: var(--color-ink); }
+  .step-task-sub { display: block; color: var(--color-ink-muted); }
   .step-task + .step-task { margin-top: .25rem; }
   .step-task-icon { position: relative; display: flex; flex-shrink: 0; align-items: center; justify-content: center; width: 2rem; height: 2rem; border-radius: 999px; background: var(--color-surface-2); color: var(--color-ink-muted); }
   .step-task-dot { position: absolute; top: 0; right: 0; width: .5rem; height: .5rem; border-radius: 999px; background: var(--color-urgent); }
-  .step-task-note { margin-top: .25rem; padding-left: 2.625rem; font-size: var(--text-sm); color: var(--color-ink-muted); }
+  .step-task-dot--danger { background: var(--color-danger); }
   /* Наш ход — только часы строкой под названием шага, без знака и слова «XCar» (12.11.2026, владелец). */
   .step-who--bare { display: block; margin-top: .25rem; }
   .step-who-icon { display: flex; flex-shrink: 0; align-items: center; justify-content: center; width: 2rem; height: 2rem; border-radius: 999px; background: var(--color-surface-2); color: var(--color-ink-muted); }
@@ -4855,6 +4856,12 @@ html::view-transition-image-pair(hero) { isolation: auto; }
   .box .photo-strip, .box-nested .photo-strip, .phase .photo-strip { @apply mr-0 pr-0; }
   .photo-cell { @apply relative h-20 min-w-16 shrink-0 snap-start overflow-hidden rounded-(--radius-m) bg-surface-3 sm:h-24; touch-action: pan-x; }
   .photo-cell img { @apply h-full w-auto max-w-[16rem] cursor-zoom-in object-contain; }
+  /* Кадры предложения CRM — окно и страница (`admin.offers.photo-blocks`, 16.11.2026, владелец: «на компе узкие, много помещается,
+     а на телефоне широкие, по одной на экран»): плитка одного размера 8×6rem и на телефоне, и на ПК, кадр её заполняет — ширина не
+     зависит ни от картинки, ни от браузера. Развёрнутая сеткой (`.is-open`) — по своим правилам. */
+  .photo-blocks .photo-cell { width: 8rem; height: 6rem; min-width: 0; }
+  .photo-blocks .photo-cell img { width: 100%; height: 100%; max-width: none; object-fit: cover; }
+  .photo-blocks .photo-add { height: 6rem; }
   .photo-cell.is-hidden img { @apply opacity-40 grayscale; }
   /* Глаз и поворот — сразу на экране, сервер догоняет (photos_controller#hide/#rotate): иконка — по классу плитки,
      поворот — CSS по --turn (четверти) и --fit (вписать боком), пока не пришёл повёрнутый файл. */
@@ -4938,6 +4945,12 @@ html::view-transition-image-pair(hero) { isolation: auto; }
   .detail-card .box h2.box-title { font-size: var(--text-sm); font-weight: 500; color: var(--color-ink-muted); letter-spacing: normal; }
   .detail-body .step--current .step-title, .detail-body .step--ask .step-title { font-size: var(--text-base); }
   .detail-body .btn-s { font-size: var(--text-base); }
+  /* Кнопки шага пути — тише самого шага (16.11.2026, владелец: «текст в кнопках огромный, что-то не так с пропорциями»): 36 px,
+     13 весом 500, одной высоты, длинная подпись переносится. Только кнопки самого шага (прямые и в своей форме), не шторок в нём. */
+  .step-acts > .btn-s, .step-acts > * > .btn-s, .step-who-acts > .btn-s, .step-who-acts > * > .btn-s, .step-task-acts > .btn-s,
+  .step-task-acts > * > .btn-s, .signing-edit > summary .btn-s {
+    height: auto; min-height: 2.25rem; padding-block: .375rem; font-size: var(--text-sm); font-weight: 500; line-height: 1.25; white-space: normal;
+  }
   .detail-body .vincode-text, .detail-body .letter-box { font-size: var(--text-sm); }
   .detail-card .deal-chat { background: var(--color-surface-2); }
   /* Поля в карточке строки: плотнее, чем в редакторе, и не шире своей колонки (дата-время и VIN распирали её). */

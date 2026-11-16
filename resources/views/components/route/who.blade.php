@@ -1,10 +1,8 @@
-{{-- Кто сейчас действует на шаге пути — строкой, а не фразой (04.11.2026, владелец: «во „Ждём менеджера“ непонятно, кого и чего
-     ждём», «тупо текстом — это не дизайн»): менеджер сделки — аватар и имя («Позвонить» снята 10.11.2026 — не пользовались); поставщик — логотип и имя; мы —
-     знак XCar. Справа от имени — состояние словом цвета (`x-ui.state`): у менеджера срок («до 05.11 17:00», «просрочено 2 д»,
-     без срока «ждём 3 д»), у письма поставщику — что с ним («письмо не отправлено», «письмо от 04.11, ждём 1д», «ответил 04.11»
-     — нажатие открывает окно писем на нём), у нашего хода — часы. Под подпунктом «сейчас» в `x-route.path`, той же строкой
-     в «Переоценке» (`.step-who`). --}}
-{{-- named=false — окно машины (12.11.2026): менеджер сделки словом «Менеджер» без аватара, его имя и телефон — в сведениях шапки. --}}
+{{-- Кто сейчас действует на шаге пути — строкой дела (`x-route.task-row`), как строки письма и ожидания поставщика (16.11.2026,
+     владелец: «глянь, как на других этапах — привести к единству»): значок, что происходит («Ждём менеджера», «Ждём счёт»,
+     «Поставщик ответил», «Письмо поставщику не отправлено», «Наш ход»), ниже серым срок или дата; просрочено — красной точкой у
+     значка; письмо — нажатием строки. На странице у менеджера и водителя — аватар вместо значка (`named`), в окне менеджер — в шапке.
+     Слот `acts` — кнопки за менеджера под строкой во всю ширину шага. Под подпунктом «сейчас» в `x-route.path`. --}}
 @props(['position', 'offer', 'deal' => null, 'named' => true])
 @php
     use App\Support\Ago;
@@ -22,7 +20,6 @@
         default => null,
     };
     $manager = $side === 'manager' ? $deal?->buyer : null;
-    $vendor = $side === 'supplier' ? $offer->vendor : null;
     $timer = fn (string $mode, $at) => '<span class="nums" data-controller="timer" data-timer-'.$mode.'-value="'.$at->toIso8601String().'" data-timer-coarse-value="true"'.($mode === 'until' ? ' data-timer-done-value="-" data-timer-word-value=""' : '').'></span>';
     $overdue = $position->isOverdue();
     $since = $position->block_entered_at ?? $position->entered_at;
@@ -48,73 +45,43 @@
         (bool) $trip->pickup_at => 'заберёт '.$trip->pickupDay('d.m'),
         default => 'договаривается с владельцем',
     };
-    [$state, $tone, $open] = match (true) {
-        // Рыжий — только срочность по времени (15.11.2026, владелец: «рыжее меня всегда бесило, непонятно, что хотят»): нехватка
-        // и ожидание — обычным серым, просрочка — красным.
-        $letter === 'unsent' => ['письмо не отправлено', $overdue ? 'danger' : 'plain', null],
-        $letter === 'failed' => ['письмо не ушло', 'danger', null],
-        $letter === 'bounced' => ['письмо не доставлено', 'danger', null],
-        $letter === 'replied' => ['ответил '.Ago::html($position->replyAt(), true, words: false), 'accent', $letters],
-        // «ждём 17 д 15 ч» — неразрывно: в узкой дорожке переносится целиком, а не «ждём 17 д / 15 ч».
-        // Без письма — сообщили сами (`SkipLetter`, 10.11.2026): ссылки на письмо нет.
-        $letter === 'sent' && ! empty($position->payload['letter_by_hand']) => ['сообщили сами '.Ago::html($position->letterAt(), words: false).', <span class="whitespace-nowrap">ждём '.$timer('since', $position->letterAt()).'</span>', $overdue ? 'urgent' : 'plain', null],
-        $letter === 'sent' => ['письмо от '.Ago::html($position->letterAt(), words: false).', <span class="whitespace-nowrap">ждём '.$timer('since', $position->letterAt()).'</span>', $overdue ? 'urgent' : 'plain',
-            $letters.(isset($position->payload['letter_id']) ? '?at='.$position->payload['letter_id'] : '')],
-        $invoice => ['счёт не выставлен', $overdue ? 'danger' : 'plain', null],
-        $position->carried() => [e($tripState), 'plain', null],
-        (bool) $debt => ['должен&nbsp;'.e($debt->amount()).', '.e($debt->word()), $debt->late() ? 'danger' : 'plain', null],
-        // Ждём менеджера — сколько ждём и срок одной строкой (10.11.2026: «до 11.11» без «ждём» не говорило, что ход его).
-        $side === 'manager' && (bool) $position->deadline_at => ['<span class="whitespace-nowrap">ждём '.$timer('since', $since).'</span>, '.($overdue ? '<span class="whitespace-nowrap">просрочено на '.$timer('since', $position->deadline_at).'</span>' : 'срок '.e(Ago::at($position->deadline_at, true, words: false))), $overdue ? 'danger' : 'plain', null],
-        $overdue && (bool) $position->deadline_at => ['просрочено '.$timer('since', $position->deadline_at), 'danger', null],
-        $side === 'us' && (bool) $position->deadline_at => ['осталось '.$timer('until', $position->deadline_at), 'plain', null],
-        (bool) $position->deadline_at => ['до '.e(Ago::at($position->deadline_at, true, words: false)), 'plain', null],
-        $side === 'us' => ['наш ход', 'plain', null],
-        default => ['ждём '.$timer('since', $since), 'plain', null],
+    // Одним видом — строкой дела (16.11.2026, владелец: «глянь, как на других этапах — привести к единству»; за образец — вариант А
+    // «Ждём счёт / 2д 17ч»): значок, что происходит, ниже серым срок; просрочено — красной точкой у значка, не цветом текста;
+    // нажимается — открывает письмо. [значок, заголовок, вторая строка (html), просрочено, адрес письма]
+    $sinceHtml = fn ($at) => $at ? $timer('since', $at) : null;
+    $late = fn () => $position->deadline_at ? '<span class="whitespace-nowrap">просрочено '.$timer('since', $position->deadline_at).'</span>' : null;
+    // Что ждём от поставщика — по выходам этапа (`SupplierWait`): письмо ушло или ждём его без нашего письма.
+    $what = $side === 'supplier' && ($letter === 'sent' || $letter === null) ? \App\Workflow\SupplierWait::what($position->stage) : null;
+    $waitLetter = $letter === 'sent' && empty($position->payload['letter_by_hand']) ? $letters.(isset($position->payload['letter_id']) ? '?at='.$position->payload['letter_id'] : '') : null;
+    [$icon, $title, $sub, $danger, $open] = match (true) {
+        $letter === 'unsent' => ['send', 'Письмо поставщику не отправлено', null, $overdue, null],
+        $letter === 'failed' => ['alert', 'Письмо поставщику не ушло', null, true, null],
+        $letter === 'bounced' => ['alert', 'Письмо поставщику не доставлено', null, true, null],
+        $letter === 'replied' => ['reply', 'Поставщик ответил', Ago::html($position->replyAt(), true, words: false), false, $letters],
+        (bool) $what => ['clock', 'Ждём '.$what, $sinceHtml($letter === 'sent' ? $position->letterAt() : $since), $overdue, $waitLetter],
+        $invoice => ['file', 'Счёт не выставлен', $overdue ? $late() : null, $overdue, null],
+        $position->carried() => ['cat-truck', $driver?->shortName() ?? 'Вывоз', e($tripState), false, null],
+        (bool) $debt => ['wallet', 'Менеджер должен '.$debt->amount(), e($debt->word()), $debt->late(), null],
+        (bool) $asked => ['user', 'Ждём ответ менеджера', $sinceHtml($asked->created_at), $overdue, null],
+        $side === 'manager' => ['user', 'Ждём менеджера', $sinceHtml($since), $overdue, null],
+        $side === 'us' => ['timer', 'Наш ход', $position->deadline_at ? ($overdue ? $late() : 'осталось '.$timer('until', $position->deadline_at)) : null, $overdue, null],
+        default => ['clock', 'Ждём', $sinceHtml($since), $overdue, null],
     };
+    // На странице — аватар менеджера или водителя вместо значка (в окне менеджер — в шапке).
+    $face = $named ? ($manager ?? $driver) : null;
+    $hasActs = isset($acts) && $acts->hasActualContent();
 @endphp
-@if (! $named && $trip && $trip->state !== \App\Logistics\TransportState::Delivered)
-    {{-- Окно: шаг везёт наша логистика — рейс со всем, что о нём, в дорожке «Вывоз» рядом; второй раз не пишем (12.11.2026,
-         владелец: «почему тут про вывоз несколько раз»). Страница — как было. --}}
-@elseif ($manager && ! $named && ! $asked && ! $open)
-    {{-- Окно: менеджер — в шапке, здесь без значка и слова «Менеджер», только чего ждём (12.11.2026, владелец: «много мусора»). --}}
-    <div {{ $attributes->class('step-who step-who--bare') }}><x-ui.state :tone="$tone"><span>{!! $debt ? 'менеджер '.$state : preg_replace('/ждём /u', 'ждём менеджера ', $state, 1) !!}</span></x-ui.state></div>
-@elseif ($side === 'us' && ! $trip && ! $position->carried() && ! $open)
-    {{-- Наш ход — строки «[знак] XCar» нет (12.11.2026, владелец: «зачем сюда логотип икскара»): только часы под названием. --}}
-    <div {{ $attributes->class('step-who step-who--bare') }}><x-ui.state :tone="$tone"><span>{!! $state !!}</span></x-ui.state></div>
-@elseif ($vendor)
-    {{-- Поставщик — без логотипа и имени (16.11.2026, владелец: «зачем в ходе логотип страховой, очень странно выглядит»): он в шапке
-         окна и страницы, здесь — только что с письмом; письмо открывается нажатием. --}}
-    <div {{ $attributes->class('step-who step-who--bare') }}>
-        @if ($open)
-            <button type="button" class="state state-{{ $tone }} underline decoration-dotted underline-offset-4" data-controller="emit" data-action="emit#send" data-emit-event-param="letters:open" data-emit-url-param="{{ $open }}"><span>{!! $state !!}</span></button>
-        @else
-            <x-ui.state :tone="$tone"><span>{!! $letter === 'unsent' ? 'наш ход: письмо поставщику' : $state !!}</span></x-ui.state>
-        @endif
-    </div>
-@elseif ($side)
-    <div {{ $attributes->class('step-who') }}>
-        @if ($manager && $named)
-            <x-ui.avatar :user="$manager" :size="32"/>
-        @elseif ($manager)
-            <span class="step-who-icon"><x-ui.icon name="user" class="size-4"/></span>
-        @elseif ($driver)
-            <x-ui.avatar :user="$driver" :size="32"/>
-        @elseif ($side === 'us')
-            {{-- Вывоз нашей логистикой без водителя — грузовиком, не знаком XCar (12.11.2026). --}}
-            <span class="step-who-icon"><x-ui.icon name="cat-truck" class="size-4"/></span>
-        @else
-            <span class="step-who-icon"><x-ui.icon name="user" class="size-4"/></span>
-        @endif
-        <div class="min-w-0">
-            <div class="truncate">{{ ($named ? $manager?->shortName() : ($manager ? 'Менеджер' : null)) ?? $driver?->shortName() ?? $vendor?->name ?? ($trip !== null || $position->carried() ? 'Вывоз' : null) ?? ($side === 'us' ? 'XCar' : ($deal?->isAuction() ? 'Аукцион' : 'Менеджер')) }}</div>
-            @if ($open)
-                <button type="button" class="state state-{{ $tone }} underline decoration-dotted underline-offset-4" data-controller="emit" data-action="emit#send" data-emit-event-param="letters:open" data-emit-url-param="{{ $open }}"><span>{!! $state !!}</span></button>
-            @elseif ($asked)
-                <x-ui.state :tone="$overdue ? 'danger' : 'plain'"><span>спросили {!! Ago::html($asked->created_at, true, words: false) !!}, <span class="whitespace-nowrap">молчит {!! $timer('since', $asked->created_at) !!}</span>@if ($position->deadline_at), {!! $overdue ? '<span class="whitespace-nowrap">просрочено на '.$timer('since', $position->deadline_at).'</span>' : 'срок '.e(Ago::at($position->deadline_at, true, words: false)) !!}@endif</span></x-ui.state>
-            @else
-                {{-- Одной вставкой: `.state` — inline-flex, и пробелы между текстом и датой он съедал («ушло15.10»). --}}
-                <x-ui.state :tone="$tone"><span>{!! $state !!}</span></x-ui.state>
+@unless (! $named && $trip && $trip->state !== \App\Logistics\TransportState::Delivered)
+    {{-- Окно: шаг везёт наша логистика — рейс со всем, что о нём, в дорожке «Вывоз» рядом; второй раз не пишем (12.11.2026). --}}
+    @if ($side || $what)
+        <x-route.task-row :icon="$icon" :avatar="$face" :danger="$danger" :emit="$open" :static="! $open" {{ $attributes }}>
+            {{ $title }}
+            @if ($sub)
+                <x-slot:sub>{!! $sub !!}</x-slot:sub>
             @endif
-        </div>
-    </div>
+        </x-route.task-row>
+    @endif
+@endunless
+@if ($hasActs)
+    <div class="step-acts step-who-acts--bare">{{ $acts }}</div>
 @endif

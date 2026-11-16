@@ -16,14 +16,25 @@
     @if ($line)
         <form method="post" action="/work/deals/{{ $deal->id }}/reviews/done" id="{{ $id }}-skip" hidden data-turbo-confirm="Менеджер не узнает об этом письме" data-turbo-confirm-label="Не нужно">@csrf</form>
     @endif
-    <form method="post" action="/work/deals/{{ $deal->id }}/disclose" class="flex flex-col gap-4" data-controller="disclose">
+    {{-- top — шторка в окне писем (во фрейме ленты): ответ — всей странице. --}}
+    <form method="post" action="/work/deals/{{ $deal->id }}/disclose" class="flex flex-col gap-4" data-controller="disclose" @if ($top ?? false) data-turbo-frame="_top" @endif>
         @csrf
         @error('disclose')<x-ui.flash tone="danger">{{ $message }}</x-ui.flash>@enderror
+        @if ($message ?? null)<input type="hidden" name="message" value="{{ $message->id }}">@endif
         @foreach ($letters as $m)
-            {{-- Подпись и оговорки страховой бывают на экран — письмо листается внутри себя, пункты видны сразу. --}}
-            <div class="max-h-64 overflow-y-auto rounded-(--radius-m) bg-surface-2 px-4 py-3">
+            {{-- Тема и письмо как прислали — с цветом и жирным, без цитаты (`BodyRenderer::own`, 16.11.2026); длинное листается внутри
+                 себя, пункты видны сразу. --}}
+            @php $renderer = app(\App\Mail\BodyRenderer::class); $doc = $renderer->own($m, '/work/mail'); $subject = \App\Mail\Extraction\Patterns::cleanSubject($m->subject); @endphp
+            <div>
                 <p class="mb-1 flex items-baseline gap-3 text-sm text-ink-muted"><span class="min-w-0 flex-1">Письмо {{ Ago::html($m->date_at, true, words: false) }} — видно только вам</span>@if ($line)<button type="button" class="shrink-0 text-accent-text" data-controller="emit" data-action="emit#send sheet#close" data-emit-event-param="letters:open" data-emit-url-param="/offers/{{ $deal->offer->number }}/letters?at={{ $m->id }}">Открыть</button>@endif</p>
-                <p class="whitespace-pre-line break-words text-sm">{{ $m->replyText() }}</p>
+                @if ($subject !== '' && mb_strtolower($subject) !== 'без темы')<p class="letter-subject">{{ $subject }}</p>@endif
+                @if ($doc)
+                    <div class="max-h-72 overflow-y-auto rounded-(--radius-m) {{ $renderer->isPlain($m) ? 'bg-surface-2' : 'bg-white' }}" data-controller="frame">
+                        <iframe sandbox="allow-same-origin allow-popups allow-popups-to-escape-sandbox" srcdoc="{{ $doc }}" title="Письмо" class="block w-full" style="height:120px" data-frame-target="frame" data-action="load->frame#fit"></iframe>
+                    </div>
+                @else
+                    <p class="text-sm text-ink-muted">{{ $m->has_attachments ? 'Только вложения' : 'Без своих слов' }}</p>
+                @endif
             </div>
         @endforeach
         @if ($proposals)
@@ -37,9 +48,13 @@
                             <div class="min-w-0 flex-1">
                                 <label for="{{ $box }}" class="block cursor-pointer">
                                     <span class="block text-xs text-ink-muted">{{ $guess && $p['media'] === $guess->id ? 'Счёт поставщика' : ($p['label'] ?? Disclosures::KINDS[$p['kind']]) }}</span>
-                                    <span class="block break-words" data-disclose-target="text">{{ $p['kind'] === 'file' ? $p['value'] : old('value.'.$key, $p['value']) }}</span>
+                                    @php $long = str_starts_with($key, 'letter:'); @endphp
+                                    <span @class(['block break-words', 'whitespace-pre-line' => $long]) data-disclose-target="text">{{ $p['kind'] === 'file' ? $p['value'] : old('value.'.$key, $p['value']) }}</span>
                                 </label>
-                                @if ($p['kind'] !== 'file')
+                                @if ($long)
+                                    {{-- Текст письма — полем в несколько строк: правят, что увидит менеджер. --}}
+                                    <textarea name="value[{{ $key }}]" rows="6" class="field-input mt-1" hidden data-disclose-target="input" data-action="input->disclose#typed">{{ old('value.'.$key, $p['value']) }}</textarea>
+                                @elseif ($p['kind'] !== 'file')
                                     <input type="text" name="value[{{ $key }}]" value="{{ old('value.'.$key, $p['value']) }}" class="field-input mt-1" hidden data-disclose-target="input" data-action="input->disclose#typed">
                                 @endif
                             </div>

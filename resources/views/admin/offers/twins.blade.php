@@ -16,7 +16,7 @@
             <div class="flex min-w-0 flex-1 items-center gap-2">{!! $inner !!}</div>
         @endif
         @if ($self && $editable)
-            <button type="button" data-action="twins#into" data-url="/offers/{{ $self->number }}/into/{{ $o->number }}" data-confirm="Перенести фото, документы и письма в это предложение? Черновика не останется" class="btn btn-s btn-secondary shrink-0">Это она</button>
+            <button type="button" data-action="twins#into" data-url="/offers/{{ $self->number }}/into/{{ $o->number }}" data-confirm="Перенести фото, документы и письма в это предложение? Черновика не останется" class="btn btn-s btn-quiet shrink-0">Это она</button>
         @endif
     </div>
 @endforeach

@@ -13,7 +13,122 @@ final class BodyRenderer
 
     public function document(Message $message, bool $remoteImages = false, string $base = '/work/mail'): string
     {
-        $body = $this->body($message);
+        return $this->wrap($message, $this->body($message), $remoteImages, $base);
+    }
+
+    /**
+     * Свои слова письма с его оформлением — для ленты писем и шторки «Показать менеджеру» (16.11.2026, владелец: «не надо обрезать
+     * приветствие и полностью очищать форматирование — что красным, должно быть красным»): тело как прислали, без цитаты прежней
+     * переписки ниже (`withoutQuote`); пересылка сотрудника — целиком; письмо без HTML — текстом до цитаты
+     * (`QuotationStripper::ownText`). Своих слов нет (только вложения) — null.
+     */
+    public function own(Message $message, string $base = '/work/mail'): ?string
+    {
+        $html = trim((string) $message->html_body);
+        if ($html === '') {
+            $text = Extraction\QuotationStripper::ownText($message->text_body);
+
+            return $text === '' ? null : $this->wrap($message, '<pre class="plain">'.e($text).'</pre>', false, $base);
+        }
+        if (! $message->isForwardedByStaff()) {
+            $html = $this->withoutQuote($html) ?? $html;
+        }
+
+        return self::blank($html) ? null : $this->wrap($message, $html, false, $base);
+    }
+
+    /** В теле ни слова и ни картинки (стили и заголовок не в счёт) — только вложения. Разбором, не регуляркой: письма по 100 КБ. */
+    private static function blank(string $html): bool
+    {
+        $dom = new \DOMDocument;
+        $errors = libxml_use_internal_errors(true);
+        $dom->loadHTML('<?xml encoding="utf-8"?>'.$html, LIBXML_HTML_NODEFDTD | LIBXML_NONET);
+        libxml_clear_errors();
+        libxml_use_internal_errors($errors);
+        $body = $dom->getElementsByTagName('body')->item(0);
+        if (! $body) {
+            return true;
+        }
+        foreach (iterator_to_array($dom->getElementsByTagName('style')) as $style) {
+            $style->parentNode?->removeChild($style);
+        }
+
+        return trim(str_replace("\u{00A0}", ' ', $body->textContent)) === '' && $body->getElementsByTagName('img')->length === 0;
+    }
+
+    /**
+     * Тело без цитаты прежней переписки: всё от первого её признака и ниже снимается — `<blockquote>`, блоки цитаты почтовиков
+     * (Outlook `divRplyFwdMsg` и черта `border-top: solid #E1E1E1`, Gmail, Thunderbird, Yahoo), `<hr>`, абзац «От: / From: /
+     * -----Original Message-----». Пустые абзацы в начале и в конце (Outlook ставит по два) — тоже. Признака нет — null.
+     */
+    private function withoutQuote(string $html): ?string
+    {
+        $dom = new \DOMDocument;
+        $errors = libxml_use_internal_errors(true);
+        $loaded = $dom->loadHTML('<?xml encoding="utf-8"?>'.$html, LIBXML_HTML_NODEFDTD | LIBXML_NONET);
+        libxml_clear_errors();
+        libxml_use_internal_errors($errors);
+        $body = $dom->getElementsByTagName('body')->item(0);
+        if (! $loaded || ! $body) {
+            return null;
+        }
+        $xp = new \DOMXPath($dom);
+        $starts = implode(' or ', array_map(fn ($w) => "starts-with(normalize-space(.), '{$w}')", ['От:', 'От кого:', 'From:', '-----Original', '-----Исходное', '-------- Исходное', '-------- Пересылаемое']));
+        $line = "translate(@style, 'ABCDEF ', 'abcdef')";
+        $marks = $xp->query('//body//blockquote | //body//hr'
+            ." | //body//*[@id='divRplyFwdMsg' or @id='appendonsend' or contains(@class, 'gmail_quote') or contains(@class, 'moz-cite-prefix') or contains(@class, 'yahoo_quoted')]"
+            ." | //body//div[contains({$line}, 'border-top:solid#e1e1e1') or contains({$line}, 'border-top:solid#b5c4df')]"
+            ." | //body//*[self::p or self::div][{$starts}]");
+        $start = $marks ? $marks->item(0) : null;
+        if (! $start) {
+            return null;
+        }
+        // Строка над цитатой («суббота, 14 ноября 2026 г. в 10:14 +03:00 от Марина <m@x.ru>:» у mail.ru, «… wrote:» у других) —
+        // часть цитаты.
+        // Обёртка, в которой одна цитата (mail.ru: `div#composeWebView_previouse_content > blockquote`), — тоже цитата.
+        $blank = fn (?\DOMNode $n) => $n && (($n->nodeType === XML_TEXT_NODE && trim($n->textContent) === '') || ($n instanceof \DOMElement && $n->tagName === 'br'));
+        $first = function (\DOMNode $parent) use ($blank) {
+            $n = $parent->firstChild;
+            while ($blank($n)) {
+                $n = $n->nextSibling;
+            }
+
+            return $n;
+        };
+        while ($start->parentNode && ! $start->parentNode->isSameNode($body) && $first($start->parentNode)?->isSameNode($start)) {
+            $start = $start->parentNode;
+        }
+        $intro = $start->previousSibling;
+        while ($blank($intro)) {
+            $intro = $intro->previousSibling;
+        }
+        if ($intro && preg_match('/(?:@|\bот\b|wrote|писал).{0,120}:\s*$/isu', trim($intro->textContent)) && mb_strlen(trim($intro->textContent)) < 300) {
+            $start = $intro;
+        }
+        // Всё после признака — в том же блоке и во всех вмещающих — и сам признак.
+        for ($node = $start; $node && ! $node->isSameNode($body); $node = $node->parentNode) {
+            while ($node->nextSibling) {
+                $node->parentNode->removeChild($node->nextSibling);
+            }
+        }
+        $start->parentNode->removeChild($start);
+        $paragraphs = iterator_to_array($xp->query('//body//p'));
+        $empty = fn (\DOMNode $p) => trim(str_replace("\u{00A0}", ' ', $p->textContent)) === '' && $xp->query('.//img', $p)->length === 0;
+        foreach ([$paragraphs, array_reverse($paragraphs)] as $side) {
+            foreach ($side as $p) {
+                if (! $p->parentNode || ! $empty($p)) {
+                    break;
+                }
+                $p->parentNode->removeChild($p);
+            }
+        }
+
+        return (string) preg_replace('/^<\?xml[^>]*>\s*/', '', (string) $dom->saveHTML());
+    }
+
+    /** Документ для iframe: без скриптов и форм, CSP, лист или цвета темы. */
+    private function wrap(Message $message, string $body, bool $remoteImages, string $base): string
+    {
         foreach (self::FORBIDDEN as $tag) {
             $body = preg_replace('#<'.$tag.'\b[^>]*>.*?</'.$tag.'\s*>#is', '', $body) ?? $body;
             $body = preg_replace('#<'.$tag.'\b[^>]*/?>#i', '', $body) ?? $body;

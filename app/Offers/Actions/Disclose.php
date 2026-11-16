@@ -51,11 +51,13 @@ final class Disclose
      * @param  list<array{kind: string, value: string, media?: int}>  $items  сверенные `Disclosures::picked`
      * @return array{disclosure: ?Disclosure, moved: bool} показали и сдвинули ли шаг (галка шага устарела — не сдвигаем)
      */
-    public function __invoke(Deal $deal, User $by, array $items, ?Outcome $step = null, ?int $invoice = null): array
+    public function __invoke(Deal $deal, User $by, array $items, ?Outcome $step = null, ?int $invoice = null, ?Message $message = null): array
     {
-        [$disclosure, $moved, $turn] = DB::transaction(function () use ($deal, $by, $items, $step, $invoice) {
+        [$disclosure, $moved, $turn] = DB::transaction(function () use ($deal, $by, $items, $step, $invoice, $message) {
             $deal = Deal::whereKey($deal->id)->lockForUpdate()->firstOrFail();
-            $reviews = ReplyReview::pending()->where('deal_id', $deal->id)->with('message')->get();
+            // Показ одного письма из окна писем (16.11.2026) разбирает только его, остальные ждут.
+            $reviews = ReplyReview::pending()->where('deal_id', $deal->id)->when($message, fn ($q) => $q->where('message_id', $message->id))->with('message')->get();
+            $letters = $message ? collect([$message]) : $reviews->pluck('message')->filter();
             $files = array_filter(array_map(fn ($i) => $i['media'] ?? null, $items));
             // Счёт поставщика (`SupplierInvoice`): выбранный файлом (`$invoice` — шторка «Счёт поставщика») или, у галки шага на оплату
             // поставщику менеджером, отмеченные документы письма. Без счёта такой шаг не проходит.
@@ -67,14 +69,14 @@ final class Disclose
                 $marked = Media::whereIn('id', $billed)->get()->each(fn (Media $m) => SupplierInvoice::mark($m))->keyBy('id');
                 $items = array_map(fn ($i) => isset($i['media'], $marked[$i['media']]) ? ['value' => $marked[$i['media']]->name] + $i : $i, $items);
             }
-            $disclosure = $items ? Disclosure::create(['deal_id' => $deal->id, 'items' => $items, 'message_ids' => $reviews->pluck('message_id')->all() ?: null, 'created_by' => $by->id]) : null;
+            $disclosure = $items ? Disclosure::create(['deal_id' => $deal->id, 'items' => $items, 'message_ids' => $letters->pluck('id')->values()->all() ?: null, 'created_by' => $by->id]) : null;
             Media::whereIn('id', $files)->get()->each(fn (Media $m) => $m->setCustomProperty('managers', true)->save());
             $this->done($reviews, $by);
-            $letter = $reviews->max('message_id');
-            $fits = $invoice ? $step?->stage_id === $deal->offer->position(Track::Sale)?->stage_id : $step?->is(self::stepExit($deal, $reviews->pluck('message')->filter()));
+            $letter = $letters->max('id');
+            $fits = $invoice ? $step?->stage_id === $deal->offer->position(Track::Sale)?->stage_id : $step?->is(self::stepExit($deal, $letters));
             $moved = $step && $fits && ($this->take)($deal->offer, $step, Actor::Staff, $by, $letter ? ['letter' => $letter] : []);
             // «Договор готов» письмом (11.11.2026, `SigningLetter`): адрес филиала — сделке, а филиал — вендору, если пуст.
-            $moved && mb_strtolower(trim($step->label)) === 'договор готов' && self::keepOffice($deal, $reviews->pluck('message')->filter());
+            $moved && mb_strtolower(trim($step->label)) === 'договор готов' && self::keepOffice($deal, $letters);
             $disclosure && $deal->offer->log(OfferEventType::Note, $by, ['text' => 'Показали менеджеру: '.$disclosure->summary()]);
 
             return [$disclosure, (bool) $moved, $moved ? Requirement::where('deal_id', $deal->id)->whereNull('done_at')->latest('id')->first() : null];

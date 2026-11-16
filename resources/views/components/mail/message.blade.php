@@ -76,9 +76,10 @@
         </div>
     @endif
 
-    <div class="mt-4 flex flex-wrap gap-2">
-        <a href="{{ $base }}/{{ $message->thread_id }}/reply/{{ $message->id }}" class="btn btn-quiet btn-s">Ответить</a>
-        <a href="{{ $base }}/{{ $message->thread_id }}/reply/{{ $message->id }}?mode=all" class="btn btn-ghost btn-s">Всем</a>
-        <a href="{{ $base }}/{{ $message->thread_id }}/reply/{{ $message->id }}?mode=forward" class="btn btn-ghost btn-s">Переслать</a>
+    {{-- Тем же рядом, что под лентой писем (`x-mail.reply-button`, 16.11.2026): «Ответить» слева, «Всем» и «Переслать» — справа. --}}
+    <div class="reply-acts mt-4">
+        <a href="{{ $base }}/{{ $message->thread_id }}/reply/{{ $message->id }}" class="btn btn-quiet"><x-ui.icon name="reply" class="size-4"/>Ответить</a>
+        <a href="{{ $base }}/{{ $message->thread_id }}/reply/{{ $message->id }}?mode=all" class="btn btn-quiet reply-acts-end">Всем</a>
+        <a href="{{ $base }}/{{ $message->thread_id }}/reply/{{ $message->id }}?mode=forward" class="btn btn-quiet"><x-ui.icon name="mail" class="size-4"/>Переслать</a>
     </div>
 </x-ui.card>

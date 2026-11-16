@@ -1,5 +1,5 @@
-{{-- Дорожка «Вывоз» в CRM (17.10.2026): вывоз — задача Logistics XCar. 18.10.2026 (владелец: «сырая вёрстка»): сверху —
-     ссылка в логистику и что дальше; ниже группой строк, как Настройки iOS, — логист, исполнитель, куда везти с дальностью,
+{{-- Дорожка «Вывоз» в CRM (17.10.2026): вывоз — задача Logistics XCar. 18.10.2026 (владелец: «сырая вёрстка»): рейс в логистике — пунктом «⋯» (16.11.2026);
+     ниже группой строк, как Настройки iOS, — логист, исполнитель, куда везти с дальностью,
      комментарий (`x-logistics.facts`, строка нажатием открывает окно «Назначить вывоз», `x-logistics.assign-form`); под ней —
      ход лесенкой (`Transport::steps`, без шагов «кто» — они строками выше) и история свёрнутой строкой. В «···»: «Кто и
      куда», «Уже вывезли» (задним числом, `Logistics\Actions\Backdate`: ТС уже у нас или у менеджера — 20.10.2026, при «Отдать»
@@ -31,7 +31,10 @@
 @endphp
 @if ($t || $canOpen)
 <x-ui.card title="Вывоз" :class="$class" id="pickup">
-    @if ($changeable || $undo || $backdate)
+    {{-- Рейс в логистике — пунктом «⋯», а не лаймовой «Логистика» под заголовком «Вывоз» (16.11.2026, владелец: «выбери что-то
+         одно»). Менеджер забирает сам — это не логистика, пункта нет. --}}
+    @php $tripUrl = $t && ! $manager ? Surface::Logistics->url('/transports/'.$t->id) : null; @endphp
+    @if ($changeable || $undo || $backdate || $tripUrl)
         <x-slot:actions>
             {{-- «⋯» вывоза — общей пилюлей со шторкой действий (`x-ui.more`, 12.11.2026). --}}
             <x-ui.more :id="'pickup-more-'.$offer->number" class="shrink-0">
@@ -48,6 +51,11 @@
                         @endif
                     </div>
                 @endif
+                @if ($tripUrl)
+                    <div class="menu-group">
+                        <a href="{{ $tripUrl }}" class="menu-item w-full" role="menuitem" data-turbo="false"><x-ui.icon name="cat-truck" class="size-5 text-ink-muted"/>Открыть в логистике</a>
+                    </div>
+                @endif
                 @if ($changeable)
                     <div class="menu-group">
                         <button type="button" class="menu-item w-full text-danger" role="menuitem" data-controller="emit" data-action="emit#send" data-emit-event-param="{{ $sheet }}-drop:open"><x-ui.icon name="x" class="size-5"/>Вывоз не нужен</button>
@@ -57,19 +65,13 @@
         </x-slot:actions>
     @endif
     @if ($t)
-        <div class="mb-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
-            {{-- Менеджер забирает сам — это не логистика (17.10.2026): ссылки туда нет, «Забрал» он жмёт в своей сделке. --}}
-            @if (! $manager)
-                <a href="{{ Surface::Logistics->url('/transports/'.$t->id) }}" class="text-accent-text" data-turbo="false">Логистика</a>
-                {{-- Что дальше — в окне его говорит сам текущий шаг ниже, второй раз словом не пишем. --}}
-                {{-- Что дальше («кто вывозит, не определено») говорит шаг лесенки ниже — словом здесь только просрочка
-                     (15.11.2026, владелец: «кто вывозит не определено, исполнитель не определено — мы ж тупые»). --}}
-                @if ($t->isLate())<span class="text-danger">не вывезли в срок</span>@endif
-            @elseif ($t->isLate())
-                <span class="text-danger">не забрал в срок</span>
-            @endif
-            <x-car.keys :count="$keys"/>
-        </div>
+        {{-- Не в срок и ключи — строкой, только когда есть что сказать. --}}
+        @if ($t->isLate() || ($keys !== null && $keys <= 1))
+            <div class="mb-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
+                @if ($t->isLate())<span class="text-danger">{{ $manager ? 'не забрал в срок' : 'не вывезли в срок' }}</span>@endif
+                <x-car.keys :count="$keys"/>
+            </div>
+        @endif
         @if ($deal?->isActive() && ! $deal->isGarage())
             <x-deal.handover :deal="$deal" compact lane class="mb-4"/>
         @endif
