@@ -15,6 +15,8 @@
         // «Из таблицы Кати»: заведённые черновики, под ними незаведённые номера ($ghosts) своей группой.
         $preset === 'legacy' => collect(['legacy' => $offers->getCollection()])->filter(fn ($list) => $list->isNotEmpty()),
         $preset === 'slots' => $offers->getCollection()->groupBy(fn ($o) => $o->slot_at->format('YmdHi')),
+        // «Все» — группами по вкладкам в порядке колеса (16.11.2026, `OfferTabs`): строки уже в этом порядке.
+        $preset === 'all' => $offers->getCollection()->groupBy(fn ($o) => 'tab:'.\App\Offers\OfferTabs::of($o)),
         $preset === 'bids' && $admin => $offers->getCollection()->groupBy(fn ($o) => OfferController::pickGroup($o))->sortKeys(),
         $preset === 'estimating' => $offers->getCollection()->groupBy(fn ($o) => 'est'.OfferController::estimateGroup($o))->sortKeys(),
         // На парковке — первыми; группы с подписью, только когда такие есть (`OfferController::PARK_GROUPS`).
@@ -47,6 +49,7 @@
         $key === 'hot' => OfferController::HOT_GROUP,
         $key === 'rest' => 'Остальные',
         $key === 'legacy' => $ghosts->isEmpty() ? null : 'Черновики',
+        str_starts_with((string) $key, 'tab:') => \App\Offers\OfferTabs::label(substr($key, 4)),
         str_starts_with((string) $key, 'park') => OfferController::PARK_GROUPS[(int) substr($key, 4)],
         str_starts_with((string) $key, 'est') => OfferController::ESTIMATE_GROUPS[(int) substr($key, 3)],
         $preset === 'slots' => $list->first()->slot_at->isPast() ? 'Выходит сейчас' : Slots::label($list->first()->slot_at),

@@ -34,6 +34,7 @@ use App\Offers\CatalogQuery;
 use App\Offers\DealDates;
 use App\Garage\CarState;
 use App\Offers\DealTabs;
+use App\Offers\OfferTabs;
 use App\Offers\Estimate;
 use App\Offers\EstimateState;
 use App\Offers\Exclusive;
@@ -56,6 +57,7 @@ use App\Support\Detail;
 use App\Support\Facets\Common;
 use App\Support\Facets\Facet;
 use App\Support\Facets\Facets;
+use App\Support\Facets\Option;
 use App\Support\ListPrefs;
 use App\Support\ListView;
 use App\Support\Money;
@@ -383,8 +385,16 @@ class OfferController
                 ...self::facets(),
                 ...($admin ? [Facet::toggle('loss', 'В минус', fn ($o) => Margin::scope($o))->dot('loss')] : []),
             ],
-            // Внутри «Всех» без «Где сейчас» не сузить: черновики, продажа, сделки, гараж.
-            'all' => [...self::facets(), Facet::column('state', 'Где сейчас', ['состояние', 'состояния', 'состояний'], 'offers.state')->enum(OfferState::class)->natural()],
+            // «Все» (16.11.2026, владелец: «фильтр по этому состоянию, по менеджеру очень не хватает», «фильтры неудобные»): первыми —
+            // вкладка (та же раскладка, что группы, `OfferTabs`) и менеджер, кто держит машину (сделка по текущим условиям, иначе
+            // гараж); дальше вендор, город, тип. «Заведено» здесь нет — даты заведения во «Все» нет и столбцом.
+            'all' => [
+                Facet::column('tab', 'Вкладка', ['вкладка', 'вкладки', 'вкладок'], OfferTabs::sql())->natural()
+                    ->labels(fn (array $keys) => collect([...OfferTabs::keys(), OfferTabs::OTHER])->filter(fn ($k) => in_array($k, $keys, true))
+                        ->mapWithKeys(fn ($k) => [$k => new Option($k, OfferTabs::label($k))])->all()),
+                Common::manager(self::HOLDER_SQL)->none('Без менеджера'),
+                ...array_slice(self::facets(), 0, 3),
+            ],
             default => self::facets(),
         }, ...($admin ? [
             // Срок обязывающего горит, покупателя нет (19.10.2026, владелец: «прям ПАНИКА!!!») — красной точкой с числом; на
@@ -549,7 +559,8 @@ class OfferController
      * «Публикации» нет: там группы — время выхода. Ключи групп — `burnt` и `hot`, у остальных строк — прежний; у вкладки без своих
      * групп — `rest` («Остальные»). Строке — колонка `binding_soon` (`listQuery`).
      */
-    public const HOT = ['nofloor', 'unpriced', 'estimating', 'priced', 'published', 'bids', 'done', 'all'];
+    // «Все» — группами по вкладкам (16.11.2026, владелец: «группировку не по тому, горит ли срок, а как по вкладкам»).
+    public const HOT = ['nofloor', 'unpriced', 'estimating', 'priced', 'published', 'bids', 'done'];
 
     public const HOT_GROUP = 'Горит срок обязывающего';
 
@@ -587,6 +598,9 @@ class OfferController
         }
         if (in_array($preset, self::HOT, true)) {
             $q->orderByRaw(Binding::levelSql().' desc');
+        }
+        if ($preset === 'all') {
+            $q->orderByRaw(OfferTabs::orderSql());
         }
         if ($preset === 'estimating') {
             $q->orderByRaw(self::ESTIMATE_GROUP);
@@ -643,6 +657,7 @@ class OfferController
             $preset === 'unpriced' && $admin => [self::PARK_GROUP, 'park'],
             $preset === 'estimating' => [self::ESTIMATE_GROUP, 'est'],
             $preset === 'bids' && $admin => [self::PICK_GROUP, ''],
+            $preset === 'all' => [OfferTabs::sql(), 'tab:'],
             default => [null, null],
         };
         // Горящий обязывающий — своей группой поверх групп вкладки (`HOT`); без своих групп остальные — `rest`.
@@ -729,7 +744,9 @@ class OfferController
             ! $all && $has('paid') ? new Column('paid', 'Оплачено', from: 'sm', sort: 'paid', cell: 'nums whitespace-nowrap', role: ColRole::When, rem: 6.5, main: true, fixed: true) : null,
             // Дата — и при открытом окне (13.11.2026, начальник: «Во вкладке» пропадало); не влезает — уходит последней (`Table::DROP`).
             $when ? new Column('when', $when[1], from: 'sm', sort: $when[0], cell: 'nums whitespace-nowrap', role: ColRole::When, rem: $when[2]) : null,
-        ], ['mixed' => $all, 'when' => $when[0] ?? null, 'floorSide' => $floorSide]);
+        ], ['mixed' => $all, 'when' => $when[0] ?? null, 'floorSide' => $floorSide,
+            // «Состояние» словом вкладки — во «Все» и в поиске (16.11.2026, `OfferTabs`).
+            'tabs' => $all || $preset === 'all']);
     }
 
     /**
@@ -794,12 +811,12 @@ class OfferController
                 $q->where(fn ($v) => $v->whereNull('offers.vendor_id')->orWhere('offers.vendor_id', '!=', $carcade));
             }
             if ($facets) {
-                // «Где сейчас» — чип только «Всех»: другие вкладки сами по состоянию, иначе их числа обнулялись бы.
+                // «Вкладка» и «Менеджер» — чипы только «Всех»: другие вкладки сами по вкладке, иначе их числа обнулялись бы.
                 $facets->applyTo($q, [...match (true) {
                     $key === 'bids' && $carcadeDefault => ['vendor'],
                     in_array($key, self::OPEN, true) => [],
                     default => ['recommended'],
-                }, ...($key === 'all' ? [] : ['state'])]);
+                }, ...($key === 'all' ? [] : ['tab', 'manager'])]);
             }
             // У «Из таблицы Кати» в числе и незаведённые номера — призрачные строки. Черновик из письма встаёт туда из
             // призрака, и число не меняется, — пилюле отдельно число черновиков: выросло — она вспыхивает (flip.js).
@@ -840,6 +857,9 @@ class OfferController
         return [Common::vendor('offers.vendor_id')->none('Без вендора'), Common::city('coalesce(offers.sale_settlement_id, offers.settlement_id)'), Common::category(Car::sql('offers', 'category')),
             Facet::dates('created', 'Заведено', 'offers.created_at')];
     }
+
+    /** Кто держит машину — менеджер текущих условий сделки (`offers.deal_id`), иначе гаража: чип «Менеджер» во «Все». */
+    private const HOLDER_SQL = 'coalesce((select d.buyer_id from deals d where d.id = offers.deal_id), (select g.manager_id from garage_cars g where g.offer_id = offers.id))';
 
     /** Чипы на этот раз: в `ListPrefs` не идут. */
     public const ONCE = ['created'];

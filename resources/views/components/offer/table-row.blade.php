@@ -26,6 +26,9 @@
     $r = \App\Offers\OfferRow::for($offer, auth()->user(), $gallery, $checkable, $busy);
     [$admin, $timer, $count, $countWord, $line, $stateWord, $tone, $draft, $unpriced, $rate, $slot, $missing, $todo, $vendor, $noVin]
         = [$r->admin, $r->timer, $r->count, $r->countWord, $r->line, $r->stateWord, $r->tone, $r->draft, $r->unpriced, $r->rate, $r->slot, $r->missing, $r->todo, $r->vendor, $r->noVin];
+    // «Все» и поиск (16.11.2026, владелец: «в состоянии писать именно в какой они вкладке, а не сколько ждёт») — словом вкладки,
+    // той же раскладкой, что группы и чип «Вкладка» (`OfferTabs`).
+    $tabWord = $table->context('tabs') && $admin ? (($tabKey = \App\Offers\OfferTabs::of($offer)) === \App\Offers\OfferTabs::OTHER ? $offer->crmTab() : \App\Offers\OfferTabs::label($tabKey)) : null;
     [$corrections, $correcting, $proposes, $waits, $garageBids, $priceBids] = [$r->corrections, $r->correcting(), $r->proposes(), $r->waits(), $r->garageBids, $r->priceBids];
     // Приём закрылся, а подтверждения есть — ход наш: «выбрать» оранжевым; без них — «приём закрыт».
     $pick = $admin && $offer->state === OfferState::Open && ! $timer && $offer->bids_close_at;
@@ -108,7 +111,7 @@
             <span class="fit-core sm:hidden @if ($busy) arrive-type @endif"><x-vendor.ref :vendor="$vendor" :ref="$offer->claim_ref"/></span>
             @if ($endCol && $endBottom !== '')<span class="line-end sm:hidden">{!! $endBottom !!}</span><span class="line-break sm:hidden"></span>@endif
             @if ($busy)<x-offer.arrive-line :arrive="$arrive"/>@endif
-            @if ($mixed || $line)<span class="sub-phrase sm:hidden {{ $tone }}">{{ $stateWord }}@if ($line?->who)<span class="text-ink-muted">, {{ $line->who }}</span>@endif</span>
+            @if ($mixed || $line)<span class="sub-phrase sm:hidden {{ $tone }}">{{ $tabWord ?? $stateWord }}@if ($line?->who)<span class="text-ink-muted">, {{ $line->who }}</span>@endif</span>
             @elseif ($timer)<span class="nums sm:hidden {{ $offer->isEndingSoon() ? 'text-urgent' : 'text-accent-text' }}" data-controller="timer" data-timer-until-value="{{ $offer->bids_close_at->toIso8601String() }}" data-timer-done-value="приём закрыт" data-timer-coarse-value="true" data-timer-word-value="">{{ \App\Support\Ago::left($offer->bids_close_at, '') }}</span>
             @elseif ($slot && $has('state'))<span class="sm:hidden text-accent-text">{{ $slot }}</span>
             {{-- Телефон, «Опубликованные»: у ждущих решения важнее число подтверждений, дата закрытия — у остальных. --}}
@@ -137,7 +140,8 @@
         @case('state')
     <td class="{{ $col->classes() }}">
         {{-- Кто ведёт — аватаром перед этапом (имя — подсказкой): именем строка не влезала в ширину. --}}
-        @if ($line)<span class="inline-flex max-w-full items-center gap-1.5 align-middle" @if ($line->who) title="{{ $line->who }}" @endif>@if ($line->person && ! $has('manager'))<x-ui.avatar :user="$line->person" :size="22"/>@endif<span class="{{ $tone }}">{{ $stateWord }}</span></span>
+        @if ($tabWord)<span class="{{ $tone }}{{ $draft ? ' text-ink-dim' : '' }}">{{ $tabWord }}</span>
+        @elseif ($line)<span class="inline-flex max-w-full items-center gap-1.5 align-middle" @if ($line->who) title="{{ $line->who }}" @endif>@if ($line->person && ! $has('manager'))<x-ui.avatar :user="$line->person" :size="22"/>@endif<span class="{{ $tone }}">{{ $stateWord }}</span></span>
         @elseif ($mixed)<span class="{{ $tone }}{{ $draft ? ' text-ink-dim' : '' }}">{{ $stateWord }}</span>
         @elseif ($timer)<span class="nums {{ $offer->isEndingSoon() ? 'text-urgent' : 'text-accent-text' }}" data-controller="timer" data-timer-until-value="{{ $offer->bids_close_at->toIso8601String() }}" data-timer-done-value="Приём закрыт" data-timer-coarse-value="true">{{ \App\Support\Ago::left($offer->bids_close_at) }}</span>
         @elseif ($slot)<span class="text-accent-text">{{ $slot }}</span>
