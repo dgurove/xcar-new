@@ -10,7 +10,8 @@
     <div class="flex flex-col gap-4" data-controller="unhide">
         <div>
             <div class="flex items-center gap-2">
-                <h3 class="min-w-0 flex-1 text-base font-medium">{{ $thread->subject ?: '(без темы)' }}</h3>
+                {{-- Тема — в заголовке окна (`Mail\Topic`, 17.11.2026); здесь только меню ветки справа. --}}
+                <span class="min-w-0 flex-1"></span>
                 <x-ui.more :id="$menu" class="shrink-0">
                         <button type="button" class="menu-item w-full" role="menuitem" data-action="unhide#show">{{ $linked ? 'Перепривязать' : ($park ? 'Привязать к ТС' : 'Привязать к предложению') }}</button>
                         {{-- Вендор письма — выбрать или сменить: письма с этого адреса теперь его (x-mail.vendor-sheet). --}}

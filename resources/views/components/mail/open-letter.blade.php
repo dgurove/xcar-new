@@ -1,7 +1,7 @@
 {{-- Письмо, открытое справа во «Входящих» и «Отправленных» (17.11.2026, макет выбран владельцем: «вся эта шапка лишняя»,
      «как в Spark»): без панели и темы (тема — в строке списка). Кружок, имя, ниже серым одним текстом адрес, «кому» и дата
      (не влезло — переносится), ниже машина ссылкой; справа значки «Ответить» (изогнутая стрелка) и «Переслать» (прямая) и
-     «⋯» — «В архив», «Не прочитано», «Привязать к ТС», вендор, исходное письмо, страница ветки. Кнопок внизу нет: ответ
+     «⋯» — «В архив», «Не прочитано», «Привязать к ТС», вендор, страница ветки. Кнопок внизу нет: ответ
      открывается редактором под письмом (фрейм reply-pane-{id}). Текст и вложения — с отступом под имя, как в Gmail;
      документы — карточками в две колонки, фото — одной карточкой «N фото» без миниатюр (владелец: «фотки почти юзлесс, они
      и так уходят в предложение»). Остальная переписка по машине — цепочкой под письмом (`admin/mail/pane`). --}}
@@ -67,7 +67,6 @@
                     <button type="button" class="menu-item w-full" role="menuitem" data-action="unhide#show">{{ $linked ? 'Перепривязать' : ($park ? 'Привязать к ТС' : 'Привязать к предложению') }}</button>
                     @if ($pick)<button type="button" class="menu-item w-full" role="menuitem" data-controller="emit" data-action="emit#send"
                         data-emit-event-param="vendor-pick:open" data-emit-url-param="{{ $pick['url'] }}" data-emit-sender-param="{{ $pick['sender'] }}" data-emit-name-param="{{ $pick['name'] }}" data-emit-domain-param="{{ $pick['domain'] }}">{{ $thread->vendor ? 'Сменить вендора' : 'Выбрать вендора' }}</button>@endif
-                    <a href="{{ $base }}/messages/{{ $m->id }}/body" class="menu-item" role="menuitem" data-turbo-frame="body-pane-{{ $m->id }}">Исходное письмо</a>
                     @unless ($park)<a href="{{ $base }}/{{ $thread->id }}" class="menu-item" role="menuitem">Страница ветки</a>@endunless
                 </div>
             </x-ui.more>
@@ -114,7 +113,6 @@
                 <div class="text-sm text-ink-muted">{{ $files->isNotEmpty() ? 'Только вложения' : 'Без своих слов' }}</div>
             @endif
         @endif
-        <turbo-frame id="body-pane-{{ $m->id }}" target="_top" class="mt-3 block"></turbo-frame>
 
         @if ($files->isNotEmpty())
             <div class="pane-files">

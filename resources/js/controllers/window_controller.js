@@ -81,9 +81,12 @@ export default class extends Controller {
     tools() {
         // Вопрос перед письмом (`letter-ask`) — окно низкое, по содержимому; редактор и ветка — снова во весь экран.
         this.element.querySelector('dialog')?.classList.toggle('sheet-compact', !!this.frameTarget.querySelector('[data-window-compact]'));
+        // Тема переписки (`x-mail.chain`, 17.11.2026) или заголовок шага — вместо «Письма»; без шаблона — снова свой заголовок окна.
         const title = this.frameTarget.querySelector('template[data-window-title]');
         const head = this.element.querySelector('dialog .sheet-bar h2');
+        if (head) this.title ??= head.textContent;
         if (title && head) head.replaceChildren(...title.content.cloneNode(true).childNodes);
+        else if (head && this.frameTarget.childElementCount) head.textContent = this.title;
         if (!this.hasToolsTarget) return;
         // Ответ без шаблона (редактор письма в том же фрейме) — кнопки окна остаются прежними.
         const tools = this.frameTarget.querySelector('template[data-window-tools]');

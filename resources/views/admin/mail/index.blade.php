@@ -3,7 +3,7 @@
      «Входящие» и «Отправленные» ($letters) — письма строками, как в Gmail, без цепочек: слева список (кто, тема, машина),
      справа открытое письмо (`Detail`, ключ — id письма, ↑/↓ листают). «Все делами» и «Архив» — дела карточками: машина,
      цепочка «Из писем», предложение или письмо без них, в карточке все письма дела (`admin.mail.list`).
-     Верх — заголовок с «Написать» справа, пилюли, ящик (offer@ / deal@) чипом с меню, лупа, справа «Прочитать все» и
+     Верх — заголовок с «Написать» справа, пилюли, ящик (offer@ / deal@) чипом с меню, лупа, справа
      «Проверить почту», ниже чипы (вендор, непрочитанные, с файлами; во «Все делами» ещё смысл и «Без прочего»). Лупа ищет
      по ходу набора по всем письмам — мимо пилюли и чипов — и показывает дела; адрес не меняет. ?window=id — окно писем
      ветки сразу (ссылки из уведомлений).
@@ -41,15 +41,6 @@
             </x-slot:pillsExtra>
         @endif
         <x-slot:actions>
-            {{-- «Прочитать все» — непрочитанные «Входящие» под ящиком и чипами, с вопросом. --}}
-            @if ($letters && $box === 'in' && ! empty($counts['in']))
-                <form method="post" action="{{ $base }}/read-all" class="contents" data-turbo-confirm="Отметить все входящие прочитанными?">@csrf
-                    @foreach (array_filter(request()->only(['account', 'vendor', 'files']), 'filled') as $key => $value)
-                        <input type="hidden" name="{{ $key }}" value="{{ $value }}">
-                    @endforeach
-                    <button class="btn btn-s btn-quiet btn-round shrink-0" aria-label="Прочитать все" title="Прочитать все"><x-ui.icon name="check-check" class="size-5"/></button>
-                </form>
-            @endif
             {{-- «Проверить почту» — ящики забираются тут же, тост — сколько пришло. --}}
             <form method="post" action="{{ $base }}/sync" class="contents">@csrf<button class="btn btn-s btn-quiet btn-round shrink-0" aria-label="Проверить почту" title="Проверить почту"><x-ui.icon name="refresh" class="size-5"/></button></form>
         </x-slot:actions>

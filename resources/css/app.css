@@ -5268,7 +5268,8 @@ dialog.lightbox:not(.lb-one) .lb-pill--bottom { bottom: calc(var(--lb-strip-bott
   .compose-chip > .icon, .compose-chip > svg:first-child { @apply text-ink-muted; }
   .compose-quote { @apply min-w-0; }
   /* Ответ открыт внизу ленты — у письма, на которое отвечаем, своего «Ответить на это» нет: тот же редактор второй раз. */
-  .chain:has(.chain-reply .compose) .letter-foot[data-replying] > turbo-frame > .letter-link { display: none; }
+  /* «Ответить на это» у письма, на которое и так отвечает «Ответить» внизу ленты, — лишний дубль (17.11.2026). */
+  .chain:has(.chain-reply) .letter-foot[data-replying] > turbo-frame > .letter-link { display: none; }
   .compose-files { @apply mt-2 flex flex-wrap gap-2 empty:hidden; }
   .compose-files .file-row, .compose-file { @apply max-w-full gap-2 rounded-(--radius-m) bg-surface-3 py-1 pr-1 pl-2 text-sm; }
   /* Галка на чипе того же тона не видна: пустой квадрат — цветом листа (пересылка). */

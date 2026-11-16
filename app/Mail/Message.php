@@ -130,7 +130,10 @@ class Message extends Model
     /** Свои слова для показа — без подписи (`Extraction\Signature`, 16.11.2026): строка почты, лента, плашки. Разбор берёт `ownText`. */
     public function shownText(): string
     {
-        return Extraction\Signature::cut($this->ownText(), $this->from_name);
+        // Без пустых строк (17.11.2026, владелец: «пустые строки убирай везде»).
+        $lines = preg_split('/\R/u', Extraction\Signature::cut($this->ownText(), $this->from_name)) ?: [];
+
+        return implode("\n", array_filter($lines, fn ($l) => trim(str_replace("\u{00A0}", ' ', $l)) !== ''));
     }
 
     /** Ответ вендора текстом до подписи — менеджеру сделки (`Intent::reply`). */

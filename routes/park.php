@@ -236,9 +236,8 @@ Route::domain(config('xcar.park_host'))->middleware(['auth', 'section:park'])->g
     Route::get('/mail/attachments/{attachment}', [MailController::class, 'attachment']);
     Route::get('/mail/messages/{message}/body', [MailController::class, 'body']);
     Route::post('/mail/messages/{message}/flag', [MailController::class, 'flag']);
-    // «Входящие»: прочитано по письму, «Прочитать все», файлы письма архивом (17.11.2026).
+    // «Входящие»: прочитано по письму, файлы письма архивом (17.11.2026).
     Route::post('/mail/messages/{message}/seen', [MailController::class, 'seen'])->middleware('park.manage');
-    Route::post('/mail/read-all', [MailController::class, 'readAll'])->middleware('park.manage');
     Route::get('/mail/messages/{message}/files.zip', [MailController::class, 'files']);
     Route::post('/mail/messages/{message}/parse', [MailController::class, 'reparse']);
     Route::post('/mail/messages/{message}/retry', [MailController::class, 'resend']);

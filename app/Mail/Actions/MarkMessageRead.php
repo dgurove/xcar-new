@@ -30,12 +30,6 @@ final class MarkMessageRead
         return $this->apply($ids, $read);
     }
 
-    /** «Прочитать все» — письма списком. @param list<int> $ids */
-    public function all(array $ids, bool $read = true): int
-    {
-        return count($this->apply($ids, $read));
-    }
-
     /** @param list<int> $ids @return list<int> */
     private function apply(array $ids, bool $read): array
     {

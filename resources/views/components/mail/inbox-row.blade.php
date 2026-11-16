@@ -39,7 +39,8 @@
         @if ($unsent)<span class="inbox-unsent {{ $unsent === \App\Mail\SendState::Failed ? 'text-danger' : 'text-urgent' }}">{{ $unsent->label() }}</span>@endif
         <span class="inbox-when nums">{{ $when }}</span>
     </span>
-    <span class="inbox-subj">{{ trim((string) $m->subject) ?: '(без темы)' }}</span>
+    {{-- Тема без «RE: / Fwd:» и «ч.2» — в узкой колонке приставки съедали место. --}}
+    <span class="inbox-subj">{{ \App\Mail\Topic::clean($m->subject) ?: '(без темы)' }}</span>
     <span class="inbox-l3">
         @if ($car)
             <span class="inbox-car">@if ($car[0])<x-vendor.logo :vendor="$car[0]"/>@endif<span class="truncate">{{ $car[1] }}</span></span>

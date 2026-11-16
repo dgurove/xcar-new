@@ -49,6 +49,18 @@ return new class extends Migration
             // Имя в базе уже строчными (закодированное base64 не раскодировать) — только адрес.
             DB::table('mail_addresses')->where('id', $row->id)->update(['email' => mb_strtolower(\App\Mail\Parser::glued($row->email)[0])]);
         }
+        // Его копии: «Кому» письма (`to_preview`) — заново из адресов, участники ветки — пересчётом ветки; пустая закодированная
+        // тема «=?UTF-8?B??=» — пустая тема.
+        foreach (Message::where('to_preview', 'like', '%=?%')->pluck('id') as $id) {
+            $to = DB::table('mail_addresses')->where('message_id', $id)->where('kind', 'to')->orderBy('position')->get(['email', 'name']);
+            DB::table('mail_messages')->where('id', $id)->update(['to_preview' => $to->isEmpty() ? null
+                : mb_substr($to->map(fn ($a) => $a->name ? "{$a->name} <{$a->email}>" : $a->email)->implode(', '), 0, 255)]);
+        }
+        DB::table('mail_messages')->where('subject', 'like', '=?%??=')->update(['subject' => null]);
+        DB::table('mail_threads')->where('subject', 'like', '=?%??=')->update(['subject' => null]);
+        foreach (\App\Mail\Thread::withoutGlobalScopes()->whereRaw("participants::text like '%=?%'")->get() as $thread) {
+            app(\App\Mail\Threads::class)->refresh($thread);
+        }
         // Число непрочитанных у ветки — тем же правилом, что `Threads::refresh` (входящие, не прочитаны).
         DB::statement("update mail_threads t set unread_count = (select count(*) from mail_messages m where m.thread_id = t.id
             and m.direction = 'in' and not m.is_seen)");

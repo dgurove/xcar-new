@@ -13,7 +13,7 @@
         <x-mail.open-letter :message="$message" :thread="$thread" :base="$base" :park="$park"/>
         @if ($others->isNotEmpty())
             <div class="pane-case">
-                <div class="pane-case-head">Переписка по машине</div>
+                <div class="pane-case-head">Тема писем: <span class="text-ink">{{ \App\Mail\Topic::of($case) ?? '(без темы)' }}</span></div>
                 <x-mail.chain :messages="$others" :base="$base" :candidate="$thread->candidate" :subjects="false" :focus="false" newest closed/>
             </div>
         @endif

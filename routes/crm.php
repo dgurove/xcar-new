@@ -148,9 +148,8 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
         Route::get('/attachments/{attachment}', [MailController::class, 'attachment']);
         Route::get('/messages/{message}/body', [MailController::class, 'body']);
         Route::post('/messages/{message}/flag', [MailController::class, 'flag']);
-        // «Входящие»: прочитано по письму, «Прочитать все», файлы письма архивом (17.11.2026).
+        // «Входящие»: прочитано по письму, файлы письма архивом (17.11.2026).
         Route::post('/messages/{message}/seen', [MailController::class, 'seen']);
-        Route::post('/read-all', [MailController::class, 'readAll']);
         Route::get('/messages/{message}/files.zip', [MailController::class, 'files']);
         Route::post('/messages/{message}/parse', [MailController::class, 'reparse']);
         Route::post('/messages/{message}/retry', [MailController::class, 'resend']);

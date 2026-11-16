@@ -409,22 +409,6 @@ class MailController
         return redirect(strtok($back, '?').($query ? '?'.http_build_query($query) : ''))->with('toast', $read ? 'Прочитано' : 'Не прочитано');
     }
 
-    /** «Прочитать все» — все непрочитанные «Входящие» под текущими ящиком и чипами. */
-    public function readAll(Request $request, MarkMessageRead $mark)
-    {
-        $accounts = Account::where('scope', $this->scope)->when($this->scope === Scope::Offers && ! $request->user()->isAdmin(), fn ($a) => $a->whereNotNull('reply_account_id'))->get();
-        $mailbox = $accounts->count() > 1 ? $accounts->firstWhere('slug', (string) $request->input('account')) : null;
-        $boxAccounts = $mailbox ? collect([$mailbox]) : $accounts;
-        $all = Thread::query()->whereIn('account_id', $boxAccounts->pluck('id'))->where('messages_count', '>', 0)
-            ->when($this->scope === Scope::Offers, fn ($t) => $t->crmMailFor($request->user()));
-        $query = Boxes::letters($boxAccounts->pluck('id'), 'in', $all)->where('mail_messages.is_seen', false)
-            ->when($request->input('vendor'), fn ($m, $v) => $m->whereIn('mail_threads.vendor_id', array_map('intval', explode(',', (string) $v))))
-            ->when($request->boolean('files'), fn ($m) => $m->where('mail_messages.has_attachments', true));
-        $n = $mark->all($query->pluck('mail_messages.id')->all());
-
-        return back()->with('toast', $n ? 'Прочитано: '.$n : 'Непрочитанных нет');
-    }
-
     /** «Скачать все» — файлы письма одним архивом, имя — тема письма. */
     public function files(Message $message)
     {

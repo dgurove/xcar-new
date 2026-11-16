@@ -21,7 +21,8 @@ final class Parser
     public function headers(string $block): array
     {
         $message = ImapMessage::fromString(rtrim($block)."\r\n\r\n");
-        $subject = $this->decode($this->header($message, 'subject'));
+        // Пустая закодированная тема («=?UTF-8?B??=») декодером не снимается — это пустая тема.
+        $subject = trim((string) preg_replace('/=\?[^?]+\?[bq]\?\?=/i', '', (string) $this->decode($this->header($message, 'subject'))));
         $addresses = [];
         foreach (AddressKind::cases() as $kind) {
             array_push($addresses, ...$this->addressesOf($message, $kind));

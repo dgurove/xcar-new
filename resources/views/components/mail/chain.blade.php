@@ -1,7 +1,7 @@
 {{-- Лента писем о ТС: по времени сверху вниз, на линии слева, как история посылки. Узел — письмо (x-mail.letter):
      на линии кружок отправителя (у «ч.2» и свёрнутых — точка), этап и письмо без ответа видны по заголовку; автоответы и
-     бухгалтерия подряд свёрнуты в один узел «3 служебных». Тема пишется строкой-разделителем, когда меняется
-     (subjects). Раскрыто одно письмо — в фокусе (focus: id письма, иначе первое непрочитанное, иначе последнее), к нему и
+     бухгалтерия подряд свёрнуты в один узел «3 служебных». Строк-тем нет: общая тема (`Mail\Topic`) — в заголовке окна
+     (с 17.11.2026; `subjects` больше ничего не меняет). Раскрыто одно письмо — в фокусе (focus: id письма, иначе первое непрочитанное, иначе последнее), к нему и
      прокрутка; нажатие раскрывает другое, прежнее сворачивается, с анимацией (`chain_controller`, 13.11.2026, начальник: с
      телефона письма не раскрывались, «раскрывалось одно, остальные сворачивались»). reply — один «Ответить {кому}» внизу,
      редактор во фрейме reply на месте кнопки. candidate — этапы для заголовков узлов.
@@ -57,18 +57,13 @@
     // ветку ч.3 — последнего письма машины) — отвечаем на него, а не на самое новое.
     $atLetter = is_int($focus) ? $messages->first(fn (Message $m) => $m->id === $focus && ! $own($m)) : null;
     $replyTo = $reply ? ($atLetter ?? $pool->last(fn (Message $m) => ! $own($m)) ?? $pool->last()) : null;
-    $subject = null;
-    // Тема строкой — без «Re:/Fwd:», у пересылки сотрудника — та, что в цитате: это письмо вендора.
-    $topic = fn (Message $m) => ($m->isForwardedByStaff() ? \App\Mail\Extraction\QuotationStripper::forwardedSubject($m->text_body) : null)
-        ?? trim((string) preg_replace('/^\s*(?:(?:fwd|fw|re|пересылка|пересл)\s*:\s*)+/ui', '', (string) $m->subject));
 @endphp
 <div {{ $attributes->merge(['class' => 'chain']) }} data-controller="chain" @if ($fold) data-chain-many-value="true" @endif>
+    {{-- Общая тема переписки — в заголовок окна писем вместо «Письма» (`window_controller#tools`); строк-тем внутри ленты нет
+         (17.11.2026, владелец). --}}
+    @if ($windowTitle = \App\Mail\Topic::of($messages))<template data-window-title>{{ $windowTitle }}</template>@endif
     @forelse ($nodes as $node)
         @php $first = is_array($node) ? $node['items'][0] : $node; @endphp
-        @if ($subjects && $first->subject_normalized !== $subject && ! isset($continued[$first->id]))
-            @php $subject = $first->subject_normalized; @endphp
-            <div class="chain-subject"><span class="truncate">{{ $topic($first) ?: '(без темы)' }}</span></div>
-        @endif
         @if (is_array($node))
             <div class="letter letter--service">
                 <span class="letter-dot"></span>
@@ -77,16 +72,16 @@
                     <summary class="letter-head"><span class="letter-who font-normal text-ink-muted">{{ $node['service'] ? $n.' '.\App\Support\Plural::of($n, ['служебное', 'служебных', 'служебных']) : 'Ещё '.$n.' '.\App\Support\Plural::of($n, ['письмо', 'письма', 'писем']) }}</span><span class="letter-when">{{ \App\Support\Ago::html(end($node['items'])->date_at, words: false) }}</span></summary>
                     <div class="letter-text">
                         @foreach ($node['items'] as $m)
-                            <x-mail.letter :message="$m" :replying="$m->id === $replyTo?->id" :base="$base" :title="NodeTitle::for($m, $candidate)" :titled="NodeTitle::titled($m, $candidate)" :kind="$own($m) ? 'ours' : ''" :reply="$reply"/>
+                            <x-mail.letter :common="$windowTitle" :message="$m" :replying="$m->id === $replyTo?->id" :base="$base" :title="NodeTitle::for($m, $candidate)" :titled="NodeTitle::titled($m, $candidate)" :kind="$own($m) ? 'ours' : ''" :reply="$reply"/>
                         @endforeach
                     </div>
                 </details>
             </div>
         @else
             @if (isset($continued[$node->id]))
-                <x-mail.letter :message="$node" :replying="$node->id === $replyTo?->id" :base="$base" title="Ещё файлы к письму" :kind="$own($node) ? 'ours' : ''" :open="! $closed && $node->id === ($focusId ?? $lastId)" :focus="$node->id === $focusId" :reply="$reply" continuation/>
+                <x-mail.letter :common="$windowTitle" :message="$node" :replying="$node->id === $replyTo?->id" :base="$base" title="Ещё файлы к письму" :kind="$own($node) ? 'ours' : ''" :open="! $closed && $node->id === ($focusId ?? $lastId)" :focus="$node->id === $focusId" :reply="$reply" continuation/>
             @else
-                <x-mail.letter :message="$node" :replying="$node->id === $replyTo?->id" :base="$base" :title="NodeTitle::for($node, $candidate)" :titled="NodeTitle::titled($node, $candidate)" :kind="$kind($node)" :dismiss="$reply && in_array($node->id, $asks, true) && $node->thread_id !== $replyTo?->thread_id" :open="! $closed && ($fold ? (! $node->is_seen || $node->id === $focusId || in_array($node->id, $keep, true)) : $node->id === ($focusId ?? $lastId))" :focus="$node->id === $focusId" :reply="$reply"/>
+                <x-mail.letter :common="$windowTitle" :message="$node" :replying="$node->id === $replyTo?->id" :base="$base" :title="NodeTitle::for($node, $candidate)" :titled="NodeTitle::titled($node, $candidate)" :kind="$kind($node)" :dismiss="$reply && in_array($node->id, $asks, true) && $node->thread_id !== $replyTo?->thread_id" :open="! $closed && ($fold ? (! $node->is_seen || $node->id === $focusId || in_array($node->id, $keep, true)) : $node->id === ($focusId ?? $lastId))" :focus="$node->id === $focusId" :reply="$reply"/>
             @endif
         @endif
     @empty

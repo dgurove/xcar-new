@@ -1,10 +1,10 @@
 {{-- Письмо в ленте: свёрнуто — строка «кто, заголовок, скрепка, когда» (заголовок — этап, смысл или первые свои слова,
      непрочитанное полужирным); раскрыто — свои слова письма без цитат и подписи, вложения (фото лентой, документы
-     строкой, открываются в шторке документов), «Исходное письмо» грузит тело в iframe только по раскрытию, «Ответить на это» — редактор
+     строкой, открываются в шторке документов), «Ответить на это» — редактор
      во фрейме под письмом. На линии — кружок отправителя (x-mail.sender-avatar); kind: stage (этап),
      ask (без нашего ответа) — заголовок светлее, ours (наше) — фон у текста. --}}
 {{-- continuation — «ч.2» того же письма (те же слова, другие файлы): текст не повторяется, только вложения. --}}
-@props(['message', 'base' => '/mail', 'title', 'titled' => true, 'kind' => '', 'open' => false, 'focus' => false, 'reply' => false, 'continuation' => false, 'dismiss' => false, 'replying' => false])
+@props(['message', 'base' => '/mail', 'title', 'titled' => true, 'kind' => '', 'open' => false, 'focus' => false, 'reply' => false, 'continuation' => false, 'dismiss' => false, 'replying' => false, 'common' => null])
 @php
     use App\Mail\{ParseState, SendState};
     use App\Mail\Chains\NodeTitle;
@@ -28,11 +28,12 @@
         <summary class="letter-head">
             <span class="letter-who" title="{{ $from }}">{{ $who }}</span>
             <span class="letter-title{{ $titled ? '' : ' letter-title--words' }}">{{ $title }}</span>
-            {{-- Раскрытое — тема справа от имени, длинная режется «…» (16.11.2026, владелец: «темы писать справа от имени, имя не сокращать»). --}}
-            @if (! $continuation && ($topic = \App\Mail\Extraction\Patterns::cleanSubject($m->subject)) !== '' && mb_strtolower($topic) !== 'без темы')<span class="letter-topic" title="{{ $topic }}">{{ $topic }}</span>@endif
+            {{-- Раскрытое — тема справа от имени, длинная режется «…» (16.11.2026, владелец: «темы писать справа от имени, имя не сокращать»);
+                 та же, что общая тема в заголовке окна (common, 17.11.2026), — не повторяется. --}}
+            @if (! $continuation && ($topic = \App\Mail\Topic::clean($m->subject)) !== '' && mb_strtolower($topic) !== 'без темы' && ! \App\Mail\Topic::same($m->subject, $common))<span class="letter-topic" title="{{ $topic }}">{{ $topic }}</span>@endif
             @if ($files->isNotEmpty())<span class="letter-clip nums"><x-ui.icon name="clip" class="size-3.5"/>{{ $files->count() }}</span>@endif
-            {{-- Раскрыто — полная дата («21 сентября, 14:26»), свёрнуто — короткая. --}}
-            <span class="letter-when nums"><span class="letter-when-short">{{ $when }}</span><span class="letter-when-full">{{ $m->date_at?->isoFormat($m->date_at->isCurrentYear() ? 'D MMMM, H:mm' : 'D MMMM YYYY, H:mm') }}</span></span>
+            {{-- Раскрыто — дата со временем («14.11 12:58», без «14 ноября», 17.11.2026), свёрнуто — короткая. --}}
+            <span class="letter-when nums"><span class="letter-when-short">{{ $when }}</span><span class="letter-when-full">{{ \App\Support\Ago::at($m->date_at, true) }}</span></span>
         </summary>
         @unless ($continuation)
             {{-- Конверт: подпись через пробел, адреса текстом через запятую; каждый берётся нажатием. Сразу под шапкой — следующей
@@ -112,12 +113,10 @@
 
             <div data-controller="unhide">
                 <div class="letter-foot" @if ($replying) data-replying @endif>
-                    <button type="button" class="letter-link" data-action="unhide#show" data-unhide-target="trigger">Исходное письмо</button>
                     @if ($reply)<x-mail.reply-button :message="$m" :base="$base" :frame="'reply-'.$m->id"/>@endif
                     {{-- Переписка ждёт ответа, а «Ответ не нужен» внизу ленты — у другой (окно писем ТС, несколько веток). --}}
                     @if ($dismiss && \App\Mail\Threads::canAnswer(auth()->user()))<form method="post" action="{{ $base }}/{{ $m->thread_id }}/answered" data-turbo-frame="_top" class="contents">@csrf<button class="letter-link">Ответ не нужен</button></form>@endif
                 </div>
-                <turbo-frame id="body-{{ $m->id }}" src="{{ $base }}/messages/{{ $m->id }}/body" loading="lazy" target="_top" class="mt-2" hidden data-unhide-target="block"><x-ui.skeleton :rows="2"/></turbo-frame>
             </div>
         </div>
     </details>

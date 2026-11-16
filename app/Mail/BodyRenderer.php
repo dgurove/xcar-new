@@ -22,7 +22,8 @@ final class BodyRenderer
      * переписки ниже (`withoutQuote`); пересылка сотрудника — целиком; письмо без HTML — текстом до цитаты
      * (`QuotationStripper::ownText`). Своих слов нет (только вложения) — null.
      */
-    /** flat — письмо справа во «Входящих» (17.11.2026): прямо на белом, без листа и поля — серая плашка там была бы заливкой блока. */
+    /** flat — письмо справа во «Входящих» (17.11.2026): прямо на белом, без листа и поля — серая плашка там была бы заливкой блока.
+     *  Пустые строки и свёрнутая подпись — везде (`tidy`). */
     public function own(Message $message, string $base = '/work/mail', bool $flat = false): ?string
     {
         $html = trim((string) $message->html_body);
@@ -31,10 +32,7 @@ final class BodyRenderer
             if ($text === '') {
                 return null;
             }
-            if (! $flat) {
-                return $this->wrap($message, '<pre class="plain">'.e($text).'</pre>', false, $base);
-            }
-            // Справа во «Входящих»: без пустых строк, подпись — свёрнутой «› Подпись» (17.11.2026, владелец).
+            // Без пустых строк, подпись — свёрнутой «› Подпись» (17.11.2026, владелец: «пустые строки убирай везде»).
             $lines = fn (string $t) => implode("\n", array_filter(preg_split('/\R/u', $t) ?: [], fn ($l) => trim(str_replace("\u{00A0}", ' ', $l)) !== ''));
             $sign = $lines($sign);
 
@@ -44,16 +42,17 @@ final class BodyRenderer
         if (! $message->isForwardedByStaff()) {
             $html = $this->withoutQuote($html) ?? $html;
         }
-        $html = $flat ? ($this->flat($html, $message->from_name) ?? $html) : ($this->withoutSignature($html, $message->from_name) ?? $html);
+        $html = $this->tidy($html, $message->from_name) ?? $html;
 
         return self::blank($html) ? null : $this->wrap($message, $html, false, $base, $flat);
     }
 
     /**
-     * Письмо справа во «Входящих» (17.11.2026, владелец): подпись не срезается, а сворачивается в «› Подпись» в конце письма,
-     * пустых строк нет — пустые абзацы и блоки уходят, `<br>` подряд — один, в начале и в конце блока — ни одного.
+     * Письмо везде — справа во «Входящих», в ленте окна писем, в «Показать менеджеру» (17.11.2026, владелец): подпись не
+     * срезается, а сворачивается в «› Подпись» в конце письма; пустых строк нет — пустые абзацы и блоки уходят, `<br>` подряд —
+     * один, в начале и в конце блока — ни одного.
      */
-    private function flat(string $html, ?string $name): ?string
+    private function tidy(string $html, ?string $name): ?string
     {
         $dom = new \DOMDocument;
         $errors = libxml_use_internal_errors(true);
@@ -181,21 +180,6 @@ final class BodyRenderer
      * (Outlook `divRplyFwdMsg` и черта `border-top: solid #E1E1E1`, Gmail, Thunderbird, Yahoo), `<hr>`, абзац «От: / From: /
      * -----Original Message-----». Пустые абзацы в начале и в конце (Outlook ставит по два) — тоже. Признака нет — null.
      */
-    /** Тело без подписи (`Extraction\Signature`); подписи нет — null. */
-    private function withoutSignature(string $html, ?string $name): ?string
-    {
-        $dom = new \DOMDocument;
-        $errors = libxml_use_internal_errors(true);
-        $loaded = $dom->loadHTML('<?xml encoding="utf-8"?>'.self::ascii($html), LIBXML_HTML_NODEFDTD | LIBXML_NONET);
-        libxml_clear_errors();
-        libxml_use_internal_errors($errors);
-        $body = $dom->getElementsByTagName('body')->item(0);
-        if (! $loaded || ! $body instanceof \DOMElement || ! Extraction\Signature::cutDom($dom, $body, $name)) {
-            return null;
-        }
-
-        return self::save($dom);
-    }
 
     private function withoutQuote(string $html): ?string
     {
@@ -325,9 +309,9 @@ final class BodyRenderer
             .'<base target="_blank"><style>html{margin:0;padding:0;'.$colors.'}body{margin:0;padding:'.($flat ? '0' : '12px').';'.$colors.';font-family:Onest,system-ui,-apple-system,sans-serif;font-size:15px;line-height:1.45;word-break:break-word}'
             .'img{max-width:100%;height:auto}table{max-width:100%;border-collapse:collapse}a{color:#669709}pre.plain{white-space:pre-wrap;font-family:inherit;margin:0}'
             .'blockquote{margin:0;padding-left:12px;border-left:2px solid #d0d0d0;color:#808080}'
-            .($flat ? 'p{margin:0}.sig{margin-top:10px}.sig>summary{cursor:pointer;list-style:none;font-size:13px;color:#8a8a8a}.sig>summary::-webkit-details-marker{display:none}'
+            .('p{margin:0}.sig{margin-top:10px}.sig>summary{cursor:pointer;list-style:none;font-size:13px;color:#8a8a8a}.sig>summary::-webkit-details-marker{display:none}'
                 .'.sig>summary::before{content:"›";display:inline-block;width:12px;transition:transform .15s}.sig[open]>summary::before{transform:rotate(90deg)}'
-                .'.sig-body{margin-top:6px;color:#8a8a8a;font-size:13px}' : '')
+                .'.sig-body{margin-top:6px;color:#8a8a8a;font-size:13px}')
             .$themed.'</style></head><body>'.$body.'</body></html>';
     }
 
