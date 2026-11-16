@@ -3044,7 +3044,8 @@ html.kb-open { --home-gap: 0px; }
      на 5–7 px выше даты и слов. Иконка — по центру строки. */
   .letter-clip { grid-column: 2; grid-row: 2; justify-self: end; display: inline-flex; align-items: baseline; gap: .125rem; font-size: var(--text-sm); color: var(--color-ink-dim); }
   .letter-clip > svg { align-self: center; }
-  .letter--stage .letter-title, .letter--ask .letter-title, .letter--unread .letter-title { color: var(--color-ink); }
+  /* Слова строки — чёрным только у непрочитанного, как имя (17.11.2026, владелец); этап и «ждёт ответа» говорят метки справа. */
+  .letter--unread .letter-title { color: var(--color-ink); }
   /* Раскрытая шапка — просто строка текста: высота под нажатие нужна свёрнутой, а у раскрытой конверт «От…» вставал
      через лишнюю пустую строку. */
   .letter-body[open] > .letter-head { min-height: 0; }
