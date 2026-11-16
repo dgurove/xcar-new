@@ -71,7 +71,7 @@ class InsurerLetterHiddenTest extends TestCase
 
         // Админ — в «Разобрать ответ», видит письмо и пункты.
         $this->assertSame(1, ReplyReview::pending()->where('deal_id', $this->deal->id)->count());
-        $this->assertSame('Разобрать ответ', $this->offer->fresh()->position(Track::Sale)->todo()['title']);
+        $this->assertSame('Прочитать ответ поставщика', $this->offer->fresh()->position(Track::Sale)->todo()['title']);
         $this->actingAs($this->admin)->withHeaders(['Turbo-Frame' => 'detail'])->get("http://crm.xcar.localhost/offers?preset=us&peek={$this->offer->fresh()->number}")->assertOk()
             ->assertSee('Письмо от Альфа тест')->assertSee('Иванов Иван')->assertSee('+7 900 123-45-67')->assertSee('паспорт.pdf')
             ->assertSee('Пройти шаг «Поставщик согласовал»');
@@ -119,9 +119,9 @@ class InsurerLetterHiddenTest extends TestCase
 
         // Неразобранное письмо отменённой сделки машину в «Разобрать ответ» не держит.
         $this->letter("Добрый день! Ещё контакт +7 900 765-43-22\r\n");
-        $this->assertSame('Разобрать ответ', $this->offer->fresh()->position(Track::Sale)->todo()['title'] ?? null);
+        $this->assertSame('Прочитать ответ поставщика', $this->offer->fresh()->position(Track::Sale)->todo()['title'] ?? null);
         $this->deal->cancel();
-        $this->assertNotSame('Разобрать ответ', $this->offer->fresh()->position(Track::Sale)?->todo()['title'] ?? null);
+        $this->assertNotSame('Прочитать ответ поставщика', $this->offer->fresh()->position(Track::Sale)?->todo()['title'] ?? null);
         $this->assertFalse(Position::where('offer_id', $this->offer->id)->where('track', 'sale')->whereRaw("exists (select 1 from reply_reviews rr join deals rd on rd.id = rr.deal_id where rr.offer_id = offer_positions.offer_id and rr.state = 'pending' and rd.closed_at is null and not rd.parallel)")->exists());
     }
 

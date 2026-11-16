@@ -290,11 +290,11 @@ class Position extends Model
         }
 
         if ($at = $this->replyPending()) {
-            return $todo('reply', 'Разобрать ответ', 0, $at, ['label' => 'Разобрать', 'href' => '/offers/'.$offer->number]);
+            return $todo('reply', 'Прочитать ответ поставщика', 0, $at, ['label' => 'Открыть', 'href' => '/offers/'.$offer->number]);
         }
 
         return match (true) {
-            $letter === 'replied' => $todo('reply', 'Разобрать ответ', 0, $this->replyAt(), ['label' => 'Открыть письмо', 'letters' => '/offers/'.$offer->number.'/letters']),
+            $letter === 'replied' => $todo('reply', 'Прочитать ответ поставщика', 0, $this->replyAt(), ['label' => 'Открыть письмо', 'letters' => '/offers/'.$offer->number.'/letters']),
             $letter === 'bounced' => $todo('bounced', 'Письмо поставщику не дошло', 1, button: $write('Написать снова')),
             // Письмо с реквизитами без реквизитов не пишем (03.11.2026): сначала покупатель — «Заполнить» к его карточке.
             in_array($letter, ['unsent', 'failed'], true) && $this->stage->isRequisitesStep() && ($gap = $this->deal?->requisitesGap()) => $todo('requisites', $gap, 1, button: ['label' => 'Заполнить', 'href' => $this->deal->schemeOf()->paysCar() || $this->deal->isGarageUs()
@@ -366,11 +366,11 @@ class Position extends Model
         $money = Surface::Crm->url('/work/deals/'.$deal->id.'#money');
 
         return match ($gap) {
-            'share' => ['title' => 'Впишите вознаграждение менеджера', 'button' => 'Вписать вознаграждение', 'url' => $money],
-            'commission' => ['title' => 'Назначьте вознаграждение', 'button' => 'Назначить вознаграждение', 'url' => $money],
+            'share' => ['title' => 'Вписать вознаграждение менеджера', 'button' => 'Вписать вознаграждение', 'url' => $money],
+            'commission' => ['title' => 'Назначить вознаграждение', 'button' => 'Назначить вознаграждение', 'url' => $money],
             // Реквизиты продавцов правятся на парковке («Реквизиты»), Р.О.С. — первой строкой «мы».
-            'ros_requisites' => ['title' => 'Заполните реквизиты Р.О.С.', 'button' => 'Заполнить реквизиты Р.О.С.', 'url' => Surface::Park->url('/money/parties')],
-            default => ['title' => 'Выставите счёт', 'button' => 'Выставить счёт', 'url' => Surface::Crm->url('/work/invoices/new?offer='.$deal->offer->number)],
+            'ros_requisites' => ['title' => 'Заполнить реквизиты Р.О.С.', 'button' => 'Заполнить реквизиты Р.О.С.', 'url' => Surface::Park->url('/money/parties')],
+            default => ['title' => 'Выставить счёт', 'button' => 'Выставить счёт', 'url' => Surface::Crm->url('/work/invoices/new?offer='.$deal->offer->number)],
         };
     }
 

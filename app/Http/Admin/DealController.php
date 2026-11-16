@@ -20,7 +20,6 @@ use App\Offers\Deal;
 use App\Offers\DealDates;
 use App\Offers\DealScheme;
 use App\Offers\DealTabs;
-use App\Offers\DealWork;
 use App\Offers\Giving;
 use App\Offers\OfferNumber;
 use App\Offers\OfferState;
@@ -163,7 +162,7 @@ class DealController
         // Вкладка этапа (16.11.2026, владелец: «сначала наше дело, потом кого ждём»): дела зелёными группами по тому, что сделать,
         // дальше «Ждём менеджера», «Ждём поставщика». Числа групп — по всему списку, строки живого обновления — только запрошенные.
         $groups = $whole !== null ? self::stageGroups($whole, $live) : null;
-        // «Оплата от менеджера» — сверху итог: кто сколько должен нам (27.10.2026, `DealDebt`).
+        // «Менеджер платит нам» — сверху итог: кто сколько должен нам (27.10.2026, `DealDebt`).
         $debts = $whole !== null && $preset === 'paying' ? self::debts($whole) : null;
         $table = ListView::isTable(ListView::pick($request, 0));
         $deals = match (true) {
@@ -197,7 +196,7 @@ class DealController
     private static function stageGroups(Collection $deals, ?array $live): Collection
     {
         $rows = DealTabs::rows($deals)->values();
-        $wait = ['manager' => 'Ждём менеджера', 'supplier' => 'Ждём поставщика', 'other' => 'Прочее'];
+        $wait = DealTabs::WAITS;
         $groups = $rows->groupBy(fn (array $r) => $r['todo'] ? 'do:'.$r['todo']['key'] : 'wait:'.DealTabs::waits($r['deal']))
             ->map(function (Collection $rows, string $key) use ($wait) {
                 $first = $rows->first();
@@ -209,7 +208,7 @@ class DealController
                 $since = fn (array $r) => ($r['todo']['since'] ?? $r['deal']->offer?->position()?->entered_at)?->getTimestamp() ?? PHP_INT_MAX;
 
                 return [
-                    'title' => $ours ? $first['todo']['title'] : $wait[substr($key, 5)],
+                    'title' => $ours ? (DealTabs::TODO_TITLES[$first['todo']['title']] ?? $first['todo']['title']) : $wait[substr($key, 5)],
                     'ours' => $ours, 'rank' => $ours ? $first['todo']['rank'] : 1000 + array_search(substr($key, 5), array_keys($wait), true),
                     'size' => $rows->count(), 'button' => $button,
                     'rows' => $rows->sortBy($since)->map(fn (array $r) => ['deal' => $r['deal'], 'todo' => $r['todo'] ?? ['key' => '', 'title' => '', 'rank' => 0, 'since' => null, 'button' => null]])->values(),
@@ -279,9 +278,9 @@ class DealController
     private static function scope($q, string $preset)
     {
         return match ($preset) {
-            // «Закрыты» — выданные (16.11.2026): продажа на аукционе, «Сделка закрыта».
+            // «Завершённые» — выданные (16.11.2026): продажа на аукционе, «Сделка закрыта».
             'finished' => $q->done()->whereHas('offer', fn ($o) => $o->where('offers.state', OfferState::Delivered)),
-            // Этап — блок шага продажи (`DealWork::tabSql`).
+            // Этап маршрута — раскладка `DealTabs`.
             default => $q->active()->whereHas('offer', fn ($o) => $o->where('offers.state', OfferState::Sold)->whereIn('offers.id', DealTabs::ids($preset))),
         };
     }
