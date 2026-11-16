@@ -77,7 +77,9 @@ final class CaseView
         $waiting = $threads->whereNotNull('needs_reply_at')->pluck('id');
         $asks = $waiting->isEmpty() ? collect() : Message::whereIn('thread_id', $waiting)->where('direction', Direction::In)
             ->orderBy('date_at')->orderBy('id')->get(['id', 'thread_id', 'subject', 'from_name', 'from_email', 'date_at', 'text_body', 'html_body', 'intent'])
-            ->groupBy('thread_id')->map->last()->sortBy('date_at')->values();
+            ->groupBy('thread_id')->map->last()->values();
+        // Одно и то же письмо в нескольких ветках — одним блоком (`Mail\Twins`, 16.11.2026).
+        $asks = \App\Mail\Twins::collapse($asks);
         // Блок «Письма» над таймлайном — все письма строками, как в «Почте»; этапы — из цепочки кандидата этой ТС.
         $messages = $ids->isEmpty() ? collect() : Message::whereIn('thread_id', $ids)->with(['author', 'attachments', 'account'])->orderBy('date_at')->orderBy('id')->get();
 

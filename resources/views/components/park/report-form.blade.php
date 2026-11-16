@@ -41,6 +41,9 @@
             @error('report')<x-ui.flash tone="danger">{{ $message }}</x-ui.flash>@enderror
             <div class="fields">
                 <x-ui.field name="to" :id="$id.'-to'" label="Кому" :value="old('to', $report->to)" required/>
+                {{-- Копия — участники письма, на которое отвечаем (16.11.2026, Альфа: «Почему удаляете участников переписки?»;
+                     `IntakeReport::cc` тем же правилом, что ответ в редакторе). Лишнее можно стереть. --}}
+                <x-ui.field name="cc" :id="$id.'-cc'" label="Копия" :value="old('cc', $report->cc)"/>
             </div>
 
             <div>

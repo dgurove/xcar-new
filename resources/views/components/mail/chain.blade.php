@@ -49,7 +49,10 @@
     // приёме ТС свежее, и «Написать» по сделке открывало ответ со storage@). Ответ парковке — у самого её письма.
     $pool = $messages->filter(fn (Message $m) => $m->account?->scope !== \App\Mail\Scope::Park);
     $pool = $pool->isNotEmpty() ? $pool : $messages;
-    $replyTo = $reply ? ($pool->last(fn (Message $m) => ! $own($m)) ?? $pool->last()) : null;
+    // Открыли на письме (`?at=`, «Ответить» из «Ждут ответа» на парковке, 16.11.2026: по Skoda Rapid ответ из блока ч.1 уходил в
+    // ветку ч.3 — последнего письма машины) — отвечаем на него, а не на самое новое.
+    $atLetter = is_int($focus) ? $messages->first(fn (Message $m) => $m->id === $focus && ! $own($m)) : null;
+    $replyTo = $reply ? ($atLetter ?? $pool->last(fn (Message $m) => ! $own($m)) ?? $pool->last()) : null;
     $subject = null;
     // Тема строкой — без «Re:/Fwd:», у пересылки сотрудника — та, что в цитате: это письмо вендора.
     $topic = fn (Message $m) => ($m->isForwardedByStaff() ? \App\Mail\Extraction\QuotationStripper::forwardedSubject($m->text_body) : null)

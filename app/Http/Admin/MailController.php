@@ -769,7 +769,7 @@ class MailController
         }
         $message->load(['account.replyAccount', 'addresses', 'attachments']);
         $mode = $request->query('mode', 'reply');
-        $defaults = $mode === 'forward' ? $composer->forward($message) : $composer->reply($message, $mode === 'all');
+        $defaults = $mode === 'forward' ? $composer->forward($message) : $composer->reply($message, $mode !== 'only');
         // Ящик, что только принимает (offer@), отвечает через свой «Отвечаем с ящика» (deal@).
         $sender = $message->account->sender();
 

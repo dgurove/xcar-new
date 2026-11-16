@@ -14,21 +14,32 @@ final class Composer
 {
     public function __construct(private Parser $parser, private Threads $threads) {}
 
-    /** Ответ уходит с ящика, через который отвечает ящик родителя (`Account::sender`): на письмо в offer@ — с deal@. */
-    public function reply(Message $parent, bool $all = false): array
+    /**
+     * Ответ уходит с ящика, через который отвечает ящик родителя (`Account::sender`): на письмо в offer@ — с deal@.
+     * **По умолчанию — всем участникам** (16.11.2026, Альфа по Skoda Rapid 0770/046/01145/26: «Почему удаляете участников
+     * переписки?» — ответы с парковки уходили только написавшему, копия терялась): кому — написавший (его Reply-To), копия —
+     * остальные из «Кому» и «Копия» письма и контакты вендора «всегда в копии» (своей стороны: парковка или «Реализация»), без
+     * наших ящиков (всех, не только того, с которого отвечаем) и без того, кто уже в «Кому». `$all = false` — только ему.
+     */
+    public function reply(Message $parent, bool $all = true): array
     {
         $account = $parent->account->sender();
         // Письмо вендора, пересланное сотрудником со своего ящика: отвечаем вендору, а не сотруднику, темой из цитаты.
         $forwarded = $parent->isForwardedByStaff();
         $to = array_filter([$forwarded ? $parent->field('sender') : $parent->replyToAddress()]);
         $cc = [];
-        if ($all) {
+        // Пересланное сотрудником — его адресаты наши, участники переписки с вендором — в цитате; копию не собираем.
+        if ($all && ! $forwarded) {
             foreach ([AddressKind::To, AddressKind::Cc] as $kind) {
                 foreach ($parent->addressesOfKind($kind) as $address) {
-                    $cc[] = $address->email;
+                    $cc[] = mb_strtolower($address->email);
                 }
             }
-            $cc = array_values(array_diff(array_unique($cc), $to, [mb_strtolower($account->email)]));
+            if ($vendor = $parent->thread?->vendor) {
+                array_push($cc, ...array_map('mb_strtolower', $vendor->ccEmails(sale: $parent->account->scope !== Scope::Park)));
+            }
+            $ours = Account::query()->pluck('email')->map(fn ($e) => mb_strtolower((string) $e))->all();
+            $cc = array_values(array_diff(array_unique(array_filter($cc)), array_map('mb_strtolower', $to), $ours, [mb_strtolower($account->email)]));
         }
 
         return [
@@ -65,9 +76,14 @@ final class Composer
 
         // Тема — «Re: …» ветки, а не шаблона (28.10.2026, владелец: «Альфа потеряет — не поймут, что это ответ в ветку»;
         // до того, с 08.10.2026, тема шаблона — только номер убытка — перебивала «Re:»). Номер убытка в теме ветки и так есть.
+        $to = $ours ? ($values['to'] ?? '') : ($reply['to'] ?: ($values['to'] ?? ''));
+        // Копия — из шаблона (контакты «всегда в копии») и участники ветки (16.11.2026: копию не теряем ни в одном ответе).
+        $split = fn ($list) => array_filter(array_map('trim', explode(',', (string) $list)));
+        $cc = array_values(array_diff(array_unique([...$split($values['cc'] ?? ''), ...$split($reply['cc'])]), $split($to)));
+
         return [
-            'to' => $ours ? ($values['to'] ?? '') : ($reply['to'] ?: ($values['to'] ?? '')),
-            'cc' => $values['cc'] ?? '',
+            'to' => $to,
+            'cc' => implode(', ', $cc),
             'subject' => $reply['subject'] ?: trim($rendered['subject']),
             'body' => $this->text($rendered['body']).$this->signature($account),
             'quote' => 'reply',

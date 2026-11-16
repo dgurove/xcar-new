@@ -55,7 +55,11 @@ final class IntakeReport
             $slots[$kind->value] = $papers->filter(fn (Media $m) => ($m->getCustomProperty('report_doc') ?? ReportDoc::ofName($m->file_name)?->value) === $kind->value)->values();
         }
 
-        return new self($vehicle, $parent, $account, $to, '', $photos, $slots);
+        // Копия — все участники письма, на которое отвечаем (16.11.2026, Альфа: «Почему удаляете участников переписки?»): то же
+        // правило, что у ответа в редакторе (`Composer::reply`), без наших ящиков и без того, кто уже в «Кому».
+        $cc = $parent ? implode(', ', array_diff(array_map('trim', explode(',', app(\App\Mail\Composer::class)->reply($parent)['cc'])), [$to, ''])) : '';
+
+        return new self($vehicle, $parent, $account, $to, $cc, $photos, $slots);
     }
 
     /**

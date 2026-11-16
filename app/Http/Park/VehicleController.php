@@ -259,7 +259,7 @@ class VehicleController
         // «Ждут от нас» сверху карточки (19.10.2026, владелец: «непонятно, что от тебя хотят в этом окне»): письма без ответа
         // — последнее входящее ветки с `needs_reply_at`, то же правило, что шаг «Нужно ответить» в деле и почта.
         $waiting = Thread::ofCar($vehicle, $request->user())->whereNotNull('needs_reply_at')->pluck('id');
-        $asks = $messages->whereIn('thread_id', $waiting)->where('direction', Direction::In)->groupBy('thread_id')->map->last()->sortBy('date_at')->values();
+        $asks = \App\Mail\Twins::collapse($messages->whereIn('thread_id', $waiting)->where('direction', Direction::In)->groupBy('thread_id')->map->last()->values());
 
         return view('park.vehicles.detail', Stay::of($vehicle, $request->user()) + [
             'asks' => $asks, 'tasks' => Tasks::of([$vehicle->id])[$vehicle->id] ?? [],
@@ -499,8 +499,13 @@ class VehicleController
     public function letterDone(Request $request, Vehicle $vehicle, Message $message, Threads $threads)
     {
         abort_unless($message->thread?->vehicle_id === $vehicle->id, 404);
-        $threads->answered($message->thread, $request->user());
-        app(MarkThreadRead::class)($message->thread);
+        // Тот же текст в других ветках машины (`Mail\Twins`) — блок был один, закрываем все.
+        $waiting = Thread::where('vehicle_id', $vehicle->id)->whereNotNull('needs_reply_at')->pluck('id');
+        $last = Message::whereIn('thread_id', $waiting)->where('direction', Direction::In)->orderBy('date_at')->orderBy('id')->get()->groupBy('thread_id')->map->last()->values();
+        foreach (\App\Mail\Twins::of($message, $last->push($message)->unique('id'))->pluck('thread')->unique('id') as $thread) {
+            $threads->answered($thread, $request->user());
+            app(MarkThreadRead::class)($thread);
+        }
 
         return redirect("/cars/{$vehicle->id}")->with('toast', 'Сделано');
     }

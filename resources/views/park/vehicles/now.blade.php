@@ -20,7 +20,8 @@
             <section class="flex flex-col gap-3 rounded-(--radius-l) bg-surface-2 p-3">
                 <div class="flex min-w-0 flex-col gap-0.5">
                     <h2 class="text-base font-medium">{{ $words($m) }}</h2>
-                    <span class="text-sm text-ink-muted">{{ \App\Mail\Chains\NodeTitle::who($m) }}, <span class="nums">{{ \App\Support\Ago::html($m->date_at, short: true) }}</span></span>
+                    {{-- То же письмо в нескольких ветках — одним блоком (`Mail\Twins`), сколько веток — словом. --}}
+                    <span class="text-sm text-ink-muted">{{ \App\Mail\Chains\NodeTitle::who($m) }}, <span class="nums">{{ \App\Support\Ago::html($m->date_at, short: true) }}</span>@if (($m->twins ?? 1) > 1), в {{ $m->twins }} {{ $m->twins < 5 ? 'ветки' : 'веток' }}@endif</span>
                     @if ($text = trim($m->ownText()))<p class="truncate text-sm">{{ $text }}</p>@endif
                 </div>
                 <div class="flex gap-2">
