@@ -22,7 +22,8 @@
             $dot = fn (string $f) => str_replace(['[', ']'], ['.', ''], $n($f));
             $passportError = $errors->first($dot('passport'));
         @endphp
-        <div class="field {{ $passportError ? 'field-invalid' : '' }}">
+        {{-- Серия и номер — во всю ширину, дата выдачи строкой ниже (16.11.2026, владелец: в половине ширины номер не помещался). --}}
+        <div class="field {{ $rows ? '' : 'sm:col-span-2' }} {{ $passportError ? 'field-invalid' : '' }}">
             <label for="{{ $id('passport_series') }}" class="field-label">Паспорт<x-ui.req/></label>
             <div class="passport-no">
                 <label class="field-input passport-no-part" for="{{ $id('passport_series') }}">серия</label>
