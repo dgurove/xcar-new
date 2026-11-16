@@ -57,18 +57,11 @@
     };
 @endphp
 <x-ui.shell title="Предложения" :heading="false" :detail="$detail">
-    {{-- Вкладок восемь — заголовком с вертикальным списком, а не лентой пилюль (22.10.2026, владелец); действия экрана —
-         в той же строке, сортировка, вид и лупа — в строке чипов. --}}
-    <div class="title-row">
-        <x-ui.tab-title :pills="$presets" :pill="$preset" pill-param="preset" pill-home="" :counts="$counts" :badges="\App\Http\Admin\OfferController::badges()" :bumps="['legacy' => 'legacy_drafts']" :sections="\App\Http\Admin\OfferController::sections(auth()->user())" :drop="['todo', 'what', 'sub', 'turn']" fallback="Предложения" id="offers-tabs"/>
-        <div class="title-actions">
-            {{-- Фильтр стоит — видно в строке названия, а не только в ряду чипов: на телефоне выбранный чип бывает за краем ленты
-                 (02.11.2026, владелец: «если дело в фильтре, рисовать значок фильтра, если он применён», «кнопку „Сбросить“
-                 до тех, которые по умолчанию»). Нажатие — чипы как по умолчанию, «Кроме Каркаде» снова встаёт; «Сбросить» в ряду
-                 чипов здесь нет — одна кнопка, а не две («в чём разница, зачем две кнопки»). --}}
-            @if (! $searching && $facets->active())
-                <a href="{{ $facets->resetUrl() }}" class="pill title-filter" aria-current="true" aria-label="Сбросить фильтры" title="Сбросить фильтры" data-turbo-action="replace" data-turbo-prefetch="false"><x-ui.icon name="filter" class="size-4"/><x-ui.icon name="x" class="size-3.5"/></a>
-            @endif
+    {{-- Шапка — одна на вкладки колеса (`x-admin.tab-head`, 17.11.2026): название-колесо и действия экрана, ряд кнопок (сортировка,
+         лупа, вид, «Фильтр»), быстрые чипы и переключатели. Сброс фильтра — × у «Фильтра» (прежняя «фильтр ×» в строке названия). --}}
+    <x-admin.tab-head :presets="$presets" :preset="$preset" :counts="$counts" :sections="\App\Http\Admin\OfferController::sections(auth()->user())" :sort="$sort" name="offers" :facets="$facets" search="Номер, марка, VIN, убыток"
+        :views="$searching || $preset === 'legacy' ? null : ($packable ? \App\Support\ListView::SHELVED : \App\Support\ListView::ALL)" :view="$view">
+        <x-slot:actions>
             @if ($preset === 'legacy' && ! $searching)<x-offer.legacy-sheet/>@endif
             {{-- «Оценить» — только в «Без закупочной»: круглой «₽» с меню (22.10.2026, владелец: в «Без продажной» кнопка не нужна
                  — строка сама «Оценить», а кнопки должны влезть в строку заголовка). Из текста — сообщение или фото с номерами
@@ -86,11 +79,8 @@
             <x-offer.export-sheet url="/offers/export" list="crm" id="offers-export"/>
             @if (auth()->user()->canCrmMail())<a href="/offers/from-mail" class="btn btn-s btn-quiet relative shrink-0 rounded-full" aria-label="Из писем"><x-ui.icon name="mail" class="size-4"/><span class="hidden sm:inline">Из писем</span><x-ui.badge href="/offers/from-mail" :badges="\App\Support\Nav::badges(auth()->user())"/></a>@endif
             <form method="post" action="/offers" class="shrink-0">@csrf<button type="submit" class="btn btn-s btn-accent rounded-full"><x-ui.icon name="plus" class="size-4"/><span class="hidden sm:inline">Новый</span></button></form>
-        </div>
-    </div>
-    <x-ui.toolbar :sort="$sort" name="offers" :facets="$facets" :facets-reset="false" search="Номер, марка, VIN, убыток">
-        <x-slot:extra>@unless ($searching || $preset === 'legacy')<x-ui.view-switch :current="$view" :views="$packable ? \App\Support\ListView::SHELVED : \App\Support\ListView::ALL"/>@endunless</x-slot:extra>
-    </x-ui.toolbar>
+        </x-slot:actions>
+    </x-admin.tab-head>
 
     <div class="mt-6" id="list" @if ($pick) data-controller="pick" @endif>
         {{-- После вставки номеров: что уже в сделке или в продаже — в список не попало, строкой к самой машине. --}}
@@ -107,7 +97,10 @@
                 </div>
             @endif
         @endforeach
-        @if ($offers->isEmpty() && $ghosts->isEmpty())
+        @if ($offers->isEmpty() && $ghosts->isEmpty() && ! $searching && $facets->activeCount())
+            {{-- Пусто из-за фильтра (17.11.2026): так и сказать, и сбросить одним нажатием. --}}
+            <x-ui.empty :href="$facets->resetUrl()" link="Сбросить фильтр">По фильтру ничего</x-ui.empty>
+        @elseif ($offers->isEmpty() && $ghosts->isEmpty())
             <x-ui.empty>{{ match ($searching ? '' : $preset) { 'nofloor' => 'Закупочные заполнены', 'unpriced' => 'Всё оценено', 'estimating' => 'На оценке ничего нет', 'priced' => 'Оценённых нет', 'slots' => 'В слотах пусто', 'published' => 'Опубликованных нет', 'done' => 'Всё разобрано', 'bids' => 'Подтверждений нет', 'legacy' => 'Список пуст', default => 'Предложений нет' } }}</x-ui.empty>
         @else
             @if ($pick)

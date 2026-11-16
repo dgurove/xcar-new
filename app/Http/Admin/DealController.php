@@ -20,6 +20,7 @@ use App\Offers\Deal;
 use App\Offers\DealDates;
 use App\Offers\DealScheme;
 use App\Offers\DealTabs;
+use App\Offers\OfferFilters;
 use App\Offers\Giving;
 use App\Offers\OfferNumber;
 use App\Offers\OfferState;
@@ -107,11 +108,14 @@ class DealController
         $stage = "(select left(md5(coalesce(b.name, s.name)), 8) from offer_positions p join workflow_stages s on s.id = p.stage_id
             left join workflow_blocks b on b.id = s.block_id where p.offer_id = deals.offer_id and p.track = 'sale' order by p.id limit 1)";
         $staged = isset(DealTabs::TABS[$preset]);
+        // Шапка вкладки (17.11.2026): быстрые — менеджер, вендор, этап и «Горит срок обязывающего»; остальное и параметры машины,
+        // денег и сроков (`OfferFilters`) — в шторке «Фильтр»; «Во вкладке» — вход в блок шага продажи (вкладка сделки — блок).
+        $since = "(select coalesce(p.block_entered_at, p.entered_at) from offer_positions p where p.offer_id = deals.offer_id and p.track = 'sale' limit 1)";
         $facets = Facets::for($request, 'crm-deals', ...[
-            Common::manager('deals.buyer_id'),
-            Common::vendor('(select vendor_id from offers where offers.id = deals.offer_id)'),
+            Common::manager('deals.buyer_id')->quick(),
+            Common::vendor('(select vendor_id from offers where offers.id = deals.offer_id)')->quick(),
             // Этап — блок маршрута по имени (как в строке): у разных вендоров одноимённые блоки — один вариант.
-            Facet::column('stage', 'Этап', ['этап', 'этапа', 'этапов'], $stage)->labels(fn (array $keys) => DB::table('workflow_stages as s')
+            Facet::column('stage', 'Этап', ['этап', 'этапа', 'этапов'], $stage)->quick()->labels(fn (array $keys) => DB::table('workflow_stages as s')
                 ->leftJoin('workflow_blocks as b', 'b.id', '=', 's.block_id')
                 ->selectRaw('distinct left(md5(coalesce(b.name, s.name)), 8) as k, coalesce(b.name, s.name) as name')
                 ->whereRaw('left(md5(coalesce(b.name, s.name)), 8) in ('.implode(',', array_fill(0, max(count($keys), 1), '?')).')', $keys ?: [''])
@@ -121,13 +125,14 @@ class DealController
                 where p.offer_id = deals.offer_id and p.track = 'sale' and p.deadline_at < now()) then 'late' else 'ok' end)")
                 ->labels(fn (array $keys) => array_intersect_key(['late' => new Option('late', 'Просрочено'), 'ok' => new Option('ok', 'В срок')], array_flip($keys))),
             // Срок обязывающего горит, а поставщику не заплачено (19.10.2026, `Offers\Binding`).
-            Facet::toggle('binding', 'Горит срок обязывающего', fn ($q) => $q->whereHas('offer', fn ($o) => Binding::scope($o, 'deal')))->dot('danger'),
+            Facet::toggle('binding', 'Горит срок обязывающего', fn ($q) => $q->whereHas('offer', fn ($o) => Binding::scope($o, 'deal')))->dot('danger')->quick(),
             Facet::column('garage', 'Гараж', ['вид', 'вида', 'видов'], "(case when deals.garage_payer is null then 'deal' else 'garage' end)")
                 ->labels(fn (array $keys) => array_intersect_key(['deal' => new Option('deal', 'Без гаража'), 'garage' => new Option('garage', 'Гаражные')], array_flip($keys))),
-        ]);
+            ...OfferFilters::for('deals.offer_id', $request->user()->canManageCrm(), $since),
+        ])->saving('offers');
         $askedSort = $request->query('sort');
         // «Чей ход» не запоминается: вкладки прежде были вкладками, не фильтром — в соседней вкладке он путал бы.
-        ListPrefs::sync($request, 'crm-deals', keep: $facets->keys());
+        ListPrefs::sync($request, 'crm-deals', keep: array_values(array_diff($facets->keys(), OfferController::ONCE)));
         OfferController::forgetBindingSort($request, $askedSort);
         $searching = $facets->searching();
         $sort = Sort::from($request->query('sort'), self::SORTS, 'deadline');

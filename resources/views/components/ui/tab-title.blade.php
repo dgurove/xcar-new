@@ -10,11 +10,13 @@
      Вкладки нет в адресе (поиск) — fallback. sections — подзаголовки
      разделов в колесе (16.11.2026, владелец выбрал вариант А макета: «между вариантами подзаголовки, которые не выбираются, а
      пролистываются»): ключ первой вкладки раздела → подпись; снап на них не встаёт (`tab_wheel_controller`). drop — параметры
-     адреса, что не переносятся в другую вкладку (дела «Ваш ход» `todo`, `sub`). --}}
-@props(['pills' => [], 'pill' => '', 'pillParam' => 'view', 'pillHome' => null, 'counts' => [], 'badges' => [], 'bumps' => [], 'fallback' => '', 'id' => 'tab-menu', 'sections' => [], 'drop' => []])
+     адреса, что не переносятся в другую вкладку (дела «Ваш ход» `todo`, `sub`); keep — наоборот, только эти (17.11.2026, шапка
+     вкладок колеса: чипы у каждой вкладки свои и берутся из памяти `ListPrefs` — чужие из адреса ставили в соседней вкладке
+     одноимённый чип чужим значением: «Этап» сделок в «Этап гаража», и список пустел). --}}
+@props(['pills' => [], 'pill' => '', 'pillParam' => 'view', 'pillHome' => null, 'counts' => [], 'badges' => [], 'bumps' => [], 'fallback' => '', 'id' => 'tab-menu', 'sections' => [], 'drop' => [], 'keep' => null])
 @php
     $action = '/'.ltrim(request()->path(), '/');
-    $query = array_diff_key(request()->query(), array_flip($drop));
+    $query = $keep !== null ? array_intersect_key(request()->query(), array_flip($keep)) : array_diff_key(request()->query(), array_flip($drop));
     $url = fn (array $set) => $action.'?'.str_replace('%2C', ',', http_build_query(array_filter(array_merge($query, $set), fn ($v) => $v !== null && $v !== '')));
 @endphp
 <div {{ $attributes->merge(['class' => 'tab-title']) }} data-controller="tab-wheel">

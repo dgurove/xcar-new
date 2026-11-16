@@ -39,6 +39,12 @@ final class Facets
     /** @var array<string, list<string>> исключение, развёрнутое в варианты (для своего условия `apply`) */
     private array $resolved = [];
 
+    /** @var array<string, string>|null значения чипов на момент выборки (до того, как контроллер снял умолчания из адреса) */
+    private ?array $state = null;
+
+    /** Список сохранённых фильтров (`SavedFilter::list`) — у шапки вкладок колеса «Предложений»; пусто — сохранения нет. */
+    public ?string $saved = null;
+
     public function __construct(private Request $request, public string $list, Facet ...$facets)
     {
         foreach ($facets as $f) {
@@ -58,6 +64,49 @@ final class Facets
         $this->always = true;
 
         return $this;
+    }
+
+    /** Сохранённые фильтры человека в шторке «Фильтр» — общий список колеса (`offers`). */
+    public function saving(string $list): self
+    {
+        $this->saved = $list;
+
+        return $this;
+    }
+
+    /** Есть ли быстрые чипы: тогда остальные — только в шторке «Фильтр» (и чипом, пока выбраны). */
+    public function quick(): bool
+    {
+        return array_any($this->facets, fn (Facet $f) => $f->quick);
+    }
+
+    /** Сколько чипов выбрано не по умолчанию — число на кнопке «Фильтр». */
+    public function activeCount(): int
+    {
+        return count(array_filter($this->keys(), fn ($k) => $this->on($k) !== $this->facets[$k]->byDefault));
+    }
+
+    /**
+     * Значения всех чипов списка как в адресе — для сохранённого фильтра: пустое значение — явно, чтобы память `ListPrefs` не
+     * подмешалась. Снимок — на момент выборки (умолчание «Кроме Каркаде» контроллер потом снимает из адреса).
+     *
+     * @return array<string, string>
+     */
+    public function state(): array
+    {
+        return $this->state ?? $this->snapshot();
+    }
+
+    /** @return array<string, string> */
+    private function snapshot(): array
+    {
+        return collect($this->keys())->mapWithKeys(fn ($k) => [$k => is_string($v = $this->request->query($k)) ? $v : ''])->all();
+    }
+
+    /** @return array<string, Facet> */
+    public function all(): array
+    {
+        return $this->facets;
     }
 
     /** Адрес списка, если экран другой (чаты: справа открыт чат, а фильтр — у списка). */
@@ -103,7 +152,7 @@ final class Facets
     public function excluded(string $key): ?array
     {
         $raw = $this->request->query($key);
-        if (! is_string($raw) || ! str_starts_with($raw, '!') || ! isset($this->facets[$key]) || $this->facets[$key]->toggle || $this->facets[$key]->single || $this->facets[$key]->dates) {
+        if (! is_string($raw) || ! str_starts_with($raw, '!') || ! isset($this->facets[$key]) || $this->facets[$key]->toggle || $this->facets[$key]->single || $this->facets[$key]->dates || $this->facets[$key]->range) {
             return null;
         }
 
@@ -129,6 +178,9 @@ final class Facets
         }
         if ($this->facets[$key]->dates) {
             return Facet::period($raw) ? [$raw] : [];
+        }
+        if ($this->facets[$key]->range) {
+            return Facet::bounds($raw) ? [$raw] : [];
         }
         if ($this->facets[$key]->single) {
             return $raw === $this->facets[$key]->default ? [] : [$raw];
@@ -162,8 +214,16 @@ final class Facets
             }
         }
         $this->applied = clone $b;
+        $this->state = $this->snapshot();
         if ($this->request->headers->has('X-Count')) {
             throw new HttpResponseException(response()->json(['count' => $this->total()]));
+        }
+        // Шторка «Фильтр» грузится по открытию (17.11.2026): варианты всех чипов считаются, только когда их смотрят.
+        // Варианты параметра — ещё одним запросом, когда его открыли (`X-Filter-Pane`): модели, города и марки списком сразу
+        // весили бы сотни килобайт.
+        if ($this->request->headers->has('X-Filters')) {
+            $pane = $this->request->headers->get('X-Filter-Pane');
+            throw new HttpResponseException(response()->view('ui.filter-body', ['facets' => $this, 'pane' => is_string($pane) && isset($this->facets[$pane]) ? $pane : null]));
         }
 
         return $q;
@@ -208,21 +268,35 @@ final class Facets
      *
      * @return Collection<int, object{facet: Facet, options: list<Option>, selected: list<string>, label: string}>
      */
-    public function chips(): Collection
+    /** $all — все чипы с вариантами (шторка «Фильтр»); $only — один ключ (варианты открытого параметра). */
+    public function chips(bool $all = false, ?string $only = null): Collection
     {
-        if ($this->chips !== null) {
+        if (! $all && $this->chips !== null) {
             return $this->chips;
         }
         if ($this->base === null) {
-            return $this->chips = collect();
+            return $all ? collect() : $this->chips = collect();
         }
+        // Есть быстрые чипы — ряд считает только их (и переключатели вкладки) и выбранное; варианты остальных — по открытию
+        // «Фильтра».
+        $lazy = ! $all && $this->quick();
 
-        return $this->chips = collect($this->facets)->map(function (Facet $f, string $key) {
+        $chips = collect($this->facets)->when($only !== null, fn ($c) => $c->only([$only]))->map(function (Facet $f, string $key) use ($lazy, $all) {
             // Переключатель внутри шторки другого чипа (`Facet::within`) — не в ряду: его рисует тот чип.
             if ($f->within !== null) {
                 return null;
             }
+            if ($lazy && ! $f->quick && ! $this->on($key)) {
+                return null;
+            }
             $selected = $this->selected($key);
+            if ($f->range) {
+                $raw = $selected[0] ?? null;
+                [$from, $to] = $raw ? Facet::bounds($raw) : [null, null];
+
+                return (object) ['facet' => $f, 'options' => [], 'selected' => $selected, 'on' => $raw !== null, 'value' => (string) $raw,
+                    'label' => $raw ? (string) $f->rangeLabel($raw) : $f->title, 'from' => $from, 'to' => $to, 'inner' => null];
+            }
             $inner = $this->innerOf($key);
             if ($f->toggle) {
                 $n = $f->tally ? ($f->tally)() : null;
@@ -264,8 +338,10 @@ final class Facets
                 }
                 $o->count = $n;
                 $o->selected = in_array($k, $selected, true) || ($f->single && ! $selected && $k === $f->default);
-                // Пустой вариант в шторке не нужен — разве что он выбран и его надо снять (и «Все» одиночного выбора).
-                if ($n === 0 && ! $o->selected && $k !== $f->default) {
+                // Пустой вариант в шторке не нужен — разве что он выбран и его надо снять (и «Все» одиночного выбора), или
+                // исключён (вернуть): без него «Кроме Carcade» там, где Carcade нет, подписывался единственным оставшимся
+                // вендором — будто его выбрали (17.11.2026).
+                if ($n === 0 && ! $o->selected && $k !== $f->default && ! in_array($k, $out ?? [], true)) {
                     continue;
                 }
                 $options[$k] = $o;
@@ -309,6 +385,8 @@ final class Facets
 
             return (object) ['facet' => $f, 'options' => array_values($options), 'selected' => $selected, 'on' => $on, 'value' => $out !== null ? '!'.implode(',', $out) : implode(',', $selected), 'label' => $label, 'inner' => $inner];
         })->filter()->values();
+
+        return $all ? $chips : $this->chips = $chips;
     }
 
     /**
@@ -323,24 +401,24 @@ final class Facets
         $bindings = [];
         // Считать тем же, что строка списка (`countBy`: у почты — дело): `count(*)` → `count(*) filter (…)`.
         $count = $this->countExpr;
-        foreach (array_keys(Facet::PERIODS) as $k) {
+        foreach (array_keys($f->periods()) as $k) {
             [$from, $to] = Facet::period($k);
-            $sql[] = "{$count} filter (where ".implode(' and ', array_filter([$from ? "{$f->dates} >= ?" : null, $to ? "{$f->dates} < ?" : null])).") as \"{$k}\"";
+            $sql[] = "{$count} filter (where ".implode(' and ', array_filter([$from ? "({$f->dates}) >= ?" : null, $to ? "({$f->dates}) < ?" : null])).") as \"{$k}\"";
             array_push($bindings, ...array_filter([$from, $to]));
         }
         $row = (array) Facet::bare($sub->toBase())->selectRaw(implode(', ', $sql), $bindings)->first();
         $raw = $selected[0] ?? null;
         $options = [];
-        foreach (Facet::PERIODS as $k => $label) {
+        foreach ($f->periods() as $k => $label) {
             $o = new Option($k, $label);
             $o->count = (int) ($row[$k] ?? 0);
             $o->selected = $raw === $k;
             $options[] = $o;
         }
-        [$from, $to] = $raw && ! isset(Facet::PERIODS[$raw]) ? Facet::period($raw) : [null, null];
+        [$from, $to] = $raw && ! isset($f->periods()[$raw]) ? Facet::period($raw) : [null, null];
 
         return (object) ['facet' => $f, 'options' => $options, 'selected' => $selected, 'on' => $raw !== null, 'value' => (string) $raw,
-            'label' => $raw ? (string) Facet::periodLabel($raw) : $f->title, 'from' => $from?->format('Y-m-d'), 'to' => $to?->subDay()->format('Y-m-d')];
+            'label' => $raw ? (string) Facet::periodLabel($raw) : $f->title, 'from' => $from?->format('Y-m-d'), 'to' => $to?->subDay()->format('Y-m-d'), 'inner' => null];
     }
 
     /**

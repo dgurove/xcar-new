@@ -34,6 +34,7 @@ use App\Offers\CatalogQuery;
 use App\Offers\DealDates;
 use App\Garage\CarState;
 use App\Offers\DealTabs;
+use App\Offers\OfferFilters;
 use App\Offers\OfferTabs;
 use App\Purchases\Purchase;
 use App\Purchases\PurchaseState;
@@ -386,7 +387,7 @@ class OfferController
         $step = in_array($preset, self::STEPS, true);
         // «Без цены» — без сортировки и вида, чипы есть (владелец 04.10.2026: «не хватает фильтров»), по умолчанию — без
         // Каркаде. «Рекомендуем» — переключатель у опубликованных.
-        $facets = Facets::for($request, 'crm-offers', ...match ($preset) {
+        $tabFacets = [...match ($preset) {
             // «Новые» (опубликовано за сутки) и «Горящие» (приём закрывается за 12 ч) — как пилюли каталога, голубой и рыжей
             // точкой и своим цветом включённого (12.10.2026, владелец); подтверждения и сроки видит только админ.
             'published', 'bids' => [
@@ -426,7 +427,18 @@ class OfferController
             Facet::toggle('binding', 'Горит срок', fn ($o) => Binding::scope($o, $preset === 'bids' ? 'undecided' : 'panic'))->dot('danger'),
             // Переоценка ждёт решения (28.10.2026) — оранжевой точкой, пока такие есть.
             Facet::toggle('reprice', 'Переоценка', fn ($o) => $o->whereHas('reprices', fn ($r) => $r->where('state', Reprice::PENDING)))->dot('hot'),
-        ] : []))->always();
+        ] : [])];
+        // Шапка вкладки (17.11.2026, владелец: «в третьей строке несколько быстрых дропдаун-фильтров (состояние, менеджер, вендор),
+        // в четвёртой — горит срок, переоценка», остальное — кнопкой «Фильтр»): быстрые — три чипа и переключатели вкладки;
+        // остальное и параметры машины, денег и сроков (`OfferFilters`) — в шторке «Фильтр».
+        $quick = $preset === 'all' ? ['tab', 'manager', 'vendor'] : ['vendor', 'city', 'category'];
+        foreach ($tabFacets as $f) {
+            if ($f->toggle || in_array($f->key, $quick, true)) {
+                $f->quick();
+            }
+        }
+        $facets = Facets::for($request, 'crm-offers', ...$tabFacets, ...OfferFilters::for('offers.id', $admin, $preset === 'all' ? OfferTabs::sinceSql() : null))
+            ->always()->saving('offers');
         $askedSort = $request->query('sort');
         ListPrefs::sync($request, 'crm-offers', keep: array_values(array_diff($facets->keys(), self::ONCE)));
         self::forgetBindingSort($request, $askedSort);
@@ -905,7 +917,7 @@ class OfferController
     private const HOLDER_SQL = 'coalesce((select d.buyer_id from deals d where d.id = offers.deal_id), (select g.manager_id from garage_cars g where g.offer_id = offers.id))';
 
     /** Чипы на этот раз: в `ListPrefs` не идут. */
-    public const ONCE = ['created'];
+    public const ONCE = ['created', 'until'];
 
     public function store(Request $request, CreateOffer $create)
     {

@@ -8,15 +8,15 @@
     $user = auth()->user();
 @endphp
 <x-ui.shell :title="$presets['garage'] ?? 'Гараж'" :heading="false" :detail="$detail">
-    <div class="title-row">
-        <x-ui.tab-title :pills="$presets" pill="garage" pill-param="preset" pill-home="" :counts="$counts" :badges="\App\Http\Admin\OfferController::badges()" :bumps="['legacy' => 'legacy_drafts']" :sections="$sections" :drop="['todo', 'what', 'sub', 'turn']" fallback="Предложения" id="offers-tabs"/>
-    </div>
-    <x-ui.toolbar :sort="$sort" name="garage" :facets="$facets">
-        <x-slot:extra><x-ui.view-switch :current="$view" :views="ListView::SHELVED"/></x-slot:extra>
-    </x-ui.toolbar>
+    {{-- Шапка — одна на вкладки колеса (`x-admin.tab-head`, 17.11.2026); лупа — как у остальных вкладок. --}}
+    <x-admin.tab-head :presets="$presets" preset="garage" :counts="$counts" :sections="$sections" :sort="$sort" name="garage" :facets="$facets" search="Номер, марка, VIN, убыток"
+        :views="ListView::SHELVED" :view="$view"/>
 
-    @if ($groups->isEmpty())
-        <x-ui.empty class="mt-6">В гараже пусто</x-ui.empty>
+    <div id="list">
+    @if ($groups->isEmpty() && $facets->activeCount() && ! $facets->searching())
+        <x-ui.empty class="mt-6" :href="$facets->resetUrl()" link="Сбросить фильтр">По фильтру ничего</x-ui.empty>
+    @elseif ($groups->isEmpty())
+        <x-ui.empty class="mt-6">{{ $facets->searching() ? 'Ничего не нашлось' : 'В гараже пусто' }}</x-ui.empty>
     @elseif (ListView::isTable($view))
         @php $columns = \App\Http\Admin\GarageController::table(); @endphp
         <x-ui.table :table="$columns" id="garage-table" class="mt-4" :view="$view">
@@ -61,6 +61,7 @@
             @endforeach
         </div>
     @endif
+    </div>
     {{-- Окно писем для письма поставщику в пути сделки карточки. --}}
     <x-mail.window/>
 </x-ui.shell>

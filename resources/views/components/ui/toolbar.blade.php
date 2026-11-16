@@ -18,8 +18,11 @@
      слот lead — заголовок экрана в одну строку с кнопками настройки списка (разделы «Работы», 13.11.2026, владелец: «справа от
      заголовка тупо пустое место — туда сортировку, лупу, вид»): строка `.toolbar-head` — первой, над пилюлями.
      Сортировка — окошко x-ui.sort: поле и направление (владелец 06.10.2026: «кнопка сортировки, окошко — выбор
-     критерия и ascending/descending»); прежнего меню исходов словами («Сначала дешёвые») больше нет. --}}
-@props(['sort' => null, 'sortParam' => 'sort', 'pills' => [], 'dots' => [], 'pill' => '', 'pillParam' => 'view', 'pillDefault' => true, 'pillHome' => null, 'pillDrop' => [], 'counts' => [], 'badges' => [], 'bumps' => [], 'tones' => [], 'name' => 'list', 'action' => null, 'search' => null, 'searchTarget' => '#list', 'searchUrl' => null, 'q' => null, 'facets' => null, 'searchOpen' => false, 'sortToggles' => [], 'facetsReset' => true])
+     критерия и ascending/descending»); прежнего меню исходов словами («Сначала дешёвые») больше нет.
+     rows — шапка вкладок колеса «Предложений» (`x-admin.tab-head`, 17.11.2026, владелец): ряд кнопок (слева сортировка и лупа,
+     справа вид из слота `extra` и «Фильтр» — `x-ui.filter-sheet`), под ним быстрые чипы (`Facet::quick`) и выбранное в
+     «Фильтре», ниже переключатели; на ПК — одной строкой. Пилюль, действий и «Сбросить» в этом виде нет. --}}
+@props(['rows' => false, 'sort' => null, 'sortParam' => 'sort', 'pills' => [], 'dots' => [], 'pill' => '', 'pillParam' => 'view', 'pillDefault' => true, 'pillHome' => null, 'pillDrop' => [], 'counts' => [], 'badges' => [], 'bumps' => [], 'tones' => [], 'name' => 'list', 'action' => null, 'search' => null, 'searchTarget' => '#list', 'searchUrl' => null, 'q' => null, 'facets' => null, 'searchOpen' => false, 'sortToggles' => [], 'facetsReset' => true])
 @php
     $action ??= '/'.ltrim(request()->path(), '/');
     $query = request()->query();
@@ -31,6 +34,33 @@
     // Короткий ряд пилюль — на широком экране чипы встают в его строку (`.toolbar--fit`, app.css).
     $fit = $pills && mb_strlen(implode('', $pills)) <= 40;
 @endphp
+@if ($rows)
+<div {{ $attributes->merge(['class' => 'toolbar toolbar--rows']) }} @if ($search) data-controller="live-search" data-live-search-target-value="{{ $searchTarget }}" @if ($searchUrl) data-live-search-url-value="{{ $searchUrl }}" @endif @endif @if ($searching) data-searching @endif>
+    @if ($search)
+        <form class="toolbar-search" role="search" data-action="submit->live-search#stop">
+            <x-ui.icon name="search" class="size-4 shrink-0 text-ink-muted"/>
+            <input type="search" name="q" value="{{ $q }}" placeholder="{{ $search }}" autocomplete="off" enterkeyhint="search" aria-label="{{ $search }}"
+                   data-live-search-target="input" data-action="input->live-search#input keydown->live-search#key">
+            <button type="button" class="toolbar-search-x" data-live-search-target="clear" data-action="live-search#clear" aria-label="Очистить" hidden><x-ui.icon name="x" class="size-4"/></button>
+        </form>
+        <button type="button" class="toolbar-cancel" data-action="live-search#cancel">Отмена</button>
+    @endif
+    <div class="toolbar-bar">
+        <div class="toolbar-side">
+            @if ($sort)<x-ui.sort :sort="$sort" :url="$sortUrl" :name="$name" :toggles="$sortToggles"/>@endif
+            @if ($search)<button type="button" class="btn btn-s btn-quiet btn-round shrink-0 toolbar-lens" data-action="live-search#open" aria-label="Поиск"><x-ui.icon name="search" class="size-5"/></button>@endif
+        </div>
+        <div class="toolbar-side toolbar-side--end">
+            {{ $extra ?? '' }}
+            @if ($facets && $facets->all())<x-ui.filter-sheet :facets="$facets" :name="$name"/>@endif
+        </div>
+    </div>
+    @if ($facets && ! request()->headers->has('X-List'))
+        <x-ui.facets :facets="$facets" :name="$name" part="quick"/>
+        <x-ui.facets :facets="$facets" :name="$name" part="toggles"/>
+    @endif
+</div>
+@else
 <div {{ $attributes->merge(['class' => 'toolbar flex items-center gap-2 max-md:gap-y-3'.($fit ? ' toolbar--fit' : '')]) }} @if ($search) data-controller="live-search" data-live-search-target-value="{{ $searchTarget }}" @if ($searchUrl) data-live-search-url-value="{{ $searchUrl }}" @endif @if ($searchOpen) data-live-search-open-value="true" @endif @endif @if ($searching) data-searching @endif>
     @if ($search)
         <form class="toolbar-search" role="search" data-action="submit->live-search#stop">
@@ -110,3 +140,4 @@
         <x-ui.facets :facets="$facets" :name="$name" :reset="$facetsReset"/>
     @endif
 </div>
+@endif

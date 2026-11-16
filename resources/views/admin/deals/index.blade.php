@@ -7,12 +7,9 @@
      с разделами, что у предложений; вкладка — этап маршрута (`DealTabs`). Внутри — сначала наши дела зелёными группами, потом
      кого ждём (владелец: «сначала наше дело, потом кого ждём»). Ключ строки и окна — номер машины. --}}
 <x-ui.shell :title="$presets[$preset] ?? 'Предложения'" :heading="false" :detail="$detail">
-    <div class="title-row">
-        <x-ui.tab-title :pills="$presets" :pill="$preset" pill-param="preset" pill-home="" :counts="$counts" :badges="\App\Http\Admin\OfferController::badges()" :bumps="['legacy' => 'legacy_drafts']" :sections="$sections" :drop="['todo', 'what', 'sub', 'turn']" fallback="Предложения" id="offers-tabs"/>
-    </div>
-    <x-ui.toolbar :sort="$sort" name="deals" :facets="$facets" search="Номер, марка, VIN, менеджер">
-        <x-slot:extra><x-ui.view-switch :views="['list', 'table', 'wide']" :current="$view"/></x-slot:extra>
-    </x-ui.toolbar>
+    {{-- Шапка — одна на вкладки колеса (`x-admin.tab-head`, 17.11.2026). --}}
+    <x-admin.tab-head :presets="$presets" :preset="$preset" :counts="$counts" :sections="$sections" :sort="$sort" name="deals" :facets="$facets" search="Номер, марка, VIN, менеджер"
+        :views="['list', 'table', 'wide']" :view="$view"/>
 
     <div id="list">
     @if ($groups !== null)
@@ -23,7 +20,9 @@
                 @if ($debts['overdue'] > 0)<span class="text-danger">просрочено <span class="nums font-semibold">{{ \App\Support\Money::rub($debts['overdue']) }}</span></span>@endif
             </div>
         @endif
-        @if ($groups->isEmpty())
+        @if ($groups->isEmpty() && $facets->activeCount())
+            <x-ui.empty class="mt-6" :href="$facets->resetUrl()" link="Сбросить фильтр">По фильтру ничего</x-ui.empty>
+        @elseif ($groups->isEmpty())
             <x-ui.empty class="mt-6">Сделок на этом этапе нет</x-ui.empty>
         @else
             <x-ui.table :table="$table" id="deals" class="mt-6" view="table">
@@ -34,6 +33,8 @@
                 @endforeach
             </x-ui.table>
         @endif
+    @elseif ($deals->isEmpty() && $facets->activeCount())
+        <x-ui.empty class="mt-6" :href="$facets->resetUrl()" link="Сбросить фильтр">По фильтру ничего</x-ui.empty>
     @elseif ($deals->isEmpty())
         <x-ui.empty class="mt-6">Сделок нет</x-ui.empty>
     @else

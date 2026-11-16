@@ -12,7 +12,10 @@ use Illuminate\Database\Query\Builder as QueryBuilder;
  * - column — у строки одно значение (колонка или скалярный подзапрос): варианты и числа — group by по нему;
  * - custom — своё условие и свой подсчёт (многие ко многим: группы, ТС закупки с ценой менеджера);
  * - toggle — переключатель без шторки («Непрочитанные», «Мои»);
- * - dates — промежуток дат колонки («Заведено»): быстрый вариант словом (`7d`) или свои края (`2026-10-01~2026-10-15`).
+ * - dates — промежуток дат колонки («Заведено»): быстрый вариант словом (`7d`) или свои края (`2026-10-01~2026-10-15`);
+ *   `ahead` — варианты вперёд («Срок обязывающего»: сгорел, сегодня, завтра, до 3 дней, неделя);
+ * - range — числа «от–до» (год, пробег, цены, дни во вкладке): `year=2018~2024`, `price=~1500000` (17.11.2026, «Фильтр»).
+ * quick — быстрый чип шапки вкладки (`x-ui.toolbar rows`); остальные — только в шторке «Фильтр» и чипом, пока выбраны.
  * Значения в адресе — через запятую (`?vendor=3,5`): одно значение выглядит как прежние `?yard=2`, ссылки живут.
  * С `!` впереди — исключение (`?vendor=!22` — все, кроме Каркаде): так фильтр «кроме» одинаков на любой вкладке, а не
  * застывает списком вендоров, которые были на той, где его выбрали.
@@ -68,8 +71,25 @@ final class Facet
     /** Колонка даты чипа-промежутка (`dates`). */
     public ?string $dates = null;
 
+    /** Варианты промежутка — вперёд от сегодня (`AHEAD`): сроки, а не прошедшее. */
+    public bool $ahead = false;
+
+    /** Выражение чисел «от–до» (`range`): год, пробег, цена, дни. */
+    public ?string $range = null;
+
+    /** Единица у чисел диапазона в подписи («км», «д»); деньги — `money`: «до 1,5 млн». */
+    public string $unit = '';
+
+    public bool $money = false;
+
+    /** Быстрый чип шапки вкладки (ряд под кнопками); остальные — в шторке «Фильтр». */
+    public bool $quick = false;
+
     /** Быстрые варианты промежутка дат: словом, а не датами — «7 дней» завтра значит те же семь дней. */
     public const PERIODS = ['today' => 'Сегодня', 'yesterday' => 'Вчера', '7d' => '7 дней', '30d' => '30 дней', 'month' => 'Этот месяц', 'prev-month' => 'Прошлый месяц'];
+
+    /** Варианты вперёд (`ahead`): «сгорел» — срок прошёл, «до 3 дней» и «неделя» — от сейчас. Ключи свои: `today` прошедшего — «с сегодня». */
+    public const AHEAD = ['gone' => 'Прошёл', 'day' => 'Сегодня', 'next' => 'Завтра', 'in3' => 'До 3 дней', 'in7' => 'До недели'];
 
     /** @var array<string, list<string>> подпись группы → ключи (шторка «Какие ТС» закупки) */
     public array $groups = [];
@@ -120,6 +140,61 @@ final class Facet
         return $f;
     }
 
+    /** Числа «от–до» выражения (17.11.2026, «Фильтр»): края включительно, любого может не быть. */
+    public static function range(string $key, string $title, string $expr, string $unit = ''): self
+    {
+        $f = new self($key, $title);
+        $f->range = $expr;
+        $f->unit = $unit;
+
+        return $f;
+    }
+
+    /** Края диапазона из адреса: `2018~2024`, `~1500000`, `3~`; неразборчивое и пустое — null. @return array{0: ?int, 1: ?int}|null */
+    public static function bounds(string $raw): ?array
+    {
+        if (! preg_match('/^(\d{1,12})?~(\d{1,12})?$/', $raw, $m) || ($m[1] ?? '') === '' && ($m[2] ?? '') === '') {
+            return null;
+        }
+        [$from, $to] = [($m[1] ?? '') === '' ? null : (int) $m[1], ($m[2] ?? '') === '' ? null : (int) $m[2]];
+
+        return $from !== null && $to !== null && $from > $to ? [$to, $from] : [$from, $to];
+    }
+
+    /** Подпись диапазона: «2018–2024», «от 3д», «до 1,5 млн». */
+    public function rangeLabel(string $raw): ?string
+    {
+        $b = self::bounds($raw);
+        if (! $b) {
+            return null;
+        }
+        // Год — без разрядов («2018»), пробег — с ними и единицей («100 000 км»), дни — слитно («3д», как «6д 5ч»).
+        $n = fn (int $v) => match (true) {
+            $this->money => self::short($v),
+            $this->unit === '' => (string) $v,
+            $this->unit === 'д' => $v.'д',
+            default => \App\Support\Money::nums($v).' '.$this->unit,
+        };
+        [$from, $to] = $b;
+
+        return match (true) {
+            $from !== null && $to !== null && $from === $to => $n($from),
+            $from !== null && $to !== null => $n($from).'–'.$n($to),
+            $from !== null => 'от '.$n($from),
+            default => 'до '.$n($to),
+        };
+    }
+
+    /** Сумма коротко для чипа: «900 тыс», «1,5 млн». */
+    private static function short(int $v): string
+    {
+        return match (true) {
+            $v >= 1_000_000 => rtrim(rtrim(number_format($v / 1_000_000, 1, ',', ''), '0'), ',').' млн',
+            $v >= 1_000 => intdiv($v, 1_000).' тыс',
+            default => (string) $v,
+        };
+    }
+
     /**
      * Промежуток из значения адреса: [с, до) — `до` уже следующий день; край, которого нет, — null. Неразборчивое — null.
      *
@@ -135,6 +210,11 @@ final class Facet
             '30d' => [$today->subDays(29), null],
             'month' => [$today->startOfMonth(), null],
             'prev-month' => [$today->subMonthNoOverflow()->startOfMonth(), $today->startOfMonth()],
+            'gone' => [null, CarbonImmutable::now()],
+            'day' => [$today, $today->addDay()],
+            'next' => [$today->addDay(), $today->addDays(2)],
+            'in3' => [CarbonImmutable::now(), $today->addDays(4)],
+            'in7' => [CarbonImmutable::now(), $today->addDays(8)],
             default => false,
         };
         if ($quick !== false) {
@@ -163,8 +243,8 @@ final class Facet
         if ($raw === 'month' || $raw === 'prev-month') {
             return $month($raw === 'month' ? $today : $today->subMonthNoOverflow());
         }
-        if (isset(self::PERIODS[$raw])) {
-            return self::PERIODS[$raw];
+        if (isset(self::PERIODS[$raw]) || isset(self::AHEAD[$raw])) {
+            return self::PERIODS[$raw] ?? self::AHEAD[$raw];
         }
         $p = self::period($raw);
         if (! $p) {
@@ -180,6 +260,36 @@ final class Facet
             (bool) $from => 'с '.$day($from),
             default => 'по '.$day($to),
         };
+    }
+
+    /** Быстрый чип шапки вкладки — в ряду под кнопками; без пометки чип живёт в шторке «Фильтр». */
+    public function quick(): self
+    {
+        $this->quick = true;
+
+        return $this;
+    }
+
+    /** Промежуток дат вперёд: варианты `AHEAD` вместо прошедших. */
+    public function ahead(): self
+    {
+        $this->ahead = true;
+
+        return $this;
+    }
+
+    /** Диапазон — деньги: поля с разрядами, подпись «до 1,5 млн». */
+    public function money(): self
+    {
+        $this->money = true;
+
+        return $this;
+    }
+
+    /** @return array<string, string> быстрые варианты промежутка дат */
+    public function periods(): array
+    {
+        return $this->ahead ? self::AHEAD : self::PERIODS;
     }
 
     /** Вариант «пусто» (`none` в адресе): «Без парковки», «Взяли под себя». */
@@ -306,7 +416,15 @@ final class Facet
         }
         if ($this->dates) {
             $p = self::period($values[0]);
-            $p && $q->when($p[0], fn ($w) => $w->where($this->dates, '>=', $p[0]))->when($p[1], fn ($w) => $w->where($this->dates, '<', $p[1]));
+            // Колонка или выражение (срок обязывающего сделки — подзапросом по номеру предложения).
+            $p && $q->when($p[0], fn ($w) => $w->whereRaw("({$this->dates}) >= ?", [$p[0]]))->when($p[1], fn ($w) => $w->whereRaw("({$this->dates}) < ?", [$p[1]]));
+
+            return;
+        }
+        if ($this->range) {
+            $b = self::bounds($values[0]);
+            $b && $q->when($b[0] !== null, fn ($w) => $w->whereRaw("({$this->range}) >= ?", [$b[0]]))
+                ->when($b[1] !== null, fn ($w) => $w->whereRaw("({$this->range}) <= ?", [$b[1]]));
 
             return;
         }

@@ -5,6 +5,7 @@ namespace App\Http\Admin;
 use App\Live\Rows;
 use App\Offers\CarWindow;
 use App\Offers\Offer;
+use App\Offers\OfferFilters;
 use App\Offers\OfferNumber;
 use App\Support\Detail;
 use App\Support\Facets\Facets;
@@ -52,7 +53,13 @@ class GalleryController
         }
         $preset = array_key_exists((string) $request->query('preset'), self::PRESETS) ? (string) $request->query('preset') : 'gallery';
         $searching = filled($request->query('q'));
-        $facets = Facets::for($request, 'crm-gallery', ...OfferController::facets());
+        // Шапка вкладки (17.11.2026): быстрые — вендор, город, тип ТС; «Заведено» и параметры машины, денег и сроков
+        // (`OfferFilters`) — в шторке «Фильтр».
+        $base = OfferController::facets();
+        foreach (array_slice($base, 0, 3) as $f) {
+            $f->quick();
+        }
+        $facets = Facets::for($request, 'crm-gallery', ...$base, ...OfferFilters::for('offers.id', $request->user()->canManageCrm()))->saving('offers');
         ListPrefs::sync($request, 'crm-gallery', keep: array_values(array_diff($facets->keys(), OfferController::ONCE)));
         $sort = Sort::from($request->query('sort'), self::SORTS, $preset === 'interest' ? '-last' : '-fresh');
 

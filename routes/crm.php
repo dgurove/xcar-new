@@ -20,6 +20,7 @@ use App\Http\Admin\MailController;
 use App\Http\Admin\MailTemplateController;
 use App\Http\Admin\MoneyController;
 use App\Http\Admin\OfferController;
+use App\Http\Admin\SavedFilterController;
 use App\Http\Admin\OfferDraftController;
 use App\Http\Admin\OfferEstimateController;
 use App\Http\Admin\OfferPhotoController;
@@ -86,6 +87,10 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
     Route::get('/offers/twins', [OfferController::class, 'twins']);
     // Окно «Выгрузка» над списком: вкладка, чипы и лупа — файлом или данными для буфера (`format=json`).
     Route::get('/offers/export', [OfferController::class, 'export']);
+    // Сохранённые фильтры шторки «Фильтр» (17.11.2026) — свои у каждого, модератору тоже; чужой — 404.
+    Route::post('/offers/filters', [SavedFilterController::class, 'store']);
+    Route::patch('/offers/filters/{filter}', [SavedFilterController::class, 'update'])->whereNumber('filter');
+    Route::delete('/offers/filters/{filter}', [SavedFilterController::class, 'destroy'])->whereNumber('filter');
     // «Оценить → Из текста»: оценочные из сообщения — модератору тоже, он ставит закупочную.
     Route::post('/offers/valuations/file', [OfferValuationController::class, 'file'])->middleware('throttle:10,1');
     Route::post('/offers/valuations/preview', [OfferValuationController::class, 'preview']);

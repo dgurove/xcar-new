@@ -8,6 +8,7 @@ use App\Garage\CarState;
 use App\Garage\GaragePayer;
 use App\Live\Rows;
 use App\Offers\CarWindow;
+use App\Offers\OfferFilters;
 use App\Offers\OfferNumber;
 use App\Offers\OfferTabs;
 use App\Support\Detail;
@@ -50,22 +51,29 @@ class GarageController
         }
         // Фильтры (16.11.2026, владелец: «фильтры хорошие»): этап сделки (группы вкладки), менеджер, этап гаража, кто платит
         // поставщику, вендор.
+        // Шапка вкладки (17.11.2026): быстрые — состояние, менеджер, вендор; этап гаража, кто платит и параметры машины, денег и
+        // сроков (`OfferFilters`) — в шторке «Фильтр»; «Во вкладке» — с входа в этап гаража.
         $facets = Facets::for($request, 'crm-garage',
-            Facet::column('tab', 'Состояние', ['состояние', 'состояния', 'состояний'], OfferTabs::sql('garage_cars.offer_id'))->natural()
+            Facet::column('tab', 'Состояние', ['состояние', 'состояния', 'состояний'], OfferTabs::sql('garage_cars.offer_id'))->natural()->quick()
                 ->labels(fn (array $keys) => collect([...OfferTabs::keys(), OfferTabs::OTHER])->filter(fn ($k) => in_array($k, $keys, true))
                     ->mapWithKeys(fn ($k) => [$k => new Option($k, self::tabLabel($k))])->all()),
-            Common::manager('garage_cars.manager_id')->none('Взяли под себя'),
+            Common::manager('garage_cars.manager_id')->none('Взяли под себя')->quick(),
+            Common::vendor('(select o.vendor_id from offers o where o.id = garage_cars.offer_id)')->quick(),
             Facet::column('stage', 'Этап гаража', ['этап', 'этапа', 'этапов'], 'garage_cars.state')->enum(CarState::class)->natural(),
             Facet::column('payer', 'Кто платит поставщику', ['вариант', 'варианта', 'вариантов'], '(select d.garage_payer from deals d where d.id = garage_cars.deal_id)')
                 ->enum(GaragePayer::class)->natural(),
-            Common::vendor('(select o.vendor_id from offers o where o.id = garage_cars.offer_id)'),
-        );
-        ListPrefs::sync($request, 'crm-garage', keep: $facets->keys());
+            ...OfferFilters::for('garage_cars.offer_id', $request->user()->canManageCrm(), 'coalesce(garage_cars.stage_at, garage_cars.taken_at)'),
+        )->saving('offers');
+        ListPrefs::sync($request, 'crm-garage', keep: array_values(array_diff($facets->keys(), OfferController::ONCE)));
         $sort = Sort::from($request->query('sort'), self::SORTS, 'stage');
 
         // Все гаражные машины до расчёта, в любом этапе сделки (16.11.2026, начальник: «всего 5 машин»).
         $q = Car::with(['offer', 'offer.media', 'offer.vendor', 'offer.deal', 'offer.positions.stage.block', 'offer.positions.stage.exits', 'offer.parkVehicle', 'offer.pickupTask.executor', 'manager', 'manager.media', 'costs', 'invoice', 'payoutInvoice', 'deal.offer'])
             ->where('state', '!=', CarState::Settled)->whereHas('offer');
+        // Поиск лупой (17.11.2026: у остальных вкладок колеса он есть) — по машине, мимо чипов, как у предложений.
+        if ($facets->searching()) {
+            $q->whereHas('offer', fn ($o) => $o->searchCrm(trim((string) $request->query('q'))));
+        }
         $cars = $facets->apply($q)->orderBy('stage_at')->get();
         $total = $cars->count();
         // Живое обновление строкой (`Live\Rows`): машин в гараже десятки — сужаем уже выбранное.
