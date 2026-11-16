@@ -31,7 +31,10 @@
             </label>
             <span class="passport-tile-label">{{ $p['label'] }}</span>
             {{-- Что с файлом — по `data-state`: искра, пока читаем, «не прочитано» — если не вышло. --}}
-            <span class="passport-tile-state"><x-ui.spark class="scan-spark size-4"/><span class="scan-failed">не прочитано</span></span>
+            <span class="passport-tile-state"><x-ui.spark class="scan-spark size-4"/><span class="scan-failed">не прочитано</span>
+                {{-- Повернуть (16.11.2026, владелец: прописка осталась боком): по часовой, страница читается снова. --}}
+                <button type="button" class="passport-tile-rotate" data-action="passport-scan#rotate" aria-label="Повернуть: {{ $p['label'] }}" title="Повернуть"><x-ui.icon name="rotate" class="size-4"/></button>
+            </span>
         </div>
     @endforeach
     {{-- «Распознать заново» (13.11.2026): прочитать оба скана снова, прочитанное — поверх полей; без скачивания и повторной

@@ -7,6 +7,8 @@ use App\Billing\Documents\PassportPdf;
 use App\Billing\Jobs\ReadPassport;
 use App\Billing\Party;
 use App\Live\RefreshDeal;
+use App\Media\Actions\RotatePhoto;
+use App\Media\Thumb;
 use App\Offers\Actions\SettleContract;
 use App\Offers\Actions\SyncDealInvoices;
 use App\Offers\Deal;
@@ -45,9 +47,30 @@ class PassportScanController
         $pages = $party->getMedia('passport');
         abort_if($pages->isEmpty(), 404);
         foreach ($pages as $media) {
-            $media->setCustomProperty('read', 'reading')->setCustomProperty('over', true)->save();
+            $media->setCustomProperty('turned', true)->setCustomProperty('read', 'reading')->setCustomProperty('over', true)->save();
             ReadPassport::dispatch($media->id);
         }
+
+        return response()->json($this->state($party->fresh()));
+    }
+
+    /**
+     * Повернуть страницу (16.11.2026, владелец: прописка осталась боком, «не хватает кнопок поворота»): файл на месте, нажатия
+     * подряд — одним запросом (`turns` по часовой), и страница читается снова, прочитанное — поверх полей.
+     */
+    public function rotate(Request $request, Party $party, string $page, RotatePhoto $rotate)
+    {
+        $me = $request->user();
+        abort_unless(self::staff($me, $party) || $party->managedBy($me), 404);
+        $media = $party->passportScan($page);
+        abort_unless($media && $media->getCustomProperty('read') !== 'reading', 404);
+        $rotate($media, RotatePhoto::turns($request));
+        Thumb::forget("thumb-m{$media->id}");
+        // Новый отпечаток — новый текст: по прежнему кэш отдал бы прочитанное до поворота.
+        $path = $media->refresh()->getPath();
+        is_file($path) && $media->setCustomProperty('sha', hash_file('sha256', $path));
+        $media->setCustomProperty('turned', true)->setCustomProperty('read', 'reading')->setCustomProperty('over', true)->save();
+        ReadPassport::dispatch($media->id);
 
         return response()->json($this->state($party->fresh()));
     }

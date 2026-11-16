@@ -94,9 +94,12 @@ def read(path):
     text = '\n'.join(lines(engine(np.ascontiguousarray(np.rot90(image, turn or 0)))))
     best = turn or 0
     if turn is not None and len(text) < SHORT:
+        # Модель ориентации меняется, только если текста явно больше (16.11.2026, прописка от руки боком: модель сказала
+        # верно, а «прямо» дало на пару знаков больше такого же мусора — и страница осталась боком).
+        mine = len(text)
         for k in (k for k in range(4) if k != turn):
             other = '\n'.join(lines(engine(np.ascontiguousarray(np.rot90(image, k)))))
-            if len(other) > len(text):
+            if len(other) > max(len(text), mine * 1.5, mine + 50):
                 text, best = other, k
     if os.path.basename(path).startswith('pass-'):
         across_text = across(np.rot90(image, best))

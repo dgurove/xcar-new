@@ -30,6 +30,37 @@ export default class extends Controller {
         else window.toast?.('Не получилось, попробуйте ещё раз');
     }
 
+    // Повернуть страницу (16.11.2026): кадр крутится сразу, нажатия подряд копятся и уходят одним запросом через 600 мс;
+    // сервер крутит файл и читает страницу снова, прочитанное — поверх полей.
+    rotate(event) {
+        const tile = event.currentTarget.closest('[data-page]');
+        const img = tile.querySelector('.passport-tile-view img');
+        tile.turns = ((tile.turns || 0) + 1) % 4;
+        if (img) img.style.transform = tile.turns ? `rotate(${tile.turns * 90}deg)${tile.turns % 2 ? ' scale(.75)' : ''}` : '';
+        clearTimeout(tile.turnTimer);
+        tile.turnTimer = setTimeout(async () => {
+            const turns = tile.turns;
+            tile.turns = 0;
+            if (!turns) return;
+            this.over = true;
+            this.filled.delete(tile.dataset.page);
+            tile.dataset.state = 'reading';
+            tile.classList.add('spark-busy');
+            this.toggleReread(true);
+            const body = new FormData();
+            body.append('turns', turns);
+            const data = await getJson(`${this.urlValue}/${tile.dataset.page}/rotate`, { method: 'POST', body, quiet: true });
+            if (data) this.apply(data);
+            else {
+                if (img) img.style.transform = '';
+                tile.dataset.state = 'done';
+                tile.classList.remove('spark-busy');
+                this.toggleReread(false);
+                window.toast?.('Не получилось повернуть');
+            }
+        }, 600);
+    }
+
     toggleReread(busy) {
         if (this.hasRereadTarget) this.rereadTarget.hidden = busy || !this.tileTargets.some((t) => t.classList.contains('passport-tile--on'));
     }

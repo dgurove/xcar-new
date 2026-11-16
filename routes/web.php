@@ -147,6 +147,7 @@ Route::middleware(['auth', 'wall'])->group(function () {
         Route::post('/parties/{party}/passport/{page}', [PassportScanController::class, 'upload'])->whereIn('page', ['main', 'reg'])->middleware('throttle:30,1');
         Route::get('/parties/{party}/passport/live', [PassportScanController::class, 'live']);
         Route::post('/parties/{party}/passport/read', [PassportScanController::class, 'read'])->middleware('throttle:10,1');
+        Route::post('/parties/{party}/passport/{page}/rotate', [PassportScanController::class, 'rotate'])->whereIn('page', ['main', 'reg'])->middleware('throttle:30,1');
         Route::get('/parties/{party}/passport.pdf', [PassportScanController::class, 'pdf']);
     });
 

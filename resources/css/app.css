@@ -970,6 +970,11 @@ html.kb-open { --home-gap: 0px; }
   .passport-tile-state { display: inline-flex; align-items: center; font-size: var(--text-sm); }
   .passport-tile:not([data-state="reading"]) .scan-spark, .passport-tile:not([data-state="failed"]) .scan-failed { display: none; }
   .scan-failed { color: var(--color-urgent); }
+  .passport-tile-rotate { display: flex; align-items: center; justify-content: center; width: 2rem; height: 2rem; margin: -.25rem -.25rem -.25rem .25rem; border-radius: 999px;
+    color: var(--color-ink-muted); cursor: pointer; }
+  @media (hover: hover) { .passport-tile-rotate:hover { background: var(--color-surface-3); color: var(--color-ink); } }
+  .passport-tile:not(.passport-tile--on) .passport-tile-rotate, .passport-tile[data-state="reading"] .passport-tile-rotate { display: none; }
+  .passport-tile-rotate:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
   .passport-tile-img:focus-visible, .passport-tile-pick:focus-within, .passport-tile-swap:focus-within { outline: 2px solid var(--color-accent); outline-offset: 2px; }
   /* Пилюля вкладки, куда уехала строка из карточки (StreamActions.count): коротко лаймом и чуть крупнее. */
   @media (prefers-reduced-motion: no-preference) {

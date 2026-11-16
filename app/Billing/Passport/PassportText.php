@@ -384,9 +384,14 @@ final class PassportText
     {
         $words = [];
         foreach ($lines as $line) {
-            foreach (preg_split('/\s+/u', self::cyr(mb_strtoupper($line), true)) as $w) {
-                $w = trim($w, '.,:;');
-                if (preg_match('/^[А-ЯЁ-]{2,}$/u', $w) && ! preg_match(self::LABELS, $w)) {
+            foreach (preg_split('/\s+/u', $line) as $raw) {
+                // Подпись бланка мелким шрифтом — строчными, значение — заглавными (16.11.2026, Файзулаев: подпись
+                // «Отчество», прочитанная «Отчестае», встала на место имени).
+                if (preg_match('/\p{Ll}.*\p{Ll}/u', $raw)) {
+                    continue;
+                }
+                $w = trim(self::cyr(mb_strtoupper($raw), true), '.,:;');
+                if (preg_match('/^[А-ЯЁ-]{2,}$/u', $w) && ! preg_match(self::LABELS, $w) && ! self::nearLabel($w)) {
                     $words[] = $w;
                 }
             }
@@ -456,6 +461,21 @@ final class PassportText
         }
 
         return null;
+    }
+
+    /** Подпись «Фамилия» / «Отчество», прочитанная заглавными с ошибкой («ОТЧЕСТАЕ»). */
+    private static function nearLabel(string $w): bool
+    {
+        if (mb_strlen($w) < 6) {
+            return false;
+        }
+        foreach (['ФАМИЛИЯ', 'ОТЧЕСТВО', 'РОЖДЕНИЯ'] as $label) {
+            if (levenshtein($w, $label) <= 4) { // байты: кириллическая буква — два
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /** Есть ли имя в словаре частых имён (`resources/data/first-names.txt`). */
@@ -533,8 +553,9 @@ final class PassportText
                 break;
             }
             // Строка с датой рождения и полом — из неё только то, что не дата и не пол (первая строка места бывает рядом).
+            // Регистр не трогаем: подпись «рождения» рядом строчными («МУЖ.раждеви», 16.11.2026) — не значение.
             if ($n === 0) {
-                $line = preg_replace('/\d{2}[.,]\d{2}[.,]\d{4}|\b(МУЖ|ЖЕН)\.?/u', '   ', self::cyr(mb_strtoupper($line)));
+                $line = preg_replace('/\d{2}[.,]\d{2}[.,]\d{4}|\b(МУЖ|ЖЕН)\.?/iu', '   ', self::cyr($line));
             }
             foreach (self::values($line) as $v) {
                 // Обрывок подписи «Пол» в строке даты («ПО.МУЖ» → «ПО.») — не значение.

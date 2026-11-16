@@ -47,8 +47,9 @@ final class ReadPassport implements ShouldQueue
             $read = true;
             $page = $text === null ? $media->getCustomProperty('page') : self::placePage($media, (string) $text);
             $result = $page === 'reg' ? PassportText::registration((string) $text) : PassportText::main((string) $text);
-            // Сначала поворот, потом «прочитано»: шторка по «done» берёт миниатюру уже прямой.
-            $text !== null && $turn && self::upright($media, $turn, $text);
+            // Сначала поворот, потом «прочитано»: шторка по «done» берёт миниатюру уже прямой. Повёрнутую руками
+            // (`turned`, кнопка у плитки) не крутим: человек видит страницу, модель ориентации на рукописи ошибается.
+            $text !== null && $turn && ! $media->getCustomProperty('turned') && self::upright($media, $turn, $text);
             $media->setCustomProperty('read', $text === null ? 'failed' : 'done')
                 ->setCustomProperty('fields', $result['fields'])
                 ->setCustomProperty('checked', $result['checked'])
