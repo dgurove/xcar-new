@@ -3,6 +3,7 @@ import * as Turbo from '@hotwired/turbo';
 import { debounce } from '../lib/debounce';
 import { getJson, request } from '../lib/http';
 import * as overlays from '../overlays';
+import { confirmSheet } from '../confirm';
 
 // Окно «Фильтр» вкладок колеса (`ui/filter-body` во фрейме карточки, `?peek=filter`, 17.11.2026): параметр со списком — строка,
 // варианты грузятся по нажатию (`X-Filter-Pane`) и открываются экраном того же окна (`push`/`pop`); галки — тем же правилом,
@@ -47,12 +48,12 @@ export default class extends Controller {
         this.element.querySelector('.detail-body')?.scrollTo({ top: 0 });
     }
 
-    // «⋯» у сохранённого и «Сохранить фильтр…» — строка правки под строкой.
-    more(event) {
-        const edit = event.currentTarget.closest('.filter-saved')?.querySelector('.filter-edit');
-        if (!edit) return;
-        edit.hidden = !edit.hidden;
-        if (!edit.hidden) edit.querySelector('input[type="text"]')?.focus();
+    // «Сохранить текущий…» и «Переименовать…» на экране «Сохранённые фильтры» — поле названия под списком действий.
+    reveal({ params: { edit } }) {
+        this.element.querySelectorAll('.filter-edit').forEach((el) => { el.hidden = el.dataset.edit !== edit || !el.hidden; });
+        const input = this.element.querySelector(`.filter-edit[data-edit="${edit}"]:not([hidden]) input[name="name"]`);
+        input?.focus();
+        input?.select();
     }
 
     change(event) {
@@ -255,6 +256,8 @@ export default class extends Controller {
         event.preventDefault();
         const form = event.target;
         this.stamp(event);
+        // «Удалить» — сначала вопрос (`data-confirm`, свой: у Turbo он шёл бы после снятой записи окна): не согласились — всё как было.
+        if (form.dataset.confirm && !(await confirmSheet(form.dataset.confirm, { label: form.dataset.confirmLabel || 'Да', danger: true }))) return;
         const frame = this.element.closest('turbo-frame');
         if (frame) frame.dataset.fresh = '1';
         await overlays.shut('detail');

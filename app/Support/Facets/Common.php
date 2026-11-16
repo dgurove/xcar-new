@@ -15,7 +15,7 @@ final class Common
     public static function vendor(string $expr, string $key = 'vendor'): Facet
     {
         return Facet::column($key, 'Вендор', ['вендор', 'вендора', 'вендоров'], $expr)
-            ->numeric()
+            ->numeric()->icon('building')
             ->labels(fn (array $ids) => Vendor::whereIn('id', self::ints($ids))->get(['id', 'name'])
                 ->mapWithKeys(fn (Vendor $v) => [(string) $v->id => new Option((string) $v->id, $v->name, vendor: $v)])->all());
     }
@@ -23,7 +23,7 @@ final class Common
     public static function manager(string $expr, string $key = 'manager', string $title = 'Менеджер'): Facet
     {
         return Facet::column($key, $title, ['менеджер', 'менеджера', 'менеджеров'], $expr)
-            ->numeric()
+            ->numeric()->icon('user')
             ->labels(fn (array $ids) => User::whereIn('id', self::ints($ids))->with(User::withAvatar())->get()
                 ->mapWithKeys(fn (User $u) => [(string) $u->id => new Option((string) $u->id, $u->name ?: ($u->login ?? '№ '.$u->id), user: $u)])->all());
     }
@@ -31,14 +31,14 @@ final class Common
     public static function city(string $expr): Facet
     {
         return Facet::column('city', 'Город', ['город', 'города', 'городов'], $expr)
-            ->numeric()
+            ->numeric()->icon('map-pin')
             ->labels(fn (array $ids) => Settlement::whereIn('id', self::ints($ids))->get()
                 ->mapWithKeys(fn (Settlement $s) => [(string) $s->id => new Option((string) $s->id, $s->title())])->all());
     }
 
     public static function category(string $expr, ?string $none = null): Facet
     {
-        $f = Facet::column('category', 'Тип ТС', ['тип', 'типа', 'типов'], $expr)
+        $f = Facet::column('category', 'Тип ТС', ['тип', 'типа', 'типов'], $expr)->icon('truck')
             ->labels(fn (array $keys) => collect(Category::cases())->filter(fn (Category $c) => in_array($c->value, $keys, true))
                 ->mapWithKeys(fn (Category $c) => [$c->value => new Option($c->value, $c->label(), category: $c)])->all());
 

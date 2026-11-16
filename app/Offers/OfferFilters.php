@@ -20,25 +20,25 @@ final class OfferFilters
     public static function for(string $id, bool $admin, ?string $since = null): array
     {
         return [
-            Facet::column('brand', 'Марка', ['марка', 'марки', 'марок'], self::car($id, 'brand_id'))->numeric()
+            Facet::column('brand', 'Марка', ['марка', 'марки', 'марок'], self::car($id, 'brand_id'))->numeric()->icon('award')
                 ->labels(fn (array $ids) => Brand::whereIn('id', array_map('intval', $ids))->get(['id', 'name'])
                     ->mapWithKeys(fn (Brand $b) => [(string) $b->id => new Option((string) $b->id, $b->name)])->sortBy('label')->all()),
             // Модель — из марок, что остались при прочих чипах: выбрали марку — в шторке только её модели.
-            Facet::column('model', 'Модель', ['модель', 'модели', 'моделей'], self::car($id, 'model_id'))->numeric()
+            Facet::column('model', 'Модель', ['модель', 'модели', 'моделей'], self::car($id, 'model_id'))->numeric()->icon('car-front')
                 ->labels(fn (array $ids) => CarModel::whereIn('id', array_map('intval', $ids))->with('brand:id,name')->get(['id', 'brand_id', 'name'])
                     ->mapWithKeys(fn (CarModel $m) => [(string) $m->id => new Option((string) $m->id, $m->name, hint: $m->brand?->name)])->all()),
-            Facet::range('year', 'Год', self::car($id, 'year')),
-            Facet::range('mileage', 'Пробег', self::car($id, 'mileage'), 'км'),
+            Facet::range('year', 'Год', self::car($id, 'year'))->icon('calendar'),
+            Facet::range('mileage', 'Пробег', self::car($id, 'mileage'), 'км')->icon('gauge'),
             ...($admin ? [
-                Facet::range('floor', 'Закупочная', self::offer($id, 'floor_price'))->money(),
-                Facet::range('asking', 'Цена продажи', self::offer($id, 'asking_price'))->money(),
+                Facet::range('floor', 'Закупочная', self::offer($id, 'floor_price'))->money()->icon('cart'),
+                Facet::range('asking', 'Цена продажи', self::offer($id, 'asking_price'))->money()->icon('tag'),
             ] : []),
-            Facet::dates('until', 'Срок обязывающего', self::offer($id, 'binding_until'))->ahead(),
-            Facet::range('days', 'Во вкладке', 'floor(extract(epoch from now() - ('.($since ?? 'coalesce('.self::offer($id, 'tab_at').', '.self::offer($id, 'created_at').')').')) / 86400)', 'д'),
+            Facet::dates('until', 'Срок обязывающего', self::offer($id, 'binding_until'))->ahead()->icon('timer'),
+            Facet::range('days', 'Во вкладке', 'floor(extract(epoch from now() - ('.($since ?? 'coalesce('.self::offer($id, 'tab_at').', '.self::offer($id, 'created_at').')').')) / 86400)', 'д')->icon('hourglass'),
             // На парковке — ТС той же машины ждёт приёма или стоит (`Offer::onPark`).
             Facet::toggle('park', 'На парковке', fn ($q) => $q->whereRaw('exists (select 1 from park_vehicles pv where pv.car_id = '.self::offer($id, 'car_id')
-                ." and pv.state in ('".VehicleState::Expected->value."', '".VehicleState::Stored->value."'))")),
-            Facet::toggle('novin', 'Без VIN', fn ($q) => $q->whereRaw('coalesce('.self::car($id, 'vin').", '') = ''")),
+                ." and pv.state in ('".VehicleState::Expected->value."', '".VehicleState::Stored->value."'))"))->icon('parking'),
+            Facet::toggle('novin', 'Без VIN', fn ($q) => $q->whereRaw('coalesce('.self::car($id, 'vin').", '') = ''"))->icon('barcode'),
         ];
     }
 

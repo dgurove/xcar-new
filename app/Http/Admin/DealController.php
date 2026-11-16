@@ -115,7 +115,7 @@ class DealController
             Common::manager('deals.buyer_id')->quick(),
             Common::vendor('(select vendor_id from offers where offers.id = deals.offer_id)')->quick(),
             // Этап — блок маршрута по имени (как в строке): у разных вендоров одноимённые блоки — один вариант.
-            Facet::column('stage', 'Этап', ['этап', 'этапа', 'этапов'], $stage)->quick()->labels(fn (array $keys) => DB::table('workflow_stages as s')
+            Facet::column('stage', 'Этап', ['этап', 'этапа', 'этапов'], $stage)->quick()->icon('route')->labels(fn (array $keys) => DB::table('workflow_stages as s')
                 ->leftJoin('workflow_blocks as b', 'b.id', '=', 's.block_id')
                 ->selectRaw('distinct left(md5(coalesce(b.name, s.name)), 8) as k, coalesce(b.name, s.name) as name')
                 ->whereRaw('left(md5(coalesce(b.name, s.name)), 8) in ('.implode(',', array_fill(0, max(count($keys), 1), '?')).')', $keys ?: [''])
@@ -123,10 +123,10 @@ class DealController
             // Срок — шаг сделки просрочен или нет; у закрытых сделок срока нет — «в срок».
             Facet::column('due', 'Срок', ['срок', 'срока', 'сроков'], '(case when '.Deal::ACTIVE_SQL." and exists (select 1 from offer_positions p
                 where p.offer_id = deals.offer_id and p.track = 'sale' and p.deadline_at < now()) then 'late' else 'ok' end)")
-                ->labels(fn (array $keys) => array_intersect_key(['late' => new Option('late', 'Просрочено'), 'ok' => new Option('ok', 'В срок')], array_flip($keys))),
+                ->labels(fn (array $keys) => array_intersect_key(['late' => new Option('late', 'Просрочено'), 'ok' => new Option('ok', 'В срок')], array_flip($keys)))->icon('clock'),
             // Срок обязывающего горит, а поставщику не заплачено (19.10.2026, `Offers\Binding`).
-            Facet::toggle('binding', 'Горит срок обязывающего', fn ($q) => $q->whereHas('offer', fn ($o) => Binding::scope($o, 'deal')))->dot('danger')->quick(),
-            Facet::column('garage', 'Гараж', ['вид', 'вида', 'видов'], "(case when deals.garage_payer is null then 'deal' else 'garage' end)")
+            Facet::toggle('binding', 'Горит срок обязывающего', fn ($q) => $q->whereHas('offer', fn ($o) => Binding::scope($o, 'deal')))->dot('danger')->quick()->icon('fire'),
+            Facet::column('garage', 'Гараж', ['вид', 'вида', 'видов'], "(case when deals.garage_payer is null then 'deal' else 'garage' end)")->icon('warehouse')
                 ->labels(fn (array $keys) => array_intersect_key(['deal' => new Option('deal', 'Без гаража'), 'garage' => new Option('garage', 'Гаражные')], array_flip($keys))),
             ...OfferFilters::for('deals.offer_id', $request->user()->canManageCrm(), $since),
         ])->saving('offers');

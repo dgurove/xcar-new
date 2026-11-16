@@ -82,8 +82,11 @@ final class Facet
 
     public bool $money = false;
 
-    /** Быстрый чип шапки вкладки (ряд под кнопками); остальные — в шторке «Фильтр». */
+    /** Быстрый чип шапки вкладки (ряд под кнопками); остальные — в окне «Фильтр». */
     public bool $quick = false;
+
+    /** Значок строки в окне «Фильтр» (`App\Support\Icons`, 17.11.2026, владелец: «очень не хватает иконок у строк фильтров»). */
+    public ?string $icon = null;
 
     /** Быстрые варианты промежутка дат: словом, а не датами — «7 дней» завтра значит те же семь дней. */
     public const PERIODS = ['today' => 'Сегодня', 'yesterday' => 'Вчера', '7d' => '7 дней', '30d' => '30 дней', 'month' => 'Этот месяц', 'prev-month' => 'Прошлый месяц'];
@@ -266,6 +269,13 @@ final class Facet
     public function quick(): self
     {
         $this->quick = true;
+
+        return $this;
+    }
+
+    public function icon(string $name): self
+    {
+        $this->icon = $name;
 
         return $this;
     }

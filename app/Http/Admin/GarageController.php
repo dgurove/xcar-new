@@ -54,14 +54,14 @@ class GarageController
         // Шапка вкладки (17.11.2026): быстрые — состояние, менеджер, вендор; этап гаража, кто платит и параметры машины, денег и
         // сроков (`OfferFilters`) — в шторке «Фильтр»; «Во вкладке» — с входа в этап гаража.
         $facets = Facets::for($request, 'crm-garage',
-            Facet::column('tab', 'Состояние', ['состояние', 'состояния', 'состояний'], OfferTabs::sql('garage_cars.offer_id'))->natural()->quick()
+            Facet::column('tab', 'Состояние', ['состояние', 'состояния', 'состояний'], OfferTabs::sql('garage_cars.offer_id'))->natural()->quick()->icon('layers')
                 ->labels(fn (array $keys) => collect([...OfferTabs::keys(), OfferTabs::OTHER])->filter(fn ($k) => in_array($k, $keys, true))
                     ->mapWithKeys(fn ($k) => [$k => new Option($k, self::tabLabel($k))])->all()),
             Common::manager('garage_cars.manager_id')->none('Взяли под себя')->quick(),
             Common::vendor('(select o.vendor_id from offers o where o.id = garage_cars.offer_id)')->quick(),
-            Facet::column('stage', 'Этап гаража', ['этап', 'этапа', 'этапов'], 'garage_cars.state')->enum(CarState::class)->natural(),
+            Facet::column('stage', 'Этап гаража', ['этап', 'этапа', 'этапов'], 'garage_cars.state')->enum(CarState::class)->natural()->icon('warehouse'),
             Facet::column('payer', 'Кто платит поставщику', ['вариант', 'варианта', 'вариантов'], '(select d.garage_payer from deals d where d.id = garage_cars.deal_id)')
-                ->enum(GaragePayer::class)->natural(),
+                ->enum(GaragePayer::class)->natural()->icon('hand-coins'),
             ...OfferFilters::for('garage_cars.offer_id', $request->user()->canManageCrm(), 'coalesce(garage_cars.stage_at, garage_cars.taken_at)'),
         )->saving('offers');
         ListPrefs::sync($request, 'crm-garage', keep: array_values(array_diff($facets->keys(), OfferController::ONCE)));

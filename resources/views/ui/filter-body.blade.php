@@ -2,8 +2,7 @@
      предложение: на компе всё сдвигается, на телефоне снизу») — тот же фрейм `x-ui.detail`, что карточка строки: полоса с ручкой
      и «Закрыть», тело листается, подвал «Сбросить» / «Показать N» всегда на экране. Рисует `Facets::panel` (фрейм — сразу из
      `Facets::apply`, страница — шелл через `Detail::html`); `pane` — варианты одного параметра, грузятся по нажатию строки
-     (`X-Filter-Pane`). Сверху «Мои фильтры» — сохранённые строками (нажатие — открыть: вкладка и все параметры разом; «⋯» —
-     переименовать, сохранить выбранное сюда, удалить) и «Сохранить фильтр…». Ниже параметры строками, как «Настройки» iOS:
+     (`X-Filter-Pane`). Сверху «Сохранённые фильтры» — строка со «›», экран с названиями и что с ними сделать. Ниже параметры строками, как «Настройки» iOS:
      чип со списком — «Менеджер — Иван Петров ›», варианты — экраном того же окна («‹ Менеджер» — назад); числа «от–до» —
      полями в строке; переключатели — свитчами. Логику держит `filter_controller` тем же правилом, что шторка чипа: отмечено
      всё — без фильтра, снятых меньше — «кроме»; в адрес — только тронутое и стоявшее в адресе. --}}
@@ -18,7 +17,9 @@
     $current = [...$carry, ...$state];
     $tabs = \App\Http\Admin\OfferController::PRESETS;
     // Подсказка названия — что выбрано сейчас: «Иван Петров, горит срок».
-    $hint = $chips->filter(fn ($c) => ($c->on ?? $c->selected !== []) && ! $c->facet->byDefault)
+    // Умолчание экрана «Кроме Каркаде» — не выбор: в подсказку не идёт.
+    $carcade = '!'.\App\Http\Admin\OfferController::carcadeId();
+    $hint = $chips->filter(fn ($c) => ($c->on ?? $c->selected !== []) && ! $c->facet->byDefault && ! ($c->facet->key === 'vendor' && ($c->value ?? '') === $carcade))
         ->map(fn ($c) => $c->facet->toggle ? mb_strtolower($c->facet->title) : ($c->facet->range || $c->facet->dates ? $c->facet->title.' '.mb_strtolower($c->label) : $c->label))
         ->take(3)->implode(', ');
     $hint = $hint !== '' ? mb_strtoupper(mb_substr($hint, 0, 1)).mb_substr($hint, 1) : ($tabs[request()->query('preset')] ?? 'Мой фильтр');
@@ -32,63 +33,73 @@
     <a class="bar-btn" href="{{ \App\Support\Detail::close() }}" data-turbo-frame="detail" data-turbo-prefetch="false" data-detail-target="close" data-action="detail#close:prevent" aria-label="Закрыть"><x-ui.icon name="x" class="size-[18px]"/></a>
 </div>
 <div class="detail-body">
-{{-- Формы «Мои фильтры» — всей страницей (`_top`): формы окна иначе отвечают в само окно (`DetailBack`), и сохранённый не
-     открывался. --}}
-<div class="filter-main" data-filter-target="main">
-    @if ($facets->saved)
-        <div class="list-cap">Мои фильтры</div>
-        <div class="list mb-4">
-            @foreach ($saved as $sf)
-                @php $here = $sf->matches($current); @endphp
-                <div class="filter-saved">
-                    <div class="row">
-                        <a href="{{ $sf->url() }}" class="min-w-0 flex-1" data-turbo-prefetch="false" data-action="filter#go">
-                            <span class="block truncate">{{ $sf->name }}</span>
-                            <span class="row-sub">{{ $tabs[$sf->query['preset'] ?? ''] ?? 'Предложения' }}</span>
-                        </a>
-                        @if ($here)<x-ui.icon name="check" class="size-5 shrink-0 text-accent"/>@endif
-                        <button type="button" class="filter-more" data-action="filter#more" aria-label="Изменить «{{ $sf->name }}»"><x-ui.icon name="more" class="size-5"/></button>
-                    </div>
-                    <div class="filter-edit" hidden>
-                        <form method="post" action="/offers/filters/{{ $sf->id }}" class="flex items-center gap-2" data-turbo-frame="_top" data-action="submit->filter#send">
-                            @csrf
-                            @method('patch')
-                            <input type="text" name="name" value="{{ $sf->name }}" maxlength="60" class="field-input field-s min-w-0 flex-1" aria-label="Название" required>
-                            <button type="submit" class="btn btn-s btn-quiet shrink-0">Переименовать</button>
-                        </form>
-                        <div class="flex flex-wrap gap-2">
-                            <form method="post" action="/offers/filters/{{ $sf->id }}" data-turbo-frame="_top" data-action="submit->filter#send">
-                                @csrf
-                                @method('patch')
-                                <input type="hidden" name="query" value="">
-                                <button type="submit" class="btn btn-s btn-quiet">Сохранить выбранное сюда</button>
-                            </form>
-                            <form method="post" action="/offers/filters/{{ $sf->id }}" data-turbo-frame="_top" data-action="submit->filter#send" data-turbo-confirm="Удалить фильтр «{{ $sf->name }}»?" data-turbo-confirm-label="Удалить">
-                                @csrf
-                                @method('delete')
-                                <button type="submit" class="btn btn-s btn-quiet text-danger">Удалить</button>
-                            </form>
-                        </div>
-                    </div>
-                </div>
-            @endforeach
-            <div class="filter-saved">
-                <button type="button" class="row w-full text-left text-accent-text" data-action="filter#more">
-                    <x-ui.icon name="plus" class="size-5 shrink-0"/><span class="min-w-0 flex-1">Сохранить фильтр…</span>
-                </button>
-                <div class="filter-edit" hidden>
-                    <form method="post" action="/offers/filters" class="flex items-center gap-2" data-turbo-frame="_top" data-action="submit->filter#send">
-                        @csrf
-                        <input type="hidden" name="list" value="{{ $facets->saved }}">
-                        <input type="hidden" name="query" value="">
-                        <input type="text" name="name" value="{{ $hint }}" maxlength="60" class="field-input field-s min-w-0 flex-1" aria-label="Название фильтра" required>
-                        <button type="submit" class="btn btn-s btn-accent shrink-0">Сохранить</button>
-                    </form>
-                </div>
+{{-- «Сохранённые фильтры» — строкой со «›», как параметры (17.11.2026, владелец: «только названия — слишком много места»;
+     выпадающее меню — «категорически не подходит»): нажатие — экран того же окна (`filter#push`, панель `saved`): названия
+     одной строкой, у открытого галка; ниже «Сохранить текущий…» и для открытого — «Переименовать…», «Обновить выбранным»,
+     «Удалить». Панель — вне GET-формы фильтра (в ней свои формы). Формы — всей страницей (`_top`): формы окна иначе отвечают
+     в само окно (`DetailBack`); `filter#send` снимает запись окна «Назад» и помечает окно на перерисовку. --}}
+@php $here = $saved->first(fn ($sf) => $sf->matches($current)); @endphp
+@if ($facets->saved)
+    <div class="filter-main list mb-4" data-filter-target="main">
+        <button type="button" class="row w-full text-left" data-action="filter#push" data-filter-pane-param="saved">
+            <x-ui.icon name="bookmark" class="filter-ico size-[18px]"/>
+            <span class="shrink-0">Сохранённые фильтры</span>
+            <span class="filter-value min-w-0 flex-1 truncate text-right">{{ $here?->name }}</span>
+            <x-ui.icon name="chevron-right" class="size-4 shrink-0 text-ink-dim"/>
+        </button>
+    </div>
+    <div class="filter-pane" data-filter-target="pane" data-pane="saved" hidden>
+        <button type="button" class="filter-back" data-action="filter#pop"><x-ui.icon name="chevron-left" class="size-5"/>Сохранённые фильтры</button>
+        @if ($saved->isNotEmpty())
+            <div class="list mb-4">
+                @foreach ($saved as $sf)
+                    <a href="{{ $sf->url() }}" class="row" data-turbo-prefetch="false" data-action="filter#go">
+                        <span class="min-w-0 flex-1 truncate">{{ $sf->name }}</span>
+                        @if ($here?->is($sf))<x-ui.icon name="check" class="size-5 shrink-0 text-accent"/>@endif
+                    </a>
+                @endforeach
             </div>
+        @else
+            <p class="mb-4 px-1 text-sm text-ink-muted">Сохранённых пока нет</p>
+        @endif
+        <div class="list mb-4">
+            <button type="button" class="row w-full text-left text-accent-text" data-action="filter#reveal" data-filter-edit-param="new"><x-ui.icon name="plus" class="filter-ico size-[18px] !text-current"/><span class="min-w-0 flex-1">Сохранить текущий…</span></button>
+            @if ($here)
+                <button type="button" class="row w-full text-left" data-action="filter#reveal" data-filter-edit-param="rename"><x-ui.icon name="edit" class="filter-ico size-[18px]"/><span class="min-w-0 flex-1">Переименовать «{{ $here->name }}»…</span></button>
+                <button type="submit" form="filter-update" class="row w-full text-left"><x-ui.icon name="refresh" class="filter-ico size-[18px]"/><span class="min-w-0 flex-1">Обновить выбранным</span></button>
+                <button type="submit" form="filter-delete" class="row w-full text-left text-danger"><x-ui.icon name="trash" class="filter-ico size-[18px] !text-current"/><span class="min-w-0 flex-1">Удалить</span></button>
+            @endif
         </div>
-    @endif
-</div>
+        <div class="filter-edit" data-edit="new" hidden>
+            <form method="post" action="/offers/filters" class="flex items-center gap-2" data-turbo-frame="_top" data-action="submit->filter#send">
+                @csrf
+                <input type="hidden" name="list" value="{{ $facets->saved }}">
+                <input type="hidden" name="query" value="">
+                <input type="text" name="name" value="{{ $hint }}" maxlength="60" class="field-input field-s min-w-0 flex-1" aria-label="Название фильтра" required>
+                <button type="submit" class="btn btn-s btn-accent shrink-0">Сохранить</button>
+            </form>
+        </div>
+        @if ($here)
+            <div class="filter-edit" data-edit="rename" hidden>
+                <form method="post" action="/offers/filters/{{ $here->id }}" class="flex items-center gap-2" data-turbo-frame="_top" data-action="submit->filter#send">
+                    @csrf
+                    @method('patch')
+                    <input type="text" name="name" value="{{ $here->name }}" maxlength="60" class="field-input field-s min-w-0 flex-1" aria-label="Название" required>
+                    <button type="submit" class="btn btn-s btn-accent shrink-0">Переименовать</button>
+                </form>
+            </div>
+            <form id="filter-update" method="post" action="/offers/filters/{{ $here->id }}" hidden data-turbo-frame="_top" data-action="submit->filter#send">
+                @csrf
+                @method('patch')
+                <input type="hidden" name="query" value="">
+            </form>
+            <form id="filter-delete" method="post" action="/offers/filters/{{ $here->id }}" hidden data-turbo-frame="_top" data-action="submit->filter#send" data-confirm="Удалить фильтр «{{ $here->name }}»?" data-confirm-label="Удалить">
+                @csrf
+                @method('delete')
+            </form>
+        @endif
+    </div>
+@endif
 <form method="get" action="{{ $facets->action() }}" id="filter-form" class="filter-form" data-filter-target="form" data-action="change->filter#change input->filter#input submit->filter#submit">
     @foreach ($carry as $k => $v)<input type="hidden" name="{{ $k }}" value="{{ $v }}">@endforeach
     {{-- Значения чипов со списком — вне `.list`: между строками они рвали волосяные линии. --}}
@@ -100,12 +111,14 @@
                 @if ($f->toggle)
                     <label class="row row-switch">
                         <input type="hidden" name="{{ $key }}" value="" data-orig="{{ $orig }}">
+                        @if ($f->icon)<x-ui.icon :name="$f->icon" class="filter-ico size-[18px]"/>@endif
                         <span class="min-w-0 flex-1">{{ $f->title }}</span>
                         @if ($chip->count)<span class="nums text-sm text-ink-dim">{{ $chip->count }}</span>@endif
                         <input type="checkbox" class="switch shrink-0" name="{{ $key }}" value="1" @checked($chip->selected) data-orig="{{ $orig }}">
                     </label>
                 @elseif ($f->range)
                     <div class="row filter-range">
+                        @if ($f->icon)<x-ui.icon :name="$f->icon" class="filter-ico size-[18px]"/>@endif
                         <span class="mr-auto">{{ $f->title }}</span>
                         <input type="hidden" name="{{ $key }}" value="{{ $chip->value }}" data-orig="{{ $orig }}" data-filter-range="{{ $key }}">
                         <input type="text" inputmode="numeric" class="field-input field-s filter-num" placeholder="от" value="{{ $chip->from !== null ? ($f->money ? \App\Support\Money::nums($chip->from) : $chip->from) : '' }}" form="filter-none" data-filter-edge="{{ $key }}" @if ($f->money) data-money @endif aria-label="{{ $f->title }} от" autocomplete="off">
@@ -114,6 +127,7 @@
                     </div>
                 @else
                     <button type="button" class="row w-full text-left" data-action="filter#push" data-filter-pane-param="{{ $key }}">
+                        @if ($f->icon)<x-ui.icon :name="$f->icon" class="filter-ico size-[18px]"/>@endif
                         <span class="shrink-0">{{ $f->title }}</span>
                         <span class="filter-value min-w-0 flex-1 truncate text-right" data-filter-label="{{ $key }}">{{ $chip->on ? $chip->label : 'Все' }}</span>
                         <x-ui.icon name="chevron-right" class="size-4 shrink-0 text-ink-dim"/>

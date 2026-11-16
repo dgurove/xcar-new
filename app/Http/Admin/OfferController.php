@@ -393,28 +393,28 @@ class OfferController
             'published', 'bids' => [
                 ...self::facets(),
                 ...($admin ? [
-                    Facet::toggle('urgent', 'Срочные', fn ($o) => $o->urgent())->dot('urgent'),
-                    Facet::toggle('fresh', 'Новые', fn ($o) => $o->where('offers.state', OfferState::Open)->where('offers.published_at', '>=', now()->subHours(Offer::NEW_HOURS)))->dot('fresh'),
-                    Facet::toggle('ending', 'Горящие', fn ($o) => CatalogQuery::ending($o))->dot('hot'),
+                    Facet::toggle('urgent', 'Срочные', fn ($o) => $o->urgent())->dot('urgent')->icon('zap'),
+                    Facet::toggle('fresh', 'Новые', fn ($o) => $o->where('offers.state', OfferState::Open)->where('offers.published_at', '>=', now()->subHours(Offer::NEW_HOURS)))->dot('fresh')->icon('sparkles'),
+                    Facet::toggle('ending', 'Горящие', fn ($o) => CatalogQuery::ending($o))->dot('hot')->icon('clock'),
                     // Ни одного подтверждения, приём кончается за 3 часа (22.10.2026, владелец: «ни одно предложение не должно
                     // остаться без подтверждений»).
                     Facet::toggle('nobids', 'Без подтверждений', fn ($o) => $o->where('offers.state', OfferState::Open)->where('offers.bids_close_at', '>', now())
                         ->where('offers.bids_close_at', '<=', now()->addHours(NoBidsAlarm::HOURS))
-                        ->whereDoesntHave('bids', fn ($b) => $b->whereIn('state', [BidState::Active, BidState::Accepted])))->dot('hot'),
-                    Facet::toggle('loss', 'В минус', fn ($o) => Margin::scope($o))->dot('loss'),
+                        ->whereDoesntHave('bids', fn ($b) => $b->whereIn('state', [BidState::Active, BidState::Accepted])))->dot('hot')->icon('ban'),
+                    Facet::toggle('loss', 'В минус', fn ($o) => Margin::scope($o))->dot('loss')->icon('trending-down'),
                 ] : []),
-                Facet::toggle('recommended', 'Рекомендуем', fn ($o) => $o->where('recommended', true)),
+                Facet::toggle('recommended', 'Рекомендуем', fn ($o) => $o->where('recommended', true))->icon('thumbs-up'),
             ],
             // Продажная у самой закупочной или ниже (`Offers\Margin`, 14.10.2026) — чип, пока такие есть.
             'priced', 'slots' => [
                 ...self::facets(),
-                ...($admin ? [Facet::toggle('loss', 'В минус', fn ($o) => Margin::scope($o))->dot('loss')] : []),
+                ...($admin ? [Facet::toggle('loss', 'В минус', fn ($o) => Margin::scope($o))->dot('loss')->icon('trending-down')] : []),
             ],
             // «Все» (16.11.2026, владелец: «фильтр по этому состоянию, по менеджеру очень не хватает», «фильтры неудобные»): первыми —
             // вкладка (та же раскладка, что группы, `OfferTabs`) и менеджер, кто держит машину (сделка по текущим условиям, иначе
             // гараж); дальше вендор, город, тип. «Заведено» здесь нет — даты заведения во «Все» нет и столбцом.
             'all' => [
-                Facet::column('tab', 'Состояние', ['состояние', 'состояния', 'состояний'], OfferTabs::sql())->natural()
+                Facet::column('tab', 'Состояние', ['состояние', 'состояния', 'состояний'], OfferTabs::sql())->natural()->icon('layers')
                     ->labels(fn (array $keys) => collect([...OfferTabs::keys(), OfferTabs::OTHER])->filter(fn ($k) => in_array($k, $keys, true))
                         ->mapWithKeys(fn ($k) => [$k => new Option($k, OfferTabs::label($k))])->all()),
                 Common::manager(self::HOLDER_SQL)->none('Без менеджера'),
@@ -424,9 +424,9 @@ class OfferController
         }, ...($admin ? [
             // Срок обязывающего горит, покупателя нет (19.10.2026, владелец: «прям ПАНИКА!!!») — красной точкой с числом; на
             // «Есть подтверждения» — подтверждение есть, а принять не успели (`undecided`).
-            Facet::toggle('binding', 'Горит срок', fn ($o) => Binding::scope($o, $preset === 'bids' ? 'undecided' : 'panic'))->dot('danger'),
+            Facet::toggle('binding', 'Горит срок', fn ($o) => Binding::scope($o, $preset === 'bids' ? 'undecided' : 'panic'))->dot('danger')->icon('fire'),
             // Переоценка ждёт решения (28.10.2026) — оранжевой точкой, пока такие есть.
-            Facet::toggle('reprice', 'Переоценка', fn ($o) => $o->whereHas('reprices', fn ($r) => $r->where('state', Reprice::PENDING)))->dot('hot'),
+            Facet::toggle('reprice', 'Переоценка', fn ($o) => $o->whereHas('reprices', fn ($r) => $r->where('state', Reprice::PENDING)))->dot('hot')->icon('refresh'),
         ] : [])];
         // Шапка вкладки (17.11.2026, владелец: «в третьей строке несколько быстрых дропдаун-фильтров (состояние, менеджер, вендор),
         // в четвёртой — горит срок, переоценка», остальное — кнопкой «Фильтр»): быстрые — три чипа и переключатели вкладки;
@@ -910,7 +910,7 @@ class OfferController
     public static function facets(): array
     {
         return [Common::vendor('offers.vendor_id')->none('Без вендора'), Common::city('coalesce(offers.sale_settlement_id, offers.settlement_id)'), Common::category(Car::sql('offers', 'category')),
-            Facet::dates('created', 'Заведено', 'offers.created_at')];
+            Facet::dates('created', 'Заведено', 'offers.created_at')->icon('calendar-plus')];
     }
 
     /** Кто держит машину — менеджер текущих условий сделки (`offers.deal_id`), иначе гаража: чип «Менеджер» во «Все». */
