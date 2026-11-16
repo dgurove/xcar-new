@@ -3,7 +3,7 @@
      отправителя 24 px (у «ч.2» и у письма того же отправителя подряд — точка, repeat).
      Свёрнуто — строка: кто, этап или первые слова (непрочитанное полужирным), скрепка, дата.
      Раскрыто — вид, выбранный владельцем по макетам:
-     - имя и серым адрес рядом; тема — только если не совпадает с общей темой переписки (common, она в заголовке окна);
+     - имя и серым адрес рядом; темы у письма нет — общая тема в заголовке окна (17.11.2026, владелец);
      - «кому: …» и дата «14.11 12:58» одним серым текстом, переносится; у пересылки сотрудника — кому и когда писал поставщик;
      - машина ссылкой (логотип, марка, модель, год); у незаведённой цепочки «Из писем» — «Завести», у ветки без машины —
        «Привязать»;
@@ -61,7 +61,6 @@
         <summary class="letter-head">
             <span class="letter-who" title="{{ $from }}">{{ $who }}@unless ($continuation)<span class="letter-from"> {{ $from }}</span>@endunless</span>
             <span class="letter-title{{ $titled ? '' : ' letter-title--words' }}">{{ $title }}</span>
-            @if (! $continuation && ($topic = \App\Mail\Topic::clean($m->subject)) !== '' && mb_strtolower($topic) !== 'без темы' && ! \App\Mail\Topic::same($m->subject, $common))<span class="letter-topic" title="{{ $topic }}">{{ $topic }}</span>@endif
             @if ($files->isNotEmpty())<span class="letter-clip nums"><x-ui.icon name="clip" class="size-3.5"/>{{ $files->count() }}</span>@endif
             <span class="letter-when nums">{{ \App\Support\Ago::stamp($m->date_at) }}</span>
         </summary>

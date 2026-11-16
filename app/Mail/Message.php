@@ -133,6 +133,9 @@ class Message extends Model
         // Без пустых строк (17.11.2026, владелец: «пустые строки убирай везде»).
         $lines = preg_split('/\R/u', Extraction\Signature::cut($this->ownText(), $this->from_name)) ?: [];
 
+        // Звёздочки жирного из текстовой версии mail.ru («*Цена за ЛОТ*») — не слова.
+        $lines = array_map(fn ($l) => (string) preg_replace('/(?<!\S)\*+(?=\S)|(?<=\S)\*+(?!\S)/u', '', $l), $lines);
+
         return implode("\n", array_filter($lines, fn ($l) => trim(str_replace("\u{00A0}", ' ', $l)) !== ''));
     }
 

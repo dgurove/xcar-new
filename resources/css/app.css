@@ -3349,6 +3349,10 @@ html.kb-open { --home-gap: 0px; }
     .sheet-tall.sheet-compact .sheet-x { display: inline-flex; }
     .sheet-tall.sheet-compact .sheet-back { display: none; }
   }
+  /* Заголовок высокого окна переносится целиком; на телефоне — вровень с именами писем (кружок 24 + зазор), «‹» и «×» —
+     по первой строке. */
+  .sheet-title { padding-top: .25rem; overflow-wrap: anywhere; }
+  @media (pointer: coarse) { .sheet-title { padding-top: .5rem; } .sheet-tall .sheet-back + .sheet-title { margin-left: -1rem; } }
   @media (min-width: 640px) { .sheet-tall .sheet-back { display: none; } .sheet-tall.sheet-compact { max-width: 28rem; } }
   @keyframes sheet-up   { from { translate: 0 100%; } }
   @keyframes sheet-down { from { translate: 0 var(--from, 0px); } to { translate: 0 110%; } }
@@ -6033,9 +6037,8 @@ dialog.lightbox:not(.lb-one) .lb-pill--bottom { bottom: calc(var(--lb-strip-bott
   .letter--repeat > .letter-body > .letter-head .letter-when { margin-left: auto; }
   .letter--repeat > .letter-body[open] > .letter-head .letter-who { display: inline; }
   .letter-from { display: none; font-size: var(--text-sm); font-weight: 400; color: var(--color-ink-muted); }
-  /* Раскрытая шапка — строками: имя с адресом, ниже тема (если своя), без даты и скрепки — они в конверте и файлах. */
+  /* Раскрытая шапка — имя с адресом, без даты и скрепки — они в конверте и файлах; темы нет — она в заголовке окна. */
   .chain--full .letter-body[open] > .letter-head { display: block; }
-  .chain--full .letter-body[open] > .letter-head .letter-topic { margin-top: .125rem; white-space: normal; overflow-wrap: anywhere; color: var(--color-ink); }
   .chain--full .letter-body[open] > .letter-head .letter-from { display: inline; }
   .chain--full .letter-body[open] > .letter-head .letter-who { flex: 1 1 auto; white-space: normal; overflow-wrap: anywhere; font-weight: 600; color: var(--color-ink); }
   .chain--full .letter-body[open] > .letter-head .letter-when, .chain--full .letter-body[open] > .letter-head .letter-clip { display: none; }

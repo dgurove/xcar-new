@@ -12,10 +12,11 @@
 @php $open = $open || (($errors ?? null)?->any() && old('_sheet') === $id); @endphp
 <dialog id="{{ $id }}" {{ $attributes->class(['sheet', 'sheet-wide' => $wide, 'sheet-tall' => $tall, 'sheet--inflow' => $inflow]) }} data-sheet-target="dialog" data-action="click->sheet#backdrop" @if ($anchor) data-sheet-anchor @endif @if ($open) data-sheet-open-value="true" @endif>
     @if (! $bare && ($title || !$inflow))
-    <div class="sheet-bar mb-4 flex items-center justify-between gap-3{{ $tall ? ' sheet-head' : '' }}">
+    <div class="sheet-bar mb-4 flex justify-between gap-3{{ $tall ? ' sheet-head items-start' : ' items-center' }}">
         @if ($tall)<button type="button" class="sheet-close sheet-back -ml-2" data-action="sheet#close" aria-label="Назад"><x-ui.icon name="chevron-left" class="size-5"/></button>@endif
-        {{-- Высокое окно: заголовок слева у «‹», даже когда крестик на телефоне спрятан и справа ничего нет. --}}
-        @if ($title)<h2 @class(['text-lg', 'min-w-0 flex-1 truncate' => $tall])>{{ $title }}</h2>@endif
+        {{-- Высокое окно: заголовок слева у «‹», даже когда крестик на телефоне спрятан и справа ничего нет; не режется — переносится,
+             на телефоне начинается вровень с текстом окна (17.11.2026, владелец: тема писем целиком, «отступ неадекватный»). --}}
+        @if ($title)<h2 @class(['text-lg', 'sheet-title min-w-0 flex-1' => $tall])>{{ $title }}</h2>@endif
         @if ($tools)<span class="ml-auto flex items-center gap-2">{{ $tools }}</span>@endif
         <button type="button" class="sheet-close{{ $tools ? '' : ' ml-auto' }}{{ $tall ? ' sheet-x' : '' }}" data-action="sheet#close" aria-label="Закрыть"><x-ui.icon name="x" class="size-[18px]"/></button>
     </div>
