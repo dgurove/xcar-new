@@ -182,7 +182,7 @@ class InsurerLetterHiddenTest extends TestCase
         $this->letter("Добрый день! Контакт +7 900 765-43-21\r\n");
         Notification::assertNotSentTo($this->admin, SupplierInvoiceArrivedNotice::class);
         $this->letter("Добрый день! Внимание!!! Оплата принимается только от плательщика по счету!!!\r\n");
-        Notification::assertSentTo($this->admin, SupplierInvoiceArrivedNotice::class, fn ($n) => $n->important() && str_contains($n->title(), 'выставила счёт'));
+        Notification::assertSentTo($this->admin, SupplierInvoiceArrivedNotice::class, fn ($n) => $n->important() && str_starts_with($n->title(), 'Счёт от '));
     }
 
     /** Письмо страховой настоящим путём: разобрано ящиком — `MessageParsed` → `OnMessage` (история, файлы, «Разобрать ответ»). */

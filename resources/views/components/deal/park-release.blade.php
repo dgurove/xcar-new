@@ -16,7 +16,7 @@
     };
 @endphp
 <div class="list mt-3">
-    @if ($vehicle->yard)<x-pickup.yard :yard="$vehicle->yard"/>@else<div class="row text-ink-muted">Едет на нашу парковку</div>@endif
+    @if ($vehicle->yard)<x-pickup.yard :yard="$vehicle->yard"/>@else<div class="row text-ink-muted">{{ $vehicle->state === \App\Park\VehicleState::Stored ? 'На нашей парковке, парковка не указана' : 'Едет на нашу парковку' }}</div>@endif
     @if ($deal->isActive() && ! $pass?->used_at)
         <button type="button" class="row justify-between text-left" data-controller="emit" data-action="emit#send" data-emit-event-param="{{ $sheet }}:open">
             <span class="min-w-0"><span class="block">{{ $receiver ? 'Заберёт '.$receiver->labelFor(null) : 'Кто заберёт' }}</span><span class="block text-sm {{ $state[1] }}">{{ $state[0] }}</span></span>

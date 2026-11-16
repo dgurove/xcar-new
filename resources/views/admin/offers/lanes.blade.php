@@ -60,7 +60,8 @@
         @if ($pickupLane || $handover)
             <div class="flex min-w-0 flex-col gap-4">
                 @if ($pickupLane)<x-logistics.lane :offer="$offer" :deal="$deal?->isActive() ? $deal : null" :compact="$compact"/>@endif
-                @if ($handover)<x-deal.handover :deal="$deal" compact/>@endif
+                {{-- Без вывоза (машина на нашей парковке, 16.11.2026: на странице было голым текстом без карточки) — `compact` только в окне. --}}
+                @if ($handover)<x-deal.handover :deal="$deal" :compact="$compact"/>@endif
             </div>
         @endif
 

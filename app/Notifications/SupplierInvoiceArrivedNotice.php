@@ -21,12 +21,13 @@ final class SupplierInvoiceArrivedNotice extends Notice
 
     public function title(): string
     {
-        return ($this->deal->offer->vendor?->name ?? 'Страховая').' выставила счёт — '.$this->deal->offer->titleWithYear();
+        return 'Счёт от '.($this->deal->offer->vendor?->name ?? 'страховой').' — '.$this->deal->offer->titleWithYear();
     }
 
     public function text(): ?string
     {
-        return 'Покажите счёт менеджеру'.($this->deal->buyer ? ' — '.$this->deal->buyer->shortName() : '').': «Разобрать ответ»';
+        // 16.11.2026, владелец: «пишет, что я должен разобрать ответ, а непонятно, показан ли счёт» — словами, что с ним.
+        return ($this->deal->buyer ? 'Менеджер '.$this->deal->buyer->shortName() : 'Менеджер').' его ещё не видит — показать';
     }
 
     public function href(): string

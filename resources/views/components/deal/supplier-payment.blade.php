@@ -14,6 +14,15 @@
     use App\Offers\DealScheme;
     use App\Support\Money;
     $offer = $deal->offer;
+    // Платёжка поставщику прямо отсюда (16.11.2026, владелец: «прикрепление платёжки — в «Оплате поставщику» и в шаге сделки тоже,
+    // без этого следующий шаг не продвинется»): та же шторка и тот же адрес, что «Приложить платёжку за менеджера» в шаге
+    // (`PaymentProofController`, `pass=1` — шаг проходит); открыта, пока шаг оплаты ждёт документ. После — файлом PDF.
+    $proofStage = $offer?->position(\App\Workflow\Track::Sale)?->stage;
+    $proofReq = $deal->openRequirement;
+    $proofOpen = auth()->user()?->canManageCrm() && $proofReq && $proofReq->asks === \App\Workflow\Asks::Document && $proofStage?->isPayStep()
+        && $proofReq->stage_id === $proofStage->id && $deal->paysSupplierOn($proofStage);
+    $proofFiles = $proofOpen ? $proofReq->getMedia('files') : collect();
+    $proofSent = ! $proofOpen && \App\Offers\Documents\PaymentProofPdf::files($deal)->isNotEmpty();
     // Кто платит поставщику или собственнику — покупатель по договору (16.11.2026, вариант Б): свой, не плательщик счёта ПРАЙМ.
     $cb = $deal->contract?->buyer;
     $buyerWho = match (true) {
@@ -77,13 +86,16 @@
                     <span class="block text-sm text-ink-muted">платит {{ $buyerWho }} напрямую</span>
                     <span class="nums mt-1 block pay-sum">{{ $deal->isDirect() && $deal->owner_price === null ? 'уточним' : Money::rub((int) $deal->ownerPrice()) }}</span>
                 </div>
-                @if ($bill)
+                @if ($bill || $proofOpen || $proofSent)
                     <div class="list">
-                        <x-ui.doc :doc="\App\Support\Docs::media($bill)" class="row">
-                            <x-ui.file-icon :name="$bill->file_name" :mime="$bill->mime_type" :bytes="$bill->size"/>
-                            <span class="min-w-0 flex-1 truncate">Счёт поставщика <span class="text-ink-muted">от {{ \App\Support\Ago::day($bill->created_at) }}</span></span>
-                            <x-ui.chevron/>
-                        </x-ui.doc>
+                        @if ($bill)
+                            <x-ui.doc :doc="\App\Support\Docs::media($bill)" class="row">
+                                <x-ui.file-icon :name="$bill->file_name" :mime="$bill->mime_type" :bytes="$bill->size"/>
+                                <span class="min-w-0 flex-1 truncate">Счёт поставщика <span class="text-ink-muted">от {{ \App\Support\Ago::day($bill->created_at) }}</span></span>
+                                <x-ui.chevron/>
+                            </x-ui.doc>
+                        @endif
+                        @include('admin.deals.supplier-payment-proof')
                     </div>
                 @endif
             @elseif ($kind === 'owner')

@@ -26,6 +26,11 @@
     // Шаг оплаты со счётом — сколько должен и срок счёта (`DealDebt`), как в «Оплате» и строке «Ждём менеджера».
     $debt = $side === 'manager' && $deal && $position->stage->isPayStep() ? \App\Billing\DealDebt::of($deal) : null;
     $debt = $debt && ! $debt->paid() ? $debt : null;
+    // Шаг оплаты поставщику по его счёту («страховой напрямую», ДКП, 16.11.2026, владелец по Mazda 2610152114: «Менеджер должен
+    // 98 000» — это наш счёт подбора, а шаг — про 1 632 000 страховой): строкой — кому и сколько платит менеджер.
+    $toSupplier = $side === 'manager' && $deal && $deal->paysSupplierOn($position->stage)
+        ? 'Менеджер платит '.($offer->vendor?->name ?? 'поставщику').' '.\App\Support\Money::rub((int) $deal->ownerPrice()) : null;
+    $debt = $toSupplier ? null : $debt;
     // Спросили менеджера и он молчит (10.11.2026, начальник по Volvo 01527: «он пока не ответил — почему это нигде не видно») —
     // только у вопроса «Берёте в работу?»: «Заберите автомобиль» — дело, а не вопрос, там «ждём 7 д · до 05.11».
     $asked = $manager && ! $debt && ! $position->carried() && $position->stage->asksConsent()
@@ -61,6 +66,7 @@
         (bool) $what => ['clock', 'Ждём '.$what, $sinceHtml($letter === 'sent' ? $position->letterAt() : $since), $overdue, $waitLetter],
         $invoice => ['file', 'Счёт не выставлен', $overdue ? $late() : null, $overdue, null],
         $position->carried() => ['cat-truck', $driver?->shortName() ?? 'Вывоз', e($tripState), false, null],
+        (bool) $toSupplier => ['wallet', $toSupplier, $sinceHtml($since), $overdue, null],
         (bool) $debt => ['wallet', 'Менеджер должен '.$debt->amount(), e($debt->word()), $debt->late(), null],
         (bool) $asked => ['user', 'Ждём ответ менеджера', $sinceHtml($asked->created_at), $overdue, null],
         $side === 'manager' => ['user', 'Ждём менеджера', $sinceHtml($since), $overdue, null],

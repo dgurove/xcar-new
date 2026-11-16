@@ -66,11 +66,10 @@
     if ($claims->isNotEmpty()) {
         $moves = $moves->reject($paidExit);
     }
-    // Деньги пришли мимо менеджера (наличными, на карту, увидели в банке) — отметить прямо в шаге оплаты, не ища счёт в
-    // «Оплатах»: оплата сама проходит шаг за менеджера и наш «Оплата получена» (`AdvanceOnPayment`). 13.10.2026, владелец.
-    $payNow = $deal && $stage->isPayStep() && $claims->isEmpty() && auth()->user()?->canManageCrm()
-        ? $invoices->filter(fn ($i) => $i->state === InvoiceState::Issued && $i->remaining() > 0)->values()
-        : collect();
+    // «Деньги пришли» в шаге больше нет (16.11.2026, владелец: «непонятно, зачем кнопка, что она делает»; на «Оплате счёта»
+    // страховой она отмечала наш счёт подбора, а шаг — про оплату поставщику): отметка нашей оплаты — строкой «Деньги пришли?»
+    // под счётом в блоке «ООО «ПРАЙМ»» «Продажи» (`x-deal.money`); оплата по-прежнему сама проходит шаг (`AdvanceOnPayment`).
+    $payNow = collect();
     $undo = \App\Workflow\Actions\StepBack::undoable($offer, $position->track);
     // «Продлить срок» (19.01.2027, начальник): шагу с часами — +1 день, +3 дня, до даты (`ExtendDeadline`).
     $extend = $position->deadline_at !== null && auth()->user()?->canManageCrm();
@@ -231,6 +230,9 @@
                         $forKeys = ! $takeFor && ! ($wantsInvoice || $moves->isNotEmpty() || $stage->template_id || $requests || $payNow->isNotEmpty()) ? $forKeys : collect();
                         $proofFor = $req && $req->asks === \App\Workflow\Asks::Document && $stage->isPayStep() && auth()->user()?->canManageCrm();
                         $reqFiles = $req ? $req->getMedia('files') : collect();
+                        // Оплату с документом проходят только с платёжкой (16.11.2026, владелец: «без этого следующий шаг не продвинется»):
+                        // «Приложить платёжку за менеджера» и есть этот ход, голого «За менеджера: Оплатил, документ приложен» нет.
+                        $forKeys = $proofFor ? $forKeys->reject(fn ($x) => in_array($x->label, \App\Offers\Documents\PaymentProofPdf::EXITS, true)) : $forKeys;
                     @endphp
                     {{-- Всё, что за менеджера, — под строкой «Менеджер» (16.11.2026, владелец: «„Беру в работу за менеджера“ должно быть под
                          „Менеджер“, а так они разорваны»): что он уже приложил, данные покупателя, документ об оплате, его ответы. --}}
@@ -252,7 +254,7 @@
                             @endif
                             @if ($proofFor)
                                 <div data-controller="sheet">
-                                    <x-ui.button type="button" size="sm" variant="secondary" data-action="sheet#open">{{ $reqFiles->isEmpty() ? 'Приложить за менеджера' : 'Документ об оплате' }}</x-ui.button>
+                                    <x-ui.button type="button" size="sm" variant="secondary" data-action="sheet#open">{{ $reqFiles->isEmpty() ? 'Приложить платёжку за менеджера' : 'Документ об оплате' }}</x-ui.button>
                                     <x-deal.payment-proof-sheet :id="'payment-proof-'.$position->id" :deal="$deal" :requirement="$req"/>
                                 </div>
                             @endif
@@ -312,8 +314,22 @@
                             @endforeach
                         </x-ui.info>
                     @endif
+                    {{-- Счёт поставщика на шаге оплаты (16.11.2026, владелец: «непонятно, показан ли ему счёт, пишет, что я должен ему что-то
+                         показывать»): показан — строкой «Счёт поставщика показан менеджеру» со временем, и общей кнопки «Показать менеджеру»
+                         тогда нет (она — в «···» разбора писем); не показан — красная строка ниже. Время — `shown_at` у файла
+                         (`SupplierInvoice::mark`), у прежних — последний показ по сделке. --}}
+                    @php
+                        $billShown = $deal && \App\Offers\SupplierInvoice::onPay($deal, $stage) && auth()->user()?->canManageCrm() ? \App\Offers\SupplierInvoice::shown($offer)->first() : null;
+                        $billShownAt = $billShown ? (($at = $billShown->getCustomProperty('shown_at')) ? \Illuminate\Support\Carbon::parse($at) : (\App\Offers\Disclosures::shown($deal)->first()?->created_at ?? $billShown->updated_at)) : null;
+                    @endphp
+                    @if ($billShown)
+                        <x-route.task-row icon="check" static>
+                            Счёт поставщика показан менеджеру
+                            <x-slot:sub>{!! \App\Support\Ago::html($billShownAt, true, words: false) !!}</x-slot:sub>
+                        </x-route.task-row>
+                    @endif
                     {{-- Письмо поставщика ждёт разбора — строкой в шаге, а не лаймовой плашкой над путём (10.11.2026). --}}
-                    @if ($deal && $position->track === \App\Workflow\Track::Sale && auth()->user()?->canManageCrm())<x-deal.reply-review :deal="$deal" line :manual="! $compact"/>@endif
+                    @if ($deal && $position->track === \App\Workflow\Track::Sale && auth()->user()?->canManageCrm())<x-deal.reply-review :deal="$deal" line :manual="! $compact && ! $billShown"/>@endif
                     {{-- Менеджер платит поставщику по его счёту, а счёта не видит (10.11.2026, 0790/046/11079/26) — красной строкой. --}}
                     @if ($deal && \App\Offers\SupplierInvoice::onPay($deal, $stage) && auth()->user()?->canManageCrm() && \App\Offers\SupplierInvoice::shown($offer)->isEmpty())
                         <div class="contents" data-controller="sheet">

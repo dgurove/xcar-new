@@ -222,7 +222,9 @@ final class Handover
             canPick: $open && $picks && ! $parked && ! $deal->isGarage() && $saleExit === null && (bool) $pickup?->isOpen() && ! $pickup->taken()
                 && $sale && ! self::routePicks($sale->stage),
             keys: $keys,
-            park: ($atYard || $toYard) && ! $withBuyer ? $vehicle : null,
+            // Стоит у нас и без указанной парковки (16.11.2026, ТС 647 Mazda: `stored`, `yard_id` пусто) — тоже выдача с парковки,
+            // а не «Владелец / Телефон / Показать контакт».
+            park: ($parked || $toYard) && ! $withBuyer ? $vehicle : null,
             phone2: $withBuyer || $phone2 === $phone ? null : $phone2,
         );
     }

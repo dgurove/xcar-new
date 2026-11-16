@@ -58,7 +58,8 @@ final class SupplierInvoice
     public static function mark(Media $m): void
     {
         $m->name = 'Счёт поставщика от '.$m->created_at->timezone('Europe/Moscow')->format('d.m.Y');
-        $m->setCustomProperty(self::PROP, true)->setCustomProperty('managers', true)->save();
+        // Когда показали (16.11.2026): строка шага «Счёт поставщика показан менеджеру» — со временем.
+        $m->setCustomProperty(self::PROP, true)->setCustomProperty('managers', true)->setCustomProperty('shown_at', $m->getCustomProperty('shown_at') ?? now()->toIso8601String())->save();
     }
 
     /** Подпись строки выбора: «из письма 09.11», «загружен 09.11». */

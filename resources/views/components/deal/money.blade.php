@@ -43,8 +43,9 @@
 <x-ui.card title="Продажа" {{ $attributes->class('sale-card') }}>
     @php
         // Редкое со счетами — в «⋯» карточки (15.11.2026, владелец выбрал «счёт файлом, как документ»): «Оплатили без ссылки…»
-        // (шторка оплаты ниже, событием `paid-{id}:open`; на шаге оплаты её несёт шаг), «Ещё счёт», страница счёта.
-        $paidBy = $invoices->filter(fn ($i) => ! $i->isOwed() && $i->state === InvoiceState::Issued && $i->remaining() > 0 && ! $payStep && auth()->user()?->canManageCrm());
+        // (шторка оплаты ниже, событием `paid-{id}:open`), «Ещё счёт», страница счёта. С 16.11.2026 и на шаге оплаты: «Деньги пришли»
+        // из шага убрано — отметка нашей оплаты здесь, строкой «Деньги пришли?» под счётом.
+        $paidBy = $invoices->filter(fn ($i) => ! $i->isOwed() && $i->state === InvoiceState::Issued && $i->remaining() > 0 && auth()->user()?->canManageCrm());
         $pages = $invoices->reject(fn ($i) => $i->isOwed() || $i->state === InvoiceState::Void);
         $editMoney = $deal->isActive() && $deal->moneyEditable() && (! $deal->isGarage() || $deal->isGarageManager() || ($deal->namesBuyer() && $deal->amount !== null));
         $moreMoney = $editMoney || $withContract || $paidBy->isNotEmpty() || $pages->isNotEmpty() || ($deal->isActive() && $issued->isNotEmpty());
@@ -267,6 +268,11 @@
                     {{-- Ссылка на оплату — своей строкой под счётом: её состояние и «Скопировать» / «Отправить». --}}
                     @if ($link && $link->isOpen())
                         <x-ui.share-link variant="row" :url="$link->url()" title="Оплата по ссылке" :text="$link->message()" label="Ссылка на оплату" :sub="$linkState" done="Ссылка на оплату в буфере"/>
+                    @endif
+                    {{-- Отметка, что оплата ПРАЙМ / Р.О.С. принята, — здесь, под своим счётом (16.11.2026, владелец: «отметку, что оплата
+                         на прайм/рос принята, — не в шаге, а в блоке «Продажа»»): та же шторка оплаты (`paid-{id}`). --}}
+                    @if ($paidBy->contains('id', $i->id))
+                        <x-deal.sale-row label="Деньги пришли?" value="Отметить" tone="accent" data-controller="emit" data-action="emit#send" data-emit-event-param="paid-{{ $i->id }}:open"/>
                     @endif
                 @endif
                 @if (! $i->isOwed() && ! $i->openLink())<x-billing.pay-status :invoice="$i" staff/>@endif
