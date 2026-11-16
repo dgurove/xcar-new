@@ -160,10 +160,20 @@ final class Parser
             if (! $address instanceof ImapAddress || trim((string) $address->mail) === '') {
                 continue;
             }
-            $addresses[] = ['kind' => $kind, 'email' => mb_strtolower(trim((string) $address->mail)), 'name' => $this->personal($address->personal), 'position' => $position++];
+            [$email, $name] = self::glued(trim((string) $address->mail));
+            $addresses[] = ['kind' => $kind, 'email' => mb_strtolower($email), 'name' => $this->personal($name ?? $address->personal), 'position' => $position++];
         }
 
         return $addresses;
+    }
+
+    /**
+     * Имя, склеенное с адресом без пробела («=?utf-8?b?…?=<6691111@mail.ru>», 17.11.2026): библиотека отдаёт всё адресом —
+     * в «Кому» и в копии ответа вставала эта строка. Адрес — из угловых скобок, имя — что перед ними. @return array{0: string, 1: ?string}
+     */
+    public static function glued(string $mail): array
+    {
+        return preg_match('/^(.*?)<\s*([^<>\s]+@[^<>\s]+?)\s*>?$/u', $mail, $m) ? [$m[2], trim($m[1]) !== '' ? trim($m[1]) : null] : [$mail, null];
     }
 
     private function personal(mixed $personal): ?string

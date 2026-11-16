@@ -7,8 +7,9 @@
      редактор во фрейме reply на месте кнопки. candidate — этапы для заголовков узлов.
      «Ч.2» того же письма (те же слова от того же адреса в сутки) — узел «Ещё файлы к письму» без текста.
      fold — разбор письма: раскрыты только письмо-заявка и то, что ждёт ответа, прочие подряд идущие письма свёрнуты
-     в узел «Ещё N писем» на своём месте в ленте. --}}
-@props(['messages', 'base' => '/mail', 'candidate' => null, 'reply' => false, 'subjects' => true, 'focus' => true, 'replyOpen' => false, 'replyText' => null, 'fold' => false])
+     в узел «Ещё N писем» на своём месте в ленте.
+     newest — от новых к старым, closed — все свёрнуты (переписка по машине под письмом справа во «Входящих», 17.11.2026). --}}
+@props(['messages', 'base' => '/mail', 'candidate' => null, 'reply' => false, 'subjects' => true, 'focus' => true, 'replyOpen' => false, 'replyText' => null, 'fold' => false, 'newest' => false, 'closed' => false])
 @php
     use App\Mail\Chains\NodeTitle;
     use App\Mail\Extraction\Intent;
@@ -45,6 +46,9 @@
     }
     // Одно служебное письмо подряд — обычный узел; при fold свёрнутое остаётся свёрнутым и в одиночку.
     $nodes = array_map(fn ($n) => is_array($n) && count($n['items']) === 1 && ! $fold ? $n['items'][0] : $n, $nodes);
+    if ($newest) {
+        $nodes = array_reverse($nodes);
+    }
     // Окно писем предложения: «Ответить» внизу — в ветку сделки (offer@, deal@), не парковки (09.11.2026: письмо storage@ о
     // приёме ТС свежее, и «Написать» по сделке открывало ответ со storage@). Ответ парковке — у самого её письма.
     $pool = $messages->filter(fn (Message $m) => $m->account?->scope !== \App\Mail\Scope::Park);
@@ -80,9 +84,9 @@
             </div>
         @else
             @if (isset($continued[$node->id]))
-                <x-mail.letter :message="$node" :replying="$node->id === $replyTo?->id" :base="$base" title="Ещё файлы к письму" :kind="$own($node) ? 'ours' : ''" :open="$node->id === ($focusId ?? $lastId)" :focus="$node->id === $focusId" :reply="$reply" continuation/>
+                <x-mail.letter :message="$node" :replying="$node->id === $replyTo?->id" :base="$base" title="Ещё файлы к письму" :kind="$own($node) ? 'ours' : ''" :open="! $closed && $node->id === ($focusId ?? $lastId)" :focus="$node->id === $focusId" :reply="$reply" continuation/>
             @else
-                <x-mail.letter :message="$node" :replying="$node->id === $replyTo?->id" :base="$base" :title="NodeTitle::for($node, $candidate)" :titled="NodeTitle::titled($node, $candidate)" :kind="$kind($node)" :dismiss="$reply && in_array($node->id, $asks, true) && $node->thread_id !== $replyTo?->thread_id" :open="$fold ? (! $node->is_seen || $node->id === $focusId || in_array($node->id, $keep, true)) : $node->id === ($focusId ?? $lastId)" :focus="$node->id === $focusId" :reply="$reply"/>
+                <x-mail.letter :message="$node" :replying="$node->id === $replyTo?->id" :base="$base" :title="NodeTitle::for($node, $candidate)" :titled="NodeTitle::titled($node, $candidate)" :kind="$kind($node)" :dismiss="$reply && in_array($node->id, $asks, true) && $node->thread_id !== $replyTo?->thread_id" :open="! $closed && ($fold ? (! $node->is_seen || $node->id === $focusId || in_array($node->id, $keep, true)) : $node->id === ($focusId ?? $lastId))" :focus="$node->id === $focusId" :reply="$reply"/>
             @endif
         @endif
     @empty

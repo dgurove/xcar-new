@@ -36,6 +36,14 @@ export default class extends Controller {
         this.paint();
         try {
             const doc = this.frameTarget.contentDocument;
+            // «› Подпись» в письме раскрыли или свернули — высота по телу письма (по документу рамка не сжималась бы).
+            if (doc && !doc.__fitToggle) {
+                doc.__fitToggle = true;
+                doc.addEventListener('toggle', () => {
+                    const body = doc.body?.getBoundingClientRect().height;
+                    if (body) this.frameTarget.style.height = Math.min(Math.max(Math.ceil(body) + 8, 60), 4000) + 'px';
+                }, true);
+            }
             const height = Math.max(doc.documentElement.scrollHeight, doc.body?.scrollHeight || 0);
             if (!height) return;
             this.frameTarget.style.height = Math.min(Math.max(height + 8, 60), 4000) + 'px';

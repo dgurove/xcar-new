@@ -27,16 +27,89 @@ final class BodyRenderer
     {
         $html = trim((string) $message->html_body);
         if ($html === '') {
-            $text = Extraction\Signature::cut(Extraction\QuotationStripper::ownText($message->text_body), $message->from_name);
+            [$text, $sign] = Extraction\Signature::split(Extraction\QuotationStripper::ownText($message->text_body), $message->from_name);
+            if ($text === '') {
+                return null;
+            }
+            if (! $flat) {
+                return $this->wrap($message, '<pre class="plain">'.e($text).'</pre>', false, $base);
+            }
+            // Справа во «Входящих»: без пустых строк, подпись — свёрнутой «› Подпись» (17.11.2026, владелец).
+            $lines = fn (string $t) => implode("\n", array_filter(preg_split('/\R/u', $t) ?: [], fn ($l) => trim(str_replace("\u{00A0}", ' ', $l)) !== ''));
+            $sign = $lines($sign);
 
-            return $text === '' ? null : $this->wrap($message, '<pre class="plain">'.e($text).'</pre>', false, $base, $flat);
+            return $this->wrap($message, '<pre class="plain">'.e($lines($text)).'</pre>'
+                .($sign !== '' ? '<details class="sig"><summary>Подпись</summary><pre class="plain sig-body">'.e($sign).'</pre></details>' : ''), false, $base, $flat);
         }
         if (! $message->isForwardedByStaff()) {
             $html = $this->withoutQuote($html) ?? $html;
         }
-        $html = $this->withoutSignature($html, $message->from_name) ?? $html;
+        $html = $flat ? ($this->flat($html, $message->from_name) ?? $html) : ($this->withoutSignature($html, $message->from_name) ?? $html);
 
         return self::blank($html) ? null : $this->wrap($message, $html, false, $base, $flat);
+    }
+
+    /**
+     * Письмо справа во «Входящих» (17.11.2026, владелец): подпись не срезается, а сворачивается в «› Подпись» в конце письма,
+     * пустых строк нет — пустые абзацы и блоки уходят, `<br>` подряд — один, в начале и в конце блока — ни одного.
+     */
+    private function flat(string $html, ?string $name): ?string
+    {
+        $dom = new \DOMDocument;
+        $errors = libxml_use_internal_errors(true);
+        $loaded = $dom->loadHTML('<?xml encoding="utf-8"?>'.self::ascii($html), LIBXML_HTML_NODEFDTD | LIBXML_NONET);
+        libxml_clear_errors();
+        libxml_use_internal_errors($errors);
+        $body = $dom->getElementsByTagName('body')->item(0);
+        if (! $loaded || ! $body instanceof \DOMElement) {
+            return null;
+        }
+        $sign = $dom->createElement('div');
+        $sign->setAttribute('class', 'sig-body');
+        Extraction\Signature::cutDom($dom, $body, $name, $sign);
+        self::compact($body);
+        self::compact($sign);
+        if (trim(str_replace("\u{00A0}", ' ', $sign->textContent)) !== '' || $sign->getElementsByTagName('img')->length) {
+            $details = $dom->createElement('details');
+            $details->setAttribute('class', 'sig');
+            $details->appendChild($dom->createElement('summary', 'Подпись'));
+            $details->appendChild($sign);
+            $body->appendChild($details);
+        }
+
+        return self::save($dom);
+    }
+
+    /** Без пустых строк: пустые блоки (без текста, картинок и таблиц) — вон, `<br>` подряд — один, у краёв блока — ни одного. */
+    private static function compact(\DOMElement $root): void
+    {
+        $blank = fn (\DOMNode $n) => trim(str_replace("\u{00A0}", ' ', $n->textContent)) === '';
+        $solid = fn (\DOMElement $e) => in_array(strtolower($e->localName), ['img', 'table', 'hr', 'iframe', 'video'], true)
+            || $e->getElementsByTagName('img')->length || $e->getElementsByTagName('table')->length;
+        $xp = new \DOMXPath($root->ownerDocument);
+        foreach (array_reverse(iterator_to_array($xp->query('.//*', $root))) as $el) {
+            $tag = strtolower($el->localName);
+            // Только блоки: пустой `<span> </span>` между словами — пробел, его не трогаем.
+            if (in_array($tag, ['p', 'o:p', 'div', 'section', 'center', 'blockquote', 'ul', 'ol', 'li', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6'], true) && $blank($el) && ! $solid($el)) {
+                $el->parentNode?->removeChild($el);
+            }
+        }
+        $isBr = fn (?\DOMNode $n) => $n instanceof \DOMElement && strtolower($n->localName) === 'br';
+        $skip = function (?\DOMNode $n, string $dir) use ($blank) {
+            while ($n && $n->nodeType === XML_TEXT_NODE && $blank($n)) {
+                $n = $dir === 'prev' ? $n->previousSibling : $n->nextSibling;
+            }
+
+            return $n;
+        };
+        foreach (iterator_to_array($root->getElementsByTagName('br')) as $br) {
+            $prev = $skip($br->previousSibling, 'prev');
+            $next = $skip($br->nextSibling, 'next');
+            $block = fn (?\DOMNode $n) => $n instanceof \DOMElement && in_array(strtolower($n->localName), ['p', 'div', 'table', 'ul', 'ol', 'blockquote', 'h1', 'h2', 'h3', 'h4', 'details'], true);
+            if ($prev === null || $next === null || $isBr($prev) || $block($prev) || $block($next)) {
+                $br->parentNode?->removeChild($br);
+            }
+        }
     }
 
     /**
@@ -251,7 +324,11 @@ final class BodyRenderer
             .($plain ? '<meta name="color-scheme" content="'.($theme ?? 'light dark').'">' : '')
             .'<base target="_blank"><style>html{margin:0;padding:0;'.$colors.'}body{margin:0;padding:'.($flat ? '0' : '12px').';'.$colors.';font-family:Onest,system-ui,-apple-system,sans-serif;font-size:15px;line-height:1.45;word-break:break-word}'
             .'img{max-width:100%;height:auto}table{max-width:100%;border-collapse:collapse}a{color:#669709}pre.plain{white-space:pre-wrap;font-family:inherit;margin:0}'
-            .'blockquote{margin:0;padding-left:12px;border-left:2px solid #d0d0d0;color:#808080}'.$themed.'</style></head><body>'.$body.'</body></html>';
+            .'blockquote{margin:0;padding-left:12px;border-left:2px solid #d0d0d0;color:#808080}'
+            .($flat ? 'p{margin:0}.sig{margin-top:10px}.sig>summary{cursor:pointer;list-style:none;font-size:13px;color:#8a8a8a}.sig>summary::-webkit-details-marker{display:none}'
+                .'.sig>summary::before{content:"›";display:inline-block;width:12px;transition:transform .15s}.sig[open]>summary::before{transform:rotate(90deg)}'
+                .'.sig-body{margin-top:6px;color:#8a8a8a;font-size:13px}' : '')
+            .$themed.'</style></head><body>'.$body.'</body></html>';
     }
 
     /** Письмо без своей вёрстки: только текст или HTML без своих фонов и цветов — его можно рисовать цветами темы. */

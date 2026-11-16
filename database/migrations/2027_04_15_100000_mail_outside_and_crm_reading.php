@@ -44,6 +44,11 @@ return new class extends Migration
             DB::table('mail_messages')->whereIn('id', $ids)->update(['is_seen' => true]);
             PushSeen::dispatch($ids->values()->all(), true);
         }
+        // Адрес, склеенный с закодированным именем («=?utf-8?b?…?=<6691111@mail.ru»), — адрес и имя порознь (`Parser::glued`).
+        foreach (DB::table('mail_addresses')->where('email', 'like', '%<%@%')->get(['id', 'email', 'name']) as $row) {
+            // Имя в базе уже строчными (закодированное base64 не раскодировать) — только адрес.
+            DB::table('mail_addresses')->where('id', $row->id)->update(['email' => mb_strtolower(\App\Mail\Parser::glued($row->email)[0])]);
+        }
         // Число непрочитанных у ветки — тем же правилом, что `Threads::refresh` (входящие, не прочитаны).
         DB::statement("update mail_threads t set unread_count = (select count(*) from mail_messages m where m.thread_id = t.id
             and m.direction = 'in' and not m.is_seen)");

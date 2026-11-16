@@ -4,8 +4,8 @@
      «⋯» — «В архив», «Не прочитано», «Привязать к ТС», вендор, исходное письмо, страница ветки. Кнопок внизу нет: ответ
      открывается редактором под письмом (фрейм reply-pane-{id}). Текст и вложения — с отступом под имя, как в Gmail;
      документы — карточками в две колонки, фото — одной карточкой «N фото» без миниатюр (владелец: «фотки почти юзлесс, они
-     и так уходят в предложение»). folded — другое письмо той же ветки: строкой, по нажатию раскрывается, без действий. --}}
-@props(['message', 'thread', 'base', 'park' => false, 'folded' => false])
+     и так уходят в предложение»). Остальная переписка по машине — цепочкой под письмом (`admin/mail/pane`). --}}
+@props(['message', 'thread', 'base', 'park' => false])
 @php
     use App\Mail\{ParseState, SendState};
     use App\Mail\Chains\NodeTitle;
@@ -27,41 +27,19 @@
     $bounce = $m->intent === \App\Mail\Extraction\Intent::Bounce->value;
     $editor = $base.'/'.$m->thread_id.'/reply/'.$m->id;
     $menu = 'pane-menu-'.$m->id;
-    $pick = $folded ? null : \App\Mail\VendorPick::of(auth()->user(), $park ? \App\Mail\Scope::Park : \App\Mail\Scope::Offers, $base, $thread, $thread->messages, $thread->candidate);
+    $pick = \App\Mail\VendorPick::of(auth()->user(), $park ? \App\Mail\Scope::Park : \App\Mail\Scope::Offers, $base, $thread, $thread->messages, $thread->candidate);
     $archives = $documents->filter(fn ($f) => \App\Support\Docs::archive($f));
     $documents = $documents->diff($archives);
     $count = fn (int $n, array $w) => $n.' '.\App\Support\Plural::of($n, $w);
 @endphp
-@if ($folded)
-    <details class="pane-fold" id="pane-letter-{{ $m->id }}">
-        <summary class="pane-fold-head">
-            <x-mail.sender-avatar :message="$m" :size="32"/>
-            <span class="pane-fold-who">{{ NodeTitle::who($m) }}</span>
-            <span class="pane-fold-snip">{{ NodeTitle::words($m, 160) ?: ($files->isNotEmpty() ? 'Вложения' : 'Без своих слов') }}</span>
-            <span class="pane-fold-when nums">{{ \App\Support\Ago::at($m->date_at, true) }}</span>
-        </summary>
-        <div class="pane-body pane-body--folded">
-            @if ($text !== '')<div class="whitespace-pre-line break-words">{{ $text }}</div>@endif
-            @if ($files->isNotEmpty())
-                <div class="pane-docs mt-3">
-                    @foreach ($files as $file)
-                        <a href="{{ $base }}/attachments/{{ $file->id }}" target="_blank" class="pane-doc" data-doc="{{ \App\Support\Docs::type($file->mime, $file->filename) }}" data-doc-name="{{ \App\Support\Docs::label($file->filename) }}" title="{{ $file->filename }}">
-                            <x-ui.file-icon :name="$file->filename" :mime="$file->mime" :bytes="$file->size"/><span class="min-w-0 truncate">{{ $file->filename }}</span>
-                        </a>
-                    @endforeach
-                </div>
-            @endif
-        </div>
-    </details>
-@else
 <article class="pane-letter" id="pane-letter-{{ $m->id }}" data-controller="unhide">
     <header class="pane-head">
         <x-mail.sender-avatar :message="$m" :size="40"/>
         <div class="min-w-0 flex-1">
-            <div class="pane-who">{{ NodeTitle::who($m) }}</div>
-            {{-- Адрес, кому и дата — одним серым текстом: не влезло — переносится, дата целиком (17.11.2026, владелец). --}}
+            {{-- Имя и справа от него адрес (17.11.2026, владелец: «почту справа от имени, а не под ним»); ниже кому и дата — одним
+                 серым текстом: не влезло — переносится, дата целиком. --}}
+            <div class="pane-who"><b>{{ NodeTitle::who($m) }}</b> <span class="pane-from">{{ $from }}</span></div>
             <div class="pane-env">
-                <span>{{ $from }}</span>
                 @if ($to->isNotEmpty())<span>кому: {{ $to->take(3)->join(', ') }}{{ $to->count() > 3 ? ' и ещё '.($to->count() - 3) : '' }}</span>@endif
                 <span class="nums whitespace-nowrap">{{ \App\Support\Ago::at($m->date_at, true) }}</span>
             </div>
@@ -174,4 +152,3 @@
         <turbo-frame id="reply-pane-{{ $m->id }}" class="mt-4 block empty:hidden"></turbo-frame>
     </div>
 </article>
-@endif

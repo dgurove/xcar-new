@@ -318,8 +318,23 @@ class MailController
             $files[$head] = ($files[$head] ?? 0) + $m->files()->count();
         }
         $rows = collect($page->items())->reject(fn (Message $m) => isset($continued[$m->id]))->values();
+        // Сколько писем во всей переписке по машине (цепочка, ветка) — кружок в строке (17.11.2026, владелец: «вся переписка
+        // по машине»): ключ дела — тот же, что у «Все делами» (`Boxes::group`), в тех же ящиках.
+        $key = fn (Message $m) => match (true) {
+            $data['park'] && (bool) $m->thread?->vehicle_id => 'v:'.$m->thread->vehicle_id,
+            ! $data['park'] && (bool) $m->thread?->offer_id => 'o:'.$m->thread->offer_id,
+            (bool) $m->thread?->candidate_id => 'c:'.$m->thread->candidate_id,
+            default => 't:'.$m->thread_id,
+        };
+        $keys = $rows->map($key)->unique()->values();
+        $group = Boxes::group($this->scope);
+        $sizes = $keys->isEmpty() ? collect() : Message::query()->join('mail_threads', 'mail_threads.id', '=', 'mail_messages.thread_id')
+            ->whereIn('mail_messages.account_id', $boxAccounts->pluck('id'))->whereIn('mail_messages.thread_id', (clone $all)->select('mail_threads.id'))
+            ->whereRaw("{$group} in (".implode(',', array_fill(0, $keys->count(), '?')).')', $keys->all())
+            ->selectRaw("{$group} as g, count(*) as n")->groupByRaw($group)->pluck('n', 'g');
         $view = ['rows' => $rows, 'page' => $page, 'files' => $files, 'box' => $box, 'base' => $this->base, 'park' => $data['park'],
-            'filtered' => $facets->active()];
+            'filtered' => $facets->active(), 'queue' => $this->queue,
+            'sizes' => $rows->mapWithKeys(fn (Message $m) => [$m->id => (int) ($sizes[$key($m)] ?? 1)])->all()];
         if ($request->header('X-List')) {
             return response()->view('admin.mail.letters', $view + ['more' => true]);
         }
@@ -330,7 +345,6 @@ class MailController
             'threads' => $page,
             'q' => '',
             'facets' => $facets,
-            'queue' => $this->queue,
             'crm' => ! $data['park'],
             'forced' => null,
             'counts' => array_filter(['in' => $this->inboxUnread($boxAccounts, $all), 'attention' => $data['park'] ? Boxes::attentionCount(Scope::Park) : 0]),
@@ -358,9 +372,19 @@ class MailController
         }
         $thread = $message->thread->load(['account', 'offer.vendor', 'offer.car', 'vehicle.vendor', 'candidate.vendor', 'vendor',
             'messages.account', 'messages.thread', 'messages.attachments', 'messages.addresses', 'messages.author']);
+        $park = $this->scope === Scope::Park;
+        // Под письмом — вся переписка по машине (17.11.2026, владелец), как в окне писем дела: предложение и ТС — их ветки
+        // (`Thread::ofCar`), цепочка «Из писем» — её письма, иначе ветка.
+        $with = ['messages.account', 'messages.thread', 'messages.attachments', 'messages.addresses', 'messages.author'];
+        $car = $park ? $thread->vehicle : $thread->offer;
+        $case = match (true) {
+            (bool) $car => Thread::ofCar($car, auth()->user())->with($with)->get()->flatMap->messages,
+            (bool) $thread->candidate => $thread->candidate->load(['messages.account', 'messages.thread', 'messages.attachments', 'messages.addresses', 'messages.author'])->messages,
+            default => $thread->messages,
+        };
 
         return view('admin.mail.pane', ['message' => $thread->messages->firstWhere('id', $message->id) ?? $message, 'thread' => $thread, 'base' => $this->base,
-            'park' => $this->scope === Scope::Park]);
+            'park' => $park, 'case' => $case->unique('id')->values()]);
     }
 
     /**
