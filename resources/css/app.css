@@ -1292,7 +1292,14 @@ html.kb-open { --home-gap: 0px; }
   .toolbar-lead .tab-title-btn { width: 100%; min-height: 2.75rem; }
   .toolbar-head .toolbar-tools { display: flex; align-items: center; gap: .5rem; flex-shrink: 0; margin-left: auto; }
   .toolbar[data-searching] .toolbar-head { display: none; }
-  .tab-title { flex: 1 1 10rem; }
+  /* ˄ ˅ к соседней вкладке — сразу за названием (17.11.2026, владелец): едут за концом названия, само название не сдвигается.
+     Высотой первой строки заголовка — длинное название переносится, кнопки у первой строки. */
+  .tab-title { flex: 1 1 10rem; display: flex; align-items: flex-start; gap: .25rem; min-width: 0; }
+  .tab-title > h1 { min-width: 0; }
+  .tab-step { display: flex; flex: none; align-items: center; height: 1.14em; }
+  .tab-step .bar-btn[aria-disabled] { opacity: .35; pointer-events: none; }
+  /* На телефоне ˄ ˅ нет (17.11.2026, владелец): там колесо листается пальцем. */
+  @media (max-width: 1023.98px) { .tab-step { display: none; } }
   .title-actions { @apply ml-auto flex shrink-0 items-center gap-1.5; }
   .title-actions .btn-s { height: 2rem; padding-inline: .75rem; }
   .title-actions .btn-round { width: 2rem; height: 2rem; }
@@ -1325,63 +1332,99 @@ html.kb-open { --home-gap: 0px; }
     --wheel-small: .618; --wheel-row: 1.8em;
     position: fixed; inset: 0; z-index: var(--z-wheel); background: var(--color-wheel); color: var(--color-ink);
     opacity: 0; transition: opacity var(--dur) var(--ease-in);
+    /* Открытое колесо живёт в `<html>` вне `<body>` — шрифт body ему не достаётся: без ss01 у Onest другое «т» с дырами
+       («Пост авщик», 17.11.2026). */
+    font-feature-settings: "ss01" 1; -webkit-font-smoothing: antialiased;
   }
   .tab-wheel.is-open { opacity: 1; transition: opacity var(--dur) var(--ease-out); }
   .tab-wheel-chev { position: absolute; z-index: 1; left: var(--wheel-chev-x); top: var(--wheel-chev-y); color: var(--color-ink-dim); pointer-events: none; }
   .tab-wheel.is-leaving { opacity: 0; transition: opacity var(--dur-slow) var(--ease-out); }
-  .tab-wheel-scroll {
-    position: absolute; inset: 0; display: block; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none;
-    scroll-snap-type: y mandatory; scroll-padding-top: var(--wheel-focus);
-    padding-top: var(--wheel-focus); padding-bottom: var(--wheel-tail);
-    /* Над фокусом и у низа пункты тают — маска прозрачности, не цвет. */
-    mask-image: linear-gradient(to bottom, transparent var(--safe-top), #000 calc(var(--wheel-focus) - .25rem), #000 calc(100% - 5rem), transparent);
-  }
+  .tab-wheel-scroll { position: absolute; inset: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; }
   .tab-wheel-scroll::-webkit-scrollbar { display: none; }
-  .tab-wheel-scroll.is-gliding { scroll-snap-type: none; }
-  .tab-wheel-item {
-    display: flex; align-items: center; gap: .75rem; height: var(--wheel-row); max-width: calc(var(--wheel-left) + 26rem);
-    padding-inline: var(--wheel-left) max(1rem, env(safe-area-inset-right)); scroll-snap-align: start; view-timeline: --wheel-row block;
-    color: var(--color-ink-dim); -webkit-tap-highlight-color: transparent; outline: none;
-  }
-  /* Название — шрифтом заголовка (h1 в `@layer base`), мелкое — масштабом от левого края: текст не прыгает. */
-  .tab-wheel-label {
-    position: relative; flex: none; font-weight: 500; line-height: 1.14; letter-spacing: -.025em; white-space: nowrap;
-    transform-origin: left center; transform: scale(var(--wheel-small)); color: var(--color-ink-dim);
-  }
-  .tab-wheel-item[aria-current] .tab-wheel-label { transform: none; color: var(--color-ink); }
+  .tab-wheel-item { display: flex; align-items: center; gap: .75rem; color: var(--color-ink-dim); -webkit-tap-highlight-color: transparent; outline: none; }
+  /* Название — шрифтом заголовка (h1 в `@layer base`). */
+  .tab-wheel-label { position: relative; flex: none; font-weight: 500; line-height: 1.14; letter-spacing: -.025em; white-space: nowrap; color: var(--color-ink-dim); }
+  .tab-wheel-item[aria-current] .tab-wheel-label { color: var(--color-ink); }
   /* Подзаголовок раздела в колесе (16.11.2026, владелец выбрал вариант 1 макета): тонкая линия и название справа мелким серым.
      Не вкладка — снапа нет, нажатие мимо, колесо его пролистывает. */
-  .tab-wheel-sec {
-    display: flex; align-items: center; gap: .625rem; height: 1.75rem; max-width: calc(var(--wheel-left) + 26rem);
-    padding-inline: var(--wheel-left) max(1rem, env(safe-area-inset-right)); scroll-snap-align: none;
-  }
+  .tab-wheel-sec { display: flex; align-items: center; gap: .625rem; height: 1.75rem; }
   .tab-wheel-sec-line { flex: 1; height: var(--hairline); background: var(--color-hairline); }
   .tab-wheel-sec-name { font-size: var(--text-sm); color: var(--color-ink-dim); white-space: nowrap; }
   /* Зелёное число у названия вкладки — частью названия: растёт и тает вместе с ним. */
   .tab-wheel-badge { margin-inline-start: .35em; font-size: .5em; line-height: 1.5; padding-inline: .45em; min-width: 1.5em; vertical-align: .35em; letter-spacing: 0; }
   .table-group.is-ours .table-group-name { color: var(--color-accent-text); }
+  /* Наши дела во вкладке — красным счётчиком с белым числом, как у разделов таб-бара CRM (17.11.2026, владелец: «не зелёные,
+     а счётчики как на разделах»). Два класса — `.badge` ниже по файлу. */
+  .tab-wheel-label .tab-wheel-badge { background: var(--color-danger); color: #fff; }
   .tab-wheel-nums { margin-inline-start: auto; display: flex; align-items: center; gap: .5rem; font-size: var(--text-sm); color: var(--color-ink-dim); }
+  /* Колесо — телефон и планшет. Столбцы ПК здесь не нужны: обёртка столбца — `contents`, пункты подряд одним списком. */
+  @media (max-width: 1023.98px) {
+    .tab-wheel-col { display: contents; }
+    .tab-wheel-mark { display: none; }
+    .tab-wheel-scroll {
+      display: block; scroll-snap-type: y mandatory; scroll-padding-top: var(--wheel-focus);
+      padding-top: var(--wheel-focus); padding-bottom: var(--wheel-tail);
+      /* Над фокусом и у низа пункты тают — маска прозрачности, не цвет. */
+      mask-image: linear-gradient(to bottom, transparent var(--safe-top), #000 calc(var(--wheel-focus) - .25rem), #000 calc(100% - 5rem), transparent);
+    }
+    .tab-wheel-scroll.is-gliding { scroll-snap-type: none; }
+    .tab-wheel-item {
+      height: var(--wheel-row); max-width: calc(var(--wheel-left) + 26rem);
+      padding-inline: var(--wheel-left) max(1rem, env(safe-area-inset-right)); scroll-snap-align: start; view-timeline: --wheel-row block;
+    }
+    /* Мелкое — масштабом от левого края: текст не прыгает. */
+    .tab-wheel-label { transform-origin: left center; transform: scale(var(--wheel-small)); }
+    .tab-wheel-item[aria-current] .tab-wheel-label { transform: none; }
+    .tab-wheel-sec {
+      max-width: calc(var(--wheel-left) + 26rem);
+      padding-inline: var(--wheel-left) max(1rem, env(safe-area-inset-right)); scroll-snap-align: none;
+    }
+    /* Выплывают к своим местам лесенкой от текущей: снизу — снизу, сверху — сверху; текущая уже стоит на месте заголовка. */
+    .tab-wheel-item:not([aria-current]) { transition: opacity var(--dur-fast) var(--ease-in); }
+    .tab-wheel:not(.is-open) .tab-wheel-item:not([aria-current]) { opacity: 0; }
+    .tab-wheel-sec { transition: opacity var(--dur-fast) var(--ease-in); }
+    .tab-wheel:not(.is-open) .tab-wheel-sec { opacity: 0; }
+  }
   @supports (animation-timeline: view()) {
-    .tab-wheel-item .tab-wheel-label, .tab-wheel-item[aria-current] .tab-wheel-label {
-      animation: wheel-focus linear both; animation-timeline: --wheel-row;
-      animation-range: cover calc(var(--wheel-at) - var(--wheel-row)) cover calc(var(--wheel-at) + var(--wheel-row));
+    @media (max-width: 1023.98px) {
+      .tab-wheel-item .tab-wheel-label, .tab-wheel-item[aria-current] .tab-wheel-label {
+        animation: wheel-focus linear both; animation-timeline: --wheel-row;
+        animation-range: cover calc(var(--wheel-at) - var(--wheel-row)) cover calc(var(--wheel-at) + var(--wheel-row));
+      }
     }
   }
   @keyframes wheel-focus {
     0%, 100% { transform: scale(var(--wheel-small)); color: var(--color-ink-dim); }
     50% { transform: none; color: var(--color-ink); }
   }
-  /* Выплывают к своим местам лесенкой от текущей: снизу — снизу, сверху — сверху; текущая уже стоит на месте заголовка. */
-  .tab-wheel-item:not([aria-current]) { transition: opacity var(--dur-fast) var(--ease-in); }
-  .tab-wheel:not(.is-open) .tab-wheel-item:not([aria-current]) { opacity: 0; }
-  .tab-wheel-sec { transition: opacity var(--dur-fast) var(--ease-in); }
-  .tab-wheel:not(.is-open) .tab-wheel-sec { opacity: 0; }
-  @media (prefers-reduced-motion: no-preference) {
+  @media (max-width: 1023.98px) and (prefers-reduced-motion: no-preference) {
     .tab-wheel.is-open .tab-wheel-item:not([aria-current]) {
       animation: wheel-in var(--dur-slow) var(--ease-spring) both; animation-delay: calc(60ms + var(--wheel-d, 0) * 25ms);
     }
   }
   @keyframes wheel-in { from { opacity: 0; translate: 0 calc(var(--wheel-dir, 1) * 1rem); } }
+  /* ПК (от 1024, 17.11.2026, владелец: «не скролл, а просто клик», «на пк не должно быть фокуса скролла на том, что выбрано»):
+     столбцы «Предложения», «Сделки», «Архивы» без заголовков от места названия (--wheel-left, --wheel-top ставит скрипт);
+     пункты одного размера, выбранный — тёмным с «›» слева, как у названия; подложек нет. Не влезли по высоте — заливка
+     листается обычно. У раздела из одной вкладки («Закупки», «Гараж») — только линия; «Сделка» и «Архив» — подзаголовками
+     в начале своих столбцов (владелец). */
+  @media (min-width: 1024px) {
+    .tab-wheel-chev { display: none; }
+    .tab-wheel-scroll {
+      display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 20rem); justify-content: start; align-items: start;
+      column-gap: clamp(1.5rem, 4vw, 4rem); padding: var(--wheel-top) 2rem 3rem var(--wheel-left);
+    }
+    .tab-wheel-col { display: flex; flex-direction: column; min-width: 0; }
+    .tab-wheel-item { height: 2.25rem; cursor: pointer; }
+    .tab-wheel-label { font-size: var(--text-lg); font-weight: 400; letter-spacing: 0; color: var(--color-ink-muted); transition: color var(--dur-fast); }
+    .tab-wheel-item[aria-current] .tab-wheel-label { font-weight: 500; color: var(--color-ink); }
+    .tab-wheel-item:hover .tab-wheel-label { color: var(--color-ink); }
+    .tab-wheel-item:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; border-radius: var(--radius-s); }
+    .tab-wheel-mark { position: absolute; left: -.875rem; top: 50%; translate: 0 -50%; color: var(--color-ink-dim); }
+    /* Счётчик крупнее: 12 px, как метка (17.11.2026, владелец: кружки 8 px «не читабельны»). */
+    .tab-wheel-label .tab-wheel-badge { font-size: var(--text-xs); line-height: 1.5; min-width: 1.5em; padding-inline: .4em; margin-inline-start: .4em; vertical-align: .15em; }
+    .tab-wheel-sec.is-solo .tab-wheel-sec-name { display: none; }
+  }
   /* Выбрали — вкладка грузится: под названием бежит лаймовая полоска, пока страница не встала под колесом. */
   .tab-wheel-item.is-loading .tab-wheel-label::after {
     content: ''; position: absolute; inset-inline: 0; bottom: -.2em; height: 2px; border-radius: 1px; background: var(--color-accent);

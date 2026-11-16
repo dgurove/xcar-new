@@ -94,10 +94,11 @@ class OfferController
     public const PRESETS = [
         'all' => 'Все',
         // Закупка и галерея — тоже этапы (16.11.2026, владелец): из закупки машины попадают в черновики, в галерею черновики —
-        // параллельно, оставаясь черновиками. Строки рисуют `PurchaseController::tab` и `GalleryController::tab`.
+        // параллельно, оставаясь черновиками. Строки рисуют `PurchaseController::tab` и `GalleryController::tab`. Галерея —
+        // перед черновиками (17.11.2026, владелец); раскладку «Все» порядок не трогает — галереи в `OfferTabs` нет.
         'purchases' => 'Закупки',
-        'nofloor' => 'Без закупочной цены', 'unpriced' => 'Без продажной цены', 'estimating' => 'На оценке у менеджеров', 'priced' => 'Оцененные',
         ...GalleryController::PRESETS,
+        'nofloor' => 'Без закупочной цены', 'unpriced' => 'Без продажной цены', 'estimating' => 'На оценке у менеджеров', 'priced' => 'Оцененные',
         'slots' => 'Публикация', 'published' => 'Опубликованные', 'bids' => 'Есть подтверждения', 'done' => 'Без подтверждений',
         ...self::DEAL_TABS,
         // Гараж — все гаражные машины до расчёта, параллельно их вкладкам сделки, как галерея (16.11.2026, начальник: «всего 5
@@ -117,7 +118,14 @@ class OfferController
      * Разделы колеса (16.11.2026, владелец выбрал вариант А: «между вариантами подзаголовки, которые не выбираются, а
      * пролистываются»): первая вкладка раздела → подпись (`x-ui.tab-title :sections`). «Все» — над разделами.
      */
-    public const SECTIONS = ['purchases' => 'Закупка', 'nofloor' => 'Черновик', 'gallery' => 'Галерея', 'slots' => 'Предложение', 'reprice' => 'Сделка', 'garage' => 'Гараж', 'archive' => 'Архив'];
+    public const SECTIONS = ['purchases' => 'Закупка', 'gallery' => 'Галерея', 'nofloor' => 'Черновик', 'slots' => 'Предложение', 'reprice' => 'Сделка', 'garage' => 'Гараж', 'archive' => 'Архив'];
+
+    /**
+     * Столбцы колеса на ПК (17.11.2026, владелец: «не скролл, а просто клик», «три столбца: предложения — черновики, закупка,
+     * галерея, предложение; сделки — сделки и гараж; архивы»; заголовков у столбцов нет — имя только для чтения с экрана):
+     * первая вкладка столбца → имя (`x-ui.tab-title :columns`). На телефоне колесо одно.
+     */
+    public const WHEEL_COLUMNS = ['all' => 'Предложения', 'reprice' => 'Сделки', 'archive' => 'Архивы'];
 
     /** Вкладки, машин которых во «Все» нет (17.11.2026, владелец): работа модератора и законченное. */
     public const ALL_HIDDEN = ['nofloor', 'finished'];
@@ -170,13 +178,25 @@ class OfferController
     /** Разделы колеса человека — только у разделов, где есть его вкладки. */
     public static function sections(User $user): array
     {
+        return self::starts(self::SECTIONS, $user);
+    }
+
+    /** Столбцы колеса человека на ПК — только те, где есть его вкладки. */
+    public static function wheelColumns(User $user): array
+    {
+        return self::starts(self::WHEEL_COLUMNS, $user);
+    }
+
+    /** Подписи частей колеса (разделов, столбцов) — у первой видимой человеку вкладки части. */
+    private static function starts(array $parts, User $user): array
+    {
         $presets = self::presets($user);
         $out = [];
-        $section = null;
+        $part = null;
         foreach (array_keys(self::PRESETS) as $key) {
-            $section = self::SECTIONS[$key] ?? $section;
-            if (isset($presets[$key]) && $section && ! in_array($section, $out, true)) {
-                $out[$key] = $section;
+            $part = $parts[$key] ?? $part;
+            if (isset($presets[$key]) && $part && ! in_array($part, $out, true)) {
+                $out[$key] = $part;
             }
         }
 

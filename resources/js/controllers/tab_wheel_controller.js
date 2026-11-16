@@ -15,7 +15,12 @@ import { scrollTop, scrollToY } from '../lib/scroller';
 //
 // Переход — визит replace на тот же адрес, Turbo его морфит (`body`), поэтому на время загрузки колесо живёт в `<html>`
 // вне `<body>`: морф его не видит, а в компонент вставляет свежее (скрытое) колесо новой страницы. Угасло — уходит.
+//
+// ПК (от 1024, 17.11.2026, владелец: «не скролл, а просто клик», «на пк не должно быть фокуса скролла на том, что выбрано»):
+// те же пункты столбцами (CSS), скрипт ставит только место названия; клик открывает сразу, стрелки водят фокус по пунктам
+// (←/→ — в соседний столбец), Enter открывает. Режим выбирается при открытии; ширина перешла границу — колесо закрывается.
 const ID = 'tab-wheel';
+const COLS = '(min-width: 1024px)';
 
 // Щелчок, как у колёсика часов: iOS 18+ отдаёт касанием переключатель `<input switch>`, нажатый через подпись; на
 // Android — вибрация. Не умеют — молча.
@@ -44,6 +49,7 @@ export default class extends Controller {
         const r = button.getBoundingClientRect();
         const line = parseFloat(getComputedStyle(button).lineHeight) || r.height;
 
+        this.cols = matchMedia(COLS).matches;
         this.wheel = wheel;
         this.button = button;
         this.scroll = wheel.querySelector('.tab-wheel-scroll');
@@ -54,28 +60,34 @@ export default class extends Controller {
         document.documentElement.append(wheel);
         wheel.hidden = false;
 
-        const row = this.items[0]?.offsetHeight || line;
-        const port = this.scroll.clientHeight;
-        // Линия фокуса — верх строки, чья середина на середине первой строки заголовка.
-        const focus = Math.round(r.top + line / 2 - row / 2);
         const set = (k, v) => wheel.style.setProperty(k, v);
-        this.row = row;
-        set('--wheel-focus', `${focus}px`);
-        set('--wheel-tail', `${Math.max(0, port - focus - row)}px`);
-        set('--wheel-at', `${port - focus}px`);
         set('--wheel-left', `${Math.round(r.left)}px`);
-        // «›» у выбранной — ровно там, где она у заголовка: показывает, что выбрано (владелец 30.10.2026).
-        const chev = button.querySelector('.tab-title-chev')?.getBoundingClientRect();
-        if (chev) { set('--wheel-chev-x', `${chev.left}px`); set('--wheel-chev-y', `${chev.top}px`); }
-        this.items.forEach((a, i) => {
-            a.style.setProperty('--wheel-d', String(Math.abs(i - this.current)));
-            a.style.setProperty('--wheel-dir', String(Math.sign(i - this.current)));
-        });
-        // Место каждой вкладки — её верх у линии фокуса: между разделами стоят подзаголовки (`.tab-wheel-sec`, 16.11.2026),
-        // поэтому не «номер × строка». Снап встаёт только на вкладки — подзаголовки пролистываются.
-        this.focus = focus;
-        this.tops = this.items.map((a) => a.offsetTop - focus);
-        this.scroll.scrollTop = this.pos(this.current);
+        if (this.cols) {
+            // Столбцы — от места названия; прокрутки к выбранной нет.
+            set('--wheel-top', `${Math.round(r.top)}px`);
+            this.scroll.scrollTop = 0;
+        } else {
+            const row = this.items[0]?.offsetHeight || line;
+            const port = this.scroll.clientHeight;
+            // Линия фокуса — верх строки, чья середина на середине первой строки заголовка.
+            const focus = Math.round(r.top + line / 2 - row / 2);
+            this.row = row;
+            set('--wheel-focus', `${focus}px`);
+            set('--wheel-tail', `${Math.max(0, port - focus - row)}px`);
+            set('--wheel-at', `${port - focus}px`);
+            // «›» у выбранной — ровно там, где она у заголовка: показывает, что выбрано (владелец 30.10.2026).
+            const chev = button.querySelector('.tab-title-chev')?.getBoundingClientRect();
+            if (chev) { set('--wheel-chev-x', `${chev.left}px`); set('--wheel-chev-y', `${chev.top}px`); }
+            this.items.forEach((a, i) => {
+                a.style.setProperty('--wheel-d', String(Math.abs(i - this.current)));
+                a.style.setProperty('--wheel-dir', String(Math.sign(i - this.current)));
+            });
+            // Место каждой вкладки — её верх у линии фокуса: между разделами стоят подзаголовки (`.tab-wheel-sec`, 16.11.2026),
+            // поэтому не «номер × строка». Снап встаёт только на вкладки — подзаголовки пролистываются.
+            this.focus = focus;
+            this.tops = this.items.map((a) => a.offsetTop - focus);
+            this.scroll.scrollTop = this.pos(this.current);
+        }
         this.listen();
         overlays.open(ID, { close: () => this.close(true) });
         button.setAttribute('aria-expanded', 'true');
@@ -88,12 +100,15 @@ export default class extends Controller {
         const s = this.scroll;
         this.off = new AbortController();
         const opts = { signal: this.off.signal };
-        s.addEventListener('scroll', () => {
-            const i = this.index();
-            if (i !== this.at) { this.at = i; tick(); }
-        }, { ...opts, passive: true });
-        s.addEventListener('touchstart', () => this.stopGlide(), { ...opts, passive: true });
-        s.addEventListener('wheel', () => this.stopGlide(), { ...opts, passive: true });
+        if (!this.cols) {
+            s.addEventListener('scroll', () => {
+                const i = this.index();
+                if (i !== this.at) { this.at = i; tick(); }
+            }, { ...opts, passive: true });
+            s.addEventListener('touchstart', () => this.stopGlide(), { ...opts, passive: true });
+            s.addEventListener('wheel', () => this.stopGlide(), { ...opts, passive: true });
+        }
+        matchMedia(COLS).addEventListener('change', () => this.close(), opts);
         this.wheel.addEventListener('click', (e) => this.tap(e), opts);
         document.addEventListener('keydown', (e) => this.key(e), opts);
         // Наш визит — по адресу (ответ мог прийти редиректом); начался чужой — колесо его не ждёт.
@@ -122,6 +137,13 @@ export default class extends Controller {
         event.preventDefault();
         if (!item) { this.close(); return; }
         const i = this.items.indexOf(item);
+        // ПК: клик — сразу; по выбранной — закрыть (или отменить начатую загрузку другой).
+        if (this.cols) {
+            if (i !== this.current) this.go(i);
+            else if (this.chosen !== null) this.cancel();
+            else this.close();
+            return;
+        }
         if (i === this.index() && !this.gliding) {
             if (i === this.current) this.close(); else this.go(i);
             return;
@@ -131,6 +153,7 @@ export default class extends Controller {
 
     key(event) {
         if (event.key === 'Escape') { event.preventDefault(); this.close(); return; }
+        if (this.cols) { this.colKey(event); return; }
         const step = { ArrowDown: 1, ArrowUp: -1 }[event.key];
         if (step) {
             event.preventDefault();
@@ -141,6 +164,31 @@ export default class extends Controller {
             event.preventDefault();
             const i = this.index();
             if (i === this.current) this.close(); else this.go(i);
+        }
+    }
+
+    // ПК: ↑/↓ — по пунктам подряд, ←/→ — к ближайшему по высоте пункту соседнего столбца, Enter — открыть пункт в фокусе.
+    colKey(event) {
+        const at = this.items.indexOf(document.activeElement);
+        const from = at < 0 ? this.current : at;
+        const step = { ArrowDown: 1, ArrowUp: -1 }[event.key];
+        const side = { ArrowRight: 1, ArrowLeft: -1 }[event.key];
+        if (step) {
+            event.preventDefault();
+            this.items[Math.max(0, Math.min(this.items.length - 1, at < 0 ? from : from + step))]?.focus();
+        } else if (side) {
+            event.preventDefault();
+            const cols = [...this.wheel.querySelectorAll('.tab-wheel-col')];
+            const item = this.items[from];
+            const next = cols[cols.indexOf(item?.closest('.tab-wheel-col')) + side];
+            if (!item || !next) return;
+            const y = item.getBoundingClientRect().top;
+            const near = [...next.querySelectorAll('.tab-wheel-item')]
+                .reduce((best, a) => (!best || Math.abs(a.getBoundingClientRect().top - y) < Math.abs(best.getBoundingClientRect().top - y) ? a : best), null);
+            near?.focus();
+        } else if (event.key === 'Enter' && at >= 0) {
+            event.preventDefault();
+            if (at === this.current) this.close(); else this.go(at);
         }
     }
 
