@@ -1360,6 +1360,9 @@ html.kb-open { --home-gap: 0px; }
   }
   .tab-wheel-sec-line { flex: 1; height: var(--hairline); background: var(--color-hairline); }
   .tab-wheel-sec-name { font-size: var(--text-sm); color: var(--color-ink-dim); white-space: nowrap; }
+  /* Зелёное число у названия вкладки — частью названия: растёт и тает вместе с ним. */
+  .tab-wheel-badge { margin-inline-start: .35em; font-size: .5em; line-height: 1.5; padding-inline: .45em; min-width: 1.5em; vertical-align: .35em; letter-spacing: 0; }
+  .table-group.is-ours .table-group-name { color: var(--color-accent-text); }
   .tab-wheel-nums { margin-inline-start: auto; display: flex; align-items: center; gap: .5rem; font-size: var(--text-sm); color: var(--color-ink-dim); }
   @supports (animation-timeline: view()) {
     .tab-wheel-item .tab-wheel-label, .tab-wheel-item[aria-current] .tab-wheel-label {

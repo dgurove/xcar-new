@@ -23,8 +23,8 @@ final class Batch
 
     /** Вид пачки → заголовок сводного (число вставляется) и куда ведёт. */
     public const KINDS = [
-        'stage-overdue' => ['Срок вышел: %s', ['шаг', 'шага', 'шагов'], 'crm', '/offers?preset=us'],
-        'stage-due' => ['Срок подходит: %s', ['шаг', 'шага', 'шагов'], 'crm', '/offers?preset=us'],
+        'stage-overdue' => ['Срок вышел: %s', ['шаг', 'шага', 'шагов'], 'crm', '/offers?preset=agree'],
+        'stage-due' => ['Срок подходит: %s', ['шаг', 'шага', 'шагов'], 'crm', '/offers?preset=agree'],
         'transport-moved' => ['Вывоз: %s', ['событие', 'события', 'событий'], 'logistics', '/transports'],
         'transport-requested' => ['Новые вывозы: %s', ['задача', 'задачи', 'задач'], 'logistics', '/transports'],
         'transport-waiting' => ['Вывоз ждёт назначения: %s', ['задача', 'задачи', 'задач'], 'logistics', '/transports?preset=new'],

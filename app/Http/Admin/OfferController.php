@@ -32,7 +32,7 @@ use App\Offers\CarView;
 use App\Offers\CarWindow;
 use App\Offers\CatalogQuery;
 use App\Offers\DealDates;
-use App\Offers\DealWork;
+use App\Offers\DealTabs;
 use App\Offers\Estimate;
 use App\Offers\EstimateState;
 use App\Offers\Exclusive;
@@ -94,17 +94,23 @@ class OfferController
     ];
 
     /**
-     * Сделка — состояние предложения (16.11.2026, начальник; владелец выбрал вкладки «по этапам маршрута»): вкладки сделки —
-     * здесь же, а не в «Работе → Сделки». «Ваш ход» — дела (`DealController::todo`), дальше этапы маршрута (`DealWork::TABS`),
-     * «Закрыты» — выданные. Строки рисует `DealController::tab` — те же группы и строки, что были в «Сделках».
+     * Сделка — состояние предложения (16.11.2026, начальник; владелец выбрал вкладки «по этапам маршрута», «Ваш ход» — разложить
+     * по этапам): вкладки сделки здесь же, а не в «Работе → Сделки». Этапы по порядку маршрута — `DealTabs`, «Завершённые» —
+     * выданные. Строки рисует `DealController::tab`.
      */
-    public const DEAL_TABS = ['us' => 'Ваш ход', ...DealWork::TABS, 'finished' => 'Закрыты'];
+    public const DEAL_TABS = [...DealTabs::TABS, 'finished' => 'Завершённые'];
 
     /**
      * Разделы колеса (16.11.2026, владелец выбрал вариант А: «между вариантами подзаголовки, которые не выбираются, а
      * пролистываются»): первая вкладка раздела → подпись (`x-ui.tab-title :sections`). «Все» — над разделами.
      */
-    public const SECTIONS = ['nofloor' => 'Черновик', 'slots' => 'Предложение', 'us' => 'Сделка', 'archive' => 'Архив'];
+    public const SECTIONS = ['nofloor' => 'Черновик', 'slots' => 'Предложение', 'reprice' => 'Сделка', 'archive' => 'Архив'];
+
+    /** Зелёные числа колеса: ключ вкладки → ключ числа в `counts` (оценки менеджеров, наши дела по этапам сделки). */
+    public static function badges(): array
+    {
+        return ['estimating' => 'estimating_given', 'priced' => 'priced_given', ...collect(DealTabs::TABS)->mapWithKeys(fn ($t, $k) => [$k => $k.'_our'])->all()];
+    }
 
     /** Вкладка ли сделки: строки — сделки (`DealController::tab`). */
     public static function dealTab(?string $preset): bool
@@ -133,8 +139,8 @@ class OfferController
         }
         $hidden = ['estimating' => true, 'bids' => true, 'done' => true, 'all' => true, 'legacy' => true, 'auction' => true];
 
-        // Модератору (14.11.2026, `canEditDeals`) — сделки для документов: этапы и «Закрыты», без дел админа «Ваш ход».
-        return array_diff_key(self::PRESETS, $hidden + ['us' => true] + ($user->canEditDeals() ? [] : self::DEAL_TABS));
+        // Модератору (14.11.2026, `canEditDeals`) — сделки для документов: этапы и «Завершённые».
+        return array_diff_key(self::PRESETS, $hidden + ($user->canEditDeals() ? [] : self::DEAL_TABS));
     }
 
     /** Разделы колеса человека — только у разделов, где есть его вкладки. */
@@ -508,9 +514,8 @@ class OfferController
             'bids' => $q->where('offers.state', OfferState::Open)->whereHas('bids', $bids),
             // «Все» (21.10.2026, владелец: «все, в том числе завершённые и перешедшие в сделку, короче все кроме архивных»).
             'all' => $q->whereNotIn('offers.state', [OfferState::Archived, OfferState::Cancelled]),
-            // Сделка (16.11.2026): «Ваш ход» — шаг продажи ждёт нас; этапы — блок шага продажи; «Закрыты» — выданные.
-            'us' => $q->where('offers.state', OfferState::Sold)->whereHas('deal')->whereHas('positions', fn ($p) => $p->where('track', 'sale')->needsUs()),
-            'agree', 'paying', 'docs', 'pickup', 'settle', 'self' => $q->where('offers.state', OfferState::Sold)->whereHas('deal')->whereRaw(DealWork::tabSql($preset)),
+            // Сделка (16.11.2026): этап — раскладка `DealTabs`, «Завершённые» — выданные.
+            'reprice', 'letter', 'answered', 'agree', 'invoice', 'paying', 'payout', 'pickup', 'docs' => $q->whereIn('offers.id', DealTabs::ids($preset)),
             'finished' => $q->where('offers.state', OfferState::Delivered),
             default => $q->whereIn('offers.state', [OfferState::Archived, OfferState::Cancelled]),
         };
@@ -800,6 +805,11 @@ class OfferController
             if (in_array($key, ['estimating', 'priced'], true) && $user->canManageCrm()) {
                 $counts[$key.'_given'] = (clone $q)->whereHas('estimates', fn ($e) => $e->needsDecision())->count();
             }
+        }
+
+        // Сколько ждёт нас по вкладкам сделки — зелёным у названия (16.11.2026).
+        foreach (DealTabs::ours() as $tab => $n) {
+            $counts[$tab.'_our'] = $n;
         }
 
         return $counts;

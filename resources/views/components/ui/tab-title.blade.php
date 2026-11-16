@@ -31,11 +31,11 @@
                     <div class="tab-wheel-sec" aria-hidden="true"><span class="tab-wheel-sec-line"></span><span class="tab-wheel-sec-name">{{ $sections[$key] }}</span></div>
                 @endisset
                 <a href="{{ $hrefs[$key] ?? $url([$pillParam => $key === '' || $key === ($pillHome ?? array_key_first($pills)) ? null : $key, 'page' => null, 'rows' => null]) }}" class="tab-wheel-item text-xl sm:text-2xl" data-turbo-prefetch="false" @isset($bumps[$key]) data-pill-bump="{{ $key }}:{{ $counts[$bumps[$key]] ?? 0 }}" @endisset @if ((string) $pill === (string) $key) aria-current="true" @endif>
-                    <span class="tab-wheel-label">{{ $label }}</span>
+                    {{-- Зелёное число — сразу за названием (16.11.2026, владелец: «зелёные счётчики возле заголовков, а не справа»):
+                         внутри названия, растёт вместе с ним; серое «всего» — справа. --}}
+                    <span class="tab-wheel-label">{{ $label }}@isset($badges[$key])<span class="badge nums tab-wheel-badge" data-pill-count="{{ $badges[$key] }}" @unless ($counts[$badges[$key]] ?? 0) hidden @endunless>{{ ($counts[$badges[$key]] ?? 0) ?: '' }}</span>@endisset</span>
                     <span class="tab-wheel-nums">
-                        @isset($badges[$key])<span class="badge nums" data-pill-count="{{ $badges[$key] }}">{{ ($counts[$badges[$key]] ?? 0) ?: '' }}</span>@endisset
-                        {{-- Бейдж и есть число вкладки («Ваш ход») — второй раз серым его нет. --}}
-                        @if (array_key_exists($key, $counts) && ($badges[$key] ?? null) !== $key)<span class="nums" data-pill-count="{{ $key }}">{{ $counts[$key] ?: '' }}</span>@endif
+                        @if (array_key_exists($key, $counts))<span class="nums" data-pill-count="{{ $key }}">{{ $counts[$key] ?: '' }}</span>@endif
                     </span>
                 </a>
             @endforeach

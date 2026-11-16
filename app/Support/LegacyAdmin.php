@@ -9,7 +9,7 @@ final class LegacyAdmin
         'offers' => '/offers',
         'pochta' => '/work/mail',
         'chaty' => '/work/chats',
-        'sdelki' => '/offers?preset=us',
+        'sdelki' => '/offers?preset=agree',
         'zakupki' => '/purchases',
         'stavki' => '/offers?preset=bids',
         'interesy' => '/interests',

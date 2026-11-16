@@ -57,7 +57,7 @@
     {{-- Вкладок восемь — заголовком с вертикальным списком, а не лентой пилюль (22.10.2026, владелец); действия экрана —
          в той же строке, сортировка, вид и лупа — в строке чипов. --}}
     <div class="title-row">
-        <x-ui.tab-title :pills="$presets" :pill="$preset" pill-param="preset" pill-home="" :counts="$counts" :badges="['estimating' => 'estimating_given', 'priced' => 'priced_given', 'us' => 'us']" :bumps="['legacy' => 'legacy_drafts']" :sections="\App\Http\Admin\OfferController::sections(auth()->user())" :drop="['todo', 'what', 'sub', 'turn']" fallback="Предложения" id="offers-tabs"/>
+        <x-ui.tab-title :pills="$presets" :pill="$preset" pill-param="preset" pill-home="" :counts="$counts" :badges="\App\Http\Admin\OfferController::badges()" :bumps="['legacy' => 'legacy_drafts']" :sections="\App\Http\Admin\OfferController::sections(auth()->user())" :drop="['todo', 'what', 'sub', 'turn']" fallback="Предложения" id="offers-tabs"/>
         <div class="title-actions">
             {{-- Фильтр стоит — видно в строке названия, а не только в ряду чипов: на телефоне выбранный чип бывает за краем ленты
                  (02.11.2026, владелец: «если дело в фильтре, рисовать значок фильтра, если он применён», «кнопку „Сбросить“

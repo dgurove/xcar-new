@@ -24,6 +24,7 @@ use App\Offers\Bid;
 use App\Offers\BidState;
 use App\Offers\CatalogQuery;
 use App\Offers\Deal;
+use App\Offers\DealTabs;
 use App\Offers\Interest;
 use App\Offers\InterestState;
 use App\Offers\Offer;
@@ -786,6 +787,7 @@ final class Nav
     public static function forgetStaffCounts(): void
     {
         Conveyor::forget();
+        DealTabs::forget();
         foreach (Surface::cases() as $surface) {
             Cache::forget("nav.staff:{$surface->value}");
             Cache::forget("nav.counts:{$surface->value}:staff");

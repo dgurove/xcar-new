@@ -2,6 +2,7 @@
 
 namespace App\Live\Console;
 
+use App\Offers\DealTabs;
 use App\Purchases\Purchase;
 use App\Support\Portion;
 use App\Support\Surface;
@@ -38,8 +39,7 @@ final class ListsCheck extends Command
         $offers = ['nofloor', 'unpriced', 'estimating', 'priced', 'slots', 'published', 'bids', 'done', 'all', 'archive', 'legacy', 'auction'];
 
         return [
-            ...array_map(fn ($p) => $crm('/offers?preset='.$p), ['us', 'agree', 'paying', 'docs', 'pickup', 'settle', 'self', 'finished']),
-            $crm('/offers?preset=agree&turn=manager'),
+            ...array_map(fn ($p) => $crm('/offers?preset='.$p), [...array_keys(DealTabs::TABS), 'finished']),
             ...array_map(fn ($p) => $crm('/offers?preset='.$p.'&vid=table'), $offers),
             $crm('/gallery?preset=live&vid=table'), $crm('/gallery?preset=interest&vid=table'),
             $crm('/alarms'),

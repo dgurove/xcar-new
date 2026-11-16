@@ -95,7 +95,7 @@ class AlfaRequisitesTest extends TestCase
 
     /**
      * Подпункты шага (`Workflow\Substeps`, 04.11.2026): в «Согласовании» пройденное — исходом, кто нажал; в «Реквизитах для
-     * счёта» — «Нет реквизитов» сейчас, «Письмо с реквизитами» впереди; во «Ждём менеджера» сделка — в группе своего менеджера.
+     * счёта» — «Нет реквизитов» сейчас, «Письмо с реквизитами» впереди; сделка — во вкладке «Реквизиты и счёт».
      */
     public function test_substeps_and_waiting_tab_name_who_and_what(): void
     {
@@ -112,8 +112,11 @@ class AlfaRequisitesTest extends TestCase
         $this->assertSame('Реквизиты для счёта', $offer->stage()->block->name);
         $this->assertSame([['Нет реквизитов', 'now'], ['Письмо с реквизитами', 'wait']], $subs->map(fn ($s) => [$s['name'], $s['state']])->all());
 
-        $page = $this->actingAs($this->admin)->get('http://'.Surface::Crm->host().'/offers?preset=paying&turn=manager')->assertOk();
-        $page->assertSee('Денис Трофимов')->assertSee('Нет реквизитов')->assertDontSee('tel:79000000002', false); // «Позвонить» снята 10.11.2026
+        // Вкладка — этап «Реквизиты и счёт» (`DealTabs`, 16.11.2026), строка — с менеджером, без кнопки «Позвонить» (снята 10.11.2026).
+        \App\Offers\DealTabs::forget();
+        $this->assertSame('invoice', \App\Offers\DealTabs::map()[$offer->id][0] ?? null);
+        $page = $this->actingAs($this->admin)->get('http://'.Surface::Crm->host().'/offers?preset=invoice')->assertOk();
+        $page->assertSee('Денис Трофимов')->assertDontSee('tel:79000000002', false);
     }
 
     public function test_reply_asking_requisites_is_recognized(): void

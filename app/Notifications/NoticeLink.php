@@ -73,7 +73,7 @@ final class NoticeLink
             (bool) preg_match('~^/garage/(?:cars|pickups)/(\d+)~', $path, $m) => '/offers/'.$m[1],
             (bool) preg_match('~^/buyers/(\d+)$~', $path, $m) => '/settings/users/'.$m[1],
             // «Выставите счёт» прежнего вида: счета ставятся сами, форма без покупателя отвечала 404 — в деньги сделки.
-            $path === '/work/invoices/new' => self::dealOfOffer($href) ?? '/offers?preset=us',
+            $path === '/work/invoices/new' => self::dealOfOffer($href) ?? '/offers?preset=agree',
             default => $href,
         };
     }
