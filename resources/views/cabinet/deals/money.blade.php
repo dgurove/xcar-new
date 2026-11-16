@@ -1,4 +1,4 @@
-{{-- Деньги сделки менеджеру по схеме оплаты (05.10.2026; с 16.11.2026 — одной карточкой «Деньги», см. ниже):
+{{-- Деньги сделки менеджеру по схеме оплаты (05.10.2026; с 16.11.2026 — одной карточкой без заголовка, на шаге оплаты — в нём):
      ДКП и «страховой напрямую» — цена продажи, взаимозачёт, собственнику (или страховой), подбор XCar, «Ваша доля» зелёным;
      ПРАЙМ / Р.О.С. — цена продажи (она же счёт за ТС) и вознаграждение с выплатами. Закупочную менеджер видит только в своём
      ДКП. Счёт открывается тут же — способы оплаты под его строкой (`cabinet.deals.payment row`), отдельной страницы оплаты нет
@@ -33,10 +33,26 @@
      у ПРАЙМ — цена и счёт на ту же сумму. Строки «подпись — сумма», второй строкой только факт (оплачено, ждём подтверждения,
      срок счёта); «после ответа поставщика» и прочие «когда» сняты (владелец: «не надо это всё»). Выставленный счёт — со способами
      оплаты под строкой (`cabinet.deals.payment row`); на шаге оплаты платить — в задаче шага, здесь только строки. --}}
-@php $payHere = ! $onPayStep; @endphp
-<div class="box deal-money-card" id="money">
-    <h2 class="box-title">Деньги</h2>
-    <div class="deal-money-rows">
+{{-- Шаг оплаты (16.11.2026, владелец: «встрой оплату в блок деньги, убери слово „Деньги“, объедини два блока в один»): строки —
+     внутри карточки шага «Оплата» (`embedded`, `cabinet.deals.step`), своей карточки тогда нет; платить — здесь же. На остальных
+     шагах — своей карточкой без заголовка. --}}
+@php
+    $embedded ??= false;
+    $payHere = $embedded || ! $onPayStep;
+    // «Страховой напрямую» / ДКП на оплате: чек — одной «Приложить чек» под строками (`cabinet.deals.receipt`), у ПРАЙМ своей нет.
+    $oneReceipt = $embedded && $deal->paysSelection();
+    $supplierFiles = [];
+    if ($embedded && $deal->paysSelection()) {
+        foreach (\App\Offers\SupplierInvoice::shown($offer) as $f) {
+            $supplierFiles[] = ['Счёт поставщика', $f, 'от '.$f->created_at->timezone('Europe/Moscow')->format('d.m')];
+        }
+        foreach ($deal->sentPaymentProof()?->getMedia('files') ?? [] as $f) {
+            $supplierFiles[] = ['Платёжка', $f, \App\Support\Ago::at($f->created_at, true, words: false)];
+        }
+    }
+@endphp
+@unless ($embedded)<div class="box deal-money-card" id="money">@endunless
+    <div class="deal-money-rows{{ $embedded ? ' mt-4' : '' }}">
         @if ($deal->paysSelection())
             <a href="/offers/{{ $offer->number }}" class="deal-money-row flex items-start gap-3"><span class="min-w-0 flex-1">Цена продажи</span><span class="nums shrink-0 text-lg font-semibold">{{ Money::rub($deal->amount) }}</span></a>
             @if ($deal->offset() && ! $deal->isDirect())
@@ -47,22 +63,24 @@
                  «Поставщику» (название вендора менеджеру не показываем); подбор — юрлицо его счёта («ООО «ПРАЙМ»»), а не «Подбор XCar». --}}
             @include('cabinet.deals.payment', ['row' => true,
                 'title' => $deal->schemeOf() === \App\Offers\DealScheme::Insurer ? 'Поставщику' : 'Собственнику',
-                'amount' => $ownerSum, 'state' => $supplierState, 'invoice' => null, 'buyerPays' => $deal->isActive(), 'block' => true])
+                'amount' => $ownerSum, 'state' => $supplierState, 'invoice' => null, 'buyerPays' => $deal->isActive(), 'block' => true, 'files' => $supplierFiles,
+                'pickBuyer' => $deal->isLive() && ! $deal->hasContract()])
             @include('cabinet.deals.payment', ['row' => true, 'title' => ($selection?->seller ?? \App\Billing\Seller::Prime)->config()['name'],
                 'amount' => $selection ? $sumOf($selection) : Money::rub((int) $deal->ours()),
-                'state' => null, 'invoice' => $selection, 'pay' => $payHere, 'payerHere' => $payHere, 'block' => true])
+                'state' => null, 'invoice' => $selection, 'pay' => $payHere, 'payerHere' => $payHere, 'block' => true, 'noSlip' => $oneReceipt])
             @if ($deal->commission)
-                <div class="deal-money-row flex items-start gap-3"><span class="min-w-0 flex-1">Ваша доля</span><span class="profit-sum nums shrink-0">+{{ Money::rub((int) $deal->commission) }}</span></div>
+                <div class="deal-money-row flex items-start gap-3"><span class="min-w-0 flex-1">Вознаграждение</span><span class="profit-sum nums shrink-0">+{{ Money::rub((int) $deal->commission) }}</span></div>
             @endif
         @else
             {{-- ПРАЙМ / Р.О.С. (Совкомбанк, Carcade, часть Альфы): покупатель платит нашему юрлицу — строкой с его названием и ценой
                  (она же счёт); счёт выставлен — его оплаты и способы под ней. --}}
             @include('cabinet.deals.payment', ['row' => true, 'title' => ($sale?->seller ?? $deal->seller())->config()['name'], 'strong' => true,
-                'amount' => Money::rub((int) $deal->amount), 'state' => null, 'invoice' => $sale, 'pay' => $payHere, 'payerHere' => $payHere, 'block' => true])
+                // Вознаграждение оставил себе — к оплате меньше на него; сумма — та, что платить (16.11.2026).
+                'amount' => Money::rub((int) $deal->amount - (int) ($sale?->allPayments->where('source', \App\Billing\PaymentSource::Offset)->sum('amount') ?? 0)), 'state' => null, 'invoice' => $sale, 'pay' => $payHere, 'payerHere' => $payHere, 'block' => true])
             @if ($deal->commission)
                 <div class="deal-money-row flex flex-col gap-2">
                     <div class="flex items-start gap-3">
-                        <span class="min-w-0 flex-1"><span class="block">Ваше вознаграждение</span>@if ($state === CommissionState::Paid)<span class="block text-sm text-open">выплачено</span>@endif</span>
+                        <span class="min-w-0 flex-1"><span class="block">Вознаграждение</span>@if ($state === CommissionState::Paid)<span class="block text-sm text-open">выплачено</span>@elseif ($sale?->allPayments->contains('source', \App\Billing\PaymentSource::Offset))<span class="block text-sm text-ink-muted">оставили себе из оплаты</span>@endif</span>
                         <span class="profit-sum nums shrink-0">+{{ Money::rub((int) $deal->commission) }}</span>
                     </div>
                     @if ($fee?->payments?->isNotEmpty())
@@ -76,4 +94,4 @@
             @endif
         @endif
     </div>
-</div>
+@unless ($embedded)</div>@endunless

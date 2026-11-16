@@ -16,6 +16,9 @@
     // Платёжка ушла, поставщик ещё не подтвердил (16.11.2026, `Deal::sentPaymentProof`): та же карточка — «Оплачено поставщику»,
     // платёжка и счёт файлами, «Приложить ещё».
     $sent = ! $requirement && $deal->isLive() ? $deal->sentPaymentProof() : null;
+    // Строки денег — в этой карточке (16.11.2026, владелец: «объедини эти два блока в один»): шаг оплаты и ушедшая платёжка;
+    // решает страница сделки (`cabinet.deals.show`), она же тогда не рисует карточку денег отдельно.
+    $moneyHere = $moneyInStep ?? false;
     $unpaid = $invoices->filter(fn ($i) => ! $i->isOwed() && $i->state === \App\Billing\InvoiceState::Issued);
     // Шаг оплаты, а счета уже оплачены (оплатили по ссылке, маршрут ещё не догнал) — «Оплатите» с «Приложить» тут врут.
     $paidUp = $payStep && ! $direct && $unpaid->isEmpty() && $deal->fullyPaid();
@@ -83,15 +86,16 @@
             @php
                 // Только «Ждём поставщика»: у наших этапов фраза — инструкция менеджеру («Свяжитесь с владельцем…»), не статус.
                 // «Запись на подписание» — и пока письмо не ушло (ждём XCar): «Записываем на подписание, с 11.11» (11.11.2026).
-                $statusLine = $sent ? 'Ждём подтверждения оплаты' : (! $requirement && $position->stage->ask_text
+                // Платёжка ушла, строки денег тут же — «ждём подтверждения» говорят они сами (16.11.2026), второй раз не пишем.
+                $statusLine = $sent ? ($moneyHere ? null : 'Ждём подтверждения оплаты') : (! $requirement && $position->stage->ask_text
                     && ($position->waitsFor() === \App\Workflow\WaitsFor::Supplier || \App\Offers\Signing::awaitsSlots($position->stage))
                     ? \App\Users\Wording::mine($position->stage->ask_text) : null);
                 // Поставщик готовит договор — когда покупатель сможет подписать, день и время заранее (`Signing`, 11.11.2026).
                 $signingDays = ! $requirement && $deal->signing_at === null && \App\Offers\Signing::asksTime($position->stage->loadMissing('exits.to.exits'));
                 $heading = match (true) {
                     $consent => 'Взять в работу?',
-                    // Два платежа — поставщику и наш подбор — два одинаковых блока под общим «Оплата» (16.11.2026).
-                    $direct && $selectionPay && $requirement && ! $paidUp => 'Оплата',
+                    // Оплата одной карточкой с деньгами: заголовок «Оплата», суммы — строками ниже, не в заголовке (16.11.2026).
+                    $moneyHere && ($payStep || $sent) && ! $paidUp => 'Оплата',
                     (bool) $sent => trim(preg_replace('/^Оплатить/u', 'Оплачено', (string) $deal->schemeOf()->payLabel()).' '.($deal->supplierPayment() ? \App\Support\Money::rub($deal->supplierPayment()) : '')),
                     $signingDays && \App\Offers\Signing::wishDue($deal) => 'Когда покупатель сможет подписать договор?',
                     $needsBuyer && ! $buyerStep => $gap === 'passport' ? 'Приложить паспорт покупателя' : 'Указать покупателя',
@@ -191,10 +195,11 @@
             {{-- Платит поставщику сам — его счёт тут же, первым (10.11.2026, 0790/046/11079/26: счёт был в «Информации по сделке»
                  номером со сканера, а на шаге «Оплатить страховой» его не было). Пока не показали — словом. --}}
             @php $supplierBills = $direct || $sent ? \App\Offers\SupplierInvoice::shown($deal->offer) : collect(); @endphp
-            {{-- Поставщику и ООО «ПРАЙМ» — строками одной группы и одна «Приложить чек» с вопросом «За что?» (16.11.2026, вариант Б). --}}
-            @php $receipt = $direct && $selectionPay && $requirement && ! $needsBuyer && ! $paidUp; @endphp
-            @if ($receipt)
-                @include('cabinet.deals.receipt')
+            {{-- Оплата: строки денег (кому, сколько, файлы, плательщики, способы) и одна «Приложить чек» (16.11.2026). --}}
+            @php $receipt = $moneyHere; @endphp
+            @if ($moneyHere)
+                @include('cabinet.deals.money', ['embedded' => true])
+                @if ($deal->paysSelection() && ($payStep || $sent))@include('cabinet.deals.receipt')@endif
             @endif
             @if ($direct && ! $receipt && \App\Offers\SupplierInvoice::onPay($deal, $position->stage))
                 @if ($supplierBills->isNotEmpty())
@@ -211,7 +216,7 @@
             @if ($direct && ! $receipt && $requirement && ! $needsBuyer && ! $paidUp)
                 @include('cabinet.deals.answer', ['attachLabel' => 'Приложить платёжку'])
             @endif
-            @if ($sent)
+            @if ($sent && ! $moneyHere)
                 {{-- Платёжка ушла (16.11.2026): она и счёт файлами; пока поставщик не подтвердил — «Приложить ещё» и × (последний файл
                      не убрать). Загрузка перечитывает страницу (`reload`). --}}
                 @php $proofs = $sent->getMedia('files'); @endphp
@@ -250,7 +255,8 @@
             @include('cabinet.deals.payload')
             @if ($disclosures->isNotEmpty())@include('cabinet.deals.disclosures', ['skipFiles' => $supplierBills->pluck('id')->all()])@endif
 
-            @if ($stepInvoices->isNotEmpty())
+            @if ($moneyHere)
+            @elseif ($stepInvoices->isNotEmpty())
                 <div class="list mt-5">
                     @foreach ($stepInvoices as $i)@include('cabinet.deals.invoice-row', ['invoice' => $i])<x-billing.pay-status :invoice="$i" compact/>@endforeach
                 </div>
@@ -278,7 +284,7 @@
             @endif
 
             {{-- Действия — после всего, что нужно прочитать. --}}
-            @if ($needsBuyer)
+            @if ($needsBuyer && ! $moneyHere)
                 @if ($photoTiles)<div class="mt-4"><x-deal.buyer-kind :deal="$deal"/></div>@endif
                 <div class="mt-4">@include('cabinet.deals.contract', ['part' => 'buyer', 'embedded' => true, 'labels' => false, 'after' => ''])</div>
             @endif

@@ -38,7 +38,9 @@
         $hint = 'Поставщик выставит счёт на покупателя';
     }
     // Счёт файлом — строкой той же группы, после договора.
+    // На шаге оплаты счёт — строкой «Счёт № …» в способах оплаты карточки «Оплата»; второй раз не пишем (16.11.2026).
     $saleRow = match (true) {
+        ($saleInPay ?? false) => '',
         (bool) $sale => \Illuminate\Support\Facades\Blade::render('<x-ui.file :name="$name" mime="application/pdf" :href="$href" :bytes="$bytes" download class="row"/>',
             ['name' => 'Счёт '.(str_starts_with($sale->label(), '№') ? $sale->label() : '№ '.$sale->label()), 'href' => '/account/invoices/'.$sale->id.'/pdf', 'bytes' => $sale->getFirstMedia('file')?->size]),
         $ours && $chosen => '<div class="row sale-row"><span class="sale-row-label">Счёт</span><span class="sale-row-value text-ink-muted">'

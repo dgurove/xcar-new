@@ -1,61 +1,26 @@
-{{-- Оплата «страховой напрямую» на шаге оплаты: поставщику и ООО «ПРАЙМ» — двумя строками одной группы и одна «Приложить
-     чек» (16.11.2026, владелец, вариант Б; 2611134025: под одним «Оплата» стояли две одинаковые «Приложить платёжку», менеджер
-     нажал нижнюю — ПРАЙМ — и приложил чек поставщику на 2,7 млн к нашему подбору). Строка поставщика — его счёт файлом, строка
-     ПРАЙМ — шторка оплаты (ссылкой, по счёту, наличными). Чек: неоплаченная одна — сразу к ней, две — шторка «За что этот чек?»
-     (`receipt_controller`, `DealController::receipt`). Вход: $deal, $requirement (просьба шага оплаты), $selectionPay (счёт ПРАЙМ),
-     $supplierBills (счёт поставщика файлами). --}}
+{{-- «Приложить чек» на оплате «страховой напрямую» / ДКП — одна кнопка под строками карточки «Оплата» (16.11.2026, владелец, вариант Б;
+     2611134025: две одинаковые «Приложить платёжку» — менеджер нажал у ПРАЙМ и приложил чек поставщику на 2,7 млн к подбору). Чек:
+     куда можно одно — сразу туда, два — шторка «За что этот чек?» (`receipt_controller`, `DealController::receipt`). Поставщику —
+     пока шаг ждёт платёжку и после неё (ещё лист к ушедшей), ООО «ПРАЙМ» — пока остаток счёта не заявлен. Вход: $deal, $requirement,
+     $selectionPay (счёт ПРАЙМ). --}}
 @php
     use App\Support\Money;
-    $bill = $supplierBills->first();
-    $supplierSum = $deal->supplierPayment();
-    $prime = $selectionPay;
+    $supplierOpen = $requirement && $deal->paysSupplierOn($requirement->stage)
+        || (! $requirement && $deal->sentPaymentProof());
+    $prime = $selectionPay ?? null;
     $primeLeft = $prime ? round($prime->remaining() - $prime->claimed(), 2) : 0;
-    $primeOpen = $prime && $primeLeft > 0 && $deal->buyer_id === auth()->id();
-    $primeName = $prime?->seller->config()['name'] ?? 'ООО «ПРАЙМ»';
-    $primeSub = match (true) {
-        ! $prime => null,
-        $primeLeft <= 0 => 'ждёт подтверждения',
-        default => 'счёт '.$prime->label(),
-    };
-    // За что может быть чек: поставщику (шаг ждёт платёжку) и ПРАЙМ (остаток не заявлен).
+    // Ждёт чека хоть одна оплата — лаймовая «Приложить чек»; всё уже приложено — тихая «Приложить ещё чек» (лист к ушедшей).
+    $waiting = ($requirement && $deal->paysSupplierOn($requirement->stage)) || ($prime && $primeLeft > 0 && $deal->buyer_id === auth()->id());
     $choices = array_filter([
-        'supplier' => $requirement ? ['Поставщику', $bill ? 'счёт от '.$bill->created_at->timezone('Europe/Moscow')->format('d.m') : null, $supplierSum] : null,
-        'invoice:'.$prime?->id => $primeOpen ? [$primeName, 'счёт '.$prime->label(), $primeLeft] : null,
+        'supplier' => $supplierOpen ? [$deal->schemeOf() === \App\Offers\DealScheme::Insurer ? 'Поставщику' : 'Собственнику', $deal->supplierPayment()] : null,
+        'invoice:'.$prime?->id => $prime && $primeLeft > 0 && $deal->buyer_id === auth()->id() ? [$prime->seller->config()['name'], $primeLeft] : null,
     ]);
 @endphp
-<div class="list mt-4">
-    @if ($bill)
-        <a href="/files/{{ $bill->id }}" target="_blank" class="row" data-doc="{{ \App\Support\Docs::type($bill->mime_type, $bill->file_name) }}" data-doc-name="Счёт поставщика">
-    @else
-        <div class="row">
-    @endif
-        <span class="min-w-0 flex-1"><span class="block">Поставщику</span><span class="row-sub">{{ $bill ? 'счёт от '.$bill->created_at->timezone('Europe/Moscow')->format('d.m') : 'счёт пришлём сюда' }}</span></span>
-        <span class="nums shrink-0 font-semibold">{{ $supplierSum ? Money::rub($supplierSum) : 'уточним' }}</span>
-        @if ($bill)<x-ui.chevron/>@endif
-    @if ($bill)
-        </a>
-    @else
-        </div>
-    @endif
-    @if ($prime)
-        <div class="contents" data-controller="sheet">
-            <button type="button" class="row w-full text-left" @if ($primeOpen) data-action="sheet#open" @else disabled @endif>
-                <span class="min-w-0 flex-1"><span class="block">{{ $primeName }}</span><span class="row-sub">{{ $primeSub }}</span></span>
-                <span class="nums shrink-0 font-semibold">{{ Money::rub($primeOpen ? $primeLeft : $prime->remaining()) }}</span>
-                @if ($primeOpen)<x-ui.chevron/>@endif
-            </button>
-            @if ($primeOpen)
-                <x-billing.pay-sheet :id="'pay-'.$prime->id" :invoices="collect([$prime])" :action="'/account/money/deals/'.$deal->id.'/pay'" pdf="/account/invoices/{id}/pdf"
-                    :buyers="\App\Support\People::buyersOf(auth()->user())" :open="old('invoice') == $prime->id && $errors->any()"/>
-            @endif
-        </div>
-    @endif
-</div>
 @if ($choices)
     <form method="post" action="/deals/{{ $deal->id }}/receipt" enctype="multipart/form-data" class="mt-4" data-controller="sheet receipt" data-receipt-single-value="{{ count($choices) === 1 ? 'true' : 'false' }}" data-action="receipt:ask->sheet#open">
         @csrf
         @if (count($choices) === 1)<input type="hidden" name="for" value="{{ array_key_first($choices) }}">@endif
-        <label class="btn btn-accent btn-block cursor-pointer"><x-ui.icon name="clip" class="size-5"/> Приложить чек
+        <label @class(['btn btn-block cursor-pointer', 'btn-accent' => $waiting, 'btn-quiet' => ! $waiting])><x-ui.icon name="clip" class="size-5"/> {{ $waiting ? 'Приложить чек' : 'Приложить ещё чек' }}
             <input type="file" name="file" accept="image/*,.pdf,.heic" class="sr-only" tabindex="-1" data-receipt-target="input" data-action="click->receipt#reset change->receipt#picked">
         </label>
         @error('file')<p class="field-error mt-1">{{ $message }}</p>@enderror
@@ -65,9 +30,9 @@
                 <img hidden alt="" class="receipt-shot" data-receipt-target="preview">
                 <p hidden class="mb-3 truncate text-sm text-ink-muted" data-receipt-target="name"></p>
                 <div class="list">
-                    @foreach ($choices as $key => [$name, $sub, $sum])
+                    @foreach ($choices as $key => [$name, $sum])
                         <label class="row row-check">
-                            <span class="min-w-0 flex-1"><span class="block">{{ $name }}</span>@if ($sub)<span class="row-sub">{{ $sub }}</span>@endif</span>
+                            <span class="min-w-0 flex-1">{{ $name }}</span>
                             <span class="nums shrink-0 font-semibold">{{ $sum ? Money::rub($sum) : '' }}</span>
                             <span class="check"><input type="radio" name="for" value="{{ $key }}" data-action="receipt#chose"></span>
                         </label>

@@ -25,6 +25,20 @@
     $canPay = $pay && $invoice && $deal->buyer_id === auth()->id() && $invoice->state === InvoiceState::Issued && $left > 0;
     // Строка «Плательщик» — менеджеру сделки, пока она идёт: где платят (по умолчанию — где выбор способа) или где счёт ещё ждут.
     $showPayer = ($payerHere ?? $canPay) && $deal->buyer_id === auth()->id() && $deal->isActive() && ! $deal->isDirect();
+    // Одна оплата на весь счёт — её сумма та же, что у строки (16.11.2026, владелец: «одно и то же по сто раз»): состояние словом
+    // под подписью, платёжка — файлом в группе с плательщиком; отдельной строки «Оплата по счёту N ₽» нет.
+    // Удержанное вознаграждение (зачёт) — не оплата: его говорит строка «Вознаграждение» ниже (16.11.2026, владелец: «одно и то же
+    // по сто раз»), а сумма строки — уже за вычетом него.
+    $payments = $invoice && $invoice->relationLoaded('allPayments') ? $invoice->allPayments->reject(fn ($p) => $p->source === \App\Billing\PaymentSource::Offset)->values() : collect();
+    $single = $row && $payments->count() === 1 && abs((float) $payments->first()->amount - ((float) $invoice->total - (float) $invoice->allPayments->where('source', \App\Billing\PaymentSource::Offset)->sum('amount'))) < 1 ? $payments->first() : null;
+    if ($single) {
+        $state = match ($single->state) {
+            \App\Billing\PaymentState::Claimed => ['сообщили '.\App\Support\Ago::day($single->created_at).', ждём подтверждения', 'text-ink-muted'],
+            \App\Billing\PaymentState::Rejected => ['не поступила'.($single->reject_reason ? ': '.$single->reject_reason : ''), 'text-danger'],
+            default => ['оплачено '.\App\Support\Ago::day($single->paid_at ?? $single->created_at), 'text-open'],
+        };
+        $singleSlip = $single->slip();
+    }
     if ($canPay) {
         $online = app(\App\Billing\Acquiring\Gateway::class)->configured() && PayLink::eligible($invoice);
         $ways = array_filter([
@@ -86,7 +100,7 @@
     </{{ $head }}>
     @endif
     {{-- Что уже внесено — оплатами с платёжками, «ждёт подтверждения» (15.11.2026: было только в шторке счёта, которой больше нет). --}}
-    @if ($invoice && $invoice->relationLoaded('allPayments') && $invoice->allPayments->isNotEmpty())
+    @if (! $single && $payments->isNotEmpty())
         <div class="list">
             @foreach ($invoice->allPayments as $p)
                 <x-money.payment :payment="$p" :slip="'/account/money/invoices/'.$invoice->id.'/payments/'.$p->id.'/slip'"/>
@@ -96,17 +110,32 @@
     {{-- Плательщик — один на счёт и ссылку (16.11.2026, владелец: «это два способа оплаты одной суммы»): первой строкой той же
          группы, что и способы оплаты, — под заголовком своего блока («ООО «ПРАЙМ»»), а не над всей карточкой: у оплаты поставщику
          свой плательщик — покупатель по договору (вариант Б, владелец: «два блока, у каждого свой плательщик»). --}}
-    @if ($showPayer && ! $canPay)
-        <div class="list"><x-deal.payer :deal="$deal" :action="'/deals/'.$deal->id.'/payer'" :id="'deal-payer-'.$deal->id.'-'.($invoice?->id ?? 'new')"/></div>
+    @if (($showPayer && ! $canPay) || ($singleSlip ?? null))
+        <div class="list">
+            @if ($singleSlip ?? null)<x-ui.file name="Платёжка" :mime="$singleSlip->mime_type" :bytes="$singleSlip->size" :size="\App\Support\Ago::at($singleSlip->created_at, true, words: false)" :href="'/account/money/invoices/'.$invoice->id.'/payments/'.$single->id.'/slip'" class="row"/>@endif
+            @if ($showPayer && ! $canPay)<x-deal.payer :deal="$deal" :action="'/deals/'.$deal->id.'/payer'" :id="'deal-payer-'.$deal->id.'-'.($invoice?->id ?? 'new')"/>@endif
+        </div>
     @endif
     {{-- Оплата поставщику или собственнику — платит покупатель по договору (свой, не плательщик счёта ПРАЙМ): строкой «Платит»,
          нажатие — выбор покупателя (`buyer:open`, шторка «Договора»). --}}
     @if ($buyerPays ?? false)
-        @php $cb = $deal->contract?->buyer; @endphp
-        <div class="list">
-            <x-deal.sale-row label="Плательщик" :value="$cb ? ($cb->id === $deal->buyer_id ? 'Вы' : $cb->name) : 'не выбран'" :tone="$cb ? null : 'danger'"
-                data-controller="emit" data-action="emit#send" data-emit-event-param="buyer:open"/>
-        </div>
+        @php
+            $cb = $deal->contract?->buyer;
+            $fileRows = collect($files ?? [])->map(fn ($f) => \Illuminate\Support\Facades\Blade::render('<x-ui.file :name="$n" :mime="$m->mime_type" :bytes="$m->size" :size="$sub" :href="$href" class="row"/>',
+                ['n' => $f[0], 'm' => $f[1], 'sub' => $f[2], 'href' => '/files/'.$f[1]->id]))->implode('');
+        @endphp
+        @if ($pickBuyer ?? false)
+            {{-- «Страховой напрямую» (16.11.2026, владелец: «про указание покупателя два раза получилось — запихивай этот блок вместо строки
+                 про плательщика»): кто платит поставщику — покупатель, выбор здесь же (плитки, «Покупатель ›»), отдельного блока нет. --}}
+            @if (! $deal->contract?->buyer_user_id && $deal->isLive())<x-deal.buyer-kind :deal="$deal"/>@endif
+            @include('cabinet.deals.contract', ['part' => 'buyer', 'embedded' => true, 'labels' => true, 'after' => $fileRows])
+        @else
+            <div class="list">
+                {!! $fileRows !!}
+                <x-deal.sale-row label="Плательщик" :value="$cb ? ($cb->id === $deal->buyer_id ? 'Вы' : $cb->name) : 'не выбран'" :tone="$cb ? null : 'danger'"
+                    data-controller="emit" data-action="emit#send" data-emit-event-param="buyer:open"/>
+            </div>
+        @endif
     @endif
     @if ($canPay)
         <div>
@@ -130,6 +159,8 @@
                  (`PayChoice`, `way=transfer`, платёжка — `slip`), дальше «ждёт подтверждения». --}}
             {{-- Та же зелёная кнопка, что у платежа поставщику (16.11.2026, владелец: «два блока оплаты по-разному оформлены, кнопки
                  приложить платёжку должны быть одинаковые, зелёная больше нравится»). --}}
+            {{-- На шаге оплаты «страховой напрямую» чек — одной «Приложить чек» внизу карточки (`cabinet.deals.receipt`), здесь нет. --}}
+            @unless ($noSlip ?? false)
             <form method="post" action="/account/money/deals/{{ $deal->id }}/pay" enctype="multipart/form-data" data-controller="autosubmit" class="mt-3">
                 @csrf
                 <input type="hidden" name="way" value="transfer"><input type="hidden" name="invoice" value="{{ $invoice->id }}">
@@ -138,6 +169,7 @@
                 </label>
             </form>
             @error('slip')<p class="field-error mt-1">{{ $message }}</p>@enderror
+            @endunless
         </div>
     @endif
 </div>

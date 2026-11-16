@@ -88,7 +88,7 @@
         @include('garage.cars.sell-split', ['deal' => $car->deal, 'sale' => null])
     @endif
     @if ($car->isSold() && $invoice && $car->manager)
-        <div class="{{ $row }}"><span>{{ $staff ? 'Вознаграждение менеджеру' : 'Ваше вознаграждение' }}</span><span class="nums">{{ Money::rub($s['fee']) }}</span></div>
+        <div class="{{ $row }}"><span>{{ $staff ? 'Вознаграждение менеджеру' : 'Вознаграждение' }}</span><span class="nums">{{ Money::rub($s['fee']) }}</span></div>
     @endif
     @if ($staff && $car->isSold() && $label !== 'Прибыль')
         <div class="{{ $row }}"><span>Нам остаётся</span><span class="nums {{ $s['ours'] < 0 ? 'text-danger' : '' }}">{{ Money::exact($s['ours']) }}</span></div>

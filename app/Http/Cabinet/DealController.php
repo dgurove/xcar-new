@@ -444,12 +444,14 @@ class DealController
             'for' => ['required', 'string', 'regex:/^(supplier|invoice:\d+)$/'],
         ], ['file.required' => 'Выберите файл чека', 'file.mimes' => 'Нужен снимок или PDF', 'file.max' => 'Файл больше 20 МБ', 'for.required' => 'Выберите, за что чек']);
         if ($data['for'] === 'supplier') {
-            $requirement = $deal->openRequirement()->first();
-            if (! $requirement || ! AttachRequirementFiles::paysOn($requirement) || ! $deal->paysSupplierOn($requirement->stage)) {
-                return redirect($deal->href())->with('toast', 'Оплата поставщику уже приложена');
+            // Шаг ждёт платёжку — она и ответ; платёжка ушла, поставщик не подтвердил — ещё лист к ней (`sentPaymentProof`).
+            $open = $deal->openRequirement()->first();
+            $requirement = $open && AttachRequirementFiles::paysOn($open) && $deal->paysSupplierOn($open->stage) ? $open : (! $open ? $deal->sentPaymentProof() : null);
+            if (! $requirement) {
+                return redirect($deal->href())->with('toast', 'Сейчас чек поставщику не приложить');
             }
             app(AttachRequirementFiles::class)($requirement, $request->file('file'));
-            if ($move = $deal->proofMove($requirement->stage)) {
+            if (! $requirement->done_at && ($move = $deal->proofMove($requirement->stage))) {
                 $answer($requirement->fresh(), $move, $me);
             }
 

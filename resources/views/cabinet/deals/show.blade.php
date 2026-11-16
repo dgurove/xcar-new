@@ -25,6 +25,15 @@
     $tooEarly = $deal->isLive() && ! $deal->buyerOpen();
     // «Автомобиль» своей карточкой под шагом (11.11.2026): получение — не само дело шага (не «Заберите автомобиль», не чек-лист
     // договора), а показать есть что — где он, кто везёт, «Забрал» / «Вывоз».
+    // Оплата — одной карточкой (16.11.2026, владелец: «встрой оплату в блок деньги… объедини эти два блока в один»): на шаге оплаты
+    // и пока ушедшую платёжку не подтвердили строки денег — в карточке шага, своей карточки денег нет.
+    // «Страховой напрямую»: покупатель — тот, кто платит поставщику, выбор — в строке «Поставщику» (16.11.2026), отдельного блока
+    // «Указать покупателя» нет; когда шаг просит покупателя, строки денег — в карточке шага.
+    $buyerInMoney = $deal->isLive() && ! $deal->isGarage() && $deal->paysSelection() && ! $deal->hasContract();
+    $moneyInStep = $deal->isLive() && ! $deal->isGarage() && $position && (
+        (! $needsBuyer && $requirement && $position->stage->isPayStep() && $requirement->asks !== \App\Workflow\Asks::Buyer)
+        || (! $needsBuyer && ! $requirement && $deal->sentPaymentProof())
+        || ($buyerInMoney && ($needsBuyer || $requirement?->asks === \App\Workflow\Asks::Buyer)));
     $carCard = $deal->isLive() && $handover && ! $contractStep && ! ($requirement && $position?->stage->isPickupStep())
         && ((($handover->shows() || ($handover->park && $deal->releasable())) && ! $handover->withBuyer) || $handover->carrier || $handover->canRequest);
 @endphp
@@ -37,7 +46,7 @@
     <div data-deal-offer="{{ $offer->number }}" class="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[minmax(0,1fr)_22rem] lg:gap-8">
         <section class="contents lg:col-start-1 lg:row-start-1 lg:flex lg:min-w-0 lg:flex-col lg:gap-6">
             <x-offer.reprice-ask :deal="$deal" class="order-1 min-w-0"/>
-            <div class="order-1 min-w-0">@include('cabinet.deals.step', ['contractStep' => $contractStep, 'pickupSteps' => $pickupSteps, 'carCard' => $carCard])</div>
+            <div class="order-1 min-w-0">@include('cabinet.deals.step', ['contractStep' => $contractStep, 'pickupSteps' => $pickupSteps, 'carCard' => $carCard, 'moneyInStep' => $moneyInStep])</div>
             @if ($carCard)<div class="order-1 min-w-0">@include('cabinet.deals.car-card')</div>@endif
             {{-- Закончилась без покупателя — «выберите покупателя» уже не о чем. --}}
             {{-- Покупатель не выбран или без данных — это дело менеджера: на телефоне сразу под задачей, над «Расчётом»
@@ -47,12 +56,12 @@
             {{-- «Договор и счёт» сразу под шагом (16.11.2026, владелец выбрал вариант А: «не замечают, где этот блок»): покупатель, наш
                  договор и счёт файлами; «Договор уже подписан?» — своей карточкой следом. --}}
             @php
-                $withBuyer = $buyerHere && ! $contractStep && ! $needsBuyer && ! $tooEarly && ($deal->isLive() || $deal->contract?->buyer_user_id);
+                $withBuyer = $buyerHere && ! $buyerInMoney && ! $contractStep && ! $needsBuyer && ! $tooEarly && ($deal->isLive() || $deal->contract?->buyer_user_id);
                 $signStep = $deal->openRequirement?->asks === \App\Workflow\Asks::Document && $deal->openRequirement?->stage?->aboutContract();
                 // У Альфы договор — после подтверждённой оплаты: до неё просить подписанный не о чем (`Deal::contractAfterPay`).
                 $withSigned = ! $signStep && ! $deal->contractAfterPay() && \App\Offers\Actions\AttachSignedContract::allows($deal) || $deal->getMedia('signed_contract')->isNotEmpty();
             @endphp
-            @if ($withBuyer)<div class="order-1 min-w-0">@include('cabinet.deals.buyer-block', ['withBuyer' => $withBuyer])</div>@endif
+            @if ($withBuyer)<div class="order-1 min-w-0">@include('cabinet.deals.buyer-block', ['withBuyer' => $withBuyer, 'saleInPay' => $moneyInStep])</div>@endif
             {{-- Подписанный без нас — своей карточкой-вопросом, отдельно от нашего договора (16.11.2026). --}}
             @if ($withSigned && ! $signStep)<x-deal.signed-contract :deal="$deal" :base="'/deals/'.$deal->id" ask class="order-1"/>@endif
             @if ($deal->buyer_asked_at && $deal->isLive())<x-deal.buyer-ask-sheet :deal="$deal"/>@endif
@@ -75,6 +84,7 @@
                  колонке, на телефоне — самым верхом, над задачей. --}}
             {{-- На телефоне — под задачей (10.11.2026, владелец: «пишут в чат, а не кнопку жмут»: чат стоял над делом). --}}
             @if ($offer->chatOpenFor(auth()->user()))<div class="order-1 min-w-0">@include('cabinet.deals.chat-card')</div>@endif
+            @unless ($moneyInStep)
             <div class="order-2 min-w-0">
                 @if (! $deal->isGarage())
                     @include('cabinet.deals.money')
@@ -91,6 +101,7 @@
                     </div>
                 @endif
             </div>
+            @endunless
             <x-offer.my-note :offer="$offer" class="order-3 min-w-0"/>
             <x-offer.facts :offer="$offer" :full="true" class="order-7"/>
             @if ($docs->isNotEmpty())

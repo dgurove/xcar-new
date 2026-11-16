@@ -123,7 +123,7 @@ final class DealMoney
                 : new self('Счёт ещё не выставлен', $base, 'muted', 'open', $label);
         }
 
-        $mine = $staff ? 'вознаграждение' : 'Ваше вознаграждение';
+        $mine = $staff ? 'вознаграждение' : 'Вознаграждение';
         // Вознаграждение — его прибыль: оставленное себе (ДКП, страховой, удержал из счёта) — зелёным.
         if ($deal->buyerPaysReward() && $deal->commission) {
             return new self($staff ? 'Берёт с покупателя' : 'Получите от покупателя', (float) $deal->commission, 'profit', 'closed', $mine);
