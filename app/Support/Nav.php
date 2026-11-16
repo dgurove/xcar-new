@@ -117,7 +117,7 @@ final class Nav
                 self::item('Предложения', '/offers', ['/offers', '/purchases', '/gallery'], icon: 'feed'),
                 self::item('Почта', '/work/mail', icon: 'mail'),
                 self::item('Чаты', '/work/chats', icon: 'chats'),
-                self::item('Оплаты', '/work/money', icon: 'coin'),
+                self::item('Оплаты', '/work/money', icon: 'wallet'),
                 // Кабинет CRM — это «Настройки»: профиль первой пилюлей, уведомления — под /account. В шапке ПК его
                 // ведёт аватар, на телефоне — последний таб: отдельной капсулой он был бы вторым входом рядом.
                 self::item('Настройки', '/settings', ['/settings', '/account'], tab: false, capsule: false),
