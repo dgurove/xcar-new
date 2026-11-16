@@ -299,7 +299,7 @@ final class Facets
             if ($f->within !== null) {
                 return null;
             }
-            if ($lazy && ! $f->quick && ! $this->on($key)) {
+            if ($lazy && ! $f->quick) {
                 return null;
             }
             $selected = $this->selected($key);

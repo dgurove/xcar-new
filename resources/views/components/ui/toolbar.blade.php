@@ -57,7 +57,6 @@
         @endif
     </div>
     @if ($facets && ! request()->headers->has('X-List'))
-        <x-ui.facets :facets="$facets" :name="$name" part="quick"/>
         <x-ui.facets :facets="$facets" :name="$name" part="toggles"/>
     @endif
 </div>
