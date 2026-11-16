@@ -9,13 +9,12 @@ import { scrollTop, scrollToY } from '../lib/scroller';
 // Нажали заголовок — заливка проявляется (круг владельцу не подошёл, 30.10.2026), текущая вкладка стоит ровно на месте заголовка, остальные
 // выплывают. Колесо — нативная прокрутка со снапом к «линии фокуса» (место заголовка); рост и цвет пункта считает браузер
 // анимацией по прокрутке (`animation-timeline`, app.css) — в такт пальцу, без скрипта в кадре. Скрипт только ставит
-// размеры и ловит, где колесо встало. Встало на другой вкладке — через SETTLE она грузится (владелец: «страница начинает
-// грузиться, и когда загрузится — выбор закрывается угасанием»), колесо ждёт; переложили — прежняя загрузка отменяется.
+// размеры и ловит нажатия. Вкладка открывается только нажатием (16.11.2026, владелец: «чтобы всё равно надо было нажимать
+// по нужному, даже если доскроллил на него»; до того колесо, вставшее на другой вкладке, грузило её само): нажали пункт —
+// он доезжает к фокусу и грузится («страница начинает грузиться, и когда загрузится — выбор закрывается угасанием»).
 //
 // Переход — визит replace на тот же адрес, Turbo его морфит (`body`), поэтому на время загрузки колесо живёт в `<html>`
 // вне `<body>`: морф его не видит, а в компонент вставляет свежее (скрытое) колесо новой страницы. Угасло — уходит.
-const SETTLE = 250;  // встало — через столько грузим: пролистывая мимо, не грузим каждую
-const REST = 140;    // без scrollend: столько тишины после прокрутки — встало
 const ID = 'tab-wheel';
 
 // Щелчок, как у колёсика часов: iOS 18+ отдаёт касанием переключатель `<input switch>`, нажатый через подпись; на
@@ -92,15 +91,8 @@ export default class extends Controller {
         s.addEventListener('scroll', () => {
             const i = this.index();
             if (i !== this.at) { this.at = i; tick(); }
-            clearTimeout(this.wait);
-            clearTimeout(this.rest);
-            this.rest = setTimeout(() => this.settled(), REST);
         }, { ...opts, passive: true });
-        s.addEventListener('scrollend', () => this.settled(), opts);
-        s.addEventListener('touchstart', () => { this.touching = true; this.stopGlide(); }, { ...opts, passive: true });
-        const up = () => { this.touching = false; clearTimeout(this.rest); this.rest = setTimeout(() => this.settled(), REST); };
-        s.addEventListener('touchend', up, { ...opts, passive: true });
-        s.addEventListener('touchcancel', up, { ...opts, passive: true });
+        s.addEventListener('touchstart', () => this.stopGlide(), { ...opts, passive: true });
         s.addEventListener('wheel', () => this.stopGlide(), { ...opts, passive: true });
         this.wheel.addEventListener('click', (e) => this.tap(e), opts);
         document.addEventListener('keydown', (e) => this.key(e), opts);
@@ -120,17 +112,6 @@ export default class extends Controller {
         let best = 0;
         this.tops.forEach((t, i) => { if (Math.abs(t - y) < Math.abs(this.tops[best] - y)) best = i; });
         return best;
-    }
-
-    // Колесо встало: на другой вкладке — через SETTLE грузим её, на текущей — загрузку отменяем.
-    settled() {
-        if (this.touching || this.gliding || this.leaving || !this.wheel) return;
-        clearTimeout(this.rest);
-        clearTimeout(this.wait);
-        const i = this.index();
-        if (i === this.chosen) return;
-        if (i === this.current) { this.cancel(); return; }
-        this.wait = setTimeout(() => this.go(i), SETTLE);
     }
 
     tap(event) {
@@ -154,7 +135,8 @@ export default class extends Controller {
         if (step) {
             event.preventDefault();
             const i = Math.max(0, Math.min(this.items.length - 1, (this.gliding ? this.target : this.index()) + step));
-            this.glide(i, () => this.settled());
+            // Стрелки только крутят: открывает Enter (выбор — нажатием).
+            this.glide(i, () => {});
         } else if (event.key === 'Enter') {
             event.preventDefault();
             const i = this.index();
@@ -191,7 +173,6 @@ export default class extends Controller {
     }
 
     async go(i) {
-        clearTimeout(this.wait);
         if (this.chosen === i || this.leaving) return;
         this.chosen = i;
         this.items.forEach((a, j) => a.classList.toggle('is-loading', j === i));
@@ -232,7 +213,6 @@ export default class extends Controller {
         const wheel = this.wheel;
         if (!wheel || this.leaving) return;
         this.leaving = true;
-        clearTimeout(this.wait);
         this.stopGlide();
         if (this.chosen !== null) {
             Turbo.navigator.stop();
@@ -259,10 +239,8 @@ export default class extends Controller {
         if (!wheel) return;
         this.wheel = null;
         this.off?.abort();
-        clearTimeout(this.wait);
-        clearTimeout(this.rest);
         this.stopGlide();
-        this.touching = this.leaving = false;
+        this.leaving = false;
         this.chosen = this.url = null;
         this.mine = false;
         wheel.classList.remove('is-open', 'is-leaving');

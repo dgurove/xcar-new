@@ -9,7 +9,7 @@
 @endphp
 <x-ui.shell :title="$chat ? $chat->displayName() : 'Чаты'" :heading="false" :back="$chat ? ['Чаты', '/work/chats'.$qs] : null" :back-row="false">
     <div class="chat-crm-top">
-        <x-admin.work-titles current="chats" :count="$chats->total()"/>
+        <x-admin.work-titles current="chats"/>
     </div>
     <div class="chat-split chat-split-crm mt-6 {{ $current ? 'has-current' : '' }}" data-controller="split">
         <div class="chat-rows" id="chat-rows">

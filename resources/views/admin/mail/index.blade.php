@@ -12,8 +12,8 @@
     {{-- Кнопки стоят в строке заголовка и на телефоне: своей строки они не стоят. В CRM заголовок — строка
          разделов «Работы» (x-admin.work-titles), кнопки справа в ней же. --}}
     @if ($crm && ! $forced)
-        <div class="flex items-center gap-3">
-            <div class="min-w-0 flex-1"><x-admin.work-titles current="mail" :count="$threads->total()" :edge="false"/></div>
+        <div class="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
+            <x-admin.work-titles current="mail"/>
             @include('admin.mail.actions')
         </div>
     @elseif (! $forced)

@@ -5,13 +5,13 @@
      своё число для вспышки (у «Из таблицы Кати»). Числа в колесе держат `data-pill-count`, как пилюли: их тикают
      live.js и flip.js, вспыхивает само название (lib/bump.js). Бейдж в другой вкладке — точка после названия (CSS).
      У названия ни числа, ни стрелки рядом (владелец 22.10.2026: «криво, смещает всё»); что это выбор, говорит маленькая
-     «›» в поле экрана слева — название не сдвигает (вечером того же дня). Колесо — tab_wheel_controller.
-     Вкладки нет в адресе (поиск) — fallback. hrefs — вкладки разными адресами, а не параметром (разделы «Работы»: Сделки,
-     Гараж, Почта, Чаты, Оплаты — 13.11.2026, владелец: «такой же переключатель, как в предложениях»). sections — подзаголовки
+     «›» в поле экрана слева — название не сдвигает (вечером того же дня). Колесо — tab_wheel_controller; вкладка открывается
+     только нажатием (16.11.2026).
+     Вкладки нет в адресе (поиск) — fallback. sections — подзаголовки
      разделов в колесе (16.11.2026, владелец выбрал вариант А макета: «между вариантами подзаголовки, которые не выбираются, а
      пролистываются»): ключ первой вкладки раздела → подпись; снап на них не встаёт (`tab_wheel_controller`). drop — параметры
      адреса, что не переносятся в другую вкладку (дела «Ваш ход» `todo`, `sub`). --}}
-@props(['pills' => [], 'pill' => '', 'pillParam' => 'view', 'pillHome' => null, 'counts' => [], 'badges' => [], 'bumps' => [], 'fallback' => '', 'id' => 'tab-menu', 'hrefs' => [], 'sections' => [], 'drop' => []])
+@props(['pills' => [], 'pill' => '', 'pillParam' => 'view', 'pillHome' => null, 'counts' => [], 'badges' => [], 'bumps' => [], 'fallback' => '', 'id' => 'tab-menu', 'sections' => [], 'drop' => []])
 @php
     $action = '/'.ltrim(request()->path(), '/');
     $query = array_diff_key(request()->query(), array_flip($drop));
@@ -30,7 +30,7 @@
                 @isset($sections[$key])
                     <div class="tab-wheel-sec" aria-hidden="true"><span class="tab-wheel-sec-line"></span><span class="tab-wheel-sec-name">{{ $sections[$key] }}</span></div>
                 @endisset
-                <a href="{{ $hrefs[$key] ?? $url([$pillParam => $key === '' || $key === ($pillHome ?? array_key_first($pills)) ? null : $key, 'page' => null, 'rows' => null]) }}" class="tab-wheel-item text-xl sm:text-2xl" data-turbo-prefetch="false" @isset($bumps[$key]) data-pill-bump="{{ $key }}:{{ $counts[$bumps[$key]] ?? 0 }}" @endisset @if ((string) $pill === (string) $key) aria-current="true" @endif>
+                <a href="{{ $url([$pillParam => $key === '' || $key === ($pillHome ?? array_key_first($pills)) ? null : $key, 'page' => null, 'rows' => null]) }}" class="tab-wheel-item text-xl sm:text-2xl" data-turbo-prefetch="false" @isset($bumps[$key]) data-pill-bump="{{ $key }}:{{ $counts[$bumps[$key]] ?? 0 }}" @endisset @if ((string) $pill === (string) $key) aria-current="true" @endif>
                     {{-- Зелёное число — сразу за названием (16.11.2026, владелец: «зелёные счётчики возле заголовков, а не справа»):
                          внутри названия, растёт вместе с ним; серое «всего» — справа. --}}
                     <span class="tab-wheel-label">{{ $label }}@isset($badges[$key])<span class="badge nums tab-wheel-badge" data-pill-count="{{ $badges[$key] }}" @unless ($counts[$badges[$key]] ?? 0) hidden @endunless>{{ ($counts[$badges[$key]] ?? 0) ?: '' }}</span>@endisset</span>
