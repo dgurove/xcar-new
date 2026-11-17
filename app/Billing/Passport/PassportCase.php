@@ -32,6 +32,13 @@ final class PassportCase
     private const TWINS = ['A' => 'А', 'B' => 'В', 'C' => 'С', 'E' => 'Е', 'H' => 'Н', 'K' => 'К', 'M' => 'М', 'O' => 'О', 'P' => 'Р', 'T' => 'Т',
         'X' => 'Х', 'Y' => 'У', 'I' => 'І'];
 
+    /** Римское число: «I», «IV», «XXII» — но не одиночные «C», «M», «X» (это «с.», «м.», «х.»). */
+    private static function roman(string $w): bool
+    {
+        return ($w === 'I' || strlen($w) >= 2) && preg_match('/[IXV]/', $w) === 1
+            && preg_match('/^M{0,3}(CM|CD|D?C{0,3})(XC|XL|L?X{0,3})(IX|IV|V?I{0,3})$/', $w) === 1;
+    }
+
     public static function format(?string $s): ?string
     {
         if ($s === null || trim($s) === '') {
@@ -39,7 +46,9 @@ final class PassportCase
         }
         // Слово из одних латинских двойников в русском тексте — кириллицей («P-H» → «Р-Н»); «І» — это «П» обрывком («PECI.» → «РЕСП»).
         if (preg_match('/[А-ЯЁа-яё]/u', $s)) {
-            $s = preg_replace_callback('/(?<![\p{L}])[ABCEHKMOPTXYI]+(?![\p{L}])/u', fn ($m) => strtr(strtr($m[0], self::TWINS), ['І' => 'П']), $s);
+            // Римское число («УЛ. XXII ПАРТСЪЕЗДА», «I МАЯ») — как есть (ревью 17.11.2026); одиночная «C.», «X.», «M.» — сокращение (село, хутор).
+            $s = preg_replace_callback('/(?<![\p{L}])[ABCEHKMOPTXYI]+(?![\p{L}])/u', fn ($m) => self::roman($m[0]) ? $m[0]
+                : strtr(strtr($m[0], self::TWINS), ['І' => 'П']), $s);
         }
         $first = true;
         $prev = null;
@@ -52,6 +61,9 @@ final class PassportCase
             $prev = [mb_strtolower($word), $at + strlen($word)];
             $before = $at > 0 ? substr($s, $at - 1, 1) : '';
             $after = substr($s, $at + strlen($word), 1);
+            if (self::roman($word)) {
+                return $word;
+            }
             $lower = mb_strtolower($word);
             $upper = mb_strtoupper($word);
             // Буква номера дома или квартиры: «44А», «40"В"» — как есть.

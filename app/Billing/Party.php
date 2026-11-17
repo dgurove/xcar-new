@@ -33,8 +33,12 @@ class Party extends Model implements HasMedia
     protected static function booted(): void
     {
         // «Кем выдан» — заглавными, как в бланке, любым путём: скан, форма, ручная правка (17.11.2026, владелец).
-        static::saving(fn (self $p) => $p->isDirty('passport_issued') && $p->passport_issued !== null
-            ? $p->passport_issued = mb_strtoupper(trim($p->passport_issued)) : null);
+        // Ничего не возвращает: значение из `saving` остановило бы остальных слушателей (`until`).
+        static::saving(function (self $p): void {
+            if ($p->isDirty('passport_issued') && $p->passport_issued !== null) {
+                $p->passport_issued = mb_strtoupper(trim($p->passport_issued));
+            }
+        });
         static::saved(fn (self $p) => $p->is_self ? null : Closing::forgetPending());
         // ФИО поменялось любым путём (форма, скан, «Распознать заново») — имя покупателя за ним (16.11.2026, владелец:
         // «строго должны соответствовать паспорту»; скан Файзулаева исправил ФИО, а покупатель остался «Отчестае Комил»).

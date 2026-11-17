@@ -140,9 +140,16 @@ class Message extends Model
      * Удалённое видят только сотрудники (серым, с тем, кто удалил); собеседникам его нет вовсе — бесследно, как «Удалить у всех» в
      * Telegram (17.11.2026, владелец).
      */
-    public function hiddenFor(?User $viewer): bool
+    public function hiddenFor(?User $viewer, ?Chat $chat = null): bool
     {
-        return $this->isDeleted() && ! $viewer?->canEditDeals();
+        if (! $this->isDeleted()) {
+            return false;
+        }
+        $chat ??= $this->chat;
+
+        // Сотрудник — не участник этого чата и не менеджер в нём (ревью 17.11.2026: модератор или админ, что ещё и менеджер, в своих
+        // чатах на сайте — собеседник, удалённого ему нет).
+        return ! ($viewer?->canEditDeals() && $viewer->id !== $chat?->user_id && $viewer->id !== $chat?->manager_id);
     }
 
     /** Своё ли это сообщение для читающего: участник (и гость) видит свои справа, вторая сторона — свои. */

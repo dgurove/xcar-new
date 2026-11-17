@@ -5,7 +5,8 @@
 @php
     use App\Chats\AuthorKind;
     $readonly ??= $user !== null && ! $chat->canPost($user);
-    $staffEyes = $user?->canEditDeals() ?? false;
+    // Глаза площадки — сотрудник не участник и не менеджер этого чата (как `Message::hiddenFor`).
+    $staffEyes = $user?->canEditDeals() && $user->id !== $chat->user_id && $user->id !== $chat->manager_id;
     $readSeq = $chat->readSeqOf($user);
     $firstUnread ??= 0;
     $prev = null;
@@ -19,7 +20,7 @@
 @if (!empty($more))<div class="chat-more" data-chat-target="more" data-seq="{{ $messages->first()->seq }}"></div>@endif
 @foreach ($messages as $m)
     {{-- Удалённое собеседнику — бесследно (17.11.2026, владелец): ни пузыря, ни «Сообщение удалено». --}}
-    @continue($m->hiddenFor($user))
+    @continue($m->hiddenFor($user, $chat))
     @php
         $system = $m->author_kind === AuthorKind::System;
         $mine = $readonly ? $m->author_kind === AuthorKind::Staff : $m->isMine($user, $chat);

@@ -204,7 +204,7 @@ final class PassportText
     /**
      * Адрес из штампа «Зарегистрирован»: последний по дате, «снят с учёта» — мимо.
      *
-     * @return array{fields: array<string, string>, checked: list<string>}
+     * @return array{fields: array<string, string>, checked: list<string>, stamped?: bool}
      */
     public static function registration(string $text): array
     {
@@ -263,7 +263,8 @@ final class PassportText
             $address = self::address(array_slice($before, -5));
         }
 
-        return ['fields' => $address !== '' ? ['reg_address' => PassportCase::format($address)] : [], 'checked' => []];
+        // `stamped` — страница прописки и без читаемого адреса (рукопись): по нему `ReadPassport::placePage` ставит страницу на место.
+        return ['fields' => $address !== '' ? ['reg_address' => PassportCase::format($address)] : [], 'checked' => [], 'stamped' => true];
     }
 
     /** Дата штампа — и без точек: «09.04.2008», «0904 2008.», «09 04 2008». */
@@ -511,7 +512,7 @@ final class PassportText
                     }
                 }
 
-                return self::title(implode(' ', self::fixLetters($best)));
+                return self::title(implode(' ', self::fixLetters($best, $target)));
             }
             // Слов разворота нет — расшифровка зоны.
             if (count($zone) >= 2) {
@@ -521,7 +522,7 @@ final class PassportText
         // Без зоны: отчество по окончанию, перед ним имя и фамилия.
         foreach ($words as $i => $w) {
             if (preg_match('/(ВИЧ|ВНА|ИЧНА|ЧНА|ОГЛЫ|КЫЗЫ)$/u', $w) && $i >= 2) {
-                return self::title(implode(' ', self::fixLetters([$words[$i - 2], $words[$i - 1], $w])));
+                return self::title($words[$i - 2].' '.$words[$i - 1].' '.$w);
             }
         }
 
@@ -529,13 +530,14 @@ final class PassportText
     }
 
     /**
-     * Буква, что разворот путает в имени и отчестве (Б/В, П/Р, Н/И): имени нет в словаре, а с заменой есть — заменить
+     * Буква, что разворот путает в имени и отчестве (Б/В, П/Р, Н/И, Т/Г): имени нет в словаре, а с заменой есть и зона внизу
+     * не против — заменить; без зоны не трогаем (ревью 17.11.2026: редкое имя не по словарю подменилось бы соседним)
      * («БИТАЛИЙ БИКТОРОВИЧ» → «ВИТАЛИЙ ВИКТОРОВИЧ», 17.11.2026). Фамилию не трогаем: словаря фамилий нет.
      *
      * @param  list<string>  $w  фамилия, имя, отчество
      * @return list<string>
      */
-    private static function fixLetters(array $w): array
+    private static function fixLetters(array $w, string $target): array
     {
         $swaps = ['Б' => 'В', 'В' => 'Б', 'П' => 'Р', 'Р' => 'П', 'Н' => 'И', 'И' => 'Н', 'Т' => 'Г', 'Г' => 'Т', 'Ф' => 'Г'];
         foreach ([1, 2] as $i) {
@@ -552,8 +554,14 @@ final class PassportText
             foreach ($letters as $p => $c) {
                 isset($swaps[$c]) && $tries[] = implode('', array_replace($letters, [$p => $swaps[$c]]));
             }
+            // Замена — только если зона внизу с ней сходится лучше: редкое настоящее имя не по словарю не подменяется соседним.
+            // Б и В зона не различает (сверка — без них): такая замена проходит по словарю, остальные — если зона сходится лучше.
+            $bv = fn (string $x) => strtr($x, 'B', 'V');
+            $dist = fn (array $x) => levenshtein($bv(implode('', array_map(fn ($p) => self::toMrz($p), $x))), $bv($target));
+            $was = $dist($w);
             foreach ($tries as $v) {
-                if ($ok($v)) {
+                $same = $bv(self::toMrz($v)) === $bv(self::toMrz($w[$i]));
+                if ($ok($v) && ($same || $dist(array_replace($w, [$i => $v])) < $was)) {
                     $w[$i] = $v;
                     break;
                 }
@@ -643,13 +651,14 @@ final class PassportText
     private static function dropJunkBefore(string $s): string
     {
         $words = preg_split('/\s+/u', trim($s));
-        $organ = '/^(ГУ|ГУМВД|МВД|УМВД|ОМВД|УВД|ГУВД|ОВД|РОВД|ТП|ОУФМС|УФМС|ОТДЕЛ\p{L}*|ТЕРРИТОРИАЛЬН\p{L}*|ПАСПОРТН\p{L}*)$/u';
+        $organ = '/^(ГУ|ГУМВД|МВД|УМВД|ОМВД|УВД|ГУВД|ОВД|РОВД|ТП|ОУФМС|УФМС|ОФМС|ОВМ|ГУВМ|УВМ|ОУВМ|ОТДЕЛ\p{L}*|ТЕРРИТОРИАЛЬН\p{L}*|ПАСПОРТН\p{L}*)$/u';
         foreach (array_slice($words, 0, 3) as $i => $w) {
             if (! preg_match($organ, $w)) {
                 continue;
             }
             $junk = array_slice($words, 0, $i);
-            $keep = fn ($w) => preg_match('/(ИМ|ЫМ|ОМ|ЕМ)$|^\d|^№|^(МО|МП|ТП|ОП|ОМ)$/u', $w);
+            // Часть названия: прилагательное в творительном («ЦЕНТРАЛЬНЫМ»), номер, сокращение органа («ОВМ ОМВД», «ГУВМ МВД», «ТО УФМС»).
+            $keep = fn ($w) => preg_match('/(ИМ|ЫМ|ОМ|ЕМ)$|^\d|^№|^(МО|МП|ТП|ТО|ОП|ОМ|ОО|ОВМ|ГУВМ|УВМ|ОУВМ|ОФМС|ОУФМС|УФМС)$|(ВМ|ВД|МС)$/u', $w);
 
             return $junk && ! array_filter($junk, $keep) ? implode(' ', array_slice($words, $i)) : $s;
         }
@@ -712,13 +721,11 @@ final class PassportText
             unset($fields['passport_issued_at']);
             $issued = null;
         }
-        // Спорят друг с другом: уходит непроверенная; обе непроверенные — обе (какая из них ошибка, не знаем).
+        // Спорят друг с другом: уходит непроверенная; обе непроверенные — дата рождения (её берём последней датой страницы, она чаще
+        // чужая), дата выдачи у кода подразделения остаётся.
         if ($birth && $issued && $issued < date('Y-m-d', strtotime($birth.' +14 years'))) {
-            foreach (['birth_at', 'passport_issued_at'] as $key) {
-                if (! in_array($key, $checked, true)) {
-                    unset($fields[$key]);
-                }
-            }
+            $drop = ! in_array('birth_at', $checked, true) ? 'birth_at' : (in_array('passport_issued_at', $checked, true) ? null : 'passport_issued_at');
+            $drop && $fields = array_diff_key($fields, [$drop => true]);
         }
     }
 

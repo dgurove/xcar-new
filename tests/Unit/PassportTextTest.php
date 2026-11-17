@@ -152,14 +152,22 @@ class PassportTextTest extends TestCase
         $f = PassportText::main($text)['fields'];
         $this->assertSame('ГУ МВД РОССИИ ПО КРАСНОДАРСКОМУ КРАЮ', $f['passport_issued']);
         $this->assertSame('г. Харьков Украина', $f['birth_place']);
-        $this->assertSame('Зайцев Виталий Викторович', $f['name']);
+        // Без зоны внизу буквы не подменяются: редкое имя не по словарю осталось бы как есть.
+        $this->assertSame('Зайцев Биталий Бикторович', $f['name']);
     }
 
-    /** Паспорт выдан в 12 лет — даты спорят, не ставится ни одна непроверенная. */
+    /** Б/В в имени и отчестве — по словарю, когда зона внизу не против (Зайцев с прода, 17.11.2026). */
+    public function test_name_letters_fixed_by_zone(): void
+    {
+        $text = "ЗАЙЦЕВ\nБИТАЛИЙ\nБИКТОРОВИЧ\nPNRUSZAQCEV<<VITALIOVIKTOROVI3<<<<<<   <<\n4624956789RUS8407009M<<<<<<<1220201500057<76";
+        $this->assertSame('Зайцев Виталий Викторович', PassportText::main($text)['fields']['name']);
+    }
+
+    /** Паспорт выдан в 12 лет — даты спорят: уходит дата рождения, дата выдачи остаётся. */
     public function test_impossible_dates_are_dropped(): void
     {
         $f = PassportText::main("ГУ МВД РОССИИ ПО Г. МОСКВЕ\n08.06.2002   770-115\nИВАНОВ\nИВАН\nИВАНОВИЧ\nМУЖ.   08.06.1990\n")['fields'];
         $this->assertArrayNotHasKey('birth_at', $f);
-        $this->assertArrayNotHasKey('passport_issued_at', $f);
+        $this->assertSame('2002-06-08', $f['passport_issued_at'] ?? null);
     }
 }

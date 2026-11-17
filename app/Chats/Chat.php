@@ -119,7 +119,9 @@ class Chat extends Model
      */
     public function isCounterpart(?User $user): bool
     {
-        return $user !== null && ($this->manager_id ? $user->id === $this->manager_id : $user->canEditDeals());
+        // Свой чат с площадкой у модератора или админа, который ещё и менеджер, — он в нём участник, а не вторая сторона
+        // (ревью 17.11.2026: иначе свои сообщения и прочитанное считались бы за площадку).
+        return $user !== null && ($this->manager_id ? $user->id === $this->manager_id : $user->id !== $this->user_id && $user->canEditDeals());
     }
 
     /** Имя собеседника для второй стороны. */

@@ -105,7 +105,8 @@ final class ReadPassport implements ShouldQueue
         $page = (string) $media->getCustomProperty('page');
         $main = PassportText::main($text);
         $isMain = $main['checked'] !== [] || isset($main['fields']['name']);
-        $isReg = ! $isMain && isset(PassportText::registration($text)['fields']['reg_address']);
+        // Штамп «Зарегистрирован» — прописка, даже если адрес рукописью не прочитался (адрес-мусор `PassportText` не отдаёт).
+        $isReg = ! $isMain && (PassportText::registration($text)['stamped'] ?? false);
         $actual = match (true) {
             $page === 'reg' && $isMain => 'main',
             $page !== 'reg' && $isReg => 'reg',

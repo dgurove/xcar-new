@@ -90,7 +90,7 @@ class ChatController
         abort_unless($chat->allows($request->user(), $this->guest->token($request)), 404);
         $message = $chat->messages()->with(['author', 'files', 'deletedBy'])->where('seq', $seq)->firstOrFail();
         // Удалённое собеседнику — 404: лента уберёт пузырь сама (`chat_controller#refresh`).
-        abort_if($message->hiddenFor($request->user()), 404);
+        abort_if($message->hiddenFor($request->user(), $chat), 404);
 
         return view('chat.messages', ['chat' => $chat, 'messages' => collect([$message]), 'user' => $request->user(), 'single' => true]);
     }
@@ -122,7 +122,7 @@ class ChatController
         $message = $delete($this->own($chat, $seq), $request->user());
 
         // Собеседнику удалённого нет — пустой ответ, пузырь уходит из ленты; сотруднику — серый пузырь «Удалено: кто».
-        return $message->hiddenFor($request->user()) ? response('') : $this->message($request, $chat, $seq);
+        return $message->hiddenFor($request->user(), $chat) ? response('') : $this->message($request, $chat, $seq);
     }
 
     /** «Печатает…» — только в хаб другой стороне, в базе следа нет. */
