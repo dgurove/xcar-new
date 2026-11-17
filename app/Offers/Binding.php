@@ -411,7 +411,9 @@ final class Binding
 
     public static function alarmCount(?User $user): int
     {
-        return self::alarmsFor($user) ? once(fn () => self::alarmQuery($user)->count()) : 0;
+        // Число в шапке каждой страницы — общее для всех, кто ведёт вывоз (условие от человека не зависит, только допуск):
+        // одно на полминуты или до события про предложения (`StaffCache`), а не COUNT с тревогой на каждый запрос.
+        return self::alarmsFor($user) ? \App\Support\StaffCache::remember('binding-alarm', 30, fn () => self::alarmQuery($user)->count()) : 0;
     }
 
     /**
