@@ -27,9 +27,10 @@ final class DealTabs
         'reprice' => 'Переоценка',
         'letter' => 'Написать поставщику',
         'answered' => 'Поставщик ответил',
-        // «Согласование» (17.11.2026, владелец: под «Ждём согласия поставщика» стояли «ждём менеджера» — непонятно): сюда идёт
-        // всё, что не из таблицы блоков, — согласие менеджера и согласие поставщика.
-        'agree' => 'Согласование',
+        // «На согласовании» (17.11.2026, владелец: под «Ждём согласия поставщика» стояли «ждём менеджера» — непонятно; вечером —
+        // «не Согласование, а На согласовании», «там не должно быть машин, по которым наш шаг»): сюда идёт всё, что не из таблицы
+        // блоков, — согласие менеджера и согласие поставщика; переоценка — всегда в «Переоценке».
+        'agree' => 'На согласовании',
         'invoice' => 'Ждём счёт от поставщика',
         'paying' => 'Менеджер должен нам',
         'payout' => 'Мы должны поставщику',
@@ -61,14 +62,18 @@ final class DealTabs
 
     private const CACHE = 'deal-tabs';
 
-    /** Вкладка и наш ли ход одной сделки по её шагу и делу. */
-    public static function of(?Position $position, ?array $todo): string
+    /**
+     * Вкладка и наш ли ход одной сделки по её шагу и делу. `$repricing` — вопрос переоценки ещё не закрыт (`RepriceFlow::for`,
+     * 17.11.2026, владелец: «пока вопрос переоценки не закрыт, она должна быть в переоценке всё время, в нужной подгруппе, никуда не
+     * уходить, пока не решится вопрос с новой ценой»): и когда ход менеджера, и когда он назвал новую цену.
+     */
+    public static function of(?Position $position, ?array $todo, bool $repricing = false): string
     {
         $key = $todo['key'] ?? '';
         $block = self::BLOCKS[$position?->stage?->block?->name ?? $position?->stage?->name ?? ''] ?? 'agree';
 
         return match (true) {
-            in_array($key, ['reprice', 'reprice-answer', 'price-ask'], true) => 'reprice',
+            $repricing || in_array($key, ['reprice', 'reprice-answer', 'price-ask', 'price-offer'], true) => 'reprice',
             in_array($key, ['letter', 'bounced', 'requisites'], true) || str_starts_with($key, 'request:') => 'letter',
             $key === 'reply' && $block === 'agree' => 'answered',
             // Деньги от менеджера пришли раньше счёта — дооформить его оплату. «Себе» без менеджера (деньги покупателя гаражной) —
@@ -89,16 +94,20 @@ final class DealTabs
      */
     public static function rows(Collection $deals): Collection
     {
-        $letters = Reprice::whereIn('offer_id', $deals->pluck('offer_id')->filter()->unique())->where('state', Reprice::APPLIED)
+        $offers = $deals->pluck('offer_id')->filter()->unique();
+        $letters = Reprice::whereIn('offer_id', $offers)->where('state', Reprice::APPLIED)
             ->where('source', 'letter')->whereNull('answered_at')->distinct()->pluck('offer_id')->flip();
+        // У кого вообще есть переоценка (ждущая или разобранная) — только им спрашиваем, закрыт ли вопрос (`RepriceFlow::for`).
+        $repriced = Reprice::whereIn('offer_id', $offers)->whereIn('state', [Reprice::PENDING, Reprice::APPLIED])->distinct()->pluck('offer_id')->flip();
 
-        return $deals->mapWithKeys(function (Deal $deal) use ($letters) {
+        return $deals->mapWithKeys(function (Deal $deal) use ($letters, $repriced) {
             $position = $deal->offer?->position();
             $position?->setRelation('offer', $deal->offer)->setRelation('deal', $deal);
             $position && ($position->letterRepriceKnown = $letters->has($deal->offer_id));
             $todo = $position?->todo();
+            $repricing = $repriced->has($deal->offer_id) && $deal->offer && RepriceFlow::for($deal->offer->setRelation('deal', $deal)) !== null;
 
-            return [$deal->id => ['deal' => $deal, 'tab' => self::of($position, $todo), 'todo' => $todo]];
+            return [$deal->id => ['deal' => $deal, 'tab' => self::of($position, $todo, $repricing), 'todo' => $todo]];
         });
     }
 
