@@ -2,54 +2,20 @@
 
 namespace App\Http\Admin;
 
-use App\Space\Conveyor;
 use App\Support\Surface;
 use Illuminate\Http\Request;
 
 /**
- * Главная CRM — космос с конвейером (04.11.2026, владелец; `App\Space\Conveyor`). Предложения переехали на `/offers`, работа начинается
- * с них (`Surface::home`), сюда ведёт только логотип. Маршрут вне `auth`, как `/` сайта и парковки: гость уходит на вход
- * без «вернуться сюда» — после входа он в предложениях, а не в космосе. Старые ссылки на список (`/?preset=…&peek=…` в
- * Telegram, пушах, закладках) — на тот же адрес под `/offers`, до входа: адрес для возврата запомнит уже список. Не 301:
- * постоянный редирект браузер запоминает навсегда, и свои параметры у главной (схема) потом не заработали бы.
- * Космос — только изнутри CRM, логотипом (05.11.2026: начальник открыл CRM закладкой на корень и попал на «Тест»): открыли
- * CRM снаружи — адрес руками, закладка, новая вкладка, ссылка с другого сайта — сразу предложения. Изнутри — переход Turbo
- * или клик того же сайта (`Sec-Fetch-Site: same-origin`) либо Referer с хоста CRM (обновление страницы его сохраняет).
+ * Корень CRM — сразу предложения (17.11.2026: космос с конвейером не прижился, `archive/space`). Старые ссылки на список
+ * (`/?preset=…&peek=…` в Telegram, пушах, закладках) — на тот же адрес под `/offers`. Маршрут вне `auth`: гостя на вход
+ * отправит уже `/offers`, и после входа он вернётся в список. Не 301 — постоянный редирект браузер запоминает навсегда.
  */
 final class HomeController
 {
     public function __invoke(Request $request)
     {
-        if (($query = $request->getQueryString()) !== null) {
-            return redirect('/offers?'.$query);
-        }
-        if (! $request->user()) {
-            return redirect('/login');
-        }
-        abort_unless($request->user()->isStaff(), 404);
-        if (! self::fromInside($request)) {
-            return redirect(Surface::Crm->home());
-        }
+        $query = $request->getQueryString();
 
-        $board = Conveyor::view();
-
-        return view('admin.space', ['board' => $board, 'people' => Conveyor::people($board)]);
-    }
-
-    /**
-     * Живые числа конвейера: событие сотрудникам — `space_controller` перечитывает кусок `#conveyor` и морфит его сам.
-     * Снимок устарел, а пересчитывать рано (`Conveyor::$stale`) — заголовок просит спросить ещё раз.
-     */
-    public function conveyor()
-    {
-        $response = response()->view('admin.space.conveyor', ['board' => Conveyor::view()]);
-
-        return Conveyor::$stale ? $response->header('X-Conveyor-Stale', '1') : $response;
-    }
-
-    private static function fromInside(Request $request): bool
-    {
-        return $request->header('Sec-Fetch-Site') === 'same-origin'
-            || parse_url((string) $request->header('Referer'), PHP_URL_HOST) === $request->getHost();
+        return redirect(Surface::Crm->home().($query !== null ? '?'.$query : ''));
     }
 }

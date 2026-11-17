@@ -72,7 +72,7 @@ class PartnerTest extends TestCase
 
     public function test_partner_host_has_nothing_else(): void
     {
-        foreach (['/account/chats/support', '/account/notifications', '/deals', '/gallery', '/search?q=a', '/reference/vendors', '/files/1', '/work/mail', '/offers/twins', '/space/conveyor'] as $path) {
+        foreach (['/account/chats/support', '/account/notifications', '/deals', '/gallery', '/search?q=a', '/reference/vendors', '/files/1', '/work/mail', '/offers/twins'] as $path) {
             $this->actingAs($this->alfaMan)->get($this->url($path))->assertNotFound();
         }
         $this->actingAs($this->alfaMan)->get($this->url('/account'))->assertOk();

@@ -17,11 +17,13 @@
      Вкладки нет в адресе (поиск) — fallback, без ˄ ˅. sections — подзаголовки
      разделов в колесе (16.11.2026, владелец выбрал вариант А макета: «между вариантами подзаголовки, которые не выбираются, а
      пролистываются»): ключ первой вкладки раздела → подпись; снап на них не встаёт (`tab_wheel_controller`); на ПК у раздела из
-     одной вкладки («Закупки», «Гараж») — только линия (`is-solo`); «Сделка» и «Архив» — подзаголовками и в начале столбца. drop — параметры
+     одной вкладки («Закупки», «Гараж») — только линия (`is-solo`). heads — разделы, чьё имя несёт их первая вкладка (сводные
+     «Все черновики», «Все предложения», «Все сделки», «Архивы», 17.11.2026, владелец: подзаголовки — «кликабельными»): над ней
+     линия без подписи, в начале столбца ПК — и без линии. drop — параметры
      адреса, что не переносятся в другую вкладку (дела «Ваш ход» `todo`, `sub`); keep — наоборот, только эти (17.11.2026, шапка
      вкладок колеса: чипы у каждой вкладки свои и берутся из памяти `ListPrefs` — чужие из адреса ставили в соседней вкладке
      одноимённый чип чужим значением: «Этап» сделок в «Этап гаража», и список пустел). --}}
-@props(['pills' => [], 'pill' => '', 'pillParam' => 'view', 'pillHome' => null, 'counts' => [], 'badges' => [], 'bumps' => [], 'fallback' => '', 'id' => 'tab-menu', 'sections' => [], 'columns' => [], 'skipEmpty' => true, 'drop' => [], 'keep' => null])
+@props(['pills' => [], 'pill' => '', 'pillParam' => 'view', 'pillHome' => null, 'counts' => [], 'badges' => [], 'bumps' => [], 'fallback' => '', 'id' => 'tab-menu', 'sections' => [], 'heads' => [], 'columns' => [], 'skipEmpty' => true, 'drop' => [], 'keep' => null])
 @php
     $action = '/'.ltrim(request()->path(), '/');
     $query = $keep !== null ? array_intersect_key(request()->query(), array_flip($keep)) : array_diff_key(request()->query(), array_flip($drop));
@@ -63,7 +65,7 @@
 <div {{ $attributes->merge(['class' => 'tab-title'.($at !== false ? ' has-step' : '')]) }} data-controller="tab-wheel">
     <h1 class="text-xl sm:text-2xl">
         <button type="button" class="tab-title-btn" data-bump data-action="tab-wheel#open" aria-haspopup="dialog" aria-expanded="false" aria-controls="{{ $id }}">
-            <x-ui.icon name="chevron-right" class="tab-title-chev size-3.5"/>{{ $pills[$pill] ?? $fallback }}
+            <x-ui.icon name="chevron-right" class="tab-title-chev size-[.9em]"/>{{ $pills[$pill] ?? $fallback }}
         </button>
     </h1>
     @if ($at !== false)
@@ -78,20 +80,22 @@
         </div>
     @endif
     <div id="{{ $id }}" class="tab-wheel" data-wheel role="dialog" aria-label="Вкладки" hidden>
-        <x-ui.icon name="chevron-right" class="tab-wheel-chev size-3.5"/>
+        <x-ui.icon name="chevron-right" class="tab-wheel-chev text-xl sm:text-2xl size-[.9em]"/>
         <nav class="tab-wheel-scroll">
             @foreach ($cols as $col)
-                <div class="tab-wheel-col" role="group" @if ($col['name']) aria-label="{{ $col['name'] }}" @endif>
+                <div class="tab-wheel-col" role="group" style="--col: {{ $loop->index }}" @if ($col['name']) aria-label="{{ $col['name'] }}" @endif>
                     @foreach ($col['keys'] as $key)
                         @php($label = $pills[$key])
+                        {{-- Раздел, чьё имя несёт сама вкладка («Все черновики», `heads`), — линия без подписи; в начале столбца ПК
+                             и линии нет (`is-top`): вкладка и есть верх столбца. --}}
                         @isset($sections[$key])
-                            <div @class(['tab-wheel-sec', 'is-solo' => ($size[$key] ?? 0) === 1]) aria-hidden="true"><span class="tab-wheel-sec-line"></span><span class="tab-wheel-sec-name">{{ $sections[$key] }}</span></div>
+                            <div @class(['tab-wheel-sec', 'is-solo' => ($size[$key] ?? 0) === 1 || in_array($key, $heads, true), 'is-top' => $loop->first && in_array($key, $heads, true)]) aria-hidden="true"><span class="tab-wheel-sec-line"></span>@unless (in_array($key, $heads, true))<span class="tab-wheel-sec-name">{{ $sections[$key] }}</span>@endunless</div>
                         @endisset
-                        <a href="{{ $href($key) }}" class="tab-wheel-item text-xl sm:text-2xl" data-turbo-prefetch="false" @isset($bumps[$key]) data-pill-bump="{{ $key }}:{{ $counts[$bumps[$key]] ?? 0 }}" @endisset @if ((string) $pill === $key) aria-current="true" @endif>
+                        <a href="{{ $href($key) }}" @class(['tab-wheel-item text-xl sm:text-2xl', 'is-head' => in_array($key, $heads, true)]) data-turbo-prefetch="false" @isset($bumps[$key]) data-pill-bump="{{ $key }}:{{ $counts[$bumps[$key]] ?? 0 }}" @endisset @if ((string) $pill === $key) aria-current="true" @endif>
                             {{-- Зелёное число — сразу за названием (16.11.2026, владелец: «зелёные счётчики возле заголовков, а не справа»):
                                  внутри названия, растёт вместе с ним; серое «всего» — справа. «›» у выбранной — на ПК (на телефоне она
                                  одна, на месте заголовка, `.tab-wheel-chev`). --}}
-                            <span class="tab-wheel-label">@if ((string) $pill === $key)<x-ui.icon name="chevron-right" class="tab-wheel-mark size-3.5"/>@endif{{ $label }}@isset($badges[$key])<span class="badge nums tab-wheel-badge" data-pill-count="{{ $badges[$key] }}" @unless ($counts[$badges[$key]] ?? 0) hidden @endunless>{{ ($counts[$badges[$key]] ?? 0) ?: '' }}</span>@endisset</span>
+                            <span class="tab-wheel-label">@if ((string) $pill === $key)<x-ui.icon name="chevron-right" class="tab-wheel-mark size-[.9em]"/>@endif{{ $label }}@isset($badges[$key])<span class="badge nums tab-wheel-badge" data-pill-count="{{ $badges[$key] }}" @unless ($counts[$badges[$key]] ?? 0) hidden @endunless>{{ ($counts[$badges[$key]] ?? 0) ?: '' }}</span>@endisset</span>
                             <span class="tab-wheel-nums">
                                 @if (array_key_exists($key, $counts))<span class="nums" data-pill-count="{{ $key }}">{{ $counts[$key] ?: '' }}</span>@endif
                             </span>

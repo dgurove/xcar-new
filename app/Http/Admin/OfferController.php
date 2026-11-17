@@ -98,14 +98,42 @@ class OfferController
         // перед черновиками (17.11.2026, владелец); раскладку «Все» порядок не трогает — галереи в `OfferTabs` нет.
         'purchases' => 'Закупки',
         ...GalleryController::PRESETS,
+        // Сводные вкладки разделов (17.11.2026, владелец: подзаголовки колеса «кликабельными — как „Все“, но по всем своим») —
+        // первыми в своём разделе, вместо подзаголовка (`SUMMARIES`).
+        'all_drafts' => 'Все черновики',
         'nofloor' => 'Без закупочной цены', 'unpriced' => 'Без продажной цены', 'estimating' => 'На оценке у менеджеров', 'priced' => 'Оцененные',
+        'all_offers' => 'Все предложения',
         'slots' => 'Публикация', 'published' => 'Опубликованные', 'bids' => 'Есть подтверждения', 'done' => 'Без подтверждений',
+        'all_deals' => 'Все сделки',
         ...self::DEAL_TABS,
         // Гараж — все гаражные машины до расчёта, параллельно их вкладкам сделки, как галерея (16.11.2026, начальник: «всего 5
         // машин»; владелец: своим разделом). Строки рисует `GarageController::tab`.
         'garage' => 'Гараж',
+        'all_archive' => 'Архивы',
         'archive' => 'Архив', 'legacy' => 'Из таблицы Кати', 'auction' => 'На аукцион',
     ];
+
+    /**
+     * Сводные вкладки разделов (17.11.2026): «Все» по вкладкам одного раздела — те же группы по вкладкам (`OfferTabs`), чипы
+     * «Состояние» и «Менеджер», столбцы. Сводная → вкладки раздела; сделки — этапы `DealTabs` и «Завершённые».
+     */
+    public const SUMMARIES = [
+        'all_drafts' => ['nofloor', 'unpriced', 'estimating', 'priced'],
+        'all_offers' => ['slots', 'published', 'bids', 'done'],
+        'all_deals' => null,
+        'all_archive' => ['archive', 'legacy', 'auction'],
+    ];
+
+    /** Вкладки, по которым раскладывается сводная («Все» или раздела); не сводная — null. @return list<string>|null */
+    public static function summary(?string $preset): ?array
+    {
+        return match (true) {
+            $preset === 'all' => array_values(array_diff(OfferTabs::keys(), self::ALL_HIDDEN, ['archive'])),
+            $preset === 'all_deals' => array_keys(self::DEAL_TABS),
+            array_key_exists((string) $preset, self::SUMMARIES) => self::SUMMARIES[$preset],
+            default => null,
+        };
+    }
 
     /**
      * Сделка — состояние предложения (16.11.2026, начальник; владелец выбрал вкладки «по этапам маршрута», «Ваш ход» — разложить
@@ -118,14 +146,14 @@ class OfferController
      * Разделы колеса (16.11.2026, владелец выбрал вариант А: «между вариантами подзаголовки, которые не выбираются, а
      * пролистываются»): первая вкладка раздела → подпись (`x-ui.tab-title :sections`). «Все» — над разделами.
      */
-    public const SECTIONS = ['purchases' => 'Закупка', 'gallery' => 'Галерея', 'nofloor' => 'Черновик', 'slots' => 'Предложение', 'reprice' => 'Сделка', 'garage' => 'Гараж', 'archive' => 'Архив'];
+    public const SECTIONS = ['purchases' => 'Закупка', 'gallery' => 'Галерея', 'all_drafts' => 'Черновик', 'all_offers' => 'Предложение', 'all_deals' => 'Сделка', 'garage' => 'Гараж', 'all_archive' => 'Архив'];
 
     /**
      * Столбцы колеса на ПК (17.11.2026, владелец: «не скролл, а просто клик», «три столбца: предложения — черновики, закупка,
      * галерея, предложение; сделки — сделки и гараж; архивы»; заголовков у столбцов нет — имя только для чтения с экрана):
      * первая вкладка столбца → имя (`x-ui.tab-title :columns`). На телефоне колесо одно.
      */
-    public const WHEEL_COLUMNS = ['all' => 'Предложения', 'reprice' => 'Сделки', 'archive' => 'Архивы'];
+    public const WHEEL_COLUMNS = ['all' => 'Предложения', 'all_deals' => 'Сделки', 'all_archive' => 'Архивы'];
 
     /** Вкладки, машин которых во «Все» нет (17.11.2026, владелец): работа модератора и законченное. */
     public const ALL_HIDDEN = ['nofloor', 'finished'];
@@ -139,7 +167,7 @@ class OfferController
     /** Зелёные числа колеса: ключ вкладки → ключ числа в `counts` (оценки менеджеров, наши дела по этапам сделки). */
     public static function badges(): array
     {
-        return ['estimating' => 'estimating_given', 'priced' => 'priced_given', ...collect(DealTabs::TABS)->mapWithKeys(fn ($t, $k) => [$k => $k.'_our'])->all()];
+        return ['estimating' => 'estimating_given', 'priced' => 'priced_given', 'all_deals' => 'all_deals_our', ...collect(DealTabs::TABS)->mapWithKeys(fn ($t, $k) => [$k => $k.'_our'])->all()];
     }
 
     /** Вкладка ли сделки: строки — сделки (`DealController::tab`). */
@@ -168,7 +196,7 @@ class OfferController
             return self::PRESETS;
         }
         // Закупки и галерея — админу (их разделы в CRM у модератора закрыты и прежде).
-        $hidden = ['estimating' => true, 'bids' => true, 'done' => true, 'all' => true, 'legacy' => true, 'auction' => true,
+        $hidden = ['estimating' => true, 'bids' => true, 'done' => true, 'all' => true, 'legacy' => true, 'auction' => true, ...array_fill_keys(array_keys(self::SUMMARIES), true),
             'purchases' => true, 'gallery' => true, 'interest' => true];
 
         // Модератору (14.11.2026, `canEditDeals`) — сделки для документов: этапы и «Завершённые»; гаража у него нет.
@@ -276,7 +304,7 @@ class OfferController
             // Срок обязывающего — без столбца (19.10.2026, владелец: «засрали интерфейс»): только в окошке сортировки.
             'binding' => $cols !== null,
             'closing' => in_array($preset, self::OPEN, true),
-            'tab' => in_array($preset, self::BY_TAB, true) || $preset === 'all',
+            'tab' => in_array($preset, self::BY_TAB, true) || self::summary($preset) !== null,
             // Во вкладках шагов время, порядок и аватар — про приход во вкладку (18.10.2026, начальник: сортировал по
             // заведению, а в столбце время прихода — «непонятно, что значит»). Запомненная «Дата заведения» тут — умолчание.
             'created' => ! in_array($preset, self::BY_TAB, true),
@@ -429,7 +457,7 @@ class OfferController
             // «Все» (16.11.2026, владелец: «фильтр по этому состоянию, по менеджеру очень не хватает», «фильтры неудобные»): первыми —
             // вкладка (та же раскладка, что группы, `OfferTabs`) и менеджер, кто держит машину (сделка по текущим условиям, иначе
             // гараж); дальше вендор, город, тип. «Заведено» здесь нет — даты заведения во «Все» нет и столбцом.
-            'all' => [
+            'all', 'all_drafts', 'all_offers', 'all_deals', 'all_archive' => [
                 Facet::column('tab', 'Состояние', ['состояние', 'состояния', 'состояний'], OfferTabs::sql())->natural()->icon('layers')
                     ->labels(fn (array $keys) => collect([...OfferTabs::keys(), OfferTabs::OTHER])->filter(fn ($k) => in_array($k, $keys, true))
                         ->mapWithKeys(fn ($k) => [$k => new Option($k, OfferTabs::label($k))])->all()),
@@ -452,7 +480,7 @@ class OfferController
                 $f->quick();
             }
         }
-        $facets = Facets::for($request, 'crm-offers', ...$tabFacets, ...OfferFilters::for('offers.id', $admin, $preset === 'all' ? OfferTabs::sinceSql() : null))
+        $facets = Facets::for($request, 'crm-offers', ...$tabFacets, ...OfferFilters::for('offers.id', $admin, self::summary($preset) !== null ? OfferTabs::sinceSql() : null))
             ->always()->saving('offers');
         $askedSort = $request->query('sort');
         ListPrefs::sync($request, 'crm-offers', keep: array_values(array_diff($facets->keys(), self::ONCE)));
@@ -484,7 +512,7 @@ class OfferController
         // Горит ли срок обязывающего — для первых групп вкладки (`HOT`): 2 — сгорел, 1 — горит, 0 — нет.
         $q->selectRaw(Binding::levelSql().' as binding_soon');
         // «Все» — с какого момента машина в своей вкладке (17.11.2026, `OfferTabs::sinceSql`): «6д 5ч» справа в строке и столбцом.
-        if ($preset === 'all' && ! $searching) {
+        if (self::summary($preset) !== null && ! $searching) {
             $q->selectRaw(OfferTabs::sinceSql().' as tab_since');
         }
         // Ждущая переоценка закупочной (28.10.2026) — меткой у цены и чипом.
@@ -492,7 +520,7 @@ class OfferController
             $q->withExists(['reprices as reprice_pending' => fn ($r) => $r->where('state', Reprice::PENDING)]);
         }
         // «Все» и поиск — где машина после продажи: этап сделки, менеджер, срок оплаты, гараж (`DealLine::forOffer`).
-        if ($admin && ($preset === 'all' || $searching)) {
+        if ($admin && (self::summary($preset) !== null || $searching)) {
             $q->with(['deal.buyer', 'deal.invoices.claims', 'lastDeal.buyer', 'garageCar.manager', 'positions.stage.block', 'positions.stage.exits.to',
                 ...User::withAvatar('deal.buyer.media'), ...User::withAvatar('lastDeal.buyer.media'), ...User::withAvatar('garageCar.manager.media')]);
         }
@@ -590,6 +618,8 @@ class OfferController
             // завершённые и всё, что в архиве») — по той же раскладке, что группы (`OfferTabs`).
             'all' => $q->whereNotIn('offers.state', [OfferState::Archived, OfferState::Cancelled])
                 ->when(OfferTabs::ids(self::ALL_HIDDEN), fn ($w, $ids) => $w->whereIntegerNotInRaw('offers.id', $ids)),
+            // Сводная раздела — машины, что раскладка кладёт в его вкладки (группы те же, числа сходятся с колесом).
+            'all_drafts', 'all_offers', 'all_deals', 'all_archive' => $q->whereIntegerInRaw('offers.id', OfferTabs::ids(self::summary($preset))),
             // Сделка (16.11.2026): этап — раскладка `DealTabs`, «Завершённые» — выданные.
             'reprice', 'letter', 'answered', 'agree', 'invoice', 'paying', 'payout', 'pickup', 'docs' => $q->whereIn('offers.id', DealTabs::ids($preset)),
             // «Гараж» — все гаражные машины до расчёта, в любом этапе сделки (16.11.2026); расчёт закрыт — в «Завершённых».
@@ -664,7 +694,7 @@ class OfferController
         if (in_array($preset, self::HOT, true)) {
             $q->orderByRaw(Binding::levelSql().' desc');
         }
-        if ($preset === 'all') {
+        if (self::summary($preset) !== null) {
             $q->orderByRaw(OfferTabs::orderSql());
         }
         if ($preset === 'estimating') {
@@ -684,7 +714,7 @@ class OfferController
         }
         $bids = "(select count(*) from bids where bids.offer_id = offers.id and bids.state = '".BidState::Active->value."')";
         match ($sort->key) {
-            'tab' => $q->orderByRaw(($preset === 'all' ? OfferTabs::sinceSql() : 'offers.tab_at')." {$dir} nulls last"),
+            'tab' => $q->orderByRaw((self::summary($preset) !== null ? OfferTabs::sinceSql() : 'offers.tab_at')." {$dir} nulls last"),
             'published' => $q->orderByRaw("published_at {$dir} nulls last"),
             'closing' => $q->orderByRaw("bids_close_at {$dir} nulls last"),
             'number' => $q->orderBy('offers.number', $dir),
@@ -722,7 +752,7 @@ class OfferController
             $preset === 'unpriced' && $admin => [self::PARK_GROUP, 'park'],
             $preset === 'estimating' => [self::ESTIMATE_GROUP, 'est'],
             $preset === 'bids' && $admin => [self::PICK_GROUP, ''],
-            $preset === 'all' => [OfferTabs::sql(), 'tab:'],
+            self::summary($preset) !== null => [OfferTabs::sql(), 'tab:'],
             default => [null, null],
         };
         // Горящий обязывающий — своей группой поверх групп вкладки (`HOT`); без своих групп остальные — `rest`.
@@ -787,13 +817,13 @@ class OfferController
             // он в «№ убытка» с логотипом вендора); сортировка «Номер» осталась в окошке, номер — в окне и поиске.
             // Во «Все» город — с 1024: место отдано этапу сделки и менеджеру в «Состоянии» (27.10.2026; с 29.10.2026 таблица
             // плотнее, и с 1536 — слишком поздно).
-            $has('city') ? new Column('city', 'Город', from: $preset === 'all' ? 'lg' : 'sm', aside: true, clip: true, role: ColRole::Place, rem: max(5, $cityCh * .5 + 2.5)) : null,
+            $has('city') ? new Column('city', 'Город', from: self::summary($preset) !== null ? 'lg' : 'sm', aside: true, clip: true, role: ColRole::Place, rem: max(5, $cityCh * .5 + 2.5)) : null,
             // Во «Все» состояние — главное (14.11.2026, владелец: с окном справа оно уходило по ширине — «ничего не понятно»).
             // «Менеджер» — третьим, после номера убытка, по левому краю, аватар слева (14.11.2026, владелец).
             // Ширина постоянная (`fixed`): по первой сотне строк её не посчитать — наверху «Все» сгоревшие сроки без сделок, и
             // столбец сжимался до заголовка, имена ниже резались до «Ива…» (14.11.2026, владелец).
             ! $all && $has('manager') ? new Column('manager', 'Менеджер', from: 'sm', cell: 'whitespace-nowrap', role: ColRole::State, rem: 12.5, main: true, fixed: true) : null,
-            $has('state') ? new Column('state', ! $all && $has('bids') ? 'Приём' : 'Состояние', from: 'sm', sort: 'closing', cell: 'whitespace-normal', role: ColRole::State, rem: 10, main: $preset === 'all') : null,
+            $has('state') ? new Column('state', ! $all && $has('bids') ? 'Приём' : 'Состояние', from: 'sm', sort: 'closing', cell: 'whitespace-normal', role: ColRole::State, rem: 10, main: self::summary($preset) !== null) : null,
             // «Во вкладке» — длительностью «6д 5ч», рядом с «Состоянием» (17.11.2026, «Все»): про него и говорит.
             ! $all && $has('since') ? new Column('since', 'Во вкладке', from: 'sm', sort: 'tab', cell: 'nums whitespace-nowrap', role: ColRole::State, rem: 6.5, main: true, fixed: true) : null,
             // Менеджер сделки или гаража — во «Все», и при открытом окне (14.11.2026, владелец).
@@ -813,7 +843,7 @@ class OfferController
             $when ? new Column('when', $when[1], from: 'sm', sort: $when[0], cell: 'nums whitespace-nowrap', role: ColRole::When, rem: $when[2]) : null,
         ], ['mixed' => $all, 'when' => $when[0] ?? null, 'floorSide' => $floorSide,
             // «Состояние» словом вкладки — во «Все» и в поиске (16.11.2026, `OfferTabs`).
-            'tabs' => $all || $preset === 'all']);
+            'tabs' => $all || self::summary($preset) !== null]);
     }
 
     /**
@@ -853,7 +883,10 @@ class OfferController
             // Города и закупочной нет: столбцы больше не уходят по ширине (таблица листается вбок), и они выталкивали срок и
             // даты за край — город есть в окне, закупочная в «Ценах».
             // Сколько во вкладке — за «Состоянием» (17.11.2026, владелец: «сколько дней и часов она уже в этой вкладке»).
-            'all' => ['vendor', 'state', 'since', 'manager', 'price', 'binding', 'sold', 'paid'],
+            'all', 'all_deals' => ['vendor', 'state', 'since', 'manager', 'price', 'binding', 'sold', 'paid'],
+            // Сводные черновиков и предложений — без сделки: менеджера и дат продажи и оплаты у них нет, закупочная — есть.
+            'all_drafts', 'all_offers' => ['vendor', 'state', 'since', 'floor', 'price', 'binding'],
+            'all_archive' => ['vendor', 'state', 'since', 'floor', 'price'],
             // «Архив»: где предложение сейчас — словом вкладки (`Offer::crmTab`: «Сделки», «Гараж»).
             default => ['vendor', 'city', 'state', 'floor', 'price', 'created'],
         };
@@ -872,7 +905,7 @@ class OfferController
     {
         $base = fn () => Offer::inCrm($user)->notEmptyDraft();
         $counts = [];
-        foreach (array_diff(array_keys(self::presets($user)), ['archive']) as $key) {
+        foreach (array_diff(array_keys(self::presets($user)), ['archive', 'all_archive']) as $key) {
             // «Закупки» — открытые закупки, как прежнее число таб-бара.
             if ($key === 'purchases') {
                 $counts[$key] = Purchase::where('state', PurchaseState::Open)->count();
@@ -890,7 +923,7 @@ class OfferController
                     $key === 'bids' && $carcadeDefault => ['vendor'],
                     in_array($key, self::OPEN, true) => [],
                     default => ['recommended'],
-                }, ...($key === 'all' ? [] : ['tab', 'manager'])]);
+                }, ...(self::summary($key) !== null ? [] : ['tab', 'manager'])]);
             }
             // У «Из таблицы Кати» в числе и незаведённые номера — призрачные строки. Черновик из письма встаёт туда из
             // призрака, и число не меняется, — пилюле отдельно число черновиков: выросло — она вспыхивает (flip.js).
@@ -908,6 +941,10 @@ class OfferController
         // Сколько ждёт нас по вкладкам сделки — зелёным у названия (16.11.2026).
         foreach (DealTabs::ours() as $tab => $n) {
             $counts[$tab.'_our'] = $n;
+        }
+        // У «Все сделки» — все наши дела по этапам.
+        if (isset($counts['all_deals'])) {
+            $counts['all_deals_our'] = array_sum(DealTabs::ours());
         }
 
         return $counts;

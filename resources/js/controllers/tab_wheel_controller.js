@@ -38,11 +38,36 @@ function tick() {
     try { navigator.vibrate?.(4); } catch {}
 }
 
+// Логотип CRM ведёт сюда (`Surface::brand`, 17.11.2026: космос на `/` не прижился): колесо «Предложений» открывается само,
+// а на самих `/offers` — на месте, без перехода и с чипами вкладки.
+const LOGO = '/offers#tabs';
+const HOME = '/offers';
+
 export default class extends Controller {
+    connect() {
+        if (location.pathname !== HOME) return;
+        this.onLogo = (event) => {
+            const link = event.target.closest?.('a[href]');
+            if (!link || link.getAttribute('href') !== LOGO || event.metaKey || event.ctrlKey || event.shiftKey || event.button) return;
+            event.preventDefault();
+            event.stopImmediatePropagation();
+            this.show(this.element.querySelector('.tab-title-btn'));
+        };
+        document.addEventListener('click', this.onLogo, true);
+        if (location.hash === '#tabs') {
+            // Хэш снимается сразу: обновление и «Назад» колесо сами не открывают.
+            history.replaceState(history.state, '', location.pathname + location.search);
+            requestAnimationFrame(() => this.show(this.element.querySelector('.tab-title-btn')));
+        }
+    }
+
     open(event) {
-        if (this.wheel) return;
+        this.show(event.currentTarget);
+    }
+
+    show(button) {
+        if (this.wheel || !button || !this.element.isConnected) return;
         const wheel = this.element.querySelector('[data-wheel]');
-        const button = event.currentTarget;
         if (!wheel) return;
         // Страница уехала — наверх под заливкой: после загрузки заголовок встанет туда же, где пункт в фокусе.
         if (scrollTop() > 0) scrollToY(0, 'instant');
@@ -300,6 +325,8 @@ export default class extends Controller {
     }
 
     disconnect() {
+        if (this.onLogo) document.removeEventListener('click', this.onLogo, true);
+        this.onLogo = null;
         if (this.wheel && this.chosen === null) {
             if (overlays.isOpen(ID)) overlays.shut(ID);
             this.teardown();

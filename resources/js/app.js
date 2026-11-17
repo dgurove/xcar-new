@@ -114,9 +114,9 @@ window.Stimulus = application;
 // Внутреннее CRM (лот, двойники, подсветка) — тоже кусками (07.11.2026): в сборке, которую получает partner.xcar.ru, их нет
 // (сторож — `scripts/partner-lint.mjs`).
 const controllerName = (path) => path.match(/\/([\w-]+)_controller\.js$/)[1].replace(/_/g, '-');
-const controllers = import.meta.glob(['./controllers/*_controller.js', '!./controllers/{chat,photos,qr_release,share,passkey,vin,draft,editor,combobox,login,tariff_form,car_text,drop_empty,valuation,date,export,yard_editor,space,lot_field,lots_island,twins,glow}_controller.js'], { eager: true });
+const controllers = import.meta.glob(['./controllers/*_controller.js', '!./controllers/{chat,photos,qr_release,share,passkey,vin,draft,editor,combobox,login,tariff_form,car_text,drop_empty,valuation,date,export,yard_editor,lot_field,lots_island,twins,glow}_controller.js'], { eager: true });
 for (const [path, module] of Object.entries(controllers)) application.register(controllerName(path), module.default);
-const lazy = new Map(Object.entries(import.meta.glob('./controllers/{chat,photos,qr_release,share,passkey,vin,draft,editor,combobox,login,tariff_form,car_text,drop_empty,valuation,date,export,yard_editor,space,lot_field,lots_island,twins,glow}_controller.js')).map(([path, load]) => [controllerName(path), load]));
+const lazy = new Map(Object.entries(import.meta.glob('./controllers/{chat,photos,qr_release,share,passkey,vin,draft,editor,combobox,login,tariff_form,car_text,drop_empty,valuation,date,export,yard_editor,lot_field,lots_island,twins,glow}_controller.js')).map(([path, load]) => [controllerName(path), load]));
 const loadLazy = (root) => {
     for (const [name, load] of lazy) {
         const selector = `[data-controller~="${name}"]`;

@@ -23,13 +23,16 @@ final class OfferTabs
     private static array $memo = [];
 
     /**
-     * Вкладки, по которым раскладываются машины «Всех», по порядку колеса. Закупки — не предложения, галерея — окно показа
-     * черновика параллельно его вкладке (16.11.2026): машина остаётся в группе своего черновика, у строки — метка «в галерее».
+     * Вкладки, по которым раскладываются машины «Всех» и сводных разделов, по порядку колеса. Закупки — не предложения,
+     * галерея — окно показа черновика параллельно его вкладке (16.11.2026): машина остаётся в группе своего черновика, у строки —
+     * метка «в галерее»; сводные (`OfferController::SUMMARIES`) сами раскладываются по этим. «Архив» — с 17.11.2026, для
+     * «Архивов»: во «Все» архивного нет по состоянию.
      * @return list<string>
      */
     public static function keys(): array
     {
-        return array_values(array_diff(array_keys(OfferController::PRESETS), ['all', 'archive', 'purchases', 'gallery', 'interest']));
+        return array_values(array_diff(array_keys(OfferController::PRESETS),
+            ['all', 'purchases', 'gallery', 'interest', ...array_keys(OfferController::SUMMARIES)]));
     }
 
     /** `offer_id` → ключ вкладки. @return array<int, string> */

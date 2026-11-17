@@ -43,6 +43,8 @@
 @source "../js";
 /* Классы столбцов таблиц пишет описание (`App\Support\Table\Column::classes`). */
 @source "../../app/Support/Table";
+/* Архив (`archive/space` — космос главной CRM): Tailwind сам сканирует корень проекта, классы оттуда в сборку не нужны. */
+@source not "../../archive";
 
 @custom-variant dark (&:where(.dark, .dark *));
 
@@ -1340,7 +1342,11 @@ html.kb-open { --home-gap: 0px; }
   .tab-title-btn { @apply relative rounded-(--radius-s) text-left; font: inherit; color: inherit; transition: color var(--dur-fast); }
   /* «›» — в поле экрана слева от названия, у самого края: видно, что это выбор, а название стоит на месте. Открыт список —
      поворачивается вниз. */
-  .tab-title-chev { position: absolute; left: -.875rem; top: .65em; translate: 0 -50%; color: var(--color-ink-dim); transition: rotate var(--dur-fast); }
+  /* «›» — один на заголовке, колесе телефона и выбранной на ПК (17.11.2026, владелец: «симпатичнее, чуть-чуть побольше»): размер
+     от шрифта названия (.9em — уголок в .45em, был 7 px при любом заголовке), линия ≈ 2 px — как штрих заголовка 500, серым
+     темнее подписи; уголок — в .2em от первой буквы, серединой на середине заглавных. */
+  .tab-title-chev, .tab-wheel-chev, .tab-wheel-mark { stroke-width: 2.25; color: var(--color-ink-muted); }
+  .tab-title-chev { position: absolute; left: -.7625em; top: .6em; translate: 0 -50%; transition: rotate var(--dur-fast); }
   @media (hover: hover) { .tab-title-btn:hover { color: var(--color-ink-muted); } }
   /* Строка ушла в другую вкладку (lib/bump.js) — название коротко загорается лаймом, без раздувания. */
   @media (prefers-reduced-motion: no-preference) { .tab-title-btn.is-bumped { animation: title-bump .9s cubic-bezier(.2,.8,.2,1) 1; } }
@@ -1363,7 +1369,7 @@ html.kb-open { --home-gap: 0px; }
     font-feature-settings: "ss01" 1; -webkit-font-smoothing: antialiased;
   }
   .tab-wheel.is-open { opacity: 1; transition: opacity var(--dur) var(--ease-out); }
-  .tab-wheel-chev { position: absolute; z-index: 1; left: var(--wheel-chev-x); top: var(--wheel-chev-y); color: var(--color-ink-dim); pointer-events: none; }
+  .tab-wheel-chev { position: absolute; z-index: 1; left: var(--wheel-chev-x); top: var(--wheel-chev-y); pointer-events: none; }
   .tab-wheel.is-leaving { opacity: 0; transition: opacity var(--dur-slow) var(--ease-out); }
   .tab-wheel-scroll { position: absolute; inset: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; }
   .tab-wheel-scroll::-webkit-scrollbar { display: none; }
@@ -1437,20 +1443,35 @@ html.kb-open { --home-gap: 0px; }
   @media (min-width: 1024px) {
     .tab-wheel-chev { display: none; }
     .tab-wheel-scroll {
-      display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 20rem); justify-content: start; align-items: start;
+      /* Столбец — не уже своих названий (выбранная крупнее): «Ждём согласия поставщика» шрифтом заголовка не наезжает на
+         соседний; не влезли все — заливка листается вбок. */
+      display: grid; grid-auto-flow: column; grid-auto-columns: minmax(max-content, 22rem); justify-content: start; align-items: start;
       column-gap: clamp(1.5rem, 4vw, 4rem); padding: var(--wheel-top) 2rem 3rem var(--wheel-left);
     }
     .tab-wheel-col { display: flex; flex-direction: column; min-width: 0; }
     .tab-wheel-item { height: 2.25rem; cursor: pointer; }
     .tab-wheel-label { font-size: var(--text-lg); font-weight: 400; letter-spacing: 0; color: var(--color-ink-muted); transition: color var(--dur-fast); }
-    .tab-wheel-item[aria-current] .tab-wheel-label { font-weight: 500; color: var(--color-ink); }
+    /* Выбранная — шрифтом заголовка, как на телефоне (17.11.2026, владелец: «на телефоне нравится, а тут такой же, как все»). */
+    .tab-wheel-item[aria-current] { height: 3rem; }
+    .tab-wheel-item[aria-current] .tab-wheel-label { font-size: var(--text-2xl); font-weight: 500; letter-spacing: -.025em; color: var(--color-ink); }
+    .tab-wheel-item[aria-current] .tab-wheel-nums { color: var(--color-ink-muted); }
+    .tab-wheel-nums { transition: color var(--dur-fast); }
     .tab-wheel-item:hover .tab-wheel-label { color: var(--color-ink); }
+    .tab-wheel-item:hover .tab-wheel-nums { color: var(--color-ink-muted); }
+    .tab-wheel-sec.is-top { display: none; }
+    /* «Все» и сводные разделов («Все черновики»…) — шапки своих вкладок: плотнее и темнее, выбранная всё равно крупнее. */
+    .tab-wheel-item.is-head .tab-wheel-label { font-weight: 500; color: var(--color-ink); }
     .tab-wheel-item:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; border-radius: var(--radius-s); }
-    .tab-wheel-mark { position: absolute; left: -.875rem; top: 50%; translate: 0 -50%; color: var(--color-ink-dim); }
+    .tab-wheel-mark { position: absolute; left: -.7625em; top: .6em; translate: 0 -50%; }
     /* Счётчик крупнее: 12 px, как метка (17.11.2026, владелец: кружки 8 px «не читабельны»). */
-    .tab-wheel-label .tab-wheel-badge { font-size: var(--text-xs); line-height: 1.5; min-width: 1.5em; padding-inline: .4em; margin-inline-start: .4em; vertical-align: .15em; }
+    .tab-wheel-label .tab-wheel-badge { font-size: var(--text-xs); line-height: 1.5; min-width: 1.5em; padding-inline: .4em; margin-inline-start: .4em; vertical-align: middle; letter-spacing: 0; }
     .tab-wheel-sec.is-solo .tab-wheel-sec-name { display: none; }
   }
+  /* ПК: столбцы проявляются лесенкой вслед за заливкой — на 4 px снизу, шаг 40 мс (`--col` в разметке). */
+  @media (min-width: 1024px) and (prefers-reduced-motion: no-preference) {
+    .tab-wheel.is-open .tab-wheel-col { animation: wheel-col var(--dur) var(--ease-out) both; animation-delay: calc(var(--col, 0) * 40ms); }
+  }
+  @keyframes wheel-col { from { opacity: 0; translate: 0 4px; } }
   /* Выбрали — вкладка грузится: под названием бежит лаймовая полоска, пока страница не встала под колесом. */
   .tab-wheel-item.is-loading .tab-wheel-label::after {
     content: ''; position: absolute; inset-inline: 0; bottom: -.2em; height: 2px; border-radius: 1px; background: var(--color-accent);
@@ -4510,7 +4531,6 @@ html.kb-open { --home-gap: 0px; }
 @import "./telegram.css";
 @import "./push.css";
 @import "./lock.css";
-@import "./space.css";
 
 @layer components {
 

@@ -36,7 +36,7 @@ final class ListsCheck extends Command
     private function lists(): array
     {
         $crm = fn (string $path) => [Surface::Crm, $path, Role::Admin];
-        $offers = ['nofloor', 'unpriced', 'estimating', 'priced', 'slots', 'published', 'bids', 'done', 'all', 'archive', 'legacy', 'auction'];
+        $offers = ['nofloor', 'unpriced', 'estimating', 'priced', 'slots', 'published', 'bids', 'done', 'all', 'all_drafts', 'all_offers', 'all_deals', 'all_archive', 'archive', 'legacy', 'auction'];
 
         return [
             ...array_map(fn ($p) => $crm('/offers?preset='.$p), [...array_keys(DealTabs::TABS), 'finished']),

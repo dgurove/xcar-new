@@ -16,7 +16,7 @@
         $preset === 'legacy' => collect(['legacy' => $offers->getCollection()])->filter(fn ($list) => $list->isNotEmpty()),
         $preset === 'slots' => $offers->getCollection()->groupBy(fn ($o) => $o->slot_at->format('YmdHi')),
         // «Все» — группами по вкладкам в порядке колеса (16.11.2026, `OfferTabs`): строки уже в этом порядке.
-        $preset === 'all' => $offers->getCollection()->groupBy(fn ($o) => 'tab:'.\App\Offers\OfferTabs::of($o)),
+        \App\Http\Admin\OfferController::summary($preset) !== null => $offers->getCollection()->groupBy(fn ($o) => 'tab:'.\App\Offers\OfferTabs::of($o)),
         $preset === 'bids' && $admin => $offers->getCollection()->groupBy(fn ($o) => OfferController::pickGroup($o))->sortKeys(),
         $preset === 'estimating' => $offers->getCollection()->groupBy(fn ($o) => 'est'.OfferController::estimateGroup($o))->sortKeys(),
         // На парковке — первыми; группы с подписью, только когда такие есть (`OfferController::PARK_GROUPS`).
@@ -206,7 +206,7 @@
         @endif
     </div>
     {{-- «Продано» / «Оплачено» во «Все» — одна шторка на страницу (ячейки строк её открывают). --}}
-    @if ($preset === 'all' && auth()->user()->canManageCrm())<x-deal.dates-sheet/>@endif
+    @if (\App\Http\Admin\OfferController::summary($preset) !== null && auth()->user()->canManageCrm())<x-deal.dates-sheet/>@endif
     {{-- Окно писем для карточки «Письма» в карточке строки. --}}
     <x-mail.window/>
 </x-ui.shell>

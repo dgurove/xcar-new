@@ -11,7 +11,7 @@
     $capsules = \App\Support\Nav::capsules($user);
     $top = \App\Support\Nav::top($user);
     $badges = \App\Support\Nav::badges($user);
-    // Логотип ведёт вошедшего в его список (в CRM — на главную с космосом), гостя — на первый экран.
+    // Логотип ведёт вошедшего в его список (в CRM — в предложения с открытым колесом вкладок, `Surface::brand`), гостя — на первый экран.
     $home = $user ? $surface->brand() : '/';
     $cabinet = \App\Support\Nav::cabinetRoot();
     $isCurrent = fn (array $item) => \App\Support\Nav::isCurrent($item, $path);
