@@ -39,7 +39,7 @@
     // Покупателем вписано наше юрлицо (17.11.2026: Корабельников — «ООО «Р.О.С.»», чтобы Альфа выставила счёт на Р.О.С.): это
     // схема «Через Р.О.С.», а не покупатель. Строкой с причиной, админу — «Перевести через Р.О.С.».
     $ours = $buyer?->party ? (\App\Billing\Party::ours($buyer->party->inn) ?? ($buyer->party->is_self ? $buyer->party->seller : null)) : null;
-    $toRos = $ours && $deal->schemeOf() !== \App\Offers\DealScheme::Ros && $deal->moneyEditable() && auth()->user()?->canManageCrm()
+    $toRos = $ours && $deal->schemeOf() !== \App\Offers\DealScheme::Ros && $deal->moneyEditable() && auth()->user()?->canEditDeals()
         && in_array(\App\Offers\DealScheme::Ros, \App\Offers\DealScheme::casesFor($deal->offer->vendor, $deal->offer), true);
 @endphp
 @if ($ours)

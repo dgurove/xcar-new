@@ -12,7 +12,8 @@
     use App\Offers\DealScheme;
     $scheme = $deal->schemeOf();
     $choices = DealScheme::casesFor($deal->offer->vendor, $deal->offer);
-    $admin = auth()->user()?->canManageCrm();
+    // Схему меняет и модератор (17.11.2026, владелец: модераторы ведут сделки целиком — «через Р.О.С.» и в окне сделки).
+    $admin = auth()->user()?->canEditDeals();
     $editable = $deal->isActive() && count($choices) > 1 && $deal->moneyEditable() && $admin;
     $contract = $deal->hasContract() && $scheme->paysCar() ? DealContract::for($deal)->loadMissing('priceAuthor') : null;
 @endphp

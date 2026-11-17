@@ -192,6 +192,8 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
         Route::get('/work/deals/{deal}', [DealController::class, 'show']);
         Route::put('/work/deals/{deal}/contract', [DealContractController::class, 'update']);
         Route::put('/work/deals/{deal}/payer', [DealContractController::class, 'payer']);
+        // Схема сделки («Кому платит покупатель», через Р.О.С.) — и модератору (17.11.2026, владелец).
+        Route::post('/work/deals/{deal}/scheme', [DealController::class, 'scheme']);
         Route::put('/work/deals/{deal}/fee-seller', [DealContractController::class, 'feeSeller']);
         // «Отправить менеджеру» у счёта и договора (16.11.2026): сотрудник проверил — менеджер видит.
         Route::post('/work/deals/{deal}/invoices/{invoice}/show', [DealContractController::class, 'showInvoice']);
@@ -355,7 +357,6 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
         // «Работа → Вывоз» заменила логистика (10.10.2026): перевозки — на logistics.xcar.ru.
         Route::get('/work/pickups', fn () => redirect()->away(Surface::Logistics->url('/transports'), 301));
         Route::put('/work/deals/{deal}/money', [DealController::class, 'money']);
-        Route::post('/work/deals/{deal}/scheme', [DealController::class, 'scheme']);
         // Скан паспорта покупателя, которого админ указывает за менеджера (20.10.2026) — та же загрузка, что в кабинете.
         // Оплаты — вкладки «По ссылкам / Нам должны / Мы должны» (07.10.2026); карточка счёта — общая со стоянкой.
         Route::get('/work/money', [MoneyController::class, 'index']);
