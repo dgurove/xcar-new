@@ -21,6 +21,7 @@ use App\Http\Garage\PickupController as GaragePickupController;
 use App\Http\Garage\SettlementController as GarageSettlementController;
 use App\Http\Live\FragmentController;
 use App\Http\Live\PerfController;
+use App\Http\Live\VisitedController;
 use App\Http\PeopleController;
 use App\Http\PeopleMailController;
 use App\Http\Pwa\PushController;
@@ -175,6 +176,8 @@ Route::middleware(['auth', 'wall'])->group(function () {
     Route::get('/live/badges', [FragmentController::class, 'badges']);
     // Замеры нажатий с телефонов (`lib/perf.js`) — в журнал `perf-*.log`.
     Route::post('/live/perf', [PerfController::class, 'store'])->middleware('throttle:240,1');
+    // Заранее загруженную страницу открыли — отметки обычного захода (`VisitedController`).
+    Route::post('/live/visited', VisitedController::class)->middleware('throttle:240,1');
     // Пункты меню значка связи — по открытию меню (`x-ui.links`), а не 3–4 запроса на каждую строку списка.
     Route::get('/live/car-links/{kind}/{id}', [FragmentController::class, 'carLinks'])->whereIn('kind', ['o', 'v', 't'])->whereNumber('id')->middleware('ability:isAdmin');
 

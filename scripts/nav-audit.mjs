@@ -142,6 +142,17 @@ if ((!only || only === 'место') && host === 'crm') {
     let now = await state();
     check('уход табом и возврат: тот же адрес и прокрутка', same(was, now), `было ${fmt(was)}, стало ${fmt(now)}`);
 
+    // Прокрутка другого раздела не переезжает в этот: Почта на 900 → «Предложения» на своём месте, и обратно.
+    await tap(mail);
+    await scrollTo(900);
+    await tap(offers);
+    now = await state();
+    check('место раздела не берёт прокрутку покинутого', same(was, now), `было ${fmt(was)}, стало ${fmt(now)}`);
+    await tap(mail);
+    const back900 = await state();
+    check('и покинутый помнит своё', Math.abs(back900.y - 900) <= 4, `Почта y=${back900.y}`);
+    await tap(offers);
+
     // Раздел устарел, пока был скрыт: по нему пришло событие — при возврате он показан сразу и тихо перечитан.
     const hub = await page.evaluate(() => !!window.__es);
     if (hub) {

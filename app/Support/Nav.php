@@ -488,14 +488,7 @@ final class Nav
      */
     private static function perRequest(string $key, \Closure $compute): mixed
     {
-        $memo = app()->runningInConsole() ? null : request()->attributes;
-        if ($memo?->has($key)) {
-            return $memo->get($key);
-        }
-        $value = $compute();
-        $memo?->set($key, $value);
-
-        return $value;
+        return StaffCache::perRequest($key, $compute);
     }
 
     /**
@@ -511,7 +504,11 @@ final class Nav
     /** Свои счётчики сайта — заново: человек открыл предложение, и «не просмотренных» стало меньше (`ReadOffer`). */
     public static function forget(User $user): void
     {
-        Cache::forget('nav.counts:'.Surface::Site->value.':'.$user->id);
+        // Счётчики живут в `StaffCache` (17.11.2026) — забывать там же: прямой `Cache::forget` старого ключа ничего не снимал.
+        StaffCache::forget('nav.counts:'.Surface::Site->value.':'.$user->id);
+        if (! app()->runningInConsole()) {
+            request()->attributes->remove('nav.counts:'.Surface::Site->value.':'.$user->id);
+        }
     }
 
     private static function counts(User $user, Surface $surface): array

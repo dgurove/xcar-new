@@ -12,6 +12,11 @@ const pending = new Map();
 // Замок менеджера: загруженное заранее под окном лежать не должно.
 document.addEventListener('lock:freeze', () => pending.clear());
 
+function visited(href) {
+    const token = document.querySelector('meta[name="csrf-token"]')?.content ?? '';
+    try { navigator.sendBeacon?.('/live/visited', new Blob([JSON.stringify({ _token: token, url: href })], { type: 'application/json' })); } catch {}
+}
+
 export function prefetch(href, ttl = TTL) {
     const url = new URL(href, location.href);
     const hit = pending.get(url.href);
@@ -74,6 +79,9 @@ export function touchPrefetch() {
         pending.delete(url.href);
         if (hit && Date.now() - hit.at < TTL && !hit.controller.signal.aborted) {
             event.detail.fetchRequest = { response: hit.response };
+            // Ответ собран как предзагрузка — сервер ничего не отметил. Переход пошёл: сообщаем, что страницу открыли
+            // (уведомления о ней, «Просмотрено» у предложения — `VisitedController`).
+            visited(url.href);
         }
     }, true);
 

@@ -385,7 +385,14 @@ class Vendor extends Model implements HasMedia
         }
         $key = $column.':'.$email;
         if (array_key_exists($key, self::$senders)) {
-            return self::$senders[$key] ? self::find(self::$senders[$key]) : null;
+            // Модель — одна на веб-запрос (список почты спрашивает вендора на каждую строку: был запрос на строку); в очереди
+            // и консоли — заново, там процесс живёт долго и вендора могли поправить.
+            $id = self::$senders[$key];
+            if (! $id) {
+                return null;
+            }
+
+            return app()->runningInConsole() ? self::find($id) : \App\Support\StaffCache::perRequest('vendor:'.$id, fn () => self::find($id));
         }
         $domain = (string) preg_replace('/.*@/u', '', $email);
         $vendor = self::whereJsonContains($column, $email)->first()

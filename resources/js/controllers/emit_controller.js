@@ -1,6 +1,15 @@
 import { Controller } from '@hotwired/stimulus';
 import { closeSheet } from '../sheet';
 import { request } from '../lib/http';
+import { onMorphElement } from '../lib/morph-guard';
+
+// Дозагруженные шторки живут в окне, а в свежей разметке окна на их месте пустое место `data-lazy-sheets`: живой морф окна
+// снял бы открытую шторку посреди ввода. Пока в месте открыта шторка — место не морфится; закрыта — морфится как есть,
+// шторки снова приедут по требованию.
+onMorphElement((event) => {
+    const el = event.target;
+    if (el instanceof HTMLElement && el.dataset.lazyLoaded !== undefined && el.querySelector('dialog[open]')) event.preventDefault();
+});
 
 // Шторки действий окна машины приезжают по первому требованию (`data-lazy-sheets`, `OfferController::windowSheets`): в окне
 // их до десяти, а открывают редко. Слушателя события на странице ещё нет — дозагружаем шторки на их место и ждём, пока
@@ -17,6 +26,7 @@ async function ensureSheets(from, name) {
     const response = await request(url, { accept: 'text/html' });
     if (!response) { holder.dataset.lazySheets = url; return; }
     holder.innerHTML = await response.text();
+    holder.dataset.lazyLoaded = url;
     await new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)));
 }
 

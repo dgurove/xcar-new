@@ -52,12 +52,14 @@ final class Publisher
         }
     }
 
-    /** Адреса события задевают вкладки колеса «Предложений»: предложения, сделки, гараж, закупки, галерея. */
+    /** Адреса события задевают вкладки колеса «Предложений»: предложения, сделки, гараж, закупки, галерея, оплаты. */
     private static function touchesTabs(string $type, array $data): bool
     {
         $paths = $type === 'rows' ? array_keys($data['paths'] ?? []) : ($data['paths'] ?? []);
         foreach ($paths as $path) {
-            if (preg_match('#^/(offers|purchases|gallery|work/(deals|garage)|deals|garage)(/|$)#', (string) $path)) {
+            // «Оплаты» — тоже: счёт и оплата двигают сделку между вкладками («Оплата» → «Выплата»), а событие счёта несёт
+            // только `/work/money` (`Invoice::refreshLists`, `PublishLiveUpdates::invoiceChanged`).
+            if (preg_match('#^/(offers|purchases|gallery|work/(deals|garage|money)|deals|garage)(/|$)#', (string) $path)) {
                 return true;
             }
         }

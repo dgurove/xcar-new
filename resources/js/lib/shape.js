@@ -12,6 +12,7 @@
 // подменяется — иначе заготовка попала бы в снимок уходящего экрана и сбила память его прокрутки. Шапка и таб-бар
 // остаются живыми. Слой снимают отрисовка новой страницы, ошибка запроса и запасной таймер.
 import { shown as markShown } from './perf';
+import { colored } from './ghost';
 
 const PREFIX = 'shape:';
 const LIMIT = 30_000;     // знаков на силуэт
@@ -21,6 +22,7 @@ const shapes = new Map();
 let layer = null;
 let timer = 0;
 let armed = null;
+const taken = new Map(); // ключ силуэта → когда снят в этой сессии
 
 const theme = () => (document.documentElement.classList.contains('dark') ? 'd' : 'l');
 const tabOf = (url) => url.searchParams.get('preset') ?? url.searchParams.get('box') ?? url.searchParams.get('tab') ?? '';
@@ -41,11 +43,8 @@ function load(key) {
     return Array.isArray(shape) ? shape : null;
 }
 
-const grey = (value) => {
-    const n = (value.match(/[\d.]+/g) ?? []).map(Number);
-    if (value.startsWith('oklch')) return n[1] <= 0.04;
-    return Math.max(n[0], n[1], n[2]) - Math.min(n[0], n[1], n[2]) <= 24;
-};
+// Серое — не цветное (`lib/ghost.js`: то же правило у силуэта окна строки): лайм и красный в силуэте серым.
+const grey = (value) => !colored(value);
 const solid = (value) => {
     if (!value || value === 'transparent') return false;
     const n = (value.match(/[\d.]+/g) ?? []).map(Number);
@@ -125,6 +124,7 @@ export function capture() {
         shapes.set(key, shape);
         try { localStorage.setItem(PREFIX + key, JSON.stringify(shape)); } catch {}
     }
+    return true;
 }
 
 // Общая заготовка списка, пока своего силуэта нет: заголовок, ряд кружков, плашка со строками в два этажа.
@@ -211,10 +211,18 @@ export function shape() {
     // Новая страница рисуется — слой больше не нужен; не доехала — тоже.
     document.addEventListener('turbo:before-render', (event) => { if (!event.detail.isPreview) hide(); });
     document.addEventListener('turbo:fetch-request-error', hide);
+    // Экран встал — снять его силуэт, когда браузеру нечем заняться: к следующему открытию он уже готов. Не на каждую
+    // отрисовку: живое обновление (морф) и «Назад» приносят тот же экран, а снятие — обход тысяч узлов со стилями и запись
+    // в localStorage. Один раз за 10 минут на экран (ключ силуэта), и только после настоящей смены страницы.
+    let morphed = false;
+    document.addEventListener('turbo:render', (event) => { morphed = event.detail.renderMethod === 'morph'; });
     document.addEventListener('turbo:load', () => {
         hide();
-        // Экран встал — снять его силуэт, когда браузеру нечем заняться: к следующему открытию он уже готов.
-        const snap = () => { try { capture(); } catch {} };
-        (window.requestIdleCallback ?? ((fn) => setTimeout(fn, 600)))(snap, { timeout: 2500 });
+        const skip = morphed;
+        morphed = false;
+        const key = keysOf(location.href)[0];
+        if (skip || Date.now() - (taken.get(key) ?? 0) < 600_000) return;
+        const snap = () => { try { if (capture()) taken.set(key, Date.now()); } catch {} };
+        (window.requestIdleCallback ?? ((fn) => setTimeout(fn, 600)))(snap, { timeout: 4000 });
     });
 }

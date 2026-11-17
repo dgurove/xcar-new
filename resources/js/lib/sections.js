@@ -91,9 +91,12 @@ export function open(tab, saved) {
         Turbo.session.view.snapshotCache.put(url, pin.snapshot);
         pendingScroll = saved.y;
         reopened = pathOf(tab);
-        // Адрес ставим сами: визит restore историю не пишет, а таб — замена записи, как и прежде.
-        Turbo.session.history.replace(url);
-        Turbo.navigator.startVisit(url, Turbo.session.history.restorationIdentifier, { action: 'restore', historyChanged: true, direction: 'none' });
+        // Адрес ставим сами: визит restore историю не пишет, а таб — замена записи, как и прежде. Запись — новая, со своим
+        // ключом восстановления: с ключом покинутой страницы `keepPosition` (lib/scroller.js) счёл бы показ её «Назад» и
+        // поставил бы её прокрутку поверх места раздела (Почта на 900 → «Предложения» вставали на 900, а не на 2500).
+        const id = crypto.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+        Turbo.session.history.replace(url, id);
+        Turbo.navigator.startVisit(url, id, { action: 'restore', historyChanged: true, direction: 'none' });
         return true;
     }
     pendingScroll = saved.y;
@@ -114,6 +117,16 @@ export function markDirty(paths) {
         }
         if (best) dirty.set(pathOf(best[0]), Date.now());
     }
+}
+
+// Переход по ссылке не начался: Turbo его запретил (`turbo:before-visit` отменён — несохранённое в окне). Слушатель на window
+// в фазе всплытия — после всех слушателей document, отмена к этому моменту уже видна.
+function stayed(revert) {
+    const off = () => { removeEventListener('turbo:before-visit', check); document.removeEventListener('turbo:visit', off); };
+    const check = (event) => { off(); if (event.defaultPrevented) revert(); };
+    addEventListener('turbo:before-visit', check);
+    document.addEventListener('turbo:visit', off);
+    setTimeout(off, 3000);
 }
 
 export function sections({ onStale } = {}) {
@@ -168,15 +181,18 @@ export function sections({ onStale } = {}) {
         const link = event.target.closest?.('a[data-section]');
         if (!link || event.defaultPrevented || event.button || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
         const href = link.getAttribute('href');
-        // Раздел загорается под кликом, не дожидаясь страницы: шапка не постоянная и пришла бы только с ответом.
-        for (const a of document.querySelectorAll('a[data-section][aria-current]')) a.removeAttribute('aria-current');
-        link.setAttribute('aria-current', 'page');
-        if (here?.tab === href) { forget(href); arm(link.href); return; }
+        // Раздел загорается под кликом, не дожидаясь страницы: шапка не постоянная и пришла бы только с ответом. Переход
+        // не пошёл («Сохранить изменения?» → «Остаться», запрет перехода) — подсветка возвращается на раздел экрана.
+        const was = [...document.querySelectorAll('a[data-section][aria-current]')];
+        const light = (on) => { for (const a of document.querySelectorAll('a[data-section]')) on.includes(a) ? a.setAttribute('aria-current', 'page') : a.removeAttribute('aria-current'); };
+        light([link]);
+        const revert = () => light(was);
+        if (here?.tab === href) { forget(href); arm(link.href); stayed(revert); return; }
         const saved = recall(href);
-        if (!saved) { arm(link.href); return; }
+        if (!saved) { arm(link.href); stayed(revert); return; }
         event.preventDefault();
         window.dispatchEvent(new CustomEvent('section:leave'));
-        overlays.clear().then((ok) => ok && open(href, saved));
+        overlays.clear().then((ok) => { if (!ok || !open(href, saved)) revert(); });
     });
     // Раздел с памятью открывается из снимка или по запомненному адресу — заранее тянуть его корень незачем
     // (на ПК наведение на раздел в шапке стоило серверу двух страниц: `/offers` и редирект на вкладку).

@@ -23,7 +23,9 @@ document.addEventListener('turbo:before-render', (event) => {
     const body = event.detail.newBody;
     const next = body.querySelector('#tabbar');
     if (!bar || bar === next) return;
-    if (next && Number(next.dataset.at || 0) >= Number(bar.dataset.at || 0)) {
+    // Строго свежее: клон бара в снимке несёт то же `data-at`, что живой на момент ухода, а числа с тех пор обновлял
+    // `/live/badges` — при равенстве снимок откатил бы их.
+    if (next && Number(next.dataset.at || 0) > Number(bar.dataset.at || 0)) {
         Turbo.morphChildren(bar, next);
         bar.dataset.at = next.dataset.at || '';
     }

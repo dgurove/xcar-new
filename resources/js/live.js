@@ -83,9 +83,17 @@ export function live() {
         const keys = [...(form.dataset.liveRows || '').split(','), peek].filter(Boolean);
         if (keys.length) refreshOwn(keys);
     });
-    // «Назад» на список показывает снимок Turbo, снятый до правки в редакторе, — его перечитываем.
-    document.addEventListener('turbo:before-cache', () => { leftAt.set(location.href, performance.now()); });
-    document.addEventListener('turbo:load', () => { if (restoredNow && mutatedAt > (leftAt.get(location.href) ?? 0)) refreshPage(); restoredNow = false; });
+    // «Назад» на список показывает снимок Turbo, снятый до правки в редакторе, — его перечитываем. Адрес снимка — свой (как
+    // `freshness` в app.js): когда Turbo снимает уходящую страницу, location уже новый, и при «Назад» время ухода ложилось
+    // на страницу назначения — правка до этого момента считалась «старше снимка», перечитывания не было.
+    let shownUrl = location.href;
+    document.addEventListener('address:change', (e) => { shownUrl = e.detail.url; });
+    document.addEventListener('turbo:before-cache', () => { leftAt.set(shownUrl, performance.now()); });
+    document.addEventListener('turbo:load', () => {
+        shownUrl = location.href;
+        if (restoredNow && mutatedAt > (leftAt.get(location.href) ?? 0)) refreshPage();
+        restoredNow = false;
+    });
     document.addEventListener('turbo:visit', (e) => { restoredNow = e.detail.action === 'restore'; });
     document.addEventListener('live:retopic', (e) => {
         topics = e.detail?.topics || '';

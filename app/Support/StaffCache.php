@@ -80,6 +80,15 @@ final class StaffCache
         }
     }
 
+    /** Забыть одно значение (личное, без группы): следующий запрос посчитает заново. */
+    public static function forget(string $key): void
+    {
+        Cache::forget('staff-cache:'.$key);
+        if (! app()->runningInConsole()) {
+            request()->attributes->remove('staff-cache:'.$key);
+        }
+    }
+
     /** @return ?array{v: mixed, at: float} значение, посчитанное после сброса группы и моложе срока */
     private static function fresh(string $key, int $seconds, ?string $group): ?array
     {
@@ -113,7 +122,8 @@ final class StaffCache
         }
     }
 
-    private static function perRequest(string $key, Closure $compute): mixed
+    /** Значение — раз на веб-запрос (атрибуты запроса); в консоли и очереди — каждый раз: там объект живёт весь процесс. */
+    public static function perRequest(string $key, Closure $compute): mixed
     {
         $memo = app()->runningInConsole() ? null : request()->attributes;
         if ($memo?->has($key)) {

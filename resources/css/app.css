@@ -218,6 +218,8 @@
   --stick-top: var(--header-edge);
   --action: 0;
   --tabbar: calc(var(--spacing-tabbar) + var(--safe-bottom));
+  /* Сколько снизу занимает таб-бар экрана приложения — листу строки над ним (`.split-detail`, 17.11.2026). */
+  --tabbar-edge: 0px;
   --bottom-edge: var(--tabbar);
   --bottom-room: calc(var(--tabbar) + var(--action) * var(--spacing-action));
   --page-room: calc(var(--bottom-room) - var(--tabbar));
@@ -3735,8 +3737,13 @@ html.kb-open { --home-gap: 0px; }
        «как 2 FPS»): ширина та же, текст не перекладывается. Тянут за полосу (detail_controller#grab), листается тело. */
     .split-detail {
       @apply block;
-      --sheet-half: calc(50dvh - var(--header-edge));
-      position: fixed; inset-inline: 0; bottom: 0; z-index: var(--z-panel); margin-inline: auto; max-width: 36rem;
+      /* Над таб-баром, а не поверх (17.11.2026, владелец: «окно под тулбаром понравилось, только поднять повыше»): разделы
+         остаются под пальцем — ушёл в чат, машина осталась открытой (`lib/sections.js`). В покое верх листа на трети экрана:
+         видно три-четыре строки списка над ним, а окну — больше места, чем было на полэкрана. */
+      --sheet-half: calc(32dvh - var(--header-edge));
+      /* Полоса «Домой» — под таб-баром: щель внизу листа нужна, только когда таб-бара нет (планшет, экран без него). */
+      --home-gap: max(0px, calc(var(--safe-bottom) - var(--tabbar-edge)));
+      position: fixed; inset-inline: 0; bottom: var(--tabbar-edge); z-index: var(--z-panel); margin-inline: auto; max-width: 36rem;
       top: calc(var(--header-edge) + var(--sheet-half)); overflow: hidden;
       /* Тень — у самого листа: у карточки внутри её обрезал overflow листа, и тени не было вовсе (07.10.2026). Белый
          лист над белой таблицей — край линией и короткой тенью, глубина длинной. */
@@ -3748,7 +3755,7 @@ html.kb-open { --home-gap: 0px; }
     }
     .split-detail[data-full], .split-detail[data-moving] { top: var(--header-edge); }
     .split-detail[data-moving] { will-change: transform; }
-    html.kb-open .split-detail { top: var(--header-edge); bottom: var(--kb, 0px); transform: none; }
+    html.kb-open .split-detail { top: var(--header-edge); bottom: var(--kb, 0px); transform: none; --home-gap: 0px; }
     @keyframes split-up { from { transform: translateY(100%); } }
     .detail-card {
       height: 100%; overflow: hidden;
@@ -3773,7 +3780,7 @@ html.kb-open { --home-gap: 0px; }
     .detail-bar { @apply rounded-t-(--radius-xl) pt-4; touch-action: none; cursor: grab; }
     .detail-handle { display: block; position: absolute; inset-inline: 0; top: .375rem; margin: 0 auto; width: 36px; height: 5px; border-radius: 3px; background: var(--color-line); }
     /* Лист закрывает нижнюю половину — последние строки выезжают из-под него. */
-    .split[data-open] .split-main { padding-bottom: 50dvh; }
+    .split[data-open] .split-main { padding-bottom: calc(68dvh - var(--tabbar-edge)); }
     /* Чья карточка — видно в таблице (07.10.2026, вариант владельца «строка горит»): выбранная лаймовая с полосой слева,
        остальные строки и заголовки групп бледнеют; нажимаются как раньше. Выбранная встаёт над листом —
        scrollIntoView({block: 'nearest'}) учитывает scroll-margin. */
@@ -3782,7 +3789,7 @@ html.kb-open { --home-gap: 0px; }
     .split[data-open] .split-main [data-detail-key]:not([aria-selected="true"]) { opacity: .45; }
     /* Приглушённая строка логистики (`is-dim`) под листом бледнеет как все, а не вдвое. */
     .split[data-open] .split-main tr.is-dim > td { opacity: 1; }
-    .split[data-open] .split-main [data-detail-key] { scroll-margin-bottom: calc(50dvh + 1rem); }
+    .split[data-open] .split-main [data-detail-key] { scroll-margin-bottom: calc(68dvh - var(--tabbar-edge) + 1rem); }
     .split[data-open] .split-main tr[aria-selected="true"] > :first-child,
     .split[data-open] .split-main .row[aria-selected="true"] { box-shadow: inset 3px 0 0 var(--color-accent); }
   }
@@ -4318,6 +4325,13 @@ html.kb-open { --home-gap: 0px; }
     border-top: var(--hairline) solid var(--color-hairline);
   }
   @media (min-width: 768px) { .tabbar { display: none; } }
+  /* Таб-бар на экране — лист строки стоит над ним (`--tabbar-edge`). Его нет у поставщика, на экране чата и под клавиатурой.
+     Над листом таб-бар и в движении листа: уезжающий вниз лист проходит под ним, а не по нему. */
+  @media (max-width: 767.98px) {
+    body.app-shell { --tabbar-edge: var(--tabbar); }
+    body.app-shell.chat-open, body.app-shell.surface-partner, html.kb-open body.app-shell { --tabbar-edge: 0px; }
+    html.detail-open .tabbar { z-index: calc(var(--z-panel) + 1); }
+  }
   /* Клавиатура стоит — бара нет, без движения: на iOS он и так под ней (visibility — колонка не пересчитывается, длинный
      список под листом не раскладывается заново на каждое поле); там, где клавиатура ужимает окно (Android,
      html.kb-resizes из keyboard.js), невидимый блок оставлял бы пустую полосу над ней — там он уходит из колонки. Прятать по фокусу с анимацией было нельзя —

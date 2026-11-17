@@ -11,7 +11,7 @@ const DROP = /^(id|name|value|placeholder|href|src|srcset|sizes|action|formactio
 
 // Есть ли у цвета оттенок: rgb() с разными каналами или oklch() с заметной насыщенностью (так Chrome отдаёт цвета темы).
 // В тени слоёв несколько (у кольца поля первый прозрачный) — смотрится каждый.
-function colored(value) {
+export function colored(value) {
     return (value.match(/(rgba?|oklch)\([^)]*\)/g) ?? []).some((c) => {
         const n = c.match(/[\d.]+/g).map(Number);
         if (c.startsWith('oklch')) return n[1] > 0.04 && (n[3] ?? 1) > 0.1;
