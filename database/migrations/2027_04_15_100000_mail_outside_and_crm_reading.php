@@ -1,7 +1,6 @@
 <?php
 
 use App\Mail\Account;
-use App\Mail\Jobs\PushSeen;
 use App\Mail\Message;
 use App\Mail\Scope;
 use Illuminate\Database\Migrations\Migration;
@@ -15,9 +14,8 @@ use Illuminate\Support\Facades\Schema;
  * письма), по нему стоят «Входящие» и «Отправленные»; дальше его держит `Message::saving`.
  *
  * CRM — без «Требуют внимания» («я бы вообще от этого явления избавился, чисто с прочитанными и непрочитанными»):
- * «ждёт ответа» у веток CRM снимается (дальше `Threads::waiting` его там не ставит), входящие CRM старше трёх дней —
- * прочитанными, и в ящике тоже (`PushSeen`): иначе «Входящие» открылись бы с 470 непрочитанными. Старые входящие
- * парковки — тоже: у неё те же «Входящие».
+ * «ждёт ответа» у веток CRM снимается (дальше `Threads::waiting` его там не ставит). Прочитанность не трогается: пометка
+ * старых входящих прочитанными стёрла, что люди правда прочитали (17.11.2026, `2027_04_16_110000_unread_back`).
  */
 return new class extends Migration
 {
@@ -37,13 +35,8 @@ return new class extends Migration
 
         $crm = Account::where('scope', Scope::Offers)->pluck('id');
         DB::table('mail_threads')->whereIn('account_id', $crm)->whereNotNull('needs_reply_at')->update(['needs_reply_at' => null]);
-        // Прочитанными — старые входящие обеих сторон: на парковке те же «Входящие» (там висело 109 непрочитанных).
-        $old = DB::table('mail_messages')->where('outside', true)->where('is_seen', false)
-            ->where('date_at', '<', now()->subDays(3))->pluck('id');
-        foreach ($old->chunk(500) as $ids) {
-            DB::table('mail_messages')->whereIn('id', $ids)->update(['is_seen' => true]);
-            PushSeen::dispatch($ids->values()->all(), true);
-        }
+        // Старые входящие прочитанными больше не помечаются (17.11.2026, владелец: «не понимаю, что мы прочитали, а что нет»):
+        // так было на проде при выкладке, вернули по дампу — `2027_04_16_110000_unread_back`.
         // Адрес, склеенный с закодированным именем («=?utf-8?b?…?=<6691111@mail.ru»), — адрес и имя порознь (`Parser::glued`).
         foreach (DB::table('mail_addresses')->where('email', 'like', '%<%@%')->get(['id', 'email', 'name']) as $row) {
             // Имя в базе уже строчными (закодированное base64 не раскодировать) — только адрес.
