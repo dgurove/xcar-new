@@ -1,5 +1,6 @@
 {{-- Строка ссылки на оплату — одна на всё приложение CRM (09.10.2026): «По ссылкам» видом строками, деньги сделки,
-     «Ссылка уже есть», карточка счёта. Как строка в банке: сверху кто платит и сумма на одной линии, под ними ТС (данные —
+     «Ссылка уже есть», карточка счёта. Как строка в банке: сверху что оплачивают (`PayLink::title`, имени плательщика нет с
+     18.11.2026) и сумма на одной линии, под ними ТС (данные —
      режутся «…») и статус коротким словом под суммой (`MoneyLinks::short`). detail — открывает карточку рядом со списком
      (строка «Оплат»), иначе переход на её адрес. car=false — ТС не пишем (деньги сделки: машина та же); вместо неё
      sub — своя фраза, она не режется, а переносится (CLAUDE.md: многоточие только у данных извне). Слот acts — маленькая кнопка в строке (копировать у открытой). --}}
@@ -13,7 +14,7 @@
 <div {{ $attributes->class(['row money-row', 'opacity-50' => $link->state === PayLinkState::Canceled]) }} @if ($detail) data-detail-key="{{ $link->id }}" data-search-row @endif>
     <a href="{{ $href }}" class="money-row-main" @if ($detail) data-detail-link data-turbo-frame="detail" data-turbo-prefetch="false" @else data-turbo-frame="_top" @endif>
         <span class="money-row-line">
-            <span class="money-row-title">{{ $link->payerName() }}</span>
+            <span class="money-row-title">{{ $link->title() }}</span>
             <span class="nums {{ $link->state === PayLinkState::Paid ? 'text-open' : '' }}">{{ Money::rub($link->amount) }}</span>
         </span>
         <span @class(['money-row-line money-row-sub', 'money-row-wrap' => ! $car])>

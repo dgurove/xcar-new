@@ -22,7 +22,9 @@
         @case('title')
     <td class="{{ $col->classes() }}">
         <x-ui.row-link :key="$invoice->id" :with="['tab' => $tab]"><span class="cell-title"><span class="cell-name">{{ $title }}</span>@if ($table->has('amount'))<span class="line-end sm:hidden {{ $amountTone }}">{{ Money::nums($amount) }}</span>@endif</span></x-ui.row-link>
-        <span class="cell-sub sm:hidden">@if ($now)<span class="{{ $tone }}">{{ $now }}</span>@endif @if ($link && $link[1] !== 'text-ink-muted')<span class="{{ $link[1] }}">{{ $link[0] }}</span>@endif @if ($what && $car)<a href="{{ $car }}" class="cell-car" data-turbo-frame="_top">{{ $what }}</a>@elseif ($what)<span class="cell-car">{{ $what }}</span>@endif</span>
+        {{-- Название — машина (18.11.2026: «по машинам, а не по плательщикам»); под ней на телефоне — что со счётом и менеджер. У
+             выплат название — кому, машина — ниже. --}}
+        <span class="cell-sub sm:hidden">@if ($now)<span class="{{ $tone }}">{{ $now }}</span>@endif @if ($link && $link[1] !== 'text-ink-muted')<span class="{{ $link[1] }}">{{ $link[0] }}</span>@endif @if (! $table->has('car') && $manager)<span>{{ $manager->shortName() }}</span>@elseif ($what && $car)<a href="{{ $car }}" class="cell-car" data-turbo-frame="_top">{{ $what }}</a>@elseif ($what)<span class="cell-car">{{ $what }}</span>@endif</span>
     </td>
         @break
         @case('manager')

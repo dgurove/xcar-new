@@ -234,12 +234,28 @@ class PayLink extends Model
      */
     public function message(): string
     {
+        // Без имени плательщика (18.11.2026): ссылку оплачивает кто угодно, на `/pay` — только почта.
         return implode("\n", array_filter([
-            $this->payerName(),
             $this->invoice?->carLine(),
             Money::exact($this->amount),
             'Оплата картой, СБП или SberPay по ссылке:',
         ]));
+    }
+
+    /**
+     * Что оплачивают — заголовок строки и карточки ссылки, текст «Поделиться» (18.11.2026: имени плательщика нет нигде): разовая
+     * услуга — её название, счёт-документ — «Оплата по счёту № N», комиссия — «Оплата подбора».
+     */
+    public function title(): string
+    {
+        $i = $this->invoice;
+
+        return match (true) {
+            ! $i => 'Оплата по ссылке',
+            $i->isService() => $i->receiptTitle() ?: 'Оплата по ссылке',
+            $i->isDocument() => 'Оплата по счёту '.$i->label(),
+            default => 'Оплата '.\App\Billing\PayOffer::what($i),
+        };
     }
 
     /** Кто платит — словами для строки: «вы», имя покупателя или человека. */

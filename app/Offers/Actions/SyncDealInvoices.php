@@ -126,8 +126,9 @@ final class SyncDealInvoices
             return null;
         }
 
-        // Плательщик — выбранный по сделке (`Deal::payerParty`, 16.11.2026), по умолчанию покупатель по договору (17.11.2026).
-        return ['party' => $deal->payerParty(), 'offset' => 0.0,
+        // Плательщика у комиссии нет (18.11.2026, владелец: «плательщик указывается только для выставления договора счёта (ДКП),
+        // для комиссий нет»): сторона счёта — менеджер, внутри, нигде не показывается; платит по ссылке кто угодно, на `/pay` — почта.
+        return ['party' => Party::forUser($deal->buyer), 'offset' => 0.0,
             'lines' => [['title' => 'Подбор ТС '.$deal->offer->titleWithYear(), 'qty' => 1, 'unit' => 'pc', 'price' => (float) $due, 'kind' => ChargeKind::Selection->value]]];
     }
 
@@ -217,12 +218,15 @@ final class SyncDealInvoices
         $rate = (($want['vat'] ?? null) ?? $seller->vatRate()) ?: null;
         $vatFits = fn (Invoice $i) => ($i->vat_rate ?: null) === $rate;
         // Сменили схему ПРАЙМ ↔ Р.О.С. — счёт другого продавца перевыставляется.
-        $fits = fn (Invoice $i) => $want && $i->seller === $seller && $i->party_id === $want['party']->id && abs((float) $i->charges->whereNull('voided_at')->sum(fn ($c) => $c->price * $c->qty) - $total) < 0.01
+        // Сторона подбора — не повод перевыставлять (18.11.2026): у 13 счетов стоял выбранный раньше плательщик, их ссылки живут.
+        $fits = fn (Invoice $i) => $want && $i->seller === $seller && ($kind === ChargeKind::Selection || $i->party_id === $want['party']->id) && abs((float) $i->charges->whereNull('voided_at')->sum(fn ($c) => $c->price * $c->qty) - $total) < 0.01
             && abs($i->payments->where('source', PaymentSource::Offset)->sum('amount') - $want['offset']) < 0.01;
         // Зачёт оплаты по ссылке — не оплата этого счёта: счёт перевыставляется, зачёт ляжет в новый (`ApplyDealCredits`).
         $paid = fn (Invoice $i) => $i->claims->isNotEmpty() || $i->payments->contains(fn ($p) => ! $p->source->isSoft());
 
         $keep = $current->first(fn (Invoice $i) => $fits($i) || $paid($i));
+        // Запрошенный счёт за подбор («Запросить счёт…», `RequestFeeInvoice`) остаётся запрошенным и после перевыставления.
+        $requested = $current->first(fn (Invoice $i) => $i->requested_at !== null);
         // Сменилась только ставка НДС, а не платили — тот же счёт с новой ставкой, без новой нумерации (14.11.2026). НДС
         // «сверху» меняет итог — такой перевыставляется.
         if ($keep && ! $paid($keep) && ! $vatFits($keep)) {
@@ -242,10 +246,13 @@ final class SyncDealInvoices
             return;
         }
         $invoice = ($this->issue)($want['party'], $by, 'issued', $kind, $this->dueFor($deal, $kind), lines: $want['lines'], dealId: $deal->id, offerId: $deal->offer_id, seller: $seller, vatRate: $want['vat'] ?? null);
+        if ($requested && $kind === ChargeKind::Selection) {
+            $invoice->forceFill(['requested_at' => $requested->requested_at, 'requested_by' => $requested->requested_by])->save();
+        }
         if ($want['offset'] > 0) {
             ($this->record)($invoice, $by, $want['offset'], null, PaymentSource::Offset, null, 'Удержано агентское вознаграждение');
         }
-        $deal->offer->log(OfferEventType::Note, $by, ['text' => 'Счёт '.$invoice->label().' на '.Money::rub($invoice->total).' — '.$want['party']->name]);
+        $deal->offer->log(OfferEventType::Note, $by, ['text' => $invoice->isDocument() ? 'Счёт '.$invoice->label().' на '.Money::rub($invoice->total).' — '.$want['party']->name : 'Подбор к оплате: '.Money::rub($invoice->total)]);
     }
 
     /**

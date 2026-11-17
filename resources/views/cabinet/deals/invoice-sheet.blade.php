@@ -6,9 +6,10 @@
     use App\Billing\InvoiceState;
     $i = $invoice;
 @endphp
-<x-ui.sheet :id="'invoice-'.$i->id" :title="'Счёт '.$i->label().' от '.\App\Support\Ago::day($i->issued_at)" :open="(int) request('invoice') === $i->id">
+<x-ui.sheet :id="'invoice-'.$i->id" :title="$i->isDocument() ? 'Счёт '.$i->label().' от '.\App\Support\Ago::day($i->issued_at) : \App\Billing\PayOffer::name($i)" :open="(int) request('invoice') === $i->id">
     <div class="list">
-        @if ($i->party_id !== auth()->user()->party_id)
+        {{-- Кто платит — только у счёта-документа: у комиссии плательщика нет (18.11.2026). --}}
+        @if ($i->isDocument() && $i->party_id !== auth()->user()->party_id)
             <div class="row"><span class="shrink-0 text-ink-muted">Платит</span><span class="min-w-0 flex-1 break-words text-right">{{ $i->party?->title() }}</span></div>
         @endif
         @foreach ($i->charges as $c)

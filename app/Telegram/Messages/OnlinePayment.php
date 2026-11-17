@@ -47,7 +47,7 @@ final class OnlinePayment extends Message
 
         return Text::lines($i->deal?->offer ?? Car::ofInvoice($i)?->offer,
             $sum,
-            'Счёт '.$i->label().', '.$i->party->name.($i->remaining() > 0 && $this->what === 'paid' ? ', остаток '.Money::rub($i->remaining()) : ''),
+            $i->nounWithParty().($i->remaining() > 0 && $this->what === 'paid' ? ', остаток '.Money::rub($i->remaining()) : ''),
             $i->deal?->buyer ? 'Менеджер '.$i->deal->buyer->name : null);
     }
 

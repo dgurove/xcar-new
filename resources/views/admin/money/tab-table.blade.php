@@ -23,7 +23,7 @@
                 <span class="table-group-aside"><span class="nums">{{ Money::rub($s['claims']->sum('amount')) }}</span></span>
             </x-table.group>
             @foreach ($s['claims'] as $p)
-                <x-money.table-row :table="$columns" :tab="$key" :invoice="$p->invoice" :title="PartyName::short($p->invoice->party->name)" tone="text-urgent"
+                <x-money.table-row :table="$columns" :tab="$key" :invoice="$p->invoice" :title="R::what($p->invoice) ?? PartyName::short($p->invoice->party->name)" tone="text-urgent"
                     :now="($p->source === PaymentSource::Cash ? 'отдал наличные ' : 'пишет, что оплатил ').\App\Support\Ago::day($p->paid_at)"
                     :manager="$p->invoice->manager()" :amount="$p->amount"/>
             @endforeach
@@ -39,8 +39,8 @@
                 </x-table.group>
                 @foreach ($bills as $i)
                     @php [$now, $tone] = R::due($i) ?? ['срок '.$i->laterLabel(), '']; @endphp
-                    <x-money.table-row :table="$columns" :tab="$key" :invoice="$i" :title="PartyName::short($i->party->name)" :now="$now" :tone="$tone" :link="R::linkWord($i)"
-                        :manager="R::via($i)" :amount="$i->remaining()" :paid="$i->isPartial() ? 1 - $i->remaining() / $i->total : null"/>
+                    <x-money.table-row :table="$columns" :tab="$key" :invoice="$i" :title="R::what($i) ?? PartyName::short($i->party->name)" :now="$now" :tone="$tone" :link="R::linkWord($i)"
+                        :manager="$i->manager()" :amount="$i->remaining()" :paid="$i->isPartial() ? 1 - $i->remaining() / $i->total : null"/>
                 @endforeach
             @endforeach
         @endif
@@ -65,8 +65,8 @@
         @if ($paidItems->isNotEmpty())
             <x-table.group :table="$columns" key="paid" :title="$key === 'payouts' ? 'Выплачено' : 'Оплачено'" :count="$paid instanceof \Illuminate\Support\Collection ? $paidItems->count() : $paid->total()"/>
             @foreach ($paidItems as $i)
-                <x-money.table-row :table="$columns" :tab="$key" :invoice="$i" :title="PartyName::short($key === 'payouts' ? R::who($i) : $i->party->name)"
-                    :now="$key === 'payouts' ? R::paidOut($i) : R::how($i, $attempts)" tone="text-ink-muted" :manager="R::via($i)" :amount="$i->total" amount-tone="text-open"/>
+                <x-money.table-row :table="$columns" :tab="$key" :invoice="$i" :title="$key === 'payouts' ? PartyName::short(R::who($i)) : (R::what($i) ?? PartyName::short($i->party->name))"
+                    :now="$key === 'payouts' ? R::paidOut($i) : R::how($i, $attempts)" tone="text-ink-muted" :manager="$i->manager()" :amount="$i->total" amount-tone="text-open"/>
             @endforeach
         @endif
     </x-ui.table>

@@ -61,7 +61,7 @@ final class SettleAcquiring
                 return $attempt;
             }
             $payment = ($this->record)($invoice, Robot::user(), $amount, now(), PaymentSource::Acquiring, $attempt->external_id,
-                'По ссылке '.PayMethod::label($fresh->method).', платил '.$link->payerLabel());
+                'По ссылке '.PayMethod::label($fresh->method).($link->payer_name || $link->payer_user_id ? ', платил '.$link->payerLabel() : ''));
             $attempt->update(['payment_id' => $payment->id, 'applied' => $amount]);
             $link->update(['state' => PayLinkState::Paid, 'paid_at' => now(), 'payment_id' => $payment->id]);
             $paid = [$link, $payment];
@@ -72,8 +72,6 @@ final class SettleAcquiring
             return $attempt;
         });
         if ($paid) {
-            // Вписал на странице оплаты другое имя — плательщик счёта и сделки он (16.11.2026).
-            rescue(fn () => \App\Offers\Actions\SetDealPayer::paidBy(Invoice::withoutGlobalScope('demo')->find($paid[1]->invoice_id), $paid[0]->fresh()), report: true);
             PaidOnline::dispatch(...$paid);
             // Заплатили часть (лимит одного платежа) — на остаток сразу следующая ссылка; `KeepPayLink` на оплату
             // сработал ещё внутри транзакции, когда эта ссылка была открыта.

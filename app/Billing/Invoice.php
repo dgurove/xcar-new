@@ -38,7 +38,7 @@ use Spatie\MediaLibrary\InteractsWithMedia;
  */
 #[Fillable(['seller', 'park', 'direction', 'year', 'number', 'code', 'revision', 'external_no', 'kind', 'month', 'party_id', 'vehicle_id', 'deal_id', 'offer_id', 'issued_at', 'due_at', 'vat', 'vat_rate', 'vat_on_top', 'total', 'paid', 'state', 'paid_at',
     'overdue_at', 'reminded_at', 'sent_at', 'sent_by', 'sent_message_id', 'voided_at', 'void_reason', 'notes', 'created_by', 'car_title', 'credit_deal_id', 'shown_at', 'shown_by',
-    'act_no', 'act_at', 'basis', 'line_title'])]
+    'act_no', 'act_at', 'basis', 'line_title', 'requested_at', 'requested_by'])]
 class Invoice extends Model implements HasMedia
 {
     use FastAttributes;
@@ -53,15 +53,20 @@ class Invoice extends Model implements HasMedia
         static::addGlobalScope(City::SCOPE, fn (Builder $q) => ($city = City::viewing()) ? City::invoices($q, $city) : null);
         // Счёт выставили, оплатили, аннулировали — «Оплаты» у всех, кто их открыл, перечитываются (18.10.2026: у других
         // строка висела в «Проверить» / «Ждём»). После коммита.
-        static::saved(fn (self $i) => $i->wasRecentlyCreated || $i->wasChanged(['state', 'paid', 'due_at']) ? $i->refreshLists() : null);
+        static::saved(fn (self $i) => $i->wasRecentlyCreated || $i->wasChanged(['state', 'paid', 'due_at', 'shown_at']) ? $i->refreshLists() : null);
     }
 
     /** Перечитать списки «Оплат» своей стороны: парковки или CRM. */
     public function refreshLists(): void
     {
-        $this->park
-            ? app(Publisher::class)->refreshSoon(Topics::PARK, ['/money'])
-            : app(Publisher::class)->refreshSoon(Topics::STAFF, ['/work/money']);
+        if ($this->park) {
+            app(Publisher::class)->refreshSoon(Topics::PARK, ['/money']);
+
+            return;
+        }
+        // И страница человека в «Оплатах» (18.11.2026, `MoneyController::person`): менеджер счёта, у выплаты — получатель.
+        $person = $this->isOwed() ? User::where('party_id', $this->party_id)->orderBy('id')->value('id') : $this->manager()?->id;
+        app(Publisher::class)->refreshSoon(Topics::STAFF, ['/work/money', '/work/money/managers/'.($person ?? 'none')]);
     }
 
     public const VAT = 20;
@@ -69,7 +74,7 @@ class Invoice extends Model implements HasMedia
     protected function casts(): array
     {
         return ['seller' => Seller::class, 'kind' => ChargeKind::class, 'state' => InvoiceState::class, 'month' => 'date', 'issued_at' => 'date', 'due_at' => 'date', 'paid_at' => 'date', 'act_at' => 'date', 'vat' => 'bool', 'vat_rate' => 'int', 'vat_on_top' => 'bool', 'park' => 'bool',
-            'total' => 'float', 'paid' => 'float', 'revision' => 'int', 'overdue_at' => 'datetime', 'reminded_at' => 'datetime', 'sent_at' => 'datetime', 'voided_at' => 'datetime', 'shown_at' => 'datetime'];
+            'total' => 'float', 'paid' => 'float', 'revision' => 'int', 'overdue_at' => 'datetime', 'reminded_at' => 'datetime', 'sent_at' => 'datetime', 'voided_at' => 'datetime', 'shown_at' => 'datetime', 'requested_at' => 'datetime'];
     }
 
     public function registerMediaCollections(): void
@@ -338,7 +343,41 @@ class Invoice extends Model implements HasMedia
     /** Есть ли у счёта документ (PDF рисуется на лету, `InvoicePdf`): счёт, выставленный нами, — не выплата нашего долга. */
     public function hasPdf(): bool
     {
-        return ! $this->isOwed();
+        return ! $this->isOwed() && $this->isDocument();
+    }
+
+    /**
+     * Комиссия ПРАЙМ — только ссылкой или наличными (18.11.2026, владелец: «счёт на комиссию мы больше не формируем, только либо
+     * по ссылке либо наличкой»; «PDF вообще не нужен»): у подбора от ПРАЙМ нет ни номера, ни PDF, ни «Счёт № N». Подбор Р.О.С.
+     * (ссылки у неё нет) — счётом, как был.
+     */
+    public static function feeByLink(ChargeKind $kind, ?Seller $seller): bool
+    {
+        return $kind === ChargeKind::Selection && $seller === Seller::Prime;
+    }
+
+    /** Счёт как документ — номер, PDF, «Счёт № N»: у комиссии ПРАЙМ — только когда счёт запросили («Запросить счёт…»). */
+    public function isDocument(): bool
+    {
+        return ! self::feeByLink($this->kind, $this->seller) || $this->requested_at !== null;
+    }
+
+    /** Чем назвать в тексте: «счёт № 197» или, у комиссии без счёта, «подбор» (уведомления, Telegram). */
+    public function noun(): string
+    {
+        return $this->isDocument() ? 'счёт '.$this->label() : 'подбор';
+    }
+
+    /** «по счёту № 197» / «за подбор» — к оплате: «Оплата 88 190 ₽ за подбор принята». */
+    public function byWhat(): string
+    {
+        return $this->isDocument() ? 'по счёту '.$this->label() : 'за подбор';
+    }
+
+    /** «Счёт № 197, ООО «СТАР»» / «Подбор» — кто платит, только у документа: у комиссии плательщика нет (18.11.2026). */
+    public function nounWithParty(): string
+    {
+        return $this->isDocument() ? 'Счёт '.$this->label().', '.$this->party->name : 'Подбор';
     }
 
     public function isOwed(): bool

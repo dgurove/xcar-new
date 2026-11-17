@@ -1,4 +1,7 @@
-{{-- Оплаты (раздел CRM) — три раздела крупными заголовками (`x-ui.big-tabs`, 17.11.2026, владелец: «как было в „Работе“»):
+{{-- Оплаты (раздел CRM) — три раздела крупными заголовками (`x-ui.big-tabs`, 17.11.2026, владелец: «как было в „Работе“»); с 18.11.2026
+     в разделе — люди строками (`x-money.manager-row`, начальник: «сгруппировать по менеджерам»), внутри — его машины
+     (`admin/money/person`). Лупа и «Оплаченные» — прежней таблицей ниже.
+     Было:
      «Комиссии» (подбор ПРАЙМ и разовые услуги по ссылке) и «ДКП» (счета за машину от ПРАЙМ и Р.О.С.) — группы «Проверить»,
      «Просрочено», «Ждём» с суммой, чип «Откуда»; «Выплаты» (вознаграждения и перевозки — группой на получателя). Оплаченное — чипом «Оплаченные», в ленте
      только дела. Вид — таблицей (`admin/money/tab-table`, по умолчанию) или строками (`admin/money/tab`). Число у пилюли —
@@ -22,14 +25,22 @@
         @endif
     </x-ui.toolbar>
     <div id="money-feed" data-detail-shape="plain">
-        @if ($manager)
-            <div class="list mt-4"><x-money.manager-row :user="$manager['user']" :position="$manager['position']"/></div>
+        @if ($people !== null)
+            {{-- По менеджерам (18.11.2026): аватар, имя, что требует нас, долг и «›» — внутри его машины. --}}
+            @if ($people->isEmpty())
+                <x-ui.empty class="mt-6">{{ match ($tab) { 'fees' => 'Комиссий к оплате нет', 'dkp' => 'Счетов за ТС к оплате нет', default => 'Выплачивать нечего' } }}</x-ui.empty>
+            @else
+                <div class="list mt-4">
+                    @foreach ($people as $person)<x-money.manager-row :person="$person" :tab="$tab"/>@endforeach
+                </div>
+            @endif
+        @else
+            @if (collect($sections)->every(fn ($s) => $s['claims']->isEmpty() && $s['open']->isEmpty() && $s['paid']->isEmpty()))
+                <x-ui.empty class="mt-6">{{ match (true) { $q !== '' => 'Ничего не нашлось', $tab !== 'payouts' => 'Оплаченных счетов нет', default => 'Выплат ещё не было' } }}</x-ui.empty>
+            @endif
+            @foreach ($sections as $key => $section)
+                @include($view === ListView::TABLE ? 'admin.money.tab-table' : 'admin.money.tab', ['key' => $key, 's' => $section, 'titled' => count($sections) > 1])
+            @endforeach
         @endif
-        @if (collect($sections)->every(fn ($s) => $s['claims']->isEmpty() && $s['open']->isEmpty() && $s['paid']->isEmpty()))
-            <x-ui.empty class="mt-6">{{ match (true) { $q !== '' => 'Ничего не нашлось', $facets->on('paid') => $tab !== 'payouts' ? 'Оплаченных счетов нет' : 'Выплат ещё не было', $tab === 'fees' => 'Комиссий к оплате нет', $tab === 'dkp' => 'Счетов за ТС к оплате нет', default => 'Выплачивать нечего' } }}</x-ui.empty>
-        @endif
-        @foreach ($sections as $key => $section)
-            @include($view === ListView::TABLE ? 'admin.money.tab-table' : 'admin.money.tab', ['key' => $key, 's' => $section, 'titled' => count($sections) > 1])
-        @endforeach
     </div>
 </x-ui.shell>

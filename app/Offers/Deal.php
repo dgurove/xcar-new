@@ -289,9 +289,8 @@ class Deal extends Model implements HasMedia
     }
 
     /**
-     * Кто платит по счетам сделки — один на счёт и ссылку (16.11.2026, владелец: «два способа оплаты одной суммы»):
-     * выбранная сторона (`deals.payer_party_id`), иначе как было — у продажи ПРАЙМ менеджер или покупатель по договору
-     * (`DealContract::managerPays`, `$sale`), у подбора и гаража — менеджер. Без менеджера (аукцион) — null.
+     * Кто платит по счёту сделки за ТС (ДКП ПРАЙМ / Р.О.С., гараж): выбранная сторона (`deals.payer_party_id`), иначе менеджер или
+     * покупатель по договору (`DealContract::managerPays`, `$sale`). У подбора плательщика нет (18.11.2026). Без менеджера — null.
      */
     public function payerParty(bool $sale = false): ?Party
     {
@@ -304,9 +303,9 @@ class Deal extends Model implements HasMedia
     }
 
     /**
-     * Плательщик по умолчанию человеком (без выбранной стороны): покупатель по договору у продажи ПРАЙМ и у подбора, когда за
-     * машину покупатель платит поставщику сам (Альфа, ДКП собственника; 17.11.2026, владелец: «в 90 % случаев за подбор платит
-     * покупатель, а не менеджер, а у нас по умолчанию менеджер»), иначе менеджер.
+     * Плательщик по умолчанию человеком (без выбранной стороны): у счёта за ТС ПРАЙМ — покупатель по договору, если платит не
+     * менеджер, иначе менеджер. У подбора плательщика нет (18.11.2026, владелец: «только для выставления договора счёта (ДКП)»):
+     * его сторона — менеджер (`SyncDealInvoices::selection`).
      */
     public function payerUser(bool $sale = false): ?User
     {
@@ -314,24 +313,8 @@ class Deal extends Model implements HasMedia
             return null;
         }
         $contract = $this->contract;
-        $buyerPays = $contract?->buyer && ! $contract->managerPays();
-        if ($sale) {
-            return $buyerPays ? $contract->buyer : $this->buyer;
-        }
 
-        return $buyerPays && $this->paysSelection() && self::selectionPayer($contract->buyer) ? $contract->buyer : $this->buyer;
-    }
-
-    /**
-     * Покупатель по договору годится плательщиком подбора: данные внесены (не заготовка «Новый покупатель» — счёт без имени
-     * уходил бы в никуда) и это не наше юрлицо (ПРАЙМ, Р.О.С. покупает у Альфы с НДС — подбор тогда платит менеджер).
-     * Перевыставление 17.11.2026 положило 8 счетов на заготовку и на «ООО «Р.О.С.»» — отсюда правило.
-     */
-    private static function selectionPayer(User $buyer): bool
-    {
-        $party = $buyer->party;
-
-        return $party?->filled() && ! $party->isOurs();
+        return $sale && $contract?->buyer && ! $contract->managerPays() ? $contract->buyer : $this->buyer;
     }
 
     /** Кому платят услуги подбора — ООО «ПРАЙМ» (по умолчанию) или ООО «Р.О.С.» (`deals.fee_seller`, `SetFeeSeller`, 16.11.2026). */

@@ -241,6 +241,7 @@ Route::middleware(['auth', 'wall'])->group(function () {
             Route::post('/deals/{deal}/picked', [DealController::class, 'picked']);
             Route::put('/deals/{deal}/contract', [DealContractController::class, 'update']);
             Route::put('/deals/{deal}/payer', [DealContractController::class, 'payer']);
+            Route::post('/deals/{deal}/invoices/{invoice}/paper', [DealContractController::class, 'paper']);
             Route::get('/deals/{deal}/dkp', [DealContractController::class, 'show']);
             Route::get('/deals/{deal}/dkp.pdf', [DealContractController::class, 'show']);
             Route::post('/deals/{deal}/files', [DealController::class, 'upload']);

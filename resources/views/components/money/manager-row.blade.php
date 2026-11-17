@@ -1,30 +1,28 @@
-{{-- Расчёты с менеджером строкой (бывший экран «Расчёты с менеджерами», 06.10.2026: владелец прочёл голое число как
-     «мы должны Бородину», а должен был он). Справа у каждого числа — кто кому: «должен нам до 8 окт» или «должны ему»,
-     оба — стопкой. Под именем — что горит: просрочил, сообщил об оплате. Суммы — строки его «Денег» (`ManagerLedger`).
-     Ведёт в его карточку на «Деньги». --}}
-@props(['user', 'position'])
-@php use App\Support\Money; $p = $position; @endphp
-<a href="/settings/users/{{ $user->id }}?pill=money" class="row">
-    <x-ui.avatar :user="$user" :size="36"/>
+{{-- Человек в «Оплатах» строкой (18.11.2026, владелец: «максимально простые красивые строки — аватарка, имя менеджера, справа сумма
+     долга и стрелочка >»): под именем — только то, что требует нас, словами-элементами («2 отправить», «сообщил об оплате N ₽»,
+     «ссылка не прошла», «просрочил N ₽» красным, у выплат — «реквизитов нет»); справа — сколько открытого в разделе, без подписи.
+     Ведёт на его машины (`MoneyController::person`). person — строка `MoneyController::people`. --}}
+@props(['person', 'tab'])
+@php use App\Support\Money; $p = $person; $payout = $tab === 'payouts'; @endphp
+<a href="{{ \App\Http\Admin\MoneyController::personUrl($p['user'], $tab) }}" class="row money-person">
+    @if ($p['user'])
+        <x-ui.avatar :user="$p['user']" :size="30"/>
+    @else
+        <span class="flex size-[30px] shrink-0 items-center justify-center rounded-full bg-surface-3 text-ink-muted"><x-ui.icon name="users" class="size-4"/></span>
+    @endif
     <span class="min-w-0 flex-1">
-        <span class="block truncate">{{ $user->name }}</span>
-        @if ($p['overdue'] > 0 || $p['claimed'] > 0)
+        <span class="block truncate">{{ $p['user']?->name ?? ($payout ? 'Другие получатели' : 'Без менеджера') }}</span>
+        @if ($p['send'] || $p['claimed'] > 0 || $p['tried'] || $p['overdue'] > 0 || $p['noDetails'])
             <span class="row-sub">
-                @if ($p['overdue'] > 0)<span class="nums whitespace-nowrap text-danger">просрочил {{ Money::rub($p['overdue']) }}</span>@endif
+                @if ($p['send'])<span class="whitespace-nowrap text-accent-text">{{ $p['send'] }} отправить</span>@endif
                 @if ($p['claimed'] > 0)<span class="nums whitespace-nowrap text-urgent">сообщил об оплате {{ Money::rub($p['claimed']) }}</span>@endif
+                @if ($p['tried'])<span class="whitespace-nowrap text-urgent">ссылка не прошла</span>@endif
+                @if ($p['overdue'] > 0)<span class="nums whitespace-nowrap text-danger">{{ $payout ? 'просрочили' : 'просрочил' }} {{ Money::rub($p['overdue']) }}</span>@endif
+                @if ($p['noDetails'])<span class="whitespace-nowrap text-danger">реквизитов нет</span>@endif
             </span>
         @endif
     </span>
-    <span class="flex shrink-0 flex-col items-end gap-1 text-right">
-        @if ($p['pay'] > 0)
-            <span><span class="nums block font-semibold">{{ Money::rub($p['pay']) }}</span><span class="block text-xs text-ink-dim">должен нам@if ($p['pay_due']) до {{ \App\Support\Ago::html($p['pay_due'], words: false) }}@endif</span></span>
-        @endif
-        @if ($p['payout'] > 0)
-            <span><span class="nums block font-semibold text-accent-text">{{ Money::rub($p['payout']) }}</span><span class="block text-xs text-ink-dim">должны ему</span></span>
-        @endif
-        @if ($p['pay'] == 0 && $p['payout'] == 0)
-            <span><span class="nums block text-ink-muted">{{ Money::rub($p['paid_out']) }}</span><span class="block text-xs text-ink-dim">{{ $p['paid_out'] > 0 ? 'выплатили' : 'расчётов нет' }}</span></span>
-        @endif
-    </span>
+    {{-- Подписи под суммой нет (18.11.2026, владелец: «должен» под каждой суммой — бред): кто кому — говорит раздел. --}}
+    <span @class(['nums shrink-0 font-semibold', 'text-accent-text' => $payout])>{{ Money::rub($p['sum']) }}</span>
     <x-ui.chevron/>
 </a>

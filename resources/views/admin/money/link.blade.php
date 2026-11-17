@@ -54,7 +54,7 @@
     $history = $history->sortBy('created')->values();
 @endphp
 <x-ui.detail>
-    <x-ui.row-card :title="$link->payerName()" :head="false" :photo="false" :action="false">
+    <x-ui.row-card :title="$link->title()" :head="false" :photo="false" :action="false">
         @if ($other)
             <x-slot:tools>
                 <x-ui.more :id="'link-more-'.$id" bar>
@@ -66,7 +66,7 @@
         <div class="money-hero">
             <div class="money-hero-sum nums">{{ Money::nums($link->amount, fmod($link->amount, 1) ? 2 : 0) }}<small> ₽</small></div>
             <div class="money-hero-state {{ $tone ?: 'text-ink-muted' }}">{{ $state }}</div>
-            <div class="money-hero-who">{{ $link->payerName() }}</div>
+            <div class="money-hero-who">{{ $link->title() }}</div>
         </div>
 
         @if ($live)
@@ -111,11 +111,14 @@
                     <x-ui.chevron/>
                 </a>
             @endif
+            {{-- Комиссия без счёта (18.11.2026) — строки «Счёт» нет: машина и сделка — строкой выше. --}}
+            @if ($i->isDocument())
             <a href="{{ $i->crmHref() }}" class="row" data-turbo-frame="_top">
                 <span class="shrink-0 text-ink-muted">Счёт</span>
                 <span class="min-w-0 flex-1 truncate text-right nums">{{ $i->label() }}@if ($i->issued_at) от {{ \App\Support\Ago::html($i->issued_at, words: false) }}@endif</span>
                 <x-ui.chevron/>
             </a>
+            @endif
             {{-- Почта для чека (05.11.2026): обычно её вписывает плательщик на странице оплаты; знаем заранее — можно вписать
                  тут, пока ссылка жива. Не обязательна: нет — «при оплате». --}}
             @if ($live)

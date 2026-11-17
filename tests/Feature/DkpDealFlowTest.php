@@ -123,11 +123,7 @@ class DkpDealFlowTest extends TestCase
         $this->assertSame('Сделка закрыта', $offer->fresh()->stage()->name);
     }
 
-    /**
-     * Ссылка после согласования — на менеджера и ровно 80 000. Плательщик ссылки — всегда плательщик счёта (16.11.2026, владелец:
-     * «два способа оплаты одной суммы»): «Получить ссылку» с другим именем её не переписывает; другой плательщик — строкой
-     * «Плательщик» (`SetDealPayer`), и тогда счёт и ссылка уходят на него вместе.
-     */
+    /** Ссылка после согласования — ровно 80 000, без плательщика (18.11.2026): «Получить ссылку» с именем его не ставит. */
     public function test_link_is_80_and_follows_invoice_payer(): void
     {
         config(['xcar.yookassa.shop_id' => '1', 'xcar.yookassa.secret' => 'test']);
@@ -138,15 +134,9 @@ class DkpDealFlowTest extends TestCase
         $this->actingAs($this->manager)->post('/account/money/deals/'.$deal->id.'/pay', ['invoice' => $invoice->id, 'way' => 'link', 'payer' => 'other', 'name' => 'Покупаев Пётр', 'email' => 'petr@example.test'])
             ->assertSessionHasNoErrors();
         $this->assertSame(0, User::where('email', 'petr@example.test')->count());
-        $this->assertSame($invoice->party->name, $invoice->fresh()->openLink()->payer_name);
-
-        $this->actingAs($this->manager)->put('/deals/'.$deal->id.'/payer', ['payer' => 'new', 'kind' => 'person', 'name' => 'Покупаев Пётр'])->assertSessionHasNoErrors();
-        // Новый плательщик — новый счёт: менеджеру снова после «Отправить менеджеру» (16.11.2026).
-        $this->sendToManager($deal);
-        $now = $deal->fresh()->issuedInvoices()->where('state', '!=', \App\Billing\InvoiceState::Void)->sole();
-        $this->assertSame('Покупаев Пётр', $now->party->name);
-        $this->assertSame('Покупаев Пётр', $now->openLink()->payer_name);
-        $this->assertEqualsWithDelta(80000, $now->openLink()->amount, 0.01);
+        // Плательщика у комиссии нет (18.11.2026): ссылка без имени, почту введёт тот, кто платит.
+        $this->assertNull($invoice->fresh()->openLink()->payer_name);
+        $this->assertEqualsWithDelta(80000, $invoice->fresh()->openLink()->amount, 0.01);
     }
 
     public function test_cancelled_deal_voids_unpaid_selection_invoice(): void
@@ -176,10 +166,11 @@ class DkpDealFlowTest extends TestCase
         $this->assertNull($invoice->fresh()->openLink());
         $this->actingAs($this->admin)->post($crm.'/work/money/invoices/'.$invoice->id.'/links', [])->assertSessionHasErrors('amount');
         $this->assertNull($invoice->fresh()->openLink());
-        $this->actingAs($this->admin)->get($crm.'/work/money')->assertOk()->assertDontSee('data-detail-key="'.$invoice->id.'"', false);
+        // «Оплаты» по менеджерам (18.11.2026): неотправленное — делом «1 отправить» у менеджера.
+        $this->actingAs($this->admin)->get($crm.'/work/money')->assertOk()->assertSee('1 отправить');
 
         $this->sendToManager($deal);
         $this->assertEqualsWithDelta(80000, $invoice->fresh()->openLink()->amount, 0.01);
-        $this->actingAs($this->admin)->get($crm.'/work/money')->assertOk()->assertSee('data-detail-key="'.$invoice->id.'"', false);
+        $this->actingAs($this->admin)->get($crm.'/work/money')->assertOk()->assertDontSee('1 отправить');
     }
 }

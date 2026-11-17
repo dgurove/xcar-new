@@ -34,7 +34,8 @@ export function confirmSheet(message, options = {}) {
         d.querySelector('h2').textContent = message;
         if (options.warn) d.querySelector('h2').insertAdjacentHTML('beforebegin', '<span class="confirm-warn" aria-hidden="true">!</span>');
         d.querySelector('[data-ok]').textContent = label;
-        d.querySelector('[data-cancel]').textContent = options.cancel || 'Отмена';
+        // Своё «нет» и у формы (18.11.2026, «Запросить счёт…»: «Нет, оплатим обычным способом») — data-turbo-confirm-cancel.
+        d.querySelector('[data-cancel]').textContent = options.cancel || submitter?.dataset?.turboConfirmCancel || form?.dataset.turboConfirmCancel || 'Отмена';
         if (options.alt) {
             const alt = d.querySelector('[data-alt]');
             alt.textContent = options.alt.label;

@@ -54,12 +54,12 @@ class PayController
     public function go(Request $request, string $code, StartCheckout $start)
     {
         $link = $this->link($code);
+        // Только почта для чека: имени плательщика нет нигде (18.11.2026).
         $data = $request->validate([
-            'name' => ['nullable', 'string', 'max:160'],
             'email' => ['nullable', 'email', 'max:120'],
         ], ['email.email' => 'Проверьте почту']);
         try {
-            $url = $start($link, $data['name'] ?? null, $data['email'] ?? null);
+            $url = $start($link, $data['email'] ?? null);
             Cache::forget('acquiring:failures');
 
             return redirect()->away($url);

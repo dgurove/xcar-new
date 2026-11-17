@@ -22,9 +22,9 @@ final class StartCheckout
 {
     public function __construct(private Gateway $gateway, private CancelPayLink $cancel) {}
 
-    public function __invoke(PayLink $link, ?string $name = null, ?string $email = null): string
+    public function __invoke(PayLink $link, ?string $email = null): string
     {
-        [$amount, $reuse] = DB::transaction(function () use ($link, $name, $email) {
+        [$amount, $reuse] = DB::transaction(function () use ($link, $email) {
             $link = PayLink::whereKey($link->id)->lockForUpdate()->with('invoice')->firstOrFail();
             if (! $link->isOpen()) {
                 throw ValidationException::withMessages(['link' => 'Ссылка '.mb_strtolower($link->state->label())]);
@@ -40,7 +40,7 @@ final class StartCheckout
 
                 return [0, null];
             }
-            $link->fill(array_filter(['payer_name' => trim((string) $name) ?: null, 'payer_email' => trim((string) $email) ?: null]));
+            $link->fill(array_filter(['payer_email' => trim((string) $email) ?: null]));
             if (! filter_var((string) $link->payer_email, FILTER_VALIDATE_EMAIL)) {
                 throw ValidationException::withMessages(['email' => 'Нужна почта: на неё придёт чек']);
             }

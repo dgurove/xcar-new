@@ -9,10 +9,13 @@
 @php
     use App\Support\Money; use App\Billing\InvoiceState; use App\Offers\CommissionState; use App\Offers\CommissionMode;
     $offer = $deal->offer;
-    // Строка «Плательщик» (`x-deal.payer`, 16.11.2026) — у идущей сделки с менеджером: над счетами, без счёта — своей группой.
-    $payerRow = $deal->buyer_id && $deal->isActive() && ! $deal->isAuction();
-    $payerId = $payerRow ? ($deal->payer_party_id ?? $deal->payerUser(sale: $deal->isPrime())?->party_id) : null;
     $invoices = $deal->shownInvoices();
+    // Строка «Плательщик» (`x-deal.payer`, 16.11.2026) — у идущей сделки с менеджером: над счетами, без счёта — своей группой.
+    // Только у счёта за ТС (18.11.2026, владелец: «плательщик указывается только для выставления договора счёта (ДКП), для комиссий
+    // нет»): у подбора плательщика нет нигде — ссылку оплачивает кто угодно, на `/pay` — только почта.
+    $payerRow = $deal->buyer_id && $deal->isActive() && ! $deal->isAuction()
+        && ($deal->schemeOf()->paysCar() || $invoices->contains(fn ($i) => $i->kind === \App\Billing\ChargeKind::Sale && ! $i->isOwed()));
+    $payerId = $payerRow ? ($deal->payer_party_id ?? $deal->payerUser(sale: $deal->isPrime())?->party_id) : null;
     // Разовые оплаты по ссылке с машиной сделки (09.10.2026): их деньги лежат в счетах сделки зачётом, что не легло — сверх.
     $credits = $deal->credits()->with(['party', 'offer', 'payments', 'payLinks.attempts', 'payLinks.creator', 'payLinks.payerUser'])->get();
     $extra = $credits->isNotEmpty() ? $deal->creditExtra() : 0;
@@ -65,7 +68,7 @@
                     @endif
                     <div class="menu-group">
                         @foreach ($paidBy as $i)
-                            <button type="button" class="menu-item w-full" data-controller="emit" data-action="emit#send" data-emit-event-param="paid-{{ $i->id }}:open">Оплатили без ссылки{{ $paidBy->count() > 1 ? ' по счёту '.$i->label() : '' }}…</button>
+                            <button type="button" class="menu-item w-full" data-controller="emit" data-action="emit#send" data-emit-event-param="paid-{{ $i->id }}:open">Оплатили без ссылки{{ $paidBy->count() > 1 ? ($i->isDocument() ? ' по счёту '.$i->label() : ' за подбор') : '' }}…</button>
                         @endforeach
                         @if ($deal->isActive() && $issued->isNotEmpty())<a href="/work/invoices/new?offer={{ $offer->number }}" class="menu-item w-full">Ещё счёт</a>@endif
                     </div>
@@ -251,6 +254,21 @@
                             </span>
                         @endif
                     </div>
+                @elseif (! $i->isDocument())
+                    {{-- Комиссия ПРАЙМ — без счёта (18.11.2026, владелец: «счёт на комиссию мы больше не формируем, только либо по ссылке
+                         либо наличкой», «PDF вообще не нужен»): ни строки-документа, ни номера. Не отправлено — кнопка «Отправить ссылку
+                         на оплату», отправлено — сама ссылка строкой ниже, оплачено — словом с датой. --}}
+                    @if ($i->state === InvoiceState::Paid)
+                        <div class="row sale-row"><span class="sale-row-label">Оплачено</span><span class="sale-row-value">{{ \App\Support\Ago::day($i->paid_at) }}</span><x-ui.chevron-space/></div>
+                    @elseif ($i->state !== InvoiceState::Void)
+                        @if (! $i->isShownToManager())<x-deal.send-row :deal="$deal" :action="'/work/deals/'.$deal->id.'/invoices/'.$i->id.'/show'" :label="\App\Billing\PayOffer::sendLabel($i)"/>@endif
+                        @if ($link && $link->isOpen())
+                            <x-ui.share-link variant="row" :url="$link->url()" title="Оплата по ссылке" :text="$link->message()" label="Ссылка на оплату" :sub="$linkState" done="Ссылка на оплату в буфере"/>
+                        @endif
+                        @if ($paidBy->contains('id', $i->id))
+                            <x-deal.sale-row label="Оплатили наличными?" value="Отметить" tone="accent" data-controller="emit" data-action="emit#send" data-emit-event-param="paid-{{ $i->id }}:open"/>
+                        @endif
+                    @endif
                 @else
                     {{-- Счёт — файлом, как документ (15.11.2026, владелец: «счёт должен быть не страницей, а кнопкой „Скачать PDF“»;
                          из вариантов выбрал «файлом»): значок PDF с весом, «Счёт № 184 от 13.11», ниже кто платит и сумма; нажатие —
@@ -270,7 +288,7 @@
                         <x-deal.sale-row label="Деньги пришли?" value="Отметить" tone="accent" data-controller="emit" data-action="emit#send" data-emit-event-param="paid-{{ $i->id }}:open"/>
                     @endif
                 @endif
-                @if (! $i->isOwed() && ! $i->openLink())<x-billing.pay-status :invoice="$i" staff/>@endif
+                @if (! $i->isOwed() && ! $i->openLink() && ($i->isDocument() || $i->isShownToManager()))<x-billing.pay-status :invoice="$i" staff/>@endif
                 @foreach ($i->claims as $p)
                     <x-money.payment :payment="$p" :slip="'/work/money/invoices/'.$i->id.'/payments/'.$p->id.'/slip'" staff>
                         @unless ($inStep)
@@ -287,11 +305,14 @@
                 @endforeach
             @endforeach
         </div>
+        {{-- Счёт на комиссию — только по просьбе (18.11.2026): «Запросили счёт…» мелко справа под блоком. --}}
+        @php $paperFor = auth()->user()?->canEditDeals() && $deal->isActive() ? $invoices->first(fn ($i) => \App\Billing\Invoice::feeByLink($i->kind, $i->seller) && ! $i->requested_at && $i->state === InvoiceState::Issued) : null; @endphp
+        @if ($paperFor)<x-billing.request-invoice :action="'/work/deals/'.$deal->id.'/invoices/'.$paperFor->id.'/paper'" staff class="mt-1"/>@endif
     @endif
     {{-- Шторки «Оплатили без ссылки…» — их открывает пункт «⋯» карточки. --}}
     @foreach ($paidBy as $i)
         <div class="contents" data-controller="sheet" data-action="paid-{{ $i->id }}:open@window->sheet#open">
-            <x-ui.sheet id="paid-{{ $i->id }}" :title="'Оплата по счёту '.$i->label()"><x-billing.pay-form :invoice="$i" :action="'/work/money/invoices/'.$i->id.'/payments'" sheet/></x-ui.sheet>
+            <x-ui.sheet id="paid-{{ $i->id }}" :title="$i->isDocument() ? 'Оплата по счёту '.$i->label() : 'Оплата подбора'"><x-billing.pay-form :invoice="$i" :action="'/work/money/invoices/'.$i->id.'/payments'" :source="$i->isDocument() ? null : 'cash'" sheet/></x-ui.sheet>
         </div>
     @endforeach
     {{-- Итог — последним: сначала договор и счета, потом сколько остаётся нам (15.11.2026). --}}

@@ -7,7 +7,9 @@
 @php
     use App\Support\Money; use App\Billing\InvoiceState; use App\Billing\PaymentSource;
     // «Открыть» — машина в сделке или гараже, а не страница счёта (17.11.2026, владелец: «удали её везде»).
-    $i = $invoice; $href = $i->carOffer()?->crmPath(); $offer = $i->deal?->offer ?? $i->offer; $manager = $i->manager();
+    // Действия карточки — по адресам счёта (18.11.2026: с 17.11 они уходили на `/offers/N/…` — «Деньги пришли» отвечала 404, PDF —
+    // карточкой машины); «ТС» строкой ниже — на машину.
+    $i = $invoice; $href = '/work/money/invoices/'.$i->id; $offer = $i->deal?->offer ?? $i->offer; $manager = $i->manager();
     $attempts = \App\Billing\Acquiring\AcquiringPayment::whereIn('link_id', $i->payLinks()->pluck('id'))->where('status', 'succeeded')->with('payout')->get();
     $overpaid = $attempts->filter(fn ($a) => $a->overpaid() > 0);
     $issued = $i->state === InvoiceState::Issued;
@@ -16,7 +18,7 @@
     $sum = $i->remaining() > 0 ? $i->remaining() : $i->total;
 @endphp
 <x-ui.detail>
-    <x-ui.row-card :href="$href" :title="$i->isOwed() ? 'Выплата менеджеру '.$i->party->name : 'Счёт '.$i->label().', '.$i->party->name" :head="false" :photo="false" :action="false">
+    <x-ui.row-card :href="$i->carOffer()?->crmPath()" :title="$i->isOwed() ? 'Выплата менеджеру '.$i->party->name : ($i->isDocument() ? 'Счёт '.$i->label().', '.$i->party->name : \App\Billing\PayOffer::name($i))" :head="false" :photo="false" :action="false">
         <div class="money-hero">
             @if ($issued)<div class="money-hero-cap">{{ $i->isOwed() ? 'должны ему' : 'должен нам' }}</div>@endif
             <div class="money-hero-sum nums">{{ Money::nums($sum, fmod($sum, 1) ? 2 : 0) }}<small> ₽</small></div>
@@ -29,25 +31,26 @@
                 <x-billing.light :invoice="$i" class="money-hero-state !text-sm"/>
             @endif
             {{-- Тем же видом, что в строке списка (`PartyName`): «ООО «СТАР»», а не «ОБЩЕСТВО С ОГРАНИЧЕННОЙ…» прописными. --}}
-            <div class="money-hero-who">{{ \App\Billing\PartyName::short($i->party->name) }}</div>
+            {{-- У комиссии плательщика нет (18.11.2026) — чья: менеджер. --}}
+            <div class="money-hero-who">{{ $i->isDocument() || ! $manager ? \App\Billing\PartyName::short($i->party->name) : $manager->name }}</div>
         </div>
 
-        @if ($issued || $i->number)
+        @if ($issued || ($i->number && $i->hasPdf()))
             <div class="acts acts-hero">
                 @if ($issued)
                     <div data-controller="sheet" class="contents">
                         <button type="button" class="act" data-action="sheet#open"><span class="btn btn-accent btn-round"><x-ui.icon name="{{ $i->isOwed() ? 'send' : 'check' }}"/></span>{{ $i->isOwed() ? 'Выплатить' : 'Деньги пришли' }}</button>
-                        <x-ui.sheet :id="'paid-'.$i->id" :title="$i->isOwed() ? 'Выплата '.$i->party->name : 'Оплата по счёту '.$i->label()">
+                        <x-ui.sheet :id="'paid-'.$i->id" :title="$i->isOwed() ? 'Выплата '.$i->party->name : ($i->isDocument() ? 'Оплата по счёту '.$i->label() : 'Оплата подбора')">
                             <x-billing.pay-form :invoice="$i" :action="$href.'/payments'" :sources="$sources" sheet/>
                         </x-ui.sheet>
                     </div>
                 @endif
-                @if ($i->number)<x-ui.doc :doc="['url' => $href.'/pdf', 'type' => 'pdf', 'name' => 'schet-'.$i->number.'.pdf', 'label' => 'Счёт '.$i->label()]" class="act"><span class="btn btn-quiet btn-round"><x-ui.icon name="file"/></span>PDF</x-ui.doc>@endif
+                @if ($i->number && $i->hasPdf())<x-ui.doc :doc="['url' => $href.'/pdf', 'type' => 'pdf', 'name' => 'schet-'.$i->number.'.pdf', 'label' => 'Счёт '.$i->label()]" class="act"><span class="btn btn-quiet btn-round"><x-ui.icon name="file"/></span>PDF</x-ui.doc>@endif
             </div>
         @endif
 
         <div class="list mt-6">
-            <div class="row"><span class="shrink-0 text-ink-muted">{{ $i->isOwed() ? 'Выплата' : 'Счёт' }}</span><span class="min-w-0 flex-1 truncate text-right nums">{{ $i->isOwed() ? '' : $i->label().' ' }}от {{ \App\Support\Ago::html($i->issued_at, words: false) }}</span></div>
+            <div class="row"><span class="shrink-0 text-ink-muted">{{ $i->isOwed() ? 'Выплата' : ($i->isDocument() ? 'Счёт' : 'Выставлено') }}</span><span class="min-w-0 flex-1 truncate text-right nums">{{ $i->isOwed() || ! $i->isDocument() ? '' : $i->label().' ' }}{{ $i->isDocument() || $i->isOwed() ? 'от ' : '' }}{!! \App\Support\Ago::html($i->issued_at, words: false) !!}</span></div>
             <div class="row"><span class="shrink-0 text-ink-muted">За что</span><span class="min-w-0 flex-1 truncate text-right">{{ \App\Http\Admin\MoneyRows::payoutKind($i) }}</span></div>
             @if ($offer)
                 <a href="{{ $offer->crmPath() }}" class="row" data-turbo-frame="_top">

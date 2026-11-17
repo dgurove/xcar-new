@@ -37,8 +37,9 @@ final class EnsurePayLink
         if ($amount <= 0) {
             return null;
         }
-        $party = $invoice->party;
-
-        return ($this->create)($invoice, Robot::user(), $amount, PayerKind::Other, null, $party->name, $party->phone, $party->email, auto: true);
+        // Без плательщика (18.11.2026, владелец: «плательщика ваще вырезаем… по ссылке просто почта»): почту для чека вводит тот, кто
+        // платит, на `/pay` — почту менеджера туда не подставляем.
+        // Разовая услуга из CRM — почта, вписанная сотрудником при выставлении (`IssueServiceInvoice`).
+        return ($this->create)($invoice, Robot::user(), $amount, PayerKind::Other, email: $invoice->isService() ? $invoice->party->email : null, auto: true);
     }
 }

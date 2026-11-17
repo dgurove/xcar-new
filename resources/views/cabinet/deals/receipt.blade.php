@@ -7,7 +7,8 @@
     use App\Support\Money;
     $supplierOpen = $requirement && $deal->paysSupplierOn($requirement->stage)
         || (! $requirement && $deal->sentPaymentProof());
-    $prime = $selectionPay ?? null;
+    // Комиссия без счёта (18.11.2026) — только ссылкой или наличными: чек перевода к ней не прикладывают.
+    $prime = ($selectionPay ?? null)?->isDocument() ? $selectionPay : null;
     $primeLeft = $prime ? round($prime->remaining() - $prime->claimed(), 2) : 0;
     // Ждёт чека хоть одна оплата — лаймовая «Приложить чек»; всё уже приложено — тихая «Приложить ещё чек» (лист к ушедшей).
     $waiting = ($requirement && $deal->paysSupplierOn($requirement->stage)) || ($prime && $primeLeft > 0 && $deal->buyer_id === auth()->id());

@@ -28,14 +28,7 @@
     if ($link) {
         $link->loadMissing('attempts');
         [$state, $tone] = $link->stateLine();
-        // Менеджер платит сам — «платите вы», а не своё имя (06.10.2026).
-        // Ссылка, заведённая вместе со счётом, — на имя плательщика счёта: если это он сам, тоже «вы».
-        // Сам за себя — по тому, кто завёл ссылку, а не по имени: сотрудник, открывший ту же страницу, «вы» не видит.
-        $viewer = auth()->user();
-        $self = ! $staff && $viewer && (
-            ($link->payer_kind === \App\Billing\Acquiring\PayerKind::Self && $viewer->id === $link->created_by)
-            || ($link->payer_kind === \App\Billing\Acquiring\PayerKind::Other && $viewer->party_id && $i->party_id === $viewer->party_id && in_array($link->payer_name, [null, '', $i->party->name], true)));
-        $pays = $self ? 'платите вы' : 'платит '.$link->payerName();
+        // Кто платит — не пишем (18.11.2026, владелец: «плательщика ваще вырезаем»): по ссылке платит кто угодно.
         $text = $link->message();
     }
 @endphp
@@ -43,11 +36,11 @@
     <div data-controller="sheet" class="contents">
         @if ($compact)
             @php $other = abs($link->amount - ($i->remaining() - $i->claimed())) >= 0.01; @endphp
-            <x-ui.share-link variant="row" :url="$link->url()" :title="'Оплата по счёту '.$i->label()" :text="$text" class="pay-link">
+            <x-ui.share-link variant="row" :url="$link->url()" :title="$link->title()" :text="$text" class="pay-link">
                 <x-slot:lead>
                     <button type="button" class="min-w-[9rem] flex-1 text-left" data-action="sheet#open">
                         <span class="block">Ссылка на оплату@if ($other) <span class="nums">на {{ Money::rub($link->amount) }}</span>@endif</span>
-                        <span class="row-sub !whitespace-normal {{ match ($tone) { 'danger' => '!text-danger', 'urgent' => '!text-urgent', default => '' } }}">{{ $pays }}, {{ preg_replace('/^ждём оплату, /u', '', $state) }}</span>
+                        <span class="row-sub !whitespace-normal {{ match ($tone) { 'danger' => '!text-danger', 'urgent' => '!text-urgent', default => '' } }}">{{ \Illuminate\Support\Str::ucfirst(preg_replace('/^ждём оплату, /u', '', $state)) }}</span>
                     </button>
                 </x-slot:lead>
             </x-ui.share-link>
@@ -57,12 +50,12 @@
         {{-- Одна строка: что с оплатой (нажатие — шторка ссылки) и, пока ссылка жива, «Скопировать» / «Отправить» справа
              (`x-ui.share-link`, 28.10.2026: была второй строкой «Ссылка на оплату» под той же). --}}
         @if ($live)
-            <x-ui.share-link variant="row" :url="$link->url()" :title="'Оплата по счёту '.$i->label()" :text="$text" class="money-line">
+            <x-ui.share-link variant="row" :url="$link->url()" :title="$link->title()" :text="$text" class="money-line">
                 <x-slot:lead>
                     <button type="button" class="flex min-w-[9rem] flex-1 items-center gap-3 text-left" data-action="sheet#open">
                         <x-ui.row-icon name="qr" :tone="$tone === 'danger' ? 'danger' : 'urgent'" size="s"/>
                         <span class="min-w-0 flex-1">
-                            <span class="block">Оплата по ссылке<span class="text-ink-muted">, {{ $pays }}</span>@if ($other) <span class="nums text-urgent">{{ Money::rub($link->amount) }}</span>@endif</span>
+                            <span class="block">Оплата по ссылке@if ($other) <span class="nums text-urgent">{{ Money::rub($link->amount) }}</span>@endif</span>
                             <span class="row-sub !whitespace-normal {{ match ($tone) { 'danger' => '!text-danger', 'urgent' => '!text-urgent', default => '' } }}">{{ $state }}</span>
                         </span>
                     </button>
@@ -72,7 +65,7 @@
             <button type="button" class="row money-line w-full text-left" data-action="sheet#open">
                 <x-ui.row-icon name="qr" :tone="$tone === 'danger' ? 'danger' : 'urgent'" size="s"/>
                 <span class="min-w-0 flex-1">
-                    <span class="block">Оплата по ссылке<span class="text-ink-muted">, {{ $pays }}</span></span>
+                    <span class="block">Оплата по ссылке</span>
                     <span class="row-sub !whitespace-normal {{ match ($tone) { 'danger' => '!text-danger', 'urgent' => '!text-urgent', default => '' } }}">{{ $state }}</span>
                 </span>
                 @if ($other)<span class="nums shrink-0 text-urgent">{{ Money::rub($link->amount) }}</span>@endif
@@ -83,7 +76,7 @@
             <div class="flex flex-col gap-4">
                 <div class="money-hero">
                     <span class="nums text-[32px] font-semibold leading-tight">{{ Money::rub($link->amount) }}</span>
-                    <span class="text-ink-muted">{{ $pays }}</span>
+                    <span class="text-ink-muted">{{ $link->title() }}</span>
                 </div>
                 {{-- Почта для чека — по желанию (05.11.2026): обычно её вписывает плательщик на странице оплаты, знаем заранее —
                      можно тут. --}}
@@ -97,7 +90,7 @@
                     <div class="list"><div class="row"><span class="shrink-0 text-ink-muted">Чек</span><span class="min-w-0 flex-1 truncate text-right">{{ $link->payer_email }}</span></div></div>
                 @endif
                 <x-billing.pay-qr :link="$link" :main="false"/>
-                <x-ui.share-link :url="$link->url()" :title="'Оплата по счёту '.$i->label()" :text="$text" editable :rows="5"/>
+                <x-ui.share-link :url="$link->url()" :title="$link->title()" :text="$text" editable :rows="5"/>
                 <x-billing.link-attempts :link="$link"/>
                 @if ($live)
                 <details class="list">

@@ -101,7 +101,7 @@
         @php $pdf = (bool) $invoice?->hasPdf(); @endphp
         <{{ $pdf ? 'a' : 'div' }} @if ($pdf) href="/garage/cars/{{ $car->offer->number }}/invoice/pdf" data-doc="pdf" data-doc-name="Счёт {{ $invoice?->label() }}" @endif class="{{ $row }}">
             <span class="min-w-0">
-                <span class="block">{{ $invoice->isOwed() ? ($staff ? 'Выплата менеджеру' : 'Выплата вам') : 'Счёт '.$invoice->label() }}@if ($buyerPays) <span class="text-ink-muted">{{ $invoice->party?->name }}</span>@endif</span>
+                <span class="block">{{ $invoice->isOwed() ? ($staff ? 'Выплата менеджеру' : 'Выплата вам') : ($invoice->isDocument() ? 'Счёт '.$invoice->label() : \App\Billing\PayOffer::name($invoice)) }}@if ($buyerPays && $invoice->isDocument()) <span class="text-ink-muted">{{ $invoice->party?->name }}</span>@endif</span>
                 <span class="row-sub">@if ($invoice->isOwed()){{ $payoutWord($invoice) }}@else{{ $invoice->state->label() }}@if ($invoice->remaining() > 0), до {{ \App\Support\Ago::html($invoice->due_at, words: false) }}@endif @endif</span>
             </span>
             @if ($pdf)<span class="flex shrink-0 items-center gap-1 text-accent-text"><x-ui.icon name="file" class="size-4"/>PDF</span>@endif

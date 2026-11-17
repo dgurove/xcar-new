@@ -197,6 +197,8 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
         Route::put('/work/deals/{deal}/fee-seller', [DealContractController::class, 'feeSeller']);
         // «Отправить менеджеру» у счёта и договора (16.11.2026): сотрудник проверил — менеджер видит.
         Route::post('/work/deals/{deal}/invoices/{invoice}/show', [DealContractController::class, 'showInvoice']);
+        // «Запросили счёт…» у комиссии (18.11.2026): обычно только ссылка или наличные.
+        Route::post('/work/deals/{deal}/invoices/{invoice}/paper', [DealContractController::class, 'paperInvoice']);
         Route::post('/work/deals/{deal}/contract/show', [DealContractController::class, 'showContract']);
         Route::post('/work/deals/{deal}/supplier-contract', [DealContractController::class, 'supplierContract']);
         Route::post('/parties/{party}/passport/{page}', [PassportScanController::class, 'upload'])->whereIn('page', ['main', 'reg'])->middleware('throttle:30,1');
@@ -361,6 +363,8 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
         // Оплаты — вкладки «По ссылкам / Нам должны / Мы должны» (07.10.2026); карточка счёта — общая со стоянкой.
         Route::get('/work/money', [MoneyController::class, 'index']);
         Route::get('/work/money/managers', [MoneyController::class, 'managers']); // бывшие «Расчёты с менеджерами» — редирект
+        // Человек в «Оплатах» (18.11.2026): его машины в разделе; `none` — без менеджера.
+        Route::get('/work/money/managers/{person}', [MoneyController::class, 'person'])->where('person', '\d+|none');
         // Разовая оплата услуг по ссылке без сделки — только админ (05.10.2026).
         Route::post('/work/money/service', [MoneyController::class, 'service'])->middleware('ability:isAdmin');
         Route::get('/work/money/cars', [MoneyController::class, 'cars'])->middleware('ability:isAdmin');

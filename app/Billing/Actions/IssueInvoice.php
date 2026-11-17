@@ -69,7 +69,8 @@ final class IssueInvoice
             $vatRate = $issued ? (($vatRate ?? $seller->vatRate()) ?: null) : null;
             $vatOnTop = $vatRate && $party->vat_on_top;
             // Счёт сделки менеджера — без номера до «Отправить менеджеру» (`Numbering::assign`, 16.11.2026).
-            $numbered = $issued && ! Numbering::deferred($issued, $park, $dealId);
+            // Комиссия ПРАЙМ — без номера вовсе, пока счёт не запросили (`Invoice::feeByLink`, 18.11.2026).
+            $numbered = $issued && ! Numbering::deferred($issued, $park, $dealId) && ! Invoice::feeByLink($kind, $seller);
             $invoice = Invoice::create([
                 'seller' => $seller, 'park' => $park, 'direction' => $direction, 'year' => $numbered ? $year : null, 'number' => $numbered ? Numbering::next($seller, $year) : null,
                 // Исправленный документ (`FixClosingDocument` с прежним номером) — тот же номер и следующая редакция.

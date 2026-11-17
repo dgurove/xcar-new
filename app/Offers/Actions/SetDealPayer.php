@@ -7,8 +7,6 @@ use App\Billing\Invoice;
 use App\Billing\InvoiceState;
 use App\Billing\Party;
 use App\Billing\PartyKind;
-use App\Billing\Acquiring\Actions\CreatePayLink;
-use App\Billing\Acquiring\PayerKind;
 use App\Billing\Acquiring\PayLink;
 use App\Offers\Deal;
 use App\Offers\DealContract;
@@ -20,15 +18,14 @@ use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
 /**
- * Плательщик сделки — один на счёт и ссылку (16.11.2026, владелец: «это два способа оплаты одной и той же суммы, а не два
- * разных платежа»; «у счёта тоже необязательно менеджер плательщик, любое лицо может оплатить»). Выбор строкой «Плательщик»
- * над счётом (`x-deal.payer`, CRM и страница сделки менеджера):
+ * Плательщик счёта сделки за ТС (16.11.2026, владелец: «у счёта тоже необязательно менеджер плательщик, любое лицо может
+ * оплатить»; с 18.11.2026 — только у ДКП ПРАЙМ / Р.О.С.: «плательщик указывается только для выставления договора счёта (ДКП), для
+ * комиссий нет»). Выбор строкой «Плательщик» над счётом (`x-deal.payer`, CRM и страница сделки менеджера):
  * - `manager` — сам менеджер (как по умолчанию: счёт с разбивкой и удержанием вознаграждения);
  * - `user:{id}` — его покупатель;
  * - `party:{id}` — сторона, что уже платила или была плательщиком по этой сделке;
  * - `new` — кто угодно: физлицо, ИП или организация (организацию и ИП с тем же ИНН берём существующими).
- * Ложится в `deals.payer_party_id`, счёт перевыставляется на него (`SyncDealInvoices`): прежний аннулируется вместе со
- * ссылкой, у нового ссылка на того же плательщика (`EnsurePayLink`). По счёту уже платили — смены нет.
+ * Ложится в `deals.payer_party_id`, счёт перевыставляется на него (`SyncDealInvoices`). По счёту уже платили — смены нет.
  */
 final class SetDealPayer
 {
@@ -54,16 +51,16 @@ final class SetDealPayer
         return ['name.required' => 'Укажите, кто платит', 'inn.required_if' => 'Нужен ИНН', 'inn.regex' => 'ИНН — 10 или 12 цифр', 'email.email' => 'Проверьте почту'];
     }
 
-    /** Ссылка этого счёта — на плательщика счёта, своего выбора у неё нет: счёт сделки за ТС или подбор. */
+    /** Счёт с плательщиком — только счёт сделки за ТС (18.11.2026, владелец: «для комиссий нет»). */
     public static function follows(Invoice $invoice): bool
     {
-        return $invoice->deal_id !== null && in_array($invoice->kind, [ChargeKind::Sale, ChargeKind::Selection], true) && $invoice->direction === 'issued';
+        return $invoice->deal_id !== null && $invoice->kind === ChargeKind::Sale && $invoice->direction === 'issued';
     }
 
-    /** Счета сделки, у которых есть плательщик (продажа, подбор), — живые. */
+    /** Счета сделки, у которых есть плательщик (за ТС), — живые. */
     public static function invoices(Deal $deal)
     {
-        return $deal->shownInvoices()->filter(fn (Invoice $i) => in_array($i->kind, [ChargeKind::Sale, ChargeKind::Selection], true)
+        return $deal->shownInvoices()->filter(fn (Invoice $i) => $i->kind === ChargeKind::Sale
             && $i->direction === 'issued' && $i->state !== InvoiceState::Void)->values();
     }
 
@@ -149,8 +146,8 @@ final class SetDealPayer
             if ($choice !== 'manager' && $party->isOurs()) {
                 throw ValidationException::withMessages(['payer' => Party::oursMessage(Party::ours($party->inn) ?? $party->seller ?? \App\Billing\Seller::Ros)]);
             }
-            // Своей стороной всегда, и менеджер тоже (17.11.2026): по умолчанию подбор платит покупатель, выбор «менеджер» должен
-            // держаться (`Deal::managerPays` узнаёт его по стороне менеджера).
+            // Своей стороной всегда, и менеджер тоже (17.11.2026): выбор «менеджер» должен держаться (`Deal::managerPays` узнаёт его по
+            // стороне менеджера).
             $deal->forceFill(['payer_party_id' => $party->id])->save();
             // Договор ПРАЙМ смотрит на `payer` (кто платит — менеджер или покупатель): держим в согласии.
             if ($contract = $deal->contract) {
@@ -159,46 +156,9 @@ final class SetDealPayer
             $deal->unsetRelation('contract')->unsetRelation('payer');
             $deal->offer?->log(OfferEventType::Note, $by, ['text' => 'Плательщик: '.$party->name]);
             ($this->sync)($deal->fresh(), $by);
-            // Счёт остался прежним (тот же плательщик), а ссылка заведена на другого (выбирали у ссылки до 16.11.2026,
-            // счёт № 184: счёт Орлову, ссылка Виеову) — ссылка на плательщика счёта, на ту же сумму.
-            foreach (self::invoices($deal) as $invoice) {
-                $link = $invoice->openLink();
-                // Не отправленный менеджеру счёт ссылки не получает (`CreatePayLink`): смена плательщика из-за этого не падает.
-                if ($link && $invoice->party && $invoice->isShownToManager() && PayLink::squash((string) $link->payer_name) !== PayLink::squash((string) $invoice->party->name)) {
-                    app(CreatePayLink::class)($invoice, $by, (float) $link->amount, PayerKind::Other, null, $invoice->party->name, null, $invoice->party->email ?: $link->payer_email);
-                }
-            }
 
             return $party;
         });
-    }
-
-    /**
-     * Оплатили по ссылке, а на странице оплаты человек вписал другое имя (16.11.2026, владелец: «имя плательщика должно
-     * замениться на это новое фактическое»): плательщик счёта и сделки — он. Известный по сделке (менеджер, его покупатели,
-     * прежние сторонние) — тот же, иначе новая сторона-физлицо с его почтой. Счёт перепечатывается на него, в истории — было →
-     * стало. Почту плательщик вписывает сам на странице оплаты — мы её не спрашиваем.
-     */
-    public static function paidBy(Invoice $invoice, PayLink $link): void
-    {
-        $name = PayLink::squash((string) $link->payer_name);
-        $deal = $invoice->deal;
-        if ($name === '' || ! $deal || ! self::follows($invoice) || PayLink::squash((string) $invoice->party?->name) === $name) {
-            return;
-        }
-        $was = $invoice->party?->name;
-        $party = null;
-        foreach (self::options($deal) as $o) {
-            $candidate = $o['user'] ? Party::forUser($o['user']) : $o['party'];
-            if (in_array($name, [PayLink::squash((string) $candidate->name), PayLink::squash((string) $o['user']?->name)], true)) {
-                $party = $candidate;
-                break;
-            }
-        }
-        $party ??= Party::create(['kind' => PartyKind::Person, 'name' => $name, 'email' => $link->payer_email]);
-        $invoice->forceFill(['party_id' => $party->id])->save();
-        $deal->forceFill(['payer_party_id' => $party->id === $deal->buyer?->party_id ? null : $party->id])->save();
-        $deal->offer?->log(OfferEventType::Note, null, ['text' => 'Оплатил по ссылке '.$name.($was ? ' (плательщиком стоял '.$was.')' : '')]);
     }
 
     /** @return array{Party, User} */

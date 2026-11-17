@@ -2,8 +2,8 @@
      „Отправить счёт“, но только в этапе оплаты — а то сотрудники могут не заметить, что они не отправлены, и удивляться, почему
      не платят»). Не отправлен — рыжая строка дела «Менеджер не видит …», нажатие — шторка: документ (проверить PDF) и «Отправить
      менеджеру» (`x-deal.send-row`, тот же маршрут, что в «Продаже»). Отправлен — тихая строка с галкой и временем.
-     `invoice` — счёт сделки; без него — договор. Счёт со ссылкой — «Ссылка на оплату подбора N ₽», счёт за подбор в шторке — другой
-     способ оплатить подбор (17.11.2026, владелец: «счёт за подбор — лишь альтернативный способ оплаты», `Billing\PayOffer`). --}}
+     `invoice` — счёт сделки; без него — договор. Счёт со ссылкой — «Ссылка на оплату подбора N ₽»; счёта за подбор нет (18.11.2026,
+     владелец: «только либо по ссылке либо наличкой») — в шторке «К оплате» и сумма; запрошенный счёт — строкой-документом. --}}
 @props(['deal', 'invoice' => null])
 @php
     if ($invoice) {
@@ -44,12 +44,19 @@
             <div class="list">
                 @if ($invoice && $linked)
                     <div class="row justify-between gap-3">
-                        <span class="min-w-0">К оплате<span class="row-sub">{{ $invoice->party?->title() }}</span></span>
+                        <span class="min-w-0">К оплате</span>
                         <span class="nums whitespace-nowrap">{{ $sub }}</span>
                     </div>
+                    @if ($invoice->isDocument())
                     <x-deal.doc-row :href="$href" :title="\App\Billing\PayOffer::invoiceName($invoice)" :date="\App\Support\Ago::day($invoice->issued_at)" name="schet.pdf" :download="$media">
                         <span>или оплатить по счёту</span>
                     </x-deal.doc-row>
+                    @endif
+                @elseif ($invoice && ! $invoice->isDocument())
+                    <div class="row justify-between gap-3">
+                        <span class="min-w-0">К оплате</span>
+                        <span class="nums whitespace-nowrap">{{ $sub }}</span>
+                    </div>
                 @elseif ($invoice)
                     <x-deal.doc-row :href="$href" :title="\App\Billing\PayOffer::invoiceName($invoice)" :date="\App\Support\Ago::day($invoice->issued_at)" name="schet.pdf" :download="$media">
                         <span>{{ $invoice->party?->title() }}</span><span class="nums whitespace-nowrap">{{ \App\Support\Money::rub($invoice->total) }}</span>

@@ -87,14 +87,13 @@ final class YooKassa implements Gateway
     }
 
     /**
-     * Чек: покупатель — почта плательщика (чеки от ЮKassa уходят только на неё, телефон не нужен), позиция одна.
+     * Чек: покупатель — почта плательщика (чеки от ЮKassa уходят только на неё, телефон не нужен; имени нет — 18.11.2026), позиция одна.
      * ПРАЙМ продаёт только услугу подбора, поэтому признаки позиции — «Услуга» и «Полный расчёт», без настройки.
      */
     private function receipt(PayLink $link, float $amount): array
     {
         $invoice = $link->invoice;
         $customer = array_filter([
-            'full_name' => $link->payer_name ?: null,
             'email' => $link->payer_email ?: null,
         ]);
 

@@ -19,7 +19,7 @@ final class InvoiceOverdue extends Message
     {
         // Счёт по сделке или гаражу — машиной, как остальные сообщения; счёт парковки — прежним видом.
         if ($offer = $this->offer()) {
-            return ($this->invoice->isOwed() ? 'Мы просрочили выплату по ' : 'Счёт по ').$offer->titleWithYear().($this->invoice->isOwed() ? '' : ' просрочен');
+            return ($this->invoice->isOwed() ? 'Мы просрочили выплату по ' : ($this->invoice->isDocument() ? 'Счёт по ' : 'Оплата подбора по ')).$offer->titleWithYear().($this->invoice->isOwed() ? '' : ($this->invoice->isDocument() ? ' просрочен' : ' просрочена'));
         }
 
         return ($this->invoice->isOwed() ? 'Мы просрочили ' : 'Счёт просрочен ').$this->invoice->label();
@@ -31,7 +31,7 @@ final class InvoiceOverdue extends Message
 
         $rest = 'Остаток '.Money::rub($i->remaining()).' из '.Money::rub($i->total).', срок '.Ago::day($i->due_at).', '.$i->overdueLabel();
         if ($offer = $this->offer()) {
-            return Text::lines($offer, $rest, $i->label().', '.$i->party->name);
+            return Text::lines($offer, $rest, $i->nounWithParty());
         }
 
         return [

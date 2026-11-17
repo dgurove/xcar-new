@@ -123,47 +123,24 @@ class DealPayerTest extends TestCase
         $this->assertSame($this->manager->fresh()->party_id, $deal->fresh()->payer_party_id);
     }
 
-    public function test_selection_invoice_payer_follows_and_link_goes_to_him(): void
+    /**
+     * У комиссии плательщика нет (18.11.2026, владелец: «плательщик указывается только для выставления договора счёта (ДКП)»;
+     * «по ссылке просто почта»): сторона счёта — менеджер, у ссылки ни имени, ни почты; счёта-документа нет, пока его не
+     * запросили («Запросить счёт…» — номер и PDF).
+     */
+    public function test_selection_has_no_payer_and_no_invoice_until_requested(): void
     {
         $deal = $this->deal(CommissionMode::Payout, DealScheme::Insurer, 'supplier');
         $invoice = $deal->issuedInvoices()->sole();
         $this->assertSame($this->manager->fresh()->party_id, $invoice->party_id);
-        $buyer = User::create(['name' => 'Александр Видов', 'roles' => [Role::Buyer], 'manager_id' => $this->manager->id, 'approved_at' => now(), 'access' => []]);
+        $this->assertFalse($invoice->isDocument());
+        $this->assertNull($invoice->number);
+        $this->assertNull($invoice->openLink()?->payer_name);
+        $this->assertNull($invoice->openLink()?->payer_email);
 
-        app(SetDealPayer::class)($deal, $this->manager, ['payer' => 'user:'.$buyer->id]);
-        $this->sendToManager($deal);
-        $now = $deal->fresh()->issuedInvoices()->where('state', '!=', InvoiceState::Void)->sole();
-        $this->assertSame($buyer->fresh()->party_id, $now->party_id);
-        $this->assertEqualsWithDelta($invoice->total, $now->total, 0.01);
-        $this->assertSame('Александр Видов', $now->openLink()?->payer_name);
-        $this->assertNull($invoice->fresh()->openLink());
-    }
-
-    public function test_link_on_someone_else_is_reissued_to_invoice_payer(): void
-    {
-        $deal = $this->deal(CommissionMode::Payout, DealScheme::Insurer, 'supplier');
-        $invoice = $deal->issuedInvoices()->sole();
-        // Как № 184 до 16.11.2026: счёт менеджеру, ссылку перевыпустили на его покупателя.
-        $old = app(\App\Billing\Acquiring\Actions\CreatePayLink::class)($invoice, $this->manager, (float) $invoice->openLink()->amount, \App\Billing\Acquiring\PayerKind::Other, null, 'Александр Виеов');
-
-        app(SetDealPayer::class)($deal, $this->admin, ['payer' => 'manager']);
-        $this->assertSame(PayLinkState::Canceled, $old->fresh()->state);
-        $this->assertSame('Иван Орлов', $invoice->fresh()->openLink()?->payer_name);
-    }
-
-    /** На странице оплаты вписали другое имя и заплатили — плательщик счёта и сделки он (16.11.2026). */
-    public function test_name_typed_on_pay_page_becomes_payer(): void
-    {
-        $deal = $this->deal(CommissionMode::Payout, DealScheme::Insurer, 'supplier');
-        $invoice = $deal->issuedInvoices()->sole();
-        $link = $invoice->openLink();
-        $link->update(['payer_name' => 'Сидоров Пётр', 'payer_email' => 'p@mail.ru']);
-        app(RecordPayment::class)($invoice->fresh(), $this->admin, (float) $invoice->total, now(), PaymentSource::Acquiring);
-
-        SetDealPayer::paidBy($invoice->fresh(), $link->fresh());
-        $this->assertSame('Сидоров Пётр', $invoice->fresh()->party->name);
-        $this->assertSame($invoice->fresh()->party_id, $deal->fresh()->payer_party_id);
-        $this->assertSame('p@mail.ru', $invoice->fresh()->party->email);
+        $this->actingAs($this->manager)->post('/deals/'.$deal->id.'/invoices/'.$invoice->id.'/paper')->assertSessionHasNoErrors();
+        $this->assertTrue($invoice->fresh()->isDocument());
+        $this->assertNotNull($invoice->fresh()->number);
     }
 
     /** «Плательщик платит — ООО «Р.О.С.»» (16.11.2026): счёт подбора от Р.О.С., без ссылки; обратно ПРАЙМ — со ссылкой; оплатили — не меняется. */

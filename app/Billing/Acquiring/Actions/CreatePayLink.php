@@ -66,7 +66,7 @@ final class CreatePayLink
             if ($auto) {
                 return $link;
             }
-            $invoice->offer?->log(OfferEventType::Note, $by, ['text' => 'Ссылка на оплату '.Money::exact($amount).' по счёту '.$invoice->label().', платит '.$link->payerLabel()]);
+            $invoice->offer?->log(OfferEventType::Note, $by, ['text' => 'Ссылка на оплату '.Money::exact($amount).' '.$invoice->byWhat().($link->payer_name || $link->payer_user_id ? ', платит '.$link->payerLabel() : '')]);
 
             return $link;
         });

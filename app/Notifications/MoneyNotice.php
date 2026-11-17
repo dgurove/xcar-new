@@ -83,27 +83,27 @@ final class MoneyNotice extends Notice
         // Срок в прошлом не пишется (12.11.2026: «оплатить до 25.10» 12 ноября).
         $when = $i->due_at ? ($i->due_at->isFuture() ? ', оплатить до '.Ago::day($i->due_at) : '') : ', оплатить '.$i->laterLabel(true);
 
-        // Со ссылкой — «Ссылка на оплату подбора 88 190 ₽», счёт за подбор — другой способ оплаты (17.11.2026, владелец: «кажется, что
-        // это счёт на машину»; `Billing\PayOffer`). Без ссылки (ТС от ПРАЙМ) — «Счёт за ТС № 197 на …».
+        // Со ссылкой — «Ссылка на оплату подбора 88 190 ₽» (17.11.2026, владелец: «кажется, что это счёт на машину»; `Billing\PayOffer`),
+        // другой способ — наличные (18.11.2026: счёта за подбор нет, разве что запросили). Без ссылки (ТС от ПРАЙМ) — «Счёт за ТС № 197 на …».
         if (\App\Billing\PayOffer::linked($i)) {
             $what = \App\Billing\PayOffer::what($i);
             $sum = Money::rub(\App\Billing\PayOffer::amount($i));
 
             return (new self('Ссылка на оплату '.$what.' '.$sum.$when, $i->deal?->offer?->titleWithYear(), self::path($i, open: true), $i->deal?->offer?->number))
-                ->tg($i, 'Оплата '.$what.': :car', 'Ссылка на оплату '.$what, $sum.$when.' — по ссылке или по счёту за '.($what === 'подбора' ? 'подбор' : $what), 'Оплатить')
+                ->tg($i, 'Оплата '.$what.': :car', 'Ссылка на оплату '.$what, $sum.$when.($i->isDocument() ? ' — по ссылке или по счёту за '.($what === 'подбора' ? 'подбор' : $what) : ' — по ссылке или наличными'), 'Оплатить')
                 ->about($i)->variant('invoice-issued', 'Ссылка на оплату');
         }
 
-        return (new self(\App\Billing\PayOffer::invoiceName($i).' на '.Money::rub($i->remaining()).$when, $i->deal?->offer?->titleWithYear(), self::path($i, open: true), $i->deal?->offer?->number))
-            ->tg($i, 'Счёт по :car', \App\Billing\PayOffer::invoiceName($i), Money::rub($i->remaining()).$when)->about($i)->variant('invoice-issued', 'Счёт выставлен');
+        return (new self(\App\Billing\PayOffer::line($i).$when, $i->deal?->offer?->titleWithYear(), self::path($i, open: true), $i->deal?->offer?->number))
+            ->tg($i, $i->isDocument() ? 'Счёт по :car' : 'Оплата по :car', \App\Billing\PayOffer::name($i), Money::rub($i->remaining()).$when)->about($i)->variant('invoice-issued', 'Счёт выставлен');
     }
 
     /** Расчёт по машине в гараже: счёт к оплате или то, что мы должны ему, — ведёт на машину. */
     public static function garageInvoice(Invoice $i, Car $car): self
     {
-        return (new self($i->isOwed() ? 'К выплате '.Money::exact($i->remaining()).' за '.$car->offer->titleWithYear() : 'Счёт '.$i->label().' на '.Money::exact($i->remaining()).', оплатить до '.Ago::day($i->due_at),
+        return (new self($i->isOwed() ? 'К выплате '.Money::exact($i->remaining()).' за '.$car->offer->titleWithYear() : \App\Billing\PayOffer::name($i).($i->isDocument() ? ' на ' : ' ').Money::exact($i->remaining()).', оплатить до '.Ago::day($i->due_at),
             $car->offer->titleWithYear(), $car->url(), $car->offer->number))
-            ->tg($i, $i->isOwed() ? 'К выплате по :car' : 'Счёт по :car', 'Счёт '.$i->label(),
+            ->tg($i, $i->isOwed() ? 'К выплате по :car' : ($i->isDocument() ? 'Счёт по :car' : 'Оплата по :car'), $i->isOwed() ? 'Выплата' : \App\Billing\PayOffer::name($i),
                 Money::exact($i->remaining()).($i->isOwed() ? '' : ', оплатить до '.Ago::day($i->due_at)), 'Открыть')->variant('garage-invoice', 'Расчёт по гаражу');
     }
 
@@ -111,8 +111,8 @@ final class MoneyNotice extends Notice
     {
         $i = $p->invoice;
 
-        return (new self('Оплата '.Money::rub($p->amount).' по счёту '.$i->label().' принята', $i->remaining() > 0 ? 'Остаток '.Money::rub($i->remaining()) : 'Счёт оплачен', self::path($i), $i->deal?->offer?->number))
-            ->tg($i, 'Оплата по :car принята', 'Оплата по счёту '.$i->label().' принята', Money::rub($p->amount).', '.self::rest($i))->about($i)->variant('payment-confirmed', 'Оплата принята');
+        return (new self('Оплата '.Money::rub($p->amount).' '.$i->byWhat().' принята', $i->remaining() > 0 ? 'Остаток '.Money::rub($i->remaining()) : 'Счёт оплачен', self::path($i), $i->deal?->offer?->number))
+            ->tg($i, 'Оплата по :car принята', 'Оплата '.$i->byWhat().' принята', Money::rub($p->amount).', '.self::rest($i))->about($i)->variant('payment-confirmed', 'Оплата принята');
     }
 
     /**
@@ -128,8 +128,8 @@ final class MoneyNotice extends Notice
     {
         $i = $p->invoice;
 
-        return (new self('Оплата '.Money::rub($p->amount).' по счёту '.$i->label().' не поступила', $p->reject_reason ?: 'Нужно проверить платёж и сообщить снова', self::path($i), $i->deal?->offer?->number))
-            ->tg($i, 'Оплата по :car не поступила', 'Оплата по счёту '.$i->label().' не поступила', Money::rub($p->amount).', '.mb_lcfirst($p->reject_reason ?: 'Нужно проверить платёж и сообщить снова'))->about($i)->variant('payment-rejected', 'Оплата не поступила');
+        return (new self('Оплата '.Money::rub($p->amount).' '.$i->byWhat().' не поступила', $p->reject_reason ?: 'Нужно проверить платёж и сообщить снова', self::path($i), $i->deal?->offer?->number))
+            ->tg($i, 'Оплата по :car не поступила', 'Оплата '.$i->byWhat().' не поступила', Money::rub($p->amount).', '.mb_lcfirst($p->reject_reason ?: 'Нужно проверить платёж и сообщить снова'))->about($i)->variant('payment-rejected', 'Оплата не поступила');
     }
 
     public static function payout(Payment $p): self
@@ -144,7 +144,7 @@ final class MoneyNotice extends Notice
     {
         $i = $p->invoice;
 
-        $notice = (new self(($i->deal?->buyer?->shortName() ?? $i->party->name).' сообщил об оплате '.Money::rub($p->amount).' по счёту '.$i->label(), $i->deal?->offer?->titleWithYear() ?? Car::ofInvoice($i)?->offer->titleWithYear(), Car::ofInvoice($i)?->crmUrl() ?? MoneyController::url($i), $i->deal?->offer?->number, true))->about($i);
+        $notice = (new self(($i->deal?->buyer?->shortName() ?? $i->party->name).' сообщил об оплате '.Money::rub($p->amount).' '.$i->byWhat(), $i->deal?->offer?->titleWithYear() ?? Car::ofInvoice($i)?->offer->titleWithYear(), Car::ofInvoice($i)?->crmUrl() ?? MoneyController::url($i), $i->deal?->offer?->number, true))->about($i);
         $notice->loud = true;
         $notice->actor = $i->deal?->buyer;
 
@@ -172,9 +172,9 @@ final class MoneyNotice extends Notice
     {
         $i = $p->invoice;
 
-        return (new self('Оплачено по ссылке '.Money::rub($p->amount).', счёт '.$i->label(), $i->remaining() > 0 ? 'Остаток '.Money::rub($i->remaining()) : ($i->deal?->offer?->titleWithYear() ?? Car::ofInvoice($i)?->offer->titleWithYear()),
+        return (new self('Оплачено по ссылке '.Money::rub($p->amount).' '.$i->byWhat(), $i->remaining() > 0 ? 'Остаток '.Money::rub($i->remaining()) : ($i->deal?->offer?->titleWithYear() ?? Car::ofInvoice($i)?->offer->titleWithYear()),
             self::path($i), $i->deal?->offer?->number))
-            ->tg($i, 'Оплачено по ссылке: :car', 'Оплачено по ссылке, счёт '.$i->label(), Money::rub($p->amount).', '.self::rest($i))->about($i)->variant('paid-online', 'Оплачено по ссылке');
+            ->tg($i, 'Оплачено по ссылке: :car', 'Оплачено по ссылке '.$i->byWhat(), Money::rub($p->amount).', '.self::rest($i))->about($i)->variant('paid-online', 'Оплачено по ссылке');
     }
 
     /** Оплатили по ссылке — сотрудникам в «Деньги». */
@@ -182,7 +182,7 @@ final class MoneyNotice extends Notice
     {
         $i = $p->invoice;
 
-        return (new self('По ссылке оплачено '.Money::rub($p->amount).', счёт '.$i->label().', платил '.$link->payerLabel(), $i->deal?->offer?->titleWithYear() ?? Car::ofInvoice($i)?->offer->titleWithYear(),
+        return (new self('По ссылке оплачено '.Money::rub($p->amount).' '.$i->byWhat(), $i->deal?->offer?->titleWithYear() ?? Car::ofInvoice($i)?->offer->titleWithYear(),
             Car::ofInvoice($i)?->crmUrl() ?? MoneyController::url($i), $i->deal?->offer?->number, true))->about($i)->variant('paid-online-staff', 'Оплачено по ссылке, сотрудникам');
     }
 
@@ -192,15 +192,15 @@ final class MoneyNotice extends Notice
         $i = $a->link->invoice;
         $why = $a->cancelLabel() ?? 'отклонено';
 
-        return (new self('Оплата по ссылке не прошла: '.$why, 'Счёт '.$i->label().', '.Money::rub($a->amount), self::path($i), $i->deal?->offer?->number))
-            ->tg($i, 'Оплата не прошла: :car', 'Оплата по ссылке не прошла, счёт '.$i->label(), Money::rub($a->amount).', '.$why.'. Ссылка работает, можно оплатить ещё раз')->about($i)->variant('declined', 'Оплата по ссылке не прошла');
+        return (new self('Оплата по ссылке не прошла: '.$why, Str::ucfirst($i->noun()).', '.Money::rub($a->amount), self::path($i), $i->deal?->offer?->number))
+            ->tg($i, 'Оплата не прошла: :car', 'Оплата по ссылке не прошла, '.$i->noun(), Money::rub($a->amount).', '.$why.'. Ссылка работает, можно оплатить ещё раз')->about($i)->variant('declined', 'Оплата по ссылке не прошла');
     }
 
     /** Переплата по ссылке или непробитый чек — сотрудникам в «Деньги». */
     public static function onlineTroubleStaff(AcquiringPayment $a, string $what): self
     {
         $i = $a->link->invoice;
-        $title = $what === 'overpaid' ? 'Переплата по ссылке '.Money::rub($a->overpaid()).', счёт '.$i->label().', нужно вернуть' : 'Чек не пробился: оплата '.Money::rub($a->amount).', счёт '.$i->label();
+        $title = $what === 'overpaid' ? 'Переплата по ссылке '.Money::rub($a->overpaid()).', '.$i->noun().', нужно вернуть' : 'Чек не пробился: оплата '.Money::rub($a->amount).', '.$i->noun();
 
         return (new self($title, $i->deal?->offer?->titleWithYear() ?? Car::ofInvoice($i)?->offer->titleWithYear(), \App\Http\Admin\MoneyController::url($i), $i->deal?->offer?->number, true))->about($i)->variant('online-trouble-staff', 'Сбой оплаты по ссылке');
     }
@@ -220,7 +220,7 @@ final class MoneyNotice extends Notice
     /** Просрочен счёт ПРАЙМ (сделка, гараж) — сотрудникам в «Деньги» CRM; счета парковки идут `ParkNotice`. */
     public static function overdue(Invoice $i): self
     {
-        return (new self(($i->isOwed() ? 'Мы просрочили ' : 'Просрочен счёт ').$i->label().', '.$i->party->name, Money::rub($i->remaining()), \App\Http\Admin\MoneyController::url($i), $i->deal?->offer?->number, true))->variant('overdue', 'Просрочен счёт');
+        return (new self(match (true) { $i->isOwed() => 'Мы просрочили '.$i->label().', '.$i->party->name, $i->isDocument() => 'Просрочен счёт '.$i->label().', '.$i->party->name, default => 'Просрочена оплата подбора' }, Money::rub($i->remaining()), \App\Http\Admin\MoneyController::url($i), $i->deal?->offer?->number, true))->variant('overdue', 'Просрочен счёт');
     }
 
     public static function feeDue(Invoice $fee): self

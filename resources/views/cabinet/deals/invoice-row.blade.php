@@ -5,7 +5,8 @@
     <button type="button" class="row w-full text-left" data-action="sheet#open">
         <x-ui.icon name="file" class="size-5 shrink-0 text-ink-muted"/>
         <span class="min-w-0 flex-1">
-            <span class="block whitespace-nowrap">Счёт {{ $invoice->label() }}</span>
+            {{-- Комиссия без счёта (18.11.2026) — «Оплата подбора», без номера и PDF. --}}
+            <span class="block whitespace-nowrap">{{ $invoice->isDocument() ? 'Счёт '.$invoice->label() : \App\Billing\PayOffer::name($invoice) }}</span>
             <span class="row-sub"><x-billing.light :invoice="$invoice"/>{{ $invoice->claimed() > 0 ? ', ждёт подтверждения' : '' }}</span>
         </span>
         <span class="nums shrink-0 font-semibold">{{ \App\Support\Money::rub($invoice->remaining() > 0 ? $invoice->remaining() : $invoice->total) }}</span>

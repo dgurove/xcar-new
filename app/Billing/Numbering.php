@@ -32,7 +32,8 @@ final class Numbering
      */
     public static function assign(Invoice $invoice): bool
     {
-        if ($invoice->number || $invoice->direction !== 'issued' || $invoice->code) {
+        // Комиссия ПРАЙМ без запрошенного счёта — не документ (`Invoice::isDocument`): номер на ссылку не тратится.
+        if ($invoice->number || $invoice->direction !== 'issued' || $invoice->code || ! $invoice->isDocument()) {
             return false;
         }
         $year = (int) now()->format('Y');

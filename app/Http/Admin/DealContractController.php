@@ -49,6 +49,15 @@ class DealContractController
         return back()->with('toast', \App\Billing\PayOffer::sent($invoice->fresh()));
     }
 
+    /** «Запросили счёт…» у комиссии (18.11.2026): счёт подбора — документом с номером и PDF (`RequestFeeInvoice`). */
+    public function paperInvoice(Request $request, Deal $deal, \App\Billing\Invoice $invoice, \App\Billing\Actions\RequestFeeInvoice $paper)
+    {
+        abort_unless($invoice->deal_id === $deal->id, 404);
+        $paper($invoice, $request->user());
+
+        return back()->with('toast', 'Счёт за подбор выставлен');
+    }
+
     /** «Отправить менеджеру» у договора (16.11.2026): до того у менеджера «Договор готовится». */
     public function showContract(Request $request, Deal $deal, \App\Offers\Actions\ShowToManager $show)
     {

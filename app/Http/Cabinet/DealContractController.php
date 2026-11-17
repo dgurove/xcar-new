@@ -25,6 +25,15 @@ class DealContractController
         return back()->with('toast', $party->id === $request->user()->party_id ? 'Платите вы' : 'Платит '.$party->name);
     }
 
+    /** «Запросить счёт…» у комиссии (18.11.2026): счёт подбора — документом с номером и PDF (`RequestFeeInvoice`). */
+    public function paper(Request $request, Deal $deal, \App\Billing\Invoice $invoice, \App\Billing\Actions\RequestFeeInvoice $request_)
+    {
+        abort_unless($deal->buyer_id === $request->user()->id && $invoice->deal_id === $deal->id && $invoice->isVisibleToManager($request->user()), 404);
+        $request_($invoice, $request->user());
+
+        return back()->with('toast', 'Счёт запрошен');
+    }
+
     public function update(Request $request, Deal $deal, SaveDealContract $save)
     {
         // Покупатель для счёта поставщика без договора — тоже здесь (03.11.2026, `Deal::collectsBuyer`).
