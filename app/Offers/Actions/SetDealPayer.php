@@ -110,11 +110,9 @@ final class SetDealPayer
     public static function current(Deal $deal): string
     {
         if (! $deal->payer_party_id) {
-            // Подбор, уже выставленный на кого-то (прежде — на менеджера), — на нём; иначе плательщик по умолчанию
-            // (`Deal::payerUser`: покупатель по договору у продажи ПРАЙМ и у подбора, где покупатель платит поставщику сам).
-            $live = $deal->isPrime() ? null : Invoice::where('deal_id', $deal->id)->where('direction', 'issued')->where('state', '!=', InvoiceState::Void)
-                ->where('kind', ChargeKind::Selection)->latest('id')->value('party_id');
-            $user = $live ? User::where('party_id', $live)->first() : $deal->payerUser($deal->isPrime());
+            // Плательщик по умолчанию (`Deal::payerUser`: покупатель по договору у продажи ПРАЙМ и у подбора, где покупатель
+            // платит поставщику сам).
+            $user = $deal->payerUser($deal->isPrime());
 
             return $user && $user->id !== $deal->buyer_id ? 'user:'.$user->id : 'manager';
         }
@@ -144,8 +142,9 @@ final class SetDealPayer
                 str_starts_with($choice, 'party:') => [$this->known($deal, (int) substr($choice, 6)), null],
                 default => [$this->fresh($data), null],
             };
-            // Менеджер — пусто (как по умолчанию); остальные — своей стороной.
-            $deal->forceFill(['payer_party_id' => $user?->id === $deal->buyer_id ? null : $party->id])->save();
+            // Своей стороной всегда, и менеджер тоже (17.11.2026): по умолчанию подбор платит покупатель, выбор «менеджер» должен
+            // держаться (`Deal::managerPays` узнаёт его по стороне менеджера).
+            $deal->forceFill(['payer_party_id' => $party->id])->save();
             // Договор ПРАЙМ смотрит на `payer` (кто платит — менеджер или покупатель): держим в согласии.
             if ($contract = $deal->contract) {
                 $contract->forceFill(['payer' => $user?->id === $deal->buyer_id ? 'manager' : 'buyer'])->save();

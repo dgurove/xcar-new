@@ -119,7 +119,8 @@ class DealPayerTest extends TestCase
         $this->assertSame($this->manager->fresh()->party_id, $back->party_id);
         $this->assertEqualsWithDelta(1020000, $back->remaining(), 0.01);
         $this->assertSame(PayLinkState::Canceled, $link->fresh()->state);
-        $this->assertNull($deal->fresh()->payer_party_id);
+        // Выбор «менеджер» держится своей стороной (17.11.2026: по умолчанию подбор платит покупатель).
+        $this->assertSame($this->manager->fresh()->party_id, $deal->fresh()->payer_party_id);
     }
 
     public function test_selection_invoice_payer_follows_and_link_goes_to_him(): void

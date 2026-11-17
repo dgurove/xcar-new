@@ -315,8 +315,27 @@ class Deal extends Model implements HasMedia
         }
         $contract = $this->contract;
         $buyerPays = $contract?->buyer && ! $contract->managerPays();
+        if ($sale) {
+            return $buyerPays ? $contract->buyer : $this->buyer;
+        }
 
-        return $buyerPays && ($sale || $this->paysSelection()) ? $contract->buyer : $this->buyer;
+        return $buyerPays && $this->paysSelection() && self::selectionPayer($contract->buyer) ? $contract->buyer : $this->buyer;
+    }
+
+    /**
+     * Покупатель по договору годится плательщиком подбора: данные внесены (не заготовка «Новый покупатель» — счёт без имени
+     * уходил бы в никуда) и это не наше юрлицо (ПРАЙМ, Р.О.С. покупает у Альфы с НДС — подбор тогда платит менеджер).
+     * Перевыставление 17.11.2026 положило 8 счетов на заготовку и на «ООО «Р.О.С.»» — отсюда правило.
+     */
+    private static function selectionPayer(User $buyer): bool
+    {
+        $party = $buyer->party;
+        if (! $party?->filled()) {
+            return false;
+        }
+        $ours = collect(Seller::cases())->map(fn (Seller $s) => (string) ($s->config()["inn"] ?? ""))->filter()->all();
+
+        return ! ($party->inn && in_array($party->inn, $ours, true));
     }
 
     /** Кому платят услуги подбора — ООО «ПРАЙМ» (по умолчанию) или ООО «Р.О.С.» (`deals.fee_seller`, `SetFeeSeller`, 16.11.2026). */
