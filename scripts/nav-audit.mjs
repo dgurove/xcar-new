@@ -9,7 +9,7 @@
 //    приложении), письмо на телефоне. И память табов не путается: «Чаты» открывают чаты.
 //
 // Запуск: свой сервер `PHP_CLI_SERVER_WORKERS=2 php artisan serve --port=8017 --no-reload` (гасить по PID), затем
-//   node scripts/nav-audit.mjs            (PORT=8017 SHOWN=150 ONLY=отклик|место SHOTS=каталог)
+//   node scripts/nav-audit.mjs            (PORT=8017 SHOWN=150 ONLY=отклик|место SHOTS=каталог HOST=site USER_ID=6)
 // Выход 1, если хоть одна проверка не прошла. Безголовый Chromium рисует программно — сравнивать «до» и «после» на
 // одной машине, абсолютные числа с айфона даёт `php artisan perf:pages`.
 const { chromium, devices } = await import(process.env.PLAYWRIGHT || '/home/claude/tools/playwright/node_modules/playwright/index.mjs');
@@ -17,7 +17,9 @@ const port = process.env.PORT || '8017';
 const limit = Number(process.env.SHOWN || 150);
 const only = process.env.ONLY || '';
 const shots = process.env.SHOTS || '';
-const crm = `http://crm.xcar.localhost:${port}`;
+// HOST=site|park|logistics — отклик табов другого хоста (место проверяется только в CRM: сценарии его разделов).
+const host = process.env.HOST || 'crm';
+const crm = host === 'site' ? `http://xcar.localhost:${port}` : `http://${host}.xcar.localhost:${port}`;
 const user = Number(process.env.USER_ID || 3);
 
 const results = [];
@@ -51,7 +53,7 @@ await ctx.addInitScript((id) => {
     }
 }, user);
 // Страницам без хаба (локально) подставляем его адрес и тему — `live.js` откроет подставной источник.
-await ctx.route((url) => url.hostname.startsWith('crm.') && !/\/(build|media|hot|pwa|fonts|images|live)\//.test(url.pathname), async (route) => {
+await ctx.route((url) => url.host === new URL(crm).host && !/\/(build|media|hot|pwa|fonts|images|live)\//.test(url.pathname), async (route) => {
     const request = route.request();
     if (request.method() !== 'GET' || !['document', 'fetch'].includes(request.resourceType())) return route.continue();
     const response = await route.fetch().catch(() => null);
@@ -80,6 +82,9 @@ const state = () => page.evaluate(() => ({
 const tabs = () => page.$$eval('#tabbar a.tab', (as) => as.map((a) => a.getAttribute('href')));
 const scrollTo = async (y) => { await page.evaluate((y) => { document.querySelector('#scroller').scrollTop = y; }, y); await page.waitForTimeout(700); };
 async function tap(href, { timed = false } = {}) {
+    // Шторка, что открылась сама (вопрос менеджеру о сделке, уведомления), закрывает таб-бар — здесь она не предмет проверки.
+    // Закрываем как человек (Esc — `cancel`): скриптовый `close()` оставил бы запись слоя в истории (`overlays.js`).
+    for (let i = 0; i < 3 && await page.evaluate(() => !!document.querySelector('dialog:modal')); i++) { await page.keyboard.press('Escape'); await page.waitForTimeout(450); }
     const link = await page.$(`#tabbar a.tab[href="${href}"]`);
     const box = await link?.boundingBox();
     if (!box) return null;
@@ -106,7 +111,7 @@ const shot = async (name) => { if (shots) await page.screenshot({ path: `${shots
 // ——— 1. Отклик ———
 if (!only || only === 'отклик') {
     console.log('\nОтклик на нажатие таба (телефон, процессор ×4)');
-    await page.goto(crm + '/offers'); await settle(2000);
+    await page.goto(crm + '/'); await settle(2000);
     const order = (await tabs()).slice(1).concat((await tabs())[0]);
     for (const round of ['впервые', 'повторно']) {
         for (const href of order) {
@@ -122,7 +127,7 @@ if (!only || only === 'отклик') {
 }
 
 // ——— 2. Место ———
-if (!only || only === 'место') {
+if ((!only || only === 'место') && host === 'crm') {
     console.log('\nМесто в разделе');
     await page.goto(crm + '/offers'); await settle(1500);
     const [offers, mail, chats] = await tabs().then((t) => [t.find((h) => h.startsWith('/offers')), t.find((h) => h.includes('mail')), t.find((h) => h.includes('chats'))]).catch(() => []);
