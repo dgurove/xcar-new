@@ -17,7 +17,17 @@
             </x-ui.card>
         @endif
         @if ($showFiles)
+            @php $shown = $invoice ?? $draft; $canText = $shown && $shown->state !== \App\Billing\InvoiceState::Void && auth()->user()->canManagePark(); @endphp
             <x-ui.card title="Документы">
+                {{-- Номер и дата акта, основание, строка счёта (17.11.2026, `closing-text`). --}}
+                @if ($canText)
+                    <x-slot:actions>
+                        <span data-controller="sheet" class="contents">
+                            <button type="button" class="btn btn-s btn-quiet" data-action="sheet#open"><x-ui.icon name="edit" class="size-4"/>Текст счёта</button>
+                            <x-ui.sheet :id="'text-'.$d->key" title="Текст счёта">@include('park.money.closing-text', ['doc' => $d, 'shown' => $shown])</x-ui.sheet>
+                        </span>
+                    </x-slot:actions>
+                @endif
                 {{-- Строками прямо в плашке, без плашки внутри плашки и крупных значков (09.11.2026, владелец: «файлы громоздкие,
                      не вижу смысла блок в блоке»): значок типа мелко и имя файла, как оно уйдёт («Счет 20260911-01.pdf»). --}}
                 <div class="doc-files" data-docs-scope>

@@ -24,7 +24,9 @@ final class StorageActPdf
         }
         $path = TempFile::path('akt-', 'pdf');
         file_put_contents($path, $this->render($invoice));
-        $invoice->addMedia($path)->usingFileName('akt-hraneniya-'.$invoice->docNo().'-'.$invoice->year.'.pdf')->toMediaCollection('act');
+        // Пересборка (правка номера или даты акта, «Текст счёта») — прежний файл уходит, иначе в архиве оба.
+        $invoice->clearMediaCollection('act');
+        $invoice->addMedia($path)->usingFileName('akt-hraneniya-'.$invoice->actNo().'-'.$invoice->year.'.pdf')->toMediaCollection('act');
     }
 
     /** PDF акта хранения одной ТС. */

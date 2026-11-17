@@ -13,21 +13,28 @@ use App\Support\Phone;
 final class OwnerContacts
 {
     /**
-     * Контакты машины: список, а без него — прежние поля (имя, телефон, второй телефон без имени).
+     * Контакты для шторки шага: записанный список, а без него — прежние поля (имя, телефон, второй телефон без имени, чтобы
+     * при сохранении шторки он не потерялся).
      *
      * @return list<array{name: ?string, phone: ?string}>
      */
     public static function of(object $car): array
     {
-        $list = self::clean((array) ($car->insured_contacts ?? []));
-        if ($list) {
-            return $list;
-        }
-
-        return self::clean([
+        return self::listed($car) ?: self::clean([
             ['name' => $car->insured_name ?? null, 'phone' => $car->insured_phone ?? null],
             ['name' => null, 'phone' => $car->insured_phone2 ?? null],
         ]);
+    }
+
+    /**
+     * Только записанный список — по нему виды решают, показывать ли контакты списком: второй телефон одного человека
+     * (`insured_phone2`) — не второй контакт.
+     *
+     * @return list<array{name: ?string, phone: ?string}>
+     */
+    public static function listed(object $car): array
+    {
+        return self::clean((array) ($car->insured_contacts ?? []));
     }
 
     /**
@@ -53,16 +60,45 @@ final class OwnerContacts
         return array_values($out);
     }
 
-    /** Поля машины по списку: сам список, первый контакт — имя и телефон, телефон второго — второй телефон. */
+    /**
+     * Поля машины по списку: сам список (имя, телефон и второй телефон из него ставит `sync` при сохранении машины). Пустой
+     * список — и прежние поля пусто: очистили все контакты — значит, владельца нет.
+     */
     public static function fields(array $contacts): array
     {
         $list = self::clean($contacts);
 
-        return [
-            'insured_contacts' => $list ?: null,
-            'insured_name' => $list[0]['name'] ?? null,
-            'insured_phone' => $list[0]['phone'] ?? null,
-            'insured_phone2' => $list[1]['phone'] ?? null,
-        ];
+        return $list ? ['insured_contacts' => $list] : ['insured_contacts' => null, 'insured_name' => null, 'insured_phone' => null, 'insured_phone2' => null];
+    }
+
+    /**
+     * Одна правда о владельце (`Car::saving`): сменили список — из него прежние поля (первый контакт — имя и телефон, телефон
+     * второго — второй телефон); сменили прежние поля мимо списка (логистика `SetDetails`, редактор, бот) при непустом
+     * списке — первый контакт и телефон второго из них. Иначе список устаревал и шторка, CRM и менеджер видели старый номер.
+     */
+    public static function sync(Car $car): void
+    {
+        if ($car->isDirty('insured_contacts')) {
+            $list = self::listed($car);
+            $car->insured_contacts = $list ?: null;
+            $car->insured_name = $list[0]['name'] ?? null;
+            $car->insured_phone = $list[0]['phone'] ?? null;
+            $car->insured_phone2 = $list[1]['phone'] ?? null;
+
+            return;
+        }
+        $list = self::listed($car);
+        if (! $list || ! $car->isDirty(['insured_name', 'insured_phone', 'insured_phone2'])) {
+            return;
+        }
+        $list[0] = ['name' => $car->insured_name, 'phone' => $car->insured_phone];
+        if ($car->isDirty('insured_phone2')) {
+            if (isset($list[1])) {
+                $list[1]['phone'] = $car->insured_phone2;
+            } elseif ($car->insured_phone2) {
+                $list[1] = ['name' => null, 'phone' => $car->insured_phone2];
+            }
+        }
+        $car->insured_contacts = self::clean($list) ?: null;
     }
 }

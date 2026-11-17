@@ -204,7 +204,7 @@ final class Handover
             if ($listed) {
                 $keys[] = 'contacts';
             }
-            $contacts = $listed ?: ($staff ? OwnerContacts::of($offer) : []);
+            $contacts = $listed ?: ($staff ? OwnerContacts::listed($offer) : []);
             $contacts = count($contacts) > 1 ? array_map(fn ($c) => ['name' => VendorNames::strip($c['name']) ?: null, 'phone' => $c['phone']], $contacts) : [];
         }
         // Имя и адрес бывают кусками письма страховой: её название менеджеру не показываем (15.10.2026).
@@ -286,23 +286,6 @@ final class Handover
         }
 
         return array_values(array_filter($lines));
-    }
-
-    /**
-     * Контакты для шторки шага: машины (`OwnerContacts::of`), а нет их — из последнего письма поставщика по машине
-     * (письма, прочитанные до того, как контакты стали списком).
-     *
-     * @return list<array{name: ?string, phone: ?string}>
-     */
-    public static function prefillContacts(Offer $offer): array
-    {
-        if ($own = OwnerContacts::of($offer)) {
-            return $own;
-        }
-        $letter = \App\Mail\Message::withoutGlobalScopes()->whereIn('thread_id', \App\Mail\Thread::withoutGlobalScopes()->where('offer_id', $offer->id)->select('id'))
-            ->where('direction', 'in')->latest('date_at')->limit(10)->get()->first(fn ($m) => $m->isFromVendor() && $m->field('contacts'));
-
-        return $letter ? OwnerContacts::clean((array) $letter->field('contacts')) : [];
     }
 
     /** В маршруте продажи есть свой шаг «Автомобиль забрал» (Совкомбанк, Т-Страхование, Каркаде — пусть и позже текущего). */

@@ -50,7 +50,7 @@ final class RegistryAct
         foreach (self::form($invoice)->files($tow) as $template => $title) {
             [$rows, $keys] = $this->rows($invoice, $template);
             // Отчёт-акт Альфы — собирается кодом (`ReportSheet`, 09.11.2026), остальные формы — прежние файлы страховых.
-            $out[$title.' '.$invoice->fileNo().'.'.pathinfo($template, PATHINFO_EXTENSION)] = $template === 'report.xlsx'
+            $out[$title.' '.$invoice->actFileNo().'.'.pathinfo($template, PATHINFO_EXTENSION)] = $template === 'report.xlsx'
                 ? ReportSheet::build($vars, $rows)
                 : Template::fill($template, $vars, $rows, $keys);
         }
@@ -89,9 +89,10 @@ final class RegistryAct
         $short = fn (Party $x) => $x->kind === PartyKind::Entrepreneur ? 'ИП '.str_replace('. ', '.', (string) $x->director) : $x->name;
 
         return [
-            'number' => $invoice->docNo(),
-            'date' => $invoice->issued_at->format('d.m.Y'),
-            'date_words' => $invoice->issued_at->locale('ru')->isoFormat('D MMMM YYYY').' г.',
+            // Номер и дата акта — свои, если вписали (`Invoice::actNo` / `actDate`), иначе счёта.
+            'number' => $invoice->actNo(),
+            'date' => $invoice->actDate()->format('d.m.Y'),
+            'date_words' => $invoice->actDate()->locale('ru')->isoFormat('D MMMM YYYY').' г.',
             'period' => $quoted($from).' по '.$quoted($to),
             'from' => $from->format('d.m.Y'),
             'to' => $to->format('d.m.Y'),

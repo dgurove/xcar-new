@@ -38,8 +38,8 @@
 <body>
     @unless ($pdf || $embed)<div class="print"><button type="button" onclick="window.print()">Печать</button></div>@endunless
     <article class="act">
-        <h1>Акт оказанных услуг хранения {{ $i->label() }}</h1>
-        <p class="sub">{{ $i->issued_at->format('d.m.Y') }}</p>
+        <h1>Акт оказанных услуг хранения {{ $i->actLabel() }}</h1>
+        <p class="sub">{{ $i->actDate()->format('d.m.Y') }}</p>
         <p><b>{{ $self->name }}</b> ({{ $self->details() }}), Исполнитель, и <b>{{ $p->name }}</b>{{ $p->details() ? ' ('.$p->details().')' : '' }}, Заказчик, составили настоящий акт о том, что Исполнитель оказал услуги по хранению транспортного средства:</p>
         <table>
             <tr><th>Транспортное средство</th><td>{{ $v?->titleWithYear() }}</td></tr>

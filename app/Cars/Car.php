@@ -79,6 +79,8 @@ class Car extends Model implements HasMedia
             if ($car->isDirty(['brand_id', 'model_id'])) {
                 $car->unsetRelation('brand')->unsetRelation('model');
             }
+            // Контакты владельца — список и прежние поля одной правдой (`OwnerContacts::sync`, 17.11.2026).
+            OwnerContacts::sync($car);
             // «Марки нет» (12.11.2026) — пока марку не вписали: вписали — признак снимается сам.
             if ($car->brand_id && $car->no_brand) {
                 $car->no_brand = false;

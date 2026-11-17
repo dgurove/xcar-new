@@ -5,6 +5,7 @@ namespace App\Billing\Actions;
 use App\Billing\Charge;
 use App\Billing\ChargeKind;
 use App\Billing\Closing;
+use App\Billing\ClosingText;
 use App\Billing\Documents\StorageActPdf;
 use App\Billing\Invoice;
 use App\Billing\InvoiceState;
@@ -76,11 +77,17 @@ final class FixClosingDocument
             if ($only) {
                 $this->restoreLater($only);
             }
-            $this->act->attach($invoice);
+            // Свой текст черновика (номер и дата акта, основание, строка — `ClosingText`), у новой редакции без своего — прежнего
+            // счёта: в записанный счёт, черновику он больше не нужен.
+            $texts = ClosingText::for($month, $group);
+            $own = $texts ? $texts->only(ClosingText::FIELDS) : ($replaces ? $replaces->only(ClosingText::FIELDS) : []);
             // Прошлый документ (свой день отправки) с давно прошедшим сроком — просрочка отмечена сразу и молча: иначе часы
-            // (`TickInvoices`) прислали бы «просрочен» на каждый отмеченный за всю историю.
-            $invoice->update(['sent_at' => $at ? $day : now(), 'sent_by' => $by->id] + ($at ? ['issued_at' => $day->toDateString()] : [])
+            // (`TickInvoices`) прислали бы «просрочен» на каждый отмеченный за всю историю. День отправки — до файла акта: акт
+            // берёт дату счёта (17.11.2026: файл прикладывался раньше, и в акте оставалась сегодняшняя дата).
+            $invoice->update(array_filter($own, fn ($v) => $v !== null) + ['sent_at' => $at ? $day : now(), 'sent_by' => $by->id] + ($at ? ['issued_at' => $day->toDateString()] : [])
                 + ($at && $due->lt(now()->startOfDay()) ? ['overdue_at' => now()] : []));
+            $texts?->delete();
+            $this->act->attach($invoice->refresh());
 
             return $invoice;
         });

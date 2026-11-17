@@ -83,6 +83,11 @@ class RouteController
         $cf = Handover::contactFields($exit->to);
         $contacts = $cf && $request->has('contacts') ? OwnerContacts::clean((array) $request->input('contacts')) : null;
         if ($contacts !== null) {
+            // Обязательные имя и телефон шага — ошибкой блока контактов: полей `fields.*` в шторке нет, их ошибку не видно.
+            $byKey = collect($exit->staffFields())->keyBy('key');
+            if ((($byKey[$cf['name']]['required'] ?? false) && ! ($contacts[0]['name'] ?? null)) || (($byKey[$cf['phone']]['required'] ?? false) && ! ($contacts[0]['phone'] ?? null))) {
+                throw ValidationException::withMessages(['contacts' => 'Впишите ФИО и телефон']);
+            }
             $request->merge(['fields' => [...(array) $request->input('fields', []), $cf['name'] => $contacts[0]['name'] ?? '', $cf['phone'] => $contacts[0]['phone'] ?? '']]);
         }
         $payload = [];
@@ -109,15 +114,15 @@ class RouteController
         // «За менеджера» (28.10.2026, владелец: «он мне уже устно подтвердил»): исход менеджера жмёт сотрудник — просьба
         // закрывается его ответом, в «Истории» «за менеджера». «Уже согласился» у «Спросить менеджера» (`then_take`) — наш
         // исход и сразу за менеджера его «Беру в работу» (у гаражной — «Забираю в гараж») одной транзакцией.
-        if ($contacts) {
+        if (count($contacts ?? []) > 1) {
             $payload['contacts'] = $contacts;
         }
         $offer = DB::transaction(function () use ($request, $offer, $exit, $take, $payload, $contacts) {
             if ($request->input('for') === 'manager') {
                 return $this->forManager($offer, $exit, $take, $request->user());
             }
-            // Подтверждённые контакты — машине: их читают логистика и CRM (`OwnerContacts`).
-            if ($contacts) {
+            // Подтверждённые контакты — машине: их читают логистика и CRM (`OwnerContacts`). Очистили все — владельца нет.
+            if ($contacts !== null) {
                 app(UpdateOffer::class)($offer, OwnerContacts::fields($contacts), $request->user(), ['why' => $exit->label]);
                 $offer->refresh();
             }

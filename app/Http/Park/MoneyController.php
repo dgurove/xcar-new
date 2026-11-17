@@ -6,6 +6,7 @@ use App\Billing\Actions\FixClosingDocument;
 use App\Billing\Acts\RegistryAct;
 use App\Billing\Closing;
 use App\Billing\ClosingDoc;
+use App\Billing\ClosingText;
 use App\Billing\Documents\InvoicePdf;
 use App\Billing\Documents\StorageActPdf;
 use App\Billing\Invoice;
@@ -324,6 +325,49 @@ class MoneyController
     }
 
     /** @return array{0: Carbon, 1: string, 2: ?Invoice} */
+    /**
+     * «Текст счёта» документа месяца (17.11.2026): номер и дата акта, основание, строка. Черновик — `ClosingText` по месяцу и
+     * группе (`Closing::draft` подставит, отправка перенесёт), записанный счёт — его колонки и заново файлы акта. Основание и
+     * строка, совпавшие с собранными (с новым актом), своими не пишутся: правка одного акта и дальше меняет строку сама.
+     */
+    public function closingText(Request $request, string $key, StorageActPdf $act)
+    {
+        abort_unless($request->user()->canManagePark(), 403);
+        abort_unless(preg_match(ClosingDoc::KEY, $key) && ($doc = ClosingDoc::find($key)), 404);
+        $data = $request->validate(['act_no' => ['nullable', 'string', 'max:30'], 'act_at' => ['nullable', 'date'],
+            'basis' => ['nullable', 'string', 'max:255'], 'line_title' => ['nullable', 'string', 'max:2000']]);
+        $invoice = $doc->live() ? Closing::draft($doc->month, (string) $doc->group) : $doc->invoice;
+        abort_unless($invoice && $invoice->state !== InvoiceState::Void, 404);
+        $clean = fn ($v) => ($v = trim((string) preg_replace('/\s+/u', ' ', (string) $v))) === '' ? null : $v;
+        // Что было в шторке: строка и основание, собранные по прежнему акту, — нетронутые не своё (иначе правка одного номера
+        // акта оставила бы в строке старый номер).
+        $was = [$invoice->line_title, $invoice->basis];
+        $invoice->forceFill(['basis' => null, 'line_title' => null]);
+        $before = [$invoice->defaultRegistryLine(), $invoice->basisText()];
+        // Собранное — с новым актом и без своих основания и строки: с ним сравнивается вписанное.
+        $invoice->forceFill(['act_no' => $clean($data['act_no'] ?? null), 'act_at' => $data['act_at'] ?? null]);
+        $line = $clean($data['line_title'] ?? null);
+        $basis = $clean($data['basis'] ?? null);
+        $fields = [
+            'act_no' => $invoice->act_no,
+            'act_at' => $invoice->act_at?->toDateString(),
+            'basis' => $basis !== null && $basis !== $invoice->basisText() && ($basis !== $before[1] || $was[1] !== null) ? $basis : null,
+            'line_title' => $line !== null && $line !== $invoice->defaultRegistryLine() && ($line !== $before[0] || $was[0] !== null) ? $line : null,
+        ];
+        if ($doc->live()) {
+            $where = ['month' => $doc->month->copy()->startOfMonth()->toDateString(), 'group' => (string) $doc->group];
+            array_filter($fields, fn ($v) => $v !== null)
+                ? ClosingText::updateOrCreate($where, $fields + ['updated_by' => $request->user()->id])
+                : ClosingText::where($where)->delete();
+        } else {
+            $invoice->forceFill($fields)->save();
+            // Файлы акта записаны при отправке — с новым номером и датой заново.
+            $act->attach($invoice->refresh());
+        }
+
+        return back()->with('toast', 'Текст счёта сохранён');
+    }
+
     private function draftKey(Request $request): array
     {
         // Ключ строки в пути (`/money/draft/{key}/pdf`) — месяц и группа из него.

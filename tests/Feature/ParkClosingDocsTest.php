@@ -191,6 +191,39 @@ class ParkClosingDocsTest extends TestCase
      * ключу месяца и группы, старый `?peek=` — туда же); «Отправили сами» записывает, кто отметил, и ведёт на страницу
      * отправленного.
      */
+    /**
+     * «Текст счёта» (17.11.2026, владелец: счёт Альфе от 17.11, акт — № 20261109-01 от 09.11.2026): у черновика номер и дата
+     * акта встают в строку счёта и в отчёт-акт, отправка переносит их в счёт; у записанного — правка пересобирает файл акта,
+     * своя строка остаётся своей, а совпавшая с собранной своей не пишется.
+     */
+    public function test_act_number_and_date_are_editable_for_draft_and_sent(): void
+    {
+        $month = Carbon::parse('2026-10-01');
+        $group = Closing::items($month)->map(fn ($i) => Closing::groupOf($i))->first();
+        $key = ClosingDoc::liveKey($month, $group);
+        $this->actingAs($this->admin)->get(Surface::Park->url('/money/closing/'.$key))->assertOk()->assertSee('Текст счёта');
+        $this->actingAs($this->admin)->post(Surface::Park->url('/money/closing/'.$key.'/text'), ['act_no' => '20261109-01', 'act_at' => '2026-11-09',
+            'basis' => Closing::draft($month, $group)->basisText(), 'line_title' => Closing::draft($month, $group)->registryLine()])->assertRedirect();
+        $this->assertSame(['act_no' => '20261109-01', 'basis' => null, 'line_title' => null], \App\Billing\ClosingText::sole()->only(['act_no', 'basis', 'line_title']));
+
+        $draft = Closing::draft($month, $group);
+        $this->assertSame('20260511-01', $draft->code);                 // номер счёта — свой
+        $this->assertStringEndsWith('согласно акту № 20261109-01 от 09.11.2026', $draft->registryLine());
+        $vars = (new \ReflectionMethod(\App\Billing\Acts\RegistryAct::class, 'vars'))->invoke(app(\App\Billing\Acts\RegistryAct::class), $draft, false);
+        $this->assertSame(['20261109-01', '09.11.2026'], [$vars['number'], $vars['date']]);
+
+        $sent = app(FixClosingDocument::class)($month, $group, $this->admin);
+        $this->assertSame('20261109-01', $sent->act_no);
+        $this->assertSame('2026-11-09', $sent->act_at->toDateString());
+        $this->assertSame(0, \App\Billing\ClosingText::count());
+
+        $this->actingAs($this->admin)->post(Surface::Park->url('/money/closing/i'.$sent->id.'/text'), ['act_no' => '20261110-01', 'act_at' => '2026-11-10',
+            'basis' => 'Договор № 1', 'line_title' => 'Хранение за октябрь'])->assertRedirect();
+        $sent->refresh();
+        $this->assertSame(['20261110-01', 'Договор № 1', 'Хранение за октябрь'], [$sent->act_no, $sent->basisText(), $sent->registryLine()]);
+        $this->assertCount(1, $sent->getMedia('act'));
+    }
+
     public function test_screen_lists_months_and_opens_page(): void
     {
         $month = Carbon::parse('2026-10-01');

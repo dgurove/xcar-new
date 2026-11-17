@@ -109,6 +109,15 @@ class TBankConsentTest extends TestCase
         $this->assertStringContainsString('Нужин Владислав Николаевич +7 967 124-01-10', $text);
         $this->assertStringContainsString('Москва, ул. Тестовая, 1', $text);
         $this->assertStringNotContainsString('Из Письма', $text);
+
+        // Правка телефона мимо списка (логистика `SetDetails` пишет прежние поля) — список следует, второй контакт остаётся.
+        $car = $offer->fresh()->car;
+        $car->update(['insured_phone' => '+7 900 555-66-77']);
+        $this->assertSame([['name' => 'Нужина Елена Александровна', 'phone' => '+7 900 555-66-77'], ['name' => 'Нужин Владислав Николаевич', 'phone' => '+7 967 124-01-10']],
+            \App\Cars\OwnerContacts::listed($car->fresh()));
+        // Очистили список — владельца нет и в прежних полях.
+        $car->update(\App\Cars\OwnerContacts::fields([]));
+        $this->assertSame([null, null, null], [$car->fresh()->insured_name, $car->fresh()->insured_phone, $car->fresh()->insured_phone2]);
     }
 
     public function test_staff_asks_manager_with_vin_then_letter_with_lot_price(): void

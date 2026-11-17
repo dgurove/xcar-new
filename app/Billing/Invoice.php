@@ -37,7 +37,8 @@ use Spatie\MediaLibrary\InteractsWithMedia;
  * без своей ТС: машины — строками хранения со своим `vehicle_id`, долг машины — её доля (`Ledger::shareOf`).
  */
 #[Fillable(['seller', 'park', 'direction', 'year', 'number', 'code', 'revision', 'external_no', 'kind', 'month', 'party_id', 'vehicle_id', 'deal_id', 'offer_id', 'issued_at', 'due_at', 'vat', 'vat_rate', 'vat_on_top', 'total', 'paid', 'state', 'paid_at',
-    'overdue_at', 'reminded_at', 'sent_at', 'sent_by', 'sent_message_id', 'voided_at', 'void_reason', 'notes', 'created_by', 'car_title', 'credit_deal_id', 'shown_at', 'shown_by'])]
+    'overdue_at', 'reminded_at', 'sent_at', 'sent_by', 'sent_message_id', 'voided_at', 'void_reason', 'notes', 'created_by', 'car_title', 'credit_deal_id', 'shown_at', 'shown_by',
+    'act_no', 'act_at', 'basis', 'line_title'])]
 class Invoice extends Model implements HasMedia
 {
     use FastAttributes;
@@ -67,7 +68,7 @@ class Invoice extends Model implements HasMedia
 
     protected function casts(): array
     {
-        return ['seller' => Seller::class, 'kind' => ChargeKind::class, 'state' => InvoiceState::class, 'month' => 'date', 'issued_at' => 'date', 'due_at' => 'date', 'paid_at' => 'date', 'vat' => 'bool', 'vat_rate' => 'int', 'vat_on_top' => 'bool', 'park' => 'bool',
+        return ['seller' => Seller::class, 'kind' => ChargeKind::class, 'state' => InvoiceState::class, 'month' => 'date', 'issued_at' => 'date', 'due_at' => 'date', 'paid_at' => 'date', 'act_at' => 'date', 'vat' => 'bool', 'vat_rate' => 'int', 'vat_on_top' => 'bool', 'park' => 'bool',
             'total' => 'float', 'paid' => 'float', 'revision' => 'int', 'overdue_at' => 'datetime', 'reminded_at' => 'datetime', 'sent_at' => 'datetime', 'voided_at' => 'datetime', 'shown_at' => 'datetime'];
     }
 
@@ -473,6 +474,73 @@ class Invoice extends Model implements HasMedia
     public function docNo(): string
     {
         return (string) ($this->code ?? $this->number);
+    }
+
+    /**
+     * Номер акта (17.11.2026, владелец: счёт Альфе от 17.11, акт — № 20261109-01 от 09.11): свой, если вписали (`act_no`,
+     * шторка «Текст счёта» парковки), иначе номер счёта. Его же — строка счёта, отчёт-акт и акты по ТС.
+     */
+    public function actNo(): string
+    {
+        return filled($this->act_no) ? (string) $this->act_no : $this->docNo();
+    }
+
+    /** «№ 20261109-01» — свой номер акта, иначе подпись счёта (с редакцией). */
+    public function actLabel(): string
+    {
+        return filled($this->act_no) ? '№ '.$this->act_no : $this->label();
+    }
+
+    /** Дата акта: своя, иначе дата счёта. */
+    public function actDate(): ?\Carbon\CarbonInterface
+    {
+        return $this->act_at ?? $this->issued_at;
+    }
+
+    /** Договор вендора реестра словами: «Договор № E240020/06/03/22 от 16.02.2022 г.», у вывоза — договор эвакуации. */
+    public function contractText(): ?string
+    {
+        if (! $this->isRegistry()) {
+            return null;
+        }
+        $vendor = $this->registryVehicles()->first()?->vendor;
+        $agreement = $this->kind === ChargeKind::Tow && $vendor?->tow_agreement_number ? [$vendor->tow_agreement_number, $vendor->tow_agreement_date] : [$vendor?->agreement_number, $vendor?->agreement_date];
+
+        return $agreement[0] ? 'Договор № '.$agreement[0].($agreement[1] ? ' от '.$agreement[1]->format('d.m.Y').' г.' : '') : null;
+    }
+
+    /** «Основание» реестра: своё (`basis`), иначе договор, иначе услуга словами. */
+    public function basisText(): string
+    {
+        return filled($this->basis) ? (string) $this->basis
+            : ($this->contractText() ?? ($this->kind === ChargeKind::Tow ? 'Эвакуация транспортных средств' : 'Хранение транспортных средств'));
+    }
+
+    /**
+     * Строка реестра одной позицией (владелец 08.10.2026; слова — как в прежних счетах страховым): своя (`line_title`), иначе
+     * «Услуги по хранению автотранспорта за октябрь 2026 г. на основании Договора № … согласно акту № … от …» — номер и дата
+     * акта из `actNo` / `actDate`: поправили акт — строка следует сама.
+     */
+    public function registryLine(): string
+    {
+        return filled($this->line_title) ? (string) $this->line_title : $this->defaultRegistryLine();
+    }
+
+    /** Строка реестра, собранная по счёту (без своей) — с какой сравнить вписанную. */
+    public function defaultRegistryLine(): string
+    {
+        $contract = $this->contractText();
+
+        return ($this->kind === ChargeKind::Tow ? 'Услуги по эвакуации транспортных средств' : 'Услуги по хранению автотранспорта')
+            .($this->month ? ' за '.mb_strtolower($this->month->translatedFormat('F Y')).' г.' : '')
+            .($contract ? ' на основании '.str_replace('Договор', 'Договора', $contract) : '')
+            .' согласно акту № '.$this->actNo().' от '.$this->actDate()?->format('d.m.Y');
+    }
+
+    /** Номер в имени файла акта: свой номер акта как есть, иначе номер счёта с редакцией (`fileNo`). */
+    public function actFileNo(): string
+    {
+        return filled($this->act_no) ? str_replace(['/', '\\'], '-', (string) $this->act_no) : $this->fileNo();
     }
 
     /** Номер в имени файла: исправленный — «20261108-01 (ред 1)», как в архиве. */

@@ -160,22 +160,8 @@ abstract class Template
         }
         preg_match('/'.$phone.'/u', $line, $pm, PREG_OFFSET_CAPTURE);
         $raw = $pm[0][0];
-        $offset = $pm[0][1];
-        $before = substr($line, 0, $offset);
-        $after = substr($line, $offset + strlen($raw));
-        // Хвост после номера — до следующего номера: «Анастасия/ 8-950-… Александр» даёт Анастасию.
-        $after = preg_split('/'.$phone.'/u', $after)[0] ?? '';
-        // Служебные слова с заглавной, которые стоят рядом с номером, но именем не являются.
-        $noise = '/\b(Юр|л|Л|Представитель(?:ница)?|представител[ья]|собственника?|Контактн\w*|лицо|со|стороны|тел|Тел|Телефон|Контакт|по|доверенности|или|ПАО|ООО|АО|ИП|от|Со|Клиент\w*|Страховател\w*|Владел\w*|Просьба|Просим|Прошу|Связаться|Номер|Моб\w*|Сот\w*|Добрый|День|Здравствуйте|Уважаем\w*|Коллеги)\b\.?/iu';
-        $word = '[А-ЯЁ][а-яё]{2,}(?:-[А-ЯЁ][а-яё]{2,})?';
-        $clean = fn (string $s) => preg_replace('/[\s"«»,;:\-–—\/()]+/u', ' ', (string) preg_replace($noise, ' ', $s));
-        // После номера — первые слова с заглавной; до номера — последние. Не больше трёх (Фамилия Имя Отчество).
-        $name = null;
-        if (preg_match('/^\s*((?:'.$word.'\s+){0,2}'.$word.')/u', $clean($after), $m)) {
-            $name = $m[1];
-        } elseif (preg_match('/((?:'.$word.'\s+){0,2}'.$word.')\s*$/u', $clean($before), $m)) {
-            $name = $m[1];
-        }
+        // Имя у номера — одна дверь со списком контактов (`nameAround`): «Анастасия/ 8-950-… Александр» даёт Анастасию.
+        $name = self::nameAround($line, $pm[0][1], $raw);
         $normalized = Phone::normalize($raw);
 
         return [$name ? trim($name) : null, $normalized ? Phone::format($normalized) : trim($raw)];
@@ -190,7 +176,8 @@ abstract class Template
     /**
      * Контакты владельца — свои слова письма до подписи и до цитаты: строка с телефоном и ФИО рядом («Нужина Елена
      * Александровна +7(906)041-41-67», «8-985-171-19-90 Александр») или ФИО строкой выше голого номера. 8-800 и номера после
-     * «С уважением» (подпись сотрудника страховой: «Тел.: +7 (495) 648-10-00, Доб. 8787») не берутся; один номер — один раз.
+     * «С уважением» (подпись сотрудника страховой: «Тел.: +7 (495) 648-10-00, Доб. 8787»), офисные («доб.», «факс») и без имени
+     * не берутся; один номер — один раз.
      *
      * @return list<array{name: ?string, phone: string}>
      */
@@ -200,8 +187,11 @@ abstract class Template
         $prev = null;
         foreach (preg_split('/\R/u', $text) ?: [] as $line) {
             $line = trim($line);
-            // Подпись или цитата — дальше не свои слова.
-            if (preg_match('/^(?:>|с\s+уважением|c\s+уважением|уважением|best regards|--\s*$|-{3,}|(?:От|From|Sent|Отправлено|Исходное письмо)\b)/iu', $line)) {
+            // Подпись или цитата — дальше не свои слова: «С уважением», «--», «От:» / «From:», заголовок цитаты Gmail и почты
+            // («пн, 17 нояб. 2026 г. в 11:46, Павел <p@x.ru>:», «… пишет:», «… wrote:»), строка из одного «Спасибо».
+            if (preg_match('/^(?:>|с\s+уважением|c\s+уважением|уважением|best regards|--\s*$|-{3,}|(?:От|From|Sent|Отправлено|Исходное письмо)\b)/iu', $line)
+                || preg_match('/(?:<[^<>\s]+@[^<>\s]+>\s*:|\b(?:пишет|написал\w*|wrote)\s*:)\s*$/iu', $line)
+                || preg_match('/^(?:спасибо|благодарю|благодарим)[!.,]*$/iu', $line)) {
                 break;
             }
             if ($line === '') {
@@ -214,11 +204,15 @@ abstract class Template
             }
             foreach ($all[0] as [$raw, $offset]) {
                 $normalized = Phone::normalize($raw);
-                if (! $normalized || str_starts_with($normalized, '7800') || str_starts_with($normalized, '+7800') || isset($out[$normalized])) {
+                // Офисный номер («…, доб. 8787», «факс») — сотрудник, а не владелец; «Тел.: …» подписи без имени отсеет имя ниже.
+                $label = preg_match('/факс\w*\.?\s*:?\s*$/iu', substr($line, 0, $offset)) || preg_match('/^\s*,?\s*доб/iu', substr($line, $offset + strlen($raw)));
+                if (! $normalized || str_starts_with($normalized, '7800') || $label || isset($out[$normalized])) {
                     continue;
                 }
-                $name = self::nameAround($line, $offset, $raw) ?? $prev;
-                $out[$normalized] = ['name' => $name, 'phone' => Phone::format($normalized)];
+                // Только с именем: голый номер без человека — не контакт владельца (подпись, телефон стоянки).
+                if ($name = self::nameAround($line, $offset, $raw) ?? $prev) {
+                    $out[$normalized] = ['name' => $name, 'phone' => Phone::format($normalized)];
+                }
             }
             $prev = null;
         }

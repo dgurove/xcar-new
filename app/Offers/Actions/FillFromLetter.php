@@ -47,13 +47,12 @@ final class FillFromLetter
                 $data[$column] = $value;
             }
         }
-        // Все контакты владельца из письма (17.11.2026) — когда своих ещё нет; второй телефон — у второго контакта.
+        // Все контакты владельца из письма (17.11.2026) — когда списка ещё нет: вписанный владелец (имя, телефон) остаётся первым,
+        // контакты письма — за ним, один номер — один раз (`OwnerContacts::sync` поставит из списка прежние поля).
         $contacts = OwnerContacts::clean((array) $message->field('contacts'));
-        if ($contacts && blank($offer->insured_contacts)) {
-            $data['insured_contacts'] = $contacts;
-            if (blank($offer->insured_phone2) && ($second = $contacts[1]['phone'] ?? null) && $second !== ($data['insured_phone'] ?? $offer->insured_phone)) {
-                $data['insured_phone2'] = $second;
-            }
+        if ($contacts && ! OwnerContacts::listed($offer)) {
+            $data['insured_contacts'] = OwnerContacts::clean([...OwnerContacts::of($offer), ...$contacts]);
+            unset($data['insured_name'], $data['insured_phone']);
         }
         $log = ['letter' => $message->id];
         // VIN из письма поставщика об этой машине — в пустое поле сразу, в любом состоянии и из ответа «RE:» (15.11.2026,

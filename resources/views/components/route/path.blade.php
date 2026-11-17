@@ -511,7 +511,7 @@
                                                 @endphp
                                                 @if ($cf)
                                                     @php $byKey = collect($exit->staffFields())->keyBy('key'); @endphp
-                                                    <x-route.contacts :contacts="\App\Offers\Handover::prefillContacts($offer)" :labels="[$byKey[$cf['name']]['label'], $byKey[$cf['phone']]['label']]" :id="'exit-'.$exit->id.'-contacts'"/>
+                                                    <x-route.contacts :contacts="\App\Cars\OwnerContacts::of($offer)" :labels="[$byKey[$cf['name']]['label'], $byKey[$cf['phone']]['label']]" :id="'exit-'.$exit->id.'-contacts'"/>
                                                 @endif
                                                 @if ($rest)
                                                     <div class="fields">

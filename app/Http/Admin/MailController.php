@@ -793,7 +793,7 @@ class MailController
             }
             // Счёт на ТС без файла акта — PDF акта хранения на лету (у реестра файлы кладёт фиксация).
             if ($send !== 'invoice' && ! $invoice->getFirstMedia('act') && $invoice->kind === ChargeKind::Storage && ! $invoice->isRegistry()) {
-                $defaults['files'][] = $outbox->put('akt-hraneniya-'.$invoice->docNo().'-'.$invoice->year.'.pdf', $actPdf->render($invoice));
+                $defaults['files'][] = $outbox->put('akt-hraneniya-'.$invoice->actNo().'-'.$invoice->year.'.pdf', $actPdf->render($invoice));
             }
         } elseif ($release && ! $request->old()) {
             // Письмо о выдаче — с тем, что приложили в окне выдачи (06.11.2026, владелец): файлы шага (акт скрепкой или
@@ -888,7 +888,7 @@ class MailController
             return $files;
         }
         if (! $doc->isRegistry()) {
-            return [...$files, $outbox->put('akt-hraneniya-'.$doc->fileNo().'.pdf', $actPdf->render($doc))];
+            return [...$files, $outbox->put('akt-hraneniya-'.$doc->actFileNo().'.pdf', $actPdf->render($doc))];
         }
         foreach (app(RegistryAct::class)->files($doc) as $name => $path) {
             $files[] = $outbox->put($name, (string) file_get_contents($path));

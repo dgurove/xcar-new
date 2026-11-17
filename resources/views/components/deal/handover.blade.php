@@ -15,8 +15,9 @@
     $empty = ! $offer->insured_name && ! $offer->insured_phone && ! $offer->inspection_address;
     // Ни владельца, ни телефона — «Добавить», даже если адрес есть (15.11.2026: «Контакт владельца — Изменить» над одним адресом).
     $noContact = ! $offer->insured_name && ! $offer->insured_phone;
-    // Несколько контактов владельца (17.11.2026) — списком; один — как было.
+    // Несколько контактов владельца (17.11.2026) — списком; один (и его второй телефон) — как было. Правка — всеми.
     $contacts = \App\Cars\OwnerContacts::of($offer);
+    $listed = \App\Cars\OwnerContacts::listed($offer);
     $form = 'handover-'.$deal->id;
     // Адрес — то же поле, что в «Транспортном средстве» редактора: открываться только на ошибку своей формы (`_form`).
     $editing = old('_form') === $form && $errors->hasAny($keys);
@@ -50,9 +51,9 @@
             <x-deal.park-release :deal="$deal" :vehicle="$handover->park"/>
         @else
         <div data-edit-card-target="view" @if ($editing) hidden @endif>
-            @if (count($contacts) > 1)
+            @if (count($listed) > 1)
                 <div class="mt-3 grid grid-cols-[minmax(0,1fr)_auto] gap-x-4 gap-y-2.5 leading-snug">
-                    @foreach ($contacts as $c)
+                    @foreach ($listed as $c)
                         <div class="min-w-0"><div class="field-label">{{ $loop->first ? 'Владелец' : 'Ещё контакт' }}</div><div class="mt-0.5 break-words">{{ $c['name'] ?: '—' }}</div></div>
                         <div class="min-w-0">@if ($c['phone'])<div class="field-label">Телефон</div><x-ui.tel :value="$c['phone']" :text="$c['phone']" class="mt-0.5 block w-fit"/>@endif</div>
                     @endforeach

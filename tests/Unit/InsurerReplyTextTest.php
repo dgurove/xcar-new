@@ -49,6 +49,13 @@ class InsurerReplyTextTest extends TestCase
         $this->assertSame('Нужина Елена Александровна', $fields['insured_name']['value']);
         $this->assertSame('+7 906 041-41-67', $fields['insured_phone']['value']);
         $this->assertArrayNotHasKey('contact_name', $fields, 'наш адрес в цитате — не ответственный');
+
+        // Подпись без «С уважением» и цитата Gmail — не контакты; владелец с «тел.» — контакт.
+        $tail = \App\Mail\Extraction\Templates\Template::contacts("Документы во вложении.\nНужин Владислав Николаевич, тел. 8 967 124-01-10\nСпасибо!\nИванова Мария, специалист\n8 (495) 111-22-33, доб. 12\n"
+            ."пн, 17 нояб. 2026 г. в 11:46, Павел <p.roevnev@tbank.ru>:\nПетров Пётр 8 999 000-11-22");
+        $this->assertSame([['name' => 'Нужин Владислав Николаевич', 'phone' => '+7 967 124-01-10']], $tail);
+        $gmail = \App\Mail\Extraction\Templates\Template::contacts("Ок\nпн, 17 нояб. 2026 г. в 11:46, Павел <p.roevnev@tbank.ru>:\nПетров Пётр 8 999 000-11-22");
+        $this->assertSame([], $gmail);
     }
 
     /** Ссылку пишет внешний отправитель, ходит по ней наш сервер: только https и не внутренние адреса. */

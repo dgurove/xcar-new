@@ -224,6 +224,9 @@ final class Closing
             'due_at' => ($registry ? now()->addWeekdays($v->vendor?->payment_days ?? 5) : now())->toDateString(),
             'vat' => (bool) $vatRate, 'vat_rate' => $vatRate, 'vat_on_top' => $onTop, 'total' => $onTop ? round($total * (1 + $vatRate / 100), 2) : $total, 'paid' => 0,
         ]);
+        // Свой текст документа (номер и дата акта, основание, строка): черновика — `ClosingText`, иначе исправляемого счёта.
+        $texts = ClosingText::for($month, $group);
+        $invoice->forceFill($texts ? $texts->only(ClosingText::FIELDS) : ($replaces ? $replaces->only(ClosingText::FIELDS) : []));
         $invoice->setRelation('party', $party)->setRelation('charges', $charges->values())->setRelation('vehicle', $registry ? null : $v)
             ->setRelation('payments', collect())->setRelation('deal', null)->setRelation('media', collect())
             // Не вошедшие ТС с причиной — отношением, а не свойством: модель черновика не записывается.

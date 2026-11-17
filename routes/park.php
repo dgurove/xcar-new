@@ -137,6 +137,8 @@ Route::domain(config('xcar.park_host'))->middleware(['auth', 'section:park'])->g
         Route::get('/money/closing/{key}', [MoneyController::class, 'closingPage'])->where('key', '(i\d+|d\d{6}-[A-Za-z0-9_-]+)');
         // Переписка по документу месяца — окно писем (09.11.2026).
         Route::get('/money/closing/{key}/letters', [MoneyController::class, 'closingLetters'])->where('key', '(i\d+|d\d{6}-[A-Za-z0-9_-]+)');
+        // «Текст счёта» (17.11.2026): номер и дата акта, основание, строка — черновику и записанному.
+        Route::post('/money/closing/{key}/text', [MoneyController::class, 'closingText'])->where('key', '(i\d+|d\d{6}-[A-Za-z0-9_-]+)');
         // Живой документ месяца: счёт и акт на лету, «Отправили сами» фиксирует (письмом — `/mail/new?closing=`).
         Route::get('/money/draft', [MoneyController::class, 'draft']);
         Route::get('/money/draft/pdf', [MoneyController::class, 'draftPdf']);

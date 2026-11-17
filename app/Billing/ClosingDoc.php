@@ -274,6 +274,9 @@ final class ClosingDoc
         }
         $no = ($this->invoice ?? $draft)?->fileNo();
         $named = fn (string $title, string $ext) => $title.($no ? ' '.$no : '').'.'.$ext;
+        // Акт — своим номером, если его вписали («Текст счёта», `Invoice::actFileNo`).
+        $actNo = ($this->invoice ?? $draft)?->actFileNo();
+        $actNamed = fn (string $title, string $ext) => $title.($actNo ? ' '.$actNo : '').'.'.$ext;
         $type = fn (string $ext) => match ($ext) {
             'xlsx' => 'sheet', 'docx' => 'word', default => 'pdf'
         };
@@ -291,13 +294,13 @@ final class ClosingDoc
         $out = [['url' => $base.'/pdf', 'type' => 'pdf', 'name' => $named('Счет', 'pdf'), 'label' => 'Счёт', 'ext' => 'pdf']];
         $first = $this->rows->first();
         if (! $first['tow'] && $first['payer'] === 'buyer') {
-            return [...$out, ['url' => $base.'/act', 'type' => 'pdf', 'name' => $named('Акт хранения', 'pdf'), 'label' => 'Акт', 'ext' => 'pdf']];
+            return [...$out, ['url' => $base.'/act', 'type' => 'pdf', 'name' => $actNamed('Акт хранения', 'pdf'), 'label' => 'Акт', 'ext' => 'pdf']];
         }
         $form = $first['vehicle']->vendor?->act_form ?? ActForm::Report;
         $n = 0;
         foreach ($form->files($first['tow']) as $template => $title) {
             $ext = pathinfo($template, PATHINFO_EXTENSION);
-            $out[] = ['url' => $base.'/act'.($n ? '?n='.$n : ''), 'type' => $type($ext), 'name' => $named($title, $ext), 'label' => self::actLabel($title), 'ext' => $ext];
+            $out[] = ['url' => $base.'/act'.($n ? '?n='.$n : ''), 'type' => $type($ext), 'name' => $actNamed($title, $ext), 'label' => self::actLabel($title), 'ext' => $ext];
             $n++;
         }
 

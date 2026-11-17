@@ -12,11 +12,8 @@
     // «СТОЯНКА», 05.11.2026): услуга за месяц на основании договора согласно акту, «Кол-во» — число ТС, цены нет.
     $registry = $invoice->isRegistry();
     $tow = $invoice->kind === \App\Billing\ChargeKind::Tow;
-    $vendor = $registry ? $invoice->registryVehicles()->first()?->vendor : null;
-    $agreement = $tow && $vendor?->tow_agreement_number ? [$vendor->tow_agreement_number, $vendor->tow_agreement_date] : [$vendor?->agreement_number, $vendor?->agreement_date];
-    $contract = $agreement[0] ? 'Договор № '.$agreement[0].($agreement[1] ? ' от '.$agreement[1]->format('d.m.Y').' г.' : '') : null;
-    $lines = $registry ? collect([new \App\Billing\Charge(['title' => ($tow ? 'Услуги по эвакуации транспортных средств' : 'Услуги по хранению автотранспорта').' за '.mb_strtolower($invoice->month->translatedFormat('F Y')).' г.'
-        .($contract ? ' на основании '.str_replace('Договор', 'Договора', $contract) : '').' согласно акту № '.$invoice->docNo().' от '.$invoice->issued_at->format('d.m.Y'),
+    // Строка и основание реестра — `Invoice::registryLine` / `basisText` (свои, если вписали шторкой «Текст счёта»).
+    $lines = $registry ? collect([new \App\Billing\Charge(['title' => $invoice->registryLine(),
         'qty' => $invoice->registryVehicles()->count(), 'unit' => 'ts', 'price' => null, 'amount' => $invoice->charges->sum('amount')])]) : $invoice->charges;
     // Удержанное менеджером вознаграждение — зачёт в момент выставления: печатается и «к оплате».
     $offset = $invoice->payments->where('source', \App\Billing\PaymentSource::Offset)->sum('amount');
@@ -31,7 +28,7 @@
     $embed = ! $pdf && request()->boolean('embed');
     $basis = match (true) {
         (bool) $invoice->vehicle => $invoice->vehicle->titleWithYear().($invoice->vehicle->vin ? ', VIN '.$invoice->vehicle->vin : '').($invoice->vehicle->ref ? ', '.$invoice->vehicle->ref : '').($invoice->vehicle->contract_no ? ', договор № '.$invoice->vehicle->contract_no : ''),
-        $registry => $contract ?? ($tow ? 'Эвакуация транспортных средств' : 'Хранение транспортных средств'),
+        $registry => $invoice->basisText(),
         (bool) $invoice->deal => 'Сделка по предложению № '.$invoice->deal->offer?->number.($invoice->deal->offer ? ', '.$invoice->deal->offer->titleWithYear() : ''),
         default => null,
     };
