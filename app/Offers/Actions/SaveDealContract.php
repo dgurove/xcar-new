@@ -65,6 +65,10 @@ final class SaveDealContract
             } elseif (! empty($data['buyer_id'])) {
                 $buyer = User::whereKey($data['buyer_id'])->where('manager_id', $deal->buyer_id)->first()
                     ?? throw ValidationException::withMessages(['buyer_id' => 'Это не ваш покупатель']);
+                // Заведённый раньше «покупатель» — наше юрлицо (ООО «Р.О.С.» Корабельникова, 17.11.2026) — не покупатель.
+                if ($buyer->party && ($ours = Party::ours($buyer->party->inn) ?? ($buyer->party->is_self ? $buyer->party->seller : null))) {
+                    throw ValidationException::withMessages(['buyer_id' => Party::oursMessage($ours)]);
+                }
                 $contract->buyer_user_id = $buyer->id;
             }
             // ДКП ПРАЙМ (14.11.2026): номер договора комиссии и ставка НДС — выбором сотрудника в карточке ДКП.

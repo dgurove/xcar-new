@@ -418,6 +418,11 @@
                             </div>
                         </div>
                     @endforeach
+                    {{-- Кому выставляет счёт поставщик (17.11.2026, владелец: «как указать, что через Р.О.С., — не понял»): в шагах
+                         покупателя и реквизитов — строкой, «Через Р.О.С.» видно сразу; сменить — строка «Покупатель платит» в «Деньгах». --}}
+                    @if ($deal && ($stage->isRequisitesStep() || $stage->asks === \App\Workflow\Asks::Buyer) && ($invoiceLine = $deal->supplierInvoiceLine()))
+                        <p class="mt-2 text-sm text-ink-muted">{{ $invoiceLine }}</p>
+                    @endif
                     @if ($wantsInvoice || $moves->isNotEmpty() || $stage->template_id || $requests || $payNow->isNotEmpty())
                         @php
                             // Письмо с реквизитами без реквизитов — не кнопкой, а чего не хватает (03.11.2026, владелец: «почему

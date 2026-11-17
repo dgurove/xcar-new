@@ -168,6 +168,10 @@ final class UpdateOffer
         if (in_array('asking_price', $changed, true) && $offer->asking_price) {
             app(CloseEstimates::class)($offer, $by);
         }
+        // «С НДС» у машины в сделке — схема за ним сама: с НДС через Р.О.С. (17.11.2026, `SchemeFollowsVat`).
+        if (in_array('prices_include_vat', $changed, true)) {
+            app(SchemeFollowsVat::class)($offer, $by);
+        }
         if (in_array('insurer_deadline_at', $changed, true)) {
             // Срок от страховой могли вписать после того, как оффер встал на этап.
             Position::where('offer_id', $offer->id)->whereHas('stage', fn ($s) => $s->where('deadline_source', DeadlineSource::InsurerDeadline))

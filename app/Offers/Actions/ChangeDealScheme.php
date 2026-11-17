@@ -2,6 +2,7 @@
 
 namespace App\Offers\Actions;
 
+use App\Offers\OfferEventType;
 use App\Offers\Deal;
 use App\Offers\DealScheme;
 use App\Users\User;
@@ -30,7 +31,17 @@ final class ChangeDealScheme
         if ($was === $scheme) {
             return $deal;
         }
-        ($this->money)($deal, $by, $deal->commission, $deal->commission_mode, $scheme, $deal->share, 'Схема: '.$was->label().' → '.$scheme->label());
+        // Покупателем было вписано наше юрлицо (Р.О.С. «покупателем», чтобы поставщик выставил счёт на Р.О.С., 17.11.2026) —
+        // в новой схеме оно продавец, покупатель снимается: менеджер впишет настоящего. Плательщик-наше юрлицо — тоже.
+        $contract = $deal->contract()->with('buyer.party')->first();
+        if ($contract?->buyer?->party && ($contract->buyer->party->isOurs())) {
+            $contract->forceFill(['buyer_user_id' => null, 'payer' => 'manager'])->save();
+            $deal->offer->log(OfferEventType::Note, $by, ['text' => 'Покупатель «'.$contract->buyer->name.'» снят: наше юрлицо не покупатель']);
+        }
+        if ($deal->payer?->isOurs()) {
+            $deal->forceFill(['payer_party_id' => null])->save();
+        }
+        ($this->money)($deal->fresh(), $by, $deal->commission, $deal->commission_mode, $scheme, $deal->share, 'Схема: '.$was->label().' → '.$scheme->label());
         $deal = $deal->fresh(['offer', 'contract.buyer.party']);
         $this->advance->rehome($deal, $by);
         // Сменился продавец (ПРАЙМ ↔ Р.О.С.) — номер договора прежний: очередь одна на обоих, выданный номер не меняется

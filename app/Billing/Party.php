@@ -289,6 +289,41 @@ class Party extends Model implements HasMedia
     }
 
     /**
+     * Наше юрлицо по ИНН (17.11.2026, владелец: «машина от Альфы с НДС — платёж от ООО «Р.О.С.», покупатель платит Р.О.С.»;
+     * Корабельников завёл «покупателя» ООО «Р.О.С.», чтобы Альфа выставила счёт на Р.О.С.): ПРАЙМ, Р.О.С., ИП Кузнецов.
+     * Покупателем договора и плательщиком сделки оно быть не может — это схема «Через Р.О.С.» (`DealScheme::Ros`).
+     */
+    public static function ours(?string $inn): ?Seller
+    {
+        $inn = preg_replace('/\D+/', '', (string) $inn);
+        if ($inn === '') {
+            return null;
+        }
+        foreach (Seller::cases() as $seller) {
+            if ((string) ($seller->config()['inn'] ?? '') === $inn) {
+                return $seller;
+            }
+        }
+
+        return null;
+    }
+
+    public function isOurs(): bool
+    {
+        return $this->is_self || self::ours($this->inn) !== null;
+    }
+
+    /** Почему наше юрлицо не покупатель — словами для поля и тоста. */
+    public static function oursMessage(Seller $seller): string
+    {
+        $name = (string) ($seller->config()['name'] ?? 'Наша компания');
+
+        return $seller === Seller::Ros
+            ? $name.' не покупатель. С НДС сделка идёт через Р.О.С.: счёт поставщика будет на Р.О.С., а покупателем укажите того, кто покупает'
+            : $name.': это наша компания, не покупатель. Укажите того, кто покупает';
+    }
+
+    /**
      * Контрагент вендора — его реквизиты, других нет: заводится при первом счёте или первой записи реквизитов.
      * Чтение (долги, чипы) базу не трогает: `$create = false` отдаёт незаписанный черновик без id.
      */

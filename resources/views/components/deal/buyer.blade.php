@@ -36,7 +36,23 @@
     // Прежние «Реквизиты фотографией» (10–13.11.2026, «Карточка фирмы»): снимки, что прислал менеджер, — здесь же, чтобы внести
     // данные с них (13.11.2026, Тужиков прислал реквизиты фото, а в CRM их не было видно нигде: «не вижу ни в чате, ни в сделке»).
     $cards = $buyer?->party ? $buyer->party->getMedia('card') : collect();
+    // Покупателем вписано наше юрлицо (17.11.2026: Корабельников — «ООО «Р.О.С.»», чтобы Альфа выставила счёт на Р.О.С.): это
+    // схема «Через Р.О.С.», а не покупатель. Строкой с причиной, админу — «Перевести через Р.О.С.».
+    $ours = $buyer?->party ? (\App\Billing\Party::ours($buyer->party->inn) ?? ($buyer->party->is_self ? $buyer->party->seller : null)) : null;
+    $toRos = $ours && $deal->schemeOf() !== \App\Offers\DealScheme::Ros && $deal->moneyEditable() && auth()->user()?->canManageCrm()
+        && in_array(\App\Offers\DealScheme::Ros, \App\Offers\DealScheme::casesFor($deal->offer->vendor, $deal->offer), true);
 @endphp
+@if ($ours)
+    <div class="row flex-col items-stretch gap-2">
+        <p class="text-danger">{{ \App\Billing\Party::oursMessage($ours) }}</p>
+        @if ($toRos)
+            <form method="post" action="/work/deals/{{ $deal->id }}/scheme" data-turbo-confirm="Перевести сделку через Р.О.С.?" data-turbo-confirm-text="Покупатель заплатит Р.О.С. по счёту с НДС, Р.О.С. заплатит поставщику. Покупателем впишите того, кто покупает">
+                @csrf<input type="hidden" name="scheme" value="ros"><input type="hidden" name="scheme_ok" value="1">
+                <button class="btn btn-s btn-accent">Перевести через Р.О.С.</button>
+            </form>
+        @endif
+    </div>
+@endif
 {{-- Покупатель по договору — строкой «Продажи» (16.11.2026, владелец: «там „Платит“, а там „Плательщик“, и выглядят по-разному»):
      в «страховой напрямую» и ДКП он и платит поставщику или собственнику — «Плательщик — имя ›», как у блока ПРАЙМ; в ПРАЙМ —
      «Покупатель». Кто платит по счёту ПРАЙМ — строкой «Плательщик» над счётом (`x-deal.payer`). --}}

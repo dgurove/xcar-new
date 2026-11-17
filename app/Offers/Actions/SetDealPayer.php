@@ -136,12 +136,19 @@ final class SetDealPayer
                 throw ValidationException::withMessages(['payer' => 'По счёту уже платили — плательщика не поменять']);
             }
             $choice = (string) $data['payer'];
+            // Наше юрлицо плательщиком не бывает — это схема «Через Р.О.С.» (17.11.2026); новое — до заведения стороны.
+            if ($choice === 'new' && ($ours = Party::ours($data['inn'] ?? null))) {
+                throw ValidationException::withMessages(['inn' => Party::oursMessage($ours)]);
+            }
             [$party, $user] = match (true) {
                 $choice === 'manager' => [Party::forUser($deal->buyer), $deal->buyer],
                 str_starts_with($choice, 'user:') => $this->buyer($deal, (int) substr($choice, 5)),
                 str_starts_with($choice, 'party:') => [$this->known($deal, (int) substr($choice, 6)), null],
                 default => [$this->fresh($data), null],
             };
+            if ($choice !== 'manager' && $party->isOurs()) {
+                throw ValidationException::withMessages(['payer' => Party::oursMessage(Party::ours($party->inn) ?? $party->seller ?? \App\Billing\Seller::Ros)]);
+            }
             // Своей стороной всегда, и менеджер тоже (17.11.2026): по умолчанию подбор платит покупатель, выбор «менеджер» должен
             // держаться (`Deal::managerPays` узнаёт его по стороне менеджера).
             $deal->forceFill(['payer_party_id' => $party->id])->save();

@@ -29,7 +29,11 @@ final class PartyRules
             // обязательно; организация — название, ИНН, руководитель, адрес, банк по желанию.
             $prefix.'.kind' => ['nullable', Rule::in(SaveBuyerData::KINDS)],
             $prefix.'.org' => ['required_if:'.$prefix.'.kind,company', 'nullable', 'string', 'max:200'],
-            $prefix.'.inn' => ['required_if:'.$prefix.'.kind,ip,company', 'nullable', 'digits_between:10,12', Rule::when($kind('ip'), 'digits:12')],
+            // Наше юрлицо (ПРАЙМ, Р.О.С., ИП Кузнецов) покупателем не бывает — это схема «Через Р.О.С.» (17.11.2026).
+            $prefix.'.inn' => ['required_if:'.$prefix.'.kind,ip,company', 'nullable', 'digits_between:10,12', Rule::when($kind('ip'), 'digits:12'),
+                function ($attr, $value, $fail) {
+                    ($seller = Party::ours((string) $value)) && $fail(Party::oursMessage($seller));
+                }],
             $prefix.'.kpp' => ['nullable', 'digits:9'],
             $prefix.'.ogrn' => ['required_if:'.$prefix.'.kind,ip', 'nullable', 'digits_between:13,15', Rule::when($kind('ip'), 'digits:15')],
             $prefix.'.legal_address' => ['required_if:'.$prefix.'.kind,company', 'nullable', 'string', 'max:255'],
