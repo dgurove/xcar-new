@@ -66,14 +66,16 @@ final class RepriceAskNotice extends Notice
 
     public function toTelegram(): ?array
     {
+        // Гаражная — ответ кнопками здесь же, цены нет (`RepriceAsk::agreesOnly`, 17.11.2026); остальным цену вводят на странице.
         return ['title' => self::telegramTitle($this->ask), 'lines' => self::telegramLines($this->ask),
-            'keyboard' => [self::buttons($this->ask)], 'button' => 'Ввести цену'];
+            'keyboard' => [self::buttons($this->ask)], 'button' => $this->ask->agreesOnly() ? 'Открыть' : 'Ввести цену'];
     }
 
     /** Цену вводят на странице («Ввести цену» — кнопка-ссылка), здесь — только отказ. @return list<array{text: string, callback_data: string}> */
     public static function buttons(RepriceAsk $ask): array
     {
-        return [['text' => 'Отказываюсь', 'callback_data' => "reprice:{$ask->id}:no"]];
+        return [...($ask->agreesOnly() ? [['text' => 'Согласен', 'callback_data' => "reprice:{$ask->id}:yes"]] : []),
+            ['text' => 'Отказываюсь', 'callback_data' => "reprice:{$ask->id}:no"]];
     }
 
     public static function telegramTitle(RepriceAsk $ask): string
@@ -87,6 +89,11 @@ final class RepriceAskNotice extends Notice
     {
         $p = $ask->pairs();
 
-        return Text::lines($ask->offer, 'Было: '.$p['was'], 'Стало: '.$p['now'], 'Нужна новая цена подтверждения до '.Ago::day($ask->due_at->setTimezone('Europe/Moscow'), true));
+        $due = Ago::day($ask->due_at->setTimezone('Europe/Moscow'), true);
+        if ($ask->agreesOnly()) {
+            return Text::lines($ask->offer, 'Закупочная: '.\App\Support\Money::nums($ask->from_price).' → '.\App\Support\Money::rub($ask->to_price), 'Согласны на новую закупочную? Ответьте до '.$due);
+        }
+
+        return Text::lines($ask->offer, 'Было: '.$p['was'], 'Стало: '.$p['now'], 'Нужна новая цена подтверждения до '.$due);
     }
 }

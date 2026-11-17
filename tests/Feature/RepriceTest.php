@@ -329,6 +329,27 @@ class RepriceTest extends TestCase
         $this->assertSame('manager', \App\Offers\DealTabs::waits($deal->fresh()));
     }
 
+    /** Гаражная — «Согласен» на новую закупочную, без цены подтверждения (17.11.2026, Audi RS 6 Сергея). */
+    public function test_garage_question_is_agree_or_decline_without_price(): void
+    {
+        $deal = app(AcceptBid::class)(app(PlaceBid::class)($this->offer, $this->roman, 1050000), $this->admin, 20000, CommissionMode::Payout, scheme: DealScheme::Insurer);
+        $deal->forceFill(['garage_payer' => \App\Garage\GaragePayer::Manager])->save();
+        app(UpdateOffer::class)($this->offer->fresh(), ['floor_price' => 650000], $this->admin);
+        app(ApplyReprice::class)($this->offer->fresh()->pendingReprice, $this->admin, 650000, [], 'ask');
+        $ask = RepriceAsk::sole();
+        $this->assertTrue($ask->agreesOnly());
+        $this->assertSame('Ответить про новую закупочную', $deal->fresh()->managerTask()['title']);
+        $this->assertSame(['Согласен', 'Отказываюсь'], array_column(\App\Notifications\RepriceAskNotice::buttons($ask), 'text'));
+
+        $card = $this->actingAs($this->roman)->get($deal->fresh()->href());
+        $card->assertOk()->assertSee('Согласен на')->assertDontSee('Новая цена подтверждения');
+
+        $this->actingAs($this->roman)->post('/reprice-asks/'.$ask->id, ['do' => 'agree_cost'])->assertRedirect();
+        $this->assertSame(RepriceAsk::AGREED, $ask->fresh()->state);
+        $this->assertSame(650000, $deal->fresh()->cost);
+        $this->assertNotSame('reprice', \App\Offers\DealTabs::rows(collect([$deal->fresh()->load('offer.positions.stage.block')]))->first()['tab']);
+    }
+
     public function test_admin_rejects_offered_price_or_enters_it_for_manager(): void
     {
         $deal = app(AcceptBid::class)(app(PlaceBid::class)($this->offer, $this->roman, 1050000), $this->admin, 20000, CommissionMode::Payout, scheme: DealScheme::Insurer);

@@ -136,6 +136,29 @@ final class AnswerReprice
     }
 
     /** Отказ: менеджер не берёт по новой цене или админ отказал ему. */
+    /**
+     * Согласен на новую закупочную — гаражная сделка (`RepriceAsk::agreesOnly`, 17.11.2026): цены подтверждения у него нет, меняется
+     * только закупочная сделки (`ApplyReprice::updateDeal` без суммы — договор и неоплаченные счета), показ всем снят.
+     */
+    public function agreeCost(RepriceAsk $ask, User $by): RepriceAsk
+    {
+        $staff = $this->staff($ask, $by);
+        $ask = $this->locked($ask, function (RepriceAsk $ask, Offer $offer) use ($by, $staff) {
+            if (! $ask->agreesOnly()) {
+                throw ValidationException::withMessages(['reprice' => 'Назовите новую цену подтверждения']);
+            }
+            if (! $ask->deal->moneyEditable()) {
+                throw ValidationException::withMessages(['reprice' => 'По счёту сделки уже платили — закупочную меняет админ в CRM']);
+            }
+            $this->apply->updateDeal($ask->deal, $ask->to_price, $by);
+            $this->publish->stop($offer, $by, 'Менеджер согласен на новую закупочную, публикация для других снята');
+            $this->close($ask, $offer, $by, RepriceAsk::AGREED, $staff);
+        });
+        $staff || $this->tellAdmins($ask, $by);
+
+        return $ask;
+    }
+
     public function decline(RepriceAsk $ask, User $by): RepriceAsk
     {
         $staff = $this->staff($ask, $by);

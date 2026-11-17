@@ -108,6 +108,9 @@ class RepriceController
         } elseif ($do === 'counter') {
             $answer->counter($ask, $rub('counter_price'), $by);
             $toast = 'Контрпредложение отправлено';
+        } elseif ($do === 'agree_cost') {
+            $answer->agreeCost($ask, $by);
+            $toast = 'За менеджера: согласен на новую закупочную';
         } elseif ($do === 'agree') {
             $answer->agree($ask, $by);
             $toast = 'За менеджера: согласен';

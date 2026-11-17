@@ -186,6 +186,15 @@ class RepriceAsk extends Model
         return ['was' => $pair($this->shown_from, $this->asking_from), 'now' => $pair($this->shown_to, $this->asking_to)];
     }
 
+    /**
+     * Только «да / нет» на новую закупочную — у гаражной сделки (17.11.2026, владелец по Audi RS 6 Сергея: «она же в гараже, он не
+     * вводил цену подтверждения — просто спрашиваем, согласен ли он на новую цену закупки»). Остальным — их новая цена (10.11.2026).
+     */
+    public function agreesOnly(): bool
+    {
+        return $this->deal_id !== null && (bool) $this->deal?->isGarage();
+    }
+
     /** Ответил админ за менеджера. */
     public function byStaff(): bool
     {

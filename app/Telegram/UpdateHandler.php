@@ -237,7 +237,7 @@ final class UpdateHandler
             return;
         }
         $text = self::body(RepriceAskNotice::telegramTitle($ask), RepriceAskNotice::telegramLines($ask));
-        $open = [[TelegramChannel::button('Ввести цену', Surface::Site->url($ask->deal_id ? $ask->deal->href() : '/offers/'.$ask->offer->number))]];
+        $open = [[TelegramChannel::button($ask->agreesOnly() ? 'Открыть' : 'Ввести цену', Surface::Site->url($ask->deal_id ? $ask->deal->href() : '/offers/'.$ask->offer->number))]];
         if (! $ask->alive()) {
             $this->bot->answer($press->queryId, 'Уже не действует');
             $this->bot->edit($press->chatId, $press->messageId, $text('Уже не действует'), $open);
@@ -245,8 +245,15 @@ final class UpdateHandler
             return;
         }
         $this->confirmed($press, 'reprice', $text, RepriceAskNotice::buttons($ask), $open,
-            ['no' => ['Отказаться? '.$ask->declineMeans(), 'Да, отказываюсь']],
+            ['no' => ['Отказаться? '.$ask->declineMeans(), 'Да, отказываюсь'],
+                'yes' => ['Согласны на новую закупочную '.\App\Support\Money::rub($ask->to_price).'?', 'Да, согласен']],
             function (string $which) use ($ask, $user) {
+                // Гаражная — «Согласен» на новую закупочную (17.11.2026, `RepriceAsk::agreesOnly`).
+                if ($which === 'yes' && $ask->agreesOnly()) {
+                    app(AnswerReprice::class)->agreeCost($ask, $user);
+
+                    return ['Согласились', 'Согласие — '.Ago::day(now(), true)];
+                }
                 // Цену называют на странице (10.11.2026); прежнее «Согласен» из старых сообщений — туда же.
                 if ($which !== 'no') {
                     return null;

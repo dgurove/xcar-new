@@ -89,6 +89,11 @@ class BidController
 
             return redirect($away)->with('toast', $ask->deal_id ? 'Сделка отменена' : 'Подтверждение снято');
         }
+        if ($do === 'agree_cost') {
+            $answer->agreeCost($ask, $by);
+
+            return back()->with('toast', 'Согласились на новую закупочную');
+        }
         if ($do === 'agree') {
             $answer->agree($ask, $by);
 

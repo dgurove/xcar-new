@@ -26,7 +26,8 @@ final class RepriceAnsweredNotice extends Notice
 
         return match ($ask->state) {
             RepriceAsk::OFFERED => $who.': предлагает '.Money::plain((int) $ask->offered_price).$n,
-            RepriceAsk::AGREED => $who.': '.($ask->counter_price ? 'согласен на ' : 'новая цена ').Money::plain((int) ($ask->bid_id ? $ask->bid?->amount : $ask->deal?->amount)).$n,
+            RepriceAsk::AGREED => $ask->agreesOnly() ? $who.': согласен на закупочную '.Money::plain($ask->to_price).$n
+                : $who.': '.($ask->counter_price ? 'согласен на ' : 'новая цена ').Money::plain((int) ($ask->bid_id ? $ask->bid?->amount : $ask->deal?->amount)).$n,
             default => $who.': отказался от закупочной '.Money::plain($ask->to_price).$n,
         };
     }

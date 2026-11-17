@@ -25,6 +25,26 @@
         <div class="nums mt-1 text-[32px] font-bold leading-tight">{{ Money::rub((int) $ask->offered_price) }}</div>
         <p class="mt-2 text-sm text-ink-muted">Ждём решения</p>
     </div>
+@elseif ($ask?->agreesOnly())
+    {{-- Гаражная (17.11.2026, владелец: «он не вводил цену подтверждения — спрашиваем, согласен ли он на новую цену закупки»): только
+         закупочная было → стало и «Согласен» / «Отказываюсь»; цены продажи и поля цены нет. --}}
+    <div {{ $attributes->class('counter-card') }}>
+        <div class="text-sm text-accent-text">Закупочная изменилась</div>
+        <div class="mt-2 flex flex-col gap-1">
+            <div class="flex items-baseline justify-between gap-3"><span class="text-ink-muted">Было</span><span class="nums">{{ Money::rub($ask->from_price) }}</span></div>
+            <div class="flex items-baseline justify-between gap-3"><span class="text-ink-muted">Стало</span><span class="nums font-bold">{{ Money::rub($ask->to_price) }}</span></div>
+        </div>
+        @error('reprice')<p class="mt-2 text-sm text-danger">{{ $message }}</p>@enderror
+        <form method="post" action="{{ $action }}" class="mt-4" data-turbo-confirm="Согласны на {{ Money::rub($ask->to_price) }}?" data-turbo-confirm-text="Закупочная ТС в гараже станет {{ Money::rub($ask->to_price) }}" data-turbo-confirm-label="Согласен">
+            @csrf<input type="hidden" name="do" value="agree_cost">
+            <button type="submit" class="btn btn-accent w-full">Согласен на {{ Money::rub($ask->to_price) }}</button>
+        </form>
+        <form method="post" action="{{ $action }}" class="mt-2" data-turbo-confirm="Отказаться?" data-turbo-confirm-text="{{ $ask->declineMeans() }}" data-turbo-confirm-label="Отказываюсь">
+            @csrf<input type="hidden" name="do" value="decline">
+            <button type="submit" class="btn btn-quiet w-full">Отказываюсь</button>
+        </form>
+        <p class="mt-2 text-sm">Ответьте до <span class="nums">{{ Ago::html($ask->due_at->setTimezone('Europe/Moscow'), true, words: false) }}</span></p>
+    </div>
 @elseif ($ask)
     @php $p = $ask->pairs(); $was = $ask->amountWas(); $low = $errors->has('low'); @endphp
     <div {{ $attributes->class('counter-card') }}>

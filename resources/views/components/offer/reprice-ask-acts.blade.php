@@ -11,7 +11,15 @@
     $sheetId = 'reprice-ask-'.$ask->id;
 @endphp
 <span {{ $attributes->class('flex shrink-0 flex-wrap items-center gap-2') }}>
-    @if ($ask->isOffered())
+    @if ($ask->agreesOnly())
+        {{-- Гаражная (17.11.2026): цены у него нет — за него только «Согласен» на новую закупочную или «Отказался». --}}
+        <form method="post" action="{{ $action }}" class="contents" data-turbo-confirm="За менеджера: согласен на {{ Money::rub($ask->to_price) }}?" data-turbo-confirm-text="Закупочная ТС в гараже станет {{ Money::rub($ask->to_price) }}" data-turbo-confirm-label="Согласен">
+            @csrf<input type="hidden" name="do" value="agree_cost"><button type="submit" class="{{ $pill }}">Согласен на {{ Money::rub($ask->to_price) }}</button>
+        </form>
+        <form method="post" action="{{ $action }}" class="contents" data-turbo-confirm="За менеджера: отказался?" data-turbo-confirm-text="{{ $ask->declineMeans() }}" data-turbo-confirm-label="Отказался">
+            @csrf<input type="hidden" name="do" value="decline"><button type="submit" class="{{ $pill }}">Отказался</button>
+        </form>
+    @elseif ($ask->isOffered())
         <form method="post" action="{{ $action }}" class="contents" data-turbo-confirm="Принять {{ Money::rub((int) $ask->offered_price) }}?" data-turbo-confirm-text="Сумма сделки станет {{ Money::rub((int) $ask->offered_price) }}, закупочная {{ Money::rub($ask->to_price) }}; договор и счета обновятся" data-turbo-confirm-label="Принять">
             @csrf<input type="hidden" name="do" value="accept"><button type="submit" class="btn btn-s btn-accent shrink-0 !h-8 rounded-full !px-3.5">Принять</button>
         </form>

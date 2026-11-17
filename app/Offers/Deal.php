@@ -404,7 +404,8 @@ class Deal extends Model implements HasMedia
         $position = $this->offer?->position();
         // Выросла закупочная — сначала ответ про цену (28.10.2026, `RepriceAsk`).
         if ($due = RepriceAsk::dealDue()->get($this->offer_id)) {
-            return ['title' => 'Назвать новую цену', 'due' => $due, 'kind' => 'reprice'];
+            // Гаражная — согласие на новую закупочную, без цены (`RepriceAsk::agreesOnly`, 17.11.2026).
+            return ['title' => $this->isGarage() ? 'Ответить про новую закупочную' : 'Назвать новую цену', 'due' => $due, 'kind' => 'reprice'];
         }
         $req = $this->openRequirement;
         if ($req) {
