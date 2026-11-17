@@ -45,7 +45,7 @@ final class ListsCheck extends Command
             $crm('/alarms'),
             $crm('/settings/deliveries'), $crm('/settings/deliveries?view=people'),
             $crm('/offers?preset=garage&vid=table'),
-            ...array_map(fn ($t) => $crm('/work/money?tab='.$t), ['links', 'owed', 'payouts']),
+            ...array_map(fn ($t) => $crm('/work/money?tab='.$t), ['owed', 'payouts', 'owed&paid=1']),
             $crm('/purchases/{purchase}?vid=table'),
             [Surface::Park, '/requests', Role::ParkAdmin],
             [Surface::Park, '/cars?preset=stored', Role::ParkAdmin],

@@ -6,6 +6,7 @@ use App\Billing\Acquiring\PayMethod;
 use App\Billing\ChargeKind;
 use App\Billing\Invoice;
 use App\Billing\PartyName;
+use App\Billing\ServiceTitle;
 use App\Billing\PaymentSource;
 use App\Support\Ago;
 use App\Users\User;
@@ -17,12 +18,17 @@ use Illuminate\Support\Collection;
  */
 final class MoneyRows
 {
-    /** Машина без запятой перед годом («Kia Rio 2019»): запятая отделяет её от плательщика; у разовой — услуга. */
+    /** Машина без запятой перед годом («Kia Rio 2019»): запятая отделяет её от плательщика; у разовой — машина словами или услуга. */
     public static function what(Invoice $i): ?string
     {
         $offer = $i->deal?->offer ?? $i->offer ?? ($i->garageCar ?? $i->garagePayoutCar)?->offer;
 
-        return $offer ? trim($offer->title().' '.$offer->year) : ($i->isService() ? $i->charges->first()?->title : null);
+        // Ручная оплата с машиной словами («Lada Vesta» без предложения) — она, а не название услуги; услуга по умолчанию
+        // («Консультационные услуги по подбору ТС», `ServiceTitle::DEFAULT`) — не ТС: в столбце ТС она раздувала ширину
+        // и ничего не говорила (17.11.2026), строка таблицы пишет «не указано».
+        $title = $i->isService() ? $i->charges->first()?->title : null;
+
+        return $offer ? trim($offer->title().' '.$offer->year) : ($i->car_title ?: ($title !== ServiceTitle::DEFAULT ? $title : null));
     }
 
     /** «Плательщик, машина». */
@@ -91,6 +97,24 @@ final class MoneyRows
         [$state, $tone] = $l->error_at || $l->attempts->isNotEmpty() ? $l->stateLine() : ['ссылку ещё не открывали', null];
 
         return [$state, self::tone($tone)];
+    }
+
+    /**
+     * Что со ссылкой счёта — хвостом статуса строки «Нам должны» (17.11.2026: вкладки ссылок больше нет, её слово переехало
+     * в строку счёта): [слово, тон] или null — ссылки нет или по ней всё ровно.
+     */
+    public static function linkWord(Invoice $i): ?array
+    {
+        $l = $i->openLink();
+
+        return $l ? match ($l->status()[0]) {
+            'new' => ['ссылку не открывали', 'text-ink-muted'],
+            'pending' => ['ссылку открыли', 'text-urgent'],
+            'abandoned' => ['по ссылке не оплатили', 'text-urgent'],
+            'declined' => ['по ссылке не прошла', 'text-danger'],
+            'error' => ['ссылка не открылась', 'text-danger'],
+            default => null,
+        } : null;
     }
 
     /** Срок счёта словами и тоном: «до 8 окт» / «срок прошёл 5 окт». */

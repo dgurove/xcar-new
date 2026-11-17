@@ -238,8 +238,11 @@ class ManualLinkCreditTest extends TestCase
         $this->assertSame('Оплата картой, СБП или SberPay по ссылке:', $lines[3]);
     }
 
-    /** «По ссылкам» — ссылки сделок и ручные одним списком, ТС у строки, отменённые только чипом, старый адрес счёта жив. */
-    public function test_links_list_shows_deal_and_manual_links(): void
+    /**
+     * «Нам должны» — счёт сделки со ссылкой и ручная оплата по ссылке одним списком (17.11.2026: вкладки ссылок больше нет),
+     * ТС у строки, что со ссылкой — словом, «Откуда» — чипом; карточка разовой — её ссылка; аннулированный из списка уходит.
+     */
+    public function test_owed_list_shows_deal_and_manual_links(): void
     {
         $deal = $this->accepted();
         $this->walkTo($deal, 'Связаться с владельцем');
@@ -249,18 +252,18 @@ class ManualLinkCreditTest extends TestCase
         $this->actingAs($this->admin);
 
         $this->get($crm.'/work/money')->assertOk()
-            ->assertSee('data-detail-key="'.$manual->openLink()->id.'"', false)->assertSee('data-detail-key="'.$this->selection($deal)->openLink()->id.'"', false)
-            ->assertSee('Тужиков Евгений')->assertSee(', сделка')
-            ->assertSee('Морковин Дмитрий Евгеньевич')->assertSee('Lada Vesta')->assertSee(', Владелец');
-        $this->get($crm.'/work/money?q='.urlencode('морковин дмитрий'))->assertOk()->assertSee('data-detail-key="'.$manual->openLink()->id.'"', false)->assertDontSee('data-detail-key="'.$this->selection($deal)->openLink()->id.'"', false);
+            ->assertSee('data-detail-key="'.$manual->id.'"', false)->assertSee('data-detail-key="'.$this->selection($deal)->id.'"', false)
+            ->assertSee('Евгений Тужиков')->assertSee('Дмитрий Морковин')->assertSee('Lada Vesta')
+            ->assertSee('ссылку не открывали')->assertSee('Откуда');
+        $this->get($crm.'/work/money?q='.urlencode('морковин дмитрий'))->assertOk()->assertSee('data-detail-key="'.$manual->id.'"', false)->assertDontSee('data-detail-key="'.$this->selection($deal)->id.'"', false);
+        // Старый адрес вкладки ссылок — список «Нам должны».
+        $this->get($crm.'/work/money?tab=links')->assertOk()->assertSee('data-detail-key="'.$manual->id.'"', false);
 
         $link = $manual->openLink();
-        $this->get($crm.'/work/money?peek='.$manual->id, ['Turbo-Frame' => 'detail'])->assertOk()->assertSee('Морковин Дмитрий Евгеньевич')->assertSee('link-'.$manual->openLink()->id.'-car:open', false);
+        $this->get($crm.'/work/money?peek='.$manual->id, ['Turbo-Frame' => 'detail'])->assertOk()->assertSee('Морковин Дмитрий Евгеньевич')->assertSee('link-'.$link->id.'-car:open', false);
+        $this->get($crm.'/work/money?tab=links&peek='.$link->id, ['Turbo-Frame' => 'detail'])->assertOk()->assertSee('link-'.$link->id.'-car:open', false);
         $this->delete($crm.'/work/money/links/'.$link->id)->assertRedirect();
         $this->assertSame(InvoiceState::Void, $manual->fresh()->state);
-
-        $row = 'data-detail-key="'.$link->id.'"';
-        $this->get($crm.'/work/money')->assertDontSee($row, false);
-        $this->get($crm.'/work/money?canceled=1')->assertSee($row, false);
+        $this->get($crm.'/work/money')->assertDontSee('data-detail-key="'.$manual->id.'"', false);
     }
 }

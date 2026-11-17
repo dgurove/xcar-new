@@ -6,20 +6,13 @@ use App\Billing\Acquiring\PayLink;
 use App\Billing\Acquiring\PayLinkState;
 use App\Billing\Invoice;
 use App\Offers\OfferNumber;
-use App\Support\Facets\Facet;
-use App\Support\Facets\Facets;
-use App\Support\Facets\Option;
-use App\Support\Sort;
 use App\Users\User;
-use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Http\Request;
 
 /**
- * «Ссылки» — все ссылки на оплату одним списком (09.10.2026, владелец: «один список из ссылок с сортировкой по дате
- * создания, у всех подписана марка, модель и номер, и подписано, какие созданы сделкой, а какие вручную»): строка —
- * ссылка, а не счёт. Сделки, гараж, взятые менеджером в кабинете и кнопкой «Создать ссылку» — все здесь.
- * Отменённые (заменённые другой суммой, погашенные) — только чипом «Отменённые».
+ * Ссылки на оплату в «Оплатах»: откуда (сделка, гараж, вручную — им же чип «Откуда» у «Нам должны»), кто взял, ТС, слово
+ * состояния и фраза для карточки ссылки. Своего списка у ссылок нет с 17.11.2026 (была вкладка «По ссылкам», 09.10.2026):
+ * счёт со ссылкой стоит в «Нам должны», что с ней — словом в строке (`MoneyRows::linkWord`).
  */
 final class MoneyLinks
 {
@@ -31,20 +24,6 @@ final class MoneyLinks
     public const WITH = ['invoice.party', 'invoice.charges', 'invoice.offer', 'invoice.deal.offer', 'invoice.deal.buyer',
         'invoice.garageCar.offer', 'invoice.garageCar.manager', 'invoice.creditDeal.offer', 'invoice.creditDeal.buyer', 'invoice.creator', 'attempts', 'creator', 'payerUser'];
 
-    public static function sorts(): array
-    {
-        return ['created' => ['Создано', 'desc'], 'payer' => ['Плательщик', 'asc'], 'amount' => ['Сумма', 'desc']];
-    }
-
-    public static function facets(Request $request): Facets
-    {
-        return Facets::for($request, 'crm-money-links',
-            Facet::column('from', 'Откуда', ['источник', 'источника', 'источников'], self::FROM)
-                ->labels(fn (array $keys) => collect(self::FROM_LABELS)->only($keys)->map(fn ($l, $k) => new Option($k, $l))->all())->natural(),
-            Facet::toggle('canceled', 'Отменённые', fn ($q) => $q),
-        );
-    }
-
     /** Ссылки счетов раздела (`Invoice::crmMoney` — его области демо и города), с машиной и плательщиком. */
     public static function query(): Builder
     {
@@ -53,35 +32,7 @@ final class MoneyLinks
             ->whereIn('billing_pay_links.invoice_id', Invoice::crmMoney()->where('direction', 'issued')->select('billing_invoices.id'));
     }
 
-    /** Отменённые — только с чипом; число пилюли — открытые. */
-    public static function base(Facets $facets): Builder
-    {
-        return self::query()->when(! $facets->on('canceled'), fn ($q) => $q->where('billing_pay_links.state', '!=', PayLinkState::Canceled->value));
-    }
-
-    public static function list(Facets $facets, string $qs, Sort $sort)
-    {
-        $q = self::base($facets);
-        $facets->apply($q);
-        // Лупа — `PayLink::search` (пустой запрос — без отбора), по всем ссылкам и без страниц.
-        $q->search($qs)->with(self::WITH);
-        $dir = $sort->dir();
-        match ($sort->key) {
-            'payer' => $q->orderByRaw("coalesce(nullif(billing_pay_links.payer_name, ''), (select name from billing_parties where billing_parties.id = billing_invoices.party_id)) {$dir}"),
-            'amount' => $q->orderBy('billing_pay_links.amount', $dir),
-            default => $q->orderBy('billing_pay_links.created_at', $dir),
-        };
-        $q->orderBy('billing_pay_links.id', $dir);
-
-        return $qs === '' ? $q->paginate(50)->withQueryString() : $q->limit(50)->get();
-    }
-
-    public static function openCount(): int
-    {
-        return self::query()->where('billing_pay_links.state', PayLinkState::Open->value)->count();
-    }
-
-    /** По открытой ссылке пытались и не вышло — пилюля оранжевая. */
+    /** По открытой ссылке пытались и не вышло — красная точка у «Нам должны». */
     public static function tried(): bool
     {
         return self::query()->where('billing_pay_links.state', PayLinkState::Open->value)
@@ -143,16 +94,6 @@ final class MoneyLinks
             'abandoned' => ['не оплатили', 'text-urgent'],
             'declined' => ['не прошла', 'text-danger'],
             default => ['ждём оплату', 'text-ink-muted'],
-        };
-    }
-
-    /** День группы в списке: «Сегодня», «Вчера», «5 октября», прошлый год — с годом. */
-    public static function day(CarbonInterface $t): string
-    {
-        return match (true) {
-            $t->isToday() => 'Сегодня',
-            $t->isYesterday() => 'Вчера',
-            default => $t->translatedFormat($t->isCurrentYear() ? 'j F' : 'j F Y'),
         };
     }
 

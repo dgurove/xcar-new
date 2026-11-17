@@ -1,6 +1,7 @@
 {{-- Вкладка «Оплат» таблицей — вид по умолчанию (07.10.2026, владелец: «мне гораздо удобнее табличные», строки низкие,
      чтобы помещалось больше). Одна `x-ui.table` на вкладку, группы — липкие `x-table.group`: «Проверить» (менеджер пишет,
-     что оплатил), «Ждём» (у «Мы должны» — группа на получателя), «Оплачено» / «Выплачено». Столбцы — `MoneyController::table`, строка —
+     что оплатил), «Просрочено» и «Ждём» с суммой (у «Мы должны» — группа на получателя); оплаченное — только с чипом
+     «Оплаченные» (группа «Оплачено» / «Выплачено», без суммы: накопленное не показываем). Столбцы — `MoneyController::table`, строка —
      `x-money.table-row`; фразы — `MoneyRows`, строка открывает карточку рядом. --}}
 @php
     use App\Billing\PartyName; use App\Billing\PaymentSource; use App\Http\Admin\MoneyRows as R; use App\Support\Money;
@@ -16,9 +17,11 @@
     <x-ui.table :id="'money-'.$key" class="mt-2" :table="$columns">
         <x-slot:head><x-table.head :table="$columns" :sort="$titled ? null : $sort"/></x-slot:head>
 
-        {{-- Проверить: менеджер пишет, что оплатил — «Поступило» в карточке. --}}
+        {{-- Проверить: менеджер пишет, что оплатил — «Поступило» в карточке. Сумма у заголовка — сколько пишут, что заплатили. --}}
         @if ($s['claims']->isNotEmpty())
-            <x-table.group :table="$columns" key="claims" title="Проверить" :count="$s['claims']->count()"/>
+            <x-table.group :table="$columns" key="claims" title="Проверить" :count="$s['claims']->count()">
+                <span class="table-group-aside"><span class="nums">{{ Money::rub($s['claims']->sum('amount')) }}</span></span>
+            </x-table.group>
             @foreach ($s['claims'] as $p)
                 <x-money.table-row :table="$columns" :tab="$key" :invoice="$p->invoice" :title="PartyName::short($p->invoice->party->name)" tone="text-urgent"
                     :now="($p->source === PaymentSource::Cash ? 'отдал наличные ' : 'пишет, что оплатил ').\App\Support\Ago::day($p->paid_at)"
@@ -26,17 +29,19 @@
             @endforeach
         @endif
 
-        {{-- Ждём: открытые; по умолчанию сверху те, где по ссылке пытались и не вышло. Что сейчас — одно слово: не прошла по
-             ссылке важнее срока. Частичная — полоской у суммы, а не фразой. --}}
+        {{-- Нам должны (17.11.2026): «Просрочено» и «Ждём» — каждая с суммой остатка у заголовка: сколько нам должны и сколько
+             из этого просрочено видно сразу, без счёта строк. Статус — срок; частичная — «оплачено N %», ссылка — её слово
+             хвостом (`MoneyRows::linkWord`). Сверху в группе — где по ссылке пытались и не вышло. --}}
         @if ($s['open']->isNotEmpty() && $key !== 'payouts')
-            <x-table.group :table="$columns" key="open" title="Ждём" :count="$s['open']->count()"/>
-            @foreach ($s['open'] as $i)
-                @php
-                    $link = $s['tried']->contains($i->id) ? R::link($i) : null;
-                    [$now, $tone] = $link ?? R::due($i) ?? ['срок '.$i->laterLabel(), ''];
-                @endphp
-                <x-money.table-row :table="$columns" :tab="$key" :invoice="$i" :title="PartyName::short($i->party->name)" :now="$now" :tone="$tone"
-                    :manager="R::via($i)" :amount="$i->remaining()" :paid="$i->isPartial() ? 1 - $i->remaining() / $i->total : null"/>
+            @foreach (collect(['overdue' => 'Просрочено', 'open' => 'Ждём'])->map(fn ($t, $g) => [$t, $s['open']->filter(fn ($i) => $i->isOverdue() === ($g === 'overdue'))])->filter(fn ($g) => $g[1]->isNotEmpty()) as $group => [$groupTitle, $bills])
+                <x-table.group :table="$columns" :key="$group" :title="$groupTitle" :count="$bills->count()">
+                    <span class="table-group-aside"><span class="nums">{{ Money::rub($bills->sum(fn ($b) => $b->remaining())) }}</span></span>
+                </x-table.group>
+                @foreach ($bills as $i)
+                    @php [$now, $tone] = R::due($i) ?? ['срок '.$i->laterLabel(), '']; @endphp
+                    <x-money.table-row :table="$columns" :tab="$key" :invoice="$i" :title="PartyName::short($i->party->name)" :now="$now" :tone="$tone" :link="R::linkWord($i)"
+                        :manager="R::via($i)" :amount="$i->remaining()" :paid="$i->isPartial() ? 1 - $i->remaining() / $i->total : null"/>
+                @endforeach
             @endforeach
         @endif
 
