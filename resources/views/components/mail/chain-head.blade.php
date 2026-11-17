@@ -9,7 +9,7 @@
     $stage = $c->stage === CandidateStage::Intake || ! $c->stage ? $c->requestTag() : $c->stageLabel();
     $frame = $window ? 'data-turbo-frame=_top' : '';
 @endphp
-<div class="chain-head">
+<div @class(['chain-head', 'chain-head--window' => $window])>
     <div class="min-w-0 flex-1">
         <div class="chain-head-title {{ $c->hasCar() ? '' : 'text-ink-muted' }}">@if ($c->hasCar())<x-ui.cat-icon :category="\App\Cars\Category::guess($c->title()) ?? \App\Cars\Category::Passenger"/>@endif{{ $c->title() }}</div>
         <div class="chain-head-sub">

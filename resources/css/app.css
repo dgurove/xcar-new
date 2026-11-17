@@ -6083,7 +6083,31 @@ dialog.lightbox:not(.lb-one) .lb-pill--bottom { bottom: calc(var(--lb-strip-bott
   }
 
   .mail-pane { padding: 1.25rem 1.5rem 1.5rem; }
-  .pane-head { display: flex; align-items: flex-start; gap: 1rem; margin-bottom: 1rem; }
+  .pane-head { display: flex; flex-wrap: wrap; align-items: flex-start; gap: .5rem 1rem; margin-bottom: 1rem; }
+  /* Дело письма (`x-mail.case-head`, 17.11.2026, владелец: «из письма никак не попасть в дело машины»): над цепочкой в окне писем,
+     открытом из почты, — строкой, как дело в шаге пути: значок типа ТС кружком, название, справа серым где машина и «›»; ниже
+     волосяная линия. Письмо без машины — «ТС не привязано» и кнопки; в шапке листа ПК — только кнопки справа. */
+  .case-head { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem .625rem; margin-bottom: .875rem; padding-bottom: .875rem; border-bottom: var(--hairline) solid var(--color-hairline); color: var(--color-ink); }
+  .case-head-icon { display: flex; flex: none; align-items: center; justify-content: center; width: 2.25rem; height: 2.25rem; border-radius: 999px; background: var(--color-surface-2); }
+  .case-head-icon .cat-icon { width: 1.25rem; height: 1.25rem; margin: 0; }
+  .case-head-name { flex: 1 1 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
+  .case-head-place { flex: none; font-size: var(--text-sm); color: var(--color-ink-muted); }
+  @media (hover: hover) { a.case-head:hover .case-head-name { color: var(--color-accent-text); } }
+  .case-head-link { flex-basis: 100%; }
+  .case-head-chain { margin-bottom: .875rem; padding-bottom: .875rem; border-bottom: var(--hairline) solid var(--color-hairline); }
+  .case-head-acts { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: .5rem; margin-left: auto; }
+  .case-head-acts > .case-head-link { margin-top: .25rem; }
+  .pane-head .case-head-do { height: 2rem; min-height: 2rem; padding-inline: .875rem; } /* у шапки листа ПК — 32 px, как кнопки у заголовка */
+  .case-head-do { height: 2.25rem; min-height: 2.25rem; padding-inline: 1rem; font-size: var(--text-sm); }
+  /* Без машины — подпись строкой, кнопки под ней поровну: рядом «ТС не привязано» резалось до «ТС не п…». */
+  .case-head--loose > .case-head-name { flex-basis: calc(100% - 2.875rem); }
+  .case-head--loose > .case-head-do, .case-head--loose > form > .case-head-do { flex: 1 1 0; }
+  .case-head--loose > form:not(.case-head-link) { display: contents; }
+  /* Шапка цепочки «Из писем» в окне: название и вендор — строкой, «Не заявка» и «Завести» под ними поровну (на телефоне имя вендора
+     заезжало под кнопки). */
+  .chain-head--window > .min-w-0 { flex-basis: 100% !important; } /* утилита flex-1 разметки сильнее слоя компонентов */
+  .chain-head--window .case-do { flex: 1 1 0; }
+  .chain-head--window > form.contents > .case-do, .chain-head--window > a.case-do { flex: 1 1 0; }
   .pane-topic { flex: 1 1 auto; min-width: 0; font-size: var(--text-sm); line-height: 1.25rem; color: var(--color-ink-muted); overflow-wrap: anywhere; }
   .letter-car.pane-car { flex: 0 1 auto; margin-top: 0; max-width: 50%; }
 

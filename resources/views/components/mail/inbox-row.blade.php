@@ -28,12 +28,13 @@
     $who = $sent ? ($to ? mb_strtolower((string) ($to->email ?: $to->name)) : trim((string) $m->to_preview)) : NodeTitle::who($m);
     $unread = ! $sent && ! $m->is_seen;
     $when = $m->date_at?->isToday() ? $m->date_at->format('H:i') : \App\Support\Ago::at($m->date_at, true);
-    // Окно писем дела на этом письме — тот же адрес, что у карточек «Все делами».
+    // Окно писем дела на этом письме — тот же адрес, что у карточек «Все делами»; `from=mail` — над цепочкой дело письма ссылкой или
+    // «Завести» (`x-mail.case-head`, 17.11.2026: из окна, открытого со строки, в машину было не попасть).
     $letters = match (true) {
-        (bool) $vehicle => '/cars/'.$vehicle->id.'/letters?at='.$m->id,
-        (bool) $offer => '/offers/'.$offer->number.'/letters?at='.$m->id,
+        (bool) $vehicle => '/cars/'.$vehicle->id.'/letters?at='.$m->id.'&from=mail',
+        (bool) $offer => '/offers/'.$offer->number.'/letters?at='.$m->id.'&from=mail',
         (bool) ($t?->candidate_id) => $queue.'/'.$t->candidate_id.'/letters?at='.$m->id,
-        default => $base.'/'.$m->thread_id.'/window?at='.$m->id,
+        default => $base.'/'.$m->thread_id.'/window?at='.$m->id.'&from=mail',
     };
     $unsent = $m->isOurs() && $m->send_state && $m->send_state !== \App\Mail\SendState::Sent ? $m->send_state : null;
 @endphp
