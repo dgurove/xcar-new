@@ -101,7 +101,9 @@ class DealPayerTest extends TestCase
         $this->assertTrue($deal->fresh()->withholds());
         $this->assertTrue($deal->fresh()->buyerPaysReward());
 
-        // Ссылка (по счёту продажи её заводят руками) — на плательщика счёта.
+        // Ссылка (по счёту продажи её заводят руками) — на плательщика счёта, и только после «Отправить менеджеру» (17.11.2026).
+        $this->sendToManager($deal);
+        $invoice = $invoice->fresh();
         $link = app(\App\Billing\Acquiring\Actions\EnsurePayLink::class)($invoice) ?? app(\App\Billing\Acquiring\Actions\CreatePayLink::class)($invoice, $this->manager, 100000,
             \App\Billing\Acquiring\PayerKind::Other, null, $invoice->party->name, null, $invoice->party->email);
         $this->assertSame('ООО Ромашка', $link->payer_name);

@@ -19,7 +19,7 @@ use Illuminate\Validation\ValidationException;
  * (СБП и SberPay — 700 000 ₽), плательщик — сам менеджер, его покупатель или человек по имени. Почта для чека —
  * из профиля или введённая; не знаем — её введёт плательщик на `/pay` (чек ЮKassa приходит только на почту).
  * Прежняя открытая ссылка счёта гаснет. Ссылку, заведённую вместе со счётом (`EnsurePayLink`), в историю
- * предложения не пишем: её никто не делал.
+ * предложения не пишем: её никто не делал. Счёт сделки, который менеджеру ещё не отправили, ссылки не получает никак.
  */
 final class CreatePayLink
 {
@@ -32,6 +32,12 @@ final class CreatePayLink
             // Вознаграждение от поставщика платит вендор по счёту, не человек по ссылке.
             if ($invoice->state !== InvoiceState::Issued || $invoice->isOwed() || $invoice->kind === ChargeKind::Reward) {
                 throw ValidationException::withMessages(['amount' => 'Счёт '.mb_strtolower($invoice->state->label())]);
+            }
+            // Ссылка — только к счёту, который менеджеру уже отправили (17.11.2026, начальник: «пока не нажали „Отправить“,
+            // ссылка не выставляется и не отображается», иначе «Оплаты» захламлялись счетами, которых менеджер не видит).
+            // Одна дверь для всех путей: сама со счётом (`EnsurePayLink`), CRM, кабинет, смена плательщика, `acquiring:backfill-links`.
+            if (! $invoice->isShownToManager()) {
+                throw ValidationException::withMessages(['amount' => 'Счёт ещё не отправлен менеджеру: ссылка появится вместе с ним']);
             }
             $left = round($invoice->remaining() - $invoice->claimed(fresh: true), 2);
             $amount = round($amount, 2);

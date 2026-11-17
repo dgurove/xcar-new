@@ -134,7 +134,9 @@ class MoneyController
         $q = Invoice::crmMoney();
 
         return match ($tab) {
-            'owed' => ($facets ? $facets->applyTo($q) : $q)->where('direction', 'issued'),
+            // Счёт сделки, который менеджеру ещё не отправили, — не долг, а дело «Отправить счёт менеджеру» в сделке (17.11.2026,
+            // начальник: «раздел оплат захламляется»; на проде таких было 169 из 206).
+            'owed' => ($facets ? $facets->applyTo($q) : $q)->where('direction', 'issued')->shownToManager(),
             default => ($facets ? $facets->applyTo($q) : $q)->where('direction', 'owed')->whereIn('kind', self::PAYOUTS),
         };
     }

@@ -126,11 +126,13 @@ class PayLink extends Model
 
     /**
      * Счёт, который платят по ссылке: наш (ПРАЙМ) к оплате по сделке или гаражу, шлюз подключён. Парковка (ИП),
-     * вознаграждение от вендора, наши обязательства и демо — нет. Одна дверь для `EnsurePayLink` и экранов.
+     * вознаграждение от вендора, наши обязательства и демо — нет. Счёт сделки — только отправленный менеджеру
+     * (`Invoice::isShownToManager`, 17.11.2026): до «Отправить менеджеру» ни ссылки, ни «Новая ссылка» в CRM, ни «Онлайн».
+     * Одна дверь для `EnsurePayLink` и экранов; заводит ссылку `CreatePayLink`, он проверяет отправку сам.
      */
     public static function eligible(Invoice $invoice): bool
     {
-        return $invoice->state === InvoiceState::Issued && ! $invoice->isOwed() && ! $invoice->is_demo
+        return $invoice->state === InvoiceState::Issued && ! $invoice->isOwed() && ! $invoice->is_demo && $invoice->isShownToManager()
             && $invoice->seller === Seller::Prime && $invoice->kind !== ChargeKind::Reward
             // Счёт ПРАЙМ за машину по сделке платят по счёту, без ссылки (Совкомбанк, 05.10.2026); ссылка — у подбора и доли.
             && ! ($invoice->deal_id && $invoice->kind === ChargeKind::Sale)

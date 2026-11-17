@@ -153,7 +153,8 @@ final class SetDealPayer
             // счёт № 184: счёт Орлову, ссылка Виеову) — ссылка на плательщика счёта, на ту же сумму.
             foreach (self::invoices($deal) as $invoice) {
                 $link = $invoice->openLink();
-                if ($link && $invoice->party && PayLink::squash((string) $link->payer_name) !== PayLink::squash((string) $invoice->party->name)) {
+                // Не отправленный менеджеру счёт ссылки не получает (`CreatePayLink`): смена плательщика из-за этого не падает.
+                if ($link && $invoice->party && $invoice->isShownToManager() && PayLink::squash((string) $link->payer_name) !== PayLink::squash((string) $invoice->party->name)) {
                     app(CreatePayLink::class)($invoice, $by, (float) $link->amount, PayerKind::Other, null, $invoice->party->name, null, $invoice->party->email ?: $link->payer_email);
                 }
             }

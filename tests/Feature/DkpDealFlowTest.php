@@ -44,7 +44,7 @@ class DkpDealFlowTest extends TestCase
 
     private User $manager;
 
-    private function deal(): array
+    private function deal(bool $send = true): array
     {
         Storage::fake('private');
         Notification::fake();
@@ -63,7 +63,7 @@ class DkpDealFlowTest extends TestCase
         $this->assertSame('Ждём письмо поставщика', $offer->fresh()->stage()->name);
         $this->walkTo($offer, $deal->fresh(), 'Связаться с владельцем');
 
-        $this->sendToManager($deal);
+        $send && $this->sendToManager($deal);
 
         return [$offer, $deal->fresh()];
     }
@@ -155,5 +155,31 @@ class DkpDealFlowTest extends TestCase
         app(CancelDeal::class)($deal, $this->admin);
 
         $this->assertSame(InvoiceState::Void, \App\Billing\Invoice::where('deal_id', $deal->id)->sole()->state);
+    }
+
+    /**
+     * Ссылка на оплату подбора — только вместе с «Отправить менеджеру» (17.11.2026, начальник: «пока не нажали „Отправить“,
+     * ссылка не выставляется и не отображается»). До отправки её не заводит ни сама система, ни дозаполнение ссылок, ни
+     * сотрудник из CRM, и в «Оплатах» такого счёта нет; отправили — ссылка на остаток и строка в «Нам должны».
+     */
+    public function test_link_only_after_invoice_is_sent_to_manager(): void
+    {
+        config(['xcar.yookassa.shop_id' => '1', 'xcar.yookassa.secret' => 'test']);
+        [, $deal] = $this->deal(send: false);
+        $invoice = $deal->issuedInvoices()->sole();
+        $crm = 'http://'.config('xcar.crm_host');
+
+        $this->assertNull($invoice->shown_at);
+        $this->assertNull($invoice->openLink());
+        $this->assertFalse(\App\Billing\Acquiring\PayLink::eligible($invoice));
+        $this->artisan('acquiring:backfill-links')->assertSuccessful();
+        $this->assertNull($invoice->fresh()->openLink());
+        $this->actingAs($this->admin)->post($crm.'/work/money/invoices/'.$invoice->id.'/links', [])->assertSessionHasErrors('amount');
+        $this->assertNull($invoice->fresh()->openLink());
+        $this->actingAs($this->admin)->get($crm.'/work/money')->assertOk()->assertDontSee('data-detail-key="'.$invoice->id.'"', false);
+
+        $this->sendToManager($deal);
+        $this->assertEqualsWithDelta(80000, $invoice->fresh()->openLink()->amount, 0.01);
+        $this->actingAs($this->admin)->get($crm.'/work/money')->assertOk()->assertSee('data-detail-key="'.$invoice->id.'"', false);
     }
 }
