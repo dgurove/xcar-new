@@ -311,7 +311,7 @@ class RepriceTest extends TestCase
     /** Админ отказал по названной цене — сделка отменена, менеджеру сообщение; цена за менеджера — сразу в сделку. */
     /**
      * Пока менеджер думает про новую цену — сделка в «Переоценке», подгруппа «Ждём менеджера», и у гаражной тоже (17.11.2026,
-     * владелец про Audi RS 6 Сергея: «спросил у менеджера — пропала из „Переоценки“»; у гаражной шага переоценки нет).
+     * владелец про Audi RS 6 Сергея: «спросил у менеджера — пропала из „Переоценки“»).
      */
     public function test_open_question_keeps_deal_in_reprice_tab_even_garage(): void
     {
@@ -323,7 +323,7 @@ class RepriceTest extends TestCase
         $this->assertSame('reprice', $row()['tab']);
 
         $deal->forceFill(['garage_payer' => \App\Garage\GaragePayer::Manager])->save();
-        $this->assertNull(\App\Offers\RepriceFlow::for($this->offer->fresh()), 'у гаражной шага переоценки нет');
+        $this->assertNotNull(\App\Offers\RepriceFlow::for($this->offer->fresh()), 'у гаражной тот же шаг переоценки');
         $this->assertSame('reprice', $row()['tab']);
         $this->assertNotContains($row()['todo']['key'] ?? null, ['reply'], 'не «Прочитать ответ» — ждём менеджера');
         $this->assertSame('manager', \App\Offers\DealTabs::waits($deal->fresh()));
@@ -578,6 +578,38 @@ class RepriceTest extends TestCase
         $this->assertNotNull($reprice->fresh()->answered_at);
         $this->assertNull(RepriceFlow::for($this->offer->fresh()));
         $this->assertNull($this->offer->fresh()->position(Track::Sale)->repriceUnanswered());
+    }
+
+    /**
+     * Гаражная — тот же шаг «Переоценка» до ответа поставщику (17.11.2026, владелец про Audi RS 6 Сергея: «нажал, что согласен, — и
+     * она пропала из „Переоценки“, а поставщику мы не ответили»).
+     */
+    public function test_garage_reprice_step_lasts_until_supplier_answered(): void
+    {
+        $deal = app(AcceptBid::class)(app(PlaceBid::class)($this->offer, $this->roman, 1050000), $this->admin, 20000, CommissionMode::Payout, scheme: DealScheme::Insurer);
+        $deal->forceFill(['garage_payer' => \App\Garage\GaragePayer::Manager])->save();
+        $this->offer->update(['claim_ref' => '653253/2026']);
+        $account = DB::table('mail_accounts')->insertGetId(['slug' => 'offer', 'title' => 'offer', 'email' => 'offer@xcar.ru', 'scope' => 'offers',
+            'imap_host' => 'x', 'imap_username' => 'x', 'imap_password' => 'x', 'smtp_host' => 'x', 'smtp_username' => 'x', 'smtp_password' => 'x']);
+        $letter = Message::create(['account_id' => $account, 'direction' => 'in', 'from_email' => 'korochkin@sovcomins.ru', 'subject' => 'RE: 653253/2026',
+            'parsed' => ['keys' => ['code:'.Code::key('653253/2026')], 'own_text' => 'Новая стоимость – 650 000 руб.']]);
+        $reprice = app(DetectReprice::class)($this->offer->fresh(), $letter);
+        app(ApplyReprice::class)($reprice->fresh(), $this->admin, 650000, [], 'ask');
+        $this->assertTrue(RepriceFlow::inRoute($this->offer->fresh()));
+        $tab = fn () => \App\Offers\DealTabs::rows(collect([$deal->fresh()->load('offer.positions.stage.block')]))->first();
+
+        app(AnswerReprice::class)->agreeCost(RepriceAsk::where('deal_id', $deal->id)->sole(), $this->roman);
+        $flow = RepriceFlow::for($this->offer->fresh());
+        $this->assertSame([RepriceFlow::DONE, RepriceFlow::DONE, RepriceFlow::NOW], [$flow->price(), $flow->buyer(), $flow->answer()]);
+        $this->assertSame('reprice', $tab()['tab'], 'согласен — но поставщику не ответили');
+        $this->assertSame('reprice-answer', $tab()['todo']['key'] ?? null);
+        $position = $this->offer->fresh()->position(Track::Sale);
+        $this->assertTrue(\App\Workflow\Position::whereKey($position->id)->needsUs()->exists());
+
+        $sent = Message::create(['account_id' => $account, 'thread_id' => $letter->thread_id, 'direction' => 'out', 'from_email' => 'offer@xcar.ru', 'subject' => 'RE: 653253/2026']);
+        Reprice::answeredBy($sent, $letter, $this->admin);
+        $this->assertNull(RepriceFlow::for($this->offer->fresh()));
+        $this->assertNotSame('reprice', $tab()['tab']);
     }
 
     /** Ответ Альфе — та же закупочная, что встаёт в сделку, с надбавкой к ставке словами (+50 000 или +5 %). */

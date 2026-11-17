@@ -62,7 +62,8 @@
             <p class="reprice-done nums">Цену {{ $reprice->decider ? 'решил '.$reprice->decider->shortName() : 'решили' }} {{ Ago::html($reprice->decided_at, words: false) }}</p>
         @endif
         @if ($taker === RepriceFlow::DONE && $ask && ! $ask->isOpen() && $buyer)
-            <p class="reprice-done nums">{{ $buyer->shortName() }} согласен на {{ Money::rub((int) $flow->deal->amount) }}{{ $ask->answered_at ? ', '.Ago::at($ask->answered_at, words: false) : '' }}</p>
+            {{-- Гаражная — согласие на закупочную, цены подтверждения у неё нет (`RepriceAsk::agreesOnly`, 17.11.2026). --}}
+            <p class="reprice-done nums">{{ $buyer->shortName() }} согласен на {{ $ask->agreesOnly() ? 'закупочную '.Money::rub($ask->to_price) : Money::rub((int) $flow->deal->amount) }}{{ $ask->answered_at ? ', '.Ago::at($ask->answered_at, words: false) : '' }}</p>
         @endif
 
         {{-- Что делать сейчас. --}}
@@ -84,7 +85,7 @@
                     @elseif ($ask?->isCountered())
                         <x-ui.state :tone="$ask->late() ? 'danger' : 'accent'" class="nums">наше {{ Money::rub((int) $ask->counter_price) }} вместо {{ Money::nums((int) $ask->offered_price) }}, {{ $ask->late() ? 'не ответил, срок ' : 'думает до ' }}{{ Ago::at($ask->due_at, true, words: false) }}</x-ui.state>
                     @elseif ($ask?->isPending())
-                        <x-ui.state :tone="$ask->late() ? 'danger' : 'plain'" class="nums">{{ $ask->late() ? 'не назвал цену, срок ' : 'думает до ' }}{{ Ago::at($ask->due_at, true, words: false) }}</x-ui.state>
+                        <x-ui.state :tone="$ask->late() ? 'danger' : 'plain'" class="nums">{{ $ask->late() ? ($ask->agreesOnly() ? 'не ответил, срок ' : 'не назвал цену, срок ') : 'думает до ' }}{{ Ago::at($ask->due_at, true, words: false) }}</x-ui.state>
                     @endif
                 </div>
                 @if ($ask?->isOpen())

@@ -210,7 +210,7 @@ class Position extends Model
     public function repriceUnanswered(): ?Reprice
     {
         $deal = $this->track === Track::Sale ? $this->deal : null;
-        if (! $deal || ! $deal->isActive() || $deal->isGarage() || $this->letterRepriceKnown === false) {
+        if (! $deal || ! $deal->isActive() || $this->letterRepriceKnown === false) {
             return null;
         }
         // Т-Страхование до нашего «Письма о покупке»: ответом на их «Цену за Лот» будет оно (`SupplierLetterWait`, 15.11.2026).
@@ -475,7 +475,7 @@ class Position extends Model
             and not exists (select 1 from billing_invoices si where si.deal_id = d.id and si.kind = 'sale' and si.state <> 'void')))
         or (offer_positions.track = 'sale' and exists (select 1 from offer_reprices r join deals d on d.offer_id = r.offer_id
             where r.offer_id = offer_positions.offer_id and r.state = 'applied' and r.source = 'letter' and r.answered_at is null
-                and ".Deal::ACTIVE_D." and d.garage_payer is null and r.created_at >= d.created_at
+                and ".Deal::ACTIVE_D." and r.created_at >= d.created_at
                 and not exists (select 1 from reprice_asks a where a.deal_id = d.id and a.state in ('pending', 'offered', 'countered'))
                 and not exists (select 1 from workflow_stages ws where ws.id = offer_positions.stage_id
                     and ws.name in ('Ждём письмо поставщика', 'Согласие менеджера', 'Письмо о покупке')

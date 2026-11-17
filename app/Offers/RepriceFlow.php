@@ -39,13 +39,14 @@ final class RepriceFlow
     {
         $deal = $offer->deal;
 
-        return $deal && $deal->isActive() && ! $deal->isGarage() && $offer->positions->isNotEmpty();
+        // Гаражная — тоже (17.11.2026, владелец: Audi RS 6 Сергея «пропала из „Переоценки“, а поставщику мы не ответили»).
+        return $deal && $deal->isActive() && $offer->positions->isNotEmpty();
     }
 
     public static function for(Offer $offer): ?self
     {
         $deal = $offer->deal;
-        if (! $deal || ! $deal->isActive() || $deal->isGarage()) {
+        if (! $deal || ! $deal->isActive()) {
             return null;
         }
         // Ждущая — она; иначе последняя разобранная после начала сделки (до сделки переоценка её не касалась).

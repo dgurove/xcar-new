@@ -274,6 +274,11 @@ final class CarView
         }
         $line = $this->deals && in_array($this->offer->state, [OfferState::Sold, OfferState::Delivered, OfferState::Garage, OfferState::Cancelled], true)
             ? DealLine::forOffer($this->offer) : null;
+        // Идёт переоценка — её шаг и в полосе, как во вкладке и в «Ходе сделки» (17.11.2026: у Audi RS 6 полоса писала этап
+        // маршрута «В гараж: письмо о покупке», а сделка — в «Переоценке»).
+        if ($line && $this->offer->state === OfferState::Sold && RepriceFlow::for($this->offer)) {
+            return [$this->deal?->isGarage() ? 'В гараж: переоценка' : 'Переоценка', 'text-accent-text'];
+        }
 
         return $line ? [$line->word, $line->tone] : [$this->offer->crmTab(), $this->offer->state->textTone() ?: 'text-ink-muted'];
     }
