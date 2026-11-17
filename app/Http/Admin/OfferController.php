@@ -158,9 +158,10 @@ class OfferController
 
     /**
      * Разделы колеса (16.11.2026, владелец выбрал вариант А: «между вариантами подзаголовки, которые не выбираются, а
-     * пролистываются»): первая вкладка раздела → подпись (`x-ui.tab-title :sections`). «Все» — над разделами.
+     * пролистываются»): первая вкладка раздела → подпись (`x-ui.tab-title :sections`). «Все» — над разделами. В «Сделке» —
+     * «Ждём» над вкладками без нашего дела (`DealTabs::WAITING`, 17.11.2026) и линия над «Завершёнными».
      */
-    public const SECTIONS = ['purchases' => 'Закупка', 'gallery' => 'Галерея', 'all_drafts' => 'Черновик', 'all_offers' => 'Предложение', 'all_deals' => 'Сделка', 'garage' => 'Гараж', 'all_archive' => 'Архив'];
+    public const SECTIONS = ['purchases' => 'Закупка', 'gallery' => 'Галерея', 'all_drafts' => 'Черновик', 'all_offers' => 'Предложение', 'all_deals' => 'Сделка', 'agree' => 'Ждём', 'finished' => 'Завершённые', 'garage' => 'Гараж', 'all_archive' => 'Архив'];
 
     /**
      * Столбцы колеса на ПК (17.11.2026, владелец: «не скролл, а просто клик», «три столбца: предложения — черновики, закупка,
@@ -181,7 +182,7 @@ class OfferController
     /** Зелёные числа колеса: ключ вкладки → ключ числа в `counts` (оценки менеджеров, наши дела по этапам сделки). */
     public static function badges(): array
     {
-        return ['estimating' => 'estimating_given', 'priced' => 'priced_given', 'all_deals' => 'all_deals_our', ...collect(DealTabs::TABS)->mapWithKeys(fn ($t, $k) => [$k => $k.'_our'])->all()];
+        return ['estimating' => 'estimating_given', 'priced' => 'priced_given', 'all_deals' => 'all_deals_our', ...collect(DealTabs::TABS)->except(DealTabs::WAITING)->mapWithKeys(fn ($t, $k) => [$k => $k.'_our'])->all()];
     }
 
     /** Вкладка ли сделки: строки — сделки (`DealController::tab`). */
@@ -645,7 +646,7 @@ class OfferController
             // Сводная раздела — машины, что раскладка кладёт в его вкладки (группы те же, числа сходятся с колесом).
             'all_drafts', 'all_offers', 'all_deals', 'all_archive' => $q->whereIntegerInRaw('offers.id', OfferTabs::ids(self::summary($preset))),
             // Сделка (16.11.2026): этап — раскладка `DealTabs`, «Завершённые» — выданные.
-            'reprice', 'letter', 'answered', 'agree', 'invoice', 'paying', 'payout', 'pickup', 'docs' => $q->whereIn('offers.id', DealTabs::ids($preset)),
+            'reprice', 'letter', 'answered', 'check', 'bill', 'arrived', 'payout', 'todo', 'agree', 'invoice', 'paying', 'pickup', 'docs' => $q->whereIn('offers.id', DealTabs::ids($preset)),
             // «Гараж» — все гаражные машины до расчёта, в любом этапе сделки (16.11.2026); расчёт закрыт — в «Завершённых».
             'garage' => $q->whereHas('garageCar', fn ($c) => $c->where('state', '!=', CarState::Settled)),
             // Галерея — окно показа черновика (`GalleryController::scopeFor`); закупки — не предложения: строк-предложений нет.

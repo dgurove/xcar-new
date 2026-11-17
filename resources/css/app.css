@@ -1401,6 +1401,10 @@ html.kb-open { --home-gap: 0px; }
      а счётчики как на разделах»). Два класса — `.badge` ниже по файлу. */
   .tab-wheel-label .tab-wheel-badge { background: var(--color-danger); color: #fff; }
   .tab-wheel-nums { margin-inline-start: auto; display: flex; align-items: center; gap: .5rem; font-size: var(--text-sm); color: var(--color-ink-dim); }
+  /* Вкладка, где мы только ждём (`DealTabs::WAITING`, 17.11.2026, владелец: «regular font полупрозрачный»): обычный вес и
+     полупрозрачное название; выбранная — тоже обычным весом, но в полный цвет. */
+  .tab-wheel-item.is-wait .tab-wheel-label { font-weight: 400; }
+  .tab-wheel-item.is-wait:not([aria-current]) .tab-wheel-label { opacity: .5; }
   /* Колесо — телефон и планшет. Столбцы ПК здесь не нужны: обёртка столбца — `contents`, пункты подряд одним списком. */
   @media (max-width: 1023.98px) {
     .tab-wheel-col { display: contents; }
@@ -1478,6 +1482,7 @@ html.kb-open { --home-gap: 0px; }
     /* Счётчик крупнее: 12 px, как метка (17.11.2026, владелец: кружки 8 px «не читабельны»). */
     .tab-wheel-label .tab-wheel-badge { font-size: var(--text-xs); line-height: 1.5; min-width: 1.5em; padding-inline: .4em; margin-inline-start: .4em; vertical-align: middle; letter-spacing: 0; }
     .tab-wheel-sec.is-solo .tab-wheel-sec-name { display: none; }
+    .tab-wheel-item.is-wait[aria-current] .tab-wheel-label { font-weight: 400; }
   }
   /* ПК: столбцы проявляются лесенкой вслед за заливкой — на 4 px снизу, шаг 40 мс (`--col` в разметке). */
   @media (min-width: 1024px) and (prefers-reduced-motion: no-preference) {

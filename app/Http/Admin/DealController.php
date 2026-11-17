@@ -74,7 +74,7 @@ class DealController
             $preset === 'done' => 'finished',
             // Дела прежнего «Ваш ход» — в свои этапы (16.11.2026).
             default => match ((string) $request->query('todo')) {
-                'reply' => 'answered', 'write', 'request' => 'letter', 'reprice' => 'reprice', 'invoice' => 'invoice', default => 'agree',
+                'reply' => 'answered', 'write', 'request' => 'letter', 'reprice' => 'reprice', 'invoice' => 'bill', default => 'agree',
             },
         };
         $to = ['preset' => $to];
@@ -206,8 +206,8 @@ class DealController
                 $since = fn (array $r) => ($r['todo']['since'] ?? $r['deal']->offer?->position()?->entered_at)?->getTimestamp() ?? PHP_INT_MAX;
 
                 return [
-                    'title' => $ours ? (DealTabs::TODO_TITLES[$first['todo']['title']] ?? $first['todo']['title']) : $wait[substr($key, 5)],
-                    'ours' => $ours, 'rank' => $ours ? $first['todo']['rank'] : 1000 + array_search(substr($key, 5), array_keys($wait), true),
+                    'title' => $ours ? (DealTabs::TODO_TITLES[$first['todo']['title']] ?? $first['todo']['title']) : DealTabs::waitTitle(substr($key, 5)),
+                    'ours' => $ours, 'rank' => $ours ? $first['todo']['rank'] : 1000 + array_search(strtok(substr($key, 5), ':'), array_keys($wait), true),
                     // Письмо об интересе не ушло — группа красным (17.11.2026, владелец).
                     'danger' => $key === 'do:interest-letter',
                     'size' => $rows->count(),

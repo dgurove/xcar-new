@@ -22,8 +22,9 @@
      линия без подписи, в начале столбца ПК — и без линии. drop — параметры
      адреса, что не переносятся в другую вкладку (дела «Ваш ход» `todo`, `sub`); keep — наоборот, только эти (17.11.2026, шапка
      вкладок колеса: чипы у каждой вкладки свои и берутся из памяти `ListPrefs` — чужие из адреса ставили в соседней вкладке
-     одноимённый чип чужим значением: «Этап» сделок в «Этап гаража», и список пустел). --}}
-@props(['pills' => [], 'pill' => '', 'pillParam' => 'view', 'pillHome' => null, 'counts' => [], 'badges' => [], 'bumps' => [], 'fallback' => '', 'id' => 'tab-menu', 'sections' => [], 'heads' => [], 'columns' => [], 'skipEmpty' => true, 'drop' => [], 'keep' => null])
+     одноимённый чип чужим значением: «Этап» сделок в «Этап гаража», и список пустел). waits — вкладки, где мы только ждём
+     (`DealTabs::WAITING`, 17.11.2026, владелец: «regular font полупрозрачный, чтобы показать, что там чисто ждать надо»). --}}
+@props(['pills' => [], 'pill' => '', 'pillParam' => 'view', 'pillHome' => null, 'counts' => [], 'badges' => [], 'bumps' => [], 'fallback' => '', 'id' => 'tab-menu', 'sections' => [], 'heads' => [], 'columns' => [], 'skipEmpty' => true, 'drop' => [], 'keep' => null, 'waits' => []])
 @php
     $action = '/'.ltrim(request()->path(), '/');
     $query = $keep !== null ? array_intersect_key(request()->query(), array_flip($keep)) : array_diff_key(request()->query(), array_flip($drop));
@@ -86,12 +87,12 @@
                 <div class="tab-wheel-col" role="group" style="--col: {{ $loop->index }}" @if ($col['name']) aria-label="{{ $col['name'] }}" @endif>
                     @foreach ($col['keys'] as $key)
                         @php($label = $pills[$key])
-                        {{-- Раздел, чьё имя несёт сама вкладка («Все черновики», `heads`), — линия без подписи; в начале столбца ПК
+                        {{-- Раздел, чьё имя несёт сама вкладка («Все черновики», `heads`; «Гараж», «Завершённые» — то же слово), — линия без подписи; в начале столбца ПК
                              и линии нет (`is-top`): вкладка и есть верх столбца. --}}
                         @isset($sections[$key])
-                            <div @class(['tab-wheel-sec', 'is-solo' => ($size[$key] ?? 0) === 1 || in_array($key, $heads, true), 'is-top' => $loop->first && in_array($key, $heads, true)]) aria-hidden="true"><span class="tab-wheel-sec-line"></span>@unless (in_array($key, $heads, true))<span class="tab-wheel-sec-name">{{ $sections[$key] }}</span>@endunless</div>
+                            <div @class(['tab-wheel-sec', 'is-solo' => ($size[$key] ?? 0) === 1 || in_array($key, $heads, true), 'is-top' => $loop->first && in_array($key, $heads, true)]) aria-hidden="true"><span class="tab-wheel-sec-line"></span>@unless (in_array($key, $heads, true) || $sections[$key] === $label)<span class="tab-wheel-sec-name">{{ $sections[$key] }}</span>@endunless</div>
                         @endisset
-                        <a href="{{ $href($key) }}" @class(['tab-wheel-item text-xl sm:text-2xl', 'is-head' => in_array($key, $heads, true)]) data-turbo-prefetch="false" @isset($bumps[$key]) data-pill-bump="{{ $key }}:{{ $counts[$bumps[$key]] ?? 0 }}" @endisset @if ((string) $pill === $key) aria-current="true" @endif>
+                        <a href="{{ $href($key) }}" @class(['tab-wheel-item text-xl sm:text-2xl', 'is-head' => in_array($key, $heads, true), 'is-wait' => in_array($key, $waits, true)]) data-turbo-prefetch="false" @isset($bumps[$key]) data-pill-bump="{{ $key }}:{{ $counts[$bumps[$key]] ?? 0 }}" @endisset @if ((string) $pill === $key) aria-current="true" @endif>
                             {{-- Зелёное число — сразу за названием (16.11.2026, владелец: «зелёные счётчики возле заголовков, а не справа»):
                                  внутри названия, растёт вместе с ним; серое «всего» — справа. «›» у выбранной — на ПК (на телефоне она
                                  одна, на месте заголовка, `.tab-wheel-chev`). --}}
