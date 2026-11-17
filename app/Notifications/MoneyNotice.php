@@ -83,8 +83,19 @@ final class MoneyNotice extends Notice
         // Срок в прошлом не пишется (12.11.2026: «оплатить до 25.10» 12 ноября).
         $when = $i->due_at ? ($i->due_at->isFuture() ? ', оплатить до '.Ago::day($i->due_at) : '') : ', оплатить '.$i->laterLabel(true);
 
-        return (new self('Счёт '.$i->label().' на '.Money::rub($i->remaining()).$when, $i->deal?->offer?->titleWithYear(), self::path($i, open: true), $i->deal?->offer?->number))
-            ->tg($i, 'Счёт по :car', 'Счёт '.$i->label(), Money::rub($i->remaining()).$when)->about($i)->variant('invoice-issued', 'Счёт выставлен');
+        // Со ссылкой — «Ссылка на оплату подбора 88 190 ₽», счёт за подбор — другой способ оплаты (17.11.2026, владелец: «кажется, что
+        // это счёт на машину»; `Billing\PayOffer`). Без ссылки (ТС от ПРАЙМ) — «Счёт за ТС № 197 на …».
+        if (\App\Billing\PayOffer::linked($i)) {
+            $what = \App\Billing\PayOffer::what($i);
+            $sum = Money::rub(\App\Billing\PayOffer::amount($i));
+
+            return (new self('Ссылка на оплату '.$what.' '.$sum.$when, $i->deal?->offer?->titleWithYear(), self::path($i, open: true), $i->deal?->offer?->number))
+                ->tg($i, 'Оплата '.$what.': :car', 'Ссылка на оплату '.$what, $sum.$when.' — по ссылке или по счёту за '.($what === 'подбора' ? 'подбор' : $what), 'Оплатить')
+                ->about($i)->variant('invoice-issued', 'Ссылка на оплату');
+        }
+
+        return (new self(\App\Billing\PayOffer::invoiceName($i).' на '.Money::rub($i->remaining()).$when, $i->deal?->offer?->titleWithYear(), self::path($i, open: true), $i->deal?->offer?->number))
+            ->tg($i, 'Счёт по :car', \App\Billing\PayOffer::invoiceName($i), Money::rub($i->remaining()).$when)->about($i)->variant('invoice-issued', 'Счёт выставлен');
     }
 
     /** Расчёт по машине в гараже: счёт к оплате или то, что мы должны ему, — ведёт на машину. */

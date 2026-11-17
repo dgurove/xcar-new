@@ -132,7 +132,13 @@ class PayLink extends Model
      */
     public static function eligible(Invoice $invoice): bool
     {
-        return $invoice->state === InvoiceState::Issued && ! $invoice->isOwed() && ! $invoice->is_demo && $invoice->isShownToManager()
+        return $invoice->isShownToManager() && self::linkable($invoice);
+    }
+
+    /** Будет ли у счёта ссылка — без условия «отправлен менеджеру» (что напишем до отправки, `Billing\PayOffer`). */
+    public static function linkable(Invoice $invoice): bool
+    {
+        return $invoice->state === InvoiceState::Issued && ! $invoice->isOwed() && ! $invoice->is_demo
             && $invoice->seller === Seller::Prime && $invoice->kind !== ChargeKind::Reward
             // Счёт ПРАЙМ за машину по сделке платят по счёту, без ссылки (Совкомбанк, 05.10.2026); ссылка — у подбора и доли.
             && ! ($invoice->deal_id && $invoice->kind === ChargeKind::Sale)

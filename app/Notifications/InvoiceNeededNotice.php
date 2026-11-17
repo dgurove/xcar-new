@@ -27,7 +27,13 @@ final class InvoiceNeededNotice extends Notice
 
     public function text(): ?string
     {
-        return $this->deal->buyer ? 'Менеджер '.$this->deal->buyer->name : null;
+        $who = $this->deal->buyer ? 'Менеджер '.$this->deal->buyer->name : null;
+        if ($this->gap !== 'send') {
+            return $who;
+        }
+        $what = \App\Billing\PayOffer::unsent($this->deal)->map(fn ($i) => \App\Billing\PayOffer::line($i))->implode(', ');
+
+        return implode(', ', array_filter([$what, $who ? mb_lcfirst($who) : null])) ?: null;
     }
 
     public function href(): string

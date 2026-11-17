@@ -2,17 +2,20 @@
      „Отправить счёт“, но только в этапе оплаты — а то сотрудники могут не заметить, что они не отправлены, и удивляться, почему
      не платят»). Не отправлен — рыжая строка дела «Менеджер не видит …», нажатие — шторка: документ (проверить PDF) и «Отправить
      менеджеру» (`x-deal.send-row`, тот же маршрут, что в «Продаже»). Отправлен — тихая строка с галкой и временем.
-     `invoice` — счёт сделки; без него — договор. --}}
+     `invoice` — счёт сделки; без него — договор. Счёт со ссылкой — «Ссылка на оплату подбора N ₽», счёт за подбор в шторке — другой
+     способ оплатить подбор (17.11.2026, владелец: «счёт за подбор — лишь альтернативный способ оплаты», `Billing\PayOffer`). --}}
 @props(['deal', 'invoice' => null])
 @php
     if ($invoice) {
         $sent = $invoice->isShownToManager();
         $at = $invoice->shown_at ?? $invoice->paid_at;
-        $name = 'счёт '.$invoice->label();
+        $linked = \App\Billing\PayOffer::linked($invoice);
+        $name = mb_lcfirst(\App\Billing\PayOffer::name($invoice));
+        $missing = $linked ? 'Менеджер не получил ссылку на оплату '.\App\Billing\PayOffer::what($invoice) : 'Менеджер не видит '.$name;
         $media = $invoice->hasPdf();
         $href = $media ? '/work/money/invoices/'.$invoice->id.'/pdf' : '/work/money/invoices/'.$invoice->id;
         $action = '/work/deals/'.$deal->id.'/invoices/'.$invoice->id.'/show';
-        $sub = \App\Support\Money::rub($invoice->total);
+        $sub = \App\Support\Money::rub(\App\Billing\PayOffer::amount($invoice));
         $sheet = 'send-invoice-'.$invoice->id;
     } else {
         $contract = \App\Offers\DealContract::for($deal);
@@ -34,13 +37,21 @@
 @else
     <div class="contents" data-controller="sheet">
         <x-route.task-row icon="file" urgent :aria-controls="$sheet">
-            Менеджер не видит {{ $name }}
+            {{ $missing ?? 'Менеджер не видит '.$name }}
             @if ($sub)<x-slot:sub>{{ $sub }}</x-slot:sub>@endif
         </x-route.task-row>
-        <x-ui.sheet :id="$sheet" :title="$invoice ? 'Счёт '.$invoice->label() : 'Договор'">
+        <x-ui.sheet :id="$sheet" :title="$invoice ? \App\Billing\PayOffer::name($invoice) : 'Договор'">
             <div class="list">
-                @if ($invoice)
-                    <x-deal.doc-row :href="$href" :title="'Счёт '.$invoice->label()" :date="\App\Support\Ago::day($invoice->issued_at)" name="schet.pdf" :download="$media">
+                @if ($invoice && $linked)
+                    <div class="row justify-between gap-3">
+                        <span class="min-w-0">К оплате<span class="row-sub">{{ $invoice->party?->title() }}</span></span>
+                        <span class="nums whitespace-nowrap">{{ $sub }}</span>
+                    </div>
+                    <x-deal.doc-row :href="$href" :title="\App\Billing\PayOffer::invoiceName($invoice)" :date="\App\Support\Ago::day($invoice->issued_at)" name="schet.pdf" :download="$media">
+                        <span>или оплатить по счёту</span>
+                    </x-deal.doc-row>
+                @elseif ($invoice)
+                    <x-deal.doc-row :href="$href" :title="\App\Billing\PayOffer::invoiceName($invoice)" :date="\App\Support\Ago::day($invoice->issued_at)" name="schet.pdf" :download="$media">
                         <span>{{ $invoice->party?->title() }}</span><span class="nums whitespace-nowrap">{{ \App\Support\Money::rub($invoice->total) }}</span>
                     </x-deal.doc-row>
                 @else
@@ -48,7 +59,7 @@
                         <span>{{ $contract->buyer?->party?->name }}</span>@if ($contract->price)<span class="nums whitespace-nowrap">{{ \App\Support\Money::rub($contract->price) }}</span>@endif
                     </x-deal.doc-row>
                 @endif
-                <x-deal.send-row :deal="$deal" :action="$action"/>
+                <x-deal.send-row :deal="$deal" :action="$action" :label="$invoice ? \App\Billing\PayOffer::sendLabel($invoice) : 'Отправить менеджеру'"/>
             </div>
         </x-ui.sheet>
     </div>

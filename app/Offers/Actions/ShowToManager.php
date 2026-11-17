@@ -34,7 +34,7 @@ final class ShowToManager
             // Номер и дата счёта — днём отправки (`Numbering::assign`, 16.11.2026): до неё счёт без номера.
             \App\Billing\Numbering::assign($invoice);
             $invoice->update(['shown_at' => now(), 'shown_by' => $by->id]);
-            $deal->offer->log(OfferEventType::Note, $by, ['text' => 'Счёт '.$invoice->label().' отправлен менеджеру']);
+            $deal->offer->log(OfferEventType::Note, $by, ['text' => \App\Billing\PayOffer::sent($invoice)]);
 
             return $invoice;
         });

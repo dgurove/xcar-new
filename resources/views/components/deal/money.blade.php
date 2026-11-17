@@ -261,11 +261,11 @@
                     {{-- Счёт — файлом, как документ (15.11.2026, владелец: «счёт должен быть не страницей, а кнопкой „Скачать PDF“»;
                          из вариантов выбрал «файлом»): значок PDF с весом, «Счёт № 184 от 13.11», ниже кто платит и сумма; нажатие —
                          PDF в шторке документов, справа — «Скачать». Файла нет — строка ведёт на страницу счёта. --}}
-                    <x-deal.doc-row :href="$pdf ?? '/work/money/invoices/'.$i->id" :title="'Счёт '.$i->label()" :date="\App\Support\Ago::day($i->issued_at)" name="schet.pdf" :download="(bool) $pdf">
+                    <x-deal.doc-row :href="$pdf ?? '/work/money/invoices/'.$i->id" :title="\App\Billing\PayOffer::invoiceName($i)" :date="\App\Support\Ago::day($i->issued_at)" name="schet.pdf" :download="(bool) $pdf">
                         @if (! $payerRow || $i->party_id !== $payerId)<span>{{ $i->party?->title() }}</span>@endif<span class="nums whitespace-nowrap">{{ $i->isPartial() && $i->remaining() > 0 ? 'осталось '.Money::rub($i->remaining()).' из '.Money::rub($i->total) : Money::rub($i->total) }}</span>@if ($i->deal_id && $i->shown_at)<span class="text-ink-muted">у менеджера с {{ \App\Support\Ago::day($i->shown_at) }}</span>@elseif (! $i->isShownToManager())<span class="text-ink-muted">не отправлен</span>@endif
                     </x-deal.doc-row>
                     {{-- Менеджер видит счёт только после «Отправить» (16.11.2026): сотрудник сперва проверяет. --}}
-                    @if (! $i->isShownToManager() && $i->state !== InvoiceState::Void)<x-deal.send-row :deal="$deal" :action="'/work/deals/'.$deal->id.'/invoices/'.$i->id.'/show'"/>@endif
+                    @if (! $i->isShownToManager() && $i->state !== InvoiceState::Void)<x-deal.send-row :deal="$deal" :action="'/work/deals/'.$deal->id.'/invoices/'.$i->id.'/show'" :label="\App\Billing\PayOffer::sendLabel($i)"/>@endif
                     {{-- Ссылка на оплату — своей строкой под счётом: её состояние и «Скопировать» / «Отправить». --}}
                     @if ($link && $link->isOpen())
                         <x-ui.share-link variant="row" :url="$link->url()" title="Оплата по ссылке" :text="$link->message()" label="Ссылка на оплату" :sub="$linkState" done="Ссылка на оплату в буфере"/>

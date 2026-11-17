@@ -420,8 +420,14 @@ class Position extends Model
         return match ($gap) {
             'share' => ['title' => 'Вписать вознаграждение менеджера', 'button' => 'Вписать вознаграждение', 'url' => $money],
             'commission' => ['title' => 'Назначить вознаграждение', 'button' => 'Назначить вознаграждение', 'url' => $money],
-            // Счёт готов, менеджер его не видит, пока сотрудник не проверит и не отправит (16.11.2026).
-            'send' => ['title' => 'Отправить счёт менеджеру', 'button' => 'Отправить счёт', 'url' => $money],
+            // Счёт готов, менеджер его не видит, пока сотрудник не проверит и не отправит (16.11.2026). Что уходит — ссылка на оплату
+            // подбора или счёт за ТС (`Billing\PayOffer`, 17.11.2026, владелец: «кажется, что это счёт на машину»).
+            'send' => (function () use ($deal, $money) {
+                $linked = \App\Billing\PayOffer::unsent($deal)->contains(fn ($i) => \App\Billing\PayOffer::linked($i));
+
+                return $linked ? ['title' => 'Отправить менеджеру ссылку на оплату', 'button' => 'Отправить ссылку', 'url' => $money]
+                    : ['title' => 'Отправить счёт менеджеру', 'button' => 'Отправить счёт', 'url' => $money];
+            })(),
             // Реквизиты продавцов правятся на парковке («Реквизиты»), Р.О.С. — первой строкой «мы».
             'ros_requisites' => ['title' => 'Заполнить реквизиты Р.О.С.', 'button' => 'Заполнить реквизиты Р.О.С.', 'url' => Surface::Park->url('/money/parties')],
             default => ['title' => 'Выставить счёт', 'button' => 'Выставить счёт', 'url' => Surface::Crm->url('/work/invoices/new?offer='.$deal->offer->number)],

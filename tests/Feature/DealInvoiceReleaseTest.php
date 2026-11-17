@@ -89,14 +89,15 @@ class DealInvoiceReleaseTest extends TestCase
         // В ходе сделки на шаге оплаты — строка «Менеджер не видит счёт» со шторкой отправки (`x-deal.send-task` в `x-route.path`).
         $this->actingAs($admin);
         $row = fn () => \Illuminate\Support\Facades\Blade::render('<x-deal.send-task :deal="$deal" :invoice="$invoice"/>', ['deal' => $deal->fresh(), 'invoice' => $invoice->fresh()]);
-        $this->assertStringContainsString('Менеджер не видит счёт без номера', $row());
+        // Что уходит — словами `Billing\PayOffer` (17.11.2026): шлюз в тесте не подключён — счёт, а не ссылка; «без номера» не пишем.
+        $this->assertMatchesRegularExpression('/Менеджер не видит счёт за \S+\s*</u', $row());
         $this->assertStringContainsString('/work/deals/'.$deal->id.'/invoices/'.$invoice->id.'/show', $row());
 
         // «Отправить менеджеру» — видит, уведомление, ход его.
         app(ShowToManager::class)->invoice($deal->fresh(), $invoice, $admin);
         $this->assertSame(1, $invoice->fresh()->number);
         $this->assertTrue($invoice->fresh()->isVisibleToManager($manager));
-        $this->assertStringContainsString('Счёт № 1 у менеджера', $row());
+        $this->assertStringContainsString('№ 1 у менеджера', $row());
         $this->assertStringNotContainsString('Менеджер не видит', $row());
         Notification::assertSentTo($manager, MoneyNotice::class);
         $this->assertNull($position->fresh()->waits_for);

@@ -46,7 +46,7 @@ class DealContractController
         abort_unless($invoice->deal_id === $deal->id && $deal->buyer_id, 404);
         $show->invoice($deal, $invoice, $request->user());
 
-        return back()->with('toast', 'Счёт '.$invoice->label().' отправлен менеджеру');
+        return back()->with('toast', \App\Billing\PayOffer::sent($invoice->fresh()));
     }
 
     /** «Отправить менеджеру» у договора (16.11.2026): до того у менеджера «Договор готовится». */

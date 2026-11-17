@@ -2,10 +2,10 @@
      всё ли верно, перед тем как отправляется»; вид — вариант Б: кнопка во всю ширину прямо под документом, без полосы между ними).
      Что менеджер ещё не видит, говорит сам документ второй строкой. Отправлено — кнопки нет, у документа серым «у менеджера с …».
      Без менеджера у сделки — нечего отправлять. --}}
-@props(['action', 'deal'])
+@props(['action', 'deal', 'label' => 'Отправить менеджеру'])
 @if ($deal->buyer_id && auth()->user()?->canEditDeals())
     <form method="post" action="{{ $action }}" class="send-under">
         @csrf
-        <button type="submit" class="btn btn-accent btn-s w-full gap-2"><x-ui.icon name="send" class="size-4"/>Отправить менеджеру</button>
+        <button type="submit" class="btn btn-accent btn-s w-full gap-2"><x-ui.icon name="send" class="size-4"/>{{ $label }}</button>
     </form>
 @endif

@@ -18,6 +18,14 @@ final class InvoiceNeeded extends Message
 
     protected function lines(): array
     {
+        // Отправить менеджеру — что именно и на сколько, а не цена сделки (17.11.2026, владелец: «кажется, что это счёт на машину»).
+        if ($this->gap === 'send') {
+            return Text::lines($this->deal->offer, ...[
+                ...\App\Billing\PayOffer::unsent($this->deal)->map(fn ($i) => \App\Billing\PayOffer::line($i))->all(),
+                $this->deal->buyer ? 'Менеджер '.$this->deal->buyer->name : null,
+            ]);
+        }
+
         return Text::lines($this->deal->offer,
             $this->deal->buyer ? 'Менеджер '.$this->deal->buyer->name : null,
             $this->deal->amount ? 'Цена подтверждения '.Money::rub($this->deal->amount) : null);
