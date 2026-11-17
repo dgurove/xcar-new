@@ -89,7 +89,7 @@ class Car extends Model
     public static function forOffer(Offer $offer, ?User $user = null): ?self
     {
         $car = self::with(['manager', 'costs.author', 'invoice.payments', 'payoutInvoice', 'deal'])->where('offer_id', $offer->id)->first();
-        if (! $car || ($user && ! $user->isAdmin() && $car->manager_id !== $user->id)) {
+        if (! $car || ($user && ! $user->garageStaff() && $car->manager_id !== $user->id)) {
             return null;
         }
         $car->setRelation('offer', $offer->loadMissing(['media', 'settlement']));
@@ -107,7 +107,7 @@ class Car extends Model
     /** Машины одного человека: менеджеру — его, взятые под себя видит только сотрудник; админ-менеджер на сайте — менеджер. */
     public function scopeOf(Builder $q, User $user): Builder
     {
-        return $user->isAdmin() && ! $user->isManager() ? $q : $q->where('manager_id', $user->id);
+        return $user->garageStaff() && ! $user->isManager() ? $q : $q->where('manager_id', $user->id);
     }
 
     /** Потрачено: все расходы или только чьи-то. */

@@ -502,6 +502,15 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
         return $this->roleCan('canEditDeals');
     }
 
+    /**
+     * Сторона площадки в гараже: админ, а в CRM — и модератор (17.11.2026, владелец: модераторам вся работа со сделками и гаражом).
+     * На сайте модератор-менеджер — менеджер со своими машинами.
+     */
+    public function garageStaff(): bool
+    {
+        return $this->isAdmin() || ($this->isModerator() && \App\Support\Surface::current() === \App\Support\Surface::Crm);
+    }
+
     public function isModerator(): bool
     {
         return $this->hasRole(Role::Moderator);
@@ -988,7 +997,7 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
     /** Непрочитанное в чатах: свои чаты и чаты покупателей, где человек — вторая сторона; сотруднику — и площадки. */
     public function unreadChats(bool $platform = true): int
     {
-        $staff = $this->isAdmin() && $platform;
+        $staff = $this->canEditDeals() && $platform;
         $own = $this->canChat();
         if (! $staff && ! $own) {
             return 0;

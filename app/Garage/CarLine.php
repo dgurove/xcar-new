@@ -31,7 +31,7 @@ final class CarLine
     public static function for(Car $car, User $viewer, bool $crm = false): self
     {
         $offer = $car->offer;
-        $staff = $viewer->isAdmin();
+        $staff = $viewer->garageStaff();
         $current = $car->payoutInvoice ?? $car->invoice;
         // Ход менеджера в сделке со страховой — только самому менеджеру и только на сайте.
         $asks = ! $crm && $car->manager_id === $viewer->id ? $car->deal?->openRequirement : null;
@@ -45,7 +45,7 @@ final class CarLine
             $tone = $mine;
         }
         // Покупателю с гаражом его дело — оплатить свой счёт (сумма «к оплате» справа слова не говорила).
-        $pay = ! $crm && ! $asks && ! $viewer->isAdmin() && $car->forBuyer() && $car->manager_id === $viewer->id && ! $car->hidesBuyerPrice()
+        $pay = ! $crm && ! $asks && ! $viewer->garageStaff() && $car->forBuyer() && $car->manager_id === $viewer->id && ! $car->hidesBuyerPrice()
             && ($due = $car->holderInvoice()) && $due->remaining() > 0 && ! $car->buyerHasPaid();
         if ($pay) {
             $tone = $due->isOverdue() ? 'font-medium text-danger' : $mine;

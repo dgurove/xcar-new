@@ -30,7 +30,7 @@ final class DeleteMessage
             if ($message->seq > $chat->{"read_seq_{$other}"} && $chat->{"unread_for_{$other}"} > 0) {
                 $chat->decrement("unread_for_{$other}");
             }
-            if ($by->isAdmin() && $chat->offer) {
+            if ($by->canEditDeals() && $chat->offer) {
                 $chat->offer->log(OfferEventType::Note, $by, ['text' => 'Удалено сообщение в чате, собеседник '.$chat->displayName().': «'
                     .Str::limit((string) ($message->text ?: ($message->files()->exists() ? 'файл' : '')), 80).'»']);
             }

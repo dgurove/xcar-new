@@ -2,7 +2,7 @@
      его сделка или машина в гараже на сайте (`Deal::personUrl`; не вошёл — вход и сюда же). «Скопировать» и
      «Отправить» текстом (`Deal::personText`). Только админу; шторки «Отдано» после «Отдать» нет с 16.11.2026. --}}
 @props(['deal', 'pill' => false, 'inline' => false])
-@php $url = auth()->user()?->canManageCrm() ? $deal->personUrl() : null; @endphp
+@php $url = auth()->user()?->canEditDeals() ? $deal->personUrl() : null; @endphp
 @if ($url && $deal->buyer && ($pill || $inline))
     {{-- Пилюлей в ряду «Чат · Документы» окошка сделки (03.11.2026, владелец: карточка «Ссылка для Евгений Т.» посреди окошка была
          непонятной): нажатие — ссылка с текстом в буфер. --}}

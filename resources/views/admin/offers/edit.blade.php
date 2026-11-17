@@ -48,7 +48,7 @@
         @if ($garageCar)
             {{-- Отданная в гараж — «в гараже», как в сделке, пока идут и бумаги со страховой (владелец 06.10.2026). --}}
             <x-ui.pill tone="plain" href="#garage">В гараже, {{ $garageCar->manager?->shortName() ?? 'взяли под себя' }}</x-ui.pill>
-        @elseif ($admin && $offer->deal)
+        @elseif ($deals && $offer->deal)
             {{-- В сделке пилюля состояния ведёт к дорожке «Сделка» ниже. --}}
             <x-ui.pill :tone="$offer->state->tone()" href="#deal">{{ $offer->crmTab() }}</x-ui.pill>
         @else
@@ -131,7 +131,8 @@
         </form>
 
         {{-- Дорожки — от ширины своей колонки (`@container/lanes`): от 52rem три в линию, уже — две, ещё уже — столбиком. --}}
-        @if ($admin)
+        {{-- Модератору — у машины в сделке или гараже (17.11.2026: вся работа со сделкой); у черновика дорожек у него нет, как было. --}}
+        @if ($admin || ($deals && ($deal || $garageCar)))
             <div class="@container/lanes order-1 min-w-0 @4xl:order-none">@include('admin.offers.lanes')</div>
         @endif
         </div>
@@ -190,7 +191,7 @@
             {{-- «Показ» карточкой — только у сделки; у черновика — строкой в «Ценах», у открытого — в плашке «Приём». --}}
             @unless ($draftShow || $intake)<x-offer.showing :offer="$offer" form="offer-form" :summary="$showingSummary" class="order-3"/>@endunless
             @php $noteDeal = $garageCar?->deal ?? $deal; @endphp
-            @if ($admin && $noteDeal)<x-deal.note :deal="$noteDeal" id="deal-note" class="order-3"/>@endif
+            @if ($deals && $noteDeal)<x-deal.note :deal="$noteDeal" id="deal-note" class="order-3"/>@endif
 
 
             {{-- История — последние четыре записи, остальное по «Ещё N»: лента в тридцать строк занимала экран. История машины,

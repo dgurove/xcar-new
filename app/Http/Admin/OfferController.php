@@ -199,8 +199,8 @@ class OfferController
         $hidden = ['estimating' => true, 'bids' => true, 'done' => true, 'all' => true, 'legacy' => true, 'auction' => true, ...array_fill_keys(array_keys(self::SUMMARIES), true),
             'purchases' => true, 'gallery' => true, 'interest' => true];
 
-        // Модератору (14.11.2026, `canEditDeals`) — сделки для документов: этапы и «Завершённые»; гаража у него нет.
-        return array_diff_key(self::PRESETS, $hidden + ['garage' => true] + ($user->canEditDeals() ? [] : self::DEAL_TABS));
+        // Модератору (`canEditDeals`) — сделки по этапам, «Завершённые» и гараж (17.11.2026, владелец: полный доступ к сделкам и гаражу).
+        return array_diff_key(self::PRESETS, $hidden + ($user->canEditDeals() ? [] : ['garage' => true] + self::DEAL_TABS));
     }
 
     /** Разделы колеса человека — только у разделов, где есть его вкладки. */

@@ -15,8 +15,8 @@
     $home = $user ? $surface->brand() : '/';
     $cabinet = \App\Support\Nav::cabinetRoot();
     $isCurrent = fn (array $item) => \App\Support\Nav::isCurrent($item, $path);
-    // Чаты площадки в шапке CRM — на месте «Избранного» сайта; у модератора их нет.
-    $crmChats = $surface === \App\Support\Surface::Crm && $user?->canManageCrm();
+    // Чаты площадки в шапке CRM — на месте «Избранного» сайта; у модератора с 17.11.2026 тоже (ведёт сделки).
+    $crmChats = $surface === \App\Support\Surface::Crm && $user?->canEditDeals();
     // Тревога «нет покупателя» — ведущим логистику в CRM и логистике, логисту в логистике (`Offers\Binding::alarmsFor`).
     $alarm = \App\Offers\Binding::alarmsFor($user, $surface);
     // Партнёру (поставщик, 07.11.2026) — ни поиска по системе, ни уведомлений: его список ищет лупой сам.

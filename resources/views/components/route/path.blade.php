@@ -36,11 +36,17 @@
     $exits = $stage->exitsFor(Actor::Staff, $deal)->reject(fn ($x) => $x->acceptsBid());
     // «За менеджера» (28.10.2026, владелец: «он мне уже устно подтвердил»): его ответы шага — пунктами «···», нажимает
     // админ (`RouteController::forManager`, в «Истории» — «за менеджера»).
-    $forManager = $deal?->buyer_id && auth()->user()?->canManageCrm() ? $stage->exitsFor(Actor::Manager, $deal) : collect();
+    $forManager = $deal?->buyer_id && auth()->user()?->canEditDeals() ? $stage->exitsFor(Actor::Manager, $deal) : collect();
     $takeFor = $stage->asksConsent() ? $forManager->first(fn ($x) => $x->takes()) : null;
     // Имена блоков как есть: кто вывозит, видно строкой над путём («Стоит у Сергей К.» имя не склоняет).
     $blockName = fn ($block) => $block->name;
     [$breaks, $moves] = $exits->partition(fn ($x) => $x->to?->block && $x->to->block_id !== $stage->block_id && $x->to->block->isDeadEnd())->all();
+    // Модератор ведёт сделку, но решает админ (17.11.2026): ни выходов в тупик («Отказ поставщика»), ни закрытия сделки, ни выставления
+    // в продажу (`RouteController::exit` их не примет).
+    if (! auth()->user()?->canManageCrm()) {
+        $breaks = collect();
+        $moves = $moves->reject(fn ($x) => \App\Offers\Deal::closes($x) || $x->to?->offer_state === \App\Offers\OfferState::Open)->values();
+    }
     // «Заявка отправлена» (Каркаде) — не кнопка: её жмёт само письмо заявки по всем сделкам вендора разом.
     $requestExit = $deal ? $moves->first(fn ($x) => mb_strtolower($x->label) === 'заявка отправлена') : null;
     $requests = $requestExit ? \App\Offers\Deal::awaitingRequest($offer->vendor_id)->count() : 0;
@@ -65,8 +71,9 @@
     // «Поступило / Не поступила» по сообщению менеджера — только где оплату проверяем мы. На «Подтверждении оплаты» страховой
     // (ждём поставщика) — нет (16.11.2026, владелец: «мы этого не знаем: сначала платёжку отправляем в Альфу, они отвечают,
     // что оплачено»): там «Отправить страховой», после письма — её ответ кнопками шага.
-    $claims = $moves->contains($paidExit) && $stage->waits_for !== WaitsFor::Supplier ?$invoices->flatMap(fn ($i) => $i->claims->map(fn ($p) => [$i, $p])) : collect();
-    if ($claims->isNotEmpty()) {
+    $claims = $moves->contains($paidExit) && $stage->waits_for !== WaitsFor::Supplier && auth()->user()?->canManageCrm() ?$invoices->flatMap(fn ($i) => $i->claims->map(fn ($p) => [$i, $p])) : collect();
+    // «Оплата получена / не поступила» — деньги, решает админ (17.11.2026): модератору этих кнопок нет.
+    if ($claims->isNotEmpty() || ! auth()->user()?->canManageCrm()) {
         $moves = $moves->reject($paidExit);
     }
     // «Деньги пришли» в шаге больше нет (16.11.2026, владелец: «непонятно, зачем кнопка, что она делает»; на «Оплате счёта»
@@ -75,7 +82,7 @@
     $payNow = collect();
     $undo = \App\Workflow\Actions\StepBack::undoable($offer, $position->track);
     // «Продлить срок» (19.01.2027, начальник): шагу с часами — +1 день, +3 дня, до даты (`ExtendDeadline`).
-    $extend = $position->deadline_at !== null && auth()->user()?->canManageCrm();
+    $extend = $position->deadline_at !== null && auth()->user()?->canEditDeals();
     // Черновик без цены продажи (владелец 04.10.2026): первый шаг продажи — назначить цену, а не «Выставить в продажу». Шаг не
     // из маршрута — он стоит перед ним текущим с «Оценить» (`/offers/{n}/rate`), а этап маршрута ждёт впереди серым.
     $pricing = $position->track === \App\Workflow\Track::Sale && $offer->state === \App\Offers\OfferState::Draft && ! $offer->asking_price && ! $offer->isScheduled() && auth()->user()?->canManageCrm();
@@ -233,7 +240,7 @@
                     @php
                         $forKeys = $stage->asks === \App\Workflow\Asks::Buyer && ! $deal?->contractSigned() ? collect() : $forManager->reject(fn ($x) => $x->isRetreat());
                         $forKeys = ! $takeFor && ! ($wantsInvoice || $moves->isNotEmpty() || $stage->template_id || $requests || $payNow->isNotEmpty()) ? $forKeys : collect();
-                        $proofFor = $req && $req->asks === \App\Workflow\Asks::Document && $stage->isPayStep() && auth()->user()?->canManageCrm();
+                        $proofFor = $req && $req->asks === \App\Workflow\Asks::Document && $stage->isPayStep() && auth()->user()?->canEditDeals();
                         $reqFiles = $req ? $req->getMedia('files') : collect();
                         // Оплату с документом проходят только с платёжкой (16.11.2026, владелец: «без этого следующий шаг не продвинется»):
                         // «Приложить платёжку за менеджера» и есть этот ход, голого «За менеджера: Оплатил, документ приложен» нет.
@@ -243,7 +250,7 @@
                          „Менеджер“, а так они разорваны»): что он уже приложил, данные покупателя, документ об оплате, его ответы. --}}
                     {{-- Письмо ждёт разбора — оно строкой «Письмо от … / Показать менеджеру?» ниже (`x-deal.reply-review`); «Поставщик ответил»
                          о том же письме второй строкой не пишем (17.11.2026). --}}
-                    @php $letterWaits = $deal?->buyer_id && $position->track === \App\Workflow\Track::Sale && auth()->user()?->canManageCrm()
+                    @php $letterWaits = $deal?->buyer_id && $position->track === \App\Workflow\Track::Sale && auth()->user()?->canEditDeals()
                         && \App\Offers\ReplyReview::pending()->where('deal_id', $deal->id)->exists(); @endphp
                     <x-route.who :position="$position" :offer="$offer" :deal="$deal" :named="! $compact" :replied="! $letterWaits">
                         <x-slot:acts>
@@ -258,7 +265,7 @@
                                     @endforeach
                                 </div>
                             @endif
-                            @if ($buyerData && auth()->user()?->canManageCrm())
+                            @if ($buyerData && auth()->user()?->canEditDeals())
                                 <a href="/offers/{{ $offer->number }}?buyer=1#invoice-buyer" class="btn btn-s btn-quiet" data-turbo-frame="_top">Заполнить реквизиты за менеджера</a>
                             @endif
                             @if ($proofFor)
@@ -286,7 +293,7 @@
                     @endif
                     {{-- День и время подписания (`Signing`, 11.11.2026): пока поставщик готовит договор — что назвал менеджер, или
                          выбрать за него. --}}
-                    @if ($deal && $position->track === \App\Workflow\Track::Sale && $deal->signing_at === null && auth()->user()?->canManageCrm()
+                    @if ($deal && $position->track === \App\Workflow\Track::Sale && $deal->signing_at === null && auth()->user()?->canEditDeals()
                         && \App\Offers\Signing::asksTime($position->stage->loadMissing('exits.to.exits')))
                         @if (\App\Offers\Signing::wish($deal))
                             <x-deal.signing-when :deal="$deal" :action="'/work/deals/'.$deal->id.'/signing-wish'" class="mt-2"/>
@@ -300,7 +307,7 @@
                     @endif
                     {{-- Запись на подписание (`Offers\Signing`): менеджер выбирает время — его варианты плитками (за него), выбрано —
                          карточка встречи. --}}
-                    @if ($deal && $position->track === \App\Workflow\Track::Sale && \App\Offers\Signing::picks($position->stage) && auth()->user()?->canManageCrm())
+                    @if ($deal && $position->track === \App\Workflow\Track::Sale && \App\Offers\Signing::picks($position->stage) && auth()->user()?->canEditDeals())
                         <p class="mt-3 text-sm text-ink-muted">Выбрать за менеджера</p>
                         @if ($deal->signing_slots)
                             <x-deal.signing-pick :deal="$deal" :action="'/work/deals/'.$deal->id.'/signing'" :other="'/work/deals/'.$deal->id.'/signing-wish'" class="mt-2"/>
@@ -313,7 +320,7 @@
                         <x-deal.appointment :deal="$deal" :confirmed="$position->waitsFor() === \App\Workflow\WaitsFor::Manager" :ics="'/work/deals/'.$deal->id.'/signing.ics'" class="mt-3"/>
                     @endif
                     {{-- Контакты филиала (`vendors.signing_office`, 11.11.2026) — кому звонить про запись, только в CRM. --}}
-                    @php $officeContacts = $deal && $position->track === \App\Workflow\Track::Sale && auth()->user()?->canManageCrm()
+                    @php $officeContacts = $deal && $position->track === \App\Workflow\Track::Sale && auth()->user()?->canEditDeals()
                         && (\App\Offers\Signing::awaitsSlots($position->stage) || \App\Offers\Signing::picks($position->stage) || (\App\Offers\Signing::booked($deal) && $position->waitsFor() !== \App\Workflow\WaitsFor::Manager))
                         ? \App\Offers\Signing::office($deal)['contacts'] : []; @endphp
                     @if ($officeContacts)
@@ -328,7 +335,7 @@
                          тогда нет (она — в «···» разбора писем); не показан — красная строка ниже. Время — `shown_at` у файла
                          (`SupplierInvoice::mark`), у прежних — последний показ по сделке. --}}
                     @php
-                        $billShown = $deal && \App\Offers\SupplierInvoice::onPay($deal, $stage) && auth()->user()?->canManageCrm() ? \App\Offers\SupplierInvoice::shown($offer)->first() : null;
+                        $billShown = $deal && \App\Offers\SupplierInvoice::onPay($deal, $stage) && auth()->user()?->canEditDeals() ? \App\Offers\SupplierInvoice::shown($offer)->first() : null;
                         $billShownAt = $billShown ? (($at = $billShown->getCustomProperty('shown_at')) ? \Illuminate\Support\Carbon::parse($at) : (\App\Offers\Disclosures::shown($deal)->first()?->created_at ?? $billShown->updated_at)) : null;
                     @endphp
                     @if ($billShown)
@@ -338,9 +345,9 @@
                         </x-route.task-row>
                     @endif
                     {{-- Письмо поставщика ждёт разбора — строкой в шаге, а не лаймовой плашкой над путём (10.11.2026). --}}
-                    @if ($deal && $position->track === \App\Workflow\Track::Sale && auth()->user()?->canManageCrm())<x-deal.reply-review :deal="$deal" line :manual="false"/>@endif
+                    @if ($deal && $position->track === \App\Workflow\Track::Sale && auth()->user()?->canEditDeals())<x-deal.reply-review :deal="$deal" line :manual="false"/>@endif
                     {{-- Менеджер платит поставщику по его счёту, а счёта не видит (10.11.2026, 0790/046/11079/26) — красной строкой. --}}
-                    @if ($deal && \App\Offers\SupplierInvoice::onPay($deal, $stage) && auth()->user()?->canManageCrm() && \App\Offers\SupplierInvoice::shown($offer)->isEmpty())
+                    @if ($deal && \App\Offers\SupplierInvoice::onPay($deal, $stage) && auth()->user()?->canEditDeals() && \App\Offers\SupplierInvoice::shown($offer)->isEmpty())
                         <div class="contents" data-controller="sheet">
                             <x-route.task-row icon="file" urgent aria-controls="invoice-pay-{{ $position->id }}">Менеджер не видит счёт поставщика</x-route.task-row>
                             <x-deal.supplier-invoice-sheet :id="'invoice-pay-'.$position->id" :deal="$deal"/>
@@ -363,7 +370,7 @@
                     @endif
                     {{-- Документ об оплате (10.11.2026): на шаге оплаты админ прикладывает за менеджера (чек прислал в чат), дальше — одним
                          PDF для страховой (`PaymentProofPdf`), пока письмо об оплате не ушло. --}}
-                    @php $payProof = $deal && auth()->user()?->canManageCrm() ? \App\Offers\Documents\PaymentProofPdf::files($deal)->isNotEmpty() : false; @endphp
+                    @php $payProof = $deal && auth()->user()?->canEditDeals() ? \App\Offers\Documents\PaymentProofPdf::files($deal)->isNotEmpty() : false; @endphp
                     @if ($payProof && ($stage->isPayStep() || ($stage->waits_for === WaitsFor::Supplier && $stage->template_id && $position->letterStatus() !== 'sent')))
                         <x-route.task-row icon="file" :href="'/work/deals/'.$deal->id.'/payment-proof.pdf'" target="_blank">
                             Документ об оплате
@@ -524,7 +531,7 @@
                                 @endif
                             @endforeach
                             @if ($requisitesGap)
-                                <p class="order-first w-full text-sm text-ink-muted">{{ $requisitesGap }}, письмо поставщику пока не написать @if (auth()->user()?->canManageCrm())<a href="{{ $deal->schemeOf()->paysCar() || $deal->isGarageUs() ? \App\Support\Surface::Park->url('/money/parties') : '/offers/'.$offer->number.'?buyer=1#invoice-buyer' }}" class="btn btn-s btn-quiet ml-1" data-turbo-frame="_top">Заполнить</a>@endif</p>
+                                <p class="order-first w-full text-sm text-ink-muted">{{ $requisitesGap }}, письмо поставщику пока не написать @if (auth()->user()?->canEditDeals())<a href="{{ $deal->schemeOf()->paysCar() || $deal->isGarageUs() ? \App\Support\Surface::Park->url('/money/parties') : '/offers/'.$offer->number.'?buyer=1#invoice-buyer' }}" class="btn btn-s btn-quiet ml-1" data-turbo-frame="_top">Заполнить</a>@endif</p>
                             @elseif ($stage->template_id)
                                 {{-- Письмо не ушло — это и есть дело шага: лаймовой первой; ушло — серой «Написать ещё». --}}
                                 @if ($position->letterStatus() === 'failed' && ($failedId = $position->payload['letter_failed']['id'] ?? null))

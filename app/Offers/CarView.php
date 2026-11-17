@@ -32,6 +32,9 @@ final class CarView
 {
     public readonly bool $admin;
 
+    /** Работает со сделками — админ и модератор (`canEditDeals`, 17.11.2026): сделка, гараж, ход сделки, чаты; решения и цены — `$admin`. */
+    public readonly bool $deals;
+
     /** Сделка машины: идущая, иначе последняя состоявшаяся (`lastDeal`) — у админа. */
     public readonly ?Deal $deal;
 
@@ -54,14 +57,15 @@ final class CarView
     private function __construct(public readonly Offer $offer, public readonly User $user, public readonly bool $page, ?Deal $deal = null)
     {
         $this->admin = $user->canManageCrm();
+        $this->deals = $user->canEditDeals();
         $this->load();
         // Строка «Сделок» открывает окно своей сделки: «Закончены» — отменённая или прошлая, у машины уже другая (12.11.2026:
         // окно показывало нынешнее состояние машины без суммы, менеджера и договора той сделки).
-        $this->pastDeal = $this->admin && $deal && ! $deal->isParallel() && $deal->id !== $offer->lastDeal?->id;
-        $this->deal = $this->admin ? ($this->pastDeal ? $deal->setRelation('offer', $offer) : $offer->lastDeal) : null;
-        $this->garageCar = $this->admin ? GarageCar::forOffer($offer) : null;
+        $this->pastDeal = $this->deals && $deal && ! $deal->isParallel() && $deal->id !== $offer->lastDeal?->id;
+        $this->deal = $this->deals ? ($this->pastDeal ? $deal->setRelation('offer', $offer) : $offer->lastDeal) : null;
+        $this->garageCar = $this->deals ? GarageCar::forOffer($offer) : null;
         $this->garageView = $this->garageCar ? GarageView::for($this->garageCar, $user) : null;
-        $this->chats = $this->admin ? Chat::withLast()->withCount('messages')->where('offer_id', $offer->id)->orderByDesc('last_message_at')->get() : collect();
+        $this->chats = $this->deals ? Chat::withLast()->withCount('messages')->where('offer_id', $offer->id)->orderByDesc('last_message_at')->get() : collect();
         // Письма — с почтой CRM (`canCrmMail`): одна проверка на окно и страницу (было три — в виде, в контроллере и никакой).
         $this->letters = $user->canCrmMail() ? OfferFiles::letters($offer, $user) : ['letters' => 0, 'dealLetters' => 0, 'messages' => collect(), 'asks' => collect(), 'stages' => collect()];
         $this->decide();
@@ -77,7 +81,7 @@ final class CarView
     {
         // Окно открывают и подгружают заранее соседям открытой строки — то, что нужно только странице (история, заявки парковки,
         // сводка показов), грузит только страница (12.11.2026).
-        $this->offer->load(['settlement', 'media', 'vendor', ...($this->page ? ['car.events.user.vendor', 'parkVehicle.requests'] : []), ...($this->admin ? [
+        $this->offer->load(['settlement', 'media', 'vendor', ...($this->page ? ['car.events.user.vendor', 'parkVehicle.requests'] : []), ...($this->deals ? [
             'bids.user', 'interests.user.manager', 'interests.placer', 'purchaseCar.purchase', 'purchaseCar.bids.user',
             'parkVehicle.yard', 'vendor.workflows', 'positions.stage.block', 'positions.stage.exits.to.block.stages',
             'positions.stage.workflow', 'deal.buyer', 'lastDeal.buyer', 'lastDeal.bid', 'lastDeal.requirements.media',
@@ -154,6 +158,7 @@ final class CarView
             'offer' => $o,
             'n' => $o->number,
             'admin' => $admin,
+            'deals' => $this->deals,
             'car' => $this,
             'deal' => $this->deal,
             'garageView' => $this->garageView,
@@ -218,7 +223,7 @@ final class CarView
 
             return [$line->word, $line->tone];
         }
-        $line = $this->admin && in_array($this->offer->state, [OfferState::Sold, OfferState::Delivered, OfferState::Garage, OfferState::Cancelled], true)
+        $line = $this->deals && in_array($this->offer->state, [OfferState::Sold, OfferState::Delivered, OfferState::Garage, OfferState::Cancelled], true)
             ? DealLine::forOffer($this->offer) : null;
 
         return $line ? [$line->word, $line->tone] : [$this->offer->crmTab(), $this->offer->state->textTone() ?: 'text-ink-muted'];
@@ -391,7 +396,7 @@ final class CarView
      */
     public function actions(bool $deletable = false): array
     {
-        if (! $this->admin && ! $deletable) {
+        if (! $this->deals && ! $deletable) {
             return [];
         }
         $o = $this->offer;
@@ -402,6 +407,21 @@ final class CarView
         $groups = [];
         $emit = fn (string $event, string $label, string $icon, bool $danger = false) => ['kind' => 'emit', 'event' => $event, 'label' => $label, 'icon' => $icon, 'danger' => $danger];
         $post = fn (string $action, string $label, string $icon, array $fields = [], bool $danger = false, ?string $confirm = null, ?string $text = null, bool $guard = false, ?string $method = null, ?string $confirmLabel = null) => compact('action', 'label', 'icon', 'fields', 'danger', 'confirm', 'text', 'guard', 'method') + ['kind' => 'post', 'confirmLabel' => $confirmLabel];
+
+        // Работа со сделкой — и модератору (17.11.2026): действия «Гаража» и заметка; решения и цены ниже — только админу.
+        $work = [];
+        if ($this->deals) {
+            // «Гараж» окну показать нечего — раздела нет, его действия здесь (12.11.2026).
+            if (! $this->page && $this->garageQuiet() && ($garage = $this->garageMenu())) {
+                $work[] = array_map(fn ($m) => $m[0] === 'emit'
+                    ? $emit($m[1], $m[2], $m[1] === 'cost-new' ? 'plus' : 'edit')
+                    : $post($m[2], $m[3], 'edit', [], $m[1] === 'DELETE', ($m[4] ?? null) ?: null, method: in_array($m[1], ['POST', 'post'], true) ? null : strtolower($m[1])), $garage);
+            }
+            // Пустая заметка в окне не рисуется — пунктом «⋯»: нажатие показывает её поле на месте (12.11.2026, владелец: «мусор»).
+            if (($noteDeal = $this->garageCar?->deal ?? $this->deal) && blank($noteDeal->notes)) {
+                $work[] = [$emit('deal-note-'.$noteDeal->id, 'Заметка', 'edit')];
+            }
+        }
 
         if ($this->admin) {
             if ($v['publishItems'] && ! $v['publishButton']) {
@@ -423,16 +443,9 @@ final class CarView
             if (($v['publishItems'] && Exclusive::due($o)->isNotEmpty()) || ($state === OfferState::Open && Exclusive::running($o)->isNotEmpty())) {
                 $groups[] = [['kind' => 'view', 'view' => 'admin.car.exclusive-off']];
             }
-            // «Гараж» окну показать нечего — раздела нет, его действия здесь (12.11.2026).
-            if (! $this->page && $this->garageQuiet() && ($garage = $this->garageMenu())) {
-                $groups[] = array_map(fn ($m) => $m[0] === 'emit'
-                    ? $emit($m[1], $m[2], $m[1] === 'cost-new' ? 'plus' : 'edit')
-                    : $post($m[2], $m[3], 'edit', [], $m[1] === 'DELETE', ($m[4] ?? null) ?: null, method: in_array($m[1], ['POST', 'post'], true) ? null : strtolower($m[1])), $garage);
-            }
-            // Пустая заметка в окне не рисуется — пунктом «⋯»: нажатие показывает её поле на месте (12.11.2026, владелец: «мусор»).
-            if (($noteDeal = $this->garageCar?->deal ?? $this->deal) && blank($noteDeal->notes)) {
-                $groups[] = [$emit('deal-note-'.$noteDeal->id, 'Заметка', 'edit')];
-            }
+            // Работа со сделкой — на своём месте среди пунктов админа.
+            array_push($groups, ...$work);
+            $work = [];
             // Оценочная неактуальна (15.11.2026, владелец: «надо ждать цены от Альфы») — снять её и закупочную от неё, в «Без закупочной».
             if (DropValuation::allows($o) && auth()->user() && $o->isEditableBy(auth()->user())) {
                 $groups[] = [$post('/offers/'.$n.'/value-stale', 'Оценочная неактуальна', 'undo', [], confirm: 'Оценочная неактуальна?',
@@ -503,6 +516,7 @@ final class CarView
                 $groups[] = $red;
             }
         }
+        array_push($groups, ...$work);
         if ($deletable) {
             $groups[] = [$post('/offers/'.$n, 'Удалить черновик', 'trash', [], true, 'Удалить черновик?', 'Фото и документы удалятся вместе с ним', method: 'delete') + ['top' => true]];
         }

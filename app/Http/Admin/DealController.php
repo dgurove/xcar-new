@@ -86,16 +86,13 @@ class DealController
         return redirect('/offers?'.http_build_query($to + $keep), 301);
     }
 
-    /** Окно строки вкладки сделки: ключ — номер машины; модератору — окно документов её сделки. */
+    /**
+     * Окно строки вкладки сделки: ключ — номер машины. Модератору — то же окно машины (17.11.2026, владелец: «модераторам полный
+     * доступ ко всем сделкам»; до того — урезанное окно документов `admin.deals.docs-window`).
+     */
     private static function window(Request $request, string $key): mixed
     {
-        $offer = OfferNumber::find($key);
-        if ($request->user()->canManageCrm()) {
-            return CarWindow::of($request, $offer);
-        }
-        $deal = $offer?->lastDeal()->with(['offer', 'buyer', 'contract'])->first();
-
-        return $deal && ! $deal->isParallel() ? view('admin.deals.docs-window', ['deal' => $deal]) : null;
+        return CarWindow::of($request, OfferNumber::find($key));
     }
 
     public function tab(Request $request, string $preset)
@@ -292,11 +289,6 @@ class DealController
      */
     public function show(Request $request, Deal $deal)
     {
-        // Модератору страницы машины нет — окно документов в «Сделках».
-        if (! $request->user()->canManageCrm()) {
-            return redirect('/offers?'.http_build_query(['preset' => 'agree', 'peek' => $deal->offer->number]));
-        }
-
         return redirect('/offers/'.$deal->offer->number.($deal->isGarage() ? '#garage' : ''));
     }
 
@@ -377,7 +369,7 @@ class DealController
     /** «Продано» / «Оплачено» нажатием во «Все» (14.11.2026, `SetDealDate`): пустое — очистить. */
     public function dates(Request $request, Deal $deal, SetDealDate $set)
     {
-        abort_unless($request->user()->canManageCrm(), 403);
+        abort_unless($request->user()->canEditDeals(), 403);
         $data = $request->validate(['what' => ['required', Rule::in([DealDates::SOLD, DealDates::PAID])],
             'at' => ['nullable', 'date', 'before_or_equal:today']]);
         // «Очистить» в шторке — та же форма с `clear`: дата в поле остаётся, но снимается.
@@ -404,7 +396,7 @@ class DealController
     /** «Договор уже подписан» (14.11.2026): покупателя и его данных не просим, шаги договора — пройдены (`MarkContractSigned`). */
     public function contractSigned(Request $request, Deal $deal, MarkContractSigned $mark)
     {
-        abort_unless($request->user()->canManageCrm(), 403);
+        abort_unless($request->user()->canEditDeals(), 403);
         $deal = $mark($deal, $request->user());
         $stage = $deal->offer->stage();
 

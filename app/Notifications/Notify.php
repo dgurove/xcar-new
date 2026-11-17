@@ -362,7 +362,8 @@ final class Notify
         }
         if ($e->message->author_kind === AuthorKind::Participant) {
             // Вторая сторона: менеджер покупателя или сотрудники площадки.
-            $to = $chat->manager_id ? collect([$chat->manager])->filter() : $this->staff();
+            // Сотрудники площадки — админы и модераторы: модератор ведёт сделки и чат с менеджером (17.11.2026).
+            $to = $chat->manager_id ? collect([$chat->manager])->filter() : User::withRole(Role::Admin, Role::Moderator)->get();
             $notice = new ChatNotice($e->message, true, $chat->unread_for_staff === 1);
         } else {
             $to = collect([$chat->user])->filter();

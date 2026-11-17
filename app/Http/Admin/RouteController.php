@@ -45,6 +45,13 @@ class RouteController
     {
         // «Выставить в продажу» маршрута — с выбором слота, как кнопка редактора: в слот — маршрут догонят часы
         // (`ChangeOfferState` в 16:00 сам найдёт выход в «Приём»), сейчас — шаг как обычно.
+        // Модератор ведёт сделку (17.11.2026), но решения — у админа: выход в тупик («Отказ поставщика»), закрытие сделки и выставление
+        // в продажу и «Оплата получена / не поступила» (деньги) — нет.
+        if (! $request->user()->canManageCrm()) {
+            $exit->loadMissing('to.block');
+            abort_if(($exit->to?->block && $exit->to->block->isDeadEnd()) || \App\Offers\Deal::closes($exit) || $exit->to?->offer_state === OfferState::Open
+                || preg_match('/^оплата (получена|не поступила)/u', mb_strtolower($exit->label)) === 1, 403);
+        }
         $when = Slots::when($request->input('when'), $request->input('day'), Slots::NOW);
         if ($when !== Slots::NOW && $exit->to?->offer_state === OfferState::Open
             && in_array($offer->state, [OfferState::Draft, OfferState::Gallery], true)) {
@@ -131,7 +138,7 @@ class RouteController
     /** Исход менеджера, нажатый сотрудником: его просьба закрыта этим ответом (кнопки Telegram скажут «Уже отвечено»). */
     private function forManager(Offer $offer, Outcome $exit, TakeExit $take, User $by): Offer
     {
-        abort_unless($by->canManageCrm(), 403);
+        abort_unless($by->canEditDeals(), 403);
         $exit->loadMissing('from');
         $deal = $offer->deal()->first();
         if ($exit->actor !== Actor::Manager || ! $deal?->buyer_id) {

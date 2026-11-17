@@ -21,7 +21,7 @@ final class MoveCar
         if ($car->state === $to) {
             throw ValidationException::withMessages(['car' => 'ТС уже на этапе «'.$to->label().'»']);
         }
-        if ($by->isAdmin()) {
+        if ($by->garageStaff()) {
             if (! $car->state->isWorking() || ! $to->isWorking() || $car->isFrozen()) {
                 throw ValidationException::withMessages(['car' => 'С этапа «'.$car->state->label().'» на «'.$to->label().'» так не перевести']);
             }

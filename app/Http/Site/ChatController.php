@@ -41,7 +41,7 @@ class ChatController
         $chat = $open($offer, $request->user());
         // «С кнопками» (CRM, 10.11.2026): сотрудник шлёт менеджеру своё сообщение с кнопками его открытого шага.
         $step = $request->integer('step') ?: null;
-        $step = $step && $request->user()?->isAdmin() && StepAsk::openFor($chat)?->id === $step ? $step : null;
+        $step = $step && $request->user()?->canEditDeals() && StepAsk::openFor($chat)?->id === $step ? $step : null;
         $this->guarded(fn () => $post($chat, $request->user(), $request->input('text'), $request->file('files', []), $request->integer('reply_to') ?: null, $step));
         $messages = $chat->messages()->with(['author', 'files', 'deletedBy'])->get();
 

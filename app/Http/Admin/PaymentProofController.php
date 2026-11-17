@@ -26,7 +26,7 @@ final class PaymentProofController
 {
     public function store(Request $request, Deal $deal, AttachRequirementFiles $attach, TakeExit $take)
     {
-        abort_unless($request->user()->canManageCrm(), 403);
+        abort_unless($request->user()->canEditDeals(), 403);
         $requirement = $this->open($deal);
         $request->validate(['files' => ['array'], 'files.*' => ['file', 'max:30720'], 'message' => ['nullable', 'integer']]);
         foreach ($request->file('files', []) as $file) {
@@ -57,7 +57,7 @@ final class PaymentProofController
     /** «Это оплата ООО «ПРАЙМ»»: платёжка поставщику — на самом деле чек нашего счёта (`SwapPaymentProof`, 16.11.2026). */
     public function toInvoice(Request $request, Deal $deal, SwapPaymentProof $swap)
     {
-        abort_unless($request->user()->canManageCrm(), 403);
+        abort_unless($request->user()->canEditDeals(), 403);
         $swap->toInvoice($deal, $request->user());
 
         return back()->with('toast', 'Чек перенесли в оплату по счёту, шаг снова «Оплата»');
@@ -65,7 +65,7 @@ final class PaymentProofController
 
     public function remove(Request $request, Deal $deal, Media $media)
     {
-        abort_unless($request->user()->canManageCrm(), 403);
+        abort_unless($request->user()->canEditDeals(), 403);
         $requirement = $this->open($deal);
         abort_unless($media->model_type === $requirement->getMorphClass() && $media->model_id === $requirement->id, 404);
         $media->delete();
@@ -76,7 +76,7 @@ final class PaymentProofController
     /** «Документ об оплате, PDF» — посмотреть или скачать. */
     public function pdf(Request $request, Deal $deal)
     {
-        abort_unless($request->user()->canManageCrm(), 403);
+        abort_unless($request->user()->canEditDeals(), 403);
         $pdf = PaymentProofPdf::render($deal) ?? abort(404);
 
         return response($pdf, 200, ['Content-Type' => 'application/pdf',

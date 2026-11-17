@@ -21,7 +21,7 @@ final class AddCost
         if ($car->isFrozen()) {
             throw ValidationException::withMessages(['amount' => 'По ТС выставлен счёт: сначала аннулируйте его']);
         }
-        $staff = $by->isAdmin();
+        $staff = $by->garageStaff();
         if (! $staff && ! $car->state->isWorking()) {
             throw ValidationException::withMessages(['amount' => 'Расходы вносят, когда ТС у вас']);
         }

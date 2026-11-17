@@ -97,12 +97,13 @@ final class Nav
             return $user ? [self::item('Предложения', '/offers')] : [];
         }
 
-        // Модератор: черновики, сделки для документов (14.11.2026: сумма договора и ДКП), почта по галке и профиль — остальное
-        // в CRM админу.
+        // Модератор: черновики, сделки и гараж вкладками «Предложений» (17.11.2026 — вся работа со сделками), почта по галке, чаты
+        // с менеджерами и профиль; оплаты и остальное CRM — админу. Значки — как у админа.
         if ($surface === Surface::Crm && ! $user?->canManageCrm()) {
             return array_values(array_filter([
-                self::item('Предложения', '/offers'),
-                $user?->canCrmMail() ? self::item('Почта', '/work/mail') : null,
+                self::item('Предложения', '/offers', ['/offers', '/gallery'], icon: 'feed'),
+                $user?->canCrmMail() ? self::item('Почта', '/work/mail', icon: 'mail') : null,
+                $user?->canEditDeals() ? self::item('Чаты', '/work/chats', icon: 'chats') : null,
                 self::item('Настройки', '/settings', ['/settings', '/account'], tab: false, capsule: false),
             ]));
         }
@@ -664,10 +665,10 @@ final class Nav
         $badges = ['/account/notifications' => $user->unreadCount()];
 
         if ($surface === Surface::Crm && ! $user->canManageCrm()) {
-            // Модератору из общих бейджей — только почта, и то по галке.
-            $mail = $user->canCrmMail() ? array_intersect_key(self::staffCounts($surface), array_flip(['/offers/from-mail', '/work/mail'])) : [];
+            // Модератору из общих бейджей — почта по галке и чаты площадки.
+            $keys = [...($user->canCrmMail() ? ['/offers/from-mail', '/work/mail'] : []), ...($user->canEditDeals() ? ['/work/chats'] : [])];
 
-            return array_filter($badges + $mail);
+            return array_filter($badges + array_intersect_key(self::staffCounts($surface), array_flip($keys)));
         }
         if ($surface === Surface::Park || $surface === Surface::Crm) {
             return array_filter($badges + self::staffCounts($surface));

@@ -7,7 +7,7 @@
     // «Ответ не нужен» — разобрано, ждём его дальше (`Position::replyHandled`).
     // Только под письмом поставщика (02.11.2026, владелец: под нашим «Выражаем интерес» кнопка рядом с «Ответить» — «че за
     // продал другому, не понимаем»): это ответ на его «уже продано», а не действие с нашим письмом.
-    $deal = auth()->user()?->canManageCrm() && ! $message->isOurs() ? $message->thread?->offer?->deal : null;
+    $deal = auth()->user()?->canEditDeals() && ! $message->isOurs() ? $message->thread?->offer?->deal : null;
     $deal = $deal?->isActive() ? $deal : null;
     $replied = $deal && $message->thread->offer->position(\App\Workflow\Track::Sale)?->letterStatus() === 'replied';
     $said = $deal && ! $message->isOurs() ? trim(\Illuminate\Support\Str::limit(preg_replace('/\s+/u', ' ', (string) $message->shownText()), 60, '…')) : '';
@@ -25,7 +25,8 @@
         @php
             $noReply = ($message->thread?->needs_reply_at || $replied) && \App\Mail\Threads::canAnswer(auth()->user());
             // Поставщик уже подтвердил оплату (`prepaid_at`) — машина продана нам: «продал другому» не к месту (13.11.2026).
-            $declined = $deal && ! $deal->prepaid_at;
+            // Закрыть сделку отказом — решение админа (17.11.2026): модератору «Показать менеджеру» есть, «Продал другому» — нет.
+            $declined = $deal && ! $deal->prepaid_at && auth()->user()->canManageCrm();
         @endphp
         <div class="reply-acts">
             <a href="{{ $editor }}" class="btn btn-quiet"><x-ui.icon :name="$bounce ? 'mail' : 'reply'" class="size-4"/>{{ $bounce ? 'Переслать' : 'Ответить' }}</a>

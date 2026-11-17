@@ -57,7 +57,7 @@ class CarController
         $car = $this->car($request, $offer);
         // Сделка со страховой идёт — шаг сделки и путь, как на её странице: просьбы менеджеру («Забираю», «Отказываюсь») — тут.
         // Сотрудник ведёт маршрут в CRM — ему шаг не нужен.
-        $step = $car->dealOpen() && ! $request->user()->isAdmin() ? DealController::stepData($car->deal) : null;
+        $step = $car->dealOpen() && ! $request->user()->garageStaff() ? DealController::stepData($car->deal) : null;
 
         return view('garage.cars.show', [
             'view' => GarageView::for($car, $request->user(), $step),

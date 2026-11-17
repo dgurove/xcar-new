@@ -17,7 +17,7 @@ final class GarageView
     public static function for(Car $car, User $user, ?array $step = null): array
     {
         $offer = $car->offer;
-        $staff = $user->isAdmin();
+        $staff = $user->garageStaff();
         // Машина у покупателя с гаражом (20.10.2026): его цена счётом сделки, без расчёта и выплаты; «Продана» — отметкой.
         $buyerCar = $car->forBuyer();
         $asBuyer = $buyerCar && ! $staff;

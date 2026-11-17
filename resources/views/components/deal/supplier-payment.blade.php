@@ -19,7 +19,7 @@
     // (`PaymentProofController`, `pass=1` — шаг проходит); открыта, пока шаг оплаты ждёт документ. После — файлом PDF.
     $proofStage = $offer?->position(\App\Workflow\Track::Sale)?->stage;
     $proofReq = $deal->openRequirement;
-    $proofOpen = auth()->user()?->canManageCrm() && $proofReq && $proofReq->asks === \App\Workflow\Asks::Document && $proofStage?->isPayStep()
+    $proofOpen = auth()->user()?->canEditDeals() && $proofReq && $proofReq->asks === \App\Workflow\Asks::Document && $proofStage?->isPayStep()
         && $proofReq->stage_id === $proofStage->id && $deal->paysSupplierOn($proofStage);
     $proofFiles = $proofOpen ? $proofReq->getMedia('files') : collect();
     $proofSent = ! $proofOpen && \App\Offers\Documents\PaymentProofPdf::files($deal)->isNotEmpty();

@@ -40,7 +40,7 @@ final class SigningController
 
     public function pick(Request $request, Deal $deal, PickSigningTime $pick)
     {
-        abort_unless($request->user()->canManageCrm(), 403);
+        abort_unless($request->user()->canEditDeals(), 403);
         $deal = $pick($deal, $request->user(), (string) $request->validate(['at' => ['required', 'string', 'max:30']])['at'], staff: true);
 
         return back(fallback: '/work/deals/'.$deal->id)->with('toast', 'Записываем на '.Ago::at($deal->signing_at, true, words: false));
@@ -49,7 +49,7 @@ final class SigningController
     /** День и время за менеджера (`SaveSigningWish`). */
     public function wish(Request $request, Deal $deal, SaveSigningWish $save)
     {
-        abort_unless($request->user()->canManageCrm(), 403);
+        abort_unless($request->user()->canEditDeals(), 403);
         $data = $request->validate(['slots' => ['required', 'array', 'max:60'], 'slots.*' => ['string', 'max:16']], ['slots.required' => 'Отметьте хотя бы одно время']);
         $deal = $save($deal, $request->user(), $data['slots'], staff: true);
 

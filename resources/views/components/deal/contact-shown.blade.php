@@ -11,7 +11,7 @@
     $offer = $deal->offer;
     $phone = Phone::normalize($offer->insured_phone);
     $has = $offer->insured_name || $offer->insured_phone;
-    $live = $has && $deal->buyer_id && $deal->isActive() && ! $deal->isGarage() && auth()->user()?->canManageCrm();
+    $live = $has && $deal->buyer_id && $deal->isActive() && ! $deal->isGarage() && auth()->user()?->canEditDeals();
     $shownAt = null;
     if ($live) {
         foreach (Disclosures::shown($deal)->sortByDesc('id') as $d) {

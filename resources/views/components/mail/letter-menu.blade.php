@@ -13,11 +13,11 @@
     $linked = $park ? $thread?->vehicle : $thread?->offer;
     $incoming = ! $m->isOurs() || $m->isForwardedByStaff();
     $pick = $thread ? \App\Mail\VendorPick::of(auth()->user(), $park ? \App\Mail\Scope::Park : \App\Mail\Scope::Offers, $base, $thread, $thread->messages, $thread->candidate) : null;
-    $deal = ! $park && auth()->user()?->canManageCrm() && $incoming ? $thread?->offer?->deal : null;
+    $deal = ! $park && auth()->user()?->canEditDeals() && $incoming ? $thread?->offer?->deal : null;
     $deal = $deal?->isActive() ? $deal : null;
     $replied = $deal && $thread->offer->position(\App\Workflow\Track::Sale)?->letterStatus() === 'replied';
     $noReply = ($thread?->needs_reply_at || $replied || $dismiss) && \App\Mail\Threads::canAnswer(auth()->user());
-    $declined = $deal && ! $deal->prepaid_at;
+    $declined = $deal && ! $deal->prepaid_at && auth()->user()->canManageCrm();
     $said = $declined ? trim(\Illuminate\Support\Str::limit(preg_replace('/\s+/u', ' ', (string) $m->shownText()), 60, '…')) : '';
     $disclose = $deal?->buyer_id ? 'disclose-letter-'.$m->id : null;
 @endphp

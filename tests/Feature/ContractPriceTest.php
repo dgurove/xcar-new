@@ -96,10 +96,10 @@ class ContractPriceTest extends TestCase
         $this->assertTrue($contract->price_manual);
         $this->assertEqualsWithDelta(990000, (float) $this->invoice($deal)->total, 0.01);
 
-        // Остальное по сделке модератору закрыто: схема, НДС, гараж.
+        // Деньги сделки модератору закрыты: схема, НДС. Гараж с 17.11.2026 открыт — вкладкой «Предложений».
         $this->actingAs($moderator)->post($crm.'/work/deals/'.$deal->id.'/scheme', ['scheme' => 'ros'])->assertNotFound();
         $this->actingAs($moderator)->put($crm.'/work/deals/'.$deal->id.'/contract', ['vat_rate' => 22])->assertForbidden();
-        $this->actingAs($moderator)->get($crm.'/work/garage')->assertNotFound();
+        $this->actingAs($moderator)->get($crm.'/work/garage')->assertRedirect();
 
         // «Как в сделке» — снова по деньгам сделки.
         $this->actingAs($this->admin)->put($crm.'/work/deals/'.$deal->id.'/contract-price', ['auto' => 1])->assertRedirect();

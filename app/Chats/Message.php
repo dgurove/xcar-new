@@ -123,7 +123,7 @@ class Message extends Model
     }
 
     /**
-     * Удалить можно своё живое сообщение, а админ в чате площадки — любое не служебное, и менеджера тоже (17.11.2026, владелец:
+     * Удалить можно своё живое сообщение, а админ и модератор в чате площадки — любое не служебное, и менеджера тоже (17.11.2026, владелец:
      * «в чате в админке безумно не хватает удаления»; «Привет, берём в работу?» и показ менеджеру автора не имеют).
      */
     public function deletableBy(?User $user, ?Chat $chat = null): bool
@@ -132,7 +132,7 @@ class Message extends Model
             return true;
         }
 
-        return $user !== null && ! $this->isDeleted() && $this->author_kind !== AuthorKind::System && $user->isAdmin()
+        return $user !== null && ! $this->isDeleted() && $this->author_kind !== AuthorKind::System && $user->canEditDeals()
             && ($chat ?? $this->chat)->isCounterpart($user);
     }
 
@@ -142,7 +142,7 @@ class Message extends Model
      */
     public function hiddenFor(?User $viewer): bool
     {
-        return $this->isDeleted() && ! $viewer?->isAdmin();
+        return $this->isDeleted() && ! $viewer?->canEditDeals();
     }
 
     /** Своё ли это сообщение для читающего: участник (и гость) видит свои справа, вторая сторона — свои. */

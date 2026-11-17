@@ -972,13 +972,20 @@ class Offer extends Model
             // Черновик с Мигторга (`MigtorgDrafts`) — всем модераторам: это их работа, которую раньше делали руками (26.10.2026).
             // Черновик поставщика (partner.xcar.ru, 07.11.2026) — всем модераторам: «Без закупочной» — их работа, автор у
             // него — поставщик, а не их группа.
-            return $q->where(fn ($w) => $w->whereIn('moderator_id', $user->teamIds())
-                ->when($user->canCrmMail(), fn ($m) => $m->orWhere(fn ($n) => $n->autoDrafted()))
-                ->orWhere(fn ($n) => $n->migtorgDrafted())
-                ->orWhere('offers.created_via', 'partner'))
+            // С 17.11.2026 (владелец с начальником: «модераторам полный доступ ко всем сделкам — данные покупателей, счета, договоры»)
+            // машина в сделке или гараже — открыта модератору целиком, любая (`canEditDeals`); черновики — как были.
+            $dealt = fn ($e) => $e->from('deals')->whereColumn('deals.offer_id', 'offers.id');
+            $garaged = fn ($e) => $e->from('garage_cars')->whereColumn('garage_cars.offer_id', 'offers.id');
+
+            return $q->where(fn ($all) => $all->where(fn ($drafts) => $drafts
+                ->where(fn ($w) => $w->whereIn('moderator_id', $user->teamIds())
+                    ->when($user->canCrmMail(), fn ($m) => $m->orWhere(fn ($n) => $n->autoDrafted()))
+                    ->orWhere(fn ($n) => $n->migtorgDrafted())
+                    ->orWhere('offers.created_via', 'partner'))
                 ->whereDoesntHave('purchaseCar')
-                ->whereNotExists(fn ($e) => $e->from('deals')->whereColumn('deals.offer_id', 'offers.id'))
-                ->whereNotExists(fn ($e) => $e->from('garage_cars')->whereColumn('garage_cars.offer_id', 'offers.id'));
+                ->whereNotExists($dealt)
+                ->whereNotExists($garaged))
+                ->when($user->canEditDeals(), fn ($w) => $w->orWhereExists($dealt)->orWhereExists($garaged)));
         }
 
         return $q->whereRaw('false');

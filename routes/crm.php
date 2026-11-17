@@ -202,20 +202,17 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
         Route::post('/work/deals/{deal}/signed', [DealController::class, 'signed']);
         Route::delete('/work/deals/{deal}/signed/{media}', [DealController::class, 'removeSigned']);
         Route::get('/work/deals/{deal}/signed-contract.pdf', [DealController::class, 'signedPdf']);
-    });
-
-    Route::middleware('ability:canManageCrm')->group(function () {
-        Route::get('/work/invoices/new', [InvoiceController::class, 'create']);
-        Route::post('/work/invoices', [InvoiceController::class, 'store']);
-        // Шеринг PDF: маршруты без домена на хосте CRM отбивает ResolveSurface — свои копии.
-        Route::match(['get', 'post'], '/offers/{offer}/pdf', [ShareController::class, 'pdf']);
-        Route::get('/offers/{offer}/photo/{media}', [ShareController::class, 'photo'])->whereNumber('media');
-        Route::post('/offers/{offer}/photos/warm', [ShareController::class, 'warm'])->middleware('throttle:240,1');
-        Route::post('/offers/{offer}/zip', [ShareController::class, 'zip']);
-        // Карточка «Гаража» зовёт счёт машины и отмену ссылки оплаты путём без хоста — на CRM тоже свои копии.
+        // Работа со сделкой модератору (17.11.2026, владелец с начальником: «модераторам полный доступ ко всем сделкам — данные
+        // покупателей, отправка счёта и договора менеджеру и так далее»; чат с менеджером и гараж): шаги пути без выходов в тупик
+        // (`RouteController::exit`), разбор писем, подписание, документ об оплате за менеджера, чаты, гараж. Деньги («Поступила»,
+        // ссылки, «Оплаты») и решения (отмена, отказ, «Отдать», подтверждения, переоценка) — у админа ниже.
+        // Счёт сделки — смотреть (окно счёта, PDF, печать, акт); оплаты и аннулирование — у админа.
+        Route::get('/work/money/invoices/{invoice}', [MoneyController::class, 'show']);
+        Route::get('/work/money/invoices/{invoice}/pdf', [MoneyController::class, 'file']);
+        Route::get('/work/money/invoices/{invoice}/print', [MoneyController::class, 'print']);
+        Route::get('/work/money/invoices/{invoice}/act', [MoneyController::class, 'act']);
         Route::get('/garage/cars/{offer}/invoice/pdf', [GarageSettlementController::class, 'pdf']);
         Route::delete('/garage/cars/{offer}/links/{link}', [GarageSettlementController::class, 'cancelLink']);
-        // Машину в гараже сотрудник ведёт в CRM (карточка «Гараж» редактора и «Работа → Гараж») — теми же адресами, что на сайте.
         Route::post('/garage/cars/{offer}/costs', [GarageCarController::class, 'storeCost']);
         Route::delete('/garage/cars/{offer}', [GarageCarController::class, 'destroy']);
         Route::post('/garage/cars/{offer}/waiting', [GarageCarController::class, 'notArrived']);
@@ -230,6 +227,53 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
         Route::post('/garage/cars/{offer}/payout', [GarageSettlementController::class, 'payout']);
         Route::post('/garage/cars/{offer}/payments', [GarageSettlementController::class, 'pay']);
         Route::delete('/garage/cars/{offer}/invoice', [GarageSettlementController::class, 'voidInvoice']);
+        Route::post('/offers/{offer}/exit/{exit}', [RouteController::class, 'exit']);
+        Route::post('/offers/{offer}/stage', [RouteController::class, 'place']);
+        Route::post('/offers/{offer}/back', [RouteController::class, 'back']);
+        Route::post('/offers/{offer}/deadline', [RouteController::class, 'deadline']);
+        Route::get('/offers/{offer}/letter-ask', [RouteController::class, 'letterAsk']);
+        Route::post('/offers/{offer}/letter-skip', [RouteController::class, 'letterSkip']);
+        Route::post('/offers/{offer}/pickup', [RouteController::class, 'pickup']);
+        Route::post('/offers/{offer}/media/{media}/managers', [OfferPhotoController::class, 'managers']);
+        Route::delete('/offers/{offer}/pickup', [RouteController::class, 'dropPickup']);
+        Route::post('/offers/{offer}/pickup/back', [RouteController::class, 'pickupBack']);
+        Route::post('/offers/{offer}/pickup/backdate', [RouteController::class, 'pickupBackdate']);
+        Route::post('/work/deals/supplier-answer', [DealController::class, 'supplierAnswer']);
+        Route::put('/work/deals/{deal}/receiver', [DealController::class, 'receiver']);
+        Route::post('/work/deals/{deal}/contract-signed', [DealController::class, 'contractSigned']);
+        Route::post('/work/deals/{deal}/dates', [DealController::class, 'dates']);
+        Route::post('/work/deals/{deal}/disclose', [DisclosureController::class, 'store']);
+        Route::post('/work/deals/{deal}/supplier-invoice', [DisclosureController::class, 'invoice']);
+        Route::post('/work/deals/{deal}/signing-slots', [SigningController::class, 'slots']);
+        Route::post('/work/deals/{deal}/signing', [SigningController::class, 'pick']);
+        Route::post('/work/deals/{deal}/signing-wish', [SigningController::class, 'wish']);
+        Route::post('/work/deals/{deal}/signing-confirm', [SigningController::class, 'confirm']);
+        Route::get('/work/deals/{deal}/signing.ics', [SigningController::class, 'ics']);
+        Route::post('/work/deals/{deal}/payment-proof', [PaymentProofController::class, 'store']);
+        Route::delete('/work/deals/{deal}/payment-proof/{media}', [PaymentProofController::class, 'remove']);
+        Route::get('/work/deals/{deal}/payment-proof.pdf', [PaymentProofController::class, 'pdf']);
+        Route::post('/work/deals/{deal}/payment-proof/to-invoice', [PaymentProofController::class, 'toInvoice']);
+        Route::post('/work/deals/{deal}/reviews/done', [DisclosureController::class, 'dismiss']);
+        Route::get('/work/garage', [GarageController::class, 'index']);
+        Route::get('/work/deals/{deal}/chat', [DealController::class, 'chat']);
+        Route::post('/work/deals/{deal}/note', [DealController::class, 'note']);
+        Route::get('/work/chats', [ChatController::class, 'index']);
+        Route::get('/work/chats/{chat}', [ChatController::class, 'show']);
+        Route::post('/work/chats/offer/{offer}/{user}', [ChatController::class, 'start']);
+        Route::delete('/work/chats/{chat}', [ChatController::class, 'destroy']);
+        Route::get('/account/chats', fn () => redirect('/work/chats'));
+    });
+
+    Route::middleware('ability:canManageCrm')->group(function () {
+        Route::get('/work/invoices/new', [InvoiceController::class, 'create']);
+        Route::post('/work/invoices', [InvoiceController::class, 'store']);
+        // Шеринг PDF: маршруты без домена на хосте CRM отбивает ResolveSurface — свои копии.
+        Route::match(['get', 'post'], '/offers/{offer}/pdf', [ShareController::class, 'pdf']);
+        Route::get('/offers/{offer}/photo/{media}', [ShareController::class, 'photo'])->whereNumber('media');
+        Route::post('/offers/{offer}/photos/warm', [ShareController::class, 'warm'])->middleware('throttle:240,1');
+        Route::post('/offers/{offer}/zip', [ShareController::class, 'zip']);
+        // Карточка «Гаража» зовёт счёт машины и отмену ссылки оплаты путём без хоста — на CRM тоже свои копии.
+        // Машину в гараже сотрудник ведёт в CRM (карточка «Гараж» редактора и «Работа → Гараж») — теми же адресами, что на сайте.
         Route::post('/share/error', [ShareController::class, 'report'])->middleware('throttle:30,1');
         Route::post('/offers/{offer}/extend', [OfferController::class, 'extend']);
         Route::post('/offers/{offer}/lower-price', [OfferController::class, 'lowerPrice']);
@@ -279,18 +323,7 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
         Route::post('/offers/{offer}/deal-publication', [RepriceController::class, 'publish']);
         Route::delete('/offers/{offer}/deal-publication', [RepriceController::class, 'unpublish']);
         Route::post('/offers/{offer}/reprices/{reprice}/answered', [RepriceController::class, 'answered']);
-        Route::post('/offers/{offer}/exit/{exit}', [RouteController::class, 'exit']);
-        Route::post('/offers/{offer}/stage', [RouteController::class, 'place']);
-        Route::post('/offers/{offer}/back', [RouteController::class, 'back']);
-        Route::post('/offers/{offer}/deadline', [RouteController::class, 'deadline']);
-        Route::get('/offers/{offer}/letter-ask', [RouteController::class, 'letterAsk']);
-        Route::post('/offers/{offer}/letter-skip', [RouteController::class, 'letterSkip']);
-        Route::post('/offers/{offer}/pickup', [RouteController::class, 'pickup']);
         // «Видно менеджеру» у документа — решает админ (модератору документ менеджерам не открыть).
-        Route::post('/offers/{offer}/media/{media}/managers', [OfferPhotoController::class, 'managers']);
-        Route::delete('/offers/{offer}/pickup', [RouteController::class, 'dropPickup']);
-        Route::post('/offers/{offer}/pickup/back', [RouteController::class, 'pickupBack']);
-        Route::post('/offers/{offer}/pickup/backdate', [RouteController::class, 'pickupBackdate']);
 
         Route::post('/confirmations/{bid}/accept', [GiveController::class, 'accept']);
         Route::post('/offers/{offer}/confirmations', [BidController::class, 'storeFor']);
@@ -304,36 +337,17 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
 
         // Работа: сделки, почта и чаты под одним заголовком.
         Route::redirect('/work', '/work/mail');
-        Route::post('/work/deals/supplier-answer', [DealController::class, 'supplierAnswer']);
-        Route::put('/work/deals/{deal}/receiver', [DealController::class, 'receiver']);
         Route::post('/work/deals/{deal}/declined', [DealController::class, 'declined']);
         Route::post('/work/deals/{deal}/sold', [DealController::class, 'sold']);
-        Route::post('/work/deals/{deal}/contract-signed', [DealController::class, 'contractSigned']);
-        Route::post('/work/deals/{deal}/dates', [DealController::class, 'dates']);
         Route::post('/work/deals/{deal}/reopen', [DealController::class, 'reopen']);
         // Параллельные сделки (07.11.2026, `Offers\Parallels`): переключиться на эту — «Взять в работу», закрыть одну — «Снять».
         Route::post('/work/deals/{deal}/take', [ParallelController::class, 'take']);
         Route::post('/work/deals/{deal}/drop', [ParallelController::class, 'drop']);
-        Route::post('/work/deals/{deal}/disclose', [DisclosureController::class, 'store']);
-        Route::post('/work/deals/{deal}/supplier-invoice', [DisclosureController::class, 'invoice']);
-        Route::post('/work/deals/{deal}/signing-slots', [SigningController::class, 'slots']);
-        Route::post('/work/deals/{deal}/signing', [SigningController::class, 'pick']);
-        Route::post('/work/deals/{deal}/signing-wish', [SigningController::class, 'wish']);
-        Route::post('/work/deals/{deal}/signing-confirm', [SigningController::class, 'confirm']);
-        Route::get('/work/deals/{deal}/signing.ics', [SigningController::class, 'ics']);
         // Документ об оплате поставщику за менеджера и одним PDF (10.11.2026, `PaymentProofController`).
-        Route::post('/work/deals/{deal}/payment-proof', [PaymentProofController::class, 'store']);
-        Route::delete('/work/deals/{deal}/payment-proof/{media}', [PaymentProofController::class, 'remove']);
-        Route::get('/work/deals/{deal}/payment-proof.pdf', [PaymentProofController::class, 'pdf']);
-        Route::post('/work/deals/{deal}/payment-proof/to-invoice', [PaymentProofController::class, 'toInvoice']);
-        Route::post('/work/deals/{deal}/reviews/done', [DisclosureController::class, 'dismiss']);
         // У кого что в гараже и во что обошлось.
-        Route::get('/work/garage', [GarageController::class, 'index']);
         // Кто что вывозит: мы или менеджер, к нему, к нам или на парковку.
         // «Работа → Вывоз» заменила логистика (10.10.2026): перевозки — на logistics.xcar.ru.
         Route::get('/work/pickups', fn () => redirect()->away(Surface::Logistics->url('/transports'), 301));
-        Route::get('/work/deals/{deal}/chat', [DealController::class, 'chat']);
-        Route::post('/work/deals/{deal}/note', [DealController::class, 'note']);
         Route::put('/work/deals/{deal}/money', [DealController::class, 'money']);
         Route::post('/work/deals/{deal}/scheme', [DealController::class, 'scheme']);
         // Скан паспорта покупателя, которого админ указывает за менеджера (20.10.2026) — та же загрузка, что в кабинете.
@@ -356,20 +370,12 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
         // Выписка СберБизнеса переехала в Настройки → Банк (07.10.2026): связь толком не настроена, в «Оплатах» она была мусором.
         Route::permanentRedirect('/work/money/bank', '/settings/bank/statement');
         Route::prefix('work/money/invoices/{invoice}')->group(function () {
-            Route::get('/', [MoneyController::class, 'show']);
             Route::put('/', [MoneyController::class, 'update']);
-            Route::get('/pdf', [MoneyController::class, 'file']);
-            Route::get('/print', [MoneyController::class, 'print']);
-            Route::get('/act', [MoneyController::class, 'act']);
             Route::post('/payments', [MoneyController::class, 'pay']);
             Route::get('/payments/{payment}/slip', [MoneyController::class, 'slip']);
             Route::delete('/payments/{payment}', [MoneyController::class, 'unpay']);
             Route::post('/void', [MoneyController::class, 'void']);
         });
-        Route::get('/work/chats', [ChatController::class, 'index']);
-        Route::get('/work/chats/{chat}', [ChatController::class, 'show']);
-        Route::post('/work/chats/offer/{offer}/{user}', [ChatController::class, 'start']);
-        Route::delete('/work/chats/{chat}', [ChatController::class, 'destroy']);
 
         Route::get('/gallery', [GalleryController::class, 'index']);
         // Старые адреса разделов — закладки и ссылки из уведомлений.
@@ -378,7 +384,6 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
         Route::get('/chats', fn () => redirect('/work/chats'.(request()->getQueryString() ? '?'.request()->getQueryString() : ''), 301));
         Route::get('/chats/{chat}', fn (int $chat) => redirect("/work/chats/{$chat}", 301))->whereNumber('chat');
         // Уведомления и тосты зовут на экран кабинета без хоста — на CRM это «Чаты» в работе.
-        Route::get('/account/chats', fn () => redirect('/work/chats'));
         Route::get('/account/chats/{chat}', fn (int $chat) => redirect("/work/chats/{$chat}"))->whereNumber('chat');
 
         Route::get('/purchases', [PurchaseController::class, 'index']);

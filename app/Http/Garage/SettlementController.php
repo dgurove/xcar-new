@@ -218,7 +218,7 @@ class SettlementController
 
     private function staffCar(Request $request, Offer $offer): Car
     {
-        abort_unless($request->user()->isAdmin(), 403);
+        abort_unless($request->user()->garageStaff(), 403);
 
         return $this->car($request, $offer);
     }

@@ -15,7 +15,7 @@ final class UpdateCost
 {
     public function __invoke(Cost $cost, array $data, ?User $by = null): Cost
     {
-        $payer = $by?->isAdmin() && ! $cost->isSupplier() ? (Payer::tryFrom((string) ($data['paid_by'] ?? '')) ?? $cost->payer) : $cost->payer;
+        $payer = $by?->garageStaff() && ! $cost->isSupplier() ? (Payer::tryFrom((string) ($data['paid_by'] ?? '')) ?? $cost->payer) : $cost->payer;
         if ($payer === Payer::Manager && ! $cost->car->manager_id) {
             $payer = Payer::Xcar;
         }

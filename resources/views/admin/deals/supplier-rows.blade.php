@@ -6,7 +6,7 @@
     $bill = \App\Offers\SupplierInvoice::shown($offer)->first();
     $proofStage = $offer?->position(\App\Workflow\Track::Sale)?->stage;
     $proofReq = $deal->openRequirement;
-    $proofOpen = auth()->user()?->canManageCrm() && $proofReq && $proofReq->asks === \App\Workflow\Asks::Document && $proofStage?->isPayStep()
+    $proofOpen = auth()->user()?->canEditDeals() && $proofReq && $proofReq->asks === \App\Workflow\Asks::Document && $proofStage?->isPayStep()
         && $proofReq->stage_id === $proofStage->id && $deal->paysSupplierOn($proofStage);
     $proofFiles = $proofOpen ? $proofReq->getMedia('files') : collect();
     $proofSent = ! $proofOpen && \App\Offers\Documents\PaymentProofPdf::files($deal)->isNotEmpty();
@@ -30,7 +30,7 @@
         <x-deal.doc-row :href="'/files/'.$supplierContract->id" title="Договор от страховой" :name="$supplierContract->file_name" :mime="$supplierContract->mime_type" :bytes="$supplierContract->size" :file="'Договор от страховой.'.(pathinfo($supplierContract->file_name, PATHINFO_EXTENSION) ?: 'pdf')">
             {{ ($supplierContract->getCustomProperty('letter') ? 'из письма ' : 'приложен ').\App\Support\Ago::day($supplierContract->created_at) }}
         </x-deal.doc-row>
-    @elseif (auth()->user()?->canManageCrm() && $deal->isActive())
+    @elseif (auth()->user()?->canEditDeals() && $deal->isActive())
         <form method="post" action="/work/deals/{{ $deal->id }}/supplier-contract" enctype="multipart/form-data" class="contents" data-controller="autosubmit">
             @csrf
             <label class="row sale-row cursor-pointer">

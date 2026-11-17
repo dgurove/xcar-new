@@ -38,7 +38,7 @@ class Cost extends Model
             return false;
         }
 
-        return $user->isAdmin() || ($this->payer === Payer::Manager && ! $this->isSupplier() && ! $car->isSold() && $car->manager_id === $user->id);
+        return $user->garageStaff() || ($this->payer === Payer::Manager && ! $this->isSupplier() && ! $car->isSold() && $car->manager_id === $user->id);
     }
 
     /** «Оплата поставщику», которую гараж записал сам по сделке: сумма — закупочная, менеджер её не правит. */

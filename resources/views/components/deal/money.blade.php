@@ -217,7 +217,7 @@
         </div>
     @endif
     @if ($payerRow && $invoices->isEmpty())
-        <div class="list mt-4"><x-deal.payer :deal="$deal" :action="'/work/deals/'.$deal->id.'/payer'" :editable="auth()->user()?->canManageCrm()"/></div>
+        <div class="list mt-4"><x-deal.payer :deal="$deal" :action="'/work/deals/'.$deal->id.'/payer'" :editable="auth()->user()?->canEditDeals()"/></div>
     @endif
     @if ($invoices->isNotEmpty())
         {{-- Счета — одной группой строк через линию, как список в приложении: слева счёт и его состояние словом,
@@ -239,7 +239,7 @@
         <div @class(['list', 'mt-2' => $ourSeller, 'mt-4' => ! $ourSeller])>
             {{-- Плательщик — один на счёт и ссылку, строкой над ними (16.11.2026, `x-deal.payer`). --}}
             @if ($ourBills->contains(fn ($i) => $i->kind === \App\Billing\ChargeKind::Selection) && $deal->buyer_id)<x-deal.fee-seller :deal="$deal"/>@endif
-            @if ($payerRow)<x-deal.payer :deal="$deal" :action="'/work/deals/'.$deal->id.'/payer'" :editable="auth()->user()?->canManageCrm()"/>@endif
+            @if ($payerRow)<x-deal.payer :deal="$deal" :action="'/work/deals/'.$deal->id.'/payer'" :editable="auth()->user()?->canEditDeals()"/>@endif
             @foreach ($invoices as $i)
                 @php
                     $link = ! $i->isOwed() && $i->state !== InvoiceState::Paid ? $last($i, true) : null;

@@ -59,19 +59,19 @@
             {{-- «Показать менеджеру» и «Ссылка менеджеру» — тихими ссылками в плашке менеджера (12.11.2026, владелец: «встроить
                  компактно в блок, где менеджер написан»); нет менеджера (аукцион) — пилюлями в ряду ниже, как было. --}}
             @php
-                $personDeal = $admin ? ($garageCar?->deal ?? ($deal?->isActive() ? $deal : null)) : null;
-                $holderActs = $admin && ($car->holder()['user'] ?? null) !== null;
+                $personDeal = $deals ? ($garageCar?->deal ?? ($deal?->isActive() ? $deal : null)) : null;
+                $holderActs = $deals && ($car->holder()['user'] ?? null) !== null;
             @endphp
             @include('admin.car.facts')
             @include('admin.car.alerts')
             {{-- Ряд пилюль: остальные чаты; чат с менеджером сделки, «Показать» и ссылка — пилюлями, только когда плашки менеджера
                  нет (иначе они в ней, 12.11.2026). --}}
             @php $pillChat = $dealChat && ! $holderActs; @endphp
-            @if ($pillChat || $otherChats->isNotEmpty() || (! $holderActs && (($admin && $deal?->isActive()) || $personDeal)))
+            @if ($pillChat || $otherChats->isNotEmpty() || (! $holderActs && (($deals && $deal?->isActive()) || $personDeal)))
                 <div class="flex w-full flex-wrap items-center gap-2">
                     @if ($pillChat)<x-deal.chat-card :deal="$deal" :chat="$car->dealChat()" compact/>@endif
                     @if ($otherChats->isNotEmpty())<x-ui.pill :tone="$chatUnread ? 'urgent' : 'plain'" href="/work/chats?preset=all&q={{ $n }}" data-turbo-frame="_top"><x-ui.icon name="chat" class="size-4"/> {{ $otherChats->count() === 1 ? 'Чат' : 'Чаты' }}@if ($otherChats->count() > 1 && ! $chatUnread) <span class="nums text-ink-dim">{{ $otherChats->count() }}</span>@endif @if ($chatUnread) <span class="badge">{{ $chatUnread }}</span>@endif</x-ui.pill>@endif
-                    @if (! $holderActs && $admin && $deal?->isActive())<x-deal.reply-review :deal="$deal" pill/>@endif
+                    @if (! $holderActs && $deals && $deal?->isActive())<x-deal.reply-review :deal="$deal" pill/>@endif
                     @if (! $holderActs && $personDeal)<x-deal.person-link :deal="$personDeal" pill/>@endif
                 </div>
             @endif
@@ -95,7 +95,7 @@
         <div class="mt-4 flex flex-col gap-5">
             {{-- Дорожки — те же, что на странице (`admin.offers.lanes`), но короче (`compact`, 12.11.2026, владелец: «информация по
                  несколько раз дублируется»): путь — текущим шагом, вывоз — без лесенки, деньги — без числа шапки, без ДКП. --}}
-            @if ($admin)<div class="@container/lanes min-w-0">@include('admin.offers.lanes', ['compact' => true])</div>@endif
+            @if ($admin || ($deals && ($deal || $garageCar)))<div class="@container/lanes min-w-0">@include('admin.offers.lanes', ['compact' => true])</div>@endif
             {{-- Доп. запрос поставщику (17.11.2026, `x-offer.extra-request`) — над письмами: последний запрос и «Сделать доп. запрос». --}}
             @if ($extraRequest)<x-offer.extra-request :offer="$offer" :messages="$messages"/>@endif
             {{-- Письма — все строками, как в «Почте»: по ним заполняют поля и оценивают (11.10.2026). --}}
@@ -120,7 +120,7 @@
                 @endif
             </form>
             @php $noteDeal = $garageCar?->deal ?? $deal; @endphp
-            @if ($admin && $noteDeal)<x-deal.note :deal="$noteDeal" folded/>@endif
+            @if ($deals && $noteDeal)<x-deal.note :deal="$noteDeal" folded/>@endif
             @if ($selling)
                 <section>
                     <h2 class="detail-section">Документы</h2>

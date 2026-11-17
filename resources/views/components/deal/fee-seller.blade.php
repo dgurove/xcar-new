@@ -6,7 +6,7 @@
     use App\Offers\Actions\SetFeeSeller;
     $current = $deal->feeSeller();
     $name = $current->config()['name'] ?? $current->value;
-    $editable = auth()->user()?->canManageCrm() && $deal->isActive() && ! SetFeeSeller::locked($deal);
+    $editable = auth()->user()?->canEditDeals() && $deal->isActive() && ! SetFeeSeller::locked($deal);
     $id = 'fee-seller-'.$deal->id;
 @endphp
 @if ($editable)

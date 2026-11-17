@@ -10,7 +10,7 @@
     $user = auth()->user();
     $auto = DealContract::priceFor($deal);
     $editable = $deal->isActive() && $deal->moneyEditable() && $user?->canEditDeals();
-    $vatEditable = $deal->isActive() && $user?->canManageCrm();
+    $vatEditable = $deal->isActive() && $user?->canEditDeals();
     $id = 'contract-price-'.$deal->id;
     $vat = $contract->vatRate() ? 'НДС '.$contract->vatRate().' %' : 'без НДС';
     $sub = $contract->price_manual

@@ -206,7 +206,7 @@
         @endif
     </div>
     {{-- «Продано» / «Оплачено» во «Все» — одна шторка на страницу (ячейки строк её открывают). --}}
-    @if (\App\Http\Admin\OfferController::summary($preset) !== null && auth()->user()->canManageCrm())<x-deal.dates-sheet/>@endif
+    @if (\App\Http\Admin\OfferController::summary($preset) !== null && auth()->user()->canEditDeals())<x-deal.dates-sheet/>@endif
     {{-- Окно писем для карточки «Письма» в карточке строки. --}}
     <x-mail.window/>
 </x-ui.shell>
