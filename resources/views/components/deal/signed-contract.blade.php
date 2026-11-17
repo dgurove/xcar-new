@@ -6,7 +6,9 @@
      окна модератора. --}}
 @props(['deal', 'base', 'bare' => false, 'card' => false, 'label' => 'Подписанный договор', 'ask' => false])
 @php
-    $files = $deal->getMedia('signed_contract');
+    // Все листы — и приложенные к сделке, и ответ менеджера на шаг договора — одним PDF (17.11.2026, владелец: «как с платёжкой:
+    // не фотками, а единым PDF в „Продаже“»; `SignedContractPdf`).
+    $files = \App\Offers\Documents\SignedContractPdf::files($deal);
     $can = \App\Offers\Actions\AttachSignedContract::allows($deal);
 @endphp
 @if ($ask && $files->isEmpty() && $can)
@@ -26,17 +28,24 @@
     </section>
 @elseif ($files->isNotEmpty() || $can)
     @php ob_start(); @endphp
-        @foreach ($files as $media)
-            {{-- Тем же видом, что счета и договор (16.11.2026, `x-deal.doc-row`): «Подписанный договор от 16.11», «Скачать», крестик. --}}
-            <x-deal.doc-row :href="'/files/'.$media->id" title="Подписанный договор" :date="\App\Support\Ago::day($media->created_at)" :name="$media->file_name" :mime="$media->mime_type" :bytes="$media->size" :file="\App\Media\DocName::of($media)">
+        @if ($files->isNotEmpty())
+            {{-- Одной строкой: «Подписанный договор от 17.11», PDF из всех листов; «Добавить лист» — скрепкой справа (17.11.2026). --}}
+            <x-deal.doc-row :href="$base.'/signed-contract.pdf'" title="Подписанный договор" :name="\App\Offers\Documents\SignedContractPdf::fileName($deal)" :file="\App\Offers\Documents\SignedContractPdf::fileName($deal)">
+                {{-- Дата и число листов — второй строкой: в названии на телефоне дата резалась до «от 1…». --}}
+                <span class="nums">{{ \App\Support\Ago::day(\App\Offers\Documents\SignedContractPdf::at($deal)) }}{{ $files->count() > 1 ? ', листов '.$files->count() : '' }}</span>
                 @if ($can)
                     <x-slot:acts>
-                        <form method="post" action="{{ $base }}/signed/{{ $media->id }}" data-turbo-confirm="Убрать файл договора?">@csrf @method('delete')<button class="btn btn-ghost btn-s px-2 text-ink-muted" aria-label="Убрать"><x-ui.icon name="x" class="size-5"/></button></form>
+                        <form method="post" action="{{ $base }}/signed" enctype="multipart/form-data" class="contents" data-controller="autosubmit">
+                            @csrf
+                            <label class="btn btn-ghost btn-s px-2 text-ink-muted" title="Добавить лист" aria-label="Добавить лист">
+                                <input type="file" name="files[]" multiple accept=".pdf,.jpg,.jpeg,.png,.webp,.heic,.heif,.doc,.docx" class="sr-only" data-action="change->autosubmit#submit"><x-ui.icon name="clip" class="size-5"/>
+                            </label>
+                        </form>
                     </x-slot:acts>
                 @endif
             </x-deal.doc-row>
-        @endforeach
-        @if ($can)
+        @endif
+        @if ($can && $files->isEmpty())
             <form method="post" action="{{ $base }}/signed" enctype="multipart/form-data" class="contents signed-upload" data-controller="autosubmit">
                 @csrf
                 <label @class(['row signed-add', 'sale-row' => $bare && $files->isEmpty()])>

@@ -458,6 +458,15 @@ class DealController
         return back()->with('toast', 'Подписанный договор приложен');
     }
 
+    /** Подписанный договор одним PDF — файлы сделки и ответы шага договора (`SignedContractPdf`, 17.11.2026). */
+    public function signedPdf(Deal $deal)
+    {
+        $pdf = \App\Offers\Documents\SignedContractPdf::render($deal) ?? abort(404);
+
+        return response($pdf, 200, ['Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'inline; filename*=UTF-8\'\''.rawurlencode(\App\Offers\Documents\SignedContractPdf::fileName($deal))]);
+    }
+
     public function removeSigned(Request $request, Deal $deal, Media $media)
     {
         abort_unless(AttachSignedContract::allows($deal), 404);

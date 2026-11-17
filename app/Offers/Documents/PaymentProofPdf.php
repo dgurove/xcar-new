@@ -3,14 +3,10 @@
 namespace App\Offers\Documents;
 
 use App\Offers\Deal;
-use App\Support\Pdf;
-use App\Support\ScanImage;
 use App\Workflow\Requirement;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Str;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
-use Symfony\Component\Process\ExecutableFinder;
 
 /**
  * Документ об оплате одним PDF (10.11.2026, владелец: первая оплата по счёту Альфы через систему — менеджер прислал два фото
@@ -41,45 +37,10 @@ final class PaymentProofPdf
         return self::requirement($deal)?->getMedia('files')->sortBy('order_column')->values() ?? collect();
     }
 
-    /** null — нечего собрать. */
+    /** null — нечего собрать. Сборка — `ScanBundle`, та же у подписанного договора. */
     public static function render(Deal $deal): ?string
     {
-        $files = self::files($deal);
-        $pdfs = $files->filter(fn (Media $m) => $m->mime_type === 'application/pdf' && is_file($m->getPath()))->values();
-        // Один PDF (с 16.11.2026 снимок платёжки и ложится PDF, `AttachRequirementFiles`) — он и есть документ.
-        if ($files->count() === 1 && $pdfs->count() === 1) {
-            return (string) file_get_contents($pdfs->first()->getPath());
-        }
-        $unite = (new ExecutableFinder)->find('pdfunite');
-        $pages = [];
-        foreach ($files as $m) {
-            if ($m->mime_type !== 'application/pdf' || ! $unite) {
-                $pages = [...$pages, ...ScanImage::pages($m, 20)];
-            }
-        }
-        $images = $pages ? Pdf::render('park.report.scan', ['pages' => array_map(fn ($j) => 'data:image/jpeg;base64,'.base64_encode($j), $pages)]) : null;
-        if (! $unite || $pdfs->isEmpty()) {
-            return $images;
-        }
-        if ($images === null && $pdfs->count() === 1) {
-            return (string) file_get_contents($pdfs->first()->getPath());
-        }
-
-        $dir = sys_get_temp_dir().'/payment-pdf-'.bin2hex(random_bytes(6));
-        @mkdir($dir);
-        try {
-            $parts = $pdfs->map(fn (Media $m) => $m->getPath())->all();
-            if ($images !== null) {
-                file_put_contents($dir.'/images.pdf', $images);
-                array_unshift($parts, $dir.'/images.pdf');
-            }
-            $out = Process::timeout(60)->run([$unite, ...$parts, $dir.'/out.pdf']);
-
-            return $out->successful() && is_file($dir.'/out.pdf') ? (string) file_get_contents($dir.'/out.pdf') : $images;
-        } finally {
-            array_map('unlink', glob($dir.'/*') ?: []);
-            @rmdir($dir);
-        }
+        return ScanBundle::pdf(self::files($deal));
     }
 
     /** «Оплата 0790-046-09068-26.pdf» — по номеру убытка, без него — по номеру предложения. */

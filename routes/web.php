@@ -245,6 +245,7 @@ Route::middleware(['auth', 'wall'])->group(function () {
             Route::delete('/deals/{deal}/files/{media}', [DealController::class, 'removeFile']);
             Route::post('/deals/{deal}/signed', [DealController::class, 'signed']);
             Route::delete('/deals/{deal}/signed/{media}', [DealController::class, 'removeSigned']);
+            Route::get('/deals/{deal}/signed-contract.pdf', [DealController::class, 'signedPdf']);
         });
     });
 
