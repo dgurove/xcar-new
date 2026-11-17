@@ -23,8 +23,16 @@ final class Wording
         return self::for(auth()->user(), $text);
     }
 
+    /**
+     * Названия этапов менеджеру и покупателю своими словами (17.11.2026, владелец: «не „Согласование с поставщиком“, а „На
+     * согласовании“»). Только целое название — внутри фраз не трогаем.
+     */
+    public const SITE = ['Согласование с поставщиком' => 'На согласовании'];
+
     public static function for(?User $user, ?string $text): ?string
     {
+        $text = $text !== null ? (self::SITE[$text] ?? $text) : null;
+
         return $text !== null && $user?->holdsAsBuyer() ? self::buyer($text) : $text;
     }
 
