@@ -5,6 +5,7 @@ namespace App\Offers;
 use App\Workflow\Position;
 use App\Workflow\WaitsFor;
 use Illuminate\Support\Collection;
+use App\Support\StaffCache;
 use Illuminate\Support\Facades\Cache;
 
 /**
@@ -105,7 +106,7 @@ final class DealTabs
     public static function map(): array
     {
         // Непроданная гаражная «платит менеджер» — только в «Гараже» (17.11.2026, владелец), во вкладках сделки её нет.
-        return Cache::remember(self::CACHE, 30, fn () => self::rows(Deal::active()->whereHas('offer', fn ($o) => $o->where('offers.state', OfferState::Sold))
+        return StaffCache::remember(self::CACHE, 30, fn () => self::rows(Deal::active()->whereHas('offer', fn ($o) => $o->where('offers.state', OfferState::Sold))
             ->with(self::WITH)->get())->reject(fn (array $r) => $r['deal']->sellsFromGarage($r['deal']->offer?->position()?->stage))->mapWithKeys(fn (array $r) => [$r['deal']->offer_id => [$r['tab'], $r['todo'] !== null]])->all());
     }
 
@@ -123,7 +124,7 @@ final class DealTabs
 
     public static function forget(): void
     {
-        Cache::forget(self::CACHE);
+        StaffCache::bump(StaffCache::TABS);
     }
 
     /** Связи, что нужны делу шага (`Position::todo`) и строкам. */

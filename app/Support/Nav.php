@@ -533,7 +533,8 @@ final class Nav
 
     private static function countsCached(User $user, Surface $surface, string $key): array
     {
-        return Cache::remember($key, 30, function () use ($user, $surface) {
+        // Общие счётчики админов сбрасывает событие (`forgetStaffCounts`), личные живут свой срок.
+        return StaffCache::remember($key, 30, function () use ($user, $surface) {
             $day = now()->subDay();
             if ($surface === Surface::Park) {
                 return ['totals' => [
@@ -615,7 +616,7 @@ final class Nav
                     : CatalogQuery::fresh(clone $open, $user)->count(),
                 '/gallery' => (clone $gallery)->where('gallery_from', '>', $day)->count(),
             ]];
-        });
+        }, str_ends_with($key, ':staff') ? StaffCache::COUNTS : null);
     }
 
     /**
@@ -746,7 +747,7 @@ final class Nav
         // У управляющего с городом свои числа (`Park\City`): области моделей сами сужают выборку.
         $city = $surface === Surface::Park ? City::viewing() : null;
 
-        return Cache::remember("nav.staff:{$surface->value}".($city ? ":{$city}" : ''), 30, function () use ($surface) {
+        return StaffCache::remember("nav.staff:{$surface->value}".($city ? ":{$city}" : ''), 30, function () use ($surface) {
             if ($surface === Surface::Park) {
                 return [
                     // Бейдж «Из писем» — число дел, которые надо завести: у одинокого письма-заявки цепочки нет.
@@ -776,21 +777,23 @@ final class Nav
                 '/work/money' => MoneyController::todo(),
             ];
             return $badges;
-        });
+        }, StaffCache::COUNTS);
+    }
+
+    /** Только счётчики навигации (чат, почта, оплата, парковка): раскладку вкладок такое событие не меняет. */
+    public static function forgetStaffBadges(): void
+    {
+        StaffCache::bump(StaffCache::COUNTS);
     }
 
     /** Сброс общих счётчиков сотрудников — бейджей и итогов таб-бара; личные живут свои полминуты. */
     public static function forgetStaffCounts(): void
     {
+        // Раскладка вкладок и числа колеса — и счётчики навигации всех хостов и городов: две метки вместо дюжины удалений
+        // (`StaffCache`); пересчитает первый, кому понадобится, остальные возьмут его результат.
         DealTabs::forget();
         OfferTabs::forget();
-        foreach (Surface::cases() as $surface) {
-            Cache::forget("nav.staff:{$surface->value}");
-            Cache::forget("nav.counts:{$surface->value}:staff");
-        }
-        foreach (array_keys(City::options()) as $city) {
-            Cache::forget('nav.staff:'.Surface::Park->value.":{$city}");
-        }
+        self::forgetStaffBadges();
     }
 
     /** Число в капсуле таб-бара: до трёх цифр, дальше «999+». */

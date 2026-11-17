@@ -128,7 +128,13 @@
                 </section>
             @endif
         </div>
-        @include('admin.car.sheets')
+        {{-- Шторки действий — по первому требованию (`OfferController::windowSheets`, `emit_controller`): в окне их до десяти,
+             а открывают редко. После ошибки формы шторки рисуются сразу — ошибка и введённое стоят в своей шторке. --}}
+        @if ($errors->any() || session()->hasOldInput())
+            @include('admin.car.sheets')
+        @else
+            <div class="contents" data-lazy-sheets="/offers/{{ $n }}/window-sheets{{ ($car->pastDeal ?? false) && $deal ? '?deal='.$deal->id : '' }}"></div>
+        @endif
         <x-slot:foot><x-ui.save-bar :form="$form"/></x-slot:foot>
     </x-ui.row-card>
 </x-ui.detail>

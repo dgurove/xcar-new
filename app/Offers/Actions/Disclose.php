@@ -162,7 +162,10 @@ final class Disclose
      */
     public static function stepExit(Deal $deal, Collection $letters): ?Outcome
     {
-        $offer = $deal->offer->unsetRelation('positions');
+        // Шаг перечитывается только в действии (он меняется посреди запроса); на показ — уже загруженный: окно сделки
+        // спрашивает исход дважды, и каждый раз это было пять запросов маршрута.
+        $shown = ! app()->runningInConsole() && request()->isMethod('GET');
+        $offer = $shown ? $deal->offer : $deal->offer->unsetRelation('positions');
         $stage = $offer->position(Track::Sale)?->stage;
         if ($letters->isEmpty() || $offer->vendor?->deal_format === DealFormat::Wholesale || $stage?->waits_for !== WaitsFor::Supplier) {
             return null;

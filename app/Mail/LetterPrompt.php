@@ -48,6 +48,11 @@ final class LetterPrompt
             return null;
         }
         $request->attributes->set('letter-prompt', true);
+        // Ждущего письма почти никогда нет — тогда и замок не нужен: одно чтение вместо замка, чтения и удаления на
+        // каждой странице CRM.
+        if (! Cache::has(self::key($user->id))) {
+            return null;
+        }
 
         return self::locked($user->id, function () use ($user) {
             $list = Cache::get(self::key($user->id), []);

@@ -372,14 +372,22 @@ export default class extends Controller {
         };
     }
 
-    // Соседи открытой строки — заранее, когда всё уже нарисовано: ↑/↓ и «Дальше» открываются без ожидания.
+    // Сосед открытой строки — заранее, когда всё уже нарисовано: ↑/↓ и «Дальше» открываются без ожидания. Один и в сторону
+    // движения (17.11.2026: окно — самый частый тяжёлый запрос, 0,5 с и две сотни запросов к базе на проде, а каждое
+    // открытие тянуло следом ещё два таких же — оба соседа, через 0,4 с). Листают вниз — следующий, вверх — предыдущий;
+    // и только когда человек задержался на окне: открыл и сразу закрыл или пошёл дальше — соседа не грузим.
     neighbours() {
         clearTimeout(this.nearTimer);
+        const rows = this.rows, i = rows.indexOf(this.current);
+        if (i < 0) return;
+        const back = this.lastIndex !== undefined && i < this.lastIndex;
+        this.lastIndex = i;
         this.nearTimer = setTimeout(() => {
-            const rows = this.rows, i = rows.indexOf(this.current);
-            if (i < 0) return;
-            [rows[i + 1], rows[i - 1]].forEach((r) => r && fetchCard(this.urlFor(r)));
-        }, 400);
+            // Окно уже закрыли (выбранной строки нет) — грузить нечего.
+            const at = this.rows.indexOf(this.current);
+            const next = at < 0 ? null : this.rows[at + (back ? -1 : 1)];
+            if (next && document.visibilityState === 'visible') fetchCard(this.urlFor(next));
+        }, 1200);
     }
     // Свёрнутые группы (`group_fold_controller`) листанием ↑/↓ пропускаются.
     get rows() { return [...this.element.querySelectorAll('[data-detail-key]')].filter((r) => !r.hidden); }

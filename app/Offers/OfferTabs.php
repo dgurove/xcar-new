@@ -4,6 +4,7 @@ namespace App\Offers;
 
 use App\Http\Admin\OfferController;
 use App\Workflow\Track;
+use App\Support\StaffCache;
 use Illuminate\Support\Facades\Cache;
 
 /**
@@ -38,7 +39,7 @@ final class OfferTabs
     /** `offer_id` → ключ вкладки. @return array<int, string> */
     public static function map(): array
     {
-        return Cache::remember(self::CACHE, 30, function () {
+        return StaffCache::remember(self::CACHE, 30, function () {
             $out = [];
             foreach (self::keys() as $key) {
                 $ids = OfferController::scopeFor($key, Offer::query()->notEmptyDraft(), true)->pluck('offers.id');
@@ -125,7 +126,7 @@ final class OfferTabs
 
     public static function forget(): void
     {
-        Cache::forget(self::CACHE);
+        StaffCache::bump(StaffCache::TABS);
         self::$memo = [];
     }
 }

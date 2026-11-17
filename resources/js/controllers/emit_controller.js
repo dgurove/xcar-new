@@ -1,5 +1,21 @@
 import { Controller } from '@hotwired/stimulus';
 import { closeSheet } from '../sheet';
+import { request } from '../lib/http';
+
+// Шторки действий окна машины приезжают по первому требованию (`data-lazy-sheets`, `OfferController::windowSheets`): в окне
+// их до десяти, а открывают редко. Слушателя события на странице ещё нет — дозагружаем шторки на их место и ждём, пока
+// Stimulus подключит контроллеры; потом событие идёт как обычно.
+async function ensureSheets(from, name) {
+    if (document.querySelector(`[data-action*="${name.replace(/"/g, '')}@window"]`)) return;
+    const holder = (from.closest('turbo-frame') ?? document).querySelector('[data-lazy-sheets]');
+    const url = holder?.dataset.lazySheets;
+    if (!url) return;
+    holder.removeAttribute('data-lazy-sheets');
+    const response = await request(url, { accept: 'text/html' });
+    if (!response) { holder.dataset.lazySheets = url; return; }
+    holder.innerHTML = await response.text();
+    await new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)));
+}
 
 // Кнопка, которая шлёт событие на window: другой контроллер его ловит
 // (deal:open открывает блок цены, chat:open — чат, letters:open — окно писем с url в detail, vendor-pick:open — шторка
@@ -28,6 +44,7 @@ export default class extends Controller {
             event.stopImmediatePropagation();
             await closeSheet(sheet);
         }
+        await ensureSheets(this.element, name);
         window.dispatchEvent(new CustomEvent(name, { detail: { ...rest, url: rest.url || null } }));
     }
 }

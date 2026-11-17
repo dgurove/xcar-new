@@ -105,6 +105,8 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
     Route::middleware('offer.edit')->group(function () {
         Route::get('/offers/{offer}', [OfferController::class, 'edit'])->name('crm.offers.edit');
         Route::get('/offers/{offer}/letters', [MailController::class, 'offerLetters'])->middleware('ability:canCrmMail');
+        // Шторки действий окна машины — по первому требованию (`data-lazy-sheets`, `emit_controller`).
+        Route::get('/offers/{offer}/window-sheets', [OfferController::class, 'windowSheets']);
         // Кадры письма прикрепляются: строка хода и ряд фото, пока ImportThreadFiles идёт (attach_controller).
         Route::get('/offers/{offer}/attach', [AttachController::class, 'offer']);
         Route::put('/offers/{offer}', [OfferController::class, 'update']);

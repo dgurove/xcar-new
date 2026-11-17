@@ -19,7 +19,9 @@ class ReadNoticesOnVisit
     public function handle(Request $request, Closure $next)
     {
         $user = $request->user();
-        if ($user && $request->isMethod('GET') && ! $request->prefetch() && ! Impersonation::active()) {
+        // Фоновый запрос (обновление строк, счётчик фильтра, догрузка списка) — не визит человека: читать за него нечего,
+        // а UPDATE уведомлений шёл на каждый такой запрос.
+        if ($user && $request->isMethod('GET') && ! KeepFlashInBackground::background($request) && ! $request->headers->has('X-List') && ! Impersonation::active()) {
             $path = '/'.ltrim($request->path(), '/');
             ($this->read)([$user->id], array_values(array_unique([$path, $request->getRequestUri()])), Surface::current());
         }

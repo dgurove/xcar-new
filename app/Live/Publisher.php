@@ -33,8 +33,11 @@ final class Publisher
     private function send(array|string $topics, string $type, array $data): void
     {
         // Событие для сотрудников — счётчики Nav::staffCounts пересчитываются (и без хаба тоже).
+        // Раскладку вкладок и числа колеса сбрасывает только событие про предложения, сделки, гараж и закупки (17.11.2026):
+        // чат, почта, оплата и парковка шлют события постоянно, и на каждое все открытые «Предложения» пересчитывали
+        // раскладку заново. Им — только счётчики навигации. Событие без адресов (`badges` само по себе) — тоже.
         if (in_array($type, ['badges', 'refresh', 'rows'], true) && array_intersect([Topics::STAFF, Topics::PARK], (array) $topics)) {
-            Nav::forgetStaffCounts();
+            self::touchesTabs($type, $data) ? Nav::forgetStaffCounts() : Nav::forgetStaffBadges();
         }
         $hub = (string) config('xcar.mercure.hub');
         if ($hub === '' || ! config('xcar.mercure.publisher_key')) {
@@ -47,6 +50,19 @@ final class Publisher
         } catch (Throwable $e) {
             Log::warning('Хаб не принял событие', ['type' => $type, 'topics' => $topics, 'error' => $e->getMessage()]);
         }
+    }
+
+    /** Адреса события задевают вкладки колеса «Предложений»: предложения, сделки, гараж, закупки, галерея. */
+    private static function touchesTabs(string $type, array $data): bool
+    {
+        $paths = $type === 'rows' ? array_keys($data['paths'] ?? []) : ($data['paths'] ?? []);
+        foreach ($paths as $path) {
+            if (preg_match('#^/(offers|purchases|gallery|work/(deals|garage)|deals|garage)(/|$)#', (string) $path)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

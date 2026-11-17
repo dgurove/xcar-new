@@ -67,6 +67,7 @@ use App\Support\Money;
 use App\Support\Plural;
 use App\Support\Portion;
 use App\Support\Sort;
+use App\Support\StaffCache;
 use App\Support\Table\ColRole;
 use App\Support\Table\Column;
 use App\Support\Table\Table;
@@ -123,6 +124,19 @@ class OfferController
         'all_deals' => null,
         'all_archive' => ['archive', 'legacy', 'auction'],
     ];
+
+    /**
+     * Шторки действий окна машины («Вернуть в продажу», «Отдать», «Срочно», «Опубликовать для других»…) — отдельным ответом
+     * по первому требованию (17.11.2026): в каждом окне их до десяти, это 120–140 КБ из 195–320 КБ ответа и два десятка
+     * запросов, а открывают одну на много окон. Окно несёт пустое место `data-lazy-sheets`, `emit_controller` перед событием
+     * «имя:open» дозагружает их сюда. Страница машины рисует шторки сразу, как и окно после ошибки формы.
+     */
+    public function windowSheets(Request $request, Offer $offer)
+    {
+        $deal = $request->query('deal') ? \App\Offers\Deal::find((int) $request->query('deal')) : null;
+
+        return view('admin.car.sheets', CarView::for($offer, $request->user(), deal: $deal?->offer_id === $offer->id ? $deal : null)->vars());
+    }
 
     /** Вкладки, по которым раскладывается сводная («Все» или раздела); не сводная — null. @return list<string>|null */
     public static function summary(?string $preset): ?array
@@ -548,7 +562,17 @@ class OfferController
     /** Вендор Каркаде: на проде он «Carcade», локально «Каркаде» — как его ищет миграция закупок. */
     public static function carcadeId(): ?int
     {
-        return Vendor::whereRaw("name ilike '%каркаде%' or name ilike '%carcade%'")->value('id');
+        // Вендор не меняется — раз в пять минут на воркер, а не `ilike` по вендорам на каждый запрос списка. В консоли и
+        // тестах (один процесс на много баз) — запросом.
+        static $memo = null;
+        if (app()->runningInConsole()) {
+            return Vendor::whereRaw("name ilike '%каркаде%' or name ilike '%carcade%'")->value('id');
+        }
+        if ($memo === null || microtime(true) - $memo[1] > 300) {
+            $memo = [Vendor::whereRaw("name ilike '%каркаде%' or name ilike '%carcade%'")->value('id'), microtime(true)];
+        }
+
+        return $memo[0];
     }
 
     /** Умолчание вкладки «все, кроме Каркаде» (`!id` — исключение, Facets); Каркаде на вкладке нет — null. */
@@ -902,6 +926,22 @@ class OfferController
      */
     /** carcadeDefault — «Кроме Каркаде» стоит умолчанием, а не выбором: число «Есть подтверждения» считается без него. */
     public static function counts(User $user, ?Facets $facets = null, bool $carcadeDefault = false): array
+    {
+        // После своего действия (POST: «Оценить», «Взять») — всегда заново: число пилюли должно вспыхнуть сразу.
+        if (! request()->isMethodSafe()) {
+            return self::count($user, $facets, $carcadeDefault);
+        }
+        // Числа всех вкладок — три десятка COUNT по предложениям; между правками они не меняются, а колесо скрыто до
+        // нажатия. Одно значение на всех, кто смотрит с тем же выбором фильтров, до ближайшего события про предложения
+        // (`StaffCache::TABS`) или полминуты; пересчёт один на всех.
+        $who = $user->canManageCrm() ? 'crm' : 'u'.$user->id;
+        $key = 'offers.counts:'.md5(json_encode([$who, array_keys(self::presets($user)), $facets?->state(), $facets?->searching(), $carcadeDefault]));
+
+        return StaffCache::remember($key, 30, fn () => self::count($user, $facets, $carcadeDefault));
+    }
+
+    /** @return array<string, int> */
+    private static function count(User $user, ?Facets $facets, bool $carcadeDefault): array
     {
         $base = fn () => Offer::inCrm($user)->notEmptyDraft();
         $counts = [];
