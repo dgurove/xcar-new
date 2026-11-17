@@ -77,8 +77,8 @@
         @unless ($continuation)
             {{-- Кому и дата — одним серым текстом: не влезло — переносится, дата целиком. --}}
             <div class="letter-env">
-                @if ($to->isNotEmpty())<span>кому: {{ $to->take(3)->join(', ') }}{{ $to->count() > 3 ? ' и ещё '.($to->count() - 3) : '' }}</span>@endif
-                <span class="nums whitespace-nowrap">{{ \App\Support\Ago::at($sentAt, true) }}</span>
+                {{-- Дата — справа в последней строке «кому» (плавает вправо после текста: влезла — в той же строке, нет — строкой ниже). --}}
+                @if ($to->isNotEmpty())<span>кому: {{ $to->take(3)->join(', ') }}{{ $to->count() > 3 ? ' и ещё '.($to->count() - 3) : '' }}</span>@endif<span class="letter-env-when nums">{{ \App\Support\Ago::at($sentAt, true) }}</span>
             </div>
             @if ($car)
                 <a href="{{ $car['href'] }}" class="letter-car" data-turbo-frame="_top" @if ($car['cross']) data-turbo="false" @endif><x-ui.cat-icon :category="$car['cat']"/><span class="truncate">{{ $car['name'] }}</span><x-ui.icon name="chevron-right" class="size-3.5 shrink-0"/></a>

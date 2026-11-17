@@ -65,6 +65,6 @@ export default class extends Controller {
             if (r.height > 0) bottom = Math.max(bottom, r.bottom + margin(el));
         }
         const height = Math.ceil(bottom + (doc.defaultView?.scrollY || 0));
-        if (height > 0) this.frameTarget.style.height = Math.min(Math.max(height + 2, 20), 4000) + 'px';
+        if (height > 0) this.frameTarget.style.height = Math.min(Math.max(height, 20), 4000) + 'px';
     }
 }

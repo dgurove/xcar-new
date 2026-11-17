@@ -6078,15 +6078,17 @@ dialog.lightbox:not(.lb-one) .lb-pill--bottom { bottom: calc(var(--lb-strip-bott
   .letter-body[open] > .letter-acts { display: flex; }
   .letter-ib { display: grid; place-items: center; width: 2.25rem; height: 2.25rem; border-radius: 9999px; color: var(--color-ink-muted); }
   @media (hover: hover) { .letter-ib:hover { background: var(--color-hover); color: var(--color-ink); } }
-  .chain--full .letter-env { display: flex; flex-wrap: wrap; column-gap: .75rem; margin: 0; font-size: var(--text-sm); line-height: 1.25rem; color: var(--color-ink-muted); overflow-wrap: anywhere; }
+  .chain--full .letter-env { display: flow-root; margin: 0; font-size: var(--text-sm); line-height: 1.25rem; color: var(--color-ink-muted); overflow-wrap: anywhere; }
+  .letter-env-when { float: right; margin-left: .75rem; white-space: nowrap; }
   .letter-car { display: inline-flex; align-items: center; gap: .375rem; max-width: 100%; margin-top: .375rem; font-size: var(--text-sm); line-height: 1.125rem; color: var(--color-ink); }
   .letter-car .cat-icon { flex: none; width: 1.25rem; height: 1.25rem; margin: 0; }
   .letter-car .i { color: var(--color-ink-muted); }
   .letter-car--do { color: var(--color-accent-text); font-weight: 500; }
   @media (hover: hover) { .letter-car:hover { color: var(--color-accent-text); } }
   .letter-link-form { display: flex; align-items: flex-end; gap: .5rem; margin-top: .75rem; }
-  .chain--full .letter-text { margin-top: .625rem; line-height: 1.375rem; }
-  .letter-files { margin-top: .75rem; }
+  /* Шапка → текст → «Подпись ›» → файлы — одним шагом (17.11.2026, владелец: «странные отступы»). */
+  .chain--full .letter-text { margin-top: .5rem; line-height: 1.375rem; }
+  .letter-files { margin-top: .5rem; }
   .letter-docs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .5rem; }
   @media (max-width: 639.98px) { .letter-docs { grid-template-columns: minmax(0, 1fr); } }
   .letter-doc { display: flex; align-items: center; gap: .625rem; min-width: 0; height: 3.25rem; padding: 0 .75rem 0 .5rem; border-radius: var(--radius-m); background: var(--color-surface-2); font-size: var(--text-base); color: var(--color-ink); }

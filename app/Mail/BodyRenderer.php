@@ -399,7 +399,7 @@ final class BodyRenderer
             .'<base target="_blank"><style>html{margin:0;padding:0;'.$colors.'}body{margin:0;padding:'.($flat ? '0' : '12px').';'.$colors.';font-family:Onest,system-ui,-apple-system,sans-serif;font-size:15px;line-height:1.45;word-break:break-word}'
             .'img{max-width:100%;height:auto}table{max-width:100%;border-collapse:collapse}a{color:#669709}pre.plain{white-space:pre-wrap;font-family:inherit;margin:0}'
             .'blockquote{margin:0;padding-left:12px;border-left:2px solid #d0d0d0;color:#808080}'
-            .('p{margin:0}.sig{margin-top:10px}.sig>summary{cursor:pointer;list-style:none;font-size:13px;color:#8a8a8a}.sig>summary::-webkit-details-marker{display:none}'
+            .('p{margin:0}.sig{margin-top:6px}.sig>summary{cursor:pointer;list-style:none;font-size:13px;line-height:20px;color:#8a8a8a}.sig>summary::-webkit-details-marker{display:none}'
                 .'.sig>summary{display:inline-flex;align-items:center;gap:2px}.sig>summary svg{width:16px;height:16px;fill:none;stroke:#a3a3a3;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round;transition:transform .15s}.sig[open]>summary svg{transform:rotate(90deg)}'
                 .'.sig-body{margin-top:6px;color:#8a8a8a;font-size:13px}')
             .$themed.'</style></head><body>'.$body.'</body></html>';
