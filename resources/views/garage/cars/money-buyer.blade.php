@@ -3,7 +3,7 @@
      вывоз его не ждёт) и его расходы. Закупочной, наших расходов, оплаты поставщику, вознаграждения и расчёта здесь нет. --}}
 @php
     use App\Support\Money;
-    $pdf = $holderInvoice?->getFirstMedia('file');
+    $pdf = (bool) $holderInvoice?->hasPdf();
     $left = $holderInvoice ? $holderInvoice->remaining() : 0;
     $claimed = $holderInvoice && $left > 0 ? $holderInvoice->claimed() : 0;
     $mine = $car->extraSpent(\App\Garage\Payer::Manager);

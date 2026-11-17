@@ -145,7 +145,7 @@
                 @foreach ($ways as $way => [$icon, $label, $hint])
                     <div class="contents" data-controller="sheet">
                         <button type="button" class="row w-full text-left" data-action="sheet#open">
-                            @if ($icon === 'file')<x-ui.file-icon name="schet.pdf" :bytes="$invoice->getFirstMedia('file')?->size"/>@else<x-ui.row-icon :name="$icon" size="s"/>@endif
+                            @if ($icon === 'file')<x-ui.file-icon name="schet.pdf"/>@else<x-ui.row-icon :name="$icon" size="s"/>@endif
                             <span class="min-w-0 flex-1"><span class="block">{{ $label }}</span>@if ($hint)<span class="row-sub">{{ $hint }}</span>@endif</span>
                             <x-ui.chevron/>
                         </button>

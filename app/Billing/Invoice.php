@@ -73,6 +73,7 @@ class Invoice extends Model implements HasMedia
 
     public function registerMediaCollections(): void
     {
+        // Прежние PDF счетов (до 17.11.2026); новые не пишутся — счёт рисуется при открытии (`InvoicePdf`).
         $this->addMediaCollection('file')->useDisk('private')->singleFile();
         // Акт: у счёта на ТС — один PDF, у реестра — файлы прежней формы страховой (у РГС — акт и приложение).
         $this->addMediaCollection('act')->useDisk('private');
@@ -321,6 +322,12 @@ class Invoice extends Model implements HasMedia
     public function isShownToManager(): bool
     {
         return ! $this->deal_id || $this->direction !== 'issued' || $this->shown_at !== null || $this->paidMoney() > 0;
+    }
+
+    /** Есть ли у счёта документ (PDF рисуется на лету, `InvoicePdf`): счёт, выставленный нами, — не выплата нашего долга. */
+    public function hasPdf(): bool
+    {
+        return ! $this->isOwed();
     }
 
     public function isOwed(): bool

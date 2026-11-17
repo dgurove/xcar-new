@@ -94,7 +94,7 @@
                 <div class="list">
                     <x-ui.doc :doc="['url' => str_replace('{id}', $first->id, $pdf), 'type' => 'pdf', 'name' => 'schet-'.$first->number.'.pdf', 'label' => 'Счёт '.$first->label()]" class="row">
                         {{-- Тем же видом, что способ «Счёт» в квитанции платежа (15.11.2026): значок PDF с весом и номер. --}}
-                        <x-ui.file-icon name="schet.pdf" :bytes="$first->getFirstMedia('file')?->size"/>
+                        <x-ui.file-icon name="schet.pdf"/>
                         <span class="min-w-0 flex-1">Счёт {{ $first->label() }}</span>
                         <x-ui.chevron/>
                     </x-ui.doc>

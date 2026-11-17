@@ -6,7 +6,6 @@ use App\Billing\Actions\IssueInvoice;
 use App\Billing\Actions\RecordPayment;
 use App\Billing\Actions\VoidInvoice;
 use App\Billing\ChargeKind;
-use App\Billing\Documents\InvoicePdf;
 use App\Billing\Invoice;
 use App\Billing\InvoiceState;
 use App\Billing\Party;
@@ -45,7 +44,7 @@ final class SyncDealInvoices
     // Срок оплаты менеджером — 14 дней (27.10.2026, владелец: «5 дней мало, обычно 14», и «у остальных тоже»).
     private const DAYS = 14;
 
-    public function __construct(private IssueInvoice $issue, private VoidInvoice $void, private RecordPayment $record, private InvoicePdf $pdf, private ApplyDealCredits $credits) {}
+    public function __construct(private IssueInvoice $issue, private VoidInvoice $void, private RecordPayment $record, private ApplyDealCredits $credits) {}
 
     public function __invoke(Deal $deal, User $by): void
     {
@@ -231,7 +230,6 @@ final class SyncDealInvoices
                 $keep = null;
             } else {
                 $keep->update(['vat' => (bool) $rate, 'vat_rate' => $rate]);
-                $this->pdf->attach($keep->fresh(['charges', 'party', 'payments']));
                 $deal->offer->log(OfferEventType::Note, $by, ['text' => 'Счёт '.$keep->label().': '.($rate ? 'НДС '.$rate.' %' : 'без НДС')]);
             }
         }
@@ -246,7 +244,6 @@ final class SyncDealInvoices
         $invoice = ($this->issue)($want['party'], $by, 'issued', $kind, $this->dueFor($deal, $kind), lines: $want['lines'], dealId: $deal->id, offerId: $deal->offer_id, seller: $seller, vatRate: $want['vat'] ?? null);
         if ($want['offset'] > 0) {
             ($this->record)($invoice, $by, $want['offset'], null, PaymentSource::Offset, null, 'Удержано агентское вознаграждение');
-            $this->pdf->attach($invoice->fresh(['charges', 'party', 'payments']));
         }
         $deal->offer->log(OfferEventType::Note, $by, ['text' => 'Счёт '.$invoice->label().' на '.Money::rub($invoice->total).' — '.$want['party']->name]);
     }

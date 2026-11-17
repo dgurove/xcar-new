@@ -39,7 +39,6 @@ final class ShowToManager
             return $invoice;
         });
         if ($shown) {
-            app(\App\Billing\Documents\InvoicePdf::class)->attach($shown->fresh(['charges', 'party', 'payments']));
             InvoiceShown::dispatch($shown->fresh(), $by);
             Disclose::publish($deal);
         }

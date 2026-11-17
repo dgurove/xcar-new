@@ -3,7 +3,6 @@
 namespace App\Billing\Listeners;
 
 use App\Billing\ChargeKind;
-use App\Billing\Documents\InvoicePdf;
 use App\Billing\Invoice;
 use App\Billing\InvoiceState;
 use App\Notifications\MoneyNotice;
@@ -21,8 +20,6 @@ use Illuminate\Support\Carbon;
 final class StartInvoiceDue
 {
     private const KINDS = [ChargeKind::Sale, ChargeKind::Selection];
-
-    public function __construct(private InvoicePdf $pdf) {}
 
     public function handle(StageEntered $e): void
     {
@@ -59,6 +56,5 @@ final class StartInvoiceDue
     private function retime(Invoice $invoice, ?Carbon $due): void
     {
         $invoice->update(['due_at' => $due?->toDateString()]);
-        $this->pdf->attach($invoice->fresh(['charges', 'party', 'payments']));
     }
 }

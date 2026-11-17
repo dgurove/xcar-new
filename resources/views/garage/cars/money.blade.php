@@ -27,7 +27,7 @@
 @if ($staff && ($buyerCar ?? false))
     {{-- Машина у покупателя с гаражом — сотруднику (20.10.2026): закупочная, его цена, его счёт и наша прибыль; расчёта с
          ним нет. --}}
-    @php $hi = $holderInvoice; $pdf = $hi?->getFirstMedia('file'); @endphp
+    @php $hi = $holderInvoice; $pdf = (bool) $hi?->hasPdf(); @endphp
     <div class="list">
         @php $editable = $car->state !== \App\Garage\CarState::Settled && ! ($buyerPaid ?? false); @endphp
         {{-- Нажатие — «Цена покупателю»: правим, пока он не платил. --}}
@@ -98,7 +98,7 @@
     @endif
     {{-- Выплата, что уже крупно сверху, второй строкой не повторяется. --}}
     @if ($invoice && ! ($invoice->isOwed() && $unpaid && $invoice->is($current)))
-        @php $pdf = $invoice->getFirstMedia('file'); @endphp
+        @php $pdf = (bool) $invoice?->hasPdf(); @endphp
         <{{ $pdf ? 'a' : 'div' }} @if ($pdf) href="/garage/cars/{{ $car->offer->number }}/invoice/pdf" data-doc="pdf" data-doc-name="Счёт {{ $invoice?->label() }}" @endif class="{{ $row }}">
             <span class="min-w-0">
                 <span class="block">{{ $invoice->isOwed() ? ($staff ? 'Выплата менеджеру' : 'Выплата вам') : 'Счёт '.$invoice->label() }}@if ($buyerPays) <span class="text-ink-muted">{{ $invoice->party?->name }}</span>@endif</span>

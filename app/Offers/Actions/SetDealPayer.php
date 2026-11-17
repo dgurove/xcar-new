@@ -189,7 +189,6 @@ final class SetDealPayer
         $invoice->forceFill(['party_id' => $party->id])->save();
         $deal->forceFill(['payer_party_id' => $party->id === $deal->buyer?->party_id ? null : $party->id])->save();
         $deal->offer?->log(OfferEventType::Note, null, ['text' => 'Оплатил по ссылке '.$name.($was ? ' (плательщиком стоял '.$was.')' : '')]);
-        rescue(fn () => app(\App\Billing\Documents\InvoicePdf::class)->attach($invoice->fresh(['charges', 'party', 'payments'])), report: true);
     }
 
     /** @return array{Party, User} */

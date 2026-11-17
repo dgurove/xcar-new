@@ -58,8 +58,7 @@ final class RecordPayment
 
             return [$payment, $numbered];
         });
-        [$payment, $numbered] = $payment;
-        $numbered && app(\App\Billing\Documents\InvoicePdf::class)->attach($invoice->fresh(['charges', 'party', 'payments']));
+        [$payment] = $payment;
         PaymentRecorded::dispatch($invoice->fresh(), $by);
 
         return $payment;

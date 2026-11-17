@@ -166,10 +166,9 @@ class MoneyController
     {
         // Аннулированный — нет: в перевыставленном счёте могли быть прежние суммы.
         abort_unless($invoice->isVisibleToManager($request->user()) && $invoice->state !== InvoiceState::Void, 404);
-        $media = $invoice->getFirstMedia('file');
-        abort_unless($media, 404);
+        abort_unless($invoice->hasPdf(), 404);
 
-        return response()->file($media->getPath(), ['Content-Type' => 'application/pdf', 'Content-Disposition' => 'inline; filename="'.$media->file_name.'"']);
+        return app(\App\Billing\Documents\InvoicePdf::class)->response($invoice);
     }
 
     /** Скан платёжки — своей заявки или своей выплаты. */

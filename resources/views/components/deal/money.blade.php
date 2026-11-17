@@ -12,7 +12,7 @@
     // Строка «Плательщик» (`x-deal.payer`, 16.11.2026) — у идущей сделки с менеджером: над счетами, без счёта — своей группой.
     $payerRow = $deal->buyer_id && $deal->isActive() && ! $deal->isAuction();
     $payerId = $payerRow ? ($deal->payer_party_id ?? $deal->payerUser(sale: $deal->isPrime())?->party_id) : null;
-    $invoices = $deal->invoices()->with(['party', 'media', 'claims.media', 'payLinks.attempts', 'payLinks.creator', 'payLinks.payerUser', 'deal.offer'])->get();
+    $invoices = $deal->invoices()->with(['party', 'claims.media', 'payLinks.attempts', 'payLinks.creator', 'payLinks.payerUser', 'deal.offer'])->get();
     // Разовые оплаты по ссылке с машиной сделки (09.10.2026): их деньги лежат в счетах сделки зачётом, что не легло — сверх.
     $credits = $deal->credits()->with(['party', 'offer', 'payments', 'payLinks.attempts', 'payLinks.creator', 'payLinks.payerUser'])->get();
     $extra = $credits->isNotEmpty() ? $deal->creditExtra() : 0;
@@ -244,8 +244,7 @@
                 @php
                     $link = ! $i->isOwed() && $i->state !== InvoiceState::Paid ? $last($i, true) : null;
                     [$linkState, $linkTone] = $link ? \App\Http\Admin\MoneyLinks::short($link) : [null, null];
-                    $media = ! $i->isOwed() && $i->state !== InvoiceState::Void ? $i->getFirstMedia('file') : null;
-                    $pdf = $media ? '/work/money/invoices/'.$i->id.'/pdf' : null;
+                    $pdf = $i->hasPdf() && $i->state !== InvoiceState::Void ? '/work/money/invoices/'.$i->id.'/pdf' : null;
                 @endphp
                 @if ($i->isOwed())
                     <div class="row">
@@ -262,7 +261,7 @@
                     {{-- Счёт — файлом, как документ (15.11.2026, владелец: «счёт должен быть не страницей, а кнопкой „Скачать PDF“»;
                          из вариантов выбрал «файлом»): значок PDF с весом, «Счёт № 184 от 13.11», ниже кто платит и сумма; нажатие —
                          PDF в шторке документов, справа — «Скачать». Файла нет — строка ведёт на страницу счёта. --}}
-                    <x-deal.doc-row :href="$pdf ?? '/work/money/invoices/'.$i->id" :title="'Счёт '.$i->label()" :date="\App\Support\Ago::day($i->issued_at)" name="schet.pdf" :bytes="$media?->size" :download="(bool) $pdf">
+                    <x-deal.doc-row :href="$pdf ?? '/work/money/invoices/'.$i->id" :title="'Счёт '.$i->label()" :date="\App\Support\Ago::day($i->issued_at)" name="schet.pdf" :download="(bool) $pdf">
                         @if (! $payerRow || $i->party_id !== $payerId)<span>{{ $i->party?->title() }}</span>@endif<span class="nums whitespace-nowrap">{{ $i->isPartial() && $i->remaining() > 0 ? 'осталось '.Money::rub($i->remaining()).' из '.Money::rub($i->total) : Money::rub($i->total) }}</span>@if ($i->deal_id && $i->shown_at)<span class="text-ink-muted">у менеджера с {{ \App\Support\Ago::day($i->shown_at) }}</span>@elseif (! $i->isShownToManager())<span class="text-ink-muted">не отправлен</span>@endif
                     </x-deal.doc-row>
                     {{-- Менеджер видит счёт только после «Отправить» (16.11.2026): сотрудник сперва проверяет. --}}

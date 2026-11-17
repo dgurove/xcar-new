@@ -3,7 +3,6 @@
 namespace App\Billing\Actions;
 
 use App\Billing\ChargeKind;
-use App\Billing\Documents\InvoicePdf;
 use App\Billing\Invoice;
 use App\Billing\Party;
 use App\Billing\PaymentSource;
@@ -25,7 +24,7 @@ use Illuminate\Support\Facades\DB;
  */
 final class IssueDealInvoice
 {
-    public function __construct(private IssueInvoice $issue, private RecordPayment $record, private InvoicePdf $pdf) {}
+    public function __construct(private IssueInvoice $issue, private RecordPayment $record) {}
 
     /** @param  bool  $withFee  строка вознаграждения в счёте; подбор по ДКП — без неё: менеджер платит ровно подбор */
     public function __invoke(Deal $deal, User $by, Party $party, ChargeKind $kind, float $base, CarbonInterface $dueAt, ?string $notes = null, ?string $title = null, bool $withFee = true): Invoice
@@ -50,8 +49,6 @@ final class IssueDealInvoice
             $invoice = ($this->issue)($party, $by, 'issued', $kind, $dueAt, lines: $lines, dealId: $deal->id, offerId: $offer->id, notes: $notes, seller: $seller);
             if ($fee > 0 && $deal->withholds()) {
                 ($this->record)($invoice, $by, (float) $fee, null, PaymentSource::Offset, null, 'Удержано агентское вознаграждение');
-                // PDF печётся при выставлении — перепечь с зачётом и «к оплате».
-                $this->pdf->attach($invoice->fresh(['charges', 'party', 'payments']));
             }
             $offer->log(OfferEventType::Note, $by, ['text' => 'Счёт '.$invoice->label().' на '.Money::rub($invoice->total).', платит '.$party->name]);
 

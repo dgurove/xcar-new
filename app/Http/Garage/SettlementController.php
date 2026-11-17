@@ -205,10 +205,9 @@ class SettlementController
     public function pdf(Request $request, Offer $offer)
     {
         $car = $this->car($request, $offer);
-        $media = $car->invoice?->getFirstMedia('file');
-        abort_unless($media, 404);
+        abort_unless($car->invoice?->hasPdf(), 404);
 
-        return response()->file($media->getPath(), ['Content-Type' => 'application/pdf', 'Content-Disposition' => 'inline; filename="'.$media->file_name.'"']);
+        return app(\App\Billing\Documents\InvoicePdf::class)->response($car->invoice);
     }
 
     private function car(Request $request, Offer $offer): Car

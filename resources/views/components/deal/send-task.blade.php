@@ -9,7 +9,7 @@
         $sent = $invoice->isShownToManager();
         $at = $invoice->shown_at ?? $invoice->paid_at;
         $name = 'счёт '.$invoice->label();
-        $media = $invoice->getFirstMedia('file');
+        $media = $invoice->hasPdf();
         $href = $media ? '/work/money/invoices/'.$invoice->id.'/pdf' : '/work/money/invoices/'.$invoice->id;
         $action = '/work/deals/'.$deal->id.'/invoices/'.$invoice->id.'/show';
         $sub = \App\Support\Money::rub($invoice->total);
@@ -40,7 +40,7 @@
         <x-ui.sheet :id="$sheet" :title="$invoice ? 'Счёт '.$invoice->label() : 'Договор'">
             <div class="list">
                 @if ($invoice)
-                    <x-deal.doc-row :href="$href" :title="'Счёт '.$invoice->label()" :date="\App\Support\Ago::day($invoice->issued_at)" name="schet.pdf" :bytes="$media?->size" :download="(bool) $media">
+                    <x-deal.doc-row :href="$href" :title="'Счёт '.$invoice->label()" :date="\App\Support\Ago::day($invoice->issued_at)" name="schet.pdf" :download="$media">
                         <span>{{ $invoice->party?->title() }}</span><span class="nums whitespace-nowrap">{{ \App\Support\Money::rub($invoice->total) }}</span>
                     </x-deal.doc-row>
                 @else

@@ -7,7 +7,6 @@ use App\Billing\Acquiring\PayLink;
 use App\Billing\Acquiring\PayLinkState;
 use App\Billing\Charge;
 use App\Billing\ChargeKind;
-use App\Billing\Documents\InvoicePdf;
 use App\Billing\Invoice;
 use App\Billing\InvoiceState;
 use App\Billing\Party;
@@ -50,7 +49,7 @@ final class SeedDemo extends Command
 
     protected $description = 'Наполнить демонстрационный кабинет менеджера (сделки, счёт, ссылка на оплату)';
 
-    public function handle(InvoicePdf $pdf): int
+    public function handle(): int
     {
         $user = User::withoutGlobalScope('demo')->where('login', $this->argument('login'))->firstOrFail();
         $user->forceFill(['roles' => [Role::Manager], 'is_demo' => true, 'approved_at' => $user->approved_at ?? now()])->save();
@@ -76,7 +75,6 @@ final class SeedDemo extends Command
             // Сделка в работе: счёт на разницу выставлен, менеджер открыл ссылку на оплату.
             $deal = $this->deal($user, $this->offer(9001, 'Kia', 'Rio', 2021, 48000, 1_250_000), 1_250_000, 1_100_000, 50_000, DealState::Active);
             $invoice = $this->invoice($party, $user, $deal, 1001, now()->subDay(), 100_000, 50_000);
-            $pdf->attach($invoice->fresh(['charges', 'party', 'payments']));
             PayLink::create([
                 'code' => PayLink::freshCode(), 'invoice_id' => $invoice->id, 'amount' => $invoice->total, 'payer_kind' => PayerKind::Self,
                 'payer_name' => $user->name, 'payer_phone' => $user->phone, 'state' => PayLinkState::Open, 'created_by' => $user->id,
@@ -86,7 +84,6 @@ final class SeedDemo extends Command
             // Закрытая сделка: оплачена по ссылке, вознаграждение выплачено.
             $done = $this->deal($user, $this->offer(9002, 'Hyundai', 'Solaris', 2020, 61000, 980_000, OfferState::Delivered), 980_000, 900_000, 30_000, DealState::Done);
             $paid = $this->invoice($party, $user, $done, 1002, now()->subDays(14), 50_000, 30_000);
-            $pdf->attach($paid->fresh(['charges', 'party', 'payments']));
             $payment = $this->pay($paid, now()->subDays(12), PaymentSource::Acquiring, 'По ссылке через СБП');
             PayLink::create([
                 'code' => PayLink::freshCode(), 'invoice_id' => $paid->id, 'amount' => $paid->total, 'payer_kind' => PayerKind::Self, 'payer_name' => $user->name,

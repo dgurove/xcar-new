@@ -42,7 +42,7 @@ trait InvoiceActions
         $this->guardInvoice($invoice);
         $invoice->load(['party', 'vehicle', 'vehicle.yard', 'charges', 'payments.media', 'claims.media', 'allPayments', 'deal.offer', 'deal.buyer', 'creator', 'media']);
 
-        return view($this->invoiceView(), ['invoice' => $invoice, 'sources' => PaymentSource::manual(), 'file' => $invoice->getFirstMedia('file')]);
+        return view($this->invoiceView(), ['invoice' => $invoice, 'sources' => PaymentSource::manual(), 'file' => $invoice->hasPdf()]);
     }
 
     public function pay(Request $request, Invoice $invoice, RecordPayment $record)
@@ -101,10 +101,10 @@ trait InvoiceActions
     public function file(Invoice $invoice)
     {
         $this->guardInvoice($invoice);
-        $media = $invoice->getFirstMedia('file');
-        abort_unless($media, 404);
+        abort_unless($invoice->hasPdf(), 404);
 
-        return response()->file($media->getPath(), ['Content-Type' => 'application/pdf', 'Content-Disposition' => 'inline; filename="'.$media->file_name.'"']);
+        // Из текущих данных при каждом открытии (17.11.2026, `InvoicePdf`).
+        return app(\App\Billing\Documents\InvoicePdf::class)->response($invoice);
     }
 
     public function print(Invoice $invoice)

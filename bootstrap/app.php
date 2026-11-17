@@ -9,7 +9,6 @@ use App\Billing\Bank\Console\MatchByVinCommand;
 use App\Billing\Bank\Console\PerpetualSecret;
 use App\Billing\Bank\Console\SyncBank;
 use App\Billing\Console\CloseMonthCommand;
-use App\Billing\Console\RerenderInvoices;
 use App\Billing\Console\TickBilling;
 use App\Cars\Console\CollectValuesCommand;
 use App\Cars\Console\MergeCatalogCommand;
@@ -122,7 +121,6 @@ return Application::configure(basePath: dirname(__DIR__))
         PerfDigestCommand::class,
         PerfPagesCommand::class,
         CollectValuesCommand::class,
-        RerenderInvoices::class,
         ListsCheck::class,
         TelegramAvatars::class,
         CreateUser::class,

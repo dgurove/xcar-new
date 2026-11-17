@@ -5,7 +5,6 @@ namespace App\Garage\Actions;
 use App\Billing\Actions\IssueInvoice;
 use App\Billing\Actions\RecordPayment;
 use App\Billing\ChargeKind;
-use App\Billing\Documents\InvoicePdf;
 use App\Billing\Invoice;
 use App\Billing\Party;
 use App\Billing\PaymentSource;
@@ -32,7 +31,7 @@ use Illuminate\Validation\ValidationException;
  */
 final class SettleGarageCar
 {
-    public function __construct(private IssueInvoice $issue, private RecordPayment $record, private InvoicePdf $pdf) {}
+    public function __construct(private IssueInvoice $issue, private RecordPayment $record) {}
 
     /** @param  Party|array|null  $buyer  кто платит вместо менеджера: контрагент или поля нового (kind, name, inn, phone) */
     public function __invoke(Car $car, User $by, ?int $commission = null, Party|array|null $buyer = null): ?Invoice
@@ -80,8 +79,6 @@ final class SettleGarageCar
                 $invoice = ($this->issue)($party, $by, 'issued', ChargeKind::Sale, WorkDays::add(now(), 5), lines: $lines, offerId: $offer->id);
                 if ($fee > 0) {
                     ($this->record)($invoice, $by, $fee, null, PaymentSource::Offset, null, 'Удержано вознаграждение менеджеру');
-                    // PDF печётся при выставлении — перепечь с зачётом и «к оплате».
-                    $this->pdf->attach($invoice->fresh(['charges', 'party', 'payments']));
                 }
             }
             $car->update(['invoice_id' => $invoice->id, 'invoice_to' => 'manager']);

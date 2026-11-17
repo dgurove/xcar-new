@@ -6,7 +6,6 @@ use App\Billing\Accrual;
 use App\Billing\Charge;
 use App\Billing\ChargeKind;
 use App\Billing\Closing;
-use App\Billing\Documents\InvoicePdf;
 use App\Billing\Events\InvoiceIssued;
 use App\Billing\Invoice;
 use App\Billing\InvoiceState;
@@ -44,7 +43,6 @@ final class IssueInvoice
     /** @var list<string> ТС реестра, которые не вошли, с причиной */
     public array $skipped = [];
 
-    public function __construct(private InvoicePdf $pdf) {}
 
     /**
      * @param  ?CarbonInterface  $dueAt  null — срок ещё не начался (подбор до шага оплаты, `SyncDealInvoices::dueFor`)
@@ -128,10 +126,6 @@ final class IssueInvoice
             foreach ($amounts as $id => $amount) {
                 Vehicle::find($id)?->log(EventType::Invoiced, $by, ['label' => 'реестр '.$invoice->label(), 'amount' => round($amount, 2), 'party' => $party->name]);
             }
-            if ($issued) {
-                $this->pdf->attach($invoice->fresh(['charges', 'party', 'vehicle']));
-            }
-
             return $invoice;
         });
         // Число «выставить» у закрытия месяца считается дорого — сбрасываем только счетами парковки, не сделками CRM.

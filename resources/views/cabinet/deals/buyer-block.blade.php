@@ -16,7 +16,7 @@
     $scheme = $deal->schemeOf();
     $ours = in_array($scheme, [DealScheme::Prime, DealScheme::Ros], true);
     // Счёт за ТС от ПРАЙМ / Р.О.С. — файлом, когда выставлен.
-    $sale = $ours ? $deal->invoices()->where('kind', \App\Billing\ChargeKind::Sale)->where('state', '!=', \App\Billing\InvoiceState::Void->value)->shownToManager()->with('media')->latest('id')->first() : null;
+    $sale = $ours ? $deal->invoices()->where('kind', \App\Billing\ChargeKind::Sale)->where('state', '!=', \App\Billing\InvoiceState::Void->value)->shownToManager()->latest('id')->first() : null;
     // У Альфы договор — после подтверждённой оплаты (`Deal::contractAfterPay`): до неё строки «Договор» нет, только покупатель и счёт.
     $later = $deal->hasContract() && $deal->contractAfterPay();
     $docsReady = $deal->hasContract() ? (($later || $contract->missing() === []) && (! $ours || $sale)) : true;
@@ -41,8 +41,8 @@
     // На шаге оплаты счёт — строкой «Счёт № …» в способах оплаты карточки «Оплата»; второй раз не пишем (16.11.2026).
     $saleRow = match (true) {
         ($saleInPay ?? false) => '',
-        (bool) $sale => \Illuminate\Support\Facades\Blade::render('<x-ui.file :name="$name" mime="application/pdf" :href="$href" :bytes="$bytes" download class="row"/>',
-            ['name' => 'Счёт '.(str_starts_with($sale->label(), '№') ? $sale->label() : '№ '.$sale->label()), 'href' => '/account/invoices/'.$sale->id.'/pdf', 'bytes' => $sale->getFirstMedia('file')?->size]),
+        (bool) $sale => \Illuminate\Support\Facades\Blade::render('<x-ui.file :name="$name" mime="application/pdf" :href="$href" download class="row"/>',
+            ['name' => 'Счёт '.(str_starts_with($sale->label(), '№') ? $sale->label() : '№ '.$sale->label()), 'href' => '/account/invoices/'.$sale->id.'/pdf']),
         $ours && $chosen => '<div class="row sale-row"><span class="sale-row-label">Счёт</span><span class="sale-row-value text-ink-muted">'
             .e($contract->buyer?->party?->readyAsBuyer() ? 'готовится' : 'ждём данные').'</span></div>',
         default => '',
