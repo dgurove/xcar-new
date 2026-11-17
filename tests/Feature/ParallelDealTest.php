@@ -189,8 +189,9 @@ class ParallelDealTest extends TestCase
         foreach (['Зайцев', 'Оплата счёта', 'Счёт от поставщика'] as $leak) {
             $this->assertStringNotContainsString($leak, $html, 'прежний главный видит: '.$leak);
         }
-        // Его путь — с тем, что он прошёл до переключения (не обрыв на «Письме с реквизитами»).
-        $this->assertStringContainsString('Согласование с поставщиком', $html);
+        // Его путь — с тем, что он прошёл до переключения (не обрыв на «Письме с реквизитами»); на сайте блок — «На согласовании»
+        // (`Users\Wording::SITE`).
+        $this->assertStringContainsString('На согласовании', $html);
 
         $this->assertNotNull($taken->reissue_at);
         // Письмо ушло, счёт пришёл заново.

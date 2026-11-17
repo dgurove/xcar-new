@@ -123,6 +123,36 @@ class AlfaRequisitesTest extends TestCase
         $page->assertSee('Денис Трофимов')->assertDontSee('tel:79000000002', false);
     }
 
+    /**
+     * Осмотр перед оплатой (17.11.2026, CTTM 5491/046/00861/26): Альфа согласовала осмотр — ход менеджера, не наше письмо с
+     * реквизитами; «Осмотрел, берём» — снова реквизиты, «не берём» — в приём, сделка отменена.
+     */
+    public function test_inspection_agreed_passes_turn_to_manager(): void
+    {
+        [$offer, $deal] = $this->deal(vat: true);
+        Party::seller(Seller::Ros)->update(['name' => 'ООО «Р.О.С.»', 'inn' => '7700000000', 'kind' => 'company']);
+        $this->exit($offer, 'Поставщик просит реквизиты');
+        $this->assertSame('Письмо с реквизитами', $offer->fresh()->stage()->name);
+
+        $this->exit($offer, 'Поставщик согласовал осмотр');
+        $stage = $offer->fresh()->stage();
+        $this->assertSame('Осмотр перед оплатой', $stage->name);
+        $this->assertSame(\App\Workflow\WaitsFor::Manager, $stage->waits_for);
+        $this->exit($offer, 'Осмотрел, берём');
+        $this->assertSame('Письмо с реквизитами', $offer->fresh()->stage()->name, 'платим мы — сразу письмо с нашими реквизитами');
+
+        // «Не берём» — в приём, как «Я передумал» (вход туда отменяет сделку; выставить машину без марки и фото тест не может).
+        $this->exit($offer, 'Поставщик согласовал осмотр');
+        $refuse = $offer->fresh()->stage()->exits->firstWhere('label', 'После осмотра не берём');
+        $this->assertSame('Приём подтверждений', $refuse?->to?->name);
+        $this->assertSame(Actor::Manager, $refuse->actor);
+
+        $agreed = new Message(['direction' => 'in', 'text_body' => "Добрый день!\nЭПТС во вложении\nСогласован визуальный осмотр ТС\nТс стоит по адресу …"]);
+        $template = new Message(['direction' => 'in', 'text_body' => "ГОТС поступили на реализацию. При необходимости можно осмотреть ТС по согласованию с сотрудником филиала."]);
+        $this->assertTrue(InsurerReplies::approvesInspection($agreed));
+        $this->assertFalse(InsurerReplies::approvesInspection($template));
+    }
+
     public function test_reply_asking_requisites_is_recognized(): void
     {
         $ask = new Message(['direction' => 'in', 'text_body' => "Добрый день!\nПросьба прислать реквизиты для выставления счета. Без НДС.\nС уважением, Берсенева Елена"]);

@@ -64,7 +64,8 @@ final class Substeps
 
         $current = $byId->get($stage->id) ?? $stage;
         while (true) {
-            $targets = $current->exits->filter(fn (Outcome $e) => $e->actor !== Actor::Timer && $e->fits($deal))
+            // Крюк («Осмотр перед оплатой», 17.11.2026) — не путь вперёд: туда сворачивают по письму поставщика, ждать его не надо.
+            $targets = $current->exits->filter(fn (Outcome $e) => $e->actor !== Actor::Timer && $e->fits($deal) && $e->to?->name !== \App\Workflow\Presets\Alfa::INSPECTION)
                 ->map(fn (Outcome $e) => $e->to_stage_id)->filter(fn ($id) => $byId->has($id))->unique()->values();
             if ($targets->count() !== 1 || in_array($targets->first(), $seen, true)) {
                 break;
