@@ -90,8 +90,12 @@ final class PassportText
             $fields['passport_issued'] = $issued;
         }
         if ($place = self::birthPlace($lines)) {
-            $fields['birth_place'] = $place;
+            $fields['birth_place'] = self::cleanPlace($place, $fields['name'] ?? null, $fields['passport'] ?? null);
         }
+        if (($fields['birth_place'] ?? null) === '') {
+            unset($fields['birth_place']);
+        }
+        self::checkDates($fields, $checked);
 
         // Заглавные бланка — словами (17.11.2026, владелец, `PassportCase`); «кем выдан» — заглавными, как в бланке.
         isset($fields['birth_place']) && $fields['birth_place'] = PassportCase::format($fields['birth_place']);
@@ -237,6 +241,14 @@ final class PassportText
 
                 continue;
             }
+            // Дата словами в начале строки адреса или с нечитаемым годом (17.11.2026: «23 ОКТЯБРЯ2 2000, РЕР-Н: РЕСП ДАГЕСТАН…»,
+            // «20 НОЯБРЯ 200Г Г.») — дата штампа, не адрес.
+            [$line, $d] = self::leadingWordDate($line);
+            $d && ! $current['date'] && $current['date'] = $d;
+            $line = self::screenNoise($line);
+            if ($line === '') {
+                continue;
+            }
             $current['lines'][] = $line;
         }
         $current !== null && $stamps[] = $current;
@@ -276,6 +288,35 @@ final class PassportText
         return null;
     }
 
+    /**
+     * Дата месяцем словом в начале строки: [строка без неё, дата или null]. Год прочитан с ошибкой («200Г») — дата уходит
+     * из строки, но не ставится.
+     *
+     * @return array{0: string, 1: ?string}
+     */
+    private static function leadingWordDate(string $line): array
+    {
+        $up = self::cyr(mb_strtoupper($line));
+        foreach (self::MONTHS as $word => $month) {
+            if (preg_match('/^\s*(\d{1,2})\s*[«"]?\s*'.$word.'\p{L}*\d?\s*((?:19|20)[\dОOГ]{2})\s*(?:Г\.?)?\s*[,.]?\s*/u', $up, $m)) {
+                $year = preg_match('/^\d{4}$/', $m[2]) ? $m[2] : null;
+                $date = $year && (int) $m[1] >= 1 && (int) $m[1] <= 31 ? sprintf('%s-%02d-%02d', $year, $month, (int) $m[1]) : null;
+
+                return [trim(mb_substr($up, mb_strlen($m[0]))), $date];
+            }
+        }
+
+        return [$line, null];
+    }
+
+    /** Фото экрана телефона (17.11.2026, Минакова): «3 сентября, 10:53», «7 10:37» — время сообщения и строка состояния, не адрес. */
+    private static function screenNoise(string $line): string
+    {
+        $line = preg_replace('/\d{1,2}\s+(?:'.implode('|', array_keys(self::MONTHS)).')\p{L}*,?\s+\d{1,2}:\d{2}/iu', ' ', $line);
+
+        return trim(preg_replace(['/(?<![\d.:])\d{1,2}:\d{2}(?![\d:])/u', '/\s{2,}/u'], [' ', '   '], $line));
+    }
+
     /** Строки штампа → «САМАРСКАЯ ОБЛ., ГОР. САМАРА, УЛ. МОЛОДОГВАРДЕЙСКАЯ, Д. 151, КВ. 23». */
     private static function address(array $lines): string
     {
@@ -287,6 +328,16 @@ final class PassportText
             if (preg_match('/МВД|УФМС|ОВД|ОВМ|ОТДЕЛ|МИГРАЦ|ПАСПОРТН/u', $up) || preg_match('/^\d{3}-\d{3}|ЗАВЕРИЛ|ПОДПИСЬ/u', $up)) {
                 break;
             }
+            // Тот же штамп «кем зарегистрирован», прочитанный с ошибками (17.11.2026, паспорта прода: «ОТДЕЕ ПО БОНРОСАН НИГРАЦИИ»,
+            // «ПО ВОПРОСАН ИКГРАДИЕ ОТДЕНА ПОНИЦИИ», «УПРАВНЕННЯ ИВ РОССИИ», «"ОВК НО ИВД», «(НАНМЕНОВАНИЕ ПОДРАЗДЕЛЕНИЯ») — конец адреса.
+            if (preg_match('/ВОПРОС|[ВБ]О[НП]РОСА|[МН]ИГРАЦ|ИНГРАЦ|ИКГРАД|ИГРАНИИ|ПО[ЛН]И[ЦН]ИИ|ОТЛЕЛ|РОССИ(?!\p{L})|РОССИИ|ССИИ\b|[ЕО]НОВАН|ПОДРАЗДЕ|(?<!\p{L})ОТДЕ(?:НА|Е)?(?!\p{L})|(?<!\p{L})\p{L}{0,2}ВД(?!\p{L})/u', $up)) {
+                break;
+            }
+            // Подпись поля, прочитанная с ошибкой («УННЦА:», «УЛИЩА:», «ПУНКГ:», «РЕР-Н:», «РАЙОВ:»), и «РЕГ-» без «Н» — мимо; «Дом:»,
+            // «Кв.:», «Корп.:» разбираются ниже.
+            $up = preg_replace_callback('/^(?:[А-ЯЁA-Z.\-]{1,7}\s*:\s*)+/u', fn ($m) => preg_match('/^(ДО|КВ|КО)/u', $m[0]) ? $m[0] : '', $up);
+            $up = preg_replace(['/^РЕ[ГР]-\s*/u', '/(^|\s)(?:УН|YN|УЛ)(?=\s|$)/u', '/(^|\s)[ОO][ВБ]Л\./u', '/^А\.(?=\d)/u', '/(\d)КВ\.?(\d)/u'],
+                ['', '$1УЛ.', '$1ОБЛ.', 'Д.', '$1 КВ. $2'], $up);
             // «151 КВ.:23» без подписи «Дом»: номер дома и квартира.
             if (preg_match('/^([\dА-Я\/]+)\s+КВ\.?\s*:?\s*([\dА-Я]+)$/u', $up, $hk)) {
                 $parts[] = 'Д. '.$hk[1];
@@ -326,7 +377,13 @@ final class PassportText
         // не бывает — такой кусок не адрес; без русского слова адреса нет вовсе (мусор хуже пустого поля).
         $parts = array_filter($parts, fn ($p) => $p !== '' && ! (preg_match('/[A-Z]/', $p) && ! preg_match('/[А-ЯЁ]/u', $p)));
 
-        return preg_match('/[А-ЯЁ]{3,}/u', implode(' ', $parts)) ? implode(', ', $parts) : '';
+        // Мусор вместо адреса (17.11.2026: «1ОКОРП», «А0MN12 КОРП. 19», «РАЙОЕ PERNON» — рукопись) хуже пустого поля: нужно
+        // слово от пяти букв и либо пометка места (г., ул., обл., край, р-н…), либо хотя бы три слова.
+        $text = implode(' ', $parts);
+        $marker = preg_match('/(^|[\s,.])(Г|ГОР|УЛ|ОБЛ|ОБЛАСТЬ|КРАЙ|РЕСП|РЕСПУБЛИКА|С|Д|П|ПОС|ПГТ|РП|ПЕР|ПР-Т|ПР-КТ|Р-Н|РАЙОН|МКР|ПЛ|Ш|НАБ|ТЕР|СНТ|ДНТ)(?=[\s.,]|$)/u', $text);
+        $real = preg_match('/[А-ЯЁ]{5,}/u', $text) && ($marker || count(preg_split('/[\s,]+/u', trim($text))) >= 3);
+
+        return $real ? implode(', ', $parts) : '';
     }
 
     /**
@@ -420,7 +477,8 @@ final class PassportText
                         if ($i === $j || $j === $k || $i === $k) {
                             continue;
                         }
-                        $dist = levenshtein($codes[$i].$codes[$j].$codes[$k], $target);
+                        // Б и В разворот путает («БИТАЛИЙ БИКТОРОВИЧ» при «VITALIO VIKTOROVI3» в зоне, 17.11.2026, Зайцев) — не ошибка.
+                        $dist = levenshtein(strtr($codes[$i].$codes[$j].$codes[$k], 'B', 'V'), strtr($target, 'B', 'V'));
                         if ($dist < $bestDist) {
                             [$best, $bestDist] = [[$words[$i], $words[$j], $words[$k]], $dist];
                         }
@@ -453,7 +511,7 @@ final class PassportText
                     }
                 }
 
-                return self::title(implode(' ', $best));
+                return self::title(implode(' ', self::fixLetters($best)));
             }
             // Слов разворота нет — расшифровка зоны.
             if (count($zone) >= 2) {
@@ -463,11 +521,46 @@ final class PassportText
         // Без зоны: отчество по окончанию, перед ним имя и фамилия.
         foreach ($words as $i => $w) {
             if (preg_match('/(ВИЧ|ВНА|ИЧНА|ЧНА|ОГЛЫ|КЫЗЫ)$/u', $w) && $i >= 2) {
-                return self::title($words[$i - 2].' '.$words[$i - 1].' '.$w);
+                return self::title(implode(' ', self::fixLetters([$words[$i - 2], $words[$i - 1], $w])));
             }
         }
 
         return null;
+    }
+
+    /**
+     * Буква, что разворот путает в имени и отчестве (Б/В, П/Р, Н/И): имени нет в словаре, а с заменой есть — заменить
+     * («БИТАЛИЙ БИКТОРОВИЧ» → «ВИТАЛИЙ ВИКТОРОВИЧ», 17.11.2026). Фамилию не трогаем: словаря фамилий нет.
+     *
+     * @param  list<string>  $w  фамилия, имя, отчество
+     * @return list<string>
+     */
+    private static function fixLetters(array $w): array
+    {
+        $swaps = ['Б' => 'В', 'В' => 'Б', 'П' => 'Р', 'Р' => 'П', 'Н' => 'И', 'И' => 'Н', 'Т' => 'Г', 'Г' => 'Т', 'Ф' => 'Г'];
+        foreach ([1, 2] as $i) {
+            $ok = fn (string $x) => $i === 1 ? self::isName($x) : self::isName(self::patronymicStem($x));
+            if (! isset($w[$i]) || $ok($w[$i])) {
+                continue;
+            }
+            // Сначала все такие буквы разом («БИКТОРОВИЧ»), потом по одной («МАРТАРИТА» → «МАРГАРИТА», «САХИВ» → «САХИБ»).
+            $letters = mb_str_split($w[$i]);
+            $tries = [];
+            foreach ($swaps as $from => $to) {
+                str_contains($w[$i], $from) && $tries[] = str_replace($from, $to, $w[$i]);
+            }
+            foreach ($letters as $p => $c) {
+                isset($swaps[$c]) && $tries[] = implode('', array_replace($letters, [$p => $swaps[$c]]));
+            }
+            foreach ($tries as $v) {
+                if ($ok($v)) {
+                    $w[$i] = $v;
+                    break;
+                }
+            }
+        }
+
+        return $w;
     }
 
     /** Подпись «Фамилия» / «Отчество», прочитанная заглавными с ошибкой («ОТЧЕСТАЕ»). */
@@ -539,7 +632,107 @@ final class PassportText
             }
         }
 
-        return $out ? implode(' ', $out) : null;
+        return $out ? self::dropJunkBefore(implode(' ', $out)) : null;
+    }
+
+    /**
+     * Сор перед названием органа (17.11.2026, по паспортам прода: «ХР ГУ МВД…», «НАОРТ ПЫ ГУ МВД…», «ЛЮБИМАЯ ОТДЕЛЕНИЕМ…» — подпись
+     * чата со скриншота, «Ф ОТДЕЛОМ…»): одно-два слова до органа уходят, если это не часть названия — «ЦЕНТРАЛЬНЫМ ОВД»,
+     * «ЗАВОЛЖСКИМ РОВД», «68 ОТДЕЛОМ», «МО УФМС» остаются.
+     */
+    private static function dropJunkBefore(string $s): string
+    {
+        $words = preg_split('/\s+/u', trim($s));
+        $organ = '/^(ГУ|ГУМВД|МВД|УМВД|ОМВД|УВД|ГУВД|ОВД|РОВД|ТП|ОУФМС|УФМС|ОТДЕЛ\p{L}*|ТЕРРИТОРИАЛЬН\p{L}*|ПАСПОРТН\p{L}*)$/u';
+        foreach (array_slice($words, 0, 3) as $i => $w) {
+            if (! preg_match($organ, $w)) {
+                continue;
+            }
+            $junk = array_slice($words, 0, $i);
+            $keep = fn ($w) => preg_match('/(ИМ|ЫМ|ОМ|ЕМ)$|^\d|^№|^(МО|МП|ТП|ОП|ОМ)$/u', $w);
+
+            return $junk && ! array_filter($junk, $keep) ? implode(' ', array_slice($words, $i)) : $s;
+        }
+
+        return $s;
+    }
+
+    /**
+     * Сор в месте рождения (17.11.2026, паспорта прода): пол («МУЖ.», «МУХ.» — «Мух. г. Харьков»), номер паспорта («…Р-НА 566608…»),
+     * слова ФИО и обрывки «РОССИЙСКАЯ ФЕДЕРАЦИЯ» с соседних ячеек («Валентиновна Екатермна Рвсвева Дераци»), «РОССИА» — «РОССИЯ».
+     */
+    private static function cleanPlace(string $place, ?string $name, ?string $passport): string
+    {
+        $names = array_filter(preg_split('/\s+/u', mb_strtoupper((string) $name)), fn ($w) => mb_strlen($w) >= 4);
+        $digits = preg_replace('/\D/', '', (string) $passport);
+        // По буквам, не по байтам: «ЕКАТЕРМНА» ≈ «ЕКАТЕРИНА» (1), «ГРУЗИНСКАЯ» и «РОСТОВСКАЯ» — не имя.
+        $near = fn (string $a, string $b): bool => mb_strlen($b) >= 4 && abs(mb_strlen($a) - mb_strlen($b)) <= 2 && self::lev($a, $b) <= max(1, intdiv(mb_strlen($b), 4));
+        $tokens = preg_split('/\s+/u', trim($place));
+        $words = [];
+        foreach ($tokens as $i => $w) {
+            $bare = trim($w, '.,');
+            if (preg_match('/^(МУЖ|МУХ|ЖЕН|МYЖ)$/u', $bare) || (preg_match('/^\d{5,}$/', $bare) && ($digits === '' || str_contains($digits, $bare)))) {
+                continue;
+            }
+            // Слово ФИО или шапки бланка — только не название места после «Г.», «ГОР.», «С.» («Г. МОСКВА» у Москвина остаётся).
+            $afterAbbr = $i > 0 && preg_match('/^[А-ЯЁ\-]{1,4}\.$/u', $tokens[$i - 1]);
+            if (! $afterAbbr && mb_strlen($bare) >= 4 && preg_match('/^[А-ЯЁ]+$/u', $bare) && ! in_array($bare, ['РОССИЯ', 'РОССИИ'], true)) {
+                if (preg_match('/ДЕРАЦ|ФЕДЕР|ОССИЙСК|(ВИЧ|ВНА)$/u', $bare)) {
+                    continue;
+                }
+                foreach ($names as $n) {
+                    if ($near($bare, $n)) {
+                        continue 2;
+                    }
+                }
+            }
+            $words[] = $w;
+        }
+
+        return trim(preg_replace('/(^|\s)РОССИА(?=\s|$)/u', '$1РОССИЯ', implode(' ', $words)));
+    }
+
+    /**
+     * Даты, которых не бывает (17.11.2026: рождение 26.04.2026, паспорт выдан в 12 лет): паспорт выдают с 14 лет. Непроверенная
+     * зоной дата, что спорит с другой, не ставится — пустое поле человек заполнит, а неверное в договоре никто не заметит.
+     *
+     * @param  array<string, string>  $fields
+     * @param  list<string>  $checked
+     */
+    private static function checkDates(array &$fields, array $checked): void
+    {
+        $birth = $fields['birth_at'] ?? null;
+        $issued = $fields['passport_issued_at'] ?? null;
+        $now = date('Y-m-d');
+        if ($birth && ! in_array('birth_at', $checked, true) && ($birth > date('Y-m-d', strtotime('-14 years')) || $birth < '1900-01-01')) {
+            unset($fields['birth_at']);
+            $birth = null;
+        }
+        if ($issued && ! in_array('passport_issued_at', $checked, true) && ($issued > $now || $issued < '1997-01-01')) {
+            unset($fields['passport_issued_at']);
+            $issued = null;
+        }
+        // Спорят друг с другом: уходит непроверенная; обе непроверенные — обе (какая из них ошибка, не знаем).
+        if ($birth && $issued && $issued < date('Y-m-d', strtotime($birth.' +14 years'))) {
+            foreach (['birth_at', 'passport_issued_at'] as $key) {
+                if (! in_array($key, $checked, true)) {
+                    unset($fields[$key]);
+                }
+            }
+        }
+    }
+
+    /** Расстояние Левенштейна по буквам (встроенный считает байты: кириллица — по два). */
+    private static function lev(string $a, string $b): int
+    {
+        $map = [];
+        $enc = function (string $s) use (&$map): string {
+            return implode('', array_map(function ($c) use (&$map) {
+                return $map[$c] ??= chr(count($map) % 255 + 1);
+            }, mb_str_split($s)));
+        };
+
+        return levenshtein($enc($a), $enc($b));
     }
 
     /** Место рождения: заглавные ячейки после строки с датой рождения (последняя дата), до зоны. */
@@ -669,7 +862,8 @@ final class PassportText
                 return $w;
             }
 
-            $w = strtr($w, array_diff_key(self::LOOKALIKE, ['3' => 1, '0' => 1]) + ['G' => 'Г', 'V' => 'В', 'S' => 'С', 'N' => 'Н', 'R' => 'Р']);
+            // J — «Л», прочитанная латиницей посреди русского слова («HИKOJAEB», «СТЕРjИТАМАК», «Jенинкент», 17.11.2026).
+            $w = strtr($w, array_diff_key(self::LOOKALIKE, ['3' => 1, '0' => 1]) + ['G' => 'Г', 'V' => 'В', 'S' => 'С', 'N' => 'Н', 'R' => 'Р', 'J' => 'Л']);
 
             // 3 и 0 — буквы З и О только между буквами («ЗАРЕГИСТРИРОВАН»), в числах («КВ. 23») — цифры.
             return preg_replace(['/(?<=[А-ЯЁ])3|3(?=[А-ЯЁ])/u', '/(?<=[А-ЯЁ])0|0(?=[А-ЯЁ])/u'], ['З', 'О'], $w);

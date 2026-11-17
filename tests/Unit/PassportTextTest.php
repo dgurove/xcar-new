@@ -26,7 +26,7 @@ class PassportTextTest extends TestCase
     {
         $text = "Место жительства\nЗАРЕГИСТРИРОВАН\n15.06.2015\nРег-н: САМАРСКАЯ ОБЛ.\nПункт: ГОР. САМАРА\nУлица: МОЛОДОГВАРДЕЙСКАЯ\nДом: 151   Кв.: 23\nОТДЕЛОМ УФМС РОССИИ";
 
-        $this->assertSame('Самарская обл, гор. Самара, Молодогвардейская, д. 151, кв. 23', PassportText::registration($text)['fields']['reg_address']);
+        $this->assertSame('Самарская обл., гор. Самара, Молодогвардейская, д. 151, кв. 23', PassportText::registration($text)['fields']['reg_address']);
     }
 
     /** Дата штампа месяцем словом в адрес не попадает (13.11.2026, Мишин: «23 АПРЕЛЯ 2004Г., ЗНАМЕНСКИЕ САДКИ УЛ., …»). */
@@ -124,5 +124,42 @@ class PassportTextTest extends TestCase
         return "рОССЙЙ.СКАЯ ФЕДЕРАЦИЯ\nПаспорт выдан.   ОТДЕЛОМ УФМС РОССИИ\nПО РЕСП. ДАГЕСТАН   8\nВ СОВЕТСКОМ Р-НЕ ГОР. МАХАЧКАЛЫ\n"
             ."Дата выдач19.03.2008 Код подразделения 050-003   0\nАичнй код   512946\nlllcg\nAЛИЕВ\nФам.Аня\nФYCEЙH\nМАГОМЕДОВИЧ\n"
             ."Отчество   0\nПо.МУЖ   Δaτa   19.09.1982\nрождения\nMeero   ГОР. МАХАЧКАЛА\nрождения\n512946";
+    }
+    /** Штамп «кем зарегистрирован» с ошибками OCR — конец адреса; подписи полей и дата словами — мимо (17.11.2026, паспорта прода). */
+    public function test_registration_garbled_stamp_and_labels(): void
+    {
+        $text = "MECTO ЖИТЕАЬСТВА\nЗАРЕГИСТРИРОВАН\n20 ноября 200г г.\nPer-H: \u{0393}   MOCKBA\nРайон:\nПУНКТ:\nУннца: yn АКАДЕМИКА ПИЛЮГИНА\n14K.2 KB 361\nОТДЕЛЕНИЕ ПО ВОПРОСАМ НИГРАЦИИ ОНВД РОССИИ\n770-115   Заверил:";
+        $this->assertSame('г Москва, ул. Академика Пилюгина, 14К.2 кв 361', PassportText::registration($text)['fields']['reg_address']);
+
+        $text = "ЗАРЕГИСТРИРОВАН\n11.08.2023\nНИЖЕГОРОДСКАЯ ОБЛ.\nПЕР. КИПАРИСОВ,\nA.5KB24\nОТДЕЕ ПО БОНРОСАН НИГРАЦИИ ОТДЕНА ПОНИЦИИ\nР 6 УЛВД РОССИИ ПО Г. НИННЕНУ";
+        $this->assertSame('Нижегородская обл., пер. Кипарисов,, д.5 кв. 24', PassportText::registration($text)['fields']['reg_address']);
+
+        // Фото экрана телефона: время сообщения посреди штампа.
+        $text = "ЗАРЕГИСТРИРОВАН\n05.02.2025   ЛЮБИМАЯ\nБРЯНСКАЯ ОБЛ. P-H   3 сентября, 10:53\nBPЯHCКИЙ   СУПОНЕВО\nУЛ. ФРУНЗЕ,Д.38\n\"ОВК НО ИВД РОССИИ";
+        $this->assertSame('Брянская обл. р-н, Врянский Супонево, ул. Фрунзе,д.38', PassportText::registration($text)['fields']['reg_address']);
+    }
+
+    /** Мусор вместо адреса — пусто, а не «1ОКОРП». */
+    public function test_registration_garbage_is_empty(): void
+    {
+        $this->assertSame([], PassportText::registration("ЗАРЕГИСТРИРОВАН\n01.01.2020\n1ОКОРП\nОТДЕЛОМ УФМС")['fields']);
+    }
+
+    /** Сор перед органом, пол и номер паспорта в месте рождения, Б/В в имени (17.11.2026). */
+    public function test_issuer_place_and_name_cleanup(): void
+    {
+        $text = "НаОРТ ПЫ ГУ МВД РОССИИ ПО КРАСНОДАРСКОМУ КРАЮ\n230-004\nДта пдачи 05.06.2016 кол подразделения   610407\nЗАЙЦЕВ\nБИТАЛИЙ\nБИКТОРОВИЧ\nМYX.   11.11.1990\nГ.ХАРЬКОВ УКРАИНА 610407\n";
+        $f = PassportText::main($text)['fields'];
+        $this->assertSame('ГУ МВД РОССИИ ПО КРАСНОДАРСКОМУ КРАЮ', $f['passport_issued']);
+        $this->assertSame('г. Харьков Украина', $f['birth_place']);
+        $this->assertSame('Зайцев Виталий Викторович', $f['name']);
+    }
+
+    /** Паспорт выдан в 12 лет — даты спорят, не ставится ни одна непроверенная. */
+    public function test_impossible_dates_are_dropped(): void
+    {
+        $f = PassportText::main("ГУ МВД РОССИИ ПО Г. МОСКВЕ\n08.06.2002   770-115\nИВАНОВ\nИВАН\nИВАНОВИЧ\nМУЖ.   08.06.1990\n")['fields'];
+        $this->assertArrayNotHasKey('birth_at', $f);
+        $this->assertArrayNotHasKey('passport_issued_at', $f);
     }
 }
