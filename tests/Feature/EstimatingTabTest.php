@@ -25,7 +25,9 @@ class EstimatingTabTest extends TestCase
         config(['xcar.mercure.hub' => '']);
         $admin = User::create(['name' => 'Катя', 'phone' => '79000000040', 'roles' => [Role::Admin], 'approved_at' => now()]);
         $manager = User::create(['name' => 'Иван', 'phone' => '79000000041', 'roles' => [Role::Manager], 'approved_at' => now()]);
-        $offer = Offer::create(['vendor_id' => Vendor::create(['name' => 'Альфа тест'])->id, 'claim_ref' => '5691/046/00885/26', 'floor_price' => 300000]);
+        // С маркой: пустой черновик на оценку не отдаётся (`Offer::estimable`, 17.11.2026).
+        $offer = Offer::create(['vendor_id' => Vendor::create(['name' => 'Альфа тест'])->id, 'claim_ref' => '5691/046/00885/26', 'floor_price' => 300000,
+            'brand_id' => \App\Cars\Brand::create(['slug' => 'kia-est', 'name' => 'Kia'])->id]);
         $in = fn (string $tab, bool $admin = true) => OfferController::scopeFor($tab, Offer::whereKey($offer->id), $admin)->exists();
 
         $this->assertTrue($in('unpriced'));

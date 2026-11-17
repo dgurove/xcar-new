@@ -33,6 +33,10 @@ final class AskEstimates
         if ($offer->state !== OfferState::Draft || $offer->isScheduled()) {
             throw ValidationException::withMessages(['managers' => 'Спросить можно черновик, пока он не в слоте']);
         }
+        // Пустой черновик («ТС» без марки и фото — номер и сумма из СМС) менеджеру оценить нечем (17.11.2026, `Offer::estimable`).
+        if (! $offer->isEstimable()) {
+            throw ValidationException::withMessages(['managers' => 'Нечего оценивать: у ТС нет ни марки, ни фото — сначала данные (лот, письмо)']);
+        }
         $base = $offer->asking_price ?: null;
         $managers = collect($managers)->filter(fn (User $u) => $u->isManager())->unique('id');
         if ($managers->isEmpty()) {

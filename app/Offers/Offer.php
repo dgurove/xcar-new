@@ -492,8 +492,27 @@ class Offer extends Model
      */
     public function scopeAskedOf(Builder $q, User $user): Builder
     {
-        return $q->where('offers.state', OfferState::Draft)
+        return $q->where('offers.state', OfferState::Draft)->estimable()
             ->whereHas('estimates', fn ($e) => $e->open()->where('user_id', $user->id));
+    }
+
+    /**
+     * Есть что оценивать: у ТС марка (или «Марки нет») либо фото (17.11.2026, владелец про «Нужно оценить» Романа: пять карточек «ТС»
+     * без фото — черновики «Оценить из текста» с одним номером и суммой, лота на Мигторге ещё нет). Пустой менеджеру не
+     * показывается и не отдаётся на оценку (`AskEstimates`); пришли данные — появится сам.
+     */
+    public function scopeEstimable(Builder $q): Builder
+    {
+        $car = (new \App\Cars\Car)->getMorphClass();
+
+        return $q->whereExists(fn ($c) => $c->from('cars')->whereColumn('cars.id', 'offers.car_id')
+            ->where(fn ($w) => $w->whereNotNull('cars.brand_id')->orWhere('cars.no_brand', true)
+                ->orWhereExists(fn ($m) => $m->from('media')->where('media.model_type', $car)->whereColumn('media.model_id', 'cars.id')->where('media.collection_name', 'photos'))));
+    }
+
+    public function isEstimable(): bool
+    {
+        return (bool) ($this->car?->brand_id || $this->car?->no_brand || $this->car?->getMedia('photos')->isNotEmpty());
     }
 
     /**

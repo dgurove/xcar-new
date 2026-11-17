@@ -51,6 +51,8 @@ final class Queue
         return Estimate::query()->select('offer_estimates.*')->with(['offer', 'user'])
             ->join('users as u', 'u.id', '=', 'offer_estimates.user_id')
             ->where('offer_estimates.state', EstimateState::Asked)->where('offer_estimates.due_at', '>', now())
+            // Пустой черновик (`Offer::estimable`) — не шлём, пока у ТС нет марки или фото.
+            ->whereHas('offer', fn ($o) => $o->estimable())
             ->whereRaw(self::LINKED)
             ->where('offer_estimates.created_at', '>=', $since)->whereColumn('offer_estimates.created_at', '>=', 'u.whatsapp_linked_at')
             ->whereRaw(self::unsent("'estimate:' || offer_estimates.id"))

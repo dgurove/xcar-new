@@ -304,7 +304,9 @@ class WhatsAppTest extends TestCase
     public function test_estimate_goes_personal_as_text(): void
     {
         $roma = $this->manager('79000000601', '79000000601@s.whatsapp.net');
-        $draft = Offer::create(['vendor_id' => $this->offer->vendor_id, 'floor_price' => 500000]);
+        // С маркой: пустой черновик («ТС» без марки и фото) не оценивают и не шлют (`Offer::estimable`, 17.11.2026).
+        $draft = Offer::create(['vendor_id' => $this->offer->vendor_id, 'floor_price' => 500000,
+            'brand_id' => \App\Cars\Brand::create(['slug' => 'kia-wa', 'name' => 'Kia'])->id]);
         $this->offer->forceFill(['state' => OfferState::Draft])->save();
         $ask = fn (array $extra = []) => Estimate::create(['offer_id' => $draft->id, 'user_id' => $roma->id, 'state' => EstimateState::Asked,
             'due_at' => now()->addDays(2), 'exclusive_days' => 5] + $extra);
