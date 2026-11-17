@@ -148,16 +148,38 @@ final class Signature
             return $drop !== [];
         }
         // Подпись — с начала и всё ниже, по уровням вверх до тела письма; fold — не выбросить, а собрать туда по порядку.
+        // Каждый кусок помнит, в чём стоял: в fold он ложится в копии своих обёрток (17.11.2026, владелец: «у них подпись более
+        // навороченно оформлена» — цвет, жирность и шрифт подписи висят на `<span style>` и `<b>` вокруг строк, а куски
+        // переносились без них: имя Совкомбанка из синего полужирного становилось простым, красная черта — серой).
         $moved = [];
         for ($node = $start; $node && ! $node->isSameNode($body); $node = $node->parentNode) {
+            $parent = $node->parentNode;
             while ($node->nextSibling) {
-                $moved[] = $node->parentNode->removeChild($node->nextSibling);
+                $moved[] = [$parent->removeChild($node->nextSibling), $parent];
             }
         }
-        $moved = [$start->parentNode?->removeChild($start) ?? $start, ...$moved];
+        $startParent = $start->parentNode;
+        $moved = [[$startParent?->removeChild($start) ?? $start, $startParent], ...$moved];
         self::trimEnd($body);
-        foreach ($fold ? $moved : [] as $node) {
-            $fold->appendChild($node);
+        if ($fold) {
+            $clones = [];
+            $into = function (?\DOMNode $parent) use (&$into, &$clones, $body, $fold): \DOMNode {
+                if (! $parent instanceof \DOMElement || $parent->isSameNode($body) || in_array(strtolower($parent->localName), ['body', 'html'], true)) {
+                    return $fold;
+                }
+                $key = spl_object_id($parent);
+                if (! isset($clones[$key])) {
+                    $copy = $parent->cloneNode(false);
+                    $copy instanceof \DOMElement && $copy->removeAttribute('id');
+                    $into($parent->parentNode)->appendChild($copy);
+                    $clones[$key] = $copy;
+                }
+
+                return $clones[$key];
+            };
+            foreach ($moved as [$node, $parent]) {
+                $into($parent)->appendChild($node);
+            }
         }
 
         return true;

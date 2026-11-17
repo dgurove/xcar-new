@@ -5,9 +5,12 @@
     use App\Chats\AuthorKind;
     $deleted = $m->isDeleted();
     $own = !$readonly && !$deleted && $m->ownedBy($user);
+    // Удалить: своё — автору, любое в чате площадки — админу (17.11.2026, `Message::deletableBy`).
+    $del = !$readonly && !$deleted && !$system && $m->deletableBy($user, $chat);
     $reply = $m->reply_to && !$deleted ? $m->replied() : null;
     $images = $deleted ? collect() : $m->files->filter->isImage();
-    $docs = $deleted ? collect() : $m->files->reject->isImage();
+    // Удалённое видят только сотрудники — файлы строками, без миниатюр.
+    $docs = $deleted ? $m->files : $m->files->reject->isImage();
     // Мета (время, галочки) сидит на последней строке текста; в пузыре из одних фото — поверх фото.
     $photoOnly = !$deleted && !$m->text && $images->isNotEmpty() && $docs->isEmpty();
     $kb = fn (int $b) => $b >= 1048576 ? round($b / 1048576, 1).' МБ' : max(1, (int) round($b / 1024)).' КБ';
@@ -17,11 +20,14 @@
     $docPick = !$deleted && !$stepKeys && ($docAsk ?? null) && $m->author_kind === AuthorKind::Participant && $m->files->isNotEmpty()
         && $m->created_at->gte($docAsk->created_at->copy()->subDays(2));
 @endphp
-<div class="msg {{ $system ? 'is-system' : ($mine ? 'is-mine' : 'is-their') }} {{ $cont ? 'is-cont' : '' }} {{ $mine && !$system && $m->seq <= $readSeq ? 'is-read' : '' }} {{ $m->edited_at && !$deleted ? 'is-edited' : '' }} {{ $photoOnly ? 'is-photo' : '' }} {{ $stepKeys || $docPick ? 'has-step' : '' }}" data-seq="{{ $m->seq }}" data-day="{{ $day }}" data-author="{{ $m->author_id ?? $m->author_kind->value }}" @if ($own) data-own @endif @if ($deleted) data-deleted @endif @if (!$system && !$readonly && !$deleted) data-action="contextmenu->chat#menu:prevent pointerdown->chat#press pointerup->chat#release pointercancel->chat#release pointermove->chat#drag" @endif>
+<div class="msg {{ $system ? 'is-system' : ($mine ? 'is-mine' : 'is-their') }} {{ $cont ? 'is-cont' : '' }} {{ $mine && !$system && $m->seq <= $readSeq ? 'is-read' : '' }} {{ $m->edited_at && !$deleted ? 'is-edited' : '' }} {{ $photoOnly ? 'is-photo' : '' }} {{ $stepKeys || $docPick ? 'has-step' : '' }}" data-seq="{{ $m->seq }}" data-day="{{ $day }}" data-author="{{ $m->author_id ?? $m->author_kind->value }}" @if ($own) data-own @endif @if ($del) data-del @endif @if ($deleted) data-deleted @endif @if (!$system && !$readonly && !$deleted) data-action="contextmenu->chat#menu:prevent pointerdown->chat#press pointerup->chat#release pointercancel->chat#release pointermove->chat#drag" @endif>
     @if ($system)
         <div class="msg-system">{{ $m->text }}</div>
     @else
         <div class="msg-bubble" @if ($m->text && !$deleted) data-text="{{ $m->text }}" @endif>
+            {{-- Меню пузыря на ПК — кружок «⌄» в углу при наведении (17.11.2026, владелец: удаление «красиво, удобно, ненавязчиво»;
+                 правую кнопку никто не знал). Телефон — долгое нажатие. --}}
+            @if (!$readonly && !$deleted)<button type="button" class="msg-more" data-action="chat#more" aria-label="Действия с сообщением"><x-ui.icon name="chevron-down" class="size-4"/></button>@endif
             {{-- Имя над чужим пузырём — где на той стороне могут быть разные люди (площадка) или читает сотрудник; покупателю и его менеджеру имя говорит полоса сверху. --}}
             @if (!$cont && ($readonly || (!$mine && !$chat->isBuyerChat())))<div class="msg-author">{{ $m->authorName($chat, $user) }}</div>@endif
             @if ($reply)
@@ -36,8 +42,9 @@
                 <a href="/chats/{{ $m->chat_id }}/files/{{ $f->id }}" target="_blank" data-doc="{{ \App\Support\Docs::type($f->mime, $f->name) }}" data-doc-name="{{ \App\Support\Docs::label($f->name) }}" title="{{ $f->name }}" class="msg-file"><x-ui.file-icon :name="$f->name" :mime="$f->mime" :bytes="$f->size"/><span class="min-w-0 truncate text-sm">{{ $f->name }}</span></a>
             @endforeach
             @if ($deleted)
-                <div class="msg-deleted">Сообщение удалено</div>
-                @if ($staffEyes && $m->text)<div class="msg-text text-ink-dim">{!! \App\Support\Linkify::html($m->text) !!}</div>@endif
+                {{-- Сюда доходят только сотрудники (собеседнику удалённого нет, `Message::hiddenFor`): что было — серым, кто и когда удалил. --}}
+                @if ($m->text)<div class="msg-text">{!! \App\Support\Linkify::html($m->text) !!}</div>@endif
+                <div class="msg-deleted">Удалено@if ($m->deletedBy): {{ $m->deletedBy->is($user) ? 'вами' : $m->deletedBy->shortName() }}@endif, <span class="nums">{!! \App\Support\Ago::html($m->deleted_at, true, words: false) !!}</span></div>
             @elseif ($m->text)
                 <div class="msg-text">{!! \App\Support\Linkify::html($m->text) !!}</div>
             @endif

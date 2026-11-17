@@ -18,6 +18,8 @@
 @endphp
 @if (!empty($more))<div class="chat-more" data-chat-target="more" data-seq="{{ $messages->first()->seq }}"></div>@endif
 @foreach ($messages as $m)
+    {{-- Удалённое собеседнику — бесследно (17.11.2026, владелец): ни пузыря, ни «Сообщение удалено». --}}
+    @continue($m->hiddenFor($user))
     @php
         $system = $m->author_kind === AuthorKind::System;
         $mine = $readonly ? $m->author_kind === AuthorKind::Staff : $m->isMine($user, $chat);

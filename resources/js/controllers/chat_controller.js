@@ -15,7 +15,7 @@ import { scrollBehavior } from '../lib/motion';
 // до отправки, вставка из буфера и drop; просмотр — lightbox.js, как везде.
 
 export default class extends Controller {
-    static targets = ['list', 'form', 'input', 'files', 'submit', 'state', 'stateIcon', 'stateName', 'stateText', 'previews', 'menu', 'ownItem', 'copyItem', 'editItem', 'more', 'step'];
+    static targets = ['list', 'form', 'input', 'files', 'submit', 'state', 'stateIcon', 'stateName', 'stateText', 'previews', 'menu', 'ownItem', 'copyItem', 'editItem', 'removeItem', 'more', 'step'];
     static values = { url: String, open: String, id: Number, last: Number, readonly: Boolean };
 
     connect() {
@@ -279,6 +279,13 @@ export default class extends Controller {
         this.open(event.currentTarget, event.clientX, event.clientY);
     }
 
+    // Кружок «⌄» в углу пузыря (ПК, на наведении): меню — под ним, у края пузыря.
+    more(event) {
+        event.stopPropagation();
+        const btn = event.currentTarget, r = btn.getBoundingClientRect();
+        this.open(btn.closest('.msg'), r.left, r.bottom + 4);
+    }
+
     open(el, x, y) {
         if (this.readonlyValue || !this.hasMenuTarget) return;
         // Долгое нажатие и contextmenu на Android приходят вместе: второй раз меню не открывается заново.
@@ -289,6 +296,13 @@ export default class extends Controller {
         const own = el.hasAttribute('data-own');
         const text = el.querySelector('.msg-bubble')?.dataset.text;
         this.ownItemTargets.forEach((b) => { b.hidden = !own; });
+        // Удалить: своё — «Удалить», чужое (админ в чате площадки, `data-del`) — «Удалить у всех»: у собеседника исчезнет бесследно.
+        if (this.hasRemoveItemTarget) {
+            const del = el.hasAttribute('data-del');
+            this.removeItemTarget.hidden = !del;
+            this.removeItemTarget.dataset.label = own ? 'Удалить' : 'Удалить у всех';
+            this.removeItemTarget.lastElementChild.textContent = this.removeItemTarget.dataset.label;
+        }
         // Изменить — только текст: у сообщения из одних фото править нечего.
         this.editItemTarget.hidden = !own || !text;
         this.copyItemTarget.hidden = !text;
@@ -322,17 +336,17 @@ export default class extends Controller {
 
     // Удаление — с подтверждением в самом пункте: первый тап переименовывает его, второй удаляет.
     async remove(event) {
-        const item = event.currentTarget, label = item.lastChild;
+        const item = event.currentTarget, label = item.lastElementChild, base = item.dataset.label || 'Удалить';
         if (!item.dataset.sure) {
             item.dataset.sure = '1';
             label.textContent = 'Точно удалить';
             clearTimeout(item.sureTimer);
-            item.sureTimer = setTimeout(() => { delete item.dataset.sure; label.textContent = 'Удалить'; }, 3000);
+            item.sureTimer = setTimeout(() => { delete item.dataset.sure; label.textContent = base; }, 3000);
             return;
         }
         clearTimeout(item.sureTimer);
         delete item.dataset.sure;
-        label.textContent = 'Удалить';
+        label.textContent = base;
         this.closeMenu();
         const seq = this.active?.dataset.seq;
         if (!seq) return;
@@ -345,6 +359,8 @@ export default class extends Controller {
         const box = document.createElement('div');
         box.innerHTML = html;
         const fresh = box.querySelector('.msg'), old = this.listTarget.querySelector(`.msg[data-seq="${seq}"]`);
+        // Пустой ответ — пузыря у читающего больше нет (удалённое собеседнику не показывается, 17.11.2026).
+        if (old && !fresh && !html.trim()) { old.remove(); return; }
         if (!fresh || !old) return;
         fresh.classList.toggle('is-cont', old.classList.contains('is-cont'));
         if (fresh.classList.contains('is-cont')) fresh.querySelector('.msg-author')?.remove();

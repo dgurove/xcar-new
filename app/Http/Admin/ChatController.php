@@ -34,7 +34,7 @@ class ChatController
         $firstUnread = ! $chat->isBuyerChat() && $chat->read_seq_staff < $chat->messages_count ? $chat->read_seq_staff + 1 : 0;
         $read($chat, $user);
         Presence::touch($chat, $user);
-        $messages = $chat->messages()->with(['author', 'files'])->reorder('seq', 'desc')->limit(Feed::PAGE)->get()->reverse()->values();
+        $messages = $chat->messages()->with(['author', 'files', 'deletedBy'])->reorder('seq', 'desc')->limit(Feed::PAGE)->get()->reverse()->values();
 
         return view('admin.chats.index', $this->list($request) + [
             'chat' => $chat, 'messages' => $messages, 'user' => $user, 'firstUnread' => $firstUnread,

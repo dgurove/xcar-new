@@ -12,7 +12,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
 
-#[Fillable(['chat_id', 'seq', 'author_id', 'author_kind', 'text', 'reply_to', 'edited_at', 'deleted_at', 'requirement_id', 'ask'])]
+#[Fillable(['chat_id', 'seq', 'author_id', 'author_kind', 'text', 'reply_to', 'edited_at', 'deleted_at', 'deleted_by', 'requirement_id', 'ask'])]
 class Message extends Model
 {
     use FastAttributes;
@@ -34,6 +34,12 @@ class Message extends Model
     public function author(): BelongsTo
     {
         return $this->belongsTo(User::class, 'author_id');
+    }
+
+    /** Кто удалил (17.11.2026) — сотрудникам в CRM серым под удалённым. */
+    public function deletedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'deleted_by');
     }
 
     /** Просьба шага, чьи кнопки несёт сообщение площадки (10.11.2026, `Chats\StepKeys`). */
@@ -114,6 +120,29 @@ class Message extends Model
     public function ownedBy(?User $user): bool
     {
         return $user !== null && $this->author_id === $user->id && ! $this->isDeleted() && $this->author_kind !== AuthorKind::System;
+    }
+
+    /**
+     * Удалить можно своё живое сообщение, а админ в чате площадки — любое не служебное, и менеджера тоже (17.11.2026, владелец:
+     * «в чате в админке безумно не хватает удаления»; «Привет, берём в работу?» и показ менеджеру автора не имеют).
+     */
+    public function deletableBy(?User $user, ?Chat $chat = null): bool
+    {
+        if ($this->ownedBy($user)) {
+            return true;
+        }
+
+        return $user !== null && ! $this->isDeleted() && $this->author_kind !== AuthorKind::System && $user->isAdmin()
+            && ($chat ?? $this->chat)->isCounterpart($user);
+    }
+
+    /**
+     * Удалённое видят только сотрудники (серым, с тем, кто удалил); собеседникам его нет вовсе — бесследно, как «Удалить у всех» в
+     * Telegram (17.11.2026, владелец).
+     */
+    public function hiddenFor(?User $viewer): bool
+    {
+        return $this->isDeleted() && ! $viewer?->isAdmin();
     }
 
     /** Своё ли это сообщение для читающего: участник (и гость) видит свои справа, вторая сторона — свои. */

@@ -182,9 +182,21 @@ final class BodyRenderer
 
             return $n;
         };
+        // Край строчной обёртки — ещё не край строки: `<b>Кондратов Андрей</b><span><br>Главный специалист` (ВСК) — `<br>` первым
+        // в `<span>`, а до него в абзаце текст; без него имя и должность слипались в одну строку (17.11.2026). Соседа ищем выше,
+        // пока обёртка строчная.
+        $inline = fn (?\DOMNode $n) => $n instanceof \DOMElement && in_array(strtolower($n->localName), ['span', 'b', 'strong', 'i', 'em', 'u', 'font', 'a', 'small', 'big', 'sub', 'sup'], true);
+        $near = function (\DOMNode $n, string $dir) use ($skip, $inline, $root) {
+            for (; ; $n = $n->parentNode) {
+                $side = $skip($dir === 'prev' ? $n->previousSibling : $n->nextSibling, $dir);
+                if ($side !== null || ! $inline($n->parentNode) || $n->parentNode->isSameNode($root)) {
+                    return $side;
+                }
+            }
+        };
         foreach (iterator_to_array($root->getElementsByTagName('br')) as $br) {
-            $prev = $skip($br->previousSibling, 'prev');
-            $next = $skip($br->nextSibling, 'next');
+            $prev = $near($br, 'prev');
+            $next = $near($br, 'next');
             $block = fn (?\DOMNode $n) => $n instanceof \DOMElement && in_array(strtolower($n->localName), ['p', 'div', 'table', 'ul', 'ol', 'blockquote', 'h1', 'h2', 'h3', 'h4', 'details'], true);
             if ($prev === null || $next === null || $isBr($prev) || $block($prev) || $block($next)) {
                 $br->parentNode?->removeChild($br);
@@ -401,7 +413,7 @@ final class BodyRenderer
             .'blockquote{margin:0;padding-left:12px;border-left:2px solid #d0d0d0;color:#808080}'
             .('p{margin:0}.sig{margin-top:6px}.sig>summary{cursor:pointer;list-style:none;font-size:13px;line-height:20px;color:#8a8a8a}.sig>summary::-webkit-details-marker{display:none}'
                 .'.sig>summary{display:inline-flex;align-items:center;gap:2px}.sig>summary svg{width:16px;height:16px;fill:none;stroke:#a3a3a3;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round;transition:transform .15s}.sig[open]>summary svg{transform:rotate(90deg)}'
-                .'.sig-body{margin-top:6px;color:#8a8a8a;font-size:13px}')
+                .'.sig-body{margin-top:6px}')
             .$themed.'</style></head><body>'.$body.'</body></html>';
     }
 

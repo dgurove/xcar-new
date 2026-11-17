@@ -66,14 +66,14 @@ final class TelegramChannel
         // текст уже доставлен.
         if ($sent && method_exists($notice, 'telegramFiles')) {
             foreach ($notice->telegramFiles() as $file) {
-                $this->sendFile($user, $file, (int) $sent->message_id);
+                $this->sendFile($user, $file, (int) $sent->message_id, $notice->telegramSubject());
             }
         }
 
         return $sent ? Sent::ok() : Sent::failed('Telegram не ответил');
     }
 
-    private function sendFile(User $user, \App\Chats\File $file, int $replyTo): void
+    private function sendFile(User $user, \App\Chats\File $file, int $replyTo, ?string $subject = null): void
     {
         try {
             $disk = \Illuminate\Support\Facades\Storage::disk('private');
@@ -81,7 +81,9 @@ final class TelegramChannel
                 return;
             }
             $upload = new \Illuminate\Http\UploadedFile($disk->path($file->path), $file->name ?: basename($file->path), $file->mime, null, true);
-            $this->bot->sendFile((int) $user->telegram_chat_id, $upload, null, $replyTo ?: null);
+            $sent = $this->bot->sendFile((int) $user->telegram_chat_id, $upload, null, $replyTo ?: null);
+            // Тот же предмет, что у текста: удалили сообщение чата — уходят и файлы (`RetractChatMessage`).
+            $sent && $subject && $sent->update(['subject' => $subject]);
         } catch (Throwable $e) {
             Log::warning('Telegram: файл чата не ушёл', ['user' => $user->id, 'file' => $file->id, 'error' => $e->getMessage()]);
         }

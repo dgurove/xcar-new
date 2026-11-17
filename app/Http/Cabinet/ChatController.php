@@ -33,7 +33,7 @@ class ChatController
         $firstUnread = $chat->myReadSeq($user) < $chat->messages_count ? $chat->myReadSeq($user) + 1 : 0;
         $read($chat, $user);
         Presence::touch($chat, $user);
-        $messages = $chat->messages()->with(['author', 'files'])->reorder('seq', 'desc')->limit(Feed::PAGE)->get()->reverse()->values();
+        $messages = $chat->messages()->with(['author', 'files', 'deletedBy'])->reorder('seq', 'desc')->limit(Feed::PAGE)->get()->reverse()->values();
 
         return view('cabinet.chats', [
             'chat' => $chat, 'messages' => $messages, 'user' => $user, 'firstUnread' => $firstUnread,

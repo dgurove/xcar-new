@@ -64,6 +64,18 @@ final class ChatNotice extends Notice
         return '/account/chats/'.$this->message->chat_id;
     }
 
+    /** Сообщения бота об этом сообщении чата — удалить у всех, когда его удалили (`Chats\Jobs\RetractChatMessage`, 17.11.2026). */
+    public function telegramSubject(): ?string
+    {
+        return \App\Chats\Jobs\RetractChatMessage::subjectOf($this->message->id);
+    }
+
+    /** Строка ленты знает своё сообщение — убрать её вместе с ним. */
+    public function toArray(\App\Users\User $user): array
+    {
+        return parent::toArray($user) + ['chat_message' => $this->message->id];
+    }
+
     /**
      * В Telegram — сообщение целиком; автоответ площадки — нет: человек сам только что написал. Другое сообщение площадки без
      * автора (вопрос «Берём?», `PlatformMessage`) — да: ради него оно и пишется.

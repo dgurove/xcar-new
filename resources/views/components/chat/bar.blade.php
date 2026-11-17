@@ -24,5 +24,5 @@
     <button type="button" class="menu-item w-full" role="menuitem" data-action="chat#reply"><x-ui.icon name="reply" class="size-5"/>Ответить</button>
     <button type="button" class="menu-item w-full" role="menuitem" data-action="chat#copy" data-chat-target="copyItem"><x-ui.icon name="copy" class="size-5"/>Скопировать</button>
     <button type="button" class="menu-item w-full" role="menuitem" data-action="chat#startEdit" data-chat-target="ownItem editItem"><x-ui.icon name="edit" class="size-5"/>Изменить</button>
-    <button type="button" class="menu-item w-full text-danger" role="menuitem" data-action="chat#remove" data-chat-target="ownItem removeItem"><x-ui.icon name="trash" class="size-5"/>Удалить</button>
+    <button type="button" class="menu-item w-full text-danger" role="menuitem" data-action="chat#remove" data-chat-target="removeItem"><x-ui.icon name="trash" class="size-5"/><span>Удалить</span></button>
 </div>

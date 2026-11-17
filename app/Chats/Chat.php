@@ -75,7 +75,8 @@ class Chat extends Model
 
     public function scopeWithLast(Builder $query): Builder
     {
-        $last = fn (string $column) => Message::select($column)->whereColumn('chat_id', 'chats.id')->orderByDesc('seq')->limit(1);
+        // Последнее живое: удалённое в превью не попадает ни у кого (17.11.2026, у собеседника его нет вовсе).
+        $last = fn (string $column) => Message::select($column)->whereColumn('chat_id', 'chats.id')->whereNull('deleted_at')->orderByDesc('seq')->limit(1);
         // Есть ли у последнего сообщения не-картинка — чтобы превью говорило «Файл», а не «Фото».
         $doc = File::selectRaw('1')->whereIn('message_id', $last('id'))->where('mime', 'not like', 'image/%')->limit(1);
 
