@@ -63,6 +63,25 @@ class StrayVendorLettersTest extends TestCase
         $this->assertSame($offer->id, app(LinkThread::class)->auto(Message::where('thread_id', $thread->id)->first()->load('account', 'thread'))?->id, 'тот же номер с другим годом');
     }
 
+    /**
+     * Письмо-список (17.11.2026, Альфа «Реализация»: девять строк «номер — сумма — марка» привязались к первой машине списка):
+     * больше двух номеров — ни к какой машине, номера тела не поле письма. Письмо об одной машине — как раньше.
+     */
+    public function test_list_letter_is_not_linked_to_first_car(): void
+    {
+        $offer = app(CreateOffer::class)(null);
+        app(UpdateOffer::class)($offer, ['claim_ref' => 'Z691/046/02300/26', 'vendor_id' => Vendor::first()->id], null);
+        $body = "Андрей, если интересны ТС по списку и цене(без надбавок), присылайте предложения.\nномер уб стоимость марка\n"
+            ."Z691/046/02300/26 459000 грузовик\n0531/046/00572/26 1259000 Renault\nZ691/046/18227/25 419000 прицеп\n5991/046/00481/26 36999 газель";
+        $list = $this->letter('Реализация', $body);
+        $message = Message::where('thread_id', $list->id)->first()->load('account', 'thread');
+        $this->assertNull(app(LinkThread::class)->auto($message), 'список — ни к одной машине');
+        $this->assertNull(app(Extractor::class)->extract('Реализация', $body, 'a.lapshin@sovcomins.ru', now(), [])['code'] ?? null, 'номера тела — не поле письма');
+
+        $one = $this->letter('Реализация', 'Андрей, по Z691/046/02300/26 цена 459000');
+        $this->assertSame($offer->id, app(LinkThread::class)->auto(Message::where('thread_id', $one->id)->first()->load('account', 'thread'))?->id, 'об одной машине — привязывается');
+    }
+
     public function test_bare_number_takes_year_from_contract_name(): void
     {
         $files = [new Attachment(['filename' => 'Договор комиссии 837110-26.docx', 'is_inline' => true]), new Attachment(['filename' => 'оценка ГОТС.pdf', 'is_inline' => true])];

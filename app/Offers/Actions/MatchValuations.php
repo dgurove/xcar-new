@@ -49,7 +49,7 @@ final class MatchValuations
      * @param  list<array{ref: string, key: string, amount: ?int, vin: ?string, city?: ?array}>  $rows
      * @return list<array{status: string, ref: string, amount: ?int, vin: ?string, offer: ?Offer, floor: ?int, value_differs?: bool, floor_differs?: bool}>
      */
-    public function __invoke(User $user, array $rows): array
+    public function __invoke(User $user, array $rows, bool $markup = true): array
     {
         $rows = array_values(array_filter($rows, fn ($r) => $r['amount'] !== null && $r['key'] !== ''));
         $amounts = [];
@@ -97,7 +97,7 @@ final class MatchValuations
                 $lot = $lots->get($r['key']);
                 // Черновик получит вендора по виду номера — цены из суммы по его правилу.
                 $vendor = $vendorOf($r['ref']);
-                $floor = Pricing::fromAmount($vendor, $r['amount'])['floor_price'];
+                $floor = Pricing::fromAmount($vendor, $r['amount'], markup: $markup)['floor_price'];
                 $out[] = $r + ['status' => count($amounts[$r['key']]) === 1 ? 'absent' : 'missing', 'suspicious' => self::suspicious($r['amount']), 'lot' => $lot, 'vendor' => $vendor, 'archived' => $archived->get($r['key']), 'offer' => null, 'direct' => false, 'floor' => $floor, 'value_differs' => false, 'floor_differs' => false, 'vin_fill' => null, 'vin_taken' => null, 'city_fill' => null, 'gaps' => []];
 
                 continue;
@@ -106,7 +106,8 @@ final class MatchValuations
                 $vin = strtoupper((string) $offer->vin);
                 $direct = ! Pricing::byValue($offer->vendor_id);
                 $rules = Pricing::rulesFor($offer);
-                $floor = $direct ? $r['amount'] : Pricing::floorFrom($r['amount'], $rules);
+                // Без наценки (суммы — закупочные, `Pricing::fromAmount`) закупочная — сама сумма и у вендора с оценочной.
+                $floor = $direct || ! $markup ? $r['amount'] : Pricing::floorFrom($r['amount'], $rules);
                 // Вписанное расходится: оценочная другая; закупочная вписана рукой (не пустая и не посчитанная от
                 // прежней оценочной) и не та, что получится.
                 $valueDiffers = ! $direct && $offer->value !== null && (int) $offer->value !== $r['amount'];

@@ -69,7 +69,7 @@ final class ValuationFromChat implements ShouldQueue
         }
         $items = $match($user, $rows);
         $id = random_int(100000, 999999999);
-        Cache::put("valuation-bot:{$id}", ApplyValuations::prepare($user, $items) + ['chat' => $this->chatId], now()->addDay());
+        Cache::put("valuation-bot:{$id}", ApplyValuations::prepare($user, $items, source: 'bot') + ['chat' => $this->chatId], now()->addDay());
         $this->say($bot, self::summary($items, match ($kind) {
             self::PHOTO => 'Оценка из фото',
             self::SHEET => 'Оценка из таблицы',

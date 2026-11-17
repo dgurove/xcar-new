@@ -30,6 +30,8 @@ final class DraftSource
         public readonly bool $reopenCancelled = true,
         // Архивное снова черновиком (14.11.2026, владелец: «мы их убираем, а они снова появляются»): без человека — нет.
         public readonly bool $reopenArchived = true,
+        // Сумма — уже закупочная, без наценки (`Pricing::fromAmount`, «Оценить из текста → Закупочные»).
+        public readonly bool $markup = true,
     ) {}
 
     public function claimKey(): ?string

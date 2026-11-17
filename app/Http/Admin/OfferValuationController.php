@@ -5,8 +5,10 @@ namespace App\Http\Admin;
 use App\Offers\Actions\ApplyValuations;
 use App\Offers\Actions\MatchValuations;
 use App\Offers\ValuationPhoto;
+use App\Offers\ValuationRun;
 use App\Offers\ValuationSheet;
 use App\Offers\ValuationText;
+use App\Vendors\Vendor;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
@@ -42,13 +44,16 @@ final class OfferValuationController
 
     public function preview(Request $request, MatchValuations $match)
     {
-        $text = (string) $request->validate(['text' => ['required', 'string', 'max:100000']])['text'];
+        $data = $request->validate(['text' => ['required', 'string', 'max:100000'], 'mode' => ['nullable', 'in:value,floor'], 'source' => ['nullable', 'in:text,file,photo']]);
+        $text = (string) $data['text'];
+        // Суммы — оценочные (закупочная по правилу вендора) или уже закупочные, без наценки (17.11.2026, сегмент окна).
+        $markup = ($data['mode'] ?? 'value') !== 'floor';
         $parsed = ValuationText::parse($text);
-        $items = $match($request->user(), $parsed['rows']);
+        $items = $match($request->user(), $parsed['rows'], $markup);
         $token = Str::random(32);
         $take = collect($items)->filter(fn ($i) => $i['offer'] && in_array($i['status'], ['fill', 'conflict', 'check'], true));
         $found = collect($items)->filter(fn ($i) => $i['offer'] && in_array($i['status'], ['fill', 'conflict', 'same'], true));
-        Cache::put("valuation:{$token}", ApplyValuations::prepare($request->user(), $items), now()->addMinutes(30));
+        Cache::put("valuation:{$token}", ApplyValuations::prepare($request->user(), $items, $markup, $data['source'] ?? 'text'), now()->addMinutes(30));
         // Строки текста для анимации «убираем лишнее»: остаются номер, сумма, VIN и город, прочее схлопывается.
         $keep = collect($parsed['rows'])->flatMap(fn ($r) => $r['lines'])->flip();
         $lines = collect($parsed['lines'])->map(fn ($l, $i) => ['text' => trim($l), 'keep' => $keep->has($i)])
@@ -69,8 +74,18 @@ final class OfferValuationController
                 'no_vin' => $found->filter(fn ($i) => in_array('vin', $i['gaps'], true))->unique(fn ($i) => $i['offer']->id)->count(),
                 'no_city' => $found->filter(fn ($i) => in_array('city', $i['gaps'], true))->unique(fn ($i) => $i['offer']->id)->count(),
             ],
-            'html' => view('admin.offers.valuation-rows', ['items' => $items])->render(),
+            'html' => view('admin.offers.valuation-rows', ['items' => $items, 'mode' => $markup ? 'value' : 'floor'])->render(),
         ]);
+    }
+
+    /** «История» окна — последние 20 сохранений окна и бота; кусок фрейма `valuation-history`. Модератору — свои. */
+    public function history(Request $request)
+    {
+        $runs = ValuationRun::query()->with('user')->when(! $request->user()->canManageCrm(), fn ($q) => $q->where('user_id', $request->user()->id))
+            ->latest('id')->limit(20)->get();
+        $vendors = Vendor::whereKey($runs->flatMap(fn ($r) => array_keys($r->vendors))->unique()->filter()->values())->get()->keyBy('id');
+
+        return view('admin.offers.valuation-history', compact('runs', 'vendors'));
     }
 
     public function apply(Request $request, ApplyValuations $apply)

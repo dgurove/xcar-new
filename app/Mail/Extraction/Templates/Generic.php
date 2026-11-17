@@ -21,7 +21,8 @@ class Generic extends Template
         [$brand, $model] = $this->brandAndModel($subject);
         $this->put($fields, 'brand', $brand, 'subject');
         $this->put($fields, 'model', $model, 'subject');
-        if (static::BODY_FALLBACK) {
+        // Письмо-список (`CodeMatcher::isList`): номер, VIN и госномер тела — не об одной машине.
+        if (static::BODY_FALLBACK && ! $this->matcher->isList($body)) {
             $this->put($fields, 'code', $this->firstCode($body), 'body');
             $this->put($fields, 'vin', $this->vin($body), 'body');
             $this->put($fields, 'plate', $this->match(Patterns::PLATE, $body), 'body');

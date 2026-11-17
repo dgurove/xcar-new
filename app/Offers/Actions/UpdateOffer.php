@@ -59,7 +59,9 @@ final class UpdateOffer
         $offer->fill($data);
         // Сменили оценочную или ступени предложения, закупочную не трогали — закупочная от неё же по ступеням предложения,
         // если не вписана рукой (`Pricing::floorFor`).
-        if (($offer->isDirty('value') || $offer->isDirty('floor_rules')) && ! $offer->isDirty('floor_price')
+        // Без наценки (`$log['markup'] === false`, «Оценить из текста → Закупочные») закупочная — та, что прислали, и когда
+        // она не сменилась.
+        if (($offer->isDirty('value') || $offer->isDirty('floor_rules')) && ! $offer->isDirty('floor_price') && ($log['markup'] ?? true) !== false
             && ($floor = Pricing::floorFor($offer->floor_price, $was, $offer->value, Pricing::autoRules($offer), $wasRules))) {
             $offer->floor_price = $floor;
         }

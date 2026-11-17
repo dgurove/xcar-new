@@ -35,6 +35,9 @@
                     </label>
                 </div>
 
+                {{-- Что уже проставляли через окно и бота (17.11.2026, `ValuationRun`): грузится, когда окно открыли. --}}
+                <turbo-frame id="valuation-history" src="/offers/valuations/history" loading="lazy" class="valuation-history-frame"></turbo-frame>
+
                 {{-- Файл: значок или миниатюра, имя, объём или ход; справа кольцо, галка или «×». --}}
                 <div class="list" data-valuation-target="file" hidden>
                     <div class="row valuation-file" data-state="read">
@@ -82,6 +85,9 @@
         <form method="post" action="/offers/valuations" class="valuation-pane" data-valuation-target="result" data-action="submit->valuation#save" hidden>
             @csrf
             <input type="hidden" name="token" data-valuation-target="token">
+            {{-- Суммы в тексте — оценочные (закупочная по правилу вендора) или уже закупочные без надбавок (17.11.2026, Альфа
+                 «Реализация»): переключили — тот же текст разбирается заново (`valuation#remode`). --}}
+            <x-ui.segment name="mode" :options="['value' => 'Оценочные', 'floor' => 'Закупочные']" value="value" class="valuation-mode" data-action="change->valuation#remode"/>
             <div class="valuation-scroll" data-valuation-target="rows"></div>
             <p class="valuation-what" data-valuation-target="what"></p>
             <div class="valuation-bar">

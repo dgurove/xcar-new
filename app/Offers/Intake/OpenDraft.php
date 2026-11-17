@@ -128,7 +128,7 @@ final class OpenDraft
         // Вендор парковки — его сторона продаж (`Vendor::forCrm`) сразу: от неё НДС, маршрут и строка в истории.
         $fields['vendor_id'] = Vendor::forCrm($fields['vendor_id'] ?? null);
         if ($source->amount && ! isset($fields['floor_price'])) {
-            $fields += Pricing::fromAmount($fields['vendor_id'] ?? null, $source->amount);
+            $fields += Pricing::fromAmount($fields['vendor_id'] ?? null, $source->amount, markup: $source->markup);
         }
 
         return array_filter($fields, fn ($v) => $v !== null && $v !== '');

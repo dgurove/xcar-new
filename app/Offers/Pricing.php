@@ -232,12 +232,18 @@ final class Pricing
 
     /**
      * Сумма от страховой в цены предложения: у вендора с оценочной — оценочная и закупочная от неё, иначе закупочная.
+     * markup: false — сумма уже закупочная, без надбавок (17.11.2026, Альфа «Реализация»: «по цене без надбавок»): закупочная =
+     * сумма, у вендора с оценочной и оценочная та же, наценки нет.
      *
      * @return array{value?: int, floor_price: int}
      */
-    public static function fromAmount(?int $vendorId, int $amount, ?Offer $offer = null): array
+    public static function fromAmount(?int $vendorId, int $amount, ?Offer $offer = null, bool $markup = true): array
     {
-        return self::byValue($vendorId) ? ['value' => $amount, 'floor_price' => self::floorFrom($amount, self::rulesFor($offer ?? $vendorId))] : ['floor_price' => $amount];
+        if (! self::byValue($vendorId)) {
+            return ['floor_price' => $amount];
+        }
+
+        return ['value' => $amount, 'floor_price' => $markup ? self::floorFrom($amount, self::rulesFor($offer ?? $vendorId)) : $amount];
     }
 
     /** @return array{0: ?int, 1: int, 2: int|float} */

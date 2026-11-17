@@ -11,6 +11,7 @@ use App\Offers\Intake\OpenDraft;
 use App\Offers\Jobs\ImportMigtorgLot;
 use App\Offers\Offer;
 use App\Offers\Pricing;
+use App\Offers\ValuationRun;
 use App\Users\User;
 use Illuminate\Support\Facades\DB;
 
@@ -27,13 +28,16 @@ final class ApplyValuations
     public function __construct(private UpdateOffer $update) {}
 
     /** @return array<string, mixed> */
-    public static function prepare(User $user, array $items): array
+    public static function prepare(User $user, array $items, bool $markup = true, string $source = 'text'): array
     {
         $take = collect($items)->filter(fn ($i) => $i['offer'] && in_array($i['status'], ['fill', 'conflict', 'check'], true));
         $found = collect($items)->filter(fn ($i) => $i['offer'] && in_array($i['status'], ['fill', 'conflict', 'same'], true));
 
         return [
             'user' => $user->id,
+            // Суммы — оценочные с наценкой по правилу или уже закупочные (17.11.2026); откуда текст — для «Истории» окна.
+            'markup' => $markup,
+            'source' => $source,
             // VIN и город из текста — по предложению, и у тех, где сумма та же.
             'vin' => $found->filter(fn ($i) => $i['vin_fill'])->mapWithKeys(fn ($i) => [$i['offer']->id => $i['vin_fill']])->all(),
             'city' => $found->filter(fn ($i) => $i['city_fill'])->mapWithKeys(fn ($i) => [$i['offer']->id => $i['city_fill']['id']])->all(),
@@ -77,11 +81,13 @@ final class ApplyValuations
         $cities = array_diff_key($cities, array_flip($off));
         $touch = array_values(array_unique([...$ids, ...array_keys($vins), ...array_keys($cities)]));
         $done = $vinDone = $cityDone = $vinTaken = $repriced = 0;
+        $markup = (bool) ($saved['markup'] ?? true);
+        $items = [];
         foreach (Offer::query()->inCrm($user)->whereKey($touch)->get() as $offer) {
             $set = [];
             if (in_array($offer->id, $ids, true)) {
                 $value = (int) $saved['amounts'][$offer->id];
-                $set = Pricing::fromAmount($offer->vendor_id, $value, $offer);
+                $set = Pricing::fromAmount($offer->vendor_id, $value, $offer, $markup);
                 // Расхождение без «Перезаписать» — вписанное остаётся; оставили оценочную — закупочная тоже прежняя.
                 $differs = $saved['differs'][$offer->id] ?? null;
                 if ($differs && ($keep[$offer->id] ?? 'keep') === 'keep') {
@@ -107,7 +113,10 @@ final class ApplyValuations
             if ($set === []) {
                 continue;
             }
-            ($this->update)($offer, $set, $user, ['source' => 'valuation', 'value' => $set['value'] ?? null, 'floor' => $set['floor_price'] ?? null]);
+            ($this->update)($offer, $set, $user, ['source' => 'valuation', 'value' => $set['value'] ?? null, 'floor' => $set['floor_price'] ?? null] + ($markup ? [] : ['markup' => false]));
+            if (isset($set['floor_price']) || isset($set['value'])) {
+                $items[] = ['offer_id' => $offer->id, 'number' => $offer->number, 'ref' => (string) $offer->claim_ref, 'vendor_id' => $offer->vendor_id, 'amount' => (int) $saved['amounts'][$offer->id]];
+            }
             // Подтвердившие уже есть — закупочная не встала, а ждёт решения переоценкой (`UpdateOffer`, 28.10.2026): это не
             // «оценено», а «на переоценку».
             if (isset($set['floor_price']) && (int) $offer->floor_price !== (int) $set['floor_price']) {
@@ -115,7 +124,8 @@ final class ApplyValuations
                 $done = max(0, $done - 1);
             }
         }
-        $created = $this->createAbsent($user, array_intersect_key($saved['create'] ?? [], array_flip($create)));
+        $created = $this->createAbsent($user, array_intersect_key($saved['create'] ?? [], array_flip($create)), $markup);
+        ValuationRun::record($user, $saved['source'] ?? 'text', $markup, [...$items, ...array_map(fn ($c) => array_intersect_key($c, array_flip(['offer_id', 'number', 'ref', 'vendor_id', 'amount'])), $created)]);
 
         return ['done' => $done, 'repriced' => $repriced, 'created' => $created, 'vin' => $vinDone, 'city' => $cityDone, 'vin_taken' => $vinTaken];
     }
@@ -129,26 +139,27 @@ final class ApplyValuations
      * @param  array<string, array{ref: string, amount: int, lot: ?int}>  $rows
      * @return list<array{number: int, title: string, ref: string, floor: int, city: ?string}>
      */
-    private function createAbsent(User $user, array $rows): array
+    private function createAbsent(User $user, array $rows, bool $markup = true): array
     {
         $out = [];
         foreach ($rows as $row) {
             $lot = $row['lot'] ? DB::table('migtorg_lots')->find($row['lot']) : null;
             try {
                 [$offer, $outcome] = app(OpenDraft::class)(new DraftSource($lot ? 'migtorg' : 'valuation', $row['ref'], amount: (int) $row['amount'],
-                    created: $lot ? ['migtorg' => $lot->id] : ['valuation' => true], why: 'Оценка из текста'), $user);
+                    created: $lot ? ['migtorg' => $lot->id] : ['valuation' => true], why: 'Оценка из текста', markup: $markup), $user);
             } catch (IdentityTaken) {
                 continue;
             }
             // Вернулось из архива или уже было — цены из текста поверх прежних.
             if ($outcome !== OpenDraft::CREATED) {
-                ($this->update)($offer, Pricing::fromAmount($offer->vendor_id, (int) $row['amount'], $offer), $user, ['source' => 'valuation']);
+                ($this->update)($offer, Pricing::fromAmount($offer->vendor_id, (int) $row['amount'], $offer, $markup), $user, ['source' => 'valuation'] + ($markup ? [] : ['markup' => false]));
             }
             if ($lot && $outcome !== OpenDraft::EXISTING) {
                 ImportMigtorgLot::start($offer->refresh(), $lot);
             }
             $offer->refresh();
-            $out[] = ['number' => $offer->number, 'title' => $offer->titleWithYear() ?: $row['ref'], 'ref' => $row['ref'], 'floor' => (int) $offer->floor_price, 'city' => $offer->settlement?->title() ?? $lot?->city];
+            $out[] = ['number' => $offer->number, 'title' => $offer->titleWithYear() ?: $row['ref'], 'ref' => $row['ref'], 'floor' => (int) $offer->floor_price, 'city' => $offer->settlement?->title() ?? $lot?->city,
+                'offer_id' => $offer->id, 'vendor_id' => $offer->vendor_id, 'amount' => (int) $row['amount']];
         }
 
         return $out;

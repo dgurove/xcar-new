@@ -1615,6 +1615,21 @@ html.kb-open { --home-gap: 0px; }
      экран «Готово» с галкой обводкой. */
   .valuation-body { @apply flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto; overscroll-behavior: contain; }
   .valuation-sources .row { @apply w-full cursor-pointer; }
+  /* Суммы — оценочные или закупочные (17.11.2026): сегмент над группами итога; пока текст разбирается заново — строки бледнеют. */
+  .valuation-mode { margin-bottom: .75rem; }
+  .valuation-scroll.is-busy { opacity: .45; pointer-events: none; transition: opacity var(--dur-fast); }
+  /* История окна (`admin/offers/valuation-history`): под источниками, пока выбирают; строка — сохранение, раскрывается машинами. */
+  .valuation-sources[hidden] ~ .valuation-history-frame { display: none; }
+  .valuation-history-head { margin-top: 1.5rem; }
+  .valuation-run > summary { list-style: none; cursor: pointer; }
+  .valuation-run > summary::-webkit-details-marker { display: none; }
+  .valuation-run-logos { display: flex; flex: none; gap: .25rem; font-size: 1.5rem; }
+  .valuation-run-mode { color: var(--color-ink-muted); }
+  .valuation-run-mode.is-floor { color: var(--color-accent-text); }
+  .valuation-run-when { flex: none; text-align: right; font-size: var(--text-sm); color: var(--color-ink-muted); }
+  .valuation-run-items { display: grid; padding: 0 1rem .75rem 3.25rem; }
+  .valuation-run-item { display: flex; align-items: center; gap: .75rem; min-height: 2rem; font-size: var(--text-sm); }
+  @media (hover: hover) { .valuation-run-item:hover { color: var(--color-ink); text-decoration: underline; text-underline-offset: 3px; } }
   /* Перетащили файл в окно — источник загорается лаймом. */
   .valuation.is-dragging .valuation-sources, .valuation.is-dragging .valuation-text { background: var(--color-accent-soft); }
   .valuation-key { @apply hidden rounded-md bg-surface-3 px-1.5 py-0.5 font-sans text-xs text-ink-muted; }

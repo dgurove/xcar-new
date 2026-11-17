@@ -93,6 +93,8 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
     Route::post('/offers/valuations/file', [OfferValuationController::class, 'file'])->middleware('throttle:10,1');
     Route::post('/offers/valuations/preview', [OfferValuationController::class, 'preview']);
     Route::post('/offers/valuations', [OfferValuationController::class, 'apply']);
+    // История окна (17.11.2026): последние сохранения окна и бота.
+    Route::get('/offers/valuations/history', [OfferValuationController::class, 'history']);
     // «Из таблицы Кати» (10.10.2026): номера списком, «Завести» и «Убрать» — только админу.
     Route::middleware('ability:canManageCrm')->group(function () {
         Route::post('/offers/legacy', [LegacyClaimController::class, 'store']);

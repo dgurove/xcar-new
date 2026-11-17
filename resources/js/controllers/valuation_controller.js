@@ -39,6 +39,7 @@ export default class extends Controller {
             event.preventDefault();
             return this.read(file);
         }
+        this.source = 'text';
         if (event.target === this.textTarget) return setTimeout(() => this.run(), 0);
         const text = event.clipboardData?.getData('text/plain')?.trim();
         if (!text || event.target.closest?.('input, textarea, [contenteditable]')) return;
@@ -49,6 +50,7 @@ export default class extends Controller {
 
     // «Вставить текст»: из буфера, если браузер даёт; не даёт или пусто — поле с клавиатурой.
     async pasteText() {
+        this.source = 'text';
         let text = '';
         try { text = (await navigator.clipboard?.readText?.())?.trim() ?? ''; } catch { /* нет доступа — руками */ }
         this.showText(text);
@@ -102,6 +104,7 @@ export default class extends Controller {
     async read(file) {
         if (this.busy || this.reading) return;
         const sheet = SHEET.test(file.name);
+        this.source = sheet ? 'file' : 'photo';
         this.reading = true;
         this.sourcesTarget.hidden = true;
         this.editorTarget.hidden = true;
@@ -157,7 +160,7 @@ export default class extends Controller {
         this.mark('clean', 'run');
         const started = performance.now();
         // Сбой пишется в самом окне разбора, поэтому запрос — без тоста.
-        const data = await getJson(this.urlValue, { method: 'POST', json: { text }, quiet: true });
+        const data = await getJson(this.urlValue, { method: 'POST', json: this.ask(text), quiet: true });
         if (!data) return this.fail('Не получилось разобрать, попробуйте ещё раз');
         await sleep(Math.max(0, 300 - (performance.now() - started)));
 
@@ -205,6 +208,29 @@ export default class extends Controller {
         if (!calm()) await this.workTarget.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 200 }).finished.catch(() => {});
         this.workTarget.hidden = true;
         this.busy = false;
+    }
+
+    // Что спросить у разбора: текст, род сумм (сегмент «Оценочные | Закупочные») и откуда текст — для «Истории».
+    ask(text) {
+        const mode = this.resultTarget.querySelector('input[name="mode"]:checked')?.value ?? 'value';
+        return { text, mode, source: this.source ?? 'text' };
+    }
+
+    // Сегмент «Оценочные | Закупочные» на итоге (17.11.2026): тот же текст разбирается заново — закупочные в карточках сразу
+    // верные (без наценки — сама сумма), токен новый; этапов заново не показываем.
+    async remode() {
+        const text = this.textTarget.value.trim();
+        if (!text || this.busy) return;
+        this.busy = true;
+        this.rowsTarget.classList.add('is-busy');
+        const data = await getJson(this.urlValue, { method: 'POST', json: this.ask(text), quiet: true });
+        this.rowsTarget.classList.remove('is-busy');
+        this.busy = false;
+        if (!data) return;
+        this.rowsTarget.innerHTML = data.html;
+        this.tokenTarget.value = data.token;
+        this.rowsTarget.querySelectorAll('[data-valuation-row]').forEach((r) => r.classList.add('show-floor'));
+        this.count();
     }
 
     // Строки текста: сначала все, потом лишние схлопываются по очереди, а номера и суммы загораются.

@@ -117,6 +117,10 @@ final class LinkThread
         if ($thread->offer_id || $thread->unlinked_at) {
             return null;
         }
+        // Письмо-список (`CodeMatcher::isList`, 17.11.2026: «Реализация» Альфы привязалась к первой машине списка) — ни к одной.
+        if ($this->matcher->isList($message->ownText())) {
+            return null;
+        }
         $codes = array_unique([...$this->keyed($message, 'code'), ...array_map(fn ($c) => (string) Code::key($c), $this->matcher->findAll($this->whole($message)))]);
         foreach ($codes as $code) {
             if (($offer = Offer::whereCar('claim_ref_key', $code)->first()) && ! self::otherCar($offer, $message)) {

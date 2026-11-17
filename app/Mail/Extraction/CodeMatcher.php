@@ -34,6 +34,18 @@ final class CodeMatcher
         return null;
     }
 
+    /**
+     * Письмо-список (17.11.2026, Альфа «Реализация»: девять строк «номер — сумма — марка»): больше двух разных номеров — письмо
+     * не об одной машине. Номер из его тела не поле письма, к машине оно само не привязывается (`Generic`, `LinkThread::auto`).
+     * Два номера («выдать ТС А и Б») — по-прежнему письмо о машинах.
+     */
+    public const LIST_FROM = 3;
+
+    public function isList(?string $text): bool
+    {
+        return count(array_unique(array_map(fn ($c) => (string) Code::key($c), $this->findAll($text)))) >= self::LIST_FROM;
+    }
+
     /** @return list<string> в порядке появления в тексте */
     public function findAll(?string $text): array
     {
