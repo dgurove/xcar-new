@@ -25,7 +25,8 @@
                             <span class="fact">{{ $status }}</span>
                             <span class="fact nums">{{ \App\Support\Ago::html($interest->created_at, words: false) }}</span>
                         </div>
-                        @if ($interest->comment)<p class="mt-1.5 text-sm text-ink-muted">{{ $interest->comment }}</p>@endif
+                        {{-- Комментарий из одних знаков («.», «?» — вписали, чтобы что-то вписать) в своём списке не рисуется: под строкой висела точка. --}}
+                        @if ($interest->comment && preg_match('/[\p{L}\p{N}]/u', $interest->comment))<p class="mt-1.5 text-sm text-ink-muted">{{ $interest->comment }}</p>@endif
                     </div>
                     @if ($open && $price->shown())<span class="nums shrink-0 text-sm font-semibold">{{ \App\Support\Money::rub($price->to) }}</span>@endif
                 </{{ $open ? 'a' : 'div' }}>

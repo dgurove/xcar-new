@@ -105,6 +105,8 @@ class ServerTiming
             $request->hasHeader('X-Filter-Pane') => 'pane',
             $request->hasHeader('Turbo-Frame') => 'frame:'.$request->header('Turbo-Frame'),
             $request->prefetch() => 'prefetch',
+            // Поток по живому событию (счётчики `/live/badges`, плитка `/offers/N/card`): не страница (18.11.2026).
+            str_contains((string) $request->header('Accept'), 'turbo-stream') => 'stream',
             default => 'page',
         };
     }

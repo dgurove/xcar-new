@@ -2,6 +2,7 @@
 
 namespace App\Offers;
 
+use App\Support\ShowMemo;
 use App\Users\User;
 use App\Workflow\Asks;
 use App\Workflow\Outcome;
@@ -46,15 +47,14 @@ final class ManagerAsk
         if (! $me->hasDeals()) {
             return collect();
         }
-        // Полка «Предложений» и вопрос при входе спрашивают на одной странице — один запрос на запрос.
-        static $seen = [];
-        $key = $me->id.':'.spl_object_id(request());
-
-        return $seen[$key] ??= Deal::with(['offer.media', 'offer.positions.stage.block', 'offer.positions.stage.exits.to', 'openRequirement.stage.exits.to', 'garageCar.offer'])
+        // Полка «Предложений» и вопрос при входе спрашивают на одной странице — одна выборка на запрос. Память — запроса
+        // (`ShowMemo`), а не статика: статика жила весь срок воркера Octane, росла с каждым запросом и могла отдать
+        // прежний список, когда номер объекта запроса повторялся (18.11.2026).
+        return ShowMemo::get('manager-ask:'.$me->id, fn () => Deal::with(['offer.media', 'offer.positions.stage.block', 'offer.positions.stage.exits.to', 'openRequirement.stage.exits.to', 'garageCar.offer'])
             ->where('buyer_id', $me->id)->live()->whereRaw(Deal::MANAGER_TURN_SQL)->get()
             ->each(fn (Deal $d) => Parallels::dress($d->loadMissing('shadowStage')))
             ->map(fn (Deal $d) => self::for($d))->filter()
-            ->sortBy(fn (self $a) => $a->due?->getTimestamp() ?? PHP_INT_MAX)->values();
+            ->sortBy(fn (self $a) => $a->due?->getTimestamp() ?? PHP_INT_MAX)->values());
     }
 
     public static function for(Deal $deal): ?self

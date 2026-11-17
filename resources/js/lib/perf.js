@@ -10,12 +10,14 @@ let press = 0;       // когда палец или мышь нажали в п
 let where = '';      // что нажали: таб, колесо вкладок, строку списка
 let visit = null;    // идущий переход: { t0, what, from, to, shown }
 let here = '';       // экран, что сейчас показан
+let lifted = 0;      // когда нажатие стало кликом: палец на экране — не ожидание (18.11.2026)
 
 const now = () => performance.now();
 
 const screen = (url = location) => {
-    const tab = url.searchParams?.get('preset') ?? url.searchParams?.get('box') ?? url.searchParams?.get('tab')
-        ?? new URLSearchParams(url.search).get('preset') ?? new URLSearchParams(url.search).get('box') ?? new URLSearchParams(url.search).get('tab');
+    // Вкладка экрана: колесо CRM (`preset`), ящик почты, вкладка — и пилюли сайта (`view`: «Новые», «Горящие», архив сделок).
+    const query = url.searchParams ?? new URLSearchParams(url.search);
+    const tab = query.get('preset') ?? query.get('box') ?? query.get('tab') ?? query.get('view');
     return url.pathname.replace(/\d+/g, 'N') + (tab ? ` [${tab}]` : '');
 };
 
@@ -24,6 +26,8 @@ const kindOf = (target) => {
     if (target.closest('#tabbar')) return 'tab';
     if (target.closest('.tab-wheel')) return 'wheel';
     if (target.closest('[data-detail-key]')) return 'row';
+    // Плитка и строка-карточка сайта ведут на страницу машины — главное нажатие менеджера и покупателя.
+    if (target.closest('.card')) return 'card';
     return 'visit';
 };
 
@@ -40,13 +44,15 @@ export function shown() {
 
 export function perf() {
     here = screen();
-    document.addEventListener('pointerdown', (event) => { press = now(); where = kindOf(event.target); }, { capture: true, passive: true });
+    document.addEventListener('pointerdown', (event) => { press = now(); lifted = 0; where = kindOf(event.target); }, { capture: true, passive: true });
+    document.addEventListener('click', () => { if (!lifted) lifted = now(); }, { capture: true, passive: true });
 
     document.addEventListener('turbo:visit', (event) => {
         // Переход начат нажатием — считаем от нажатия; сам (живое обновление, «Назад» жестом) — от начала перехода.
         const pressed = now() - press < 1500;
         if (!pressed && event.detail.action !== 'restore') { visit = null; return; }
-        visit = { t0: pressed ? press : now(), what: event.detail.action === 'restore' && (!pressed || where === 'visit') ? 'back' : where, from: here, to: screen(new URL(event.detail.url)) };
+        visit = { t0: pressed ? press : now(), what: event.detail.action === 'restore' && (!pressed || where === 'visit' || where === 'card') ? 'back' : where, from: here, to: screen(new URL(event.detail.url)),
+            finger: pressed && lifted > press ? Math.round(lifted - press) : undefined };
     });
     document.addEventListener('turbo:render', shown);
     document.addEventListener('turbo:load', () => {
@@ -54,7 +60,7 @@ export function perf() {
         visit = null;
         here = screen();
         if (!done || done.from === done.to && done.what === 'visit') return;
-        send({ what: done.what, from: done.from, to: done.to, shown: done.shown ?? Math.round(now() - done.t0), ready: Math.round(now() - done.t0) });
+        send({ what: done.what, from: done.from, to: done.to, shown: done.shown ?? Math.round(now() - done.t0), ready: Math.round(now() - done.t0), finger: done.finger });
     });
 
     // Окно строки (машина, письмо, платёж): от нажатия строки до карточки во фрейме.

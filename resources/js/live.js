@@ -165,6 +165,8 @@ function chat(detail) {
 }
 
 async function card({ number, only }) {
+    // Каталог и галерея, которых нет на экране, узнают о плитке при возврате: их снимок иначе жил до двух минут.
+    markDirty(['/offers', '/gallery']);
     const present = !!document.getElementById(`offer-${number}`);
     const list = document.getElementById('catalog');
     if (!present && (!list || only)) return;

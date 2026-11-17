@@ -25,7 +25,8 @@ let armed = null;
 const taken = new Map(); // ключ силуэта → когда снят в этой сессии
 
 const theme = () => (document.documentElement.classList.contains('dark') ? 'd' : 'l');
-const tabOf = (url) => url.searchParams.get('preset') ?? url.searchParams.get('box') ?? url.searchParams.get('tab') ?? '';
+// Вкладка экрана: колесо CRM, ящик почты, вкладка — и пилюли сайта (`view`: «Новые», «Горящие», заявки и архив сделок).
+const tabOf = (url) => url.searchParams.get('preset') ?? url.searchParams.get('box') ?? url.searchParams.get('tab') ?? url.searchParams.get('view') ?? '';
 
 // Свой ключ экрана и запасной — «последний экран этого пути»: ссылка таба ведёт на корень раздела без вкладки.
 function keysOf(href) {

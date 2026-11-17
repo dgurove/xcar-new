@@ -13,7 +13,7 @@ use Illuminate\Support\Carbon;
 final class PerfPagesCommand extends Command
 {
     protected $signature = 'perf:pages {--days=1 : сколько дней назад от сегодня} {--day= : один день YYYY-MM-DD}
-        {--host= : часть имени хоста, например crm} {--min=5 : строки реже не показывать}';
+        {--host= : хост: crm, park, xcar или имя целиком — xcar.ru} {--min=5 : строки реже не показывать}';
 
     protected $description = 'Медиана и p90 страниц и нажатий по журналу perf';
 
@@ -25,7 +25,7 @@ final class PerfPagesCommand extends Command
         $pages = $taps = [];
         foreach ($days as $day) {
             foreach (self::rows($day) as [$type, $row]) {
-                if ($this->option('host') && ! str_contains((string) ($row['host'] ?? ''), (string) $this->option('host'))) {
+                if ($this->option('host') && ! self::onHost((string) ($row['host'] ?? ''), (string) $this->option('host'))) {
                     continue;
                 }
                 $type === 'tap' ? $taps[self::tapKey($row)][] = $row : $pages[self::pageKey($row)][] = $row;
@@ -37,9 +37,9 @@ final class PerfPagesCommand extends Command
             self::pct($rows, 'q', 50), self::pct($rows, 'view', 50), self::pct($rows, 'kb', 50),
         ]));
         if ($taps) {
-            $this->table(['нажатие', 'где', 'раз', 'отклик p50', 'p90', 'данные p50', 'p90'], self::lines($taps, $min, fn (array $rows, string $key) => [
+            $this->table(['нажатие', 'где', 'раз', 'отклик p50', 'p90', 'данные p50', 'p90', 'палец'], self::lines($taps, $min, fn (array $rows, string $key) => [
                 ...explode('|', $key), count($rows), self::pct($rows, 'shown', 50), self::pct($rows, 'shown', 90),
-                self::pct($rows, 'ready', 50), self::pct($rows, 'ready', 90),
+                self::pct($rows, 'ready', 50), self::pct($rows, 'ready', 90), self::pct($rows, 'finger', 50),
             ]));
         }
 
@@ -61,19 +61,28 @@ final class PerfPagesCommand extends Command
     }
 
     /** Страница без номеров; у списков с вкладками — вкладка, она и есть экран. */
+    /**
+     * Хост записи против `--host`: с точкой — имя целиком (`xcar.ru` — только сайт, а не всё, что на `.xcar.ru`:
+     * 18.11.2026 сводка сайта смешивалась с CRM), без точки — первая часть имени (`crm`, `park`, `xcar`).
+     */
+    private static function onHost(string $host, string $want): bool
+    {
+        return str_contains($want, '.') ? $host === $want : strtok($host, '.') === $want;
+    }
+
     private static function pageKey(array $row): string
     {
         $path = (string) ($row['path'] ?? '/');
         parse_str((string) parse_url($path, PHP_URL_QUERY), $query);
         $name = preg_replace('/\d+/', 'N', strtok($path, '?') ?: '/');
-        $tab = $query['preset'] ?? $query['box'] ?? $query['tab'] ?? null;
+        $tab = $query['preset'] ?? $query['box'] ?? $query['tab'] ?? $query['view'] ?? null;
 
         return strtok((string) ($row['host'] ?? ''), '.').' '.$name.($tab ? ' ['.$tab.']' : '').'|'.($row['kind'] ?? 'page');
     }
 
     private static function tapKey(array $row): string
     {
-        return ($row['what'] ?? 'visit').' '.($row['to'] ?? '').'|'.(($row['app'] ?? false) ? 'приложение' : (($row['phone'] ?? false) ? 'телефон' : 'ПК'));
+        return strtok((string) ($row['host'] ?? ''), '.').' '.($row['what'] ?? 'visit').' '.($row['to'] ?? '').'|'.(($row['app'] ?? false) ? 'приложение' : (($row['phone'] ?? false) ? 'телефон' : 'ПК'));
     }
 
     /** @return list<list<mixed>> строки таблицы: частые первыми */

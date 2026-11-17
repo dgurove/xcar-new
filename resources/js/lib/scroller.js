@@ -10,6 +10,33 @@ export const scrollToY = (top, behavior = 'auto') => scroller().scrollTo({ top, 
 
 export const scrollByY = (dy) => scroller().scrollBy(0, dy);
 
+// Место после возврата из снимка держится, пока раскладка дорастает (18.11.2026, «Предложения» менеджера: ушёл табом,
+// вернулся — список на строку ниже). У свежего DOM куски за экраном (`content-visibility: auto` — ленты, плитки, порции
+// таблицы) стоят в запасную высоту: прокрутка встаёт по ней, в первом же кадре кусок получает настоящую, и браузер
+// «якорем» сдвигает прокрутку вслед — место уезжает на разницу. Пока человек не тронул экран (и не дольше `ms`),
+// прокрутка возвращается на своё число после каждой смены высоты страницы — в том же кадре, до отрисовки.
+let held = null;
+const TOUCHED = ['pointerdown', 'touchstart', 'wheel', 'keydown'];
+export function holdY(y, ms = 1500) {
+    held?.();
+    const el = scroller();
+    scrollToY(y);
+    const content = el.firstElementChild;
+    if (!content || typeof ResizeObserver === 'undefined') return;
+    const watch = new ResizeObserver(() => { if (Math.abs(el.scrollTop - y) > 1) el.scrollTo({ top: y, behavior: 'auto' }); });
+    const stop = () => {
+        if (held !== stop) return;
+        held = null;
+        watch.disconnect();
+        clearTimeout(timer);
+        for (const name of TOUCHED) removeEventListener(name, stop, { capture: true });
+    };
+    const timer = setTimeout(stop, ms);
+    for (const name of TOUCHED) addEventListener(name, stop, { capture: true, passive: true });
+    held = stop;
+    watch.observe(content);
+}
+
 // Видимая часть страницы: под шапкой и над видимой плашкой действий (у fixed-узла offsetParent всегда null, а спрятанная
 // клавиатурой плашка коробку сохраняет — смотрим коробки и видимость). bottom — не ниже переданного края (клавиатура).
 export const pageEdges = (bottom = innerHeight) => {
@@ -52,7 +79,7 @@ export function keepPosition() {
         if (!restoring) { if (key) positions.set(key, scrollTop()); return; }
         restoring = false;
         const y = positions.get(key);
-        if (y) requestAnimationFrame(() => scrollToY(y));
+        if (y) requestAnimationFrame(() => holdY(y));
     });
 }
 

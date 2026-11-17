@@ -9,7 +9,10 @@
 //    приложении), письмо на телефоне. И память табов не путается: «Чаты» открывают чаты.
 //
 // Запуск: свой сервер `PHP_CLI_SERVER_WORKERS=2 php artisan serve --port=8017 --no-reload` (гасить по PID), затем
-//   node scripts/nav-audit.mjs            (PORT=8017 SHOWN=150 ONLY=отклик|место SHOTS=каталог HOST=site USER_ID=6)
+//   node scripts/nav-audit.mjs            (PORT=8017 SHOWN=150 ONLY=отклик|место|переход SHOTS=каталог HOST=site USER_ID=6)
+// Сайт (`HOST=site`, менеджер 6 или покупатель 46; 18.11.2026): там главное действие не таб, а «плитка → машина → назад» —
+// блок «переход» меряет отклик таких нажатий (от клика: палец в эмуляции держится дольше настоящего), блок «место» —
+// прокрутку списка после «назад» и после ухода табом и то, что машина из Галереи и Избранного остаётся в своём разделе.
 // Выход 1, если хоть одна проверка не прошла. Безголовый Chromium рисует программно — сравнивать «до» и «после» на
 // одной машине, абсолютные числа с айфона даёт `php artisan perf:pages`.
 const { chromium, devices } = await import(process.env.PLAYWRIGHT || '/home/claude/tools/playwright/node_modules/playwright/index.mjs');
@@ -37,17 +40,23 @@ await ctx.addInitScript((id) => {
         close() { this.readyState = 2; }
     };
     window.__nav = { events: [], t0: 0, shown: null, sign: '' };
-    const sign = () => `${location.pathname}|${document.querySelector('h1')?.textContent.trim() ?? ''}|${document.querySelector('[data-section-ghost]') ? 'ghost' : ''}`;
+    // Знак экрана — что на нём видно, а не адрес: возврат из снимка ставит адрес раньше, чем рисует (18.11.2026).
+    const sign = () => `${document.querySelector('h1')?.textContent.trim() ?? ''}|${document.body?.dataset.navTab ?? ''}|${document.querySelector('[data-section-ghost]') ? 'ghost' : ''}|${document.querySelector('#scroller')?.textContent.replace(/\s+/g, ' ').trim().slice(0, 80) ?? ''}`;
     window.__navArm = () => {
         const nav = window.__nav;
-        nav.events = []; nav.shown = null; nav.t0 = 0; nav.sign = sign();
+        nav.events = []; nav.shown = null; nav.t0 = 0; nav.click = null; nav.ghost = false; nav.vt = 0; nav.long = 0; nav.sign = sign();
         const watch = () => {
+            if (document.querySelector('[data-section-ghost]')) nav.ghost = true;
             if (nav.t0 && nav.shown === null && sign() !== nav.sign) nav.shown = Math.round(performance.now() - nav.t0);
             if (nav.shown === null) requestAnimationFrame(watch);
         };
         requestAnimationFrame(watch);
     };
     document.addEventListener('touchstart', () => { if (window.__nav && !window.__nav.t0) window.__nav.t0 = performance.now(); }, true);
+    document.addEventListener('click', () => { const nav = window.__nav; if (nav?.t0 && nav.click === null) nav.click = Math.round(performance.now() - nav.t0); }, true);
+    try { new PerformanceObserver((list) => { for (const e of list.getEntries()) if (window.__nav?.t0) window.__nav.long += Math.round(e.duration); }).observe({ entryTypes: ['longtask'] }); } catch {}
+    const startVT = document.startViewTransition?.bind(document);
+    if (startVT) document.startViewTransition = (...args) => { if (window.__nav) window.__nav.vt += 1; return startVT(...args); };
     for (const name of ['turbo:visit', 'turbo:before-fetch-request', 'turbo:render', 'turbo:load']) {
         document.addEventListener(name, (event) => window.__nav.events.push([name.slice(6), Math.round(performance.now() - (window.__nav.t0 || performance.now())), event.detail?.url?.toString?.() ?? '']), true);
     }
@@ -78,6 +87,15 @@ const state = () => page.evaluate(() => ({
     peek: !!document.querySelector('turbo-frame#detail')?.children.length,
     letters: !!document.querySelector('dialog[open] turbo-frame#letters-frame, dialog[open] #letters-frame'),
     title: document.querySelector('h1')?.textContent.trim() ?? '',
+    tab: document.body.dataset.navTab ?? '',
+    // Что стоит под шапкой: первая строка или плитка и её верх. Место — это она, а не число прокрутки: у свежего DOM
+    // высоты кусков за экраном (`content-visibility`) запасные, и та же строка стоит при другом `scrollTop`.
+    anchor: (() => {
+        const box = document.querySelector('#scroller')?.getBoundingClientRect();
+        const el = [...document.querySelectorAll('#scroller tr[data-detail-key], #scroller article.card, #scroller .row')].find((e) => e.getBoundingClientRect().top >= (box?.top ?? 0) + 40);
+        return el ? { id: el.dataset.detailKey || el.id || el.querySelector('a[href]')?.getAttribute('href') || '', top: Math.round(el.getBoundingClientRect().top) } : null;
+    })(),
+    cars: new Set([...document.querySelectorAll('a[href*="/offers/"]')].map((a) => a.getAttribute('href').match(/\/offers\/(\d+)/)?.[1]).filter(Boolean)).size,
 }));
 const tabs = () => page.$$eval('#tabbar a.tab', (as) => as.map((a) => a.getAttribute('href')));
 const scrollTo = async (y) => { await page.evaluate((y) => { document.querySelector('#scroller').scrollTop = y; }, y); await page.waitForTimeout(700); };
@@ -99,6 +117,32 @@ async function tap(href, { timed = false } = {}) {
     page.off('request', onRequest);
     return { ...nav, requests };
 }
+// Нажатие не таба: что нажать, находит функция на странице (координаты точки). Отклик — от касания и от клика.
+const escSheets = async () => { for (let i = 0; i < 3 && await page.evaluate(() => !!document.querySelector('dialog:modal')); i++) { await page.keyboard.press('Escape'); await page.waitForTimeout(450); } };
+async function press(find, arg) {
+    await escSheets();
+    const at = await page.evaluate(find, arg);
+    if (!at) return null;
+    const requests = [];
+    const onRequest = (r) => { if (['document', 'fetch', 'xhr'].includes(r.resourceType()) && r.url().startsWith(crm) && !r.url().includes('/live/')) requests.push(r.url().replace(crm, '')); };
+    page.on('request', onRequest);
+    await page.evaluate(() => window.__navArm());
+    await page.touchscreen.tap(at[0], at[1]);
+    await page.waitForFunction(() => window.__nav.events.some((e) => e[0] === 'load'), null, { timeout: 15000 }).catch(() => {});
+    const nav = await page.evaluate(() => { const n = window.__nav; return { shown: n.shown, click: n.click, load: n.events.find((e) => e[0] === 'load')?.[1] ?? null, ghost: n.ghost, vt: n.vt, long: n.long }; });
+    await settle(900);
+    page.off('request', onRequest);
+    return { ...nav, afterClick: nav.shown === null ? null : nav.shown - (nav.click ?? 0), requests };
+}
+// Первая видимая ссылка списка (между шапкой и таб-баром), чей адрес подходит под выражение.
+const linkIn = (source) => press((source) => {
+    const re = new RegExp(source);
+    const a = [...document.querySelectorAll('a[href]')].find((a) => { const r = a.getBoundingClientRect(); return r.width > 20 && r.height > 20 && r.top > 170 && r.bottom < innerHeight - 110 && a.offsetParent && re.test(a.getAttribute('href')); });
+    if (!a) return null;
+    const r = a.getBoundingClientRect();
+    return [r.left + Math.min(r.width / 2, 90), r.top + r.height / 2];
+}, source);
+const pressBack = () => press(() => { const b = [...document.querySelectorAll('[data-controller~="back"]')].find((n) => n.offsetParent && n.getBoundingClientRect().width > 0); if (!b) return null; const r = b.getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; });
 const back = async () => {
     const at = await page.evaluate(() => { const b = [...document.querySelectorAll('[data-controller~="back"]')].find((n) => n.offsetParent && n.getBoundingClientRect().width > 0); if (!b) return null; const r = b.getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; });
     if (!at) return false;
@@ -253,6 +297,120 @@ if ((!only || only === 'место') && host === 'crm') {
         check('открытое письмо переживает перезапуск приложения', now.letters, `стало ${fmt(now)}`);
         await shot('место-письмо');
     }
+}
+
+// ——— 3. Сайт: нажатия не табов ———
+// Главное действие менеджера и покупателя — «плитка → машина → назад» (прод 17.11.2026: чаще нажатий табов, отклик 0,5 с).
+if (host === 'site' && (!only || only === 'переход')) {
+    console.log('\nПереходы сайта не табами (телефон, процессор ×4; отклик — от клика)');
+    const report = (name, r, extra = '') => {
+        if (!r) { check(name, false, 'нажать нечего'); return; }
+        check(`${name}: отклик не позже ${limit} мс`, r.afterClick !== null && r.afterClick <= limit,
+            `отклик ${r.afterClick ?? '—'} мс (от касания ${r.shown ?? '—'}), данные ${r.load ?? '—'} мс, долгие задачи ${r.long} мс, ${r.ghost ? 'заготовка есть' : 'заготовки нет'}${r.vt ? `, переходов вида ${r.vt}` : ''}${extra}`);
+    };
+    const hrefs = await tabs();
+    await page.goto(crm + '/offers'); await settle(1500); await escSheets();
+    await scrollTo(900);
+    let was = await state();
+    let r = await linkIn('/offers/\\d+');
+    let now;
+    if (r) {
+        report('список → машина', r);
+        r = await pressBack();
+        now = await state();
+        report('машина → назад', r, `, запросов страницы ${r?.requests.length ?? '—'}`);
+        check('назад из машины: список на том же месте', now.url === was.url && Math.abs(now.y - was.y) <= 4, `было ${was.url} y=${was.y}, стало ${now.url} y=${now.y}`);
+        report('список → машина второй раз', await linkIn('/offers/\\d+'));
+        report('машина → следующая («›»)', await press(() => { const a = document.querySelector('a[rel="next"][href*="/offers/"]'); if (!a?.offsetParent) return null; const b = a.getBoundingClientRect(); return [b.left + b.width / 2, b.top + b.height / 2]; }));
+    } else {
+        // Человек выбрал вид «таблица» (вид на сайте помнится): строка открывает окно, а не страницу — это сценарий CRM.
+        console.log('  · список таблицей: машина открывается окном — страницу машины меряет покупатель (USER_ID=46)');
+    }
+    // Третий таб роли: «Сделки» менеджера, «Интерес» покупателя — строка, страница, назад.
+    if (hrefs[2]) {
+        await tap(hrefs[2]); await scrollTo(500);
+        was = await state();
+        r = await linkIn('/(deals|garage/cars|offers)/\\d+');
+        if (r) {
+            report(`${hrefs[2]} → строка`, r);
+            r = await pressBack(); now = await state();
+            report(`назад в ${hrefs[2]}`, r);
+            check(`назад в ${hrefs[2]}: то же место`, now.url === was.url && Math.abs(now.y - was.y) <= 4, `было ${was.url} y=${was.y}, стало ${now.url} y=${now.y}`);
+        }
+    }
+    // Кабинет → Чаты → чат → «‹».
+    await page.goto(crm + '/account'); await settle(1200);
+    r = await linkIn('/account/chats$');
+    if (r) {
+        report('кабинет → чаты', r);
+        r = await linkIn('/account/chats/(offer/)?\\d+');
+        if (r) { report('чаты → чат', r); report('чат → назад', await pressBack()); }
+    }
+}
+
+// ——— 4. Сайт: место и раздел ———
+if (host === 'site' && (!only || only === 'место')) {
+    console.log('\nМесто и раздел на сайте');
+    const hrefs = await tabs();
+    const fmt = (s) => `${s.url} y=${s.y} раздел=${s.tab}${s.anchor ? ` верхняя ${s.anchor.id}@${s.anchor.top}` : ''}`;
+    const same = (a, b) => a.url === b.url && (a.anchor && b.anchor ? a.anchor.id === b.anchor.id && Math.abs(a.anchor.top - b.anchor.top) <= 4 : Math.abs(a.y - b.y) <= 4);
+    const other = hrefs.find((h) => h.startsWith('/garage')) ?? hrefs[2];
+
+    await page.goto(crm + '/offers'); await settle(1500); await escSheets();
+    await scrollTo(1400);
+    let was = await state();
+    await tap(other); await tap('/offers');
+    let now = await state();
+    check('уход табом и возврат: тот же список и прокрутка', same(was, now), `было ${fmt(was)}, стало ${fmt(now)}`);
+
+    // Машина со страницы другого раздела остаётся в нём: подсветка таб-бара и память раздела.
+    if (hrefs.includes('/gallery')) {
+        await tap('/gallery'); await settle(600);
+        if (await linkIn('/offers/\\d+')) {
+            const car = await state();
+            check('машина из Галереи остаётся в разделе «Галерея»', car.tab === '/gallery', fmt(car));
+            await tap('/offers'); now = await state();
+            check('«Предложения» после неё открывают свой список', now.url.split('?')[0] === '/offers', fmt(now));
+            await tap('/gallery'); now = await state();
+            check('«Галерея» помнит открытую в ней машину', now.url.split('?')[0] === car.url.split('?')[0], `была ${fmt(car)}, стало ${fmt(now)}`);
+            await tap('/gallery'); // второй раз — к корню раздела
+        } else {
+            // Галерея пуста (окно до 23:59 кончилось): та же дверь сервера — машина каталога с контекстом галереи.
+            const any = await page.evaluate(async () => (await (await fetch('/offers')).text()).match(/href="[^"]*(\/offers\/\d+)[?"]/)?.[1]);
+            if (any) {
+                await page.evaluate((u) => window.Turbo.visit(u), `${any}?list=gallery`); await settle();
+                now = await state();
+                check('машина с контекстом галереи — в разделе «Галерея»', now.tab === '/gallery', fmt(now));
+            }
+        }
+    }
+    await page.goto(crm + '/account/favorites'); await settle(1200);
+    if (await linkIn('/offers/\\d+')) {
+        const car = await state();
+        check('машина из Избранного остаётся в «Кабинете»', car.tab === '/account', fmt(car));
+        await tap('/offers'); now = await state();
+        check('«Предложения» после неё открывают свой список', now.url.split('?')[0] === '/offers', fmt(now));
+    } else console.log('  · в избранном пусто — пропуск');
+
+    // Вторая страница списка: машина и системное «назад».
+    await page.goto(crm + '/offers?page=2'); await settle(1500); await escSheets();
+    if ((await state()).cars > 3) {
+        await scrollTo(600);
+        was = await state();
+        if (await linkIn('/offers/\\d+')) {
+            await page.goBack(); await settle();
+            now = await state();
+            check('вторая страница: после машины то же место', same(was, now), `было ${fmt(was)}, стало ${fmt(now)}`);
+        }
+    } else console.log('  · второй страницы нет — пропуск');
+
+    // Запуск с иконки: адрес из манифеста открывается без круга через редирект.
+    const fresh = await ctx.newPage();
+    const hops = [];
+    fresh.on('response', (res) => { if (res.request().resourceType() === 'document') hops.push(res.status()); });
+    await fresh.goto(crm + '/offers?app=1'); await fresh.waitForLoadState('load').catch(() => {});
+    await fresh.close();
+    check('запуск с иконки (/offers?app=1): без редиректа', hops.length === 1 && hops[0] === 200, `ответы: ${hops.join(' → ')}`);
 }
 
 await browser.close();

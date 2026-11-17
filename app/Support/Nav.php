@@ -917,12 +917,39 @@ final class Nav
     {
         $request = request();
         if (! $request->attributes->has('nav.current')) {
-            $path = $request->attributes->get('nav.tab') ?? '/'.ltrim($request->path(), '/');
+            $path = $request->attributes->get('nav.tab') ?? self::origin($user)['href'] ?? '/'.ltrim($request->path(), '/');
             $request->attributes->set('nav.current', collect(self::tabs($user))->filter(fn ($t) => self::isCurrent($t, $path))
                 ->sortByDesc(fn ($t) => self::matchLength($t, $path))->first()['href'] ?? null);
         }
 
         return $request->attributes->get('nav.current');
+    }
+
+    /**
+     * Раздел, из которого открыли страницу объекта (18.11.2026: машина из «Галереи» или «Избранного» считалась
+     * «Предложениями» — подсветка таб-бара прыгала, а таб «Предложения» потом открывал эту машину вместо своего списка).
+     * Как в приложении: страница, открытая внутри раздела, остаётся в нём. Раздел едет в адресе — `in=/account` (дописывает
+     * ссылке `lib/sections.js` в момент касания) или контекст списка `list=gallery`; принимается только свой таб человека.
+     *
+     * @return array{label: string, href: string}|null
+     */
+    public static function origin(?User $user): ?array
+    {
+        $request = request();
+        $in = $request->query('in');
+        if (! is_string($in) || $in === '') {
+            $in = $request->query('list') === 'gallery' ? '/gallery' : null;
+        }
+        if ($in === null) {
+            return null;
+        }
+        foreach (self::tabs($user) as $tab) {
+            if ($tab['href'] === $in) {
+                return ['label' => $tab['label'], 'href' => $tab['href']];
+            }
+        }
+
+        return null;
     }
 
     /** Длина самого точного совпадения — чтобы в таб-баре активен был один пункт. */

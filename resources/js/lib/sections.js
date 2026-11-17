@@ -16,7 +16,7 @@
 //
 // Экран без таб-бара (чат на телефоне, `body.chat-open`) местом раздела не становится: из него выходят «‹».
 import * as Turbo from '@hotwired/turbo';
-import { scrollTop, scrollToY } from './scroller';
+import { holdY, scrollTop } from './scroller';
 import * as overlays from '../overlays';
 import { arm } from './shape';
 import { prefetch } from '../touch-prefetch';
@@ -109,17 +109,43 @@ export function open(tab, saved) {
     return true;
 }
 
-/** Событие по адресам (`refresh`, `rows`): разделы, которых нет на экране, перечитаются при возврате. */
+// Адреса разделов из таб-бара (`data-match`): какому разделу принадлежит путь — самое точное совпадение.
+const tabMatches = () => [...document.querySelectorAll('#tabbar a.tab[data-match]')].map((a) => [a.getAttribute('href'), a.dataset.match.split(' ')]);
+function tabOfPath(path, tabs = tabMatches()) {
+    let best = null;
+    for (const [href, matches] of tabs) {
+        for (const m of matches) if (m && (m === '/' ? path === '/' : path.startsWith(m)) && (!best || m.length > best[1])) best = [href, m.length];
+    }
+    return best ? pathOf(best[0]) : null;
+}
+
+/** Событие по адресам (`refresh`, `rows`, `card`): разделы, которых нет на экране, перечитаются при возврате. */
 export function markDirty(paths) {
-    const tabs = [...document.querySelectorAll('#tabbar a.tab[data-match]')].map((a) => [a.getAttribute('href'), a.dataset.match.split(' ')]);
+    const tabs = tabMatches();
     for (const path of paths ?? []) {
         if (path === location.pathname) continue;
-        let best = null;
-        for (const [href, matches] of tabs) {
-            for (const m of matches) if (m && (m === '/' ? path === '/' : path.startsWith(m)) && (!best || m.length > best[1])) best = [href, m.length];
-        }
-        if (best) dirty.set(pathOf(best[0]), Date.now());
+        const tab = tabOfPath(path, tabs);
+        if (tab) dirty.set(tab, Date.now());
     }
+}
+
+/**
+ * Страница объекта, открытая из чужого раздела, остаётся в нём (18.11.2026, сайт: машина из «Галереи» и «Избранного»
+ * считалась «Предложениями» — подсветка прыгала, и «Предложения» потом открывали её вместо своего списка). Как в
+ * приложении: ссылка внутри раздела ведёт вглубь раздела. Ссылке на страницу с номером, чей путь — другого раздела,
+ * в момент касания (до запроса по касанию) дописывается `in=<раздел>`; сервер ставит по нему раздел страницы
+ * (`Nav::origin`), а с ним — подсветку, «назад» и память раздела. Корни разделов не трогаются: ссылка на список — переход.
+ */
+function adopt(link) {
+    const here = tabNow();
+    if (!here || link.target || link.hasAttribute('download') || link.origin !== location.origin || link.closest('#tabbar, a[data-section]')) return;
+    const url = new URL(link.href);
+    const mine = link.dataset.in; // раздел, что дописали мы: ссылка в несменяемом куске (карточка уведомления) переживает переход
+    if (!/\/\d+(\/|$)/.test(url.pathname) || url.searchParams.has('list') || (url.searchParams.has('in') && mine === undefined)) return;
+    const foreign = (tabOfPath(url.pathname) ?? pathOf(here)) !== pathOf(here);
+    if (foreign ? mine === here : mine === undefined) return;
+    if (foreign) { url.searchParams.set('in', pathOf(here)); link.dataset.in = here; } else { url.searchParams.delete('in'); delete link.dataset.in; }
+    link.setAttribute('href', url.pathname + url.search + url.hash);
 }
 
 // Переход по ссылке не начался: Turbo его запретил (`turbo:before-visit` отменён — несохранённое в окне). Слушатель на window
@@ -148,7 +174,7 @@ export function sections({ onStale } = {}) {
     document.addEventListener('turbo:visit', (event) => { action = event.detail.action; clearTimeout(warm); });
     document.addEventListener('turbo:render', () => {
         if (pendingScroll === undefined) return;
-        scrollToY(pendingScroll);
+        holdY(pendingScroll);
         if (reopened) shownNow();
     });
     document.addEventListener('turbo:load', () => {
@@ -159,14 +185,14 @@ export function sections({ onStale } = {}) {
             // Отрисовка могла дорасти (картинки, шрифт) — добираем место вторым заходом, если не встало.
             const y = pendingScroll;
             pendingScroll = undefined;
-            if (Math.abs(scrollTop() - y) > 2) requestAnimationFrame(() => scrollToY(y));
+            if (Math.abs(scrollTop() - y) > 2) requestAnimationFrame(() => holdY(y));
         }
         // «Назад» на место раздела (из чата, из карточки): прокрутку ставит `keepPosition` по записи истории; не встала
         // (окно строки перехватило, запись сменилась) — место раздела то же, ставим по нему.
         if (action === 'restore' && !reopened && here.tab) {
             const place = read(sessionStorage, here.tab);
             if (place?.url === here.url && place.y > 0) {
-                requestAnimationFrame(() => requestAnimationFrame(() => { if (scrollTop() < 2) scrollToY(place.y); }));
+                requestAnimationFrame(() => requestAnimationFrame(() => { if (scrollTop() < 2) holdY(place.y); }));
             }
         }
         action = null;
@@ -226,6 +252,11 @@ export function sections({ onStale } = {}) {
     }, { capture: true, passive: true });
     addEventListener('pagehide', remember);
     document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') remember(); });
+    // Раздел ссылки — до всего, что читает её адрес: `pointerover` раньше касания (запрос по касанию) и наведения Turbo.
+    if (document.querySelector('meta[name="surface"]')?.content === 'site') {
+        const own = (event) => { const link = event.target.closest?.('a[href]'); if (link) adopt(link); };
+        for (const name of ['pointerover', 'pointerdown', 'focusin']) document.addEventListener(name, own, { capture: true, passive: true });
+    }
 
     // Снимок покинутого экрана Turbo кладёт в свой кэш через такт после ухода — забираем его себе, по разделу.
     const cache = Turbo.session.view?.snapshotCache;

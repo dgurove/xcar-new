@@ -22,7 +22,7 @@ export function colored(value) {
 // Ключ — список и вид экрана: у вкладок предложений карточки разные, на телефоне и ПК раскладка своя.
 export function ghostKey(wide) {
     const p = new URLSearchParams(location.search);
-    return `${location.host}${location.pathname}|${p.get('preset') ?? p.get('pill') ?? p.get('tab') ?? ''}|${wide ? 'w' : 'n'}`;
+    return `${location.host}${location.pathname}|${p.get('preset') ?? p.get('pill') ?? p.get('tab') ?? p.get('view') ?? ''}|${wide ? 'w' : 'n'}`;
 }
 
 export function ghostFor(key) {

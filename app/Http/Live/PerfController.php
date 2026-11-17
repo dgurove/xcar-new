@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\Log;
  */
 class PerfController
 {
-    private const WHAT = ['tab', 'wheel', 'row', 'visit', 'back', 'window'];
+    private const WHAT = ['tab', 'wheel', 'row', 'card', 'visit', 'back', 'window'];
 
     public function store(Request $request)
     {
@@ -25,6 +25,8 @@ class PerfController
                 'to' => $screen('to'),
                 'shown' => $ms('shown'),
                 'ready' => $ms('ready'),
+                // Сколько палец был на экране (нажатие → клик): входит в `shown` и `ready`, но это не ожидание.
+                'finger' => $ms('finger'),
                 'app' => $request->boolean('app'),
                 'phone' => (bool) preg_match('/iPhone|Android.+Mobile/', (string) $request->userAgent()),
                 'user' => $request->user()?->id,
