@@ -6,7 +6,13 @@
      Без пропа — адрес из session letters (приняли подтверждение в редакторе — черновик письма вендору после редиректа).
      letters:close — отправили письмо с then=close: окно закрывается, страница не перечитывается. --}}
 @props(['url' => null, 'title' => 'Письма'])
-@php $url ??= session('letters') ?? \App\Mail\LetterPrompt::take(); @endphp
+@php
+    // ?letters= — открытые на телефоне письма дела (17.11.2026, `window_controller`): приложение выгрузили из памяти или страницу
+    // перечитали — письмо снова открыто. Только адрес писем машины, предложения или очереди своего хоста.
+    $kept = request()->query('letters');
+    $kept = is_string($kept) && preg_match('#^/(offers|cars)/\d+/letters(\?[\w=&%.-]*)?$|^/[\w/-]+/\d+/letters(\?[\w=&%.-]*)?$#', $kept) ? $kept : null;
+    $url ??= session('letters') ?? \App\Mail\LetterPrompt::take() ?? $kept;
+@endphp
 <div data-controller="sheet window" data-action="letters:open@window->window#open letters:close@window->window#close" @if ($url) data-window-url-value="{{ $url }}" @endif class="contents">
     <x-ui.sheet id="letters" :title="$title" tall>
         <x-slot:tools><span class="contents" data-window-target="tools"></span></x-slot:tools>

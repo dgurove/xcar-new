@@ -89,7 +89,7 @@
         <div class="header-row">
             @foreach ($capsules as $item)
                 {{-- data-section — раздел с памятью места и снимком (`lib/sections.js`): открывается там, где оставили, сразу. --}}
-                <a href="{{ $item['href'] }}" class="header-btn header-h relative flex-1 px-5 text-sm" @if ($isCurrent($item)) aria-current="page" @endif @if (str_starts_with($item['href'], 'http')) data-turbo="false" @else data-section @endif>
+                <a href="{{ $item['href'] }}" class="header-btn header-h relative flex-1 px-5 text-sm" @if ($isCurrent($item)) aria-current="page" @endif @if (str_starts_with($item['href'], 'http')) data-turbo="false" @else data-section @if ($item['go'] ?? null) data-go="{{ $item['go'] }}" @endif @endif>
                     {{ $item['label'] }}<x-ui.badge :href="$item['href']" :badges="$badges"/>
                 </a>
             @endforeach

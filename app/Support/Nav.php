@@ -101,7 +101,7 @@ final class Nav
         // с менеджерами и профиль; оплаты и остальное CRM — админу. Значки — как у админа.
         if ($surface === Surface::Crm && ! $user?->canManageCrm()) {
             return array_values(array_filter([
-                self::item('Предложения', '/offers', ['/offers', '/gallery'], icon: 'feed'),
+                self::item('Предложения', '/offers', ['/offers', '/gallery'], icon: 'feed') + ['go' => self::offersHome($user)],
                 $user?->canCrmMail() ? self::item('Почта', '/work/mail', icon: 'mail') : null,
                 $user?->canEditDeals() ? self::item('Чаты', '/work/chats', icon: 'chats') : null,
                 self::item('Настройки', '/settings', ['/settings', '/account'], tab: false, capsule: false),
@@ -113,7 +113,7 @@ final class Nav
         if ($surface === Surface::Crm) {
             return [
                 // Значки разделов (16.11.2026, владелец: «красивые иконки, заполненные»): лента, письмо, пузыри, монета.
-                self::item('Предложения', '/offers', ['/offers', '/purchases', '/gallery'], icon: 'feed'),
+                self::item('Предложения', '/offers', ['/offers', '/purchases', '/gallery'], icon: 'feed') + ['go' => self::offersHome($user)],
                 self::item('Почта', '/work/mail', icon: 'mail'),
                 self::item('Чаты', '/work/chats', icon: 'chats'),
                 self::item('Оплаты', '/work/money', icon: 'wallet'),
@@ -939,6 +939,15 @@ final class Nav
     }
 
     /** icon — значок в таб-баре (`x-ui.tab-icon`): у разделов CRM вместо капсулы с числом. */
+    /**
+     * Куда ведёт раздел «Предложения» CRM: сразу на вкладку человека по умолчанию (`go`), без круга через редирект
+     * `/offers` → `/offers?preset=…` (17.11.2026: первый вход в раздел платил два запроса). Ключ раздела — по-прежнему `/offers`.
+     */
+    private static function offersHome(?User $user): ?string
+    {
+        return $user ? '/offers?preset='.\App\Http\Admin\OfferController::home($user) : null;
+    }
+
     private static function item(string $label, string $href, string|array|null $match = null, bool $tab = true, bool $capsule = true, ?string $icon = null): array
     {
         return ['label' => $label, 'href' => $href, 'match' => $match ?? $href, 'tab' => $tab, 'capsule' => $capsule, 'icon' => $icon];

@@ -18,7 +18,7 @@
             <form method="post" action="/logout" class="contents">@csrf<button type="submit" class="tab"><span class="tab-mark"><span class="tab-dot"></span></span><span>{{ $tab['label'] }}</span></button></form>
             @continue
         @endif
-        <a href="{{ $tab['href'] }}" class="tab" data-match="{{ implode(' ', array_filter((array) $tab['match'], fn ($m) => ! str_starts_with($m, 'http'))) }}" data-turbo-action="replace" data-action="tabbar#tap" @if ($tab['href'] === $current) aria-current="page" @endif>
+        <a href="{{ $tab['href'] }}" class="tab" @if ($tab['go'] ?? null) data-go="{{ $tab['go'] }}" @endif data-match="{{ implode(' ', array_filter((array) $tab['match'], fn ($m) => ! str_starts_with($m, 'http'))) }}" data-turbo-action="replace" data-action="tabbar#tap" @if ($tab['href'] === $current) aria-current="page" @endif>
             <span class="tab-mark">
                 @if ($loop->last && $user)
                     <x-ui.avatar :user="$user" :size="26"/>

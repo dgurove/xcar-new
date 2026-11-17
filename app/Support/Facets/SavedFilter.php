@@ -24,7 +24,7 @@ final class SavedFilter extends Model
     public const LIMIT = 20;
 
     /** Что в сохранённый адрес не идёт и в сравнении не участвует: страница, порция, поиск, карточка, сброс, вид. */
-    public const DROP = ['page', 'part', 'rows', 'q', 'peek', 'reset', 'vid', 'per'];
+    public const DROP = ['page', 'part', 'rows', 'q', 'peek', 'reset', 'vid', 'per', 'letters'];
 
     /** Адрес списка (`list`) — колесо «Предложений». */
     public const PATHS = ['offers' => '/offers'];

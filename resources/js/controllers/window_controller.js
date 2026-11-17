@@ -1,5 +1,6 @@
 import { Controller } from '@hotwired/stimulus';
 import * as Turbo from '@hotwired/turbo';
+import { setAddress } from '../lib/address';
 
 // Окно писем: одна шторка tall на странице с фреймом letters-frame. Событие letters:open
 // с url в detail ставит фрейму src и открывает шторку (сосед-контроллер sheet на том же
@@ -25,7 +26,7 @@ export default class extends Controller {
             const handled = !!this.handled, byUser = !!this.byUser;
             this.handled = this.byUser = false;
             // Закрыли сами или дело сделано — окно забыто; закрылось уходом со страницы — вернутся к открытому (`keep`).
-            if (handled || byUser || !this.leaving) delete this.element.dataset.windowKeep;
+            if (handled || byUser || !this.leaving) { delete this.element.dataset.windowKeep; this.addressed(null); }
             this.leaving = false;
             window.dispatchEvent(new CustomEvent('letters:closed', { detail: { handled, url } }));
             if (!handled && !byUser && /\/letter-ask|\/work\/mail\/new/.test(url)) {
@@ -145,7 +146,18 @@ export default class extends Controller {
         // Письма читают — к ним возвращаются; редактор письма и вопрос шага заново сами не открываются.
         if (frame.id === 'letters-frame' && /\/letters(\?|$)|\/window(\?|$)/.test(url)) this.element.dataset.windowKeep = url;
         else delete this.element.dataset.windowKeep;
+        // Письма дела — в адрес страницы (`?letters=`): приложение выгрузили или перечитали — письмо снова открыто.
+        this.addressed(/\/\d+\/letters(\?|$)/.test(url) ? url : null);
         this.sheet?.open();
+    }
+
+    addressed(url) {
+        const here = new URL(location.href);
+        const was = here.searchParams.get('letters');
+        if ((url ?? null) === was) return;
+        if (url) here.searchParams.set('letters', new URL(url, location.origin).pathname + new URL(url, location.origin).search);
+        else here.searchParams.delete('letters');
+        setAddress(here);
     }
 
     get sheet() { return this.application.getControllerForElementAndIdentifier(this.element, 'sheet'); }

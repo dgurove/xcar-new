@@ -72,6 +72,9 @@ export function recall(tab) {
     return !root || pin?.url === keyOf(saved.url) ? saved : null;
 }
 
+/** Куда ведёт раздел: `data-go` (вкладка по умолчанию, без круга через редирект) или сама ссылка. */
+export const goOf = (link) => new URL(link.dataset.go || link.getAttribute('href'), location.origin).href;
+
 export function forget(tab) {
     write(sessionStorage, tab, null);
     write(localStorage, tab, null);
@@ -187,9 +190,17 @@ export function sections({ onStale } = {}) {
         const light = (on) => { for (const a of document.querySelectorAll('a[data-section]')) on.includes(a) ? a.setAttribute('aria-current', 'page') : a.removeAttribute('aria-current'); };
         light([link]);
         const revert = () => light(was);
-        if (here?.tab === href) { forget(href); arm(link.href); stayed(revert); return; }
+        // Раздел с `data-go` ведём сами — сразу на его вкладку; без него переход по ссылке делает Turbo.
+        const direct = (to) => {
+            if (!link.dataset.go) { arm(link.href); stayed(revert); return; }
+            event.preventDefault();
+            arm(to);
+            stayed(revert);
+            Turbo.visit(to);
+        };
+        if (here?.tab === href) { forget(href); direct(goOf(link)); return; }
         const saved = recall(href);
-        if (!saved) { arm(link.href); stayed(revert); return; }
+        if (!saved) { direct(goOf(link)); return; }
         event.preventDefault();
         window.dispatchEvent(new CustomEvent('section:leave'));
         overlays.clear().then((ok) => { if (!ok || !open(href, saved)) revert(); });
@@ -198,7 +209,8 @@ export function sections({ onStale } = {}) {
     // (на ПК наведение на раздел в шапке стоило серверу двух страниц: `/offers` и редирект на вкладку).
     document.addEventListener('turbo:before-prefetch', (event) => {
         const link = event.target.closest?.('a[data-section], #tabbar a.tab');
-        if (link && recall(link.getAttribute('href'))) event.preventDefault();
+        // Раздел со своей вкладкой (`data-go`) Turbo тянул бы по ссылке — корень с редиректом, который не понадобится.
+        if (link && (link.dataset.go || recall(link.getAttribute('href')))) event.preventDefault();
     });
     // Раздел без снимка откроется с сервера — запрос уходит по касанию, не дожидаясь отпускания пальца.
     document.addEventListener('pointerdown', (event) => {
@@ -208,7 +220,7 @@ export function sections({ onStale } = {}) {
         const saved = recall(href);
         if (saved && pins.get(pathOf(href))?.url === keyOf(saved.url)) return;
         // Следующим тактом: сначала экран отвечает на нажатие (силуэт), запрос стартует сразу за ним.
-        const url = saved?.url ?? link.href;
+        const url = saved?.url ?? goOf(link);
         clearTimeout(warm);
         warm = setTimeout(() => prefetch(url), 0);
     }, { capture: true, passive: true });

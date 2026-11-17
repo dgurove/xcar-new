@@ -55,6 +55,12 @@ export default class extends Controller {
                 // Окно писем закроется как «ушли в другой раздел», а не «закрыл человек»: вернутся — оно снова открыто.
                 window.dispatchEvent(new CustomEvent('section:leave'));
                 overlays.clear().then((ok) => { if (!ok || !sections.open(href, saved)) mark(this.element, this.shownValue); });
+            } else if (link.dataset.go) {
+                // Раздел открывают впервые и знают его вкладку — сразу туда, без круга через редирект; пока едет — силуэт.
+                event.preventDefault();
+                window.dispatchEvent(new CustomEvent('section:leave'));
+                const to = sections.goOf(link);
+                overlays.clear().then((ok) => { if (ok) { arm(to); Turbo.visit(to, { action: 'replace' }); } else mark(this.element, this.shownValue); });
             } else {
                 // Раздел открывают впервые: пока едет страница — силуэт экрана.
                 arm(link.href);
@@ -64,10 +70,12 @@ export default class extends Controller {
         event.preventDefault();
         sections.forget(href);
         const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
-        if (new URL(link.href).pathname === location.pathname && location.search === '') {
+        const root = new URL(sections.goOf(link));
+        if (root.pathname === location.pathname && (location.search === '' || location.search === root.search)) {
             if (scrollTop() > 0) scrollToY(0, reduce ? 'auto' : 'smooth');
             return;
         }
-        overlays.clear().then((ok) => { if (ok) { arm(link.href); Turbo.visit(link.href, { action: 'replace' }); } });
+        const to = sections.goOf(link);
+        overlays.clear().then((ok) => { if (ok) { arm(to); Turbo.visit(to, { action: 'replace' }); } });
     }
 }

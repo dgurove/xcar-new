@@ -247,6 +247,10 @@ if ((!only || only === 'место') && host === 'crm') {
         await tap(mail);
         now = await state();
         check('открытое письмо переживает уход в другой раздел', was.letters && now.letters, `было ${fmt(was)}, стало ${fmt(now)}`);
+        // Приложение выгрузили из памяти (полная загрузка того же адреса): письмо снова открыто — оно в адресе (`?letters=`).
+        await page.reload(); await settle(2500);
+        now = await state();
+        check('открытое письмо переживает перезапуск приложения', now.letters, `стало ${fmt(now)}`);
         await shot('место-письмо');
     }
 }
