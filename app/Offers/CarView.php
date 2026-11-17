@@ -64,8 +64,11 @@ final class CarView
         $this->pastDeal = $this->deals && $deal && ! $deal->isParallel() && $deal->id !== $offer->lastDeal?->id;
         $this->deal = $this->deals ? ($this->pastDeal ? $deal->setRelation('offer', $offer) : $offer->lastDeal) : null;
         $this->garageCar = $this->deals ? GarageCar::forOffer($offer) : null;
+        $this->wire();
         $this->garageView = $this->garageCar ? GarageView::for($this->garageCar, $user) : null;
-        $this->chats = $this->deals ? Chat::withLast()->withCount('messages')->where('offer_id', $offer->id)->orderByDesc('last_message_at')->get() : collect();
+        // Предложение чатов — это же окно: без повторной выборки предложения и всех его файлов (`Chat::withLast` грузит их списку).
+        $this->chats = $this->deals ? Chat::withLast()->without(['offer', 'offer.media'])->withCount('messages')->where('offer_id', $offer->id)
+            ->orderByDesc('last_message_at')->get()->each(fn (Chat $c) => $c->setRelation('offer', $offer)) : collect();
         // Письма — с почтой CRM (`canCrmMail`): одна проверка на окно и страницу (было три — в виде, в контроллере и никакой).
         $this->letters = $user->canCrmMail() ? OfferFiles::letters($offer, $user) : ['letters' => 0, 'dealLetters' => 0, 'messages' => collect(), 'asks' => collect(), 'stages' => collect()];
         $this->decide();
@@ -84,10 +87,56 @@ final class CarView
         $this->offer->load(['settlement', 'media', 'vendor', ...($this->page ? ['car.events.user.vendor', 'parkVehicle.requests'] : []), ...($this->deals ? [
             'bids.user', 'interests.user.manager', 'interests.placer', 'purchaseCar.purchase', 'purchaseCar.bids.user',
             'parkVehicle.yard', 'vendor.workflows', 'positions.stage.block', 'positions.stage.exits.to.block.stages',
-            'positions.stage.workflow', 'deal.buyer', 'lastDeal.buyer', 'lastDeal.bid', 'lastDeal.requirements.media',
+            'positions.stage.workflow', 'deal.buyer',
             'openEstimates.user', ...User::withAvatar('openEstimates.user.media'), 'declinedEstimates.user', ...User::withAvatar('declinedEstimates.user.media'),
         ] : [])])->loadCount(['activeBids', 'interests', 'activeBids as garage_bids_count' => fn ($b) => $b->where('kind', BidKind::Garage)])
             ->loadMax('activeBids as top_bid', 'amount');
+        if ($this->deals) {
+            // Последняя сделка обычно и есть идущая — та же запись: не читать её и покупателя второй раз.
+            $deal = $this->offer->deal;
+            if ($deal && $deal->id === $this->offer->deal_id) {
+                $this->offer->setRelation('lastDeal', $deal);
+            }
+            $this->offer->loadMissing(['lastDeal.buyer', 'lastDeal.bid', 'lastDeal.requirements.media']);
+        }
+    }
+
+    /**
+     * Связи между уже прочитанным — чтобы виды не читали ту же машину, сделку и гараж заново (17.11.2026: окно сделки — 182
+     * запроса, из них ~90 повторов: предложение со своей машиной, маркой и моделью перечитывалось через гараж и вывоз,
+     * покупатель — через каждую сделку, гараж предложения — четырежды).
+     */
+    private function wire(): void
+    {
+        $o = $this->offer;
+        if (! $this->deals) {
+            return;
+        }
+        $o->setRelation('garageCar', $this->garageCar);
+        $deals = collect([$o->relationLoaded('deal') ? $o->deal : null, $o->relationLoaded('lastDeal') ? $o->lastDeal : null, $this->deal, $this->garageCar?->deal])
+            ->filter(fn ($d) => $d && $d->offer_id === $o->id);
+        foreach ($deals as $d) {
+            $d->setRelation('offer', $o);
+            // Гараж сделки — связь по `deal_id`: только когда это он.
+            if ($this->garageCar?->deal_id === $d->id) {
+                $d->setRelation('garageCar', $this->garageCar);
+            }
+        }
+        if ($this->garageCar) {
+            $this->garageCar->setRelation('offer', $o);
+        }
+        // Вывоз: его предложение и машина — те, что уже на руках.
+        $pickup = $o->pickupTask;
+        if ($pickup) {
+            $pickup->setRelation('offer', $o);
+            if ($o->relationLoaded('car') && $pickup->car_id === $o->car_id) {
+                $pickup->setRelation('car', $o->getRelation('car'));
+            }
+        }
+        // Счета сделки — одной выборкой со всем, что нужно видам (`Deal::shownInvoices`).
+        foreach ($deals->unique('id') as $d) {
+            $d->shownInvoices();
+        }
     }
 
     /** Все решения `@php`, что раньше жили по копии в окне предложения и редакторе. */

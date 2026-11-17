@@ -2,6 +2,7 @@
 
 namespace App\Workflow;
 
+use App\Support\ShowMemo;
 use App\Offers\Deal;
 use App\Offers\Offer;
 use App\Offers\OfferEventType;
@@ -63,6 +64,11 @@ final class Path
      */
     public static function journal(Offer $offer, Track $track, ?Carbon $since = null, ?Deal $parallel = null): Collection
     {
+        return ShowMemo::get('path-journal:'.$offer->id.':'.$track->value.':'.$since?->getTimestamp().':'.$parallel?->id, fn () => self::readJournal($offer, $track, $since, $parallel));
+    }
+
+    private static function readJournal(Offer $offer, Track $track, ?Carbon $since, ?Deal $parallel): Collection
+    {
         // Параллельная сделка (07.11.2026) — свой путь: её теневые шаги, а не шаги машины (`Offers\Parallels::enter`). Была
         // главной, пока на другого не переключили, — до переключения её путь и есть путь машины.
         $demoted = $parallel ? $offer->events()->where('type', OfferEventType::Parallel)->where('payload->do', 'taken')
@@ -111,7 +117,7 @@ final class Path
      */
     public static function ladder(Stage $stage, array $passedNames, ?Deal $deal = null, bool $guess = false): Collection
     {
-        $all = $stage->workflow->blocks()->with('stages.exits.to.block')->get();
+        $all = ShowMemo::get('workflow-blocks:'.$stage->workflow_id, fn () => $stage->workflow->blocks()->with('stages.exits.to.block')->get());
         $current = $all->firstWhere('id', $stage->block_id);
         // Блоки впереди по маршруту — журнал их «пройденными» не делает: маршрут поменяли на ходу (Совкомбанк 10.10.2026:
         // сначала «Забрал», потом оплата), и вход в старый этап блока «Оплата» ставил его позади — путь кончался текущим.

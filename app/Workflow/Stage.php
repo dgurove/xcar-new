@@ -2,6 +2,7 @@
 
 namespace App\Workflow;
 
+use App\Support\ShowMemo;
 use App\Billing\WorkDays;
 use App\Http\Admin\MailController;
 use App\Mail\Template;
@@ -316,6 +317,6 @@ class Stage extends Model
 
     public function loadedExits(): Collection
     {
-        return $this->relationLoaded('exits') ? $this->exits : $this->exits()->with('to')->get();
+        return $this->relationLoaded('exits') ? $this->exits : ShowMemo::get('stage-exits:'.$this->id, fn () => $this->exits()->with('to')->get());
     }
 }

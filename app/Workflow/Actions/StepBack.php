@@ -43,7 +43,9 @@ final class StepBack
      */
     public static function undoable(Offer $offer, Track $track): ?array
     {
-        $position = Position::where('offer_id', $offer->id)->where('track', $track)->with('stage.exits')->first();
+        // На показ — уже загруженная позиция предложения (`Offer::position` помнит её на GET); в действии — из базы.
+        $position = ! app()->runningInConsole() && request()->isMethodSafe() ? $offer->position($track)
+            : Position::where('offer_id', $offer->id)->where('track', $track)->with('stage.exits')->first();
         $last = $position ? Path::journal($offer, $track)->last() : null;
         if (! $last || $position->stage->exits->isEmpty()) {
             return null;

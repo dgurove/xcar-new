@@ -2,6 +2,7 @@
 
 namespace App\Workflow;
 
+use App\Support\ShowMemo;
 use App\Offers\Deal;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -34,7 +35,7 @@ final class Substeps
     {
         $stage = $position->stage;
         $block = $stage->block;
-        $stages = $block->stages()->with('exits.to')->get();
+        $stages = ShowMemo::get('block-stages:'.$block->id, fn () => $block->stages()->with('exits.to')->get());
         $byId = $stages->keyBy('id');
 
         // Хвост журнала в этом блоке: с последнего входа в блок, без самого текущего этапа.

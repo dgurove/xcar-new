@@ -63,8 +63,8 @@ final class SetDealPayer
     /** Счета сделки, у которых есть плательщик (продажа, подбор), — живые. */
     public static function invoices(Deal $deal)
     {
-        return $deal->invoices()->whereIn('kind', [ChargeKind::Sale, ChargeKind::Selection])->where('direction', 'issued')
-            ->where('state', '!=', InvoiceState::Void)->with(['payments', 'claims', 'party'])->get();
+        return $deal->shownInvoices()->filter(fn (Invoice $i) => in_array($i->kind, [ChargeKind::Sale, ChargeKind::Selection], true)
+            && $i->direction === 'issued' && $i->state !== InvoiceState::Void)->values();
     }
 
     /** По счёту уже платили (или менеджер сообщил об оплате) — плательщика не меняем: деньги пришли от него. */

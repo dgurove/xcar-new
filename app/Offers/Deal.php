@@ -1064,6 +1064,28 @@ class Deal extends Model implements HasMedia
         return $this->hasMany(Invoice::class)->where('state', '!=', InvoiceState::Void)->orderBy('id');
     }
 
+    /** Связи счетов, что нужны окну и странице сделки: деньги, путь, плательщик, долг. */
+    public const SHOWN_INVOICES = ['invoices.party', 'invoices.payments', 'invoices.claims.media', 'invoices.payLinks.attempts',
+        'invoices.payLinks.creator', 'invoices.payLinks.payerUser'];
+
+    /**
+     * Живые счета сделки для показа — одна выборка на запрос (17.11.2026: окно сделки читало их семь раз — путь, «Продажа»,
+     * схема, сумма договора, плательщик, долг, «деньги правятся»). На показ (GET в вебе) — загруженная связь `invoices` со
+     * всем, что нужно видам; в действиях и очереди — из базы: счета меняются посреди запроса.
+     *
+     * @return Collection<int, Invoice>
+     */
+    public function shownInvoices(): Collection
+    {
+        if (app()->runningInConsole() || ! request()->isMethodSafe()) {
+            return $this->invoices()->with(array_map(fn ($r) => substr($r, strlen('invoices.')), self::SHOWN_INVOICES))->get()
+                ->each(fn (Invoice $i) => $i->setRelation('deal', $this));
+        }
+        $this->loadMissing(self::SHOWN_INVOICES);
+
+        return $this->invoices->each(fn (Invoice $i) => $i->setRelation('deal', $this));
+    }
+
     /** Наши счета покупателю или вендору по этой сделке. */
     public function issuedInvoices(): HasMany
     {
@@ -1592,7 +1614,7 @@ class Deal extends Model implements HasMedia
      */
     public function moneyEditable(): bool
     {
-        $invoices = $this->invoices()->with(['payments', 'claims'])->get();
+        $invoices = $this->shownInvoices();
 
         return $invoices->every(fn (Invoice $i) => $i->direction === 'issued' && $i->kind !== ChargeKind::Reward && $i->claims->isEmpty()
             && $i->payments->every(fn ($p) => $p->source->isSoft()));

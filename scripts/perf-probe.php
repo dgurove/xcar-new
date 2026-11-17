@@ -12,7 +12,7 @@
  *   php scripts/perf-probe.php /deals --host=site --user=6
  *
  * Ключи: --user=3, --host=crm|site|park|logistics|partner, --frame=имя, --rows=ключи, --list, --top=6 (сколько строк
- * разбора), --trace (места в коде вместо текста запросов), --cold (разбор холодного прогона, а не тёплого).
+ * разбора), --trace (места в коде вместо текста запросов), --dups (одинаковые запросы с теми же значениями), --cold (разбор холодного прогона, а не тёплого).
  *
  * Мерить только так, а не `tinker`-ом: в консоли пакетные выборки на запрос (`once` в `RepriceAsk::dealDue`,
  * `ReplyReview::waiting`, `Position::firstCredits`) намеренно отключены, и список сделок даёт по четыре запроса на строку —
@@ -60,6 +60,7 @@ $headers = array_filter([
 
 $log = [];
 $on = false;
+$GLOBALS['depth'] = isset($opt['grep']) ? 7 : 3;
 DB::listen(function ($q) use (&$log, &$on) {
     if (! $on) {
         return;
@@ -71,16 +72,24 @@ DB::listen(function ($q) use (&$log, &$on) {
             continue;
         }
         $file = str_replace(dirname(__DIR__).'/', '', $file);
-        if (str_starts_with($file, 'storage/framework/views/')) {
-            continue;
+        if (str_contains($file, '/framework/views/') || str_contains($file, '/cache/views/')) {
+            // Скомпилированный вид — имя исходного шаблона из метки в конце файла.
+            static $views = [];
+            $views[$f['file']] ??= preg_match('#/\*\*PATH (\S+) ENDPATH\*\*/#', (string) @file_get_contents($f['file']), $vm)
+                ? str_replace([dirname(__DIR__).'/resources/views/', '.blade.php'], ['', ''], $vm[1]) : null;
+            if (! $views[$f['file']]) {
+                continue;
+            }
+            $file = 'view:'.$views[$f['file']];
         }
         $frames[] = preg_replace('#^app/#', '', $file).':'.($f['line'] ?? 0);
-        if (count($frames) >= 3) {
+        if (count($frames) >= ($GLOBALS['depth'] ?? 3)) {
             break;
         }
     }
     $sql = preg_replace('/in \([0-9, ?]+\)/', 'in (…)', preg_replace('/\s+/', ' ', $q->sql));
-    $log[] = ['sql' => $sql, 'at' => implode(' ← ', $frames) ?: '(сессия, кэш, каркас)', 'ms' => $q->time, 'conn' => $q->connectionName];
+    $log[] = ['sql' => $sql, 'at' => implode(' ← ', $frames) ?: '(сессия, кэш, каркас)', 'ms' => $q->time, 'conn' => $q->connectionName,
+        'exact' => preg_replace('/\s+/', ' ', $q->sql).' '.json_encode($q->bindings)];
 });
 
 $hit = function (string $url, bool $cold) use ($app, $kernel, $host, $headers, $opt, &$log, &$on): array {
@@ -138,7 +147,8 @@ foreach ($urls as $url) {
     $line('тёплый', $warm);
     $top = (int) $opt['top'];
     if ($top > 0) {
-        $key = isset($opt['trace']) ? 'at' : 'sql';
+        // --dups — один и тот же запрос с теми же значениями дважды и больше: то, что уже было прочитано.
+        $key = isset($opt['dups']) ? 'exact' : (isset($opt['trace']) ? 'at' : 'sql');
         $groups = [];
         foreach ((isset($opt['cold']) ? $cold : $warm)['log'] as $q) {
             $groups[$q[$key]] ??= [0, 0.0];
@@ -146,6 +156,20 @@ foreach ($urls as $url) {
             $groups[$q[$key]][1] += $q['ms'];
         }
         uasort($groups, fn ($a, $b) => $b[1] <=> $a[1]);
+        // --grep=текст — каждый запрос с этим куском и откуда он (7 кадров).
+        if (isset($opt['grep'])) {
+            foreach ((isset($opt['cold']) ? $cold : $warm)['log'] as $q) {
+                if (str_contains($q['exact'], (string) $opt['grep'])) {
+                    echo '     · '.$q['at']."\n";
+                }
+            }
+
+            continue;
+        }
+        if (isset($opt['dups'])) {
+            $groups = array_filter($groups, fn ($g) => $g[0] > 1);
+            uasort($groups, fn ($a, $b) => $b[0] <=> $a[0]);
+        }
         foreach (array_slice($groups, 0, $top, true) as $what => [$n, $ms]) {
             printf("     ×%-4d %6.1f мс  %s\n", $n, $ms, mb_strimwidth($what, 0, 170, '…'));
         }

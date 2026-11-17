@@ -85,14 +85,15 @@ class DealContract extends Model
      */
     public static function for(Deal $deal): self
     {
+        // Договор знает свою сделку — ту, что на руках: иначе он перечитывал её, а с ней предложение, машину, марку и модель.
         if ($deal->contract) {
-            return $deal->contract;
+            return $deal->contract->setRelation('deal', $deal);
         }
         // Гаражная «платит менеджер» и сделка супер-покупателя — покупатель он сам, он же платит.
         $self = $deal->isGarageManager() || $deal->isDirect();
         $defaults = ['price' => self::priceFor($deal)] + ($self ? ['buyer_user_id' => $deal->buyer_id, 'payer' => 'manager'] : []);
 
-        return tap(self::firstOrCreate(['deal_id' => $deal->id], $defaults), fn ($c) => $deal->setRelation('contract', $c));
+        return tap(self::firstOrCreate(['deal_id' => $deal->id], $defaults), fn ($c) => $deal->setRelation('contract', $c->setRelation('deal', $deal)));
     }
 
     /** Цена договора по деньгам сделки: собственнику (ДКП), закупочная (гаражная), иначе цена подтверждения (у гаражной

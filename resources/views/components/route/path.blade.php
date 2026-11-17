@@ -64,7 +64,7 @@
     $answeredBy = \App\Users\User::whereIn('id', $requirements->flatMap(fn ($r) => [$r->user_id, $r->answer['by'] ?? null])->filter()->unique())->get()->keyBy('id');
     $answerer = fn ($r) => $answeredBy->get($r->user_id)?->shortName() ?? 'Менеджер';
     $menu = 'route-more-'.$position->id;
-    $invoices = $deal ? $deal->invoices()->with('claims.media')->get()->reject(fn ($i) => $i->isOwed() || $i->state === InvoiceState::Void) : collect();
+    $invoices = $deal ? $deal->shownInvoices()->reject(fn ($i) => $i->isOwed() || $i->state === InvoiceState::Void) : collect();
     // Этап оплаты без счёта — ход наш (`Position::awaitsInvoice`): «Выставить счёт» первой кнопкой.
     $wantsInvoice = $deal && $position->awaitsInvoice();
     $paidExit = fn ($x) => preg_match('/^оплата (получена|не поступила)/u', mb_strtolower($x->label)) === 1;
