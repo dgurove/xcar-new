@@ -74,21 +74,40 @@ final class SetDealDate
                 .($was?->format('d.m.Y') ?? 'нет').' → '.($at?->format('d.m.Y') ?? 'нет').($why ? ', '.$why : '')]);
 
             // Оплатили поставщику, а сделка на шаге нашей оплаты — шаг проходит («Поставщику оплачено» с этой датой).
-            $stage = $offer->stage();
-            if ($what === DealDates::PAID && $at && $deal->isActive() && $stage?->paysOut()
-                && ($exit = $stage->exitsFor(Actor::Staff, $deal)->first(fn ($e) => ! $e->to?->block?->isDeadEnd()))) {
-                // Поля шага: дата — первое, номер платёжки — поле со словом «номер» / «платёж».
-                $out = [];
-                foreach ($stage->payFields() as $i => $f) {
-                    $isNo = preg_match('/номер|№/iu', $f['label']);
-                    $value = $isNo ? $doc : ($i === 0 || preg_match('/дат/iu', $f['label']) ? $at->translatedFormat('j F Y') : null);
-                    $value && $out[$f['label']] = $value;
-                }
-                ($this->take)($offer, $exit, Actor::Staff, $by, $out ? ['out' => $out] : []);
+            if ($what === DealDates::PAID && $at && $this->passPaid($deal, $offer, $at, $by, $doc)) {
                 $deal->refresh()->forceFill([$column => $at])->save();
+            }
+
+            // «Продано» вписали руками, а счёта нет (или «страховой напрямую» — дату оплаты) — деньги пришли, шаг оплаты
+            // проходит (`MoneyIn`, 17.11.2026).
+            if ($by && $what === DealDates::SOLD && $at && $deal->isActive()) {
+                app(MoneyIn::class)($deal->fresh()->setRelation('offer', $offer->fresh()), $by);
             }
 
             return $deal->fresh();
         });
+    }
+
+    /**
+     * Поставщику заплачено, а сделка на шаге нашей оплаты — «Поставщику оплачено» с датой и номером платёжки в полях шага.
+     * Зовут и вписанная дата, и вход на шаг, когда заплатили раньше (`AdvanceOnPayment::entered`, аудит 17.11.2026: перевели
+     * поставщику до «Договор получен» — шаг ждал руки). @return bool прошёл ли шаг
+     */
+    public function passPaid(Deal $deal, Offer $offer, Carbon $at, ?User $by, ?string $doc = null): bool
+    {
+        $stage = $offer->stage();
+        if (! $deal->isActive() || ! $stage?->paysOut() || ! ($exit = $stage->exitsFor(Actor::Staff, $deal)->first(fn ($e) => ! $e->to?->block?->isDeadEnd()))) {
+            return false;
+        }
+        // Поля шага: дата — первое, номер платёжки — поле со словом «номер» / «платёж».
+        $out = [];
+        foreach ($stage->payFields() as $i => $f) {
+            $isNo = preg_match('/номер|№/iu', $f['label']);
+            $value = $isNo ? $doc : ($i === 0 || preg_match('/дат/iu', $f['label']) ? $at->translatedFormat('j F Y') : null);
+            $value && $out[$f['label']] = $value;
+        }
+        ($this->take)($offer, $exit, Actor::Staff, $by, $out ? ['out' => $out] : []);
+
+        return true;
     }
 }

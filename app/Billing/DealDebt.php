@@ -2,7 +2,9 @@
 
 namespace App\Billing;
 
+use App\Offers\Actions\MoneyIn;
 use App\Offers\Deal;
+use App\Offers\DealDates;
 use App\Support\Ago;
 use App\Support\Money;
 use App\Workflow\Position;
@@ -82,8 +84,17 @@ final class DealDebt
         if (! $position || ($deal->namesBuyer() && $deal->amount === null) || $amount <= 0 || ! in_array($position->waits_for, [WaitsFor::Us, WaitsFor::Manager], true) || ! $position->stage->isPayStep()) {
             return null;
         }
-        $gap = $deal->invoiceGap();
+        // Деньги без счёта уже пришли, но не все (17.11.2026, `MoneyIn`): долг — остаток, словами «пришло N из M». Пришло всё —
+        // шаг оплаты прошёл сам, сюда сделка не попадает.
+        $got = DealDates::throughUs($deal) ? MoneyIn::received($deal) : 0;
         $due = $deal->payDue();
+        if ($got > 0 && $got < $amount) {
+            $rest = round($amount - $got, 2);
+            $late = $due && $due->copy()->startOfDay()->lt(today());
+
+            return new self($rest, $late ? $rest : 0, $due, false, null, 'пришло '.Money::nums($got).' из '.Money::nums($amount), false);
+        }
+        $gap = $deal->invoiceGap();
         $late = $due && $due->copy()->startOfDay()->lt(today());
         [$status, $ours] = match ($gap) {
             'buyer' => ['счёта нет: не указал покупателя', false],

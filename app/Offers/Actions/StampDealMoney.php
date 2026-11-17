@@ -51,6 +51,11 @@ final class StampDealMoney
                 $deal = ($this->set)($deal, DealDates::PAID, $at, null, 'по выписке Сбера'.($tx->doc_number ? ', платёжка № '.$tx->doc_number : ''), $tx->doc_number);
             }
         }
+        // Деньги за машину пришли без нашего счёта — шаг оплаты проходит сам (`MoneyIn`, 17.11.2026).
+        $deal = $deal->fresh();
+        if ($deal->isActive()) {
+            app(MoneyIn::class)($deal);
+        }
 
         return $deal->fresh();
     }

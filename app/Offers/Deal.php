@@ -1567,7 +1567,9 @@ class Deal extends Model implements HasMedia
     /** Все наши счета по сделке оплачены, и хотя бы один есть — сигнал «вознаграждение к выплате». */
     public function fullyPaid(): bool
     {
-        $issued = $this->issuedInvoices()->get();
+        // Счёт вознаграждения вендору (наш доход от поставщика) — не оплата покупателя: неоплаченный, он держал шаг «Оплата»
+        // сделки, где за машину заплатили целиком (аудит 17.11.2026).
+        $issued = $this->issuedInvoices()->where('kind', '!=', ChargeKind::Reward)->get();
 
         return $issued->isNotEmpty() && $issued->every(fn (Invoice $i) => $i->state === InvoiceState::Paid);
     }

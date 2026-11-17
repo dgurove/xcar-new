@@ -139,7 +139,9 @@ class Position extends Model
     public function moneyArrived(): ?Carbon
     {
         $deal = $this->track === Track::Sale ? $this->deal : null;
-        if (! $deal || $deal->hasSaleInvoice()) {
+        // Любой наш счёт менеджеру (у ДКП это подбор, не «продажа») — деньги ложатся на него; «страховой напрямую» за машину
+        // нам не платят вовсе (17.11.2026: у обеих висело ложное «Деньги пришли»).
+        if (! $deal || ! \App\Offers\DealDates::throughUs($deal) || $deal->hasManagerInvoice(sent: false)) {
             return null;
         }
         // Первая оплата по ссылке — одним запросом на все сделки списка (16.11.2026: было по запросу на строку), как
@@ -248,21 +250,20 @@ class Position extends Model
         $todo = fn (string $key, string $title, int $rank, ?Carbon $at = null, ?array $button = null) => ['key' => $key, 'title' => $title, 'rank' => $rank, 'since' => $at ?? $since, 'button' => $button];
         $write = fn (string $label) => ($url = $offer->vendorLetterUrl($this->stage)) ? ['label' => $label, 'letters' => $url] : null;
 
-        // Деньги пришли, а счёта нет — что дооформить, прежними кнопками (12.11.2026): продажа — «Продана» гаража, вознаграждение
-        // — «Назначить», покупатель — «Заполнить за менеджера».
-        if ($at = $this->moneyArrived()) {
-            // «Себе» (без менеджера): пока ТС в гараже не продана — сначала продажа, счёт потом.
-            $car = $this->deal->buyer_id ? null : $this->deal->garageCar;
-            $gap = $car && ! $car->isSold() ? 'price' : $this->deal->invoiceGap();
+        // Деньги пришли, а счёта нет — что дооформить, прежними кнопками (12.11.2026): продажа — «Продана» гаража, покупатель —
+        // «Заполнить за менеджера» (для договора). «Выставить счёт» и прочее — нет (17.11.2026, владелец: «если деньги уже
+        // пришли — значит счёт выставили вне системы, его тут никогда не выставят»): шаг оплаты проходит сам (`MoneyIn`).
+        $car = $this->deal?->buyer_id ? null : $this->deal?->garageCar;
+        $gap = ($at = $this->moneyArrived()) ? ($car && ! $car->isSold() ? 'price' : $this->deal->invoiceGap()) : null;
+        if ($at && in_array($gap, ['price', 'buyer', 'passport'], true)) {
             [$what, $label, $href] = match ($gap) {
                 'price' => ['записать продажу', 'Записать', '/offers/'.$offer->number.'?sold=1'],
                 'buyer' => ['нужен покупатель', 'Заполнить', '/offers/'.$offer->number.'?buyer=1#invoice-buyer'],
-                'passport' => ['нужен паспорт покупателя', 'Заполнить', '/offers/'.$offer->number.'?buyer=1#invoice-buyer'],
-                default => (fn ($a) => [mb_strtolower($a['title']), $a['button'], $a['url']])(self::gapAction($gap, $this->deal)),
+                default => ['нужен паспорт покупателя', 'Заполнить', '/offers/'.$offer->number.'?buyer=1#invoice-buyer'],
             };
 
             // Ключ — по тому, чего не хватает: группа «Ваш ход» берёт заголовок у ключа, а не у строки.
-            return $todo('gap:paid-'.($gap ?? 'invoice'), 'Деньги пришли: '.$what, 1, $at, ['label' => $label, 'href' => $href]);
+            return $todo('gap:paid-'.$gap, 'Деньги пришли: '.$what, 1, $at, ['label' => $label, 'href' => $href]);
         }
 
         if ($this->awaitsInvoice()) {

@@ -66,6 +66,7 @@ use App\Offers\Console\MigtorgArchive;
 use App\Offers\Console\MigtorgDropOsago;
 use App\Offers\Console\MigtorgSync;
 use App\Offers\Console\PruneEmptyDrafts;
+use App\Offers\Console\MoneyCloseCommand;
 use App\Offers\Console\RepricesFromLettersCommand;
 use App\Offers\Console\TickOffers;
 use App\Offers\Console\ValuationsCommand;
@@ -128,6 +129,7 @@ return Application::configure(basePath: dirname(__DIR__))
         AutoDraftsCommand::class,
         FillFromLettersCommand::class,
         RepricesFromLettersCommand::class,
+        MoneyCloseCommand::class,
         DealCarDocsCommand::class,
         DealReconcileCommand::class,
         CommissionOwnersCommand::class,
