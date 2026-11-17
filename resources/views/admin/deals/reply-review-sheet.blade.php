@@ -10,12 +10,13 @@
     $guess = $billed ? \App\Offers\SupplierInvoice::guess($deal->offer->getMedia('papers')->whereIn('id', collect($proposals)->pluck('media')->filter())->sortByDesc('id')) : null;
     $picked = $picked ?: ($guess ? ['file:'.$guess->id] : array_keys(array_filter($proposals, fn ($p) => $p['pick'] ?? false)));
 @endphp
-{{-- `$line` — шторку открывает строка письма в шаге (10.11.2026): она и есть разбор — «Открыть» у письма, «Не нужно» в подвале,
+{{-- `$line` — шторку открывает строка письма в шаге (10.11.2026): она и есть разбор — «Открыть» у письма, «Пропустить письмо» в подвале
+     (17.11.2026: кнопки под строкой в шаге больше нет),
      что уже показано — сверху. --}}
 @php $line = ($line ?? false) && $letters->isNotEmpty(); @endphp
 <x-ui.sheet :id="$id" :title="$line ? ($billed ? 'Счёт' : 'Письмо').' от '.($deal->offer->vendor?->name ?? 'поставщика') : 'Показать менеджеру'" tall>
     @if ($line)
-        <form method="post" action="/work/deals/{{ $deal->id }}/reviews/done" id="{{ $id }}-skip" hidden data-turbo-confirm="Менеджер не узнает об этом письме" data-turbo-confirm-label="Не нужно">@csrf</form>
+        <form method="post" action="/work/deals/{{ $deal->id }}/reviews/done" id="{{ $id }}-skip" hidden data-turbo-confirm="Пропустить письмо?" data-turbo-confirm-text="Менеджер о нём не узнает" data-turbo-confirm-label="Пропустить">@csrf</form>
     @endif
     {{-- top — шторка в окне писем (во фрейме ленты): ответ — всей странице. --}}
     <form method="post" action="/work/deals/{{ $deal->id }}/disclose" class="flex flex-col gap-4" data-controller="disclose" @if ($top ?? false) data-turbo-frame="_top" @endif>
@@ -99,9 +100,11 @@
             </label>
         @endif
         @if ($line)
-            <div class="sheet-foot flex gap-2">
-                <x-ui.button type="submit" variant="secondary" form="{{ $id }}-skip" class="flex-1">Не нужно</x-ui.button>
-                <x-ui.button type="submit" class="flex-[2]" data-disclose-target="submit">Отправить менеджеру</x-ui.button>
+            {{-- Главное — «Отправить менеджеру» во всю ширину; «Пропустить письмо» тихой кнопкой под ней (17.11.2026, владелец: пропуск —
+                 внутри шторки, а не большой кнопкой в шаге). --}}
+            <div class="sheet-foot flex flex-col gap-1">
+                <x-ui.button type="submit" block data-disclose-target="submit">Отправить менеджеру</x-ui.button>
+                <x-ui.button type="submit" variant="ghost" form="{{ $id }}-skip" block class="text-ink-muted">Пропустить письмо</x-ui.button>
             </div>
         @else
             <x-ui.sheet-foot type="submit" data-disclose-target="submit">Отправить менеджеру</x-ui.sheet-foot>

@@ -2923,10 +2923,7 @@ html.kb-open { --home-gap: 0px; }
   .step-who-acts > form > .btn, .step-who-acts > div > .btn { width: 100%; }
   /* Кнопки за менеджера — без строки «Менеджер» (ждём менеджера словом) своим рядом под состоянием. */
   .step-who-acts--bare { margin-top: .5rem; }
-  /* Действия строки дела («Пропустить письмо» под письмом, 16.11.2026) — во всю ширину шага, как кнопки под «Менеджер». */
-  .step-task-acts { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: .5rem; }
-  .step-task-acts > form, .step-task-acts > div, .step-task-acts > a, .step-task-acts > button { flex: 1 1 auto; min-width: 0; }
-  .step-who-acts .btn, .step-task-acts .btn { width: 100%; }
+  .step-who-acts .btn { width: 100%; }
   /* Состояние — своя фраза («должен 1 050 000 ₽ · просрочено 10 д»): в узкой дорожке переносится, а не лезет вправо. Отдельной
      строкой сразу под именем (16.11.2026, владелец: «под словом „Менеджер“ странный отступ» — `inline-flex` в строке имени 22,5 px
      давал ~10 px зазора). */
@@ -2940,6 +2937,11 @@ html.kb-open { --home-gap: 0px; }
   .step-acts > form, .step-acts > div, .step-acts > a, .step-acts > button { flex: 1 1 auto; min-width: 0; }
   .step-acts > form > .btn, .step-acts > div > .btn { width: 100%; }
   .step-acts > p { flex-basis: 100%; }
+  /* Главная кнопка шага — самая большая (17.11.2026, владелец: «главное действие — „Спросить менеджера“»): лаймовая первой, а при
+     трёх кнопках и больше — своей строкой во всю ширину, серые делят строку под ней; иначе третья серая переносилась и вставала
+     во всю ширину — больше главной («Подтверждение оплаты», «Подтверждение покупки», «Запись на подписание»). */
+  .step-acts > .step-main { order: -1; }
+  .step-acts--lead > .step-main { flex-basis: 100%; }
   /* Строка дела в шаге (`x-route.task-row`, 10.11.2026): письмо, ДКП, счёт — одним видом, как строка `.list`; цвет — только точкой. */
   /* 13, а не 15 (16.11.2026, владелец: «размер шрифта чуть меньше»): строка дела — подпись к шагу, вторая строка — приглушённо. */
   /* «Показать менеджеру» (16.11.2026, сначала готовое сообщение): «Приложить» и «Другие письма» — плашкой строками 13, подпись письма
@@ -5096,8 +5098,7 @@ html::view-transition-image-pair(hero) { isolation: auto; }
   .detail-body .btn-s { font-size: var(--text-base); }
   /* Кнопки шага пути — тише самого шага (16.11.2026, владелец: «текст в кнопках огромный, что-то не так с пропорциями»): 36 px,
      13 весом 500, одной высоты, длинная подпись переносится. Только кнопки самого шага (прямые и в своей форме), не шторок в нём. */
-  .step-acts > .btn-s, .step-acts > * > .btn-s, .step-who-acts > .btn-s, .step-who-acts > * > .btn-s, .step-task-acts > .btn-s,
-  .step-task-acts > * > .btn-s, .signing-edit > summary .btn-s {
+  .step-acts > .btn-s, .step-acts > * > .btn-s, .step-who-acts > .btn-s, .step-who-acts > * > .btn-s, .signing-edit > summary .btn-s {
     height: auto; min-height: 2.25rem; padding-block: .375rem; font-size: var(--text-sm); font-weight: 500; line-height: 1.25; white-space: normal;
   }
   .detail-body .vincode-text, .detail-body .letter-box { font-size: var(--text-sm); }

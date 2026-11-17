@@ -48,11 +48,9 @@
                     {{ $what }} от <span class="nums whitespace-nowrap">{!! Ago::html($letters->first()->date_at, true, words: false) !!}</span>
                     <x-slot:sub>Показать менеджеру?</x-slot:sub>
                 </x-route.task-row>
-                {{-- Письмо не для менеджера (16.11.2026, владелец: «нас в копию поставили, а мне красным — будто ответить должен»): закрыть
-                     разбор видной кнопкой, не открывая шторку; «Не нужно» в её подвале — то же. --}}
-                <form method="post" action="/work/deals/{{ $deal->id }}/reviews/done" class="step-task-acts" data-turbo-confirm="Пропустить письмо?" data-turbo-confirm-text="Менеджер о нём не узнает" data-turbo-confirm-label="Пропустить">
-                    @csrf<button class="btn btn-s btn-quiet">Пропустить письмо</button>
-                </form>
+                {{-- Письмо не для менеджера (16.11.2026, владелец: «нас в копию поставили») — «Пропустить письмо» в подвале шторки, а не
+                     кнопкой в шаге (17.11.2026, владелец: «самая большая кнопка — пропустить письмо, максимально нелогично», «перенёс бы
+                     внутрь окна, которое открывается по „Показать менеджеру?“»): главное в шаге — его кнопки ниже. --}}
                 @include('admin.deals.reply-review-sheet', $sheet + ['line' => true])
             </div>
         @elseif ($manual)
@@ -64,11 +62,22 @@
             </div>
         @endif
         @if ($shown->isNotEmpty())
-            {{-- Строкой дела, как остальное в шаге (16.11.2026, единый вид): что показали — заголовком, когда — ниже серым. --}}
-            <x-route.task-row icon="check" static>
-                Показано менеджеру: {{ $shown->first()->summary() }}
-                <x-slot:sub>{!! Ago::html($shown->first()->created_at, true, words: false) !!}</x-slot:sub>
-            </x-route.task-row>
+            {{-- Строкой дела: «Показано менеджеру» и когда (17.11.2026, владелец: «куча текста, который ещё и весь сдвигается из-за
+                 иконки»; было «Показано менеджеру: 20261116102357ЭПТС, ЭПТС во вложении…»). Что именно — нажатием, шторкой тем же
+                 видом, каким это видит менеджер (`cabinet.deals.disclosure`), каждый показ этапа, свежий сверху. --}}
+            <div class="contents" data-controller="sheet">
+                <x-route.task-row icon="check" aria-controls="{{ $id }}-shown">
+                    Показано менеджеру
+                    <x-slot:sub>{!! Ago::html($shown->first()->created_at, true, words: false) !!}</x-slot:sub>
+                </x-route.task-row>
+                <x-ui.sheet :id="$id.'-shown'" title="Показано менеджеру">
+                    <div class="flex flex-col gap-4">
+                        @foreach ($shown as $disclosure)
+                            @include('cabinet.deals.disclosure', ['disclosure' => $disclosure])
+                        @endforeach
+                    </div>
+                </x-ui.sheet>
+            </div>
         @endif
     @elseif ($letters->isNotEmpty() || $shown->isNotEmpty())
     <div {{ $attributes }} data-controller="sheet">

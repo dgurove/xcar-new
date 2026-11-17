@@ -2,6 +2,8 @@
 
 namespace App\Offers\Actions;
 
+use App\Chats\Actions\OpenChat;
+use App\Chats\Actions\PlatformMessage;
 use App\Chats\StepAsk;
 use App\Live\Publisher;
 use App\Live\Topics;
@@ -33,8 +35,8 @@ use Spatie\MediaLibrary\MediaCollections\Models\Media;
  * «Показать менеджеру» (03.11.2026, владелец: «админ отмечает, что из этого показать, жмёт кнопку — и только тогда менеджеру
  * приходит уведомление и показывается ТОЛЬКО то, что выбрано»). Под замком сделки одной транзакцией: строка `Disclosure` с
  * выбранным (правленым), документам — «Видно менеджеру», ждущие разборы сделки — разобраны; галка шага — исход «поставщик
- * согласовал» / «ответ получен» / «просит реквизиты», который раньше жало письмо само (`OnInsurerReply`). После — менеджеру
- * `DealInfoNotice` с его новым ходом, без пунктов и с шагом — «Ваш ход». «Ничего не показывать» — `dismiss`.
+ * согласовал» / «ответ получен» / «просит реквизиты», который раньше жало письмо само (`OnInsurerReply`). После — показанное
+ * сообщением в чат сделки (`toChat`), без пунктов и с шагом — «Ваш ход». «Ничего не показывать» — `dismiss`.
  */
 final class Disclose
 {
@@ -55,8 +57,13 @@ final class Disclose
     {
         [$disclosure, $moved, $turn] = DB::transaction(function () use ($deal, $by, $items, $step, $invoice, $message) {
             $deal = Deal::whereKey($deal->id)->lockForUpdate()->firstOrFail();
-            // Показ одного письма из окна писем (16.11.2026) разбирает только его, остальные ждут.
-            $reviews = ReplyReview::pending()->where('deal_id', $deal->id)->when($message, fn ($q) => $q->where('message_id', $message->id))->with('message')->get();
+            // Показ одного письма из окна писем (16.11.2026) разбирает его и письма не новее него (17.11.2026, владелец по сделке 123:
+            // «показано же менеджеру, зачем всё ещё висит „Показать менеджеру?“» — Альфа 14.11 просила коллегу прислать ПТС, а ответ
+            // коллеги с ЭПТС 16.11 показали из окна); пришедшие после него ждут.
+            $reviews = ReplyReview::pending()->where('deal_id', $deal->id)
+                ->when($message, fn ($q) => $q->where(fn ($w) => $w->where('message_id', $message->id)
+                    ->when($message->date_at, fn ($w) => $w->orWhereHas('message', fn ($m) => $m->where('date_at', '<=', $message->date_at)))))
+                ->with('message')->get();
             $letters = $message ? collect([$message]) : $reviews->pluck('message')->filter();
             $files = array_filter(array_map(fn ($i) => $i['media'] ?? null, $items));
             // Счёт поставщика (`SupplierInvoice`): выбранный файлом (`$invoice` — шторка «Счёт поставщика») или, у галки шага на оплату
@@ -83,16 +90,45 @@ final class Disclose
         });
         self::publish($deal);
         if ($buyer = $deal->buyer) {
-            if ($disclosure) {
+            // Показанное — сообщением в чат сделки; чата у менеджера нет — уведомлением, как раньше (с его ходом в нём же).
+            $chat = $disclosure && self::toChat($deal->fresh(['offer', 'buyer']), $disclosure, $turn);
+            if ($disclosure && ! $chat) {
                 $buyer->notify(new DealInfoNotice($disclosure, $turn));
             } elseif ($turn) {
                 $buyer->notify(new YourTurnNotice($turn->load('offer')));
             }
-            // Новый ход — и кнопками в чате сделки (`StepAsk`), как на любом шаге.
+            // Новый ход — и кнопками в чате сделки (`StepAsk`), как на любом шаге: после сообщения с показанным.
             $turn && StepAsk::post($turn);
         }
 
         return ['disclosure' => $disclosure, 'moved' => $moved];
+    }
+
+    /**
+     * Показанное — сообщением «Администрации XCar» в чат сделки (17.11.2026, владелец: «нажал „Показать менеджеру“ — ему в чат и
+     * телегу ничего не пришло, должно же было»): сообщение менеджеру, ниже имя, телефон и адрес строками, документы и фото —
+     * вложениями. Сообщение чата само уходит в ленту, пуш и Telegram с файлами (`Notify::chat`), отдельного `DealInfoNotice` нет.
+     * Счёт поставщика, что `StepAsk` на шаге оплаты приложит сам, второй раз не прикладывается. Чат менеджеру закрыт — false.
+     */
+    private static function toChat(Deal $deal, Disclosure $disclosure, ?Requirement $turn): bool
+    {
+        $offer = $deal->offer;
+        if (! $offer || ! $offer->chatOpenFor($deal->buyer)) {
+            return false;
+        }
+        $items = collect($disclosure->items ?? []);
+        $lines = $items->where('kind', 'text')->merge($items->whereIn('kind', ['name', 'phone', 'address']))
+            ->map(fn ($i) => trim((string) $i['value']))->filter()->values();
+        $files = $disclosure->files();
+        if ($turn?->stage && $deal->paysSupplierOn($turn->stage)) {
+            $bill = SupplierInvoice::shown($offer)->take(1)->pluck('id');
+            $files = $files->reject(fn (Media $m) => $bill->contains($m->id))->values();
+        }
+        if ($lines->isNotEmpty() || $files->isNotEmpty()) {
+            app(PlatformMessage::class)(app(OpenChat::class)($offer, $deal->buyer, greet: false), $lines->implode("\n") ?: 'Документы по сделке', media: $files);
+        }
+
+        return true;
     }
 
     /** «Ничего не показывать»: письма разобраны, менеджеру — ничего. Под тем же замком, что и показ. */

@@ -240,7 +240,11 @@
                     @endphp
                     {{-- Всё, что за менеджера, — под строкой «Менеджер» (16.11.2026, владелец: «„Беру в работу за менеджера“ должно быть под
                          „Менеджер“, а так они разорваны»): что он уже приложил, данные покупателя, документ об оплате, его ответы. --}}
-                    <x-route.who :position="$position" :offer="$offer" :deal="$deal" :named="! $compact">
+                    {{-- Письмо ждёт разбора — оно строкой «Письмо от … / Показать менеджеру?» ниже (`x-deal.reply-review`); «Поставщик ответил»
+                         о том же письме второй строкой не пишем (17.11.2026). --}}
+                    @php $letterWaits = $deal?->buyer_id && $position->track === \App\Workflow\Track::Sale && auth()->user()?->canManageCrm()
+                        && \App\Offers\ReplyReview::pending()->where('deal_id', $deal->id)->exists(); @endphp
+                    <x-route.who :position="$position" :offer="$offer" :deal="$deal" :named="! $compact" :replied="! $letterWaits">
                         <x-slot:acts>
                             @if ($reqFiles->isNotEmpty())
                                 {{-- Строкой дела, как остальное в шаге (16.11.2026): имя файла с телефона — набор цифр, важно, что он есть. --}}
@@ -254,7 +258,7 @@
                                 </div>
                             @endif
                             @if ($buyerData && auth()->user()?->canManageCrm())
-                                <a href="/offers/{{ $offer->number }}?buyer=1#invoice-buyer" class="btn btn-s btn-quiet" data-turbo-frame="_top">Данные покупателя за менеджера</a>
+                                <a href="/offers/{{ $offer->number }}?buyer=1#invoice-buyer" class="btn btn-s btn-quiet" data-turbo-frame="_top">Заполнить реквизиты за менеджера</a>
                             @endif
                             @if ($proofFor)
                                 <div data-controller="sheet">
@@ -403,18 +407,29 @@
                                 </div>
                                 <x-deal.claim-other :payment="$p"/>
                             </div>
-                                <x-deal.claim-other :payment="$p"/>
-                                @if ($slip = $p->slip())<x-ui.doc :doc="\App\Support\Docs::media($slip)" class="btn btn-s btn-ghost"><x-ui.icon name="file" class="size-4"/>Платёжка</x-ui.doc>@endif
-                            </div>
                         </div>
                     @endforeach
                     @if ($wantsInvoice || $moves->isNotEmpty() || $stage->template_id || $requests || $payNow->isNotEmpty())
+                        @php
+                            // Письмо с реквизитами без реквизитов — не кнопкой, а чего не хватает (03.11.2026, владелец: «почему
+                            // „Написать поставщику“, если покупатель так и не заполнен»).
+                            $requisitesGap = $stage->isRequisitesStep() && $deal ? $deal->requisitesGap() : null;
+                            // Поставщик отвечает списком (Каркаде, `DealFormat::Wholesale`): отметить ответ по всем его сделкам разом.
+                            $waiting = $deal && $offer->vendor?->deal_format === \App\Vendors\DealFormat::Wholesale && $stage->isAgreement() && $stage->waits_for === WaitsFor::Supplier
+                                ? \App\Offers\Deal::awaitingSupplier($offer->vendor_id) : collect();
+                            $invoiceButton = $wantsInvoice && $position->gap() !== 'send' && ! ($position->gap() === 'ros_requisites' && ! auth()->user()?->isParkAdmin());
+                            // Сколько кнопок в ряду: от трёх лаймовая встаёт своей строкой во всю ширину (`.step-acts--lead`, 17.11.2026).
+                            $actCount = ($requests ? 1 : 0) + ($invoiceButton ? 1 : 0) + $payNow->count() + $moves->count()
+                                + (! $requisitesGap && $stage->template_id ? 1 : 0) + ($waiting->count() > 1 ? 1 : 0);
+                        @endphp
                         {{-- `.step-acts`: кнопки делят ширину дорожки, перенеслись — каждая во всю ширину (05.11.2026, владелец про
-                             три узкие дорожки редактора: «вёрстка — треш»; кнопки разной длины стояли лесенкой). --}}
-                        <div class="step-acts mt-3">
+                             три узкие дорожки редактора: «вёрстка — треш»; кнопки разной длины стояли лесенкой). Лаймовая (`step-main`) —
+                             первой, от трёх кнопок — своей строкой (17.11.2026, владелец: «главное действие — „Спросить менеджера“», а
+                             больше всех была серая). --}}
+                        <div @class(['step-acts mt-3', 'step-acts--lead' => $actCount >= 3])>
                             {{-- Заявка поставщику пачкой: окно письма со списком файлом, отправили — все её сделки дальше. --}}
                             @if ($requests)
-                                <x-mail.window-button :url="'/work/mail/new?request='.$offer->vendor_id.'&then=close'" :label="'Заявка поставщику ('.$requests.')'" class="btn-s btn-accent"/>
+                                <x-mail.window-button :url="'/work/mail/new?request='.$offer->vendor_id.'&then=close'" :label="'Заявка поставщику ('.$requests.')'" class="btn-s btn-accent step-main"/>
                             @endif
                             {{-- «Отправить счёт» — строкой дела выше со шторкой (`x-deal.send-task`), кнопкой здесь не дублируем. --}}
                             @if ($wantsInvoice && $position->gap() !== 'send')
@@ -424,7 +439,7 @@
                                 @if ($position->gap() === 'ros_requisites' && ! auth()->user()?->isParkAdmin())
                                     <p class="text-sm text-ink-muted">Ждём реквизиты Р.О.С.</p>
                                 @else
-                                    <a href="{{ $action['url'] }}" class="btn btn-s btn-accent" data-turbo-frame="_top">{{ $action['button'] }}</a>
+                                    <a href="{{ $action['url'] }}" class="btn btn-s btn-accent step-main" data-turbo-frame="_top">{{ $action['button'] }}</a>
                                 @endif
                             @endif
                             @foreach ($payNow as $i)
@@ -447,32 +462,33 @@
                                      получена“ нажимать нежелательно — ждём подтверждения в письме поставщика»). --}}
                                 @php $variant = $i === 0 && ! $wantsInvoice && $payNow->isEmpty() && $position->letterStatus() !== 'unsent'
                                     && ! ($stage->waits_for === WaitsFor::Supplier && $position->letterStatus() === 'sent') ? 'primary' : 'secondary'; @endphp
+                                @php $main = $variant === 'primary' ? 'step-main' : null; @endphp
                                 @if ($exit->to?->offer_state === \App\Offers\OfferState::Open && in_array($offer->state, [\App\Offers\OfferState::Draft, \App\Offers\OfferState::Gallery], true))
                                     {{-- «Выставить в продажу» — сейчас или в слот, как кнопка редактора. --}}
-                                    <div data-controller="sheet">
+                                    <div data-controller="sheet" @class([$main])>
                                         <x-ui.button type="button" size="sm" :variant="$variant" data-action="sheet#open">{{ $label($exit) }}</x-ui.button>
                                         <x-offer.publish-sheet :offer="$offer" id="exit-{{ $exit->id }}" action="/offers/{{ $n }}/exit/{{ $exit->id }}"/>
                                     </div>
                                 @elseif ($deal && \App\Offers\Signing::confirmExit($exit))
                                     {{-- «Запись подтверждена» — на какое из названных менеджером времён записал поставщик (`ConfirmSigning`). --}}
-                                    <div data-controller="sheet">
+                                    <div data-controller="sheet" @class([$main])>
                                         <x-ui.button type="button" size="sm" :variant="$variant" data-action="sheet#open" aria-controls="confirm-{{ $exit->id }}">{{ $label($exit) }}</x-ui.button>
                                         <x-deal.signing-confirm-sheet :id="'confirm-'.$exit->id" :deal="$deal" :exit="$exit" :reply="$signingReply"/>
                                     </div>
                                 @elseif ($deal && \App\Offers\Signing::slotsExit($exit))
                                     {{-- Свободное время поставщика — шторкой: адрес и время, менеджер выберет плиткой (`Offers\Signing`). --}}
-                                    <div data-controller="sheet">
+                                    <div data-controller="sheet" @class([$main])>
                                         <x-ui.button type="button" size="sm" :variant="$variant" data-action="sheet#open" aria-controls="slots-{{ $exit->id }}">{{ $label($exit) }}</x-ui.button>
                                         <x-deal.signing-slots-sheet :id="'slots-'.$exit->id" :deal="$deal" :exit="$exit" :reply="$signingReply"/>
                                     </div>
                                 @elseif (\App\Offers\SupplierInvoice::needs($deal, $exit))
                                     {{-- На оплату поставщику менеджером — только со счётом: шторка выбора счёта (`SupplierInvoice`). --}}
-                                    <div data-controller="sheet">
+                                    <div data-controller="sheet" @class([$main])>
                                         <x-ui.button type="button" size="sm" :variant="$variant" data-action="sheet#open" aria-controls="invoice-{{ $exit->id }}">{{ $label($exit) }}</x-ui.button>
                                         <x-deal.supplier-invoice-sheet :id="'invoice-'.$exit->id" :deal="$deal" :exit="$exit"/>
                                     </div>
                                 @elseif ($exit->staffFields())
-                                    <div data-controller="sheet">
+                                    <div data-controller="sheet" @class([$main])>
                                         <x-ui.button type="button" size="sm" :variant="$variant" data-action="sheet#open">{{ $label($exit) }}</x-ui.button>
                                         <x-ui.sheet id="exit-{{ $exit->id }}" :title="$exit->label">
                                             <form method="post" action="/offers/{{ $n }}/exit/{{ $exit->id }}" class="flex flex-col gap-4">
@@ -494,39 +510,34 @@
                                         : $exit->confirm; @endphp
                                     @if ($asks($exit))
                                         {{-- Спросить или «Уже согласился» — одной шторкой (`ask_consent_controller`, 28.10.2026). --}}
-                                        <form method="post" action="/offers/{{ $n }}/exit/{{ $exit->id }}" data-controller="ask-consent" data-action="submit->ask-consent#ask">
+                                        <form method="post" action="/offers/{{ $n }}/exit/{{ $exit->id }}" data-controller="ask-consent" data-action="submit->ask-consent#ask" @class([$main])>
                                             @csrf<input type="hidden" name="then_take" value="" data-ask-consent-target="take"><x-ui.button size="sm" :variant="$variant">{{ $label($exit) }}</x-ui.button>
                                         </form>
                                     @else
                                         @php $next = $exit->consequence(); @endphp
-                                        <form method="post" action="/offers/{{ $n }}/exit/{{ $exit->id }}" @if ($confirm) data-turbo-confirm="{{ $confirm }}" @if ($next) data-turbo-confirm-text="Дальше: {{ $next }}" @endif @elseif ($next) data-turbo-confirm="{{ $label($exit) }}?" data-turbo-confirm-text="Дальше: {{ $next }}" data-turbo-confirm-label="{{ $label($exit) }}" @endif>
+                                        <form method="post" action="/offers/{{ $n }}/exit/{{ $exit->id }}" @class([$main]) @if ($confirm) data-turbo-confirm="{{ $confirm }}" @if ($next) data-turbo-confirm-text="Дальше: {{ $next }}" @endif @elseif ($next) data-turbo-confirm="{{ $label($exit) }}?" data-turbo-confirm-text="Дальше: {{ $next }}" data-turbo-confirm-label="{{ $label($exit) }}" @endif>
                                             @csrf<x-ui.button size="sm" :variant="$variant">{{ $label($exit) }}</x-ui.button>
                                         </form>
                                     @endif
                                 @endif
                             @endforeach
-                            @php
-                                // Письмо с реквизитами без реквизитов — не кнопкой, а чего не хватает (03.11.2026, владелец: «почему
-                                // „Написать поставщику“, если покупатель так и не заполнен»).
-                                $requisitesGap = $stage->isRequisitesStep() && $deal ? $deal->requisitesGap() : null;
-                            @endphp
                             @if ($requisitesGap)
                                 <p class="order-first w-full text-sm text-ink-muted">{{ $requisitesGap }}, письмо поставщику пока не написать @if (auth()->user()?->canManageCrm())<a href="{{ $deal->schemeOf()->paysCar() || $deal->isGarageUs() ? \App\Support\Surface::Park->url('/money/parties') : '/offers/'.$offer->number.'?buyer=1#invoice-buyer' }}" class="btn btn-s btn-quiet ml-1" data-turbo-frame="_top">Заполнить</a>@endif</p>
                             @elseif ($stage->template_id)
                                 {{-- Письмо не ушло — это и есть дело шага: лаймовой первой; ушло — серой «Написать ещё». --}}
                                 @if ($position->letterStatus() === 'failed' && ($failedId = $position->payload['letter_failed']['id'] ?? null))
                                     {{-- Не ушло с нашей стороны — то же письмо ещё раз (`MailController::resend`). --}}
-                                    <form method="post" action="/work/mail/messages/{{ $failedId }}/retry" class="order-first">@csrf<button class="btn btn-accent btn-s"><x-ui.icon name="send" class="size-4"/>Повторить отправку</button></form>
+                                    <form method="post" action="/work/mail/messages/{{ $failedId }}/retry" class="step-main order-first">@csrf<button class="btn btn-accent btn-s"><x-ui.icon name="send" class="size-4"/>Повторить отправку</button></form>
                                 @elseif (in_array($position->letterStatus(), ['unsent', 'bounced'], true))
                                     {{-- Письмо — окном писем, как везде (28.10.2026: ссылка уводила на отдельную страницу); ушло — в окне его ветка, закрыли — шаг перечитан. --}}
-                                    <x-mail.window-button :url="$offer->vendorLetterUrl($stage)" icon="send" :label="$position->letterStatus() === 'bounced' ? 'Написать снова' : ($deal && str_contains((string) $stage->template?->body, 'Документ об оплате') ? 'Отправить страховой' : 'Написать поставщику')" class="btn-accent btn-s order-first"/>
+                                    <x-mail.window-button :url="$offer->vendorLetterUrl($stage)" icon="send" :label="$position->letterStatus() === 'bounced' ? 'Написать снова' : ($deal && str_contains((string) $stage->template?->body, 'Документ об оплате') ? 'Отправить страховой' : 'Написать поставщику')" class="btn-accent btn-s step-main order-first"/>
                                 @else
                                     <x-mail.window-button :url="$offer->vendorLetterUrl($stage)" icon="send" :label="$position->letterStatus() ? 'Написать ещё' : 'Письмо вендору'" class="btn-s"/>
                                 @endif
                             @endif
                             {{-- Поставщик отвечает списком (Каркаде, `DealFormat::Wholesale`): отметить ответ по всем его сделкам разом. У Альфы
                                  (03.11.2026) кнопка «Ответ по списку (85)» стояла зря — она отвечает по каждой машине. --}}
-                            @if ($deal && $offer->vendor?->deal_format === \App\Vendors\DealFormat::Wholesale && $stage->isAgreement() && $stage->waits_for === WaitsFor::Supplier && ($waiting = \App\Offers\Deal::awaitingSupplier($offer->vendor_id))->count() > 1)
+                            @if ($waiting->count() > 1)
                                 <div data-controller="sheet">
                                     <x-ui.button type="button" size="sm" variant="secondary" data-action="sheet#open">Ответ по списку ({{ $waiting->count() }})</x-ui.button>
                                     <x-deal.supplier-answer :deals="$waiting" :id="'supplier-answer-'.$position->id"/>

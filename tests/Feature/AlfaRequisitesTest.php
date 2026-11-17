@@ -322,7 +322,11 @@ class AlfaRequisitesTest extends TestCase
         $pdf->refresh();
         $this->assertTrue((bool) $pdf->getCustomProperty('managers'));
         $this->assertStringStartsWith('Счёт поставщика от ', $pdf->name);
-        Notification::assertSentTo($this->manager, DealInfoNotice::class);
+        // Слова админа — сообщением в чат сделки; сам счёт приложит вопрос шага оплаты, второй раз его не шлём (17.11.2026).
+        Notification::assertNotSentTo($this->manager, DealInfoNotice::class);
+        $chat = \App\Chats\Chat::where('offer_id', $offer->id)->where('user_id', $this->manager->id)->firstOrFail();
+        $said = $chat->messages()->where('text', 'Только от плательщика')->firstOrFail();
+        $this->assertSame(0, $said->files()->count());
 
         $this->actingAs($this->manager)->get(Surface::Site->url('/deals/'.$deal->id))->assertOk()->assertSee('Счёт поставщика')->assertSee('от '.$pdf->created_at->timezone('Europe/Moscow')->format('d.m'))->assertSee('Только от плательщика');
         $this->actingAs($this->admin)->followingRedirects()->get($crm('/work/deals/'.$deal->id))->assertOk()->assertDontSee('Менеджер не видит счёт поставщика');

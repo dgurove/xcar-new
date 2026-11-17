@@ -85,11 +85,17 @@ class InsurerLetterHiddenTest extends TestCase
             'text' => 'Звонить после 12', 'step' => $exit->id,
         ])->assertSessionHasNoErrors();
 
-        Notification::assertSentToTimes($this->manager, DealInfoNotice::class, 1);
-        Notification::assertSentTo($this->manager, DealInfoNotice::class, fn (DealInfoNotice $n) => str_contains($n->text(), '+7 900 123-45-67')
-            && str_contains($n->text(), 'Пётр') && ! str_contains($n->text(), 'Петров') && ! str_contains($n->text(), '555-66-77')
-            && str_contains($n->text(), 'Звонить после 12') && str_contains($n->text(), 'Документы: 1') && str_contains($n->text(), 'Дело: '));
-        Notification::assertNotSentTo($this->manager, YourTurnNotice::class);
+        // Показанное — сообщением в чат сделки с документом (17.11.2026), ход — своим уведомлением и кнопками шага следом.
+        Notification::assertNotSentTo($this->manager, DealInfoNotice::class);
+        Notification::assertSentTo($this->manager, YourTurnNotice::class);
+        $chat = \App\Chats\Chat::where('offer_id', $this->offer->id)->where('user_id', $this->manager->id)->firstOrFail();
+        $said = $chat->messages()->whereNull('requirement_id')->latest('id')->firstOrFail();
+        $this->assertStringContainsString('Звонить после 12', $said->text);
+        $this->assertStringContainsString('+7 900 123-45-67', $said->text);
+        $this->assertStringContainsString('Пётр', $said->text);
+        $this->assertStringNotContainsString('Петров', $said->text);
+        $this->assertStringNotContainsString('555-66-77', $said->text);
+        $this->assertSame(1, $said->files()->count());
         $this->assertSame('Согласие менеджера', $stage());
         $this->assertSame(0, ReplyReview::pending()->count());
         $this->page()->assertSee('Информация по сделке')->assertSee('+7 900 123-45-67')->assertSee('Пётр')->assertSee('Звонить после 12')
