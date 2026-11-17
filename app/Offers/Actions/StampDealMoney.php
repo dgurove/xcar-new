@@ -69,7 +69,8 @@ final class StampDealMoney
             ->where('state', PaymentState::Confirmed->value)->min('paid_at');
         // Выписка — не раньше месяца до сделки (сделки заводили и задним числом) и не от самого поставщика (возврат): деньги
         // за прежнюю продажу этой машины или возврат страховой продажей не считаются.
-        $bank = Transaction::where('deal_id', $deal->id)->where('direction', 'in')->whereDate('booked_at', '>=', self::since($deal))
+        // «Не наше» — не продажа (17.11.2026: строка «Не наше» с машиной ставила «Продано»), «Вне системы» — продажа.
+        $bank = Transaction::where('deal_id', $deal->id)->where('direction', 'in')->carMoney()->whereDate('booked_at', '>=', self::since($deal))
             ->where(fn ($q) => $q->whereNull('counterparty_inn')->orWhereNotIn('counterparty_inn', self::supplierInns($deal)))->min('booked_at');
         $first = collect([$payments, $bank])->filter()->map(fn ($d) => Carbon::parse($d))->min();
 

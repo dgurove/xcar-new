@@ -33,6 +33,9 @@ Schedule::command('billing:close-month')->monthlyOn(1, '06:00');
 Schedule::command('acquiring:sync')->everyFiveMinutes()->withoutOverlapping();
 Schedule::command('bank:sync')->everyTenMinutes()->between('7:00', '23:00')->withoutOverlapping()->runInBackground();
 Schedule::command('bank:sync --days=1 --digest')->dailyAt('06:10')->withoutOverlapping();
+// Перепроверка выписки (17.11.2026): строка пришла раньше, чем завели сделку или машину, — привяжется сама; деньги без счёта
+// закрывают шаг оплаты (`StampDealMoney` → `MoneyIn`). Привязанное руками не трогается.
+Schedule::command('bank:link')->hourlyAt(25)->between('7:00', '23:00')->withoutOverlapping()->runInBackground();
 Schedule::command('mail:sync')->everyMinute()->withoutOverlapping()->runInBackground();
 // Без withoutOverlapping: очередь держит замок Postgres в самой команде — новый опрос ждёт прежний и подхватывает без паузы.
 Schedule::command('telegram:poll')->everyMinute()->runInBackground();

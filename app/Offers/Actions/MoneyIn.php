@@ -90,7 +90,7 @@ final class MoneyIn
     public static function received(Deal $deal): float
     {
         $since = $deal->created_at->copy()->subDays(30)->toDateString();
-        $bank = (float) Transaction::where('deal_id', $deal->id)->where('direction', 'in')->where('state', '!=', Transaction::IGNORED)
+        $bank = (float) Transaction::where('deal_id', $deal->id)->where('direction', 'in')->carMoney()
             ->whereDate('booked_at', '>=', $since)
             ->where(fn ($q) => $q->whereNull('counterparty_inn')->orWhereNotIn('counterparty_inn', StampDealMoney::supplierInns($deal)))
             ->sum('amount');

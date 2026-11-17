@@ -41,6 +41,21 @@ class Transaction extends Model
 
     protected $table = 'billing_bank_transactions';
 
+    /**
+     * Пометка «Вне системы» (12.11.2026 так отметили 72 входящие разом): деньги наши, а счёт выставлен мимо системы — за машину
+     * они считаются (`scopeCarMoney`), в отличие от «Не наше».
+     */
+    public const OUTSIDE = 'Вне системы';
+
+    /**
+     * Деньги за машину (17.11.2026): всё, кроме «Не наше»; «Вне системы» — наше (владелец: «если деньги уже пришли, значит
+     * счёт вне системы выставили»). Им считают «Продано» (`StampDealMoney::firstIn`) и сколько пришло (`MoneyIn::received`).
+     */
+    public function scopeCarMoney(Builder $q): Builder
+    {
+        return $q->where(fn ($s) => $s->where('state', '!=', self::IGNORED)->orWhere('note', self::OUTSIDE));
+    }
+
     protected function casts(): array
     {
         return ['booked_at' => 'date', 'amount' => 'float', 'decided_at' => 'datetime', 'payload' => 'array'];

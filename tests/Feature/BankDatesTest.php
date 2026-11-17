@@ -53,7 +53,7 @@ class BankDatesTest extends TestCase
     private function tx(string $dir, string $day, string $purpose, ?string $inn = null): Transaction
     {
         return Transaction::create(['external_id' => uniqid(), 'account' => '1', 'booked_at' => $day, 'direction' => $dir, 'amount' => 100000,
-            'counterparty' => 'Кто-то', 'counterparty_inn' => $inn, 'purpose' => $purpose, 'state' => $dir === 'in' ? Transaction::IGNORED : Transaction::OUTGOING]);
+            'counterparty' => 'Кто-то', 'counterparty_inn' => $inn, 'purpose' => $purpose, 'state' => $dir === 'in' ? Transaction::UNMATCHED : Transaction::OUTGOING]);
     }
 
     public function test_bank_rows_set_sold_and_paid(): void
@@ -63,6 +63,11 @@ class BankDatesTest extends TestCase
         $link($this->tx('in', '2026-11-10', 'Оплата TC LADA 2014 г.в. vin: XTA21140064123456. НДС не облагается'));
         $link($this->tx('in', '2026-11-05', 'Аванс за ТС vin XTA21140064123456'));
         $this->assertSame('2026-11-05', $deal->fresh()->paid_in_at?->toDateString(), 'первый платёж');
+        // «Не наше» — не продажа (17.11.2026): более ранняя строка с той же машиной, отмеченная «Не наше», дату не двигает.
+        $foreign = $this->tx('in', '2026-11-01', 'Оплата ТС vin XTA21140064123456');
+        $foreign->forceFill(['state' => Transaction::IGNORED, 'note' => 'Не наше'])->save();
+        $link($foreign);
+        $this->assertSame('2026-11-05', $deal->fresh()->paid_in_at?->toDateString(), '«Не наше» не считается');
 
         $out = $link($this->tx('out', '2026-11-12', 'Оплата за поврежденный автомобиль LADA, р/н У757РУ152, по договору комиссии № 238163/2026. НДС не облагается', '7812016906'));
         $this->assertTrue($out?->is($deal));
