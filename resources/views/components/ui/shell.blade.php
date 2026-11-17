@@ -31,9 +31,13 @@
     $path = '/'.ltrim(request()->path(), '/');
     $phoneBack ??= $back === false ? null : ($back ?? \App\Support\Nav::phoneBack($path, auth()->user()));
     $back = $back === false ? null : ($back ?? \App\Support\Nav::backFor($path, auth()->user()));
+    // Фоновый кусок списка (живое обновление строк `X-Live-Rows`, следующая сотня `X-List`): клиент берёт из ответа строки,
+    // числа пилюль и таб-бара — шапка, шторки, тосты и остров ему не нужны (17.11.2026: на каждый такой запрос их рисовали
+    // целиком). Предзагрузка — нет: её ответ становится страницей.
+    $bare = request()->hasHeader('X-Live-Rows') || request()->hasHeader('X-List');
 @endphp
 <x-ui.layout :title="$title" :cache="$cache" :description="$description" :index="$index" class="app-shell">
-    <x-ui.header :back="$phoneBack"/>
+    @unless ($bare)<x-ui.header :back="$phoneBack"/>@endunless
     <div id="scroller" class="app-scroll">
 
     {{-- Запас под таб-бар и плашку действий: везде, где нет подвала (у него свой запас) — CRM, стоянка, приложение
@@ -63,15 +67,15 @@
     @if ($site && !$installed && ! auth()->check())<x-ui.footer/>@endif
     </div>
     {{-- Партнёру (07.11.2026) — только просмотр документов: ни Telegram, ни пушей, ни сделок. --}}
-    @auth
+    @if (auth()->check() && ! $bare)
         @if (\App\Support\Surface::current() === \App\Support\Surface::Partner)
             <x-ui.docs/>
         @else
             <x-ui.docs/><x-deal.ask-sheet/><x-telegram.connect/><x-push.offer/><x-users.credentials/>
         @endif
-    @endauth
+    @endif
     {{-- Новые лоты Мигторга черновиками — капсула сотрудникам CRM (админы и модераторы, тема `staff`). --}}
-    @if (auth()->user()?->isStaff() && \App\Support\Surface::current() === \App\Support\Surface::Crm)<x-migtorg.island/>@endif
+    @if (! $bare && auth()->user()?->isStaff() && \App\Support\Surface::current() === \App\Support\Surface::Crm)<x-migtorg.island/>@endif
     @unless ($partner)<x-ui.tabbar/>@endunless
-    <x-ui.toasts/>
+    @unless ($bare)<x-ui.toasts/>@endunless
 </x-ui.layout>
