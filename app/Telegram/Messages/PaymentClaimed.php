@@ -45,6 +45,6 @@ final class PaymentClaimed extends Message
             return ['text' => 'ТС в CRM', 'url' => $car->crmUrl()];
         }
 
-        return ['text' => 'Счёт в CRM', 'url' => Surface::Crm->url('/work/money/invoices/'.$this->payment->invoice_id)];
+        return ['text' => 'Счёт в CRM', 'url' => Surface::Crm->url(\App\Http\Admin\MoneyController::url($this->payment->invoice))];
     }
 }

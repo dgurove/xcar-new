@@ -9,6 +9,7 @@
 @php
     use App\Http\Admin\MoneyRows as R; use App\Support\Money;
     $what = R::what($invoice);
+    $car = $invoice->carOffer()?->crmPath();
     // 99 % — потолок: «100 %» у неоплаченного остатка врёт.
     $share = $paid !== null ? max(1, min(99, (int) floor($paid * 100))) : null;
     // Хвост статуса — второстепенный кусок (`.cell-sub`): ширину столбца не задаёт (`Support\Table\Widths`), при нехватке места
@@ -21,14 +22,15 @@
         @case('title')
     <td class="{{ $col->classes() }}">
         <x-ui.row-link :key="$invoice->id" :with="['tab' => $tab]"><span class="cell-title"><span class="cell-name">{{ $title }}</span>@if ($table->has('amount'))<span class="line-end sm:hidden {{ $amountTone }}">{{ Money::nums($amount) }}</span>@endif</span></x-ui.row-link>
-        <span class="cell-sub sm:hidden">@if ($now)<span class="{{ $tone }}">{{ $now }}</span>@endif @if ($link && $link[1] !== 'text-ink-muted')<span class="{{ $link[1] }}">{{ $link[0] }}</span>@endif @if ($what)<span class="cell-car">{{ $what }}</span>@endif</span>
+        <span class="cell-sub sm:hidden">@if ($now)<span class="{{ $tone }}">{{ $now }}</span>@endif @if ($link && $link[1] !== 'text-ink-muted')<span class="{{ $link[1] }}">{{ $link[0] }}</span>@endif @if ($what && $car)<a href="{{ $car }}" class="cell-car" data-turbo-frame="_top">{{ $what }}</a>@elseif ($what)<span class="cell-car">{{ $what }}</span>@endif</span>
     </td>
         @break
         @case('manager')
     <td class="{{ $col->classes() }}"><x-cell.person :user="$manager" from="lg"/></td>
         @break
         @case('car')
-    <td class="{{ $col->classes() }}">@if ($what)<span class="block truncate" title="{{ $what }}">{{ $what }}</span>@elseif ($invoice->isService())<span class="text-ink-dim">не указано</span>@endif</td>
+    {{-- ТС — переход в сделку или гараж (17.11.2026, владелец: «очень не хватает перехода в сделки из оплат»). --}}
+    <td class="{{ $col->classes() }}">@if ($what && $car)<a href="{{ $car }}" class="block truncate hover:underline" title="{{ $what }}" data-turbo-frame="_top">{{ $what }}</a>@elseif ($what)<span class="block truncate" title="{{ $what }}">{{ $what }}</span>@elseif ($invoice->isService())<span class="text-ink-dim">не указано</span>@endif</td>
         @break
         @case('number')
     <td class="{{ $col->classes() }}">{{ $invoice->label() }}</td>

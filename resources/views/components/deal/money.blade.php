@@ -47,9 +47,8 @@
         // (шторка оплаты ниже, событием `paid-{id}:open`), «Ещё счёт», страница счёта. С 16.11.2026 и на шаге оплаты: «Деньги пришли»
         // из шага убрано — отметка нашей оплаты здесь, строкой «Деньги пришли?» под счётом.
         $paidBy = $invoices->filter(fn ($i) => ! $i->isOwed() && $i->state === InvoiceState::Issued && $i->remaining() > 0 && auth()->user()?->canManageCrm());
-        $pages = $invoices->reject(fn ($i) => $i->isOwed() || $i->state === InvoiceState::Void);
         $editMoney = $deal->isActive() && $deal->moneyEditable() && (! $deal->isGarage() || $deal->isGarageManager() || ($deal->namesBuyer() && $deal->amount !== null));
-        $moreMoney = $editMoney || $withContract || $paidBy->isNotEmpty() || $pages->isNotEmpty() || ($deal->isActive() && $issued->isNotEmpty());
+        $moreMoney = $editMoney || $withContract || $paidBy->isNotEmpty() || ($deal->isActive() && $issued->isNotEmpty());
     @endphp
     {{-- «Изменить» — лаймовым словом в заголовке, как у ТС, цен, ДКП и заметки (07.10.2026), а не чипом среди схемы. --}}
     {{-- Гаражная Совкомбанка (`namesBuyer`): вознаграждение назначаем, когда менеджер назвал цену продажи. --}}
@@ -70,11 +69,6 @@
                         @endforeach
                         @if ($deal->isActive() && $issued->isNotEmpty())<a href="/work/invoices/new?offer={{ $offer->number }}" class="menu-item w-full">Ещё счёт</a>@endif
                     </div>
-                    @if ($pages->isNotEmpty())
-                        <div class="menu-group">
-                            @foreach ($pages as $i)<a href="/work/money/invoices/{{ $i->id }}" class="menu-item w-full" data-turbo-frame="_top">Страница счёта {{ $i->label() }}</a>@endforeach
-                        </div>
-                    @endif
                 </x-ui.more>
             @endif
             @if ($editMoney)
@@ -248,7 +242,7 @@
                 @endphp
                 @if ($i->isOwed())
                     <div class="row">
-                        <a href="/work/money/invoices/{{ $i->id }}" class="min-w-0 flex-1"><span class="block">Выплата менеджеру</span><span class="row-sub"><x-billing.light :invoice="$i"/></span></a>
+                        <a href="{{ \App\Http\Admin\MoneyController::url($i) }}" class="min-w-0 flex-1" data-turbo-frame="_top"><span class="block">Выплата менеджеру</span><span class="row-sub"><x-billing.light :invoice="$i"/></span></a>
                         <span class="nums shrink-0 font-semibold">{{ Money::rub($i->remaining() > 0 ? $i->remaining() : $i->total) }}</span>
                         @if ($i->isAgentFee() && $i->state === InvoiceState::Issued)
                             <span data-controller="sheet" class="contents">
@@ -261,7 +255,7 @@
                     {{-- Счёт — файлом, как документ (15.11.2026, владелец: «счёт должен быть не страницей, а кнопкой „Скачать PDF“»;
                          из вариантов выбрал «файлом»): значок PDF с весом, «Счёт № 184 от 13.11», ниже кто платит и сумма; нажатие —
                          PDF в шторке документов, справа — «Скачать». Файла нет — строка ведёт на страницу счёта. --}}
-                    <x-deal.doc-row :href="$pdf ?? '/work/money/invoices/'.$i->id" :title="\App\Billing\PayOffer::invoiceName($i)" :date="\App\Support\Ago::day($i->issued_at)" name="schet.pdf" :download="(bool) $pdf">
+                    <x-deal.doc-row :href="$pdf ?? \App\Http\Admin\MoneyController::url($i)" :title="\App\Billing\PayOffer::invoiceName($i)" :date="\App\Support\Ago::day($i->issued_at)" name="schet.pdf" :download="(bool) $pdf">
                         @if (! $payerRow || $i->party_id !== $payerId)<span>{{ $i->party?->title() }}</span>@endif<span class="nums whitespace-nowrap">{{ $i->isPartial() && $i->remaining() > 0 ? 'осталось '.Money::rub($i->remaining()).' из '.Money::rub($i->total) : Money::rub($i->total) }}</span>@if ($i->deal_id && $i->shown_at)<span class="text-ink-muted">у менеджера с {{ \App\Support\Ago::day($i->shown_at) }}</span>@elseif (! $i->isShownToManager())<span class="text-ink-muted">не отправлен</span>@endif
                     </x-deal.doc-row>
                     {{-- Менеджер видит счёт только после «Отправить» (16.11.2026): сотрудник сперва проверяет. --}}
@@ -284,7 +278,7 @@
                                 {{-- Три ответа одним рядом во всю ширину, чип платёжки — над ними (16.11.2026). --}}
                                 <div class="claim-acts">
                                     <form method="post" action="/work/payments/{{ $p->id }}/confirm" class="contents" data-turbo-confirm="Поступила {{ Money::rub($p->amount) }}?">@csrf<x-ui.button size="sm">Поступила</x-ui.button></form>
-                                    <a href="/work/money/invoices/{{ $i->id }}" class="btn btn-s btn-quiet">Не поступила</a>
+                                    <a href="{{ \App\Http\Admin\MoneyController::url($i) }}" class="btn btn-s btn-quiet" data-turbo-frame="_top">Не поступила</a>
                                     <x-deal.claim-other :payment="$p"/>
                                 </div>
                             </x-slot:acts>

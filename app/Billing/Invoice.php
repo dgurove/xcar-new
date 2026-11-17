@@ -325,6 +325,16 @@ class Invoice extends Model implements HasMedia
         return ! $this->deal_id || $this->direction !== 'issued' || $this->shown_at !== null || $this->paidMoney() > 0;
     }
 
+    /**
+     * Куда ведёт счёт в CRM — на машину в сделке или гараже (17.11.2026, владелец: «там должна быть кнопка на сделку, а не на
+     * страницу счёта, которая вообще не нужна — удали её везде»); счёт без машины (разовая услуга) — его карточка в «Оплатах».
+     * Путь без хоста; для Telegram, писем и других хостов — `Surface::Crm->url(...)`.
+     */
+    public function crmHref(): string
+    {
+        return $this->carOffer()?->crmPath() ?? \App\Http\Admin\MoneyController::url($this);
+    }
+
     /** Есть ли у счёта документ (PDF рисуется на лету, `InvoicePdf`): счёт, выставленный нами, — не выплата нашего долга. */
     public function hasPdf(): bool
     {

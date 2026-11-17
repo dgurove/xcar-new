@@ -202,7 +202,7 @@ final class MoneyNotice extends Notice
         $i = $a->link->invoice;
         $title = $what === 'overpaid' ? 'Переплата по ссылке '.Money::rub($a->overpaid()).', счёт '.$i->label().', нужно вернуть' : 'Чек не пробился: оплата '.Money::rub($a->amount).', счёт '.$i->label();
 
-        return (new self($title, $i->deal?->offer?->titleWithYear() ?? Car::ofInvoice($i)?->offer->titleWithYear(), '/work/money/invoices/'.$i->id, $i->deal?->offer?->number, true))->about($i)->variant('online-trouble-staff', 'Сбой оплаты по ссылке');
+        return (new self($title, $i->deal?->offer?->titleWithYear() ?? Car::ofInvoice($i)?->offer->titleWithYear(), \App\Http\Admin\MoneyController::url($i), $i->deal?->offer?->number, true))->about($i)->variant('online-trouble-staff', 'Сбой оплаты по ссылке');
     }
 
     /** «Оплатить» дважды подряд упало на стороне ЮKassa — сотрудникам: покупатели сейчас заплатить не могут. */
@@ -220,7 +220,7 @@ final class MoneyNotice extends Notice
     /** Просрочен счёт ПРАЙМ (сделка, гараж) — сотрудникам в «Деньги» CRM; счета парковки идут `ParkNotice`. */
     public static function overdue(Invoice $i): self
     {
-        return (new self(($i->isOwed() ? 'Мы просрочили ' : 'Просрочен счёт ').$i->label().', '.$i->party->name, Money::rub($i->remaining()), '/work/money/invoices/'.$i->id, $i->deal?->offer?->number, true))->variant('overdue', 'Просрочен счёт');
+        return (new self(($i->isOwed() ? 'Мы просрочили ' : 'Просрочен счёт ').$i->label().', '.$i->party->name, Money::rub($i->remaining()), \App\Http\Admin\MoneyController::url($i), $i->deal?->offer?->number, true))->variant('overdue', 'Просрочен счёт');
     }
 
     public static function feeDue(Invoice $fee): self

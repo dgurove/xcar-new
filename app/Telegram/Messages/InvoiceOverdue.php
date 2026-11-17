@@ -56,6 +56,6 @@ final class InvoiceOverdue extends Message
     {
         return $this->invoice->park
             ? ['text' => 'Счёт на парковке', 'url' => Surface::Park->url('/money/invoices/'.$this->invoice->id)]
-            : ['text' => 'Счёт в CRM', 'url' => Surface::Crm->url('/work/money/invoices/'.$this->invoice->id)];
+            : ['text' => 'Счёт в CRM', 'url' => Surface::Crm->url(\App\Http\Admin\MoneyController::url($this->invoice))];
     }
 }

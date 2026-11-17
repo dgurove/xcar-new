@@ -43,7 +43,7 @@
         @if ($s['profit'] !== null)<div class="{{ $row }}"><span>Прибыль</span><span class="nums {{ $s['profit'] < 0 ? 'text-danger' : '' }}">{{ Money::exact($s['profit']) }}</span></div>@endif
         @if ($mine > 0)<div class="{{ $row }}"><span>Расходы покупателя</span><span class="nums">{{ Money::exact($mine) }}</span></div>@endif
         @if ($hi)
-            <{{ $pdf ? 'a' : 'div' }} @if ($pdf) href="{{ \App\Support\Surface::Crm->url('/work/money/invoices/'.$hi->id) }}" data-turbo="false" @endif class="{{ $row }}">
+            <{{ $pdf ? 'a' : 'div' }} @if ($pdf) href="{{ \App\Support\Surface::Crm->url(\App\Http\Admin\MoneyController::url($hi)) }}" data-turbo="false" @endif class="{{ $row }}">
                 <span class="min-w-0"><span class="block">Счёт {{ $hi->label() }}</span><span class="row-sub">{{ $hi->state->label() }}@if ($hi->remaining() > 0), осталось {{ Money::rub($hi->remaining()) }}@endif</span></span>
             </{{ $pdf ? 'a' : 'div' }}>
         @elseif ($car->deal && ($when = $car->deal->invoiceNotYet()))

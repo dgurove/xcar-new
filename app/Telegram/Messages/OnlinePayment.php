@@ -58,6 +58,6 @@ final class OnlinePayment extends Message
 
     protected function link(): array
     {
-        return ['text' => 'Счёт в CRM', 'url' => Surface::Crm->url('/work/money/invoices/'.$this->invoice()->id)];
+        return ['text' => 'Счёт в CRM', 'url' => Surface::Crm->url(\App\Http\Admin\MoneyController::url($this->invoice()))];
     }
 }

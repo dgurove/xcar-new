@@ -6,7 +6,8 @@
      (у ссылки — способ, комиссия, «Вернуть») и переплата по ссылке; срок под суммой — словами строки списка (`MoneyRows::due`); «Аннулировать» — красной строкой внизу. --}}
 @php
     use App\Support\Money; use App\Billing\InvoiceState; use App\Billing\PaymentSource;
-    $i = $invoice; $href = '/work/money/invoices/'.$i->id; $offer = $i->deal?->offer ?? $i->offer; $manager = $i->manager();
+    // «Открыть» — машина в сделке или гараже, а не страница счёта (17.11.2026, владелец: «удали её везде»).
+    $i = $invoice; $href = $i->carOffer()?->crmPath(); $offer = $i->deal?->offer ?? $i->offer; $manager = $i->manager();
     $attempts = \App\Billing\Acquiring\AcquiringPayment::whereIn('link_id', $i->payLinks()->pluck('id'))->where('status', 'succeeded')->with('payout')->get();
     $overpaid = $attempts->filter(fn ($a) => $a->overpaid() > 0);
     $issued = $i->state === InvoiceState::Issued;

@@ -14,7 +14,7 @@
             {{-- Списание и прошлое — не про счета: «Не наше» и «Вернуть» только у живых поступлений. --}}
             @if (! $tx->isIncoming() || $tx->state === \App\Billing\Bank\Transaction::HISTORY)
             @elseif ($tx->invoice)
-                <a href="/work/money/invoices/{{ $tx->invoice_id }}" class="btn btn-s btn-quiet">Счёт {{ $tx->invoice->label() }}, {{ $tx->invoice->party->name }}</a>
+                <a href="{{ \App\Http\Admin\MoneyController::url($tx->invoice) }}" class="btn btn-s btn-quiet">Счёт {{ $tx->invoice->label() }}, {{ $tx->invoice->party->name }}</a>
             @elseif ($tx->state === \App\Billing\Bank\Transaction::IGNORED)
                 <form method="post" action="{{ $href }}/ignore" class="contents">@csrf<button class="btn btn-s btn-quiet">Вернуть в непривязанные</button></form>
             @else
@@ -37,7 +37,7 @@
                 <x-money.line :icon="$payouts->isEmpty() ? 'clock' : 'check'" :title="$tx->note" :tone="$payouts->isEmpty() ? 'urgent' : 'open'"/>
                 @foreach ($payouts as $a)
                     <x-money.line :icon="\App\Billing\Acquiring\PayMethod::icon($a->method)" :title="'Счёт '.$a->link->invoice->label().', '.$a->link->invoice->party->name"
-                        :sub="\App\Support\Ago::day($a->created_at, true).', комиссия '.Money::exact($a->fee() ?? 0)" :amount="$a->amount" :href="'/work/money/invoices/'.$a->link->invoice_id" data-turbo-frame="_top"/>
+                        :sub="\App\Support\Ago::day($a->created_at, true).', комиссия '.Money::exact($a->fee() ?? 0)" :amount="$a->amount" :href="\App\Http\Admin\MoneyController::url($a->link->invoice)" data-turbo-frame="_top"/>
                 @endforeach
             </div>
         @endif

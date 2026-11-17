@@ -13,6 +13,7 @@ use App\Billing\Actions\IssueServiceInvoice;
 use App\Billing\Actions\RejectPayment;
 use App\Billing\Actions\SwapPaymentProof;
 use App\Billing\ChargeKind;
+use App\Billing\Seller;
 use App\Billing\Invoice;
 use App\Billing\InvoiceState;
 use App\Billing\ManagerLedger;
@@ -56,7 +57,15 @@ class MoneyController
 {
     use InvoiceActions;
 
-    public const TABS = ['owed' => 'Нам должны', 'payouts' => 'Мы должны'];
+    /**
+     * Разделы — крупными заголовками (17.11.2026, владелец: «как было в „Работе“, красиво, как в App Store»): «Комиссии» — оплата
+     * подбора ПРАЙМ (и разовые услуги по ссылке), «ДКП» — счета за сами машины от ПРАЙМ и Р.О.С. (оплаты страховым и хозяевам напрямую
+     * мы не ведём — счетов у нас нет), «Выплаты» — вознаграждения менеджерам и перевозки (прежнее «Мы должны»).
+     */
+    public const TABS = ['fees' => 'Комиссии', 'dkp' => 'ДКП', 'payouts' => 'Выплаты'];
+
+    /** Разделы «нам должны»: группы «Проверить», «Ждём», чип «Откуда», номер счёта. */
+    private const OWED = ['fees', 'dkp'];
 
     /** «Мы должны»: вознаграждения менеджерам и перевозки партнёрам и перевозчикам (логистика, 10.10.2026). */
     public const PAYOUTS = [ChargeKind::AgentFee, ChargeKind::Tow];
@@ -68,7 +77,7 @@ class MoneyController
     public static function sorts(string $tab): array
     {
         return ['auto' => ['Срочное', 'desc'], 'created' => ['Создано', 'desc'], 'due' => ['Срок', 'asc']]
-            + ($tab === 'owed' ? ['number' => ['Счёт', 'asc']] : [])
+            + (in_array($tab, self::OWED, true) ? ['number' => ['Счёт', 'asc']] : [])
             + ['payer' => [$tab === 'payouts' ? 'Менеджер' : 'Плательщик', 'asc'], 'amount' => ['Сумма', 'desc']];
     }
 
@@ -87,8 +96,13 @@ class MoneyController
         if ($detail->framed()) {
             return $detail->response();
         }
-        // Вкладки ссылок больше нет (17.11.2026): `tab=links` — только карточка ссылки, список под ней — «Нам должны».
-        $tab = array_key_exists((string) $request->query('tab'), self::TABS) ? (string) $request->query('tab') : 'owed';
+        // Вкладки ссылок больше нет (17.11.2026): `tab=links` — только карточка ссылки, список под ней — «Комиссии». Прежнее
+        // `tab=owed` (закладки, уведомления) — раздел открытого счёта, без него — «Комиссии».
+        $tab = (string) $request->query('tab');
+        if (! array_key_exists($tab, self::TABS)) {
+            $peek = $tab === 'owed' && ctype_digit((string) $request->query('peek')) ? Invoice::find((int) $request->query('peek')) : null;
+            $tab = $peek ? self::tabOf($peek) : 'fees';
+        }
         $facets = self::facets($request, $tab);
         // «Оплаченные» не помнится: раздел открывается делами, а не историей.
         ListPrefs::sync($request, 'crm-money', keep: array_values(array_diff($facets->keys(), ['paid'])));
@@ -119,25 +133,37 @@ class MoneyController
     {
         return Facets::for($request, 'crm-money', ...array_filter([
             Common::manager(self::MANAGER),
-            $tab === 'owed' ? Facet::column('from', 'Откуда', ['источник', 'источника', 'источников'], MoneyLinks::FROM)
+            in_array($tab, self::OWED, true) ? Facet::column('from', 'Откуда', ['источник', 'источника', 'источников'], MoneyLinks::FROM)
                 ->labels(fn (array $keys) => collect(MoneyLinks::FROM_LABELS)->only($keys)->map(fn ($l, $k) => new Option($k, $l))->all())->natural() : null,
             Facet::toggle('paid', $tab === 'payouts' ? 'Выплаченные' : 'Оплаченные', fn ($q) => $q),
         ]));
     }
 
     /**
-     * Счета вкладки: «Нам должны» — все наши (сделки, гараж, разовые по ссылке, по счёту и по ссылке; до 17.11.2026 счета со
-     * ссылкой жили отдельной вкладкой), «Мы должны» — вознаграждения и перевозки.
+     * Счета раздела: «Комиссии» — наши выставленные, кроме счетов за машину (подбор, разовые услуги); «ДКП» — счета за машину от
+     * ПРАЙМ и Р.О.С. (сделки и гараж); «Выплаты» — вознаграждения и перевозки.
      */
     private static function of(string $tab, ?Facets $facets = null)
     {
         $q = Invoice::crmMoney();
+        // Счёт сделки, который менеджеру ещё не отправили, — не долг, а дело «Отправить менеджеру» в сделке (17.11.2026,
+        // начальник: «раздел оплат захламляется»; на проде таких было 169 из 206).
+        $ours = fn () => ($facets ? $facets->applyTo($q) : $q)->where('direction', 'issued')->shownToManager();
 
         return match ($tab) {
-            // Счёт сделки, который менеджеру ещё не отправили, — не долг, а дело «Отправить счёт менеджеру» в сделке (17.11.2026,
-            // начальник: «раздел оплат захламляется»; на проде таких было 169 из 206).
-            'owed' => ($facets ? $facets->applyTo($q) : $q)->where('direction', 'issued')->shownToManager(),
+            'dkp' => $ours()->where('kind', ChargeKind::Sale)->whereIn('seller', [Seller::Prime->value, Seller::Ros->value]),
+            'fees' => $ours()->where(fn ($w) => $w->where('kind', '!=', ChargeKind::Sale)->orWhereNotIn('seller', [Seller::Prime->value, Seller::Ros->value])),
             default => ($facets ? $facets->applyTo($q) : $q)->where('direction', 'owed')->whereIn('kind', self::PAYOUTS),
+        };
+    }
+
+    /** Раздел счёта: выплата, счёт за машину или комиссия. */
+    public static function tabOf(Invoice $i): string
+    {
+        return match (true) {
+            $i->isOwed() => 'payouts',
+            $i->kind === ChargeKind::Sale && in_array($i->seller, [Seller::Prime, Seller::Ros], true) => 'dkp',
+            default => 'fees',
         };
     }
 
@@ -152,14 +178,14 @@ class MoneyController
         $q = fn () => self::of($tab, $facets)->search($qs)->with(self::WITH);
         $history = $qs === '' && $facets->on('paid');
         $todo = $qs !== '' || ! $history;
-        $claims = $tab === 'owed' && $todo
-            ? Payment::where('state', PaymentState::Claimed)->whereHas('invoice', fn ($i) => $i->whereIn('billing_invoices.id', self::of('owed', $facets)->search($qs)->select('billing_invoices.id')))
+        $claims = in_array($tab, self::OWED, true) && $todo
+            ? Payment::where('state', PaymentState::Claimed)->whereHas('invoice', fn ($i) => $i->whereIn('billing_invoices.id', self::of($tab, $facets)->search($qs)->select('billing_invoices.id')))
                 ->with(['invoice' => fn ($i) => $i->with(self::WITH)])->orderBy('paid_at')->orderBy('id')->get()
             : collect();
         $tried = $tab === 'payouts' ? collect() : self::tried(self::of($tab, $facets)->search($qs))->pluck('billing_invoices.id');
         $auto = $sort->key === 'auto';
         $open = ! $todo ? collect() : $q()->where('state', InvoiceState::Issued)->with('payLinks.attempts')
-            ->when($tab === 'owed', fn ($w) => $w->whereDoesntHave('claims'))
+            ->when(in_array($tab, self::OWED, true), fn ($w) => $w->whereDoesntHave('claims'))
             ->when($auto && $tried->isNotEmpty(), fn ($w) => $w->orderByRaw('billing_invoices.id in ('.$tried->map(fn ($id) => (int) $id)->implode(',').') desc'))
             ->when($auto, fn ($w) => $w->orderByRaw('due_at asc nulls last'), fn ($w) => self::order($w, $sort, open: true))
             ->orderBy('billing_invoices.id')->get();
@@ -195,14 +221,12 @@ class MoneyController
     private static function counts(Facets $facets): array
     {
         $open = fn (string $t) => self::of($t, $facets)->where('state', InvoiceState::Issued);
+        // Дело: менеджер пишет, что оплатил, или по ссылке пытались и не вышло — позвонить (ссылки — только у комиссий).
+        $todo = fn (string $t) => $open($t)->whereHas('claims')->exists() || ($t === 'fees' && MoneyLinks::tried());
 
         return [
-            'counts' => ['owed' => $open('owed')->count(), 'payouts' => $n = $open('payouts')->count()],
-            'tones' => array_filter([
-                // Дело: менеджер пишет, что оплатил, или по ссылке пытались и не вышло — позвонить.
-                'owed' => self::of('owed', $facets)->where('state', InvoiceState::Issued)->whereHas('claims')->exists() || MoneyLinks::tried() ? 'pill-todo' : '',
-                'payouts' => $n ? 'pill-todo' : '',
-            ]),
+            'counts' => ['fees' => $open('fees')->count(), 'dkp' => $open('dkp')->count(), 'payouts' => $n = $open('payouts')->count()],
+            'tones' => array_filter(['fees' => $todo('fees') ? 'pill-todo' : '', 'dkp' => $todo('dkp') ? 'pill-todo' : '', 'payouts' => $n ? 'pill-todo' : '']),
         ];
     }
 
@@ -213,7 +237,7 @@ class MoneyController
             return self::linkUrl($link);
         }
 
-        return '/work/money?tab='.($i->isOwed() ? 'payouts' : 'owed').'&peek='.$i->id;
+        return '/work/money?tab='.self::tabOf($i).'&peek='.$i->id;
     }
 
     /** Ссылка на оплату в «Оплатах» — её карточка на «Ссылки». */
@@ -228,9 +252,21 @@ class MoneyController
         return PaymentSource::manual();
     }
 
+    /**
+     * Страницы счёта в CRM нет (17.11.2026, владелец: «страница счёта вообще не нужна, удали её везде, там должна быть кнопка на
+     * сделку»): прежний адрес — переадресация на машину в сделке или гараже, без машины — на карточку счёта в «Оплатах». Оплата,
+     * правка, аннулирование, PDF — те же маршруты, ими живёт карточка.
+     */
+    public function show(Invoice $invoice)
+    {
+        $this->guardInvoice($invoice);
+
+        return redirect($invoice->crmHref());
+    }
+
     protected function invoiceView(): string
     {
-        return 'admin.money.invoice';
+        return 'billing.invoice-page';
     }
 
     /** «Мы должны» в CRM — вознаграждение менеджеру: «выплата». */
@@ -378,7 +414,7 @@ class MoneyController
         $status = new Column('status', 'Статус', from: 'sm', sort: 'due', role: ColRole::State, rem: 12);
 
         return match ($tab) {
-            'owed' => Table::of(new Column('title', 'Плательщик', grow: true, sort: 'payer'), new Column('manager', 'Менеджер', from: 'lg', aside: true, role: ColRole::Who, rem: 9),
+            'fees', 'dkp' => Table::of(new Column('title', 'Плательщик', grow: true, sort: 'payer'), new Column('manager', 'Менеджер', from: 'lg', aside: true, role: ColRole::Who, rem: 9),
                 new Column('number', 'Счёт', from: 'lg', aside: true, sort: 'number', role: ColRole::Code, rem: 6), $car, $status, $created, $amount),
             // «Мы должны»: открытые — группами по получателю (менеджер, логист), строка — за что; выплаченные — получателем.
             default => Table::of(new Column('title', 'Кому', grow: true, sort: 'payer'), $car, $status, $created, $amount),
