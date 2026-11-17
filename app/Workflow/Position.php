@@ -333,9 +333,19 @@ class Position extends Model
         if ($this->carried()) {
             return ['text' => 'везёт логистика', 'tone' => 'text-ink-muted', 'hint' => null];
         }
+        $deal = $this->track === Track::Sale ? $this->deal : null;
+        // Гаражная «платит менеджер» до продажи — платить не за что, срока нет (17.11.2026, владелец): её место — «Гараж», и
+        // статус — этап гаража («подготовка», «в продаже»), как у машин после сделки; группа там — тот же этап.
+        if ($deal?->sellsFromGarage($this->stage)) {
+            return ['text' => $deal->garageCar ? mb_lcfirst($deal->garageCar->state->label()) : 'продаёт', 'tone' => 'text-ink-muted', 'hint' => null];
+        }
+        // Счёта нет, потому что менеджер не дал покупателя или паспорт, — так и сказать, чего ждём (17.11.2026).
+        $gap = $deal && $this->waitsFor() === WaitsFor::Manager && $this->stage->isPayStep() ? $deal->invoiceGap() : null;
         $text = match (true) {
             $this->letterStatus() === 'sent' => 'ждём ответа поставщика',
             $this->waitsFor() === WaitsFor::Supplier => 'ждём поставщика',
+            $gap === 'buyer' => 'нужен покупатель',
+            $gap === 'passport' => 'нужен паспорт покупателя',
             $this->waitsFor() === WaitsFor::Manager => 'ждём менеджера',
             default => null,
         };

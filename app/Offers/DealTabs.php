@@ -104,8 +104,9 @@ final class DealTabs
     /** Раскладка всех идущих сделок: `offer_id` → [вкладка, наш ход]. @return array<int, array{0: string, 1: bool}> */
     public static function map(): array
     {
+        // Непроданная гаражная «платит менеджер» — только в «Гараже» (17.11.2026, владелец), во вкладках сделки её нет.
         return Cache::remember(self::CACHE, 30, fn () => self::rows(Deal::active()->whereHas('offer', fn ($o) => $o->where('offers.state', OfferState::Sold))
-            ->with(self::WITH)->get())->mapWithKeys(fn (array $r) => [$r['deal']->offer_id => [$r['tab'], $r['todo'] !== null]])->all());
+            ->with(self::WITH)->get())->reject(fn (array $r) => $r['deal']->sellsFromGarage($r['deal']->offer?->position()?->stage))->mapWithKeys(fn (array $r) => [$r['deal']->offer_id => [$r['tab'], $r['todo'] !== null]])->all());
     }
 
     /** Машины вкладки (`OfferController::scopeFor`). @return list<int> */
