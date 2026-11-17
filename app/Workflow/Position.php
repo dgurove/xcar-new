@@ -233,6 +233,9 @@ class Position extends Model
         return $this->waits_for === WaitsFor::Us && $this->track === Track::Sale && $this->stage->isPickupStep();
     }
 
+    /** Блок письма об интересе (первое письмо поставщику после «Принять»). */
+    public const AGREE_BLOCK = 'Согласование с поставщиком';
+
     /**
      * Что сделать нам — для «Ваш ход» в «Сделках» (27.10.2026, владелец: «не видно, что нужно сделать, а что просто
      * просрочено»): группа (`key`, `title` глаголом, `rank` — порядок групп), с какого момента ждёт (`since`) и кнопка
@@ -301,6 +304,10 @@ class Position extends Model
             // Письмо с реквизитами без реквизитов не пишем (03.11.2026): сначала покупатель — «Заполнить» к его карточке.
             in_array($letter, ['unsent', 'failed'], true) && $this->stage->isRequisitesStep() && ($gap = $this->deal?->requisitesGap()) => $todo('requisites', $gap, 1, button: ['label' => 'Заполнить', 'href' => $this->deal->schemeOf()->paysCar() || $this->deal->isGarageUs()
                     ? Surface::Park->url('/money/parties') : '/offers/'.$offer->number.'?buyer=1#invoice-buyer']),
+            // Письмо об интересе после «Принять» не ушло (17.11.2026, владелец: «для Альфы обязательно нужно письмо, оч плохо, если
+            // приняли, а письмо не отправили — заметно, своей подгруппой, красным»; за день 4 таких у Андрея): первый шаг письма
+            // согласования с поставщиком — своим делом первым, красным (`status`, группа `x-table.group danger`).
+            in_array($letter, ['unsent', 'failed'], true) && $this->stage->block?->name === self::AGREE_BLOCK => $todo('interest-letter', 'Письмо об интересе не отправлено', 0, button: $write('Написать')),
             in_array($letter, ['unsent', 'failed'], true) => $todo('letter', 'Написать поставщику', 1, button: $write('Написать')),
             $this->consentLate() => $todo('consent', 'Менеджер не ответил, берёт ли', 3, $this->deadline_at,
                 ($phone = $this->deal?->buyer?->phone) ? ['label' => 'Телефон менеджера', 'tel' => $phone] : null),
@@ -325,7 +332,7 @@ class Position extends Model
         if ($todo = $this->todo()) {
             // Дела не по сроку шага (переоценка, письмо на разбор, деньги) горят своим: срок шага к ним не относится.
             $own = ! preg_match('/^(reprice|reply|price-offer|gap:paid)/', $todo['key']);
-            $red = $todo['key'] === 'price-ask' || $todo['key'] === 'consent' || ($own && $late);
+            $red = in_array($todo['key'], ['price-ask', 'consent', 'interest-letter'], true) || ($own && $late);
             $title = \App\Offers\DealTabs::TODO_TITLES[$todo['title']] ?? $todo['title'];
 
             return ['text' => mb_lcfirst($title), 'tone' => $red ? 'text-danger' : 'text-accent-text', 'hint' => $own ? $hint : null];

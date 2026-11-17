@@ -1387,6 +1387,7 @@ html.kb-open { --home-gap: 0px; }
   /* Зелёное число у названия вкладки — частью названия: растёт и тает вместе с ним. */
   .tab-wheel-badge { margin-inline-start: .35em; font-size: .5em; line-height: 1.5; padding-inline: .45em; min-width: 1.5em; vertical-align: .35em; letter-spacing: 0; }
   .table-group.is-ours .table-group-name { color: var(--color-accent-text); }
+  .table-group.is-danger .table-group-name { color: var(--color-danger); }
   /* Наши дела во вкладке — красным счётчиком с белым числом, как у разделов таб-бара CRM (17.11.2026, владелец: «не зелёные,
      а счётчики как на разделах»). Два класса — `.badge` ниже по файлу. */
   .tab-wheel-label .tab-wheel-badge { background: var(--color-danger); color: #fff; }

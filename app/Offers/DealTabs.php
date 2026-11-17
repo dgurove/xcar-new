@@ -74,7 +74,7 @@ final class DealTabs
 
         return match (true) {
             $repricing || in_array($key, ['reprice', 'reprice-answer', 'price-ask', 'price-offer'], true) => 'reprice',
-            in_array($key, ['letter', 'bounced', 'requisites'], true) || str_starts_with($key, 'request:') => 'letter',
+            in_array($key, ['interest-letter', 'letter', 'bounced', 'requisites'], true) || str_starts_with($key, 'request:') => 'letter',
             // Ответ поставщика на разбор — «Поставщик ответил» и на согласовании, и пока ждём счёт (17.11.2026, владелец: «в „Ждём
             // счёт от поставщика“ не должно быть ничего, что наш ход»).
             $key === 'reply' && in_array($block, ['agree', 'invoice'], true) => 'answered',
