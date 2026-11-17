@@ -18,7 +18,7 @@ class PassportTextTest extends TestCase
     {
         $text = "РЕСПУБЛИКА ДАГЕСТАН\nКАРАБУДАХКЕНТСКИЙ РАЙОН\nАДМИНИСТРАЦИЯ С.АДАНАК\nЗАРЕГИСТРИРОВАН\n1205   2009.\nподпись";
 
-        $this->assertSame('РЕСПУБЛИКА ДАГЕСТАН, КАРАБУДАХКЕНТСКИЙ РАЙОН, С. АДАНАК', PassportText::registration($text)['fields']['reg_address']);
+        $this->assertSame('Республика Дагестан, Карабудахкентский Район, с. Аданак', PassportText::registration($text)['fields']['reg_address']);
     }
 
     /** Печатный штамп — по-прежнему строки после слова. */
@@ -26,7 +26,7 @@ class PassportTextTest extends TestCase
     {
         $text = "Место жительства\nЗАРЕГИСТРИРОВАН\n15.06.2015\nРег-н: САМАРСКАЯ ОБЛ.\nПункт: ГОР. САМАРА\nУлица: МОЛОДОГВАРДЕЙСКАЯ\nДом: 151   Кв.: 23\nОТДЕЛОМ УФМС РОССИИ";
 
-        $this->assertSame('САМАРСКАЯ ОБЛ, ГОР. САМАРА, МОЛОДОГВАРДЕЙСКАЯ, Д. 151, КВ. 23', PassportText::registration($text)['fields']['reg_address']);
+        $this->assertSame('Самарская обл, гор. Самара, Молодогвардейская, д. 151, кв. 23', PassportText::registration($text)['fields']['reg_address']);
     }
 
     /** Дата штампа месяцем словом в адрес не попадает (13.11.2026, Мишин: «23 АПРЕЛЯ 2004Г., ЗНАМЕНСКИЕ САДКИ УЛ., …»). */
@@ -34,13 +34,13 @@ class PassportTextTest extends TestCase
     {
         $text = "ЗАРЕГИСТРИРОВАН\n23 апреля 2004г.\nЗНАМЕНСКИЕ САДКИ УЛ.\nД. 1, КВ. 56";
 
-        $this->assertSame('ЗНАМЕНСКИЕ САДКИ УЛ., Д. 1, КВ. 56', PassportText::registration($text)['fields']['reg_address']);
+        $this->assertSame('Знаменские Садки ул., д. 1, кв. 56', PassportText::registration($text)['fields']['reg_address']);
     }
 
     /** Греческая «Φ» от OCR — кириллицей: «РΦ ГОР. МОСКВА» → «РФ …». */
     public function test_greek_lookalikes(): void
     {
-        $fields = PassportText::main(str_replace('ГОР. МАХАЧКАЛА', 'РΦ ГОР. МАХАЧКАЛА', $this->main()))['fields'];
+        $fields = PassportText::main(str_replace('гор. Махачкала', 'РΦ ГОР. МАХАЧКАЛА', $this->main()))['fields'];
 
         $this->assertStringNotContainsString('Φ', (string) ($fields['birth_place'] ?? ''));
     }
@@ -67,7 +67,7 @@ class PassportTextTest extends TestCase
         $fields = PassportText::main($this->main())['fields'];
 
         $this->assertSame('Алиев Фусейн Магомедович', $fields['name']);
-        $this->assertSame('ГОР. МАХАЧКАЛА', $fields['birth_place']);
+        $this->assertSame('гор. Махачкала', $fields['birth_place']);
     }
 
     /** Зона не прочиталась, подпись «Отчество» прочитана «Отчестае», «рождения» — строчными рядом с полом (16.11.2026). */
@@ -80,7 +80,7 @@ class PassportTextTest extends TestCase
         $fields = PassportText::main($text)['fields'];
 
         $this->assertSame('Файзулаев Комил Ахмеджонович', $fields['name']);
-        $this->assertSame('ГОР. ДУШАНБЕ РЕСП.ТАДЖИКИСТАН', $fields['birth_place']);
+        $this->assertSame('гор. Душанбе респ.Таджикистан', $fields['birth_place']);
         $this->assertSame('2918 916342', $fields['passport']);
     }
 

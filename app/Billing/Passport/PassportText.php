@@ -93,6 +93,10 @@ final class PassportText
             $fields['birth_place'] = $place;
         }
 
+        // Заглавные бланка — словами: «ГУ МВД России по г. Москве» (17.11.2026, владелец, `PassportCase`).
+        foreach (['passport_issued', 'birth_place'] as $key) {
+            isset($fields[$key]) && $fields[$key] = PassportCase::format($fields[$key]);
+        }
         // Серия без пробела: «8207 445349» (07.11.2026, владелец).
         isset($fields['passport']) && $fields['passport'] = preg_replace('/^(\d{2})\s(\d{2})\s/u', '$1$2 ', $fields['passport']);
 
@@ -248,7 +252,7 @@ final class PassportText
             $address = self::address(array_slice($before, -5));
         }
 
-        return ['fields' => $address !== '' ? ['reg_address' => $address] : [], 'checked' => []];
+        return ['fields' => $address !== '' ? ['reg_address' => PassportCase::format($address)] : [], 'checked' => []];
     }
 
     /** Дата штампа — и без точек: «09.04.2008», «0904 2008.», «09 04 2008». */

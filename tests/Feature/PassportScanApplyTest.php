@@ -28,7 +28,7 @@ class PassportScanApplyTest extends TestCase
         $party = Party::create(['kind' => 'person', 'name' => 'Мишин Родион Валерьевич', 'passport_code' => '770-999']);
         $read = [
             'main' => ['passport' => '4510 950314', 'passport_issued_at' => '2010-09-29', 'passport_code' => '770-121', 'birth_at' => '1990-09-18', 'birth_place' => 'ГОР. МОСКВА'],
-            'reg' => ['reg_address' => 'ЗНАМЕНСКИЕ САДКИ УЛ., Д. 1, КВ. 56'],
+            'reg' => ['reg_address' => 'Знаменские Садки ул., д. 1, кв. 56'],
         ];
         foreach ($read as $page => $fields) {
             $party->addMedia(UploadedFile::fake()->image($page.'.jpg'))->withCustomProperties(['page' => $page, 'read' => 'done', 'fields' => $fields])
@@ -45,7 +45,7 @@ class PassportScanApplyTest extends TestCase
 
         $party->refresh();
         $this->assertSame('4510 950314', $party->passport);
-        $this->assertSame('ЗНАМЕНСКИЕ САДКИ УЛ., Д. 1, КВ. 56', $party->reg_address);
+        $this->assertSame('Знаменские Садки ул., д. 1, кв. 56', $party->reg_address);
         $this->assertSame('770-999', $party->passport_code, 'вписанное руками не перетирается');
     }
 

@@ -171,6 +171,10 @@ class Party extends Model implements HasMedia
             }
         }
         $set = array_filter($read, fn ($v, $k) => filled($v) && ($over || blank($this->getRawOriginal($k))), ARRAY_FILTER_USE_BOTH);
+        // Прочитанное раньше заглавными — тем же видом, что новое (`PassportCase`, 17.11.2026).
+        foreach (array_intersect_key($set, array_flip(['passport_issued', 'birth_place', 'reg_address'])) as $k => $v) {
+            $set[$k] = \App\Billing\Passport\PassportCase::format($v);
+        }
         if ($set === []) {
             return false;
         }
