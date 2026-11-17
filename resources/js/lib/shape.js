@@ -93,7 +93,9 @@ export function capture() {
     const walk = (el, clip) => {
         if (++seen > MAX_NODES || out.length >= MAX_RECTS) return;
         const tag = el.localName;
-        if (tag === 'script' || tag === 'template' || tag === 'dialog' || tag === 'turbo-frame' && el.id === 'detail') return;
+        // Шторка в силуэт не идёт — кроме открытой в потоке страницы (на ПК блок цены и действий машины — `<dialog open>`
+        // без модальности: `sheet` `inflow`), это часть экрана.
+        if (tag === 'script' || tag === 'template' || tag === 'dialog' && (!el.open || el.matches(':modal')) || tag === 'turbo-frame' && el.id === 'detail') return;
         const r = el.getBoundingClientRect();
         const cs = getComputedStyle(el);
         if (cs.display === 'none' || cs.visibility === 'hidden') return;
@@ -164,12 +166,16 @@ function fallback(w, h) {
 }
 
 // Страница объекта, чьего силуэта ещё нет: заголовок, кадр 4:3 и строки фактов — места те же, что у настоящей.
-function fallbackPage(w, h) {
+// Кадр — только когда нажата плитка с большим фото: у строки (сделка, интерес) страница начинается не с кадра.
+function fallbackPage(w, h, photo) {
     const pad = w < 768 ? 16 : 32;
     const width = Math.min(w - pad * 2, 720);
-    const photo = Math.round(width * 0.75);
-    const out = [['s', pad, 26, width, 30, 0, ['title', 22, '500', 28]], ['s', pad, 118, width, photo, 16, ['cover']]];
-    for (let i = 0, y = 118 + photo + 28; y < h - 20 && i < 8; i++, y += 34) out.push(['t', pad, y, Math.round(width * (0.5 - (i % 3) * 0.1)), 10, 4]);
+    const frame = photo ? Math.round(width * 0.75) : 0;
+    const out = [['s', pad, 26, width, 30, 0, ['title', 22, '500', 28]]];
+    if (frame) out.push(['s', pad, 118, width, frame, 16, ['cover']]);
+    else out.push(['c', w < 768 ? 0 : pad, 100, w < 768 ? w : width, h, 24, 'var(--color-surface)']);
+    const left = pad + (frame ? 0 : w < 768 ? 4 : 20);
+    for (let i = 0, y = frame ? 118 + frame + 28 : 130; y < h - 20 && i < (frame ? 8 : 14); i++, y += 34) out.push(['t', left, y, Math.round(width * (0.5 - (i % 3) * 0.1)), 10, 4]);
     return out;
 }
 
@@ -208,6 +214,8 @@ function fillFrom(link) {
     if (title && title.length <= 90) fill.title = title;
     if (price && price.length <= 40) fill.price = price;
     if (img) fill.cover = img.currentSrc;
+    // Плитка с большим кадром — и страница начнётся с кадра (запасная заготовка, пока своего силуэта нет).
+    if (img && box.matches('.card')) fill.large = true;
     return Object.keys(fill).length ? fill : null;
 }
 
@@ -233,7 +241,7 @@ export function show(href, fill = null) {
     const shape = keysOf(href).map(load).find(Boolean);
     const object = /\d/.test(new URL(href, location.href).pathname);
     // Силуэт снят при этой ширине (ключ) — высота экрана могла смениться (клавиатура, поворот): лишнее обрежет слой.
-    const rects = shape ? shape.slice(1) : object ? fallbackPage(box.width, box.height) : fallback(box.width, box.height);
+    const rects = shape ? shape.slice(1) : object ? fallbackPage(box.width, box.height, !!fill?.large) : fallback(box.width, box.height);
     layer = document.createElement('div');
     layer.className = 'screen-ghost';
     layer.dataset.sectionGhost = '';
