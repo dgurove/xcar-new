@@ -1,25 +1,24 @@
 {{-- Нижний таб-бар телефона: до четырёх разделов и «Кабинет». У раздела CRM — залитый значок (`x-ui.tab-icon`, 16.11.2026),
      у остальных вместо иконки — капсула с числом позиций (серая; у текущего лаймовая и одной ширины под три цифры),
      сверху справа лаймовый бейдж нового; у кабинета — аватар. Без позиций — точка.
-     Бар один на всё приложение (data-turbo-permanent): Turbo не пересоздаёт его на переходе, числа и текущий таб
-     новой страницы переносит tabbar_controller. --}}
+     Бар один на всё приложение (data-turbo-permanent): Turbo не пересоздаёт его на переходе, числа новой страницы
+     переносит tabbar_controller (только из бара свежее живого — `data-at`), текущий таб он берёт из `<body data-nav-tab>`.
+     `data-match` — адреса раздела: по ним `lib/sections.js` узнаёт, какой раздел задело живое событие. --}}
 @php
     $user = auth()->user();
-    // Экран может назвать свой таб сам (`nav.tab`): у дела ожидаемой ТС адрес /cars, а таб — «Заявки».
-    $path = request()->attributes->get('nav.tab') ?? '/'.ltrim(request()->path(), '/');
     $tabs = \App\Support\Nav::tabs($user);
     $badges = \App\Support\Nav::badges($user);
     $totals = \App\Support\Nav::totals($user);
-    // Активен самый точный пункт: «Деньги» в /account/money — «Кабинет», «Покупатели» в /buyers — «Сделки».
-    $current = collect($tabs)->filter(fn ($t) => \App\Support\Nav::isCurrent($t, $path))->sortByDesc(fn ($t) => \App\Support\Nav::matchLength($t, $path))->first()['href'] ?? null;
+    // Таб экрана — одна дверь с `<body data-nav-tab>` (`Nav::currentTab`).
+    $current = \App\Support\Nav::currentTab($user);
 @endphp
-<nav class="tabbar" id="tabbar" aria-label="Разделы" data-controller="tabbar" data-tabbar-shown-value="{{ $current }}" data-turbo-permanent>
+<nav class="tabbar" id="tabbar" aria-label="Разделы" data-controller="tabbar" data-tabbar-shown-value="{{ $current }}" data-at="{{ (int) (microtime(true) * 1000) }}" data-turbo-permanent>
     @foreach ($tabs as $tab)
         @if ($tab['logout'] ?? false)
             <form method="post" action="/logout" class="contents">@csrf<button type="submit" class="tab"><span class="tab-mark"><span class="tab-dot"></span></span><span>{{ $tab['label'] }}</span></button></form>
             @continue
         @endif
-        <a href="{{ $tab['href'] }}" class="tab" data-turbo-action="replace" data-action="tabbar#tap" @if ($tab['href'] === $current) aria-current="page" @endif>
+        <a href="{{ $tab['href'] }}" class="tab" data-match="{{ implode(' ', array_filter((array) $tab['match'], fn ($m) => ! str_starts_with($m, 'http'))) }}" data-turbo-action="replace" data-action="tabbar#tap" @if ($tab['href'] === $current) aria-current="page" @endif>
             <span class="tab-mark">
                 @if ($loop->last && $user)
                     <x-ui.avatar :user="$user" :size="26"/>

@@ -1,4 +1,5 @@
 import * as Turbo from '@hotwired/turbo';
+import { markDirty } from './lib/sections';
 import { onResume, RESUME } from './lib/resume';
 import { scrollTop, scrollToY } from './lib/scroller';
 
@@ -200,6 +201,8 @@ function pending() {
 const here = (handler) => (data) => (!data.surface || document.body.classList.contains(`surface-${data.surface}`)) && handler(data);
 
 function refresh({ paths, request }) {
+    // Раздел, которого нет на экране, перечитается, когда в него вернутся (`lib/sections.js`).
+    markDirty(paths);
     if (paths?.includes(location.pathname)) refreshPage(request);
     // Окно писем на любой странице (02.11.2026: Андрей отправил письмо страховой, оно ушло через 3 с, а окно так и стояло
     // «В очереди»): в окне ветка, письма предложения или ТС — узнаём по ссылкам на эту ветку (`/work/mail/{t}/…`), письмо
@@ -211,6 +214,7 @@ function refresh({ paths, request }) {
 
 // Правка своей формой: автор свою строку уже получил ответом (потоки карточки) — как refresh, второй раз не тянем.
 function rows({ paths, request }) {
+    markDirty(Object.keys(paths ?? {}));
     const keys = paths?.[location.pathname];
     if (!keys?.length || (request && Turbo.session.recentRequests?.has(request))) return;
     refreshRows(keys);

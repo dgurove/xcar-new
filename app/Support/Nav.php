@@ -907,6 +907,24 @@ final class Nav
         return false;
     }
 
+    /**
+     * Таб, которому принадлежит экран запроса: его адрес или null. Активен самый точный пункт («Деньги» в /account/money —
+     * «Кабинет», «Покупатели» в /buyers — «Сделки»); экран может назвать свой таб сам (`nav.tab`): у дела ожидаемой ТС адрес
+     * /cars, а таб — «Заявки». Кладётся в `<body data-nav-tab>`: таб-бар постоянный и текущий таб берёт из страницы, а не из
+     * своей копии в снимке (`tabbar_controller`), память разделов — по нему (`lib/sections.js`).
+     */
+    public static function currentTab(?User $user): ?string
+    {
+        $request = request();
+        if (! $request->attributes->has('nav.current')) {
+            $path = $request->attributes->get('nav.tab') ?? '/'.ltrim($request->path(), '/');
+            $request->attributes->set('nav.current', collect(self::tabs($user))->filter(fn ($t) => self::isCurrent($t, $path))
+                ->sortByDesc(fn ($t) => self::matchLength($t, $path))->first()['href'] ?? null);
+        }
+
+        return $request->attributes->get('nav.current');
+    }
+
     /** Длина самого точного совпадения — чтобы в таб-баре активен был один пункт. */
     public static function matchLength(array $item, string $path): int
     {

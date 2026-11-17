@@ -1,4 +1,5 @@
 import { Controller } from '@hotwired/stimulus';
+import { setAddress } from '../lib/address';
 import { request } from '../lib/http';
 
 // Бесконечная лента: страниц нет, следующая порция подгружается, когда до конца списка остаётся экран.
@@ -79,12 +80,10 @@ export default class extends Controller {
         const last = [...this.element.querySelectorAll('tbody.table-part tr.table-group')].at(-1);
         if (head?.matches('tr.table-group') && last && head.dataset.group === last.dataset.group) head.remove();
         tail.replaceWith(...parts, ...(theirs.querySelector('tbody[data-endless-next]') ? [theirs.querySelector('tbody[data-endless-next]')] : []));
-        // Адрес без визита Turbo, ключ восстановления тот же (как `detail#address`): снимок «Назад» ляжет под этим адресом.
+        // Адрес без визита Turbo, ключ восстановления тот же (`lib/address.js`): снимок «Назад» и раздела ляжет под этим адресом.
         const url = new URL(location.href);
         url.searchParams.set('rows', parts.at(-1).dataset.rows);
-        const h = window.Turbo?.session?.history;
-        if (h) h.replace(url, h.restorationIdentifier);
-        else history.replaceState(history.state, '', url);
+        setAddress(url);
         // Свёрнутая группа (`group_fold`) прячет и догруженные строки — заголовка у них в куске может не быть.
         this.dispatch('appended');
     }

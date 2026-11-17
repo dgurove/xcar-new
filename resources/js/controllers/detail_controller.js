@@ -1,4 +1,5 @@
 import { Controller } from '@hotwired/stimulus';
+import { setAddress } from '../lib/address';
 import { onMorphAttribute, onMorphElement } from '../lib/morph-guard';
 import { focusField } from '../keyboard';
 import * as overlays from '../overlays';
@@ -470,11 +471,9 @@ export default class extends Controller {
         return card;
     }
 
-    // Адрес страницы без визита Turbo: запись та же, у Turbo — тот же ключ восстановления.
+    // Адрес страницы без визита Turbo: запись та же, у Turbo — тот же ключ восстановления и снимка (`lib/address.js`).
     address(url) {
-        const h = window.Turbo?.session?.history;
-        if (h) h.replace(url, h.restorationIdentifier);
-        else history.replaceState(history.state, '', url);
+        setAddress(url);
     }
 
     // Заготовка листа, пока карточка в пути, — по форме карточки (x-ui.row-card): полоса как у карточки (‹ ›, «4 из 7»,

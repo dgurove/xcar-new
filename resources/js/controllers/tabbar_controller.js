@@ -2,78 +2,66 @@ import { Controller } from '@hotwired/stimulus';
 import * as Turbo from '@hotwired/turbo';
 import * as overlays from '../overlays';
 import { scrollTop, scrollToY } from '../lib/scroller';
+import * as sections from '../lib/sections';
 
-// Ключ памяти табов; «tab:» — прежний, в нём могли остаться чужие адреса, его не читаем.
-const KEY = 'tabs:';
+// Бар постоянный (data-turbo-permanent): Turbo переносит живой узел, а бар новой страницы выбрасывает.
+// Текущий таб — из самой страницы (`<body data-nav-tab>`), а не из её копии бара (17.11.2026): в снимке страницы на месте
+// бара лежит его клон, снятый уже после перехода, — с табом следующей страницы. При «Назад» из чата на список таб-бар
+// оставался «в Чатах», и нажатие таба клало адрес списка в память чужого раздела («Чаты» открывали «Предложения»).
+// Числа и бейджи — морфом детей и только из бара свежее живого (`data-at`): снимок не откатывает их назад.
+const mark = (bar, href) => {
+    bar.dataset.tabbarShownValue = href ?? '';
+    for (const tab of bar.querySelectorAll('.tab')) {
+        if (href && tab.getAttribute('href') === href) tab.setAttribute('aria-current', 'page');
+        else tab.removeAttribute('aria-current');
+    }
+};
 
-// Прокрутка, которую надо вернуть после ближайшего рендера.
-let restoreScroll;
-document.addEventListener('turbo:load', () => {
-    if (restoreScroll === undefined) return;
-    const y = restoreScroll;
-    restoreScroll = undefined;
-    requestAnimationFrame(() => scrollToY(y));
-});
-
-// Бар постоянный (data-turbo-permanent): Turbo переносит живой узел, а бар новой страницы выбрасывает. Из него
-// берём числа, бейджи и текущий таб — морфом детей, сам узел не пересоздаётся.
 document.addEventListener('turbo:before-render', (event) => {
     const bar = document.getElementById('tabbar');
-    const next = event.detail.newBody.querySelector('#tabbar');
-    if (!bar || !next || bar === next) return;
-    bar.dataset.tabbarShownValue = next.dataset.tabbarShownValue;
-    Turbo.morphChildren(bar, next);
+    const body = event.detail.newBody;
+    const next = body.querySelector('#tabbar');
+    if (!bar || bar === next) return;
+    if (next && Number(next.dataset.at || 0) >= Number(bar.dataset.at || 0)) {
+        Turbo.morphChildren(bar, next);
+        bar.dataset.at = next.dataset.at || '';
+    }
+    mark(bar, 'navTab' in body.dataset ? body.dataset.navTab : next?.dataset.tabbarShownValue);
 });
 
 // Таб-бар ведёт себя как нативный (под клавиатурой его прячет html.kb-open, app.css):
 // табы переключаются заменой без записи в историю (data-turbo-action="replace"),
 // активный пункт загорается под пальцем, не дожидаясь ответа; тап по уже
 // активному табу — наверх, а из глубины раздела — к его корню. У каждого таба
-// своя память (sessionStorage): экран и прокрутка, на которых его оставили.
+// своя память — экран, прокрутка и снимок страницы, на которых его оставили (`lib/sections.js`): раздел, где уже были,
+// открывается сразу, без запроса к серверу.
 export default class extends Controller {
     // Таб страницы, что на экране, — от сервера. aria-current загорается под пальцем раньше ответа: пока медленная
-    // страница едет, текущим по нему был бы уже новый таб, и в его память лёг бы чужой адрес («Наличие» → Заявки).
+    // страница едет, текущим по нему был бы уже новый таб.
     static values = { shown: String };
 
     tap(event) {
         const link = event.currentTarget;
-        const current = this.element.querySelector('.tab[aria-current="page"]');
-        if (current !== link) {
-            this.remember(this.shownValue);
+        const href = link.getAttribute('href');
+        if (this.shownValue !== href) {
             for (const tab of this.element.querySelectorAll('.tab[aria-current]')) tab.removeAttribute('aria-current');
             link.setAttribute('aria-current', 'page');
-            const saved = this.recall(link);
+            const saved = sections.recall(href);
             if (saved) {
                 event.preventDefault();
-                restoreScroll = saved.y;
-                overlays.clear().then((ok) => ok && Turbo.visit(saved.url, { action: 'replace' }));
+                // Окно писем закроется как «ушли в другой раздел», а не «закрыл человек»: вернутся — оно снова открыто.
+                window.dispatchEvent(new CustomEvent('section:leave'));
+                overlays.clear().then((ok) => { if (!ok || !sections.open(href, saved)) mark(this.element, this.shownValue); });
             }
             return;
         }
         event.preventDefault();
-        this.forget(link);
+        sections.forget(href);
         const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
         if (new URL(link.href).pathname === location.pathname && location.search === '') {
             if (scrollTop() > 0) scrollToY(0, reduce ? 'auto' : 'smooth');
             return;
         }
         overlays.clear().then((ok) => ok && Turbo.visit(link.href, { action: 'replace' }));
-    }
-
-    remember(href) {
-        if (!href) return;
-        try { sessionStorage.setItem(KEY + new URL(href, location.origin).pathname, JSON.stringify({ url: location.href, y: scrollTop() })); } catch {}
-    }
-
-    recall(tab) {
-        try {
-            const saved = JSON.parse(sessionStorage.getItem(KEY + new URL(tab.href).pathname) || 'null');
-            if (!saved || new URL(saved.url).origin !== location.origin) return null;
-            return saved.url !== tab.href || saved.y > 0 ? saved : null;
-        } catch { return null; }
-    }
-
-    forget(tab) {
-        try { sessionStorage.removeItem(KEY + new URL(tab.href).pathname); } catch {}
     }
 }

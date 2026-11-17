@@ -28,6 +28,12 @@ const ctx = await browser.newContext({ ...devices['Pixel 7'], serviceWorkers: 'b
 await ctx.addInitScript((id) => {
     // Шторка «включите уведомления» закрывает таб-бар через пару секунд после входа — здесь она не предмет проверки.
     try { localStorage.setItem(`push:offer:${id}`, JSON.stringify({ n: 3, at: Date.now() })); } catch {}
+    // Живые события — подставной источник (хаба локально нет): проверка «раздел устарел, пока был скрыт» шлёт событие сама.
+    window.EventSource = class extends EventTarget {
+        static CONNECTING = 0; static OPEN = 1; static CLOSED = 2;
+        constructor() { super(); this.readyState = 1; window.__es = this; setTimeout(() => this.onopen?.(), 0); }
+        close() { this.readyState = 2; }
+    };
     window.__nav = { events: [], t0: 0, shown: null, sign: '' };
     const sign = () => `${location.pathname}|${document.querySelector('h1')?.textContent.trim() ?? ''}|${document.querySelector('[data-section-ghost]') ? 'ghost' : ''}`;
     window.__navArm = () => {
@@ -44,6 +50,18 @@ await ctx.addInitScript((id) => {
         document.addEventListener(name, (event) => window.__nav.events.push([name.slice(6), Math.round(performance.now() - (window.__nav.t0 || performance.now())), event.detail?.url?.toString?.() ?? '']), true);
     }
 }, user);
+// Страницам без хаба (локально) подставляем его адрес и тему — `live.js` откроет подставной источник.
+await ctx.route((url) => url.hostname.startsWith('crm.') && !/\/(build|media|hot|pwa|fonts|images|live)\//.test(url.pathname), async (route) => {
+    const request = route.request();
+    if (request.method() !== 'GET' || !['document', 'fetch'].includes(request.resourceType())) return route.continue();
+    const response = await route.fetch().catch(() => null);
+    if (!response) return route.abort();
+    let body = await response.text();
+    if ((response.headers()['content-type'] || '').includes('text/html') && body.includes('<head>') && !body.includes('name="mercure-hub"')) {
+        body = body.replace('<head>', '<head><meta name="mercure-hub" content="/fake-hub"><meta name="mercure-topics" content="staff">');
+    }
+    return route.fulfill({ response, body });
+});
 const page = await ctx.newPage();
 page.on('dialog', (d) => d.dismiss().catch(() => {}));
 await page.goto(`http://xcar.localhost:${port}/dev/login/${user}`);
@@ -106,6 +124,7 @@ if (!only || only === 'отклик') {
 // ——— 2. Место ———
 if (!only || only === 'место') {
     console.log('\nМесто в разделе');
+    await page.goto(crm + '/offers'); await settle(1500);
     const [offers, mail, chats] = await tabs().then((t) => [t.find((h) => h.startsWith('/offers')), t.find((h) => h.includes('mail')), t.find((h) => h.includes('chats'))]).catch(() => []);
     const same = (a, b, what = ['url', 'y']) => what.every((k) => (k === 'y' ? Math.abs(a.y - b.y) <= 4 : a[k] === b[k]));
     const fmt = (s) => `${s.url} y=${s.y} строк=${s.rows}${s.peek ? ' окно' : ''}${s.letters ? ' письмо' : ''}`;
@@ -117,6 +136,25 @@ if (!only || only === 'место') {
     await tap(chats); await tap(offers);
     let now = await state();
     check('уход табом и возврат: тот же адрес и прокрутка', same(was, now), `было ${fmt(was)}, стало ${fmt(now)}`);
+
+    // Раздел устарел, пока был скрыт: по нему пришло событие — при возврате он показан сразу и тихо перечитан.
+    const hub = await page.evaluate(() => !!window.__es);
+    if (hub) {
+        await tap(chats);
+        await page.evaluate(() => window.__es.dispatchEvent(new MessageEvent('refresh', { data: JSON.stringify({ paths: ['/offers'] }) })));
+        const later = [];
+        const watch = (q) => { if (q.resourceType() === 'fetch' && q.url().startsWith(crm + '/offers')) later.push(q.url().replace(crm, '')); };
+        page.on('request', watch);
+        const r = await tap(offers);
+        // Перечитывание ждёт, пока экран успокоится (палец, прокрутка, идущий визит) — даём ему время.
+        await page.waitForTimeout(3000);
+        page.off('request', watch);
+        check('устаревший раздел: показан сразу и перечитан следом', r.shown !== null && r.shown <= limit && later.length > 0, `отклик ${r.shown} мс, запросы: ${later.join(', ') || 'нет'}`);
+        now = await state();
+        check('после тихого обновления место то же', same(was, now), `было ${fmt(was)}, стало ${fmt(now)}`);
+    } else {
+        check('подставной источник живых событий открыт', false);
+    }
 
     // Догруженные строки.
     await scrollTo(999999); await page.waitForTimeout(2500); await scrollTo(999999); await page.waitForTimeout(2500);
@@ -144,15 +182,23 @@ if (!only || only === 'место') {
         now = await state();
         check('и «Предложения» помнят место', same(was, now), `было ${fmt(was)}, стало ${fmt(now)}`);
 
-        // Системный пуш при закрытом приложении: страница чата загружается целиком.
+        // Системный пуш при закрытом приложении: новое окно без истории и без памяти сессии сразу открывает чат.
         await page.goto(crm + '/offers?preset=all'); await settle(1500);
         await scrollTo(1800); await page.waitForTimeout(600);
         was = await state();
-        await page.goto(crm + chat); await settle();
-        await back();
-        now = await state();
-        if (!now.url.startsWith('/offers')) { await tap(offers); now = await state(); }
-        check('пуш при закрытом приложении → чат → назад: «Предложения» на том же месте', same(was, now), `было ${fmt(was)}, стало ${fmt(now)}`);
+        // Приложение ушло в фон и выгружено: место пишется на `pagehide`.
+        await page.evaluate(() => window.dispatchEvent(new Event('pagehide')));
+        const fresh = await ctx.newPage();
+        await fresh.goto(crm + chat); await fresh.waitForLoadState('networkidle').catch(() => {}); await fresh.waitForTimeout(1200);
+        // «‹» в чате без истории ведёт в список чатов, оттуда — таб «Предложения».
+        const at = await fresh.evaluate(() => { const b = [...document.querySelectorAll('[data-controller~="back"]')].find((n) => n.offsetParent && n.getBoundingClientRect().width > 0); if (!b) return null; const r = b.getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; });
+        if (at) { await fresh.touchscreen.tap(at[0], at[1]); await fresh.waitForFunction(() => location.pathname === '/work/chats', null, { timeout: 10000 }).catch(() => {}); await fresh.waitForLoadState('networkidle').catch(() => {}); await fresh.waitForTimeout(1500); }
+        const link = await fresh.$(`#tabbar a.tab[href="${offers}"]`);
+        const box = await link?.boundingBox();
+        if (box) { await fresh.touchscreen.tap(box.x + box.width / 2, box.y + box.height / 2); await fresh.waitForFunction(() => location.pathname.startsWith('/offers'), null, { timeout: 10000 }).catch(() => {}); await fresh.waitForLoadState('networkidle').catch(() => {}); await fresh.waitForTimeout(1800); }
+        now = await fresh.evaluate(() => ({ url: location.pathname + location.search, y: Math.round(document.querySelector('#scroller')?.scrollTop ?? scrollY), rows: document.querySelectorAll('tr[data-detail-key]').length }));
+        await fresh.close();
+        check('пуш при закрытом приложении → чат → «‹» → «Предложения»: то же место', same(was, now), `было ${fmt(was)}, стало ${fmt(now)}`);
     } else {
         check('чат для проверки найден', false);
     }
@@ -165,7 +211,11 @@ if (!only || only === 'место') {
         await page.touchscreen.tap(row[0], row[1]); await settle(2500);
         was = await state();
         await page.evaluate((u) => window.Turbo.visit(u), chat); await settle();
+        const t0 = Date.now();
         await back();
+        // Экран со списком и открытым окном собирается из снимка дольше пустого списка — ждём место, а не гадаем.
+        await page.waitForFunction((y) => Math.abs((document.querySelector('#scroller')?.scrollTop ?? 0) - y) <= 4, was.y, { timeout: 8000 }).catch(() => {});
+        console.log(`  · список с открытым окном вернулся за ${Date.now() - t0} мс`);
         now = await state();
         check('открытое окно машины переживает уход в чат', was.peek && now.peek && same(was, now), `было ${fmt(was)}, стало ${fmt(now)}`);
         await shot('место-окно');

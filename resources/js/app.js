@@ -9,7 +9,7 @@ import { confirmSheet } from './confirm';
 import { closeSheet } from './sheet';
 import { netGuards } from './net';
 import { priceGuard, schemeGuard } from './price-guard';
-import { live, dropKey, refreshOwn, refreshRows } from './live';
+import { live, dropKey, refreshOwn, refreshPage, refreshRows } from './live';
 import { onMorphAttribute, onMorphElement } from './lib/morph-guard';
 import { bump } from './lib/bump';
 import './flip';
@@ -26,6 +26,7 @@ import { keepPush } from './push-sync';
 import { csrf } from './lib/http';
 import avatarFallback from './lib/avatar-fallback';
 import { perf } from './lib/perf';
+import { sections } from './lib/sections';
 
 // Потоки из ответа карточки строки (x-ui.row-card): тост flash-сообщения и «следующий без цены» (detail_controller).
 Turbo.StreamActions.toast = function () {
@@ -171,6 +172,7 @@ onMorphElement((event) => {
 });
 touchPrefetch();
 perf();
+sections({ onStale: () => refreshPage() });
 pressFeedback();
 inPageAnchors();
 netGuards();
@@ -389,6 +391,8 @@ function freshness() {
     // Адрес снимка — свой: на «Назад» location уже прежний, когда Turbo снимает уходящую страницу, и время ложилось
     // не той странице (возвращённый список всегда казался свежим).
     let shown = location.href;
+    // Окно строки и догруженные строки меняют адрес без визита (`lib/address.js`) — снимок ляжет под новым.
+    document.addEventListener('address:change', (event) => { shown = event.detail.url; });
     document.addEventListener('turbo:before-cache', () => cachedAt.set(shown, Date.now()));
     document.addEventListener('turbo:visit', (event) => { action = event.detail.action; });
     document.addEventListener('turbo:load', () => {
@@ -599,7 +603,9 @@ function relaunchScroll() {
     onHide(save);
     window.addEventListener('pagehide', save);
     const nav = performance.getEntriesByType('navigation')[0];
-    if (!['navigate', 'reload'].includes(nav?.type)) return;
+    // back_forward — «Назад» браузера на страницу, загруженную целиком (пришли в чат по пушу и вернулись): окно браузер
+    // вернул бы сам, а листается у нас #scroller.
+    if (!['navigate', 'reload', 'back_forward'].includes(nav?.type)) return;
     try {
         const saved = JSON.parse(localStorage.getItem(key()) || 'null');
         if (saved && Date.now() - saved.at < 30 * 60 * 1000 && saved.y > 0) requestAnimationFrame(() => scrollToY(saved.y));
@@ -791,6 +797,9 @@ function haptics() {
         if (!input.classList.contains('haptic')) return;
         event.stopPropagation();
         input.checked = false;
+        // Фокус на невидимой галке не держим (Chromium и Android ставят его нажатием, а таб-бар постоянный — фокус переживал
+        // переход): «человек в поле ввода» — и живое обновление страницы ждало следующего касания (`live.js` busy).
+        input.blur();
         const host = input.parentElement;
         host?.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: window }));
     }, true);

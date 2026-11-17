@@ -24,6 +24,9 @@ export default class extends Controller {
             const url = this.frameTarget.getAttribute('src') || '';
             const handled = !!this.handled, byUser = !!this.byUser;
             this.handled = this.byUser = false;
+            // Закрыли сами или дело сделано — окно забыто; закрылось уходом со страницы — вернутся к открытому (`keep`).
+            if (handled || byUser || !this.leaving) delete this.element.dataset.windowKeep;
+            this.leaving = false;
             window.dispatchEvent(new CustomEvent('letters:closed', { detail: { handled, url } }));
             if (!handled && !byUser && /\/letter-ask|\/work\/mail\/new/.test(url)) {
                 const token = document.querySelector('meta[name="csrf-token"]')?.content;
@@ -53,8 +56,26 @@ export default class extends Controller {
         this.element.querySelector('dialog')?.addEventListener('close', this.onClose);
         this.element.querySelector('dialog')?.addEventListener('click', this.onUser, true);
         this.element.querySelector('dialog')?.addEventListener('cancel', this.onUser, true);
+        // Уходят со страницы (таб, ссылка, «Назад») — окно закроется не рукой человека; тронул окно снова — остался.
+        this.leaving = false;
+        this.onLeave = () => { this.leaving = true; };
+        this.onStay = () => { this.leaving = false; };
+        for (const name of ['turbo:click', 'turbo:before-visit', 'turbo:visit']) document.addEventListener(name, this.onLeave, true);
+        window.addEventListener('section:leave', this.onLeave);
+        this.element.querySelector('dialog')?.addEventListener('pointerdown', this.onStay, true);
         this.ready = true;
         if (this.urlValue) this.load(this.urlValue);
+        else this.reopen();
+    }
+
+    // Страница вернулась из снимка (раздел оставили с открытым письмом, `lib/sections.js`): окно снова открыто на том же
+    // письме — содержимое фрейма в снимке, перечитывать нечего; фрейм пуст — грузим.
+    reopen() {
+        const url = this.element.dataset.windowKeep;
+        if (!url) return;
+        const frame = this.frameTarget;
+        if (frame.getAttribute('src') === url && frame.childElementCount && !frame.querySelector('.skeleton')) this.sheet?.open();
+        else this.load(url);
     }
 
     // Адрес пришёл морфом той же страницы (приняли подтверждение в редакторе — session letters): контроллер не
@@ -69,6 +90,8 @@ export default class extends Controller {
         document.removeEventListener('turbo:submit-end', this.onEnd);
         document.removeEventListener('turbo:frame-load', this.onLoad);
         document.removeEventListener('turbo:fetch-request-error', this.onError);
+        for (const name of ['turbo:click', 'turbo:before-visit', 'turbo:visit']) document.removeEventListener(name, this.onLeave, true);
+        window.removeEventListener('section:leave', this.onLeave);
     }
 
     retry() {
@@ -119,6 +142,9 @@ export default class extends Controller {
             frame.removeAttribute('src');
             frame.setAttribute('src', url);
         }
+        // Письма читают — к ним возвращаются; редактор письма и вопрос шага заново сами не открываются.
+        if (frame.id === 'letters-frame' && /\/letters(\?|$)|\/window(\?|$)/.test(url)) this.element.dataset.windowKeep = url;
+        else delete this.element.dataset.windowKeep;
         this.sheet?.open();
     }
 
