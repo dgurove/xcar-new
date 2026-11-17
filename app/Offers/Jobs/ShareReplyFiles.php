@@ -34,6 +34,9 @@ final class ShareReplyFiles implements ShouldQueue
 
     public int $tries = 2;
 
+    /** От стольких картинок в письме — это фото машины, а не паспорт или СТС (17.11.2026, 638141/2026: Совкомбанк переслал 20 кадров). */
+    public const PHOTO_BATCH = 6;
+
     public function __construct(public int $messageId)
     {
         $this->onConnection('database-long')->onQueue('files')->afterCommit();
@@ -57,9 +60,20 @@ final class ShareReplyFiles implements ShouldQueue
             // прислало паспорт картинкой, и он лёг скрытым кадром — менеджер его не видел).
             if ($dealing) {
                 [$images, $attachments] = $attachments->partition(fn ($a) => ! $a->is_inline && str_starts_with(mb_strtolower((string) $a->mime), 'image/'));
+                // Пачка картинок — фото машины, как у писем до сделки (17.11.2026, владелец: «почему в 638141/2026 все фотки в документы
+                // ушли» — Совкомбанк в сделке переслал 20 кадров лота, они легли документами и утащили за собой кадры с Мигторга).
+                if ($images->count() >= self::PHOTO_BATCH) {
+                    $attachments = $attachments->merge($images);
+                    $images = collect();
+                }
                 foreach ($images as $image) {
                     if (($contents = $image->contents()) !== null) {
-                        self::photoToDocument($model, hash('sha256', $contents), $documents);
+                        $sha = hash('sha256', $contents);
+                        // Та же картинка — видимый кадр машины (Мигторг, наши фото): это фото, не документ.
+                        if (self::isCarPhoto($model, $sha)) {
+                            continue;
+                        }
+                        self::photoToDocument($model, $sha, $documents);
                         $importer->importDocument($model, 'papers', (string) $image->filename, $contents, 'mail', $documents);
                     }
                 }
@@ -92,11 +106,20 @@ final class ShareReplyFiles implements ShouldQueue
      */
     private static function photoToDocument(Model $model, string $sha, array $properties): void
     {
+        // Только скрытый кадр из письма — тот самый обгон разбора ветки. Кадры машины (Мигторг, наши, видимые) не трогаются никогда.
         $model->media()->where('collection_name', 'photos')->where('custom_properties->sha', $sha)->get()
+            ->filter(fn (Media $m) => $m->getCustomProperty('hidden') && $m->getCustomProperty('letter') && ! $m->getCustomProperty('migtorg'))
             ->each(function (Media $m) use ($model, $properties) {
                 // Файл кадра — на публичном диске, документы — на закрытом: переносом (копия в «papers» и удаление кадра).
                 $moved = $m->move(method_exists($model, 'carRecord') ? $model->carRecord() : $model, 'papers');
                 $moved->forceFill(['custom_properties' => [...array_diff_key($moved->custom_properties, ['hidden' => true]), ...$properties]])->save();
             });
+    }
+
+    /** Картинка уже лежит кадром машины, который видно или который пришёл с Мигторга. */
+    private static function isCarPhoto(Model $model, string $sha): bool
+    {
+        return $model->media()->where('collection_name', 'photos')->where('custom_properties->sha', $sha)->get()
+            ->contains(fn (Media $m) => ! $m->getCustomProperty('hidden') || $m->getCustomProperty('migtorg'));
     }
 }
