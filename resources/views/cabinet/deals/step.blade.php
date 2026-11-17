@@ -90,9 +90,14 @@
                 $statusLine = $sent ? ($moneyHere ? null : 'Ждём подтверждения оплаты') : (! $requirement && $position->stage->ask_text
                     && ($position->waitsFor() === \App\Workflow\WaitsFor::Supplier || \App\Offers\Signing::awaitsSlots($position->stage))
                     ? \App\Users\Wording::mine($position->stage->ask_text) : null);
+                // Идёт переоценка, вопрос ему открыт — этап «Переоценка», ответ — карточкой выше (`x-offer.reprice-ask`), не «На
+                // согласовании, ждём поставщика» (17.11.2026, владелец по Audi RS 6 Сергея).
+                $repricing = \App\Offers\RepriceAsk::open()->where('deal_id', $deal->id)->get()->contains->alive();
+                $repricing && $statusLine = null;
                 // Поставщик готовит договор — когда покупатель сможет подписать, день и время заранее (`Signing`, 11.11.2026).
                 $signingDays = ! $requirement && $deal->signing_at === null && \App\Offers\Signing::asksTime($position->stage->loadMissing('exits.to.exits'));
                 $heading = match (true) {
+                    $repricing => 'Переоценка',
                     $consent => 'Взять в работу?',
                     // Оплата одной карточкой с деньгами: заголовок «Оплата», суммы — строками ниже, не в заголовке (16.11.2026).
                     $moneyHere && ($payStep || $sent) && ! $paidUp => 'Оплата',
@@ -120,12 +125,13 @@
                 };
             @endphp
             <h2>{{ $heading }}</h2>
+            @if ($repricing)<p class="mt-1 text-sm text-ink-muted">Ждём вашего ответа про новую {{ $deal->isGarage() ? 'закупочную' : 'цену' }}</p>@endif
             {{-- Фраза этапа и сколько уже идёт счётчиком, без «с 12.11» (16.11.2026). --}}
             @if ($statusLine !== null)<p class="mt-1 text-sm text-ink-muted">{{ $statusLine }}@if ($position->entered_at) <span class="nums whitespace-nowrap" data-controller="timer" data-timer-since-value="{{ $position->entered_at->toIso8601String() }}" data-timer-coarse-value="true">{{ \App\Support\Ago::since($position->entered_at) }}</span>@endif</p>@endif
             @if ($signingDays)
                 <x-deal.signing-when :deal="$deal" :action="'/deals/'.$deal->id.'/signing-wish'" class="mt-4"/>
             @endif
-            @unless ($noInvoice || $paidUp || $statusLine !== null)<div class="mt-1 text-sm"><x-route.clock :position="$position" :bare="$consent || $position->waitsFor() === \App\Workflow\WaitsFor::Manager"/></div>@endunless
+            @unless ($noInvoice || $paidUp || $statusLine !== null || $repricing)<div class="mt-1 text-sm"><x-route.clock :position="$position" :bare="$consent || $position->waitsFor() === \App\Workflow\WaitsFor::Manager"/></div>@endunless
             @if ($requirement && ! ($pickupSteps ?? null) && ! $needsBuyer && ! $needsPrice && ! $paidUp && ! $consent)
                 @if ($rejected)<p class="mt-2 font-medium text-urgent">Оплата <span class="nums">{{ \App\Support\Money::rub($rejected->amount) }}</span> от <span class="nums">{{ \App\Support\Ago::html($rejected->paid_at, words: false) }}</span> не поступила{{ $rejected->reject_reason ? ': '.$rejected->reject_reason : '' }}</p>@endif
                 {{-- Срок просьбы — тот же, что часы под заголовком: второй раз его не пишем. --}}
@@ -134,7 +140,7 @@
                 @endif
             @elseif ($noInvoice)
                 <p class="mt-3 font-medium">Счёт готовится</p>
-            @elseif ($consentAhead)
+            @elseif ($consentAhead && ! $repricing)
                 <p class="mt-3 text-sm text-ink-muted">Дальше здесь и в Telegram спросим, берётся ли ТС в работу</p>
             @endif
 
