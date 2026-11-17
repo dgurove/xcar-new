@@ -2,6 +2,7 @@
 
 namespace App\Http\Admin;
 
+use App\Cars\OwnerContacts;
 use App\Logistics\Actions\AssignExecutor;
 use App\Logistics\Actions\Backdate;
 use App\Logistics\Actions\Cancel as CancelTransport;
@@ -13,6 +14,8 @@ use App\Logistics\Transport;
 use App\Logistics\TransportEvent;
 use App\Mail\LetterPrompt;
 use App\Offers\Actions\ScheduleOffer;
+use App\Offers\Actions\UpdateOffer;
+use App\Offers\Handover;
 use App\Offers\Offer;
 use App\Offers\OfferState;
 use App\Offers\Signing;
@@ -76,6 +79,12 @@ class RouteController
         if (Signing::pickExit($exit) && ! $offer->deal?->signing_at && ! ($offer->deal && Signing::wish($offer->deal))) {
             throw ValidationException::withMessages(['exit' => 'Сначала выберите время']);
         }
+        // Владелец списком контактов (`x-route.contacts`, 17.11.2026): первый — в поля имени и телефона шага, все — в шаг и машине.
+        $cf = Handover::contactFields($exit->to);
+        $contacts = $cf && $request->has('contacts') ? OwnerContacts::clean((array) $request->input('contacts')) : null;
+        if ($contacts !== null) {
+            $request->merge(['fields' => [...(array) $request->input('fields', []), $cf['name'] => $contacts[0]['name'] ?? '', $cf['phone'] => $contacts[0]['phone'] ?? '']]);
+        }
         $payload = [];
         foreach ($exit->staffFields() as $field) {
             $value = trim((string) $request->input("fields.{$field['key']}", ''));
@@ -100,9 +109,17 @@ class RouteController
         // «За менеджера» (28.10.2026, владелец: «он мне уже устно подтвердил»): исход менеджера жмёт сотрудник — просьба
         // закрывается его ответом, в «Истории» «за менеджера». «Уже согласился» у «Спросить менеджера» (`then_take`) — наш
         // исход и сразу за менеджера его «Беру в работу» (у гаражной — «Забираю в гараж») одной транзакцией.
-        $offer = DB::transaction(function () use ($request, $offer, $exit, $take, $payload) {
+        if ($contacts) {
+            $payload['contacts'] = $contacts;
+        }
+        $offer = DB::transaction(function () use ($request, $offer, $exit, $take, $payload, $contacts) {
             if ($request->input('for') === 'manager') {
                 return $this->forManager($offer, $exit, $take, $request->user());
+            }
+            // Подтверждённые контакты — машине: их читают логистика и CRM (`OwnerContacts`).
+            if ($contacts) {
+                app(UpdateOffer::class)($offer, OwnerContacts::fields($contacts), $request->user(), ['why' => $exit->label]);
+                $offer->refresh();
             }
             $offer = $take($offer, $exit, Actor::Staff, $request->user(), $payload);
             if ($request->boolean('then_take') && $exit->to?->asksConsent()) {

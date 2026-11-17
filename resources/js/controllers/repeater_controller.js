@@ -18,5 +18,7 @@ export default class extends Controller {
 
     remove(event) {
         event.target.closest('[data-row]').remove();
+        // Убрали строку — форма изменилась: «Сохранить изменения» (save_bar) должна это увидеть.
+        this.element.querySelector('input, textarea, select')?.dispatchEvent(new Event('input', { bubbles: true }));
     }
 }

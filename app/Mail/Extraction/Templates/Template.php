@@ -50,6 +50,13 @@ abstract class Template
 
         $put('answer_by', self::answerBy($joined, $on));
         [$name, $phone] = self::insured(ParkExtractor::beforeSignature($plain));
+        // Все контакты владельца из своих слов письма (17.11.2026, Т-Страхование: «просьба связаться… Нужина Елена
+        // Александровна +7(906)… / Нужин Владислав Николаевич +7(967)…» — без слова-якоря, двое): строки «ФИО телефон».
+        $contacts = self::contacts($plain);
+        $put('contacts', $contacts);
+        if ($name === null && $phone === null && $contacts) {
+            [$name, $phone] = [$contacts[0]['name'], $contacts[0]['phone']];
+        }
         $put('insured_name', $name);
         $put('insured_phone', $phone);
         $put('flags', self::flags($joined));
@@ -60,7 +67,8 @@ abstract class Template
         }
         $put('holder', self::holder($joined));
         // Ответственный по убытку — кто написал у вендора; у пересланного письма он в заголовке «От:».
-        if (preg_match('/^\s*(?:>\s*)*(?:От|From):\s*([^<\n]{2,80}?)\s*<[^>\n]+>/mu', (string) $text, $m)) {
+        // Наше же письмо в цитате («From: XCar <deal@xcar.ru>») — не ответственный вендора.
+        if (preg_match('/^\s*(?:>\s*)*(?:От|From):\s*([^<\n]{2,80}?)\s*<([^>\n]+)>/mu', (string) $text, $m) && ! self::ours($m[1], $m[2])) {
             $put('contact_name', trim($m[1], " \t\"'"));
         }
         $put('docs_required', self::docsRequired($joined));
@@ -171,6 +179,71 @@ abstract class Template
         $normalized = Phone::normalize($raw);
 
         return [$name ? trim($name) : null, $normalized ? Phone::format($normalized) : trim($raw)];
+    }
+
+    /** Наш адрес или имя («XCar», `…@xcar.ru`). */
+    private static function ours(string $name, string $email): bool
+    {
+        return (bool) preg_match('/xcar/iu', $name.' '.$email);
+    }
+
+    /**
+     * Контакты владельца — свои слова письма до подписи и до цитаты: строка с телефоном и ФИО рядом («Нужина Елена
+     * Александровна +7(906)041-41-67», «8-985-171-19-90 Александр») или ФИО строкой выше голого номера. 8-800 и номера после
+     * «С уважением» (подпись сотрудника страховой: «Тел.: +7 (495) 648-10-00, Доб. 8787») не берутся; один номер — один раз.
+     *
+     * @return list<array{name: ?string, phone: string}>
+     */
+    public static function contacts(string $text): array
+    {
+        $out = [];
+        $prev = null;
+        foreach (preg_split('/\R/u', $text) ?: [] as $line) {
+            $line = trim($line);
+            // Подпись или цитата — дальше не свои слова.
+            if (preg_match('/^(?:>|с\s+уважением|c\s+уважением|уважением|best regards|--\s*$|-{3,}|(?:От|From|Sent|Отправлено|Исходное письмо)\b)/iu', $line)) {
+                break;
+            }
+            if ($line === '') {
+                continue;
+            }
+            if (! preg_match_all('/'.Patterns::PHONE.'/u', $line, $all, PREG_OFFSET_CAPTURE)) {
+                $prev = preg_match('/^(?:[А-ЯЁ][а-яё]+(?:-[А-ЯЁ][а-яё]+)?\s+){1,2}[А-ЯЁ][а-яё]+$/u', $line) ? $line : null;
+
+                continue;
+            }
+            foreach ($all[0] as [$raw, $offset]) {
+                $normalized = Phone::normalize($raw);
+                if (! $normalized || str_starts_with($normalized, '7800') || str_starts_with($normalized, '+7800') || isset($out[$normalized])) {
+                    continue;
+                }
+                $name = self::nameAround($line, $offset, $raw) ?? $prev;
+                $out[$normalized] = ['name' => $name, 'phone' => Phone::format($normalized)];
+            }
+            $prev = null;
+        }
+
+        return array_values($out);
+    }
+
+    /** Имя у номера в строке: после него — первые слова с заглавной, до него — последние; не больше трёх. */
+    private static function nameAround(string $line, int $offset, string $raw): ?string
+    {
+        $phone = Patterns::PHONE;
+        $before = preg_split('/'.$phone.'/u', substr($line, 0, $offset));
+        $before = (string) end($before);
+        $after = preg_split('/'.$phone.'/u', substr($line, $offset + strlen($raw)))[0] ?? '';
+        $noise = '/\b(Юр|л|Л|Представитель(?:ница)?|представител[ья]|собственника?|Контактн\w*|лицо|со|стороны|тел|Тел|Телефон|Контакт|по|доверенности|или|ПАО|ООО|АО|ИП|от|Со|Клиент\w*|Страховател\w*|Владел\w*|Просьба|Просим|Прошу|Связаться|Номер|Моб\w*|Сот\w*|Добрый|День|Здравствуйте|Уважаем\w*|Коллеги|Доб\w*)\b\.?/iu';
+        $word = '[А-ЯЁ][а-яё]{2,}(?:-[А-ЯЁ][а-яё]{2,})?';
+        $clean = fn (string $s) => preg_replace('/[\s"«»,;:\-–—\/()]+/u', ' ', (string) preg_replace($noise, ' ', $s));
+        if (preg_match('/^\s*((?:'.$word.'\s+){0,2}'.$word.')/u', $clean($after), $m)) {
+            return trim($m[1]);
+        }
+        if (preg_match('/((?:'.$word.'\s+){0,2}'.$word.')\s*$/u', $clean($before), $m)) {
+            return trim($m[1]);
+        }
+
+        return null;
     }
 
     /** @return list<string> */

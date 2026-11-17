@@ -2,6 +2,7 @@
 
 namespace App\Offers;
 
+use App\Cars\OwnerContacts;
 use App\Logistics\Transport;
 use App\Mail\Extraction\Patterns;
 use App\Park\City;
@@ -76,6 +77,13 @@ final class Handover
         public readonly ?Vehicle $park = null,
         /** Второй телефон владельца (19.10.2026) — когда контакт и есть владелец, а не парковка и не держатель. */
         public readonly ?string $phone2 = null,
+        /**
+         * Все контакты владельца, когда их несколько (17.11.2026, Т-Страхование: двое в письме): `[{name, phone}]` из шага
+         * «Поставщик согласовал» (`payload.contacts`), сотруднику — машины (`OwnerContacts`). Один — не список: name / phone.
+         *
+         * @var list<array{name: ?string, phone: ?string}>
+         */
+        public readonly array $contacts = [],
     ) {}
 
     /** Кто на парковке отвечает за выдачу: управляющий её города (не «только приёмка»), иначе администратор парковки. */
@@ -189,6 +197,16 @@ final class Handover
             $fields['address'] ??= $owner['address'];
         }
         $phone = Phone::normalize($fields['phone'] ?? null);
+        // Несколько контактов владельца: подтверждённые на шаге (менеджеру — только они), сотруднику — машины.
+        $contacts = [];
+        if (! $withBuyer && ! $atYard && ! $held) {
+            $listed = is_array($sale?->payload['contacts'] ?? null) ? OwnerContacts::clean($sale->payload['contacts']) : [];
+            if ($listed) {
+                $keys[] = 'contacts';
+            }
+            $contacts = $listed ?: ($staff ? OwnerContacts::of($offer) : []);
+            $contacts = count($contacts) > 1 ? array_map(fn ($c) => ['name' => VendorNames::strip($c['name']) ?: null, 'phone' => $c['phone']], $contacts) : [];
+        }
         // Имя и адрес бывают кусками письма страховой: её название менеджеру не показываем (15.10.2026).
         $address = $withBuyer ? null : (VendorNames::strip($fields['address'] ?? null) ?: null);
         if ($address && ! $mapUrl) {
@@ -226,7 +244,65 @@ final class Handover
             // а не «Владелец / Телефон / Показать контакт».
             park: ($parked || $toYard) && ! $withBuyer ? $vehicle : null,
             phone2: $withBuyer || $phone2 === $phone ? null : $phone2,
+            contacts: $contacts,
         );
+    }
+
+    /**
+     * Шаг спрашивает владельца именем и телефоном (`mapped`): шторка рисует их списком контактов (`x-route.contacts`).
+     *
+     * @return array{name: string, phone: string}|null ключи полей имени и телефона
+     */
+    public static function contactFields(?Stage $stage): ?array
+    {
+        $mapped = $stage ? self::mapped($stage) : [];
+        $name = array_search('name', $mapped, true);
+        $phone = array_search('phone', $mapped, true);
+
+        return $name !== false && $phone !== false ? ['name' => (string) $name, 'phone' => (string) $phone] : null;
+    }
+
+    /**
+     * Строки для сообщения менеджеру в чат сделки (`Chats\StepAsk`): контакты владельца и адрес, что вписаны на шаге (payload
+     * позиции) — «Нужина Елена Александровна +7 906 041-41-67», ниже адрес. Шаг без полей владельца или пустой — ничего.
+     *
+     * @return list<string>
+     */
+    public static function ownerLines(Stage $stage, mixed $payload): array
+    {
+        $payload = is_string($payload) ? json_decode($payload, true) : $payload;
+        if (! is_array($payload)) {
+            return [];
+        }
+        $mapped = self::mapped($stage);
+        $cf = self::contactFields($stage);
+        $contacts = is_array($payload['contacts'] ?? null) ? OwnerContacts::clean($payload['contacts'])
+            : ($cf ? OwnerContacts::clean([['name' => $payload[$cf['name']] ?? null, 'phone' => $payload[$cf['phone']] ?? null]]) : []);
+        $lines = array_map(fn ($c) => trim(($c['name'] ?? '').' '.($c['phone'] ?? '')), $contacts);
+        foreach ($mapped as $key => $kind) {
+            if ($kind === 'address' && filled($payload[$key] ?? null)) {
+                $lines[] = trim((string) $payload[$key]);
+            }
+        }
+
+        return array_values(array_filter($lines));
+    }
+
+    /**
+     * Контакты для шторки шага: машины (`OwnerContacts::of`), а нет их — из последнего письма поставщика по машине
+     * (письма, прочитанные до того, как контакты стали списком).
+     *
+     * @return list<array{name: ?string, phone: ?string}>
+     */
+    public static function prefillContacts(Offer $offer): array
+    {
+        if ($own = OwnerContacts::of($offer)) {
+            return $own;
+        }
+        $letter = \App\Mail\Message::withoutGlobalScopes()->whereIn('thread_id', \App\Mail\Thread::withoutGlobalScopes()->where('offer_id', $offer->id)->select('id'))
+            ->where('direction', 'in')->latest('date_at')->limit(10)->get()->first(fn ($m) => $m->isFromVendor() && $m->field('contacts'));
+
+        return $letter ? OwnerContacts::clean((array) $letter->field('contacts')) : [];
     }
 
     /** В маршруте продажи есть свой шаг «Автомобиль забрал» (Совкомбанк, Т-Страхование, Каркаде — пусть и позже текущего). */

@@ -75,6 +75,42 @@ class TBankConsentTest extends TestCase
         return [$offer->fresh(), $deal->fresh()];
     }
 
+    /**
+     * «Поставщик согласовал» (17.11.2026): владелец списком контактов — первый в поля шага, все в шаге и у машины; менеджеру
+     * в «Получении» — оба.
+     */
+    public function test_supplier_agreed_saves_several_owner_contacts(): void
+    {
+        [$offer, $deal] = $this->accepted();
+        $exit = \App\Workflow\Outcome::where('label', 'Поставщик согласовал')->whereHas('from', fn ($s) => $s->where('workflow_id', $offer->vendor->workflow(Track::Sale)->id))->firstOrFail();
+        app(EnterStage::class)($offer, $exit->from);
+        // Контакты из письма у машины есть, но менеджеру до «Поставщик согласовал» — ни в получении, ни в чате.
+        app(\App\Offers\Actions\UpdateOffer::class)($offer, \App\Cars\OwnerContacts::fields([['name' => 'Из Письма Человек', 'phone' => '+79001112233']]), null, ['why' => 'письмо']);
+        $handover = \App\Offers\Handover::for($deal->fresh());
+        $this->assertNull($handover->name);
+        $this->assertNull($handover->phone);
+        $this->assertSame([], $handover->contacts);
+        $this->assertFalse(ChatMessage::where('text', 'like', '%Из Письма%')->exists());
+        $address = collect($exit->to->staff_fields)->firstWhere('label', 'Адрес автомобиля')['key'];
+        $this->actingAs($this->admin)->post('http://crm.xcar.localhost/offers/'.$offer->number."/exit/{$exit->id}", [
+            'contacts' => [['name' => 'Нужина Елена Александровна', 'phone' => '+7(906)041-41-67'], ['name' => 'Нужин Владислав Николаевич', 'phone' => '89671240110'], ['name' => '', 'phone' => '']],
+            'fields' => [$address => 'Москва, ул. Тестовая, 1'],
+        ])->assertRedirect()->assertSessionHasNoErrors();
+
+        $offer = $offer->fresh();
+        $this->assertSame('Нужина Елена Александровна', $offer->insured_name);
+        $this->assertSame('+7 967 124-01-10', $offer->insured_phone2);
+        $this->assertCount(2, $offer->insured_contacts);
+        $this->assertCount(2, $offer->position(Track::Sale)->payload['contacts']);
+        $this->assertSame(['Нужина Елена Александровна', 'Нужин Владислав Николаевич'], array_column(\App\Offers\Handover::for($deal->fresh())->contacts, 'name'));
+        // В чат сделки менеджеру — делом шага и строками контактов с адресом.
+        $text = (string) ChatMessage::whereNotNull('requirement_id')->latest('id')->value('text');
+        $this->assertStringContainsString('Нужина Елена Александровна +7 906 041-41-67', $text);
+        $this->assertStringContainsString('Нужин Владислав Николаевич +7 967 124-01-10', $text);
+        $this->assertStringContainsString('Москва, ул. Тестовая, 1', $text);
+        $this->assertStringNotContainsString('Из Письма', $text);
+    }
+
     public function test_staff_asks_manager_with_vin_then_letter_with_lot_price(): void
     {
         [$offer, $deal] = $this->accepted();

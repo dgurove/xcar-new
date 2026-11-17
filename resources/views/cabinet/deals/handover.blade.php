@@ -16,7 +16,18 @@
         <x-ui.info-row icon="clock" class="nums">{{ $handover->dateLabel() }}</x-ui.info-row>
         {{-- Кто везёт — строкой той же карточки (`car-card`). --}}
         @if ($carrier ?? null)<x-ui.info-row icon="cat-truck">{{ $carrier }}</x-ui.info-row>@endif
-        @if ($handover->name || $handover->phone)
+        {{-- Несколько контактов владельца (17.11.2026) — строкой на каждого: имя, под ним телефон. --}}
+        @if ($handover->contacts)
+            @foreach ($handover->contacts as $c)
+                <div class="info-row">
+                    <x-ui.icon name="user" class="info-icon size-5"/>
+                    <span class="min-w-0 flex-1">
+                        @if ($c['name'])<span class="block break-words">{{ $c['name'] }}</span>@endif
+                        @if ($c['phone'])<x-ui.tel :value="$c['phone']" class="block w-fit"/>@endif
+                    </span>
+                </div>
+            @endforeach
+        @elseif ($handover->name || $handover->phone)
             <div class="info-row">
                 <x-ui.icon name="user" class="info-icon size-5"/>
                 <span class="min-w-0 flex-1">

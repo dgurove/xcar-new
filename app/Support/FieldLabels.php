@@ -49,7 +49,7 @@ final class FieldLabels
         'car_place' => 'где ТС', 'settlement_id' => 'город', 'sale_settlement_id' => 'город продажи', 'inspection_address' => 'адрес осмотра', 'floor_price' => 'закупочная цена', 'owner_price' => 'собственнику по ДКП', 'value' => 'оценочная стоимость', 'publish_price' => 'заявленная цена', 'asking_price' => 'цена продажи',
         'min_bid_price' => 'минимальная цена', 'min_bid_share' => 'доля от цены', 'prices_include_vat' => 'НДС', 'tags' => 'метки', 'tag_colors' => 'цвета меток', 'bids_close_at' => 'срок приёма', 'first_look_until' => 'только оценившему до',
         'chat_enabled' => 'чат', 'share_locked' => 'запрет шеринга', 'recommended' => 'рекомендуем', 'managers_limited' => 'круг менеджеров', 'managers' => 'менеджеры', 'audience_rules' => 'кому показывать', 'floor_rules' => 'наценка к оценочной', 'audience_id' => 'шаблон показа', 'deal_audience' => 'кому показывать в сделке', 'deal_show_until' => 'сколько показывать в сделке',
-        'vendor_id' => 'вендор', 'answer_by' => 'ответ до', 'insured_name' => 'страхователь', 'insured_phone' => 'телефон страхователя', 'insured_phone2' => 'ещё телефон страхователя', 'flags' => 'признаки', 'holder' => 'держатель',
+        'vendor_id' => 'вендор', 'answer_by' => 'ответ до', 'insured_name' => 'страхователь', 'insured_phone' => 'телефон страхователя', 'insured_phone2' => 'ещё телефон страхователя', 'insured_contacts' => 'контакты владельца', 'flags' => 'признаки', 'holder' => 'держатель',
         'contact_name' => 'контакт', 'contact_phone' => 'телефон', 'contact_email' => 'почта ответственного', 'insurer_deadline_at' => 'срок от вендора', 'binding_until' => 'срок обязывающего предложения',
         'category' => 'категория', 'oversize' => 'негабарит', 'no_brand' => 'марки нет', 'value' => 'оценочная стоимость', 'policy_no' => '№ полиса', 'contract_kind' => 'основание', 'contract_no' => 'номер договора', 'contract_at' => 'дата договора',
         'assigned_price' => 'назначенная цена', 'pts' => 'ПТС', 'sts' => 'СТС', 'body_no' => 'номер кузова', 'chassis_no' => 'номер шасси', 'owner_party_id' => 'комитент', 'storage_rate' => 'своя ставка', 'storage_total' => 'своя сумма хранения', 'storage_rate_note' => 'почему своя', 'billing_cadence' => 'счёт за хранение', 'sold_at' => 'продано', 'pickup_name' => 'кто заберёт', 'pickup_phone' => 'телефон покупателя',
@@ -88,6 +88,10 @@ final class FieldLabels
         }
         if (isset(self::ENUMS[$field])) {
             return self::ENUMS[$field]::tryFrom((string) $value)?->label() ?? (string) $value;
+        }
+        // Контакты владельца (`OwnerContacts`): «Нужина Елена +7 906 041-41-67; Нужин Владислав +7 967 124-01-10».
+        if ($field === 'insured_contacts' && is_array($value)) {
+            return implode('; ', array_map(fn ($c) => trim(($c['name'] ?? '').' '.($c['phone'] ?? '')), $value));
         }
         if (isset(self::LISTS[$field]) && is_array($value)) {
             return implode(', ', array_map(fn ($v) => self::LISTS[$field]::tryFrom((string) $v)?->label() ?? (string) $v, $value));

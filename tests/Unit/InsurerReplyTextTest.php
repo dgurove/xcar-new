@@ -34,6 +34,23 @@ class InsurerReplyTextTest extends TestCase
         $this->assertSame(750000, $fields['owner_price']['value']);
     }
 
+    /**
+     * Контакты владельца без слова-якоря и сразу двое (17.11.2026, Т-Страхование по AUT-26-982161): «ФИО телефон» строками;
+     * подпись сотрудника страховой и наше письмо в цитате («From: XCar») — не контакты.
+     */
+    public function test_owner_contacts_without_anchor_two_people(): void
+    {
+        $body = "Партнёры, добрый день!\nДокументы во вложении, просьба связаться, организовать вывоз и оплату, спасибо\n"
+            ."Нужина Елена Александровна +7(906)041-41-67\nНужин Владислав Николаевич +7(967)124-01-10\n\nС уважением,\nРоевнев Павел\n"
+            ."Тел.: +7 (495) 648-10-00, Доб. 8787\nМоб.: 8 (995) 121-60 -35\n\nFrom: XCar <deal@xcar.ru>\nSent: Sunday\n\nПросим прислать контакты.";
+        $fields = \App\Mail\Extraction\Templates\Template::common('RE: AUT-26-982161', $body);
+
+        $this->assertSame([['name' => 'Нужина Елена Александровна', 'phone' => '+7 906 041-41-67'], ['name' => 'Нужин Владислав Николаевич', 'phone' => '+7 967 124-01-10']], $fields['contacts']['value']);
+        $this->assertSame('Нужина Елена Александровна', $fields['insured_name']['value']);
+        $this->assertSame('+7 906 041-41-67', $fields['insured_phone']['value']);
+        $this->assertArrayNotHasKey('contact_name', $fields, 'наш адрес в цитате — не ответственный');
+    }
+
     /** Ссылку пишет внешний отправитель, ходит по ней наш сервер: только https и не внутренние адреса. */
     public function test_cloud_link_rejects_private_and_plain_http(): void
     {

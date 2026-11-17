@@ -44,7 +44,7 @@ class Car extends Model implements HasMedia
     public const FIELDS = ['claim_ref', 'vin', 'plate', 'brand_id', 'model_id', 'year', 'color', 'mileage', 'body', 'transmission',
         'drive', 'fuel', 'engine_volume', 'engine_power', 'category', 'oversize', 'damage_cause', 'damage_zones', 'damage_note',
         'incident_date', 'is_runnable', 'has_keys', 'keys_count', 'papers', 'pts', 'sts', 'policy_no', 'value', 'insured_name', 'insured_phone',
-        'flags', 'docs_required', 'holder', 'body_no', 'chassis_no', 'insured_phone2', 'steering', 'condition', 'place', 'no_brand'];
+        'flags', 'docs_required', 'holder', 'body_no', 'chassis_no', 'insured_phone2', 'insured_contacts', 'steering', 'condition', 'place', 'no_brand'];
 
     /** Производные колонки: пишет сама машина. */
     public const DERIVED = ['claim_ref_key'];
@@ -60,7 +60,7 @@ class Car extends Model implements HasMedia
             'year' => 'int', 'mileage' => 'int', 'keys_count' => 'int', 'engine_volume' => 'int', 'engine_power' => 'int', 'value' => 'int', 'value_at' => 'datetime',
             'body' => Body::class, 'transmission' => Transmission::class, 'drive' => Drive::class, 'fuel' => Fuel::class,
             'damage_cause' => DamageCause::class, 'papers' => Papers::class, 'category' => Category::class, 'place' => CarPlace::class,
-            'damage_zones' => 'array', 'flags' => 'array', 'docs_required' => 'array',
+            'damage_zones' => 'array', 'flags' => 'array', 'docs_required' => 'array', 'insured_contacts' => 'array',
             'oversize' => 'bool', 'no_brand' => 'bool', 'is_runnable' => 'bool', 'has_keys' => 'bool', 'active' => 'bool', 'is_demo' => 'bool',
             'incident_date' => 'date', 'field_sources' => 'array',
         ];

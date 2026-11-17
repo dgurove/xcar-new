@@ -15,6 +15,8 @@
     $empty = ! $offer->insured_name && ! $offer->insured_phone && ! $offer->inspection_address;
     // Ни владельца, ни телефона — «Добавить», даже если адрес есть (15.11.2026: «Контакт владельца — Изменить» над одним адресом).
     $noContact = ! $offer->insured_name && ! $offer->insured_phone;
+    // Несколько контактов владельца (17.11.2026) — списком; один — как было.
+    $contacts = \App\Cars\OwnerContacts::of($offer);
     $form = 'handover-'.$deal->id;
     // Адрес — то же поле, что в «Транспортном средстве» редактора: открываться только на ошибку своей формы (`_form`).
     $editing = old('_form') === $form && $errors->hasAny($keys);
@@ -48,13 +50,21 @@
             <x-deal.park-release :deal="$deal" :vehicle="$handover->park"/>
         @else
         <div data-edit-card-target="view" @if ($editing) hidden @endif>
-            @unless ($empty)<div class="mt-3 grid grid-cols-[minmax(0,1fr)_auto] gap-x-4 gap-y-2.5 leading-snug">
+            @if (count($contacts) > 1)
+                <div class="mt-3 grid grid-cols-[minmax(0,1fr)_auto] gap-x-4 gap-y-2.5 leading-snug">
+                    @foreach ($contacts as $c)
+                        <div class="min-w-0"><div class="field-label">{{ $loop->first ? 'Владелец' : 'Ещё контакт' }}</div><div class="mt-0.5 break-words">{{ $c['name'] ?: '—' }}</div></div>
+                        <div class="min-w-0">@if ($c['phone'])<div class="field-label">Телефон</div><x-ui.tel :value="$c['phone']" :text="$c['phone']" class="mt-0.5 block w-fit"/>@endif</div>
+                    @endforeach
+                    @if ($offer->inspection_address)<div class="col-span-2 min-w-0"><div class="field-label">Адрес</div><div class="mt-0.5 break-words">{{ $offer->inspection_address }}</div></div>@endif
+                </div>
+            @elseif (! $empty)<div class="mt-3 grid grid-cols-[minmax(0,1fr)_auto] gap-x-4 gap-y-2.5 leading-snug">
                 @if ($offer->insured_name)<div class="min-w-0"><div class="field-label">Владелец</div><div class="mt-0.5 break-words">{{ $offer->insured_name }}</div></div>@endif
                 @if ($offer->insured_phone)<div class="min-w-0"><div class="field-label">Телефон</div><x-ui.tel :value="$offer->insured_phone" :text="$offer->insured_phone" class="mt-0.5 block w-fit"/></div>@endif
                 {{-- Второй телефон владельца (19.10.2026) — тем же видом, под первым. --}}
                 @if ($offer->insured_phone2)<div class="col-start-2 min-w-0"><div class="field-label">Ещё телефон</div><x-ui.tel :value="$offer->insured_phone2" :text="$offer->insured_phone2" class="mt-0.5 block w-fit"/></div>@endif
                 @if ($offer->inspection_address)<div class="col-span-2 min-w-0"><div class="field-label">Адрес</div><div class="mt-0.5 break-words">{{ $offer->inspection_address }}</div></div>@endif
-            </div>@endunless
+            </div>@endif
             {{-- Видит ли его менеджер и «Показать менеджеру» — прямо под контактом (15.11.2026). --}}
             <x-deal.contact-shown :deal="$deal" class="mt-3"/>
         </div>
@@ -62,9 +72,8 @@
             <form method="post" action="/offers/{{ $offer->number }}" id="{{ $form }}" class="mt-3 grid grid-cols-1 gap-3 {{ $compact ? '' : 'sm:grid-cols-2' }}" data-controller="save-bar">
                 @csrf @method('put')
                 <input type="hidden" name="_form" value="{{ $form }}">
-                <x-ui.field name="insured_name" label="Владелец" :value="$offer->insured_name" id="handover-name-{{ $deal->id }}"/>
-                <x-ui.field name="insured_phone" label="Телефон" :value="$offer->insured_phone" id="handover-phone-{{ $deal->id }}"/>
-                <x-ui.field name="insured_phone2" label="Ещё телефон" type="tel" :value="$offer->insured_phone2" id="handover-phone2-{{ $deal->id }}"/>
+                {{-- Владелец списком контактов — тот же блок, что в шторке «Поставщик согласовал» (17.11.2026). --}}
+                <div class="{{ $compact ? '' : 'sm:col-span-2' }}"><x-route.contacts :contacts="$contacts" :labels="['Владелец', 'Телефон']" :id="'handover-'.$deal->id"/></div>
                 <x-ui.field name="inspection_address" label="Адрес" :value="$offer->inspection_address" span="sm:col-span-2" id="handover-address-{{ $deal->id }}"/>
                 <x-ui.save-bar class="sm:col-span-2" :page="! $compact"/>
             </form>

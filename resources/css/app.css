@@ -1620,6 +1620,13 @@ html.kb-open { --home-gap: 0px; }
   .valuation-scroll.is-busy { opacity: .45; pointer-events: none; transition: opacity var(--dur-fast); }
   /* История окна (`admin/offers/valuation-history`): под источниками, пока выбирают; строка — сохранение, раскрывается машинами. */
   .valuation-sources[hidden] ~ .valuation-history-frame { display: none; }
+  /* Контакты владельца в шторке шага (`x-route.contacts`): группа на человека, ФИО и номер — обычные поля без подписей, текст и
+     подсказка справа, как у остальных полей (17.11.2026, владелец: подписи то слева, то сверху — «межстрочные расстояния не
+     так»); × — справа от группы, вне полей. */
+  .route-contact { display: flex; align-items: center; gap: .25rem; }
+  .fields .field.route-contact-field > .field-input { grid-column: 1 / -1; }
+  .route-contact-x { display: grid; flex: none; place-items: center; width: 2rem; height: 2rem; margin-right: -.5rem; border-radius: 999px; color: var(--color-ink-muted); }
+  @media (hover: hover) { .route-contact-x:hover { color: var(--color-ink); background: var(--color-hover); } }
   .valuation-history-head { margin-top: 1.5rem; }
   .valuation-run > summary { list-style: none; cursor: pointer; }
   .valuation-run > summary::-webkit-details-marker { display: none; }

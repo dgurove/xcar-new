@@ -4,6 +4,7 @@ namespace App\Offers\Actions;
 
 use App\Cars\Actions\FillCar;
 use App\Cars\Jobs\ReadCarDocs;
+use App\Cars\OwnerContacts;
 use App\Cars\Settlement;
 use App\Cars\Vin\VinAutofill;
 use App\Mail\Actions\LinkThread;
@@ -44,6 +45,14 @@ final class FillFromLetter
             $value = trim((string) $message->field($field));
             if ($value !== '' && blank($offer->{$column})) {
                 $data[$column] = $value;
+            }
+        }
+        // Все контакты владельца из письма (17.11.2026) — когда своих ещё нет; второй телефон — у второго контакта.
+        $contacts = OwnerContacts::clean((array) $message->field('contacts'));
+        if ($contacts && blank($offer->insured_contacts)) {
+            $data['insured_contacts'] = $contacts;
+            if (blank($offer->insured_phone2) && ($second = $contacts[1]['phone'] ?? null) && $second !== ($data['insured_phone'] ?? $offer->insured_phone)) {
+                $data['insured_phone2'] = $second;
             }
         }
         $log = ['letter' => $message->id];

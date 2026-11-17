@@ -5,6 +5,7 @@ namespace App\Http\Admin;
 use App\Cars\CarFields;
 use App\Cars\DamageCause;
 use App\Cars\DamageZone;
+use App\Cars\OwnerContacts;
 use App\Cars\Papers;
 use App\Mail\Extraction\Code;
 use App\Offers\AudienceRules;
@@ -76,6 +77,10 @@ class OfferRequest extends FormRequest
             'insured_name' => ['nullable', 'string', 'max:120'],
             'insured_phone' => ['nullable', 'string', 'max:40'],
             'insured_phone2' => ['nullable', 'string', 'max:40'],
+            // Контакты владельца списком (`x-route.contacts`, 17.11.2026): пишутся через `OwnerContacts::fields`.
+            'contacts' => ['nullable', 'array', 'max:10'],
+            'contacts.*.name' => ['nullable', 'string', 'max:80'],
+            'contacts.*.phone' => ['nullable', 'string', 'max:40'],
             'floor_price' => ['nullable', 'integer', 'max:100000000'],
             'value' => ['nullable', 'integer', 'min:0', 'max:1000000000'],
             // Диапазоны наценки предложения (07.11.2026) — JSON из `x-offer.floor-rules`, приводит `Pricing::clean`.
@@ -130,6 +135,10 @@ class OfferRequest extends FormRequest
         $data = $this->validated();
         if ($only !== null) {
             $data = Arr::only($data, $only);
+        }
+        // Контакты владельца списком — сам список и первый контакт в прежние поля (их читают логистика и уведомления).
+        if (array_key_exists('contacts', $data)) {
+            $data = array_merge(Arr::except($data, ['contacts', 'insured_name', 'insured_phone', 'insured_phone2']), OwnerContacts::fields((array) $data['contacts']));
         }
         // Галки и «кому» блока «Показ» — только когда он был в форме (`_show`): в сделке и в гараже редактор его не
         // рисует (06.10.2026), и сохранение полей ТС не должно их сбрасывать.

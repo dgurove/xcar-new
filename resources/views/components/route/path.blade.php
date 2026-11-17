@@ -385,7 +385,7 @@
                         @endif
                     @endif
                     @if ($position->fields())
-                        <div class="mt-2 text-sm">@foreach ($position->fields() as $k => $v)<div><span class="text-ink-muted">{{ collect($stage->staff_fields)->firstWhere('key', $k)['label'] ?? $k }}:</span> {{ $v }}</div>@endforeach</div>
+                        <div class="mt-2 text-sm">@foreach ($position->fields() as $k => $v)<div><span class="text-ink-muted">{{ $k === 'contacts' ? 'Контакты' : (collect($stage->staff_fields)->firstWhere('key', $k)['label'] ?? $k) }}:</span> {{ is_array($v) ? collect($v)->map(fn ($c) => is_array($c) ? trim(($c['name'] ?? '').' '.($c['phone'] ?? '')) : (string) $c)->implode('; ') : $v }}</div>@endforeach</div>
                     @endif
                     @php $doneNames = $subs->where('state', \App\Workflow\Substeps::DONE)->pluck('name')->map(fn ($v) => mb_strtolower($v)); @endphp
                     @foreach ($answers as $r)
@@ -503,12 +503,23 @@
                                             <form method="post" action="/offers/{{ $n }}/exit/{{ $exit->id }}" class="flex flex-col gap-4">
                                                 @csrf
                                                 {{-- Контакт и адрес из письма — уже вписаны (`Handover::prefill`), поправить можно. --}}
-                                                @php $prefill = \App\Offers\Handover::prefill($exit->to, $offer); @endphp
-                                                <div class="fields">
-                                                    @foreach ($exit->staffFields() as $field)
-                                                        <x-route.field :field="$field" :name="'fields['.$field['key'].']'" :value="$prefill[$field['key']] ?? $field['default'] ?? null"/>
-                                                    @endforeach
-                                                </div>
+                                                @php
+                                                    $prefill = \App\Offers\Handover::prefill($exit->to, $offer);
+                                                    // Владелец и его телефон — списком контактов: их бывает несколько (17.11.2026).
+                                                    $cf = \App\Offers\Handover::contactFields($exit->to);
+                                                    $rest = $cf ? array_values(array_filter($exit->staffFields(), fn ($f) => ! in_array($f['key'], $cf, true))) : $exit->staffFields();
+                                                @endphp
+                                                @if ($cf)
+                                                    @php $byKey = collect($exit->staffFields())->keyBy('key'); @endphp
+                                                    <x-route.contacts :contacts="\App\Offers\Handover::prefillContacts($offer)" :labels="[$byKey[$cf['name']]['label'], $byKey[$cf['phone']]['label']]" :id="'exit-'.$exit->id.'-contacts'"/>
+                                                @endif
+                                                @if ($rest)
+                                                    <div class="fields">
+                                                        @foreach ($rest as $field)
+                                                            <x-route.field :field="$field" :name="'fields['.$field['key'].']'" :value="$prefill[$field['key']] ?? $field['default'] ?? null"/>
+                                                        @endforeach
+                                                    </div>
+                                                @endif
                                                 <x-ui.sheet-foot>{{ $label($exit) }}</x-ui.sheet-foot>
                                             </form>
                                         </x-ui.sheet>

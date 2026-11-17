@@ -6,6 +6,7 @@ use App\Chats\Actions\OpenChat;
 use App\Chats\Actions\PlatformMessage;
 use App\Notifications\Notify;
 use App\Offers\Deal;
+use App\Offers\Handover;
 use App\Offers\SupplierInvoice;
 use App\Support\Ago;
 use App\Support\Money;
@@ -73,8 +74,12 @@ final class StepAsk
         }
         $task = $deal?->managerTask();
         $title = Wording::neutral(Wording::for($deal?->buyer, $task && $task['kind'] === 'ask' ? $task['title'] : $r->title));
+        // Контакты владельца, что сотрудник подтвердил шторкой «Поставщик согласовал» (17.11.2026, владелец: «контакты в чате
+        // менеджеру отправлять»): строками под делом — только вписанное на шаге, из писем само ничего не идёт.
+        $owner = $deal && $r->stage ? Handover::ownerLines($r->stage, Position::where('offer_id', $deal->offer_id)->where('track', Track::Sale)
+            ->where('stage_id', $r->stage_id)->value('payload')) : [];
 
-        return 'Привет, '.$title.($due && ! str_ends_with($title, '?') ? ', до '.$due : '');
+        return 'Привет, '.$title.($due && ! str_ends_with($title, '?') ? ', до '.$due : '').($owner ? "\n".implode("\n", $owner) : '');
     }
 
     /**
