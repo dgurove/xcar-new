@@ -4,7 +4,7 @@
 @php use App\Http\Admin\UserController; $me = auth()->user(); $base = UserController::base(); $crm = \App\Support\Surface::current() === \App\Support\Surface::Crm; $link = ($link['user'] ?? null) === $user->id ? $link : null; $park = \App\Support\Surface::current() === \App\Support\Surface::Park; $edits = UserController::manages($me, $user); @endphp
 <x-ui.cabinet :title="$user->name" :back="$back" :phone-heading="false">
 
-    <div class="grid gap-6 lg:grid-cols-[1fr_18rem]">
+    <div class="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_18rem]">
         <div class="lg:col-start-2 lg:row-start-1" data-controller="sheet">
             <x-ui.contact :name="$user->name" :user="$user" sidebar>
                 {{-- Под именем — кто он (роль словом, группы чипами), строкой текста — как связаться (логин, телефон, почта,

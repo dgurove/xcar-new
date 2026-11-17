@@ -82,7 +82,7 @@
         </x-slot:actions>
     </x-admin.tab-head>
 
-    <div class="mt-6" id="list" @if ($pick) data-controller="pick" @endif>
+    <div class="mt-4" id="list" @if ($pick) data-controller="pick" @endif>
         {{-- После вставки номеров: что уже в сделке или в продаже — в список не попало, строкой к самой машине. --}}
         @foreach (['deals' => 'Уже в сделке', 'published' => 'В продаже'] as $part => $head)
             @if ($items = session('legacy.'.$part))

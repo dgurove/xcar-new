@@ -56,7 +56,7 @@
                     {{-- sub — строка под названием (факты документа, 09.11.2026): на ПК второй строкой под заголовком, на телефоне —
                          между заголовком и кнопками действий. --}}
                     @isset($sub)<div {{ $sub->attributes->merge(['class' => 'basis-full order-3 max-md:order-2']) }}>{{ $sub }}</div>@endisset
-                    @isset($actions)<div {{ $actions->attributes->merge(['class' => 'flex w-full flex-wrap items-center gap-1 sm:ml-auto sm:w-auto sm:gap-2'.(isset($sub) ? ' max-md:order-3' : '')]) }}>{{ $actions }}</div>@endisset
+                    @isset($actions)<div {{ $actions->attributes->merge(['class' => 'head-actions flex w-full flex-wrap items-center gap-1 sm:ml-auto sm:w-auto sm:gap-2'.(isset($sub) ? ' max-md:order-3' : '')]) }}>{{ $actions }}</div>@endisset
                 </div>
             @endif
             {{ $slot }}

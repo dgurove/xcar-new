@@ -24,7 +24,7 @@
             </div>
         </x-slot:actions>
     </x-admin.tab-head>
-    <div class="list mt-6">
+    <div class="list mt-4">
         @forelse ($purchases as $p)
             <a href="/purchases/{{ $p->number }}" class="row">
                 <div class="min-w-0 flex-1">

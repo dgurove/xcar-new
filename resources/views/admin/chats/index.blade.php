@@ -12,7 +12,7 @@
     <div class="chat-crm-top">
         <h1 class="head-title text-xl sm:text-2xl">Чаты</h1>
     </div>
-    <div class="chat-split chat-split-crm mt-6 {{ $current ? 'has-current' : '' }}" data-controller="split">
+    <div class="chat-split chat-split-crm mt-4 {{ $current ? 'has-current' : '' }}" data-controller="split">
         <div class="chat-rows" id="chat-rows">
             <x-chat.list-head search="Имя, телефон, ТС, номер" url="/work/chats" :count="$chats->total()" :q="$q"/>
             <div class="chat-rows-body" id="chat-rows-body">

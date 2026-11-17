@@ -77,16 +77,15 @@
             <div class="toolbar-lead">{{ $lead }}</div>
         @if ($sort || isset($extra) || ($search && ! $searchOpen))
     <div class="toolbar-tools">
-        @if ($sort)
-            <x-ui.sort :sort="$sort" :url="$sortUrl" :name="$name" :toggles="$sortToggles"/>
-        @endif
-
-        {{-- Кнопки экрана (переключатель вида) — после сортировки: сначала то, чем список настраивают; лупа — за ними. --}}
-        {{ $extra ?? '' }}
-
+        {{-- Лупа, сортировка, вид — одним порядком во всех разделах, как в шапке «Предложений» (17.11.2026, владелец: «заголовки,
+             фильтры, кнопки в разных местах в разных разделах — скачет всё»). --}}
         @if ($search && ! $searchOpen)
             <button type="button" class="btn btn-s btn-quiet btn-round shrink-0 toolbar-lens" data-action="live-search#open" aria-label="Поиск"><x-ui.icon name="search" class="size-5"/></button>
         @endif
+        @if ($sort)
+            <x-ui.sort :sort="$sort" :url="$sortUrl" :name="$name" :toggles="$sortToggles"/>
+        @endif
+        {{ $extra ?? '' }}
     </div>
         @endif
         </div>
@@ -116,16 +115,15 @@
          лупа рядом ниже); на ПК обёртки нет (`contents`). --}}
     @if (! isset($lead) && ($sort || isset($extra) || ($search && ! $searchOpen)))
     <div class="toolbar-tools">
-        @if ($sort)
-            <x-ui.sort :sort="$sort" :url="$sortUrl" :name="$name" :toggles="$sortToggles"/>
-        @endif
-
-        {{-- Кнопки экрана (переключатель вида) — после сортировки: сначала то, чем список настраивают; лупа — за ними. --}}
-        {{ $extra ?? '' }}
-
+        {{-- Лупа, сортировка, вид — одним порядком во всех разделах, как в шапке «Предложений» (17.11.2026, владелец: «заголовки,
+             фильтры, кнопки в разных местах в разных разделах — скачет всё»). --}}
         @if ($search && ! $searchOpen)
             <button type="button" class="btn btn-s btn-quiet btn-round shrink-0 toolbar-lens" data-action="live-search#open" aria-label="Поиск"><x-ui.icon name="search" class="size-5"/></button>
         @endif
+        @if ($sort)
+            <x-ui.sort :sort="$sort" :url="$sortUrl" :name="$name" :toggles="$sortToggles"/>
+        @endif
+        {{ $extra ?? '' }}
     </div>
     @endif
 

@@ -5,7 +5,7 @@
     {{-- Шапка — одна на вкладки колеса (`x-admin.tab-head`, 17.11.2026). --}}
     <x-admin.tab-head :presets="$presets" :preset="$preset" :counts="$counts" :sections="$sections" :sort="$sort" name="gallery" :facets="$facets" search="Номер, марка, VIN, убыток"/>
 
-    <div class="mt-6" id="list">
+    <div class="mt-4" id="list">
         @if ($offers->isEmpty())
             @if (! $searching && $facets->activeCount())
                 <x-ui.empty :href="$facets->resetUrl()" link="Сбросить фильтр">По фильтру ничего</x-ui.empty>

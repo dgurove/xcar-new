@@ -67,7 +67,7 @@ class VendorController
     public function index(Request $request)
     {
         $kind = Kind::tryFrom($request->query('kind', ''));
-        $off = $request->boolean('off');
+        $off = $request->boolean('off') || $request->query('kind') === 'off';
         // Вендор парковки, который в CRM — другой (`crm_vendor_id`), в списке CRM не стоит.
         ListPrefs::sync($request, 'crm-vendors');
         $sort = Sort::from($request->query('sort'), self::SORTS, 'name');

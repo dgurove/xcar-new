@@ -410,6 +410,22 @@ html.kb-open { --home-gap: 0px; }
   .container-site { width: 100%; max-width: var(--container-site); margin-inline: auto; padding-inline: 1rem; }
   @media (min-width: 768px)  { .container-site { padding-inline: 1.5rem; } }
   @media (min-width: 1280px) { .container-site { padding-inline: 2rem; } }
+  /* Телефон CRM — блоки страницы от края до края экрана, отступ — только у содержимого блока, углы скруглены (17.11.2026, владелец:
+     «блок от края до края, и содержание имело этот отступ, а не два отступа», «скругление углов всё равно должно быть»; «Предложения»,
+     «Почта», «Чаты», «Настройки»). Только блоки самой страницы: в шторке, в окне машины и внутри другого блока — нет; поля и пилюли —
+     с полем экрана. Таблицы — `.table-box` (на всех хостах). */
+  @media (max-width: 639.98px) {
+    .surface-crm .container-site .box:not(dialog *, #detail *, .box *, .list *),
+    .surface-crm .container-site .list:not(dialog *, #detail *, .box *, .list *),
+    .surface-crm .container-site .chat-rows-list:not(dialog *, #detail *),
+    .surface-crm .container-site .cards--list:not(dialog *, #detail *),
+    .surface-crm .container-site .inbox-list { margin-inline: -1rem; }
+    /* Поиск чатов — во всю ширину, как список под ним (17.11.2026, владелец: «растяни ещё поиск в чатах»). */
+    .surface-crm .chat-split-crm .chat-list-head .toolbar-search { margin-inline: -1rem; }
+    /* Строки-карточки («Списком»): миниатюра и полоса — от поля экрана, а не в 8 px от края. */
+    .surface-crm .container-site .cards--list:not(dialog *, #detail *) { --sep-l: calc(1rem + var(--media-w) + .625rem); --sep-r: 1rem; }
+    .surface-crm .container-site .cards--list:not(dialog *, #detail *) > .card { padding-inline: 1rem; }
+  }
 
   .btn {
     @apply inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-(--radius-xl) px-7 font-medium leading-none
@@ -1172,7 +1188,7 @@ html.kb-open { --home-gap: 0px; }
   }
   /* Кнопка с подписью, спрятанной на телефоне («+ Новый», «Из писем») — круглая, как соседи. Только до 640:
      от 640 подпись уже видна (sm:inline), и в круге 2,75rem она вылезала на соседнюю кнопку. */
-  @media (max-width: 639.98px) { .toolbar .btn:has(> .hidden) { width: 2.75rem; padding: 0; } }
+  @media (max-width: 639.98px) { .toolbar .btn:has(> .hidden) { width: 2.25rem; padding: 0; } } /* кнопки тулбара — 36 px: кругом, а не овалом 44×36 */
   /* Сортировка вынесена в строку заголовка (x-slot:actions шелла) — в тулбаре на телефоне её нет («Оплаты» менеджера). */
   @media (max-width: 767.98px) { .toolbar--sort-head > .toolbar-tools { display: none; } }
   /* Так же у кнопок в строке заголовка («Написать» почты, «+ Закупка»): кружок своей высоты. */
@@ -1198,6 +1214,14 @@ html.kb-open { --home-gap: 0px; }
   /* !important: у обёрток кнопок утилита .contents из слоя утилит сильнее. */
   /* Группа кнопок тулбара (сортировка, вид, лупа): на ПК обёртки нет — кнопки прямо в строке тулбара. */
   .toolbar-tools { display: contents; }
+  /* ПК: лупа, сортировка и вид — первыми слева, перед пилюлями и чипами, как в шапке «Предложений» (17.11.2026, владелец: «кнопки в
+     шапках в разных местах в разных разделах — скачет»); у «Почты» и «Оплат» они стояли справа. На телефоне — рядом под пилюлями. */
+  /* `*`: сортировка и вид обёрнуты в `contents`, порядок встаёт у самих кнопок; порядок вне ряда ничего не меняет. */
+  @media (min-width: 768px) { .toolbar > .toolbar-tools * { order: -3; } }
+  /* Кнопки в строке заголовка CRM — 32 px, как у «Предложений» («Написать» почты была 44, «Выгрузка» — 36). */
+  .surface-crm .head-actions .btn-s { height: 2rem; min-height: 2rem; padding-inline: .75rem; }
+  .surface-crm .head-actions .btn-round { width: 2rem; height: 2rem; padding: 0; }
+  @media (max-width: 639.98px) { .surface-crm .head-actions .btn-s:has(> .hidden.sm\:inline) { width: 2rem; padding: 0; } }
   .toolbar:not([data-searching]) > .toolbar-search, .toolbar:not([data-searching]) > .toolbar-cancel { display: none !important; }
   .toolbar[data-searching] > :not(.toolbar-pills, .toolbar-search, .toolbar-cancel) { display: none !important; }
   .toolbar[data-searching] > .toolbar-search { order: 5; flex: 1 1 0; max-width: none; }
@@ -1308,7 +1332,7 @@ html.kb-open { --home-gap: 0px; }
   /* Кружки тулбара (сортировка, вид, лупа), действия справа («Скачать»), чипы фильтров и кнопки строки названия (письма,
      «+») — на любой ширине одной высоты 36 px, кружки той же белой заливки, что чипы (15.11.2026, владелец: кружки рядом с
      30 px чипов — ряд рваный; сначала было только до 768 px, а на ПК и планшете остались серые). */
-  .toolbar-tools .btn-round, .title-actions .btn-round, .toolbar-actions .btn-round { width: 2.25rem; height: 2.25rem; }
+  .toolbar-tools .btn-round, .toolbar-actions .btn-round { width: 2.25rem; height: 2.25rem; }
   .toolbar-actions .btn-s { height: 2.25rem; }
   .toolbar-tools .btn-quiet, .title-actions .btn-quiet, .toolbar-actions .btn-quiet { background: var(--color-surface); }
   .toolbar-chips .pill { min-height: 2.25rem; }
@@ -1943,7 +1967,9 @@ html.kb-open { --home-gap: 0px; }
   /* Столбцы не влезли — плашка листается вбок (table_scroll_controller ставит is-scroll только тогда). */
   .table-box.is-scroll { overflow-x: auto; overscroll-behavior-x: contain; }
   .table { @apply w-full border-collapse; table-layout: auto; font-size: var(--text-base); line-height: 1.25; }
-  @media (max-width: 639.98px) { .table-box { margin-inline: -1rem; border-radius: 0 !important; } }
+  /* Телефон — от края до края экрана, углы скруглены (17.11.2026, владелец: «блоки от края до края, но скругление углов всё равно
+     должно быть»; до того углы были прямые). */
+  @media (max-width: 639.98px) { .table-box { margin-inline: -1rem; } }
   /* Режется только название: столбец .grow забирает остаток ширины, цифры — ровно по содержимому. */
   .table th.grow { width: 100%; }
   .table td.grow { max-width: 0; }
@@ -6004,16 +6030,18 @@ dialog.lightbox:not(.lb-one) .lb-pill--bottom { bottom: calc(var(--lb-strip-bott
    справа значки ответа и пересылки; текст и вложения — с отступом под имя; документы карточками в две колонки. */
 @layer components {
   .toolbar-sep { flex: none; width: 1px; height: 1.25rem; margin-inline: .25rem; background: var(--color-line); }
-  .inbox-list { overflow: hidden; border-radius: var(--radius-l); background: var(--color-surface); }
-  .inbox-row { display: grid; grid-template-columns: 1.25rem minmax(0, 1fr); column-gap: .5rem; position: relative; padding: .625rem 1rem .6875rem 1.125rem; color: var(--color-ink); }
+  .inbox-list { --inbox-fs: 14px; --inbox-lh: 1.125rem; overflow: hidden; border-radius: var(--radius-l); background: var(--color-surface); }
+  /* Компактнее (17.11.2026, владелец: «шрифты чуть больше, чем должны быть», «больше писем на экране»; выбрал 14 из 14 и 13): три
+     строки одним кеглем и одним шагом, отступы строки — 8 px. Телефон — от края до края, как блоки CRM (`.page-bleed` ниже). */
+  .inbox-row { display: grid; grid-template-columns: 1.25rem minmax(0, 1fr); column-gap: .5rem; position: relative; padding: .5rem 1rem .5625rem; color: var(--color-ink); }
   .inbox-row > .inbox-l1, .inbox-row > .inbox-subj, .inbox-row > .inbox-l3 { grid-column: 2; }
-  .inbox-lead { grid-column: 1; display: flex; align-items: center; justify-content: center; height: 1.25rem; }
+  .inbox-lead { grid-column: 1; display: flex; align-items: center; justify-content: center; height: var(--inbox-lh); }
   .inbox-lead--car { margin-top: .125rem; }
-  .inbox-lead--car .cat-icon { width: 1.25rem; height: 1.25rem; margin: 0; }
+  .inbox-lead--car .cat-icon { width: 1.125rem; height: 1.125rem; margin: 0; }
   .inbox-row + .inbox-row { box-shadow: inset 0 .5px 0 var(--color-line); }
   @media (hover: hover) { .inbox-row:hover { background: var(--color-hover); } }
   .inbox-row[aria-selected="true"], .inbox-row[aria-selected="true"]:hover { background: var(--color-surface-3); box-shadow: inset 4px 0 0 var(--color-accent); }
-  .inbox-l1 { display: flex; align-items: center; gap: .5rem; min-width: 0; font-size: var(--text-base); line-height: 1.25rem; }
+  .inbox-l1 { display: flex; align-items: center; gap: .5rem; min-width: 0; font-size: var(--inbox-fs); line-height: var(--inbox-lh); }
   .inbox-who { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; color: var(--color-ink-muted); }
   .inbox-row.is-unread .inbox-who { color: var(--color-ink); }
   .inbox-to { color: var(--color-ink-muted); }
@@ -6021,15 +6049,15 @@ dialog.lightbox:not(.lb-one) .lb-pill--bottom { bottom: calc(var(--lb-strip-bott
   .inbox-unsent, .inbox-box { flex: none; font-size: var(--text-sm); }
   .inbox-box { color: var(--color-ink-muted); }
   .inbox-when { flex: none; font-size: var(--text-sm); color: var(--color-ink-muted); }
-  .inbox-subj { display: block; margin-top: .125rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--text-base); line-height: 1.25rem; }
+  .inbox-subj { display: block; margin-top: .125rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--inbox-fs); line-height: var(--inbox-lh); }
   /* Непрочитанное: имя чёрным полужирным, слова письма и время — чёрным обычным (17.11.2026, владелец). */
   .inbox-row.is-unread .inbox-snip, .inbox-row.is-unread .inbox-when { color: var(--color-ink); }
   /* Три строки — один кегль и одна высота строки (17.11.2026, владелец: «межстрочные и размеры одинаковые должны быть»). */
   .inbox-l3 { display: flex; align-items: center; gap: .5rem; min-width: 0; margin-top: .125rem; }
   .inbox-car { display: flex; align-items: center; min-width: 0; }
-  .inbox-snip { flex: 1 1 auto; min-width: 0; font-size: var(--text-base); line-height: 1.25rem; }
+  .inbox-snip { flex: 1 1 auto; min-width: 0; font-size: var(--inbox-fs); line-height: var(--inbox-lh); }
   /* Сколько писем по машине — серым кружком справа внизу (17.11.2026, владелец). */
-  .inbox-count { flex: none; min-width: 1.25rem; height: 1.25rem; padding: 0 .375rem; border-radius: 9999px; background: var(--color-surface-3); font-size: var(--text-xs); line-height: 1.25rem; text-align: center; color: var(--color-ink-muted); }
+  .inbox-count { flex: none; min-width: var(--inbox-lh); height: var(--inbox-lh); padding: 0 .3125rem; border-radius: 9999px; background: var(--color-surface-3); font-size: var(--text-xs); line-height: var(--inbox-lh); text-align: center; color: var(--color-ink-muted); }
   .inbox-snip { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--color-ink-muted); }
   .inbox-more { padding: 1rem; text-align: center; font-size: var(--text-sm); color: var(--color-ink-dim); }
 

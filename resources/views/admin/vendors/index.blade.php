@@ -1,14 +1,13 @@
 {{-- Вендоры списком: пилюли по типу и «Выключенные», первая строка — новый (как «Новая ссылка»). --}}
 @php use App\Vendors\Kind; use App\Workflow\Track; $q = fn ($p) => '/settings/vendors'.($p ? '?'.$p : ''); @endphp
 <x-ui.cabinet title="Вендоры">
-    <div class="flex flex-wrap gap-1.5">
-        <x-ui.pill :href="$q('')" :current="!$kind && !$off">Все</x-ui.pill>
-        @foreach (Kind::cases() as $k)
-            @if ($counts[$k->value] ?? 0)<x-ui.pill :href="$q('kind='.$k->value)" :current="$kind === $k">{{ $k->plural() }} <span class="nums text-ink-dim">{{ $counts[$k->value] }}</span></x-ui.pill>@endif
-        @endforeach
-        @if ($offCount)<x-ui.pill :href="$q('off=1')" :current="$off">Выключенные <span class="nums text-ink-dim">{{ $offCount }}</span></x-ui.pill>@endif
-        <span class="ml-auto"><x-ui.sort :sort="$sort" :url="fn ($v) => \App\Support\Sort::url($v)" name="vendors"/></span>
-    </div>
+    {{-- Тот же тулбар, что у «Пользователей» (17.11.2026, владелец: шапки разделов «скачут»): пилюли, под ними сортировка. «Выключенные» —
+         пилюлей `kind=off`. --}}
+    @php
+        $pills = ['' => 'Все'] + collect(Kind::cases())->filter(fn ($k) => $counts[$k->value] ?? 0)->mapWithKeys(fn ($k) => [$k->value => $k->plural()])->all() + ($offCount ? ['off' => 'Выключенные'] : []);
+        $pillCounts = collect(Kind::cases())->mapWithKeys(fn ($k) => [$k->value => $counts[$k->value] ?? 0])->all() + ['off' => $offCount];
+    @endphp
+    <x-ui.toolbar :sort="$sort" :pills="$pills" :pill="$off ? 'off' : ($kind?->value ?? '')" pill-param="kind" pill-home="" :counts="$pillCounts" name="vendors"/>
     <div class="list">
         <div data-controller="sheet">
             <x-ui.sheet-row>
