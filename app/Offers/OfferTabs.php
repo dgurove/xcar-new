@@ -6,6 +6,7 @@ use App\Http\Admin\OfferController;
 use App\Workflow\Track;
 use App\Support\StaffCache;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 
 /**
  * В какой вкладке «Предложений» машина — для «Всех» (16.11.2026, владелец: «группировку как по вкладкам», «в состоянии писать,
@@ -40,12 +41,18 @@ final class OfferTabs
     public static function map(): array
     {
         return StaffCache::remember(self::CACHE, 30, function () {
+            // Одним запросом (17.11.2026): номера всех вкладок — `union all` условий самих вкладок с порядком колеса; машина в
+            // нескольких — первая по порядку, как прежде. Было ~24 выборки по одной.
+            $union = null;
+            foreach (self::keys() as $i => $key) {
+                $q = OfferController::scopeFor($key, Offer::query()->notEmptyDraft(), true)->toBase()
+                    ->cloneWithout(['orders', 'columns', 'limit', 'offset'])->cloneWithoutBindings(['order', 'select'])
+                    ->select('offers.id')->selectRaw('cast(? as text) as k, cast(? as int) as o', [$key, $i]);
+                $union = $union ? $union->unionAll($q) : $q;
+            }
             $out = [];
-            foreach (self::keys() as $key) {
-                $ids = OfferController::scopeFor($key, Offer::query()->notEmptyDraft(), true)->pluck('offers.id');
-                foreach ($ids as $id) {
-                    $out[$id] ??= $key;
-                }
+            foreach ($union ? DB::query()->fromSub($union, 't')->orderBy('o')->get() : [] as $row) {
+                $out[(int) $row->id] ??= $row->k;
             }
 
             return $out;

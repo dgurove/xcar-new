@@ -944,11 +944,14 @@ class OfferController
     private static function count(User $user, ?Facets $facets, bool $carcadeDefault): array
     {
         $base = fn () => Offer::inCrm($user)->notEmptyDraft();
-        $counts = [];
+        // Все числа — одним запросом (17.11.2026): три десятка COUNT уходили в базу по одному, на каждый — свой круг.
+        // Условия те же, что у списков вкладок (`scopeFor` и чипы), — подзапросами одного SELECT.
+        $subs = [];
+        $count = fn ($q) => $q->toBase()->cloneWithout(['orders', 'columns', 'limit', 'offset'])->cloneWithoutBindings(['order', 'select'])->selectRaw('count(*)');
         foreach (array_diff(array_keys(self::presets($user)), ['archive', 'all_archive']) as $key) {
             // «Закупки» — открытые закупки, как прежнее число таб-бара.
             if ($key === 'purchases') {
-                $counts[$key] = Purchase::where('state', PurchaseState::Open)->count();
+                $subs[$key] = Purchase::where('state', PurchaseState::Open)->toBase()->selectRaw('count(*)');
 
                 continue;
             }
@@ -965,18 +968,29 @@ class OfferController
                     default => ['recommended'],
                 }, ...(self::summary($key) !== null ? [] : ['tab', 'manager'])]);
             }
+            $subs[$key] = $count($q);
             // У «Из таблицы Кати» в числе и незаведённые номера — призрачные строки. Черновик из письма встаёт туда из
             // призрака, и число не меняется, — пилюле отдельно число черновиков: выросло — она вспыхивает (flip.js).
-            $counts[$key] = $q->count() + ($key === 'legacy' && self::ghostsShown($facets) ? LegacyClaim::ghosts()->count() : 0);
-            if ($key === 'legacy') {
-                $counts['legacy_drafts'] = $q->count();
+            if ($key === 'legacy' && self::ghostsShown($facets)) {
+                $subs['legacy_ghosts'] = LegacyClaim::ghosts()->toBase()->cloneWithout(['orders', 'columns'])->cloneWithoutBindings(['order', 'select'])->selectRaw('count(*)');
             }
             // Лаймовый бейдж у «На оценке у менеджеров» и «Оцененных» — сколько ответов менеджеров ждут решения: оценки и свои
             // цены вместо цены админа («Согласен» решения не ждёт), 11.10.2026.
             if (in_array($key, ['estimating', 'priced'], true) && $user->canManageCrm()) {
-                $counts[$key.'_given'] = (clone $q)->whereHas('estimates', fn ($e) => $e->needsDecision())->count();
+                $subs[$key.'_given'] = $count((clone $q)->whereHas('estimates', fn ($e) => $e->needsDecision()));
             }
         }
+        $select = DB::query();
+        foreach ($subs as $alias => $sub) {
+            $select->selectSub($sub, $alias);
+        }
+        $row = $subs ? (array) $select->first() : [];
+        $counts = array_map('intval', $row);
+        if (array_key_exists('legacy', $counts)) {
+            $counts['legacy_drafts'] = $counts['legacy'];
+            $counts['legacy'] += $counts['legacy_ghosts'] ?? 0;
+        }
+        unset($counts['legacy_ghosts']);
 
         // Сколько ждёт нас по вкладкам сделки — зелёным у названия (16.11.2026).
         foreach (DealTabs::ours() as $tab => $n) {
