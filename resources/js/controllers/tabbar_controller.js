@@ -3,6 +3,7 @@ import * as Turbo from '@hotwired/turbo';
 import * as overlays from '../overlays';
 import { scrollTop, scrollToY } from '../lib/scroller';
 import * as sections from '../lib/sections';
+import { arm } from '../lib/shape';
 
 // Бар постоянный (data-turbo-permanent): Turbo переносит живой узел, а бар новой страницы выбрасывает.
 // Текущий таб — из самой страницы (`<body data-nav-tab>`), а не из её копии бара (17.11.2026): в снимке страницы на месте
@@ -52,6 +53,9 @@ export default class extends Controller {
                 // Окно писем закроется как «ушли в другой раздел», а не «закрыл человек»: вернутся — оно снова открыто.
                 window.dispatchEvent(new CustomEvent('section:leave'));
                 overlays.clear().then((ok) => { if (!ok || !sections.open(href, saved)) mark(this.element, this.shownValue); });
+            } else {
+                // Раздел открывают впервые: пока едет страница — силуэт экрана.
+                arm(link.href);
             }
             return;
         }
@@ -62,6 +66,6 @@ export default class extends Controller {
             if (scrollTop() > 0) scrollToY(0, reduce ? 'auto' : 'smooth');
             return;
         }
-        overlays.clear().then((ok) => ok && Turbo.visit(link.href, { action: 'replace' }));
+        overlays.clear().then((ok) => { if (ok) { arm(link.href); Turbo.visit(link.href, { action: 'replace' }); } });
     }
 }

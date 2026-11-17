@@ -18,6 +18,8 @@
 import * as Turbo from '@hotwired/turbo';
 import { scrollTop, scrollToY } from './scroller';
 import * as overlays from '../overlays';
+import { arm } from './shape';
+import { prefetch } from '../touch-prefetch';
 import { shown as shownNow } from './perf';
 
 const KEY = 'tabs:';
@@ -34,6 +36,7 @@ let reopened = null;      // раздел, открытый из снимка: �
 let refresh = () => {};
 let user = null;         // чьи снимки лежат в памяти
 let action = null;       // вид идущего визита
+let warm = 0;            // отложенный на такт запрос раздела по касанию
 
 const pathOf = (href) => new URL(href, location.origin).pathname;
 const keyOf = (url) => { const u = new URL(url, location.origin); u.hash = ''; return u.href; };
@@ -94,6 +97,8 @@ export function open(tab, saved) {
         return true;
     }
     pendingScroll = saved.y;
+    // Снимка нет (первое открытие после запуска) — пока едет страница, на её месте силуэт экрана (`lib/shape.js`).
+    arm(url.href);
     Turbo.visit(url.href, { action: 'replace' });
     return true;
 }
@@ -123,7 +128,8 @@ export function sections({ onStale } = {}) {
         remember();
         if (here.tab) { left.unshift({ tab: here.tab, url: keyOf(here.url) }); left.length = Math.min(left.length, 4); }
     });
-    document.addEventListener('turbo:visit', (event) => { action = event.detail.action; });
+    // Визит уже пошёл (нажатие без задержки) — он сам и есть запрос, второго заранее не шлём.
+    document.addEventListener('turbo:visit', (event) => { action = event.detail.action; clearTimeout(warm); });
     document.addEventListener('turbo:render', () => {
         if (pendingScroll === undefined) return;
         scrollToY(pendingScroll);
@@ -162,9 +168,12 @@ export function sections({ onStale } = {}) {
         const link = event.target.closest?.('a[data-section]');
         if (!link || event.defaultPrevented || event.button || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
         const href = link.getAttribute('href');
-        if (here?.tab === href) { forget(href); return; }
+        // Раздел загорается под кликом, не дожидаясь страницы: шапка не постоянная и пришла бы только с ответом.
+        for (const a of document.querySelectorAll('a[data-section][aria-current]')) a.removeAttribute('aria-current');
+        link.setAttribute('aria-current', 'page');
+        if (here?.tab === href) { forget(href); arm(link.href); return; }
         const saved = recall(href);
-        if (!saved) return;
+        if (!saved) { arm(link.href); return; }
         event.preventDefault();
         window.dispatchEvent(new CustomEvent('section:leave'));
         overlays.clear().then((ok) => ok && open(href, saved));
@@ -175,6 +184,18 @@ export function sections({ onStale } = {}) {
         const link = event.target.closest?.('a[data-section], #tabbar a.tab');
         if (link && recall(link.getAttribute('href'))) event.preventDefault();
     });
+    // Раздел без снимка откроется с сервера — запрос уходит по касанию, не дожидаясь отпускания пальца.
+    document.addEventListener('pointerdown', (event) => {
+        const link = event.target.closest?.('#tabbar a.tab, a[data-section]');
+        const href = link?.getAttribute('href');
+        if (!href || here?.tab === href || href.startsWith('http')) return;
+        const saved = recall(href);
+        if (saved && pins.get(pathOf(href))?.url === keyOf(saved.url)) return;
+        // Следующим тактом: сначала экран отвечает на нажатие (силуэт), запрос стартует сразу за ним.
+        const url = saved?.url ?? link.href;
+        clearTimeout(warm);
+        warm = setTimeout(() => prefetch(url), 0);
+    }, { capture: true, passive: true });
     addEventListener('pagehide', remember);
     document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') remember(); });
 

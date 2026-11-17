@@ -3666,6 +3666,22 @@ html.kb-open { --home-gap: 0px; }
   @keyframes blank-sheen { to { transform: translateX(100%); } }
   .detail-blank .detail-body.detail-failed::after { content: none; }
   .blank { display: block; background: var(--color-surface-3); }
+  /* Силуэт экрана (`lib/shape.js`, 17.11.2026): слой на месте #scroller, пока едет страница раздела, — прямоугольники на
+     месте строк, картинок и плашек, снятые с настоящего экрана; заголовок раздела — словом. Ребёнок <html> вне <body>
+     (шрифт body ему не достаётся, как колесу вкладок). Блик один на весь слой, как у заготовки окна. */
+  .screen-ghost { position: fixed; z-index: 30; overflow: hidden; contain: strict; font-family: var(--font-sans); font-feature-settings: "ss01" 1; -webkit-font-smoothing: antialiased; }
+  .screen-ghost > i, .screen-ghost > b { position: absolute; display: block; }
+  /* Свои стили полосы Turbo вне слоёв — перебивает только !important. */
+  html.ghost-on .turbo-progress-bar { visibility: hidden !important; }
+  .screen-ghost > i.g, .screen-ghost > i.f { background: var(--color-surface-3); }
+  .screen-ghost > b { color: var(--color-ink); white-space: nowrap; }
+  .screen-ghost::after {
+    content: ''; position: absolute; inset: 0; pointer-events: none;
+    background: linear-gradient(100deg, transparent 30%, rgb(255 255 255 / .55) 50%, transparent 70%);
+    transform: translateX(-100%);
+  }
+  .dark .screen-ghost::after { background: linear-gradient(100deg, transparent 30%, rgb(255 255 255 / .07) 50%, transparent 70%); }
+  @media (prefers-reduced-motion: no-preference) { .screen-ghost::after { animation: blank-sheen 1.3s ease-in-out infinite; } }
   /* Силуэт по снимку настоящей карточки (lib/ghost.js): текст — полосой его ширины, значки пустые, лаймовое — серым. */
   .detail-ghost { pointer-events: none; }
   .ghost-t { color: transparent; background: var(--color-surface-3); border-radius: var(--radius-s); -webkit-box-decoration-break: clone; box-decoration-break: clone; }

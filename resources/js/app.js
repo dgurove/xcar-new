@@ -27,6 +27,7 @@ import { csrf } from './lib/http';
 import avatarFallback from './lib/avatar-fallback';
 import { perf } from './lib/perf';
 import { sections } from './lib/sections';
+import { shape } from './lib/shape';
 
 // Потоки из ответа карточки строки (x-ui.row-card): тост flash-сообщения и «следующий без цены» (detail_controller).
 Turbo.StreamActions.toast = function () {
@@ -173,6 +174,7 @@ onMorphElement((event) => {
 touchPrefetch();
 perf();
 sections({ onStale: () => refreshPage() });
+shape();
 pressFeedback();
 inPageAnchors();
 netGuards();
