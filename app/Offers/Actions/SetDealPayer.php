@@ -110,9 +110,13 @@ final class SetDealPayer
     public static function current(Deal $deal): string
     {
         if (! $deal->payer_party_id) {
-            $c = $deal->contract;
+            // Подбор, уже выставленный на кого-то (прежде — на менеджера), — на нём; иначе плательщик по умолчанию
+            // (`Deal::payerUser`: покупатель по договору у продажи ПРАЙМ и у подбора, где покупатель платит поставщику сам).
+            $live = $deal->isPrime() ? null : Invoice::where('deal_id', $deal->id)->where('direction', 'issued')->where('state', '!=', InvoiceState::Void)
+                ->where('kind', ChargeKind::Selection)->latest('id')->value('party_id');
+            $user = $live ? User::where('party_id', $live)->first() : $deal->payerUser($deal->isPrime());
 
-            return $c?->buyer && ! $c->managerPays() && $deal->isPrime() ? 'user:'.$c->buyer_user_id : 'manager';
+            return $user && $user->id !== $deal->buyer_id ? 'user:'.$user->id : 'manager';
         }
         $user = User::where('party_id', $deal->payer_party_id)->first();
 

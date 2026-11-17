@@ -303,15 +303,20 @@ class Deal extends Model implements HasMedia
         return $user ? Party::forUser($user) : null;
     }
 
-    /** Плательщик по умолчанию человеком (без выбранной стороны): покупатель по договору у продажи ПРАЙМ или менеджер. */
+    /**
+     * Плательщик по умолчанию человеком (без выбранной стороны): покупатель по договору у продажи ПРАЙМ и у подбора, когда за
+     * машину покупатель платит поставщику сам (Альфа, ДКП собственника; 17.11.2026, владелец: «в 90 % случаев за подбор платит
+     * покупатель, а не менеджер, а у нас по умолчанию менеджер»), иначе менеджер.
+     */
     public function payerUser(bool $sale = false): ?User
     {
         if ($this->payer_party_id || ! $this->buyer) {
             return null;
         }
         $contract = $this->contract;
+        $buyerPays = $contract?->buyer && ! $contract->managerPays();
 
-        return $sale && $contract?->buyer && ! $contract->managerPays() ? $contract->buyer : $this->buyer;
+        return $buyerPays && ($sale || $this->paysSelection()) ? $contract->buyer : $this->buyer;
     }
 
     /** Кому платят услуги подбора — ООО «ПРАЙМ» (по умолчанию) или ООО «Р.О.С.» (`deals.fee_seller`, `SetFeeSeller`, 16.11.2026). */

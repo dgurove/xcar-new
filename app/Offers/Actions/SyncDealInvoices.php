@@ -126,8 +126,13 @@ final class SyncDealInvoices
             return null;
         }
 
-        // Плательщик — выбранный по сделке (`Deal::payerParty`, 16.11.2026), по умолчанию менеджер.
-        return ['party' => $deal->payerParty(), 'offset' => 0.0,
+        // Плательщик — выбранный по сделке (`Deal::payerParty`, 16.11.2026), по умолчанию покупатель по договору (17.11.2026).
+        // Счёт подбора, уже выставленный по прежнему правилу на менеджера, не перевыставляем сами — сменить его можно строкой
+        // «Плательщик».
+        $live = $deal->payer_party_id ? null : Invoice::where('deal_id', $deal->id)->where('direction', 'issued')->where('state', '!=', InvoiceState::Void)
+            ->where('kind', ChargeKind::Selection)->with('party')->latest('id')->first();
+
+        return ['party' => $live?->party ?? $deal->payerParty(), 'offset' => 0.0,
             'lines' => [['title' => 'Подбор ТС '.$deal->offer->titleWithYear(), 'qty' => 1, 'unit' => 'pc', 'price' => (float) $due, 'kind' => ChargeKind::Selection->value]]];
     }
 
