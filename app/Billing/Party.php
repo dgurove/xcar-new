@@ -32,6 +32,9 @@ class Party extends Model implements HasMedia
     /** Реквизиты плательщика поменялись — «нужны реквизиты» в закрытии месяца пересчитывается сразу, а не через 10 минут. */
     protected static function booted(): void
     {
+        // «Кем выдан» — заглавными, как в бланке, любым путём: скан, форма, ручная правка (17.11.2026, владелец).
+        static::saving(fn (self $p) => $p->isDirty('passport_issued') && $p->passport_issued !== null
+            ? $p->passport_issued = mb_strtoupper(trim($p->passport_issued)) : null);
         static::saved(fn (self $p) => $p->is_self ? null : Closing::forgetPending());
         // ФИО поменялось любым путём (форма, скан, «Распознать заново») — имя покупателя за ним (16.11.2026, владелец:
         // «строго должны соответствовать паспорту»; скан Файзулаева исправил ФИО, а покупатель остался «Отчестае Комил»).
@@ -171,8 +174,8 @@ class Party extends Model implements HasMedia
             }
         }
         $set = array_filter($read, fn ($v, $k) => filled($v) && ($over || blank($this->getRawOriginal($k))), ARRAY_FILTER_USE_BOTH);
-        // Прочитанное раньше заглавными — тем же видом, что новое (`PassportCase`, 17.11.2026).
-        foreach (array_intersect_key($set, array_flip(['passport_issued', 'birth_place', 'reg_address'])) as $k => $v) {
+        // Прочитанное раньше заглавными — тем же видом, что новое (`PassportCase`, 17.11.2026); «кем выдан» — заглавными (`booted`).
+        foreach (array_intersect_key($set, array_flip(['birth_place', 'reg_address'])) as $k => $v) {
             $set[$k] = \App\Billing\Passport\PassportCase::format($v);
         }
         if ($set === []) {

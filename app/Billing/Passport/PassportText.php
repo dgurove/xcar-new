@@ -93,10 +93,9 @@ final class PassportText
             $fields['birth_place'] = $place;
         }
 
-        // Заглавные бланка — словами: «ГУ МВД России по г. Москве» (17.11.2026, владелец, `PassportCase`).
-        foreach (['passport_issued', 'birth_place'] as $key) {
-            isset($fields[$key]) && $fields[$key] = PassportCase::format($fields[$key]);
-        }
+        // Заглавные бланка — словами (17.11.2026, владелец, `PassportCase`); «кем выдан» — заглавными, как в бланке.
+        isset($fields['birth_place']) && $fields['birth_place'] = PassportCase::format($fields['birth_place']);
+        isset($fields['passport_issued']) && $fields['passport_issued'] = mb_strtoupper($fields['passport_issued']);
         // Серия без пробела: «8207 445349» (07.11.2026, владелец).
         isset($fields['passport']) && $fields['passport'] = preg_replace('/^(\d{2})\s(\d{2})\s/u', '$1$2 ', $fields['passport']);
 
