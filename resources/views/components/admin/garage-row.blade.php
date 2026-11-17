@@ -1,12 +1,12 @@
-{{-- Строка «Работы → Гаража»: название (от 640 этап — своим столбцом «Этап», 29.10.2026); на телефоне в два этажа — под ним этап цветным словом и дни на нём (у ждущей машины — слово
-     вывоза, у проданной — с какого числа; `App\Garage\CarLine`), на телефоне логотип вендора с убытком тем же этажом после
-     запятой; пока идёт сделка со страховой — вместо дней на этапе её срок коротким словом (`x-route.term`), без фразы. На телефоне (и в краткой таблице рядом с окном) справа
+{{-- Строка «Гаража»: название (от 640 этап — своим столбцом «Этап», 29.10.2026); на телефоне под ним статус, ниже логотип вендора
+     с убытком. Статус (17.11.2026, владелец: «очень непонятные описания», «почему подготовка, если переоценка», «зачем писать, кто
+     вывезет», «просрочено — просто красным») — одной дверью `CarLine::crmStatuses` (prop `status`): пока идёт сделка со
+     страховой — статус её шага (`Position::status`: наше дело зелёным, кого ждём серым, просрочено красным, сколько — подсказкой),
+     после — этап гаража серым; где машина и кто её везёт — в окне. На телефоне (и в краткой таблице рядом с окном) справа
      одно главное число этапа (`CarLine`: закупочная, к оплате, продана за). От 640 вместо него — столбцы, каждый своё:
-     вендор, «Закупочная», «Расходы», «Цена продажи»; шире — «В гараже с». Строка в одну линию: кто платил расходы и
-     что с деньгами по продаже — в карточке. Нажатие — карточка с путём, деньгами и расходами. Срок обязывающего, пока сделка не
-     заплатила поставщику, — меткой у названия, только когда горит. На телефоне номер убытка — своей строкой (16.11.2026: длинный этап
-     переносился, и логотип наезжал на срок). --}}
-@props(['car', 'table'])
+     вендор, «Закупочная», «Расходы», «Цена продажи»; шире — «В гараже с». Нажатие — карточка с путём, деньгами и расходами.
+     Срок обязывающего, пока сделка не заплатила поставщику, — красным таймером у номера убытка, только когда горит. --}}
+@props(['car', 'table', 'status' => null])
 @php
     use App\Support\Money;
     $offer = $car->offer;
@@ -28,14 +28,14 @@
         @case('title')
     <td class="{{ $col->classes() }}">
         <x-cell.title :key="$offer->number" :offer="$offer">@if ($binding && ! $hasRef)<x-offer.binding :offer="$offer" icon/>@endif</x-cell.title>
-        <span class="cell-sub"><span class="sm:hidden"><span class="{{ $line->tone }}">{{ $line->word }}</span>, @if ($sale)<x-route.term :position="$sale"/>@else{{ $line->when }}@endif</span>@if ($hasRef)<span class="block sm:hidden"><x-vendor.ref :vendor="$vendor" :ref="$offer->claim_ref">@if ($binding)<x-offer.binding :offer="$offer" icon/>@endif</x-vendor.ref></span>@endif</span>
+        <span class="cell-sub">@if ($status)<span class="sm:hidden {{ $status['tone'] }}" @if ($status['hint']) title="{{ $status['hint'] }}" @endif>{{ $status['text'] }}</span>@endif{{ "" }}@if ($hasRef)<span class="block sm:hidden"><x-vendor.ref :vendor="$vendor" :ref="$offer->claim_ref">@if ($binding)<x-offer.binding :offer="$offer" icon/>@endif</x-vendor.ref></span>@endif</span>
     </td>
         @break
         @case('vendor')
     <td class="{{ $col->classes() }}"><x-vendor.ref :vendor="$vendor" :ref="$offer->claim_ref" cell>@if ($binding)<x-offer.binding :offer="$offer" icon/>@endif</x-vendor.ref></td>
         @break
         @case('stage')
-    <td class="{{ $col->classes() }}"><span class="whitespace-normal"><span class="{{ $line->tone }}">{{ $line->word }}</span>, @if ($sale)<x-route.term :position="$sale"/>@else{{ $line->when }}@endif</span></td>
+    <td class="{{ $col->classes() }}">@if ($status)<span class="whitespace-normal {{ $status['tone'] }}" @if ($status['hint']) title="{{ $status['hint'] }}" @endif>{{ $status['text'] }}</span>@endif</td>
         @break
         @case('manager')
     <td class="{{ $col->classes() }}">@if ($car->manager)<x-cell.person :user="$car->manager" from="lg"/>@else<span class="text-ink-muted">под себя</span>@endif</td>

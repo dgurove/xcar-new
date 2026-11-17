@@ -2,10 +2,13 @@
 
 namespace App\Garage;
 
+use App\Offers\Deal;
+use App\Offers\DealTabs;
 use App\Offers\PickupState;
 use App\Support\Ago;
 use App\Support\Plural;
 use App\Users\User;
+use Illuminate\Support\Collection;
 
 /**
  * Машина гаража одной строкой — для плитки, строки и таблицы на сайте и в CRM (10.10.2026: раньше это считали три
@@ -52,7 +55,7 @@ final class CarLine
             (bool) $asks => 'ваш ход: '.mb_strtolower($asks->title),
             // Без «ждёт ТС,» (15.11.2026, владелец: «что это за надпись, зачем она»): слово вывоза и так говорит, что машины ещё нет.
             $pickWord !== null => $pickWord,
-            default => mb_strtolower($car->state->label()),
+            default => mb_lcfirst($car->state->label()),
         };
         $when = match ($car->state) {
             CarState::Settled => (string) Ago::day(($car->settled_at ?? $car->sold_at)),
@@ -70,6 +73,25 @@ final class CarLine
             // Чья — сотруднику; «забирает Сергей К.» уже назвал того же человека — второй раз не пишем.
             $staff && ! ($car->manager && str_contains($word, $car->manager->shortName())) ? ($car->manager?->shortName() ?? 'взяли под себя') : null,
         );
+    }
+
+    /**
+     * Статус машин гаража в строках CRM (17.11.2026, владелец: «подготовка, ждём менеджера» под «Переоценкой» — «непонятно»):
+     * пока идёт сделка со страховой — статус её шага (`Position::status`, тот же, что у вкладок сделки, без «где машина»), после
+     * — этап гаража серым. Шаги — одной выборкой (`DealTabs::rows`): строка базу сама не спрашивает.
+     *
+     * @param  Collection<int, Car>  $cars
+     * @return array<int, array{text: string, tone: string, hint: ?string}|null> по `offer_id`
+     */
+    public static function crmStatuses(Collection $cars): array
+    {
+        $open = $cars->filter(fn (Car $c) => $c->dealOpen())->pluck('offer_id')->filter()->all();
+        $steps = $open ? DealTabs::rows(Deal::active()->whereIn('offer_id', $open)->with(DealTabs::WITH)->get())
+            ->mapWithKeys(fn (array $r) => [$r['deal']->offer_id => $r['deal']->offer?->position()?->status()])->all() : [];
+
+        return $cars->mapWithKeys(fn (Car $c) => [$c->offer_id => in_array($c->offer_id, $open, true)
+            ? ($steps[$c->offer_id] ?? null)
+            : ['text' => mb_lcfirst($c->state->label()), 'tone' => self::tone($c->state->tone()), 'hint' => null]])->all();
     }
 
     /** «3 дня»: число и слово не разрываются переносом. */

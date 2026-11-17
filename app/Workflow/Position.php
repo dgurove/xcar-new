@@ -12,6 +12,7 @@ use App\Offers\ReplyReview;
 use App\Offers\Reprice;
 use App\Offers\RepriceAsk;
 use App\Offers\SupplierLetterWait;
+use App\Support\Ago;
 use App\Support\FastAttributes;
 use App\Support\Surface;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -305,6 +306,46 @@ class Position extends Model
             $this->stage->isRequestStep() => $todo('request:'.$offer->vendor_id, 'Отправить заявку поставщику', 4),
             default => $todo('stage:'.$this->stage->name, $this->stage->name, 5),
         };
+    }
+
+    /**
+     * Статус шага одной строкой — одна дверь для строк гаража и сделок, «Что сейчас» и телефона (17.11.2026, владелец: «очень
+     * непонятные описания», «подготовка, если переоценка», «просрочено 34д 14ч — лучше просто красным»): наше дело — названием
+     * из `todo`, тем же, что у групп, зелёным (и под своей группой: «ещё раз написать не повредит»); не наше — кого ждём, серым;
+     * просрочено — красным. Длительности в тексте нет — подсказкой (`hint`). Никого не ждём — null. Где машина и кто её
+     * везёт — не здесь: это окно и логистика.
+     *
+     * @return array{text: string, tone: string, hint: ?string}|null
+     */
+    public function status(): ?array
+    {
+        $late = $this->isOverdue();
+        $hint = $this->deadline_at ? ($late ? Ago::overdue($this->deadline_at) : Ago::left($this->deadline_at)) : null;
+        if ($todo = $this->todo()) {
+            // Дела не по сроку шага (переоценка, письмо на разбор, деньги) горят своим: срок шага к ним не относится.
+            $own = ! preg_match('/^(reprice|reply|price-offer|gap:paid)/', $todo['key']);
+            $red = $todo['key'] === 'price-ask' || $todo['key'] === 'consent' || ($own && $late);
+            $title = \App\Offers\DealTabs::TODO_TITLES[$todo['title']] ?? $todo['title'];
+
+            return ['text' => mb_lcfirst($title), 'tone' => $red ? 'text-danger' : 'text-accent-text', 'hint' => $own ? $hint : null];
+        }
+        if ($this->carried()) {
+            return ['text' => 'везёт логистика', 'tone' => 'text-ink-muted', 'hint' => null];
+        }
+        $text = match (true) {
+            $this->letterStatus() === 'sent' => 'ждём ответа поставщика',
+            $this->waitsFor() === WaitsFor::Supplier => 'ждём поставщика',
+            $this->waitsFor() === WaitsFor::Manager => 'ждём менеджера',
+            default => null,
+        };
+        if ($text === null) {
+            return null;
+        }
+        if ($this->letterStatus() === 'sent' && ($at = $this->letterAt())) {
+            $hint = 'письмо ушло '.Ago::at($at, true).($hint ? ', '.$hint : '');
+        }
+
+        return ['text' => $text, 'tone' => $late ? 'text-danger' : 'text-ink-muted', 'hint' => $hint];
     }
 
     /**

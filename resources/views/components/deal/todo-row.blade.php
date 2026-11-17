@@ -1,19 +1,22 @@
 {{-- Строка «Ваш ход» в «Сделках» CRM (27.10.2026, владелец: «не видно, что нужно сделать, а что просто просрочено»): что
-     сделать — заголовок группы, здесь машина, вендор с убытком, менеджер, сколько ждёт (серым; срок вышел — красным
-     «просрочено») и кнопка дела. Рыжего нет: вся группа — наш ход. Столбцы — `DealController::table('us')`. --}}
+     сделать — заголовок группы, здесь машина, вендор с убытком, менеджер, сколько ждёт числом (серым; срок вышел — красным,
+     без слова «просрочено») и кнопка дела. Рыжего нет: вся группа — наш ход. Столбцы — `DealController::table('us')`. --}}
 @props(['deal', 'todo', 'table'])
 @php
     $offer = $deal->offer;
     $position = $offer->position();
     $late = $position->isOverdue();
     $at = $late ? $position->deadline_at : $todo['since'];
-    $wait = $at ? ($late ? 'просрочено ' : 'ждёт ').'<span class="nums" data-controller="timer" data-timer-since-value="'.$at->toIso8601String().'" data-timer-coarse-value="true"></span>' : null;
+    // Сколько ждёт — числом, без слов (17.11.2026, владелец: «просрочено я бы не писал — просто красным»): срок вышел — красным,
+    // с момента срока; иначе серым, с начала дела. Что значит число — подсказкой.
+    $wait = $at ? '<span class="nums" title="'.($late ? 'Просрочено на' : 'Ждёт').'" data-controller="timer" data-timer-since-value="'.$at->toIso8601String().'" data-timer-coarse-value="true"></span>' : null;
     $tone = $late ? 'text-danger' : 'text-ink-muted';
     // На телефоне время — в самой кнопке (`x-deal.todo-button wait`, 13.11.2026): строка в две строки. Без кнопки или у номера
     // телефона — по-прежнему строкой под названием.
     $inButton = $at && $todo['button'] && ! isset($todo['button']['tel']);
-    // Гаражная (16.11.2026, владелец: «гараж — та же сделка с теми же этапами»): пока маршрут идёт, она во вкладке этапа, а что
-    // с машиной у менеджера — словом у названия («гараж: подготовка»).
+    // Гаражная (16.11.2026, владелец: «гараж — та же сделка с теми же этапами»): пока маршрут идёт, она во вкладке этапа — у
+    // названия словом «гараж»; что с машиной у менеджера («подготовка») здесь не пишем (17.11.2026, владелец: «почему подготовка,
+    // если переоценка») — это в окне.
     $garage = $deal->garageCar?->state;
 @endphp
 <tr data-detail-key="{{ $deal->offer->number }}" data-search-row id="deal-{{ $deal->id }}">
@@ -21,7 +24,7 @@
         @switch($key)
         @case('title')
     <td class="{{ $col->classes() }}">
-        <x-cell.title :key="$deal->offer->number" :offer="$offer">@if ($garage)<span class="ms-1.5 whitespace-nowrap text-sm text-ink-muted">гараж: {{ mb_strtolower(mb_substr($garage->label(), 0, 1)).mb_substr($garage->label(), 1) }}</span>@endif</x-cell.title>
+        <x-cell.title :key="$deal->offer->number" :offer="$offer">@if ($garage)<span class="ms-1.5 whitespace-nowrap text-sm text-ink-muted">гараж</span>@endif</x-cell.title>
         <span class="cell-sub sm:hidden"><x-vendor.ref :vendor-id="$offer->vendor_id" :ref="$offer->claim_ref"/>@if ($wait && ! $inButton) <span class="inline-block whitespace-nowrap {{ $tone }}">{!! $wait !!}</span>@endif</span>
     </td>
         @break

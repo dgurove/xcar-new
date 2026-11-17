@@ -37,7 +37,8 @@ final class PickupState
             $offer->car_place === CarPlace::Ours => ['на парковке', 'open'],
             $offer->car_place === CarPlace::Elsewhere => ['по адресу', 'open'],
             // Между отрезками — на стоянке логиста: менеджеру это «в пути», ему ехать некуда.
-            $offer->car_place === CarPlace::Depot => [$viewer?->isStaff() ? 'на стоянке логиста' : 'в пути', 'open'],
+            // CRM зовёт без зрителя — это сотрудник (17.11.2026: CRM писала «в пути» про стоящую на стоянке).
+            $offer->car_place === CarPlace::Depot => [! $viewer || $viewer->isStaff() ? 'на стоянке логиста' : 'в пути', 'open'],
             ! $t => ['вывоз не начат', 'plain'],
             $hold !== null => [$hold, 'plain'],
             $t->state === TransportState::Moving => [$mine ? 'везёте' : 'везут', 'open'],

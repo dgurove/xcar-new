@@ -25,8 +25,9 @@
     $admin = $me->leadsLogistics();
     $sale = $admin ? \App\Logistics\SaleState::of($t) : null;
     $offer = $t->saleOffer();
-    // Этап сделки — когда забирать уже можно (иначе «после оплаты» / «ждём поставщика» говорит то же).
-    $dealStage = $sale && in_array($sale->key, ['deal', 'garage'], true) && ! str_contains($sale->word, ',') ? $offer?->position()?->stage?->block?->name : null;
+    // Сделка без удержания — её этапом одним словом вместо «сделка, оплата» (17.11.2026, владелец: «непонятные статусы»);
+    // забирать рано — словом удержания («вывоз после оплаты»).
+    $dealStage = $sale && $sale->key === 'deal' && $sale->word === 'сделка' ? $offer?->position()?->stage?->block?->name : null;
     $handles = $t->isHandledBy($me);
     $mine = $t->hasLogist($me);
     $order = $t->isOrder();
@@ -109,7 +110,7 @@
                 <div class="row items-center justify-between gap-3">
                     <span class="min-w-0">
                         <span class="block text-sm text-ink-muted">Продажа</span>
-                        <span class="block {{ $sale->tone }}">{{ $sale->word }}@if ($dealStage)<span class="text-ink-muted">, {{ mb_strtolower($dealStage) }}</span>@endif</span>
+                        <span class="block {{ $sale->tone }}" @if ($sale->hint) title="{{ $sale->hint }}" @endif>{{ $dealStage ? 'сделка: '.mb_lcfirst($dealStage) : $sale->word }}</span>
                         <span class="block text-sm text-ink-muted nums">поступила {{ \App\Support\Ago::html($t->created_at, time: true, words: false) }}</span>
                     </span>
                     @if ($sale->manager)<x-ui.person :user="$sale->manager" class="shrink-0"/>@endif

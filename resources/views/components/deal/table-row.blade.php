@@ -6,8 +6,7 @@
      «Оплата» (27.10.2026, владелец: «нам надо понимать, кто сколько должен и какой срок») — остаток наших счетов и срок
      словом (`DealDebt`): просрочено — красным, срок в три дня — оранжевым, оплачено — зелёным; на телефоне срок — под суммой.
      Этап — `DealLine`, просроченная оплата — красным. Столбцы — `DealController::table` (шапка `x-table.head` по тому же описанию). --}}
-{{-- group — название группы, под которой стоит строка («Все» — по этапу): то же название в строке второй раз не пишется. --}}
-@props(['deal', 'table', 'group' => null])
+@props(['deal', 'table'])
 @php
     use App\Offers\DealState;
     $offer = $deal->offer;
@@ -50,9 +49,9 @@
             {{-- Телефон: сумма — концом строки названия, а не столбцом (15.11.2026, владелец: «не резать, если справа есть место»). --}}
             @if ($ends)<span class="line-end sm:hidden">{{ $amountText }}</span>@endif
         </x-cell.title>
-        {{-- На телефоне второй строкой — срок шага и этап (20.10.2026, как в «Вывозе»; 27.10.2026 — этап здесь, а не справа:
-             там он резался). Не влез — переносится. Срок оплаты — под суммой, здесь этап без него. --}}
-        <span class="cell-sub cell-sub--wrap sm:hidden">@if ($ends && ($subEnd = trim($subEndHtml)) !== '')<span class="line-end order-last">{!! $subEnd !!}</span>@endif{{ "" }}@if ($active && $position)<x-route.term :position="$position"/>@php $stageName = str_replace(', в гараж', '', $position->stage->name); @endphp@if (mb_strtolower($stageName) !== mb_strtolower((string) $group)) <span class="inline-block whitespace-nowrap text-ink-muted">{{ mb_lcfirst($stageName) }}</span>@endif{{ "" }}@else<span class="{{ $tone }}">{{ $word }}</span>@endif</span>
+        {{-- На телефоне второй строкой — статус шага одним словом (`x-route.term`, 17.11.2026, владелец: «очень непонятные
+             описания»; до того срок и имя этапа через пробел), некого ждать — этап серым. Срок оплаты — под суммой. --}}
+        <span class="cell-sub cell-sub--wrap sm:hidden">@if ($ends && ($subEnd = trim($subEndHtml)) !== '')<span class="line-end order-last">{!! $subEnd !!}</span>@endif{{ "" }}@if ($active && $position && $position->status())<x-route.term :position="$position"/>@else<span class="{{ $tone }}">{{ $word }}</span>@endif</span>
     </td>
         @break
         @case('vendor')
@@ -68,7 +67,7 @@
     <td class="{{ $col->classes() }}"><span class="{{ $tone }} whitespace-normal" title="{{ $word }}">{{ $word }}</span></td>
         @break
         @case('term')
-    <td class="{{ $col->classes() }}">@if ($active && $position)<x-route.term :position="$position" :clock="! $payDue" :waiting="! in_array($table->context('preset'), ['manager', 'supplier'], true)"/>@endif</td>
+    <td class="{{ $col->classes() }}">@if ($active && $position)<x-route.term :position="$position"/>@endif</td>
         @break
         @case('pay')
     <td class="{{ $col->classes() }}">

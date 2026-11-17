@@ -96,6 +96,7 @@ class GarageController
         return view('admin.garage.index', [
             'detail' => $detail,
             'groups' => $groups,
+            'statuses' => CarLine::crmStatuses($cars),
             'total' => $total,
             'facets' => $facets,
             'sort' => $sort,
@@ -114,12 +115,13 @@ class GarageController
         return $tab === 'garage' ? 'garage:'.$car->state->value : $tab;
     }
 
-    /** Заголовок группы: этап сделки словом вкладки, после сделки — «Сделка закрыта: подготовка». */
+    /**
+     * Заголовок группы: этап сделки словом вкладки, после сделки — этап гаража («Подготовка», «В продаже»; 17.11.2026 без
+     * «Сделка закрыта:» — владелец: «очень непонятные описания»).
+     */
     public static function groupTitle(string $key): string
     {
-        return str_starts_with($key, 'garage:')
-            ? 'Сделка закрыта: '.(fn ($l) => mb_strtolower(mb_substr($l, 0, 1)).mb_substr($l, 1))(CarState::from(substr($key, 7))->label())
-            : self::tabLabel($key);
+        return str_starts_with($key, 'garage:') ? CarState::from(substr($key, 7))->label() : self::tabLabel($key);
     }
 
     /** Подпись этапа в чипе: вкладка сделки, «Гараж» здесь — «Сделка закрыта». */

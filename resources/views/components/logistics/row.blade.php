@@ -57,7 +57,7 @@
              дальше цветным словом целиком и куда — режется «…». Номер убытка, путь через стоянки, кто вывозит — в карточке и
              столбцах ПК, межрегион — чипом-фильтром и в карточке; «дальше без исполнителя» — оранжевой точкой у названия. --}}
         <span class="cell-sub cell-sub--one">
-            @if ($sale && $deciding)<span class="sm:hidden shrink-0 {{ $sale->tone }}">{{ $sale->word }}</span>
+            @if ($sale && $deciding)<span class="sm:hidden shrink-0 {{ $sale->tone }}" @if ($sale->hint) title="{{ $sale->hint }}" @endif>{{ $sale->word }}</span>
             @elseif ($stepHere || (! $manager && ! $to))<span @class(['shrink-0', 'sm:hidden' => $has('step'), $late ? 'text-danger' : $t->state->tone()])>{{ $late ? 'не вывезли в срок' : $t->next() }}</span>@endif
             @if ($manager)<span class="sm:hidden min-w-0 truncate">→ {{ $manager->shortName() }}</span>@elseif ($to)<span class="sm:hidden min-w-0 truncate">→ {{ $to }}</span>@endif
         </span>
@@ -70,7 +70,7 @@
     <td class="{{ $col->classes() }}"><x-vendor.ref :vendor-id="$vendorId" :ref="$ref" cell/></td>
         @break
         @case('sale')
-    <td class="{{ $col->classes() }}"><span class="{{ $sale?->tone }}">{{ $sale?->word }}</span></td>
+    <td class="{{ $col->classes() }}"><span class="{{ $sale?->tone }}" @if ($sale?->hint) title="{{ $sale->hint }}" @endif>{{ $sale?->word }}</span></td>
         @break
         @case('binding')
     <td class="{{ $col->classes() }} {{ $binding && \App\Offers\Binding::panics($binding) ? 'text-danger' : 'text-ink-muted' }}">{{ $binding?->binding_until ? \App\Offers\Binding::html($binding->binding_until) : '' }}</td>

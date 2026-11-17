@@ -60,6 +60,8 @@ final readonly class SaleState
         public int $days,
         /** Срок обязывающего горит или вышел, покупателя нет (`Offers\Binding`) — паника важнее «ищем покупателя». */
         public bool $panic = false,
+        /** Сколько ждёт покупателя — подсказкой к слову, не в нём. */
+        public ?string $hint = null,
     ) {}
 
     /** Подгрузка, без которой `of()` спрашивает базу на каждой строке (`offer.vendor.workflows` — для `Deal::pickupHold`). */
@@ -84,18 +86,19 @@ final readonly class SaleState
         $buyer = in_array($key, ['garage', 'deal', 'sold'], true);
         $deciding = $t->state === TransportState::New;
         $hold = $key === 'deal' ? $o->deal->setRelation('offer', $o)->pickupHold() : null;
-        // Сколько ждёт — с поступления заявки, а не с публикации (18.10.2026, владелец: «ищем покупателя 2д 14ч»; срок
-        // приёма в строке логистике не нужен).
-        $since = $t->created_at ? ' '.Ago::since($t->created_at) : '';
+        // Слово — один факт, без длительности (17.11.2026, владелец: «очень непонятные статусы», «раздувается — лучше просто
+        // красным»; до того «ищем покупателя 2д 14ч», «сделка, после оплаты»): три дня без покупателя — красным, сколько ждёт с
+        // поступления заявки — подсказкой (`hint`).
         $word = match ($key) {
-            'park' => 'перевод парковки',
+            'park' => 'с парковки',
             'garage' => 'гараж',
-            'deal' => $hold ? 'сделка, '.$hold : 'сделка',
+            'deal' => $hold ?? 'сделка',
             'sold' => 'продана',
-            'open' => 'ищем покупателя'.$since,
-            'none', 'draft' => 'не опубликовано'.$since,
+            'open' => 'ищем покупателя',
+            'none', 'draft' => 'не опубликовано',
             default => 'снята с продажи',
         };
+        $hint = in_array($key, ['open', 'none', 'draft'], true) && $t->created_at ? 'ждёт '.Ago::since($t->created_at) : null;
 
         // Три дня без покупателя — слово красным и строка в полный цвет: «пизда рулю, надо срочно что-то делать»
         // (18.10.2026, владелец); меньше — ещё ищем, строка без исполнителя приглушена.
@@ -117,6 +120,7 @@ final readonly class SaleState
             waiting: $deciding && ! $buyer && $key !== 'park' && ! $late && ! $panic,
             days: $days,
             panic: $panic,
+            hint: $hint,
         );
     }
 }

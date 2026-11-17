@@ -7,6 +7,7 @@ use App\Cars\Car;
 use App\Cars\Category;
 use App\Cars\Region;
 use App\Cars\Settlement;
+use App\Offers\Deal;
 use App\Offers\Offer;
 use App\Park\City;
 use App\Park\Pass;
@@ -382,10 +383,13 @@ class Transport extends Model
         return $this->state === TransportState::Agreed && $this->pickup_at !== null && $this->pickup_at->copy()->endOfDay()->isPast();
     }
 
-    /** День вывоза словом — без времени (прежние записи бывают со временем, его не пишем). */
-    public function pickupDay(string $format = 'j M'): ?string
+    /**
+     * День вывоза — без времени (прежние записи бывают со временем, его не пишем): «17.11», как все даты (`Ago::day`; до 17.11.2026
+     * «17 ноя» рядом с «17.11» той же строки). format — свой вид для текстов водителю («17 ноября»).
+     */
+    public function pickupDay(?string $format = null): ?string
     {
-        return $this->pickup_at?->translatedFormat($format);
+        return $this->pickup_at ? ($format ? $this->pickup_at->translatedFormat($format) : Ago::day($this->pickup_at)) : null;
     }
 
     /** Сколько раз не дозвонились. */
@@ -450,10 +454,11 @@ class Transport extends Model
     {
         return match (true) {
             $this->channel === Channel::Auction => 'забрал аукцион',
-            $this->state === TransportState::New && $this->undecided => 'кто вывозит, не определено',
+            // Слова — как сказал бы человек, без склейки и внутренних названий (17.11.2026, владелец: «очень непонятные статусы»).
+            $this->state === TransportState::New && $this->undecided => 'не решили, кто вывозит',
             $this->state === TransportState::New => 'выбрать исполнителя',
             $this->state === TransportState::Logist && $this->from_depot_id => 'на стоянке '.($this->fromDepot?->name ?? 'логиста'),
-            $this->state === TransportState::Logist => 'ждёт исполнителя логиста',
+            $this->state === TransportState::Logist => 'логист ищет исполнителя',
             $this->state === TransportState::Assigned && $this->isSelfPickup() => 'забирает сам',
             $this->state === TransportState::Assigned && $this->isPickup() => 'позвонить владельцу',
             $this->state === TransportState::Assigned => 'забрать',
@@ -461,6 +466,9 @@ class Transport extends Model
             $this->state === TransportState::Agreed && $this->awaitsDocs() => 'документы в пути',
             $this->state === TransportState::Agreed && $this->pickup_at => 'вывоз '.$this->pickupDay(),
             $this->state === TransportState::Agreed => 'забрать',
+            $this->state === TransportState::Planned => 'после прошлого отрезка',
+            $this->state === TransportState::Moving => 'в пути',
+            $this->state === TransportState::Delivered => 'привезли',
             default => mb_strtolower($this->state->label()),
         };
     }
@@ -583,7 +591,7 @@ class Transport extends Model
 
         return match ($hold) {
             null => null,
-            'после оплаты' => 'Забирать после оплаты',
+            Deal::HOLD_PAY => 'Забирать после оплаты',
             default => 'Ждём согласия поставщика',
         };
     }

@@ -23,7 +23,7 @@
             <x-slot:head><x-table.head :table="$columns" :sort="$sort"/></x-slot:head>
             @foreach ($groups as $key => $cars)
                 <x-table.group :table="$columns" :key="'g-'.str_replace(':', '-', $key)" :title="\App\Http\Admin\GarageController::groupTitle($key)" :count="$cars->count()"/>
-                @foreach ($cars as $car)<x-admin.garage-row :car="$car" :table="$columns"/>@endforeach
+                @foreach ($cars as $car)<x-admin.garage-row :car="$car" :table="$columns" :status="$statuses[$car->offer_id] ?? null"/>@endforeach
             @endforeach
         </x-ui.table>
     @elseif ($view === ListView::GRID)
@@ -32,7 +32,7 @@
             @foreach ($groups->flatten() as $car)
                 @php $line = \App\Garage\CarLine::for($car, $user, crm: true); @endphp
                 <x-garage.card :offer="$car->offer" :href="\App\Support\Detail::url($car->offer->number)" detail vendor
-                               :word="$line->word" :tone="$line->tone" :when="$line->when" :value="$line->value" :caption="$line->caption"/>
+                               :word="$statuses[$car->offer_id]['text'] ?? ''" :tone="$statuses[$car->offer_id]['tone'] ?? ''" :value="$line->value" :caption="$line->caption"/>
             @endforeach
         </div>
     @else
@@ -45,7 +45,7 @@
                         @foreach ($cars as $car)
                             @php $line = \App\Garage\CarLine::for($car, $user, crm: true); @endphp
                             <x-garage.card :offer="$car->offer" :href="\App\Support\Detail::url($car->offer->number)" detail vendor
-                                           :word="$line->word" :tone="$line->tone" :when="$line->when" :value="$line->value" :caption="$line->caption"/>
+                                           :word="$statuses[$car->offer_id]['text'] ?? ''" :tone="$statuses[$car->offer_id]['tone'] ?? ''" :value="$line->value" :caption="$line->caption"/>
                         @endforeach
                     </x-ui.shelf>
                     @continue
@@ -55,7 +55,7 @@
                     @foreach ($cars as $car)
                         @php $line = \App\Garage\CarLine::for($car, $user, crm: true); @endphp
                         <x-garage.card :offer="$car->offer" :href="\App\Support\Detail::url($car->offer->number)" detail vendor
-                                       :word="$line->word" :tone="$line->tone" :when="$line->when" :value="$line->value" :caption="$line->caption"/>
+                                       :word="$statuses[$car->offer_id]['text'] ?? ''" :tone="$statuses[$car->offer_id]['tone'] ?? ''" :value="$line->value" :caption="$line->caption"/>
                     @endforeach
                 </div>
             @endforeach

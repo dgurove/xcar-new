@@ -506,12 +506,19 @@ class Deal extends Model implements HasMedia
         return $this->pickupHold() === null;
     }
 
-    /** Почему забирать рано — словом для пути и вывоза: «ждём поставщика», «после оплаты»; null — можно. */
+    public const HOLD_PAY = 'вывоз после оплаты';
+
+    public const HOLD_AGREE = 'вывоз после согласия поставщика';
+
+    /**
+     * Почему забирать рано — словом для пути и вывоза: «вывоз после согласия поставщика», «вывоз после оплаты» (17.11.2026,
+     * владелец: «непонятно, что значит „после оплаты“»); null — можно.
+     */
     public function pickupHold(): ?string
     {
         $vendor = $this->offer?->vendor;
         if ($vendor?->deal_format === DealFormat::Wholesale && $this->agreed_at === null) {
-            return 'ждём поставщика';
+            return self::HOLD_AGREE;
         }
         if ($this->prepaid_at !== null || ! $vendor?->pay_before_pickup) {
             return null;
@@ -519,7 +526,7 @@ class Deal extends Model implements HasMedia
 
         // Маршрута продажи у вендора нет (Альфа СПб завели без него) — `prepaid_at` ставить некому: забирать, когда
         // счета сделки оплачены, а не никогда.
-        return ! $vendor->workflow(Track::Sale)?->is_active && $this->fullyPaid() ? null : 'после оплаты';
+        return ! $vendor->workflow(Track::Sale)?->is_active && $this->fullyPaid() ? null : self::HOLD_PAY;
     }
 
     /**

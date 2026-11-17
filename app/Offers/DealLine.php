@@ -51,7 +51,7 @@ final class DealLine
             return $deal->isGarage() ? new self('В гараж: '.mb_lcfirst($line->word), $line->tone, $line->who, $line->person) : $line;
         }
         if ($offer->state === OfferState::Garage && ($car = $offer->garageCar)) {
-            return new self('Гараж: '.mb_strtolower($car->state->label()), 'text-ink-muted', $car->manager?->shortName() ?? 'взяли под себя', $car->manager);
+            return new self('Гараж: '.mb_lcfirst($car->state->label()), 'text-ink-muted', $car->manager?->shortName() ?? 'взяли под себя', $car->manager);
         }
         if ($offer->state === OfferState::Cancelled && ($deal = $offer->declinedDeal)) {
             return new self('Отказ поставщика', 'text-danger', $deal->buyer?->shortName(), $deal->buyer);
@@ -66,15 +66,13 @@ final class DealLine
     /**
      * Этап маршрута, а не блок (10.11.2026, начальник по Volvo 01527: «Согласование с поставщиком», а ждём согласия менеджера):
      * блоки — язык менеджера, в CRM — что сейчас. Пометку гаражной ветки «, в гараж» говорит «В гараж:» спереди. На шаге
-     * оплаты с открытым счётом — его срок.
+     * оплаты с просроченным счётом — красным.
      */
     private static function stage(Position $position, ?DealDebt $debt): array
     {
         $word = str_replace(', в гараж', '', $position->stage->name);
-        if ($debt && ! $debt->paid() && $position->stage->isPayStep()) {
-            return [$word.', '.$debt->word(), $debt->late() ? 'text-danger' : ''];
-        }
-
-        return [$word, ''];
+        // Срок оплаты — цветом этапа, не словами (17.11.2026, владелец: «просрочено — просто красным»): долг и срок словом —
+        // в «Оплате» и в «Деньгах» окна.
+        return [$word, $debt && ! $debt->paid() && $position->stage->isPayStep() && $debt->late() ? 'text-danger' : ''];
     }
 }
