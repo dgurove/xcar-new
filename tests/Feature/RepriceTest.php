@@ -309,6 +309,26 @@ class RepriceTest extends TestCase
     }
 
     /** Админ отказал по названной цене — сделка отменена, менеджеру сообщение; цена за менеджера — сразу в сделку. */
+    /**
+     * Пока менеджер думает про новую цену — сделка в «Переоценке», подгруппа «Ждём менеджера», и у гаражной тоже (17.11.2026,
+     * владелец про Audi RS 6 Сергея: «спросил у менеджера — пропала из „Переоценки“»; у гаражной шага переоценки нет).
+     */
+    public function test_open_question_keeps_deal_in_reprice_tab_even_garage(): void
+    {
+        $deal = app(AcceptBid::class)(app(PlaceBid::class)($this->offer, $this->roman, 1050000), $this->admin, 20000, CommissionMode::Payout, scheme: DealScheme::Insurer);
+        app(UpdateOffer::class)($this->offer->fresh(), ['floor_price' => 650000], $this->admin);
+        app(ApplyReprice::class)($this->offer->fresh()->pendingReprice, $this->admin, 650000, [], 'ask');
+        $this->assertTrue(RepriceAsk::sole()->isOpen());
+        $row = fn () => \App\Offers\DealTabs::rows(collect([$deal->fresh()->load('offer.positions.stage.block')]))->first();
+        $this->assertSame('reprice', $row()['tab']);
+
+        $deal->forceFill(['garage_payer' => \App\Garage\GaragePayer::Manager])->save();
+        $this->assertNull(\App\Offers\RepriceFlow::for($this->offer->fresh()), 'у гаражной шага переоценки нет');
+        $this->assertSame('reprice', $row()['tab']);
+        $this->assertNotContains($row()['todo']['key'] ?? null, ['reply'], 'не «Прочитать ответ» — ждём менеджера');
+        $this->assertSame('manager', \App\Offers\DealTabs::waits($deal->fresh()));
+    }
+
     public function test_admin_rejects_offered_price_or_enters_it_for_manager(): void
     {
         $deal = app(AcceptBid::class)(app(PlaceBid::class)($this->offer, $this->roman, 1050000), $this->admin, 20000, CommissionMode::Payout, scheme: DealScheme::Insurer);

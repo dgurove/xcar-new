@@ -95,6 +95,12 @@ final class DetectReprice
         $reprice->setRelation('offer', $offer)->setRelation('message', $message);
         $offer->log(OfferEventType::Reprice, $by, ['reprice' => $reprice->id, 'state' => Reprice::PENDING, 'from' => $reprice->from_price,
             'to' => $price, 'source' => $source, ...($message ? ['letter' => $message->id] : [])]);
+        // Письмо, что завело переоценку, разбирают ею, а не «Прочитать ответ поставщика» (`OnInsurerReply::queue`). В разбор оно
+        // успевает встать раньше, чем заведена переоценка (17.11.2026, Audi RS 6 Сергея: висело «Поставщик ответил»), — снимаем.
+        if ($message) {
+            \App\Offers\ReplyReview::where('message_id', $message->id)->where('state', \App\Offers\ReplyReview::PENDING)
+                ->update(['state' => \App\Offers\ReplyReview::DONE, 'done_at' => now()]);
+        }
         // Админ вписал закупочную в редакторе — шторка открывается у него следующей же отрисовкой карточки (одной меткой,
         // а не «создано недавно»: живое перечитывание открывало бы её снова). Всё остальное — письмо, модератор, парковка,
         // «Оценить из текста», Мигторг — админам уведомлением: иначе правка молча не применится, и никто не узнает.

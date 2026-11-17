@@ -101,13 +101,23 @@ final class DealTabs
             ->where('source', 'letter')->whereNull('answered_at')->distinct()->pluck('offer_id')->flip();
         // У кого вообще есть переоценка (ждущая или разобранная) — только им спрашиваем, закрыт ли вопрос (`RepriceFlow::for`).
         $repriced = Reprice::whereIn('offer_id', $offers)->whereIn('state', [Reprice::PENDING, Reprice::APPLIED])->distinct()->pluck('offer_id')->flip();
+        // Вопрос открыт и без `RepriceFlow` (17.11.2026, владелец про Audi RS 6 Сергея — гаражная сделка, у неё шага «Переоценка» нет):
+        // ждущая переоценка или менеджер ещё не ответил про новую цену.
+        $pending = Reprice::whereIn('offer_id', $offers)->where('state', Reprice::PENDING)->distinct()->pluck('offer_id')->flip();
+        $asked = RepriceAsk::whereIn('deal_id', $deals->pluck('id'))->whereIn('state', RepriceAsk::OPEN)->distinct()->pluck('deal_id')->flip();
 
-        return $deals->mapWithKeys(function (Deal $deal) use ($letters, $repriced) {
+        return $deals->mapWithKeys(function (Deal $deal) use ($letters, $repriced, $pending, $asked) {
             $position = $deal->offer?->position();
             $position?->setRelation('offer', $deal->offer)->setRelation('deal', $deal);
             $position && ($position->letterRepriceKnown = $letters->has($deal->offer_id));
             $todo = $position?->todo();
-            $repricing = $repriced->has($deal->offer_id) && $deal->offer && RepriceFlow::for($deal->offer->setRelation('deal', $deal)) !== null;
+            $repricing = $pending->has($deal->offer_id) || $asked->has($deal->id)
+                || ($repriced->has($deal->offer_id) && $deal->offer && RepriceFlow::for($deal->offer->setRelation('deal', $deal)) !== null);
+            // Менеджер думает про новую цену — подгруппа «Ждём менеджера» (`waits`), а не дело шага («Прочитать ответ поставщика» — это
+            // и есть письмо переоценки, его черёд после ответа). Свои дела переоценки (не ответил к сроку, назвал цену) — остаются.
+            if ($asked->has($deal->id) && ! in_array($todo['key'] ?? '', ['reprice', 'reprice-answer', 'price-ask', 'price-offer'], true)) {
+                $todo = null;
+            }
 
             return [$deal->id => ['deal' => $deal, 'tab' => self::of($position, $todo, $repricing), 'todo' => $todo]];
         });
@@ -154,6 +164,8 @@ final class DealTabs
         $position = $deal->offer?->position();
 
         return match (true) {
+            // Менеджер думает про новую цену (`RepriceAsk`) — ждём его, какой бы шаг ни стоял (гаражная без шага переоценки).
+            RepriceAsk::where('deal_id', $deal->id)->whereIn('state', RepriceAsk::OPEN)->exists() => 'manager',
             $position?->carried() === true => 'transport',
             $position?->waitsFor() === WaitsFor::Manager => 'manager',
             $position?->waitsFor() === WaitsFor::Supplier => 'supplier',
