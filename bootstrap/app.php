@@ -84,6 +84,7 @@ use App\Push\Console\MakeKeys;
 use App\Storage\Console\Gc;
 use App\Storage\Console\Report;
 use App\Support\Console\PerfDigestCommand;
+use App\Support\Console\PerfPagesCommand;
 use App\Support\Surface;
 use App\Telegram\Console\Poll;
 use App\Telegram\Console\SetProfile;
@@ -119,6 +120,7 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withCommands([
         PerfDigestCommand::class,
+        PerfPagesCommand::class,
         CollectValuesCommand::class,
         RerenderInvoices::class,
         ListsCheck::class,

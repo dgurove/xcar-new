@@ -25,6 +25,7 @@ import { keepPosition, onScroll as onPageScroll, quietHover, scrollTop, scrollTo
 import { keepPush } from './push-sync';
 import { csrf } from './lib/http';
 import avatarFallback from './lib/avatar-fallback';
+import { perf } from './lib/perf';
 
 // Потоки из ответа карточки строки (x-ui.row-card): тост flash-сообщения и «следующий без цены» (detail_controller).
 Turbo.StreamActions.toast = function () {
@@ -169,6 +170,7 @@ onMorphElement((event) => {
     if (el.matches('input, textarea') && el.value !== el.defaultValue) event.preventDefault();
 });
 touchPrefetch();
+perf();
 pressFeedback();
 inPageAnchors();
 netGuards();

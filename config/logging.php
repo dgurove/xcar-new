@@ -83,6 +83,16 @@ return [
             'replace_placeholders' => true,
         ],
 
+        // Каждый GET страницы и замеры с телефонов (`ServerTiming`, `PerfController`): время, запросы, вид запроса.
+        // Сводка — `perf:pages`. Строка — JSON после сообщения `page` или `tap`.
+        'perf' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/perf.log'),
+            'level' => 'info',
+            'days' => 21,
+            'replace_placeholders' => true,
+        ],
+
         'daily' => [
             'driver' => 'daily',
             'path' => storage_path('logs/laravel.log'),
