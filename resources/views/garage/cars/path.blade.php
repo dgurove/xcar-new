@@ -29,7 +29,8 @@
             // Сумма — крупно в деньгах: здесь только что и до когда.
             $unpaid && $current->isOwed() => $staff ? 'отдаём менеджеру' : 'выплата вам',
             $unpaid && $car->invoice_to === 'buyer' => 'ждём оплату покупателя',
-            $unpaid => ($staff ? 'менеджер отдаёт' : 'оплата').' до '.\App\Support\Ago::day($current->due_at),
+            // Срок — счётчиком, не датой (17.11.2026, владелец): «оплата, осталось 2 д 3 ч» / «просрочено 1 д 4 ч».
+            $unpaid => ($staff ? 'менеджер отдаёт' : 'оплата').($current->due_at ? ', '.($current->due_at->isPast() ? \App\Support\Ago::overdue($current->due_at) : \App\Support\Ago::left($current->due_at)) : ''),
             default => null,
         },
         default => null,

@@ -59,7 +59,8 @@ final class CarLine
         };
         $when = match ($car->state) {
             CarState::Settled => (string) Ago::day(($car->settled_at ?? $car->sold_at)),
-            CarState::Sold => 'с '.Ago::day($car->sold_at),
+            // Сколько прошло с продажи, а не «с 12.11» (17.11.2026, владелец: в статусах сроки счётчиком, не датой).
+            CarState::Sold => $car->sold_at ? self::days((int) $car->sold_at->copy()->startOfDay()->diffInDays(today())) : '',
             default => self::days($car->stageDays()),
         };
         [$value, $caption] = $crm ? self::crmMoney($car, $current) : self::siteMoney($car, $current, $staff);

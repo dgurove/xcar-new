@@ -130,7 +130,7 @@
                 @if ($rejected)<p class="mt-2 font-medium text-urgent">Оплата <span class="nums">{{ \App\Support\Money::rub($rejected->amount) }}</span> от <span class="nums">{{ \App\Support\Ago::html($rejected->paid_at, words: false) }}</span> не поступила{{ $rejected->reject_reason ? ': '.$rejected->reject_reason : '' }}</p>@endif
                 {{-- Срок просьбы — тот же, что часы под заголовком: второй раз его не пишем. --}}
                 @if ($requirement->due_at && ! ($position->deadline_at && abs($position->deadline_at->diffInMinutes($requirement->due_at)) < 1))
-                    <p class="mt-2 text-sm {{ $requirement->due_at->isPast() ? 'text-urgent' : 'text-ink-muted' }}">до {{ \App\Support\Ago::html($requirement->due_at, true, words: false) }}, <span class="nums font-medium" data-controller="timer" data-timer-until-value="{{ $requirement->due_at->toIso8601String() }}" data-timer-done-value="срок вышел"></span></p>
+                    <p class="mt-2 text-sm {{ $requirement->due_at->isPast() ? 'text-urgent' : 'text-ink-muted' }}">@if ($requirement->due_at->isPast())Просрочено на <span class="nums font-medium" data-controller="timer" data-timer-since-value="{{ $requirement->due_at->toIso8601String() }}" data-timer-coarse-value="true">{{ \App\Support\Ago::since($requirement->due_at, hours: true) }}</span>@else<span class="nums font-medium" data-controller="timer" data-timer-until-value="{{ $requirement->due_at->toIso8601String() }}" data-timer-coarse-value="true" data-timer-done-value="срок вышел">{{ \App\Support\Ago::left($requirement->due_at) }}</span>@endif</p>
                 @endif
             @elseif ($noInvoice)
                 <p class="mt-3 font-medium">Счёт готовится</p>
