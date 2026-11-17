@@ -75,7 +75,9 @@ final class DealTabs
         return match (true) {
             $repricing || in_array($key, ['reprice', 'reprice-answer', 'price-ask', 'price-offer'], true) => 'reprice',
             in_array($key, ['letter', 'bounced', 'requisites'], true) || str_starts_with($key, 'request:') => 'letter',
-            $key === 'reply' && $block === 'agree' => 'answered',
+            // Ответ поставщика на разбор — «Поставщик ответил» и на согласовании, и пока ждём счёт (17.11.2026, владелец: «в „Ждём
+            // счёт от поставщика“ не должно быть ничего, что наш ход»).
+            $key === 'reply' && in_array($block, ['agree', 'invoice'], true) => 'answered',
             // Деньги от менеджера пришли раньше счёта — дооформить его оплату. «Себе» без менеджера (деньги покупателя гаражной) —
             // во вкладке своего блока.
             str_starts_with($key, 'gap:paid') && $position?->deal?->buyer_id => 'paying',

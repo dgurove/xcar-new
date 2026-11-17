@@ -174,7 +174,12 @@ final class Disclose
 
         // Ждём счёт, а письмо с файлом — «Счёт от поставщика получен» (10.11.2026, 0790/046/11079/26: счёт пришёл, а шаг жали
         // отдельно и менеджер его не видел).
-        $billed = $letters->contains(fn (Message $m) => InsurerReplies::hasFiles($m))
+        // Счёт приходит только после нашего письма шага (реквизитов): письмо с файлом раньше него — не счёт (17.11.2026, CTTM
+        // 5491/046/00861/26: ЭПТС от 16.11 встал «Счёт от поставщика получен», хотя реквизиты Альфе ещё не уходили).
+        $position = $offer->position(Track::Sale);
+        $sentAt = $stage->isLetterStep() ? $position?->letterAt() : null;
+        $after = fn (Message $m) => ! $stage->isLetterStep() || ($sentAt && $m->date_at && $m->date_at->gt($sentAt));
+        $billed = $letters->contains(fn (Message $m) => InsurerReplies::hasFiles($m) && $after($m))
             ? $stage->exitsFor(Actor::Staff, $deal)->first(fn (Outcome $x) => SupplierInvoice::needs($deal, $x)) : null;
 
         return ($letters->contains(fn (Message $m) => InsurerReplies::asksRequisites($m)) ? $find(self::REQUISITES) : null) ?? $billed ?? $find(self::EXITS);

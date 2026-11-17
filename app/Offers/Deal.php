@@ -941,21 +941,6 @@ class Deal extends Model implements HasMedia
      * На кого поставщик выставит счёт за ТС (03.11.2026, реквизиты Альфе): платим мы — ПРАЙМ, Р.О.С., гараж «платим мы» —
      * наше юрлицо; иначе («страховой напрямую») — покупатель по договору.
      */
-    /**
-     * На кого счёт поставщика — словами для шага реквизитов (17.11.2026, владелец: «как там это указать в CRM — не понял»):
-     * «Счёт АльфаСтрахование — на ООО «Р.О.С.»» у схемы «Через Р.О.С.», «— на покупателя» у «Напрямую». null — счёта
-     * поставщика на покупателя у сделки нет (ДКП собственника, ПРАЙМ без письма реквизитов).
-     */
-    public function supplierInvoiceLine(): ?string
-    {
-        $vendor = $this->offer?->vendor?->name ?? 'поставщика';
-        if ($this->schemeOf()->paysCar() || $this->isGarageUs()) {
-            return 'Счёт '.$vendor.' на '.Party::seller($this->seller())->name.($this->seller() === Seller::Ros ? ', с НДС' : '');
-        }
-
-        return $this->schemeOf() === DealScheme::Insurer ? 'Счёт '.$vendor.' на покупателя' : null;
-    }
-
     public function supplierInvoicee(): ?Party
     {
         if ($this->schemeOf()->paysCar() || $this->isGarageUs()) {

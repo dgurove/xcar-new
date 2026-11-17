@@ -65,7 +65,6 @@ class RosSchemeTest extends TestCase
 
         app(UpdateOffer::class)($deal->offer->fresh(), ['prices_include_vat' => true], $this->admin);
         $this->assertSame(DealScheme::Ros, $deal->fresh()->schemeOf(), 'с НДС — через Р.О.С.');
-        $this->assertSame('Счёт АльфаСтрахование тест на '.Party::seller(Seller::Ros)->name.', с НДС', $deal->fresh()->supplierInvoiceLine());
 
         app(UpdateOffer::class)($deal->offer->fresh(), ['prices_include_vat' => false], $this->admin);
         $this->assertSame(DealScheme::Insurer, $deal->fresh()->schemeOf(), 'без НДС — снова напрямую');
