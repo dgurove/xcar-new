@@ -6076,8 +6076,7 @@ dialog.lightbox:not(.lb-one) .lb-pill--bottom { bottom: calc(var(--lb-strip-bott
   .letter-body[open] > .letter-acts { display: flex; }
   .letter-ib { display: grid; place-items: center; width: 2.25rem; height: 2.25rem; border-radius: 9999px; color: var(--color-ink-muted); }
   @media (hover: hover) { .letter-ib:hover { background: var(--color-hover); color: var(--color-ink); } }
-  .chain--full .letter-env { display: flow-root; margin: 0; font-size: var(--text-sm); line-height: 1.25rem; color: var(--color-ink-muted); overflow-wrap: anywhere; }
-  .letter-env-when { float: right; margin-left: .75rem; white-space: nowrap; }
+  .chain--full .letter-env { display: flex; flex-wrap: wrap; column-gap: .75rem; margin: 0; font-size: var(--text-sm); line-height: 1.25rem; color: var(--color-ink-muted); overflow-wrap: anywhere; }
   .letter-car { display: inline-flex; align-items: center; gap: .375rem; max-width: 100%; margin-top: .375rem; font-size: var(--text-sm); line-height: 1.125rem; color: var(--color-ink); }
   .letter-car .cat-icon { flex: none; width: 1.25rem; height: 1.25rem; margin: 0; }
   .letter-car .i { color: var(--color-ink-muted); }
