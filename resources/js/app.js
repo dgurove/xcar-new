@@ -109,6 +109,30 @@ Turbo.StreamActions.count = function () {
 const application = Application.start();
 window.Stimulus = application;
 
+// Outlets в проекте нет ни у одного контроллера, а Stimulus на каждое подключение контроллера перебирает все модули
+// (их полтораста) и все подключённые контексты — дважды (18.11.2026, профиль «назад» в список плиток: 143 мс на телефоне).
+// Пока outlets никто не объявил, наблюдатель за ними не заводится; объявит — работает как в библиотеке. Класса
+// наблюдателя Stimulus наружу не отдаёт — прототип берётся у первого подключённого контроллера.
+(function quietOutlets() {
+    let modules = -1;
+    let used = false;
+    const anyOutlets = () => {
+        const all = application.router.modules;
+        if (all.length !== modules) { modules = all.length; used = all.some((m) => (m.definition.controllerConstructor.outlets ?? []).length > 0); }
+        return used;
+    };
+    const patch = () => {
+        const proto = Object.getPrototypeOf(application.router.contexts[0]?.outletObserver ?? null);
+        if (!proto?.start) return false;
+        const { start, refresh } = proto;
+        proto.start = function () { if (anyOutlets()) start.call(this); else this.started = true; };
+        proto.refresh = function () { if (anyOutlets()) refresh.call(this); };
+        return true;
+    };
+    const tryPatch = () => { if (patch()) document.removeEventListener('turbo:load', tryPatch); };
+    document.addEventListener('turbo:load', tryPatch);
+})();
+
 // Контроллеры, нужные только на своих экранах (чат, фото, сканер QR, подпись, редактор…), — отдельными кусками:
 // грузятся, когда на странице появился их data-controller. Остальные — в основной сборке, сразу. «Кому показывать»
 // (audience) — сразу (19.10.2026): шторка открывалась раньше куска и была пустой, правка из неё до формы не доходила.
@@ -207,7 +231,6 @@ offerRead();
 longPressMenu();
 // Номер телефона — окошко «Скопировать / Позвонить» вместо звонка сразу (11.11.2026, `tel.js`).
 telSheet();
-heroTransition();
 timerDone();
 transitionsWhenAnimated();
 noZoom();
@@ -368,8 +391,12 @@ function keepSideScroll() {
     let restore = false;
     // Адрес снимка — свой: на «Назад» location уже новый, когда Turbo снимает уходящую страницу.
     let shown = location.href;
+    // Где стоит лента — пишется, когда её листают (18.11.2026): чтение `scrollLeft` у всех лент перед снимком было
+    // принудительной раскладкой уходящей страницы — около 100 мс на телефоне на каждом переходе.
+    const moved = new WeakMap();
+    addEventListener('scroll', (e) => { if (e.target.nodeType === 1 && e.target.matches(SIDE)) moved.set(e.target, e.target.scrollLeft); }, { capture: true, passive: true });
     document.addEventListener('turbo:before-cache', () => {
-        const at = [...document.querySelectorAll(SIDE)].map((el) => el.scrollLeft);
+        const at = [...document.querySelectorAll(SIDE)].map((el) => moved.get(el) ?? 0);
         if (at.some(Boolean)) saved.set(shown, at); else saved.delete(shown);
     });
     document.addEventListener('turbo:visit', (e) => { restore = e.detail.action === 'restore'; });
@@ -619,43 +646,15 @@ function relaunchScroll() {
     } catch {}
 }
 
-// Фото карточки перетекает в главный кадр галереи и обратно: одно имя
-// view-transition-name у кадра, на который смотрели, и у кадра на новой странице.
-// Старый элемент помечается до захвата снимка (turbo:click / turbo:visit restore),
-// новый — в newBody на turbo:before-render; после рендера имена снимаются,
-// иначе два одинаковых имени отменят переход.
-function heroTransition() {
-    const name = (el) => { if (el) el.style.viewTransitionName = 'hero'; };
-    const cardImg = (card) => {
-        const strip = card?.querySelector('.card-strip');
-        if (!strip) return card?.querySelector('.card-media img');
-        return [...strip.querySelectorAll('img')].find((img) => Math.abs(img.offsetLeft - strip.scrollLeft) < 4) || strip.querySelector('img');
-    };
-    const pageImg = (root) => root.querySelector('[data-gallery-target="strip"] img, .photo-strip img');
-    document.addEventListener('turbo:click', (event) => name(cardImg(event.target.closest('.card'))));
-    document.addEventListener('turbo:visit', (event) => {
-        if (event.detail.action === 'restore' && document.body.dataset.offerPage) name(pageImg(document.body));
-    });
-    document.addEventListener('turbo:before-render', (event) => {
-        const body = event.detail.newBody;
-        const from = document.querySelector('[style*="view-transition-name"]');
-        if (!from) return;
-        const number = from.closest('.card')?.dataset.offerNumber;
-        if (body.dataset.offerPage) name(pageImg(body));
-        else if (number) name(cardImg(body.querySelector(`#offer-${number}, #admin-offer-${number}`)));
-    });
-    document.addEventListener('turbo:load', () => {
-        document.querySelectorAll('[style*="view-transition-name"]').forEach((el) => { el.style.viewTransitionName = ''; });
-    });
-}
-
-// Turbo оборачивает в view transition каждый визит, хотя едут только соседи по списку (data-nav-dir) и фото
-// карточки (hero). Снимок без анимации не нужен, а в установленном приложении iOS 26–27 вредит: viewport там
+// Turbo оборачивает в view transition каждый визит, хотя едут только соседи по списку (data-nav-dir). Перетекание фото
+// плитки в кадр галереи (hero) снято 18.11.2026: пара не складывалась никогда (`data-offer-page` стоял не на body), а
+// кадр плитки с именем включал переход вида на каждом «плитка → страница» — снимок всего экрана впустую и принудительная
+// раскладка на клике (`offsetLeft`). Снимок без анимации не нужен, а в установленном приложении iOS 26–27 вредит: viewport там
 // короче экрана на верхний вырез, и снимок таб-бара встаёт по другой высоте — бар подпрыгивает на каждом
 // переходе. Turbo спрашивает мету текущей страницы до рендера; новая страница приносит её обратно.
 function transitionsWhenAnimated() {
     document.addEventListener('turbo:visit', () => {
-        const animated = 'navDir' in document.documentElement.dataset || document.querySelector('[style*="view-transition-name"]');
+        const animated = 'navDir' in document.documentElement.dataset;
         document.querySelector('meta[name="view-transition"]')?.setAttribute('content', animated ? 'same-origin' : 'none');
     });
 }
@@ -718,8 +717,12 @@ function systemTheme() {
 function headerState() {
     const onScroll = () => document.getElementById('header')?.classList.toggle('is-scrolled', scrollTop() > 4);
     onPageScroll(onScroll);
-    document.addEventListener('turbo:load', onScroll);
-    document.addEventListener('turbo:render', onScroll);
+    // После отрисовки — следующим кадром: чтение прокрутки прямо в обработчике заставляло браузер разложить новую
+    // страницу раньше времени (и ещё раз после остальных обработчиков).
+    let frame = 0;
+    const later = () => { if (!frame) frame = requestAnimationFrame(() => { frame = 0; onScroll(); }); };
+    document.addEventListener('turbo:load', later);
+    document.addEventListener('turbo:render', later);
 }
 
 // Активная пилюля ленты — в кадре, а не за краем экрана.
@@ -733,7 +736,9 @@ function activePillIntoView() {
         if (left - pad >= row.scrollLeft && right + pad <= row.scrollLeft + row.clientWidth) return;
         row.scrollLeft = left - (row.clientWidth - el.offsetWidth) / 2;
     });
-    document.addEventListener('turbo:load', show);
+    // Следующим кадром: замер ширины ленты прямо в обработчике загрузки заставлял браузер разложить новую страницу
+    // раньше времени (18.11.2026); в кадре раскладка всё равно считается, и пилюля встаёт до отрисовки.
+    document.addEventListener('turbo:load', () => requestAnimationFrame(show));
 }
 
 // Экран из кэша воркера (запуск с иконки) старше 5 с — тихий replace-morph:

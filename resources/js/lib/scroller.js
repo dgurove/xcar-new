@@ -6,6 +6,13 @@ export const scroller = () => document.getElementById('scroller') ?? document.sc
 
 export const scrollTop = () => scroller().scrollTop;
 
+// Прокрутка страницы без чтения раскладки: число из последнего события прокрутки (18.11.2026). `scrollTop` у страницы,
+// где только что что-то поменяли (класс нажатой плитки, подмена body), заставляет браузер тут же пересчитать стили и
+// раскладку — на уходе со списка это 40 мс на телефоне. Новая страница без единого события стоит сверху.
+const seen = { el: null, y: 0 };
+addEventListener('scroll', (e) => { if (e.target === scroller()) { seen.el = e.target; seen.y = e.target.scrollTop; } }, { capture: true, passive: true });
+export const knownY = () => (seen.el === scroller() ? seen.y : 0);
+
 export const scrollToY = (top, behavior = 'auto') => scroller().scrollTo({ top, behavior });
 
 export const scrollByY = (dy) => scroller().scrollBy(0, dy);
@@ -21,6 +28,7 @@ export function holdY(y, ms = 1500) {
     held?.();
     const el = scroller();
     scrollToY(y);
+    seen.el = el; seen.y = y;
     const content = el.firstElementChild;
     if (!content || typeof ResizeObserver === 'undefined') return;
     const watch = new ResizeObserver(() => { if (Math.abs(el.scrollTop - y) > 1) el.scrollTo({ top: y, behavior: 'auto' }); });
@@ -76,7 +84,7 @@ export function keepPosition() {
         key = current();
         // Живое обновление (refresh — визит replace с новой записью) узел оставляет на месте: прокрутка та же, а запись
         // новая — без этого «Назад» после него возвращал в начало списка.
-        if (!restoring) { if (key) positions.set(key, scrollTop()); return; }
+        if (!restoring) { if (key) positions.set(key, knownY()); return; }
         restoring = false;
         const y = positions.get(key);
         if (y) requestAnimationFrame(() => holdY(y));

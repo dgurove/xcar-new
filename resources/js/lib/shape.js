@@ -25,6 +25,10 @@ let armed = null;
 const taken = new Map(); // ключ силуэта → когда снят в этой сессии
 
 const theme = () => (document.documentElement.classList.contains('dark') ? 'd' : 'l');
+// Ширина окна — из памяти: `innerWidth` на свежей странице заставляет браузер тут же посчитать её стили и раскладку
+// (18.11.2026, трассировка «плитка → машина»: 90 мс на телефоне в обработчике загрузки).
+let viewport = innerWidth;
+addEventListener('resize', () => { viewport = innerWidth; }, { passive: true });
 // Вкладка экрана: колесо CRM, ящик почты, вкладка — и пилюли сайта (`view`: «Новые», «Горящие», заявки и архив сделок).
 const tabOf = (url) => url.searchParams.get('preset') ?? url.searchParams.get('box') ?? url.searchParams.get('tab') ?? url.searchParams.get('view') ?? '';
 
@@ -32,7 +36,7 @@ const tabOf = (url) => url.searchParams.get('preset') ?? url.searchParams.get('b
 function keysOf(href) {
     const url = new URL(href, location.href);
     const base = `${url.host}${url.pathname.replace(/\d+/g, 'N')}`;
-    const tail = `${Math.round(innerWidth / 8) * 8}${theme()}`;
+    const tail = `${Math.round(viewport / 8) * 8}${theme()}`;
     return [`${base}|${tabOf(url)}|${tail}`, `${base}||${tail}`];
 }
 

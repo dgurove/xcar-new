@@ -20,7 +20,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content">
     {{-- Интерфейс только русский: переводчик браузера ломал обрывки («12 д 5 ч», госномера) — 07.10.2026. --}}
     <meta name="google" content="notranslate">
-    <meta name="theme-color" content="{{ $bar[$theme ?? 'light'] }}">
+    <meta name="theme-color" content="{{ $bar[$theme ?? 'light'] }}" data-light="{{ $bar['light'] }}" data-dark="{{ $bar['dark'] }}">
     <meta name="view-transition" content="same-origin">
     {{-- Без превью из кэша: иначе advance на виденный адрес рисует снимок, а через миг молча
          подменяет свежим — скачок после анимации. Ответ обычно уже в руках (префетч). --}}

@@ -373,8 +373,7 @@ html.kb-open { --home-gap: 0px; }
   /* Переходы между страницами (view transitions, iOS 18.2 и Chrome 126). Сдвига экрана нет:
      открыть чат, ТС или пилюлю кабинета — не «другая страница», а то же приложение; корень
      просто подменяется. Едут только соседи по списку на странице ТС (data-nav-dir из
-     neighbourDirection / nav_controller: «следующее» въезжает справа, «предыдущее» — слева) и
-     фото карточки, перетекающее в кадр галереи (группа hero, app.js heroTransition). Только визиты Turbo: переход между
+     neighbourDirection / nav_controller: «следующее» въезжает справа, «предыдущее» — слева). Только визиты Turbo: переход между
      полными загрузками (@view-transition) снят 15.10.2026 — снимок таб-бара на входе и перезагрузке давал прыжок. */
   html::view-transition-old(root), html::view-transition-new(root) { animation: none; mix-blend-mode: normal; }
   html::view-transition-group(root) { animation-duration: 0s; }
@@ -5068,9 +5067,6 @@ html[data-theme-switch] #header, html[data-theme-switch] #tabbar, html[data-them
 /* keyframes theme-circle с координатами кнопки пишет theme_controller в <style id="theme-circle">. */
 
 /* Кадр карточки летит в галерею и обратно (имя ставит app.js на время перехода). */
-html::view-transition-group(hero) { animation-duration: var(--dur-slow); animation-timing-function: var(--ease-out); z-index: 2; }
-html::view-transition-old(hero), html::view-transition-new(hero) { animation: none; mix-blend-mode: normal; width: 100%; height: 100%; object-fit: cover; overflow: clip; }
-html::view-transition-image-pair(hero) { isolation: auto; }
 
 /* ------------------------------------------------------------- прочее из кита */
 

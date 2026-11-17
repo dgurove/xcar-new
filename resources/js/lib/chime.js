@@ -5,14 +5,20 @@
 // метка уведомления в localStorage, видимая вкладка первой, скрытые ждут и проверяют, не звенела ли она уже.
 let context = null;
 
+function make() {
+    try { context ??= new (window.AudioContext || window.webkitAudioContext)(); } catch {}
+}
+
 function wake() {
     try {
-        context ??= new (window.AudioContext || window.webkitAudioContext)();
-        if (context.state === 'suspended') context.resume();
+        if (context?.state === 'suspended') context.resume();
     } catch {}
 }
 
+// Сам контекст рождается с первой загрузкой экрана (18.11.2026), а не на первом нажатии: его создание стояло между
+// нажатием и началом перехода (80 мс на телефоне в эмуляции). Спящим он живёт до жеста, нажатие его только будит.
 export function unlockChime() {
+    document.addEventListener('turbo:load', make, { once: true });
     ['click', 'keydown'].forEach((name) => document.addEventListener(name, wake, { capture: true, passive: true }));
 }
 

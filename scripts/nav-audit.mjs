@@ -137,7 +137,7 @@ async function press(find, arg) {
 // Первая видимая ссылка списка (между шапкой и таб-баром), чей адрес подходит под выражение.
 const linkIn = (source) => press((source) => {
     const re = new RegExp(source);
-    const a = [...document.querySelectorAll('a[href]')].find((a) => { const r = a.getBoundingClientRect(); return r.width > 20 && r.height > 20 && r.top > 170 && r.bottom < innerHeight - 110 && a.offsetParent && re.test(a.getAttribute('href')); });
+    const a = [...document.querySelectorAll('a[href]')].find((a) => { const r = a.getBoundingClientRect(); return r.width > 20 && r.height > 20 && r.top > 170 && r.bottom < innerHeight - 110 && a.offsetParent && !a.classList.contains('btn') && re.test(a.getAttribute('href')); });
     if (!a) return null;
     const r = a.getBoundingClientRect();
     return [r.left + Math.min(r.width / 2, 90), r.top + r.height / 2];

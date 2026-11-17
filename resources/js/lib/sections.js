@@ -16,7 +16,7 @@
 //
 // Экран без таб-бара (чат на телефоне, `body.chat-open`) местом раздела не становится: из него выходят «‹».
 import * as Turbo from '@hotwired/turbo';
-import { holdY, scrollTop } from './scroller';
+import { holdY, knownY, scrollTop } from './scroller';
 import * as overlays from '../overlays';
 import { arm } from './shape';
 import { prefetch } from '../touch-prefetch';
@@ -51,7 +51,7 @@ const write = (store, tab, value) => { try { value ? store.setItem(slot(tab), JS
 /** Запомнить место раздела, что сейчас на экране. */
 export function remember() {
     if (!here?.tab) return;
-    const place = { url: here.url, y: Math.round(scrollTop()), at: Date.now() };
+    const place = { url: here.url, y: Math.round(knownY()), at: Date.now() };
     write(sessionStorage, here.tab, place);
     write(localStorage, here.tab, place);
 }
@@ -182,10 +182,8 @@ export function sections({ onStale } = {}) {
         if (user !== who()) { user = who(); pins.clear(); dirty.clear(); }
         here = { tab: tabNow(), url: location.href };
         if (pendingScroll !== undefined) {
-            // Отрисовка могла дорасти (картинки, шрифт) — добираем место вторым заходом, если не встало.
-            const y = pendingScroll;
+            // Отрисовка может дорасти (картинки, шрифт, куски за экраном) — место держит `holdY`, пока экран не тронули.
             pendingScroll = undefined;
-            if (Math.abs(scrollTop() - y) > 2) requestAnimationFrame(() => holdY(y));
         }
         // «Назад» на место раздела (из чата, из карточки): прокрутку ставит `keepPosition` по записи истории; не встала
         // (окно строки перехватило, запись сменилась) — место раздела то же, ставим по нему.
