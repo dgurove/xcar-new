@@ -90,7 +90,10 @@ export function touchPrefetch() {
     }
     // Мышь стоит, а под ней едут ссылки (прокрутка колесом) — это не наведение: страницу заранее не грузим (30.10.2026,
     // при прокрутке уходили запросы за каждой проехавшей ссылкой).
-    document.addEventListener('turbo:before-prefetch', (event) => { if (performance.now() - scrolledAt < 250) event.preventDefault(); });
+    document.addEventListener('turbo:before-prefetch', (event) => {
+        const link = event.target.closest?.('a[href]');
+        if (performance.now() - scrolledAt < 250 || link && goesBack(link)) event.preventDefault();
+    });
 
     // Стрелки к соседям на странице ТС — ответ уже в руках к моменту тапа. Постраничку списка — нет: это целая
     // следующая страница карточек на каждый показ, а листают её редко.
@@ -99,7 +102,12 @@ export function touchPrefetch() {
     }, 800));
 }
 
-function prefetchable(link) {
+// «‹» шапки при живой истории — шаг назад по ней (`back_controller`): экран встанет из снимка, а ссылка под кнопкой
+// (корень раздела) не понадобится. Её предзагрузка по касанию на каждое «назад» стоила серверу целого списка — самой
+// тяжёлой страницы сайта (18.11.2026: на проде 51 такая за вечер, по 0,5 с и 62 запроса каждая).
+const goesBack = (link) => link.matches('[data-controller~="back"]') && (window.navigation?.canGoBack ?? history.length > 1) && !!history.state?.turbo;
+
+export function prefetchable(link) {
     if (link.origin !== location.origin) return false;
     if (link.hasAttribute('download') || link.target?.startsWith('_')) return false;
     if (link.closest('[data-turbo="false"], [data-turbo-prefetch="false"], [data-turbo-method], [data-turbo-frame]')) return false;
@@ -110,6 +118,7 @@ function prefetchable(link) {
     if (frame && frame.getAttribute('target') !== '_top') return false;
     // Таб таб-бара открывает запомненный экран раздела (tabbar_controller), а не свой href — предзагрузка ушла бы мимо.
     if (link.closest('#tabbar')) return false;
+    if (goesBack(link)) return false;
     if (link.href === location.href || link.hash && link.pathname === location.pathname) return false;
     if (document.querySelector('meta[name="turbo-prefetch"][content="false"]')) return false;
     return true;

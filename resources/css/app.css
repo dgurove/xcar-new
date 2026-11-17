@@ -1518,7 +1518,11 @@ html.kb-open { --home-gap: 0px; }
   .facet-all { @apply ml-auto shrink-0 whitespace-nowrap px-1 py-2 text-sm font-medium text-accent-text; }
   @media (hover: hover) { .facet-all:hover { @apply text-accent; } }
   .facet-submit { @apply sticky bottom-0 -mx-1 bg-surface px-1 pb-1 pt-2; }
-  .facet-submit [aria-busy] .nums { opacity: .5; }
+  /* Число бледнеет, пока считается, — переменной, а не селектором «… [aria-busy] .nums» (18.11.2026): Turbo на каждый
+     переход ставит `aria-busy` на <html>, и с потомком `.nums` за этим атрибутом браузер пересчитывал стили всех цен
+     страницы — у списка плиток 800 узлов и 80 мс на телефоне до первого кадра после нажатия. */
+  .facet-submit [aria-busy] { --counting: .5; }
+  .facet-submit .nums { opacity: var(--counting, 1); }
   /* «С» и «По» чипа дат — в одну строку, подпись слева от поля. */
   .facet-days { @apply mb-3 grid grid-cols-2 gap-2; }
   .facet-day { @apply flex min-w-0 items-center gap-2; }
@@ -1566,7 +1570,8 @@ html.kb-open { --home-gap: 0px; }
   /* Поле названия под списком действий экрана «Сохранённые фильтры» («Сохранить текущий…», «Переименовать…»). */
   .filter-edit { @apply -mt-2 mb-4; }
   .detail-foot > .filter-foot { display: flex; align-items: center; gap: .5rem; }
-  .filter-foot [aria-busy] .nums { opacity: .5; }
+  .filter-foot [aria-busy] { --counting: .5; }
+  .filter-foot .nums { opacity: var(--counting, 1); }
   .filter-main + .filter-form { margin-top: 0; }
   .filter-main { margin-top: .25rem; }
   /* Окно «Выгрузка» (`x-offer.export-sheet`): столбцы — пилюлями-галками (отмеченная — лаймовая, как выбранная пилюля),
@@ -3288,7 +3293,7 @@ html.kb-open { --home-gap: 0px; }
   .scan .list-head:first-child, .scan form > .list-head:first-of-type { @apply pt-1; }
   .scan-foot { position: sticky; z-index: 2; bottom: calc(-1.25rem - var(--safe-bottom)); margin: 1.25rem -1.25rem calc(-1.25rem - var(--safe-bottom)); padding: .75rem 1.25rem calc(1.25rem + var(--safe-bottom)); background: var(--color-surface); }
   /* Кнопка в работе — только кольцо: число в ней просвечивало сквозь него. */
-  .scan-foot .btn[aria-busy="true"] > * { visibility: hidden; }
+  .scan-foot .btn > * { visibility: var(--busy-part, inherit); }
   @media (prefers-reduced-motion: reduce) { .scan-spin { animation: none; border-top-color: var(--color-accent); opacity: .5; } }
   /* Читалка «Завести» (x-mail.reader-body) в блоке «Документы»: строка хода «Читаю 2 из 4» с полосой и «Стоп», ход —
      на строках документов (`data-scan`): по значку читаемого бежит полоса скана, ждущий притушен, прочитанный — с
@@ -3699,6 +3704,7 @@ html.kb-open { --home-gap: 0px; }
   html.ghost-on .turbo-progress-bar { visibility: hidden !important; }
   .screen-ghost > i.g, .screen-ghost > i.f { background: var(--color-surface-3); }
   .screen-ghost > b { color: var(--color-ink); white-space: nowrap; }
+  .screen-ghost > b.s { white-space: normal; overflow: hidden; }
   .screen-ghost::after {
     content: ''; position: absolute; inset: 0; pointer-events: none;
     background: linear-gradient(100deg, transparent 30%, rgb(255 255 255 / .55) 50%, transparent 70%);
@@ -5954,7 +5960,12 @@ dialog.lightbox:not(.lb-one) .lb-pill--bottom { bottom: calc(var(--lb-strip-bott
     border-radius: 50%; border: 2px solid var(--spin); border-top-color: transparent;
     animation: spin .8s linear infinite;
   }
-  .btn[aria-busy="true"] .badge, .btn[aria-busy="true"] svg { visibility: hidden; }
+  /* Значок и бейдж занятой кнопки прячутся переменной, а не потомком после `[aria-busy]` (18.11.2026): Turbo на каждый
+     переход ставит `aria-busy` на <html>, и селектор «[aria-busy] svg» (а «[aria-busy] > *» у сканера — тем более)
+     заставлял браузер пересчитать стили всех значков, а то и всей страницы, до первого кадра после нажатия — 800 узлов
+     у списка плиток. Без занятости значение `inherit` — как без правила. */
+  .btn[aria-busy="true"] { --busy-part: hidden; }
+  .btn .badge, .btn svg { visibility: var(--busy-part, inherit); }
   @keyframes spin { to { transform: rotate(360deg); } }
   @media (prefers-reduced-motion: reduce) {
     .btn[aria-busy="true"]::after { animation: none; border-top-color: var(--spin); opacity: .5; }

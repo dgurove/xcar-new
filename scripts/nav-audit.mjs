@@ -318,7 +318,7 @@ if (host === 'site' && (!only || only === 'переход')) {
         report('список → машина', r);
         r = await pressBack();
         now = await state();
-        report('машина → назад', r, `, запросов страницы ${r?.requests.length ?? '—'}`);
+        report('машина → назад', r, `, запросы: ${r?.requests.join(' ') || 'нет'}`);
         check('назад из машины: список на том же месте', now.url === was.url && Math.abs(now.y - was.y) <= 4, `было ${was.url} y=${was.y}, стало ${now.url} y=${now.y}`);
         report('список → машина второй раз', await linkIn('/offers/\\d+'));
         report('машина → следующая («›»)', await press(() => { const a = document.querySelector('a[rel="next"][href*="/offers/"]'); if (!a?.offsetParent) return null; const b = a.getBoundingClientRect(); return [b.left + b.width / 2, b.top + b.height / 2]; }));

@@ -11,8 +11,15 @@
 // Показ — слоем поверх `#scroller`, ребёнком `<html>` вне `<body>` (как колесо вкладок): содержимое страницы не
 // подменяется — иначе заготовка попала бы в снимок уходящего экрана и сбила память его прокрутки. Шапка и таб-бар
 // остаются живыми. Слой снимают отрисовка новой страницы, ошибка запроса и запасной таймер.
+//
+// Заготовка страницы (18.11.2026, сайт: «нажал на машину — полсекунды ничего»; главное нажатие там не таб, а плитка).
+// Силуэт взводится и на ссылку вглубь — плитка, строка сделки, пункт кабинета. У страницы объекта (номер в пути) в
+// силуэте есть места: заголовок, обложка, цена (`h1` и `data-shape-slot`), своего текста и картинок в них нет — их
+// заполняет нажатая плитка тем, что уже на экране: названием, ценой и кадром, который браузер уже держит в памяти.
+// Настоящая страница встаёт под слой, и её первый кадр получает ту же обложку фоном, пока грузится свой.
 import { shown as markShown } from './perf';
 import { colored } from './ghost';
+import { prefetchable } from '../touch-prefetch';
 
 const PREFIX = 'shape:';
 const LIMIT = 30_000;     // знаков на силуэт
@@ -22,6 +29,7 @@ const shapes = new Map();
 let layer = null;
 let timer = 0;
 let armed = null;
+let cover = null;        // кадр нажатой плитки: первый кадр новой страницы получит его фоном
 const taken = new Map(); // ключ силуэта → когда снят в этой сессии
 
 const theme = () => (document.documentElement.classList.contains('dark') ? 'd' : 'l');
@@ -73,6 +81,8 @@ export function capture() {
         if (extra !== undefined) row.push(extra);
         out.push(row);
     };
+    // Страница объекта (номер в пути): её заголовок и размеченные места — не текст, а место под данные нажатой плитки.
+    const object = /\d/.test(location.pathname);
     const range = document.createRange();
     // Обрезка по предку с `overflow`: у строки с «…» коробки текста идут за видимый край.
     const cut = (r, clip) => {
@@ -91,6 +101,11 @@ export function capture() {
         // Ниже первого экрана — ни сам, ни дети (у `contents` коробки нет — смотрим детей).
         if (!boxless && (r.top >= box.bottom || r.bottom <= box.top - 200)) return;
         let radius = parseFloat(cs.borderTopLeftRadius) || 0;
+        const slot = el.dataset.shapeSlot ?? (object && tag === 'h1' ? 'title' : null);
+        if (slot) {
+            if (!boxless) add('s', cut(r, clip), Math.min(radius, r.height / 2), [slot, Math.round(parseFloat(cs.fontSize)), cs.fontWeight, Math.round(parseFloat(cs.lineHeight)) || 0, parseFloat(cs.letterSpacing) || 0]);
+            return;
+        }
         if (tag === 'img' || tag === 'svg' || tag === 'video' || tag === 'canvas' || tag === 'picture') {
             // Скругление аватара и логотипа часто держит обёртка того же размера.
             const wrap = el.parentElement?.getBoundingClientRect();
@@ -148,33 +163,85 @@ function fallback(w, h) {
     return out;
 }
 
+// Страница объекта, чьего силуэта ещё нет: заголовок, кадр 4:3 и строки фактов — места те же, что у настоящей.
+function fallbackPage(w, h) {
+    const pad = w < 768 ? 16 : 32;
+    const width = Math.min(w - pad * 2, 720);
+    const photo = Math.round(width * 0.75);
+    const out = [['s', pad, 26, width, 30, 0, ['title', 22, '500', 28]], ['s', pad, 118, width, photo, 16, ['cover']]];
+    for (let i = 0, y = 118 + photo + 28; y < h - 20 && i < 8; i++, y += 34) out.push(['t', pad, y, Math.round(width * (0.5 - (i % 3) * 0.1)), 10, 4]);
+    return out;
+}
+
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 
-function draw(rects) {
+function draw(rects, fill) {
     return rects.map(([kind, x, y, w, h, r, extra]) => {
         const at = `left:${x}px;top:${y}px;width:${w}px;height:${h}px;border-radius:${r}px`;
         if (kind === 'h') return `<b style="left:${x}px;top:${y}px;height:${h}px;line-height:${h}px;font-size:${extra[1]}px;font-weight:${extra[2]}">${esc(extra[0])}</b>`;
         if (kind === 'c') return `<i style="${at};background:${esc(extra)}"></i>`;
+        if (kind === 's') {
+            const [name, size = 15, weight = '400', line = 0, spacing = 0] = extra;
+            const value = fill?.[name];
+            if (name === 'cover') return `<i class="g" style="${at}${value ? `;background:center / cover no-repeat url('${encodeURI(value).replace(/'/g, '%27')}'), var(--color-surface-3)` : ''}"></i>`;
+            // Данных нет (пришли не с плитки) — полоса на месте первой строки, как у остального текста силуэта.
+            const bar = Math.max(6, Math.round(size * 0.62));
+            if (!value) return `<i class="g" style="left:${x}px;top:${y + Math.round(((line || h) - bar) / 2)}px;width:${Math.round(w * 0.6)}px;height:${bar}px;border-radius:4px"></i>`;
+            // Ширина — до края экрана, а не коробки прежнего текста: у другой машины название длиннее.
+            return `<b class="s" style="left:${x}px;top:${y}px;max-width:calc(100% - ${x + 16}px);font-size:${size}px;font-weight:${weight};letter-spacing:${spacing}px;line-height:${line ? `${line}px` : '1.25'}">${esc(value)}</b>`;
+        }
         return `<i class="${kind === 'f' ? 'f' : 'g'}" style="${at}"></i>`;
     }).join('');
 }
 
+/**
+ * Что нажатая плитка или строка уже показывает о странице, куда ведёт: название, цена, кадр. Только то, что на экране:
+ * кадр — загруженный (его адрес браузер отдаст из памяти), текст — как написан. Ничего не хранится.
+ */
+function fillFrom(link) {
+    const box = link.closest('.card, .row, tr') ?? link;
+    const text = (el) => el?.textContent.replace(/\s+/g, ' ').trim() ?? '';
+    const title = text(box.querySelector('[data-fill="title"], .card-name, .cell-name, .cell-title, .font-medium'));
+    const price = text(box.querySelector('[data-fill="price"], .card-price'));
+    const img = [...box.querySelectorAll('img')].find((i) => i.complete && i.naturalWidth > 40 && i.currentSrc);
+    const fill = {};
+    if (title && title.length <= 90) fill.title = title;
+    if (price && price.length <= 40) fill.price = price;
+    if (img) fill.cover = img.currentSrc;
+    return Object.keys(fill).length ? fill : null;
+}
+
+// Дом слоя — постоянный пустой узел в <html> рядом с <body>, заведённый при запуске. Сам слой прямо в <html> менял
+// соседей у <body>: тот переставал быть последним ребёнком, и браузер пересчитывал стили сотен узлов страницы по
+// правилам с `:last-child` и `:has()` — до первого кадра после нажатия (18.11.2026, трассировка: 800 узлов).
+let host = null;
+function home() {
+    if (!host?.isConnected) {
+        host = document.createElement('div');
+        host.setAttribute('aria-hidden', 'true');
+        document.documentElement.append(host);
+    }
+    return host;
+}
+
 /** Показать силуэт экрана по адресу, куда идём. false — показывать не на чем (страница без `#scroller`). */
-export function show(href) {
+export function show(href, fill = null) {
     const scroller = document.getElementById('scroller');
     if (!scroller) return false;
     hide();
     const box = scroller.getBoundingClientRect();
     const shape = keysOf(href).map(load).find(Boolean);
+    const object = /\d/.test(new URL(href, location.href).pathname);
     // Силуэт снят при этой ширине (ключ) — высота экрана могла смениться (клавиатура, поворот): лишнее обрежет слой.
-    const rects = shape ? shape.slice(1) : fallback(box.width, box.height);
+    const rects = shape ? shape.slice(1) : object ? fallbackPage(box.width, box.height) : fallback(box.width, box.height);
     layer = document.createElement('div');
     layer.className = 'screen-ghost';
     layer.dataset.sectionGhost = '';
     layer.setAttribute('aria-hidden', 'true');
     layer.style.cssText = `top:${box.top}px;left:${box.left}px;width:${box.width}px;height:${box.height}px;background:${shape ? shape[0][2] : getComputedStyle(document.body).backgroundColor}`;
-    layer.innerHTML = draw(rects);
-    document.documentElement.append(layer);
+    layer.innerHTML = draw(rects, fill);
+    home().append(layer);
+    cover = fill?.cover ?? null;
     // Полоса загрузки Turbo под шапкой при силуэте лишняя: экран уже ответил.
     document.documentElement.classList.add('ghost-on');
     clearTimeout(timer);
@@ -184,6 +251,7 @@ export function show(href) {
 
 export function hide() {
     clearTimeout(timer);
+    cover = null;
     if (layer) document.documentElement.classList.remove('ghost-on');
     layer?.remove();
     layer = null;
@@ -196,22 +264,48 @@ export const shown = () => !!layer;
  * а не раньше — переход могут запретить («Сохранить изменения?»), и слой остался бы висеть.
  * exact — только свой силуэт экрана: общая заготовка списка пилюле не годится.
  */
-export function arm(href, { exact = false } = {}) {
-    armed = { href: new URL(href, location.href).href, exact, at: performance.now() };
+export function arm(href, { exact = false, fill = null, strict = false } = {}) {
+    armed = { href: new URL(href, location.href).href, exact, fill, strict, at: performance.now() };
+}
+
+// Ссылка вглубь приложения: плитка, строка, пункт кабинета. Не таб и не раздел шапки (их взводит `sections`), не пилюля
+// (ниже), не сосед «‹ ›» (тот же экран), не чат (экран без шапки и таб-бара — силуэт списка на его месте соврал бы).
+const pattern = (path) => path.replace(/\d+/g, 'N');
+function deep(link) {
+    if (!prefetchable(link) || link.closest('#tabbar, a[data-section], .tab-wheel, dialog') || link.matches('.pill, [rel="prev"], [rel="next"]')) return false;
+    const url = new URL(link.href);
+    return pattern(url.pathname) !== pattern(location.pathname) && !/\/chats\/\d/.test(url.pathname);
+}
+
+/** Взвести заготовку страницы, на которую ведёт ссылка (строка таблицы без ссылки под пальцем — `row_go_controller`). */
+export function armLink(link) {
+    if (deep(link)) arm(link.href, { fill: fillFrom(link), strict: true });
 }
 
 export function shape() {
+    home();
     document.addEventListener('turbo:visit', (event) => {
         const go = armed;
         armed = null;
         if (!go || performance.now() - go.at > 2500 || event.detail.action === 'restore') return;
+        // Взвод ссылки — только под свой визит: нажатие могло открыть окно строки или шторку, а визит пришёл следом сам
+        // (живое обновление) — заготовка чужой страницы легла бы поверх экрана.
+        if (go.strict && new URL(event.detail.url).pathname !== new URL(go.href).pathname) return;
         if (go.exact && !load(keysOf(event.detail.url)[0])) return;
-        if (show(event.detail.url)) markShown();
+        if (show(event.detail.url, go.fill)) markShown();
     });
     // Пилюли экрана (Входящие / Отправленные, Нам должны / Мы должны): тот же экран с другим списком.
     document.addEventListener('click', (event) => {
-        const pill = event.target.closest?.('a.pill[href]');
-        if (pill && !pill.hasAttribute('aria-current') && !event.defaultPrevented) arm(pill.href, { exact: true });
+        if (event.defaultPrevented || event.button > 0 || event.metaKey || event.ctrlKey || event.shiftKey) return;
+        const link = event.target.closest?.('a[href]');
+        if (!link) return;
+        if (link.matches('a.pill')) { if (!link.hasAttribute('aria-current')) arm(link.href, { exact: true }); return; }
+        armLink(link);
+    });
+    // Новая страница рисуется: её первый кадр получает обложку нажатой плитки фоном — пока грузится свой, серого нет.
+    document.addEventListener('turbo:before-render', (event) => {
+        const at = cover && !event.detail.isPreview ? event.detail.newBody?.querySelector('[data-shape-slot="cover"]') : null;
+        if (at) at.style.background = `center / cover no-repeat url('${encodeURI(cover).replace(/'/g, '%27')}')`;
     });
     // Новая страница рисуется — слой больше не нужен; не доехала — тоже.
     document.addEventListener('turbo:before-render', (event) => { if (!event.detail.isPreview) hide(); });

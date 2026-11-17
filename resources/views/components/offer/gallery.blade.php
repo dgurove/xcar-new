@@ -32,7 +32,8 @@
     </div>
 @else
     <div data-controller="gallery" @if ($download) data-gallery-download-value="true" @endif data-action="keydown@window->gallery#key">
-        <div class="relative overflow-hidden rounded-(--radius-xl) bg-surface-3">
+        {{-- Место обложки в заготовке страницы (`lib/shape.js`): по касанию плитки здесь сразу её кадр. --}}
+        <div class="relative overflow-hidden rounded-(--radius-xl) bg-surface-3" data-shape-slot="cover">
             <div class="flex snap-x snap-mandatory overflow-x-auto" data-gallery-target="strip" style="scrollbar-width:none">
                 @foreach ($photos as $i => $media)
                     <a href="{{ \App\Media\MediaUrl::for($media) }}" data-mid="{{ \App\Media\MediaUrl::for($media, 'w960') }}" data-thumb="{{ \App\Media\MediaUrl::for($media, 'w320') }}" class="aspect-[4/3] w-full shrink-0 snap-center cursor-zoom-in" data-action="click->gallery#open" data-index="{{ $i }}">

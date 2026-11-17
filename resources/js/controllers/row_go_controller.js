@@ -1,5 +1,6 @@
 import { Controller } from '@hotwired/stimulus';
 import * as Turbo from '@hotwired/turbo';
+import { armLink } from '../lib/shape';
 
 // Таблица, где строка ведёт на страницу, а не в карточку рядом (гараж на сайте): нажатие мимо ссылки по строке — переход
 // по ссылке названия (`a.row-link`). Ссылки, кнопки и копирование в строке работают сами.
@@ -9,6 +10,6 @@ export default class extends Controller {
         if (event.target.closest('a, button, input, label, [data-controller~="copy"]')) return;
         if (window.getSelection()?.toString()) return;
         const link = event.target.closest('tr')?.querySelector('a.row-link[href]');
-        if (link) Turbo.visit(link.href);
+        if (link) { armLink(link); Turbo.visit(link.href); }
     }
 }
