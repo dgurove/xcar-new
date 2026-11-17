@@ -143,6 +143,8 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
     Route::prefix('work/mail')->middleware('ability:canCrmMail')->group(function () {
         Route::get('/', [MailController::class, 'index']);
         Route::get('/new', [MailController::class, 'compose']);
+        // Шторка «Вендор письма» — по первому требованию (`data-lazy-sheets`): со списком всех вендоров она ехала на каждую страницу.
+        Route::view('/vendor-sheet', 'admin.mail.vendor-sheet');
         Route::post('/', [MailController::class, 'send']);
         Route::post('/file', [MailController::class, 'file']);
         Route::get('/addresses', [MailController::class, 'addresses']);

@@ -106,8 +106,11 @@ final class DealTabs
     public static function map(): array
     {
         // Непроданная гаражная «платит менеджер» — только в «Гараже» (17.11.2026, владелец), во вкладках сделки её нет.
+        // Раскладке нужны шаг и дело, а не строка: без кадров машин (`offer.media`) — с ними выборка 360 сделок шла
+        // полсекунды вместо 0,1 с, и это была главная цена пересчёта после каждого события (17.11.2026).
         return StaffCache::remember(self::CACHE, 30, fn () => self::rows(Deal::active()->whereHas('offer', fn ($o) => $o->where('offers.state', OfferState::Sold))
-            ->with(self::WITH)->get())->reject(fn (array $r) => $r['deal']->sellsFromGarage($r['deal']->offer?->position()?->stage))->mapWithKeys(fn (array $r) => [$r['deal']->offer_id => [$r['tab'], $r['todo'] !== null]])->all());
+            ->with(array_values(array_diff(self::WITH, ['offer.media'])))->get())->reject(fn (array $r) => $r['deal']->sellsFromGarage($r['deal']->offer?->position()?->stage))
+            ->mapWithKeys(fn (array $r) => [$r['deal']->offer_id => [$r['tab'], $r['todo'] !== null]])->all());
     }
 
     /** Машины вкладки (`OfferController::scopeFor`). @return list<int> */

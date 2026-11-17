@@ -7,7 +7,10 @@ import { request } from '../lib/http';
 // Stimulus подключит контроллеры; потом событие идёт как обычно.
 async function ensureSheets(from, name) {
     if (document.querySelector(`[data-action*="${name.replace(/"/g, '')}@window"]`)) return;
-    const holder = (from.closest('turbo-frame') ?? document).querySelector('[data-lazy-sheets]');
+    // Место, что называет свои события (`data-lazy-sheets-for`: шторка вендора письма), — по имени; иначе — место в окне,
+    // откуда нажали (шторки действий машины: их события с номером, заранее не назвать).
+    const named = [...document.querySelectorAll('[data-lazy-sheets][data-lazy-sheets-for]')].find((h) => h.dataset.lazySheetsFor.split(' ').includes(name));
+    const holder = named ?? (from.closest('turbo-frame') ?? document).querySelector('[data-lazy-sheets]:not([data-lazy-sheets-for])');
     const url = holder?.dataset.lazySheets;
     if (!url) return;
     holder.removeAttribute('data-lazy-sheets');
@@ -17,13 +20,6 @@ async function ensureSheets(from, name) {
     await new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)));
 }
 
-// Кнопка, которая шлёт событие на window: другой контроллер его ловит
-// (deal:open открывает блок цены, chat:open — чат, letters:open — окно писем с url в detail, vendor-pick:open — шторка
-// вендора письма).
-// С wide — только от этой ширины: уже неё ссылка ведёт куда написано (чат со страницы ТС на телефоне — экраном, не шторкой).
-// Кнопка в шторке с «sheet#close» («···» редактора → «Отдать…», «Срочно…», «Вернуть в продажу»): сначала закрывается её
-// шторка, потом событие — иначе закрытие снимало из истории (overlays.js) и запись только что открытой шторки, и она
-// тут же закрывалась.
 export default class extends Controller {
     async send(event) {
         if (event.params.wide && !matchMedia(`(min-width: ${event.params.wide}px)`).matches) return;

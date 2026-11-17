@@ -16,4 +16,12 @@
 </div>
 {{-- Шторка «Вендор письма» — там же, где окно писем: одна на страницу, её открывает «Выбрать вендора» (x-mail.vendor-pick). --}}
 @php $vendorScope = \App\Support\Surface::current() === \App\Support\Surface::Park ? \App\Mail\Scope::Park : \App\Mail\Scope::Offers; @endphp
-@if (\App\Mail\VendorPick::allowed(auth()->user(), $vendorScope))<x-mail.vendor-sheet :park="$vendorScope === \App\Mail\Scope::Park"/>@endif
+@if (\App\Mail\VendorPick::allowed(auth()->user(), $vendorScope))
+    {{-- В CRM — по первому требованию (17.11.2026: список всех вендоров, 12 КБ и запрос, ехал на каждую страницу с окном писем);
+         после ошибки формы — сразу: введённое стоит в шторке. --}}
+    @if ($vendorScope === \App\Mail\Scope::Offers && ! $errors->any() && ! session()->hasOldInput())
+        <div class="contents" data-lazy-sheets="/work/mail/vendor-sheet" data-lazy-sheets-for="vendor-pick:open"></div>
+    @else
+        <x-mail.vendor-sheet :park="$vendorScope === \App\Mail\Scope::Park"/>
+    @endif
+@endif
