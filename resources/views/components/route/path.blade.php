@@ -241,6 +241,12 @@
                         $forKeys = $stage->asks === \App\Workflow\Asks::Buyer && ! $deal?->contractSigned() ? collect() : $forManager->reject(fn ($x) => $x->isRetreat());
                         $forKeys = ! $takeFor && ! ($wantsInvoice || $moves->isNotEmpty() || $stage->template_id || $requests || $payNow->isNotEmpty()) ? $forKeys : collect();
                         $proofFor = $req && $req->asks === \App\Workflow\Asks::Document && $stage->isPayStep() && auth()->user()?->canEditDeals();
+                        // Шаг платит только комиссию без счёта (18.11.2026) — ссылкой или наличными, платёжки нет: «Приложить платёжку за
+                        // менеджера» не нужна. Где платят поставщику или по счёту — как было.
+                        if ($proofFor && $deal && ! $deal->paysSupplierOn($stage)) {
+                            $ours = $invoices->filter(fn ($i) => $i->direction === 'issued' && $i->kind !== \App\Billing\ChargeKind::Reward && $i->state !== \App\Billing\InvoiceState::Void);
+                            $proofFor = $ours->isEmpty() || $ours->contains(fn ($i) => $i->isDocument());
+                        }
                         $reqFiles = $req ? $req->getMedia('files') : collect();
                         // Оплату с документом проходят только с платёжкой (16.11.2026, владелец: «без этого следующий шаг не продвинется»):
                         // «Приложить платёжку за менеджера» и есть этот ход, голого «За менеджера: Оплатил, документ приложен» нет.

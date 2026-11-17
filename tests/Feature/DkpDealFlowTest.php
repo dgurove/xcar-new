@@ -166,8 +166,8 @@ class DkpDealFlowTest extends TestCase
         $this->assertNull($invoice->fresh()->openLink());
         $this->actingAs($this->admin)->post($crm.'/work/money/invoices/'.$invoice->id.'/links', [])->assertSessionHasErrors('amount');
         $this->assertNull($invoice->fresh()->openLink());
-        // «Оплаты» по менеджерам (18.11.2026): неотправленное — делом «1 отправить» у менеджера.
-        $this->actingAs($this->admin)->get($crm.'/work/money')->assertOk()->assertSee('1 отправить');
+        // «Оплаты» по менеджерам (18.11.2026): до шага оплаты неотправленного там нет вовсе.
+        $this->actingAs($this->admin)->get($crm.'/work/money')->assertOk()->assertDontSee('1 отправить');
 
         $this->sendToManager($deal);
         $this->assertEqualsWithDelta(80000, $invoice->fresh()->openLink()->amount, 0.01);

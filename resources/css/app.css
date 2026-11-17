@@ -776,11 +776,8 @@ html.kb-open { --home-gap: 0px; }
   .list > * + .money-person::after { left: calc(1.75rem + 30px); }
   /* Строка человека — плотно, как «Настройки» iOS (18.11.2026, владелец): кружок 30 px, строка 44 px. */
   .list .row.money-person { min-height: 2.75rem; padding-block: .4375rem; }
-  .list > * + .money-car::after { left: 4.75rem; }
-  /* «Оплаты» → человек (18.11.2026): кнопки строки машины — своей строкой под ней, от текста (поле + фото 3rem + зазор). */
-  .money-car-acts { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: .5rem; padding: 0 1rem .75rem 4.75rem; }
-  .money-car-acts > form > .btn, .money-car-acts > div > .btn, .money-car-acts > .btn { @apply w-full px-2; }
-  @media (min-width: 640px) { .money-car-acts { grid-auto-columns: max-content; } .money-car-acts > form > .btn, .money-car-acts > div > .btn, .money-car-acts > .btn { @apply w-auto px-4; } }
+  /* Кнопки дела в строке таблицы человека в «Оплатах» — в ряд у правого края. */
+  .money-acts { display: flex; justify-content: flex-end; gap: .5rem; white-space: nowrap; }
   .claim-acts > .btn, .claim-acts > form > .btn, .claim-acts > div > .btn { @apply w-full px-2; }
   .receipt-shot { @apply mb-4 block w-full rounded-(--radius-m) bg-surface-2 object-contain; max-height: 34dvh; }
   /* «Опубликовать»: кнопка называет исход отмеченной строки — «сейчас», «сегодня в 16:00», «завтра в 16:00». */

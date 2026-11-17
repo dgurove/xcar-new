@@ -29,7 +29,28 @@
         $sheet = 'send-contract-'.$deal->id;
     }
 @endphp
-@if ($sent)
+@php
+    // Отправленная комиссия (18.11.2026, владелец: «скопировать ссылку нигде нельзя, нажать, что наличными оплачено»): живая ссылка —
+    // строкой со «Скопировать» / «Отправить», под ней «Оплатили наличными…» — шторка оплаты с наличными.
+    $openLink = $invoice && $sent && $invoice->state === \App\Billing\InvoiceState::Issued ? $invoice->openLink() : null;
+    $cash = $invoice && $sent && ! $invoice->isDocument() && $invoice->state === \App\Billing\InvoiceState::Issued && $invoice->remaining() > 0 && auth()->user()?->canManageCrm();
+@endphp
+@if ($sent && ($openLink || $cash))
+    <div class="list mt-2">
+        @if ($openLink)
+            @php [$linkState] = \App\Http\Admin\MoneyLinks::short($openLink); @endphp
+            <x-ui.share-link variant="row" :url="$openLink->url()" :title="$openLink->title()" :text="$openLink->message()" label="Ссылка на оплату" :sub="$linkState.', '.\App\Support\Money::rub($openLink->amount)" done="Ссылка на оплату в буфере"/>
+        @endif
+        @if ($cash)
+            <div class="contents" data-controller="sheet">
+                <x-deal.sale-row label="Оплатили наличными?" value="Отметить" tone="accent" data-action="sheet#open"/>
+                <x-ui.sheet :id="'cash-'.$invoice->id" :title="$invoice->isDocument() ? 'Оплата по счёту '.$invoice->label() : 'Оплата подбора'">
+                    <x-billing.pay-form :invoice="$invoice" :action="'/work/money/invoices/'.$invoice->id.'/payments'" :source="$invoice->isDocument() ? null : 'cash'" sheet/>
+                </x-ui.sheet>
+            </div>
+        @endif
+    </div>
+@elseif ($sent)
     <x-route.task-row icon="check" static>
         {{ \Illuminate\Support\Str::ucfirst($name) }} у менеджера
         @if ($at)<x-slot:sub>{!! \App\Support\Ago::html($at, true, words: false) !!}</x-slot:sub>@endif

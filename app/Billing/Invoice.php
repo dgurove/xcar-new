@@ -324,6 +324,15 @@ class Invoice extends Model implements HasMedia
             ->orWhereRaw("billing_invoices.paid > coalesce((select sum(p.amount) from billing_payments p where p.invoice_id = billing_invoices.id and p.source = 'offset'), 0) + 0.005"));
     }
 
+    /**
+     * Сделка счёта стоит на шаге оплаты (`Stage::isPayStep`: у менеджера выход «Платёжное поручение…» / «Оплатил, документ…»).
+     * Неотправленный счёт до этого шага — ещё не долг (18.11.2026, владелец: «по многим поставщики даже не согласовали реализацию, а
+     * ты предлагаешь отправить 53 ссылки — только на этапе „Оплата подбора“»): в «Оплатах» его нет.
+     */
+    public const ON_PAY_STEP_SQL = "exists (select 1 from deals d join offer_positions p on p.offer_id = d.offer_id and p.track = 'sale'
+        join workflow_exits e on e.stage_id = p.stage_id and e.actor = 'manager'
+        where d.id = billing_invoices.deal_id and (lower(e.label) like 'платёжное поручение%' or lower(e.label) like 'оплатил, документ%'))";
+
     /** Наш счёт сделки (`issued`) — после отправки или первой оплаты (деньги пришли — проверять поздно); выплата ему и счета без сделки — сразу. */
     public function isShownToManager(): bool
     {

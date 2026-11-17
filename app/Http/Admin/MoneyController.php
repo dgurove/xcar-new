@@ -161,8 +161,10 @@ class MoneyController
         $q = Invoice::crmMoney();
         // Неотправленный менеджеру счёт сделки — тоже здесь (18.11.2026, владелец: «внутри все оплаты по этому менеджеру и в том
         // числе то, что надо ему отправить»): группой «Отправить» у человека. Вознаграждение от поставщика до оплаты — нет.
+        // До шага оплаты неотправленного не видно вовсе: это ещё не долг (`Invoice::ON_PAY_STEP_SQL`).
         $ours = fn () => ($facets ? $facets->applyTo($q) : $q)->where('direction', 'issued')
-            ->where(fn ($w) => $w->where('kind', '!=', ChargeKind::Reward->value)->orWhere(fn ($x) => $x->shownToManager()));
+            ->where(fn ($w) => $w->where(fn ($x) => $x->shownToManager())
+                ->orWhere(fn ($x) => $x->where('kind', '!=', ChargeKind::Reward->value)->whereRaw(Invoice::ON_PAY_STEP_SQL)));
 
         return match ($tab) {
             'dkp' => $ours()->where('kind', ChargeKind::Sale)->whereIn('seller', [Seller::Prime->value, Seller::Ros->value]),
@@ -238,7 +240,7 @@ class MoneyController
         // Дело: менеджер пишет, что оплатил, или по ссылке пытались и не вышло — позвонить (ссылки — только у комиссий).
         // Неотправленное менеджеру — тоже дело (18.11.2026).
         $todo = fn (string $t) => $open($t)->whereHas('claims')->exists() || ($t === 'fees' && MoneyLinks::tried())
-            || ($t !== 'payouts' && $open($t)->whereNotNull('deal_id')->whereNull('shown_at')->where('paid', '<=', 0)->exists());
+            || ($t !== 'payouts' && $open($t)->whereNotNull('deal_id')->whereNull('shown_at')->where('paid', '<=', 0)->whereRaw(Invoice::ON_PAY_STEP_SQL)->exists());
 
         return [
             'counts' => ['fees' => $open('fees')->count(), 'dkp' => $open('dkp')->count(), 'payouts' => $n = $open('payouts')->count()],
@@ -486,6 +488,17 @@ class MoneyController
         $reject($payment, $request->user(), $request->validate(['reason' => ['nullable', 'string', 'max:255']])['reason'] ?? null);
 
         return back()->with('toast', 'Отмечено: не поступила');
+    }
+
+    /**
+     * Таблица страницы человека (18.11.2026, владелец: «внутри надо как таблицу, а не строками»): по машинам, как «Сделки» —
+     * название, № убытка, что с оплатой, когда выставлено, сумма и кнопки дела самым правым (`x-money.person-row`).
+     */
+    public static function personTable(): Table
+    {
+        return Table::of(new Column('title', 'Марка, модель', grow: true), new Column('vendor', '№ убытка', from: 'sm', role: ColRole::Code, rem: 10),
+            new Column('status', 'Статус', from: 'sm', role: ColRole::State, rem: 10), new Column('created', 'Создано', from: 'lg', aside: true, role: ColRole::When, cell: 'nums', rem: 6.5),
+            new Column('amount', 'Сумма', num: true, cell: 'nums', rem: 7), new Column('action', role: ColRole::When, rem: 14));
     }
 
     /**
