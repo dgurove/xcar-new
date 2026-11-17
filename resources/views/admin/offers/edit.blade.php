@@ -170,6 +170,7 @@
                 @if ($published)
                     <div data-edit-card-target="view" @unless ($foldMoney) hidden @endunless>@include('admin.offers.fields.money-view', ['garageOnly' => (bool) $garageView])</div>
                 @endif
+                @include('admin.offers.revived')
                 <div @if ($published) data-edit-card-target="edit" @if ($foldMoney) hidden @endif @endif>@include('admin.offers.fields.money', ['form' => 'offer-form', 'garageOnly' => (bool) $garageView])</div>
                 {{-- Черновик: «Показ» строкой со шторкой и, у оценённого, «Выставить в продажу» и «Отдать» — в этой же карточке. --}}
                 @if ($draftShow)

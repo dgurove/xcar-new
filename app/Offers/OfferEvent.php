@@ -167,6 +167,7 @@ class OfferEvent extends Model
             OfferEventType::Scheduled => isset($p['error']) ? 'Не вышло в слот: '.$p['error'] : (isset($p['at']) ? 'В слот '.Ago::day(Carbon::parse($p['at']), true) : 'Убрано из слота'),
             // Окно галереи: открыли («В галерее до 11 окт, 23:59») или убрали руками.
             OfferEventType::Gallery => isset($p['until']) ? 'В галерее до '.Ago::day(Carbon::parse($p['until']), true) : (($p['letter'] ?? false) ? 'Убрано из галереи: пришло письмо' : 'Убрано из галереи'),
+            OfferEventType::Revived => 'Вернулось в «Без продажной цены»: письмо поставщика после закрытия приёма',
             OfferEventType::PlaceChanged => 'Автомобиль: '.(CarPlace::labelOf($p['place'] ?? null) ?? 'место не указано'),
             OfferEventType::Note => (string) ($p['text'] ?? ''),
             OfferEventType::Garage => self::garageText($p),

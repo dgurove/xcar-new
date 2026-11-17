@@ -24,6 +24,7 @@
             <h2 class="detail-section !mb-0">Цены</h2>
             <span class="ml-auto">@include('admin.offers.fields.vat-check', ['form' => $form])</span>
         </div>
+        @include('admin.offers.revived')
         {{-- Без марки не выставить (12.11.2026, начальник): марка и модель — тут, полями формы окна; у прицепа или кузова без
              шильдика — «Марки нет» (`OfferController::noBrand`). В «ТС» ниже их тогда нет (`x-car.blocks without`). --}}
         @if ($brandTop ?? false)

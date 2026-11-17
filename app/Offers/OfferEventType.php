@@ -34,5 +34,6 @@ enum OfferEventType: string
     case Reprice = 'reprice'; // переоценка закупочной: пришла, применена, отклонена (28.10.2026, `Offers\Reprice`)
     case SupplierDeclined = 'supplier_declined'; // поставщик отказал продавать — сделка закрыта по причине (28.10.2026)
     case Wave = 'wave'; // открылась следующая волна показа: кому и через сколько после выхода (07.11.2026, `NotifyViewers::due`)
+    case Revived = 'revived'; // письмо поставщика вернуло машину из «Без подтверждений» в «Без продажной цены» (18.11.2026, `ReviveClosed`)
     case Parallel = 'parallel'; // параллельная сделка: поручили, её шаг, взяли в работу, закрыли (07.11.2026, `Offers\Parallels`)
 }

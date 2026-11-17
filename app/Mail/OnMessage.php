@@ -18,6 +18,7 @@ use App\Notifications\Notify;
 use App\Notifications\ParkNotice;
 use App\Offers\Actions\DetectReprice;
 use App\Offers\Actions\FillFromLetter;
+use App\Offers\Actions\ReviveClosed;
 use App\Offers\SupplierLetterWait;
 use App\Offers\Actions\ShowInGallery;
 use App\Offers\Events\InsurerReplied;
@@ -86,6 +87,8 @@ final class OnMessage
         if ($offer = $linked instanceof Offer ? $linked : $thread?->offer) {
             // Новое письмо вендора по черновику в галерее — окно закрывается (привязку новой ветки ловит LinkThread).
             ShowInGallery::onLetter($offer);
+            // Новое письмо поставщика по машине из «Без подтверждений» — снова в работу, в «Без продажной цены» (18.11.2026).
+            ReviveClosed::onLetter($offer, $message);
             try {
                 app(FillFromLetter::class)($offer, $message);
                 // «Новая стоимость – 433 200 руб.» по машине с закупочной — переоценка на решение админа, сама цена не меняется.

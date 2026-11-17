@@ -1742,6 +1742,26 @@ class Offer extends Model
         return $user && $this->favorites->contains('user_id', $user->id);
     }
 
+    /**
+     * Что было до возврата письмом из «Без подтверждений» (`ReviveClosed`, 18.11.2026): цена продажи, сколько подтверждений,
+     * когда закрыт приём, письмо — пока машину не выставили снова. @return array{asking: int, bids: int, closed_at: ?Carbon, letter: ?Message}|null
+     */
+    public function revival(): ?array
+    {
+        if ($this->state !== OfferState::Draft) {
+            return null;
+        }
+        $event = $this->events()->where('type', OfferEventType::Revived)->latest('id')->first();
+        if (! $event || ($this->published_at && $event->created_at->lt($this->published_at))) {
+            return null;
+        }
+        $p = $event->payload;
+
+        return ['asking' => (int) ($p['asking'] ?? 0), 'bids' => (int) ($p['bids'] ?? 0),
+            'closed_at' => isset($p['closed_at']) ? Carbon::parse($p['closed_at']) : null,
+            'letter' => isset($p['letter']) ? \App\Mail\Message::find($p['letter']) : null];
+    }
+
     public function log(OfferEventType $type, ?User $user = null, array $payload = []): OfferEvent
     {
         return $this->events()->create(['car_id' => $this->car_id, 'type' => $type, 'user_id' => $user?->id, 'payload' => $payload]);
