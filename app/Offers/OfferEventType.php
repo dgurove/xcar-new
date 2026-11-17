@@ -25,6 +25,7 @@ enum OfferEventType: string
     case Garage = 'garage';
     case Gallery = 'gallery_window';
     case SupplierLetter = 'supplier_letter';
+    case ExtraRequest = 'extra_request';
     case Estimate = 'estimate';
     case Auction = 'auction';
     case Proposal = 'proposal';

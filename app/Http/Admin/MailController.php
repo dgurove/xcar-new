@@ -49,7 +49,9 @@ use App\Media\PhotosPdf;
 use App\Media\Thumb;
 use App\Offers\Actions\AutoOffer;
 use App\Offers\Actions\MarkSupplierRequestSent;
+use App\Offers\Actions\LogExtraRequest;
 use App\Offers\Documents\PaymentProofPdf;
+use App\Offers\ExtraRequest;
 use App\Offers\Intake\OpenDraft;
 use App\Offers\Offer;
 use App\Offers\OfferNumber;
@@ -635,7 +637,7 @@ class MailController
         $accounts = Account::where('scope', $this->scope)->sending()->orderBy('title')->get();
         $account = $accounts->firstWhere('slug', $request->query('account')) ?? $accounts->first();
         abort_unless($account, 404);
-        $template = $request->query('template') ? Template::where('scope', $this->scope)->find($request->query('template')) : null;
+        $template = $request->query('template') ? Template::where('scope', $this->scope)->letters()->find($request->query('template')) : null;
         // Предложение — письмо CRM, машина и счёт — письма парковки: чужая сторона их не подставляет.
         $sale = $this->scope === Scope::Offers;
         $offer = $sale && $request->query('offer') ? OfferNumber::find((string) $request->query('offer')) : null;
@@ -699,6 +701,15 @@ class MailController
             // Контакт «Реализация» у вендора (Альфа — implementation@, 08.10.2026) — адресат письма по продаже, кто бы ни
             // написал последнее письмо: ответственный по убытку и пересылка Андрея — не те, кто согласует реализацию.
             $saleTo = $offer->vendor?->saleTo();
+        }
+        // Доп. запрос поставщику (17.11.2026, владелец по CTTM Cargoline: «Сделать доп. запрос» над письмами машины): галки —
+        // ссылками над текстом (`pick[]`, город — `city`), письмо собирает `ExtraRequest` и уходит ответом в ветку
+        // поставщика, как письмо этапа.
+        $extra = $offer && $request->boolean('extra') ? ExtraRequest::picked((array) $request->query('pick', [])) : null;
+        $extraCity = null;
+        if ($extra !== null) {
+            $extraCity = trim((string) $request->query('city', '')) ?: ExtraRequest::cityOf($offer, $extra);
+            $template = new Template(['subject' => '{{ claim_ref }}', 'body' => ExtraRequest::text($offer, $extra, $extraCity)]);
         }
         if ($vehicle) {
             // Письмо о машине отвечает в ту ветку, которой приехала заявка.
@@ -799,7 +810,7 @@ class MailController
         // Письмо поставщику об оплате (шаблон этапа, Альфа): документ об оплате, что приложили на шаге оплаты, — во вложении
         // (18.10.2026: «Платёжное поручение во вложении» уходило без него) одним PDF (10.11.2026, владелец: «из двух фоток, как
         // с паспортом, формировался пдф» — `PaymentProofPdf`).
-        if ($offer?->deal && $template && ! $request->old() && $template->id === $offer->stage()?->template_id
+        if ($offer?->deal && $template?->id && ! $request->old() && $template->id === $offer->stage()?->template_id
             && PaymentProofPdf::files($offer->deal)->isNotEmpty() && ($proof = PaymentProofPdf::render($offer->deal))) {
             $defaults['files'][] = $outbox->put(PaymentProofPdf::fileName($offer->deal), $proof);
         }
@@ -818,6 +829,11 @@ class MailController
         if ($supplierRequest && ! $request->old()) {
             $defaults['files'][] = $outbox->put($supplierRequest->filename(), $supplierRequest->xlsx());
         }
+        // «Подтвердить оплату» — PDF оплаты во вложении, если он есть и ещё не уходил по этой машине.
+        $sentByUs = $extra !== null ? Message::whereIn('thread_id', Thread::where('offer_id', $offer->id)->select('id'))->where('direction', Direction::Out)->with('attachments')->get() : collect();
+        if ($extra !== null && ! $request->old() && ExtraRequest::proofNeeded($offer, $extra, $sentByUs) && ($proof = PaymentProofPdf::render($offer->deal))) {
+            $defaults['files'][] = $outbox->put(PaymentProofPdf::fileName($offer->deal), $proof);
+        }
         $closingFiles = [];
         if ($draft && ! $request->old()) {
             $closingFiles = $this->closingFiles($draft, $outbox, $actPdf, $send);
@@ -825,12 +841,15 @@ class MailController
         }
 
         return view('admin.mail.compose-frame', ['frame' => $request->header('Turbo-Frame'), 'account' => $account, 'accounts' => $accounts, 'thread' => $thread, 'parent' => $parent, 'report' => $release ? 'release' : null, 'defaults' => $defaults, 'invoice' => $invoice,
-            'mode' => 'new', 'templates' => Template::where('scope', $this->scope)->orderBy('name')->get(), 'offer' => $offer, 'vehicle' => $vehicle, 'base' => $this->base,
+            'mode' => 'new', 'templates' => $extra !== null ? collect() : Template::where('scope', $this->scope)->letters()->orderBy('name')->get(), 'offer' => $offer, 'vehicle' => $vehicle, 'base' => $this->base,
             // Черновик после «Принять» (BidController::accepted): отправили — окно закрывается, человек идёт дальше по списку.
             'then' => $request->query('then') === 'close' ? 'close' : null,
             'requestDeals' => $supplierRequest?->deals->pluck('id')->implode(','),
             'closing' => $closing && ! $review ? $request->query('closing') : null, 'closingReplaces' => $closing[2]?->id ?? null, 'closingFiles' => $closingFiles, 'closingSend' => $send,
             'closingThread' => $closing ? $request->query('closing') : null,
+            'extra' => $extra, 'extraCity' => $extraCity, 'extraAll' => $extra !== null ? Template::requests()->get() : collect(),
+            // Просим подтвердить оплату, а платёжки в системе нет (платил ПРАЙМ) — прикладывают скрепкой.
+            'extraNoProof' => $extra !== null && $extra->contains(fn (Template $t) => $t->attach === Template::PAY_PROOF) && (! $offer->deal || PaymentProofPdf::files($offer->deal)->isEmpty()),
             // Номер, который письмо показало: при отправке он меняется на настоящий, если успел смениться (полночь, другой отправил).
             'closingLabel' => $draft?->label()]);
     }
@@ -952,6 +971,10 @@ class MailController
             throw $e;
         }
         $account = Account::where('slug', $data['account'])->where('scope', $this->scope)->firstOrFail();
+        // Доп. запрос поставщику — что спросили, словами на момент отправки (`mail_messages.requests`).
+        if ($this->scope === Scope::Offers && ! empty($data['extra'])) {
+            $data['requests'] = ExtraRequest::record(ExtraRequest::picked($data['extra']), $data['extra_city'] ?? null);
+        }
         if (! $composer->emails($data['to'])) {
             return redirect($retry ?: url()->previous())->withInput()->withErrors(['to' => 'Нужен хотя бы один адрес']);
         }
@@ -1037,9 +1060,13 @@ class MailController
             }
         }
 
-        // Ответ на письмо переоценки — поставщику ответили (`RepriceFlow`, 04.11.2026).
-        if ($this->scope === Scope::Offers) {
+        // Ответ на письмо переоценки — поставщику ответили (`RepriceFlow`, 04.11.2026). Доп. запрос — не ответ на переоценку.
+        if ($this->scope === Scope::Offers && empty($data['requests'])) {
             Reprice::answeredBy($message, $parent, $request->user());
+        }
+        // Доп. запрос ушёл — в «Историю» машины и менеджеру сделки в чат.
+        if ($this->scope === Scope::Offers && ! empty($data['requests']) && ! empty($data['offer']) && ($asked = Offer::find($data['offer']))) {
+            app(LogExtraRequest::class)($asked, $message, $request->user());
         }
         // Заявка поставщику ушла — сделки из её файла идут дальше «Заявка отправлена».
         $requested = $this->scope === Scope::Offers && ! empty($data['request_deals'])
@@ -1588,6 +1615,9 @@ class MailController
             'closing_thread' => ['nullable', 'string', 'max:80'],
             'closing_files.*' => ['string'],
             'request_deals' => ['nullable', 'string', 'regex:/^\d+(,\d+)*$/'],
+            'extra' => ['nullable', 'array', 'max:30'],
+            'extra.*' => ['integer'],
+            'extra_city' => ['nullable', 'string', 'max:80'],
         ], [], ['to' => 'Кому', 'cc' => 'Копия', 'subject' => 'Тема', 'body' => 'Письмо']);
     }
 

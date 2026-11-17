@@ -183,6 +183,8 @@ final class CarView
             'purge' => $admin && in_array($state, [OfferState::Archived, OfferState::Cancelled], true),
             'askMenu' => ($correct || $rate) && $o->openEstimates->isEmpty() && $o->declinedEstimates->isEmpty(),
             'chats' => $this->chats,
+            // «Сделать доп. запрос» над письмами (17.11.2026, `ExtraRequest`): админу с почтой, у машины есть поставщик, не архив.
+            'extraRequest' => $admin && $this->user->canCrmMail() && $o->vendor_id && ! in_array($state, [OfferState::Archived, OfferState::Cancelled], true),
             'tags' => $admin ? Tag::orderBy('sort')->get() : collect(),
             // Кому отдать на оценку — у черновика; «+ Интерес», «За менеджера» берут `People::managers`.
             // Тот же список, что у окна «Кому» (`AudienceRules::people`), — один запрос на окно.

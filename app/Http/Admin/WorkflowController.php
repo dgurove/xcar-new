@@ -139,7 +139,7 @@ class WorkflowController
             'exits' => old('exits', $stage->exists ? $stage->exits->map(fn ($e) => $e->only('id', 'label', 'actor', 'to_stage_id', 'confirm'))->all() : []),
             'fields' => old('fields', $stage->fields ?? []),
             'staffFields' => old('staff_fields', $stage->staff_fields ?? []),
-            'templates' => Template::where('scope', Scope::Offers)->orderBy('name')->pluck('name', 'id'),
+            'templates' => Template::where('scope', Scope::Offers)->letters()->orderBy('name')->pluck('name', 'id'),
         ]);
     }
 

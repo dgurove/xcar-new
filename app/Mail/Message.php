@@ -16,7 +16,7 @@ use Illuminate\Support\Facades\Cache;
     'references_header', 'subject', 'subject_normalized', 'from_email', 'from_name', 'to_preview', 'date_at',
     'internal_at', 'size', 'is_seen', 'is_answered', 'is_flagged', 'is_draft', 'is_deleted', 'text_body',
     'html_body', 'preview', 'headers', 'parse_state', 'parse_error', 'send_state', 'send_error', 'send_attempts',
-    'sent_at', 'appended_to_sent_at', 'has_attachments', 'attachments_count', 'created_by', 'intent', 'parsed', 'parser_version',
+    'sent_at', 'appended_to_sent_at', 'has_attachments', 'attachments_count', 'created_by', 'intent', 'parsed', 'parser_version', 'requests',
 ])]
 class Message extends Model
 {
@@ -47,6 +47,8 @@ class Message extends Model
             'send_state' => SendState::class,
             'headers' => 'array',
             'parsed' => 'array',
+            // Доп. запрос поставщику (17.11.2026, `Offers\ExtraRequest::record`): галки и фраза на момент отправки.
+            'requests' => 'array',
             'date_at' => 'datetime',
             'internal_at' => 'datetime',
             'sent_at' => 'datetime',

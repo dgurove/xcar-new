@@ -174,6 +174,8 @@ final class Composer
                 'parse_state' => ParseState::Parsed,
                 'send_state' => SendState::Queued,
                 'created_by' => $by?->id,
+                // Доп. запрос поставщику (`Offers\ExtraRequest::record`) — до очереди: письмом этапа его не считать (`MarkSupplierLetter`).
+                'requests' => $data['requests'] ?? null,
             ]);
             $message->addresses()->create(['kind' => 'from', 'email' => mb_strtolower($account->email), 'name' => $account->fromName(), 'position' => 0]);
             foreach (['to' => $to, 'cc' => $this->emails($data['cc'] ?? ''), 'bcc' => $this->emails($data['bcc'] ?? '')] as $kind => $list) {

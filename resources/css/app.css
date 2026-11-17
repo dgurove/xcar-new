@@ -5311,6 +5311,12 @@ dialog.lightbox:not(.lb-one) .lb-pill--bottom { bottom: calc(var(--lb-strip-bott
   .compose-templates::-webkit-scrollbar { display: none; }
   .compose-template { @apply inline-flex h-8 shrink-0 items-center rounded-full bg-surface-3 px-3 text-sm whitespace-nowrap text-ink hover:bg-line/60; }
   .compose-template[aria-current] { @apply bg-accent font-medium text-white hover:bg-accent-hover; }
+  /* Доп. запрос поставщику (17.11.2026): галки-пилюли в несколько строк, под ними варианты города и «Другой» полем. */
+  .compose-requests { @apply mb-3 flex flex-col gap-2 border-b border-line pb-3; }
+  .compose-requests-list { @apply flex flex-wrap gap-1.5; }
+  .compose-choice { @apply h-7 px-2.5; }
+  .compose-choice-input { @apply h-7 w-36 rounded-full bg-surface-3 px-3 text-base outline-none placeholder:text-ink-dim focus:bg-surface-2; }
+  .compose-requests-note { @apply text-sm text-ink-dim; }
   /* Исходное письмо — чипом под текстом; раскрытый встаёт во всю ширину, содержимое — под ним. */
   .compose-extras { @apply mt-3 flex flex-wrap items-start gap-1.5; }
   .compose-extras > details[open] { @apply basis-full; }
@@ -6154,6 +6160,13 @@ dialog.lightbox:not(.lb-one) .lb-pill--bottom { bottom: calc(var(--lb-strip-bott
   .chain--full .letter-body[open] > .letter-head .letter-when, .chain--full .letter-body[open] > .letter-head .letter-clip { display: none; }
   .chain--full .letter-body--acts[open] > .letter-head { padding-right: 7.5rem; }
   /* Заголовок карточки писем (x-mail.letters): тема писем и число, справа значок «Ответить». */
+  /* Доп. запрос поставщику над письмами (17.11.2026, `x-offer.extra-request`): последний запрос строкой, справа серым — ждём
+     ответа или ответили; кнопка своей строкой. */
+  .extra-request { display: flex; flex-direction: column; gap: .75rem; }
+  .extra-request-head { display: flex; align-items: baseline; gap: .75rem; }
+  .extra-request-title { flex: 1 1 auto; min-width: 0; font-size: var(--text-sm); line-height: 1.125rem; font-weight: 500; color: var(--color-ink-muted); }
+  .extra-request-state { flex: none; font-size: var(--text-sm); color: var(--color-ink-dim); white-space: nowrap; }
+  .extra-request-text { margin-top: .25rem; }
   .letters-head { display: flex; align-items: center; gap: .75rem; margin-bottom: .5rem; }
   .letters-head > h2 { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; font-size: var(--text-sm); line-height: 1.125rem; font-weight: 500; color: var(--color-ink-muted); }
   .letter-acts { display: none; position: absolute; top: -.375rem; right: 0; align-items: center; gap: .125rem; }

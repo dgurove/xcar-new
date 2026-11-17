@@ -531,6 +531,7 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
             Route::get('/templates', [MailTemplateController::class, 'index']);
             Route::get('/templates/new', [MailTemplateController::class, 'create']);
             Route::post('/templates', [MailTemplateController::class, 'store']);
+            Route::post('/templates/order', [MailTemplateController::class, 'order']);
             Route::get('/templates/{template}', [MailTemplateController::class, 'edit']);
             Route::put('/templates/{template}', [MailTemplateController::class, 'update']);
             Route::delete('/templates/{template}', [MailTemplateController::class, 'destroy']);

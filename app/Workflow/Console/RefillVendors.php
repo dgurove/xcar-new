@@ -55,8 +55,8 @@ class RefillVendors extends Command
             Template::where('scope', Scope::Offers)->where('name', $letter['name'])->update(['subject' => $letter['subject'], 'body' => $letter['body']]);
         }
 
-        // Письма поставщику под старыми именами, на которые больше никто не ссылается.
-        $orphans = Template::where('scope', Scope::Offers)->where('name', 'like', 'Поставщику:%')
+        // Письма поставщику под старыми именами, на которые больше никто не ссылается (доп. запросы — не письма, их не трогаем).
+        $orphans = Template::where('scope', Scope::Offers)->letters()->where('name', 'like', 'Поставщику:%')
             ->whereDoesntHave('stages')->get();
         foreach ($orphans as $template) {
             $template->delete();

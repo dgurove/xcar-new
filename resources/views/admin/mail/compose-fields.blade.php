@@ -21,6 +21,11 @@
 @if ($then ?? null)<input type="hidden" name="then" value="{{ $then }}">@endif
 {{-- Заявка поставщику: сделки её файла — отправили письмо, они идут дальше «Заявка отправлена». --}}
 @if ($requestDeals ?? null)<input type="hidden" name="request_deals" value="{{ old('request_deals', $requestDeals) }}">@endif
+{{-- Доп. запрос поставщику: что отмечено — с письмом (`mail_messages.requests`, «История», чат менеджера). --}}
+@if (($extra ?? null) !== null)
+    @foreach ($extra as $t)<input type="hidden" name="extra[]" value="{{ $t->id }}">@endforeach
+    @if ($extraCity ?? null)<input type="hidden" name="extra_city" value="{{ $extraCity }}">@endif
+@endif
 @php
     // Имена известных адресов — тегам «Кому» и «Копии» вместо голой почты.
     $names = $parent ? collect([mb_strtolower((string) $parent->from_email) => $parent->from_name])
@@ -58,6 +63,35 @@
         <input id="compose-subject-{{ $frame ?? 'page' }}" name="subject" value="{{ old('subject', $defaults['subject']) }}" class="compose-input" autocomplete="off">
     </div>
     <div class="compose-body">
+        {{-- Доп. запрос поставщику (17.11.2026, владелец: «отметить галочками [Согласовать осмотр] и [Запросить ПТС]»): запросы из
+             «Настройки → Шаблоны» пилюлями в несколько строк, нажатие — письмо собирается заново (`ExtraRequest`); текст правили
+             руками — сначала спросит (`compose_requests_controller`). --}}
+        @if (($extra ?? null) !== null)
+            @php
+                $pickedIds = $extra->pluck('id')->all();
+                $cityT = \App\Offers\ExtraRequest::cityTemplate($extra);
+            @endphp
+            <div class="compose-requests" data-controller="compose-requests" data-compose-requests-frame-value="letters-frame">
+                <div class="compose-requests-list">
+                    @foreach ($extraAll as $t)
+                        @php $ids = in_array($t->id, $pickedIds, true) ? array_values(array_diff($pickedIds, [$t->id])) : [...$pickedIds, $t->id]; @endphp
+                        <a href="{{ request()->fullUrlWithQuery(['pick' => $ids]) }}" class="compose-template" @if (in_array($t->id, $pickedIds, true)) aria-current="true" @endif
+                           data-turbo-frame="letters-frame" data-turbo-prefetch="false" data-action="compose-requests#go">{{ $t->name }}</a>
+                    @endforeach
+                </div>
+                @if ($cityT)
+                    <div class="compose-requests-list">
+                        @foreach ($cityT->choices ?? [] as $c)
+                            <a href="{{ request()->fullUrlWithQuery(['city' => $c]) }}" class="compose-template compose-choice" @if ($extraCity === $c) aria-current="true" @endif
+                               data-turbo-frame="letters-frame" data-turbo-prefetch="false" data-action="compose-requests#go">{{ $c }}</a>
+                        @endforeach
+                        <input type="text" class="compose-choice-input" placeholder="Другой: в Казани" value="{{ in_array($extraCity, $cityT->choices ?? [], true) ? '' : $extraCity }}"
+                               data-url="{{ request()->fullUrlWithQuery(['city' => '__CITY__']) }}" data-action="change->compose-requests#city keydown.enter->compose-requests#city:prevent" aria-label="Другой город" form="none">
+                    </div>
+                @endif
+                @if ($extraNoProof ?? false)<p class="compose-requests-note">Платёжки в системе нет — приложите скрепкой</p>@endif
+            </div>
+        @endif
         {{-- Шаблоны нового письма и готовые ответы парковки (`Template::replies`) — лентой чипов над текстом, а не строкой шапки
              (04.11.2026: подпись «Шаблон» ломала колонку подписей, белые пилюли резались краем). Ответ перечитывается в своём
              фрейме. Без предзагрузки: выбор «Фотоотчёта» собирает акт и кадры, наведение мышью не должно. --}}

@@ -96,6 +96,8 @@
             {{-- Дорожки — те же, что на странице (`admin.offers.lanes`), но короче (`compact`, 12.11.2026, владелец: «информация по
                  несколько раз дублируется»): путь — текущим шагом, вывоз — без лесенки, деньги — без числа шапки, без ДКП. --}}
             @if ($admin)<div class="@container/lanes min-w-0">@include('admin.offers.lanes', ['compact' => true])</div>@endif
+            {{-- Доп. запрос поставщику (17.11.2026, `x-offer.extra-request`) — над письмами: последний запрос и «Сделать доп. запрос». --}}
+            @if ($extraRequest)<x-offer.extra-request :offer="$offer" :messages="$messages"/>@endif
             {{-- Письма — все строками, как в «Почте»: по ним заполняют поля и оценивают (11.10.2026). --}}
             @if ($letters)
                 <section>

@@ -9,8 +9,12 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Collection;
 
-/** Заготовка письма: тема и тело с подстановками {{ number }}, {{ car }}, {{ claim_ref }}, {{ floor }}, {{ price }}, {{ manager }}, {{ insurer }}. */
-#[Fillable(['name', 'scope', 'subject', 'body', 'intent', 'attach'])]
+/**
+ * Заготовка письма: тема и тело с подстановками {{ number }}, {{ car }}, {{ claim_ref }}, {{ floor }}, {{ price }}, {{ manager }}, {{ insurer }}.
+ * Вид `request` — не письмо, а фраза доп. запроса поставщику (17.11.2026, `Offers\ExtraRequest`): галка `name`, фраза `body`
+ * после «Просьба …», порядок `position`, варианты `{{ city }}` — `choices`, `attach = payment` — PDF оплаты во вложении.
+ */
+#[Fillable(['name', 'scope', 'subject', 'body', 'intent', 'attach', 'kind', 'position', 'choices'])]
 class Template extends Model
 {
     use FastAttributes;
@@ -19,7 +23,31 @@ class Template extends Model
 
     protected function casts(): array
     {
-        return ['scope' => Scope::class];
+        return ['scope' => Scope::class, 'choices' => 'array'];
+    }
+
+    /** Письмо — всё, что не доп. запрос: пилюли «Шаблон» нового письма, письмо этапа, «сироты» `vendors:refill`. */
+    public const LETTER = 'letter';
+
+    public const REQUEST = 'request';
+
+    /** Доп. запрос прикладывает PDF оплаты (`PaymentProofPdf`), если он есть и ещё не уходил по этой машине. */
+    public const PAY_PROOF = 'payment';
+
+    public function scopeLetters($query)
+    {
+        return $query->where('kind', self::LETTER);
+    }
+
+    /** Доп. запросы поставщику в порядке фраз письма. */
+    public function scopeRequests($query)
+    {
+        return $query->where('scope', Scope::Offers)->where('kind', self::REQUEST)->orderByRaw('position nulls last')->orderBy('id');
+    }
+
+    public function isRequest(): bool
+    {
+        return $this->kind === self::REQUEST;
     }
 
     public const PLACEHOLDERS = ['number', 'car', 'vin', 'claim_ref', 'floor', 'price', 'manager', 'insurer', 'today', 'buyer'];

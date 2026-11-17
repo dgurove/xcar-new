@@ -214,6 +214,12 @@
             @include('admin.offers.papers-block')
         </x-ui.card>
 
+        {{-- Доп. запрос поставщику (17.11.2026, `x-offer.extra-request`) — над письмами. --}}
+        @if ($extraRequest)
+            <x-ui.card class="order-4 @4xl:order-none @4xl:col-span-2">
+                <x-offer.extra-request :offer="$offer" :messages="$messages"/>
+            </x-ui.card>
+        @endif
         {{-- Письма — под документами, как в деле ТС: все строками, как в «Почте»; письмо и ответ — окном поверх редактора. --}}
         @if ($letters && auth()->user()->canCrmMail())
             <x-ui.card class="order-4 @4xl:order-none @4xl:col-span-2">

@@ -12,18 +12,37 @@ use Illuminate\Validation\Rule;
 /**
  * Шаблоны писем: в CRM — все («Настройки → Шаблоны»), на парковке — только её (02.11.2026: управляющий правит свои
  * готовые ответы сам, в CRM ему нельзя). Шаблону парковки — на какое письмо предлагать первым и что приложить само.
+ *
+ * Доп. запросы поставщику (17.11.2026, владелец: «шаблоны пусть удобно добавляются и редактируются в кабинете в шаблонах»,
+ * `Offers\ExtraRequest`) — своей группой первыми: галка, фраза после «Просьба …», варианты `{{ city }}`, «Приложить платёжку»;
+ * порядок — перетаскиванием (`POST /settings/templates/order`), он же порядок фраз письма.
  */
 class MailTemplateController
 {
     public function index()
     {
         return view('admin.mail.templates', ['templates' => Template::when($this->park(), fn ($q) => $q->where('scope', Scope::Park))
-            ->orderBy('scope')->orderBy('name')->get(), 'base' => $this->base()]);
+            ->letters()->orderBy('scope')->orderBy('name')->get(), 'requests' => $this->park() ? collect() : Template::requests()->get(), 'base' => $this->base()]);
     }
 
-    public function create()
+    public function create(Request $request)
     {
-        return $this->form(new Template(['scope' => $this->park() ? Scope::Park : Scope::Offers]));
+        $ask = ! $this->park() && $request->query('kind') === Template::REQUEST;
+
+        return $this->form(new Template(['scope' => $this->park() ? Scope::Park : Scope::Offers, 'kind' => $ask ? Template::REQUEST : Template::LETTER]));
+    }
+
+    /** Порядок доп. запросов (= порядок фраз письма) — перетаскиванием в списке. */
+    public function order(Request $request)
+    {
+        abort_if($this->park(), 404);
+        $ids = array_values(array_unique(array_map('intval', (array) $request->validate(['ids' => ['required', 'array', 'max:200'], 'ids.*' => ['integer']])['ids'])));
+        $known = Template::requests()->pluck('id')->all();
+        foreach (array_values(array_intersect($ids, $known)) as $i => $id) {
+            Template::whereKey($id)->update(['position' => $i + 1]);
+        }
+
+        return response()->noContent();
     }
 
     public function edit(Template $template)
@@ -35,7 +54,11 @@ class MailTemplateController
 
     public function store(Request $request)
     {
-        $template = Template::create($this->data($request));
+        $data = $this->data($request);
+        if (($data['kind'] ?? null) === Template::REQUEST) {
+            $data['position'] = (int) Template::requests()->max('position') + 1;
+        }
+        $template = Template::create($data);
 
         return redirect($this->base()."/{$template->id}")->with('toast', 'Шаблон сохранён');
     }
@@ -44,7 +67,7 @@ class MailTemplateController
     {
         abort_if($this->park() && $template->scope !== Scope::Park, 404);
         // Письмо шага — только текст: по названию его находит `Template::park`.
-        $template->update($template->isStep() ? array_diff_key($this->data($request), array_flip(['name', 'scope', 'intent', 'attach'])) : $this->data($request));
+        $template->update($template->isStep() ? array_diff_key($this->data($request, $template), array_flip(['name', 'scope', 'intent', 'attach'])) : $this->data($request, $template));
 
         return redirect($this->base()."/{$template->id}")->with('toast', 'Сохранено');
     }
@@ -76,8 +99,21 @@ class MailTemplateController
         return $this->park() ? '/templates' : '/settings/templates';
     }
 
-    private function data(Request $request): array
+    private function data(Request $request, ?Template $template = null): array
     {
+        // Доп. запрос — галка, фраза, варианты города и платёжка; темы, смысла письма и стороны у него нет.
+        if (! $this->park() && ($template?->isRequest() ?? $request->input('kind') === Template::REQUEST)) {
+            $data = $request->validate([
+                'name' => ['required', 'string', 'max:80'],
+                'body' => ['required', 'string', 'max:300'],
+                'choices' => ['nullable', 'string', 'max:2000'],
+                'attach' => ['nullable', Rule::in([Template::PAY_PROOF])],
+            ], [], ['name' => 'Галка', 'body' => 'Фраза']);
+            $choices = array_values(array_unique(array_filter(array_map(fn ($c) => trim((string) $c), preg_split('/\R/u', (string) ($data['choices'] ?? '')) ?: []))));
+
+            return ['name' => $data['name'], 'body' => trim((string) preg_replace('/\s+/u', ' ', $data['body'])), 'choices' => $choices ? array_slice($choices, 0, 20) : null,
+                'attach' => $data['attach'] ?? null, 'kind' => Template::REQUEST, 'scope' => Scope::Offers, 'subject' => null, 'intent' => null];
+        }
         $data = $request->validate([
             'name' => ['required', 'string', 'max:80'],
             'scope' => [$this->park() ? 'nullable' : 'required', Rule::enum(Scope::class)],

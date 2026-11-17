@@ -55,6 +55,11 @@ final class MarkSupplierLetter
         if (! in_array($position->letterStatus(), ['unsent', 'failed', 'bounced'], true)) {
             return;
         }
+        // Доп. запрос поставщику (17.11.2026, `Offers\ExtraRequest`: «прислать ПТС и согласовать осмотр») — не письмо этапа:
+        // иначе «Подтверждаем актуальность» стояло бы «ушло», хотя ушёл только запрос ПТС.
+        if (! empty($e->message->requests)) {
+            return;
+        }
         $offer = $position->offer;
         $message = $e->message;
         $at = $message->sent_at ?? $message->date_at ?? now();
@@ -118,7 +123,8 @@ final class MarkSupplierLetter
     public function failed(MessageFailed $e): void
     {
         $position = self::position($e->message);
-        if (! $position || ! in_array($position->letterStatus(), ['unsent', 'failed', 'bounced'], true)) {
+        // Не ушёл доп. запрос — письмо этапа от этого «не ушло» не становится: окно запроса скажет само.
+        if (! $position || ! empty($e->message->requests) || ! in_array($position->letterStatus(), ['unsent', 'failed', 'bounced'], true)) {
             return;
         }
         $again = ($position->payload['letter_failed']['id'] ?? null) === $e->message->id;
