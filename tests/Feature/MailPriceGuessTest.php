@@ -85,6 +85,8 @@ class MailPriceGuessTest extends TestCase
         $gaz = \App\Cars\Brand::known('ГАЗ') ?? \App\Cars\Brand::create(['name' => 'ГАЗ', 'slug' => 'gaz']);
         $gaz->models()->create(['name' => '2834NJ', 'slug' => '2834nj']);
         $this->assertSame('2834NE', \App\Cars\CarModel::resolve($gaz, '2834NE')->name);
+        // Подпись VIN слитно после OCR (ЭПТС прицепа 4224).
+        $this->assertSame('EAR853371R0000489', DocumentFields::extract("Идентификационныйномер   EAR853371R0000489\n")['vin']['value'] ?? null);
         $this->assertSame('3558', DocumentFields::extract("Марка/модель ТС   SHACAMAN 3558   Гос.рег.номер\n")['model']['value'] ?? null);
 
         $garbled = str_repeat("Ндевтифихаrдrrонншй Hor,tep транспортного средства Коммерчесхое яаименование 2Ез4NJ Год ивгот.овлвння 2о2з паспорта Выписка\n", 3);

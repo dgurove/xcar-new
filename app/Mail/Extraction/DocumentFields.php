@@ -52,7 +52,7 @@ final class DocumentFields
                 break;
             }
         }
-        foreach (self::values($text, 'Идентификационный\s+номер(?:\s*\(VIN\))?|\bVIN(?:\s+ТС)?\b|\bВИН\b') as $value) {
+        foreach (self::values($text, 'Идентификационный\s*номер(?:\s*\(VIN\))?|\bVIN(?:\s+ТС)?\b|\bВИН\b') as $value) {
             if (preg_match(Patterns::VIN, mb_strtoupper($value), $m) && ($vin = VinText::labelled($m[0]))) {
                 $put('vin', $vin);
                 break;
