@@ -21,6 +21,7 @@ use App\Users\User;
 use App\Workflow\Events\StageEntered;
 use App\Workflow\Outcome;
 use App\Workflow\Position;
+use App\Workflow\Presets\Route;
 use App\Workflow\Requirement;
 use App\Workflow\Stage;
 use App\Workflow\Track;
@@ -98,7 +99,7 @@ final class EnterStage
         // Заплатили поставщику — выход из этапа нашей оплаты («Поставщику оплачено», «Переведено поставщику»): срок
         // обязывающего предложения сделке больше не грозит (`Deal::supplierPaid`, 19.10.2026). Откат отметку не снимает.
         if ($track === Track::Sale && $deal?->isActive() && ! $deal->supplier_paid_at && $exit && ! $back
-            && ($from?->paysOut() || in_array(mb_strtolower(trim($exit->label)), ['поставщику оплачено', 'переведено поставщику'], true))) {
+            && ($from?->paysOut() || in_array(mb_strtolower(trim($exit->label)), ['поставщику оплачено', 'переведено поставщику', mb_strtolower(Route::SUPPLIER_PAID)], true))) {
             $deal->forceFill(['supplier_paid_at' => $now])->save();
         }
 
@@ -148,7 +149,7 @@ final class EnterStage
         // Оплата за ТС подтверждена (поставщик получил, «платим мы» — оплатили сами): у Альфы только теперь можно забирать
         // (`Deal::mayPickUp`, 10.10.2026). Откат шага отметку не снимает — деньги уже ушли.
         if ($track === Track::Sale && $deal?->isActive() && ! $deal->prepaid_at && $exit
-            && in_array(mb_strtolower(trim($exit->label)), ['оплата получена', 'поставщику оплачено'], true)) {
+            && in_array(mb_strtolower(trim($exit->label)), ['оплата получена', 'поставщику оплачено', mb_strtolower(Route::SUPPLIER_PAID)], true)) {
             $deal->forceFill(['prepaid_at' => $now])->save();
         }
 

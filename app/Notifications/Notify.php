@@ -259,7 +259,7 @@ final class Notify
         }
         // Альфа оплачена — теперь можно забирать (10.10.2026): тому, кто забирает, контакт и адрес.
         if ($deal?->prepaid_at && $e->exit && $e->offer->vendor?->pay_before_pickup
-            && in_array(mb_strtolower(trim($e->exit->label)), ['оплата получена', 'поставщику оплачено'], true)) {
+            && in_array(mb_strtolower(trim($e->exit->label)), ['оплата получена', 'поставщику оплачено', mb_strtolower(\App\Workflow\Presets\Route::SUPPLIER_PAID)], true)) {
             $this->pickupOpened($deal->setRelation('offer', $e->offer));
         }
         // Каркаде: поставщик согласовал заявку — теперь можно забирать (11.10.2026), до того менеджер только ждал.

@@ -14,6 +14,7 @@ use Illuminate\Support\Collection;
  */
 enum ReplyKind: string
 {
+    case Paid = 'paid';
     case Invoice = 'invoice';
     case Requisites = 'requisites';
     case Sale = 'sale';
@@ -27,6 +28,7 @@ enum ReplyKind: string
     public function title(): string
     {
         return match ($this) {
+            self::Paid => 'Оплата получена',
             self::Invoice => 'Прислали счёт',
             self::Requisites => 'Просят реквизиты',
             self::Sale => 'ГОТС поступили на реализацию',
@@ -44,6 +46,8 @@ enum ReplyKind: string
         $text = mb_strtolower($message->replyText());
 
         return match (true) {
+            // Альфа: «Денежные средства на счету компании, прошу подготовить и подписать с контрагентом ДКП» (18.11.2026).
+            InsurerReplies::confirmsPayment($message) => self::Paid,
             // Альфа: «Внимание!!! Оплата принимается только от плательщика по счету!!!» со счётом во вложении.
             preg_match('/оплата\s+принимается\s+только\s+от\s+плательщика|сч[её]т\w*\s+на\s+оплату|(?:во\s+вложении|прилага\w+|направля\w+)\s+сч[её]т|сч[её]т\s+во\s+вложении/u', $text) === 1 => self::Invoice,
             InsurerReplies::asksRequisites($message) => self::Requisites,

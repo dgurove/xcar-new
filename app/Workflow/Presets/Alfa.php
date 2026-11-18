@@ -33,6 +33,7 @@ final class Alfa extends Route
         $payment['invoice']['exits'] = [
             ['Оплатил, документ приложен', 'manager', 'ros_transfer', 'ros'],
             ['Оплатил, документ приложен', 'manager', 'payment_check', 'not_ros'],
+            [self::SUPPLIER_PAID, 'staff', 'contract'],
         ];
         // Перевод с Р.О.С. — между оплатой и проверкой Альфой: порядок в блоке — порядок пути.
         $payment = ['invoice' => $payment['invoice'], 'ros_transfer' => null, 'payment_check' => $payment['payment_check']];

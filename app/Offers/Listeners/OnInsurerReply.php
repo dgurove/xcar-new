@@ -20,7 +20,10 @@ use App\Offers\Reprice;
 use App\Users\Role;
 use App\Users\User;
 use App\Vendors\DealFormat;
-use App\Workflow\Events\StageEntered;
+use App\Workflow\Actions\TakeExit;
+use App\Workflow\Actor;
+use App\Workflow\Outcome;
+use App\Workflow\Presets\Route;
 use App\Workflow\Track;
 use App\Workflow\WaitsFor;
 use Illuminate\Events\Dispatcher;
@@ -71,6 +74,32 @@ final class OnInsurerReply
         if (($position = $offer->unsetRelation('positions')->position(Track::Sale)) && $position->letterStatus() === 'sent') {
             $position->update(['waits_for' => WaitsFor::Us, 'deadline_at' => null, 'reminded_at' => null, 'overdue_at' => null,
                 'payload' => [...$position->payload, 'reply_at' => ($message->date_at ?? now())->toIso8601String()]]);
+        }
+        // Поставщик подтвердил оплату — шаг оплаты проходит сам (18.11.2026, владелец): платёжку не просим и не отправляем.
+        $e->live && $this->paid($deal, $message);
+    }
+
+    /**
+     * Письмо «оплата получена» (`InsurerReplies::confirmsPayment`) — сделка на «Оплате счёта» проходит «Поставщик подтвердил оплату»
+     * (`Route::SUPPLIER_PAID`), на «Подтверждении оплаты» — «Оплата получена». От имени системы, в «Истории» — по письму.
+     */
+    private function paid(Deal $deal, Message $message): void
+    {
+        if (! $deal->isActive() || ! InsurerReplies::confirmsPayment($message)) {
+            return;
+        }
+        $offer = $deal->offer->unsetRelation('positions');
+        $stage = $offer->position(Track::Sale)?->stage;
+        $exit = $stage?->exitsFor(Actor::Staff, $deal)->first(fn (Outcome $x) => mb_strtolower(trim($x->label)) === mb_strtolower(Route::SUPPLIER_PAID)
+            || ($stage->waits_for === WaitsFor::Supplier && mb_strtolower(trim($x->label)) === 'оплата получена'));
+        if (! $exit) {
+            return;
+        }
+        try {
+            app(TakeExit::class)($offer, $exit, Actor::Staff, User::withRole(Role::Admin)->orderBy('id')->first(),
+                ['label' => $exit->label.' — по письму поставщика '.($message->date_at ?? now())->format('d.m')]);
+        } catch (\Throwable $err) {
+            \Illuminate\Support\Facades\Log::warning('Оплата по письму поставщика не прошла шаг', ['deal' => $deal->id, 'error' => $err->getMessage()]);
         }
     }
 

@@ -479,8 +479,10 @@
                                 {{-- Письмо поставщику не ушло — главное «Написать поставщику», исходы серыми. --}}
                                 {{-- Ждём ответа поставщика на ушедшее письмо (платёжка, заявка) — его исходы серыми (16.11.2026, владелец: «„Оплата
                                      получена“ нажимать нежелательно — ждём подтверждения в письме поставщика»). --}}
+                                {{-- «Поставщик подтвердил оплату» — серой всегда: жмут, только когда поставщик написал (письмо проводит шаг само). --}}
                                 @php $variant = $i === 0 && ! $wantsInvoice && $payNow->isEmpty() && $position->letterStatus() !== 'unsent'
-                                    && ! ($stage->waits_for === WaitsFor::Supplier && $position->letterStatus() === 'sent') ? 'primary' : 'secondary'; @endphp
+                                    && ! ($stage->waits_for === WaitsFor::Supplier && $position->letterStatus() === 'sent')
+                                    && $exit->label !== \App\Workflow\Presets\Route::SUPPLIER_PAID ? 'primary' : 'secondary'; @endphp
                                 @php $main = $variant === 'primary' ? 'step-main' : null; @endphp
                                 @if ($exit->to?->offer_state === \App\Offers\OfferState::Open && in_array($offer->state, [\App\Offers\OfferState::Draft, \App\Offers\OfferState::Gallery], true))
                                     {{-- «Выставить в продажу» — сейчас или в слот, как кнопка редактора. --}}

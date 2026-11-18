@@ -26,6 +26,13 @@ abstract class Route
 {
     protected const DAY = 1440;
 
+    /**
+     * Поставщик сам написал, что оплату получил, — шаг оплаты пройден без платёжки и без письма с ней (18.11.2026, владелец по
+     * 2610142050: Альфа «Денежные средства на счету компании…», а сделка просила приложить платёжку). Кнопкой и само по письму
+     * (`OnInsurerReply`).
+     */
+    public const SUPPLIER_PAID = 'Поставщик подтвердил оплату';
+
     /** @return array<string, array{name: string, text: string}> */
     abstract public function blocks(): array;
 
@@ -246,7 +253,7 @@ abstract class Route
             'invoice'.$suffix => [
                 'name' => 'Оплата счёта', 'block' => 'payment'.$suffix, 'waits_for' => 'manager', 'limit_minutes' => 14 * self::DAY, 'asks' => 'document',
                 'ask_title' => 'Оплатить счёт', 'ask_text' => 'Оплата — по ссылке под счётом картой, СБП или SberPay, отметится сама. Или по реквизитам из счёта, тогда нужно приложить платёжное поручение',
-                'exits' => [['Оплатил, документ приложен', 'manager', 'payment_check'.$suffix]],
+                'exits' => [['Оплатил, документ приложен', 'manager', 'payment_check'.$suffix], [self::SUPPLIER_PAID, 'staff', $next]],
             ],
             'payment_check'.$suffix => [
                 'name' => 'Подтверждение оплаты', 'block' => 'payment'.$suffix, 'waits_for' => 'supplier', 'limit_minutes' => 2 * self::DAY, 'letter' => 'payment',
