@@ -1932,11 +1932,14 @@ html.kb-open { --home-gap: 0px; }
      без карточки в карточке; своя доля — зелёным, но размером строки. */
   .deal-money-rows { display: flex; flex-direction: column; margin-top: .25rem; }
   .deal-money-row { padding-block: .625rem; }
-  .deal-money-rows > .deal-money-row + .deal-money-row { border-top: 1px solid var(--color-line); }
+  /* Линии — только под ценой продажи и над вознаграждением (18.11.2026, владелец: «в таком количестве полос смысла не вижу»). */
+  .deal-money-rows > .deal-money-price { border-bottom: 1px solid var(--color-line); }
+  .deal-money-rows > .deal-money-total { border-top: 1px solid var(--color-line); margin-top: .25rem; }
   .deal-money-card .profit-sum { font-size: var(--text-lg); }
   /* Платёж блоком (16.11.2026, вариант Б): над и под ним — линия толще строчной, между заголовком и группой строк — воздух. */
-  .deal-money-rows > .deal-money-block { padding-block: .875rem; }
-  .deal-money-rows > .deal-money-row + .deal-money-block, .deal-money-rows > .deal-money-block + .deal-money-row { border-top-width: 2px; }
+  .deal-money-rows > .deal-money-block { padding-block: .625rem; }
+  /* Покупатель — последней плашкой карточки денег (18.11.2026, «квитанция»): без линии, отступом от итога. */
+  .deal-money-rows > .deal-money-buyer { padding-top: .5rem; }
   /* «Платит — Покупатель | Я» в «Оформлении» сделки менеджера: переключатель ниже, вровень с соседними строками. */
   .deal-form .sale-row-label { color: var(--color-ink); }
   .deal-pay .segment { padding: .125rem; }

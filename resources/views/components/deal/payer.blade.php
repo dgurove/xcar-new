@@ -6,7 +6,7 @@
      (`SetDealPayer`); по счёту уже платили — строка без выбора. --}}
 {{-- `row` false — без строки (плательщик — тот же покупатель, 18.11.2026: «по несколько раз одно и то же»): одна шторка по событию
      `{id}:open`, в «Продаже» CRM — пунктом «⋯» «Кто платит…». --}}
-@props(['deal', 'action', 'id' => null, 'editable' => true, 'row' => true])
+@props(['deal', 'action', 'id' => null, 'editable' => true, 'row' => true, 'capped' => false])
 @php
     use App\Offers\Actions\SetDealPayer;
     use App\Support\People;
@@ -22,7 +22,10 @@
     $options = $can ? SetDealPayer::options($deal) : [];
     $current = old('_sheet') === $id ? (string) old('payer') : SetDealPayer::current($deal);
 @endphp
-@if (! $can && $row)
+@if (! $can && $row && $capped)
+    <div class="list-cap !px-0">Покупатель</div>
+    <div class="list"><div class="row"><span class="min-w-0 flex-1 truncate">{{ $value }}</span></div></div>
+@elseif (! $can && $row)
     <div class="row sale-row">
         <span class="sale-row-label">Покупатель</span>
         <span class="sale-row-value">{{ $value }}</span>
@@ -30,7 +33,11 @@
     </div>
 @elseif ($can)
 <div class="contents" data-controller="sheet" @unless ($row) data-action="{{ $id }}:open@window->sheet#open" @endunless>
-    @if ($row)<x-deal.sale-row label="Покупатель" :value="$value" data-action="sheet#open"/>@endif
+    {{-- `capped` — подпись над плашкой, в плашке только имя (18.11.2026, карточка денег менеджера). --}}
+    @if ($row && $capped)
+        <div class="list-cap !px-0">Покупатель</div>
+        <div class="list"><button type="button" class="row w-full text-left" data-action="sheet#open"><span class="min-w-0 flex-1 truncate">{{ $value }}</span><x-ui.chevron/></button></div>
+    @elseif ($row)<x-deal.sale-row label="Покупатель" :value="$value" data-action="sheet#open"/>@endif
     <x-ui.sheet :id="$id" title="Покупатель">
         <form method="post" action="{{ $action }}" class="flex flex-col gap-4" data-controller="reveal autosubmit">
             @csrf @method('put')

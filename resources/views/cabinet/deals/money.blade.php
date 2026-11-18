@@ -51,7 +51,7 @@
 @unless ($embedded)<div class="box deal-money-card" id="money">@endunless
     <div class="deal-money-rows{{ $embedded ? ' mt-4' : '' }}">
         @if ($deal->paysSelection())
-            <a href="/offers/{{ $offer->number }}" class="deal-money-row flex items-start gap-3"><span class="min-w-0 flex-1">Цена продажи</span><span class="nums shrink-0 text-lg font-semibold">{{ Money::rub($deal->amount) }}</span></a>
+            <a href="/offers/{{ $offer->number }}" class="deal-money-row deal-money-price flex items-start gap-3"><span class="min-w-0 flex-1">Цена продажи</span><span class="nums shrink-0 text-lg font-semibold">{{ Money::rub($deal->amount) }}</span></a>
             @if ($deal->offset() && ! $deal->isDirect())
                 <div class="deal-money-row flex items-start gap-3"><span class="min-w-0 flex-1">Взаимозачёт со страховой</span><span class="nums shrink-0 text-ink-muted">−{{ Money::rub($deal->offset()) }}</span></div>
             @endif
@@ -65,17 +65,22 @@
             @include('cabinet.deals.payment', ['row' => true, 'title' => ($selection?->seller ?? \App\Billing\Seller::Prime)->config()['name'],
                 'amount' => $selection ? $sumOf($selection) : Money::rub((int) $deal->ours()),
                 'state' => null, 'invoice' => $selection, 'pay' => $payHere, 'payerHere' => $payHere, 'block' => true, 'noSlip' => $oneReceipt])
-            @if ($deal->commission)
-                <div class="deal-money-row flex items-start gap-3"><span class="min-w-0 flex-1">Вознаграждение</span><span class="profit-sum nums shrink-0">+{{ Money::rub((int) $deal->commission) }}</span></div>
-            @endif
+            @include('cabinet.deals.money-reward')
+            {{-- Покупатель — последней строкой (18.11.2026, «квитанция»): не посреди сумм. --}}
+            @if ($deal->isActive())@include('cabinet.deals.money-buyer', ['pickBuyer' => $deal->isLive() && ! $deal->hasContract()])@endif
         @else
             {{-- ПРАЙМ / Р.О.С. (Совкомбанк, Carcade, часть Альфы): покупатель платит нашему юрлицу — строкой с его названием и ценой
                  (она же счёт); счёт выставлен — его оплаты и способы под ней. --}}
-            @include('cabinet.deals.payment', ['row' => true, 'title' => ($sale?->seller ?? $deal->seller())->config()['name'], 'strong' => true,
-                // Сумма — та, что платить: цена минус вознаграждение (как счёт и договор, 18.11.2026).
-                'amount' => Money::rub(max(0, (int) $deal->amount - (int) $deal->commission)), 'state' => null, 'invoice' => $sale, 'pay' => $payHere, 'payerHere' => $payHere, 'block' => true])
-            @if ($deal->commission)
-                <div class="deal-money-row flex items-start gap-3"><span class="min-w-0 flex-1">Вознаграждение</span><span class="profit-sum nums shrink-0">+{{ Money::rub((int) $deal->commission) }}</span></div>
+            {{-- «Квитанцией» (18.11.2026, владелец выбрал вариант А): цена продажи → счёт нашего юрлица → вознаграждение → покупатель. --}}
+            @if ($deal->amount !== null && ! $deal->isGarage())
+                <div class="deal-money-row deal-money-price flex items-start gap-3"><span class="min-w-0 flex-1">Цена продажи</span><span class="nums shrink-0 text-lg font-semibold">{{ Money::rub($deal->amount) }}</span></div>
+            @endif
+            @include('cabinet.deals.payment', ['row' => true, 'title' => ($sale?->seller ?? $deal->seller())->config()['name'], 'strong' => ! ($deal->amount !== null && ! $deal->isGarage()),
+                // Сумма — та, что платить: цена минус вознаграждение и наличные мимо счёта (как счёт и договор, `DealContract::priceFor`).
+                'amount' => Money::rub((int) ($sale ? $sale->total : \App\Offers\DealContract::priceFor($deal))), 'state' => null, 'invoice' => $sale, 'pay' => $payHere, 'payerHere' => $payHere, 'payerLast' => true, 'block' => true])
+            @include('cabinet.deals.money-reward')
+            @if ($deal->buyer_id === auth()->id() && $deal->isActive() && ! $deal->isDirect() && $deal->schemeOf()->paysCar())
+                <div class="deal-money-buyer"><x-deal.payer :deal="$deal" :action="'/deals/'.$deal->id.'/payer'" :id="'deal-payer-'.$deal->id.'-money'" capped/></div>
             @endif
         @endif
     </div>

@@ -27,7 +27,8 @@
     // Строка «Плательщик» — менеджеру сделки, пока она идёт: где платят (по умолчанию — где выбор способа) или где счёт ещё ждут.
     // Только у счёта за ТС (18.11.2026, владелец: «плательщик указывается только для выставления договора счёта (ДКП)»).
     $forCar = $invoice ? $invoice->kind === \App\Billing\ChargeKind::Sale : $deal->schemeOf()->paysCar();
-    $showPayer = ($payerHere ?? $canPay) && $forCar && $deal->buyer_id === auth()->id() && $deal->isActive() && ! $deal->isDirect();
+    // `payerLast` — строку покупателя ставит сама карточка денег последней (18.11.2026, «квитанция»).
+    $showPayer = ! ($payerLast ?? false) && ($payerHere ?? $canPay) && $forCar && $deal->buyer_id === auth()->id() && $deal->isActive() && ! $deal->isDirect();
     // Одна оплата на весь счёт — её сумма та же, что у строки (16.11.2026, владелец: «одно и то же по сто раз»): состояние словом
     // под подписью, платёжка — файлом в группе с плательщиком; отдельной строки «Оплата по счёту N ₽» нет.
     // Вознаграждение, вычтенное зачётом в старых счетах (до 18.11.2026), — не оплата: сумма строки — уже за вычетом него.
@@ -126,21 +127,9 @@
             $fileRows = collect($files ?? [])->map(fn ($f) => \Illuminate\Support\Facades\Blade::render('<x-ui.file :name="$n" :mime="$m->mime_type" :bytes="$m->size" :size="$sub" :href="$href" class="row"/>',
                 ['n' => $f[0], 'm' => $f[1], 'sub' => $f[2], 'href' => '/files/'.$f[1]->id]))->implode('');
         @endphp
-        @if ($buyerTask ?? false)
-            {{-- Покупателя ещё нет — задача «Укажите покупателя» под шагом (18.11.2026); здесь только файлы. --}}
-            @if ($fileRows !== '')<div class="list">{!! $fileRows !!}</div>@endif
-        @elseif (($pickBuyer ?? false) || ($buyerPickInMoney ?? false))
-            {{-- «Страховой напрямую» (16.11.2026, владелец: «про указание покупателя два раза получилось — запихивай этот блок вместо строки
-                 про плательщика»): кто платит поставщику — покупатель, выбор здесь же (плитки, «Покупатель ›»), отдельного блока нет. --}}
-            @if (! $deal->contract?->buyer_user_id && $deal->isLive())<x-deal.buyer-kind :deal="$deal"/>@endif
-            @include('cabinet.deals.contract', ['part' => 'buyer', 'embedded' => true, 'labels' => true, 'after' => $fileRows])
-        @else
-            <div class="list">
-                {!! $fileRows !!}
-                <x-deal.sale-row label="Покупатель" :value="$cb ? ($cb->id === $deal->buyer_id ? 'Вы' : $cb->buyerLabel()) : 'не выбран'" :tone="$cb ? null : 'danger'"
-                    data-controller="emit" data-action="emit#send" data-emit-event-param="buyer:open"/>
-            </div>
-        @endif
+        {{-- Покупатель — строкой в конце карточки денег (18.11.2026, владелец выбрал «квитанцию»: не посреди сумм) —
+             `cabinet.deals.money-buyer`; здесь только файлы платежа. --}}
+        @if ($fileRows !== '')<div class="list">{!! $fileRows !!}</div>@endif
     @endif
     @if ($canPay)
         <div>

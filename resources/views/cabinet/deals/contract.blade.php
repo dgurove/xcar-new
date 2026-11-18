@@ -30,14 +30,22 @@
     $embedded ??= false;
     // Подписи строк («Покупатель — имя ›») — в карточке «Договор» (`labels`); в чек-листе шага пункт уже называется «Покупатель».
     $labels ??= false;
+    $capped ??= false;
     $doc = new \App\Offers\DkpDocument($contract);
     $pdf = ['url' => '/deals/'.$deal->id.'/dkp.pdf', 'type' => 'pdf', 'name' => $doc->fileName(), 'label' => 'ДКП'];
     $missing = $contract->missing();
     // Без договора — покупатель для счёта поставщика (03.11.2026, Альфа): «данные для счёта».
     $for = $deal->hasContract() ? 'договора' : 'счёта';
+    // Имя покупателя строкой: человек — как аккаунт («Михаил Шмелёв», ФИО целиком резалось), организация и ИП — коротко по названию.
+    $buyerName = $buyer ? ($buyer->party?->kind === \App\Billing\PartyKind::Person || ! $buyer->party?->kind ? $buyer->buyerLabel()
+        : (\App\Support\OrgName::short($buyer->party?->name) ?: $buyer->buyerLabel())) : null;
 @endphp
 <section @if ($part !== 'doc') id="dkp-buyer" @endif class="min-w-0">
     @unless ($embedded)<h2 class="list-head">{{ $garage ? 'Договор купли-продажи' : 'Покупатель' }}</h2>@endunless
+    {{-- `capped` — подпись «Покупатель» над плашкой, в плашке имя и состояние (18.11.2026, владелец про карточку денег: «Покупатель
+         над блоком, а не в блоке, чтобы имя нормально влезало»). --}}
+    {{-- Состояние — справа в строке подписи, в плашке только имя (18.11.2026, владелец). --}}
+    @if ($capped && $buyer)<div class="list-cap !px-0 flex justify-between gap-3"><span>Покупатель</span><span @class(['text-open' => $ready, 'text-urgent' => ! $ready])>{{ $ready ? 'данные есть' : ($gap ?? 'нужны данные') }}</span></div>@endif
     <div class="list">
         @if ($part !== 'doc')
         @if ($buyer)
@@ -46,15 +54,19 @@
                 {{-- В «Оформлении» покупатель — одна строка (16.11.2026, владелец: «выбор покупателя — одно поле, а не два»): данные
                      есть — нажатие открывает выбор покупателя; нет — их шторку, «Другой покупатель» в ней. --}}
                 @if ($labels && $editable && ! ($garage && $buyer) && ! $me->isSuperBuyer())
-                <button type="button" class="row sale-row" data-controller="emit" data-action="emit#send" data-emit-event-param="buyer:open">
+                <button type="button" @class(['row w-full text-left', 'sale-row' => ! $capped]) data-controller="emit" data-action="emit#send" data-emit-event-param="buyer:open">
                 @else
-                <a href="{{ $isMe ? '/account/money/details' : '/buyers/'.$buyer->id }}" @class(['row', 'sale-row' => $labels])>
+                <a href="{{ $isMe ? '/account/money/details' : '/buyers/'.$buyer->id }}" @class(['row', 'sale-row' => $labels && ! $capped])>
                 @endif
-                    @if ($labels)
-                        <span class="sale-row-label"><span class="block text-ink">Покупатель</span><span @class(['block text-sm', 'text-open' => $ready, 'text-urgent' => ! $ready])>{{ $ready ? 'данные есть' : ($gap ?? 'нужны данные') }}</span></span>
-                        <span class="sale-row-value truncate">{{ $isMe ? ($garage ? 'Ваши данные' : 'Я сам') : (\App\Support\OrgName::short($buyer->party?->name) ?: $buyer->buyerLabel()) }}</span>
+                    @if ($labels && ! $capped)
+                        {{-- Подпись слева, имя справа, состояние — под именем (18.11.2026: в узкой колонке ПК «данные есть» под подписью
+                             рвалось на две строки, а имя резалось). --}}
+                        <span class="sale-row-label !flex-none text-ink">Покупатель</span>
+                        <span class="sale-row-value min-w-0 !max-w-none flex-1"><span class="block truncate">{{ $isMe ? ($garage ? 'Ваши данные' : 'Я сам') : $buyerName }}</span><span @class(['block text-sm', 'text-open' => $ready, 'text-urgent' => ! $ready])>{{ $ready ? 'данные есть' : ($gap ?? 'нужны данные') }}</span></span>
+                    @elseif ($capped)
+                        <span class="min-w-0 flex-1 truncate">{{ $isMe ? ($garage ? 'Ваши данные' : 'Я сам') : $buyerName }}</span>
                     @else
-                        <span class="min-w-0 flex-1"><span class="block truncate">{{ $isMe ? ($garage ? 'Ваши данные' : 'Я сам') : (\App\Support\OrgName::short($buyer->party?->name) ?: $buyer->buyerLabel()) }}</span><span @class(['block text-sm', 'text-open' => $ready, 'text-urgent' => ! $ready])>{{ $ready ? 'данные есть' : ($gap ?? 'нужны данные') }}</span></span>
+                        <span class="min-w-0 flex-1"><span class="block truncate">{{ $isMe ? ($garage ? 'Ваши данные' : 'Я сам') : $buyerName }}</span><span @class(['block text-sm', 'text-open' => $ready, 'text-urgent' => ! $ready])>{{ $ready ? 'данные есть' : ($gap ?? 'нужны данные') }}</span></span>
                     @endif
                     <x-ui.chevron/>
                 @if ($labels && $editable && ! ($garage && $buyer) && ! $me->isSuperBuyer())
@@ -64,12 +76,14 @@
                 @endif
             @else
                 <div data-controller="sheet" class="contents">
-                    <x-ui.sheet-row @class(['sale-row' => $labels])>
-                        @if ($labels)
-                            <span class="sale-row-label"><span class="block text-ink">Покупатель</span><span class="block text-sm text-urgent">{{ $gap ?? 'нужны данные' }}</span></span>
-                            <span class="sale-row-value truncate">{{ $isMe ? ($garage ? 'Ваши данные' : 'Я сам') : (\App\Support\OrgName::short($buyer->party?->name) ?: $buyer->buyerLabel()) }}</span>
+                    <x-ui.sheet-row @class(['sale-row' => $labels && ! $capped])>
+                        @if ($labels && ! $capped)
+                            <span class="sale-row-label !flex-none text-ink">Покупатель</span>
+                            <span class="sale-row-value min-w-0 !max-w-none flex-1"><span class="block truncate">{{ $isMe ? ($garage ? 'Ваши данные' : 'Я сам') : $buyerName }}</span><span class="block text-sm text-urgent">{{ $gap ?? 'нужны данные' }}</span></span>
+                        @elseif ($capped)
+                            <span class="min-w-0 flex-1 truncate">{{ $isMe ? ($garage ? 'Ваши данные' : 'Я сам') : $buyerName }}</span>
                         @else
-                            <span class="min-w-0 flex-1"><span class="block truncate">{{ $isMe ? ($garage ? 'Ваши данные' : 'Я сам') : (\App\Support\OrgName::short($buyer->party?->name) ?: $buyer->buyerLabel()) }}</span><span class="block text-sm text-urgent">{{ $gap ?? 'нужны данные' }}</span></span>
+                            <span class="min-w-0 flex-1"><span class="block truncate">{{ $isMe ? ($garage ? 'Ваши данные' : 'Я сам') : $buyerName }}</span><span class="block text-sm text-urgent">{{ $gap ?? 'нужны данные' }}</span></span>
                         @endif
                         <x-ui.chevron/>
                     </x-ui.sheet-row>

@@ -436,7 +436,8 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
     public function buyerLabel(): string
     {
         if ($this->name !== \App\Users\Actions\AddPerson::UNNAMED) {
-            return $this->name;
+            // Имя и фамилия, без отчества (18.11.2026, владелец: «отчество тут отображать не надо»).
+            return filled($this->first_name) && filled($this->last_name) ? $this->first_name.' '.$this->last_name : $this->name;
         }
 
         return filled($this->party?->name) ? $this->party->name : ($this->party?->kind ?? \App\Billing\PartyKind::Person)->label();
