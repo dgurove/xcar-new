@@ -6,7 +6,6 @@ use App\Billing\Actions\SaveBuyerData;
 use App\Billing\Party;
 use App\Billing\PartyKind;
 use App\Notifications\BuyerContractDataNotice;
-use App\Offers\CommissionMode;
 use App\Offers\DealContract;
 use App\Offers\OfferEventType;
 use App\Support\Money;
@@ -96,13 +95,11 @@ final class SaveDealContract
             $deal->offer->log(OfferEventType::Note, $by, ['text' => $what !== '' ? 'ДКП: '.$what : 'ДКП изменён']);
         });
         $picked = $contract->wasChanged('buyer_user_id');
-        // Оформляет на себя (13.11.2026, владелец: «комиссию менеджера из счёта на оплату сразу вычитать»): вознаграждение —
-        // «Оставляет себе», пустое — доля менеджера от разницы (`Deal::defaultCommission`); пока по счетам не платили.
+        // Оформляет на себя (13.11.2026, владелец: «комиссию менеджера из счёта на оплату сразу вычитать»): вознаграждения не
+        // было — доля менеджера от разницы (`Deal::defaultCommission`); пока по счетам не платили. Счёт и так за вычетом его.
         $fresh = $deal->fresh(['buyer', 'contract']);
-        if ($picked && $fresh->selfBuy() && $fresh->moneyEditable() && ($fresh->commission_mode !== CommissionMode::Withheld || $fresh->commission === null)) {
-            $commission = $fresh->commission ?? $fresh->defaultCommission();
-            ($this->money)($fresh, $by, $commission, CommissionMode::Withheld,
-                note: 'Оформляет на себя: вознаграждение '.($commission ? Money::rub($commission) : 'нет').', вычитается из оплаты');
+        if ($picked && $fresh->selfBuy() && $fresh->moneyEditable() && $fresh->commission === null && ($commission = $fresh->defaultCommission()) !== null) {
+            ($this->money)($fresh, $by, $commission, note: 'Оформляет на себя: вознаграждение '.Money::rub($commission));
         }
         // Плательщик или его данные сменились — счёт ПРАЙМ встаёт сам (или перевыставляется, если за него не платили).
         ($this->invoices)($deal->fresh(['offer', 'buyer', 'contract.buyer']), $by);

@@ -9,7 +9,6 @@ use App\Billing\PaymentSource;
 use App\Offers\Actions\AcceptBid;
 use App\Offers\Actions\CancelDeal;
 use App\Offers\Actions\PlaceBid;
-use App\Offers\CommissionMode;
 use App\Offers\DealScheme;
 use App\Offers\DealState;
 use App\Offers\Offer;
@@ -56,7 +55,7 @@ class DkpDealFlowTest extends TestCase
         $offer->forceFill(['state' => OfferState::Open])->save();
         $offer->viewers()->create(['user_id' => $this->manager->id, 'opens_at' => now()]);
         app(EnterStage::class)($offer, Stage::where('workflow_id', $vendor->fresh()->workflow(Track::Sale)->id)->where('name', 'Приём подтверждений')->firstOrFail());
-        $deal = app(AcceptBid::class)(app(PlaceBid::class)($offer->fresh(), $this->manager, 850000), $this->admin, 20000, CommissionMode::Payout, scheme: DealScheme::OwnerDkp);
+        $deal = app(AcceptBid::class)(app(PlaceBid::class)($offer->fresh(), $this->manager, 850000), $this->admin, 20000, scheme: DealScheme::OwnerDkp);
         // Пока поставщик не согласовал — ни счёта, ни ссылки. Сначала письмо поставщика, по нему согласие менеджера, потом наше
         // письмо (15.11.2026, `TBankConsentTest`); ответ с контактом — сразу контакты менеджеру.
         $this->assertFalse($deal->fresh()->issuedInvoices()->exists());
@@ -88,7 +87,6 @@ class DkpDealFlowTest extends TestCase
         $this->assertSame(779000, $deal->cost);
         $this->assertSame(750000, $deal->ownerPrice());
         $this->assertSame(29000, $deal->offset());
-        $this->assertSame(CommissionMode::Withheld, $deal->commission_mode);
         $this->assertSame(80000, $deal->ours());
         $invoice = $deal->issuedInvoices()->sole();
         $this->assertSame(ChargeKind::Selection, $invoice->kind);

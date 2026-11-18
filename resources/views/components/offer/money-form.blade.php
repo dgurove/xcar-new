@@ -1,11 +1,11 @@
-{{-- Деньги сделки одной формой: цена подтверждения, закупочная, разница, поле
-     «Агентское вознаграждение» с живым «нам остаётся» и режим — выплачиваем или
-     менеджер удерживает сам. Та же форма принимает подтверждение и правит сделку.
+{{-- Деньги сделки одной формой: цена подтверждения, закупочная, разница, поле вознаграждения менеджера с живыми
+     «Услугами подбора» (разница минус вознаграждение: наш счёт — за вычетом его, выплат менеджеру нет, 18.11.2026). Та же
+     форма принимает подтверждение и правит сделку.
      С `scheme` — ещё кому платят за ТС (05.10.2026): ПРАЙМ по счёту, страхователю по ДКП или страховой напрямую. У двух
      последних — сколько собственнику или страховой (меньше закупочной — взаимозачёт), нам — подбор (цена минус эта сумма
-     минус вознаграждение), режим — удерживает сам.
+     минус вознаграждение).
      07.10.2026: суммы строками (.fields), кнопка .sheet-foot (форма всегда в шторке). `fee` false — без вознаграждения
-     (супер-покупатель покупает у нас сам, 10.10.2026): поле и режим спрятаны, «Нам остаётся» — вся разница.
+     (супер-покупатель покупает у нас сам, 10.10.2026): поле спрятано, услуги подбора — вся разница.
      15.10.2026: `cost` — закупочная, с которой менеджер подтверждал (закрепляется в сделке); `supplierCost` — нынешняя,
      если другая, строкой только для админа; у идущей сделки сумма собственнику не правится (`ownerLocked`).
      18.10.2026: `priced` — цену менеджеру вписывают тут же («Отдать» без подтверждения, поле `amount` — в слоте с
@@ -16,10 +16,9 @@
      13.11.2026: `share` — доля менеджера от разницы (`users.deal_share`, владелец: «у Сахиба по умолчанию 50:50»);
      `prefill` (принятие) — пустое поле сразу долей, и поле идёт за разницей, пока его не правили руками.
      16.11.2026: вознаграждение — ползунком, суммой или процентом от разницы (`x-deal.reward-split`; чипа доли больше нет). --}}
-@props(['action', 'amount', 'cost' => null, 'commission' => null, 'mode' => \App\Offers\CommissionMode::Payout, 'submit' => 'Принять', 'confirm' => null, 'method' => 'post', 'id' => null, 'note' => null,
+@props(['action', 'amount', 'cost' => null, 'commission' => null, 'submit' => 'Принять', 'confirm' => null, 'method' => 'post', 'id' => null, 'note' => null,
     'scheme' => null, 'schemes' => null, 'ownerPrice' => null, 'fee' => true, 'ownerLocked' => false, 'supplierCost' => null, 'priced' => false, 'costEditable' => false, 'schemeLocked' => false, 'offer' => null, 'share' => null, 'prefill' => false])
 @php
-    use App\Offers\CommissionMode;
     use App\Offers\DealScheme;
     use App\Support\Money;
     $current = old('commission', $commission);
@@ -96,21 +95,13 @@
         </div>
     </div>
     @if ($margin !== null || $scheme)
-        {{-- «Нам остаётся» у ПРАЙМ — уже подписью «Нам» на полосе вознаграждения (16.11.2026): строкой — только у ДКП и
-             «страховой напрямую» («Менеджер платит нам» — не из разницы) и без вознаграждения (супер-покупатель). --}}
+        {{-- Услуги подбора у ПРАЙМ — уже подписью на полосе вознаграждения (16.11.2026): строкой — только у ДКП и «страховой
+             напрямую» (не из разницы) и без вознаграждения (супер-покупатель). --}}
         <dl class="grid grid-cols-[auto_1fr] items-baseline gap-x-4" @if ($fee) data-commission-target="dkpOnly" @unless ($dkp) hidden @endunless @endif>
-            <dt class="text-sm text-ink-dim" data-commission-target="oursLabel" data-ours="Нам остаётся" data-dkp="Менеджер платит нам">{{ $dkp ? 'Менеджер платит нам' : 'Нам остаётся' }}</dt>
+            <dt class="text-sm text-ink-dim">Услуги подбора</dt>
             <dd class="nums text-right text-lg font-semibold" data-commission-target="ours">{{ $margin !== null && ($amount || ! $priced) ? Money::rub($margin - (int) $current) : '' }}</dd>
         </dl>
     @endif
-    <div @unless ($fee) hidden @endunless>
-        <div class="flex flex-wrap gap-2" data-commission-target="oursOnly" @if ($dkp) hidden @endif>
-            @foreach (CommissionMode::cases() as $m)
-                <label class="choice"><input type="radio" name="mode" value="{{ $m->value }}" @checked(old('mode', $mode->value) === $m->value)><span>{{ $m->label() }}</span></label>
-            @endforeach
-        </div>
-    </div>
-    @error('mode')<p class="field-error">{{ $message }}</p>@enderror
     @if ($note ?? null)<p class="text-sm text-ink-muted">{{ $note }}</p>@endif
     <x-ui.sheet-foot>{{ $submit }}</x-ui.sheet-foot>
 </form>

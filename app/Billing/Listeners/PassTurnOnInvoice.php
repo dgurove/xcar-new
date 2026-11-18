@@ -2,7 +2,6 @@
 
 namespace App\Billing\Listeners;
 
-use App\Billing\ChargeKind;
 use App\Billing\Events\InvoiceIssued;
 use App\Billing\Events\InvoiceShown;
 use App\Billing\Events\InvoiceVoided;
@@ -25,7 +24,7 @@ final class PassTurnOnInvoice
     public function handle(InvoiceIssued|InvoiceShown|InvoiceVoided $e): void
     {
         $invoice = $e->invoice;
-        if ($invoice->isOwed() || ! $invoice->deal_id || $invoice->kind === ChargeKind::Reward) {
+        if ($invoice->isOwed() || ! $invoice->deal_id) {
             return;
         }
         // Ход менеджеру — когда счёт ему отправили (`InvoiceShown`, 16.11.2026); вставший, но не отправленный — ход наш

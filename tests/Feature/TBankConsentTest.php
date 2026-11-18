@@ -10,7 +10,6 @@ use App\Notifications\Notify;
 use App\Offers\Actions\AcceptBid;
 use App\Offers\Actions\FillFromLetter;
 use App\Offers\Actions\PlaceBid;
-use App\Offers\CommissionMode;
 use App\Offers\DealScheme;
 use App\Offers\Offer;
 use App\Offers\OfferState;
@@ -70,7 +69,7 @@ class TBankConsentTest extends TestCase
         $offer->viewers()->create(['user_id' => $this->manager->id, 'opens_at' => now()]);
         app(EnterStage::class)($offer, Stage::where('workflow_id', $vendor->fresh()->workflow(Track::Sale)->id)->where('name', 'Приём подтверждений')->firstOrFail());
         $letter && $this->tbankLetter($offer);
-        $deal = app(AcceptBid::class)(app(PlaceBid::class)($offer->fresh(), $this->manager, 600000), $this->admin, 0, CommissionMode::Withheld, scheme: DealScheme::OwnerDkp);
+        $deal = app(AcceptBid::class)(app(PlaceBid::class)($offer->fresh(), $this->manager, 600000), $this->admin, 0, scheme: DealScheme::OwnerDkp);
 
         return [$offer->fresh(), $deal->fresh()];
     }

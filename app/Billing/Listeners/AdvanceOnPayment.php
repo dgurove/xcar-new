@@ -2,7 +2,6 @@
 
 namespace App\Billing\Listeners;
 
-use App\Billing\ChargeKind;
 use App\Billing\Events\PaymentConfirmed;
 use App\Billing\Events\PaymentRecorded;
 use App\Billing\InvoiceState;
@@ -34,7 +33,7 @@ final class AdvanceOnPayment
     {
         $invoice = $e instanceof PaymentConfirmed ? $e->payment->invoice->refresh() : $e->invoice;
         // Вознаграждение от поставщика и наше обязательство менеджеру — не оплата покупателя, маршрут не двигают.
-        if ($invoice->state !== InvoiceState::Paid || ! $invoice->deal_id || $invoice->isOwed() || $invoice->kind === ChargeKind::Reward) {
+        if ($invoice->state !== InvoiceState::Paid || ! $invoice->deal_id || $invoice->isOwed()) {
             return;
         }
         // Счетов у сделки бывает два (гаражная «платит менеджер»: машина и наша доля) — шаг оплаты проходит, только когда

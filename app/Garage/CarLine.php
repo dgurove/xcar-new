@@ -15,7 +15,7 @@ use Illuminate\Support\Collection;
  * шаблона каждый по-своему). Этап цветным словом (ждёт машину — словом вывоза, ждут ответа менеджера — «ваш ход»),
  * когда (дни на этапе, у проданной — с какого числа, у рассчитанной — дата) и главное число этапа с подписью.
  * До продажи главное число везде — закупочная (`Car::price`, 13.10.2026: менеджеру, админу на сайте и в CRM), после —
- * итог продажи: к выплате, отдать нам, продана за.
+ * итог продажи: отдать нам, платит покупатель, продана за.
  */
 final class CarLine
 {
@@ -32,7 +32,7 @@ final class CarLine
     {
         $offer = $car->offer;
         $staff = $viewer->garageStaff();
-        $current = $car->payoutInvoice ?? $car->invoice;
+        $current = $car->invoice;
         // Ход менеджера в сделке со страховой — только самому менеджеру и только на сайте.
         $asks = ! $crm && $car->manager_id === $viewer->id ? $car->deal?->openRequirement : null;
         // Своё дело — обычным цветом и полужирным, просрочено — красным; состояние — серым, не лаймом: лайм — глагол
@@ -126,7 +126,7 @@ final class CarLine
             // До продажи — закупочная: сотруднику нынешняя, менеджеру закреплённая при подтверждении (16.10.2026).
             CarState::Waiting, CarState::Repair, CarState::Ready, CarState::Selling => [$car->priceFor($staff), 'закупочная'],
             CarState::Sold => $current && $current->remaining() > 0
-                ? [$current->remaining(), $current->isOwed() ? ($staff ? 'отдаём' : 'к выплате') : ($car->invoice_to === 'buyer' ? 'платит покупатель' : ($staff ? 'отдаёт нам' : 'отдать нам'))]
+                ? [$current->remaining(), $car->invoice_to === 'buyer' ? 'платит покупатель' : ($staff ? 'отдаёт нам' : 'отдать нам')]
                 : [$car->sold_price, $staff ? 'счёта нет' : 'продана за'],
             default => [$car->sold_price, 'продана за'],
         };

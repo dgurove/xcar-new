@@ -3,7 +3,7 @@ import { nums, rubles } from '../lib/money';
 
 // Вознаграждение менеджеру ползунком, суммой или процентом от разницы (16.11.2026, `x-deal.reward-split`): любое из трёх
 // двигает два других. Ползунок — шагом 5 %, а заливка и подписи полосы — по точной сумме. В форму — скрытое поле в
-// рублях: вознаграждение (`reward`) или «нам» = разница − вознаграждение (`ours`). Разница меняется на лету — сумма
+// рублях: вознаграждение (`reward`) или услуги подбора = разница − вознаграждение (`ours`). Разница меняется на лету — сумма
 // остаётся, процент пересчитывается; а если последним вписали процент (или поле предзаполнено долей, `follow`), — остаётся
 // процент, и сумма идёт за разницей. Хозяину (`commission`, `reprice`) поле суммы шлёт `input` — его суммы считаются как
 // раньше; пока шлём мы, `typed` процент не трогает (иначе «33,» превращалось бы в «33» под пальцем).
@@ -95,7 +95,7 @@ export default class extends Controller {
         return String(Math.round(p * 10) / 10).replace('.', ',');
     }
 
-    // Скрытое поле в рублях: вознаграждение или «нам». Без разницы — как вписано.
+    // Скрытое поле в рублях: вознаграждение или услуги подбора. Без разницы — как вписано.
     write() {
         const r = this.reward;
         const ours = this.modeValue === 'ours' && this.split;
@@ -110,6 +110,6 @@ export default class extends Controller {
         this.barTarget.style.setProperty('--p', `${Math.max(0, Math.min(100, r / this.marginValue * 100))}%`);
         this.barTarget.classList.toggle('is-over', rest < 0);
         this.mgrTargets.forEach((el) => { el.textContent = `Менеджеру ${nums(r)}`; });
-        this.oursTargets.forEach((el) => { el.textContent = `Нам ${rest < 0 ? '−' : ''}${nums(Math.abs(rest))}`; });
+        this.oursTargets.forEach((el) => { el.textContent = `Подбор ${rest < 0 ? '−' : ''}${nums(Math.abs(rest))}`; });
     }
 }

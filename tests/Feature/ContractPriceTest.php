@@ -6,7 +6,6 @@ use App\Billing\InvoiceState;
 use App\Offers\Actions\AcceptBid;
 use App\Offers\Actions\PlaceBid;
 use App\Offers\Actions\SaveDealContract;
-use App\Offers\CommissionMode;
 use App\Offers\Deal;
 use App\Offers\DealContract;
 use App\Offers\DealScheme;
@@ -52,7 +51,7 @@ class ContractPriceTest extends TestCase
         $offer->forceFill(['state' => OfferState::Open])->save();
         $offer->viewers()->create(['user_id' => $this->manager->id, 'opens_at' => now()]);
         app(EnterStage::class)($offer, Stage::where('workflow_id', $vendor->fresh()->workflow(Track::Sale)->id)->where('name', 'Приём подтверждений')->firstOrFail());
-        $deal = app(AcceptBid::class)(app(PlaceBid::class)($offer->fresh(), $this->manager, 1050000), $this->admin, 30000, CommissionMode::Payout, scheme: DealScheme::Prime);
+        $deal = app(AcceptBid::class)(app(PlaceBid::class)($offer->fresh(), $this->manager, 1050000), $this->admin, 30000, scheme: DealScheme::Prime);
         $exit = $offer->fresh()->position(Track::Sale)->stage->exits->firstWhere('label', 'Автомобиль забрал');
         app(TakeExit::class)($offer->fresh(), $exit, Actor::Manager, $this->manager);
         app(SaveDealContract::class)(DealContract::for($deal->fresh()), ['buyer_id' => 'new', 'new_buyer' => ['phone' => '+7 900 555-44-33'], 'buyer' => ['kind' => 'person',
@@ -102,9 +101,9 @@ class ContractPriceTest extends TestCase
         $this->actingAs($moderator)->put($crm.'/work/deals/'.$deal->id.'/contract', ['vat_rate' => 22])->assertForbidden();
         $this->actingAs($moderator)->get($crm.'/work/garage')->assertRedirect();
 
-        // «Как в сделке» — снова по деньгам сделки.
+        // «Как в сделке» — снова по деньгам сделки: цена минус вознаграждение (18.11.2026).
         $this->actingAs($this->admin)->put($crm.'/work/deals/'.$deal->id.'/contract-price', ['auto' => 1])->assertRedirect();
         $this->assertFalse($deal->fresh()->contract->price_manual);
-        $this->assertEqualsWithDelta(1050000, (float) $this->invoice($deal)->total, 0.01);
+        $this->assertEqualsWithDelta(1020000, (float) $this->invoice($deal)->total, 0.01);
     }
 }

@@ -9,6 +9,7 @@ use App\Garage\CarState;
 use App\Garage\GaragePayer;
 use App\Offers\Actions\AcceptBid;
 use App\Offers\Actions\PlaceBid;
+use App\Offers\Actions\SellFromStatement;
 use App\Offers\BidKind;
 use App\Offers\Deal;
 use App\Offers\DealScheme;
@@ -83,15 +84,24 @@ class SellFromStatementTest extends TestCase
 
         $deal = $deal->fresh();
         $this->assertSame(CarState::Sold, $deal->garageCar->state);
-        $this->assertSame(1250000, (int) $deal->garageCar->sold_price);
-        $this->assertSame(1250000, (int) $deal->amount);
-        $this->assertSame($deal->suggestedCommission(1250000), (int) $deal->commission);
+        // Пришло 1 250 000 — это цена минус вознаграждение: услуги подбора 250 000 — наша доля 60 %, вознаграждение по той же
+        // шкале 166 667, цена продажи — пришедшее плюс оно.
+        $reward = SellFromStatement::reward($deal, 1250000);
+        $this->assertSame(166667, $reward);
+        $this->assertSame(1250000 + $reward, (int) $deal->garageCar->sold_price);
+        $this->assertSame(1250000 + $reward, (int) $deal->amount);
+        $this->assertSame($reward, (int) $deal->commission);
+        // Счёт ПРАЙМ — ровно пришедшее, закрыт им; переплаты нет.
+        $sale = $deal->issuedInvoices()->sole();
+        $this->assertEqualsWithDelta(1250000, $sale->total, 0.01);
+        $this->assertSame(\App\Billing\InvoiceState::Paid, $sale->state);
+        $this->assertSame(0.0, $deal->creditExtra());
         $this->assertStringContainsString('догадка по выписке', (string) $this->soldLine($deal));
         $this->assertStringContainsString('Холопова Ирина Владимировна', (string) $this->soldLine($deal));
 
         // Ещё поступление — цена прежняя, в «Истории» — проверьте.
         $this->pay(50000, 'ПАО Сбербанк//ХОЛОПОВА ИРИНА ВЛАДИМИРОВНА//40817', '2026-11-17');
-        $this->assertSame(1250000, (int) $deal->fresh()->garageCar->sold_price);
+        $this->assertSame(1250000 + $reward, (int) $deal->fresh()->garageCar->sold_price);
         $this->assertTrue($deal->offer->events()->where('type', OfferEventType::Note)->get()->contains(fn ($e) => str_contains($e->text(), 'После продажи по догадке')));
     }
 

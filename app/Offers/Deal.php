@@ -47,11 +47,12 @@ use Spatie\MediaLibrary\InteractsWithMedia;
 /**
  * Сделка: чьё подтверждение принято и почём. Деньги — `cost` (закупочная, какой её видел менеджер, когда подтверждал,
  * — закреплена навсегда, 15.10.2026: по ней счета, ДКП и всё, что видит менеджер; новую от поставщика пишет
- * `supplier_cost`, только админу — `supplierCost()`), `commission` (агентское вознаграждение менеджеру) и режим:
- * выплачиваем после оплаты или менеджер удерживает сам. Менеджер вознаграждение
- * не видит, пока по сделке нет живого счёта — `showsCommission()`.
+ * `supplier_cost`, только админу — `supplierCost()`) и `commission` — вознаграждение менеджера. Его считаем мы (доля
+ * `users.deal_share`, у гаража Совкомбанка — `garage_share`), а получает он его не от нас (18.11.2026, начальник: «мы
+ * вознаграждения менеджерам никогда не выплачиваем»): наши счёт и ДКП — цена минус вознаграждение, из них закупочная — за ТС,
+ * остальное — услуги подбора (`ours`). Выплат менеджеру, режима «выплачиваем» и зачёта «удержано» в системе нет.
  */
-#[Fillable(['offer_id', 'bid_id', 'buyer_id', 'amount', 'cost', 'supplier_cost', 'owner_price', 'share', 'commission', 'commission_mode', 'scheme', 'garage_payer', 'parallel', 'notes', 'closed_at', 'cancelled_at', 'close_reason', 'close_note', 'agreed_at', 'buyer_asked_at', 'signing_slots', 'signing_address', 'signing_at', 'signing_asked_at', 'signing_wish', 'prepaid_at', 'supplier_paid_at', 'contract_signed_at', 'contract_signed_by', 'paid_in_at', 'dates_by_hand',
+#[Fillable(['offer_id', 'bid_id', 'buyer_id', 'amount', 'cost', 'supplier_cost', 'owner_price', 'share', 'commission', 'scheme', 'garage_payer', 'parallel', 'notes', 'closed_at', 'cancelled_at', 'close_reason', 'close_note', 'agreed_at', 'buyer_asked_at', 'signing_slots', 'signing_address', 'signing_at', 'signing_asked_at', 'signing_wish', 'prepaid_at', 'supplier_paid_at', 'contract_signed_at', 'contract_signed_by', 'paid_in_at', 'dates_by_hand',
     'receiver_user_id', 'receiver_name', 'receiver_phone', 'receiver_at', 'auction_at', 'buyer_party_id', 'payer_party_id', 'fee_seller', 'shadow_stage_id', 'shadow_at', 'reissue_at'])]
 class Deal extends Model implements HasMedia
 {
@@ -71,7 +72,7 @@ class Deal extends Model implements HasMedia
 
     protected function casts(): array
     {
-        return ['scheme_at' => 'datetime', 'parallel' => 'bool', 'amount' => 'int', 'cost' => 'int', 'supplier_cost' => 'int', 'owner_price' => 'int', 'share' => 'int', 'commission' => 'int', 'commission_mode' => CommissionMode::class, 'scheme' => DealScheme::class, 'garage_payer' => GaragePayer::class, 'closed_at' => 'datetime', 'cancelled_at' => 'datetime', 'agreed_at' => 'datetime', 'buyer_asked_at' => 'datetime', 'signing_slots' => 'array', 'signing_at' => 'datetime', 'signing_asked_at' => 'datetime', 'signing_wish' => 'array', 'prepaid_at' => 'datetime', 'supplier_paid_at' => 'datetime', 'contract_signed_at' => 'datetime', 'paid_in_at' => 'datetime', 'dates_by_hand' => 'array', 'receiver_at' => 'datetime', 'auction_at' => 'datetime', 'shadow_at' => 'datetime', 'reissue_at' => 'datetime'];
+        return ['scheme_at' => 'datetime', 'parallel' => 'bool', 'amount' => 'int', 'cost' => 'int', 'supplier_cost' => 'int', 'owner_price' => 'int', 'share' => 'int', 'commission' => 'int', 'scheme' => DealScheme::class, 'garage_payer' => GaragePayer::class, 'closed_at' => 'datetime', 'cancelled_at' => 'datetime', 'agreed_at' => 'datetime', 'buyer_asked_at' => 'datetime', 'signing_slots' => 'array', 'signing_at' => 'datetime', 'signing_asked_at' => 'datetime', 'signing_wish' => 'array', 'prepaid_at' => 'datetime', 'supplier_paid_at' => 'datetime', 'contract_signed_at' => 'datetime', 'paid_in_at' => 'datetime', 'dates_by_hand' => 'array', 'receiver_at' => 'datetime', 'auction_at' => 'datetime', 'shadow_at' => 'datetime', 'reissue_at' => 'datetime'];
     }
 
     public function offer(): BelongsTo
@@ -323,7 +324,7 @@ class Deal extends Model implements HasMedia
         return Seller::tryFrom((string) $this->fee_seller) ?? Seller::Prime;
     }
 
-    /** Платит сам менеджер (его сторона) — тогда счёт с разбивкой и удержанием вознаграждения. */
+    /** Платит сам менеджер (его сторона), а не его покупатель. */
     public function managerPays(): bool
     {
         if ($this->payer_party_id) {
@@ -564,8 +565,8 @@ class Deal extends Model implements HasMedia
     }
 
     /**
-     * Покупатель менеджера платит закупочную страхователю сам по ДКП, менеджер нам — разницу за подбор, вознаграждение
-     * оставляет себе (05.10.2026, Т-Страхование).
+     * Покупатель менеджера платит закупочную страхователю сам по ДКП, менеджер нам — подбор: разницу минус своё
+     * вознаграждение (05.10.2026, Т-Страхование).
      */
     public function isDkp(): bool
     {
@@ -1107,14 +1108,6 @@ class Deal extends Model implements HasMedia
         return max(0, round($this->credited() - $this->creditApplied(), 2));
     }
 
-    /** Обязательство перед менеджером — вознаграждение к выплате. */
-    public function agentFee(): HasOne
-    {
-        // Условия — внутри ofMany: снаружи они ложатся после подзапроса «последний счёт сделки», и счёт за хранение,
-        // выставленный позже, прятал вознаграждение — `IssueAgentFee` начислял его заново (06.10.2026).
-        return $this->hasOne(Invoice::class)->ofMany(['id' => 'max'], fn ($q) => $q->where('direction', 'owed')->where('kind', ChargeKind::AgentFee)->where('state', '!=', InvoiceState::Void));
-    }
-
     /** Машина в гараже по этой сделке: пока сделка идёт, бумаги со страховой ведёт её маршрут. */
     public function garageCar(): HasOne
     {
@@ -1185,7 +1178,8 @@ class Deal extends Model implements HasMedia
         if ($reward === null) {
             return null;
         }
-        $payable = $sale - ($recorded && ! $this->withholds() ? 0 : $reward);
+        // Наш счёт — цена минус вознаграждение (18.11.2026: вознаграждение менеджер получает не от нас).
+        $payable = $sale - $reward;
         $paid = $this->credited();
 
         return ['reward' => $reward, 'payable' => $payable, 'paid' => $paid, 'rest' => round($payable - $paid, 2)];
@@ -1489,8 +1483,8 @@ class Deal extends Model implements HasMedia
     }
 
     /**
-     * Что остаётся нам: ПРАЙМ — разница минус вознаграждение менеджера; ДКП и страховой — подбор, который менеджер платит
-     * нам (взаимозачёт внутри); гаражная «платит менеджер» — наша доля.
+     * Услуги подбора — что остаётся нам сверх закупочной: ПРАЙМ и Р.О.С. — цена минус вознаграждение минус закупочная; ДКП и
+     * страховой — подбор, который менеджер платит нам (взаимозачёт внутри); гаражная «платит менеджер» — наша доля.
      */
     public function ours(): ?int
     {
@@ -1503,39 +1497,6 @@ class Deal extends Model implements HasMedia
     }
 
     /**
-     * Платит покупатель, вознаграждение менеджер берёт с него сам: счёт ПРАЙМ и договор — цена минус вознаграждение, мы его
-     * не выплачиваем. Гаражная Совкомбанка (27.10.2026) — всегда; продажа ПРАЙМ — при «удерживает сам» (16.11.2026, владелец
-     * по сделке 412 Совкомбанка: «нужно в счёте и договоре вычитать вознаграждение, он сам его забирает у покупателя, нас это
-     * не волнует»; до того платёж покупателя шёл целиком на ПРАЙМ, а вознаграждение мы выплачивали менеджеру).
-     */
-    public function buyerPaysReward(): bool
-    {
-        if ($this->managerPays() || $this->isDirect()) {
-            return false;
-        }
-
-        return $this->namesBuyer() || ($this->isPrime() && ! $this->isGarage() && $this->commission_mode === CommissionMode::Withheld);
-    }
-
-    /**
-     * Менеджер удерживает вознаграждение: платит он — зачётом в счёте, платит покупатель — берёт с покупателя сам
-     * (`buyerPaysReward`, счёт и договор за вычетом). Режим «выплачиваем» у ПРАЙМ с покупателем — выплата после оплаты.
-     */
-    public function withholds(): bool
-    {
-        if ($this->buyerPaysReward()) {
-            return true;
-        }
-        if ($this->commission_mode !== CommissionMode::Withheld) {
-            return false;
-        }
-
-        return ! ($this->isPrime() && (! $this->isGarage() || $this->namesBuyer()) && ! $this->managerPays());
-    }
-
-    /** Менеджеру вознаграждение открывается с первого живого счёта по сделке. */
-    /** Есть ли живой счёт — для экранов: по загруженным счетам, если они уже есть (списки «Денег»), иначе запросом. */
-    /**
      * Есть ли у менеджера счёт, который платит он (или его покупатель): наш, живой, не вознаграждение от вендора и **отправленный
      * ему** кнопкой в CRM (`shown_at`, 16.11.2026). Без него этап оплаты ждёт нас — выставить или отправить счёт
      * (`Position::awaitsInvoice`, `invoiceGap` = `send`).
@@ -1544,10 +1505,10 @@ class Deal extends Model implements HasMedia
     {
         // Списки грузят счета заранее (`DealController::index`) — по ним, без запроса на строку (16.11.2026).
         if ($this->relationLoaded('invoices')) {
-            return $this->invoices->contains(fn (Invoice $i) => $i->direction === 'issued' && $i->kind !== ChargeKind::Reward && (! $sent || $i->isShownToManager()));
+            return $this->invoices->contains(fn (Invoice $i) => $i->direction === 'issued' && (! $sent || $i->isShownToManager()));
         }
 
-        return $this->issuedInvoices()->where('kind', '!=', ChargeKind::Reward)->when($sent, fn ($q) => $q->shownToManager())->exists();
+        return $this->issuedInvoices()->when($sent, fn ($q) => $q->shownToManager())->exists();
     }
 
     /** Есть ли живой счёт продажи — по загруженным счетам, иначе запросом. */
@@ -1565,53 +1526,21 @@ class Deal extends Model implements HasMedia
         return $this->relationLoaded('invoices') ? $this->invoices->isNotEmpty() : $this->invoices()->exists();
     }
 
-    public function showsCommission(): bool
-    {
-        return $this->commission !== null && $this->hasInvoices();
-    }
-
-    /** Вознаграждение правится, пока по сделке нет ни одного живого счёта. */
-    public function commissionEditable(): bool
-    {
-        // Проверка перед записью (UpdateDealMoney) — всегда из базы: загруженные счета могли устареть.
-        return ! $this->invoices()->exists();
-    }
-
-    /**
-     * Деньги сделки правятся, пока за наши счета не платили (зачёт удержанного вознаграждения — не оплата) и нет
-     * выплаты менеджеру: счета, что ставятся сами, перевыставит `SyncDealInvoices`.
-     */
+    /** Деньги сделки правятся, пока за наши счета не платили: счета, что ставятся сами, перевыставит `SyncDealInvoices`. */
     public function moneyEditable(): bool
     {
         $invoices = $this->shownInvoices();
 
-        return $invoices->every(fn (Invoice $i) => $i->direction === 'issued' && $i->kind !== ChargeKind::Reward && $i->claims->isEmpty()
+        return $invoices->every(fn (Invoice $i) => $i->direction === 'issued' && $i->claims->isEmpty()
             && $i->payments->every(fn ($p) => $p->source->isSoft()));
     }
 
-    public function commissionState(): CommissionState
-    {
-        if (! $this->showsCommission()) {
-            return CommissionState::Hidden;
-        }
-        if ($this->withholds()) {
-            return CommissionState::Withheld;
-        }
-        $fee = $this->agentFee;
-
-        return match (true) {
-            $fee === null => CommissionState::Awaiting,
-            $fee->state === InvoiceState::Paid => CommissionState::Paid,
-            default => CommissionState::Payable,
-        };
-    }
-
-    /** Все наши счета по сделке оплачены, и хотя бы один есть — сигнал «вознаграждение к выплате». */
+    /** Все наши счета по сделке оплачены, и хотя бы один есть. */
     public function fullyPaid(): bool
     {
         // Счёт вознаграждения вендору (наш доход от поставщика) — не оплата покупателя: неоплаченный, он держал шаг «Оплата»
         // сделки, где за машину заплатили целиком (аудит 17.11.2026).
-        $issued = $this->issuedInvoices()->where('kind', '!=', ChargeKind::Reward)->get();
+        $issued = $this->issuedInvoices()->get();
 
         return $issued->isNotEmpty() && $issued->every(fn (Invoice $i) => $i->state === InvoiceState::Paid);
     }

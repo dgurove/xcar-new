@@ -316,7 +316,6 @@ Route::middleware(['auth', 'wall'])->group(function () {
         Route::delete('/cars/{offer}/sold', [GarageSettlementController::class, 'unsold']);
         Route::put('/cars/{offer}/buyer-price', [GarageSettlementController::class, 'buyerPrice']);
         Route::post('/cars/{offer}/settle', [GarageSettlementController::class, 'settle']);
-        Route::post('/cars/{offer}/payout', [GarageSettlementController::class, 'payout']);
         Route::post('/cars/{offer}/payments', [GarageSettlementController::class, 'pay']);
         Route::post('/cars/{offer}/checkout', [GarageSettlementController::class, 'checkout']);
         Route::post('/cars/{offer}/links', [GarageSettlementController::class, 'link']);

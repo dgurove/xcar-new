@@ -9,7 +9,6 @@ use App\Notifications\TelegramChannel;
 use App\Notifications\YourTurnNotice;
 use App\Offers\Actions\AcceptBid;
 use App\Offers\Actions\PlaceBid;
-use App\Offers\CommissionMode;
 use App\Offers\DealScheme;
 use App\Offers\Offer;
 use App\Offers\OfferState;
@@ -56,7 +55,7 @@ class ChatTelegramTest extends TestCase
         $offer->forceFill(['state' => OfferState::Open, 'chat_enabled' => true])->save();
         $offer->viewers()->create(['user_id' => $this->manager->id, 'opens_at' => now()]);
         app(EnterStage::class)($offer, Stage::where('workflow_id', $vendor->fresh()->workflow(Track::Sale)->id)->where('name', 'Приём подтверждений')->firstOrFail());
-        app(AcceptBid::class)(app(PlaceBid::class)($offer->fresh(), $this->manager, 1200000), $this->admin, 50000, CommissionMode::Payout,
+        app(AcceptBid::class)(app(PlaceBid::class)($offer->fresh(), $this->manager, 1200000), $this->admin, 50000,
             scheme: DealScheme::forOffer($offer->fresh()), ownerPrice: 900000);
         foreach (['Поставщик согласовал'] as $label) {
             $o = $offer->fresh();

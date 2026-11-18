@@ -6,7 +6,6 @@ use App\Billing\Actions\VoidInvoice;
 use App\Billing\Invoice;
 use App\Billing\InvoiceState;
 use App\Billing\PaymentSource;
-use App\Offers\CommissionMode;
 use App\Offers\Deal;
 use App\Offers\DealScheme;
 use App\Support\Money;
@@ -69,7 +68,7 @@ class DealAgreementFixCommand extends Command
                 foreach ($open as $invoice) {
                     $void($invoice, $by, 'Счёт — после ответа поставщика');
                 }
-                $deal->forceFill(['agreed_at' => null] + ($prime ? ['scheme' => DealScheme::Prime, 'owner_price' => null, 'commission_mode' => CommissionMode::Payout] : []))->save();
+                $deal->forceFill(['agreed_at' => null] + ($prime ? ['scheme' => DealScheme::Prime, 'owner_price' => null] : []))->save();
                 if ($back) {
                     $enter($offer->fresh(), $agreement, $by);
                 }

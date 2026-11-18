@@ -9,7 +9,6 @@ use App\Billing\Acquiring\Gateway;
 use App\Billing\Acquiring\PayerKind;
 use App\Billing\Acquiring\PayLink;
 use App\Billing\Actions\SaveRequisites;
-use App\Billing\ChargeKind;
 use App\Billing\DealMoney;
 use App\Billing\Documents\StatementPdf;
 use App\Billing\Export\ManagerStatement;
@@ -95,7 +94,7 @@ class MoneyController
     {
         $me = $request->user();
         $invoice = $deal->issuedInvoices()->whereKey((int) $request->input('invoice'))->firstOrFail();
-        abort_unless($invoice->isVisibleToManager($me) && ! $invoice->isOwed() && $invoice->kind !== ChargeKind::Reward, 404);
+        abort_unless($invoice->isVisibleToManager($me) && ! $invoice->isOwed(), 404);
 
         [$toast, $link] = $choice($request, $invoice, $me);
         // «Оплатить» есть и в задаче сделки, и на машине в гараже (гаражная сделка ещё идёт) — ответ туда, откуда платили.
@@ -117,7 +116,7 @@ class MoneyController
     public function link(Request $request, Invoice $invoice, CreatePayLink $create)
     {
         $me = $request->user();
-        abort_unless($invoice->isVisibleToManager($me) && ! $invoice->isOwed() && $invoice->kind !== ChargeKind::Reward, 404);
+        abort_unless($invoice->isVisibleToManager($me) && ! $invoice->isOwed(), 404);
         abort_unless(app(Gateway::class)->configured(), 422, 'Оплата по ссылке не подключена');
         $request->merge(['amount' => $request->filled('amount') ? Money::parse($request->input('amount')) : null]);
         $data = $request->validate(['amount' => ['nullable', 'numeric', 'min:0.01']]);

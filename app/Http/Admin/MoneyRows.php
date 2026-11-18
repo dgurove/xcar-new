@@ -21,7 +21,7 @@ final class MoneyRows
     /** Машина без запятой перед годом («Kia Rio 2019»): запятая отделяет её от плательщика; у разовой — машина словами или услуга. */
     public static function what(Invoice $i): ?string
     {
-        $offer = $i->deal?->offer ?? $i->offer ?? ($i->garageCar ?? $i->garagePayoutCar)?->offer;
+        $offer = $i->deal?->offer ?? $i->offer ?? $i->garageCar?->offer;
 
         // Ручная оплата с машиной словами («Lada Vesta» без предложения) — она, а не название услуги; услуга по умолчанию
         // («Консультационные услуги по подбору ТС», `ServiceTitle::DEFAULT`) — не ТС: в столбце ТС она раздувала ширину
@@ -43,11 +43,10 @@ final class MoneyRows
         return $i->manager()?->shortName() ?? PartyName::short($i->party->name);
     }
 
-    /** За что выплата — строкой в группе получателя «Мы должны»: «Вознаграждение», «Вывоз» (в CRM вывоз, не «эвакуация»). */
+    /** За что выплата — строкой в группе получателя «Мы должны»: «Вывоз» (в CRM вывоз, не «эвакуация»). */
     public static function payoutKind(Invoice $i): string
     {
         return match ($i->kind) {
-            ChargeKind::AgentFee => 'Вознаграждение',
             ChargeKind::Tow => 'Вывоз',
             default => $i->kind->label(),
         };
@@ -61,7 +60,7 @@ final class MoneyRows
         return $m && $m->party_id !== $i->party_id ? $m : null;
     }
 
-    /** Как заплатили — по последней оплате: «оплатил 4 окт по ссылке через СБП», «оставил себе вознаграждение 6 окт». */
+    /** Как заплатили — по последней оплате: «оплатил 4 окт по ссылке через СБП». */
     public static function how(Invoice $i, Collection $attempts): ?string
     {
         $p = $i->payments->sortBy('paid_at')->last();
@@ -73,13 +72,14 @@ final class MoneyRows
         return match ($p->source) {
             PaymentSource::Acquiring => 'оплатил '.$day.' по ссылке '.PayMethod::label($attempts->get($p->id)?->method),
             PaymentSource::Cash => 'оплатил '.$day.' наличными',
-            PaymentSource::Offset => 'оставил себе вознаграждение '.$day,
+            // Зачёт вознаграждения в старых счетах (до 18.11.2026) — история.
+            PaymentSource::Offset => 'вознаграждение менеджера '.$day,
             PaymentSource::Credit => 'засчитана оплата по ссылке '.$day,
             default => 'оплатил '.$day.' в банк'.($p->refNumber() ? ', п/п '.$p->refNumber() : ''),
         };
     }
 
-    /** Выплата менеджеру: «выплатили 6 окт на счёт». */
+    /** Выплата: «выплатили 6 окт на счёт». */
     public static function paidOut(Invoice $i): ?string
     {
         $p = $i->payments->sortBy('paid_at')->last();
@@ -153,7 +153,7 @@ final class MoneyRows
             null => null,
             PaymentSource::Acquiring => trim('по ссылке '.PayMethod::label($attempts->get($p->id)?->method)),
             PaymentSource::Cash => 'наличными',
-            PaymentSource::Offset => 'зачётом вознаграждения',
+            PaymentSource::Offset => 'вознаграждением менеджера',
             PaymentSource::Credit => 'оплатой по ссылке',
             default => 'в банк',
         };

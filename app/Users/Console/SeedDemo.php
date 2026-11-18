@@ -18,7 +18,6 @@ use App\Billing\Seller;
 use App\Cars\Brand;
 use App\Cars\CarModel;
 use App\Offers\Actions\SyncViewers;
-use App\Offers\CommissionMode;
 use App\Offers\Deal;
 use App\Offers\DealState;
 use App\Offers\Offer;
@@ -74,28 +73,21 @@ final class SeedDemo extends Command
 
             // Сделка в работе: счёт на разницу выставлен, менеджер открыл ссылку на оплату.
             $deal = $this->deal($user, $this->offer(9001, 'Kia', 'Rio', 2021, 48000, 1_250_000), 1_250_000, 1_100_000, 50_000, DealState::Active);
-            $invoice = $this->invoice($party, $user, $deal, 1001, now()->subDay(), 100_000, 50_000);
+            $invoice = $this->invoice($party, $user, $deal, 1001, now()->subDay(), 100_000);
             PayLink::create([
                 'code' => PayLink::freshCode(), 'invoice_id' => $invoice->id, 'amount' => $invoice->total, 'payer_kind' => PayerKind::Self,
                 'payer_name' => $user->name, 'payer_phone' => $user->phone, 'state' => PayLinkState::Open, 'created_by' => $user->id,
             ]);
             $this->place($camry, $deal);
 
-            // Закрытая сделка: оплачена по ссылке, вознаграждение выплачено.
+            // Закрытая сделка: оплачена по ссылке.
             $done = $this->deal($user, $this->offer(9002, 'Hyundai', 'Solaris', 2020, 61000, 980_000, OfferState::Delivered), 980_000, 900_000, 30_000, DealState::Done);
-            $paid = $this->invoice($party, $user, $done, 1002, now()->subDays(14), 50_000, 30_000);
+            $paid = $this->invoice($party, $user, $done, 1002, now()->subDays(14), 50_000);
             $payment = $this->pay($paid, now()->subDays(12), PaymentSource::Acquiring, 'По ссылке через СБП');
             PayLink::create([
                 'code' => PayLink::freshCode(), 'invoice_id' => $paid->id, 'amount' => $paid->total, 'payer_kind' => PayerKind::Self, 'payer_name' => $user->name,
                 'payer_phone' => $user->phone, 'state' => PayLinkState::Paid, 'payment_id' => $payment->id, 'paid_at' => $payment->paid_at, 'created_by' => $user->id,
             ]);
-            $fee = Invoice::create([
-                'direction' => 'owed', 'kind' => ChargeKind::AgentFee, 'party_id' => $party->id, 'deal_id' => $done->id, 'offer_id' => $done->offer_id,
-                'issued_at' => now()->subDays(12)->toDateString(), 'due_at' => now()->subDays(7)->toDateString(), 'vat' => false, 'total' => 30_000, 'state' => InvoiceState::Issued,
-            ])->forceFill(['is_demo' => true]);
-            $fee->save();
-            Charge::create(['party_id' => $party->id, 'deal_id' => $done->id, 'invoice_id' => $fee->id, 'kind' => ChargeKind::AgentFee, 'title' => 'Агентское вознаграждение', 'qty' => 1, 'unit' => 'pc', 'price' => 30_000, 'amount' => 30_000]);
-            $this->pay($fee, now()->subDays(9), PaymentSource::Bank, 'Выплата вознаграждения');
         });
 
         $this->info('Демо-кабинет готов: '.$user->login);
@@ -150,8 +142,7 @@ final class SeedDemo extends Command
 
     private function deal(User $user, Offer $offer, int $amount, int $cost, int $commission, DealState $state): Deal
     {
-        $deal = new Deal(['offer_id' => $offer->id, 'buyer_id' => $user->id, 'amount' => $amount, 'cost' => $cost, 'commission' => $commission,
-            'commission_mode' => CommissionMode::Payout]);
+        $deal = new Deal(['offer_id' => $offer->id, 'buyer_id' => $user->id, 'amount' => $amount, 'cost' => $cost, 'commission' => $commission]);
         $deal->forceFill(['is_demo' => true])->save();
         // Завершённая — закрыта и остаётся текущими условиями машины (`Deal::finish`).
         if ($state === DealState::Done) {
@@ -161,19 +152,17 @@ final class SeedDemo extends Command
         return $deal;
     }
 
-    /** Счёт на разницу двумя строками, как `IssueDealInvoice`: подбор и агентское вознаграждение. */
-    private function invoice(Party $party, User $user, Deal $deal, int $number, Carbon $at, int $selection, int $fee): Invoice
+    /** Счёт подбора одной строкой — разница за вычетом вознаграждения менеджера, как `IssueDealInvoice`. */
+    private function invoice(Party $party, User $user, Deal $deal, int $number, Carbon $at, int $selection): Invoice
     {
         $car = $deal->offer->titleWithYear();
         $invoice = new Invoice([
             'direction' => 'issued', 'year' => self::YEAR, 'number' => $number, 'kind' => ChargeKind::Selection, 'party_id' => $party->id,
             'deal_id' => $deal->id, 'offer_id' => $deal->offer_id, 'issued_at' => $at->toDateString(), 'due_at' => $at->copy()->addDays(5)->toDateString(),
-            'vat' => true, 'vat_rate' => Seller::Prime->vatRate(), 'total' => $selection + $fee, 'paid' => 0, 'state' => InvoiceState::Issued,
+            'vat' => true, 'vat_rate' => Seller::Prime->vatRate(), 'total' => $selection, 'paid' => 0, 'state' => InvoiceState::Issued,
         ]);
         $invoice->forceFill(['is_demo' => true])->save();
-        foreach ([['Подбор ТС '.$car, $selection, ChargeKind::Selection], ['Агентское вознаграждение', $fee, ChargeKind::AgentFee]] as [$title, $price, $kind]) {
-            Charge::create(['party_id' => $party->id, 'deal_id' => $deal->id, 'invoice_id' => $invoice->id, 'kind' => $kind, 'title' => $title, 'qty' => 1, 'unit' => 'pc', 'price' => $price, 'amount' => $price]);
-        }
+        Charge::create(['party_id' => $party->id, 'deal_id' => $deal->id, 'invoice_id' => $invoice->id, 'kind' => ChargeKind::Selection, 'title' => 'Подбор ТС '.$car, 'qty' => 1, 'unit' => 'pc', 'price' => $selection, 'amount' => $selection]);
 
         return $invoice;
     }

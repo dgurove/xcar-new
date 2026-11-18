@@ -8,12 +8,10 @@ use App\Billing\Acquiring\PayerKind;
 use App\Billing\Acquiring\PayLink;
 use App\Billing\Actions\RecordPayment;
 use App\Billing\Actions\VoidInvoice;
-use App\Billing\InvoiceState;
 use App\Billing\Party;
 use App\Billing\PartyKind;
 use App\Billing\PaymentSource;
 use App\Garage\Actions\ClearGarageSold;
-use App\Garage\Actions\IssueGaragePayout;
 use App\Garage\Actions\MarkGarageSold;
 use App\Garage\Actions\MoveCar;
 use App\Garage\Actions\SetBuyerPrice;
@@ -95,7 +93,7 @@ class SettlementController
         return back()->with('toast', 'Цена покупателю '.Money::rub($price));
     }
 
-    /** Счёт с вознаграждением: платит менеджер (как раньше) или его покупатель — плательщик, как у сделки. */
+    /** Счёт по машине за вычетом расходов и вознаграждения менеджера: платит менеджер или его покупатель — плательщик, как у сделки. */
     public function settle(Request $request, Offer $offer, SettleGarageCar $settle)
     {
         $car = $this->staffCar($request, $offer);
@@ -123,8 +121,7 @@ class SettlementController
     public function pay(Request $request, Offer $offer, RecordPayment $record)
     {
         $car = $this->staffCar($request, $offer);
-        // Покупатель уже оплатил — дальше ждёт выплата менеджеру: «Выплатили» отмечает её.
-        $invoice = $car->payoutInvoice ?? $car->invoice ?? $car->holderInvoice();
+        $invoice = $car->invoice ?? $car->holderInvoice();
         abort_unless($invoice, 404);
         $request->merge(['amount' => Money::parse($request->input('amount'))]);
         // Поля — общей формы «Деньги пришли» (`x-billing.pay-form`, 28.10.2026): откуда, номер и скан платёжки, заметка.
@@ -150,7 +147,7 @@ class SettlementController
     public function checkout(Request $request, Offer $offer, PayChoice $choice)
     {
         $car = $this->car($request, $offer);
-        abort_unless($car->invoice && ! $car->invoice->isOwed() && $car->manager_id === $request->user()->id, 404);
+        abort_unless($car->invoice && $car->manager_id === $request->user()->id, 404);
         [$toast, $link] = $choice($request, $car->invoice, $request->user());
 
         return back()->with('toast', $toast)->with('open-link', $link?->id);
@@ -161,7 +158,7 @@ class SettlementController
     {
         $car = $this->car($request, $offer);
         $invoice = $car->invoice;
-        abort_unless($invoice && ! $invoice->isOwed() && $car->manager_id === $request->user()->id, 404);
+        abort_unless($invoice && $car->manager_id === $request->user()->id, 404);
         $request->merge(['amount' => $request->filled('amount') ? Money::parse($request->input('amount')) : null]);
         $data = $request->validate(['amount' => ['nullable', 'numeric', 'min:0.01']]);
         $party = $invoice->party;
@@ -179,26 +176,14 @@ class SettlementController
         return back()->with('toast', 'Ссылка отменена');
     }
 
-    /** Аннулировать открытый документ: выплату менеджеру, если покупатель уже заплатил, иначе сам счёт. */
+    /** Аннулировать открытый счёт по машине. */
     public function voidInvoice(Request $request, Offer $offer, VoidInvoice $void)
     {
         $car = $this->staffCar($request, $offer);
-        $payout = $car->payoutInvoice?->state === InvoiceState::Void ? null : $car->payoutInvoice;
-        $document = $payout ?? $car->invoice;
-        abort_unless($document, 404);
-        $void($document, $request->user(), $request->input('reason'));
+        abort_unless($car->invoice, 404);
+        $void($car->invoice, $request->user(), $request->input('reason'));
 
-        return back()->with('toast', $payout ? 'Выплата аннулирована' : 'Счёт аннулирован');
-    }
-
-    /** Выплата менеджеру заново: покупатель заплатил, а выплаты нет (аннулировали или оплата пришла без автора). */
-    public function payout(Request $request, Offer $offer, IssueGaragePayout $issue)
-    {
-        $car = $this->staffCar($request, $offer);
-        $commission = $request->validate(['commission' => ['nullable', 'integer', 'min:0']])['commission'] ?? null;
-        $invoice = $issue($car, $request->user(), $commission !== null ? (int) $commission : null);
-
-        return back()->with('toast', $invoice ? 'К выплате '.Money::exact($invoice->remaining()) : 'Расчёт закрыт');
+        return back()->with('toast', 'Счёт аннулирован');
     }
 
     /** PDF счёта — сотруднику и хозяину машины; на сайте свой адрес, но туда из гаража не ходят. */

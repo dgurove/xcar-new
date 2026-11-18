@@ -9,7 +9,6 @@ use App\Notifications\ChatNotice;
 use App\Notifications\Notify;
 use App\Offers\Actions\AcceptBid;
 use App\Offers\Actions\PlaceBid;
-use App\Offers\CommissionMode;
 use App\Offers\Deal;
 use App\Offers\DealContract;
 use App\Offers\DealScheme;
@@ -62,7 +61,7 @@ class ManagerAsksTest extends TestCase
         $offer->forceFill(['state' => OfferState::Open, 'chat_enabled' => true])->save();
         $offer->viewers()->create(['user_id' => $this->manager->id, 'opens_at' => now()]);
         app(EnterStage::class)($offer, Stage::where('workflow_id', $vendor->fresh()->workflow(Track::Sale)->id)->where('name', 'Приём подтверждений')->firstOrFail());
-        app(AcceptBid::class)(app(PlaceBid::class)($offer->fresh(), $this->manager, 1200000), $this->admin, 50000, CommissionMode::Payout,
+        app(AcceptBid::class)(app(PlaceBid::class)($offer->fresh(), $this->manager, 1200000), $this->admin, 50000,
             scheme: DealScheme::forOffer($offer->fresh()), ownerPrice: 900000);
         $this->exit($offer, 'Поставщик согласовал');
         $this->assertSame('Согласие менеджера', $offer->fresh()->stage()->name);

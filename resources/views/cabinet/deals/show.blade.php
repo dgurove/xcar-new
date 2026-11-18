@@ -1,7 +1,5 @@
 @php
-    use App\Offers\CommissionState;
     use App\Offers\DealState;
-    $feeState = $deal->commissionState();
     // Счета, что уже стоят в «Расчёте» (подбор, ПРАЙМ), второй раз «Счетами» ниже пути не пишем (11.10.2026: «Счёт № 1,
     // оплачен, 900 000» стоял и там, и там); аннулированные менеджеру ни о чём. Остаются прочие оплаченные — и все в гараже,
     // где «Расчёта» нет.
@@ -94,8 +92,8 @@
                         @if (! $deal->isLive())<x-ui.state :tone="$deal->state === DealState::Done ? 'open' : 'danger'" class="mt-2">{{ mb_strtolower($deal->state->label()) }}</x-ui.state>@endif
                         <dl class="mt-4 grid grid-cols-2 gap-x-6 gap-y-3">
                             <div class="min-w-0"><dt class="text-sm text-ink-dim">Предложение</dt><dd class="nums mt-0.5 break-words font-normal"><x-ui.copy-code :value="(string) $offer->number"/></dd></div>
-                            @if ($feeState !== CommissionState::Hidden)
-                                <div class="col-span-2 min-w-0"><dt class="text-sm text-ink-dim">Агентское вознаграждение</dt><dd class="mt-0.5 flex flex-wrap items-baseline justify-between gap-2"><span class="nums font-semibold">{{ \App\Support\Money::rub($deal->commission) }}</span><x-ui.state :tone="$feeState->tone()">{{ mb_strtolower($feeState->label()) }}</x-ui.state></dd></div>
+                            @if ($deal->commission && $deal->hasInvoices())
+                                <div class="col-span-2 min-w-0"><dt class="text-sm text-ink-dim">Вознаграждение</dt><dd class="nums mt-0.5 font-semibold">{{ \App\Support\Money::rub($deal->commission) }}</dd></div>
                             @endif
                         </dl>
                     </div>

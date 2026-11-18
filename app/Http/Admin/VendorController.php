@@ -28,7 +28,6 @@ use App\Vendors\ClaimRequest;
 use App\Vendors\DealFormat;
 use App\Vendors\Kind;
 use App\Vendors\Parser;
-use App\Vendors\RewardKind;
 use App\Vendors\Vendor;
 use App\Workflow\Position;
 use App\Workflow\Track;
@@ -285,8 +284,6 @@ class VendorController
     {
         $data = $request->validate(Vendor::rules($vendor) + [
             'deal_format' => ['required', Rule::enum(DealFormat::class)],
-            'reward_kind' => ['nullable', Rule::enum(RewardKind::class)],
-            'reward_value' => ['nullable', 'integer', 'min:0'],
             'answer_hours' => ['nullable', 'integer', 'between:1,720'],
             'binding_days' => ['nullable', 'integer', 'between:1,365'],
             'silence_means_buy' => ['boolean'],

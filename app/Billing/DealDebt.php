@@ -24,14 +24,14 @@ final class DealDebt
 {
     /** Открытый счёт сделки нам: выставлен, не оплачен целиком, не выплата и не вознаграждение от вендора. */
     public const OPEN_SQL = "billing_invoices.deal_id = deals.id and billing_invoices.direction = 'issued' and billing_invoices.state = 'issued'
-        and billing_invoices.kind <> 'reward' and billing_invoices.total > billing_invoices.paid";
+        and billing_invoices.total > billing_invoices.paid";
 
     /** Сделка должна нам: открытый счёт или ожидаемый платёж (то же правило, что `of`). */
     public const OWES_SQL = '(exists (select 1 from billing_invoices where '.self::OPEN_SQL.')
         or ('.Deal::ACTIVE_SQL." and coalesce(deals.amount, deals.cost) > 0
             and not (deals.garage_payer = 'manager' and deals.amount is null and exists (select 1 from offers o join vendors v on v.id = o.vendor_id
                 where o.id = deals.offer_id and v.deal_format = 'commission'))
-            and not exists (select 1 from billing_invoices i where i.deal_id = deals.id and i.direction = 'issued' and i.state <> 'void' and i.kind <> 'reward')
+            and not exists (select 1 from billing_invoices i where i.deal_id = deals.id and i.direction = 'issued' and i.state <> 'void')
             and exists (select 1 from offer_positions p where p.offer_id = deals.offer_id and p.track = 'sale' and p.waits_for in ('us', 'manager')
                 and exists (select 1 from workflow_exits x where x.stage_id = p.stage_id and x.actor = 'manager' and (lower(x.label) like 'платёжное поручение%' or lower(x.label) like 'оплатил, документ%')))))";
 
@@ -69,7 +69,7 @@ final class DealDebt
             return new self($owed, round($open->filter->isOverdue()->sum(fn (Invoice $i) => $i->remaining()), 2), $first->due_at,
                 $claimed, $first->due_at ? null : $first->laterLabel(), $status, $claimed);
         }
-        if ($invoices->contains(fn (Invoice $i) => ! $i->isOwed() && $i->kind !== ChargeKind::Reward)) {
+        if ($invoices->contains(fn (Invoice $i) => ! $i->isOwed())) {
             return new self(0, 0, null, false, null, 'оплачено');
         }
 

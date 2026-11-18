@@ -76,19 +76,13 @@ class Car extends Model
         return $this->belongsTo(User::class, 'created_by');
     }
 
-    /** Выплата менеджеру его расходов и вознаграждения, когда за машину заплатил покупатель. */
-    public function payoutInvoice(): BelongsTo
-    {
-        return $this->belongsTo(Invoice::class, 'payout_invoice_id');
-    }
-
     /**
      * Машина гаража предложения — одна выборка на CRM (окно, редактор), гараж сайта и расчёт (11.11.2026: три загрузчика со
      * своими связями). С `$user` — только его или любая сотруднику, иначе null (чужая для менеджера не существует).
      */
     public static function forOffer(Offer $offer, ?User $user = null): ?self
     {
-        $car = self::with(['manager', 'costs.author', 'invoice.payments', 'payoutInvoice', 'deal'])->where('offer_id', $offer->id)->first();
+        $car = self::with(['manager', 'costs.author', 'invoice.payments', 'deal'])->where('offer_id', $offer->id)->first();
         if (! $car || ($user && ! $user->garageStaff() && $car->manager_id !== $user->id)) {
             return null;
         }
@@ -265,11 +259,11 @@ class Car extends Model
         return $this->invoice_id !== null || $this->state === CarState::Settled;
     }
 
-    /** Машина, по которой выставлен этот счёт или выплата: уведомления о гаражном счёте ведут к ней, а не в сделки. */
+    /** Машина, по которой выставлен этот счёт: уведомления о гаражном счёте ведут к ней, а не в сделки. */
     public static function ofInvoice(Invoice $invoice): ?self
     {
         return $invoice->deal_id ? null : self::with(['offer', 'manager'])
-            ->where(fn ($q) => $q->where('invoice_id', $invoice->id)->orWhere('payout_invoice_id', $invoice->id))->first();
+            ->where('invoice_id', $invoice->id)->first();
     }
 
     /** Адрес машины в гараже для менеджера — из уведомлений, писем, Telegram: с хостом сайта, откуда бы ни открыли. */
@@ -325,13 +319,6 @@ class Car extends Model
     public function managerPaidSupplier(): bool
     {
         return $this->deal_id !== null && $this->deal?->garage_payer === GaragePayer::Manager;
-    }
-
-    /** Покупатель заплатил, а выплаты менеджеру нет (аннулировали или оплата пришла без автора) — её заводят кнопкой. */
-    public function awaitsPayout(): bool
-    {
-        return $this->state === CarState::Sold && $this->invoice_to === 'buyer' && $this->invoice?->state === InvoiceState::Paid
-            && (! $this->payoutInvoice || $this->payoutInvoice->state === InvoiceState::Void);
     }
 
     /**

@@ -37,8 +37,8 @@ class SellFromStatementCommand extends Command
 
             return self::SUCCESS;
         }
-        $fee = $deal->namesBuyer() ? $deal->suggestedCommission($g['price']) : null;
-        $this->line('Запишем: продана за '.Money::rub($g['price']).', покупатель '.$g['payer'].($fee !== null ? ', вознаграждение менеджеру '.Money::rub($fee) : ''));
+        $this->line('Запишем: продана за '.Money::rub($g['price']).', пришло '.Money::rub($g['paid']).', покупатель '.$g['payer']
+            .($g['reward'] !== null ? ', вознаграждение '.Money::rub($g['reward']).', услуги подбора '.Money::rub($g['paid'] - (int) $deal->cost) : ''));
         if ($this->option('apply')) {
             $car = $sell($deal);
             $car ? $this->info('Записано') : $this->error('Не записалось — см. лог');

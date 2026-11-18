@@ -68,7 +68,7 @@ class GarageController
         $sort = Sort::from($request->query('sort'), self::SORTS, 'stage');
 
         // Все гаражные машины до расчёта, в любом этапе сделки (16.11.2026, начальник: «всего 5 машин»).
-        $q = Car::with(['offer', 'offer.media', 'offer.vendor', 'offer.deal', 'offer.positions.stage.block', 'offer.positions.stage.exits', 'offer.parkVehicle', 'offer.pickupTask.executor', 'manager', 'manager.media', 'costs', 'invoice', 'payoutInvoice', 'deal.offer'])
+        $q = Car::with(['offer', 'offer.media', 'offer.vendor', 'offer.deal', 'offer.positions.stage.block', 'offer.positions.stage.exits', 'offer.parkVehicle', 'offer.pickupTask.executor', 'manager', 'manager.media', 'costs', 'invoice', 'deal.offer'])
             ->where('state', '!=', CarState::Settled)->whereHas('offer');
         // Поиск лупой (17.11.2026: у остальных вкладок колеса он есть) — по машине, мимо чипов, как у предложений.
         if ($facets->searching()) {

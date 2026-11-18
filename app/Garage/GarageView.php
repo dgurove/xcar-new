@@ -27,8 +27,8 @@ final class GarageView
         $holderDue = $asBuyer && ! $car->hidesBuyerPrice() && $holderInvoice && $holderInvoice->remaining() - $holderInvoice->claimed() > 0;
         $n = $offer->number;
         $invoice = $car->invoice;
-        // Ждёт денег сейчас: выплата менеджеру (покупатель уже заплатил) или сам счёт; у покупателя с гаражом — его счёт.
-        $current = $car->payoutInvoice ?? $invoice ?? $holderInvoice;
+        // Ждёт денег сейчас: счёт по машине; у покупателя с гаражом — его счёт.
+        $current = $invoice ?? $holderInvoice;
         // Правит сотрудник, пока покупатель не платил: цену, «Вернуть в продажу», «Отдали по ошибке» (20.10.2026).
         $buyerPaid = $buyerCar && $car->buyerHasPaid();
         $unpaid = $current && $current->remaining() > 0;
@@ -56,12 +56,11 @@ final class GarageView
             $staff && $buyerCar && $unpaid => [['emit', 'paid', 'Поступила']],
             $buyerCar => [],
             ! $staff && $car->state === CarState::Selling => [['emit', 'selling', 'Продаю']],
-            ! $staff && $unpaid && ! $current->isOwed() && $car->invoice_to !== 'buyer' && $current->remaining() - $current->claimed() > 0 => [['emit', 'pay', 'Оплатить']],
+            ! $staff && $unpaid && $car->invoice_to !== 'buyer' && $current->remaining() - $current->claimed() > 0 => [['emit', 'pay', 'Оплатить']],
             $staff && $car->state === CarState::Selling => [['emit', 'sold', 'Продана']],
             // Совкомбанк: счёт ПРАЙМ покупателю выставляет сделка, расчёта по машине нет.
             $staff && $car->state === CarState::Sold && ! $invoice && ! $car->settledByDeal() => [['emit', 'settle', $car->manager ? 'Выставить счёт' : 'Закрыть расчёт']],
-            $staff && $car->awaitsPayout() => [['emit', 'payout', 'Выплата менеджеру']],
-            $staff && $unpaid => [['emit', 'paid', $current->isOwed() ? 'Выплатили' : 'Поступила']],
+            $staff && $unpaid => [['emit', 'paid', 'Поступила']],
             default => [],
         }));
         // Редкое — в «⋯» своей дорожки: снять итог и аннулировать — у продажи, «Отдали по ошибке» — у гаража.

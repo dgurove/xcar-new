@@ -8,7 +8,6 @@ use App\Billing\DealDebt;
 use App\Billing\Invoice;
 use App\Offers\Actions\AcceptBid;
 use App\Offers\Actions\PlaceBid;
-use App\Offers\CommissionMode;
 use App\Offers\Deal;
 use App\Offers\DealScheme;
 use App\Offers\Offer;
@@ -49,7 +48,7 @@ class MoneyInTest extends TestCase
         $offer->viewers()->create(['user_id' => $manager->id, 'opens_at' => now()]);
         $stages = Stage::where('workflow_id', $vendor->fresh()->workflow(Track::Sale)->id);
         app(EnterStage::class)($offer, (clone $stages)->where('name', 'Приём подтверждений')->firstOrFail());
-        $deal = app(AcceptBid::class)(app(PlaceBid::class)($offer->fresh(), $manager, 1200000), $admin, 50000, CommissionMode::Payout, scheme: DealScheme::Prime);
+        $deal = app(AcceptBid::class)(app(PlaceBid::class)($offer->fresh(), $manager, 1200000), $admin, 50000, scheme: DealScheme::Prime);
         // Счёт вне системы: нашего счёта менеджеру нет.
         Invoice::where('deal_id', $deal->id)->delete();
         app(EnterStage::class)($offer->fresh(), (clone $stages)->where('name', 'Оплата счёта')->firstOrFail());

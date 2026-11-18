@@ -7,7 +7,6 @@ use App\Billing\Bank\CarMatch;
 use App\Billing\Bank\Transaction;
 use App\Offers\Actions\AcceptBid;
 use App\Offers\Actions\PlaceBid;
-use App\Offers\CommissionMode;
 use App\Offers\Deal;
 use App\Offers\DealScheme;
 use App\Offers\Offer;
@@ -47,7 +46,7 @@ class BankDatesTest extends TestCase
         $offer->viewers()->create(['user_id' => $manager->id, 'opens_at' => now()]);
         app(EnterStage::class)($offer, Stage::where('workflow_id', $vendor->fresh()->workflow(Track::Sale)->id)->where('name', 'Приём подтверждений')->firstOrFail());
 
-        return app(AcceptBid::class)(app(PlaceBid::class)($offer->fresh(), $manager, 1200000), $admin, 50000, CommissionMode::Payout, scheme: DealScheme::Prime)->fresh();
+        return app(AcceptBid::class)(app(PlaceBid::class)($offer->fresh(), $manager, 1200000), $admin, 50000, scheme: DealScheme::Prime)->fresh();
     }
 
     private function tx(string $dir, string $day, string $purpose, ?string $inn = null): Transaction

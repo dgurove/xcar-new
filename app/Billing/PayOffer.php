@@ -31,7 +31,6 @@ final class PayOffer
     {
         return match ($i->kind) {
             ChargeKind::Selection => 'подбора',
-            ChargeKind::AgentFee => 'вознаграждения',
             ChargeKind::Sale => 'ТС',
             ChargeKind::Storage => 'хранения',
             ChargeKind::Service => 'услуг',
@@ -44,7 +43,6 @@ final class PayOffer
     {
         return match ($i->kind) {
             ChargeKind::Selection => 'подбор',
-            ChargeKind::AgentFee => 'вознаграждение',
             ChargeKind::Sale => 'ТС',
             ChargeKind::Storage => 'хранение',
             ChargeKind::Service => 'услуги',
@@ -114,7 +112,7 @@ final class PayOffer
      */
     public static function unsent(Deal $deal): Collection
     {
-        return $deal->issuedInvoices()->where('kind', '!=', ChargeKind::Reward)->where('state', '!=', InvoiceState::Void->value)
+        return $deal->issuedInvoices()->where('state', '!=', InvoiceState::Void->value)
             ->with('payments')->orderBy('id')->get()->reject(fn (Invoice $i) => $i->isShownToManager())->values();
     }
 }

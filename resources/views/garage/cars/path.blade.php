@@ -21,13 +21,12 @@
         CarState::Sold => $car->settledByDeal() ? match ($car->deal->invoiceGap()) {
             'buyer' => $staff ? 'менеджер указывает покупателя' : 'укажите покупателя',
             'passport' => $staff ? 'менеджер прикладывает паспорт покупателя' : 'приложите паспорт покупателя',
-            'commission' => $staff ? 'назначить вознаграждение' : 'готовим счёт',
+            'commission' => $staff ? 'посчитать вознаграждение' : 'готовим счёт',
             null => $car->deal->issuedInvoices()->where('state', \App\Billing\InvoiceState::Issued)->exists() ? 'ждём оплату покупателя' : null,
             default => $staff ? 'выставить счёт' : 'готовим счёт',
         } : match (true) {
             ! $invoice => $staff ? 'выставить счёт' : 'готовим счёт',
             // Сумма — крупно в деньгах: здесь только что и до когда.
-            $unpaid && $current->isOwed() => $staff ? 'отдаём менеджеру' : 'выплата вам',
             $unpaid && $car->invoice_to === 'buyer' => 'ждём оплату покупателя',
             // Срок — счётчиком, не датой (17.11.2026, владелец): «оплата, осталось 2 д 3 ч» / «просрочено 1 д 4 ч».
             $unpaid => ($staff ? 'менеджер отдаёт' : 'оплата').($current->due_at ? ', '.($current->due_at->isPast() ? \App\Support\Ago::overdue($current->due_at) : \App\Support\Ago::left($current->due_at)) : ''),

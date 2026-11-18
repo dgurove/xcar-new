@@ -274,7 +274,7 @@
                      «Оплатить»; ссылка на оплату — в шторке по кнопке. Ждёт подтверждения — словом в платеже. --}}
                 <div class="mt-5 flex flex-col gap-3">
                     @php
-                        $payable = $unpaid->reject(fn ($i) => $i->kind === \App\Billing\ChargeKind::Reward);
+                        $payable = $unpaid;
                         // Кому — юрлицом счёта («ООО «ПРАЙМ»», 16.11.2026); два счёта одного юрлица — различаем, за что.
                         $sameSeller = $payable->pluck('seller')->unique()->count() < $payable->count();
                     @endphp

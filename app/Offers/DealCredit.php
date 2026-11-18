@@ -2,7 +2,6 @@
 
 namespace App\Offers;
 
-use App\Billing\ChargeKind;
 use App\Billing\Invoice;
 use App\Billing\InvoiceState;
 use App\Offers\Actions\ApplyDealCredits;
@@ -26,7 +25,7 @@ final class DealCredit
     public static function room(Deal $deal): ?float
     {
         $targets = Invoice::where('deal_id', $deal->id)->where('direction', 'issued')->where('state', '!=', InvoiceState::Void)
-            ->where('kind', '!=', ChargeKind::Reward)->with('claims')->get();
+            ->with('claims')->get();
         if ($targets->isEmpty()) {
             return null;
         }

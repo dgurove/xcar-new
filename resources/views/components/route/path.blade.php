@@ -246,7 +246,7 @@
                         // Шаг пройдёт сам, когда деньги придут (`AdvanceOnPayment`): «За менеджера: Оплатил, документ приложен» тоже не нужен.
                         $feeOnly = false;
                         if ($proofFor && $deal && ! $deal->paysSupplierOn($stage)) {
-                            $ours = $invoices->filter(fn ($i) => $i->direction === 'issued' && $i->kind !== \App\Billing\ChargeKind::Reward && $i->state !== \App\Billing\InvoiceState::Void);
+                            $ours = $invoices->filter(fn ($i) => $i->direction === 'issued' && $i->state !== \App\Billing\InvoiceState::Void);
                             $feeOnly = $ours->isNotEmpty() && ! $ours->contains(fn ($i) => $i->isDocument());
                             $proofFor = ! $feeOnly;
                         }
@@ -365,7 +365,7 @@
                     {{-- Наш счёт и договор на шаге оплаты (16.11.2026, владелец: «чтобы не удивлялись, почему не платят по счёту»): не
                          отправлены менеджеру — рыжей строкой со шторкой «Отправить менеджеру», отправлены — строкой с галкой. --}}
                     @if ($deal && $stage->isPayStep() && $deal->buyer_id && auth()->user()?->canEditDeals())
-                        @foreach ($invoices->filter(fn ($i) => $i->direction === 'issued' && $i->kind !== \App\Billing\ChargeKind::Reward) as $i)
+                        @foreach ($invoices->filter(fn ($i) => $i->direction === 'issued') as $i)
                             <x-deal.send-task :deal="$deal" :invoice="$i"/>
                         @endforeach
                         @if ($deal->hasContract() && \App\Offers\DealContract::for($deal)->isReady())

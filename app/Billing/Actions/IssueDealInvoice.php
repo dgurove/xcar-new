@@ -5,7 +5,6 @@ namespace App\Billing\Actions;
 use App\Billing\ChargeKind;
 use App\Billing\Invoice;
 use App\Billing\Party;
-use App\Billing\PaymentSource;
 use App\Billing\Seller;
 use App\Offers\Deal;
 use App\Offers\OfferEventType;
@@ -15,41 +14,34 @@ use Carbon\CarbonInterface;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Счёт по сделке двумя строками: «Транспортное средство» (или «Подбор ТС») на базу
- * за вычетом вознаграждения и «Агентское вознаграждение» — итого равен базе.
- * Менеджер удерживает вознаграждение сам — его строка тут же гасится зачётом,
- * к оплате остаётся база минус вознаграждение. Вознаграждение от поставщика —
- * одна строка вендору. С этого счёта менеджер видит своё вознаграждение.
- * НДС — ставкой ПРАЙМ (`IssueInvoice`): в сумме, а у контрагента с «НДС сверху» — прибавлен к строкам.
+ * Счёт по сделке руками («Ещё счёт» в CRM): одной строкой — «Транспортное средство» или «Подбор ТС» на сумму, что вписал
+ * сотрудник (форма подставляет цену минус вознаграждение менеджера, у подбора — подбор). Строки «Агентское вознаграждение»
+ * и зачёта нет (18.11.2026: вознаграждения мы не выплачиваем, наш счёт — сразу за вычетом его).
+ * НДС — ставкой продавца (`IssueInvoice`): в сумме, а у контрагента с «НДС сверху» — прибавлен к строке.
  */
 final class IssueDealInvoice
 {
-    public function __construct(private IssueInvoice $issue, private RecordPayment $record) {}
+    public function __construct(private IssueInvoice $issue) {}
 
-    /** @param  bool  $withFee  строка вознаграждения в счёте; подбор по ДКП — без неё: менеджер платит ровно подбор */
-    public function __invoke(Deal $deal, User $by, Party $party, ChargeKind $kind, float $base, CarbonInterface $dueAt, ?string $notes = null, ?string $title = null, bool $withFee = true): Invoice
+    public function __invoke(Deal $deal, User $by, Party $party, ChargeKind $kind, float $amount, CarbonInterface $dueAt, ?string $notes = null, ?string $title = null): Invoice
     {
         $offer = $deal->offer;
         $car = $offer->titleWithYear();
-        $fee = $kind === ChargeKind::Reward || ! $withFee ? 0 : (int) $deal->commission;
         $title ??= match ($kind) {
             ChargeKind::Sale => 'Транспортное средство '.$car,
             ChargeKind::Selection => 'Подбор ТС '.$car,
-            ChargeKind::Reward => 'Вознаграждение по продаже '.$car,
             default => $car,
         };
-        $lines = [['title' => $title, 'qty' => 1, 'unit' => 'pc', 'price' => round($base - $fee, 2), 'kind' => $kind->value]];
-        if ($fee > 0) {
-            $lines[] = ['title' => 'Агентское вознаграждение', 'qty' => 1, 'unit' => 'pc', 'price' => (float) $fee, 'kind' => ChargeKind::AgentFee->value];
-        }
+        $lines = [['title' => $title, 'qty' => 1, 'unit' => 'pc', 'price' => round($amount, 2), 'kind' => $kind->value]];
 
-        return DB::transaction(function () use ($deal, $by, $party, $kind, $dueAt, $notes, $lines, $fee, $offer) {
-            // Счёт за машину — от продавца сделки (Альфа с НДС — Р.О.С.), подбор и вознаграждение — от ПРАЙМ.
-            $seller = $kind === ChargeKind::Sale ? $deal->seller() : Seller::Prime;
+        return DB::transaction(function () use ($deal, $by, $party, $kind, $dueAt, $notes, $lines, $offer) {
+            // Счёт за машину — от продавца сделки (Альфа с НДС — Р.О.С.), подбор — продавцом услуг подбора сделки.
+            $seller = match ($kind) {
+                ChargeKind::Sale => $deal->seller(),
+                ChargeKind::Selection => $deal->feeSeller(),
+                default => Seller::Prime,
+            };
             $invoice = ($this->issue)($party, $by, 'issued', $kind, $dueAt, lines: $lines, dealId: $deal->id, offerId: $offer->id, notes: $notes, seller: $seller);
-            if ($fee > 0 && $deal->withholds()) {
-                ($this->record)($invoice, $by, (float) $fee, null, PaymentSource::Offset, null, 'Удержано агентское вознаграждение');
-            }
             $offer->log(OfferEventType::Note, $by, ['text' => 'Счёт '.$invoice->label().' на '.Money::rub($invoice->total).', платит '.$party->name]);
 
             return $invoice;

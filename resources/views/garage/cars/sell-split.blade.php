@@ -15,7 +15,7 @@
     $row = $dense ? 'row !min-h-11 !py-2' : 'row';
 @endphp
 <div @class([$row, 'profit' => ! $staff])>
-    <span @class(['min-w-0 flex-1', 'font-medium' => ! $staff])>{{ $staff ? 'Вознаграждение менеджеру' : 'Вознаграждение' }}</span>
+    <span @class(['min-w-0 flex-1', 'font-medium' => ! $staff])>{{ $staff ? 'Вознаграждение менеджера' : 'Вознаграждение' }}</span>
     <span @class(['nums', 'profit-sum' => ! $staff && $split, 'text-ink-dim' => ! $split]) {!! $target('reward') !!} data-sign="{{ $staff ? '' : '+' }}">{{ $split ? ($staff ? '' : '+').Money::rub($split['reward']) : '—' }}</span>
 </div>
 <div class="{{ $row }}"><span class="min-w-0 flex-1">К оплате XCar</span><span @class(['nums', 'text-ink-dim' => ! $split]) {!! $target('payable') !!}>{{ $split ? Money::rub($split['payable']) : '—' }}</span></div>

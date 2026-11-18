@@ -14,7 +14,6 @@ use App\Billing\PaymentSource;
 use App\Billing\ServiceTitle;
 use App\Offers\Actions\AcceptBid;
 use App\Offers\Actions\PlaceBid;
-use App\Offers\CommissionMode;
 use App\Offers\Deal;
 use App\Offers\DealScheme;
 use App\Offers\Offer;
@@ -64,7 +63,7 @@ class ManualLinkCreditTest extends TestCase
         app(EnterStage::class)($offer, Stage::where('workflow_id', $vendor->fresh()->workflow(Track::Sale)->id)->where('name', 'Приём подтверждений')->firstOrFail());
         $this->offer = $offer->fresh();
 
-        return app(AcceptBid::class)(app(PlaceBid::class)($this->offer, $this->manager, 850000), $this->admin, 20000, CommissionMode::Payout, scheme: DealScheme::OwnerDkp)->fresh();
+        return app(AcceptBid::class)(app(PlaceBid::class)($this->offer, $this->manager, 850000), $this->admin, 20000, scheme: DealScheme::OwnerDkp)->fresh();
     }
 
     private function walkTo(Deal $deal, string $name): void

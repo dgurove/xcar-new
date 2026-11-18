@@ -2,7 +2,6 @@
 
 namespace App\Billing\Listeners;
 
-use App\Billing\ChargeKind;
 use App\Billing\Events\PaymentClaimed;
 use App\Billing\InvoiceState;
 use App\Billing\PaymentSource;
@@ -36,7 +35,7 @@ final class AdvanceOnClaim
             return;
         }
         // Сообщил об оплате одного счёта, а другой (машина или доля) ещё не оплачен и не заявлен — шаг ждёт.
-        $open = $deal->issuedInvoices()->where('kind', '!=', ChargeKind::Reward)->where('state', InvoiceState::Issued)->with('claims')->get();
+        $open = $deal->issuedInvoices()->where('state', InvoiceState::Issued)->with('claims')->get();
         if ($open->contains(fn ($i) => $i->claims->isEmpty() && $i->remaining() > 0)) {
             return;
         }

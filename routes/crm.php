@@ -235,7 +235,6 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
         Route::delete('/garage/cars/{offer}/sold', [GarageSettlementController::class, 'unsold']);
         Route::put('/garage/cars/{offer}/buyer-price', [GarageSettlementController::class, 'buyerPrice']);
         Route::post('/garage/cars/{offer}/settle', [GarageSettlementController::class, 'settle']);
-        Route::post('/garage/cars/{offer}/payout', [GarageSettlementController::class, 'payout']);
         Route::post('/garage/cars/{offer}/payments', [GarageSettlementController::class, 'pay']);
         Route::delete('/garage/cars/{offer}/invoice', [GarageSettlementController::class, 'voidInvoice']);
         Route::post('/offers/{offer}/exit/{exit}', [RouteController::class, 'exit']);

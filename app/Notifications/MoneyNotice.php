@@ -16,8 +16,8 @@ use App\Users\User;
 use Illuminate\Support\Str;
 
 /**
- * Деньги по сделке: менеджеру — счёт выставлен, оплата принята или не поступила, выплачено;
- * сотрудникам — менеджер сообщил об оплате, вознаграждение к выплате. Менеджеру всегда, сотруднику — категория «Деньги».
+ * Деньги по сделке: менеджеру — счёт выставлен, оплата принята или не поступила;
+ * сотрудникам — менеджер сообщил об оплате. Менеджеру всегда, сотруднику — категория «Деньги».
  */
 final class MoneyNotice extends Notice
 {
@@ -98,13 +98,13 @@ final class MoneyNotice extends Notice
             ->tg($i, $i->isDocument() ? 'Счёт по :car' : 'Оплата по :car', \App\Billing\PayOffer::name($i), Money::rub($i->remaining()).$when)->about($i)->variant('invoice-issued', 'Счёт выставлен');
     }
 
-    /** Расчёт по машине в гараже: счёт к оплате или то, что мы должны ему, — ведёт на машину. */
+    /** Расчёт по машине в гараже: счёт к оплате — ведёт на машину. */
     public static function garageInvoice(Invoice $i, Car $car): self
     {
-        return (new self($i->isOwed() ? 'К выплате '.Money::exact($i->remaining()).' за '.$car->offer->titleWithYear() : \App\Billing\PayOffer::name($i).($i->isDocument() ? ' на ' : ' ').Money::exact($i->remaining()).', оплатить до '.Ago::day($i->due_at),
+        return (new self(\App\Billing\PayOffer::name($i).($i->isDocument() ? ' на ' : ' ').Money::exact($i->remaining()).', оплатить до '.Ago::day($i->due_at),
             $car->offer->titleWithYear(), $car->url(), $car->offer->number))
-            ->tg($i, $i->isOwed() ? 'К выплате по :car' : ($i->isDocument() ? 'Счёт по :car' : 'Оплата по :car'), $i->isOwed() ? 'Выплата' : \App\Billing\PayOffer::name($i),
-                Money::exact($i->remaining()).($i->isOwed() ? '' : ', оплатить до '.Ago::day($i->due_at)), 'Открыть')->variant('garage-invoice', 'Расчёт по гаражу');
+            ->tg($i, $i->isDocument() ? 'Счёт по :car' : 'Оплата по :car', \App\Billing\PayOffer::name($i),
+                Money::exact($i->remaining()).', оплатить до '.Ago::day($i->due_at), 'Открыть')->variant('garage-invoice', 'Расчёт по гаражу');
     }
 
     public static function paymentConfirmed(Payment $p): self
@@ -130,14 +130,6 @@ final class MoneyNotice extends Notice
 
         return (new self('Оплата '.Money::rub($p->amount).' '.$i->byWhat().' не поступила', $p->reject_reason ?: 'Нужно проверить платёж и сообщить снова', self::path($i), $i->deal?->offer?->number))
             ->tg($i, 'Оплата по :car не поступила', 'Оплата '.$i->byWhat().' не поступила', Money::rub($p->amount).', '.mb_lcfirst($p->reject_reason ?: 'Нужно проверить платёж и сообщить снова'))->about($i)->variant('payment-rejected', 'Оплата не поступила');
-    }
-
-    public static function payout(Payment $p): self
-    {
-        $i = $p->invoice;
-
-        return (new self('Выплачено '.Money::rub($p->amount).($i->remaining() > 0 ? ', осталось '.Money::rub($i->remaining()) : ''), $i->deal?->offer?->titleWithYear() ?? Car::ofInvoice($i)?->offer->titleWithYear(), self::path($i), $i->deal?->offer?->number))
-            ->tg($i, 'Вознаграждение по :car выплачено', 'Вознаграждение выплачено', Money::rub($p->amount).($i->remaining() > 0 ? ', осталось '.Money::rub($i->remaining()) : ''))->about($i)->variant('payout', 'Вознаграждение выплачено');
     }
 
     public static function claimed(Payment $p): self
@@ -221,11 +213,6 @@ final class MoneyNotice extends Notice
     public static function overdue(Invoice $i): self
     {
         return (new self(match (true) { $i->isOwed() => 'Мы просрочили '.$i->label().', '.$i->party->name, $i->isDocument() => 'Просрочен счёт '.$i->label().', '.$i->party->name, default => 'Просрочена оплата подбора' }, Money::rub($i->remaining()), \App\Http\Admin\MoneyController::url($i), $i->deal?->offer?->number, true))->variant('overdue', 'Просрочен счёт');
-    }
-
-    public static function feeDue(Invoice $fee): self
-    {
-        return (new self('К выплате '.Money::rub($fee->total).' — '.$fee->party->name, $fee->deal?->offer?->titleWithYear().', до '.Ago::day($fee->due_at), MoneyController::url($fee), $fee->deal?->offer?->number, true))->about($fee)->variant('fee-due', 'Вознаграждение к выплате');
     }
 
     public function label(): string

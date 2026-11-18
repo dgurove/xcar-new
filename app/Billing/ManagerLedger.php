@@ -11,8 +11,8 @@ use Carbon\CarbonInterface;
 use Illuminate\Support\Collection;
 
 /**
- * Деньги глазами менеджера: счета, которые ему платить, вознаграждение по сделкам,
- * лента операций и итоги за период. Только чтение — базу не трогает; закупочную и
+ * Деньги глазами менеджера: счета, которые ему платить, вознаграждение по сделкам (числом — выплат менеджерам нет,
+ * 18.11.2026), наши выплаты ему за перевозки, лента операций и итоги за период. Только чтение — базу не трогает; закупочную и
  * «нам» не знает.
  */
 final class ManagerLedger
@@ -20,7 +20,7 @@ final class ManagerLedger
     /** Все сделки-расчёты с раскладом: экран берёт и список пресета, и числа пилюль — считаем раз. */
     private ?Collection $all = null;
 
-    /** staff — смотрит сотрудник: фразы третьим лицом («должен нам», «должны ему»), а не «Оплатите». */
+    /** staff — смотрит сотрудник: фразы третьим лицом («должен нам»), а не «Оплатите». */
     public function __construct(private User $manager, private bool $staff = false) {}
 
     /** Все счета, что ему видны, — для истории и акта. */
@@ -30,7 +30,7 @@ final class ManagerLedger
     }
 
     /**
-     * Сделки-расчёты по пресету: все (идущие и со счётом), оплатить, ждут выплаты, закрытые.
+     * Сделки-расчёты по пресету: все (идущие и со счётом), оплатить, закрытые.
      * Требующие действия — первыми, дальше по дате. Считается в памяти: сделок у менеджера десятки.
      *
      * @return Collection<int, Deal>
@@ -45,7 +45,7 @@ final class ManagerLedger
                 ->where(fn ($q) => $q->whereNull('garage_payer')->orWhereHas('invoices'))
                 // Покупателю с гаражом без галки цены — гаражных расчётов нет: он видит только цену продажи (21.10.2026).
                 ->when(! $this->staff && ! $this->manager->seesGaragePrice(), fn ($q) => $q->whereNull('garage_payer'))
-                ->with(['offer', 'offer.media', 'offer.vendor', 'offer.positions.stage.block', 'offer.positions.stage.exits.to', 'invoices.claims', 'invoices.payLinks', 'agentFee'])->latest()->get();
+                ->with(['offer', 'offer.media', 'offer.vendor', 'offer.positions.stage.block', 'offer.positions.stage.exits.to', 'invoices.claims', 'invoices.payLinks'])->latest()->get();
             $this->all->each(fn (Deal $d) => $d->setAttribute('money', DealMoney::of($d, $this->staff)));
         }
         $deals = $this->all->filter(fn (Deal $d) => match ($preset) {
@@ -56,15 +56,15 @@ final class ManagerLedger
         return $deals->sortBy([fn (Deal $a, Deal $b) => ($b->money->needsAction() <=> $a->money->needsAction()) ?: ($b->created_at <=> $a->created_at)])->values();
     }
 
-    /** Машины гаража с его счётом или выплатой — строками рядом со сделками (`DealMoney::garage`). */
+    /** Машины гаража с его счётом — строками рядом со сделками (`DealMoney::garage`). */
     private ?Collection $cars = null;
 
     /** @return Collection<int, GarageCar> с `money` */
     public function cars(string $preset = 'all'): Collection
     {
         $this->cars ??= GarageCar::where('manager_id', $this->manager->id)
-            ->where(fn ($q) => $q->whereNotNull('invoice_id')->orWhereNotNull('payout_invoice_id'))
-            ->with(['offer', 'offer.media', 'invoice.claims', 'payoutInvoice'])->latest('stage_at')->get()
+            ->whereNotNull('invoice_id')
+            ->with(['offer', 'offer.media', 'invoice.claims'])->latest('stage_at')->get()
             ->each(fn (GarageCar $c) => $c->setAttribute('money', DealMoney::garage($c, $this->manager, $this->staff)))
             ->filter(fn (GarageCar $c) => $c->money)->values();
 
@@ -105,7 +105,7 @@ final class ManagerLedger
         return array_filter(['all' => $all->count()] + $all->countBy(fn ($r) => $r->money->preset)->all());
     }
 
-    /** Суммы пилюль «Оплатить» и «Ждут выплаты» — ровно то, что в их списке. */
+    /** Суммы пилюль «Оплатить» и «Ждут выплаты» (перевозки) — ровно то, что в их списке. */
     public function sums(): array
     {
         $rows = $this->rows();
@@ -114,7 +114,7 @@ final class ManagerLedger
     }
 
     /**
-     * Положение: сколько он должен нам, сколько мы ему, есть ли просрочка. Сумма строк `rows()` —
+     * Положение: сколько он должен нам, сколько мы ему за перевозки, есть ли просрочка. Сумма строк `rows()` —
      * число над списком всегда сходится со списком (06.10.2026: «Оплатить 440 500», а строк на 81 000 — счёт гаража
      * считался, а строкой не показывался).
      *
@@ -123,7 +123,7 @@ final class ManagerLedger
     public function position(): array
     {
         $rows = $this->rows();
-        $fees = $this->manager->party_id ? Invoice::where('party_id', $this->manager->party_id)->where('direction', 'owed')->whereIn('kind', [ChargeKind::AgentFee, ChargeKind::Tow])->where('state', '!=', InvoiceState::Void)->get() : collect();
+        $fees = $this->manager->party_id ? Invoice::where('party_id', $this->manager->party_id)->where('direction', 'owed')->where('kind', ChargeKind::Tow)->where('state', '!=', InvoiceState::Void)->get() : collect();
         $sum = fn (string $key) => round($rows->sum(fn ($r) => $r->money->{$key}), 2);
 
         return [
@@ -137,8 +137,7 @@ final class ManagerLedger
     }
 
     /**
-     * Лента операций: счёт выставлен, сообщили об оплате, оплата принята или не поступила, удержано,
-     * вознаграждение к выплате, выплачено. Каждая — дата, слова, сумма, куда вести.
+     * Лента операций: счёт выставлен, сообщили об оплате, оплата принята или не поступила, перевозка к выплате, выплачено. Каждая — дата, слова, сумма, куда вести.
      *
      * @return Collection<int, array{at: CarbonInterface, title: string, amount: float, kind: string, href: string, offer: ?string, deal: ?int}>
      */
@@ -146,11 +145,10 @@ final class ManagerLedger
     {
         $rows = collect();
         $invoices = $this->invoices();
-        // Гаражные счета и выплаты — без сделки: ведут на машину в гараже, а не в пустой расчёт сделки.
-        $cars = GarageCar::with(['offer'])->where(fn ($q) => $q->whereIn('invoice_id', $invoices->whereNull('deal_id')->pluck('id'))
-            ->orWhereIn('payout_invoice_id', $invoices->whereNull('deal_id')->pluck('id')))->get();
+        // Гаражные счета — без сделки: ведут на машину в гараже, а не в пустой расчёт сделки.
+        $cars = GarageCar::with(['offer'])->whereIn('invoice_id', $invoices->whereNull('deal_id')->pluck('id'))->get();
         foreach ($invoices as $i) {
-            $car = $i->deal_id ? null : $cars->first(fn ($c) => $c->invoice_id === $i->id || $c->payout_invoice_id === $i->id);
+            $car = $i->deal_id ? null : $cars->first(fn ($c) => $c->invoice_id === $i->id);
             $offer = $i->deal?->offer?->titleWithYear() ?? $car?->offer->titleWithYear();
             // Перевозка партнёра (логистика) — без сделки: ведёт в его перевозки.
             $transport = $i->isTransport() ? Transport::firstWhere('invoice_id', $i->id) : null;
@@ -161,14 +159,15 @@ final class ManagerLedger
                 default => ($i->deal?->href() ?? '/deals/'.$i->deal_id).'#money',
             };
             $rows->push(['at' => $i->issued_at->copy()->setTimeFrom($i->created_at), 'title' => match (true) {
-                $i->isAgentFee() => 'Вознаграждение к выплате', $i->isTransport() => 'Перевозка к выплате', default => 'Счёт '.$i->label().' выставлен',
-            }, 'amount' => $i->total, 'kind' => $i->isAgentFee() || $i->isTransport() ? 'fee' : 'invoice', 'href' => $href, 'offer' => $offer, 'deal' => $i->deal_id]);
+                $i->isTransport() => 'Перевозка к выплате', default => 'Счёт '.$i->label().' выставлен',
+            }, 'amount' => $i->total, 'kind' => $i->isTransport() ? 'fee' : 'invoice', 'href' => $href, 'offer' => $offer, 'deal' => $i->deal_id]);
             foreach ($i->allPayments as $p) {
                 $rows->push(match (true) {
                     $p->state === PaymentState::Claimed => ['at' => $p->created_at, 'title' => 'Сообщили об оплате', 'amount' => $p->amount, 'kind' => 'claim', 'href' => $href, 'offer' => $offer, 'deal' => $i->deal_id],
                     $p->state === PaymentState::Rejected => ['at' => $p->decided_at ?? $p->updated_at, 'title' => 'Оплата не поступила', 'amount' => $p->amount, 'kind' => 'rejected', 'href' => $href, 'offer' => $offer, 'deal' => $i->deal_id],
                     $p->source === PaymentSource::Credit => ['at' => $p->created_at, 'title' => 'Засчитана оплата по ссылке', 'amount' => $p->amount, 'kind' => 'paid', 'href' => $href, 'offer' => $offer, 'deal' => $i->deal_id],
-                    $p->source === PaymentSource::Offset => ['at' => $p->created_at, 'title' => 'Удержано агентское вознаграждение', 'amount' => $p->amount, 'kind' => 'offset', 'href' => $href, 'offer' => $offer, 'deal' => $i->deal_id],
+                    // Зачёт вознаграждения в старых счетах (до 18.11.2026).
+                    $p->source === PaymentSource::Offset => ['at' => $p->created_at, 'title' => 'Вознаграждение', 'amount' => $p->amount, 'kind' => 'offset', 'href' => $href, 'offer' => $offer, 'deal' => $i->deal_id],
                     $i->isOwed() => ['at' => $p->paid_at->copy()->setTimeFrom($p->decided_at ?? $p->created_at), 'title' => 'Выплачено', 'amount' => $p->amount, 'kind' => 'payout', 'href' => $href, 'offer' => $offer, 'deal' => $i->deal_id],
                     default => ['at' => $p->paid_at->copy()->setTimeFrom($p->decided_at ?? $p->created_at), 'title' => 'Оплата принята', 'amount' => $p->amount, 'kind' => 'paid', 'href' => $href, 'offer' => $offer, 'deal' => $i->deal_id],
                 });
@@ -178,7 +177,7 @@ final class ManagerLedger
         return $rows->filter(fn ($r) => (! $from || $r['at']->gte($from)) && (! $to || $r['at']->lte($to)))->sortByDesc('at')->values();
     }
 
-    /** Итоги ленты: оплачено нам, выплачено ему. */
+    /** Итоги ленты: оплачено нам, выплачено ему за перевозки. */
     public function totals(Collection $history): array
     {
         return [
@@ -188,10 +187,10 @@ final class ManagerLedger
         ];
     }
 
-    /** Сделки за период для выгрузки: цена, счёт, оплачено, вознаграждение, выплачено. */
+    /** Сделки за период для выгрузки: цена, счёт, оплачено, вознаграждение. */
     public function dealsBetween(CarbonInterface $from, CarbonInterface $to): Collection
     {
         return Deal::where('buyer_id', $this->manager->id)->whereBetween('created_at', [$from, $to])->held()
-            ->with(['offer', 'invoices.allPayments', 'agentFee'])->orderBy('created_at')->get();
+            ->with(['offer', 'invoices.allPayments'])->orderBy('created_at')->get();
     }
 }

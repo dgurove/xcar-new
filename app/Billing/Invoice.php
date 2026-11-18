@@ -152,7 +152,6 @@ class Invoice extends Model implements HasMedia
             ->orWhereHas('charges', fn ($c) => $c->where('kind', ChargeKind::Service->value)->where('title', 'ilike', $like))
             ->orWhereHas('deal.buyer', $name)
             ->orWhereHas('garageCar.manager', $name)
-            ->orWhereHas('garagePayoutCar.manager', $name)
             ->orWhereHas('offer', $offer = fn ($o) => $o->searchCrm($t))
             ->orWhereHas('deal.offer', $offer)
             ->orWhereHas('garageCar.offer', $offer)
@@ -285,19 +284,13 @@ class Invoice extends Model implements HasMedia
         return $this->direction === 'owed' && $this->kind === ChargeKind::Tow && ! $this->park;
     }
 
-    public function isAgentFee(): bool
-    {
-        return $this->direction === 'owed' && $this->kind === ChargeKind::AgentFee;
-    }
-
     /**
      * Что видит менеджер: счета его контрагенту и счета по его сделкам (плательщик —
-     * его покупатель). Одна дверь для списка, страницы, PDF и заявки об оплате. Счёт вендору (вознаграждение от
-     * поставщика) — никогда: в нём его название, реквизиты и деньги со страховой (15.10.2026).
+     * его покупатель). Одна дверь для списка, страницы, PDF и заявки об оплате.
      */
     public function scopeVisibleToManager($q, User $user)
     {
-        return $q->where(fn ($k) => $k->whereNull('billing_invoices.kind')->orWhere('billing_invoices.kind', '!=', ChargeKind::Reward->value))->where(fn ($w) => $w
+        return $q->where(fn ($w) => $w
             ->when($user->party_id, fn ($x) => $x->where('party_id', $user->party_id), fn ($x) => $x->whereRaw('false'))
             ->orWhereHas('deal', fn ($d) => $d->where('buyer_id', $user->id)))
             // Покупателю с гаражом без галки цены — ни одного гаражного счёта, и своим плательщиком тоже (21.10.2026).
@@ -307,8 +300,7 @@ class Invoice extends Model implements HasMedia
 
     public function isVisibleToManager(User $user): bool
     {
-        return $this->kind !== ChargeKind::Reward
-            && (($user->party_id && $this->party_id === $user->party_id) || ($this->deal_id && $this->deal?->buyer_id === $user->id))
+        return (($user->party_id && $this->party_id === $user->party_id) || ($this->deal_id && $this->deal?->buyer_id === $user->id))
             && ($user->seesGaragePrice() || ! $this->deal?->isGarage())
             && $this->isShownToManager();
     }
@@ -319,7 +311,7 @@ class Invoice extends Model implements HasMedia
      */
     public function scopeShownToManager($q)
     {
-        // Деньги — настоящие: зачёт удержанного вознаграждения (`Offset`) оплатой не считается.
+        // Деньги — настоящие: зачёт вознаграждения в старых счетах (`Offset`) оплатой не считается.
         return $q->where(fn ($w) => $w->whereNull('billing_invoices.deal_id')->orWhere('billing_invoices.direction', '!=', 'issued')->orWhereNotNull('billing_invoices.shown_at')
             ->orWhereRaw("billing_invoices.paid > coalesce((select sum(p.amount) from billing_payments p where p.invoice_id = billing_invoices.id and p.source = 'offset'), 0) + 0.005"));
     }
@@ -457,8 +449,8 @@ class Invoice extends Model implements HasMedia
     }
 
     /**
-     * Оплачено деньгами: без зачёта удержанного вознаграждения (`PaymentSource::Offset`) — это не оплата, а строка счёта,
-     * которую менеджер оставил себе. Иначе счёт «удерживает сам» с порога горел «Частично».
+     * Оплачено деньгами: без зачёта вознаграждения в старых счетах (`PaymentSource::Offset`, до 18.11.2026) — это не оплата,
+     * а строка счёта. Иначе такой счёт с порога горел «Частично».
      */
     public function paidMoney(): float
     {
@@ -498,34 +490,28 @@ class Invoice extends Model implements HasMedia
     }
 
     /**
-     * Счета раздела «Оплаты» в CRM: по сделкам, по машинам гаража (счёт и выплата менеджеру — без сделки, но в
-     * «Расчётах с менеджерами» они есть, 06.10.2026) и разовые оплаты услуг.
+     * Счета раздела «Оплаты» в CRM: по сделкам, по машинам гаража (без сделки, но в «Расчётах с менеджерами» они есть,
+     * 06.10.2026) и разовые оплаты услуг.
      */
     public function scopeCrmMoney($q)
     {
         return $q->where(fn ($w) => $w->whereNotNull('deal_id')
             ->orWhereIn('id', fn ($g) => $g->select('invoice_id')->from('garage_cars')->whereNotNull('invoice_id'))
-            ->orWhereIn('id', fn ($g) => $g->select('payout_invoice_id')->from('garage_cars')->whereNotNull('payout_invoice_id'))
             ->orWhere(fn ($s) => $s->where('kind', ChargeKind::Service->value)->whereNull('vehicle_id'))
             // Перевозка из логистики, не парковочная: долг партнёру или перевозчику.
             ->orWhere(fn ($s) => $s->where('direction', 'owed')->where('kind', ChargeKind::Tow->value)->where('park', false)));
     }
 
-    /** Машина гаража, чей это счёт или выплата (у гаражных сделки нет). */
+    /** Машина гаража, чей это счёт (у гаражных сделки нет). */
     public function garageCar(): HasOne
     {
         return $this->hasOne(GarageCar::class, 'invoice_id');
     }
 
-    public function garagePayoutCar(): HasOne
-    {
-        return $this->hasOne(GarageCar::class, 'payout_invoice_id');
-    }
-
     /** Менеджер, с которым этот счёт: покупатель сделки или держатель машины гаража. */
     public function manager(): ?User
     {
-        return $this->deal?->buyer ?? ($this->garageCar ?? $this->garagePayoutCar)?->manager;
+        return $this->deal?->buyer ?? $this->garageCar?->manager;
     }
 
     /** Номер для документа без «№»: «20261108-01» у парковки, иначе сквозной. */

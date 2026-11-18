@@ -64,15 +64,15 @@ class MoneyController
     /**
      * Разделы — крупными заголовками (17.11.2026, владелец: «как было в „Работе“, красиво, как в App Store»): «Комиссии» — оплата
      * подбора ПРАЙМ (и разовые услуги по ссылке), «ДКП» — счета за сами машины от ПРАЙМ и Р.О.С. (оплаты страховым и хозяевам напрямую
-     * мы не ведём — счетов у нас нет), «Выплаты» — вознаграждения менеджерам и перевозки (прежнее «Мы должны»).
+     * мы не ведём — счетов у нас нет), «Выплаты» — перевозки партнёрам и перевозчикам (прежнее «Мы должны»; вознаграждения менеджерам мы не выплачиваем, 18.11.2026).
      */
     public const TABS = ['fees' => 'Комиссии', 'dkp' => 'ДКП', 'payouts' => 'Выплаты'];
 
     /** Разделы «нам должны»: группы «Проверить», «Ждём», чип «Откуда», номер счёта. */
     private const OWED = ['fees', 'dkp'];
 
-    /** «Мы должны»: вознаграждения менеджерам и перевозки партнёрам и перевозчикам (логистика, 10.10.2026). */
-    public const PAYOUTS = [ChargeKind::AgentFee, ChargeKind::Tow];
+    /** «Мы должны»: перевозки партнёрам и перевозчикам (логистика, 10.10.2026). */
+    public const PAYOUTS = [ChargeKind::Tow];
 
     /**
      * Сортировка вкладки (07.10.2026): по умолчанию «Срочное» — ждём сверху тех, где по ссылке не вышло, дальше по сроку,
@@ -86,9 +86,9 @@ class MoneyController
     }
 
     /** Менеджер счёта: покупатель сделки, у гаражной — держатель машины. */
-    private const MANAGER = 'coalesce((select buyer_id from deals where deals.id = billing_invoices.deal_id), (select g.manager_id from garage_cars g where g.invoice_id = billing_invoices.id or g.payout_invoice_id = billing_invoices.id limit 1))';
+    private const MANAGER = 'coalesce((select buyer_id from deals where deals.id = billing_invoices.deal_id), (select g.manager_id from garage_cars g where g.invoice_id = billing_invoices.id limit 1))';
 
-    /** Получатель выплаты — сотрудник по своей стороне (менеджер — вознаграждение, логист — вывоз). */
+    /** Получатель выплаты — сотрудник по своей стороне (логист — вывоз). */
     private const RECIPIENT = '(select u.id from users u where u.party_id = billing_invoices.party_id order by u.id limit 1)';
 
     /** Чей счёт в разделе: у долга нам — менеджер сделки или гаража, у выплаты — получатель. */
@@ -97,7 +97,7 @@ class MoneyController
         return $tab === 'payouts' ? self::RECIPIENT : self::MANAGER;
     }
 
-    private const WITH = ['party', 'charges', 'payments', 'offer', 'deal.offer', 'deal.buyer', 'garageCar.manager', 'garageCar.offer', 'garagePayoutCar.manager', 'garagePayoutCar.offer'];
+    private const WITH = ['party', 'charges', 'payments', 'offer', 'deal.offer', 'deal.buyer', 'garageCar.manager', 'garageCar.offer'];
 
     public function index(Request $request)
     {
@@ -164,7 +164,7 @@ class MoneyController
         // До шага оплаты неотправленного не видно вовсе: это ещё не долг (`Invoice::ON_PAY_STEP_SQL`).
         $ours = fn () => ($facets ? $facets->applyTo($q) : $q)->where('direction', 'issued')
             ->where(fn ($w) => $w->where(fn ($x) => $x->shownToManager())
-                ->orWhere(fn ($x) => $x->where('kind', '!=', ChargeKind::Reward->value)->whereRaw(Invoice::ON_PAY_STEP_SQL)));
+                ->orWhere(fn ($x) => $x->whereRaw(Invoice::ON_PAY_STEP_SQL)));
 
         return match ($tab) {
             'dkp' => $ours()->where('kind', ChargeKind::Sale)->whereIn('seller', [Seller::Prime->value, Seller::Ros->value]),

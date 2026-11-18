@@ -1,18 +1,15 @@
 {{-- Деньги сделки менеджеру по схеме оплаты (05.10.2026; с 16.11.2026 — одной карточкой без заголовка, на шаге оплаты — в нём):
      ДКП и «страховой напрямую» — цена продажи, взаимозачёт, собственнику (или страховой), подбор XCar, «Ваша доля» зелёным;
-     ПРАЙМ / Р.О.С. — цена продажи (она же счёт за ТС) и вознаграждение с выплатами. Закупочную менеджер видит только в своём
+     ПРАЙМ / Р.О.С. — счёт за ТС (цена минус вознаграждение) и вознаграждение числом (выплат нет, 18.11.2026). Закупочную менеджер видит только в своём
      ДКП. Счёт открывается тут же — способы оплаты под его строкой (`cabinet.deals.payment row`), отдельной страницы оплаты нет
      (19.10.2026). Договор — карточкой «Договор» (`cabinet.deals.buyer-block`). --}}
 @php
     use App\Support\Money;
     use App\Billing\ChargeKind;
     use App\Billing\InvoiceState;
-    use App\Offers\CommissionState;
     $live = $invoices->reject(fn ($i) => $i->state === InvoiceState::Void);
     $selection = $live->first(fn ($i) => $i->kind === ChargeKind::Selection);
     $sale = $live->first(fn ($i) => $i->kind === ChargeKind::Sale);
-    $state = $deal->commissionState();
-    $fee = $deal->agentFee;
     $onPayStep = $requirement && $position?->stage->isPayStep();
 @endphp
 @php
@@ -75,22 +72,10 @@
             {{-- ПРАЙМ / Р.О.С. (Совкомбанк, Carcade, часть Альфы): покупатель платит нашему юрлицу — строкой с его названием и ценой
                  (она же счёт); счёт выставлен — его оплаты и способы под ней. --}}
             @include('cabinet.deals.payment', ['row' => true, 'title' => ($sale?->seller ?? $deal->seller())->config()['name'], 'strong' => true,
-                // Вознаграждение оставил себе — к оплате меньше на него; сумма — та, что платить (16.11.2026).
-                'amount' => Money::rub((int) $deal->amount - (int) ($sale?->allPayments->where('source', \App\Billing\PaymentSource::Offset)->sum('amount') ?? 0)), 'state' => null, 'invoice' => $sale, 'pay' => $payHere, 'payerHere' => $payHere, 'block' => true])
+                // Сумма — та, что платить: цена минус вознаграждение (как счёт и договор, 18.11.2026).
+                'amount' => Money::rub(max(0, (int) $deal->amount - (int) $deal->commission)), 'state' => null, 'invoice' => $sale, 'pay' => $payHere, 'payerHere' => $payHere, 'block' => true])
             @if ($deal->commission)
-                <div class="deal-money-row flex flex-col gap-2">
-                    <div class="flex items-start gap-3">
-                        <span class="min-w-0 flex-1"><span class="block">Вознаграждение</span>@if ($state === CommissionState::Paid)<span class="block text-sm text-open">выплачено</span>@elseif ($sale?->allPayments->contains('source', \App\Billing\PaymentSource::Offset))<span class="block text-sm text-ink-muted">оставили себе из оплаты</span>@endif</span>
-                        <span class="profit-sum nums shrink-0">+{{ Money::rub((int) $deal->commission) }}</span>
-                    </div>
-                    @if ($fee?->payments?->isNotEmpty())
-                        <div class="list">
-                            @foreach ($fee->payments as $p)
-                                <x-money.payment :payment="$p" title="Выплачено" icon="wallet" :slip="'/account/money/invoices/'.$fee->id.'/payments/'.$p->id.'/slip'"/>
-                            @endforeach
-                        </div>
-                    @endif
-                </div>
+                <div class="deal-money-row flex items-start gap-3"><span class="min-w-0 flex-1">Вознаграждение</span><span class="profit-sum nums shrink-0">+{{ Money::rub((int) $deal->commission) }}</span></div>
             @endif
         @endif
     </div>

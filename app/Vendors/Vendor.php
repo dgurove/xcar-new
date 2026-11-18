@@ -42,7 +42,7 @@ use Spatie\MediaLibrary\InteractsWithMedia;
 #[Fillable([
     'name', 'kind', 'is_active', 'on_park', 'notes',
     'agreement_number', 'agreement_date', 'agreement_until', 'act_form', 'tow_agreement_number', 'tow_agreement_date',
-    'deal_format', 'to_gallery', 'drafts_from_migtorg', 'letters_to_telegram', 'pickup_on_arrival', 'claim_ref_optional', 'reward_kind', 'reward_value', 'payment_days', 'offers_include_vat', 'answer_hours', 'silence_means_buy', 'binding_days',
+    'deal_format', 'to_gallery', 'drafts_from_migtorg', 'letters_to_telegram', 'pickup_on_arrival', 'claim_ref_optional', 'payment_days', 'offers_include_vat', 'answer_hours', 'silence_means_buy', 'binding_days',
     'storage_payer', 'buyer_pays_late', 'release_without_payment', 'release_by_qr', 'auto_sale', 'floor_by_value', 'buyer_rate_multiplier', 'billing_cadence',
     'senders', 'parser', 'park_senders', 'mail_account_id', 'party_id', 'report_template_id', 'refusal_template_id', 'home_yard_id', 'park_seller',
     'intake_docs', 'intake_note', 'audience_rules', 'intake_report_docs', 'floor_rules', 'signing_office',
@@ -77,7 +77,6 @@ class Vendor extends Model implements HasMedia
             'tow_agreement_date' => 'date',
             'act_form' => ActForm::class,
             'deal_format' => DealFormat::class,
-            'reward_kind' => RewardKind::class,
             'offers_include_vat' => 'bool',
             'to_gallery' => 'bool',
             'drafts_from_migtorg' => 'bool',

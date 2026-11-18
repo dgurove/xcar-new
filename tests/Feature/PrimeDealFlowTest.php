@@ -6,6 +6,7 @@ use App\Billing\Actions\IssueServiceInvoice;
 use App\Billing\Actions\RecordPayment;
 use App\Billing\ServiceTitle;
 use App\Billing\ChargeKind;
+use App\Billing\Invoice;
 use App\Billing\InvoiceState;
 use App\Billing\PaymentSource;
 use App\Garage\GaragePayer;
@@ -15,8 +16,6 @@ use App\Offers\Actions\AcceptBid;
 use App\Offers\Actions\PlaceBid;
 use App\Offers\Actions\SaveDealContract;
 use App\Offers\BidKind;
-use App\Offers\CommissionMode;
-use App\Offers\CommissionState;
 use App\Offers\DealContract;
 use App\Offers\DealScheme;
 use App\Offers\Offer;
@@ -40,9 +39,8 @@ use Tests\TestCase;
 
 /**
  * Схемы оплаты без «Выставите счёт» (05.10.2026, Совкомбанк и Альфа): ПРАЙМ — счёт сам, как только менеджер указал
- * покупателя: «Транспортное средство» = закупочная + «Агентское вознаграждение» = разница, без ссылки, вознаграждение
- * к выплате; платит сам менеджер — за вычетом; «страховой напрямую» — подбор по ссылке; гараж «платит менеджер» — счёт
- * за машину и наша доля. Ошибка здесь — не тот счёт не тому человеку.
+ * покупателя: одной строкой «Транспортное средство» на цену минус вознаграждение (выплат менеджеру нет, 18.11.2026), без
+ * ссылки, кто бы ни платил; «страховой напрямую» — подбор по ссылке; гараж «платит менеджер» — счёт за машину и наша доля. Ошибка здесь — не тот счёт не тому человеку.
  */
 class PrimeDealFlowTest extends TestCase
 {
@@ -84,10 +82,10 @@ class PrimeDealFlowTest extends TestCase
             'passport' => '11 11 111111', 'passport_issued' => 'ГУ МВД', 'passport_issued_at' => '2010-10-10', 'reg_address' => 'г. Москва']];
     }
 
-    public function test_prime_waits_for_buyer_then_invoice_to_buyer_without_link_and_payout(): void
+    public function test_prime_waits_for_buyer_then_invoice_to_buyer_without_link_and_no_payout(): void
     {
         $offer = $this->offer();
-        $deal = app(AcceptBid::class)(app(PlaceBid::class)($offer, $this->manager, 1050000), $this->admin, 30000, CommissionMode::Payout, scheme: DealScheme::Prime);
+        $deal = app(AcceptBid::class)(app(PlaceBid::class)($offer, $this->manager, 1050000), $this->admin, 30000, scheme: DealScheme::Prime);
         // До получения счетов нет и покупателя никто не спрашивает.
         $this->assertSame('Забрать автомобиль', $offer->fresh()->stage()->name);
         $this->assertSame(0, $deal->fresh()->issuedInvoices()->count());
@@ -111,25 +109,26 @@ class PrimeDealFlowTest extends TestCase
         $invoice = $deal->fresh()->issuedInvoices()->sole();
         $this->assertSame(ChargeKind::Sale, $invoice->kind);
         $this->assertSame('Покупаев Пётр Петрович', $invoice->party->name);
-        $this->assertEqualsWithDelta(1050000, $invoice->remaining(), 0.01);
-        // Платит покупатель — одна строка на цену сделки (13.10.2026): разбивка «ТС по закупочной + агентское» показала бы
-        // ему закупочную и долю менеджера. Выплата менеджеру от строк не зависит — она своим счётом `agent_fee`.
-        $this->assertSame([1050000.0], $invoice->charges()->orderBy('id')->pluck('price')->map(fn ($p) => (float) $p)->all());
+        // Одна строка на цену минус вознаграждение (18.11.2026: вознаграждения мы не выплачиваем никогда, наш счёт — за вычетом
+        // его; закупочной в счёте не видно).
+        $this->assertEqualsWithDelta(1020000, $invoice->remaining(), 0.01);
+        $this->assertSame([1020000.0], $invoice->charges()->orderBy('id')->pluck('price')->map(fn ($p) => (float) $p)->all());
         $this->assertNull($invoice->openLink());
         // Счёт встал — ход наш, пока сотрудник не отправит его менеджеру (16.11.2026); отправил — ход менеджера.
         $this->assertSame(WaitsFor::Us, Position::whereKey($position->id)->first()->waits_for);
         $this->sendToManager($deal);
         $this->assertNull(Position::whereKey($position->id)->value('waits_for'));
 
-        app(RecordPayment::class)($invoice->fresh(), $this->admin, 1050000, now(), PaymentSource::Bank);
-        $this->assertSame(CommissionState::Payable, $deal->fresh()->commissionState());
+        // Оплатили — выплаты менеджеру нет.
+        app(RecordPayment::class)($invoice->fresh(), $this->admin, 1020000, now(), PaymentSource::Bank);
+        $this->assertSame(0, Invoice::where('direction', 'owed')->count());
     }
 
     /** Разовая оплата по ссылке с машиной сделки ПРАЙМ ложится в её счёт зачётом; строка счёта та же (09.10.2026). */
     public function test_prime_invoice_takes_manual_link_credit(): void
     {
         $offer = $this->offer();
-        $deal = app(AcceptBid::class)(app(PlaceBid::class)($offer, $this->manager, 1050000), $this->admin, 30000, CommissionMode::Payout, scheme: DealScheme::Prime);
+        $deal = app(AcceptBid::class)(app(PlaceBid::class)($offer, $this->manager, 1050000), $this->admin, 30000, scheme: DealScheme::Prime);
         $this->pickedUp($offer);
         $manual = app(IssueServiceInvoice::class)(['name' => 'Покупаев Пётр Петрович'], $this->admin, 100000, ServiceTitle::DEFAULT, $offer);
         app(RecordPayment::class)($manual->fresh(), $this->admin, 100000, now(), PaymentSource::Bank);
@@ -138,15 +137,15 @@ class PrimeDealFlowTest extends TestCase
         $this->passportFor($deal->fresh()->contract->buyer);
 
         $invoice = $deal->fresh()->issuedInvoices()->sole();
-        $this->assertSame([1050000.0], $invoice->charges()->orderBy('id')->pluck('price')->map(fn ($p) => (float) $p)->all());
-        $this->assertEqualsWithDelta(950000, $invoice->remaining(), 0.01);
+        $this->assertSame([1020000.0], $invoice->charges()->orderBy('id')->pluck('price')->map(fn ($p) => (float) $p)->all());
+        $this->assertEqualsWithDelta(920000, $invoice->remaining(), 0.01);
         $this->assertEqualsWithDelta(100000, (float) $invoice->payments()->where('source', PaymentSource::Credit)->sum('amount'), 0.01);
     }
 
     public function test_prime_manager_pays_minus_his_fee(): void
     {
         $offer = $this->offer();
-        $deal = app(AcceptBid::class)(app(PlaceBid::class)($offer, $this->manager, 1050000), $this->admin, 30000, CommissionMode::Withheld, scheme: DealScheme::Prime);
+        $deal = app(AcceptBid::class)(app(PlaceBid::class)($offer, $this->manager, 1050000), $this->admin, 30000, scheme: DealScheme::Prime);
         $this->pickedUp($offer);
         app(SaveDealContract::class)(DealContract::for($deal->fresh()), ['buyer_id' => 'me'], $this->manager);
         $this->passportFor($this->manager);
@@ -161,7 +160,7 @@ class PrimeDealFlowTest extends TestCase
     {
         // Не по комиссии: у Совкомбанка с 14.11.2026 только ПРАЙМ (`DealScheme::casesFor`).
         $offer = $this->offer(779000, 'supplier');
-        $deal = app(AcceptBid::class)(app(PlaceBid::class)($offer, $this->manager, 1050000), $this->admin, 20000, CommissionMode::Payout, scheme: DealScheme::Insurer, ownerPrice: 750000);
+        $deal = app(AcceptBid::class)(app(PlaceBid::class)($offer, $this->manager, 1050000), $this->admin, 20000, scheme: DealScheme::Insurer, ownerPrice: 750000);
         $this->pickedUp($offer);
         $this->sendToManager($deal);
 
@@ -196,24 +195,24 @@ class PrimeDealFlowTest extends TestCase
     }
 
     /**
-     * ПРАЙМ «удерживает сам», платит покупатель — счёт и договор за вычетом вознаграждения, его менеджер берёт с покупателя сам,
-     * выплаты нет (16.11.2026, владелец по сделке 412 Совкомбанка; до того платёж шёл целиком на ПРАЙМ и вознаграждение
-     * выплачивали). «Плачу я» — тоже за вычетом, зачётом.
+     * ПРАЙМ: счёт и договор за вычетом вознаграждения, кто бы ни платил — покупатель или сам менеджер (16.11.2026, владелец по
+     * сделке 412 Совкомбанка; 18.11.2026 — выплат менеджеру нет вовсе), одной строкой, без зачёта.
      */
     public function test_prime_withheld_follows_payer(): void
     {
         $offer = $this->offer();
-        $deal = app(AcceptBid::class)(app(PlaceBid::class)($offer, $this->manager, 1050000), $this->admin, 30000, CommissionMode::Withheld, scheme: DealScheme::Prime);
+        $deal = app(AcceptBid::class)(app(PlaceBid::class)($offer, $this->manager, 1050000), $this->admin, 30000, scheme: DealScheme::Prime);
         $this->pickedUp($offer);
         app(SaveDealContract::class)(DealContract::for($deal->fresh()), $this->buyerData(), $this->manager);
         $this->passportFor($deal->fresh()->contract->buyer);
         $this->assertEqualsWithDelta(1020000, $deal->fresh()->issuedInvoices()->sole()->remaining(), 0.01);
-        $this->assertTrue($deal->fresh()->withholds());
         $this->assertSame(1020000, (int) $deal->fresh()->contract->price);
-        $this->assertNull($deal->fresh()->agentFee);
 
         app(SaveDealContract::class)(DealContract::for($deal->fresh()), ['payer' => 'manager'], $this->manager);
-        $this->assertSame(CommissionMode::Withheld, $deal->fresh()->commission_mode);
-        $this->assertEqualsWithDelta(1020000, $deal->fresh()->issuedInvoices()->sole()->remaining(), 0.01);
+        $sale = $deal->fresh()->issuedInvoices()->sole();
+        $this->assertEqualsWithDelta(1020000, $sale->remaining(), 0.01);
+        $this->assertSame([1020000.0], $sale->charges()->pluck('price')->map(fn ($p) => (float) $p)->all());
+        $this->assertSame(0, $sale->payments()->where('source', PaymentSource::Offset)->count());
+        $this->assertSame(1020000, (int) $deal->fresh()->contract->price);
     }
 }

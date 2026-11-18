@@ -3,7 +3,6 @@
 namespace App\Offers\Actions;
 
 use App\Billing\Actions\IssueInvoice;
-use App\Billing\Actions\RecordPayment;
 use App\Billing\Actions\VoidInvoice;
 use App\Billing\ChargeKind;
 use App\Billing\Invoice;
@@ -29,9 +28,10 @@ use Illuminate\Support\Facades\DB;
  * кому и какой счёт). Два места:
  * — подбор (`Selection`) менеджеру со ссылкой: у ДКП и «страховой напрямую» — цена − собственнику/страховой −
  *   вознаграждение (850 − 750 − 20 = 80 000) одной строкой; у гаражной «платит менеджер» — наша доля;
- * — ПРАЙМ (`Sale`) без ссылки: «Транспортное средство» = закупочная и «Агентское вознаграждение» = разница (944 000 +
- *   106 000) тому, кого менеджер указал плательщиком; платит менеджер с «удерживает сам» — его вознаграждение зачётом,
- *   платит покупатель — вознаграждение выплачиваем; гаражной «платит менеджер» у ПРАЙМ — менеджеру на закупочную.
+ * — ПРАЙМ / Р.О.С. (`Sale`) без ссылки: одной строкой «Транспортное средство» на цену минус вознаграждение менеджера
+ *   (18.11.2026, начальник: вознаграждения мы не выплачиваем никогда — из того, что приходит нам, закупочная за ТС, остальное
+ *   — услуги подбора; владелец: «лучше одной» строкой) тому, кого менеджер указал плательщиком; гаражной «платит менеджер»
+ *   — менеджеру на закупочную.
  * Счёт, что уже стоит как надо, не трогаем; другой, за который не платили, — аннулируем и ставим заново; оплаченный —
  * история, его не меняем. Не нужен схеме — не трогаем вовсе. Пока сделка согласуется с поставщиком (`Deal::agreed`),
  * счетов нет вовсе (09.10.2026): первые ставит `AgreeDeal`.
@@ -44,7 +44,7 @@ final class SyncDealInvoices
     // Срок оплаты менеджером — 14 дней (27.10.2026, владелец: «5 дней мало, обычно 14», и «у остальных тоже»).
     private const DAYS = 14;
 
-    public function __construct(private IssueInvoice $issue, private VoidInvoice $void, private RecordPayment $record, private ApplyDealCredits $credits) {}
+    public function __construct(private IssueInvoice $issue, private VoidInvoice $void, private ApplyDealCredits $credits) {}
 
     public function __invoke(Deal $deal, User $by): void
     {
@@ -114,7 +114,7 @@ final class SyncDealInvoices
         }
     }
 
-    /** @return array{party: Party, lines: list<array>, offset: float}|null */
+    /** @return array{party: Party, lines: list<array>, vat?: ?int}|null */
     private function selection(Deal $deal): ?array
     {
         $due = $deal->selectionDue();
@@ -128,18 +128,18 @@ final class SyncDealInvoices
 
         // Плательщика у комиссии нет (18.11.2026, владелец: «плательщик указывается только для выставления договора счёта (ДКП),
         // для комиссий нет»): сторона счёта — менеджер, внутри, нигде не показывается; платит по ссылке кто угодно, на `/pay` — почта.
-        return ['party' => Party::forUser($deal->buyer), 'offset' => 0.0,
+        return ['party' => Party::forUser($deal->buyer),
             'lines' => [['title' => 'Подбор ТС '.$deal->offer->titleWithYear(), 'qty' => 1, 'unit' => 'pc', 'price' => (float) $due, 'kind' => ChargeKind::Selection->value]]];
     }
 
-    /** @return array{party: Party, lines: list<array>, offset: float}|null */
+    /** @return array{party: Party, lines: list<array>, vat?: ?int}|null */
     private function prime(Deal $deal): ?array
     {
         // Покупатель с гаражом — одна строка на его цену, какой бы ни была схема: закупочной в счёте нет (20.10.2026).
         if ($deal->forGarageBuyer()) {
             $price = $deal->garageCar()->value('buyer_price');
 
-            return $price ? ['party' => $deal->payerParty(), 'offset' => 0.0,
+            return $price ? ['party' => $deal->payerParty(),
                 'lines' => [['title' => 'Транспортное средство '.$deal->offer->titleWithYear(), 'qty' => 1, 'unit' => 'pc', 'price' => (float) $price, 'kind' => ChargeKind::Sale->value]]] : null;
         }
         if (! $deal->isPrime() || $deal->cost === null || ! $deal->buyer) {
@@ -154,7 +154,7 @@ final class SyncDealInvoices
         // Гаражная Совкомбанка (`namesBuyer`) — как обычная ПРАЙМ: счёт на цену продажи тому, кого назвал менеджер.
         if ($deal->isGarage() && ! $deal->namesBuyer()) {
             return $deal->isGarageManager() && $deal->passportReady()
-                ? ['party' => $deal->payerParty(), 'offset' => 0.0, 'lines' => [['title' => $car, 'qty' => 1, 'unit' => 'pc', 'price' => (float) $deal->cost, 'kind' => ChargeKind::Sale->value]]]
+                ? ['party' => $deal->payerParty(), 'lines' => [['title' => $car, 'qty' => 1, 'unit' => 'pc', 'price' => (float) $deal->cost, 'kind' => ChargeKind::Sale->value]]]
                 : null;
         }
         $contract = $deal->contract;
@@ -162,7 +162,7 @@ final class SyncDealInvoices
         $vat = $contract ? $contract->vatRate() : null;
         // Сумма договора, вписанная руками (14.11.2026, «всякое бывает»), — счёт идёт за ней.
         $manual = $contract?->price_manual && $contract->price !== null ? (int) $contract->price : null;
-        // Гаражной Совкомбанка ещё и вознаграждение: его назначаем мы, когда менеджер назвал цену продажи.
+        // Гаражной Совкомбанка ещё и вознаграждение: его считаем мы, когда менеджер назвал цену продажи.
         if (! $contract?->buyer_user_id || $deal->amount === null || ($deal->namesBuyer() && $deal->commission === null)) {
             return null;
         }
@@ -174,27 +174,12 @@ final class SyncDealInvoices
         if (! $deal->passportReady() && $deal->credited() <= 0) {
             return null;
         }
-        // Платит покупатель: «удерживает сам» — счёт за вычетом вознаграждения, его менеджер берёт с покупателя
-        // (`Deal::buyerPaysReward`); «выплачиваем» — счёт на всю цену, вознаграждение выплачиваем после оплаты.
-        // Кто платит — одна дверь `Deal::payerParty` (16.11.2026): выбранный по сделке, иначе менеджер или покупатель по
-        // договору. Не менеджер — одной строкой: разбивка показала бы закупочную и долю менеджера.
-        $managerPays = $deal->managerPays();
-        $party = $deal->payerParty(sale: true);
-        // Супер-покупатель (`isDirect`) закупочную не видит нигде: ему одна строка на цену сделки, без разбивки на
-        // «Транспортное средство» по закупочной и «Агентское вознаграждение» — разница выдала бы её. Так же покупателю
-        // менеджера, когда платит он (13.10.2026): счёт с разбивкой показал бы ему закупочную и долю менеджера.
-        if ($deal->isDirect() || ! $managerPays) {
-            $price = $manual ?? ($deal->buyerPaysReward() ? max(0, (int) $deal->amount - (int) $deal->commission) : (int) $deal->amount);
+        // Одной строкой на цену минус вознаграждение (18.11.2026): кто бы ни платил — менеджер, его покупатель, супер-покупатель
+        // (у него вознаграждения нет). Закупочная внутри счёта не видна. Кто платит — одна дверь `Deal::payerParty`.
+        $price = $manual ?? max(0, (int) $deal->amount - (int) $deal->commission);
 
-            return ['party' => $party, 'offset' => 0.0, 'vat' => $vat, 'lines' => [['title' => $car, 'qty' => 1, 'unit' => 'pc', 'price' => (float) $price, 'kind' => ChargeKind::Sale->value]]];
-        }
-        $fee = max(0, ($manual ?? (int) $deal->amount) - (int) $deal->cost);
-        $lines = [['title' => $car, 'qty' => 1, 'unit' => 'pc', 'price' => (float) $deal->cost, 'kind' => ChargeKind::Sale->value]];
-        if ($fee > 0) {
-            $lines[] = ['title' => 'Агентское вознаграждение', 'qty' => 1, 'unit' => 'pc', 'price' => (float) $fee, 'kind' => ChargeKind::AgentFee->value];
-        }
-
-        return ['party' => $party, 'lines' => $lines, 'vat' => $vat, 'offset' => $managerPays && $deal->withholds() ? (float) min((int) $deal->commission, $fee) : 0.0];
+        return ['party' => $deal->payerParty(sale: true), 'vat' => $vat,
+            'lines' => [['title' => $car, 'qty' => 1, 'unit' => 'pc', 'price' => (float) $price, 'kind' => ChargeKind::Sale->value]]];
     }
 
     private function slot(Deal $deal, User $by, ChargeKind $kind, ?array $want): void
@@ -220,7 +205,8 @@ final class SyncDealInvoices
         // Сменили схему ПРАЙМ ↔ Р.О.С. — счёт другого продавца перевыставляется.
         // Сторона подбора — не повод перевыставлять (18.11.2026): у 13 счетов стоял выбранный раньше плательщик, их ссылки живут.
         $fits = fn (Invoice $i) => $want && $i->seller === $seller && ($kind === ChargeKind::Selection || $i->party_id === $want['party']->id) && abs((float) $i->charges->whereNull('voided_at')->sum(fn ($c) => $c->price * $c->qty) - $total) < 0.01
-            && abs($i->payments->where('source', PaymentSource::Offset)->sum('amount') - $want['offset']) < 0.01;
+            // Зачёт «удержано агентское вознаграждение» был до 18.11.2026 — счёт с ним перевыставляется одной строкой.
+            && $i->payments->where('source', PaymentSource::Offset)->whereNull('voided_at')->isEmpty();
         // Зачёт оплаты по ссылке — не оплата этого счёта: счёт перевыставляется, зачёт ляжет в новый (`ApplyDealCredits`).
         $paid = fn (Invoice $i) => $i->claims->isNotEmpty() || $i->payments->contains(fn ($p) => ! $p->source->isSoft());
 
@@ -248,9 +234,6 @@ final class SyncDealInvoices
         $invoice = ($this->issue)($want['party'], $by, 'issued', $kind, $this->dueFor($deal, $kind), lines: $want['lines'], dealId: $deal->id, offerId: $deal->offer_id, seller: $seller, vatRate: $want['vat'] ?? null);
         if ($requested && $kind === ChargeKind::Selection) {
             $invoice->forceFill(['requested_at' => $requested->requested_at, 'requested_by' => $requested->requested_by])->save();
-        }
-        if ($want['offset'] > 0) {
-            ($this->record)($invoice, $by, $want['offset'], null, PaymentSource::Offset, null, 'Удержано агентское вознаграждение');
         }
         $deal->offer->log(OfferEventType::Note, $by, ['text' => $invoice->isDocument() ? 'Счёт '.$invoice->label().' на '.Money::rub($invoice->total).' — '.$want['party']->name : 'Подбор к оплате: '.Money::rub($invoice->total)]);
     }

@@ -7,7 +7,6 @@ use App\Garage\CarState;
 use App\Garage\Events\GarageChanged;
 use App\Offers\Actions\SyncDealInvoices;
 use App\Offers\Actions\UpdateDealMoney;
-use App\Offers\CommissionMode;
 use App\Offers\DealContract;
 use App\Offers\Margin;
 use App\Support\Money;
@@ -59,9 +58,11 @@ final class MarkGarageSold
             DealContract::for($deal)->update(['price' => DealContract::priceFor($deal->fresh())]);
             // Вознаграждение — сразу по доле менеджера (12.11.2026, `Deal::suggestedCommission`): «Назначить вознаграждение»
             // висело у четырёх продаж; поправить — прежней шторкой «Изменить» в CRM. Счета пересобирает `UpdateDealMoney`.
+            // Посчитанное заранее (`commission`, догадка по выписке — `SellFromStatement`) — оно.
             $deal = $deal->fresh();
-            if (($deal->commission === null || $repriced) && $deal->moneyEditable() && ($fee = $deal->suggestedCommission()) !== null) {
-                app(UpdateDealMoney::class)($deal, $by, $fee, CommissionMode::Withheld, note: 'Вознаграждение '.Money::rub($fee).': менеджеру '.(100 - $deal->ourGarageShare()).' % навара'.($mark ? ' — догадка по выписке' : ''));
+            $fee = isset($data['commission']) ? (int) $data['commission'] : $deal->suggestedCommission();
+            if (($deal->commission === null || $repriced || isset($data['commission'])) && $deal->moneyEditable() && $fee !== null) {
+                app(UpdateDealMoney::class)($deal, $by, $fee, note: 'Вознаграждение '.Money::rub($fee).': менеджеру '.(100 - $deal->ourGarageShare()).' % навара'.($mark ? ' — догадка по выписке' : ''));
             } else {
                 app(SyncDealInvoices::class)($deal, $by);
             }

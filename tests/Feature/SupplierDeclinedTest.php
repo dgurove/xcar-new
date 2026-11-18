@@ -5,7 +5,6 @@ namespace Tests\Feature;
 use App\Notifications\SupplierDeclinedNotice;
 use App\Offers\Actions\AcceptBid;
 use App\Offers\Actions\PlaceBid;
-use App\Offers\CommissionMode;
 use App\Offers\DealLine;
 use App\Offers\DealScheme;
 use App\Offers\DealState;
@@ -44,7 +43,7 @@ class SupplierDeclinedTest extends TestCase
         $offer->forceFill(['state' => OfferState::Open])->save();
         $offer->viewers()->create(['user_id' => $manager->id, 'opens_at' => now()]);
         app(EnterStage::class)($offer, Stage::where('workflow_id', $vendor->fresh()->workflow(Track::Sale)->id)->where('name', 'Приём подтверждений')->firstOrFail());
-        $deal = app(AcceptBid::class)(app(PlaceBid::class)($offer->fresh(), $manager, 1100000), $admin, 30000, CommissionMode::Payout, scheme: DealScheme::Prime);
+        $deal = app(AcceptBid::class)(app(PlaceBid::class)($offer->fresh(), $manager, 1100000), $admin, 30000, scheme: DealScheme::Prime);
 
         $this->actingAs($admin)->post("http://crm.xcar.localhost/work/deals/{$deal->id}/declined", ['note' => ''])->assertSessionHasErrors('note');
         $this->actingAs($admin)->post("http://crm.xcar.localhost/work/deals/{$deal->id}/declined", ['note' => 'Поставщик продаёт сам', 'pickup' => 'keep'])

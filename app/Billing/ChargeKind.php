@@ -4,7 +4,10 @@ namespace App\Billing;
 
 use App\Cars\HasLabels;
 
-/** За что деньги: хранение, эвакуация, осмотр, простой, негабарит — стоянка; продажа, подбор, перечисление вендору, агентское вознаграждение менеджеру и вознаграждение от поставщика — сделки. */
+/**
+ * За что деньги: хранение, эвакуация, осмотр, простой, негабарит — стоянка; продажа, подбор, перечисление вендору — сделки.
+ * `AgentFee` — только в старых документах (до 18.11.2026: строка «Агентское вознаграждение» и выплата менеджеру), новых нет.
+ */
 enum ChargeKind: string
 {
     use HasLabels;
@@ -20,7 +23,6 @@ enum ChargeKind: string
     case Selection = 'selection';
     case Transfer = 'transfer';
     case AgentFee = 'agent_fee';
-    case Reward = 'reward';
     case Other = 'other';
     // Разовая оплата наших услуг по ссылке из CRM — без сделки и машины (`IssueServiceInvoice`).
     case Service = 'service';
@@ -39,7 +41,6 @@ enum ChargeKind: string
             self::Selection => 'Подбор ТС',
             self::Transfer => 'Перечисление вендору',
             self::AgentFee => 'Агентское вознаграждение',
-            self::Reward => 'Вознаграждение от поставщика',
             self::Other => 'Прочее',
             self::Service => 'Услуги',
         };

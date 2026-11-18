@@ -5,7 +5,6 @@ namespace Tests\Feature;
 use App\Offers\Actions\AcceptBid;
 use App\Offers\Actions\PlaceBid;
 use App\Offers\CarPlace;
-use App\Offers\CommissionMode;
 use App\Offers\DealScheme;
 use App\Offers\Offer;
 use App\Offers\OfferState;
@@ -46,7 +45,7 @@ class PickupWithUsTest extends TestCase
         $offer->viewers()->create(['user_id' => $manager->id, 'opens_at' => now()]);
         app(EnterStage::class)($offer, Stage::where('workflow_id', $vendor->fresh()->workflow(Track::Sale)->id)->where('name', 'Приём подтверждений')->firstOrFail());
 
-        return app(AcceptBid::class)(app(PlaceBid::class)($offer->fresh(), $manager, 1050000), $admin, 30000, CommissionMode::Payout, scheme: DealScheme::Prime)->fresh();
+        return app(AcceptBid::class)(app(PlaceBid::class)($offer->fresh(), $manager, 1050000), $admin, 30000, scheme: DealScheme::Prime)->fresh();
     }
 
     public function test_pickup_step_passes_itself_when_car_is_with_us(): void

@@ -19,7 +19,6 @@ use App\Offers\Actions\AcceptBid;
 use App\Offers\Actions\PlaceBid;
 use App\Offers\Actions\SaveDealContract;
 use App\Offers\BidKind;
-use App\Offers\CommissionMode;
 use App\Offers\DealContract;
 use App\Offers\DealScheme;
 use App\Offers\Offer;
@@ -68,26 +67,28 @@ class MoneyDirectionTest extends TestCase
         return $offer->fresh();
     }
 
-    /** Счёт после выплаты (хранение, «Ещё счёт») прятал выплату от `agentFee` — и её начисляли второй раз. */
-    public function test_agent_fee_is_issued_once_even_after_later_invoice(): void
+    /** Вознаграждения менеджеру мы не выплачиваем (18.11.2026): оплатили все счета, и ещё счёт — выплаты нет, «должны ему» — ноль. */
+    public function test_paid_deal_never_owes_manager(): void
     {
         $offer = $this->offer();
-        $deal = app(AcceptBid::class)(app(PlaceBid::class)($offer, $this->manager, 1050000), $this->admin, 30000, CommissionMode::Payout, scheme: DealScheme::Prime);
+        $deal = app(AcceptBid::class)(app(PlaceBid::class)($offer, $this->manager, 1050000), $this->admin, 30000, scheme: DealScheme::Prime);
         // Совкомбанк: счёт и договор — после «Автомобиль забрал».
         app(TakeExit::class)($offer->fresh(), $offer->fresh()->position(Track::Sale)->stage->exits->firstWhere('label', 'Автомобиль забрал'), Actor::Manager, $this->manager);
         app(SaveDealContract::class)(DealContract::for($deal->fresh()), ['buyer_id' => 'new', 'new_buyer' => ['phone' => '+7 900 555-44-33'], 'buyer' => ['kind' => 'person',
             'name' => 'Покупаев Пётр Петрович', 'birth_at' => '1985-05-05', 'passport' => '11 11 111111', 'passport_issued' => 'ГУ МВД', 'passport_issued_at' => '2010-10-10', 'reg_address' => 'г. Москва']], $this->manager);
         $this->passportFor($deal->fresh()->contract->buyer);
-        app(RecordPayment::class)($deal->fresh()->issuedInvoices()->sole(), $this->admin, 1050000, now(), PaymentSource::Bank);
-        $this->assertSame(1, Invoice::where('deal_id', $deal->id)->where('direction', 'owed')->count());
+        $sale = $deal->fresh()->issuedInvoices()->sole();
+        $this->assertEqualsWithDelta(1020000, $sale->total, 0.01);
+        app(RecordPayment::class)($sale, $this->admin, 1020000, now(), PaymentSource::Bank);
+        $this->assertSame(0, Invoice::where('deal_id', $deal->id)->where('direction', 'owed')->count());
 
         $extra = app(IssueInvoice::class)(Party::forUser($this->manager), $this->admin, 'issued', ChargeKind::Other, now()->addDays(3),
             lines: [['title' => 'Хранение', 'qty' => 1, 'unit' => 'pc', 'price' => 5000.0, 'kind' => ChargeKind::Other->value]], dealId: $deal->id, offerId: $offer->id);
-        $this->assertNotNull($deal->fresh()->agentFee);
         app(RecordPayment::class)($extra->fresh(), $this->admin, 5000, now(), PaymentSource::Bank);
 
-        $this->assertSame(1, Invoice::where('deal_id', $deal->id)->where('direction', 'owed')->where('state', '!=', 'void')->count());
-        $this->assertEqualsWithDelta(30000, (new ManagerLedger($this->manager))->position()['payout'], 0.01);
+        $this->assertSame(0, Invoice::where('deal_id', $deal->id)->where('direction', 'owed')->count());
+        $this->assertEqualsWithDelta(0, (new ManagerLedger($this->manager))->position()['payout'], 0.01);
+        $this->assertSame('Вознаграждение', DealMoney::of($deal->fresh())->phrase);
     }
 
     /** Гараж «платит менеджер»: два счёта (машина и доля) — строка и пилюля показывают одну сумму, сотруднику «должен нам». */
@@ -113,21 +114,17 @@ class MoneyDirectionTest extends TestCase
         $this->assertSame([$this->manager->fresh()->party_id], $deal->fresh()->invoices->pluck('party_id')->unique()->values()->all());
     }
 
-    /** Продали в минус — в `invoice_id` наша выплата: это «Вам к выплате», а не «Отдать нам». */
-    public function test_garage_loss_is_payout_not_pay(): void
+    /** Продали в минус — выплаты менеджеру нет (18.11.2026): расчёт закрывается без документа. */
+    public function test_garage_loss_closes_without_payout(): void
     {
         $offer = $this->offer(900000);
         $car = Car::create(['offer_id' => $offer->id, 'manager_id' => $this->manager->id, 'state' => CarState::Selling, 'taken_at' => now(), 'cost' => 900000]);
         app(AddCost::class)($car, ['title' => 'Кузов', 'amount' => 300000], $this->manager);
         $car->forceFill(['state' => CarState::Sold, 'sold_at' => now(), 'sold_price' => 200000])->save();
 
-        $invoice = app(SettleGarageCar::class)($car->fresh(), $this->admin, 10000);
-        $this->assertTrue($invoice->isOwed());
-
-        $money = DealMoney::garage($car->fresh(), $this->manager->fresh());
-        $this->assertSame('payout', $money->preset);
-        $this->assertSame('Вам к выплате', $money->caption);
-        $this->assertEqualsWithDelta($invoice->total, $money->toHim, 0.01);
-        $this->assertSame(0.0, (float) $money->toUs);
+        $this->assertNull(app(SettleGarageCar::class)($car->fresh(), $this->admin, 10000));
+        $this->assertSame(CarState::Settled, $car->fresh()->state);
+        $this->assertSame(0, Invoice::where('direction', 'owed')->count());
+        $this->assertNull(DealMoney::garage($car->fresh(), $this->manager->fresh()));
     }
 }

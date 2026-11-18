@@ -14,7 +14,6 @@ use App\Offers\Actions\SaveDealContract;
 use App\Offers\Actions\TakeParallel;
 use App\Offers\Bid;
 use App\Offers\BidState;
-use App\Offers\CommissionMode;
 use App\Offers\Deal;
 use App\Offers\DealContract;
 use App\Offers\DealScheme;
@@ -83,7 +82,7 @@ class ParallelDealTest extends TestCase
         app(EnterStage::class)($offer, Stage::where('workflow_id', $vendor->fresh()->workflow(Track::Sale)->id)->where('name', 'Приём подтверждений')->firstOrFail());
         $bid = app(PlaceBid::class)($offer->fresh(), $this->first, 1200000);
         $this->reserve = app(PlaceBid::class)($offer->fresh(), $this->second, 1200000);
-        $deal = app(AcceptBid::class)($bid, $this->admin, 50000, CommissionMode::Payout, scheme: DealScheme::forOffer($offer->fresh()), ownerPrice: 900000);
+        $deal = app(AcceptBid::class)($bid, $this->admin, 50000, scheme: DealScheme::forOffer($offer->fresh()), ownerPrice: 900000);
         $this->offer = $offer->fresh();
         foreach (['Поставщик согласовал', 'Беру в работу', 'Поставщик просит реквизиты'] as $label) {
             if ($this->offer->fresh()->stage()->name === $upTo) {

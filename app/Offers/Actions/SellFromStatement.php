@@ -20,9 +20,12 @@ use Throwable;
 /**
  * Гаражная продажа догадкой по выписке (18.11.2026, владелец: «оплаты со СберБизнеса не разносятся сами, висят тупо»;
  * 28 гаражных сделок стояли «Деньги пришли: записать продажу» — покупатель заплатил по VIN, цену никто не вписал).
- * Заплатил покупатель, а не менеджер, — машина «Продана» за сумму его поступлений: вознаграждение по доле, покупатель
- * сделки — он же (`BuyerFromStatement`). Это догадка, и в «Истории» она так и названа (владелец: «главное — в истории
- * помечать, что это догадки»): строка «Продана за N — догадка по выписке: …».
+ * Заплатил покупатель, а не менеджер, — машина «Продана», покупатель сделки — он же (`BuyerFromStatement`). Пришло нам —
+ * цена минус вознаграждение (18.11.2026: вознаграждение менеджер получает не от нас, наш счёт — за вычетом его): из пришедшего
+ * закупочная — за ТС, остальное — услуги подбора, наша доля навара (`users.garage_share`); вознаграждение — по той же шкале
+ * (`reward`), цена продажи — пришедшее плюс вознаграждение. Счёт ПРАЙМ встаёт ровно на пришедшее и закрыт им. Это догадка, и в
+ * «Истории» она так и названа (владелец: «главное — в истории помечать, что это догадки»): «Продана за N — догадка по
+ * выписке: …», у вознаграждения — «— догадка по выписке».
  *
  * Не гадает, если: продажа уже записана или цена сделки вписана, машину ещё везут, платил сам менеджер или платили разные
  * люди, есть деньги мимо выписки, сумма в минус или с лишним нулём против закупочной. Тогда остаётся «Деньги пришли:
@@ -37,7 +40,7 @@ final class SellFromStatement
     /**
      * Что записать, или почему нельзя.
      *
-     * @return array{ok: bool, why?: string, price?: int, payer?: string, txs?: Collection<int, Transaction>, car?: Car}
+     * @return array{ok: bool, why?: string, price?: int, paid?: int, reward?: ?int, payer?: string, txs?: Collection<int, Transaction>, car?: Car}
      */
     public static function guess(Deal $deal): array
     {
@@ -80,7 +83,23 @@ final class SellFromStatement
             return $no('сумма против закупочной: '.mb_lcfirst($check['title']));
         }
 
-        return ['ok' => true, 'price' => $price, 'payer' => $payers->first(), 'txs' => $txs, 'car' => $car];
+        // Гаражная Совкомбанка — с вознаграждением менеджера по шкале; «Себе» — продали мы, цена — пришедшее.
+        $reward = $deal->namesBuyer() ? self::reward($deal, $price) : null;
+
+        return ['ok' => true, 'price' => $price + (int) $reward, 'paid' => $price, 'reward' => $reward, 'payer' => $payers->first(), 'txs' => $txs, 'car' => $car];
+    }
+
+    /**
+     * Вознаграждение менеджера, если пришло `$paid`: наша часть — пришедшее минус закупочная, это наша доля навара за вычетом
+     * его расходов (`Deal::commissionFrom`); навар — наша часть / доля, вознаграждение — навар минус наша часть плюс его
+     * расходы. Рубли — вверх до целых.
+     */
+    public static function reward(Deal $deal, int $paid): int
+    {
+        $ours = max(0, $paid - (int) $deal->cost);
+        $share = max(1, $deal->ourGarageShare());
+
+        return (int) ceil($ours * (100 - $share) / $share) + $deal->managerGarageCosts();
     }
 
     /** Поступления выписки по сделке — деньги за машину, по дате. */
@@ -108,8 +127,9 @@ final class SellFromStatement
             $dates = $g['txs']->map(fn (Transaction $tx) => $tx->booked_at->format('d.m'))->unique()->implode(', ');
             $what = ($g['txs']->count() > 1 ? 'поступления '.$dates : 'поступление '.$dates).' от '.$g['payer'];
             try {
-                return ($this->sold)($g['car'], ['sold_price' => $g['price'], 'sold_at' => $g['txs']->last()->booked_at, 'buyer_name' => $g['payer']], $by,
-                    ['guess' => $what, 'tx' => $g['txs']->pluck('id')->all()]);
+                // Сумму против закупочной проверили на пришедшем (`guess`) — переспрашивать «точно?» некого.
+                return ($this->sold)($g['car'], array_filter(['sold_price' => $g['price'], 'sold_at' => $g['txs']->last()->booked_at, 'buyer_name' => $g['payer'],
+                    'commission' => $g['reward'], 'price_ok' => true], fn ($v) => $v !== null), $by, ['guess' => $what, 'tx' => $g['txs']->pluck('id')->all()]);
             } catch (Throwable $e) {
                 Log::warning('garage: продажа по выписке, сделка '.$deal->id.' — '.$e->getMessage());
 

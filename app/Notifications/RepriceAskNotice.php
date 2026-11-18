@@ -81,7 +81,7 @@ final class RepriceAskNotice extends Notice
     public static function telegramTitle(RepriceAsk $ask): string
     {
         // Слово «закупочная» — только где она у него на экране (`RepriceAsk::shownAs`).
-        return ($ask->shownAs() === 'reward' ? 'Вознаграждение изменится: ' : 'Новая цена: ').$ask->offer->titleWithYear();
+        return 'Новая цена: '.$ask->offer->titleWithYear();
     }
 
     /** @return array<int, mixed> */

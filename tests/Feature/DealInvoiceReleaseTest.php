@@ -9,7 +9,6 @@ use App\Offers\Actions\AcceptBid;
 use App\Offers\Actions\PlaceBid;
 use App\Offers\Actions\SaveDealContract;
 use App\Offers\Actions\ShowToManager;
-use App\Offers\CommissionMode;
 use App\Offers\DealContract;
 use App\Offers\DealScheme;
 use App\Offers\Offer;
@@ -54,7 +53,7 @@ class DealInvoiceReleaseTest extends TestCase
         $offer->forceFill(['state' => OfferState::Open])->save();
         $offer->viewers()->create(['user_id' => $manager->id, 'opens_at' => now()]);
         app(EnterStage::class)($offer, Stage::where('workflow_id', $vendor->fresh()->workflow(Track::Sale)->id)->where('name', 'Приём подтверждений')->firstOrFail());
-        $deal = app(AcceptBid::class)(app(PlaceBid::class)($offer->fresh(), $manager, 1050000), $admin, 30000, CommissionMode::Withheld, scheme: DealScheme::Prime);
+        $deal = app(AcceptBid::class)(app(PlaceBid::class)($offer->fresh(), $manager, 1050000), $admin, 30000, scheme: DealScheme::Prime);
         $this->assertSame('Забрать автомобиль', $offer->fresh()->stage()->name);
 
         // Покупатель с паспортом до «Автомобиль забрал» — счёт уже есть, без срока, менеджер его не видит.

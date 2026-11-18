@@ -5,7 +5,6 @@ namespace App\Billing\Acquiring\Actions;
 use App\Billing\Acquiring\PayerKind;
 use App\Billing\Acquiring\PayLink;
 use App\Billing\Acquiring\PayLinkState;
-use App\Billing\ChargeKind;
 use App\Billing\Invoice;
 use App\Billing\InvoiceState;
 use App\Offers\OfferEventType;
@@ -30,7 +29,7 @@ final class CreatePayLink
         return DB::transaction(function () use ($invoice, $by, $amount, $kind, $payer, $name, $email, $auto) {
             $invoice = Invoice::withoutGlobalScope('demo')->whereKey($invoice->id)->lockForUpdate()->firstOrFail();
             // Вознаграждение от поставщика платит вендор по счёту, не человек по ссылке.
-            if ($invoice->state !== InvoiceState::Issued || $invoice->isOwed() || $invoice->kind === ChargeKind::Reward) {
+            if ($invoice->state !== InvoiceState::Issued || $invoice->isOwed()) {
                 throw ValidationException::withMessages(['amount' => 'Счёт '.mb_strtolower($invoice->state->label())]);
             }
             // Ссылка — только к счёту, который менеджеру уже отправили (17.11.2026, начальник: «пока не нажали „Отправить“,

@@ -3,7 +3,6 @@
 namespace App\Http\Cabinet;
 
 use App\Billing\Actions\ClaimPayment;
-use App\Billing\ChargeKind;
 use App\Billing\Invoice;
 use App\Billing\InvoiceState;
 use App\Billing\Party;
@@ -458,7 +457,7 @@ class DealController
             return redirect($deal->href())->with('toast', 'Чек приложен к оплате поставщику');
         }
         $invoice = $deal->issuedInvoices()->whereKey((int) substr($data['for'], 8))->firstOrFail();
-        abort_unless($invoice->isVisibleToManager($me) && ! $invoice->isOwed() && $invoice->kind !== ChargeKind::Reward, 404);
+        abort_unless($invoice->isVisibleToManager($me) && ! $invoice->isOwed(), 404);
         $left = round($invoice->remaining() - $invoice->claimed(), 2);
         if ($left <= 0) {
             return redirect($deal->href())->with('toast', 'По этому счёту оплата уже приложена');

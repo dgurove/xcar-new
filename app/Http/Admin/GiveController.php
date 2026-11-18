@@ -6,7 +6,6 @@ use App\Garage\GaragePayer;
 use App\Mail\LetterPrompt;
 use App\Offers\Actions\Give;
 use App\Offers\Bid;
-use App\Offers\CommissionMode;
 use App\Offers\Deal;
 use App\Offers\DealScheme;
 use App\Offers\Giving;
@@ -49,7 +48,6 @@ class GiveController
             'manager_id' => ['nullable', 'integer', 'exists:users,id'],
             'amount' => ['nullable', 'integer', 'min:1'],
             'commission' => ['nullable', 'integer', 'min:0', 'max:'.max(0, (int) $amount)],
-            'mode' => ['nullable', Rule::enum(CommissionMode::class)],
             'scheme' => ['nullable', Rule::enum(DealScheme::class)],
             // По ДКП — что покупатель отдаст страхователю: меньше цены менеджеру, иначе подбору не из чего.
             'owner_price' => ['nullable', 'integer', 'min:1', 'max:'.max(1, (int) $amount)],
@@ -82,7 +80,7 @@ class GiveController
             throw ValidationException::withMessages(['owner_price' => $scheme === DealScheme::OwnerDkp ? 'Сколько покупатель отдаёт страхователю по ДКП' : 'Сколько покупатель отдаёт страховой']);
         }
         $money = ['scheme' => $scheme, 'ownerPrice' => $data['owner_price'] ?? null, 'commission' => $data['commission'] ?? null,
-            'mode' => CommissionMode::tryFrom($data['mode'] ?? '') ?? CommissionMode::Payout, 'payer' => GaragePayer::tryFrom($data['payer'] ?? ''),
+            'payer' => GaragePayer::tryFrom($data['payer'] ?? ''),
             'share' => $data['share'] ?? null, 'pickup' => $data['pickup'] ?? null, 'where' => $data['where'] ?? 'owner', 'loss' => $request->boolean('loss'),
             'buyerPrice' => $data['buyer_price'] ?? null, 'arrivedAt' => $arrivedAt,
             'cost' => ! $garage && $request->user()->isAdmin() ? ($data['cost'] ?? null) : null,

@@ -84,7 +84,7 @@ class RepriceController
         DB::transaction(function () use ($apply, $reprice, $request, $data, $prices, $publish, $reward, $deal, $commission) {
             $apply($reprice, $request->user(), $data['price'], $data['bids'] ?? [], $data['deal'] ?? null, $prices, $publish);
             if ($reward && ($deal = $deal->fresh()) && $deal->isActive()) {
-                app(UpdateDealMoney::class)($deal, $request->user(), $commission, $deal->commission_mode);
+                app(UpdateDealMoney::class)($deal, $request->user(), $commission);
             }
         });
 

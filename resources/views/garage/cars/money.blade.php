@@ -1,8 +1,8 @@
 {{-- Деньги машины одной плашкой. Сверху главное число этапа: до продажи — закупочная (сотруднику нынешняя `Car::price`,
      менеджеру закреплённая при подтверждении `Car::managerPrice`, 16.10.2026), после продажи — прибыль (нам) или цена (ему), со счётом —
-     сколько осталось отдать или ждём от покупателя, затем выплата менеджеру, после расчёта — цена продажи. Ниже строки,
-     из которых оно сложилось: расходы без оплаты поставщику (она и есть закупочная), у сотрудника — «Вложено».
-     Вознаграждение менеджер видит только со счётом, как у сделок. --}}
+     сколько осталось отдать или ждём от покупателя, после расчёта — цена продажи. Ниже строки, из которых оно сложилось:
+     расходы без оплаты поставщику (она и есть закупочная), у сотрудника — «Вложено». Вознаграждение менеджер видит только со
+     счётом, как у сделок; выплат менеджеру нет (18.11.2026). --}}
 @php
     use App\Support\Money;
     $unpaid = $current && $current->remaining() > 0;
@@ -14,15 +14,12 @@
     [$label, $value, $tone] = match (true) {
         ! $car->isSold() && $price => ['Закупочная', $price, ''],
         ! $car->isSold() => [$staff ? 'Вложено в ТС' : 'Расходы', $mine + $ours, ''],
-        $unpaid && $current->isOwed() => [$staff ? 'Должны менеджеру' : 'Вам к выплате', $current->remaining(), 'text-accent-text'],
         $unpaid && $buyerPays => ['Покупатель платит', $current->remaining(), $current->isOverdue() ? 'text-danger' : ''],
         $unpaid => [$staff ? 'Менеджер должен нам' : 'Отдать нам', $current->remaining(), $current->isOverdue() ? 'text-danger' : ''],
         $car->state === \App\Garage\CarState::Sold && $staff => ['Прибыль', $s['profit'], $s['profit'] < 0 ? 'text-danger' : ''],
         default => ['Продана за', $car->sold_price, ''],
     };
     $row = 'row justify-between';
-    // Состояние выплаты менеджеру — словом выплаты, а не счёта («Выставлен» про наш долг ему не говорит ничего).
-    $payoutWord = fn ($i) => $i->state === \App\Billing\InvoiceState::Paid ? 'выплачено' : 'ждёт выплаты'.($i->remaining() > 0 ? ' до '.\App\Support\Ago::day($i->due_at) : '');
 @endphp
 @if ($staff && ($buyerCar ?? false))
     {{-- Машина у покупателя с гаражом — сотруднику (20.10.2026): закупочная, его цена, его счёт и наша прибыль; расчёта с
@@ -57,7 +54,7 @@
         <span class="nums text-[32px] leading-none font-bold {{ $tone }}">{{ Money::exact($value) }}</span>
         @if ($claimed > 0)<span class="mt-1 text-sm text-urgent">Сообщили об оплате {{ Money::exact($claimed) }}, ждём подтверждения</span>@endif
     </div>
-    @if ($unpaid && ! $current->isOwed())
+    @if ($unpaid)
         <x-billing.pay-status compact :invoice="$current" :staff="$staff" :create="$staff ? null : '/garage/cars/'.$car->offer->number.'/links'" :cancel="$staff ? null : '/garage/cars/'.$car->offer->number.'/links'"/>
     @endif
 
@@ -88,7 +85,7 @@
         @include('garage.cars.sell-split', ['deal' => $car->deal, 'sale' => null])
     @endif
     @if ($car->isSold() && $invoice && $car->manager)
-        <div class="{{ $row }}"><span>{{ $staff ? 'Вознаграждение менеджеру' : 'Вознаграждение' }}</span><span class="nums">{{ Money::rub($s['fee']) }}</span></div>
+        <div class="{{ $row }}"><span>{{ $staff ? 'Вознаграждение менеджера' : 'Вознаграждение' }}</span><span class="nums">{{ Money::rub($s['fee']) }}</span></div>
     @endif
     @if ($staff && $car->isSold() && $label !== 'Прибыль')
         <div class="{{ $row }}"><span>Нам остаётся</span><span class="nums {{ $s['ours'] < 0 ? 'text-danger' : '' }}">{{ Money::exact($s['ours']) }}</span></div>
@@ -96,22 +93,15 @@
     @if ($car->buyer_name || $car->buyer_phone)
         <div class="{{ $row }}"><span class="shrink-0">Покупатель</span><span class="min-w-0 text-right"><span class="block break-words">{{ $car->buyer_name }}</span>@if ($car->buyer_phone)<x-ui.tel :value="$car->buyer_phone" class="block"/>@endif</span></div>
     @endif
-    {{-- Выплата, что уже крупно сверху, второй строкой не повторяется. --}}
-    @if ($invoice && ! ($invoice->isOwed() && $unpaid && $invoice->is($current)))
+    @if ($invoice)
         @php $pdf = (bool) $invoice?->hasPdf(); @endphp
         <{{ $pdf ? 'a' : 'div' }} @if ($pdf) href="/garage/cars/{{ $car->offer->number }}/invoice/pdf" data-doc="pdf" data-doc-name="Счёт {{ $invoice?->label() }}" @endif class="{{ $row }}">
             <span class="min-w-0">
-                <span class="block">{{ $invoice->isOwed() ? ($staff ? 'Выплата менеджеру' : 'Выплата вам') : ($invoice->isDocument() ? 'Счёт '.$invoice->label() : \App\Billing\PayOffer::name($invoice)) }}@if ($buyerPays && $invoice->isDocument()) <span class="text-ink-muted">{{ $invoice->party?->name }}</span>@endif</span>
-                <span class="row-sub">@if ($invoice->isOwed()){{ $payoutWord($invoice) }}@else{{ $invoice->state->label() }}@if ($invoice->remaining() > 0), до {{ \App\Support\Ago::html($invoice->due_at, words: false) }}@endif @endif</span>
+                <span class="block">{{ $invoice->isDocument() ? 'Счёт '.$invoice->label() : \App\Billing\PayOffer::name($invoice) }}@if ($buyerPays && $invoice->isDocument()) <span class="text-ink-muted">{{ $invoice->party?->name }}</span>@endif</span>
+                <span class="row-sub">{{ $invoice->state->label() }}@if ($invoice->remaining() > 0), до {{ \App\Support\Ago::html($invoice->due_at, words: false) }}@endif</span>
             </span>
             @if ($pdf)<span class="flex shrink-0 items-center gap-1 text-accent-text"><x-ui.icon name="file" class="size-4"/>PDF</span>@endif
         </{{ $pdf ? 'a' : 'div' }}>
-    @endif
-    @if ($car->payoutInvoice && ! ($unpaid && $car->payoutInvoice->is($current)))
-        <div class="{{ $row }}">
-            <span class="min-w-0"><span class="block">{{ $staff ? 'Выплата менеджеру' : 'Выплата вам' }}</span><span class="row-sub">{{ $payoutWord($car->payoutInvoice) }}</span></span>
-            <span class="nums">{{ Money::exact($car->payoutInvoice->total) }}</span>
-        </div>
     @endif
 </div>
 @endif

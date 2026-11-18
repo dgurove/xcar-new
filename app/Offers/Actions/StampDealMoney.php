@@ -3,7 +3,6 @@
 namespace App\Offers\Actions;
 
 use App\Billing\Bank\Transaction;
-use App\Billing\ChargeKind;
 use App\Billing\Invoice;
 use App\Billing\PaymentState;
 use App\Offers\Deal;
@@ -63,7 +62,7 @@ final class StampDealMoney
     /** Первая оплата за машину: счета сделки и зачёты, входящие выписки этой сделки. */
     public static function firstIn(Deal $deal): ?Carbon
     {
-        $invoices = Invoice::where('direction', 'issued')->where('kind', '!=', ChargeKind::Reward)
+        $invoices = Invoice::where('direction', 'issued')
             ->where(fn ($q) => $q->where('deal_id', $deal->id)->orWhere('credit_deal_id', $deal->id))->pluck('id');
         $payments = $invoices->isEmpty() ? null : DB::table('billing_payments')->whereIn('invoice_id', $invoices)
             ->where('state', PaymentState::Confirmed->value)->min('paid_at');

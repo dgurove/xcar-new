@@ -1,7 +1,6 @@
 <?php
 
 use App\Offers\Actions\IssueSelectionInvoice;
-use App\Offers\CommissionMode;
 use App\Offers\DealContract;
 use App\Offers\DealScheme;
 use App\Offers\Offer;
@@ -28,7 +27,7 @@ return new class extends Migration
         $by = User::withRole(Role::Admin)->orderBy('id')->first();
         DB::transaction(function () use ($offer, $deal, $by) {
             $offer->update(['owner_price' => 750000]);
-            $deal->update(['scheme' => DealScheme::OwnerDkp, 'owner_price' => 750000, 'commission_mode' => CommissionMode::Withheld, 'commission' => $deal->commission ?? 20000]);
+            $deal->update(['scheme' => DealScheme::OwnerDkp, 'owner_price' => 750000, 'commission' => $deal->commission ?? 20000]);
             $offer->log(OfferEventType::Note, $by, ['text' => 'По ДКП: собственнику 750 000 ₽, взаимозачёт 29 000 ₽, вознаграждение 20 000 ₽']);
             DealContract::for($deal);
             app(IssueSelectionInvoice::class)($deal->fresh(), $by);

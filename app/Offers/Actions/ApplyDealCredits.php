@@ -4,7 +4,6 @@ namespace App\Offers\Actions;
 
 use App\Billing\Actions\RecordPayment;
 use App\Billing\Actions\VoidPayment;
-use App\Billing\ChargeKind;
 use App\Billing\Invoice;
 use App\Billing\InvoiceState;
 use App\Billing\Payment;
@@ -19,7 +18,7 @@ use Illuminate\Support\Facades\DB;
  * зачёт суммы сделки, а когда уже оплачено то, что в сделке обозначено, — это просто дополнительная доплата»). Счёт
  * сделки остаётся на свою сумму, в него ложится оплата `PaymentSource::Credit` с `credit_invoice_id` ручного счёта —
  * дальше всё штатно: остаток, ссылка сделки на остаток (`EnsurePayLink`), оплачен целиком — шаг оплаты и выплата
- * (`AdvanceOnPayment`, `PayoutWhenPaid`). Класть некуда — доплата сверх сделки (`Deal::creditExtra`).
+ * (`AdvanceOnPayment`). Класть некуда — доплата сверх сделки (`Deal::creditExtra`).
  * Зачёт ручного счёта, который аннулировали, вернули или отвязали от сделки, гасится (`release`).
  */
 final class ApplyDealCredits
@@ -37,7 +36,7 @@ final class ApplyDealCredits
             }
             // Сначала подбор (его менеджер платит по ссылке), потом счёт ПРАЙМ; вознаграждение от вендора и выплаты — не сюда.
             $targets = Invoice::where('deal_id', $deal->id)->where('direction', 'issued')->where('state', InvoiceState::Issued)
-                ->where('kind', '!=', ChargeKind::Reward)->orderByRaw("kind = 'selection' desc")->orderBy('id')->get();
+                ->orderByRaw("kind = 'selection' desc")->orderBy('id')->get();
             foreach ($credits as $credit) {
                 $left = round((float) $credit->paid - $this->applied($credit), 2);
                 foreach ($targets as $target) {

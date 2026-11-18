@@ -1,22 +1,22 @@
-{{-- Вознаграждение менеджеру — ползунком, суммой или процентом от разницы (16.11.2026, начальник: «процент с продажи чтобы
+{{-- Вознаграждение менеджера — ползунком, суммой или процентом от разницы (16.11.2026, начальник: «процент с продажи чтобы
      указывать можно было», «сумма или % выбрать», «он считает процент от разницы»; владелец выбрал из макетов вариант Г —
-     ползунок сам заполняет полосу, подписанную «Менеджеру N» слева и «Нам M» справа, под ней «Менеджеру, ₽» и «% от
+     ползунок сам заполняет полосу, подписанную «Менеджеру N» слева и «Подбор M» справа (услуги подбора, 18.11.2026), под ней «Менеджеру, ₽» и «% от
      разницы»: вписали — ползунок двигается сам; шаг ползунка 5 %, в полях — любое). Разница (`margin`) — от чего процент:
      цена минус закупочная, у старого гаража — прибыль. Её нет или она не больше нуля — одно поле суммы.
-     `mode`: `reward` — в форму уходит вознаграждение (`commission`); `ours` — «нам» = разница минус вознаграждение
-     (гаражная «платит менеджер», `deals.share`), тогда `value` — тоже «нам». Хозяин формы (`commission`, `reprice`)
+     `mode`: `reward` — в форму уходит вознаграждение (`commission`); `ours` — услуги подбора = разница минус вознаграждение
+     (гаражная «платит менеджер», `deals.share`), тогда `value` — тоже услуги подбора. Хозяин формы (`commission`, `reprice`)
      держит поле суммы своими целями и действиями — атрибуты компонента ложатся на него; ползунок и процент шлют ему
      `input`. Разница меняется на лету — хозяин ставит `data-reward-margin-value` (`commission_controller#shareMargin`).
      `follow` — поле идёт за разницей процентом (предзаполнено долей менеджера `users.deal_share`), пока сумму не вписали
      руками; `share` — доля по умолчанию, когда суммы ещё нет; `showMargin` false — разница уже строкой выше (`money-form`). `hidden` — атрибуты скрытого поля (у `money-form` его цель `amount`). --}}
-@props(['name', 'value' => null, 'margin' => null, 'mode' => 'reward', 'label' => 'Вознаграждение менеджеру', 'id' => null,
+@props(['name', 'value' => null, 'margin' => null, 'mode' => 'reward', 'label' => 'Вознаграждение менеджера', 'id' => null,
     'hidden' => [], 'follow' => false, 'share' => null, 'showMargin' => true, 'placeholder' => '0', 'error' => null])
 @php
     use App\Support\Money;
     $id ??= 'reward-'.uniqid();
     $margin = $margin === null ? null : (int) $margin;
     $value = $value === null || $value === '' ? null : (int) $value;
-    // Вознаграждение на экране: у «нам» — разница минус «нам».
+    // Вознаграждение на экране: у услуг подбора — разница минус они.
     $reward = $value === null ? null : ($mode === 'ours' && $margin !== null ? $margin - $value : $value);
     $split = $margin !== null && $margin > 0;
     $pct = $split && $reward !== null ? round($reward / $margin * 100, 1) : null;
@@ -29,7 +29,7 @@
 @endphp
 <div class="field reward-split @error($error) field-invalid @enderror" data-controller="reward" data-reward-mode-value="{{ $mode }}" @if ($margin !== null) data-reward-margin-value="{{ $margin }}" @endif @if ($follow) data-reward-follow-value="true" @endif>
     <div class="flex items-baseline justify-between gap-3">
-        <label for="{{ $id }}" class="field-label">{{ $split ? $label : ($mode === 'ours' ? 'Нам по ссылке, ₽' : $label.', ₽') }}</label>
+        <label for="{{ $id }}" class="field-label">{{ $split ? $label : ($mode === 'ours' ? 'Услуги подбора, ₽' : $label.', ₽') }}</label>
         <span class="field-label nums" data-reward-target="margin" @unless ($split && $showMargin) hidden @endunless @unless ($showMargin) data-off @endunless>разница {{ $split ? Money::nums($margin) : '' }}</span>
     </div>
     <div class="reward-bar" data-reward-target="bar" style="--p: {{ $pct === null ? 0 : max(0, min(100, $pct)) }}%" @unless ($split) hidden @endunless>

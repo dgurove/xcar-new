@@ -30,8 +30,7 @@
     $showPayer = ($payerHere ?? $canPay) && $forCar && $deal->buyer_id === auth()->id() && $deal->isActive() && ! $deal->isDirect();
     // Одна оплата на весь счёт — её сумма та же, что у строки (16.11.2026, владелец: «одно и то же по сто раз»): состояние словом
     // под подписью, платёжка — файлом в группе с плательщиком; отдельной строки «Оплата по счёту N ₽» нет.
-    // Удержанное вознаграждение (зачёт) — не оплата: его говорит строка «Вознаграждение» ниже (16.11.2026, владелец: «одно и то же
-    // по сто раз»), а сумма строки — уже за вычетом него.
+    // Вознаграждение, вычтенное зачётом в старых счетах (до 18.11.2026), — не оплата: сумма строки — уже за вычетом него.
     $payments = $invoice && $invoice->relationLoaded('allPayments') ? $invoice->allPayments->reject(fn ($p) => $p->source === \App\Billing\PaymentSource::Offset)->values() : collect();
     $single = $row && $payments->count() === 1 && abs((float) $payments->first()->amount - ((float) $invoice->total - (float) $invoice->allPayments->where('source', \App\Billing\PaymentSource::Offset)->sum('amount'))) < 1 ? $payments->first() : null;
     if ($single) {

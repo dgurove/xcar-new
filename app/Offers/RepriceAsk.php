@@ -174,14 +174,13 @@ class RepriceAsk extends Model
 
     /**
      * Было → стало для менеджера двумя парами (владелец: «было 5 189 000 → 5 490 000, стало 5 550 000 → 5 700 000»):
-     * то, что он видит (`shown_*`), и цена продажи. Цены продажи нет (старый вопрос) или видит он вознаграждение — одно число.
+     * то, что он видит (`shown_*`), и цена продажи. Цены продажи нет (старый вопрос) — одно число.
      *
      * @return array{was: string, now: string}
      */
     public function pairs(): array
     {
-        $reward = $this->shownAs() === 'reward';
-        $pair = fn (?int $a, ?int $b) => Money::nums((int) $a).($b && ! $reward ? ' → '.Money::rub($b) : ' ₽');
+        $pair = fn (?int $a, ?int $b) => Money::nums((int) $a).($b ? ' → '.Money::rub($b) : ' ₽');
 
         return ['was' => $pair($this->shown_from, $this->asking_from), 'now' => $pair($this->shown_to, $this->asking_to)];
     }
@@ -211,9 +210,9 @@ class RepriceAsk extends Model
     /**
      * Что менеджер видит из этой переоценки (закупочной на xcar нет ни у кого — CLAUDE.md): у подтверждения — цена «от»
      * (заявленная вписана рукой или «от» не сдвинулась — для него ничего не поменялось), у сделки ДКП, «страховой напрямую»
-     * и гаража — закупочная (она у него в «Расчёте»), у ПРАЙМ, где платит он сам, — его вознаграждение (разница цены и
-     * закупочной, строка счёта). У остальных — супер-покупателя, покупателя с гаражом, ПРАЙМ, где платит его покупатель, —
-     * для него не меняется ничего: null, цена встаёт молча.
+     * и гаража — закупочная (она у него в «Расчёте»). У остальных — супер-покупателя, покупателя с гаражом, ПРАЙМ (счёт одной
+     * строкой на цену минус его вознаграждение, закупочной в нём нет с 18.11.2026) — для него не меняется ничего: null, цена
+     * встаёт молча.
      *
      * @return array{0: int, 1: int}|null
      */
@@ -229,34 +228,22 @@ class RepriceAsk extends Model
 
             return [Offer::declaredFrom($from), Offer::declaredFrom($to)];
         }
-        if ($on->paysSelection() || $on->isGarage()) {
-            return [$from, $to];
-        }
-        $contract = $on->contract;
-        if ($on->isPrime() && ! $on->isDirect() && $on->amount !== null && (! $contract?->buyer_user_id || $contract->managerPays())) {
-            return [max(0, (int) $on->amount - $from), max(0, (int) $on->amount - $to)];
-        }
-
-        return null;
+        return $on->paysSelection() || $on->isGarage() ? [$from, $to] : null;
     }
 
-    /** Чем для менеджера выражена перемена: цена «от» подтверждения, закупочная сделки или его вознаграждение. */
+    /** Чем для менеджера выражена перемена: цена «от» подтверждения или закупочная сделки. */
     public function shownAs(): string
     {
-        return match (true) {
-            $this->bid_id !== null => 'from',
-            $this->deal && ($this->deal->paysSelection() || $this->deal->isGarage()) => 'cost',
-            default => 'reward',
-        };
+        return $this->bid_id !== null ? 'from' : 'cost';
     }
 
-    /** Подпись того, что поменялось: «Цена «от»», «Закупочная», «Вознаграждение». */
+    /** Подпись того, что поменялось: «Цена «от»», «Закупочная». */
     public function shownLabel(): string
     {
-        return ['from' => 'Цена «от»', 'cost' => 'Закупочная', 'reward' => 'Вознаграждение'][$this->shownAs()];
+        return ['from' => 'Цена «от»', 'cost' => 'Закупочная'][$this->shownAs()];
     }
 
-    /** Что поменялось — словами для менеджера: «Цена «от» 900 000 → 950 000 ₽», «Вознаграждение 100 000 → 50 000 ₽». */
+    /** Что поменялось — словами для менеджера: «Цена «от» 900 000 → 950 000 ₽», «Закупочная 800 000 → 850 000 ₽». */
     public function phrase(): string
     {
         return $this->shownLabel().' '.Money::nums((int) $this->shown_from).' → '.Money::rub((int) $this->shown_to);

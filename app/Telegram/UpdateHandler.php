@@ -30,7 +30,6 @@ use App\Telegram\Actions\LinkChat;
 use App\Telegram\Actions\LogoutTelegram;
 use App\Telegram\Actions\UnlinkChat;
 use App\Telegram\Jobs\ValuationFromChat;
-use App\Telegram\Messages\AgentFeeDue;
 use App\Telegram\Messages\InvoiceOverdue;
 use App\Telegram\Messages\PaymentClaimed;
 use App\Telegram\Offers\OffersBot;
@@ -126,7 +125,6 @@ final class UpdateHandler
         }
         match ($press->topic) {
             'invoice' => $this->invoice($press),
-            'fee' => $this->fee($press),
             'claim' => $this->claim($press),
             default => $this->bot->answer($press->queryId, 'Кнопка устарела.'),
         };
@@ -409,27 +407,6 @@ final class UpdateHandler
         $this->bot->edit($press->chatId, $press->messageId, $message->text('Оплачен '.Ago::day(now(), true)), $message->afterDecision());
     }
 
-    /** «Выплачено» под вознаграждением — перечисление на весь остаток от имени владельца. */
-    private function fee(Press $press): void
-    {
-        $fee = Invoice::with(['party', 'deal.offer'])->find($press->id);
-        if (! $fee) {
-            $this->bot->answer($press->queryId, 'Обязательство удалено.');
-
-            return;
-        }
-        $message = new AgentFeeDue($fee);
-        if ($fee->state !== InvoiceState::Issued || $fee->remaining() <= 0) {
-            $this->bot->answer($press->queryId, 'Уже '.mb_strtolower($fee->state->label()).'.');
-            $this->bot->edit($press->chatId, $press->messageId, $message->text($fee->state->label()), $message->afterDecision());
-
-            return;
-        }
-        $owner = Robot::user();
-        app(RecordPayment::class)($fee, $owner, $fee->remaining(), null, PaymentSource::Bank, null, 'из Telegram');
-        $this->bot->answer($press->queryId, 'Выплачено.');
-        $this->bot->edit($press->chatId, $press->messageId, $message->text('Выплачено '.Ago::day(now(), true)), $message->afterDecision());
-    }
 
     /** «Поступило» под сообщением менеджера — заявленная оплата становится оплатой. */
     private function claim(Press $press): void

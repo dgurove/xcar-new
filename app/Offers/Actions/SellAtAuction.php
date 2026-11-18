@@ -117,7 +117,7 @@ final class SellAtAuction
             $offer->positions()->where('track', Track::Sale->value)->update(['deadline_at' => null, 'waits_for' => null]);
 
             if (! $outside && $party) {
-                ($this->invoice)($deal->fresh(), $by, $party, ChargeKind::Sale, (float) $price, now()->addDays(3)->endOfDay(), withFee: false);
+                ($this->invoice)($deal->fresh(), $by, $party, ChargeKind::Sale, (float) $price, now()->addDays(3)->endOfDay());
             }
 
             return $deal->fresh();

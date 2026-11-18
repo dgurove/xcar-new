@@ -2,7 +2,7 @@
      пилюли Обзор, Предложения (15.10.2026), Запросы (16.10.2026, бейдж — номера к отправке), Контакты, Маршруты лентой. Шторка «Продажа»: имя и тип (общие с парковкой), условия сделки, почта
      продажи. Реквизиты, хранение, прайс, деньги, заявки на приёмку — на парковке, ссылкой в обзоре.
      07.10.2026: поля строками (.fields), кнопка .sheet-foot. --}}
-@php use App\Vendors\{DealFormat, Kind, Parser, RewardKind}; @endphp
+@php use App\Vendors\{DealFormat, Kind, Parser}; @endphp
 <x-ui.cabinet :title="$vendor->name" :back="['Вендоры', '/settings/vendors']" :phone-heading="false">
     <div data-controller="sheet">
         <div class="flex items-start gap-3">
@@ -27,8 +27,6 @@
                 <div class="list-head">Сделка</div>
                 <div class="fields">
                     <x-ui.field name="deal_format" label="Формат сделки" :options="DealFormat::options()" :value="$vendor->deal_format->value"/>
-                    <x-ui.field name="reward_kind" label="Вознаграждение" :options="RewardKind::options()" placeholder="—" :value="$vendor->reward_kind?->value"/>
-                    <x-ui.field name="reward_value" label="Процент или сумма" :value="$vendor->reward_value"/>
                     <x-ui.field name="answer_hours" label="Ответ, часов" :value="$vendor->answer_hours"/>
                     <x-ui.field name="binding_days" label="Срок предложения, дней" :value="$vendor->binding_days"/>
                 </div>

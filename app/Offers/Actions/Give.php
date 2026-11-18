@@ -10,7 +10,6 @@ use App\Logistics\TransportNotice;
 use App\Offers\Bid;
 use App\Offers\BidKind;
 use App\Offers\BidState;
-use App\Offers\CommissionMode;
 use App\Offers\Deal;
 use App\Offers\DealContract;
 use App\Offers\DealScheme;
@@ -105,7 +104,7 @@ final class Give
 
             $deal = $this->deal($offer, $g, $bid, $manager, $garage, $cost);
             $offer->log(OfferEventType::BidAccepted, $by, array_filter(['bid_id' => $bid?->id, 'amount' => $deal->amount, 'commission' => $deal->commission,
-                'mode' => $deal->commission_mode?->value, 'garage' => $deal->garage_payer?->value, 'manager' => $bid ? null : $manager?->id,
+                'garage' => $deal->garage_payer?->value, 'manager' => $bid ? null : $manager?->id,
                 'scheme' => $deal->scheme->value, 'dkp' => $deal->ownerPrice(), 'share' => $deal->share,
                 'cost' => $g->cost !== null && $bid && $g->cost !== $bid->frozenCost() ? [$bid->frozenCost(), $g->cost] : null,
                 'buyer_price' => $garage && $manager?->holdsAsBuyer() ? $g->buyerPrice : null], fn ($v) => $v !== null));
@@ -237,7 +236,7 @@ final class Give
     private function deal(Offer $offer, Giving $g, ?Bid $bid, ?User $manager, bool $garage, ?int $cost, bool $parallel = false): Deal
     {
         $scheme = DealScheme::resolve($offer, $g->scheme);
-        [$commission, $mode, $payer, $share] = [$g->commission, $g->mode, null, null];
+        [$commission, $payer, $share] = [$g->commission, null, null];
         // Не вписали — доля менеджера от разницы, если она у него задана (13.11.2026, `users.deal_share`, `Deal::shareOf`).
         if ($commission === null && $manager?->deal_share !== null && $bid?->amount !== null && $cost !== null && ! $manager->isSuperBuyer()) {
             $commission = Deal::shareOf($bid->amount - $cost, $manager->deal_share);
@@ -247,21 +246,16 @@ final class Give
             // без гаражной ветки (Т-Страхование) — платит менеджер, путём обычной сделки (`Offer::garagePayerFixed`).
             // Покупателю — всегда мы: расчёта у него нет, он платит свою цену счётом ПРАЙМ (20.10.2026).
             $payer = ! $manager || $manager->holdsAsBuyer() ? GaragePayer::Us : ($offer->garagePayerFixed() ?? $g->payer ?? GaragePayer::Us);
-            [$commission, $mode] = [null, CommissionMode::Payout];
+            $commission = null;
             // Наша доля — только у «платит менеджер»: он платит её по ссылке сразу (05.10.2026). Совкомбанк: доли нет —
             // машина уходит без оплаты, нашу часть даёт продажа (`Deal::namesBuyer`).
             $share = $payer === GaragePayer::Manager && ! $offer->vendor?->isCommission() ? $g->share : null;
         }
-        // Покупатель платит не нам (ДКП, страховой) — вознаграждение остаётся у менеджера, нам он платит подбор.
-        if ($scheme->paysSelection()) {
-            $mode = CommissionMode::Withheld;
-        }
-
         // С машиной в памяти: новая идущая ставит указатель и у этого `$offer` (`Deal::saved`), а не только в базе.
         $deal = new Deal(['offer_id' => $offer->id, 'bid_id' => $bid?->id, 'buyer_id' => $manager?->id, 'amount' => $bid?->amount, 'parallel' => $parallel,
             'cost' => $cost, 'supplier_cost' => $offer->floor_price && $offer->floor_price !== $cost ? $offer->floor_price : null,
             'owner_price' => $scheme->paysSelection() && ! $garage ? ($g->ownerPrice ?? $offer->owner_price ?? $cost) : null,
-            'share' => $share, 'commission' => $commission, 'commission_mode' => $mode, 'scheme' => $scheme, 'garage_payer' => $payer]);
+            'share' => $share, 'commission' => $commission, 'scheme' => $scheme, 'garage_payer' => $payer]);
         $deal->setRelation('offer', $offer)->save();
 
         return $deal;

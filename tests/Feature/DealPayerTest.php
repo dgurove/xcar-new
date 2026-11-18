@@ -11,7 +11,6 @@ use App\Offers\Actions\AcceptBid;
 use App\Offers\Actions\PlaceBid;
 use App\Offers\Actions\SaveDealContract;
 use App\Offers\Actions\SetDealPayer;
-use App\Offers\CommissionMode;
 use App\Offers\Deal;
 use App\Offers\DealContract;
 use App\Offers\DealScheme;
@@ -46,7 +45,7 @@ class DealPayerTest extends TestCase
 
     private User $manager;
 
-    private function deal(CommissionMode $mode = CommissionMode::Withheld, DealScheme $scheme = DealScheme::Prime, string $format = 'commission'): Deal
+    private function deal(DealScheme $scheme = DealScheme::Prime, string $format = 'commission'): Deal
     {
         Storage::fake('private');
         Notification::fake();
@@ -59,7 +58,7 @@ class DealPayerTest extends TestCase
         $offer->forceFill(['state' => OfferState::Open])->save();
         $offer->viewers()->create(['user_id' => $this->manager->id, 'opens_at' => now()]);
         app(EnterStage::class)($offer, Stage::where('workflow_id', $vendor->fresh()->workflow(Track::Sale)->id)->where('name', 'Приём подтверждений')->firstOrFail());
-        $deal = app(AcceptBid::class)(app(PlaceBid::class)($offer->fresh(), $this->manager, 1050000), $this->admin, 30000, $mode, scheme: $scheme,
+        $deal = app(AcceptBid::class)(app(PlaceBid::class)($offer->fresh(), $this->manager, 1050000), $this->admin, 30000, scheme: $scheme,
             ownerPrice: $scheme === DealScheme::Insurer ? 750000 : null);
         $exit = $offer->fresh()->position(Track::Sale)->stage->exits->firstWhere('label', 'Автомобиль забрал');
         app(TakeExit::class)($offer->fresh(), $exit, Actor::Manager, $this->manager);
@@ -68,7 +67,7 @@ class DealPayerTest extends TestCase
         return $deal->fresh();
     }
 
-    /** ПРАЙМ, договор на менеджера, платит он — счёт с разбивкой и удержанием. */
+    /** ПРАЙМ, договор на менеджера, платит он — счёт одной строкой за вычетом вознаграждения. */
     private function managerDeal(): Deal
     {
         $deal = $this->deal();
@@ -94,12 +93,10 @@ class DealPayerTest extends TestCase
         $invoice = $this->sale($deal);
         $this->assertSame($party->id, $invoice->party_id);
         $this->assertSame(InvoiceState::Void, $before->fresh()->state);
-        // Посторонний — одна строка (разбивка показала бы закупочную и долю менеджера) за вычетом вознаграждения: «удерживает
-        // сам» — менеджер берёт его с покупателя (16.11.2026, владелец по сделке 412 Совкомбанка), договор — на ту же сумму.
+        // Одна строка за вычетом вознаграждения, кто бы ни платил (18.11.2026: вознаграждения мы не выплачиваем), договор — на
+        // ту же сумму.
         $this->assertSame([1020000.0], $invoice->charges()->pluck('price')->map(fn ($p) => (float) $p)->all());
         $this->assertEqualsWithDelta(1020000, $invoice->remaining(), 0.01);
-        $this->assertTrue($deal->fresh()->withholds());
-        $this->assertTrue($deal->fresh()->buyerPaysReward());
 
         // Ссылка (по счёту продажи её заводят руками) — на плательщика счёта, и только после «Отправить менеджеру» (17.11.2026).
         $this->sendToManager($deal);
@@ -113,7 +110,7 @@ class DealPayerTest extends TestCase
         $this->assertSame($party->id, $again->id);
         $this->assertSame(1, Party::where('inn', '7700000000')->count());
 
-        // Обратно на менеджера — разбивка и удержание, ссылка прежнего плательщика погашена.
+        // Обратно на менеджера — та же сумма одной строкой, ссылка прежнего плательщика погашена.
         app(SetDealPayer::class)($deal->fresh(), $this->manager, ['payer' => 'manager']);
         $back = $this->sale($deal);
         $this->assertSame($this->manager->fresh()->party_id, $back->party_id);
@@ -130,7 +127,7 @@ class DealPayerTest extends TestCase
      */
     public function test_selection_has_no_payer_and_no_invoice_until_requested(): void
     {
-        $deal = $this->deal(CommissionMode::Payout, DealScheme::Insurer, 'supplier');
+        $deal = $this->deal(DealScheme::Insurer, 'supplier');
         $invoice = $deal->issuedInvoices()->sole();
         $this->assertSame($this->manager->fresh()->party_id, $invoice->party_id);
         $this->assertFalse($invoice->isDocument());
@@ -146,7 +143,7 @@ class DealPayerTest extends TestCase
     /** «Плательщик платит — ООО «Р.О.С.»» (16.11.2026): счёт подбора от Р.О.С., без ссылки; обратно ПРАЙМ — со ссылкой; оплатили — не меняется. */
     public function test_fee_seller_switches_selection_invoice(): void
     {
-        $deal = $this->deal(CommissionMode::Payout, DealScheme::Insurer, 'supplier');
+        $deal = $this->deal(DealScheme::Insurer, 'supplier');
         \App\Billing\Party::seller(\App\Billing\Seller::Ros)->forceFill(['inn' => '7700000001', 'bank_name' => 'Банк', 'account' => '40702810000000000001', 'bik' => '044525000'])->save();
         $first = $deal->issuedInvoices()->sole();
         $this->assertSame(\App\Billing\Seller::Prime, $first->seller);

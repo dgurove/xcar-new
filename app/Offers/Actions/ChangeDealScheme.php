@@ -41,7 +41,7 @@ final class ChangeDealScheme
         if ($deal->payer?->isOurs()) {
             $deal->forceFill(['payer_party_id' => null])->save();
         }
-        ($this->money)($deal->fresh(), $by, $deal->commission, $deal->commission_mode, $scheme, $deal->share, 'Схема: '.$was->label().' → '.$scheme->label());
+        ($this->money)($deal->fresh(), $by, $deal->commission, $scheme, $deal->share, 'Схема: '.$was->label().' → '.$scheme->label());
         $deal = $deal->fresh(['offer', 'contract.buyer.party']);
         // «Через Р.О.С.» — с НДС (17.11.2026, владелец): цены машины встают «С НДС» сами (галки НДС в окне сделки нет); обратно
         // схема за НДС идёт сама (`SchemeFollowsVat`), здесь круга нет — схема уже Р.О.С.

@@ -7,7 +7,7 @@
      цена и «Нам», остальной расклад свёрнут. 07.10.2026: кнопки шторок .sheet-foot. --}}
 @props(['deal', 'compact' => false, 'skip' => [], 'window' => false])
 @php
-    use App\Support\Money; use App\Billing\InvoiceState; use App\Offers\CommissionState; use App\Offers\CommissionMode;
+    use App\Support\Money; use App\Billing\InvoiceState;
     $offer = $deal->offer;
     $invoices = $deal->shownInvoices();
     // Строка «Плательщик» (`x-deal.payer`, 16.11.2026) — у идущей сделки с менеджером: над счетами, без счёта — своей группой.
@@ -19,10 +19,7 @@
     // Разовые оплаты по ссылке с машиной сделки (09.10.2026): их деньги лежат в счетах сделки зачётом, что не легло — сверх.
     $credits = $deal->credits()->with(['party', 'offer', 'payments', 'payLinks.attempts', 'payLinks.creator', 'payLinks.payerUser'])->get();
     $extra = $credits->isNotEmpty() ? $deal->creditExtra() : 0;
-    $fee = $invoices->first(fn ($i) => $i->isAgentFee());
     $issued = $invoices->reject(fn ($i) => $i->isOwed());
-    $state = $deal->commissionState();
-    $party = $deal->buyer ? \App\Billing\Party::forUser($deal->buyer, false) : null;
     // Этап «Проверка оплаты» сам показывает заявку менеджера с «Поступило» — здесь она только строкой, без второй пары кнопок.
     // Шаг оплаты сам несёт «Деньги пришли» (`x-route.path`) — у строки счёта её тогда нет.
     $payStep = $deal->isActive() && $offer->position()?->stage->isPayStep();
@@ -79,8 +76,8 @@
             <div data-controller="sheet" class="contents" data-action="deal-money-{{ $deal->id }}:open@window->sheet#open">
                 <x-ui.sheet id="deal-money-{{ $deal->id }}" title="Деньги сделки">
                     @if ($deal->isGarageManager())
-                        {{-- Гаражная «платит менеджер»: вознаграждение менеджеру ползунком (16.11.2026), в форму — «нам по ссылке», счёт со
-                             ссылкой встаёт сам (`SyncDealInvoices`). --}}
+                        {{-- Гаражная «платит менеджер»: вознаграждение и услуги подбора ползунком (16.11.2026), в форму — услуги подбора
+                             (`deals.share`), счёт со ссылкой встаёт сам (`SyncDealInvoices`). --}}
                         <form method="post" action="/work/deals/{{ $deal->id }}/money" class="flex flex-col gap-4">
                             @csrf @method('put')
                             <x-deal.reward-split name="share" mode="ours" :id="'deal-share-'.$deal->id" :value="$deal->share" :margin="$deal->offer?->asking_price && $deal->cost !== null ? (int) $deal->offer->asking_price - (int) $deal->cost : null"/>
@@ -88,7 +85,7 @@
                         </form>
                     @else
                         {{-- Схема — своей строкой «Схема» (`x-deal.scheme`, 03.11.2026): здесь только вознаграждение. --}}
-                        <x-offer.money-form :action="'/work/deals/'.$deal->id.'/money'" method="put" :amount="$deal->amount" :cost="$deal->cost" :commission="$deal->commission" :fee="! $deal->isDirect()" :mode="$deal->commission_mode"
+                        <x-offer.money-form :action="'/work/deals/'.$deal->id.'/money'" method="put" :amount="$deal->amount" :cost="$deal->cost" :commission="$deal->commission" :fee="! $deal->isDirect()"
                             :scheme="\App\Offers\DealScheme::choiceFor($deal->offer->vendor?->deal_format, $deal->schemeOf())" scheme-locked :owner-price="$deal->owner_price" :owner-locked="true" :supplier-cost="$deal->supplier_cost" :share="$deal->isGarage() ? null : $deal->buyer?->deal_share" submit="Сохранить"/>
                     @endif
                 </x-ui.sheet>
@@ -106,27 +103,25 @@
         // цена сделки, `cost` — закупочная гаража до продажи) и кто платит поставщику (`payer` — в сведениях под менеджером).
         $skips = fn (string $k) => in_array($k, $skip, true);
         if ($deal->isGarage()) {
-            // Гаражная: цены нет, вознаграждение назначат при продаже из гаража; важно, кто платит поставщику.
+            // Гаражная: цены нет, вознаграждение посчитаем при продаже из гаража; важно, кто платит поставщику.
             if (! $skips('payer') && ! ($deal->namesBuyer() && $deal->amount !== null)) $rows[] = ['В гараж', $deal->garagePayerLine(), 'text-right font-medium', true];
             if ($deal->namesBuyer() && $deal->amount !== null) $rows[] = ['Цена продажи', Money::rub($deal->amount), $dd.' font-medium', true];
-            if ($deal->isGarageManager()) $rows[] = ['Нам по ссылке', $deal->share ? Money::rub($deal->share) : 'не вписано', $dd, false];
         } elseif ($deal->isAuction() && ! $skips('amount')) {
             $rows[] = ['Цена на аукционе', $deal->amount === null ? 'не указана' : Money::rub($deal->amount), $dd.' font-medium', true];
         }
-        // Закупочная, разница, «страховой» — в «Оплате поставщику»; вознаграждение — вторым этажом «Нам» (15.11.2026: раскладка
-        // из пяти строк повторяла соседние блоки).
-        // Вознаграждение — своей строкой над «Нам», как платится — в её подписи (15.11.2026, владелец: «кривая вёрстка» — подпись
-        // под «Нам» в три этажа). Реквизитов для выплаты нет — меткой ниже.
-        $feeNoPayout = $deal->commission && ! $deal->withholds() && $party && ! $party->payoutReady();
+        // Закупочная, разница, «страховой» — в «Оплате поставщику» (15.11.2026: раскладка из пяти строк повторяла соседние блоки).
+        // Нас интересуют закупочная и услуги подбора (18.11.2026, владелец): вознаграждение менеджера — просто числом, без слов
+        // о том, как он его получает; то, что остаётся нам сверх закупочной, — «Услуги подбора».
         $feeShown = $deal->commission && ! $deal->isAuction() && (! $deal->isGarage() || ($deal->namesBuyer() && $deal->amount !== null));
-        if ($feeShown) $rows[] = [match (true) {
-            $deal->selfBuy() => 'Вычтено из оплаты менеджера',
-            $deal->isPrime() && $deal->commission_mode === CommissionMode::Withheld => 'Менеджер оставляет себе',
-            $deal->isPrime() => 'Выплачиваем менеджеру',
-            default => 'Вознаграждение менеджера',
-        }, Money::rub($deal->commission), $dd, false];
+        if ($feeShown) $rows[] = ['Вознаграждение менеджера', Money::rub($deal->commission), $dd, false];
         $ours = $deal->ours() === null ? null : $deal->ours() + $deal->supplierGain();
-        if ($ours !== null) $rows[] = ['Нам', Money::rub($ours), $dd.' text-lg font-semibold'.($ours < 0 ? ' text-danger' : ''), true];
+        // Услуги подбора — счётом ниже (ДКП, «страховой», доля гаража): там же заголовком с суммой, второй раз строкой не пишем.
+        $feeBilled = ($deal->paysSelection() || $deal->isGarageManager()) && $invoices->contains(fn ($i) => $i->kind === \App\Billing\ChargeKind::Selection && $i->state !== InvoiceState::Void);
+        if ($deal->isGarageManager() && ! $feeBilled) {
+            $rows[] = ['Услуги подбора', $deal->share ? Money::rub($deal->share) : 'не вписано', $dd.' text-lg font-semibold', true];
+        } elseif (! $feeBilled && ! $deal->isGarageManager() && $ours !== null) {
+            $rows[] = ['Услуги подбора', Money::rub($ours), $dd.' text-lg font-semibold'.($ours < 0 ? ' text-danger' : ''), true];
+        }
         $rest = $compact ? array_filter($rows, fn ($r) => ! $r[3]) : [];
         $shown = $compact ? array_filter($rows, fn ($r) => $r[3]) : $rows;
     @endphp
@@ -158,19 +153,10 @@
     @if ($top !== '')<div class="list mb-3 last:mb-0">{!! $top !!}</div>@endif
     {{-- Пустая строка (ни режима, ни состояния, ни «Ещё счёт») не рисуется — под схемой была дыра (12.11.2026). --}}
     @php ob_start(); @endphp
-        {{-- Схема и режим вознаграждения — текстом, состояние словом, «Ещё счёт» — действием (10.10.2026). --}}
-        {{-- Схема — строкой «Схема» выше (`x-deal.scheme`); здесь — аукцион вне системы и режим вознаграждения. --}}
-        {{-- Оформляет на себя (13.11.2026): вознаграждение вычитается из того, что он платит, — словами, при любой схеме. --}}
-        {{-- На странице и в окне «как» и «реквизитов нет» — у строки «Вознаграждение» (15.11.2026); здесь — в карточке строки. --}}
+        {{-- Схема — строкой «Схема» выше (`x-deal.scheme`); здесь — аукцион вне системы. --}}
         @if ($deal->isAuction() && $invoices->isEmpty())
             <span class="text-sm text-ink-muted">Счёт вне системы</span>
-        @elseif ($compact && $deal->selfBuy() && $deal->commission)
-            <span class="text-sm text-ink-muted">На себя, вознаграждение вычтено из оплаты</span>
-        @elseif ($compact && $deal->commission && $deal->isPrime())
-            <span class="text-sm text-ink-muted">Вознаграждение: {{ mb_strtolower($deal->commission_mode->label()) }}</span>
         @endif
-        @if (! in_array($state, [CommissionState::Hidden, CommissionState::Withheld]))<x-ui.state :tone="$state->tone()">{{ mb_strtolower($state->label()) }}{{ $state === CommissionState::Payable && $fee ? ' до '.\App\Support\Ago::day($fee->due_at) : '' }}{{ $state === CommissionState::Paid && $fee?->paid_at ? ' '.\App\Support\Ago::day($fee->paid_at) : '' }}</x-ui.state>@endif
-        @if ($feeNoPayout)<span class="text-sm text-ink-muted">Реквизитов для выплаты нет</span>@endif
     @php $chips = trim(ob_get_clean()); @endphp
     @if ($chips !== '')<div class="mt-3 flex flex-wrap items-center gap-1.5">{!! $chips !!}</div>@endif
     {{-- Ссылки на оплату — одной группой строк `x-billing.link-row` (09.10.2026): ссылка счёта сделки и ручные, засчитанные
@@ -206,12 +192,13 @@
                     // Деньги по VIN из выписки (12.11.2026) — «Пришло по выписке», не «вручную» (даты — строками поступлений верхом
                     // «Продажи», `x-deal.arrivals`, 18.11.2026); счёта ещё нет — сходится ли
                     // с ним: «не хватает» красным числом (`Deal::arrivedBalance`), до продажи — против закупочной.
+                    // Сверх счёта — услуги подбора (18.11.2026, владелец: «все переплаты сверх закупочных — плата за услуги подбора»).
                     $bank = $credits->flatMap->payments->first(fn ($p) => $p->source === \App\Billing\PaymentSource::Bank);
                     $arrived = $deal->arrivedBalance();
                     $short = $arrived && $arrived['diff'] <= -1;
                     $over = $arrived && $arrived['against'] === 'invoice' && $arrived['diff'] >= 1;
                 @endphp
-                <div class="row">@if ($links->isEmpty())<span class="min-w-0 flex-1"><span class="block">{{ $bank ? 'Пришло по выписке' : 'Оплачено вручную' }}</span><span class="row-sub">@if ($short)<span class="whitespace-nowrap">{{ $arrived['against'] === 'cost' ? 'до закупочной не хватает' : 'не хватает' }} <span class="nums text-danger">{{ Money::rub(abs($arrived['diff'])) }}</span></span>@elseif ($over)<span class="whitespace-nowrap">переплата <span class="nums">{{ Money::rub($arrived['diff']) }}</span></span>@else{{ $deal->agreed() && $issued->isNotEmpty() ? 'сверх сделки' : 'засчитаем, когда выставим счёт' }}@endif</span></span>@else<span class="min-w-0 flex-1 text-ink-muted">{{ $deal->agreed() && $issued->isNotEmpty() ? 'Сверх сделки' : 'Засчитаем, когда выставим счёт' }}</span>@endif<span class="nums shrink-0">{{ Money::rub($extra) }}</span></div>
+                <div class="row">@if ($links->isEmpty())<span class="min-w-0 flex-1"><span class="block">{{ $bank ? 'Пришло по выписке' : 'Оплачено вручную' }}</span><span class="row-sub">@if ($short)<span class="whitespace-nowrap">{{ $arrived['against'] === 'cost' ? 'до закупочной не хватает' : 'не хватает' }} <span class="nums text-danger">{{ Money::rub(abs($arrived['diff'])) }}</span></span>@elseif ($over || ($deal->agreed() && $issued->isNotEmpty()))услуги подбора@else{{ 'засчитаем, когда выставим счёт' }}@endif</span></span>@else<span class="min-w-0 flex-1 text-ink-muted">{{ $deal->agreed() && $issued->isNotEmpty() ? 'Услуги подбора' : 'Засчитаем, когда выставим счёт' }}</span>@endif<span class="nums shrink-0">{{ Money::rub($extra) }}</span></div>
             @endif
         </div>
     @endif
@@ -239,24 +226,14 @@
             {{-- Плательщик — один на счёт и ссылку, строкой над ними (16.11.2026, `x-deal.payer`). --}}
             @if ($ourBills->contains(fn ($i) => $i->kind === \App\Billing\ChargeKind::Selection) && $deal->buyer_id)<x-deal.fee-seller :deal="$deal"/>@endif
             @if ($payerRow)<x-deal.payer :deal="$deal" :action="'/work/deals/'.$deal->id.'/payer'" :editable="auth()->user()?->canEditDeals()"/>@endif
-            @foreach ($invoices as $i)
+            {{-- Наших выплат по сделке нет (18.11.2026: вознаграждение менеджеру мы не выплачиваем) — только наши счета. --}}
+            @foreach ($issued as $i)
                 @php
-                    $link = ! $i->isOwed() && $i->state !== InvoiceState::Paid ? $last($i, true) : null;
+                    $link = $i->state !== InvoiceState::Paid ? $last($i, true) : null;
                     [$linkState, $linkTone] = $link ? \App\Http\Admin\MoneyLinks::short($link) : [null, null];
                     $pdf = $i->hasPdf() && $i->state !== InvoiceState::Void ? '/work/money/invoices/'.$i->id.'/pdf' : null;
                 @endphp
-                @if ($i->isOwed())
-                    <div class="row">
-                        <a href="{{ \App\Http\Admin\MoneyController::url($i) }}" class="min-w-0 flex-1" data-turbo-frame="_top"><span class="block">Выплата менеджеру</span><span class="row-sub"><x-billing.light :invoice="$i"/></span></a>
-                        <span class="nums shrink-0 font-semibold">{{ Money::rub($i->remaining() > 0 ? $i->remaining() : $i->total) }}</span>
-                        @if ($i->isAgentFee() && $i->state === InvoiceState::Issued)
-                            <span data-controller="sheet" class="contents">
-                                <x-ui.button type="button" size="sm" data-action="sheet#open">Выплатить</x-ui.button>
-                                <x-ui.sheet id="pay-{{ $i->id }}" :title="'Выплата '.$i->party->name"><x-billing.pay-form :invoice="$i" :action="'/work/money/invoices/'.$i->id.'/payments'" sheet/></x-ui.sheet>
-                            </span>
-                        @endif
-                    </div>
-                @elseif (! $i->isDocument())
+                @if (! $i->isDocument())
                     {{-- Комиссия ПРАЙМ — без счёта (18.11.2026, владелец: «счёт на комиссию мы больше не формируем, только либо по ссылке
                          либо наличкой», «PDF вообще не нужен»): ни строки-документа, ни номера. Не отправлено — кнопка «Отправить ссылку
                          на оплату», отправлено — сама ссылка строкой ниже, оплачено — словом с датой. --}}

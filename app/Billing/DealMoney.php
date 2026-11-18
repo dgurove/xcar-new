@@ -3,7 +3,6 @@
 namespace App\Billing;
 
 use App\Garage\Car as GarageCar;
-use App\Offers\CommissionState;
 use App\Offers\Deal;
 use App\Offers\DealState;
 use App\Support\Ago;
@@ -22,9 +21,10 @@ final class DealMoney
 
     /**
      * Направление сказано словом (06.10.2026, владелец: «почему мы должны Бородину 1 690 000» — он был должен нам, а
-     * число стояло без слов). Менеджеру — «К оплате» / «Вам к выплате», сотруднику (`staff`) — третьим лицом:
-     * «должен нам» / «должны ему». Деньги строки — `toUs` (его счета, что ещё не оплачены), `toHim` (наша выплата к
-     * перечислению), `overdue`, `claimed`: итоги «Денег» и «Расчётов с менеджерами» — сумма строк, а не свой запрос.
+     * число стояло без слов). Менеджеру — «К оплате», сотруднику (`staff`) — третьим лицом: «должен нам». Деньги строки —
+     * `toUs` (его счета, что ещё не оплачены), `toHim` (наша выплата за перевозку — логистам), `overdue`, `claimed`: итоги
+     * «Денег» и «Расчётов с менеджерами» — сумма строк, а не свой запрос. Вознаграждений менеджерам мы не выплачиваем
+     * (18.11.2026): у сделки оно только числом.
      */
     private function __construct(
         public readonly string $phrase,
@@ -39,10 +39,10 @@ final class DealMoney
         public readonly ?CarbonInterface $due = null, // ближний срок его оплаты нам
     ) {}
 
-    /** Счета, что платит менеджер или его покупатель: без выплат ему и без счёта вендору за вознаграждение. */
+    /** Счета, что платит менеджер или его покупатель (без наших выплат). */
     public static function payable($invoices)
     {
-        return $invoices->filter(fn (Invoice $i) => ! $i->isOwed() && $i->kind !== ChargeKind::Reward && $i->state === InvoiceState::Issued)
+        return $invoices->filter(fn (Invoice $i) => ! $i->isOwed() && $i->state === InvoiceState::Issued)
             ->sortBy(fn (Invoice $i) => [$i->due_at ? 0 : 1, $i->due_at?->timestamp ?? 0, $i->id])->values();
     }
 
@@ -56,8 +56,6 @@ final class DealMoney
         }
         $issued = $invoices->reject(fn (Invoice $i) => $i->isOwed());
         $open = self::payable($invoices);
-        $fee = $invoices->first(fn (Invoice $i) => $i->isAgentFee() && $i->state !== InvoiceState::Void);
-        $state = $deal->commissionState();
         // Гаражная сделка цены подтверждения не знает: её счёт (Каркаде, платит менеджер) — от закупочной.
         $label = $deal->isGarage() ? 'В гараж' : 'Цена подтверждения';
         // Покупатель с гаражом закупочной не видит нигде (20.10.2026): его число — его цена.
@@ -85,16 +83,12 @@ final class DealMoney
             $claimed = round($open->sum(fn (Invoice $i) => $i->claimed()), 2);
             $late = round($open->filter->isOverdue()->sum(fn (Invoice $i) => $i->remaining()), 2);
             $caption = $staff ? 'должен нам' : 'К оплате';
-            // Выплату уже выставили, а потом пришёл ещё счёт (хранение) — строка про счёт, но и выплату называет: она в
-            // итогах «должны ему», и в строках её должно быть видно.
-            $toHim = $fee && $fee->state === InvoiceState::Issued ? $fee->remaining() : 0;
-            $also = $toHim > 0 ? ($staff ? ', ему к выплате ' : ', вам к выплате ').Money::rub($toHim) : '';
-            $money = ['toUs' => $left, 'overdue' => $late, 'claimed' => $claimed, 'toHim' => $toHim, 'due' => $first->due_at];
+            $money = ['toUs' => $left, 'overdue' => $late, 'claimed' => $claimed, 'due' => $first->due_at];
             if ($claimed > 0) {
-                return new self(($staff ? 'Сообщил об оплате' : 'Оплата ждёт подтверждения').$also, $left, 'muted', 'pay', $caption, ...$money);
+                return new self($staff ? 'Сообщил об оплате' : 'Оплата ждёт подтверждения', $left, 'muted', 'pay', $caption, ...$money);
             }
             if ($late > 0) {
-                return new self($first->overdueLabel(true).$also, $left, 'urgent', 'pay', $caption, ...$money);
+                return new self($first->overdueLabel(true), $left, 'urgent', 'pay', $caption, ...$money);
             }
             $byBuyer = $deal->isPrime() && $deal->buyer && $first->party_id !== $deal->buyer->party_id;
             $phrase = match (true) {
@@ -106,7 +100,7 @@ final class DealMoney
                 default => 'Оплатите до ',
             };
 
-            return new self($phrase.$date($first->due_at).$also, $left, $first->light() === 'urgent' ? 'urgent' : 'plain', 'pay', $caption, ...$money);
+            return new self($phrase.$date($first->due_at), $left, $first->light() === 'urgent' ? 'urgent' : 'plain', 'pay', $caption, ...$money);
         }
         // Счёт встал, но менеджеру не отправлен — «Счёт готовится» серым, а не оранжевое «Укажите покупателя».
         if ($issued->isEmpty() && $deal->isActive() && ($notYet = $deal->invoiceNotYet()) !== null) {
@@ -123,36 +117,20 @@ final class DealMoney
                 : new self('Счёт ещё не выставлен', $base, 'muted', 'open', $label);
         }
 
-        $mine = $staff ? 'вознаграждение' : 'Вознаграждение';
-        // Вознаграждение — его прибыль: оставленное себе (ДКП, страховой, удержал из счёта) — зелёным.
-        if ($deal->buyerPaysReward() && $deal->commission) {
-            return new self($staff ? 'Берёт с покупателя' : 'Получите от покупателя', (float) $deal->commission, 'profit', 'closed', $mine);
-        }
-        if (($deal->paysSelection() || $deal->withholds()) && $deal->commission) {
-            return new self($staff ? 'Оставил себе' : 'Оставили себе', (float) $deal->commission, 'profit', 'closed', $mine);
-        }
-
-        return match ($state) {
-            CommissionState::Payable => $staff
-                ? new self('Выплатить до '.$date($fee->due_at), $fee->remaining(), 'accent', 'payout', 'должны ему', toHim: $fee->remaining())
-                : new self('К выплате до '.$date($fee->due_at), $fee->remaining(), 'accent', 'payout', 'Вам к выплате', toHim: $fee->remaining()),
-            CommissionState::Paid => new self(($staff ? 'Выплатили ' : 'Выплачено ').$date($fee->paid_at), (float) $deal->commission, 'muted', 'closed', $mine),
-            // Его счета оплачены, выплата ещё не выставлена (ждёт счёт вендора или очередь) — это не «закрыто».
-            CommissionState::Awaiting => new self($staff ? 'Выплата после оплаты всех счетов' : 'Выплатим после оплаты всех счетов', (float) $deal->commission, 'muted', 'payout', $mine),
-            default => new self('Счёт оплачен', $base, 'muted', 'closed', $label),
-        };
+        // Счета оплачены: у менеджера — его вознаграждение числом (зелёным — его деньги), без слов о том, как он его получает.
+        return $deal->commission
+            ? new self('Вознаграждение', (float) $deal->commission, 'profit', 'closed')
+            : new self('Счёт оплачен', $base, 'muted', 'closed', $label);
     }
 
     /**
-     * Расчёт машины в гараже строкой «Денег»: счёт «отдать нам» или выплата менеджеру — только его; счёт его
-     * покупателю менеджеру не платить. Продали в минус — в `invoice_id` лежит наша выплата (`owed`), а не его счёт.
-     * Нечего показать — null.
+     * Расчёт машины в гараже строкой «Денег»: счёт «отдать нам» — только его; счёт его покупателю менеджеру не платить.
+     * Нечего показать — null. Старые выплаты (`owed`, до 18.11.2026) — не его счёт, их тут нет.
      */
     public static function garage(GarageCar $car, User $manager, bool $staff = false): ?self
     {
         $mine = fn (?Invoice $i) => $i && $i->state !== InvoiceState::Void && $manager->party_id && $i->party_id === $manager->party_id;
         $invoice = $mine($car->invoice) ? $car->invoice : null;
-        $payout = $mine($car->payoutInvoice) ? $car->payoutInvoice : ($invoice?->isOwed() ? $invoice : null);
         $invoice = $invoice?->isOwed() ? null : $invoice;
         $date = fn ($at) => Ago::day($at);
         if ($invoice && $invoice->state === InvoiceState::Issued) {
@@ -166,20 +144,16 @@ final class DealMoney
                 default => new self(($staff ? 'Оплатит до ' : 'Оплатите до ').$date($invoice->due_at), $left, $invoice->light() === 'urgent' ? 'urgent' : 'plain', 'pay', $caption, ...$money),
             };
         }
-        if ($payout) {
-            return self::payout($payout, $staff);
-        }
-
         return $invoice ? new self('Оплачено', (float) $invoice->total, 'muted', 'closed', $staff ? 'оплатил' : 'Отдали нам') : null;
     }
 
-    /** Перевозка партнёра (логистика, 10.10.2026) строкой «Денег»: наш долг ему за эвакуацию — как выплата гаража. */
+    /** Перевозка партнёра (логистика, 10.10.2026) строкой «Денег»: наш долг ему за эвакуацию. */
     public static function transport(Invoice $invoice, bool $staff = false): self
     {
         return self::payout($invoice, $staff);
     }
 
-    /** Наша выплата менеджеру (`owed`): к выплате до срока — или выплачено. */
+    /** Наша выплата за перевозку (`owed`): к выплате до срока — или выплачено. */
     private static function payout(Invoice $payout, bool $staff): self
     {
         $date = fn ($at) => Ago::day($at);

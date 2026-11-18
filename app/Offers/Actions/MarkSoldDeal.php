@@ -2,9 +2,7 @@
 
 namespace App\Offers\Actions;
 
-use App\Billing\Actions\IssueAgentFee;
 use App\Billing\Actions\RecordPayment;
-use App\Billing\ChargeKind;
 use App\Billing\Invoice;
 use App\Billing\InvoiceState;
 use App\Billing\PaymentSource;
@@ -44,7 +42,7 @@ use Illuminate\Validation\ValidationException;
  */
 final class MarkSoldDeal
 {
-    public function __construct(private PlaceOnStage $place, private RecordPayment $pay, private AgreeDeal $agree, private IssueAgentFee $fee,
+    public function __construct(private PlaceOnStage $place, private RecordPayment $pay, private AgreeDeal $agree,
         private MarkSold $markSold, private SetCarPlace $carPlace, private Cancel $cancel) {}
 
     public static function allows(?Deal $deal, ?User $by = null): bool
@@ -65,10 +63,10 @@ final class MarkSoldDeal
         return $stop($stage) ? FastForward::here($stage) : FastForward::from($deal, $stage, $stop);
     }
 
-    /** Наши неоплаченные счета менеджеру по сделке (вознаграждение вендору — не его). */
+    /** Наши неоплаченные счета менеджеру по сделке. */
     public static function unpaid(Deal $deal): Collection
     {
-        return $deal->issuedInvoices()->where('state', InvoiceState::Issued)->where('kind', '!=', ChargeKind::Reward)->get()
+        return $deal->issuedInvoices()->where('state', InvoiceState::Issued)->get()
             ->filter(fn (Invoice $i) => $i->remaining() > 0.005)->values();
     }
 
@@ -116,9 +114,8 @@ final class MarkSoldDeal
                 foreach ($bills as $bill) {
                     $snap['payments'][] = ($this->pay)($bill, $by, $bill->remaining(), $at, PaymentSource::Bank, note: 'Уже продана: оплачено вне системы')->id;
                 }
-                if ($deal->refresh()->fullyPaid()) {
-                    ($this->fee)($deal->setRelation('offer', $offer), $by);
-                }
+                // Оплата сдвигает сделку (даты, шаг) — дальше работаем со свежей.
+                $deal->refresh()->setRelation('offer', $offer);
                 // Счёта нет (ПРАЙМ без покупателя), а «заплатил» сказал человек — «Продано» его датой, руками: оплаты, по которой
                 // `StampDealMoney` её бы поставил, нет.
                 if ($bills->isEmpty() && DealDates::soldColumn($deal) === 'paid_in_at' && ! $deal->paid_in_at) {

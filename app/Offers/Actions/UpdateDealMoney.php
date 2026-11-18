@@ -5,7 +5,6 @@ namespace App\Offers\Actions;
 use App\Billing\Actions\VoidInvoice;
 use App\Billing\ChargeKind;
 use App\Billing\InvoiceState;
-use App\Offers\CommissionMode;
 use App\Offers\Deal;
 use App\Offers\DealContract;
 use App\Offers\DealScheme;
@@ -16,7 +15,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 /**
- * Поправить деньги сделки: схему оплаты, вознаграждение, режим, гаражной — сколько нам по ссылке. Закупочная и сумма собственнику
+ * Поправить деньги сделки: схему оплаты, вознаграждение менеджера, гаражной — сколько нам по ссылке. Закупочная и сумма собственнику
  * закреплены с принятия и здесь не правятся (15.10.2026).
  * Пока за наши счета не платили (`Deal::moneyEditable`): счета, что ставятся сами, перевыставит `SyncDealInvoices`.
  */
@@ -24,7 +23,7 @@ final class UpdateDealMoney
 {
     public function __construct(private SyncDealInvoices $invoices) {}
 
-    public function __invoke(Deal $deal, User $by, ?int $commission, CommissionMode $mode, ?DealScheme $scheme = null, ?int $share = null, ?string $note = null): void
+    public function __invoke(Deal $deal, User $by, ?int $commission, ?DealScheme $scheme = null, ?int $share = null, ?string $note = null): void
     {
         if (! $deal->moneyEditable()) {
             throw ValidationException::withMessages(['commission' => 'По счёту сделки уже платили, сначала отмените оплату']);
@@ -35,12 +34,12 @@ final class UpdateDealMoney
         $scheme ??= $deal->schemeOf();
         $selection = $scheme->paysSelection() && ! $deal->isGarage();
         $wasSelection = $deal->paysSelection();
-        // Гаражная Совкомбанка (`namesBuyer`) — деньги как у обычной ПРАЙМ: вознаграждение назначаем мы, когда менеджер продал.
+        // Гаражная Совкомбанка (`namesBuyer`) — деньги как у обычной ПРАЙМ: вознаграждение считаем мы, когда менеджер продал.
         $garage = $deal->isGarage() && ! $deal->namesBuyer();
-        DB::transaction(function () use ($deal, $by, $commission, $mode, $scheme, $selection, $wasSelection, $share, $garage, $note) {
+        DB::transaction(function () use ($deal, $by, $commission, $scheme, $selection, $wasSelection, $share, $garage, $note) {
             $deal->update($garage
                 ? ['scheme' => $scheme, 'share' => $deal->isGarageManager() ? $share : null]
-                : ['commission' => $commission, 'commission_mode' => $selection ? CommissionMode::Withheld : $mode, 'scheme' => $scheme,
+                : ['commission' => $commission, 'scheme' => $scheme,
                     // Сумма собственнику закреплена с принятия, как и закупочная (15.10.2026, владелец: «никогда»).
                     'owner_price' => $selection ? ($deal->owner_price ?? $deal->cost) : null]);
             $deal->offer->log(OfferEventType::Note, $by, ['text' => $note ?? match (true) {
@@ -49,7 +48,7 @@ final class UpdateDealMoney
                     ? 'Вознаграждение менеджеру '.Money::rub((int) $deal->offer->asking_price - (int) $deal->cost - (int) $deal->share).', ' : '')
                     .'нам по ссылке '.($deal->share ? Money::rub($deal->share) : 'нет'),
                 $selection => $scheme->payeeLabel().' '.Money::rub((int) $deal->ownerPrice()).', вознаграждение '.($commission ? Money::rub($commission) : 'нет'),
-                default => $scheme->label().', вознаграждение '.($commission ? Money::rub($commission) : 'нет').', '.mb_strtolower($deal->commission_mode->label()),
+                default => $scheme->label().', вознаграждение '.($commission ? Money::rub($commission) : 'нет'),
             }]);
             // Ушли со схемы, где менеджер платит подбор, или стёрли гаражную долю — неоплаченный подбор гаснет (ссылка с ним).
             $fresh = $deal->fresh();

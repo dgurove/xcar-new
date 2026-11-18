@@ -2,17 +2,16 @@ import { Controller } from '@hotwired/stimulus';
 import { nums, rub, rubles } from '../lib/money';
 
 // Деньги при вознаграждении менеджеру: поле с разделителями (на сервер — число) и суммы,
-// пересчитанные на месте. ours — «нам остаётся» (разница минус вознаграждение), due —
-// сколько менеджер отдаёт (база минус вознаграждение); ушло в минус — подпись dueLabel
-// меняется на data-negative: тогда отдаём мы. payout — сколько выплатим менеджеру, когда за машину из гаража платит
-// его покупатель: его расходы (spent) плюс вознаграждение. price — цену вписывают тут же («Отдать» без подтверждения):
+// пересчитанные на месте. ours — услуги подбора (разница минус вознаграждение), due —
+// сколько платят нам (база минус вознаграждение; в минус — ноль: выплат менеджеру нет, 18.11.2026).
+// price — цену вписывают тут же («Отдать» без подтверждения):
 // разница и «нам остаётся» идут за ней, не выше закупочной — форма переспрашивает и шлёт согласие loss. costDisplay —
 // закупочную менеджера вписывает админ при принятии (28.10.2026): разница, взаимозачёт и согласие loss идут за ней.
 // Вознаграждение — ползунком, суммой или процентом от разницы (16.11.2026, `reward_controller`): разницу ему отдаёт
 // shareMargin, доля менеджера `users.deal_share` — предзаполнением куска.
 export default class extends Controller {
-    static targets = ['display', 'amount', 'ours', 'oursLabel', 'due', 'dueLabel', 'payout', 'oursOnly', 'dkpOnly', 'ownerDisplay', 'ownerAmount', 'offset', 'payee', 'price', 'margin', 'loss', 'costDisplay', 'costAmount'];
-    static values = { margin: Number, base: Number, spent: Number, amount: Number, cost: Number };
+    static targets = ['display', 'amount', 'ours', 'due', 'oursOnly', 'dkpOnly', 'ownerDisplay', 'ownerAmount', 'offset', 'payee', 'price', 'margin', 'loss', 'costDisplay', 'costAmount'];
+    static values = { margin: Number, base: Number, amount: Number, cost: Number };
 
     connect() {
         this.input();
@@ -23,7 +22,7 @@ export default class extends Controller {
         return rub(v, kopecks ? 2 : 0);
     }
 
-    // «За ТС платят»: ПРАЙМ — разница и режим; ДКП и страховой — сколько им, нам — подбор (05.10.2026).
+    // «За ТС платят»: ПРАЙМ — разница; ДКП и страховой — сколько им, нам — подбор (05.10.2026).
     // Схема, где покупатель платит не нам (ДКП, страховой): сумма ему, нам — подбор.
     get dkp() {
         return this.element.querySelector('input[name=scheme]:checked')?.dataset.selection === '1';
@@ -34,7 +33,6 @@ export default class extends Controller {
         if (this.hasPayeeTarget && picked?.dataset.payee) this.payeeTarget.textContent = picked.dataset.payee;
         this.oursOnlyTargets.forEach((el) => { el.hidden = this.dkp; });
         this.dkpOnlyTargets.forEach((el) => { el.hidden = !this.dkp; });
-        if (this.hasOursLabelTarget) this.oursLabelTarget.textContent = this.dkp ? this.oursLabelTarget.dataset.dkp : this.oursLabelTarget.dataset.ours;
         this.input();
     }
 
@@ -139,10 +137,7 @@ export default class extends Controller {
             this.oursTarget.classList.toggle('text-danger', ours < 0);
         }
         if (this.hasDueTarget && this.hasBaseValue) {
-            const due = this.baseValue - value;
-            this.dueTarget.textContent = this.money(Math.abs(due));
-            if (this.hasDueLabelTarget) this.dueLabelTarget.textContent = due < 0 ? this.dueLabelTarget.dataset.negative : this.dueLabelTarget.dataset.positive;
+            this.dueTarget.textContent = this.money(Math.max(0, this.baseValue - value));
         }
-        if (this.hasPayoutTarget) this.payoutTarget.textContent = this.money(this.spentValue + value);
     }
 }

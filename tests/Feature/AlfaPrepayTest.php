@@ -13,7 +13,6 @@ use App\Offers\Actions\AssignDealPickup;
 use App\Offers\Actions\PlaceBid;
 use App\Offers\Actions\SaveDealContract;
 use App\Offers\Actions\SyncDealInvoices;
-use App\Offers\CommissionMode;
 use App\Offers\Deal;
 use App\Offers\DealContract;
 use App\Offers\DealScheme;
@@ -71,7 +70,7 @@ class AlfaPrepayTest extends TestCase
 
     private function accept(Offer $offer): Deal
     {
-        return app(AcceptBid::class)(app(PlaceBid::class)($offer, $this->manager, 1200000), $this->admin, 50000, CommissionMode::Payout,
+        return app(AcceptBid::class)(app(PlaceBid::class)($offer, $this->manager, 1200000), $this->admin, 50000,
             scheme: DealScheme::forOffer($offer), ownerPrice: 900000);
     }
 
@@ -210,7 +209,7 @@ class AlfaPrepayTest extends TestCase
     public function test_prime_transfers_to_supplier(): void
     {
         $offer = $this->offer(vat: false);
-        $deal = app(AcceptBid::class)(app(PlaceBid::class)($offer, $this->manager, 1200000), $this->admin, 50000, CommissionMode::Payout, scheme: DealScheme::Prime);
+        $deal = app(AcceptBid::class)(app(PlaceBid::class)($offer, $this->manager, 1200000), $this->admin, 50000, scheme: DealScheme::Prime);
         $this->assertSame(DealScheme::Prime, $deal->scheme);
         $this->toPayStep($offer, $deal);
         app(SaveDealContract::class)(DealContract::for($deal->fresh()), ['buyer_id' => 'me'], $this->manager);

@@ -96,16 +96,16 @@ class DealContract extends Model
         return tap(self::firstOrCreate(['deal_id' => $deal->id], $defaults), fn ($c) => $deal->setRelation('contract', $c->setRelation('deal', $deal)));
     }
 
-    /** Цена договора по деньгам сделки: собственнику (ДКП), закупочная (гаражная), иначе цена подтверждения (у гаражной
-     *  Совкомбанка — цена продажи, которую назвал менеджер; платит покупатель — минус вознаграждение, как в счёте,
-     *  27.10.2026, `Deal::buyerPaysReward`). */
+    /** Цена договора по деньгам сделки: собственнику (ДКП), закупочная (гаражная), иначе — как счёт: цена подтверждения (у
+     *  гаражной Совкомбанка — цена продажи, которую назвал менеджер) минус вознаграждение менеджера, у ПРАЙМ и у Р.О.С.
+     *  (18.11.2026, владелец: «цена минус вознаграждение!!! В ДКП ПРАЙМ, Р.О.С. тоже!!!»). */
     public static function priceFor(Deal $deal): ?int
     {
         return match (true) {
             $deal->isDkp() => $deal->ownerPrice(),
             $deal->isGarage() && ! $deal->namesBuyer() => $deal->cost,
-            $deal->buyerPaysReward() && $deal->amount !== null => max(0, (int) $deal->amount - (int) $deal->commission),
-            default => $deal->amount,
+            $deal->amount !== null => max(0, (int) $deal->amount - (int) $deal->commission),
+            default => null,
         };
     }
 
@@ -157,7 +157,7 @@ class DealContract extends Model
     }
 
     /**
-     * По счёту ПРАЙМ платит сам менеджер (за вычетом своего вознаграждения) — он же покупатель или нет. Плательщик выбран
+     * По счёту ПРАЙМ платит сам менеджер — он же покупатель или нет. Плательщик выбран
      * своей стороной (`deals.payer_party_id`, `SetDealPayer`, 16.11.2026) — менеджер, только если это его сторона.
      */
     public function managerPays(): bool

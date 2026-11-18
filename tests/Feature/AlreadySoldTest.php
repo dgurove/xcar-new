@@ -9,7 +9,6 @@ use App\Offers\Actions\MarkSoldDeal;
 use App\Offers\Actions\PlaceBid;
 use App\Offers\Actions\ReopenDeal;
 use App\Offers\CarPlace;
-use App\Offers\CommissionMode;
 use App\Offers\Deal;
 use App\Offers\DealScheme;
 use App\Offers\DealState;
@@ -56,7 +55,7 @@ class AlreadySoldTest extends TestCase
         $offer->forceFill(['state' => OfferState::Open])->save();
         $offer->viewers()->create(['user_id' => $this->manager->id, 'opens_at' => now()]);
         app(EnterStage::class)($offer, Stage::where('workflow_id', $vendor->fresh()->workflow(Track::Sale)->id)->where('name', 'Приём подтверждений')->firstOrFail());
-        $deal = app(AcceptBid::class)(app(PlaceBid::class)($offer->fresh(), $this->manager, 1200000), $this->admin, 50000, CommissionMode::Payout,
+        $deal = app(AcceptBid::class)(app(PlaceBid::class)($offer->fresh(), $this->manager, 1200000), $this->admin, 50000,
             scheme: DealScheme::forOffer($offer->fresh()), ownerPrice: 900000);
         $o = $offer->fresh();
         $exit = $o->stage()->exits->first(fn ($e) => $e->label === 'Поставщик согласовал' && $e->fits($deal->fresh()));

@@ -12,8 +12,8 @@
         $p->state === PaymentState::Claimed => [$p->source->icon(), $p->source === PaymentSource::Cash ? 'Наличные' : 'Оплата по счёту', ($p->source === PaymentSource::Cash ? 'отдали ' : 'сообщили ').$day.', ждёт подтверждения', 'urgent'],
         // Коротко — строка не разваливается на три (16.11.2026, владелец: «убогая вёрстка»): что засчитана — второй строкой.
         $p->source === PaymentSource::Credit => ['offset', 'Оплата по ссылке', $day.', засчитана', 'open'],
-        // Вычел вознаграждение из счёта — «оставил себе», а не бухгалтерский «зачёт» (06.10.2026).
-        $p->source === PaymentSource::Offset => ['offset', $staff ? 'Менеджер оставил себе вознаграждение' : 'Вы оставили себе вознаграждение', $day, 'muted'],
+        // Вознаграждение, вычтенное в старых счетах зачётом (до 18.11.2026: теперь счёт сразу за вычетом его).
+        $p->source === PaymentSource::Offset => ['offset', 'Вознаграждение', $day, 'muted'],
         $p->source === PaymentSource::Acquiring => [PayMethod::icon($a?->method), 'Оплата по ссылке', $day.' '.PayMethod::label($a?->method)
             .($staff && $a?->fee() > 0 ? ', комиссия '.\App\Support\Money::exact($a->fee()) : '')
             .($staff && $a ? ($a->payout ? ', на счёте с '.\App\Support\Ago::day($a->payout->booked_at) : ', ждёт зачисления') : ''), 'open'],

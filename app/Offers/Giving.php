@@ -36,7 +36,6 @@ final readonly class Giving
         public ?DealScheme $scheme = null,
         public ?int $ownerPrice = null,
         public ?int $commission = null,
-        public CommissionMode $mode = CommissionMode::Payout,
         public ?GaragePayer $payer = null,
         public ?int $share = null,
         public ?string $pickup = null,

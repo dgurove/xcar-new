@@ -1,6 +1,5 @@
 <?php
 
-use App\Offers\CommissionMode;
 use App\Offers\Deal;
 use App\Offers\DealScheme;
 use App\Offers\Actions\UpdateDealMoney;
@@ -33,7 +32,7 @@ return new class extends Migration
 
                 continue;
             }
-            app(UpdateDealMoney::class)($deal, $by, $deal->commission, CommissionMode::Withheld, DealScheme::Insurer);
+            app(UpdateDealMoney::class)($deal, $by, $deal->commission, DealScheme::Insurer);
         }
     }
 };

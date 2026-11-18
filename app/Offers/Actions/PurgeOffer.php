@@ -39,7 +39,7 @@ final class PurgeOffer
             $garage = GarageCar::where('offer_id', $offer->id)->get();
             $invoices = Invoice::where('offer_id', $offer->id)
                 ->orWhereIn('deal_id', $deals)
-                ->orWhereIn('id', $garage->pluck('invoice_id')->merge($garage->pluck('payout_invoice_id'))->filter())
+                ->orWhereIn('id', $garage->pluck('invoice_id')->filter())
                 ->get();
             $subjects = ['/offers/'.$offer->number, ...$deals->map(fn ($d) => '/deals/'.$d)];
 

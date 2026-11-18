@@ -6,7 +6,6 @@ use App\Notifications\ParkPassNotice;
 use App\Offers\Actions\AcceptBid;
 use App\Offers\Actions\CancelDeal;
 use App\Offers\Actions\PlaceBid;
-use App\Offers\CommissionMode;
 use App\Offers\Deal;
 use App\Offers\DealScheme;
 use App\Offers\Handover;
@@ -69,7 +68,7 @@ class ParkReleaseByDealTest extends TestCase
         $vehicle = Vehicle::create(['vendor_id' => $vendor->id, 'yard_id' => $state === VehicleState::Stored ? $yard->id : null, 'state' => $state,
             'accepted_at' => $state === VehicleState::Stored ? now() : null]);
         DB::table('park_vehicles')->where('id', $vehicle->id)->update(['car_id' => $offer->car_id]);
-        $deal = app(AcceptBid::class)(app(PlaceBid::class)($offer->fresh(), $this->manager, 1200000), $this->admin, 50000, CommissionMode::Payout,
+        $deal = app(AcceptBid::class)(app(PlaceBid::class)($offer->fresh(), $this->manager, 1200000), $this->admin, 50000,
             scheme: DealScheme::Insurer, ownerPrice: 900000);
 
         return [$offer->fresh(), $deal, $vehicle->fresh(), $yard];

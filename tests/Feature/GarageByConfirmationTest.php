@@ -11,7 +11,6 @@ use App\Billing\PartyKind;
 use App\Billing\PaymentSource;
 use App\Garage\Actions\AddCost;
 use App\Garage\Actions\EnsurePickup;
-use App\Garage\Actions\IssueGaragePayout;
 use App\Garage\Actions\MarkGarageSold;
 use App\Garage\Actions\MoveCar;
 use App\Garage\Actions\SettleGarageCar;
@@ -64,7 +63,7 @@ class GarageByConfirmationTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_garage_confirmation_runs_route_to_garage_and_pays_manager_back(): void
+    public function test_garage_confirmation_runs_route_to_garage_and_settles_without_payout(): void
     {
         Storage::fake('private');
         $admin = User::create(['name' => 'Владелец', 'phone' => '79000000001', 'roles' => [Role::Admin], 'approved_at' => now()]);
@@ -122,34 +121,22 @@ class GarageByConfirmationTest extends TestCase
         app(MarkGarageSold::class)($car, ['sold_price' => 1500000], $manager);
         $buyer = Party::create(['kind' => PartyKind::Person, 'name' => 'Покупатель']);
         $invoice = app(SettleGarageCar::class)($car->fresh(), $admin, 70000, $buyer);
-        $this->assertEquals(1500000, $invoice->total);
+        // Покупателю — цена минус расходы менеджера минус его вознаграждение (18.11.2026: выплат менеджеру нет).
+        $this->assertEquals(1500000 - 50000 - 70000, $invoice->total);
 
-        app(RecordPayment::class)($invoice->fresh(), $admin, 1500000, null, PaymentSource::Bank);
-        $car->refresh();
-        $this->assertSame(CarState::Sold, $car->state);
-        $this->assertEquals(120000, $car->payoutInvoice->total);
-        $this->assertTrue($car->payoutInvoice->isOwed());
-
-        // Аннулировали выплату — машина ждёт её снова, кнопка заводит заново с другим вознаграждением.
-        app(VoidInvoice::class)($car->payoutInvoice, $admin);
-        $car = $car->fresh();
-        $this->assertTrue($car->awaitsPayout());
-        $payout = app(IssueGaragePayout::class)($car, $admin, 80000);
-        $this->assertEquals(130000, $payout->total);
-
-        app(RecordPayment::class)($payout->fresh(), $admin, 130000, null, PaymentSource::Bank);
+        app(RecordPayment::class)($invoice->fresh(), $admin, 1380000, null, PaymentSource::Bank);
         $this->assertSame(CarState::Settled, $car->fresh()->state);
+        $this->assertSame(0, Invoice::where('direction', 'owed')->count());
 
-        // Счёт покупателю перевыставили после выплаты — вторая выплата не появляется, расчёт закрывается по прежней.
+        // Счёт покупателю перевыставили — расчёт снова закрывается его оплатой, выплаты нет.
         $buyerInvoice = $car->fresh()->invoice;
         $buyerInvoice->payments()->get()->each(fn ($p) => app(VoidPayment::class)($p, $admin));
         app(VoidInvoice::class)($buyerInvoice->fresh(), $admin);
-        $car = $car->fresh();
-        $this->assertSame($payout->id, $car->payout_invoice_id);
-        $again = app(SettleGarageCar::class)($car, $admin, 80000, ['kind' => PartyKind::Person, 'name' => 'Покупатель 2']);
-        app(RecordPayment::class)($again->fresh(), $admin, 1500000, null, PaymentSource::Bank);
+        $again = app(SettleGarageCar::class)($car->fresh(), $admin, 80000, ['kind' => PartyKind::Person, 'name' => 'Покупатель 2']);
+        $this->assertEquals(1500000 - 50000 - 80000, $again->total);
+        app(RecordPayment::class)($again->fresh(), $admin, 1370000, null, PaymentSource::Bank);
         $this->assertSame(CarState::Settled, $car->fresh()->state);
-        $this->assertSame(1, Invoice::where('direction', 'owed')->where('state', '!=', 'void')->count());
+        $this->assertSame(0, Invoice::where('direction', 'owed')->count());
     }
 
     /**
@@ -228,7 +215,8 @@ class GarageByConfirmationTest extends TestCase
         $invoice = $deal->fresh()->issuedInvoices()->sole();
         $this->assertSame('Покупаев Пётр Петрович', $invoice->party->name);
         $this->assertEqualsWithDelta(1400000, $invoice->total, 0.01);
-        $this->assertTrue($deal->fresh()->buyerPaysReward());
+        // Счёт — цена продажи минус вознаграждение (1 500 000 − 100 000), одной строкой.
+        $this->assertSame([1400000.0], $invoice->charges()->pluck('price')->map(fn ($p) => (float) $p)->all());
         // Договор — на ту же сумму, что счёт (27.10.2026).
         $this->assertSame(1400000, $deal->fresh()->contract->price);
         $this->sendToManager($deal);

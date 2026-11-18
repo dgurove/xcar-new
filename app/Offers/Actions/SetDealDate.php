@@ -2,7 +2,6 @@
 
 namespace App\Offers\Actions;
 
-use App\Billing\Actions\IssueAgentFee;
 use App\Billing\Actions\RecordPayment;
 use App\Billing\PaymentSource;
 use App\Offers\Deal;
@@ -26,7 +25,7 @@ use Illuminate\Validation\ValidationException;
  */
 final class SetDealDate
 {
-    public function __construct(private RecordPayment $pay, private IssueAgentFee $fee, private TakeExit $take, private ReopenDeal $reopen) {}
+    public function __construct(private RecordPayment $pay, private TakeExit $take, private ReopenDeal $reopen) {}
 
     /**
      * @param  ?User  $by  null — система (выписка, `StampDealMoney`): дата не помечается «руками», счета не трогаются
@@ -55,7 +54,7 @@ final class SetDealDate
                     foreach (MarkSoldDeal::unpaid($deal) as $bill) {
                         ($this->pay)($bill, $by, $bill->remaining(), $at, PaymentSource::Bank, note: 'Оплачено: дата во «Все»');
                     }
-                    $deal->refresh()->fullyPaid() && ($this->fee)($deal->setRelation('offer', $offer), $by);
+                    $deal->refresh()->setRelation('offer', $offer);
                 } elseif (! $at && $deal->fullyPaid()) {
                     throw ValidationException::withMessages(['at' => 'Счета оплачены — оплату отменяют в «Деньгах» сделки']);
                 }

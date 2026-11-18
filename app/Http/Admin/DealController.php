@@ -15,7 +15,6 @@ use App\Offers\Actions\SetReceiver;
 use App\Offers\Actions\UpdateDealMoney;
 use App\Offers\Binding;
 use App\Offers\CarWindow;
-use App\Offers\CommissionMode;
 use App\Offers\Deal;
 use App\Offers\DealDates;
 use App\Offers\DealScheme;
@@ -305,9 +304,9 @@ class DealController
     /** Деньги сделки — пока по ней нет счёта или есть только неоплаченный подбор по ДКП (`Deal::moneyEditable`). */
     public function money(Request $request, Deal $deal, UpdateDealMoney $update)
     {
-        // «Нам по ссылке» из ползунка вознаграждения (16.11.2026): ноль — вознаграждение съело всю разницу, это ошибка, а не «стереть».
+        // Услуги подбора из ползунка вознаграждения (16.11.2026): ноль — вознаграждение съело всю разницу, это ошибка, а не «стереть».
         $request->merge(['share' => blank($request->input('share')) ? null : Money::rubles($request->input('share'))]);
-        $data = $request->validate(['commission' => ['nullable', 'integer', 'min:0'], 'mode' => ['nullable', Rule::enum(CommissionMode::class)],
+        $data = $request->validate(['commission' => ['nullable', 'integer', 'min:0'],
             'scheme' => ['nullable', Rule::enum(DealScheme::class)],
             'share' => ['nullable', 'integer', 'min:1']], ['share.min' => Giving::SHARE_LEFT]);
         // Поле вознаграждения пустое — вознаграждения нет; поля нет вовсе (гаражная доля) — прежнее.
@@ -317,8 +316,7 @@ class DealController
         if ($scheme && ! in_array($scheme, DealScheme::casesFor($deal->offer->vendor, $deal->offer), true)) {
             $scheme = DealScheme::forOffer($deal->offer);
         }
-        $update($deal, $request->user(), $commission, CommissionMode::tryFrom($data['mode'] ?? '') ?? $deal->commission_mode,
-            $scheme, isset($data['share']) ? (int) $data['share'] : null);
+        $update($deal, $request->user(), $commission, $scheme, isset($data['share']) ? (int) $data['share'] : null);
 
         return back()->with('toast', 'Сохранено');
     }

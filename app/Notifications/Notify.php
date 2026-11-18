@@ -3,8 +3,6 @@
 namespace App\Notifications;
 
 use App\Billing\Acquiring\AcquiringPayment;
-use App\Billing\ChargeKind;
-use App\Billing\Events\AgentFeeDue;
 use App\Billing\Events\InvoiceIssued;
 use App\Billing\Events\InvoiceOverdue;
 use App\Billing\Events\OnlinePaymentTrouble;
@@ -15,7 +13,6 @@ use App\Billing\Events\PaymentRecorded;
 use App\Billing\Events\PaymentRejected;
 use App\Billing\Invoice;
 use App\Billing\InvoiceState;
-use App\Billing\PaymentSource;
 use App\Chats\AuthorKind;
 use App\Chats\Events\ChatMessagePosted;
 use App\Chats\Presence;
@@ -52,7 +49,6 @@ use App\Park\Request as ParkRequest;
 use App\Park\RequestState;
 use App\Park\VehicleState;
 use App\Telegram\Jobs\NotifyOwner;
-use App\Telegram\Messages\AgentFeeDue as AgentFeeDueMessage;
 use App\Telegram\Messages\BuyerJoined as BuyerJoinedMessage;
 use App\Telegram\Messages\InvoiceNeeded as InvoiceNeededMessage;
 use App\Telegram\Messages\ManagerJoined as ManagerJoinedMessage;
@@ -115,7 +111,6 @@ final class Notify
             PaymentConfirmed::class => 'paymentConfirmed',
             PaymentRejected::class => 'paymentRejected',
             PaymentRecorded::class => 'paymentRecorded',
-            AgentFeeDue::class => 'agentFeeDue',
             PaidOnline::class => 'paidOnline',
             OnlinePaymentTrouble::class => 'onlinePaymentTrouble',
         ];
@@ -462,7 +457,7 @@ final class Notify
     {
         $i = $e->invoice;
         // Счёт сделки менеджер узнаёт, когда его отправил сотрудник (`InvoiceShown`, 16.11.2026), а не когда он встал.
-        if ($i->isOwed() || ! $i->deal_id || $i->kind === ChargeKind::Reward || ! $i->shown_at) {
+        if ($i->isOwed() || ! $i->deal_id || ! $i->shown_at) {
             return;
         }
         $i->load(['party', 'deal.offer', 'deal.buyer']);
@@ -502,21 +497,10 @@ final class Notify
         ($p->invoice->deal?->buyer ?? GarageCar::ofInvoice($p->invoice)?->manager)?->notify(MoneyNotice::paymentRejected($p));
     }
 
-    /** Выплата менеджеру записана — ему в ленту. Оплаты покупателя тут не касаются: о них он узнаёт подтверждением заявки. */
+    /** Оплата записана: счёт Р.О.С. оплачен — перевести поставщику (`rosPaid`). */
     public function paymentRecorded(PaymentRecorded $e): void
     {
-        $i = $e->invoice;
-        $this->rosPaid($i);
-        $garage = $i->deal_id ? null : GarageCar::ofInvoice($i);
-        if (! $i->isAgentFee() || (! $i->deal_id && ! $garage)) {
-            return;
-        }
-        $p = $i->payments()->latest('id')->first();
-        if ($p && $p->source !== PaymentSource::Offset) {
-            $i->load(['deal.offer', 'deal.buyer']);
-            $p->setRelation('invoice', $i);
-            ($i->deal?->buyer ?? $garage?->manager)?->notify(MoneyNotice::payout($p));
-        }
+        $this->rosPaid($e->invoice);
     }
 
     /** Оплатили по ссылке: менеджеру счёта, сотрудникам в «Деньги», владельцу строкой в Telegram (05.10.2026: «непонятно, оплатили или нет»). */
@@ -547,13 +531,6 @@ final class Notify
         NotifyOwner::dispatch(new OnlinePaymentMessage($a, $e->what));
     }
 
-    /** Вознаграждение к выплате: сотрудникам в ленту, владельцу в Telegram с «Выплачено». */
-    public function agentFeeDue(AgentFeeDue $e): void
-    {
-        $fee = $e->fee->load(['party', 'deal.offer']);
-        Notification::send($this->staff(), MoneyNotice::feeDue($fee));
-        NotifyOwner::dispatch(new AgentFeeDueMessage($fee));
-    }
 
     /** Люди парковки; с городом объекта — только те, кому он виден (`Park\City`: администраторы и управляющие без города — все). */
     /**

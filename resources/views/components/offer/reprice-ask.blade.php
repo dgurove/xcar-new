@@ -48,7 +48,7 @@
 @elseif ($ask)
     @php $p = $ask->pairs(); $was = $ask->amountWas(); $low = $errors->has('low'); @endphp
     <div {{ $attributes->class('counter-card') }}>
-        <div class="text-sm text-accent-text">{{ $ask->shownAs() === 'reward' ? 'Вознаграждение изменится' : 'Цена изменилась' }}</div>
+        <div class="text-sm text-accent-text">Цена изменилась</div>
         <div class="mt-2 flex flex-col gap-1">
             <div class="flex items-baseline justify-between gap-3"><span class="text-ink-muted">Было</span><span class="nums">{{ $p['was'] }}</span></div>
             <div class="flex items-baseline justify-between gap-3"><span class="text-ink-muted">Стало</span><span class="nums font-bold">{{ $p['now'] }}</span></div>

@@ -4,7 +4,6 @@ namespace Tests\Feature;
 
 use App\Offers\Actions\AcceptBid;
 use App\Offers\Actions\PlaceBid;
-use App\Offers\CommissionMode;
 use App\Offers\Deal;
 use App\Offers\DealScheme;
 use App\Offers\Offer;
@@ -48,7 +47,7 @@ class SignedContractTest extends TestCase
         $offer->viewers()->create(['user_id' => $manager->id, 'opens_at' => now()]);
         $stages = Stage::where('workflow_id', $vendor->fresh()->workflow(Track::Sale)->id);
         app(EnterStage::class)($offer, (clone $stages)->where('name', 'Приём подтверждений')->firstOrFail());
-        $deal = app(AcceptBid::class)(app(PlaceBid::class)($offer->fresh(), $manager, 1050000), $admin, 30000, CommissionMode::Payout, scheme: DealScheme::Prime);
+        $deal = app(AcceptBid::class)(app(PlaceBid::class)($offer->fresh(), $manager, 1050000), $admin, 30000, scheme: DealScheme::Prime);
         $this->assertNull($deal->fresh()->contract?->buyer_user_id, 'покупателя нет');
 
         $site = fn (string $p) => Surface::Site->url($p);

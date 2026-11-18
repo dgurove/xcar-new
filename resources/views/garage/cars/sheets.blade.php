@@ -70,11 +70,11 @@
 @endif
 
 @if ($staff && $car->state === \App\Garage\CarState::Sold && ! $invoice)
-    {{-- Вознаграждение вводится здесь же: суммы ниже пересчитываются на месте. Отдаёт — цена минус расходы менеджера
-         минус вознаграждение; ушло в минус — отдаём мы, документ станет обязательством перед ним. --}}
+    {{-- Вознаграждение вводится здесь же: суммы ниже пересчитываются на месте. Счёт — цена минус расходы менеджера минус
+         вознаграждение, кто бы ни платил (18.11.2026: выплат менеджеру нет); ноль и меньше — расчёт закрывается без документа. --}}
     <div {!! $wrap('settle') !!}>
         <x-ui.sheet id="settle" :title="$car->manager ? 'Выставить счёт' : 'Закрыть расчёт'">
-            <form method="post" action="/garage/cars/{{ $n }}/settle" class="flex flex-col gap-3" @if ($car->manager) data-controller="commission reveal" data-commission-margin-value="{{ $s['profit'] }}" data-commission-base-value="{{ $car->sold_price - $s['manager_costs'] }}" data-commission-spent-value="{{ $s['manager_costs'] }}" @endif>
+            <form method="post" action="/garage/cars/{{ $n }}/settle" class="flex flex-col gap-3" @if ($car->manager) data-controller="commission reveal" data-commission-margin-value="{{ $s['profit'] }}" data-commission-base-value="{{ $car->sold_price - $s['manager_costs'] }}" @endif>
                 @csrf
                 <div class="list">
                     <div class="row justify-between"><span>Продана за</span><span class="nums">{{ Money::rub($car->sold_price) }}</span></div>
@@ -87,15 +87,12 @@
                         :hidden="['data-commission-target' => 'amount']" data-commission-target="display" data-action="input->commission#input"/>
                     <div class="list">
                         <div class="row justify-between"><span>Нам остаётся</span><span class="nums font-semibold" data-commission-target="ours">{{ Money::exact($s['ours']) }}</span></div>
-                        {{-- Платит менеджер — сколько он отдаёт нам; платит покупатель — сколько выплатим менеджеру после оплаты. --}}
-                        <div class="row justify-between" data-reveal-target="pane" data-reveal-key="manager"><span data-commission-target="dueLabel" data-positive="Менеджер отдаёт нам" data-negative="Отдаём менеджеру">Менеджер отдаёт нам</span><span class="nums font-semibold" data-commission-target="due">{{ Money::exact(abs($s['due'])) }}</span></div>
-                        <div class="row justify-between" data-reveal-target="pane" data-reveal-key="buyer" hidden><span>Выплатим менеджеру</span><span class="nums font-semibold" data-commission-target="payout">{{ Money::exact($s['payout']) }}</span></div>
+                        <div class="row justify-between"><span>К оплате</span><span class="nums font-semibold" data-commission-target="due">{{ Money::exact(max(0, $s['due'])) }}</span></div>
                         @error('party_id')<p class="field-error px-4 pb-3">{{ $message }}</p>@enderror
                     </div>
                 @endif
                 @if ($car->manager && ! $car->managerPaidSupplier())
-                    {{-- Кто платит — как у сделки: менеджер (его деньги покупателя у него на руках) или его покупатель
-                         (счёт на всю цену, менеджеру после оплаты — его расходы и вознаграждение). --}}
+                    {{-- Кто платит — как у сделки: менеджер или его покупатель, сумма та же. --}}
                     <div class="flex flex-col gap-3">
                         <div class="flex flex-wrap gap-2">
                             <label class="choice"><input type="radio" name="payer" value="manager" @checked(old('payer', 'manager') === 'manager') data-action="reveal#pick"><span>Платит менеджер</span></label>
@@ -118,27 +115,10 @@
     </div>
 @endif
 
-@if ($staff && $car->awaitsPayout())
-    {{-- Покупатель заплатил, а выплаты нет: аннулировали или оплата пришла сама. Вознаграждение можно поправить. --}}
-    <div {!! $wrap('payout') !!}>
-        <x-ui.sheet id="payout" title="Выплата менеджеру">
-            <form method="post" action="/garage/cars/{{ $n }}/payout" class="flex flex-col gap-3" data-controller="commission" data-commission-spent-value="{{ $s['manager_costs'] }}">
-                @csrf
-                <x-deal.reward-split name="commission" id="payout-fee" :value="$car->commission" :margin="$s['profit'] === null ? null : (int) round($s['profit'])"
-                    :hidden="['data-commission-target' => 'amount']" data-commission-target="display" data-action="input->commission#input"/>
-                <div class="list">
-                    <div class="row justify-between"><span>Его расходы</span><span class="nums">{{ Money::exact($s['manager_costs']) }}</span></div>
-                    <div class="row justify-between"><span>Выплатим</span><span class="nums font-semibold" data-commission-target="payout">{{ Money::exact($s['payout']) }}</span></div>
-                </div>
-                <x-ui.sheet-foot type="submit" variant="primary">Выплата менеджеру</x-ui.sheet-foot>
-            </form>
-        </x-ui.sheet>
-    </div>
-@endif
 
 @if ($staff && $unpaid)
     <div {!! $wrap('paid') !!}>
-        <x-ui.sheet id="paid" :title="$current->isOwed() ? 'Выплатили менеджеру' : 'Деньги пришли'">
+        <x-ui.sheet id="paid" title="Деньги пришли">
             {{-- Та же форма, что «Деньги пришли» у счёта и в шаге сделки (28.10.2026): откуда, номер и скан платёжки. --}}
             <x-billing.pay-form :invoice="$current" :action="'/garage/cars/'.$n.'/payments'" :source="$current->claims()->first()?->source->value" sheet/>
         </x-ui.sheet>
@@ -167,7 +147,7 @@
             <x-billing.pay-sheet :invoices="collect([$holderInvoice])" :action="'/account/money/deals/'.$car->deal_id.'/pay'" pdf="/account/invoices/{id}/pdf" :open="$errors->any()"/>
         </div>
     @endif
-@elseif (! $staff && $unpaid && ! $current->isOwed() && $car->invoice_to !== 'buyer' && $current->remaining() - $current->claimed() > 0)
+@elseif (! $staff && $unpaid && $car->invoice_to !== 'buyer' && $current->remaining() - $current->claimed() > 0)
     <div {!! $wrap('pay') !!}>
         <x-billing.pay-sheet :invoices="collect([$invoice])" :action="'/garage/cars/'.$n.'/checkout'" :pdf="'/garage/cars/'.$n.'/invoice/pdf'" :buyers="\App\Support\People::buyersOf($user)" :open="$errors->any()" :other-name="$car->buyer_name"/>
     </div>

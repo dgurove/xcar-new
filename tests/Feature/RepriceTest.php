@@ -21,7 +21,6 @@ use App\Offers\Actions\DismissReprice;
 use App\Offers\Actions\PlaceBid;
 use App\Offers\Actions\UpdateOffer;
 use App\Offers\BidState;
-use App\Offers\CommissionMode;
 use App\Offers\DealScheme;
 use App\Offers\DealState;
 use App\Offers\Offer;
@@ -205,7 +204,7 @@ class RepriceTest extends TestCase
 
     public function test_deal_update_reissues_unpaid_and_keep_goes_to_supplier_cost(): void
     {
-        $deal = app(AcceptBid::class)(app(PlaceBid::class)($this->offer, $this->roman, 1050000), $this->admin, 20000, CommissionMode::Payout, scheme: DealScheme::Insurer);
+        $deal = app(AcceptBid::class)(app(PlaceBid::class)($this->offer, $this->roman, 1050000), $this->admin, 20000, scheme: DealScheme::Insurer);
         $this->pickedUp();
         $first = $deal->fresh()->issuedInvoices()->sole();
         $this->assertEqualsWithDelta(1050000 - 594762 - 20000, $first->total, 0.01);
@@ -245,7 +244,7 @@ class RepriceTest extends TestCase
      */
     public function test_increase_asks_manager_price_and_admin_decides(): void
     {
-        $deal = app(AcceptBid::class)(app(PlaceBid::class)($this->offer, $this->roman, 1050000), $this->admin, 20000, CommissionMode::Payout, scheme: DealScheme::Insurer);
+        $deal = app(AcceptBid::class)(app(PlaceBid::class)($this->offer, $this->roman, 1050000), $this->admin, 20000, scheme: DealScheme::Insurer);
         $this->pickedUp();
         $this->sendToManager($deal);
         $first = $deal->fresh()->issuedInvoices()->sole();
@@ -315,7 +314,7 @@ class RepriceTest extends TestCase
      */
     public function test_open_question_keeps_deal_in_reprice_tab_even_garage(): void
     {
-        $deal = app(AcceptBid::class)(app(PlaceBid::class)($this->offer, $this->roman, 1050000), $this->admin, 20000, CommissionMode::Payout, scheme: DealScheme::Insurer);
+        $deal = app(AcceptBid::class)(app(PlaceBid::class)($this->offer, $this->roman, 1050000), $this->admin, 20000, scheme: DealScheme::Insurer);
         app(UpdateOffer::class)($this->offer->fresh(), ['floor_price' => 650000], $this->admin);
         app(ApplyReprice::class)($this->offer->fresh()->pendingReprice, $this->admin, 650000, [], 'ask');
         $this->assertTrue(RepriceAsk::sole()->isOpen());
@@ -332,7 +331,7 @@ class RepriceTest extends TestCase
     /** Гаражная — «Согласен» на новую закупочную, без цены подтверждения (17.11.2026, Audi RS 6 Сергея). */
     public function test_garage_question_is_agree_or_decline_without_price(): void
     {
-        $deal = app(AcceptBid::class)(app(PlaceBid::class)($this->offer, $this->roman, 1050000), $this->admin, 20000, CommissionMode::Payout, scheme: DealScheme::Insurer);
+        $deal = app(AcceptBid::class)(app(PlaceBid::class)($this->offer, $this->roman, 1050000), $this->admin, 20000, scheme: DealScheme::Insurer);
         $deal->forceFill(['garage_payer' => \App\Garage\GaragePayer::Manager])->save();
         app(UpdateOffer::class)($this->offer->fresh(), ['floor_price' => 650000], $this->admin);
         app(ApplyReprice::class)($this->offer->fresh()->pendingReprice, $this->admin, 650000, [], 'ask');
@@ -352,7 +351,7 @@ class RepriceTest extends TestCase
 
     public function test_admin_rejects_offered_price_or_enters_it_for_manager(): void
     {
-        $deal = app(AcceptBid::class)(app(PlaceBid::class)($this->offer, $this->roman, 1050000), $this->admin, 20000, CommissionMode::Payout, scheme: DealScheme::Insurer);
+        $deal = app(AcceptBid::class)(app(PlaceBid::class)($this->offer, $this->roman, 1050000), $this->admin, 20000, scheme: DealScheme::Insurer);
         app(UpdateOffer::class)($this->offer->fresh(), ['floor_price' => 650000], $this->admin);
         app(ApplyReprice::class)($this->offer->fresh()->pendingReprice, $this->admin, 650000, [], 'ask');
         $ask = RepriceAsk::sole();
@@ -390,7 +389,7 @@ class RepriceTest extends TestCase
     public function test_increase_declined_cancels_deal_and_withdraws_bid(): void
     {
         $denis = app(PlaceBid::class)($this->offer, $this->denis, 980000);
-        $deal = app(AcceptBid::class)(app(PlaceBid::class)($this->offer->fresh(), $this->roman, 1050000), $this->admin, 20000, CommissionMode::Payout, scheme: DealScheme::Insurer);
+        $deal = app(AcceptBid::class)(app(PlaceBid::class)($this->offer->fresh(), $this->roman, 1050000), $this->admin, 20000, scheme: DealScheme::Insurer);
         app(UpdateOffer::class)($this->offer->fresh(), ['floor_price' => 650000], $this->admin);
         app(ApplyReprice::class)($this->offer->fresh()->pendingReprice, $this->admin, 650000, [$denis->id => 'ask'], 'ask');
         $this->assertSame(2, RepriceAsk::pending()->count());
@@ -424,7 +423,7 @@ class RepriceTest extends TestCase
      */
     public function test_show_to_all_while_manager_thinks(): void
     {
-        $deal = app(AcceptBid::class)(app(PlaceBid::class)($this->offer, $this->roman, 1050000), $this->admin, 20000, CommissionMode::Payout, scheme: DealScheme::Insurer);
+        $deal = app(AcceptBid::class)(app(PlaceBid::class)($this->offer, $this->roman, 1050000), $this->admin, 20000, scheme: DealScheme::Insurer);
         app(UpdateOffer::class)($this->offer->fresh(), ['floor_price' => 650000], $this->admin);
         $this->assertFalse(Offer::dealOpenTo($this->denis)->exists());
 
@@ -459,7 +458,7 @@ class RepriceTest extends TestCase
         // Готово к продаже: марка и кадр — иначе отказ увёл бы в черновики.
         $this->offer->update(['brand_id' => \App\Cars\Brand::create(['slug' => 'bmw', 'name' => 'BMW'])->id]);
         $this->offer->addMedia(\Illuminate\Http\UploadedFile::fake()->image('a.jpg', 800, 600))->toMediaCollection('photos');
-        $deal = app(AcceptBid::class)(app(PlaceBid::class)($this->offer, $this->roman, 1050000), $this->admin, 20000, CommissionMode::Payout, scheme: DealScheme::Insurer);
+        $deal = app(AcceptBid::class)(app(PlaceBid::class)($this->offer, $this->roman, 1050000), $this->admin, 20000, scheme: DealScheme::Insurer);
         app(UpdateOffer::class)($this->offer->fresh(), ['floor_price' => 650000], $this->admin);
         app(ApplyReprice::class)($this->offer->fresh()->pendingReprice, $this->admin, 650000, [], 'ask', publish: ['rules' => [], 'until' => now()->addDays(3)]);
         $until = $this->offer->fresh()->deal_show_until;
@@ -481,7 +480,7 @@ class RepriceTest extends TestCase
         $this->assertSame($bid->id, $ask->bid_id);
 
         // Приняли, пока Роман думал, — вопрос не гаснет, а переезжает на сделку; цена сделки до ответа прежняя.
-        $deal = app(AcceptBid::class)($bid->fresh(), $this->admin, 20000, CommissionMode::Payout, scheme: DealScheme::Insurer);
+        $deal = app(AcceptBid::class)($bid->fresh(), $this->admin, 20000, scheme: DealScheme::Insurer);
         $ask->refresh();
         $this->assertSame([null, $deal->id], [$ask->bid_id, $ask->deal_id]);
         $this->assertTrue($ask->alive());
@@ -494,7 +493,7 @@ class RepriceTest extends TestCase
      */
     public function test_admin_chooses_to_ask_either_way(): void
     {
-        $deal = app(AcceptBid::class)(app(PlaceBid::class)($this->offer, $this->roman, 1050000), $this->admin, 20000, CommissionMode::Payout, scheme: DealScheme::Insurer);
+        $deal = app(AcceptBid::class)(app(PlaceBid::class)($this->offer, $this->roman, 1050000), $this->admin, 20000, scheme: DealScheme::Insurer);
         app(UpdateOffer::class)($this->offer->fresh(), ['floor_price' => 650000], $this->admin);
         app(ApplyReprice::class)($this->offer->fresh()->pendingReprice, $this->admin, 650000, [], 'update');
         $this->assertSame(650000, $deal->fresh()->cost);
@@ -543,7 +542,7 @@ class RepriceTest extends TestCase
     /** Переоценка письмом в сделке — шаг «Переоценка»: цена → покупатель → ответ поставщику; ответили письмом — шаг ушёл. */
     public function test_reprice_step_in_deal_until_supplier_answered(): void
     {
-        $deal = app(AcceptBid::class)(app(PlaceBid::class)($this->offer, $this->roman, 1050000), $this->admin, 20000, CommissionMode::Payout, scheme: DealScheme::Insurer);
+        $deal = app(AcceptBid::class)(app(PlaceBid::class)($this->offer, $this->roman, 1050000), $this->admin, 20000, scheme: DealScheme::Insurer);
         $this->offer->update(['claim_ref' => '653253/2026']);
         $account = DB::table('mail_accounts')->insertGetId(['slug' => 'offer', 'title' => 'offer', 'email' => 'offer@xcar.ru', 'scope' => 'offers',
             'imap_host' => 'x', 'imap_username' => 'x', 'imap_password' => 'x', 'smtp_host' => 'x', 'smtp_username' => 'x', 'smtp_password' => 'x']);
@@ -586,7 +585,7 @@ class RepriceTest extends TestCase
      */
     public function test_garage_reprice_step_lasts_until_supplier_answered(): void
     {
-        $deal = app(AcceptBid::class)(app(PlaceBid::class)($this->offer, $this->roman, 1050000), $this->admin, 20000, CommissionMode::Payout, scheme: DealScheme::Insurer);
+        $deal = app(AcceptBid::class)(app(PlaceBid::class)($this->offer, $this->roman, 1050000), $this->admin, 20000, scheme: DealScheme::Insurer);
         $deal->forceFill(['garage_payer' => \App\Garage\GaragePayer::Manager])->save();
         $this->offer->update(['claim_ref' => '653253/2026']);
         $account = DB::table('mail_accounts')->insertGetId(['slug' => 'offer', 'title' => 'offer', 'email' => 'offer@xcar.ru', 'scope' => 'offers',
@@ -617,7 +616,7 @@ class RepriceTest extends TestCase
     {
         $this->offer->vendor->update(['floor_by_value' => true]);
         $this->offer->update(['claim_ref' => '0790/046/09068/26', 'floor_price' => 5189000]);
-        $deal = app(AcceptBid::class)(app(PlaceBid::class)($this->offer->fresh(), $this->roman, 5600000), $this->admin, 20000, CommissionMode::Payout, scheme: DealScheme::Insurer);
+        $deal = app(AcceptBid::class)(app(PlaceBid::class)($this->offer->fresh(), $this->roman, 5600000), $this->admin, 20000, scheme: DealScheme::Insurer);
         $account = DB::table('mail_accounts')->insertGetId(['slug' => 'deal', 'title' => 'deal', 'email' => 'deal@xcar.ru', 'scope' => 'offers',
             'imap_host' => 'x', 'imap_username' => 'x', 'imap_password' => 'x', 'smtp_host' => 'x', 'smtp_username' => 'x', 'smtp_password' => 'x']);
         $message = Message::create(['account_id' => $account, 'direction' => 'in', 'from_email' => 'implementation@alfastrah.ru', 'subject' => 'RE: 0790/046/09068/26',

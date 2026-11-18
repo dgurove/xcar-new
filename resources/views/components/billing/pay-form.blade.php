@@ -8,7 +8,7 @@
 @props(['invoice', 'action', 'sources' => \App\Billing\PaymentSource::manual(), 'sheet' => false, 'source' => null])
 @php
     use App\Support\Money;
-    $done = $invoice->isOwed() ? ($invoice->isAgentFee() ? 'Выплачено' : 'Перечислено') : ($sheet ? 'Деньги пришли' : 'Оплачен');
+    $done = $invoice->isOwed() ? 'Перечислено' : ($sheet ? 'Деньги пришли' : 'Оплачен');
     // `source` — откуда по умолчанию: подтверждаем заявку менеджера («оплатил наличными») — её способом (28.10.2026).
     $source = old('source', $source && array_key_exists($source, $sources) ? $source : (array_key_first($sources) ?? 'bank'));
 @endphp

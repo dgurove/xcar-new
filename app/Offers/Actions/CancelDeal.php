@@ -3,7 +3,6 @@
 namespace App\Offers\Actions;
 
 use App\Billing\Actions\VoidInvoice;
-use App\Billing\ChargeKind;
 use App\Billing\InvoiceState;
 use App\Billing\PaymentSource;
 use App\Garage\Car as GarageCar;
@@ -84,17 +83,14 @@ final class CancelDeal
     }
 
     /**
-     * Невыплаченное вознаграждение и счета менеджеру, за которые не платили, гаснут (и ссылки на оплату с ними,
+     * Счета менеджеру, за которые не платили, гаснут (и ссылки на оплату с ними,
      * `CloseLinksWhenSettled`); оплаченное — история. Отмена сделки и переключение на параллельную (`TakeParallel`).
      */
     public static function voidUnpaid(Deal $deal, ?User $by, string $why): void
     {
-        if (($fee = $deal->agentFee()->first()) && $fee->state === InvoiceState::Issued && $fee->paid == 0) {
-            app(VoidInvoice::class)($fee, $by, $why);
-        }
         // Счёт менеджеру, за который ещё не платили (подбор по ДКП выставляется при принятии), гаснет вместе со сделкой —
         // и ссылка на оплату с ним (`CloseLinksWhenSettled`). Оплаченное — история: возврат решает человек.
-        foreach ($deal->issuedInvoices()->where('state', InvoiceState::Issued)->where('kind', '!=', ChargeKind::Reward)->get() as $invoice) {
+        foreach ($deal->issuedInvoices()->where('state', InvoiceState::Issued)->get() as $invoice) {
             if (! $invoice->payments()->whereNotIn('source', PaymentSource::soft())->exists()) {
                 app(VoidInvoice::class)($invoice, $by, $why);
             }

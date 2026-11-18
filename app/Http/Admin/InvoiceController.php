@@ -7,7 +7,6 @@ use App\Billing\ChargeKind;
 use App\Billing\Party;
 use App\Billing\PartyKind;
 use App\Offers\Offer;
-use App\Vendors\RewardKind;
 use App\Workflow\Track;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -27,23 +26,20 @@ class InvoiceController
         abort_unless($deal && $deal->buyer, 404);
         $party = Party::forUser($deal->buyer);
         $position = $offer->position(Track::Sale);
-        $vendor = $offer->vendor;
-        $vendorParty = $vendor && $vendor->kind->billable() ? Party::forVendor($vendor, false) : null;
 
         return view('admin.invoices.create', [
             'offer' => $offer, 'deal' => $deal, 'party' => $party,
             'parties' => Party::where('is_self', false)->orderBy('name')->pluck('name', 'id')->put('new', 'Новый плательщик'),
-            'vendorParty' => $vendorParty,
             'existing' => $deal->invoices()->with('party')->get(),
             'due' => $position?->deadline_at?->toDateString() ?? now()->addDays(14)->toDateString(),
-            'kinds' => [ChargeKind::Sale->value => ChargeKind::Sale->label(), ChargeKind::Selection->value => ChargeKind::Selection->label(), ChargeKind::Reward->value => ChargeKind::Reward->label(), ChargeKind::Other->value => ChargeKind::Other->label()],
-            // База по виду: продажа — цена подтверждения, подбор — разница, вознаграждение — по условиям вендора.
+            'kinds' => [ChargeKind::Sale->value => ChargeKind::Sale->label(), ChargeKind::Selection->value => ChargeKind::Selection->label(), ChargeKind::Other->value => ChargeKind::Other->label()],
+            // Сумма по виду (18.11.2026: наш счёт — за вычетом вознаграждения менеджера): продажа — цена подтверждения минус
+            // вознаграждение (у гаражной — закупочная), подбор — то, что менеджер платит за подбор (`Deal::selectionDue`; у ПРАЙМ
+            // — услуги подбора `Deal::ours`).
             'bases' => [
-                'sale' => $deal->base(),
-                // Подбор: по ДКП — цена минус то, что отдают собственнику (взаимозачёт наш), иначе разница с закупочной.
-                'selection' => max(0, (int) ($deal->paysSelection() ? $deal->selectionBase() : ($deal->isGarageManager() ? $deal->share : $deal->margin()))),
-                'reward' => $this->reward((int) $deal->base(), $deal->supplierCost(), $vendor?->reward_kind, $vendor?->reward_value),
-                'other' => $deal->base(),
+                'sale' => $deal->amount !== null ? max(0, $deal->amount - (int) $deal->commission) : $deal->base(),
+                'selection' => max(0, (int) ($deal->paysSelection() || $deal->isGarageManager() ? $deal->selectionDue() : $deal->ours())),
+                'other' => $deal->amount !== null ? max(0, $deal->amount - (int) $deal->commission) : $deal->base(),
             ],
             'partyKinds' => PartyKind::options(),
             'kind' => $deal->paysSelection() || $deal->isGarageManager() ? ChargeKind::Selection->value : ChargeKind::Sale->value,
@@ -59,7 +55,7 @@ class InvoiceController
             'party_id' => ['required', Rule::when(fn () => $request->input('party_id') !== 'new', ['exists:billing_parties,id'])],
             'party_name' => ['required_if:party_id,new', 'nullable', 'string', 'max:200'], 'party_kind' => ['nullable', Rule::enum(PartyKind::class)],
             'party_inn' => ['nullable', 'digits_between:10,12'], 'party_phone' => ['nullable', 'string', 'max:20'],
-            'kind' => ['required', 'in:sale,selection,reward,other'], 'title' => ['nullable', 'string', 'max:160'],
+            'kind' => ['required', 'in:sale,selection,other'], 'title' => ['nullable', 'string', 'max:160'],
             'amount' => ['required', 'numeric', 'min:1'], 'due_at' => ['required', 'date'], 'notes' => ['nullable', 'string', 'max:1000'],
         ]);
         $party = $data['party_id'] === 'new'
@@ -70,15 +66,5 @@ class InvoiceController
 
         // Счёт выставляют из сделки — туда и возвращаемся.
         return redirect($deal ? "/work/deals/{$deal->id}" : "/offers/{$offer->number}")->with('toast', 'Счёт '.$invoice->label().' выставлен');
-    }
-
-    /** Наше вознаграждение по условиям вендора: разница цен, процент от продажи или фикс; без условий — разница. */
-    private function reward(int $amount, ?int $cost, ?RewardKind $kind, ?int $value): int
-    {
-        return max(0, (int) match ($kind) {
-            RewardKind::Percent => round($amount * ($value ?? 0) / 100),
-            RewardKind::Fixed => $value ?? 0,
-            default => $cost === null ? 0 : $amount - $cost,
-        });
     }
 }
