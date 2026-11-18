@@ -9,7 +9,10 @@
     $deal = $ask->deal;
     $back ??= request()->getRequestUri();
     $size = in_array($variant, ['card', 'row'], true) ? 's' : null;
-    $pickup = ! in_array($variant, ['row', 'card'], true) && $ask->canAskPickup();
+    // Вопрос при входе (`sheet`) — только ответ и «Ещё нет» (18.11.2026, владелец: «убери „я передумал“ — чтобы отменить, пусть
+    // проваливаются в сделку; чисто подтвердить или ещё нет»): ни отказа, ни «Попросить вывоз…» — они на странице сделки.
+    $plain = in_array($variant, ['row', 'card', 'sheet'], true);
+    $pickup = ! $plain && $ask->canAskPickup();
 @endphp
 <div {{ $attributes->class(['ask-action', 'ask-action--'.$variant]) }} @if ($pickup) data-controller="sheet" @endif>
     @if ($ask->taps())
@@ -23,7 +26,7 @@
             @endforeach
             {{-- В строке и в плитке «Ждут вас» — одна кнопка: плитки одной высоты, кнопки в ряд (10.11.2026, владелец: «всё скачет»);
                  «Передумал» и «Попросить вывоз…» — в чате, в сделке и в вопросе при входе. --}}
-            @if (! in_array($variant, ['row', 'card'], true))
+            @if (! $plain)
                 @foreach ($ask->retreats as $exit)
                     <button name="exit" value="{{ $exit->id }}" class="{{ $variant === 'keys' ? 'btn btn-quiet btn-block' : 'retreat-link' }}" data-turbo-confirm="{{ Wording::mine($exit->confirm) ?: 'Передумали? Сделка отменится' }}">{{ Wording::mine($exit->label) }}</button>
                 @endforeach
@@ -32,7 +35,7 @@
     @else
         <x-ui.button :href="$ask->href()" :size="$size" :block="$variant !== 'row'">{{ $ask->link }}</x-ui.button>
     @endif
-    @if ($pickup && ! in_array($variant, ['row', 'card'], true))
+    @if ($pickup)
         <button type="button" class="{{ $variant === 'keys' ? 'btn btn-quiet btn-block' : 'retreat-link' }}" data-action="sheet#open">Попросить вывоз…</button>
         <x-deal.pickup-ask-sheet :deal="$deal" :back="$back"/>
     @endif

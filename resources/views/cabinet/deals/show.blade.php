@@ -41,8 +41,8 @@
          колонки. ПК: слева работа (задача, покупатель, путь, счета), справа липко расчёт, характеристики, документы, фото.
          Телефон — одна колонка: задача, чат, расчёт, покупатель, путь, характеристики, документы, фото. Чат — карточкой
          (`cabinet.deals.chat-card`): на ПК первым сбоку, на телефоне под задачей (10.11.2026). --}}
-    <div data-deal-offer="{{ $offer->number }}" class="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[minmax(0,1fr)_22rem] lg:gap-8">
-        <section class="contents lg:col-start-1 lg:row-start-1 lg:flex lg:min-w-0 lg:flex-col lg:gap-6">
+    <div data-deal-offer="{{ $offer->number }}" class="grid grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-[minmax(0,1fr)_22rem] lg:gap-6">
+        <section class="contents lg:col-start-1 lg:row-start-1 lg:flex lg:min-w-0 lg:flex-col lg:gap-4">
             <x-offer.reprice-ask :deal="$deal" class="order-1 min-w-0"/>
             <div class="order-1 min-w-0">@include('cabinet.deals.step', ['contractStep' => $contractStep, 'pickupSteps' => $pickupSteps, 'carCard' => $carCard, 'moneyInStep' => $moneyInStep])</div>
             @if ($carCard)<div class="order-1 min-w-0">@include('cabinet.deals.car-card')</div>@endif
@@ -77,7 +77,7 @@
 
         </section>
 
-        <aside class="contents lg:sticky lg:top-[calc(var(--stick-top)+1rem)] lg:col-start-2 lg:row-start-1 lg:flex lg:flex-col lg:gap-6 lg:self-start">
+        <aside class="contents lg:sticky lg:top-[calc(var(--stick-top)+1rem)] lg:col-start-2 lg:row-start-1 lg:flex lg:flex-col lg:gap-4 lg:self-start">
             {{-- Чат — как диалог мессенджера, а не кнопкой в заголовке (06.10.2026, владелец): на ПК первым в боковой
                  колонке, на телефоне — самым верхом, над задачей. --}}
             {{-- На телефоне — под задачей (10.11.2026, владелец: «пишут в чат, а не кнопку жмут»: чат стоял над делом). --}}

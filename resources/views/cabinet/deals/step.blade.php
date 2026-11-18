@@ -69,7 +69,7 @@
     // спросим его. О письмах поставщика ни слова.
     $consentAhead = $deal->isLive() && ! $consent && ! $deal->agreed() && $position?->stage->loadMissing('exits.to.exits')->exits->contains(fn ($e) => $e->to?->asksConsent());
 @endphp
-<div class="flex flex-col gap-6">
+<div class="flex flex-col gap-4">
     @if (! $deal->isLive() && ! $deal->isGarage())
         {{-- Закончилась — состояние словом с датой, без своей плашки, и на телефоне тоже (11.10.2026: там закрытая сделка
              выглядела идущей). Гаражной его пишет своя карточка суммы. --}}

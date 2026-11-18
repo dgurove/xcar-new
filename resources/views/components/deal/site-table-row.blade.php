@@ -1,8 +1,9 @@
 {{-- Строка таблицы «Сделок» сайта (18.11.2026, владелец: «сделки и гараж — по умолчанию вид табличный», как в CRM). Одна линия:
      значок типа ТС и название; «Что сейчас» — один факт (правило строк CRM, 17.11.2026): дело менеджера его словами зелёным,
      просрочено — оно же красным, без слова «просрочено»; чужой ход — этап серым (кого ждём, говорит раздел); срок — числом
-     своим столбцом (сколько осталось, просрочено или ждём); справа сумма и кнопка дела (`x-deal.ask-action`). На телефоне:
-     название с суммой концом строки, под ним факт со сроком, кнопка дела — своей строкой (строка без кнопки справа).
+     своим столбцом (сколько осталось, просрочено или ждём); справа сумма. На телефоне: название с суммой концом строки, под
+     ним факт со сроком. Кнопки дела в строке нет (18.11.2026, владелец: «убери кнопки эти зелёные, статуса достаточно — будут
+     нажимать и внутри уже работать»): отвечают на странице сделки, там шаг со своими кнопками.
      Админу — чья сделка, строка ведёт в CRM: там он её ведёт. Гаражная — словом «гараж» у названия, ведёт в машину гаража.
      Столбцы — `Cabinet\DealController::table`; `task` — `Deal::managerTask()`, посчитан контроллером один раз. --}}
 @props(['deal', 'table', 'task' => null, 'staff' => false, 'inGarage' => false])
@@ -33,8 +34,6 @@
         $task === null && ! $paidUp && $position?->block_entered_at !== null => '<span class="nums whitespace-nowrap text-ink-muted" title="На этапе">'.e(Ago::since($position->block_entered_at, hours: true)).'</span>',
         default => '',
     };
-    // «Ваш ход» — с кнопкой ответа прямо в строке (10.11.2026): «Беру в работу», «Автомобиль забрал» — сразу, остальное — ссылкой на шаг.
-    $ask = $task && ! $staff ? \App\Offers\ManagerAsk::for($deal) : null;
 @endphp
 <tr id="deal-{{ $deal->id }}" data-detail-key="{{ $deal->id }}" data-search-row>
     @foreach ($table->columns as $key => $col)
@@ -43,7 +42,6 @@
     <td class="{{ $col->classes() }}">
         <a href="{{ $href }}" class="row-link" @if ($staff) data-turbo="false" @endif><span class="cell-title"><x-ui.cat-icon :category="$offer->category()"/><span class="cell-name">{{ $offer->title() }}@if ($year = $offer->carRecord()->year)<span class="cell-year"> {{ $year }}</span>@endif</span>@if ($garage && ! $inGarage)<span class="ms-1.5 whitespace-nowrap text-sm text-ink-muted">гараж</span>@endif<span class="line-end sm:hidden">{{ $amount }}</span></span></a>
         <span class="cell-sub cell-sub--wrap sm:hidden"><span class="{{ $tone }}">{{ $fact }}</span>@if ($term !== '')<span class="line-end">{!! $term !!}</span>@endif{{ "" }}@if ($staff && $deal->buyer)<span class="md:hidden">{{ $deal->buyer->shortName() }}</span>@endif</span>
-        @if ($ask)<x-deal.ask-action :ask="$ask" variant="row" class="row-ask row-ask--cell sm:!hidden"/>@endif
     </td>
         @break
         @case('state')
@@ -57,9 +55,6 @@
         @break
         @case('term')
     <td class="{{ $col->classes() }}">{!! $term !!}</td>
-        @break
-        @case('action')
-    <td class="{{ $col->classes() }}">@if ($ask)<x-deal.ask-action :ask="$ask" variant="row" class="row-ask row-ask--cell"/>@endif</td>
         @break
         @endswitch
     @endforeach

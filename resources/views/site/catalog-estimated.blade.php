@@ -2,7 +2,7 @@
      вбок, как «Нужно оценить», без полосы — делать там нечего; таблицей — строками с заголовком группы. --}}
 @if ($estimated->isNotEmpty())
     @if (\App\Support\ListView::isTable($view))
-        <x-ui.table id="catalog-estimated" :view="$view" class="mt-6" :table="$columns">
+        <x-ui.table id="catalog-estimated" :view="$view" class="mt-4" :table="$columns">
             <x-slot:head><x-table.head :table="$columns" :sort="$sorting"/></x-slot:head>
             <x-table.group :table="$columns" key="estimated" title="Ждут решения" :count="$estimated->count()"/>
             @foreach ($estimated as $offer)
@@ -10,7 +10,7 @@
             @endforeach
         </x-ui.table>
     @else
-        <div class="mt-6" data-controller="ticker">
+        <div class="mt-4" data-controller="ticker">
             <x-ui.shelf title="Ждут решения" :count="$estimated->count()" id="catalog-estimated">
                 @foreach ($estimated as $offer)
                     <x-offer.card :offer="$offer" :estimate="$offer->openEstimates->first()" cover/>

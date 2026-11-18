@@ -73,7 +73,7 @@
                 @if ($head)
                     <x-ui.shelf :title="$head" :count="$rows->count()">@foreach ($rows as $row)<x-garage.card :offer="$row['offer']" :href="$row['href']" :word="$row['word']" :tone="$row['tone']" :when="$row['when']" :value="$row['value'] ?? null" :caption="$row['caption'] ?? null" :who="$row['who'] ?? null"/>@endforeach</x-ui.shelf>
                 @else
-                    <div class="cards cards--grid mb-6">@foreach ($rows as $row)<x-garage.card :offer="$row['offer']" :href="$row['href']" :word="$row['word']" :tone="$row['tone']" :when="$row['when']" :value="$row['value'] ?? null" :caption="$row['caption'] ?? null" :who="$row['who'] ?? null"/>@endforeach</div>
+                    <div class="cards cards--grid mb-4">@foreach ($rows as $row)<x-garage.card :offer="$row['offer']" :href="$row['href']" :word="$row['word']" :tone="$row['tone']" :when="$row['when']" :value="$row['value'] ?? null" :caption="$row['caption'] ?? null" :who="$row['who'] ?? null"/>@endforeach</div>
                 @endif
             @endforeach
         </div>

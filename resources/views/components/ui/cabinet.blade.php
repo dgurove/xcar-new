@@ -28,7 +28,7 @@
     @isset($actions)
         <x-slot:actions class="{{ $actions->attributes->get('class') }}">{{ $actions }}</x-slot:actions>
     @endisset
-    <div @class(['grid gap-6', 'lg:grid-cols-[15rem_minmax(0,56rem)] lg:gap-8' => $pills]) data-title-anchor>
+    <div @class(['grid gap-4', 'lg:grid-cols-[15rem_minmax(0,56rem)] lg:gap-6' => $pills]) data-title-anchor>
         @if ($pills)
             {{-- min-w-0 обязателен: иначе лента шире экрана растягивает колонку сетки. --}}
             <nav class="min-w-0 max-md:hidden lg:self-start" aria-label="Разделы кабинета">
@@ -42,7 +42,7 @@
                 </div>
             </nav>
         @endif
-        <div class="flex min-w-0 flex-col gap-6">
+        <div class="flex min-w-0 flex-col gap-4">
             {{-- Ссылка «‹ Раздел» — только когда заголовка с круглой «назад» над колонкой нет (экран с пилюлями). --}}
             @if ($back && $pills)
                 <a href="{{ $back[1] }}" class="hidden w-fit items-center gap-1 text-sm text-ink-muted transition-colors hover:text-ink md:inline-flex" data-controller="back" data-action="back#go" data-turbo-action="replace"><x-ui.icon name="chevron-left" class="size-4"/>{{ $back[0] }}</a>

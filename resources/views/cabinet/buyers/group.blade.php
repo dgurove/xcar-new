@@ -3,7 +3,7 @@
 @php $n = $group->members->count(); @endphp
 <x-ui.cabinet :title="$group->name" :phone-heading="false">
 
-    <div class="grid gap-6 lg:grid-cols-[minmax(0,44rem)_18rem]">
+    <div class="grid gap-4 lg:grid-cols-[minmax(0,44rem)_18rem]">
         <div class="lg:col-start-2 lg:row-start-1">
             <x-ui.contact :name="$group->name" sidebar>
                 <x-slot:chips>
@@ -11,7 +11,7 @@
                 </x-slot:chips>
             </x-ui.contact>
 
-            <section class="mt-6">
+            <section class="mt-4">
                 <h2 class="list-head">Состав</h2>
                 @if ($buyers->isEmpty())
                     <div class="list"><x-people.pick name="users[]" kind="buyer" only reload placeholder="Добавить покупателя"/></div>
@@ -36,7 +36,7 @@
                 @endif
             </section>
             {{-- Переименовать и удалить — строкой в конце, а не одиноким кружком «Изменить» под названием (11.11.2026). --}}
-            <section class="mt-6" data-controller="sheet">
+            <section class="mt-4" data-controller="sheet">
                 <div class="list">
                     <x-ui.sheet-row>
                         <x-ui.row-icon name="edit"/>

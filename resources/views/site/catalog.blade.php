@@ -41,7 +41,7 @@
                 {{-- «Ждут вас» — дела по своим сделкам первой лентой (10.11.2026, владелец: «подтверждение предложений научились, а
                      когда сделка — почти всегда приходится за них админам нажимать»): кнопка ответа прямо в плитке. --}}
                 @if (($asks ?? collect())->isNotEmpty())
-                    <div class="mb-6">
+                    <div class="mb-4">
                         <x-ui.shelf title="Ждут вас" :count="$asks->count()" id="catalog-asks">
                             @foreach ($asks as $ask)<x-deal.ask-card :ask="$ask"/>@endforeach
                         </x-ui.shelf>
@@ -52,7 +52,7 @@
                      срочных, а на пилюлях «Новые» и «Горящие» пропадали). --}}
                 @if ($toEstimate->isNotEmpty())
                     @if (\App\Support\ListView::isTable($view))
-                    <x-ui.table id="catalog-estimates" :view="$view" class="mb-6" :table="$columns">
+                    <x-ui.table id="catalog-estimates" :view="$view" class="mb-4" :table="$columns">
                         <x-slot:head><x-table.head :table="$columns" :sort="$sorting"/></x-slot:head>
                         <x-table.group :table="$columns" key="estimate" title="Нужно оценить" :count="$toEstimate->count()"/>
                         @foreach ($toEstimate as $offer)
@@ -62,7 +62,7 @@
                     @else
                     {{-- Лентой вбок (владелец 11.10.2026: плитки во всю ширину «гигантские»): узкие плитки одной строкой, сколько бы
                          их ни было, на любом виде списка. --}}
-                    <div class="mb-6" data-controller="ticker">
+                    <div class="mb-4" data-controller="ticker">
                         <x-ui.shelf title="Нужно оценить" :count="$toEstimate->count()" id="catalog-estimates">
                             @foreach ($toEstimate as $offer)
                                 <x-offer.card :offer="$offer" :estimate="$offer->openEstimates->first()" cover/>
@@ -94,7 +94,7 @@
                      таблицей — первыми строками с заголовком. --}}
                 @if ($urgent->isNotEmpty())
                     @if (\App\Support\ListView::isTable($view))
-                    <x-ui.table id="catalog-urgent" :view="$view" class="mb-6" :table="$columns">
+                    <x-ui.table id="catalog-urgent" :view="$view" class="mb-4" :table="$columns">
                         <x-slot:head><x-table.head :table="$columns" :sort="$sorting"/></x-slot:head>
                         <x-table.group :table="$columns" key="urgent" title="Срочно" :count="$urgent->count()"><x-slot:before><x-ui.icon name="fire" fill class="mr-1 inline size-4 align-[-2px] text-fire"/></x-slot:before></x-table.group>
                         @foreach ($urgent as $offer)
@@ -102,7 +102,7 @@
                         @endforeach
                     </x-ui.table>
                     @else
-                    <div class="mb-6" data-controller="ticker">
+                    <div class="mb-4" data-controller="ticker">
                         <x-ui.shelf title="Срочно" tone="urgent" :count="$urgent->count()" id="catalog-urgent" :data-selection-target="$selecting ? 'list' : null" :data-action="$selecting ? 'click->selection#tap:capture change->selection#change' : null">
                             @foreach ($urgent as $offer)
                                 <x-offer.card :offer="$offer" :context="$context" cover/>
@@ -115,7 +115,7 @@
                      (новое — голубое, горящее — оранжевое). Плитками — лентой вбок, строками и таблицей — первыми строками с заголовком. --}}
                 @if ($exclusive->isNotEmpty())
                     @if (\App\Support\ListView::isTable($view))
-                    <x-ui.table id="catalog-only" :view="$view" class="mb-6" :table="$columns">
+                    <x-ui.table id="catalog-only" :view="$view" class="mb-4" :table="$columns">
                         <x-slot:head><x-table.head :table="$columns" :sort="$sorting"/></x-slot:head>
                         <x-table.group :table="$columns" key="only" title="Открыты только Вам" :count="$exclusive->count()"><x-slot:before><span class="card-tone card-tone--only"></span></x-slot:before></x-table.group>
                         @foreach ($exclusive as $offer)
@@ -123,14 +123,14 @@
                         @endforeach
                     </x-ui.table>
                     @elseif ($view === \App\Support\ListView::LIST)
-                    <div id="catalog-only" class="cards cards--list mb-6" data-controller="ticker" @if ($selecting) data-selection-target="list" data-action="click->selection#tap:capture change->selection#change" @endif>
+                    <div id="catalog-only" class="cards cards--list mb-4" data-controller="ticker" @if ($selecting) data-selection-target="list" data-action="click->selection#tap:capture change->selection#change" @endif>
                         <h2 class="cards-group"><span class="card-tone card-tone--only self-center"></span>Открыты только Вам <span class="nums">{{ $exclusive->count() }}</span></h2>
                         @foreach ($exclusive as $offer)
                             <x-offer.card :offer="$offer" :context="$context" only/>
                         @endforeach
                     </div>
                     @else
-                    <div class="mb-6" data-controller="ticker">
+                    <div class="mb-4" data-controller="ticker">
                         <x-ui.shelf title="Открыты только Вам" tone="only" :count="$exclusive->count()" id="catalog-only" :data-selection-target="$selecting ? 'list' : null" :data-action="$selecting ? 'click->selection#tap:capture change->selection#change' : null">
                             @foreach ($exclusive as $offer)
                                 <x-offer.card :offer="$offer" :context="$context" only cover/>

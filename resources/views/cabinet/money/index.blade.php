@@ -15,7 +15,7 @@
 <x-ui.cabinet title="Оплаты">
     {{-- На телефоне сортировка — справа от заголовка, а не своим рядом под пилюлями (как «Гараж»); на ПК — в тулбаре. --}}
     <x-slot:actions class="!w-auto ml-auto md:hidden"><x-ui.toolbar :sort="$sort" name="money-head" action="/account/money"/></x-slot:actions>
-    <div class="flex flex-col gap-6">
+    <div class="flex flex-col gap-4">
 
         @if ($needDetails && ($position['payout'] > 0 || $position['paid_out'] > 0))
             <div class="list">

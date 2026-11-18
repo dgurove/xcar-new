@@ -25,14 +25,14 @@
     <div class="-mt-3 mb-6 flex flex-wrap gap-1.5">@if ($offer->isUrgent())<x-offer.urgent label/>@endif{{ "" }}@if ($offer->recommended)<x-offer.recommended label/>@endif<x-offer.tags :offer="$offer" :facts="false"/></div>
 
     {{-- Слева галерея и описание, справа цена и характеристики: всё о машине — в первом экране. --}}
-    <div class="grid gap-6 lg:grid-cols-[1fr_22rem] lg:gap-8">
+    <div class="grid gap-4 lg:grid-cols-[1fr_22rem] lg:gap-6">
         <div class="lg:col-start-1 lg:row-start-1">
             {{-- Знак на кадрах поставила оценка — уйдёт вместе с ней (владелец 11.10.2026). Запрет шеринга админа — строки нет. --}}
             @if ($offer->share_locked_by_estimate && $photos->isNotEmpty() && \App\Offers\Estimate::openFor($offer, $user))<p class="mb-2 text-sm text-ink-muted">Водяные знаки пропадут после оценки</p>@endif
             <x-offer.gallery :photos="$photos" :alt="$offer->titleWithYear()" :offer="$offer"/>
         </div>
 
-        <aside class="flex flex-col gap-6 lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:gap-8">
+        <aside class="flex flex-col gap-4 lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:gap-6">
             <x-offer.deal-box :offer="$offer" :my-bid="$myBid" :my-interest="$myInterest" :chat="$chat" :can-chat="$canChat"/>
             {{-- Своя заметка — сразу под ценой (ПК), на телефоне после цены, перед «Характеристиками». --}}
             <x-offer.my-note :offer="$offer" class="order-2 lg:order-1"/>
