@@ -237,6 +237,21 @@ class Position extends Model
     public const AGREE_BLOCK = 'Согласование с поставщиком';
 
     /**
+     * Запасное дело — именем шага. Но шаг «Ждём …» с нашим ходом так не называем (18.11.2026, владелец: «в группе „Ждём“ не должно быть
+     * ни одной сделки, по которой ход наш»): у такого шага должно быть своё дело в `todo` — пока его нет, «Проверить: …» и запись в журнал.
+     */
+    private function fallbackTitle(): string
+    {
+        $name = $this->stage->name;
+        if (! str_starts_with(mb_strtolower($name), 'ждём')) {
+            return $name;
+        }
+        \Illuminate\Support\Facades\Log::warning('deals: наш ход на шаге ожидания без своего дела', ['stage' => $name, 'offer' => $this->offer_id]);
+
+        return 'Проверить: '.mb_lcfirst($name);
+    }
+
+    /**
      * Что пишем поставщику на шаге — по шаблону письма шага: [вид, дело словом] (группы вкладки «Написать поставщику»).
      * Шаблона нет — по названию шага.
      *
@@ -335,7 +350,11 @@ class Position extends Model
             $this->consentLate() => $todo('consent', 'Менеджер не ответил, берёт ли', 3, $this->deadline_at,
                 ($phone = $this->deal?->buyer?->phone) ? ['label' => 'Телефон менеджера', 'tel' => $phone] : null),
             $this->stage->isRequestStep() => $todo('request:'.$offer->vendor_id, 'Отправить заявку поставщику', 4),
-            default => $todo('stage:'.$this->stage->name, $this->stage->name, 5),
+            // Письмо Т-Страхования пришло — спросить менеджера (18.11.2026, владелец: «как это „Ждём письмо поставщика“ и при этом ход
+            // наш — они туда не зайдут»): своим делом и своей вкладкой «Спросить менеджера», кнопка — тот же выход, что в окне.
+            $this->stage->name === \App\Offers\SupplierLetterWait::STAGE && ($ask = \App\Offers\SupplierLetterWait::exitOf($this->stage))
+                => $todo('ask-consent', 'Берёт ли в работу', 1, button: ['label' => 'Спросить', 'post' => '/offers/'.$offer->number.'/exit/'.$ask->id, 'confirm' => 'Спросить менеджера, берёт ли в работу?']),
+            default => $todo('stage:'.$this->stage->name, $this->fallbackTitle(), 5),
         };
     }
 

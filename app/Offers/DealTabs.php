@@ -29,6 +29,8 @@ final class DealTabs
         // счёт отправить — тоже отдельная вкладка»): строка здесь только при нашем деле, вкладка — по виду дела (`of`).
         'reprice' => 'Переоценка',
         'letter' => 'Написать поставщику',
+        // Вопрос менеджеру (18.11.2026): письмо Т-Страхования пришло — спросить, берёт ли в работу (`Position::todo` `ask-consent`).
+        'ask' => 'Спросить менеджера',
         'answered' => 'Поставщик ответил',
         'check' => 'Проверить оплату',
         'bill' => 'Отправить счёт',
@@ -100,6 +102,7 @@ final class DealTabs
         return match (true) {
             $repricing || in_array($key, ['reprice', 'reprice-answer', 'price-ask', 'price-offer'], true) => 'reprice',
             in_array($key, ['bounced', 'requisites'], true) || str_starts_with($key, 'letter') || str_starts_with($key, 'request:') => 'letter',
+            $key === 'ask-consent' => 'ask',
             // Ответ поставщика на разбор — на каком бы шаге ни пришёл.
             $key === 'reply' => 'answered',
             str_starts_with($key, 'stage:Проверка оплаты') => 'check',

@@ -14,6 +14,12 @@
 @elseif (isset($button['tel']))
     {{-- Номер менеджера — номером, не кнопкой «Позвонить» (11.11.2026): нажатие — «Скопировать / Позвонить» (`tel.js`). --}}
     <x-ui.tel :value="$button['tel']" class="text-sm"/>
+@elseif (isset($button['post']))
+    {{-- Дело — одним нажатием с переспросом (выход шага от сотрудника: «Спросить» менеджера, 18.11.2026). --}}
+    <form method="post" action="{{ $button['post'] }}" class="contents" @if (! empty($button['confirm'])) data-turbo-confirm="{{ $button['confirm'] }}" data-turbo-confirm-label="{{ $button['label'] }}" @endif>
+        @csrf
+        <button type="submit" class="{{ $class }}" aria-label="{{ $button['label'] }}"><span @class(['max-sm:hidden' => $timed])>{{ $button['label'] }}</span>{!! $time !!}</button>
+    </form>
 @elseif (isset($button['href']))
     <a href="{{ $button['href'] }}" data-turbo-frame="_top" class="{{ $class }}" aria-label="{{ $button['label'] }}"><span @class(['max-sm:hidden' => $timed])>{{ $button['label'] }}</span>{!! $time !!}</a>
 @endif
