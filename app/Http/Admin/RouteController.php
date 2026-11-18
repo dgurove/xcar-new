@@ -153,7 +153,8 @@ class RouteController
 
         // Туда же, откуда нажали: страница сделки, редактор или карточка строки (DetailBack), а не всегда в редактор.
         // Шаг можно отменить — в тосте «Отменить».
-        return back(fallback: "/offers/{$offer->number}")->with('toast', $exit->label)
+        // «Письмо поставщика пришло» — по сути вопрос менеджеру ушёл (18.11.2026): тост — что сделали.
+        return back(fallback: "/offers/{$offer->number}")->with('toast', $exit->label === \App\Offers\SupplierLetterWait::EXIT ? 'Спросили менеджера' : $exit->label)
             ->with('toast-undo', (bool) StepBack::undoable($offer, $exit->from->workflow->track));
     }
 

@@ -40,6 +40,8 @@ final class DealTabs
         // «Ждём» — нашего дела нет (`WAITING`): обычным шрифтом, полупрозрачные, без красного счётчика (владелец: «такие вкладки
         // делал бы regular font полупрозрачный, чтобы показать, что там чисто ждать надо»). Вкладка — по блоку шага (`BLOCKS`).
         // «На согласовании» (17.11.2026, владелец: «не Согласование, а На согласовании») — согласие менеджера и поставщика.
+        // С 18.11.2026 — только ожидание поставщика (владелец: «то, что менеджеры думают, там не должно быть ничего»): ждём менеджера на
+        // шаге согласования — «Спросить менеджера», группа «Ждём ответа» (`of`, `waits`).
         'agree' => 'На согласовании',
         'invoice' => 'Ждём поставщика',
         'paying' => 'Менеджер должен нам',
@@ -92,6 +94,9 @@ final class DealTabs
             $supplier = $position?->waitsFor() === WaitsFor::Supplier;
 
             return match (true) {
+                // Менеджер думает (берёт ли, что ответить) — пока не ответил, сделка в «Спросить менеджера» (18.11.2026); оплату,
+                // получение и договор он ведёт сам — там свои вкладки ожидания.
+                self::asksManager($position, $block) => 'ask',
                 in_array($block, self::WAITING, true) && ! ($supplier && $block === 'paying') => $block,
                 $supplier => 'invoice',
                 $block === 'payout' => 'paying',
@@ -102,7 +107,7 @@ final class DealTabs
         return match (true) {
             $repricing || in_array($key, ['reprice', 'reprice-answer', 'price-ask', 'price-offer'], true) => 'reprice',
             in_array($key, ['bounced', 'requisites'], true) || str_starts_with($key, 'letter') || str_starts_with($key, 'request:') => 'letter',
-            $key === 'ask-consent' => 'ask',
+            in_array($key, ['ask-consent', 'consent'], true) => 'ask',
             // Ответ поставщика на разбор — на каком бы шаге ни пришёл.
             $key === 'reply' => 'answered',
             str_starts_with($key, 'stage:Проверка оплаты') => 'check',
@@ -184,7 +189,13 @@ final class DealTabs
         'buyer', 'openRequirement', 'invoices.claims', 'invoices.party', 'contract', 'garageCar'];
 
     /** Группы сделок без нашего дела, по порядку. */
-    public const WAITS = ['manager' => 'Ждём менеджера', 'supplier' => 'Ждём поставщика', 'transport' => 'Везёт наша логистика', 'other' => 'Прочее'];
+    public const WAITS = ['answer' => 'Ждём ответа', 'manager' => 'Ждём менеджера', 'supplier' => 'Ждём поставщика', 'transport' => 'Везёт наша логистика', 'other' => 'Прочее'];
+
+    /** Ждём ответа менеджера на шаге согласования, а не на оплате, получении, договоре или расчёте (у них свои вкладки). */
+    private static function asksManager(?Position $position, string $block): bool
+    {
+        return $position?->waitsFor() === WaitsFor::Manager && ! in_array($block, ['invoice', 'paying', 'pickup', 'docs', 'payout', 'letter'], true);
+    }
 
     /** Заголовок группы ожидания по ключу `waits`. */
     public static function waitTitle(string $key): string
@@ -201,6 +212,8 @@ final class DealTabs
             // Менеджер думает про новую цену (`RepriceAsk`) — ждём его, какой бы шаг ни стоял (гаражная без шага переоценки).
             RepriceAsk::where('deal_id', $deal->id)->whereIn('state', RepriceAsk::OPEN)->exists() => 'manager',
             $position?->carried() === true => 'transport',
+            // Вопрос менеджеру на шаге не из вкладок ожидания (оплата, получение, договор) — «Спросить менеджера», «Ждём ответа».
+            self::asksManager($position, self::BLOCKS[$position?->stage?->block?->name ?? $position?->stage?->name ?? ''] ?? 'agree') => 'answer',
             $position?->waitsFor() === WaitsFor::Manager => 'manager',
             // Чего ждём от поставщика на шагах оплаты — своей группой («Ждём счёт», «Ждём подтверждение оплаты»).
             $position?->waitsFor() === WaitsFor::Supplier => isset(self::WAIT_STAGES[$position->stage?->name]) ? 'supplier:'.$position->stage->name : 'supplier',
