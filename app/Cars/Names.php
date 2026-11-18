@@ -306,7 +306,8 @@ final class Names
             }
         }
         // Опечатка OCR в латинице — только при тех же цифрах: Tiggo 7 и Tiggo 8 — разные модели, не опечатка.
-        $limit = mb_strlen($flat) >= 7 ? 2 : (mb_strlen($flat) >= 4 ? 1 : 0);
+        // Код модели — цифры с буквой-двумя (2834NE и 2834NJ — разные кузова «АвтоМаша», 18.11.2026): буквы и есть различие.
+        $limit = preg_match_all('/\p{L}/u', $flat) < 3 ? 0 : (mb_strlen($flat) >= 7 ? 2 : (mb_strlen($flat) >= 4 ? 1 : 0));
         $near = $models->filter(fn ($m) => $limit && self::sameDigits($flat, $m->name) && levenshtein($flat, self::flat($m->name)) <= $limit)->pluck('name')->unique();
 
         return $near->count() === 1 ? $near->first() : null;

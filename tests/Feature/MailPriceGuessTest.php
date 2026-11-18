@@ -79,6 +79,13 @@ class MailPriceGuessTest extends TestCase
             ."Коммерческоенайменование   2834NJ\nНомер шасси (рамы)   X96330250P2885463\nМарка базового ТС (шасси)   ГАЗ\nАдрес изготовителя   603032, Российская\nГород Нижний Новгород,\n";
         $f = DocumentFields::extract($ocr);
         $this->assertSame(['ГАЗ', '2834NJ', null], [$f['brand']['value'] ?? null, $f['model']['value'] ?? null, $f['city']['value'] ?? null]);
+        // Акт Альфы: «Марка/модель ТС   SHACAMAN 3558» (2610222544).
+        \App\Cars\Brand::create(['name' => 'Shacman (Shaanxi)', 'slug' => 'shacman']);
+        // Код модели с другой буквой — другая модель, а не опечатка OCR.
+        $gaz = \App\Cars\Brand::known('ГАЗ') ?? \App\Cars\Brand::create(['name' => 'ГАЗ', 'slug' => 'gaz']);
+        $gaz->models()->create(['name' => '2834NJ', 'slug' => '2834nj']);
+        $this->assertSame('2834NE', \App\Cars\CarModel::resolve($gaz, '2834NE')->name);
+        $this->assertSame('3558', DocumentFields::extract("Марка/модель ТС   SHACAMAN 3558   Гос.рег.номер\n")['model']['value'] ?? null);
 
         $garbled = str_repeat("Ндевтифихаrдrrонншй Hor,tep транспортного средства Коммерчесхое яаименование 2Ез4NJ Год ивгот.овлвння 2о2з паспорта Выписка\n", 3);
         $this->assertFalse(\App\Mail\Extraction\AttachmentText::readable($garbled));

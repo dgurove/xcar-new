@@ -66,7 +66,7 @@ final class DocumentFields
         }
         // Марка с моделью одной строкой (акт, договор), иначе «Марка» и «Модель» порознь (акт Альфы, ЭПТС: «Марка HONDA»,
         // «Коммерческое наименование CR-V» или «GEELY EX5 EM-i» — с маркой внутри).
-        foreach (self::values($text, 'Марка\s*\/\s*модель|Марка,\s*модель|Марка\s+и\s+модель|Наименование\s+ТС') as $car) {
+        foreach (self::values($text, '(?:Марка\s*\/\s*модель|Марка,\s*модель|Марка\s+и\s+модель)(?:\s+ТС)?|Наименование\s+ТС') as $car) {
             if ($found = ScanCar::of($car)) {
                 $put('brand', $found['brand']);
                 $put('model', $found['model']);
