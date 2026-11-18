@@ -492,13 +492,14 @@ class MoneyController
 
     /**
      * Таблица страницы человека (18.11.2026, владелец: «внутри надо как таблицу, а не строками»): по машинам, как «Сделки» —
-     * название, № убытка, что с оплатой, когда выставлено, сумма и кнопки дела самым правым (`x-money.person-row`).
+     * название, № убытка, что с оплатой, когда выставлено, сумма и кнопки дела самым правым (`x-money.person-row`). Кнопки — ровно
+     * своей ширины (`fixed`): скрытый текст «Поделиться» в ячейке раздувал столбец до 48rem.
      */
     public static function personTable(): Table
     {
         return Table::of(new Column('title', 'Марка, модель', grow: true), new Column('vendor', '№ убытка', from: 'sm', role: ColRole::Code, rem: 10),
             new Column('status', 'Статус', from: 'sm', role: ColRole::State, rem: 10), new Column('created', 'Создано', from: 'lg', aside: true, role: ColRole::When, cell: 'nums', rem: 6.5),
-            new Column('amount', 'Сумма', num: true, cell: 'nums', rem: 7), new Column('action', role: ColRole::When, rem: 14));
+            new Column('amount', 'Сумма', num: true, cell: 'nums', rem: 7), new Column('action', role: ColRole::When, rem: 15, fixed: true));
     }
 
     /**

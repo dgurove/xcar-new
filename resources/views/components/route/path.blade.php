@@ -243,14 +243,17 @@
                         $proofFor = $req && $req->asks === \App\Workflow\Asks::Document && $stage->isPayStep() && auth()->user()?->canEditDeals();
                         // Шаг платит только комиссию без счёта (18.11.2026) — ссылкой или наличными, платёжки нет: «Приложить платёжку за
                         // менеджера» не нужна. Где платят поставщику или по счёту — как было.
+                        // Шаг пройдёт сам, когда деньги придут (`AdvanceOnPayment`): «За менеджера: Оплатил, документ приложен» тоже не нужен.
+                        $feeOnly = false;
                         if ($proofFor && $deal && ! $deal->paysSupplierOn($stage)) {
                             $ours = $invoices->filter(fn ($i) => $i->direction === 'issued' && $i->kind !== \App\Billing\ChargeKind::Reward && $i->state !== \App\Billing\InvoiceState::Void);
-                            $proofFor = $ours->isEmpty() || $ours->contains(fn ($i) => $i->isDocument());
+                            $feeOnly = $ours->isNotEmpty() && ! $ours->contains(fn ($i) => $i->isDocument());
+                            $proofFor = ! $feeOnly;
                         }
                         $reqFiles = $req ? $req->getMedia('files') : collect();
                         // Оплату с документом проходят только с платёжкой (16.11.2026, владелец: «без этого следующий шаг не продвинется»):
                         // «Приложить платёжку за менеджера» и есть этот ход, голого «За менеджера: Оплатил, документ приложен» нет.
-                        $forKeys = $proofFor ? $forKeys->reject(fn ($x) => in_array($x->label, \App\Offers\Documents\PaymentProofPdf::EXITS, true)) : $forKeys;
+                        $forKeys = $proofFor || $feeOnly ? $forKeys->reject(fn ($x) => in_array($x->label, \App\Offers\Documents\PaymentProofPdf::EXITS, true)) : $forKeys;
                     @endphp
                     {{-- Всё, что за менеджера, — под строкой «Менеджер» (16.11.2026, владелец: «„Беру в работу за менеджера“ должно быть под
                          „Менеджер“, а так они разорваны»): что он уже приложил, данные покупателя, документ об оплате, его ответы. --}}
