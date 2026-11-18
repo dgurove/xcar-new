@@ -3,6 +3,7 @@ import * as Turbo from '@hotwired/turbo';
 import * as overlays from '../overlays';
 import { reducedMotion } from '../lib/motion';
 import { scrollTop, scrollToY } from '../lib/scroller';
+import { request } from '../lib/http';
 
 // Вкладки экрана колесом во весь экран (`x-ui.tab-title`, 30.10.2026, владелец: «как в iOS, как на Apple Watch»).
 //
@@ -78,9 +79,7 @@ export default class extends Controller {
         this.wheel = wheel;
         this.button = button;
         this.scroll = wheel.querySelector('.tab-wheel-scroll');
-        this.items = [...wheel.querySelectorAll('.tab-wheel-item')];
-        this.current = Math.max(0, this.items.findIndex((a) => a.hasAttribute('aria-current')));
-        this.at = this.current;
+        this.collect();
         this.chosen = null;
         document.documentElement.append(wheel);
         wheel.hidden = false;
@@ -103,15 +102,8 @@ export default class extends Controller {
             // «›» у выбранной — ровно там, где она у заголовка: показывает, что выбрано (владелец 30.10.2026).
             const chev = button.querySelector('.tab-title-chev')?.getBoundingClientRect();
             if (chev) { set('--wheel-chev-x', `${chev.left}px`); set('--wheel-chev-y', `${chev.top}px`); }
-            this.items.forEach((a, i) => {
-                a.style.setProperty('--wheel-d', String(Math.abs(i - this.current)));
-                a.style.setProperty('--wheel-dir', String(Math.sign(i - this.current)));
-            });
-            // Место каждой вкладки — её верх у линии фокуса: между разделами стоят подзаголовки (`.tab-wheel-sec`, 16.11.2026),
-            // поэтому не «номер × строка». Снап встаёт только на вкладки — подзаголовки пролистываются.
             this.focus = focus;
-            this.tops = this.items.map((a) => a.offsetTop - focus);
-            this.scroll.scrollTop = this.pos(this.current);
+            this.place();
         }
         this.listen();
         overlays.open(ID, { close: () => this.close(true) });
@@ -119,6 +111,37 @@ export default class extends Controller {
         void wheel.offsetWidth;
         wheel.classList.add('is-open');
         this.items[this.current]?.focus({ preventScroll: true });
+    }
+
+    // Пункты колеса — видимые: «Только мои» (18.11.2026) прячет вкладки, за которые человек не отвечает (`data-not-mine`).
+    collect() {
+        const mine = this.wheel.classList.contains('is-mine');
+        this.items = [...this.wheel.querySelectorAll('.tab-wheel-item')].filter((a) => !(mine && a.hasAttribute('data-not-mine')));
+        this.current = Math.max(0, this.items.findIndex((a) => a.hasAttribute('aria-current')));
+        this.at = this.current;
+    }
+
+    // Телефон: лесенка выплывания от текущей и места вкладок у линии фокуса.
+    place() {
+        this.items.forEach((a, i) => {
+            a.style.setProperty('--wheel-d', String(Math.abs(i - this.current)));
+            a.style.setProperty('--wheel-dir', String(Math.sign(i - this.current)));
+        });
+        // Место каждой вкладки — её верх у линии фокуса: между разделами стоят подзаголовки (`.tab-wheel-sec`, 16.11.2026),
+        // поэтому не «номер × строка». Снап встаёт только на вкладки — подзаголовки пролистываются.
+        this.tops = this.items.map((a) => a.offsetTop - this.focus);
+        this.scroll.scrollTop = this.pos(this.current);
+    }
+
+    // Тумблер «Только мои» (18.11.2026, владелец): колесо сужается сразу, запоминается у человека в фоне.
+    mine(event) {
+        const on = event.target.checked;
+        this.wheel.classList.toggle('is-mine', on);
+        this.collect();
+        if (!this.cols) this.place();
+        const body = new FormData();
+        body.append('on', on ? '1' : '0');
+        request('/offers/wheel-mine', { method: 'POST', body });
     }
 
     listen() {
@@ -135,6 +158,8 @@ export default class extends Controller {
         }
         matchMedia(COLS).addEventListener('change', () => this.close(), opts);
         this.wheel.addEventListener('click', (e) => this.tap(e), opts);
+        // Колесо открыто вне своего контроллера (в `<html>`), действия Stimulus до тумблера не доходят — слушаем сами.
+        this.wheel.querySelector('.tab-wheel-mine input')?.addEventListener('change', (e) => this.mine(e), opts);
         document.addEventListener('keydown', (e) => this.key(e), opts);
         // Наш визит — по адресу (ответ мог прийти редиректом); начался чужой — колесо его не ждёт.
         document.addEventListener('turbo:visit', (e) => { this.mine = !!this.url && e.detail.url === this.url; }, opts);
@@ -155,6 +180,8 @@ export default class extends Controller {
     }
 
     tap(event) {
+        // Тумблер «Только мои» — не вкладка и не мимо: колесо остаётся открытым.
+        if (event.target.closest('.tab-wheel-mine')) return;
         // Подзаголовок раздела — не вкладка: нажатие по нему ничего не делает (и колесо не закрывает).
         if (event.target.closest('.tab-wheel-sec')) { event.preventDefault(); return; }
         const item = event.target.closest('.tab-wheel-item');

@@ -3,6 +3,7 @@
 use App\Http\Admin\AlarmController;
 use App\Http\Admin\BankController;
 use App\Http\Admin\BidController;
+use App\Http\Admin\ResponsibleController;
 use App\Http\Admin\ChatController;
 use App\Http\Admin\DealContractController;
 use App\Http\Admin\DealController;
@@ -89,6 +90,8 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
     Route::post('/offers/filters', [SavedFilterController::class, 'store']);
     Route::patch('/offers/filters/{filter}', [SavedFilterController::class, 'update'])->whereNumber('filter');
     Route::delete('/offers/filters/{filter}', [SavedFilterController::class, 'destroy'])->whereNumber('filter');
+    // «Только мои» в колесе вкладок (18.11.2026): помнится у человека, любому сотруднику CRM.
+    Route::post('/offers/wheel-mine', [OfferController::class, 'wheelMine']);
     // «Оценить → Из текста»: оценочные из сообщения — модератору тоже, он ставит закупочную.
     Route::post('/offers/valuations/file', [OfferValuationController::class, 'file'])->middleware('throttle:10,1');
     Route::post('/offers/valuations/preview', [OfferValuationController::class, 'preview']);
@@ -464,6 +467,10 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
             Route::post('/users/invites/{invite}/off', [InviteController::class, 'disable']);
             Route::post('/users/invites/{invite}/mail', [InviteController::class, 'mail']);
             Route::post('/users/invites/{invite}/on', [InviteController::class, 'enable']);
+
+            // Ответственные за вкладки «Предложений» (18.11.2026): по ним «Только мои» в колесе.
+            Route::get('/responsibles', [ResponsibleController::class, 'index']);
+            Route::put('/responsibles/{preset}', [ResponsibleController::class, 'update']);
 
             Route::get('/tags', [TagController::class, 'index']);
             Route::post('/tags', [TagController::class, 'store']);

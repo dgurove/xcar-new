@@ -36,6 +36,7 @@ use App\Garage\CarState;
 use App\Offers\DealTabs;
 use App\Offers\OfferFilters;
 use App\Offers\OfferTabs;
+use App\Offers\TabOwner;
 use App\Purchases\Purchase;
 use App\Purchases\PurchaseState;
 use App\Offers\Estimate;
@@ -216,6 +217,33 @@ class OfferController
 
         // Модератору (`canEditDeals`) — сделки по этапам, «Завершённые» и гараж (17.11.2026, владелец: полный доступ к сделкам и гаражу).
         return array_diff_key(self::PRESETS, $hidden + ($user->canEditDeals() ? [] : ['garage' => true] + self::DEAL_TABS));
+    }
+
+    /** Память «Только мои» колеса (`ListPrefs`): список и ключ. */
+    public const MINE_LIST = 'offers-wheel';
+
+    /**
+     * «Только мои» в колесе (18.11.2026, владелец): включён ли у человека и за какие вкладки он отвечает (`TabOwner`). null —
+     * не сотрудник CRM.
+     *
+     * @return array{on: bool, keys: list<string>}|null
+     */
+    public static function tabMine(?User $user): ?array
+    {
+        if (! $user?->isStaff()) {
+            return null;
+        }
+
+        return ['on' => (bool) ListPrefs::value($user, self::MINE_LIST, 'mine'), 'keys' => TabOwner::presetsOf($user)];
+    }
+
+    /** Тумблер «Только мои» колеса: колесо прячет вкладки сразу, сюда — запомнить (на всех устройствах человека). */
+    public function wheelMine(Request $request)
+    {
+        ListPrefs::put($request, self::MINE_LIST, 'mine', $request->boolean('on') ? 1 : null);
+
+        // Колесо шлёт `fetch` — ему ответ без страницы; формой (без скрипта) — назад.
+        return $request->expectsJson() ? response()->noContent() : back();
     }
 
     /** Разделы колеса человека — только у разделов, где есть его вкладки. */

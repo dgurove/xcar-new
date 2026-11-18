@@ -78,6 +78,27 @@ final class ListPrefs
         throw new HttpResponseException(redirect('/'.ltrim($request->path(), '/').($query ? '?'.Arr::query($query) : '')));
     }
 
+    /** Одно значение памяти списка человека (не чипа): «Только мои» колеса вкладок (18.11.2026). */
+    public static function value(?User $user, string $list, string $key): mixed
+    {
+        return ($user?->list_prefs ?? [])[$list][$key] ?? null;
+    }
+
+    /** Записать одно значение памяти списка; null — стереть. «Войти как» память человека не трогает. */
+    public static function put(Request $request, string $list, string $key, mixed $value): void
+    {
+        if (Impersonation::active()) {
+            return;
+        }
+        $prefs = self::all($request)[$list] ?? [];
+        if ($value === null) {
+            unset($prefs[$key]);
+        } else {
+            $prefs[$key] = $value;
+        }
+        self::remember($request, $list, $prefs);
+    }
+
     private static function all(Request $request): array
     {
         $user = $request->user();

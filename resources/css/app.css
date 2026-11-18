@@ -1431,6 +1431,19 @@ html.kb-open { --home-gap: 0px; }
      полупрозрачное название; выбранная — тоже обычным весом, но в полный цвет. */
   .tab-wheel-item.is-wait .tab-wheel-label { font-weight: 400; }
   .tab-wheel-item.is-wait:not([aria-current]) .tab-wheel-label { opacity: .5; }
+  /* «Только мои» (18.11.2026, владелец выбрал тумблер iOS): в правом нижнем углу колеса подпись и переключатель; включён — вкладки, за
+     которые человек не отвечает (`TabOwner`), и разделы без своих прячутся. Ничего не назначено — одна строка. */
+  .tab-wheel.is-mine [data-not-mine], .tab-wheel.is-mine [data-mine-first] { display: none; }
+  @media (min-width: 1024px) { .tab-wheel.is-mine [data-mine-top] { display: none; } }
+  /* Подложка цвета колеса: пункты, что листаются под тумблером, его не перебивают. */
+  .tab-wheel-mine {
+    position: absolute; z-index: 2; right: max(.5rem, env(safe-area-inset-right)); bottom: max(.5rem, env(safe-area-inset-bottom));
+    display: flex; align-items: center; gap: .625rem; padding: .5rem; padding-inline-start: .875rem; border-radius: 999px;
+    background: var(--color-wheel); font-size: var(--text-sm); color: var(--color-ink-muted); cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .tab-wheel-none { display: none; font-size: var(--text-sm); color: var(--color-ink-dim); }
+  .tab-wheel.is-mine .tab-wheel-none { display: block; padding-inline: var(--wheel-left) 1rem; }
   /* Колесо — телефон и планшет. Столбцы ПК здесь не нужны: обёртка столбца — `contents`, пункты подряд одним списком. */
   @media (max-width: 1023.98px) {
     .tab-wheel-col { display: contents; }

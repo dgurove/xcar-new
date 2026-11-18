@@ -331,6 +331,7 @@ final class Nav
                 '' => [
                     self::link('Профиль', '/settings', exact: true),
                     ...($user->isAdmin() ? [self::link('Пользователи', '/settings/users', icon: 'users')] : []),
+                    ...($user->isAdmin() ? [self::link('Ответственные', '/settings/responsibles', icon: 'user')] : []),
                     self::link('Вендоры', '/settings/vendors', icon: 'deal'),
                     ...($user->isAdmin() ? [self::link('Таймеры', '/settings/timers', icon: 'timer')] : []),
                     ...($user->isAdmin() ? [self::link('Банк', '/settings/bank', icon: 'bank')] : []),
