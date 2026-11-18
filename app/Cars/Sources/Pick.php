@@ -70,7 +70,10 @@ final class Pick
             $rejected = Rejections::of(Rejections::car($car->id), Variants::REJECT);
             foreach ($rows->groupBy('field') as $field => $group) {
                 $columns = Values::columns($field);
-                if (Values::current($lane, $field) || array_filter($columns, fn ($c) => $car->byHuman($c))) {
+                // Город: стоит только регион — источник с местом в нём его уточняет (`Settlement::refines`).
+                $coarse = $field === 'city' && $lane instanceof Offer && $lane->settlement_id && $group->pluck('key')->unique()->count() === 1
+                    && \App\Cars\Settlement::refines($lane->settlement_id, json_decode($group->first()->write, true)['settlement_id'] ?? null);
+                if ((Values::current($lane, $field) && ! $coarse) || array_filter($columns, fn ($c) => $car->byHuman($c))) {
                     continue;
                 }
                 // Вписывается только точное согласие источников (VIN с разницей в знак — не «согласны»).

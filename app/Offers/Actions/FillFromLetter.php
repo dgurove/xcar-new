@@ -84,8 +84,8 @@ final class FillFromLetter
             && (Settlement::resolve((string) $chosen['city']['value'], $area) || ! Settlement::resolve((string) $chosen['city']['value']))) {
             $chosen['city']['region'] = $area;
         }
-        // Город из документа, которого справочник не знает, — как написано (`Settlement::orFree`): пусто хуже.
-        if (($chosen['city']['source'] ?? null) === 'file' && ! Settlement::resolve((string) $chosen['city']['value'], $chosen['city']['region'] ?? null)
+        // Город из документа или подписи письма с регионом («Город нахождения Шушары»), которого справочник не знает, — как написано (`Settlement::orFree`): пусто хуже.
+        if ((($chosen['city']['source'] ?? null) === 'file' || ! empty($message->fields()['city']['region'])) && ! Settlement::resolve((string) $chosen['city']['value'], $chosen['city']['region'] ?? null)
             && ($place = Settlement::orFree((string) $chosen['city']['value'], $chosen['city']['region'] ?? null))) {
             $chosen['city'] = ['value' => $place['name'], 'region' => $chosen['city']['region'] ?? null, 'create' => true];
         }

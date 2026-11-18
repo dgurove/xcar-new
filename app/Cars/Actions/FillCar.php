@@ -97,7 +97,9 @@ final class FillCar
             $guessed = $field === 'vehicle_category' && $lane instanceof Offer && ! $lane->parkVehicle && $lane->carRecord()->categoryGuessed();
             // Поле последним правил человек — источник его не трогает, даже стёртое (`Car::stamp`, 07.11.2026).
             $human = $onlyEmpty && $lane->carRecord()->byHuman(CarFields::column($lane::class, $field));
-            if (array_key_exists($field, $data) && (! blank($lane->{$field}) || $human) && ! $guessed) {
+            // Стоит только регион, а источник называет место в нём — уточнение, а не «занято» (`Settlement::refines`).
+            $refines = $field === 'settlement_id' && ! $human && Settlement::refines($lane->settlement_id ?? null, $data[$field] ?? null);
+            if (array_key_exists($field, $data) && (! blank($lane->{$field}) || $human) && ! $guessed && ! $refines) {
                 unset($data[$field]);
             }
         }

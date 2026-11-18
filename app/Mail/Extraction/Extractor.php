@@ -56,6 +56,15 @@ final class Extractor
         if (! isset($fields['city']) && ($city = Template::city($text))) {
             $fields['city'] = ['value' => $city, 'source' => 'body'];
         }
+        // Подписи «Город нахождения» / «Регион нахождения» (Абсолют) — с регионом: село без него не найти.
+        if (! isset($fields['city']) && ($place = Template::place($text))) {
+            $fields['city'] = $place + ['source' => 'body'];
+        }
+        // Места нет нигде, а регион в теме есть («… Самарская обл.») — хотя бы он (18.11.2026, владелец: «лучше регион, чем
+        // пустота»): в справочнике регионы — тоже места; город из документа потом его уточнит (`Settlement::refines`).
+        if (! isset($fields['city']) && ($area = \App\Cars\Region::inText($topic)) && Settlement::named($area->name)) {
+            $fields['city'] = ['value' => $area->name, 'source' => 'subject'];
+        }
         $this->bareCode($fields, $topic, collect($attachments)->pluck('filename')->filter()->all());
         $guessed = $this->body($fields, $text);
         foreach ($this->documents($attachments) as $field => $value) {

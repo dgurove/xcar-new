@@ -84,7 +84,7 @@ final class PromoteCandidate
             // Город письма, а нет его — место из адреса осмотра («Пермский край, д. Ванюки, …»).
             // Село без региона — с регионом из темы («… Самарская обл.»); справочник места не знает вовсе — как написано
             // (`Settlement::orFree`, 18.11.2026, владелец: «лучше регион с ошибкой, чем пустота»).
-            'settlement_id' => ($v('city') ? Settlement::named($v('city'))['id'] ?? Settlement::resolve($v('city'), $area = \App\Cars\Region::inText((string) $candidate->subject)?->name)['id'] ?? null : null)
+            'settlement_id' => ($v('city') ? Settlement::named($v('city'))['id'] ?? Settlement::resolve($v('city'), $area = $candidate->extracted['city']['region'] ?? \App\Cars\Region::inText((string) $candidate->subject)?->name)['id'] ?? null : null)
                 ?? Settlement::inAddress($v('location'))['id'] ?? ($v('city') ? Settlement::orFree($v('city'), $area ?? null)['id'] ?? null : null),
             // Без номера у вендора, у которого так бывает (ТИТ), — «б/н», как вписывают руками; машину держит госномер.
             'claim_ref' => $candidate->code ?? ($vendor?->claim_ref_optional ? Code::NONE : null),
