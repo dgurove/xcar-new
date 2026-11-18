@@ -90,8 +90,7 @@ final class FetchSpecs implements ShouldQueue
         // Слова «Коробка», «Топливо» — теми же правилами, что в письмах (`CarWords`).
         $set('transmission', Transmission::tryFrom((string) CarWords::transmission($s['transmission'])));
         $set('fuel', Fuel::tryFrom((string) CarWords::fuel($s['fuel'])));
-        if ($s['brand'] && ! $car->isLocked('brand_id')) {
-            $brand = Brand::resolve($s['brand']);
+        if ($s['brand'] && ! $car->isLocked('brand_id') && ($brand = Brand::resolve($s['brand']))) {
             $car->brand_id = $brand->id;
             $car->brand_raw = $s['brand'];
             if ($s['model']) {

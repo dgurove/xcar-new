@@ -65,10 +65,19 @@ class Brand extends Model
     }
 
     /** Найти по любому написанию, иначе завести. */
-    public static function resolve(string $name): self
+    /**
+     * Марка по имени, неизвестная — заводится. Код модели маркой не заводится (18.11.2026: «2834Ne», «2824Ln», «278858» —
+     * кузова «АвтоМаша» на шасси ГАЗ, у Мигторга и в ЭПТС «марки нет»): имя начинается с буквы и в нём есть две буквы подряд.
+     */
+    public static function resolve(string $name): ?self
     {
         $name = trim($name);
 
-        return self::known($name) ?? self::create(['slug' => self::slugFor($name), 'name' => $name]);
+        return self::known($name) ?? (self::plausible($name) ? self::create(['slug' => self::slugFor($name), 'name' => $name]) : null);
+    }
+
+    public static function plausible(string $name): bool
+    {
+        return preg_match('/^\p{L}/u', $name) === 1 && preg_match('/\p{L}{2}/u', $name) === 1;
     }
 }

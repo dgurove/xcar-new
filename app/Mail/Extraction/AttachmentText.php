@@ -49,8 +49,26 @@ final class AttachmentText
             return false;
         }
         $words = count(array_filter($tokens, fn ($t) => preg_match('/^[«("]?(?:\p{Cyrillic}{3,}|[A-Za-z]{3,})[.,:;»)"]?$/u', $t)));
+        if ($words / count($tokens) < 0.35) {
+            return false;
+        }
 
-        return $words / count($tokens) >= 0.35;
+        return ! self::garbled($tokens);
+    }
+
+    /**
+     * Слой сканера «почти русский» (18.11.2026, ЭПТС 5991/046/00482/26: «Ндевтифихаrдrrонншй Hor,tep», «2Ез4NJ», «2о2з» —
+     * разбор не нашёл ни VIN, ни модели, а наш OCR читает тот же скан чисто): слова, где кириллица смешана с латиницей или
+     * сидит внутри числа. У слоя, что сделала программа, таких слов нет (замер прода — меньше 2 %), у слоя сканера — от 4 %.
+     *
+     * @param  list<string>  $tokens
+     */
+    private static function garbled(array $tokens): bool
+    {
+        $lettered = array_filter($tokens, fn ($t) => preg_match('/\p{L}/u', $t));
+        $mixed = array_filter($lettered, fn ($t) => (preg_match('/\p{Cyrillic}/u', $t) && preg_match('/[A-Za-z]/', $t)) || preg_match('/\d\p{Cyrillic}{1,2}\d/u', $t));
+
+        return count($lettered) >= 20 && count($mixed) / count($lettered) >= 0.03;
     }
 
     /** Первые пять страниц: оценка и акт — одна-две, дальше в PDF бывают только сканы. */

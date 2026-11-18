@@ -63,6 +63,23 @@ class MailPriceGuessTest extends TestCase
         $this->assertSame(260000, $fields['floor_price']['value']);
     }
 
+    /**
+     * ЭПТС фургона на шасси ГАЗ (18.11.2026, 5991/046/00482/26): «Марка: Отсутствует» — марка базового ТС с коммерческим
+     * наименованием, а не марка «2834Nj»; слой сканера «почти русский» не читается — его читает наш OCR.
+     */
+    public function test_epts_without_brand_and_garbled_scanner_layer(): void
+    {
+        $text = "Идентификационный номер   XU42834NJP0000310\nМарка   Отсутствует\nКоммерческоенаименование   2834NJ\n"
+            ."Годизготовления   2023\nМарка базового ТС (шасси)   ГАЗ\n";
+        $f = DocumentFields::extract($text);
+        $this->assertSame(['XU42834NJP0000310', 'ГАЗ', '2834NJ', 2023], [$f['vin']['value'] ?? null, $f['brand']['value'] ?? null, $f['model']['value'] ?? null, $f['year']['value'] ?? null]);
+        $this->assertNull(\App\Cars\Brand::resolve('2834NE'));
+
+        $garbled = str_repeat("Ндевтифихаrдrrонншй Hor,tep транспортного средства Коммерчесхое яаименование 2Ез4NJ Год ивгот.овлвння 2о2з паспорта Выписка\n", 3);
+        $this->assertFalse(\App\Mail\Extraction\AttachmentText::readable($garbled));
+        $this->assertTrue(\App\Mail\Extraction\AttachmentText::readable(str_repeat("Идентификационный номер XU42834NJP0000310 транспортного средства Коммерческое наименование 2834NJ Год изготовления 2023 паспорта Выписка\n", 3)));
+    }
+
     public function test_agreement_price(): void
     {
         $text = 'Страховая сумма по Договору страхования составляет 1 140 000,00 (один миллион сто сорок тысяч) рублей 00 копеек.'

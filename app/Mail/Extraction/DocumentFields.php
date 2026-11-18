@@ -84,7 +84,29 @@ final class DocumentFields
                 }
             }
         }
-        if (! isset($f['brand']) && ($mark = self::values($text, 'Марка(?:\s+ТС)?')[0] ?? null)) {
+        // ЭПТС кузова на чужом шасси (18.11.2026, 5991/046/00482/26 — фургон «АвтоМаш»): «Марка: Отсутствует», модель —
+        // «Коммерческое наименование 2834NJ», марка — базового ТС («Марка базового ТС (шасси) ГАЗ») или по VIN шасси (X96 — ГАЗ).
+        // Прежде «Отсутствует 2834NJ» давало марку «2834Nj».
+        // Подпись «Марка» OCR бывает читает латиницей («Мapka») — тогда хватает коммерческого наименования.
+        $mark = self::values($text, 'Марка(?:\s+ТС)?')[0] ?? null;
+        if ($mark !== null && preg_match('/^(?:отсутствует|нет|не\s+указан\w*|[—–-]+)$/iu', $mark)) {
+            $mark = null;
+        }
+        if (! isset($f['brand']) && $mark === null) {
+            $trade = self::values($text, 'Коммерческое\s*наименование')[0] ?? null;
+            $base = self::values($text, 'Марка\s*базового\s*ТС(?:\s*\(шасси\))?')[0] ?? null;
+            foreach ($base ? [] : self::values($text, 'Идентификационный\s*номер\s*базового\s*ТС|Номер\s*шасси(?:\s*\(рамы\))?') as $value) {
+                if (preg_match(Patterns::VIN, mb_strtoupper($value), $m) && ($car = ScanCar::carOfVin($m[0]))) {
+                    $base = $car['brand']->name;
+                    break;
+                }
+            }
+            if (! isset($f['brand']) && $base && $trade && ($found = ScanCar::of($base.' '.$trade))) {
+                $put('brand', $found['brand']);
+                $put('model', $found['model']);
+            }
+        }
+        if (! isset($f['brand']) && $mark !== null) {
             $model = self::values($text, 'Модель(?:,\s*модификация)?(?:\s+ТС)?|Коммерческое\s+наименование')[0] ?? '';
             if ($found = ScanCar::of(str_starts_with(mb_strtolower($model), mb_strtolower($mark)) ? $model : $mark.' '.$model)) {
                 $put('brand', $found['brand']);
@@ -106,7 +128,7 @@ final class DocumentFields
         // 164301059905697», «ПТС (электронный) серия: …», «Свидетельство о регистрации транспортного средства | 99 58 458318».
         $put('pts', self::pts($text));
         $put('sts', self::sts($text));
-        foreach (self::values($text, 'Год\s+выпуска|Год\s+изготовления') as $value) {
+        foreach (self::values($text, 'Год\s*выпуска|Год\s*изготовления') as $value) {
             if (preg_match('/\b('.Patterns::YEAR.')\b/u', $value, $m)) {
                 $put('year', (int) $m[1]);
                 break;

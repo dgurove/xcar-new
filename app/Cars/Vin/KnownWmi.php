@@ -46,9 +46,15 @@ final class KnownWmi
     public static function saw(string $vin): void
     {
         if (! self::has($vin)) {
-            Cache::forget(self::KEY);
-            self::$learned = null;
+            self::forget();
         }
+    }
+
+    /** Список выученных — заново при следующем вопросе (и тестам: он живёт в процессе пять минут). */
+    public static function forget(): void
+    {
+        Cache::forget(self::KEY);
+        self::$learned = null;
     }
 
     private static function table(): array

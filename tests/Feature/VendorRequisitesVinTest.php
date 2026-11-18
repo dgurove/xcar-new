@@ -66,6 +66,7 @@ class VendorRequisitesVinTest extends TestCase
         Car::create(['vin' => 'EDEDB21B4RD000101', 'brand_id' => $brand->id, 'model_id' => $model->id, 'year' => 2024]);
         Car::create(['vin' => 'EDEDB21B7RD000202', 'brand_id' => $brand->id, 'model_id' => $model->id]);
 
+        KnownWmi::forget();
         $memory = (new VinMemory)->recall('EDEDB21B0RD999999');
         $this->assertSame($brand->id, (int) $memory['values']['brand_id']);
         $this->assertSame($model->id, (int) $memory['values']['model_id']);

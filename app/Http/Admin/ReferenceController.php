@@ -110,6 +110,9 @@ class ReferenceController
     public function createBrand(Request $request)
     {
         $brand = Brand::resolve($request->validate(['name' => ['required', 'string', 'max:120']])['name']);
+        if (! $brand) {
+            throw \Illuminate\Validation\ValidationException::withMessages(['name' => 'Это код модели, а не марка']);
+        }
 
         return response()->json(['id' => $brand->id, 'label' => $brand->name]);
     }
