@@ -4420,6 +4420,39 @@ html.kb-open { --home-gap: 0px; }
   @media (prefers-reduced-motion: no-preference) { html[data-net="reconnecting"] .net::before { animation: net-run 1.4s ease-in-out infinite; } }
   @keyframes net-run { to { translate: 340% 0; } }
 
+  /* Заставка выкладки (`lib/updating.js`, 18.11.2026): сайт на полминуты пропадает — поверх всего (модальное окно браузера,
+     над шторками) глухая заливка, как у колеса вкладок, знак в лаймовом кольце и одна фраза. Сайт вернулся — кольцо
+     замыкается, «Готово», заставка тает и чуть отъезжает на зрителя; страница под ней — как оставили. Живёт в `<html>` вне
+     `<body>`: шрифт — свой, как у колеса. */
+  .updating {
+    position: fixed; inset: 0; z-index: calc(var(--z-viewer) + 1); display: grid; place-items: center;
+    width: 100%; height: 100%; max-width: none; max-height: none; margin: 0; border: 0; padding: 0; overflow: hidden;
+    background: var(--color-wheel); color: var(--color-ink); opacity: 0; transition: opacity var(--dur-slow) var(--ease-out);
+    font-feature-settings: "ss01" 1; -webkit-font-smoothing: antialiased; touch-action: none; overscroll-behavior: contain;
+  }
+  .updating::backdrop { background: transparent; }
+  .updating.is-open { opacity: 1; }
+  .updating.is-leaving { opacity: 0; scale: 1.06; pointer-events: none; transition: opacity 420ms var(--ease-in), scale 420ms var(--ease-in); }
+  .updating-box { display: grid; justify-items: center; gap: .25rem; padding: 1.5rem; text-align: center; translate: 0 .75rem; transition: translate var(--dur-slow) var(--ease-spring); }
+  .updating.is-open .updating-box { translate: 0; }
+  .updating-mark { position: relative; display: grid; place-items: center; width: 6rem; height: 6rem; margin-bottom: 1rem; }
+  .updating-mark img { width: 2.75rem; height: 2.75rem; grid-area: 1 / 1; }
+  .updating-ring { position: absolute; inset: 0; width: 100%; height: 100%; fill: none; rotate: -90deg; }
+  .updating-ring circle { stroke: var(--color-accent); stroke-width: 3; stroke-linecap: round; stroke-dasharray: 100 0; transition: stroke-dasharray 520ms var(--ease-out); }
+  @media (prefers-reduced-motion: no-preference) {
+    .updating-ring { animation: updating-turn 1.15s linear infinite; }
+    .updating-ring circle { stroke-dasharray: 26 74; }
+    .updating.is-done .updating-ring circle { stroke-dasharray: 100 0; }
+    .updating.is-done .updating-mark { animation: updating-pop 520ms var(--ease-spring) 180ms; }
+  }
+  @keyframes updating-turn { to { rotate: 270deg; } }
+  @keyframes updating-pop { 40% { scale: 1.08; } }
+  .updating-title { font-size: var(--text-lg); font-weight: 500; }
+  .updating-sub { font-size: var(--text-sm); color: var(--color-ink-muted); transition: opacity var(--dur); }
+  .updating [data-on="done"], .updating.is-done [data-on="run"] { display: none; }
+  .updating.is-done [data-on="done"] { display: inline; }
+  .updating.is-done .updating-sub { opacity: 0; }
+
   /* Пара логотипов и пара иконок темы: показ, а не подмена. */
   .on-light { display: block; }
   .on-dark  { display: none; }

@@ -31,6 +31,7 @@ import { sections } from './lib/sections';
 import { visitGuard } from './lib/visit-guard';
 import { setAddress } from './lib/address';
 import { shape } from './lib/shape';
+import { updating } from './lib/updating';
 
 // Потоки из ответа карточки строки (x-ui.row-card): тост flash-сообщения и «следующий без цены» (detail_controller).
 Turbo.StreamActions.toast = function () {
@@ -214,6 +215,7 @@ netGuards();
 priceGuard();
 schemeGuard();
 live();
+updating();
 imageFade();
 freshness();
 keepSideScroll();

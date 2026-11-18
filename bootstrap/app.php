@@ -36,6 +36,7 @@ use App\Http\Middleware\TouchSeen;
 use App\Http\Middleware\TrackNoticeOpen;
 use App\Http\Middleware\UseLinkedAccount;
 use App\Live\Console\ListsCheck;
+use App\Live\Console\ReleaseAnnounce;
 use App\Live\SubscriberCookie;
 use App\Logistics\Console\MergeCancelledCommand;
 use App\Logistics\Console\TickCommand as LogisticsTick;
@@ -125,6 +126,7 @@ return Application::configure(basePath: dirname(__DIR__))
         PerfPagesCommand::class,
         CollectValuesCommand::class,
         ListsCheck::class,
+        ReleaseAnnounce::class,
         TelegramAvatars::class,
         CreateUser::class,
         TickOffers::class,

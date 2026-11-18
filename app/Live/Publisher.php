@@ -56,6 +56,25 @@ final class Publisher
         if ($catalog) {
             Nav::forgetSiteCounts();
         }
+        $this->post($topics, $type, $data);
+    }
+
+    /**
+     * Всем открытым окнам (выкладка: «обновляемся», `release:announce`): общие темы и личные темы тех, кто был на сайте
+     * за сутки, — покупатель, поставщик и логист слушают только свою. Мимо счётчиков и кэша — только хаб.
+     */
+    public function everyone(string $type, array $data = []): void
+    {
+        $users = DB::table(config('session.table', 'sessions'))->whereNotNull('user_id')
+            ->where('last_activity', '>', now()->subDay()->timestamp)->distinct()->pluck('user_id');
+        $topics = [Topics::CATALOG, Topics::STAFF, Topics::PARK, ...$users->map(fn ($id) => Topics::user((int) $id))];
+        foreach (array_chunk($topics, 300) as $chunk) {
+            $this->post($chunk, $type, $data);
+        }
+    }
+
+    private function post(array|string $topics, string $type, array $data): void
+    {
         $hub = (string) config('xcar.mercure.hub');
         if ($hub === '' || ! config('xcar.mercure.publisher_key')) {
             return;

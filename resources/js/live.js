@@ -28,6 +28,7 @@ import { scrollTop, scrollToY } from './lib/scroller';
 //   telegram {state} — live:telegram для telegram_controller: чат привязан, вход подтверждён или отклонён
 //   offers-bot / whatsapp {state: linked} — live:offers-bot / live:whatsapp для offers_feed_controller: подписка встала
 //   scan {candidate} — live:scan для scan_controller: «✨ Распознать» прочитал файл или закончил
+//   release {} — идёт выкладка, сайт на полминуты пропадёт: live:release для заставки (lib/updating.js)
 //   lots {count, cars} — новые лоты Мигторга заведены черновиками: live:lots для lots_island_controller
 //   tg-chat / tg-chat-edit {chat, seq} — переписка бота (админам): live:tg-chat* для той же ленты chat_controller
 //   lock {state} — замок менеджера (lock_controller): approved / denied — кнопка под кодом в боте, kicked — вошли с другого
@@ -133,7 +134,7 @@ function open() {
     on('notices-read', ({ subjects }) => window.noticesRead?.(subjects));
     on('badges', badges);
     on('chat', chat);
-    ['telegram', 'offers-bot', 'whatsapp', 'scan', 'lock', 'files', 'lots', 'mail-sent'].forEach((name) => on(name, (detail) => document.dispatchEvent(new CustomEvent(`live:${name}`, { detail }))));
+    ['telegram', 'offers-bot', 'whatsapp', 'scan', 'lock', 'files', 'lots', 'mail-sent', 'release'].forEach((name) => on(name, (detail) => document.dispatchEvent(new CustomEvent(`live:${name}`, { detail }))));
     ['chat-edit', 'chat-read', 'chat-typing', 'tg-chat', 'tg-chat-edit'].forEach((name) => on(name, (detail) => document.dispatchEvent(new CustomEvent(`live:${name}`, { detail }))));
     source.onopen = () => {
         document.documentElement.removeAttribute('data-net');
