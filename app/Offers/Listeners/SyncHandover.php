@@ -21,6 +21,7 @@ use App\Workflow\Actor;
 use App\Workflow\Events\StageEntered;
 use App\Workflow\Outcome;
 use App\Workflow\Requirement;
+use App\Workflow\Stage;
 use App\Workflow\Track;
 use App\Workflow\WaitsFor;
 use Illuminate\Events\Dispatcher;
@@ -33,6 +34,8 @@ use Illuminate\Support\Facades\DB;
  * — менеджер сделки сам вывозит и нажал в логистике «Забрал» — машина у него;
  * — вывоз привёз машину в гараж менеджера сделки («Привёз» с точкой `keeper`);
  * — продажа пришла на шаг получения, а машина уже у него.
+ * Шаг связи перед получением (Т-Страхование «Связаться с владельцем», `Stage::contactExit`) — так же: машина у него или у нас —
+ * пропуском до шага получения, везёт логистика — ход наш (18.11.2026).
  * Обратно: менеджер нажал в сделке «Автомобиль забрал» — задача вывоза закрывается «у него» (`SelfPickup`; вёл логист — отменена).
  * Конец пути гаражной ставит машину на «Подготовку» (`CloseGarageDeal`, `StartPrepOnArrival`).
  * Чей ход на шаге получения — того, кто везёт (`turn`, 17.10.2026, прогон этапов): везёт логистика — ход наш, без часов и
@@ -97,10 +100,10 @@ final class SyncHandover
         }
         if (! $deal?->isActive() || $offer->car_place !== CarPlace::Keeper || $offer->standsWith()?->id !== $deal->buyer_id) {
             // Машина у нас (парковка, «Стоит у нас») — шаг получения проходит сам (15.11.2026, владелец).
-            if ($deal && $e->to->isPickupStep() && $this->passIfWithUs($deal->setRelation('offer', $offer), $e->by ?? $this->system())) {
+            if ($deal && $e->to->handsStep() && $this->passIfWithUs($deal->setRelation('offer', $offer), $e->by ?? $this->system())) {
                 return;
             }
-            if ($deal && $e->to->isPickupStep()) {
+            if ($deal && $e->to->handsStep()) {
                 $this->turn($offer, $deal);
             }
 
@@ -118,7 +121,7 @@ final class SyncHandover
     {
         $deal ??= $offer->deal()->first();
         $position = $offer->unsetRelation('positions')->position(Track::Sale);
-        if (! $deal?->isActive() || ! $position?->stage->isPickupStep()) {
+        if (! $deal?->isActive() || ! $position?->stage->handsStep()) {
             return;
         }
         $ours = $deal->setRelation('offer', $offer->unsetRelation('pickupTask'))->carried();
@@ -166,8 +169,12 @@ final class SyncHandover
     {
         $offer = $deal->offer->unsetRelation('positions');
         $stage = $offer->position(Track::Sale)?->stage;
-        if (! $deal->isActive() || ! $stage?->isPickupStep() || ! $deal->carWithUs()) {
+        if (! $deal->isActive() || ! $stage?->handsStep() || ! $deal->carWithUs()) {
             return false;
+        }
+        // Шаг связи перед получением — пропуском до шага получения; вход в него (`entered`) проходит и его.
+        if ($this->skipContact($deal, $stage, $by, 'автомобиль у нас')) {
+            return true;
         }
         $exit = $stage->exitsFor(Actor::Staff, $deal)->first(fn ($x) => self::handsOver($x))
             ?? $stage->exitsFor(Actor::Manager, $deal)->first(fn ($x) => Handover::picked($x));
@@ -185,12 +192,35 @@ final class SyncHandover
         /** @var Offer $offer */
         $offer = $deal->offer->unsetRelation('positions');
         $stage = $offer->position(Track::Sale)?->stage;
+        // Шаг связи перед получением (Т-Страхование) — сначала пропуском до получения; вход в него мог уже пройти и его.
+        if ($stage && $this->skipContact($deal, $stage, $by, 'автомобиль у менеджера')) {
+            $stage = $offer->unsetRelation('positions')->position(Track::Sale)?->stage;
+            if (! $stage?->isPickupStep()) {
+                return;
+            }
+        }
         // Шаг его — «Автомобиль забрал»; отдавали мы (гараж, везём ему сами) — «Автомобиль передан».
         $exit = $stage?->exitsFor(Actor::Manager, $deal)->first(fn ($x) => Handover::picked($x))
             ?? $stage?->exitsFor(Actor::Staff, $deal)->first(fn ($x) => self::handsOver($x));
         if ($exit) {
             ($this->take)($offer, $exit, $exit->actor, $by);
         }
+    }
+
+    /**
+     * Шаг связи перед получением (Т-Страхование «Связаться с владельцем», 18.11.2026), а машина уже у менеджера или у нас — шаг
+     * проходит без исхода: «Связался с владельцем» было бы неправдой. Просьба закрывается, продажа — на шаг получения.
+     */
+    private function skipContact(Deal $deal, Stage $stage, User $by, string $why): bool
+    {
+        $exit = $stage->contactExit();
+        if (! $exit?->to) {
+            return false;
+        }
+        Requirement::closeOpen($deal, $stage->id, ['closed_by' => 'system', 'exit' => mb_ucfirst($why)]);
+        ($this->place)($deal->offer->unsetRelation('positions'), $exit->to, $by, payload: ['label' => '«'.$stage->name.'» пройден: '.$why]);
+
+        return true;
     }
 
     /** Исход шага передачи: менеджер забрал или мы передали. */

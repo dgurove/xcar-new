@@ -149,6 +149,23 @@ class Stage extends Model
         return $this->loadedExits()->contains(fn (Outcome $e) => $e->actor === Actor::Manager && mb_strtolower($e->label) === 'автомобиль забрал');
     }
 
+    /**
+     * Шаг связи перед получением (Т-Страхование «Связаться с владельцем» → «Забрать автомобиль»): исход менеджера ведёт на шаг
+     * получения. Вывоз знает и его (18.11.2026, владелец: «почему менеджер должен связываться с владельцем и забирать, если в
+     * логистике уже отмечено, что она вывезена»): везёт логистика — ход наш, привезли — шаг проходит сам (`SyncHandover`).
+     */
+    public function contactExit(): ?Outcome
+    {
+        return $this->isPickupStep() ? null
+            : $this->loadedExits()->first(fn (Outcome $e) => $e->actor === Actor::Manager && $e->to?->isPickupStep());
+    }
+
+    /** Шаг получения или связи перед ним — шаги, которые ведёт вывоз. */
+    public function handsStep(): bool
+    {
+        return $this->isPickupStep() || $this->contactExit() !== null;
+    }
+
     /** «Собираем заявку поставщику» (Каркаде): исход «Заявка отправлена» жмёт само письмо заявки по всем сделкам вендора. */
     public function isRequestStep(): bool
     {

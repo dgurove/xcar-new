@@ -113,9 +113,9 @@ final class EnterStage
         // поставщика («Договор готов» по «Показать менеджеру», 11.11.2026) — наше письмо этапа ещё впереди: ход наш.
         $ownLetter = $letter && Message::whereKey($letter)->where('direction', Direction::Out->value)->exists();
         $awaitsLetter = $track === Track::Sale && $deal?->isActive() && $to->isLetterStep() && ! $ownLetter && ! $back;
-        // Шаг «Забрать автомобиль», а везёт логистика (17.10.2026): ход наш, без часов и просьбы «Заберите» —
+        // Шаг «Забрать автомобиль» (и связь перед ним — `Stage::handsStep`), а везёт логистика (17.10.2026): ход наш, без часов и просьбы «Заберите» —
         // шаг пройдёт сам по «Привёз» к нему (`SyncHandover`); сняли вывоз — ход снова его (`SyncHandover::turn`).
-        $carried = $track === Track::Sale && $deal?->isActive() && $to->isPickupStep() && $deal->setRelation('offer', $offer->unsetRelation('pickupTask'))->carried();
+        $carried = $track === Track::Sale && $deal?->isActive() && $to->handsStep() && $deal->setRelation('offer', $offer->unsetRelation('pickupTask'))->carried();
         $waits = $ours || $awaitsLetter || $carried ? WaitsFor::Us : ($needsBuyer ? WaitsFor::Manager : null);
         $deadline = match (true) {
             $awaitsLetter => Stage::letterDeadline($now),

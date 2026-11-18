@@ -119,6 +119,29 @@ class TBankConsentTest extends TestCase
         $this->assertSame([null, null, null], [$car->fresh()->insured_name, $car->fresh()->insured_phone, $car->fresh()->insured_phone2]);
     }
 
+    /**
+     * Вывоз везёт и привёз машину менеджеру, а продажа на «Связаться с владельцем» (18.11.2026, 2610303355 Kia Sorento): пока везёт
+     * логистика — ход наш без срока; «Привёз» к менеджеру — связь и получение проходят сами, остаётся подписанный договор.
+     */
+    public function test_delivery_to_manager_passes_owner_contact_and_pickup(): void
+    {
+        [$offer, $deal] = $this->accepted();
+        $contact = Stage::where('workflow_id', $offer->vendor->workflow(Track::Sale)->id)->where('name', 'Связаться с владельцем')->firstOrFail();
+        app(EnterStage::class)($offer, $contact);
+        $transport = app(\App\Logistics\Actions\OpenPickup::class)($offer->fresh(), $this->admin, \App\Logistics\Point::Keeper);
+        $position = $offer->fresh()->position(Track::Sale);
+        $this->assertSame('Связаться с владельцем', $position->stage->name);
+        $this->assertSame(\App\Workflow\WaitsFor::Us, $position->waits_for);
+        $this->assertNull($position->deadline_at);
+        $this->assertTrue($position->carried());
+
+        app(\App\Logistics\Actions\Backdate::class)($transport->fresh(), ['picked_at' => now()->toDateTimeString(), 'destination' => 'keeper'], $this->admin);
+        $position = $offer->fresh()->position(Track::Sale);
+        $this->assertSame('Подписанный договор', $position->stage->name);
+        $this->assertFalse(\App\Workflow\Requirement::where('deal_id', $deal->id)->whereNull('done_at')
+            ->whereHas('stage', fn ($q) => $q->whereIn('name', ['Связаться с владельцем', 'Забрать автомобиль']))->exists());
+    }
+
     public function test_staff_asks_manager_with_vin_then_letter_with_lot_price(): void
     {
         [$offer, $deal] = $this->accepted();
