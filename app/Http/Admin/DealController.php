@@ -278,11 +278,11 @@ class DealController
     private static function scope($q, string $preset)
     {
         return match ($preset) {
-            // «Завершённые» — выданные (16.11.2026): продажа на аукционе, «Сделка закрыта»; и гаражные с закрытым расчётом — их
-            // сделка остаётся открытой (18.11.2026: 2610272959 числом в колесе была, а строкой — ни в одной вкладке; условие
-            // колеса — `OfferController::scopeFor('finished')`).
+            // «Завершённые» — выданные (16.11.2026): продажа на аукционе, «Сделка закрыта»; и гаражные с закрытым расчётом — машина
+            // остаётся «В гараже», а не «Выдан» (18.11.2026: 2610272959 числом в колесе была, а строкой — ни в одной вкладке; условие
+            // колеса — `OfferController::scopeFor('finished')`). Сделка гаражной — любая не отменённая.
             'finished' => $q->where(fn ($w) => $w->where(fn ($d) => $d->done()->whereHas('offer', fn ($o) => $o->where('offers.state', OfferState::Delivered)))
-                ->orWhere(fn ($g) => $g->active()->whereHas('offer', fn ($o) => $o->where('offers.state', OfferState::Garage)
+                ->orWhere(fn ($g) => $g->whereNull('deals.cancelled_at')->whereHas('offer', fn ($o) => $o->where('offers.state', OfferState::Garage)
                     ->whereHas('garageCar', fn ($c) => $c->where('state', \App\Garage\CarState::Settled))))),
             // Этап маршрута — раскладка `DealTabs`.
             default => $q->active()->whereHas('offer', fn ($o) => $o->where('offers.state', OfferState::Sold)->whereIn('offers.id', DealTabs::ids($preset))),
