@@ -18,9 +18,20 @@ class NotificationController
 {
     public function index(Request $request)
     {
+        // Фильтр (18.11.2026): «Ждут нас» — важные (`data.important`, у строк с 18.11), «Непрочитанные».
+        $show = in_array($request->query('show'), ['ours', 'unread'], true) ? $request->query('show') : 'all';
+        $base = fn () => $request->user()->noticesHere();
+        $scope = fn ($q, string $what) => match ($what) {
+            'ours' => $q->where('data->important', true),
+            'unread' => $q->whereNull('read_at'),
+            default => $q,
+        };
+
         return view('cabinet.notifications', [
-            'items' => tap($request->user()->noticesHere()->latest()->paginate(40), fn ($p) => \App\Notifications\NoticeFaces::prime($p->items())),
+            'items' => tap($scope($base(), $show)->latest()->paginate(40)->withQueryString(), fn ($p) => \App\Notifications\NoticeFaces::prime($p->items())),
             'unread' => $request->user()->unreadCount(),
+            'show' => $show,
+            'counts' => ['ours' => $scope($base(), 'ours')->whereNull('read_at')->count(), 'unread' => $scope($base(), 'unread')->count()],
         ]);
     }
 
@@ -28,7 +39,7 @@ class NotificationController
     public function latest(Request $request)
     {
         return view('cabinet.notifications-latest', [
-            'items' => tap($request->user()->noticesHere()->latest()->limit(8)->get(), fn ($items) => \App\Notifications\NoticeFaces::prime($items)),
+            'items' => tap($request->user()->noticesHere()->latest()->limit(10)->get(), fn ($items) => \App\Notifications\NoticeFaces::prime($items)),
             'frame' => $request->header('Turbo-Frame', 'notifications-latest'),
         ]);
     }

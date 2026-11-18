@@ -433,7 +433,8 @@ abstract class Notice extends Notification implements ShouldQueue
             + (($car = $this->car()) ? ['car' => $car, 'brief' => $this->brief($user)] : [])
             + ($actor ? ['actor' => $actor->id] : [])
             + (($vendor = $this->vendor()) ? ['vendor' => $vendor->id] : [])
-            + ($this->important() ? ['important' => true] : []);
+            + ($this->important() ? ['important' => true] : [])
+            + ['icon' => $this->icon()];
     }
 
     /**

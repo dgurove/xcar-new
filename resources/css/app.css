@@ -4219,12 +4219,15 @@ html.kb-open { --home-gap: 0px; }
   .notice-row { @apply items-center gap-2.5; }
   .notice-dot { @apply shrink-0 rounded-full; width: .5rem; height: .5rem; }
   .notice-face { @apply shrink-0; }
-  .notice-row > .notice-face { width: 2rem; height: 2rem; }
+  .notice-row > .notice-face, .notice-row .notice-face { width: 2rem; height: 2rem; }
   .notice-mini > .notice-face { width: 1.75rem; height: 1.75rem; }
   .notice-logo { border-radius: 50%; font-size: .875rem; }
   .notice-icon { @apply inline-flex items-center justify-center rounded-full bg-surface-3 text-ink-muted; }
   .alarm-row .notice-icon { background: var(--color-danger); color: #fff; }
-  .notice-what { @apply mt-0.5 line-clamp-2 block text-sm text-ink-muted; }
+  .notice-what { @apply mt-0.5 line-clamp-2 text-sm text-ink-muted; }
+  .notice-what--mini { @apply line-clamp-none truncate; }
+  .notice-day { @apply mt-3 text-xs font-medium text-ink-muted; }
+  .notice-day:first-child { @apply mt-0; }
   .notice-mini { @apply flex items-center gap-2.5 py-2.5; }
   .notice-mini:hover .font-medium { @apply text-accent-text; }
   /* iPad пальцем: наведения нет — крестик и «Закрыть все» видны сразу. */
