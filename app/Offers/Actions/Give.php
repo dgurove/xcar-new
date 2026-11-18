@@ -85,6 +85,8 @@ final class Give
             if ($g->parallel) {
                 return $this->parallel($offer, $g, $bid, $manager, $cost, $by);
             }
+            // «Не снимать с продажи»: как машину показывают сейчас — запомнить до перехода в сделку (он гасит «Срочно» и публикацию).
+            $show = $g->keepUntil ? PublishDeal::saleShow($offer) : null;
 
             // Отдаём другому: прежняя сделка отменяется, прежний победитель узнаёт об этом.
             $previous = $offer->deal()->with('bid')->first();
@@ -97,8 +99,11 @@ final class Give
                     BidDeclined::dispatch($previous->bid->refresh(), $by);
                 }
                 $offer->unsetRelation('deal');
-                // Публиковали для других поверх прежней сделки (`PublishDeal`) — выбрали, кому отдать: публикация снята.
-                app(PublishDeal::class)->stop($offer, $by, 'Отдали другому менеджеру, публикация для других снята');
+                // Публиковали для других поверх прежней сделки (`PublishDeal`) — выбрали, кому отдать: публикация снята
+                // (не снимаем с продажи — остаётся, `keep` ниже ставит новый срок).
+                if (! $show) {
+                    app(PublishDeal::class)->stop($offer, $by, 'Отдали другому менеджеру, публикация для других снята');
+                }
             }
             $bid?->update(['state' => BidState::Accepted, 'decided_at' => now(), 'decided_by' => $by->id]);
 
@@ -150,6 +155,9 @@ final class Give
             // с «Беру в работу» (14.11.2026, владелец: «у Совкома не сделали, срочно»; `Deal::buyerOpen`).
             if ($deal->isCommission()) {
                 app(AskBuyer::class)->ask($deal);
+            }
+            if ($show) {
+                app(PublishDeal::class)->keep($offer->fresh(['deal', 'vendor']), $show, $g->keepUntil, $by);
             }
             // ДКП ПРАЙМ «за счёт собственника» (14.11.2026): комитент — сам из договора комиссии в письмах, после записи сделки.
             DB::afterCommit(fn () => app(FillCommissionOwner::class)($deal->fresh(['offer.vendor', 'contract'])));

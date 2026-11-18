@@ -781,6 +781,9 @@ html.kb-open { --home-gap: 0px; }
   .row-switch { @apply cursor-pointer; }
   .row-switch .switch { @apply ml-auto shrink-0; }
   .row-switch:has(.switch:disabled) { @apply cursor-default opacity-60; }
+  /* «Не снимать с продажи» (`x-offer.keep-selling`): часы — только при включённом тумблере. */
+  .keep-hours { display: none; }
+  .keep-sell:has(.switch:checked) .keep-hours { display: block; }
   /* Строка-выбор: вся строка — цель, отметка справа кругом, как в iOS: пустой — волосяная обводка, отмеченный —
      лаймовый круг с белой галкой. Строка не заливается. Квадратные галки форм (.check вне строки) — как были. */
   .row-check { @apply cursor-pointer; }

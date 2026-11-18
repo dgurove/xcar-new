@@ -103,6 +103,8 @@
         </dl>
     @endif
     @if ($note ?? null)<p class="text-sm text-ink-muted">{{ $note }}</p>@endif
+    {{-- Над кнопкой — «Не снимать с продажи» у «Принять» / «Отдать» (`x-offer.keep-selling`). --}}
+    {{ $keep ?? '' }}
     {{-- Принятие, после которого маршрут попросит письмо вендору, — выбор «и написать письмо» / «без письма» (`x-offer.give-foot`). --}}
     @if ($letter && $offer)<x-offer.give-foot :offer="$offer" :label="$submit"/>@else<x-ui.sheet-foot>{{ $submit }}</x-ui.sheet-foot>@endif
 </form>

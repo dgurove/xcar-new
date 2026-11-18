@@ -10,6 +10,7 @@ use App\Offers\Deal;
 use App\Offers\DealScheme;
 use App\Offers\Giving;
 use App\Offers\Offer;
+use App\Support\Ago;
 use App\Support\Money;
 use App\Users\User;
 use App\Workflow\Actions\SkipLetter;
@@ -61,7 +62,11 @@ class GiveController
             'pickup' => ['nullable', Rule::in(Giving::PICKUP)],
             'where' => ['nullable', Rule::in(array_keys(Giving::WHERE))],
             'arrived_at' => ['nullable', 'date', 'before_or_equal:now'],
-        ], ['arrived_at.before_or_equal' => 'Не позже, чем сейчас', 'share.min' => Giving::SHARE_LEFT]);
+            // «Не снимать с продажи» (`x-offer.keep-selling`): сколько ещё часов остальные видят машину.
+            'keep_hours' => ['nullable', 'required_if_accepted:keep', 'integer', 'min:1', 'max:168'],
+        ], ['arrived_at.before_or_equal' => 'Не позже, чем сейчас', 'share.min' => Giving::SHARE_LEFT,
+            'keep_hours.required_if_accepted' => 'Сколько часов', 'keep_hours.integer' => 'Целое число часов',
+            'keep_hours.min' => 'Хотя бы час', 'keep_hours.max' => 'Не больше недели']);
         // Дата — только когда ТС уже не у владельца: «Уже у …» в гараж или «Уже забрал» в сделку.
         $already = ($garage && ($data['where'] ?? null) === 'arrived') || (! $garage && ($data['pickup'] ?? null) === 'taken');
         $arrivedAt = $already && ! empty($data['arrived_at']) ? Carbon::parse($data['arrived_at']) : null;
@@ -90,6 +95,8 @@ class GiveController
             'parallel' => $bid && $request->boolean('parallel')];
         if ($money['parallel']) {
             $money['pickup'] = null;
+        } elseif ($request->boolean('keep')) {
+            $money['keepUntil'] = now()->addHours((int) $data['keep_hours']);
         }
         $giving = $bid ? Giving::bid($bid, ...$money)
             : new Giving($offer, isset($data['manager_id']) ? User::find($data['manager_id']) : null, $garage, $amount, ...$money);
@@ -114,6 +121,9 @@ class GiveController
             $deal->isGarage() => $who ? 'В гараж: '.$who : 'В гараж, взяли под себя',
             default => 'В сделку: '.$who.', '.Money::rub($deal->amount),
         };
+        if ($request->boolean('keep') && ($fresh = $offer->fresh())->showsDealAsOpen()) {
+            $toast .= ', в продаже до '.Ago::at($fresh->deal_show_until, true, words: false);
+        }
         // Писать ли поставщику, выбирают кнопкой самой шторки (18.11.2026, владелец: «должен явно указывать — отправить письмо
         // или не отправлять, только тогда оно может в следующую вкладку переехать»; `x-offer.give-foot`).
         // «Без письма» — шаг закрыт как «сообщили сами», дальше обычный ответ: строка ушла, окно — к следующему.

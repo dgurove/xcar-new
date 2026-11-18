@@ -3,6 +3,8 @@
 namespace App\Offers\Actions;
 
 use App\Offers\AudienceRules;
+use App\Offers\Binding;
+use App\Offers\Exclusive;
 use App\Offers\Jobs\RetractOfferNotices;
 use App\Offers\Offer;
 use App\Offers\OfferEventType;
@@ -11,6 +13,7 @@ use App\Offers\OfferViewer;
 use App\Support\Ago;
 use App\Users\User;
 use Carbon\CarbonInterface;
+use Illuminate\Support\Carbon;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -69,6 +72,49 @@ final class PublishDeal
         ($this->notify)($offer, live: true);
         $what = AudienceRules::summary($rules).', приём до '.Ago::at($until, true, words: false);
         $offer->log(OfferEventType::Updated, $by, ['show_all' => ($why ?? ($running ? 'Публикация для других менеджеров' : 'Опубликовано для других менеджеров')).': '.$what]);
+    }
+
+    /**
+     * «Не снимать с продажи» (18.11.2026, начальник: отдать в сделку или в гараж, а остальные ещё 12 часов видят машину в
+     * предложениях; «Опубликовать для других» после — новая публикация, всем «Новое предложение»). Продажа продолжается
+     * публикацией сделки с теми же волнами от того же момента (`$show` — `saleShow` до «Отдать»): у видевших `opens_at` тот же,
+     * новой в каталоге машина не становится, уведомлений нет — кому волна уже наступила, отмечены уведомлёнными (и прежний
+     * покупатель при «Отдать другому»), будущие волны придут своим ходом. До `$until`, не позже срока обязывающего.
+     *
+     * @param  array{rules: ?array, since: CarbonInterface}  $show
+     */
+    public function keep(Offer $offer, array $show, CarbonInterface $until, ?User $by): void
+    {
+        if (! self::allows($offer)) {
+            return;
+        }
+        $until = Binding::clampClose($offer, Carbon::instance($until));
+        $offer->forceFill(['deal_audience_rules' => $show['rules'], 'deal_published_at' => $show['since'], 'deal_show_until' => $until])->save();
+        ($this->sync)($offer);
+        OfferViewer::where('offer_id', $offer->id)->whereNull('notified_at')->where('opens_at', '<=', now())->update(['notified_at' => now()]);
+        $offer->log(OfferEventType::Updated, $by, ['show_all' => 'Не сняли с продажи: приём до '.Ago::at($until, true, words: false)]);
+    }
+
+    /**
+     * Как машину показывают сейчас, до «Отдать» (`keep`): идёт публикация сделки — её волны, идёт приём — волны продажи
+     * (срочное — всем сразу, как в `SyncViewers`). Приёма нет — `null`: продолжать нечего.
+     *
+     * @return ?array{rules: ?array, since: CarbonInterface}
+     */
+    public static function saleShow(Offer $offer): ?array
+    {
+        if ($offer->showsDealAsOpen()) {
+            return ['rules' => $offer->deal_audience_rules, 'since' => $offer->deal_published_at];
+        }
+        if (! $offer->bidsOpen() || ! $offer->published_at || $offer->is_demo) {
+            return null;
+        }
+        $rules = AudienceRules::of($offer);
+        if ($offer->isUrgent() && Exclusive::running($offer)->isEmpty()) {
+            $rules = array_map(fn ($r) => $r['delay'] === null ? $r : ['delay' => 0] + $r, $rules);
+        }
+
+        return ['rules' => AudienceRules::isEveryone($rules) ? null : $rules, 'since' => $offer->published_at];
     }
 
     /** Снять публикацию: машина уходит из предложений у всех, кроме тех, кто уже подтвердил (резерв держит страницу). */

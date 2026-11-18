@@ -31,4 +31,9 @@
     @endunless
     {{-- Параллельной ТС не забирают: вывоз — у главной. --}}
     @unless ($parallel)<x-offer.pickup-choice :offer="$offer" :manager="$bid?->user"/>@endunless
+    @unless ($parallel)
+        <x-slot:keep>
+            <x-offer.keep-selling :offer="$offer" :prefix="$prefix"/>
+        </x-slot:keep>
+    @endunless
 </x-offer.money-form>
