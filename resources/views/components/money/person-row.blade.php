@@ -42,9 +42,11 @@
     @foreach ($table->columns as $key => $col)
         @switch($key)
         @case('title')
-    <td class="{{ $col->classes() }}">
+    <td @class([$col->classes(), 'has-mid-act' => $unsent && $button])>
+        {{-- Телефон: «Выставить» — справа посередине строки (18.11.2026, владелец: «справа по середине — строка компактнее»). --}}
+        @if ($unsent && $button)<span class="mid-act sm:hidden">{!! $button !!}</span>@endif
         @if ($offer)
-            <x-cell.title :key="$offer->number" :offer="$offer" :with="['tab' => $tab]">@if ($unsent && $button)<span class="line-end sm:hidden">{!! $button !!}</span>@elseif (! $unsent)<span class="line-end sm:hidden nums {{ $paid ? 'text-open' : '' }}">{{ Money::rub($amount) }}</span>@endif</x-cell.title>
+            <x-cell.title :key="$offer->number" :offer="$offer" :with="['tab' => $tab]">@if (! $unsent)<span class="line-end sm:hidden nums {{ $paid ? 'text-open' : '' }}">{{ Money::rub($amount) }}</span>@endif</x-cell.title>
         @else
             <a href="{{ \App\Http\Admin\MoneyController::url($i) }}" class="cell-title" data-turbo-frame="_top"><span class="cell-name">{{ $title }}</span>@unless ($unsent)<span class="line-end sm:hidden nums {{ $paid ? 'text-open' : '' }}">{{ Money::rub($amount) }}</span>@endunless</a>
         @endif
