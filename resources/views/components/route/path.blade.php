@@ -543,7 +543,12 @@
                                             @csrf<input type="hidden" name="then_take" value="" data-ask-consent-target="take"><x-ui.button size="sm" :variant="$variant">{{ $label($exit) }}</x-ui.button>
                                         </form>
                                     @else
-                                        @php $next = $exit->consequence(); @endphp
+                                        @php
+                                            $next = $exit->consequence();
+                                            // Ответ поставщика, а он после нашего письма молчит — переспросить (18.11.2026, 8771/046/00635/26).
+                                            $silent = ! $confirm && $offer->deal && \App\Offers\InsurerReplies::isSupplierAnswer($exit) ? \App\Offers\InsurerReplies::silentSince($offer->deal) : null;
+                                            $confirm = $silent ? 'Поставщик ещё не ответил на письмо от '.\App\Support\Ago::at($silent, time: true, words: false).'. Точно «'.$exit->label.'»?' : $confirm;
+                                        @endphp
                                         <form method="post" action="/offers/{{ $n }}/exit/{{ $exit->id }}" @class([$main]) @if ($confirm) data-turbo-confirm="{{ $confirm }}" @if ($next) data-turbo-confirm-text="Дальше: {{ $next }}" @endif @elseif ($next) data-turbo-confirm="{{ $label($exit) }}?" data-turbo-confirm-text="Дальше: {{ $next }}" data-turbo-confirm-label="{{ $label($exit) }}" @endif>
                                             @csrf<x-ui.button size="sm" :variant="$variant">{{ $label($exit) }}</x-ui.button>
                                         </form>

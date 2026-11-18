@@ -33,6 +33,35 @@ final class InsurerReplies
             ->filter(fn (Message $m) => self::counts($m))->values();
     }
 
+    /**
+     * Поставщик молчит после нашего письма (18.11.2026, 8771/046/00635/26: «Поставщик просит реквизиты» нажали через две минуты
+     * после «Подтверждаем актуальность», Альфа ничего не просила): время нашего последнего письма по сделке, если после него
+     * ответа поставщика нет (`for`); писем нет или поставщик ответил — null. Кнопки ответа поставщика тогда переспрашивают.
+     */
+    public static function silentSince(Deal $deal): ?\Carbon\CarbonInterface
+    {
+        return once(function () use ($deal) {
+            $threads = Thread::where('offer_id', $deal->offer_id)->pluck('id');
+            $ours = $threads->isEmpty() ? null : Message::whereIn('thread_id', $threads)->where('direction', Direction::Out)
+                ->where('date_at', '>=', $deal->created_at)->max('date_at');
+            if (! $ours) {
+                return null;
+            }
+            $ours = \Illuminate\Support\Carbon::parse($ours);
+            $answered = self::for($deal)->contains(fn (Message $m) => $m->date_at && $m->date_at->gt($ours));
+
+            return $answered ? null : $ours;
+        });
+    }
+
+    /** Кнопка шага — это ответ поставщика («Поставщик просит реквизиты», «Счёт от поставщика получен»…): её жмёт сотрудник за поставщика. */
+    public static function isSupplierAnswer(\App\Workflow\Outcome $exit): bool
+    {
+        $label = mb_strtolower(trim($exit->label));
+
+        return str_starts_with($label, 'поставщик ') || str_starts_with($label, 'счёт от поставщика');
+    }
+
     /** Ответ страховой, а не автоответ и не наше. */
     public static function counts(Message $message): bool
     {
