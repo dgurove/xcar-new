@@ -3655,11 +3655,11 @@ html.kb-open { --home-gap: 0px; }
   .table tbody tr:not(.table-group) > td { background-color: inherit; }
   .table thead th { background: var(--color-ground); }
   .table tbody tr.table-group, .table tbody tr.table-group:hover { background: transparent; }
-  .table tr.table-group > th { background: var(--color-ground); padding-top: 1.25rem; padding-bottom: .375rem; padding-inline: 1rem; }
+  .table tr.table-group > th { background: var(--color-ground); padding-top: .875rem; padding-bottom: .375rem; padding-inline: 1rem; }
   .table tbody tr.table-group:first-child > th { padding-top: .25rem; }
   /* ПК: заголовок группы — тем же мелким серым, что на телефоне, с воздухом над блоком. */
   @media (min-width: 640px) {
-    .table-wrap .table tr.table-group > th { font-size: var(--text-sm); padding-top: 1rem; padding-bottom: .375rem; }
+    .table-wrap .table tr.table-group > th { font-size: var(--text-sm); padding-top: .75rem; padding-bottom: .375rem; }
     .table-wrap .table tbody tr.table-group:first-child > th { padding-top: .25rem; }
   }
   .table-box .table tbody { --r: var(--radius-l); }
