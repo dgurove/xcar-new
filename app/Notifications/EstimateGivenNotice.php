@@ -43,7 +43,7 @@ final class EstimateGivenNotice extends Notice
         $preset = match (true) {
             $offer->first_look_until !== null => 'published',
             $this->estimate->isCorrection() => 'priced',
-            default => 'estimating',
+            default => 'unpriced',
         };
 
         return Surface::Crm->url('/offers?'.http_build_query(['vid' => 'table', 'preset' => $preset, 'peek' => $offer->number]));
