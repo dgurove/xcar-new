@@ -2,6 +2,7 @@
 
 namespace App\Mail;
 
+use App\Mail\Actions\ReadEarlier;
 use App\Mail\Events\MessageParsed;
 use App\Mail\Jobs\ImportThreadFiles;
 use App\Mail\Reading\ReadLetter;
@@ -10,10 +11,11 @@ use Illuminate\Support\Facades\DB;
 /** Разобранное письмо → база: поля, адреса, опись вложений, ветка; дальше — событие и закрепление файлов, если ветка привязана. */
 final class Ingest
 {
-    public function __construct(private Threads $threads, private ReadLetter $reader) {}
+    public function __construct(private Threads $threads, private ReadLetter $reader, private ReadEarlier $readEarlier) {}
 
     public function apply(Message $message, array $parsed, bool $quiet = false): Message
     {
+        $was = $message->thread_id;
         DB::transaction(function () use ($message, $parsed) {
             $thread = $this->threads->resolve($message->account, $parsed);
             $message->forceFill([
@@ -50,6 +52,12 @@ final class Ingest
         });
 
         $message = $message->fresh(['account', 'thread', 'attachments']);
+        // Легло в ветку впервые — непрочитанным в ней остаётся только последнее (`ReadEarlier`); пересборка уже
+        // лежавшего письма ничего не трогает — «Не прочитано» руками держится.
+        if ($message->thread_id !== $was && in_array($message->id, ($this->readEarlier)($message), true)) {
+            $message->is_seen = true;
+            $message->syncOriginalAttribute('is_seen');
+        }
         // Ветка уже привязана — файлы этого письма едут к машине; если привяжется сейчас (OnMessage), LinkThread поставит джобу на всю ветку.
         $linked = $message->thread?->isLinked() ?? false;
         MessageParsed::dispatch($message, $quiet);

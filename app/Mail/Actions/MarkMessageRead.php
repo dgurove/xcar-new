@@ -30,8 +30,8 @@ final class MarkMessageRead
         return $this->apply($ids, $read);
     }
 
-    /** @param list<int> $ids @return list<int> */
-    private function apply(array $ids, bool $read): array
+    /** Флаг письмам — у нас, в ящике (`PushSeen`), счётчики веток и «Почты»; и `ReadEarlier`. @param list<int> $ids @return list<int> */
+    public function apply(array $ids, bool $read): array
     {
         if (! $ids) {
             return [];

@@ -2,6 +2,7 @@
 
 namespace App\Mail;
 
+use App\Mail\Jobs\PushSeen;
 use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
@@ -153,6 +154,12 @@ final class Sync
         $has = fn (string $flag) => (bool) array_filter($flags, fn ($v) => strtolower(ltrim((string) $v, '\\')) === $flag);
         $changes = ['is_seen' => $has('seen'), 'is_answered' => $has('answered'), 'is_flagged' => $has('flagged'), 'is_draft' => $has('draft'), 'is_deleted' => $has('deleted')];
         $dirty = array_filter($changes, fn ($v, $k) => $message->{$k} !== $v, ARRAY_FILTER_USE_BOTH);
+        // Ящик ещё не получил «прочитано» (`PushSeen` в очереди), а письмо в ветке уже не последнее (`ReadEarlier`) —
+        // флаг не возвращаем, а шлём снова: иначе правило «непрочитано только последнее» откатывалось бы гонкой.
+        if (($dirty['is_seen'] ?? null) === false && $message->direction === Direction::In && $this->hasLater($message)) {
+            unset($dirty['is_seen']);
+            PushSeen::dispatch([$message->id], true);
+        }
         if (! $dirty) {
             return;
         }
@@ -160,6 +167,14 @@ final class Sync
         if (isset($dirty['is_seen']) && $message->thread) {
             $this->threads->refresh($message->thread);
         }
+    }
+
+    /** В ветке есть письмо позже этого — оно уже не последнее. */
+    private function hasLater(Message $message): bool
+    {
+        return $message->thread_id && $message->date_at && Message::where('thread_id', $message->thread_id)->where('id', '!=', $message->id)
+            ->where(fn ($q) => $q->where('date_at', '>', $message->date_at)->orWhere(fn ($e) => $e->where('date_at', $message->date_at)->where('id', '>', $message->id)))
+            ->exists();
     }
 
     private function store(Account $account, Folder $folder, array $snapshot, Imap $imap, int $uid, array $row, bool $quiet = false): bool
