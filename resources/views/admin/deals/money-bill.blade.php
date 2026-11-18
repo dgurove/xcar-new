@@ -31,9 +31,11 @@
         @if ($withSum && (! $payerRow || $i->party_id !== $payerId))<span>{{ $i->party?->title() }}</span>@endif
         @if ($withSum)<span class="nums whitespace-nowrap">{{ $i->isPartial() && $i->remaining() > 0 ? 'осталось '.Money::rub($i->remaining()).' из '.Money::rub($i->total) : Money::rub($i->total) }}</span>@endif
         @if ($i->shown_at)<span class="text-ink-muted">у менеджера с {{ \App\Support\Ago::day($i->shown_at) }}</span>@elseif ($withSum && ! $i->isShownToManager())<span class="text-ink-muted">не отправлен</span>@endif
+        {{-- Менеджер видит счёт только после «Отправить» (16.11.2026): сотрудник сперва проверяет; кнопка — пилюлей справа (18.11.2026). --}}
+        @if (! $i->isShownToManager())
+            <x-slot:acts><x-deal.send-row :deal="$deal" :action="'/work/deals/'.$deal->id.'/invoices/'.$i->id.'/show'" pill/></x-slot:acts>
+        @endif
     </x-deal.doc-row>
-    {{-- Менеджер видит счёт только после «Отправить» (16.11.2026): сотрудник сперва проверяет. --}}
-    @if (! $i->isShownToManager())<x-deal.send-row :deal="$deal" :action="'/work/deals/'.$deal->id.'/invoices/'.$i->id.'/show'" :label="\App\Billing\PayOffer::sendLabel($i)"/>@endif
     @if ($link && $link->isOpen())
         <x-ui.share-link variant="row" :url="$link->url()" title="Оплата по ссылке" :text="$link->message()" label="Ссылка на оплату" :sub="$linkState" done="Ссылка на оплату в буфере"/>
     @endif
