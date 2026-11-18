@@ -27,6 +27,7 @@ import { csrf } from './lib/http';
 import avatarFallback from './lib/avatar-fallback';
 import { perf } from './lib/perf';
 import { sections } from './lib/sections';
+import { visitGuard } from './lib/visit-guard';
 import { shape } from './lib/shape';
 
 // Потоки из ответа карточки строки (x-ui.row-card): тост flash-сообщения и «следующий без цены» (detail_controller).
@@ -197,6 +198,7 @@ onMorphElement((event) => {
 });
 touchPrefetch();
 perf();
+visitGuard();
 sections({ onStale: () => refreshPage() });
 shape();
 pressFeedback();
@@ -416,7 +418,18 @@ function freshness() {
         && !document.activeElement?.matches('input, textarea, select, [contenteditable]');
     const quiet = () => document.querySelector('.cards, [data-list], [data-fresh-on-back]') && calm();
     // Метка — чтобы net.js не перечитывал токен отдельным запросом: его принесёт этот же ответ.
-    const refresh = () => { window.xcarRefreshedAt = Date.now(); Turbo.visit(location.href, { action: 'replace' }); };
+    // Следующим тактом, а не прямо в обработчике `turbo:load`: визит, начатый в нём, Turbo тут же забывает (навигатор,
+    // закончив прежний, стирает ссылку на текущий), и следующий переход не мог его отменить — перечитывание доезжало
+    // и рисовало покинутый раздел поверх нового (18.11.2026, «застревает в разделе», `lib/visit-guard.js`). За такт человек
+    // мог уйти — перечитываем только тот экран, для которого решили.
+    const refresh = () => {
+        const url = location.href;
+        setTimeout(() => {
+            if (location.href !== url || Turbo.navigator.currentVisit) return;
+            window.xcarRefreshedAt = Date.now();
+            Turbo.visit(url, { action: 'replace' });
+        }, 0);
+    };
     // Адрес снимка — свой: на «Назад» location уже прежний, когда Turbo снимает уходящую страницу, и время ложилось
     // не той странице (возвращённый список всегда казался свежим).
     let shown = location.href;

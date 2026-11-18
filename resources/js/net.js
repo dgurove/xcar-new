@@ -1,6 +1,7 @@
 import * as Turbo from '@hotwired/turbo';
 import { onResume, RESUME } from './lib/resume';
 import { csrf } from './lib/http';
+import { stopVisit } from './lib/visit-guard';
 
 // Сеть и сессия без белых страниц.
 // 419 (токен истёк: приложение лежало в фоне, вход в соседнем приложении сменил
@@ -23,14 +24,6 @@ function failed(kind, url, status, frame = null, redirected = null) {
         _token: csrf(), kind, url: own(url).slice(0, 500), status: status || null, frame, redirected: redirected ? own(redirected).slice(0, 500) : null,
     })], { type: 'application/json' }));
     window.toast?.(FAILED[status] ?? 'Не получилось', 'danger');
-}
-
-// Остановленный переход Turbo не снимает с <html> aria-busy и полосу загрузки — они висели до следующего перехода,
-// и экран выглядел вечно грузящимся.
-function stopVisit() {
-    Turbo.navigator.stop();
-    document.documentElement.removeAttribute('aria-busy');
-    Turbo.session.adapter?.hideVisitProgressBar?.();
 }
 
 export function netGuards() {

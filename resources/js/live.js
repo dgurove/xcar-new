@@ -1,5 +1,6 @@
 import * as Turbo from '@hotwired/turbo';
 import { markDirty } from './lib/sections';
+import { canceled } from './lib/visit-guard';
 import { onResume, RESUME } from './lib/resume';
 import { scrollTop, scrollToY } from './lib/scroller';
 
@@ -250,7 +251,13 @@ const moving = () => fingers > 0 || performance.now() - movedAt < 600;
 document.addEventListener('turbo:before-render', (e) => {
     if (e.detail.renderMethod !== 'morph' || !moving()) return;
     e.preventDefault();
-    const go = () => (moving() ? setTimeout(go, 250) : e.detail.resume());
+    // Пока вставка ждала, человек мог уйти в другой раздел (нажатие таба — тоже «палец на экране»): визит отменён, и
+    // его страница поверх нового раздела не встаёт (18.11.2026, «застревает в разделе» — `lib/visit-guard.js`). Отрисовку
+    // Turbo всё равно надо отпустить: не отпущенная держала бы все следующие.
+    const visit = Turbo.navigator.currentVisit;
+    const render = e.detail.render;
+    e.detail.render = (...args) => (canceled(visit) ? undefined : render(...args));
+    const go = () => (moving() && !canceled(visit) ? setTimeout(go, 250) : e.detail.resume());
     setTimeout(go, 250);
 });
 // Вернулись из фона — чуть позже: долгий фон и так перечитывает страницу визитом (app.js freshness), он идёт первым, а

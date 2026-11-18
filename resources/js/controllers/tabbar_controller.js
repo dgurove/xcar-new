@@ -46,6 +46,8 @@ export default class extends Controller {
     tap(event) {
         const link = event.currentTarget;
         const href = link.getAttribute('href');
+        // Таб экрана, пока едет переход в другой раздел, — «остаться здесь»: переход останавливается (18.11.2026).
+        if (this.shownValue === href && sections.stay()) { event.preventDefault(); mark(this.element, this.shownValue); return; }
         if (this.shownValue !== href) {
             for (const tab of this.element.querySelectorAll('.tab[aria-current]')) tab.removeAttribute('aria-current');
             link.setAttribute('aria-current', 'page');

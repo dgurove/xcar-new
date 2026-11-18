@@ -18,7 +18,8 @@
 import * as Turbo from '@hotwired/turbo';
 import { holdY, knownY, scrollTop } from './scroller';
 import * as overlays from '../overlays';
-import { arm } from './shape';
+import { arm, hide as hideGhost } from './shape';
+import { leaving, stopVisit } from './visit-guard';
 import { prefetch } from '../touch-prefetch';
 import { shown as shownNow } from './perf';
 
@@ -48,9 +49,23 @@ const slot = (tab) => `${KEY}${who()}:${pathOf(tab)}`;
 const read = (store, tab) => { try { return JSON.parse(store.getItem(slot(tab)) || 'null'); } catch { return null; } };
 const write = (store, tab, value) => { try { value ? store.setItem(slot(tab), JSON.stringify(value)) : store.removeItem(slot(tab)); } catch {} };
 
+// Чей это адрес: раздел, названный в нём самом (`in=`, контекст галереи), иначе — по путям разделов из таб-бара.
+// undefined — путей нет (экран без таб-бара): судить не по чему.
+function ownerOf(url) {
+    const tabs = tabMatches();
+    if (!tabs.length) return undefined;
+    const u = new URL(url, location.origin);
+    const stated = u.searchParams.get('in') ?? (u.searchParams.get('list') === 'gallery' ? '/gallery' : null);
+    return stated && tabs.some(([href]) => pathOf(href) === stated) ? stated : tabOfPath(u.pathname, tabs);
+}
+// Место раздела — только его адрес (18.11.2026, «застревает в разделе»): когда на экране оказывалась страница одного
+// раздела под адресом другого (отменённый переход дорисовался — `lib/visit-guard.js`), память записывала разделу чужой
+// адрес и чужой снимок, и он открывал другой раздел до перезапуска приложения. Чужое не пишется и не читается.
+const belongs = (url, tab) => { const owner = ownerOf(url); return owner === undefined || owner === pathOf(tab); };
+
 /** Запомнить место раздела, что сейчас на экране. */
 export function remember() {
-    if (!here?.tab) return;
+    if (!here?.tab || !belongs(here.url, here.tab)) return;
     const place = { url: here.url, y: Math.round(knownY()), at: Date.now() };
     write(sessionStorage, here.tab, place);
     write(localStorage, here.tab, place);
@@ -66,6 +81,7 @@ export function recall(tab) {
     try {
         if (!saved || new URL(saved.url).origin !== location.origin) return null;
     } catch { return null; }
+    if (!belongs(saved.url, tab)) { forget(tab); return null; }
     // Корень раздела с самого верха — и так то, что откроет ссылка таба; но со снимком он откроется сразу, без сервера.
     const pin = pins.get(pathOf(tab));
     const root = saved.url === new URL(tab, location.origin).href && !(saved.y > 0);
@@ -87,7 +103,9 @@ export function forget(tab) {
  */
 export function open(tab, saved) {
     const url = new URL(saved.url);
-    const pin = pins.get(pathOf(tab));
+    let pin = pins.get(pathOf(tab));
+    // Снимок — этого раздела: страница в нём знает свой раздел сама (`<body data-nav-tab>`).
+    if (pin && pin.snapshot.element?.dataset.navTab !== tab) { pins.delete(pathOf(tab)); pin = null; }
     if (pin && pin.url === keyOf(url)) {
         if (!Turbo.session.applicationAllowsVisitingLocation(url)) return false;
         pins.delete(pathOf(tab));
@@ -146,6 +164,21 @@ function adopt(link) {
     if (foreign ? mine === here : mine === undefined) return;
     if (foreign) { url.searchParams.set('in', pathOf(here)); link.dataset.in = here; } else { url.searchParams.delete('in'); delete link.dataset.in; }
     link.setAttribute('href', url.pathname + url.search + url.hash);
+}
+
+/**
+ * Нажали раздел, что на экране, пока едет переход в другой: человек передумал — переход останавливается, раздел
+ * остаётся как был (18.11.2026: нажатие считалось «к началу раздела», а переход доезжал и уводил). true — остановили.
+ */
+export function stay() {
+    if (!leaving()) return false;
+    stopVisit();
+    hideGhost();
+    pendingScroll = undefined;
+    reopened = null;
+    action = null;
+    clearTimeout(warm);
+    return true;
 }
 
 // Переход по ссылке не начался: Turbo его запретил (`turbo:before-visit` отменён — несохранённое в окне). Слушатель на window
@@ -212,6 +245,8 @@ export function sections({ onStale } = {}) {
         // не пошёл («Сохранить изменения?» → «Остаться», запрет перехода) — подсветка возвращается на раздел экрана.
         const was = [...document.querySelectorAll('a[data-section][aria-current]')];
         const light = (on) => { for (const a of document.querySelectorAll('a[data-section]')) on.includes(a) ? a.setAttribute('aria-current', 'page') : a.removeAttribute('aria-current'); };
+        // Раздел экрана, пока едет переход в другой, — «остаться»: переход останавливается, подсветка возвращается.
+        if (here?.tab === href && stay()) { event.preventDefault(); light([...document.querySelectorAll('a[data-section]')].filter((a) => a.getAttribute('href') === href)); return; }
         light([link]);
         const revert = () => light(was);
         // Раздел с `data-go` ведём сами — сразу на его вкладку; без него переход по ссылке делает Turbo.
@@ -263,7 +298,8 @@ export function sections({ onStale } = {}) {
     cache.put = (location, snapshot) => {
         const result = put(location, snapshot);
         const from = left.find((l) => l.url === keyOf(location));
-        if (from && snapshot?.element && snapshot.element.getElementsByTagName('*').length <= HEAVY && !snapshot.element.classList.contains('chat-open')) {
+        if (from && snapshot?.element && snapshot.element.dataset.navTab === from.tab
+            && snapshot.element.getElementsByTagName('*').length <= HEAVY && !snapshot.element.classList.contains('chat-open')) {
             pins.set(pathOf(from.tab), { url: from.url, snapshot, at: Date.now() });
         }
         return result;
