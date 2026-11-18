@@ -6,7 +6,6 @@
 <div class="contents" data-controller="sheet">
     <x-ui.sheet :id="'deal-buyer-ask-'.$deal->id" title="Кто покупатель?" :open="$open">
         <div class="flex flex-col gap-4">
-            <p class="text-ink-muted">Страховая попросит реквизиты, отправим сразу</p>
             <x-deal.buyer-kind :deal="$deal"/>
             {{-- Выбор — та же шторка блока «Покупатель» на странице (`buyer:open`): второй копии формы с теми же id здесь нет. --}}
             <div class="list"><button type="button" class="row w-full text-left" data-controller="emit" data-action="sheet#close emit#send" data-emit-event-param="buyer:open"><x-ui.row-icon name="users" size="s"/><span class="min-w-0 flex-1">Выбрать из моих покупателей</span><x-ui.chevron/></button></div>

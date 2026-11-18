@@ -5,7 +5,7 @@
      «Изменить» карточки «ДКП ПРАЙМ»), ошибка формы открывает её сама.
      ДКП ПРАЙМ (14.11.2026): строкой — собственник по договору комиссии (сам из письма, `FillCommissionOwner`); под «Изменить» —
      собственник полями паспорта и № договора комиссии. НДС договора — рядом со схемой в «Деньгах» (`x-deal.scheme`). --}}
-@props(['deal', 'bare' => false, 'docRow' => true])
+@props(['deal', 'bare' => false, 'docRow' => true, 'capped' => false])
 @php
     use App\Offers\DealContract;
     $contract = DealContract::for($deal)->loadMissing(['seller', 'buyer.party']);
@@ -25,7 +25,7 @@
 @php ob_start(); @endphp
     {{-- Договор — файлом (`x-deal.contract-doc`); в «Продаже» его ставит `x-deal.money` над «Подписанным договором». --}}
     @if ($doc_row)<x-deal.contract-doc :deal="$deal"/>@endif
-    <x-deal.buyer :deal="$deal" :contract="$contract"/>
+    <x-deal.buyer :deal="$deal" :contract="$contract" :capped="$capped"/>
 @php $rows = ob_get_clean(); @endphp
 @php ob_start(); @endphp
     <div class="contents" data-controller="sheet" data-action="dkp-{{ $deal->id }}:open@window->sheet#open">

@@ -127,9 +127,10 @@
             $fileRows = collect($files ?? [])->map(fn ($f) => \Illuminate\Support\Facades\Blade::render('<x-ui.file :name="$n" :mime="$m->mime_type" :bytes="$m->size" :size="$sub" :href="$href" class="row"/>',
                 ['n' => $f[0], 'm' => $f[1], 'sub' => $f[2], 'href' => '/files/'.$f[1]->id]))->implode('');
         @endphp
-        {{-- Покупатель — строкой в конце карточки денег (18.11.2026, владелец выбрал «квитанцию»: не посреди сумм) —
-             `cabinet.deals.money-buyer`; здесь только файлы платежа. --}}
-        @if ($fileRows !== '')<div class="list">{!! $fileRows !!}</div>@endif
+        {{-- Покупатель — над счётом и платёжкой (18.11.2026, владелец: «блок покупателя над счётом и договором, для
+             единообразия»): подпись и состояние над плашкой с именем (`cabinet.deals.money-buyer`), ниже файлы платежа. --}}
+        @include('cabinet.deals.money-buyer', ['pickBuyer' => $pickBuyer ?? false])
+        @if ($fileRows !== '')<div class="list mt-3">{!! $fileRows !!}</div>@endif
     @endif
     @if ($canPay)
         <div>

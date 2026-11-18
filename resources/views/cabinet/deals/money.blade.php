@@ -66,8 +66,6 @@
                 'amount' => $selection ? $sumOf($selection) : Money::rub((int) $deal->ours()),
                 'state' => null, 'invoice' => $selection, 'pay' => $payHere, 'payerHere' => $payHere, 'block' => true, 'noSlip' => $oneReceipt])
             @include('cabinet.deals.money-reward')
-            {{-- Покупатель — последней строкой (18.11.2026, «квитанция»): не посреди сумм. --}}
-            @if ($deal->isActive())@include('cabinet.deals.money-buyer', ['pickBuyer' => $deal->isLive() && ! $deal->hasContract()])@endif
         @else
             {{-- ПРАЙМ / Р.О.С. (Совкомбанк, Carcade, часть Альфы): покупатель платит нашему юрлицу — строкой с его названием и ценой
                  (она же счёт); счёт выставлен — его оплаты и способы под ней. --}}
@@ -75,13 +73,15 @@
             @if ($deal->amount !== null && ! $deal->isGarage())
                 <div class="deal-money-row deal-money-price flex items-start gap-3"><span class="min-w-0 flex-1">Цена продажи</span><span class="nums shrink-0 text-lg font-semibold">{{ Money::rub($deal->amount) }}</span></div>
             @endif
+            {{-- Покупатель уже есть на странице — в карточке «Договор и счёт» или в шаге (`buyerPickInMoney` — нет) — второй раз не пишем
+                 (18.11.2026: «Михаил Шмелёв» стоял дважды). --}}
+            @if ($deal->buyer_id === auth()->id() && $deal->isActive() && ! $deal->isDirect() && $deal->schemeOf()->paysCar() && ($buyerPickInMoney ?? true))
+                <div class="deal-money-buyer pb-2"><x-deal.payer :deal="$deal" :action="'/deals/'.$deal->id.'/payer'" :id="'deal-payer-'.$deal->id.'-money'" capped/></div>
+            @endif
             @include('cabinet.deals.payment', ['row' => true, 'title' => ($sale?->seller ?? $deal->seller())->config()['name'], 'strong' => ! ($deal->amount !== null && ! $deal->isGarage()),
                 // Сумма — та, что платить: цена минус вознаграждение и наличные мимо счёта (как счёт и договор, `DealContract::priceFor`).
                 'amount' => Money::rub((int) ($sale ? $sale->total : \App\Offers\DealContract::priceFor($deal))), 'state' => null, 'invoice' => $sale, 'pay' => $payHere, 'payerHere' => $payHere, 'payerLast' => true, 'block' => true])
             @include('cabinet.deals.money-reward')
-            @if ($deal->buyer_id === auth()->id() && $deal->isActive() && ! $deal->isDirect() && $deal->schemeOf()->paysCar())
-                <div class="deal-money-buyer"><x-deal.payer :deal="$deal" :action="'/deals/'.$deal->id.'/payer'" :id="'deal-payer-'.$deal->id.'-money'" capped/></div>
-            @endif
         @endif
     </div>
 @unless ($embedded)</div>@endunless

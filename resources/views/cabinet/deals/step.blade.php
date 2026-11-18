@@ -32,8 +32,10 @@
     // проходит сам, когда данные со сканом есть (`AdvanceOnBuyerData`). Письма поставщика менеджер не видит.
     $buyerStep = $deal->isLive() && $requirement?->asks === Asks::Buyer;
     $needsBuyer = $needsBuyer || $buyerStep;
-    // Покупатель ещё не выбран — сначала плитки «Физлицо» / «ИП» / «Организация» (`x-deal.buyer-kind`).
-    $photoTiles = $needsBuyer && ! \App\Offers\DealContract::for($deal)->buyer_user_id;
+    // Покупателя ещё нет (или только заготовка без данных) — тот же выбор, что у задачи «Укажите покупателя» (`buyer-picker`,
+    // 18.11.2026): плитки вида и свои покупатели строками; есть — его строка с данными (`cabinet.deals.contract`).
+    $stepBuyer = \App\Offers\DealContract::for($deal)->buyer;
+    $pickBuyerHere = $deal->isLive() && ! auth()->user()->isSuperBuyer() && (! $stepBuyer || $stepBuyer->isBuyerDraft());
     // Гаражная Совкомбанка: счёт и договор — когда менеджер продаст (`Deal::namesBuyer`): цену он пишет «Продаю».
     $needsPrice = $gap === 'price';
     // Строки счетов — только в гараже, где «Расчёта» нет; на странице сделки счёт в «Расчёте», а здесь — сама оплата.
@@ -187,7 +189,11 @@
                                     @include('cabinet.deals.payload')
                                     @if ($disclosures->isNotEmpty())@include('cabinet.deals.disclosures')@endif
                                 @elseif ($key === 'buyer')
-                                    @include('cabinet.deals.contract', ['part' => 'buyer', 'embedded' => true, 'labels' => false, 'after' => ''])
+                                    @if ($pickBuyerHere)
+                                        @include('cabinet.deals.buyer-picker')
+                                    @else
+                                        @include('cabinet.deals.contract', ['part' => 'buyer', 'embedded' => true, 'labels' => false, 'after' => ''])
+                                    @endif
                                 @elseif ($key === 'doc')
                                     @include('cabinet.deals.contract', ['part' => 'doc', 'embedded' => true, 'labels' => false, 'after' => ''])
                                 @endif
@@ -291,8 +297,11 @@
 
             {{-- Действия — после всего, что нужно прочитать. --}}
             @if ($needsBuyer && ! $moneyHere)
-                @if ($photoTiles)<div class="mt-4"><x-deal.buyer-kind :deal="$deal"/></div>@endif
-                <div class="mt-4">@include('cabinet.deals.contract', ['part' => 'buyer', 'embedded' => true, 'labels' => false, 'after' => ''])</div>
+                @if ($pickBuyerHere)
+                    <div class="mt-4">@include('cabinet.deals.buyer-picker')</div>
+                @else
+                    <div class="mt-4">@include('cabinet.deals.contract', ['part' => 'buyer', 'embedded' => true, 'labels' => false, 'after' => ''])</div>
+                @endif
             @endif
             @if ($requirement && ! $needsBuyer && ! $selectionPay && ! $direct && ! $paidUp && ! $signingPick)
                 @if ($payStep && $unpaid->isNotEmpty() && ! $direct)

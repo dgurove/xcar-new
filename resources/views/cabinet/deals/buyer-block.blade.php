@@ -19,7 +19,6 @@
     $sale = $ours ? $deal->invoices()->where('kind', \App\Billing\ChargeKind::Sale)->where('state', '!=', \App\Billing\InvoiceState::Void->value)->shownToManager()->latest('id')->first() : null;
     // У Альфы договор — после подтверждённой оплаты (`Deal::contractAfterPay`): до неё строки «Договор» нет, только покупатель и счёт.
     $later = $deal->hasContract() && $deal->contractAfterPay();
-    $docsReady = $deal->hasContract() ? (($later || $contract->missing() === []) && (! $ours || $sale)) : true;
     $title = match (true) {
         $withBuyer && $asked && ! $chosen => 'Указать покупателя',
         $deal->isGarage() => 'Договор купли-продажи',
@@ -28,19 +27,6 @@
         $deal->hasContract() => 'Договор',
         default => 'Покупатель',
     };
-    $hint = $docsReady ? null : match (true) {
-        $ours && $later => 'Счёт выставим по данным покупателя',
-        $ours => 'Подготовим сами по данным покупателя',
-        $deal->hasContract() => 'Подготовим договор по данным покупателя',
-        default => null,
-    };
-    if (! $deal->hasContract() && $deal->collectsBuyer()) {
-        $hint = 'Поставщик выставит счёт на покупателя';
-    }
-    // Через Р.О.С. (17.11.2026): покупатель платит Р.О.С. по счёту с НДС — менеджеру словами, кому платит его покупатель.
-    if ($deal->seller() === \App\Billing\Seller::Ros && $deal->schemeOf()->paysCar() && ! $docsReady) {
-        $hint = 'Покупатель платит ООО «Р.О.С.» по счёту с НДС, договор с Р.О.С.';
-    }
     // Счёт файлом — строкой той же группы, после договора.
     // На шаге оплаты счёт — строкой «Счёт № …» в способах оплаты карточки «Оплата»; второй раз не пишем (16.11.2026).
     $saleRow = match (true) {
@@ -54,10 +40,16 @@
 @endphp
 <section class="box deal-form min-w-0">
     <h2 class="box-title">{{ $title }}</h2>
-    @if ($hint)<p class="mt-1">{{ $hint }}</p>@endif
+    {{-- Без фраз-пояснений под заголовком (18.11.2026, владелец: «Подготовим сами по данным покупателя» — «колхоз, нейрослоп»).
+         Покупатель — подписью над плашкой с состоянием справа, в плашке имя (`capped`); договор и счёт — своей группой ниже. --}}
     @if ($withBuyer)
         @if (! $chosen && $deal->isLive())<div class="mt-3"><x-deal.buyer-kind :deal="$deal"/></div>@endif
-        <div class="mt-2">@include('cabinet.deals.contract', ['part' => $deal->hasContract() && ! $later ? 'all' : 'buyer', 'embedded' => true, 'after' => $saleRow, 'labels' => true])</div>
+        <div class="mt-2">@include('cabinet.deals.contract', ['part' => 'buyer', 'embedded' => true, 'after' => '', 'labels' => true, 'capped' => true])</div>
+        @if ($deal->hasContract() && ! $later)
+            <div class="mt-3">@include('cabinet.deals.contract', ['part' => 'doc', 'embedded' => true, 'after' => $saleRow, 'labels' => true])</div>
+        @elseif ($saleRow !== '')
+            <div class="list mt-3">{!! $saleRow !!}</div>
+        @endif
     @elseif ($saleRow !== '')
         <div class="list mt-2">{!! $saleRow !!}</div>
     @endif

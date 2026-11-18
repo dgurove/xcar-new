@@ -2,7 +2,8 @@
      вознаграждение → покупатель). Пока его нет — задача «Укажите покупателя» под шагом, здесь ничего; на странице нет другой шторки
      выбора — своя (`buyerPickInMoney`), иначе строка шлёт `buyer:open`. --}}
 @php $cb = $deal->contract?->buyer; @endphp
-@unless ($buyerTask ?? false)
+{{-- Покупателя нет (или заготовка без данных) — строки нет: его просит задача «Укажите покупателя» или сам шаг. --}}
+@if ($cb && ! $cb->isBuyerDraft() && (($pickBuyer ?? false) || ($buyerPickInMoney ?? true)))
 <div class="deal-money-buyer">
     @if (($pickBuyer ?? false) || ($buyerPickInMoney ?? false))
         {{-- «Страховой напрямую» (16.11.2026) и до согласования (18.11.2026) — своя шторка выбора: на странице другой нет. --}}
@@ -20,4 +21,4 @@
         </div>
     @endif
 </div>
-@endunless
+@endif

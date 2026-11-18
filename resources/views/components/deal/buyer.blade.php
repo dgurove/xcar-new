@@ -3,7 +3,9 @@
      сам менеджер, его покупатели, «+ Новый покупатель» (встаёт в «Покупатели» менеджера и в сделку); нет данных — их шторка со
      сканом паспорта; у ПРАЙМ — кто платит по счёту. Строками внутри `.list`: в ДКП (`x-deal.contract`) и в «Покупателе для
      счёта» поставщика (`x-deal.invoice-buyer`, 03.11.2026). --}}
-@props(['deal', 'contract' => null, 'autoOpen' => true])
+{{-- `capped` (18.11.2026, владелец: «Покупатель» и состояние — подписью над плашкой, в плашке имя, «в CRM тоже»): своя группа
+     `.list` с подписью над ней; строка с именем открывает данные покупателя (там «Другой покупатель»), не выбран — выбор. --}}
+@props(['deal', 'contract' => null, 'autoOpen' => true, 'capped' => false])
 @php
     $contract ??= \App\Offers\DealContract::for($deal)->loadMissing(['buyer.party']);
     $manager = $deal->buyer;
@@ -15,7 +17,8 @@
     $gap = $buyer?->party?->gapWord();
     // Строка (06.11.2026, владелец: «Покупатель  Гамидов Та…» — подпись слева съедала ФИО): имя во всю строку, под ним состояние;
     // у ИП и организации — вид словом. Без аватара и с формой коротко — «ООО …» (16.11.2026, владелец: «зачем здесь аватарка»).
-    $who = $buyer ? (\App\Support\OrgName::short($buyer->party?->name) ?: $buyer->buyerLabel()) : null;
+    // Человек — имя и фамилия без отчества (18.11.2026, владелец), организация и ИП — коротко по названию (`User::buyerLabel`).
+    $who = $buyer ? $buyer->buyerLabel() : null;
     // Менеджер оформляет на себя (13.11.2026, `Deal::selfBuy`) — словом в строке, а не «, менеджер» у имени.
     $selfWord = $isManager ? 'на себя, ' : '';
     $kindWord = match ($buyer?->party?->kind) { \App\Billing\PartyKind::Entrepreneur => 'ИП, ', \App\Billing\PartyKind::Company => 'юр. лицо, ', default => '' };
@@ -42,6 +45,10 @@
     $toRos = $ours && $deal->schemeOf() !== \App\Offers\DealScheme::Ros && $deal->moneyEditable() && auth()->user()?->canEditDeals()
         && in_array(\App\Offers\DealScheme::Ros, \App\Offers\DealScheme::casesFor($deal->offer->vendor, $deal->offer), true);
 @endphp
+@if ($capped)
+    <div class="list-cap !px-0 flex justify-between gap-3"><span>Покупатель</span>@if ($buyer)<span @class(['text-open' => $ready, 'text-danger' => ! $ready])>{{ $ready ? $selfWord.$kindWord.'данные есть' : ($gap ?? 'нужны данные') }}</span>@endif</div>
+    <div class="list">
+@endif
 @if ($ours)
     <div class="row flex-col items-stretch gap-2">
         <p class="text-danger">{{ \App\Billing\Party::oursMessage($ours) }}</p>
@@ -62,8 +69,11 @@
     @endphp
     <form method="post" action="/work/deals/{{ $deal->id }}/contract" class="contents">
         @csrf @method('put')
-        <x-people.pick data-action="deal-buyer-pick-{{ $deal->id }}:open@window->sheet#open" name="buyer_id" kind="buyer" passport variant="row" :people="$rows" :value="$isManager ? 'me' : $buyer?->id" title="Покупатель" :deal="$deal->id" link autosubmit :open="$ask && ! $buyer"
-            :placeholder="'не выбран'" :label="$rowLabel" finish="Выбрать"/>
+        <x-people.pick data-action="deal-buyer-pick-{{ $deal->id }}:open@window->sheet#open" name="buyer_id" kind="buyer" passport :people="$rows" :value="$isManager ? 'me' : $buyer?->id" title="Покупатель" :deal="$deal->id" link autosubmit :open="$ask && ! $buyer"
+            :placeholder="'не выбран'" :label="$rowLabel" finish="Выбрать" :variant="$capped ? 'none' : 'row'"/>
+        @if ($capped && ! $buyer)
+            <button type="button" class="row w-full text-left" data-controller="emit" data-action="emit#send" data-emit-event-param="deal-buyer-pick-{{ $deal->id }}:open"><span class="min-w-0 flex-1 text-danger">не выбран</span><x-ui.chevron/></button>
+        @endif
     </form>
     @error('buyer_id')<p class="field-error px-4 py-2">{{ $message }}</p>@enderror
 @endif
@@ -71,7 +81,11 @@
 @if ($buyer && $live)
     <div data-controller="sheet" data-action="{{ $dataSheet }}:open@window->sheet#open" class="contents">
         {{-- Данные для договора — своей строкой того же вида, под «Плательщиком» (16.11.2026). --}}
-        <x-deal.sale-row :label="'Реквизиты'" :value="$ready ? trim($kindWord.'есть', ', ') : ($gap ?? 'нужны')" :tone="$ready ? null : 'danger'" class="w-full text-left" data-action="sheet#open"/>
+        @if ($capped)
+            <button type="button" class="row w-full text-left" data-action="sheet#open"><span class="min-w-0 flex-1 truncate">{{ $isManager ? 'На себя' : $who }}</span><x-ui.chevron/></button>
+        @else
+            <x-deal.sale-row :label="'Реквизиты'" :value="$ready ? trim($kindWord.'есть', ', ') : ($gap ?? 'нужны')" :tone="$ready ? null : 'danger'" class="w-full text-left" data-action="sheet#open"/>
+        @endif
         <x-ui.sheet :id="$dataSheet" :title="$ready ? 'Данные покупателя' : 'Данные для '.$for" :open="session('open_sheet') === $dataSheet || ($errors->hasAny(['buyer.*']) && ! preg_match('/^deal-(invoice|contract)-gaps-/', (string) old('_sheet'))) || $ask" tall>
             @php $buyerParty = $buyer->party ?? \App\Billing\Party::forUser($buyer); @endphp
             {{-- Снимки реквизитов от менеджера — над полями: вносят, глядя на них. --}}
@@ -98,11 +112,14 @@
                 </x-billing.buyer-fields>
                 <x-ui.sheet-foot>Сохранить</x-ui.sheet-foot>
             </form>
+            @unless ($deal->isGarage())
+                <button type="button" class="btn btn-quiet btn-s mt-3 w-full" data-controller="emit" data-action="sheet#close emit#send" data-emit-event-param="deal-buyer-pick-{{ $deal->id }}:open">Другой покупатель</button>
+            @endunless
         </x-ui.sheet>
     </div>
 @elseif ($buyer || ! $live)
     <div class="row">
-        <span class="min-w-0 flex-1">@if ($buyer)<span class="block break-words">{{ $who }}</span>@if ($ready)<span class="row-sub text-open">{{ $selfWord }}{{ $kindWord }}данные есть</span>@elseif ($isManager)<span class="row-sub">на себя</span>@endif @else<span class="text-ink-muted">Покупатель не выбран</span>@endif</span>
+        <span class="min-w-0 flex-1">@if ($buyer)<span class="block break-words">{{ $who }}</span>@if ($capped)@elseif ($ready)<span class="row-sub text-open">{{ $selfWord }}{{ $kindWord }}данные есть</span>@elseif ($isManager)<span class="row-sub">на себя</span>@endif @else<span class="text-ink-muted">Покупатель не выбран</span>@endif</span>
     </div>
     @if ($scanPdf)
         <x-ui.doc :doc="$scanPdf" class="row">
@@ -119,3 +136,6 @@
         <x-ui.chevron/>
     </x-ui.doc>
 @endforeach
+@if ($capped)
+    </div>
+@endif

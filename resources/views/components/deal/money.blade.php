@@ -196,7 +196,6 @@
     @if ($supplierBlock)
         {{-- Покупатель платит поставщику или собственнику сам (ДКП, «страховой напрямую») — блок «Поставщику» / «Собственнику». --}}
         @php ob_start(); @endphp
-            @if ($withContract)<x-deal.contract :deal="$deal" bare :doc-row="false"/>@elseif ($withBuyer)<x-deal.buyer :deal="$deal"/>@endif
             @include('admin.deals.supplier-rows')
             <x-deal.contract-gaps :deal="$deal"/>
             {!! $contractLine !!}
@@ -206,6 +205,8 @@
             {{-- Гаражной суммы собственнику нет (её платит менеджер сам) — без нуля в шапке. --}}
             @if ($deal->isDirect() && $deal->owner_price === null)<span class="nums shrink-0">уточним</span>@elseif ($deal->ownerPrice() !== null)<span class="nums shrink-0">{{ Money::rub((int) $deal->ownerPrice()) }}</span>@endif
         </div>
+        {{-- Покупатель — над счётом и договором своей группой: подпись и состояние сверху, в плашке имя (18.11.2026, владелец). --}}
+        @if ($withContract)<div class="mb-3"><x-deal.contract :deal="$deal" bare :doc-row="false" capped/></div>@elseif ($withBuyer)<div class="mb-3"><x-deal.buyer :deal="$deal" capped/></div>@endif
         @if ($top !== '')<div class="list mb-3 last:mb-0">{!! $top !!}</div>@endif
     @elseif ($carBlock)
         <div class="mb-2 flex items-start gap-3 px-3">
@@ -228,8 +229,9 @@
         {{-- Счёт есть — поступления покупателя сказаны словом шапки, строками — чужие плательщики; счёта нет — строкой «Пришло по
              выписке» ниже. --}}
         @if ($sale)<x-deal.arrivals :deal="$deal" :except="$buyerNames"/>@endif
+        {{-- Покупатель — над счётом и договором своей группой: подпись и состояние сверху, в плашке имя (18.11.2026, владелец). --}}
+        @if ($withContract)<div class="mb-3"><x-deal.contract :deal="$deal" bare :doc-row="false" capped/></div>@elseif ($withBuyer)<div class="mb-3"><x-deal.buyer :deal="$deal" capped/></div>@endif
         <div class="list mb-3 last:mb-0">
-            @if ($withContract)<x-deal.contract :deal="$deal" bare :doc-row="false"/>@elseif ($withBuyer)<x-deal.buyer :deal="$deal"/>@endif
             {{-- Часть мимо счёта — строкой, когда есть: из-за неё счёт и договор меньше цены продажи. --}}
             @if ($contract?->cash_part)<div class="row sale-row"><span class="sale-row-label">Наличными мимо счёта</span><span class="sale-row-value nums">{{ Money::rub($contract->cash_part) }}</span><x-ui.chevron-space/></div>@endif
             @if ($payerApart)<x-deal.payer :deal="$deal" :action="'/work/deals/'.$deal->id.'/payer'" :editable="$canEdit"/>@endif

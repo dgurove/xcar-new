@@ -435,6 +435,10 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
     /** Покупатель словами: имя, у заготовки — вид лица («Физ. лицо», «ИП», «Юр. лицо»), а не «Новый покупатель» (18.11.2026). */
     public function buyerLabel(): string
     {
+        // Организация и ИП — коротко по названию («ООО «1АВТО»», а не «ОБЩЕСТВО С ОГРАНИЧЕННОЙ ОТВЕТСТВЕННОСТЬЮ…»).
+        if (in_array($this->party?->kind, [\App\Billing\PartyKind::Company, \App\Billing\PartyKind::Entrepreneur], true) && filled($this->party->name)) {
+            return \App\Support\OrgName::short($this->party->name) ?: $this->party->name;
+        }
         if ($this->name !== \App\Users\Actions\AddPerson::UNNAMED) {
             // Имя и фамилия, без отчества (18.11.2026, владелец: «отчество тут отображать не надо»).
             return filled($this->first_name) && filled($this->last_name) ? $this->first_name.' '.$this->last_name : $this->name;
