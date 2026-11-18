@@ -615,6 +615,12 @@ class OfferController
             $q->whereDoesntHave('estimates', fn ($e) => $e->open());
         }
 
+        // Сделка (16.11.2026): этап — раскладка `DealTabs`. Ключи — из `DealTabs::TABS`, не списком: «Спросить менеджера» (`ask`)
+        // в список не попал и считался условием «Архива» — 105 в колесе при 2 строках (18.11.2026).
+        if (isset(DealTabs::TABS[$preset])) {
+            return $q->whereIn('offers.id', DealTabs::ids($preset));
+        }
+
         return match ($preset) {
             'legacy' => LegacyClaim::onList($q->where('offers.state', OfferState::Draft)),
             'auction' => $q->where('offers.state', OfferState::Draft)->whereNotNull('offers.auction_at'),
@@ -645,8 +651,6 @@ class OfferController
                 ->when(OfferTabs::ids(self::ALL_HIDDEN), fn ($w, $ids) => $w->whereIntegerNotInRaw('offers.id', $ids)),
             // Сводная раздела — машины, что раскладка кладёт в его вкладки (группы те же, числа сходятся с колесом).
             'all_drafts', 'all_offers', 'all_deals', 'all_archive' => $q->whereIntegerInRaw('offers.id', OfferTabs::ids(self::summary($preset))),
-            // Сделка (16.11.2026): этап — раскладка `DealTabs`, «Завершённые» — выданные.
-            'reprice', 'letter', 'answered', 'check', 'bill', 'arrived', 'payout', 'todo', 'agree', 'invoice', 'paying', 'pickup', 'docs' => $q->whereIn('offers.id', DealTabs::ids($preset)),
             // «Гараж» — все гаражные машины до расчёта, в любом этапе сделки (16.11.2026); расчёт закрыт — в «Завершённых».
             'garage' => $q->whereHas('garageCar', fn ($c) => $c->where('state', '!=', CarState::Settled)),
             // Галерея — окно показа черновика (`GalleryController::scopeFor`); закупки — не предложения: строк-предложений нет.
