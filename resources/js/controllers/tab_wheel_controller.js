@@ -133,8 +133,8 @@ export default class extends Controller {
         this.scroll.scrollTop = this.pos(this.current);
     }
 
-    // Тумблер «Только мои» (18.11.2026, владелец): колесо сужается сразу, запоминается у человека в фоне.
-    mine(event) {
+    // Тумблер «Только мои» (18.11.2026, владелец): колесо сужается сразу, запоминается у человека в фоне. Имя не `mine`: это поле «наш визит» ниже — оно затирало обработчик после первого закрытия колеса, и тумблер молчал.
+    onlyMine(event) {
         const on = event.target.checked;
         this.wheel.classList.toggle('is-mine', on);
         this.collect();
@@ -159,7 +159,7 @@ export default class extends Controller {
         matchMedia(COLS).addEventListener('change', () => this.close(), opts);
         this.wheel.addEventListener('click', (e) => this.tap(e), opts);
         // Колесо открыто вне своего контроллера (в `<html>`), действия Stimulus до тумблера не доходят — слушаем сами.
-        this.wheel.querySelector('.tab-wheel-mine input')?.addEventListener('change', (e) => this.mine(e), opts);
+        this.wheel.querySelector('.tab-wheel-mine input')?.addEventListener('change', (e) => this.onlyMine(e), opts);
         document.addEventListener('keydown', (e) => this.key(e), opts);
         // Наш визит — по адресу (ответ мог прийти редиректом); начался чужой — колесо его не ждёт.
         document.addEventListener('turbo:visit', (e) => { this.mine = !!this.url && e.detail.url === this.url; }, opts);
