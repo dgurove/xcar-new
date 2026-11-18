@@ -26,7 +26,7 @@
     @endif
     <div class="min-w-0 flex-1">
         <div class="flex items-baseline gap-2">
-            <span class="{{ $unread ? 'font-medium' : '' }}">{{ $name }}</span>
+            <span class="{{ $unread ? 'font-medium' : '' }}" data-fill="title">{{ $name }}</span>
             @if ($staff && !$chat->user)<span class="tag">гость</span>@endif
             @if ($at)<span class="ml-auto shrink-0 text-xs text-ink-dim nums">{{ \App\Support\Ago::html($at, short: true) }}</span>@endif
         </div>

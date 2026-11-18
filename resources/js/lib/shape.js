@@ -179,6 +179,24 @@ function fallbackPage(w, h, photo) {
     return out;
 }
 
+// Экран чата (без шапки и таб-бара, во весь экран): полоса собеседника, пузыри переписки, поле ввода. Своего силуэта у чата нет — лента у каждого своя, а каркас один.
+function chatShape(w, h) {
+    // Имени и кадра из строки тут нет: строка списка названа машиной, а шапка чата — собеседником.
+    const out = [['c', 0, 0, w, 56, 0, 'var(--color-bar)'], ['b', 12, 10, 36, 36, 18], ['b', 58, 8, 40, 40, 20],
+        ['t', 110, 14, Math.min(180, w - 150), 10, 4], ['t', 110, 35, 110, 8, 4]];
+    const sides = [0, 1, 1, 0, 1, 0, 0];
+    for (let i = 0, y = h - 96; y > 90 && i < sides.length; i++) {
+        const width = Math.round(w * (0.34 + ((i * 7) % 4) * 0.09));
+        const height = 40 + ((i * 5) % 3) * 22;
+        y -= height;
+        out.push(['b', sides[i] ? w - 16 - width : 16, y, width, height, 18]);
+        y -= 10;
+    }
+    out.push(['c', 0, h - 72, w, 72, 0, 'var(--color-bar)'], ['b', 56, h - 60, w - 124, 44, 22], ['b', w - 56, h - 60, 44, 44, 22]);
+    return out;
+}
+const isChat = (href) => /\/chats\/(offer\/|support)?\d*$/.test(new URL(href, location.href).pathname) && /\/chats\/./.test(new URL(href, location.href).pathname);
+
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 
 function draw(rects, fill) {
@@ -205,7 +223,7 @@ function draw(rects, fill) {
  * кадр — загруженный (его адрес браузер отдаст из памяти), текст — как написан. Ничего не хранится.
  */
 function fillFrom(link) {
-    const box = link.closest('.card, .row, tr') ?? link;
+    const box = link.closest('.card, .row, .chat-row, tr') ?? link;
     const text = (el) => el?.textContent.replace(/\s+/g, ' ').trim() ?? '';
     const title = text(box.querySelector('[data-fill="title"], .card-name, .cell-name, .cell-title, .font-medium'));
     const price = text(box.querySelector('[data-fill="price"], .card-price'));
@@ -237,19 +255,21 @@ export function show(href, fill = null) {
     const scroller = document.getElementById('scroller');
     if (!scroller) return false;
     hide();
-    const box = scroller.getBoundingClientRect();
-    const shape = keysOf(href).map(load).find(Boolean);
+    const chat = isChat(href);
+    // Чат — во весь экран под строкой состояния: у него нет ни шапки, ни таб-бара.
+    const box = chat ? { top: 0, left: 0, width: document.documentElement.clientWidth, height: document.documentElement.clientHeight } : scroller.getBoundingClientRect();
+    const shape = chat ? null : keysOf(href).map(load).find(Boolean);
     const object = /\d/.test(new URL(href, location.href).pathname);
     // Силуэт снят при этой ширине (ключ) — высота экрана могла смениться (клавиатура, поворот): лишнее обрежет слой.
-    const rects = shape ? shape.slice(1) : object ? fallbackPage(box.width, box.height, !!fill?.large) : fallback(box.width, box.height);
+    const rects = shape ? shape.slice(1) : chat ? chatShape(box.width, box.height) : object ? fallbackPage(box.width, box.height, !!fill?.large) : fallback(box.width, box.height);
     layer = document.createElement('div');
-    layer.className = 'screen-ghost';
+    layer.className = chat ? 'screen-ghost screen-ghost--full' : 'screen-ghost';
     layer.dataset.sectionGhost = '';
     layer.setAttribute('aria-hidden', 'true');
-    layer.style.cssText = `top:${box.top}px;left:${box.left}px;width:${box.width}px;height:${box.height}px;background:${shape ? shape[0][2] : getComputedStyle(document.body).backgroundColor}`;
+    layer.style.cssText = chat ? '' : `top:${box.top}px;left:${box.left}px;width:${box.width}px;height:${box.height}px;background:${shape ? shape[0][2] : getComputedStyle(document.body).backgroundColor}`;
     layer.innerHTML = draw(rects, fill);
     home().append(layer);
-    cover = fill?.cover ?? null;
+    cover = chat ? null : fill?.cover ?? null;
     // Полоса загрузки Turbo под шапкой при силуэте лишняя: экран уже ответил.
     document.documentElement.classList.add('ghost-on');
     clearTimeout(timer);
@@ -276,13 +296,14 @@ export function arm(href, { exact = false, fill = null, strict = false } = {}) {
     armed = { href: new URL(href, location.href).href, exact, fill, strict, at: performance.now() };
 }
 
-// Ссылка вглубь приложения: плитка, строка, пункт кабинета. Не таб и не раздел шапки (их взводит `sections`), не пилюля
-// (ниже), не сосед «‹ ›» (тот же экран), не чат (экран без шапки и таб-бара — силуэт списка на его месте соврал бы).
+// Ссылка вглубь приложения: плитка, строка, пункт кабинета, чат (у него свой каркас во весь экран — `chatShape`). Не
+// таб и не раздел шапки (их взводит `sections`), не пилюля (ниже), не сосед «‹ ›» (тот же экран).
 const pattern = (path) => path.replace(/\d+/g, 'N');
 function deep(link) {
     if (!prefetchable(link) || link.closest('#tabbar, a[data-section], .tab-wheel, dialog') || link.matches('.pill, [rel="prev"], [rel="next"]')) return false;
     const url = new URL(link.href);
-    return pattern(url.pathname) !== pattern(location.pathname) && !/\/chats\/\d/.test(url.pathname);
+    // Чат на ПК открывается рядом со списком (фрейм — `prefetchable` его уже отсеял); страницей — на телефоне.
+    return pattern(url.pathname) !== pattern(location.pathname);
 }
 
 /** Взвести заготовку страницы, на которую ведёт ссылка (строка таблицы без ссылки под пальцем — `row_go_controller`). */

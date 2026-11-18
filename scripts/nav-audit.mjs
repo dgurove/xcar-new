@@ -112,6 +112,7 @@ async function tap(href, { timed = false } = {}) {
     await page.evaluate(() => window.__navArm());
     await page.touchscreen.tap(box.x + box.width / 2, box.y + box.height / 2);
     await page.waitForFunction(() => window.__nav.events.some((e) => e[0] === 'load'), null, { timeout: 30000 }).catch(() => {});
+    await page.waitForFunction(() => window.__nav.shown !== null, null, { timeout: 600 }).catch(() => {});
     const nav = await page.evaluate(() => ({ shown: window.__nav.shown, load: window.__nav.events.find((e) => e[0] === 'load')?.[1] ?? null }));
     await settle(timed ? 900 : 1200);
     page.off('request', onRequest);
@@ -129,6 +130,8 @@ async function press(find, arg) {
     await page.evaluate(() => window.__navArm());
     await page.touchscreen.tap(at[0], at[1]);
     await page.waitForFunction(() => window.__nav.events.some((e) => e[0] === 'load'), null, { timeout: 15000 }).catch(() => {});
+    // Экран из снимка встаёт быстрее кадра: отклик пишет наблюдатель по кадрам — дать ему его кадр.
+    await page.waitForFunction(() => window.__nav.shown !== null, null, { timeout: 600 }).catch(() => {});
     const nav = await page.evaluate(() => { const n = window.__nav; return { shown: n.shown, click: n.click, load: n.events.find((e) => e[0] === 'load')?.[1] ?? null, ghost: n.ghost, vt: n.vt, long: n.long }; });
     await settle(900);
     page.off('request', onRequest);
