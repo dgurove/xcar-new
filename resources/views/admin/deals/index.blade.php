@@ -1,7 +1,10 @@
 @php
     $view = \App\Support\ListView::pick(request(), $deals->total());
     // Столбцы — одно описание на шапку, строки и заголовки групп (`DealController::table`).
-    $table = \App\Http\Admin\DealController::table($groups !== null);
+    // Столбец кнопок — только когда в списке есть хоть одна кнопка дела (18.11.2026, владелец про «Ждём ответа»: «убери пустое
+    // место, кнопки там не нужны»).
+    $actions = $groups !== null && collect($groups)->contains(fn ($g) => collect($g['rows'] ?? [])->contains(fn ($r) => ! empty($r['todo']['button'])));
+    $table = \App\Http\Admin\DealController::table($groups !== null, $actions);
 @endphp
 {{-- Вкладки сделки в «Предложениях» (16.11.2026: сделка — состояние предложения, `OfferController::DEAL_TABS`): то же колесо
      с разделами, что у предложений; вкладка — этап маршрута (`DealTabs`). Внутри — сначала наши дела зелёными группами, потом
