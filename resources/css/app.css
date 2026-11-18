@@ -3644,7 +3644,43 @@ html.kb-open { --home-gap: 0px; }
      лист со scroll-snap (прокладка на высоту экрана: начало — «закрыто», середина — «полэкрана», карточка — «во весь
      экран»), тянется пальцем нативной прокруткой; пустая часть пропускает нажатия и прокрутку к таблице
      (pointer-events). Пустой фрейм не рисуется — таблица во всю ширину. */
-  .table-box { @apply rounded-(--radius-l) bg-surface; overflow: clip; }
+  .table-box { overflow: clip; }
+  /* Блоки таблицы — как группы «Настроек» iOS (18.11.2026, владелец: «подписи подзаголовков с суммами — над блоками, а не в
+     блоках»; «и в предложениях тоже»). Шапка столбцов и заголовок группы — на фоне страницы, над блоком; каждая группа — свой
+     блок, скруглённый сверху и снизу. Фон — у строки (`:where` — без веса: наведение и выбранная его перебивают), ячейка берёт
+     его же (`inherit`) — на телефоне углы скругляет ячейка (у строки таблицы радиуса нет), на ПК строка — сетка, скругляет она. */
+  .table { border-collapse: separate; border-spacing: 0; }
+  :where(.table tbody tr:not(.table-group)) { background-color: var(--color-surface); }
+  /* Только цвет: линия между строками — фоновая картинка ячейки («полоса — фоном ячеек»), её не трогаем. */
+  .table tbody tr:not(.table-group) > td { background-color: inherit; }
+  .table thead th { background: var(--color-ground); }
+  .table tbody tr.table-group, .table tbody tr.table-group:hover { background: transparent; }
+  .table tr.table-group > th { background: var(--color-ground); padding-top: 1.25rem; padding-bottom: .375rem; padding-inline: 1rem; }
+  .table tbody tr.table-group:first-child > th { padding-top: .25rem; }
+  /* ПК: заголовок группы — тем же мелким серым, что на телефоне, с воздухом над блоком. */
+  @media (min-width: 640px) {
+    .table-wrap .table tr.table-group > th { font-size: var(--text-sm); padding-top: 1rem; padding-bottom: .375rem; }
+    .table-wrap .table tbody tr.table-group:first-child > th { padding-top: .25rem; }
+  }
+  .table-box .table tbody { --r: var(--radius-l); }
+  /* Первая строка блока: первая в теле таблицы без группы или сразу за заголовком группы; последняя — перед заголовком или
+     последняя в теле. */
+  .table tbody:first-of-type > tr:first-child:not(.table-group) > td:first-child, .table tr.table-group + tr > td:first-child { border-top-left-radius: var(--r); }
+  .table tbody:first-of-type > tr:first-child:not(.table-group) > td:nth-last-child(1 of :not(.hidden, .phone-off)), .table tr.table-group + tr > td:nth-last-child(1 of :not(.hidden, .phone-off)) { border-top-right-radius: var(--r); }
+  .table tbody > tr:not(.table-group):has(+ tr.table-group) > td:first-child, .table tbody:last-of-type > tr:last-child:not(.table-group) > td:first-child { border-bottom-left-radius: var(--r); }
+  .table tbody > tr:not(.table-group):has(+ tr.table-group) > td:nth-last-child(1 of :not(.hidden, .phone-off)), .table tbody:last-of-type > tr:last-child:not(.table-group) > td:nth-last-child(1 of :not(.hidden, .phone-off)) { border-bottom-right-radius: var(--r); }
+  /* Перед хвостом «Ещё N…» последняя строка порции — тоже низ блока. */
+  .table tbody:has(+ tbody.table-more) > tr:last-child:not(.table-group) > td:first-child { border-bottom-left-radius: var(--r); }
+  .table tbody:has(+ tbody.table-more) > tr:last-child:not(.table-group) > td:nth-last-child(1 of :not(.hidden, .phone-off)) { border-bottom-right-radius: var(--r); }
+  /* Листается вбок: шапка и заголовки групп — на фоне страницы, и закреплённое название в них тоже. */
+  .table-wrap.is-grid .table-box.is-scroll .table :is(thead tr, tr.table-group) { background-color: var(--color-ground); }
+  @media (min-width: 640px) {
+    .table-wrap.is-grid:not(.is-wide) .table tbody:has(+ tbody.table-more) > tr:last-child:not(.table-group) { border-bottom-left-radius: var(--r); border-bottom-right-radius: var(--r); }
+    /* ПК: строка — сетка (`is-grid`), углы — у неё, ячейки внутри обрезаются. */
+    .table-wrap.is-grid:not(.is-wide) .table tbody tr:not(.table-group) { overflow: clip; }
+    .table-wrap.is-grid:not(.is-wide) .table tbody:first-of-type > tr:first-child:not(.table-group), .table-wrap.is-grid:not(.is-wide) .table tr.table-group + tr { border-top-left-radius: var(--r); border-top-right-radius: var(--r); }
+    .table-wrap.is-grid:not(.is-wide) .table tbody > tr:not(.table-group):has(+ tr.table-group), .table-wrap.is-grid:not(.is-wide) .table tbody:last-of-type > tr:last-child:not(.table-group) { border-bottom-left-radius: var(--r); border-bottom-right-radius: var(--r); }
+  }
   /* Срок приёма в строке: секундомер и число вплотную, без слова «осталось». */
   .cell-timer { white-space: nowrap; }
   /* Строчно, не флексом: у inline-flex базовая линия бралась от иконки, и число вставало выше соседнего текста. */
