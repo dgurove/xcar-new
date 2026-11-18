@@ -21,7 +21,8 @@ enum Reach: string
      */
     public static function area(?int $region): ?int
     {
-        return [50 => 77, 47 => 78][$region] ?? $region;
+        // Без региона — null: ключ массива null в PHP 8.5 устарел (предупреждение в логах).
+        return $region === null ? null : ([50 => 77, 47 => 78][$region] ?? $region);
     }
 
     public function label(): string
