@@ -25,9 +25,14 @@ final class StageDueNotice extends Notice
         return parent::kind().($this->overdue ? ':overdue' : ':due');
     }
 
+    /**
+     * Менеджеру — само дело, без «Срок подходит» и даты (18.11.2026, владелец: «убери сроки из уведомлений и сообщений, меня
+     * всегда с них кринжевало; просто „Оплатить счёт“, всё»). Сотруднику — как было.
+     */
     public function title(): string
     {
-        return ($this->overdue ? 'Срок вышел: ' : 'Срок подходит: ').$this->what().' — № '.$this->offer->number;
+        return $this->dealId ? $this->what().' — № '.$this->offer->number
+            : ($this->overdue ? 'Срок вышел: ' : 'Срок подходит: ').$this->what().' — № '.$this->offer->number;
     }
 
     /**
@@ -38,12 +43,12 @@ final class StageDueNotice extends Notice
     {
         $ask = $this->dealId ? Requirement::where('deal_id', $this->dealId)->where('stage_id', $this->position->stage_id)->whereNull('done_at')->latest('id')->value('title') : null;
 
-        return $ask ?? $this->position->stage->name;
+        return $ask ?? ($this->dealId ? $this->position->stage->managerTitle() : $this->position->stage->name);
     }
 
     public function text(): ?string
     {
-        return $this->offer->titleWithYear().', срок '.Ago::day($this->position->deadline_at, true);
+        return $this->dealId ? $this->offer->titleWithYear() : $this->offer->titleWithYear().', срок '.Ago::day($this->position->deadline_at, true);
     }
 
     public function href(): string
@@ -89,8 +94,8 @@ final class StageDueNotice extends Notice
     public function toTelegram(): ?array
     {
         return $this->dealId === null ? null : [
-            'title' => ($this->overdue ? 'Срок вышел по ' : 'Срок подходит по ').$this->offer->titleWithYear(),
-            'lines' => Text::lines($this->offer, $this->what().($this->position->deadline_at ? ' до '.Ago::day($this->position->deadline_at, true) : '')),
+            'title' => $this->what().': '.$this->offer->titleWithYear(),
+            'lines' => Text::lines($this->offer),
             'button' => 'Открыть сделку',
         ];
     }

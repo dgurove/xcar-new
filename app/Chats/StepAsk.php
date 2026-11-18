@@ -64,8 +64,6 @@ final class StepAsk
             return Notify::CONSENT_ASK.($offer ? "\n".$offer->titleWithYear().($offer->vin ? ', VIN '.$offer->vin : '') : '');
         }
         $deal = $r->deal;
-        // Срок в прошлом не пишется: «до 25.10» 12 ноября — не просьба, а упрёк.
-        $due = $r->due_at?->isFuture() ? Ago::day($r->due_at, true) : null;
         if ($deal && $r->stage && $deal->paysSupplierOn($r->stage)) {
             $sum = $deal->supplierPayment();
 
@@ -79,7 +77,8 @@ final class StepAsk
         $owner = $deal && $r->stage ? Handover::ownerLines($r->stage, Position::where('offer_id', $deal->offer_id)->where('track', Track::Sale)
             ->where('stage_id', $r->stage_id)->value('payload')) : [];
 
-        return 'Привет, '.$title.($due && ! str_ends_with($title, '?') ? ', до '.$due : '').($owner ? "\n".implode("\n", $owner) : '');
+        // Без срока (18.11.2026, владелец: «убери сроки из сообщений в чате, меня всегда с них кринжевало»): само дело.
+        return 'Привет, '.$title.($owner ? "\n".implode("\n", $owner) : '');
     }
 
     /**

@@ -69,7 +69,7 @@ final class Sovcombank extends Route
                 ],
                 'dkp_signed' => [
                     'name' => 'Подписанный договор', 'block' => 'signing', 'waits_for' => 'manager', 'limit_minutes' => 5 * self::DAY, 'asks' => 'document',
-                    'ask_title' => 'Приложить подписанный договор', 'ask_text' => 'Нужен договор купли-продажи, подписанный покупателем',
+                    'ask_title' => 'Приложить договор', 'ask_text' => 'Нужен договор купли-продажи, подписанный покупателем',
                     'exits' => [['Договор приложен', 'manager', 'supplier_payment'], ['Договор получен', 'staff', 'supplier_payment']],
                 ],
                 'supplier_payment' => [

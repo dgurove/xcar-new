@@ -331,8 +331,9 @@ final class Notify
         } elseif ($agreed && $deal->buyerPicksUp() && ($handover = Handover::for($deal->setRelation('offer', $e->offer)))->open
             && $handover->park?->state !== VehicleState::Stored) {
             $deal->buyer->notify(new HandoverNotice($deal, $handover));
-        } elseif ($e->from?->block_id !== $e->to->block_id && $deal->created_at->lt(now()->subMinute())) {
-            // Первый шаг только что открытой сделки не пишем: менеджеру уже идёт «подтверждение принято».
+        } elseif ($e->from?->block_id !== $e->to->block_id && $e->to->loadedExits()->isEmpty() && $deal->created_at->lt(now()->subMinute())) {
+            // Наши этапы менеджеру не пересказываем (18.11.2026, владелец: «им должно быть всё равно, что мы там внутри делаем»):
+            // строкой ленты — только конец пути («Сделка закрыта»); его ход идёт «Ваш ход» выше.
             $deal->buyer->notify(new DealStepNotice($deal->load('offer'), $e->to));
         }
     }

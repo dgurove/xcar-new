@@ -78,7 +78,7 @@ final class TBank extends Route
             ],
             'dkp_signed' => [
                 'name' => 'Подписанный договор', 'block' => 'pickup', 'waits_for' => 'manager', 'limit_minutes' => 2 * self::DAY, 'asks' => 'document',
-                'ask_title' => 'Приложить подписанный договор',
+                'ask_title' => 'Приложить договор',
                 'ask_text' => 'Нужен ДКП, подписанный собственником и покупателем, — без него сделка не закроется',
                 'exits' => [['Договор приложен', 'manager', 'selection_pay']],
             ],

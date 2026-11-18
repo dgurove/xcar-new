@@ -32,9 +32,10 @@ final class SigningTimeNotice extends Notice
         return 'Когда покупатель сможет подписать договор? № '.$this->deal->offer->number;
     }
 
+    /** Без пояснения (18.11.2026, владелец: «описания убери везде»): заголовок — сам вопрос. */
     public function text(): ?string
     {
-        return 'Поставщик готовит договор. Время можно выбрать заранее — запишем сразу';
+        return null;
     }
 
     public function href(): string
@@ -60,7 +61,7 @@ final class SigningTimeNotice extends Notice
     public function toTelegram(): ?array
     {
         return ['title' => 'Когда покупатель сможет подписать договор: '.$this->deal->offer->titleWithYear(),
-            'lines' => Text::lines($this->deal->offer, 'Поставщик готовит договор. Время можно выбрать заранее — запишем сразу'),
+            'lines' => Text::lines($this->deal->offer),
             'button' => 'Выбрать время'];
     }
 

@@ -444,7 +444,7 @@ class Deal extends Model implements HasMedia
 
         return ['title' => match ($gap) {
             'buyer' => 'Указать покупателя',
-            'passport' => $this->selfBuy() ? 'Заполнить свои данные' : 'Заполнить данные покупателя',
+            'passport' => $this->selfBuy() ? 'Заполнить свои данные' : 'Нужны реквизиты',
             'price' => 'Указать цену продажи',
             default => $position->stage->managerTitle($this),
         }, 'due' => $position->deadline_at, 'kind' => in_array($gap, ['buyer', 'passport', 'price'], true) ? $gap : 'step'];
@@ -469,7 +469,7 @@ class Deal extends Model implements HasMedia
             'Покупатель не выбран' => ['title' => 'Указать покупателя', 'kind' => 'buyer'],
             'Нет скана паспорта покупателя' => ['title' => 'Приложить паспорт покупателя', 'kind' => 'passport'],
             'Нет паспорта менеджера', 'Нет скана паспорта менеджера' => ['title' => 'Приложить свой паспорт', 'kind' => 'passport'],
-            default => ['title' => 'Заполнить данные покупателя', 'kind' => 'buyer'],
+            default => ['title' => 'Нужны реквизиты', 'kind' => 'buyer'],
         };
     }
 

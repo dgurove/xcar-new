@@ -45,10 +45,12 @@
             <span class="step-dot">@unless ($open)<x-ui.icon name="check" class="size-3"/>@endunless</span>
             <div class="step-body">
                 <div class="step-head">
-                    <span class="step-title flex-1">Документы со страховой</span>
+                    {{-- «Покупка», а не «Документы со страховой» (18.11.2026, владелец: «максимально непонятная формулировка»; «не у страховой —
+                         по-разному бывает»). Что сейчас — шапкой шага выше, подстроки с блоком маршрута нет. --}}
+                    <span class="step-title flex-1">Покупка</span>
                     @if (! $open && $deal->closed_at)<span class="nums shrink-0 text-sm text-ink-dim">{{ \App\Support\Ago::html($deal->closed_at, words: false) }}</span>@endif
                 </div>
-                @if ($open && ($dealBlock || $asks))<p class="step-hint">{{ trim(mb_strtolower($dealBlock ?? '').($asks ? ', ваш ход' : ''), ', ') }}</p>@endif
+                @if ($open && $staff && $dealBlock)<p class="step-hint">{{ mb_strtolower($dealBlock) }}</p>@endif
             </div>
         </div>
     @endif
@@ -57,14 +59,16 @@
             <span class="step-dot">@if ($p['status'] === 'done')<x-ui.icon name="check" class="size-3"/>@endif</span>
             <div class="step-body">
                 <div class="step-head">
-                    {{-- Пройденное ожидание — факт: машина приехала. --}}
-                    <span class="step-title flex-1">{{ $p['state'] === CarState::Waiting && $p['status'] === 'done' ? 'ТС приехала' : $p['state']->label() }}</span>
-                    @if ($p['status'] === 'done' && $p['at'])<span class="nums shrink-0 text-sm text-ink-dim">{{ \App\Support\Ago::html($p['at'], words: false) }}</span>@endif
+                    <span class="step-title flex-1">{{ $p['state']->label() }}</span>
+                    @if ($p['status'] === 'done' && $p['at'])<span class="nums shrink-0 text-sm text-ink-dim">{{ \App\Support\Ago::html($p['at'], words: false) }}</span>
+                    {{-- Менеджеру у текущего этапа — сколько идёт, справа, вместо подписи под ним (18.11.2026). --}}
+                    @elseif ($p['status'] === 'current' && ! $staff && $p['state'] !== CarState::Sold)<span class="nums shrink-0 text-sm text-ink-dim">{{ max(1, $car->stageDays()) }}д</span>@endif
                     @if (in_array($p['state'], $back ?? [], true))
                         <form method="post" action="/garage/cars/{{ $n }}/stage" class="contents" data-turbo-confirm="Вернуть на «{{ $p['state']->label() }}»?">@csrf<input type="hidden" name="state" value="{{ $p['state']->value }}"><button class="btn btn-s btn-quiet shrink-0">Вернуть</button></form>
                     @endif
                 </div>
-                @if ($p['status'] === 'current' && $hint)<p class="step-hint">{{ $hint }}</p>@endif
+                {{-- Подсказка под этапом — только сотруднику; менеджеру его дело — шапкой страницы (`Turn::ofGarage`), без описаний. --}}
+                @if ($p['status'] === 'current' && $hint && $staff)<p class="step-hint">{{ $hint }}</p>@endif
                 @if ($p['status'] === 'current' && ($buttonsHere ?? []))
                     <div class="mt-3">@include('garage.cars.actions', ['buttons' => $buttonsHere, 'more' => [], 'bar' => false])</div>
                 @endif

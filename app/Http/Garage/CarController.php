@@ -136,7 +136,7 @@ class CarController
         abort_unless($request->user()->isAdmin(), 403);
         $undo($this->car($request, $offer), $request->user());
 
-        return back()->with('toast', 'Ждёт ТС, вывоз в логистике');
+        return back()->with('toast', 'Снова вывоз, он в логистике');
     }
 
     private function car(Request $request, Offer $offer): Car

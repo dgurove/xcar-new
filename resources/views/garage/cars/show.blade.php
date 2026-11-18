@@ -44,9 +44,15 @@
             @endif
             {{-- Гаражная «платит менеджер» у ПРАЙМ: ДКП ПРАЙМ с ним самим — его данные для договора тут же. --}}
             @if ($step['deal']->hasContract())@include('cabinet.deals.contract', ['deal' => $step['deal'], 'labels' => false, 'after' => ''])@endif
-        @elseif (! $staff && $car->deal && ($parkHandover = \App\Offers\Handover::for($car->deal))->park && $car->deal->passes()->whereNull('revoked_at')->exists())
+        @else
+            {{-- После покупки его дело — той же шапкой, что у сделки (18.11.2026): забрать, указать покупателя, оплатить счёт. --}}
+            @if ($garageTurn = \App\Offers\Turn::ofGarage($car, $user, $view))
+                <div class="box"><x-deal.turn-head :turn="$garageTurn"/></div>
+            @endif
+            @if (! $staff && $car->deal && ($parkHandover = \App\Offers\Handover::for($car->deal))->park && $car->deal->passes()->whereNull('revoked_at')->exists())
             {{-- Сделка со страховой закрыта, а машина ещё на нашей парковке — забрать по пропуску (18.10.2026). --}}
-            <div class="box"><h2>Забрать с парковки</h2>@include('cabinet.deals.park-pickup', ['deal' => $car->deal, 'handover' => $parkHandover])</div>
+                <div class="box"><h2>Забрать с парковки</h2>@include('cabinet.deals.park-pickup', ['deal' => $car->deal, 'handover' => $parkHandover])</div>
+            @endif
         @endif
 
         <div class="box">

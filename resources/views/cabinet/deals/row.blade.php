@@ -50,11 +50,14 @@
         @unless ($active)<span class="nums mt-1 block text-sm text-ink-muted sm:hidden">{{ \App\Support\Ago::html(($deal->closed_at ?? $deal->updated_at), words: false) }}</span>@endunless
         @if ($task)
             @php $late = $task['due']?->isPast(); @endphp
-            <span class="mt-1 block text-sm"><span class="font-medium">{{ \App\Users\Wording::mine($task['title']) }}</span>@if ($late)<span class="text-danger">, просрочено на <span class="nums whitespace-nowrap" data-controller="timer" data-timer-since-value="{{ $task['due']->toIso8601String() }}" data-timer-coarse-value="true"></span></span>@elseif ($task['due'])<span class="text-ink-muted">, <span class="nums whitespace-nowrap" data-controller="timer" data-timer-until-value="{{ $task['due']->toIso8601String() }}" data-timer-coarse-value="true">{{ \App\Support\Ago::left($task['due']) }}</span></span>@endif</span>
-        @elseif ($sectioned && $paidUp)
-            <span class="mt-1 block text-sm text-ink-muted">Оплата получена</span>
-        @elseif ($sectioned && $position)
-            <span class="mt-1 block text-sm text-ink-muted">{{ \App\Users\Wording::mine($position->stage->block?->name ?? $position->stage->name) }}@if ($position->block_entered_at), <span class="nums whitespace-nowrap" data-controller="timer" data-timer-since-value="{{ $position->block_entered_at->toIso8601String() }}" data-timer-coarse-value="true">{{ \App\Support\Ago::since($position->block_entered_at, hours: true) }}</span>@endif</span>
+            <span class="mt-1 block text-sm"><span class="font-medium">{{ ($turn ?? null)?->mine ? $turn->title : \App\Users\Wording::mine($task['title']) }}</span>@if ($late)<span class="text-danger">, просрочено на <span class="nums whitespace-nowrap" data-controller="timer" data-timer-since-value="{{ $task['due']->toIso8601String() }}" data-timer-coarse-value="true"></span></span>@elseif ($task['due'])<span class="text-ink-muted">, <span class="nums whitespace-nowrap" data-controller="timer" data-timer-until-value="{{ $task['due']->toIso8601String() }}" data-timer-coarse-value="true">{{ \App\Support\Ago::left($task['due']) }}</span></span>@endif</span>
+        {{-- Наш ход — «На согласовании» / «В обработке» и сколько идёт (`Offers\Turn`, 18.11.2026), гаражная в «В гараже» — этап
+             машины: имён этапов маршрута менеджеру нет. --}}
+        @elseif ($sectioned && ($inGarage ?? false) && $deal->garageCar)
+            <span class="mt-1 block text-sm text-ink-muted">{{ $deal->garageCar->state->label() }}</span>
+        @elseif ($sectioned && ($turn ?? null))
+            {{-- Слово хода — заголовок раздела, здесь только сколько идёт. --}}
+            <span class="mt-1 block text-sm text-ink-muted">@if ($turn->since)<span class="nums whitespace-nowrap" data-controller="timer" data-timer-since-value="{{ $turn->since->toIso8601String() }}" data-timer-coarse-value="true">{{ \App\Support\Ago::since($turn->since, hours: true) }}</span>@endif</span>
         @elseif ($req)
             <span class="mt-1 block text-sm font-medium text-urgent">{{ \App\Users\Wording::mine($req->title) }}@if ($req->due_at && $req->due_at->isPast()), просрочено на <span class="nums whitespace-nowrap" data-controller="timer" data-timer-since-value="{{ $req->due_at->toIso8601String() }}" data-timer-coarse-value="true"></span>@elseif ($req->due_at), <span class="nums whitespace-nowrap" data-controller="timer" data-timer-until-value="{{ $req->due_at->toIso8601String() }}" data-timer-coarse-value="true">{{ \App\Support\Ago::left($req->due_at) }}</span>@endif</span>
         @elseif ($paidUp)

@@ -29,9 +29,10 @@ final class BuyerAskNotice extends Notice
         return 'Указать покупателя — № '.$this->deal->offer->number;
     }
 
+    /** Без пояснения (18.11.2026, владелец: «описания убери везде»): заголовок — само дело. */
     public function text(): ?string
     {
-        return 'Страховая попросит реквизиты, отправим сразу';
+        return null;
     }
 
     public function href(): string
@@ -57,7 +58,7 @@ final class BuyerAskNotice extends Notice
     public function toTelegram(): ?array
     {
         return ['title' => 'Указать покупателя: '.$this->deal->offer->titleWithYear(),
-            'lines' => Text::lines($this->deal->offer, 'Страховая попросит реквизиты, отправим сразу'),
+            'lines' => Text::lines($this->deal->offer),
             'button' => 'Указать покупателя'];
     }
 

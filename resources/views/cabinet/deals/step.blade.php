@@ -1,7 +1,7 @@
 {{-- Задача сделки — одна карточка на страницу сделки и карточку машины в гараже, пока идёт сделка со страховой (гаражная
      сделка идёт по тому же маршруту). Данные — `Cabinet\DealController::stepData`. Порядок как у задачи в приложении
      (05.10.2026, владелец): что сделать → где и у кого → ответы страховой (с кем связаться, что прислали) → действия.
-     Пояснений нет (владелец: «зачем эссе в интерфейсе»): заголовок просьбы и сам инструмент — на шаге оплаты счёт со
+     Пояснений нет (владелец: «зачем эссе в интерфейсе»): шапка «чей ход» (`x-deal.turn-head`) и сам инструмент — на шаге оплаты счёт со
      ссылкой и «Оплатить» шторкой прямо здесь; тексты этапов маршрута менеджеру не рисуются, они для уведомлений.
      Вне оплаты счетов здесь нет — они в «Расчёте»; гараж, где «Расчёта» нет, передаёт `withInvoices`. Путь —
      `cabinet.deals.path`. --}}
@@ -22,8 +22,6 @@
     $unpaid = $invoices->filter(fn ($i) => ! $i->isOwed() && $i->state === \App\Billing\InvoiceState::Issued);
     // Шаг оплаты, а счета уже оплачены (оплатили по ссылке, маршрут ещё не догнал) — «Оплатите» с «Приложить» тут врут.
     $paidUp = $payStep && ! $direct && $unpaid->isEmpty() && $deal->fullyPaid();
-    // Оплата, а счёта ещё нет: ход наш (`Position::awaitsInvoice`), просить оплатить нечего — счёт готовим.
-    $noInvoice = (bool) $position?->awaitsInvoice();
     // ПРАЙМ без покупателя — ход менеджера: счёт встанет сам, как только он укажет, кому (`Deal::invoiceGap`).
     $gap = $payGap;
     // Покупатель не указан или у физлица нет паспорта со сканом (11.10.2026) — задача одна: покупатель в шторке договора.
@@ -67,9 +65,6 @@
     // Согласие менеджера (Альфа): поставщик уже согласовал — блок «Согласование с поставщиком» и «Ваш ход»
     // сбивали с толку, будто ждём поставщика (10.10.2026, владелец). Шапка — что случилось и вопрос, рядом только часы.
     $consent = $deal->isLive() && $requirement && $position?->stage->asksConsent();
-    // До согласия ждём поставщика (27.10.2026, владелец: менеджер не знает, что будет дальше): одной строкой — что дальше
-    // спросим его. О письмах поставщика ни слова.
-    $consentAhead = $deal->isLive() && ! $consent && ! $deal->agreed() && $position?->stage->loadMissing('exits.to.exits')->exits->contains(fn ($e) => $e->to?->asksConsent());
 @endphp
 <div class="flex flex-col gap-4">
     @if (! $deal->isLive() && ! $deal->isGarage())
@@ -81,69 +76,23 @@
     @endif
 
     @if ($deal->isLive() && $position)
-        <div id="step" class="box scroll-mt-4 {{ $requirement && $position->isOverdue() && ! $paidUp ? 'box-urgent' : '' }}">
-            {{-- Шапка — одна фраза, что сделать (10.11.2026, владелец: «зачем писать „Оплата / Оплатить“, „Получение автомобиля /
-                 Заберите автомобиль“ — пользователь не тупой»): заголовок — само дело, под ним срок; имя этапа — только когда
-                 делать менеджеру нечего (ждём, готовим счёт) или дело говорит чек-лист ниже. --}}
+        {{-- Просрочено — красным временем в шапке, без оранжевого «!» у заголовка (`.box-urgent`): «!» шапки — его ход. --}}
+        <div id="step" class="box scroll-mt-4">
+            {{-- Шапка — чей ход одной строкой (18.11.2026, владелец: «им должно быть всё равно, что мы там внутри делаем»): его ход —
+                 само дело и сколько осталось, наш — «На согласовании» / «В обработке» и сколько идёт (`Offers\Turn`, `x-deal.turn-head`).
+                 Описаний под ней нет: ни фраз этапа, ни «ждём поставщика», ни отдельного срока — только то, чем делается его шаг. --}}
             @php
-                // Только «Ждём поставщика»: у наших этапов фраза — инструкция менеджеру («Свяжитесь с владельцем…»), не статус.
-                // «Запись на подписание» — и пока письмо не ушло (ждём XCar): «Записываем на подписание, с 11.11» (11.11.2026).
-                // Платёжка ушла, строки денег тут же — «ждём подтверждения» говорят они сами (16.11.2026), второй раз не пишем.
-                $statusLine = $sent ? ($moneyHere ? null : 'Ждём подтверждения оплаты') : (! $requirement && $position->stage->ask_text
-                    && ($position->waitsFor() === \App\Workflow\WaitsFor::Supplier || \App\Offers\Signing::awaitsSlots($position->stage))
-                    ? \App\Users\Wording::mine($position->stage->ask_text) : null);
-                // Идёт переоценка, вопрос ему открыт — этап «Переоценка», ответ — карточкой выше (`x-offer.reprice-ask`), не «На
-                // согласовании, ждём поставщика» (17.11.2026, владелец по Audi RS 6 Сергея).
-                $repricing = \App\Offers\RepriceAsk::open()->where('deal_id', $deal->id)->get()->contains->alive();
-                $repricing && $statusLine = null;
                 // Поставщик готовит договор — когда покупатель сможет подписать, день и время заранее (`Signing`, 11.11.2026).
                 $signingDays = ! $requirement && $deal->signing_at === null && \App\Offers\Signing::asksTime($position->stage->loadMissing('exits.to.exits'));
-                $heading = match (true) {
-                    $repricing => 'Переоценка',
-                    $consent => 'Взять в работу?',
-                    // Оплата одной карточкой с деньгами: заголовок «Оплата», суммы — строками ниже, не в заголовке (16.11.2026).
-                    $moneyHere && ($payStep || $sent) && ! $paidUp => 'Оплата',
-                    (bool) $sent => trim(preg_replace('/^Оплатить/u', 'Оплачено', (string) $deal->schemeOf()->payLabel()).' '.($deal->supplierPayment() ? \App\Support\Money::rub($deal->supplierPayment()) : '')),
-                    $signingDays && \App\Offers\Signing::wishDue($deal) => 'Когда покупатель сможет подписать договор?',
-                    $needsBuyer && ! $buyerStep => $gap === 'passport' ? 'Приложить паспорт покупателя' : 'Указать покупателя',
-                    $needsPrice => 'Указать цену продажи',
-                    $paidUp => 'Оплата получена',
-                    // Просит подписанный договор, а покупателя для него нет — сначала покупатель (`Deal::contractBuyerTask`).
-                    (bool) ($contractGap = $deal->contractBuyerTask($requirement)) => $contractGap['title'],
-                    // Поставщик предложил своё время — выбрать из него (`Signing`, 11.11.2026).
-                    $requirement && $deal->signing_slots && \App\Offers\Signing::picks($position->stage) => 'Поставщик предложил другое время',
-                    // Встреча записана — дата в карточке ниже, в заголовке её не повторяем.
-                    $requirement && \App\Offers\Signing::booked($deal) => \App\Users\Wording::mine($position->stage->managerTitle()),
-                    $requirement && ! ($pickupSteps ?? null) => $direct
-                        ? trim((string) $deal->schemeOf()->payLabel().' '.($deal->supplierPayment() ? \App\Support\Money::rub($deal->supplierPayment()) : ''))
-                        : \App\Users\Wording::mine($requirement->title),
-                    // Ждём поставщика или нас, а у этапа есть фраза для менеджера — она (11.11.2026, Альфа: «Оплата получена,
-                    // поставщик готовит договор» вместо «Оформление документов»).
-                    // Ждём поставщика или нас, а у этапа есть фраза: заголовком — чей ход, фраза с датой — строкой под ним
-                    // (11.11.2026, владелец: «уродство» — фраза заголовком и «Ждём … с …» под ней).
-                    // Менеджеру «мы» — XCar («Ждём XCar», как в «Сделках»).
-                    $statusLine !== null => $position->waitsFor() === \App\Workflow\WaitsFor::Us ? 'Ждём XCar' : $position->waitsFor()->label(),
-                    default => \App\Users\Wording::mine($position->stage->block?->name) ?? 'Идёт работа',
-                };
+                $turn = \App\Offers\Turn::of($deal, $position);
             @endphp
-            <h2>{{ $heading }}</h2>
-            @if ($repricing)<p class="mt-1 text-sm text-ink-muted">Ждём вашего ответа про новую {{ $deal->isGarage() ? 'закупочную' : 'цену' }}</p>@endif
-            {{-- Фраза этапа и сколько уже идёт счётчиком, без «с 12.11» (16.11.2026). --}}
-            @if ($statusLine !== null)<p class="mt-1 text-sm text-ink-muted">{{ $statusLine }}@if ($position->entered_at) <span class="nums whitespace-nowrap" data-controller="timer" data-timer-since-value="{{ $position->entered_at->toIso8601String() }}" data-timer-coarse-value="true">{{ \App\Support\Ago::since($position->entered_at) }}</span>@endif</p>@endif
+            @if ($turn)<x-deal.turn-head :turn="$turn"/>@endif
             @if ($signingDays)
                 <x-deal.signing-when :deal="$deal" :action="'/deals/'.$deal->id.'/signing-wish'" class="mt-4"/>
             @endif
-            @unless ($noInvoice || $paidUp || $statusLine !== null || $repricing)<div class="mt-1 text-sm"><x-route.clock :position="$position" :bare="$consent || $position->waitsFor() === \App\Workflow\WaitsFor::Manager"/></div>@endunless
-            @if ($requirement && ! ($pickupSteps ?? null) && ! $needsBuyer && ! $needsPrice && ! $paidUp && ! $consent)
-                @if ($rejected)<p class="mt-2 font-medium text-urgent">Оплата <span class="nums">{{ \App\Support\Money::rub($rejected->amount) }}</span> от <span class="nums">{{ \App\Support\Ago::html($rejected->paid_at, words: false) }}</span> не поступила{{ $rejected->reject_reason ? ': '.$rejected->reject_reason : '' }}</p>@endif
-                {{-- Срок просьбы — тот же, что часы под заголовком: второй раз его не пишем. --}}
-                @if ($requirement->due_at && ! ($position->deadline_at && abs($position->deadline_at->diffInMinutes($requirement->due_at)) < 1))
-                    <p class="mt-2 text-sm {{ $requirement->due_at->isPast() ? 'text-urgent' : 'text-ink-muted' }}">@if ($requirement->due_at->isPast())Просрочено на <span class="nums font-medium" data-controller="timer" data-timer-since-value="{{ $requirement->due_at->toIso8601String() }}" data-timer-coarse-value="true">{{ \App\Support\Ago::since($requirement->due_at, hours: true) }}</span>@else<span class="nums font-medium" data-controller="timer" data-timer-until-value="{{ $requirement->due_at->toIso8601String() }}" data-timer-coarse-value="true" data-timer-done-value="срок вышел">{{ \App\Support\Ago::left($requirement->due_at) }}</span>@endif</p>
-                @endif
-            @elseif ($noInvoice)
-                <p class="mt-3 font-medium">Счёт готовится</p>
-            @elseif ($consentAhead && ! $repricing)
-                <p class="mt-3 text-sm text-ink-muted">Дальше здесь и в Telegram спросим, берётся ли ТС в работу</p>
+            {{-- Вернули на оплату («Оплата не поступила») — факт: какая оплата и почему, пока не сообщил об оплате заново. --}}
+            @if ($requirement && $rejected && ! ($pickupSteps ?? null) && ! $needsBuyer && ! $needsPrice && ! $paidUp && ! $consent)
+                <p class="mt-2 font-medium text-urgent">Оплата <span class="nums">{{ \App\Support\Money::rub($rejected->amount) }}</span> от <span class="nums">{{ \App\Support\Ago::html($rejected->paid_at, words: false) }}</span> не поступила{{ $rejected->reject_reason ? ': '.$rejected->reject_reason : '' }}</p>
             @endif
 
             @if ($contractStep ?? false)

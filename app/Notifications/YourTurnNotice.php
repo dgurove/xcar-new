@@ -45,11 +45,13 @@ final class YourTurnNotice extends Notice
         return $this->requirement->title.' — № '.$this->requirement->offer->number;
     }
 
+    /**
+     * Без описания этапа и срока (18.11.2026, владелец: «описания убери везде — и из уведомлений, и из сообщений, и из телеги,
+     * просто по делу пишем»; «убери сроки»): заголовок — само дело, этого достаточно.
+     */
     public function text(): ?string
     {
-        $due = $this->requirement->due_at ? ' До '.Ago::day($this->requirement->due_at, true).'.' : '';
-
-        return trim(($this->requirement->text ?? '').$due) ?: null;
+        return null;
     }
 
     public function href(): string
@@ -96,7 +98,7 @@ final class YourTurnNotice extends Notice
     /** @return list<string|null> */
     public static function telegramLines(Requirement $r): array
     {
-        return Text::lines($r->offer, $r->due_at ? 'До '.Ago::day($r->due_at, true) : null);
+        return Text::lines($r->offer);
     }
 
     /** «Беру в работу» и «Передумал» — у кого из них есть исход на этом этапе. */

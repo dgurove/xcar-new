@@ -21,7 +21,7 @@ final class BuyerNeededNotice extends Notice
 
     public function title(): string
     {
-        return ($this->passport ? 'Заполнить данные покупателя: ' : 'Указать покупателя: ').$this->deal->offer->titleWithYear();
+        return ($this->passport ? 'Нужны реквизиты: ' : 'Указать покупателя: ').$this->deal->offer->titleWithYear();
     }
 
     public function text(): ?string

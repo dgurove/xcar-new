@@ -138,7 +138,7 @@ final class Alfa extends Route
         return [
             'buyer_data' => [
                 'name' => 'Нет реквизитов', 'block' => 'requisites', 'waits_for' => 'manager', 'limit_minutes' => self::DAY, 'asks' => 'buyer',
-                'ask_title' => 'Заполнить данные покупателя', 'ask_text' => 'Поставщик выставит счёт на покупателя: нужны паспорт со сканом или реквизиты организации',
+                'ask_title' => 'Нужны реквизиты', 'ask_text' => 'Поставщик выставит счёт на покупателя: нужны паспорт со сканом или реквизиты организации',
                 'exits' => [['Данные покупателя заполнены', 'manager', 'requisites']],
             ],
             'requisites' => [

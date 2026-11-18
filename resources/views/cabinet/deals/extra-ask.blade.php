@@ -15,12 +15,10 @@
     $answer = $decides ? ($disclosures ?? collect())->filter(fn ($d) => $d->created_at->gte($ask->asked_at))->values() : collect();
 @endphp
 <div id="step" class="box scroll-mt-4">
-    <h2>{{ $decides ? ($consented ? 'Берёте после ответа поставщика?' : 'Взять в работу?') : 'Ждём ответа поставщика' }}</h2>
-    @if ($decides)
-        <p class="mt-1 text-sm text-ink-muted">Поставщик ответил на просьбу {{ $ask->phrase() }}</p>
-    @else
-        <p class="mt-1 text-sm text-ink-muted">Попросили {{ $ask->phrase() }} <span class="nums whitespace-nowrap" data-controller="timer" data-timer-since-value="{{ $ask->since_at->toIso8601String() }}" data-timer-coarse-value="true">{{ \App\Support\Ago::since($ask->since_at) }}</span></p>
-    @endif
+    {{-- Шапка — чей ход, как у шага сделки (`x-deal.turn-head`, 18.11.2026, владелец: «есть ЕГО шаг и НАШ шаг, ВСЁ»): ждём
+         поставщика — наш ход «На согласовании» / «В обработке» со счётчиком, без «Попросили …»; решать ему — вопрос «Поставщик ответил —
+         берёте?» (`ExtraAskDecisionNotice::question`), ниже сам ответ. --}}
+    @if ($turn = \App\Offers\Turn::of($deal))<x-deal.turn-head :turn="$turn"/>@endif
     @if ($answer->isNotEmpty())@include('cabinet.deals.disclosures', ['disclosures' => $answer, 'early' => collect(), 'late' => $answer])@endif
     @if ($ask->asks_manager)
         <form method="post" action="/deals/{{ $deal->id }}/extra-ask" class="mt-5 flex flex-col gap-4">

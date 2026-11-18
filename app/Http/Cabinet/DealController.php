@@ -29,6 +29,7 @@ use App\Offers\Handover;
 use App\Offers\OfferState;
 use App\Offers\Parallels;
 use App\Offers\Signing;
+use App\Offers\Turn;
 use App\Support\Ago;
 use App\Support\ListPrefs;
 use App\Support\ListView;
@@ -101,14 +102,16 @@ class DealController
         $deals = $staff ? Portion::of($request, $deals, (clone $deals)->count()) : $deals->get()->each(fn (Deal $d) => Parallels::dress($d->loadMissing('shadowStage')));
         // Задача менеджера — один раз на сделку: её берут и разделы, и строка (раньше строка считала заново).
         $tasks = $staff ? collect() : $deals->mapWithKeys(fn (Deal $d) => [$d->id => $d->managerTask()]);
-        $sections = $staff ? null : self::sections($deals, $tasks);
+        // Чей ход глазами менеджера (`Offers\Turn`, 18.11.2026) — тоже раз на сделку: им живут и разделы, и строка.
+        $turns = $staff ? collect() : $deals->mapWithKeys(fn (Deal $d) => [$d->id => Turn::of($d, null, $tasks[$d->id], list: true)]);
+        $sections = $staff ? null : self::sections($deals, $tasks, $turns);
 
         // Админ подтверждения решает в CRM — строки «Мои подтверждения» и «Ждут решения» у него нет.
         $bids = $me->hasDeals() ? self::waiting($me)->count() : 0;
         $pending = $me->hasDeals() ? self::pending($me)->get()->sortByDesc(fn (Bid $b) => $b->offer->bids_close_at?->getTimestamp())->values() : collect();
         $archived = self::deals($me)->whereNotNull('deals.closed_at')->notSuperseded()->count();
 
-        return view('cabinet.deals.index', ['deals' => $deals, 'sections' => $sections, 'tasks' => $tasks, 'pending' => $pending, 'bids' => $bids, 'archived' => $archived,
+        return view('cabinet.deals.index', ['deals' => $deals, 'sections' => $sections, 'tasks' => $tasks, 'turns' => $turns, 'pending' => $pending, 'bids' => $bids, 'archived' => $archived,
             'sort' => $sort, 'view' => $view, 'table' => self::table($staff)]);
     }
 
@@ -131,29 +134,27 @@ class DealController
 
     /**
      * Разделы «Сделок» менеджера (27.10.2026, владелец: свои дела терялись рыжей строкой среди «Ждём поставщика»): «Ваш ход» —
-     * что сделать (`Deal::managerTask`), просроченное и ближний срок первыми; дальше — чей ход сейчас. Пустые не рисуются.
+     * что сделать (`Deal::managerTask`), просроченное и ближний срок первыми; дальше — наш ход двумя словами (18.11.2026, владелец:
+     * «им должно быть всё равно, что мы там внутри делаем»): «На согласовании» и «В обработке» (`Offers\Turn`) — без «Ждём
+     * поставщика» и «Ждём XCar». Гаражная, где ход его без просьбы, — продаёт из гаража: «В гараже». Пустые не рисуются.
      *
      * @return array<string, array{title: string, deals: Collection}>
      */
-    private static function sections($deals, Collection $tasks): array
+    private static function sections($deals, Collection $tasks, Collection $turns): array
     {
         [$mine, $rest] = $deals->partition(fn (Deal $d) => $tasks[$d->id] !== null);
         $mine = $mine->sortBy(fn (Deal $d) => $tasks[$d->id]['due']?->getTimestamp() ?? PHP_INT_MAX)->values();
-        // Гаражная, где ход его без просьбы, — продаёт из гаража: своим разделом, а не «Идёт сделка».
-        // Ответ поставщика менеджеру не виден и тут: сделка остаётся в «Ждём поставщика» (`waitsForManager`, 03.11.2026).
-        $who = fn (Deal $d) => match ($d->offer->position()?->waitsForManager()) {
-            WaitsFor::Supplier => 'supplier',
-            WaitsFor::Us => 'us',
-            WaitsFor::Manager => $d->isGarage() ? 'garage' : 'other',
-            default => 'other',
+        $who = fn (Deal $d) => match (true) {
+            $d->isGarage() && $d->offer->position()?->waitsFor() === WaitsFor::Manager => 'garage',
+            $turns[$d->id]?->title === Turn::AGREEING => 'agree',
+            default => 'work',
         };
         $rest = $rest->groupBy($who);
 
         return array_filter([
             'mine' => ['title' => 'Ваш ход', 'deals' => $mine],
-            'supplier' => ['title' => 'Ждём поставщика', 'deals' => $rest->get('supplier', collect())],
-            'us' => ['title' => 'Ждём XCar', 'deals' => $rest->get('us', collect())],
-            'other' => ['title' => 'Идёт сделка', 'deals' => $rest->get('other', collect())],
+            'agree' => ['title' => Turn::AGREEING, 'deals' => $rest->get('agree', collect())],
+            'work' => ['title' => Turn::WORKING, 'deals' => $rest->get('work', collect())],
             'garage' => ['title' => 'В гараже', 'deals' => $rest->get('garage', collect())],
         ], fn ($s) => $s['deals']->isNotEmpty());
     }

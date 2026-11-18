@@ -51,8 +51,9 @@ final class CarLine
             $tone = $due->isOverdue() ? 'font-medium text-danger' : $mine;
         }
         $word = match (true) {
-            $pay => 'оплатите счёт',
-            (bool) $asks => 'ваш ход: '.mb_strtolower($asks->title),
+            // Его дело — само дело, без «ваш ход:» (18.11.2026, владелец: «просто „Оплатить счёт“, всё»).
+            $pay => 'оплатить счёт',
+            (bool) $asks => mb_lcfirst((string) \App\Users\Wording::for($viewer, $asks->title)),
             // Без «ждёт ТС,» (15.11.2026, владелец: «что это за надпись, зачем она»): слово вывоза и так говорит, что машины ещё нет.
             $pickWord !== null => $pickWord,
             default => mb_lcfirst($car->state->label()),

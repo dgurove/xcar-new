@@ -1,40 +1,35 @@
-{{-- Путь сделки — своим куском, не внутри шага: на телефоне между задачей и путём стоят расчёт и покупатель. Чей ход
-     у текущего этапа не пишем: его уже говорит шапка шага (11.10.2026, «ждём поставщика» стояло дважды).
-     На фоне, без коробки (11.11.2026, владелец: «путь в нормальных приложениях делают просто на фоне»), и ответы менеджера —
-     его пунктами с датой и временем, а не отдельной группой «Ваши ответы»: «Подтверждение принято», «Беру в работу». --}}
+{{-- Путь сделки у менеджера — ходами (18.11.2026, владелец: «слишком много лишней информации мы им даём», выбрал «ходами», а
+     не нашими этапами): «Подтверждение принято», его шаги своими заголовками и наши отрезки — «На согласовании» / «В обработке»;
+     у пройденного — сколько длилось, у текущего — время шапки шага (осталось или идёт), впереди серым — его шаги и конец.
+     Подпунктов, ответов с файлами и подписей нет. Собирает `Offers\Turn::path`. На фоне, без коробки (11.11.2026). --}}
 @php
-    // Конечный этап (выходов нет — «Сделка закрыта») пройден: в пути он галочкой, как в CRM.
-    $currentBlock = $position?->stage->exits->isNotEmpty() ? $position->stage->block_id : null;
-    // Ответы — только его: шаги поставщика и наши менеджеру не пересказываем (03.11.2026), их видно по блокам с датой.
-    $stageBlocks = $blocks->flatMap(fn ($b) => $b->stages->map(fn ($s) => [$s->id, $b->id]))->mapWithKeys(fn ($p) => [$p[0] => $p[1]]);
-    $answers = $deal->requirements->loadMissing('stage.exits')->whereNotNull('done_at')->filter(fn ($r) => ! empty($r->answer['exit']))
-        ->map(fn ($r) => [
-            'consent' => (bool) $r->stage?->asksConsent(),
-            'block' => $stageBlocks->get($r->stage_id),
-            'at' => $r->done_at,
-            'title' => \App\Users\Wording::mine($r->answer['label'] ?? $r->answer['exit'])
-                .(! empty($r->answer['fields']) ? ': '.collect($r->answer['fields'])->map(fn ($v, $k) => $r->shown($k, $v))->implode(', ')
-                    // Время подписания — выбранным временем (`Offers\Signing`).
-                    : (mb_strtolower($r->answer['exit']) === \App\Offers\Signing::PICK_EXIT && $deal->signing_at ? ': '.\App\Support\Ago::at($deal->signing_at, true, words: false) : '')),
-            'note' => match ($r->answer['closed_by'] ?? null) { 'staff' => 'за вас', 'payment' => 'оплата отметилась сама', default => null },
-            'files' => $r->getMedia('files'),
-        ])->filter(fn ($a) => $a['block'] !== null)->sortBy('at')->values()
-        // Один и тот же ответ без файлов несколько раз («Время согласовано: 13.11 13:00» ×5 — переписка с поставщиком) — одной
-        // строкой, последней (16.11.2026, владелец: «ищи ещё подобные косяки»).
-        ->reverse()->unique(fn ($a) => $a['files']->isEmpty() ? $a['block'].'|'.$a['title'] : spl_object_id($a['files']))->reverse()->values();
-    // До первого блока — своими пунктами пути (11.11.2026, владелец: «сначала принимается подтверждение, потом менеджер берёт
-    // в работу, и только после этого начинается согласование»): «Подтверждение принято» и «Беру в работу».
-    $lead = $answers->where('consent', true)->values()
-        ->prepend(['block' => null, 'at' => $deal->created_at, 'title' => 'Подтверждение принято', 'note' => null, 'files' => collect()]);
-    // «Подтверждение принято» — датой и временем (с него сделка началась); «Беру в работу» — сколько думал после него (16.11.2026).
-    $lead = $lead->values()->map(fn ($a, $i) => $i === 0 ? $a : $a + ['took' => max(60, (int) $lead[$i - 1]['at']->diffInSeconds($a['at']))]);
-    $answers = $answers->where('consent', false)->values();
+    $items = \App\Offers\Turn::path($deal, $position, $steps, $blocks);
 @endphp
-@if ($blocks->isNotEmpty())
-    {{-- Один «Путь сделки» без «Весь путь» (16.11.2026, владелец: «два одинаковых по смыслу блока»); заголовок — как у карточек
-         страницы, 13 серым. У этапов — сколько длились, у текущего — счётчик (`x-route.timeline`). --}}
+@if (count($items) > 1)
     <section id="path" class="scroll-mt-4 min-w-0 {{ $class ?? '' }}">
         <h2 class="mb-2 px-1 text-sm font-medium text-ink-dim">Путь сделки</h2>
-        <x-route.timeline :blocks="$blocks" :current="$currentBlock" :steps="$steps" :deal="$deal" :answers="$answers" :lead="$lead" :position="$position"/>
+        <div class="steps">
+            @foreach ($items as $it)
+                <div class="step step--{{ $it['state'] }}">
+                    <span class="step-dot">@if ($it['state'] === 'done')<x-ui.icon name="check" class="size-3"/>@endif</span>
+                    <div class="step-body">
+                        <div class="step-head items-baseline">
+                            <span class="step-title flex-1">{{ $it['title'] }}</span>
+                            @if ($it['took'])
+                                <span class="nums shrink-0 text-sm text-ink-dim">{{ \App\Support\Ago::duration($it['took']) }}</span>
+                            @elseif ($it['at'])
+                                <span class="nums shrink-0 text-sm text-ink-dim">{!! \App\Support\Ago::html($it['at'], true, words: false) !!}</span>
+                            @elseif ($t = $it['turn'])
+                                @if ($t->mine && $t->until)
+                                    <span @class(['nums shrink-0 text-sm', 'text-danger' => $t->until->isPast(), 'text-urgent' => ! $t->until->isPast()]) data-controller="timer" data-timer-until-value="{{ $t->until->toIso8601String() }}" data-timer-done-value="-" data-timer-coarse-value="true" data-timer-word-value="">{{ $t->until->isPast() ? '−'.\App\Support\Ago::since($t->until) : \App\Support\Ago::left($t->until, '') }}</span>
+                                @elseif (! $t->mine && $t->since)
+                                    <span class="nums shrink-0 text-sm text-ink-dim" data-controller="timer" data-timer-since-value="{{ $t->since->toIso8601String() }}" data-timer-coarse-value="true">{{ \App\Support\Ago::since($t->since) }}</span>
+                                @endif
+                            @endif
+                        </div>
+                    </div>
+                </div>
+            @endforeach
+        </div>
     </section>
 @endif

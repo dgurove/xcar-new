@@ -24,7 +24,8 @@ enum CarState: string
     public function label(): string
     {
         return match ($this) {
-            self::Waiting => 'Ждёт ТС',
+            // «Вывоз», а не «Ждёт ТС» (18.11.2026, владелец: «самая уебанская формулировка, непонятно, что означает»).
+            self::Waiting => 'Вывоз',
             self::Repair => 'Подготовка',
             self::Ready => 'Готова',
             self::Selling => 'В продаже',

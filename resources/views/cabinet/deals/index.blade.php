@@ -34,7 +34,7 @@
                 @if ($sections)
                     @foreach ($sections as $key => $section)
                         <x-table.group :table="$table" :key="$key" :title="$section['title']" :count="$section['deals']->count()" :ours="$key === 'mine'"/>
-                        @foreach ($section['deals'] as $deal)<x-deal.site-table-row :deal="$deal" :table="$table" :task="$tasks[$deal->id] ?? null" :in-garage="$key === 'garage'"/>@endforeach
+                        @foreach ($section['deals'] as $deal)<x-deal.site-table-row :deal="$deal" :table="$table" :task="$tasks[$deal->id] ?? null" :turn="$turns[$deal->id] ?? null" :in-garage="$key === 'garage'"/>@endforeach
                     @endforeach
                 @else
                     @foreach ($deals as $deal)<x-deal.site-table-row :deal="$deal" :table="$table" staff/>@endforeach
@@ -48,7 +48,7 @@
                 <h2 class="list-head">{{ $section['title'] }} <span class="nums">{{ $section['deals']->count() }}</span></h2>
                 <div class="list">
                     @foreach ($section['deals'] as $deal)
-                        @include('cabinet.deals.row', ['deal' => $deal, 'sectioned' => true, 'inGarage' => $key === 'garage'])
+                        @include('cabinet.deals.row', ['deal' => $deal, 'sectioned' => true, 'inGarage' => $key === 'garage', 'turn' => $turns[$deal->id] ?? null])
                     @endforeach
                 </div>
             </section>

@@ -20,9 +20,10 @@ final class DealStepNotice extends Notice
         return ($this->deal->isGarage() ? 'В гараж № ' : 'Сделка № ').$this->deal->offer->number.': '.$this->stage->managerTitle($this->deal);
     }
 
+    /** Без описания этапа (18.11.2026, владелец: «описания убери везде»). */
     public function text(): ?string
     {
-        return $this->stage->managerText();
+        return null;
     }
 
     public function href(): string

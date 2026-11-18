@@ -6,7 +6,7 @@
      нажимать и внутри уже работать»): отвечают на странице сделки, там шаг со своими кнопками.
      Админу — чья сделка, строка ведёт в CRM: там он её ведёт. Гаражная — словом «гараж» у названия, ведёт в машину гаража.
      Столбцы — `Cabinet\DealController::table`; `task` — `Deal::managerTask()`, посчитан контроллером один раз. --}}
-@props(['deal', 'table', 'task' => null, 'staff' => false, 'inGarage' => false])
+@props(['deal', 'table', 'task' => null, 'turn' => null, 'staff' => false, 'inGarage' => false])
 @php
     use App\Support\Ago; use App\Support\Money; use App\Users\Wording;
     $offer = $deal->offer;
@@ -17,10 +17,17 @@
     $req = $deal->openRequirement;
     $paidUp = $req && $position?->stage->isPayStep() && $deal->fullyPaid();
     $late = $task ? (bool) $task['due']?->isPast() : false;
+    // Менеджеру — чей ход его глазами (`Offers\Turn`, 18.11.2026, владелец: «им должно быть всё равно, что мы там внутри делаем»):
+    // его дело зелёным (вышел срок — красным) и сколько осталось, наш ход — «На согласовании» / «В обработке» и сколько идёт;
+    // гаражная в «В гараже» — этап машины. Имён этапов маршрута менеджеру нет.
+    $car = ! $staff && $inGarage ? $deal->garageCar : null;
     // Что сейчас — словом и цветом.
     [$fact, $tone] = match (true) {
         $deal->declinedBySupplier() => ['Поставщик отказал в продаже', 'text-danger'],
-        $task !== null => [Wording::mine($task['title']), $late ? 'text-danger' : 'text-accent-text'],
+        $car !== null => [$car->state->label(), 'text-ink-muted'],
+        // Наш ход в своём разделе — слово говорит заголовок группы, в строке только сколько идёт (без дубля).
+        ! $staff && $turn !== null && ! $turn->mine => ['', 'text-ink-muted'],
+        $task !== null => [$turn?->mine ? $turn->title : Wording::mine($task['title']), $late ? 'text-danger' : 'text-accent-text'],
         $paidUp => ['Оплата получена', 'text-ink-muted'],
         $position !== null => [Wording::mine($position->stage->block?->name ?? $position->stage->name), 'text-ink-muted'],
         default => ['Идёт работа', 'text-ink-muted'],
@@ -31,6 +38,8 @@
     $term = match (true) {
         $task !== null && $late => '<span class="nums whitespace-nowrap text-danger" title="Просрочено на">'.e(Ago::since($task['due'], hours: true)).'</span>',
         $task !== null && $task['due'] !== null => '<span class="nums whitespace-nowrap text-ink-muted" title="Осталось">'.e(Ago::left($task['due'], '')).'</span>',
+        $car !== null => '',
+        ! $staff && $turn !== null && ! $turn->mine => $turn->since ? '<span class="nums whitespace-nowrap text-ink-muted">'.e(Ago::since($turn->since, hours: true)).'</span>' : '',
         $task === null && ! $paidUp && $position?->block_entered_at !== null => '<span class="nums whitespace-nowrap text-ink-muted" title="На этапе">'.e(Ago::since($position->block_entered_at, hours: true)).'</span>',
         default => '',
     };

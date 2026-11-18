@@ -82,9 +82,8 @@ final class MoneyNotice extends Notice
 
     public static function invoiceIssued(Invoice $i): self
     {
-        // Подбор до шага оплаты срока не имеет: платить после договора с покупателем (`SyncDealInvoices::dueFor`).
-        // Срок в прошлом не пишется (12.11.2026: «оплатить до 25.10» 12 ноября).
-        $when = $i->due_at ? ($i->due_at->isFuture() ? ', оплатить до '.Ago::day($i->due_at) : '') : ', оплатить '.$i->laterLabel(true);
+        // Без срока и пояснений, как платить (18.11.2026, владелец: «убери сроки из уведомлений», «описания убери везде»).
+        $when = '';
 
         // Со ссылкой — «Ссылка на оплату подбора 88 190 ₽» (17.11.2026, владелец: «кажется, что это счёт на машину»; `Billing\PayOffer`),
         // другой способ — наличные (18.11.2026: счёта за подбор нет, разве что запросили). Без ссылки (ТС от ПРАЙМ) — «Счёт за ТС № 197 на …».
@@ -93,7 +92,7 @@ final class MoneyNotice extends Notice
             $sum = Money::rub(\App\Billing\PayOffer::amount($i));
 
             return (new self('Ссылка на оплату '.$what.' '.$sum.$when, $i->deal?->offer?->titleWithYear(), self::path($i, open: true), $i->deal?->offer?->number))
-                ->tg($i, 'Оплата '.$what.': :car', 'Ссылка на оплату '.$what, $sum.$when.($i->isDocument() ? ' — по ссылке или по счёту за '.($what === 'подбора' ? 'подбор' : $what) : ' — по ссылке или наличными'), 'Оплатить')
+                ->tg($i, 'Оплата '.$what.': :car', 'Ссылка на оплату '.$what, $sum, 'Оплатить')
                 ->about($i)->variant('invoice-issued', 'Ссылка на оплату');
         }
 
@@ -104,10 +103,10 @@ final class MoneyNotice extends Notice
     /** Расчёт по машине в гараже: счёт к оплате — ведёт на машину. */
     public static function garageInvoice(Invoice $i, Car $car): self
     {
-        return (new self(\App\Billing\PayOffer::name($i).($i->isDocument() ? ' на ' : ' ').Money::exact($i->remaining()).', оплатить до '.Ago::day($i->due_at),
+        return (new self(\App\Billing\PayOffer::name($i).($i->isDocument() ? ' на ' : ' ').Money::exact($i->remaining()),
             $car->offer->titleWithYear(), $car->url(), $car->offer->number))
             ->tg($i, $i->isDocument() ? 'Счёт по :car' : 'Оплата по :car', \App\Billing\PayOffer::name($i),
-                Money::exact($i->remaining()).', оплатить до '.Ago::day($i->due_at), 'Открыть')->variant('garage-invoice', 'Расчёт по гаражу');
+                Money::exact($i->remaining()), 'Открыть')->variant('garage-invoice', 'Расчёт по гаражу');
     }
 
     public static function paymentConfirmed(Payment $p): self
