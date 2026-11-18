@@ -21,6 +21,35 @@ cd "$(dirname "$0")/.."
 
 remote() { ssh "$SSH_HOST" "$@"; }
 
+# Выкладки — по одной (18.11.2026: две сессии выкладывали разом — под новым тегом на проде оказался код без последнего
+# коммита, следующие две падали на «образ на сервер»). Общее у выкладок: тег в `$ROOT/env/.env`, реестр образов с его
+# уборкой, контейнеры прода. Замок один на все рабочие копии (`~/.cache/xcar-build`), вторая выкладка ждёт первую.
+LOCK="${XDG_CACHE_HOME:-$HOME/.cache}/xcar-build/deploy.lock"
+alone() {
+    command -v flock >/dev/null || return 0
+    mkdir -p "$(dirname "$LOCK")"
+    exec 9>>"$LOCK"
+    if ! flock -n 9; then
+        echo "==> идёт другая выкладка ($(cat "$LOCK.who" 2>/dev/null || echo '?')), ждём"
+        flock 9
+    fi
+    echo "$TAG из $(pwd), $(date +%H:%M:%S)" > "$LOCK.who"
+}
+
+# Пока ждали (или не подтянули main), на прод мог уйти чужой коммит: выкладка без него молча откатила бы чужую работу.
+# Коммит прода — `RELEASE` выпуска; его нет в HEAD — стоп. `FORCE=1` — выложить всё равно (намеренный откат кодом).
+fresh() {
+    local live
+    live=$(remote "cat $ROOT/current/RELEASE 2>/dev/null" || true)
+    [ -n "$live" ] || return 0
+    git cat-file -e "$live^{commit}" 2>/dev/null || git fetch -q origin 2>/dev/null || true
+    if git merge-base --is-ancestor "$live" HEAD 2>/dev/null; then return 0; fi
+    if [ "${FORCE:-}" = 1 ]; then echo "    на проде ${live:0:8}, в HEAD его нет — выкладываем по FORCE=1"; return 0; fi
+    echo "стоп: на проде коммит ${live:0:8}, в твоём HEAD его нет — выкладка откатила бы чужую работу." >&2
+    echo "      git pull --rebase и снова; намеренно — FORCE=1 ./deploy/deploy.sh" >&2
+    exit 1
+}
+
 release_dir() { echo "$ROOT/releases/$TAG"; }
 
 # Шаблоны собираются (11.10.2026: «</x-slot:badge>@endif» вплотную ронял карточку сделки, view:cache это пропускает).
@@ -39,6 +68,8 @@ snapshot() {
     echo "==> снимок $TAG"
     remote "mkdir -p $(release_dir)"
     COPYFILE_DISABLE=1 git archive --format=tar HEAD | ssh "$SSH_HOST" "tar -x -C $(release_dir)"
+    # Какой коммит в выпуске: по нему `fresh` и `verify` (в образ попадает тем же файлом — `build`).
+    git rev-parse HEAD | ssh "$SSH_HOST" "cat > $(release_dir)/RELEASE"
     remote "cd $(release_dir)/deploy \
         && ln -sf $ROOT/env/.env .env \
         && ln -sf $ROOT/env/.env.app .env.app \
@@ -66,6 +97,7 @@ build() {
     local dir="${XDG_CACHE_HOME:-$HOME/.cache}/xcar-build/$TAG"
     rm -rf "$dir" && mkdir -p "$dir"
     git archive --format=tar HEAD | tar -x -C "$dir"
+    git rev-parse HEAD > "$dir/RELEASE"
     nice -n 10 docker build -q -f "$dir/deploy/Dockerfile" --target app -t "xcar/app:$TAG" "$dir" >/dev/null
     rm -rf "$dir"
     docker builder prune -f --filter until=48h --filter type!=exec.cachemount >/dev/null 2>&1 || true
@@ -88,6 +120,11 @@ ship() { # готовый образ на прод: в реестр здесь, 
     docker rmi "$REGISTRY/xcar/app:$TAG" >/dev/null
     ssh -o ExitOnForwardFailure=yes -R "${REMOTE_REGISTRY#*:}:$REGISTRY" "$SSH_HOST" \
         "docker pull -q $REMOTE_REGISTRY/xcar/app:$TAG >/dev/null && docker tag $REMOTE_REGISTRY/xcar/app:$TAG xcar/app:$TAG && docker rmi $REMOTE_REGISTRY/xcar/app:$TAG >/dev/null"
+    # Доехал тот же образ, что собран: номер образа — отпечаток его содержимого, у собранного и скачанного он один.
+    local built shipped
+    built=$(docker image inspect "xcar/app:$TAG" --format '{{.Id}}')
+    shipped=$(remote "docker image inspect xcar/app:$TAG --format '{{.Id}}'")
+    [ "$built" = "$shipped" ] || { echo "стоп: на сервер доехал не тот образ ($shipped вместо $built)" >&2; exit 1; }
     # Здесь и в реестре — три последних: прод держит свои три сам (`prune`).
     local old
     old=$(docker images xcar/app --format '{{.Tag}}' | grep '^dg-' | sort -r | tail -n +4 || true)
@@ -99,7 +136,13 @@ ship() { # готовый образ на прод: в реестр здесь, 
         # Тега в реестре уже нет (404, curl -f — код 22) — при pipefail это обрывало выкладку после того, как образ уже на проде.
         [ -n "$digest" ] && curl -sf -X DELETE "http://$REGISTRY/v2/xcar/app/manifests/$digest" >/dev/null || true
     done
-    [ -n "$old" ] && docker exec xcar-registry registry garbage-collect --delete-untagged /etc/docker/registry/config.yml >/dev/null 2>&1 || true
+    # После уборки реестр перезапускается: он помнит в памяти, какие слои у него есть, и про стёртый уборкой слой
+    # отвечал бы следующей выкладке «уже загружен» — образ уходил битым (`short read: expected N bytes but got 0`,
+    # 18.11.2026). Уборка и перезапуск — под замком выкладки (`alone`): чужая загрузка в этот момент не идёт.
+    if [ -n "$old" ]; then
+        docker exec xcar-registry registry garbage-collect --delete-untagged /etc/docker/registry/config.yml >/dev/null 2>&1 || true
+        docker restart xcar-registry >/dev/null 2>&1 || true
+    fi
 }
 
 migrate() {
@@ -118,6 +161,9 @@ migrate() {
 
 up() {
     echo "==> запуск"
+    # Открытым окнам — «обновляемся» (`release:announce` → заставка `lib/updating.js`): сайт сейчас секунд на двадцать
+    # пропадёт, и без слова это выглядит как «сервер упал». Прежний выпуск команды не знает — молча дальше.
+    remote "docker exec xcar-app-1 php artisan release:announce >/dev/null 2>&1 && sleep 2 || true"
     # Сначала сайт — и ждём, пока ответит (healthcheck `/up`); работники — следом по одному: разом девять контейнеров
     # на двух ядрах прода давали пик, и страницы не открывались (10.11.2026).
     compose_in "$(release_dir)" up -d --no-deps --wait --wait-timeout 120 app
@@ -142,6 +188,16 @@ prune() { # три последних выпуска и образа: есть �
         docker images 'xcar/app' --format '{{.Tag}}' | sort -r | tail -n +4 | xargs -r -I{} docker rmi xcar/app:{} >/dev/null 2>&1 || true"
 }
 
+# На проде работает именно этот коммит (18.11.2026: выкладка отчиталась успехом, прод отвечал 200, а код был прежний).
+verify() {
+    local want got
+    want=$(git rev-parse HEAD)
+    got=$(remote "docker exec xcar-app-1 cat /app/RELEASE 2>/dev/null" || true)
+    [ "$want" = "$got" ] && { echo "    код на проде: ${want:0:8}"; return; }
+    echo "стоп: на проде работает ${got:0:8}, а выкладывали ${want:0:8}" >&2
+    exit 1
+}
+
 check() {
     echo "==> проверка"
     remote "curl -fsS -o /dev/null -w 'up: %{http_code}\n' http://127.0.0.1/up"
@@ -149,18 +205,18 @@ check() {
 }
 
 case "${1:-all}" in
-    all)      lint; snapshot; build; migrate; up; check ;;
-    snapshot) snapshot ;;
-    build)    lint; snapshot; build ;;
-    migrate)  compose_in "$(current_dir)" up -d --wait postgres; compose_in "$(current_dir)" run --rm --no-deps app php artisan migrate --force ;;
-    up)       compose_in "$(current_dir)" up -d --remove-orphans ;;
+    all)      alone; fresh; lint; snapshot; build; migrate; up; check; verify ;;
+    snapshot) alone; snapshot ;;
+    build)    alone; lint; snapshot; build ;;
+    migrate)  alone; compose_in "$(current_dir)" up -d --wait postgres; compose_in "$(current_dir)" run --rm --no-deps app php artisan migrate --force ;;
+    up)       alone; compose_in "$(current_dir)" up -d --remove-orphans ;;
     ps)       compose_in "$(current_dir)" ps ;;
     logs)     shift; compose_in "$(current_dir)" logs --tail=200 "$@" ;;
     artisan)  shift; compose_in "$(current_dir)" exec app php artisan "$@" ;;
     check)    check ;;
     backup)   remote "bash $ROOT/current/deploy/backup.sh ${2:-all}" ;;
     rollback)
-        TAG="$2"; [ -d "$(release_dir)" ] || true
+        TAG="$2"; alone; [ -d "$(release_dir)" ] || true
         remote "sed -i 's/^TAG=.*/TAG=$TAG/' $ROOT/env/.env"
         compose_in "$(release_dir)" up -d --remove-orphans
         remote "ln -sfn $(release_dir) $ROOT/current"; check ;;
