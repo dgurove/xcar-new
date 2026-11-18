@@ -25,7 +25,7 @@ use Illuminate\Support\Carbon;
  * Машина в гараже: предложение, выведенное из продажи менеджеру на ремонт.
  * Всё про саму ТС — в предложении; здесь кому отдали, за сколько, расходы и чем кончилось.
  */
-#[Fillable(['offer_id', 'deal_id', 'manager_id', 'state', 'stage_at', 'taken_at', 'sold_at', 'sold_price', 'buyer_name', 'buyer_phone', 'commission', 'settled_at', 'invoice_id', 'invoice_to', 'payout_invoice_id', 'created_by', 'buyer_price'])]
+#[Fillable(['offer_id', 'deal_id', 'manager_id', 'state', 'stage_at', 'taken_at', 'sold_at', 'sold_price', 'buyer_name', 'buyer_phone', 'commission', 'settled_at', 'invoice_id', 'invoice_to', 'created_by', 'buyer_price'])]
 class Car extends Model
 {
     use FastAttributes;
