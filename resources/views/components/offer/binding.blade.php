@@ -3,7 +3,10 @@
      слово «обязывающее» и красная мигающая капсула — «нейрослоп», «агрессивно»): цвет только у значка, нажатие — окошко, что за
      срок, до какого часа, чья беда и откуда он (`Binding::source`); pop=false — без окошка (шторка «Отдать»). Окно машины,
      страница `/offers/N`, окно вывоза. icon / tag — сигнал у названия в строке списка, только когда горит. --}}
-@props(['offer', 'tag' => false, 'icon' => false, 'aside' => false, 'pop' => true])
+{{-- fit — у значка ещё и «3д 6ч» (18.11.2026, владелец: «только если помещается полностью, на ПК; на узком экране — только
+     значок»): обёртка `.binding-fit` уводит текст на скрытую вторую строку, когда в ячейке номера нет места; ширину столбца
+     (`Table\Widths`) он не трогает. --}}
+@props(['offer', 'tag' => false, 'icon' => false, 'aside' => false, 'pop' => true, 'fit' => false])
 @php
     use App\Offers\Binding;
     $until = $offer->binding_until;
@@ -61,7 +64,7 @@
 @elseif (! $level)
 @elseif ($icon)
     {{-- Сигнал в строке на телефоне (20.10.2026): красный таймер у названия, слова — подсказкой и в карточке. --}}
-    @if ($hot)<span {{ $attributes->merge(['class' => 'row-signal text-danger']) }} title="{{ $who }}, обязывающее {{ $past ? $word : 'до '.$date.', '.$word }}" aria-label="Срок обязывающего"><x-ui.icon name="timer" class="size-4"/></span>@endif
+    @if ($hot)<span {{ $attributes->merge(['class' => 'row-signal text-danger']) }} title="{{ $who }}, обязывающее {{ $past ? $word : 'до '.$date.', '.$word }}" aria-label="Срок обязывающего"><x-ui.icon name="timer" class="size-4"/></span>@if ($fit)<span class="binding-fit" aria-hidden="true"><i>&#8203;</i><span class="nums">{{ $past ? 'срок вышел' : \Illuminate\Support\Str::after($word, 'осталось ') }}</span></span>@endif{{ "" }}@endif
 @elseif ($tag)
     {{-- В строке — красным словом с таймером, без капсулы (20.10.2026, владелец: капсула «истёк» ломала строку). --}}
     @if ($hot)<span {{ $attributes->merge(['class' => 'binding-tag']) }} title="{{ $who }}, обязывающее {{ $past ? $word : 'до '.$date.', '.$word }}"><x-ui.icon name="timer" class="size-3.5 shrink-0"/>{{ $past ? 'срок вышел' : \Illuminate\Support\Str::after($word, 'осталось ') }}</span>@endif

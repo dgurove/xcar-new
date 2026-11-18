@@ -20,11 +20,11 @@
         @else
             <x-ui.row-link :key="$offer->number"><span class="cell-title"><x-ui.cat-icon :category="$offer->category()"/><span class="cell-name">{{ $offer->title() }}@if ($year = $offer->carRecord()->year)<span class="cell-year"> {{ $year }}</span>@endif</span>{!! $termEnd !!}</span></x-ui.row-link>
         @endif
-        <span class="cell-sub cell-sub--wrap sm:hidden"><span class="fit-core"><x-vendor.ref :vendor-id="$offer->vendor_id" :ref="$offer->claim_ref"/></span>@if ($table->has('term'))<span class="line-end">{{ \App\Offers\Binding::html($until) }}</span>@endif</span>
+        <span class="cell-sub cell-sub--wrap sm:hidden"><span class="fit-core"><x-vendor.ref :vendor-id="$offer->vendor_id" :ref="$offer->claim_ref"><x-offer.binding :offer="$offer" icon/></x-vendor.ref></span>@if ($table->has('term'))<span class="line-end">{{ \App\Offers\Binding::html($until) }}</span>@endif</span>
     </td>
         @break
         @case('vendor')
-    <td class="{{ $col->classes() }}"><x-vendor.ref :vendor-id="$offer->vendor_id" :ref="$offer->claim_ref" cell/></td>
+    <td class="{{ $col->classes() }}"><x-vendor.ref :vendor-id="$offer->vendor_id" :ref="$offer->claim_ref" cell><x-offer.binding :offer="$offer" icon fit/></x-vendor.ref></td>
         @break
         @case('term')
     <td class="{{ $col->classes() }} phone-off">

@@ -18,6 +18,8 @@
     // названия словом «гараж»; что с машиной у менеджера («подготовка») здесь не пишем (17.11.2026, владелец: «почему подготовка,
     // если переоценка») — это в окне.
     $garage = $deal->garageCar?->state;
+    // Красный таймер срока обязывающего — у номера убытка, как во всех строках (18.11.2026, владелец: «не во всех вкладках»).
+    $burning = \App\Offers\Binding::matters($offer) && \App\Offers\Binding::panics($offer);
 @endphp
 <tr data-detail-key="{{ $deal->offer->number }}" data-search-row id="deal-{{ $deal->id }}">
     @foreach ($table->columns as $key => $col)
@@ -25,11 +27,11 @@
         @case('title')
     <td class="{{ $col->classes() }}">
         <x-cell.title :key="$deal->offer->number" :offer="$offer">@if ($garage)<span class="ms-1.5 whitespace-nowrap text-sm text-ink-muted">гараж</span>@endif</x-cell.title>
-        <span class="cell-sub sm:hidden"><x-vendor.ref :vendor-id="$offer->vendor_id" :ref="$offer->claim_ref"/>@if ($wait && ! $inButton) <span class="inline-block whitespace-nowrap {{ $tone }}">{!! $wait !!}</span>@endif</span>
+        <span class="cell-sub sm:hidden"><x-vendor.ref :vendor-id="$offer->vendor_id" :ref="$offer->claim_ref">@if ($burning)<x-offer.binding :offer="$offer" icon/>@endif</x-vendor.ref>@if ($wait && ! $inButton) <span class="inline-block whitespace-nowrap {{ $tone }}">{!! $wait !!}</span>@endif</span>
     </td>
         @break
         @case('vendor')
-    <td class="{{ $col->classes() }}"><x-vendor.ref :vendor-id="$offer->vendor_id" :ref="$offer->claim_ref" cell/></td>
+    <td class="{{ $col->classes() }}"><x-vendor.ref :vendor-id="$offer->vendor_id" :ref="$offer->claim_ref" cell>@if ($burning)<x-offer.binding :offer="$offer" icon fit/>@endif</x-vendor.ref></td>
         @break
         @case('manager')
     <td class="{{ $col->classes() }}"><x-cell.person :user="$deal->buyer" from="lg"/></td>

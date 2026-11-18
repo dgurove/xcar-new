@@ -112,7 +112,7 @@
              прочие столбцы — в «Подробной таблице». --}}
         <span class="cell-sub cell-sub--wrap" data-controller="fitline">
             {{-- Номера — одним неразрывным куском: не влезают — строка ужимается (fitline), а не переносится. --}}
-            <span class="fit-core sm:hidden @if ($busy) arrive-type @endif"><x-vendor.ref :vendor="$vendor" :ref="$offer->claim_ref"/></span>
+            <span class="fit-core sm:hidden @if ($busy) arrive-type @endif"><x-vendor.ref :vendor="$vendor" :ref="$offer->claim_ref"><x-offer.binding :offer="$offer" icon/></x-vendor.ref></span>
             @if ($endCol && $endBottom !== '')<span class="line-end sm:hidden">{!! $endBottom !!}</span><span class="line-break sm:hidden"></span>@endif
             @if ($busy)<x-offer.arrive-line :arrive="$arrive"/>@endif
             @if ($mixed || $line)<span class="sub-phrase sm:hidden {{ $tone }}">{{ $tabWord ?? $stateWord }}@if ($tabWord && $offer->isGallery())<span class="text-ink-muted">, в галерее</span>@endif{{ "" }}@if ($line?->who)<span class="text-ink-muted">, {{ $line->who }}</span>@endif</span>
@@ -130,7 +130,7 @@
         @case('vendor')
     {{-- Вендор и номер убытка одним столбцом, как в «Наличии»: логотип (имя — подсказкой), номер с копированием. --}}
     {{-- Красный таймер срока обязывающего — справа от номера, а не у названия (17.11.2026, владелец: «меньше скакать»). --}}
-    <td class="{{ $col->classes() }}"><span class="vendor-ref">@if ($vendor)<button type="button" class="vendor-tip" data-tip="{{ $vendor->name }}" aria-label="{{ $vendor->name }}"><x-vendor.logo :vendor="$vendor"/></button>@endif @if ($offer->claim_ref)<span @class(['arrive-type' => $busy])><x-ui.copy-code :value="$offer->claim_ref"/></span>@endif{{ "" }}@unless ($has('binding'))<x-offer.binding :offer="$offer" icon/>@endunless</span></td>
+    <td class="{{ $col->classes() }}"><span class="vendor-ref">@if ($vendor)<button type="button" class="vendor-tip" data-tip="{{ $vendor->name }}" aria-label="{{ $vendor->name }}"><x-vendor.logo :vendor="$vendor"/></button>@endif @if ($offer->claim_ref)<span @class(['arrive-type' => $busy])><x-ui.copy-code :value="$offer->claim_ref"/></span>@endif{{ "" }}<x-offer.binding :offer="$offer" icon fit/></span></td>
         @break
         @case('number')
     <td class="{{ $col->classes() }}">@if (\App\Offers\OfferNumber::isPublic($offer))<x-ui.copy-code :value="(string) $offer->number"/>@endif</td>

@@ -55,7 +55,7 @@
     </td>
         @break
         @case('vendor')
-    <td class="{{ $col->classes() }}"><x-vendor.ref :vendor-id="$offer->vendor_id" :ref="$offer->claim_ref" cell>@if ($burning)<x-offer.binding :offer="$offer" icon/>@endif</x-vendor.ref></td>
+    <td class="{{ $col->classes() }}"><x-vendor.ref :vendor-id="$offer->vendor_id" :ref="$offer->claim_ref" cell>@if ($burning)<x-offer.binding :offer="$offer" icon fit/>@endif</x-vendor.ref></td>
         @break
         @case('number')
     <td class="{{ $col->classes() }}">{{ $offer->number }}</td>

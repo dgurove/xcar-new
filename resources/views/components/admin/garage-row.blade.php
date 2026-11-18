@@ -32,7 +32,7 @@
     </td>
         @break
         @case('vendor')
-    <td class="{{ $col->classes() }}"><x-vendor.ref :vendor="$vendor" :ref="$offer->claim_ref" cell>@if ($binding)<x-offer.binding :offer="$offer" icon/>@endif</x-vendor.ref></td>
+    <td class="{{ $col->classes() }}"><x-vendor.ref :vendor="$vendor" :ref="$offer->claim_ref" cell>@if ($binding)<x-offer.binding :offer="$offer" icon fit/>@endif</x-vendor.ref></td>
         @break
         @case('stage')
     <td class="{{ $col->classes() }}">@if ($status)<span class="whitespace-normal {{ $status['tone'] }}" @if ($status['hint']) title="{{ $status['hint'] }}" @endif>{{ $status['text'] }}</span>@endif</td>

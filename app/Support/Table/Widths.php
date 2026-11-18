@@ -185,7 +185,7 @@ final class Widths
             // Скрытое на ПК: классом (`sm:hidden`) или своим правилом — третий этаж краткой таблицы (`cell-source`, `cell-extra`),
             // госномер второго этажа (`sub-plate`: он уже стоит за названием).
             // Закрытое всплывающее (`popover`: меню ссылок ТС), `dialog` и `template` на экране не стоят.
-            $hides = (bool) preg_match('#\bclass="[^"]*(?<![\w:-])(?:(?:sm|md|lg):hidden|cell-source|cell-extra|sub-plate)\b#', $part)
+            $hides = (bool) preg_match('#\bclass="[^"]*(?<![\w:-])(?:(?:sm|md|lg):hidden|cell-source|cell-extra|sub-plate|binding-fit)\b#', $part)
                 || in_array($name, ['dialog', 'template'], true) || preg_match('#\spopover(?:[\s=>]|$)#', $part);
             $isSub = (bool) preg_match('#\bclass="[^"]*(?<![\w:-])cell-sub\b#', $part);
             if ($isSub && ! $sub && ! $hidden && ! $hides) {

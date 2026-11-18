@@ -2857,6 +2857,15 @@ html.kb-open { --home-gap: 0px; }
      нажатием как прежде. */
   .vendor-ref:has(> .row-signal) .vincode-ico, .ref-line:has(> .row-signal) .vincode-ico { display: none; }
   .vendor-ref > .row-signal { width: 0; overflow: visible; }
+  /* «3д 6ч» у таймера (`x-offer.binding fit`, 18.11.2026, владелец: «только если помещается полностью, на ПК»): ячейка номера во
+     всю ширину, текст — в обёртке на оставшееся место; не влезает — уходит на вторую строку обёртки и скрыт. Первым в обёртке —
+     пустой `<i>`: одиночный элемент на вторую строку не уходит. На телефоне — только значок. */
+  .vendor-ref:has(> .binding-fit) { display: flex; width: 100%; }
+  .vendor-ref > .binding-fit { flex: 1 1 0; min-width: 0; display: flex; flex-wrap: wrap; height: 1lh; overflow: hidden; align-items: baseline; margin-left: calc(1rem - .5em); color: var(--color-danger); }
+  /* Пустой «<i>» — с невидимым пробелом нулевой ширины: без текста у него нет базовой линии, и номер с «3д 6ч» съезжали. */
+  .binding-fit > i { width: 0; font-style: normal; }
+  .binding-fit > span { white-space: nowrap; }
+  @media (width < 40rem) { .vendor-ref > .binding-fit { display: none; } }
   .vendor-ref > .row-signal > svg { flex: none; }
   /* Один логотип без номера — опорной линии текста нет, и коробка вставала выше строки: по середине. */
   .vendor-ref:has(> .vendor-tip:only-child) { vertical-align: middle; }
