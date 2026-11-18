@@ -38,6 +38,20 @@ final class Extractor
         $topic = Patterns::cleanSubject(QuotationStripper::forwardedSubject($body) ?? $subject);
 
         $this->car($fields, $topic);
+        // Тема с регионом и селом («Вывоз ГОТС по делу 106123/2026, Ростовская обл. с. Дубовское», 18.11.2026): города там
+        // нет, а место есть — адресом (`Settlement::inAddress`); регион к имени добавят `FillFromLetter` и `PromoteCandidate`.
+        // Посёлок без типа («LADA Vesta Никель (Мурманская обл.)») — слово темы кириллицей с заглавной, что есть в этом регионе.
+        if (! isset($fields['city']) && ($area = \App\Cars\Region::inText($topic))) {
+            $place = Settlement::inAddress($topic);
+            if (! $place || $place['name'] === $area->name) {
+                preg_match_all('/(?<![\p{L}\-])[А-ЯЁ][а-яё]{2,}(?:-[А-ЯЁ][а-яё]+)*(?![\p{L}\-])/u', $topic, $words);
+                $place = collect(array_reverse($words[0]))->reject(fn ($w) => mb_stripos($area->name, mb_substr($w, 0, 5)) !== false)
+                    ->map(fn ($w) => Settlement::named($w, $area))->first(fn ($p) => $p && $p['name'] !== $area->name);
+            }
+            if ($place) {
+                $fields['city'] = ['value' => $place['name'], 'source' => 'subject'];
+            }
+        }
         // Город из тела («Авто в Череповце») — только когда тема его не дала: тема у Совкомбанка точнее.
         if (! isset($fields['city']) && ($city = Template::city($text))) {
             $fields['city'] = ['value' => $city, 'source' => 'body'];

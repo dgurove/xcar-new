@@ -86,6 +86,13 @@ class Settlement extends Model
                 ->when($region, fn ($q) => $q->where('region_id', $region->id))
                 ->when(! $region && ! $villages, fn ($q) => $q->where('rank', '<=', self::TOWN))
                 ->orderBy('rank')->orderBy('id')->first(['id', 'name', 'region_code']);
+            // «Сергиев-Посад» темы письма — «Сергиев Посад» справочника, и наоборот (18.11.2026, AUT-26-920130).
+            if (! $place && $key !== ($alt = str_contains($key, '-') ? str_replace('-', ' ', $key) : str_replace(' ', '-', $key))) {
+                $place = self::whereRaw("replace(lower(name), 'ё', 'е') = ?", [$alt])
+                    ->when($region, fn ($q) => $q->where('region_id', $region->id))
+                    ->when(! $region && ! $villages, fn ($q) => $q->where('rank', '<=', self::TOWN))
+                    ->orderBy('rank')->orderBy('id')->first(['id', 'name', 'region_code']);
+            }
             // В регионе точного имени нет — одно место, что отличается одной буквой (18.11.2026, 816605/2026: в документе
             // «Большая Глущица», в ОКТМО «Большая Глушица»; город не встал, вписали Самару руками).
             $place ??= $region ? self::near($key, $region) : null;

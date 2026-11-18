@@ -38,6 +38,11 @@ final class Deliver
             $t->update(['state' => TransportState::Delivered, 'delivered_at' => now()]);
             if ($offer = $t->saleOffer()) {
                 ($this->place)($offer, ($t->destination ?? Point::Ours)->place(), $by);
+                // Города у машины не было, а привезли на нашу парковку — теперь он известен (18.11.2026: 631351/2026 стояла
+                // на Краснопутиловской без города). Вписанный город не трогаем.
+                if (! $offer->settlement_id && ($city = $t->toYard?->settlement_id)) {
+                    app(\App\Offers\Actions\UpdateOffer::class)($offer, ['settlement_id' => $city], null, ['why' => 'Привезли на парковку '.$t->toYard->name]);
+                }
             }
             $this->toYard($t, $by);
             // Привезли на стоянку логиста — очередь следующего отрезка маршрута (`Route::sync` откроет его и пошлёт поручение).
