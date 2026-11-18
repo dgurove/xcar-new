@@ -19,7 +19,7 @@ use Throwable;
  */
 final class ImportStatement
 {
-    public function __construct(private SberApi $api, private MatchTransaction $match, private LinkTransaction $link) {}
+    public function __construct(private SberApi $api, private MatchTransaction $match, private LinkTransaction $link, private SortUnmatched $sort) {}
 
     /**
      * @param  bool  $history  прошлое (`bank:history`): строки только для дат сделок — без счетов и оплат (`Transaction::HISTORY`),
@@ -69,12 +69,13 @@ final class ImportStatement
             }
             if ($in && ! $history) {
                 $tx = ($this->match)($tx);
-                if ($tx->state === Transaction::UNMATCHED) {
-                    $fresh->push($tx);
-                }
             }
             // Машина по назначению — к её сделке, даты «Продано» / «Оплачено» (`LinkTransaction`).
             ($this->link)($tx, hit: $hit);
+            // Не встало — само на место, где можно: «Нет в CRM», как прошлые этого ИНН (`SortUnmatched`, 18.11.2026).
+            if ($in && ! $history && ($tx = ($this->sort)($tx->fresh()))->state === Transaction::UNMATCHED) {
+                $fresh->push($tx);
+            }
         }
         // История — сколько операций было за день у банка (пустые дни подряд — счёт ещё не открыт, `bank:history`).
         if ($history) {

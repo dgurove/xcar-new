@@ -148,6 +148,7 @@
     @php $top = trim(ob_get_clean()); @endphp
     {{-- Покупатель платит поставщику или собственнику сам («страховой напрямую», ДКП) — эта группа и есть блок «Поставщику»:
          заголовок с суммой, как у блока «ООО «ПРАЙМ»» ниже (16.11.2026, владелец: оба плательщика — одним видом). --}}
+    <x-deal.arrivals :deal="$deal"/>
     @if ($top !== '' && $supplierBlock)
         <div class="mb-2 flex items-baseline gap-3 px-3">
             <span class="min-w-0 flex-1 font-medium">{{ $deal->schemeOf() === \App\Offers\DealScheme::OwnerDkp ? 'Собственнику' : 'Поставщику' }}</span>
@@ -202,14 +203,15 @@
             @endforeach
             @if ($extra > 0)
                 @php
-                    // Деньги по VIN из выписки (12.11.2026) — «По выписке» с датой, не «вручную»; счёта ещё нет — сходится ли
+                    // Деньги по VIN из выписки (12.11.2026) — «Пришло по выписке», не «вручную» (даты — строками поступлений верхом
+                    // «Продажи», `x-deal.arrivals`, 18.11.2026); счёта ещё нет — сходится ли
                     // с ним: «не хватает» красным числом (`Deal::arrivedBalance`), до продажи — против закупочной.
                     $bank = $credits->flatMap->payments->first(fn ($p) => $p->source === \App\Billing\PaymentSource::Bank);
                     $arrived = $deal->arrivedBalance();
                     $short = $arrived && $arrived['diff'] <= -1;
                     $over = $arrived && $arrived['against'] === 'invoice' && $arrived['diff'] >= 1;
                 @endphp
-                <div class="row">@if ($links->isEmpty())<span class="min-w-0 flex-1"><span class="block">{{ $bank ? 'По выписке' : 'Оплачено вручную' }}@if ($bank && $bank->paid_at) <span class="text-ink-muted">{{ $bank->paid_at->format('d.m') }}</span>@endif</span><span class="row-sub">@if ($short)<span class="whitespace-nowrap">{{ $arrived['against'] === 'cost' ? 'до закупочной не хватает' : 'не хватает' }} <span class="nums text-danger">{{ Money::rub(abs($arrived['diff'])) }}</span></span>@elseif ($over)<span class="whitespace-nowrap">переплата <span class="nums">{{ Money::rub($arrived['diff']) }}</span></span>@else{{ $deal->agreed() && $issued->isNotEmpty() ? 'сверх сделки' : 'засчитаем, когда выставим счёт' }}@endif</span></span>@else<span class="min-w-0 flex-1 text-ink-muted">{{ $deal->agreed() && $issued->isNotEmpty() ? 'Сверх сделки' : 'Засчитаем, когда выставим счёт' }}</span>@endif<span class="nums shrink-0">{{ Money::rub($extra) }}</span></div>
+                <div class="row">@if ($links->isEmpty())<span class="min-w-0 flex-1"><span class="block">{{ $bank ? 'Пришло по выписке' : 'Оплачено вручную' }}</span><span class="row-sub">@if ($short)<span class="whitespace-nowrap">{{ $arrived['against'] === 'cost' ? 'до закупочной не хватает' : 'не хватает' }} <span class="nums text-danger">{{ Money::rub(abs($arrived['diff'])) }}</span></span>@elseif ($over)<span class="whitespace-nowrap">переплата <span class="nums">{{ Money::rub($arrived['diff']) }}</span></span>@else{{ $deal->agreed() && $issued->isNotEmpty() ? 'сверх сделки' : 'засчитаем, когда выставим счёт' }}@endif</span></span>@else<span class="min-w-0 flex-1 text-ink-muted">{{ $deal->agreed() && $issued->isNotEmpty() ? 'Сверх сделки' : 'Засчитаем, когда выставим счёт' }}</span>@endif<span class="nums shrink-0">{{ Money::rub($extra) }}</span></div>
             @endif
         </div>
     @endif

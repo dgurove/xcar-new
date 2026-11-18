@@ -90,6 +90,22 @@ class Transaction extends Model
         return $this->belongsTo(User::class, 'decided_by');
     }
 
+    /**
+     * Кто перевёл, по-человечески: «ПАО Сбербанк//ГАЛИМОВ САХИБ ШАМСИТИНОВИЧ//8000…//» → «Галимов Сахиб Шамситинович»
+     * (физлицо через банк-посредник — второй кусок; заглавные — с заглавной буквы), «(ИП)» и «ИП» снимаются.
+     */
+    public function payerName(): string
+    {
+        $parts = array_values(array_filter(array_map('trim', explode('//', (string) $this->counterparty)), fn ($p) => $p !== '' && ! preg_match('/^\d+$/', $p)));
+        $name = count($parts) > 1 && preg_match('/банк/iu', $parts[0]) ? $parts[1] : ($parts[0] ?? '');
+        $name = trim(preg_replace('/\s*\(ИП\)|^ИП\s+|^ИНДИВИДУАЛЬНЫЙ ПРЕДПРИНИМАТЕЛЬ\s+/u', '', $name));
+        if (mb_strtoupper($name) === $name && ! preg_match('/^(ООО|АО|ПАО|ОБЩЕСТВО)\b/u', $name)) {
+            $name = mb_convert_case(mb_strtolower($name), MB_CASE_TITLE);
+        }
+
+        return $name;
+    }
+
     public function isIncoming(): bool
     {
         return $this->direction === 'in';

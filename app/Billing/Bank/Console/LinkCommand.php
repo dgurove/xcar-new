@@ -3,6 +3,8 @@
 namespace App\Billing\Bank\Console;
 
 use App\Billing\Bank\Actions\LinkTransaction;
+use App\Billing\Bank\Actions\MatchTransaction;
+use App\Billing\Bank\Actions\SortUnmatched;
 use App\Billing\Bank\CarMatch;
 use App\Billing\Bank\Transaction;
 use App\Offers\Actions\StampDealMoney;
@@ -20,7 +22,7 @@ final class LinkCommand extends Command
 
     protected $description = 'Привязывает выписку к машинам и пересчитывает даты сделок';
 
-    public function handle(LinkTransaction $link, StampDealMoney $stamp): int
+    public function handle(LinkTransaction $link, StampDealMoney $stamp, SortUnmatched $sort, MatchTransaction $match): int
     {
         $dry = (bool) $this->option('dry');
         $by = ['in' => [], 'out' => []];
@@ -32,6 +34,12 @@ final class LinkCommand extends Command
             $deal = $dry ? ($hit['deal'] ?? null) : $link($tx, stamp: false);
             $key = $dry ? ($hit['by'] ?? 'нет') : ($tx->fresh()->matched_by ?? 'нет');
             $by[$tx->direction][$key] = ($by[$tx->direction][$key] ?? 0) + 1;
+            // Непривязанное входящее — ещё раз (18.11.2026): сделка по VIN завелась позже поступления — встаёт зачётом,
+            // «Нет в CRM» — тоже; не встало — `SortUnmatched` («Нет в CRM», как прошлые этого ИНН).
+            if (! $dry && $tx->isIncoming() && in_array($tx->state, [Transaction::UNMATCHED, Transaction::IGNORED], true)) {
+                $tx = $tx->state === Transaction::UNMATCHED ? $match($tx->fresh()) : $sort->retry($tx->fresh());
+                $tx->state === Transaction::UNMATCHED && $sort($tx->fresh());
+            }
         }
         foreach ($by as $dir => $counts) {
             $this->line(($dir === 'in' ? 'Входящие' : 'Исходящие').': '.collect($counts)->map(fn ($n, $k) => "{$k} {$n}")->implode(', '));

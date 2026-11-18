@@ -338,10 +338,11 @@ class Car extends Model
      * Перевести на этап: дни на этапе считаются от этого момента, шаг ложится в «Историю» машины — из неё же и путь
      * (`stages`; своей копии пути у гаража нет с 29.10.2026).
      */
-    public function moveTo(CarState $state, array $attributes = [], ?User $by = null): void
+    /** @param  array  $mark  что ещё записать в строку «Истории» (`guess` — продажа догадкой по выписке, `SellFromStatement`) */
+    public function moveTo(CarState $state, array $attributes = [], ?User $by = null, array $mark = []): void
     {
         $this->update(['state' => $state, 'stage_at' => now()] + $attributes);
-        $this->log($by, ['do' => 'stage', 'state' => $state->value] + ($state === CarState::Sold && $this->sold_price ? ['price' => $this->sold_price] : []));
+        $this->log($by, ['do' => 'stage', 'state' => $state->value] + ($state === CarState::Sold && $this->sold_price ? ['price' => $this->sold_price] : []) + $mark);
     }
 
     /** Этапы машины по порядку — строки «Истории» гаража `do: stage` (путь машины, `path`). */

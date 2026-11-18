@@ -1,0 +1,141 @@
+<?php
+
+namespace App\Offers\Actions;
+
+use App\Billing\Bank\Actions\BuyerFromStatement;
+use App\Billing\Bank\Transaction;
+use App\Billing\Robot;
+use App\Garage\Actions\MarkGarageSold;
+use App\Garage\Car;
+use App\Offers\Deal;
+use App\Offers\Margin;
+use App\Offers\OfferEventType;
+use App\Support\Money;
+use App\Users\User;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Throwable;
+
+/**
+ * Гаражная продажа догадкой по выписке (18.11.2026, владелец: «оплаты со СберБизнеса не разносятся сами, висят тупо»;
+ * 28 гаражных сделок стояли «Деньги пришли: записать продажу» — покупатель заплатил по VIN, цену никто не вписал).
+ * Заплатил покупатель, а не менеджер, — машина «Продана» за сумму его поступлений: вознаграждение по доле, покупатель
+ * сделки — он же (`BuyerFromStatement`). Это догадка, и в «Истории» она так и названа (владелец: «главное — в истории
+ * помечать, что это догадки»): строка «Продана за N — догадка по выписке: …».
+ *
+ * Не гадает, если: продажа уже записана или цена сделки вписана, машину ещё везут, платил сам менеджер или платили разные
+ * люди, есть деньги мимо выписки, сумма в минус или с лишним нулём против закупочной. Тогда остаётся «Деньги пришли:
+ * записать продажу», как было. Поступление после продажи-догадки цену не трогает — строка в «Истории»: проверьте.
+ * Сама — из `MatchByVin` на новое поступление; прошлые — по одной, `garage:sell-from-statement` (владелец: «не массовым
+ * скриптом, а по одному внимательно»).
+ */
+final class SellFromStatement
+{
+    public function __construct(private MarkGarageSold $sold) {}
+
+    /**
+     * Что записать, или почему нельзя.
+     *
+     * @return array{ok: bool, why?: string, price?: int, payer?: string, txs?: Collection<int, Transaction>, car?: Car}
+     */
+    public static function guess(Deal $deal): array
+    {
+        $deal->loadMissing(['garageCar.manager', 'buyer', 'offer']);
+        $car = $deal->garageCar;
+        $no = fn (string $why) => ['ok' => false, 'why' => $why];
+        if (! $car) {
+            return $no('не гаражная');
+        }
+        if ($car->isSold()) {
+            return $no('продажа уже записана');
+        }
+        if ($deal->amount !== null) {
+            return $no('цена продажи уже вписана');
+        }
+        if ($car->forBuyer()) {
+            return $no('машина у покупателя с гаражом');
+        }
+        if (! $car->state->isWorking()) {
+            return $no('машину ещё везут');
+        }
+        $txs = self::arrivals($deal);
+        if ($txs->isEmpty()) {
+            return $no('по выписке ничего не пришло');
+        }
+        $payers = $txs->map(fn (Transaction $tx) => BuyerFromStatement::payer($tx, $deal)['name'] ?? null);
+        if ($payers->contains(null)) {
+            return $no('платил сам менеджер или в выписке нет имени');
+        }
+        if ($payers->map(fn ($n) => mb_strtolower($n))->unique()->count() > 1) {
+            return $no('платили разные люди: '.$payers->unique()->implode(', '));
+        }
+        $price = (int) round($txs->sum('amount'));
+        // Деньги мимо выписки (ссылка, «Оплачено вручную») — сумма выписки не вся цена.
+        if ($deal->credited() > $txs->sum('amount') + 0.5) {
+            return $no('есть оплаты не из выписки');
+        }
+        $check = Margin::check($price, $deal->cost === null ? null : (int) $deal->cost);
+        if ($check && in_array($check['tone'], ['typo', 'loss'], true)) {
+            return $no('сумма против закупочной: '.mb_lcfirst($check['title']));
+        }
+
+        return ['ok' => true, 'price' => $price, 'payer' => $payers->first(), 'txs' => $txs, 'car' => $car];
+    }
+
+    /** Поступления выписки по сделке — деньги за машину, по дате. */
+    public static function arrivals(Deal $deal): Collection
+    {
+        return Transaction::where('deal_id', $deal->id)->where('direction', 'in')->where('state', Transaction::MATCHED)
+            ->carMoney()->orderBy('booked_at')->orderBy('id')->get();
+    }
+
+    /** Записать продажу догадкой; null — гадать нельзя (почему — `guess`). */
+    public function __invoke(Deal $deal, ?User $by = null): ?Car
+    {
+        $by ??= Robot::user();
+        $lock = 'garage-sell-statement-'.$deal->id;
+
+        return DB::transaction(function () use ($deal, $by, $lock) {
+            DB::select('select pg_advisory_xact_lock(hashtext(?))', [$lock]);
+            $deal = $deal->fresh();
+            $g = self::guess($deal);
+            if (! $g['ok']) {
+                $this->noteLate($deal, $by);
+
+                return null;
+            }
+            $dates = $g['txs']->map(fn (Transaction $tx) => $tx->booked_at->format('d.m'))->unique()->implode(', ');
+            $what = ($g['txs']->count() > 1 ? 'поступления '.$dates : 'поступление '.$dates).' от '.$g['payer'];
+            try {
+                return ($this->sold)($g['car'], ['sold_price' => $g['price'], 'sold_at' => $g['txs']->last()->booked_at, 'buyer_name' => $g['payer']], $by,
+                    ['guess' => $what, 'tx' => $g['txs']->pluck('id')->all()]);
+            } catch (Throwable $e) {
+                Log::warning('garage: продажа по выписке, сделка '.$deal->id.' — '.$e->getMessage());
+
+                return null;
+            }
+        });
+    }
+
+    /** Продажа уже записана догадкой, а пришло ещё — цену не трогаем, говорим в «Истории». */
+    private function noteLate(Deal $deal, User $by): void
+    {
+        $car = $deal->garageCar;
+        $sold = $car?->isSold() ? $car->stages()->get()->last(fn ($e) => ($e->payload['state'] ?? null) === 'sold') : null;
+        if (! $sold || ! isset($sold->payload['guess'])) {
+            return;
+        }
+        $known = $sold->payload['tx'] ?? [];
+        $late = self::arrivals($deal)->reject(fn (Transaction $tx) => in_array($tx->id, $known, true));
+        $noted = collect($sold->payload['late'] ?? []);
+        $new = $late->reject(fn (Transaction $tx) => $noted->contains($tx->id));
+        if ($new->isEmpty()) {
+            return;
+        }
+        $sold->update(['payload' => array_merge($sold->payload, ['late' => $noted->merge($new->pluck('id'))->values()->all()])]);
+        $deal->offer->log(OfferEventType::Note, $by, ['text' => 'После продажи по догадке ещё поступление '
+            .$new->map(fn (Transaction $tx) => Money::rub($tx->amount).' '.$tx->booked_at->format('d.m'))->implode(', ')
+            .' — цена продажи осталась '.Money::rub((int) $car->sold_price).', проверьте']);
+    }
+}

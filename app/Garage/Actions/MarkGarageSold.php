@@ -22,7 +22,8 @@ use Illuminate\Validation\ValidationException;
  */
 final class MarkGarageSold
 {
-    public function __invoke(Car $car, array $data, User $by): Car
+    /** @param  array  $mark  пометка строки «Продана» в «Истории» — у догадки по выписке (`SellFromStatement`) */
+    public function __invoke(Car $car, array $data, User $by, array $mark = []): Car
     {
         if ($car->isFrozen()) {
             throw ValidationException::withMessages(['sold_price' => 'По ТС выставлен счёт: сначала аннулируйте его']);
@@ -47,7 +48,7 @@ final class MarkGarageSold
             'sold_at' => $data['sold_at'] ?? now(),
             'buyer_name' => $staff ? ($data['buyer_name'] ?? null) : null,
             'buyer_phone' => $staff ? ($data['buyer_phone'] ?? null) : null,
-        ], $by);
+        ], $by, $mark);
         // Совкомбанк (10.10.2026): цена продажи — цена сделки и договора; счёт ПРАЙМ и договор встанут, когда менеджер назовёт
         // покупателя, а мы — его вознаграждение (`SyncDealInvoices`).
         if ($car->settledByDeal()) {
@@ -60,7 +61,7 @@ final class MarkGarageSold
             // висело у четырёх продаж; поправить — прежней шторкой «Изменить» в CRM. Счета пересобирает `UpdateDealMoney`.
             $deal = $deal->fresh();
             if (($deal->commission === null || $repriced) && $deal->moneyEditable() && ($fee = $deal->suggestedCommission()) !== null) {
-                app(UpdateDealMoney::class)($deal, $by, $fee, CommissionMode::Withheld, note: 'Вознаграждение '.Money::rub($fee).': менеджеру '.(100 - $deal->ourGarageShare()).' % навара');
+                app(UpdateDealMoney::class)($deal, $by, $fee, CommissionMode::Withheld, note: 'Вознаграждение '.Money::rub($fee).': менеджеру '.(100 - $deal->ourGarageShare()).' % навара'.($mark ? ' — догадка по выписке' : ''));
             } else {
                 app(SyncDealInvoices::class)($deal, $by);
             }

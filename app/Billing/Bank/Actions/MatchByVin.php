@@ -11,6 +11,7 @@ use App\Billing\ChargeKind;
 use App\Billing\Party;
 use App\Billing\Robot;
 use App\Billing\WorkDays;
+use App\Offers\Actions\SellFromStatement;
 use App\Offers\Deal;
 use App\Offers\OfferEventType;
 use App\Support\Money;
@@ -73,7 +74,8 @@ final class MatchByVin
         if ($tx->fresh()->state !== Transaction::MATCHED) {
             return null;
         }
-        $tx->update(['note' => 'по VIN в сделку '.$deal->offer->number]);
+        // Сделка у строки — сразу (`LinkTransaction` поставит её позже, а продажа по выписке смотрит уже сейчас).
+        $tx->update(['note' => 'по VIN в сделку '.$deal->offer->number, 'deal_id' => $tx->deal_id ?? $deal->id, 'matched_by' => $tx->matched_by ?? 'vin']);
         $deal->offer->log(OfferEventType::Note, $by, ['text' => 'Поступление '.Money::rub((float) $tx->amount).' по VIN из выписки — зачётом в сделку']);
 
         // Заплатил покупатель, а не менеджер — он и покупатель сделки (`BuyerFromStatement`, 12.11.2026). Не вышло — привязка остаётся.
@@ -81,6 +83,12 @@ final class MatchByVin
             $deal->buyer && app(BuyerFromStatement::class)($tx, $deal->fresh(), $by);
         } catch (\Throwable $e) {
             Log::warning('bank: покупатель из выписки по сделке '.$deal->offer->number.' — '.$e->getMessage());
+        }
+        // Гаражная, которую ещё не записали проданной, — продажа догадкой по выписке (18.11.2026, `SellFromStatement`).
+        try {
+            app(SellFromStatement::class)($deal->fresh(), $by);
+        } catch (\Throwable $e) {
+            Log::warning('bank: продажа по выписке, сделка '.$deal->offer->number.' — '.$e->getMessage());
         }
 
         return $deal;
