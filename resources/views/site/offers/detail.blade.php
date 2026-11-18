@@ -68,7 +68,7 @@
             @elseif ($bids && !$gallery && !$offer->openFor($user) && $offer->state !== OfferState::Draft)
                 <span class="text-sm text-ink-muted">Приём подтверждений закрыт</span>
             @endif
-            @if ($canChat)<a href="/account/chats/offer/{{ $offer->number }}" class="pill pill-plain"><x-ui.icon name="chat" class="size-4"/> Чат@if ($chat?->unread_for_user) <span class="badge">{{ $chat->unread_for_user }}</span>@endif</a>@endif
+            @if ($canChat)<a href="{{ \App\Chats\Chat::offerPath($offer->number) }}" class="pill pill-plain"><x-ui.icon name="chat" class="size-4"/> Чат@if ($chat?->unread_for_user) <span class="badge">{{ $chat->unread_for_user }}</span>@endif</a>@endif
             @if ($user?->isManager() && $offer->state === OfferState::Open && \App\Offers\Showing::pickable($user))@php $seen = \App\Offers\Showing::countsFor($user, [$offer->id])[$offer->id] ?? 0; @endphp<a href="{{ $href }}" data-show-offer="{{ $offer->id }}" class="pill pill-plain"><x-ui.icon name="users" class="size-4"/> @if ($seen)Открыто <span class="nums">{{ $seen }}</span>@else Открыть покупателям@endif</a>@endif
             {{-- Покупателю — его менеджер с номером, одной пилюлей; нажатие — «Скопировать / Позвонить» (`tel.js`, data-tel). --}}
             @if ($manager?->phone)<a href="tel:+{{ $manager->phone }}" data-tel="{{ $manager->phoneFormatted() }}" class="pill pill-plain"><x-ui.avatar :user="$manager" :size="20"/> {{ $manager->shortName() }} <span class="nums">{{ $manager->phoneFormatted() }}</span></a>@endif

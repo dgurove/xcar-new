@@ -16,7 +16,7 @@
         <h3 class="list-head mt-3">Ещё чаты</h3>
         <div class="list">
             @foreach ($chats as $c)
-                <a href="/account/chats/{{ $c->id }}" class="row" data-turbo-action="replace">
+                <a href="{{ \App\Chats\Chat::path($c->id) }}" class="row" data-turbo-action="replace">
                     <div class="min-w-0 flex-1">
                         <div class="flex items-baseline gap-2"><span class="truncate {{ $c->unread_for_user ? 'font-medium' : '' }}">{{ $c->offer?->titleWithYear() ?? \App\Chats\Chat::PLATFORM }}</span><span class="ml-auto shrink-0 text-sm text-ink-dim">{{ \App\Support\Ago::html($c->last_message_at, short: true) }}</span></div>
                         <div class="truncate text-sm {{ $c->unread_for_user ? '' : 'text-ink-muted' }}">{{ $c->lastPreview($me) }}</div>

@@ -124,7 +124,7 @@
             <a href="{{ $href }}" data-show-offer="{{ $offer->id }}" class="btn btn-icon relative" aria-label="{{ $seen ? 'Открыто '.$seen.' покупателям' : 'Открыть покупателям' }}"><x-ui.icon name="users" class="size-[22px]"/>@if ($seen)<span class="badge nums">{{ $seen }}</span>@endif</a>
         @endif
         @if (!$gallery && ! $estimate && $user?->canChat() && $offer->chat_enabled)
-            <a href="/account/chats/offer/{{ $offer->number }}" class="btn btn-icon" aria-label="Написать в чат"><x-ui.icon name="chat" class="size-[22px]"/></a>
+            <a href="{{ \App\Chats\Chat::offerPath($offer->number) }}" class="btn btn-icon" aria-label="Написать в чат"><x-ui.icon name="chat" class="size-[22px]"/></a>
         @endif
     </div>
 </article>

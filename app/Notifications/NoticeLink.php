@@ -65,9 +65,10 @@ final class NoticeLink
     private static function crm(string $href, string $path, ?string $subject): string
     {
         return match (true) {
-            // Обращение с сайта: у гостя адрес «Контакты», сотруднику — чат в CRM (тема строки — `/account/chats/{id}`).
+            // Обращение с сайта: у гостя адрес «Контакты», сотруднику — чат в CRM (тема строки — `Chat::subject`).
+            // Адрес чата — `/chats/{id}`; у старых строк ленты — `/account/chats/{id}` (его уже перевёл `Paths::translate`).
             $path === '/contacts' => self::chat($subject) ?? '/work/chats',
-            (bool) preg_match('~^/account/chats/(\d+)$~', $path, $m) => '/work/chats/'.$m[1],
+            (bool) preg_match('~^/(?:account/|deals/)?chats/(\d+)$~', $path, $m) => '/work/chats/'.$m[1],
             (bool) preg_match('~^/(?:deals|account/money/deals)/(\d+)~', $path, $m) => '/work/deals/'.$m[1].self::fragment($href),
             // Машина гаража и вывоз — по номеру предложения, в CRM её ведут в редакторе.
             (bool) preg_match('~^/garage/(?:cars|pickups)/(\d+)~', $path, $m) => '/offers/'.$m[1],

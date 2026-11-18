@@ -4,7 +4,7 @@
 @php
     $me = auth()->user();
     $current ??= null;
-    $base ??= '/account/chats';
+    $base ??= \App\Chats\Chat::ROOT;
     $chat ??= null;
     $offer ??= null;
     $other = $chat ? ($chat->isCounterpart($me) ? $chat->user : $chat->manager) : (($offer || $current === 'support') && $me->isBuyer() ? $me->manager : null);
@@ -29,16 +29,13 @@
     // При поиске строку без обращения не рисуем: она не совпала ни с чем.
     $support = !$me->isAdmin() && $q === '' && $chats->doesntContain(fn ($c) => $c->isEnquiry() && $c->manager_id === $supportTo?->id);
 @endphp
-{{-- Те же чаты — и в «Сделках» (`/deals/chats`, пилюля рядом со «Сделками» и «Покупателями»; 11.10.2026, владелец: «в
-     кабинете чаты обычно не ищут — пусть будут и там и там»), и в кабинете (`/account/chats`). --}}
-@if (str_starts_with($base, '/deals'))
-<x-ui.shell :title="$current ? $name : 'Чаты'" :back="$current ? ['Чаты', $base] : false" :phone-heading="false" :desktop-heading="false">
-    {{-- Тот же ряд, что в «Сделках» и «Покупателях» (`.search-head`), и тот же отступ до списка — пилюли не прыгают. --}}
-    <div @class(['search-head mb-4', 'max-md:hidden' => $current])><div class="search-lead min-w-0 flex-1"><x-deal.tabs current="/deals/chats"/></div></div>
+{{-- Чаты — раздел таб-бара (18.11.2026, владелец: «по центру в нижнем тулбаре разместил бы чаты — пользователи очень давно
+     просили»; до того экран жил и в кабинете `/account/chats`, и пилюлей «Сделок» `/deals/chats`). Заголовок «Чаты» — у
+     списка (`cabinet.chats-split`), у открытого чата на телефоне — своя шапка с «назад» к списку. --}}
+<x-ui.shell :title="$current ? $name : 'Чаты'" :back="$current ? ['Чаты', $base] : false" :heading="false" :back-row="false">
+    {{-- Заголовок раздела, как у «Чатов» CRM; открыт чат на телефоне — прячется (`body.chat-open`). --}}
+    <div class="chat-crm-top">
+        <h1 class="head-title text-xl sm:text-2xl">Чаты</h1>
+    </div>
     @include('cabinet.chats-split')
 </x-ui.shell>
-@else
-<x-ui.cabinet :title="$current ? $name : 'Чаты'">
-    @include('cabinet.chats-split')
-</x-ui.cabinet>
-@endif

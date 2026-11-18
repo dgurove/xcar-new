@@ -130,6 +130,9 @@ final class Paths
         'account/interest' => 'buyers/interest',
         'account/showings' => 'buyers/showings',
         'account/confirmations' => 'deals',
+        // Чаты — свой раздел таб-бара (18.11.2026): из кабинета и из пилюли «Сделок».
+        'account/chats' => 'chats',
+        'deals/chats' => 'chats',
     ];
 
     /** Путь с переведёнными сегментами или null, если переводить нечего. */

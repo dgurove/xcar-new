@@ -54,7 +54,7 @@ final class PurgeOffer
             // Чаты по предложению: файлы сообщений — моделью (диск private), остальное каскадом.
             $chats = Chat::where('offer_id', $offer->id)->pluck('id');
             ChatFile::whereIn('message_id', DB::table('chat_messages')->whereIn('chat_id', $chats)->select('id'))->get()->each->delete();
-            $subjects = [...$subjects, ...$chats->map(fn ($c) => '/account/chats/'.$c)];
+            $subjects = [...$subjects, ...$chats->map(fn ($c) => \App\Chats\Chat::subject($c))];
             Chat::whereIn('id', $chats)->delete();
 
             // Ответы менеджера на этапах — с файлами.

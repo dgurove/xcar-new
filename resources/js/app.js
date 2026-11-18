@@ -25,6 +25,7 @@ import { keepPosition, onScroll as onPageScroll, quietHover, scrollTop, scrollTo
 import { keepPush } from './push-sync';
 import { csrf } from './lib/http';
 import avatarFallback from './lib/avatar-fallback';
+import photoFallback from './lib/photo-fallback';
 import { perf } from './lib/perf';
 import { sections } from './lib/sections';
 import { visitGuard } from './lib/visit-guard';
@@ -224,6 +225,7 @@ quietHover();
 stalePage();
 keyboardInset();
 avatarFallback();
+photoFallback();
 actionRoom();
 systemTheme();
 headerState();

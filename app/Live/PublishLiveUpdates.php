@@ -214,9 +214,9 @@ final class PublishLiveUpdates
         if ($chat->user_id) {
             $this->publish->badges(Topics::user($chat->user_id));
         }
-        $this->publish->refresh($other, $chat->manager_id ? ['/account/chats'] : ['/work/chats', '/account/chats']);
+        $this->publish->refresh($other, $chat->manager_id ? [Chat::ROOT] : ['/work/chats', Chat::ROOT]);
         if ($chat->user_id) {
-            $this->publish->refresh(Topics::user($chat->user_id), ['/account/chats']);
+            $this->publish->refresh(Topics::user($chat->user_id), [Chat::ROOT]);
         }
     }
 
@@ -225,7 +225,7 @@ final class PublishLiveUpdates
     {
         $chat = $e->message->chat;
         ($this->publish)($this->allSides($chat), 'chat-edit', ['chat' => $chat->id, 'seq' => $e->message->seq]);
-        $this->publish->refresh($this->otherSide($chat), $chat->manager_id ? ['/account/chats'] : ['/work/chats', '/account/chats']);
+        $this->publish->refresh($this->otherSide($chat), $chat->manager_id ? [Chat::ROOT] : ['/work/chats', Chat::ROOT]);
     }
 
     /**
@@ -239,7 +239,7 @@ final class PublishLiveUpdates
         $reader = $e->byCounterpart ? $this->otherSide($chat) : $participant;
         ($this->publish)($e->byCounterpart ? $participant : $this->otherSide($chat), 'chat-read', ['chat' => $chat->id, 'seq' => $e->seq]);
         $this->publish->badges($reader);
-        $this->publish->refresh($reader, $e->byCounterpart && ! $chat->manager_id ? ['/work/chats', '/account/chats'] : ['/account/chats']);
+        $this->publish->refresh($reader, $e->byCounterpart && ! $chat->manager_id ? ['/work/chats', Chat::ROOT] : [Chat::ROOT]);
     }
 
     /** Вторая сторона — менеджер покупателя или сотрудники площадки. */

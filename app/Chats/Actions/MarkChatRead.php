@@ -30,7 +30,7 @@ final class MarkChatRead
             $chat->isBuyerChat() => [$chat->manager_id],
             default => User::withRole(Role::Admin)->pluck('id')->all(),
         };
-        ($this->readNotices)($side, ['/account/chats/'.$chat->id]);
+        ($this->readNotices)($side, [Chat::subject($chat->id)]);
         $column = $counterpart ? 'unread_for_staff' : 'unread_for_user';
         $seqColumn = $counterpart ? 'read_seq_staff' : 'read_seq_user';
         if ($chat->{$column} > 0 || $chat->{$seqColumn} < $chat->messages_count) {

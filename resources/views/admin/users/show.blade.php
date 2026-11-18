@@ -141,7 +141,7 @@
                     <div class="chat-rows-list">
                         @foreach ($chats as $c)
                             {{-- Чат покупателя с менеджером на сайте сотруднику не открыть — только в CRM. --}}
-                            <x-chat.row :chat="$c" :me="$me" :href="$crm ? '/work/chats/'.$c->id : ($c->manager_id ? \App\Support\Surface::Crm->url('/work/chats/'.$c->id) : '/account/chats/'.$c->id)" staff/>
+                            <x-chat.row :chat="$c" :me="$me" :href="$crm ? '/work/chats/'.$c->id : ($c->manager_id ? \App\Support\Surface::Crm->url('/work/chats/'.$c->id) : \App\Chats\Chat::path($c->id))" staff/>
                         @endforeach
                     </div>
                 </section>

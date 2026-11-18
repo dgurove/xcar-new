@@ -61,7 +61,7 @@ final class ChatNotice extends Notice
 
     public function subject(): string
     {
-        return '/account/chats/'.$this->message->chat_id;
+        return Chat::subject($this->message->chat_id);
     }
 
     /** Сообщения бота об этом сообщении чата — удалить у всех, когда его удалили (`Chats\Jobs\RetractChatMessage`, 17.11.2026). */
@@ -139,7 +139,7 @@ final class ChatNotice extends Notice
         return $this->message->preview(120);
     }
 
-    /** Чат площадки сотруднику — работа CRM: только там (адрес у него сайтовый, `/account/chats/{id}`). */
+    /** Чат площадки сотруднику — работа CRM: только там (адрес у него сайтовый, `Chat::path`). */
     public function surface(): ?Surface
     {
         return $this->forStaff && ! $this->message->chat->isBuyerChat() ? Surface::Crm : parent::surface();
@@ -152,7 +152,7 @@ final class ChatNotice extends Notice
 
     /**
      * Куда вести из уведомления и тоста: экран чата в кабинете — без хоста, чтобы установленное
-     * приложение не уходило во встроенный браузер; на CRM `/account/chats/{id}` → `/work/chats/{id}`.
+     * приложение не уходило во встроенный браузер; на CRM `/chats/{id}` → `/work/chats/{id}` (`NoticeLink`).
      */
     public static function hrefFor(Chat $chat, bool $forStaff): string
     {
@@ -160,7 +160,7 @@ final class ChatNotice extends Notice
             return '/contacts';
         }
 
-        return "/account/chats/{$chat->id}";
+        return Chat::path($chat->id);
     }
 
     public function offerNumber(): ?int

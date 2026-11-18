@@ -13,7 +13,7 @@
     <form method="post" action="/deals/{{ $ask->deal_id }}/chat-files" class="msg-step" data-turbo-confirm="Приложить к шагу как {{ $word }}?" data-turbo-confirm-label="Приложить">
         @csrf
         <input type="hidden" name="message" value="{{ $message->id }}">
-        <input type="hidden" name="back" value="/deals/chats/{{ $chat->id }}">
+        <input type="hidden" name="back" value="{{ \App\Chats\Chat::path($chat->id) }}">
         <button class="btn btn-s btn-quiet msg-step-chip"><x-ui.icon name="clip" class="size-4"/>Это {{ $word }}</button>
     </form>
 @elseif ($staff)

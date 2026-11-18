@@ -21,8 +21,9 @@
         default => [$c->deal?->openRequirement ? 0 : 1, $c->state->order(), $c->stage_at?->timestamp ?? 0],
     }, SORT_REGULAR, $sort->desc)->values();
     $count = $open->count();
-    // Гараж по умолчанию — строками (11.10.2026, владелец), не плитками, как остальные списки сайта.
-    $view = ListView::fromRequest(request(), shelves: true) ?? ListView::LIST;
+    // Гараж по умолчанию — таблицей, как в CRM (18.11.2026, владелец: «сделки и гараж — по умолчанию вид табличный»; до того
+    // строками, 11.10.2026). Выбранный самим человеком вид остаётся его (`ListPrefs`).
+    $view = ListView::fromRequest(request(), shelves: true) ?? ListView::TABLE;
     $carRow = fn ($car) => ['offer' => $car->offer, 'href' => '/garage/cars/'.$car->offer->number, 'word' => $lines[$car->id]->word,
         'tone' => $lines[$car->id]->tone, 'when' => $lines[$car->id]->when, 'value' => $lines[$car->id]->value,
         'caption' => $lines[$car->id]->caption, 'who' => $lines[$car->id]->who];
@@ -36,12 +37,16 @@
         'Рассчитались' => $closed->map(fn ($c) => $carRow($c) + ['car' => $c]),
     ], fn ($g) => $g->isNotEmpty());
 @endphp
-<x-ui.shell title="Гараж" :count="$count ?: null">
-    {{-- На телефоне сортировка и вид — справа от заголовка, а не своим рядом под ним (09.10.2026); на ПК — над списком. --}}
-    @if ($groups)
-        <x-slot:actions class="!w-auto ml-auto md:hidden"><x-ui.toolbar :sort="$sort" name="garage-head"><x-slot:extra><x-ui.view-switch :current="$view" :views="ListView::SHELVED"/></x-slot:extra></x-ui.toolbar></x-slot:actions>
-        <x-ui.toolbar :sort="$sort" name="garage" class="mb-4 max-md:hidden"><x-slot:extra><x-ui.view-switch :current="$view" :views="ListView::SHELVED"/></x-slot:extra></x-ui.toolbar>
-    @endif
+{{-- Заголовок — большие заголовки раздела «Сделки | Гараж | Покупатели» (`x-deal.heads`, 18.11.2026: гараж — второй заголовок
+     «Сделок»); покупателю с гаражом, у кого «Гараж» — сам таб, — обычный h1 с числом. Сортировка и вид — справа в той же
+     строке, не влезли — строкой ниже у правого края. --}}
+<x-ui.shell title="Гараж" :heading="false">
+    <div class="title-row">
+        <x-deal.heads current="/garage" title="Гараж" :count="$count ?: null"/>
+        @if ($groups)
+            <div class="title-actions"><x-ui.toolbar :sort="$sort" name="garage"><x-slot:extra><x-ui.view-switch :current="$view" :views="ListView::SHELVED"/></x-slot:extra></x-ui.toolbar></div>
+        @endif
+    </div>
     @if (! $groups)
         <x-ui.empty class="mt-2">В гараже пусто</x-ui.empty>
     @elseif (ListView::isTable($view))

@@ -123,40 +123,38 @@ final class Nav
             ];
         }
 
-        // Сделки менеджера — раздел таб-бара; покупатели (интерес, приглашения, группы) — его вторая пилюля.
-        $deals = self::item('Сделки', '/deals', ['/deals', '/buyers']);
+        // Чаты — свой раздел по центру таб-бара (18.11.2026, владелец: «пользователи очень давно просили»), со значком, как
+        // разделы CRM; у остальных разделов сайта — капсула с числом. Всем, кто пишет (`canChat`), и админу — чаты площадки.
+        $chats = $user && ($user->canChat() || $user->isAdmin()) ? self::item('Чаты', Chat::ROOT, icon: 'chats') : null;
+        // «Сделки» — один раздел на три экрана (18.11.2026, владелец: «гараж в сделки переместил бы, вторым заголовком»):
+        // сделки, гараж и покупатели — большими заголовками в ряд (`x-deal.heads`), у каждого свой адрес. «Гараж» остаётся
+        // пунктом без таба и капсулы: «назад» с машины гаража и его счётчик считаются по нему.
+        $deals = fn (bool $garage, bool $buyers) => [
+            self::item('Сделки', '/deals', array_values(array_filter(['/deals', $buyers ? '/buyers' : null, $garage ? '/garage' : null]))),
+            ...($garage ? [self::item('Гараж', '/garage', tab: false, capsule: false)] : []),
+        ];
+        $list = fn (array $items) => array_values(array_filter($items));
 
         // Демо-кабинет менеджера: каталог вместо закупок — закупки настоящие и ему закрыты; гаража у демо нет.
         if ($user?->hasRole(Role::Manager) && $user->is_demo) {
-            return [self::item('Предложения', '/offers'), self::item('Галерея', '/gallery'), $deals];
+            return $list([self::item('Предложения', '/offers'), self::item('Галерея', '/gallery'), $chats, ...$deals(false, true)]);
         }
 
         if ($user?->hasRole(Role::Manager)) {
-            return [
-                self::item('Предложения', '/offers'),
-                self::item('Галерея', '/gallery'),
-                $deals,
-                self::item('Гараж', '/garage'),
-            ];
+            return $list([self::item('Предложения', '/offers'), self::item('Галерея', '/gallery'), $chats, ...$deals(true, true)]);
         }
 
         // Уведомлений в разделах нет: колокольчик в шапке, лента и настройки — строкой кабинета.
         // Закупки на сайте скрыты (владелец 03.10.2026); галерея — свой раздел у всех авторизованных (08.10.2026).
         // На сайте «сотрудник» — админ (модератору сайт не нужен); админ, который ещё и менеджер, — менеджер (ветка выше).
-        // Админ — те же четыре раздела, что у менеджера: в «Сделках» и «Гараже» у него все, ведёт он их в CRM.
+        // Админ — те же разделы, что у менеджера: в «Сделках» и «Гараже» у него все, ведёт он их в CRM.
         if ($user?->isAdmin()) {
-            return [
-                self::item('Предложения', '/offers'),
-                self::item('Галерея', '/gallery'),
-                self::item('Сделки', '/deals'),
-                self::item('Гараж', '/garage'),
-            ];
+            return $list([self::item('Предложения', '/offers'), self::item('Галерея', '/gallery'), $chats, ...$deals(true, false)]);
         }
 
         // Супер-покупатель: предложения, галерея и свои сделки — покупателей нет, гараж — только по тумблеру (20.10.2026).
         if ($user?->isSuperBuyer()) {
-            return array_values(array_filter([self::item('Предложения', '/offers'), self::item('Галерея', '/gallery'), self::item('Сделки', '/deals'),
-                $user->canGarage() ? self::item('Гараж', '/garage') : null]));
+            return $list([self::item('Предложения', '/offers'), self::item('Галерея', '/gallery'), $chats, ...$deals($user->canGarage(), false)]);
         }
 
         // Проверяющий: только посмотреть предложения.
@@ -166,16 +164,17 @@ final class Nav
 
         // Покупатель: только то, что открыл менеджер, и его интерес.
         if ($user?->onlyGarage()) {
-            return [self::item('Гараж', '/garage')];
+            return $list([self::item('Гараж', '/garage'), $chats]);
         }
         if ($user?->isBuyer()) {
-            return array_values(array_filter([
+            // Четвёртый таб — «Гараж», кому его включили (тумблер в CRM, 20.10.2026: машины, что ему отдали), остальным —
+            // «Интерес»; с гаражом интерес — строкой кабинета (18.11.2026, владелец).
+            return $list([
                 self::item('Предложения', '/offers'),
                 self::item('Галерея', '/gallery'),
-                self::item('Интерес', '/account/interests'),
-                // Гараж покупателю — по тумблеру в CRM (20.10.2026): машины, что ему отдали.
-                $user->canGarage() ? self::item('Гараж', '/garage') : null,
-            ]));
+                $chats,
+                $user->canGarage() ? self::item('Гараж', '/garage') : self::item('Интерес', '/account/interests'),
+            ]);
         }
 
         if ($user?->isApproved()) {
@@ -356,7 +355,7 @@ final class Nav
             $links[] = self::link('Покупатели', '/account/buyers', icon: 'users');
         }
         if ($user->hasDeals()) {
-            // Сделки, покупатели и гараж — разделы таб-бара; в кабинете остаются деньги.
+            // Сделки, покупатели и гараж — раздел таб-бара; в кабинете остаются деньги.
             $links[] = self::link('Оплаты', '/account/money', also: ['/account/money/details'], icon: 'wallet');
             // Супер-покупатель оставляет интерес в галерее — его список здесь же (у менеджера интерес — в «Покупателях»).
             if ($user->isSuperBuyer()) {
@@ -378,10 +377,6 @@ final class Nav
             if (ContractDataController::opensFor($user)) {
                 $links[] = self::link('Данные для договора', '/account/contract', icon: 'file');
             }
-        }
-        // Сотруднику — чаты площадки здесь же, а не переадресацией в CRM: другой хост в приложении — встроенный браузер.
-        if ($user->canChat() || $user->isAdmin()) {
-            $links[] = self::link('Чаты', '/account/chats', icon: 'chat');
         }
         // Откуда показывать предложения (22.10.2026): менеджеру и супер-покупателю.
         if ($user->isManager() || $user->isSuperBuyer()) {
@@ -745,7 +740,7 @@ final class Nav
         }
         if ($user->canChat() || $user->isAdmin()) {
             // Свои чаты плюс чаты покупателей, где менеджер — вторая сторона; сотруднику — и площадки.
-            $badges['/account/chats'] = $user->unreadChats(platform: $surface === Surface::Crm);
+            $badges[Chat::ROOT] = $user->unreadChats(platform: $surface === Surface::Crm);
         }
 
         return array_filter($badges);
@@ -832,7 +827,8 @@ final class Nav
         $paths = array_column(self::sections($user, $surface), 'href');
         $paths[] = '/account/notifications';
         if ($surface === Surface::Site) {
-            $paths[] = '/account/chats';
+            $paths[] = Chat::ROOT;
+            $paths[] = '/garage';
             $paths[] = '/account/money';
             $paths[] = '/buyers';
             $paths[] = '/account/buyers';

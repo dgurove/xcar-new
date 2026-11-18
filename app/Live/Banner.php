@@ -41,7 +41,7 @@ final class Banner
      */
     public static function chat(string $from, string $text, string $href, ?User $author, int $chat, ?Surface $surface = null): array
     {
-        return self::make((string) Str::uuid(), $from, $text, $href, $author, 'chat', true, '/account/chats/'.$chat, $surface);
+        return self::make((string) Str::uuid(), $from, $text, $href, $author, 'chat', true, \App\Chats\Chat::subject($chat), $surface);
     }
 
     /** @return Payload */

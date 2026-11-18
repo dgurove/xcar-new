@@ -1,7 +1,7 @@
 {{-- Экран чата: шапка с собеседником, плашка ТС, лента и поле. Аватар и имя в шапке ведут к человеку:
      link — страница (менеджеру покупатель, сотруднику карточка в CRM), sheet — шторка-контакт
      (покупателю менеджер или площадка); status — подпись под именем вместо реального seen_at. --}}
-@props(['chat', 'messages', 'user', 'name', 'other' => null, 'offer' => null, 'back' => '/account/chats', 'open' => null, 'firstUnread' => 0, 'more' => false, 'readonly' => false, 'link' => null, 'sheet' => false, 'status' => false, 'chats' => null])
+@props(['chat', 'messages', 'user', 'name', 'other' => null, 'offer' => null, 'back' => \App\Chats\Chat::ROOT, 'open' => null, 'firstUnread' => 0, 'more' => false, 'readonly' => false, 'link' => null, 'sheet' => false, 'status' => false, 'chats' => null])
 @php
     $offer ??= $chat?->offer;
     // Машина ушла от человека (круг сузили, сделка, снята) — переписка остаётся, а цены и перехода к машине нет.

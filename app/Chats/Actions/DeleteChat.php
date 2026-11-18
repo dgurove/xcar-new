@@ -23,7 +23,7 @@ final class DeleteChat
         abort_if($chat->isBuyerChat(), 404);
         $paths = File::whereIn('message_id', $chat->messages()->select('id'))->pluck('path');
         $users = DB::transaction(function () use ($chat) {
-            $subject = '/account/chats/'.$chat->id;
+            $subject = Chat::subject($chat->id);
             $users = DB::table('notifications')->where('data->subject', $subject)->pluck('notifiable_id')->unique()->values()->all();
             DB::table('notifications')->where('data->subject', $subject)->delete();
             $chat->delete();

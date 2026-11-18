@@ -27,6 +27,33 @@ class Chat extends Model
     /** Как площадка называется собеседнику — в списке, баре чата, тосте и пуше. */
     public const PLATFORM = 'Администрация XCar';
 
+    /**
+     * Раздел «Чаты» сайта (18.11.2026, владелец: чаты — свой таб по центру). Прежние `/account/chats` и `/deals/chats`
+     * отвечают 301 (`Support\Paths::MOVED`). Адрес — только отсюда: буквального `/chats/…` в ссылках нет.
+     */
+    public const ROOT = '/chats';
+
+    /** Адрес списка чатов или экрана чата на сайте. */
+    public static function path(int|string|null $chat = null): string
+    {
+        return $chat === null ? self::ROOT : self::ROOT.'/'.$chat;
+    }
+
+    /** «Написать» по предложению: чат есть — его экран, нет — пустой экран с плашкой ТС (`Cabinet\ChatController::offer`). */
+    public static function offerPath(int|string $number): string
+    {
+        return self::ROOT.'/offer/'.$number;
+    }
+
+    /**
+     * Тема уведомлений о чате (карточки, строки ленты, «прочитано»). Это ключ, а не адрес: лежит в
+     * `notifications.data->subject` у старых строк, поэтому с переездом раздела не менялась.
+     */
+    public static function subject(int|string $chat): string
+    {
+        return '/account/chats/'.$chat;
+    }
+
     /** Токен гостя открытым текстом — только сразу после создания, для cookie. */
     public ?string $plainToken = null;
 

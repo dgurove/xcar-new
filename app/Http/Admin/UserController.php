@@ -288,7 +288,7 @@ class UserController
             'party' => $pill === 'money' ? Party::forUser($user, false) : null,
             // Сделки и машины гаража — те же строки, из которых сложены суммы в заголовке.
             'moneyDeals' => $ledger?->rows() ?? collect(),
-            'back' => $chat ? ['Чат', (Surface::current() === Surface::Crm ? '/work/chats/' : '/account/chats/').$chat->id] : null,
+            'back' => $chat ? ['Чат', Surface::current() === Surface::Crm ? '/work/chats/'.$chat->id : \App\Chats\Chat::path($chat->id)] : null,
             'chats' => $chats,
             'deals' => $deals,
             'buyersCount' => $user->isManager() ? $user->buyers()->count() : 0,

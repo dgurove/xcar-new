@@ -1,5 +1,5 @@
-{{-- Список чатов и открытый чат — общий кусок экрана чатов кабинета и «Сделок» (`cabinet.chats`). --}}
-    <div class="chat-split {{ $current ? 'has-current' : '' }}" data-controller="split">
+{{-- Список чатов и открытый чат — кусок экрана раздела «Чаты» сайта (`cabinet.chats`); сетка — как у «Чатов» CRM. --}}
+    <div class="chat-split chat-split-crm mt-4 {{ $current ? 'has-current' : '' }}" data-controller="split">
         <div class="chat-rows" id="chat-rows">
             <x-chat.list-head search="Имя, ТС, номер" :url="$base" :count="$chats->total() + ($support ? 1 : 0)" :q="$q ?? ''"/>
             <div class="chat-rows-body" id="chat-rows-body">

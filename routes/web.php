@@ -139,10 +139,12 @@ Route::middleware(['auth', 'wall'])->group(function () {
     // Сайтовое — не тем, у кого только парковка (управляющий в кабинете видит профиль и уведомления).
     Route::middleware('ability:usesSite')->group(function () {
         Route::get('/account/favorites', [ListsController::class, 'favorites']);
-        Route::get('/account/chats', [CabinetChatController::class, 'index']);
-        Route::get('/account/chats/offer/{offer}', [CabinetChatController::class, 'offer']);
-        Route::get('/account/chats/support', [CabinetChatController::class, 'support']);
-        Route::get('/account/chats/{chat}', [CabinetChatController::class, 'show']);
+        // Чаты — раздел таб-бара (18.11.2026; прежде `/account/chats` и пилюлей `/deals/chats` — оба 301, `Paths::MOVED`).
+        // Экран чата — только цифрами: `/chats/{id}/messages|files|typing` выше — лента, она открыта и гостю.
+        Route::get('/chats', [CabinetChatController::class, 'index']);
+        Route::get('/chats/offer/{offer}', [CabinetChatController::class, 'offer']);
+        Route::get('/chats/support', [CabinetChatController::class, 'support']);
+        Route::get('/chats/{chat}', [CabinetChatController::class, 'show'])->whereNumber('chat');
         Route::get('/account/interests', [ListsController::class, 'interests']);
         // Данные для договора у самого покупателя (19.10.2026).
         Route::get('/account/contract', [ContractDataController::class, 'show']);
@@ -191,13 +193,6 @@ Route::middleware(['auth', 'wall'])->group(function () {
 
     // Сделки — раздел таб-бара менеджеру и админу (админу все, ведёт он их в CRM; чужому 404 в контроллере).
     Route::get('/deals', [DealController::class, 'index']);
-    // Чаты — и в «Сделках» пилюлей (11.10.2026), тот же экран, что в кабинете.
-    Route::middleware('ability:usesSite')->group(function () {
-        Route::get('/deals/chats', [CabinetChatController::class, 'index']);
-        Route::get('/deals/chats/offer/{offer}', [CabinetChatController::class, 'offer']);
-        Route::get('/deals/chats/support', [CabinetChatController::class, 'support']);
-        Route::get('/deals/chats/{chat}', [CabinetChatController::class, 'show']);
-    });
     Route::get('/deals/{deal}', [DealController::class, 'show']);
 
     // Пользователи — админу тот же экран, что в CRM (чужому 404 в контроллере).

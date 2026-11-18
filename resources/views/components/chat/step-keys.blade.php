@@ -18,7 +18,7 @@
     <div class="msg-step">
         @if ($r->isOpen())
             @if ($here)
-                <x-deal.ask-action :ask="$ask" variant="keys" :back="'/deals/chats/'.$chat->id"/>
+                <x-deal.ask-action :ask="$ask" variant="keys" :back="\App\Chats\Chat::path($chat->id)"/>
             @elseif ($manager)
                 <x-ui.button :href="$deal->href().'#step'" variant="secondary" block>Открыть сделку</x-ui.button>
             @elseif ($labels->isNotEmpty())

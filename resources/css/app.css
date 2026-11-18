@@ -225,6 +225,8 @@
   --page-room: calc(var(--bottom-room) - var(--tabbar));
   --home-gap: var(--safe-bottom);
   --hairline: 1px;
+  /* Силуэт под кадром, пока он грузится (легковой; не открылся — силуэт своего типа ставит `lib/photo-fallback.js`). */
+  --blank-car: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 256 256%22%3E%3Cpath fill=%22%238e8e89%22 fill-opacity=%22.55%22 d=%22M240,112H211.31L168,68.69A15.86,15.86,0,0,0,156.69,64H44.28A16,16,0,0,0,31,71.12L1.34,115.56A8.07,8.07,0,0,0,0,120v48a16,16,0,0,0,16,16H33a32,32,0,0,0,62,0h66a32,32,0,0,0,62,0h17a16,16,0,0,0,16-16V128A16,16,0,0,0,240,112ZM44.28,80H156.69l32,32H23ZM64,192a16,16,0,1,1,16-16A16,16,0,0,1,64,192Zm128,0a16,16,0,1,1,16-16A16,16,0,0,1,192,192Z%22/%3E%3C/svg%3E");
 }
 @media (min-resolution: 2dppx) { :root { --hairline: .5px; } }
 /* Плашка действий на экране — та, у которой есть видимая кнопка (как в `.action-bar:not(:has(…))` у самой плашки):
@@ -247,11 +249,12 @@ html.kb-open { --home-gap: 0px; }
 @media (max-width: 1023.98px) {
   /* Лист документов снизу: плашка действий — на нём, страница докручивается выше него. */
   html.docs-open { --bottom-edge: var(--docs-h); --bottom-room: calc(var(--docs-h) + 1rem + var(--action) * var(--spacing-action)); }
-  /* Экран чата — поле ввода на нижнем краю, таб-бара нет, страница не листается. */
-  /* `chat-open` у body ставит сервер (`x-chat.screen`, `x-telegram.dialog`), а не `:has(.chat-page)` — тот пересчитывал стили
-     на каждую вставку узла (29.10.2026). Переменные считались у корня — здесь те же, что вышли бы там. */
-  body.chat-open { --tabbar: 0px; --bottom-room: 0px; --page-room: 0px; }
-  html:not(.docs-open) body.chat-open { --bottom-edge: 0px; }
+  /* Экран чата — поле ввода над таб-баром, страница не листается. Таб-бар в чате остаётся (18.11.2026, владелец: «в открытом
+     чате не убирал бы нижний тулбар — написать в чате, переключиться в предложения или сделки, нажать на чаты и вернуться
+     туда же»; до того чат занимал весь экран и обнулял `--tabbar`, `--bottom-room`, `--bottom-edge`).
+     `chat-open` у body ставит сервер (`x-chat.screen`, `x-telegram.dialog`), а не `:has(.chat-page)` — тот пересчитывал стили
+     на каждую вставку узла (29.10.2026). */
+  body.chat-open { --page-room: 0px; }
 }
 
 /* Тёмная тема — ступени тёмной iOS: фон чёрный, группа светлее фона (#1c1c1e), внутри группы и в шторке —
@@ -423,8 +426,16 @@ html.kb-open { --home-gap: 0px; }
     .surface-crm .container-site .chat-rows-list:not(dialog *, #detail *),
     .surface-crm .container-site .cards--list:not(dialog *, #detail *),
     .surface-crm .container-site .inbox-list { margin-inline: -1rem; }
+    /* Сайт — так же (18.11.2026, владелец: «хочу сделать xcar побольше похожим на CRM — блоки на телефоне тоже от края до края»). */
+    .surface-site .container-site .box:not(dialog *, #detail *, .box *, .list *),
+    .surface-site .container-site .list:not(dialog *, #detail *, .box *, .list *),
+    .surface-site .container-site .chat-rows-list:not(dialog *, #detail *),
+    .surface-site .container-site .cards--list:not(dialog *, #detail *) { margin-inline: -1rem; }
+    .surface-site .container-site .cards--list:not(dialog *, #detail *) { --sep-l: calc(1rem + var(--media-w) + .625rem); --sep-r: 1rem; }
+    .surface-site .container-site .cards--list:not(dialog *, #detail *) > .card { padding-inline: 1rem; }
     /* Поиск чатов — во всю ширину, как список под ним (17.11.2026, владелец: «растяни ещё поиск в чатах»). */
     .surface-crm .chat-split-crm .chat-list-head .toolbar-search { margin-inline: -1rem; }
+    .surface-site .chat-split-crm .chat-list-head .toolbar-search { margin-inline: -1rem; }
     /* Строки-карточки («Списком»): миниатюра и полоса — от поля экрана, а не в 8 px от края. */
     .surface-crm .container-site .cards--list:not(dialog *, #detail *) { --sep-l: calc(1rem + var(--media-w) + .625rem); --sep-r: 1rem; }
     .surface-crm .container-site .cards--list:not(dialog *, #detail *) > .card { padding-inline: 1rem; }
@@ -1406,6 +1417,9 @@ html.kb-open { --home-gap: 0px; }
   @media (min-width: 640px) { .big-tabs { gap: 1.5rem; font-size: var(--text-2xl); } }
   .big-tab .tab-wheel-badge { background: color-mix(in srgb, var(--color-ink-muted) 22%, transparent); color: var(--color-ink-muted); font-weight: 600; }
   .big-tab .tab-wheel-badge.big-tab-todo { background: var(--color-danger); color: #fff; }
+  /* Живой счётчик у заголовка (`live` у `x-ui.big-tabs`: «Сделки | Гараж | Покупатели» сайта) — число приходит потоком бейджей
+     голым `.badge`, поэтому вид — от обёртки, а не от своих классов; всегда красный: это дела человека. */
+  .big-tab > [data-badge] > .badge { margin-inline-start: .35em; font-size: .5em; line-height: 1.5; padding-inline: .45em; min-width: 1.5em; vertical-align: .35em; letter-spacing: 0; background: var(--color-danger); color: #fff; font-weight: 600; }
   .tab-wheel-badge { margin-inline-start: .35em; font-size: .5em; line-height: 1.5; padding-inline: .45em; min-width: 1.5em; vertical-align: .35em; letter-spacing: 0; }
   .table-group.is-ours .table-group-name { color: var(--color-accent-text); }
   .table-group.is-danger .table-group-name { color: var(--color-danger); }
@@ -4399,11 +4413,11 @@ html.kb-open { --home-gap: 0px; }
     border-top: var(--hairline) solid var(--color-hairline);
   }
   @media (min-width: 768px) { .tabbar { display: none; } }
-  /* Таб-бар на экране — лист строки стоит над ним (`--tabbar-edge`). Его нет у поставщика, на экране чата и под клавиатурой.
+  /* Таб-бар на экране — лист строки стоит над ним (`--tabbar-edge`). Его нет у поставщика и под клавиатурой (в чате есть, 18.11.2026).
      Над листом таб-бар и в движении листа: уезжающий вниз лист проходит под ним, а не по нему. */
   @media (max-width: 767.98px) {
     body.app-shell { --tabbar-edge: var(--tabbar); }
-    body.app-shell.chat-open, body.app-shell.surface-partner, html.kb-open body.app-shell { --tabbar-edge: 0px; }
+    body.app-shell.surface-partner, html.kb-open body.app-shell { --tabbar-edge: 0px; }
     html.detail-open .tabbar { z-index: calc(var(--z-panel) + 1); }
   }
   /* Клавиатура стоит — бара нет, без движения: на iOS он и так под ней (visibility — колонка не пересчитывается, длинный
@@ -4455,6 +4469,11 @@ html.kb-open { --home-gap: 0px; }
      раздел заходят», «красные, но не вырвиглазно», «в шапке на компьютере тоже»): таб-бар и шапка — токен красного. */
   .surface-crm .tabbar .badge, .surface-crm .tabbar .tab[aria-current="page"] .badge,
   .surface-crm .header .badge, .surface-crm .header [aria-current="page"] .badge { background: var(--color-danger); color: #fff; }
+  /* Сайт — так же, и не только в таб-баре и шапке (18.11.2026, владелец: «счётчики тоже красные сделай, а не зелёные, в xcar,
+     как в CRM»): любой счётчик «ждёт тебя» — красный: таб-бар, шапка, заголовки раздела, строки кабинета, чаты, кнопки. Лайм
+     остаётся глаголом (кнопки) и выбранным (капсула текущего раздела, пилюля). На выбранной пилюле — белый с красной цифрой. */
+  .surface-site .badge, .surface-site .tabbar .tab[aria-current="page"] .badge, .surface-site .header [aria-current="page"] .badge { background: var(--color-danger); color: #fff; }
+  .surface-site .pill[aria-current="true"] .badge, .surface-site .pill[aria-current="page"] .badge { background: #fff; color: var(--color-danger); }
   /* «Горит» — сама красная кнопка: её счётчик белый с красным, как был. */
   .surface-crm .header .alarm-btn .alarm-badge { background: #fff; color: var(--color-danger); }
 }
@@ -4780,6 +4799,12 @@ html.kb-open { --home-gap: 0px; }
   /* Кадр появляется плавно, а не выскакивает: is-loading ставит app.js до события load. */
   .photo-cell img, [data-gallery-target="strip"] img { transition: opacity var(--dur-fast) ease-out; }
   img.is-loading { opacity: 0; }
+  /* Битых значков не бывает (18.11.2026, владелец; `lib/photo-fallback.js`): кадр не открылся — картинка показывает силуэт
+     типа ТС (data-адрес) на мягком фоне; пока кадр грузится — тот же силуэт фоном коробки, кадр проявляется поверх. */
+  img.is-blank { object-fit: contain !important; background-color: var(--color-surface-3); transform: none !important; opacity: 1; }
+  .card-strip, .row-photo, .detail-photo, .photo-cell, .chat-car-photo, .chat-row-photo > img {
+    background-image: var(--blank-car); background-position: center; background-repeat: no-repeat; background-size: 42% auto;
+  }
   @media (hover: hover) { .card:hover .card-media img { transform: scale(1.05); } }
   .card-media--blank { display: var(--blank-display); height: var(--blank-h); }
   /* Заглушка вместо фото: силуэт на мягком фоне, цвет окон — фон. */
@@ -5685,7 +5710,8 @@ dialog.lightbox:not(.lb-one) .lb-pill--bottom { bottom: calc(var(--lb-strip-bott
   /* Экран: бар собеседника, полоска ТС, лента. */
   .chat-page { display: flex; flex-direction: column; min-height: 0; }
   .chat-head { display: flex; flex-shrink: 0; align-items: center; gap: .625rem; min-height: 3.5rem; padding: .375rem .75rem; border-bottom: 1px solid var(--color-line); background: var(--color-bar); }
-  .chat-back { display: none; width: 2.25rem; height: 2.25rem; margin-left: -.25rem; }
+  /* «‹» чата — та же кнопка, что в шапке оболочки (`header-btn header-sq`), только на телефоне (на ПК список рядом). */
+  .chat-back { display: none; }
   .chat-who { display: flex; flex: 1; align-items: center; gap: .625rem; min-width: 0; margin: -.25rem -.375rem; padding: .25rem .375rem; border-radius: var(--radius-m); color: inherit; text-align: left; text-decoration: none; }
   a.chat-who:hover, button.chat-who:hover { background: var(--color-hover); }
   .chat-car { display: flex; flex-shrink: 0; align-items: center; gap: .625rem; min-height: 2.75rem; padding: .375rem .75rem; border-bottom: 1px solid var(--color-line); background: var(--color-surface-2); color: var(--color-ink); }
@@ -5703,24 +5729,30 @@ dialog.lightbox:not(.lb-one) .lb-pill--bottom { bottom: calc(var(--lb-strip-bott
   .typing-dots i:nth-child(3) { animation-delay: .4s; }
   @keyframes typing-dot { 0%, 60%, 100% { opacity: .25; } 30% { opacity: 1; } }
 
-  /* Телефон: экран чата — экран приложения. Шапки сайта, таб-бара, подвала и пилюль нет,
-     бар собеседника стоит на safe-area, бар поля садится на клавиатуру (--kb). */
+  /* Телефон: экран чата — экран приложения. Шапки сайта, подвала и пилюль нет: бар собеседника стоит на месте шапки (той же
+     высоты, с той же квадратной «‹» на том же месте), бар поля — над таб-баром, а с клавиатурой садится на неё (--kb).
+     Таб-бар остаётся (18.11.2026): высота экрана — до него, под клавиатурой он и так спрятан (`--tabbar-edge` тогда 0). */
   @media (max-width: 1023.98px) {
-    body.chat-open .header, body.chat-open .tabbar, body.chat-open .footer,
+    body.chat-open .header, body.chat-open .footer,
     body.chat-open nav:has(> .cabinet-pills), body.chat-open .chat-crm-top { display: none; }
     /* Ряд h1 кабинета: имя собеседника и так в баре чата. flex у него утилитой — снимается только !important. */
     body.chat-open #main > .container-site > .has-back { display: none !important; }
     /* Отступы контейнера — утилиты (слой выше): здесь их снимает !important. */
     body.chat-open #main > .container-site { max-width: none; padding: 0 !important; }
     body.chat-open .turbo-progress-bar { top: var(--safe-top); }
-    /* Отступ сетки (mt-6 утилитой) экрану чата не нужен (запаса под таб-бар нет — --bottom-room): поле ввода — на нижнем
-       краю, страница не листается. */
+    /* Отступ сетки (mt-6 утилитой) экрану чата не нужен: поле ввода — у нижнего края, страница не листается. */
     body.chat-open .chat-split { margin-top: 0 !important; }
-    .chat-page { height: calc(100dvh - var(--kb, 0px)); }
-    .chat-head { padding-top: calc(.375rem + var(--safe-top)); }
+    .chat-page { height: calc(100dvh - max(var(--kb, 0px), var(--tabbar-edge, 0px))); }
+    /* Бар собеседника — в размерах шапки оболочки (`ui/header`: поля 1rem, py-2, квадрат 2.5rem): «‹» стоит ровно там же,
+       где на остальных экранах (18.11.2026, владелец: «кнопка назад из квадратной превращается в круглую — это должна быть
+       одна кнопка»). */
+    .chat-head { min-height: 0; padding: calc(.5rem + var(--safe-top)) 1rem .5rem; }
     .chat-back { display: inline-flex; }
+    /* Под полем — таб-бар, полосы «Домой» под ним нет; таб-бара нет (планшет) или клавиатура — как было. */
+    .chat-screen { --home-gap: max(0px, calc(var(--safe-bottom) - var(--tabbar-edge, 0px))); }
+    html.kb-open .chat-screen { --home-gap: 0px; }
     .chat-screen .chat-bar { padding-bottom: max(var(--home-gap), .5rem); }
-    .chat-screen[data-chat-readonly-value="true"] .chat-list { padding-bottom: max(var(--safe-bottom), .75rem); }
+    .chat-screen[data-chat-readonly-value="true"] .chat-list { padding-bottom: max(var(--home-gap), .75rem); }
   }
 
   /* Список чатов: панель строк с волосяными линиями; открытая строка — лаймовым.
@@ -5835,6 +5867,10 @@ dialog.lightbox:not(.lb-one) .lb-pill--bottom { bottom: calc(var(--lb-strip-bott
   .row-ask { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: .5rem; padding: 0 1rem .75rem calc(1rem + 4.5rem + .75rem); margin-top: -.375rem; }
   .row-ask .ask-action-form { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: .5rem; }
   @media (max-width: 639px) { .row-ask { padding-inline-start: calc(1rem + 3.5rem + .75rem); } }
+  /* Кнопка дела в строке таблицы «Сделок» сайта (`x-deal.site-table-row`, 18.11.2026): на ПК — своим столбцом справа, на
+     телефоне — своей строкой под названием и фактом, у правого края. */
+  .row-ask.row-ask--cell { padding: 0; margin-top: 0; flex-wrap: nowrap; }
+  @media (max-width: 639.98px) { .row-ask.row-ask--cell { margin-top: .5rem; margin-bottom: .125rem; } }
   /* «Ждут вас» на «Предложениях» (`x-deal.ask-card`): кадр с названием и ценой, что сделать и срок, кнопка внизу. */
   .ask-card { display: flex; flex-direction: column; gap: .75rem; height: 100%; padding: .875rem; border-radius: 16px; background: var(--color-surface); }
   .ask-card-head { display: flex; align-items: center; gap: .75rem; min-width: 0; }
@@ -5842,7 +5878,7 @@ dialog.lightbox:not(.lb-one) .lb-pill--bottom { bottom: calc(var(--lb-strip-bott
   .ask-card-task { display: block; flex: 1 1 auto; }
   .ask-card .ask-action, .ask-card .ask-action-form { display: grid; gap: .25rem; margin-top: auto; }
   /* Вопрос при входе (`x-deal.ask-sheet`): машина строкой, вопрос, кнопки шага во всю ширину. */
-  .ask-sheet-car { display: flex; align-items: center; gap: .75rem; min-width: 0; }
+  .ask-sheet-car { display: flex; align-items: center; gap: .75rem; min-width: 0; padding: .625rem .75rem; border-radius: var(--radius-m); background: var(--color-surface-2); }
   .ask-action--sheet, .ask-action--sheet .ask-action-form { display: grid; gap: .5rem; }
   .msg-author { margin-bottom: .125rem; font-size: 12px; font-weight: 500; color: var(--color-accent-text); }
   /* Время и галочки сидят на последней строке текста: мета в углу, у текста невидимая распорка под неё. */

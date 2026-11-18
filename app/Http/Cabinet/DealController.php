@@ -31,8 +31,13 @@ use App\Offers\Parallels;
 use App\Offers\Signing;
 use App\Support\Ago;
 use App\Support\ListPrefs;
+use App\Support\ListView;
+use App\Support\Portion;
 use App\Support\SafeBack;
 use App\Support\Sort;
+use App\Support\Table\Table;
+use App\Support\Table\ColRole;
+use App\Support\Table\Column;
 use App\Users\Actions\AddPerson;
 use App\Users\Actions\IssueInvite;
 use App\Users\User;
@@ -84,17 +89,44 @@ class DealController
             ->orderByRaw("case when {$turn} then 0 else 1 end")
             ->orderByRaw('(select min(r.due_at) from requirements r where r.deal_id = deals.id and r.done_at is null) asc nulls last')
             ->when($sort->key === 'amount', fn ($d) => $d->orderByRaw("coalesce(amount, cost) {$sort->dir()} nulls last"))->orderBy('created_at', $sort->key === 'fresh' ? $sort->dir() : 'desc')->orderByDesc('id');
-        // Админу — все сделки площадки строками, постранично; менеджеру — свои разделами «чей ход» одной страницей.
+        // По умолчанию — таблицей, как в CRM (18.11.2026, владелец: «сделки и гараж — по умолчанию вид табличный»), строками —
+        // пунктом меню вида. Страниц нет ни у кого (тот же день: «всегда бесконечная подгружающаяся лента»).
+        // Админу — все сделки площадки одной таблицей, порциями по сотне при листании (`Portion`; были страницы по 30).
+        // Менеджеру — свои разделами «чей ход» целиком: раздел считается в памяти (`managerTask`, `waitsForManager`), и порция
+        // соврала бы — выражение запроса `MANAGER_TURN_SQL` шире «Вашего хода» (гаражная без просьбы, оплаченные счета); списки
+        // малы — до сотни строк у самого занятого.
         $staff = $me->isAdmin() && ! $me->isManager();
-        $deals = $staff ? $deals->paginate(30) : $deals->get()->each(fn (Deal $d) => Parallels::dress($d->loadMissing('shadowStage')));
-        $sections = $staff ? null : self::sections($deals);
+        $view = $staff || ListView::fromRequest($request) !== ListView::LIST ? ListView::TABLE : ListView::LIST;
+        $deals = $staff ? Portion::of($request, $deals, (clone $deals)->count()) : $deals->get()->each(fn (Deal $d) => Parallels::dress($d->loadMissing('shadowStage')));
+        // Задача менеджера — один раз на сделку: её берут и разделы, и строка (раньше строка считала заново).
+        $tasks = $staff ? collect() : $deals->mapWithKeys(fn (Deal $d) => [$d->id => $d->managerTask()]);
+        $sections = $staff ? null : self::sections($deals, $tasks);
 
         // Админ подтверждения решает в CRM — строки «Мои подтверждения» и «Ждут решения» у него нет.
         $bids = $me->hasDeals() ? self::waiting($me)->count() : 0;
         $pending = $me->hasDeals() ? self::pending($me)->get()->sortByDesc(fn (Bid $b) => $b->offer->bids_close_at?->getTimestamp())->values() : collect();
         $archived = self::deals($me)->whereNotNull('deals.closed_at')->notSuperseded()->count();
 
-        return view('cabinet.deals.index', ['deals' => $deals, 'sections' => $sections, 'pending' => $pending, 'bids' => $bids, 'archived' => $archived, 'sort' => $sort]);
+        return view('cabinet.deals.index', ['deals' => $deals, 'sections' => $sections, 'tasks' => $tasks, 'pending' => $pending, 'bids' => $bids, 'archived' => $archived,
+            'sort' => $sort, 'view' => $view, 'table' => self::table($staff)]);
+    }
+
+    /**
+     * Таблица сделок сайта — одно описание на шапку, строки (`x-deal.site-table-row`) и заголовки разделов (18.11.2026).
+     * Слева название и что сейчас одним фактом (дело менеджера зелёным, чужой ход — кого ждём серым, просрочено — красным);
+     * справа — чья (админу), сумма, срок числом и кнопка дела самой правой. На телефоне — название с суммой концом строки,
+     * под ним факт со сроком, кнопка дела — своей строкой под ними (строка без кнопки справа).
+     */
+    public static function table(bool $staff): Table
+    {
+        return Table::of(
+            new Column('title', 'Марка, модель', grow: true),
+            new Column('state', 'Что сейчас', from: 'sm', role: ColRole::State, rem: 14),
+            $staff ? new Column('manager', 'Менеджер', from: 'md', role: ColRole::Who, rem: 8) : null,
+            new Column('amount', 'Сумма', from: 'sm', num: true, sort: 'amount', cell: 'nums', rem: 7),
+            new Column('term', 'Срок', from: 'sm', cell: 'nums', role: ColRole::When, rem: 6),
+            $staff ? null : new Column('action', from: 'sm', role: ColRole::When, rem: 10),
+        );
     }
 
     /**
@@ -103,9 +135,8 @@ class DealController
      *
      * @return array<string, array{title: string, deals: Collection}>
      */
-    private static function sections($deals): array
+    private static function sections($deals, Collection $tasks): array
     {
-        $tasks = $deals->mapWithKeys(fn (Deal $d) => [$d->id => $d->managerTask()]);
         [$mine, $rest] = $deals->partition(fn (Deal $d) => $tasks[$d->id] !== null);
         $mine = $mine->sortBy(fn (Deal $d) => $tasks[$d->id]['due']?->getTimestamp() ?? PHP_INT_MAX)->values();
         // Гаражная, где ход его без просьбы, — продаёт из гаража: своим разделом, а не «Идёт сделка».

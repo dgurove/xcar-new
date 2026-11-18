@@ -1,13 +1,15 @@
 {{-- Картинка оффера под srcset; без фото — заглушка. --}}
-@props(['media', 'sizes' => '(min-width: 768px) 33vw, 100vw', 'eager' => false, 'single' => false])
+@props(['media', 'sizes' => '(min-width: 768px) 33vw, 100vw', 'eager' => false, 'single' => false, 'cat' => null])
 {{-- eager — первые кадры экрана: без lazy и с высоким приоритетом, чтобы список с фото появлялся раньше.
      single — кадр плитки за первым (до него листают): один адрес w960 вместо srcset из пяти — его и берёт телефон
-     (`MediaUrl::sizes`), а каталог в двести плиток по шесть кадров был 2 МБ разметки (16.10.2026). --}}
+     (`MediaUrl::sizes`), а каталог в двести плиток по шесть кадров был 2 МБ разметки (16.10.2026).
+     cat — значок типа ТС (`Cars\Category::icon()`, «cat-truck»): силуэт заглушки, когда фото нет или оно не открылось
+     (`lib/photo-fallback.js` по `data-photo` и `data-cat`; 18.11.2026 — битых значков не бывает). Без него — легковой. --}}
 @if ($media && $single)
-    <img src="{{ \App\Media\MediaUrl::for($media, 'w960') }}" alt="" loading="lazy" decoding="async" {{ $attributes }}>
+    <img src="{{ \App\Media\MediaUrl::for($media, 'w960') }}" alt="" loading="lazy" decoding="async" data-photo @if ($cat) data-cat="{{ $cat }}" @endif {{ $attributes }}>
 @elseif ($media)
     <img src="{{ \App\Media\MediaUrl::for($media, 'w640') }}" srcset="{{ \App\Media\MediaUrl::srcset($media) }}" sizes="{{ \App\Media\MediaUrl::sizes($sizes) }}"
-         alt="" @if (!$eager) loading="lazy" @else fetchpriority="high" @endif decoding="async" {{ $attributes }}>
+         alt="" @if (!$eager) loading="lazy" @else fetchpriority="high" @endif decoding="async" data-photo @if ($cat) data-cat="{{ $cat }}" @endif {{ $attributes }}>
 @else
-    <x-ui.car-blank {{ $attributes }}/>
+    <x-ui.car-blank :icon="$cat" {{ $attributes }}/>
 @endif

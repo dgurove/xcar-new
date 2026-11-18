@@ -27,7 +27,7 @@
     // сроки — счётчиками, не датами (17.11.2026, владелец: «не „с dd.mm“, а сколько прошло или сколько осталось»).
     // справа только сумма: кого ждём, говорит раздел.
     $sectioned = ($sectioned ?? false) && $active;
-    $task = $sectioned ? $deal->managerTask() : null;
+    $task = $sectioned ? (isset($tasks) && $tasks->has($deal->id) ? $tasks[$deal->id] : $deal->managerTask()) : null;
     // «Ваш ход» — с кнопкой ответа прямо в строке (10.11.2026, владелец: «как им понятнее и удобнее»): «Беру в работу»,
     // «Автомобиль забрал» — сразу, остальное — ссылкой на шаг с подписью, что там сделать (`x-deal.ask-action`).
     $rowAsk = $task && ! $staff ? \App\Offers\ManagerAsk::for($deal) : null;

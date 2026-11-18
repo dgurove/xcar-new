@@ -271,7 +271,11 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
         Route::get('/work/chats/{chat}', [ChatController::class, 'show']);
         Route::post('/work/chats/offer/{offer}/{user}', [ChatController::class, 'start']);
         Route::delete('/work/chats/{chat}', [ChatController::class, 'destroy']);
-        Route::get('/account/chats', fn () => redirect('/work/chats'));
+        // Сайтовый адрес чатов (`Chat::path`, уведомления и тосты без хоста; старый `/account/chats` сюда же приводит
+        // `Paths::MOVED`) — на CRM это «Чаты» в работе. Только корень и экран чата: `/chats/{id}/messages|files|typing`
+        // из web.php должны дойти до ленты.
+        Route::get('/chats', fn () => redirect('/work/chats'.(request()->getQueryString() ? '?'.request()->getQueryString() : ''), 301));
+        Route::get('/chats/{chat}', fn (int $chat) => redirect("/work/chats/{$chat}", 301))->whereNumber('chat');
     });
 
     Route::middleware('ability:canManageCrm')->group(function () {
@@ -391,11 +395,6 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
         Route::get('/gallery', [GalleryController::class, 'index']);
         // Старые адреса разделов — закладки и ссылки из уведомлений.
         Route::get('/deals', fn () => redirect('/work/deals', 301));
-        // Только корень и экран чата: `/chats/{id}/messages|files|typing` из web.php должны дойти до ленты.
-        Route::get('/chats', fn () => redirect('/work/chats'.(request()->getQueryString() ? '?'.request()->getQueryString() : ''), 301));
-        Route::get('/chats/{chat}', fn (int $chat) => redirect("/work/chats/{$chat}", 301))->whereNumber('chat');
-        // Уведомления и тосты зовут на экран кабинета без хоста — на CRM это «Чаты» в работе.
-        Route::get('/account/chats/{chat}', fn (int $chat) => redirect("/work/chats/{$chat}"))->whereNumber('chat');
 
         Route::get('/purchases', [PurchaseController::class, 'index']);
         Route::post('/purchases', [PurchaseController::class, 'store']);

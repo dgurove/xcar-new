@@ -122,7 +122,7 @@ class BuyerController
         $chat = $request->integer('chat') ? Chat::whereKey($request->integer('chat'))->where('user_id', $user->id)->where('manager_id', $me->id)->first() : null;
 
         return view('cabinet.buyers.show', [
-            'back' => $chat ? ['Чат', '/deals/chats/'.$chat->id] : null,
+            'back' => $chat ? ['Чат', \App\Chats\Chat::path($chat->id)] : null,
             'buyer' => $user,
             'groups' => $me->ownGroups,
             'offers' => $offers,

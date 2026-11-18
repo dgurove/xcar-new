@@ -10,7 +10,7 @@
 <turbo-frame id="deal-chat" data-controller="reload" data-reload-url-value="/deals/{{ $deal->id }}/chat" data-action="live:chat@document->reload#load">
     {{-- Что это чат — видно сразу (владелец: «непонятно, что это чат» при знаке XCar и «Администрация XCar»): значок
          пузыря, «Чат с XCar», под ним последнее сообщение или «Написать сообщение». --}}
-    <a href="/account/chats/offer/{{ $offer->number }}" target="_top" class="box deal-chat">
+    <a href="{{ \App\Chats\Chat::offerPath($offer->number) }}" target="_top" class="box deal-chat">
         <x-chat.card-body :chat="$chat" title="Чат с XCar" :unread="$unread"/>
     </a>
 </turbo-frame>

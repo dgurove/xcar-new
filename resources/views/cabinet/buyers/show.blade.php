@@ -201,7 +201,7 @@
             <h2 class="list-head">Чаты</h2>
             <div class="list">
                 @foreach ($chats as $chat)
-                    <x-chat.row :chat="$chat" :me="auth()->user()" :href="'/deals/chats/'.$chat->id"/>
+                    <x-chat.row :chat="$chat" :me="auth()->user()" :href="\App\Chats\Chat::path($chat->id)"/>
                 @endforeach
             </div>
         </section>
