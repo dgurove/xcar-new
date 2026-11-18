@@ -82,12 +82,10 @@
                         @include('site.catalog-empty')
                         @endif
                     @else
-                    <div id="catalog" data-list="{{ $gallery ? 'gallery' : 'catalog' }}" data-prepend="{{ ! $groups && $sort === '-published' ? 'true' : 'false' }}" class="cards cards--grid" data-controller="ticker" @if ($selecting) data-selection-target="list" data-action="click->selection#tap:capture change->selection#change" @endif>
+                    <div id="catalog" data-list="{{ $gallery ? 'gallery' : 'catalog' }}" data-prepend="{{ ! $groups && $sort === '-published' ? 'true' : 'false' }}" class="cards cards--grid" data-controller="ticker endless" @if ($selecting) data-selection-target="list" data-action="click->selection#tap:capture change->selection#change" @endif>
                         @if ($urgent->isNotEmpty())<div id="catalog-urgent" class="contents">@foreach ($urgent as $offer)<x-offer.card :offer="$offer" :context="$context"/>@endforeach</div>@endif
                         @if ($exclusive->isNotEmpty())<div id="catalog-only" class="contents">@foreach ($exclusive as $offer)<x-offer.card :offer="$offer" :context="$context" only/>@endforeach</div>@endif
-                        @foreach ($offers as $offer)
-                            <x-offer.card :offer="$offer" :context="$context"/>
-                        @endforeach
+                        @include('site.catalog-part', ['before' => null])
                         @if ($estimated->isNotEmpty())<div id="catalog-estimated" class="contents">@foreach ($estimated as $offer)<x-offer.card :offer="$offer" :estimate="$offer->openEstimates->first()"/>@endforeach</div>@endif
                     </div>
                     <div class="mt-10"><x-ui.pager :of="$offers" :sizes="\App\Support\ListView::perSizes($view)"/></div>
@@ -175,13 +173,9 @@
                         @endforeach
                     </div>
                     @else
-                    <div id="catalog" data-list="{{ $gallery ? 'gallery' : 'catalog' }}" data-prepend="{{ ! $groups && $sort === '-published' ? 'true' : 'false' }}" class="{{ \App\Support\ListView::containerClass($view) }}" data-controller="ticker" @if ($selecting) data-selection-target="list" data-action="click->selection#tap:capture change->selection#change" @endif>
+                    <div id="catalog" data-list="{{ $gallery ? 'gallery' : 'catalog' }}" data-prepend="{{ ! $groups && $sort === '-published' ? 'true' : 'false' }}" class="{{ \App\Support\ListView::containerClass($view) }}" data-controller="ticker endless" @if ($selecting) data-selection-target="list" data-action="click->selection#tap:capture change->selection#change" @endif>
                         {{-- По сроку — подписью над каждой пачкой слота («До 17:00 сегодня»), владелец 10.10.2026. --}}
-                        @php $group = null; @endphp
-                        @foreach ($offers as $offer)
-                            @if ($groups && $group !== ($label = \App\Offers\CloseGroups::label($offer, $gallery)))@php $group = $label; @endphp<h2 class="cards-group">{{ $label }} <span class="nums">{{ $groupSizes[$label] ?? '' }}</span></h2>@endif
-                            <x-offer.card :offer="$offer" :context="$context"/>
-                        @endforeach
+                        @include('site.catalog-part', ['before' => null])
                     </div>
                     @endif
                     @include('site.catalog-estimated')

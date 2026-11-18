@@ -91,10 +91,11 @@ final class ListView
      * Постраничка карточного списка: сколько на странице зависит от вида, а вид без выбора —
      * от длины (pick), поэтому счёт идёт до paginate. Шаблон берёт вид тем же pick по total().
      * Таблица — порциями (`Portion`): первая сотня, дальше при листании.
+     * parts — страница плиток приходит порциями, остальное догружается при листании (`PagePart`, 18.11.2026).
      * whole — весь список одной страницей: плитки пачками лентами (x-ui.shelf) — пачку страница не рвёт; таблица, у которой
      * порция соврёт, — сортировка в памяти (честна только на всём списке) или «Выбрать все» галками (выбрало бы одну порцию).
      */
-    public static function paginate(Request $request, Builder|Relation $q, ?int $count = null, bool $whole = false): LengthAwarePaginator
+    public static function paginate(Request $request, Builder|Relation $q, ?int $count = null, bool $whole = false, bool $parts = false): LengthAwarePaginator
     {
         // Число уже посчитано — второй раз его не считает и сама постраничка (`total:`).
         $count ??= $q->count();
@@ -103,6 +104,10 @@ final class ListView
             return Portion::of($request, $q, $count);
         }
         $per = self::isTable($view) || $whole ? max($count, 1) : self::perPage($request, self::perSizes($view));
+        // parts — страница плиток порциями (`PagePart`): список сам рисует хвост догрузки (сайт: `site/catalog-part`).
+        if ($parts && ! $whole && ! self::isTable($view) && $per > PagePart::CHUNK) {
+            return PagePart::of($request, $q, $count, $per);
+        }
 
         return $q->paginate($per, total: $count)->withQueryString();
     }

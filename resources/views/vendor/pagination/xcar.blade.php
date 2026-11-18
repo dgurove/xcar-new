@@ -5,7 +5,8 @@
 @php
     $sizes ??= [];
     $choice = $sizes && $paginator->total() > min($sizes);
-    $query = array_diff_key(request()->query(), ['page' => 1, \App\Support\ListView::PER => 1]);
+    // Без `rows`: сколько плиток догружено — счёт одной страницы и одного «по N» (`PagePart`).
+    $query = array_diff_key(request()->query(), ['page' => 1, \App\Support\ListView::PER => 1, \App\Support\Portion::ROWS => 1, \App\Support\Portion::PART => 1]);
 @endphp
 @if ($paginator->hasPages() || $choice)
     <nav role="navigation" aria-label="Постраничная навигация" class="flex flex-wrap items-center gap-3" data-pages>

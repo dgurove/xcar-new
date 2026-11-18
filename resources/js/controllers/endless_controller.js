@@ -61,7 +61,17 @@ export default class extends Controller {
     append(tail, html) {
         const box = document.createElement('div');
         box.innerHTML = html;
+        const rows = tail.dataset.rowsNext;
         tail.replaceWith(...box.childNodes);
+        // Страница плиток порциями (`PagePart`): сколько плиток уже есть — в адрес (`rows=`), как у таблицы; перечитывание,
+        // «Назад» и живое обновление нарисуют столько же, отметка «лента длиннее» не нужна.
+        if (rows) {
+            const url = new URL(location.href);
+            url.searchParams.set('rows', rows);
+            setAddress(url);
+            this.dispatch('appended');
+            return;
+        }
         // Лента длиннее первой порции: перечитывание страницы (возврат, живое обновление) принесло бы одну первую —
         // догруженное пропало бы, прокрутка прыгнула (app.js freshness, live.js).
         this.element.dataset.extended = '';

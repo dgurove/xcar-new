@@ -5506,6 +5506,8 @@ dialog.lightbox:not(.lb-one) .lb-pill--bottom { bottom: calc(var(--lb-strip-bott
 
   /* Карточки за экраном не раскладываются и не рисуются; auto помнит высоту,
      так что «назад» и якоря #offer-N попадают точно. */
+  /* Хвост догрузки страницы плиток (`site/catalog-part`): строка сетки нулевой высоты — наблюдатель видит её заранее. */
+  .cards > .cards-tail { grid-column: 1 / -1; height: 1px; margin: -1px 0 0; }
   .cards > .card { content-visibility: auto; contain-intrinsic-size: auto 5rem; }
   @media (min-width: 640px) { .cards > .card { contain-intrinsic-size: auto 20rem; } }
   .cards--grid > .card { contain-intrinsic-size: auto 20rem; }

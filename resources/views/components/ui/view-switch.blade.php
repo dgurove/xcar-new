@@ -10,7 +10,8 @@
     // current — вид, которым список открыт (ListView::pick): длинный без выбора — таблицей.
     $current = $current === false ? ListView::fromRequest(request()) : $current;
     $path = '/'.ltrim(request()->path(), '/');
-    $url = fn (string $v) => $path.'?'.http_build_query(array_merge(request()->query(), [ListView::PARAM => $v]));
+    // Без `rows` (сколько строк или плиток догружено — `Portion`, `PagePart`): у другого вида свой счёт с начала.
+    $url = fn (string $v) => $path.'?'.http_build_query(array_merge(\Illuminate\Support\Arr::except(request()->query(), [\App\Support\Portion::ROWS, \App\Support\Portion::PART, 'page']), [ListView::PARAM => $v]));
     $all = ['shelf' => ['Лентами', 'shelves'], 'grid' => ['Плитками', 'grid-2'], 'list' => ['Строками', 'list'], 'table' => ['Таблицей', 'table'], 'wide' => ['Подробной таблицей', 'columns']];
     // Подробная без краткой не бывает: это та же таблица.
     $views = in_array(ListView::TABLE, $views, true) ? $views : array_diff($views, [ListView::WIDE]);

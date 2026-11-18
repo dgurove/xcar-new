@@ -13,6 +13,8 @@ use App\Support\Facets\Facets;
 use App\Support\ListContext;
 use App\Support\ListPrefs;
 use App\Support\ListView;
+use App\Support\PagePart;
+use App\Support\Portion;
 use App\Support\Sort;
 use App\Support\Table\ColRole;
 use App\Support\Table\Column;
@@ -65,15 +67,22 @@ class CatalogController
         $query = $facets->apply(CatalogQuery::for($user, array_diff_key($filters, array_flip($facets->keys())) + ['sort' => $sort, 'packs' => $packed], $gallery));
         // «Срочно» (12.10.2026, владелец): срочные с идущим приёмом — первой лентой, ближний срок выше; из основного списка
         // уходят, как «Открыты только Вам». С тем же фильтром; в поиске и на пилюле «Срочные» — нет.
+        // Порция хвоста страницы плиток (`PagePart`, запрос `endless_controller` с `X-List`): нужны только сами плитки —
+        // «Срочно» и «Только вам» узнаём номерами (из списка они уходят и тут), числа, пилюли и ленты первой страницы не
+        // считаем вовсе (18.11.2026: догрузка стоила 95 запросов из 103 у целой страницы).
+        $tail = $request->headers->has('X-List') && (int) $request->query(Portion::PART) > 1;
         $urgent = ! $gallery && blank($filters['q'] ?? null) && blank($filters['view'] ?? null)
-            ? (clone $query)->urgent()->reorder()->orderBy('offers.bids_close_at')->get() : collect();
+            ? ($tail ? (clone $query)->urgent()->reorder()->toBase()->pluck('offers.id')->map(fn ($id) => (object) ['id' => $id])
+                : (clone $query)->urgent()->reorder()->orderBy('offers.bids_close_at')->get())
+            : collect();
         if ($urgent->isNotEmpty()) {
             $query->whereNotIn('offers.id', $urgent->pluck('id'));
         }
         // «Открыты только Вам» (11.10.2026, владелец): открытое одному этому менеджеру — своей пачкой выше остальных (после
         // «Нужно оценить»), из основного списка уходит, чтобы не стоять дважды. С тем же фильтром и сортировкой; в поиске — нет.
         $exclusive = ! $gallery && $user?->isManager() && blank($filters['q'] ?? null)
-            ? (clone $query)->onlyFor($user)->get() : collect();
+            ? ($tail ? collect((clone $query)->onlyFor($user)->exists() ? [true] : []) : (clone $query)->onlyFor($user)->get())
+            : collect();
         if ($exclusive->isNotEmpty()) {
             $query->notOnlyFor($user);
         }
@@ -81,6 +90,22 @@ class CatalogController
         if (ListView::isTable(ListView::pick($request, $count, shelves: true))) {
             // Строке таблицы кадры не нужны.
             $query->without('media');
+        } elseif ($tail) {
+            $groups = CatalogQuery::grouped($user, $gallery);
+            $view = ListView::pick($request, $count, shelves: true);
+            $offers = ListView::paginate($request, $query, $count, whole: $groups && $view === ListView::SHELF, parts: true);
+            Showing::remember($user, $offers->pluck('id')->all());
+
+            return view('site.catalog-part', [
+                'offers' => $offers,
+                'before' => $offers instanceof PagePart ? $offers->before : null,
+                'view' => $view,
+                'gallery' => $gallery,
+                'groups' => $groups,
+                // Подписи пачек — только у строк; плиткам сеткой размеры пачек не нужны.
+                'groupSizes' => $groups && $view !== ListView::GRID ? CloseGroups::sizes($query, $gallery) : [],
+                'context' => ListContext::forList($gallery, array_merge($filters, ['sort' => $sort], $since ? ['unread' => $unread ? '1' : '0'] : [])),
+            ]);
         }
 
         // Счётчики на каждый запрос списка — полминуты в кэше, слабому серверу легче.
@@ -123,7 +148,7 @@ class CatalogController
         // страницами, без подписей пачек (15.10.2026, начальник).
         $groups = CatalogQuery::grouped($user, $gallery);
         $shelves = $groups && ListView::pick($request, $count, shelves: true) === ListView::SHELF;
-        $offers = ListView::paginate($request, $query, $count, whole: $shelves);
+        $offers = ListView::paginate($request, $query, $count, whole: $shelves, parts: true);
         // «Нужно оценить» (11.10.2026): черновики, отданные этому менеджеру на оценку, — первой пачкой на первой странице
         // каталога, на любой пилюле (30.10.2026: на «Новых» и «Горящих» их не было — менеджеры их не находили), кроме поиска.
         // Сначала неоценённые, ближний срок выше; оценённые — ждут решения админа.
