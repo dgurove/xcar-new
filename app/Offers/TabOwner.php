@@ -32,6 +32,15 @@ final class TabOwner extends Model
         return $this->belongsTo(User::class);
     }
 
+    /**
+     * Можно ли назначить ответственного: вкладкам ожидания (`DealTabs::WAITING`, полупрозрачные) — нет (18.11.2026, владелец:
+     * «у них и не может быть ответственного»), там нашего дела нет.
+     */
+    public static function assignable(string $preset): bool
+    {
+        return ! in_array($preset, DealTabs::WAITING, true);
+    }
+
     /** Вкладки, за которые человек отвечает. @return list<string> */
     public static function presetsOf(User $user): array
     {
