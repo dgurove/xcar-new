@@ -229,6 +229,8 @@ Route::middleware(['auth', 'wall'])->group(function () {
         Route::middleware('own:deal')->group(function () {
             Route::get('/deals/{deal}/chat', [DealController::class, 'chat']);
             Route::post('/deals/{deal}/reply', [DealController::class, 'answer']);
+            // Доп. просьба поставщику (18.11.2026, `Offers\ExtraAsk`): «Беру в работу» / «Я передумал» после ответа поставщика.
+            Route::post('/deals/{deal}/extra-ask', [DealController::class, 'extraAsk']);
             Route::post('/deals/{deal}/signing', [DealController::class, 'signing']);
             Route::post('/deals/{deal}/signing-wish', [DealController::class, 'signingWish']);
             Route::get('/deals/{deal}/signing.ics', [DealController::class, 'signingIcs']);

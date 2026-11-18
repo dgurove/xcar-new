@@ -129,8 +129,15 @@ class OfferEvent extends Model
             OfferEventType::RouteDropped => 'Вывоз отменён',
             OfferEventType::InsurerReplied => 'Страховая ответила'.(! empty($p['contact']) ? ', есть контакт' : ''),
             OfferEventType::SupplierLetter => 'Письмо поставщику отправлено',
-            // Доп. запрос поставщику (17.11.2026, `Offers\ExtraRequest`): «Доп. запрос поставщику: прислать ПТС и согласовать осмотр».
-            OfferEventType::ExtraRequest => 'Доп. запрос поставщику'.(! empty($p['text']) ? ': '.$p['text'] : ''),
+            // Доп. просьба поставщику (17.11.2026, `Offers\ExtraRequest`; 18.11.2026 — «просьба», и её ход, `Offers\ExtraAsk`).
+            OfferEventType::ExtraRequest => match ($p['state'] ?? null) {
+                'answered' => 'Поставщик ответил на доп. просьбу',
+                'phone' => 'Доп. просьба: поставщик ответил не письмом',
+                'reopened' => 'Доп. просьба снова активна: вопрос не решён',
+                'take' => 'Доп. просьба решена: менеджер берёт в работу'.(! empty($p['for']) ? ' (за него)' : ''),
+                'drop' => 'Доп. просьба: менеджер передумал'.(! empty($p['for']) ? ' (за него)' : ''),
+                default => 'Доп. просьба поставщику'.(! empty($p['text']) ? ': '.$p['text'] : ''),
+            },
             OfferEventType::Estimate => self::estimateText($p),
             // «На аукцион» (13.10.2026): отправили, запланировали по истечении срока, сняли план, вернули в продажу или в черновики.
             OfferEventType::Auction => match (true) {

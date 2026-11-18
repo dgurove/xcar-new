@@ -47,9 +47,6 @@ final class Disclose
     /** Исход «просят реквизиты» (`Presets\Alfa::ASKS_REQUISITES`) — по письму, где их просят, а не по телефону. */
     private const REQUISITES = ['поставщик просит реквизиты'];
 
-    /** Исход «осмотр согласован» (`Presets\Alfa::INSPECTION_AGREED`). */
-    private const INSPECTION = ['поставщик согласовал осмотр'];
-
     public function __construct(private TakeExit $take) {}
 
     /**
@@ -103,6 +100,9 @@ final class Disclose
             // Новый ход — и кнопками в чате сделки (`StepAsk`), как на любом шаге: после сообщения с показанным.
             $turn && StepAsk::post($turn);
         }
+        // Ответ на доп. просьбу показали — ход менеджера: «Беру в работу» / «Я передумал» (18.11.2026, `Offers\ExtraAsk`). Шаг сдвинулся
+        // на согласие — его просьба с теми же кнопками уже ушла, второй не шлём.
+        $disclosure && app(SettleExtraAsk::class)->shown($deal, notify: ! $turn);
 
         return ['disclosure' => $disclosure, 'moved' => $moved];
     }
@@ -185,17 +185,13 @@ final class Disclose
         $billed = $letters->contains(fn (Message $m) => InsurerReplies::hasFiles($m) && $after($m))
             ? $stage->exitsFor(Actor::Staff, $deal)->first(fn (Outcome $x) => SupplierInvoice::needs($deal, $x)) : null;
 
-        // Осмотр согласован — ход менеджера («Осмотр перед оплатой»), не письмо с реквизитами и не счёт (17.11.2026, CTTM).
-        $inspection = $letters->contains(fn (Message $m) => InsurerReplies::approvesInspection($m)) ? $find(self::INSPECTION) : null;
-
-        return $inspection ?? ($letters->contains(fn (Message $m) => InsurerReplies::asksRequisites($m)) ? $find(self::REQUISITES) : null) ?? $billed ?? $find(self::EXITS);
+        return ($letters->contains(fn (Message $m) => InsurerReplies::asksRequisites($m)) ? $find(self::REQUISITES) : null) ?? $billed ?? $find(self::EXITS);
     }
 
     /** Галка шага отмечена сама там, где раньше шаг проходило письмо: в нём телефон или просьба реквизитов. */
     public static function stepByDefault(Outcome $exit, Collection $letters, ?Deal $deal = null): bool
     {
         return in_array(mb_strtolower(trim($exit->label)), self::REQUISITES, true)
-            || (in_array(mb_strtolower(trim($exit->label)), self::INSPECTION, true) && $letters->contains(fn (Message $m) => InsurerReplies::approvesInspection($m)))
             || (mb_strtolower(trim($exit->label)) === 'договор готов' && $letters->contains(fn (Message $m) => SigningLetter::ready($m)))
             || SupplierInvoice::needs($deal, $exit)
             || $letters->contains(fn (Message $m) => InsurerReplies::hasContact($m));

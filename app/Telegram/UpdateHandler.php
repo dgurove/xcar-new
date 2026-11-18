@@ -117,6 +117,12 @@ final class UpdateHandler
 
             return;
         }
+        // Ответ поставщика на доп. просьбу — берёт ли менеджер (18.11.2026, `Offers\ExtraAsk`).
+        if ($press->topic === 'extra') {
+            $this->extra($press);
+
+            return;
+        }
         // Кнопки лежат в чатах владельца и админов, но переслать сообщение и нажать может кто угодно.
         if (! in_array($press->fromId, $this->bot->ownerChats(), true)) {
             $this->bot->answer($press->queryId, 'Кнопка не для этого аккаунта');
@@ -296,6 +302,38 @@ final class UpdateHandler
                 app(AnswerRequirement::class)($r, $exit, $user);
 
                 return [$exit->label, $exit->label.' — '.Ago::day(now(), true)];
+            });
+    }
+
+    /** «Беру в работу» / «Я передумал» по доп. просьбе (`ExtraAskDecisionNotice`): нажать может только менеджер сделки. */
+    private function extra(Press $press): void
+    {
+        $ask = \App\Offers\ExtraAsk::with(['offer', 'deal'])->find($press->id);
+        $user = User::where('telegram_chat_id', $press->fromId)->first();
+        if (! $ask || ! $user || ! $ask->deal || $ask->deal->buyer_id !== $user->id) {
+            $this->bot->answer($press->queryId, 'Кнопка не для этого аккаунта');
+
+            return;
+        }
+        $notice = \App\Notifications\ExtraAskDecisionNotice::class;
+        $text = self::body($notice::question($ask).': '.$ask->offer->titleWithYear(), \App\Telegram\Text::lines($ask->offer, 'Поставщик ответил на просьбу: '.$ask->phrase()));
+        $open = [[TelegramChannel::button('Открыть сделку', Surface::Site->url($ask->deal->href()))]];
+        $labels = \App\Offers\ExtraAsk::labels($ask->deal);
+        if (! $ask->isOpen() || ! $ask->deal->isActive()) {
+            $this->bot->answer($press->queryId, 'Уже отвечено');
+            $this->bot->edit($press->chatId, $press->messageId, $text('Уже отвечено'), $open);
+
+            return;
+        }
+        $this->confirmed($press, 'extra', $text, $notice::buttons($ask), $open,
+            ['take' => [$labels['take'].'?', 'Да, беру'], 'drop' => [$labels['drop'].'? Сделка отменится', 'Да, отказываюсь']],
+            function (string $which) use ($ask, $user, $labels) {
+                if (! in_array($which, [\App\Offers\ExtraAsk::TAKE, \App\Offers\ExtraAsk::DROP], true)) {
+                    return null;
+                }
+                app(\App\Offers\Actions\SettleExtraAsk::class)->decide($ask->deal, $which, $user);
+
+                return [$labels[$which], $labels[$which].' — '.Ago::day(now(), true)];
             });
     }
 

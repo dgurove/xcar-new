@@ -34,6 +34,7 @@ use App\Http\Admin\PurchaseCarPhotoController;
 use App\Http\Admin\PurchaseController;
 use App\Http\Admin\ReferenceController;
 use App\Http\Admin\RepriceController;
+use App\Http\Admin\ExtraAskController;
 use App\Http\Admin\RouteController;
 use App\Http\Admin\SigningController;
 use App\Http\Admin\TagController;
@@ -248,6 +249,10 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
         Route::post('/offers/{offer}/letter-skip', [RouteController::class, 'letterSkip']);
         // «Запросить реквизиты» в шаге «Письмо с реквизитами» (18.11.2026): менеджеру снова в чат сделки.
         Route::post('/offers/{offer}/ask-buyer', [RouteController::class, 'askBuyer']);
+        // Доп. просьба (18.11.2026, `Offers\ExtraAsk`): «Вопрос не решён», «Ответили не письмом», решение за менеджера.
+        Route::post('/offers/{offer}/extra-asks/{ask}/reopen', [ExtraAskController::class, 'reopen']);
+        Route::post('/offers/{offer}/extra-asks/{ask}/phone', [ExtraAskController::class, 'phone']);
+        Route::post('/offers/{offer}/extra-asks/decide', [ExtraAskController::class, 'decide']);
         Route::post('/offers/{offer}/pickup', [RouteController::class, 'pickup']);
         Route::post('/offers/{offer}/media/{media}/managers', [OfferPhotoController::class, 'managers']);
         Route::delete('/offers/{offer}/pickup', [RouteController::class, 'dropPickup']);

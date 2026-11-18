@@ -285,6 +285,30 @@ class DealController
         ];
     }
 
+    /**
+     * Доп. просьба поставщику (18.11.2026, `Offers\ExtraAsk`): ответ менеджера — «Беру в работу» / «Я передумал» (после согласия —
+     * «Всё в порядке, берём» / «Не берём»). На «Согласии менеджера» это и ответ шага — второго вопроса нет.
+     */
+    public function extraAsk(Request $request, Deal $deal, \App\Offers\Actions\SettleExtraAsk $settle)
+    {
+        $data = $request->validate(['decision' => ['required', 'in:'.\App\Offers\ExtraAsk::TAKE.','.\App\Offers\ExtraAsk::DROP]]);
+        $labels = \App\Offers\ExtraAsk::labels($deal);
+        if (! \App\Offers\ExtraAsk::holding($deal)?->asks_manager) {
+            return $this->back($request, $deal)->with('toast', 'Ответ уже не нужен');
+        }
+        $settle->decide($deal, $data['decision'], $request->user());
+        if ($data['decision'] === \App\Offers\ExtraAsk::DROP) {
+            return redirect($deal->isGarage() ? '/garage' : '/deals')->with('toast', 'Сделка отменена');
+        }
+        $deal->refresh();
+        // Взял на согласии — сразу «Кто покупатель?», как у кнопки шага (`answer`): `AskBuyer` спросил только что.
+        if ($deal->isActive() && $deal->buyer_asked_at?->gt(now()->subMinute())) {
+            return redirect($deal->href())->with('toast', $labels['take'])->with('open_sheet', 'deal-buyer-ask-'.$deal->id);
+        }
+
+        return $this->back($request, $deal)->with('toast', $labels['take']);
+    }
+
     public function answer(Request $request, Deal $deal, AnswerRequirement $answer)
     {
         $data = $request->validate(['exit' => ['required', 'integer'], 'requirement' => ['nullable', 'integer'], 'back' => ['nullable', 'string', 'max:500']]);

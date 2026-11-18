@@ -2,6 +2,7 @@
 
 namespace App\Workflow\Actions;
 
+use App\Offers\ExtraAsk;
 use App\Offers\OfferEventType;
 use App\Workflow\Actor;
 use App\Workflow\Events\StageDue;
@@ -34,7 +35,10 @@ final class TickStages
 
         // Обход по id, а не страницами: обработанная строка выпадает из фильтра и
         // сдвинула бы следующую страницу. Одна упавшая позиция не останавливает остальные.
-        foreach (Position::whereNotNull('deadline_at')->where('deadline_at', '<=', $now)->whereNull('overdue_at')
+        // Доп. просьба держит сделку (18.11.2026, `ExtraAsk`) — срок этапа стоит: ни перехода по времени, ни «просрочено», ни
+        // напоминания; снялась — срок сдвинут на паузу (`SettleExtraAsk::thaw`).
+        $frozen = 'not '.ExtraAsk::HOLDS_SQL;
+        foreach (Position::whereNotNull('deadline_at')->where('deadline_at', '<=', $now)->whereNull('overdue_at')->whereRaw($frozen)
             ->with(['offer', 'stage.exits.to', 'stage.workflow'])->lazyById() as $position) {
             try {
                 if ($exit = $position->stage->timerExit()) {
@@ -59,7 +63,7 @@ final class TickStages
         // «Срок подходит» — за десятую часть срока шага, от получаса до суток (19.01.2027: за час до срока у шага в час
         // напоминание приходило сразу, у недельного — за час, когда уже поздно).
         foreach (Position::whereNotNull('deadline_at')->where('deadline_at', '>', $now)->where('deadline_at', '<=', $now->copy()->addMinutes(self::REMIND_MAX))
-            ->whereNull('reminded_at')->with(['offer', 'stage'])->lazyById() as $position) {
+            ->whereNull('reminded_at')->whereRaw($frozen)->with(['offer', 'stage'])->lazyById() as $position) {
             if ($position->deadline_at->gt($now->copy()->addMinutes(self::remindBefore($position)))) {
                 continue;
             }

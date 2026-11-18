@@ -14,7 +14,8 @@ use Illuminate\Support\Facades\DB;
  * Доп. запрос поставщику ушёл (17.11.2026, `Offers\ExtraRequest`): «Доп. запрос поставщику: прислать ПТС и согласовать
  * осмотр» в «Историю» машины со ссылкой на письмо и, когда идёт сделка с менеджером, ему в чат сообщением площадки —
  * «Попросили поставщика прислать ПТС и согласовать осмотр» (по CTTM Cargoline Роман не давал покупателя, пока не будет ПТС
- * и осмотра, и не знал, что мы их уже запросили). Ответ поставщика ему уходит через «Разобрать ответ» (`Disclose`).
+ * и осмотра, и не знал, что мы их уже запросили). Ответ поставщика ему уходит через «Разобрать ответ» (`Disclose`). С 18.11.2026 —
+ * и запись `ExtraAsk`: пока доп. просьба не решена, ход сделки стоит (`SettleExtraAsk`).
  */
 final class LogExtraRequest
 {
@@ -25,6 +26,8 @@ final class LogExtraRequest
             return;
         }
         $offer->log(OfferEventType::ExtraRequest, $by, ['text' => $text, 'letter' => $message->id]);
+        // Пока просьба не решена, ход сделки стоит (18.11.2026, `Offers\ExtraAsk`).
+        app(SettleExtraAsk::class)->asked($offer, $message, $by, $text);
 
         $id = $offer->id;
         DB::afterCommit(function () use ($id, $text) {

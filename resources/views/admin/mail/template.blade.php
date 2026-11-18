@@ -1,7 +1,7 @@
 @php
     $new = ! $template->exists;
     $ask = $template->isRequest();
-    $fresh = $ask ? 'Новый запрос' : 'Новый шаблон';
+    $fresh = $ask ? 'Новая просьба' : 'Новый шаблон';
     $choicesText = implode("\n", $template->choices ?? []);
 @endphp
 <x-ui.cabinet :title="$new ? $fresh : $template->name">

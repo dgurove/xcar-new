@@ -247,7 +247,7 @@ class DealController
      * (`x-deal.todo-row`): что сделать или кого ждём — заголовок группы, у строки — сколько ждёт и кнопка дела. «Завершённые» и
      * лупа — таблица с этапом, оплатой и суммой (`x-deal.table-row`).
      */
-    public static function table(bool $staged = false, bool $actions = true): Table
+    public static function table(bool $staged = false, bool $actions = true, bool $asked = false): Table
     {
         $title = new Column('title', 'Марка, модель', grow: true);
         // Ширина у каждого столбца (29.10.2026): без неё `x-ui.table :rest` гадали числом в виде, и название то резалось, то
@@ -257,7 +257,9 @@ class DealController
 
         return $staged
             // Кнопка дела — самой правой, за сроком «Ждёт».
-            ? Table::of(...array_filter([$title, $vendor, $manager, new Column('wait', 'Ждёт', from: 'sm', role: ColRole::When, rem: 8), $actions ? new Column('action', role: ColRole::When, rem: 9) : null]))
+            // «Доп. просьба» (18.11.2026) — что попросили у поставщика, своим столбцом: группа говорит, чего ждём, строка — о чём.
+            ? Table::of(...array_filter([$title, $vendor, $asked ? new Column('asked', 'Попросили', from: 'sm', clip: true, cell: 'whitespace-nowrap', role: ColRole::State, rem: 16) : null, $manager,
+                new Column('wait', 'Ждёт', from: 'sm', role: ColRole::When, rem: 8), $actions ? new Column('action', role: ColRole::When, rem: 9) : null]))
             : new Table([$title, $vendor, new Column('number', '№', from: '2xl', class: 'nums', role: ColRole::Code, rem: 7), $manager,
                 new Column('stage', 'Этап', from: 'sm', role: ColRole::State, rem: 12),
                 new Column('term', 'Что сейчас', from: 'sm', sort: 'deadline', role: ColRole::When, rem: 9),

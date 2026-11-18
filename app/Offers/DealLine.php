@@ -70,6 +70,10 @@ final class DealLine
      */
     private static function stage(Position $position, ?DealDebt $debt): array
     {
+        // Доп. просьба держит сделку (18.11.2026, `ExtraAsk`) — её шаг, как во вкладке и в «Ходе сделки»; наш ход — зелёным.
+        if ($ask = $position->extraAsk()) {
+            return ['Доп. просьба', $ask->phase() === ExtraAsk::SHOW ? 'text-accent-text' : ''];
+        }
         $word = str_replace(', в гараж', '', $position->stage->name);
         // Срок оплаты — цветом этапа, не словами (17.11.2026, владелец: «просрочено — просто красным»): долг и срок словом —
         // в «Оплате» и в «Деньгах» окна.

@@ -5,7 +5,6 @@ namespace App\Offers;
 use App\Mail\Account;
 use App\Mail\Direction;
 use App\Mail\Extraction\CloudShare;
-use App\Mail\Extraction\Intent;
 use App\Mail\Extraction\Patterns;
 use App\Mail\Message;
 use App\Mail\Scope;
@@ -65,7 +64,7 @@ final class InsurerReplies
     /** Ответ страховой, а не автоответ и не наше. */
     public static function counts(Message $message): bool
     {
-        return $message->isFromVendor() && ! Intent::silent($message->intent) && $message->replyText() !== '';
+        return $message->isFromVendor() && ! $message->isAutomatic() && $message->replyText() !== '';
     }
 
     /** В ответе есть файлы: вложения или ссылка на облако (`CloudShare`). */

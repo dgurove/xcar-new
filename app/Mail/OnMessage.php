@@ -19,6 +19,7 @@ use App\Notifications\ParkNotice;
 use App\Offers\Actions\DetectReprice;
 use App\Offers\Actions\FillFromLetter;
 use App\Offers\Actions\ReviveClosed;
+use App\Offers\Actions\SettleExtraAsk;
 use App\Offers\SupplierLetterWait;
 use App\Offers\Actions\ShowInGallery;
 use App\Offers\Events\InsurerReplied;
@@ -98,6 +99,10 @@ final class OnMessage
             } catch (Throwable $e) {
                 Log::warning('fill-from-letter: '.$e->getMessage(), ['offer' => $offer->id, 'message' => $message->id]);
             }
+            // Первый ответ поставщика по машине — доп. просьба получила ответ (18.11.2026, `Offers\ExtraAsk`): автоответ «отсутствую» — нет.
+            if ($message->account->scope === Scope::Offers && $message->isFromVendor() && ! $message->isAutomatic()) {
+                app(SettleExtraAsk::class)->answered($offer, $message);
+            }
             // Ответ страховой по идущей сделке на ящик, который пишет (deal@): история, файлы, ход шага письма — наш.
             $deal = $offer->deal;
             if ($deal && $message->account->scope === Scope::Offers && $message->account->reply_account_id === null
@@ -105,7 +110,7 @@ final class OnMessage
                 && ! $offer->events()->where('type', OfferEventType::InsurerReplied)->where('payload->letter', $message->id)->exists()) {
                 InsurerReplied::dispatch($deal, $message);
             } elseif ($deal && $message->account->scope === Scope::Offers && $message->direction === Direction::In
-                && ($message->isFromVendor() || $message->isForwardedByStaff()) && ! Intent::silent($message->intent)) {
+                && $message->isFromVendor() && ! $message->isAutomatic()) {
                 OnInsurerReply::mark($deal, $message);
             }
             // Менеджеру — ничего: письмо ждёт админа в «Разобрать ответ» (03.11.2026, `Actions\Disclose`).

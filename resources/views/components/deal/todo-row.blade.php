@@ -6,7 +6,9 @@
     $offer = $deal->offer;
     $position = $offer->position();
     $late = $position->isOverdue();
-    $at = $late ? $position->deadline_at : $todo['since'];
+    // Доп. просьба держит сделку (18.11.2026): ждём — с начала её шага (просьба ушла, показали менеджеру).
+    $ask = $table->has('asked') ? \App\Offers\ExtraAsk::holding($deal) : null;
+    $at = $late ? $position->deadline_at : ($todo['since'] ?? ($ask ? ($ask->shown_at ?? $ask->answered_at ?? $ask->since_at) : null));
     // Сколько ждёт — числом, без слов (17.11.2026, владелец: «просрочено я бы не писал — просто красным»): срок вышел — красным,
     // с момента срока; иначе серым, с начала дела. Что значит число — подсказкой.
     $wait = $at ? '<span class="nums" title="'.($late ? 'Просрочено на' : 'Ждёт').'" data-controller="timer" data-timer-since-value="'.$at->toIso8601String().'" data-timer-coarse-value="true"></span>' : null;
@@ -27,11 +29,14 @@
         @case('title')
     <td class="{{ $col->classes() }}">
         <x-cell.title :key="$deal->offer->number" :offer="$offer">@if ($garage)<span class="ms-1.5 whitespace-nowrap text-sm text-ink-muted">гараж</span>@endif</x-cell.title>
-        <span class="cell-sub sm:hidden"><x-vendor.ref :vendor-id="$offer->vendor_id" :ref="$offer->claim_ref">@if ($burning)<x-offer.binding :offer="$offer" icon/>@endif</x-vendor.ref>@if ($wait && ! $inButton) <span class="inline-block whitespace-nowrap {{ $tone }}">{!! $wait !!}</span>@endif</span>
+        <span class="cell-sub sm:hidden">@if ($ask){{ \Illuminate\Support\Str::ucfirst($ask->phrase()) }}@else<x-vendor.ref :vendor-id="$offer->vendor_id" :ref="$offer->claim_ref">@if ($burning)<x-offer.binding :offer="$offer" icon/>@endif</x-vendor.ref>@endif{{ "" }}@if ($wait && ! $inButton) <span class="inline-block whitespace-nowrap {{ $tone }}">{!! $wait !!}</span>@endif</span>
     </td>
         @break
         @case('vendor')
     <td class="{{ $col->classes() }}"><x-vendor.ref :vendor-id="$offer->vendor_id" :ref="$offer->claim_ref" cell>@if ($burning)<x-offer.binding :offer="$offer" icon fit/>@endif</x-vendor.ref></td>
+        @break
+        @case('asked')
+    <td class="{{ $col->classes() }}">{{ $ask ? \Illuminate\Support\Str::ucfirst($ask->phrase()) : '' }}</td>
         @break
         @case('manager')
     <td class="{{ $col->classes() }}"><x-cell.person :user="$deal->buyer" from="lg"/></td>

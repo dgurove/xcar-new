@@ -360,11 +360,13 @@ class Deal extends Model implements HasMedia
      * Ход менеджера в SQL — для «Ваш ход» в «Сделках» сайта и бейджа (`Nav::asks`): открытая просьба или этап продажи ждёт его
      * (ПРАЙМ без покупателя — без просьбы). То же правило в PHP — `managerTask()`.
      */
+    // Доп. просьба (18.11.2026, `ExtraAsk`): пока ждём поставщика или показываем ответ — хода его нет; показали — его ход.
     public const MANAGER_TURN_SQL = "(exists (select 1 from reprice_asks a where a.deal_id = deals.id and a.state in ('pending', 'countered'))
-        or (".self::ACTIVE_SQL." and deals.signing_asked_at is not null and deals.signing_at is null and coalesce(jsonb_array_length(deals.signing_wish->'slots'), 0) = 0)
+        or ((not ".ExtraAsk::DEAL_BEFORE_SQL.") and ((".self::ACTIVE_SQL." and deals.signing_asked_at is not null and deals.signing_at is null and coalesce(jsonb_array_length(deals.signing_wish->'slots'), 0) = 0)
         or deals.buyer_asked_at is not null or exists (select 1 from requirements r where r.deal_id = deals.id and r.done_at is null)
         or (".self::ACTIVE_SQL." and exists (select 1 from offer_positions p join workflow_stages s on s.id = p.stage_id where p.offer_id = deals.offer_id
-            and p.track = 'sale' and coalesce(p.waits_for, s.waits_for) = 'manager')))";
+            and p.track = 'sale' and coalesce(p.waits_for, s.waits_for) = 'manager'))))
+        or (".self::ACTIVE_SQL." and ".ExtraAsk::DEAL_MANAGER_SQL."))";
 
     /**
      * Что сделать менеджеру по идущей сделке (27.10.2026, владелец: «глянь так же с точки зрения менеджера»): просьба шага,
@@ -390,6 +392,11 @@ class Deal extends Model implements HasMedia
         if ($due = RepriceAsk::dealDue()->get($this->offer_id)) {
             // Гаражная — согласие на новую закупочную, без цены (`RepriceAsk::agreesOnly`, 17.11.2026).
             return ['title' => $this->isGarage() ? 'Ответить про новую закупочную' : 'Назвать новую цену', 'due' => $due, 'kind' => 'reprice'];
+        }
+        // Доп. просьба поставщику держит сделку (18.11.2026, `ExtraAsk`): до показа ответа — ждём, показали — решить, берёт ли.
+        if ($ask = ExtraAsk::holding($this)) {
+            return $ask->asks_manager && $ask->phase() === ExtraAsk::MANAGER
+                ? ['title' => \App\Notifications\ExtraAskDecisionNotice::question($ask), 'due' => null, 'kind' => 'extra'] : null;
         }
         $req = $this->openRequirement;
         if ($req) {

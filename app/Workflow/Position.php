@@ -7,6 +7,7 @@ use App\Billing\Invoice;
 use App\Billing\InvoiceState;
 use App\Mail\Message;
 use App\Offers\Deal;
+use App\Offers\ExtraAsk;
 use App\Offers\Offer;
 use App\Offers\ReplyReview;
 use App\Offers\Reprice;
@@ -62,7 +63,17 @@ class Position extends Model
 
     public function isOverdue(): bool
     {
-        return $this->deadline_at?->isPast() ?? false;
+        // Пока доп. просьба держит сделку, срок этапа стоит (`ExtraAsk`).
+        return ($this->deadline_at?->isPast() ?? false) && ! $this->extraAsk();
+    }
+
+    /**
+     * Доп. просьба поставщику держит ход сделки (18.11.2026, `Offers\ExtraAsk`): этап стоит, дела шага нет — только её шаг (наш
+     * «Показать менеджеру») и дела не о шаге (переоценка, ответ на разбор, деньги).
+     */
+    public function extraAsk(): ?ExtraAsk
+    {
+        return $this->track === Track::Sale ? ExtraAsk::holding($this->deal) : null;
     }
 
     /** Чей ход сейчас: свой у позиции, иначе этапа. Читать только так, не `stage->waits_for`. */
@@ -127,6 +138,11 @@ class Position extends Model
      */
     public function needsUs(): bool
     {
+        if ($ask = $this->extraAsk()) {
+            return $ask->phase() === ExtraAsk::SHOW || $this->repricePending() || $this->priceAskLate() !== null || $this->priceOffered() !== null
+                || $this->replyPending() !== null || $this->repriceUnanswered() !== null || $this->moneyArrived() !== null;
+        }
+
         return ($this->waitsFor() === WaitsFor::Us && ! $this->carried()) || in_array($this->letterStatus(), ['unsent', 'failed', 'bounced', 'replied'], true)
             || $this->consentLate() || $this->repricePending() || $this->priceAskLate() !== null || $this->priceOffered() !== null || $this->replyPending() !== null
             || $this->repriceUnanswered() !== null || $this->moneyArrived() !== null;
@@ -284,6 +300,7 @@ class Position extends Model
             return null;
         }
         $offer = $this->offer;
+        $ask = $this->extraAsk();
         $since = $this->block_entered_at ?? $this->entered_at;
         $letter = $this->awaitsInvoice() ? null : $this->letterStatus();
         $todo = fn (string $key, string $title, int $rank, ?Carbon $at = null, ?array $button = null) => ['key' => $key, 'title' => $title, 'rank' => $rank, 'since' => $at ?? $since, 'button' => $button];
@@ -305,7 +322,7 @@ class Position extends Model
             return $todo('gap:paid-'.$gap, 'Деньги пришли: '.$what, 1, $at, ['label' => $label, 'href' => $href]);
         }
 
-        if ($this->awaitsInvoice()) {
+        if (! $ask && $this->awaitsInvoice()) {
             $gap = $this->gap();
             $action = self::gapAction($gap, $this->deal);
 
@@ -333,8 +350,18 @@ class Position extends Model
             return $todo('reprice-answer', 'Ответить поставщику про переоценку', 0, $answer->decided_at, ['label' => 'Открыть', 'href' => '/offers/'.$offer->number]);
         }
 
+        // Поставщик ответил на доп. просьбу — показать менеджеру (или «Вопрос не решён»): своим делом, а не «Прочитать ответ».
+        if ($ask?->phase() === ExtraAsk::SHOW) {
+            return $todo('extra-show', 'Показать ответ менеджеру', 0, $ask->answered_at, ['label' => 'Открыть', 'href' => '/offers/'.$offer->number]);
+        }
+
         if ($at = $this->replyPending()) {
             return $todo('reply', 'Прочитать ответ поставщика', 0, $at, ['label' => 'Открыть', 'href' => '/offers/'.$offer->number]);
+        }
+
+        // Ход сделки стоит — дел шага нет.
+        if ($ask) {
+            return null;
         }
 
         return match (true) {
@@ -392,8 +419,9 @@ class Position extends Model
      */
     public function status(): ?array
     {
+        $ask = $this->extraAsk();
         $late = $this->isOverdue();
-        $hint = $this->deadline_at ? ($late ? Ago::overdue($this->deadline_at) : Ago::left($this->deadline_at)) : null;
+        $hint = $this->deadline_at && ! $ask ? ($late ? Ago::overdue($this->deadline_at) : Ago::left($this->deadline_at)) : null;
         if ($todo = $this->todo()) {
             // Дела не по сроку шага (переоценка, письмо на разбор, деньги) горят своим: срок шага к ним не относится.
             $own = ! preg_match('/^(reprice|reply|price-offer|gap:paid)/', $todo['key']);
@@ -405,6 +433,11 @@ class Position extends Model
                 $red => 'text-danger',
                 default => 'text-accent-text',
             }, 'hint' => $own && empty($todo['quiet']) ? $hint : null];
+        }
+        // Доп. просьба держит сделку — чего ждём (18.11.2026): ответа поставщика или решения менеджера.
+        if ($ask) {
+            return ['text' => $ask->phase() === ExtraAsk::MANAGER ? 'ждём решения менеджера' : 'ждём ответа на доп. просьбу', 'tone' => 'text-ink-muted',
+                'hint' => 'просьба ушла '.Ago::at($ask->asked_at, true).': '.$ask->phrase()];
         }
         if ($this->carried()) {
             return ['text' => 'везёт логистика', 'tone' => 'text-ink-muted', 'hint' => null];
@@ -442,7 +475,7 @@ class Position extends Model
      */
     public function consentLate(): bool
     {
-        return $this->overdue_at !== null && $this->waitsFor() === WaitsFor::Manager && $this->stage->asksConsent();
+        return $this->overdue_at !== null && $this->waitsFor() === WaitsFor::Manager && $this->stage->asksConsent() && ! $this->extraAsk();
     }
 
     // `letter_by_hand` — «Без письма — сообщили сами» (`SkipLetter`): печатался в шаге строкой «letter_by_hand: 1» (16.11.2026).
@@ -527,7 +560,7 @@ class Position extends Model
     // Метки письма — только на этапе письма (`Stage::isLetterStep`), «менеджер не ответил» — только пока ход его
     // (`consentLate`): без этого число пилюли «Ваш ход» расходилось со строками (27.10.2026). Ждущая переоценка — `repricePending`,
     // письмо на разбор — `replyPending`, ответ поставщику на переоценку — `repriceUnanswered`.
-    public const NEEDS_US_SQL = "coalesce((coalesce(offer_positions.waits_for, (select s.waits_for from workflow_stages s where s.id = offer_positions.stage_id)) = 'us'
+    public const NEEDS_US_SQL = "coalesce(((not ".ExtraAsk::HOLDS_SQL.") and ((coalesce(offer_positions.waits_for, (select s.waits_for from workflow_stages s where s.id = offer_positions.stage_id)) = 'us'
             and not exists (select 1 from workflow_exits x where x.stage_id = offer_positions.stage_id and lower(x.label) = 'заявка отправлена')
             and not (coalesce(offer_positions.waits_for, '') = 'us' and exists (select 1 from workflow_exits x where x.stage_id = offer_positions.stage_id
                 and x.actor = 'manager' and (lower(x.label) = 'автомобиль забрал' or exists (select 1 from workflow_exits y where y.stage_id = x.to_stage_id
@@ -538,7 +571,8 @@ class Position extends Model
         or (offer_positions.overdue_at is not null
             and coalesce(offer_positions.waits_for, (select s.waits_for from workflow_stages s where s.id = offer_positions.stage_id)) = 'manager'
             and exists (select 1 from workflow_exits x where x.stage_id = offer_positions.stage_id
-                and x.actor = 'manager' and lower(x.label) in ('беру в работу', 'покупаю')))
+                and x.actor = 'manager' and lower(x.label) in ('беру в работу', 'покупаю')))))
+        or (offer_positions.track = 'sale' and ".ExtraAsk::SHOW_SQL.")
         or (offer_positions.track = 'sale' and exists (select 1 from offer_reprices r where r.offer_id = offer_positions.offer_id and r.state = 'pending'))
         or (offer_positions.track = 'sale' and exists (select 1 from reply_reviews rr join deals d on d.id = rr.deal_id
             where rr.offer_id = offer_positions.offer_id and rr.state = 'pending' and ".Deal::ACTIVE_D."))

@@ -86,6 +86,7 @@ final class ManagerAsk
 
         return match (true) {
             $kind === 'reprice' => 'Назвать цену',
+            $kind === 'extra' => 'Ответить',
             $kind === 'signing', Signing::picks($req?->stage) => 'Выбрать время',
             $kind === 'price' => 'Указать цену',
             $kind === 'passport' => 'Приложить паспорт',

@@ -36,7 +36,12 @@
 
         @if ($step && ! $staff)
             <x-offer.reprice-ask :deal="$step['deal']"/>
-            @include('cabinet.deals.step', $step + ['withInvoices' => ! $asBuyer])
+            {{-- Доп. просьба поставщику держит сделку (18.11.2026, `Offers\ExtraAsk`) — её задача вместо шага, как на странице сделки. --}}
+            @if ($extraAsk = \App\Offers\ExtraAsk::holding($step['deal']))
+                @include('cabinet.deals.extra-ask', $step + ['ask' => $extraAsk])
+            @else
+                @include('cabinet.deals.step', $step + ['withInvoices' => ! $asBuyer])
+            @endif
             {{-- Гаражная «платит менеджер» у ПРАЙМ: ДКП ПРАЙМ с ним самим — его данные для договора тут же. --}}
             @if ($step['deal']->hasContract())@include('cabinet.deals.contract', ['deal' => $step['deal'], 'labels' => false, 'after' => ''])@endif
         @elseif (! $staff && $car->deal && ($parkHandover = \App\Offers\Handover::for($car->deal))->park && $car->deal->passes()->whereNull('revoked_at')->exists())

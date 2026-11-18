@@ -31,7 +31,8 @@ final class RemindStalled
         }
         $edge = $now->copy()->subDays(self::DAYS);
         $due = collect();
-        foreach (Position::where('track', Track::Sale)->whereNull('deadline_at')->where('entered_at', '<=', $edge)
+        // Доп. просьба держит сделку (18.11.2026, `ExtraAsk`) — напоминать о шаге не о чем.
+        foreach (Position::where('track', Track::Sale)->whereNull('deadline_at')->where('entered_at', '<=', $edge)->whereRaw('not '.\App\Offers\ExtraAsk::HOLDS_SQL)
             ->where(fn ($q) => $q->whereNull('reminded_at')->orWhere('reminded_at', '<=', $edge))
             ->with(['offer.deal.buyer', 'stage.exits'])->lazyById() as $position) {
             $deal = $position->offer?->deal;

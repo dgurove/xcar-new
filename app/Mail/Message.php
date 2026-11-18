@@ -153,6 +153,18 @@ class Message extends Model
         return $this->direction === Direction::In && (! $this->isOurs() || $this->isForwardedByStaff());
     }
 
+    /**
+     * Автоответ или недоставка — не ответ человека (18.11.2026, Z691/046/13570/26: «Я отсутствую на рабочем месте…» через минуту
+     * после доп. просьбы засчитался ответом поставщика и встал в «Разобрать ответ»). У писем offer@ `intent` пустой — по теме
+     * и своим словам письма (`Intent::of`).
+     */
+    public function isAutomatic(): bool
+    {
+        $intent = $this->intent ?? Extraction\Intent::of($this->subject, $this->text_body ?: strip_tags((string) $this->html_body))->value;
+
+        return Extraction\Intent::silent($intent) || Extraction\Intent::isBounce($this->subject, $this->from_email);
+    }
+
     /** Примечание сотрудника над пересланным письмом (`QuotationStripper::forwardNote`). */
     public function forwardNote(): ?string
     {

@@ -60,7 +60,12 @@
     <div data-deal-offer="{{ $offer->number }}" class="grid grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-[minmax(0,1fr)_22rem] lg:gap-6">
         <section class="contents lg:col-start-1 lg:row-start-1 lg:flex lg:min-w-0 lg:flex-col lg:gap-4">
             <x-offer.reprice-ask :deal="$deal" class="order-1 min-w-0"/>
-            <div class="order-1 min-w-0">@include('cabinet.deals.step', ['contractStep' => $contractStep, 'pickupSteps' => $pickupSteps, 'carCard' => $carCard, 'moneyInStep' => $moneyInStep])</div>
+            {{-- Доп. просьба поставщику держит сделку (18.11.2026, `Offers\ExtraAsk`) — её задача вместо шага. --}}
+            @if ($extraAsk = \App\Offers\ExtraAsk::holding($deal))
+                <div class="order-1 min-w-0">@include('cabinet.deals.extra-ask', ['ask' => $extraAsk])</div>
+            @else
+                <div class="order-1 min-w-0">@include('cabinet.deals.step', ['contractStep' => $contractStep, 'pickupSteps' => $pickupSteps, 'carCard' => $carCard, 'moneyInStep' => $moneyInStep])</div>
+            @endif
             @if ($buyerTask)<div class="order-1 min-w-0">@include('cabinet.deals.buyer-task')</div>@endif
             @if ($carCard)<div class="order-1 min-w-0">@include('cabinet.deals.car-card')</div>@endif
             {{-- Закончилась без покупателя — «выберите покупателя» уже не о чем. --}}

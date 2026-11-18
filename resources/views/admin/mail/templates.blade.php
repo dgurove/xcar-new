@@ -2,7 +2,7 @@
     {{-- Доп. запросы поставщику (17.11.2026, `Offers\ExtraRequest`): галки окна «Сделать доп. запрос», порядок — перетаскиванием
          за ручку, он же порядок фраз письма; под названием — фраза после «Просьба …». --}}
     @if ($requests->isNotEmpty() || $base === '/settings/templates')
-        <p class="list-head">Доп. запросы</p>
+        <p class="list-head">Доп. просьбы</p>
         <div class="list" data-controller="list-order" data-list-order-url-value="{{ $base }}/order">
             @foreach ($requests as $template)
                 <div class="row" data-id="{{ $template->id }}">
@@ -18,7 +18,7 @@
             @endforeach
             <a href="{{ $base }}/new?kind=request" class="row">
                 <x-ui.row-icon name="plus" tone="accent"/>
-                <span class="min-w-0 flex-1 font-medium">Новый запрос</span>
+                <span class="min-w-0 flex-1 font-medium">Новая просьба</span>
             </a>
         </div>
         <p class="list-head mt-6">Письма</p>

@@ -70,6 +70,9 @@ final class AnswerRequirement
             }
 
             $requirement->update(['done_at' => now(), 'answer' => ['exit' => $exit->label, 'fields' => $answer]]);
+            // «Беру в работу» / «Я передумал» на согласии решает и доп. просьбу (18.11.2026, владелец: «окнул и сразу нажал — чтобы не
+            // спрашивать его заново, берёт ли он в работу»).
+            $requirement->deal && app(\App\Offers\Actions\SettleExtraAsk::class)->consentAnswered($requirement->deal, $exit, $by);
             ($this->takeExit)($requirement->offer, $exit, Actor::Manager, $by, $answer);
             $requirement->offer->log(OfferEventType::RequirementAnswered, $by, ['exit' => $exit->label, 'fields' => $answer]);
 
