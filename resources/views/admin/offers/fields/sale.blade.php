@@ -46,9 +46,12 @@
         @endunless
     </x-slot:view>
     <div class="{{ $grid }}">
+        {{-- Города нет, и поле «Город» уже стоит у «Цен» этой формы (окно, `SaleCity::claimFact`) — второго с тем же именем нет. --}}
+        @if ($offer->settlement_id || \App\Offers\SaleCity::claimFact($offer, $form ?? 'offer-form'))
         <x-ui.combobox name="settlement_id" label="Город факт" url="/reference/settlements" create="/reference/settlements" :value="$offer->settlement_id" :text="$offer->settlement?->title()" :pinned="$cityPinned">
             <x-slot:hint><x-car.variant-hint :v="$city" :car="$offer->car_id"/></x-slot:hint>
         </x-ui.combobox>
+        @endif
         {{-- Форма — окна (`$form`) или редактора (`offer-form`): в ней поле одно, у кого раньше (`SaleCity::claim`). --}}
         <x-offer.sale-city :offer="$offer" :form="$form ?? 'offer-form'" class="col-span-2 min-w-0 self-end"/>
         <x-ui.field name="inspection_address" label="Адрес осмотра" :value="$offer->inspection_address" span="col-span-2">

@@ -73,4 +73,13 @@ final class SaleCity
 
         return true;
     }
+
+    /**
+     * Поле «Город» (факт) в форме — тоже одно (18.11.2026: у машины без города оно встаёт у «Цен» окна, и «Осмотр» той же
+     * формы своё уже не рисует — два поля с одним именем затёрли бы друг друга). Кто первым, тот и держит.
+     */
+    public static function claimFact(Offer $offer, string $form): bool
+    {
+        return self::claim($offer, $form.'|fact');
+    }
 }

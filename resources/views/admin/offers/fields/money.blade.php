@@ -64,8 +64,9 @@
             @error('binding_until')<span class="field-error">{{ $message }}</span>@enderror
         @endif
     </div>
-    {{-- Город продажи — у цен; в форме он один (`SaleCity::claim`): в окне здесь, в редакторе — у «Города факт» выше. --}}
-    @if ($admin && ! $garageOnly)<x-offer.sale-city :offer="$offer" :form="$form" :id="$idp.'sale-city'" :plate="$plate"/>@endif
+    {{-- Город продажи — у цен; в форме он один (`SaleCity::claim`): в окне здесь, в редакторе — у «Города факт» выше.
+         Города машины нет — здесь же поле «Город» (`ask`). --}}
+    @if ($admin && ! $garageOnly)<x-offer.sale-city :offer="$offer" :form="$form" :id="$idp.'sale-city'" :plate="$plate" ask/>@endif
     @if ($admin && ! $garageOnly)
         <details class="price-more" @if ($more) open @endif>
             <summary class="flex items-center gap-1 text-sm text-ink-muted">Заявленная, минимальная, доля <x-ui.icon name="chevron-down" class="price-more-chevron size-4"/></summary>
