@@ -19,7 +19,7 @@ use Illuminate\Support\Facades\Notification;
  * `owed`) аннулируются — и «оплаченные» (владелец: «мисклики, в оплату услуг подбора шли»); счета идущих сделок, что стоят
  * не так, как велит новое правило (одной строкой на цену минус вознаграждение, без зачёта), перевыставляются тем же
  * `SyncDealInvoices`: неоплаченные — заново (отправленные менеджеру встают в «Отправить счёт»), оплаченные — история.
- * Без `--apply` — то же внутри транзакции с откатом: список, что изменится, ничего не меняя. Уведомлений нет ни там, ни там.
+ * Договор, уже отданный менеджеру с датой, не трогаем вместе со счётом. Без `--apply` — то же внутри транзакции с откатом: список, что изменится, ничего не меняя. Уведомлений нет ни там, ни там.
  */
 class NoPayoutsCommand extends Command
 {
@@ -86,6 +86,10 @@ class NoPayoutsCommand extends Command
      */
     private static function affected(Deal $deal): bool
     {
+        // Договор уже у менеджера (отправлен и датирован) — бумага на руках, сумму в ней и счёт под неё не переписываем.
+        if ($deal->contract?->shown_at && $deal->contract->signed_at) {
+            return false;
+        }
         $open = Invoice::where('deal_id', $deal->id)->where('direction', 'issued')->where('state', 'issued')->with(['charges', 'payments'])->get()
             ->reject(fn (Invoice $i) => $i->payments->contains(fn ($p) => ! $p->voided_at && ! $p->source->isSoft()));
         if ($open->contains(fn (Invoice $i) => $i->charges->whereNull('voided_at')->contains('kind', ChargeKind::AgentFee)
