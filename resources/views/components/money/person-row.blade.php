@@ -12,6 +12,12 @@
     $title = $offer ? null : (R::what($i) ?? R::payoutKind($i));
     [$word, $tone] = $paid ? [R::paidWay($i, $attempts ?? collect()), 'text-ink-muted'] : R::state($i);
     $shown = $i->isShownToManager();
+    // Невыставленная (18.11.2026, владелец: «„не выставлена“ и так понятно — есть кнопка; сумму туда, вместо статуса, серым, чтобы
+    // справа чисто кнопка»): под маркой — сумма, справа — только «Выставить».
+    $unsent = ! $paid && ! $shown;
+    if ($unsent) {
+        [$word, $tone] = [Money::rub($i->remaining()), 'text-ink-muted nums'];
+    }
     $amount = $paid ? $i->total : $i->remaining();
     $since = $paid ? $i->paid_at?->format('d.m') : ($shown ? \App\Support\Ago::since($i->shown_at ?? $i->created_at) : null);
     $sinceTone = ! $paid && $i->isOverdue() ? 'text-danger' : 'text-ink-muted';
@@ -38,15 +44,15 @@
         @case('title')
     <td class="{{ $col->classes() }}">
         @if ($offer)
-            <x-cell.title :key="$offer->number" :offer="$offer" :with="['tab' => $tab]"><span class="line-end sm:hidden nums {{ $paid ? 'text-open' : '' }}">{{ Money::rub($amount) }}</span></x-cell.title>
+            <x-cell.title :key="$offer->number" :offer="$offer" :with="['tab' => $tab]">@if ($unsent && $button)<span class="line-end sm:hidden">{!! $button !!}</span>@elseif (! $unsent)<span class="line-end sm:hidden nums {{ $paid ? 'text-open' : '' }}">{{ Money::rub($amount) }}</span>@endif</x-cell.title>
         @else
-            <a href="{{ \App\Http\Admin\MoneyController::url($i) }}" class="cell-title" data-turbo-frame="_top"><span class="cell-name">{{ $title }}</span><span class="line-end sm:hidden nums {{ $paid ? 'text-open' : '' }}">{{ Money::rub($amount) }}</span></a>
+            <a href="{{ \App\Http\Admin\MoneyController::url($i) }}" class="cell-title" data-turbo-frame="_top"><span class="cell-name">{{ $title }}</span>@unless ($unsent)<span class="line-end sm:hidden nums {{ $paid ? 'text-open' : '' }}">{{ Money::rub($amount) }}</span>@endunless</a>
         @endif
-        <span class="cell-sub cell-sub--one sm:hidden">@if ($word)<span class="{{ $tone }}">{{ $word }}</span>@endif<span class="line-end">@if ($button){!! $button !!}@elseif ($since)<span class="nums {{ $sinceTone }}">{{ $since }}</span>@endif</span></span>
+        <span class="cell-sub cell-sub--one sm:hidden">@if ($word)<span class="{{ $tone }}">{{ $word }}</span>@endif<span class="line-end">@if ($button && ! $unsent){!! $button !!}@elseif ($since)<span class="nums {{ $sinceTone }}">{{ $since }}</span>@endif</span></span>
     </td>
         @break
         @case('status')
-    <td class="{{ $col->classes() }} {{ $tone }}">{{ $word }}</td>
+    <td class="{{ $col->classes() }} {{ $tone }}">{{ $unsent ? '' : $word }}</td>
         @break
         @case('amount')
     <td class="{{ $col->classes() }} phone-off {{ $paid ? 'text-open' : '' }}">{{ Money::nums($amount) }}</td>
