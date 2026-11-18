@@ -99,6 +99,7 @@ final class DealDebt
         [$status, $ours] = match ($gap) {
             'buyer' => ['счёта нет: не указал покупателя', false],
             'passport' => ['счёта нет: не хватает данных покупателя', false],
+            'unread' => ['счёта нет: данные паспорта не распознались', true],
             'send' => ['счёт не отправлен менеджеру', true],
             default => ['счёта нет: '.mb_lcfirst(Position::gapAction(in_array($gap, ['share', 'commission', 'ros_requisites'], true) ? $gap : 'invoice', $deal)['button']), true],
         };

@@ -10,6 +10,7 @@ use Illuminate\Database\Migrations\Migration;
 /**
  * Счёт за ТС — по тому, что он печатает (18.11.2026, `Party::invoiceGaps`): идущие сделки, чей счёт ждал паспорт со сканом, а ФИО и
  * прописка покупателя уже есть, получают счёт сейчас (`SyncDealInvoices`; менеджер увидит его после «Отправить менеджеру»).
+ * Паспорт приложен, а ФИО или прописку не распознали (`unread`, Юсупов) — ход становится нашим, «Данные не распознались».
  */
 return new class extends Migration
 {
@@ -20,7 +21,7 @@ return new class extends Migration
             return;
         }
         Deal::where('state', DealState::Active)->where('is_demo', false)->with(['offer', 'buyer', 'contract.buyer'])->get()
-            ->filter(fn (Deal $d) => ! $d->hasSaleInvoice() && ! $d->passportReady() && $d->invoiceReady())
+            ->filter(fn (Deal $d) => ! $d->hasSaleInvoice() && (($d->invoiceReady() && ! $d->passportReady()) || $d->invoiceGap() === 'unread'))
             ->each(fn (Deal $d) => app(SyncDealInvoices::class)($d, $by));
     }
 

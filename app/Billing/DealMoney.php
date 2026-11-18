@@ -106,6 +106,10 @@ final class DealMoney
         if ($issued->isEmpty() && $deal->isActive() && ($notYet = $deal->invoiceNotYet()) !== null) {
             return new self('Счёт '.$notYet, $base, 'plain', 'open', $staff ? mb_strtolower($label) : $label);
         }
+        // Паспорт приложен, данные вносим мы (18.11.2026) — менеджеру «Счёт готовится», сотруднику — что не распознали.
+        if ($issued->isEmpty() && $deal->isActive() && $deal->invoiceGap() === 'unread') {
+            return $staff ? new self('Данные не распознались', $base, 'urgent', 'open', mb_strtolower($label)) : new self('Счёт готовится', $base, 'plain', 'open', $label);
+        }
         if ($issued->isEmpty() && $deal->isActive() && in_array($gap = $deal->invoiceGap(), ['buyer', 'passport'], true)) {
             return $staff
                 ? new self($gap === 'passport' ? 'Не хватает данных покупателя' : 'Ждём покупателя', $base, 'plain', 'open', mb_strtolower($label))

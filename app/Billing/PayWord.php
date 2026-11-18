@@ -52,7 +52,12 @@ final class PayWord
         if (! $deal->isActive()) {
             return null;
         }
-        $word = match ($deal->invoiceGap()) {
+        // Паспорт приложен, а нужного счёту не распознали — наш ход, красным (18.11.2026, владелец: «нельзя писать „ждём паспорт“,
+        // если его приложили»).
+        if (($gap = $deal->invoiceGap()) === 'unread') {
+            return ['паспорт приложен, не распознано: '.mb_strtolower(implode(', ', $deal->invoiceGaps())), 'text-danger'];
+        }
+        $word = match ($gap) {
             'buyer' => 'ждём покупателя',
             'passport' => 'не хватает данных покупателя',
             'price' => 'ждём цену продажи',

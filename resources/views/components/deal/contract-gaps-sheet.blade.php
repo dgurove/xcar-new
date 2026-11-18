@@ -6,6 +6,12 @@
 @php
     $contract = \App\Offers\DealContract::for($deal)->loadMissing(['buyer.party']);
     $missing = $contract->missing();
+    // Паспорт приложен, а договору в нём не распознали (18.11.2026): «паспорт приложен, не распознано: дата рождения» вместо «данные
+    // покупателя» — как у счёта.
+    $unread = $contract->buyer ? \App\Billing\Party::forUser($contract->buyer)->unreadFields() : [];
+    $words = $unread
+        ? 'паспорт приложен, не распознано: '.implode(', ', [...array_values($unread), ...array_diff($missing, ['данные покупателя'])])
+        : 'не указано: '.implode(', ', $missing);
     $id = 'deal-contract-gaps-'.$deal->id;
     $page = '/offers/'.$deal->offer->number;
     $buyer = $contract->buyer;
@@ -27,7 +33,7 @@
             <x-ui.file-icon name="dkp.pdf"/>
             <span class="min-w-0 flex-1">
                 <span class="block truncate">Договор купли-продажи</span>
-                <span class="row-sub text-danger">не указано: {{ implode(', ', $missing) }}</span>
+                <span class="row-sub text-danger">{{ $words }}</span>
             </span>
         </button>
         @if ($attach && \App\Offers\Actions\AttachSignedContract::allows($deal))
@@ -40,7 +46,7 @@
         @endif
     </div>
     <x-ui.sheet :id="$id" title="Договор невозможно сформировать" :open="$errors->hasAny(['buyer.*']) && old('_sheet') === $id" tall>
-        <p class="mb-3 text-ink-muted">Пока не указано: {{ implode(', ', $missing) }}</p>
+        <p class="mb-3 text-ink-muted">{{ \Illuminate\Support\Str::ucfirst($words) }}</p>
         @if ($rows)
             <div class="list mb-4">
                 @foreach ($rows as [$label, $value, $event, $href])

@@ -16,19 +16,31 @@
     $onlyReg = $party?->invoiceLacksOnlyReg() && array_keys($fields) === ['reg_address'];
     $company = $party?->kind === PartyKind::Company;
     $words = mb_strtolower(implode(', ', $blockers));
+    // Паспорт приложен — так и сказать, и показать скан, чтобы вписать по нему (18.11.2026, владелец: «если паспорт приложен, надо
+    // писать, что он приложен»; «не „нет прописки“, а „прописка не распозналась“»).
+    $unread = $deal->invoiceGap() === 'unread';
+    $reading = ! $unread && $party?->scanState() === 'reading';
+    $lead = $unread ? 'паспорт приложен, не распознано: ' : ($reading ? 'паспорт распознаётся, пока нет: ' : 'не указано: ');
+    $scanPdf = ($unread || $reading) && $party->getMedia('passport')->isNotEmpty()
+        ? ['url' => '/parties/'.$party->id.'/passport.pdf', 'type' => 'pdf', 'name' => \App\Billing\Documents\PassportPdf::fileName($party), 'label' => 'Паспорт'] : null;
 @endphp
 <div data-controller="sheet" class="contents">
     <button type="button" class="row w-full text-left" data-action="sheet#open">
         <x-ui.file-icon name="schet.pdf"/>
         <span class="min-w-0 flex-1">
             <span class="block truncate">Счёт за ТС</span>
-            <span class="row-sub">@if ($blockers)<span class="text-danger">не указано: {{ $words }}</span>@else<span class="text-ink-muted">не сформирован</span>@endif</span>
+            <span class="row-sub">@if ($blockers)<span class="text-danger">{{ $lead }}{{ $words }}</span>@else<span class="text-ink-muted">не сформирован</span>@endif</span>
         </span>
         <x-ui.chevron/>
     </button>
     <x-ui.sheet :id="$id" title="Счёт невозможно сформировать" :open="$errors->hasAny(['buyer.*']) && old('_sheet') === $id">
         @if ($blockers)
-            <p class="mb-3 text-ink-muted">Пока не указано: {{ $words }}</p>
+            <p class="mb-3 text-ink-muted">{{ \Illuminate\Support\Str::ucfirst($lead) }}{{ $words }}</p>
+            @if ($scanPdf)
+                <div class="list mb-3">
+                    <x-ui.doc :doc="$scanPdf" class="row"><x-ui.row-icon name="file" size="s" tone="open"/><span class="min-w-0 flex-1">Скан паспорта, PDF</span><x-ui.chevron/></x-ui.doc>
+                </div>
+            @endif
         @else
             <p class="mb-3 text-ink-muted">Счёт не встал сам — выставьте его в «Деньгах»</p>
         @endif

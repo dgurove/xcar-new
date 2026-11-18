@@ -309,7 +309,10 @@ class Position extends Model
             $gap = $this->gap();
             $action = self::gapAction($gap, $this->deal);
 
-            return $todo('gap:'.$gap, $action['button'], 2, button: ['label' => $action['button'], 'href' => $action['url']]);
+            // Группа — делом (`button`), а «Данные не распознались» — что случилось, первой и красным (18.11.2026).
+            return $gap === 'unread'
+                ? $todo('gap:unread', $action['title'], 1, button: ['label' => $action['button'], 'href' => $action['url']])
+                : $todo('gap:'.$gap, $action['button'], 2, button: ['label' => $action['button'], 'href' => $action['url']]);
         }
 
         if ($due = $this->priceAskLate()) {
@@ -395,6 +398,7 @@ class Position extends Model
             $this->waitsFor() === WaitsFor::Supplier => 'ждём поставщика',
             $gap === 'buyer' => 'нужен покупатель',
             $gap === 'passport' => 'не хватает данных покупателя',
+            $gap === 'unread' => 'данные не распознались',
             $this->waitsFor() === WaitsFor::Manager => 'ждём менеджера',
             default => null,
         };
@@ -455,7 +459,7 @@ class Position extends Model
         // Через связь: списки, где часы стоят в каждой строке, грузят её разом (`with('deal')`).
         $gap = $this->deal?->invoiceGap();
 
-        return in_array($gap, ['share', 'commission', 'ros_requisites', 'send'], true) ? $gap : 'invoice';
+        return in_array($gap, ['share', 'commission', 'ros_requisites', 'send', 'unread'], true) ? $gap : 'invoice';
     }
 
     /**
@@ -469,6 +473,8 @@ class Position extends Model
         return match ($gap) {
             'share' => ['title' => 'Вписать услуги подбора', 'button' => 'Вписать услуги подбора', 'url' => $money],
             'commission' => ['title' => 'Назначить вознаграждение', 'button' => 'Назначить вознаграждение', 'url' => $money],
+            // Паспорт приложен, а нужного счёту в нём не распознали (18.11.2026) — вписать по скану, шторка данных со сканом.
+            'unread' => ['title' => 'Данные не распознались', 'button' => 'Внести данные', 'url' => Surface::Crm->url('/offers/'.$deal->offer->number.'?buyer=1#invoice-buyer')],
             // Счёт готов, менеджер его не видит, пока сотрудник не проверит и не отправит (16.11.2026). Что уходит — ссылка на оплату
             // подбора или счёт за ТС (`Billing\PayOffer`, 17.11.2026, владелец: «кажется, что это счёт на машину»).
             'send' => (function () use ($deal, $money) {

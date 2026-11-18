@@ -34,6 +34,9 @@ final class DealTabs
         'answered' => 'Поставщик ответил',
         'check' => 'Проверить оплату',
         'bill' => 'Отправить счёт',
+        // Договор (18.11.2026, владелец): паспорт приложен, а договору данных не хватает — «Данные не распознались»; готов и не
+        // отправлен — «Счёт оплачен» (красным) и «Счёт не оплачен» (`Deal::paperTodo`).
+        'contract' => 'Отправить договор',
         'arrived' => 'Деньги пришли',
         'payout' => 'Оплатить поставщику',
         'todo' => 'Другие дела',
@@ -115,6 +118,7 @@ final class DealTabs
             str_starts_with($key, 'gap:paid') => 'arrived',
             // Счёта нет или менеджер его ещё не получил: выставить, отправить, назначить вознаграждение.
             str_starts_with($key, 'gap:') => 'bill',
+            str_starts_with($key, 'contract:') => 'contract',
             // Шаг нашей оплаты поставщику, в каком бы блоке он ни стоял.
             (bool) $position?->stage?->paysOut() => 'payout',
             default => 'todo',
@@ -151,6 +155,10 @@ final class DealTabs
             if ($asked->has($deal->id) && ! in_array($todo['key'] ?? '', ['reprice', 'reprice-answer', 'price-ask', 'price-offer'], true)) {
                 $todo = null;
             }
+            // У шага своего дела нет — наше дело по документам покупателя: не распознались данные, договор не отправлен (18.11.2026).
+            if ($todo === null && ! $repricing) {
+                $todo = $deal->paperTodo();
+            }
 
             return [$deal->id => ['deal' => $deal, 'tab' => self::of($position, $todo, $repricing), 'todo' => $todo]];
         });
@@ -186,7 +194,7 @@ final class DealTabs
 
     /** Связи, что нужны делу шага (`Position::todo`) и строкам. */
     public const WITH = ['offer', 'offer.vendor', 'offer.media', 'offer.positions.stage.block', 'offer.positions.stage.exits.to', 'offer.pendingReprice',
-        'buyer', 'openRequirement', 'invoices.claims', 'invoices.party', 'contract', 'garageCar'];
+        'buyer', 'openRequirement', 'invoices.claims', 'invoices.party', 'contract.buyer.party.media', 'garageCar'];
 
     /** Группы сделок без нашего дела, по порядку. */
     public const WAITS = ['answer' => 'Ждём ответа', 'manager' => 'Ждём менеджера', 'supplier' => 'Ждём поставщика', 'transport' => 'Везёт наша логистика', 'other' => 'Прочее'];

@@ -252,6 +252,13 @@ class Party extends Model implements HasMedia
      */
     public function gapWord(): ?string
     {
+        // Паспорт приложен (18.11.2026, владелец: «нельзя писать „нет прописки“, если его приложили — „прописка не распозналась“»).
+        if ($this->scanState() === 'reading') {
+            return 'паспорт распознаётся';
+        }
+        if ($unread = $this->unreadFields()) {
+            return count($unread) > 2 ? 'данные не распознались' : 'не распознано: '.implode(', ', $unread);
+        }
         $missing = array_keys(array_filter(match ($this->kind) {
             PartyKind::Company => ['названия' => blank($this->name), 'ИНН' => blank($this->inn), 'адреса' => blank($this->legal_address), 'директора' => blank($this->director)],
             PartyKind::Entrepreneur => ['ФИО' => blank($this->name), 'ИНН' => blank($this->inn), 'ОГРНИП' => blank($this->ogrn), 'адреса' => blank($this->legal_address ?: $this->reg_address)],
@@ -314,6 +321,40 @@ class Party extends Model implements HasMedia
     public function invoiceLacksOnlyReg(): bool
     {
         return array_keys($this->invoiceGaps()) === ['reg_address'];
+    }
+
+    /**
+     * Скан паспорта физлица: `none` — не приложен, `reading` — распознаётся (`ReadPassport`), `read` — дочитан (18.11.2026,
+     * владелец: «если паспорт приложен, надо писать, что он приложен»). Страницы без отметки (приложены до распознавания) — дочитаны.
+     */
+    public function scanState(): string
+    {
+        $pages = $this->needsPassportScan() ? $this->getMedia('passport') : collect();
+
+        return match (true) {
+            $pages->isEmpty() => 'none',
+            $pages->contains(fn (Media $m) => $m->getCustomProperty('read') === 'reading') => 'reading',
+            default => 'read',
+        };
+    }
+
+    /**
+     * Чего скан не дал — поля паспорта физлица, которых нет, хотя паспорт приложен и дочитан (18.11.2026, владелец: «паспорт
+     * приложили и что-либо не распозналось — это уже наш ход», группа «Данные не распознались»). Скана нет — пусто.
+     *
+     * @return array<string, string> поле => слово
+     */
+    public function unreadFields(): array
+    {
+        if (! in_array($this->kind, [null, PartyKind::Person, PartyKind::SelfEmployed], true) || $this->scanState() !== 'read') {
+            return [];
+        }
+
+        return array_map(fn ($w) => $w[0], array_filter([
+            'name' => ['ФИО', $this->name], 'birth_at' => ['дата рождения', $this->birth_at], 'passport' => ['номер паспорта', $this->passport],
+            'passport_issued' => ['кем выдан', $this->passport_issued], 'passport_issued_at' => ['дата выдачи', $this->passport_issued_at],
+            'reg_address' => ['прописка', $this->reg_address],
+        ], fn ($w) => blank($w[1])));
     }
 
     /** Реквизитов для счёта не хватает — печатается с прочерком. */

@@ -83,9 +83,9 @@ final class ReadPassport implements ShouldQueue
         foreach ($pages->filter(fn (Media $m) => $m->getCustomProperty('over')) as $m) {
             $m->forgetCustomProperty('over')->save();
         }
-        if (! $party->fillFromScan($over)) {
-            return;
-        }
+        // Пересчёт — и когда скан ничего не дал (18.11.2026): «паспорт приложен, не распознано» — ход наш (`Deal::invoiceGap` `unread`),
+        // и сделка должна встать к нам сразу, а не ждать менеджера.
+        $party->fillFromScan($over);
         $user = User::where('party_id', $party->id)->first();
         $by = User::find($media->getCustomProperty('by')) ?? User::withRole(Role::Admin)->orderBy('id')->first();
         if ($user && $by) {

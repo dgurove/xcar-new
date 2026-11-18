@@ -1006,7 +1006,8 @@ class Deal extends Model implements HasMedia
             $this->seller() === Seller::Ros && ! Party::seller(Seller::Ros)->billable() => 'ros_requisites',
             // У покупателя нет того, что счёт печатает (18.11.2026: ФИО и прописка, у ИП и организации — свои поля; скан и
             // паспорт — договору): счёта ПРАЙМ нет, ход менеджера. Деньги уже пришли — счёт встаёт и так (`SyncDealInvoices::prime`).
-            $this->isPrime() && ! $this->invoiceReady() && $this->credited() <= 0 => 'passport',
+            // Паспорт приложен и дочитан, а нужного счёту в нём не нашлось (18.11.2026, владелец: «это уже НАШ ХОД») — `unread`.
+            $this->isPrime() && ! $this->invoiceReady() && $this->credited() <= 0 => $this->invoiceUnread() ? 'unread' : 'passport',
             default => 'invoice',
         };
     }
@@ -1041,6 +1042,48 @@ class Deal extends Model implements HasMedia
         return $this->invoiceGaps() === [];
     }
 
+    /** Счёту не хватает того, что скан паспорта должен был дать, а паспорт приложен и дочитан (`Party::unreadFields`). */
+    public function invoiceUnread(): bool
+    {
+        $buyer = $this->invoiceBuyer();
+
+        return $buyer && array_intersect_key($this->invoiceGaps(), Party::forUser($buyer)->unreadFields()) !== [];
+    }
+
+    /**
+     * Наше дело по документам покупателя, когда у шага своего нет (18.11.2026, владелец): паспорт приложен, а нужного счёту в нём
+     * нет — «Данные не распознались» во «Отправить счёт» (`gap:unread`); счёту хватает, договору нет — та же группа во «Отправить
+     * договор» (`contract:unread`); договор готов и не отправлен — «Счёт оплачен» (красным) или «Счёт не оплачен». Дело —
+     * в виде `Position::todo`. Нет — null.
+     *
+     * @return array{key: string, title: string, rank: int, since: ?\Illuminate\Support\Carbon, button: ?array}|null
+     */
+    public function paperTodo(): ?array
+    {
+        if (! $this->isActive() || ! $this->hasContract() || ! $this->buyer_id || $this->isAuction() || ! $this->contract?->buyer_user_id) {
+            return null;
+        }
+        $contract = $this->contract;
+        $fill = ['label' => 'Внести данные', 'href' => '/offers/'.$this->offer->number.'?buyer=1#invoice-buyer'];
+        $todo = fn (string $key, string $title, int $rank, ?array $button, $since = null) => ['key' => $key, 'title' => $title, 'rank' => $rank,
+            'since' => $since ?? $contract->updated_at, 'button' => $button];
+        if ($this->invoiceGap() === 'unread') {
+            return $todo('gap:unread', 'Данные не распознались', 1, $fill);
+        }
+        if ($contract->buyer && Party::forUser($contract->buyer)->unreadFields()) {
+            return $todo('contract:unread', 'Данные не распознались', 1, $fill);
+        }
+        if ($contract->shown_at || ! DealContract::for($this)->isReady() || \App\Offers\Documents\SignedContractPdf::files($this)->isNotEmpty()) {
+            return null;
+        }
+        $sale = $this->invoices->first(fn (Invoice $i) => $i->direction === 'issued' && $i->kind === \App\Billing\ChargeKind::Sale && $i->state !== InvoiceState::Void);
+        $paid = $sale?->state === InvoiceState::Paid;
+
+        return $todo($paid ? 'contract:paid' : 'contract:unpaid', $paid ? 'Счёт оплачен' : 'Счёт не оплачен', $paid ? 2 : 3,
+            ['label' => 'Отправить договор', 'post' => '/work/deals/'.$this->id.'/contract/show', 'confirm' => 'Отправить договор менеджеру?'],
+            $contract->ready_at ?? $contract->updated_at);
+    }
+
     /**
      * Чего не хватает счёту за ТС словами — для строки-заготовки счёта и шторки «Счёт невозможно сформировать, пока не указаны»
      * (18.11.2026, `x-deal.invoice-gaps`). Поля покупателя — ключами полей (их вводят тут же), остальное — своими ключами.
@@ -1050,7 +1093,7 @@ class Deal extends Model implements HasMedia
     public function invoiceBlockers(): array
     {
         return match ($this->invoiceGap()) {
-            'passport' => $this->invoiceGaps(),
+            'passport', 'unread' => $this->invoiceGaps(),
             'buyer' => ['buyer' => 'Покупатель'],
             'price' => ['price' => 'Цена продажи'],
             'share' => ['share' => 'Наша доля'],
