@@ -99,7 +99,7 @@ final class DealTabs
 
         return match (true) {
             $repricing || in_array($key, ['reprice', 'reprice-answer', 'price-ask', 'price-offer'], true) => 'reprice',
-            in_array($key, ['interest-letter', 'letter', 'bounced', 'requisites'], true) || str_starts_with($key, 'request:') => 'letter',
+            in_array($key, ['bounced', 'requisites'], true) || str_starts_with($key, 'letter') || str_starts_with($key, 'request:') => 'letter',
             // Ответ поставщика на разбор — на каком бы шаге ни пришёл.
             $key === 'reply' => 'answered',
             str_starts_with($key, 'stage:Проверка оплаты') => 'check',

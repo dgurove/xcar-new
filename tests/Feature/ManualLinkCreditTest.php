@@ -230,11 +230,11 @@ class ManualLinkCreditTest extends TestCase
         $this->walkTo($deal, 'Связаться с владельцем');
         $link = $this->selection($deal)->openLink();
 
+        // Без имени плательщика (18.11.2026): ссылку оплачивает кто угодно.
         $lines = explode("\n", $link->message());
-        $this->assertSame('Тужиков Евгений', $lines[0]);
-        $this->assertStringStartsWith('ТС', $lines[1]);
-        $this->assertSame("80\u{00A0}000\u{00A0}₽", $lines[2]);
-        $this->assertSame('Оплата картой, СБП или SberPay по ссылке:', $lines[3]);
+        $this->assertStringStartsWith('ТС', $lines[0]);
+        $this->assertSame("80\u{00A0}000\u{00A0}₽", $lines[1]);
+        $this->assertSame('Оплата картой, СБП или SberPay по ссылке:', $lines[2]);
     }
 
     /**
@@ -250,19 +250,19 @@ class ManualLinkCreditTest extends TestCase
         $crm = 'http://'.config('xcar.crm_host');
         $this->actingAs($this->admin);
 
-        $this->get($crm.'/work/money')->assertOk()
-            ->assertSee('data-detail-key="'.$manual->id.'"', false)->assertSee('data-detail-key="'.$this->selection($deal)->id.'"', false)
-            ->assertSee('Евгений Тужиков')->assertSee('Дмитрий Морковин')->assertSee('Lada Vesta')
-            ->assertSee('ссылку не открывали')->assertSee('Откуда');
+        // «Оплаты» по менеджерам (18.11.2026): строки людей; ручная оплата без менеджера — «Без менеджера», внутри — машиной.
+        $this->get($crm.'/work/money')->assertOk()->assertSee('Тужиков')->assertSee('Без менеджера')->assertSee('Откуда');
+        $this->get($crm.'/work/money/managers/'.$deal->buyer_id.'?tab=fees')->assertOk()->assertSee('ссылку не открывали');
+        $this->get($crm.'/work/money/managers/none?tab=fees')->assertOk()->assertSee('Lada Vesta');
         $this->get($crm.'/work/money?q='.urlencode('морковин дмитрий'))->assertOk()->assertSee('data-detail-key="'.$manual->id.'"', false)->assertDontSee('data-detail-key="'.$this->selection($deal)->id.'"', false);
         // Старый адрес вкладки ссылок — список «Нам должны».
-        $this->get($crm.'/work/money?tab=links')->assertOk()->assertSee('data-detail-key="'.$manual->id.'"', false);
+        $this->get($crm.'/work/money?tab=links')->assertOk()->assertSee('Без менеджера');
 
         $link = $manual->openLink();
-        $this->get($crm.'/work/money?peek='.$manual->id, ['Turbo-Frame' => 'detail'])->assertOk()->assertSee('Морковин Дмитрий Евгеньевич')->assertSee('link-'.$link->id.'-car:open', false);
+        $this->get($crm.'/work/money?peek='.$manual->id, ['Turbo-Frame' => 'detail'])->assertOk()->assertSee('link-'.$link->id.'-car:open', false);
         $this->get($crm.'/work/money?tab=links&peek='.$link->id, ['Turbo-Frame' => 'detail'])->assertOk()->assertSee('link-'.$link->id.'-car:open', false);
         $this->delete($crm.'/work/money/links/'.$link->id)->assertRedirect();
         $this->assertSame(InvoiceState::Void, $manual->fresh()->state);
-        $this->get($crm.'/work/money')->assertDontSee('data-detail-key="'.$manual->id.'"', false);
+        $this->get($crm.'/work/money')->assertDontSee('Без менеджера');
     }
 }

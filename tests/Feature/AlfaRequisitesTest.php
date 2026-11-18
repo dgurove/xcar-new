@@ -429,16 +429,8 @@ class AlfaRequisitesTest extends TestCase
     {
         [$offer, $deal, $prime] = $this->payStep();
         $page = $this->actingAs($this->manager)->get(Surface::Site->url('/deals/'.$deal->id))->assertOk();
-        $page->assertSee('Приложить чек')->assertSee('За что этот чек?')->assertDontSee('Приложить платёжку');
-
-        $this->actingAs($this->manager)->post(Surface::Site->url('/deals/'.$deal->id.'/receipt'), ['file' => UploadedFile::fake()->image('chek.jpg', 500, 800)])->assertSessionHasErrors('for');
-        $this->actingAs($this->manager)->post(Surface::Site->url('/deals/'.$deal->id.'/receipt'), ['file' => UploadedFile::fake()->image('chek.jpg', 500, 800), 'for' => 'invoice:'.$prime->id])->assertRedirect();
-        $claim = $prime->fresh()->claims()->sole();
-        $this->assertNotNull($claim->slip());
-        $this->assertSame('Оплата счёта', $offer->fresh()->stage()->name);
-
-        // ПРАЙМ заявлен — чек остаётся только поставщику, вопроса нет.
-        $this->actingAs($this->manager)->get(Surface::Site->url('/deals/'.$deal->id))->assertSee('Приложить чек')->assertDontSee('За что этот чек?');
+        // Комиссия ПРАЙМ — ссылкой или наличными (18.11.2026): чека перевода к ней нет, чек — только поставщику, вопроса «За что» нет.
+        $page->assertSee('Приложить чек')->assertDontSee('За что этот чек?')->assertDontSee('Приложить платёжку');
         $this->actingAs($this->manager)->post(Surface::Site->url('/deals/'.$deal->id.'/receipt'), ['file' => UploadedFile::fake()->image('chek-2.jpg', 500, 800), 'for' => 'supplier'])->assertRedirect();
         $this->assertSame('Подтверждение оплаты', $offer->fresh()->stage()->name);
         $this->assertSame(['application/pdf'], PaymentProofPdf::files($deal->fresh())->pluck('mime_type')->all());

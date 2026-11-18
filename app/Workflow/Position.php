@@ -237,6 +237,27 @@ class Position extends Model
     public const AGREE_BLOCK = 'Согласование с поставщиком';
 
     /**
+     * Что пишем поставщику на шаге — по шаблону письма шага: [вид, дело словом] (группы вкладки «Написать поставщику»).
+     * Шаблона нет — по названию шага.
+     *
+     * @return array{string, string}
+     */
+    public static function letterAction(Stage $stage): array
+    {
+        // Название шаблона — раз на запрос: строк сделок сотни, шаблонов единицы.
+        $name = $stage->template_id ? \App\Support\ShowMemo::get('template-name:'.$stage->template_id, fn () => \App\Mail\Template::whereKey($stage->template_id)->value('name')) : null;
+
+        return match ($name) {
+            'Поставщику: уведомление о покупке', 'Поставщику: запрос контактов' => ['interest', 'Проявить интерес'],
+            'Поставщику: подтверждение покупки' => ['confirm', 'Подтвердить актуальность'],
+            'Поставщику: реквизиты для счёта' => ['requisites', 'Отправить реквизиты'],
+            'Поставщику: документ об оплате' => ['payment', 'Отправить чек'],
+            'Поставщику: запись на подписание' => ['signing', 'Записаться на подписание'],
+            default => ['stage', 'Написать поставщику'],
+        };
+    }
+
+    /**
      * Что сделать нам — для «Ваш ход» в «Сделках» (27.10.2026, владелец: «не видно, что нужно сделать, а что просто
      * просрочено»): группа (`key`, `title` глаголом, `rank` — порядок групп), с какого момента ждёт (`since`) и кнопка
      * строки (`letters` — окно писем, `href` — ссылка, `tel`). Заявка Каркаде — кнопка у группы, одна на вендора.
@@ -307,8 +328,10 @@ class Position extends Model
             // Письмо об интересе после «Принять» не ушло (17.11.2026, владелец: «для Альфы обязательно нужно письмо, оч плохо, если
             // приняли, а письмо не отправили — заметно, своей подгруппой, красным»; за день 4 таких у Андрея): первый шаг письма
             // согласования с поставщиком — своим делом первым, красным (`status`, группа `x-table.group danger`).
-            in_array($letter, ['unsent', 'failed'], true) && $this->stage->block?->name === self::AGREE_BLOCK => $todo('interest-letter', 'Письмо об интересе не отправлено', 0, button: $write('Написать')),
-            in_array($letter, ['unsent', 'failed'], true) => $todo('letter', 'Написать поставщику', 1, button: $write('Написать')),
+            // Письмо — группой по тому, что пишем (18.11.2026, владелец: «группу „Написать поставщику“ разбить: „Отправить реквизиты“,
+            // „Проявить интерес“, „Подтвердить актуальность“, „Отправить чек“…», `letterAction`). Письмо шага согласования — красным.
+            in_array($letter, ['unsent', 'failed'], true) && $this->stage->block?->name === self::AGREE_BLOCK => $todo('letter-agree:'.self::letterAction($this->stage)[0], self::letterAction($this->stage)[1], 0, button: $write('Написать')),
+            in_array($letter, ['unsent', 'failed'], true) => $todo('letter:'.self::letterAction($this->stage)[0], self::letterAction($this->stage)[1], 1, button: $write('Написать')),
             $this->consentLate() => $todo('consent', 'Менеджер не ответил, берёт ли', 3, $this->deadline_at,
                 ($phone = $this->deal?->buyer?->phone) ? ['label' => 'Телефон менеджера', 'tel' => $phone] : null),
             $this->stage->isRequestStep() => $todo('request:'.$offer->vendor_id, 'Отправить заявку поставщику', 4),
@@ -332,7 +355,7 @@ class Position extends Model
         if ($todo = $this->todo()) {
             // Дела не по сроку шага (переоценка, письмо на разбор, деньги) горят своим: срок шага к ним не относится.
             $own = ! preg_match('/^(reprice|reply|price-offer|gap:paid)/', $todo['key']);
-            $red = in_array($todo['key'], ['price-ask', 'consent', 'interest-letter'], true) || ($own && $late);
+            $red = in_array($todo['key'], ['price-ask', 'consent'], true) || str_starts_with($todo['key'], 'letter-agree:') || ($own && $late);
             $title = \App\Offers\DealTabs::TODO_TITLES[$todo['title']] ?? $todo['title'];
 
             return ['text' => mb_lcfirst($title), 'tone' => $red ? 'text-danger' : 'text-accent-text', 'hint' => $own ? $hint : null];

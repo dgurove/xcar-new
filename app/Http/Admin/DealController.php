@@ -207,8 +207,8 @@ class DealController
                 return [
                     'title' => $ours ? (DealTabs::TODO_TITLES[$first['todo']['title']] ?? $first['todo']['title']) : DealTabs::waitTitle(substr($key, 5)),
                     'ours' => $ours, 'rank' => $ours ? $first['todo']['rank'] : 1000 + array_search(strtok(substr($key, 5), ':'), array_keys($wait), true),
-                    // Письмо об интересе не ушло — группа красным (17.11.2026, владелец).
-                    'danger' => $key === 'do:interest-letter',
+                    // Письмо шага согласования не ушло — группа красным (17.11.2026, владелец).
+                    'danger' => str_starts_with($key, 'do:letter-agree:'),
                     'size' => $rows->count(),
                     'rows' => $rows->sortBy($since)->map(fn (array $r) => ['deal' => $r['deal'], 'todo' => $r['todo'] ?? ['key' => '', 'title' => '', 'rank' => 0, 'since' => null, 'button' => null]])->values(),
                 ];
