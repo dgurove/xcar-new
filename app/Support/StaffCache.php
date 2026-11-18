@@ -27,6 +27,9 @@ final class StaffCache
 
     public const COUNTS = 'counts';
 
+    /** Каталог сайта: личные числа разделов менеджера и покупателя (`Nav`), сброс — событие каталога (`Publisher`). */
+    public const SITE = 'site';
+
     private const WAIT = 4;
 
     /**

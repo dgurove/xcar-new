@@ -165,22 +165,40 @@ function chat(detail) {
     else window.toast?.(`${detail.from}: ${detail.text}`, detail.href ? { href: detail.href } : undefined);
 }
 
-async function card({ number, only }) {
+// Плитки копятся и спрашиваются пачкой (18.11.2026): каждое событие `card` уходило своим запросом сразу, у каждого
+// открытого каталога — публикация пачкой из N машин при M менеджерах была N×M запросов в одну секунду на двух ядрах.
+// Теперь одно окно на каталог: первое событие ждёт 0,4–1,2 с (у каждого своя пауза — запросы разных людей не встают
+// стеной), остальные за это время едут с ним одним запросом `/offers/cards`.
+let cardsDue = new Map(); // номер → only
+let cardsTimer = 0;
+function card({ number, only }) {
     // Каталог и галерея, которых нет на экране, узнают о плитке при возврате: их снимок иначе жил до двух минут.
     markDirty(['/offers', '/gallery']);
     const present = !!document.getElementById(`offer-${number}`);
+    if (!present && (!document.getElementById('catalog') || only)) return;
+    cardsDue.set(Number(number), !!only);
+    cardsTimer ||= setTimeout(cards, 400 + Math.random() * 800);
+}
+
+async function cards() {
+    cardsTimer = 0;
+    const due = cardsDue;
+    cardsDue = new Map();
     const list = document.getElementById('catalog');
-    if (!present && (!list || only)) return;
-    const r = await fetch(`/offers/${number}/card?present=${present ? 1 : 0}&list=${list?.dataset.list || ''}`, { headers: { Accept: 'text/vnd.turbo-stream.html' } });
+    // Экран сменился, пока ждали: спрашиваем только то, что ещё касается этой страницы.
+    const numbers = [...due.keys()].filter((n) => document.getElementById(`offer-${n}`) || (list && !due.get(n)));
+    if (!numbers.length || document.visibilityState !== 'visible') return;
+    const present = numbers.filter((n) => document.getElementById(`offer-${n}`));
+    const r = await fetch(`/offers/cards?n=${numbers.join(',')}&present=${present.join(',')}&list=${list?.dataset.list || ''}`, { headers: { Accept: 'text/vnd.turbo-stream.html' } });
     if (!r.ok) return;
-    const html = await r.text();
-    // Новая плитка въезжает наверх, только если человек стоит в начале списка, а список — новыми сверху: иначе
-    // (по сроку, с подписями пачек, таблицей) он получит N новых под кнопкой, а не плитку не на своём месте.
-    if (!present && html.includes('action="prepend"') && (list?.dataset.prepend === 'false' || scrollTop() > 200 || location.search)) {
-        pending();
-        return;
+    const box = document.createElement('template');
+    box.innerHTML = await r.text();
+    for (const stream of box.content.querySelectorAll('turbo-stream')) {
+        // Новая плитка въезжает наверх, только если человек стоит в начале списка, а список — новыми сверху: иначе
+        // (по сроку, с подписями пачек, таблицей) он получит N новых под кнопкой, а не плитку не на своём месте.
+        if (stream.getAttribute('action') === 'prepend' && (list?.dataset.prepend === 'false' || scrollTop() > 200 || location.search)) { pending(); continue; }
+        Turbo.renderStreamMessage(stream.outerHTML);
     }
-    Turbo.renderStreamMessage(html);
     if (document.querySelector('#catalog .card, #catalog tr')) document.getElementById('catalog-empty')?.remove();
 }
 
@@ -462,13 +480,33 @@ function syncCounts(doc, gone) {
     });
 }
 
-export async function badges() {
+// Счётчики — одним запросом на пачку событий (18.11.2026): каждое событие `badges` (сообщение, уведомление, шаг сделки)
+// сразу тянуло `/live/badges`, а приходят они очередями. Первое ждёт 0,25–0,75 с (своя пауза у каждого окна), остальные
+// за это время его не дублируют; пришло, пока запрос шёл, — ещё один после него. Скрытая вкладка спросит, когда покажется.
+let badgesTimer = 0;
+let badgesBusy = false;
+let badgesAgain = false;
+let badgesLate = false;
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && badgesLate) { badgesLate = false; badges(); } });
+
+export function badges() {
     if (!topics.includes('user/')) return;
+    badgesTimer ||= setTimeout(askBadges, 250 + Math.random() * 500);
+}
+
+async function askBadges() {
+    badgesTimer = 0;
+    if (document.visibilityState !== 'visible') { badgesLate = true; return; }
+    if (badgesBusy) { badgesAgain = true; return; }
+    badgesBusy = true;
     try {
         const r = await fetch('/live/badges', { headers: { Accept: 'text/vnd.turbo-stream.html' } });
         const date = Date.parse(r.headers.get('Date') || '');
         if (date) window.clockOffset = date - Date.now();
         if (r.ok) Turbo.renderStreamMessage(await r.text());
         document.dispatchEvent(new CustomEvent('badges:updated'));
-    } catch {}
+    } catch {} finally {
+        badgesBusy = false;
+        if (badgesAgain) { badgesAgain = false; badges(); }
+    }
 }

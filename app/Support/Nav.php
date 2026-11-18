@@ -502,6 +502,27 @@ final class Nav
     }
 
     /** Свои счётчики сайта — заново: человек открыл предложение, и «не просмотренных» стало меньше (`ReadOffer`). */
+    /**
+     * С человеком что-то случилось (событие в его тему `user/{id}`, его собственное действие): личные числа сайта и
+     * «Оплаты» кабинета — заново. До 18.11.2026 они жили полминуты: у менеджера каждая страница и каждый `/live/badges`
+     * раз в 30 секунд пересчитывали всё — около 60 запросов, из них 16 — расчёт денег целиком. Теперь — до события.
+     */
+    public static function touch(User|int $user): void
+    {
+        $id = $user instanceof User ? $user->id : $user;
+        StaffCache::forget('nav.counts:'.Surface::Site->value.':'.$id);
+        StaffCache::forget('nav.money:'.$id);
+        if (! app()->runningInConsole()) {
+            request()->attributes->remove('nav.counts:'.Surface::Site->value.':'.$id);
+        }
+    }
+
+    /** Каталог сайта изменился (новое предложение, приём закрыт, показ): личные числа «Предложений» и «Галереи» — заново. */
+    public static function forgetSiteCounts(): void
+    {
+        StaffCache::bump(StaffCache::SITE);
+    }
+
     public static function forget(User $user): void
     {
         // Счётчики живут в `StaffCache` (17.11.2026) — забывать там же: прямой `Cache::forget` старого ключа ничего не снимал.
@@ -530,8 +551,12 @@ final class Nav
 
     private static function countsCached(User $user, Surface $surface, string $key): array
     {
-        // Общие счётчики админов сбрасывает событие (`forgetStaffCounts`), личные живут свой срок.
-        return StaffCache::remember($key, 30, function () use ($user, $surface) {
+        // Общие счётчики админов сбрасывает событие (`forgetStaffCounts`). Личные на сайте — тоже событие: каталога
+        // (`forgetSiteCounts`) или адресное (`touch`); срок — запасной, на случай, если событие забыли (гаснет окно галереи).
+        $own = ! str_ends_with($key, ':staff');
+        $site = $own && $surface === Surface::Site;
+
+        return StaffCache::remember($key, $site ? 300 : 30, function () use ($user, $surface) {
             $day = now()->subDay();
             if ($surface === Surface::Park) {
                 return ['totals' => [
@@ -587,7 +612,7 @@ final class Nav
             return ['totals' => array_filter([
                 '/offers' => (clone $open)->count(),
                 '/gallery' => (clone $gallery)->count(),
-                '/purchases' => $user->canSeePurchases() ? Purchase::cardCount($user) : null,
+                // Закупок в разделах сайта нет (число не показывалось нигде, а стоило запроса на каждую открытую закупку).
                 // Сделки в работе — то, что стоит строками на экране «Сделки».
                 '/deals' => match (true) {
                     // Только сделки в работе, как в списке (11.10.2026): подтверждения и закончившееся — строками в конце.
@@ -613,7 +638,7 @@ final class Nav
                     : CatalogQuery::fresh(clone $open, $user)->count(),
                 '/gallery' => (clone $gallery)->where('gallery_from', '>', $day)->count(),
             ]];
-        }, str_ends_with($key, ':staff') ? StaffCache::COUNTS : null);
+        }, match (true) { ! $own => StaffCache::COUNTS, $site => StaffCache::SITE, default => null });
     }
 
     /**
@@ -699,8 +724,9 @@ final class Nav
             // красное «Оплатить», а строка кабинета молчала).
             // Число — строки самих «Оплат», где нужен он (`DealMoney::needsAction`), иначе бейдж и список расходятся; расчёт
             // тяжёлый — полминуты в кэше, как итоги таб-бара.
-            $badges['/account/money'] = Cache::remember("nav.money:{$user->id}", 30,
-                fn () => (new ManagerLedger($user))->rows()->filter(fn ($r) => $r->money->needsAction())->count());
+            // тяжёлый (все сделки человека со счетами) — до события о нём (`touch`), срок — запасной.
+            $badges['/account/money'] = StaffCache::remember("nav.money:{$user->id}", 600,
+                fn () => (new ManagerLedger($user))->rows()->filter(fn ($r) => $r->money->needsAction())->count(), null);
         }
         if ($user->holdsAsBuyer()) {
             // Что ждут от него по сделкам — на табе «Сделки», как у менеджера; по гаражной — на табе «Гараж» (20.10.2026).

@@ -39,6 +39,23 @@ final class Publisher
         if (in_array($type, ['badges', 'refresh', 'rows'], true) && array_intersect([Topics::STAFF, Topics::PARK], (array) $topics)) {
             self::touchesTabs($type, $data) ? Nav::forgetStaffCounts() : Nav::forgetStaffBadges();
         }
+        // Личные числа сайта (`Nav::touch`, `forgetSiteCounts`, 18.11.2026): событие человеку — его числа заново, событие
+        // каталога (плитка, перечитать список) — «Предложения» и «Галерея» у всех. Событие и так шлёт всё, что эти числа
+        // меняет, — тем же людям; кэш на срок полминуты пересчитывал их у каждого без повода.
+        $catalog = false;
+        foreach ((array) $topics as $topic) {
+            if ($type === 'card') {
+                // Плитка — про каталог, и шлют её всем, кто видит машину: одной меткой каталога, а не каждому свой сброс.
+                $catalog = true;
+            } elseif (preg_match('#^user/(\d+)$#', (string) $topic, $m)) {
+                Nav::touch((int) $m[1]);
+            } elseif ($topic === Topics::CATALOG) {
+                $catalog = true;
+            }
+        }
+        if ($catalog) {
+            Nav::forgetSiteCounts();
+        }
         $hub = (string) config('xcar.mercure.hub');
         if ($hub === '' || ! config('xcar.mercure.publisher_key')) {
             return;

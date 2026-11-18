@@ -114,6 +114,13 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        // Своё действие (любой не-GET вошедшего) меняет его же числа навигации — они посчитаются заново (`Nav::touch`):
+        // с 18.11.2026 личные числа сайта живут до события, а не полминуты.
+        \Illuminate\Support\Facades\Event::listen(\Illuminate\Foundation\Http\Events\RequestHandled::class, function ($event) {
+            if (! $event->request->isMethodSafe() && ($user = $event->request->user())) {
+                \App\Support\Nav::touch($user);
+            }
+        });
         // У машины появился документ — её документы читаются сами (`Cars\Jobs\ReadCarDocs`, 07.11.2026).
         Media::created(function ($media) {
             // Файл поставщика (partner.xcar.ru) сам не читается: читается после того, как он отдал цену (`Partner\Handover`).

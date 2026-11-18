@@ -317,6 +317,16 @@ class Stage extends Model
 
     public function loadedExits(): Collection
     {
-        return $this->relationLoaded('exits') ? $this->exits : ShowMemo::get('stage-exits:'.$this->id, fn () => $this->exits()->with('to')->get());
+        if ($this->relationLoaded('exits')) {
+            return $this->exits;
+        }
+        // На показе — выходы всех этапов двумя запросами на запрос, а не по запросу на этап (18.11.2026: счётчики сайта
+        // спрашивали «шаг ли это оплаты» у десятка этапов на каждой странице и на каждом `/live/badges` — 10 запросов из
+        // 23). Маршрутов десятки строк. В действиях и очереди (`ShowMemo` там не помнит) — по-прежнему свой запрос.
+        if (app()->runningInConsole() || ! request()->isMethodSafe()) {
+            return $this->exits()->with('to')->get();
+        }
+
+        return ShowMemo::get('stage-exits', fn () => Outcome::with('to')->orderBy('position')->get()->groupBy('stage_id'))->get($this->id) ?? new Collection;
     }
 }

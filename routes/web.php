@@ -100,6 +100,7 @@ Route::middleware('wall')->group(function () {
     Route::get('/search', SearchController::class);
     Route::view('/faq', 'site.pages.voprosy');
     Route::get('/gallery', [CatalogController::class, 'gallery']);
+    Route::get('/offers/cards', [FragmentController::class, 'cards']);
     Route::get('/offers/{offer}', [OfferController::class, 'show'])->name('offers.show');
     Route::get('/offers/{offer}/card', [FragmentController::class, 'card']);
 });
