@@ -432,6 +432,19 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
         return $this->name === \App\Users\Actions\AddPerson::UNNAMED && blank($this->party?->name);
     }
 
+    /**
+     * Значок покупателя в его строке (18.11.2026, владелец: «серую иконку человечка, организации или ИП перед именем, как в других
+     * строках»): те же, что у плиток вида (`x-deal.buyer-kind`).
+     */
+    public function buyerIcon(): string
+    {
+        return match ($this->party?->kind) {
+            \App\Billing\PartyKind::Company => 'bank',
+            \App\Billing\PartyKind::Entrepreneur => 'bag',
+            default => 'user',
+        };
+    }
+
     /** Покупатель словами: имя, у заготовки — вид лица («Физ. лицо», «ИП», «Юр. лицо»), а не «Новый покупатель» (18.11.2026). */
     public function buyerLabel(): string
     {

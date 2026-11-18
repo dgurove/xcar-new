@@ -64,7 +64,7 @@
                         <span class="sale-row-label !flex-none text-ink">Покупатель</span>
                         <span class="sale-row-value min-w-0 !max-w-none flex-1"><span class="block truncate">{{ $isMe ? ($garage ? 'Ваши данные' : 'Я сам') : $buyerName }}</span><span @class(['block text-sm', 'text-open' => $ready, 'text-urgent' => ! $ready])>{{ $ready ? 'данные есть' : ($gap ?? 'нужны данные') }}</span></span>
                     @elseif ($capped)
-                        <span class="min-w-0 flex-1 truncate">{{ $isMe ? ($garage ? 'Ваши данные' : 'Я сам') : $buyerName }}</span>
+                        <x-ui.icon :name="$buyer->buyerIcon()" class="size-5 shrink-0 text-ink-dim"/><span class="min-w-0 flex-1 truncate">{{ $isMe ? ($garage ? 'Ваши данные' : 'Я сам') : $buyerName }}</span>
                     @else
                         <span class="min-w-0 flex-1"><span class="block truncate">{{ $isMe ? ($garage ? 'Ваши данные' : 'Я сам') : $buyerName }}</span><span @class(['block text-sm', 'text-open' => $ready, 'text-urgent' => ! $ready])>{{ $ready ? 'данные есть' : ($gap ?? 'нужны данные') }}</span></span>
                     @endif
@@ -81,7 +81,7 @@
                             <span class="sale-row-label !flex-none text-ink">Покупатель</span>
                             <span class="sale-row-value min-w-0 !max-w-none flex-1"><span class="block truncate">{{ $isMe ? ($garage ? 'Ваши данные' : 'Я сам') : $buyerName }}</span><span class="block text-sm text-urgent">{{ $gap ?? 'нужны данные' }}</span></span>
                         @elseif ($capped)
-                            <span class="min-w-0 flex-1 truncate">{{ $isMe ? ($garage ? 'Ваши данные' : 'Я сам') : $buyerName }}</span>
+                            <x-ui.icon :name="$buyer->buyerIcon()" class="size-5 shrink-0 text-ink-dim"/><span class="min-w-0 flex-1 truncate">{{ $isMe ? ($garage ? 'Ваши данные' : 'Я сам') : $buyerName }}</span>
                         @else
                             <span class="min-w-0 flex-1"><span class="block truncate">{{ $isMe ? ($garage ? 'Ваши данные' : 'Я сам') : $buyerName }}</span><span class="block text-sm text-urgent">{{ $gap ?? 'нужны данные' }}</span></span>
                         @endif

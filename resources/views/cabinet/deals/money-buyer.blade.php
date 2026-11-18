@@ -15,6 +15,7 @@
         <div class="list-cap !px-0 flex justify-between gap-3"><span>Покупатель</span>@if ($cb)<span @class(['text-open' => $cbReady, 'text-urgent' => ! $cbReady])>{{ $cbReady ? 'данные есть' : ($cb->party?->gapWord() ?? 'нужны данные') }}</span>@endif</div>
         <div class="list">
             <button type="button" class="row w-full text-left" data-controller="emit" data-action="emit#send" data-emit-event-param="buyer:open">
+                <x-ui.icon :name="$cb?->buyerIcon() ?? 'user'" class="size-5 shrink-0 text-ink-dim"/>
                 <span @class(['min-w-0 flex-1 truncate', 'text-danger' => ! $cb])>{{ $cb ? ($cb->id === $deal->buyer_id ? 'Вы' : $cb->buyerLabel()) : 'не выбран' }}</span>
                 <x-ui.chevron/>
             </button>

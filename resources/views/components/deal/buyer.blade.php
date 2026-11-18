@@ -72,7 +72,7 @@
         <x-people.pick data-action="deal-buyer-pick-{{ $deal->id }}:open@window->sheet#open" name="buyer_id" kind="buyer" passport :people="$rows" :value="$isManager ? 'me' : $buyer?->id" title="Покупатель" :deal="$deal->id" link autosubmit :open="$ask && ! $buyer"
             :placeholder="'не выбран'" :label="$rowLabel" finish="Выбрать" :variant="$capped ? 'none' : 'row'"/>
         @if ($capped && ! $buyer)
-            <button type="button" class="row w-full text-left" data-controller="emit" data-action="emit#send" data-emit-event-param="deal-buyer-pick-{{ $deal->id }}:open"><span class="min-w-0 flex-1 text-danger">не выбран</span><x-ui.chevron/></button>
+            <button type="button" class="row w-full text-left" data-controller="emit" data-action="emit#send" data-emit-event-param="deal-buyer-pick-{{ $deal->id }}:open"><x-ui.icon name="user" class="size-5 shrink-0 text-ink-dim"/><span class="min-w-0 flex-1 text-danger">не выбран</span><x-ui.chevron/></button>
         @endif
     </form>
     @error('buyer_id')<p class="field-error px-4 py-2">{{ $message }}</p>@enderror
@@ -82,7 +82,7 @@
     <div data-controller="sheet" data-action="{{ $dataSheet }}:open@window->sheet#open" class="contents">
         {{-- Данные для договора — своей строкой того же вида, под «Плательщиком» (16.11.2026). --}}
         @if ($capped)
-            <button type="button" class="row w-full text-left" data-action="sheet#open"><span class="min-w-0 flex-1 truncate">{{ $isManager ? 'На себя' : $who }}</span><x-ui.chevron/></button>
+            <button type="button" class="row w-full text-left" data-action="sheet#open"><x-ui.icon :name="$buyer->buyerIcon()" class="size-5 shrink-0 text-ink-dim"/><span class="min-w-0 flex-1 truncate">{{ $isManager ? 'На себя' : $who }}</span><x-ui.chevron/></button>
         @else
             <x-deal.sale-row :label="'Реквизиты'" :value="$ready ? trim($kindWord.'есть', ', ') : ($gap ?? 'нужны')" :tone="$ready ? null : 'danger'" class="w-full text-left" data-action="sheet#open"/>
         @endif

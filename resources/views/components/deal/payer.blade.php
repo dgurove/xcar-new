@@ -24,7 +24,7 @@
 @endphp
 @if (! $can && $row && $capped)
     <div class="list-cap !px-0">Покупатель</div>
-    <div class="list"><div class="row"><span class="min-w-0 flex-1 truncate">{{ $value }}</span></div></div>
+    <div class="list"><div class="row"><x-ui.icon :name="$user?->buyerIcon() ?? 'user'" class="size-5 shrink-0 text-ink-dim"/><span class="min-w-0 flex-1 truncate">{{ $value }}</span></div></div>
 @elseif (! $can && $row)
     <div class="row sale-row">
         <span class="sale-row-label">Покупатель</span>
@@ -36,7 +36,7 @@
     {{-- `capped` — подпись над плашкой, в плашке только имя (18.11.2026, карточка денег менеджера). --}}
     @if ($row && $capped)
         <div class="list-cap !px-0">Покупатель</div>
-        <div class="list"><button type="button" class="row w-full text-left" data-action="sheet#open"><span class="min-w-0 flex-1 truncate">{{ $value }}</span><x-ui.chevron/></button></div>
+        <div class="list"><button type="button" class="row w-full text-left" data-action="sheet#open"><x-ui.icon :name="$user?->buyerIcon() ?? 'user'" class="size-5 shrink-0 text-ink-dim"/><span class="min-w-0 flex-1 truncate">{{ $value }}</span><x-ui.chevron/></button></div>
     @elseif ($row)<x-deal.sale-row label="Покупатель" :value="$value" data-action="sheet#open"/>@endif
     <x-ui.sheet :id="$id" title="Покупатель">
         <form method="post" action="{{ $action }}" class="flex flex-col gap-4" data-controller="reveal autosubmit">
