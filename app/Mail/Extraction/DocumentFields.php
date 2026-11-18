@@ -87,13 +87,13 @@ final class DocumentFields
         // ЭПТС кузова на чужом шасси (18.11.2026, 5991/046/00482/26 — фургон «АвтоМаш»): «Марка: Отсутствует», модель —
         // «Коммерческое наименование 2834NJ», марка — базового ТС («Марка базового ТС (шасси) ГАЗ») или по VIN шасси (X96 — ГАЗ).
         // Прежде «Отсутствует 2834NJ» давало марку «2834Nj».
-        // Подпись «Марка» OCR бывает читает латиницей («Мapka») — тогда хватает коммерческого наименования.
+        // Подпись «Марка» OCR бывает читает латиницей («Мapka»), «наименование» — с «й» — тогда хватает коммерческого наименования.
         $mark = self::values($text, 'Марка(?:\s+ТС)?')[0] ?? null;
         if ($mark !== null && preg_match('/^(?:отсутствует|нет|не\s+указан\w*|[—–-]+)$/iu', $mark)) {
             $mark = null;
         }
         if (! isset($f['brand']) && $mark === null) {
-            $trade = self::values($text, 'Коммерческое\s*наименование')[0] ?? null;
+            $trade = self::values($text, 'Коммерческ\w*\s*на\w{0,2}менование')[0] ?? null;
             $base = self::values($text, 'Марка\s*базового\s*ТС(?:\s*\(шасси\))?')[0] ?? null;
             foreach ($base ? [] : self::values($text, 'Идентификационный\s*номер\s*базового\s*ТС|Номер\s*шасси(?:\s*\(рамы\))?') as $value) {
                 if (preg_match(Patterns::VIN, mb_strtoupper($value), $m) && ($car = ScanCar::carOfVin($m[0]))) {
@@ -153,7 +153,9 @@ final class DocumentFields
         $put('engine_volume', CarWords::cc(self::values($text, 'V\s*объ[её]м,?\s*л\.?|Объ[её]м\s+двигателя(?:,\s*(?:л|см3|куб\.?\s*см)\.?)?')[0] ?? null));
         $power = CarWords::digits(self::values($text, 'Мощность(?:\s+двигателя)?(?:,\s*л\.?\s*с\.?)?')[0] ?? null);
         $put('engine_power', $power && $power < 2000 ? $power : null);
-        $city = self::values($text, '\bГород')[0] ?? null;
+        // В (Э)ПТС «Город …» — адрес завода-изготовителя или собственника, а не где стоит машина (18.11.2026: фургон «АвтоМаш»
+        // встал «Нижний Новгород» по адресу завода).
+        $city = preg_match('/паспорт\w*\s*транспортн\w*\s*средств/iu', $text) ? null : (self::values($text, '\bГород')[0] ?? null);
         $put('city', $city ? trim((string) preg_replace('/^г\.?\s+/u', '', $city)) : null);
         $put('floor_price', self::price($text));
         $put('binding_until', self::binding($text));

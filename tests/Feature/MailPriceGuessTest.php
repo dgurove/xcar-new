@@ -74,6 +74,11 @@ class MailPriceGuessTest extends TestCase
         $f = DocumentFields::extract($text);
         $this->assertSame(['XU42834NJP0000310', 'ГАЗ', '2834NJ', 2023], [$f['vin']['value'] ?? null, $f['brand']['value'] ?? null, $f['model']['value'] ?? null, $f['year']['value'] ?? null]);
         $this->assertNull(\App\Cars\Brand::resolve('2834NE'));
+        // OCR второй раз: «Мapka» латиницей, «Коммерческоенайменование», город — только адрес завода.
+        $ocr = "Выписка из электронного паспорта транспортного средства\nИдентификационный номер   XU42834NJP0000310\nМapka   Отсутствует\n"
+            ."Коммерческоенайменование   2834NJ\nНомер шасси (рамы)   X96330250P2885463\nМарка базового ТС (шасси)   ГАЗ\nАдрес изготовителя   603032, Российская\nГород Нижний Новгород,\n";
+        $f = DocumentFields::extract($ocr);
+        $this->assertSame(['ГАЗ', '2834NJ', null], [$f['brand']['value'] ?? null, $f['model']['value'] ?? null, $f['city']['value'] ?? null]);
 
         $garbled = str_repeat("Ндевтифихаrдrrонншй Hor,tep транспортного средства Коммерчесхое яаименование 2Ез4NJ Год ивгот.овлвння 2о2з паспорта Выписка\n", 3);
         $this->assertFalse(\App\Mail\Extraction\AttachmentText::readable($garbled));
