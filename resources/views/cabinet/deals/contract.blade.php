@@ -46,7 +46,7 @@
          над блоком, а не в блоке, чтобы имя нормально влезало»). --}}
     {{-- Состояние — справа в строке подписи, в плашке только имя (18.11.2026, владелец). --}}
     @if ($capped && $buyer)<div class="list-cap !px-0 flex justify-between gap-3"><span>Покупатель</span><span @class(['text-open' => $ready, 'text-urgent' => ! $ready])>{{ $ready ? 'данные есть' : ($gap ?? 'нужны данные') }}</span></div>@endif
-    <div class="list">
+    <div @class(["list", "list-solo" => $capped])>
         @if ($part !== 'doc')
         @if ($buyer)
             @if ($ready || ! $editable)

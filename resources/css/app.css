@@ -1951,6 +1951,8 @@ html.kb-open { --home-gap: 0px; }
      первая .row в обёртке, а не первый ребёнок (у формы первым идёт скрытый _token). */
   .list > * + .contents > .row:first-of-type, .list > * + .contents > .contents > .row:first-of-type, .list > * + .contents > .contents > .contents > .row:first-of-type { position: relative; }
   .list > .contents::after { content: none; }
+  /* Плашка покупателя (18.11.2026): строка одна, а перед ней скрытая форма выбора — разделитель сверху ей не нужен. */
+  .list.list-solo > *::after, .list.list-solo .row::after { content: none !important; }
   /* Действия счёта в «Деньгах» сделки — продолжение его строки, без линии сверху (13.11.2026): «Скопировать», «Отправить»
      ссылку и тихое «Оплатили без ссылки…». */
   .invoice-acts { @apply flex flex-wrap items-center gap-2 px-4 pb-3 -mt-1; }

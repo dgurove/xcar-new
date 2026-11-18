@@ -47,7 +47,7 @@
 @endphp
 @if ($capped)
     <div class="list-cap !px-0 flex justify-between gap-3"><span>Покупатель</span>@if ($buyer)<span @class(['text-open' => $ready, 'text-danger' => ! $ready])>{{ $ready ? $selfWord.$kindWord.'данные есть' : ($gap ?? 'нужны данные') }}</span>@endif</div>
-    <div class="list">
+    <div class="list list-solo">
 @endif
 @if ($ours)
     <div class="row flex-col items-stretch gap-2">
