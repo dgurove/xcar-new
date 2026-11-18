@@ -28,6 +28,7 @@ import avatarFallback from './lib/avatar-fallback';
 import { perf } from './lib/perf';
 import { sections } from './lib/sections';
 import { visitGuard } from './lib/visit-guard';
+import { setAddress } from './lib/address';
 import { shape } from './lib/shape';
 
 // Потоки из ответа карточки строки (x-ui.row-card): тост flash-сообщения и «следующий без цены» (detail_controller).
@@ -200,6 +201,7 @@ touchPrefetch();
 perf();
 visitGuard();
 sections({ onStale: () => refreshPage() });
+cleanLaunchAddress();
 shape();
 pressFeedback();
 inPageAnchors();
@@ -409,6 +411,18 @@ function keepSideScroll() {
         if (!at) return;
         document.querySelectorAll(SIDE).forEach((el, i) => { if (at[i]) el.scrollTo({ left: at[i], behavior: 'instant' }); });
     });
+}
+
+// Запуск с иконки: адрес из манифеста несёт метку `app=1` (сервер по ней ставит cookie «установлено» и рисует страницу
+// сразу, без редиректа — `MarkInstalled`). В адресе она не нужна: память раздела и «Назад» живут под чистым адресом.
+function cleanLaunchAddress() {
+    const clean = () => {
+        const url = new URL(location.href);
+        if (url.searchParams.get('app') !== '1') return;
+        url.searchParams.delete('app');
+        setAddress(url);
+    };
+    document.addEventListener('turbo:load', clean);
 }
 
 function freshness() {
