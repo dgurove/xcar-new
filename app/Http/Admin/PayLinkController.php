@@ -26,6 +26,7 @@ class PayLinkController
 {
     public function store(Request $request, Invoice $invoice, CreatePayLink $create, Gateway $gateway, ReissueServiceInvoice $reissue)
     {
+        MoneyController::guardDeal($invoice);
         abort_unless($gateway->configured(), 422, 'Оплата по ссылке не подключена');
         $request->merge(['amount' => $request->filled('amount') ? Money::parse($request->input('amount')) : null]);
         $data = $request->validate([
@@ -49,6 +50,7 @@ class PayLinkController
     /** Почта для чека из шторки ссылки. */
     public function email(Request $request, PayLink $link, SetPayerEmail $set)
     {
+        MoneyController::guardDeal($link->invoice);
         $data = $request->validate(['email' => ['required', 'email', 'max:120']], ['email.required' => 'Впишите почту', 'email.email' => 'Проверьте почту']);
         $set($link, $data['email']);
 
@@ -58,6 +60,7 @@ class PayLinkController
     public function destroy(Request $request, PayLink $link, CancelPayLink $cancel, VoidInvoice $void)
     {
         $invoice = $link->invoice;
+        MoneyController::guardDeal($invoice);
         // Ручная без оплат гаснет вместе со счётом: открытый счёт без ссылки — невидимый долг.
         if ($link->isOpen() && $invoice->isService() && $invoice->paid == 0 && ! $invoice->claims()->exists()) {
             $void($invoice, $request->user(), 'Ссылка отменена');

@@ -95,10 +95,11 @@ class ContractPriceTest extends TestCase
         $this->assertTrue($contract->price_manual);
         $this->assertEqualsWithDelta(990000, (float) $this->invoice($deal)->total, 0.01);
 
-        // Ставка НДС договора модератору закрыта; схему («Кому платит покупатель», через Р.О.С.) он меняет с 17.11.2026 (владелец).
-        // Гараж с 17.11.2026 открыт — вкладкой «Предложений».
+        // Схему («Кому платит покупатель», через Р.О.С.) модератор меняет с 17.11.2026, ставку НДС договора — с 18.11.2026 (владелец:
+        // «полный доступ ко всему, что касается договоров и счетов»). Гараж с 17.11.2026 открыт — вкладкой «Предложений».
         $this->actingAs($moderator)->post($crm.'/work/deals/'.$deal->id.'/scheme', ['scheme' => 'ros', 'scheme_ok' => 1])->assertRedirect(); // дверь открыта (у этого вендора Р.О.С. нет — ошибкой поля, не 404)
-        $this->actingAs($moderator)->put($crm.'/work/deals/'.$deal->id.'/contract', ['vat_rate' => 22])->assertForbidden();
+        $this->actingAs($moderator)->put($crm.'/work/deals/'.$deal->id.'/contract', ['vat_rate' => 22])->assertRedirect();
+        $this->assertSame(22, $deal->fresh()->contract->vat_rate);
         $this->actingAs($moderator)->get($crm.'/work/garage')->assertRedirect();
 
         // «Как в сделке» — снова по деньгам сделки: цена минус вознаграждение (18.11.2026).

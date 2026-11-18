@@ -280,11 +280,29 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
         // из web.php должны дойти до ленты.
         Route::get('/chats', fn () => redirect('/work/chats'.(request()->getQueryString() ? '?'.request()->getQueryString() : ''), 301));
         Route::get('/chats/{chat}', fn (int $chat) => redirect("/work/chats/{$chat}", 301))->whereNumber('chat');
+        // Счета и деньги сделки — модератору тоже (18.11.2026, владелец: «у модераторов должен быть полный доступ ко всему, что
+        // касается договоров и счетов», «пусть цену продажи и сумму вознаграждения тоже могут менять»): цена и вознаграждение,
+        // оплаты и аннулирование счёта, заявки менеджера об оплате, ссылки у счёта, «Ещё счёт». Счёт без сделки модератору
+        // закрыт (`MoneyController::guardInvoice`, `PayLinkController`); раздел «Оплаты» и возврат эквайринга — админу.
+        Route::put('/work/deals/{deal}/money', [DealController::class, 'money']);
+        Route::post('/work/payments/{payment}/confirm', [MoneyController::class, 'confirm']);
+        Route::post('/work/payments/{payment}/reject', [MoneyController::class, 'reject']);
+        Route::post('/work/payments/{payment}/to-supplier', [MoneyController::class, 'toSupplier']);
+        Route::post('/work/money/invoices/{invoice}/links', [PayLinkController::class, 'store']);
+        Route::delete('/work/money/links/{link}', [PayLinkController::class, 'destroy']);
+        Route::put('/work/money/links/{link}/email', [PayLinkController::class, 'email']);
+        Route::prefix('work/money/invoices/{invoice}')->group(function () {
+            Route::put('/', [MoneyController::class, 'update']);
+            Route::post('/payments', [MoneyController::class, 'pay']);
+            Route::get('/payments/{payment}/slip', [MoneyController::class, 'slip']);
+            Route::delete('/payments/{payment}', [MoneyController::class, 'unpay']);
+            Route::post('/void', [MoneyController::class, 'void']);
+        });
+        Route::get('/work/invoices/new', [InvoiceController::class, 'create']);
+        Route::post('/work/invoices', [InvoiceController::class, 'store']);
     });
 
     Route::middleware('ability:canManageCrm')->group(function () {
-        Route::get('/work/invoices/new', [InvoiceController::class, 'create']);
-        Route::post('/work/invoices', [InvoiceController::class, 'store']);
         // Шеринг PDF: маршруты без домена на хосте CRM отбивает ResolveSurface — свои копии.
         Route::match(['get', 'post'], '/offers/{offer}/pdf', [ShareController::class, 'pdf']);
         Route::get('/offers/{offer}/photo/{media}', [ShareController::class, 'photo'])->whereNumber('media');
@@ -366,7 +384,6 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
         // Кто что вывозит: мы или менеджер, к нему, к нам или на парковку.
         // «Работа → Вывоз» заменила логистика (10.10.2026): перевозки — на logistics.xcar.ru.
         Route::get('/work/pickups', fn () => redirect()->away(Surface::Logistics->url('/transports'), 301));
-        Route::put('/work/deals/{deal}/money', [DealController::class, 'money']);
         // Скан паспорта покупателя, которого админ указывает за менеджера (20.10.2026) — та же загрузка, что в кабинете.
         // Оплаты — вкладки «По ссылкам / Нам должны / Мы должны» (07.10.2026); карточка счёта — общая со стоянкой.
         Route::get('/work/money', [MoneyController::class, 'index']);
@@ -379,22 +396,9 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
         Route::get('/work/money/links/existing', [MoneyController::class, 'existing'])->middleware('ability:isAdmin');
         Route::put('/work/money/links/{link}/car', [PayLinkController::class, 'car'])->middleware('ability:isAdmin');
         Route::get('/work/money/links/{link}/attach', [PayLinkController::class, 'attach'])->middleware('ability:isAdmin');
-        Route::post('/work/payments/{payment}/confirm', [MoneyController::class, 'confirm']);
-        Route::post('/work/payments/{payment}/reject', [MoneyController::class, 'reject']);
-        Route::post('/work/payments/{payment}/to-supplier', [MoneyController::class, 'toSupplier']);
-        Route::post('/work/money/invoices/{invoice}/links', [PayLinkController::class, 'store']);
-        Route::delete('/work/money/links/{link}', [PayLinkController::class, 'destroy']);
-        Route::put('/work/money/links/{link}/email', [PayLinkController::class, 'email']);
         Route::post('/work/money/acquiring/{attempt}/refund', [PayLinkController::class, 'refund']);
         // Выписка СберБизнеса переехала в Настройки → Банк (07.10.2026): связь толком не настроена, в «Оплатах» она была мусором.
         Route::permanentRedirect('/work/money/bank', '/settings/bank/statement');
-        Route::prefix('work/money/invoices/{invoice}')->group(function () {
-            Route::put('/', [MoneyController::class, 'update']);
-            Route::post('/payments', [MoneyController::class, 'pay']);
-            Route::get('/payments/{payment}/slip', [MoneyController::class, 'slip']);
-            Route::delete('/payments/{payment}', [MoneyController::class, 'unpay']);
-            Route::post('/void', [MoneyController::class, 'void']);
-        });
 
         Route::get('/gallery', [GalleryController::class, 'index']);
         // Старые адреса разделов — закладки и ссылки из уведомлений.

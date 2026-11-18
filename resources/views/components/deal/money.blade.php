@@ -45,8 +45,9 @@
         // Редкое со счетами — в «⋯» карточки (15.11.2026, владелец выбрал «счёт файлом, как документ»): «Оплатили без ссылки…»
         // (шторка оплаты ниже, событием `paid-{id}:open`), «Ещё счёт», страница счёта. С 16.11.2026 и на шаге оплаты: «Деньги пришли»
         // из шага убрано — отметка нашей оплаты здесь, строкой «Деньги пришли?» под счётом.
-        $paidBy = $invoices->filter(fn ($i) => ! $i->isOwed() && $i->state === InvoiceState::Issued && $i->remaining() > 0 && auth()->user()?->canManageCrm());
-        $editMoney = $deal->isActive() && $deal->moneyEditable() && (! $deal->isGarage() || $deal->isGarageManager() || ($deal->namesBuyer() && $deal->amount !== null));
+        $paidBy = $invoices->filter(fn ($i) => ! $i->isOwed() && $i->state === InvoiceState::Issued && $i->remaining() > 0 && auth()->user()?->canEditDeals());
+        // Гаражная Совкомбанка без цены — тоже (18.11.2026): цену продажи вписывают тут же, как «Продаю» менеджера.
+        $editMoney = $deal->isActive() && $deal->moneyEditable() && auth()->user()?->canEditDeals() && (! $deal->isGarage() || $deal->isGarageManager() || $deal->namesBuyer());
         // Что раньше стояло строками («Кому», «Плательщик», «Кому» у подбора) — пунктами «⋯» (18.11.2026): шапки блоков и так это говорят.
         $schemeEdit = ! $deal->isAuction() && $deal->isActive() && count(\App\Offers\DealScheme::casesFor($offer->vendor, $offer)) > 1 && $deal->moneyEditable() && auth()->user()?->canEditDeals();
         $payerEdit = $payerRow && auth()->user()?->canEditDeals() && ! \App\Offers\Actions\SetDealPayer::locked($deal);
@@ -85,7 +86,7 @@
             @if ($editMoney)
             {{-- Шторка денег сделки — пунктом «⋯» (15.11.2026: «Изменить» в заголовке «Продажи» было непонятно, что меняет). --}}
             <div data-controller="sheet" class="contents" data-action="deal-money-{{ $deal->id }}:open@window->sheet#open">
-                <x-ui.sheet id="deal-money-{{ $deal->id }}" title="Деньги сделки">
+                <x-ui.sheet id="deal-money-{{ $deal->id }}" :title="$deal->isGarageManager() ? 'Деньги сделки' : 'Цена и вознаграждение'">
                     @if ($deal->isGarageManager())
                         {{-- Гаражная «платит менеджер»: вознаграждение и услуги подбора ползунком (16.11.2026), в форму — услуги подбора
                              (`deals.share`), счёт со ссылкой встаёт сам (`SyncDealInvoices`). --}}
@@ -96,8 +97,8 @@
                         </form>
                     @else
                         {{-- Схема — своей строкой «Схема» (`x-deal.scheme`, 03.11.2026): здесь только вознаграждение. --}}
-                        <x-offer.money-form :action="'/work/deals/'.$deal->id.'/money'" method="put" :amount="$deal->amount" :cost="$deal->cost" :commission="$deal->commission" :fee="! $deal->isDirect()"
-                            :scheme="\App\Offers\DealScheme::choiceFor($deal->offer->vendor?->deal_format, $deal->schemeOf())" scheme-locked :owner-price="$deal->owner_price" :owner-locked="true" :supplier-cost="$deal->supplier_cost" :share="$deal->isGarage() ? null : $deal->buyer?->deal_share" submit="Сохранить"/>
+                        {{-- Цена продажи — полем (18.11.2026, владелец: «цена продажи по итогу часто другая»; и модератору). --}}
+                        <x-deal.price-money :deal="$deal" submit="Сохранить"/>
                     @endif
                 </x-ui.sheet>
             </div>
@@ -157,7 +158,7 @@
         $payerApart = $payerRow && $payerId && $payerId !== $buyerParty && ($buyerParty || $deal->payer_party_id);
         $signed = \App\Offers\Documents\SignedContractPdf::files($deal)->isNotEmpty();
         $ready = $withContract && ! \App\Offers\DealContract::for($deal)->missing();
-        $priceEditable = $contract && $deal->isActive() && (($deal->moneyEditable() && $canEdit) || auth()->user()?->canManageCrm());
+        $priceEditable = $contract && $deal->isActive() && $canEdit;
         // Ссылка знает свой счёт без запроса: строка берёт из него плательщика, машину и текст «Поделиться».
         $last = fn ($i, bool $live) => $i->payLinks->when($live, fn ($c) => $c->where('state', '!=', \App\Billing\Acquiring\PayLinkState::Canceled))
             ->sortByDesc('id')->first()?->setRelation('invoice', $i);

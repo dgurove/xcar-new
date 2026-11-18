@@ -23,20 +23,28 @@ final class UpdateDealMoney
 {
     public function __construct(private SyncDealInvoices $invoices) {}
 
-    public function __invoke(Deal $deal, User $by, ?int $commission, ?DealScheme $scheme = null, ?int $share = null, ?string $note = null): void
+    /** @param  ?int  $amount  цена продажи (`deals.amount`, 18.11.2026: «цена продажи по итогу часто другая») — null: не трогаем */
+    public function __invoke(Deal $deal, User $by, ?int $commission, ?DealScheme $scheme = null, ?int $share = null, ?string $note = null, ?int $amount = null): void
     {
         if (! $deal->moneyEditable()) {
             throw ValidationException::withMessages(['commission' => 'По счёту сделки уже платили, сначала отмените оплату']);
         }
-        if ($commission !== null && $deal->amount !== null && $commission > $deal->amount) {
-            throw ValidationException::withMessages(['commission' => 'Не больше цены подтверждения '.Money::rub($deal->amount)]);
+        $price = $amount ?? $deal->amount;
+        if ($commission !== null && $price !== null && $commission > $price) {
+            throw ValidationException::withMessages(['commission' => 'Не больше цены продажи '.Money::rub($price)]);
         }
+        $was = $deal->amount;
+        $repriced = $amount !== null && $amount !== $was;
         $scheme ??= $deal->schemeOf();
         $selection = $scheme->paysSelection() && ! $deal->isGarage();
         $wasSelection = $deal->paysSelection();
         // Гаражная Совкомбанка (`namesBuyer`) — деньги как у обычной ПРАЙМ: вознаграждение считаем мы, когда менеджер продал.
         $garage = $deal->isGarage() && ! $deal->namesBuyer();
-        DB::transaction(function () use ($deal, $by, $commission, $scheme, $selection, $wasSelection, $share, $garage, $note) {
+        DB::transaction(function () use ($deal, $by, $commission, $scheme, $selection, $wasSelection, $share, $garage, $note, $amount, $was, $repriced) {
+            if ($repriced) {
+                $deal->update(['amount' => $amount]);
+                $deal->offer->log(OfferEventType::Note, $by, ['text' => 'Цена продажи '.($was === null ? '' : Money::rub($was).' → ').Money::rub($amount)]);
+            }
             $deal->update($garage
                 ? ['scheme' => $scheme, 'share' => $deal->isGarageManager() ? $share : null]
                 : ['commission' => $commission, 'scheme' => $scheme,

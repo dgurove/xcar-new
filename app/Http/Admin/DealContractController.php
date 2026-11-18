@@ -123,8 +123,8 @@ class DealContractController
         abort_unless($deal->hasContract(), 404);
         // НДС договора — сегментом в карточке ДКП, сразу (14.11.2026, владелец: «бывает и без НДС, и 5 %, и 22 %»).
         if ($request->has('vat_rate') && ! $request->has('vehicle')) {
-            // НДС — деньги ПРАЙМ: только админ (модератору — сумма договора и данные ДКП).
-            abort_unless($request->user()->canManageCrm(), 403);
+            // НДС договора — и модератору (18.11.2026, владелец: «полный доступ ко всему, что касается договоров и счетов»).
+            abort_unless($request->user()->canEditDeals(), 403);
             $data = $request->validate(['vat_rate' => ['required', 'integer', Rule::in(DealContract::VAT_RATES)]], [], ['vat_rate' => 'НДС']);
             $contract = $save(DealContract::for($deal), $data, $request->user());
 
@@ -150,29 +150,34 @@ class DealContractController
     }
 
     /**
-     * Шторка «Счёт невозможно сформировать, пока не указаны» (18.11.2026, `x-deal.invoice-gaps`): только недостающие поля
-     * счёта (`Party::invoiceGaps`) — обязательными, вид покупателя прежний; «Сформировать без прописки» (`without_reg`) —
-     * отметка у договора, если не хватает одной прописки. Дальше — та же дверь, что у данных покупателя (`SaveDealContract`).
+     * Шторка «Счёт невозможно сформировать» (18.11.2026, `x-deal.invoice-gaps`): вид покупателя сегментом и поля счёта этого вида —
+     * обязательными; «Сформировать без прописки» (`without_reg`) — отметка у договора, если физлицу не хватает одной прописки.
+     * Дальше — та же дверь, что у данных покупателя (`SaveDealContract`).
      */
     public function invoiceData(Request $request, Deal $deal, SaveDealContract $save)
     {
         abort_unless($deal->isLive() && ($buyer = $deal->invoiceBuyer()) && $deal->contract, 404);
         $party = \App\Billing\Party::forUser($buyer);
-        $without = $request->boolean('without_reg') && $party->invoiceLacksOnlyReg();
-        $gaps = $party->invoiceGaps(withoutReg: $without);
-        $kind = match ($party->kind) { \App\Billing\PartyKind::Company => 'company', \App\Billing\PartyKind::Entrepreneur => 'ip', default => 'person' };
-        // Название организации в форме — `org` (`SaveBuyerData`); правила — из общих, без «обязательно по виду»: обязательно
-        // только то, чего счёту не хватает.
-        $field = fn (string $k) => $kind === 'company' && $k === 'name' ? 'org' : $k;
+        // Вид — из сегмента окна (18.11.2026, владелец: «указание типа покупателя, если его нет»), по умолчанию прежний.
+        $was = match ($party->kind) { \App\Billing\PartyKind::Company => 'company', \App\Billing\PartyKind::Entrepreneur => 'ip', default => 'person' };
+        $kind = in_array($request->input('buyer.kind'), ['person', 'ip', 'company'], true) ? $request->input('buyer.kind') : $was;
+        $without = $kind === 'person' && $request->boolean('without_reg') && blank($request->input('buyer.reg_address'));
+        // Обязательны поля счёта этого вида (`Party::invoiceGaps`), остальное — правилами общих полей покупателя.
+        $need = match ($kind) {
+            'company' => ['org' => 'название', 'inn' => 'ИНН', 'kpp' => 'КПП', 'legal_address' => 'юридический адрес'],
+            'ip' => ['name' => 'ФИО', 'inn' => 'ИНН', 'ogrn' => 'ОГРНИП', 'legal_address' => 'адрес'],
+            default => ['name' => 'ФИО'] + ($without ? [] : ['reg_address' => 'адрес прописки']),
+        };
         $all = PartyRules::passport('buyer');
         $rules = [];
-        foreach ($gaps as $k => $label) {
-            $base = array_values(array_filter((array) ($all['buyer.'.$field($k)] ?? ['string', 'max:255']), fn ($r) => ! is_string($r) || ! str_starts_with($r, 'required') && $r !== 'nullable'));
-            $rules['buyer.'.$field($k)] = ['required', ...$base];
+        foreach ($need as $k => $label) {
+            $base = array_values(array_filter((array) ($all['buyer.'.$k] ?? ['string', 'max:255']), fn ($r) => ! is_string($r) || (! str_starts_with($r, 'required') && $r !== 'nullable')));
+            $rules['buyer.'.$k] = ['required', ...$base];
         }
         PartyRules::squeeze($request);
-        $data = $rules ? $request->validate($rules, [], collect($gaps)->mapWithKeys(fn ($l, $k) => ['buyer.'.$field($k) => mb_strtolower($l)])->all()) : [];
+        $data = $request->validate($rules, [], collect($need)->mapWithKeys(fn ($l, $k) => ['buyer.'.$k => $l])->all());
         $save($deal->contract, ['buyer' => ['kind' => $kind] + ($data['buyer'] ?? [])] + ($without ? ['invoice_without_reg' => true] : []), $request->user());
+
         return back()->with('toast', $deal->fresh()->hasSaleInvoice() ? 'Счёт сформирован' : 'Данные покупателя сохранены');
     }
 

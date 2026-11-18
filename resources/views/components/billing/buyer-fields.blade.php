@@ -34,11 +34,14 @@
         </div>
     </div>
     <div class="fields fields-stack" data-reveal-target="pane" data-reveal-key="ip" data-requisites-paste-target="group" @if ($kind !== 'ip') hidden @endif>
+        {{-- Реквизиты целиком (18.11.2026, владелец: «парсер ворда не надо — удобный ввод: копирует, вставляет»): блок раскладывается по полям. --}}
+        <x-ui.field name="_paste" :id="$id('ip', 'paste')" label="Реквизиты целиком" type="textarea" rows="2" placeholder="Скопируйте карточку ИП из Word и вставьте сюда"/>
         <x-ui.field :name="$n('inn')" :id="$id('ip', 'inn')" label="ИНН" :value="$mine('inn', $ip)" placeholder="12 цифр" required/>
         <x-ui.field :name="$n('ogrn')" :id="$id('ip', 'ogrn')" label="ОГРНИП" :value="$mine('ogrn', $ip)" placeholder="15 цифр" required/>
         <x-ui.field :name="$n('legal_address')" :id="$id('ip', 'legal_address')" label="Адрес" type="textarea" rows="1" :value="$ip ? ($party->legal_address ?: $party->reg_address) : $party?->reg_address" required/>
     </div>
     <div class="fields fields-stack" data-reveal-target="pane" data-reveal-key="company" data-requisites-paste-target="group" @if ($kind !== 'company') hidden @endif>
+        <x-ui.field name="_paste" :id="$id('org', 'paste')" label="Реквизиты целиком" type="textarea" rows="2" placeholder="Скопируйте карточку организации из Word и вставьте сюда"/>
         <x-ui.field :name="$n('org')" :id="$id('org', 'name')" label="Название" :value="$company ? $party->name : null" required/>
         <x-ui.field :name="$n('inn')" :id="$id('org', 'inn')" label="ИНН" :value="$mine('inn', $company)" required/>
         <x-ui.field :name="$n('kpp')" :id="$id('org', 'kpp')" label="КПП" :value="$mine('kpp', $company)"/>

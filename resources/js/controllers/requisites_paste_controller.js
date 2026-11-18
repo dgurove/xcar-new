@@ -12,7 +12,8 @@ const LABELS = [
     [/бик/i, 'bik'],
     [/огрн/i, 'ogrn'],
     [/кпп/i, 'kpp'],
-    [/^инн\b/i, 'inn'],
+    // `\b` в JS — граница латиницы: «ИНН:» не узнавался (18.11.2026).
+    [/^инн(?![а-яё])/i, 'inn'],
     [/руковод|директор/i, 'director'],
     [/адрес/i, 'legal_address'],
     [/наименование\s*банка|^банк/i, 'bank_name'],
@@ -58,6 +59,11 @@ export function parseRequisites(text) {
             i++;
             continue;
         }
+        // «ИП Волков Виктор Александрович» / «Индивидуальный предприниматель …» строкой без подписи — название (ФИО из него, `fioOf`).
+        if (/^(индивидуальный\s+предприниматель|ип)\s+[а-яё]/i.test(line)) {
+            put('org', line);
+            continue;
+        }
         put(byDigits(line), line);
     }
 
@@ -98,7 +104,9 @@ export default class extends Controller {
             delete found.org;
             found.name = fio;
         }
-        const filled = Object.entries(found).filter(([key, value]) => this.write(key, value, key !== 'name'));
+        // Из поля «Реквизиты целиком» — и ФИО поверх: вставили карточку нарочно (18.11.2026).
+        const whole = field.name === '_paste';
+        const filled = Object.entries(found).filter(([key, value]) => this.write(key, value, key !== 'name' || whole));
         if (!filled.length) return;
         event.preventDefault();
         window.toast?.(`Разложено по полям: ${filled.length}`);

@@ -354,6 +354,20 @@ class MoneyController
         return redirect($invoice->crmHref());
     }
 
+    /**
+     * Модератору — только счета сделок (18.11.2026, владелец: «полный доступ ко всему, что касается договоров и счетов»): оплата,
+     * аннулирование, срок, заявки менеджера, ссылки у счёта. Счёт без сделки (парковка, разовые ссылки) — админу.
+     */
+    public static function guardDeal(?Invoice $invoice): void
+    {
+        abort_unless(auth()->user()?->canManageCrm() || ($invoice && ($invoice->deal_id || $invoice->credit_deal_id)), 403);
+    }
+
+    protected function guardInvoice(Invoice $invoice): void
+    {
+        self::guardDeal($invoice);
+    }
+
     protected function invoiceView(): string
     {
         return 'billing.invoice-page';
@@ -470,6 +484,7 @@ class MoneyController
 
     public function confirm(Request $request, Payment $payment, ConfirmPayment $confirm)
     {
+        self::guardDeal($payment->invoice);
         $confirm($payment, $request->user());
 
         return back()->with('toast', 'Оплата принята');
@@ -478,6 +493,7 @@ class MoneyController
     /** «Это за другое»: чек сообщения об оплате ПРАЙМ — на самом деле оплата поставщику (`SwapPaymentProof`, 16.11.2026). */
     public function toSupplier(Request $request, Payment $payment, SwapPaymentProof $swap)
     {
+        self::guardDeal($payment->invoice);
         $swap->toSupplier($payment, $request->user());
 
         return back()->with('toast', 'Чек перенесли в оплату поставщику');
@@ -485,6 +501,7 @@ class MoneyController
 
     public function reject(Request $request, Payment $payment, RejectPayment $reject)
     {
+        self::guardDeal($payment->invoice);
         $reject($payment, $request->user(), $request->validate(['reason' => ['nullable', 'string', 'max:255']])['reason'] ?? null);
 
         return back()->with('toast', 'Отмечено: не поступила');

@@ -43,7 +43,9 @@ use App\Workflow\Outcome;
 use App\Workflow\Position;
 use App\Workflow\Stage;
 use App\Workflow\Track;
+use App\Garage\Actions\MarkGarageSold;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -310,8 +312,9 @@ class DealController
     public function money(Request $request, Deal $deal, UpdateDealMoney $update)
     {
         // Услуги подбора из ползунка вознаграждения (16.11.2026): ноль — вознаграждение съело всю разницу, это ошибка, а не «стереть».
-        $request->merge(['share' => blank($request->input('share')) ? null : Money::rubles($request->input('share'))]);
-        $data = $request->validate(['commission' => ['nullable', 'integer', 'min:0'],
+        $request->merge(['share' => blank($request->input('share')) ? null : Money::rubles($request->input('share')),
+            'amount' => blank($request->input('amount')) ? null : Money::rubles($request->input('amount'))]);
+        $data = $request->validate(['commission' => ['nullable', 'integer', 'min:0'], 'amount' => ['nullable', 'integer', 'min:1'],
             'scheme' => ['nullable', Rule::enum(DealScheme::class)],
             'share' => ['nullable', 'integer', 'min:1']], ['share.min' => Giving::SHARE_LEFT]);
         // Поле вознаграждения пустое — вознаграждения нет; поля нет вовсе (гаражная доля) — прежнее.
@@ -321,7 +324,24 @@ class DealController
         if ($scheme && ! in_array($scheme, DealScheme::casesFor($deal->offer->vendor, $deal->offer), true)) {
             $scheme = DealScheme::forOffer($deal->offer);
         }
-        $update($deal, $request->user(), $commission, $scheme, isset($data['share']) ? (int) $data['share'] : null);
+        // Цена продажи (18.11.2026, владелец: «пусть цену продажи и сумму вознаграждения тоже могут менять», и модератор): не выше
+        // закупочной — переспрос формы (`loss`). Гаражная Совкомбанка без цены — как «Продаю» менеджера (`MarkGarageSold`: машина
+        // «Продана», вознаграждение — вписанное или по доле), иначе — цена сделки.
+        $amount = $data['amount'] ?? null;
+        if ($amount !== null && $amount !== $deal->amount && $deal->cost !== null && $amount <= $deal->cost && ! $request->boolean('loss')) {
+            throw ValidationException::withMessages(['amount' => 'Цена продажи не выше закупочной '.Money::rub($deal->cost)]);
+        }
+        if ($amount !== null && $deal->namesBuyer() && $deal->amount === null && ($car = $deal->garageCar) && ! $car->isSold()) {
+            try {
+                app(MarkGarageSold::class)($car, ['sold_price' => $amount, 'sold_at' => now(), 'price_ok' => true]
+                    + ($request->has('commission') && $commission !== null ? ['commission' => $commission] : []), $request->user());
+            } catch (ValidationException $e) {
+                throw ValidationException::withMessages(['amount' => $e->validator->errors()->first('sold_price') ?: $e->getMessage()]);
+            }
+
+            return back()->with('toast', 'Цена продажи '.Money::rub($amount));
+        }
+        $update($deal, $request->user(), $commission, $scheme, isset($data['share']) ? (int) $data['share'] : null, amount: $amount);
 
         return back()->with('toast', 'Сохранено');
     }

@@ -60,7 +60,7 @@ final class PayWord
         $word = match ($gap) {
             'buyer' => 'ждём покупателя',
             'passport' => 'не хватает данных покупателя',
-            'price' => 'ждём цену продажи',
+            'price' => 'не указана цена продажи',
             'commission' => 'посчитать вознаграждение',
             'ros_requisites' => 'нет реквизитов Р.О.С.',
             default => null,

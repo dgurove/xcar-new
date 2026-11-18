@@ -21,6 +21,9 @@
     $unread = $deal->invoiceGap() === 'unread';
     $reading = ! $unread && $party?->scanState() === 'reading';
     $lead = $unread ? 'паспорт приложен, не распознано: ' : ($reading ? 'паспорт распознаётся, пока нет: ' : 'не указано: ');
+    // Цены продажи или вознаграждения нет — форма цены (`x-deal.price-money`); данных договору не хватает — строка в шторку данных.
+    $money = (bool) array_intersect_key($blockers, ['price' => 1, 'commission' => 1]);
+    $contractData = $buyer && $deal->isLive() && $deal->hasContract() && array_intersect(\App\Offers\DealContract::for($deal)->missing(), ['данные покупателя', 'скан паспорта покупателя']);
     $scanPdf = ($unread || $reading) && $party->getMedia('passport')->isNotEmpty()
         ? ['url' => '/parties/'.$party->id.'/passport.pdf', 'type' => 'pdf', 'name' => \App\Billing\Documents\PassportPdf::fileName($party), 'label' => 'Паспорт'] : null;
 @endphp
@@ -45,28 +48,65 @@
             <p class="mb-3 text-ink-muted">Счёт не встал сам — выставьте его в «Деньгах»</p>
         @endif
         @if ($fields && $canEdit)
-            <form method="post" action="/work/deals/{{ $deal->id }}/invoice-data" class="flex flex-col gap-3" id="{{ $id }}-form">
+            {{-- Вид покупателя — сегментом, поля счёта своего вида (18.11.2026, владелец: «тут же должно быть указание типа покупателя,
+                 если его нет, и ввод реквизитов»): физлицо — ФИО и прописка, ИП — ФИО, ИНН, ОГРНИП, адрес, организация — название,
+                 ИНН, КПП, юридический адрес. У ИП и организации — поле «Реквизиты целиком»: вставили карточку из Word — разложилось по
+                 полям (`requisites_paste_controller`). Скрытые группы выключены (`reveal`) и в форму не уходят. --}}
+            @php
+                $kind = old('buyer.kind', match ($party->kind) { PartyKind::Company => 'company', PartyKind::Entrepreneur => 'ip', default => 'person' });
+                $ip = $party->kind === PartyKind::Entrepreneur;
+                $own = fn (string $f, bool $mine) => $mine ? $party->{$f} : null;
+                $f = fn (string $g, string $k) => $id.'-'.$g.'-'.$k;
+            @endphp
+            <form method="post" action="/work/deals/{{ $deal->id }}/invoice-data" class="flex flex-col gap-3" id="{{ $id }}-form" data-controller="reveal requisites-paste" data-requisites-paste-prefix-value="buyer">
                 @csrf @method('put')
-                <div class="fields fields-stack">
-                    @foreach ($fields as $k => $label)
-                        @php $name = $company && $k === 'name' ? 'org' : $k; @endphp
-                        <x-ui.field :name="'buyer['.$name.']'" :id="$id.'-'.$name" :label="$label" :type="str_contains($k, 'address') ? 'textarea' : 'text'" :rows="str_contains($k, 'address') ? 1 : null" required/>
-                    @endforeach
+                <x-ui.segment name="buyer[kind]" :options="['person' => 'Физлицо', 'ip' => 'ИП', 'company' => 'Организация']" :value="$kind" pick/>
+                <div class="fields fields-stack" data-reveal-target="pane" data-reveal-key="person" @if ($kind !== 'person') hidden @endif>
+                    <x-ui.field name="buyer[name]" :id="$f('p', 'name')" label="ФИО" :value="$company ? null : $party->name" required/>
+                    <x-ui.field name="buyer[reg_address]" :id="$f('p', 'reg')" label="Адрес прописки" type="textarea" rows="1" :value="$party->reg_address" :required="! $onlyReg"/>
+                </div>
+                <div class="fields fields-stack" data-reveal-target="pane" data-reveal-key="ip" data-requisites-paste-target="group" @if ($kind !== 'ip') hidden @endif>
+                    <x-ui.field name="_paste" :id="$f('ip', 'paste')" label="Реквизиты целиком" type="textarea" rows="2" placeholder="Скопируйте карточку ИП из Word и вставьте сюда"/>
+                    <x-ui.field name="buyer[name]" :id="$f('ip', 'name')" label="ФИО" :value="$company ? null : $party->name" required/>
+                    <x-ui.field name="buyer[inn]" :id="$f('ip', 'inn')" label="ИНН" :value="$own('inn', $ip)" placeholder="12 цифр" required/>
+                    <x-ui.field name="buyer[ogrn]" :id="$f('ip', 'ogrn')" label="ОГРНИП" :value="$own('ogrn', $ip)" placeholder="15 цифр" required/>
+                    <x-ui.field name="buyer[legal_address]" :id="$f('ip', 'addr')" label="Адрес" type="textarea" rows="1" :value="$ip ? ($party->legal_address ?: $party->reg_address) : $party->reg_address" required/>
+                </div>
+                <div class="fields fields-stack" data-reveal-target="pane" data-reveal-key="company" data-requisites-paste-target="group" @if ($kind !== 'company') hidden @endif>
+                    <x-ui.field name="_paste" :id="$f('org', 'paste')" label="Реквизиты целиком" type="textarea" rows="2" placeholder="Скопируйте карточку организации из Word и вставьте сюда"/>
+                    <x-ui.field name="buyer[org]" :id="$f('org', 'name')" label="Название" :value="$own('name', $company)" required/>
+                    <x-ui.field name="buyer[inn]" :id="$f('org', 'inn')" label="ИНН" :value="$own('inn', $company)" required/>
+                    <x-ui.field name="buyer[kpp]" :id="$f('org', 'kpp')" label="КПП" :value="$own('kpp', $company)" required/>
+                    <x-ui.field name="buyer[legal_address]" :id="$f('org', 'addr')" label="Юридический адрес" type="textarea" rows="1" :value="$own('legal_address', $company)" required/>
                 </div>
                 <div class="sheet-foot flex flex-col gap-2">
                     <x-ui.button block>Сформировать счёт</x-ui.button>
                     @if ($onlyReg)
-                        <button type="submit" name="without_reg" value="1" class="btn btn-quiet w-full" formnovalidate>Сформировать без прописки</button>
+                        {{-- Без прописки — только физлицу: у ИП и организации кнопки нет (панель `reveal`). --}}
+                        <div data-reveal-target="pane" data-reveal-key="person" @if ($kind !== 'person') hidden @endif>
+                            <button type="submit" name="without_reg" value="1" class="btn btn-quiet w-full" formnovalidate>Сформировать без прописки</button>
+                        </div>
                     @endif
                     <button type="button" class="btn btn-ghost w-full" data-action="sheet#close">Отмена</button>
                 </div>
             </form>
+        @elseif ($money && $canEdit)
+            {{-- Цены продажи или вознаграждения нет — вписать тут же (18.11.2026, владелец по сделке Алины: «почему не указана цена
+                 продажи? вон же 882к»). Сумма договора, вписанная руками, — подсказкой: счёт пойдёт по ней. --}}
+            <x-deal.price-money :deal="$deal" submit="Сформировать счёт" :hint="$deal->contract?->price_manual && $deal->contract->price ? 'Сумма договора '.\App\Support\Money::rub($deal->contract->price).' — счёт пойдёт по ней' : null"/>
         @else
             <div class="sheet-foot flex flex-col gap-2">
                 @if (isset($blockers['buyer']) && $canEdit)
                     <button type="button" class="btn btn-accent w-full" data-controller="emit" data-action="sheet#close emit#send" data-emit-event-param="deal-buyer-pick-{{ $deal->id }}:open">Выбрать покупателя</button>
                 @endif
                 <button type="button" class="btn btn-ghost w-full" data-action="sheet#close">Отмена</button>
+            </div>
+        @endif
+        @if ($contractData && $canEdit)
+            <div class="list mt-3">
+                <button type="button" class="row w-full text-left" data-controller="emit" data-action="sheet#close emit#send" data-emit-event-param="deal-buyer-data-{{ $deal->id }}:open">
+                    <span class="min-w-0 flex-1">Все данные покупателя</span><x-ui.chevron/>
+                </button>
             </div>
         @endif
     </x-ui.sheet>

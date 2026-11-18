@@ -33,7 +33,7 @@
     // Отправленная комиссия (18.11.2026, владелец: «скопировать ссылку нигде нельзя, нажать, что наличными оплачено»): живая ссылка —
     // строкой со «Скопировать» / «Отправить», под ней «Оплатили наличными…» — шторка оплаты с наличными.
     $openLink = $invoice && $sent && $invoice->state === \App\Billing\InvoiceState::Issued ? $invoice->openLink() : null;
-    $cash = $invoice && $sent && ! $invoice->isDocument() && $invoice->state === \App\Billing\InvoiceState::Issued && $invoice->remaining() > 0 && auth()->user()?->canManageCrm();
+    $cash = $invoice && $sent && ! $invoice->isDocument() && $invoice->state === \App\Billing\InvoiceState::Issued && $invoice->remaining() > 0 && auth()->user()?->canEditDeals();
 @endphp
 @if ($sent && ($openLink || $cash))
     <div class="list mt-2">
