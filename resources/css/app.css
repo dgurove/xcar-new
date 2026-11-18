@@ -4538,6 +4538,23 @@ html.kb-open { --home-gap: 0px; }
   }
 }
 
+/* CRM на телефоне — подложки нет, кнопки парят справа над таб-баром, как на ПК (18.11.2026, владелец про страницу
+   предложения и сделки: «плашка жутко бесит», «белая слишком много экрана перекрывает», «кнопка справа и без белой
+   подложки», «не круглая, а капсульная», «и остальные кнопки более узкими»). Высота кнопок 44 px вместо 56, ширина по
+   надписи, «···» и корзина — капсулой 52×44; пустое место полосы нажатий не ловит. Запас страницы — 4rem вместо 5.
+   Вне слоёв: классы разметки `flex-1` и `btn-lg` (нужны сайту и ПК) иначе сильнее. Сайт, парковка, логистика и
+   партнёр — прежней плашкой с кнопкой во всю ширину. */
+@media (max-width: 767.98px) {
+  body.surface-crm { --spacing-action: 4rem; --bottom-room: calc(var(--tabbar) + var(--action) * var(--spacing-action)); --page-room: calc(var(--bottom-room) - var(--tabbar)); }
+  .surface-crm .action-bar { background: none; border-top: 0; pointer-events: none; }
+  .surface-crm .action-bar-inner { justify-content: flex-end; gap: .5rem; min-height: 0; padding-block: .625rem; }
+  .surface-crm .action-bar-inner > * { pointer-events: auto; }
+  .surface-crm .action-bar .btn { flex: 0 1 auto; height: 2.75rem; padding-inline: 1.25rem; border-radius: 999px; font-size: var(--text-base); box-shadow: 0 4px 16px rgb(0 0 0 / .16); }
+  .surface-crm .action-bar .btn-round { flex: none; width: 3.25rem; padding-inline: 0; }
+  .surface-crm .action-bar .btn-ghost { background: var(--color-surface-3); }
+  .dark .surface-crm .action-bar .btn { box-shadow: 0 4px 16px rgb(0 0 0 / .5); }
+}
+
 /* ------------------------------------------------------------- шторка документов */
 
 @layer components {
