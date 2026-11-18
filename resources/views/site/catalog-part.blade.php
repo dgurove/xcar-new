@@ -14,5 +14,6 @@
     <x-offer.card :offer="$offer" :context="$context"/>
 @endforeach
 @if ($offers instanceof \App\Support\PagePart && $offers->next())
-    <div class="cards-tail" data-endless-next="{{ $offers->next() }}" data-rows-next="{{ $offers->after() }}" aria-hidden="true"></div>
+    {{-- `data-rest` — сколько ещё за порцией: длинной ленте (`endless_controller`, дальше 480 плиток) хвост становится кнопкой «Ещё». --}}
+    <div class="cards-tail" data-endless-next="{{ $offers->next() }}" data-rows-next="{{ $offers->after() }}" data-rest="{{ $offers->rest() }}" aria-hidden="true"></div>
 @endif

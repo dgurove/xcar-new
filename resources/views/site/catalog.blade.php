@@ -88,7 +88,6 @@
                         @include('site.catalog-part', ['before' => null])
                         @if ($estimated->isNotEmpty())<div id="catalog-estimated" class="contents">@foreach ($estimated as $offer)<x-offer.card :offer="$offer" :estimate="$offer->openEstimates->first()"/>@endforeach</div>@endif
                     </div>
-                    <div class="mt-10"><x-ui.pager :of="$offers" :sizes="\App\Support\ListView::perSizes($view)"/></div>
                     @endif
                 @else
                 {{-- «Срочно» (12.10.2026, владелец): самой первой лентой, с огоньком и сроком приёма цветом огня. Строками и
@@ -179,7 +178,6 @@
                     </div>
                     @endif
                     @include('site.catalog-estimated')
-                    @unless ($shelves)<div class="mt-10"><x-ui.pager :of="$offers" :sizes="\App\Support\ListView::perSizes($view)"/></div>@endunless
                 @endif
                 @endif
             </div>

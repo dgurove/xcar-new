@@ -8,6 +8,13 @@ import { request } from '../lib/http';
 // Таблица (`x-ui.table :portion`, 31.10.2026): ответ — та же страница со следующей сотней; из неё берётся кусок
 // `tbody.table-part` своей таблицы (по id) и новый хвост, кусок встаёт следующим `tbody` — в те же столбцы. Сколько
 // строк уже есть — в адрес (`rows=`): перечитывание, «Назад» и живое обновление рисуют столько же, догруженное не пропадает.
+// Лента плиток без страниц (каталог и галерея сайта, 18.11.2026): в адрес пишется не больше `ROWS_MAX` плиток — столько сервер
+// рисует одним ответом (`PagePart::MAX`); лента длиннее живёт в снимке страницы и помечается `data-extended` (перечитывание её
+// не срежет). Дальше `AUTO_MAX` плиток сама она не растёт: хвост становится кнопкой «Ещё» — десятки тысяч узлов телефон листает
+// и снимает медленно, а снимок такой страницы память разделов уже не держит (`HEAVY` в `lib/sections.js`).
+const ROWS_MAX = 96;
+const AUTO_MAX = 480;
+
 export default class extends Controller {
     connect() {
         this.observer = new IntersectionObserver((entries) => {
@@ -28,6 +35,8 @@ export default class extends Controller {
         const tail = this.tail();
         if (!tail || tail === this.watching) return;
         this.watching = tail;
+        // Длинная лента дальше растёт по нажатию.
+        if (Number(tail.dataset.rowsNext) > AUTO_MAX && !tail.matches('tbody')) { this.manual(tail); return; }
         this.observer.observe(tail);
     }
 
@@ -35,6 +44,19 @@ export default class extends Controller {
     tail() {
         return [...this.element.querySelectorAll('[data-endless-next]:not([data-endless-busy])')]
             .find((tail) => tail.parentElement.closest('[data-controller~="endless"]') === this.element);
+    }
+
+    manual(tail) {
+        if (tail.dataset.endlessManual !== undefined) return;
+        tail.dataset.endlessManual = '';
+        tail.removeAttribute('aria-hidden');
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'btn btn-quiet';
+        const rest = Number(tail.dataset.rest) || 0;
+        button.textContent = rest ? `Ещё ${Math.min(24, rest)}, осталось ${rest}` : 'Ещё';
+        button.addEventListener('click', () => this.load());
+        tail.append(button);
     }
 
     async load() {
@@ -67,8 +89,10 @@ export default class extends Controller {
         // «Назад» и живое обновление нарисуют столько же, отметка «лента длиннее» не нужна.
         if (rows) {
             const url = new URL(location.href);
-            url.searchParams.set('rows', rows);
+            url.searchParams.set('rows', String(Math.min(Number(rows), ROWS_MAX)));
             setAddress(url);
+            // Плиток больше, чем сервер отдаст перечитыванию, — лента «длиннее первой порции», как ниже.
+            if (Number(rows) > ROWS_MAX) this.element.dataset.extended = '';
             this.dispatch('appended');
             return;
         }

@@ -34,11 +34,19 @@ export default class extends Controller {
         // Фото в ленте приходят позже текста и раздвигают её: стояли внизу — остаёмся внизу (у WebKit нет привязки
         // прокрутки, overflow-anchor), иначе последнее сообщение уезжало под поле ввода.
         this.pinned = true;
-        this.onListScroll = () => { this.pinned = this.atBottom(); };
+        // Где стояла лента — меткой на ней самой: её уносит снимок страницы, и возврат в чат табом «Чаты» встаёт туда же
+        // (18.11.2026; свежая страница метки не несёт — открывается на первом непрочитанном или внизу).
+        this.onListScroll = () => {
+            this.pinned = this.atBottom();
+            clearTimeout(this.placeTimer);
+            this.placeTimer = setTimeout(() => { const l = this.listTarget; l.dataset.fromBottom = String(Math.max(0, Math.round(l.scrollHeight - l.scrollTop - l.clientHeight))); }, 150);
+        };
         this.onMediaLoad = (e) => { if (e.target.tagName === 'IMG' && this.pinned) this.listTarget.scrollTop = this.listTarget.scrollHeight; };
         this.listTarget.addEventListener('scroll', this.onListScroll, { passive: true });
         this.listTarget.addEventListener('load', this.onMediaLoad, true);
-        this.scroll(this.listTarget.querySelector('#chat-new'));
+        const kept = this.listTarget.dataset.fromBottom;
+        if (kept !== undefined) this.listTarget.scrollTop = this.listTarget.scrollHeight - this.listTarget.clientHeight - Number(kept);
+        else this.scroll(this.listTarget.querySelector('#chat-new'));
         this.pinned = this.atBottom();
         this.status = document.querySelector('[data-chat-status]');
         // Шторка чата на ПК грузится лениво: chat:open уходил раньше, чем контроллер подключился, и чат не читался.
@@ -51,6 +59,7 @@ export default class extends Controller {
         window.removeEventListener('online', this.onOnline);
         clearInterval(this.timer);
         clearTimeout(this.typingTimer);
+        clearTimeout(this.placeTimer);
         this.listTarget.removeEventListener('scroll', this.onListScroll);
         this.listTarget.removeEventListener('load', this.onMediaLoad, true);
         this.topWatcher?.disconnect();

@@ -57,6 +57,9 @@ final class ListsCheck extends Command
             [Surface::Site, '/gallery?vid=table', Role::Manager],
             [Surface::Site, '/account/favorites?vid=table', Role::Manager],
             [Surface::Site, '/garage?vid=table', Role::Manager],
+            // Сделки сайта — таблицей по умолчанию (18.11.2026): менеджеру разделами «чей ход», админу — все порциями.
+            [Surface::Site, '/deals', Role::Manager],
+            [Surface::Site, '/deals', Role::Admin],
             [Surface::Site, '/purchases/{purchase}?vid=table', Role::Manager],
             [Surface::Site, '/offers?vid=table', Role::Buyer],
         ];

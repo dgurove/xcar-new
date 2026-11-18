@@ -341,14 +341,10 @@ if (host === 'site' && (!only || only === 'переход')) {
             check(`назад в ${hrefs[2]}: то же место`, now.url === was.url && Math.abs(now.y - was.y) <= 4, `было ${was.url} y=${was.y}, стало ${now.url} y=${now.y}`);
         }
     }
-    // Кабинет → Чаты → чат → «‹».
-    await page.goto(crm + '/account'); await settle(1200);
-    r = await linkIn('/account/chats$');
-    if (r) {
-        report('кабинет → чаты', r);
-        r = await linkIn('/account/chats/(offer/)?\\d+');
-        if (r) { report('чаты → чат', r); report('чат → назад', await pressBack()); }
-    }
+    // Чаты (раздел таб-бара, 18.11.2026) → чат → «‹».
+    await page.goto(crm + '/chats'); await settle(1200);
+    r = await linkIn('/chats/(offer/)?\\d+');
+    if (r) { report('чаты → чат', r); report('чат → назад', await pressBack()); }
 }
 
 // ——— 4. Сайт: место и раздел ———

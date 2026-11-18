@@ -14,7 +14,9 @@
 // пока его не было на экране, по его адресам пришло событие (`markDirty` из `live.js`), или снимку больше двух минут
 // (`freshness` в `app.js`). Снимка нет — обычный визит по запомненному адресу.
 //
-// Экран без таб-бара (чат на телефоне, `body.chat-open`) местом раздела не становится: из него выходят «‹».
+// Открытый чат — такое же место раздела «Чаты» (18.11.2026, владелец: «написать в чате, переключиться в предложения или
+// сделки, нажать на чаты — и вернуться туда же, в тот же чат»; до того чат прятал таб-бар и местом раздела не был).
+// Ленту после возврата догоняет сам чат (`chat_controller` при подключении), её прокрутку он же ставит по метке в снимке.
 import * as Turbo from '@hotwired/turbo';
 import { holdY, knownY, scrollTop } from './scroller';
 import * as overlays from '../overlays';
@@ -38,10 +40,11 @@ let refresh = () => {};
 let user = null;         // чьи снимки лежат в памяти
 let action = null;       // вид идущего визита
 let warm = 0;            // отложенный на такт запрос раздела по касанию
+let returned = null;     // адрес экрана, открытого возвратом в раздел (`open`): «‹» с него — не шаг истории
 
 const pathOf = (href) => new URL(href, location.origin).pathname;
 const keyOf = (url) => { const u = new URL(url, location.origin); u.hash = ''; return u.href; };
-const tabNow = () => (document.body.classList.contains('chat-open') ? null : document.body.dataset.navTab || null);
+const tabNow = () => document.body.dataset.navTab || null;
 
 // Место — своё у каждого человека: под «Войти как» и после смены пользователя чужой адрес раздела не подставляется.
 const who = () => document.querySelector('meta[name="user-id"]')?.content ?? '0';
@@ -103,6 +106,7 @@ export function forget(tab) {
  */
 export function open(tab, saved) {
     const url = new URL(saved.url);
+    returned = keyOf(url);
     let pin = pins.get(pathOf(tab));
     // Снимок — этого раздела: страница в нём знает свой раздел сама (`<body data-nav-tab>`).
     if (pin && pin.snapshot.element?.dataset.navTab !== tab) { pins.delete(pathOf(tab)); pin = null; }
@@ -148,19 +152,30 @@ export function markDirty(paths) {
 }
 
 /**
+ * Экран открыт возвратом в раздел (таб, капсула шапки), а не переходом вглубь: запись истории перед ним — чужая (её
+ * заменил адрес раздела), и «‹» шагом истории увёл бы в другой раздел («чат → Предложения → машина → таб Чаты → ‹»
+ * открывал список предложений). `back_controller` с такого экрана идёт по ссылке, к корню своего раздела.
+ */
+export const cameBack = () => returned !== null && returned === keyOf(location.href);
+
+/**
  * Страница объекта, открытая из чужого раздела, остаётся в нём (18.11.2026, сайт: машина из «Галереи» и «Избранного»
  * считалась «Предложениями» — подсветка прыгала, и «Предложения» потом открывали её вместо своего списка). Как в
  * приложении: ссылка внутри раздела ведёт вглубь раздела. Ссылке на страницу с номером, чей путь — другого раздела,
  * в момент касания (до запроса по касанию) дописывается `in=<раздел>`; сервер ставит по нему раздел страницы
  * (`Nav::origin`), а с ним — подсветку, «назад» и память раздела. Корни разделов не трогаются: ссылка на список — переход.
+ * Раздел, чьи экраны всегда свои (`data-own` у таба: «Чаты» — чат из «Предложений» остаётся чатом), не усыновляется.
+ * `target="_top"` — та же навигация (ссылка изнутри фрейма: машина из полосы чата), внешней её делает только другое окно.
  */
 function adopt(link) {
     const here = tabNow();
-    if (!here || link.target || link.hasAttribute('download') || link.origin !== location.origin || link.closest('#tabbar, a[data-section]')) return;
+    if (!here || (link.target && link.target !== '_top' && link.target !== '_self') || link.hasAttribute('download') || link.origin !== location.origin || link.closest('#tabbar, a[data-section]')) return;
     const url = new URL(link.href);
+    const target = tabOfPath(url.pathname);
+    if (target && target !== pathOf(here) && document.querySelector(`#tabbar a.tab[data-own][href="${CSS.escape(target)}"]`)) return;
     const mine = link.dataset.in; // раздел, что дописали мы: ссылка в несменяемом куске (карточка уведомления) переживает переход
     if (!/\/\d+(\/|$)/.test(url.pathname) || url.searchParams.has('list') || (url.searchParams.has('in') && mine === undefined)) return;
-    const foreign = (tabOfPath(url.pathname) ?? pathOf(here)) !== pathOf(here);
+    const foreign = (target ?? pathOf(here)) !== pathOf(here);
     if (foreign ? mine === here : mine === undefined) return;
     if (foreign) { url.searchParams.set('in', pathOf(here)); link.dataset.in = here; } else { url.searchParams.delete('in'); delete link.dataset.in; }
     link.setAttribute('href', url.pathname + url.search + url.hash);
@@ -214,6 +229,7 @@ export function sections({ onStale } = {}) {
         // Вошёл другой человек («Войти как», выход и вход) — снимки прежнего не показываем.
         if (user !== who()) { user = who(); pins.clear(); dirty.clear(); }
         here = { tab: tabNow(), url: location.href };
+        if (returned !== null && returned !== keyOf(location.href)) returned = null;
         if (pendingScroll !== undefined) {
             // Отрисовка может дорасти (картинки, шрифт, куски за экраном) — место держит `holdY`, пока экран не тронули.
             pendingScroll = undefined;
@@ -299,7 +315,7 @@ export function sections({ onStale } = {}) {
         const result = put(location, snapshot);
         const from = left.find((l) => l.url === keyOf(location));
         if (from && snapshot?.element && snapshot.element.dataset.navTab === from.tab
-            && snapshot.element.getElementsByTagName('*').length <= HEAVY && !snapshot.element.classList.contains('chat-open')) {
+            && snapshot.element.getElementsByTagName('*').length <= HEAVY) {
             pins.set(pathOf(from.tab), { url: from.url, snapshot, at: Date.now() });
         }
         return result;

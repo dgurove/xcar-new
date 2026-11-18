@@ -179,11 +179,12 @@ function fallbackPage(w, h, photo) {
     return out;
 }
 
-// Экран чата (без шапки и таб-бара, во весь экран): полоса собеседника, пузыри переписки, поле ввода. Своего силуэта у чата нет — лента у каждого своя, а каркас один.
+// Экран чата (без шапки оболочки, над таб-баром): полоса собеседника в размерах шапки с квадратной «‹» на её месте, пузыри
+// переписки, поле ввода. Своего силуэта у чата нет — лента у каждого своя, а каркас один.
 function chatShape(w, h) {
     // Имени и кадра из строки тут нет: строка списка названа машиной, а шапка чата — собеседником.
-    const out = [['c', 0, 0, w, 56, 0, 'var(--color-bar)'], ['b', 12, 10, 36, 36, 18], ['b', 58, 8, 40, 40, 20],
-        ['t', 110, 14, Math.min(180, w - 150), 10, 4], ['t', 110, 35, 110, 8, 4]];
+    const out = [['c', 0, 0, w, 56, 0, 'var(--color-bar)'], ['b', 16, 8, 40, 40, 0], ['b', 66, 10, 36, 36, 18],
+        ['t', 112, 14, Math.min(180, w - 150), 10, 4], ['t', 112, 35, 110, 8, 4]];
     const sides = [0, 1, 1, 0, 1, 0, 0];
     for (let i = 0, y = h - 96; y > 90 && i < sides.length; i++) {
         const width = Math.round(w * (0.34 + ((i * 7) % 4) * 0.09));
@@ -256,8 +257,8 @@ export function show(href, fill = null) {
     if (!scroller) return false;
     hide();
     const chat = isChat(href);
-    // Чат — во весь экран под строкой состояния: у него нет ни шапки, ни таб-бара.
-    const box = chat ? { top: 0, left: 0, width: document.documentElement.clientWidth, height: document.documentElement.clientHeight } : scroller.getBoundingClientRect();
+    // Чат — от строки состояния до таб-бара (низ прокрутки): шапки оболочки у него нет, таб-бар остаётся (18.11.2026).
+    const box = chat ? { top: 0, left: 0, width: document.documentElement.clientWidth, height: Math.round(scroller.getBoundingClientRect().bottom) } : scroller.getBoundingClientRect();
     const shape = chat ? null : keysOf(href).map(load).find(Boolean);
     const object = /\d/.test(new URL(href, location.href).pathname);
     // Силуэт снят при этой ширине (ключ) — высота экрана могла смениться (клавиатура, поворот): лишнее обрежет слой.

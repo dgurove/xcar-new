@@ -3,7 +3,9 @@
      сверху справа лаймовый бейдж нового; у кабинета — аватар. Без позиций — точка.
      Бар один на всё приложение (data-turbo-permanent): Turbo не пересоздаёт его на переходе, числа новой страницы
      переносит tabbar_controller (только из бара свежее живого — `data-at`), текущий таб он берёт из `<body data-nav-tab>`.
-     `data-match` — адреса раздела: по ним `lib/sections.js` узнаёт, какой раздел задело живое событие. --}}
+     `data-match` — адреса раздела: по ним `lib/sections.js` узнаёт, какой раздел задело живое событие; `data-own` — раздел, чьи
+     экраны всегда его («Чаты» сайта): чат, открытый из другого раздела, в нём не остаётся.
+     На сайте значок — только у «Чатов» (18.11.2026, владелец), у остальных разделов — капсула с числом. --}}
 @php
     $user = auth()->user();
     $tabs = \App\Support\Nav::tabs($user);
@@ -18,7 +20,7 @@
             <form method="post" action="/logout" class="contents">@csrf<button type="submit" class="tab"><span class="tab-mark"><span class="tab-dot"></span></span><span>{{ $tab['label'] }}</span></button></form>
             @continue
         @endif
-        <a href="{{ $tab['href'] }}" class="tab" @if ($tab['go'] ?? null) data-go="{{ $tab['go'] }}" @endif data-match="{{ implode(' ', array_filter((array) $tab['match'], fn ($m) => ! str_starts_with($m, 'http'))) }}" data-turbo-action="replace" data-action="tabbar#tap" @if ($tab['href'] === $current) aria-current="page" @endif>
+        <a href="{{ $tab['href'] }}" class="tab" @if ($tab['go'] ?? null) data-go="{{ $tab['go'] }}" @endif data-match="{{ implode(' ', array_filter((array) $tab['match'], fn ($m) => ! str_starts_with($m, 'http'))) }}" @if ($tab['own'] ?? false) data-own @endif data-turbo-action="replace" data-action="tabbar#tap" @if ($tab['href'] === $current) aria-current="page" @endif>
             <span class="tab-mark">
                 @if ($loop->last && $user)
                     <x-ui.avatar :user="$user" :size="26"/>

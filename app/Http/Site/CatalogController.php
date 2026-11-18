@@ -51,6 +51,10 @@ class CatalogController
         // «Не просмотренные» (21.10.2026) — первым чипом у вошедшего в каталоге; не запоминается: каждый заход снова включён.
         $since = ! $gallery && $user ? CatalogQuery::since($request, enter: true) : null;
         $facets = Facets::for($request, $gallery ? 'gallery' : 'catalog', ...[...($since ? [CatalogQuery::unreadFacet($user, $since)] : []), ...CatalogQuery::facets($user)]);
+        // Страниц у каталога и галереи нет (18.11.2026, владелец: «всегда бесконечная подгружающаяся лента»): `page` и «по
+        // сколько» из старых ссылок и памяти списка не читаются — до `ListPrefs::sync`: с `page` он не подставил бы чипы.
+        $request->query->remove('page');
+        $request->query->remove(ListView::PER);
         // «Не просмотренные» и регионы (22.10.2026) не запоминаются: каждый заход — снова по умолчанию.
         ListPrefs::sync($request, $gallery ? 'gallery' : 'catalog', keep: array_values(array_diff($facets->keys(), ['unread', 'regions'])), sort: false);
         $filters = array_filter($request->only(CatalogQuery::FILTERS), fn ($v) => is_scalar($v) && $v !== '');
@@ -93,7 +97,7 @@ class CatalogController
         } elseif ($tail) {
             $groups = CatalogQuery::grouped($user, $gallery);
             $view = ListView::pick($request, $count, shelves: true);
-            $offers = ListView::paginate($request, $query, $count, whole: $groups && $view === ListView::SHELF, parts: true);
+            $offers = ListView::paginate($request, $query, $count, whole: $groups && $view === ListView::SHELF, endless: true);
             Showing::remember($user, $offers->pluck('id')->all());
 
             return view('site.catalog-part', [
@@ -148,7 +152,7 @@ class CatalogController
         // страницами, без подписей пачек (15.10.2026, начальник).
         $groups = CatalogQuery::grouped($user, $gallery);
         $shelves = $groups && ListView::pick($request, $count, shelves: true) === ListView::SHELF;
-        $offers = ListView::paginate($request, $query, $count, whole: $shelves, parts: true);
+        $offers = ListView::paginate($request, $query, $count, whole: $shelves, endless: true);
         // «Нужно оценить» (11.10.2026): черновики, отданные этому менеджеру на оценку, — первой пачкой на первой странице
         // каталога, на любой пилюле (30.10.2026: на «Новых» и «Горящих» их не было — менеджеры их не находили), кроме поиска.
         // Сначала неоценённые, ближний срок выше; оценённые — ждут решения админа.

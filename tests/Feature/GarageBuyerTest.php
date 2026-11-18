@@ -120,7 +120,7 @@ class GarageBuyerTest extends TestCase
             $this->assertClean(json_encode($note->data, JSON_UNESCAPED_UNICODE));
         }
         // Чат по машине — с площадкой, не с его менеджером.
-        $this->actingAs($this->buyer)->get(self::SITE.'/account/chats/offer/'.$n)->assertOk();
+        $this->actingAs($this->buyer)->get(self::SITE.'/chats/offer/'.$n)->assertOk();
 
         // Продана — отметкой без суммы; счёт оплачен — расчёт закрыт.
         $deal->finish();

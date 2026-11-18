@@ -94,14 +94,21 @@ final class ListView
      * parts — страница плиток приходит порциями, остальное догружается при листании (`PagePart`, 18.11.2026).
      * whole — весь список одной страницей: плитки пачками лентами (x-ui.shelf) — пачку страница не рвёт; таблица, у которой
      * порция соврёт, — сортировка в памяти (честна только на всём списке) или «Выбрать все» галками (выбрало бы одну порцию).
+     * endless — лента без страниц (18.11.2026, каталог и галерея сайта): плитки и строки — весь список порциями по 24
+     * (`PagePart` с `per` = длине списка), номеров страниц и «по N» нет; `page` и `per` из старых ссылок не читаются.
      */
-    public static function paginate(Request $request, Builder|Relation $q, ?int $count = null, bool $whole = false, bool $parts = false): LengthAwarePaginator
+    public static function paginate(Request $request, Builder|Relation $q, ?int $count = null, bool $whole = false, bool $parts = false, bool $endless = false): LengthAwarePaginator
     {
         // Число уже посчитано — второй раз его не считает и сама постраничка (`total:`).
         $count ??= $q->count();
         $view = self::pick($request, $count);
         if (self::isTable($view) && ! $whole) {
             return Portion::of($request, $q, $count);
+        }
+        if ($endless && ! $whole) {
+            $request->query->remove('page');
+
+            return PagePart::of($request, $q, $count, max($count, 1));
         }
         $per = self::isTable($view) || $whole ? max($count, 1) : self::perPage($request, self::perSizes($view));
         // parts — страница плиток порциями (`PagePart`): список сам рисует хвост догрузки (сайт: `site/catalog-part`).

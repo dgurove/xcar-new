@@ -16,11 +16,19 @@ use Illuminate\Support\Arr;
  * порция страницы сразу, остальные её плитки — когда до конца остаётся экран (`endless_controller`, хвост
  * `site/catalog-part`). Сколько плиток страницы уже есть — в адресе (`rows=`, клиент пишет сам): перечитывание, «Назад»
  * и живое обновление рисуют столько же. Таблица порциями — `Portion` (там страниц нет вовсе).
+ *
+ * Лента без страниц (тот же день, владелец: «в предложениях, галерее, сделке и гараже убрать вообще страницы, всегда
+ * бесконечная подгружающаяся лента»): «страница» — весь список (`per` = числу машин, `ListView::paginate(endless:)`),
+ * номеров и «по N» нет. Одним ответом сервер рисует не больше `MAX` плиток — и по `rows=` из адреса тоже: длинную ленту
+ * целиком держит снимок страницы у клиента (память разделов), а не перечитывание.
  */
 final class PagePart extends LengthAwarePaginator
 {
     /** Плиток в порции: три-четыре экрана телефона, полтора экрана ПК. */
     public const CHUNK = 24;
+
+    /** Больше плиток одним ответом не рисуем: столько весила самая тяжёлая страница «по 96». */
+    public const MAX = 96;
 
     private int $from = 0;
 
@@ -45,7 +53,7 @@ final class PagePart extends LengthAwarePaginator
         } else {
             $from = 0;
             // Первая порция — сколько уже было догружено (`rows`), целыми порциями.
-            $take = (int) min($onPage, max($chunk, (int) ceil((int) $request->query(Portion::ROWS) / $chunk) * $chunk));
+            $take = (int) min($onPage, self::MAX, max($chunk, (int) ceil((int) $request->query(Portion::ROWS) / $chunk) * $chunk));
         }
         // Последним — ключ: у порядка списка бывают равные, и без него порции Postgres отдаёт внахлёст.
         $q->orderBy(($q instanceof Relation ? $q->getRelated() : $q->getModel())->getQualifiedKeyName());
@@ -96,7 +104,15 @@ final class PagePart extends LengthAwarePaginator
         }
         $query = Arr::except(request()->query(), [Portion::ROWS, Portion::PART, 'peek']);
 
-        return '/'.ltrim(request()->path(), '/').'?'.Arr::query($query + ['page' => $this->currentPage(), Portion::PART => intdiv($this->upto(), $this->chunk) + 1]);
+        // Номер страницы — только у списка со страницами: у ленты (`per` = всему списку) страница одна, и `page` в адресе
+        // хвоста выключил бы запомненные чипы (`ListPrefs::sync`).
+        return '/'.ltrim(request()->path(), '/').'?'.Arr::query(Arr::except($query, ['page']) + ($this->currentPage() > 1 ? ['page' => $this->currentPage()] : []) + [Portion::PART => intdiv($this->upto(), $this->chunk) + 1]);
+    }
+
+    /** Сколько плиток ещё за этой порцией. */
+    public function rest(): int
+    {
+        return max(0, $this->onPage() - $this->upto());
     }
 
     /** Сколько плиток страницы будет после следующей порции — это клиент пишет в `rows=`. */

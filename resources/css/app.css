@@ -3764,7 +3764,7 @@ html.kb-open { --home-gap: 0px; }
   .screen-ghost > b { color: var(--color-ink); white-space: nowrap; }
   .screen-ghost > b.s { white-space: normal; overflow: hidden; }
   /* Заготовка чата — во весь экран под строкой состояния, над шапкой и таб-баром (у чата их нет). */
-  .screen-ghost--full { inset: var(--safe-top) 0 0; z-index: calc(var(--z-panel) + 2); background: var(--color-ground); }
+  .screen-ghost--full { inset: var(--safe-top) 0 var(--tabbar); z-index: calc(var(--z-panel) + 2); background: var(--color-ground); }
   .screen-ghost::after {
     content: ''; position: absolute; inset: 0; pointer-events: none;
     background: linear-gradient(100deg, transparent 30%, rgb(255 255 255 / .55) 50%, transparent 70%);
@@ -5535,6 +5535,8 @@ dialog.lightbox:not(.lb-one) .lb-pill--bottom { bottom: calc(var(--lb-strip-bott
      так что «назад» и якоря #offer-N попадают точно. */
   /* Хвост догрузки страницы плиток (`site/catalog-part`): строка сетки нулевой высоты — наблюдатель видит её заранее. */
   .cards > .cards-tail { grid-column: 1 / -1; height: 1px; margin: -1px 0 0; }
+  /* Длинная лента (дальше 480 плиток) растёт по нажатию: хвост — кнопка «Ещё» (`endless_controller`). */
+  .cards > .cards-tail[data-endless-manual] { display: flex; justify-content: center; height: auto; margin: 1rem 0 0; }
   .cards > .card { content-visibility: auto; contain-intrinsic-size: auto 5rem; }
   @media (min-width: 640px) { .cards > .card { contain-intrinsic-size: auto 20rem; } }
   .cards--grid > .card { contain-intrinsic-size: auto 20rem; }
