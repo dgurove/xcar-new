@@ -4,7 +4,9 @@
      подписан» (`AttachSignedContract`). base — адрес сделки на этой поверхности (`/deals/5`, `/work/deals/5`); bare — строки без
      своей группы и заголовка (внутри группы «Деньги» CRM), файл подписан «подписанный договор»; card — карточкой, как «Договор»
      окна модератора. --}}
-@props(['deal', 'base', 'bare' => false, 'card' => false, 'label' => 'Подписанный договор', 'ask' => false])
+{{-- `docTitle` — название строки файла: в «Продаже» CRM одна строка «Договор» («подписан 14.11» второй строкой, 18.11.2026,
+     владелец: «по несколько раз одно и то же» — готовый договор тогда не рисуется). --}}
+@props(['deal', 'base', 'bare' => false, 'card' => false, 'label' => 'Подписанный договор', 'ask' => false, 'docTitle' => 'Подписанный договор'])
 @php
     // Все листы — и приложенные к сделке, и ответ менеджера на шаг договора — одним PDF (17.11.2026, владелец: «как с платёжкой:
     // не фотками, а единым PDF в „Продаже“»; `SignedContractPdf`).
@@ -30,9 +32,9 @@
     @php ob_start(); @endphp
         @if ($files->isNotEmpty())
             {{-- Одной строкой: «Подписанный договор от 17.11», PDF из всех листов; «Добавить лист» — скрепкой справа (17.11.2026). --}}
-            <x-deal.doc-row :href="$base.'/signed-contract.pdf'" title="Подписанный договор" :name="\App\Offers\Documents\SignedContractPdf::fileName($deal)" :file="\App\Offers\Documents\SignedContractPdf::fileName($deal)">
+            <x-deal.doc-row :href="$base.'/signed-contract.pdf'" :title="$docTitle" :name="\App\Offers\Documents\SignedContractPdf::fileName($deal)" :file="\App\Offers\Documents\SignedContractPdf::fileName($deal)">
                 {{-- Дата и число листов — второй строкой: в названии на телефоне дата резалась до «от 1…». --}}
-                <span class="nums">{{ \App\Support\Ago::day(\App\Offers\Documents\SignedContractPdf::at($deal)) }}{{ $files->count() > 1 ? ', листов '.$files->count() : '' }}</span>
+                <span class="nums">{{ $docTitle !== 'Подписанный договор' ? 'подписан ' : '' }}{{ \App\Support\Ago::day(\App\Offers\Documents\SignedContractPdf::at($deal)) }}{{ $files->count() > 1 ? ', листов '.$files->count() : '' }}</span>
                 @if ($can)
                     <x-slot:acts>
                         <form method="post" action="{{ $base }}/signed" enctype="multipart/form-data" class="contents" data-controller="autosubmit">

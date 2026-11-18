@@ -3,7 +3,9 @@
      Вписанная руками (`SetContractPrice`, 14.11.2026: «всякое бывает») — вторым этажом кто, когда и сколько «в сделке».
      Нажатие — шторка: сумма крупно по центру, «Как в сделке N» чипом, НДС «Без НДС | 5 % | 22 %» (`DealContract::vatRate`,
      меняется сразу, только админ) и что будет со счётом. По счёту уже платили — сумма не правится, словом. --}}
-@props(['deal', 'contract'])
+{{-- `row` false — без строки «Сумма договора»: шторку открывает сумма в шапке блока «Продажи» событием
+     `contract-price-{id}:open` (18.11.2026, владелец: «по несколько раз одно и то же» — сумма одна, в шапке). --}}
+@props(['deal', 'contract', 'row' => true])
 @php
     use App\Offers\DealContract;
     use App\Support\Money;
@@ -18,14 +20,14 @@
         : ($deal->isActive() && ! $deal->moneyEditable() ? 'по счёту уже платили, сменить нельзя' : null);
     $nb = fn (string $s) => str_replace(' ', "\u{00A0}", $s);
 @endphp
-<div @if ($editable || $vatEditable) data-controller="sheet" @endif class="contents">
+<div @if ($editable || $vatEditable) data-controller="sheet" @unless ($row) data-action="{{ $id }}:open@window->sheet#open" @endunless @endif class="contents">
     @php ob_start(); @endphp
         {{-- Видом строки «Продажи» (16.11.2026): подпись серым слева, сумма справа, НДС и кто вписал — мелко под суммой. --}}
         <span class="sale-row-label">Сумма договора</span>
         <span class="sale-row-value"><span class="nums block">{{ $contract->price ? Money::rub($contract->price) : 'нет суммы' }}</span><span class="block text-sm text-ink-muted">{{ $vat }}@if ($sub), {{ $sub }}@endif</span></span>
     @php $line = ob_get_clean(); @endphp
     @if ($editable || $vatEditable)
-        <x-ui.sheet-row class="sale-row">{!! $line !!}<x-ui.chevron/></x-ui.sheet-row>
+        @if ($row)<x-ui.sheet-row class="sale-row">{!! $line !!}<x-ui.chevron/></x-ui.sheet-row>@endif
         <x-ui.sheet :id="$id" title="Договор">
             <div class="flex flex-col gap-5">
                 @if ($editable)
@@ -61,7 +63,7 @@
                 @endif
             </div>
         </x-ui.sheet>
-    @else
+    @elseif ($row)
         <div class="row sale-row">{!! $line !!}<x-ui.chevron-space/></div>
     @endif
 </div>

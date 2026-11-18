@@ -4,7 +4,9 @@
      («Я» у него самого), покупатель по договору и другие его покупатели, сторонние плательщики этой сделки — строками с
      карандашом; «Другой плательщик» — физлицо, ИП или организация. Выбор сразу перевыставляет неоплаченный счёт и ссылку
      (`SetDealPayer`); по счёту уже платили — строка без выбора. --}}
-@props(['deal', 'action', 'id' => null, 'editable' => true])
+{{-- `row` false — без строки (плательщик — тот же покупатель, 18.11.2026: «по несколько раз одно и то же»): одна шторка по событию
+     `{id}:open`, в «Продаже» CRM — пунктом «⋯» «Кто платит…». --}}
+@props(['deal', 'action', 'id' => null, 'editable' => true, 'row' => true])
 @php
     use App\Offers\Actions\SetDealPayer;
     use App\Support\People;
@@ -20,15 +22,15 @@
     $options = $can ? SetDealPayer::options($deal) : [];
     $current = old('_sheet') === $id ? (string) old('payer') : SetDealPayer::current($deal);
 @endphp
-@if (! $can)
+@if (! $can && $row)
     <div class="row sale-row">
         <span class="sale-row-label">Плательщик</span>
         <span class="sale-row-value">{{ $value }}</span>
         <x-ui.chevron-space/>
     </div>
-@else
-<div class="contents" data-controller="sheet">
-    <x-deal.sale-row label="Плательщик" :value="$value" data-action="sheet#open"/>
+@elseif ($can)
+<div class="contents" data-controller="sheet" @unless ($row) data-action="{{ $id }}:open@window->sheet#open" @endunless>
+    @if ($row)<x-deal.sale-row label="Плательщик" :value="$value" data-action="sheet#open"/>@endif
     <x-ui.sheet :id="$id" title="Кто платит">
         <form method="post" action="{{ $action }}" class="flex flex-col gap-4" data-controller="reveal autosubmit">
             @csrf @method('put')

@@ -1,11 +1,17 @@
 {{-- Поступления выписки по сделке — верхом «Продажи» (18.11.2026, владелец: «подписывать в блоке „Продажа“ компактно, что есть
      такое-то поступление от такого-то числа»): строкой на платёж — значок банка, дата, кто перевёл, сумма. Деньги за машину
      (`Transaction::carMoney`: и «Вне системы»), до трёх; больше — «ещё N» ссылкой на выписку с поиском по VIN. --}}
-@props(['deal'])
+{{-- `except` — имена покупателя: его поступления сказаны словом шапки блока (`Billing\PayWord`, 18.11.2026), строкой — только чужие
+     плательщики. --}}
+@props(['deal', 'except' => []])
 @php
     use App\Support\Money;
+    // Имя — набором слов без регистра: в выписке «МИНАКОВА МАРИНА ВАЛЕРЬЕВНА», у нас «Марина Валерьевна Минакова».
+    $words = fn (?string $n) => collect(preg_split('/[\s"«»]+/u', mb_strtolower((string) $n)))->filter(fn ($w) => mb_strlen($w) > 1)->sort()->values()->all();
+    $known = collect($except)->map($words)->filter()->all();
     $txs = \App\Billing\Bank\Transaction::where('deal_id', $deal->id)->where('direction', 'in')->carMoney()
-        ->orderByDesc('booked_at')->orderByDesc('id')->get();
+        ->orderByDesc('booked_at')->orderByDesc('id')->get()
+        ->reject(fn ($tx) => in_array($words($tx->payerName()), $known, true));
     $vin = $deal->offer?->car?->vin;
 @endphp
 @if ($txs->isNotEmpty())
