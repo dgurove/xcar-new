@@ -103,7 +103,7 @@ class OfferController
         // Сводные вкладки разделов (17.11.2026, владелец: подзаголовки колеса «кликабельными — как „Все“, но по всем своим») —
         // первыми в своём разделе, вместо подзаголовка (`SUMMARIES`).
         'all_drafts' => 'Все черновики',
-        'nofloor' => 'Без закупочной цены', 'unpriced' => 'Без продажной цены', 'priced' => 'Оцененные',
+        'nofloor' => 'Без закупочной цены', 'unpriced' => 'Без продажной цены', 'estimating' => 'На оценке у менеджеров', 'priced' => 'Оцененные',
         'all_offers' => 'Все предложения',
         'slots' => 'Публикация', 'published' => 'Опубликованные', 'bids' => 'Есть подтверждения', 'done' => 'Без подтверждений',
         'all_deals' => 'Все сделки',
@@ -121,7 +121,7 @@ class OfferController
      * «Состояние» и «Менеджер», столбцы. Сводная → вкладки раздела; сделки — этапы `DealTabs` и «Завершённые».
      */
     public const SUMMARIES = [
-        'all_drafts' => ['nofloor', 'unpriced', 'priced'],
+        'all_drafts' => ['nofloor', 'unpriced', 'estimating', 'priced'],
         'all_offers' => ['slots', 'published', 'bids', 'done'],
         'all_deals' => null,
         'all_archive' => ['archive', 'legacy', 'auction'],
@@ -184,7 +184,7 @@ class OfferController
     /** Зелёные числа колеса: ключ вкладки → ключ числа в `counts` (оценки менеджеров, наши дела по этапам сделки). */
     public static function badges(): array
     {
-        return ['unpriced' => 'unpriced_given', 'priced' => 'priced_given', 'all_deals' => 'all_deals_our', ...collect(DealTabs::TABS)->except(DealTabs::WAITING)->mapWithKeys(fn ($t, $k) => [$k => $k.'_our'])->all()];
+        return ['estimating' => 'estimating_given', 'priced' => 'priced_given', 'all_deals' => 'all_deals_our', ...collect(DealTabs::TABS)->except(DealTabs::WAITING)->mapWithKeys(fn ($t, $k) => [$k => $k.'_our'])->all()];
     }
 
     /** Вкладка ли сделки: строки — сделки (`DealController::tab`). */
@@ -201,7 +201,7 @@ class OfferController
     private const OPEN = ['published', 'bids'];
 
     /** Вкладки, где порядок — когда предложение в них попало (`offers.tab_at`) и столбец даты — оно же. */
-    public const BY_TAB = ['nofloor', 'unpriced', 'priced', 'done', 'archive', 'auction'];
+    public const BY_TAB = ['nofloor', 'unpriced', 'estimating', 'priced', 'done', 'archive', 'auction'];
 
     /**
      * Вкладки человека: подтверждения, «На оценке у менеджеров», «Без подтверждений», «Все», «Из таблицы Кати» и «На аукцион» видит
@@ -213,7 +213,7 @@ class OfferController
             return self::PRESETS;
         }
         // Закупки и галерея — админу (их разделы в CRM у модератора закрыты и прежде).
-        $hidden = ['bids' => true, 'done' => true, 'all' => true, 'legacy' => true, 'auction' => true, ...array_fill_keys(array_keys(self::SUMMARIES), true),
+        $hidden = ['estimating' => true, 'bids' => true, 'done' => true, 'all' => true, 'legacy' => true, 'auction' => true, ...array_fill_keys(array_keys(self::SUMMARIES), true),
             'purchases' => true, 'gallery' => true, 'interest' => true];
 
         // Модератору (`canEditDeals`) — сделки по этапам, «Завершённые» и гараж (17.11.2026, владелец: полный доступ к сделкам и гаражу).
@@ -277,16 +277,14 @@ class OfferController
 
     /** Прежние пилюли — в новые вкладки: ссылки из Telegram, закладки, `LegacyAdmin`. */
     private const LEGACY = [
-        'draft' => 'unpriced', 'purchase' => 'unpriced',
-        // «На оценке у менеджеров» — группами «Без продажной цены» (18.11.2026, начальник).
-        'estimating' => 'unpriced', 'closed' => 'done', 'slot' => 'slots', 'open' => 'published', 'recommended' => 'published',
+        'draft' => 'unpriced', 'purchase' => 'unpriced', 'closed' => 'done', 'slot' => 'slots', 'open' => 'published', 'recommended' => 'published',
     ];
 
     /** Вкладки, где идёт работа по шагам: всегда таблица, без сортировки — порядок задаёт сам шаг. */
-    private const STEPS = ['nofloor', 'unpriced', 'priced', 'slots', 'published', 'bids'];
+    private const STEPS = ['nofloor', 'unpriced', 'estimating', 'priced', 'slots', 'published', 'bids'];
 
     /** Вкладки, где карточка после дела идёт к следующей строке. */
-    private const TODO = ['nofloor', 'unpriced'];
+    private const TODO = ['nofloor', 'unpriced', 'estimating'];
 
     /** Вкладки дела: строка ушла — карточка сама к следующей (оценили, заполнили закупочную, приняли подтверждение). */
     private const ADVANCE = [...self::TODO, 'bids', 'done'];
@@ -650,16 +648,15 @@ class OfferController
 
         // Черновики из таблицы Кати — только в своей вкладке, рабочим не мешают (10.10.2026; 12.10.2026 начальник снова:
         // «не отображать»).
-        if (in_array($preset, ['nofloor', 'unpriced', 'priced', 'slots', 'done'], true)) {
+        if (in_array($preset, ['nofloor', 'unpriced', 'estimating', 'priced', 'slots', 'done'], true)) {
             LegacyClaim::offList($q);
         }
         // Отправленные на аукцион (13.10.2026) — только во вкладке «На аукцион», рабочим и таблице Кати не мешают.
-        if (in_array($preset, ['nofloor', 'unpriced', 'priced', 'slots', 'done', 'legacy'], true)) {
+        if (in_array($preset, ['nofloor', 'unpriced', 'estimating', 'priced', 'slots', 'done', 'legacy'], true)) {
             $q->whereNull('offers.auction_at');
         }
-        // Отдали менеджерам на оценку (01.11.2026, начальник) — у админа своей вкладкой, из «Без закупочной» и «Без продажной»
-        // уходит; модератору закупочную заполнять и на оценке — у него вкладки нет.
-        // «Без продажной цены» — группой «На оценке у менеджеров» (18.11.2026, начальник: «в одной вкладке, просто в разных группах»).
+        // Отдали менеджерам на оценку (01.11.2026, начальник) — у админа своей вкладкой, из «Без закупочной» уходит; в «Без продажной
+        // цены» остаётся (18.11.2026, начальник: «и в той, и в той вкладке одновременно»). Модератору — вкладки нет.
         if ($admin && $preset === 'nofloor') {
             $q->whereDoesntHave('estimates', fn ($e) => $e->open());
         }
@@ -677,10 +674,11 @@ class OfferController
             // останется цена продажи, но пока нет оценочной и закупочной, они черновики без закупочной»; `ParkValue`).
             // И приём закрывался без подтверждений — сначала закупочная («Без подтверждений» — только с ней).
             'nofloor' => $q->where('offers.state', OfferState::Draft)->whereNull('slot_at')->where(fn ($p) => $p->whereNull('floor_price')->orWhere('floor_price', 0)),
-            // Админу — и черновики на оценке у менеджеров с любой закупочной (группы `UNPRICED_GROUPS`).
+            // Админу — и черновики на оценке у менеджеров с любой закупочной: они и здесь, и в «На оценке у менеджеров».
             'unpriced' => $q->where('offers.state', OfferState::Draft)->whereNull('slot_at')->where(fn ($p) => $p->whereNull('asking_price')->orWhere('asking_price', 0))
                 ->where(fn ($f) => $f->where('floor_price', '>', 0)->when($admin, fn ($w) => $w->orWhereHas('estimates', fn ($e) => $e->open()))),
             // Без цены продажи, а менеджер думает или уже оценил (просьба `asked` | `given`); корректировка цены — в «Оцененных».
+            'estimating' => self::estimating($q),
             // Приём кончился без подтверждений — в «Без подтверждений» (29.10.2026, начальник), модератору — здесь же: той вкладки у него нет.
             'priced' => $q->where('offers.state', OfferState::Draft)->whereNull('slot_at')->where('asking_price', '>', 0)->where('floor_price', '>', 0)
                 ->when($admin, fn ($o) => $o->whereNull('offers.intake_closed_at')),
@@ -712,6 +710,12 @@ class OfferController
         };
     }
 
+    /** «На оценке у менеджеров»: черновик без цены продажи (закупочная — любая) с открытой просьбой оценить. */
+    public static function estimating(Builder $q): Builder
+    {
+        return $q->where('offers.state', OfferState::Draft)->whereNull('slot_at')->where(fn ($p) => $p->whereNull('asking_price')->orWhere('asking_price', 0))
+            ->whereHas('estimates', fn ($e) => $e->open());
+    }
 
     /**
      * Опубликованные — группами по тому, что делать: 0 «Выбрать» (приём закрыт, подтверждения есть), 1 «Идёт приём»
@@ -728,7 +732,7 @@ class OfferController
      * групп — `rest` («Остальные»). Строке — колонка `binding_soon` (`listQuery`).
      */
     // «Все» — группами по вкладкам (16.11.2026, владелец: «группировку не по тому, горит ли срок, а как по вкладкам»).
-    public const HOT = ['nofloor', 'unpriced', 'priced', 'published', 'bids', 'done'];
+    public const HOT = ['nofloor', 'unpriced', 'estimating', 'priced', 'published', 'bids', 'done'];
 
     public const HOT_GROUP = 'Горит срок обязывающего';
 
@@ -738,16 +742,17 @@ class OfferController
      * «Без продажной цены» админа — машины на нашей парковке первыми своей группой (22.10.2026, начальник: у них приоритет),
      * остальные — «Не у нас». На парковке — ТС той же машины ждёт приёма или стоит (`Offer::onPark`).
      */
-    /**
-     * С 18.11.2026 (начальник: «без продажной цены и на оценке у менеджеров — в одной вкладке, просто в разных группах») — и
-     * группы оценки: «Менеджеры оценили» (решение за админом, первыми), «На парковке», «Не у нас», «На оценке у менеджеров»
-     * (ещё ждём — последними). Прежняя вкладка `estimating` — 301 сюда (`LEGACY`).
-     */
-    public const PARK_GROUPS = ['Менеджеры оценили', 'На парковке', 'Не у нас', 'На оценке у менеджеров'];
+    public const PARK_GROUPS = ['На парковке', 'Не у нас'];
 
-    private const PARK_GROUP = "case when exists (select 1 from offer_estimates e where e.offer_id = offers.id and e.state = 'given') then 0
-        when exists (select 1 from offer_estimates e where e.offer_id = offers.id and e.state = 'asked') then 3
-        when exists (select 1 from park_vehicles v where v.car_id = offers.car_id and v.state in ('expected', 'stored')) then 1 else 2 end";
+    private const PARK_GROUP = "case when exists (select 1 from park_vehicles v where v.car_id = offers.car_id and v.state in ('expected', 'stored')) then 0 else 1 end";
+
+    /**
+     * «На оценке у менеджеров» — группами (02.11.2026, владелец): «Оценённые» — хотя бы один менеджер оценил, решение за
+     * админом; «Не оценённые» — ещё ждём.
+     */
+    public const ESTIMATE_GROUPS = ['Оценённые', 'Не оценённые'];
+
+    public const ESTIMATE_GROUP = "case when exists (select 1 from offer_estimates e where e.offer_id = offers.id and e.state = 'given') then 0 else 1 end";
 
     public const PICK_GROUP = "case when bids_close_at is not null and bids_close_at <= now() and exists (select 1 from bids where bids.offer_id = offers.id and bids.state = 'active') then 0 when bids_close_at is null or bids_close_at > now() then 1 else 2 end";
 
@@ -768,6 +773,9 @@ class OfferController
         }
         if (self::summary($preset) !== null) {
             $q->orderByRaw(OfferTabs::orderSql());
+        }
+        if ($preset === 'estimating') {
+            $q->orderByRaw(self::ESTIMATE_GROUP);
         }
         match (true) {
             $preset === 'slots' => $q->orderBy('slot_at'),
@@ -819,6 +827,7 @@ class OfferController
     {
         [$expr, $prefix] = match (true) {
             $preset === 'unpriced' && $admin => [self::PARK_GROUP, 'park'],
+            $preset === 'estimating' => [self::ESTIMATE_GROUP, 'est'],
             $preset === 'bids' && $admin => [self::PICK_GROUP, ''],
             self::summary($preset) !== null => [OfferTabs::sql(), 'tab:'],
             default => [null, null],
@@ -838,19 +847,10 @@ class OfferController
             ->mapWithKeys(fn ($n, $g) => [$prefix.$g => (int) $n])->all();
     }
 
-    /** Группа «Без продажной цены» админа (PARK_GROUPS) — то же правило, что у порядка; оценки — одним запросом на запрос. */
-    public static function unpricedGroup(Offer $offer): int
+    /** Группа «На оценке у менеджеров» (ESTIMATE_GROUPS) — то же правило, что у порядка; оценённые — одним запросом на запрос. */
+    public static function estimateGroup(Offer $offer): int
     {
-        $states = once(fn () => Estimate::whereIn('state', [EstimateState::Given, EstimateState::Asked])->get(['offer_id', 'state'])
-            ->groupBy('offer_id')->map(fn ($rows) => $rows->pluck('state')->map(fn ($st) => $st->value)->all())->all());
-        $mine = $states[$offer->id] ?? [];
-
-        return match (true) {
-            in_array(EstimateState::Given->value, $mine, true) => 0,
-            in_array(EstimateState::Asked->value, $mine, true) => 3,
-            $offer->onPark() => 1,
-            default => 2,
-        };
+        return isset(once(fn () => Estimate::where('state', EstimateState::Given)->distinct()->pluck('offer_id')->flip()->all())[$offer->id]) ? 0 : 1;
     }
 
     /** Группа опубликованного (PICK_GROUPS) — то же правило, что у порядка. */
@@ -945,7 +945,7 @@ class OfferController
             // Оценка: закупочная — ориентир, «Оценить» на месте цены; у черновика номера нет, кто завёл — аватаром у даты.
             // Город — сразу за номером убытка (владелец 04.10.2026: «не хватает столбца с городом»). Оценочной в таблице нет
             // (владелец 05.10.2026: «скрой») — она в карточке строки, в «Деньгах».
-            'unpriced', 'priced', 'legacy', 'auction' => ['vendor', 'city', 'floor', 'price', 'created'],
+            'unpriced', 'estimating', 'priced', 'legacy', 'auction' => ['vendor', 'city', 'floor', 'price', 'created'],
             // «Без подтверждений» — только черновики после приёма: состояние у всех одно, дата — когда кончился приём.
             'done' => ['vendor', 'city', 'floor', 'price', 'created'],
             // Когда выйдет — заголовок группы, слова в строке не нужно.
@@ -1029,9 +1029,9 @@ class OfferController
             if ($key === 'legacy' && self::ghostsShown($facets)) {
                 $subs['legacy_ghosts'] = LegacyClaim::ghosts()->toBase()->cloneWithout(['orders', 'columns'])->cloneWithoutBindings(['order', 'select'])->selectRaw('count(*)');
             }
-            // Лаймовый бейдж у «Без продажной цены» (группа «Менеджеры оценили») и «Оцененных» — сколько ответов менеджеров ждут решения: оценки и свои
+            // Лаймовый бейдж у «На оценке у менеджеров» и «Оцененных» — сколько ответов менеджеров ждут решения: оценки и свои
             // цены вместо цены админа («Согласен» решения не ждёт), 11.10.2026.
-            if (in_array($key, ['unpriced', 'priced'], true) && $user->canManageCrm()) {
+            if (in_array($key, ['estimating', 'priced'], true) && $user->canManageCrm()) {
                 $subs[$key.'_given'] = $count((clone $q)->whereHas('estimates', fn ($e) => $e->needsDecision()));
             }
         }

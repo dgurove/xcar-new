@@ -1498,7 +1498,7 @@ class Offer extends Model
                 ! ($this->floor_price > 0) => $presets['nofloor'],
                 $this->intake_closed_at !== null && $user?->canManageCrm() => $presets['done'],
                 $this->asking_price > 0 => $presets['priced'],
-                $user?->canManageCrm() && $this->onEstimate() => $presets['unpriced'],
+                $user?->canManageCrm() && $this->onEstimate() => $presets['estimating'],
                 $this->floor_price > 0 => $presets['unpriced'],
                 default => $presets['nofloor'],
             },

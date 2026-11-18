@@ -18,10 +18,10 @@
         // «Все» — группами по вкладкам в порядке колеса (16.11.2026, `OfferTabs`): строки уже в этом порядке.
         \App\Http\Admin\OfferController::summary($preset) !== null => $offers->getCollection()->groupBy(fn ($o) => 'tab:'.\App\Offers\OfferTabs::of($o)),
         $preset === 'bids' && $admin => $offers->getCollection()->groupBy(fn ($o) => OfferController::pickGroup($o))->sortKeys(),
-        // «Менеджеры оценили», «На парковке», «Не у нас», «На оценке у менеджеров» (`OfferController::PARK_GROUPS`); группы с
-        // подписью — когда их больше одной.
-        $preset === 'unpriced' && $admin && $offers->getCollection()->map(fn ($o) => OfferController::unpricedGroup($o))->unique()->count() > 1
-            => $offers->getCollection()->groupBy(fn ($o) => 'park'.OfferController::unpricedGroup($o))->sortKeys(),
+        $preset === 'estimating' => $offers->getCollection()->groupBy(fn ($o) => 'est'.OfferController::estimateGroup($o))->sortKeys(),
+        // На парковке — первыми; группы с подписью, только когда такие есть (`OfferController::PARK_GROUPS`).
+        $preset === 'unpriced' && $admin && $offers->getCollection()->contains(fn ($o) => $o->onPark())
+            => $offers->getCollection()->groupBy(fn ($o) => 'park'.($o->onPark() ? 0 : 1))->sortKeys(),
         default => collect(['' => $offers->getCollection()]),
     };
     // «Срок обязывающего сгорел» и «Горит срок обязывающего» — первыми группами над группами вкладки (`OfferController::HOT`,
@@ -51,6 +51,7 @@
         $key === 'legacy' => $ghosts->isEmpty() ? null : 'Черновики',
         str_starts_with((string) $key, 'tab:') => \App\Offers\OfferTabs::label(substr($key, 4)),
         str_starts_with((string) $key, 'park') => OfferController::PARK_GROUPS[(int) substr($key, 4)],
+        str_starts_with((string) $key, 'est') => OfferController::ESTIMATE_GROUPS[(int) substr($key, 3)],
         $preset === 'slots' => $list->first()->slot_at->isPast() ? 'Выходит сейчас' : Slots::label($list->first()->slot_at),
         default => OfferController::PICK_GROUPS[$key],
     };
@@ -100,7 +101,7 @@
             {{-- Пусто из-за фильтра (17.11.2026): так и сказать, и сбросить одним нажатием. --}}
             <x-ui.empty :href="$facets->resetUrl()" link="Сбросить фильтр">По фильтру ничего</x-ui.empty>
         @elseif ($offers->isEmpty() && $ghosts->isEmpty())
-            <x-ui.empty>{{ match ($searching ? '' : $preset) { 'nofloor' => 'Закупочные заполнены', 'unpriced' => 'Всё оценено', 'priced' => 'Оценённых нет', 'slots' => 'В слотах пусто', 'published' => 'Опубликованных нет', 'done' => 'Всё разобрано', 'bids' => 'Подтверждений нет', 'legacy' => 'Список пуст', default => 'Предложений нет' } }}</x-ui.empty>
+            <x-ui.empty>{{ match ($searching ? '' : $preset) { 'nofloor' => 'Закупочные заполнены', 'unpriced' => 'Всё оценено', 'estimating' => 'На оценке ничего нет', 'priced' => 'Оценённых нет', 'slots' => 'В слотах пусто', 'published' => 'Опубликованных нет', 'done' => 'Всё разобрано', 'bids' => 'Подтверждений нет', 'legacy' => 'Список пуст', default => 'Предложений нет' } }}</x-ui.empty>
         @else
             @if ($pick)
                 <form id="offers-pick" method="post" action="/offers/schedule" data-live-select data-price-guard="publish">@csrf</form>
@@ -147,7 +148,7 @@
             @endif
             <div class="mt-8"><x-ui.pager :of="$offers" :sizes="\App\Support\ListView::perSizes($view)"/></div>
             {{-- Сделали последнюю — тост ведёт дальше по шагу (detail_controller#advance); модератору дальше ничего нет. --}}
-            @if ($preset === 'unpriced' && ! $searching)
+            @if (in_array($preset, ['unpriced', 'estimating'], true) && ! $searching)
                 <a href="/offers?preset=priced" data-advance-done hidden>Все оценены, дальше «Оцененные»</a>
             @elseif ($preset === 'nofloor' && ! $searching && $admin)
                 <a href="/offers?preset=unpriced" data-advance-done hidden>Закупочные заполнены, дальше «Без продажной цены»</a>

@@ -31,18 +31,20 @@ class EstimatingTabTest extends TestCase
         $in = fn (string $tab, bool $admin = true) => OfferController::scopeFor($tab, Offer::whereKey($offer->id), $admin)->exists();
 
         $this->assertTrue($in('unpriced'));
+        $this->assertFalse($in('estimating'));
 
         $this->travel(1)->minutes();
         app(AskEstimates::class)($offer->fresh(), [$manager], $admin);
-        // С 18.11.2026 — та же вкладка, группа «На оценке у менеджеров» (начальник); из «Без закупочной» уходит.
+        // И там, и там (18.11.2026, начальник).
+        $this->assertTrue($in('estimating'));
         $this->assertTrue($in('unpriced'));
         $this->assertTrue($in('unpriced', admin: false));
-        $this->assertSame(3, OfferController::unpricedGroup($offer->fresh()));
-        $this->assertSame('Без продажной цены', $offer->fresh()->crmTab($admin));
+        $this->assertSame('На оценке у менеджеров', $offer->fresh()->crmTab($admin));
         $this->assertEqualsWithDelta(now()->timestamp, $offer->fresh()->tab_at->timestamp, 2);
         $this->assertArrayNotHasKey('estimating', OfferController::presets(User::create(['name' => 'Мод', 'phone' => '79000000042', 'roles' => [Role::Moderator], 'approved_at' => now()])));
 
         app(CloseEstimates::class)($offer->fresh(), $admin, only: $offer->estimates()->pluck('id')->all());
         $this->assertTrue($in('unpriced'));
+        $this->assertFalse($in('estimating'));
     }
 }
