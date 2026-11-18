@@ -16,6 +16,9 @@
     $isDeal = ! $garage && $offer->state === \App\Offers\OfferState::Sold;
     $auction = $offer->onAuction();
     $closeAt = old('bids_close_at');
+    // Вернулись с ошибкой — выбранные волны на месте, как и срок (18.11.2026).
+    $stored = $offer->audience_rules ? json_encode($offer->audience_rules) : '';
+    $waves = old('_sheet') === 'resale-'.$n ? (string) old('audience_rules', $stored) : $stored;
     $holder = $offer->car_place === \App\Offers\CarPlace::Keeper ? $offer->standsWith() : null;
     // Вывоз идёт — не пропадает (12.11.2026, владелец: «чтобы пока был вывоз — она продавалась», `ReturnToSale`).
     $pickup = ! $holder && ($t = \App\Logistics\Transport::openFor($offer)) && ! $t->taken();
@@ -62,7 +65,7 @@
                     <div>
                         <h3 class="list-head">Показ</h3>
                         <x-offer.binding-field :offer="$offer" :id="'resale-binding-'.$n"/>
-                        <x-audience.field :value="$offer->audience_rules ? json_encode($offer->audience_rules) : ''" :rules="\App\Offers\AudienceRules::of($offer)" inline class="mt-4">
+                        <x-audience.field :value="$waves" :rules="\App\Offers\AudienceRules::of($offer)" inline class="mt-4">
                             <x-slot:end><x-offer.close-field :offer="$offer" :id="'resale-close-'.$n" :value="$closeAt" label="Конец приёма"/></x-slot:end>
                         </x-audience.field>
                     </div>

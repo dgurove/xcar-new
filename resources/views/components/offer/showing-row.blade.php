@@ -8,7 +8,7 @@
     use App\Offers\{AudienceRules, Slots};
     $close = $offer->bids_close_at;
     $when = $when === false ? false : ($close && $close->isFuture()
-        ? 'Приём до '.$close->translatedFormat($close->isCurrentYear() ? 'j M, H:i' : 'j M Y, H:i')
+        ? 'Приём до '.\App\Support\Ago::day($close, true)
         : 'Приём '.config('xcar.bids_window_days').' '.\App\Support\Plural::of((int) config('xcar.bids_window_days'), ['день', 'дня', 'дней']).' с выхода, до '.sprintf('%02d:00', (int) config('xcar.bids_close_hour')));
     $marks = array_filter([
         $offer->recommended ? 'рекомендуем' : null,
@@ -35,7 +35,8 @@
     </button>
     <x-ui.sheet :id="$id" title="Показ">
         <x-offer.showing :offer="$offer" :form="$form" :summary="$summary" as="sheet"/>
-        <x-ui.sheet-foot type="submit" foot="mt-4" :form="$form" data-action="sheet#close">Сохранить</x-ui.sheet-foot>
+        {{-- `data-save-part` — на странице уходят только поля показа, если тронуты только они (`save_bar_controller`). --}}
+        <x-ui.sheet-foot type="submit" foot="mt-4" :form="$form" data-action="sheet#close" data-save-part="binding_until bids_close_at audience_rules recommended chat_enabled share_locked garage_allowed">Сохранить</x-ui.sheet-foot>
     </x-ui.sheet>
 </div>
 @endif

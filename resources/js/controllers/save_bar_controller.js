@@ -70,7 +70,9 @@ export default class extends Controller {
     }
 
     touch(el) {
-        if (el.closest('[data-controller~="audience"]')) {
+        // Конец приёма стоит концом ленты волн (слот `end`) — это обычное поле формы, не список окна: до 18.11.2026 оно сюда
+        // не попадало, и дата из шторки «Показ» окна машины не сохранялась («пишешь сохранить, выходишь — 3 дня»).
+        if (el.closest('[data-controller~="audience"]') && !el.closest('[data-audience-target="end"]')) {
             // В шторке «Кому» свои списки без имён — сохраняется только итог в скрытом поле: волны предложения
             // (`audience_rules`), у публикации сделки — то же поле.
             if (!el.matches('[data-audience-target="rules"]') || !el.name) return;
@@ -98,15 +100,26 @@ export default class extends Controller {
         const button = event.submitter;
         const ours = !button || button.matches('[data-save-bar-button]');
         if (!this.touched && ours) { event.preventDefault(); return; }
-        if (this.partialValue) {
-            this.element.querySelectorAll('input[name="_fields[]"]').forEach((i) => i.remove());
-            // Ничего не тронуто («Оценить» с пустым полем) — список из одной метки `_none`: сервер ничего не пишет и ведёт дальше (пустую строку Laravel делает null).
-            for (const name of this.dirty.size ? this.dirty : ['_none']) {
-                const i = document.createElement('input');
-                i.type = 'hidden';
-                i.name = '_fields[]';
-                i.value = name;
-                this.element.append(i);
+        this.element.querySelectorAll('input[name="_fields[]"]').forEach((i) => i.remove());
+        const put = (names) => names.map((name) => {
+            const i = document.createElement('input');
+            i.type = 'hidden';
+            i.name = '_fields[]';
+            i.value = name;
+            this.element.append(i);
+            return i;
+        });
+        // Ничего не тронуто («Оценить» с пустым полем) — список из одной метки `_none`: сервер ничего не пишет и ведёт дальше (пустую строку Laravel делает null).
+        if (this.partialValue) put(this.dirty.size ? [...this.dirty] : ['_none']);
+        // Кнопка части формы (`data-save-part="имена полей"`: «Сохранить» шторки «Показ» на странице предложения, 18.11.2026):
+        // тронуто только её — уходят только её поля, как у карточки строки. Иначе срок приёма и «Кому» черновика без марки
+        // молча не сохранялись: вся форма падала на «Поле „марка“ обязательно» где-то выше по странице. Тронуто и другое —
+        // вся форма, как раньше (и после ошибки проверки: введённое из old() иначе пропало бы). Метки снимаются, как только Turbo собрал форму: следующая отправка — снова целиком.
+        else if (button?.dataset.savePart) {
+            const part = button.dataset.savePart.split(' ');
+            if (!this.dirtyValue && [...this.dirty].every((name) => part.includes(name))) {
+                const marks = put(part);
+                setTimeout(() => marks.forEach((i) => i.remove()));
             }
         }
         // Кнопку гасим после того, как Turbo собрал форму (выключенная кнопка в данные не попала бы).

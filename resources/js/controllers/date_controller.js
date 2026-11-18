@@ -37,13 +37,26 @@ export default class extends Controller {
         this.valueTarget.addEventListener('change', this.onChange);
         // POST → редирект на ту же страницу Turbo делает морфом: контроллер не переподключается, скрытое поле получает
         // новое значение, а слова остаются прежними (13.10.2026: «Вернуть в продажу» — срок приёма показывал старый).
-        this.onMorph = () => { if (!this.popTarget.matches(':popover-open')) this.render(true); };
+        // Живое обновление посреди правки (18.11.2026, «дата сбрасывается»: шторка «Показ» открыта, пришло событие по машине —
+        // морф ставил в скрытое поле серверное значение, выбранная дата пропадала): выбранное человеком (`mine`) возвращается,
+        // исходным для «Не сохранять?» остаётся серверное. Форма ушла — дальше правду говорит сервер.
+        this.onMorph = () => {
+            const server = this.valueTarget.value;
+            if (this.mine !== undefined && server !== this.mine) {
+                this.valueTarget.value = this.mine;
+                if ('sheetWas' in this.valueTarget.dataset) this.valueTarget.dataset.sheetWas = server;
+                this.render();
+            } else if (!this.popTarget.matches(':popover-open')) this.render(true);
+        };
         document.addEventListener('turbo:morph', this.onMorph);
+        this.onSent = (e) => { if (e.target === this.valueTarget.form) this.mine = undefined; };
+        document.addEventListener('submit', this.onSent);
     }
 
     disconnect() {
         if (!this.onChange) return;
         document.removeEventListener('turbo:morph', this.onMorph);
+        document.removeEventListener('submit', this.onSent);
         this.valueTarget.removeEventListener('change', this.onChange);
         this.close();
     }
@@ -211,6 +224,7 @@ export default class extends Controller {
         this.valueTarget.value = value;
         this.render();
         if (!changed) return;
+        this.mine = value;
         this.valueTarget.dispatchEvent(new Event('input', { bubbles: true }));
         this.valueTarget.dispatchEvent(new Event('change', { bubbles: true }));
     }

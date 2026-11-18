@@ -15,6 +15,9 @@
     $on = $offer->showsDealAsOpen();
     $until = old('until', $on ? $offer->deal_show_until?->format('Y-m-d\TH:i') : Binding::clampClose($offer, Slots::closeFor(now()))->format('Y-m-d\TH:i'));
     $rules = AudienceRules::forDeal($offer);
+    // Вернулись с ошибкой (нет цены, «Точно?») — выбранные волны на месте, как и срок (18.11.2026: срок возвращался, волны нет).
+    $stored = $offer->deal_audience_rules ? json_encode($offer->deal_audience_rules) : '';
+    $value = old('_sheet') === 'deal-publish-'.$n ? (string) old('audience_rules', $stored) : $stored;
 @endphp
 <div data-controller="sheet" data-action="deal-publish:open@window->sheet#open" class="contents">
     <x-ui.sheet id="deal-publish-{{ $n }}" :title="$on ? 'Публикация для других менеджеров' : 'Опубликовать для других менеджеров'">
@@ -29,7 +32,7 @@
                 <x-ui.field name="min_bid_share" label="Доля до продажной" :id="'deal-publish-share-'.$n" :value="old('min_bid_share', $offer->min_bid_share)" placeholder="0,6"/>
             </div>
             <x-offer.sale-city :offer="$offer" :id="'deal-publish-sale-city-'.$n"/>
-            <x-audience.field :value="$offer->deal_audience_rules ? json_encode($offer->deal_audience_rules) : ''" :rules="$rules" inline deal :fresh="! $on" :base="$on ? $offer->deal_published_at : null">
+            <x-audience.field :value="$value" :rules="$rules" inline deal :fresh="! $on" :base="$on ? $offer->deal_published_at : null">
                 <x-slot:end><x-offer.close-field :offer="$offer" name="until" :id="'deal-publish-until-'.$n" :value="$until" label="Конец публикации"/></x-slot:end>
             </x-audience.field>
             @error('audience_rules')<p class="field-error">{{ $message }}</p>@enderror

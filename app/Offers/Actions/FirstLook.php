@@ -83,10 +83,13 @@ final class FirstLook
             // оценку (`Exclusive`) кончился — «Показ» дальше свой.
             Offer::whereKey($offer->id)->update(['published_at' => now()]);
             Estimate::where('offer_id', $offer->id)->where('exclusive_until', '>', now())->update(['exclusive_until' => now()]);
+            // Срок приёма, вписанный рукой уже при эксклюзиве (он позже его конца), остаётся (18.11.2026, владелец: «дату
+            // указали — её ничто не должно менять, кроме намеренного изменения»); наш — конец эксклюзива — считается заново.
+            $own = $offer->bids_close_at?->gt($offer->first_look_until) && $offer->bids_close_at->isFuture();
             ($this->update)($offer->refresh(), [
                 'audience_rules' => AudienceRules::everyone(), 'first_look_until' => null, 'first_look_user_id' => null,
-                'bids_close_at' => Binding::clampClose($offer, Slots::closeFor(now())),
-            ], null, ['why' => 'Эксклюзив кончился без подтверждения — всем']);
+            ] + ($own ? [] : ['bids_close_at' => Binding::clampClose($offer, Slots::closeFor(now()))]),
+                null, ['why' => 'Эксклюзив кончился без подтверждения — всем']);
 
             return true;
         });
