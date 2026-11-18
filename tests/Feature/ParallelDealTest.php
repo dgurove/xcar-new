@@ -62,7 +62,7 @@ class ParallelDealTest extends TestCase
     private Bid $reserve;
 
     /** Альфа, сделка у первого; второй — в резерве. `$upTo` — до какого шага довести главную. */
-    private function setUpDeal(string $upTo = 'Нет реквизитов'): Deal
+    private function setUpDeal(string $upTo = 'Письмо с реквизитами'): Deal
     {
         Storage::fake('private');
         Notification::fake();
@@ -132,7 +132,7 @@ class ParallelDealTest extends TestCase
         $this->assertSame('Нет реквизитов', $par->shadowStage->name);
         $this->assertSame('Заполнить данные покупателя', $par->openRequirement()->first()?->title);
         $this->assertTrue($main->fresh()->isActive());
-        $this->assertNotNull($main->openRequirement()->first(), 'просьба главной на месте');
+        // Главная — на «Письме с реквизитами» (18.11.2026, один шаг): своей просьбы менеджеру у неё нет.
         Notification::assertSentTo($this->second, BidAcceptedNotice::class, fn ($n) => $n->href() === '/deals/'.$par->id);
 
         // Главный заполнил, письмо ушло, счёт пришёл — у второго по-прежнему его «Нет реквизитов», ни слова о том.

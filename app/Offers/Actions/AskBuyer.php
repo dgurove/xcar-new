@@ -4,6 +4,7 @@ namespace App\Offers\Actions;
 
 use App\Notifications\BuyerAskNotice;
 use App\Offers\Deal;
+use App\Users\User;
 use App\Vendors\DealFormat;
 use App\Workflow\Asks;
 use Illuminate\Support\Carbon;
@@ -63,6 +64,35 @@ final class AskBuyer
         }
 
         return $deals;
+    }
+
+    /**
+     * «Запросить реквизиты» в шаге «Письмо с реквизитами» (18.11.2026, владелец: «пинает ещё раз менеджера в чате и в
+     * уведомлениях»): сообщение в чат сделки — оно само уходит лентой, пушем и в Telegram (`Notify::chat`); чат закрыт —
+     * `BuyerAskNotice`. Отметка `buyer_asked_at` — сейчас, в «Историю» — строка.
+     */
+    public function nudge(Deal $deal, User $by): void
+    {
+        $deal->loadMissing(['offer', 'buyer']);
+        if (! $deal->buyer || ! $deal->offer) {
+            return;
+        }
+        $deal->update(['buyer_asked_at' => now()]);
+        $deal->offer->log(\App\Offers\OfferEventType::Note, $by, ['text' => 'Запросили реквизиты у менеджера']);
+        $text = 'Поставщик просит реквизиты для счёта. Заполните покупателя по сделке: паспорт со сканом страниц или реквизиты организации — '
+            .\App\Support\Surface::Site->url($deal->href());
+        $id = $deal->id;
+        DB::afterCommit(function () use ($id, $text) {
+            $deal = Deal::with(['buyer', 'offer'])->find($id);
+            if (! $deal?->buyer) {
+                return;
+            }
+            if ($deal->offer->chatOpenFor($deal->buyer)) {
+                app(\App\Chats\Actions\PlatformMessage::class)(app(\App\Chats\Actions\OpenChat::class)($deal->offer, $deal->buyer, greet: false), $text);
+            } else {
+                $deal->buyer->notify(new BuyerAskNotice($deal));
+            }
+        });
     }
 
     public static function settle(Deal $deal): void

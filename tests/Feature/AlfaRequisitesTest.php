@@ -98,7 +98,7 @@ class AlfaRequisitesTest extends TestCase
 
     /**
      * Подпункты шага (`Workflow\Substeps`, 04.11.2026): в «Согласовании» пройденное — исходом, кто нажал; в «Реквизитах для
-     * счёта» — «Нет реквизитов» сейчас, «Письмо с реквизитами» впереди; сделка — во вкладке «Ждём счёт от поставщика».
+     * счёта» — сразу «Письмо с реквизитами» (18.11.2026, один шаг); покупателя нет — наше дело «Запросить реквизиты».
      */
     public function test_substeps_and_waiting_tab_name_who_and_what(): void
     {
@@ -113,12 +113,12 @@ class AlfaRequisitesTest extends TestCase
         $offer = $offer->fresh();
         $subs = Substeps::for($offer->position(Track::Sale), Path::journal($offer, Track::Sale), $offer->deal);
         $this->assertSame('Реквизиты для счёта', $offer->stage()->block->name);
-        $this->assertSame([['Нет реквизитов', 'now'], ['Письмо с реквизитами', 'wait']], $subs->map(fn ($s) => [$s['name'], $s['state']])->all());
+        $this->assertSame([['Письмо с реквизитами', 'now']], $subs->map(fn ($s) => [$s['name'], $s['state']])->all());
 
-        // Вкладка — этап «Ждём счёт от поставщика» (`DealTabs`, 16.11.2026), строка — с менеджером, без кнопки «Позвонить» (снята 10.11.2026).
+        // Покупателя нет — наше дело «Запросить реквизиты» во вкладке «Написать поставщику».
         DealTabs::forget();
-        $this->assertSame('invoice', DealTabs::map()[$offer->id][0] ?? null);
-        $page = $this->actingAs($this->admin)->get('http://'.Surface::Crm->host().'/offers?preset=invoice')->assertOk();
+        $this->assertSame('letter', DealTabs::map()[$offer->id][0] ?? null);
+        $page = $this->actingAs($this->admin)->get('http://'.Surface::Crm->host().'/offers?preset=letter')->assertOk();
         $page->assertSee('Денис Трофимов')->assertDontSee('tel:79000000002', false);
     }
 
@@ -165,38 +165,37 @@ class AlfaRequisitesTest extends TestCase
         [$offer, $deal] = $this->deal(vat: false);
         $this->assertSame(DealScheme::Insurer, $deal->scheme);
 
+        // С 18.11.2026 — сразу «Письмо с реквизитами»: покупателя нет — «Запросить реквизиты» (менеджеру в чат), письма нет.
         $this->exit($offer, 'Поставщик просит реквизиты');
         $stage = $offer->fresh()->stage();
-        $this->assertSame('Нет реквизитов', $stage->name);
-        $this->assertSame(Asks::Buyer, $stage->asks);
-        $this->assertTrue($deal->fresh()->collectsBuyer());
-        $requirement = $deal->fresh()->openRequirement()->firstOrFail();
-        $this->assertSame('Заполнить данные покупателя', $requirement->title);
-
-        // Кнопкой без данных шаг не пройти — письмо ушло бы пустым.
-        try {
-            app(AnswerRequirement::class)($requirement, $stage->exitsFor(Actor::Manager, $deal->fresh())->first(), $this->manager);
-            $this->fail('без данных покупателя шаг прошёл');
-        } catch (ValidationException) {
-        }
+        $this->assertSame('Письмо с реквизитами', $stage->name);
+        $this->assertSame('none', $deal->fresh()->requisitesState());
+        $this->assertSame('Запросить реквизиты', $offer->fresh()->position(Track::Sale)->todo()['title']);
+        $this->travel(1)->minutes();
+        $this->actingAs($this->admin)->post(Surface::Crm->url('/offers/'.$offer->number.'/ask-buyer'))->assertRedirect();
+        $this->assertNotNull($deal->fresh()->buyer_asked_at);
+        $this->assertSame('requisites-asked', $offer->fresh()->position(Track::Sale)->todo()['key']);
+        DealTabs::forget();
+        $this->assertSame('ask', DealTabs::map()[$offer->id][0] ?? null);
 
         // «Заполнить за менеджера» ведёт с `?buyer=1` — шторка выбора покупателя открыта сразу (06.11.2026: ссылка только
         // прокручивала к карточке).
         $crm = fn (string $path) => $this->actingAs($this->admin)->get(Surface::Crm->url($path))->assertOk();
-        $crm('/offers/'.$offer->number)->assertSee('?buyer=1#invoice-buyer', false)->assertDontSee('data-sheet-open-value', false);
+        // Покупатель — в самом шаге (18.11.2026): «Запросить реквизиты» и строка покупателя.
+        $crm('/offers/'.$offer->number)->assertSee('Запросить реквизиты')->assertDontSee('data-sheet-open-value', false);
         $crm('/offers/'.$offer->number.'?buyer=1')->assertSee('data-sheet-open-value', false);
 
         // Админ за менеджера: покупатель — сам менеджер, паспорт со сканом — шаг проходит сам, ход наш (письмо не ушло).
         app(SaveDealContract::class)(DealContract::for($deal->fresh()), ['buyer_id' => 'me'], $this->admin);
-        $this->assertSame('Нет реквизитов', $offer->fresh()->stage()->name, 'без скана шаг стоит');
+        $this->assertSame('Письмо с реквизитами', $offer->fresh()->stage()->name);
         // Покупатель выбран, данных нет — по той же ссылке открыта шторка данных.
         $this->assertMatchesRegularExpression('/<dialog id="deal-buyer-data-'.$deal->id.'"[^<]*data-sheet-open-value/', $crm('/offers/'.$offer->number.'?buyer=1')->getContent());
         $this->passportFor($this->manager);
         $offer = $offer->fresh();
         $this->assertSame('Письмо с реквизитами', $offer->stage()->name);
         $this->assertSame(WaitsFor::Us, $offer->position(Track::Sale)->waits_for);
-        // Данные есть — сотрудникам громко «напишите поставщику» (05.11.2026, владелец: «вот тут уведомление уместно»).
-        Notification::assertSentTo($this->admin, OurTurnNotice::class, fn ($n) => str_contains((string) $n->text(), 'Напишите поставщику'));
+        $this->assertSame('ready', $deal->fresh()->requisitesState());
+        $crm('/offers/'.$offer->number)->assertSee('Отправить реквизиты');
         $this->assertNull($deal->fresh()->contract->ready_at, 'договора у «страховой напрямую» нет — «ДКП готов» не шлём');
 
         // В письме — реквизиты покупателя, скан — у него же (вложение черновика).
@@ -260,7 +259,7 @@ class AlfaRequisitesTest extends TestCase
     {
         [$offer, $deal] = $this->deal(vat: false);
         $this->exit($offer, 'Поставщик просит реквизиты');
-        $this->assertSame('Нет реквизитов', $offer->fresh()->stage()->name);
+        $this->assertSame('Письмо с реквизитами', $offer->fresh()->stage()->name);
         $this->assertSame('Покупатель не выбран', $deal->fresh()->requisitesGap());
 
         // Админ меняет схему на ПРАЙМ — кто и когда записано, шаг сразу на письмо с нашими реквизитами.
@@ -272,11 +271,10 @@ class AlfaRequisitesTest extends TestCase
         $this->assertSame('Письмо с реквизитами', $offer->fresh()->stage()->name);
         $this->assertNull($deal->requisitesGap(), 'реквизиты ПРАЙМ есть — письмо можно');
 
-        // Обратно на «страховой напрямую», письмо не ушло — назад к данным покупателя, менеджеру задача, письма нет.
+        // Обратно на «страховой напрямую», письмо не ушло — шаг тот же (покупатель — в самом шаге), письма без покупателя нет.
         app(ChangeDealScheme::class)($deal, DealScheme::Insurer, $this->admin);
         $offer = $offer->fresh();
-        $this->assertSame('Нет реквизитов', $offer->stage()->name);
-        $this->assertNotNull($deal->fresh()->openRequirement()->first());
+        $this->assertSame('Письмо с реквизитами', $offer->stage()->name);
         $this->assertNull($offer->position(Track::Sale)->todo()['button']['letters'] ?? null);
     }
 
@@ -289,7 +287,7 @@ class AlfaRequisitesTest extends TestCase
         app(EnterStage::class)($offer->fresh(), $letterStage, $this->admin);
         $todo = $offer->fresh()->position(Track::Sale)->todo();
         $this->assertSame('requisites', $todo['key']);
-        $this->assertSame('Заполнить', $todo['button']['label']);
+        $this->assertSame('Запросить', $todo['button']['label']);
     }
 
     public function test_alfa_scheme_choices_default_first_and_prime_asks_twice(): void

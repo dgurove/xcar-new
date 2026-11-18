@@ -962,6 +962,30 @@ class Deal extends Model implements HasMedia
         };
     }
 
+    /**
+     * Реквизиты для письма поставщику (18.11.2026, владелец: три случая шага «Письмо с реквизитами»): `ready` — всё есть,
+     * «Отправить реквизиты»; `partial` — что-то внесено (паспорт, скан, ИНН), но не всё — «Отправить» с переспросом; `none` —
+     * покупателя нет или у него ничего не внесено — «Запросить реквизиты» у менеджера. Платим мы (Р.О.С., ПРАЙМ) — свои
+     * реквизиты: `ready` или `none` (тогда их заполняем мы, `requisitesGap`).
+     */
+    public function requisitesState(): string
+    {
+        if ($this->requisitesGap() === null) {
+            return 'ready';
+        }
+        if ($this->schemeOf()->paysCar() || $this->isGarageUs()) {
+            return 'none';
+        }
+        $party = $this->contract?->buyer?->party;
+        if (! $party) {
+            return 'none';
+        }
+        $any = $party->readyForContract() || $party->getMedia('passport')->isNotEmpty() || filled($party->passport) || filled($party->reg_address)
+            || filled($party->inn);
+
+        return $any ? 'partial' : 'none';
+    }
+
     /** Сколько покупатель отдаёт не нам — собственнику по ДКП или страховой: своя сумма, а без неё закупочная. */
     public function ownerPrice(): ?int
     {

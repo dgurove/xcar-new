@@ -44,9 +44,8 @@ final class AdvanceOnBuyerData
     }
 
     /**
-     * Сменили схему на шаге реквизитов (`ChangeDealScheme`): «страховой напрямую» без готового покупателя, а письмо с
-     * реквизитами ещё не ушло — назад на «Нет реквизитов» (менеджеру задача); стало «платим мы» (ПРАЙМ, Р.О.С.)
-     * на шаге данных — сразу письмо с нашими реквизитами.
+     * Сменили схему на шаге реквизитов (`ChangeDealScheme`): стало «платим мы» (ПРАЙМ, Р.О.С.) на шаге данных — сразу письмо
+     * с нашими реквизитами; «страховой напрямую» на письме — остаётся там (с 18.11.2026 покупатель — в самом шаге).
      */
     public function rehome(Deal $deal, User $by): void
     {
@@ -64,11 +63,8 @@ final class AdvanceOnBuyerData
 
             return;
         }
-        $data = $stage->isRequisitesStep() && ! $ours && in_array($position->letterStatus(), [null, 'unsent', 'failed'], true)
-            ? Stage::where('workflow_id', $stage->workflow_id)->where('asks', Asks::Buyer->value)->first() : null;
-        if ($data && ! $deal->contract?->buyer?->party?->readyAsBuyer()) {
-            app(EnterStage::class)($offer, $data, $by, ['label' => 'Схема сменилась: нужны данные покупателя'], back: true);
-        }
+        // Стало «страховой напрямую» на «Письме с реквизитами» — остаёмся: покупатель теперь в самом шаге (18.11.2026, один шаг
+        // реквизитов), назад на «Нет реквизитов» не уводим.
     }
 
     /** Вошли на шаг, а данные уже есть (вернули шаг назад, покупатель тот же) — шаг проходит сразу. */

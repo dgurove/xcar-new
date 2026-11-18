@@ -27,12 +27,9 @@
     // Исход, что ведёт на согласие менеджера (Альфа), — «Спросить менеджера» (27.10.2026, владелец: «Поставщик согласовал»
     // читали как «сразу в работу», а это только вопрос менеджеру). Подпись исхода в маршруте не меняется — по ней узнают шаг.
     $asks = fn ($x) => $x->actor === Actor::Staff && $x->to?->asksConsent();
-    // Страховая просит реквизиты, а покупатель уже есть (10.11.2026, владелец: «это задача для нас — отправить реквизиты, что
-    // менеджер прикрепил до этого»): исход к «Нет реквизитов» / «Письму с реквизитами» — «Отправить реквизиты», шаг «Нет
-    // реквизитов» пройдёт сам (`AdvanceOnBuyerData`), письмо откроется (`RouteController::exit`).
-    $sends = fn ($x) => $deal && $x->actor === Actor::Staff && ($x->to?->asks === \App\Workflow\Asks::Buyer || $x->to?->isRequisitesStep())
-        && $deal->requisitesGap() === null;
-    $label = fn ($x) => $asks($x) ? 'Спросить менеджера' : ($sends($x) ? 'Отправить реквизиты' : $x->setRelation('from', $stage)->shownLabel());
+    // «Поставщик просит реквизиты» — всегда этими словами (18.11.2026, владелец: «кнопка „Отправить реквизиты“ вводит в
+    // заблуждение»): отправка — уже в шаге «Письмо с реквизитами», там и покупатель.
+    $label = fn ($x) => $asks($x) ? 'Спросить менеджера' : $x->setRelation('from', $stage)->shownLabel();
     $exits = $stage->exitsFor(Actor::Staff, $deal)->reject(fn ($x) => $x->acceptsBid());
     // «За менеджера» (28.10.2026, владелец: «он мне уже устно подтвердил»): его ответы шага — пунктами «···», нажимает
     // админ (`RouteController::forManager`, в «Истории» — «за менеджера»).
@@ -432,13 +429,17 @@
                             // Письмо с реквизитами без реквизитов — не кнопкой, а чего не хватает (03.11.2026, владелец: «почему
                             // „Написать поставщику“, если покупатель так и не заполнен»).
                             $requisitesGap = $stage->isRequisitesStep() && $deal ? $deal->requisitesGap() : null;
+                            // Письмо с реквизитами ещё не ушло (18.11.2026, владелец: три случая) — покупатель в самом шаге, как в «Продаже»,
+                            // кнопка по реквизитам: `ready` — «Отправить реквизиты», `partial` — она же с переспросом, `none` — «Запросить реквизиты».
+                            $reqState = $stage->isRequisitesStep() && $deal && in_array($position->letterStatus(), ['unsent', 'bounced'], true) ? $deal->requisitesState() : null;
+                            $buyerPays = $deal && ! $deal->schemeOf()->paysCar() && ! $deal->isGarageUs();
                             // Поставщик отвечает списком (Каркаде, `DealFormat::Wholesale`): отметить ответ по всем его сделкам разом.
                             $waiting = $deal && $offer->vendor?->deal_format === \App\Vendors\DealFormat::Wholesale && $stage->isAgreement() && $stage->waits_for === WaitsFor::Supplier
                                 ? \App\Offers\Deal::awaitingSupplier($offer->vendor_id) : collect();
                             $invoiceButton = $wantsInvoice && $position->gap() !== 'send' && ! ($position->gap() === 'ros_requisites' && ! auth()->user()?->isParkAdmin());
                             // Сколько кнопок в ряду: от трёх лаймовая встаёт своей строкой во всю ширину (`.step-acts--lead`, 17.11.2026).
                             $actCount = ($requests ? 1 : 0) + ($invoiceButton ? 1 : 0) + $payNow->count() + $moves->count()
-                                + (! $requisitesGap && $stage->template_id ? 1 : 0) + ($waiting->count() > 1 ? 1 : 0);
+                                + ($stage->template_id ? 1 : 0) + ($waiting->count() > 1 ? 1 : 0);
                         @endphp
                         {{-- `.step-acts`: кнопки делят ширину дорожки, перенеслись — каждая во всю ширину (05.11.2026, владелец про
                              три узкие дорожки редактора: «вёрстка — треш»; кнопки разной длины стояли лесенкой). Лаймовая (`step-main`) —
@@ -555,8 +556,20 @@
                                     @endif
                                 @endif
                             @endforeach
-                            @if ($requisitesGap)
-                                <p class="order-first w-full text-sm text-ink-muted">{{ $requisitesGap }}, письмо поставщику пока не написать @if (auth()->user()?->canEditDeals())<a href="{{ $deal->schemeOf()->paysCar() || $deal->isGarageUs() ? \App\Support\Surface::Park->url('/money/parties') : '/offers/'.$offer->number.'?buyer=1#invoice-buyer' }}" class="btn btn-s btn-quiet ml-1" data-turbo-frame="_top">Заполнить</a>@endif</p>
+                            @if ($reqState && $buyerPays)
+                                {{-- Покупатель и его реквизиты — тем же видом, что в «Продаже»: посмотреть, поправить, заполнить за менеджера. --}}
+                                <div class="list order-first w-full"><x-deal.buyer :deal="$deal"/></div>
+                            @endif
+                            @if ($reqState === 'none' && $buyerPays && $deal->buyer_id)
+                                <form method="post" action="/offers/{{ $n }}/ask-buyer" class="step-main order-first">@csrf<button class="btn btn-accent btn-s"><x-ui.icon name="chat" class="size-4"/>Запросить реквизиты</button></form>
+                                @if ($deal->buyer_asked_at)<p class="w-full text-sm text-ink-muted">Запросили у менеджера {{ \App\Support\Ago::at($deal->buyer_asked_at, time: true) }}</p>@endif
+                            @elseif ($reqState === 'none' || ($requisitesGap && ! $buyerPays))
+                                <p class="order-first w-full text-sm text-ink-muted">{{ $requisitesGap }}, письмо поставщику пока не написать @if (auth()->user()?->canEditDeals())<a href="{{ \App\Support\Surface::Park->url('/money/parties') }}" class="btn btn-s btn-quiet ml-1" data-turbo-frame="_top">Заполнить</a>@endif</p>
+                            @elseif ($reqState)
+                                {{-- Отправить реквизиты — окно письма поставщику; не всё заполнено — сначала переспросить. --}}
+                                @php $missing = $reqState === 'partial' ? ($deal->contract?->buyer?->party?->gapWord() ?? mb_lcfirst($requisitesGap)) : null; @endphp
+                                <x-mail.window-button :url="$offer->vendorLetterUrl($stage)" icon="send" :label="$position->letterStatus() === 'bounced' ? 'Отправить снова' : 'Отправить реквизиты'" class="btn-accent btn-s step-main order-first"
+                                    :data-emit-confirm-param="$missing ? 'Заполнены не все данные: '.$missing.'. Отправить реквизиты?' : null"/>
                             @elseif ($stage->template_id)
                                 {{-- Письмо не ушло — это и есть дело шага: лаймовой первой; ушло — серой «Написать ещё». --}}
                                 @if ($position->letterStatus() === 'failed' && ($failedId = $position->payload['letter_failed']['id'] ?? null))

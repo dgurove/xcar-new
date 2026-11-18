@@ -143,10 +143,10 @@ class RouteController
                 ->with('toast-undo', (bool) StepBack::undoable($offer, $exit->from->workflow->track));
         }
 
-        // «Отправить реквизиты» (10.11.2026): покупатель был готов, «Нет реквизитов» прошёл сам — сразу письмо с реквизитами
-        // (вопрос перед черновиком, `LetterPrompt`), как после «Принять».
+        // Поставщик просит реквизиты, а они полные (10.11.2026; с 18.11.2026 шаг один — «Письмо с реквизитами») — сразу письмо
+        // (вопрос перед черновиком, `LetterPrompt`), как после «Принять». Неполные — письмо не открываем: в шаге покупатель.
         $now = $offer->fresh()->stage();
-        if (($exit->to?->asks === Asks::Buyer || $exit->to?->isRequisitesStep()) && $now?->isRequisitesStep()
+        if (($exit->to?->asks === Asks::Buyer || $exit->to?->isRequisitesStep()) && $now?->isRequisitesStep() && $offer->deal()->first()?->requisitesGap() === null
             && in_array($offer->fresh()->position()?->letterStatus(), ['unsent', null], true) && ($url = $offer->fresh()->vendorLetterUrl($now))) {
             LetterPrompt::ask($request->user(), $offer, $url.'&then=close');
         }
@@ -156,6 +156,16 @@ class RouteController
         // «Письмо поставщика пришло» — по сути вопрос менеджеру ушёл (18.11.2026): тост — что сделали.
         return back(fallback: "/offers/{$offer->number}")->with('toast', $exit->label === \App\Offers\SupplierLetterWait::EXIT ? 'Спросили менеджера' : $exit->label)
             ->with('toast-undo', (bool) StepBack::undoable($offer, $exit->from->workflow->track));
+    }
+
+    /** «Запросить реквизиты» (18.11.2026): покупателя нет или у него ничего не внесено — менеджеру снова в чат сделки. */
+    public function askBuyer(Request $request, Offer $offer, \App\Offers\Actions\AskBuyer $ask)
+    {
+        $deal = $offer->deal()->first();
+        abort_unless($deal?->isActive() && $deal->buyer_id, 404);
+        DB::transaction(fn () => $ask->nudge($deal, $request->user()));
+
+        return back(fallback: "/offers/{$offer->number}")->with('toast', 'Запросили у менеджера');
     }
 
     /** Исход менеджера, нажатый сотрудником: его просьба закрыта этим ответом (кнопки Telegram скажут «Уже отвечено»). */

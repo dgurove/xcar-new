@@ -246,6 +246,8 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
         Route::post('/offers/{offer}/deadline', [RouteController::class, 'deadline']);
         Route::get('/offers/{offer}/letter-ask', [RouteController::class, 'letterAsk']);
         Route::post('/offers/{offer}/letter-skip', [RouteController::class, 'letterSkip']);
+        // «Запросить реквизиты» в шаге «Письмо с реквизитами» (18.11.2026): менеджеру снова в чат сделки.
+        Route::post('/offers/{offer}/ask-buyer', [RouteController::class, 'askBuyer']);
         Route::post('/offers/{offer}/pickup', [RouteController::class, 'pickup']);
         Route::post('/offers/{offer}/media/{media}/managers', [OfferPhotoController::class, 'managers']);
         Route::delete('/offers/{offer}/pickup', [RouteController::class, 'dropPickup']);

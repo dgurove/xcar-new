@@ -2,6 +2,7 @@ import { Controller } from '@hotwired/stimulus';
 import { closeSheet } from '../sheet';
 import { request } from '../lib/http';
 import { onMorphElement } from '../lib/morph-guard';
+import { confirmSheet } from '../confirm';
 
 // Дозагруженные шторки живут в окне, а в свежей разметке окна на их месте пустое место `data-lazy-sheets`: живой морф окна
 // снял бы открытую шторку посреди ввода. Пока в месте открыта шторка — место не морфится; закрыта — морфится как есть,
@@ -39,8 +40,10 @@ export default class extends Controller {
         if (event.params.wide && !matchMedia(`(min-width: ${event.params.wide}px)`).matches) return;
         if (event.target.closest('a, button, form, input, label') && event.target.closest('a, button, form, input, label') !== this.element && !this.element.matches('a, button')) return;
         event.preventDefault();
-        // Остальные data-emit-*-param — тоже в detail («Выбрать вендора» несёт отправителя, название и домен).
-        const { event: name, wide, ...rest } = event.params;
+        // Остальные data-emit-*-param — тоже в detail («Выбрать вендора» несёт отправителя, название и домен). `confirm` — сначала
+        // переспросить (18.11.2026: «Отправить реквизиты», когда заполнено не всё).
+        const { event: name, wide, confirm, ...rest } = event.params;
+        if (confirm && !(await confirmSheet(confirm, { label: 'Отправить' }))) return;
         // Пункт шторки действий «⋯» (`x-ui.more`, `.sheet-actions-list`) — так же (12.11.2026, начальник: «Отдать на оценку»
         // перестал работать): `sheet#item` закрывал «⋯» после события, и закрытие снимало запись только что открытой шторки.
         // Закрывается своя шторка «⋯», а не окно вокруг неё: на ПК она поповер (`showPopover`, без атрибута open), и

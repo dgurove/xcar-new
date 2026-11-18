@@ -103,7 +103,8 @@ class Workflow extends Model
             }
         }
         foreach ($stages->slice(1) as $stage) {
-            if (! in_array($stage->id, $reached, true)) {
+            // «Нет реквизитов» (`Asks::Buyer`) с 18.11.2026 — только для параллельных машин: на него ставит `Parallels`, а не исход.
+            if (! in_array($stage->id, $reached, true) && $stage->asks !== Asks::Buyer) {
                 $problems[] = "На этап «{$stage->name}» не ведёт ни один исход";
             }
         }

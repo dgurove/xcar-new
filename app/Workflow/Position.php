@@ -340,9 +340,11 @@ class Position extends Model
         return match (true) {
             $letter === 'replied' => $todo('reply', 'Прочитать ответ поставщика', 0, $this->replyAt(), ['label' => 'Открыть письмо', 'letters' => '/offers/'.$offer->number.'/letters']),
             $letter === 'bounced' => $todo('bounced', 'Письмо поставщику не дошло', 1, button: $write('Написать снова')),
-            // Письмо с реквизитами без реквизитов не пишем (03.11.2026): сначала покупатель — «Заполнить» к его карточке.
-            in_array($letter, ['unsent', 'failed'], true) && $this->stage->isRequisitesStep() && ($gap = $this->deal?->requisitesGap()) => $todo('requisites', $gap, 1, button: ['label' => 'Заполнить', 'href' => $this->deal->schemeOf()->paysCar() || $this->deal->isGarageUs()
-                    ? Surface::Park->url('/money/parties') : '/offers/'.$offer->number.'?buyer=1#invoice-buyer']),
+            // Письмо с реквизитами, а реквизитов нет совсем (18.11.2026, владелец: три случая; `Deal::requisitesState`): платит
+            // покупатель — «Запросить реквизиты» у менеджера; запросили на этом шаге — ход его («requisites-asked», вкладка «Спросить
+            // менеджера», `DealTabs`); платим мы — свои реквизиты «Заполнить». Внесено не всё — письмо можно: дело «Отправить реквизиты».
+            in_array($letter, ['unsent', 'failed'], true) && $this->stage->isRequisitesStep() && $this->deal?->requisitesState() === 'none'
+                => $this->requisitesTodo($todo, $since),
             // Письмо об интересе после «Принять» не ушло (17.11.2026, владелец: «для Альфы обязательно нужно письмо, оч плохо, если
             // приняли, а письмо не отправили — заметно, своей подгруппой, красным»; за день 4 таких у Андрея): первый шаг письма
             // согласования с поставщиком — своим делом первым, красным (`status`, группа `x-table.group danger`).
@@ -359,6 +361,22 @@ class Position extends Model
                 => $todo('ask-consent', 'Берёт ли в работу', 1, button: ['label' => 'Спросить', 'post' => '/offers/'.$offer->number.'/exit/'.$ask->id, 'confirm' => 'Спросить менеджера, берёт ли в работу?']),
             default => $todo('stage:'.$this->stage->name, $this->fallbackTitle(), 5),
         };
+    }
+
+    /** Дело шага «Письмо с реквизитами», когда реквизитов нет совсем (`todo`). */
+    private function requisitesTodo(\Closure $todo, ?Carbon $since): array
+    {
+        $deal = $this->deal;
+        $number = $this->offer->number;
+        if ($deal->schemeOf()->paysCar() || $deal->isGarageUs() || ! $deal->buyer_id) {
+            return $todo('requisites', (string) $deal->requisitesGap(), 1, button: ['label' => 'Заполнить', 'href' => $deal->buyer_id && ! $deal->schemeOf()->paysCar() && ! $deal->isGarageUs()
+                ? '/offers/'.$number.'?buyer=1#invoice-buyer' : Surface::Park->url('/money/parties')]);
+        }
+        if ($deal->buyer_asked_at && $since && $deal->buyer_asked_at->gt($since)) {
+            return $todo('requisites-asked', 'Ждём реквизиты от менеджера', 1, $deal->buyer_asked_at);
+        }
+
+        return $todo('requisites', 'Запросить реквизиты', 1, button: ['label' => 'Запросить', 'post' => '/offers/'.$number.'/ask-buyer', 'confirm' => 'Запросить реквизиты у менеджера?']);
     }
 
     /**

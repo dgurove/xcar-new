@@ -159,6 +159,10 @@ final class DealTabs
             if ($asked->has($deal->id) && ! in_array($todo['key'] ?? '', ['reprice', 'reprice-answer', 'price-ask', 'price-offer'], true)) {
                 $todo = null;
             }
+            // Реквизиты запросили у менеджера на шаге письма (18.11.2026) — его ход: «Спросить менеджера», группа «Ждём ответа».
+            if (($todo['key'] ?? '') === 'requisites-asked') {
+                return [$deal->id => ['deal' => $deal, 'tab' => 'ask', 'todo' => null]];
+            }
             // У шага своего дела нет — наше дело по документам покупателя: не распознались данные, договор не отправлен (18.11.2026).
             if ($todo === null && ! $repricing) {
                 $todo = $deal->paperTodo();
@@ -223,6 +227,8 @@ final class DealTabs
         return match (true) {
             // Менеджер думает про новую цену (`RepriceAsk`) — ждём его, какой бы шаг ни стоял (гаражная без шага переоценки).
             RepriceAsk::where('deal_id', $deal->id)->whereIn('state', RepriceAsk::OPEN)->exists() => 'manager',
+            // Ждём реквизиты от менеджера на шаге письма (`Position::requisitesTodo`).
+            ($position?->todo()['key'] ?? null) === 'requisites-asked' => 'answer',
             $position?->carried() === true => 'transport',
             // Вопрос менеджеру на шаге не из вкладок ожидания (оплата, получение, договор) — «Спросить менеджера», «Ждём ответа».
             self::asksManager($position, self::BLOCKS[$position?->stage?->block?->name ?? $position?->stage?->name ?? ''] ?? 'agree') => 'answer',
