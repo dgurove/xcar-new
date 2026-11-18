@@ -50,10 +50,13 @@ final class MoneyNotice extends Notice
         return $this->subject ?? parent::subject();
     }
 
-    /** Менеджеру про его деньги — и в Telegram (вид задаёт фабрика); сотрудникам только лентой. */
+    /**
+     * Менеджеру про его деньги — и в Telegram (вид задаёт фабрика); сотрудникам — тем сообщением, что уходило владельцу и
+     * админам (`withTelegram`: «Сообщили об оплате» с «Поступила», «Перевести Альфе»…; 18.11.2026 — одно уведомление вместо двух).
+     */
     public function toTelegram(): ?array
     {
-        return $this->toStaff ? null : $this->telegram;
+        return $this->toStaff ? parent::toTelegram() : $this->telegram;
     }
 
     /**
@@ -253,7 +256,8 @@ final class MoneyNotice extends Notice
 
     public function important(): bool
     {
-        return $this->loud || parent::important();
+        // Сотрудникам звенит и висит только то, что ждёт их (заявленная оплата, перевести поставщику); остальное с Telegram — тихо.
+        return $this->toStaff ? $this->loud : ($this->loud || parent::important());
     }
 
     public function actor(): ?User

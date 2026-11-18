@@ -17,6 +17,11 @@ final class VendorLetter extends Message
 {
     public function __construct(private Letter $letter, private Vendor $vendor, private ?Offer $offer = null) {}
 
+    public function offer(): ?\App\Offers\Offer
+    {
+        return $this->offer;
+    }
+
     protected function title(): string
     {
         return $this->vendor->name.': '.($this->offer?->titleWithYear() ?? ($this->letter->subject ?: 'письмо без темы'));

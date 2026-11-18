@@ -17,6 +17,12 @@ final class StalledStepNotice extends Notice
     /** @param  list<array{0: Deal, 1: string}>  $items  сделка и что сделать */
     public function __construct(private array $items) {}
 
+    /** Заменяет само себя: в ленте строка одна (`CollapseNotices`). */
+    public function collapses(?\App\Users\User $user): bool
+    {
+        return true;
+    }
+
     public function label(): string
     {
         return 'Шаг давно ждёт';

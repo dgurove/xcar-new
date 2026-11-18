@@ -19,7 +19,7 @@ class NotificationController
     public function index(Request $request)
     {
         return view('cabinet.notifications', [
-            'items' => $request->user()->noticesHere()->latest()->paginate(40),
+            'items' => tap($request->user()->noticesHere()->latest()->paginate(40), fn ($p) => \App\Notifications\NoticeFaces::prime($p->items())),
             'unread' => $request->user()->unreadCount(),
         ]);
     }
@@ -28,7 +28,7 @@ class NotificationController
     public function latest(Request $request)
     {
         return view('cabinet.notifications-latest', [
-            'items' => $request->user()->noticesHere()->latest()->limit(5)->get(),
+            'items' => tap($request->user()->noticesHere()->latest()->limit(8)->get(), fn ($items) => \App\Notifications\NoticeFaces::prime($items)),
             'frame' => $request->header('Turbo-Frame', 'notifications-latest'),
         ]);
     }
@@ -87,6 +87,7 @@ class NotificationController
         $user = $request->user();
 
         return view('cabinet.notification-settings', [
+            'devices' => self::devices($user),
             'user' => $user,
             'categories' => Categories::for($user),
             'telegram' => Categories::telegram($user),
@@ -140,11 +141,41 @@ class NotificationController
 
     public function test(Request $request)
     {
-        $request->user()->notify(new TestNotice);
+        $user = $request->user();
+        $user->notify(new TestNotice);
         // Пуш — на каждое устройство, мимо фильтра приложения: подписку логистики и парковки «Проверить» раньше не задевало.
-        Subscription::where('user_id', $request->user()->id)->get()->each(fn (Subscription $sub) => WebPushChannel::test($sub));
+        $ok = Subscription::where('user_id', $user->id)->get()->filter(fn (Subscription $sub) => WebPushChannel::test($sub));
+        // Итог по каналам (18.11.2026: «точно ли придёт») — куда ушло и чего нет.
+        $crm = $ok->filter(fn (Subscription $s) => $s->host && \App\Support\Surface::fromHost($s->host) === \App\Support\Surface::Crm)->count();
+        $went = array_filter(['лента', $user->wantsTelegram() ? 'Telegram' : null,
+            $ok->isNotEmpty() ? 'пуш на '.$ok->count().' '.\App\Support\Plural::of($ok->count(), ['устройство', 'устройства', 'устройств']) : null]);
+        $toast = 'Отправили: '.implode(', ', $went);
+        if ($user->isStaff() && ! $crm) {
+            return back()->with('toast-danger', $toast.'. В CRM пуши не включены ни на одном устройстве');
+        }
 
-        return back()->with('toast', 'Отправили пробное уведомление');
+        return back()->with('toast', $toast);
+    }
+
+    /**
+     * Где у человека включены пуши — строкой под «На это устройство» (18.11.2026: начальник включил их только на xcar.ru на Маке,
+     * а уведомления сделок живут в CRM — ни одного пуша за неделю). @return list<string>
+     */
+    public static function devices(\App\Users\User $user): array
+    {
+        return Subscription::where('user_id', $user->id)->whereNull('failed_at')->get()->map(function (Subscription $s) {
+            $app = match ($s->host ? \App\Support\Surface::fromHost($s->host) : \App\Support\Surface::Site) {
+                \App\Support\Surface::Crm => 'CRM', \App\Support\Surface::Park => 'парковка', \App\Support\Surface::Logistics => 'логистика',
+                \App\Support\Surface::Partner => 'partner.xcar.ru', default => 'xcar.ru',
+            };
+            $agent = (string) $s->agent;
+            $device = match (true) {
+                str_contains($agent, 'iPhone') => 'iPhone', str_contains($agent, 'iPad') => 'iPad', str_contains($agent, 'Android') => 'Android',
+                str_contains($agent, 'Macintosh') => 'Mac', str_contains($agent, 'Windows') => 'Windows', default => 'компьютер',
+            };
+
+            return $app.' на '.$device;
+        })->unique()->values()->all();
     }
 
     /**

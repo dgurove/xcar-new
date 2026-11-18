@@ -5,7 +5,6 @@ namespace App\Offers\Actions;
 use App\Notifications\BindingPanicNotice;
 use App\Offers\Binding;
 use App\Offers\Offer;
-use App\Telegram\Jobs\NotifyOwner;
 use App\Telegram\Messages\BindingPanic;
 use App\Users\Role;
 use App\Users\User;
@@ -34,8 +33,8 @@ final class BindingAlarm
         $sent = 0;
         foreach ($q->lazyById() as $offer) {
             DB::table('offers')->where('id', $offer->id)->update(['binding_alerted_for' => $offer->binding_until]);
-            Notification::send($admins ??= User::withRole(Role::Admin)->whereNull('rejected_at')->get(), new BindingPanicNotice($offer));
-            NotifyOwner::dispatch(new BindingPanic($offer));
+            // Одно уведомление: в ленту, пушем и тем же сообщением в Telegram (18.11.2026; было ещё отдельное `NotifyOwner`).
+            Notification::send($admins ??= User::withRole(Role::Admin)->whereNull('rejected_at')->get(), (new BindingPanicNotice($offer))->withTelegram(new BindingPanic($offer)));
             $sent++;
         }
 

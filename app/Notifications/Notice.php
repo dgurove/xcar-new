@@ -4,13 +4,17 @@ namespace App\Notifications;
 
 use App\Offers\Offer;
 use App\Push\WebPushChannel;
+use App\Telegram\Messages\Message as TelegramMessage;
+use App\Vendors\Vendor;
 use App\Support\Surface;
 use App\Users\User;
 use App\Users\Wording;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Notifications\Notification;
 use Illuminate\Support\HtmlString;
+use Illuminate\Support\Str;
 
 /**
  * Уведомление: заголовок, текст, куда ведёт. Куда доставлять — решают настройки
@@ -76,10 +80,104 @@ abstract class Notice extends Notification implements ShouldQueue
         return $query ? $path.'?'.$query : $path;
     }
 
-    /** Метка пуша: пуши одного объекта заменяют друг друга. */
+    /**
+     * Метка пуша: пуши с одной меткой заменяют друг друга в центре уведомлений. С 18.11.2026 у каждого события свой пуш
+     * (начальник: «все уведомления по всем событиям — в центр уведомлений»): метка — только у того, что заменяет само себя
+     * (`collapses`), у чата — чат.
+     */
     public function tag(): ?string
     {
-        return $this->subject();
+        return $this->collapses(null) ? $this->subject() : null;
+    }
+
+    /**
+     * Лента держит одну строку на объект (`CollapseNotices`): новое стирает прежние о нём же. С 18.11.2026 — только у того, что
+     * само себя заменяет (тревога срока, утренняя сводка, пачки): иначе каждое событие — своей строкой (владелец: «каждое
+     * событие»; было — «Отправить счёт» стирало «Роман берёт»).
+     */
+    public function collapses(?User $user): bool
+    {
+        return false;
+    }
+
+    /**
+     * Машина, о которой уведомление, — первой строкой капсулы и строки ленты, заголовком пуша (18.11.2026, начальник:
+     * «аватарка, машина в первой строке и текст во второй»). По умолчанию — машина предложения, сделки, подтверждения, счёта…
+     * среди полей уведомления; без машины — null, капсула пишет заголовок.
+     */
+    public function car(): ?string
+    {
+        return $this->aboutOffer()?->titleWithYear();
+    }
+
+    /** Что случилось — коротко, за машиной: заголовок без названия машины («Роман Корабельников берёт»), иначе текст. */
+    public function brief(?User $user = null): string
+    {
+        $title = $this->titleFor($user);
+        $car = $this->car();
+        if ($car === null || ! str_contains($title, $car)) {
+            return $title;
+        }
+        $rest = trim(str_replace($car, '', $title), " \u{00A0}:—–-,");
+
+        return $rest !== '' ? $rest : ($this->textFor($user) ?? $title);
+    }
+
+    /** Вендор — лицо уведомления, когда пишет поставщик (логотип вместо аватара). */
+    public function vendor(): ?Vendor
+    {
+        return null;
+    }
+
+    /** Предложение среди полей уведомления: само, у сделки, подтверждения, просьбы, переоценки, счёта, оплаты. */
+    protected function aboutOffer(): ?Offer
+    {
+        if ($offer = $this->telegramMessage?->offer()) {
+            return $offer;
+        }
+        foreach ((array) $this as $value) {
+            try {
+                $offer = match (true) {
+                    $value instanceof Offer => $value,
+                    $value instanceof \App\Billing\Payment => $value->invoice?->deal?->offer,
+                    $value instanceof \App\Billing\Invoice => $value->deal?->offer,
+                    $value instanceof Model && method_exists($value, 'offer') => $value->offer,
+                    $value instanceof Model && method_exists($value, 'deal') => $value->deal?->offer,
+                    default => null,
+                };
+            } catch (\Throwable) {
+                $offer = null;
+            }
+            if ($offer instanceof Offer) {
+                return $offer;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * То же сообщение, что уходило владельцу и админам в Telegram мимо ленты (`NotifyOwner`), — Telegram-видом этого уведомления
+     * (18.11.2026: «Сообщили об оплате» с кнопкой «Поступила», «Перевести Альфе»…): одно уведомление в ленту, пушем и в Telegram.
+     */
+    protected ?TelegramMessage $telegramMessage = null;
+
+    public function withTelegram(?TelegramMessage $message): static
+    {
+        $this->telegramMessage = $message;
+
+        return $this;
+    }
+
+    /** Telegram-вид из сообщения владельцу: заголовок, строки, кнопки решения над ссылкой. */
+    protected function telegramFromMessage(): ?array
+    {
+        if (! $this->telegramMessage) {
+            return null;
+        }
+        $p = $this->telegramMessage->parts();
+
+        return ['title' => $p['title'], 'lines' => $p['lines'], 'button' => $p['link']['text'], 'keyboard' => array_chunk($p['decisions'], 2)];
     }
 
     /**
@@ -192,7 +290,7 @@ abstract class Notice extends Notification implements ShouldQueue
      */
     public function toTelegram(): ?array
     {
-        return null;
+        return $this->telegramFromMessage();
     }
 
     /**
@@ -250,6 +348,8 @@ abstract class Notice extends Notification implements ShouldQueue
     public function via(User $user): array
     {
         if (! $this->critical() && ! $user->wants($this->category())) {
+            $this->skipped($user, 'feed', 'категория выключена');
+
             return [];
         }
         $via = ['database'];
@@ -258,6 +358,8 @@ abstract class Notice extends Notification implements ShouldQueue
         }
         if (! $user->quietHours()) {
             $via[] = WebPushChannel::class;
+        } else {
+            $this->skipped($user, 'push', 'тихие часы');
         }
         // На почту — только то, что человек сам включил (`User::wantsMailFor`, по умолчанию ничего; 06.11.2026, владелец:
         // «все ненавидят спам»), и из этого — где нужен человек, или сводка сотруднику.
@@ -267,9 +369,27 @@ abstract class Notice extends Notification implements ShouldQueue
         // В Telegram — если он включён и эта категория там не выключена; критичное — всегда.
         if ($user->wantsTelegram($this->critical() ? null : $this->category()) && $this->toTelegram() !== null) {
             $via[] = TelegramChannel::class;
+        } elseif ($user->telegram_chat_id && $this->toTelegram() !== null) {
+            $this->skipped($user, 'telegram', $user->wantsTelegram() ? 'выключено в категории' : 'Telegram выключен');
         }
 
         return $via;
+    }
+
+    /**
+     * Не ушло по выбору человека — тоже строкой журнала (18.11.2026: «почему ему не пришло» — видно в «Настройки → Доставка»):
+     * статус `off`, в числа «отправлено» не входит. Laravel зовёт `via` до того, как у уведомления есть id, — у строки свой.
+     */
+    private function skipped(User $user, string $channel, string $why): void
+    {
+        try {
+            Delivery::create([
+                'notice_id' => $this->id ?? (string) Str::uuid(), 'user_id' => $user->id, 'kind' => $this->kind(), 'label' => mb_substr($this->label(), 0, 80),
+                'category' => $this->category(), 'important' => $this->important(), 'channel' => $channel, 'status' => 'off', 'detail' => $why, 'created_at' => now(),
+            ]);
+        } catch (\Throwable) {
+            // Журнал — не повод не доставить остальное.
+        }
     }
 
     /** Текст из маршрута сделки (этап, просьба): супер-покупателю его слова «менеджер» переводятся (`Users\Wording`). */
@@ -298,11 +418,22 @@ abstract class Notice extends Notification implements ShouldQueue
         return $text === null ? null : preg_replace(['/№ (?=\S)/u', '/(?<=\d) (?=\d{3}(?!\d))/u', '/ ₽/u'], ["№\u{00A0}", "\u{00A0}", "\u{00A0}₽"], $text);
     }
 
+    /**
+     * Строка ленты. `car`, `brief`, `actor`, `vendor` — капсулой (18.11.2026): машина, коротко что, лицо (сотрудник площадки
+     * менеджеру и покупателю — без лица, как на карточке, `Live\Banner`).
+     */
     public function toArray(User $user): array
     {
+        $actor = $this->actor();
+        $actor = $actor?->isStaff() && ! $user->isStaff() ? null : $actor;
+
         return ['title' => $this->titleFor($user), 'text' => $this->textFor($user), 'href' => $this->href(), 'offer' => $this->offerNumber(), 'subject' => $this->subject()]
             + ($this->surface() ? ['surface' => $this->surface()->value] : [])
-            + ($this->alarm() ? ['alarm' => true] : []);
+            + ($this->alarm() ? ['alarm' => true] : [])
+            + (($car = $this->car()) ? ['car' => $car, 'brief' => $this->brief($user)] : [])
+            + ($actor ? ['actor' => $actor->id] : [])
+            + (($vendor = $this->vendor()) ? ['vendor' => $vendor->id] : [])
+            + ($this->important() ? ['important' => true] : []);
     }
 
     /**

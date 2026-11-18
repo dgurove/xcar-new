@@ -26,7 +26,7 @@
                         <span class="block">{{ $first->label }}</span>
                         <span class="block text-xs text-ink-muted">
                             @foreach ($rows->sortBy(fn ($d) => array_search($d->channel, array_keys($words), true))->values() as $d)
-                                <span @class(['text-danger' => $d->status === 'failed', 'text-ink-dim' => $d->status === 'skipped'])>{{ $words[$d->channel].($d->channel === 'push' && $d->devices > 1 ? ' на '.$d->devices : '').match ($d->status) { 'failed' => ' не ушёл', 'skipped' => ' некуда', default => '' }.($loop->last ? '' : ',') }}</span>
+                                <span @class(['text-danger' => $d->status === 'failed', 'text-ink-dim' => in_array($d->status, ['skipped', 'off'], true)])>{{ $words[$d->channel].($d->channel === 'push' && $d->devices > 1 ? ' на '.$d->devices : '').match ($d->status) { 'failed' => ' не ушёл', 'skipped' => ' некуда'.($d->detail ? ' ('.$d->detail.')' : ''), 'off' => ' выключен: '.$d->detail, default => '' }.($loop->last ? '' : ',') }}</span>
                             @endforeach
                         </span>
                     </span>

@@ -12,6 +12,11 @@ final class RosTransferDue extends Message
 {
     public function __construct(private Invoice $invoice) {}
 
+    public function offer(): ?\App\Offers\Offer
+    {
+        return $this->invoice->deal?->offer;
+    }
+
     protected function title(): string
     {
         $deal = $this->invoice->deal;

@@ -34,12 +34,21 @@ final class EstimateDeclinedNotice extends Notice
 
     public function category(): string
     {
-        return 'bids';
+        return 'estimates';
     }
 
-    public function quiet(): bool
+    /**
+     * Админу — пушем и в Telegram, категорией «Оценки менеджеров» (18.11.2026, начальник: всё по сделкам — в центр уведомлений
+     * и в Telegram; владелец: категории включены, выключают в настройках). Было тихой строкой ленты (07.11.2026). Без звука.
+     */
+    public function important(): bool
     {
-        return true;
+        return false;
+    }
+
+    public function toTelegram(): ?array
+    {
+        return ['title' => $this->title(), 'lines' => [$this->text()], 'button' => 'Открыть'];
     }
 
     public function actor(): ?User

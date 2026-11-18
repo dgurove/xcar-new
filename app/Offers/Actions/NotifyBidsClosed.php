@@ -5,7 +5,10 @@ namespace App\Offers\Actions;
 use App\Offers\BidState;
 use App\Offers\Offer;
 use App\Offers\OfferState;
-use App\Telegram\Jobs\NotifyOwner;
+use App\Notifications\StaffNotice;
+use App\Users\Role;
+use App\Users\User;
+use Illuminate\Support\Facades\Notification;
 use App\Telegram\Messages\BidsClosed;
 use App\Telegram\Messages\BidsClosedPack;
 use App\Telegram\Messages\SlotClosing;
@@ -28,7 +31,8 @@ final class NotifyBidsClosed
             ->with('bids')->orderBy('id')->get();
         foreach ($offers->groupBy(fn (Offer $o) => $o->bids_close_at->toDateTimeString()) as $group) {
             DB::table('offers')->whereIn('id', $group->pluck('id'))->update(['bids_closed_notified_for' => DB::raw('bids_close_at')]);
-            NotifyOwner::dispatch(new SlotClosing($group->values()));
+            // Админам — в ленту, пушем и в Telegram (18.11.2026; было только Telegram).
+            Notification::send(User::withRole(Role::Admin)->get(), new StaffNotice(new SlotClosing($group->values()), 'bids', 'Слот закрывается'));
         }
 
         return $offers->count();
@@ -47,7 +51,7 @@ final class NotifyBidsClosed
         foreach ($offers->groupBy(fn (Offer $o) => $o->bids_close_at->format('Y-m-d H:i')) as $group) {
             DB::table('offers')->whereIn('id', $group->pluck('id'))->update(['bids_closed_notified_for' => DB::raw('bids_close_at')]);
             if ($group->contains(fn (Offer $o) => $o->bids->contains('state', BidState::Active))) {
-                NotifyOwner::dispatch($group->count() === 1 ? new BidsClosed($group->first()) : new BidsClosedPack($group->values()));
+                Notification::send(User::withRole(Role::Admin)->get(), new StaffNotice($group->count() === 1 ? new BidsClosed($group->first()) : new BidsClosedPack($group->values()), 'bids', 'Приём закрыт'));
             }
         }
 

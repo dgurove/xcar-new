@@ -53,7 +53,7 @@ final class RepriceAnsweredNotice extends Notice
 
     public function category(): string
     {
-        return $this->ask->deal_id ? 'deals' : 'bids';
+        return 'managers';
     }
 
     public function important(): bool

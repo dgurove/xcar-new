@@ -18,6 +18,11 @@ final class OnlinePayment extends Message
 {
     public function __construct(private AcquiringPayment $attempt, private string $what) {}
 
+    public function offer(): ?\App\Offers\Offer
+    {
+        return $this->attempt->link?->invoice?->deal?->offer;
+    }
+
     private function invoice(): Invoice
     {
         return $this->attempt->link->invoice;

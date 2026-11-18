@@ -42,7 +42,7 @@ final class SupplierInvoiceArrivedNotice extends Notice
 
     public function category(): string
     {
-        return 'deals';
+        return 'supplier_mail';
     }
 
     public function subject(): string

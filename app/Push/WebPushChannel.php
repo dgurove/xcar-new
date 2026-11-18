@@ -34,12 +34,17 @@ final class WebPushChannel
         if ($subs->isEmpty()) {
             return Sent::skipped('нет подписок в этом приложении');
         }
-        $notification = [
-            'title' => $notice->titleFor($user),
-            'body' => (string) $notice->textFor($user),
+        // Две строки центра уведомлений (18.11.2026, начальник: «машина в первой строке и текст во второй»): машина и что
+        // случилось; без машины — заголовок и текст. Метки нет — каждое событие своим пушем (`Notice::tag`).
+        $car = $notice->car();
+        $text = $notice->textFor($user);
+        $brief = $car ? $notice->brief($user) : null;
+        $notification = array_filter([
+            'title' => $car ?? $notice->titleFor($user),
+            'body' => $car ? $brief.($text && $text !== $brief ? "\n".$text : '') : (string) $text,
             'tag' => $notice->tag(),
             'lang' => 'ru',
-        ];
+        ], fn ($v) => $v !== null);
         $href = $notice->href();
         $badges = [];
         $push = self::client();

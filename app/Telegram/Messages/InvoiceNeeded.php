@@ -11,6 +11,11 @@ final class InvoiceNeeded extends Message
 {
     public function __construct(private Deal $deal, private ?string $gap = null) {}
 
+    public function offer(): ?\App\Offers\Offer
+    {
+        return $this->deal->offer;
+    }
+
     protected function title(): string
     {
         return \App\Workflow\Position::gapAction($this->gap, $this->deal)['title'].': '.$this->deal->offer->titleWithYear();

@@ -6,7 +6,11 @@
 @if (session('toast') || session('toast-danger'))
 <template id="flash" data-message="{{ session('toast-danger') ?? session('toast') }}" data-kind="{{ session('toast-danger') ? 'danger' : '' }}" @if (session('toast-undo')) data-undo="{{ is_string(session('toast-undo')) ? session('toast-undo') : '' }}" @endif @if (session('toast-href')) data-href="{{ session('toast-href') }}" @endif @if (session('toast-undo-url')) data-undo-url="{{ session('toast-undo-url') }}" data-undo-label="{{ session('toast-undo-label', 'Вернуть') }}" @endif></template>
 @endif
-{{-- Уведомления карточками (banner_controller): ПК — справа снизу, телефон — сверху. Тоже постоянный узел. --}}
+{{-- Уведомления капсулами (banner_controller): ПК — слева снизу, над стопкой «Ещё N» (не влезли) и «Закрыть все»; телефон — сверху.
+     Тоже постоянный узел. --}}
 <div class="banners" id="banners" data-controller="banner" data-turbo-permanent>
-    <button type="button" class="banners-clear" data-banner-target="clear" data-action="banner#clearAll" hidden>Закрыть все</button>
+    <div class="banners-bar">
+        <span class="banners-more" data-banner-target="more" hidden></span>
+        <button type="button" class="banners-clear" data-banner-target="clear" data-action="banner#clearAll" hidden>Закрыть все</button>
+    </div>
 </div>

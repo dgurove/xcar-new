@@ -8,7 +8,6 @@ use App\Billing\Bank\SberApi;
 use App\Billing\Bank\Transaction;
 use App\Notifications\MoneyNotice;
 use App\Support\HoldsSingleRun;
-use App\Telegram\Jobs\NotifyOwner;
 use App\Telegram\Messages\BankDigest;
 use App\Users\Role;
 use App\Users\User;
@@ -64,7 +63,7 @@ final class SyncBank extends Command
                 $digest = new BankDigest((clone $open)->count(), (float) (clone $open)->sum('amount'), $connection->fresh()->last_error,
                     $connection->refresh_expires_at ? (int) now()->diffInDays($connection->refresh_expires_at) : null);
                 if ($digest->worthSending()) {
-                    NotifyOwner::dispatch($digest);
+                    Notification::send(User::withRole(Role::Admin)->get(), new \App\Notifications\StaffNotice($digest, 'money', 'Выписка банка', loud: false));
                 }
             }
 

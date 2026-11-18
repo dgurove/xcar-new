@@ -38,8 +38,8 @@ use App\Park\Events\LetterArrived;
 use App\Park\EventType;
 use App\Park\Vehicle;
 use App\Park\VehicleState;
-use App\Telegram\Jobs\NotifyOwner;
-use App\Telegram\Messages\VendorLetter;
+use App\Notifications\SupplierMailNotice;
+use App\Offers\ReplyKind;
 use App\Users\Role;
 use App\Users\User;
 use App\Vendors\Vendor;
@@ -118,7 +118,7 @@ final class OnMessage
                 OnInsurerReply::queue($deal, $message);
             }
         }
-        $this->toTelegram($message, $linked instanceof Offer ? $linked : $thread?->offer);
+        $this->toStaff($message, $linked instanceof Offer ? $linked : $thread?->offer);
         $topic = $message->account->scope === Scope::Park ? Topics::PARK : Topics::STAFF;
         $base = $message->account->scope === Scope::Park ? '/mail' : '/work/mail';
         // «Заявки» — тоже: заявку из письма могла только что завести почта (`AutoRequest`), её строка входит силуэтом.
@@ -177,19 +177,27 @@ final class OnMessage
     }
 
     /**
-     * Письмо вендора с галкой `letters_to_telegram` (АльфаСтрахование, 17.10.2026) на ящик, который пишет (deal@), —
-     * владельцу и админам в Telegram. Вендор — ветки, иначе разбора письма (пересылка сотрудника — по цитате).
+     * Письмо поставщика — админам в ленту, пушем и в Telegram (`SupplierMailNotice`, 18.11.2026; до того — только Telegram
+     * владельцу и админам мимо ленты и настроек). Каждое письмо по машине в идущей сделке, на любой ящик и пересылкой, и, как
+     * было, любое письмо вендора с галкой `letters_to_telegram` на ящик, который пишет (deal@). Автоответ и недоставка — нет.
+     * Счёт и «договор готов» по сделке уходят своим громким (`OnInsurerReply::queue`) — второй раз не шлём.
      */
-    private function toTelegram(Message $message, ?Offer $offer): void
+    private function toStaff(Message $message, ?Offer $offer): void
     {
-        if (! $message->isFromVendor() || $message->account->scope !== Scope::Offers
-            || $message->account->reply_account_id !== null || in_array($message->intent, [Intent::Auto->value, Intent::Bounce->value], true)) {
+        if (! $message->isFromVendor() || $message->account->scope !== Scope::Offers || $message->isAutomatic()) {
             return;
         }
-        $vendor = $message->thread?->vendor ?? Vendor::find($message->field('vendor_id'));
-        if ($vendor?->letters_to_telegram) {
-            NotifyOwner::dispatch(new VendorLetter($message, $vendor, $offer));
+        $vendor = $message->thread?->vendor ?? $offer?->vendor ?? Vendor::find($message->field('vendor_id'));
+        $deal = $offer?->deal;
+        $onDeal = $deal?->isActive() && ! $message->date_at?->lt($deal->created_at);
+        $flagged = $vendor?->letters_to_telegram && $message->account->reply_account_id === null;
+        if (! $vendor || (! $onDeal && ! $flagged)) {
+            return;
         }
+        if ($onDeal && $deal->buyer_id && in_array(ReplyKind::of($message), [ReplyKind::Invoice, ReplyKind::ContractReady], true)) {
+            return;
+        }
+        Notification::send(User::withRole(Role::Admin)->get(), new SupplierMailNotice($message, $vendor, $offer));
     }
 
     /** Не ушло — открытая ветка (и окно писем на любой странице) показывает «Не ушло» с «Отправить снова», а не вечное «Отправляется». */

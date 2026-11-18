@@ -13,6 +13,12 @@ final class ConsentGivenNotice extends Notice
 {
     public function __construct(private Deal $deal) {}
 
+    /** Лицо капсулы и строки ленты — менеджер сделки (18.11.2026). */
+    public function actor(): ?\App\Users\User
+    {
+        return $this->deal->buyer;
+    }
+
     public function label(): string
     {
         return 'Менеджер берёт сделку';
@@ -41,7 +47,7 @@ final class ConsentGivenNotice extends Notice
 
     public function category(): string
     {
-        return 'deals';
+        return 'managers';
     }
 
     public function subject(): string

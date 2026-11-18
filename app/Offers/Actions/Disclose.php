@@ -103,6 +103,8 @@ final class Disclose
         // Ответ на доп. просьбу показали — ход менеджера: «Беру в работу» / «Я передумал» (18.11.2026, `Offers\ExtraAsk`). Шаг сдвинулся
         // на согласие — его просьба с теми же кнопками уже ушла, второй не шлём.
         $disclosure && app(SettleExtraAsk::class)->shown($deal, notify: ! $turn);
+        // Коллегам — строкой (18.11.2026): ответ поставщика ушёл менеджеру.
+        $disclosure && \App\Notifications\Notify::toStaff(\App\Notifications\DealEventNotice::disclosed($deal->loadMissing('offer'), $by), $by);
 
         return ['disclosure' => $disclosure, 'moved' => $moved];
     }

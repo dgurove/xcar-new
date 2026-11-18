@@ -15,6 +15,11 @@ final class BidsClosed extends Message
 {
     public function __construct(private Offer $offer) {}
 
+    public function offer(): ?\App\Offers\Offer
+    {
+        return $this->offer;
+    }
+
     protected function title(): string
     {
         return 'Приём закрыт: '.$this->offer->titleWithYear();

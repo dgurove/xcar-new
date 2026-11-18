@@ -113,7 +113,39 @@ final class Notify
             PaymentRecorded::class => 'paymentRecorded',
             PaidOnline::class => 'paidOnline',
             OnlinePaymentTrouble::class => 'onlinePaymentTrouble',
+            \App\Mail\Events\MessageSent::class => 'letterSent',
+            \App\Offers\Events\BidPlaced::class => 'bidPlaced',
         ];
+    }
+
+    /**
+     * Админам — что произошло, без того, кто это сделал (18.11.2026, владелец: «своих не присылать»). Массовое с `batchKey` —
+     * пачкой (`Batch`).
+     */
+    public static function toStaff(Notice $notice, ?User $by = null): void
+    {
+        Batch::send(User::withRole(Role::Admin)->get()->reject(fn (User $u) => $by && $u->is($by)), $notice);
+    }
+
+    /**
+     * Наше письмо поставщику по идущей сделке и доп. просьба (18.11.2026, начальник: «даже когда отправлено письмо или доп.
+     * запрос») — админам, кроме автора.
+     */
+    public function letterSent(\App\Mail\Events\MessageSent $e): void
+    {
+        $message = $e->message->loadMissing(['account', 'thread.offer.deal', 'author']);
+        $offer = $message->thread?->offer;
+        if (! $offer || $message->account?->scope !== Scope::Offers || ! $message->isOutgoing()
+            || (! $offer->deal?->isActive() && empty($message->requests))) {
+            return;
+        }
+        self::toStaff(DealEventNotice::ourLetter($offer, $message, $message->author), $message->author);
+    }
+
+    /** Новое подтверждение менеджера — админам («Подтверждения и приём»). */
+    public function bidPlaced(\App\Offers\Events\BidPlaced $e): void
+    {
+        self::toStaff(DealEventNotice::bidPlaced($e->bid, $e->byStaff ? $e->by : $e->bid->user), $e->by);
     }
 
     /** Покупатель прошёл по ссылке: менеджеру — в ленту и push, владельцу — строка в Telegram. */
@@ -124,13 +156,14 @@ final class Notify
         if (! ($e->invite->manual && auth()->id() === $e->user->manager_id)) {
             $e->user->manager?->notify(new BuyerJoinedNotice($e->user));
         }
-        NotifyOwner::dispatch(new BuyerJoinedMessage($e->user->load('manager')));
+        // Админам — в ленту, пушем и в Telegram (18.11.2026; было только Telegram владельцу и админам).
+        Notification::send($this->staff(), new StaffNotice(new BuyerJoinedMessage($e->user->load('manager')), 'people', 'Новый покупатель', loud: false));
     }
 
     /** Менеджер пришёл по ссылке админа — владельцу строка в Telegram. */
     public function managerJoined(ManagerJoined $e): void
     {
-        NotifyOwner::dispatch(new ManagerJoinedMessage($e->user));
+        Notification::send($this->staff(), new StaffNotice(new ManagerJoinedMessage($e->user), 'people', 'Новый менеджер', loud: false));
     }
 
     public function accessDecided(AccessDecided $e): void
@@ -167,6 +200,7 @@ final class Notify
         $deal = Deal::where('bid_id', $e->bid->id)->live()->latest('id')->first();
         if ($deal) {
             $e->bid->user->notify(new BidAcceptedNotice($deal->load('offer')));
+            self::toStaff(DealEventNotice::dealOpened($deal->load('buyer'), $e->by), $e->by);
         }
     }
 
@@ -277,6 +311,13 @@ final class Notify
             // (05.11.2026, владелец: «вот тут уведомление уместно» — вместо каждого нового подтверждения). Нажал за него
             // сотрудник — `by` не менеджер, никому. Счёт не встал — своё `invoiceNeeded` выше.
             Notification::send($this->staff(), new OurTurnNotice($deal->load(['offer', 'buyer']), $e->to, $e->exit));
+        } elseif ($deal?->isActive() && $e->by && ! $e->letter && $e->track === Track::Sale) {
+            // Остальные шаги — админам строкой (18.11.2026, начальник: «и когда мы действие сделали, и когда другие»): менеджер
+            // нажал шаг, после которого ждём его или поставщика; сотрудник сдвинул шаг — коллегам. Система (часы) — нет.
+            $deal->setRelation('offer', $e->offer);
+            self::toStaff($e->by->is($deal->buyer)
+                ? DealEventNotice::managerStep($deal, $e->to, $e->exit, $e->by)
+                : DealEventNotice::stageMoved($deal, $e->to, $e->exit, $e->by), $e->by);
         }
         // Шаг сдвинул админ галкой в «Показать менеджеру» — его ход уходит в том же уведомлении (`Offers\Actions\Disclose`).
         if (! $deal?->buyer || $e->letter) {
@@ -308,8 +349,7 @@ final class Notify
             return;
         }
         $i->load(['party', 'deal.offer.vendor']);
-        Notification::send($this->staff(), MoneyNotice::rosReceived($i));
-        NotifyOwner::dispatch(new RosTransferDue($i));
+        Notification::send($this->staff(), MoneyNotice::rosReceived($i)->withTelegram(new RosTransferDue($i)));
     }
 
     /**
@@ -480,8 +520,7 @@ final class Notify
     public function paymentClaimed(PaymentClaimed $e): void
     {
         $p = $e->payment->load(['invoice.party', 'invoice.deal.offer', 'invoice.deal.buyer']);
-        Notification::send($this->staff(), MoneyNotice::claimed($p));
-        NotifyOwner::dispatch(new PaymentClaimedMessage($p));
+        Notification::send($this->staff(), MoneyNotice::claimed($p)->withTelegram(new PaymentClaimedMessage($p)));
     }
 
     public function paymentConfirmed(PaymentConfirmed $e): void
@@ -489,12 +528,14 @@ final class Notify
         // «Перевести Альфе» шлёт `paymentRecorded`: подтверждение заявки — тоже запись оплаты, второй раз не надо.
         $p = $e->payment->load(['invoice.deal.offer', 'invoice.deal.buyer']);
         ($p->invoice->deal?->buyer ?? GarageCar::ofInvoice($p->invoice)?->manager)?->notify(MoneyNotice::paymentConfirmed($p));
+        $p->invoice->deal?->offer && self::toStaff(DealEventNotice::paymentDecided($p, true, $e->by), $e->by);
     }
 
     public function paymentRejected(PaymentRejected $e): void
     {
         $p = $e->payment->load(['invoice.deal.offer', 'invoice.deal.buyer']);
         ($p->invoice->deal?->buyer ?? GarageCar::ofInvoice($p->invoice)?->manager)?->notify(MoneyNotice::paymentRejected($p));
+        $p->invoice->deal?->offer && self::toStaff(DealEventNotice::paymentDecided($p, false, $e->by), $e->by);
     }
 
     /** Оплата записана: счёт Р.О.С. оплачен — перевести поставщику (`rosPaid`). */
@@ -508,10 +549,8 @@ final class Notify
     {
         $p = $e->payment->load(['invoice.party', 'invoice.deal.offer', 'invoice.deal.buyer']);
         ($p->invoice->deal?->buyer ?? GarageCar::ofInvoice($p->invoice)?->manager)?->notify(MoneyNotice::paidOnline($e->link, $p));
-        Notification::send($this->staff(), MoneyNotice::paidOnlineStaff($e->link, $p));
-        if ($attempt = AcquiringPayment::where('payment_id', $p->id)->with('link.invoice')->first()) {
-            NotifyOwner::dispatch(new OnlinePaymentMessage($attempt, 'paid'));
-        }
+        $attempt = AcquiringPayment::where('payment_id', $p->id)->with('link.invoice')->first();
+        Notification::send($this->staff(), MoneyNotice::paidOnlineStaff($e->link, $p)->withTelegram($attempt ? new OnlinePaymentMessage($attempt, 'paid') : null));
     }
 
     /**
@@ -527,8 +566,7 @@ final class Notify
 
             return;
         }
-        Notification::send($this->staff(), MoneyNotice::onlineTroubleStaff($a, $e->what));
-        NotifyOwner::dispatch(new OnlinePaymentMessage($a, $e->what));
+        Notification::send($this->staff(), MoneyNotice::onlineTroubleStaff($a, $e->what)->withTelegram(new OnlinePaymentMessage($a, $e->what)));
     }
 
 
@@ -561,8 +599,7 @@ final class Notify
     public function invoiceNeeded(Deal $deal, ?string $gap): void
     {
         $deal->loadMissing(['buyer', 'offer']);
-        Notification::send($this->staff(), new InvoiceNeededNotice($deal, $gap));
-        NotifyOwner::dispatch(new InvoiceNeededMessage($deal, $gap));
+        Notification::send($this->staff(), (new InvoiceNeededNotice($deal, $gap))->withTelegram(new InvoiceNeededMessage($deal, $gap)));
     }
 
     /** Сторона площадки: подтверждения, интерес, сроки, деньги, чаты — админам; модератору их нет. */

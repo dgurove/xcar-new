@@ -51,16 +51,21 @@ final class EstimateGivenNotice extends Notice
 
     public function category(): string
     {
-        return 'bids';
+        return 'estimates';
     }
 
     /**
-     * Строкой в ленте, без звука и пуша (07.11.2026, владелец: оценки разбирает разом — «На оценке у менеджеров → Оценённые»,
-     * подэтап главной «Разобрать оценки»; по журналу доставки открывали 2 %).
+     * Админу — пушем и в Telegram, категорией «Оценки менеджеров» (18.11.2026, начальник: всё по сделкам — в центр уведомлений
+     * и в Telegram; владелец: категории включены, выключают в настройках). Было тихой строкой ленты (07.11.2026). Без звука.
      */
-    public function quiet(): bool
+    public function important(): bool
     {
-        return true;
+        return false;
+    }
+
+    public function toTelegram(): ?array
+    {
+        return ['title' => $this->title(), 'lines' => [$this->text()], 'button' => 'Открыть'];
     }
 
     public function actor(): ?User

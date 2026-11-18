@@ -15,6 +15,12 @@ final class OurTurnNotice extends Notice
 {
     public function __construct(private Deal $deal, private Stage $to, private ?Outcome $exit = null) {}
 
+    /** Лицо капсулы и строки ленты — менеджер сделки (18.11.2026). */
+    public function actor(): ?\App\Users\User
+    {
+        return $this->deal->buyer;
+    }
+
     public function label(): string
     {
         return 'Ход за нами';
@@ -44,7 +50,7 @@ final class OurTurnNotice extends Notice
 
     public function category(): string
     {
-        return 'deals';
+        return 'managers';
     }
 
     public function subject(): string

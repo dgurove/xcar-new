@@ -12,6 +12,11 @@ final class BindingPanic extends Message
 {
     public function __construct(private Offer $offer) {}
 
+    public function offer(): ?\App\Offers\Offer
+    {
+        return $this->offer;
+    }
+
     protected function title(): string
     {
         return (Binding::of($this->offer) === 'deal' ? '🚨 Поставщику не заплачено: ' : '🚨 Нет покупателя: ').$this->offer->titleWithYear();

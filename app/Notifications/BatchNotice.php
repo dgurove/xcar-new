@@ -13,6 +13,12 @@ final class BatchNotice extends Notice
     /** @param list<string> $lines */
     public function __construct(private string $key, private array $lines, private Notice $sample) {}
 
+    /** Сводка заменяет прежнюю того же вида (`CollapseNotices`); наши письма — каждая пачка своей строкой. */
+    public function collapses(?\App\Users\User $user): bool
+    {
+        return $this->key !== 'our-mail';
+    }
+
     /** Сводное — своим видом пачки: «Сводка: Срок вышел», «Сводка: Новые вывозы». */
     public function label(): string
     {

@@ -42,6 +42,23 @@ abstract class Message
         return false;
     }
 
+    /**
+     * Части сообщения — для уведомления сотрудникам (`Notifications\StaffNotice`, 18.11.2026: всё, что админ получает в Telegram,
+     * — ещё и в ленту и пушем): заголовок, строки, кнопки решения, ссылка.
+     *
+     * @return array{title: string, lines: list<?string>, decisions: list<array{text: string, callback_data: string}>, link: array{text: string, url: string}}
+     */
+    public function parts(): array
+    {
+        return ['title' => $this->title(), 'lines' => $this->lines(), 'decisions' => $this->decisions(), 'link' => $this->link()];
+    }
+
+    /** Машина сообщения — первая строка капсулы уведомления; без машины — null. */
+    public function offer(): ?\App\Offers\Offer
+    {
+        return null;
+    }
+
     public function afterDecision(): array
     {
         return [[$this->link()]];

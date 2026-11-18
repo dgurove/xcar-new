@@ -1,10 +1,10 @@
 import { Controller } from '@hotwired/stimulus';
 import { chime, unlockChime } from '../lib/chime';
 
-// Уведомления, как в macOS и iOS: карточка с аватаром, заголовком и текстом. Разметку рисует сервер (`x-ui.banner`),
-// приходит она живым каналом (live.js: notice, chat) в window.notify({id, subject, important, sound, surface, html}).
-// ПК и планшет (от 768) — стопка в правом нижнем углу, новая ближе к углу; телефон — сверху во всю ширину, старые выглядывают из-под
-// новой. Обычная уходит сама через 6 с (наведение и касание держат), со звуком (sound: новые предложения) звенит и тоже
+// Уведомления капсулами (18.11.2026, начальник: «слева, не огромными»): лицо, машина, коротко что — одной строкой. Разметку рисует
+// сервер (`x-ui.banner`), приходит она живым каналом (live.js: notice, chat) в window.notify({id, subject, important, sound, surface, html}).
+// ПК и планшет (от 768) — стопка у левого нижнего угла, новая ниже, видно восемь, остальные — «Ещё N» над стопкой; наведение
+// разворачивает капсулу вширь (CSS); телефон — сверху во всю ширину, старые выглядывают из-под новой. Обычная уходит сама через 6 с (наведение и касание держат), со звуком (sound: новые предложения) звенит и тоже
 // уходит сама, важная звенит и висит, пока её не нажмут, не закроют крестиком или не смахнут (вправо на ПК, вверх на
 // телефоне). Карточка об объекте одна: новая о нём заменяет прежнюю, а открытый где угодно объект закрывает её во всех
 // вкладках (notices-read). Закрытие в одной вкладке закрывает и в остальных (BroadcastChannel); важные переживают
@@ -12,10 +12,11 @@ import { chime, unlockChime } from '../lib/chime';
 // Узел постоянный (data-turbo-permanent): переходы Turbo карточки не трогают. Здесь же — число непрочитанного в
 // названии вкладки (meta badge-count: `User::badgeCount` — на сайте чаты и ход по сделкам).
 const TTL = 6000;
-const KEEP = 'xcar.banners';
+// Ключ памяти вкладки — с видом карточки: прежние карточки (до капсул) после перезагрузки не встают.
+const KEEP = 'xcar.banners.2';
 
 export default class extends Controller {
-    static targets = ['clear'];
+    static targets = ['clear', 'more'];
 
     connect() {
         this.timers = new Map();
@@ -107,7 +108,7 @@ export default class extends Controller {
         this.swipe(el);
     }
 
-    // Смахивание: на ПК вправо (мышью или двумя пальцами по тачпаду), на телефоне вверх. Не дотянули — назад.
+    // Смахивание: на ПК влево — к краю, откуда пришла (мышью или двумя пальцами по тачпаду), на телефоне вверх. Не дотянули — назад.
     swipe(el) {
         let start = null;
         let moved = 0;
@@ -120,12 +121,12 @@ export default class extends Controller {
         });
         el.addEventListener('pointermove', (e) => {
             if (!start) return;
-            const d = this.wide.matches ? Math.max(0, e.clientX - start.x) : Math.min(0, e.clientY - start.y);
+            const d = this.wide.matches ? Math.min(0, e.clientX - start.x) : Math.min(0, e.clientY - start.y);
             if (!el.dataset.dragged && Math.abs(d) < 6) return;
             if (!el.dataset.dragged) { el.dataset.dragged = '1'; el.setPointerCapture?.(e.pointerId); el.classList.add('is-dragging'); }
             moved = d;
             el.style.translate = this.wide.matches ? `${d}px 0` : `0 ${d}px`;
-            if (this.wide.matches) el.style.opacity = String(Math.max(0.2, 1 - d / 300));
+            if (this.wide.matches) el.style.opacity = String(Math.max(0.2, 1 + d / 300));
         });
         const end = () => {
             if (!start) return;
@@ -150,7 +151,7 @@ export default class extends Controller {
             if (!this.wide.matches || Math.abs(e.deltaX) <= Math.abs(e.deltaY)) return;
             e.preventDefault();
             wheel += Math.abs(e.deltaX);
-            el.style.translate = `${Math.min(wheel, 120)}px 0`;
+            el.style.translate = `${-Math.min(wheel, 120)}px 0`;
             clearTimeout(wheelTimer);
             if (wheel > 80) { this.close(el); return; }
             wheelTimer = setTimeout(() => { wheel = 0; el.style.translate = ''; }, 180);
@@ -204,17 +205,22 @@ export default class extends Controller {
         el.remove();
     }
 
-    // Глубина в стопке: 0 — новая. На ПК видно четыре, на телефоне — новая и две под ней.
+    // Глубина в стопке: 0 — новая. На ПК видно восемь капсул (остальные — «Ещё N»), на телефоне — новая и две под ней.
     layout() {
         const all = [...this.element.querySelectorAll('.banner:not(.is-leaving)')].reverse();
+        const room = this.wide.matches ? 8 : 3;
         all.forEach((el, depth) => {
             el.style.setProperty('--depth', depth);
             el.dataset.depth = depth;
-            el.toggleAttribute('data-buried', depth >= (this.wide.matches ? 4 : 3));
+            el.toggleAttribute('data-buried', depth >= room);
         });
         if (all[0]) this.element.style.setProperty('--top-h', `${all[0].offsetHeight}px`);
         this.element.dataset.count = String(all.length);
         if (this.hasClearTarget) this.clearTarget.hidden = all.length < 2;
+        if (this.hasMoreTarget) {
+            this.moreTarget.hidden = all.length <= room;
+            this.moreTarget.textContent = `Ещё ${all.length - room}`;
+        }
     }
 
     // «сейчас», «5 мин», дальше время.

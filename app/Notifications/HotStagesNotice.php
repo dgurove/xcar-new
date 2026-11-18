@@ -10,6 +10,12 @@ final class HotStagesNotice extends Notice
 {
     public function __construct(private int $total, private int $ours) {}
 
+    /** Заменяет само себя: в ленте строка одна (`CollapseNotices`). */
+    public function collapses(?\App\Users\User $user): bool
+    {
+        return true;
+    }
+
     public function label(): string
     {
         return 'Утренняя сводка: горит';

@@ -20,6 +20,14 @@
                             <span class="min-w-0 flex-1">
                                 <span class="block font-medium">На это устройство</span>
                                 <span class="row-sub text-danger" data-push-target="state" hidden></span>
+                                {{-- Где ещё включены (18.11.2026: начальник включил пуши только на xcar.ru на Маке, а сделки живут в CRM —
+                                     за неделю ни одного пуша); сотруднику без CRM — красной строкой. --}}
+                                @if ($devices)
+                                    <span class="row-sub">Включены: {{ implode(', ', $devices) }}</span>
+                                @endif
+                                @if ($user->isStaff() && ! collect($devices)->contains(fn ($d) => str_starts_with($d, 'CRM')))
+                                    <span class="row-sub text-danger">В CRM пуши не включены ни на одном устройстве</span>
+                                @endif
                             </span>
                             <input type="checkbox" class="switch" data-push-target="toggle" data-action="change->push#toggle">
                         </label>

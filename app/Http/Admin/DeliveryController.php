@@ -58,7 +58,7 @@ final class DeliveryController
     {
         $rows = DB::table('notice_deliveries')->where('created_at', '>=', $from)->groupBy('kind')
             ->selectRaw("kind, max(label) as label, max(category) as category, bool_or(important) as important,
-                count(distinct notice_id) as sent, count(distinct user_id) as people,
+                count(distinct notice_id) filter (where status <> 'off') as sent, count(distinct user_id) filter (where status <> 'off') as people,
                 count(*) filter (where channel = 'push' and status = 'sent') as push,
                 coalesce(sum(devices) filter (where channel = 'push' and status = 'sent'), 0) as devices,
                 count(*) filter (where channel = 'push' and status = 'skipped') as nowhere,
@@ -77,7 +77,7 @@ final class DeliveryController
     private function people($from, Sort $sort): Collection
     {
         $stats = DB::table('notice_deliveries')->where('created_at', '>=', $from)->groupBy('user_id')
-            ->selectRaw("user_id, count(distinct notice_id) as sent,
+            ->selectRaw("user_id, count(distinct notice_id) filter (where status <> 'off') as sent,
                 count(*) filter (where channel = 'push' and status = 'sent') as push,
                 count(*) filter (where channel = 'telegram' and status = 'sent') as telegram,
                 count(*) filter (where status = 'failed') as failed,

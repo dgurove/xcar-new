@@ -23,7 +23,9 @@ final class ChatNotice extends Notice
     public function via(User $user): array
     {
         $via = parent::via($user);
-        $via = $this->first ? array_values($via) : array_values(array_intersect($via, [WebPushChannel::class, TelegramChannel::class]));
+        // Сотруднику — каждое сообщение и строкой ленты (18.11.2026, начальник: «всё, что в Telegram, — и в центр уведомлений»);
+        // менеджеру и покупателю — первое непрочитанное, строка на чат.
+        $via = $this->first || ! $this->toManagerSide($user) ? array_values($via) : array_values(array_intersect($via, [WebPushChannel::class, TelegramChannel::class]));
         // Менеджеру (и покупателю) — в Telegram каждое сообщение чата, кто бы ни писал, даже с выключенными чатами в настройках
         // (16.11.2026, владелец: «всё, что ему в чат приходит, — в телегу: администратор, модератор, покупатель»). Сотрудникам —
         // по их настройкам, как было.
@@ -166,6 +168,29 @@ final class ChatNotice extends Notice
     public function offerNumber(): ?int
     {
         return $this->message->chat->offer?->number;
+    }
+
+    /** Менеджеру и покупателю — строка на чат; сотруднику — каждое сообщение строкой. */
+    public function collapses(?User $user): bool
+    {
+        return $user === null || $this->toManagerSide($user);
+    }
+
+    /** Пуши одного чата заменяют друг друга. */
+    public function tag(): ?string
+    {
+        return $this->subject();
+    }
+
+    public function car(): ?string
+    {
+        return $this->message->chat->offer?->titleWithYear();
+    }
+
+    /** Капсулой: кто пишет и само сообщение. */
+    public function brief(?User $user = null): string
+    {
+        return $this->who().': '.$this->message->preview(120);
     }
 
     public function category(): string

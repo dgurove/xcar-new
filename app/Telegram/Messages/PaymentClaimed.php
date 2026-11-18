@@ -15,6 +15,11 @@ final class PaymentClaimed extends Message
 {
     public function __construct(private Payment $payment) {}
 
+    public function offer(): ?\App\Offers\Offer
+    {
+        return $this->payment->invoice?->deal?->offer;
+    }
+
     protected function title(): string
     {
         $i = $this->payment->invoice;

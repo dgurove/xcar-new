@@ -2,6 +2,10 @@
 
 namespace App\Offers\Actions;
 
+use App\Notifications\DealEventNotice;
+use App\Notifications\Notify;
+use Illuminate\Support\Facades\DB;
+
 use App\Billing\Actions\VoidInvoice;
 use App\Billing\InvoiceState;
 use App\Billing\PaymentSource;
@@ -78,6 +82,12 @@ final class CancelDeal
         self::voidUnpaid($deal, $by, 'Сделка отменена');
         // Выдача с нашей парковки по этой сделке снимается: пропуск гаснет, продажа на парковке — тоже (18.10.2026).
         app(SyncParkRelease::class)($deal->fresh(), $by);
+        // Админам, кроме того, кто отменил (18.11.2026): менеджер передумал — громко, машину снова продавать. «Изменить гараж» тому
+        // же менеджеру (`$same`) — не отмена.
+        if (! $same && $offer) {
+            $id = $deal->id;
+            DB::afterCommit(fn () => ($d = Deal::with(['offer', 'buyer'])->find($id)) && Notify::toStaff(DealEventNotice::dealCancelled($d, $by), $by));
+        }
 
         return $deal;
     }
