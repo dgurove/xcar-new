@@ -24,7 +24,7 @@
             ? [$deal->isDkp() ? 'Продавец' : 'Собственник', 'нет данных', 'dkp-'.$deal->id.':open', null] : null,
         in_array('данные продавца', $missing, true) && $contract->form() === 'ros' ? ['Реквизиты Р.О.С.', 'нет', null, null] : null,
         in_array('(Э)ПТС', $missing, true) ? ['ПТС', 'не внесён', null, $page.'#car-docs'] : null,
-        in_array('цена', $missing, true) ? ['Сумма договора', 'не указана', 'contract-price-'.$deal->id.':open', null] : null,
+        in_array('цена', $missing, true) ? ['Цена продажи', 'не указана', 'deal-money-'.$deal->id.':open', null] : null,
     ]);
 @endphp
 <div data-controller="sheet" class="contents">

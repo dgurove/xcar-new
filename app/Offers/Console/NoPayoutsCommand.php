@@ -99,13 +99,13 @@ class NoPayoutsCommand extends Command
         if (! $deal->schemeOf()->paysCar() || $deal->isGarage() || $deal->amount === null || ! $deal->commission) {
             return false;
         }
-        $want = max(0, $deal->amount - (int) $deal->commission);
+        $want = (int) \App\Offers\DealContract::priceFor($deal);
         $contract = $deal->contract;
-        if ($contract && ! $contract->price_manual && $contract->price !== null && $contract->price !== $want) {
+        if ($contract && $contract->price !== null && $contract->price !== $want) {
             return true;
         }
 
-        return $open->contains(fn (Invoice $i) => $i->kind === ChargeKind::Sale && ! ($contract?->price_manual) && abs((float) $i->charges->whereNull('voided_at')->sum(fn ($c) => $c->price * $c->qty) - $want) > 0.5);
+        return $open->contains(fn (Invoice $i) => $i->kind === ChargeKind::Sale && abs((float) $i->charges->whereNull('voided_at')->sum(fn ($c) => $c->price * $c->qty) - $want) > 0.5);
     }
 
     /** @return array<int, string> живые наши счета сделки: id → «№ 166 продажа 1 000 000 ₽, отправлен, оплачено 0» */

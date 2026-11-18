@@ -4,7 +4,6 @@ namespace App\Http\Admin;
 
 use App\Billing\PartyRules;
 use App\Offers\Actions\SaveDealContract;
-use App\Offers\Actions\SetContractPrice;
 use App\Offers\Deal;
 use App\Offers\DealContract;
 use App\Offers\DkpDocument;
@@ -179,20 +178,6 @@ class DealContractController
         $save($deal->contract, ['buyer' => ['kind' => $kind] + ($data['buyer'] ?? [])] + ($without ? ['invoice_without_reg' => true] : []), $request->user());
 
         return back()->with('toast', $deal->fresh()->hasSaleInvoice() ? 'Счёт сформирован' : 'Данные покупателя сохранены');
-    }
-
-    /**
-     * Сумма договора руками (14.11.2026, `SetContractPrice`): шторка «Сумма договора» в «Деньгах» и в окне документов
-     * модератора. «Как в сделке» (`auto`) — снова по деньгам сделки.
-     */
-    public function price(Request $request, Deal $deal, SetContractPrice $set)
-    {
-        $auto = $request->boolean('auto');
-        $request->merge(['price' => Money::rubles($request->input('price')) ?: null]);
-        $data = $auto ? [] : $request->validate(['price' => ['required', 'integer', 'min:1']], [], ['price' => 'сумма договора']);
-        $contract = $set($deal, $auto ? null : (int) $data['price'], $request->user());
-
-        return back()->with('toast', 'Сумма договора '.Money::rub((int) $contract->price).($auto ? ', как в сделке' : ''));
     }
 
     public function show(Request $request, Deal $deal)

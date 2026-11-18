@@ -208,8 +208,7 @@ final class ApplyReprice
             'owner_price' => $deal->owner_price !== null && (int) $deal->owner_price === $was ? $price : $deal->owner_price,
         ])->save();
         $fresh = $deal->fresh();
-        // Сумма договора, вписанная руками (`SetContractPrice`), остаётся.
-        $fresh->contract && ! $fresh->contract->price_manual && $fresh->contract->update(['price' => DealContract::priceFor($fresh)]);
+        $fresh->contract && $fresh->contract->update(['price' => DealContract::priceFor($fresh)]);
         ($this->invoices)($fresh, $by);
         if ($amount !== null && $amount !== $amountWas) {
             // Подтверждение, по которому сделка, — та же цена: карточка «Сделка» в CRM показывает его сумму (10.11.2026, владелец:

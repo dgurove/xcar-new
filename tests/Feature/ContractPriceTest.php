@@ -28,8 +28,8 @@ use Tests\TestCase;
 
 /**
  * Счёт ПРАЙМ за ТС — по договору (14.11.2026, владелец): ставка НДС из блока «НДС» (`DealContract::vatRate`; сменилась
- * только ставка — тот же счёт, без новой нумерации), сумма договора руками (`SetContractPrice`) — счёт за ней. Модератору —
- * «Сделки» и сумма договора, остальное по сделке — нет. Ошибка здесь — не та сумма или ставка в счёте, лишний доступ.
+ * только ставка — тот же счёт, без новой нумерации). Суммы договора руками нет с 18.11.2026: договор и счёт — цена продажи минус
+ * вознаграждение и часть наличными мимо счёта (`cash_part`), правит и модератор. Ошибка здесь — не та сумма или ставка в счёте.
  */
 class ContractPriceTest extends TestCase
 {
@@ -81,7 +81,7 @@ class ContractPriceTest extends TestCase
         $this->assertSame($first->number, $same->number);
     }
 
-    public function test_manual_contract_price_drives_invoice_and_moderator_access(): void
+    public function test_cash_part_lowers_contract_and_invoice_and_moderator_access(): void
     {
         $deal = $this->deal();
         $crm = 'http://'.config('xcar.crm_host');
@@ -89,10 +89,12 @@ class ContractPriceTest extends TestCase
 
         $this->actingAs($moderator)->get($crm.'/work/deals')->assertRedirect();
         $this->actingAs($moderator)->get($crm.'/offers?preset=agree')->assertOk();
-        $this->actingAs($moderator)->put($crm.'/work/deals/'.$deal->id.'/contract-price', ['price' => '990 000'])->assertRedirect();
+        // Часть отдали наличными мимо счёта — договор и счёт меньше на неё, цена продажи та же (18.11.2026).
+        $this->actingAs($moderator)->put($crm.'/work/deals/'.$deal->id.'/money', ['amount' => '1 050 000', 'commission' => 30000, 'cash_part' => '30 000'])->assertRedirect();
         $contract = $deal->fresh()->contract;
+        $this->assertSame(30000, $contract->cash_part);
         $this->assertSame(990000, $contract->price);
-        $this->assertTrue($contract->price_manual);
+        $this->assertSame(1050000, (int) $deal->fresh()->amount);
         $this->assertEqualsWithDelta(990000, (float) $this->invoice($deal)->total, 0.01);
 
         // Схему («Кому платит покупатель», через Р.О.С.) модератор меняет с 17.11.2026, ставку НДС договора — с 18.11.2026 (владелец:
@@ -102,9 +104,9 @@ class ContractPriceTest extends TestCase
         $this->assertSame(22, $deal->fresh()->contract->vat_rate);
         $this->actingAs($moderator)->get($crm.'/work/garage')->assertRedirect();
 
-        // «Как в сделке» — снова по деньгам сделки: цена минус вознаграждение (18.11.2026).
-        $this->actingAs($this->admin)->put($crm.'/work/deals/'.$deal->id.'/contract-price', ['auto' => 1])->assertRedirect();
-        $this->assertFalse($deal->fresh()->contract->price_manual);
+        // Наличные стёрли — снова цена минус вознаграждение.
+        $this->actingAs($this->admin)->put($crm.'/work/deals/'.$deal->id.'/money', ['amount' => '1 050 000', 'commission' => 30000, 'cash_part' => ''])->assertRedirect();
+        $this->assertNull($deal->fresh()->contract->cash_part);
         $this->assertEqualsWithDelta(1020000, (float) $this->invoice($deal)->total, 0.01);
     }
 }

@@ -313,8 +313,9 @@ class DealController
     {
         // Услуги подбора из ползунка вознаграждения (16.11.2026): ноль — вознаграждение съело всю разницу, это ошибка, а не «стереть».
         $request->merge(['share' => blank($request->input('share')) ? null : Money::rubles($request->input('share')),
-            'amount' => blank($request->input('amount')) ? null : Money::rubles($request->input('amount'))]);
-        $data = $request->validate(['commission' => ['nullable', 'integer', 'min:0'], 'amount' => ['nullable', 'integer', 'min:1'],
+            'amount' => blank($request->input('amount')) ? null : Money::rubles($request->input('amount')),
+            'cash_part' => blank($request->input('cash_part')) ? null : Money::rubles($request->input('cash_part'))]);
+        $data = $request->validate(['commission' => ['nullable', 'integer', 'min:0'], 'amount' => ['nullable', 'integer', 'min:1'], 'cash_part' => ['nullable', 'integer', 'min:0'],
             'scheme' => ['nullable', Rule::enum(DealScheme::class)],
             'share' => ['nullable', 'integer', 'min:1']], ['share.min' => Giving::SHARE_LEFT]);
         // Поле вознаграждения пустое — вознаграждения нет; поля нет вовсе (гаражная доля) — прежнее.
@@ -338,10 +339,15 @@ class DealController
             } catch (ValidationException $e) {
                 throw ValidationException::withMessages(['amount' => $e->validator->errors()->first('sold_price') ?: $e->getMessage()]);
             }
+            if ($request->filled('cash_part')) {
+                $fresh = $deal->fresh(['offer', 'contract']);
+                $update($fresh, $request->user(), $fresh->commission, cash: $data['cash_part'] ?? null, setCash: true);
+            }
 
             return back()->with('toast', 'Цена продажи '.Money::rub($amount));
         }
-        $update($deal, $request->user(), $commission, $scheme, isset($data['share']) ? (int) $data['share'] : null, amount: $amount);
+        $update($deal, $request->user(), $commission, $scheme, isset($data['share']) ? (int) $data['share'] : null, amount: $amount,
+            cash: $data['cash_part'] ?? null, setCash: $request->has('cash_part'));
 
         return back()->with('toast', 'Сохранено');
     }

@@ -37,7 +37,7 @@
                     <x-billing.passport-fields :party="$contract->seller" prefix="seller"/>
                 @endif
                 <div class="grid grid-cols-1 gap-3">
-                    {{-- У ПРАЙМ и Р.О.С. сумма договора — строкой «Сумма» в «Продаже» (`x-deal.contract-price`, 14.11.2026). --}}
+                    {{-- У ПРАЙМ и Р.О.С. сумма договора считается из цены продажи (`DealContract::priceFor`, шторка `x-deal.price-money`). --}}
                     @unless ($prime || $contract->form() === 'ros')
                         <x-ui.field name="vehicle[price]" label="Цена по ДКП, ₽" :value="$contract->price ? \App\Support\Money::nums($contract->price) : null"/>
                     @endunless

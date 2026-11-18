@@ -5,7 +5,7 @@
      (Совкомбанк — всегда ПРАЙМ, по счёту уже платили) — в «Деньгах» строки нет, продавец — меткой у заголовка (15.11.2026,
      владелец: «ты реально считаешь, что это хороший дизайн?» — «ПРАЙМ, у Совкомбанка всегда» и абзац занимали место формы);
      `fixed` — показать его строкой (окно сделки модератора). У договора нашего юрлица (ПРАЙМ, Р.О.С.) — строка «Договор»
-     (`x-deal.contract-price`: сумма и НДС, шторкой). `bare` — только строки, группу `.list` ставит «Деньги». `row` false — без строки,
+     (с 18.11.2026 цена и НДС — `x-deal.price-money`, суммы договора руками нет). `bare` — только строки, группу `.list` ставит «Деньги». `row` false — без строки,
      одна шторка по событию `scheme-{id}:open` (в «Продаже» CRM — пунктом «⋯» «Кому платит покупатель…», 18.11.2026, владелец: «по
      несколько раз одно и то же» — кому платят, говорит шапка блока). --}}
 @props(['deal', 'bare' => false, 'fixed' => true, 'price' => true, 'row' => true])
@@ -17,7 +17,8 @@
     // Схему меняет и модератор (17.11.2026, владелец: модераторы ведут сделки целиком — «через Р.О.С.» и в окне сделки).
     $admin = auth()->user()?->canEditDeals();
     $editable = $deal->isActive() && count($choices) > 1 && $deal->moneyEditable() && $admin;
-    $contract = $deal->hasContract() && $scheme->paysCar() ? DealContract::for($deal)->loadMissing('priceAuthor') : null;
+    // Сумма договора руками снята (18.11.2026): цена и НДС — шторкой «Цена и вознаграждение» (`x-deal.price-money`).
+    $contract = null;
 @endphp
 @if ($editable || $fixed || ($contract && $price))
     @unless ($bare)<div class="list">@endunless
@@ -63,6 +64,5 @@
             <x-ui.chevron-space/>
         </div>
     @endif
-    @if ($contract && $price)<x-deal.contract-price :deal="$deal" :contract="$contract"/>@endif
     @unless ($bare)</div>@endunless
 @endif

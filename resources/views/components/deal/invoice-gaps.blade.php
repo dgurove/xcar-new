@@ -93,7 +93,7 @@
         @elseif ($money && $canEdit)
             {{-- Цены продажи или вознаграждения нет — вписать тут же (18.11.2026, владелец по сделке Алины: «почему не указана цена
                  продажи? вон же 882к»). Сумма договора, вписанная руками, — подсказкой: счёт пойдёт по ней. --}}
-            <x-deal.price-money :deal="$deal" submit="Сформировать счёт" :hint="$deal->contract?->price_manual && $deal->contract->price ? 'Сумма договора '.\App\Support\Money::rub($deal->contract->price).' — счёт пойдёт по ней' : null"/>
+            <x-deal.price-money :deal="$deal" submit="Сформировать счёт"/>
         @else
             <div class="sheet-foot flex flex-col gap-2">
                 @if (isset($blockers['buyer']) && $canEdit)

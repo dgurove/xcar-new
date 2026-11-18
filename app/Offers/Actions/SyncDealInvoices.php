@@ -58,8 +58,8 @@ final class SyncDealInvoices
         // сотрудник не нажмёт «Отправить менеджеру» (`ShowToManager`), срока до шага оплаты нет (`dueFor`).
         $deal->loadMissing(['offer', 'buyer', 'contract.buyer']);
         // Цена договора ПРАЙМ идёт за счётом — плательщик, цена и вознаграждение меняются по ходу (гаражная Совкомбанка
-        // 27.10.2026, продажа — 16.11.2026: платит покупатель — минус вознаграждение). Вписанная руками (`SetContractPrice`) не перетирается.
-        if (($deal->namesBuyer() || $deal->isPrime()) && $deal->contract && ! $deal->contract->price_manual && $deal->contract->price !== ($price = DealContract::priceFor($deal))) {
+        // 27.10.2026, продажа — 16.11.2026: платит покупатель — минус вознаграждение; 18.11.2026 — и минус наличные мимо счёта).
+        if (($deal->namesBuyer() || $deal->isPrime()) && $deal->contract && $deal->contract->price !== ($price = DealContract::priceFor($deal))) {
             $deal->contract->update(['price' => $price]);
         }
         DB::transaction(function () use ($deal, $by) {
@@ -160,8 +160,6 @@ final class SyncDealInvoices
         $contract = $deal->contract;
         // Ставка НДС счёта за ТС — ставка договора (14.11.2026, блок «НДС» в «Деньгах», `DealContract::vatRate`).
         $vat = $contract ? $contract->vatRate() : null;
-        // Сумма договора, вписанная руками (14.11.2026, «всякое бывает»), — счёт идёт за ней.
-        $manual = $contract?->price_manual && $contract->price !== null ? (int) $contract->price : null;
         // Гаражной Совкомбанка ещё и вознаграждение: его считаем мы, когда менеджер назвал цену продажи.
         if (! $contract?->buyer_user_id || $deal->amount === null || ($deal->namesBuyer() && $deal->commission === null)) {
             return null;
@@ -176,8 +174,9 @@ final class SyncDealInvoices
             return null;
         }
         // Одной строкой на цену минус вознаграждение (18.11.2026): кто бы ни платил — менеджер, его покупатель, супер-покупатель
-        // (у него вознаграждения нет). Закупочная внутри счёта не видна. Кто платит — одна дверь `Deal::payerParty`.
-        $price = $manual ?? max(0, (int) $deal->amount - (int) $deal->commission);
+        // (у него вознаграждения нет), и минус наличные мимо счёта — та же сумма, что в договоре (`DealContract::priceFor`).
+        // Закупочная внутри счёта не видна. Кто платит — одна дверь `Deal::payerParty`.
+        $price = (int) DealContract::priceFor($deal);
 
         return ['party' => $deal->payerParty(sale: true), 'vat' => $vat,
             'lines' => [['title' => $car, 'qty' => 1, 'unit' => 'pc', 'price' => (float) $price, 'kind' => ChargeKind::Sale->value]]];

@@ -28,7 +28,7 @@
 @endphp
 @php
     $scheme = $deal->schemeOf();
-    // Договор нашего юрлица — строкой «Сумма» (`x-deal.contract-price`: сумма и НДС шторкой).
+    // Договор нашего юрлица: цена продажи и НДС — шторкой «Цена и вознаграждение» (`x-deal.price-money`), сумма договора считается сама.
     $contractRow = ! $deal->isAuction() && $deal->hasContract() && $scheme->paysCar();
 @endphp
 {{-- «Продажа» (15.11.2026, владелец: «„Деньги“ — нейрослопово», «один блок „Продажа“, второй „Оплата поставщику“»): кто продаёт,
@@ -71,7 +71,7 @@
                     @endif
                     @if ($editMoney || $withContract)
                         <div class="menu-group">
-                            @if ($editMoney)<button type="button" class="menu-item w-full" data-controller="emit" data-action="emit#send" data-emit-event-param="deal-money-{{ $deal->id }}:open">{{ match (true) { $deal->namesBuyer() && $deal->commission === null => 'Назначить вознаграждение…', default => 'Вознаграждение менеджера…' } }}</button>@endif
+                            @if ($editMoney)<button type="button" class="menu-item w-full" data-controller="emit" data-action="emit#send" data-emit-event-param="deal-money-{{ $deal->id }}:open">{{ $deal->isGarageManager() ? 'Вознаграждение менеджера…' : 'Цена и вознаграждение…' }}</button>@endif
                             @if ($withContract)<button type="button" class="menu-item w-full" data-controller="emit" data-action="emit#send" data-emit-event-param="dkp-{{ $deal->id }}:open">Данные договора…</button>@endif
                         </div>
                     @endif
@@ -117,7 +117,7 @@
         if ($deal->isGarage()) {
             // Гаражная: цены нет, вознаграждение посчитаем при продаже из гаража; важно, кто платит поставщику.
             if (! $skips('payer') && ! ($deal->namesBuyer() && $deal->amount !== null)) $rows[] = ['В гараж', $deal->garagePayerLine(), 'text-right font-medium', true];
-            if ($deal->namesBuyer() && $deal->amount !== null) $rows[] = ['Цена продажи', Money::rub($deal->amount), $dd.' font-medium', true];
+            // Цена продажи гаражной Совкомбанка — в шапке «ПРАЙМ» (18.11.2026), строкой не повторяется.
         } elseif ($deal->isAuction() && ! $skips('amount')) {
             $rows[] = ['Цена на аукционе', $deal->amount === null ? 'не указана' : Money::rub($deal->amount), $dd.' font-medium', true];
         }
@@ -147,10 +147,12 @@
         $selection = $ourBills->first(fn ($i) => $i->kind === \App\Billing\ChargeKind::Selection);
         $otherBills = $ourBills->reject(fn ($i) => $i->is($sale) || $i->is($selection));
         $canEdit = auth()->user()?->canEditDeals();
-        $contract = $contractRow ? \App\Offers\DealContract::for($deal)->loadMissing('priceAuthor') : null;
+        $contract = $contractRow ? \App\Offers\DealContract::for($deal) : null;
         // За ТС платят нам (ПРАЙМ, Р.О.С., гараж): наш договор или счёт за машину.
         $carBlock = ! $deal->isAuction() && ! $supplierBlock && ($contract || $sale);
-        $carSum = $sale ? (float) $sale->total : $contract?->price;
+        // Справа в шапке — цена продажи (18.11.2026, владелец выбрал «Г + А»: сумму договора путали с ценой), у покупателя с гаражом —
+        // его счёт; договор и счёт за ТС считаются из неё сами (`DealContract::priceFor`).
+        $carSum = $deal->forGarageBuyer() ? ($sale ? (float) $sale->total : $contract?->price) : $deal->amount;
         $carWord = $carBlock ? \App\Billing\PayWord::of($sale, $deal) : null;
         // Плательщик строкой — только когда это не покупатель по договору (иначе одно имя дважды); покупателя ещё нет — только
         // выбранный руками (по умолчанию платит сам менеджер, это не новость).
@@ -158,7 +160,7 @@
         $payerApart = $payerRow && $payerId && $payerId !== $buyerParty && ($buyerParty || $deal->payer_party_id);
         $signed = \App\Offers\Documents\SignedContractPdf::files($deal)->isNotEmpty();
         $ready = $withContract && ! \App\Offers\DealContract::for($deal)->missing();
-        $priceEditable = $contract && $deal->isActive() && $canEdit;
+        $priceEditable = $editMoney && ! $deal->forGarageBuyer() && ! $deal->isGarageManager();
         // Ссылка знает свой счёт без запроса: строка берёт из него плательщика, машину и текст «Поделиться».
         $last = fn ($i, bool $live) => $i->payLinks->when($live, fn ($c) => $c->where('state', '!=', \App\Billing\Acquiring\PayLinkState::Canceled))
             ->sortByDesc('id')->first()?->setRelation('invoice', $i);
@@ -212,13 +214,13 @@
                 @if ($carWord)<span class="block text-sm {{ $carWord[1] }}">{{ $carWord[0] }}</span>@endif
             </span>
             @if ($priceEditable)
-                <button type="button" class="shrink-0 text-right" data-controller="emit" data-action="emit#send" data-emit-event-param="contract-price-{{ $deal->id }}:open">
-                    <span class="nums block font-medium">{{ $carSum ? Money::rub($carSum) : 'нет суммы' }}</span>
-                    <span class="block text-sm text-ink-muted">{{ $contract->vatRate() ? 'НДС '.$contract->vatRate().' %' : 'без НДС' }}</span>
+                <button type="button" class="shrink-0 text-right" data-controller="emit" data-action="emit#send" data-emit-event-param="deal-money-{{ $deal->id }}:open">
+                    @if ($carSum)<span class="nums block font-medium">{{ Money::rub($carSum) }}</span>@else<span class="block text-danger">не указана</span>@endif
+                    @if ($contract)<span class="block text-sm text-ink-muted">{{ $contract->vatRate() ? 'НДС '.$contract->vatRate().' %' : 'без НДС' }}</span>@endif
                 </button>
             @else
                 <span class="shrink-0 text-right">
-                    <span class="nums block font-medium">{{ $carSum ? Money::rub($carSum) : 'нет суммы' }}</span>
+                    <span class="nums block font-medium">{{ $carSum ? Money::rub($carSum) : 'не указана' }}</span>
                     @if ($contract)<span class="block text-sm text-ink-muted">{{ $contract->vatRate() ? 'НДС '.$contract->vatRate().' %' : 'без НДС' }}</span>@endif
                 </span>
             @endif
@@ -228,6 +230,8 @@
         @if ($sale)<x-deal.arrivals :deal="$deal" :except="$buyerNames"/>@endif
         <div class="list mb-3 last:mb-0">
             @if ($withContract)<x-deal.contract :deal="$deal" bare :doc-row="false"/>@elseif ($withBuyer)<x-deal.buyer :deal="$deal"/>@endif
+            {{-- Часть мимо счёта — строкой, когда есть: из-за неё счёт и договор меньше цены продажи. --}}
+            @if ($contract?->cash_part)<div class="row sale-row"><span class="sale-row-label">Наличными мимо счёта</span><span class="sale-row-value nums">{{ Money::rub($contract->cash_part) }}</span><x-ui.chevron-space/></div>@endif
             @if ($payerApart)<x-deal.payer :deal="$deal" :action="'/work/deals/'.$deal->id.'/payer'" :editable="$canEdit"/>@endif
             {{-- Чего не хватает договору, говорит его строка-заготовка — отдельными строками только без неё. --}}
             @unless ($withContract && $canEdit && $deal->isActive() && ! $ready && ! $signed)<x-deal.contract-gaps :deal="$deal" :price-row="(bool) $contract"/>@endunless
@@ -248,7 +252,6 @@
         @if ($top !== '')<div class="list mb-3 last:mb-0">{!! $top !!}</div>@endif
     @endif
     {{-- Шторки без своих строк — их открывают сумма в шапке и пункты «⋯» (18.11.2026). --}}
-    @if ($contract)<x-deal.contract-price :deal="$deal" :contract="$contract" :row="false"/>@endif
     @unless ($deal->isAuction())<x-deal.scheme :deal="$deal" bare :price="false" :row="false"/>@endunless
     @if ($payerRow && ! $payerApart)<x-deal.payer :deal="$deal" :action="'/work/deals/'.$deal->id.'/payer'" :editable="$canEdit" :row="false"/>@endif
     @if ($selection && $deal->buyer_id)<x-deal.fee-seller :deal="$deal" :row="false"/>@endif
