@@ -1,5 +1,5 @@
 {{-- «Оплата за подбор» — вкладка колеса «Предложений» (18.11.2026, `SelectionController::tab`): счета подбора по машинам, как в
-     «Оплатах → Комиссии», двумя группами — «Не выставлены» (сделка на шаге оплаты, ссылку не отправили — наш ход, «Выставить») и
+     «Оплатах → Комиссии», двумя группами — «Не выставлены» (сделка на шаге оплаты, ссылку не отправили — наш ход, «Выставить»), «Подтвердить оплату» (менеджер сообщил, что оплатил, — «Пришли») и
      «Выставлены» (ждём оплату). Строка — `x-money.person-row` со столбцом менеджера, нажатие — окно машины. --}}
 @php
     use App\Support\Money;
@@ -20,6 +20,10 @@
             @if ($unsent->isNotEmpty())
                 <x-table.group :table="$columns" key="unsent" title="Не выставлены" :count="$unsent->count()" danger>{!! $sum($unsent) !!}</x-table.group>
                 @foreach ($unsent as $i)<x-money.person-row :table="$columns" :invoice="$i"/>@endforeach
+            @endif
+            @if ($claimed->isNotEmpty())
+                <x-table.group :table="$columns" key="claimed" title="Подтвердить оплату" :count="$claimed->count()" ours>{!! $sum($claimed) !!}</x-table.group>
+                @foreach ($claimed as $i)<x-money.person-row :table="$columns" :invoice="$i"/>@endforeach
             @endif
             @if ($issued->isNotEmpty())
                 <x-table.group :table="$columns" key="issued" title="Выставлены" :count="$issued->count()">{!! $sum($issued) !!}</x-table.group>

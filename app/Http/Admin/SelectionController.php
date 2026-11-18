@@ -76,11 +76,14 @@ class SelectionController
         $bills = Rows::filter($bills, fn (Invoice $i) => $i->carOffer()?->number);
         // Не выставлены — дольше ждущие выше; выставлены — раньше отправленные выше (дольше ждём оплату).
         [$issued, $unsent] = $bills->partition(fn (Invoice $i) => $i->isShownToManager());
+        // Менеджер сообщил, что оплатил (наличными, переводом) — своей группой «Подтвердить оплату» (18.11.2026, владелец).
+        [$claimed, $issued] = $issued->partition(fn (Invoice $i) => $i->claims->isNotEmpty());
         $user = $request->user();
 
         return view('admin.selection.index', [
             'detail' => $detail,
             'unsent' => $unsent->sortBy(fn (Invoice $i) => $i->created_at?->getTimestamp() ?? 0)->values(),
+            'claimed' => $claimed->sortBy(fn (Invoice $i) => $i->claims->min('paid_at')?->getTimestamp() ?? 0)->values(),
             'issued' => $issued->sortBy(fn (Invoice $i) => ($i->shown_at ?? $i->created_at)?->getTimestamp() ?? 0)->values(),
             'total' => $total,
             'facets' => $facets,
