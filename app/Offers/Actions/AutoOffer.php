@@ -74,7 +74,10 @@ final class AutoOffer
             return 'письмо старше недели';
         }
         $body = $letter->text_body ?: strip_tags((string) $letter->html_body);
-        if ($why = self::notAnOffer((string) $letter->subject, $body, $letter->attachments->pluck('filename')->all())) {
+        $why = self::notAnOffer((string) $letter->subject, $body, $letter->attachments->pluck('filename')->all());
+        // «Fwd: RE: …», но в цепочке вендор прямо предлагает машину (18.11.2026, Энергогарант Lada Granta У-000-027778/26:
+        // «Интересен ли ЛОТ?» — Андрей переслал ответ, цепочка неделю ждала в «Из писем»): это предложение.
+        if ($why && ! ($why === 'ответ в переписке' && self::offered($candidate))) {
             return $why;
         }
         if (! $candidate->vendor_id && ! $candidate->value('vendor_id')) {
@@ -97,7 +100,9 @@ final class AutoOffer
         $number = self::number($candidate->code);
         // Номер темы есть в таблице Кати — ему верим: в договоре бывает опечатка (564694 вместо 564964).
         $listed = LegacyClaim::where('claim_ref_key', Code::key($candidate->code))->exists();
-        if ($docs && $number && ! $listed && ! in_array($number, array_map(self::number(...), $docs), true)) {
+        // Номер в теме — опечатка вендора, а машина по VIN уже в CRM с номером из документов (18.11.2026, Совкомбанк «Вывоз ГОТС
+        // по делу 896536/2026» о Chery 879585/2026): письма ложатся к ней (`__invoke`).
+        if ($docs && $number && ! $listed && ! in_array($number, array_map(self::number(...), $docs), true) && ! self::docsOwner($candidate, $docs)) {
             return 'номер убытка в теме и в документах разный';
         }
         // 12.10.2026: Катя переслала июньское письмо, машина продана давно. Давнюю пересылку заводим, только если номер в
@@ -211,6 +216,12 @@ final class AutoOffer
         if ($this->blocker($candidate, $old)) {
             return null;
         }
+        if ($owner = self::docsOwner($candidate, self::docClaims($this->letter($candidate)))) {
+            $this->promote->attach($candidate, $owner);
+            Nav::forgetStaffCounts();
+
+            return null;
+        }
         try {
             [$offer, $outcome] = $this->promote->promote($candidate, null);
         } catch (Throwable $e) {
@@ -297,6 +308,31 @@ final class AutoOffer
     }
 
     /** Номер дела без года: «114725/2026» → «114725». */
+    /**
+     * Живое предложение машины по VIN цепочки, чей номер — в документах письма, а номер темы — другой: тема с опечаткой.
+     *
+     * @param  list<string>  $docs
+     */
+    private static function docsOwner(Candidate $candidate, array $docs): ?Offer
+    {
+        $vin = (string) $candidate->value('vin');
+        if (! $docs || ! Vin::full($vin) || ! ($offer = Identity::offerByVin($vin)) || ! ($own = self::number($offer->claim_ref))) {
+            return null;
+        }
+        $theme = self::number($candidate->code);
+
+        return $own !== $theme && in_array($own, array_map(self::number(...), $docs), true) ? $offer : null;
+    }
+
+    /** В письмах вендора цепочки — прямое предложение машины: «Интересен ли лот?», «Предлагаем принять участие», «готова к передаче». */
+    private static function offered(Candidate $candidate): bool
+    {
+        return $candidate->messages->contains(fn (Message $m) => ! $m->isOurs() || $m->isForwardedByStaff()
+            ? (bool) preg_match('/интересен\s+ли\s+(?:лот|тс|автомобиль)|предлагаем\s+(?:принять\s+участие|приобрести|рассмотреть)|готов\w*\s+к\s+передаче|прошу\s+принять\s+в\s+работу/iu',
+                (string) ($m->text_body ?: strip_tags((string) $m->html_body)))
+            : false);
+    }
+
     private static function number(?string $claim): ?string
     {
         return preg_match('/^(\d{4,7})(?:\/\d{2,4})?$/', (string) Code::normalize($claim), $m) ? $m[1] : null;

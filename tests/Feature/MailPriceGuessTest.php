@@ -66,6 +66,10 @@ class MailPriceGuessTest extends TestCase
         $this->assertArrayNotHasKey('floor_price', (new Extractor($reader))->extract('BMW X5 № Т053КВ977', $body, 'sergey_avanesov@rgs.ru', now(), []));
         $this->assertSame(6375000, \App\Mail\Extraction\Templates\Template::notedPrice('База стоимость 6375000₽'));
         $this->assertNull(\App\Mail\Extraction\Templates\Template::notedPrice('Посмотри, пожалуйста'));
+        // Совкомбанк в начале года — четыре цифры (5303-26), ПСБ и СОГАЗ — своими номерами.
+        $codes = new \App\Mail\Extraction\CodeMatcher;
+        $this->assertSame(['5303-26'], $codes->findAll('5303-26 LADA GRANTA пгт. Кугеси'));
+        $this->assertSame(['0207-26-06'], $codes->findAll('ПСБ 0207-26-06 Тойота'));
     }
 
     public function test_contract_price_beats_bare_sum_in_text(): void

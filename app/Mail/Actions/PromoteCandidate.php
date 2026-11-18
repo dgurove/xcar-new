@@ -130,6 +130,13 @@ final class PromoteCandidate
         $this->link->forOffer($offer);
     }
 
+    /** Цепочка о машине, что уже в CRM (`AutoOffer::docsOwner`): письма — к ней, цепочка уходит из «Из писем». */
+    public function attach(Candidate $candidate, Offer $offer): void
+    {
+        $candidate->update(['state' => CandidateState::Promoted, 'offer_id' => $offer->id]);
+        $this->linkAll($candidate, $offer);
+    }
+
     /** Предложение с тем же убытком (любое, и из архива) или VIN (живое) — `Identity`. */
     public function existing(Candidate $candidate): ?Offer
     {
