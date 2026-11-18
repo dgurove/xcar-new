@@ -298,7 +298,7 @@ class Position extends Model
             [$what, $label, $href] = match ($gap) {
                 'price' => ['записать продажу', 'Записать', '/offers/'.$offer->number.'?sold=1'],
                 'buyer' => ['нужен покупатель', 'Заполнить', '/offers/'.$offer->number.'?buyer=1#invoice-buyer'],
-                default => ['нужен паспорт покупателя', 'Заполнить', '/offers/'.$offer->number.'?buyer=1#invoice-buyer'],
+                default => ['не хватает данных покупателя', 'Заполнить', '/offers/'.$offer->number.'?buyer=1#invoice-buyer'],
             };
 
             // Ключ — по тому, чего не хватает: группа «Ваш ход» берёт заголовок у ключа, а не у строки.
@@ -394,7 +394,7 @@ class Position extends Model
             $this->letterStatus() === 'sent' => 'ждём ответа поставщика',
             $this->waitsFor() === WaitsFor::Supplier => 'ждём поставщика',
             $gap === 'buyer' => 'нужен покупатель',
-            $gap === 'passport' => 'нужен паспорт покупателя',
+            $gap === 'passport' => 'не хватает данных покупателя',
             $this->waitsFor() === WaitsFor::Manager => 'ждём менеджера',
             default => null,
         };

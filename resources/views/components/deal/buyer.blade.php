@@ -62,17 +62,17 @@
     @endphp
     <form method="post" action="/work/deals/{{ $deal->id }}/contract" class="contents">
         @csrf @method('put')
-        <x-people.pick name="buyer_id" kind="buyer" passport variant="row" :people="$rows" :value="$isManager ? 'me' : $buyer?->id" title="Покупатель" :deal="$deal->id" link autosubmit :open="$ask && ! $buyer"
+        <x-people.pick data-action="deal-buyer-pick-{{ $deal->id }}:open@window->sheet#open" name="buyer_id" kind="buyer" passport variant="row" :people="$rows" :value="$isManager ? 'me' : $buyer?->id" title="Покупатель" :deal="$deal->id" link autosubmit :open="$ask && ! $buyer"
             :placeholder="'не выбран'" :label="$rowLabel" finish="Выбрать"/>
     </form>
     @error('buyer_id')<p class="field-error px-4 py-2">{{ $message }}</p>@enderror
 @endif
 {{-- Данные есть — та же шторка: посмотреть, поправить, скан PDF (05.11.2026). --}}
 @if ($buyer && $live)
-    <div data-controller="sheet" class="contents">
+    <div data-controller="sheet" data-action="{{ $dataSheet }}:open@window->sheet#open" class="contents">
         {{-- Данные для договора — своей строкой того же вида, под «Плательщиком» (16.11.2026). --}}
         <x-deal.sale-row :label="'Реквизиты'" :value="$ready ? trim($kindWord.'есть', ', ') : ($gap ?? 'нужны')" :tone="$ready ? null : 'danger'" class="w-full text-left" data-action="sheet#open"/>
-        <x-ui.sheet :id="$dataSheet" :title="$ready ? 'Данные покупателя' : 'Данные для '.$for" :open="session('open_sheet') === $dataSheet || $errors->hasAny(['buyer.*']) || $ask" tall>
+        <x-ui.sheet :id="$dataSheet" :title="$ready ? 'Данные покупателя' : 'Данные для '.$for" :open="session('open_sheet') === $dataSheet || ($errors->hasAny(['buyer.*']) && ! preg_match('/^deal-(invoice|contract)-gaps-/', (string) old('_sheet'))) || $ask" tall>
             @php $buyerParty = $buyer->party ?? \App\Billing\Party::forUser($buyer); @endphp
             {{-- Снимки реквизитов от менеджера — над полями: вносят, глядя на них. --}}
             @if ($cards->isNotEmpty())

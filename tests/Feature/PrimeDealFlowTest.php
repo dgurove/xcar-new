@@ -100,9 +100,8 @@ class PrimeDealFlowTest extends TestCase
         Notification::assertNotSentTo($this->admin, InvoiceNeededNotice::class);
 
         app(SaveDealContract::class)(DealContract::for($deal->fresh()), $this->buyerData(), $this->manager);
-        // Покупатель указан, паспорт вписан, а скана нет — счёта и ДКП нет, ход менеджера «Приложите паспорт» (11.10.2026).
-        $this->assertSame(0, $deal->fresh()->issuedInvoices()->count());
-        $this->assertSame('passport', $deal->fresh()->invoiceGap());
+        // Покупатель указан, паспорт вписан, а скана нет — счёт уже есть (18.11.2026: ему нужны ФИО и прописка), договору скан нужен.
+        $this->assertSame(1, $deal->fresh()->issuedInvoices()->where('kind', ChargeKind::Sale)->count());
         $this->assertContains('скан паспорта покупателя', DealContract::for($deal->fresh())->missing());
         $this->passportFor($deal->fresh()->contract->buyer);
 

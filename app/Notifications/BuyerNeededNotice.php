@@ -11,7 +11,7 @@ use App\Telegram\Text;
  */
 final class BuyerNeededNotice extends Notice
 {
-    /** $passport — покупатель указан, но у физлица нет паспорта со сканом (11.10.2026). */
+    /** $passport — покупатель указан, но не хватает того, что печатает счёт (18.11.2026). */
     public function __construct(private Deal $deal, private bool $passport = false) {}
 
     public function label(): string
@@ -21,12 +21,12 @@ final class BuyerNeededNotice extends Notice
 
     public function title(): string
     {
-        return ($this->passport ? 'Приложить паспорт покупателя: ' : 'Указать покупателя: ').$this->deal->offer->titleWithYear();
+        return ($this->passport ? 'Заполнить данные покупателя: ' : 'Указать покупателя: ').$this->deal->offer->titleWithYear();
     }
 
     public function text(): ?string
     {
-        return $this->passport ? 'Счёт и ДКП соберутся по скану паспорта' : 'Счёт и ДКП соберутся по его данным';
+        return $this->passport ? 'Счёт соберётся по ФИО и прописке, ДКП — по скану паспорта' : 'Счёт и ДКП соберутся по его данным';
     }
 
     public function href(): string

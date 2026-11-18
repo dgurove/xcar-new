@@ -282,6 +282,40 @@ class Party extends Model implements HasMedia
         };
     }
 
+    /**
+     * Чего не хватает счёту — только то, что он печатает (18.11.2026, владелец: «счёт невозможно сформировать, пока не указаны:
+     * ФИО, адрес прописки»; паспорт со сканом нужен договору, не счёту): физлицу — ФИО и прописка (самозанятому ещё ИНН), ИП —
+     * ФИО, ИНН, ОГРНИП, адрес, организации — название, ИНН, КПП, юридический адрес. `$withoutReg` — «Сформировать без
+     * прописки» (`deal_contracts.invoice_without_reg_at`): прописки нет — счёт выходит без неё, впишут — PDF её покажет сам.
+     *
+     * @return array<string, string> поле => подпись поля
+     */
+    public function invoiceGaps(bool $withoutReg = false): array
+    {
+        $want = match ($this->kind) {
+            PartyKind::Company => ['name' => ['Название', $this->name], 'inn' => ['ИНН', $this->inn], 'kpp' => ['КПП', $this->kpp],
+                'legal_address' => ['Юридический адрес', $this->legal_address]],
+            PartyKind::Entrepreneur => ['name' => ['ФИО', $this->name], 'inn' => ['ИНН', $this->inn], 'ogrn' => ['ОГРНИП', $this->ogrn],
+                'legal_address' => ['Адрес', $this->legal_address ?: $this->reg_address]],
+            PartyKind::SelfEmployed => ['name' => ['ФИО', $this->name], 'inn' => ['ИНН', $this->inn],
+                'reg_address' => ['Адрес прописки', $withoutReg ? 'skip' : $this->reg_address]],
+            default => ['name' => ['ФИО', $this->name], 'reg_address' => ['Адрес прописки', $withoutReg ? 'skip' : $this->reg_address]],
+        };
+
+        return array_map(fn ($w) => $w[0], array_filter($want, fn ($w) => blank($w[1])));
+    }
+
+    public function readyForInvoice(bool $withoutReg = false): bool
+    {
+        return $this->invoiceGaps($withoutReg) === [];
+    }
+
+    /** Не хватает одной прописки — счёт можно сформировать без неё. */
+    public function invoiceLacksOnlyReg(): bool
+    {
+        return array_keys($this->invoiceGaps()) === ['reg_address'];
+    }
+
     /** Реквизитов для счёта не хватает — печатается с прочерком. */
     public function bankMissing(): bool
     {

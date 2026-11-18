@@ -77,6 +77,10 @@ final class SaveDealContract
             if (array_key_exists('vat_rate', $data)) {
                 $contract->vat_rate = $data['vat_rate'] === null ? null : (int) $data['vat_rate'];
             }
+            // «Сформировать без прописки» (18.11.2026): счёт выходит без неё (`Party::invoiceGaps`), договор её требует как прежде.
+            if (! empty($data['invoice_without_reg'])) {
+                $contract->invoice_without_reg_at ??= now();
+            }
             if (in_array($data['payer'] ?? null, ['buyer', 'manager'], true)) {
                 $contract->payer = $data['payer'];
             }
@@ -90,7 +94,8 @@ final class SaveDealContract
                 isset($data['seller']) ? ($deal->isDkp() ? 'продавец' : 'собственник') : null, isset($data['vehicle']) ? 'ТС' : null,
                 $contract->wasChanged('commission_no') ? 'договор комиссии '.($contract->commission_no ?? 'по номеру убытка') : null,
                 $contract->wasChanged('vat_rate') ? ($contract->vat_rate ? 'НДС '.$contract->vat_rate.' %' : 'без НДС') : null, $contract->wasChanged('buyer_user_id') ? 'покупатель '.$contract->buyer?->name : null,
-                isset($data['buyer']) && ! $contract->wasChanged('buyer_user_id') ? 'паспорт покупателя' : null,
+                isset($data['buyer']) && ! $contract->wasChanged('buyer_user_id') ? 'данные покупателя' : null,
+                $contract->wasChanged('invoice_without_reg_at') ? 'счёт без прописки' : null,
             ]));
             $deal->offer->log(OfferEventType::Note, $by, ['text' => $what !== '' ? 'ДКП: '.$what : 'ДКП изменён']);
         });

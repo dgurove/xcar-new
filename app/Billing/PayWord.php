@@ -54,7 +54,7 @@ final class PayWord
         }
         $word = match ($deal->invoiceGap()) {
             'buyer' => 'ждём покупателя',
-            'passport' => 'ждём паспорт покупателя',
+            'passport' => 'не хватает данных покупателя',
             'price' => 'ждём цену продажи',
             'commission' => 'посчитать вознаграждение',
             'ros_requisites' => 'нет реквизитов Р.О.С.',

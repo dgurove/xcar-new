@@ -191,6 +191,7 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
         Route::get('/work/deals', [DealController::class, 'index']);
         Route::get('/work/deals/{deal}', [DealController::class, 'show']);
         Route::put('/work/deals/{deal}/contract', [DealContractController::class, 'update']);
+        Route::put('/work/deals/{deal}/invoice-data', [DealContractController::class, 'invoiceData']);
         Route::put('/work/deals/{deal}/payer', [DealContractController::class, 'payer']);
         // Схема сделки («Кому платит покупатель», через Р.О.С.) — и модератору (17.11.2026, владелец).
         Route::post('/work/deals/{deal}/scheme', [DealController::class, 'scheme']);

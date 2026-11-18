@@ -437,7 +437,7 @@ class Deal extends Model implements HasMedia
 
         return ['title' => match ($gap) {
             'buyer' => 'Указать покупателя',
-            'passport' => $this->selfBuy() ? 'Приложить свой паспорт' : 'Приложить паспорт покупателя',
+            'passport' => $this->selfBuy() ? 'Заполнить свои данные' : 'Заполнить данные покупателя',
             'price' => 'Указать цену продажи',
             default => $position->stage->managerTitle($this),
         }, 'due' => $position->deadline_at, 'kind' => in_array($gap, ['buyer', 'passport', 'price'], true) ? $gap : 'step'];
@@ -1004,9 +1004,9 @@ class Deal extends Model implements HasMedia
             $this->namesBuyer() && $this->commission === null => 'commission',
             // Р.О.С. без реквизитов (пришлёт владелец) — счёт выставить не от кого.
             $this->seller() === Seller::Ros && ! Party::seller(Seller::Ros)->billable() => 'ros_requisites',
-            // Покупатель-физлицо без паспорта со сканом (11.10.2026): счёта ПРАЙМ нет, ход менеджера.
-            // Деньги уже пришли — счёт встаёт и без паспорта (`SyncDealInvoices::prime`, 12.11.2026).
-            $this->isPrime() && ! $this->passportReady() && $this->credited() <= 0 => 'passport',
+            // У покупателя нет того, что счёт печатает (18.11.2026: ФИО и прописка, у ИП и организации — свои поля; скан и
+            // паспорт — договору): счёта ПРАЙМ нет, ход менеджера. Деньги уже пришли — счёт встаёт и так (`SyncDealInvoices::prime`).
+            $this->isPrime() && ! $this->invoiceReady() && $this->credited() <= 0 => 'passport',
             default => 'invoice',
         };
     }
@@ -1017,13 +1017,57 @@ class Deal extends Model implements HasMedia
         return in_array($this->invoiceGap(), ['buyer', 'price', 'passport'], true);
     }
 
+    /** Покупатель счёта (как у `passportReady`); нет — null. */
+    public function invoiceBuyer(): ?User
+    {
+        return $this->isGarage() && ! $this->namesBuyer() ? ($this->isGarageManager() ? $this->buyer : null) : $this->contract?->buyer;
+    }
+
+    /**
+     * Что не даёт сформировать счёт за ТС — поля покупателя, что счёт печатает (`Party::invoiceGaps`); «Сформировать без
+     * прописки» у договора снимает прописку. Пусто — можно.
+     *
+     * @return array<string, string>
+     */
+    public function invoiceGaps(): array
+    {
+        $buyer = $this->invoiceBuyer();
+
+        return $buyer ? Party::forUser($buyer)->invoiceGaps(withoutReg: $this->contract?->invoice_without_reg_at !== null) : [];
+    }
+
+    public function invoiceReady(): bool
+    {
+        return $this->invoiceGaps() === [];
+    }
+
+    /**
+     * Чего не хватает счёту за ТС словами — для строки-заготовки счёта и шторки «Счёт невозможно сформировать, пока не указаны»
+     * (18.11.2026, `x-deal.invoice-gaps`). Поля покупателя — ключами полей (их вводят тут же), остальное — своими ключами.
+     *
+     * @return array<string, string>
+     */
+    public function invoiceBlockers(): array
+    {
+        return match ($this->invoiceGap()) {
+            'passport' => $this->invoiceGaps(),
+            'buyer' => ['buyer' => 'Покупатель'],
+            'price' => ['price' => 'Цена продажи'],
+            'share' => ['share' => 'Наша доля'],
+            'commission' => ['commission' => 'Вознаграждение менеджера'],
+            'ros_requisites' => ['ros_requisites' => 'Реквизиты Р.О.С.'],
+            'invoice' => $this->amount === null ? ['amount' => 'Цена сделки'] : [],
+            default => [],
+        };
+    }
+
     /**
      * Паспорт покупателя по договору готов со сканом (`Party::readyAsBuyer`). Гаражной «платит менеджер» покупатель —
      * сам менеджер; ПРАЙМ без договора — нечего проверять.
      */
     public function passportReady(): bool
     {
-        $buyer = $this->isGarage() && ! $this->namesBuyer() ? ($this->isGarageManager() ? $this->buyer : null) : $this->contract?->buyer;
+        $buyer = $this->invoiceBuyer();
 
         return ! $buyer || Party::forUser($buyer)->readyAsBuyer();
     }

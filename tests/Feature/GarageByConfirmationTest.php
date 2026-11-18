@@ -204,13 +204,14 @@ class GarageByConfirmationTest extends TestCase
         app(SaveDealContract::class)(DealContract::for($deal->fresh()), ['buyer_id' => 'new', 'new_buyer' => ['phone' => '+7 900 555-44-33'],
             'buyer' => ['kind' => 'person', 'name' => 'Покупаев Пётр Петрович', 'birth_at' => '1985-05-05', 'passport' => '11 11 111111',
                 'passport_issued' => 'ГУ МВД', 'passport_issued_at' => '2010-10-10', 'reg_address' => 'г. Москва']], $manager);
-        // Вознаграждение уже есть — дальше скан паспорта покупателя; поправим его на 100 000, как правят в «Изменить».
-        $this->assertSame('passport', $deal->fresh()->invoiceGap());
+        // ФИО и прописка есть — счёт встаёт и без скана (18.11.2026, `Party::invoiceGaps`); поправим вознаграждение на 100 000,
+        // как правят в «Изменить», — счёт перевыставится.
+        $this->assertSame('send', $deal->fresh()->invoiceGap());
 
         $deal->fresh()->update(['commission' => 100000]);
         app(SyncDealInvoices::class)($deal->fresh(), $admin);
-        // Вознаграждение назначено — дальше скан паспорта покупателя (11.10.2026), со сканом счёт встаёт сам.
-        $this->assertSame('passport', $deal->fresh()->invoiceGap());
+        // Скан паспорта нужен договору, не счёту.
+        $this->assertContains('скан паспорта покупателя', DealContract::for($deal->fresh())->missing());
         $this->passportFor($deal->fresh()->contract->buyer);
         $invoice = $deal->fresh()->issuedInvoices()->sole();
         $this->assertSame('Покупаев Пётр Петрович', $invoice->party->name);

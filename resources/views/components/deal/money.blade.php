@@ -172,6 +172,9 @@
                 <x-deal.signed-contract :deal="$deal" :base="'/work/deals/'.$deal->id" bare doc-title="Договор"/>
             @elseif ($ready)
                 <x-deal.contract-doc :deal="$deal" :attach="$canEdit"/>
+            @elseif ($withContract && $canEdit && $deal->isActive())
+                {{-- Не готов — строкой, как готовый: нажатие — чего не хватает, с полями (18.11.2026, `x-deal.contract-gaps-sheet`). --}}
+                <x-deal.contract-gaps-sheet :deal="$deal" :attach="true"/>
             @elseif ($canEdit)
                 <x-deal.signed-contract :deal="$deal" :base="'/work/deals/'.$deal->id" bare/>
             @endif
@@ -225,9 +228,16 @@
         <div class="list mb-3 last:mb-0">
             @if ($withContract)<x-deal.contract :deal="$deal" bare :doc-row="false"/>@elseif ($withBuyer)<x-deal.buyer :deal="$deal"/>@endif
             @if ($payerApart)<x-deal.payer :deal="$deal" :action="'/work/deals/'.$deal->id.'/payer'" :editable="$canEdit"/>@endif
-            <x-deal.contract-gaps :deal="$deal" :price-row="(bool) $contract"/>
+            {{-- Чего не хватает договору, говорит его строка-заготовка — отдельными строками только без неё. --}}
+            @unless ($withContract && $canEdit && $deal->isActive() && ! $ready && ! $signed)<x-deal.contract-gaps :deal="$deal" :price-row="(bool) $contract"/>@endunless
+            {{-- Счёт — первым, договор за ним (18.11.2026, начальник: «договор вообще после счёта должен формироваться»). Счёта нет —
+                 строка-заготовка: нажатие говорит, чего не хватает, и даёт ввести (`x-deal.invoice-gaps`). --}}
+            @if ($sale)
+                {!! $billRows($sale, false) !!}
+            @elseif ($deal->isActive())
+                <x-deal.invoice-gaps :deal="$deal"/>
+            @endif
             {!! $contractLine !!}
-            @if ($sale){!! $billRows($sale, false) !!}@endif
         </div>
     @else
         @php ob_start(); @endphp

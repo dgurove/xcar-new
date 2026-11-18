@@ -150,6 +150,33 @@ class DealContractController
     }
 
     /**
+     * Шторка «Счёт невозможно сформировать, пока не указаны» (18.11.2026, `x-deal.invoice-gaps`): только недостающие поля
+     * счёта (`Party::invoiceGaps`) — обязательными, вид покупателя прежний; «Сформировать без прописки» (`without_reg`) —
+     * отметка у договора, если не хватает одной прописки. Дальше — та же дверь, что у данных покупателя (`SaveDealContract`).
+     */
+    public function invoiceData(Request $request, Deal $deal, SaveDealContract $save)
+    {
+        abort_unless($deal->isLive() && ($buyer = $deal->invoiceBuyer()) && $deal->contract, 404);
+        $party = \App\Billing\Party::forUser($buyer);
+        $without = $request->boolean('without_reg') && $party->invoiceLacksOnlyReg();
+        $gaps = $party->invoiceGaps(withoutReg: $without);
+        $kind = match ($party->kind) { \App\Billing\PartyKind::Company => 'company', \App\Billing\PartyKind::Entrepreneur => 'ip', default => 'person' };
+        // Название организации в форме — `org` (`SaveBuyerData`); правила — из общих, без «обязательно по виду»: обязательно
+        // только то, чего счёту не хватает.
+        $field = fn (string $k) => $kind === 'company' && $k === 'name' ? 'org' : $k;
+        $all = PartyRules::passport('buyer');
+        $rules = [];
+        foreach ($gaps as $k => $label) {
+            $base = array_values(array_filter((array) ($all['buyer.'.$field($k)] ?? ['string', 'max:255']), fn ($r) => ! is_string($r) || ! str_starts_with($r, 'required') && $r !== 'nullable'));
+            $rules['buyer.'.$field($k)] = ['required', ...$base];
+        }
+        PartyRules::squeeze($request);
+        $data = $rules ? $request->validate($rules, [], collect($gaps)->mapWithKeys(fn ($l, $k) => ['buyer.'.$field($k) => mb_strtolower($l)])->all()) : [];
+        $save($deal->contract, ['buyer' => ['kind' => $kind] + ($data['buyer'] ?? [])] + ($without ? ['invoice_without_reg' => true] : []), $request->user());
+        return back()->with('toast', $deal->fresh()->hasSaleInvoice() ? 'Счёт сформирован' : 'Данные покупателя сохранены');
+    }
+
+    /**
      * Сумма договора руками (14.11.2026, `SetContractPrice`): шторка «Сумма договора» в «Деньгах» и в окне документов
      * модератора. «Как в сделке» (`auto`) — снова по деньгам сделки.
      */

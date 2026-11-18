@@ -153,7 +153,7 @@ final class SyncDealInvoices
         }
         // Гаражная Совкомбанка (`namesBuyer`) — как обычная ПРАЙМ: счёт на цену продажи тому, кого назвал менеджер.
         if ($deal->isGarage() && ! $deal->namesBuyer()) {
-            return $deal->isGarageManager() && $deal->passportReady()
+            return $deal->isGarageManager() && $deal->invoiceReady()
                 ? ['party' => $deal->payerParty(), 'lines' => [['title' => $car, 'qty' => 1, 'unit' => 'pc', 'price' => (float) $deal->cost, 'kind' => ChargeKind::Sale->value]]]
                 : null;
         }
@@ -166,12 +166,13 @@ final class SyncDealInvoices
         if (! $contract?->buyer_user_id || $deal->amount === null || ($deal->namesBuyer() && $deal->commission === null)) {
             return null;
         }
-        // Покупатель-физлицо — только с паспортом и его сканом (11.10.2026, владелец: руками ошибаются). Уже выставленный
+        // Покупатель — только с тем, что счёт печатает (18.11.2026, владелец: «счёт невозможно сформировать, пока не указаны:
+        // ФИО, адрес прописки»; до того требовали паспорт со сканом — 11.10.2026, — а он нужен договору). Уже выставленный
         // счёт не трогаем: `slot` без нужного счёта ничего не гасит.
         // Деньги уже пришли (зачёт по VIN или ручная оплата, 12.11.2026, владелец: «паспорт нужен только для выставления
         // счёта — если бабки пришли, всё равно на паспорт») — счёт встаёт без паспорта и закрывается зачётом; договору
         // паспорт по-прежнему нужен (`Deal::contractBuyerTask`).
-        if (! $deal->passportReady() && $deal->credited() <= 0) {
+        if (! $deal->invoiceReady() && $deal->credited() <= 0) {
             return null;
         }
         // Одной строкой на цену минус вознаграждение (18.11.2026): кто бы ни платил — менеджер, его покупатель, супер-покупатель

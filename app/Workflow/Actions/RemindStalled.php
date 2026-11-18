@@ -61,7 +61,7 @@ final class RemindStalled
             $position->stage->isPayStep() => match ($deal->invoiceGap()) {
                 'buyer' => 'Указать покупателя',
                 'price' => 'Указать цену продажи',
-                'passport' => 'Приложить паспорт покупателя',
+                'passport' => 'Заполнить данные покупателя',
                 default => null,
             },
             default => null,
