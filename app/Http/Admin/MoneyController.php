@@ -501,8 +501,8 @@ class MoneyController
         // сколько прошло — концами строк (`.line-end`), кнопка — в строке статуса.
         // Ширины — ровно заданные (`fixed`): список и блок «Оплачено» — две таблицы, их столбцы должны стоять одинаково.
         return Table::of(new Column('title', 'Марка, модель', grow: true, fixed: true, rem: 20), new Column('status', 'Статус', from: 'sm', role: ColRole::State, rem: 12, fixed: true),
-            new Column('amount', 'Сумма', num: true, cell: 'nums', rem: 7, fixed: true), new Column('since', 'Выставлено', from: 'sm', role: ColRole::When, cell: 'nums', rem: 6.5, fixed: true),
-            new Column('action', from: 'sm', role: ColRole::When, rem: 7.5, fixed: true));
+            // «Выставлено» и кнопка — один столбец (18.11.2026, владелец: «где выставлено — время, где не выставлено — кнопка»).
+            new Column('amount', 'Сумма', num: true, cell: 'nums', rem: 7, fixed: true), new Column('since', 'Выставлено', from: 'sm', num: true, role: ColRole::When, cell: 'nums', rem: 7.5, fixed: true));
     }
 
     /**

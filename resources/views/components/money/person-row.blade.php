@@ -52,10 +52,7 @@
     <td class="{{ $col->classes() }} phone-off {{ $paid ? 'text-open' : '' }}">{{ Money::nums($amount) }}</td>
         @break
         @case('since')
-    <td class="{{ $col->classes() }} {{ $sinceTone }}">{{ $since }}</td>
-        @break
-        @case('action')
-    <td class="{{ $col->classes() }}">{!! $button !!}</td>
+    <td class="{{ $col->classes() }} {{ $button ? '' : $sinceTone }}">@if ($button){!! $button !!}@else{{ $since }}@endif</td>
         @break
         @endswitch
     @endforeach
