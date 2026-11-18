@@ -130,7 +130,7 @@ final class SetDealPayer
                 throw ValidationException::withMessages(['payer' => 'У сделки нет менеджера']);
             }
             if (self::locked($deal)) {
-                throw ValidationException::withMessages(['payer' => 'По счёту уже платили — плательщика не поменять']);
+                throw ValidationException::withMessages(['payer' => 'По счёту уже платили — покупателя не поменять']);
             }
             $choice = (string) $data['payer'];
             // Наше юрлицо плательщиком не бывает — это схема «Через Р.О.С.» (17.11.2026); новое — до заведения стороны.
@@ -154,7 +154,7 @@ final class SetDealPayer
                 $contract->forceFill(['payer' => $user?->id === $deal->buyer_id ? 'manager' : 'buyer'])->save();
             }
             $deal->unsetRelation('contract')->unsetRelation('payer');
-            $deal->offer?->log(OfferEventType::Note, $by, ['text' => 'Плательщик: '.$party->name]);
+            $deal->offer?->log(OfferEventType::Note, $by, ['text' => 'Покупатель: '.$party->name]);
             ($this->sync)($deal->fresh(), $by);
 
             return $party;
@@ -177,7 +177,7 @@ final class SetDealPayer
         $ok = $id === $deal->payer_party_id || Invoice::where('deal_id', $deal->id)->where('party_id', $id)->exists();
         $party = $ok ? Party::where('is_self', false)->find($id) : null;
         if (! $party) {
-            throw ValidationException::withMessages(['payer' => 'Такого плательщика у сделки нет']);
+            throw ValidationException::withMessages(['payer' => 'Такого покупателя у сделки нет']);
         }
 
         return $party;

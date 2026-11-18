@@ -20,7 +20,7 @@
     $ip = $party?->kind === PartyKind::Entrepreneur;
 @endphp
 <div class="flex flex-col gap-3" data-controller="reveal requisites-paste" data-requisites-paste-prefix-value="{{ $prefix }}">
-    <x-ui.segment :name="$n('kind')" :options="['person' => 'Физлицо', 'ip' => 'ИП', 'company' => 'Организация']" :value="$kind" pick/>
+    <x-ui.segment :name="$n('kind')" :options="['person' => 'Физ. лицо', 'ip' => 'ИП', 'company' => 'Юр. лицо']" :value="$kind" pick/>
     @if ($scan && $party?->exists)
         <div data-reveal-target="pane" data-reveal-key="person ip" @if ($kind === 'company') hidden @endif>
             <x-billing.passport-scan :party="$party" :form="$scan" :prefix="$prefix"/>

@@ -60,7 +60,7 @@
             @endphp
             <form method="post" action="/work/deals/{{ $deal->id }}/invoice-data" class="flex flex-col gap-3" id="{{ $id }}-form" data-controller="reveal requisites-paste" data-requisites-paste-prefix-value="buyer">
                 @csrf @method('put')
-                <x-ui.segment name="buyer[kind]" :options="['person' => 'Физлицо', 'ip' => 'ИП', 'company' => 'Организация']" :value="$kind" pick/>
+                <x-ui.segment name="buyer[kind]" :options="['person' => 'Физ. лицо', 'ip' => 'ИП', 'company' => 'Юр. лицо']" :value="$kind" pick/>
                 <div class="fields fields-stack" data-reveal-target="pane" data-reveal-key="person" @if ($kind !== 'person') hidden @endif>
                     <x-ui.field name="buyer[name]" :id="$f('p', 'name')" label="ФИО" :value="$company ? null : $party->name" required/>
                     <x-ui.field name="buyer[reg_address]" :id="$f('p', 'reg')" label="Адрес прописки" type="textarea" rows="1" :value="$party->reg_address" :required="! $onlyReg"/>

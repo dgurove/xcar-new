@@ -16,7 +16,7 @@
     // Имя без заведения стороны (`payerUser`): страница стороны не создаёт.
     $user = $deal->payerUser(sale: $deal->isPrime());
     $isManager = $user ? $user->id === $deal->buyer_id : ($deal->buyer && $deal->payer_party_id === $deal->buyer->party_id);
-    $value = $isManager ? ($mine ? 'Вы' : $deal->buyer->name) : ($user?->name ?? $deal->payer?->name ?? 'не выбран');
+    $value = $isManager ? ($mine ? 'Вы' : $deal->buyer->name) : ($user?->buyerLabel() ?? $deal->payer?->name ?? 'не выбран');
     $locked = SetDealPayer::locked($deal);
     $can = $editable && ! $locked && $deal->buyer_id;
     $options = $can ? SetDealPayer::options($deal) : [];
@@ -24,14 +24,14 @@
 @endphp
 @if (! $can && $row)
     <div class="row sale-row">
-        <span class="sale-row-label">Плательщик</span>
+        <span class="sale-row-label">Покупатель</span>
         <span class="sale-row-value">{{ $value }}</span>
         <x-ui.chevron-space/>
     </div>
 @elseif ($can)
 <div class="contents" data-controller="sheet" @unless ($row) data-action="{{ $id }}:open@window->sheet#open" @endunless>
-    @if ($row)<x-deal.sale-row label="Плательщик" :value="$value" data-action="sheet#open"/>@endif
-    <x-ui.sheet :id="$id" title="Кто платит">
+    @if ($row)<x-deal.sale-row label="Покупатель" :value="$value" data-action="sheet#open"/>@endif
+    <x-ui.sheet :id="$id" title="Покупатель">
         <form method="post" action="{{ $action }}" class="flex flex-col gap-4" data-controller="reveal autosubmit">
             @csrf @method('put')
             <p class="-mt-2 text-sm text-ink-muted">На него счёт и ссылка на оплату</p>
@@ -47,13 +47,13 @@
                 @endforeach
                 <label class="row row-check">
                     <x-ui.row-icon name="plus" size="s" tone="accent"/>
-                    <span class="min-w-0 flex-1 font-medium text-accent-text">Другой плательщик</span>
+                    <span class="min-w-0 flex-1 font-medium text-accent-text">Другой покупатель</span>
                     <span class="check"><input type="radio" name="payer" value="new" @checked($current === 'new') data-action="reveal#pick"></span>
                 </label>
             </div>
             @error('payer')<p class="field-error">{{ $message }}</p>@enderror
             <div class="flex flex-col gap-3" data-reveal-target="pane" data-reveal-key="new" @if ($current !== 'new') hidden @endif>
-                <x-ui.segment name="kind" :options="['person' => 'Физлицо', 'ip' => 'ИП', 'company' => 'Организация']" :value="old('kind', 'person')"/>
+                <x-ui.segment name="kind" :options="['person' => 'Физ. лицо', 'ip' => 'ИП', 'company' => 'Юр. лицо']" :value="old('kind', 'person')"/>
                 <div class="fields fields-stack">
                     <x-ui.field name="name" :id="$id.'-name'" label="ФИО или название"/>
                     <x-ui.field name="inn" :id="$id.'-inn'" label="ИНН" inputmode="numeric"/>

@@ -129,7 +129,8 @@ class ManagerAsksTest extends TestCase
         [$offer, $deal] = $this->deal();
         $this->exit($offer, 'Беру в работу');
         $this->exit($offer, 'Поставщик просит реквизиты');
-        $this->assertSame('Нет реквизитов', $offer->fresh()->stage()->name);
+        // С 18.11.2026 (1e0877a1) — сразу «Письмо с реквизитами»: покупатель — в самом шаге, шага «Нет реквизитов» нет.
+        $this->assertSame('Письмо с реквизитами', $offer->fresh()->stage()->name);
 
         // Передумал вид — тот же покупатель, а не второй «Новый покупатель».
         $this->actingAs($this->manager)->post("http://xcar.localhost/deals/{$deal->id}/buyer-new", ['kind' => 'company'])->assertRedirect();

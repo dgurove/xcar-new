@@ -15,14 +15,14 @@
     $gap = $buyer?->party?->gapWord();
     // Строка (06.11.2026, владелец: «Покупатель  Гамидов Та…» — подпись слева съедала ФИО): имя во всю строку, под ним состояние;
     // у ИП и организации — вид словом. Без аватара и с формой коротко — «ООО …» (16.11.2026, владелец: «зачем здесь аватарка»).
-    $who = $buyer ? (\App\Support\OrgName::short($buyer->party?->name) ?: $buyer->name) : null;
+    $who = $buyer ? (\App\Support\OrgName::short($buyer->party?->name) ?: $buyer->buyerLabel()) : null;
     // Менеджер оформляет на себя (13.11.2026, `Deal::selfBuy`) — словом в строке, а не «, менеджер» у имени.
     $selfWord = $isManager ? 'на себя, ' : '';
-    $kindWord = match ($buyer?->party?->kind) { \App\Billing\PartyKind::Entrepreneur => 'ИП, ', \App\Billing\PartyKind::Company => 'организация, ', default => '' };
+    $kindWord = match ($buyer?->party?->kind) { \App\Billing\PartyKind::Entrepreneur => 'ИП, ', \App\Billing\PartyKind::Company => 'юр. лицо, ', default => '' };
     $dataSheet = 'deal-buyer-data-'.$deal->id;
     // Покупатель платит поставщику или собственнику сам — он и «Плательщик» блока «Поставщику» (16.11.2026).
     $paysSupplier = in_array($deal->schemeOf(), [\App\Offers\DealScheme::Insurer, \App\Offers\DealScheme::OwnerDkp], true);
-    $rowLabel = $paysSupplier ? 'Плательщик' : 'Покупатель';
+    $rowLabel = 'Покупатель';
     // «Заполнить» / «Заполнить за менеджера» из шага пути и «Ваш ход» (`?buyer=1`, 06.11.2026: ссылка на `#invoice-buyer` только
     // прокручивала к карточке — шторку надо было ещё найти): данных нет — сразу их шторка, покупателя нет — его выбор.
     // Покупатели параллельных на той же странице сами не открываются (`autoOpen` = false): `?buyer=1` — про главную сделку.

@@ -85,7 +85,7 @@ class EarlyBuyerTest extends TestCase
         Notification::assertSentTo($this->manager, BuyerAskNotice::class);
         // «Страховой напрямую»: отдельного блока «Указать покупателя» нет с 16.11.2026 (b2cddf00) — окно «Кто покупатель?» и строка
         // покупателя в карточке денег.
-        $this->actingAs($this->manager)->get('/deals/'.$deal->id)->assertOk()->assertSee('Кто покупатель?')->assertSee('не выбран');
+        $this->actingAs($this->manager)->get('/deals/'.$deal->id)->assertOk()->assertSee('Кто покупатель?')->assertSee('Укажите покупателя');
 
         // Покупатель до запроса страховой — сохраняется (раньше 404), паспорт со сканом — дело гаснет.
         $this->actingAs($this->manager)->put('/deals/'.$deal->id.'/contract', ['buyer_id' => 'me'])->assertSessionHasNoErrors();
@@ -93,8 +93,8 @@ class EarlyBuyerTest extends TestCase
         $this->assertNull($deal->fresh()->buyer_asked_at);
         $this->assertNull($deal->fresh()->managerTask());
 
-        // Страховая просит реквизиты — у нас «Отправить реквизиты», «Нет реквизитов» проходит сам.
-        $this->actingAs($this->admin)->get(Surface::Crm->url('/offers/'.$offer->number))->assertOk()->assertSee('Отправить реквизиты');
+        // Страховая просит реквизиты — у нас «Поставщик просит реквизиты», дальше сразу «Письмо с реквизитами».
+        $this->actingAs($this->admin)->get(Surface::Crm->url('/offers/'.$offer->number))->assertOk()->assertSee('Поставщик просит реквизиты');
         $this->exit($offer, 'Поставщик просит реквизиты');
         $this->assertSame('Письмо с реквизитами', $offer->fresh()->stage()->name);
     }
@@ -104,12 +104,12 @@ class EarlyBuyerTest extends TestCase
         [$offer, $deal] = $this->deal();
         $this->exit($offer, 'Беру в работу');
         $this->assertNotNull($deal->fresh()->buyer_asked_at);
-        // Не дал — запрос страховой, как раньше, ведёт на «Нет реквизитов» у менеджера.
+        // Не дал — запрос страховой ведёт сразу на «Письмо с реквизитами» (18.11.2026, 1e0877a1: покупатель — в самом шаге).
         $this->actingAs($this->admin)->get(Surface::Crm->url('/offers/'.$offer->number))->assertOk()
             // Покупатель — строкой «Продажи» «Покупатель — не выбран» (16.11.2026), не делом шага.
             ->assertSee('не выбран')->assertDontSee('Указать покупателя')->assertDontSee('Отправить реквизиты');
         $this->exit($offer, 'Поставщик просит реквизиты');
-        $this->assertSame('Нет реквизитов', $offer->fresh()->stage()->name);
+        $this->assertSame('Письмо с реквизитами', $offer->fresh()->stage()->name);
         $deal->fresh()->cancel();
         $this->assertNull($deal->fresh()->buyer_asked_at);
     }

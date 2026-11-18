@@ -17,10 +17,10 @@ enum PartyKind: string
     public function label(): string
     {
         return match ($this) {
-            self::Company => 'Юрлицо',
+            self::Company => 'Юр. лицо',
             self::Entrepreneur => 'ИП',
             self::SelfEmployed => 'Самозанятый',
-            self::Person => 'Физлицо',
+            self::Person => 'Физ. лицо',
         };
     }
 }

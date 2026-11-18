@@ -126,7 +126,10 @@
             $fileRows = collect($files ?? [])->map(fn ($f) => \Illuminate\Support\Facades\Blade::render('<x-ui.file :name="$n" :mime="$m->mime_type" :bytes="$m->size" :size="$sub" :href="$href" class="row"/>',
                 ['n' => $f[0], 'm' => $f[1], 'sub' => $f[2], 'href' => '/files/'.$f[1]->id]))->implode('');
         @endphp
-        @if ($pickBuyer ?? false)
+        @if ($buyerTask ?? false)
+            {{-- Покупателя ещё нет — задача «Укажите покупателя» под шагом (18.11.2026); здесь только файлы. --}}
+            @if ($fileRows !== '')<div class="list">{!! $fileRows !!}</div>@endif
+        @elseif (($pickBuyer ?? false) || ($buyerPickInMoney ?? false))
             {{-- «Страховой напрямую» (16.11.2026, владелец: «про указание покупателя два раза получилось — запихивай этот блок вместо строки
                  про плательщика»): кто платит поставщику — покупатель, выбор здесь же (плитки, «Покупатель ›»), отдельного блока нет. --}}
             @if (! $deal->contract?->buyer_user_id && $deal->isLive())<x-deal.buyer-kind :deal="$deal"/>@endif
@@ -134,7 +137,7 @@
         @else
             <div class="list">
                 {!! $fileRows !!}
-                <x-deal.sale-row label="Плательщик" :value="$cb ? ($cb->id === $deal->buyer_id ? 'Вы' : $cb->name) : 'не выбран'" :tone="$cb ? null : 'danger'"
+                <x-deal.sale-row label="Покупатель" :value="$cb ? ($cb->id === $deal->buyer_id ? 'Вы' : $cb->buyerLabel()) : 'не выбран'" :tone="$cb ? null : 'danger'"
                     data-controller="emit" data-action="emit#send" data-emit-event-param="buyer:open"/>
             </div>
         @endif

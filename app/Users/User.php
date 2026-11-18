@@ -422,6 +422,26 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
         return $this->belongsTo(User::class, 'manager_id');
     }
 
+    /**
+     * Заготовка покупателя (18.11.2026): нажали плитку вида («Физ. лицо», «ИП», «Юр. лицо», `Cabinet\DealController::buyerNew`), а
+     * данных не внесли — имя «Новый покупатель», ФИО у контрагента пустое. Покупателем ещё не считается: задача «Укажите
+     * покупателя» стоит, в списках своих её нет.
+     */
+    public function isBuyerDraft(): bool
+    {
+        return $this->name === \App\Users\Actions\AddPerson::UNNAMED && blank($this->party?->name);
+    }
+
+    /** Покупатель словами: имя, у заготовки — вид лица («Физ. лицо», «ИП», «Юр. лицо»), а не «Новый покупатель» (18.11.2026). */
+    public function buyerLabel(): string
+    {
+        if ($this->name !== \App\Users\Actions\AddPerson::UNNAMED) {
+            return $this->name;
+        }
+
+        return filled($this->party?->name) ? $this->party->name : ($this->party?->kind ?? \App\Billing\PartyKind::Person)->label();
+    }
+
     public function buyers(): HasMany
     {
         return $this->hasMany(User::class, 'manager_id')->whereJsonContains('roles', Role::Buyer->value);

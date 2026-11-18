@@ -16,7 +16,7 @@
         @csrf
         <x-ui.card title="Кому">
             <div class="grid grid-cols-2 gap-3">
-                <x-ui.field name="party_id" label="Плательщик" :options="$parties" :value="$party->id" required span="col-span-2" data-deal-invoice-target="party" data-action="deal-invoice#party"/>
+                <x-ui.field name="party_id" label="Покупатель" :options="$parties" :value="$party->id" required span="col-span-2" data-deal-invoice-target="party" data-action="deal-invoice#party"/>
                 <div class="col-span-2 grid grid-cols-2 gap-3" data-deal-invoice-target="newParty" hidden>
                     <x-ui.field name="party_name" label="Название или ФИО" span="col-span-2"/>
                     <x-ui.field name="party_kind" label="Кто" :options="$partyKinds" value="person"/>

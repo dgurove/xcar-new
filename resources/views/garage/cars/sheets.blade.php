@@ -100,7 +100,7 @@
                         </div>
                         <div data-reveal-target="pane" data-reveal-key="buyer" hidden>
                             <div class="fields">
-                                <x-ui.field name="party_id" label="Плательщик" :options="$parties" value="new"/>
+                                <x-ui.field name="party_id" label="Покупатель" :options="$parties" value="new"/>
                                 <x-ui.field name="party_name" label="Название или ФИО" :value="old('party_name', $car->buyer_name)"/>
                                 <x-ui.field name="party_kind" label="Кто" :options="collect(\App\Billing\PartyKind::cases())->mapWithKeys(fn ($k) => [$k->value => $k->label()])" value="person"/>
                                 <x-ui.field name="party_inn" label="ИНН"/>

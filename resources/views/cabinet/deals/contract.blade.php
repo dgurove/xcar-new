@@ -52,9 +52,9 @@
                 @endif
                     @if ($labels)
                         <span class="sale-row-label"><span class="block text-ink">Покупатель</span><span @class(['block text-sm', 'text-open' => $ready, 'text-urgent' => ! $ready])>{{ $ready ? 'данные есть' : ($gap ?? 'нужны данные') }}</span></span>
-                        <span class="sale-row-value truncate">{{ $isMe ? ($garage ? 'Ваши данные' : 'Я сам') : (\App\Support\OrgName::short($buyer->party?->name) ?: $buyer->name) }}</span>
+                        <span class="sale-row-value truncate">{{ $isMe ? ($garage ? 'Ваши данные' : 'Я сам') : (\App\Support\OrgName::short($buyer->party?->name) ?: $buyer->buyerLabel()) }}</span>
                     @else
-                        <span class="min-w-0 flex-1"><span class="block truncate">{{ $isMe ? ($garage ? 'Ваши данные' : 'Я сам') : (\App\Support\OrgName::short($buyer->party?->name) ?: $buyer->name) }}</span><span @class(['block text-sm', 'text-open' => $ready, 'text-urgent' => ! $ready])>{{ $ready ? 'данные есть' : ($gap ?? 'нужны данные') }}</span></span>
+                        <span class="min-w-0 flex-1"><span class="block truncate">{{ $isMe ? ($garage ? 'Ваши данные' : 'Я сам') : (\App\Support\OrgName::short($buyer->party?->name) ?: $buyer->buyerLabel()) }}</span><span @class(['block text-sm', 'text-open' => $ready, 'text-urgent' => ! $ready])>{{ $ready ? 'данные есть' : ($gap ?? 'нужны данные') }}</span></span>
                     @endif
                     <x-ui.chevron/>
                 @if ($labels && $editable && ! ($garage && $buyer) && ! $me->isSuperBuyer())
@@ -67,9 +67,9 @@
                     <x-ui.sheet-row @class(['sale-row' => $labels])>
                         @if ($labels)
                             <span class="sale-row-label"><span class="block text-ink">Покупатель</span><span class="block text-sm text-urgent">{{ $gap ?? 'нужны данные' }}</span></span>
-                            <span class="sale-row-value truncate">{{ $isMe ? ($garage ? 'Ваши данные' : 'Я сам') : (\App\Support\OrgName::short($buyer->party?->name) ?: $buyer->name) }}</span>
+                            <span class="sale-row-value truncate">{{ $isMe ? ($garage ? 'Ваши данные' : 'Я сам') : (\App\Support\OrgName::short($buyer->party?->name) ?: $buyer->buyerLabel()) }}</span>
                         @else
-                            <span class="min-w-0 flex-1"><span class="block truncate">{{ $isMe ? ($garage ? 'Ваши данные' : 'Я сам') : (\App\Support\OrgName::short($buyer->party?->name) ?: $buyer->name) }}</span><span class="block text-sm text-urgent">{{ $gap ?? 'нужны данные' }}</span></span>
+                            <span class="min-w-0 flex-1"><span class="block truncate">{{ $isMe ? ($garage ? 'Ваши данные' : 'Я сам') : (\App\Support\OrgName::short($buyer->party?->name) ?: $buyer->buyerLabel()) }}</span><span class="block text-sm text-urgent">{{ $gap ?? 'нужны данные' }}</span></span>
                         @endif
                         <x-ui.chevron/>
                     </x-ui.sheet-row>

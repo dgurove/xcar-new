@@ -67,7 +67,8 @@ final class People
     public static function contractBuyers(User $manager, string $self, string $selfMissing, string $selfReady = 'данные для договора есть'): Collection
     {
         return collect([['id' => 'me'] + ['name' => $self] + self::row($manager, $manager->party?->readyAsBuyer() ? $selfReady : $selfMissing)])
-            ->concat(self::buyersOf($manager)->map(fn (User $b) => self::row($b, $b->party?->readyAsBuyer() ? 'данные для договора есть'
+            // Заготовка без данных («Новый покупатель», 18.11.2026) — видом лица, а не этим именем.
+            ->concat(self::buyersOf($manager)->map(fn (User $b) => ['name' => $b->buyerLabel()] + self::row($b, $b->party?->readyAsBuyer() ? 'данные для договора есть'
                 : ($b->phone ? Phone::format($b->phone) : 'данных для договора нет'))));
     }
 

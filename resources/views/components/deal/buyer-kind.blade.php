@@ -4,7 +4,7 @@
      Ниже — выбор из своих (`cabinet.deals.contract`). --}}
 @props(['deal'])
 <div class="buyer-kinds">
-    @foreach (['person' => ['Физлицо', 'паспорт', 'user'], 'ip' => ['ИП', 'паспорт и реквизиты', 'bag'], 'company' => ['Организация', 'реквизиты', 'bank']] as $kind => [$title, $sub, $icon])
+    @foreach (['person' => ['Физ. лицо', 'паспорт', 'user'], 'ip' => ['ИП', 'паспорт и реквизиты', 'bag'], 'company' => ['Юр. лицо', 'реквизиты', 'bank']] as $kind => [$title, $sub, $icon])
         <form method="post" action="/deals/{{ $deal->id }}/buyer-new" class="contents">
             @csrf
             <input type="hidden" name="kind" value="{{ $kind }}">

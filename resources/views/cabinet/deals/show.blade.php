@@ -32,6 +32,22 @@
         (! $needsBuyer && $requirement && $position->stage->isPayStep() && $requirement->asks !== \App\Workflow\Asks::Buyer)
         || (! $needsBuyer && ! $requirement && $deal->sentPaymentProof())
         || ($buyerInMoney && ($needsBuyer || $requirement?->asks === \App\Workflow\Asks::Buyer)));
+    // Задача «Укажите покупателя» — карточкой под шагом (18.11.2026, владелец: «чтобы ТОЧНО заметили»): покупатель нужен, а его нет
+    // или только заготовка без данных; и до согласования. Где шаг сам просит покупателя (договор, «Нет реквизитов», ПРАЙМ на оплате)
+    // — он в шаге. Пока задача есть, шторку выбора (`buyer:open`) держит она; блока «Договор» и выбора в «Деньгах» нет.
+    $contractBuyer = $deal->contract?->buyer;
+    $stepPicks = $contractStep || $needsBuyer || $requirement?->asks === \App\Workflow\Asks::Buyer;
+    // Ставится с согласия («Беру в работу» — `AskBuyer`, `buyer_asked_at`, без срока) или когда покупка уже согласована.
+    $buyerTask = $deal->isLive() && $deal->needsBuyer() && ($deal->buyer_asked_at || $deal->buyerOpen()) && ! $deal->isGarage() && ! auth()->user()->isSuperBuyer() && ! $stepPicks
+        && (! $contractBuyer || $contractBuyer->isBuyerDraft());
+    // С согласия — и у «страховой напрямую» (10.11.2026, `Deal::needsBuyer`); на шаге «Нет реквизитов» покупатель в задаче.
+    $buyerHere = ($deal->hasContract() || $deal->buyerAhead()) && $requirement?->asks !== \App\Workflow\Asks::Buyer;
+    // «Договор и счёт» сразу под шагом (16.11.2026, владелец выбрал вариант А: «не замечают, где этот блок»): покупатель, наш
+    // договор и счёт файлами; «Договор уже подписан?» — своей карточкой следом.
+    $withBuyer = $buyerHere && ! $buyerInMoney && ! $contractStep && ! $needsBuyer && ! $tooEarly && ! $buyerTask && ($deal->isLive() || $deal->contract?->buyer_user_id);
+    // Покупатель в «Деньгах» — своей шторкой, когда на странице её больше никто не держит (до согласования блока «Договор» нет —
+    // 18.11.2026 строка «Плательщик» слала событие в пустоту).
+    $buyerPickInMoney = ! $buyerTask && ! $withBuyer && ! $stepPicks;
     $carCard = $deal->isLive() && $handover && ! $contractStep && ! ($requirement && $position?->stage->isPickupStep())
         && ((($handover->shows() || ($handover->park && $deal->releasable())) && ! $handover->withBuyer) || $handover->carrier || $handover->canRequest);
 @endphp
@@ -45,16 +61,12 @@
         <section class="contents lg:col-start-1 lg:row-start-1 lg:flex lg:min-w-0 lg:flex-col lg:gap-4">
             <x-offer.reprice-ask :deal="$deal" class="order-1 min-w-0"/>
             <div class="order-1 min-w-0">@include('cabinet.deals.step', ['contractStep' => $contractStep, 'pickupSteps' => $pickupSteps, 'carCard' => $carCard, 'moneyInStep' => $moneyInStep])</div>
+            @if ($buyerTask)<div class="order-1 min-w-0">@include('cabinet.deals.buyer-task')</div>@endif
             @if ($carCard)<div class="order-1 min-w-0">@include('cabinet.deals.car-card')</div>@endif
             {{-- Закончилась без покупателя — «выберите покупателя» уже не о чем. --}}
             {{-- Покупатель не выбран или без данных — это дело менеджера: на телефоне сразу под задачей, над «Расчётом»
                  (05.11.2026); готов — на прежнем месте под ним. --}}
-            {{-- С согласия — и у «страховой напрямую» (10.11.2026, `Deal::needsBuyer`); на шаге «Нет реквизитов» покупатель в задаче. --}}
-            @php $buyerHere = ($deal->hasContract() || $deal->buyerAhead()) && $requirement?->asks !== \App\Workflow\Asks::Buyer; @endphp
-            {{-- «Договор и счёт» сразу под шагом (16.11.2026, владелец выбрал вариант А: «не замечают, где этот блок»): покупатель, наш
-                 договор и счёт файлами; «Договор уже подписан?» — своей карточкой следом. --}}
             @php
-                $withBuyer = $buyerHere && ! $buyerInMoney && ! $contractStep && ! $needsBuyer && ! $tooEarly && ($deal->isLive() || $deal->contract?->buyer_user_id);
                 $signStep = $deal->openRequirement?->asks === \App\Workflow\Asks::Document && $deal->openRequirement?->stage?->aboutContract();
                 // У Альфы договор — после подтверждённой оплаты: до неё просить подписанный не о чем (`Deal::contractAfterPay`).
                 $withSigned = ! $signStep && ! $deal->contractAfterPay() && \App\Offers\Actions\AttachSignedContract::allows($deal) || $deal->getMedia('signed_contract')->isNotEmpty();

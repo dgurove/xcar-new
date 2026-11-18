@@ -879,6 +879,11 @@ class Deal extends Model implements HasMedia
             return false;
         }
         $stage = $this->offer?->stage();
+        // Письмо с реквизитами (с 18.11.2026 — сразу после запроса поставщика, без шага «Нет реквизитов», 1e0877a1): покупатель — в
+        // самом шаге, его данные и идут в письмо. Без этого на шаге письма покупатель «не нужен», и дело менеджера гасло.
+        if ($stage?->isRequisitesStep()) {
+            return true;
+        }
         $buyer = $stage ? Parallels::buyerStage($stage) : null;
 
         return $buyer && ($buyer->is($stage) || Parallels::rank($buyer) > Parallels::rank($stage));

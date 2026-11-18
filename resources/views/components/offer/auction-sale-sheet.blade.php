@@ -13,7 +13,7 @@
         <form method="post" action="{{ $action }}" class="flex flex-col gap-4" data-controller="reveal"
               data-turbo-confirm="Продана на аукционе?" data-turbo-confirm-text="Предложение закроется, вывоз отметится «Забрал аукцион»" data-turbo-confirm-label="Продана">
             @csrf
-            <x-ui.segment name="buyer_kind" :options="['person' => 'Физлицо', 'company' => 'Организация']" :value="$kind" pick/>
+            <x-ui.segment name="buyer_kind" :options="['person' => 'Физ. лицо', 'company' => 'Юр. лицо']" :value="$kind" pick/>
             <div class="contents" data-reveal-target="pane" data-reveal-key="person" @if ($kind !== 'person') hidden @endif>
                 <div class="fields fields-stack">
                     <x-ui.field name="buyer_name" :id="'auction-person-'.$n" label="ФИО покупателя" :value="$kind === 'person' ? old('buyer_name') : null"/>
