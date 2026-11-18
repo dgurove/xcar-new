@@ -61,6 +61,8 @@
     // «Все» (17.11.2026, владелец: «справа лучше не цену, а дату и время обязывающего с иконкой и сколько дней и часов она уже в
     // этой вкладке»): наверху срок обязывающего, внизу — сколько во вкладке (`OfferTabs::sinceSql`, столбец «Во вкладке»).
     $since = $has('since') && $offer->tab_since ? \Illuminate\Support\Carbon::parse($offer->tab_since) : null;
+    // Справа на телефоне уже стоит «⏱ 20.11» (`x-offer.row-meta`) — у номера второй таймер не нужен (18.11.2026, владелец).
+    $metaTimer = $endCol && ($since || ! $has('binding'));
     ob_start();
 @endphp
         @if ($busy && $rate)
@@ -112,7 +114,7 @@
              прочие столбцы — в «Подробной таблице». --}}
         <span class="cell-sub cell-sub--wrap" data-controller="fitline">
             {{-- Номера — одним неразрывным куском: не влезают — строка ужимается (fitline), а не переносится. --}}
-            <span class="fit-core sm:hidden @if ($busy) arrive-type @endif"><x-vendor.ref :vendor="$vendor" :ref="$offer->claim_ref"><x-offer.binding :offer="$offer" icon/></x-vendor.ref></span>
+            <span class="fit-core sm:hidden @if ($busy) arrive-type @endif"><x-vendor.ref :vendor="$vendor" :ref="$offer->claim_ref">@unless ($metaTimer)<x-offer.binding :offer="$offer" icon/>@endunless</x-vendor.ref></span>
             @if ($endCol && $endBottom !== '')<span class="line-end sm:hidden">{!! $endBottom !!}</span><span class="line-break sm:hidden"></span>@endif
             @if ($busy)<x-offer.arrive-line :arrive="$arrive"/>@endif
             @if ($mixed || $line)<span class="sub-phrase sm:hidden {{ $tone }}">{{ $tabWord ?? $stateWord }}@if ($tabWord && $offer->isGallery())<span class="text-ink-muted">, в галерее</span>@endif{{ "" }}@if ($line?->who)<span class="text-ink-muted">, {{ $line->who }}</span>@endif</span>

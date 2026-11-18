@@ -1573,6 +1573,12 @@ html.kb-open { --home-gap: 0px; }
   .toolbar-row { min-width: 0; overflow-x: auto; scrollbar-width: none; overscroll-behavior-x: contain; margin-inline: -1rem; padding-inline: 1rem; scroll-padding-inline: 1rem; }
   .toolbar-row::-webkit-scrollbar { display: none; }
   .toolbar-row .pill { min-height: 2.25rem; }
+  /* Кнопки ряда — одной высоты 36 px (18.11.2026, владелец: быстрые чипы «не вписываются»): «Фильтр» был 30, чипы — 36 с
+     полями, лупа и вид — 36. */
+  .toolbar--rows .toolbar-row .pill { height: 2.25rem; padding-block: 0; }
+  .toolbar-side .filter-btn { height: 2.25rem; min-height: 2.25rem; }
+  .toolbar-toggles { min-width: 0; }
+  .toolbar-toggles .toolbar-row > div { flex-wrap: nowrap; }
   /* ПК — те же ряды (17.11.2026, владелец выбрал «ряды, как на телефоне»: одной строкой вид и «Фильтр» падали одни на вторую);
      ряды чипов в поле контейнера и переносятся, а не листаются — мышью прокрутку вбок не найти. */
   @media (min-width: 768px) {

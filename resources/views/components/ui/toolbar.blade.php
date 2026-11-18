@@ -51,13 +51,18 @@
             @if ($search)<button type="button" class="btn btn-s btn-quiet btn-round shrink-0 toolbar-lens" data-action="live-search#open" aria-label="Поиск"><x-ui.icon name="search" class="size-5"/></button>@endif
             @if ($sort)<x-ui.sort :sort="$sort" :url="$sortUrl" :name="$name" :toggles="$sortToggles"/>@endif
             {{ $extra ?? '' }}
+            {{-- Быстрые чипы («Горит срок») на ПК — сразу после «Вида» (18.11.2026, владелец: «на компе для них есть место»); на
+                 телефоне — своей строкой ниже. --}}
+            @if ($facets && ! request()->headers->has('X-List'))
+                <div class="toolbar-toggles max-md:hidden"><x-ui.facets :facets="$facets" :name="$name" part="toggles"/></div>
+            @endif
         </div>
         @if ($facets && $facets->all())
             <div class="toolbar-side toolbar-side--end"><x-ui.filter-button :facets="$facets"/></div>
         @endif
     </div>
     @if ($facets && ! request()->headers->has('X-List'))
-        <x-ui.facets :facets="$facets" :name="$name" part="toggles"/>
+        <div class="md:hidden"><x-ui.facets :facets="$facets" :name="$name" part="toggles"/></div>
     @endif
 </div>
 @else
