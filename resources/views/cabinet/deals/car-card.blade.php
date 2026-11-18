@@ -20,7 +20,7 @@
         <div @class(['mt-3 grid gap-2', 'grid-cols-2' => $pick && $ask])>
             @if ($pick)
                 <form method="post" action="/deals/{{ $deal->id }}/picked" data-turbo-confirm="Забрали автомобиль?" data-turbo-confirm-label="Забрал">
-                    @csrf<button type="submit" class="btn btn-quiet btn-block"><x-ui.icon name="check" class="size-5"/>Забрал</button>
+                    @csrf<button type="submit" class="btn btn-quiet btn-block"><x-ui.icon name="check" class="size-5"/>Забрал…</button>
                 </form>
             @endif
             @if ($ask)

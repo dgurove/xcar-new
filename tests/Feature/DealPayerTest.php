@@ -98,12 +98,15 @@ class DealPayerTest extends TestCase
         $this->assertSame([1020000.0], $invoice->charges()->pluck('price')->map(fn ($p) => (float) $p)->all());
         $this->assertEqualsWithDelta(1020000, $invoice->remaining(), 0.01);
 
-        // Ссылка (по счёту продажи её заводят руками) — на плательщика счёта, и только после «Отправить менеджеру» (17.11.2026).
+        // За ТС по ссылке не платят никогда (18.11.2026, владелец: «по ссылке ТОЛЬКО за подбор»): ни сама, ни руками.
         $this->sendToManager($deal);
         $invoice = $invoice->fresh();
-        $link = app(\App\Billing\Acquiring\Actions\EnsurePayLink::class)($invoice) ?? app(\App\Billing\Acquiring\Actions\CreatePayLink::class)($invoice, $this->manager, 100000,
-            \App\Billing\Acquiring\PayerKind::Other, null, $invoice->party->name, null, $invoice->party->email);
-        $this->assertSame('ООО Ромашка', $link->payer_name);
+        $this->assertNull(app(\App\Billing\Acquiring\Actions\EnsurePayLink::class)($invoice));
+        try {
+            app(\App\Billing\Acquiring\Actions\CreatePayLink::class)($invoice, $this->manager, 100000, \App\Billing\Acquiring\PayerKind::Other, null, $invoice->party->name, null, $invoice->party->email);
+            $this->fail('ссылка за ТС заведена');
+        } catch (\Illuminate\Validation\ValidationException) {
+        }
 
         // Тот же ИНН второй раз — та же сторона, не дубль.
         $again = app(SetDealPayer::class)($deal->fresh(), $this->manager, ['payer' => 'new', 'kind' => 'company', 'name' => 'Ромашка', 'inn' => '7700000000']);
@@ -115,7 +118,6 @@ class DealPayerTest extends TestCase
         $back = $this->sale($deal);
         $this->assertSame($this->manager->fresh()->party_id, $back->party_id);
         $this->assertEqualsWithDelta(1020000, $back->remaining(), 0.01);
-        $this->assertSame(PayLinkState::Canceled, $link->fresh()->state);
         // Выбор «менеджер» держится своей стороной (17.11.2026: по умолчанию подбор платит покупатель).
         $this->assertSame($this->manager->fresh()->party_id, $deal->fresh()->payer_party_id);
     }

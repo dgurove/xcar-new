@@ -6,12 +6,12 @@
     <div @class(['contents' => $bar, 'flex flex-wrap items-center gap-2' => ! $bar])>
         @foreach ($buttons as $i => $b)
             @if ($b[0] === 'post')
-                <form method="post" action="{{ $b[1] }}" class="contents" @if ($b[3] ?? null) data-turbo-confirm="{{ $b[3] }}" @endif>@csrf<button type="submit" class="btn {{ $i ? 'btn-quiet' : 'btn-accent' }} {{ $size }}">{{ $b[2] }}</button></form>
+                <form method="post" action="{{ $b[1] }}" class="contents" @if ($b[3] ?? null) data-turbo-confirm="{{ $b[3] }}" @endif>@csrf<button type="submit" class="btn {{ $i ? 'btn-quiet' : 'btn-accent' }} {{ $size }}">{{ \App\Support\Opens::label($b[2], (bool) ($b[3] ?? null)) }}</button></form>
             @elseif ($b[0] === 'link')
                 <a href="{{ $b[1] }}" class="btn {{ $i ? 'btn-quiet' : 'btn-accent' }} {{ $size }}">{{ $b[2] }}</a>
             @else
                 <button type="button" class="btn {{ $i ? 'btn-quiet' : 'btn-accent' }} {{ $size }}" data-controller="emit" data-action="emit#send" data-emit-event-param="{{ $b[1] }}:open">
-                    @if ($b[1] === 'cost-new')<x-ui.icon name="plus" class="size-5"/>@endif{{ $b[2] }}
+                    @if ($b[1] === 'cost-new')<x-ui.icon name="plus" class="size-5"/>@endif{{ \App\Support\Opens::label($b[2]) }}
                 </button>
             @endif
         @endforeach

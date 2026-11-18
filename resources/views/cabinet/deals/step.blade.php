@@ -1,10 +1,8 @@
 {{-- Задача сделки — одна карточка на страницу сделки и карточку машины в гараже, пока идёт сделка со страховой (гаражная
      сделка идёт по тому же маршруту). Данные — `Cabinet\DealController::stepData`. Порядок как у задачи в приложении
      (05.10.2026, владелец): что сделать → где и у кого → ответы страховой (с кем связаться, что прислали) → действия.
-     Пояснений нет (владелец: «зачем эссе в интерфейсе»): шапка «чей ход» (`x-deal.turn-head`) и сам инструмент — на шаге оплаты счёт со
-     ссылкой и «Оплатить» шторкой прямо здесь; тексты этапов маршрута менеджеру не рисуются, они для уведомлений.
-     Вне оплаты счетов здесь нет — они в «Расчёте»; гараж, где «Расчёта» нет, передаёт `withInvoices`. Путь —
-     `cabinet.deals.path`. --}}
+     Пояснений нет (владелец: «зачем эссе в интерфейсе»): шапка «чей ход» (`x-deal.turn-head`) и то, что не про деньги; счёт,
+     договор, покупатель и оплата — блоком под шагом (`cabinet.deals.receipt-card`, 18.11.2026). Путь — `cabinet.deals.path`. --}}
 @php
     use App\Offers\DealState;
     use App\Workflow\Asks;
@@ -13,12 +11,6 @@
     // За ТС платят не нам, а поставщику или собственнику (Альфа, «Страховой напрямую»; 18.10.2026): задача — заплатить им и
     // приложить платёжку, её и подтверждает поставщик. Наш подбор — отдельной строкой ниже, шаг он не держит.
     $direct = $payStep && $deal->paysSupplierOn($position->stage);
-    // Платёжка ушла, поставщик ещё не подтвердил (16.11.2026, `Deal::sentPaymentProof`): та же карточка — «Оплачено поставщику»,
-    // платёжка и счёт файлами, «Приложить ещё».
-    $sent = ! $requirement && $deal->isLive() ? $deal->sentPaymentProof() : null;
-    // Строки денег — в этой карточке (16.11.2026, владелец: «объедини эти два блока в один»): шаг оплаты и ушедшая платёжка;
-    // решает страница сделки (`cabinet.deals.show`), она же тогда не рисует карточку денег отдельно.
-    $moneyHere = $moneyInStep ?? false;
     $unpaid = $invoices->filter(fn ($i) => ! $i->isOwed() && $i->state === \App\Billing\InvoiceState::Issued);
     // Шаг оплаты, а счета уже оплачены (оплатили по ссылке, маршрут ещё не догнал) — «Оплатите» с «Приложить» тут врут.
     $paidUp = $payStep && ! $direct && $unpaid->isEmpty() && $deal->fullyPaid();
@@ -30,18 +22,8 @@
     // проходит сам, когда данные со сканом есть (`AdvanceOnBuyerData`). Письма поставщика менеджер не видит.
     $buyerStep = $deal->isLive() && $requirement?->asks === Asks::Buyer;
     $needsBuyer = $needsBuyer || $buyerStep;
-    // Покупателя ещё нет (или только заготовка без данных) — тот же выбор, что у задачи «Укажите покупателя» (`buyer-picker`,
-    // 18.11.2026): плитки вида и свои покупатели строками; есть — его строка с данными (`cabinet.deals.contract`).
-    $stepBuyer = \App\Offers\DealContract::for($deal)->buyer;
-    $pickBuyerHere = $deal->isLive() && ! auth()->user()->isSuperBuyer() && (! $stepBuyer || $stepBuyer->isBuyerDraft());
     // Гаражная Совкомбанка: счёт и договор — когда менеджер продаст (`Deal::namesBuyer`): цену он пишет «Продаю».
     $needsPrice = $gap === 'price';
-    // Строки счетов — только в гараже, где «Расчёта» нет; на странице сделки счёт в «Расчёте», а здесь — сама оплата.
-    // На шаге оплаты — только сама оплата (ссылка и «Оплатить N ₽»), строка счёта повторяла бы ту же сумму.
-    $stepInvoices = ($withInvoices ?? false) && ! $payStep ? $unpaid : collect();
-    // Подбор (ДКП, «страховой напрямую») на шаге оплаты — группой «Оплатите XCar за подбор», как в «Расчёте».
-    $selectionPay = $payStep && ! ($withInvoices ?? false) && $deal->paysSelection()
-        ? $unpaid->first(fn ($i) => $i->kind === \App\Billing\ChargeKind::Selection) : null;
     // Вернули на оплату («Оплата не поступила») — менеджер видит почему, пока не сообщил об оплате заново.
     $rejected = $payStep && $unpaid->every(fn ($i) => $i->claimed() == 0)
         ? \App\Billing\Payment::whereIn('invoice_id', $unpaid->pluck('id'))->where('state', \App\Billing\PaymentState::Rejected)->latest('id')->first() : null;
@@ -61,7 +43,6 @@
     $disclosures = ($disclosures ?? collect())->reverse()->values();
     $early = $disclosures->count() > 3 ? $disclosures->slice(0, $disclosures->count() - 2) : collect();
     $late = $disclosures->slice($early->count());
-    $ownerPhone = $disclosures->contains(fn ($d) => $d->values('phone') !== []);
     // Согласие менеджера (Альфа): поставщик уже согласовал — блок «Согласование с поставщиком» и «Ваш ход»
     // сбивали с толку, будто ждём поставщика (10.10.2026, владелец). Шапка — что случилось и вопрос, рядом только часы.
     $consent = $deal->isLive() && $requirement && $position?->stage->asksConsent();
@@ -91,182 +72,35 @@
                 <x-deal.signing-when :deal="$deal" :action="'/deals/'.$deal->id.'/signing-wish'" class="mt-4"/>
             @endif
             {{-- Вернули на оплату («Оплата не поступила») — факт: какая оплата и почему, пока не сообщил об оплате заново. --}}
-            @if ($requirement && $rejected && ! ($pickupSteps ?? null) && ! $needsBuyer && ! $needsPrice && ! $paidUp && ! $consent)
+            @if ($requirement && $rejected && ! $needsBuyer && ! $needsPrice && ! $paidUp && ! $consent)
                 <p class="mt-2 font-medium text-urgent">Оплата <span class="nums">{{ \App\Support\Money::rub($rejected->amount) }}</span> от <span class="nums">{{ \App\Support\Ago::html($rejected->paid_at, words: false) }}</span> не поступила{{ $rejected->reject_reason ? ': '.$rejected->reject_reason : '' }}</p>
             @endif
 
-            @if ($contractStep ?? false)
-                {{-- Шаг договора — чек-лист в том порядке, в каком всё делается (05.10.2026, владелец: «просит приложить
-                     договор, хотя договора у него нет, он ниже формируется»): связаться с владельцем → покупатель → ДКП
-                     (открыть, распечатать) → подписанный договор и кнопка шага. Сделанное — галочкой. У ДКП Т-Страхования
-                     (06.10.2026, владелец: «сначала отмечает, что связался, потом — что забрал») ещё «Заберите
-                     автомобиль», и «Связался» / «Забрал» — шаги маршрута: кнопка стоит у текущего пункта, будущие
-                     приглушены. Покупателя и ДКП готовят когда угодно — их подписывают при передаче. --}}
-                @php
-                    $contract = \App\Offers\DealContract::for($deal)->loadMissing(['seller', 'buyer.party']);
-                    $contact = $showHandover || $payload->isNotEmpty() || $disclosures->isNotEmpty();
-                    $flow = $pickupSteps ?? null;
-                    $signedFiles = $requirement->asks === Asks::Document && $requirement->getMedia('files')->isNotEmpty();
-                    $state = fn (bool $done) => $done ? 'done' : 'open';
-                    $items = array_values(array_filter($flow ? [
-                        ['contact', 'Связаться с владельцем', $flow['contact']],
-                        ['pickup', 'Забрать ТС', $flow['pickup']],
-                        ['buyer', 'Покупатель по ДКП', $state((bool) $contract->buyer?->party?->readyAsBuyer())],
-                        ['doc', 'Договор купли-продажи', $state($contract->shownToManager())],
-                        ['signed', 'Подписанный договор', $flow['signed'] === 'current' && $signedFiles ? 'done' : $flow['signed']],
-                    ] : [
-                        $contact ? ['contact', $handover?->where === 'У владельца' || $ownerPhone ? 'Связаться с владельцем' : 'Где ТС', 'open'] : null,
-                        ['buyer', $deal->isPrime() ? 'Покупатель' : 'Покупатель по ДКП', $state((bool) $contract->buyer?->party?->readyAsBuyer())],
-                        ['doc', 'Договор купли-продажи', $state($contract->shownToManager())],
-                        ['signed', 'Подписанный договор', $state($signedFiles)],
-                    ]));
-                    // Кнопка шага — у пункта, что сейчас: «Связался», «Забрал» или «Договор приложен».
-                    $here = $flow ? ($flow['contact'] === 'current' ? 'contact' : ($flow['pickup'] === 'current' ? 'pickup' : 'signed')) : 'signed';
-                @endphp
-                <ol class="task-steps">
-                    @foreach ($items as $k => [$key, $title, $mark])
-                        <li @class(['task-step', 'is-done' => $mark === 'done', 'is-later' => $mark === 'later'])>
-                            @if ($key === 'signed')
-                                @include('cabinet.deals.signed-mark', ['done' => $mark === 'done', 'n' => $k + 1])
-                            @else
-                                <span class="task-step-mark">@if ($mark === 'done')<x-ui.icon name="check" class="size-3.5"/>@else{{ $k + 1 }}@endif</span>
-                            @endif
-                            <div class="task-step-body">
-                                <h4 class="task-step-title">{{ \App\Users\Wording::mine($title) }}</h4>
-                                @if ($key === 'contact')
-                                    @if ($showHandover)@include($handover->park ? 'cabinet.deals.park-pickup' : 'cabinet.deals.handover')@endif
-                                    @include('cabinet.deals.payload')
-                                    @if ($disclosures->isNotEmpty())@include('cabinet.deals.disclosures')@endif
-                                @elseif ($key === 'buyer')
-                                    @if ($pickBuyerHere)
-                                        @include('cabinet.deals.buyer-picker')
-                                    @else
-                                        @include('cabinet.deals.contract', ['part' => 'buyer', 'embedded' => true, 'labels' => false, 'after' => ''])
-                                    @endif
-                                @elseif ($key === 'doc')
-                                    @include('cabinet.deals.contract', ['part' => 'doc', 'embedded' => true, 'labels' => false, 'after' => ''])
-                                @endif
-                                @if ($key === $here)@include('cabinet.deals.answer')@endif
-                                @if ($key === 'pickup')@include('cabinet.deals.pickup-request', ['inline' => true])@endif
-                            </div>
-                        </li>
-                    @endforeach
-                </ol>
-            @else
-            {{-- Платит поставщику сам — его счёт тут же, первым (10.11.2026, 0790/046/11079/26: счёт был в «Информации по сделке»
-                 номером со сканера, а на шаге «Оплатить страховой» его не было). Пока не показали — словом. --}}
-            @php $supplierBills = $direct || $sent ? \App\Offers\SupplierInvoice::shown($deal->offer) : collect(); @endphp
-            {{-- Оплата: строки денег (кому, сколько, файлы, плательщики, способы) и одна «Приложить чек» (16.11.2026). --}}
-            @php $receipt = $moneyHere; @endphp
-            @if ($moneyHere)
-                @include('cabinet.deals.money', ['embedded' => true])
-                @if ($deal->paysSelection() && ($payStep || $sent))@include('cabinet.deals.receipt')@endif
-            @endif
-            @if ($direct && ! $receipt && \App\Offers\SupplierInvoice::onPay($deal, $position->stage))
-                @if ($supplierBills->isNotEmpty())
-                    <div class="list mt-4">
-                        {{-- Счёт — своим именем и с «Поделиться» (10.11.2026: менеджеры не узнавали счёт в файле со сканера и не могли
-                             переслать его тому, кто платит); чек — кнопкой ниже, с камеры. --}}
-                        @foreach ($supplierBills as $f)<x-ui.file name="Счёт поставщика" :mime="$f->mime_type" :bytes="$f->size" :size="'от '.$f->created_at->timezone('Europe/Moscow')->format('d.m')" href="/files/{{ $f->id }}" download class="row"/>@endforeach
-                    </div>
-                @else
-                    <p class="mt-3 text-ink-muted">Счёт поставщика пришлём сюда</p>
-                @endif
-            @endif
-            {{-- Платёжка поставщику — сразу под его счётом, до нашего подбора: два блока одного вида (16.11.2026). --}}
-            @if ($direct && ! $receipt && $requirement && ! $needsBuyer && ! $paidUp)
-                @include('cabinet.deals.answer', ['attachLabel' => 'Приложить платёжку'])
-            @endif
-            @if ($sent && ! $moneyHere)
-                {{-- Платёжка ушла (16.11.2026): она и счёт файлами; пока поставщик не подтвердил — «Приложить ещё» и × (последний файл
-                     не убрать). Загрузка перечитывает страницу (`reload`). --}}
-                @php $proofs = $sent->getMedia('files'); @endphp
-                <div class="mt-4" data-controller="photos" data-photos-url-value="/deals/{{ $deal->id }}/files" data-photos-reload-value="true">
-                    <input type="file" accept="image/*,.pdf,.heic" multiple class="sr-only" tabindex="-1" data-photos-target="input" data-action="change->photos#upload">
-                    <div class="list">
-                        @foreach ($proofs as $m)
-                            <x-ui.file name="Платёжка" :mime="$m->mime_type" :bytes="$m->size" :size="\App\Support\Ago::at($m->created_at, true, words: false)" href="/files/{{ $m->id }}" class="row">
-                                @if ($proofs->count() > 1)
-                                    <form method="post" action="/deals/{{ $deal->id }}/files/{{ $m->id }}">@csrf @method('delete')<button class="btn btn-ghost btn-s px-2 text-ink-muted" aria-label="Убрать"><x-ui.icon name="x" class="size-5"/></button></form>
-                                @endif
-                            </x-ui.file>
-                        @endforeach
-                        @foreach ($supplierBills as $f)<x-ui.file name="Счёт поставщика" :mime="$f->mime_type" :bytes="$f->size" :size="'от '.$f->created_at->timezone('Europe/Moscow')->format('d.m')" href="/files/{{ $f->id }}" download class="row"/>@endforeach
-                    </div>
-                    <div hidden data-photos-target="progress" class="my-2">
-                        <div class="mb-1 text-sm text-ink-muted" data-label></div>
-                        <div class="h-1.5 overflow-hidden rounded-full bg-surface-3"><div class="h-full bg-accent transition-[width]" data-bar style="width:0"></div></div>
-                    </div>
-                    <button type="button" class="retreat-link mt-1 flex w-full items-center justify-center gap-1.5" data-action="photos#pick"><x-ui.icon name="clip" class="size-4"/>Приложить ещё</button>
-                </div>
-            @endif
-            {{-- Запись на подписание (`Offers\Signing`): выбрать время плиткой, потом — карточка встречи. --}}
-            @php $signingPick = $requirement && \App\Offers\Signing::picks($position->stage); @endphp
+            {{-- Под шапкой — только то, что не про деньги и документы (18.11.2026, владелец: «везде один блок с суммами, счётом,
+                 договором, покупателем», «убирай этот путь с подписанием договора»): получение (где ТС, контакт), запись на
+                 подписание, показанное из писем, кнопки ответа шага. Счёт, договор, покупатель, платёжки и подписанный договор —
+                 в блоке денег под шагом (`cabinet.deals.receipt-card`), там же главная кнопка его дела по ним. --}}
+            @php
+                $paperStep = $requirement && ($payStep || $requirement->asks === Asks::Buyer || $needsBuyer || $needsPrice
+                    || ($requirement->asks === Asks::Document && $requirement->stage?->aboutContract()) || $direct);
+                $signingPick = $requirement && \App\Offers\Signing::picks($position->stage);
+            @endphp
             @if ($signingPick && $deal->signing_slots)
                 <x-deal.signing-pick :deal="$deal" :action="'/deals/'.$deal->id.'/signing'" :other="'/deals/'.$deal->id.'/signing-wish'" class="mt-4"/>
             @elseif ($signingPick)
                 <x-deal.signing-when :deal="$deal" :action="'/deals/'.$deal->id.'/signing-wish'" picks class="mt-4"/>
             @elseif (! $deal->signing_at && \App\Offers\Signing::awaitsSlots($position->stage))
-                {{-- Письмо записи: просим одно из названных — строкой, без «Изменить». --}}
                 <x-deal.signing-when :deal="$deal" readonly class="mt-4"/>
             @elseif (\App\Offers\Signing::booked($deal))
                 <x-deal.appointment :deal="$deal" :confirmed="$position->waitsFor() === \App\Workflow\WaitsFor::Manager" :ics="'/deals/'.$deal->id.'/signing.ics'" class="mt-4"/>
             @endif
             @if ($showHandover)@include($handover->park ? 'cabinet.deals.park-pickup' : 'cabinet.deals.handover')@endif
             @include('cabinet.deals.payload')
-            @if ($disclosures->isNotEmpty())@include('cabinet.deals.disclosures', ['skipFiles' => $supplierBills->pluck('id')->all()])@endif
-
-            @if ($moneyHere)
-            @elseif ($stepInvoices->isNotEmpty())
-                <div class="list mt-5">
-                    @foreach ($stepInvoices as $i)@include('cabinet.deals.invoice-row', ['invoice' => $i])<x-billing.pay-status :invoice="$i" compact/>@endforeach
-                </div>
-            @elseif ($selectionPay && ! $direct)
-                {{-- Подбор по ДКП и «страховой напрямую» — тем же платежом, что в «Платежах» (там их на этом шаге нет, 15.11.2026). --}}
-                <div class="mt-5">@include('cabinet.deals.payment', ['nested' => true, 'amount' => \App\Support\Money::rub($selectionPay->remaining()), 'state' => null, 'invoice' => $selectionPay, 'pay' => true])</div>
-            @elseif ($payStep && ! $direct && $unpaid->isNotEmpty())
-                {{-- Счёт, который ждёт оплаты, — платежом (15.11.2026, тот же кусок, что в «Платежах»): кому, за что, сумма, файл и
-                     «Оплатить»; ссылка на оплату — в шторке по кнопке. Ждёт подтверждения — словом в платеже. --}}
-                <div class="mt-5 flex flex-col gap-3">
-                    @php
-                        $payable = $unpaid;
-                        // Кому — юрлицом счёта («ООО «ПРАЙМ»», 16.11.2026); два счёта одного юрлица — различаем, за что.
-                        $sameSeller = $payable->pluck('seller')->unique()->count() < $payable->count();
-                    @endphp
-                    @foreach ($payable as $i)
-                        @include('cabinet.deals.payment', [
-                            'title' => $payable->count() > 1 ? ($sameSeller ? ($i->kind === \App\Billing\ChargeKind::Selection ? 'Подбор' : 'Автомобиль') : $i->seller->config()['name']) : null,
-                            'nested' => true,
-                            'amount' => \App\Support\Money::rub($i->remaining()),
-                            'state' => null,
-                            'invoice' => $i, 'pay' => true])
-                    @endforeach
-                </div>
+            @if ($disclosures->isNotEmpty())@include('cabinet.deals.disclosures', ['skipFiles' => $direct ? \App\Offers\SupplierInvoice::shown($deal->offer)->pluck('id')->all() : []])@endif
+            @if ($requirement && ! $paperStep && ! $paidUp && ! $signingPick)
+                @include('cabinet.deals.answer')
             @endif
-
-            {{-- Действия — после всего, что нужно прочитать. --}}
-            @if ($needsBuyer && ! $moneyHere)
-                @if ($pickBuyerHere)
-                    <div class="mt-4">@include('cabinet.deals.buyer-picker')</div>
-                @else
-                    <div class="mt-4">@include('cabinet.deals.contract', ['part' => 'buyer', 'embedded' => true, 'labels' => false, 'after' => ''])</div>
-                @endif
-            @endif
-            @if ($requirement && ! $needsBuyer && ! $selectionPay && ! $direct && ! $paidUp && ! $signingPick)
-                @if ($payStep && $unpaid->isNotEmpty() && ! $direct)
-                    {{-- «Оплатить» — в платеже выше (15.11.2026). --}}
-                @else
-                    @include('cabinet.deals.answer')
-                @endif
-            @endif
-            @if ($direct && $selectionPay && ! $receipt)
-                {{-- Наш подбор — своей группой под платежом поставщику, вторичной кнопкой. --}}
-                {{-- Здесь главное — платёж поставщику выше, наш подбор — вторичной кнопкой. --}}
-                <div class="pay-split">@include('cabinet.deals.payment', ['title' => $selectionPay->seller->config()['name'], 'nested' => true, 'amount' => \App\Support\Money::rub($selectionPay->remaining()), 'state' => null, 'invoice' => $selectionPay, 'pay' => true])</div>
-            @endif
-            @endif
-            {{-- В чек-листе договора с получением строка стоит под «Заберите автомобиль». --}}
-            @unless ((($contractStep ?? false) && ($pickupSteps ?? null)) || ($carCard ?? false))@include('cabinet.deals.pickup-request')@endunless
+            @unless ($carCard ?? false)@include('cabinet.deals.pickup-request')@endunless
         </div>
     @elseif ($deal->isLive())
         <x-ui.empty>Сделка ещё не началась</x-ui.empty>

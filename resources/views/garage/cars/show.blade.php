@@ -40,10 +40,16 @@
             @if ($extraAsk = \App\Offers\ExtraAsk::holding($step['deal']))
                 @include('cabinet.deals.extra-ask', $step + ['ask' => $extraAsk])
             @else
-                @include('cabinet.deals.step', $step + ['withInvoices' => ! $asBuyer])
+                @include('cabinet.deals.step', $step)
             @endif
-            {{-- Гаражная «платит менеджер» у ПРАЙМ: ДКП ПРАЙМ с ним самим — его данные для договора тут же. --}}
-            @if ($step['deal']->hasContract())@include('cabinet.deals.contract', ['deal' => $step['deal'], 'labels' => false, 'after' => ''])@endif
+            {{-- Деньги и документы покупки — тем же блоком, что на странице сделки (18.11.2026, владелец: «к единой схеме»):
+                 покупатель → счёт → договор, платёжка, наличные. --}}
+            {{-- Покупатель с гаражом сумм сделки не видит (закупочная — `GarageBuyerTest`): ему — только данные для договора, как было. --}}
+            @if ($asBuyer)
+                @if ($step['deal']->hasContract())@include('cabinet.deals.contract', ['deal' => $step['deal'], 'labels' => false, 'after' => ''])@endif
+            @else
+                @include('cabinet.deals.receipt-card', $step)
+            @endif
         @else
             {{-- После покупки его дело — той же шапкой, что у сделки (18.11.2026): забрать, указать покупателя, оплатить счёт. --}}
             @if ($garageTurn = \App\Offers\Turn::ofGarage($car, $user, $view))

@@ -4,51 +4,17 @@
     // оплачен, 900 000» стоял и там, и там); аннулированные менеджеру ни о чём. Остаются прочие оплаченные — и все в гараже,
     // где «Расчёта» нет.
     $liveInvoices = $invoices->reject(fn ($i) => $i->state === \App\Billing\InvoiceState::Void);
-    $inMoney = $deal->isGarage() ? [] : collect([\App\Billing\ChargeKind::Selection, \App\Billing\ChargeKind::Sale])
+    $inMoney = collect([\App\Billing\ChargeKind::Selection, \App\Billing\ChargeKind::Sale])
         ->map(fn ($kind) => $liveInvoices->first(fn ($i) => $i->kind === $kind)?->id)->filter()->all();
     $pastInvoices = $liveInvoices->reject(fn ($i) => $i->state === \App\Billing\InvoiceState::Issued || in_array($i->id, $inMoney, true));
     $docs = \App\Offers\OfferFiles::forManagers($offer, auth()->user());
     $photos = $offer->visiblePhotos();
-    // Шаг договора (просьба приложить документ, у сделки есть ДКП): покупатель и сам ДКП — пунктами задачи, а не блоком
-    // ниже неё (05.10.2026, владелец: «просит приложить договор, а он где-то ниже формируется»).
-    // Получение по ДКП (Т-Страхование, 06.10.2026): «Связался» → «Забрал» → подписанный договор — тот же чек-лист с первого шага.
-    $pickupSteps = \App\Offers\Handover::checklist($deal, $position);
-    $contractStep = $deal->isLive() && $deal->hasContract() && $requirement && ($pickupSteps || ($requirement->asks === \App\Workflow\Asks::Document && ! $position?->stage->isPayStep()));
-    // ПРАЙМ без покупателя: задача и есть выбор покупателя — он в ней, а не вторым блоком с той же кнопкой.
-    $needsBuyer = in_array($payGap, ['buyer', 'passport'], true);
-    // Пока покупка не согласована (11.10.2026 — Каркаде, 27.10.2026 — у всех: BMW X6 Альфы 22 дня просила «Выбрать
-    // покупателя» и ДКП, хотя поставщик ещё не ответил, а менеджер не сказал «Беру»): «Выбрать покупателя» и ДКП рано.
-    // Блок встанет после согласования (`Deal::agreed`).
-    // Совкомбанк — сразу с принятия (14.11.2026, `Deal::buyerOpen`): согласования у него нет.
-    $tooEarly = $deal->isLive() && ! $deal->buyerOpen();
-    // «Автомобиль» своей карточкой под шагом (11.11.2026): получение — не само дело шага (не «Заберите автомобиль», не чек-лист
-    // договора), а показать есть что — где он, кто везёт, «Забрал» / «Вывоз».
-    // Оплата — одной карточкой (16.11.2026, владелец: «встрой оплату в блок деньги… объедини эти два блока в один»): на шаге оплаты
-    // и пока ушедшую платёжку не подтвердили строки денег — в карточке шага, своей карточки денег нет.
-    // «Страховой напрямую»: покупатель — тот, кто платит поставщику, выбор — в строке «Поставщику» (16.11.2026), отдельного блока
-    // «Указать покупателя» нет; когда шаг просит покупателя, строки денег — в карточке шага.
-    $buyerInMoney = $deal->isLive() && ! $deal->isGarage() && $deal->paysSelection() && ! $deal->hasContract();
-    $moneyInStep = $deal->isLive() && ! $deal->isGarage() && $position && (
-        (! $needsBuyer && $requirement && $position->stage->isPayStep() && $requirement->asks !== \App\Workflow\Asks::Buyer)
-        || (! $needsBuyer && ! $requirement && $deal->sentPaymentProof())
-        || ($buyerInMoney && ($needsBuyer || $requirement?->asks === \App\Workflow\Asks::Buyer)));
-    // Задача «Укажите покупателя» — карточкой под шагом (18.11.2026, владелец: «чтобы ТОЧНО заметили»): покупатель нужен, а его нет
-    // или только заготовка без данных; и до согласования. Где шаг сам просит покупателя (договор, «Нет реквизитов», ПРАЙМ на оплате)
-    // — он в шаге. Пока задача есть, шторку выбора (`buyer:open`) держит она; блока «Договор» и выбора в «Деньгах» нет.
-    $contractBuyer = $deal->contract?->buyer;
-    $stepPicks = $contractStep || $needsBuyer || $requirement?->asks === \App\Workflow\Asks::Buyer;
-    // Ставится с согласия («Беру в работу» — `AskBuyer`, `buyer_asked_at`, без срока) или когда покупка уже согласована.
-    $buyerTask = $deal->isLive() && $deal->needsBuyer() && ($deal->buyer_asked_at || $deal->buyerOpen()) && ! $deal->isGarage() && ! auth()->user()->isSuperBuyer() && ! $stepPicks
-        && (! $contractBuyer || $contractBuyer->isBuyerDraft());
-    // С согласия — и у «страховой напрямую» (10.11.2026, `Deal::needsBuyer`); на шаге «Нет реквизитов» покупатель в задаче.
-    $buyerHere = ($deal->hasContract() || $deal->buyerAhead()) && $requirement?->asks !== \App\Workflow\Asks::Buyer;
-    // «Договор и счёт» сразу под шагом (16.11.2026, владелец выбрал вариант А: «не замечают, где этот блок»): покупатель, наш
-    // договор и счёт файлами; «Договор уже подписан?» — своей карточкой следом.
-    $withBuyer = $buyerHere && ! $buyerInMoney && ! $contractStep && ! $needsBuyer && ! $tooEarly && ! $buyerTask && ($deal->isLive() || $deal->contract?->buyer_user_id);
-    // Покупатель в «Деньгах» — своей шторкой, когда на странице её больше никто не держит (до согласования блока «Договор» нет —
-    // 18.11.2026 строка «Плательщик» слала событие в пустоту).
-    $buyerPickInMoney = ! $buyerTask && ! $withBuyer && ! $stepPicks;
-    $carCard = $deal->isLive() && $handover && ! $contractStep && ! ($requirement && $position?->stage->isPickupStep())
+    // Страница — шаг (чей ход и то, что не про деньги: «Беру в работу», получение, подписание) и под ним ОДИН блок денег и
+    // документов (`cabinet.deals.receipt-card`, 18.11.2026, владелец: «везде один нормальный блок», «счёт и договор вместе»).
+    // Чек-листа договора, карточек «Договор и счёт», «Договор уже подписан?», «Укажите покупателя» и денег справа нет.
+    // «Автомобиль» своей карточкой под шагом (11.11.2026): получение — не само дело шага, а показать есть что — где он, кто
+    // везёт, «Забрал» / «Вывоз».
+    $carCard = $deal->isLive() && $handover && ! ($requirement && $position?->stage->isPickupStep())
         && ((($handover->shows() || ($handover->park && $deal->releasable())) && ! $handover->withBuyer) || $handover->carrier || $handover->canRequest);
 @endphp
 <x-ui.shell :title="$offer->titleWithYear()" copy-title :back="['Сделки', '/deals']">
@@ -64,21 +30,10 @@
             @if ($extraAsk = \App\Offers\ExtraAsk::holding($deal))
                 <div class="order-1 min-w-0">@include('cabinet.deals.extra-ask', ['ask' => $extraAsk])</div>
             @else
-                <div class="order-1 min-w-0">@include('cabinet.deals.step', ['contractStep' => $contractStep, 'pickupSteps' => $pickupSteps, 'carCard' => $carCard, 'moneyInStep' => $moneyInStep])</div>
+                <div class="order-1 min-w-0">@include('cabinet.deals.step', ['carCard' => $carCard])</div>
             @endif
-            @if ($buyerTask)<div class="order-1 min-w-0">@include('cabinet.deals.buyer-task')</div>@endif
             @if ($carCard)<div class="order-1 min-w-0">@include('cabinet.deals.car-card')</div>@endif
-            {{-- Закончилась без покупателя — «выберите покупателя» уже не о чем. --}}
-            {{-- Покупатель не выбран или без данных — это дело менеджера: на телефоне сразу под задачей, над «Расчётом»
-                 (05.11.2026); готов — на прежнем месте под ним. --}}
-            @php
-                $signStep = $deal->openRequirement?->asks === \App\Workflow\Asks::Document && $deal->openRequirement?->stage?->aboutContract();
-                // У Альфы договор — после подтверждённой оплаты: до неё просить подписанный не о чем (`Deal::contractAfterPay`).
-                $withSigned = ! $signStep && ! $deal->contractAfterPay() && \App\Offers\Actions\AttachSignedContract::allows($deal) || $deal->getMedia('signed_contract')->isNotEmpty();
-            @endphp
-            @if ($withBuyer)<div class="order-1 min-w-0">@include('cabinet.deals.buyer-block', ['withBuyer' => $withBuyer, 'saleInPay' => $moneyInStep])</div>@endif
-            {{-- Подписанный без нас — своей карточкой-вопросом, отдельно от нашего договора (16.11.2026). --}}
-            @if ($withSigned && ! $signStep)<x-deal.signed-contract :deal="$deal" :base="'/deals/'.$deal->id" ask class="order-1"/>@endif
+            <div class="order-1 min-w-0">@include('cabinet.deals.receipt-card')</div>
             @if ($deal->buyer_asked_at && $deal->isLive())<x-deal.buyer-ask-sheet :deal="$deal"/>@endif
             @include('cabinet.deals.path', ['class' => 'order-5'])
 
@@ -99,24 +54,6 @@
                  колонке, на телефоне — самым верхом, над задачей. --}}
             {{-- На телефоне — под задачей (10.11.2026, владелец: «пишут в чат, а не кнопку жмут»: чат стоял над делом). --}}
             @if ($offer->chatOpenFor(auth()->user()))<div class="order-1 min-w-0">@include('cabinet.deals.chat-card')</div>@endif
-            @unless ($moneyInStep)
-            <div class="order-2 min-w-0">
-                @if (! $deal->isGarage())
-                    @include('cabinet.deals.money')
-                @else
-                    <div class="box">
-                        <a href="/offers/{{ $offer->number }}" class="nums block text-[32px] font-bold leading-none">{{ \App\Support\Money::rub($deal->amount) }}</a>
-                        @if (! $deal->isLive())<x-ui.state :tone="$deal->state === DealState::Done ? 'open' : 'danger'" class="mt-2">{{ mb_strtolower($deal->state->label()) }}</x-ui.state>@endif
-                        <dl class="mt-4 grid grid-cols-2 gap-x-6 gap-y-3">
-                            <div class="min-w-0"><dt class="text-sm text-ink-dim">Предложение</dt><dd class="nums mt-0.5 break-words font-normal"><x-ui.copy-code :value="(string) $offer->number"/></dd></div>
-                            @if ($deal->commission && $deal->hasInvoices())
-                                <div class="col-span-2 min-w-0"><dt class="text-sm text-ink-dim">Вознаграждение</dt><dd class="nums mt-0.5 font-semibold">{{ \App\Support\Money::rub($deal->commission) }}</dd></div>
-                            @endif
-                        </dl>
-                    </div>
-                @endif
-            </div>
-            @endunless
             <x-offer.my-note :offer="$offer" class="order-3 min-w-0"/>
             <x-offer.facts :offer="$offer" :full="true" class="order-7"/>
             @if ($docs->isNotEmpty())

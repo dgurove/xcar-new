@@ -85,7 +85,7 @@ class EarlyBuyerTest extends TestCase
         Notification::assertSentTo($this->manager, BuyerAskNotice::class);
         // «Страховой напрямую»: отдельного блока «Указать покупателя» нет с 16.11.2026 (b2cddf00) — окно «Кто покупатель?» и строка
         // покупателя в карточке денег.
-        $this->actingAs($this->manager)->get('/deals/'.$deal->id)->assertOk()->assertSee('Кто покупатель?')->assertSee('Укажите покупателя');
+        $this->actingAs($this->manager)->get('/deals/'.$deal->id)->assertOk()->assertSee('Кто покупатель?')->assertSee('Указать покупателя');
 
         // Покупатель до запроса страховой — сохраняется (раньше 404), паспорт со сканом — дело гаснет.
         $this->actingAs($this->manager)->put('/deals/'.$deal->id.'/contract', ['buyer_id' => 'me'])->assertSessionHasNoErrors();

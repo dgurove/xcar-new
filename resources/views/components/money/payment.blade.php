@@ -11,7 +11,17 @@
         $p->state === PaymentState::Rejected => [$p->source->icon(), 'Не поступила', $p->reject_reason ?: $day, 'danger'],
         $p->state === PaymentState::Claimed => [$p->source->icon(), $p->source === PaymentSource::Cash ? 'Наличные' : 'Оплата по счёту', ($p->source === PaymentSource::Cash ? 'отдали ' : 'сообщили ').$day.', ждёт подтверждения', 'urgent'],
         // Коротко — строка не разваливается на три (16.11.2026, владелец: «убогая вёрстка»): что засчитана — второй строкой.
-        $p->source === PaymentSource::Credit => ['offset', 'Оплата по ссылке', $day.', засчитана', 'open'],
+        // Зачёт — подписью того, как пришли деньги исходного счёта (18.11.2026, владелец: «по ссылке за машину НИКОГДА не платят»:
+        // банковский перевод, засчитанный в сделку, стоял «Оплатой по ссылке»): перевод — «Оплата по счёту», наличные — «Наличные».
+        $p->source === PaymentSource::Credit => (function () use ($p, $day) {
+            $origin = $p->credit_invoice_id ? \App\Billing\Payment::where('invoice_id', $p->credit_invoice_id)->where('source', '!=', PaymentSource::Credit->value)->latest('id')->value('source') : null;
+            $origin = $origin instanceof PaymentSource ? $origin : PaymentSource::tryFrom((string) $origin);
+            return match ($origin) {
+                PaymentSource::Acquiring => ['offset', 'Оплата по ссылке', $day.', засчитана', 'open'],
+                PaymentSource::Cash => ['cash', 'Наличные', $day.', засчитаны', 'open'],
+                default => ['bank', 'Оплата по счёту', $day.', засчитана', 'open'],
+            };
+        })(),
         // Вознаграждение, вычтенное в старых счетах зачётом (до 18.11.2026: теперь счёт сразу за вычетом его).
         $p->source === PaymentSource::Offset => ['offset', 'Вознаграждение', $day, 'muted'],
         $p->source === PaymentSource::Acquiring => [PayMethod::icon($a?->method), 'Оплата по ссылке', $day.' '.PayMethod::label($a?->method)

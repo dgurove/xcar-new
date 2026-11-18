@@ -32,6 +32,11 @@ final class CreatePayLink
             if ($invoice->state !== InvoiceState::Issued || $invoice->isOwed()) {
                 throw ValidationException::withMessages(['amount' => 'Счёт '.mb_strtolower($invoice->state->label())]);
             }
+            // За ТС по сделке по ссылке не платят никогда — только по счёту или наличными; ссылка — у подбора (18.11.2026, владелец:
+            // «по ссылке ТОЛЬКО за подбор»). Одна дверь: CRM, кабинет, `PayChoice`, гараж — правило `PayLink::linkable` здесь же.
+            if ($invoice->deal_id && $invoice->kind === \App\Billing\ChargeKind::Sale) {
+                throw ValidationException::withMessages(['amount' => 'За ТС по ссылке не платят: по счёту или наличными']);
+            }
             // Ссылка — только к счёту, который менеджеру уже отправили (17.11.2026, начальник: «пока не нажали „Отправить“,
             // ссылка не выставляется и не отображается», иначе «Оплаты» захламлялись счетами, которых менеджер не видит).
             // Одна дверь для всех путей: сама со счётом (`EnsurePayLink`), CRM, кабинет, смена плательщика, `acquiring:backfill-links`.

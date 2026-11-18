@@ -7,7 +7,7 @@
     @if ($handover->canPick)
         {{-- Шага получения у маршрута нет (Альфа): «Забрал» — здесь, иначе его вывоз так и висел бы открытым. --}}
         <form method="post" action="/deals/{{ $deal->id }}/picked" class="mt-4" data-turbo-confirm="Забрали автомобиль?" data-turbo-confirm-label="Автомобиль забрал">
-            @csrf<x-ui.button block variant="secondary">Автомобиль забрал</x-ui.button>
+            @csrf<x-ui.button block variant="secondary">Автомобиль забрал…</x-ui.button>
         </form>
     @endif
     {{-- «Попросить вывоз…» (10.11.2026, было «Нужен вывоз» — владелец: «непонятно, что эта кнопка делает»): шторка с тем,

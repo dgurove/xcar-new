@@ -48,7 +48,7 @@ final class ApplyDealCredits
                         continue;
                     }
                     $amount = min($left, $room);
-                    $payment = ($this->record)($target->fresh(), $by, $amount, null, PaymentSource::Credit, null, 'Оплата по ссылке, счёт '.$credit->label());
+                    $payment = ($this->record)($target->fresh(), $by, $amount, null, PaymentSource::Credit, null, 'Зачёт, счёт '.$credit->label());
                     $payment->update(['credit_invoice_id' => $credit->id]);
                     $left = round($left - $amount, 2);
                 }

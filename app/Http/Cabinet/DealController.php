@@ -554,8 +554,21 @@ class DealController
     {
         $request->validate(['files' => ['required', 'array', 'max:20'], 'files.*' => ['file', 'max:30720']],
             ['files.required' => 'Выберите файл договора', 'files.*.max' => 'Файл больше 30 МБ']);
+        // Шаг договора у него открыт — файлы в просьбу шага и сразу ответ «Договор приложен» (18.11.2026, владелец: «убирай чек-лист
+        // договора»; кнопка «Приложить подписанный договор» в блоке денег): маршрут идёт своим исходом, как раньше по кнопке.
+        $me = $request->user();
+        $requirement = $deal->buyer_id === $me->id ? $deal->openRequirement()->with('stage.exits')->first() : null;
+        if ($requirement && $requirement->asks === Asks::Document && $requirement->stage?->aboutContract() && ! $requirement->stage->isPayStep()
+            && ($move = $deal->soleMove($requirement->stage))) {
+            foreach ($request->file('files') as $file) {
+                app(AttachRequirementFiles::class)($requirement, $file);
+            }
+            app(AnswerRequirement::class)($requirement->fresh(), $move, $me);
+
+            return back()->with('toast', 'Подписанный договор приложен');
+        }
         foreach ($request->file('files') as $file) {
-            $attach($deal, $file, $request->user());
+            $attach($deal, $file, $me);
         }
 
         return back()->with('toast', 'Подписанный договор приложен');

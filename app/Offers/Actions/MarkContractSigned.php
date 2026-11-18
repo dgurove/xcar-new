@@ -45,7 +45,10 @@ final class MarkContractSigned
                 // Дальше — только закрытие (у Альфы подписание — последний шаг): закрывает «Уже продана…» со своими вопросами
                 // про деньги и вывоз, а не эта отметка.
                 if ($run->stop && ! $run->closes()) {
-                    Requirement::closeOpen($deal, $stage->id, ['closed_by' => 'staff', 'by' => $by->id, 'exit' => 'Договор подписан']);
+                    // Приложил сам менеджер (шаг договора, блок денег на сайте, 18.11.2026) — его ответ «Договор приложен», не «за вас».
+                    Requirement::closeOpen($deal, $stage->id, $by->id === $deal->buyer_id
+                        ? ['by' => $by->id, 'exit' => 'Договор приложен']
+                        : ['closed_by' => 'staff', 'by' => $by->id, 'exit' => 'Договор подписан']);
                     ($this->place)($offer, $run->stop, $by);
                 }
             }

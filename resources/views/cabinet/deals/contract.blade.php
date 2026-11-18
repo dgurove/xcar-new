@@ -122,12 +122,12 @@
                  показываем договор, если он НЕ ГОТОВ»; прежде — «ДКП готовим: (Э)ПТС»). --}}
             {{-- Готовый, но не отправленный сотрудником (кнопка в CRM, 16.11.2026) — «готовится», файла нет. --}}
             @if (! $missing && ! $contract->shownToManager())
-                <div class="row sale-row"><span class="sale-row-label">Договор</span><span class="sale-row-value text-ink-muted">готовится</span></div>
+                <div class="row sale-row"><span class="sale-row-label">Договор</span><span class="sale-row-value text-ink-muted">в обработке</span></div>
             @elseif (! $missing && $labels)
                 {{-- В «Договоре и счёте» — файлом PDF со «Скачать» (16.11.2026, владелец: «чтобы поняли, что это файл»). --}}
                 <x-ui.file :name="'Договор купли-продажи'.($doc->number() ? ' № '.$doc->number() : '')" mime="application/pdf" :href="'/deals/'.$deal->id.'/dkp.pdf'" download class="row"/>
             @elseif ($labels)
-                <div class="row sale-row"><span class="sale-row-label">Договор</span><span class="sale-row-value text-ink-muted">{{ $ready ? 'готовится' : 'ждём данные' }}</span></div>
+                <div class="row sale-row"><span class="sale-row-label">Договор</span><span @class(['sale-row-value', 'text-ink-muted' => $ready, 'text-danger' => ! $ready])>{{ $ready ? 'в обработке' : 'нужны данные' }}</span></div>
             @elseif (! $missing)
                 <x-ui.doc :doc="$pdf" class="row sale-row">
                     <span class="sale-row-label text-ink">{{ $prime ? 'ДКП '.$deal->seller()->short() : 'ДКП' }}{{ $doc->number() ? ' № '.$doc->number() : '' }}</span>
