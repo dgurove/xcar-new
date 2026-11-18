@@ -9,8 +9,10 @@ use App\Mail\Extraction\Extractor;
 use App\Mail\Extraction\Intent;
 use App\Mail\Extraction\ParkExtractor;
 use App\Mail\Extraction\QuotationStripper;
+use App\Mail\Extraction\Templates\Template;
 use App\Mail\Message;
 use App\Mail\Scope;
+use App\Offers\Pricing;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -43,13 +45,18 @@ final class ReadLetter
             default => null,
         };
         $own = QuotationStripper::ownText($body);
+        // Цена в записке сотрудника над пересылкой — главнее сумм в письме вендора (`Template::notedPrice`).
+        $note = QuotationStripper::forwardNote($body);
+        if (! $isPark && ($price = Template::notedPrice($note)) && $price >= Pricing::MIN) {
+            $fields['floor_price'] = ['value' => $price, 'source' => 'note'];
+        }
 
         return [
             'fields' => $fields,
             'keys' => $this->keys($message, $fields, $intent),
             'intent' => $intent?->value,
             'own_text' => mb_substr(Intent::excerpt($own !== '' ? $own : $body, 2000), 0, 2000),
-            'forward_note' => QuotationStripper::forwardNote($body),
+            'forward_note' => $note,
         ];
     }
 

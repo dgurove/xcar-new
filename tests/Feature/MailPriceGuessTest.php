@@ -49,6 +49,25 @@ class MailPriceGuessTest extends TestCase
         $this->assertSame('file', $fields['floor_price']['source']);
     }
 
+    /**
+     * Росгосстрах (18.11.2026, BMW X5 Т053КВ977): «Стоимость авто 13 000 000 руб. Пробег на момент страхования» — страховая
+     * стоимость, не закупочная; закупочная — «База стоимость 6375000₽» в записке Андрея над пересылкой.
+     */
+    public function test_insured_value_is_not_price_and_staff_note_is(): void
+    {
+        $reader = new class implements AttachmentReader
+        {
+            public function read(Attachment $attachment): array
+            {
+                return [];
+            }
+        };
+        $body = "Андрей добрый день!\nа/м BMW X5\n2024\nСтоимость авто 13 000 000 руб. Пробег на момент страхования 13 тыс км.\nСрок действия полиса с января 2026";
+        $this->assertArrayNotHasKey('floor_price', (new Extractor($reader))->extract('BMW X5 № Т053КВ977', $body, 'sergey_avanesov@rgs.ru', now(), []));
+        $this->assertSame(6375000, \App\Mail\Extraction\Templates\Template::notedPrice('База стоимость 6375000₽'));
+        $this->assertNull(\App\Mail\Extraction\Templates\Template::notedPrice('Посмотри, пожалуйста'));
+    }
+
     public function test_contract_price_beats_bare_sum_in_text(): void
     {
         $reader = new class implements AttachmentReader

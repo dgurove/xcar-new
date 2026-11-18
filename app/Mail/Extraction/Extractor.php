@@ -213,8 +213,12 @@ final class Extractor
             foreach ($m[1] as [$digits, $at]) {
                 $before = mb_strtolower(mb_strcut($plain, max(0, $at - 60), min(60, $at)));   // смещение в байтах — режем по буквам
                 $sentence = preg_split('/[.!?\n](?=\s)/u', mb_strtolower(mb_strcut($plain, max(0, $at - 240), min(240, $at))));
+                // Сумма, за которой «на момент страхования», «полис», — страховая стоимость (18.11.2026, Росгосстрах: «Стоимость
+                // авто 13 000 000 руб. Пробег на момент страхования…» встала бы закупочной).
+                $after = mb_strtolower(mb_strcut($plain, $at, 140));
                 if (preg_match('/(пробег\w*|забрать\s+за|км)\s*[:–—-]?\s*$/u', $before)
-                    || preg_match('/выплат|возмещени|страхов\w*\s+сумм/u', (string) end($sentence))) {
+                    || preg_match('/выплат|возмещени|страхов\w*\s+сумм/u', (string) end($sentence))
+                    || preg_match('/страхован|полис/u', $after)) {
                     continue;
                 }
                 if ($value = Template::money($digits)) {

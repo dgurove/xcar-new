@@ -186,6 +186,12 @@ final class ChainBuilder
         foreach ($theirs->reject($single) as $m) {
             $fields += array_diff_key($m->fields(), array_flip(['vin', 'plate', 'brand', 'model', 'year', 'code']));
         }
+        // Цена из записки сотрудника над пересылкой (`ReadLetter`) — главнее суммы в письме вендора, из какого бы письма цепочки
+        // ни пришла (BMW X5 Росгосстраха: записка во второй части, «стоимость авто» страховой — в первой); выбор человека главнее.
+        $noted = $theirs->map(fn (Message $m) => $m->fields()['floor_price'] ?? null)->filter(fn ($f) => ($f['source'] ?? null) === 'note')->last();
+        if ($noted && ! isset($candidate->chosen['floor_price'])) {
+            $fields['floor_price'] = $noted;
+        }
         foreach ($ours as $m) {
             $fields += array_intersect_key($m->fields(), array_flip(['brand', 'model', 'plate', 'vin', 'year', 'code']));
         }

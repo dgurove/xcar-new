@@ -356,6 +356,15 @@ abstract class Template
     /** Сумма «685 713», «933333», «5 211 000,00»: разряды через пробел или слитно, копейки отрезаются. */
     public const MONEY = '(\d{1,3}(?: \d{3})+|\d{4,9})(?:[,.]\d{1,2}(?!\d))?';
 
+    /**
+     * Цена в записке сотрудника над пересылкой (18.11.2026, BMW X5 Росгосстраха: «База стоимость 6375000₽» Андрея — закупочная,
+     * а «Стоимость авто 13 000 000» в письме страховой — страховая стоимость): «база», «закупочная», «цена», «стоимость» и сумма.
+     */
+    public static function notedPrice(?string $note): ?int
+    {
+        return $note && preg_match('/(?:баз\w*|закуп\w*|цен\w*|стоимост\w*)\D{0,25}?'.self::MONEY.'/ui', self::joined($note), $m) ? self::money($m[1]) : null;
+    }
+
     public static function money(string $digits): ?int
     {
         $value = (int) preg_replace('/\D/u', '', $digits);
