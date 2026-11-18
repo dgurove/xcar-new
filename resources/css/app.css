@@ -4805,6 +4805,9 @@ html.kb-open { --home-gap: 0px; }
   .card-strip, .row-photo, .detail-photo, .photo-cell, .chat-car-photo, .chat-row-photo > img {
     background-image: var(--blank-car); background-position: center; background-repeat: no-repeat; background-size: 42% auto;
   }
+  /* Кадр сам стал заглушкой — фон коробки под ним гаснет: в клетке с панелью кнопок (кадры в CRM) картинка ниже коробки,
+     и два силуэта стояли со сдвигом друг на друге (18.11.2026, владелец: «заглушку на заглушку наложил»). */
+  :is(.card-strip, .row-photo, .detail-photo, .photo-cell, .chat-car-photo):has(img.is-blank) { background-image: none; }
   @media (hover: hover) { .card:hover .card-media img { transform: scale(1.05); } }
   .card-media--blank { display: var(--blank-display); height: var(--blank-h); }
   /* Заглушка вместо фото: силуэт на мягком фоне, цвет окон — фон. */
@@ -5869,12 +5872,11 @@ dialog.lightbox:not(.lb-one) .lb-pill--bottom { bottom: calc(var(--lb-strip-bott
   .row-ask { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: .5rem; padding: 0 1rem .75rem calc(1rem + 4.5rem + .75rem); margin-top: -.375rem; }
   .row-ask .ask-action-form { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: .5rem; }
   @media (max-width: 639px) { .row-ask { padding-inline-start: calc(1rem + 3.5rem + .75rem); } }
-  /* «Ждут вас» на «Предложениях» (`x-deal.ask-card`): кадр с названием и ценой, что сделать и срок, кнопка внизу. */
+  /* «Ждут вас» на «Предложениях» (`x-deal.ask-card`): кадр с названием и ценой, что сделать и срок; кнопки нет — отвечают в сделке. */
   .ask-card { display: flex; flex-direction: column; gap: .75rem; height: 100%; padding: .875rem; border-radius: 16px; background: var(--color-surface); }
   .ask-card-head { display: flex; align-items: center; gap: .75rem; min-width: 0; }
   .ask-card-head .row-photo { width: 3.5rem; height: 2.625rem; }
   .ask-card-task { display: block; flex: 1 1 auto; }
-  .ask-card .ask-action, .ask-card .ask-action-form { display: grid; gap: .25rem; margin-top: auto; }
   /* Вопрос при входе (`x-deal.ask-sheet`): машина строкой, вопрос, кнопки шага во всю ширину. */
   .ask-sheet-car { display: flex; align-items: center; gap: .75rem; min-width: 0; padding: .625rem .75rem; border-radius: var(--radius-m); background: var(--color-surface-2); }
   .ask-action--sheet, .ask-action--sheet .ask-action-form { display: grid; gap: .5rem; }
