@@ -30,7 +30,7 @@
         <x-slot:aside>
             @if ($money)@include($asBuyer ? 'garage.cars.money-buyer' : 'garage.cars.money')@endif
             {{-- Вопросы по машине — тем же чатом, что и до гаража: на всех этапах до продажи. --}}
-            @if ($chat)<a href="{{ \App\Chats\Chat::offerPath($offer->number) }}" class="btn btn-quiet w-full"><x-ui.icon name="chat" class="size-5"/> Написать</a>@endif
+            @if ($chat)<a href="{{ \App\Chats\Chat::offerPath($offer->number) }}" class="btn btn-quiet btn-bleed w-full"><x-ui.icon name="chat" class="size-5"/> Написать</a>@endif
             <x-offer.my-note :offer="$offer"/>
         </x-slot:aside>
 

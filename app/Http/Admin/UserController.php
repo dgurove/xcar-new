@@ -314,6 +314,7 @@ class UserController
     public function party(Request $request, User $user)
     {
         abort_unless($request->user()->isAdmin() && $user->hasDeals(), 404);
+        PartyRules::squeezePassport($request);
         $data = $request->validate(PartyRules::rules());
         // НДС ПРАЙМ в его счетах — в сумме (разница цен), «НДС сверху» — если так договорились.
         app(SaveRequisites::class)($user, $data + ['vat_on_top' => $request->boolean('vat_on_top')]);

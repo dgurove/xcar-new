@@ -65,6 +65,17 @@ final class PartyRules
         $set && $request->merge([$prefix => $set]);
     }
 
+    /**
+     * Серия и номер двумя полями без набора (`x-billing.party-fields`: «Ваши данные», CRM, логистика, парковка; 18.11.2026) — в
+     * одно `passport`, как `squeeze` у форм договора.
+     */
+    public static function squeezePassport(\Illuminate\Http\Request $request): void
+    {
+        if ($request->has('passport_series') || $request->has('passport_number')) {
+            $request->merge(['passport' => self::passportNumber((string) $request->input('passport_series'), (string) $request->input('passport_number'))]);
+        }
+    }
+
     /** «82 07» и «445349» → «8207 445349» (серия без пробела, 07.11.2026, владелец); не по образцу (старый или чужой паспорт) — как вписали, через пробел. */
     public static function passportNumber(string $series, string $number): ?string
     {

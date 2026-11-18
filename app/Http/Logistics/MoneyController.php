@@ -75,6 +75,7 @@ class MoneyController
     public function party(Request $request, User $user)
     {
         abort_unless($user->isLogist() && ($request->user()->isAdmin() || $request->user()->is($user)), 404);
+        PartyRules::squeezePassport($request);
         $data = $request->validate(PartyRules::rules());
         app(SaveRequisites::class)($user, $data);
 

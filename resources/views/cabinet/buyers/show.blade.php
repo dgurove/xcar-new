@@ -157,7 +157,7 @@
                     <x-billing.passport-scan :party="$party" form="buyer-passport-form"/>
                     <form method="post" action="/buyers/{{ $buyer->id }}/passport" class="flex flex-col gap-3" id="buyer-passport-form">
                         @csrf @method('put')
-                        <x-billing.passport-fields :party="$buyer->party ?? new \App\Billing\Party(['name' => $buyer->name])" prefix="buyer" rows/>
+                        <x-billing.passport-fields :party="$buyer->party ?? new \App\Billing\Party(['name' => $buyer->name])" prefix="buyer"/>
                         <x-ui.sheet-foot>Сохранить</x-ui.sheet-foot>
                     </form>
                 </x-ui.sheet>

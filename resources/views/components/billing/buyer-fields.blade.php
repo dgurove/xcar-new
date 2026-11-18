@@ -6,7 +6,8 @@
      выбранного вида (`SaveBuyerData`), так что и сохранённое при смене вида не теряется. Реквизиты, вставленные целиком
      в любое поле ИП или организации, раскладываются по полям (`requisites_paste_controller`).
      scan — id формы: плитки скана внутри группы (OCR вписывает в её поля); fallback — ФИО, когда в имени уже название
-     организации (покупатель был организацией). Только в шторках и на экране «Данные для договора». --}}
+     организации (покупатель был организацией). Только в шторках и на экране «Данные для договора». Поля — подпись сверху,
+     значение в своей плашке (18.11.2026, владелец: «в CRM и в xcar одинаково», прежде строками `.fields-stack`). --}}
 @props(['party' => null, 'prefix' => 'buyer', 'key' => null, 'scan' => null, 'fallback' => null])
 @php
     use App\Billing\PartyKind;
@@ -27,20 +28,20 @@
             {{ $scanAfter ?? '' }}
         </div>
     @endif
-    <div class="fields fields-stack" data-reveal-target="pane" data-reveal-key="person ip" @if ($kind === 'company') hidden @endif>
+    <div class="flex flex-col gap-3" data-reveal-target="pane" data-reveal-key="person ip" @if ($kind === 'company') hidden @endif>
         <x-ui.field :name="$n('name')" :id="$id('p', 'name')" label="ФИО" :value="$company ? $fallback : $party?->name" required/>
-        <div class="contents" data-reveal-target="pane" data-reveal-key="person" @if ($kind !== 'person') hidden @endif>
-            <x-billing.passport-fields :party="$party" :prefix="$prefix" :key="$key" rows bare :fio="false"/>
+        <div data-reveal-target="pane" data-reveal-key="person" @if ($kind !== 'person') hidden @endif>
+            <x-billing.passport-fields :party="$party" :prefix="$prefix" :key="$key" bare :fio="false"/>
         </div>
     </div>
-    <div class="fields fields-stack" data-reveal-target="pane" data-reveal-key="ip" data-requisites-paste-target="group" @if ($kind !== 'ip') hidden @endif>
+    <div class="flex flex-col gap-3" data-reveal-target="pane" data-reveal-key="ip" data-requisites-paste-target="group" @if ($kind !== 'ip') hidden @endif>
         {{-- Реквизиты целиком (18.11.2026, владелец: «парсер ворда не надо — удобный ввод: копирует, вставляет»): блок раскладывается по полям. --}}
         <x-ui.field name="_paste" :id="$id('ip', 'paste')" label="Реквизиты целиком" type="textarea" rows="2" placeholder="Скопируйте карточку ИП из Word и вставьте сюда"/>
         <x-ui.field :name="$n('inn')" :id="$id('ip', 'inn')" label="ИНН" :value="$mine('inn', $ip)" placeholder="12 цифр" required/>
         <x-ui.field :name="$n('ogrn')" :id="$id('ip', 'ogrn')" label="ОГРНИП" :value="$mine('ogrn', $ip)" placeholder="15 цифр" required/>
         <x-ui.field :name="$n('legal_address')" :id="$id('ip', 'legal_address')" label="Адрес" type="textarea" rows="1" :value="$ip ? ($party->legal_address ?: $party->reg_address) : $party?->reg_address" required/>
     </div>
-    <div class="fields fields-stack" data-reveal-target="pane" data-reveal-key="company" data-requisites-paste-target="group" @if ($kind !== 'company') hidden @endif>
+    <div class="flex flex-col gap-3" data-reveal-target="pane" data-reveal-key="company" data-requisites-paste-target="group" @if ($kind !== 'company') hidden @endif>
         <x-ui.field name="_paste" :id="$id('org', 'paste')" label="Реквизиты целиком" type="textarea" rows="2" placeholder="Скопируйте карточку организации из Word и вставьте сюда"/>
         <x-ui.field :name="$n('org')" :id="$id('org', 'name')" label="Название" :value="$company ? $party->name : null" required/>
         <x-ui.field :name="$n('inn')" :id="$id('org', 'inn')" label="ИНН" :value="$mine('inn', $company)" required/>
@@ -52,7 +53,7 @@
     {{-- Банк — один на ИП и организацию: сменили вид между ними — счёт на месте. ИП без банка сервер не сохранит. --}}
     <div class="flex flex-col" data-reveal-target="pane" data-reveal-key="ip company" data-requisites-paste-target="group" @if ($kind === 'person') hidden @endif>
         <h3 class="list-head">Банк</h3>
-        <div class="fields fields-stack">
+        <div class="flex flex-col gap-3">
             <x-ui.field :name="$n('account')" :id="$id('bank', 'account')" label="Расчётный счёт" :value="$party?->account" placeholder="20 цифр"/>
             <x-ui.field :name="$n('bank_name')" :id="$id('bank', 'bank_name')" label="Банк" :value="$party?->bank_name"/>
             <x-ui.field :name="$n('bik')" :id="$id('bank', 'bik')" label="БИК" :value="$party?->bik" placeholder="9 цифр"/>

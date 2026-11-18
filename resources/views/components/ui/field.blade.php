@@ -25,7 +25,7 @@
     $keys = match (true) {
         $money => ['inputmode' => 'decimal', 'autocomplete' => 'off'],
         $ends('year', 'mileage', 'km', 'power', 'volume', 'qty', 'capacity', 'days', 'hours', 'port', 'multiplier', 'share') => ['inputmode' => 'decimal', 'autocomplete' => 'off'],
-        $ends('inn', 'kpp', 'ogrn', 'bik', 'bic', 'account', 'corr') => ['inputmode' => 'decimal', 'autocomplete' => 'off', 'autocorrect' => 'off', 'spellcheck' => 'false'],
+        $ends('inn', 'kpp', 'ogrn', 'bik', 'bic', 'account', 'corr', 'passport_series', 'passport_number') => ['inputmode' => 'decimal', 'autocomplete' => 'off', 'autocorrect' => 'off', 'spellcheck' => 'false'],
         $ends('vin', 'plate', 'claim_ref', 'ref', 'policy_no', 'sts', 'pts', 'dl', 'passport', 'passport_code', 'external_no', 'contract_no', 'agreement_number') => ['autocapitalize' => 'characters', 'autocorrect' => 'off', 'spellcheck' => 'false', 'autocomplete' => 'off'],
         $ends('phone', 'tel') => ['type' => 'tel', 'inputmode' => 'tel', 'autocomplete' => 'tel'],
         $ends('email') => ['type' => 'email', 'inputmode' => 'email', 'autocomplete' => 'email', 'autocapitalize' => 'none', 'autocorrect' => 'off'],

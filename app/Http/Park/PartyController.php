@@ -79,6 +79,7 @@ class PartyController
 
     private function data(Request $request): array
     {
+        PartyRules::squeezePassport($request);
         return $request->validate(PartyRules::rules()) + ['vat_on_top' => $request->boolean('vat_on_top')];
     }
 }

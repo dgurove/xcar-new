@@ -11,18 +11,19 @@
                 {{-- Подпись не отрывается от номера: «ОГРНИП», «р/с» и цифры — одним куском при переносе. --}}
                 @php $glue = fn (?string $t) => str_replace('/', "/\u{2060}", preg_replace('/ (?=\d)/u', "\u{a0}", (string) $t)); @endphp
                 <div class="mt-1 text-sm text-ink-muted">{{ $party->kind->label() }}@if ($party->details()), <span class="nums">{{ $glue($party->details()) }}</span>@endif</div>
-                <div class="text-sm text-ink-muted">{{ $party->bankDetails() ? $glue($party->bankDetails()) : 'Банк не указан' }}</div>
+                {{-- Банк — только где он нужен: ИП и юрлицо (ДКП) или мы платим (исполнитель вывоза); менеджеру-физлицу мы не платим. --}}
+                @if ($party->bankDetails() || $user->isDriver() || $party->kind !== \App\Billing\PartyKind::Person)<div class="text-sm text-ink-muted">{{ $party->bankDetails() ? $glue($party->bankDetails()) : 'Банк не указан' }}</div>@endif
             @else
                 <div class="mt-1 text-sm text-ink-muted">Не указаны</div>
             @endif
-            @if (! $party->payoutReady())<x-ui.state tone="urgent" class="mt-2">Реквизитов для выплаты нет</x-ui.state>@endif
+            @if ($user->isDriver() && ! $party->payoutReady())<x-ui.state tone="urgent" class="mt-2">Реквизитов для выплаты нет</x-ui.state>@endif
         </div>
         <button type="button" class="btn btn-s btn-quiet btn-round shrink-0" data-action="sheet#open" aria-label="Изменить реквизиты"><x-ui.icon name="edit" class="size-5"/></button>
     </div>
     <x-ui.sheet id="party" title="Реквизиты" wide tall>
         <form method="post" action="{{ $base }}/{{ $user->id }}/party" class="flex flex-col gap-4">
             @csrf @method('put')
-            <x-billing.party-fields :party="$party->exists ? $party : null" vat/>
+            <x-billing.party-fields :party="$party->exists ? $party : null" vat :payouts="$user->isDriver()"/>
             <x-ui.sheet-foot>Сохранить</x-ui.sheet-foot>
         </form>
     </x-ui.sheet>

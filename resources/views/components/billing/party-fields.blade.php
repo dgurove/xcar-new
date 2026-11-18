@@ -1,8 +1,11 @@
 {{-- Поля контрагента по виду: юрлицо, ИП, самозанятый, физлицо — вид выбирается чипами, лишние поля прячутся
      (reveal_controller выключает их, чтобы не ушли в форму). Банк общий, карта — где счёта может не быть.
      staff — служебные поля (руководитель, назначение платежа, заметки), менеджеру в кабинете они не нужны.
-     vat — «НДС сверху»: у плательщика счета ПРАЙМ (CRM) и ИП (парковка) прибавляют НДС к строкам, а не выделяют из суммы. --}}
-@props(['party' => null, 'staff' => true, 'vat' => false])
+     vat — «НДС сверху»: у плательщика счета ПРАЙМ (CRM) и ИП (парковка) прибавляют НДС к строкам, а не выделяют из суммы.
+     Паспорт физлица — тем же куском, что у договора (`x-billing.passport-fields`, 18.11.2026, владелец: «в CRM и в xcar форму
+     одинаковой»). payouts — мы этому человеку платим (исполнители вывоза и парковки): «Банк» у физлица и самозанятого; иначе
+     (менеджеру на сайте и в CRM — «зачем мы покупателю банк прописываем?») банк только у ИП и юрлица — его печатает ДКП. --}}
+@props(['party' => null, 'staff' => true, 'vat' => false, 'payouts' => true])
 @php
     use App\Billing\PartyKind;
     $g = 'grid grid-cols-2 gap-3';
@@ -14,7 +17,9 @@
             <label class="choice"><input type="radio" name="kind" value="{{ $k->value }}" @checked($kind === $k->value) data-action="reveal#pick"><span>{{ $k->label() }}</span></label>
         @endforeach
     </div>
-    <x-ui.field name="name" label="Название или ФИО" :value="$party?->name" required/>
+    {{-- «ФИО» у человека, «Название» у юрлица: одно поле `name`, подпись — по виду (18.11.2026, владелец: «не „Название или ФИО“»). --}}
+    <div data-reveal-target="pane" data-reveal-key="ip npd person" @if ($kind === 'company') hidden @endif><x-ui.field name="name" id="name-person" label="ФИО" :value="$party?->name" required/></div>
+    <div data-reveal-target="pane" data-reveal-key="company" @if ($kind !== 'company') hidden @endif><x-ui.field name="name" id="name-company" label="Название" :value="$party?->name" required/></div>
     <div class="{{ $g }}" data-reveal-target="pane" data-reveal-key="company">
         <x-ui.field name="inn" id="inn-company" label="ИНН" :value="$party?->inn"/>
         <x-ui.field name="kpp" id="kpp-company" label="КПП" :value="$party?->kpp"/>
@@ -38,14 +43,10 @@
         <x-ui.field name="inn" id="inn-npd" label="ИНН" :value="$party?->inn"/>
         <x-ui.field name="reg_address" id="reg_address-npd" label="Адрес регистрации" :value="$party?->reg_address"/>
     </div>
-    <div class="{{ $g }}" data-reveal-target="pane" data-reveal-key="person">
-        <x-ui.field name="passport" id="passport-person" label="Паспорт, серия и номер" :value="$party?->passport"/>
-        <x-ui.field name="passport_issued" id="passport_issued-person" label="Кем выдан" :value="$party?->passport_issued"/>
-        <x-ui.field name="passport_issued_at" id="passport_issued_at-person" label="Дата выдачи" type="date" :value="$party?->passport_issued_at?->toDateString()"/>
-        <x-ui.field name="passport_code" id="passport_code-person" label="Код подразделения" :value="$party?->passport_code"/>
-        <x-ui.field name="reg_address" id="reg_address-person" label="Адрес регистрации" :value="$party?->reg_address"/>
-        <x-ui.field name="birth_at" id="birth_at-person" label="Дата рождения" type="date" :value="$party?->birth_at?->toDateString()"/>
+    <div data-reveal-target="pane" data-reveal-key="person" @if ($kind !== 'person') hidden @endif>
+        <x-billing.passport-fields :party="$party" key="party" :fio="false" :required="false" bare/>
     </div>
+    <div class="flex flex-col gap-3" data-reveal-target="pane" data-reveal-key="{{ $payouts ? 'company ip npd person' : 'company ip' }}" @if (! $payouts && ! in_array($kind, ['company', 'ip'], true)) hidden @endif>
     <x-ui.section-title level="h3" class="!text-lg">Банк</x-ui.section-title>
     <div class="{{ $g }}">
         <x-ui.field name="bank_name" label="Банк" :value="$party?->bank_name" span="col-span-2"/>
@@ -54,6 +55,7 @@
         <x-ui.field name="corr_account" label="Корр. счёт" :value="$party?->corr_account"/>
         <x-ui.field name="card" label="Номер карты" :value="$party?->card"/>
         @if ($staff)<x-ui.field name="payment_purpose" label="Назначение платежа" :value="$party?->payment_purpose" span="col-span-2"/>@endif
+    </div>
     </div>
     <div class="{{ $g }}">
         <x-ui.field name="phone" label="Телефон" type="tel" :value="$party?->phone"/>

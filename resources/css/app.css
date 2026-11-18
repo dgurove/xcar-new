@@ -434,6 +434,9 @@ html.kb-open { --home-gap: 0px; }
     .surface-site .container-site .list:not(dialog *, #detail *, .box *, .list *),
     .surface-site .container-site .chat-rows-list:not(dialog *, #detail *),
     .surface-site .container-site .cards--list:not(dialog *, #detail *) { margin-inline: -1rem; }
+    /* «Написать» и заметка на странице сделки и гаража — тоже от края до края (18.11.2026, владелец). */
+    .surface-site .container-site .note-card:not(dialog *, #detail *, .box *, .list *, .note-card--bare),
+    .surface-site .container-site .btn-bleed { width: calc(100% + 2rem) !important; margin-inline: -1rem; }
     .surface-site .container-site .cards--list:not(dialog *, #detail *) { --sep-l: calc(1rem + var(--media-w) + .625rem); --sep-r: 1rem; }
     .surface-site .container-site .cards--list:not(dialog *, #detail *) > .card { padding-inline: 1rem; }
     /* Поиск чатов — во всю ширину, как список под ним (17.11.2026, владелец: «растяни ещё поиск в чатах»). */
@@ -1006,6 +1009,8 @@ html.kb-open { --home-gap: 0px; }
   .fields .field .passport-no .field-input { text-align: left; }
   .fields .field > .passport-no { grid-column: 2; }
   .fields.fields-stack .field > .passport-no { width: 100%; }
+  /* Паспорт сеткой (18.11.2026): «Кем выдан» и адрес — по высоте текста, а не пустой простынёй. */
+  .passport-grid textarea.field-input { field-sizing: content; min-height: 3rem; resize: none; }
   /* Паспорт к новому покупателю (07.11.2026): строка поля, файлы — чипами под ней. */
   .people-passport { cursor: pointer; }
   .people-passport-pick { grid-column: 2; justify-self: end; color: var(--color-accent-text); }

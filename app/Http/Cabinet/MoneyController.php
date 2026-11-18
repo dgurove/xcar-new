@@ -152,6 +152,7 @@ class MoneyController
 
     public function saveDetails(Request $request)
     {
+        PartyRules::squeezePassport($request);
         $data = $request->validate(PartyRules::rules());
         app(SaveRequisites::class)($request->user(), $data);
         // «Я сам» с паспортом и сканом — счёт и договор его сделок встают сами.
