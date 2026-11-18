@@ -24,12 +24,15 @@ return new class extends Migration
 {
     public function up(): void
     {
-        $spec = Alfa::requisites()['inspection'];
+        // С 18.11.2026 этапа нет: осмотр — доп. просьбой (`Offers\ExtraAsk`), этап снимает `2027_04_18_160000_extra_asks`. На
+        // чистой базе здесь делать нечего (прод её уже прошёл).
+        return;
+        $spec = [];
 
         // Все пути с блоком «Реквизиты для счёта» (Альфа и скопированный с неё Энергогарант), а не только «оплата до вывоза».
         $workflows = Stage::where('name', 'Письмо с реквизитами')->pluck('workflow_id')->unique();
         foreach (\App\Workflow\Workflow::whereKey($workflows)->get() as $workflow) {
-            if ($workflow->track !== Track::Sale || Stage::where('workflow_id', $workflow->id)->where('name', Alfa::INSPECTION)->exists()) {
+            if ($workflow->track !== Track::Sale || Stage::where('workflow_id', $workflow->id)->where('name', 'Осмотр перед оплатой')->exists()) {
                 continue;
             }
             DB::transaction(function () use ($workflow, $spec) {
