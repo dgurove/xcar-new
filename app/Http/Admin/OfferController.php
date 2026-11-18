@@ -367,9 +367,9 @@ class OfferController
             return redirect($request->fullUrlWithQuery(['preset' => self::home($request->user())]));
         }
         ['q' => $q, 'facets' => $facets, 'preset' => $preset, 'admin' => $admin, 'step' => $step, 'sort' => $sort, 'searching' => $searching,
-            'carcadeHidden' => $carcadeHidden] = $this->listQuery($request);
-        // Числа вкладок — с тем же выбором, что и список (и «кроме Каркаде» по умолчанию).
-        $counts = self::counts($request->user(), $facets, $carcadeHidden);
+            'carcadeOn' => $carcadeOn] = $this->listQuery($request);
+        // Числа вкладок — с тем же выбором, что и список (и «кроме Каркаде» по умолчанию — у каждой вкладки по её правилу).
+        $counts = self::counts($request->user(), $facets, $carcadeOn);
 
         $count = $q->count();
         // Вид — на любой вкладке (начальник 04.10.2026: «вернуть кнопку видов»); по умолчанию в CRM таблица, поиск — таблицей.
@@ -436,7 +436,7 @@ class OfferController
      * Список вкладки — одно место для экрана и окна «Выгрузка» (`export`): вкладка, чипы с памятью, «кроме Каркаде» по
      * умолчанию, поиск лупой мимо вкладки и чипов, порядок.
      *
-     * @return array{q: Builder, facets: Facets, preset: string, admin: bool, step: bool, sort: Sort, searching: bool, carcadeHidden: bool}
+     * @return array{q: Builder, facets: Facets, preset: string, admin: bool, step: bool, sort: Sort, searching: bool, carcadeOn: bool}
      */
     private function listQuery(Request $request): array
     {
@@ -512,7 +512,9 @@ class OfferController
         if (! $searching && ($given === null || (is_string($given) && str_starts_with($given, '!'))) && ($carcade = $this->carcadeDefault($request, $preset))) {
             $facets->implied('vendor', $carcade);
         }
-        $carcadeHidden = $facets->isImplied('vendor');
+        // Умолчание в силе — вендор не выбран (или выбран ровно «Кроме Каркаде»): числа колеса вычитают Каркаде у каждой
+        // вкладки, что его прячет (`hidesCarcade`), даже если на этой вкладке Каркаде нет.
+        $carcadeOn = ! $searching && self::carcadeOn($given);
 
         // Пустой «+ Новый» в списке не стоит: его либо заполнят, либо он удалится, как только из него уйдут.
         $q = Offer::query()->inCrm($request->user())->notEmptyDraft()->with(['settlement', 'saleSettlement', 'vendor', 'parkVehicle:id,car_id,state,accepted_at,created_at', 'deal', 'garageCar'])
@@ -548,7 +550,7 @@ class OfferController
         }
         $facets->apply($q);
 
-        return compact('q', 'facets', 'preset', 'admin', 'step', 'sort', 'searching', 'carcadeHidden');
+        return compact('q', 'facets', 'preset', 'admin', 'step', 'sort', 'searching', 'carcadeOn');
     }
 
     /** Окно «Выгрузка» над списком: то, что на экране (вкладка, чипы, лупа), — файлом или в буфер (21.10.2026). */
@@ -576,12 +578,27 @@ class OfferController
         return $memo[0];
     }
 
+    /**
+     * Прячет ли вкладка Каркаде по умолчанию — одно правило для списка (`carcadeDefault`) и числа колеса (`count`; 18.11.2026,
+     * владелец: «Спросить менеджера» 105 при 2 строках — числа колеса считались по другому правилу). Не прячут: «Есть
+     * подтверждения» — всё, что подтвердили менеджеры (11.10.2026, владелец: подтверждения Армена на Каркаде админ не видел);
+     * вкладки сделки, «Гараж», галерея, закупки — у них свои контроллеры без умолчания; «Все сделки» — сумма вкладок сделки.
+     */
+    private static function hidesCarcade(string $preset): bool
+    {
+        return ! self::ownTab($preset) && ! in_array($preset, ['bids', 'all_deals'], true);
+    }
+
+    /** Умолчание «Кроме Каркаде» в силе: вендор не выбран или выбран ровно им (`?vendor=!id`). */
+    private static function carcadeOn(mixed $vendor): bool
+    {
+        return $vendor === null || (is_string($vendor) && ($id = self::carcadeId()) && $vendor === '!'.$id);
+    }
+
     /** Умолчание вкладки «все, кроме Каркаде» (`!id` — исключение, Facets); Каркаде на вкладке нет — null. */
     private function carcadeDefault(Request $request, string $preset): ?string
     {
-        // «Есть подтверждения» — всё, что подтвердили менеджеры (11.10.2026, владелец: подтверждения Армена на Каркаде
-        // админ не видел): умолчание «Кроме Каркаде» на этой вкладке не встаёт.
-        if ($preset === 'bids') {
+        if (! self::hidesCarcade($preset)) {
             return null;
         }
         $carcade = self::carcadeId();
@@ -929,9 +946,13 @@ class OfferController
      *
      * @return array<string, int>
      */
-    /** carcadeDefault — «Кроме Каркаде» стоит умолчанием, а не выбором: число «Есть подтверждения» считается без него. */
-    public static function counts(User $user, ?Facets $facets = null, bool $carcadeDefault = false): array
+    /**
+     * carcadeOn — умолчание «Кроме Каркаде» в силе (`carcadeOn`): Каркаде вычитается у вкладок, что его прячут (`hidesCarcade`).
+     * null — по памяти чипов «Предложений» (страницы вкладок со своим контроллером и ответы на POST чипов не несут).
+     */
+    public static function counts(User $user, ?Facets $facets = null, ?bool $carcadeOn = null): array
     {
+        $carcadeDefault = $carcadeOn ?? self::carcadeOn(($user->list_prefs ?? [])['crm-offers']['vendor'] ?? null);
         // После своего действия (POST: «Оценить», «Взять») — всегда заново: число пилюли должно вспыхнуть сразу.
         if (! request()->isMethodSafe()) {
             return self::count($user, $facets, $carcadeDefault);
@@ -961,17 +982,15 @@ class OfferController
                 continue;
             }
             $q = self::scopeFor($key, $base(), $user->canManageCrm());
-            // Без чипов (поток после «Оценить») «Без цены» считается как вид по умолчанию — без Каркаде.
-            if (! $facets && in_array($key, self::TODO, true) && ($carcade = self::carcadeId())) {
-                $q->where(fn ($v) => $v->whereNull('offers.vendor_id')->orWhere('offers.vendor_id', '!=', $carcade));
-            }
             if ($facets) {
                 // «Вкладка» и «Менеджер» — чипы только «Всех»: другие вкладки сами по вкладке, иначе их числа обнулялись бы.
-                $facets->applyTo($q, [...match (true) {
-                    $key === 'bids' && $carcadeDefault => ['vendor'],
-                    in_array($key, self::OPEN, true) => [],
-                    default => ['recommended'],
-                }, ...(self::summary($key) !== null ? [] : ['tab', 'manager'])]);
+                // Вендор умолчанием — не чип: Каркаде вычитается ниже по правилу вкладки.
+                $facets->applyTo($q, [...(in_array($key, self::OPEN, true) ? [] : ['recommended']), ...(self::summary($key) !== null ? [] : ['tab', 'manager']),
+                    ...($carcadeDefault ? ['vendor'] : [])]);
+            }
+            // «Кроме Каркаде» — как у списка вкладки (`hidesCarcade`): число = строки, что покажет вкладка.
+            if ($carcadeDefault && ! $facets?->searching() && self::hidesCarcade($key) && ($carcade = self::carcadeId())) {
+                $q->where(fn ($v) => $v->whereNull('offers.vendor_id')->orWhere('offers.vendor_id', '!=', $carcade));
             }
             $subs[$key] = $count($q);
             // У «Из таблицы Кати» в числе и незаведённые номера — призрачные строки. Черновик из письма встаёт туда из
