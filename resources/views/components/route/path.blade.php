@@ -87,6 +87,16 @@
     $pricing = $position->track === \App\Workflow\Track::Sale && $offer->state === \App\Offers\OfferState::Draft && ! $offer->asking_price && ! $offer->isScheduled() && auth()->user()?->canManageCrm();
 @endphp
 <div class="steps">
+    {{-- «Заявка поступила» (18.11.2026, владелец: «перед „Приём подтверждений“ не хватает»): дата — первое событие «Истории»
+         машины, какой бы источник ни был (письмо, Мигторг, рукой). --}}
+    @if ($received = $offer->events()->reorder()->min('created_at') ?? $offer->created_at)
+        <div class="step step--{{ Path::DONE }}">
+            <span class="step-dot"><x-ui.icon name="check" class="size-3"/></span>
+            <div class="step-body">
+                <div class="step-head" style="padding-inline-end: 1.5rem"><span class="step-title flex-1">Заявка поступила</span><span class="flex shrink-0 items-center gap-1.5"><span class="nums text-sm text-ink-dim">{{ \App\Support\Ago::html(\Illuminate\Support\Carbon::parse($received), words: false) }}</span><x-ui.icon name="chevron-down" class="size-4" style="visibility: hidden"/></span></div>
+            </div>
+        </div>
+    @endif
     @if ($pricing)
         <div class="step step--{{ Path::CURRENT }}">
             <span class="step-dot"></span>
