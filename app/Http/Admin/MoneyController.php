@@ -86,7 +86,7 @@ class MoneyController
     }
 
     /** Менеджер счёта: покупатель сделки, у гаражной — держатель машины. */
-    private const MANAGER = 'coalesce((select buyer_id from deals where deals.id = billing_invoices.deal_id), (select g.manager_id from garage_cars g where g.invoice_id = billing_invoices.id limit 1))';
+    public const MANAGER = 'coalesce((select buyer_id from deals where deals.id = billing_invoices.deal_id), (select g.manager_id from garage_cars g where g.invoice_id = billing_invoices.id limit 1))';
 
     /** Получатель выплаты — сотрудник по своей стороне (логист — вывоз). */
     private const RECIPIENT = '(select u.id from users u where u.party_id = billing_invoices.party_id order by u.id limit 1)';
@@ -156,7 +156,7 @@ class MoneyController
      * Счета раздела: «Комиссии» — наши выставленные, кроме счетов за машину (подбор, разовые услуги); «ДКП» — счета за машину от
      * ПРАЙМ и Р.О.С. (сделки и гараж); «Выплаты» — вознаграждения и перевозки.
      */
-    private static function of(string $tab, ?Facets $facets = null)
+    public static function of(string $tab, ?Facets $facets = null)
     {
         $q = Invoice::crmMoney();
         // Неотправленный менеджеру счёт сделки — тоже здесь (18.11.2026, владелец: «внутри все оплаты по этому менеджеру и в том

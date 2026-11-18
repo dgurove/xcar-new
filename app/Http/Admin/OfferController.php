@@ -107,6 +107,10 @@ class OfferController
         'all_offers' => 'Все предложения',
         'slots' => 'Публикация', 'published' => 'Опубликованные', 'bids' => 'Есть подтверждения', 'done' => 'Без подтверждений',
         'all_deals' => 'Все сделки',
+        // «Оплата за подбор» (18.11.2026, владелец) — поперёк этапов, как «Гараж»: сделка остаётся и в своей вкладке этапа.
+        // Счета — «Оплаты → Комиссии» с машиной; красное число — ссылку не выставили, а сделка на шаге оплаты
+        // (`SelectionController`). В `DEAL_TABS` и `OfferTabs` её нет: раскладка «одна сделка — одна вкладка» та же.
+        'selection' => 'Оплата за подбор',
         ...self::DEAL_TABS,
         // Гараж — все гаражные машины до расчёта, параллельно их вкладкам сделки, как галерея (16.11.2026, начальник: «всего 5
         // машин»; владелец: своим разделом). Строки рисует `GarageController::tab`.
@@ -178,13 +182,13 @@ class OfferController
     /** Вкладки, чьи строки рисует свой контроллер: сделки, гараж, галерея, закупки. */
     public static function ownTab(?string $preset): bool
     {
-        return self::dealTab($preset) || in_array($preset, ['purchases', 'gallery', 'interest', 'garage'], true);
+        return self::dealTab($preset) || in_array($preset, ['purchases', 'gallery', 'interest', 'garage', 'selection'], true);
     }
 
     /** Зелёные числа колеса: ключ вкладки → ключ числа в `counts` (оценки менеджеров, наши дела по этапам сделки). */
     public static function badges(): array
     {
-        return ['estimating' => 'estimating_given', 'priced' => 'priced_given', 'all_deals' => 'all_deals_our', ...collect(DealTabs::TABS)->except(DealTabs::WAITING)->mapWithKeys(fn ($t, $k) => [$k => $k.'_our'])->all()];
+        return ['estimating' => 'estimating_given', 'priced' => 'priced_given', 'all_deals' => 'all_deals_our', 'selection' => 'selection_our', ...collect(DealTabs::TABS)->except(DealTabs::WAITING)->mapWithKeys(fn ($t, $k) => [$k => $k.'_our'])->all()];
     }
 
     /** Вкладка ли сделки: строки — сделки (`DealController::tab`). */
@@ -217,7 +221,7 @@ class OfferController
             'purchases' => true, 'gallery' => true, 'interest' => true];
 
         // Модератору (`canEditDeals`) — сделки по этапам, «Завершённые» и гараж (17.11.2026, владелец: полный доступ к сделкам и гаражу).
-        return array_diff_key(self::PRESETS, $hidden + ($user->canEditDeals() ? [] : ['garage' => true] + self::DEAL_TABS));
+        return array_diff_key(self::PRESETS, $hidden + ($user->canEditDeals() ? [] : ['garage' => true, 'selection' => true] + self::DEAL_TABS));
     }
 
     /** Память «Только мои» колеса (`ListPrefs`): список и ключ. */
@@ -379,6 +383,7 @@ class OfferController
         if (self::ownTab($own) && isset(self::presets($request->user())[$own])) {
             return match ($own) {
                 'garage' => app(GarageController::class)->tab($request),
+                'selection' => app(SelectionController::class)->tab($request),
                 'purchases' => app(PurchaseController::class)->tab($request),
                 'gallery', 'interest' => app(GalleryController::class)->tab($request),
                 default => app(DealController::class)->tab($request, $own),
@@ -701,6 +706,7 @@ class OfferController
             'all_drafts', 'all_offers', 'all_deals', 'all_archive' => $q->whereIntegerInRaw('offers.id', OfferTabs::ids(self::summary($preset))),
             // «Гараж» — все гаражные машины до расчёта, в любом этапе сделки (16.11.2026); расчёт закрыт — в «Завершённых».
             'garage' => $q->whereHas('garageCar', fn ($c) => $c->where('state', '!=', CarState::Settled)),
+            'selection' => $q->whereIntegerInRaw('offers.id', SelectionController::ids()),
             // Галерея — окно показа черновика (`GalleryController::scopeFor`); закупки — не предложения: строк-предложений нет.
             'gallery', 'interest' => GalleryController::scopeFor($preset, $q),
             'purchases' => $q->whereRaw('false'),
@@ -1050,6 +1056,10 @@ class OfferController
         // Сколько ждёт нас по вкладкам сделки — зелёным у названия (16.11.2026).
         foreach (DealTabs::ours() as $tab => $n) {
             $counts[$tab.'_our'] = $n;
+        }
+        // «Оплата за подбор» — красным, сколько ссылок не выставлено на шаге оплаты (с тем же кругом машин, что число вкладки).
+        if (isset($counts['selection'])) {
+            $counts['selection_our'] = $base()->whereIntegerInRaw('offers.id', SelectionController::unsentIds())->count();
         }
         // У «Все сделки» — все наши дела по этапам.
         if (isset($counts['all_deals'])) {

@@ -67,6 +67,10 @@ class Invoice extends Model implements HasMedia
         // И страница человека в «Оплатах» (18.11.2026, `MoneyController::person`): менеджер счёта, у выплаты — получатель.
         $person = $this->isOwed() ? User::where('party_id', $this->party_id)->orderBy('id')->value('id') : $this->manager()?->id;
         app(Publisher::class)->refreshSoon(Topics::STAFF, ['/work/money', '/work/money/managers/'.($person ?? 'none')]);
+        // Строка машины во вкладке «Оплата за подбор» (18.11.2026, `SelectionController`): выставили, оплатили — уходит или меняется.
+        if ($n = $this->carOffer()?->number) {
+            app(Publisher::class)->rowsSoon(Topics::STAFF, ['/offers' => [$n]]);
+        }
     }
 
     public const VAT = 20;

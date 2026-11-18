@@ -4,7 +4,7 @@
      оплаченного — день оплаты. Кнопка — только где ход наш: «Выставить», «Пришли» (сообщил об оплате), «Выплатить»; у выставленного
      кнопок нет. На ПК — те же факты столбцами `MoneyController::personTable`, на телефоне — концами строк (`.line-end`). Нажатие —
      окно машины рядом; без машины — карточка счёта. --}}
-@props(['table', 'invoice', 'tab', 'paid' => false, 'attempts' => null])
+@props(['table', 'invoice', 'tab' => null, 'paid' => false, 'attempts' => null])
 @php
     use App\Support\Money; use App\Http\Admin\MoneyRows as R;
     $i = $invoice;
@@ -46,7 +46,7 @@
         {{-- Телефон: «Выставить» — справа посередине строки (18.11.2026, владелец: «справа по середине — строка компактнее»). --}}
         @if ($unsent && $button)<span class="mid-act sm:hidden">{!! $button !!}</span>@endif
         @if ($offer)
-            <x-cell.title :key="$offer->number" :offer="$offer" :with="['tab' => $tab]">@if (! $unsent)<span class="line-end sm:hidden nums {{ $paid ? 'text-open' : '' }}">{{ Money::rub($amount) }}</span>@endif</x-cell.title>
+            <x-cell.title :key="$offer->number" :offer="$offer" :with="$tab ? ['tab' => $tab] : []">@if (! $unsent)<span class="line-end sm:hidden nums {{ $paid ? 'text-open' : '' }}">{{ Money::rub($amount) }}</span>@endif</x-cell.title>
         @else
             <a href="{{ \App\Http\Admin\MoneyController::url($i) }}" class="cell-title" data-turbo-frame="_top"><span class="cell-name">{{ $title }}</span>@unless ($unsent)<span class="line-end sm:hidden nums {{ $paid ? 'text-open' : '' }}">{{ Money::rub($amount) }}</span>@endunless</a>
         @endif
@@ -55,6 +55,10 @@
         @break
         @case('status')
     <td class="{{ $col->classes() }} {{ $tone }}">{{ $unsent ? '' : $word }}</td>
+        @break
+        @case('manager')
+    {{-- Вкладка «Оплата за подбор» (18.11.2026): кто должен — покупатель сделки или менеджер гаража. --}}
+    <td class="{{ $col->classes() }}"><x-cell.person :user="$i->manager()" from="lg"/></td>
         @break
         @case('amount')
     <td class="{{ $col->classes() }} phone-off {{ $paid ? 'text-open' : '' }}">{{ Money::nums($amount) }}</td>
