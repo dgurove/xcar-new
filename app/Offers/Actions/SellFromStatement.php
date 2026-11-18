@@ -71,6 +71,10 @@ final class SellFromStatement
         if ($payers->contains(null)) {
             return $no('платил сам менеджер или в выписке нет имени');
         }
+        // Платил другой менеджер системы (18.11.2026: Tiggo 4 Pro Шералиева оплатил Иван Заикин) — это не покупатель, не гадаем.
+        if ($colleague = $payers->first(fn ($n) => self::managerNamed($n))) {
+            return $no('платил менеджер: '.$colleague);
+        }
         if ($payers->map(fn ($n) => mb_strtolower($n))->unique()->count() > 1) {
             return $no('платили разные люди: '.$payers->unique()->implode(', '));
         }
@@ -88,6 +92,17 @@ final class SellFromStatement
         $reward = $deal->namesBuyer() ? 0 : null;
 
         return ['ok' => true, 'price' => $price, 'paid' => $price, 'reward' => $reward, 'payer' => $payers->first(), 'txs' => $txs, 'car' => $car];
+    }
+
+    /** Имя из выписки — это кто-то из менеджеров системы: все слова его имени есть среди слов плательщика. */
+    private static function managerNamed(string $payer): bool
+    {
+        $words = fn (string $n) => array_values(array_filter(preg_split('/\s+/u', mb_strtolower(trim($n))), fn ($w) => mb_strlen($w) > 1));
+        $have = $words($payer);
+        // `once`, а не `static`: воркер Octane живёт долго, а менеджеры заводятся.
+        $managers = once(fn () => \App\Users\User::withRole(\App\Users\Role::Manager)->pluck('name')->map($words)->filter(fn ($w) => count($w) >= 2)->all());
+
+        return collect($managers)->contains(fn ($w) => ! array_diff($w, $have));
     }
 
     /** Поступления выписки по сделке — деньги за машину, по дате. */
