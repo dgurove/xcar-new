@@ -59,7 +59,7 @@ final class SettleGarageCar
             // Новый плательщик заводится только здесь, после проверок: отказ не оставляет пустых контрагентов.
             $party = $buyer ? (is_array($buyer) ? Party::create($buyer) : $buyer) : Party::forUser($car->manager);
             $invoice = ($this->issue)($party, $by, 'issued', ChargeKind::Sale, WorkDays::add(now(), 5),
-                lines: [['title' => 'Транспортное средство '.$offer->titleWithYear(), 'qty' => 1, 'unit' => 'pc', 'price' => round($due, 2), 'kind' => ChargeKind::Sale->value]], offerId: $offer->id);
+                lines: [['title' => $offer->invoiceTitle(), 'qty' => 1, 'unit' => 'pc', 'price' => round($due, 2), 'kind' => ChargeKind::Sale->value]], offerId: $offer->id);
             $car->update(['invoice_id' => $invoice->id, 'invoice_to' => $buyer ? 'buyer' : 'manager']);
             $car->log($by, ['do' => 'invoice', 'to' => $buyer ? 'buyer' : 'manager', 'amount' => round($due, 2)]);
 

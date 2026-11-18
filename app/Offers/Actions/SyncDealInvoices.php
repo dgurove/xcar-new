@@ -140,12 +140,12 @@ final class SyncDealInvoices
             $price = $deal->garageCar()->value('buyer_price');
 
             return $price ? ['party' => $deal->payerParty(),
-                'lines' => [['title' => 'Транспортное средство '.$deal->offer->titleWithYear(), 'qty' => 1, 'unit' => 'pc', 'price' => (float) $price, 'kind' => ChargeKind::Sale->value]]] : null;
+                'lines' => [['title' => $deal->offer->invoiceTitle(), 'qty' => 1, 'unit' => 'pc', 'price' => (float) $price, 'kind' => ChargeKind::Sale->value]]] : null;
         }
         if (! $deal->isPrime() || $deal->cost === null || ! $deal->buyer) {
             return null;
         }
-        $car = 'Транспортное средство '.$deal->offer->titleWithYear();
+        $car = $deal->offer->invoiceTitle();
         // Р.О.С. без реквизитов — счёт с прочерками не выставляем: ход наш «Заполните реквизиты Р.О.С.» (`Deal::invoiceGap`).
         // До гаражной ветки: гаражная Альфы с НДС тоже от Р.О.С.
         if ($deal->seller() !== Seller::Prime && ! $deal->seller()->party()->billable()) {

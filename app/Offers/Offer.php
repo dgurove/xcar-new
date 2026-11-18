@@ -1177,6 +1177,17 @@ class Offer extends Model
         return $this->carRecord()->withYear($this->title());
     }
 
+    /**
+     * Строка счёта за ТС (ПРАЙМ, Р.О.С., гараж, аукцион): «Audi Q8, 2021 (VIN)», VIN — когда есть (18.11.2026, по просьбе
+     * покупателей: без «Транспортное средство»).
+     */
+    public function invoiceTitle(): string
+    {
+        $vin = trim((string) $this->carRecord()->vin);
+
+        return $this->titleWithYear().($vin !== '' ? " ({$vin})" : '');
+    }
+
     /** Тип ТС — иконка перед названием и фильтр «Тип ТС»: тип машины (`Car` считает его сам по кузову и марке). */
     public function category(): Category
     {

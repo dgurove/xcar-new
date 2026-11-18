@@ -28,7 +28,7 @@ final class IssueDealInvoice
         $offer = $deal->offer;
         $car = $offer->titleWithYear();
         $title ??= match ($kind) {
-            ChargeKind::Sale => 'Транспортное средство '.$car,
+            ChargeKind::Sale => $offer->invoiceTitle(),
             ChargeKind::Selection => 'Подбор ТС '.$car,
             default => $car,
         };

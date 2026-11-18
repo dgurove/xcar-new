@@ -30,7 +30,7 @@
             <div class="grid grid-cols-2 gap-3">
                 <x-ui.field name="kind" label="Вид" :options="$kinds" :value="$kind" data-deal-invoice-target="kind" data-action="deal-invoice#kind"/>
                 <x-ui.field name="amount" label="Сумма, ₽" :value="\App\Support\Money::nums((int) $bases[$kind])" required data-deal-invoice-target="amount"/>
-                <x-ui.field name="title" label="Строка счёта" placeholder="Транспортное средство {{ $offer->titleWithYear() }}" span="col-span-2"/>
+                <x-ui.field name="title" label="Строка счёта" placeholder="{{ $offer->invoiceTitle() }}" span="col-span-2"/>
             </div>
         </x-ui.card>
         <x-ui.field name="notes" label="Заметка в счёт" type="textarea"/>
