@@ -16,20 +16,24 @@
      13.11.2026 (владелец: «над тумблером — что за машина, для кого вывоз, откуда, куда; в тумблерах — только то, что к ним
      относится»): сверху — машина (`context`, только в шторках: в окне машины CRM она и так в шапке) — название, госномер,
      коды, откуда и владелец; ниже — для кого: менеджер сделки или гаража тегом и тумблер «Забирает сам» (`self`); включён —
-     «Кто вывозит» и «Куда везти» (`.assign-others`) уходят: везёт он, к себе. Менеджера среди сегментов больше нет. --}}
+     «Кто вывозит» и «Куда везти» (`.assign-others`) уходят: везёт он, к себе. Менеджера среди сегментов больше нет.
+     18.11.2026 (владелец: «безумно неудобно», «нет поиска», «в „Наших“ должны быть другие менеджеры»): сегменты «Логист | Наши»,
+     «Наши» — один выбор с поиском и группами «Сотрудники», «Менеджеры», «Исполнители» (`Choices::ours`); канал по человеку
+     ставит сервер (`AssignExecutor::fromRequest`), сегмента «Исполнитель» нет. --}}
 @props(['transport' => null, 'offer' => null, 'action', 'prefix' => 'assign', 'route' => true, 'context' => false])
 @php
     use App\Logistics\Choices;
     use App\Logistics\Channel;
     $logists = Choices::logists();
     $staff = Choices::staff();
-    $partners = Choices::partners($transport ?? $offer);
+    $ours = Choices::ours($transport ?? $offer);
     // Менеджер сделки или гаража «сам» — и в логистике (13.11.2026, владелец: «почему нельзя самого менеджера выбрать, чтобы он
     // сам вывоз осуществил»); пачкой (`route` false) — нет: у машин разные менеджеры.
     $holder = $route && ($offer || $transport) && $transport?->isPickup() !== false ? Choices::managerOf($offer ?? $transport) : null;
     $self = $holder && (bool) old('self', $transport?->channel === Channel::Manager);
     $kind = old('channel', match (true) {
         $transport?->channel === Channel::Manager => count($logists) ? Channel::Logist->value : Channel::Staff->value,
+        $transport?->channel === Channel::Partner => Channel::Staff->value,
         (bool) $transport?->channel => $transport->channel->value,
         default => count($logists) ? Channel::Logist->value : Channel::Staff->value,
     });
@@ -43,7 +47,6 @@
         // Пусто — сегмент всё равно есть: «+ Новый логист / сотрудник» в шторке выбора (18.10.2026).
         Channel::Logist->value => Channel::Logist->short(),
         Channel::Staff->value => Channel::Staff->short(),
-        Channel::Partner->value => count($partners) ? Channel::Partner->short() : null,
     ]);
     $pickup = ! $transport || $transport->isPickup();
     $sale = $pickup ? ($offer ?? $transport?->saleOffer()) : null;
@@ -58,7 +61,7 @@
     $owner = $transport?->ownerName() ?? $car?->insured_name;
     $dest = $transport && $transport->channel !== Channel::Manager ? $transport->destinationLabel() : null;
     $garageOf = $holder && ($sale ?? $offer ?? $transport?->saleOffer())?->garageCar()->exists();
-    $cdekOn = fn (string $k) => old("cdek.$k") !== null ? (bool) old("cdek.$k") : ($transport?->channel?->value === $k ? $transport->docs_by_cdek : $k === Channel::Logist->value);
+    $cdekOn = fn (string $k) => old("cdek.$k") !== null ? (bool) old("cdek.$k") : (($transport?->channel === Channel::Partner ? 'staff' : $transport?->channel?->value) === $k ? $transport->docs_by_cdek : $k === Channel::Logist->value);
 @endphp
 <form method="post" action="{{ $action }}" {{ $attributes->class(['assign-form flex flex-col gap-4']) }} data-controller="reveal">
     @csrf
@@ -98,21 +101,15 @@
         <x-ui.segment name="channel" :options="$options" :value="$kind" pick/>
         <div class="contents" data-reveal-target="pane" data-reveal-key="logist" @if ($kind !== 'logist') hidden @endif>
             <div class="fields">
-                <x-people.pick name="who[logist]" label="Логист" kind="logist" :people="\App\Support\People::rows(\App\Users\User::whereKey(array_keys($logists))->orderBy('name')->get())" :value="$kind === 'logist' ? ($current ?? array_key_first($logists)) : array_key_first($logists)" title="Логист"/>
+                <x-people.pick name="who[logist]" label="Логист" kind="logist" :people="\App\Support\People::rows(\App\Users\User::whereKey(array_keys($logists))->orderBy('name')->get())" :value="$kind === 'logist' ? ($current ?? array_key_first($logists)) : array_key_first($logists)" title="Логист" search/>
             </div>
             @if ($pickup)<input type="hidden" name="cdek[logist]" value="0"><x-ui.check name="cdek[logist]" :checked="$cdekOn('logist')">Документы СДЭКом</x-ui.check>@endif
         </div>
         <div class="contents" data-reveal-target="pane" data-reveal-key="staff" @if ($kind !== 'staff') hidden @endif>
             <div class="fields">
-                <x-people.pick name="who[staff]" label="Исполнитель" kind="driver" :people="\App\Support\People::rows(\App\Users\User::whereKey(array_keys($staff))->orderBy('name')->get())" :value="$kind === 'staff' ? $current : null" title="Исполнитель"/>
+                <x-people.pick name="who[staff]" label="Кто" kind="driver" :people="$ours" :value="$kind === 'staff' ? $current : null" title="Кто вывозит" search/>
             </div>
             @if ($pickup)<input type="hidden" name="cdek[staff]" value="0"><x-ui.check name="cdek[staff]" :checked="$cdekOn('staff')">Документы СДЭКом</x-ui.check>@endif
-        </div>
-        <div class="contents" data-reveal-target="pane" data-reveal-key="partner" @if ($kind !== 'partner') hidden @endif>
-            <div class="fields">
-                <x-ui.field name="who[partner]" id="{{ $prefix }}-partner" label="Исполнитель" :options="$partners" placeholder="Выберите" :value="$kind === 'partner' ? $current : null"/>
-            </div>
-            @if ($pickup)<input type="hidden" name="cdek[partner]" value="0"><x-ui.check name="cdek[partner]" :checked="$cdekOn('partner')">Документы СДЭКом</x-ui.check>@endif
         </div>
         @if ($auction)
             <div class="contents" data-reveal-target="pane" data-reveal-key="auction" @if ($kind !== 'auction') hidden @endif>

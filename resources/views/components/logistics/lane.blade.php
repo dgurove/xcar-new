@@ -6,7 +6,8 @@
      ошиблись «У страховой»), отменить последний шаг (`Logistics\Actions\StepBack`), «Вывоз не нужен». Вывоза нет — «Вывезти». У сделки внутри
      — получение (контакт владельца менеджеру, `x-deal.handover`).
      compact — окно машины (12.11.2026, владелец: «информация по несколько раз дублируется»): без лесенки «Забирает … → Забрать»
-     у менеджера, что забирает сам (кто он — в сведениях шапки), у логистики — только текущий шаг; история — на странице. --}}
+     у менеджера, что забирает сам (кто он — в сведениях шапки); история — на странице. Ход логистики — целиком, как на странице
+     (18.11.2026, владелец). --}}
 @props(['offer', 'deal' => null, 'class' => '', 'compact' => false])
 @php
     use App\Logistics\Channel;
@@ -97,16 +98,14 @@
             {{-- Маршрут через стоянки (20.10.2026) — только смотреть: стоянки и исполнителей отрезков ставят в логистике. --}}
             @php $routed = $t->channel === Channel::Logist && $t->logist && $t->chain()->count() > 1; @endphp
             <div class="list mb-4">
-                <x-logistics.facts lane :compact="$compact" :t="$t" :named="! $compact" :route="$routed" :logist="$changeable ? $sheet.':open' : null" :who="$changeable && $t->channel !== Channel::Logist ? $sheet.':open' : null" :where="$changeable ? $sheet.':open' : null"/>
+                <x-logistics.facts lane :t="$t" :named="! $compact" :route="$routed" :logist="$changeable ? $sheet.':open' : null" :who="$changeable && $t->channel !== Channel::Logist ? $sheet.':open' : null" :where="$changeable ? $sheet.':open' : null"/>
             </div>
             @if ($routed)<div class="mb-4"><x-logistics.route :t="$t" :me="auth()->user()" readonly/></div>@endif
         @endif
-        @php
-            // В окне шаг «кто вывозит» — это строки «Логист» / «Исполнитель» выше (нажатием — то же окно): лесенку не рисуем.
-            $whoNow = $compact && in_array(collect($t->steps())->firstWhere('status', 'current')['key'] ?? null, ['logist', 'executor'], true);
-        @endphp
-        @unless ($told || ($compact && $manager) || $whoNow)
-        <x-logistics.steps :t="$t" ask extras="logistics.steps.lane" :with="['t' => $t, 'sheet' => $sheet]" :class="$compact ? 'steps--compact' : ''"/>
+        {{-- В окне — та же дорожка, что на странице (18.11.2026, владелец: «странно, что в окне иначе, надо тоже дорожкой»): шаг
+             «Кто вывозит» с «Выбрать», весь ход; история — только на странице. --}}
+        @unless ($told || ($compact && $manager))
+        <x-logistics.steps :t="$t" ask extras="logistics.steps.lane" :with="['t' => $t, 'sheet' => $sheet]"/>
         @endunless
         @if ($t->state === TransportState::Cancelled)<p class="mt-2 text-sm text-ink-muted">Вывоз отменён{{ $t->cancel_reason ? ': '.$t->cancel_reason : '' }}</p>@endif
         @if ($events && ! $compact)

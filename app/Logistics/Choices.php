@@ -40,6 +40,28 @@ final class Choices
             ->orderBy('name')->pluck('name', 'id')->all()), $own ? [$own => true] : []);
     }
 
+    /**
+     * «Наши» в «Кто вывозит» одним списком (18.11.2026, владелец: «в „Наших“ ещё должны быть другие менеджеры — сделку ведёт
+     * один, а вывозит другой»): сотрудники на вывозе (`staff`), менеджеры и прямые исполнители (`partners`) — строками
+     * `x-people.pick` с группой. Какой канал — решает человек (`AssignExecutor::fromRequest`).
+     *
+     * @return \Illuminate\Support\Collection<int, array>
+     */
+    public static function ours(Transport|Offer|null $of = null): \Illuminate\Support\Collection
+    {
+        $ids = array_keys(self::staff() + self::partners($of));
+        $users = User::whereKey($ids)->with(User::withAvatar())->orderBy('name')->get();
+        $group = fn (User $u) => match (true) {
+            $u->isDriver() => 'Сотрудники',
+            $u->isManager() => 'Менеджеры',
+            default => 'Исполнители',
+        };
+        $order = ['Сотрудники' => 0, 'Менеджеры' => 1, 'Исполнители' => 2];
+
+        return $users->map(fn (User $u) => [...\App\Support\People::row($u), 'group' => $group($u)])
+            ->sortBy(fn ($r) => $order[$r['group']])->values();
+    }
+
     /** Может ли человек быть своим исполнителем (`Channel::Partner`): менеджер или исполнитель без логиста. */
     public static function partnerable(User $user): bool
     {

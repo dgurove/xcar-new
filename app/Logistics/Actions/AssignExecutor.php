@@ -148,6 +148,10 @@ final class AssignExecutor
         if (! $id || ! ($who = User::find((int) $id))) {
             throw ValidationException::withMessages(['executor_id' => 'Кто именно']);
         }
+        // «Наши» — один список с менеджерами и исполнителями (18.11.2026): канал — по человеку, водитель — Staff, остальные — Partner.
+        if ($kind === Channel::Staff && ! $who->isDriver() && Choices::partnerable($who)) {
+            $kind = Channel::Partner;
+        }
 
         return [$kind, $who, $request->has('cdek') ? $request->boolean('cdek.'.$kind->value) : null];
     }

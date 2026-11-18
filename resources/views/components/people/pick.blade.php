@@ -9,15 +9,23 @@
      соседних полей (заказчик заявки подставляет адрес).
      `only` — без своего списка, одна панель «+ Новый» (кнопка «Добавить покупателя» над списком, строка в списке с галками):
      новый отмеченным в `append` (селектор списка, имя галки — `name`) или `reload` — страница перечитывается; `trigger` —
-     вид кнопки: row (строка с плюсом), button (лаймовая кнопка). --}}
+     вид кнопки: row (строка с плюсом), button (лаймовая кнопка).
+     18.11.2026 (владелец про «Кто вывозит»: «в выборе людей нет поиска — самый пиздец», «как в „Кому показывать“»): `search` —
+     поле «Найти» всегда, а не от 8; поиск по словам, без «ё» (`people-pick#filter`); у строки `group` — список группами с
+     заголовками, группа без совпадений прячется; выбранный — первым в своей группе. --}}
 @props(['name', 'label' => null, 'value' => null, 'people' => collect(), 'kind', 'title' => null, 'newLabel' => null, 'link' => false,
     'deal' => null, 'autosubmit' => false, 'none' => null, 'variant' => 'field', 'placeholder' => 'Выбрать', 'required' => false, 'finish' => null,
-    'only' => false, 'append' => null, 'reload' => false, 'trigger' => 'row', 'owner' => null, 'open' => false, 'passport' => false])
+    'only' => false, 'append' => null, 'reload' => false, 'trigger' => 'row', 'owner' => null, 'open' => false, 'passport' => false, 'search' => null])
 @php
     use App\Support\Surface;
     $uid = 'pp'.substr(md5($name.$kind.uniqid('', true)), 0, 8);
     $people = collect($people);
     $chosen = $people->first(fn ($p) => (string) $p['id'] === (string) old($name, $value));
+    $search ??= $people->count() >= 8;
+    // Группы — по полю `group` строк (порядок групп — как пришли); выбранный — первым в своей группе.
+    $grouped = $people->contains(fn ($p) => isset($p['group']))
+        ? $people->sortBy(fn ($p) => $chosen && (string) $p['id'] === (string) $chosen['id'] ? 0 : 1)->groupBy(fn ($p) => $p['group'] ?? '', preserveKeys: false)
+        : null;
     $create = Surface::current() === Surface::Crm ? '/settings/people' : '/people';
     $canCreate = \App\Http\PeopleController::allows(auth()->user(), $kind);
     $error = $errors->first($name);
@@ -70,13 +78,37 @@
         <div @class(['people-panes', 'people-panes--only' => $only]) data-people-pick-target="panes" data-form-free>
             @unless ($only)
             <div class="people-list-pane">
-                @if ($people->count() >= 8)
+                @if ($search)
                     {{-- Не форма (шторка стоит внутри чужих форм) — вид лупы списков. --}}
                     <div class="toolbar-search search-field mb-3">
                         <x-ui.icon name="search" class="size-4 shrink-0 text-ink-muted"/>
-                        <input type="search" placeholder="Имя или телефон" autocomplete="off" aria-label="Поиск" data-action="input->people-pick#filter">
+                        <input type="search" placeholder="{{ $grouped ? 'Найти' : 'Имя или телефон' }}" autocomplete="off" aria-label="Поиск" data-people-pick-target="search" data-action="input->people-pick#filter">
                     </div>
                 @endif
+                @if ($grouped)
+                <div class="flex flex-col gap-4" data-people-pick-target="list">
+                    @foreach ($grouped as $group => $rows)
+                        <div data-people-group>
+                            @if ($group !== '')<div class="list-head">{{ $group }}</div>@endif
+                            <div class="list">
+                                @foreach ($rows as $p)
+                                    <x-people.option :person="$p" :name="'_pp_'.$uid" :checked="$chosen && (string) $chosen['id'] === (string) $p['id']"/>
+                                @endforeach
+                            </div>
+                        </div>
+                    @endforeach
+                    @if ($canCreate)
+                        <div class="list">
+                            <button type="button" class="row w-full text-left" data-people-pick-target="addRow" data-action="people-pick#add">
+                                <x-ui.row-icon name="plus" size="s" tone="accent"/>
+                                <span class="min-w-0 flex-1 font-medium text-accent-text">{{ $newLabel }}</span>
+                                <x-ui.chevron/>
+                            </button>
+                        </div>
+                    @endif
+                    <p class="text-sm text-ink-muted" data-people-empty hidden>Никого не нашли</p>
+                </div>
+                @else
                 <div class="list" data-people-pick-target="list">
                     @if ($none)
                         <label class="row row-check people-option" data-people-option data-search-text="">
@@ -96,6 +128,7 @@
                         </button>
                     @endif
                 </div>
+                @endif
                 @if ($people->isEmpty() && ! $none && ! $canCreate)<x-ui.empty class="mt-4">Пока никого нет</x-ui.empty>@endif
             </div>
             @endunless

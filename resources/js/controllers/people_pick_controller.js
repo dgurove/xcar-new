@@ -12,7 +12,7 @@ import { focusField } from '../keyboard';
 // встаёт отмеченным в чужой список (`append` — селектор списка, имя галки — `name`) или страница перечитывается (`reload`).
 export default class extends Controller {
     static targets = ['shown', 'hidden', 'list', 'panes', 'newPane', 'form', 'error', 'submit', 'done', 'doneTitle', 'doneSub', 'doneRows', 'passport', 'passportFiles',
-        'shareBtn', 'copyBtn', 'finish', 'finishLabel', 'addRow'];
+        'shareBtn', 'copyBtn', 'finish', 'finishLabel', 'addRow', 'search'];
     static values = { kind: String, url: String, name: String, deal: Number, owner: Number, autosubmit: Boolean, placeholder: String, only: Boolean, append: String, reload: Boolean };
 
     connect() {
@@ -22,12 +22,26 @@ export default class extends Controller {
             if (this.hasCopyBtnTarget) this.copyBtnTarget.classList.replace('btn-quiet', 'btn-accent');
         }
         this.dialog = this.element.querySelector('dialog');
-        this.onClose = () => this.reset();
+        this.onClose = () => { this.clearSearch(); this.reset(); };
         this.dialog?.addEventListener('close', this.onClose);
+        // Открыли шторку на ПК — курсор сразу в «Найти» (на телефоне — нет: выехала бы клавиатура поверх списка).
+        if (this.dialog && this.hasSearchTarget) {
+            this.watch = new MutationObserver(() => {
+                if (this.dialog.open && matchMedia('(hover: hover)').matches) this.searchTarget.focus({ preventScroll: true });
+            });
+            this.watch.observe(this.dialog, { attributes: true, attributeFilter: ['open'] });
+        }
     }
 
     disconnect() {
         this.dialog?.removeEventListener('close', this.onClose);
+        this.watch?.disconnect();
+    }
+
+    clearSearch() {
+        if (!this.hasSearchTarget || !this.searchTarget.value) return;
+        this.searchTarget.value = '';
+        this.filter({ target: this.searchTarget });
     }
 
     // Строка списка выбрана: поле формы, подпись в строке-поле, событие соседям; autosubmit — форма уходит.
@@ -50,9 +64,18 @@ export default class extends Controller {
         if (this.autosubmitValue) this.hiddenTarget.form?.requestSubmit();
     }
 
+    // Поиск — по словам, строчными и без «ё», как «Кому показывать» (`audience#filter`, 18.11.2026): «ива петр» находит «Иван
+    // Петров». Группа без совпадений прячется целиком; ничего — «Никого не нашли».
     filter(event) {
-        const q = event.target.value.trim().toLowerCase();
-        for (const row of this.listTarget.querySelectorAll('[data-people-option]')) row.hidden = q !== '' && !row.dataset.searchText.includes(q);
+        const words = event.target.value.toLowerCase().replaceAll('ё', 'е').split(/\s+/).filter(Boolean);
+        let any = false;
+        for (const row of this.listTarget.querySelectorAll('[data-people-option]')) {
+            row.hidden = words.length > 0 && !words.every((w) => row.dataset.searchText.includes(w));
+            any ||= !row.hidden;
+        }
+        for (const group of this.listTarget.querySelectorAll('[data-people-group]')) group.hidden = !group.querySelector('[data-people-option]:not([hidden])');
+        const empty = this.listTarget.querySelector('[data-people-empty]');
+        if (empty) empty.hidden = any || words.length === 0;
     }
 
     // Шапка шторки — как экран iOS: на второй панели «‹» и её название; в режиме only «‹» нет — назад некуда.
