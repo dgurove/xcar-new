@@ -142,6 +142,8 @@
                                 @php
                                     $showUntil = old('show_until', \App\Offers\Binding::clampClose($offer, \App\Offers\Slots::closeFor(now(), 7))->format('Y-m-d\TH:i'));
                                     $showRules = $offer->deal_audience_rules ? json_encode($offer->deal_audience_rules) : '';
+                                    // Вернулись с ошибкой — выбранные волны на месте, как и срок (18.11.2026).
+                                    $showRules = old('_reprice') == $reprice->id ? (string) old('audience_rules', $showRules) : $showRules;
                                 @endphp
                                 <div class="reprice-publish flex flex-col gap-3" data-reprice-target="show" hidden>
                                     <x-ui.check name="show_all" :checked="true">Опубликовать для других, пока думает</x-ui.check>

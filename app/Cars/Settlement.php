@@ -86,10 +86,28 @@ class Settlement extends Model
                 ->when($region, fn ($q) => $q->where('region_id', $region->id))
                 ->when(! $region && ! $villages, fn ($q) => $q->where('rank', '<=', self::TOWN))
                 ->orderBy('rank')->orderBy('id')->first(['id', 'name', 'region_code']);
+            // В регионе точного имени нет — одно место, что отличается одной буквой (18.11.2026, 816605/2026: в документе
+            // «Большая Глущица», в ОКТМО «Большая Глушица»; город не встал, вписали Самару руками).
+            $place ??= $region ? self::near($key, $region) : null;
             self::$named[$memo] = $place ? ['id' => $place->id, 'name' => $place->name, 'title' => $place->title()] : null;
         }
 
         return self::$named[$memo];
+    }
+
+    /** Место региона, чьё имя той же длины и отличается ровно одной буквой; имя от 6 букв, совпало одно — иначе не гадаем. */
+    private static function near(string $key, Region $region): ?self
+    {
+        $letters = mb_str_split($key);
+        if (count($letters) < 6) {
+            return null;
+        }
+        $found = self::where('region_id', $region->id)->whereRaw('char_length(name) = ?', [count($letters)])
+            ->whereRaw("left(replace(lower(name), 'ё', 'е'), 2) = ?", [implode('', array_slice($letters, 0, 2))])
+            ->orderBy('rank')->orderBy('id')->get(['id', 'name', 'region_code'])
+            ->filter(fn (self $p) => count(array_diff_assoc(mb_str_split(str_replace('ё', 'е', mb_strtolower($p->name))), $letters)) === 1);
+
+        return $found->count() === 1 ? $found->first() : null;
     }
 
     /**
@@ -116,6 +134,23 @@ class Settlement extends Model
         }
 
         return null;
+    }
+
+    /**
+     * Место из документа или письма: справочник, а не знает — как написано, свободным местом (18.11.2026, владелец: «в
+     * справочнике нет — не значит отклонять, лучше регион с ошибкой, чем пустота»). Только похожее на имя: от трёх букв,
+     * до 40 знаков, без цифр — адрес и обрывок чтения городом не становятся.
+     *
+     * @return array{id: int, name: string, title: string}|null
+     */
+    public static function orFree(?string $name, ?string $region = null): ?array
+    {
+        if ($place = self::resolve($name, $region)) {
+            return $place;
+        }
+        $name = trim((string) preg_replace(['/^\s*(?:г|гор|город|с|село|д|дер|пос|п|пгт|рп|ст|х)\.?\s+/ui', '/\s+/u'], ['', ' '], (string) $name), ' .,;:');
+
+        return preg_match('/^\p{L}[\p{L} .\-]{2,39}$/u', $name) ? self::free($name, $region) : null;
     }
 
     /**

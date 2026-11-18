@@ -3,6 +3,8 @@
 namespace App\Cars\Sources;
 
 use App\Cars\Car;
+use App\Cars\Region;
+use App\Cars\Settlement;
 use App\Mail\Direction;
 use App\Mail\Extraction\DocumentFields;
 use App\Mail\Extraction\DocumentText;
@@ -96,6 +98,7 @@ final class Collect
     private function documents(Car $car): array
     {
         $out = [];
+        $area = null;
         foreach (self::files($car) as $file) {
             // Скан — то, что прочитано; PDF и docx — и текстовый слой без OCR (ложится в кеш).
             if ($file->isPhoto() || ! ($text = $file->isImage() ? DocumentText::cached($file) : DocumentText::layer($file))) {
@@ -105,10 +108,30 @@ final class Collect
             if (ScanFields::otherCar($car->vin, $car->brand_id, $fields['vin']['value'] ?? null, $fields['brand']['value'] ?? null)) {
                 continue;
             }
+            // «Город» документа — без региона, а село без региона не угадать: регион — из темы письма машины
+            // («… Самарская обл.», 18.11.2026, 816605/2026), когда с ним место находится или не находится никак (тогда
+            // оно встанет как написано, с этим регионом); город другого региона («Москва») остаётся собой.
+            if (isset($fields['city']['value']) && empty($fields['city']['region']) && ($area ??= self::area($this->messages($car)))
+                && (Settlement::resolve((string) $fields['city']['value'], $area) || ! Settlement::resolve((string) $fields['city']['value']))) {
+                $fields['city']['region'] = $area;
+            }
             $out = [...$out, ...$this->rows($car, 'doc', $file->scanId(), Files::label($file), Values::of($fields, $car))];
         }
 
         return $out;
+    }
+
+    /** Регион машины словами тем входящих писем — когда он там один. @param iterable<Message> $messages */
+    public static function area(iterable $messages): ?string
+    {
+        $found = [];
+        foreach ($messages as $message) {
+            if ($message->direction === Direction::In && ($region = Region::inText((string) $message->subject))) {
+                $found[$region->id] = $region->name;
+            }
+        }
+
+        return count($found) === 1 ? reset($found) : null;
     }
 
     /**

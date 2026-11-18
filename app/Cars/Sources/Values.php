@@ -287,7 +287,8 @@ final class Values
             'drive' => $put('drive', Drive::tryFrom((string) $value)?->value),
             'fuel' => $put('fuel', Fuel::tryFrom((string) $value)?->value),
             'body' => $put('body', Body::tryFrom((string) $value)?->value),
-            'city' => $put('settlement_id', Settlement::resolve((string) $value, $region)['id'] ?? null),
+            // Нет в справочнике — как написано (`Settlement::orFree`): пусто хуже.
+            'city' => $put('settlement_id', Settlement::orFree((string) $value, $region)['id'] ?? null),
             default => null,
         };
     }

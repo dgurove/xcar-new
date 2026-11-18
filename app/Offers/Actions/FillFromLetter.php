@@ -6,6 +6,7 @@ use App\Cars\Actions\FillCar;
 use App\Cars\Jobs\ReadCarDocs;
 use App\Cars\OwnerContacts;
 use App\Cars\Settlement;
+use App\Cars\Sources\Collect;
 use App\Cars\Vin\VinAutofill;
 use App\Mail\Actions\LinkThread;
 use App\Mail\Message;
@@ -77,6 +78,16 @@ final class FillFromLetter
         $chosen = array_intersect_key($message->fields(), array_flip(['vin', 'year', 'brand', 'model', 'color', 'mileage', 'city', 'deadline']));
         if (! isset($chosen['city']) && ($place = Settlement::inAddress((string) $message->field('location'))['name'] ?? null)) {
             $chosen['city'] = ['value' => $place];
+        }
+        // Город без региона (село из документа) — с регионом из темы письма, когда с ним место находится (18.11.2026).
+        if (isset($chosen['city']['value']) && empty($chosen['city']['region']) && ($area = Collect::area([$message]))
+            && (Settlement::resolve((string) $chosen['city']['value'], $area) || ! Settlement::resolve((string) $chosen['city']['value']))) {
+            $chosen['city']['region'] = $area;
+        }
+        // Город из документа, которого справочник не знает, — как написано (`Settlement::orFree`): пусто хуже.
+        if (($chosen['city']['source'] ?? null) === 'file' && ! Settlement::resolve((string) $chosen['city']['value'], $chosen['city']['region'] ?? null)
+            && ($place = Settlement::orFree((string) $chosen['city']['value'], $chosen['city']['region'] ?? null))) {
+            $chosen['city'] = ['value' => $place['name'], 'region' => $chosen['city']['region'] ?? null, 'create' => true];
         }
         $written = ($this->car)($offer, $chosen, null, FillCar::EMPTY, log: $log);
         $offer->refresh();
