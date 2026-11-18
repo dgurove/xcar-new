@@ -124,8 +124,8 @@
         // Закупочная, разница, «страховой» — в «Оплате поставщику» (15.11.2026: раскладка из пяти строк повторяла соседние блоки).
         // Нас интересуют закупочная и услуги подбора (18.11.2026, владелец): вознаграждение менеджера — просто числом, без слов
         // о том, как он его получает; то, что остаётся нам сверх закупочной, — «Услуги подбора».
-        $feeShown = $deal->commission && ! $deal->isAuction() && (! $deal->isGarage() || ($deal->namesBuyer() && $deal->amount !== null));
-        if ($feeShown) $rows[] = ['Вознаграждение менеджера', Money::rub($deal->commission), $dd, false];
+        // Вознаграждение — итогом карточки зелёным (18.11.2026, «квитанция»), не строкой расклада.
+        $rewardRow = ! $deal->isAuction() && ! $deal->isDirect() && (! $deal->isGarage() || $deal->namesBuyer());
         $ours = $deal->ours() === null ? null : $deal->ours() + $deal->supplierGain();
         // Услуги подбора — счётом ниже (ДКП, «страховой», доля гаража): там же заголовком с суммой, второй раз строкой не пишем.
         $feeBilled = ($deal->paysSelection() || $deal->isGarageManager()) && $invoices->contains(fn ($i) => $i->kind === \App\Billing\ChargeKind::Selection && $i->state !== InvoiceState::Void);
@@ -150,9 +150,9 @@
         $contract = $contractRow ? \App\Offers\DealContract::for($deal) : null;
         // За ТС платят нам (ПРАЙМ, Р.О.С., гараж): наш договор или счёт за машину.
         $carBlock = ! $deal->isAuction() && ! $supplierBlock && ($contract || $sale);
-        // Справа в шапке — цена продажи (18.11.2026, владелец выбрал «Г + А»: сумму договора путали с ценой), у покупателя с гаражом —
-        // его счёт; договор и счёт за ТС считаются из неё сами (`DealContract::priceFor`).
-        $carSum = $deal->forGarageBuyer() ? ($sale ? (float) $sale->total : $contract?->price) : $deal->amount;
+        // Справа в шапке блока — сколько платят нашему юрлицу: счёт или сумма договора (`DealContract::priceFor`); цена продажи —
+        // своей строкой над блоками (18.11.2026, «квитанцией»).
+        $carSum = $sale ? (float) $sale->total : ($contract?->price ?? ($deal->forGarageBuyer() ? null : \App\Offers\DealContract::priceFor($deal)));
         $carWord = $carBlock ? \App\Billing\PayWord::of($sale, $deal) : null;
         // Плательщик строкой — только когда это не покупатель по договору (иначе одно имя дважды); покупателя ещё нет — только
         // выбранный руками (по умолчанию платит сам менеджер, это не новость).
@@ -193,6 +193,17 @@
             return view('admin.deals.money-bill', compact('deal', 'i', 'link', 'linkState', 'pdf', 'paidBy', 'payerRow', 'payerId', 'inStep', 'withSum'))->render();
         };
     @endphp
+    {{-- «Квитанцией», как у менеджера (18.11.2026, владелец: «по нашей новой логике»): цена продажи — первой строкой, нажатие — «Цена
+         и вознаграждение»; дальше кому платят (блоки), в конце — вознаграждение зелёным. Покупатель с гаражом — без неё (его цена
+         в счёте). --}}
+    @php $topPrice = ($supplierBlock || $carBlock) && ! $deal->forGarageBuyer() && ! $deal->isGarageManager(); @endphp
+    @if ($topPrice)
+        @php $priceTag = $editMoney ? 'button' : 'div'; @endphp
+        <{{ $priceTag }} @if ($editMoney) type="button" data-controller="emit" data-action="emit#send" data-emit-event-param="deal-money-{{ $deal->id }}:open" @endif class="mb-3 flex w-full items-baseline gap-3 border-b border-line px-3 pb-3 text-left">
+            <span class="min-w-0 flex-1">Цена продажи</span>
+            @if ($deal->amount !== null)<span class="nums shrink-0 text-lg font-semibold">{{ Money::rub($deal->amount) }}</span>@else<span class="shrink-0 text-danger">не указана</span>@endif
+        </{{ $priceTag }}>
+    @endif
     @if ($supplierBlock)
         {{-- Покупатель платит поставщику или собственнику сам (ДКП, «страховой напрямую») — блок «Поставщику» / «Собственнику». --}}
         @php ob_start(); @endphp
@@ -216,12 +227,12 @@
             </span>
             @if ($priceEditable)
                 <button type="button" class="shrink-0 text-right" data-controller="emit" data-action="emit#send" data-emit-event-param="deal-money-{{ $deal->id }}:open">
-                    @if ($carSum)<span class="nums block font-medium">{{ Money::rub($carSum) }}</span>@else<span class="block text-danger">не указана</span>@endif
+                    @if ($carSum)<span class="nums block">{{ Money::rub($carSum) }}</span>@else<span class="block text-ink-muted">—</span>@endif
                     @if ($contract)<span class="block text-sm text-ink-muted">{{ $contract->vatRate() ? 'НДС '.$contract->vatRate().' %' : 'без НДС' }}</span>@endif
                 </button>
             @else
                 <span class="shrink-0 text-right">
-                    <span class="nums block font-medium">{{ $carSum ? Money::rub($carSum) : 'не указана' }}</span>
+                    <span class="nums block">{{ $carSum ? Money::rub($carSum) : '—' }}</span>
                     @if ($contract)<span class="block text-sm text-ink-muted">{{ $contract->vatRate() ? 'НДС '.$contract->vatRate().' %' : 'без НДС' }}</span>@endif
                 </span>
             @endif
@@ -299,7 +310,8 @@
         @php $selWord = \App\Billing\PayWord::of($selection); @endphp
         <div class="mt-4 mb-2 flex items-start gap-3 px-3">
             <span class="min-w-0 flex-1">
-                <span class="block font-medium">Услуги подбора</span>
+                {{-- Юрлицо ссылки, как у менеджера («ООО «ПРАЙМ»»): услуги подбора — ссылкой на оплату, не счётом (18.11.2026). --}}
+                <span class="block font-medium">{{ ($selection->seller ?? \App\Billing\Seller::Prime)->config()['name'] }}</span>
                 @if ($selWord)<span class="block text-sm {{ $selWord[1] }}">{{ $selWord[0] }}</span>@endif
             </span>
             <span class="nums shrink-0 font-medium">{{ Money::rub((float) $selection->total) }}</span>
@@ -325,6 +337,12 @@
         <dl class="mt-4 grid grid-cols-[auto_1fr] items-baseline gap-x-4 gap-y-1.5">
             @foreach ($shown as $r)<dt class="text-sm text-ink-dim">{{ $r[0] }}@foreach ($r[4] ?? [] as [$subText, $subTone])<span class="block {{ $subTone }}">{{ $subText }}</span>@endforeach</dt><dd class="text-right {{ $r[2] }}">{{ $r[1] }}</dd>@endforeach
         </dl>
+    @endif
+    @if ($rewardRow)
+        <div class="mt-3 flex items-baseline gap-3 border-t border-line px-3 pt-3">
+            <span class="min-w-0 flex-1">Вознаграждение менеджера</span>
+            @if ($deal->commission !== null)<span class="profit-sum nums shrink-0 !text-lg">{{ Money::rub((int) $deal->commission) }}</span>@else<span class="shrink-0 text-ink-muted">назначим</span>@endif
+        </div>
     @endif
     @if ($rest)
         <details class="group mt-1.5">

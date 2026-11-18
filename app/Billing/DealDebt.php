@@ -100,7 +100,8 @@ final class DealDebt
             'buyer' => ['счёта нет: не указал покупателя', false],
             'passport' => ['счёта нет: не хватает данных покупателя', false],
             'unread' => ['счёта нет: данные паспорта не распознались', true],
-            'send' => ['счёт не отправлен менеджеру', true],
+            // Подбор — ссылкой, не счётом (18.11.2026): что ушло бы менеджеру — по самому делу `Position::gapAction`.
+            'send' => [\App\Billing\PayOffer::unsent($deal)->contains(fn ($i) => ! $i->isDocument()) ? 'ссылка не выставлена' : 'счёт не отправлен менеджеру', true],
             default => ['счёта нет: '.mb_lcfirst(Position::gapAction(in_array($gap, ['share', 'commission', 'ros_requisites'], true) ? $gap : 'invoice', $deal)['button']), true],
         };
 

@@ -36,8 +36,10 @@ final class PayWord
         if ($i->paidMoney() > 0) {
             return ['пришло '.Money::rub($i->paidMoney()).' из '.Money::rub((float) $i->total), $i->isOverdue() ? 'text-danger' : 'text-ink-muted'];
         }
+        // Не выставлен менеджеру: счёт за ТС — «счёт не отправлен»; ссылка на подбор — слова нет, «не выставлена» пишет её строка
+        // (18.11.2026, владелец: «услуги подбора — не счёт, просто ссылка на оплату»).
         if ($i->deal_id && ! $i->isShownToManager()) {
-            return ['счёт не отправлен', 'text-ink-muted'];
+            return $i->isDocument() ? ['счёт не отправлен', 'text-ink-muted'] : null;
         }
         if ($i->isOverdue()) {
             return [mb_lcfirst($i->overdueLabel(true)), 'text-danger'];

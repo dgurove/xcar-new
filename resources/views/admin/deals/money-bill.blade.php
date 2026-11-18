@@ -4,10 +4,22 @@
      словом шапки (`Billing\PayWord`), строкой не повторяется. --}}
 @php use App\Support\Money; use App\Billing\InvoiceState; @endphp
 @if (! $i->isDocument())
+    {{-- Ссылка на оплату подбора — строкой, как документ (18.11.2026, владелец выбрал вариант В): серый значок ссылки (не кружком —
+         «кажется, что это кнопка»), под названием состояние, справа «Выставить» пилюлей; выставлена — «Скопировать» / «Отправить». --}}
     @if ($i->state !== InvoiceState::Paid)
-        @if (! $i->isShownToManager())<div class="send-under"><x-deal.issue-button :deal="$deal" :invoice="$i" block/></div>@endif
-        @if ($link && $link->isOpen())
-            <x-ui.share-link variant="row" :url="$link->url()" title="Оплата по ссылке" :text="$link->message()" label="Ссылка на оплату" :sub="$linkState" done="Ссылка на оплату в буфере"/>
+        @if (! $i->isShownToManager())
+            <div class="row">
+                <x-ui.icon name="link" class="size-5 shrink-0 text-ink-dim"/>
+                <span class="min-w-0 flex-1"><span class="block">Ссылка на оплату</span><span class="row-sub">не выставлена</span></span>
+                <x-deal.issue-button :deal="$deal" :invoice="$i"/>
+            </div>
+        @elseif ($link && $link->isOpen())
+            <x-ui.share-link variant="row" :url="$link->url()" title="Оплата по ссылке" :text="$link->message()" done="Ссылка на оплату в буфере">
+                <x-slot:lead>
+                    <x-ui.icon name="link" class="size-5 shrink-0 text-ink-dim"/>
+                    <span class="min-w-[9rem] flex-1"><span class="block">Ссылка на оплату</span><span class="block truncate text-sm text-ink-muted">{{ $linkState }}</span></span>
+                </x-slot:lead>
+            </x-ui.share-link>
         @endif
         @if ($paidBy->contains('id', $i->id))
             <x-deal.sale-row label="Оплатили наличными?" value="Отметить" tone="accent" data-controller="emit" data-action="emit#send" data-emit-event-param="paid-{{ $i->id }}:open"/>
