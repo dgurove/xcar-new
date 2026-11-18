@@ -9,7 +9,6 @@ use App\Garage\CarState;
 use App\Garage\GaragePayer;
 use App\Offers\Actions\AcceptBid;
 use App\Offers\Actions\PlaceBid;
-use App\Offers\Actions\SellFromStatement;
 use App\Offers\BidKind;
 use App\Offers\Deal;
 use App\Offers\DealScheme;
@@ -84,10 +83,8 @@ class SellFromStatementTest extends TestCase
 
         $deal = $deal->fresh();
         $this->assertSame(CarState::Sold, $deal->garageCar->state);
-        // Пришло 1 250 000 — это цена минус вознаграждение: услуги подбора 250 000 — наша доля 60 %, вознаграждение по той же
-        // шкале 166 667, цена продажи — пришедшее плюс оно.
-        $reward = SellFromStatement::reward($deal, 1250000);
-        $this->assertSame(166667, $reward);
+        // Пришло 1 250 000: цена по догадке — оно же, вознаграждение не знаем (0), услуги подбора — 250 000.
+        $reward = 0;
         $this->assertSame(1250000 + $reward, (int) $deal->garageCar->sold_price);
         $this->assertSame(1250000 + $reward, (int) $deal->amount);
         $this->assertSame($reward, (int) $deal->commission);

@@ -62,7 +62,8 @@ final class MarkGarageSold
             $deal = $deal->fresh();
             $fee = isset($data['commission']) ? (int) $data['commission'] : $deal->suggestedCommission();
             if (($deal->commission === null || $repriced || isset($data['commission'])) && $deal->moneyEditable() && $fee !== null) {
-                app(UpdateDealMoney::class)($deal, $by, $fee, note: 'Вознаграждение '.Money::rub($fee).': менеджеру '.(100 - $deal->ourGarageShare()).' % навара'.($mark ? ' — догадка по выписке' : ''));
+                app(UpdateDealMoney::class)($deal, $by, $fee, note: $mark && $fee === 0 ? 'Вознаграждение не знаем — догадка по выписке'
+                    : 'Вознаграждение '.Money::rub($fee).': менеджеру '.(100 - $deal->ourGarageShare()).' % навара'.($mark ? ' — догадка по выписке' : ''));
             } else {
                 app(SyncDealInvoices::class)($deal, $by);
             }
