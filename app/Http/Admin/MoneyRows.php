@@ -117,6 +117,48 @@ final class MoneyRows
         } : null;
     }
 
+    /**
+     * Что с оплатой — одним словом под названием на странице человека (18.11.2026, владелец: «статусы — просто безобразие», «под
+     * маркой статус»): [слово, тон]. Не выставлено — «не выставлена»; пишет, что оплатил, — «сообщил: наличными» / «сообщил:
+     * переводом»; ссылка — что с ней («не открывали», «открыл, не оплатил», «оплата не прошла»); без ссылки — «ждём перевод»; выплата —
+     * «к выплате» / «реквизитов нет». Срок — не словом, а цветом времени справа.
+     */
+    public static function state(Invoice $i): array
+    {
+        if ($i->isOwed()) {
+            return $i->party->payoutReady() ? ['к выплате', 'text-ink-muted'] : ['реквизитов нет', 'text-danger'];
+        }
+        if (! $i->isShownToManager()) {
+            return ['не выставлена', 'text-ink-muted'];
+        }
+        if ($claim = $i->claims->first()) {
+            return ['сообщил: '.($claim->source === PaymentSource::Cash ? 'наличными' : 'переводом'), 'text-urgent'];
+        }
+        $l = $i->openLink();
+
+        return $l ? match ($l->status()[0]) {
+            'pending', 'abandoned' => ['открыл, не оплатил', 'text-urgent'],
+            'declined' => ['оплата не прошла', 'text-danger'],
+            'error' => ['ссылка не открылась', 'text-danger'],
+            default => ['ссылку не открывали', 'text-ink-muted'],
+        } : ['ждём перевод', 'text-ink-muted'];
+    }
+
+    /** Как заплатили — коротко под названием оплаченного: «наличными», «по ссылке, СБП», «в банк», «зачётом». */
+    public static function paidWay(Invoice $i, Collection $attempts): ?string
+    {
+        $p = $i->payments->sortBy('paid_at')->last();
+
+        return match ($p?->source) {
+            null => null,
+            PaymentSource::Acquiring => trim('по ссылке '.PayMethod::label($attempts->get($p->id)?->method)),
+            PaymentSource::Cash => 'наличными',
+            PaymentSource::Offset => 'зачётом вознаграждения',
+            PaymentSource::Credit => 'оплатой по ссылке',
+            default => 'в банк',
+        };
+    }
+
     /** Срок счёта словами и тоном: «до 8 окт» / «срок прошёл 5 окт». */
     public static function due(Invoice $i): ?array
     {

@@ -197,6 +197,7 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
         Route::put('/work/deals/{deal}/fee-seller', [DealContractController::class, 'feeSeller']);
         // «Отправить менеджеру» у счёта и договора (16.11.2026): сотрудник проверил — менеджер видит.
         Route::post('/work/deals/{deal}/invoices/{invoice}/show', [DealContractController::class, 'showInvoice']);
+        Route::post('/work/deals/{deal}/invoices/{invoice}/issue', [DealContractController::class, 'issueInvoice']);
         // «Запросили счёт…» у комиссии (18.11.2026): обычно только ссылка или наличные.
         Route::post('/work/deals/{deal}/invoices/{invoice}/paper', [DealContractController::class, 'paperInvoice']);
         Route::post('/work/deals/{deal}/contract/show', [DealContractController::class, 'showContract']);

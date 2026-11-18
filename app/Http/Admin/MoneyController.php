@@ -304,19 +304,19 @@ class MoneyController
             ? $w->whereRaw(self::personSql($t).' = ?', [$user->id])
             : $w->whereRaw(self::personSql($t).' is null'));
         $open = $mine($tab)->where('state', InvoiceState::Issued)->with([...self::WITH, 'payLinks.attempts', 'claims'])->orderByRaw('due_at asc nulls last')->orderBy('billing_invoices.id')->get();
-        $tried = $tab === 'payouts' ? collect() : self::tried($mine($tab))->pluck('billing_invoices.id')->flip();
-        $send = $tab === 'payouts' ? collect() : $open->reject(fn ($i) => $i->isShownToManager())->values();
-        $claimed = $open->filter(fn ($i) => $i->claims->isNotEmpty())->values();
-        $waiting = $open->diff($send)->diff($claimed)
-            ->sortBy([fn ($a, $b) => (int) $tried->has($b->id) <=> (int) $tried->has($a->id), fn ($a, $b) => (int) $b->isOverdue() <=> (int) $a->isOverdue()])->values();
+        // Один список (18.11.2026, владелец: «разделять на группы не надо, по порядку выставления, не отправленные сверху»):
+        // невыставленные — первыми, остальное — по дню выставления, раньше выставленное выше (дольше ждёт).
+        $rows = $open->sortBy([
+            fn ($a, $b) => (int) $a->isShownToManager() <=> (int) $b->isShownToManager(),
+            fn ($a, $b) => ($a->shown_at ?? $a->created_at) <=> ($b->shown_at ?? $b->created_at),
+        ])->values();
         $paid = $mine($tab)->where('state', InvoiceState::Paid)->where('paid_at', '>=', now()->subDays(30)->toDateString())->with(self::WITH)->orderByDesc('paid_at')->orderByDesc('billing_invoices.id')->get();
         $attempts = AcquiringPayment::whereIn('payment_id', $paid->flatMap(fn ($i) => $i->payments->pluck('id')))->get()->keyBy('payment_id');
         // Числа у разделов человека — сколько открытого.
         $counts = collect(array_keys(self::TABS))->mapWithKeys(fn ($t) => [$t => $t === $tab ? $open->count() : $mine($t)->where('state', InvoiceState::Issued)->count()])->all();
 
         return view('admin.money.person', [
-            'detail' => $detail, 'user' => $user, 'tab' => $tab, 'counts' => $counts,
-            'send' => $send, 'claimed' => $claimed, 'waiting' => $waiting, 'tried' => $tried, 'paid' => $paid, 'attempts' => $attempts,
+            'detail' => $detail, 'user' => $user, 'tab' => $tab, 'counts' => $counts, 'rows' => $rows, 'paid' => $paid, 'attempts' => $attempts,
         ]);
     }
 
@@ -491,15 +491,18 @@ class MoneyController
     }
 
     /**
-     * Таблица страницы человека (18.11.2026, владелец: «внутри надо как таблицу, а не строками»): по машинам, как «Сделки» —
-     * название, № убытка, что с оплатой, когда выставлено, сумма и кнопки дела самым правым (`x-money.person-row`). Кнопки — ровно
-     * своей ширины (`fixed`): скрытый текст «Поделиться» в ячейке раздувал столбец до 48rem.
+     * Таблица страницы человека (18.11.2026, владелец выбрал «два этажа, как „Предложения“»): название и под ним что с оплатой,
+     * справа сумма и под ней сколько прошло с выставления; кнопка — только у невыставленного, «сообщил об оплате» и выплаты
+     * (`x-money.person-row`), ровно своей ширины (`fixed`).
      */
     public static function personTable(): Table
     {
-        return Table::of(new Column('title', 'Марка, модель', grow: true), new Column('vendor', '№ убытка', from: 'sm', role: ColRole::Code, rem: 10),
-            new Column('status', 'Статус', from: 'sm', role: ColRole::State, rem: 10), new Column('created', 'Создано', from: 'lg', aside: true, role: ColRole::When, cell: 'nums', rem: 6.5),
-            new Column('amount', 'Сумма', num: true, cell: 'nums', rem: 7), new Column('action', role: ColRole::When, rem: 15, fixed: true));
+        // Номера убытка нет (владелец: «захотят — нажмут, посмотрят»); на телефоне — два этажа: название и статус слева, сумма и
+        // сколько прошло — концами строк (`.line-end`), кнопка — в строке статуса.
+        // Ширины — ровно заданные (`fixed`): список и блок «Оплачено» — две таблицы, их столбцы должны стоять одинаково.
+        return Table::of(new Column('title', 'Марка, модель', grow: true, fixed: true, rem: 20), new Column('status', 'Статус', from: 'sm', role: ColRole::State, rem: 12, fixed: true),
+            new Column('amount', 'Сумма', num: true, cell: 'nums', rem: 7, fixed: true), new Column('since', 'Выставлено', from: 'sm', role: ColRole::When, cell: 'nums', rem: 6.5, fixed: true),
+            new Column('action', from: 'sm', role: ColRole::When, rem: 7.5, fixed: true));
     }
 
     /**

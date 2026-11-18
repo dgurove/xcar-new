@@ -87,7 +87,11 @@
                         <span>{{ $contract->buyer?->party?->name }}</span>@if ($contract->price)<span class="nums whitespace-nowrap">{{ \App\Support\Money::rub($contract->price) }}</span>@endif
                     </x-deal.doc-row>
                 @endif
-                <x-deal.send-row :deal="$deal" :action="$action" :label="$invoice ? \App\Billing\PayOffer::sendLabel($invoice) : 'Отправить менеджеру'"/>
+                @if ($invoice && ! $invoice->isDocument())
+                    <div class="send-under"><x-deal.issue-button :deal="$deal" :invoice="$invoice" block/></div>
+                @else
+                    <x-deal.send-row :deal="$deal" :action="$action" :label="$invoice ? \App\Billing\PayOffer::sendLabel($invoice) : 'Отправить менеджеру'"/>
+                @endif
             </div>
         </x-ui.sheet>
     </div>

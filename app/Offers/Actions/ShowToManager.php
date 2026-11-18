@@ -41,9 +41,25 @@ final class ShowToManager
         if ($shown) {
             InvoiceShown::dispatch($shown->fresh(), $by);
             Disclose::publish($deal);
+            $this->toChat($deal, $shown->fresh());
         }
 
         return $shown ?? $invoice->fresh();
+    }
+
+    /**
+     * Комиссия выставлена — ссылкой в чат с менеджером (18.11.2026, владелец: «„Выставить“ — тогда она отправляется в чат
+     * менеджеру, отображается в сделке и копируется в буфер обмена»). Уведомление «Ссылка на оплату» тогда не шлём — его
+     * заменяет сообщение чата (`Notify::invoiceIssued`).
+     */
+    private function toChat(Deal $deal, Invoice $invoice): void
+    {
+        if ($invoice->isDocument() || ! $deal->buyer) {
+            return;
+        }
+        $link = $invoice->openLink();
+        $text = \App\Billing\PayOffer::line($invoice).($link ? "\nОплата картой, СБП или SberPay по ссылке:\n".$link->url() : '');
+        rescue(fn () => app(\App\Chats\Actions\PlatformMessage::class)(app(\App\Chats\Actions\OpenChat::class)($deal->offer, $deal->buyer, greet: false), $text), report: true);
     }
 
     public function contract(Deal $deal, User $by): DealContract

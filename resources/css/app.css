@@ -442,6 +442,8 @@ html.kb-open { --home-gap: 0px; }
   .btn[aria-disabled="true"] { @apply opacity-50; }
   .btn-s { @apply px-[1.125rem] text-sm; height: 2.75rem; }
   @media (min-width: 640px) { .btn-s { height: 2.5rem; } }
+  /* Кнопка в строке таблицы (18.11.2026, «Оплаты»: «гораздо компактнее, чтобы помещалось много строк») — высотой с этаж строки. */
+  .btn-xs { @apply px-2.5 text-sm; height: 1.625rem; border-radius: 999px; }
   .btn-hero { @apply px-12 text-lg; height: 4rem; }
   @media (min-width: 640px) { .btn-hero { @apply text-xl; height: 4.375rem; } }
 

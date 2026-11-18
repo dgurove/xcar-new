@@ -49,6 +49,22 @@ class DealContractController
         return back()->with('toast', \App\Billing\PayOffer::sent($invoice->fresh()));
     }
 
+    /**
+     * «Выставить» комиссию (18.11.2026): то же «Отправить менеджеру» (`ShowToManager` — в чат ссылкой), ответ — JSON с текстом для
+     * буфера обмена: `issue_controller` кладёт его туда на том же нажатии (ClipboardItem с обещанием).
+     */
+    public function issueInvoice(Request $request, Deal $deal, \App\Billing\Invoice $invoice, \App\Offers\Actions\ShowToManager $show)
+    {
+        abort_unless($invoice->deal_id === $deal->id && $deal->buyer_id, 404);
+        $invoice = $show->invoice($deal, $invoice, $request->user());
+        $link = $invoice->openLink();
+
+        return response()->json([
+            'copy' => $link ? $link->message()."\n".$link->url() : \App\Billing\PayOffer::line($invoice),
+            'toast' => $link ? 'Выставлено, ссылка в чате и в буфере' : 'Выставлено, менеджер видит в сделке',
+        ]);
+    }
+
     /** «Запросили счёт…» у комиссии (18.11.2026): счёт подбора — документом с номером и PDF (`RequestFeeInvoice`). */
     public function paperInvoice(Request $request, Deal $deal, \App\Billing\Invoice $invoice, \App\Billing\Actions\RequestFeeInvoice $paper)
     {

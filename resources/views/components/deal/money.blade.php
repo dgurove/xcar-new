@@ -261,7 +261,7 @@
                     @if ($i->state === InvoiceState::Paid)
                         <div class="row sale-row"><span class="sale-row-label">Оплачено</span><span class="sale-row-value">{{ \App\Support\Ago::day($i->paid_at) }}</span><x-ui.chevron-space/></div>
                     @elseif ($i->state !== InvoiceState::Void)
-                        @if (! $i->isShownToManager())<x-deal.send-row :deal="$deal" :action="'/work/deals/'.$deal->id.'/invoices/'.$i->id.'/show'" :label="\App\Billing\PayOffer::sendLabel($i)"/>@endif
+                        @if (! $i->isShownToManager())<div class="send-under"><x-deal.issue-button :deal="$deal" :invoice="$i" block/></div>@endif
                         @if ($link && $link->isOpen())
                             <x-ui.share-link variant="row" :url="$link->url()" title="Оплата по ссылке" :text="$link->message()" label="Ссылка на оплату" :sub="$linkState" done="Ссылка на оплату в буфере"/>
                         @endif
