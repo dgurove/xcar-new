@@ -180,7 +180,8 @@ final class DealTabs
         // полсекунды вместо 0,1 с, и это была главная цена пересчёта после каждого события (17.11.2026).
         return StaffCache::remember(self::CACHE, 30, fn () => self::rows(Deal::active()->whereHas('offer', fn ($o) => $o->where('offers.state', OfferState::Sold))
             ->with(array_values(array_diff(self::WITH, ['offer.media'])))->get())->reject(fn (array $r) => $r['deal']->sellsFromGarage($r['deal']->offer?->position()?->stage))
-            ->mapWithKeys(fn (array $r) => [$r['deal']->offer_id => [$r['tab'], $r['todo'] !== null]])->all());
+            // Тихое дело (заявка Каркаде, `Position::todo` `quiet`) — во вкладке, но не в её счётчике.
+            ->mapWithKeys(fn (array $r) => [$r['deal']->offer_id => [$r['tab'], $r['todo'] !== null && empty($r['todo']['quiet'])]])->all());
     }
 
     /** Машины вкладки (`OfferController::scopeFor`). @return list<int> */

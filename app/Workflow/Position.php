@@ -354,7 +354,9 @@ class Position extends Model
             in_array($letter, ['unsent', 'failed'], true) => $todo('letter:'.self::letterAction($this->stage)[0], self::letterAction($this->stage)[1], 1, button: $write('Написать')),
             $this->consentLate() => $todo('consent', 'Менеджер не ответил, берёт ли', 3, $this->deadline_at,
                 ($phone = $this->deal?->buyer?->phone) ? ['label' => 'Телефон менеджера', 'tel' => $phone] : null),
-            $this->stage->isRequestStep() => $todo('request:'.$offer->vendor_id, 'Отправить заявку поставщику', 4),
+            // Заявка Каркаде — тихо (18.11.2026, владелец: «по ним пока тишина, пусть лежат, но не кричат»): в «Написать поставщику»,
+            // но серым, без счётчика вкладки и бейджа «Предложений» (`quiet`; `DealTabs::map`, `NEEDS_US_SQL`).
+            $this->stage->isRequestStep() => [...$todo('request:'.$offer->vendor_id, 'Отправить заявку поставщику', 4), 'quiet' => true],
             // Письмо Т-Страхования пришло — спросить менеджера (18.11.2026, владелец: «как это „Ждём письмо поставщика“ и при этом ход
             // наш — они туда не зайдут»): своим делом и своей вкладкой «Спросить менеджера», кнопка — тот же выход, что в окне.
             $this->stage->name === \App\Offers\SupplierLetterWait::STAGE && ($ask = \App\Offers\SupplierLetterWait::exitOf($this->stage))
@@ -398,7 +400,11 @@ class Position extends Model
             $red = in_array($todo['key'], ['price-ask', 'consent'], true) || str_starts_with($todo['key'], 'letter-agree:') || ($own && $late);
             $title = \App\Offers\DealTabs::TODO_TITLES[$todo['title']] ?? $todo['title'];
 
-            return ['text' => mb_lcfirst($title), 'tone' => $red ? 'text-danger' : 'text-accent-text', 'hint' => $own ? $hint : null];
+            return ['text' => mb_lcfirst($title), 'tone' => match (true) {
+                ! empty($todo['quiet']) => 'text-ink-muted',
+                $red => 'text-danger',
+                default => 'text-accent-text',
+            }, 'hint' => $own && empty($todo['quiet']) ? $hint : null];
         }
         if ($this->carried()) {
             return ['text' => 'везёт логистика', 'tone' => 'text-ink-muted', 'hint' => null];
@@ -515,12 +521,14 @@ class Position extends Model
 
     /** `needsUs()` одним SQL-условием над `offer_positions` — для скоупа, сортировок и подзапросов. */
     // coalesce — пустой payload даёт null, и «не наш ход» (`whereNot`) терял такие позиции. Подписи согласия — `Outcome::TAKES`.
+    // Заявка Каркаде (исход «Заявка отправлена») — тихое дело, в бейдж не идёт (18.11.2026, `todo` `quiet`).
     // Ход наш на шаге получения под логистикой (`carried`) — не наш: этап с исходом менеджера «Автомобиль забрал» или шаг
     // связи перед ним (`Stage::handsStep`).
     // Метки письма — только на этапе письма (`Stage::isLetterStep`), «менеджер не ответил» — только пока ход его
     // (`consentLate`): без этого число пилюли «Ваш ход» расходилось со строками (27.10.2026). Ждущая переоценка — `repricePending`,
     // письмо на разбор — `replyPending`, ответ поставщику на переоценку — `repriceUnanswered`.
     public const NEEDS_US_SQL = "coalesce((coalesce(offer_positions.waits_for, (select s.waits_for from workflow_stages s where s.id = offer_positions.stage_id)) = 'us'
+            and not exists (select 1 from workflow_exits x where x.stage_id = offer_positions.stage_id and lower(x.label) = 'заявка отправлена')
             and not (coalesce(offer_positions.waits_for, '') = 'us' and exists (select 1 from workflow_exits x where x.stage_id = offer_positions.stage_id
                 and x.actor = 'manager' and (lower(x.label) = 'автомобиль забрал' or exists (select 1 from workflow_exits y where y.stage_id = x.to_stage_id
                     and y.actor = 'manager' and lower(y.label) = 'автомобиль забрал')))))

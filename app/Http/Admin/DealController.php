@@ -208,7 +208,8 @@ class DealController
 
                 return [
                     'title' => $ours ? (DealTabs::TODO_TITLES[$first['todo']['title']] ?? $first['todo']['title']) : DealTabs::waitTitle(substr($key, 5)),
-                    'ours' => $ours, 'rank' => $ours ? $first['todo']['rank'] : 1000 + array_search(strtok(substr($key, 5), ':'), array_keys($wait), true),
+                    // Тихое дело (заявка Каркаде) — название группы не зелёным.
+                    'ours' => $ours && empty($first['todo']['quiet']), 'rank' => $ours ? $first['todo']['rank'] : 1000 + array_search(strtok(substr($key, 5), ':'), array_keys($wait), true),
                     // Письмо шага согласования не ушло — группа красным (17.11.2026, владелец).
                     // Данные паспорта не распознались и договор не отправлен при оплаченном счёте — тоже (18.11.2026).
                     'danger' => str_starts_with($key, 'do:letter-agree:') || in_array($key, ['do:gap:unread', 'do:contract:unread', 'do:contract:paid'], true),
