@@ -24,12 +24,13 @@
         $position !== null => [Wording::mine($position->stage->block?->name ?? $position->stage->name), 'text-ink-muted'],
         default => ['Идёт работа', 'text-ink-muted'],
     };
-    // Срок числом: у дела — сколько осталось (вышел — сколько просрочено, красным), у чужого хода — сколько ждём.
-    $iso = fn ($at) => $at->toIso8601String();
+    // Срок числом: у дела — сколько осталось (вышел — сколько просрочено, красным), у чужого хода — сколько ждём. Числа —
+    // готовым текстом, без таймера на строку: шаг у них — час, а два контроллера на каждую из сотни строк возврат в раздел
+    // из снимка делали вдвое дольше (сторож `nav-audit`: 474 мс); список и так перечитывается при возврате и по событию.
     $term = match (true) {
-        $task !== null && $late => '<span class="nums whitespace-nowrap text-danger" title="Просрочено на" data-controller="timer" data-timer-since-value="'.$iso($task['due']).'" data-timer-coarse-value="true">'.e(Ago::since($task['due'], hours: true)).'</span>',
-        $task !== null && $task['due'] !== null => '<span class="nums whitespace-nowrap text-ink-muted" title="Осталось" data-controller="timer" data-timer-until-value="'.$iso($task['due']).'" data-timer-coarse-value="true" data-timer-word-value="">'.e(Ago::left($task['due'], '')).'</span>',
-        $task === null && ! $paidUp && $position?->block_entered_at !== null => '<span class="nums whitespace-nowrap text-ink-muted" title="На этапе" data-controller="timer" data-timer-since-value="'.$iso($position->block_entered_at).'" data-timer-coarse-value="true">'.e(Ago::since($position->block_entered_at, hours: true)).'</span>',
+        $task !== null && $late => '<span class="nums whitespace-nowrap text-danger" title="Просрочено на">'.e(Ago::since($task['due'], hours: true)).'</span>',
+        $task !== null && $task['due'] !== null => '<span class="nums whitespace-nowrap text-ink-muted" title="Осталось">'.e(Ago::left($task['due'], '')).'</span>',
+        $task === null && ! $paidUp && $position?->block_entered_at !== null => '<span class="nums whitespace-nowrap text-ink-muted" title="На этапе">'.e(Ago::since($position->block_entered_at, hours: true)).'</span>',
         default => '',
     };
     // «Ваш ход» — с кнопкой ответа прямо в строке (10.11.2026): «Беру в работу», «Автомобиль забрал» — сразу, остальное — ссылкой на шаг.

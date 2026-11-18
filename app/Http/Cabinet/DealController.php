@@ -84,19 +84,20 @@ class DealController
         // разделах, с меткой «Гараж», строка ведёт в машину гаража — там и шаг сделки.
         // Ход менеджера — просьба к нему или этап, где ждут его (ПРАЙМ без покупателя — без просьбы): просроченное, потом остальное.
         $turn = Deal::MANAGER_TURN_SQL;
+        // По умолчанию — таблицей, как в CRM (18.11.2026, владелец: «сделки и гараж — по умолчанию вид табличный»), строками —
+        // пунктом меню вида. Страниц нет ни у кого (тот же день: «всегда бесконечная подгружающаяся лента»).
+        $staff = $me->isAdmin() && ! $me->isManager();
+        $view = $staff || ListView::fromRequest($request) !== ListView::LIST ? ListView::TABLE : ListView::LIST;
         // Параллельная (07.11.2026) — его сделка, как идущая: со своим теневым шагом (`Parallels::dress`).
-        $deals = self::deals($me)->live()
+        // Строке таблицы кадры не нужны.
+        $deals = self::deals($me)->when($view === ListView::TABLE, fn ($d) => $d->without('offer.media'))->live()
             ->orderByRaw("case when {$turn} then 0 else 1 end")
             ->orderByRaw('(select min(r.due_at) from requirements r where r.deal_id = deals.id and r.done_at is null) asc nulls last')
             ->when($sort->key === 'amount', fn ($d) => $d->orderByRaw("coalesce(amount, cost) {$sort->dir()} nulls last"))->orderBy('created_at', $sort->key === 'fresh' ? $sort->dir() : 'desc')->orderByDesc('id');
-        // По умолчанию — таблицей, как в CRM (18.11.2026, владелец: «сделки и гараж — по умолчанию вид табличный»), строками —
-        // пунктом меню вида. Страниц нет ни у кого (тот же день: «всегда бесконечная подгружающаяся лента»).
         // Админу — все сделки площадки одной таблицей, порциями по сотне при листании (`Portion`; были страницы по 30).
         // Менеджеру — свои разделами «чей ход» целиком: раздел считается в памяти (`managerTask`, `waitsForManager`), и порция
         // соврала бы — выражение запроса `MANAGER_TURN_SQL` шире «Вашего хода» (гаражная без просьбы, оплаченные счета); списки
         // малы — до сотни строк у самого занятого.
-        $staff = $me->isAdmin() && ! $me->isManager();
-        $view = $staff || ListView::fromRequest($request) !== ListView::LIST ? ListView::TABLE : ListView::LIST;
         $deals = $staff ? Portion::of($request, $deals, (clone $deals)->count()) : $deals->get()->each(fn (Deal $d) => Parallels::dress($d->loadMissing('shadowStage')));
         // Задача менеджера — один раз на сделку: её берут и разделы, и строка (раньше строка считала заново).
         $tasks = $staff ? collect() : $deals->mapWithKeys(fn (Deal $d) => [$d->id => $d->managerTask()]);
@@ -185,7 +186,7 @@ class DealController
     private static function deals(User $me)
     {
         return Deal::with(['offer', 'offer.media', 'offer.positions.stage.block', 'offer.positions.stage.exits.to', 'openRequirement', 'garageCar.offer'])
-            ->when(! $me->hasDeals(), fn ($d) => $d->with('buyer'))->of($me);
+            ->when(! $me->hasDeals(), fn ($d) => $d->with('buyer.media'))->of($me);
     }
 
     private static function bids(User $me)

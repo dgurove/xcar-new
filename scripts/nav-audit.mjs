@@ -41,7 +41,7 @@ await ctx.addInitScript((id) => {
     };
     window.__nav = { events: [], t0: 0, shown: null, sign: '' };
     // Знак экрана — что на нём видно, а не адрес: возврат из снимка ставит адрес раньше, чем рисует (18.11.2026).
-    const sign = () => `${document.querySelector('h1')?.textContent.trim() ?? ''}|${document.body?.dataset.navTab ?? ''}|${document.querySelector('[data-section-ghost]') ? 'ghost' : ''}|${document.querySelector('#scroller')?.textContent.replace(/\s+/g, ' ').trim().slice(0, 80) ?? ''}`;
+    const sign = () => `${document.querySelector('h1')?.textContent.trim() ?? ''}|${document.body?.dataset.navTab ?? ''}|${document.querySelector('[data-section-ghost]') ? 'ghost' : ''}|${document.body?.classList.contains('chat-open') ? 'чат' : ''}|${document.querySelector('#scroller')?.textContent.replace(/\s+/g, ' ').trim().slice(0, 80) ?? ''}`;
     window.__navArm = () => {
         const nav = window.__nav;
         nav.events = []; nav.shown = null; nav.t0 = 0; nav.click = null; nav.ghost = false; nav.vt = 0; nav.long = 0; nav.sign = sign();
@@ -329,8 +329,10 @@ if (host === 'site' && (!only || only === 'переход')) {
         // Человек выбрал вид «таблица» (вид на сайте помнится): строка открывает окно, а не страницу — это сценарий CRM.
         console.log('  · список таблицей: машина открывается окном — страницу машины меряет покупатель (USER_ID=46)');
     }
-    // Третий таб роли: «Сделки» менеджера, «Интерес» покупателя — строка, страница, назад.
-    if (hrefs[2]) {
+    // Раздел со строками: «Сделки» менеджера, «Гараж» или «Интерес» покупателя — строка, страница, назад («Чаты» — ниже).
+    const listTab = hrefs.find((h) => ['/deals', '/garage', '/account/interests'].includes(h));
+    if (listTab) {
+        hrefs[2] = listTab;
         await tap(hrefs[2]); await scrollTo(500);
         was = await state();
         r = await linkIn('/(deals|garage/cars|offers)/\\d+');
