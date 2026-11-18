@@ -172,6 +172,25 @@ export default class extends Controller {
         };
         this.frameTarget.addEventListener('detail:hold', this.onHold);
         document.addEventListener('detail:advance', this.onAdvance);
+        // Окно держит машину, пока открыто письмо (18.11.2026, начальник: «принимаю подтверждение — редактор письма не
+        // открывается, всё закрывается и улетает в другую вкладку»): окно письма стоит над окном машины, и переход к
+        // следующей строке или своё закрытие (`follow`, `advance`) гасили его (`overlays.shut` закрывает слои выше).
+        // Поток `hold` ответа «Принять и написать письмо» — держим; письмо закрылось сделанным (ушло, «без письма») — к
+        // следующему делу, как раньше; закрыл сам — остаёмся на машине, письмо ждёт на шаге сделки.
+        this.onKeep = () => { this.hold = true; this.submittedAt = 0; clearTimeout(this.followTimer); };
+        this.onLetterClosed = (e) => {
+            const go = this.pendingAdvance || (this.hold && e.detail?.handled);
+            const held = this.hold;
+            this.hold = this.pendingAdvance = false;
+            if (!this.open || !go) return;
+            // Дальше дел нет — окно остаётся на этой машине, уже сделкой: перечитать шаг (письмо ушло).
+            if (!this.advance(true) && held) {
+                const src = location.pathname + location.search;
+                if (this.frameTarget.getAttribute('src') === src) this.frameTarget.reload(); else this.frameTarget.src = src;
+            }
+        };
+        document.addEventListener('detail:keep', this.onKeep);
+        window.addEventListener('letters:closed', this.onLetterClosed);
         document.addEventListener('turbo:before-stream-render', this.onStream);
         // Морф, загрузка страницы и свежая строка приносят строки без выделения (его знает только адрес) — вернуть. Свежую
         // строку ловит наблюдатель: поток из карточки, пришедшей со страницей, рисуется раньше, чем подключится контроллер,
@@ -209,6 +228,8 @@ export default class extends Controller {
         this.frameTarget.removeEventListener('turbo:before-fetch-request', this.onFetch);
         this.unprefetch?.();
         document.removeEventListener('detail:advance', this.onAdvance);
+        document.removeEventListener('detail:keep', this.onKeep);
+        window.removeEventListener('letters:closed', this.onLetterClosed);
         document.removeEventListener('turbo:before-stream-render', this.onStream);
         ['turbo:load', 'turbo:morph'].forEach((n) => document.removeEventListener(n, this.onMark));
         document.removeEventListener('turbo:morph', this.onMorphed);
@@ -413,6 +434,7 @@ export default class extends Controller {
     // при других чипах. Поиск лупой и номер подгруженной страницы не едут (как App\Support\Detail::url).
     show(row) {
         this.shut = false;
+        this.hold = this.pendingAdvance = false;
         this.swap = true;
         this.released = false;
         this.keep();
@@ -544,15 +566,19 @@ export default class extends Controller {
     // карточки (8 с) и только без набранного: в тот же вечер строки уходили живым обновлением чужих правок, карточка сама
     // менялась под рукой, и цену с «Выставить в продажу» Андрей сделал не той машине (Evolute 2611093788). Сменилась —
     // тост с названием новой, чтобы это было видно.
+    // Письмо открыто над окном (или вот-вот откроется, `hold`) — окно машины само не закрывается и машину не меняет.
+    get keeping() { return !!this.hold || !!document.getElementById('letters-frame')?.closest('dialog')?.open; }
+
     follow(records) {
         const key = this.lastKey;
         if (!key || this.shut || !this.submittedAt || Date.now() - this.submittedAt > 8000) return;
+        if (this.keeping) return;
         const sel = `[data-detail-key="${CSS.escape(key)}"]`;
         const gone = records.some((r) => [...r.removedNodes].some((n) => n.nodeType === 1 && (n.matches(sel) || n.querySelector(sel))));
         if (!gone) return;
         clearTimeout(this.followTimer);
         this.followTimer = setTimeout(() => {
-            if (this.shut || this.lastKey !== key || this.dirty) return;
+            if (this.shut || this.lastKey !== key || this.dirty || this.keeping) return;
             const rows = this.rows;
             if (rows.some((r) => r.dataset.detailKey === key)) return;
             const next = rows[Math.min(this.lastIndex ?? 0, rows.length - 1)];
@@ -751,6 +777,7 @@ export default class extends Controller {
         }
         this.opening = null;
         this.shut = true;
+        this.hold = this.pendingAdvance = false;
         // Запись «Назад» листа снимается шагом истории — он асинхронный. Адрес без ?peek пишем после него: на ПК (без
         // выезда листа) он ложился на запись листа, а шаг назад возвращал прежний адрес с ?peek — перезагрузка и «Назад»
         // снова открывали закрытую карточку (04.11.2026).
@@ -799,15 +826,19 @@ export default class extends Controller {
     // Оценили — следующий черновик без цены: дальше по таблице, иначе с начала; кончились — тост, со следующей
     // страницей списка — ссылкой на неё.
     // Оценённая строка могла уйти из списка («Без цены») — тогда дальше с её места.
-    advance() {
+    advance(quiet = false) {
+        // Открыто письмо — к следующей после него (`onLetterClosed`). Вернуть: перешли ли к строке.
+        if (this.keeping) { this.pendingAdvance = true; return true; }
         const rows = this.rows, cur = this.current;
         const from = cur ? rows.indexOf(cur) + 1 : (this.lastIndex ?? 0);
         const next = rows.slice(from).find((r) => r.hasAttribute('data-todo')) ?? rows.slice(0, from).find((r) => r.hasAttribute('data-todo') && r !== cur);
         if (next) {
             this.wantFocus = true;
             this.show(next);
-            return;
+            return true;
         }
+        // После письма дел дальше нет — молча: окно остаётся на машине (`onLetterClosed`).
+        if (quiet === true) return false;
         const more = document.querySelector('a[rel="next"]');
         // Кончились — куда дальше, говорит список (`data-advance-done`: «Без продажной цены» → «Оцененные»; без ссылки —
         // дальше не его шаг).

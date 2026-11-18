@@ -17,7 +17,7 @@
      `prefill` (принятие) — пустое поле сразу долей, и поле идёт за разницей, пока его не правили руками.
      16.11.2026: вознаграждение — ползунком, суммой или процентом от разницы (`x-deal.reward-split`; чипа доли больше нет). --}}
 @props(['action', 'amount', 'cost' => null, 'commission' => null, 'submit' => 'Принять', 'confirm' => null, 'method' => 'post', 'id' => null, 'note' => null,
-    'scheme' => null, 'schemes' => null, 'ownerPrice' => null, 'fee' => true, 'ownerLocked' => false, 'supplierCost' => null, 'priced' => false, 'costEditable' => false, 'schemeLocked' => false, 'offer' => null, 'share' => null, 'prefill' => false])
+    'scheme' => null, 'schemes' => null, 'ownerPrice' => null, 'fee' => true, 'ownerLocked' => false, 'supplierCost' => null, 'priced' => false, 'costEditable' => false, 'schemeLocked' => false, 'offer' => null, 'share' => null, 'prefill' => false, 'letter' => false])
 @php
     use App\Offers\DealScheme;
     use App\Support\Money;
@@ -103,5 +103,6 @@
         </dl>
     @endif
     @if ($note ?? null)<p class="text-sm text-ink-muted">{{ $note }}</p>@endif
-    <x-ui.sheet-foot>{{ $submit }}</x-ui.sheet-foot>
+    {{-- Принятие, после которого маршрут попросит письмо вендору, — выбор «и написать письмо» / «без письма» (`x-offer.give-foot`). --}}
+    @if ($letter && $offer)<x-offer.give-foot :offer="$offer" :label="$submit"/>@else<x-ui.sheet-foot>{{ $submit }}</x-ui.sheet-foot>@endif
 </form>

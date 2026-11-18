@@ -375,6 +375,30 @@ class Offer extends Model
         return $template ? "/work/mail/new?offer={$this->number}&template={$template}" : null;
     }
 
+    /**
+     * Попросит ли принятие в сделку письмо вендору — шторке «Принять» / «Отдать»: тогда в ней две кнопки, «и написать письмо»
+     * и «без письма» (18.11.2026). По маршруту, без сделки: хоть одна ветка входа в сделку ведёт на этап с шаблоном письма
+     * (`Workflow::dealEntry` выбирает ветку уже по сделке; не угадали — кнопка «и написать письмо» просто примет).
+     */
+    public function dealAsksLetter(): bool
+    {
+        if ($this->deal) {
+            return false;
+        }
+        $position = $this->position(Track::Sale);
+        $workflow = $position ? $position->stage->workflow : ($this->vendor?->is_active ? $this->vendor->workflow(Track::Sale) : null);
+        if (! $workflow || (! $position && ! $workflow->is_active)) {
+            return false;
+        }
+        $stages = $workflow->stages()->with('exits.to')->get();
+        $entries = $stages->flatMap(fn (Stage $s) => $s->exits->filter(fn ($e) => $e->acceptsBid())->map(fn ($e) => $e->to))->filter();
+        if ($entries->isEmpty()) {
+            $entries = collect([$stages->first(fn (Stage $s) => $s->offer_state === OfferState::Sold)])->filter();
+        }
+
+        return $entries->contains(fn (Stage $s) => $s->template_id && $s->id !== $position?->stage_id);
+    }
+
     public function settlement(): BelongsTo
     {
         return $this->belongsTo(Settlement::class);

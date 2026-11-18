@@ -26,6 +26,10 @@ async function ensureSheets(from, name) {
     const response = await request(url, { accept: 'text/html' });
     if (!response) { holder.dataset.lazySheets = url; return; }
     holder.innerHTML = await response.text();
+    // Формы дозагруженных шторок окна машины уходят в окно, как и стоявшие в нём сразу (`detail_controller` `settle`): без
+    // метки они шли по `target="_top"` переходом всей страницы — окно закрывалось (18.11.2026).
+    const frame = holder.closest('turbo-frame#detail');
+    if (frame) holder.querySelectorAll('form:not([data-turbo-frame])').forEach((f) => { f.dataset.turboFrame = 'detail'; });
     holder.dataset.lazyLoaded = url;
     await new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)));
 }

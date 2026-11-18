@@ -39,6 +39,10 @@ Turbo.StreamActions.toast = function () {
 Turbo.StreamActions.advance = function () {
     document.dispatchEvent(new CustomEvent('detail:advance'));
 };
+// Окно машины держит свою машину, пока открыто письмо (приняли «и написать письмо»): `detail_controller` `hold`.
+Turbo.StreamActions.hold = function () {
+    document.dispatchEvent(new CustomEvent('detail:keep'));
+};
 // Окно писем с черновиком из ответа карточки (x-ui.row-card, session letters — письмо вендору после «Принять»).
 // Открываем, когда карточка встала: поток advance перед этим меняет адрес страницы (detail_controller#address
 // переписывает верхнюю запись истории) — открытое раньше окно потеряло бы свою запись, и «Назад» увёл бы со списка.

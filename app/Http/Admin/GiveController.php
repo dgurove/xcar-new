@@ -12,6 +12,7 @@ use App\Offers\Giving;
 use App\Offers\Offer;
 use App\Support\Money;
 use App\Users\User;
+use App\Workflow\Actions\SkipLetter;
 use App\Workflow\Position;
 use App\Workflow\Stage;
 use App\Workflow\Track;
@@ -23,8 +24,9 @@ use Illuminate\Validation\ValidationException;
 /**
  * Шторка «Отдать» (`x-offer.give-sheet`, 18.10.2026): одна на «Отдать…» из «Действий» и «···», «В гараж» карточки
  * «Без продажной цены», «Принять» и «Отдать» у подтверждения. Ответ один: тост, строка уходит, карточка — к следующей
- * (`OfferController::gone`), а этап, на который встала сделка, просит письмо вендору — окно писем с черновиком
- * (`LetterPrompt`; «Отдать» другому — нет: вендору о покупке уже писали).
+ * (`OfferController::gone`). Этап, на который встала сделка, просит письмо вендору — тогда в шторке две кнопки: «и написать
+ * письмо» (редактор над той же машиной, окно не уходит, `detail-hold`) или «без письма» (`SkipLetter`); «Отдать» другому —
+ * письма нет: вендору о покупке уже писали.
  */
 class GiveController
 {
@@ -106,16 +108,34 @@ class GiveController
     {
         $after = $before ? $this->stageId($offer) : null;
         $letter = $after && $after !== $before ? $offer->fresh()->vendorLetterUrl(Stage::find($after)) : null;
-        // Окно письма — из очереди человека на сервере (`LetterPrompt`), не из сессии: метку сессии съедал соседний запрос.
-        if ($letter) {
-            LetterPrompt::ask($request->user(), $offer, $letter.'&then=close');
-        }
         $who = $deal->buyer?->shortName();
         $toast = match (true) {
             $handOver => 'Отдали '.$who,
             $deal->isGarage() => $who ? 'В гараж: '.$who : 'В гараж, взяли под себя',
             default => 'В сделку: '.$who.', '.Money::rub($deal->amount),
         };
+        // Писать ли поставщику, выбирают кнопкой самой шторки (18.11.2026, владелец: «должен явно указывать — отправить письмо
+        // или не отправлять, только тогда оно может в следующую вкладку переехать»; `x-offer.give-foot`).
+        // «Без письма» — шаг закрыт как «сообщили сами», дальше обычный ответ: строка ушла, окно — к следующему.
+        if ($letter && $request->input('letter') === 'skip') {
+            try {
+                app(SkipLetter::class)($offer->fresh(), $request->user());
+            } catch (ValidationException) {
+                // Шаг письма уже не ждёт — закрывать нечего.
+            }
+            $letter = null;
+        }
+        // С письмом — окно машины стоит на месте (`detail-hold`), пока открыт редактор: прежний ответ «строка ушла, окно — к
+        // следующей» закрывал окно машины, а с ним и письмо над ним (в журнале прода `letter-closed` по 4–7 раз в день).
+        // Письмо — из очереди человека на сервере (`LetterPrompt`), не из сессии: метку сессии съедал соседний запрос.
+        // Без выбора (форма со старой страницы) — прежний вопрос «писать / не отправлять».
+        if ($letter) {
+            $request->input('letter') === 'write'
+                ? LetterPrompt::push($request->user(), $letter.'&then=close')
+                : LetterPrompt::ask($request->user(), $offer, $letter.'&then=close');
+
+            return back()->with('toast', $toast)->with('detail-hold', true);
+        }
 
         // Шторки «Отдано: …» со ссылкой больше нет (16.11.2026, владелец: «бесполезная, её не надо открывать»; она же ждала окно
         // письма и вставала вместо редактора) — ссылка тому, кому отдали, строкой «Ссылка» в окне машины (`x-deal.person-link`).

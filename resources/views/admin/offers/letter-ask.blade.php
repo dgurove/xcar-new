@@ -13,7 +13,7 @@
             <a href="{{ $to }}" data-turbo-frame="letters-frame" class="btn btn-accent w-full"><x-ui.icon name="send" class="size-4"/>Написать письмо</a>
             @if ($skippable)
                 <form method="post" action="/offers/{{ $offer->number }}/letter-skip" data-turbo-frame="letters-frame">
-                    @csrf<button type="submit" class="btn btn-quiet w-full">Без письма — сообщили сами</button>
+                    @csrf<button type="submit" class="btn btn-quiet w-full">Не отправлять — поставщик уже знает</button>
                 </form>
             @endif
             <button type="button" class="btn btn-ghost w-full" data-action="window#close">Отмена</button>

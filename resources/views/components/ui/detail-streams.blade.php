@@ -9,6 +9,9 @@
 {{-- live-rows — действие тронуло и другие строки этого списка (пачка): перечитать их у автора (`StreamActions.rows`). --}}
 @if ($liveRows = session('live-rows'))<turbo-stream action="rows" keys="{{ implode(',', (array) $liveRows) }}"></turbo-stream>@endif
 @if (session('detail-advance'))<turbo-stream action="advance"></turbo-stream>@endif
+{{-- hold — окно машины стоит на месте, пока открыто письмо (приняли «и написать письмо», `GiveController::done`): строка под
+     ним уйдёт во вкладку сделки живым обновлением, а окно ни к следующей не перейдёт, ни само не закроется. --}}
+@if (session('detail-hold'))<turbo-stream action="hold"></turbo-stream>@endif
 {{-- letters — открыть окно писем с черновиком (приняли подтверждение — письмо вендору), когда карточка встанет. Письмо ждёт
      в очереди человека на сервере (`Mail\LetterPrompt`), а не в сессии: её метку съедал соседний запрос. --}}
 @if ($letterPrompt = session('letters') ?? \App\Mail\LetterPrompt::take())<turbo-stream action="letters" url="{{ $letterPrompt }}"></turbo-stream>@endif

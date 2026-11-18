@@ -73,5 +73,5 @@
     <x-offer.pickup-choice :offer="$offer" garage :manager="$bid?->user"/>
     {{-- У гаражной строки об отмене нет (13.11.2026): тому же менеджеру чаще меняют условия гаража, а не отбирают машину. --}}
     @if ($handOver && ! $handOver->isGarage())<p class="text-sm text-ink-muted">{{ $handOver->buyer ? 'Сделка с '.$handOver->buyer->shortName().' отменится' : 'Прежняя сделка отменится' }}</p>@endif
-    <x-ui.sheet-foot type="submit" variant="primary">{{ $handOver?->isGarage() ? 'Сохранить' : ($handOver ? 'Отдать' : 'В гараж') }}</x-ui.sheet-foot>
+    <x-offer.give-foot :offer="$offer" :letter="! $handOver" :label="$handOver?->isGarage() ? 'Сохранить' : ($handOver ? 'Отдать' : 'В гараж')"/>
 </form>
