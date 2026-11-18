@@ -6,7 +6,7 @@
     $price = $bid->isGarage() ? 'В гараж' : \App\Support\Money::rub($bid->amount);
 @endphp
 <a href="/offers/{{ $offer->number }}" class="row">
-    <span class="row-photo max-sm:!h-[2.625rem] max-sm:!w-14"><x-offer.photo :media="$offer->mainPhoto()" sizes="72px"/></span>
+    <span class="row-photo max-sm:!h-[2.625rem] max-sm:!w-14"><x-offer.photo :media="$offer->mainPhoto()" :cat="$offer->category()->icon()" sizes="72px"/></span>
     <span class="min-w-0 flex-1">
         <span class="block truncate font-medium">{{ $offer->titleWithYear() }}</span>
         <span class="mt-0.5 flex items-baseline gap-x-3">

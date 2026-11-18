@@ -16,7 +16,7 @@
         @if ($person)
             <x-ui.avatar :user="$interest->user" :size="44"/>
         @else
-            <span class="row-photo">@if ($seen)<x-offer.photo :media="$offer->mainPhoto()" sizes="72px"/>@endif</span>
+            <span class="row-photo">@if ($seen)<x-offer.photo :media="$offer->mainPhoto()" :cat="$offer->category()->icon()" sizes="72px"/>@endif</span>
         @endif
         <span class="min-w-0 flex-1">
             <span class="flex items-center gap-2">

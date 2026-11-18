@@ -15,7 +15,7 @@
                     $status = $offer->isGallery() ? 'сообщим о продаже' : ($interest->state === \App\Offers\InterestState::New ? ($manager ? $manager->shortName().' свяжется' : 'Менеджер свяжется') : $interest->state->label());
                 @endphp
                 <{{ $open ? 'a' : 'div' }} @if ($open) href="/offers/{{ $offer->number }}" @endif class="row {{ $open ? '' : 'opacity-70' }}">
-                    <span class="row-photo"><x-offer.photo :media="$offer->mainPhoto()" sizes="72px"/></span>
+                    <span class="row-photo"><x-offer.photo :media="$offer->mainPhoto()" :cat="$offer->category()->icon()" sizes="72px"/></span>
                     <div class="min-w-0 flex-1">
                         <div class="flex flex-wrap items-center gap-x-2 gap-y-0.5">
                             <span class="truncate font-medium">{{ $offer->titleWithYear() }}@if ($offer->recommended)<x-offer.recommended/>@endif</span>

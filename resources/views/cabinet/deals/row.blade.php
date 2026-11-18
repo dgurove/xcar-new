@@ -36,7 +36,7 @@
 @endphp
 @if ($rowAsk)<div class="contents">@endif
 <a href="{{ $staff ? $deal->crmUrl() : ($garage ? $deal->href() : '/deals/'.$deal->id) }}" class="row" @if ($staff) data-turbo="false" @endif>
-    <span class="row-photo max-sm:!h-[2.625rem] max-sm:!w-14"><x-offer.photo :media="$offer->mainPhoto()" sizes="72px"/></span>
+    <span class="row-photo max-sm:!h-[2.625rem] max-sm:!w-14"><x-offer.photo :media="$offer->mainPhoto()" :cat="$offer->category()->icon()" sizes="72px"/></span>
     <span class="min-w-0 flex-1">
         {{-- Телефон: сумма — справа в строке названия, что сейчас — под ним во всю ширину (16.11.2026: в строке статуса она
              сжимала длинную просьбу в столбик). --}}

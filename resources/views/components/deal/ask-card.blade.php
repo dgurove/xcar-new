@@ -8,7 +8,7 @@
 @endphp
 <article class="ask-card">
     <a href="{{ $deal->href() }}" class="ask-card-head">
-        <span class="row-photo"><x-offer.photo :media="$offer->mainPhoto()" sizes="72px"/></span>
+        <span class="row-photo"><x-offer.photo :media="$offer->mainPhoto()" :cat="$offer->category()->icon()" sizes="72px"/></span>
         <span class="min-w-0">
             <span class="block truncate font-medium">{{ $offer->titleWithYear() }}</span>
             <span class="nums block text-sm text-ink-muted">{{ \App\Support\Money::rub($deal->isGarage() ? (int) $deal->cost : (int) $deal->amount) }}</span>

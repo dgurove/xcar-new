@@ -6,7 +6,7 @@
 @props(['deal', 'href', 'person' => false, 'staff' => false])
 @php use App\Support\Money; $offer = $deal instanceof \App\Logistics\Transport ? $deal->lane() : $deal->offer; $m = $deal->money ?? \App\Billing\DealMoney::of($deal); $caption = $staff ? preg_replace('/^Вам /u', '', (string) $m->caption) : $m->caption; @endphp
 <a href="{{ $href }}" class="row">
-    <span class="row-photo row-photo-s"><x-offer.photo :media="$offer->mainPhoto()" sizes="48px"/></span>
+    <span class="row-photo row-photo-s"><x-offer.photo :media="$offer->mainPhoto()" :cat="$offer->category()->icon()" sizes="48px"/></span>
     <span class="min-w-0 flex-1">
         <span class="block truncate">{{ $offer->titleWithYear() }}</span>
         <span class="row-sub !whitespace-normal"><span class="{{ $m->phraseClass() }}">{{ $m->phrase }}</span>@if ($person && $deal->buyer)<x-ui.person :user="$deal->buyer"/>@endif</span>

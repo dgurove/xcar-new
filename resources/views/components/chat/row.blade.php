@@ -16,7 +16,7 @@
 <a href="{{ $href }}" class="chat-row" data-search-row @if ($current) aria-current="true" @endif data-turbo-action="advance">
     @if ($chat->offer)
         <div class="chat-row-photo">
-            <x-offer.photo :media="$chat->offer->mainPhoto()" sizes="56px"/>
+            <x-offer.photo :media="$chat->offer->mainPhoto()" :cat="$chat->offer->category()->icon()" sizes="56px"/>
             @if ($other || !$staff)<x-chat.avatar :user="$other" :size="22" class="chat-row-avatar"/>@endif
         </div>
     @elseif ($other || !$staff)

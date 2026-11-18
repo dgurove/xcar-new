@@ -40,7 +40,7 @@
     </div>
     @if ($offer)
         @if ($carOpen)<a href="/offers/{{ $offer->number }}" class="chat-car" target="_top">@else<div class="chat-car">@endif
-            <div class="chat-car-photo"><x-offer.photo :media="$offer->mainPhoto()" sizes="40px"/></div>
+            <div class="chat-car-photo"><x-offer.photo :media="$offer->mainPhoto()" :cat="$offer->category()->icon()" sizes="40px"/></div>
             <span class="min-w-0 flex-1 truncate text-sm font-medium">{{ $offer->titleWithYear() }}</span>
             @if ($price?->shown())<span class="nums shrink-0 text-sm text-ink-muted">{{ $price::money($price->to) }} ₽</span>@endif
             @if ($carOpen)<x-ui.icon name="chevron-right" class="size-4 shrink-0 text-ink-dim"/>@endif

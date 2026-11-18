@@ -12,7 +12,8 @@
         || ($offer && $viewer?->canShare() && ! $offer->shareLockedFor($viewer));
 @endphp
 @if ($photos->isEmpty())
-    @if ($strip)<div class="detail-strip-empty"><x-ui.car-blank/></div>@else<div class="flex aspect-[4/3] items-center justify-center rounded-(--radius-xl) bg-surface-3 text-ink-dim">Фотографий нет</div>@endif
+    {{-- Фото нет — силуэт типа ТС на мягком фоне, а не слова (18.11.2026: одна заглушка `x-ui.car-blank` везде). --}}
+    @if ($strip)<div class="detail-strip-empty"><x-ui.car-blank :icon="$offer?->category()->icon()"/></div>@else<div class="aspect-[4/3] overflow-hidden rounded-(--radius-xl) bg-surface-3"><x-ui.car-blank :icon="$offer?->category()->icon()"/></div>@endif
 @elseif ($tiles)
     <div class="photo-tiles" data-controller="gallery" @if ($download) data-gallery-download-value="true" @endif data-gallery-target="strip">
         @foreach ($photos as $i => $media)

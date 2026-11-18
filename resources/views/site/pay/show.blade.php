@@ -34,7 +34,7 @@
         @endif
     @else
         <div class="box money-hero !p-6">
-            @if ($offer)<span class="money-hero-photo"><x-offer.photo :media="$offer->mainPhoto()" sizes="64px"/></span><span class="font-medium">{{ $offer->titleWithYear() }}</span>@elseif ($invoice->car_title)<span class="font-medium">{{ $invoice->car_title }}</span>@elseif ($invoice->isService())<span class="font-medium">{{ $invoice->receiptTitle() }}</span>@endif
+            @if ($offer)<span class="money-hero-photo"><x-offer.photo :media="$offer->mainPhoto()" :cat="$offer->category()->icon()" sizes="64px"/></span><span class="font-medium">{{ $offer->titleWithYear() }}</span>@elseif ($invoice->car_title)<span class="font-medium">{{ $invoice->car_title }}</span>@elseif ($invoice->isService())<span class="font-medium">{{ $invoice->receiptTitle() }}</span>@endif
             {{-- Комиссия без счёта (18.11.2026) — «Оплата подбора», без номера. --}}
             <span class="text-sm text-ink-muted">{{ $invoice->isDocument() ? 'Счёт '.$invoice->label().' от '.$invoice->issued_at->format('d.m.Y') : 'Оплата подбора' }}</span>
             <span class="nums mt-2 text-[32px] font-semibold leading-tight">{{ Money::exact($amount) }}</span>

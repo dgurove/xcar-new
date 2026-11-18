@@ -1,6 +1,7 @@
 {{-- Кадры плитки: листаются (frames), точки и стрелки — от двух кадров; без фото — заглушка-ссылка. Одна разметка у плиток
      предложения, CRM, парковки, закупки и гаража. link — атрибуты ссылок как есть (карточка рядом со списком), eager — первый кадр сразу. --}}
-@props(['photos', 'href', 'sizes' => null, 'eager' => false, 'link' => null])
+{{-- cat — значок типа ТС заглушке (`x-offer.photo :cat`, `x-ui.car-blank :icon`): кадра нет или он не открылся. --}}
+@props(['photos', 'href', 'sizes' => null, 'eager' => false, 'link' => null, 'cat' => null])
 @php
     $sizes ??= \App\Support\ListView::sizes(\App\Support\ListView::fromRequest(request(), shelves: true));
     $extra = $link === null ? '' : ' '.$link;
@@ -8,13 +9,13 @@
 @if ($photos->count() === 1)
     {{-- Один кадр (и обложка ленты, 21.10.2026) — листать нечего: без контроллера кадров. --}}
     <div class="card-media">
-        <a href="{{ $href }}"{!! $extra !!} class="card-strip"><x-offer.photo :media="$photos->first()" :sizes="$sizes" :eager="$eager"/></a>
+        <a href="{{ $href }}"{!! $extra !!} class="card-strip"><x-offer.photo :media="$photos->first()" :sizes="$sizes" :eager="$eager" :cat="$cat"/></a>
     </div>
 @elseif ($photos->isNotEmpty())
     <div class="card-media" data-controller="frames" data-action="cards:tick@window->frames#next cards:stop@window->frames#stop">
         <a href="{{ $href }}"{!! $extra !!} class="card-strip" data-frames-target="strip" data-action="frames#click touchstart->frames#touch:passive">
             @foreach ($photos as $i => $frame)
-                <x-offer.photo :media="$frame" :sizes="$sizes" :eager="$eager && $i === 0" :single="$i > 0" data-frames-target="frame"/>
+                <x-offer.photo :media="$frame" :sizes="$sizes" :eager="$eager && $i === 0" :single="$i > 0" :cat="$cat" data-frames-target="frame"/>
             @endforeach
         </a>
         @if ($photos->count() > 1)
@@ -28,5 +29,5 @@
         @endif
     </div>
 @else
-    <a href="{{ $href }}"{!! $extra !!} class="card-media card-media--blank" tabindex="-1"><x-ui.car-blank/></a>
+    <a href="{{ $href }}"{!! $extra !!} class="card-media card-media--blank" tabindex="-1"><x-ui.car-blank :icon="$cat"/></a>
 @endif

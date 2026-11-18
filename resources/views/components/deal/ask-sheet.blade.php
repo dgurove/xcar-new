@@ -39,7 +39,7 @@
         <x-ui.sheet id="ask-sheet" :title="$asks->count() > 1 ? 'Ждут ответа: '.$asks->count() : 'Ждёт ответа'">
             {{-- Машина — ссылкой на сделку: посмотреть, о чём речь; дело при этом не откладывается. --}}
             <a href="{{ $deal->href() }}" class="ask-sheet-car" data-action="ask-sheet#look">
-                <span class="row-photo"><x-offer.photo :media="$offer->mainPhoto()" sizes="72px" :cat="$offer->category()?->icon()"/></span>
+                <span class="row-photo"><x-offer.photo :media="$offer->mainPhoto()" :cat="$offer->category()->icon()" sizes="72px" :cat="$offer->category()?->icon()"/></span>
                 <span class="min-w-0 flex-1"><span class="block truncate font-medium">{{ $offer->titleWithYear() }}</span>
                     <span class="nums block text-sm text-ink-muted">{{ \App\Support\Money::rub($deal->isGarage() ? (int) $deal->cost : (int) $deal->amount) }}</span></span>
                 <x-ui.icon name="chevron-right" class="size-5 shrink-0 text-ink-dim"/>

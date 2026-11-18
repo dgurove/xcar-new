@@ -5,7 +5,7 @@
 <x-ui.swipe id="seen-{{ $offer->id }}">
     <div class="row relative transition-colors hover:bg-hover">
         <a href="/offers/{{ $offer->number }}" class="absolute inset-0 rounded-(--radius-l)" aria-label="{{ $offer->titleWithYear() }}"></a>
-        <span class="row-photo"><x-offer.photo :media="$offer->mainPhoto()" sizes="72px"/></span>
+        <span class="row-photo"><x-offer.photo :media="$offer->mainPhoto()" :cat="$offer->category()->icon()" sizes="72px"/></span>
         <span class="min-w-0 flex-1">
             <span class="block truncate">{{ $offer->titleWithYear() }}</span>
             <span class="row-sub">

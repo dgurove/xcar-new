@@ -15,7 +15,7 @@
                     @php $done = in_array($offer->id, $already, true); @endphp
                     <label class="pick-card {{ $done ? 'pick-card--done' : '' }}">
                         <input type="checkbox" name="offers[]" value="{{ $offer->id }}" @disabled($done) @checked($done) data-select-target="box" data-action="select#count">
-                        <span class="pick-card-media"><x-offer.photo :media="$offer->mainPhoto()" sizes="200px"/></span>
+                        <span class="pick-card-media"><x-offer.photo :media="$offer->mainPhoto()" :cat="$offer->category()->icon()" sizes="200px"/></span>
                         <span class="pick-card-body">
                             <span class="line-clamp-2 text-sm leading-snug">{{ $offer->titleWithYear() }}@if ($offer->recommended)<x-offer.recommended/>@endif</span>
                             @if ($offer->asking_price)<span class="nums text-sm text-ink-muted">{{ \App\Support\Money::rub($offer->asking_price) }}</span>@endif

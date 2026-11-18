@@ -44,7 +44,7 @@
         : $offer->bids()->where('user_id', $user->id)->whereIn('state', [\App\Offers\BidState::Active, \App\Offers\BidState::Accepted])->first()) : null;
 @endphp
 <article id="offer-{{ $n }}" data-offer-number="{{ $n }}" @if ($user) data-viewed-key="{{ $n }}" @endif @if ($offer->viewed) data-viewed @endif {{ $attributes->merge(['class' => 'card group'.($tone ? ' card--'.$tone : '')]) }}>
-    <x-ui.card-media :photos="$photos" :href="$href" :eager="$eager" :sizes="$cover ? \App\Support\ListView::sizes(\App\Support\ListView::SHELF) : null"/>
+    <x-ui.card-media :photos="$photos" :href="$href" :cat="$offer->category()->icon()" :eager="$eager" :sizes="$cover ? \App\Support\ListView::sizes(\App\Support\ListView::SHELF) : null"/>
     @if ($user && ! $estimate)<x-offer.favorite :offer="$offer"/>@endif
     @if (!$gallery && ! $estimate && $canShow)
         {{-- Кружок режима выбора: в разметке всегда, виден только когда лента в режиме (selection). --}}

@@ -165,7 +165,7 @@
                         @foreach ($interests as $interest)
                             @php $offer = $interest->offer; $price = \App\Offers\PriceView::for($offer, $me); @endphp
                             <a href="/offers/{{ $offer->number }}" class="row">
-                                <span class="row-photo"><x-offer.photo :media="$offer->mainPhoto()" sizes="72px"/></span>
+                                <span class="row-photo"><x-offer.photo :media="$offer->mainPhoto()" :cat="$offer->category()->icon()" sizes="72px"/></span>
                                 <span class="min-w-0 flex-1">
                                     <span class="block truncate">{{ $offer->titleWithYear() }}</span>
                                     <span class="row-sub">

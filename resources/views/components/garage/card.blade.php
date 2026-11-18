@@ -13,7 +13,7 @@
 @endphp
 <article id="garage-card-{{ $n }}" @if ($detail) data-detail-key="{{ $n }}" @endif {{ $attributes->class(['card card--garage group']) }}>
     <a href="{{ $href }}" class="card-link" aria-hidden="true" tabindex="-1" {!! $link !!}></a>
-    <x-ui.card-media :photos="$photos" :href="$href" :link="$link"/>
+    <x-ui.card-media :photos="$photos" :href="$href" :cat="$offer->category()->icon()" :link="$link"/>
     <div class="card-body">
         <div class="card-title">
             <a href="{{ $href }}" {!! $link !!} class="flex min-w-0 flex-1 items-center gap-[.25em] leading-snug hover:text-accent-text"><span class="line-clamp-1 min-w-0">{{ $offer->titleWithYear() }}</span><x-car.keys :count="$offer->keys_count"/></a>

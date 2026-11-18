@@ -44,4 +44,11 @@ export default function photoFallback() {
     sweep();
     document.addEventListener('turbo:load', () => sweep());
     document.addEventListener('turbo:frame-load', (e) => sweep(e.target));
+    // Вторая линия: событие ошибки у ленивого кадра приходит не всегда (кадр вставили потоком, морф вернул прежний адрес
+    // уже сломанной картинке) — когда прокрутка встала, проверяем ещё раз. Не чаще раза в такт простоя.
+    let idle = 0;
+    const later = () => { clearTimeout(idle); idle = setTimeout(() => sweep(), 300); };
+    addEventListener('scrollend', later, { capture: true, passive: true });
+    document.addEventListener('turbo:render', later);
+    document.addEventListener('turbo:before-stream-render', later);
 }
