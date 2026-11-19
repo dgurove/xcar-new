@@ -39,7 +39,9 @@
                 @if ($sellDeal)
                     <div class="list">@include('garage.cars.sell-split', ['deal' => $sellDeal, 'sale' => Money::rubles(old('sold_price')), 'live' => true])</div>
                 @endif
-                <x-ui.sheet-foot type="submit" variant="primary">{{ $sellAgain ? 'Всё верно, продаю' : 'Продаю' }}</x-ui.sheet-foot>
+                {{-- «Вы уверены?» (19.11.2026, `Offers\Warnings`): «Не продана» — только у сотрудника. После «Точно?» цены — без второго окна. --}}
+                <x-ui.sheet-foot type="submit" variant="primary" :data-turbo-confirm="$sellAgain ? null : \App\Offers\Warnings::TITLE" :data-turbo-confirm-text="$sellAgain ? null : \App\Offers\Warnings::SOLD"
+                    :data-turbo-confirm-label="$sellAgain ? null : 'Да, продал'" :data-turbo-confirm-cancel="$sellAgain ? null : \App\Offers\Warnings::CANCEL">{{ $sellAgain ? 'Всё верно, продаю' : 'Продаю' }}</x-ui.sheet-foot>
             </form>
         </x-ui.sheet>
     </div>

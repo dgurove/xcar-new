@@ -31,7 +31,7 @@
             {{-- Один исход — во всю ширину, два — в ряд одной ширины, как ответы в диалоге приложения; больше — переносом. --}}
             <div @class(['gap-3', 'grid' => $moves->count() <= 2, 'grid-cols-2' => $moves->count() === 2, 'flex flex-wrap' => $moves->count() > 2])>
                 @foreach ($moves as $exit)
-                    <x-ui.button name="exit" :value="$exit->id" :variant="$loop->first ? 'primary' : 'secondary'" :data-turbo-confirm="$exit->takes() ? \App\Offers\TakeWarning::TITLE : (\App\Users\Wording::mine($exit->confirm) ?: null)" :data-turbo-confirm-text="$exit->takes() ? \App\Offers\TakeWarning::TEXT : null" :data-turbo-confirm-label="$exit->takes() ? \App\Offers\TakeWarning::OK : null" :data-turbo-confirm-cancel="$exit->takes() ? \App\Offers\TakeWarning::CANCEL : null" class="min-w-0 px-4">{{ \App\Support\Opens::label(\App\Users\Wording::mine($exit->label), (bool) ($exit->confirm || $exit->takes())) }}</x-ui.button>
+                    <x-ui.button name="exit" :value="$exit->id" :variant="$loop->first ? 'primary' : 'secondary'" :data-turbo-confirm="\App\Offers\Warnings::takes($exit) ? \App\Offers\Warnings::TITLE : (\App\Users\Wording::mine($exit->confirm) ?: null)" :data-turbo-confirm-text="\App\Offers\Warnings::takes($exit) ? \App\Offers\Warnings::TAKE : null" :data-turbo-confirm-label="\App\Offers\Warnings::takes($exit) ? ($exit->takes() ? 'Да, беру в работу' : 'Да, берём') : null" :data-turbo-confirm-cancel="\App\Offers\Warnings::takes($exit) ? \App\Offers\Warnings::CANCEL : null" class="min-w-0 px-4">{{ \App\Support\Opens::label(\App\Users\Wording::mine($exit->label), (bool) ($exit->confirm || \App\Offers\Warnings::takes($exit))) }}</x-ui.button>
                 @endforeach
             </div>
         </form>
@@ -41,7 +41,7 @@
         @if ($retreats->isNotEmpty())
             <div class="mt-3 flex gap-3">
                 @foreach ($retreats as $exit)
-                    <button form="reply-{{ $requirement->id }}" name="exit" value="{{ $exit->id }}" class="btn btn-quiet shrink-0 px-5" data-turbo-confirm="{{ \App\Users\Wording::mine($exit->confirm) ?: 'Передумали? Сделка отменится' }}" data-turbo-confirm-label="Передумал"><span class="truncate">{{ \App\Support\Opens::label(\App\Users\Wording::mine($exit->label)) }}</span></button>
+                    <button form="reply-{{ $requirement->id }}" name="exit" value="{{ $exit->id }}" class="btn btn-quiet shrink-0 px-5" {{ \App\Offers\Warnings::html(\App\Offers\Warnings::DEAL_OFF, $exit->label === 'Я передумал' ? 'Да, передумал' : 'Да, отказываюсь', danger: true) }}><span class="truncate">{{ \App\Support\Opens::label(\App\Users\Wording::mine($exit->label)) }}</span></button>
                 @endforeach
                 <x-deal.remind :deal="$deal" :ask="$requirement"/>
             </div>

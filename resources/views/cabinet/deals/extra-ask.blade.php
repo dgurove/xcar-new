@@ -23,12 +23,12 @@
     @if ($ask->asks_manager)
         <form method="post" action="/deals/{{ $deal->id }}/extra-ask" id="extra-ask-{{ $ask->id }}" class="mt-5 flex flex-col gap-4">
             @csrf
-            <x-ui.button name="decision" value="take" :variant="$decides ? 'primary' : 'secondary'" block :data-turbo-confirm="$consented ? \App\Offers\TakeWarning::TITLE_AFTER : \App\Offers\TakeWarning::TITLE" :data-turbo-confirm-text="\App\Offers\TakeWarning::TEXT" :data-turbo-confirm-label="$consented ? Wording::mine($labels['take']) : \App\Offers\TakeWarning::OK" :data-turbo-confirm-cancel="\App\Offers\TakeWarning::CANCEL">{{ Wording::mine($labels['take']) }}</x-ui.button>
+            <x-ui.button name="decision" value="take" :variant="$decides ? 'primary' : 'secondary'" block :data-turbo-confirm="\App\Offers\Warnings::TITLE" :data-turbo-confirm-text="\App\Offers\Warnings::TAKE" :data-turbo-confirm-label="$consented ? 'Да, берём' : 'Да, беру в работу'" :data-turbo-confirm-cancel="\App\Offers\Warnings::CANCEL">{{ Wording::mine($labels['take']) }}</x-ui.button>
         </form>
         {{-- «Я передумал» / «Не берём» и «Напомнить через…» — двумя кнопками в ряд (19.11.2026, как на шаге сделки): решать ему — с
              напоминанием, ждём поставщика — одна серая кнопка. --}}
         <div class="mt-3 flex gap-3">
-            <button form="extra-ask-{{ $ask->id }}" name="decision" value="drop" @class(['btn btn-quiet', 'shrink-0 px-5' => $decides, 'min-w-0 flex-1' => ! $decides]) data-turbo-confirm="Передумали? Сделка отменится" data-turbo-confirm-label="{{ Wording::mine($labels['drop']) }}"><span class="truncate">{{ Wording::mine($labels['drop']) }}</span></button>
+            <button form="extra-ask-{{ $ask->id }}" name="decision" value="drop" @class(['btn btn-quiet', 'shrink-0 px-5' => $decides, 'min-w-0 flex-1' => ! $decides]) {{ \App\Offers\Warnings::html(\App\Offers\Warnings::DEAL_OFF, $consented ? 'Да, отказываюсь' : 'Да, передумал', danger: true) }}><span class="truncate">{{ Wording::mine($labels['drop']) }}</span></button>
             @if ($decides)<x-deal.remind :deal="$deal" :ask="$ask" extra/>@endif
         </div>
     @endif

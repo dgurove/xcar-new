@@ -15,7 +15,7 @@ import { confirmSheet } from '../confirm';
 // не нащупать вводом.
 export default class extends Controller {
     static targets = ['display', 'amount', 'submit', 'choice', 'buyer', 'sum', 'garage', 'low', 'error', 'choicePane', 'pricePane', 'ask', 'askError', 'askSubmit'];
-    static values = { asking: Number, garage: Boolean, staff: Boolean, check: String };
+    static values = { asking: Number, garage: Boolean, staff: Boolean, check: String, warn: String };
 
     connect() {
         this.update();
@@ -189,6 +189,12 @@ export default class extends Controller {
                     : await confirmSheet('Вы уверены?', { text: 'Такая цена требует дополнительного согласования с поставщиком', label: 'Уверен', warn: true, danger: false });
                 if (!sure) return;
                 this.lowTarget.value = '1';
+            }
+            // Обычная цена — тоже «Вы уверены?» (19.11.2026, владелец: защита от случайных нажатий; текст — `Offers\Warnings::BID`):
+            // ставку могут принять, и откроется сделка. Шаг цены в шторке «куда берёте» уже сам подтверждение — там не спрашиваем.
+            if (zone === 'ok' && this.warnValue && !pricing) {
+                const sure = await confirmSheet('Вы уверены?', { text: this.warnValue, label: `Да, подтвердить за ${rub(this.amountTarget.value)}`, cancel: 'Ещё подумаю', danger: false });
+                if (!sure) return;
             }
             this.passing = true;
             this.element.requestSubmit(submitter && this.element.contains(submitter) ? submitter : null);

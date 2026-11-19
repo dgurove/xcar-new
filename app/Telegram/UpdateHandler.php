@@ -153,7 +153,7 @@ final class UpdateHandler
     {
         $action = $aliases[$press->action] ?? $press->action;
         if ($action === 'back' || isset($asks[$action])) {
-            // Третьим — своё «нет» (19.11.2026, «Беру в работу»: «Ещё подумаю», `Offers\TakeWarning`), иначе «Назад».
+            // Третьим — своё «нет» (19.11.2026, «Вы уверены?»: «Ещё подумаю», `Offers\Warnings`), иначе «Назад».
             [$question, $yes, $no] = ($asks[$action] ?? ['', '']) + [2 => 'Назад'];
             $this->bot->answer($press->queryId, $question !== '' ? 'Подтвердите' : '');
             $this->bot->edit($press->chatId, $press->messageId, $text($question), [
@@ -213,7 +213,8 @@ final class UpdateHandler
         }
         $this->confirmed($press, 'counter', $text,
             [['text' => 'Согласен', 'callback_data' => "counter:{$bid->id}:yes"], ['text' => 'Отказаться', 'callback_data' => "counter:{$bid->id}:no"]], $open,
-            ['yes' => ['Согласиться? ТС закрепится за вами по этой цене', 'Да, согласен']],
+            ['yes' => [\App\Offers\Warnings::telegram('ТС закрепится за вами по этой цене.'), 'Да, согласен', \App\Offers\Warnings::CANCEL],
+                'no' => [\App\Offers\Warnings::telegram(\App\Offers\Warnings::BID_OFF), 'Да, отказываюсь', \App\Offers\Warnings::CANCEL]],
             function (string $which) use ($bid, $user, $open) {
                 if (! in_array($which, ['yes', 'no'], true)) {
                     return null;
@@ -250,8 +251,8 @@ final class UpdateHandler
             return;
         }
         $this->confirmed($press, 'reprice', $text, RepriceAskNotice::buttons($ask), $open,
-            ['no' => ['Отказаться? '.$ask->declineMeans(), 'Да, отказываюсь'],
-                'yes' => ['Согласны на новую закупочную '.\App\Support\Money::rub($ask->to_price).'?', 'Да, согласен']],
+            ['no' => [\App\Offers\Warnings::telegram($ask->declineMeans()), 'Да, отказываюсь', \App\Offers\Warnings::CANCEL],
+                'yes' => [\App\Offers\Warnings::telegram('Закупочная станет '.\App\Support\Money::rub($ask->to_price).'.'), 'Да, согласен', \App\Offers\Warnings::CANCEL]],
             function (string $which) use ($ask, $user) {
                 // Гаражная — «Согласен» на новую закупочную (17.11.2026, `RepriceAsk::agreesOnly`).
                 if ($which === 'yes' && $ask->agreesOnly()) {
@@ -294,7 +295,7 @@ final class UpdateHandler
             return;
         }
         $this->confirmed($press, 'turn', $text, YourTurnNotice::consentButtons($r), $open,
-            ['take' => [\App\Offers\TakeWarning::telegram(), 'Да, беру', \App\Offers\TakeWarning::CANCEL], 'drop' => ['Передумали? Сделка отменится', 'Да, передумал']],
+            ['take' => [\App\Offers\Warnings::telegram(\App\Offers\Warnings::TAKE), 'Да, беру', \App\Offers\Warnings::CANCEL], 'drop' => [\App\Offers\Warnings::telegram(\App\Offers\Warnings::DEAL_OFF), 'Да, передумал', \App\Offers\Warnings::CANCEL]],
             function (string $which) use ($r, $user) {
                 $exit = in_array($which, ['take', 'drop'], true) ? YourTurnNotice::consentExit($r, $which) : null;
                 if (! $exit) {
@@ -327,7 +328,7 @@ final class UpdateHandler
             return;
         }
         $this->confirmed($press, 'extra', $text, $notice::buttons($ask), $open,
-            ['take' => [\App\Offers\TakeWarning::telegram(\App\Offers\ExtraAsk::consented($ask->deal)), 'Да, беру', \App\Offers\TakeWarning::CANCEL], 'drop' => [$labels['drop'].'? Сделка отменится', 'Да, отказываюсь']],
+            ['take' => [\App\Offers\Warnings::telegram(\App\Offers\Warnings::TAKE), 'Да, беру', \App\Offers\Warnings::CANCEL], 'drop' => [\App\Offers\Warnings::telegram(\App\Offers\Warnings::DEAL_OFF), 'Да, отказываюсь', \App\Offers\Warnings::CANCEL]],
             function (string $which) use ($ask, $user, $labels) {
                 if (! in_array($which, [\App\Offers\ExtraAsk::TAKE, \App\Offers\ExtraAsk::DROP], true)) {
                     return null;

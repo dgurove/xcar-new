@@ -117,16 +117,16 @@ class BidCounterTest extends TestCase
         Notification::assertSentTo($this->admin, CounterAnsweredNotice::class);
     }
 
-    public function test_decline_keeps_own_price(): void
+    /** Отказ от контрпредложения снимает подтверждение (19.11.2026, владелец: «остаётся его цена — как-то неправильно»). */
+    public function test_decline_withdraws_bid(): void
     {
         $bid = app(PlaceBid::class)($this->offer, $this->roman, 965000);
         app(MakeCounter::class)($bid, $this->admin, 970000);
 
         $this->actingAs($this->roman)->post(self::SITE.'/confirmations/'.$bid->id.'/counter/answer', ['agree' => '0'])->assertSessionHasNoErrors();
         $bid = $bid->fresh();
-        $this->assertSame(BidState::Active, $bid->state);
-        $this->assertSame(965000, $bid->amount);
-        $this->assertTrue($bid->counterDeclined());
+        $this->assertSame(BidState::Withdrawn, $bid->state);
+        $this->assertSame(CounterState::Declined, $bid->counter_state);
         $this->assertNull($this->offer->fresh()->deal);
     }
 

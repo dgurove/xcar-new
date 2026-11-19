@@ -252,6 +252,7 @@ class RepriceAsk extends Model
     /** Что будет при отказе — словами кнопки и переспроса. */
     public function declineMeans(): string
     {
-        return $this->deal_id ? 'Сделка будет отменена, ТС вернётся в продажу' : 'Подтверждение будет снято';
+        // Тексты окна «Вы уверены?» (19.11.2026, `Warnings`; владелец: о возврате в продажу не писать).
+        return $this->deal_id ? Warnings::DEAL_OFF : Warnings::BID_OFF;
     }
 }

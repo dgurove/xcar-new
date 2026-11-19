@@ -14,7 +14,8 @@ import { openSheet, closeSheet, outside } from './sheet';
 export function confirmSheet(message, options = {}) {
     const { form, submitter } = options;
     const label = options.label || submitter?.dataset?.turboConfirmLabel || form?.dataset.turboConfirmLabel || shortText(submitter) || message.trim().split(/\s+/)[0].replace(/[?,.!]+$/, '');
-    const danger = options.danger ?? (submitter?.matches?.('.btn-danger, .text-danger') || /^(удалить|отклонить|отменить|снять)/i.test(message));
+    // «Да» красным и у кнопки с `data-turbo-confirm-danger` (19.11.2026, отказы `Offers\Warnings`: вопрос «Вы уверены?» глагола не несёт).
+    const danger = options.danger ?? (submitter?.matches?.('.btn-danger, .text-danger') || submitter?.dataset?.turboConfirmDanger !== undefined || /^(удалить|отклонить|отменить|снять)/i.test(message));
 
     return new Promise((resolve) => {
         document.getElementById('confirm')?.remove();
@@ -45,7 +46,7 @@ export function confirmSheet(message, options = {}) {
             alt.parentElement.classList.remove('sm:flex-row-reverse');
             alt.parentElement.querySelectorAll('.sm\\:flex-1').forEach((b) => b.classList.remove('sm:flex-1'));
         }
-        // Абзац — и у нажатой кнопки (19.11.2026, предупреждение перед «Беру в работу», `Offers\TakeWarning`), как подпись и «Отмена».
+        // Абзац — и у нажатой кнопки (19.11.2026, окна «Вы уверены?», `Offers\Warnings`), как подпись и «Отмена».
         const text = options.text || submitter?.dataset?.turboConfirmText || form?.dataset.turboConfirmText;
         if (text) { const p = d.querySelector('[data-text]'); p.textContent = text; p.hidden = false; }
         const quote = form?.dataset.turboConfirmQuote;

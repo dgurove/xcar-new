@@ -35,13 +35,13 @@
             <div class="flex items-baseline justify-between gap-3"><span class="text-ink-muted">Стало</span><span class="nums font-bold">{{ Money::rub($ask->to_price) }}</span></div>
         </div>
         @error('reprice')<p class="mt-2 text-sm text-danger">{{ $message }}</p>@enderror
-        <form method="post" action="{{ $action }}" class="mt-4" data-turbo-confirm="Согласны на {{ Money::rub($ask->to_price) }}?" data-turbo-confirm-text="Закупочная ТС в гараже станет {{ Money::rub($ask->to_price) }}" data-turbo-confirm-label="Согласен">
+        <form method="post" action="{{ $action }}" class="mt-4" data-turbo-confirm="{{ \App\Offers\Warnings::TITLE }}" data-turbo-confirm-text="Закупочная ТС в гараже станет {{ Money::rub($ask->to_price) }}" data-turbo-confirm-label="Да, согласен" data-turbo-confirm-cancel="{{ \App\Offers\Warnings::CANCEL }}">
             @csrf<input type="hidden" name="do" value="agree_cost">
             <button type="submit" class="btn btn-accent w-full">Согласен на {{ Money::rub($ask->to_price) }}</button>
         </form>
-        <form method="post" action="{{ $action }}" class="mt-2" data-turbo-confirm="Отказаться?" data-turbo-confirm-text="{{ $ask->declineMeans() }}" data-turbo-confirm-label="Отказываюсь">
+        <form method="post" action="{{ $action }}" class="mt-2" data-turbo-confirm="{{ \App\Offers\Warnings::TITLE }}" data-turbo-confirm-text="{{ $ask->declineMeans() }}" data-turbo-confirm-label="Да, отказываюсь" data-turbo-confirm-cancel="{{ \App\Offers\Warnings::CANCEL }}">
             @csrf<input type="hidden" name="do" value="decline">
-            <button type="submit" class="btn btn-quiet w-full">Отказываюсь</button>
+            <button type="submit" class="btn btn-quiet w-full" data-turbo-confirm-danger>Отказываюсь</button>
         </form>
         <p class="mt-2 text-sm">Ответьте до <span class="nums">{{ Ago::html($ask->due_at->setTimezone('Europe/Moscow'), true, words: false) }}</span></p>
     </div>
@@ -58,11 +58,12 @@
             @csrf<input type="hidden" name="do" value="price"><input type="hidden" name="low_ok" value="{{ $low ? '1' : '' }}">
             <x-ui.field name="price" label="Новая цена подтверждения, ₽" :id="'reprice-price-'.$ask->id" :value="old('price')" required/>
             @foreach (['amount', 'reprice', 'reprice_price'] as $key)@error($key)<p class="text-sm text-danger">{{ $message }}</p>@enderror @endforeach
-            <button type="submit" class="btn btn-accent w-full">{{ $low ? 'Да, отправить' : 'Отправить цену' }}</button>
+            {{-- «Вы уверены?» и у обычной цены (19.11.2026, `Warnings`); после ответа «ниже порога» кнопка сама «Да, отправить» — без второго окна. --}}
+            <button type="submit" class="btn btn-accent w-full" @unless ($low) data-turbo-confirm="{{ \App\Offers\Warnings::TITLE }}" data-turbo-confirm-label="Да, отправить" data-turbo-confirm-cancel="{{ \App\Offers\Warnings::CANCEL }}" @endunless>{{ $low ? 'Да, отправить' : 'Отправить цену' }}</button>
         </form>
-        <form method="post" action="{{ $action }}" class="mt-2" data-turbo-confirm="Отказаться?" data-turbo-confirm-text="{{ $ask->declineMeans() }}" data-turbo-confirm-label="Отказываюсь">
+        <form method="post" action="{{ $action }}" class="mt-2" data-turbo-confirm="{{ \App\Offers\Warnings::TITLE }}" data-turbo-confirm-text="{{ $ask->declineMeans() }}" data-turbo-confirm-label="Да, отказываюсь" data-turbo-confirm-cancel="{{ \App\Offers\Warnings::CANCEL }}">
             @csrf<input type="hidden" name="do" value="decline">
-            <button type="submit" class="btn btn-quiet w-full">Отказываюсь</button>
+            <button type="submit" class="btn btn-quiet w-full" data-turbo-confirm-danger>Отказываюсь</button>
         </form>
         <p class="mt-2 text-sm">Ответьте до <span class="nums">{{ Ago::html($ask->due_at->setTimezone('Europe/Moscow'), true, words: false) }}</span></p>
     </div>

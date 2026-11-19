@@ -24,7 +24,7 @@ final class CounterAnsweredNotice extends Notice
 
     public function text(): ?string
     {
-        return $this->bid->user->name.', '.$this->bid->offer->titleWithYear().($this->agreed ? ', сделка открыта' : '');
+        return $this->bid->user->name.', '.$this->bid->offer->titleWithYear().($this->agreed ? ', сделка открыта' : ', подтверждение снято');
     }
 
     public function href(): string

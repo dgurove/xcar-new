@@ -12,13 +12,14 @@
     @if ($quote)<p class="mt-2 text-sm">«{{ $quote }}»</p>@endif
     @if ($due)<p class="mt-2 text-sm">Ответьте до <span class="nums">{{ \App\Support\Ago::html($due->setTimezone('Europe/Moscow'), true, words: false) }}</span></p>@endif
     <div class="mt-4 flex flex-col gap-2">
-        <form method="post" action="{{ $action }}" data-turbo-confirm="{{ $agreeAsk }}" @if ($agreeText) data-turbo-confirm-text="{{ $agreeText }}" @endif data-turbo-confirm-label="Согласен">
+        {{-- Вопрос — «Вы уверены?» (19.11.2026, `Offers\Warnings`: что делаем, видно по кнопке), ниже — что будет. --}}
+        <form method="post" action="{{ $action }}" data-turbo-confirm="{{ \App\Offers\Warnings::TITLE }}" @if ($agreeText ?? $agreeAsk) data-turbo-confirm-text="{{ $agreeText ?? $agreeAsk }}" @endif data-turbo-confirm-label="Да, {{ mb_lcfirst($agree) }}" data-turbo-confirm-cancel="{{ \App\Offers\Warnings::CANCEL }}">
             @csrf @if ($agreeDo)<input type="hidden" name="do" value="{{ $agreeDo }}">@else<input type="hidden" name="agree" value="1">@endif
             <button type="submit" class="btn btn-accent w-full nums">{{ $agree }}</button>
         </form>
-        <form method="post" action="{{ $action }}" data-turbo-confirm="{{ $declineAsk }}" @if ($declineText) data-turbo-confirm-text="{{ $declineText }}" @endif data-turbo-confirm-label="{{ $decline }}">
+        <form method="post" action="{{ $action }}" data-turbo-confirm="{{ \App\Offers\Warnings::TITLE }}" @if ($declineText ?? $declineAsk) data-turbo-confirm-text="{{ $declineText ?? $declineAsk }}" @endif data-turbo-confirm-label="Да, {{ mb_lcfirst($decline) }}" data-turbo-confirm-cancel="{{ \App\Offers\Warnings::CANCEL }}">
             @csrf @if ($declineDo)<input type="hidden" name="do" value="{{ $declineDo }}">@else<input type="hidden" name="agree" value="0">@endif
-            <button type="submit" class="btn btn-quiet w-full">{{ $decline }}</button>
+            <button type="submit" class="btn btn-quiet w-full" data-turbo-confirm-danger>{{ $decline }}</button>
         </form>
     </div>
     @if ($error)@error($error)<p class="mt-2 text-sm text-danger">{{ $message }}</p>@enderror @endif

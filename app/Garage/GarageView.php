@@ -51,13 +51,15 @@ final class GarageView
         $stepAsks = $shown && $shown['handover']?->canRequest;
 
         $prep = array_values(array_filter(match (true) {
-            $picks && ! $stepPicks => [['post', "/garage/cars/{$n}/picked", 'Забрал']],
+            // «Вы уверены?» (19.11.2026, `Offers\Warnings`): вернуть «Ещё не вывезли» может только сотрудник.
+            $picks && ! $stepPicks => [['post', "/garage/cars/{$n}/picked", 'Забрал', \App\Offers\Warnings::TITLE, \App\Offers\Warnings::PICKED, 'Да, забрал']],
             // Расход — строкой блока «Расходы» (`garage.cars.costs`, 19.11.2026), не кнопкой плашки.
             $car->state === CarState::Repair => [$post('Готова')],
             default => [],
         }));
         $sale = array_values(array_filter(match (true) {
-            $buyerCar && $car->state === CarState::Selling => [['post', "/garage/cars/{$n}/sold", 'Продана', 'Отметить, что ТС продана?']],
+            $buyerCar && $car->state === CarState::Selling => [$staff ? ['post', "/garage/cars/{$n}/sold", 'Продана', 'Отметить, что ТС продана?']
+                : ['post', "/garage/cars/{$n}/sold", 'Продана', \App\Offers\Warnings::TITLE, \App\Offers\Warnings::SOLD, 'Да, продана']],
             $asBuyer && $holderDue => [['emit', 'pay', 'Оплатить']],
             $staff && $buyerCar && $unpaid => [['emit', 'paid', 'Поступила']],
             $buyerCar => [],

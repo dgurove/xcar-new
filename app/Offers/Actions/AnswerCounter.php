@@ -3,6 +3,7 @@
 namespace App\Offers\Actions;
 
 use App\Offers\Bid;
+use App\Offers\BidState;
 use App\Offers\CounterState;
 use App\Offers\DealScheme;
 use App\Offers\Events\CounterAnswered;
@@ -15,8 +16,9 @@ use Illuminate\Validation\ValidationException;
 /**
  * Ответ менеджера на контрпредложение (26.10.2026). «Согласен» — цена подтверждения становится ценой админа и машина
  * сразу его: «Принять» от имени того, кто предложил (`AcceptBid`), деньги сделки — по умолчанию, админ правит их в сделке.
- * Цену назвал админ сам — согласия «не выше закупочной» второй раз не спрашиваем. «Отказаться» — подтверждение остаётся
- * по своей цене. Ответить можно и после конца приёма, пока машину никому не отдали. `$staff` — админ отвечает за менеджера
+ * Цену назвал админ сам — согласия «не выше закупочной» второй раз не спрашиваем. «Отказаться» — подтверждение снимается
+ * (19.11.2026, владелец: «остаётся его цена — как-то неправильно»; прежде оставалось по своей цене), и после конца приёма тоже:
+ * отказ — его ответ, а не отзыв в приёме (`WithdrawBid` после приёма не пускает). Ответить можно и после конца приёма, пока машину никому не отдали. `$staff` — админ отвечает за менеджера
  * (28.10.2026, владелец: «устно подтвердил»): в «Истории» — «за менеджера», админам уведомление не нажавшему.
  */
 final class AnswerCounter
@@ -41,8 +43,9 @@ final class AnswerCounter
             }
             $amount = $bid->counter_amount;
             if (! $agree) {
-                $bid->update(['counter_state' => CounterState::Declined]);
+                $bid->update(['counter_state' => CounterState::Declined] + ($bid->state === BidState::Active ? ['state' => BidState::Withdrawn] : []));
                 $offer->log(OfferEventType::Counter, $staff ?? $manager, ['bid_id' => $bid->id, 'amount' => $amount, 'state' => 'declined', ...$for]);
+                $bid->state === BidState::Withdrawn && $offer->log(OfferEventType::BidWithdrawn, $staff ?? $manager, ['bid_id' => $bid->id, ...$for]);
 
                 return;
             }
