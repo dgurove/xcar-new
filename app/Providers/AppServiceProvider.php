@@ -153,6 +153,8 @@ class AppServiceProvider extends ServiceProvider
         Event::subscribe(RefreshLogistics::class);
         Event::listen(NotificationSent::class, CollapseNotices::class);
         Event::listen(NotificationSent::class, RecordDelivery::class);
+        // Номер попытки задания — каналам уведомлений для журнала («с 2-й попытки», `RetryDelivery`), без запроса на отправку.
+        Event::listen(\Illuminate\Queue\Events\JobProcessing::class, fn ($e) => \App\Notifications\RetryDelivery::$attempt = $e->job->attempts());
         Event::subscribe(PublishLiveUpdates::class);
         Event::subscribe(OnMessage::class);
         Event::subscribe(SyncOffer::class);

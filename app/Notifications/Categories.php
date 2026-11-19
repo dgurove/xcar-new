@@ -28,6 +28,42 @@ final class Categories
         'people' => 'Новые люди',
     ];
 
+    /**
+     * Темы менеджера, супер-покупателя и покупателя — строки «тема × канал» (19.11.2026, владелец выбрал: в каждой строке
+     * «Пуш» и «Telegram», лента получает всё всегда; критичное выключить нельзя — можно выбрать канал). Ключ — `Notice::topic()`.
+     * Только у кого нет ролей CRM, парковки и логистики (`siteOnly`): у них свои категории (`ADMIN`, правка 18.11.2026).
+     *
+     * @return array<string, array{label: string, critical: bool}>|null null — экран прежний
+     */
+    public static function topics(User $user): ?array
+    {
+        if (! self::siteOnly($user)) {
+            return null;
+        }
+        $t = fn (string $label, bool $critical = false) => ['label' => $label, 'critical' => $critical];
+        $deals = $user->hasRole(Role::Manager, Role::SuperBuyer) || ($user->holdsAsBuyer() && $user->canGarage());
+
+        return [
+            ...($deals ? ['deals' => $t('Сделки: ход и сроки', true), 'money' => $t('Счета и оплаты', true)] : []),
+            ...($user->hasRole(Role::Manager, Role::SuperBuyer) ? [
+                'bids' => $t('Подтверждения и цена', true),
+                'handover' => $t('Выдача и вывоз', true),
+            ] : []),
+            ...($user->hasRole(Role::Manager) ? ['estimates' => $t('Оценки')] : []),
+            'offers' => $t($user->hasRole(Role::Manager, Role::SuperBuyer) ? 'Новые предложения' : 'Новые предложения для вас'),
+            ...($user->hasRole(Role::Manager, Role::SuperBuyer) ? ['closing' => $t('Конец приёма')] : []),
+            'chats' => $t('Чаты'),
+            ...($user->hasRole(Role::Manager) ? ['people' => $t('Покупатели')] : []),
+        ];
+    }
+
+    /** Только роли сайта: менеджер, супер-покупатель, покупатель — без CRM, парковки, логистики и поставщика. */
+    public static function siteOnly(User $user): bool
+    {
+        return $user->hasRole(Role::Manager, Role::SuperBuyer, Role::Buyer)
+            && ! $user->hasRole(Role::Admin, Role::Moderator, Role::Owner, Role::Parking, Role::ParkAdmin, Role::Logist, Role::Driver, Role::Contractor, Role::Supplier);
+    }
+
     public static function for(User $user): array
     {
         // Ролей может быть несколько — наборы складываются (менеджер и модератор получают и то, и другое).

@@ -22,7 +22,8 @@ final class Banner
     /** @return Payload */
     public static function of(Notice $notice, string $id, ?User $reader = null, bool $sound = false): array
     {
-        // Сотрудник XCar на карточке менеджера и покупателя — без лица (13.11.2026, владелец: администрация везде обезличена).
+        // Сотрудник XCar на карточке менеджера и покупателя — без лица (13.11.2026, владелец: администрация везде обезличена),
+        // логотипа вендора у них тоже нет (19.11.2026, владелец: «вендоров менеджерам не показываем нигде»).
         $actor = $notice->actor();
         $actor = $actor?->isStaff() && ! $reader?->isStaff() ? null : $actor;
 
@@ -30,7 +31,7 @@ final class Banner
 
         return self::make($id, $notice->titleFor($reader), $notice->textFor($reader), $notice->href(), $actor, $notice->icon(),
             $notice->important(), $notice->subject(), $notice->surface(), $sound, $notice->alarm(), notice: true,
-            car: $car, brief: $car ? $notice->brief($reader) : null, vendor: $actor ? null : $notice->vendor());
+            car: $car, brief: $car ? $notice->brief($reader) : null, vendor: $actor || ! $reader?->isStaff() ? null : $notice->vendor());
     }
 
     /** Событие без уведомления в ленте (письмо в ящик, файлы из письма): тихо, уходит само. @return Payload */

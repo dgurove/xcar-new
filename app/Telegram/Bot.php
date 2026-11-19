@@ -129,6 +129,27 @@ class Bot
         return (int) $this->call('sendMessage', $payload, [], $shown === null ? null : ['text' => $shown] + $payload)->throw()->json('result.message_id');
     }
 
+    /**
+     * Вопрос с полем ответа (`force_reply`): Telegram сам открывает ответ на это сообщение — «Своя цена» оценки (19.11.2026).
+     * Ответ человека придёт сообщением с `reply_to_message` — его узнаёт `UpdateHandler` по предмету строки журнала.
+     */
+    public function ask(int $chatId, string $text, string $placeholder, ?int $replyTo = null): ?ChatMessage
+    {
+        $payload = ['chat_id' => $chatId, 'text' => $text, 'parse_mode' => 'HTML',
+            'reply_markup' => json_encode(['force_reply' => true, 'input_field_placeholder' => $placeholder], JSON_UNESCAPED_UNICODE)] + $this->replyTo($replyTo);
+
+        return $this->logged($chatId, $this->call('sendMessage', $payload));
+    }
+
+    /** Реакция на сообщение человека («👍» — ответ ушёл в чат на сайте); не вышло — не беда. */
+    public function react(int $chatId, int $messageId, string $emoji = '👍'): void
+    {
+        try {
+            $this->call('setMessageReaction', ['chat_id' => $chatId, 'message_id' => $messageId, 'reaction' => json_encode([['type' => 'emoji', 'emoji' => $emoji]], JSON_UNESCAPED_UNICODE)]);
+        } catch (Throwable) {
+        }
+    }
+
     /** Файл из CRM: картинка — фото, остальное — документом. */
     public function sendFile(int $chatId, UploadedFile $file, ?string $caption = null, ?int $replyTo = null): ?ChatMessage
     {

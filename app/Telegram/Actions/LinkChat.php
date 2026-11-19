@@ -22,7 +22,9 @@ final class LinkChat
         DB::transaction(function () use ($user, $chatId, $username) {
             User::where('telegram_chat_id', $chatId)->whereKeyNot($user->id)
                 ->update(['telegram_chat_id' => null, 'telegram_username' => null, 'telegram_linked_at' => null]);
-            $user->forceFill(['telegram_chat_id' => $chatId, 'telegram_username' => $username ?: null, 'telegram_linked_at' => now()])->save();
+            // Привязал снова — «Бот остановлен» в настройках больше не про него (`UnlinkChat::byChat`).
+            $user->forceFill(['telegram_chat_id' => $chatId, 'telegram_username' => $username ?: null, 'telegram_linked_at' => now(),
+                'notification_settings' => \Illuminate\Support\Arr::except($user->notification_settings ?? [], 'telegram_gone')])->save();
             Chat::where('user_id', $user->id)->whereKeyNot($chatId)->update(['user_id' => null]);
             Chat::updateOrCreate(['id' => $chatId], ['user_id' => $user->id, 'username' => $username ?: null]);
         });

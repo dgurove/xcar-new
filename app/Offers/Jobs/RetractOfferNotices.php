@@ -4,13 +4,11 @@ namespace App\Offers\Jobs;
 
 use App\Live\Publisher;
 use App\Live\Topics;
-use App\Notifications\BuyerOffersNotice;
 use App\Notifications\DealOpenedNotice;
 use App\Notifications\GalleryInterestOnSaleNotice;
 use App\Notifications\Notice;
 use App\Notifications\OfferPublishedNotice;
 use App\Notifications\OffersShownNotice;
-use App\Notifications\PurchaseCarOnSaleNotice;
 use App\Notifications\UrgentOfferNotice;
 use App\Offers\Offer;
 use App\Offers\OfferState;
@@ -39,8 +37,8 @@ final class RetractOfferNotices implements ShouldQueue
     use Queueable;
 
     /** Уведомления «о предложении целиком»: их смысл — «вот машина, смотрите». */
-    private const TYPES = [OfferPublishedNotice::class, UrgentOfferNotice::class, PurchaseCarOnSaleNotice::class,
-        GalleryInterestOnSaleNotice::class, BuyerOffersNotice::class, DealOpenedNotice::class, OffersShownNotice::class];
+    private const TYPES = [OfferPublishedNotice::class, UrgentOfferNotice::class,
+        GalleryInterestOnSaleNotice::class, DealOpenedNotice::class, OffersShownNotice::class];
 
     public function __construct(public int $offerId)
     {

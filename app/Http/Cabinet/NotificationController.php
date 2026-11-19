@@ -101,6 +101,7 @@ class NotificationController
             'devices' => self::devices($user),
             'user' => $user,
             'categories' => Categories::for($user),
+            'topics' => Categories::topics($user),
             'telegram' => Categories::telegram($user),
             'mail' => Categories::mail($user),
             'settings' => $user->notification_settings ?? [],
@@ -110,6 +111,9 @@ class NotificationController
     public function settings(Request $request)
     {
         $user = $request->user();
+        if (($topics = Categories::topics($user)) !== null && $request->boolean('topics_shown')) {
+            return $this->saveTopics($request, $user, $topics);
+        }
         $allowed = array_keys(Categories::for($user)['on']);
         $inTelegram = array_keys(Categories::telegram($user));
         // Прочие ключи (пуш, «напомнить позже» про Telegram) форма не присылает — их не теряем.
@@ -127,6 +131,39 @@ class NotificationController
             // подтверждена — тумблеры выключены и не приходят: прежний выбор не трогаем.
             + ($request->boolean('mail_shown') && $user->mailVerified() ? ['mail_on' => $mailOn] + ($mailOn ? ['mail' => true] : []) : [])
             + ($user->notification_settings ?? [])]);
+
+        return back()->with('toast', 'Сохранено');
+    }
+
+    /**
+     * «Тема × канал» менеджера и покупателя (19.11.2026): форма присылает включённые темы пуша (`push[]`) и Telegram (`tg[]`),
+     * выключенные — от списка тем. У критичной обоих выключенными не бывает: вернём пуш. Прежний `off` (выключал всё) снимается.
+     *
+     * @param  array<string, array{label: string, critical: bool}>  $topics
+     */
+    private function saveTopics(Request $request, User $user, array $topics)
+    {
+        $keys = array_keys($topics);
+        $tgShown = $request->boolean('tg_shown');
+        $s = $user->notification_settings ?? [];
+        $push = array_values(array_diff($keys, array_map('strval', (array) $request->input('push', []))));
+        $tg = $tgShown ? array_values(array_diff($keys, array_map('strval', (array) $request->input('tg', [])))) : array_values(array_intersect($keys, $s['telegram_off'] ?? []));
+        $tgWorks = $user->telegram_chat_id && $user->wantsTelegram();
+        foreach ($topics as $key => $topic) {
+            if ($topic['critical'] && in_array($key, $push, true) && (! $tgWorks || in_array($key, $tg, true))) {
+                $push = array_values(array_diff($push, [$key]));
+            }
+        }
+        $mailOn = array_values(array_intersect(array_keys(Categories::mail($user)), array_map('strval', (array) $request->input('mail_on', []))));
+        $user->update(['notification_settings' => [
+            'sound' => $request->boolean('sound'),
+            'quiet' => $request->boolean('quiet'),
+            'off' => [],
+            'push_off' => $push,
+            'telegram_off' => $tg,
+        ] + ($user->telegram_chat_id ? ['telegram' => $request->boolean('telegram')] : [])
+            + ($request->boolean('mail_shown') && $user->mailVerified() ? ['mail_on' => $mailOn] + ($mailOn ? ['mail' => true] : []) : [])
+            + $s]);
 
         return back()->with('toast', 'Сохранено');
     }
@@ -158,9 +195,14 @@ class NotificationController
         $ok = Subscription::where('user_id', $user->id)->get()->filter(fn (Subscription $sub) => WebPushChannel::test($sub));
         // Итог по каналам (18.11.2026: «точно ли придёт») — куда ушло и чего нет.
         $crm = $ok->filter(fn (Subscription $s) => $s->host && \App\Support\Surface::fromHost($s->host) === \App\Support\Surface::Crm)->count();
-        $went = array_filter(['лента', $user->wantsTelegram() ? 'Telegram' : null,
+        // Telegram — сразу и по факту (19.11.2026: тост писал «Telegram» по одной настройке, даже когда бот был заблокирован).
+        $tg = $user->wantsTelegram() ? app(\App\Notifications\TelegramChannel::class)->send($user, new TestNotice) : null;
+        $went = array_filter(['лента', $tg?->status === 'sent' ? 'Telegram' : null,
             $ok->isNotEmpty() ? 'пуш на '.$ok->count().' '.\App\Support\Plural::of($ok->count(), ['устройство', 'устройства', 'устройств']) : null]);
         $toast = 'Отправили: '.implode(', ', $went);
+        if ($tg && $tg->status !== 'sent') {
+            return back()->with('toast-danger', $toast.'. В Telegram не ушло');
+        }
         if ($user->isStaff() && ! $crm) {
             return back()->with('toast-danger', $toast.'. В CRM пуши не включены ни на одном устройстве');
         }

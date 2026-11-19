@@ -47,6 +47,7 @@ final class WebPushChannel
         ], fn ($v) => $v !== null);
         $href = $notice->href();
         $badges = [];
+        $payloads = [];
         $push = self::client();
         foreach ($subs as $sub) {
             // Адрес — на хосте подписки: у трёх приложений три scope, чужой хост iOS открыл бы во встроенном браузере.
@@ -55,12 +56,45 @@ final class WebPushChannel
             $local = NoticeLink::for(['href' => $href, 'subject' => $notice->subject()], $surface);
             $navigate = NoticeLink::tracked(str_starts_with($local, 'http') ? $local : $surface->url($local), $notice, 'push');
             $badge = $badges[$surface->value] ??= $user->badgeCount($surface);
-            self::queue($push, $sub, $notification + ['navigate' => $navigate, 'app_badge' => $badge], $notice->important());
+            $payloads[$sub->id] = self::queue($push, $sub, $notification + ['navigate' => $navigate, 'app_badge' => $badge], $notice->important());
         }
-        $failed = self::flush($push, $reasons);
+        $failed = self::flush($push, $reasons, $again);
         $accepted = $subs->count() - $failed;
+        // Сервер пушей не ответил (DNS, сеть, 5xx) — повтор только этим устройствам через 1, 5, 15 минут (19.11.2026):
+        // принявшие второй раз пуш не получат.
+        $retry = $notice->id ? array_intersect_key($payloads, array_flip($subs->whereIn('endpoint', $again)->pluck('id')->all())) : [];
+        if ($retry) {
+            Jobs\RetryPush::dispatch($notice->id, $user->id, ['kind' => $notice->kind(), 'label' => $notice->label(), 'category' => $notice->category(), 'important' => $notice->important()], $retry, 1)
+                ->delay(now()->addSeconds(Jobs\RetryPush::DELAYS[0]));
+        }
 
-        return $accepted > 0 ? Sent::ok($accepted) : Sent::failed(implode('; ', array_unique($reasons)) ?: 'не принят', 0);
+        return match (true) {
+            $accepted > 0 => Sent::ok($accepted),
+            (bool) $retry => Sent::retrying('повтор через минуту: '.(implode('; ', array_unique($reasons)) ?: 'не принят')),
+            default => Sent::failed(implode('; ', array_unique($reasons)) ?: 'не принят', 0),
+        };
+    }
+
+    /**
+     * Повтор готовых пушей (`Jobs\RetryPush`): те же тексты в те же подписки, что ещё живы. Ответ — id подписок, где снова
+     * временный сбой, и причины.
+     *
+     * @param  array<int, string>  $payloads  id подписки → готовый JSON
+     * @return array{0: int, 1: list<int>, 2: list<string>} принято, снова сбой, причины
+     */
+    public static function resend(array $payloads): array
+    {
+        $subs = Subscription::whereIn('id', array_keys($payloads))->get();
+        if ($subs->isEmpty()) {
+            return [0, [], ['подписок нет']];
+        }
+        $push = self::client();
+        foreach ($subs as $sub) {
+            self::queueRaw($push, $sub, $payloads[$sub->id]);
+        }
+        $failed = self::flush($push, $reasons, $again);
+
+        return [$subs->count() - $failed, $subs->whereIn('endpoint', $again)->pluck('id')->all(), $reasons];
     }
 
     /**
@@ -85,10 +119,18 @@ final class WebPushChannel
         return $push;
     }
 
-    private static function queue(WebPush $push, Subscription $sub, array $notification, bool $important): void
+    /** В очередь клиента; ответ — готовый JSON (для повтора). */
+    private static function queue(WebPush $push, Subscription $sub, array $notification, bool $important): string
     {
         // Важное (рядом с web_push, не внутри notification — декларативный пуш Safari его не знает) sw.js держит до нажатия.
         $payload = json_encode(['web_push' => 8030, 'important' => $important, 'notification' => $notification], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        self::queueRaw($push, $sub, $payload);
+
+        return $payload;
+    }
+
+    private static function queueRaw(WebPush $push, Subscription $sub, string $payload): void
+    {
         $push->queueNotification(PushSubscription::create(['endpoint' => $sub->endpoint, 'publicKey' => $sub->p256dh, 'authToken' => $sub->auth, 'contentEncoding' => 'aes128gcm']), $payload, ['TTL' => 86400, 'urgency' => 'normal']);
     }
 
@@ -96,9 +138,10 @@ final class WebPushChannel
      * Отправить и разобрать ответы: принятым — `last_sent_at`, отвалившиеся — удалить, прочие — `failed_at`. Число неудач,
      * в `$reasons` — их причины для журнала.
      */
-    private static function flush(WebPush $push, ?array &$reasons = []): int
+    private static function flush(WebPush $push, ?array &$reasons = [], ?array &$again = []): int
     {
         $reasons = [];
+        $again = [];
         $failed = 0;
         $sent = [];
         foreach ($push->flush() as $report) {
@@ -113,8 +156,16 @@ final class WebPushChannel
             if ($report->isSubscriptionExpired()) {
                 Subscription::where('endpoint', $endpoint)->delete();
             } else {
+                // Временное — нет ответа (DNS, сеть), 429 или 5xx: стоит повторить (`Jobs\RetryPush`), а подписка живая — `failed_at`
+                // не ставим: иначе после минутного сбоя DNS настройки говорили «Пуши не включены ни на одном устройстве».
+                // 400/403 — повтор не поможет, подписка сломана.
+                $status = $report->getResponse()?->getStatusCode();
                 Log::warning('Пуш не ушёл', ['endpoint' => substr($endpoint, 0, 60), 'reason' => $report->getReason()]);
-                Subscription::where('endpoint', $endpoint)->update(['failed_at' => now()]);
+                if ($status === null || $status === 429 || $status >= 500) {
+                    $again[] = $endpoint;
+                } else {
+                    Subscription::where('endpoint', $endpoint)->update(['failed_at' => now()]);
+                }
             }
         }
         if ($sent) {

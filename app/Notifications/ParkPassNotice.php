@@ -58,4 +58,10 @@ final class ParkPassNotice extends Notice
     {
         return ['title' => $this->title(), 'lines' => Text::lines($this->deal->offer, $this->text()), 'button' => 'Открыть пропуск'];
     }
+
+    /** Выдача и вывоз — своей темой у менеджера (`Categories::topics`). */
+    public function topic(): string
+    {
+        return 'handover';
+    }
 }

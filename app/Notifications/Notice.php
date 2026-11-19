@@ -24,6 +24,27 @@ abstract class Notice extends Notification implements ShouldQueue
 {
     use Queueable;
 
+    /**
+     * Повторы доставки (19.11.2026, владелец: «чтобы надёжно доставлялось всё, что включают»): Laravel ставит задание на
+     * каждый канал отдельно, канал с временным сбоем бросает `RetryDelivery` — повторяется только он, строка ленты не
+     * дублируется. Три повтора: через 1, 5 и 15 минут.
+     */
+    public int $tries = 4;
+
+    /** @return list<int> */
+    public function backoff(): array
+    {
+        return [60, 300, 900];
+    }
+
+    /** Повторы кончились — последней строкой журнала `failed` (видно в «Настройки → Доставка»). */
+    public function failed(\Throwable $e): void
+    {
+        if ($e instanceof RetryDelivery && $this->id) {
+            Delivery::log($this, $this->id, $e->userId, $e->channel, 'failed', 'после повторов: '.$e->detail);
+        }
+    }
+
     abstract public function title(): string;
 
     /** Вид словами для «Настройки → Доставка» («Интерес покупателя», «Срок этапа»): без него класс не загрузится. */
@@ -342,11 +363,23 @@ abstract class Notice extends Notification implements ShouldQueue
     }
 
     /**
+     * Тема для настройки «тема × канал» менеджера и покупателя (`Categories::topics`, 19.11.2026): по умолчанию — категория;
+     * своя у тех, что внутри категории живут своей строкой (счета, оценки, выдача, конец приёма).
+     */
+    public function topic(): string
+    {
+        return $this->category();
+    }
+
+    /**
      * Куда: выключенная категория — никуда; лента всегда; тихое — только в ленту; пуш — не в тихие часы;
      * почта — только включённое человеком и важное (`wantsMailFor`); Telegram — если привязан и уведомление туда просится.
      */
     public function via(User $user): array
     {
+        if (Categories::siteOnly($user)) {
+            return $this->viaTopic($user);
+        }
         if (! $this->critical() && ! $user->wants($this->category())) {
             $this->skipped($user, 'feed', 'категория выключена');
 
@@ -377,19 +410,47 @@ abstract class Notice extends Notification implements ShouldQueue
     }
 
     /**
+     * Менеджеру и покупателю — «тема × канал» (`User::wantsVia`): лента всегда, пуш (кроме тихих часов) и Telegram — как
+     * включено у темы; почта — прежним правилом.
+     */
+    protected function viaTopic(User $user): array
+    {
+        $via = ['database'];
+        if ($this->quiet()) {
+            return $via;
+        }
+        $topic = $this->topic();
+        $critical = $this->critical();
+        if (! $user->wantsVia($topic, 'push', $critical)) {
+            $this->skipped($user, 'push', 'выключено в теме');
+        } elseif ($user->quietHours()) {
+            $this->skipped($user, 'push', 'тихие часы');
+        } else {
+            $via[] = WebPushChannel::class;
+        }
+        if ($user->wantsMailFor($this->category()) && ($critical || $this->important())) {
+            $via[] = SystemMailChannel::class;
+        }
+        if ($user->telegram_chat_id && $this->toTelegram() !== null) {
+            if (! $user->wantsTelegram()) {
+                $this->skipped($user, 'telegram', 'Telegram выключен');
+            } elseif (! $user->wantsVia($topic, 'telegram', $critical)) {
+                $this->skipped($user, 'telegram', 'выключено в теме');
+            } else {
+                $via[] = TelegramChannel::class;
+            }
+        }
+
+        return $via;
+    }
+
+    /**
      * Не ушло по выбору человека — тоже строкой журнала (18.11.2026: «почему ему не пришло» — видно в «Настройки → Доставка»):
      * статус `off`, в числа «отправлено» не входит. Laravel зовёт `via` до того, как у уведомления есть id, — у строки свой.
      */
     private function skipped(User $user, string $channel, string $why): void
     {
-        try {
-            Delivery::create([
-                'notice_id' => $this->id ?? (string) Str::uuid(), 'user_id' => $user->id, 'kind' => $this->kind(), 'label' => mb_substr($this->label(), 0, 80),
-                'category' => $this->category(), 'important' => $this->important(), 'channel' => $channel, 'status' => 'off', 'detail' => $why, 'created_at' => now(),
-            ]);
-        } catch (\Throwable) {
-            // Журнал — не повод не доставить остальное.
-        }
+        Delivery::log($this, $this->id ?? (string) Str::uuid(), $user->id, $channel, 'off', $why);
     }
 
     /** Текст из маршрута сделки (этап, просьба): супер-покупателю его слова «менеджер» переводятся (`Users\Wording`). */

@@ -107,4 +107,10 @@ final class UnreadClosingNotice extends Notice
     {
         return $this->offer;
     }
+
+    /** Конец приёма — своей темой у менеджера (`Categories::topics`). */
+    public function topic(): string
+    {
+        return 'closing';
+    }
 }

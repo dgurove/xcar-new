@@ -17,7 +17,8 @@ final class UnlinkChat
             'telegram_chat_id' => null, 'telegram_username' => null, 'telegram_linked_at' => null,
             'notification_settings' => [
                 'telegram_intro' => now()->toIso8601String(), 'telegram_bid_n' => 3, 'telegram_card_hidden' => now()->addDays(30)->toIso8601String(),
-            ] + ($user->notification_settings ?? []),
+            // Отвязал сам — не «бот остановлен»: пометку ставит только `byChat`, следом.
+            ] + \Illuminate\Support\Arr::except($user->notification_settings ?? [], 'telegram_gone'),
         ])->save();
     }
 
@@ -29,6 +30,10 @@ final class UnlinkChat
     {
         User::where('telegram_chat_id', $chatId)->get()
             ->reject(fn (User $user) => Lock::enabled() && $user->underLock())
-            ->each(fn (User $user) => $this($user));
+            ->each(function (User $user) {
+                $this($user);
+                // Сам остановил бота — в настройках красным, почему Telegram молчит (19.11.2026).
+                $user->forceFill(['notification_settings' => ['telegram_gone' => now()->toIso8601String()] + ($user->notification_settings ?? [])])->save();
+            });
     }
 }

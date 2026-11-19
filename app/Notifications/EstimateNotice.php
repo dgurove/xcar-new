@@ -59,4 +59,10 @@ abstract class EstimateNotice extends Notice
 
         return array_values(array_filter([Text::vin($offer), $offer->saleCity()?->title(), $declared ? 'Заявленная '.Money::rub($declared) : null, ...$middle]));
     }
+
+    /** Оценки — своей темой у менеджера (`Categories::topics`), категория прежняя. */
+    public function topic(): string
+    {
+        return 'estimates';
+    }
 }

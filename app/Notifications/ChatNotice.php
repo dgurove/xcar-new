@@ -29,7 +29,9 @@ final class ChatNotice extends Notice
         // Менеджеру (и покупателю) — в Telegram каждое сообщение чата, кто бы ни писал, даже с выключенными чатами в настройках
         // (16.11.2026, владелец: «всё, что ему в чат приходит, — в телегу: администратор, модератор, покупатель»). Сотрудникам —
         // по их настройкам, как было.
-        if ($this->toManagerSide($user) && $user->wantsTelegram() && ! in_array(TelegramChannel::class, $via, true) && $this->toTelegram() !== null) {
+        // С 19.11.2026 у менеджера и покупателя без ролей CRM — по теме «Чаты» («тема × канал», `Categories::topics`):
+        // по умолчанию включено, выключил — его выбор.
+        if ($this->toManagerSide($user) && ! Categories::siteOnly($user) && $user->wantsTelegram() && ! in_array(TelegramChannel::class, $via, true) && $this->toTelegram() !== null) {
             $via[] = TelegramChannel::class;
         }
 
@@ -196,6 +198,20 @@ final class ChatNotice extends Notice
     public function category(): string
     {
         return 'chats';
+    }
+
+    /**
+     * Дело шага сделки в чате (`requirement_id`, сообщение `StepAsk`) — тема «Сделки», критичная (19.11.2026): `YourTurnNotice`
+     * при чате в Telegram не идёт, и выключенные «Чаты» не должны уносить ход сделки. Остальное — «Чаты».
+     */
+    public function topic(): string
+    {
+        return $this->message->requirement_id ? 'deals' : 'chats';
+    }
+
+    public function critical(): bool
+    {
+        return $this->message->requirement_id !== null;
     }
 
     /** Автор сообщения; автоответ площадки без автора — знак приложения. */

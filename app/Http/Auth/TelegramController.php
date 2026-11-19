@@ -89,9 +89,10 @@ class TelegramController
     /** «Отправить пробное» — только в Telegram, мимо ленты и пуша. */
     public function test(Request $request, TelegramChannel $channel)
     {
-        $channel->send($request->user(), new TestNotice);
+        // По факту (19.11.2026): не ушло — так и сказать, а не «Отправили».
+        $sent = $channel->send($request->user(), new TestNotice);
 
-        return back()->with('toast', 'Отправили в Telegram');
+        return $sent->status === 'sent' ? back()->with('toast', 'Отправили в Telegram') : back()->with('toast-danger', 'В Telegram не ушло');
     }
 
     public function destroy(Request $request, UnlinkChat $unlink)

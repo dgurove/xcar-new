@@ -13,7 +13,8 @@ final class TestNotice extends Notice
 {
     public function via(User $user): array
     {
-        return array_values(array_diff(parent::via($user), [WebPushChannel::class]));
+        // Telegram — тоже не отсюда: «Проверить» шлёт его сразу (`NotificationController::test`) и пишет, дошло ли на самом деле.
+        return array_values(array_diff(parent::via($user), [WebPushChannel::class, TelegramChannel::class]));
     }
 
     public function label(): string

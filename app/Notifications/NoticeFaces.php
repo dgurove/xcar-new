@@ -102,10 +102,16 @@ final class NoticeFaces
             $more = null;
         }
         $user = self::user($data) ?? (($name = self::nameIn($title)) && empty($data['vendor']) ? ($bag->names[$name] ?? null) : null);
+        // Сотрудник площадки менеджеру и покупателю — без лица (администрация обезличена, как `Notice::toArray` и `Live\Banner`):
+        // у старых строк лицо угадывается по имени в заголовке, мимо этой проверки (19.11.2026). Вендор — тоже только
+        // сотруднику: менеджерам вендоров и логотипов не показываем нигде (владелец, 19.11.2026).
+        if ($user?->isStaff() && ! auth()->user()?->isStaff()) {
+            $user = null;
+        }
 
         return [
             'car' => $car ?: $title, 'what' => $what, 'more' => $more, 'user' => $user,
-            'vendor' => $user ? null : self::vendor($data), 'icon' => $data['icon'] ?? self::iconOf($data), 'important' => ! empty($data['important']),
+            'vendor' => $user || ! auth()->user()?->isStaff() ? null : self::vendor($data), 'icon' => $data['icon'] ?? self::iconOf($data), 'important' => ! empty($data['important']),
         ];
     }
 

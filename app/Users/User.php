@@ -909,6 +909,28 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
     }
 
     /**
+     * Тема × канал (19.11.2026, `Categories::topics`): тема `$topic` в канал `push` или `telegram` не выключена
+     * (`push_off`, `telegram_off`; прежний `off` выключал оба). Критичная тема с обоими выключенными — всё равно в оба: экран
+     * последний тумблер не даёт снять, это страховка от старых настроек. Тема не из списка — включена.
+     */
+    public function wantsVia(string $topic, string $channel, bool $critical = false): bool
+    {
+        $s = $this->notification_settings ?? [];
+        $off = fn (string $ch) => in_array($topic, $s[$ch.'_off'] ?? [], true) || in_array($topic, $s['off'] ?? [], true);
+        if (! $off($channel)) {
+            return true;
+        }
+        if (! $critical) {
+            return false;
+        }
+        // Критичное: выключен этот канал — идёт сюда, если другого нет (Telegram не привязан или выключен) или он тоже выключен.
+        $other = $channel === 'push' ? 'telegram' : 'push';
+        $otherWorks = $other === 'push' || ($this->telegram_chat_id !== null && ($s['telegram'] ?? true) !== false);
+
+        return ! $otherWorks || $off($other);
+    }
+
+    /**
      * Подключить Telegram можно: менеджеру, его покупателю и супер-покупателю (12.10.2026: машины от менеджера и чат),
      * админу, модератору (вход в CRM, новое из писем) и парковке без привязки. Не за человека —
      * админ привязал бы свой чат к чужому аккаунту.

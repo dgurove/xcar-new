@@ -81,4 +81,10 @@ final class RepriceDecidedNotice extends Notice
     {
         return ['title' => $this->title(), 'lines' => Text::lines($this->ask->offer, $this->text()), 'button' => $this->what === self::COUNTERED ? 'Ответить' : 'Открыть'];
     }
+
+    /** Цена — в теме «Подтверждения и цена» (`Categories::topics`). */
+    public function topic(): string
+    {
+        return 'bids';
+    }
 }

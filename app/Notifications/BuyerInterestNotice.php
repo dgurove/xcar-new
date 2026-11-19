@@ -44,4 +44,10 @@ final class BuyerInterestNotice extends Notice
     {
         return 'interest';
     }
+
+    /** Интерес — в теме «Покупатели» (`Categories::topics`). */
+    public function topic(): string
+    {
+        return 'people';
+    }
 }

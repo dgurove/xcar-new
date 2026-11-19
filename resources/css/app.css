@@ -780,6 +780,13 @@ html.kb-open { --home-gap: 0px; }
 
   /* Строка с тумблером справа (настройки): label.row, .switch — ml-auto; выключенный тумблер — строка приглушена. */
   .row-switch { @apply cursor-pointer; }
+  /* «Тема × канал» (уведомления менеджера, 19.11.2026): столбцы «Пуш» и «Telegram» — по тумблеру шириной 51, подписи
+     столбцов над ними в заголовке группы (сдвиг — поле строки минус поле заголовка); у критичной темы последний
+     включённый не снимается — он бледнее, как неактивный в iOS. */
+  .topic-cols { @apply flex shrink-0 items-center gap-3; }
+  .list-head > .topic-cols { @apply ml-auto mr-2 text-xs font-normal text-ink-muted sm:mr-3; }
+  .list-head > .topic-cols > span { width: 51px; text-align: center; }
+  .topic-cols > .switch:disabled { opacity: .45; }
   .row-switch .switch { @apply ml-auto shrink-0; }
   .row-switch:has(.switch:disabled) { @apply cursor-default opacity-60; }
   /* «Не снимать с продажи» (`x-offer.keep-selling`): часы — только при включённом тумблере. */

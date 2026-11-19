@@ -27,6 +27,8 @@
                                 @endif
                                 @if ($user->isStaff() && ! collect($devices)->contains(fn ($d) => str_starts_with($d, 'CRM')))
                                     <span class="row-sub text-danger">В CRM пуши не включены ни на одном устройстве</span>
+                                @elseif (! $user->isStaff() && ! $devices)
+                                    <span class="row-sub text-danger">Пуши не включены ни на одном устройстве</span>
                                 @endif
                             </span>
                             <input type="checkbox" class="switch" data-push-target="toggle" data-action="change->push#toggle">
@@ -43,7 +45,12 @@
                 @if ($user->canLinkTelegram())
                     <button type="button" class="row w-full text-left" data-controller="emit" data-action="emit#send" data-emit-event-param="telegram:open">
                         <span class="flex size-11 shrink-0 items-center justify-center rounded-full tg-tile"><x-telegram.logo plain/></span>
-                        <span class="min-w-0 flex-1 font-medium">В Telegram</span>
+                        <span class="min-w-0 flex-1">
+                            <span class="block font-medium">В Telegram</span>
+                            @if (! empty($settings['telegram_gone']))
+                                <span class="row-sub text-danger">Бот остановлен — в Telegram не приходит</span>
+                            @endif
+                        </span>
                         <span class="font-medium" style="color: var(--color-telegram)">Подключить</span>
                     </button>
                 @elseif ($user->telegram_chat_id)
@@ -59,8 +66,59 @@
             </div>
         </section>
 
+        {{-- Менеджеру и покупателю — «тема × канал» (19.11.2026, `Categories::topics`): в ленту всё всегда, в строке — пуш и
+             Telegram; у критичной последний включённый не снимается. --}}
+        @if ($topics !== null)
+            @php
+                $tgCol = $user->telegram_chat_id && $user->wantsTelegram();
+                $pushOff = array_merge($settings['push_off'] ?? [], $settings['off'] ?? []);
+                $tgOff = array_merge($settings['telegram_off'] ?? [], $settings['off'] ?? []);
+            @endphp
+            <section>
+                <h2 class="list-head">
+                    О чём
+                    <span class="topic-cols">
+                        <span>Пуш</span>
+                        @if ($tgCol)
+                            <span>Telegram</span>
+                        @endif
+                    </span>
+                </h2>
+                <input type="hidden" name="topics_shown" value="1">
+                @if ($tgCol)
+                    <input type="hidden" name="tg_shown" value="1">
+                @endif
+                <div class="list">
+                    @foreach ($topics as $key => $topic)
+                        @php
+                            $p = ! in_array($key, $pushOff, true) || ($topic['critical'] && (! $tgCol || in_array($key, $tgOff, true)));
+                            $t = $tgCol && ! in_array($key, $tgOff, true);
+                        @endphp
+                        <div class="row">
+                            <span class="min-w-0 flex-1 font-medium">{{ $topic['label'] }}</span>
+                            <span class="topic-cols">
+                                <input type="checkbox" name="push[]" value="{{ $key }}" class="switch" aria-label="{{ $topic['label'] }}: пуш"
+                                    @checked($p) @disabled($topic['critical'] && $p && ! $t) data-action="change->autosubmit#submit">
+                                {{-- Неактивный тумблер в форму не идёт — значение держит скрытое поле. --}}
+                                @if ($topic['critical'] && $p && ! $t)
+                                    <input type="hidden" name="push[]" value="{{ $key }}">
+                                @endif
+                                @if ($tgCol)
+                                    <input type="checkbox" name="tg[]" value="{{ $key }}" class="switch" aria-label="{{ $topic['label'] }}: Telegram"
+                                        @checked($t) @disabled($topic['critical'] && $t && ! $p) data-action="change->autosubmit#submit">
+                                    @if ($topic['critical'] && $t && ! $p)
+                                        <input type="hidden" name="tg[]" value="{{ $key }}">
+                                    @endif
+                                @endif
+                            </span>
+                        </div>
+                    @endforeach
+                </div>
+            </section>
+        @endif
+
         {{-- В Telegram — только то, что туда вообще идёт (Categories::telegram); критичное приходит всегда. --}}
-        @if ($user->telegram_chat_id && $user->wantsTelegram() && $telegram)
+        @if ($topics === null && $user->telegram_chat_id && $user->wantsTelegram() && $telegram)
             <section>
                 <h2 class="list-head">В Telegram</h2>
                 <input type="hidden" name="tg_shown" value="1">
@@ -76,7 +134,7 @@
         @endif
 
 
-        @if ($categories['on'] || $categories['always'])
+        @if ($topics === null && ($categories['on'] || $categories['always']))
         <section>
             <h2 class="list-head">О чём</h2>
             <div class="list">

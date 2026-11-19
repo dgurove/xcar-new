@@ -54,4 +54,10 @@ final class PickupTakenNotice extends Notice
     {
         return ['title' => $this->title(), 'lines' => [$this->text()], 'button' => 'Открыть'];
     }
+
+    /** Выдача и вывоз — своей темой у менеджера (`Categories::topics`). */
+    public function topic(): string
+    {
+        return 'handover';
+    }
 }

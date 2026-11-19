@@ -30,10 +30,6 @@ final class RecordDelivery
         }
         $notice = $e->notification;
         $sent = $e->response instanceof Sent ? $e->response : Sent::ok();
-        Delivery::create([
-            'notice_id' => $notice->id, 'user_id' => $e->notifiable->id, 'kind' => $notice->kind(), 'label' => mb_substr($notice->label(), 0, 80),
-            'category' => $notice->category(), 'important' => $notice->important(), 'channel' => $channel,
-            'status' => $sent->status, 'detail' => $sent->detail, 'devices' => $sent->devices, 'created_at' => now(),
-        ]);
+        Delivery::log($notice, $notice->id, $e->notifiable->id, $channel, $sent->status, $sent->detail, $sent->devices);
     }
 }

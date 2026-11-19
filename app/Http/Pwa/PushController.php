@@ -28,7 +28,12 @@ class PushController
     {
         $endpoint = (string) $request->input('endpoint');
         Subscription::where('user_id', $request->user()->id)->when($endpoint, fn ($q) => $q->where('endpoint', $endpoint))->delete();
-        $request->user()->update(['notification_settings' => ['push' => false] + ($request->user()->notification_settings ?? [])]);
+        // «Выключено» на весь аккаунт — только когда не осталось ни одного устройства (19.11.2026): тумблер — про это
+        // устройство, а с `push=false` сверка при запуске (`push-sync.js`, `sync`) не принимала обновлённую подписку iPhone,
+        // если пуш выключили на Маке, — и на iPhone пуш молча пропадал.
+        if (! Subscription::where('user_id', $request->user()->id)->exists()) {
+            $request->user()->update(['notification_settings' => ['push' => false] + ($request->user()->notification_settings ?? [])]);
+        }
 
         return response()->json(['ok' => true]);
     }

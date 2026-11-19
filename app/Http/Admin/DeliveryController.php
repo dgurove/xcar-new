@@ -59,12 +59,12 @@ final class DeliveryController
         $rows = DB::table('notice_deliveries')->where('created_at', '>=', $from)->groupBy('kind')
             ->selectRaw("kind, max(label) as label, max(category) as category, bool_or(important) as important,
                 count(distinct notice_id) filter (where status <> 'off') as sent, count(distinct user_id) filter (where status <> 'off') as people,
-                count(*) filter (where channel = 'push' and status = 'sent') as push,
+                count(distinct notice_id) filter (where channel = 'push' and status = 'sent') as push,
                 coalesce(sum(devices) filter (where channel = 'push' and status = 'sent'), 0) as devices,
                 count(*) filter (where channel = 'push' and status = 'skipped') as nowhere,
-                count(*) filter (where channel = 'telegram' and status = 'sent') as telegram,
-                count(*) filter (where channel = 'mail' and status = 'sent') as mail,
-                count(*) filter (where status = 'failed') as failed,
+                count(distinct notice_id) filter (where channel = 'telegram' and status = 'sent') as telegram,
+                count(distinct notice_id) filter (where channel = 'mail' and status = 'sent') as mail,
+                count(distinct notice_id) filter (where status = 'failed') as failed,
                 count(distinct notice_id) filter (where opened_at is not null) as opened")
             ->get();
         $off = $this->mutedByCategory();
@@ -78,9 +78,9 @@ final class DeliveryController
     {
         $stats = DB::table('notice_deliveries')->where('created_at', '>=', $from)->groupBy('user_id')
             ->selectRaw("user_id, count(distinct notice_id) filter (where status <> 'off') as sent,
-                count(*) filter (where channel = 'push' and status = 'sent') as push,
-                count(*) filter (where channel = 'telegram' and status = 'sent') as telegram,
-                count(*) filter (where status = 'failed') as failed,
+                count(distinct notice_id) filter (where channel = 'push' and status = 'sent') as push,
+                count(distinct notice_id) filter (where channel = 'telegram' and status = 'sent') as telegram,
+                count(distinct notice_id) filter (where status = 'failed') as failed,
                 count(distinct notice_id) filter (where opened_at is not null) as opened")
             ->get()->keyBy('user_id');
         $subs = DB::table('push_subscriptions')->groupBy('user_id')
@@ -113,11 +113,20 @@ final class DeliveryController
         return $rows->sortBy($value, SORT_REGULAR, $sort->desc)->values();
     }
 
-    /** Сколько людей выключили категорию в настройках (`notification_settings.off`). @return array<string, int> */
+    /**
+     * Сколько людей выключили категорию в настройках: прежний `off` или (с 19.11.2026, «тема × канал» менеджера) тема выключена
+     * и в пуше, и в Telegram — тогда она только строкой ленты. Ключ темы у большинства совпадает с категорией. @return array<string, int>
+     */
     private function mutedByCategory(): array
     {
-        return DB::table('users')->crossJoin(DB::raw("jsonb_array_elements_text(coalesce(notification_settings->'off', '[]'::jsonb)) as off(category)"))
-            ->groupBy('off.category')->selectRaw('off.category, count(*) as n')->pluck('n', 'category')->map(fn ($n) => (int) $n)->all();
+        $rows = DB::select("select category, count(distinct id) as n from (
+                select u.id, o.category from users u, jsonb_array_elements_text(coalesce(u.notification_settings->'off', '[]'::jsonb)) as o(category)
+                union all
+                select u.id, p.category from users u, jsonb_array_elements_text(coalesce(u.notification_settings->'push_off', '[]'::jsonb)) as p(category)
+                where jsonb_exists(coalesce(u.notification_settings->'telegram_off', '[]'::jsonb), p.category)
+            ) m group by category");
+
+        return collect($rows)->mapWithKeys(fn ($r) => [$r->category => (int) $r->n])->all();
     }
 
     /** Карточка человека: последние 60 уведомлений за период, каналы строкой, открыто ли и откуда. */

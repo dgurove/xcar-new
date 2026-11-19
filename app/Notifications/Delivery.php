@@ -32,6 +32,28 @@ final class Delivery extends Model
         return ['important' => 'boolean', 'opened_at' => 'datetime'];
     }
 
+    /**
+     * Строка журнала одной дверью (19.11.2026: её собирали руками в пяти местах). `$about` — уведомление или его
+     * описание из задания (`kind`, `label`, `category`, `important`); ошибка записи не мешает доставке.
+     *
+     * @param  Notice|array{kind: string, label: string, category: string, important: bool}  $about
+     */
+    public static function log(Notice|array $about, string $noticeId, int $userId, string $channel, string $status, ?string $detail = null, ?int $devices = null): void
+    {
+        $meta = $about instanceof Notice
+            ? ['kind' => $about->kind(), 'label' => $about->label(), 'category' => $about->category(), 'important' => $about->important()]
+            : $about;
+        try {
+            self::create([
+                'notice_id' => $noticeId, 'user_id' => $userId, 'kind' => $meta['kind'], 'label' => mb_substr($meta['label'], 0, 80),
+                'category' => $meta['category'], 'important' => $meta['important'], 'channel' => $channel, 'status' => $status,
+                'detail' => $detail === null ? null : mb_substr($detail, 0, 160), 'devices' => $devices, 'created_at' => now(),
+            ]);
+        } catch (\Throwable) {
+            // Журнал — не повод не доставить.
+        }
+    }
+
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);

@@ -96,4 +96,10 @@ final class RepriceAskNotice extends Notice
 
         return Text::lines($ask->offer, 'Было: '.$p['was'], 'Стало: '.$p['now']);
     }
+
+    /** Цена — в теме «Подтверждения и цена» (`Categories::topics`). */
+    public function topic(): string
+    {
+        return 'bids';
+    }
 }

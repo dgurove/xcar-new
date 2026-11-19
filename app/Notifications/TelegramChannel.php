@@ -58,6 +58,11 @@ final class TelegramChannel
                 return Sent::failed('чат удалён, Telegram отвязан');
             }
             Log::warning('Telegram: уведомление не ушло', ['user' => $user->id, 'title' => $notice->title(), 'error' => $e->getMessage()]);
+            // Сеть до отправки, 429, 5xx — повтор заданием через 1, 5, 15 минут (`RetryDelivery`); ответ, потерянный после
+            // отправки (таймаут чтения), не повторяем: сообщение могло уйти, второе было бы дублем.
+            if ($notice->id && self::transient($e)) {
+                throw RetryDelivery::after($notice, $user->id, 'telegram', mb_substr($e->getMessage(), 0, 120));
+            }
 
             return Sent::failed($e->getMessage());
         }
@@ -70,7 +75,22 @@ final class TelegramChannel
             }
         }
 
-        return $sent ? Sent::ok() : Sent::failed('Telegram не ответил');
+        return $sent ? Sent::ok(retries: RetryDelivery::retries()) : Sent::failed('Telegram не ответил');
+    }
+
+    /** Сбой, после которого сообщение точно не ушло: DNS, соединение, 429, ошибка сервера Telegram. */
+    public static function transient(Throwable $e): bool
+    {
+        if ($e instanceof \Illuminate\Http\Client\RequestException) {
+            $status = $e->response->status();
+
+            return $status === 429 || $status >= 500;
+        }
+        if ($e instanceof \Illuminate\Http\Client\ConnectionException) {
+            return preg_match('/resolv|Could not resolve|Failed to connect|Connection timed out|Connection refused|путей нет|SSL connect/i', $e->getMessage()) === 1;
+        }
+
+        return false;
     }
 
     private function sendFile(User $user, \App\Chats\File $file, int $replyTo, ?string $subject = null): void

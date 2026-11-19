@@ -78,14 +78,19 @@ class ChatTelegramTest extends TestCase
         $requirement = $offer->deal()->first()->openRequirement()->firstOrFail();
         $step = Message::where('requirement_id', $requirement->id)->firstOrFail();
 
-        // Дело шага в чате — менеджеру уведомлением чата, и в Telegram, хотя чаты он выключил.
+        // Дело шага в чате — менеджеру уведомлением чата, и в Telegram, хотя чаты он выключил: это тема «Сделки».
         Notification::assertSentTo($this->manager, ChatNotice::class, function (ChatNotice $n, array $channels) use ($step) {
             return $n->message()->is($step) && in_array(TelegramChannel::class, $channels, true);
         });
         // Короткое «Указать покупателя: …» — без Telegram: то же самое уже пришло сообщением.
         Notification::assertSentTo($this->manager, YourTurnNotice::class, fn ($n, array $channels) => ! in_array(TelegramChannel::class, $channels, true));
 
-        // Сообщение админа — целиком, и в Telegram.
+        // Обычное сообщение при выключенных чатах — его выбор (19.11.2026, «тема × канал»): в Telegram не идёт.
+        app(PostMessage::class)($step->chat, $this->admin, 'Короткое');
+        Notification::assertNotSentTo($this->manager, ChatNotice::class, fn (ChatNotice $n, array $channels) => $n->message()->text === 'Короткое' && in_array(TelegramChannel::class, $channels, true));
+
+        // Чаты включены — сообщение админа целиком, и в Telegram.
+        $this->manager->forceFill(['notification_settings' => []])->save();
         $long = str_repeat('Длинное сообщение администрации. ', 60);
         app(PostMessage::class)($step->chat, $this->admin, $long);
         Notification::assertSentTo($this->manager, ChatNotice::class, function (ChatNotice $n, array $channels) use ($long) {

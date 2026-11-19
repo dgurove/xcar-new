@@ -117,6 +117,12 @@ final class UpdateHandler
 
             return;
         }
+        // Просьба оценить — «Согласен» с ценой XCar или «Своя цена» ответом (19.11.2026).
+        if ($press->topic === 'estimate') {
+            $this->estimate($press);
+
+            return;
+        }
         // Ответ поставщика на доп. просьбу — берёт ли менеджер (18.11.2026, `Offers\ExtraAsk`).
         if ($press->topic === 'extra') {
             $this->extra($press);
@@ -563,6 +569,10 @@ final class UpdateHandler
 
             return;
         }
+        // Ответ (свайп) на сообщение бота: на сообщение чата — в этот чат на сайте, на вопрос цены — оценка (19.11.2026).
+        if ($this->replied($chatId, $message)) {
+            return;
+        }
         // Скрин СМС с оценками или текст «номер сумма» от админа — закупочные (28.10.2026, `ValuationFromChat`): читается
         // очередью, ответ — что по каждому номеру и кнопка «Проставить N».
         if ($this->valuationMessage($chatId, $message)) {
@@ -717,6 +727,156 @@ final class UpdateHandler
     private function profile(): array
     {
         return ['text' => 'Профиль на xcar.ru', 'url' => Surface::Site->url('/account')];
+    }
+
+    /**
+     * Ответ человека на сообщение бота (19.11.2026, владелец выбрал «кнопки в уведомлении»): на сообщение чата
+     * (`ChatNotice`, предмет `chat-message:N`) — текст, фото или PDF уходят в этот чат на сайте от него, как будто написал
+     * там (те же права `Chat::canPost` и дверь `PostMessage`), в ответ — 👍 на его сообщении; на вопрос «Своя цена» и на саму просьбу
+     * (`estimate:N`) — оценка. Ответ не на наше — не наше дело, дальше по обычному пути.
+     */
+    private function replied(int $chatId, array $message): bool
+    {
+        $to = (int) data_get($message, 'reply_to_message.message_id', 0);
+        if (! $to) {
+            return false;
+        }
+        $subject = (string) ChatMessage::where('chat_id', $chatId)->where('message_id', $to)->where('direction', ChatMessage::OUT)->value('subject');
+        if (preg_match('/^chat-message:(\d+)$/', $subject, $m) === 1) {
+            $this->replyToChat($chatId, (int) $m[1], $message);
+
+            return true;
+        }
+        if (preg_match('/^estimate:(\d+)$/', $subject, $m) === 1) {
+            $this->estimatePrice($chatId, (int) $m[1], $message);
+
+            return true;
+        }
+
+        return false;
+    }
+
+    private function replyToChat(int $chatId, int $messageId, array $message): void
+    {
+        $user = User::where('telegram_chat_id', $chatId)->first();
+        $chat = \App\Chats\Message::with('chat')->find($messageId)?->chat;
+        if (! $user || ! $chat || ! $chat->canPost($user)) {
+            $this->reply($chatId, 'В этот чат ответить нельзя', null);
+
+            return;
+        }
+        $text = $message['text'] ?? $message['caption'] ?? null;
+        $file = match (true) {
+            isset($message['photo']) => ['mime_type' => 'image/jpeg', 'file_name' => 'Фото.jpg'] + end($message['photo']),
+            isset($message['document']) => $message['document'],
+            default => null,
+        };
+        if ($text === null && $file === null) {
+            $this->reply($chatId, 'В чат уходят текст, фото и PDF', null);
+
+            return;
+        }
+        $files = [];
+        if ($file) {
+            $got = $this->bot->file((string) $file['file_id'], (string) $file['file_unique_id']);
+            if (! $got) {
+                $this->reply($chatId, 'Файл не скачался', null);
+
+                return;
+            }
+            $files[] = new \Illuminate\Http\UploadedFile(\Illuminate\Support\Facades\Storage::disk('private')->path($got[1]),
+                (string) ($file['file_name'] ?? basename($got[1])), $file['mime_type'] ?? null, null, true);
+        }
+        try {
+            app(\App\Chats\Actions\PostMessage::class)($chat, $user, $text, $files);
+        } catch (ValidationException $e) {
+            $this->reply($chatId, e(collect($e->errors())->flatten()->first() ?? 'Не отправилось'), null);
+
+            return;
+        }
+        $this->bot->react($chatId, (int) $message['message_id']);
+    }
+
+    /**
+     * «Согласен» — цена XCar оценкой (корректировка), «Своя цена» / «Ввести цену» — вопрос с полем ответа
+     * (`Bot::ask`, предмет просьбы `estimate:N`). Нажать может только тот, кого просили.
+     */
+    private function estimate(Press $press): void
+    {
+        $estimate = \App\Offers\Estimate::with('offer')->find($press->id);
+        $user = User::where('telegram_chat_id', $press->fromId)->first();
+        if (! $estimate || ! $user || $estimate->user_id !== $user->id) {
+            $this->bot->answer($press->queryId, 'Кнопка не для этого аккаунта');
+
+            return;
+        }
+        if (! $estimate->isOpen()) {
+            $this->bot->answer($press->queryId, 'Оценка уже не нужна');
+
+            return;
+        }
+        if ($press->action === 'agree' && $estimate->isCorrection()) {
+            $this->giveEstimate($press->chatId, $estimate, (int) $estimate->base_price, $user, fn (string $t) => $this->bot->answer($press->queryId, $t));
+
+            return;
+        }
+        $this->bot->answer($press->queryId, 'Цена — ответом на сообщение');
+        try {
+            $asked = $this->bot->ask($press->chatId, 'Цена продажи для '.e($estimate->offer->titleWithYear()).' — числом в ответ', 'Например, 1 250 000', $press->messageId);
+            // Предмет — как у самой просьбы (`EstimateNotice::subjectOf`): закрыли её — вопрос удаляется вместе с ней.
+            $asked?->update(['subject' => \App\Notifications\EstimateNotice::subjectOf($estimate->id)]);
+        } catch (Throwable $e) {
+            Log::warning('Telegram: вопрос цены не ушёл', ['error' => $e->getMessage()]);
+        }
+    }
+
+    private function estimatePrice(int $chatId, int $estimateId, array $message): void
+    {
+        $estimate = \App\Offers\Estimate::with('offer')->find($estimateId);
+        $user = User::where('telegram_chat_id', $chatId)->first();
+        if (! $estimate || ! $user || $estimate->user_id !== $user->id) {
+            return;
+        }
+        $amount = self::price((string) ($message['text'] ?? ''));
+        if (! $amount || $amount < \App\Offers\Pricing::MIN) {
+            $this->reply($chatId, 'Нужна цена числом, например 1 250 000 или 1,25 млн', null);
+
+            return;
+        }
+        $this->giveEstimate($chatId, $estimate, $amount, $user, fn (string $t) => $this->reply($chatId, $t, null));
+    }
+
+    /**
+     * Цена из ответа человеком: «1 250 000», «1250000 ₽», «1,25 млн», «850 тыс», «850к». Не цена (слова, «1.250.000»,
+     * пусто) — null: лучше переспросить, чем записать 1 ₽ из «1,5 млн» (`Money::rubles` отбрасывает дробную часть).
+     */
+    private static function price(string $text): ?int
+    {
+        $t = mb_strtolower(trim(str_replace("\u{00A0}", ' ', $text)));
+        if (preg_match('/^(\d[\d ]*(?:[.,]\d+)?)\s*(млн|миллион\w*|тыс\w*|т|к)?\.?\s*(?:₽|р|руб\w*)?\.?$/u', $t, $m) !== 1) {
+            return null;
+        }
+        $n = (float) str_replace([' ', ','], ['', '.'], $m[1]);
+        $mult = match (true) {
+            ! isset($m[2]) || $m[2] === '' => 1,
+            str_starts_with($m[2], 'м') => 1_000_000,
+            default => 1_000,
+        };
+
+        return (int) round($n * $mult);
+    }
+
+    /** Оценка той же дверью, что на сайте (`GiveEstimate`: не ниже заявленной, просьба открыта); итог — `$say`. */
+    private function giveEstimate(int $chatId, \App\Offers\Estimate $estimate, int $amount, User $user, callable $say): void
+    {
+        try {
+            app(\App\Offers\Actions\GiveEstimate::class)($estimate, $amount, $user);
+        } catch (ValidationException $e) {
+            $say(e(collect($e->errors())->flatten()->first() ?? 'Не записалось'));
+
+            return;
+        }
+        $say('Оценка '.\App\Support\Money::rub($amount).' принята');
     }
 
     private function reply(int $chatId, string $text, ?array $keyboard): void

@@ -253,6 +253,12 @@ final class MoneyNotice extends Notice
         return ! $this->toStaff;
     }
 
+    /** Менеджеру — тема «Счета и оплаты» (`Categories::topics`); категория `deals` остаётся для почты. */
+    public function topic(): string
+    {
+        return 'money';
+    }
+
     public function important(): bool
     {
         // Сотрудникам звенит и висит только то, что ждёт их (заявленная оплата, перевести поставщику); остальное с Telegram — тихо.
