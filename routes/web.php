@@ -117,6 +117,7 @@ Route::middleware(['auth', 'wall'])->group(function () {
     // Админ подтверждает за менеджера — выбор в шторке «За какого менеджера?».
     Route::post('/confirmations/{bid}/withdraw', [BidController::class, 'withdraw']);
     Route::post('/confirmations/{bid}/counter/answer', [BidController::class, 'answerCounter']);
+    Route::post('/confirmations/{bid}/counter/remind', [BidController::class, 'remindCounter']);
     // Выросла закупочная — ответ менеджера (28.10.2026, `AnswerReprice`).
     Route::post('/reprice-asks/{ask}', [BidController::class, 'answerReprice']);
     Route::post('/offers/{offer}/interest', [InterestController::class, 'store'])->middleware('throttle:30,1');

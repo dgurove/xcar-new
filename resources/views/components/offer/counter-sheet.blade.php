@@ -1,14 +1,14 @@
 {{-- Контрпредложение (26.10.2026, начальник; `MakeCounter`): своя цена в ответ на подтверждение — крупно по центру, как
      «Ссылка на оплату»; чипы «+5 000», «+10 000», «Продажная»; под суммой — насколько выше цены менеджера и зона цены словом
-     (админу порог знать можно). Живое у машины одно: висит у другого — строкой, что оно снимется. Кнопка — слот. --}}
-@props(['bid', 'offer'])
+     (админу порог знать можно). Живое у машины одно: висит у другого — строкой, что оно снимется. Кнопка — слот, или открывает событие `event` (пункт шторки строки подтверждения). --}}
+@props(['bid', 'offer', 'event' => null])
 @php
     use App\Support\Money;
     $id = 'counter-'.$bid->id;
     $asking = (int) $offer->asking_price;
     $other = $offer->bids->first(fn ($b) => ! $b->is($bid) && $b->hasPendingCounter());
 @endphp
-<div class="contents" data-controller="sheet">
+<div class="contents" data-controller="sheet" @if ($event) data-action="{{ $event }}:open@window->sheet#open" @endif>
     {{ $slot }}
     <x-ui.sheet :id="$id" title="Контрпредложение">
         <form method="post" action="/confirmations/{{ $bid->id }}/counter" class="flex flex-col gap-4" data-controller="counter"
@@ -33,6 +33,8 @@
                 @if ($asking > $bid->amount)<button type="button" class="chip nums" data-action="counter#set" data-counter-value-param="{{ $asking }}">Продажная {{ Money::nums($asking) }}</button>@endif
             </div>
             <div class="fields"><x-ui.field name="counter_comment" label="Комментарий" :value="old('counter_comment')" placeholder="Необязательно" id="{{ $id }}-comment"/></div>
+            {{-- Резерву при идущей сделке (19.11.2026): согласие сразу передаёт машину ему (`AnswerCounter`). --}}
+            @if ($offer->deal)<p class="text-sm text-urgent">Согласится — ТС сразу уйдёт ему, сделка {{ $offer->deal->buyer?->shortName() ?? 'текущего покупателя' }} отменится</p>@endif
             @if ($other)<p class="text-sm text-ink-muted">Контрпредложение {{ $other->user->shortName() }} (<span class="nums">{{ Money::rub($other->counter_amount) }}</span>) будет отозвано</p>@endif
             <x-ui.sheet-foot type="submit" data-counter-target="submit">Отправить {{ $bid->user->shortName() }}</x-ui.sheet-foot>
         </form>

@@ -7,29 +7,47 @@
     use App\Offers\InterestState;
     $me = auth()->user();
     $add = $me?->canManageCrm() && $offer->acceptsInterest();
+    $chats = $offer->interests->isNotEmpty() ? \App\Chats\Chat::byManager($offer) : collect();
 @endphp
 @if ($offer->interests->isNotEmpty() || $add)
     <div class="list">
         @foreach ($offer->interests as $interest)
-            <div class="row">
-                <x-ui.avatar :user="$interest->user" :size="36"/>
-                <div class="min-w-0 flex-1">
-                    {{-- Когда — справа в строке имени (16.11.2026, владелец: «тогда будет две строки, а не три»). --}}
-                    <span class="flex items-baseline gap-2"><span class="min-w-0 flex-1 truncate font-medium">{{ $interest->user->is($me) ? 'Вы' : $interest->user->name }}</span><span class="nums shrink-0 whitespace-nowrap text-sm text-ink-dim">{{ \App\Support\Ago::html($interest->created_at, true, words: false) }}</span></span>
-                    @if ($interest->user->manager || $interest->placer || $interest->state === InterestState::Closed)
-                    <span class="row-sub">
+            @php
+                // Чат — с менеджером: интерес покупателя — с его менеджером, свой интерес менеджера — с ним (19.11.2026).
+                $talk = $interest->user->hasDeals() ? $interest->user : $interest->user->manager;
+                $closable = $interest->state === InterestState::Contacted;
+            @endphp
+            {{-- Строкой подтверждения (19.11.2026, вариант 3): нажатие — шторка с «Написать» менеджеру и «Закрыть интерес». --}}
+            @php $sheet = ($talk && $talk->hasDeals() && $me?->canEditDeals()) || $closable; @endphp
+            <div @class(['bid-line', 'bid-line--off' => $interest->state === InterestState::Closed])>
+                @php ob_start(); @endphp
+                    <span class="bid-line-sub">
                         @if ($interest->user->manager)<span>покупатель {{ $interest->user->manager->shortName() }}</span>@endif
                         @if ($interest->placer)<span>{{ $interest->placer->is($me) ? 'вы внесли' : 'внёс '.$interest->placer->shortName() }}</span>@endif
+                        <span class="nums">{{ \App\Support\Ago::html($interest->created_at, true, words: false) }}</span>
                         @if ($interest->state === InterestState::Closed)<x-ui.state tone="closed">закрыт</x-ui.state>@endif
                     </span>
-                    @endif
-                    @if ($interest->comment)<span class="mt-1 block text-sm">{{ $interest->comment }}</span>@endif
-                    {{-- Без телефона и без «Мы связались» (16.11.2026, владелец: «кнопка не нужна», «номера телефонов тут не нужны»);
-                         «Закрыть» — только у отмеченных раньше «связались». --}}
-                    @if ($interest->state === InterestState::Contacted)
-                        <form method="post" action="/interests/{{ $interest->id }}" class="mt-2">@csrf<input type="hidden" name="state" value="closed"><button class="btn btn-s btn-quiet">Закрыть</button></form>
-                    @endif
-                </div>
+                @php $sub = ob_get_clean(); $name = $interest->user->is($me) ? 'Вы' : $interest->user->name; @endphp
+                @php ob_start(); @endphp
+                    <x-ui.avatar :user="$interest->user" :size="36"/>
+                    <span class="min-w-0 flex-1"><span class="bid-line-name">{{ $name }}</span>{!! $sub !!}@if ($interest->comment)<span class="mt-0.5 block text-sm">{{ $interest->comment }}</span>@endif</span>
+                    @if ($sheet)<x-ui.icon name="chevron-right" class="size-4 shrink-0 text-ink-muted"/>@endif
+                @php $main = ob_get_clean(); @endphp
+                @if ($sheet)
+                    <x-ui.more :id="'interest-menu-'.$interest->id" sheet-class="bid-sheet">
+                        <x-slot:trigger><button type="button" class="bid-line-main" data-action="sheet#open" aria-haspopup="dialog" aria-controls="interest-menu-{{ $interest->id }}">{!! $main !!}</button></x-slot:trigger>
+                        <div class="bid-sheet-head">
+                            <div class="flex items-center gap-3"><x-ui.avatar :user="$interest->user" :size="40"/><div class="min-w-0 flex-1"><div class="bid-line-name">{{ $name }}</div>{!! $sub !!}</div></div>
+                            @if ($interest->comment)<p class="mt-2 text-sm">{{ $interest->comment }}</p>@endif
+                            @if ($talk && $talk->hasDeals() && $me?->canEditDeals())<div class="bid-sheet-acts"><x-offer.chat-button :offer="$offer" :user="$talk" :chats="$chats"/></div>@endif
+                        </div>
+                        @if ($closable)
+                            <div class="menu-group"><form method="post" action="/interests/{{ $interest->id }}">@csrf<input type="hidden" name="state" value="closed"><button type="submit" class="menu-item w-full"><x-ui.icon name="check" class="size-5 text-ink-muted"/>Закрыть интерес</button></form></div>
+                        @endif
+                    </x-ui.more>
+                @else
+                    <div class="bid-line-main">{!! $main !!}</div>
+                @endif
             </div>
         @endforeach
         @if ($add)<x-offer.interest-for :offer="$offer"/>@endif

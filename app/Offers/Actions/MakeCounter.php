@@ -15,7 +15,8 @@ use Illuminate\Validation\ValidationException;
 /**
  * Контрпредложение (26.10.2026, начальник): админ в ответ на подтверждение называет свою цену — выше цены менеджера.
  * Менеджер соглашается (сразу сделка, `AnswerCounter`) или отказывается. Живое у предложения одно: новое другому менеджеру
- * снимает прежнее — иначе двое согласились бы на одну машину.
+ * снимает прежнее — иначе двое согласились бы на одну машину. И резерву при идущей сделке (19.11.2026, владелец: «Тужиков
+ * передумал»): согласится — машина сразу его, прежняя сделка отменяется (`AnswerCounter`).
  */
 final class MakeCounter
 {
@@ -27,9 +28,6 @@ final class MakeCounter
             if ($bid->state !== BidState::Active || $bid->isGarage()) {
                 throw ValidationException::withMessages(['counter' => 'Подтверждение уже '.mb_strtolower($bid->state->label())]);
             }
-            if ($offer->deal()->exists()) {
-                throw ValidationException::withMessages(['counter' => 'Идёт сделка — отдайте через «Отдать»']);
-            }
             if ($amount <= (int) $bid->amount) {
                 throw ValidationException::withMessages(['counter' => 'Контрпредложение — выше цены менеджера']);
             }
@@ -38,7 +36,7 @@ final class MakeCounter
                 ->each(fn (Bid $other) => $this->withdraw($offer, $other, $by));
 
             $bid->update(['counter_amount' => $amount, 'counter_comment' => $comment ?: null, 'counter_by' => $by->id,
-                'counter_at' => now(), 'counter_state' => CounterState::Pending]);
+                'counter_at' => now(), 'counter_state' => CounterState::Pending, 'counter_remind_at' => null]);
             $offer->log(OfferEventType::Counter, $by, ['bid_id' => $bid->id, 'amount' => $amount, 'manager' => $bid->user?->shortName()]);
             $bid->setRelation('offer', $offer);
             CounterOffered::dispatch($bid, $by);
@@ -53,7 +51,7 @@ final class MakeCounter
         if ($bid->counter_state !== CounterState::Pending) {
             return;
         }
-        $bid->update(['counter_state' => CounterState::Withdrawn]);
+        $bid->update(['counter_state' => CounterState::Withdrawn, 'counter_remind_at' => null]);
         $offer->log(OfferEventType::Counter, $by, ['bid_id' => $bid->id, 'amount' => $bid->counter_amount, 'state' => 'withdrawn']);
     }
 }

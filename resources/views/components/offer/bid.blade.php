@@ -2,7 +2,7 @@
      строки (не ниже порога — сумма зелёным, ниже — жёлтая заливка, 26.10.2026; строкой группы .list в bids.blade), менеджер с телефоном, когда, комментарий. У ждущего — «Принять» (у предложения в сделке — «Отдать»:
      прежняя сделка отменится) листом «Отдать» с этим подтверждением (`x-offer.give-sheet`) и «Отклонить» рядом — одинаково в
      редакторе и карточке строки. Гаражное («В гараж») — без цены: сколько машин у менеджера уже в гараже. --}}
-@props(['bid', 'offer', 'parked' => collect(), 'deal' => null])
+@props(['bid', 'offer', 'parked' => collect(), 'deal' => null, 'chats' => null, 'dealUrl' => null])
 @php
     use App\Offers\BidState;
     use App\Support\Money;
@@ -28,17 +28,98 @@
     $twoWays = $give && ! $garage && ! $offer->deal->isGarage() && ! $offer->deal->isAuction();
     $inGarage = $garage ? (int) ($parked[$bid->user_id] ?? 0) : 0;
 @endphp
-<div @class(['px-4 py-3', 'bid-row--loss' => ($loss && $active) || $high, 'bid-row--low' => $low && ! ($loss && $active), 'bid-row--ok' => $active && ! $garage && ! $low && ! $loss && ! $high])>
-    {{-- Строка суммы (16.11.2026, владелец): сумма слева, справа когда и карандаш «Поправить цену»; под суммой — разница и
-         тревоги; ниже кто — без телефона («номера телефонов тут не нужны»). --}}
-    <div class="flex items-center gap-2">
-        <span class="bid-amount nums whitespace-nowrap text-lg font-semibold">{{ $garage ? 'В гараж' : Money::rub($price) }}</span>
-        <span class="nums ml-auto whitespace-nowrap text-sm text-ink-dim">{{ \App\Support\Ago::html($bid->created_at, true, words: false) }}</span>
-        {{-- Опечатка в цене (02.11.2026, «9 400 000 вместо 940 000») — карандаш справа в строке суммы: поправить, а не отклонять. --}}
-        @if ($active && ! $garage && $bid->amount)
-            @php $tenth = (int) round($bid->amount / 10, -3); @endphp
-            <span class="contents" data-controller="sheet">
-                <button type="button" class="btn btn-ghost btn-s -my-1 -mr-1.5 px-1.5" data-action="sheet#open" aria-label="Поправить цену" title="Поправить цену"><x-ui.icon name="edit" class="size-4"/></button>
+@php
+    $n = $bid->id;
+    $accepted = $bid->state === BidState::Accepted;
+    $counter = $bid->hasPendingCounter();
+    $fix = $active && ! $garage && $bid->amount;
+    $tenth = $fix ? (int) round($bid->amount / 10, -3) : 0;
+    // Контрпредложение — и резерву при идущей сделке (19.11.2026, владелец): согласится — сделка сразу его (`AnswerCounter`).
+    $haggle = $active && ! $garage;
+    $who = $bid->user;
+    $talk = $who->hasDeals() && ($active || $accepted);
+    $sheet = $active || $accepted;
+    $diffText = $diff ? ($diff > 0 ? '+' : '−').Money::nums(abs($diff)) : null;
+    $alerts = $high || ($loss && $active) || (! $active && ! $accepted) || $counter || $bid->counterDeclined();
+@endphp
+{{-- Строка (19.11.2026, владелец по макетам, вариант 3: «всё в кучу свалено», «кнопки слева — бред»): слева аватар, имя и
+     когда; справа цена светофором и под ней всегда разница; тревоги — цветной строкой, только когда есть. Кнопок в строке нет:
+     нажатие — шторка (`x-ui.more`): шапка с ценой и комментарием, «Написать» и главная «Принять…» / «Отдать…» в ряд, ниже
+     списком «Поправить цену…», «Контрпредложение…», ответ за менеджера и красное «Отклонить…». Отклонённые — серой строкой. --}}
+<div @class(['bid-line', 'bid-row--loss' => ($loss && $active) || $high, 'bid-row--low' => $low && ! ($loss && $active), 'bid-row--ok' => $active && ! $garage && ! $low && ! $loss && ! $high, 'bid-line--off' => ! $sheet])>
+    @php ob_start(); @endphp
+        <span class="bid-amount nums font-semibold">{{ $garage ? 'В гараж' : Money::rub($price) }}</span>
+        @if ($diffText)<span class="bid-line-diff nums">{{ $diffText }}</span>@elseif ($inGarage)<span class="bid-line-diff nums">в гараже {{ $inGarage }}</span>@endif
+    @php $sum = ob_get_clean(); ob_start(); @endphp
+        @if ($high)<x-ui.state tone="danger">больше чем вдвое выше цены, проверьте сумму</x-ui.state>@endif
+        @if ($loss && $active)<x-ui.state tone="danger">{{ $under > 0 ? 'ниже закупочной на '.Money::nums($under) : 'равна закупочной' }}</x-ui.state>@endif
+        {{-- Принятое — под подписью «Принято», словом не повторяется. --}}
+        @if (! $active && ! $accepted)<x-ui.state :tone="$bid->state === BidState::Declined ? 'danger' : 'closed'">{{ mb_strtolower($bid->state->label()) }}</x-ui.state>@endif
+        @if ($counter)<x-ui.state tone="accent"><span class="nums">→ {{ Money::rub($bid->counter_amount) }}</span>, ждём ответа</x-ui.state>@if ($bid->counter_remind_at)<span>напомним {!! \App\Support\Ago::html($bid->counter_remind_at, true, words: false) !!}</span>@endif
+        @elseif ($bid->counterDeclined())<span>отказался от <span class="nums">{{ Money::rub($bid->counter_amount) }}</span></span>@endif
+    @php $alert = ob_get_clean(); ob_start(); @endphp
+        <x-ui.avatar :user="$who" :size="36"/>
+        <span class="min-w-0 flex-1">
+            <span class="bid-line-name">{{ $who->shortName() }}</span>
+            <span class="bid-line-sub"><span class="nums">{{ \App\Support\Ago::html($bid->created_at, true, words: false) }}</span></span>
+            @if ($alerts)<span class="bid-line-sub">{!! $alert !!}</span>@endif
+        </span>
+        <span class="bid-line-end">{!! $sum !!}</span>
+        @if ($sheet)<x-ui.icon name="chevron-right" class="size-4 shrink-0 text-ink-muted"/>@endif
+    @php $main = ob_get_clean(); @endphp
+    @if ($sheet)
+        <x-ui.more :id="'bid-menu-'.$n" sheet-class="bid-sheet">
+            <x-slot:trigger><button type="button" class="bid-line-main" data-action="sheet#open" aria-haspopup="dialog" aria-controls="bid-menu-{{ $n }}">{!! $main !!}</button></x-slot:trigger>
+            <div class="bid-sheet-head">
+                <div class="flex items-center gap-3">
+                    <x-ui.avatar :user="$who" :size="40"/>
+                    <div class="min-w-0 flex-1">
+                        <div class="bid-line-name">{{ $who->shortName() }}@if ($who->isSuperBuyer()) <span class="text-sm font-normal text-ink-dim">супер-покупатель</span>@endif</div>
+                        <div class="text-sm text-ink-dim nums">{{ \App\Support\Ago::html($bid->created_at, true, words: false) }}</div>
+                    </div>
+                    <span class="bid-line-end">{!! $sum !!}</span>
+                </div>
+                @if ($alerts)<div class="bid-line-sub mt-2">{!! $alert !!}</div>@endif
+                @if ($bid->comment)<p class="mt-2 text-sm">{{ $bid->comment }}</p>@endif
+                @if ($bid->byStaff())<p class="mt-1 text-sm text-ink-dim">внёс {{ $bid->placedBy?->shortName() }}</p>@endif
+                @if ($talk || $active || $dealUrl)
+                    <div class="bid-sheet-acts">
+                        @if ($talk)<x-offer.chat-button :offer="$offer" :user="$who" :chats="$chats"/>@endif
+                        @if ($active)
+                            <button type="button" class="btn btn-accent min-w-0 flex-1" data-controller="emit" data-action="emit#send sheet#close" data-emit-event-param="give-bid-{{ $n }}:open">{{ $give ? 'Отдать…' : 'Принять…' }}</button>
+                        @elseif ($dealUrl)
+                            <a href="{{ $dealUrl }}" class="btn btn-quiet min-w-0 flex-1" data-turbo-frame="_top">Перейти к сделке</a>
+                        @endif
+                    </div>
+                @endif
+            </div>
+            @if ($fix || $haggle)
+                <div class="menu-group">
+                    @if ($fix)<button type="button" class="menu-item" data-controller="emit" data-action="emit#send" data-emit-event-param="bid-amount-{{ $n }}:open"><x-ui.icon name="edit" class="size-5 text-ink-muted"/>Поправить цену…</button>@endif
+                    @if ($haggle)<button type="button" class="menu-item" data-controller="emit" data-action="emit#send" data-emit-event-param="counter-{{ $n }}:open"><x-ui.icon name="refresh" class="size-5 text-ink-muted"/>{{ $counter ? 'Другая цена…' : 'Контрпредложение…' }}</button>@endif
+                </div>
+            @endif
+            @if ($counter)
+                {{-- Менеджер ответил устно (28.10.2026) — за него: «Согласен» сразу отдаёт ему ТС, как его собственное «Согласен». --}}
+                <div class="menu-group">
+                    <form method="post" action="/confirmations/{{ $n }}/counter/answer" data-turbo-confirm="{{ \App\Offers\Warnings::TITLE }}" data-turbo-confirm-text="За менеджера: согласен на {{ Money::rub($bid->counter_amount) }}. ТС сразу уйдёт ему в сделку@if ($give), сделка {{ $offer->deal->buyer?->shortName() }} отменится @endif" data-turbo-confirm-label="Да, согласен" data-turbo-confirm-cancel="{{ \App\Offers\Warnings::CANCEL }}">@csrf<input type="hidden" name="agree" value="1"><button type="submit" class="menu-item w-full"><x-ui.icon name="check" class="size-5 text-ink-muted"/>За менеджера: согласен…</button></form>
+                    <form method="post" action="/confirmations/{{ $n }}/counter/answer" data-turbo-confirm="{{ \App\Offers\Warnings::TITLE }}" data-turbo-confirm-text="За менеджера: отказался от {{ Money::rub($bid->counter_amount) }}. Его подтверждение снимется" data-turbo-confirm-label="Да, отказался" data-turbo-confirm-cancel="{{ \App\Offers\Warnings::CANCEL }}" data-turbo-confirm-danger>@csrf<input type="hidden" name="agree" value="0"><button type="submit" class="menu-item w-full"><x-ui.icon name="x" class="size-5 text-ink-muted"/>За менеджера: отказался…</button></form>
+                    <form method="post" action="/confirmations/{{ $n }}/counter/withdraw" data-turbo-confirm="Отозвать контрпредложение?" data-turbo-confirm-label="Отозвать">@csrf<button type="submit" class="menu-item w-full"><x-ui.icon name="undo" class="size-5 text-ink-muted"/>Отозвать контрпредложение…</button></form>
+                </div>
+            @endif
+            @if ($active)
+                <div class="menu-group">
+                    <form method="post" action="/confirmations/{{ $n }}/decline" data-turbo-confirm="Отклонить подтверждение {{ $who->shortName() }}?" data-turbo-confirm-label="Отклонить" data-turbo-confirm-danger>@csrf<button type="submit" class="menu-item w-full text-danger"><x-ui.icon name="x" class="size-5"/>Отклонить…</button></form>
+                </div>
+            @endif
+        </x-ui.more>
+    @else
+        <div class="bid-line-main">{!! $main !!}</div>
+    @endif
+    @if ($active)<x-offer.give-sheet :offer="$offer" :bid="$bid"/>@endif
+    {{-- Шторки пунктов — вне шторки строки (поповер прячет вложенное), открываются событием. --}}
+    @if ($fix)
+        <span class="contents" data-controller="sheet" data-action="bid-amount-{{ $n }}:open@window->sheet#open">
                 <x-ui.sheet :id="'bid-amount-'.$bid->id" title="Поправить цену">
                     <form method="post" action="/confirmations/{{ $bid->id }}/amount" class="flex flex-col gap-4" data-put-scope>
                         @csrf
@@ -60,43 +141,7 @@
                         <x-ui.sheet-foot type="submit">Сохранить</x-ui.sheet-foot>
                     </form>
                 </x-ui.sheet>
-            </span>
-        @endif
-    </div>
-    @if ($inGarage || $diff || $high || ($loss && $active) || ! $active)
-        <div class="flex flex-wrap items-center gap-x-2 gap-y-1">
-            @if ($inGarage)<span class="nums text-sm text-ink-dim">в гараже {{ $inGarage }}</span>@endif
-            @if ($diff)<span class="nums whitespace-nowrap text-sm text-ink-dim">{{ $diff > 0 ? '+' : '−' }}{{ Money::nums(abs($diff)) }} от цены</span>@endif
-            @if ($high)<x-ui.state tone="danger">больше чем вдвое выше цены, проверьте сумму</x-ui.state>@endif
-            @if ($loss && $active)<x-ui.state tone="danger">{{ $under > 0 ? 'ниже закупочной на '.Money::nums($under) : 'равна закупочной' }}</x-ui.state>@endif
-            @if (! $active)<x-ui.state :tone="$bid->state === BidState::Accepted ? 'open' : ($bid->state === BidState::Declined ? 'danger' : 'closed')">{{ $bid->state->label() }}</x-ui.state>@endif
-        </div>
+        </span>
     @endif
-    <div class="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm"><x-ui.person :user="$bid->user" full/>@if ($bid->user->isSuperBuyer())<span class="text-ink-dim">супер-покупатель</span>@endif @if ($bid->byStaff())<span class="text-ink-dim">внёс {{ $bid->placedBy?->shortName() }}</span>@endif</div>
-    @if ($bid->comment)<div class="mt-1 text-sm">{{ $bid->comment }}</div>@endif
-    {{-- Контрпредложение (26.10.2026): ждём ответа — акцентной строкой с «Отозвать», отказался — серым. --}}
-    @if ($bid->hasPendingCounter())
-        <div class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
-            <x-ui.state tone="accent"><span class="nums">→ {{ Money::rub($bid->counter_amount) }}</span>, ждём ответа</x-ui.state>
-            <form method="post" action="/confirmations/{{ $bid->id }}/counter/withdraw" class="contents" data-turbo-confirm="Отозвать контрпредложение?" data-turbo-confirm-label="Отозвать">@csrf<button type="submit" class="letter-link">Отозвать</button></form>
-            {{-- Менеджер ответил устно (28.10.2026) — за него: «Согласен» сразу отдаёт ему ТС, как его собственное «Согласен». --}}
-            <x-offer.answer-for :action="'/confirmations/'.$bid->id.'/counter/answer'" :agree-ask="'За менеджера: согласен на '.Money::rub($bid->counter_amount).'?'"
-                agree-text="ТС сразу уйдёт ему в сделку" :decline-ask="'За менеджера: отказался от '.Money::rub($bid->counter_amount).'?'"/>
-        </div>
-    @elseif ($bid->counterDeclined())
-        <div class="mt-1 text-sm text-ink-dim">отказался от <span class="nums">{{ Money::rub($bid->counter_amount) }}</span></div>
-    @endif
-    @if ($active)
-        <div class="mt-2 flex flex-wrap items-start gap-2">
-            <x-offer.give-sheet :offer="$offer" :bid="$bid">
-                <x-ui.button type="button" size="sm" data-action="sheet#open">{{ $give ? ($twoWays ? 'Отдать…' : 'Отдать') : 'Принять' }}</x-ui.button>
-            </x-offer.give-sheet>
-            @if (! $garage && ! $give)
-                <x-offer.counter-sheet :offer="$offer" :bid="$bid">
-                    <x-ui.button type="button" size="sm" variant="ghost" data-action="sheet#open">{{ $bid->hasPendingCounter() ? 'Другая цена' : 'Контрпредложение' }}</x-ui.button>
-                </x-offer.counter-sheet>
-            @endif
-            <form method="post" action="/confirmations/{{ $bid->id }}/decline" data-turbo-confirm="Отклонить подтверждение {{ $bid->user->shortName() }}?">@csrf<x-ui.button size="sm" variant="ghost">Отклонить</x-ui.button></form>
-        </div>
-    @endif
+    @if ($haggle)<x-offer.counter-sheet :offer="$offer" :bid="$bid" :event="'counter-'.$n"/>@endif
 </div>

@@ -130,6 +130,45 @@ class BidCounterTest extends TestCase
         $this->assertNull($this->offer->fresh()->deal);
     }
 
+    /**
+     * Контрпредложение резерву при идущей сделке (19.11.2026, владелец: «Тужиков передумал»; «сразу ему, сделка Тужикова
+     * отменяется»): согласие передаёт машину резерву, прежняя сделка отменяется.
+     */
+    public function test_reserve_counter_agree_hands_deal_over(): void
+    {
+        $denis = app(PlaceBid::class)($this->offer, $this->denis, 980000);
+        $roman = app(PlaceBid::class)($this->offer, $this->roman, 965000);
+        app(\App\Offers\Actions\AcceptBid::class)($denis, $this->admin, scheme: \App\Offers\DealScheme::resolve($this->offer->fresh(), null));
+        $first = $this->offer->fresh()->deal;
+        $this->assertSame($this->denis->id, $first->buyer_id);
+
+        $this->actingAs($this->admin)->post(self::CRM.'/confirmations/'.$roman->id.'/counter', ['counter_amount' => '990 000'])->assertSessionHasNoErrors();
+        $this->assertSame(CounterState::Pending, $roman->fresh()->counter_state);
+
+        $this->actingAs($this->roman)->post(self::SITE.'/confirmations/'.$roman->id.'/counter/answer', ['agree' => '1'])->assertSessionHasNoErrors();
+        $deal = $this->offer->fresh()->deal;
+        $this->assertSame($this->roman->id, $deal->buyer_id);
+        $this->assertSame(990000, (int) $roman->fresh()->amount);
+        $this->assertFalse($first->fresh()->isActive());
+    }
+
+    /** «Напомнить через…» (19.11.2026): в срок контрпредложение приходит снова, напоминание снимается. */
+    public function test_counter_remind(): void
+    {
+        $bid = app(PlaceBid::class)($this->offer, $this->roman, 965000);
+        app(MakeCounter::class)($bid, $this->admin, 970000);
+        Notification::fake();
+
+        $this->actingAs($this->roman)->post(self::SITE.'/confirmations/'.$bid->id.'/counter/remind', ['when' => '2'])->assertSessionHasNoErrors();
+        $this->assertNotNull($bid->fresh()->counter_remind_at);
+        $this->assertSame(0, app(\App\Offers\Actions\RemindCounter::class)());
+
+        $this->travel(3)->hours();
+        $this->assertSame(1, app(\App\Offers\Actions\RemindCounter::class)());
+        Notification::assertSentTo($this->roman, CounterOfferedNotice::class);
+        $this->assertNull($bid->fresh()->counter_remind_at);
+    }
+
     public function test_one_live_counter_and_rebid_kills_it(): void
     {
         $roman = app(PlaceBid::class)($this->offer, $this->roman, 965000);

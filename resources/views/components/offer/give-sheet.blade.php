@@ -25,7 +25,8 @@
         default => 'Отдать',
     };
 @endphp
-<div class="contents" data-controller="sheet" @unless ($bid) data-action="give-{{ $n }}:open@window->sheet#open" @endunless>
+{{-- С подтверждением — и событием give-bid-{id}:open (главная кнопка шторки строки подтверждения, 19.11.2026). --}}
+<div class="contents" data-controller="sheet" data-action="{{ $bid ? 'give-bid-'.$bid->id : 'give-'.$n }}:open@window->sheet#open">
     {{ $slot }}
     <x-ui.sheet :id="$id" :title="$title" tall>
         <div class="mb-4 flex flex-wrap items-center gap-1.5">@if ($bid)<x-ui.person :user="$bid->user" full/>@endif<span class="tag">{{ $offer->titleWithYear() }}</span>

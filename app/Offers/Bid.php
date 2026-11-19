@@ -20,7 +20,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * `Bid::price`.
  */
 #[Fillable(['offer_id', 'purchase_car_id', 'user_id', 'placed_by', 'kind', 'amount', 'comment', 'state', 'decided_at', 'decided_by', 'cost',
-    'counter_amount', 'counter_comment', 'counter_by', 'counter_at', 'counter_state'])]
+    'counter_amount', 'counter_comment', 'counter_by', 'counter_at', 'counter_state', 'counter_remind_at'])]
 class Bid extends Model
 {
     use FastAttributes;
@@ -55,7 +55,7 @@ class Bid extends Model
     protected function casts(): array
     {
         return ['state' => BidState::class, 'kind' => BidKind::class, 'amount' => 'int', 'cost' => 'int', 'decided_at' => 'datetime',
-            'counter_amount' => 'int', 'counter_at' => 'datetime', 'counter_state' => CounterState::class];
+            'counter_amount' => 'int', 'counter_at' => 'datetime', 'counter_state' => CounterState::class, 'counter_remind_at' => 'datetime'];
     }
 
     public function offer(): BelongsTo

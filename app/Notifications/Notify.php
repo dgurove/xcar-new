@@ -213,7 +213,7 @@ final class Notify
     public function counterAnswered(CounterAnswered $e): void
     {
         // Ответил за менеджера сам админ — ему не звонить.
-        Notification::send($this->staff()->reject(fn (User $u) => $u->is($e->by)), new CounterAnsweredNotice($e->bid->load('offer', 'user'), $e->agreed));
+        Notification::send($this->staff()->reject(fn (User $u) => $u->is($e->by)), new CounterAnsweredNotice($e->bid->load('offer', 'user'), $e->agreed, $e->stuck));
     }
 
     /** Оценка менеджером (11.10.2026): просьба — менеджеру, оценка — админам, решение — снова менеджеру. */

@@ -50,7 +50,11 @@ class ChatController
     {
         abort_unless($request->user()->canEditDeals(), 403);
         // Менеджер или супер-покупатель (у него сделки как у менеджера, `hasDeals`).
-        abort_unless($user->hasDeals() && ($offer->worksWith($user) || Chat::where('offer_id', $offer->id)->where('user_id', $user->id)->exists()), 404);
+        // И тому, кто подтверждал машину (резерв, отклонённые) или чей покупатель проявил к ней интерес (19.11.2026, владелец:
+        // «Тужиков передумал, хочу Роману перед передачей написать, а тут нет кнопочки чата»).
+        abort_unless($user->hasDeals() && ($offer->worksWith($user) || Chat::where('offer_id', $offer->id)->where('user_id', $user->id)->exists()
+            || $offer->bids()->where('user_id', $user->id)->exists()
+            || $offer->interests()->whereHas('user', fn ($q) => $q->whereKey($user->id)->orWhere('manager_id', $user->id))->exists()), 404);
 
         return redirect('/work/chats/'.$open($offer, $user, greet: false)->id);
     }

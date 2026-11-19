@@ -70,8 +70,22 @@ class BidController
         $agree = $request->boolean('agree');
         $answer($bid, $request->user(), $agree);
 
-        return $agree ? redirect($bid->offer->deal()->first()?->href() ?? '/offers/'.$bid->offer->number)->with('toast', 'Сделка открыта')
-            : back()->with('toast', 'Вы отказались, ваша цена в силе');
+        // Резерв при идущей сделке: передать сразу могло не выйти — тогда его ответ принят, передадут руками (`AnswerCounter`).
+        $deal = $bid->offer->deal()->first();
+        $mine = $deal && $deal->buyer_id === $request->user()->id;
+
+        return $agree ? redirect($mine ? $deal->href() : '/offers/'.$bid->offer->number)->with('toast', $mine ? 'Сделка открыта' : 'Согласие принято')
+            : back()->with('toast', 'Вы отказались, подтверждение снято');
+    }
+
+    /** «Напомнить через…» в ответе на контрпредложение (19.11.2026): часы снова пришлют его (`RemindCounter`). Пусто — снять. */
+    public function remindCounter(Request $request, Bid $bid)
+    {
+        abort_unless($bid->user_id === $request->user()->id && $bid->hasPendingCounter(), 404);
+        $at = \App\Workflow\Actions\RemindAsks::at((string) $request->input('when'));
+        \App\Offers\Actions\RemindCounter::set($bid, $at, $request->user());
+
+        return back()->with('toast', $at ? 'Напомним '.\App\Workflow\Actions\RemindAsks::when($at) : 'Напоминание снято');
     }
 
     /** Выросла закупочная: «Согласен» — новая цена, «Отказываюсь» — сделка отменена или подтверждение снято. */

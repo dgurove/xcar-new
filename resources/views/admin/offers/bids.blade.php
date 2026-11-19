@@ -20,31 +20,43 @@
     $parallelBids = \App\Offers\Deal::where('offer_id', $offer->id)->parallel()->pluck('bid_id')->filter();
     // Заменённое новой ценой — не отдельное подтверждение: смена цены видна в «Истории».
     $rest = $offer->bids->reject(fn ($b) => in_array($b->state, [BidState::Active, BidState::Replaced], true) || $b->is($accepted) || $parallelBids->contains($b->id))->sortByDesc('created_at')->values();
+    // Чат с менеджером у каждой строки (19.11.2026) — чаты машины одним запросом.
+    $chats = \App\Chats\Chat::byManager($offer);
+    $showAccepted = $accepted && ! ($compact ?? false);
+    $add = auth()->user()?->canManageCrm() && in_array($offer->state, [\App\Offers\OfferState::Open, \App\Offers\OfferState::Sold], true);
+    // Подпись группы ждущих: при сделке — «Резерв N»; «+ За менеджера» справа в ней, без подписи — внизу справа.
+    $capActive = $showAccepted || $offer->deal || $parallelBids->isNotEmpty();
 @endphp
 {{-- Группы строк через линию (.list), а не плашка на каждое подтверждение. --}}
 <div class="flex flex-col gap-2">
     {{-- Окно машины (`compact`, 12.11.2026): принятое не повторяется — его цена справа в шапке, менеджер в сведениях. --}}
-    @if ($accepted && ! ($compact ?? false))
-        <div class="list"><x-offer.bid :bid="$accepted" :offer="$offer" :parked="$parked" :deal="$offer->deal?->bid_id === $accepted->id ? $offer->deal : null"/></div>
-        @unless ($inside ?? false)<a href="{{ $offer->crmPath() }}" class="btn btn-s btn-quiet self-start" data-turbo-frame="_top">Перейти к сделке</a>@endunless
+    @if ($showAccepted)
+        <div>
+            <div class="list-cap !px-1">Принято</div>
+            <div class="list"><x-offer.bid :bid="$accepted" :offer="$offer" :parked="$parked" :chats="$chats" :deal-url="($inside ?? false) ? null : $offer->crmPath()" :deal="$offer->deal?->bid_id === $accepted->id ? $offer->deal : null"/></div>
+        </div>
     @endif
     @if ($parallelBids->isNotEmpty() && auth()->user()?->canManageCrm())
-        @include('admin.offers.parallels', ['offer' => $offer, 'main' => $offer->deal])
+        @include('admin.offers.parallels', ['offer' => $offer, 'main' => $offer->deal, 'chats' => $chats])
     @endif
-    @if ($accepted && $active->isNotEmpty())
-        <div class="mt-2 px-1 text-sm text-ink-dim">Резерв <span class="nums">{{ $active->count() }}</span></div>
-    @endif
-    @if ($active->isNotEmpty())
-        <div class="list">
-            @foreach ($active as $bid)
-                <x-offer.bid :bid="$bid" :offer="$offer" :parked="$parked"/>
-            @endforeach
+    @if ($active->isNotEmpty() || ($add && $capActive))
+        <div>
+            @if ($capActive)
+                <div class="list-cap !items-center !px-1 justify-between">@if ($active->isNotEmpty())<span>Резерв <span class="nums">{{ $active->count() }}</span></span>@endif @if ($add)<x-offer.bid-for :offer="$offer" cap class="ml-auto"/>@endif</div>
+            @endif
+            @if ($active->isNotEmpty())
+                <div class="list">
+                    @foreach ($active as $bid)
+                        <x-offer.bid :bid="$bid" :offer="$offer" :parked="$parked" :chats="$chats"/>
+                    @endforeach
+                </div>
+            @endif
         </div>
     @endif
     @if ($rest->isNotEmpty())
         <details class="mt-1">
             <summary class="letter-link cursor-pointer">Ещё {{ $rest->count() }}</summary>
-            <div class="list mt-2">@foreach ($rest as $bid)<x-offer.bid :bid="$bid" :offer="$offer" :parked="$parked"/>@endforeach</div>
+            <div class="list mt-2">@foreach ($rest as $bid)<x-offer.bid :bid="$bid" :offer="$offer" :parked="$parked" :chats="$chats"/>@endforeach</div>
         </details>
     @endif
     {{-- Та же машина в закупке (29.10.2026, владелец: «не видно в подтверждениях, сколько за неё предлагали в закупке»):
@@ -53,7 +65,7 @@
         <div @class(['px-1 text-sm text-ink-dim', 'mt-2' => $offer->bids->isNotEmpty()])>В закупке № {{ $offer->purchaseCar->purchase->number }}</div>
         @include('admin.offers.purchase-prices', ['car' => $offer->purchaseCar])
     @endif
-    @if (auth()->user()?->canManageCrm() && in_array($offer->state, [\App\Offers\OfferState::Open, \App\Offers\OfferState::Sold], true))
-        <x-offer.bid-for :offer="$offer"/>
+    @if ($add && ! $capActive)
+        <div class="list-cap !px-1 justify-end"><x-offer.bid-for :offer="$offer" cap/></div>
     @endif
 </div>

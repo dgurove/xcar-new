@@ -1938,6 +1938,24 @@ html.kb-open { --home-gap: 0px; }
   .bid-row--low .bid-amount { color: var(--color-urgent); }
   .bid-row--loss { box-shadow: inset 4px 0 0 var(--color-danger); }
   .bid-row--loss .bid-amount { color: var(--color-danger); }
+  /* Строка подтверждения, резерва, параллельной и интереса (19.11.2026, вариант 3): слева аватар, имя и когда, справа цена и
+     под ней разница; вся строка — кнопка шторки. Шторка: шапка с ценой и ряд «Написать» | главная. */
+  .bid-line { display: flex; flex-direction: column; }
+  .bid-line-main { display: flex; width: 100%; min-width: 0; align-items: center; gap: .75rem; padding: .625rem .75rem .625rem 1rem; text-align: left; }
+  button.bid-line-main { cursor: pointer; }
+  @media (hover: hover) { button.bid-line-main:hover { background: var(--color-hover); } }
+  .bid-line-sub { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: .5rem; row-gap: .125rem; font-size: var(--text-sm); color: var(--color-ink-dim); }
+  .bid-line-end { display: flex; flex: none; flex-direction: column; align-items: flex-end; text-align: right; }
+  .bid-line-end > :where(.bid-amount) { color: var(--color-ink); font-size: var(--text-base); white-space: nowrap; }
+  .bid-line-name { display: block; font-weight: 500; overflow-wrap: anywhere; }
+  .bid-line-diff { font-size: var(--text-sm); color: var(--color-ink-dim); white-space: nowrap; }
+  .bid-line--off .bid-amount { color: var(--color-ink-dim); }
+  .bid-sheet-head { padding: 1rem; }
+  .bid-sheet-acts { display: flex; gap: .625rem; margin-top: .875rem; }
+  .bid-sheet-acts .btn-accent { flex: 1 0 auto; }
+  /* Одна «Написать» (интерес) — во всю ширину. */
+  .bid-sheet-acts:not(:has(.btn-accent)) .btn { flex: 1 1 0%; }
+  .sheet-actions-list > .bid-sheet-head + .menu-group { border-top: 1px solid var(--color-line); }
   /* Контрпредложение — карточка менеджера и строка админа: заливка акцента, без обводок. */
   .counter-card { @apply rounded-(--radius-l) bg-surface p-4; } /* без заливки цветом (10.11.2026, владелец: «в глазах плывёт») — цвет только у подписи */
   .confirm-warn { display: grid; place-items: center; width: 2.75rem; height: 2.75rem; margin-bottom: .75rem; border-radius: 9999px;
@@ -2089,6 +2107,8 @@ html.kb-open { --home-gap: 0px; }
   .activity-what { @apply mt-0.5 text-sm text-ink-muted; }
   /* Подпись группы строк, как в «Настройках» iOS: мелко и серым над плашкой, справа — состояние словом. */
   .list-cap { @apply flex items-baseline gap-2 px-4 pb-1.5 text-sm font-medium text-ink-dim; }
+  /* Действие справа в подписи группы («+ За менеджера» у «Резерва», 19.11.2026). */
+  .list-cap-act { @apply -my-1 inline-flex items-center gap-1 py-1 text-sm font-medium text-accent-text; }
   /* Вознаграждение менеджера по ДКП — его прибыль (05.10.2026): строка в зелёном, сумма с мягким свечением и одним
      проходом блика при показе; без движения — просто зелёным. */
   .row.profit { box-shadow: inset 4px 0 0 var(--color-open); }
@@ -4322,6 +4342,8 @@ html.kb-open { --home-gap: 0px; }
 .sheet:popover-open .segment svg { flex-shrink: 0; width: .875rem; height: .875rem; }
 .sheet.sheet-sort:popover-open { width: 18rem; }
 .sheet.sheet-export:popover-open { width: 26rem; }
+/* Шторка строки подтверждения поповером на ПК — шире: имя, цена и ряд «Написать | Отдать…» (19.11.2026). */
+.sheet.sheet-actions.bid-sheet:popover-open { width: 21rem; }
 
 /* ------------------------------------------------------------- каркас */
 

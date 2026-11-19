@@ -118,6 +118,12 @@ class Chat extends Model
             ->whereNull('manager_id')->where('messages_count', '>', 0);
     }
 
+    /** Чаты площадки по машине — по менеджеру: строки подтверждений, резерва и интереса берут свой отсюда (`x-offer.chat-button`). */
+    public static function byManager(Offer $offer): \Illuminate\Support\Collection
+    {
+        return self::where('offer_id', $offer->id)->whereNull('manager_id')->where('messages_count', '>', 0)->get()->keyBy('user_id');
+    }
+
     /** Превью последнего сообщения в строке списка; me — чтобы своё начиналось с «Вы:». */
     public function lastPreview(?User $me): string
     {

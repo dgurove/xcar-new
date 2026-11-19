@@ -10,7 +10,7 @@ use App\Users\User;
 /** Админам: менеджер ответил на контрпредложение — согласился (сделка уже открыта) или отказался. */
 final class CounterAnsweredNotice extends Notice
 {
-    public function __construct(private Bid $bid, private bool $agreed) {}
+    public function __construct(private Bid $bid, private bool $agreed, private ?string $stuck = null) {}
 
     public function label(): string
     {
@@ -24,7 +24,14 @@ final class CounterAnsweredNotice extends Notice
 
     public function text(): ?string
     {
-        return $this->bid->user->name.', '.$this->bid->offer->titleWithYear().($this->agreed ? ', сделка открыта' : ', подтверждение снято');
+        // Резерв согласился при идущей сделке, а передать сразу не вышло (19.11.2026) — передать руками «Отдать…».
+        $how = match (true) {
+            ! $this->agreed => ', подтверждение снято',
+            $this->stuck !== null => ', передайте вручную: '.$this->stuck,
+            default => ', сделка открыта',
+        };
+
+        return $this->bid->user->name.', '.$this->bid->offer->titleWithYear().$how;
     }
 
     public function href(): string

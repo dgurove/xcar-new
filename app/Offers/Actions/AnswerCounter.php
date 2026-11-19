@@ -6,6 +6,7 @@ use App\Offers\Bid;
 use App\Offers\BidState;
 use App\Offers\CounterState;
 use App\Offers\DealScheme;
+use App\Offers\Giving;
 use App\Offers\Events\CounterAnswered;
 use App\Offers\Offer;
 use App\Offers\OfferEventType;
@@ -16,6 +17,7 @@ use Illuminate\Validation\ValidationException;
 /**
  * Ответ менеджера на контрпредложение (26.10.2026). «Согласен» — цена подтверждения становится ценой админа и машина
  * сразу его: «Принять» от имени того, кто предложил (`AcceptBid`), деньги сделки — по умолчанию, админ правит их в сделке.
+ * При идущей сделке (резерв, 19.11.2026) — передача ему полностью через `Give`, прежняя отменяется.
  * Цену назвал админ сам — согласия «не выше закупочной» второй раз не спрашиваем. «Отказаться» — подтверждение снимается
  * (19.11.2026, владелец: «остаётся его цена — как-то неправильно»; прежде оставалось по своей цене), и после конца приёма тоже:
  * отказ — его ответ, а не отзыв в приёме (`WithdrawBid` после приёма не пускает). Ответить можно и после конца приёма, пока машину никому не отдали. `$staff` — админ отвечает за менеджера
@@ -35,7 +37,8 @@ final class AnswerCounter
         }
         $for = $staff ? ['for' => 'manager'] : [];
 
-        DB::transaction(function () use ($bid, $manager, $agree, $staff, $for) {
+        $stuck = null;
+        DB::transaction(function () use ($bid, $manager, $agree, $staff, $for, &$stuck) {
             $offer = Offer::whereKey($bid->offer_id)->lockForUpdate()->firstOrFail();
             $bid->refresh();
             if (! $bid->hasPendingCounter()) {
@@ -43,21 +46,31 @@ final class AnswerCounter
             }
             $amount = $bid->counter_amount;
             if (! $agree) {
-                $bid->update(['counter_state' => CounterState::Declined] + ($bid->state === BidState::Active ? ['state' => BidState::Withdrawn] : []));
+                $bid->update(['counter_state' => CounterState::Declined, 'counter_remind_at' => null] + ($bid->state === BidState::Active ? ['state' => BidState::Withdrawn] : []));
                 $offer->log(OfferEventType::Counter, $staff ?? $manager, ['bid_id' => $bid->id, 'amount' => $amount, 'state' => 'declined', ...$for]);
                 $bid->state === BidState::Withdrawn && $offer->log(OfferEventType::BidWithdrawn, $staff ?? $manager, ['bid_id' => $bid->id, ...$for]);
 
                 return;
             }
-            if ($offer->deal()->exists()) {
-                throw ValidationException::withMessages(['counter' => 'Контрпредложение уже не действует']);
-            }
-            $bid->update(['amount' => $amount, 'counter_state' => CounterState::Accepted]);
+            $bid->update(['amount' => $amount, 'counter_state' => CounterState::Accepted, 'counter_remind_at' => null]);
             $offer->log(OfferEventType::Counter, $staff ?? $manager, ['bid_id' => $bid->id, 'amount' => $amount, 'state' => 'accepted', ...$for]);
-            ($this->accept)($bid, $bid->counterBy ?? $manager, scheme: DealScheme::resolve($offer, null), loss: true);
+            $scheme = DealScheme::resolve($offer, null);
+            if (! $offer->deal()->exists()) {
+                ($this->accept)($bid, $bid->counterBy ?? $manager, scheme: $scheme, loss: true);
+
+                return;
+            }
+            // Резерв при идущей сделке (19.11.2026, владелец: «сразу ему, сделка Тужикова отменяется») — как «Отдать» админом:
+            // прежняя сделка отменяется. Не пустило (машина уже в гараже, гараж не включён…) — цена новая, согласие записано,
+            // админам — передать руками; менеджер ошибки не видит, его ответ принят.
+            try {
+                app(Give::class)(Giving::bid($bid, scheme: $scheme, loss: true), $bid->counterBy ?? $staff ?? $manager);
+            } catch (ValidationException $e) {
+                $stuck = collect($e->errors())->flatten()->first() ?: 'не вышло';
+            }
         });
 
-        CounterAnswered::dispatch($bid->refresh(), $agree, $staff);
+        CounterAnswered::dispatch($bid->refresh(), $agree, $staff, $stuck);
 
         return $bid;
     }
