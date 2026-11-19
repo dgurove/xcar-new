@@ -153,10 +153,11 @@ final class UpdateHandler
     {
         $action = $aliases[$press->action] ?? $press->action;
         if ($action === 'back' || isset($asks[$action])) {
-            [$question, $yes] = $asks[$action] ?? ['', ''];
+            // Третьим — своё «нет» (19.11.2026, «Беру в работу»: «Ещё подумаю», `Offers\TakeWarning`), иначе «Назад».
+            [$question, $yes, $no] = ($asks[$action] ?? ['', '']) + [2 => 'Назад'];
             $this->bot->answer($press->queryId, $question !== '' ? 'Подтвердите' : '');
             $this->bot->edit($press->chatId, $press->messageId, $text($question), [
-                $action === 'back' ? $buttons : [['text' => $yes, 'callback_data' => "{$topic}:{$press->id}:sure{$action}"], ['text' => 'Назад', 'callback_data' => "{$topic}:{$press->id}:back"]],
+                $action === 'back' ? $buttons : [['text' => $yes, 'callback_data' => "{$topic}:{$press->id}:sure{$action}"], ['text' => $no, 'callback_data' => "{$topic}:{$press->id}:back"]],
                 ...$open]);
 
             return;
@@ -293,7 +294,7 @@ final class UpdateHandler
             return;
         }
         $this->confirmed($press, 'turn', $text, YourTurnNotice::consentButtons($r), $open,
-            ['take' => ['Беру в работу? После этого отказаться нельзя', 'Да, беру'], 'drop' => ['Передумали? Сделка отменится', 'Да, передумал']],
+            ['take' => [\App\Offers\TakeWarning::telegram(), 'Да, беру', \App\Offers\TakeWarning::CANCEL], 'drop' => ['Передумали? Сделка отменится', 'Да, передумал']],
             function (string $which) use ($r, $user) {
                 $exit = in_array($which, ['take', 'drop'], true) ? YourTurnNotice::consentExit($r, $which) : null;
                 if (! $exit) {
@@ -326,7 +327,7 @@ final class UpdateHandler
             return;
         }
         $this->confirmed($press, 'extra', $text, $notice::buttons($ask), $open,
-            ['take' => [$labels['take'].'?', 'Да, беру'], 'drop' => [$labels['drop'].'? Сделка отменится', 'Да, отказываюсь']],
+            ['take' => [\App\Offers\TakeWarning::telegram(\App\Offers\ExtraAsk::consented($ask->deal)), 'Да, беру', \App\Offers\TakeWarning::CANCEL], 'drop' => [$labels['drop'].'? Сделка отменится', 'Да, отказываюсь']],
             function (string $which) use ($ask, $user, $labels) {
                 if (! in_array($which, [\App\Offers\ExtraAsk::TAKE, \App\Offers\ExtraAsk::DROP], true)) {
                     return null;

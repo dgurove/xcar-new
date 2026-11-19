@@ -45,7 +45,8 @@ export function confirmSheet(message, options = {}) {
             alt.parentElement.classList.remove('sm:flex-row-reverse');
             alt.parentElement.querySelectorAll('.sm\\:flex-1').forEach((b) => b.classList.remove('sm:flex-1'));
         }
-        const text = options.text || form?.dataset.turboConfirmText;
+        // Абзац — и у нажатой кнопки (19.11.2026, предупреждение перед «Беру в работу», `Offers\TakeWarning`), как подпись и «Отмена».
+        const text = options.text || submitter?.dataset?.turboConfirmText || form?.dataset.turboConfirmText;
         if (text) { const p = d.querySelector('[data-text]'); p.textContent = text; p.hidden = false; }
         const quote = form?.dataset.turboConfirmQuote;
         if (quote) {

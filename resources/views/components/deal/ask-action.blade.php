@@ -22,7 +22,7 @@
             <input type="hidden" name="back" value="{{ $back }}">
             @foreach (in_array($variant, ['row', 'card'], true) ? $ask->moves->take(1) : $ask->moves as $exit)
                 <x-ui.button name="exit" :value="$exit->id" :size="$size" :variant="$loop->first ? 'primary' : 'secondary'" :block="$variant !== 'row'"
-                    :data-turbo-confirm="Wording::mine($exit->confirm) ?: ($exit->takes() ? 'Взять в работу? После этого отказаться нельзя' : null)">{{ Wording::mine($exit->label) }}</x-ui.button>
+                    :data-turbo-confirm="$exit->takes() ? \App\Offers\TakeWarning::TITLE : (Wording::mine($exit->confirm) ?: null)" :data-turbo-confirm-text="$exit->takes() ? \App\Offers\TakeWarning::TEXT : null" :data-turbo-confirm-label="$exit->takes() ? \App\Offers\TakeWarning::OK : null" :data-turbo-confirm-cancel="$exit->takes() ? \App\Offers\TakeWarning::CANCEL : null">{{ Wording::mine($exit->label) }}</x-ui.button>
             @endforeach
             {{-- В строке и в плитке «Ждут вас» — одна кнопка: плитки одной высоты, кнопки в ряд (10.11.2026, владелец: «всё скачет»);
                  «Передумал» и «Попросить вывоз…» — в чате, в сделке и в вопросе при входе. --}}
@@ -30,9 +30,9 @@
         {{-- «Я передумал» и «Напомнить через…» — двумя кнопками в ряд (19.11.2026, как на шаге сделки, `cabinet.deals.exits`): ряд за
              формой ответа — у шторки напоминания свои формы, «Я передумал» шлёт ответ атрибутом `form`. --}}
         @if (! $plain && $ask->retreats->isNotEmpty())
-            <div class="mt-2 grid grid-cols-2 gap-2">
+            <div class="mt-2 flex gap-2">
                 @foreach ($ask->retreats as $exit)
-                    <button form="ask-{{ $ask->requirement->id }}-{{ $variant }}" name="exit" value="{{ $exit->id }}" class="btn btn-quiet min-w-0" data-turbo-confirm="{{ Wording::mine($exit->confirm) ?: 'Передумали? Сделка отменится' }}" data-turbo-confirm-label="Передумал"><span class="truncate">{{ Wording::mine($exit->label) }}</span></button>
+                    <button form="ask-{{ $ask->requirement->id }}-{{ $variant }}" name="exit" value="{{ $exit->id }}" class="btn btn-quiet shrink-0 px-5" data-turbo-confirm="{{ Wording::mine($exit->confirm) ?: 'Передумали? Сделка отменится' }}" data-turbo-confirm-label="Передумал"><span class="truncate">{{ Wording::mine($exit->label) }}</span></button>
                 @endforeach
                 <x-deal.remind :deal="$deal" :ask="$ask->requirement" :back="$back"/>
             </div>

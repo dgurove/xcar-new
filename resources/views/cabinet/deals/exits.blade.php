@@ -31,7 +31,7 @@
             {{-- Один исход — во всю ширину, два — в ряд одной ширины, как ответы в диалоге приложения; больше — переносом. --}}
             <div @class(['gap-3', 'grid' => $moves->count() <= 2, 'grid-cols-2' => $moves->count() === 2, 'flex flex-wrap' => $moves->count() > 2])>
                 @foreach ($moves as $exit)
-                    <x-ui.button name="exit" :value="$exit->id" :variant="$loop->first ? 'primary' : 'secondary'" :data-turbo-confirm="\App\Users\Wording::mine($exit->confirm) ?: ($exit->takes() ? 'Взять в работу? После этого отказаться нельзя' : null)" class="min-w-0 px-4">{{ \App\Support\Opens::label(\App\Users\Wording::mine($exit->label), (bool) ($exit->confirm || $exit->takes())) }}</x-ui.button>
+                    <x-ui.button name="exit" :value="$exit->id" :variant="$loop->first ? 'primary' : 'secondary'" :data-turbo-confirm="$exit->takes() ? \App\Offers\TakeWarning::TITLE : (\App\Users\Wording::mine($exit->confirm) ?: null)" :data-turbo-confirm-text="$exit->takes() ? \App\Offers\TakeWarning::TEXT : null" :data-turbo-confirm-label="$exit->takes() ? \App\Offers\TakeWarning::OK : null" :data-turbo-confirm-cancel="$exit->takes() ? \App\Offers\TakeWarning::CANCEL : null" class="min-w-0 px-4">{{ \App\Support\Opens::label(\App\Users\Wording::mine($exit->label), (bool) ($exit->confirm || $exit->takes())) }}</x-ui.button>
                 @endforeach
             </div>
         </form>
@@ -39,9 +39,9 @@
              «в нормальных приложениях так не делают»). Шторка напоминания — со своими формами, поэтому ряд — за формой ответа,
              а «Я передумал» шлёт её атрибутом `form`. --}}
         @if ($retreats->isNotEmpty())
-            <div class="mt-3 grid grid-cols-2 gap-3">
+            <div class="mt-3 flex gap-3">
                 @foreach ($retreats as $exit)
-                    <button form="reply-{{ $requirement->id }}" name="exit" value="{{ $exit->id }}" class="btn btn-quiet min-w-0" data-turbo-confirm="{{ \App\Users\Wording::mine($exit->confirm) ?: 'Передумали? Сделка отменится' }}" data-turbo-confirm-label="Передумал"><span class="truncate">{{ \App\Support\Opens::label(\App\Users\Wording::mine($exit->label)) }}</span></button>
+                    <button form="reply-{{ $requirement->id }}" name="exit" value="{{ $exit->id }}" class="btn btn-quiet shrink-0 px-5" data-turbo-confirm="{{ \App\Users\Wording::mine($exit->confirm) ?: 'Передумали? Сделка отменится' }}" data-turbo-confirm-label="Передумал"><span class="truncate">{{ \App\Support\Opens::label(\App\Users\Wording::mine($exit->label)) }}</span></button>
                 @endforeach
                 <x-deal.remind :deal="$deal" :ask="$requirement"/>
             </div>
