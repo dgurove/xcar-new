@@ -27,7 +27,8 @@
             <input type="hidden" name="back" value="{{ $back }}">
             @foreach ($shown as $exit)
                 @if (Warnings::takes($exit))
-                    {{-- «Беру в работу» — окно с тремя кнопками (`x-deal.take-sheet`) во всех видах, и в строке, и в вопросе при входе. --}}
+                    {{-- «Беру в работу» — окно с тремя кнопками (`x-deal.take-sheet`) во всех видах; в вопросе при входе (`sheet`) — без «Отказываюсь»
+                         (19.11.2026, владелец: отказ там не показывать, он — на странице сделки). --}}
                     <x-ui.button type="button" :size="$size" :variant="$loop->first ? 'primary' : 'secondary'" :block="$variant !== 'row'"
                         data-controller="emit" data-action="emit#send" :data-emit-event-param="'take:'.$form.'-'.$exit->id">{{ Wording::mine($exit->label) }}</x-ui.button>
                 @else
@@ -40,7 +41,7 @@
         </form>
         @foreach ($shown->filter(fn ($e) => Warnings::takes($e)) as $exit)
             <x-deal.take-sheet :id="$form.'-'.$exit->id" :form="$form" :take="['exit', $exit->id]" :ok="$exit->takes() ? 'Да, беру в работу' : 'Да, берём'"
-                :drop="($r = $ask->retreats->first()) ? ['exit', $r->id] : null" :deal="$deal" :ask="$ask->requirement" :back="$back"/>
+                :drop="$variant !== 'sheet' && ($r = $ask->retreats->first()) ? ['exit', $r->id] : null" :deal="$deal" :ask="$ask->requirement" :back="$back"/>
         @endforeach
         {{-- «Отказываюсь» и «Напомнить через…» — двумя кнопками в ряд (19.11.2026, как на шаге сделки, `cabinet.deals.exits`): ряд за
              формой ответа — у шторки напоминания свои формы, «Отказываюсь» шлёт ответ атрибутом `form`. --}}
