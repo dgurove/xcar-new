@@ -36,16 +36,16 @@ class TickOffers extends Command
 
     protected $signature = 'offers:tick';
 
-    protected $description = 'Часы предложений: слот 16:00, черновики в галерею, исходы по времени, просрочки, напоминания, «приём закрыт» владельцу, следующие волны показа, новые предложения пачкой после 5 минут тишины, напоминания об оценке, на аукцион без подтверждений, черновики из писем, мягкие напоминания менеджеру о шагах без срока, паника по сроку обязывающего предложения, за 3 часа до конца приёма — об избранном, непросмотренных и открытых без подтверждений, за 30 минут — об избранном, приём закрыт без подтверждений — в «Оцененные», эксклюзив оценившего кончился без подтверждения — всем';
+    protected $description = 'Часы предложений: слот 16:00, черновики в галерею, исходы по времени, просрочки, напоминания, «приём закрыт» владельцу, следующие волны показа, новые предложения пачкой после 5 минут тишины, напоминания об оценке, на аукцион без подтверждений, черновики из писем, мягкие напоминания менеджеру о шагах без срока, «Напомнить через…» менеджера, паника по сроку обязывающего предложения, за 3 часа до конца приёма — об избранном, непросмотренных и открытых без подтверждений, за 30 минут — об избранном, приём закрыт без подтверждений — в «Оцененные», эксклюзив оценившего кончился без подтверждения — всем';
 
-    public function handle(PublishDueSlots $slots, TickStages $tick, NotifyBidsClosed $closed, NotifyViewers $waves, NotifyNewOffers $digest, ShowInGallery $gallery, RemindEstimates $estimates, AutoOffer $auto, SendToAuction $auction, StagesDigest $hot, RemindStalled $stalled, BindingAlarm $binding, RemindUnreadClosing $unread, ReturnClosedToRated $rated, FirstLook $firstLook): int
+    public function handle(PublishDueSlots $slots, TickStages $tick, NotifyBidsClosed $closed, NotifyViewers $waves, NotifyNewOffers $digest, ShowInGallery $gallery, RemindEstimates $estimates, AutoOffer $auto, SendToAuction $auction, StagesDigest $hot, RemindStalled $stalled, BindingAlarm $binding, RemindUnreadClosing $unread, ReturnClosedToRated $rated, FirstLook $firstLook, \App\Workflow\Actions\RemindAsks $remind): int
     {
-        return $this->holdingSingleRun('offers:tick', function () use ($slots, $tick, $closed, $waves, $digest, $gallery, $estimates, $auto, $auction, $hot, $stalled, $binding, $unread, $rated, $firstLook) {
+        return $this->holdingSingleRun('offers:tick', function () use ($slots, $tick, $closed, $waves, $digest, $gallery, $estimates, $auto, $auction, $hot, $stalled, $binding, $unread, $rated, $firstLook, $remind) {
             // Утренняя сводка «Горит» — раз в день с 10:00 (`StagesDigest`).
             $hot();
             // Слот — первым: выпущенные им предложения тем же тиком уходят менеджерам одним уведомлением (волны).
             // Первый взгляд кончился — до «приём закрыт»: не подтвердили — открывается всем с новым сроком, без «приём закрыт».
-            $counts = ['slot' => $slots(), 'gallery' => $gallery->due(), 'first_look' => $firstLook->due()] + $tick() + ['closing' => $closed->closing(), 'closed' => $closed(), 'auction' => $auction->due(), 'rated' => $rated(), 'waves' => $waves->due(), 'digest' => $digest(), 'unread' => $unread(), 'favorites' => $unread->last(), 'estimates' => $estimates->due(), 'stalled' => $stalled(), 'binding' => $binding()]
+            $counts = ['slot' => $slots(), 'gallery' => $gallery->due(), 'first_look' => $firstLook->due()] + $tick() + ['closing' => $closed->closing(), 'closed' => $closed(), 'auction' => $auction->due(), 'rated' => $rated(), 'waves' => $waves->due(), 'digest' => $digest(), 'unread' => $unread(), 'favorites' => $unread->last(), 'estimates' => $estimates->due(), 'stalled' => $stalled(), 'binding' => $binding(), 'remind' => $remind()]
                 // Письмо-предложение не завелось черновиком при приходе (выкладка); документы черновиков из писем дочитать —
                 // раз в пять минут, как у парковки: проход читает письма всех их веток.
                 + ['drafts' => $auto->catchUp(), 'read' => now()->minute % 5 === 0 ? AutoScan::sweep(offers: true) : 0]

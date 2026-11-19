@@ -400,6 +400,24 @@ class DealController
         return $request->expectsJson() ? response()->noContent() : $this->back($request, $deal);
     }
 
+    /**
+     * «Напомнить через…» (19.11.2026, `Workflow\Actions\RemindAsks`): вопрос шага или доп. просьбы придёт снова — уведомлением и
+     * сообщением в чат; пустое `when` — не напоминать. Вопрос уже закрыт — «Ответ уже не нужен», как у ответа.
+     */
+    public function remind(Request $request, Deal $deal)
+    {
+        $data = $request->validate(['when' => ['nullable', 'in:'.implode(',', array_keys(\App\Workflow\Actions\RemindAsks::CHOICES))], 'extra' => ['nullable', 'boolean'],
+            'back' => ['nullable', 'string', 'max:500']]);
+        $ask = $request->boolean('extra') ? \App\Offers\ExtraAsk::holding($deal) : $deal->openRequirement()->first();
+        if (! $ask || ($ask instanceof \App\Offers\ExtraAsk && $ask->phase() !== \App\Offers\ExtraAsk::MANAGER)) {
+            return $this->back($request, $deal)->with('toast', 'Ответ уже не нужен');
+        }
+        $at = filled($data['when'] ?? null) ? \App\Workflow\Actions\RemindAsks::at($data['when']) : null;
+        \App\Workflow\Actions\RemindAsks::set($ask, $at, $request->user());
+
+        return $this->back($request, $deal)->with('toast', $at ? 'Напомним '.\App\Workflow\Actions\RemindAsks::when($at) : 'Не напомним');
+    }
+
     /** Время подписания у поставщика — плиткой или своим (`PickSigningTime`). */
     public function signing(Request $request, Deal $deal, PickSigningTime $pick)
     {

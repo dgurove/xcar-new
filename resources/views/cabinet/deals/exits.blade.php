@@ -4,7 +4,7 @@
 @php
     use App\Workflow\Asks;
     $waiting = $requirement->asks === Asks::Document && $requirement->getMedia('files')->isEmpty();
-    // «Я передумал» — не второй кнопкой рядом, а тихой строкой под главной (10.10.2026, владелец).
+    // «Я передумал» — серой кнопкой в ряд с «Напомнить через…» под главной (19.11.2026; с 10.10.2026 была тихой строкой).
     [$retreats, $moves] = $exits->partition(fn ($e) => $e->isRetreat());
     // Вопрос о новой закупочной с «Отказываюсь» над шагом (`x-offer.reprice-ask`) — второй отмены сделки рядом не даём (19.11.2026,
     // владелец: «не должно быть двух плашек действий»). Он назвал цену или ждёт нашего контрпредложения — отмены там нет, строка остаётся.
@@ -19,7 +19,7 @@
 @endphp
 <div id="requirement-exits">
     @unless ($waiting)
-        <form method="post" action="/deals/{{ $deal->id }}/reply" class="mt-5 flex flex-col gap-4">
+        <form method="post" action="/deals/{{ $deal->id }}/reply" id="reply-{{ $requirement->id }}" class="mt-5 flex flex-col gap-4">
             @csrf
             @if ($requirement->asks === Asks::Fields)
                 @foreach ($requirement->fields as $field)
@@ -34,9 +34,17 @@
                     <x-ui.button name="exit" :value="$exit->id" :variant="$loop->first ? 'primary' : 'secondary'" :data-turbo-confirm="\App\Users\Wording::mine($exit->confirm) ?: ($exit->takes() ? 'Взять в работу? После этого отказаться нельзя' : null)" class="min-w-0 px-4">{{ \App\Support\Opens::label(\App\Users\Wording::mine($exit->label), (bool) ($exit->confirm || $exit->takes())) }}</x-ui.button>
                 @endforeach
             </div>
-            @foreach ($retreats as $exit)
-                <button name="exit" value="{{ $exit->id }}" class="retreat-link" data-turbo-confirm="{{ \App\Users\Wording::mine($exit->confirm) ?: 'Передумали? Сделка отменится' }}">{{ \App\Support\Opens::label(\App\Users\Wording::mine($exit->label)) }}</button>
-            @endforeach
         </form>
+        {{-- «Я передумал» и «Напомнить через…» — двумя кнопками в ряд под главной (19.11.2026, владелец: тихая ссылка по центру —
+             «в нормальных приложениях так не делают»). Шторка напоминания — со своими формами, поэтому ряд — за формой ответа,
+             а «Я передумал» шлёт её атрибутом `form`. --}}
+        @if ($retreats->isNotEmpty())
+            <div class="mt-3 grid grid-cols-2 gap-3">
+                @foreach ($retreats as $exit)
+                    <button form="reply-{{ $requirement->id }}" name="exit" value="{{ $exit->id }}" class="btn btn-quiet min-w-0" data-turbo-confirm="{{ \App\Users\Wording::mine($exit->confirm) ?: 'Передумали? Сделка отменится' }}" data-turbo-confirm-label="Передумал"><span class="truncate">{{ \App\Support\Opens::label(\App\Users\Wording::mine($exit->label)) }}</span></button>
+                @endforeach
+                <x-deal.remind :deal="$deal" :ask="$requirement"/>
+            </div>
+        @endif
     @endunless
 </div>

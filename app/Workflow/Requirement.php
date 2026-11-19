@@ -19,7 +19,7 @@ use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\InteractsWithMedia;
 
 /** Просьба к менеджеру на этапе, где его ход. Ответ — нажатая кнопка плюс поля или документ. */
-#[Fillable(['offer_id', 'deal_id', 'stage_id', 'user_id', 'title', 'text', 'asks', 'fields', 'due_at', 'done_at', 'answer', 'prompted_at'])]
+#[Fillable(['offer_id', 'deal_id', 'stage_id', 'user_id', 'title', 'text', 'asks', 'fields', 'due_at', 'done_at', 'answer', 'prompted_at', 'remind_at'])]
 class Requirement extends Model implements HasMedia
 {
     use FastAttributes;
@@ -34,6 +34,7 @@ class Requirement extends Model implements HasMedia
             'due_at' => 'datetime',
             'done_at' => 'datetime',
             'prompted_at' => 'datetime',
+            'remind_at' => 'datetime',
         ];
     }
 

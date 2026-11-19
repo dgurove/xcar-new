@@ -8,13 +8,15 @@
     use App\Offers\Handover;
     use App\Offers\ManagerAsk;
     $r = $message->requirement;
+    // Напомнили («Напомнить через…», `RemindAsks`, 19.11.2026) — тот же вопрос новым сообщением ниже: кнопки только у последнего.
+    $later = $r && $r->isOpen() && \App\Chats\Message::where('requirement_id', $r->id)->where('chat_id', $message->chat_id)->where('id', '>', $message->id)->exists();
     $deal = $r?->deal;
     $manager = $user && $r && $r->user_id === $user->id && ! $readonly;
     $ask = $r && $deal && $r->isOpen() && $manager ? ManagerAsk::for($deal) : null;
     $here = $ask && $ask->requirement?->id === $r->id;
     $labels = $r && $deal && $r->isOpen() && ! $manager && $r->stage ? $deal->managerExits($r->stage)->map(fn ($e) => $e->label) : collect();
 @endphp
-@if ($r && $deal)
+@if ($r && $deal && ! $later)
     <div class="msg-step">
         @if ($r->isOpen())
             @if ($here)

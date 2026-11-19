@@ -75,6 +75,11 @@
         $side === 'us' => ['timer', 'Наш ход', $position->deadline_at ? ($overdue ? $late() : 'осталось '.$timer('until', $position->deadline_at)) : null, $overdue, null],
         default => ['clock', 'Ждём', $sinceHtml($since), $overdue, null],
     };
+    // Менеджер отложил вопрос («Напомнить через…», `RemindAsks`, 19.11.2026) — сотруднику видно, когда ему напомним.
+    $remindAt = $side === 'manager' && $deal ? (\App\Offers\ExtraAsk::holding($deal)?->remind_at ?? $deal->openRequirement?->remind_at) : null;
+    if ($remindAt?->isFuture()) {
+        $sub = trim(($sub ?? '').($sub ? ', ' : '').'напомним '.e(\App\Workflow\Actions\RemindAsks::when($remindAt)));
+    }
     // На странице — аватар менеджера или водителя вместо значка (в окне менеджер — в шапке).
     $face = $named ? ($manager ?? $driver) : null;
     $hasActs = isset($acts) && $acts->hasActualContent();

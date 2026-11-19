@@ -26,7 +26,7 @@ use Illuminate\Support\Collection;
  * же, выглядеть и работать должно одинаково»; прежний этап Альфы «Осмотр перед оплатой» снят).
  */
 #[Fillable(['offer_id', 'deal_id', 'message_id', 'text', 'asks_manager', 'asked_by', 'asked_at', 'since_at', 'frozen_at', 'answered_at',
-    'answer_message_id', 'shown_at', 'decided_at', 'decision', 'decided_by'])]
+    'answer_message_id', 'shown_at', 'decided_at', 'decision', 'decided_by', 'remind_at'])]
 class ExtraAsk extends Model
 {
     use FastAttributes;
@@ -56,6 +56,7 @@ class ExtraAsk extends Model
             'answered_at' => 'datetime',
             'shown_at' => 'datetime',
             'decided_at' => 'datetime',
+            'remind_at' => 'datetime',
         ];
     }
 

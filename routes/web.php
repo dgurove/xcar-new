@@ -248,6 +248,7 @@ Route::middleware(['auth', 'wall'])->group(function () {
             Route::post('/deals/{deal}/chat-files', [DealController::class, 'chatFiles']);
             Route::post('/deals/{deal}/buyer-new', [DealController::class, 'buyerNew']);
             Route::post('/deals/{deal}/later', [DealController::class, 'later']);
+            Route::post('/deals/{deal}/remind', [DealController::class, 'remind']);
             Route::delete('/deals/{deal}/files/{media}', [DealController::class, 'removeFile']);
             Route::post('/deals/{deal}/signed', [DealController::class, 'signed']);
             Route::delete('/deals/{deal}/signed/{media}', [DealController::class, 'removeSigned']);

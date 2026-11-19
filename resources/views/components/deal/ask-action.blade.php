@@ -16,7 +16,7 @@
 @endphp
 <div {{ $attributes->class(['ask-action', 'ask-action--'.$variant]) }} @if ($pickup) data-controller="sheet" @endif>
     @if ($ask->taps())
-        <form method="post" action="/deals/{{ $deal->id }}/reply" class="ask-action-form">
+        <form method="post" action="/deals/{{ $deal->id }}/reply" id="ask-{{ $ask->requirement->id }}-{{ $variant }}" class="ask-action-form">
             @csrf
             <input type="hidden" name="requirement" value="{{ $ask->requirement->id }}">
             <input type="hidden" name="back" value="{{ $back }}">
@@ -26,12 +26,17 @@
             @endforeach
             {{-- В строке и в плитке «Ждут вас» — одна кнопка: плитки одной высоты, кнопки в ряд (10.11.2026, владелец: «всё скачет»);
                  «Передумал» и «Попросить вывоз…» — в чате, в сделке и в вопросе при входе. --}}
-            @if (! $plain)
-                @foreach ($ask->retreats as $exit)
-                    <button name="exit" value="{{ $exit->id }}" class="{{ $variant === 'keys' ? 'btn btn-quiet btn-block' : 'retreat-link' }}" data-turbo-confirm="{{ Wording::mine($exit->confirm) ?: 'Передумали? Сделка отменится' }}">{{ Wording::mine($exit->label) }}</button>
-                @endforeach
-            @endif
         </form>
+        {{-- «Я передумал» и «Напомнить через…» — двумя кнопками в ряд (19.11.2026, как на шаге сделки, `cabinet.deals.exits`): ряд за
+             формой ответа — у шторки напоминания свои формы, «Я передумал» шлёт ответ атрибутом `form`. --}}
+        @if (! $plain && $ask->retreats->isNotEmpty())
+            <div class="mt-2 grid grid-cols-2 gap-2">
+                @foreach ($ask->retreats as $exit)
+                    <button form="ask-{{ $ask->requirement->id }}-{{ $variant }}" name="exit" value="{{ $exit->id }}" class="btn btn-quiet min-w-0" data-turbo-confirm="{{ Wording::mine($exit->confirm) ?: 'Передумали? Сделка отменится' }}" data-turbo-confirm-label="Передумал"><span class="truncate">{{ Wording::mine($exit->label) }}</span></button>
+                @endforeach
+                <x-deal.remind :deal="$deal" :ask="$ask->requirement" :back="$back"/>
+            </div>
+        @endif
     @else
         <x-ui.button :href="$ask->href()" :size="$size" :block="$variant !== 'row'">{{ $ask->link }}</x-ui.button>
     @endif
