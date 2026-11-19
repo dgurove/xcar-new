@@ -19,10 +19,13 @@
 @endphp
 <x-ui.shell :title="$offer->titleWithYear()" copy-title :back="['Сделки', '/deals']">
     <x-slot:badge><x-car.keys :count="$offer->keys_count" label/></x-slot:badge>
-    {{-- Сделка — не объявление (05.10.2026, владелец): первым делом задача, справа расчёт, кадры — плиткой в самом низу
-         колонки. ПК: слева работа (задача, покупатель, путь, счета), справа липко расчёт, характеристики, документы, фото.
-         Телефон — одна колонка: задача, чат, расчёт, покупатель, путь, характеристики, документы, фото. Чат — карточкой
+    {{-- Сделка — не объявление (05.10.2026, владелец): под лентой кадров первым делом задача, справа расчёт. ПК: слева работа
+         (задача, покупатель, путь, счета), справа липко расчёт, характеристики, документы. Телефон — одна колонка: задача, чат,
+         расчёт, покупатель, путь, характеристики, документы. Чат — карточкой
          (`cabinet.deals.chat-card`): на ПК первым сбоку, на телефоне под задачей (10.11.2026). --}}
+    {{-- Кадры — лентой одинаковых миниатюр вбок первым блоком под шапкой (19.11.2026, владелец: «не сбоку и не снизу, а лентой
+         сверху под верхним блоком», «не делать одну большой»); нажатие — во весь экран, листаются все. --}}
+    @if ($photos->isNotEmpty())<div class="mb-4 lg:mb-6"><x-offer.gallery :photos="$photos" :alt="$offer->titleWithYear()" strip :offer="$offer"/></div>@endif
     <div data-deal-offer="{{ $offer->number }}" class="grid grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-[minmax(0,1fr)_22rem] lg:gap-6">
         <section class="contents lg:col-start-1 lg:row-start-1 lg:flex lg:min-w-0 lg:flex-col lg:gap-4">
             <x-offer.reprice-ask :deal="$deal" class="order-1 min-w-0"/>
@@ -64,12 +67,6 @@
                             <x-ui.file :name="$media->file_name" :mime="$media->mime_type" :bytes="$media->size" href="/files/{{ $media->id }}" :refs="[$offer->claim_ref]"/>
                         @endforeach
                     </div>
-                </section>
-            @endif
-            @if ($photos->isNotEmpty())
-                <section class="order-9 min-w-0">
-                    <h2 class="mb-2 px-1 text-sm font-medium text-ink-dim">Фото <span class="nums">{{ $photos->count() }}</span></h2>
-                    <x-offer.gallery :photos="$photos" :alt="$offer->titleWithYear()" tiles :offer="$offer"/>
                 </section>
             @endif
         </aside>

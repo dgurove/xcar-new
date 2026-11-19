@@ -1,8 +1,12 @@
-{{-- Страница ТС для тех, кто с ней работает (гараж): слева работа (шаг, путь, расходы, описание), справа липко деньги,
+{{-- (19.11.2026: кадры — лентой сверху, см. ниже; описание ниже — о прежней раскладке справа.)
+     Страница ТС для тех, кто с ней работает (гараж): слева работа (шаг, путь, расходы, описание), справа липко деньги,
      характеристики, документы и кадры плиткой внизу — как у сделки (18.11.2026, владелец: «в гараже и сделке фотки всегда вбок/
      вниз, они не должны быть в центре внимания»; прежде лента кадров стояла первой на пол-экрана). Телефон: деньги, работа,
      характеристики, документы, фото. Документы — строками, открываются шторкой. --}}
 @props(['offer', 'photos', 'docs' => collect(), 'full' => true])
+{{-- Кадры — лентой одинаковых миниатюр вбок первым блоком под шапкой, как у сделки (19.11.2026, владелец: «не сбоку и не снизу,
+     а лентой сверху»). --}}
+@if ($photos->isNotEmpty())<div class="mb-4 lg:mb-6"><x-offer.gallery :photos="$photos" :alt="$offer->titleWithYear()" strip :offer="$offer"/></div>@endif
 <div class="grid grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-[minmax(0,1fr)_22rem] lg:gap-6">
     <aside class="contents lg:sticky lg:top-[calc(var(--stick-top)+1rem)] lg:col-start-2 lg:row-start-1 lg:flex lg:flex-col lg:gap-4 lg:self-start">
         @isset($aside)<div class="order-2 flex flex-col gap-4">{{ $aside }}</div>@endisset
@@ -15,13 +19,6 @@
                         <x-ui.file :name="$media->file_name" :mime="$media->mime_type" :bytes="$media->size" href="/files/{{ $media->id }}" :refs="[$offer->claim_ref]"/>
                     @endforeach
                 </div>
-            </section>
-        @endif
-        {{-- Кадры — плиткой в самом низу колонки, как у сделки (`cabinet.deals.show`); пустого блока нет. --}}
-        @if ($photos->isNotEmpty())
-            <section class="order-9 min-w-0">
-                <h2 class="mb-2 px-1 text-sm font-medium text-ink-dim">Фото <span class="nums">{{ $photos->count() }}</span></h2>
-                <x-offer.gallery :photos="$photos" :alt="$offer->titleWithYear()" tiles :offer="$offer"/>
             </section>
         @endif
     </aside>

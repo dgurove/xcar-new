@@ -36,7 +36,6 @@ final class GarageView
         // Расходы: сотрудник — с принятия (наш эвакуатор), менеджер — пока машина у него.
         $canAdd = ! $frozen && ($staff || $car->state->isWorking());
         $post = fn (string $label) => ['post', "/garage/cars/{$n}/stage", $label];
-        $cost = $canAdd ? ['emit', 'cost-new', $car->state === CarState::Repair && ! $staff ? 'Записать расход' : 'Расход'] : null;
         // Менеджер везёт сам и машина ещё не у него — «Забрал» здесь же (17.10.2026, владелец: логистику он не видит,
         // `SelfPickup`); логистов — только если попросит («Нужен вывоз» в «⋯», `RequestPickup`).
         $pickup = ! $staff && $car->isWaiting() ? $offer->pickup() : null;
@@ -53,7 +52,8 @@ final class GarageView
 
         $prep = array_values(array_filter(match (true) {
             $picks && ! $stepPicks => [['post', "/garage/cars/{$n}/picked", 'Забрал']],
-            $car->state === CarState::Repair => $staff ? [$post('Готова')] : [$cost, $post('Готова')],
+            // Расход — строкой блока «Расходы» (`garage.cars.costs`, 19.11.2026), не кнопкой плашки.
+            $car->state === CarState::Repair => [$post('Готова')],
             default => [],
         }));
         $sale = array_values(array_filter(match (true) {
@@ -89,7 +89,7 @@ final class GarageView
         ]));
         $more = [...$moreSale, ...$morePrep];
         // На сайте менеджеру — одной плашкой: этап, рядом расход (кроме подготовки, где он уже в паре с «Готова»).
-        $buttons = array_values(array_filter([...$prep, ...$sale, ! $staff && $car->state !== CarState::Repair && $car->state->isWorking() ? $cost : null]));
+        $buttons = array_values(array_filter([...$prep, ...$sale]));
 
         return [
             'car' => $car, 'offer' => $offer, 'n' => $n, 'user' => $user, 'staff' => $staff,

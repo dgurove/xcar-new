@@ -1,4 +1,4 @@
-{{-- Расходы машины строками, итог — в заголовке (от двух строк: итог одной — она сама, 12.11.2026); строку правят в её шторке. Сотруднику список виден всегда, «+ Расход»
+{{-- Расходы машины строками, итог — в заголовке (от двух строк: итог одной — она сама, 12.11.2026); строку правят в её шторке. Сотруднику и менеджеру список виден всегда, «+ Расход»
      — в заголовке (06.10.2026, владелец: «добавлять, убирать, корректировать»); менеджеру — когда есть что показать.
      07.10.2026: поля строками (.fields), кнопка .sheet-foot; «Убрать» ниже отдельной формой, отступ шире подложки кнопки. --}}
 @php
@@ -8,14 +8,13 @@
     $costs = ($asBuyer ?? false) ? $car->costs->where('payer', \App\Garage\Payer::Manager)->reject(fn ($c) => $c->isSupplier())->values() : $car->costs;
     $total = ($asBuyer ?? false) ? $costs->sum('amount') : $car->spent();
 @endphp
-@if ($costs->isNotEmpty() || ($staff && $canAdd))
+{{-- Записать и посмотреть — одним блоком (19.11.2026, владелец: «записать не должно быть снизу, должен быть отдельный блок для
+     записи и просмотра расходов, а не действие»): блок есть, пока можно записывать, — и у менеджера, и пустой; последней строкой
+     «Записать расход» (шторка `cost-new`, `garage.cars.sheets`). Кнопки «Расход» в плашке действий нет (`GarageView`). --}}
+@if ($costs->isNotEmpty() || $canAdd)
     <section>
-        <h2 @class(['list-head lg:pt-0', '!items-center' => $staff && $canAdd])>Расходы@if ($costs->count() > 1)<span class="nums text-base font-normal text-ink-muted">{{ \App\Support\Money::exact($total) }}</span>@endif
-            @if ($staff && $canAdd)
-                <button type="button" class="btn btn-s btn-quiet ml-auto" data-controller="emit" data-action="emit#send" data-emit-event-param="cost-new:open"><x-ui.icon name="plus" class="size-4"/>Расход</button>
-            @endif
-        </h2>
-        @if ($costs->isNotEmpty())
+        <h2 class="list-head lg:pt-0">Расходы@if ($costs->count() > 1)<span class="nums text-base font-normal text-ink-muted">{{ \App\Support\Money::exact($total) }}</span>@endif</h2>
+        @if ($costs->isNotEmpty() || $canAdd)
             <div class="list">
                 @foreach ($costs as $cost)
                     @php $mine = $cost->editableBy($user); @endphp
@@ -44,6 +43,12 @@
                         @endif
                     </div>
                 @endforeach
+                @if ($canAdd)
+                    <button type="button" class="row w-full text-left" data-controller="emit" data-action="emit#send" data-emit-event-param="cost-new:open">
+                        <x-ui.row-icon name="plus" tone="accent" size="s"/>
+                        <span class="min-w-0 flex-1 text-accent-text">Записать расход</span>
+                    </button>
+                @endif
             </div>
         @endif
     </section>
