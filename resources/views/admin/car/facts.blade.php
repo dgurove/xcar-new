@@ -11,10 +11,18 @@
 @if ($holder)
     <div class="info-row flex-wrap">
         @if ($holder['user'])<x-ui.avatar :user="$holder['user']" :size="20" class="mt-px shrink-0"/>@else<x-ui.icon name="user" class="info-icon size-5"/>@endif
-        <span class="min-w-0 flex-1">
-            <span class="block break-words">{{ $holder['name'] }}</span>
-            <span class="info-sub">{{ $holder['role'] }}</span>
-        </span>
+        {{-- Гаражную «платим мы» передают другому нажатием на плашку (19.11.2026, `HandOverGarage`), как пунктом «⋯» «Передать…». --}}
+        @if ($handGarage ?? false)
+            <button type="button" class="min-w-0 flex-1 text-left" data-controller="emit" data-action="emit#send" data-emit-event-param="garage-holder-{{ $offer->number }}:open">
+                <span class="flex items-center gap-1"><span class="min-w-0 break-words">{{ $holder['name'] }}</span><x-ui.chevron class="shrink-0"/></span>
+                <span class="info-sub">{{ $holder['role'] }}</span>
+            </button>
+        @else
+            <span class="min-w-0 flex-1">
+                <span class="block break-words">{{ $holder['name'] }}</span>
+                <span class="info-sub">{{ $holder['role'] }}</span>
+            </span>
+        @endif
         @if ($holder['user']?->phone)<x-ui.phone :user="$holder['user']" class="shrink-0"/>@endif
         {{-- Что показываем ему и ссылка на его сделку (гараж) — тихо, здесь же, одной строкой во всю ширину плашки (12.11.2026,
              владелец: под именем узко, и они вставали друг под другом). --}}

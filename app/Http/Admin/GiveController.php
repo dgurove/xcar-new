@@ -41,6 +41,25 @@ class GiveController
         return $this->give($request, $bid->offer, $bid, $give);
     }
 
+    /**
+     * «Передать…» гаражную машину другому держателю без отмены сделки (19.11.2026, `HandOverGarage`): кому — менеджер,
+     * покупатель с гаражом (с его ценой) или «Себе».
+     */
+    public function holder(Request $request, Offer $offer, \App\Garage\Actions\HandOverGarage $hand)
+    {
+        $car = $offer->garageCar()->firstOrFail();
+        $request->merge(['buyer_price' => blank($request->input('buyer_price')) ? null : Money::rubles($request->input('buyer_price'))]);
+        $data = $request->validate([
+            'whom' => ['required', Rule::in(['manager', 'buyer', 'self'])],
+            'manager_id' => [Rule::requiredIf($request->input('whom') !== 'self'), 'nullable', 'integer', 'exists:users,id'],
+            'buyer_price' => ['nullable', 'integer', 'min:1'],
+        ], ['manager_id.required' => 'Кому передать']);
+        $to = $data['whom'] === 'self' ? null : User::findOrFail($data['manager_id']);
+        $hand($car, $to, $data['buyer_price'] ?? null, $request->user());
+
+        return back()->with('toast', $to ? 'Передана: '.$to->shortName() : 'Взяли под себя');
+    }
+
     private function give(Request $request, Offer $offer, ?Bid $bid, Give $give)
     {
         $request->merge(array_map(fn ($v) => blank($v) ? null : Money::rubles($v), $request->only(['amount', 'commission', 'owner_price', 'share', 'buyer_price', 'cost'])));

@@ -357,6 +357,8 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
         Route::post('/offers/{offer}/purge', [OfferController::class, 'purge']);
         Route::post('/offers/{offer}/unschedule', [OfferController::class, 'unschedule']);
         Route::post('/offers/{offer}/give', [GiveController::class, 'store']);
+        // «Передать…» гаражную другому держателю без отмены сделки (19.11.2026, `HandOverGarage`).
+        Route::post('/offers/{offer}/garage-holder', [GiveController::class, 'holder']);
         // Переоценка закупочной на решение (28.10.2026, `x-offer.reprice`).
         Route::post('/offers/{offer}/reprices/{reprice}', [RepriceController::class, 'apply']);
         Route::delete('/offers/{offer}/reprices/{reprice}', [RepriceController::class, 'dismiss']);

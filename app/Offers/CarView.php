@@ -187,6 +187,9 @@ final class CarView
             // Альфе платит он сам) — отдать заново: другому, другим плательщиком или в сделку (`Give`, этап — `handOver`).
             || ($state === OfferState::Sold && $garageCar?->state === CarState::Waiting && $o->deal?->isGarage()
                 && ! $o->deal->supplier_paid_at && $o->deal->credited() == 0));
+        // «Передать…» (19.11.2026, `HandOverGarage`): гаражная «платим мы» другому держателю без отмены сделки — и когда ТС уже у
+        // нас на подготовке. Решение, как «Отдать», — админу. Открывает и нажатие на плашку держателя (`admin.car.facts`).
+        $handGarage = $admin && $garageCar && \App\Garage\Actions\HandOverGarage::blocked($garageCar) === null;
         // Кнопка — только где «Цены» по шагам (`$steps`): у черновика на аукционе или «Без подтверждений» без цены «Цены» — разделом
         // без кнопок, и «Отдать…» остаётся в «⋯».
         $giveButton = $giveMenu && $rate && $steps && ! $this->page;
@@ -233,6 +236,7 @@ final class CarView
             'publishItems' => $publishItems,
             'publishButton' => $publishButton,
             'giveMenu' => $giveMenu,
+            'handGarage' => $handGarage,
             'resale' => $resale,
             'purge' => $admin && in_array($state, [OfferState::Archived, OfferState::Cancelled], true),
             'askMenu' => ($correct || $rate) && $o->openEstimates->isEmpty() && $o->declinedEstimates->isEmpty(),
@@ -484,6 +488,9 @@ final class CarView
             }
             if ($v['giveMenu'] && ! $v['publishButton'] && ! $v['giveButton']) {
                 $groups[] = [$emit('give-'.$n, 'Отдать…', 'deal')];
+            }
+            if ($v['handGarage']) {
+                $groups[] = [$emit('garage-holder-'.$n, 'Передать…', 'user')];
             }
             // Машина в сделке (и гаражной, пока не привезли) — показать остальным менеджерам поверх неё (12.11.2026, владелец:
             // «она в сделке у этого менеджера, но начальник хочет опубликовать её для других»; `PublishDeal`): идёт — та же

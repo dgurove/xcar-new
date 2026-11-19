@@ -332,6 +332,8 @@ class OfferEvent extends Model
             'payout' => 'Выплата менеджеру '.$sum('amount'),
             'void' => 'Аннулирован документ '.$sum('amount'),
             'unsold' => 'Не продана',
+            // «Передать…» (19.11.2026, `HandOverGarage`).
+            'holder' => isset($p['to']) ? 'Передана в гараж: '.$p['to'].(isset($p['price']) ? ', цена '.$sum('price') : '') : 'Взяли под себя'.(isset($p['from']) ? ', прежний держатель '.$p['from'] : ''),
             'buyer_price' => 'Цена покупателю: '.(isset($p['was']) ? $sum('was').' → ' : '').$sum('amount'),
             default => 'Гараж',
         };
