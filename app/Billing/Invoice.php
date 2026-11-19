@@ -483,6 +483,22 @@ class Invoice extends Model implements HasMedia
         return $this->kind === ChargeKind::Service && ! $this->deal_id && ! $this->vehicle_id;
     }
 
+    /**
+     * Наименование строки при печати (19.11.2026, владелец: «не должна храниться, должна формироваться из данных системы в момент,
+     * когда счёт скачивают»): за ТС — `Offer::invoiceTitle` («ТС Exeed LX 2024 г.в. VIN …»), подбор — «Подбор ТС марка модель, год»
+     * по машине сейчас; остальное (парковка, вывоз, услуги) — как записано строкой. Хранятся номер, дата и суммы.
+     */
+    public function lineTitle(Charge $charge): string
+    {
+        $offer = in_array($charge->kind, [ChargeKind::Sale, ChargeKind::Selection], true) ? $this->carOffer() : null;
+
+        return match (true) {
+            $offer && $charge->kind === ChargeKind::Sale => $offer->invoiceTitle(),
+            $offer !== null => 'Подбор ТС '.$offer->titleWithYear(),
+            default => (string) $charge->title,
+        };
+    }
+
     /** Наименование позиции в чеке ЮKassa: у разовой оплаты — её услуга, у сделки — «Подбор ТС марка модель». */
     public function receiptTitle(): string
     {

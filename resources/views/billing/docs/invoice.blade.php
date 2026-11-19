@@ -116,7 +116,7 @@
     <table class="items">
         <tr><th class="n">№</th><th>Наименование</th><th class="r">Кол-во</th><th class="r">Ед.</th><th class="r">Цена, ₽</th><th class="r">Сумма, ₽</th></tr>
         @foreach ($lines as $i => $c)
-            <tr><td class="n">{{ $i + 1 }}</td><td>{!! $nb($c->title) !!}</td><td class="r">{{ \App\Support\Qty::format($c->qty, '.', ' ') }}</td><td class="r">{{ $c->unitLabel() }}</td><td class="r">{{ $c->price === null ? '' : Money::nums($c->price, 2) }}</td><td class="r">{{ Money::nums($c->amount, 2) }}</td></tr>
+            <tr><td class="n">{{ $i + 1 }}</td><td>{!! $nb($registry ? $c->title : $invoice->lineTitle($c)) !!}</td><td class="r">{{ \App\Support\Qty::format($c->qty, '.', ' ') }}</td><td class="r">{{ $c->unitLabel() }}</td><td class="r">{{ $c->price === null ? '' : Money::nums($c->price, 2) }}</td><td class="r">{{ Money::nums($c->amount, 2) }}</td></tr>
         @endforeach
     </table>
 
