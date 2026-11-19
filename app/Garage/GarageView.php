@@ -44,9 +44,13 @@ final class GarageView
         // ТС у нас на стоянке или едет к нам (13.11.2026) — «Забрал» и «Попросить вывоз» нет: забирают выдачей с парковки.
         $picks = $pickup?->isOpen() && ! $pickup->taken() && $pickup->isExecutedBy($user) && ! ($car->deal?->isActive() && $car->deal->pickupHold())
             && ! $offer->onPark();
+        // Шаг сделки на этой же странице (`cabinet.deals.step`) сам даёт «Автомобиль забрал» (шаг получения маршрута) и «Попросить
+        // вывоз…» (`Handover::canRequest`) — плашка их не повторяет (19.11.2026, владелец: «зачем в сделке два раза кнопки действия»).
+        $stepPicks = $step && $step['requirement'] && $step['position']?->stage->isPickupStep();
+        $stepAsks = $step && $step['handover']?->canRequest;
 
         $prep = array_values(array_filter(match (true) {
-            $picks => [['post', "/garage/cars/{$n}/picked", 'Забрал']],
+            $picks && ! $stepPicks => [['post', "/garage/cars/{$n}/picked", 'Забрал']],
             $car->state === CarState::Repair => $staff ? [$post('Готова')] : [$cost, $post('Готова')],
             default => [],
         }));
@@ -77,7 +81,7 @@ final class GarageView
             $staff && Surface::current() === Surface::Crm && ! $car->isSold() && ($buyerCar ? ! $buyerPaid : $car->costs->isEmpty()) ? ['emit', 'resale', 'Вернуть в продажу'] : null,
             $staff && ! $car->isSold() && ! $car->dealOpen() && ($buyerCar ? ! $buyerPaid : $car->costs->isEmpty()) ? ['form', 'DELETE', "/garage/cars/{$n}", 'Отдали по ошибке', $buyerCar ? 'Забрать ТС у покупателя и вернуть в черновики? Счёт аннулируется' : 'Вернуть ТС в черновики?'] : null,
             // «Попросить вывоз…» (10.11.2026, было «Нужен вывоз»: непонятно, что делает) — что будет, словами переспроса.
-            $picks ? ['form', 'POST', "/garage/cars/{$n}/pickup", 'Попросить вывоз…', 'Попросить вывоз? Логистика XCar назначит исполнителя, он заберёт ТС'] : null,
+            $picks && ! $stepAsks ? ['form', 'POST', "/garage/cars/{$n}/pickup", 'Попросить вывоз…', 'Попросить вывоз? Логистика XCar назначит исполнителя, он заберёт ТС'] : null,
             // При «Отдать» ошиблись «Уже у нас» — назад (20.10.2026, `UndoArrival`); обратное — «Уже вывезли» в дорожке «Вывоз».
             $staff && Actions\UndoArrival::allows($car) ? ['form', 'POST', "/garage/cars/{$n}/waiting", 'Ещё не вывезли', 'ТС ещё у владельца? Подготовка встанет, вывоз снова в логистике'] : null,
         ]));
