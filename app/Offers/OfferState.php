@@ -112,7 +112,8 @@ enum OfferState: string
             self::Open => [self::Draft, self::Sold, self::Garage, self::Cancelled, self::Archived],
             // Из гаража на витрину — только «Вернуть в продажу» с новыми ценами (`ReturnToSale`, 11.10.2026), «отдали по
             // ошибке» — в черновик.
-            self::Garage => [self::Draft, self::Open, self::Archived],
+            // В сделку из гаража (`GarageToDeal`, 19.11.2026) — только когда строки гаража уже нет (`ChangeOfferState`).
+            self::Garage => [self::Draft, self::Open, self::Archived, self::Sold],
             // В гараж из сделки — только гаражной, концом её маршрута (`ChangeOfferState`); руками «Отдать в гараж» у Sold нет.
             self::Sold => [self::Delivered, self::Garage, self::Cancelled, self::Open, self::Draft],
             self::Archived => [self::Draft],

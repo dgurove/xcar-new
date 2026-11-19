@@ -60,7 +60,9 @@ final class Give
     {
         return DB::transaction(function () use ($g, $by) {
             $offer = Offer::whereKey($g->offer->id)->lockForUpdate()->firstOrFail();
-            if (! in_array($offer->state, [OfferState::Draft, OfferState::Gallery, OfferState::Open, OfferState::Sold], true)) {
+            // Из гаража — только через «Передать… → В сделку» (`GarageToDeal`): он сначала снимает строку гаража (19.11.2026).
+            $fromGarage = $offer->state === OfferState::Garage && ! \App\Garage\Car::where('offer_id', $offer->id)->exists();
+            if (! $fromGarage && ! in_array($offer->state, [OfferState::Draft, OfferState::Gallery, OfferState::Open, OfferState::Sold], true)) {
                 throw ValidationException::withMessages(['give' => 'Отдать можно из черновика, продажи или сделки']);
             }
             $bid = $g->bid ? $this->activeBid($g->bid, $offer) : null;
@@ -313,7 +315,7 @@ final class Give
      * Отдали другому: этап тот же, просьба к менеджеру — новому (вход на этап заводит её по сделке). Сменилась ветка (гараж
      * «платим мы» ↔ остальные) — с начала сделки: этап чужой ветки этой сделке не подходит.
      */
-    private function handOver(Offer $offer, Deal $previous, Deal $deal, User $by): Offer
+    public function handOver(Offer $offer, Deal $previous, Deal $deal, User $by): Offer
     {
         $stage = $offer->stage();
         if ($stage && $previous->isGarageUs() !== $deal->isGarageUs()) {

@@ -2,6 +2,7 @@
 
 namespace App\Http\Admin;
 
+use App\Garage\Actions\GarageToDeal;
 use App\Garage\GaragePayer;
 use App\Mail\LetterPrompt;
 use App\Offers\Actions\Give;
@@ -124,7 +125,13 @@ class GiveController
 
         $handOver = $offer->deal()->exists();
         $before = $this->stageId($offer);
-        $deal = $give($giving, $request->user());
+        // Машина в гараже — «Передать… → В сделку» (`GarageToDeal`, 19.11.2026): строка гаража снимается, закупочная по
+        // умолчанию — гаражной плюс наши расходы.
+        $car = ! $garage && ! $bid ? $offer->garageCar()->first() : null;
+        if ($car && $giving->cost === null) {
+            $giving = new Giving($offer, $giving->manager, false, $amount, ...['cost' => GarageToDeal::cost($car)] + $money);
+        }
+        $deal = $car ? app(GarageToDeal::class)($giving, $request->user()) : $give($giving, $request->user());
         if ($deal->isParallel()) {
             return back()->with('toast', 'Поручили параллельно: '.$deal->buyer?->shortName());
         }

@@ -8,23 +8,31 @@ use App\Garage\CarState;
 use App\Garage\Events\GarageChanged;
 use App\Garage\GaragePayer;
 use App\Notifications\GarageHandedNotice;
+use App\Offers\Actions\AskBuyer;
+use App\Offers\Actions\Give;
 use App\Offers\Actions\SyncDealInvoices;
 use App\Offers\Deal;
+use App\Offers\DealContract;
+use App\Offers\DealState;
 use App\Users\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 /**
- * «Передать…» гаражную машину другому держателю (19.11.2026, начальник: Chery 2611013407 взяли «под себя», её надо в гараж
- * Ананьеву; «Отдать…» есть, только пока машина едет, и отменяет сделку): держатель меняется в той же сделке и той же строке
- * гаража — этап, вывоз, расходы и история остаются. Кому — менеджер, покупатель с гаражом или «Себе» (снова под себя).
- * Поставщику по-прежнему платим мы (у Совкомбанка — ПРАЙМ, покупатель платит ПРАЙМ по счёту): смена «мы ↔ менеджер» меняет
- * маршрут и счета — это «Отдать…», пока ТС едет. Покупателю — его цена (`buyer_price`) и счёт ПРАЙМ на неё
- * (`SyncDealInvoices`); прежнему покупателю неоплаченный счёт аннулируется, оплаченный — передавать нельзя.
+ * «Передать… → В гараж» другому держателю (19.11.2026, начальник: Chery 2611013407 взяли «под себя», её надо в гараж
+ * Ананьеву; вечером владелец: «из гаража в гараж, из гаража кому-то в сделку или этому же — чтобы вариативность была»):
+ * держатель меняется в той же сделке и той же строке гаража — этап, вывоз, расходы и история остаются. Кому — менеджер,
+ * покупатель с гаражом или «Себе». Любой плательщик, и закрытая гаражная тоже, пока машину не продали и расчёт не выставлен.
+ *
+ * Кто платит поставщику: покупателю и «Себе» — мы; у Совкомбанка менеджер платит сам (ПРАЙМ по счёту, `Offer::garagePayerFixed`);
+ * иначе — как было. Сменился плательщик у идущей сделки — сделка встаёт на свою ветку, как у «Отдать» (`Give::handOver`).
+ * Расходы прежнего держателя переходят новому, что прежний уже платил, — история сделки, разбирают руками (владелец:
+ * «забей»): неоплаченные счета прежнему гаснут и встают новому (`SyncDealInvoices`). Покупатель по договору прежнего
+ * менеджера к новому не переходит — новый называет своего (`AskBuyer`).
  */
 final class HandOverGarage
 {
-    public function __construct(private SyncDealInvoices $sync, private VoidInvoice $void) {}
+    public function __construct(private SyncDealInvoices $sync, private VoidInvoice $void, private Give $give) {}
 
     /** Почему передать нельзя; null — можно. Им же решает «⋯» и плашка держателя (`CarView`). */
     public static function blocked(Car $car): ?string
@@ -32,10 +40,9 @@ final class HandOverGarage
         $deal = $car->deal;
 
         return match (true) {
-            ! $deal || ! $deal->isActive() || ! $deal->isGarage() => 'Передать можно ТС в гараже с идущей сделкой',
-            $deal->garage_payer !== GaragePayer::Us => 'Поставщику платит менеджер: передать другому — «Отдать…», пока ТС едет',
+            ! $deal || $deal->state === DealState::Cancelled || ! $deal->isGarage() => 'Передать можно ТС в гараже',
             $car->sold_at !== null || in_array($car->state, [CarState::Sold, CarState::Settled], true) => 'ТС уже продана',
-            $car->forBuyer() && $car->buyerHasPaid() => 'Покупатель уже платил по счёту: сначала верните оплату',
+            $car->invoice_id !== null => 'Расчёт по ТС уже выставлен',
             default => null,
         };
     }
@@ -43,29 +50,47 @@ final class HandOverGarage
     public function __invoke(Car $car, ?User $to, ?int $buyerPrice, User $by): Car
     {
         return DB::transaction(function () use ($car, $to, $buyerPrice, $by) {
-            $car = Car::whereKey($car->id)->lockForUpdate()->with(['deal.offer.vendor', 'manager', 'offer'])->firstOrFail();
+            $car = Car::whereKey($car->id)->lockForUpdate()->with(['manager', 'offer.vendor'])->firstOrFail();
             $deal = Deal::whereKey($car->deal_id)->lockForUpdate()->first();
             $car->setRelation('deal', $deal);
             if ($why = self::blocked($car)) {
                 throw ValidationException::withMessages(['holder' => $why]);
             }
             $this->check($car, $to, $buyerPrice);
-
+            $offer = $car->offer;
             $from = $car->manager;
-            // Счёт прежнему покупателю с гаражом (не оплачен — проверил `blocked`) — аннулируется: ТС больше не его.
-            if ($car->forBuyer() && ($old = $car->holderInvoice())) {
+            $was = clone $deal;
+            $payer = match (true) {
+                $to === null || $to->holdsAsBuyer() => GaragePayer::Us,
+                $offer->garagePayerFixed() === GaragePayer::Manager => GaragePayer::Manager,
+                default => $deal->garage_payer,
+            };
+
+            // Счёт прежнему покупателю с гаражом, за который не платили, — аннулируется: ТС больше не его.
+            if ($car->forBuyer() && ($old = $car->holderInvoice()) && ! $car->buyerHasPaid()) {
                 ($this->void)($old, $by, 'ТС передана другому держателю');
             }
-            $deal->update(['buyer_id' => $to?->id, 'bid_id' => null]);
+            $deal->update(['buyer_id' => $to?->id, 'bid_id' => null, 'garage_payer' => $payer,
+                // Наша доля по ссылке — у «платит менеджер» не Совкомбанка; держатель сменился — доля та же, плательщик — нет.
+                'share' => $payer === GaragePayer::Manager ? $deal->share : null, 'buyer_asked_at' => null]);
+            // Покупатель по договору — клиент прежнего менеджера: новому он не подходит (новый назовёт своего).
+            DealContract::where('deal_id', $deal->id)->whereNotNull('buyer_user_id')->update(['buyer_user_id' => null]);
             $car->update(['manager_id' => $to?->id, 'buyer_price' => $to?->holdsAsBuyer() ? $buyerPrice : null]);
             $car->log($by, array_filter(['do' => 'holder', 'to' => $to?->name, 'from' => $from?->name,
                 'price' => $to?->holdsAsBuyer() ? $buyerPrice : null], fn ($v) => $v !== null));
+
+            $deal = $deal->fresh(['offer']);
+            // Сменилась ветка маршрута («платим мы» ↔ «платит менеджер») у идущей сделки — этап своей ветки (`Give::handOver`).
+            if ($deal->isActive() && $was->isGarageUs() !== $deal->isGarageUs()) {
+                $this->give->handOver($offer->fresh(), $was, $deal, $by);
+            }
+            ($this->sync)($deal->fresh(), $by);
+            if ($deal->isActive() && $deal->isCommission()) {
+                app(AskBuyer::class)->ask($deal);
+            }
             $car = $car->fresh(['deal.offer', 'manager']);
-            // Счёт ПРАЙМ новому покупателю на его цену — сразу, как при «Отдать» (`Give`).
-            ($this->sync)($car->deal->fresh(), $by);
             GarageChanged::dispatch($car);
 
-            $offer = $car->offer;
             DB::afterCommit(function () use ($to, $from, $offer) {
                 $to?->notify(new GarageHandedNotice($offer, true));
                 if ($from && ! $from->is($to)) {
@@ -89,8 +114,6 @@ final class HandOverGarage
             $to->holdsAsBuyer() => null,
             ! $to->isManager() => 'В гараж ТС берёт менеджер или покупатель с гаражом',
             ! $to->canGarage() => 'Гараж менеджеру не включён',
-            // У Совкомбанка менеджер в гараже платит сам (ПРАЙМ по счёту, `Offer::garagePayerFixed`) — это другая ветка маршрута.
-            $offer->garagePayerFixed() === GaragePayer::Manager => 'У этого поставщика менеджер в гараже платит сам: передать можно покупателю с гаражом или себе',
             default => null,
         };
         if ($error) {
