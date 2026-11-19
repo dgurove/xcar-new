@@ -178,7 +178,10 @@
                 @endphp
                 <div>
                     <x-deal.doc-cap label="Договор" :state="$dealWord[0]" :tone="$dealWord[1]"/>
-                    @if ($shown || $signedFiles->isNotEmpty() || $canSign)
+                    {{-- Строк нет (договор ещё у нас) — одна кнопка без плашки вокруг (19.11.2026, владелец: «кривая вёрстка»). --}}
+                    @if (! $shown && $signedFiles->isEmpty() && $canSign)
+                        <x-deal.attach-signed :deal="$deal" :base="'/deals/'.$deal->id" :primary="$signStep" wide/>
+                    @elseif ($shown || $signedFiles->isNotEmpty())
                         <div class="list">
                             @if ($shown)
                                 @php $dkp = new \App\Offers\DkpDocument($contract); @endphp

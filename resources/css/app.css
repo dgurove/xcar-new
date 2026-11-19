@@ -1989,6 +1989,8 @@ html.kb-open { --home-gap: 0px; }
   /* Договор (19.11.2026, вариант Б): строка и кнопки под ней — в обёртке шторки `contents`; «Отправить как есть» и «Исправить…»
      рядом поровну, на узком — друг под другом. Шаги шторки «Исправить договор» — лаймовым номером слева. */
   .list > .contents > .send-under { padding: 0 .75rem .75rem; }
+  /* Кнопка первой в плашке (строк над ней нет) — отступ и сверху, а не прилипшей к краю. */
+  .list > .send-under:first-child, .list > .contents:first-child > .send-under:first-child { padding-top: .75rem; }
   .send-pair { display: flex; gap: .5rem; }
   .send-pair > form > .btn, .send-pair > .btn, .send-pair > .contents > .btn { flex: 1 1 0; min-width: 0; padding-inline: .5rem; white-space: nowrap; }
   /* «Напомнить через…» (`x-deal.nudge-sheet`, 19.11.2026): раскрывается чипами дней, без треугольника системы. */
