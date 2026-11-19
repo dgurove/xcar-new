@@ -120,7 +120,7 @@ final class OfferTabs
         $garage = '(select coalesce(g.stage_at, g.taken_at) from garage_cars g where g.offer_id = offers.id limit 1)';
         $bids = "(select min(b.created_at) from bids b where b.offer_id = offers.id and b.state = '".BidState::Active->value."')";
 
-        return 'coalesce((case '.$sql." {$whens} when 'garage' then {$garage} when 'bids' then {$bids} end), offers.tab_at, offers.created_at)";
+        return 'coalesce((case '.$sql." {$whens} when 'garage' then {$garage} when 'refused' then offers.refused_at when 'bids' then {$bids} end), offers.tab_at, offers.created_at)";
     }
 
     /** Порядок вкладки по колесу выражением SQL: 0, 1, 2… «Прочее» — последним. */

@@ -68,12 +68,12 @@ final class DealEventNotice extends Notice
             path: self::dealPath($deal));
     }
 
-    /** Сделка отменена; сам менеджер («Я передумал», «Отказываюсь») — громко: машину снова продавать. */
+    /** Сделка отменена; сам менеджер («Отказываюсь») — громко: машину снова продавать. */
     public static function dealCancelled(Deal $deal, ?User $by): self
     {
         $himself = $by && $deal->buyer_id === $by->id;
 
-        return new self($deal->offer, 'cancelled', 'Сделка отменена', $himself ? 'передумал, сделка отменена' : 'сделка отменена', null,
+        return new self($deal->offer, 'cancelled', 'Сделка отменена', $himself ? 'отказался, сделка отменена' : 'сделка отменена', null,
             $himself ? 'managers' : 'deals', $by, loud: $himself, path: self::dealPath($deal));
     }
 

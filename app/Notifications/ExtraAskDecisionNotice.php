@@ -63,7 +63,7 @@ final class ExtraAskDecisionNotice extends Notice
     public function toTelegram(): ?array
     {
         return ['title' => self::question($this->ask).': '.$this->ask->offer->titleWithYear(), 'lines' => Text::lines($this->ask->offer, 'Поставщик ответил на просьбу: '.$this->ask->phrase()),
-            'button' => 'Открыть сделку', 'keyboard' => [self::buttons($this->ask)]];
+            'button' => 'Открыть сделку', 'keyboard' => self::buttons($this->ask)];
     }
 
     /** До согласия — «Берёте в работу?», после — «Берёте после ответа поставщика?». */
@@ -72,11 +72,17 @@ final class ExtraAskDecisionNotice extends Notice
         return $ask->deal && ExtraAsk::consented($ask->deal) ? 'Поставщик ответил, нужно решение' : 'Поставщик ответил, взять в работу?';
     }
 
-    /** @return list<array{text: string, callback_data: string}> */
+    /**
+     * Ряды кнопок, как у согласия (`YourTurnNotice::consentButtons`): решение первым рядом, под ним «Отказываюсь» и «Напомнить
+     * через…» (`UpdateHandler::extra`).
+     *
+     * @return list<list<array{text: string, callback_data: string}>>
+     */
     public static function buttons(ExtraAsk $ask): array
     {
-        $labels = $ask->deal ? ExtraAsk::labels($ask->deal) : ['take' => 'Беру в работу', 'drop' => 'Я передумал'];
+        $labels = $ask->deal ? ExtraAsk::labels($ask->deal) : ['take' => 'Беру в работу', 'drop' => 'Отказываюсь'];
 
-        return [['text' => $labels['take'], 'callback_data' => "extra:{$ask->id}:take"], ['text' => $labels['drop'], 'callback_data' => "extra:{$ask->id}:drop"]];
+        return [[['text' => $labels['take'], 'callback_data' => "extra:{$ask->id}:take"]],
+            [['text' => $labels['drop'], 'callback_data' => "extra:{$ask->id}:drop"], ['text' => 'Напомнить через…', 'callback_data' => "extra:{$ask->id}:remind"]]];
     }
 }

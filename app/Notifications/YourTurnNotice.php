@@ -23,8 +23,8 @@ final class YourTurnNotice extends Notice
 
     /**
      * Дело шага приходит менеджеру и сообщением в чат сделки (`StepAsk::post`), а оно — в Telegram целиком (`ChatNotice`, 16.11.2026):
-     * второе сообщение об одном и том же в Telegram не шлём. Кроме согласия «Берём в работу?» — у этого кнопки «Беру в работу /
-     * Передумал» (и владелец 06.11: «чтобы точно увидели»).
+     * второе сообщение об одном и том же в Telegram не шлём. Кроме согласия «Берём в работу?» — у этого кнопки «Беру в работу»,
+     * «Отказываюсь» и «Напомнить через…» (и владелец 06.11: «чтобы точно увидели»).
      */
     public function via(\App\Users\User $user): array
     {
@@ -87,7 +87,7 @@ final class YourTurnNotice extends Notice
         // Заголовок — что сделать, а не «Ваш ход» (10.10.2026, владелец: проверить формулировки в Telegram).
         return ['title' => self::telegramTitle($r), 'lines' => self::telegramLines($r), 'button' => 'Открыть сделку',
             // Согласие — кнопками прямо в сообщении (27.10.2026, владелец), ответ — `UpdateHandler::turn`.
-            ...($this->consent() ? ['keyboard' => [self::consentButtons($r)]] : [])];
+            ...($this->consent() ? ['keyboard' => self::consentButtons($r)] : [])];
     }
 
     public static function telegramTitle(Requirement $r): string
@@ -101,16 +101,24 @@ final class YourTurnNotice extends Notice
         return Text::lines($r->offer);
     }
 
-    /** «Беру в работу» и «Передумал» — у кого из них есть исход на этом этапе. */
+    /**
+     * Ряды кнопок согласия (19.11.2026, начальник): «Беру в работу» первым рядом, под ним «Отказываюсь» и «Напомнить через…» —
+     * как на странице сделки; кнопки исхода — только у тех, что есть на этом этапе. Ответ — `UpdateHandler::turn`.
+     *
+     * @return list<list<array{text: string, callback_data: string}>>
+     */
     public static function consentButtons(Requirement $r): array
     {
         return array_values(array_filter([
-            self::consentExit($r, 'take') ? ['text' => 'Беру в работу', 'callback_data' => "turn:{$r->id}:take"] : null,
-            self::consentExit($r, 'drop') ? ['text' => 'Передумал', 'callback_data' => "turn:{$r->id}:drop"] : null,
+            self::consentExit($r, 'take') ? [['text' => 'Беру в работу', 'callback_data' => "turn:{$r->id}:take"]] : null,
+            array_values(array_filter([
+                self::consentExit($r, 'drop') ? ['text' => 'Отказываюсь', 'callback_data' => "turn:{$r->id}:drop"] : null,
+                ['text' => 'Напомнить через…', 'callback_data' => "turn:{$r->id}:remind"],
+            ])),
         ]));
     }
 
-    /** Исход согласия: take — «Беру в работу», drop — «Я передумал». */
+    /** Исход согласия: take — «Беру в работу», drop — «Отказываюсь». */
     public static function consentExit(Requirement $r, string $which): ?Outcome
     {
         $exits = $r->deal ? $r->deal->managerExits($r->stage) : collect();

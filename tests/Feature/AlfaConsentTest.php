@@ -80,7 +80,7 @@ class AlfaConsentTest extends TestCase
         $this->assertSame('2026-10-28 17:00', $position()->deadline_at->setTimezone('Europe/Moscow')->format('Y-m-d H:i'));
         $this->assertFalse($deal->fresh()->agreed());
         Notification::assertSentTo($manager, YourTurnNotice::class, fn (YourTurnNotice $n) => $n->important()
-            && collect($n->toTelegram()['keyboard'][0] ?? [])->pluck('text')->all() === ['Беру в работу', 'Передумал']);
+            && collect($n->toTelegram()['keyboard'] ?? [])->flatten(1)->pluck('text')->all() === ['Беру в работу', 'Отказываюсь', 'Напомнить через…']);
 
         // Срок вышел без ответа — горит у нас, кнопки менеджера живы.
         Carbon::setTestNow(Carbon::parse('2026-10-28 17:05', 'Europe/Moscow'));
@@ -93,6 +93,11 @@ class AlfaConsentTest extends TestCase
         $this->assertNotNull($requirement);
         $press = fn (int $from, string $action) => app(UpdateHandler::class)->handle(['update_id' => random_int(1, 9999), 'callback_query' => [
             'id' => 'q', 'from' => ['id' => $from], 'data' => "turn:{$requirement->id}:{$action}", 'message' => ['message_id' => 1, 'chat' => ['id' => $from]]]]);
+        // «Напомнить через…» — часы 1–6, выбор ставит напоминание вопроса шага (19.11.2026).
+        $press(777, 'remind');
+        $this->assertNull($requirement->fresh()->remind_at);
+        $press(777, 'in3');
+        $this->assertSame(now()->addHours(3)->format('Y-m-d H:i'), $requirement->fresh()->remind_at->format('Y-m-d H:i'));
         $press(888, 'suretake');
         $this->assertSame('Согласие менеджера', $position()->stage->name);
         $press(777, 'take');

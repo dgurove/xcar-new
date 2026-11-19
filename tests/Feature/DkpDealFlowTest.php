@@ -72,7 +72,7 @@ class DkpDealFlowTest extends TestCase
     {
         for ($i = 0; $i < 12 && ($o = $offer->fresh())->stage()->name !== $name; $i++) {
             $stage = $o->stage();
-            $exit = $stage->exitsFor(Actor::Manager, $deal)->first(fn ($e) => $e->label !== 'Я передумал');
+            $exit = $stage->exitsFor(Actor::Manager, $deal)->first(fn ($e) => $e->label !== 'Отказываюсь');
             $exit
                 ? app(TakeExit::class)($o, $exit, Actor::Manager, $this->manager)
                 : app(TakeExit::class)($o, $stage->exitsFor(Actor::Staff, $deal)->first(fn ($e) => ! str_contains(mb_strtolower($e->label), 'отказ') && ! str_contains(mb_strtolower($e->label), 'не поступила')), Actor::Staff, $this->admin);

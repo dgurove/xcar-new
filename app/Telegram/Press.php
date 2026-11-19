@@ -18,7 +18,7 @@ final class Press
     /** @param array<string, mixed> $query */
     public static function parse(array $query): ?self
     {
-        if (preg_match('/^([a-z]+):(\d+):([a-z]+)$/', (string) ($query['data'] ?? ''), $m) !== 1) {
+        if (preg_match('/^([a-z]+):(\d+):([a-z][a-z0-9]*)$/', (string) ($query['data'] ?? ''), $m) !== 1) {
             return null;
         }
 

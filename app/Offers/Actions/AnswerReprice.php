@@ -180,7 +180,9 @@ final class AnswerReprice
                         if ($published && $offer->deal_audience_rules) {
                             $offer->forceFill(['audience_rules' => $offer->deal_audience_rules])->save();
                         }
-                        ($this->state)($offer, OfferState::Open, $by);
+                        // Отказ менеджера (19.11.2026): резерв есть — ждёт админа, нет — сутки всем и «не актуально»; публиковали
+                        // для других — приём, как и был, до конца публикации.
+                        ($this->state)($offer, OfferState::Open, $by, refused: ! $published);
                     });
                     $until && $offer->refresh()->update(['bids_close_at' => Binding::clampClose($offer, $until)]);
                 } catch (ValidationException) {

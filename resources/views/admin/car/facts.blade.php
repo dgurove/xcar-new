@@ -40,7 +40,7 @@
 @endif
 @if (! $intake && $left !== null && $left > 0)
     <x-ui.info-row icon="clock"><span class="nums {{ $offer->isEndingSoon() ? 'text-urgent' : '' }}">приём <span data-controller="timer" data-timer-until-value="{{ $offer->bids_close_at->toIso8601String() }}" data-timer-done-value="закрыт" data-timer-coarse-value="true">{{ \App\Support\Ago::left($offer->bids_close_at, 'ещё') }}</span></span></x-ui.info-row>
-@elseif (! $intake && ! $gallery && $car->selling() && $offer->closed() && $admin)
+@elseif (! $intake && ! $gallery && $car->selling() && $offer->closed() && $admin && ! $offer->refused_at)
     <x-ui.info-row icon="clock"><span class="text-ink-muted">приём закрыт</span></x-ui.info-row>
 @endif
 {{-- Окно галереи (08.10.2026): висит — сколько осталось, кончилось — до какого числа висело. --}}

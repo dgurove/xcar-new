@@ -1581,19 +1581,10 @@ class MailController
      * Последнее письмо вендора по предложению из всех его веток стороны «Предложения» — на него отвечает письмо этапа.
      * Пересылка сотрудника с личного ящика — тоже письмо вендора (`Message::isFromVendor`).
      */
+    /** Письмо поставщика, на которое отвечать, — одна дверь с автоматом (`Offers\SupplierAddress`, 19.11.2026). */
     private static function vendorLetter(Offer $offer): ?Message
     {
-        $threads = Thread::where('offer_id', $offer->id)->whereIn('account_id', Account::where('scope', Scope::Offers)->select('id'))->pluck('id');
-
-        if ($threads->isEmpty()) {
-            return null;
-        }
-        $letters = Message::whereIn('thread_id', $threads)->with(['account.replyAccount', 'addresses', 'thread'])->orderByDesc('date_at')->orderByDesc('id')->get();
-
-        // Его последнее письмо, а пока он не писал — наше последнее ему (28.10.2026): «Подтверждаем актуальность» ответом
-        // на «Выражаем интерес», одной веткой «Re: …», а не новым письмом, которое у страховой потеряется.
-        return $letters->first(fn (Message $m) => $m->direction === Direction::In && $m->isFromVendor())
-            ?? $letters->first(fn (Message $m) => $m->direction === Direction::Out && $m->message_id);
+        return \App\Offers\SupplierAddress::letter($offer);
     }
 
     private function sendRules(Request $request): array

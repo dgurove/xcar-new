@@ -166,7 +166,10 @@ final class CarView
         // начальник: прицепы Альфы «нет марки» не уходили в продажу).
         $brandTop = $admin && $steps && ! $o->brand_id && ! $o->no_brand;
         // Слот, аукцион, «Без подтверждений», архив — плашка «что сейчас» (`now-block`) с кнопками; у гаража её нет.
+        // Менеджер отказался, а есть кому отдать (19.11.2026) — плашка «Менеджер отказался»: отдать или «Вернуть в продажу…».
+        $refusedNow = $admin && ! $garageCar && $state === OfferState::Open && $o->refused_at && ! $o->lapse_since && \App\Offers\Offer::hasActiveBids($o->id);
         $nowKind = ! $admin || $garageCar ? null : match (true) {
+            $refusedNow => 'refused',
             $scheduled => 'slot',
             $auction => 'auction',
             $unsold => 'unsold',
@@ -174,7 +177,7 @@ final class CarView
             default => null,
         };
         // Открытое — блок «Приём» сверху (`intake-block`): срок и продление кнопками.
-        $intake = $admin && ! $garageCar && $state === OfferState::Open && $o->bids_close_at;
+        $intake = $admin && ! $garageCar && $state === OfferState::Open && $o->bids_close_at && ! $refusedNow;
         // «Выставить в продажу» у черновика и галереи; без цены продажи публиковать нечего.
         $publishItems = $admin && in_array($state, [OfferState::Draft, OfferState::Gallery], true) && ! $scheduled && $o->asking_price && $o->floor_price && ! $auction && ! $unsold;
         // Оценённый черновик — «Выставить в продажу» кнопкой в «Ценах» (19.10.2026), не пунктом меню.

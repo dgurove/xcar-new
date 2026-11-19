@@ -138,6 +138,8 @@ final class StepAsk
     {
         $by = $r->answer['closed_by'] ?? null;
         $label = $r->answer['label'] ?? $r->answer['exit'] ?? null;
+        // Ответы до 19.11.2026 записаны прежней подписью отказа — показываем нынешней (начальник: «Отказываюсь» везде).
+        $label = $label === 'Я передумал' ? 'Отказываюсь' : $label;
 
         return match (true) {
             $by === 'staff' => $forStaff ? 'За менеджера'.($label ? ': «'.$label.'»' : '') : 'Ответили за вас'.($label ? ': «'.Wording::for($r->user, $label).'»' : ''),

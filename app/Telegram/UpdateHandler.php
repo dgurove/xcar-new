@@ -38,6 +38,7 @@ use App\Users\Access\AccessCode;
 use App\Users\Access\DecideCode;
 use App\Users\User;
 use App\Workflow\Actions\AnswerRequirement;
+use App\Workflow\Actions\RemindAsks;
 use App\Workflow\Requirement;
 use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Support\Facades\Cache;
@@ -156,8 +157,9 @@ final class UpdateHandler
             // Третьим — своё «нет» (19.11.2026, «Вы уверены?»: «Ещё подумаю», `Offers\Warnings`), иначе «Назад».
             [$question, $yes, $no] = ($asks[$action] ?? ['', '']) + [2 => 'Назад'];
             $this->bot->answer($press->queryId, $question !== '' ? 'Подтвердите' : '');
+            // Кнопки — рядом или рядами (согласие: «Беру в работу», под ним «Отказываюсь» и «Напомнить через…»).
             $this->bot->edit($press->chatId, $press->messageId, $text($question), [
-                $action === 'back' ? $buttons : [['text' => $yes, 'callback_data' => "{$topic}:{$press->id}:sure{$action}"], ['text' => $no, 'callback_data' => "{$topic}:{$press->id}:back"]],
+                ...($action === 'back' ? self::rows($buttons) : [[['text' => $yes, 'callback_data' => "{$topic}:{$press->id}:sure{$action}"], ['text' => $no, 'callback_data' => "{$topic}:{$press->id}:back"]]]),
                 ...$open]);
 
             return;
@@ -176,6 +178,35 @@ final class UpdateHandler
         }
         $this->bot->answer($press->queryId, $done[0]);
         $this->bot->edit($press->chatId, $press->messageId, $text($done[1]), $done[2] ?? $open);
+    }
+
+    /** Один ряд кнопок или уже ряды — рядами. @return list<list<array<string, string>>> */
+    private static function rows(array $buttons): array
+    {
+        return isset($buttons[0]['text']) ? [$buttons] : $buttons;
+    }
+
+    /**
+     * «Напомнить через…» в боте (19.11.2026, начальник): ряд кнопок 1–6 ч (`RemindAsks::CHOICES`) и «Назад»; выбор ставит
+     * `remind_at` (`RemindAsks::set`) и правит сообщение «Напомним в 18:30», кнопки ответа остаются.
+     *
+     * @return array{0: string, 1: string, 2: list<list<array<string, string>>>}|null
+     */
+    private static function remind(Press $press, string $topic, string $which, Requirement|\App\Offers\ExtraAsk $ask, User $user, array $buttons, array $open): ?array
+    {
+        if ($which === 'remind') {
+            $hours = collect(RemindAsks::CHOICES)->map(fn ($label, $when) => ['text' => str_replace([' часов', ' часа', ' час'], ' ч', $label), 'callback_data' => "{$topic}:{$press->id}:in{$when}"])->values();
+
+            return ['', 'Напомнить через', [...$hours->chunk(3)->map(fn ($row) => $row->values()->all())->all(), [['text' => 'Назад', 'callback_data' => "{$topic}:{$press->id}:back"]], ...$open]];
+        }
+        $at = str_starts_with($which, 'in') ? RemindAsks::at(substr($which, 2)) : null;
+        if (! $at) {
+            return null;
+        }
+        RemindAsks::set($ask, $at, $user);
+        $when = 'Напомним '.RemindAsks::when($at);
+
+        return [$when, $when, [...self::rows($buttons), ...$open]];
     }
 
     /** Строки уведомления — HTML-текстом сообщения бота: заголовок жирным, строки, ниже строка итога. */
@@ -271,8 +302,8 @@ final class UpdateHandler
     }
 
     /**
-     * Согласие менеджера из бота (27.10.2026, владелец: «в боте сразу кнопки»): «Беру в работу» и «Передумал» переспрашивают
-     * — первое необратимо (дальше письмо поставщику «актуально»), второе отменяет сделку. Ответ — тот же
+     * Согласие менеджера из бота (27.10.2026, владелец: «в боте сразу кнопки»): «Беру в работу» и «Отказываюсь» переспрашивают
+     * — первое необратимо (дальше письмо поставщику «актуально»), второе отменяет сделку; «Напомнить через…» — часы (`remind`). Ответ — тот же
      * `AnswerRequirement`, что кнопка на странице сделки. Нажать может только сам менеджер.
      */
     private function turn(Press $press): void
@@ -295,8 +326,11 @@ final class UpdateHandler
             return;
         }
         $this->confirmed($press, 'turn', $text, YourTurnNotice::consentButtons($r), $open,
-            ['take' => [\App\Offers\Warnings::telegram(\App\Offers\Warnings::TAKE), 'Да, беру', \App\Offers\Warnings::CANCEL], 'drop' => [\App\Offers\Warnings::telegram(\App\Offers\Warnings::DEAL_OFF), 'Да, передумал', \App\Offers\Warnings::CANCEL]],
-            function (string $which) use ($r, $user) {
+            ['take' => [\App\Offers\Warnings::telegram(\App\Offers\Warnings::TAKE), 'Да, беру', \App\Offers\Warnings::CANCEL], 'drop' => [\App\Offers\Warnings::telegram(\App\Offers\Warnings::DEAL_OFF), 'Да, отказываюсь', \App\Offers\Warnings::CANCEL]],
+            function (string $which) use ($r, $user, $press, $open) {
+                if ($which === 'remind' || str_starts_with($which, 'in')) {
+                    return self::remind($press, 'turn', $which, $r, $user, YourTurnNotice::consentButtons($r), $open);
+                }
                 $exit = in_array($which, ['take', 'drop'], true) ? YourTurnNotice::consentExit($r, $which) : null;
                 if (! $exit) {
                     return null;
@@ -307,7 +341,7 @@ final class UpdateHandler
             });
     }
 
-    /** «Беру в работу» / «Я передумал» по доп. просьбе (`ExtraAskDecisionNotice`): нажать может только менеджер сделки. */
+    /** «Беру в работу» / «Отказываюсь» по доп. просьбе (`ExtraAskDecisionNotice`): нажать может только менеджер сделки. */
     private function extra(Press $press): void
     {
         $ask = \App\Offers\ExtraAsk::with(['offer', 'deal'])->find($press->id);
@@ -329,7 +363,10 @@ final class UpdateHandler
         }
         $this->confirmed($press, 'extra', $text, $notice::buttons($ask), $open,
             ['take' => [\App\Offers\Warnings::telegram(\App\Offers\Warnings::TAKE), 'Да, беру', \App\Offers\Warnings::CANCEL], 'drop' => [\App\Offers\Warnings::telegram(\App\Offers\Warnings::DEAL_OFF), 'Да, отказываюсь', \App\Offers\Warnings::CANCEL]],
-            function (string $which) use ($ask, $user, $labels) {
+            function (string $which) use ($ask, $user, $labels, $press, $open, $notice) {
+                if ($which === 'remind' || str_starts_with($which, 'in')) {
+                    return $ask->phase() === \App\Offers\ExtraAsk::MANAGER ? self::remind($press, 'extra', $which, $ask, $user, $notice::buttons($ask), $open) : null;
+                }
                 if (! in_array($which, [\App\Offers\ExtraAsk::TAKE, \App\Offers\ExtraAsk::DROP], true)) {
                     return null;
                 }

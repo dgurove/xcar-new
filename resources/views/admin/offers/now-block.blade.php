@@ -6,6 +6,7 @@
 @php
     use App\Offers\{OfferState, Slots};
     $kind = match (true) {
+        $offer->state === OfferState::Open && $offer->refused_at && ! $offer->lapse_since => 'refused',
         $offer->isScheduled() => 'slot',
         $offer->onAuction() => 'auction',
         \App\Offers\Actions\ReturnToSale::unsold($offer) => 'unsold',
@@ -13,7 +14,29 @@
     };
 @endphp
 <section class="flex w-full flex-col gap-3 rounded-(--radius-l) bg-surface-2 p-3">
-    @if ($kind === 'slot')
+    @if ($kind === 'refused')
+        {{-- Менеджер отказался, есть другие подтверждения (19.11.2026, начальник): отдать другому — «Принять» у подтверждения
+             в «Подтверждениях»; или «Вернуть в продажу…» на часы — никто не подтвердит, снимется и поставщику «не актуально». --}}
+        @php
+            $refuser = \App\Offers\Deal::where('offer_id', $offer->id)->where('close_reason', 'refused')->latest('cancelled_at')->first()?->buyer;
+            $waiting = \App\Offers\Bid::where('offer_id', $offer->id)->where('state', \App\Offers\BidState::Active)->count();
+        @endphp
+        <div>
+            <h2 class="text-base font-medium">{{ $refuser ? $refuser->shortName().' отказался' : 'Менеджер отказался' }} <span class="nums text-sm font-normal text-ink-muted">{{ \App\Support\Ago::html($offer->refused_at, true, words: false) }}</span></h2>
+            <p class="mt-1 text-sm text-ink-muted">Подтверждений: <span class="nums">{{ $waiting }}</span>. Чтобы отдать другому, нажмите «Принять» у его подтверждения</p>
+        </div>
+        <div data-controller="sheet" class="flex">
+            <x-ui.button type="button" size="sm" variant="secondary" block data-action="sheet#open">Вернуть в продажу…</x-ui.button>
+            <x-ui.sheet :id="'refused-resale-'.$n" title="Вернуть в продажу">
+                <form method="post" action="/offers/{{ $n }}/refused-resale" class="flex flex-col gap-4">
+                    @csrf
+                    <x-ui.segment name="hours" :options="collect(\App\Offers\Actions\ResaleRefused::HOURS)->mapWithKeys(fn ($h) => [$h => $h.' ч'])->all()" value="24"/>
+                    <p class="text-sm text-ink-muted">Если за это время никто не подтвердит, ТС снимется с продажи, а поставщику уйдёт письмо «не актуально»</p>
+                    <x-ui.sheet-foot type="submit" variant="primary">Вернуть в продажу</x-ui.sheet-foot>
+                </form>
+            </x-ui.sheet>
+        </div>
+    @elseif ($kind === 'slot')
         <h2 class="text-base font-medium">Выйдет {{ Slots::phrase($offer->slot_at) }}</h2>
         <div class="flex flex-wrap gap-2" data-controller="sheet">
             <form method="post" action="/offers/{{ $n }}/state" data-price-guard="publish" data-price-guard-offer="{{ $n }}" class="flex basis-full">

@@ -1,9 +1,9 @@
 {{-- Задача сделки, пока её держит доп. просьба поставщику (18.11.2026, владелец: «пока активна дополнительная просьба, ход сделки
      замораживается»; «ему инфу скинули, он окнул и сразу нажал „Беру в работу“ либо отказ, чтобы не спрашивать его заново»;
      `Offers\ExtraAsk`). Вид — как у согласия «Взять в работу?» (`cabinet.deals.exits`): вопрос, что ответил поставщик (`Disclosure`),
-     главная кнопка во всю ширину, под ней «Я передумал» и «Напомнить через…» в ряд. Пока ждём ответа — «Ждём ответа поставщика», что попросили и
-     сколько ждём; кнопка та же, но серая: знает ответ раньше — решает сразу. До согласия — «Беру в работу» / «Я передумал» (это и
-     ответ шага согласия), после — «Всё в порядке, берём» / «Не берём» (`ExtraAsk::labels`). Просьба после оплаты — только ожидание. --}}
+     главная кнопка во всю ширину, под ней «Отказываюсь» и «Напомнить через…» в ряд. Пока ждём ответа — «Ждём ответа поставщика», что попросили и
+     сколько ждём; кнопка та же, но серая: знает ответ раньше — решает сразу. До согласия — «Беру в работу» / «Отказываюсь» (это и
+     ответ шага согласия), после — «Всё в порядке, берём» / «Отказываюсь» (`ExtraAsk::labels`). Просьба после оплаты — только ожидание. --}}
 @php
     use App\Offers\ExtraAsk;
     use App\Users\Wording;
@@ -23,12 +23,15 @@
     @if ($ask->asks_manager)
         <form method="post" action="/deals/{{ $deal->id }}/extra-ask" id="extra-ask-{{ $ask->id }}" class="mt-5 flex flex-col gap-4">
             @csrf
-            <x-ui.button name="decision" value="take" :variant="$decides ? 'primary' : 'secondary'" block :data-turbo-confirm="\App\Offers\Warnings::TITLE" :data-turbo-confirm-text="\App\Offers\Warnings::TAKE" :data-turbo-confirm-label="$consented ? 'Да, берём' : 'Да, беру в работу'" :data-turbo-confirm-cancel="\App\Offers\Warnings::CANCEL">{{ Wording::mine($labels['take']) }}</x-ui.button>
+            {{-- «Беру в работу» — окно с тремя кнопками (`x-deal.take-sheet`): «Ещё подумаю…» — напоминание по просьбе (`extra`). --}}
+            <x-ui.button type="button" :variant="$decides ? 'primary' : 'secondary'" block data-controller="emit" data-action="emit#send" :data-emit-event-param="'take:take-x-'.$ask->id">{{ Wording::mine($labels['take']) }}</x-ui.button>
         </form>
-        {{-- «Я передумал» / «Не берём» и «Напомнить через…» — двумя кнопками в ряд (19.11.2026, как на шаге сделки): решать ему — с
+        <x-deal.take-sheet :id="'take-x-'.$ask->id" :form="'extra-ask-'.$ask->id" :take="['decision', 'take']" :ok="$consented ? 'Да, берём' : 'Да, беру в работу'" :drop="['decision', 'drop']"
+            :deal="$decides ? $deal : null" :ask="$ask" extra/>
+        {{-- «Отказываюсь» и «Напомнить через…» — двумя кнопками в ряд (19.11.2026, как на шаге сделки): решать ему — с
              напоминанием, ждём поставщика — одна серая кнопка. --}}
         <div class="mt-3 flex gap-3">
-            <button form="extra-ask-{{ $ask->id }}" name="decision" value="drop" @class(['btn btn-quiet', 'shrink-0 px-5' => $decides, 'min-w-0 flex-1' => ! $decides]) {{ \App\Offers\Warnings::html(\App\Offers\Warnings::DEAL_OFF, $consented ? 'Да, отказываюсь' : 'Да, передумал', danger: true) }}><span class="truncate">{{ Wording::mine($labels['drop']) }}</span></button>
+            <button form="extra-ask-{{ $ask->id }}" name="decision" value="drop" @class(['btn btn-quiet', 'shrink-0 px-5' => $decides, 'min-w-0 flex-1' => ! $decides]) {{ \App\Offers\Warnings::html(\App\Offers\Warnings::DEAL_OFF, 'Да, отказываюсь', danger: true) }}><span class="truncate">{{ Wording::mine($labels['drop']) }}</span></button>
             @if ($decides)<x-deal.remind :deal="$deal" :ask="$ask" extra/>@endif
         </div>
     @endif

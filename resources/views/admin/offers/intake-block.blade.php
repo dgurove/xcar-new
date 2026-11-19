@@ -29,6 +29,14 @@
             ? 'Только '.($offer->firstLookUser?->shortName() ?? 'оценившему').', всем — если откажете по его подтверждению'
             : 'До конца приёма — только '.($offer->firstLookUser?->shortName() ?? 'оценившему').', потом всем' }}</p>
     @endif
+    {{-- После отказа менеджера (19.11.2026, `LapseRefused`): никто не подтвердит до конца приёма — снимется и поставщику «не
+         актуально»; «Не снимать» — авто-снятие гаснет. --}}
+    @if ($offer->lapse_since)
+        <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
+            <p class="min-w-0 flex-1 text-sm text-ink-muted">Если никто не подтвердит до конца приёма, ТС снимется с продажи, а поставщику уйдёт «не актуально»</p>
+            <form method="post" action="/offers/{{ $n }}/keep-on-sale" class="contents">@csrf<button class="btn btn-s btn-quiet shrink-0">Не снимать</button></form>
+        </div>
+    @endif
     {{-- «Показ» строкой — кому и какие отметки, шторка со сроком и волнами (`x-offer.showing-row`). --}}
     <x-offer.showing-row :offer="$offer" :form="$showForm" :summary="$showSummary ?? null" :when="false"/>
     <div class="flex flex-wrap gap-2">

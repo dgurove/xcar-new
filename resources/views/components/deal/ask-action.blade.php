@@ -5,34 +5,49 @@
      получения ещё «Попросить вывоз…» — шторкой с тем, что будет. --}}
 @props(['ask', 'variant' => 'card', 'back' => null])
 @php
+    use App\Offers\Warnings;
     use App\Users\Wording;
     $deal = $ask->deal;
     $back ??= request()->getRequestUri();
     $size = in_array($variant, ['card', 'row'], true) ? 's' : null;
     // Вопрос при входе (`sheet`) — только ответ и «Ещё нет» (18.11.2026, владелец: «убери „я передумал“ — чтобы отменить, пусть
-    // проваливаются в сделку; чисто подтвердить или ещё нет»): ни отказа, ни «Попросить вывоз…» — они на странице сделки.
+    // проваливаются в сделку; чисто подтвердить или ещё нет»): ни отказа, ни «Попросить вывоз…» рядом — отказ только третьей
+    // кнопкой окна «Беру в работу» (19.11.2026, начальник: окно одно везде).
     $plain = in_array($variant, ['row', 'card', 'sheet'], true);
     $pickup = ! $plain && $ask->canAskPickup();
+    // Одна страница бывает с несколькими видами одного вопроса (чат и полка) — id формы и окна свои у вида и места.
+    $form = 'ask-'.($ask->requirement?->id).'-'.$variant.'-'.substr(md5((string) $back), 0, 6);
+    $shown = $ask->taps() ? (in_array($variant, ['row', 'card'], true) ? $ask->moves->take(1) : $ask->moves) : collect();
 @endphp
 <div {{ $attributes->class(['ask-action', 'ask-action--'.$variant]) }} @if ($pickup) data-controller="sheet" @endif>
     @if ($ask->taps())
-        <form method="post" action="/deals/{{ $deal->id }}/reply" id="ask-{{ $ask->requirement->id }}-{{ $variant }}" class="ask-action-form">
+        <form method="post" action="/deals/{{ $deal->id }}/reply" id="{{ $form }}" class="ask-action-form">
             @csrf
             <input type="hidden" name="requirement" value="{{ $ask->requirement->id }}">
             <input type="hidden" name="back" value="{{ $back }}">
-            @foreach (in_array($variant, ['row', 'card'], true) ? $ask->moves->take(1) : $ask->moves as $exit)
-                <x-ui.button name="exit" :value="$exit->id" :size="$size" :variant="$loop->first ? 'primary' : 'secondary'" :block="$variant !== 'row'"
-                    :data-turbo-confirm="\App\Offers\Warnings::takes($exit) ? \App\Offers\Warnings::TITLE : (Wording::mine($exit->confirm) ?: null)" :data-turbo-confirm-text="\App\Offers\Warnings::takes($exit) ? \App\Offers\Warnings::TAKE : null" :data-turbo-confirm-label="\App\Offers\Warnings::takes($exit) ? ($exit->takes() ? 'Да, беру в работу' : 'Да, берём') : null" :data-turbo-confirm-cancel="\App\Offers\Warnings::takes($exit) ? \App\Offers\Warnings::CANCEL : null">{{ Wording::mine($exit->label) }}</x-ui.button>
+            @foreach ($shown as $exit)
+                @if (Warnings::takes($exit))
+                    {{-- «Беру в работу» — окно с тремя кнопками (`x-deal.take-sheet`) во всех видах, и в строке, и в вопросе при входе. --}}
+                    <x-ui.button type="button" :size="$size" :variant="$loop->first ? 'primary' : 'secondary'" :block="$variant !== 'row'"
+                        data-controller="emit" data-action="emit#send" :data-emit-event-param="'take:'.$form.'-'.$exit->id">{{ Wording::mine($exit->label) }}</x-ui.button>
+                @else
+                    <x-ui.button name="exit" :value="$exit->id" :size="$size" :variant="$loop->first ? 'primary' : 'secondary'" :block="$variant !== 'row'"
+                        :data-turbo-confirm="Wording::mine($exit->confirm) ?: null">{{ Wording::mine($exit->label) }}</x-ui.button>
+                @endif
             @endforeach
             {{-- В строке и в плитке «Ждут вас» — одна кнопка: плитки одной высоты, кнопки в ряд (10.11.2026, владелец: «всё скачет»);
-                 «Передумал» и «Попросить вывоз…» — в чате, в сделке и в вопросе при входе. --}}
+                 «Отказываюсь» и «Попросить вывоз…» — в чате, в сделке и в окне «Беру в работу». --}}
         </form>
-        {{-- «Я передумал» и «Напомнить через…» — двумя кнопками в ряд (19.11.2026, как на шаге сделки, `cabinet.deals.exits`): ряд за
-             формой ответа — у шторки напоминания свои формы, «Я передумал» шлёт ответ атрибутом `form`. --}}
+        @foreach ($shown->filter(fn ($e) => Warnings::takes($e)) as $exit)
+            <x-deal.take-sheet :id="$form.'-'.$exit->id" :form="$form" :take="['exit', $exit->id]" :ok="$exit->takes() ? 'Да, беру в работу' : 'Да, берём'"
+                :drop="($r = $ask->retreats->first()) ? ['exit', $r->id] : null" :deal="$deal" :ask="$ask->requirement" :back="$back"/>
+        @endforeach
+        {{-- «Отказываюсь» и «Напомнить через…» — двумя кнопками в ряд (19.11.2026, как на шаге сделки, `cabinet.deals.exits`): ряд за
+             формой ответа — у шторки напоминания свои формы, «Отказываюсь» шлёт ответ атрибутом `form`. --}}
         @if (! $plain && $ask->retreats->isNotEmpty())
             <div class="mt-2 flex gap-2">
                 @foreach ($ask->retreats as $exit)
-                    <button form="ask-{{ $ask->requirement->id }}-{{ $variant }}" name="exit" value="{{ $exit->id }}" class="btn btn-quiet shrink-0 px-5" {{ \App\Offers\Warnings::html(\App\Offers\Warnings::DEAL_OFF, $exit->label === 'Я передумал' ? 'Да, передумал' : 'Да, отказываюсь', danger: true) }}><span class="truncate">{{ Wording::mine($exit->label) }}</span></button>
+                    <button form="{{ $form }}" name="exit" value="{{ $exit->id }}" class="btn btn-quiet shrink-0 px-5" {{ Warnings::html(Warnings::DEAL_OFF, 'Да, отказываюсь', danger: true) }}><span class="truncate">{{ Wording::mine($exit->label) }}</span></button>
                 @endforeach
                 <x-deal.remind :deal="$deal" :ask="$ask->requirement" :back="$back"/>
             </div>

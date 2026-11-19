@@ -105,7 +105,7 @@ class OfferController
         'all_drafts' => 'Все черновики',
         'nofloor' => 'Без закупочной цены', 'unpriced' => 'Без продажной цены', 'estimating' => 'На оценке у менеджеров', 'priced' => 'Оцененные',
         'all_offers' => 'Все предложения',
-        'slots' => 'Публикация', 'published' => 'Опубликованные', 'bids' => 'Есть подтверждения', 'done' => 'Без подтверждений',
+        'slots' => 'Публикация', 'published' => 'Опубликованные', 'refused' => 'Менеджер отказался', 'bids' => 'Есть подтверждения', 'done' => 'Без подтверждений',
         'all_deals' => 'Все сделки',
         // «Оплата за подбор» (18.11.2026, владелец) — поперёк этапов, как «Гараж»: сделка остаётся и в своей вкладке этапа.
         // Счета — «Оплаты → Комиссии» с машиной; красное число — ссылку не выставили, а сделка на шаге оплаты
@@ -126,7 +126,7 @@ class OfferController
      */
     public const SUMMARIES = [
         'all_drafts' => ['nofloor', 'unpriced', 'estimating', 'priced'],
-        'all_offers' => ['slots', 'published', 'bids', 'done'],
+        'all_offers' => ['slots', 'published', 'refused', 'bids', 'done'],
         'all_deals' => null,
         'all_archive' => ['archive', 'legacy', 'auction'],
     ];
@@ -188,7 +188,7 @@ class OfferController
     /** Зелёные числа колеса: ключ вкладки → ключ числа в `counts` (оценки менеджеров, наши дела по этапам сделки). */
     public static function badges(): array
     {
-        return ['estimating' => 'estimating_given', 'priced' => 'priced_given', 'all_deals' => 'all_deals_our', 'selection' => 'selection_our', ...collect(DealTabs::TABS)->except(DealTabs::WAITING)->mapWithKeys(fn ($t, $k) => [$k => $k.'_our'])->all()];
+        return ['refused' => 'refused', 'estimating' => 'estimating_given', 'priced' => 'priced_given', 'all_deals' => 'all_deals_our', 'selection' => 'selection_our', ...collect(DealTabs::TABS)->except(DealTabs::WAITING)->mapWithKeys(fn ($t, $k) => [$k => $k.'_our'])->all()];
     }
 
     /** Вкладка ли сделки: строки — сделки (`DealController::tab`). */
@@ -202,7 +202,7 @@ class OfferController
      * (17.10–29.10.2026) нет: опубликовано — значит идёт приём, кончился без подтверждений — черновиком в «Без подтверждений»
      * (`ReturnClosedToRated`).
      */
-    private const OPEN = ['published', 'bids'];
+    private const OPEN = ['published', 'refused', 'bids'];
 
     /** Вкладки, где порядок — когда предложение в них попало (`offers.tab_at`) и столбец даты — оно же. */
     public const BY_TAB = ['nofloor', 'unpriced', 'estimating', 'priced', 'done', 'archive', 'auction'];
@@ -217,7 +217,7 @@ class OfferController
             return self::PRESETS;
         }
         // Закупки и галерея — админу (их разделы в CRM у модератора закрыты и прежде).
-        $hidden = ['estimating' => true, 'bids' => true, 'done' => true, 'all' => true, 'legacy' => true, 'auction' => true, ...array_fill_keys(array_keys(self::SUMMARIES), true),
+        $hidden = ['estimating' => true, 'refused' => true, 'bids' => true, 'done' => true, 'all' => true, 'legacy' => true, 'auction' => true, ...array_fill_keys(array_keys(self::SUMMARIES), true),
             'purchases' => true, 'gallery' => true, 'interest' => true];
 
         // Модератору (`canEditDeals`) — сделки по этапам, «Завершённые» и гараж (17.11.2026, владелец: полный доступ к сделкам и гаражу).
@@ -285,13 +285,13 @@ class OfferController
     ];
 
     /** Вкладки, где идёт работа по шагам: всегда таблица, без сортировки — порядок задаёт сам шаг. */
-    private const STEPS = ['nofloor', 'unpriced', 'estimating', 'priced', 'slots', 'published', 'bids'];
+    private const STEPS = ['nofloor', 'unpriced', 'estimating', 'priced', 'slots', 'published', 'refused', 'bids'];
 
     /** Вкладки, где карточка после дела идёт к следующей строке. */
     private const TODO = ['nofloor', 'unpriced', 'estimating'];
 
     /** Вкладки дела: строка ушла — карточка сама к следующей (оценили, заполнили закупочную, приняли подтверждение). */
-    private const ADVANCE = [...self::TODO, 'bids', 'done'];
+    private const ADVANCE = [...self::TODO, 'refused', 'bids', 'done'];
 
     /**
      * Вкладка по умолчанию — дело человека: модератору закупочная, админу цена продажи. Админ, который ещё и модератор
@@ -483,7 +483,7 @@ class OfferController
         $tabFacets = [...match ($preset) {
             // «Новые» (опубликовано за сутки) и «Горящие» (приём закрывается за 12 ч) — как пилюли каталога, голубой и рыжей
             // точкой и своим цветом включённого (12.10.2026, владелец); подтверждения и сроки видит только админ.
-            'published', 'bids' => [
+            'published', 'refused', 'bids' => [
                 ...self::facets(),
                 ...($admin ? [
                     Facet::toggle('urgent', 'Срочные', fn ($o) => $o->urgent())->dot('urgent')->icon('zap'),
@@ -620,7 +620,7 @@ class OfferController
      */
     private static function hidesCarcade(string $preset): bool
     {
-        return ! self::ownTab($preset) && ! in_array($preset, ['bids', 'all_deals'], true);
+        return ! self::ownTab($preset) && ! in_array($preset, ['refused', 'bids', 'all_deals'], true);
     }
 
     /** Умолчание «Кроме Каркаде» в силе: вендор не выбран или выбран ровно им (`?vendor=!id`). */
@@ -696,7 +696,11 @@ class OfferController
             // «Без подтверждений» (06.11.2026, владелец; до того «Завершённые» с группой «В работе» — сделки и гараж, им там не
             // место): приём кончился без подтверждений — решить, вернуть в продажу или в архив. Список держат пустым.
             'done' => $q->where('offers.state', OfferState::Draft)->whereNull('slot_at')->whereNotNull('offers.intake_closed_at')->where('floor_price', '>', 0),
-            'bids' => $q->where('offers.state', OfferState::Open)->whereHas('bids', $bids),
+            // «Менеджер отказался» (19.11.2026, начальник): отказался, а есть другие подтверждения — отдать другому или «Вернуть в
+            // продажу…» с авто-снятием (`ChangeOfferState` `refused`). Вернули с авто-снятием — уже не здесь, а в «Есть подтверждения».
+            'refused' => $q->where('offers.state', OfferState::Open)->whereNotNull('offers.refused_at')->whereNull('offers.lapse_since')->whereHas('bids', $bids),
+            'bids' => $q->where('offers.state', OfferState::Open)->whereHas('bids', $bids)
+                ->where(fn ($c) => $c->whereNull('offers.refused_at')->orWhereNotNull('offers.lapse_since')),
             // «Все» (21.10.2026, владелец: «все, в том числе завершённые и перешедшие в сделку, короче все кроме архивных»). Без
             // «Без закупочной цены» и «Завершённых» (17.11.2026, владелец: «во „Все“ не надо отображать без закупочной цены,
             // завершённые и всё, что в архиве») — по той же раскладке, что группы (`OfferTabs`).
@@ -738,7 +742,7 @@ class OfferController
      * групп — `rest` («Остальные»). Строке — колонка `binding_soon` (`listQuery`).
      */
     // «Все» — группами по вкладкам (16.11.2026, владелец: «группировку не по тому, горит ли срок, а как по вкладкам»).
-    public const HOT = ['nofloor', 'unpriced', 'estimating', 'priced', 'published', 'bids', 'done'];
+    public const HOT = ['nofloor', 'unpriced', 'estimating', 'priced', 'published', 'refused', 'bids', 'done'];
 
     public const HOT_GROUP = 'Горит срок обязывающего';
 
@@ -960,6 +964,7 @@ class OfferController
             // В «Опубликованных» у админа подтверждений нет по определению — столбца тоже.
             'published' => ['vendor', 'city', ...($admin ? ['state'] : []), 'floor', 'price', 'published'],
             'bids' => ['vendor', 'city', 'state', 'bids', 'floor', 'price', 'published'],
+            'refused' => ['vendor', 'city', 'state', 'bids', 'floor', 'price', 'published'],
             // «Все»: ещё когда нам заплатили и когда мы поставщику (14.11.2026, владелец: «ваще непонятно, что с ними», `DealDates`).
             // Срок обязывающего — своим столбцом, а не значком у названия (14.11.2026, владелец: «у названия — неудобно и непонятно»).
             // Даты заведения столбцом нет (14.11.2026, владелец): сортировать по ней можно (`sortFor`), видеть — не нужно.
@@ -1279,6 +1284,23 @@ class OfferController
     }
 
     /** Продлить приём на ходу: от текущего срока, если он ещё не прошёл, иначе от сейчас. */
+    /** «Менеджер отказался» → «Вернуть в продажу…» на часы (`ResaleRefused`). */
+    public function refusedResale(Request $request, Offer $offer, \App\Offers\Actions\ResaleRefused $resale)
+    {
+        $data = $request->validate(['hours' => ['required', 'integer', 'in:'.implode(',', \App\Offers\Actions\ResaleRefused::HOURS)]]);
+        $offer = $resale($offer, (int) $data['hours'], $request->user());
+
+        return back()->with('toast', 'В продаже до '.Ago::day($offer->bids_close_at, true))->with(self::gone($request, $offer->refresh()));
+    }
+
+    /** «Не снимать автоматически» — авто-снятие после отказа менеджера гаснет. */
+    public function keepOnSale(Request $request, Offer $offer, \App\Offers\Actions\ResaleRefused $resale)
+    {
+        $resale->keep($offer, $request->user());
+
+        return back()->with('toast', 'Не снимем автоматически');
+    }
+
     public function extend(Request $request, Offer $offer, UpdateOffer $update)
     {
         // «+15 мин», «+1 ч» или «Возобновить» (`renew`, 19.10.2026: кнопкой в окошке «Приём закрыт») — обычный срок приёма

@@ -71,7 +71,10 @@ final class EnterStage
             Requirement::redrawFor($closing);
         }
 
-        if ($track === Track::Sale && $to->offer_state === OfferState::Open
+        // Менеджер отказался от сделки (выход в приём, «Отказываюсь», 19.11.2026): срок приёма и показ решает отказ
+        // (`ChangeOfferState` `refused`), а не срок этапа.
+        $refused = $track === Track::Sale && $deal?->isActive() && $exit?->isRetreat() && ! $back && $to->offer_state === OfferState::Open;
+        if ($track === Track::Sale && $to->offer_state === OfferState::Open && ! $refused
             && (! $offer->bids_close_at || $offer->bids_close_at->isPast())) {
             // Как у публикации кнопкой: через N дней в 17:00 (`Slots::closeFor`), N — срок этапа «Приём» в днях.
             $offer->bids_close_at = Binding::clampClose($offer, Slots::closeFor($now, $to->limit_minutes ? max(1, intdiv($to->limit_minutes, 1440)) : null));
@@ -156,7 +159,7 @@ final class EnterStage
         }
 
         if ($track === Track::Sale && $to->offer_state && $offer->state !== $to->offer_state && $offer->state->allows($to->offer_state)) {
-            $offer = ($this->changeState)($offer, $to->offer_state, $by, followRoute: false);
+            $offer = ($this->changeState)($offer, $to->offer_state, $by, followRoute: false, refused: $refused);
             // Этап «Отказ поставщика» (единственный, что снимает предложение): сделка закрыта по причине, как кнопкой
             // «Поставщик отказал…» (`DeclineBySupplier`, 28.10.2026).
             if ($to->offer_state === OfferState::Cancelled && $deal) {

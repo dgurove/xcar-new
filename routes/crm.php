@@ -353,6 +353,9 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
         Route::post('/offers/{offer}/estimates/{estimate}/again', [OfferEstimateController::class, 'again']);
         Route::delete('/offers/{offer}/estimates/{estimate}', [OfferEstimateController::class, 'destroy']);
         Route::post('/offers/{offer}/resale', [OfferController::class, 'resale']);
+        // «Менеджер отказался» (19.11.2026): вернуть в продажу на часы с авто-снятием и «Не снимать автоматически».
+        Route::post('/offers/{offer}/refused-resale', [OfferController::class, 'refusedResale']);
+        Route::post('/offers/{offer}/keep-on-sale', [OfferController::class, 'keepOnSale']);
         // «Точно?» перед ценой под вопросом (02.11.2026, `PriceGuard`): форма цены и публикация спрашивают до отправки.
         Route::post('/offers/price-check', [OfferController::class, 'priceCheck'])->middleware('throttle:60,1');
         // Пачкой из «Оцененных» и «Публикации»: галочки строк, `offers[]` — номера.

@@ -219,7 +219,7 @@ class ParallelDealTest extends TestCase
         $this->assertSame('Согласие менеджера', $par->shadowStage->name);
         $req = $par->openRequirement()->firstOrFail();
         $exits = Parallels::exits($par, $req->stage);
-        $this->assertSame(['Беру в работу', 'Я передумал'], $exits->pluck('label')->sort()->values()->all(), 'без «Забираю в гараж»');
+        $this->assertSame(['Беру в работу', 'Отказываюсь'], $exits->pluck('label')->sort()->values()->all(), 'без «Забираю в гараж»');
 
         // Его «Беру в работу» двигает только его шаг.
         app(AnswerRequirement::class)($req, $exits->first(fn ($e) => $e->takes()), $this->second);
@@ -248,7 +248,7 @@ class ParallelDealTest extends TestCase
         $main = $this->setUpDeal('Согласие менеджера');
         $par = $this->giveParallel();
         // Главный передумал: машина снова в приёме, параллельная жива.
-        $this->exit('Я передумал', $this->first);
+        $this->exit('Отказываюсь', $this->first);
         $this->assertSame(DealState::Cancelled, $main->fresh()->state);
         $this->assertSame(OfferState::Open, $this->offer->fresh()->state);
         $this->assertTrue($par->fresh()->isParallel());

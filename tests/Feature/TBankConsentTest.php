@@ -222,9 +222,9 @@ class TBankConsentTest extends TestCase
         app(TakeExit::class)($offer, $offer->stage()->exitsFor(Actor::Staff, $deal)->firstWhere('label', \App\Offers\SupplierLetterWait::EXIT), Actor::Staff, $this->admin);
         $offer = $offer->fresh();
         $exits = $offer->stage()->exitsFor(Actor::Manager, $deal);
-        $this->assertSame(['Беру в работу', 'Я передумал'], $exits->pluck('label')->all());
-        $this->assertSame('Приём подтверждений', $exits->firstWhere('label', 'Я передумал')->to->name);
-        $this->assertTrue($exits->firstWhere('label', 'Я передумал')->isRetreat());
+        $this->assertSame(['Беру в работу', 'Отказываюсь'], $exits->pluck('label')->all());
+        $this->assertSame('Приём подтверждений', $exits->firstWhere('label', 'Отказываюсь')->to->name);
+        $this->assertTrue($exits->firstWhere('label', 'Отказываюсь')->isRetreat());
     }
 
     public function test_vin_from_tbank_subjects_and_reply_fills_empty_vin_of_sold_offer(): void

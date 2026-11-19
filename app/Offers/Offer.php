@@ -264,6 +264,9 @@ class Offer extends Model
             'urgent_at' => 'datetime',
             'auction_at' => 'datetime',
             'auction_planned_at' => 'datetime',
+            // Отказ менеджера (19.11.2026, `ChangeOfferState` `refused`) и авто-снятие после него (`LapseRefused`).
+            'refused_at' => 'datetime',
+            'lapse_since' => 'datetime',
             'proposed_at' => 'datetime',
             'floor_price' => 'int',
             'publish_price' => 'int',
@@ -1420,7 +1423,7 @@ class Offer extends Model
      * Есть ли у предложения живое подтверждение — для строк списков (`crmTab`): все такие предложения одним запросом на
      * веб-запрос (159 запросов на «Приём закрыт», аудит 20.10.2026); в очереди и консоли — прямой запрос.
      */
-    private static function hasActiveBids(int $id): bool
+    public static function hasActiveBids(int $id): bool
     {
         if (app()->runningInConsole()) {
             return Bid::where('offer_id', $id)->where('state', BidState::Active)->exists();
@@ -1504,7 +1507,7 @@ class Offer extends Model
                 default => $presets['nofloor'],
             },
             OfferState::Open => $user?->canManageCrm() && ($this->relationLoaded('bids') ? $this->bids->contains('state', BidState::Active) : self::hasActiveBids($this->id))
-                ? $presets['bids'] : $presets['published'],
+                ? ($this->refused_at && ! $this->lapse_since ? $presets['refused'] : $presets['bids']) : $presets['published'],
             // Сделка — вкладкой этапа (16.11.2026: сделка — состояние предложения), выданная — «Завершённые».
             OfferState::Sold => $presets[DealTabs::map()[$this->id][0] ?? 'agree'] ?? 'Сделка',
             OfferState::Delivered => $presets['finished'],

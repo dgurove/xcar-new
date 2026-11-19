@@ -32,12 +32,15 @@ use Illuminate\Validation\ValidationException;
  * этапа есть наш исход на этап с таким состоянием — маршрут догоняет кнопку.
  * `at` — публикация слотом (часы, `PublishDueSlots`): выход и срок приёма считаются от слота, а не от минуты тика.
  * `batch` — «сейчас» пачкой из «Оцененных»: уведомление, как у слота, — одно на человека тиком часов.
+ * `refused` — менеджер отказался от сделки (19.11.2026, начальник; `EnterStage` по выходу `isRetreat`, «Отказываюсь» от новой
+ * цены): есть другие живые подтверждения — приём закрыт сразу, без «Новое предложение», машина ждёт админа во вкладке «Менеджер
+ * отказался» (`refused_at`); нет — приём на 24 часа всем сразу и авто-снятие (`lapse_since`, `LapseRefused`).
  */
 final class ChangeOfferState
 {
-    public function __invoke(Offer $offer, OfferState $next, ?User $by, bool $followRoute = true, ?Carbon $at = null, bool $batch = false, bool $auction = false): Offer
+    public function __invoke(Offer $offer, OfferState $next, ?User $by, bool $followRoute = true, ?Carbon $at = null, bool $batch = false, bool $auction = false, bool $refused = false): Offer
     {
-        return DB::transaction(function () use ($offer, $next, $by, $followRoute, $at, $batch, $auction) {
+        return DB::transaction(function () use ($offer, $next, $by, $followRoute, $at, $batch, $auction, $refused) {
             $offer = Offer::whereKey($offer->id)->lockForUpdate()->firstOrFail();
             // Слот могли убрать или перенести в последнюю секунду — тогда часы опоздали, публиковать нечего.
             if ($at && ! $offer->slot_at?->equalTo($at)) {
@@ -53,6 +56,8 @@ final class ChangeOfferState
             if ($from === $next) {
                 return $offer;
             }
+            $refused = $refused && $from === OfferState::Sold && $next === OfferState::Open;
+            $publish = true;
             // Продана на аукционе (`SellAtAuction`): черновик, галерея или продажа закрываются сразу, сделкой без менеджера;
             // отмена (`UndoAuctionSale`) — обратно в черновик. Руками «Выдан» так не поставить: нужна идущая сделка аукциона.
             $auction = $auction && (($next === OfferState::Delivered && in_array($from, [OfferState::Draft, OfferState::Gallery, OfferState::Open], true)
@@ -81,6 +86,20 @@ final class ChangeOfferState
                     // «Приём до» вписали перед выставлением («Показ», 19.10.2026) — он и остаётся, если позже выхода; иначе срок по умолчанию.
                     if (! $offer->bids_close_at || $offer->bids_close_at->lte($at)) {
                         $offer->bids_close_at = Binding::clampClose($offer, Slots::closeFor($at));
+                    }
+                } elseif ($refused) {
+                    $offer->refused_at = now();
+                    if ($offer->bids()->where('state', BidState::Active)->exists()) {
+                        // Есть кому отдать — решает админ (вкладка «Менеджер отказался»): с витрины уходит, никого не зовём.
+                        $offer->bids_close_at = now();
+                        $offer->lapse_since = null;
+                        $publish = false;
+                    } else {
+                        // Отдать некому — сутки в продаже всем сразу; никто не подтвердил — в архив и «не актуально» (`LapseRefused`).
+                        $offer->published_at = now();
+                        $offer->audience_rules = AudienceRules::everyone();
+                        $offer->bids_close_at = Binding::clampClose($offer, now()->addDay());
+                        $offer->lapse_since = now();
                     }
                 } else {
                     // Волны показа — от этого выхода из черновика (13.10.2026): «остальным через 5 дней» считаются заново, а
@@ -117,6 +136,11 @@ final class ChangeOfferState
                 // «Предложено из заявок на приём»: опубликовали или убрали, не нажав «Принять», — решение принято, плашка
                 // не вернётся, когда черновик снова снимут с продажи.
                 $offer->proposed_at = null;
+            }
+            // Отказ менеджера и авто-снятие — до следующей смены состояния: машину отдали, сняли, вернули в черновики.
+            if (! $refused) {
+                $offer->refused_at = null;
+                $offer->lapse_since = null;
             }
             // Метка «приём закрыт» в «Оцененных» (`ReturnClosedToRated`) — до следующей публикации.
             if ($next !== OfferState::Draft) {
@@ -158,7 +182,7 @@ final class ChangeOfferState
             if ($from === OfferState::Draft && $next !== OfferState::Draft) {
                 app(CloseEstimates::class)($offer, $by);
             }
-            $this->settleDeal($offer, $next, $by);
+            $this->settleDeal($offer, $next, $by, $refused);
             // Машина ушла в архив или отменена — вывозить нечего (13.11.2026, владелец: Geely Monjaro 934000/2025 «снята с продажи»
             // висела в логистике «Без исполнителя»; так — 3 задачи Совкомбанка, чей вывоз заводится с письмом). Ещё не
             // забранную задачу система отменяет; уже забранную везут дальше.
@@ -168,7 +192,7 @@ final class ChangeOfferState
             }
 
             OfferStateChanged::dispatch($offer, $by);
-            if ($next === OfferState::Open) {
+            if ($next === OfferState::Open && $publish) {
                 OfferPublished::dispatch($offer, $by, $at !== null || $batch);
             }
 
@@ -233,7 +257,7 @@ final class ChangeOfferState
      * подтверждения) ждёт до выдачи или архива и закрывается тихо, без уведомлений: снятие с продажи и черновик
      * его не трогают — к подтвердившим возвращаются, если выбранный передумал.
      */
-    private function settleDeal(Offer $offer, OfferState $next, ?User $by = null): void
+    private function settleDeal(Offer $offer, OfferState $next, ?User $by = null, bool $refused = false): void
     {
         // Параллельные сделки (07.11.2026) живут, пока машина в сделке или снова в приёме: главную отменили — любую из них
         // можно взять в работу (`TakeParallel`). Ушла дальше (выдана, в гараже, в черновики, архив, отказ) — закрываются.
@@ -256,7 +280,7 @@ final class ChangeOfferState
                 app(CloseGarageDeal::class)($deal, $by);
             }
         } else {
-            app(CancelDeal::class)($deal, $by);
+            app(CancelDeal::class)($deal, $by, reason: $refused ? 'refused' : null);
         }
         $offer->unsetRelation('deal');
     }

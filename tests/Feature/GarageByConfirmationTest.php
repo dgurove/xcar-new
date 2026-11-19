@@ -86,7 +86,7 @@ class GarageByConfirmationTest extends TestCase
         for ($i = 0; $i < 10 && ($o = $offer->fresh())->state === OfferState::Sold; $i++) {
             $stage = $o->stage();
             $seen = [...$seen, ...$stage->exitsFor(Actor::Manager, $deal)->pluck('label')];
-            $exit = $stage->exitsFor(Actor::Manager, $deal)->first(fn ($e) => $e->label !== 'Я передумал');
+            $exit = $stage->exitsFor(Actor::Manager, $deal)->first(fn ($e) => $e->label !== 'Отказываюсь');
             $exit
                 ? app(TakeExit::class)($o, $exit, Actor::Manager, $manager)
                 : app(TakeExit::class)($o, $stage->exitsFor(Actor::Staff, $deal)->first(fn ($e) => ! str_contains($e->label, 'отказал')), Actor::Staff, $admin);

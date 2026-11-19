@@ -38,7 +38,7 @@ final class CancelDeal
      * (12.11.2026, владелец: «чтобы пока был вывоз — она продавалась», `ReturnToSale`); $same — гаражную меняют тому же
      * менеджеру («Изменить гараж», 13.11.2026): машина, вывоз и его исполнитель остаются.
      */
-    public function __invoke(Deal $deal, ?User $by = null, bool $keepCar = false, bool $keepBid = false, bool $keepPickup = false, bool $same = false): Deal
+    public function __invoke(Deal $deal, ?User $by = null, bool $keepCar = false, bool $keepBid = false, bool $keepPickup = false, bool $same = false, ?string $reason = null): Deal
     {
         // Машина гаражной уже у менеджера или по ней есть расходы — молча её не снять (владелец 06.10.2026): разбираемся
         // руками, сделка остаётся.
@@ -49,6 +49,10 @@ final class CancelDeal
                 : 'ТС уже у менеджера: сделку так не отменить']);
         }
         $deal->cancel();
+        // Почему (19.11.2026): `refused` — менеджер отказался сам (`ChangeOfferState` `refused`).
+        if ($reason) {
+            $deal->forceFill(['close_reason' => $reason])->save();
+        }
         // Отмена — тихо (как отказ): «принято», ход и сроки этой сделки у менеджера стираются из ленты и Telegram.
         RetractDealNotices::dispatch($deal->id);
         if ($deal->bid?->state === BidState::Accepted) {

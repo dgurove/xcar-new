@@ -57,7 +57,7 @@ final class TBank extends Route
             'ask_title' => 'Взять в работу',
             'ask_text' => 'Подтверждение принято. Когда ТС взято в работу, напишем поставщику',
             // Отказ — в приём: вход туда отменяет сделку и отклоняет подтверждение.
-            'exits' => [['Беру в работу', 'manager', 'claimed'], ['Я передумал', 'manager', 'bidding']],
+            'exits' => [['Беру в работу', 'manager', 'claimed'], ['Отказываюсь', 'manager', 'bidding']],
         ]] + $head;
 
         return $head + [

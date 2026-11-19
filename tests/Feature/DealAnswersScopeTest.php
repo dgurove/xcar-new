@@ -94,7 +94,7 @@ class DealAnswersScopeTest extends TestCase
         $position = fn () => Position::where('offer_id', $offer->id)->where('track', Track::Sale)->with('stage.exits.to')->firstOrFail();
         $refuse = function (User $m) use ($offer, $position) {
             $deal = $offer->fresh()->deal;
-            app(TakeExit::class)($offer->fresh(), $position()->stage->exitsFor(Actor::Manager, $deal)->firstWhere('label', 'Я передумал'), Actor::Manager, $m);
+            app(TakeExit::class)($offer->fresh(), $position()->stage->exitsFor(Actor::Manager, $deal)->firstWhere('label', 'Отказываюсь'), Actor::Manager, $m);
             $offer->refresh()->forceFill(['bids_close_at' => now()->addDay()])->save();
         };
 

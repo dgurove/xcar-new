@@ -140,8 +140,8 @@ abstract class Route
                 // Отказ — обычный исход в приём: вход туда отменяет сделку и отклоняет подтверждение.
                 // Гаражная сделка «платим мы» вместо «Беру в работу» видит «Забираю в гараж» — дальше её ветка.
                 'exits' => $confirm ?? ($garage
-                    ? [['Беру в работу', 'manager', 'confirmed', 'buyer'], ['Забираю в гараж', 'manager', 'garage_confirmed', 'garage'], ['Я передумал', 'manager', 'bidding']]
-                    : [['Беру в работу', 'manager', 'confirmed'], ['Я передумал', 'manager', 'bidding']]),
+                    ? [['Беру в работу', 'manager', 'confirmed', 'buyer'], ['Забираю в гараж', 'manager', 'garage_confirmed', 'garage'], ['Отказываюсь', 'manager', 'bidding']]
+                    : [['Беру в работу', 'manager', 'confirmed'], ['Отказываюсь', 'manager', 'bidding']]),
             ],
         ];
         if ($agreed) {
