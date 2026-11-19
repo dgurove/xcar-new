@@ -55,7 +55,9 @@
         @if ($claimed > 0)<span class="mt-1 text-sm text-urgent">Сообщили об оплате {{ Money::exact($claimed) }}, ждём подтверждения</span>@endif
     </div>
     @if ($unpaid)
-        <x-billing.pay-status compact :invoice="$current" :staff="$staff" :create="$staff ? null : '/garage/cars/'.$car->offer->number.'/links'" :cancel="$staff ? null : '/garage/cars/'.$car->offer->number.'/links'"/>
+        {{-- «Оплатить» в плашке (`GarageView`) — шторка оплаты со ссылкой: «Новую ссылку» здесь второй раз не даём (19.11.2026). --}}
+        <x-billing.pay-status compact :invoice="$current" :staff="$staff" :create="$staff ? null : '/garage/cars/'.$car->offer->number.'/links'" :cancel="$staff ? null : '/garage/cars/'.$car->offer->number.'/links'"
+            :renew="! collect($buttons ?? [])->contains(fn ($b) => ($b[1] ?? null) === 'pay')"/>
     @endif
 
     {{-- После продажи — за сколько взяли и за сколько продали рядом. --}}

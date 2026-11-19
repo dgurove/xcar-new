@@ -16,6 +16,9 @@
     // Окно: «⋯» — `CarView::garageMenu` (без «Вернуть в продажу» — оно в «⋯» полосы; с «Добавить расход», пока расходов нет).
     if ($compact && $carView) {
         $menu = $carView->garageMenu();
+    } elseif ($carView?->admin) {
+        // Страница: «Вернуть в продажу» — в «···» плашки (`CarView::actions`), в «⋯» гаража второй раз не пишем (19.11.2026).
+        $menu = array_values(array_filter($menu, fn ($m) => ($m[1] ?? null) !== 'resale'));
     }
     ob_start();
 @endphp

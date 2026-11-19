@@ -12,7 +12,7 @@
      второй суммы (она строкой выше; другая — словами «на N ₽»): «Ссылка на оплату», под ней кто платит и что с ней,
      справа круглые «Скопировать» и «Отправить»; нажатие — та же шторка с QR (05.10.2026, владелец про карточку на три
      строки текста и две кнопки во всю ширину). --}}
-@props(['invoice', 'staff' => false, 'create' => null, 'cancel' => null, 'compact' => false, 'link' => null, 'email' => null])
+@props(['invoice', 'staff' => false, 'create' => null, 'cancel' => null, 'compact' => false, 'link' => null, 'email' => null, 'renew' => true])
 @php
     use App\Support\Money; use App\Billing\Acquiring\PayMethod;
     $i = $invoice;
@@ -114,7 +114,8 @@
             </div>
         </x-ui.sheet>
     </div>
-@elseif ($payable)
+{{-- `renew` false — ссылку берут в шторке «Оплатить» плашки (гараж на сайте, 19.11.2026): второй кнопкой не повторяем. --}}
+@elseif ($payable && $renew)
     <form method="post" action="{{ $create }}" class="contents">
         @csrf
         <button class="row w-full text-left">

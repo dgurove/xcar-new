@@ -11,9 +11,14 @@ use App\Users\User;
  */
 final class DealPlacement
 {
-    public static function inSheet(Offer $offer, ?User $user, ?Interest $myInterest): bool
+    public static function inSheet(Offer $offer, ?User $user, ?Interest $myInterest, ?Bid $myBid = null): bool
     {
         if (! $user) {
+            return true;
+        }
+        // Контрпредложение ждёт ответа (и после конца приёма) — «Контрпредложение N» снизу открывает лист с «Согласен» /
+        // «Отказаться» (19.11.2026: блок стоял на странице, а кнопка плашки слала `deal:open` в пустоту — два места, одно мёртвое).
+        if ($myBid?->hasPendingCounter()) {
             return true;
         }
         $prices = PriceView::for($offer, $user)->visible;

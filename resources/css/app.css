@@ -150,8 +150,8 @@
   --container-site: 1320px;
   --spacing-header: 56px;
   --spacing-tabbar: 54px;
-  /* Плашка действий на телефоне: кнопка 3.5rem и по .75rem над и под ней. */
-  --spacing-action: 5rem;
+  /* Запас под парящие кнопки действий на телефоне: кнопка 44 px и по .625rem над и под ней (19.11.2026). */
+  --spacing-action: 4rem;
 
   /* Движение: одна физика на кит. Вход быстрый, выход мягкий; пружина — только
      для возврата после жеста (шторка, тост), не для переходов экранов. */
@@ -4342,7 +4342,7 @@ html.kb-open { --home-gap: 0px; }
 /* ------------------------------------------------------------- шапка */
 
 @layer components {
-  /* Хром — одна глухая полоса на шапку, таб-бар и плашку действий (правило 2). */
+  /* Хром — одна глухая полоса на шапку и таб-бар (правило 2); плашка действий подложки не имеет (19.11.2026, ниже вне слоёв). */
   .header, .tabbar, .action-bar { background: var(--color-bar); }
   /* Плашка, в которой видимых кнопок нет («Сохранить изменения» ждёт правки), не рисуется (то же условие — у --action). */
   .action-bar:not(:has(> .action-bar-inner > :not([hidden], [type="hidden"], template))) { display: none; }
@@ -4596,12 +4596,11 @@ html.kb-open { --home-gap: 0px; }
   /* Низ страницы: запас под плашку действий (CRM, стоянка, сайт в приложении — без подвала), токен --page-room. */
   .main-app { padding-bottom: var(--page-room); }
 
-  /* На телефоне — плашка над таб-баром (с клавиатурой — на ней, с листом документов — на листе: --bottom-edge) с кнопкой
-     во всю ширину, высота ровно --spacing-action — столько же берёт запас страницы; край — волосяная линия. */
+  /* Плашка действий — парящие кнопки у правого края без подложки (вид — ниже, вне слоёв). На телефоне — над таб-баром (с
+     клавиатурой — на ней, с листом документов — на листе: --bottom-edge), запас страницы — --spacing-action. */
   .action-bar {
     position: fixed; inset-inline: 0; z-index: var(--z-action);
     bottom: var(--bottom-edge);
-    border-top: var(--hairline) solid var(--color-hairline);
   }
   /* Плашка выбора галочками («Отправить в продажу», «Перенести», «Назначить» логистики, 23.10.2026, владелец: на
      iPhone при выделении кнопка пропадала) на телефоне — не fixed-слой поверх прокрутки, а последний кусок списка, что
@@ -4610,21 +4609,11 @@ html.kb-open { --home-gap: 0px; }
   @media (max-width: 767.98px) {
     .action-bar.action-bar--pick { position: sticky; bottom: 0; margin-inline: -1rem; margin-top: 1.5rem; }
   }
-  /* Высота — не меньше --spacing-action (кнопка 3.5rem и по .75rem), край не входит; выше — растёт, а не вылезает на таб-бар. */
-  .action-bar-inner { @apply flex items-center gap-3 py-3; min-height: var(--spacing-action); width: 100%; max-width: var(--container-site); margin-inline: auto; padding-inline: 1rem; }
-  /* От планшета — парящие кнопки в правом нижнем углу, по правому краю контейнера; плашки нет. */
+  .action-bar-inner { @apply flex items-center; width: 100%; max-width: var(--container-site); margin-inline: auto; padding-inline: 1rem; }
+  /* От планшета — в правом нижнем углу, по правому краю контейнера. */
   @media (min-width: 768px) {
-    .action-bar {
-      inset-inline: auto; bottom: calc(var(--bottom-edge) + 1.5rem); right: max(1.5rem, calc((100% - var(--container-site)) / 2 + 1.5rem));
-      background: none; border-top: 0;
-    }
-    .action-bar-inner { width: auto; min-height: 0; max-width: none; padding: 0; gap: .75rem; }
-    .action-bar .btn { flex: 0 0 auto; box-shadow: 0 8px 24px rgb(0 0 0 / .18); }
-    /* Плашки под парящими кнопками нет — прозрачная («Отменить», «Не заявка» черновика из писем) просвечивала текстом
-       страницы (15.10.2026): здесь она плотная, как тихая. */
-    .action-bar .btn-ghost { background: var(--color-surface-3); }
-    @media (hover: hover) { .action-bar .btn-ghost:hover { background: var(--color-line); } }
-    .dark .action-bar .btn { box-shadow: 0 8px 24px rgb(0 0 0 / .5); }
+    .action-bar { inset-inline: auto; bottom: calc(var(--bottom-edge) + 1.5rem); right: max(1.5rem, calc((100% - var(--container-site)) / 2 + 1.5rem)); }
+    .action-bar-inner { width: auto; max-width: none; padding: 0; }
   }
   @media (min-width: 1280px) { .action-bar { right: max(2rem, calc((100% - var(--container-site)) / 2 + 2rem)); } }
   /* Карточка строки открыта справа (от 1024) — парящие кнопки списка («Удалить навсегда», «Отправить в продажу») встают
@@ -4637,22 +4626,21 @@ html.kb-open { --home-gap: 0px; }
   }
 }
 
-/* CRM на телефоне — подложки нет, кнопки парят справа над таб-баром, как на ПК (18.11.2026, владелец про страницу
-   предложения и сделки: «плашка жутко бесит», «белая слишком много экрана перекрывает», «кнопка справа и без белой
-   подложки», «не круглая, а капсульная», «и остальные кнопки более узкими»). Высота кнопок 44 px вместо 56, ширина по
-   надписи, «···» и корзина — капсулой 52×44; пустое место полосы нажатий не ловит. Запас страницы — 4rem вместо 5.
-   Вне слоёв: классы разметки `flex-1` и `btn-lg` (нужны сайту и ПК) иначе сильнее. Сайт, парковка, логистика и
-   партнёр — прежней плашкой с кнопкой во всю ширину. */
-@media (max-width: 767.98px) {
-  body.surface-crm { --spacing-action: 4rem; --bottom-room: calc(var(--tabbar) + var(--action) * var(--spacing-action)); --page-room: calc(var(--bottom-room) - var(--tabbar)); }
-  .surface-crm .action-bar { background: none; border-top: 0; pointer-events: none; }
-  .surface-crm .action-bar-inner { justify-content: flex-end; gap: .5rem; min-height: 0; padding-block: .625rem; }
-  .surface-crm .action-bar-inner > * { pointer-events: auto; }
-  .surface-crm .action-bar .btn { flex: 0 1 auto; height: 2.75rem; padding-inline: 1.25rem; border-radius: 999px; font-size: var(--text-base); box-shadow: 0 4px 16px rgb(0 0 0 / .16); }
-  .surface-crm .action-bar .btn-round { flex: none; width: 3.25rem; padding-inline: 0; }
-  .surface-crm .action-bar .btn-ghost { background: var(--color-surface-3); }
-  .dark .surface-crm .action-bar .btn { box-shadow: 0 4px 16px rgb(0 0 0 / .5); }
-}
+/* Плашка действий — одна на все хосты и ширины (19.11.2026, владелец: «не должно быть такого, что две плашки действий»,
+   «как в CRM — парили, а не на белой плашке», «более узкими», «кнопка с многоточием не круглая, а чуть сплющенная»; до того
+   так было только в CRM на телефоне, с 18.11.2026): подложки нет, кнопки парят у правого края — на телефоне над таб-баром,
+   на ПК в углу; высота 44 px, ширина по надписи; «···», чат, корзина (`.btn-round`) — капсулой 60×44; пустое место полосы
+   нажатий не ловит. Вне слоёв: классы разметки `flex-1` и `btn-lg` иначе сильнее. */
+.action-bar { background: none; border-top: 0; pointer-events: none; }
+.action-bar-inner { justify-content: flex-end; gap: .5rem; min-height: 0; padding-block: .625rem; }
+@media (min-width: 768px) { .action-bar-inner { padding-block: 0; } }
+.action-bar-inner > * { pointer-events: auto; }
+.action-bar .btn { flex: 0 1 auto; height: 2.75rem; padding-inline: 1.25rem; border-radius: 999px; font-size: var(--text-base); box-shadow: 0 4px 16px rgb(0 0 0 / .16); }
+.action-bar .btn-round { flex: none; width: 3.75rem; padding-inline: 0; }
+/* Прозрачная («Отменить», «Не заявка» черновика из писем) просвечивала бы текстом страницы (15.10.2026) — плотная, как тихая. */
+.action-bar .btn-ghost { background: var(--color-surface-3); }
+@media (hover: hover) { .action-bar .btn-ghost:hover { background: var(--color-line); } }
+.dark .action-bar .btn { box-shadow: 0 4px 16px rgb(0 0 0 / .5); }
 
 /* ------------------------------------------------------------- шторка документов */
 

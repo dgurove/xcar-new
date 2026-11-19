@@ -44,6 +44,9 @@
         $breaks = collect();
         $moves = $moves->reject(fn ($x) => \App\Offers\Deal::closes($x) || $x->to?->offer_state === \App\Offers\OfferState::Open)->values();
     }
+    // Исход сотрудника «… за менеджера» (Альфа: «Договор подписан за менеджера») — тот же ответ, что «За менеджера: «Договор
+    // подписан»» в «⋯» шага: второй раз не даём (19.11.2026, владелец: «не должно быть двух плашек действий»).
+    $forManager = $forManager->reject(fn ($x) => $moves->contains(fn ($m) => mb_strtolower($m->label) === mb_strtolower($x->label).' за менеджера'))->values();
     // «Заявка отправлена» (Каркаде) — не кнопка: её жмёт само письмо заявки по всем сделкам вендора разом.
     $requestExit = $deal ? $moves->first(fn ($x) => mb_strtolower($x->label) === 'заявка отправлена') : null;
     $requests = $requestExit ? \App\Offers\Deal::awaitingRequest($offer->vendor_id)->count() : 0;

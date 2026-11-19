@@ -2,7 +2,7 @@
      спрашивая, оплачено ли всё»): договор («Ещё нет» — сделка встаёт на шаге договора и ждёт его обычным ходом), деньги
      менеджера (наши счета: оплачено или висит долг), поставщику (если впереди наша оплата ему), когда продали. Строка «что
      будет» — по ответам (`MarkSoldDeal::run`, панели `reveal`). `POST /work/deals/{id}/sold` → `MarkSoldDeal`. Открывает
-     событие sold:open (пункт «⋯» окна и страницы). --}}
+     событие deal-sold:open (пункт «⋯» окна и страницы). --}}
 @props(['deal'])
 @php
     use App\Offers\Actions\MarkSoldDeal;
@@ -29,7 +29,7 @@
     // Кому платим — по имени («Мы заплатили Совкомбанку»): «поставщику» читали не глядя (14.11.2026, 666916).
     $vendor = $offer?->vendor?->name ? 'поставщику, '.$offer->vendor->name : 'поставщику';
 @endphp
-<div data-controller="sheet" data-action="sold:open@window->sheet#open" class="contents">
+<div data-controller="sheet" data-action="deal-sold:open@window->sheet#open" class="contents">
     <x-ui.sheet id="sold-{{ $deal->id }}" title="Уже продана">
         <form method="post" action="/work/deals/{{ $deal->id }}/sold" class="flex flex-col gap-4">
             @csrf

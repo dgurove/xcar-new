@@ -6,7 +6,7 @@
     // Открыта из другого раздела (избранное, сделки, чат) — «назад» без истории ведёт в него, а не в «Предложения».
     $origin = $context ? null : \App\Support\Nav::origin($user);
     $back = $context?->backUrl() ?? $origin['href'] ?? ($gallery ? '/gallery' : '/offers');
-    $dealInSheet = \App\Offers\DealPlacement::inSheet($offer, $user, $myInterest);
+    $dealInSheet = \App\Offers\DealPlacement::inSheet($offer, $user, $myInterest, $myBid);
 @endphp
 <x-ui.shell :title="$offer->titleWithYear()" copy-title :back="[$origin['label'] ?? ($gallery ? 'Галерея' : 'Предложения'), $back]" :trail="[['Главная', '/'], [$gallery ? 'Галерея' : 'Предложения', $back], ['№ '.$offer->number]]" data-offer-page="{{ $offer->number }}">
     <x-slot:actions>

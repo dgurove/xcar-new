@@ -6,6 +6,11 @@
     $waiting = $requirement->asks === Asks::Document && $requirement->getMedia('files')->isEmpty();
     // «Я передумал» — не второй кнопкой рядом, а тихой строкой под главной (10.10.2026, владелец).
     [$retreats, $moves] = $exits->partition(fn ($e) => $e->isRetreat());
+    // Вопрос о новой закупочной с «Отказываюсь» над шагом (`x-offer.reprice-ask`) — второй отмены сделки рядом не даём (19.11.2026,
+    // владелец: «не должно быть двух плашек действий»). Он назвал цену или ждёт нашего контрпредложения — отмены там нет, строка остаётся.
+    $askRefuses = ($me = auth()->user()) && \App\Offers\RepriceAsk::open()->where('user_id', $me->id)->where('deal_id', $deal->id)->latest('id')->get()
+        ->contains(fn ($a) => $a->alive() && ! $a->isOffered() && ! $a->isCountered());
+    $retreats = $askRefuses ? collect() : $retreats;
     // Закрыть сделку, пока автомобиль не забрали, нельзя (18.10.2026): вместо кнопки — что сделать сначала.
     $blocker = $moves->contains(fn ($e) => \App\Offers\Deal::closes($e)) ? $deal->closeBlocker() : null;
     if ($blocker) {

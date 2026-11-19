@@ -46,8 +46,10 @@ final class GarageView
             && ! $offer->onPark();
         // Шаг сделки на этой же странице (`cabinet.deals.step`) сам даёт «Автомобиль забрал» (шаг получения маршрута) и «Попросить
         // вывоз…» (`Handover::canRequest`) — плашка их не повторяет (19.11.2026, владелец: «зачем в сделке два раза кнопки действия»).
-        $stepPicks = $step && $step['requirement'] && $step['position']?->stage->isPickupStep();
-        $stepAsks = $step && $step['handover']?->canRequest;
+        // Доп. просьба держит сделку — вместо шага её задача (`cabinet.deals.extra-ask`), там их нет: плашка остаётся.
+        $shown = $step && ! \App\Offers\ExtraAsk::holding($step['deal']) ? $step : null;
+        $stepPicks = $shown && $shown['requirement'] && $shown['position']?->stage->isPickupStep();
+        $stepAsks = $shown && $shown['handover']?->canRequest;
 
         $prep = array_values(array_filter(match (true) {
             $picks && ! $stepPicks => [['post', "/garage/cars/{$n}/picked", 'Забрал']],

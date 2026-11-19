@@ -6,7 +6,7 @@
     $user = auth()->user();
     $gallery = $offer->isGallery();
     $prices = !$gallery && ($user?->canSeePrices() ?? false);
-    $asSheet = \App\Offers\DealPlacement::inSheet($offer, $user, $myInterest);
+    $asSheet = \App\Offers\DealPlacement::inSheet($offer, $user, $myInterest, $myBid);
 @endphp
 @if ($asSheet)
     <div data-controller="sheet" data-sheet-inflow-value="(min-width: 1024px)" data-action="deal:open@window->sheet#open" class="contents">

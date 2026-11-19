@@ -419,8 +419,13 @@ final class CarView
         $path = $car->state !== CarState::Waiting && in_array($car->state, CarState::prep(), true);
         $money = $g['money'] && ! $car->isSold() && ! $car->priceFor($g['staff']);
         $chat = $car->manager && $this->deal?->buyer_id !== $car->manager_id;
+        // «Выдача с парковки» — тоже тело раздела (19.11.2026): без неё в счёте раздел рисовался со своим «⋯», а его пункты
+        // стояли и в «⋯» окна. Условие — то же, что у `admin.offers.garage-card`.
+        $parked = $car->deal && $car->deal->state !== DealState::Cancelled ? $this->offer->parkVehicle : null;
+        $release = $parked && in_array($parked->state, [\App\Park\VehicleState::Stored, \App\Park\VehicleState::Expected], true)
+            && ($car->deal->releasable() || $car->deal->passes()->exists());
 
-        return ! $path && ! $money && ! $chat && $car->costs->isEmpty();
+        return ! $path && ! $money && ! $chat && ! $release && $car->costs->isEmpty();
     }
 
     /** Чат с менеджером сделки (тот, что карточкой и пилюлей «Чат») — из общей выборки, без своего запроса. */
@@ -476,12 +481,15 @@ final class CarView
                     : $post($m[2], $m[3], 'edit', [], $m[1] === 'DELETE', ($m[4] ?? null) ?: null, method: in_array($m[1], ['POST', 'post'], true) ? null : strtolower($m[1])), $garage);
             }
             // Пустая заметка в окне не рисуется — пунктом «⋯»: нажатие показывает её поле на месте (12.11.2026, владелец: «мусор»).
-            if (($noteDeal = $this->garageCar?->deal ?? $this->deal) && blank($noteDeal->notes)) {
+            // На странице карточка «Заметка» есть всегда — пункт её повторял и ничего не открывал (19.11.2026).
+            if (! $this->page && ($noteDeal = $this->garageCar?->deal ?? $this->deal) && blank($noteDeal->notes)) {
                 $work[] = [$emit('deal-note-'.$noteDeal->id, 'Заметка', 'edit')];
             }
         }
 
         if ($this->admin) {
+            // Что даёт текущий шаг пути — здесь второй раз не пишем (19.11.2026, владелец: «не должно быть двух плашек действий»).
+            $step = \App\Workflow\StepOffers::of($o, $this->user);
             if ($v['publishItems'] && ! $v['publishButton']) {
                 $groups[] = [['kind' => 'view', 'view' => 'admin.car.publish-items'],
                     $emit('publish-day', 'Другой день…', 'calendar'), $emit('urgent', 'Срочно…', 'fire') + ['fire' => true]];
@@ -495,11 +503,10 @@ final class CarView
             // Машина в сделке (и гаражной, пока не привезли) — показать остальным менеджерам поверх неё (12.11.2026, владелец:
             // «она в сделке у этого менеджера, но начальник хочет опубликовать её для других»; `PublishDeal`): идёт — та же
             // шторка правит кому и срок, рядом «Снять публикацию».
-            if (PublishDeal::allows($o)) {
-                $groups[] = $o->showsDealAsOpen()
-                    ? [$emit('deal-publish', 'Публикация для других…', 'flag'),
-                        $post('/offers/'.$n.'/deal-publication', 'Снять публикацию', 'eye-off', [], false, PublishDeal::STOP_CONFIRM, PublishDeal::STOP_TEXT, method: 'delete', confirmLabel: 'Снять')]
-                    : [$emit('deal-publish', 'Опубликовать для других менеджеров…', 'flag')];
+            // Страница — у неё строка «Показ» сделки (`x-offer.showing`); окно — идёт публикация, факт «у других менеджеров до …»
+            // в сведениях шапки (и строка шага «Переоценка»). Оттуда же шторка правит и снимает — пунктом не повторяем.
+            if (PublishDeal::allows($o) && ! $this->page && ! $o->showsDealAsOpen()) {
+                $groups[] = [$emit('deal-publish', 'Опубликовать для других менеджеров…', 'flag')];
             }
             if (($v['publishItems'] && Exclusive::due($o)->isNotEmpty()) || ($state === OfferState::Open && Exclusive::running($o)->isNotEmpty())) {
                 $groups[] = [['kind' => 'view', 'view' => 'admin.car.exclusive-off']];
@@ -539,9 +546,9 @@ final class CarView
             // подписан» — покупатель не нужен (`MarkSoldDeal`, `MarkContractSigned`).
             $sold = [];
             if ($v['resale'] && MarkSoldDeal::allows($o->deal)) {
-                $sold[] = $emit('sold', 'Уже продана…', 'check');
+                $sold[] = $emit('deal-sold', 'Уже продана…', 'check');
             }
-            if ($v['resale'] && $state === OfferState::Sold && MarkContractSigned::allows($o->deal)) {
+            if ($v['resale'] && $state === OfferState::Sold && MarkContractSigned::allows($o->deal) && ! $step->signs) {
                 $sold[] = $post('/work/deals/'.$o->deal->id.'/contract-signed', 'Договор уже подписан', 'file', [], confirm: 'Договор с покупателем уже подписан?', text: 'Данные покупателя больше не нужны, шаги договора отметятся', confirmLabel: 'Подписан');
             }
             // Закрыли по ошибке («Уже продана» случайно, шаги прокликали руками) — снова в работу (`ReopenDeal`).
@@ -555,11 +562,12 @@ final class CarView
                 $groups[] = $sold;
             }
             $red = [];
-            if ($v['resale'] && $state === OfferState::Sold && $o->deal?->isActive()) {
+            if ($v['resale'] && $state === OfferState::Sold && $o->deal?->isActive() && ! $step->declines) {
                 // Поставщик отказал продавать (28.10.2026): сделка закрыта по причине, предложение в архиве.
                 $red[] = $emit('declined', 'Поставщик отказал…', 'x', true);
             }
-            if ($v['resale']) {
+            // Шаг сам даёт отмену за менеджера («Я передумал», «Не берёт» доп. просьбы) — «Отменить сделку» не повторяем.
+            if ($v['resale'] && ! ($step->withdraws && $state === OfferState::Sold && ! $this->garageCar)) {
                 // У сделки — одна «Отменить сделку» шторкой: в продажу или в черновики (12.10.2026); гараж — «Вернуть в продажу».
                 $red[] = $emit('resale', $state === OfferState::Sold && ! $this->garageCar ? 'Отменить сделку' : 'Вернуть в продажу', 'undo', true);
             }
