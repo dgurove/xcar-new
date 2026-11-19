@@ -20,14 +20,14 @@ final class ParallelBuyerNotice extends Notice
 
     public function title(): string
     {
-        return ($this->deal->buyer?->name ?? 'Менеджер').' прислал реквизиты (параллельно) — '.$this->deal->offer->titleWithYear();
+        return ($this->deal->buyer?->name ?? 'Менеджер').' прислал реквизиты (параллельно), '.$this->deal->offer->titleWithYear();
     }
 
     public function text(): ?string
     {
         $who = $this->deal->contract?->buyer;
 
-        return 'Покупатель: '.($who?->party?->name ?: $who?->name ?? '—').'. Взять в работу — в сделке, блок «Параллельно»';
+        return 'Покупатель: '.($who?->party?->name ?: $who?->name ?? 'без имени').'. Взять в работу можно в сделке, блок «Параллельно»';
     }
 
     public function href(): string

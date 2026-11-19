@@ -20,14 +20,14 @@ final class SupplierContractReadyNotice extends Notice
 
     public function title(): string
     {
-        return ($this->deal->offer->vendor?->name ?? 'Поставщик').': договор готов — '.$this->deal->offer->titleWithYear();
+        return ($this->deal->offer->vendor?->name ?? 'Поставщик').': договор готов, '.$this->deal->offer->titleWithYear();
     }
 
     public function text(): ?string
     {
         $wish = Signing::wishLine($this->deal);
 
-        return $wish ? 'Покупатель может '.$wish.' — напишите поставщику о записи' : 'Менеджер ещё не назвал время подписания';
+        return $wish ? 'Покупатель может '.$wish.', нужно написать поставщику о записи' : 'Менеджер ещё не назвал время подписания';
     }
 
     public function href(): string

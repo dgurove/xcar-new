@@ -42,7 +42,7 @@ final class YourTurnNotice extends Notice
 
     public function title(): string
     {
-        return $this->requirement->title.' — № '.$this->requirement->offer->number;
+        return $this->requirement->title.', № '.$this->requirement->offer->number;
     }
 
     /**

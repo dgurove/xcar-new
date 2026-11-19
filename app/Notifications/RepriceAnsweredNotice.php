@@ -22,7 +22,7 @@ final class RepriceAnsweredNotice extends Notice
     {
         $ask = $this->ask;
         $who = $ask->user?->shortName() ?? 'Менеджер';
-        $n = ' — № '.$ask->offer->number;
+        $n = ', № '.$ask->offer->number;
 
         return match ($ask->state) {
             RepriceAsk::OFFERED => $who.': предлагает '.Money::plain((int) $ask->offered_price).$n,

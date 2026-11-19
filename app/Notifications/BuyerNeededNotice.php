@@ -26,7 +26,7 @@ final class BuyerNeededNotice extends Notice
 
     public function text(): ?string
     {
-        return $this->passport ? 'Счёт соберётся по ФИО и прописке, ДКП — по скану паспорта' : 'Счёт и ДКП соберутся по его данным';
+        return $this->passport ? 'Счёт соберётся по ФИО и прописке, ДКП по скану паспорта' : 'Счёт и ДКП соберутся по его данным';
     }
 
     public function href(): string

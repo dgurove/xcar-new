@@ -30,7 +30,7 @@ final class OurTurnNotice extends Notice
     {
         $did = $this->exit ? '«'.$this->exit->label.'»' : 'сделал своё';
 
-        return ($this->deal->buyer?->name ?? 'Менеджер').': '.$did.' — '.$this->deal->offer->titleWithYear();
+        return ($this->deal->buyer?->name ?? 'Менеджер').': '.$did.', '.$this->deal->offer->titleWithYear();
     }
 
     public function text(): ?string

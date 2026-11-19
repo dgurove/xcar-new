@@ -124,7 +124,7 @@ final class DealEventNotice extends Notice
 
     public function title(): string
     {
-        return ($this->by?->shortName() ?? 'Система').': '.$this->what.' — '.$this->offer->titleWithYear();
+        return ($this->by?->shortName() ?? 'Система').': '.$this->what.', '.$this->offer->titleWithYear();
     }
 
     public function text(): ?string

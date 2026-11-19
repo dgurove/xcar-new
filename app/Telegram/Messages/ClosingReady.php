@@ -24,7 +24,7 @@ final class ClosingReady extends Message
 
         return [
             $this->items->groupBy(fn ($i) => Closing::groupOf($i))->count().' не отправлено на '.Money::rub($this->items->sum('amount')),
-            ...$byParty->take(6)->map(fn ($sum, $name) => $name.' — '.Money::rub($sum))->values()->all(),
+            ...$byParty->take(6)->map(fn ($sum, $name) => $name.': '.Money::rub($sum))->values()->all(),
         ];
     }
 

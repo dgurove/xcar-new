@@ -36,7 +36,7 @@ final class ClientFailed extends Message
             }
             $user = $request->user();
             NotifyOwner::dispatch(new self(array_values(array_filter([
-                ($data['kind'] ?? 'frame') === 'form' ? 'Отправка формы' : 'Фрейм '.($data['frame'] ?: '—'),
+                ($data['kind'] ?? 'frame') === 'form' ? 'Отправка формы' : 'Фрейм '.($data['frame'] ?: 'без имени'),
                 'GET '.$data['url'].' → '.($data['status'] ?? 'без ответа'),
                 ! empty($data['redirected']) ? 'Увело на '.$data['redirected'] : null,
                 $user ? $user->name.' (#'.$user->id.')' : 'Гость',

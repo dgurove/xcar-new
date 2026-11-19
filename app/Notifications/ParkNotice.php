@@ -117,7 +117,7 @@ final class ParkNotice extends Notice
     /** Просроченный счёт парковки — управляющему: письмо плательщику он пишет сам, автописьма нет. */
     public static function overdue(Invoice $i): self
     {
-        return (new self(($i->isOwed() ? 'Мы просрочили ' : 'Просрочен счёт ').$i->label().' — '.$i->party->name, Money::rub($i->remaining()),
+        return (new self(($i->isOwed() ? 'Мы просрочили ' : 'Просрочен счёт ').$i->label().', '.$i->party->name, Money::rub($i->remaining()),
             '/money/invoices/'.$i->id, $i->vehicle_id, true, 'park_money'))->variant('overdue', 'Просрочен счёт парковки');
     }
 

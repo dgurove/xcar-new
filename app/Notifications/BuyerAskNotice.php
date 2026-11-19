@@ -26,7 +26,7 @@ final class BuyerAskNotice extends Notice
 
     public function title(): string
     {
-        return 'Указать покупателя — № '.$this->deal->offer->number;
+        return 'Указать покупателя, № '.$this->deal->offer->number;
     }
 
     /** Без пояснения (18.11.2026, владелец: «описания убери везде»): заголовок — само дело. */

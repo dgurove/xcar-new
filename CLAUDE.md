@@ -698,11 +698,9 @@ Telegram): уведомление с `batchKey()` сотрудникам шлю�
 `ChatNotice` (Telegram-чаты теперь выключаемы), `OffersPack` (пачки — строкой ленты всегда). Сотрудники — прежние «О чём» и
 «В Telegram». Пуш нигде не включён — красным под «На это устройство»; бот остановлен — «Бот остановлен» у «Подключить»
 (`telegram_gone`, `UnlinkChat::byChat`). **Кнопки в Telegram** (`UpdateHandler::replied`): ответ (свайп) на сообщение чата —
-текст, фото, PDF уходят в чат на сайте (`Chat::canPost`, `PostMessage`, в ответ 👍); «Просьба оценить» — «Ввести цену» /
-«Согласен, N ₽» + «Своя цена» (`estimate:{id}:price|agree`, вопрос `Bot::ask` с полем ответа; ответ числом на вопрос или на саму
-просьбу — предмет `estimate:N`, закрыли просьбу — вопрос удаляется с ней; цена — `UpdateHandler::price`: «1,25 млн», «850 тыс», не
-ниже `Pricing::MIN`; дверь `GiveEstimate`). Временный сбой пуша `failed_at` не ставит; `RetryDelivery` — в `dontReport`, номер
-попытки — `RetryDelivery::$attempt` из `JobProcessing`; журнал — одна дверь `Delivery::log`. Действий на пуше нет: у менеджеров почти все устройства — iPhone, Safari их не показывает.
+текст, фото, PDF уходят в чат на сайте (`Chat::canPost`, `PostMessage`, в ответ 👍). **Цены в Telegram не вводят** (19.11.2026,
+владелец: «убери вообще ввод цен в телеграме, пусть на xcar переходят и там вводят»): у «Просьба оценить» — кнопка на сайт. Временный сбой пуша `failed_at` не ставит; `RetryDelivery` — в `dontReport`, номер
+попытки — `RetryDelivery::$attempt` из `JobProcessing`; журнал — одна дверь `Delivery::log`.
 **Поставщик** (`Role::Supplier`, 07.11.2026, `notes/postavshchik-2026-11-07.md`; владелец: «люди из Альфы, Т-Страхования,
 Совкома»; «не палить, что у нас есть парсер документов и Мигторг»): сотрудник страховой своего вендора (`users.vendor_id`) —
 только `partner.xcar.ru` (`Surface::Partner`, `routes/partner.php`, `app/Http/Partner`, виды `partner/*`); роль не

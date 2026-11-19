@@ -31,8 +31,8 @@ final class StageDueNotice extends Notice
      */
     public function title(): string
     {
-        return $this->dealId ? $this->what().' — № '.$this->offer->number
-            : ($this->overdue ? 'Срок вышел: ' : 'Срок подходит: ').$this->what().' — № '.$this->offer->number;
+        return $this->dealId ? $this->what().', № '.$this->offer->number
+            : ($this->overdue ? 'Срок вышел: ' : 'Срок подходит: ').$this->what().', № '.$this->offer->number;
     }
 
     /**
@@ -75,7 +75,7 @@ final class StageDueNotice extends Notice
 
     public function batchLine(): string
     {
-        return $this->what().' — '.$this->offer->titleWithYear();
+        return $this->what().', '.$this->offer->titleWithYear();
     }
 
     /** Покупателю сделки — всегда; сотруднику сроки этапов можно выключить. */

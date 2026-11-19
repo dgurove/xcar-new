@@ -27,7 +27,7 @@ final class ExtraAskDecisionNotice extends Notice
 
     public function title(): string
     {
-        return self::question($this->ask).' — № '.$this->ask->offer->number;
+        return self::question($this->ask).', № '.$this->ask->offer->number;
     }
 
     public function text(): ?string
@@ -69,7 +69,7 @@ final class ExtraAskDecisionNotice extends Notice
     /** До согласия — «Берёте в работу?», после — «Берёте после ответа поставщика?». */
     public static function question(ExtraAsk $ask): string
     {
-        return $ask->deal && ExtraAsk::consented($ask->deal) ? 'Поставщик ответил — берёте?' : 'Поставщик ответил — берёте в работу?';
+        return $ask->deal && ExtraAsk::consented($ask->deal) ? 'Поставщик ответил, нужно решение' : 'Поставщик ответил, взять в работу?';
     }
 
     /** @return list<array{text: string, callback_data: string}> */

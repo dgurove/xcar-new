@@ -17,6 +17,6 @@
         <time class="nums shrink-0 text-xs text-ink-dim">{{ $item->created_at->timezone('Europe/Moscow')->format('H:i') }}</time>
     </span>
     @if ($r['what'])
-        <span @class(['notice-what', 'notice-what--mini' => $mini])>{{ $r['what'] }}@if ($r['more'] && ! $mini) <span class="text-ink-dim">— {{ $r['more'] }}</span>@endif</span>
+        <span @class(['notice-what', 'notice-what--mini' => $mini])>{{ $r['what'] }}@if ($r['more'] && ! $mini) <span class="text-ink-dim">{{ $r['more'] }}</span>@endif</span>
     @endif
 </span>

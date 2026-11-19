@@ -48,7 +48,7 @@
                         <span class="min-w-0 flex-1">
                             <span class="block font-medium">В Telegram</span>
                             @if (! empty($settings['telegram_gone']))
-                                <span class="row-sub text-danger">Бот остановлен — в Telegram не приходит</span>
+                                <span class="row-sub text-danger">Бот остановлен, в Telegram не приходит</span>
                             @endif
                         </span>
                         <span class="font-medium" style="color: var(--color-telegram)">Подключить</span>
