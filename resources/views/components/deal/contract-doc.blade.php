@@ -7,7 +7,7 @@
        договора, `dkp.docx?edit=1`), 2) приложить исправленный (`EditContract`);
      - приложен исправленный — метка «исправлен», справа ↶ «Вернуть сформированный», под строкой одна «Отправить менеджеру»;
        данные сделки поменялись после правки — красным (`ContractEdit::stale`);
-     - отправлен — «у менеджера с …», справа «Отозвать» (`ShowToManager::recallContract`).
+     - отправлен — «у менеджера с …», под строкой «Отозвать» (`ShowToManager::recallContract`).
      `attach` — скрепкой справа приложить подписанный (18.11.2026). --}}
 @props(['deal', 'attach' => false])
 @php
@@ -35,7 +35,7 @@
             @if ($sent)<span class="text-ink-muted">у менеджера с {{ \App\Support\Ago::day($contract->shown_at) }}</span>@else<span class="text-ink-muted">не отправлен</span>@endif
             @if ($stale)<span class="text-danger">данные сделки менялись после правки</span>@endif
             <x-slot:dl><x-deal.dkp-download :deal="$deal" :base="$base" :name="$name" :word="! $isPdf"/></x-slot:dl>
-            @if ($canAttach || ($edited && ! $sent && $staff) || $canRecall)
+            @if ($canAttach || ($edited && ! $sent && $staff))
                 <x-slot:acts>
                     @if ($edited && ! $sent && $staff)
                         <form method="post" action="{{ $base }}/contract/edited" class="contents" data-turbo-confirm="Вернуть сформированный договор? Исправленный файл удалится">
@@ -51,7 +51,6 @@
                         </label>
                     </form>
                     @endif
-                    @if ($canRecall)<x-deal.recall-row :deal="$deal" :action="$base.'/contract/recall'" :what="mb_strtolower(mb_substr($title, 0, 1)).mb_substr($title, 1)"/>@endif
                 </x-slot:acts>
             @endif
         </x-deal.doc-row>
@@ -66,6 +65,13 @@
                     <button type="button" class="btn btn-quiet btn-s gap-2" data-action="sheet#open" aria-controls="{{ $sheet }}"><x-ui.icon name="edit" class="size-4"/>Исправить…</button>
                 @endif
             </div>
+        @endif
+        {{-- Отправлен — «Отозвать» там же, где было «Отправить» (в строке тесно: скачать, скрепка, длинный номер). --}}
+        @if ($canRecall)
+            <form method="post" action="{{ $base }}/contract/recall" class="send-under" data-turbo-confirm="Отозвать {{ mb_strtolower(mb_substr($title, 0, 1)).mb_substr($title, 1) }}? Менеджер перестанет его видеть">
+                @csrf
+                <button type="submit" class="btn btn-quiet btn-s w-full">Отозвать</button>
+            </form>
         @endif
         @if ($canEdit)
             <x-ui.sheet :id="$sheet" title="Исправить договор">
@@ -85,8 +91,15 @@
                         <span class="edit-step-n">2</span>
                         <div class="min-w-0 flex-1">
                             <div>Приложите исправленный</div>
-                            <input type="file" name="file" accept="{{ ContractEdit::ACCEPT }}" required class="field-input mt-2 w-full">
-                            @error('file')<p class="field-error mt-1">{{ $message }}</p>@enderror
+                            {{-- Вид поля, как `x-ui.file-field` (системного «Choose File» нет), со своим id: на странице полей файла много. --}}
+                            <div class="field mt-2 @error('file') field-invalid @enderror" data-controller="file-name">
+                                <label for="{{ $sheet }}-file" class="field-input flex cursor-pointer items-center gap-2">
+                                    <x-ui.icon name="clip" class="size-4 shrink-0 text-ink-dim"/>
+                                    <span class="min-w-0 truncate text-ink-muted" data-file-name-target="label">Выбрать файл .docx или .pdf</span>
+                                </label>
+                                <input id="{{ $sheet }}-file" name="file" type="file" accept="{{ ContractEdit::ACCEPT }}" required class="sr-only" data-action="change->file-name#show">
+                                @error('file')<p class="field-error">{{ $message }}</p>@enderror
+                            </div>
                         </div>
                     </div>
                     <x-ui.button type="submit" class="w-full">Сохранить</x-ui.button>

@@ -125,7 +125,7 @@
                 <div class="row sale-row"><span class="sale-row-label">Договор</span><span class="sale-row-value text-ink-muted">в обработке</span></div>
             @elseif (! $missing && $labels)
                 {{-- В «Договоре и счёте» — файлом PDF со «Скачать» (16.11.2026, владелец: «чтобы поняли, что это файл»). --}}
-                <x-deal.dkp-file :deal="$deal" :title="'Договор купли-продажи'.($doc->number() ? ' № '.$doc->number() : '')" class="row"/>
+                <x-deal.dkp-file :deal="$deal" :title="'Договор'.($doc->number() ? ' № '.$doc->number() : ' купли-продажи')" class="row"/>
             @elseif ($labels)
                 <div class="row sale-row"><span class="sale-row-label">Договор</span><span @class(['sale-row-value', 'text-ink-muted' => $ready, 'text-danger' => ! $ready])>{{ $ready ? 'в обработке' : 'нужны данные' }}</span></div>
             @elseif (! $missing)
