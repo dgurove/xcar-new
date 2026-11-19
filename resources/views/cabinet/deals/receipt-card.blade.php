@@ -67,7 +67,8 @@
         {{-- За ТС: кому, сумма, состояние; ниже покупатель, счёт, договор, оплаты и кнопки — одной группой. --}}
         <div class="deal-money-row deal-money-block flex flex-col gap-3">
             <div class="flex items-start gap-3">
-                <span class="min-w-0 flex-1"><span class="block font-medium">{{ $carTitle }}</span>@if ($carState)<span @class(['block text-sm', $carState[1]])>{{ $carState[0] }}</span>@endif</span>
+                {{-- Состояние денег — словом подписи «Счёт» ниже (19.11.2026), в шапке только кому и сколько. --}}
+                <span class="min-w-0 flex-1"><span class="block font-medium">{{ $carTitle }}</span></span>
                 <span class="nums shrink-0">{{ $carSum !== null ? Money::rub((int) $carSum) : 'уточним' }}</span>
             </div>
 
@@ -82,98 +83,117 @@
                 </div>
             @endif
 
+            {{-- Счёт и договор — своими группами с подписью и состоянием справа (19.11.2026, владелец: «разделить на строки, подписать
+                 красиво»), как «Покупатель»: «Счёт — к оплате до 03.12», «Договор — готов». Кнопки — под строкой документа и не уходят,
+                 пока счёт не оплачен целиком (владелец: «вдруг он часть оплатил, а потом доприложил ещё»): приложил — «Приложить ещё». --}}
             @php
-                $carPay = $ours && $payable($sale);
-                $docs = $sale || ($ours && $cb) || $supplierFiles->isNotEmpty() || $proofs->isNotEmpty() || $stepProofs->isNotEmpty() || ($contractRow && $cb) || $signedFiles->isNotEmpty() || $salePayments->isNotEmpty();
+                $carPay = $ours && $sale && $mine && $sale->state === InvoiceState::Issued && $sale->remaining() > 0;
+                $saleWord = $ours && ($sale || $cb) ? \App\Billing\DocWord::manager($sale, $cbReady) : null;
+                $slipMore = $sale && ($salePayments->isNotEmpty() || $sale->claims()->exists());
+                $saleNo = $sale ? (str_starts_with($sale->label(), '№') ? $sale->label() : '№ '.$sale->label()) : null;
             @endphp
-            @if ($docs)
-                <div class="list">
-                    {{-- Счёт — первым. Наш (ПРАЙМ / Р.О.С.): пока к оплате — строкой, что открывает «по счёту» с PDF и QR; оплачен —
-                         файлом. Без счёта у ДКП собственнику — строки нет. --}}
-                    @if ($sale && $carPay)
-                        <div class="contents" data-controller="sheet">
-                            <button type="button" class="row w-full text-left" data-action="sheet#open">
-                                <x-ui.file-icon name="schet.pdf"/><span class="min-w-0 flex-1 truncate">Счёт {{ str_starts_with($sale->label(), '№') ? $sale->label() : '№ '.$sale->label() }}</span><x-ui.chevron/>
-                            </button>
-                            <x-billing.pay-sheet :id="'pay-'.$sale->id.'-transfer'" pick="transfer" only :invoices="collect([$sale])" :action="'/account/money/deals/'.$deal->id.'/pay'" pdf="/account/invoices/{id}/pdf" :buyers="$buyers"
-                                :open="($errors->any() && old('way') === 'transfer' && old('invoice') == $sale->id) || request()->boolean('pay') || (int) request('invoice') === $sale->id"/>
+            @if ($saleWord)
+                <div>
+                    <x-deal.doc-cap label="Счёт" :state="$saleWord[0]" :tone="$saleWord[1]"/>
+                    @if ($sale)
+                        <div class="list">
+                            {{-- К оплате — строкой, что открывает «по счёту» с PDF и QR; оплачен — файлом. --}}
+                            @if ($carPay)
+                                <div class="contents" data-controller="sheet">
+                                    <button type="button" class="row w-full text-left" data-action="sheet#open">
+                                        <x-ui.file-icon name="schet.pdf"/><span class="min-w-0 flex-1 truncate">Счёт {{ $saleNo }} <span class="text-ink-muted">от {{ \App\Support\Ago::day($sale->issued_at) }}</span></span><x-ui.chevron/>
+                                    </button>
+                                    <x-billing.pay-sheet :id="'pay-'.$sale->id.'-transfer'" pick="transfer" only :invoices="collect([$sale])" :action="'/account/money/deals/'.$deal->id.'/pay'" pdf="/account/invoices/{id}/pdf" :buyers="$buyers"
+                                        :open="($errors->any() && old('way') === 'transfer' && old('invoice') == $sale->id) || request()->boolean('pay') || (int) request('invoice') === $sale->id"/>
+                                </div>
+                            @else
+                                <x-ui.file :name="'Счёт '.$saleNo" mime="application/pdf" :href="'/account/invoices/'.$sale->id.'/pdf'" download class="row"/>
+                            @endif
+                            {{-- Что уже внесено: платёжки, наличные, переводы. --}}
+                            @foreach ($salePayments as $p)
+                                <x-money.payment :payment="$p" :slip="'/account/money/invoices/'.$sale->id.'/payments/'.$p->id.'/slip'"/>
+                            @endforeach
+                            @if ($carPay)
+                                <div class="send-under send-pair">
+                                    <form method="post" action="/account/money/deals/{{ $deal->id }}/pay" enctype="multipart/form-data" class="contents" data-controller="autosubmit">
+                                        @csrf
+                                        <input type="hidden" name="way" value="transfer"><input type="hidden" name="invoice" value="{{ $sale->id }}">
+                                        <label @class(['btn btn-s gap-2 cursor-pointer', 'btn-accent' => $left($sale) > 0, 'btn-quiet' => $left($sale) <= 0])><x-ui.icon name="clip" class="size-4"/>{{ $slipMore ? 'Приложить ещё' : 'Приложить платёжку' }}
+                                            <input type="file" name="slip" accept="image/*,.pdf,.heic" class="sr-only" tabindex="-1" data-action="change->autosubmit#submit">
+                                        </label>
+                                    </form>
+                                    <div class="contents" data-controller="sheet">
+                                        <button type="button" class="btn btn-quiet btn-s" data-action="sheet#open">Наличными…</button>
+                                        <x-billing.pay-sheet :id="'pay-'.$sale->id.'-cash'" pick="cash" only :invoices="collect([$sale])" :action="'/account/money/deals/'.$deal->id.'/pay'" pdf="/account/invoices/{id}/pdf" :buyers="$buyers"
+                                            :open="$errors->any() && old('way') === 'cash' && old('invoice') == $sale->id"/>
+                                    </div>
+                                </div>
+                            @endif
                         </div>
-                    @elseif ($sale)
-                        <x-ui.file :name="'Счёт '.(str_starts_with($sale->label(), '№') ? $sale->label() : '№ '.$sale->label())" mime="application/pdf" :href="'/account/invoices/'.$sale->id.'/pdf'" download class="row"/>
-                    @elseif ($ours && $cb)
-                        <div class="row sale-row"><span class="sale-row-label">Счёт</span>{{-- «Ждём данные» — двусмысленно (18.11.2026, владелец): данных нет — его дело красным, есть — наш ход. --}}<span @class(['sale-row-value', 'text-ink-muted' => $cbReady, 'text-danger' => ! $cbReady])>{{ $cbReady ? 'в обработке' : 'нужны данные' }}</span></div>
+                        @error('slip')<p class="field-error">{{ $message }}</p>@enderror
                     @endif
-                    @foreach ($supplierFiles as $f)
-                        <x-ui.file name="Счёт поставщика" :mime="$f->mime_type" :bytes="$f->size" :size="'от '.$f->created_at->timezone('Europe/Moscow')->format('d.m')" href="/files/{{ $f->id }}" download class="row"/>
-                    @endforeach
-                    {{-- Договор — сразу за счётом. --}}
-                    @if ($contractRow && ($cb || $signedFiles->isNotEmpty()) && ($live || $contract->shownToManager()))
-                        @if ($contract->missing())
-                            <div class="row sale-row"><span class="sale-row-label">Договор</span>{{-- «Ждём данные» — двусмысленно (18.11.2026, владелец): данных нет — его дело красным, есть — наш ход. --}}<span @class(['sale-row-value', 'text-ink-muted' => $cbReady, 'text-danger' => ! $cbReady])>{{ $cbReady ? 'в обработке' : 'нужны данные' }}</span></div>
-                        @elseif (! $contract->shownToManager())
-                            <div class="row sale-row"><span class="sale-row-label">Договор</span><span class="sale-row-value text-ink-muted">в обработке</span></div>
-                        @else
-                            @php $dkp = new \App\Offers\DkpDocument($contract); @endphp
-                            <x-deal.dkp-file :deal="$deal" :title="'Договор'.($dkp->number() ? ' № '.$dkp->number() : ' купли-продажи')" class="row"/>
-                        @endif
-                    @endif
-                    {{-- Подписанный — файлом с «Добавить лист»; пока его нет и это не шаг договора — тихой строкой «Приложить». --}}
-                    @if ($signedFiles->isNotEmpty() || (! $signStep && $contractRow && \App\Offers\Actions\AttachSignedContract::allows($deal) && $live))
-                        <x-deal.signed-contract :deal="$deal" :base="'/deals/'.$deal->id" bare/>
-                    @endif
-                    {{-- Что уже внесено за ТС: платёжки, наличные, переводы. --}}
-                    @foreach ($proofs->concat($stepProofs) as $m)
-                        <x-ui.file name="Платёжка" :mime="$m->mime_type" :bytes="$m->size" :size="\App\Support\Ago::at($m->created_at, true, words: false)" href="/files/{{ $m->id }}" class="row"/>
-                    @endforeach
-                    @foreach ($salePayments as $p)
-                        <x-money.payment :payment="$p" :slip="'/account/money/invoices/'.$sale->id.'/payments/'.$p->id.'/slip'"/>
-                    @endforeach
                 </div>
             @endif
 
-            {{-- Дело менеджера по ТС — кнопкой под группой: платёжка (и «Оплатил наличными…»), подписанный договор. --}}
-            @if ($carPay)
-                <div class="flex flex-col gap-2">
-                    <form method="post" action="/account/money/deals/{{ $deal->id }}/pay" enctype="multipart/form-data" data-controller="autosubmit">
-                        @csrf
-                        <input type="hidden" name="way" value="transfer"><input type="hidden" name="invoice" value="{{ $sale->id }}">
-                        <label class="btn btn-accent btn-block cursor-pointer"><x-ui.icon name="clip" class="size-5"/> Приложить платёжку
-                            <input type="file" name="slip" accept="image/*,.pdf,.heic" class="sr-only" tabindex="-1" data-action="change->autosubmit#submit">
-                        </label>
-                    </form>
-                    @error('slip')<p class="field-error">{{ $message }}</p>@enderror
-                    <div class="contents" data-controller="sheet">
-                        <button type="button" class="btn btn-quiet btn-block" data-action="sheet#open">Оплатил наличными…</button>
-                        <x-billing.pay-sheet :id="'pay-'.$sale->id.'-cash'" pick="cash" only :invoices="collect([$sale])" :action="'/account/money/deals/'.$deal->id.'/pay'" pdf="/account/invoices/{id}/pdf" :buyers="$buyers"
-                            :open="$errors->any() && old('way') === 'cash' && old('invoice') == $sale->id"/>
+            {{-- Поставщику (ДКП, «страховой напрямую»): его счёт и наши платёжки. Платёжка — ответ шага, закрывает его сама; кнопка
+                 не уходит — «Приложить ещё». --}}
+            @if (! $ours && ($supplierFiles->isNotEmpty() || $proofs->isNotEmpty() || $stepProofs->isNotEmpty() || $supplierStep))
+                <div>
+                    <x-deal.doc-cap label="Счёт поставщика" :state="$carState[0] ?? null" :tone="($carState[1] ?? '') === 'text-open' ? 'ok' : 'muted'"/>
+                    <div class="list">
+                        @foreach ($supplierFiles as $f)
+                            <x-ui.file name="Счёт поставщика" :mime="$f->mime_type" :bytes="$f->size" :size="'от '.$f->created_at->timezone('Europe/Moscow')->format('d.m')" href="/files/{{ $f->id }}" download class="row"/>
+                        @endforeach
+                        @foreach ($proofs->concat($stepProofs) as $m)
+                            <x-ui.file name="Платёжка" :mime="$m->mime_type" :bytes="$m->size" :size="\App\Support\Ago::at($m->created_at, true, words: false)" href="/files/{{ $m->id }}" class="row"/>
+                        @endforeach
+                        @if ($supplierStep)
+                            <div class="send-under" data-controller="photos" data-photos-url-value="/deals/{{ $deal->id }}/files" data-photos-reload-value="true">
+                                <input type="file" accept="image/*,.pdf,.heic" multiple class="sr-only" tabindex="-1" data-photos-target="input" data-action="change->photos#upload">
+                                <div hidden data-photos-target="progress" class="mb-2">
+                                    <div class="mb-1 text-sm text-ink-muted" data-label></div>
+                                    <div class="h-1.5 overflow-hidden rounded-full bg-surface-3"><div class="h-full bg-accent transition-[width]" data-bar style="width:0"></div></div>
+                                </div>
+                                <button type="button" @class(['btn btn-s w-full gap-2', 'btn-accent' => $stepProofs->isEmpty(), 'btn-quiet' => $stepProofs->isNotEmpty()]) data-action="photos#pick"><x-ui.icon name="clip" class="size-4"/>{{ $stepProofs->isEmpty() ? 'Приложить платёжку' : 'Приложить ещё' }}</button>
+                            </div>
+                        @endif
                     </div>
+                    {{-- Лист уже приложен, а шаг не отвечен (приложили до 18.11) — ответ шага «Оплатил, документ приложен». --}}
+                    @if ($supplierStep && $stepProofs->isNotEmpty())<div class="mt-3">@include('cabinet.deals.exits', ['exits' => $deal->managerExits($requirement->stage)])</div>@endif
                 </div>
-            @elseif ($supplierStep)
-                {{-- Платёжка поставщику — тем же видом, что у нашего счёта: лаймовая кнопка; лист закрывает шаг сам (`DealController::upload`). --}}
-                {{-- Лист уже приложен, а шаг не отвечен (приложили до 18.11) — только «Оплатил, документ приложен», без второй кнопки
-                     (18.11.2026, владелец: «прикладывание платёжки странно выглядит»): файл — строкой «Платёжка» в группе выше. --}}
-                @if ($stepProofs->isEmpty())
-                <div data-controller="photos" data-photos-url-value="/deals/{{ $deal->id }}/files" data-photos-reload-value="true">
-                    <input type="file" accept="image/*,.pdf,.heic" multiple class="sr-only" tabindex="-1" data-photos-target="input" data-action="change->photos#upload">
-                    <div hidden data-photos-target="progress" class="mb-2">
-                        <div class="mb-1 text-sm text-ink-muted" data-label></div>
-                        <div class="h-1.5 overflow-hidden rounded-full bg-surface-3"><div class="h-full bg-accent transition-[width]" data-bar style="width:0"></div></div>
-                    </div>
-                    <button type="button" class="btn btn-accent btn-block" data-action="photos#pick"><x-ui.icon name="clip" class="size-5"/> Приложить платёжку</button>
-                </div>
-                @else
-                <div class="-mt-5">@include('cabinet.deals.exits', ['exits' => $deal->managerExits($requirement->stage)])</div>
-                @endif
             @endif
-            @if ($signStep && $signedFiles->isEmpty() && \App\Offers\Actions\AttachSignedContract::allows($deal))
-                <form method="post" action="/deals/{{ $deal->id }}/signed" enctype="multipart/form-data" data-controller="autosubmit">
-                    @csrf
-                    <label class="btn btn-accent btn-block cursor-pointer"><x-ui.icon name="clip" class="size-5"/> Приложить подписанный договор
-                        <input type="file" name="files[]" multiple accept=".pdf,.jpg,.jpeg,.png,.webp,.heic,.heif,.doc,.docx" class="sr-only" data-action="change->autosubmit#submit">
-                    </label>
-                </form>
-                @error('files')<p class="field-error">{{ $message }}</p>@enderror
-                @error('files.*')<p class="field-error">{{ $message }}</p>@enderror
+
+            {{-- Договор — сразу за счётом, своей группой: «в обработке», «готов» (файл Word или PDF), «подписан». Подписанный — строкой
+                 и кнопкой «Приложить подписанный» / «Приложить ещё» (на шаге договора — лаймовой). --}}
+            @if ($contractRow && ($cb || $signedFiles->isNotEmpty()) && ($live || $contract->shownToManager()))
+                @php
+                    $shown = $contract->shownToManager() || ($contract->shown_at && \App\Offers\ContractEdit::has($deal));
+                    $dealWord = match (true) {
+                        $signedFiles->isNotEmpty() => ['подписан', 'ok'],
+                        $shown => ['готов', 'ok'],
+                        $contract->missing() && ! $cbReady => ['нужны данные', 'bad'],
+                        default => ['в обработке', 'muted'],
+                    };
+                    $canSign = $live && \App\Offers\Actions\AttachSignedContract::allows($deal);
+                @endphp
+                <div>
+                    <x-deal.doc-cap label="Договор" :state="$dealWord[0]" :tone="$dealWord[1]"/>
+                    @if ($shown || $signedFiles->isNotEmpty() || $canSign)
+                        <div class="list">
+                            @if ($shown)
+                                @php $dkp = new \App\Offers\DkpDocument($contract); @endphp
+                                <x-deal.dkp-file :deal="$deal" :title="'Договор'.($dkp->number() ? ' № '.$dkp->number() : ' купли-продажи')" class="row"/>
+                            @endif
+                            @if ($signedFiles->isNotEmpty())
+                                <x-deal.signed-contract :deal="$deal" :base="'/deals/'.$deal->id" bare/>
+                            @elseif ($canSign)
+                                <div class="send-under"><x-deal.attach-signed :deal="$deal" :base="'/deals/'.$deal->id" :primary="$signStep" wide/></div>
+                            @endif
+                        </div>
+                        @error('files')<p class="field-error">{{ $message }}</p>@enderror
+                        @error('files.*')<p class="field-error">{{ $message }}</p>@enderror
+                    @endif
+                </div>
             @endif
         </div>
 

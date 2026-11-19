@@ -60,6 +60,32 @@ class DealContractController
         return back()->with('toast', 'Счёт отозван у менеджера');
     }
 
+    /**
+     * «Напомнить менеджеру» про отправленный счёт (19.11.2026, `NudgeInvoice`): `when=now` — сейчас, `days` — через столько дней в 10:00,
+     * `cancel` — «Не напоминать» (снять план).
+     */
+    public function nudgeInvoice(Request $request, Deal $deal, \App\Billing\Invoice $invoice, \App\Billing\Actions\NudgeInvoice $nudge)
+    {
+        abort_unless($invoice->deal_id === $deal->id && $deal->buyer_id, 404);
+        $data = $request->validate(['when' => ['required', 'in:now,days,cancel'], 'days' => ['nullable', 'integer', 'min:1', 'max:30']]);
+        if ($data['when'] === 'cancel') {
+            $nudge->cancel($invoice, $request->user());
+
+            return back()->with('toast', 'Не напоминаем');
+        }
+        if (! \App\Billing\Actions\NudgeInvoice::allows($invoice)) {
+            return back()->with('toast', 'Напоминать не о чем: счёт оплачен или менеджер уже приложил платёжку');
+        }
+        if ($data['when'] === 'days') {
+            $nudge->later($invoice, (int) ($data['days'] ?? 1), $request->user());
+
+            return back()->with('toast', 'Напомним '.$invoice->fresh()->nudge_at->timezone('Europe/Moscow')->format('d.m').' в 10:00');
+        }
+        $nudge->now($invoice, $request->user());
+
+        return back()->with('toast', 'Напомнили менеджеру');
+    }
+
     /** «Отозвать» отправленный договор (19.11.2026, `ShowToManager::recallContract`). */
     public function recallContract(Request $request, Deal $deal, \App\Offers\Actions\ShowToManager $show)
     {

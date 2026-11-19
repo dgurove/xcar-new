@@ -21,8 +21,12 @@
                 </x-slot:lead>
             </x-ui.share-link>
         @endif
-        @if ($paidBy->contains('id', $i->id))
-            <x-deal.sale-row label="Оплатили наличными?" value="Отметить" tone="accent" data-controller="emit" data-action="emit#send" data-emit-event-param="paid-{{ $i->id }}:open"/>
+        {{-- Выставлена — «Оплата получена» | «Напомнить менеджеру» под строкой, как у счёта (19.11.2026). --}}
+        @if ($i->isShownToManager() && $paidBy->contains('id', $i->id))
+            <div class="send-under send-pair">
+                <button type="button" class="btn btn-accent btn-s gap-2" data-controller="emit" data-action="emit#send" data-emit-event-param="paid-{{ $i->id }}:open"><x-ui.icon name="check" class="size-4"/>Оплата получена</button>
+                @if (\App\Billing\Actions\NudgeInvoice::allows($i))<x-deal.nudge-sheet :deal="$deal" :invoice="$i"/>@endif
+            </div>
         @endif
     @endif
 @else
@@ -30,11 +34,9 @@
     <x-deal.doc-row :href="$pdf ?? \App\Http\Admin\MoneyController::url($i)" :title="\App\Billing\PayOffer::invoiceName($i)" :date="\App\Support\Ago::day($i->issued_at)" name="schet.pdf" :download="(bool) $pdf">
         @if ($withSum && (! $payerRow || $i->party_id !== $payerId))<span>{{ $i->party?->title() }}</span>@endif
         @if ($withSum)<span class="nums whitespace-nowrap">{{ $i->isPartial() && $i->remaining() > 0 ? 'осталось '.Money::rub($i->remaining()).' из '.Money::rub($i->total) : Money::rub($i->total) }}</span>@endif
-        @if ($i->shown_at)<span class="text-ink-muted">у менеджера с {{ \App\Support\Ago::day($i->shown_at) }}</span>@elseif ($withSum && ! $i->isShownToManager())<span class="text-ink-muted">не отправлен</span>@endif
-        {{-- Менеджер видит счёт только после «Отправить» (16.11.2026): сотрудник сперва проверяет; кнопка — пилюлей справа (18.11.2026). --}}
-        @if (! $i->isShownToManager())
-            <x-slot:acts><x-deal.send-row :deal="$deal" :action="'/work/deals/'.$deal->id.'/invoices/'.$i->id.'/show'" pill/></x-slot:acts>
-        @elseif (\App\Offers\Actions\ShowToManager::canRecallInvoice($i))
+        {{-- Отправлен ли — словом подписи «Счёт» над блоком (`x-deal.doc-cap`, 19.11.2026); у прочих счетов без подписи — здесь. --}}
+        @if ($withSum)<span @class(['text-ink-muted' => $i->isShownToManager(), 'text-danger' => ! $i->isShownToManager()])>{{ \App\Billing\DocWord::staff($i)[0] }}</span>@endif
+        @if ($i->isShownToManager() && \App\Offers\Actions\ShowToManager::canRecallInvoice($i))
             {{-- Отправлен и не оплачен — «Отозвать» (19.11.2026): поправить и отправить снова. --}}
             <x-slot:acts><x-deal.recall-row :deal="$deal" :action="'/work/deals/'.$deal->id.'/invoices/'.$i->id.'/recall'" :what="'счёт '.$i->label()"/></x-slot:acts>
         @endif
@@ -42,9 +44,16 @@
     @if ($link && $link->isOpen())
         <x-ui.share-link variant="row" :url="$link->url()" title="Оплата по ссылке" :text="$link->message()" label="Ссылка на оплату" :sub="$linkState" done="Ссылка на оплату в буфере"/>
     @endif
-    {{-- Отметка, что оплата ПРАЙМ / Р.О.С. принята, — под своим счётом (16.11.2026): та же шторка оплаты (`paid-{id}`). --}}
-    @if ($paidBy->contains('id', $i->id))
-        <x-deal.sale-row label="Деньги пришли?" value="Отметить" tone="accent" data-controller="emit" data-action="emit#send" data-emit-event-param="paid-{{ $i->id }}:open"/>
+    {{-- Под счётом кнопками, без черты (19.11.2026, владелец: «как у договора»): не отправлен — «Отправить менеджеру»; отправлен —
+         «Оплата получена» (шторка оплаты `paid-{id}`, прежняя «Деньги пришли?») и «Напомнить менеджеру» (`x-deal.nudge-sheet`);
+         заявка менеджера — её «Поступила / Не поступила» ниже вместо них; оплачен — без кнопок. --}}
+    @if (! $i->isShownToManager())
+        <x-deal.send-row :deal="$deal" :action="'/work/deals/'.$deal->id.'/invoices/'.$i->id.'/show'"/>
+    @elseif ($paidBy->contains('id', $i->id) && $i->claims->isEmpty())
+        <div class="send-under send-pair">
+            <button type="button" class="btn btn-accent btn-s gap-2" data-controller="emit" data-action="emit#send" data-emit-event-param="paid-{{ $i->id }}:open"><x-ui.icon name="check" class="size-4"/>Оплата получена</button>
+            @if (\App\Billing\Actions\NudgeInvoice::allows($i))<x-deal.nudge-sheet :deal="$deal" :invoice="$i"/>@endif
+        </div>
     @endif
 @endif
 @if (! $i->openLink() && ($i->isDocument() || $i->isShownToManager()))<x-billing.pay-status :invoice="$i" staff/>@endif

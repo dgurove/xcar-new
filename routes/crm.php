@@ -209,6 +209,8 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
         // «Отозвать» отправленный счёт и договор (19.11.2026, владелец: «поправить и заново отправить», `ShowToManager::recall*`).
         Route::post('/work/deals/{deal}/invoices/{invoice}/recall', [DealContractController::class, 'recallInvoice']);
         Route::post('/work/deals/{deal}/contract/recall', [DealContractController::class, 'recallContract']);
+        // «Напомнить менеджеру» про отправленный счёт (19.11.2026, `NudgeInvoice`).
+        Route::post('/work/deals/{deal}/invoices/{invoice}/nudge', [DealContractController::class, 'nudgeInvoice']);
         // Исправленный договор (19.11.2026, вариант Б): приложить исправленный, вернуть сформированный (Word для правки — `dkp.docx?edit=1`).
         Route::post('/work/deals/{deal}/contract/edited', [DealContractController::class, 'edited']);
         Route::delete('/work/deals/{deal}/contract/edited', [DealContractController::class, 'unedit']);

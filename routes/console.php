@@ -24,6 +24,8 @@ Schedule::command('park:tick')->everyFiveMinutes()->withoutOverlapping();
 Schedule::command('claims:digest')->everyFiveMinutes()->withoutOverlapping();
 Schedule::command('logistics:tick')->everyFifteenMinutes()->withoutOverlapping();
 Schedule::command('billing:tick')->dailyAt('09:05');
+// «Напомнить через…» про счёт (19.11.2026, `NudgeInvoice::later`): напоминания на 10:00, проход раз в 15 минут.
+Schedule::command('billing:nudges')->everyFifteenMinutes()->withoutOverlapping();
 // Прозрачности водяных знаков по снятым и почищенным вручную кадрам — ночью, процессор свободен.
 Schedule::command('media:unmark-tune')->dailyAt('04:20')->withoutOverlapping();
 // Файлы из писем выданных ТС — только когда месяц выдачи закрыт и оплачен (`LettersPurge::due`, 06.11.2026).

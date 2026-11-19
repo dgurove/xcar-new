@@ -35,17 +35,10 @@
             <x-deal.doc-row :href="$base.'/signed-contract.pdf'" :title="$docTitle" :name="\App\Offers\Documents\SignedContractPdf::fileName($deal)" :file="\App\Offers\Documents\SignedContractPdf::fileName($deal)">
                 {{-- Дата и число листов — второй строкой: в названии на телефоне дата резалась до «от 1…». --}}
                 <span class="nums">{{ $docTitle !== 'Подписанный договор' ? 'подписан ' : '' }}{{ \App\Support\Ago::day(\App\Offers\Documents\SignedContractPdf::at($deal)) }}{{ $files->count() > 1 ? ', листов '.$files->count() : '' }}</span>
-                @if ($can)
-                    <x-slot:acts>
-                        <form method="post" action="{{ $base }}/signed" enctype="multipart/form-data" class="contents" data-controller="autosubmit">
-                            @csrf
-                            <label class="btn btn-ghost btn-s px-2 text-ink-muted" title="Добавить лист" aria-label="Добавить лист">
-                                <input type="file" name="files[]" multiple accept=".pdf,.jpg,.jpeg,.png,.webp,.heic,.heif,.doc,.docx" class="sr-only" data-action="change->autosubmit#submit"><x-ui.icon name="clip" class="size-5"/>
-                            </label>
-                        </form>
-                    </x-slot:acts>
-                @endif
             </x-deal.doc-row>
+            {{-- «Добавить лист» — не скрепкой в строке, а кнопкой «Приложить ещё» под ней (19.11.2026, владелец: «пусть она не уходит,
+                 просто называется „Приложить ещё“»). --}}
+            @if ($can)<div class="send-under"><x-deal.attach-signed :deal="$deal" :base="$base" wide/></div>@endif
         @endif
         @if ($can && $files->isEmpty())
             <form method="post" action="{{ $base }}/signed" enctype="multipart/form-data" class="contents signed-upload" data-controller="autosubmit">

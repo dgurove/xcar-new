@@ -9,6 +9,7 @@ use App\Billing\Bank\Console\MatchByVinCommand;
 use App\Billing\Bank\Console\PerpetualSecret;
 use App\Billing\Bank\Console\SyncBank;
 use App\Billing\Console\CloseMonthCommand;
+use App\Billing\Console\NudgeInvoices;
 use App\Billing\Console\TickBilling;
 use App\Cars\Console\CollectValuesCommand;
 use App\Cars\Console\MergeCatalogCommand;
@@ -157,6 +158,7 @@ return Application::configure(basePath: dirname(__DIR__))
         AutoRequestsCommand::class,
         ReleaseByLettersCommand::class,
         TickBilling::class,
+        NudgeInvoices::class,
         ClaimDigestCommand::class,
         MailClaimRequestsCommand::class,
         CloseMonthCommand::class,

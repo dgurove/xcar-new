@@ -182,7 +182,18 @@
                 <x-deal.signed-contract :deal="$deal" :base="'/work/deals/'.$deal->id" bare/>
             @endif
         @endif
-    @php $contractLine = trim(ob_get_clean()); @endphp
+    @php
+        $contractLine = trim(ob_get_clean());
+        // Слово подписи «Договор» (19.11.2026): подписан, отправлен, не отправлен или чего-то не хватает.
+        $dkpNow = $withContract || $contract ? \App\Offers\DealContract::for($deal) : null;
+        $contractWord = match (true) {
+            $signed => ['подписан', 'ok'],
+            $dkpNow?->shown_at !== null => ['отправлен '.\App\Support\Ago::day($dkpNow->shown_at), 'ok'],
+            $dkpNow && (\App\Offers\ContractEdit::has($deal) || ! $dkpNow->missing()) => ['не отправлен', 'bad'],
+            $dkpNow !== null && $deal->isActive() => ['нужны данные', 'bad'],
+            default => null,
+        };
+    @endphp
     {{-- Счёт строкой документа — без суммы (она в шапке), под ним «Отправить», ссылка, «Деньги пришли?», заявки менеджера. --}}
     @php
         $billRows = function ($i, bool $withSum) use ($deal, $last, $paidBy, $payerRow, $payerId, $inStep) {
@@ -208,9 +219,10 @@
         {{-- Покупатель платит поставщику или собственнику сам (ДКП, «страховой напрямую») — блок «Поставщику» / «Собственнику». --}}
         @php ob_start(); @endphp
             @include('admin.deals.supplier-rows')
+        @php $top = trim(ob_get_clean()); ob_start(); @endphp
             <x-deal.contract-gaps :deal="$deal"/>
             {!! $contractLine !!}
-        @php $top = trim(ob_get_clean()); @endphp
+        @php $dealGroup = trim(ob_get_clean()); @endphp
         <div class="mb-2 flex items-start gap-3 px-3">
             <span class="min-w-0 flex-1 font-medium">{{ $deal->schemeOf() === \App\Offers\DealScheme::OwnerDkp ? 'Собственнику' : 'Поставщику' }}</span>
             {{-- Сколько платят поставщику или собственнику; гаражной «платит менеджер» — закупочная (19.11.2026), Совкомбанка — нет. --}}
@@ -219,6 +231,11 @@
         {{-- Покупатель — над счётом и договором своей группой: подпись и состояние сверху, в плашке имя (18.11.2026, владелец). --}}
         @if ($withContract)<div class="mb-3"><x-deal.contract :deal="$deal" bare :doc-row="false" capped/></div>@elseif ($withBuyer)<div class="mb-3"><x-deal.buyer :deal="$deal" capped/></div>@endif
         @if ($top !== '')<div class="list mb-3 last:mb-0">{!! $top !!}</div>@endif
+        {{-- Договор — своей группой с подписью (19.11.2026), как у ПРАЙМ. --}}
+        @if ($dealGroup !== '')
+            <x-deal.doc-cap label="Договор" :state="$contractWord[0] ?? null" :tone="$contractWord[1] ?? 'muted'"/>
+            <div class="list mb-3 last:mb-0">{!! $dealGroup !!}</div>
+        @endif
     @elseif ($carBlock)
         <div class="mb-2 flex items-start gap-3 px-3">
             <span class="min-w-0 flex-1">
@@ -242,27 +259,45 @@
         @if ($sale)<x-deal.arrivals :deal="$deal" :except="$buyerNames"/>@endif
         {{-- Покупатель — над счётом и договором своей группой: подпись и состояние сверху, в плашке имя (18.11.2026, владелец). --}}
         @if ($withContract)<div class="mb-3"><x-deal.contract :deal="$deal" bare :doc-row="false" capped/></div>@elseif ($withBuyer)<div class="mb-3"><x-deal.buyer :deal="$deal" capped/></div>@endif
-        <div class="list mb-3 last:mb-0">
+        {{-- Счёт и договор — своими группами с подписью и состоянием справа (19.11.2026, владелец: «как „Покупатель — данные есть“»):
+             «Счёт — отправлен 19.11», «Договор — не отправлен»; кнопки — под строкой документа. Счёт — первым (18.11.2026, начальник:
+             «договор вообще после счёта должен формироваться»). Счёта нет — строка-заготовка (`x-deal.invoice-gaps`). --}}
+        @php
+            $saleWord = $sale ? \App\Billing\DocWord::staff($sale) : null;
+            ob_start();
+        @endphp
             {{-- Часть мимо счёта — строкой, когда есть: из-за неё счёт и договор меньше цены продажи. --}}
             @if ($contract?->cash_part)<div class="row sale-row"><span class="sale-row-label">Наличными мимо счёта</span><span class="sale-row-value nums">{{ Money::rub($contract->cash_part) }}</span><x-ui.chevron-space/></div>@endif
             @if ($payerApart)<x-deal.payer :deal="$deal" :action="'/work/deals/'.$deal->id.'/payer'" :editable="$canEdit"/>@endif
-            {{-- Чего не хватает договору, говорит его строка-заготовка — отдельными строками только без неё. --}}
-            @unless ($withContract && $canEdit && $deal->isActive() && ! $ready && ! $signed)<x-deal.contract-gaps :deal="$deal" :price-row="(bool) $contract"/>@endunless
-            {{-- Счёт — первым, договор за ним (18.11.2026, начальник: «договор вообще после счёта должен формироваться»). Счёта нет —
-                 строка-заготовка: нажатие говорит, чего не хватает, и даёт ввести (`x-deal.invoice-gaps`). --}}
             @if ($sale)
                 {!! $billRows($sale, false) !!}
             @elseif ($deal->isActive())
                 <x-deal.invoice-gaps :deal="$deal"/>
             @endif
+        @php $billGroup = trim(ob_get_clean()); ob_start(); @endphp
+            {{-- Чего не хватает договору, говорит его строка-заготовка — отдельными строками только без неё. --}}
+            @unless ($withContract && $canEdit && $deal->isActive() && ! $ready && ! $signed)<x-deal.contract-gaps :deal="$deal" :price-row="(bool) $contract"/>@endunless
             {!! $contractLine !!}
-        </div>
+        @php $dealGroup = trim(ob_get_clean()); @endphp
+        @if ($billGroup !== '')
+            <x-deal.doc-cap label="Счёт" :state="$saleWord[0] ?? null" :tone="$saleWord[1] ?? 'muted'"/>
+            <div class="list mb-3 last:mb-0">{!! $billGroup !!}</div>
+        @endif
+        @if ($dealGroup !== '')
+            <x-deal.doc-cap label="Договор" :state="$contractWord[0] ?? null" :tone="$contractWord[1] ?? 'muted'"/>
+            <div class="list mb-3 last:mb-0">{!! $dealGroup !!}</div>
+        @endif
     @else
         @php ob_start(); @endphp
             @if ($withBuyer)<x-deal.buyer :deal="$deal"/>@endif
             {!! $contractLine !!}
         @php $top = trim(ob_get_clean()); @endphp
         @if ($top !== '')<div class="list mb-3 last:mb-0">{!! $top !!}</div>@endif
+        {{-- Договор — своей группой с подписью (19.11.2026), как у ПРАЙМ. --}}
+        @if ($dealGroup !== '')
+            <x-deal.doc-cap label="Договор" :state="$contractWord[0] ?? null" :tone="$contractWord[1] ?? 'muted'"/>
+            <div class="list mb-3 last:mb-0">{!! $dealGroup !!}</div>
+        @endif
     @endif
     {{-- Шторки без своих строк — их открывают сумма в шапке и пункты «⋯» (18.11.2026). --}}
     @unless ($deal->isAuction())<x-deal.scheme :deal="$deal" bare :price="false" :row="false"/>@endunless

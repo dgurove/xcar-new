@@ -37,7 +37,7 @@ use Spatie\MediaLibrary\InteractsWithMedia;
  * без своей ТС: машины — строками хранения со своим `vehicle_id`, долг машины — её доля (`Ledger::shareOf`).
  */
 #[Fillable(['seller', 'park', 'direction', 'year', 'number', 'code', 'revision', 'external_no', 'kind', 'month', 'party_id', 'vehicle_id', 'deal_id', 'offer_id', 'issued_at', 'due_at', 'vat', 'vat_rate', 'vat_on_top', 'total', 'paid', 'state', 'paid_at',
-    'overdue_at', 'reminded_at', 'sent_at', 'sent_by', 'sent_message_id', 'voided_at', 'void_reason', 'notes', 'created_by', 'car_title', 'credit_deal_id', 'shown_at', 'shown_by',
+    'overdue_at', 'reminded_at', 'sent_at', 'sent_by', 'sent_message_id', 'voided_at', 'void_reason', 'notes', 'created_by', 'car_title', 'credit_deal_id', 'shown_at', 'shown_by', 'nudged_at', 'nudge_at',
     'act_no', 'act_at', 'basis', 'line_title', 'requested_at', 'requested_by'])]
 class Invoice extends Model implements HasMedia
 {
@@ -78,7 +78,7 @@ class Invoice extends Model implements HasMedia
     protected function casts(): array
     {
         return ['seller' => Seller::class, 'kind' => ChargeKind::class, 'state' => InvoiceState::class, 'month' => 'date', 'issued_at' => 'date', 'due_at' => 'date', 'paid_at' => 'date', 'act_at' => 'date', 'vat' => 'bool', 'vat_rate' => 'int', 'vat_on_top' => 'bool', 'park' => 'bool',
-            'total' => 'float', 'paid' => 'float', 'revision' => 'int', 'overdue_at' => 'datetime', 'reminded_at' => 'datetime', 'sent_at' => 'datetime', 'voided_at' => 'datetime', 'shown_at' => 'datetime', 'requested_at' => 'datetime'];
+            'total' => 'float', 'paid' => 'float', 'revision' => 'int', 'overdue_at' => 'datetime', 'reminded_at' => 'datetime', 'sent_at' => 'datetime', 'voided_at' => 'datetime', 'shown_at' => 'datetime', 'requested_at' => 'datetime', 'nudged_at' => 'datetime', 'nudge_at' => 'datetime'];
     }
 
     public function registerMediaCollections(): void

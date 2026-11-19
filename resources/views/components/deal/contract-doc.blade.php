@@ -8,8 +8,9 @@
        `dkp.docx?edit=1`), 2) приложить заполненный (`EditContract`);
      - приложен заполненный — метка «заполнен», справа ↶ «Вернуть сформированный», под строкой одна «Отправить менеджеру»;
        данные сделки поменялись после правки — красным (`ContractEdit::stale`);
-     - отправлен — «у менеджера с …», под строкой «Отозвать» (`ShowToManager::recallContract`).
-     `attach` — скрепкой справа приложить подписанный (18.11.2026). --}}
+     - отправлен — под строкой «Приложить подписанный» | «Отозвать» (`ShowToManager::recallContract`); отправлен ли — словом подписи
+       «Договор» (`x-deal.doc-cap` в `x-deal.money`).
+     `attach` — «Приложить подписанный» кнопкой (19.11.2026; прежде скрепкой справа). --}}
 @props(['deal', 'attach' => false])
 @php
     use App\Offers\ContractEdit;
@@ -32,25 +33,17 @@
 @if ($edited || ! $contract->missing())
     <div class="contents" @if ($canEdit) data-controller="sheet" @endif>
         <x-deal.doc-row :href="$base.'/dkp.pdf'" :title="$title" :name="$isPdf ? 'dkp.pdf' : 'dkp.docx'" :bytes="$original?->size" :file="$name.'.pdf'" id="dkp-row-{{ $deal->id }}">
+            {{-- Отправлен ли — словом подписи «Договор» над блоком (`x-deal.doc-cap`, 19.11.2026); здесь — только свойство файла. --}}
             @if ($edited)<span class="tag">заполнен</span>@endif
-            @if ($sent)<span class="text-ink-muted">у менеджера с {{ \App\Support\Ago::day($contract->shown_at) }}</span>@else<span class="text-ink-muted">не отправлен</span>@endif
             @if ($stale)<span class="text-danger">данные сделки менялись после заполнения</span>@endif
             <x-slot:dl><x-deal.dkp-download :deal="$deal" :base="$base" :name="$name" :word="! $isPdf"/></x-slot:dl>
-            @if ($canAttach || ($edited && ! $sent && $staff))
+            @if ($edited && ! $sent && $staff)
                 <x-slot:acts>
                     @if ($edited && ! $sent && $staff)
                         <form method="post" action="{{ $base }}/contract/edited" class="contents" data-turbo-confirm="Вернуть сформированный договор? Заполненный файл удалится">
                             @csrf @method('DELETE')
                             <button type="submit" class="btn btn-ghost btn-s px-1.5 text-ink-muted" title="Вернуть сформированный" aria-label="Вернуть сформированный"><x-ui.icon name="undo" class="size-5"/></button>
                         </form>
-                    @endif
-                    @if ($canAttach)
-                    <form method="post" action="{{ $base }}/signed" enctype="multipart/form-data" class="contents" data-controller="autosubmit">
-                        @csrf
-                        <label class="btn btn-ghost btn-s px-2 text-ink-muted" title="Приложить подписанный" aria-label="Приложить подписанный">
-                            <input type="file" name="files[]" multiple accept=".pdf,.jpg,.jpeg,.png,.webp,.heic,.heif,.doc,.docx" class="sr-only" data-action="change->autosubmit#submit"><x-ui.icon name="clip" class="size-5"/>
-                        </label>
-                    </form>
                     @endif
                 </x-slot:acts>
             @endif
@@ -68,12 +61,20 @@
                 </form>
             </div>
         @endif
-        {{-- Отправлен — «Отозвать» там же, где было «Отправить» (в строке тесно: скачать, скрепка, длинный номер). --}}
-        @if ($canRecall)
-            <form method="post" action="{{ $base }}/contract/recall" class="send-under" data-turbo-confirm="Отозвать {{ mb_strtolower(mb_substr($title, 0, 1)).mb_substr($title, 1) }}? Менеджер перестанет его видеть">
-                @csrf
-                <button type="submit" class="btn btn-quiet btn-s w-full">Отозвать</button>
-            </form>
+        {{-- Подписанный — кнопкой словами, а не скрепкой в строке (19.11.2026, владелец: «тупо иконка скрепки — непонятно»): до отправки —
+             серой во всю ширину под выбором (подписали вне системы), после — лаймовой рядом с «Отозвать». --}}
+        @if (! $sent && $canAttach && $staff)
+            <div class="send-under"><x-deal.attach-signed :deal="$deal" :base="$base" wide/></div>
+        @elseif ($sent && ($canAttach || $canRecall))
+            <div class="send-under send-pair">
+                @if ($canAttach)<x-deal.attach-signed :deal="$deal" :base="$base" primary/>@endif
+                @if ($canRecall)
+                    <form method="post" action="{{ $base }}/contract/recall" class="contents" data-turbo-confirm="Отозвать {{ mb_strtolower(mb_substr($title, 0, 1)).mb_substr($title, 1) }}? Менеджер перестанет его видеть">
+                        @csrf
+                        <button type="submit" class="btn btn-quiet btn-s">Отозвать</button>
+                    </form>
+                @endif
+            </div>
         @endif
         @if ($canEdit)
             <x-ui.sheet :id="$sheet" title="Заполнить договор">

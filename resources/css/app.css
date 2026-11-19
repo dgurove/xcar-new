@@ -1990,7 +1990,10 @@ html.kb-open { --home-gap: 0px; }
      рядом поровну, на узком — друг под другом. Шаги шторки «Исправить договор» — лаймовым номером слева. */
   .list > .contents > .send-under { padding: 0 .75rem .75rem; }
   .send-pair { display: flex; gap: .5rem; }
-  .send-pair > form > .btn, .send-pair > .btn { flex: 1 1 0; min-width: 0; padding-inline: .5rem; white-space: nowrap; }
+  .send-pair > form > .btn, .send-pair > .btn, .send-pair > .contents > .btn { flex: 1 1 0; min-width: 0; padding-inline: .5rem; white-space: nowrap; }
+  /* «Напомнить через…» (`x-deal.nudge-sheet`, 19.11.2026): раскрывается чипами дней, без треугольника системы. */
+  .nudge-later > summary { list-style: none; cursor: pointer; }
+  .nudge-later > summary::-webkit-details-marker { display: none; }
   .edit-step { display: flex; gap: .75rem; align-items: flex-start; }
   .edit-step-n { flex: none; width: 1.375rem; height: 1.375rem; margin-top: .0625rem; border-radius: 999px; background: var(--color-accent); color: #fff; font-size: var(--text-xs); display: inline-flex; align-items: center; justify-content: center; }
   /* Форма-группа (form.list): @csrf и @method идут первыми детьми — строка за ними не «вторая», линии над ней нет. */
