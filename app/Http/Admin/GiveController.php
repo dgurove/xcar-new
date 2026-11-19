@@ -62,7 +62,9 @@ class GiveController
 
     private function give(Request $request, Offer $offer, ?Bid $bid, Give $give)
     {
-        $request->merge(array_map(fn ($v) => blank($v) ? null : Money::rubles($v), $request->only(['amount', 'commission', 'owner_price', 'share', 'buyer_price', 'cost'])));
+        $request->merge(array_map(fn ($v) => blank($v) ? null : Money::rubles($v), $request->only(['amount', 'commission', 'owner_price', 'buyer_price', 'cost'])));
+        // Услуги подбора — со знаком (`Money::signed`): ноль — без подбора, минус — вознаграждение больше разницы.
+        $request->merge(['share' => blank($request->input('share')) ? null : Money::signed($request->input('share'))]);
         $garage = $bid ? $bid->isGarage() : $request->input('to') === 'garage';
         $amount = $bid ? $bid->amount : ($request->integer('amount') ?: null);
         $data = $request->validate([
@@ -74,7 +76,7 @@ class GiveController
             // По ДКП — что покупатель отдаст страхователю: меньше цены менеджеру, иначе подбору не из чего.
             'owner_price' => ['nullable', 'integer', 'min:1', 'max:'.max(1, (int) $amount)],
             'payer' => ['nullable', Rule::enum(GaragePayer::class)],
-            'share' => ['nullable', 'integer', 'min:1'],
+            'share' => ['nullable', 'integer', 'min:0'],
             'buyer_price' => ['nullable', 'integer', 'min:1'],
             // Закупочная менеджера в сделке — правит админ при принятии (`Giving::cost`), гаражной её не вписывают.
             'cost' => ['nullable', 'integer', 'min:1'],

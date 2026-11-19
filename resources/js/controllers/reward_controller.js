@@ -95,11 +95,12 @@ export default class extends Controller {
         return String(Math.round(p * 10) / 10).replace('.', ',');
     }
 
-    // Скрытое поле в рублях: вознаграждение или услуги подбора. Без разницы — как вписано.
+    // Скрытое поле в рублях: вознаграждение или услуги подбора. Без разницы — как вписано. Услуги подбора — со знаком: ноль —
+    // их нет (19.11.2026, гаражная «себе» без подбора), минус — вознаграждение больше разницы, сервер отвечает `SHARE_LEFT`.
     write() {
         const r = this.reward;
         const ours = this.modeValue === 'ours' && this.split;
-        this.hiddenTarget.value = r === null ? '' : (ours ? Math.max(0, this.marginValue - r) : r);
+        this.hiddenTarget.value = r === null ? '' : (ours ? this.marginValue - r : r);
     }
 
     paint() {

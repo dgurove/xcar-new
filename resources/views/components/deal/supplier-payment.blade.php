@@ -87,7 +87,7 @@
                 <div>
                     <span class="block">{{ $offer->vendor?->name ?? 'Страховая' }}</span>
                     <span class="block text-sm text-ink-muted">платит {{ $buyerWho }} напрямую</span>
-                    <span class="nums mt-1 block pay-sum">{{ $deal->isDirect() && $deal->owner_price === null ? 'уточним' : Money::rub((int) $deal->ownerPrice()) }}</span>
+                    <span class="nums mt-1 block pay-sum">{{ $deal->isDirect() && $deal->owner_price === null ? 'уточним' : Money::rub((int) $deal->supplierPayment()) }}</span>
                 </div>
                 @if ($bill || $proofOpen || $proofSent)
                     <div class="list">
@@ -105,7 +105,7 @@
                 <div>
                     <span class="block break-words">{{ $scheme->payeeName($offer, $contract?->seller?->name) }}</span>
                     <span class="block text-sm text-ink-muted">платит {{ $buyerWho }} по ДКП</span>
-                    <span class="nums mt-1 block pay-sum">{{ $sum($deal->ownerPrice()) }}</span>
+                    <span class="nums mt-1 block pay-sum">{{ $sum($deal->supplierPayment()) }}</span>
                     @if ($deal->offset())<span class="block text-sm text-ink-muted">взаимозачёт со страховой −{{ Money::rub($deal->offset()) }}</span>@endif
                 </div>
             @else

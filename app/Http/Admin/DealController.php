@@ -314,13 +314,14 @@ class DealController
     /** Деньги сделки — пока по ней нет счёта или есть только неоплаченный подбор по ДКП (`Deal::moneyEditable`). */
     public function money(Request $request, Deal $deal, UpdateDealMoney $update)
     {
-        // Услуги подбора из ползунка вознаграждения (16.11.2026): ноль — вознаграждение съело всю разницу, это ошибка, а не «стереть».
-        $request->merge(['share' => blank($request->input('share')) ? null : Money::rubles($request->input('share')),
+        // Услуги подбора из ползунка вознаграждения (16.11.2026): минус — вознаграждение больше разницы, это ошибка; ноль — подбора нет
+        // (19.11.2026, владелец: «за услуги подбора берём 0 ₽ в этот раз»), пусто — не вписаны.
+        $request->merge(['share' => blank($request->input('share')) ? null : Money::signed($request->input('share')),
             'amount' => blank($request->input('amount')) ? null : Money::rubles($request->input('amount')),
             'cash_part' => blank($request->input('cash_part')) ? null : Money::rubles($request->input('cash_part'))]);
         $data = $request->validate(['commission' => ['nullable', 'integer', 'min:0'], 'amount' => ['nullable', 'integer', 'min:1'], 'cash_part' => ['nullable', 'integer', 'min:0'],
             'scheme' => ['nullable', Rule::enum(DealScheme::class)],
-            'share' => ['nullable', 'integer', 'min:1']], ['share.min' => Giving::SHARE_LEFT]);
+            'share' => ['nullable', 'integer', 'min:0']], ['share.min' => Giving::SHARE_LEFT]);
         // Поле вознаграждения пустое — вознаграждения нет; поля нет вовсе (гаражная доля) — прежнее.
         $commission = $request->has('commission') ? (isset($data['commission']) ? (int) $data['commission'] : null) : $deal->commission;
         $scheme = DealScheme::tryFrom($data['scheme'] ?? '');

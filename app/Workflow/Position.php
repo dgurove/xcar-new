@@ -525,7 +525,8 @@ class Position extends Model
      */
     public static function gapAction(?string $gap, Deal $deal): array
     {
-        $money = Surface::Crm->url('/work/deals/'.$deal->id.'#money');
+        // Прямо на страницу машины к «Деньгам»: `/work/deals/N` у гаражной уводит на `#garage`, и якорь терялся (19.11.2026).
+        $money = Surface::Crm->url('/offers/'.$deal->offer->number.'#money');
 
         return match ($gap) {
             'share' => ['title' => 'Вписать услуги подбора', 'button' => 'Вписать услуги подбора', 'url' => $money],

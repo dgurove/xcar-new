@@ -50,6 +50,17 @@ final class Money
         return $digits === '' ? null : (int) $digits;
     }
 
+    /**
+     * Сумма со знаком: услуги подбора с ползунка (`reward_controller`, режим `ours`) уходят разницей минус вознаграждение — минус
+     * значит «вознаграждение больше разницы» (`Giving::SHARE_LEFT`), ноль — услуг подбора нет (19.11.2026).
+     */
+    public static function signed(int|float|string|null $value): ?int
+    {
+        $rub = self::rubles($value);
+
+        return $rub !== null && is_string($value) && str_starts_with(ltrim($value), '-') ? -$rub : $rub;
+    }
+
     /** «15 000,50», «15000.5», «15 000 ₽» — одно число: люди пишут суммы как привыкли. */
     public static function parse(?string $value): string
     {

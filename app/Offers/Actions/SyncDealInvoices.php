@@ -80,7 +80,9 @@ final class SyncDealInvoices
         if (! $deal->isActive() || ! $position?->stage->isPayStep() || $deal->hasManagerInvoice()) {
             return;
         }
-        $who = $deal->managerGap() ? WaitsFor::Manager : WaitsFor::Us;
+        // Платят поставщику сами по его счёту («Поставщику», ДКП, и гаражная «платит менеджер», 19.11.2026) — ход менеджера, как
+        // при входе в шаг (`EnterStage`): наш счёт подбора (или его отсутствие) оплату страховой не держит.
+        $who = $deal->managerGap() || $deal->paysSupplierOn($position->stage) ? WaitsFor::Manager : WaitsFor::Us;
         if ($position->waits_for !== $who) {
             // Ход менеджера («Укажите покупателя» после «Продаю») — часы оплаты (`Deal::payDue`), наш — без часов.
             $due = $who === WaitsFor::Manager && in_array($deal->invoiceGap(), ['buyer', 'passport'], true) ? $deal->payDue() : null;

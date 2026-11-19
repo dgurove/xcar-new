@@ -602,6 +602,16 @@ class Deal extends Model implements HasMedia
     }
 
     /**
+     * Менеджер сам платит поставщику или собственнику по их счёту — «Поставщику» и ДКП, и у гаражной «платит менеджер»
+     * (19.11.2026, владелец по 7925/046/01102/26: Сергей берёт себе, Альфа прислала счёт — в шаге «Счёт не выставлен» и
+     * «Вписать услуги подбора», счёт Альфы ему не показать). Подбор у гаражной — долей (`share`), не `paysSelection`.
+     */
+    public function paysSupplierSelf(): bool
+    {
+        return $this->schemeOf()->paysSelection() && (! $this->isGarage() || $this->isGarageManager());
+    }
+
+    /**
      * Шаг оплаты, где за ТС платят не нам, а поставщику или собственнику («Страховой напрямую», «Страхователю по ДКП»
      * у маршрута со счётом поставщика — Альфа; 18.10.2026, прогон): менеджер платит сам и прикладывает платёжку, её
      * подтверждает поставщик. Наш подбор этот шаг не двигает — Т-Страхованию (проверка подбора — наш ход) не мешает.
@@ -659,7 +669,7 @@ class Deal extends Model implements HasMedia
      */
     public function sentPaymentProof(): ?Requirement
     {
-        if (! $this->isLive() || ! $this->paysSelection() || $this->prepaid_at !== null || $this->openRequirement) {
+        if (! $this->isLive() || ! $this->paysSupplierSelf() || $this->prepaid_at !== null || $this->openRequirement) {
             return null;
         }
         $stage = $this->offer?->position(Track::Sale)?->stage;
@@ -670,7 +680,7 @@ class Deal extends Model implements HasMedia
 
     public function paysSupplierOn(?Stage $stage): bool
     {
-        return $stage !== null && $this->paysSelection() && $stage->isPayStep()
+        return $stage !== null && $this->paysSupplierSelf() && $stage->isPayStep()
             && $stage->payExit($this)?->to?->waits_for === WaitsFor::Supplier;
     }
 
@@ -1035,7 +1045,8 @@ class Deal extends Model implements HasMedia
         return match (true) {
             // Гаражная Совкомбанка: цену продажи и покупателя называет менеджер («Продаю»), вознаграждение — мы.
             $this->namesBuyer() && $this->amount === null => 'price',
-            $this->isGarageManager() && ! $this->share => 'share',
+            // Ноль — услуг подбора нет (19.11.2026), не «не вписаны».
+            $this->isGarageManager() && $this->share === null => 'share',
             $this->isPrime() && (! $this->isGarage() || $this->namesBuyer()) && ! $this->contract?->buyer_user_id => 'buyer',
             $this->namesBuyer() && $this->commission === null => 'commission',
             // Р.О.С. без реквизитов (пришлёт владелец) — счёт выставить не от кого.

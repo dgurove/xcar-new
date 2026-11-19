@@ -130,7 +130,7 @@
         // Услуги подбора — счётом ниже (ДКП, «страховой», доля гаража): там же заголовком с суммой, второй раз строкой не пишем.
         $feeBilled = ($deal->paysSelection() || $deal->isGarageManager()) && $invoices->contains(fn ($i) => $i->kind === \App\Billing\ChargeKind::Selection && $i->state !== InvoiceState::Void);
         if ($deal->isGarageManager() && ! $feeBilled) {
-            $rows[] = ['Услуги подбора', $deal->share ? Money::rub($deal->share) : 'не вписано', $dd.' text-lg font-semibold', true];
+            $rows[] = ['Услуги подбора', $deal->share !== null ? Money::rub($deal->share) : 'не вписано', $dd.' text-lg font-semibold', true];
         } elseif (! $feeBilled && ! $deal->isGarageManager() && $ours !== null) {
             $rows[] = ['Услуги подбора', Money::rub($ours), $dd.' text-lg font-semibold'.($ours < 0 ? ' text-danger' : ''), true];
         }
@@ -213,8 +213,8 @@
         @php $top = trim(ob_get_clean()); @endphp
         <div class="mb-2 flex items-start gap-3 px-3">
             <span class="min-w-0 flex-1 font-medium">{{ $deal->schemeOf() === \App\Offers\DealScheme::OwnerDkp ? 'Собственнику' : 'Поставщику' }}</span>
-            {{-- Гаражной суммы собственнику нет (её платит менеджер сам) — без нуля в шапке. --}}
-            @if ($deal->isDirect() && $deal->owner_price === null)<span class="nums shrink-0">уточним</span>@elseif ($deal->ownerPrice() !== null)<span class="nums shrink-0">{{ Money::rub((int) $deal->ownerPrice()) }}</span>@endif
+            {{-- Сколько платят поставщику или собственнику; гаражной «платит менеджер» — закупочная (19.11.2026), Совкомбанка — нет. --}}
+            @if ($deal->isDirect() && $deal->owner_price === null)<span class="nums shrink-0">уточним</span>@elseif ($deal->paysSupplierSelf() && $deal->supplierPayment() !== null)<span class="nums shrink-0">{{ Money::rub((int) $deal->supplierPayment()) }}</span>@endif
         </div>
         {{-- Покупатель — над счётом и договором своей группой: подпись и состояние сверху, в плашке имя (18.11.2026, владелец). --}}
         @if ($withContract)<div class="mb-3"><x-deal.contract :deal="$deal" bare :doc-row="false" capped/></div>@elseif ($withBuyer)<div class="mb-3"><x-deal.buyer :deal="$deal" capped/></div>@endif

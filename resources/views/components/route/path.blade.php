@@ -93,7 +93,7 @@
         <div class="step step--{{ Path::DONE }}">
             <span class="step-dot"><x-ui.icon name="check" class="size-3"/></span>
             <div class="step-body">
-                <div class="step-head" style="padding-inline-end: 1.5rem"><span class="step-title flex-1">Заявка поступила</span><span class="flex shrink-0 items-center gap-1.5"><span class="nums text-sm text-ink-dim">{{ \App\Support\Ago::html(\Illuminate\Support\Carbon::parse($received), words: false) }}</span><x-ui.icon name="chevron-down" class="size-4" style="visibility: hidden"/></span></div>
+                <div class="step-head" style="padding-inline-end: 1.5rem"><span class="step-title flex-1">Заявка поступила</span><span class="nums shrink-0 text-sm text-ink-dim">{{ \App\Support\Ago::html(\Illuminate\Support\Carbon::parse($received), words: false) }}</span></div>
             </div>
         </div>
     @endif
@@ -134,7 +134,10 @@
                     <details class="step-details">
                         <summary class="step-head">
                             <span class="step-title flex-1">{{ $blockName($block) }}</span>
-                            <span class="flex shrink-0 items-center gap-1.5">@if ($step['at'])<span class="nums text-sm text-ink-dim">{{ \App\Support\Ago::html($step['at'], words: false) }}</span>@endif<x-ui.icon name="chevron-down" class="step-chevron size-4 text-ink-dim"/></span>
+                            {{-- Стрелка — прямым ребёнком: `.step-details > summary > .step-chevron` ставит её к правому краю, дата — перед ней
+                                 (19.11.2026, владелец: в обёртке она стояла на 1,5rem левее края, где «···» текущего шага). --}}
+                            @if ($step['at'])<span class="nums shrink-0 text-sm text-ink-dim">{{ \App\Support\Ago::html($step['at'], words: false) }}</span>@endif
+                            <x-ui.icon name="chevron-down" class="step-chevron size-4 text-ink-dim"/>
                         </summary>
                         <div class="mt-1 flex flex-col gap-1">
                             @foreach ($step['stages'] as $s)
@@ -437,7 +440,13 @@
                             </div>
                         </div>
                     @endforeach
-                    @if ($wantsInvoice || $moves->isNotEmpty() || $stage->template_id || $requests || $payNow->isNotEmpty())
+                    @php
+                        // Гаражная «платит менеджер» платит поставщику сама (19.11.2026): ход менеджера, а наши услуги подбора не вписаны —
+                        // серой кнопкой рядом, не главным делом шага (оплату страховой они не держат; ноль — «без подбора»).
+                        $shareLater = ! $wantsInvoice && $deal && $deal->isActive() && $deal->isGarageManager() && $deal->share === null
+                            && $deal->paysSupplierOn($stage) && $deal->moneyEditable() && auth()->user()?->canEditDeals();
+                    @endphp
+                    @if ($wantsInvoice || $shareLater || $moves->isNotEmpty() || $stage->template_id || $requests || $payNow->isNotEmpty())
                         @php
                             // Письмо с реквизитами без реквизитов — не кнопкой, а чего не хватает (03.11.2026, владелец: «почему
                             // „Написать поставщику“, если покупатель так и не заполнен»).
@@ -451,7 +460,7 @@
                                 ? \App\Offers\Deal::awaitingSupplier($offer->vendor_id) : collect();
                             $invoiceButton = $wantsInvoice && $position->gap() !== 'send' && ! ($position->gap() === 'ros_requisites' && ! auth()->user()?->isParkAdmin());
                             // Сколько кнопок в ряду: от трёх лаймовая встаёт своей строкой во всю ширину (`.step-acts--lead`, 17.11.2026).
-                            $actCount = ($requests ? 1 : 0) + ($invoiceButton ? 1 : 0) + $payNow->count() + $moves->count()
+                            $actCount = ($requests ? 1 : 0) + ($invoiceButton ? 1 : 0) + ($shareLater ? 1 : 0) + $payNow->count() + $moves->count()
                                 + ($stage->template_id ? 1 : 0) + ($waiting->count() > 1 ? 1 : 0);
                         @endphp
                         {{-- `.step-acts`: кнопки делят ширину дорожки, перенеслись — каждая во всю ширину (05.11.2026, владелец про
@@ -470,9 +479,16 @@
                                 {{-- Реквизиты Р.О.С. правятся на парковке: у кого её нет, кнопка вела бы в стену (18.10.2026). --}}
                                 @if ($position->gap() === 'ros_requisites' && ! auth()->user()?->isParkAdmin())
                                     <p class="text-sm text-ink-muted">Ждём реквизиты Р.О.С.</p>
+                                @elseif (in_array($position->gap(), ['share', 'commission'], true))
+                                    {{-- Деньги сделки — шторкой «Деньги сделки» / «Цена и вознаграждение» тут же (`x-deal.money`, тот же пункт «⋯»):
+                                         ссылка на страницу её не открывала (19.11.2026). --}}
+                                    <button type="button" class="btn btn-s btn-accent step-main" data-controller="emit" data-action="emit#send" data-emit-event-param="deal-money-{{ $deal->id }}:open">{{ $action['button'] }}</button>
                                 @else
                                     <a href="{{ $action['url'] }}" class="btn btn-s btn-accent step-main" data-turbo-frame="_top">{{ $action['button'] }}</a>
                                 @endif
+                            @endif
+                            @if ($shareLater)
+                                <button type="button" class="btn btn-s btn-quiet" data-controller="emit" data-action="emit#send" data-emit-event-param="deal-money-{{ $deal->id }}:open">Вписать услуги подбора</button>
                             @endif
                             @foreach ($payNow as $i)
                                 <div data-controller="sheet">

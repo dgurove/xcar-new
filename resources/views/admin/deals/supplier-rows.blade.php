@@ -19,7 +19,7 @@
 @endphp
 @if ($bill)
     <x-deal.doc-row :href="'/files/'.$bill->id" title="Счёт поставщика" :date="\App\Support\Ago::day($bill->created_at)" :name="$bill->file_name" :mime="$bill->mime_type" :bytes="$bill->size">
-        <span class="nums whitespace-nowrap">{{ $deal->isDirect() && $deal->owner_price === null ? 'уточним' : \App\Support\Money::rub((int) $deal->ownerPrice()) }}</span>
+        <span class="nums whitespace-nowrap">{{ $deal->isDirect() && $deal->owner_price === null ? 'уточним' : \App\Support\Money::rub((int) $deal->supplierPayment()) }}</span>
     </x-deal.doc-row>
 @endif
 @include('admin.deals.supplier-payment-proof')
