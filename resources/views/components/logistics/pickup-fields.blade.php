@@ -12,7 +12,7 @@
     <x-ui.segment name="keys" :options="[0 => 'Нет', 1 => '1', 2 => '2', 3 => '3+']" :value="$keysNow"/>
 </div>
 @if ($order)
-    {{-- Заявка логиста: куда — адрес заявки, точек XCar у неё нет. --}}
+    {{-- Заявка логиста: куда — адрес заявки, точек XCAR у неё нет. --}}
     <input type="hidden" name="destination" value="other"><input type="hidden" name="to_address" value="{{ $t->to_address }}">
 @elseif ($t->destination === \App\Logistics\Point::Depot && ! \App\Logistics\Route::isLast($t))
     {{-- Отрезок маршрута до стоянки (20.10.2026): куда — решил маршрут. --}}

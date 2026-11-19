@@ -1,4 +1,4 @@
-// Service worker XCar. Отдаётся через /sw.js (PwaController::worker): VERSION
+// Service worker XCAR. Отдаётся через /sw.js (PwaController::worker): VERSION
 // подставляется из хэша сборки, так что после каждой выкладки кэш свежий сам.
 // HTML — только из сети (страницы живые), при обрыве — /offline; запрос HTML
 // уходит параллельно старту воркера (navigation preload). Сборка, шрифт и
@@ -204,10 +204,10 @@ self.addEventListener('pushsubscriptionchange', (event) => {
 
 self.addEventListener('push', (event) => {
     let data = {};
-    try { data = event.data?.json() ?? {}; } catch { data = { notification: { title: event.data?.text() || 'XCar' } }; }
+    try { data = event.data?.json() ?? {}; } catch { data = { notification: { title: event.data?.text() || 'XCAR' } }; }
     const n = data.notification || data;
     if (n.app_badge !== undefined && navigator.setAppBadge) navigator.setAppBadge(n.app_badge);
-    event.waitUntil(self.registration.showNotification(n.title || 'XCar', {
+    event.waitUntil(self.registration.showNotification(n.title || 'XCAR', {
         body: n.body || '',
         icon: `/pwa/${surface()}/icon-192.png`,
         badge: `/pwa/${surface()}/icon-mono-512.png`, // Android рисует бейдж силуэтом

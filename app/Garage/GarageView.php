@@ -83,7 +83,7 @@ final class GarageView
             $staff && Surface::current() === Surface::Crm && ! $car->isSold() && ($buyerCar ? ! $buyerPaid : $car->costs->isEmpty()) ? ['emit', 'resale', 'Вернуть в продажу'] : null,
             $staff && ! $car->isSold() && ! $car->dealOpen() && ($buyerCar ? ! $buyerPaid : $car->costs->isEmpty()) ? ['form', 'DELETE', "/garage/cars/{$n}", 'Отдали по ошибке', $buyerCar ? 'Забрать ТС у покупателя и вернуть в черновики? Счёт аннулируется' : 'Вернуть ТС в черновики?'] : null,
             // «Попросить вывоз…» (10.11.2026, было «Нужен вывоз»: непонятно, что делает) — что будет, словами переспроса.
-            $picks && ! $stepAsks ? ['form', 'POST', "/garage/cars/{$n}/pickup", 'Попросить вывоз…', 'Попросить вывоз? Логистика XCar назначит исполнителя, он заберёт ТС'] : null,
+            $picks && ! $stepAsks ? ['form', 'POST', "/garage/cars/{$n}/pickup", 'Попросить вывоз…', 'Попросить вывоз? Логистика XCAR назначит исполнителя, он заберёт ТС'] : null,
             // При «Отдать» ошиблись «Уже у нас» — назад (20.10.2026, `UndoArrival`); обратное — «Уже вывезли» в дорожке «Вывоз».
             $staff && Actions\UndoArrival::allows($car) ? ['form', 'POST', "/garage/cars/{$n}/waiting", 'Ещё не вывезли', 'ТС ещё у владельца? Подготовка встанет, вывоз снова в логистике'] : null,
         ]));

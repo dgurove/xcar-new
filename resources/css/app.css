@@ -1,5 +1,5 @@
 /* ==========================================================================
-   XCar. Единственный источник правды по цвету, типографике и скруглениям —
+   XCAR. Единственный источник правды по цвету, типографике и скруглениям —
    для витрины, кабинета, админа и стоянки. Язык — витрина xcar.ru.
 
    Десять правил:
@@ -3085,7 +3085,7 @@ html.kb-open { --home-gap: 0px; }
   .substep-title { font-weight: 500; }
   .substep--wait .substep-title { font-weight: 400; color: var(--color-ink-muted); }
   .substep-meta { font-size: var(--text-sm); color: var(--color-ink-muted); }
-  /* Кто действует — аватар (логотип вендора, знак XCar) и имя с состоянием строкой, кнопки — под ними своей строкой во всю ширину
+  /* Кто действует — аватар (логотип вендора, знак XCAR) и имя с состоянием строкой, кнопки — под ними своей строкой во всю ширину
      шага (16.11.2026, владелец: «аватарка кнопке никак не мешает»): в узкой дорожке редактора и на телефоне рядом с ними имя
      сжималось до «Вла…». Одна строка на «Переоценку» и подпункт «сейчас» любого шага пути (`x-route.who`, 04.11.2026). */
   /* Тема раскрытого письма в ленте (16.11.2026) — строкой над его словами. */
@@ -3144,7 +3144,7 @@ html.kb-open { --home-gap: 0px; }
   .step-task-icon { position: relative; display: flex; flex-shrink: 0; align-items: center; justify-content: center; width: 2rem; height: 2rem; border-radius: 999px; background: var(--color-surface-2); color: var(--color-ink-muted); }
   .step-task-dot { position: absolute; top: 0; right: 0; width: .5rem; height: .5rem; border-radius: 999px; background: var(--color-urgent); }
   .step-task-dot--danger { background: var(--color-danger); }
-  /* Наш ход — только часы строкой под названием шага, без знака и слова «XCar» (12.11.2026, владелец). */
+  /* Наш ход — только часы строкой под названием шага, без знака и слова «XCAR» (12.11.2026, владелец). */
   .step-who--bare { display: block; margin-top: .25rem; }
   .step-who-icon { display: flex; flex-shrink: 0; align-items: center; justify-content: center; width: 2rem; height: 2rem; border-radius: 999px; background: var(--color-surface-2); color: var(--color-ink-muted); }
 

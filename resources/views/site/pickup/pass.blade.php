@@ -22,7 +22,7 @@
         <x-pickup.yard :yard="$vehicle->yard"/>
         <div class="row justify-between"><span class="text-ink-muted">Получатель</span><span class="text-right">{{ $pass->name }}</span></div>
     </div>
-    {{-- Пропуск по сделке XCar (`/pass/{code}`): кто и когда — решает менеджер, править тут нечего. --}}
+    {{-- Пропуск по сделке XCAR (`/pass/{code}`): кто и когда — решает менеджер, править тут нечего. --}}
     @if ($pass->isLive() && ! ($deal ?? false))
         <div class="list mt-4">
             <a href="/pickup/{{ $code }}?edit=1" class="row justify-between"><span>{{ $pass->isConfirmed() ? 'Изменить дату' : 'Изменить данные или дату' }}</span><x-ui.icon name="chevron-right" class="size-4 text-ink-dim"/></a>

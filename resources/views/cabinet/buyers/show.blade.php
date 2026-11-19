@@ -41,7 +41,7 @@
                 <x-ui.sheet id="buyer-access" title="Дать доступ">
                     <form method="post" action="/buyers/{{ $buyer->id }}/access" class="flex flex-col gap-4">
                         @csrf
-                        <p class="text-ink-muted">{{ $buyer->shortName() }} войдёт в XCar и увидит ваши предложения. Пароль покажем после — отправите ему.</p>
+                        <p class="text-ink-muted">{{ $buyer->shortName() }} войдёт в XCAR и увидит ваши предложения. Пароль покажем после — отправите ему.</p>
                         <div class="fields">
                             @unless ($buyer->hasSignInContact())
                                 <x-ui.field name="contact" label="Телефон или почта" autocomplete="off" autocapitalize="off" required/>

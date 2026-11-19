@@ -23,7 +23,7 @@ final class Inbox
         $key = 'reply:'.$row['jid'].':'.($row['at'] ?? $row['id']);
         $user = LinkCode::owner($m[1]);
         if ($user === null) {
-            $this->sender->reply($row['jid'], 'Ссылка устарела — нажмите «Подключить WhatsApp» в XCar ещё раз', $key);
+            $this->sender->reply($row['jid'], 'Ссылка устарела — нажмите «Подключить WhatsApp» в XCAR ещё раз', $key);
 
             return;
         }
@@ -36,9 +36,9 @@ final class Inbox
         $group = $this->sender->group();
 
         return implode("\n", array_filter([
-            "Готово, {$user->firstName()}: WhatsApp подключён к XCar",
+            "Готово, {$user->firstName()}: WhatsApp подключён к XCAR",
             'Сюда придут предложения, открытые персонально, и просьбы оценить',
-            Sender::open() && $group['invite'] ? 'Все новые — в группе «'.($group['name'] ?: 'XCar | Предложения').'»: '.$group['invite'] : null,
+            Sender::open() && $group['invite'] ? 'Все новые — в группе «'.($group['name'] ?: 'XCAR | Предложения').'»: '.$group['invite'] : null,
         ]));
     }
 }

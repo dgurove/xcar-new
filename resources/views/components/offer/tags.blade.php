@@ -11,7 +11,7 @@
         ...$extra,
     ]));
 @endphp
-{{-- Покупателю меток нет: это условия сделки XCar с менеджером («Оплата по счету», «Отсрочка оплаты», 13.10.2026). --}}
+{{-- Покупателю меток нет: это условия сделки XCAR с менеджером («Оплата по счету», «Отсрочка оплаты», 13.10.2026). --}}
 @foreach (auth()->user()?->isBuyer() ? [] : ($offer->tags ?? []) as $name)
     <span class="tag" style="{{ $style(\App\Offers\Tag::colorOf($name, $offer->tag_colors)) }}">{{ $name }}</span>
 @endforeach

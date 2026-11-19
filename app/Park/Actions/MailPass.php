@@ -7,7 +7,7 @@ use App\Park\Pass;
 use App\Park\PassQr;
 use App\Support\Surface;
 
-/** Пропуск покупателю на почту: брендовое письмо, QR и знак XCar — картинками в теле по Content-ID. */
+/** Пропуск покупателю на почту: брендовое письмо, QR и знак XCAR — картинками в теле по Content-ID. */
 final class MailPass
 {
     public function __construct(private ParkLetter $letters, private StoreOutboxFile $outbox) {}

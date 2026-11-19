@@ -66,7 +66,7 @@ class Pass extends Model
         return $this->belongsTo(Vehicle::class);
     }
 
-    /** Пропуск по сделке XCar (18.10.2026): выдан нами, подтверждён самой сделкой — анкеты и страховой у него нет. */
+    /** Пропуск по сделке XCAR (18.10.2026): выдан нами, подтверждён самой сделкой — анкеты и страховой у него нет. */
     public function deal(): BelongsTo
     {
         return $this->belongsTo(Deal::class);

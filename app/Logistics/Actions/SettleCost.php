@@ -31,7 +31,7 @@ final class SettleCost
 
     public function __invoke(Transport $t, User $by): void
     {
-        // Заявка логиста от его заказчика: XCar за неё не платит, деньги — её (`client_price`, `executor_cost`).
+        // Заявка логиста от его заказчика: XCAR за неё не платит, деньги — её (`client_price`, `executor_cost`).
         if ($t->isOrder()) {
             return;
         }

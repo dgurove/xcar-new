@@ -123,24 +123,24 @@ class Invite extends Model
 
     /**
      * Что откроется — строкой под заголовком регистрации (покупателю вместо неё его менеджер). Как в приложениях:
-     * «Вам откроется доступ к предложениям XCar», а не «Вы будете…» (владелец 10.10.2026).
+     * «Вам откроется доступ к предложениям XCAR», а не «Вы будете…» (владелец 10.10.2026).
      */
     public function intro(): string
     {
         $city = ($name = City::name($this->park_city_id)) ? " ({$name})" : '';
 
         return match ($this->role) {
-            Role::Moderator => 'Вам откроется доступ к предложениям в CRM XCar',
-            Role::Admin => 'Вам откроется доступ к CRM XCar с правами администратора',
+            Role::Moderator => 'Вам откроется доступ к предложениям в CRM XCAR',
+            Role::Admin => 'Вам откроется доступ к CRM XCAR с правами администратора',
             // «Супер» — имя для админов: человеку он просто покупатель (владелец 10.10.2026).
-            Role::SuperBuyer => 'Вам откроется доступ к предложениям XCar',
+            Role::SuperBuyer => 'Вам откроется доступ к предложениям XCAR',
             Role::Parking => $this->park_readonly
-                ? 'Вам откроется приём и выдача ТС на парковке XCar'.$city
-                : 'Вам откроется парковка XCar'.$city.': заявки, приём, выдача и оплаты',
-            Role::Logist => 'Вам откроется Logistics XCar: вывозы в регионах и ваши исполнители',
-            Role::Driver, Role::Contractor => 'Вам откроется Logistics XCar: ваши вывозы',
-            Role::Supplier => 'Вам откроется Partner XCar: ваши ТС для XCar и их цены',
-            default => 'Вам откроется доступ к предложениям XCar и кабинету менеджера',
+                ? 'Вам откроется приём и выдача ТС на парковке XCAR'.$city
+                : 'Вам откроется парковка XCAR'.$city.': заявки, приём, выдача и оплаты',
+            Role::Logist => 'Вам откроется Logistics XCAR: вывозы в регионах и ваши исполнители',
+            Role::Driver, Role::Contractor => 'Вам откроется Logistics XCAR: ваши вывозы',
+            Role::Supplier => 'Вам откроется Partner XCAR: ваши ТС для XCAR и их цены',
+            default => 'Вам откроется доступ к предложениям XCAR и кабинету менеджера',
         };
     }
 
@@ -152,12 +152,12 @@ class Invite extends Model
     public function message(): string
     {
         if ($this->forBuyer()) {
-            return ($this->manager ? $this->manager->name.' приглашает вас' : 'Вас приглашают').' в XCar';
+            return ($this->manager ? $this->manager->name.' приглашает вас' : 'Вас приглашают').' в XCAR';
         }
         if ($this->role === Role::SuperBuyer) {
-            return 'Вас приглашают в XCar. Ссылка одноразовая'.($this->expires_at ? ', действует до '.Ago::day($this->expires_at, true) : '');
+            return 'Вас приглашают в XCAR. Ссылка одноразовая'.($this->expires_at ? ', действует до '.Ago::day($this->expires_at, true) : '');
         }
-        $text = 'Вас приглашают в XCar '.match ($this->role) {
+        $text = 'Вас приглашают в XCAR '.match ($this->role) {
             Role::Manager => 'менеджером',
             Role::Moderator => 'модератором',
             Role::Admin => 'администратором',

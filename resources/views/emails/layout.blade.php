@@ -1,4 +1,4 @@
-{{-- Общий вид системных писем с no-reply (06.11.2026, `App\Mail\SystemMail`): знак XCar, над заголовком серым — о чём,
+{{-- Общий вид системных писем с no-reply (06.11.2026, `App\Mail\SystemMail`): знак XCAR, над заголовком серым — о чём,
      заголовок, под ним серым — подробность, белая карточка (секция `card`), одна кнопка, мелкая приписка. Как у пропуска —
      таблицами и стилями в атрибутах: одинаково в Mail.ru, Gmail, Яндексе и Outlook. Логотип — `cid:logo` (SystemMail
      вкладывает его сам). Переменные: preheader, eyebrow, title, subtitle, button (['text', 'url']), note, unsubscribe, compact (заголовок 20 вместо 26 — длинные заголовки уведомлений). --}}
@@ -20,7 +20,7 @@
 <tr><td align="center" style="padding:24px 12px;">
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:480px;">
         <tr><td align="center" style="padding:0 0 20px 0;">
-            <img src="cid:logo" width="112" height="28" alt="XCar" style="display:block;border:0;width:112px;height:28px;">
+            <img src="cid:logo" width="112" height="28" alt="XCAR" style="display:block;border:0;width:112px;height:28px;">
         </td></tr>
         @if (! empty($eyebrow))<tr><td style="padding:0 4px;{{ $font }}font-size:13px;line-height:18px;color:{{ $muted }};">{{ $eyebrow }}</td></tr>@endif
         <tr><td style="padding:4px 4px 0 4px;{{ $font }}{{ ! empty($compact) ? 'font-size:20px;line-height:26px;' : 'font-size:26px;line-height:32px;' }}font-weight:500;color:{{ $ink }};">{{ $title }}</td></tr>

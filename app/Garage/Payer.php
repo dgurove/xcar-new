@@ -16,7 +16,7 @@ enum Payer: string
     {
         return match ($this) {
             self::Manager => 'Менеджер',
-            self::Xcar => 'XCar',
+            self::Xcar => 'XCAR',
         };
     }
 }

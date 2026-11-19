@@ -30,7 +30,7 @@
 <tr><td align="center" style="padding:24px 12px;">
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:480px;">
         <tr><td align="center" style="padding:0 0 20px 0;">
-            <img src="cid:{{ $logoCid }}" width="112" height="28" alt="XCar" style="display:block;border:0;width:112px;height:28px;">
+            <img src="cid:{{ $logoCid }}" width="112" height="28" alt="XCAR" style="display:block;border:0;width:112px;height:28px;">
         </td></tr>
         <tr><td style="padding:0 4px;{{ $font }}font-size:13px;line-height:18px;color:{{ $muted }};">Пропуск на получение</td></tr>
         <tr><td style="padding:4px 4px 0 4px;{{ $font }}font-size:26px;line-height:32px;font-weight:500;color:{{ $ink }};">{{ $v->titleWithYear() }}</td></tr>

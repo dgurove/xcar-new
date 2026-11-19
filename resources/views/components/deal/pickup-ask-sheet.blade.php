@@ -5,7 +5,7 @@
 @props(['deal', 'back' => null])
 <x-ui.sheet :id="'pickup-ask-'.$deal->id" title="Попросить вывоз">
     <div class="list">
-        <div class="row"><x-ui.row-icon name="cat-truck" tone="soft" size="s"/><span class="min-w-0">Логистика XCar назначит исполнителя</span></div>
+        <div class="row"><x-ui.row-icon name="cat-truck" tone="soft" size="s"/><span class="min-w-0">Логистика XCAR назначит исполнителя</span></div>
         <div class="row"><x-ui.row-icon name="map-pin" tone="soft" size="s"/><span class="min-w-0">Исполнитель заберёт автомобиль и привезёт вам</span></div>
         <div class="row"><x-ui.row-icon name="check" tone="soft" size="s"/><span class="min-w-0">Шаг «Автомобиль забрал» пройдёт сам, когда привезут</span></div>
     </div>

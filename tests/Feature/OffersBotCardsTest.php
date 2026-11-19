@@ -96,7 +96,7 @@ class OffersBotCardsTest extends TestCase
         $this->assertCount(1, $this->sent);
         $this->assertStringContainsString('chat_id='.self::CHAT, $this->sent[0]);
         $this->assertStringContainsString('1 000 000', $this->sent[0]);
-        $this->assertStringContainsString('Открыть в XCar', $this->sent[0]);
+        $this->assertStringContainsString('Открыть в XCAR', $this->sent[0]);
         $this->assertNotNull(DB::table('offer_bot_sent')->where('user_id', $this->manager->id)->value('message_id'));
 
         // Второй обход часов и повтор той же записи дорожкой — ничего нового.
@@ -169,7 +169,7 @@ class OffersBotCardsTest extends TestCase
         $this->wave($this->offer, $this->manager, now()->subMinute(), now()->subMinute());
         $this->deliver();
         $this->assertCount(1, $this->sent);
-        $this->assertStringContainsString('Открыть в XCar', $this->sent[0]);
+        $this->assertStringContainsString('Открыть в XCAR', $this->sent[0]);
         $this->assertStringNotContainsString('Срочно', $this->sent[0]);
     }
 

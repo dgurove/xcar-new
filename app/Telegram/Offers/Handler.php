@@ -97,7 +97,7 @@ final class Handler
             return;
         }
         $this->bot->quietly(fn () => $this->bot->say($chatId, 'Сюда приходят новые предложения, как только они выходят. Каждое — PDF с текстом для клиента: просто перешлите его',
-            ['inline_keyboard' => [[Card::site('🌐 XCar', Card::url('offers', $this->bot->logsIn()), $this->bot->logsIn())]]]));
+            ['inline_keyboard' => [[Card::site('🌐 XCAR', Card::url('offers', $this->bot->logsIn()), $this->bot->logsIn())]]]));
     }
 
     // ———————————————————————————————— карточка
@@ -163,7 +163,7 @@ final class Handler
     }
 
     /**
-     * Ссылка привязки (`/start L…`, из приложения или «Войти через XCar») или узнали по основному боту: подписка и
+     * Ссылка привязки (`/start L…`, из приложения или «Войти через XCAR») или узнали по основному боту: подписка и
      * «Готово»; основной бот ещё не подключён — кнопка на него (21.10.2026, владелец: «рекомендуем подписаться на оба»).
      */
     private function connected(User $user, int $chatId): void
@@ -212,26 +212,26 @@ final class Handler
     {
         $out = app(LogoutTelegram::class)($chatId);
         $this->bot->quietly(fn () => $this->bot->say($chatId, match (true) {
-            $out === LogoutTelegram::LOCKED => 'Выйти нельзя, пока вход в XCar только через Telegram',
+            $out === LogoutTelegram::LOCKED => 'Выйти нельзя, пока вход в XCAR только через Telegram',
             $out instanceof User => 'Вы вышли из аккаунта '.e($out->name),
             default => 'Вы не вошли',
-        }, $out === LogoutTelegram::LOCKED ? null : ['inline_keyboard' => [[['text' => 'Войти через XCar', 'url' => ConnectLink::url(ConnectLink::OFFERS)]]]]));
+        }, $out === LogoutTelegram::LOCKED ? null : ['inline_keyboard' => [[['text' => 'Войти через XCAR', 'url' => ConnectLink::url(ConnectLink::OFFERS)]]]]));
     }
 
     /**
-     * Незнакомый (21.10.2026): два бота и «Войти через XCar» (`ConnectLink`). Знакомый, которому бот не служит (покупатель),
+     * Незнакомый (21.10.2026): два бота и «Войти через XCAR» (`ConnectLink`). Знакомый, которому бот не служит (покупатель),
      * — что бот для менеджеров, и кнопка основного бота.
      */
     private function stranger(int $chatId, ?User $user = null): void
     {
         $main = app(Bot::class)->startUrl('hi');
         if ($user) {
-            $this->bot->quietly(fn () => $this->bot->say($chatId, 'Это бот для менеджеров XCar. Ваши уведомления приходят в @'.app(Bot::class)->username(),
+            $this->bot->quietly(fn () => $this->bot->say($chatId, 'Это бот для менеджеров XCAR. Ваши уведомления приходят в @'.app(Bot::class)->username(),
                 $main ? ['inline_keyboard' => [[['text' => 'Открыть @'.app(Bot::class)->username(), 'url' => $main]]]] : null));
 
             return;
         }
         $this->bot->quietly(fn () => $this->bot->say($chatId, ConnectLink::intro(),
-            ['inline_keyboard' => [[['text' => 'Войти через XCar', 'url' => ConnectLink::url(ConnectLink::OFFERS)]]]]));
+            ['inline_keyboard' => [[['text' => 'Войти через XCAR', 'url' => ConnectLink::url(ConnectLink::OFFERS)]]]]));
     }
 }

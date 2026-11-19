@@ -20,7 +20,7 @@ export default class extends Controller {
         }
     }
 
-    // Разница желаемой к ориентиру (заявленная или цена XCar) по ходу набора: «−100 000», пусто — ничего.
+    // Разница желаемой к ориентиру (заявленная или цена XCAR) по ходу набора: «−100 000», пусто — ничего.
     diff() {
         if (!this.hasDiffTarget || !this.hasWishTarget) return;
         const wish = rubles(this.wishTarget.value) ?? 0;

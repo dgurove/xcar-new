@@ -66,7 +66,7 @@
                                     @if ($group['invite'])
                                         <a href="{{ $group['invite'] }}" target="_blank" rel="noopener" class="row" data-turbo="false">
                                             <span class="min-w-0 flex-1">Все новые</span>
-                                            <span class="truncate feed-verb-wa">{{ $group['name'] ?: 'XCar | Предложения' }}</span>
+                                            <span class="truncate feed-verb-wa">{{ $group['name'] ?: 'XCAR | Предложения' }}</span>
                                             <x-ui.chevron/>
                                         </a>
                                     @endif

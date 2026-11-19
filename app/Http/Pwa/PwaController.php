@@ -34,7 +34,7 @@ class PwaController
             Surface::Logistics => ['Перевозки ТС', [
                 ['Перевозки', '/transports', 'cat-car'],
             ]],
-            Surface::Partner => ['Предложения для XCar', [
+            Surface::Partner => ['Предложения для XCAR', [
                 ['Предложения', '/offers', 'cat-car'],
             ]],
         };

@@ -225,7 +225,7 @@ class ParallelDealTest extends TestCase
         app(AnswerRequirement::class)($req, $exits->first(fn ($e) => $e->takes()), $this->second);
         $this->assertSame('Подтверждение покупки', $par->fresh()->shadowStage->name);
         $this->assertSame('Согласие менеджера', $this->offer->fresh()->stage()->name);
-        // Его шаг впереди главной — ждём поставщика, а не «Ждём XCar».
+        // Его шаг впереди главной — ждём поставщика, а не «Ждём XCAR».
         $this->assertSame(WaitsFor::Supplier, Parallels::position($par->fresh()->load('offer'))->waitsForManager());
 
         // Взяли его, пока главный не ответил: его согласие проходит шаг, у прежнего — его собственный вопрос.

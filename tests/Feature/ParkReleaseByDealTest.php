@@ -35,7 +35,7 @@ use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 /**
- * Выдача с нашей парковки по сделке XCar (18.10.2026, владелец): заявка и QR-пропуск встают сами, когда сделке можно
+ * Выдача с нашей парковки по сделке XCAR (18.10.2026, владелец): заявка и QR-пропуск встают сами, когда сделке можно
  * забирать; кто заберёт — решает менеджер; отменили сделку — пропуск гаснет. Ошибка здесь — машину отдали не тому или
  * парковка не знает, кому отдавать.
  */
@@ -105,7 +105,7 @@ class ParkReleaseByDealTest extends TestCase
         $this->assertTrue($vehicle->releasesByQr());
         $request = $vehicle->requests()->where('type', RequestType::Release)->first();
         $this->assertSame($deal->id, $request->deal_id);
-        $this->assertStringStartsWith('Сделка XCar', $request->source()['name']);
+        $this->assertStringStartsWith('Сделка XCAR', $request->source()['name']);
         Notification::assertSentTo($this->manager, ParkPassNotice::class);
         $h = Handover::for($deal->fresh());
         $this->assertSame('На парковке', $h->where);

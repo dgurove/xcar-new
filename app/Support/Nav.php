@@ -83,7 +83,7 @@ final class Nav
             return array_values(array_filter([
                 $tasks ? self::item('Вывоз', '/transports') : null,
                 $user->sendsLogisticsDocs() ? self::item('Документы', '/documents') : null,
-                // Свои заказчики логиста (18.10.2026): заявки не только от XCar.
+                // Свои заказчики логиста (18.10.2026): заявки не только от XCAR.
                 $user->isLogist() ? self::item('Заказчики', '/clients') : null,
                 // Свои стоянки логиста (18.10.2026): где машины ждут между отрезками.
                 $user->isLogist() ? self::item('Стоянки', '/depots') : null,

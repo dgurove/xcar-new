@@ -62,7 +62,7 @@ class InsurerLetterHiddenTest extends TestCase
         $letter = $this->letter("Добрый день! Собственник Иванов Иван, +7 (900) 123-45-67, цена 5189000.\r\nГорячая линия 8-800-333-0-999\r\n");
         $paper->setCustomProperty('letter', $letter->id)->save();
 
-        // Менеджеру — ничего: ни уведомления, ни шага, ни телефона, ни имени, ни адреса, ни «Ждём XCar».
+        // Менеджеру — ничего: ни уведомления, ни шага, ни телефона, ни имени, ни адреса, ни «Ждём XCAR».
         Notification::assertNothingSentTo($this->manager);
         $this->assertSame($before, $stage());
         $this->page()->assertDontSee('123-45-67')->assertDontSee('Иванов')->assertDontSee('5189000')->assertDontSee('Информация по сделке')

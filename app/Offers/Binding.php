@@ -398,7 +398,7 @@ final class Binding
         };
     }
 
-    /** Выборка тревог: горит или вышел недавно — нет покупателя или поставщику не заплачено. Только сотрудникам XCar. */
+    /** Выборка тревог: горит или вышел недавно — нет покупателя или поставщику не заплачено. Только сотрудникам XCAR. */
     public static function alarmQuery(User $user)
     {
         $q = Offer::query()->where('offers.binding_until', '>=', now()->subDays(self::ALARM_DAYS));

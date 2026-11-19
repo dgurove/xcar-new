@@ -33,7 +33,7 @@ use Illuminate\Support\Collection;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
 /**
- * Вывоз машины — задача Logistics XCar (17.10.2026, владелец: «логистика — полноценный этап сделки»). Совкомбанк обязывает
+ * Вывоз машины — задача Logistics XCAR (17.10.2026, владелец: «логистика — полноценный этап сделки»). Совкомбанк обязывает
  * нас вывозить каждую машину по его заявке, поэтому задача встаёт вместе с предложением из письма (`OpenPickup`); у
  * остальных вендоров — «Вывезти» в CRM, у гаража — сама. Кто вывозит, решает админ (`AssignExecutor`): логист (Татьяна,
  * регионы — она назначает своего исполнителя, вводит расстояние и цену), менеджер сделки или наши люди. Исполнитель
@@ -46,7 +46,7 @@ use Spatie\MediaLibrary\MediaCollections\Models\Media;
  *
  * Заявка логиста (`origin = order`, 18.10.2026, владелец: «ей нужно удобно создавать заявки на вывоз от других, не только
  * от xcar»): вывоз от её заказчика (`client`), машина — запись `Car` без продажи и хранения; видят только она и её
- * исполнитель (`scopeVisibleTo`), XCar ей за неё не должен — деньги свои: цена заказчику и исполнителю, отметки оплаты.
+ * исполнитель (`scopeVisibleTo`), XCAR ей за неё не должен — деньги свои: цена заказчику и исполнителю, отметки оплаты.
  */
 #[Fillable(['car_id', 'origin', 'kind', 'channel', 'executor_id', 'logist_id', 'from_address', 'pickup_at',
     'pickup_place', 'call_note', 'call_attempts', 'docs_by_cdek', 'docs_track', 'docs_sent_at', 'docs_sent_by', 'docs_received_at', 'to_address',
@@ -134,7 +134,7 @@ class Transport extends Model
         return $this->origin === 'sale';
     }
 
-    /** Заявка логиста от его заказчика — не XCar. */
+    /** Заявка логиста от его заказчика — не XCAR. */
     public function isOrder(): bool
     {
         return $this->origin === 'order';

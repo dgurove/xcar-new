@@ -43,7 +43,7 @@ final class NodeTitle
         return self::for($m, $c) !== (self::words($m) ?: ($m->has_attachments ? 'Вложения' : 'Без своих слов'));
     }
 
-    /** Кто пишет: наше письмо — сотрудник или имя ящика («Storage XCar»), письмо вендора — имя или адрес. */
+    /** Кто пишет: наше письмо — сотрудник или имя ящика («Storage XCAR»), письмо вендора — имя или адрес. */
     public static function who(Message $m): string
     {
         if ($m->isForwardedByStaff()) {

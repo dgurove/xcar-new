@@ -64,7 +64,7 @@
     </td>
         @break
         @case('client')
-    <td class="{{ $col->classes() }}"><span @class(['text-ink-muted' => ! $t->client])>{{ $t->client?->name ?? 'XCar' }}</span></td>
+    <td class="{{ $col->classes() }}"><span @class(['text-ink-muted' => ! $t->client])>{{ $t->client?->name ?? 'XCAR' }}</span></td>
         @break
         @case('vendor')
     <td class="{{ $col->classes() }}"><x-vendor.ref :vendor-id="$vendorId" :ref="$ref" cell/></td>

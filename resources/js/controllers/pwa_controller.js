@@ -107,6 +107,6 @@ export default class extends Controller {
     }
 
     hint() {
-        window.toast?.(`Добавьте ${document.querySelector('meta[name="apple-mobile-web-app-title"]')?.content ?? 'XCar'} на экран «Домой»: Поделиться → На экран «Домой»`);
+        window.toast?.(`Добавьте ${document.querySelector('meta[name="apple-mobile-web-app-title"]')?.content ?? 'XCAR'} на экран «Домой»: Поделиться → На экран «Домой»`);
     }
 }

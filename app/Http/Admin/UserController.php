@@ -74,7 +74,7 @@ class UserController
      * Роли парковки (управляющий, администратор парковки) тут не правятся — их ведёт парковка (этот же экран на её хосте),
      * CRM их сохраняет как есть (владелец 08.10.2026: админ CRM не админ парковки). «Исполнитель» (21.10.2026, владелец: покупатель
      * с гаражом сам вывозит машину — «в логистике он ещё как исполнитель должен быть») — галкой у любого, и у покупателя: без
-     * логиста он прямой исполнитель XCar (`Channel::Partner`), у логиста — её, `logist_id` CRM не трогает.
+     * логиста он прямой исполнитель XCAR (`Channel::Partner`), у логиста — её, `logist_id` CRM не трогает.
      */
     public const ROLES = [Role::Admin, Role::Moderator, Role::Manager, Role::Reviewer, Role::SuperBuyer, Role::Logist, Role::Driver, Role::Contractor, Role::Supplier];
 

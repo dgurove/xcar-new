@@ -39,7 +39,7 @@ class CarController
             ->orderBy('stage_at')
             ->get();
 
-        // Стоят у менеджера без его сделки (`held_by`, 21.10.2026): чинить не стал, продаёт XCar — забирать будут у него.
+        // Стоят у менеджера без его сделки (`held_by`, 21.10.2026): чинить не стал, продаёт XCAR — забирать будут у него.
         $user = $request->user();
         $held = Offer::whereNotNull('held_by')->when(! $user->isAdmin(), fn ($q) => $q->where('held_by', $user->id))
             ->with(['media', 'heldBy'])->orderBy('id')->get();

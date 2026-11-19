@@ -145,7 +145,7 @@ final class AddPerson
             'via' => $via,
             'phone' => $login,
             'password' => $password,
-            'text' => "Вам открыт доступ к XCar\n{$via}: {$login}\nПароль: {$password}\nВход:",
+            'text' => "Вам открыт доступ к XCAR\n{$via}: {$login}\nПароль: {$password}\nВход:",
         ];
     }
 

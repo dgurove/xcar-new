@@ -67,7 +67,7 @@ final class CaseView
         // Письма машины — только ящика парковки (`Thread::ofCar`).
         $threads = Thread::ofCar($vehicle, $user)->orderByDesc('last_message_at')->get(['id', 'subject', 'needs_reply_at', 'account_id']);
         // Выдача по QR: живой пропуск (анкета покупателя) — один запрос на экран и таймлайн.
-        // Пропуск сделки XCar (18.10.2026) — и после выдачи: шаг «Пропуск по сделке» остаётся в истории.
+        // Пропуск сделки XCAR (18.10.2026) — и после выдачи: шаг «Пропуск по сделке» остаётся в истории.
         $byQr = $vehicle->releasesByQr();
         $pass = $vehicle->pass();
         $pass = $byQr || $pass?->isDeal() ? $pass : null;

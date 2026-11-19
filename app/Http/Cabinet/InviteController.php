@@ -105,11 +105,11 @@ class InviteController
             return back()->with('toast', 'Письмо уже ушло, подождите минуту');
         }
         $html = view('emails.notice', [
-            'title' => 'Приглашение в XCar', 'subtitle' => $me->name.' приглашает вас в XCar', 'preheader' => 'Ссылка, чтобы войти в XCar',
+            'title' => 'Приглашение в XCAR', 'subtitle' => $me->name.' приглашает вас в XCAR', 'preheader' => 'Ссылка, чтобы войти в XCAR',
             'button' => ['text' => 'Принять приглашение', 'url' => $invite->url()],
             'note' => $invite->expires_at ? 'Ссылка одноразовая и работает до '.\App\Support\Ago::at($invite->expires_at, true) : null,
         ])->render();
-        \App\Mail\SystemMail::queue(\App\Mail\SystemMail::make($to, null, 'Приглашение в XCar', $html));
+        \App\Mail\SystemMail::queue(\App\Mail\SystemMail::make($to, null, 'Приглашение в XCAR', $html));
 
         return back()->with('toast', 'Приглашение отправлено на '.$to);
     }

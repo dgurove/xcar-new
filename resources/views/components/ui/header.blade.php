@@ -46,7 +46,7 @@
                 @if ($site || $crmChats)<x-ui.header-btn :name="$site ? 'favorites' : 'chats'" :badges="$badges"/>@endif
             @endif
         </div>
-        <a href="{{ $home }}" class="header-brand flex items-center justify-self-center" aria-label="XCar"><x-ui.brand wide class="h-10 max-w-[9.75rem] object-contain"/></a>
+        <a href="{{ $home }}" class="header-brand flex items-center justify-self-center" aria-label="XCAR"><x-ui.brand wide class="h-10 max-w-[9.75rem] object-contain"/></a>
         <div class="flex items-center gap-1 justify-self-end">
             @if ($tools)
                 <x-ui.header-btn name="notifications" :badges="$badges"/>
@@ -62,9 +62,9 @@
         {{-- Компактный знак на два ряда: xcar, P, эвакуатор (широкий — вписан по ширине, `object-contain`) вписаны в одну коробку 64 px, чтобы были одного размера; у CRM — та же
              надпись, что на телефоне, ниже ростом и по центру рядов. --}}
         @if ($surface === \App\Support\Surface::Crm)
-            <a href="{{ $home }}" class="row-span-2 mr-2 flex shrink-0 items-center self-center" aria-label="XCar"><x-ui.brand class="h-9"/></a>
+            <a href="{{ $home }}" class="row-span-2 mr-2 flex shrink-0 items-center self-center" aria-label="XCAR"><x-ui.brand class="h-9"/></a>
         @else
-            <a href="{{ $home }}" class="header-mark row-span-2 mr-2" aria-label="XCar"><x-ui.brand class="h-16 max-w-16 object-contain"/></a>
+            <a href="{{ $home }}" class="header-mark row-span-2 mr-2" aria-label="XCAR"><x-ui.brand class="h-16 max-w-16 object-contain"/></a>
         @endif
         <div class="header-row">
             {{-- Поиск — по закрытому: гостю не нужен. --}}

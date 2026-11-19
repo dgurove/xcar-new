@@ -44,7 +44,7 @@
             </div>
         @endforeach
         @if ($url && ($none || ! $user->telegram_chat_id))
-            <x-ui.share-link variant="row" :url="$url" title="Уведомления XCar" done="Инструкция в буфере" :text="$text" icon="bell" label="Инструкция для подключения"/>
+            <x-ui.share-link variant="row" :url="$url" title="Уведомления XCAR" done="Инструкция в буфере" :text="$text" icon="bell" label="Инструкция для подключения"/>
         @endif
     </div>
 </section>

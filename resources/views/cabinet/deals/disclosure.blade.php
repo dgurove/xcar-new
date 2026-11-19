@@ -5,7 +5,7 @@
 @if ($items->where('kind', '!=', 'file')->isNotEmpty() || $files->isNotEmpty())
 <div class="flex flex-col gap-1.5">
     <p class="nums text-sm text-ink-dim">{{ \App\Support\Ago::html($disclosure->created_at, true, words: false) }}</p>
-    {{-- Сведения значками, как «От XCar» (11.11.2026): текст, человек с телефонами, адрес с картой. --}}
+    {{-- Сведения значками, как «От XCAR» (11.11.2026): текст, человек с телефонами, адрес с картой. --}}
     <x-ui.info>
         @foreach ($items->where('kind', 'text') as $item)
             <x-ui.info-row icon="chat" pre>{{ $item['value'] }}</x-ui.info-row>

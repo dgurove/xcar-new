@@ -2,7 +2,7 @@
      (`DealPlacement`). Панели одна на виду (`estimate_edit_controller`):
      - form — как ввод суммы в Apple Pay: сумма крупно по центру, заявленная, полоса срока просьбы (за 6 ч оранжевая, вышло —
        без полосы, красным), «Отправить»;
-     - choose — корректировка (цена уже стоит, админ не уверен): крупно «Цена XCar», «Согласен» лаймом и «Предложить свою»,
+     - choose — корректировка (цена уже стоит, админ не уверен): крупно «Цена XCAR», «Согласен» лаймом и «Предложить свою»,
        она открывает form;
      - done — ответил: галочка рисуется, сумма, когда отправлено, «Изменить».
      Отклонили — словом сверху, ответить снова, срок прежний.
@@ -25,7 +25,7 @@
     $back = $given ? 'done' : ($correction ? 'choose' : null);
     $money = fn ($v) => \App\Support\Money::nums($v);
     $title = $correction ? 'Проверьте цену' : 'Оцените цену продажи';
-    // Ориентир отказа: с чем сравнить желаемую — цена XCar у корректировки, иначе заявленная, если её показали.
+    // Ориентир отказа: с чем сравнить желаемую — цена XCAR у корректировки, иначе заявленная, если её показали.
     $mark = $correction ? $estimate->base_price : $declared;
 @endphp
 <div class="estimate" data-controller="estimate-edit">
@@ -38,7 +38,7 @@
                 <span class="money-hero-cap">{{ match (true) { $estimate->agreed() => 'Вы согласны с ценой', $correction => 'Ваша цена', default => 'Ваша оценка' } }}</span>
                 <span class="money-hero-sum nums">{{ $money($estimate->amount) }} <small>₽</small></span>
                 <span class="money-hero-state text-ink-muted">отправлено {{ \App\Support\Ago::html($estimate->estimated_at, time: true, short: true) }}</span>
-                @if ($correction && ! $estimate->agreed())<span class="money-hero-car nums">цена XCar {{ \App\Support\Money::rub($estimate->base_price) }}</span>
+                @if ($correction && ! $estimate->agreed())<span class="money-hero-car nums">цена XCAR {{ \App\Support\Money::rub($estimate->base_price) }}</span>
                 @elseif ($declared)<span class="money-hero-car nums">заявленная {{ \App\Support\Money::rub($declared) }}</span>@endif
             </div>
             <button type="button" class="btn btn-quiet mt-5 w-full" data-action="estimate-edit#show" data-estimate-edit-pane-param="{{ $correction ? 'choose' : 'form' }}">Изменить</button>
@@ -49,7 +49,7 @@
     @if ($correction)
         <div data-estimate-edit-target="pane" data-pane="choose" data-title="{{ $title }}" @if ($open !== 'choose') hidden @endif>
             <div class="money-hero">
-                <span class="money-hero-cap">Цена XCar</span>
+                <span class="money-hero-cap">Цена XCAR</span>
                 <span class="money-hero-sum nums">{{ $money($estimate->base_price) }} <small>₽</small></span>
                 @if ($declared)<span class="money-hero-car mt-2 nums">заявленная {{ \App\Support\Money::rub($declared) }}</span>@endif
             </div>
@@ -77,7 +77,7 @@
                 <span class="text-2xl font-medium text-ink-muted">₽</span>
             </span>
             @error('amount')<span class="mt-2 text-sm text-danger">{{ $message }}</span>@enderror
-            @if ($correction)<span class="money-hero-car mt-2 nums">цена XCar {{ \App\Support\Money::rub($estimate->base_price) }}</span>
+            @if ($correction)<span class="money-hero-car mt-2 nums">цена XCAR {{ \App\Support\Money::rub($estimate->base_price) }}</span>
             @elseif ($declared)<span class="money-hero-car mt-2 nums">заявленная {{ \App\Support\Money::rub($declared) }}</span>@endif
             {{-- Эксклюзив (`FirstLook`): оценка сразу станет ценой, и машина будет только у него. --}}
             @if ($estimate->exclusive_days && ! $correction)<span class="money-hero-car mt-1 nums">после оценки — {{ \App\Offers\Estimate::daysWord($estimate->exclusive_days) }} только вам в продаже</span>@endif
@@ -101,7 +101,7 @@
             </span>
             @error('wish')<span class="mt-2 text-sm text-danger">{{ $message }}</span>@enderror
             @if ($mark)
-                <span class="money-hero-car mt-2 nums">{{ $correction ? 'цена XCar' : 'заявленная' }} {{ \App\Support\Money::rub($mark) }}<span class="estimate-diff" data-estimate-edit-target="diff" data-mark="{{ $mark }}"></span></span>
+                <span class="money-hero-car mt-2 nums">{{ $correction ? 'цена XCAR' : 'заявленная' }} {{ \App\Support\Money::rub($mark) }}<span class="estimate-diff" data-estimate-edit-target="diff" data-mark="{{ $mark }}"></span></span>
             @endif
         </div>
         <textarea name="reason" rows="1" maxlength="500" placeholder="Причина" aria-label="Причина" class="estimate-note mt-5">{{ old('reason') }}</textarea>

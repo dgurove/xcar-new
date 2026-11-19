@@ -22,7 +22,7 @@ final class Banner
     /** @return Payload */
     public static function of(Notice $notice, string $id, ?User $reader = null, bool $sound = false): array
     {
-        // Сотрудник XCar на карточке менеджера и покупателя — без лица (13.11.2026, владелец: администрация везде обезличена),
+        // Сотрудник XCAR на карточке менеджера и покупателя — без лица (13.11.2026, владелец: администрация везде обезличена),
         // логотипа вендора у них тоже нет (19.11.2026, владелец: «вендоров менеджерам не показываем нигде»).
         $actor = $notice->actor();
         $actor = $actor?->isStaff() && ! $reader?->isStaff() ? null : $actor;

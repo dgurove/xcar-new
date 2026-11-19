@@ -200,7 +200,7 @@ if [ ! -s .env.app ]; then
     ADDR=$(sed -n 's/^SITE_ADDRESSES=//p' .env | cut -d, -f2 | xargs)
     HOST=${ADDR#*://}
     cat > .env.app <<EOE
-APP_NAME=XCar
+APP_NAME=XCAR
 APP_ENV=production
 APP_KEY=$KEY
 APP_DEBUG=false

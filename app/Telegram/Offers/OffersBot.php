@@ -36,7 +36,7 @@ final class OffersBot extends Bot
         return null;
     }
 
-    /** Кнопка «Открыть в XCar» — входом через Telegram, когда домен выставлен в BotFather. */
+    /** Кнопка «Открыть в XCAR» — входом через Telegram, когда домен выставлен в BotFather. */
     public function logsIn(): bool
     {
         return (bool) $this->config('login');

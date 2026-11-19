@@ -22,7 +22,7 @@ final class OpenChat
     public function __invoke(Offer $offer, User $user, bool $greet = true): Chat
     {
         return DB::transaction(function () use ($offer, $user, $greet) {
-            // Машина у покупателя в гараже (20.10.2026, владелец: «с XCar») — переписка с площадкой: его менеджер эту машину
+            // Машина у покупателя в гараже (20.10.2026, владелец: «с XCAR») — переписка с площадкой: его менеджер эту машину
             // не видит, и прежний чат с ним по ней переходит к нам.
             $garage = $user->isBuyer() && GarageCar::where('offer_id', $offer->id)->where('manager_id', $user->id)->exists();
             $manager = $user->isBuyer() && ! $garage ? $user->manager_id : null;

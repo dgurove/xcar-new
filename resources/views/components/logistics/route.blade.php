@@ -144,7 +144,7 @@
                             <x-people.pick name="executor_id" label="Исполнитель" kind="contractor" :people="\App\Support\People::contractorsOf($leg->logist)" :value="old('executor_id', $leg->executor_id)" title="Исполнитель" link required/>
                             <x-ui.field name="distance_km" :id="'leg-km-'.$leg->id" label="Расстояние, км" inputmode="numeric" :value="old('distance_km', $leg->distance_km)"/>
                             <x-ui.field name="cost" :id="'leg-cost-'.$leg->id" label="Стоимость, ₽" :value="old('cost', $leg->cost ? (int) $leg->cost : null)"/>
-                            {{-- Своему исполнителю — для её «Оплат», XCar этого не видит. --}}
+                            {{-- Своему исполнителю — для её «Оплат», XCAR этого не видит. --}}
                             @if ($leg->hasLogist($me))<x-ui.field name="executor_cost" :id="'leg-ecost-'.$leg->id" label="Исполнителю, ₽" :value="old('executor_cost', $leg->executor_cost ? (int) $leg->executor_cost : null)"/>@endif
                             <x-ui.field name="comment" :id="'leg-comment-'.$leg->id" label="Комментарий" type="textarea" :value="old('comment', $leg->comment)"/>
                         </div>

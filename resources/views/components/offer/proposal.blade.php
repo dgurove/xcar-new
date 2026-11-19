@@ -6,7 +6,7 @@
 <div {{ $attributes->class('proposal') }} data-controller="proposal">
     <div class="proposal-body">
         <span class="proposal-mark" aria-hidden="true"><x-ui.spark class="size-5 proposal-spark"/><x-ui.icon name="check" class="size-5 proposal-check"/></span>
-        <p class="min-w-0 flex-1 text-ink">Это ТС было автоматически предложено из заявок на приём Park XCar</p>
+        <p class="min-w-0 flex-1 text-ink">Это ТС было автоматически предложено из заявок на приём Park XCAR</p>
     </div>
     <div class="proposal-acts">
         {{-- Публиковали, есть сделка или подтверждение — удалить нельзя (`UnlistParkOffer::allowed`): только «Принять». --}}

@@ -22,11 +22,11 @@ class PeopleMailController
             return back()->with('toast', 'Письмо уже отправлено или ссылка устарела');
         }
         $html = view('emails.credentials', [
-            'title' => 'Доступ к XCar', 'subtitle' => $user->name, 'preheader' => 'Данные для входа в XCar',
+            'title' => 'Доступ к XCAR', 'subtitle' => $user->name, 'preheader' => 'Данные для входа в XCAR',
             'rows' => [[$c['via'], $c['login']], ['Пароль', $c['password']]],
             'button' => ['text' => 'Войти', 'url' => $c['url']], 'note' => 'Пароль можно сменить в профиле после входа',
         ])->render();
-        SystemMail::queue(SystemMail::make($user->email, $user->name, 'Доступ к XCar', $html));
+        SystemMail::queue(SystemMail::make($user->email, $user->name, 'Доступ к XCAR', $html));
 
         return back()->with('toast', 'Отправили на '.$user->email);
     }

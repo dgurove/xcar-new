@@ -8,7 +8,7 @@
         <script>
             addEventListener('online', () => location.reload(), { once: true });
             if (navigator.onLine !== false) {
-                document.getElementById('offline-why').textContent = 'Обновляем XCar, страница откроется сама через минуту';
+                document.getElementById('offline-why').textContent = 'Обновляем XCAR, страница откроется сама через минуту';
                 setInterval(() => fetch('/up?t=' + Date.now(), { cache: 'no-store', credentials: 'omit' }).then((r) => r.ok && location.reload()).catch(() => {}), 2000);
             }
         </script>

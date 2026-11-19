@@ -10,7 +10,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 
 /**
- * Бот предложений на сайте: вход по кнопке «Открыть в XCar» (`login_url` — Telegram открывает ссылку отдельным
+ * Бот предложений на сайте: вход по кнопке «Открыть в XCAR» (`login_url` — Telegram открывает ссылку отдельным
  * браузером, где человека ещё нет), строка в начале каталога — скрыть на 30 дней, «Отписаться» в профиле.
  */
 final class OffersBotController

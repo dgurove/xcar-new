@@ -71,6 +71,6 @@ final class SendGuestReply implements ShouldQueue
 
         return (new Email)->from(new Address($account->email, $account->fromName()))
             ->to(new Address($chat->guest_email, (string) $chat->guest_name))
-            ->subject('XCar: ответ на ваше обращение')->html($html)->text($message->text);
+            ->subject('XCAR: ответ на ваше обращение')->html($html)->text($message->text);
     }
 }

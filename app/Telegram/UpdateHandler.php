@@ -527,7 +527,7 @@ final class UpdateHandler
         }
         $allow = $press->action === 'ok';
         app(DecideCode::class)($access, $allow);
-        $this->bot->answer($press->queryId, $allow ? 'Готово, возвращайтесь в XCar' : 'Отклонено');
+        $this->bot->answer($press->queryId, $allow ? 'Готово, возвращайтесь в XCAR' : 'Отклонено');
         $word = $allow ? ($access->purpose === 'login' ? 'Вошли ' : 'Подтверждено ') : 'Отклонено ';
         $this->bot->edit($press->chatId, $press->messageId, $word.now()->format('H:i')."\n".e($access->label));
     }
@@ -550,10 +550,10 @@ final class UpdateHandler
         if (preg_match('~^/logout(?:@\w+)?$~', trim((string) ($message['text'] ?? ''))) === 1) {
             $out = app(LogoutTelegram::class)($chatId);
             $this->reply($chatId, match (true) {
-                $out === LogoutTelegram::LOCKED => 'Выйти нельзя, пока вход в XCar только через Telegram',
+                $out === LogoutTelegram::LOCKED => 'Выйти нельзя, пока вход в XCAR только через Telegram',
                 $out instanceof User => 'Выход из аккаунта '.e($out->name),
                 default => 'Вход не выполнен',
-            }, $out === LogoutTelegram::LOCKED ? null : [[['text' => 'Войти через XCar', 'url' => ConnectLink::url(ConnectLink::MAIN)]]]);
+            }, $out === LogoutTelegram::LOCKED ? null : [[['text' => 'Войти через XCAR', 'url' => ConnectLink::url(ConnectLink::MAIN)]]]);
 
             return;
         }
@@ -598,11 +598,11 @@ final class UpdateHandler
 
             return;
         }
-        // Незнакомый: два бота и вход через XCar (21.10.2026, владелец: «скинул ссылку на бота — и менеджеры залогинились»).
-        $this->reply($chatId, ConnectLink::intro(), [[['text' => 'Войти через XCar', 'url' => ConnectLink::url(ConnectLink::MAIN)]]]);
+        // Незнакомый: два бота и вход через XCAR (21.10.2026, владелец: «скинул ссылку на бота — и менеджеры залогинились»).
+        $this->reply($chatId, ConnectLink::intro(), [[['text' => 'Войти через XCAR', 'url' => ConnectLink::url(ConnectLink::MAIN)]]]);
     }
 
-    /** Ссылка привязки (`/start L…`, из приложения или «Войти через XCar») или узнали по боту предложений: привязка и первое слово о деле. */
+    /** Ссылка привязки (`/start L…`, из приложения или «Войти через XCAR») или узнали по боту предложений: привязка и первое слово о деле. */
     public function connected(User $user, int $chatId, ?string $username): void
     {
         app(LinkChat::class)($user, $chatId, $username);

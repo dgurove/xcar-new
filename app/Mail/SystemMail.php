@@ -53,7 +53,7 @@ final class SystemMail
         $account = Account::where('slug', config('xcar.system_account'))->where('is_active', true)->first()
             ?? Account::where('scope', Scope::Offers)->where('is_active', true)->orderBy('id')->first();
 
-        return $account ? [Sender::transport($account), new Address($account->email, 'XCar')] : null;
+        return $account ? [Sender::transport($account), new Address($account->email, 'XCAR')] : null;
     }
 
     /** Отправить сейчас (уведомление — уже в очереди): итог — в журнал доставки. */

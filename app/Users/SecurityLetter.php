@@ -47,9 +47,9 @@ final class SecurityLetter
         $html = view('emails.notice', [
             'title' => 'Подтвердите почту', 'subtitle' => $user->email, 'preheader' => 'Одна кнопка — и важные уведомления будут приходить сюда',
             'button' => ['text' => 'Подтвердить', 'url' => $url],
-            'note' => 'Если вы не указывали эту почту в XCar, просто удалите письмо',
+            'note' => 'Если вы не указывали эту почту в XCAR, просто удалите письмо',
         ])->render();
-        SystemMail::queue(SystemMail::make($user->email, $user->name, 'Подтвердите почту в XCar', $html));
+        SystemMail::queue(SystemMail::make($user->email, $user->name, 'Подтвердите почту в XCAR', $html));
 
         return true;
     }

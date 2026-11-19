@@ -17,7 +17,7 @@
     $who = $invoice ? ($side === 'manager' ? 'Готовим счёт' : \App\Workflow\Position::gapAction($gap, $position->deal)['button']) : match ($waits) {
         \App\Workflow\WaitsFor::Manager => $side === 'manager' ? 'Ваш ход' : 'Ждём менеджера',
         \App\Workflow\WaitsFor::Supplier => 'Ждём поставщика',
-        \App\Workflow\WaitsFor::Us => $side === 'manager' ? 'Ждём XCar' : 'Наш ход',
+        \App\Workflow\WaitsFor::Us => $side === 'manager' ? 'Ждём XCAR' : 'Наш ход',
         default => null,
     };
 @endphp

@@ -101,7 +101,7 @@ class DealAnswersScopeTest extends TestCase
         app(AcceptBid::class)(app(PlaceBid::class)($offer->fresh(), $first, 1000000), $admin, scheme: DealScheme::Prime);
         $this->assertSame('Письмо о покупке', $position()->stage->name);
         app(TakeExit::class)($offer->fresh(), $position()->stage->exits->firstWhere('label', 'Поставщик согласовал'), Actor::Staff, $admin);
-        // «Спросить менеджера» — ещё и сообщением от «Администрации XCar» в его чате по машине (06.11.2026).
+        // «Спросить менеджера» — ещё и сообщением от «Администрации XCAR» в его чате по машине (06.11.2026).
         $asked = fn (User $m) => \App\Chats\Chat::platformWith($offer, $m)->first()?->messages()->where('author_kind', \App\Chats\AuthorKind::Staff)
             ->whereNull('author_id')->where('text', 'like', \App\Notifications\Notify::CONSENT_ASK.'%')->count();
         $this->assertSame(1, $asked($first));

@@ -1,4 +1,4 @@
-{{-- Получение автомобиля (`Offers\Handover`) внутри задачи сделки: «От XCar» и карточка `x-ui.info` — место с адресом под ним
+{{-- Получение автомобиля (`Offers\Handover`) внутри задачи сделки: «От XCAR» и карточка `x-ui.info` — место с адресом под ним
      (нажатие — карта), когда, контакт с телефоном ссылкой. Что делать — заголовок задачи
      («Заберите автомобиль»), здесь только сведения. «Автомобиль забрал» вывоза без шага продажи (Альфа) ставит сам шаг. --}}
 @php
@@ -6,9 +6,9 @@
     $map = $handover->address ? 'https://yandex.ru/maps/?text='.rawurlencode($handover->address) : null;
 @endphp
 <section @class(['handover', 'mt-4' => $caption ?? true]) aria-label="Получение автомобиля">
-    {{-- Не «От поставщика» (03.11.2026, владелец: менеджеру не говорим даже, что пришёл ответ страховой): сведения дал XCar —
+    {{-- Не «От поставщика» (03.11.2026, владелец: менеджеру не говорим даже, что пришёл ответ страховой): сведения дал XCAR —
          поля шага, вывоз, парковка, показанное админом (`Disclosure`). Значками, без колонки подписей (11.11.2026). --}}
-    @if ($caption ?? true)<p class="handover-cap">От XCar</p>@endif
+    @if ($caption ?? true)<p class="handover-cap">От XCAR</p>@endif
     <x-ui.info>
         @if ($handover->where || $handover->address)
             <x-ui.info-row icon="map-pin" :href="$map" :sub="$handover->where ? $handover->address : null">{{ $handover->where ?: $handover->address }}</x-ui.info-row>

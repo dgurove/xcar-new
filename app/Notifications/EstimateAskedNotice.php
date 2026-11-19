@@ -33,7 +33,7 @@ final class EstimateAskedNotice extends EstimateNotice
         $correction = $this->estimate->isCorrection();
 
         return ['title' => $this->title(), 'lines' => $this->lines(
-            $correction ? 'Цена XCar '.Money::rub($this->estimate->base_price) : null,
+            $correction ? 'Цена XCAR '.Money::rub($this->estimate->base_price) : null,
             'Срок '.$this->due(),
             ! $correction && $this->estimate->exclusive_days ? 'После оценки '.Estimate::daysWord($this->estimate->exclusive_days).' персонально' : null,
         ), 'button' => $correction ? 'Проверить' : 'Оценить'];

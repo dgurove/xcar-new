@@ -5,7 +5,7 @@ use App\Http\Partner\MediaController;
 use App\Http\Partner\OfferController;
 use Illuminate\Support\Facades\Route;
 
-// Partner XCar (07.11.2026) — поставщики: сотрудники страховых заводят черновики своего вендора и вписывают цены. Свой
+// Partner XCAR (07.11.2026) — поставщики: сотрудники страховых заводят черновики своего вендора и вписывают цены. Свой
 // хост того же приложения; пускает только поставщика (`Surface::opensFor`), всё, что не объявлено здесь, — 404, общие пути
 // урезаны (`ResolveSurface::PARTNER_SHARED`). Что открыто — одна дверь `Offers\Partner\PartnerOffers`.
 Route::domain(config('xcar.partner_host'))->get('/', fn () => redirect('/offers'));

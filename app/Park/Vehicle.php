@@ -200,7 +200,7 @@ class Vehicle extends Model
         return (bool) $this->vendor?->release_by_qr || $this->dealPass() !== null;
     }
 
-    /** Живой (не погашенный и не выданный) пропуск сделки XCar. Один запрос на экземпляр: экран дела спрашивает его по 4–5 раз. */
+    /** Живой (не погашенный и не выданный) пропуск сделки XCAR. Один запрос на экземпляр: экран дела спрашивает его по 4–5 раз. */
     public function dealPass(): ?Pass
     {
         if (! array_key_exists('dealPass', $this->memo)) {

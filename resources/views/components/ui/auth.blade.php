@@ -7,8 +7,8 @@
         <div class="auth-shade absolute inset-0"></div>
     </div>
     <main class="relative flex min-h-dvh flex-col items-center justify-center px-4 py-12">
-        <a href="/" class="mb-7 shrink-0" aria-label="XCar">
-            <img src="/images/xcar-white.svg" alt="XCar" width="180" height="45" class="h-9 w-auto sm:h-10">
+        <a href="/" class="mb-7 shrink-0" aria-label="XCAR">
+            <img src="/images/xcar-white.svg" alt="XCAR" width="180" height="45" class="h-9 w-auto sm:h-10">
         </a>
         <div class="w-full max-w-md rounded-(--radius-xl) bg-surface p-6 text-ink shadow-(--shadow-drop) sm:p-8">
             <h1 class="text-2xl">{{ $title }}</h1>

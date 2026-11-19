@@ -25,7 +25,7 @@ class Chat extends Model
     use FastAttributes;
 
     /** Как площадка называется собеседнику — в списке, баре чата, тосте и пуше. */
-    public const PLATFORM = 'Администрация XCar';
+    public const PLATFORM = 'Администрация XCAR';
 
     /**
      * Раздел «Чаты» сайта (18.11.2026, владелец: чаты — свой таб по центру). Прежние `/account/chats` и `/deals/chats`
@@ -157,7 +157,7 @@ class Chat extends Model
         return $this->user?->name ?? $this->guest_name ?? 'Гость';
     }
 
-    /** Кто на другом конце для читающего: участнику — менеджер или XCar, второй стороне — участник. */
+    /** Кто на другом конце для читающего: участнику — менеджер или XCAR, второй стороне — участник. */
     public function counterpartName(?User $for): string
     {
         return $this->isCounterpart($for) ? $this->displayName() : ($this->manager?->shortName() ?? self::PLATFORM);

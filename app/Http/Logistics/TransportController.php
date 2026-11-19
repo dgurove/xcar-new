@@ -64,7 +64,7 @@ use Illuminate\Validation\ValidationException;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
 /**
- * Logistics XCar — вывоз (17.10.2026): задачи списком, карточка рядом (ПК — колонкой, телефон — листом снизу). Админ
+ * Logistics XCAR — вывоз (17.10.2026): задачи списком, карточка рядом (ПК — колонкой, телефон — листом снизу). Админ
  * выбирает, кто вывозит; логист назначает своего исполнителя и цену; исполнитель созванивается с владельцем, получает
  * документы СДЭКом, «Забрал» с фото и ключами, «Привёз».
  */
@@ -214,7 +214,7 @@ class TransportController
 
     /**
      * Столбцы таблицы — по человеку и вкладке (18.10.2026, Катя и Лиза: «не хватает номера убытка, логотипа страховой,
-     * менеджера — кому везти»). Вендор и номер убытка — только сотрудникам XCar (внешний логист и исполнители к страховой
+     * менеджера — кому везти»). Вендор и номер убытка — только сотрудникам XCAR (внешний логист и исполнители к страховой
      * напрямую не ходят); продажа и менеджер — ведущим логистику; «Кто вывозит» — тем, кто видит чужие задачи.
      *
      * @return list<string>
@@ -227,13 +227,13 @@ class TransportController
         return array_values(array_filter([
             self::pickable($user, $preset) ? 'pick' : null,
             'title',
-            // Логисту — чей вывоз: XCar или его заказчик (18.10.2026).
+            // Логисту — чей вывоз: XCAR или его заказчик (18.10.2026).
             $user->isLogist() && ! $lead ? 'client' : null,
             $user->isStaff() ? 'vendor' : null,
             // Продажа — где решают, кому отдать (и в «Все», поиске); в работе решение уже принято.
             $lead && ! in_array($preset, ['work', 'moving', 'done'], true) ? 'sale' : null,
             // Срок обязывающего предложения (19.10.2026, логистика: «хотим сортировать и фильтровать по нему») — только сотрудникам
-            // XCar: это сведения Совкомбанка, логисту и исполнителям их не видно.
+            // XCAR: это сведения Совкомбанка, логисту и исполнителям их не видно.
             $lead && $preset !== 'done' ? 'binding' : null,
             'to',
             'city',
@@ -275,9 +275,9 @@ class TransportController
             $lead || $user->isLogist()
                 ? Common::manager('coalesce(transports.executor_id, transports.logist_id)', 'who', 'Исполнитель')->none('Без исполнителя')
                 : null,
-            // Заказчик логиста: XCar (вывоз продажи и парковки) или его заказчики; «Заявки N ›» заказчика ведёт сюда.
+            // Заказчик логиста: XCAR (вывоз продажи и парковки) или его заказчики; «Заявки N ›» заказчика ведёт сюда.
             $user->isLogist() ? Facet::column('client', 'Заказчик', ['заказчик', 'заказчика', 'заказчиков'], 'transports.client_id')
-                ->numeric()->none('XCar')
+                ->numeric()->none('XCAR')
                 ->labels(fn (array $ids) => Client::of($user)->whereIn('id', Common::ints($ids))->orderBy('name')->get(['id', 'name'])
                     ->mapWithKeys(fn (Client $c) => [(string) $c->id => new Option((string) $c->id, $c->name)])->all()) : null,
             Common::category(Car::sql('transports', 'category')),

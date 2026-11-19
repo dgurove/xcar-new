@@ -1300,7 +1300,7 @@ class Deal extends Model implements HasMedia
     /**
      * Расчёт продажи гаражной Совкомбанка — одна дверь цифр (12.11.2026): шторки «Продаю» и «Продана», деньги гаража
      * менеджера, «Деньги» CRM. Вознаграждение — записанное (при той же цене), иначе по доле (`suggestedCommission`); к оплате
-     * XCar — цена минус удержанное вознаграждение; пришло — зачёт по VIN; остаток — к оплате минус пришло. Цены нет — null.
+     * XCAR — цена минус удержанное вознаграждение; пришло — зачёт по VIN; остаток — к оплате минус пришло. Цены нет — null.
      *
      * @return array{reward: int, payable: int, paid: float, rest: float}|null
      */
@@ -1505,7 +1505,7 @@ class Deal extends Model implements HasMedia
     /** Текст к ссылке для «Отправить»: машина и куда ведёт, адрес — следом. */
     public function personText(): string
     {
-        return $this->offer->titleWithYear().($this->isGarage() ? ' — в вашем гараже XCar:' : ' — ваша сделка в XCar:');
+        return $this->offer->titleWithYear().($this->isGarage() ? ' — в вашем гараже XCAR:' : ' — ваша сделка в XCAR:');
     }
 
     /** Сделку закрыл отказ поставщика (28.10.2026, `DeclineBySupplier`, этап «Отказ поставщика»): причина — `close_note`. */

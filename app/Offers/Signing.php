@@ -262,7 +262,7 @@ final class Signing
         $title = 'Подписание договора: '.$deal->offer->titleWithYear();
 
         return implode("\r\n", array_filter([
-            'BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//XCar//Signing//RU', 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH',
+            'BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//XCAR//Signing//RU', 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH',
             'BEGIN:VEVENT',
             'UID:signing-'.$deal->id.'-'.$at->format('YmdHi').'@xcar.ru',
             'DTSTAMP:'.now()->utc()->format('Ymd\THis\Z'),

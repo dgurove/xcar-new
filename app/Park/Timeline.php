@@ -85,7 +85,7 @@ final class Timeline
                 $linkAt = $events->where('type', EventType::PickupLinkSent)->max('created_at');
                 $steps[] = match (true) {
                     // Пропуск нашей сделки (18.10.2026): анкеты и страховой нет — кто заберёт, решил менеджер.
-                    (bool) $pass?->isDeal() => new Step('buyer', 'Пропуск по сделке XCar', Step::DONE, null, $pass->confirmed_at,
+                    (bool) $pass?->isDeal() => new Step('buyer', 'Пропуск по сделке XCAR', Step::DONE, null, $pass->confirmed_at,
                         array_values(array_filter([$pass->name, $pass->planned_at ? 'приедет '.Ago::day($pass->planned_at, true) : null, ($m = $pass->deal?->buyer) ? 'менеджер '.$m->shortName() : null]))),
                     ! $pass => new Step('buyer', 'Ждём анкету покупателя', $v->released_at ? Step::NEXT : Step::TODO, null, null,
                         $linkAt ? ['ссылка отправлена '.Ago::day(Carbon::parse($linkAt))] : []),

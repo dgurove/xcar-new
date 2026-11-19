@@ -333,7 +333,7 @@ class WhatsAppTest extends TestCase
         $andrey = $this->manager('79251117111');
         $inbox = app(Inbox::class);
         // Пишет со своего WhatsApp — номер другой, чем в xcar: привязывается тот, откуда пришло.
-        $inbox->handle(['id' => 1, 'jid' => '74951117111@s.whatsapp.net', 'phone' => '74951117111', 'text' => 'Подключить XCar: '.LinkCode::for($andrey), 'at' => 100]);
+        $inbox->handle(['id' => 1, 'jid' => '74951117111@s.whatsapp.net', 'phone' => '74951117111', 'text' => 'Подключить XCAR: '.LinkCode::for($andrey), 'at' => 100]);
         $andrey->refresh();
         $this->assertSame('74951117111@s.whatsapp.net', $andrey->whatsapp_jid);
         $this->assertSame('74951117111', $andrey->whatsapp_phone);
@@ -347,7 +347,7 @@ class WhatsAppTest extends TestCase
         $this->assertNull($andrey->fresh()->whatsapp_jid);
 
         // Позавчерашний или чужой код — не привязывает, просит нажать ещё раз; без кода — молчим.
-        $inbox->handle(['id' => 3, 'jid' => '79990000000@s.whatsapp.net', 'phone' => '79990000000', 'text' => 'Подключить XCar: '.LinkCode::for($andrey, now()->subDays(2)), 'at' => 300]);
+        $inbox->handle(['id' => 3, 'jid' => '79990000000@s.whatsapp.net', 'phone' => '79990000000', 'text' => 'Подключить XCAR: '.LinkCode::for($andrey, now()->subDays(2)), 'at' => 300]);
         $this->assertStringContainsString('устарела', $this->sent[2]['caption']);
         $this->assertNull(User::where('whatsapp_jid', '79990000000@s.whatsapp.net')->first());
         $inbox->handle(['id' => 4, 'jid' => '79990000000@s.whatsapp.net', 'phone' => '79990000000', 'text' => 'Привет', 'at' => 400]);

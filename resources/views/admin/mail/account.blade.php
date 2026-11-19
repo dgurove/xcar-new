@@ -15,7 +15,7 @@
             <div class="grid gap-4 sm:grid-cols-2">
                 <x-ui.field name="title" label="Название" :value="$account->title" required/>
                 <x-ui.field name="email" label="Адрес" type="email" :value="$account->email" required/>
-                <x-ui.field name="from_name" label="Имя отправителя" :value="$account->from_name" placeholder="XCar"/>
+                <x-ui.field name="from_name" label="Имя отправителя" :value="$account->from_name" placeholder="XCAR"/>
                 <x-ui.field name="scope" label="Чей" :options="\App\Mail\Scope::options()" :value="$account->scope?->value"/>
                 <x-ui.field name="reply_account_id" label="Отвечаем с ящика" :options="['' => 'С этого же'] + $replyOptions" :value="$account->reply_account_id"/>
                 <x-ui.field name="sync_from" label="Забирать письма с" type="date" :value="$account->sync_from?->toDateString()"/>

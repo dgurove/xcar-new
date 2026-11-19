@@ -80,7 +80,7 @@ final class ParkNotice extends Notice
     /** Письмо страховой «продано, заберёт …» по машине с живым пропуском нашей сделки — кому отдавать, решают люди. */
     public static function insurerSoldDeal(Vehicle $v, Pass $pass): self
     {
-        return (new self('Страховая продала ТС сделки XCar: '.$v->titleWithYear(), 'По пропуску сделки ждём '.$pass->name.'. Сверьте со сделкой, прежде чем выдавать', '/cars/'.$v->id, $v->id, critical: true))->variant('insurer-sold-deal', 'Страховая продала ТС сделки');
+        return (new self('Страховая продала ТС сделки XCAR: '.$v->titleWithYear(), 'По пропуску сделки ждём '.$pass->name.'. Сверьте со сделкой, прежде чем выдавать', '/cars/'.$v->id, $v->id, critical: true))->variant('insurer-sold-deal', 'Страховая продала ТС сделки');
     }
 
     /** Отчёт о приёме не ушёл (`Park\Report`, 29.10.2026): тому, кто отправлял, со звуком — в деле «Повторить». */
@@ -89,10 +89,10 @@ final class ParkNotice extends Notice
         return (new self('Отчёт не ушёл: '.$v->titleWithYear(), $reason, '/cars/'.$v->id, $v->id, critical: true))->variant('report-failed', 'Отчёт не ушёл');
     }
 
-    /** Получатель по сделке XCar сменился (`SyncParkRelease`): прежний пропуск погашен, заберёт другой. */
+    /** Получатель по сделке XCAR сменился (`SyncParkRelease`): прежний пропуск погашен, заберёт другой. */
     public static function receiverChanged(Vehicle $v): self
     {
-        return (new self('Сменился получатель: '.$v->titleWithYear(), 'Заберёт '.trim(($v->pickup_name ?? '').' '.($v->pickup_phone ?? '')).', по сделке XCar', '/cars/'.$v->id, $v->id))->variant('receiver-changed', 'Сменился получатель');
+        return (new self('Сменился получатель: '.$v->titleWithYear(), 'Заберёт '.trim(($v->pickup_name ?? '').' '.($v->pickup_phone ?? '')).', по сделке XCAR', '/cars/'.$v->id, $v->id))->variant('receiver-changed', 'Сменился получатель');
     }
 
     public static function closing(CarbonInterface $month, int $count, float $sum): self

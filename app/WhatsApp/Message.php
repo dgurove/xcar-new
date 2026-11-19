@@ -64,7 +64,7 @@ final class Message
             to: $estimate->user->whatsapp_jid, offerId: $offer->id, userId: $estimate->user_id, estimateId: $estimate->id);
     }
 
-    /** Подпись: текст для клиента и ссылка на машину в XCar следующей строкой. */
+    /** Подпись: текст для клиента и ссылка на машину в XCAR следующей строкой. */
     public static function caption(Offer $offer): string
     {
         return implode("\n", array_filter([Caption::forward($offer), Caption::link($offer)]));

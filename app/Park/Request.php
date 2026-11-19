@@ -78,9 +78,9 @@ class Request extends Model
      */
     public function source(): array
     {
-        // Выдача по нашей сделке (18.10.2026) — «Сделка XCar, Ф. Бородин»: не письмо и не сотрудник парковки.
+        // Выдача по нашей сделке (18.10.2026) — «Сделка XCAR, Ф. Бородин»: не письмо и не сотрудник парковки.
         [$email, $name, $at] = match (true) {
-            (bool) $this->deal_id => [null, 'Сделка XCar'.(($m = $this->deal?->buyer) ? ', '.$m->shortName() : ''), $this->created_at],
+            (bool) $this->deal_id => [null, 'Сделка XCAR'.(($m = $this->deal?->buyer) ? ', '.$m->shortName() : ''), $this->created_at],
             (bool) $this->letter => [NodeTitle::email($this->letter), null, $this->letter->date_at ?? $this->created_at],
             default => [null, $this->creator?->shortName(), $this->created_at],
         };
@@ -88,7 +88,7 @@ class Request extends Model
         return ['email' => $email, 'name' => $name, 'at' => $at, 'when' => $at ? \App\Support\Ago::at($at, time: true) : null];
     }
 
-    /** Сделка XCar, по которой выдача (`SyncParkRelease`). */
+    /** Сделка XCAR, по которой выдача (`SyncParkRelease`). */
     public function deal(): BelongsTo
     {
         return $this->belongsTo(Deal::class);

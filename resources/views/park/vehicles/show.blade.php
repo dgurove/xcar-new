@@ -57,7 +57,7 @@
         </div>
         @php ob_start(); @endphp
         @php
-                    // Выдача по сделке XCar (18.10.2026): получателя решает менеджер в сделке — здесь не правится; сделка идёт, а
+                    // Выдача по сделке XCAR (18.10.2026): получателя решает менеджер в сделке — здесь не правится; сделка идёт, а
                     // забирать ещё нельзя — словом, чтобы парковка знала, что машину ждёт наш покупатель.
                     $dealPass = $vehicle->dealPass();
                     $saleDeal = ! $vehicle->sold_at && in_array($vehicle->state, [\App\Park\VehicleState::Stored, \App\Park\VehicleState::Expected], true) ? $vehicle->offer?->deal : null;
@@ -65,7 +65,7 @@
                 <x-park.city-pick :vehicle="$vehicle"/>
                 @if ($saleDeal)
                     {{-- «Идёт сделка» — пилюлей продажи рядом (админу CRM); здесь — что это значит для выдачи. --}}
-                    <p class="text-sm text-ink-muted">Сделка XCar: выдача — когда по ней можно будет забирать</p>
+                    <p class="text-sm text-ink-muted">Сделка XCAR: выдача — когда по ней можно будет забирать</p>
                 @endif
                 {{-- «На выдачу с …, кто заберёт» — только пока ТС ещё у нас (09.11.2026, владелец: «зачем спрашиваем, кто заберёт,
                      если уже выдано»); выданной — кто забрал, словом. --}}
@@ -73,7 +73,7 @@
                     <p class="text-sm">
                         <span class="nums text-urgent">На выдачу с {{ \App\Support\Ago::html($vehicle->sold_at, words: false) }}</span>@if ($vehicle->pickup_name || $handles)<span class="text-ink-muted">, </span>@endif
                         {{-- Одной строкой разметки: перевод строки между кусками давал пробел перед запятой («кто заберёт , забор»). «Не забирают N д» — меткой в ряду кодов. --}}
-                        @if ($dealPass)<span>заберёт {{ $vehicle->pickup_name }}, по сделке XCar</span>@elseif ($handles)<button type="button" class="underline decoration-dotted decoration-ink-dim underline-offset-4" data-controller="emit" data-action="emit#send" data-emit-event-param="sold:open">{{ $vehicle->pickup_name ? 'заберёт '.$vehicle->pickup_name : 'кто заберёт' }}</button>@elseif ($vehicle->pickup_name)<span>заберёт {{ $vehicle->pickup_name }}</span>@endif{{ "" }}@if ($vehicle->pickup_phone)<x-ui.tel :value="$vehicle->pickup_phone" class="ml-1"/>@endif{{ "" }}@if ($vehicle->state === \App\Park\VehicleState::Stored)<span class="text-ink-muted">, забор </span><x-park.pickup :vehicle="$vehicle" key="head" class="nums underline decoration-dotted decoration-ink-dim underline-offset-4"/>@endif
+                        @if ($dealPass)<span>заберёт {{ $vehicle->pickup_name }}, по сделке XCAR</span>@elseif ($handles)<button type="button" class="underline decoration-dotted decoration-ink-dim underline-offset-4" data-controller="emit" data-action="emit#send" data-emit-event-param="sold:open">{{ $vehicle->pickup_name ? 'заберёт '.$vehicle->pickup_name : 'кто заберёт' }}</button>@elseif ($vehicle->pickup_name)<span>заберёт {{ $vehicle->pickup_name }}</span>@endif{{ "" }}@if ($vehicle->pickup_phone)<x-ui.tel :value="$vehicle->pickup_phone" class="ml-1"/>@endif{{ "" }}@if ($vehicle->state === \App\Park\VehicleState::Stored)<span class="text-ink-muted">, забор </span><x-park.pickup :vehicle="$vehicle" key="head" class="nums underline decoration-dotted decoration-ink-dim underline-offset-4"/>@endif
                     </p>
                 @elseif ($vehicle->state === \App\Park\VehicleState::Released && $vehicle->pickup_name)
                     <p class="text-sm text-ink-muted">Забрал {{ $vehicle->pickup_name }}@if ($vehicle->pickup_phone) <x-ui.tel :value="$vehicle->pickup_phone"/>@endif</p>

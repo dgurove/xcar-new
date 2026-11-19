@@ -32,7 +32,7 @@ final class LogistAssign
             'executor_id' => ['required', 'integer'],
             'distance_km' => ['nullable', 'integer', 'min:0', 'max:20000'],
             'cost' => ['required', 'string', 'max:20'],
-            // Сколько она платит своему исполнителю — для её «Оплат» (18.10.2026); XCar это не видит и не платит.
+            // Сколько она платит своему исполнителю — для её «Оплат» (18.10.2026); XCAR это не видит и не платит.
             'executor_cost' => ['nullable', 'string', 'max:20'],
             // Межрегион и комментарий — у отрезка (20.10.2026): «внутри региона» до стоянки, «между регионами» дальше.
             'reach' => ['nullable', 'in:local,intercity'],

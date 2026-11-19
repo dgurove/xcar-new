@@ -24,7 +24,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 
 /**
- * Выдача с нашей парковки по сделке XCar — одна дверь (18.10.2026, владелец: «полноценно: покупатель нашего менеджера,
+ * Выдача с нашей парковки по сделке XCAR — одна дверь (18.10.2026, владелец: «полноценно: покупатель нашего менеджера,
  * сам менеджер, в гараж»). Идемпотентно приводит парковку к сделке:
  * — сделке можно забирать (`Deal::releasable`), машина стоит у нас или едет к нам: продажа на парковке на получателя
  *   (`MarkSold`, письма страховой не нужно), заявка на выдачу с `deal_id` (у той, что едет, — при приёме) и QR-пропуск
@@ -89,7 +89,7 @@ final class SyncParkRelease
         $first = ! $pass;
         DB::transaction(function () use ($deal, $vehicle, $receiver, $phone, $by, $pass) {
             // Анкета страховой (или прежний пропуск сделки) гаснет: на воротах — один живой пропуск.
-            $vehicle->revokePass($pass ? self::CHANGED : 'Выдача по сделке XCar');
+            $vehicle->revokePass($pass ? self::CHANGED : 'Выдача по сделке XCAR');
             ($this->sold)($vehicle, $by, now(), $receiver->name, $phone);
             Pass::create([
                 'vehicle_id' => $vehicle->id, 'code' => self::code(), 'name' => $receiver->name, 'phone' => (string) $phone,
@@ -103,7 +103,7 @@ final class SyncParkRelease
                 $pickup->update(['from_address' => 'Парковка «'.$vehicle->yard->name.'», '.$vehicle->yard->fullAddress()]);
             }
             $who = $receiver->name.($receiver->at ? ', приедет '.Ago::day($receiver->at, true) : '');
-            $vehicle->log(EventType::Note, $by, ['text' => ($pass ? 'Сменился получатель по сделке XCar № ' : 'На выдачу по сделке XCar № ').$deal->offer->number.': '.$who]);
+            $vehicle->log(EventType::Note, $by, ['text' => ($pass ? 'Сменился получатель по сделке XCAR № ' : 'На выдачу по сделке XCAR № ').$deal->offer->number.': '.$who]);
             $deal->offer->log(OfferEventType::Note, $by, ['text' => ($pass ? 'Парковке: сменился получатель, ' : 'Парковке: на выдачу, заберёт ').$who]);
         });
         DB::afterCommit(function () use ($deal, $vehicle, $first, $by) {
@@ -129,7 +129,7 @@ final class SyncParkRelease
         if ($vehicle->sold_at && ! $vehicle->sold_message_id && in_array($vehicle->state, [VehicleState::Stored, VehicleState::Expected], true)) {
             $this->sold->clear($vehicle, $by, $reason);
         }
-        $vehicle->log(EventType::Note, $by, ['text' => 'Выдача по сделке XCar № '.$deal->offer?->number.' снята: '.mb_strtolower($reason)]);
+        $vehicle->log(EventType::Note, $by, ['text' => 'Выдача по сделке XCAR № '.$deal->offer?->number.' снята: '.mb_strtolower($reason)]);
     }
 
     /** Заявка на выдачу по сделке: есть — с её получателем и сделкой, нет и машина стоит — заводится. */

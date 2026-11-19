@@ -39,7 +39,7 @@
         </div>
     @endif
     {{-- Пригласить менеджеров в оба бота (21.10.2026, владелец: «скинул ссылку на бота — и менеджеры залогинились»): в боте
-         «Запустить» и «Войти через XCar» (`ConnectLink`). --}}
+         «Запустить» и «Войти через XCAR» (`ConnectLink`). --}}
     @php
         $mainBot = app(\App\Telegram\Bot::class)->startUrl('hi');
         $offersBot = app(\App\Telegram\Offers\OffersBot::class)->startUrl('hi');
@@ -48,8 +48,8 @@
         <div>
             <div class="list-head pt-0">Telegram</div>
             <div class="list">
-                @php $botsText = "Подключите ботов XCar, чтобы не пропускать новые ТС и сделки:\n1. {$mainBot} ваши сделки, ваш ход, оплаты и чаты\n2. {$offersBot} новые предложения"; @endphp
-                <x-ui.share-link variant="row" url="В каждом нажмите «Запустить», затем «Войти через XCar»" title="Боты XCar" done="Текст в буфере" icon="send"
+                @php $botsText = "Подключите ботов XCAR, чтобы не пропускать новые ТС и сделки:\n1. {$mainBot} ваши сделки, ваш ход, оплаты и чаты\n2. {$offersBot} новые предложения"; @endphp
+                <x-ui.share-link variant="row" url="В каждом нажмите «Запустить», затем «Войти через XCAR»" title="Боты XCAR" done="Текст в буфере" icon="send"
                     :text="$botsText" label="Пригласить в ботов Telegram" :sub="$mainBot.' и '.$offersBot"/>
             </div>
         </div>

@@ -32,13 +32,13 @@
         <x-ui.date chip name="released_at" id="f-released_at" :value="old('released_at', now()->format('Y-m-d\TH:i'))" time now :clearable="false" class="nums underline decoration-dotted decoration-ink-dim underline-offset-4"/>
     </div>
     @error('released_at')<p class="field-error px-4 pb-2">{{ $message }}</p>@enderror
-    {{-- Кто заберёт — из письма о продаже; не вписан — «Указать» (шторка «Покупатель»), вписан — имя и звонок. По сделке XCar
+    {{-- Кто заберёт — из письма о продаже; не вписан — «Указать» (шторка «Покупатель»), вписан — имя и звонок. По сделке XCAR
          (18.10.2026) — получатель из сделки и над сканером: кого ждать и когда, менеджер сделки; сверяют по QR. --}}
     @if (($pass ?? null)?->isDeal() && $pass->isLive())
         <div class="row justify-between">
             <span class="min-w-0">
                 <span class="block truncate">{{ $pass->name }}</span>
-                <span class="block text-sm text-ink-muted">{{ implode(', ', array_filter(['по сделке XCar', ($m = $pass->deal?->buyer) && $m->name !== $pass->name ? 'менеджер '.$m->shortName() : null, ($w = $pass->whenLabel('j M')) ? 'приедет '.$w : null])) }}</span>
+                <span class="block text-sm text-ink-muted">{{ implode(', ', array_filter(['по сделке XCAR', ($m = $pass->deal?->buyer) && $m->name !== $pass->name ? 'менеджер '.$m->shortName() : null, ($w = $pass->whenLabel('j M')) ? 'приедет '.$w : null])) }}</span>
             </span>
             @if ($pass->phone)<span class="nums shrink-0 text-sm text-ink-muted">{{ $pass->phone }}</span>@endif
         </div>

@@ -14,7 +14,7 @@ use App\Http\PeopleController;
 use App\Http\SearchController;
 use Illuminate\Support\Facades\Route;
 
-// Logistics XCar (10.10.2026; вывоз целиком — с 17.10.2026) — свой хост того же приложения. Вход общий; пускает
+// Logistics XCAR (10.10.2026; вывоз целиком — с 17.10.2026) — свой хост того же приложения. Вход общий; пускает
 // `canLogistics` (админ, логист, наши люди, исполнители логиста, менеджеры с поручениями, модератор — документы).
 // Лендинга нет: `/` — в вывоз (модератору — в документы).
 Route::domain(config('xcar.logistics_host'))->get('/', fn () => redirect(auth()->user()?->isModerator() && ! auth()->user()->isAdmin() ? '/documents' : '/transports'));

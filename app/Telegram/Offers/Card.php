@@ -16,7 +16,7 @@ use Spatie\MediaLibrary\MediaCollections\Models\Media;
 /**
  * Карточка предложения в боте — одно сообщение (03.11.2026, владелец: «пдф, текст и ссылка-кнопка в одном сообщении»):
  * PDF первых 10 видимых кадров (`SharePdf::prepared`, собран заранее при публикации) с подписью для клиента
- * (`Caption::forward`: машина, город, характеристики, цена) и кнопкой «Открыть в XCar». Пересылается клиенту как есть.
+ * (`Caption::forward`: машина, город, характеристики, цена) и кнопкой «Открыть в XCAR». Пересылается клиенту как есть.
  * «Срочно» и срок приёма не пишем ни в подписи, ни на кнопке (03.11.2026, владелец). Кадров нет — то же текстом. Шеринг
  * закрыт — как решил владелец 21.10.2026: одно фото с той же подписью и `protect_content`, в Telegram его не переслать и
  * не сохранить; PDF такой машины не собирается вовсе (`PrepareSharePdf`).
@@ -99,7 +99,7 @@ final class Card
 
     private static function button(Offer $offer, bool $login): array
     {
-        return self::site('Открыть в XCar', self::url((string) $offer->number, $login), $login);
+        return self::site('Открыть в XCAR', self::url((string) $offer->number, $login), $login);
     }
 
     /** Кнопка на сайт: входом через Telegram (`login_url`, нужен домен в BotFather) или простой ссылкой. */

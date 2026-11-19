@@ -100,7 +100,7 @@ class MakeBuyerTest extends TestCase
     {
         $this->manager->update(['roles' => [Role::Manager, Role::Moderator, Role::Parking, Role::Contractor]]);
         $managers = UserGroup::create(['name' => 'Москва', 'kind' => UserGroup::MANAGERS]);
-        $moderators = UserGroup::create(['name' => 'XCar', 'kind' => UserGroup::MODERATORS]);
+        $moderators = UserGroup::create(['name' => 'XCAR', 'kind' => UserGroup::MODERATORS]);
         $this->manager->userGroups()->attach([$managers->id, $moderators->id]);
 
         $buyerInvite = Invite::create(['manager_id' => $this->manager->id, 'created_by' => $this->manager->id, 'role' => Role::Buyer, 'code' => Invite::freshCode()]);

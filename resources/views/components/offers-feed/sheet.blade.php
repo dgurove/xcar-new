@@ -10,7 +10,7 @@
     $bot = app(\App\Telegram\Offers\OffersBot::class);
     $start = $feed->telegram() && ! $foreign ? \App\Telegram\StartLink::link($user) : null;
     $group = $feed->whatsapp() ? app(\App\WhatsApp\Sender::class)->group() : ['name' => null, 'invite' => null];
-    $groupName = $group['name'] ?: 'XCar | Предложения';
+    $groupName = $group['name'] ?: 'XCAR | Предложения';
     // Строки выбора: канал, знак, название, что приходит, подключён ли.
     $rows = array_filter([
         $feed->telegram() ? ['tg', 'telegram', 'Telegram', 'Каждое новое ТС лично вам', $feed->subscribed(), 'подписаны'] : null,
@@ -29,7 +29,7 @@
         <div class="tg-step" data-offers-feed-target="step" data-step="pick">
             <div class="tg-scene feed-scene" data-offers-feed-target="scene" data-app="{{ $feed->telegram() ? 'tg' : 'wa' }}">
                 <div class="feed-chat" aria-hidden="true">
-                    <span class="feed-tg"><x-telegram.logo class="!size-6"/>XCar Предложения</span>
+                    <span class="feed-tg"><x-telegram.logo class="!size-6"/>XCAR Предложения</span>
                     <span class="feed-wa"><x-whatsapp.logo class="!size-6"/>{{ $groupName }}</span>
                 </div>
                 <img src="/pwa/site/icon-maskable-512.png" alt="" class="tg-avatar">
@@ -40,7 +40,7 @@
                         Toyota Camry, 2021<br>Краснодар, 23<br>2 450 000
                         <span class="feed-link">xcar.ru/offers/2611023476</span>
                     </div>
-                    <div class="tg-key">Открыть в XCar</div>
+                    <div class="tg-key">Открыть в XCAR</div>
                 </div>
             </div>
             <div class="tg-lead">

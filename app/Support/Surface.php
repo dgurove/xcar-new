@@ -111,11 +111,11 @@ enum Surface: string
     public function label(): string
     {
         return match ($this) {
-            self::Site => 'XCar',
-            self::Crm => 'CRM XCar',
-            self::Park => 'Park XCar',
-            self::Logistics => 'Logistics XCar',
-            self::Partner => 'Partner XCar',
+            self::Site => 'XCAR',
+            self::Crm => 'CRM XCAR',
+            self::Park => 'Park XCAR',
+            self::Logistics => 'Logistics XCAR',
+            self::Partner => 'Partner XCAR',
         };
     }
 

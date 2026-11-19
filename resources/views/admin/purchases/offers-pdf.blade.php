@@ -66,7 +66,7 @@
 <body>
 <table class="head">
     <tr>
-        <td><img src="file://{{ $logo }}" alt="XCar"></td>
+        <td><img src="file://{{ $logo }}" alt="XCAR"></td>
         <td>
             <div class="title">{{ $purchase->title ?: $purchase->publicTitle() }}</div>
             <div class="sub">Предложения менеджеров, {{ now()->translatedFormat('j F Y') }}</div>

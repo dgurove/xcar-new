@@ -26,7 +26,7 @@ final class GiveEstimate
         if ($amount < 1) {
             throw ValidationException::withMessages(['amount' => 'Укажите цену']);
         }
-        // Не ниже заявленной (11.10.2026, владелец); «Согласен» с ценой XCar не проверяется. Заявленную ему скрыли — без суммы.
+        // Не ниже заявленной (11.10.2026, владелец); «Согласен» с ценой XCAR не проверяется. Заявленную ему скрыли — без суммы.
         $declared = $estimate->offer->declaredPrice();
         $agrees = $estimate->isCorrection() && $amount === $estimate->base_price;
         if ($declared && $amount < $declared && ! $agrees) {

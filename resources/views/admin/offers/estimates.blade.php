@@ -65,7 +65,7 @@
         @endforeach
         @foreach ($offer->declinedEstimates as $e)
             @php
-                // С чем сравнить желаемую: цена XCar у корректировки, иначе заявленная.
+                // С чем сравнить желаемую: цена XCAR у корректировки, иначе заявленная.
                 $mark = $e->isCorrection() ? $e->base_price : $offer->declaredPrice();
                 $delta = $mark ? $e->wish_price - $mark : 0;
             @endphp
@@ -90,7 +90,7 @@
                         <span class="money-hero-cap mt-4">Хочет</span>
                         <span class="money-hero-sum nums">{{ \App\Support\Money::nums($e->wish_price) }} <small>₽</small></span>
                         {{-- Ориентир и разница — той же строкой, что у менеджера в листе отказа. --}}
-                        @if ($mark)<span class="money-hero-car mt-2 nums">{{ $e->isCorrection() ? 'цена XCar' : 'заявленная' }} {{ \App\Support\Money::rub($mark) }}@if ($delta)<span class="estimate-diff">{{ $delta > 0 ? '+' : '−' }}{{ \App\Support\Money::nums(abs($delta)) }}</span>@endif</span>@endif
+                        @if ($mark)<span class="money-hero-car mt-2 nums">{{ $e->isCorrection() ? 'цена XCAR' : 'заявленная' }} {{ \App\Support\Money::rub($mark) }}@if ($delta)<span class="estimate-diff">{{ $delta > 0 ? '+' : '−' }}{{ \App\Support\Money::nums(abs($delta)) }}</span>@endif</span>@endif
                     </div>
                     @if ($e->decline_reason)
                         <p class="estimate-reason">{{ $e->decline_reason }}</p>

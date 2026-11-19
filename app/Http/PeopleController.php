@@ -138,9 +138,9 @@ class PeopleController
     private static function linkText(string $kind): string
     {
         return match ($kind) {
-            'buyer' => 'Вас приглашают в XCar: откройте ссылку и зарегистрируйтесь',
-            'contractor' => 'Вас приглашают в Logistics XCar: откройте ссылку и зарегистрируйтесь',
-            default => 'Вас приглашают в XCar: откройте ссылку и зарегистрируйтесь',
+            'buyer' => 'Вас приглашают в XCAR: откройте ссылку и зарегистрируйтесь',
+            'contractor' => 'Вас приглашают в Logistics XCAR: откройте ссылку и зарегистрируйтесь',
+            default => 'Вас приглашают в XCAR: откройте ссылку и зарегистрируйтесь',
         };
     }
 }

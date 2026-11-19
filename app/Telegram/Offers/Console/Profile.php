@@ -9,9 +9,9 @@ use Illuminate\Console\Command;
 final class Profile extends Command
 {
     /** С 03.11.2026 бот ничего не спрашивает: каждое новое предложение — сообщением с PDF для клиента. */
-    private const DESCRIPTION = 'Новые предложения XCar для менеджеров, как только они выходят: каждое — PDF с текстом для клиента, просто перешлите его. Нажмите «Запустить» и войдите через XCar';
+    private const DESCRIPTION = 'Новые предложения XCAR для менеджеров, как только они выходят: каждое — PDF с текстом для клиента, просто перешлите его. Нажмите «Запустить» и войдите через XCAR';
 
-    private const SHORT = 'Новые предложения XCar для менеджеров';
+    private const SHORT = 'Новые предложения XCAR для менеджеров';
 
     protected $signature = 'offers-bot:profile';
 

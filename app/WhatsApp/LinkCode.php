@@ -7,7 +7,7 @@ use App\Users\User;
 use Illuminate\Support\Carbon;
 
 /**
- * Привязка WhatsApp к профилю (03.11.2026): человек сам пишет на номер владельца «Подключить XCar: K7P2QM4D» — ссылкой
+ * Привязка WhatsApp к профилю (03.11.2026): человек сам пишет на номер владельца «Подключить XCAR: K7P2QM4D» — ссылкой
  * `wa.me` с набранным текстом, — и привязывается тот WhatsApp, откуда пришло, а не номер из xcar (у Андрея они разные).
  * Переписку начал он — личные от владельца для WhatsApp ответ в чате, а не рассылка незнакомым.
  *
@@ -18,7 +18,7 @@ final class LinkCode
 {
     private const ALPHABET = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
 
-    /** Код в тексте: «Подключить XCar: K7P2QM4D», регистр и пробелы — как получится. */
+    /** Код в тексте: «Подключить XCAR: K7P2QM4D», регистр и пробелы — как получится. */
     public const PATTERN = '/xcar\s*:\s*([0-9a-z]{8})\b/iu';
 
     public static function for(User $user, ?Carbon $day = null): string
@@ -57,7 +57,7 @@ final class LinkCode
 
     public static function text(User $user): string
     {
-        return 'Подключить XCar: '.self::for($user);
+        return 'Подключить XCAR: '.self::for($user);
     }
 
     /** Ссылка с набранным текстом: на телефоне открывает WhatsApp, на ПК — WhatsApp Web или приложение. */

@@ -68,7 +68,7 @@ abstract class Template
         }
         $put('holder', self::holder($joined));
         // Ответственный по убытку — кто написал у вендора; у пересланного письма он в заголовке «От:».
-        // Наше же письмо в цитате («From: XCar <deal@xcar.ru>») — не ответственный вендора.
+        // Наше же письмо в цитате («From: XCAR <deal@xcar.ru>») — не ответственный вендора.
         if (preg_match('/^\s*(?:>\s*)*(?:От|From):\s*([^<\n]{2,80}?)\s*<([^>\n]+)>/mu', (string) $text, $m) && ! self::ours($m[1], $m[2])) {
             $put('contact_name', trim($m[1], " \t\"'"));
         }
@@ -170,7 +170,7 @@ abstract class Template
         return [$name ? trim($name) : null, $normalized ? Phone::format($normalized) : trim($raw)];
     }
 
-    /** Наш адрес или имя («XCar», `…@xcar.ru`). */
+    /** Наш адрес или имя («XCAR», `…@xcar.ru`). */
     private static function ours(string $name, string $email): bool
     {
         return (bool) preg_match('/xcar/iu', $name.' '.$email);
