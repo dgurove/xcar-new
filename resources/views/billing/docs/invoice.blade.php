@@ -32,7 +32,7 @@
         (bool) $invoice->deal => 'Сделка по предложению № '.$invoice->deal->offer?->number.($invoice->deal->offer ? ', '.$invoice->deal->offer->titleWithYear() : ''),
         default => null,
     };
-    $nb = fn (?string $s) => str_replace('№ ', '№&nbsp;', e((string) $s));
+    $nb = fn (?string $s) => str_replace(['№ ', 'VIN '], ['№&nbsp;', 'VIN&nbsp;'], e((string) $s));
 @endphp
 <!doctype html>
 <html lang="ru">
@@ -143,7 +143,7 @@
     <ol class="terms">
         @if ($invoice->due_at)<li>Оплатить до {{ $invoice->due_at->format('d.m.Y') }}</li>@endif
         @if ($invoice->notes)<li>{{ $invoice->notes }}</li>@endif
-        <li>Назначение платежа: {!! $nb(\App\Billing\Documents\PaymentQr::purpose($invoice)) !!}</li>
+        <li>В назначении платежа обязательно указывать: {!! $nb(\App\Billing\Documents\PaymentQr::purpose($invoice)) !!}</li>
     </ol>
 
     <table class="sign"><tr>

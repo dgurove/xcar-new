@@ -1178,14 +1178,15 @@ class Offer extends Model
     }
 
     /**
-     * Строка счёта за ТС (ПРАЙМ, Р.О.С., гараж, аукцион): «Audi Q8, 2021 (VIN)», VIN — когда есть (18.11.2026, по просьбе
-     * покупателей: без «Транспортное средство»).
+     * Строка счёта за ТС (ПРАЙМ, Р.О.С., гараж, аукцион): «ТС Exeed LX 2024 г.в. VIN LVTDB21B8RE049131» (19.11.2026, владелец — по
+     * счёту ПРАЙМ, что выписывали руками); года нет — без «г.в.», VIN нет — без него. Ею же — назначение платежа (`PaymentQr::purpose`).
      */
     public function invoiceTitle(): string
     {
-        $vin = trim((string) $this->carRecord()->vin);
+        $car = $this->carRecord();
+        $vin = trim((string) $car->vin);
 
-        return $this->titleWithYear().($vin !== '' ? " ({$vin})" : '');
+        return 'ТС '.$this->title().($car->year ? ' '.$car->year.' г.в.' : '').($vin !== '' ? ' VIN '.mb_strtoupper($vin) : '');
     }
 
     /** Тип ТС — иконка перед названием и фильтр «Тип ТС»: тип машины (`Car` считает его сам по кузову и марке). */

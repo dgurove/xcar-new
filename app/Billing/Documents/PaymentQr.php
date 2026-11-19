@@ -2,6 +2,7 @@
 
 namespace App\Billing\Documents;
 
+use App\Billing\ChargeKind;
 use App\Billing\Invoice;
 use App\Billing\Party;
 use App\Billing\PaymentSource;
@@ -38,10 +39,18 @@ final class PaymentQr
         return 'ST00012|'.implode('|', array_map(fn ($k, $v) => $k.'='.str_replace('|', '/', $v), array_keys($fields), $fields));
     }
 
-    /** Назначение платежа — то же, что ищет `MatchTransaction`. */
+    /**
+     * Назначение платежа. Счёт за ТС — «Оплата ТС Exeed LX 2024 г.в. VIN …» (19.11.2026, владелец): по VIN выписка сама кладёт
+     * поступление в сделку машины (`MatchByVin` → `ApplyDealCredits`), номер счёта не нужен. Остальные — «Оплата по счёту № N от …»,
+     * его ищет `MatchTransaction`.
+     */
     public static function purpose(Invoice $invoice): string
     {
-        return 'Оплата по счёту № '.$invoice->docNo().' от '.$invoice->issued_at->format('d.m.Y').'. '
-            .($invoice->vatRate() ? 'В т.ч. НДС '.$invoice->vatRate().'%' : 'НДС не облагается');
+        $vat = $invoice->vatRate() ? 'В т.ч. НДС '.$invoice->vatRate().'%' : 'НДС не облагается';
+        if ($invoice->kind === ChargeKind::Sale && ($offer = $invoice->carOffer()) && trim((string) $offer->carRecord()->vin) !== '') {
+            return 'Оплата '.$offer->invoiceTitle().'. '.$vat;
+        }
+
+        return 'Оплата по счёту № '.$invoice->docNo().' от '.$invoice->issued_at->format('d.m.Y').'. '.$vat;
     }
 }
