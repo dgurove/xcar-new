@@ -26,10 +26,12 @@
     @include('deals.docs.dkp.style')
 </head>
 <body>
-    @unless (($pdf ?? false) || request()->boolean('embed'))<div class="print"><button type="button" onclick="window.print()">Печать</button></div>@endunless
+    @unless (($pdf ?? false) || ($word ?? false) || request()->boolean('embed'))<div class="print"><button type="button" onclick="window.print()">Печать</button></div>@endunless
     @if ($pdf ?? false)<div class="pagenum"></div>@endif
     {{-- Не собран — сотруднику водяным знаком «ОБРАЗЕЦ»: такой договор не печатают. --}}
-    @include('deals.docs.dkp.draft')
+    @unless ($word ?? false)
+        @include('deals.docs.dkp.draft')
+    @endunless
     <article class="sheet">
         @if ($pdf ?? false)<div class="mask"></div>@endif
         <h1>Договор купли-продажи транспортного средства</h1>

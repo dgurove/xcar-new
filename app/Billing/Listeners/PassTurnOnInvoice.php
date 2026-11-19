@@ -3,6 +3,7 @@
 namespace App\Billing\Listeners;
 
 use App\Billing\Events\InvoiceIssued;
+use App\Billing\Events\InvoiceRecalled;
 use App\Billing\Events\InvoiceShown;
 use App\Billing\Events\InvoiceVoided;
 use App\Chats\StepAsk;
@@ -21,7 +22,7 @@ use Illuminate\Support\Carbon;
  */
 final class PassTurnOnInvoice
 {
-    public function handle(InvoiceIssued|InvoiceShown|InvoiceVoided $e): void
+    public function handle(InvoiceIssued|InvoiceShown|InvoiceVoided|InvoiceRecalled $e): void
     {
         $invoice = $e->invoice;
         if ($invoice->isOwed() || ! $invoice->deal_id) {
@@ -29,7 +30,9 @@ final class PassTurnOnInvoice
         }
         // Ход менеджеру — когда счёт ему отправили (`InvoiceShown`, 16.11.2026); вставший, но не отправленный — ход наш
         // («Отправить счёт менеджеру», `Deal::invoiceGap`).
-        if (! $e instanceof InvoiceVoided && ! $invoice->shown_at) {
+        // Отозвали (`InvoiceRecalled`, 19.11.2026) — как аннулировали: ход снова наш, пока счёт не отправят снова.
+        $back = $e instanceof InvoiceVoided || $e instanceof InvoiceRecalled;
+        if (! $back && ! $invoice->shown_at) {
             return;
         }
         $deal = Deal::with('buyer')->find($invoice->deal_id);
@@ -42,7 +45,7 @@ final class PassTurnOnInvoice
         // Ход наш (выставить) или менеджера «Укажите покупателя» (ПРАЙМ) — счёт встал: «Оплатите счёт» с часами. Часы
         // менеджера уже шли — не сбрасываются: 14 дней от «Забрал», указал он покупателя или нет (27.10.2026); мы выставили
         // поздно — от счёта.
-        if (! $e instanceof InvoiceVoided && in_array($position->waits_for, [WaitsFor::Us, WaitsFor::Manager], true)) {
+        if (! $back && in_array($position->waits_for, [WaitsFor::Us, WaitsFor::Manager], true)) {
             $keep = $position->waits_for === WaitsFor::Manager && $position->deadline_at;
             $position->update($keep ? ['waits_for' => null] : [
                 'waits_for' => null, 'deadline_at' => $position->stage->deadlineFor($deal->offer, Carbon::now()),
@@ -53,7 +56,7 @@ final class PassTurnOnInvoice
                 // Уведомления здесь нет (о счёте говорит своё), а в чат сделки — «Оплатите…» с кнопкой шага (`StepAsk`).
                 StepAsk::post(Requirement::askFor($deal, $position->stage, $position));
             }
-        } elseif ($e instanceof InvoiceVoided && $position->waits_for === null && ! $deal->hasManagerInvoice() && ! $deal->paysSupplierOn($position->stage)) {
+        } elseif ($back && $position->waits_for === null && ! $deal->hasManagerInvoice() && ! $deal->paysSupplierOn($position->stage)) {
             // Ход снова менеджера («Укажите покупателя») — часы оплаты от «Забрал» (`Deal::payDue`), наш — без часов.
             $gap = $deal->invoiceGap();
             $position->update(['waits_for' => $deal->managerGap() ? WaitsFor::Manager : WaitsFor::Us,

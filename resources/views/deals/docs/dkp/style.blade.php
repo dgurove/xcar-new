@@ -5,7 +5,8 @@
      линией `.blank` (`DkpDocument::v`), а не подчёркиваниями: те растягивали строку дырами. --}}
 @php
     $pdf ??= false;
-    $embed = ! $pdf && request()->boolean('embed');
+    $word ??= false;
+    $embed = ! $pdf && ! $word && request()->boolean('embed');
     $fonts = resource_path('fonts/pdf');
     $margin = '20mm 10mm 20mm 20mm';
 @endphp
@@ -37,6 +38,8 @@
     .facts { border-collapse: collapse; margin: 1pt 0 3pt 12.5mm; }
     .facts td { padding: 0 8pt 0 0; vertical-align: top; }
     .keep { page-break-inside: avoid; }
+    .keep-block { width: 100%; border-collapse: collapse; page-break-inside: avoid; }
+    .keep-block > tr > td, .keep-block > tbody > tr > td { padding: 0; }
     .nb { white-space: nowrap; }
     .parties { width: 100%; border-collapse: collapse; margin-top: 6pt; }
     .parties td { width: 50%; vertical-align: top; padding: 0 10pt 0 0; }
@@ -57,6 +60,12 @@
     @endif
     @if ($pdf)
     body { background: #fff; padding: 0; }
+    .sheet { max-width: none; margin: 0; padding: 0; background: transparent; }
+    @endif
+    @if ($word)
+    {{-- Word (`Offers\DkpWord`): белый лист без своих полей — поля задаёт страница, Times New Roman у читающего Word. --}}
+    @page { size: 21cm 29.7cm; margin: {{ $margin }}; }
+    body { font-family: "Times New Roman", "Liberation Serif", serif; background: #fff; padding: 0; }
     .sheet { max-width: none; margin: 0; padding: 0; background: transparent; }
     @endif
     @media print { body { background: #fff; padding: 0; } .sheet { margin: 0; padding: 0; max-width: none; } .print { display: none; } @page { margin: {{ $margin }}; } }

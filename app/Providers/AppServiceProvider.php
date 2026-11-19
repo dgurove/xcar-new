@@ -181,7 +181,7 @@ class AppServiceProvider extends ServiceProvider
         Event::listen(PaymentRejected::class, ReturnOnReject::class);
         Event::listen([PaymentRecorded::class, InvoiceVoided::class], CloseLinksWhenSettled::class);
         Event::listen([InvoiceIssued::class, \App\Billing\Events\InvoiceShown::class, PaymentRecorded::class, PaymentVoided::class], KeepPayLink::class);
-        Event::listen([InvoiceIssued::class, \App\Billing\Events\InvoiceShown::class, InvoiceVoided::class], PassTurnOnInvoice::class);
+        Event::listen([InvoiceIssued::class, \App\Billing\Events\InvoiceShown::class, InvoiceVoided::class, \App\Billing\Events\InvoiceRecalled::class], PassTurnOnInvoice::class);
         Event::listen([InvoiceVoided::class, PaymentVoided::class], ReopenWhenVoided::class);
         Event::listen([PaymentRecorded::class, PaymentVoided::class, InvoiceVoided::class], CreditDealOnManual::class);
         Event::listen(Login::class, AttachGuestEnquiry::class);

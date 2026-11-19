@@ -68,6 +68,9 @@ class Deal extends Model implements HasMedia
     public function registerMediaCollections(): void
     {
         $this->addMediaCollection('signed_contract')->useDisk('private');
+        // Исправленный договор (19.11.2026, `Offers\ContractEdit`): файл, что приложил сотрудник (Word или PDF), и его PDF.
+        $this->addMediaCollection('dkp_edited')->useDisk('private')->singleFile();
+        $this->addMediaCollection('dkp_edited_pdf')->useDisk('private')->singleFile();
     }
 
     protected function casts(): array

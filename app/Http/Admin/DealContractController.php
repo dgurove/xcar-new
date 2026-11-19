@@ -3,10 +3,13 @@
 namespace App\Http\Admin;
 
 use App\Billing\PartyRules;
+use App\Offers\Actions\EditContract;
 use App\Offers\Actions\SaveDealContract;
+use App\Offers\ContractEdit;
 use App\Offers\Deal;
 use App\Offers\DealContract;
 use App\Offers\DkpDocument;
+use App\Offers\DkpWord;
 use App\Support\Money;
 use App\Support\Pdf;
 use Illuminate\Http\Request;
@@ -46,6 +49,24 @@ class DealContractController
         $show->invoice($deal, $invoice, $request->user());
 
         return back()->with('toast', \App\Billing\PayOffer::sent($invoice->fresh()));
+    }
+
+    /** «Отозвать» отправленный счёт (19.11.2026, `ShowToManager::recallInvoice`). */
+    public function recallInvoice(Request $request, Deal $deal, \App\Billing\Invoice $invoice, \App\Offers\Actions\ShowToManager $show)
+    {
+        abort_unless($invoice->deal_id === $deal->id, 404);
+        $show->recallInvoice($deal, $invoice, $request->user());
+
+        return back()->with('toast', 'Счёт отозван у менеджера');
+    }
+
+    /** «Отозвать» отправленный договор (19.11.2026, `ShowToManager::recallContract`). */
+    public function recallContract(Request $request, Deal $deal, \App\Offers\Actions\ShowToManager $show)
+    {
+        abort_unless($deal->hasContract(), 404);
+        $show->recallContract($deal, $request->user());
+
+        return back()->with('toast', 'Договор отозван у менеджера');
     }
 
     /**
@@ -180,18 +201,94 @@ class DealContractController
         return back()->with('toast', $deal->fresh()->hasSaleInvoice() ? 'Счёт сформирован' : 'Данные покупателя сохранены');
     }
 
-    public function show(Request $request, Deal $deal)
+    public function show(Request $request, Deal $deal, EditContract $edit)
     {
         abort_unless($deal->hasContract(), 404);
+        // «Исправить договор» → «Скачать Word» (`?edit=1`, 19.11.2026): номер договора выдаётся сейчас (`EditContract::word`), чтобы в
+        // исправленном файле он уже стоял. Предзагрузку (наведение мыши, `Sec-Purpose: prefetch`) номер не трогает.
+        if ($request->boolean('edit') && str_ends_with($request->path(), '.docx') && ! self::prefetch($request) && $request->user()->canEditDeals()
+            && EditContract::allows($deal)) {
+            $edit->word($deal, $request->user());
+            $deal = $deal->fresh();
+        }
 
-        return self::document($deal, $request->routeIs('*.pdf') || str_ends_with($request->path(), '.pdf'));
+        return self::file($deal, match (true) {
+            str_ends_with($request->path(), '.pdf') => 'pdf',
+            str_ends_with($request->path(), '.docx') => 'docx',
+            default => 'html',
+        });
+    }
+
+    /** Приложить исправленный договор (Word или PDF). */
+    public function edited(Request $request, Deal $deal, EditContract $edit)
+    {
+        abort_unless($request->user()->canEditDeals(), 404);
+        $file = $request->validate(['file' => ['required', 'file', 'max:20480']],
+            ['file.required' => 'Выберите исправленный договор', 'file.max' => 'Файл больше 20 МБ'])['file'];
+        $edit->attach($deal, $file, $request->user());
+
+        return back()->with('toast', 'Исправленный договор приложен');
+    }
+
+    /** «Вернуть сформированный»: исправленный убран, договор снова из данных сделки. */
+    public function unedit(Request $request, Deal $deal, EditContract $edit)
+    {
+        abort_unless($request->user()->canEditDeals(), 404);
+        $edit->revert($deal, $request->user());
+
+        return back()->with('toast', 'Договор снова сформирован из данных сделки');
+    }
+
+    /**
+     * Договор файлом — одна дверь CRM и кабинета менеджера (19.11.2026): `pdf`, `docx` (Word, `DkpWord`) или `html` — страница
+     * печати. Есть исправленный (`ContractEdit`) — отдаётся он: PDF — его PDF, Word — сам файл (приложили PDF — Word нет),
+     * страница — его PDF. Иначе — сформированный из данных сделки сейчас.
+     */
+    public static function file(Deal $deal, string $format, bool $attachment = false)
+    {
+        $name = preg_replace('/\.pdf$/', '', (new DkpDocument(DealContract::for($deal)))->fileName());
+        if (ContractEdit::has($deal)) {
+            $media = $format === 'docx' ? (ContractEdit::hasWord($deal) ? ContractEdit::original($deal) : null) : ContractEdit::pdf($deal);
+            abort_if($media === null, 404);
+            $ext = strtolower(pathinfo($media->file_name, PATHINFO_EXTENSION));
+
+            return self::download((string) stream_get_contents($media->stream()), $name.'.'.$ext, $media->mime_type ?: 'application/octet-stream', $attachment || $format === 'docx');
+        }
+
+        if ($format === 'docx') {
+            // LibreOffice не отработал (нет в окружении, завис) — словами, а не 500: PDF при этом скачивается как обычно.
+            try {
+                $bytes = DkpWord::docx($deal);
+            } catch (\RuntimeException $e) {
+                report($e);
+                abort(503, 'Word сейчас не собрать, скачайте PDF');
+            }
+
+            return self::download($bytes, $name.'.docx', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', true);
+        }
+
+        return match ($format) {
+            'pdf' => self::document($deal, true),
+            default => self::document($deal, false),
+        };
+    }
+
+    private static function prefetch(Request $request): bool
+    {
+        return str_contains(strtolower((string) ($request->header('Sec-Purpose') ?? $request->header('X-Sec-Purpose') ?? $request->header('Purpose'))), 'prefetch');
+    }
+
+    private static function download(string $bytes, string $name, string $mime, bool $attachment)
+    {
+        return response($bytes, 200, ['Content-Type' => $mime, 'Cache-Control' => 'private, no-store',
+            'Content-Disposition' => ($attachment ? 'attachment' : 'inline').'; filename="'.Str::ascii($name).'"; filename*=UTF-8\'\''.rawurlencode($name)]);
     }
 
     /**
      * Договор страницей или PDF — одна дверь для CRM и кабинета менеджера. Вид по шаблону владельца (19.10.2026):
      * физлицо физлицу или ДКП с актом от ПРАЙМ / Р.О.С. (`DealContract::form`), данные собирает `DkpDocument`.
      */
-    public static function document(Deal $deal, bool $pdf)
+    public static function document(Deal $deal, bool $pdf, bool $word = false)
     {
         $contract = DealContract::for($deal)->load(['seller', 'buyer.party', 'deal.offer.car', 'deal.buyer']);
         $doc = new DkpDocument($contract);
@@ -200,7 +297,8 @@ class DealContractController
             'owner' => 'deals.docs.dkp.owner', 'prime' => 'deals.docs.dkp.prime', default => 'deals.docs.dkp.sale'
         };
         if (! $pdf) {
-            return view($view, ['doc' => $doc]);
+            // Word (`Offers\DkpWord`) — та же разметка без печати, номеров страниц и знака «ОБРАЗЕЦ».
+            return view($view, ['doc' => $doc] + ($word ? ['word' => true] : []));
         }
         $name = $doc->fileName();
 

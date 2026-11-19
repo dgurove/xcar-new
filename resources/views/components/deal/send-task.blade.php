@@ -55,6 +55,10 @@
         {{ \Illuminate\Support\Str::ucfirst($name) }} у менеджера
         @if ($at)<x-slot:sub>{!! \App\Support\Ago::html($at, true, words: false) !!}</x-slot:sub>@endif
     </x-route.task-row>
+@elseif (! $invoice)
+    {{-- Договор (19.11.2026): все его действия — у строки договора в «Продаже» (`x-deal.contract-doc`: скачать Word или PDF,
+         «Отправить как есть», «Исправить…»); строка дела ведёт к ней, второй шторки с тем же договором нет. --}}
+    <x-route.task-row icon="file" urgent :href="'#dkp-row-'.$deal->id">Менеджер не видит {{ $name }}</x-route.task-row>
 @else
     <div class="contents" data-controller="sheet">
         <x-route.task-row icon="file" urgent :aria-controls="$sheet">
@@ -81,10 +85,6 @@
                 @elseif ($invoice)
                     <x-deal.doc-row :href="$href" :title="\App\Billing\PayOffer::invoiceName($invoice)" :date="\App\Support\Ago::day($invoice->issued_at)" name="schet.pdf" :download="$media">
                         <span>{{ $invoice->party?->title() }}</span><span class="nums whitespace-nowrap">{{ \App\Support\Money::rub($invoice->total) }}</span>
-                    </x-deal.doc-row>
-                @else
-                    <x-deal.doc-row :href="$href" :title="'Договор купли-продажи'" name="dkp.pdf" :file="$doc->fileName()">
-                        <span>{{ $contract->buyer?->party?->name }}</span>@if ($contract->price)<span class="nums whitespace-nowrap">{{ \App\Support\Money::rub($contract->price) }}</span>@endif
                     </x-deal.doc-row>
                 @endif
                 @if ($invoice && ! $invoice->isDocument())

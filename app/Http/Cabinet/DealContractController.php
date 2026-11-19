@@ -68,10 +68,17 @@ class DealContractController
         abort_unless($deal->hasContract(), 404);
         abort_if($deal->state === DealState::Cancelled, 404);
         // Менеджеру — только готовый договор: с прочерками вместо покупателя его не печатают (06.10.2026).
-        abort_unless(DealContract::for($deal)->isReady(), 404);
+        // Исправленный (`ContractEdit`) — его, даже если в данных сделки чего-то теперь не хватает.
+        $edited = \App\Offers\ContractEdit::has($deal);
+        abort_unless($edited || DealContract::for($deal)->isReady(), 404);
         // И только отправленный кнопкой в CRM (16.11.2026): до того у менеджера «Договор готовится». Сотрудник видит всегда.
-        abort_unless($request->user()?->isAdmin() || DealContract::for($deal)->shownToManager(), 404);
+        abort_unless($request->user()?->isAdmin() || ($edited ? DealContract::for($deal)->shown_at !== null : DealContract::for($deal)->shownToManager()), 404);
 
-        return Document::document($deal, str_ends_with($request->path(), '.pdf'));
+        // Word и PDF (19.11.2026, владелец: «спрашивалось, в docx скачать или в pdf») — одна дверь с CRM.
+        return Document::file($deal, match (true) {
+            str_ends_with($request->path(), '.pdf') => 'pdf',
+            str_ends_with($request->path(), '.docx') => 'docx',
+            default => 'html',
+        });
     }
 }

@@ -83,6 +83,12 @@ final class DealEventNotice extends Notice
         return new self($deal->offer, 'disclosed', 'Показали менеджеру', 'показал менеджеру ответ поставщика', null, 'deals', $by, path: self::dealPath($deal));
     }
 
+    /** Отправленный менеджеру счёт или договор отозвали (19.11.2026). */
+    public static function recalled(Deal $deal, string $what, User $by): self
+    {
+        return new self($deal->offer, 'recalled', $what.' отозван', 'отозвал у менеджера: '.mb_strtolower(mb_substr($what, 0, 1)).mb_substr($what, 1), null, 'deals', $by, path: self::dealPath($deal));
+    }
+
     /** Новое подтверждение менеджера. */
     public static function bidPlaced(Bid $bid, ?User $by): self
     {

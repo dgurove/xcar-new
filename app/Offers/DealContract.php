@@ -24,7 +24,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * тот же `seller` (сам из договора комиссии Совкомбанка — `FillCommissionOwner`), номер — `commissionNo`. НДС договора —
  * выбором в CRM (`vatRate`).
  */
-#[Fillable(['deal_id', 'seller_party_id', 'buyer_user_id', 'payer', 'price', 'city', 'signed_at', 'ready_at', 'issuer', 'number', 'year', 'commission_no', 'vat_rate', 'cash_part', 'supplier_price', 'supplier_purpose', 'supplier_requisites', 'shown_at', 'shown_by', 'code', 'numbered_on'])]
+#[Fillable(['deal_id', 'seller_party_id', 'buyer_user_id', 'payer', 'price', 'city', 'signed_at', 'ready_at', 'issuer', 'number', 'year', 'commission_no', 'vat_rate', 'cash_part', 'supplier_price', 'supplier_purpose', 'supplier_requisites', 'shown_at', 'shown_by', 'code', 'numbered_on', 'edited_at', 'edited_by', 'edited_base'])]
 class DealContract extends Model
 {
     use FastAttributes;
@@ -37,7 +37,7 @@ class DealContract extends Model
 
     protected function casts(): array
     {
-        return ['price' => 'int', 'signed_at' => 'date', 'ready_at' => 'datetime', 'issuer' => Seller::class, 'number' => 'int', 'year' => 'int', 'vat_rate' => 'int', 'supplier_price' => 'int', 'supplier_requisites' => 'array', 'shown_at' => 'datetime', 'numbered_on' => 'date', 'invoice_without_reg_at' => 'datetime', 'cash_part' => 'int'];
+        return ['price' => 'int', 'signed_at' => 'date', 'ready_at' => 'datetime', 'issuer' => Seller::class, 'number' => 'int', 'year' => 'int', 'vat_rate' => 'int', 'supplier_price' => 'int', 'supplier_requisites' => 'array', 'shown_at' => 'datetime', 'numbered_on' => 'date', 'invoice_without_reg_at' => 'datetime', 'cash_part' => 'int', 'edited_at' => 'datetime'];
     }
 
     /** Вид документа: физлицо физлицу (ДКП собственника) или ДКП с актом от нашего юрлица. */

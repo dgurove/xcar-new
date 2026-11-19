@@ -42,10 +42,12 @@
     @include('deals.docs.dkp.style')
 </head>
 <body>
-    @unless (($pdf ?? false) || request()->boolean('embed'))<div class="print"><button type="button" onclick="window.print()">Печать</button></div>@endunless
+    @unless (($pdf ?? false) || ($word ?? false) || request()->boolean('embed'))<div class="print"><button type="button" onclick="window.print()">Печать</button></div>@endunless
     @if ($pdf ?? false)<div class="pagenum"></div>@endif
     {{-- Не собран — сотруднику водяным знаком «ОБРАЗЕЦ»: такой договор не печатают. --}}
-    @include('deals.docs.dkp.draft')
+    @unless ($word ?? false)
+        @include('deals.docs.dkp.draft')
+    @endunless
     <article class="sheet">
         @if ($pdf ?? false)<div class="mask"></div>@endif
         <h1>Договор № {{ $doc->v($doc->number(), 35) }}</h1>
@@ -93,8 +95,12 @@
         <p>5.1. Договор вступает в силу с момента подписания уполномоченными представителями обеих сторон и действует до исполнения сторонами их обязательств.</p>
         <p>5.2. Договор составлен в четырёх экземплярах – по два экземпляра для каждой из сторон.</p>
 
-        <div class="sec">6. Юридические адреса и реквизиты сторон</div>
-        @include('deals.docs.dkp.prime-parties')
+        {{-- Заголовок и реквизиты — одной строкой таблицы: её dompdf не делит, и заголовок не остаётся один внизу страницы
+             (19.11.2026, владелец: «реквизиты и заголовок разрываются на разные страницы»). --}}
+        <table class="keep-block"><tr><td>
+            <div class="sec">6. Юридические адреса и реквизиты сторон</div>
+            @include('deals.docs.dkp.prime-parties')
+        </td></tr></table>
     </article>
 
     <div class="act"></div>
@@ -113,8 +119,12 @@
         <p>4. Стороны взаимных претензий не имеют.</p>
         <p>5. Настоящий Акт составлен в 4 (четырёх) экземплярах, обладающих одинаковой юридической силой, по 2 (два) для каждой из Сторон и является неотъемлемой частью Договора.</p>
 
-        <div class="sec">ПОДПИСИ СТОРОН</div>
-        @include('deals.docs.dkp.prime-parties', ['act' => true])
+        {{-- Заголовок и реквизиты — одной строкой таблицы: её dompdf не делит, и заголовок не остаётся один внизу страницы
+             (19.11.2026, владелец: «реквизиты и заголовок разрываются на разные страницы»). --}}
+        <table class="keep-block"><tr><td>
+            <div class="sec">ПОДПИСИ СТОРОН</div>
+            @include('deals.docs.dkp.prime-parties', ['act' => true])
+        </td></tr></table>
     </article>
 </body>
 </html>

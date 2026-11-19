@@ -17,7 +17,10 @@
     </a>
     @if ($download || isset($acts))
         <span class="flex shrink-0 items-center">
-            @if ($download)<a href="{{ $href }}" download class="btn btn-ghost btn-s px-1.5 text-ink-muted" aria-label="Скачать" title="Скачать" data-controller="file" data-action="file#share" data-file-name="{{ $file }}"><x-ui.icon name="download" class="size-5"/></a>@endif
+            {{-- Свой выбор скачивания (договор: Word или PDF, `x-deal.dkp-download`) — слотом `dl` вместо одной ссылки. --}}
+            @if ($download && isset($dl))
+                {{ $dl }}
+            @elseif ($download)<a href="{{ $href }}" download class="btn btn-ghost btn-s px-1.5 text-ink-muted" aria-label="Скачать" title="Скачать" data-controller="file" data-action="file#share" data-file-name="{{ $file }}"><x-ui.icon name="download" class="size-5"/></a>@endif
             {{ $acts ?? '' }}
         </span>
     @endif

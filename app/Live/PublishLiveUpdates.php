@@ -78,6 +78,7 @@ final class PublishLiveUpdates
             PaymentVoided::class => 'payment',
             InvoiceIssued::class => 'invoice',
             \App\Billing\Events\InvoiceShown::class => 'invoice',
+            \App\Billing\Events\InvoiceRecalled::class => 'invoice',
             InvoiceVoided::class => 'invoice',
         ];
     }
@@ -278,7 +279,7 @@ final class PublishLiveUpdates
     }
 
     /** Счёт выставлен или аннулирован: у менеджера появляется «К оплате» и его ход, в CRM — строка и шаг сделки. */
-    public function invoice(InvoiceIssued|InvoiceVoided|\App\Billing\Events\InvoiceShown $e): void
+    public function invoice(InvoiceIssued|InvoiceVoided|\App\Billing\Events\InvoiceShown|\App\Billing\Events\InvoiceRecalled $e): void
     {
         $this->invoiceChanged($e->invoice);
     }

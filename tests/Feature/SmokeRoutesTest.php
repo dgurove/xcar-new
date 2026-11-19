@@ -46,7 +46,7 @@ class SmokeRoutesTest extends TestCase
 {
     use RefreshDatabase;
 
-    private const SKIP = '~(pdf|photo/|/slip|/file|attachments|export|xlsx|/print|/image|dev/login|^admin|fallback|^media/|^hot/|^storage/'
+    private const SKIP = '~(pdf|docx|photo/|/slip|/file|attachments|export|xlsx|/print|/image|dev/login|^admin|fallback|^media/|^hot/|^storage/'
         .'|login/as|password/|telegram/open|^i/|unsubscribe|/typing|/live$|marked|/mark$|registry|/body$|^up$|/thumb|/scan/live|^P/|^p/|^pay/|^pickup/)~';
 
     /** Параметры, которые не модель: шаг окна действия, вид акта, номер сообщения. */

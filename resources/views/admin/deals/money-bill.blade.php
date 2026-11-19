@@ -34,6 +34,9 @@
         {{-- Менеджер видит счёт только после «Отправить» (16.11.2026): сотрудник сперва проверяет; кнопка — пилюлей справа (18.11.2026). --}}
         @if (! $i->isShownToManager())
             <x-slot:acts><x-deal.send-row :deal="$deal" :action="'/work/deals/'.$deal->id.'/invoices/'.$i->id.'/show'" pill/></x-slot:acts>
+        @elseif (\App\Offers\Actions\ShowToManager::canRecallInvoice($i))
+            {{-- Отправлен и не оплачен — «Отозвать» (19.11.2026): поправить и отправить снова. --}}
+            <x-slot:acts><x-deal.recall-row :deal="$deal" :action="'/work/deals/'.$deal->id.'/invoices/'.$i->id.'/recall'" :what="'счёт '.$i->label()"/></x-slot:acts>
         @endif
     </x-deal.doc-row>
     @if ($link && $link->isOpen())

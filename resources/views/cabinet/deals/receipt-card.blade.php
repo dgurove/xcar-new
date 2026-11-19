@@ -114,7 +114,7 @@
                             <div class="row sale-row"><span class="sale-row-label">Договор</span><span class="sale-row-value text-ink-muted">в обработке</span></div>
                         @else
                             @php $dkp = new \App\Offers\DkpDocument($contract); @endphp
-                            <x-ui.file :name="'Договор купли-продажи'.($dkp->number() ? ' № '.$dkp->number() : '')" mime="application/pdf" :href="'/deals/'.$deal->id.'/dkp.pdf'" download class="row"/>
+                            <x-deal.dkp-file :deal="$deal" :title="'Договор купли-продажи'.($dkp->number() ? ' № '.$dkp->number() : '')" class="row"/>
                         @endif
                     @endif
                     {{-- Подписанный — файлом с «Добавить лист»; пока его нет и это не шаг договора — тихой строкой «Приложить». --}}

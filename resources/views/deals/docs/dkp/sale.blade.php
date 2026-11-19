@@ -20,10 +20,12 @@
     @include('deals.docs.dkp.style')
 </head>
 <body>
-    @unless (($pdf ?? false) || request()->boolean('embed'))<div class="print"><button type="button" onclick="window.print()">Печать</button></div>@endunless
+    @unless (($pdf ?? false) || ($word ?? false) || request()->boolean('embed'))<div class="print"><button type="button" onclick="window.print()">Печать</button></div>@endunless
     @if ($pdf ?? false)<div class="pagenum"></div>@endif
     {{-- Не собран — сотруднику водяным знаком «ОБРАЗЕЦ»: такой договор не печатают. --}}
-    @include('deals.docs.dkp.draft')
+    @unless ($word ?? false)
+        @include('deals.docs.dkp.draft')
+    @endunless
     <article class="sheet">
         @if ($pdf ?? false)<div class="mask"></div>@endif
         <h1>Договор № {{ $doc->v($doc->number(), 19) }}</h1>
@@ -64,8 +66,12 @@
         <p>5.1. Настоящий Договор вступает в силу с момента подписания уполномоченными представителями обеих Сторон и действует до исполнения Сторонами их обязательств.</p>
         <p>5.2. Договор составлен в трех экземплярах, имеющих равную юридическую силу: по одному для каждой из Сторон и один для регистрационного подразделения ГИБДД.</p>
 
-        <div class="sec">6. Реквизиты и подписи сторон</div>
-        @include('deals.docs.dkp.parties')
+        {{-- Заголовок и реквизиты — одной строкой таблицы: её dompdf не делит, и заголовок не остаётся один внизу страницы
+             (19.11.2026, владелец: «реквизиты и заголовок разрываются на разные страницы»). --}}
+        <table class="keep-block"><tr><td>
+            <div class="sec">6. Реквизиты и подписи сторон</div>
+            @include('deals.docs.dkp.parties')
+        </td></tr></table>
     </article>
 
     <div class="act"></div>

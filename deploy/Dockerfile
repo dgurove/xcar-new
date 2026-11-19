@@ -23,6 +23,10 @@ RUN sed -i 's/^Components: main$/Components: main non-free/' /etc/apt/sources.li
     && apt-get update && apt-get install -y --no-install-recommends p7zip-full p7zip-rar poppler-utils python3 python3-pip && rm -rf /var/lib/apt/lists/*
 RUN --mount=type=cache,id=xcar-pip,target=/root/.cache/pip pip3 install --break-system-packages pillow==12.3.0 pillow-heif==1.7.0
 COPY deploy/bin/heic2jpg /usr/local/bin/heic2jpg
+# LibreOffice без интерфейса (19.11.2026, владелец: договор «не только PDF, но и docx, чтобы корректировать») — договор в Word и
+# исправленный Word в PDF (`Support\Soffice`): writer-nogui без Java и X11 (~125 МБ), liberation2 — шрифт с метриками Times.
+# Своим слоем: слои выше кэш не теряют. Профиль — свой на вызов во временной папке, домашняя папка не нужна.
+RUN apt-get update && apt-get install -y --no-install-recommends libreoffice-writer-nogui fonts-liberation2 && rm -rf /var/lib/apt/lists/*
 # ocr — «✨ Распознать» в «Из писем» (`DocumentText`): PaddleOCR PP-OCRv5 через RapidOCR на onnxruntime и модель
 # поворота страницы. rapidocr тянет полный opencv с libGL — ставим без зависимостей, opencv без экрана; 4.10, а не 5.0:
 # в 5.0 ускоритель KleidiCV на ARM ронял resize (SIGSEGV на маке, 01.10.2026) — версия та же, что у разработчика. Модели

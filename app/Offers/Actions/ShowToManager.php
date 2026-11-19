@@ -62,6 +62,78 @@ final class ShowToManager
         rescue(fn () => app(\App\Chats\Actions\PlatformMessage::class)(app(\App\Chats\Actions\OpenChat::class)($deal->offer, $deal->buyer, greet: false), $text), report: true);
     }
 
+    /** Отозвать можно отправленный и ещё не оплаченный: ни денег, ни заявленной менеджером оплаты. */
+    public static function canRecallInvoice(Invoice $invoice): bool
+    {
+        return $invoice->deal_id && $invoice->direction === 'issued' && $invoice->shown_at !== null && $invoice->state === InvoiceState::Issued
+            && $invoice->paidMoney() <= 0 && ! $invoice->claims()->exists();
+    }
+
+    /**
+     * «Отозвать» отправленный счёт (19.11.2026, владелец: «ОЧЕНЬ не хватает возможности отозвать счёт и договор, чтобы поправить и
+     * заново отправить»): менеджер его больше не видит («Счёт готовится»), открытая ссылка на оплату гаснет, на шаге оплаты ход
+     * снова наш (`InvoiceRecalled` → `PassTurnOnInvoice`). Номер и дата остаются: отправят снова — тот же счёт.
+     */
+    public function recallInvoice(Deal $deal, Invoice $invoice, User $by): Invoice
+    {
+        $done = DB::transaction(function () use ($deal, $invoice, $by) {
+            $invoice = Invoice::whereKey($invoice->id)->lockForUpdate()->firstOrFail();
+            if ($invoice->deal_id !== $deal->id || ! $invoice->shown_at) {
+                return null;
+            }
+            if (! self::canRecallInvoice($invoice)) {
+                throw ValidationException::withMessages(['show' => 'По счёту уже платили: отозвать нельзя']);
+            }
+            $invoice->update(['shown_at' => null, 'shown_by' => null]);
+            foreach ($invoice->payLinks()->get() as $link) {
+                app(\App\Billing\Acquiring\Actions\CancelPayLink::class)($link, $by);
+            }
+            $deal->offer->log(OfferEventType::Note, $by, ['text' => 'Счёт '.$invoice->label().' отозван у менеджера']);
+
+            return $invoice;
+        });
+        if ($done) {
+            \App\Billing\Events\InvoiceRecalled::dispatch($done->fresh(), $by);
+            $what = 'Счёт'.($done->number ? ' № '.$done->docNo() : '');
+            $deal->buyer?->notify(new \App\Notifications\DocRecalledNotice($deal, $what));
+            \App\Notifications\Notify::toStaff(\App\Notifications\DealEventNotice::recalled($deal->loadMissing('offer'), $what, $by), $by);
+        }
+
+        return $done ?? $invoice->fresh();
+    }
+
+    /** Отозвать можно отправленный и не подписанный: подписанный приложен — договор уже на бумаге. */
+    public static function canRecallContract(Deal $deal): bool
+    {
+        return DealContract::for($deal)->shown_at !== null && ! $deal->contract_signed_at && $deal->getMedia('signed_contract')->isEmpty();
+    }
+
+    /** «Отозвать» отправленный договор: менеджер видит «Договор готовится»; номер остаётся. */
+    public function recallContract(Deal $deal, User $by): DealContract
+    {
+        $done = DB::transaction(function () use ($deal, $by) {
+            $c = DealContract::whereKey(DealContract::for($deal)->id)->lockForUpdate()->firstOrFail();
+            if (! $c->shown_at) {
+                return null;
+            }
+            if (! self::canRecallContract($deal)) {
+                throw ValidationException::withMessages(['show' => 'Подписанный договор уже приложен: отозвать нельзя']);
+            }
+            $c->update(['shown_at' => null, 'shown_by' => null]);
+            $deal->offer->log(OfferEventType::Note, $by, ['text' => 'Договор'.($c->code ? ' № '.$c->code : '').' отозван у менеджера']);
+
+            return $c;
+        });
+        if ($done) {
+            $what = 'Договор'.($done->code ? ' № '.$done->code : '');
+            $deal->buyer?->notify(new \App\Notifications\DocRecalledNotice($deal, $what));
+            \App\Notifications\Notify::toStaff(\App\Notifications\DealEventNotice::recalled($deal->loadMissing('offer'), $what, $by), $by);
+            \App\Live\RefreshDeal::of($deal);
+        }
+
+        return $done ?? DealContract::for($deal)->fresh();
+    }
+
     public function contract(Deal $deal, User $by): DealContract
     {
         $contract = DealContract::for($deal);

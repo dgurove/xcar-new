@@ -10,6 +10,8 @@ return [
     // Короткие имена логистики (`log.`, `l.`, `go.` у хоста сайта) — 301 на неё (`RedirectLegacyPaths`); в `SITE_ADDRESSES`
     // прода они есть только ради сертификата.
     'logistics_aliases' => array_filter(explode(',', (string) env('LOGISTICS_ALIASES', 'log,l,go'))),
+    // LibreOffice без интерфейса (`Support\Soffice`): договор в Word и исправленный Word в PDF. В образе — `soffice`.
+    'soffice' => env('SOFFICE_BIN', 'soffice'),
 
     // ООО «ПРАЙМ» (`Seller::Prime`): счета сделок и гаража, страница «О компании» — по карточке предприятия.
     'company' => [
