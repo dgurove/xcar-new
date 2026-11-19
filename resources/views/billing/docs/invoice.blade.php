@@ -29,7 +29,8 @@
     $basis = match (true) {
         (bool) $invoice->vehicle => $invoice->vehicle->titleWithYear().($invoice->vehicle->vin ? ', VIN '.$invoice->vehicle->vin : '').($invoice->vehicle->ref ? ', '.$invoice->vehicle->ref : '').($invoice->vehicle->contract_no ? ', договор № '.$invoice->vehicle->contract_no : ''),
         $registry => $invoice->basisText(),
-        (bool) $invoice->deal => 'Сделка по предложению № '.$invoice->deal->offer?->number.($invoice->deal->offer ? ', '.$invoice->deal->offer->titleWithYear() : ''),
+        // Сделка — «Оплата ТС Exeed LX» (19.11.2026, владелец: без «Сделка по предложению № …» и года).
+        (bool) $invoice->deal?->offer => 'Оплата ТС '.$invoice->deal->offer->title(),
         default => null,
     };
     $nb = fn (?string $s) => str_replace(['№ ', 'VIN '], ['№&nbsp;', 'VIN&nbsp;'], e((string) $s));
@@ -47,6 +48,11 @@
         @font-face { font-family: "Onest"; font-weight: 700; src: url("file://{{ $fonts }}/Onest-SemiBold.ttf"); }
         @page { size: A4; margin: 14mm 14mm 14mm 18mm; }
         body { margin: 0; }
+        /* dompdf ставит строку Onest ниже середины ячейки (19.11.2026, владелец: «всё по вертикали ниже центра») — поднимаем
+           текст на 0,5 мм: сверху меньше, снизу больше на столько же. Браузер центрирует сам. */
+        .bank td { padding-top: .4mm !important; padding-bottom: 1.4mm !important; }
+        .items th { padding-top: .7mm !important; padding-bottom: 1.7mm !important; }
+        .items td { padding-top: 1.1mm !important; padding-bottom: 2.1mm !important; }
         @else
         @font-face { font-family: "Onest"; font-weight: 100 900; font-display: swap; src: url("/fonts/onest-var.woff2") format("woff2"); }
         body { margin: 0 auto; padding: 14mm 14mm 14mm 18mm; max-width: 210mm; box-sizing: border-box; background: #fff; }
