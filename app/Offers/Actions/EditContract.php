@@ -76,7 +76,7 @@ final class EditContract
             $deal->clearMediaCollection('dkp_edited_pdf');
         }
         $contract->update(['edited_at' => now(), 'edited_by' => $by->id, 'edited_base' => ContractEdit::fingerprint($deal->fresh())]);
-        $deal->offer->log(OfferEventType::Note, $by, ['text' => $name.' исправлен вручную']);
+        $deal->offer->log(OfferEventType::Note, $by, ['text' => $name.' заполнен вручную']);
         RefreshDeal::of($deal);
     }
 

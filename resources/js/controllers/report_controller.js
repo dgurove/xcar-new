@@ -105,8 +105,12 @@ export default class extends Controller {
         const row = document.createElement('div');
         row.className = 'file-row report-file is-uploading';
         // Значок как у готовой строки (`x-ui.file-icon`): расширение и под ним вес, без миниатюры.
-        const icon = Object.assign(document.createElement('span'), { className: 'file-icon file-icon-sized' });
         const ext = (file.name.split('.').pop() || '?').toLowerCase().replace('jpeg', 'jpg').slice(0, 4);
+        // Цвет по типу — тот же, что у `x-ui.file-icon` (Word синим, Excel зелёным, PDF красным).
+        const tone = ext === 'pdf' ? 'pdf' : ['xls', 'xlsx', 'csv', 'ods'].includes(ext) ? 'sheet'
+            : ['doc', 'docx', 'rtf', 'odt', 'txt'].includes(ext) ? 'doc' : ['zip', 'rar', '7z', 'gz', 'tar'].includes(ext) ? 'zip'
+            : ['jpg', 'png', 'webp', 'heic', 'heif', 'gif'].includes(ext) ? 'image' : null;
+        const icon = Object.assign(document.createElement('span'), { className: `file-icon file-icon-sized${tone ? ` file-icon-${tone}` : ''}` });
         icon.append(Object.assign(document.createElement('span'), { className: 'file-icon-ext', textContent: ext }),
             Object.assign(document.createElement('span'), { className: 'file-icon-size', textContent: weight(file.size) }));
         const name = Object.assign(document.createElement('span'), { className: 'file-name' });

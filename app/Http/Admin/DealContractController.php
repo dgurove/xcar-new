@@ -224,10 +224,10 @@ class DealContractController
     {
         abort_unless($request->user()->canEditDeals(), 404);
         $file = $request->validate(['file' => ['required', 'file', 'max:20480']],
-            ['file.required' => 'Выберите исправленный договор', 'file.max' => 'Файл больше 20 МБ'])['file'];
+            ['file.required' => 'Выберите заполненный договор', 'file.max' => 'Файл больше 20 МБ'])['file'];
         $edit->attach($deal, $file, $request->user());
 
-        return back()->with('toast', 'Исправленный договор приложен');
+        return back()->with('toast', 'Заполненный договор приложен');
     }
 
     /** «Вернуть сформированный»: исправленный убран, договор снова из данных сделки. */

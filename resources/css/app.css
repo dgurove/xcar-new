@@ -119,6 +119,9 @@
   --color-urgent-soft: #fff3e0;
   --color-closed: #808080;
   --color-closed-soft: #ececec;
+  /* Word — синим, как сам Word (19.11.2026, владелец: «docx иконка должна быть синей, а не зелёной, везде»); Excel — зелёным (`open`). */
+  --color-word: #1f63d6;
+  --color-word-soft: #e7effc;
   /* Красный — один токен на все хосты (16.11.2026, владелец: «приятный красный, как на iOS, везде; розово-красный бесит»): системный
      красный iOS, в тёмной теме — его тёмный вариант. Своих красных мимо токена нет. */
   --color-danger: #ff3b30;
@@ -283,6 +286,8 @@ html.kb-open { --home-gap: 0px; }
   --color-urgent-soft: #3a2504;
   --color-closed: #a3a3a3;
   --color-closed-soft: #3a3a3c;
+  --color-word: #6ea4ff;
+  --color-word-soft: #17263f;
   --color-danger: #ff453a;
   --color-danger-soft: #3b1311;
   --color-req-release: #d0587a;
@@ -2983,7 +2988,7 @@ html.kb-open { --home-gap: 0px; }
   .file-icon-sized .file-icon-ext { font-size: 9px; }
   .file-icon-pdf { @apply bg-danger-soft text-danger; }
   .file-icon-sheet { @apply bg-open-soft text-open; }
-  .file-icon-doc { @apply bg-accent-soft text-accent-text; }
+  .file-icon-doc { @apply bg-word-soft text-word; }
   .file-icon-zip { @apply bg-closed-soft text-closed; }
 
 }

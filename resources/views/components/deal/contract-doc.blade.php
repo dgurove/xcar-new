@@ -3,9 +3,10 @@
      «ЗАЧЕМ мы показываем договор, если он НЕ ГОТОВ»): чего не хватает — строками `x-deal.contract-gaps`.
      Вариант Б (19.11.2026, владелец выбрал из макетов):
      - договор — значком Word (он и есть исходник для правки), скачивание спрашивает формат: Word или PDF (`x-deal.dkp-download`);
-     - не отправлен — под строкой «Отправить как есть» и «Исправить…»: шторка «Исправить договор» — 1) скачать Word (с номером
-       договора, `dkp.docx?edit=1`), 2) приложить исправленный (`EditContract`);
-     - приложен исправленный — метка «исправлен», справа ↶ «Вернуть сформированный», под строкой одна «Отправить менеджеру»;
+     - не отправлен — под строкой «Заполнить…» главной и «Отправить как есть» второй (19.11.2026, владелец: «желательно, чтобы
+       заполняли, а не в сыром виде отправляли»): шторка «Заполнить договор» — 1) скачать Word (с номером договора,
+       `dkp.docx?edit=1`), 2) приложить заполненный (`EditContract`);
+     - приложен заполненный — метка «заполнен», справа ↶ «Вернуть сформированный», под строкой одна «Отправить менеджеру»;
        данные сделки поменялись после правки — красным (`ContractEdit::stale`);
      - отправлен — «у менеджера с …», под строкой «Отозвать» (`ShowToManager::recallContract`).
      `attach` — скрепкой справа приложить подписанный (18.11.2026). --}}
@@ -31,14 +32,14 @@
 @if ($edited || ! $contract->missing())
     <div class="contents" @if ($canEdit) data-controller="sheet" @endif>
         <x-deal.doc-row :href="$base.'/dkp.pdf'" :title="$title" :name="$isPdf ? 'dkp.pdf' : 'dkp.docx'" :bytes="$original?->size" :file="$name.'.pdf'" id="dkp-row-{{ $deal->id }}">
-            @if ($edited)<span class="tag">исправлен</span>@endif
+            @if ($edited)<span class="tag">заполнен</span>@endif
             @if ($sent)<span class="text-ink-muted">у менеджера с {{ \App\Support\Ago::day($contract->shown_at) }}</span>@else<span class="text-ink-muted">не отправлен</span>@endif
-            @if ($stale)<span class="text-danger">данные сделки менялись после правки</span>@endif
+            @if ($stale)<span class="text-danger">данные сделки менялись после заполнения</span>@endif
             <x-slot:dl><x-deal.dkp-download :deal="$deal" :base="$base" :name="$name" :word="! $isPdf"/></x-slot:dl>
             @if ($canAttach || ($edited && ! $sent && $staff))
                 <x-slot:acts>
                     @if ($edited && ! $sent && $staff)
-                        <form method="post" action="{{ $base }}/contract/edited" class="contents" data-turbo-confirm="Вернуть сформированный договор? Исправленный файл удалится">
+                        <form method="post" action="{{ $base }}/contract/edited" class="contents" data-turbo-confirm="Вернуть сформированный договор? Заполненный файл удалится">
                             @csrf @method('DELETE')
                             <button type="submit" class="btn btn-ghost btn-s px-1.5 text-ink-muted" title="Вернуть сформированный" aria-label="Вернуть сформированный"><x-ui.icon name="undo" class="size-5"/></button>
                         </form>
@@ -54,16 +55,17 @@
                 </x-slot:acts>
             @endif
         </x-deal.doc-row>
-        {{-- Не отправлен — выбор под строкой: как есть или через Word. Исправленный — одна «Отправить менеджеру». --}}
+        {{-- Не отправлен — выбор под строкой: главная «Заполнить…» (через Word), второй — как есть. Заполненный — одна лаймовая
+             «Отправить менеджеру». --}}
         @if (! $sent && $staff && $deal->buyer_id)
             <div class="send-under send-pair">
+                @if ($canEdit && ! $edited)
+                    <button type="button" class="btn btn-accent btn-s gap-2" data-action="sheet#open" aria-controls="{{ $sheet }}"><x-ui.icon name="edit" class="size-4"/>Заполнить…</button>
+                @endif
                 <form method="post" action="{{ $base }}/contract/show" class="contents">
                     @csrf
-                    <button type="submit" class="btn btn-accent btn-s gap-2"><x-ui.icon name="send" class="size-4"/>{{ $edited ? 'Отправить менеджеру' : 'Отправить как есть' }}</button>
+                    <button type="submit" @class(['btn btn-s gap-2', 'btn-quiet' => $canEdit && ! $edited, 'btn-accent' => ! ($canEdit && ! $edited)])><x-ui.icon name="send" class="size-4"/>{{ $edited || ! $canEdit ? 'Отправить менеджеру' : 'Отправить как есть' }}</button>
                 </form>
-                @if ($canEdit && ! $edited)
-                    <button type="button" class="btn btn-quiet btn-s gap-2" data-action="sheet#open" aria-controls="{{ $sheet }}"><x-ui.icon name="edit" class="size-4"/>Исправить…</button>
-                @endif
             </div>
         @endif
         {{-- Отправлен — «Отозвать» там же, где было «Отправить» (в строке тесно: скачать, скрепка, длинный номер). --}}
@@ -74,14 +76,14 @@
             </form>
         @endif
         @if ($canEdit)
-            <x-ui.sheet :id="$sheet" title="Исправить договор">
+            <x-ui.sheet :id="$sheet" title="Заполнить договор">
                 <form method="post" action="{{ $base }}/contract/edited" enctype="multipart/form-data" class="flex flex-col gap-4">
                     @csrf
                     <input type="hidden" name="_sheet" value="{{ $sheet }}">
                     <div class="edit-step">
                         <span class="edit-step-n">1</span>
                         <div class="min-w-0 flex-1">
-                            <div>Скачайте Word и поправьте</div>
+                            <div>Скачайте Word и заполните</div>
                             <a href="{{ $base }}/dkp.docx?edit=1" download class="chip mt-2 max-w-full" data-turbo="false" data-turbo-prefetch="false" data-controller="file" data-action="file#share" data-file-name="{{ $name }}.docx">
                                 <x-ui.icon name="download" class="size-4 shrink-0"/><span class="truncate">{{ $name }}.docx</span>
                             </a>
@@ -90,7 +92,7 @@
                     <div class="edit-step">
                         <span class="edit-step-n">2</span>
                         <div class="min-w-0 flex-1">
-                            <div>Приложите исправленный</div>
+                            <div>Приложите заполненный</div>
                             {{-- Вид поля, как `x-ui.file-field` (системного «Choose File» нет), со своим id: на странице полей файла много. --}}
                             <div class="field mt-2 @error('file') field-invalid @enderror" data-controller="file-name">
                                 <label for="{{ $sheet }}-file" class="field-input flex cursor-pointer items-center gap-2">
