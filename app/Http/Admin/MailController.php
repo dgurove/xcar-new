@@ -1009,7 +1009,15 @@ class MailController
                     $data['invoice'] = $fixed->id;
                 }
 
-                return $composer->create($account, $data, $parent, $request->user(), $thread);
+                $message = $composer->create($account, $data, $parent, $request->user(), $thread);
+                // Ветка нового письма — машине той же транзакцией (19.11.2026): задача отправки встаёт в очередь внутри
+                // `create`, и раньше воркер успевал отправить письмо до привязки ветки — шаг письмо не засчитывал
+                // (`MarkSupplierLetter` ищет машину по ветке).
+                if ($this->scope === Scope::Offers && ! empty($data['offer']) && $message->thread && ! $message->thread->offer_id) {
+                    $message->thread->update(['offer_id' => $data['offer']]);
+                }
+
+                return $message;
             });
         } catch (ValidationException $e) {
             if ($retry) {
@@ -1026,8 +1034,10 @@ class MailController
             // Документ месяца — с письмом, которым ушёл: история карточки «Отправлен письмом на …».
             $fixed->update(['sent_message_id' => $message->id]);
         }
-        if ($this->scope === Scope::Offers && ! empty($data['offer']) && $message->thread && ! $message->thread->offer_id) {
-            $message->thread->update(['offer_id' => $data['offer']]);
+        // Письмо по шаблону шага, а сделка ещё не на этом шаге (Т-Страхование: «готовность к покупке» до «Беру в работу») —
+        // в историю тем же «письмом поставщику» с шаблоном: войдёт на шаг — засчитается (`MarkSupplierLetter::already`).
+        if ($this->scope === Scope::Offers && ! empty($data['offer']) && ctype_digit((string) $request->input('template'))) {
+            \App\Offers\Listeners\MarkSupplierLetter::early($message, (int) $data['offer'], (int) $request->input('template'));
         }
         if ($this->scope === Scope::Park && ! empty($data['vehicle']) && $message->thread && ! $message->thread->vehicle_id) {
             $message->thread->update(['vehicle_id' => $data['vehicle']]);

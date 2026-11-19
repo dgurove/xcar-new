@@ -126,6 +126,8 @@ final class EnterStage
             $noInvoice || $carried => null,
             default => $to->deadlineFor($offer, $now),
         };
+        // Позиция до входа — её письмо шага может засчитаться и после входа (`MarkSupplierLetter::already`).
+        $before = $position;
         $position = Position::updateOrCreate(['offer_id' => $offer->id, 'track' => $track->value], [
             'stage_id' => $to->id,
             'waits_for' => $waits,
@@ -138,9 +140,9 @@ final class EnterStage
             'payload' => $payload ?: null,
         ]);
         $offer->unsetRelation('positions');
-        // Письмо этого шага уже ушло на двойнике другой ветки (гараж сменили, `MarkSupplierLetter::carried`, 13.11.2026) —
-        // засчитывается: ход поставщику, срок от того письма.
-        if ($awaitsLetter && ($sent = MarkSupplierLetter::carried($offer, $to))) {
+        // Письмо этого шага уже ушло — при прежнем входе на этап, на двойнике другой ветки или раньше шага
+        // (`MarkSupplierLetter::already`, 19.11.2026) — засчитывается: ход поставщику, срок от того письма.
+        if ($awaitsLetter && ($sent = MarkSupplierLetter::already($offer, $to, $before))) {
             $at = $sent->sent_at ?? $sent->date_at ?? $now;
             $position->update(['waits_for' => null, 'deadline_at' => $to->deadlineFor($offer, $at->copy()),
                 'payload' => [...($position->payload ?? []), 'letter_id' => $sent->id, 'letter_at' => $at->toIso8601String()]]);

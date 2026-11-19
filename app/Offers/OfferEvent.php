@@ -314,6 +314,19 @@ class OfferEvent extends Model
      * Строка истории гаража (06.10.2026): этапы подготовки и продажи, расходы, счёт и выплата — то, что раньше жило
      * только в пути машины, теперь и в «Истории» предложения.
      */
+    /**
+     * Разговор с поставщиком начинался заново после события `$afterId` (19.11.2026, одно правило для `Give::agreedBefore` и
+     * `MarkSupplierLetter::already`): отказ поставщика, переоценка, машина уходила из продажи и сделки (состояние не
+     * «Продажа» и не «Сделка»), а с `replies` — и ответ поставщика.
+     */
+    public static function supplierTalkBroken(int $offerId, int $afterId, bool $replies = false): bool
+    {
+        return self::where('offer_id', $offerId)->where('id', '>', $afterId)
+            ->where(fn ($q) => $q->whereIn('type', array_filter([OfferEventType::SupplierDeclined->value, OfferEventType::Reprice->value, $replies ? OfferEventType::InsurerReplied->value : null]))
+                ->orWhere(fn ($q) => $q->where('type', OfferEventType::StateChanged->value)->whereNotIn('payload->to', [OfferState::Open->value, OfferState::Sold->value])))
+            ->exists();
+    }
+
     private static function garageText(array $p): string
     {
         $sum = fn (string $key) => isset($p[$key]) ? Money::exact((float) $p[$key]) : '';

@@ -35,9 +35,17 @@ final class ConsentGivenNotice extends Notice
         return 'Можно писать поставщику';
     }
 
+    /**
+     * Сразу окно письма с черновиком шага (19.11.2026, Андрей по AUT-26-369145: «взял в работу — даже не предложило написать
+     * письмо»), пока письмо не ушло; ушло или шаг без письма — сделка.
+     */
     public function href(): string
     {
-        return '/work/deals/'.$this->deal->id;
+        $offer = $this->deal->offer;
+        $stage = $offer?->stage();
+
+        return $stage?->isLetterStep() && $offer->position()?->letterStatus() === 'unsent' && ($url = $offer->vendorLetterUrl($stage))
+            ? $url : '/work/deals/'.$this->deal->id;
     }
 
     public function offerNumber(): ?int
@@ -67,6 +75,6 @@ final class ConsentGivenNotice extends Notice
 
     public function toTelegram(): ?array
     {
-        return ['title' => $this->title(), 'lines' => [$this->text()], 'button' => 'Открыть сделку'];
+        return ['title' => $this->title(), 'lines' => [$this->text()], 'button' => str_starts_with($this->href(), '/work/mail') ? 'Написать поставщику' : 'Открыть сделку'];
     }
 }

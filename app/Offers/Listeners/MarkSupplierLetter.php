@@ -47,7 +47,7 @@ final class MarkSupplierLetter
         // «Да, актуально», наше письмо при `replied` не засчитывалось).
         if ($position->letterStatus() === 'replied') {
             if ($position->replyHandled($e->message)) {
-                $position->offer->log(OfferEventType::SupplierLetter, $e->message->author, ['letter' => $e->message->id]);
+                $position->offer->log(OfferEventType::SupplierLetter, $e->message->author, ['letter' => $e->message->id, 'template_id' => $position->stage->template_id]);
             }
 
             return;
@@ -71,7 +71,7 @@ final class MarkSupplierLetter
             'overdue_at' => null,
             'payload' => [...$payload, 'letter_id' => $message->id, 'letter_at' => $at->toIso8601String()],
         ]);
-        $offer->log(OfferEventType::SupplierLetter, $message->author, ['letter' => $message->id]);
+        $offer->log(OfferEventType::SupplierLetter, $message->author, ['letter' => $message->id, 'template_id' => $position->stage->template_id]);
         // Шаг на открытой странице — сразу «Письмо ушло» (15.11.2026, начальник не был уверен, что ушло).
         RefreshDeal::of($offer->deal);
         // Письмо «перевыставить счёт» ушло (`TakeParallel`) — дальше у шага снова обычный шаблон.
@@ -81,42 +81,68 @@ final class MarkSupplierLetter
     }
 
     /**
-     * Письмо этого шага уже ушло на его двойнике другой ветки (13.11.2026, Сергей Николаев: «подтверждаем актуальность» ушло
-     * на «Подтверждение покупки, в гараж», потом гараж сменили на «платит менеджер» — сделка через «Согласие менеджера»
-     * встала на обычное «Подтверждение покупки», и шаг снова ждал нашего письма). Назад по истории: только согласие
-     * менеджера между ними, ответа поставщика после письма не было, тот же шаблон — то письмо и засчитывается.
+     * Письмо этого шага уже ушло (19.11.2026, владелец по AUT-26-1109653: «письмо ушло 6 часов назад, а шаг снова просит —
+     * постоянно эта проблема, переделать по уму»): отметка «ушло» жила в позиции и стиралась любым новым входом на этап —
+     * «Отдать» другому менеджеру, смена ветки гаража, «Назад» и снова вперёд. Теперь письмо — факт машины: при входе на этап с
+     * письмом ищем последнее наше письмо поставщику того же шаблона (`supplier_letter` в истории; шаблон — в событии, у старых
+     * — по этапу, на котором засчитали) и засчитываем, если с тех пор разговор с поставщиком не начинался заново: не было его
+     * ответа, отказа, переоценки, ухода машины из продажи (`OfferEvent::supplierTalkBroken`, то же правило, что у
+     * `Give::agreedBefore`). Письмо не ушло (сбой, удалено) — не засчитывается.
      */
-    public static function carried(Offer $offer, Stage $to): ?Message
+    public static function already(Offer $offer, Stage $to, ?Position $before = null): ?Message
     {
         if (! $to->template_id) {
             return null;
         }
-        $events = OfferEvent::where('offer_id', $offer->id)
-            ->whereIn('type', [OfferEventType::StageEntered->value, OfferEventType::SupplierLetter->value, OfferEventType::InsurerReplied->value])
-            ->orderByDesc('id')->limit(12)->get();
-        $letter = null;
-        foreach ($events as $e) {
-            if ($e->type === OfferEventType::InsurerReplied) {
-                return null;
+        // Письмо с реквизитами — про покупателя этой сделки: другой сделке оно не годится, а «перевыставить счёт» (`reissue_at`)
+        // пишется заново. Письмо о покупке — про машину, переходит и к другому менеджеру.
+        $deal = $offer->deal()->first();
+        if ($to->isRequisitesStep() && (! $deal || $deal->reissue_at)) {
+            return null;
+        }
+        $since = $to->isRequisitesStep() ? $deal->created_at : null;
+        $fits = fn (?Message $m) => $m && (! $since || ($m->sent_at ?? $m->date_at ?? now())->gte($since)) ? $m : null;
+        // Позиция до входа уже знала письмо этого шаблона (повторный вход на тот же этап; у старых сделок события письма нет).
+        if ($before && ($id = $before->payload['letter_id'] ?? null) && $before->stage?->template_id === $to->template_id
+            && ($at = $before->payload['letter_at'] ?? null)) {
+            $after = (int) OfferEvent::where('offer_id', $offer->id)->where('created_at', '<', $at)->max('id');
+            $message = OfferEvent::supplierTalkBroken($offer->id, $after, replies: true) ? null
+                : Message::whereKey($id)->where('direction', Direction::Out->value)->first();
+            if ($message = $fits($message)) {
+                return $message;
             }
-            if ($e->type === OfferEventType::SupplierLetter) {
-                $letter ??= $e->payload['letter'] ?? null;
-
-                continue;
-            }
-            $stage = Stage::with('exits')->find($e->payload['to_id'] ?? 0);
-            if (! $stage) {
-                return null;
-            }
-            if ($stage->asksConsent()) {
-                continue;
-            }
-
-            return $stage->id !== $to->id && $stage->template_id === $to->template_id && $letter
-                ? Message::whereKey($letter)->where('direction', Direction::Out->value)->first() : null;
+        }
+        $event = OfferEvent::where('offer_id', $offer->id)->where('type', OfferEventType::SupplierLetter->value)->latest('id')->first();
+        if (! $event || OfferEvent::supplierTalkBroken($offer->id, $event->id, replies: true)) {
+            return null;
+        }
+        $entered = $event->payload['template_id'] ?? null ? null : OfferEvent::where('offer_id', $offer->id)->where('type', OfferEventType::StageEntered->value)
+            ->where('id', '<', $event->id)->latest('id')->first();
+        $template = $event->payload['template_id'] ?? Stage::whereKey($entered?->payload['to_id'] ?? 0)->value('template_id');
+        if ((int) $template !== (int) $to->template_id) {
+            return null;
         }
 
-        return null;
+        return $fits(Message::whereKey($event->payload['letter'] ?? 0)->where('direction', Direction::Out->value)
+            ->where(fn ($q) => $q->whereNull('send_state')->orWhere('send_state', '!=', 'failed'))->first());
+    }
+
+    /**
+     * Письмо по шаблону шага ушло раньше шага (19.11.2026: у Т-Страхования «готовность к покупке» пишут и до «Беру в работу»):
+     * сделка стоит не на этапе с письмом — `sent` его не засчитывает, поэтому событие пишется здесь, с шаблоном; войдёт на
+     * шаг — `already` его найдёт. Только шаблон, что стоит на этапе маршрута этой машины.
+     */
+    public static function early(Message $message, int $offerId, int $templateId): void
+    {
+        $offer = Offer::find($offerId);
+        $position = $offer?->position(Track::Sale);
+        if (! $offer?->deal()->exists() || ! $position || $position->stage->isLetterStep() || ! empty($message->requests)) {
+            return;
+        }
+        if (! Stage::where('workflow_id', $position->stage->workflow_id)->where('template_id', $templateId)->exists()) {
+            return;
+        }
+        $offer->log(OfferEventType::SupplierLetter, $message->author, ['letter' => $message->id, 'template_id' => $templateId, 'early' => true]);
     }
 
     /** Не ушло: шаг красным; уведомление — один раз на письмо («Повторить» с тем же сбоем не звенит снова). */

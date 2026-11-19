@@ -57,6 +57,7 @@ use App\Media\Console\TuneWatermarks;
 use App\Media\Console\UnmarkPhotos;
 use App\Offers\Console\AutoDraftsCommand;
 use App\Offers\Console\BindingFromDocsCommand;
+use App\Offers\Console\LettersRecheckCommand;
 use App\Offers\Console\ReviveClosedCommand;
 use App\Offers\Console\SellFromStatementCommand;
 use App\Offers\Console\NoPayoutsCommand;
@@ -140,6 +141,7 @@ return Application::configure(basePath: dirname(__DIR__))
         CommissionOwnersCommand::class,
         BindingFromDocsCommand::class,
         ReviveClosedCommand::class,
+        LettersRecheckCommand::class,
         SellFromStatementCommand::class,
         NoPayoutsCommand::class,
         PruneEmptyDrafts::class,

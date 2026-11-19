@@ -389,10 +389,7 @@ final class Give
         if (! $previous || $previous->scheme !== $deal->scheme || (int) $previous->cost !== (int) $deal->cost || $previous->ownerPrice() !== $deal->ownerPrice()) {
             return $offer;
         }
-        $broken = OfferEvent::where('offer_id', $offer->id)->where('id', '>', $agreed->id)
-            ->where(fn ($q) => $q->whereIn('type', [OfferEventType::SupplierDeclined, OfferEventType::Reprice])
-                ->orWhere(fn ($q) => $q->where('type', OfferEventType::StateChanged)->whereNotIn('payload->to', [OfferState::Open->value, OfferState::Sold->value])))
-            ->exists();
+        $broken = OfferEvent::supplierTalkBroken($offer->id, $agreed->id);
 
         return $broken ? $offer : ($this->enter)($offer, $exit->to, $by, ['label' => 'Поставщик согласовал '.$agreed->created_at->format('d.m')], $exit);
     }

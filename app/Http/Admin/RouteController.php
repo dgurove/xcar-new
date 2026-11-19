@@ -139,6 +139,15 @@ class RouteController
             return $offer;
         });
         if ($request->input('for') === 'manager' || $request->boolean('then_take')) {
+            // «Беру в работу» за менеджера, и сделка встала на письмо поставщику (Т-Страхование: «готовность к покупке»
+            // после согласия) — тот же вопрос с черновиком, что после «Принять» (19.11.2026, Андрей по AUT-26-369145: «даже
+            // не предложило написать письмо»).
+            $fresh = $offer->fresh();
+            $now = $fresh->stage();
+            if ($now?->isLetterStep() && $fresh->position()?->letterStatus() === 'unsent' && ($url = $fresh->vendorLetterUrl($now))) {
+                LetterPrompt::ask($request->user(), $offer, $url.'&then=close');
+            }
+
             return back(fallback: "/offers/{$offer->number}")->with('toast', 'За менеджера: «'.($request->boolean('then_take') ? 'Беру в работу' : $exit->label).'»')
                 ->with('toast-undo', (bool) StepBack::undoable($offer, $exit->from->workflow->track));
         }

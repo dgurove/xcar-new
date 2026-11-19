@@ -3,6 +3,8 @@
 @if ($parent)<input type="hidden" name="parent" value="{{ $parent->id }}">@endif
 @if ($thread)<input type="hidden" name="thread" value="{{ $thread->id }}">@endif
 @if ($offer)<input type="hidden" name="offer" value="{{ $offer->id }}">@endif
+{{-- Шаблон, по которому писали: письмо шага, ушедшее раньше шага, засчитается при входе на него (`MarkSupplierLetter::early`). --}}
+@if ($offer && ctype_digit((string) request()->query('template')))<input type="hidden" name="template" value="{{ request()->query('template') }}">@endif
 @if ($vehicle ?? null)<input type="hidden" name="vehicle" value="{{ $vehicle->id }}">@endif
 @if ($invoice ?? null)<input type="hidden" name="invoice" value="{{ $invoice->id }}">@endif
 @if ($report ?? null)<input type="hidden" name="report" value="{{ $report }}">@endif
