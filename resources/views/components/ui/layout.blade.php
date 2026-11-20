@@ -71,6 +71,8 @@
         }
     </script>
     @endif
+    {{-- Во фрейме шторки сделки XCAR Chat — без шапки и таб-бара (`html.is-embedded`), до первой отрисовки. --}}
+    <script>if (window.top !== window.self) document.documentElement.classList.add('is-embedded');</script>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body data-controller="{{ trim('pwa '.$attributes->get('data-controller')) }}" data-nav-tab="{{ \App\Support\Nav::currentTab(auth()->user()) }}" {{ $attributes->except('data-controller')->merge(['class' => 'antialiased surface-'.$surface->value.(request()->attributes->get('chat-page') ? ' chat-open' : '')]) }}>

@@ -18,6 +18,7 @@
             Surface::Logistics => ['/transports'],
             Surface::Park => ['/requests', '/'],
             Surface::Crm => ['/offers'],
+            Surface::Chat => ['/chats'],
             default => ['/offers', '/deals'],
         };
         [$head, $lead] = match (true) {

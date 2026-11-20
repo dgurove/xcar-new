@@ -37,6 +37,10 @@ class PwaController
             Surface::Partner => ['Предложения для XCAR', [
                 ['Предложения', '/offers', 'cat-car'],
             ]],
+            // XCAR Chat (20.11.2026): чаты сайта и CRM отдельным приложением.
+            Surface::Chat => ['Чаты XCAR', [
+                ['Чаты', \App\Chats\Chat::ROOT, 'chat'],
+            ]],
         };
 
         // Иконка — чёрный квадрат во весь холст: стекло на iOS 26 и маску на Android кладёт система,

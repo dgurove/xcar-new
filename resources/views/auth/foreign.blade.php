@@ -5,6 +5,7 @@
         \App\Support\Surface::Park => 'парковка',
         \App\Support\Surface::Logistics => 'логистика',
         \App\Support\Surface::Partner => 'кабинет поставщиков',
+        \App\Support\Surface::Chat => 'чат',
         default => 'администрация',
     };
 @endphp

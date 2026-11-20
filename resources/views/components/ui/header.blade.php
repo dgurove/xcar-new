@@ -20,7 +20,8 @@
     // Тревога «нет покупателя» — ведущим логистику в CRM и логистике, логисту в логистике (`Offers\Binding::alarmsFor`).
     $alarm = \App\Offers\Binding::alarmsFor($user, $surface);
     // Партнёру (поставщик, 07.11.2026) — ни поиска по системе, ни уведомлений: его список ищет лупой сам.
-    $tools = $user && $surface !== \App\Support\Surface::Partner;
+    // В XCAR Chat (20.11.2026) — тоже: в нём только чаты, искать по системе и читать ленту — в своём приложении.
+    $tools = $user && $surface !== \App\Support\Surface::Partner && $surface !== \App\Support\Surface::Chat;
     // Партнёру шапки нет вовсе (08.11.2026, владелец: «шапка и лого тут не нужны»): у вошедшего остаётся полоса под вырез
     // экрана (`--safe-top`, цвет строки состояния), раздел, профиль, тема и выход — в ряду заголовка (`partner.me`).
     $bare = $user && $surface === \App\Support\Surface::Partner;

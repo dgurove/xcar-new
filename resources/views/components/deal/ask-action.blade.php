@@ -53,6 +53,9 @@
                 <x-deal.remind :deal="$deal" :ask="$ask->requirement" :back="$back"/>
             </div>
         @endif
+    @elseif (\App\Support\Surface::current() === \App\Support\Surface::Chat)
+        {{-- В XCAR Chat шаг сделки — шторкой поверх чата (`x-chat.deal-sheet`). --}}
+        <a href="{{ \App\Chats\Chat::carHref($deal->offer, auth()->user(), $ask->href()) }}" @class(['btn btn-accent', 'btn-s' => in_array($size, ['s', 'sm'], true), 'btn-block' => $variant !== 'row']) {!! \App\Chats\Chat::sheetAttrs($deal->offer) !!}>{{ $ask->link }}</a>
     @else
         <x-ui.button :href="$ask->href()" :size="$size" :block="$variant !== 'row'">{{ $ask->link }}</x-ui.button>
     @endif

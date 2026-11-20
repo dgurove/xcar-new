@@ -97,6 +97,11 @@ final class Nav
             return $user ? [self::item('Предложения', '/offers')] : [];
         }
 
+        // XCAR Chat (20.11.2026): только чаты и профиль; что откуда, решает человек, а не хост (`Chat::staffView`).
+        if ($surface === Surface::Chat) {
+            return $user ? [self::item('Чаты', Chat::ROOT, icon: 'chats') + ['own' => true]] : [];
+        }
+
         // Модератор: черновики, сделки и гараж вкладками «Предложений» (17.11.2026 — вся работа со сделками), почта по галке, чаты
         // с менеджерами и профиль; оплаты и остальное CRM — админу. Значки — как у админа.
         if ($surface === Surface::Crm && ! $user?->canManageCrm()) {
@@ -243,6 +248,10 @@ final class Nav
     {
         $surface ??= Surface::current();
 
+        // Из XCAR Chat переходов нет: установленное приложение другое не открывает, сделка — шторкой поверх чата.
+        if ($surface === Surface::Chat) {
+            return [];
+        }
         // С CRM и парковки — переходы на соседние приложения, только открытые человеку (ролей бывает несколько).
         if ($surface !== Surface::Site) {
             return self::switchers($user, $surface, fn ($label, $url, $icon) => self::item($label, $url));
@@ -305,6 +314,11 @@ final class Nav
                 // Шаблоны писем парковки — свои, на парковке (02.11.2026: управляющий правит готовые ответы сам).
                 $user->canManagePark() ? self::link('Шаблоны', '/templates', icon: 'link') : null,
             ])), 'Переходы' => self::switchers($user, $surface, fn ($label, $url, $icon) => self::link($label, $url, icon: $icon))]);
+        }
+
+        // Чату — профиль и уведомления (там темы и каналы), переходов нет: из установленного приложения в другое не уйти.
+        if ($surface === Surface::Chat) {
+            return ['' => [self::link('Профиль', '/account', exact: true), self::link('Уведомления', '/account/notifications', icon: 'bell')]];
         }
 
         // Партнёру — только профиль: ни уведомлений, ни переходов.
@@ -586,6 +600,9 @@ final class Nav
                         : 0),
                 ], 'fresh' => []];
             }
+            if ($surface === Surface::Chat) {
+                return ['totals' => [], 'fresh' => []];
+            }
             if ($surface === Surface::Partner) {
                 return ['totals' => ['/offers' => PartnerOffers::for($user)->notEmptyDraft()->count()], 'fresh' => []];
             }
@@ -681,6 +698,10 @@ final class Nav
         // Партнёру бейджей нет: уведомлений у него нет, новое — само число таба.
         if ($surface === Surface::Partner) {
             return [];
+        }
+        // Чату — только непрочитанное в чатах: сотруднику — и площадки, как в CRM.
+        if ($surface === Surface::Chat) {
+            return array_filter([Chat::ROOT => $user->unreadChats(platform: Chat::staffView($user))]);
         }
         $badges = ['/account/notifications' => $user->unreadCount()];
 

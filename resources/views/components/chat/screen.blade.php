@@ -8,7 +8,9 @@
     $carOpen = $offer && ($readonly || $offer->isVisibleTo($user));
     $price = $carOpen ? \App\Offers\PriceView::for($offer, $user) : null;
     $seen = $status === false ? $other?->seenLabel() : $status;
-    $crm = \App\Support\Surface::current() === \App\Support\Surface::Crm;
+    // Вид сотрудника — в CRM и у сотрудника в XCAR Chat (`Chat::staffView`); карточка человека и меню — только в CRM.
+    $crm = \App\Chats\Chat::staffView($user);
+    $inCrm = \App\Support\Surface::inCrm();
     // Экран чата — экран приложения без шапки и таб-бара на телефоне: `body.chat-open` (x-ui.layout).
     request()->attributes->set('chat-page', true);
 @endphp
@@ -25,13 +27,13 @@
             </div>
         @if ($link)</a>@elseif ($sheet)</button>@else</div>@endif
         @if ($readonly && $chat?->manager)
-            @if ($crm)<a href="/settings/users/{{ $chat->manager_id }}?chat={{ $chat->id }}" class="chip person shrink-0"><x-ui.avatar :user="$chat->manager" :size="20"/>{{ $chat->manager->shortName() }}</a>@else<x-ui.person :user="$chat->manager" class="shrink-0"/>@endif
+            @if ($inCrm)<a href="/settings/users/{{ $chat->manager_id }}?chat={{ $chat->id }}" class="chip person shrink-0"><x-ui.avatar :user="$chat->manager" :size="20"/>{{ $chat->manager->shortName() }}</a>@else<x-ui.person :user="$chat->manager" class="shrink-0"/>@endif
         @endif
         @if ($crm && ! $readonly && $chat?->exists && $user?->isAdmin())
             {{-- Спам и реклама — удалить чат целиком (06.10.2026). --}}
             <x-ui.more :id="'chat-more-'.$chat->id" class="shrink-0">
                 <div class="menu-group">
-                    <form method="post" action="/work/chats/{{ $chat->id }}" data-turbo-frame="_top" data-turbo-confirm="Удалить чат целиком? Вернуть его нельзя" data-turbo-confirm-label="Удалить">@csrf @method('delete')<button class="menu-item w-full text-danger" role="menuitem">Удалить чат</button></form>
+                    <form method="post" action="{{ \App\Chats\Chat::base() }}/{{ $chat->id }}" data-turbo-frame="_top" data-turbo-confirm="Удалить чат целиком? Вернуть его нельзя" data-turbo-confirm-label="Удалить">@csrf @method('delete')<button class="menu-item w-full text-danger" role="menuitem">Удалить чат</button></form>
                 
                 </div>
             </x-ui.more>
@@ -39,12 +41,13 @@
         @if ($sheet)<x-chat.contact :user="$other" :name="$name" :status="$seen" :chats="$chats" :me="$user"/>@endif
     </div>
     @if ($offer)
-        @if ($carOpen)<a href="/offers/{{ $offer->number }}" class="chat-car" target="_top">@else<div class="chat-car">@endif
+        @if ($carOpen)<a href="{{ \App\Chats\Chat::carHref($offer, $user) }}" class="chat-car" target="_top" {!! \App\Chats\Chat::sheetAttrs($offer) !!}>@else<div class="chat-car">@endif
             <div class="chat-car-photo"><x-offer.photo :media="$offer->mainPhoto()" :cat="$offer->category()->icon()" sizes="40px"/></div>
             <span class="min-w-0 flex-1 truncate text-sm font-medium">{{ $offer->titleWithYear() }}</span>
             @if ($price?->shown())<span class="nums shrink-0 text-sm text-ink-muted">{{ $price::money($price->to) }} ₽</span>@endif
             @if ($carOpen)<x-ui.icon name="chevron-right" class="size-4 shrink-0 text-ink-dim"/>@endif
         @if ($carOpen)</a>@else</div>@endif
     @endif
+    @if (\App\Support\Surface::current() === \App\Support\Surface::Chat)<x-chat.deal-sheet/>@endif
     <x-chat.box :chat="$chat" :messages="$messages" :user="$user" :first-unread="$firstUnread" :more="$more" :readonly="$readonly" :open="$open ?? ($chat || !$offer ? null : '/offers/'.$offer->number.'/chat')" screen/>
 </div>

@@ -140,6 +140,50 @@ class Chat extends Model
         return $this->offer_id === null;
     }
 
+    /**
+     * Вид чатов CRM — сотрудник, что отвечает за площадку (`canEditDeals`): в CRM всегда, в XCAR Chat (20.11.2026) — по
+     * человеку, а не по хосту: одно приложение на всех, каждому — привычный вид. Им решают список (`Chat\ChatController`),
+     * шапка экрана, кнопки шага и «за менеджера» (`x-chat.screen`, `box`, `doc-pick`).
+     */
+    public static function staffView(?User $user = null): bool
+    {
+        $surface = \App\Support\Surface::current();
+
+        return $surface === \App\Support\Surface::Crm
+            || ($surface === \App\Support\Surface::Chat && (bool) ($user ?? auth()->user())?->canEditDeals());
+    }
+
+    /**
+     * Адрес машины или сделки из чата. Везде — путь этого хоста; в XCAR Chat (20.11.2026) — страница приложения человека
+     * (сотруднику — CRM, остальным — сайт) для шторки поверх чата (`x-chat.deal-sheet`, атрибуты — `sheetAttrs`).
+     */
+    public static function carHref(Offer $offer, ?User $user = null, ?string $sitePath = null): string
+    {
+        if (\App\Support\Surface::current() !== \App\Support\Surface::Chat) {
+            return $sitePath ?? '/offers/'.$offer->number;
+        }
+        $user ??= auth()->user();
+        // Менеджеру из плашки ТС — его идущая сделка по машине, если есть: ради неё шторку и открывают.
+        $path = $sitePath ?? ($user && ! self::staffView($user)
+            ? \App\Offers\Deal::where('offer_id', $offer->id)->where('buyer_id', $user->id)->active()->latest('id')->first()?->href()
+            : null) ?? '/offers/'.$offer->number;
+
+        return self::staffView($user) ? \App\Support\Surface::Crm->url('/offers/'.$offer->number)
+            : (str_starts_with($path, 'http') ? $path : \App\Support\Surface::Site->url($path));
+    }
+
+    /** Атрибуты ссылки, что открывает шторку сделки в XCAR Chat; на других хостах — ничего. */
+    public static function sheetAttrs(Offer $offer): string
+    {
+        return \App\Support\Surface::current() === \App\Support\Surface::Chat ? 'data-deal-sheet data-turbo="false"' : '';
+    }
+
+    /** Корень экрана чатов на этом хосте: в CRM — «Чаты» работы, на сайте и в XCAR Chat — `/chats`. */
+    public static function base(): string
+    {
+        return \App\Support\Surface::inCrm() ? '/work/chats' : self::ROOT;
+    }
+
     /** Чат покупателя со своим менеджером, а не с площадкой. */
     public function isBuyerChat(): bool
     {

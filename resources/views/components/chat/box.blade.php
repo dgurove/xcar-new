@@ -16,6 +16,6 @@
     </div>
     @unless ($readonly)
         {{-- Сотруднику в CRM — чип «С кнопками»: своё сообщение менеджеру с кнопками его открытого шага (`StepAsk::openFor`). --}}
-        <x-chat.bar :draft="'chat:'.($chat?->id ?? request()->path())" :step="$chat && $user?->canEditDeals() && \App\Support\Surface::current() === \App\Support\Surface::Crm ? \App\Chats\StepAsk::openFor($chat) : null"/>
+        <x-chat.bar :draft="'chat:'.($chat?->id ?? request()->path())" :step="$chat && \App\Chats\Chat::staffView($user) ? \App\Chats\StepAsk::openFor($chat) : null"/>
     @endunless
 </div>

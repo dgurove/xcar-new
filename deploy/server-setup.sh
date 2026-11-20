@@ -182,7 +182,7 @@ if [ ! -s .env ]; then
     cat > .env <<EOE
 TAG=
 ACME_EMAIL=
-SITE_ADDRESSES=http://$IP.nip.io, http://crm.$IP.nip.io, http://park.$IP.nip.io, http://logistics.$IP.nip.io, http://partner.$IP.nip.io
+SITE_ADDRESSES=http://$IP.nip.io, http://crm.$IP.nip.io, http://park.$IP.nip.io, http://logistics.$IP.nip.io, http://partner.$IP.nip.io, http://chat.$IP.nip.io
 REDIRECT_ADDRESSES=http://$IP
 REDIRECT_TO=$IP.nip.io
 REDIRECT_SCHEME=http
@@ -229,6 +229,7 @@ CRM_HOST=crm.$HOST
 PARK_HOST=park.$HOST
 LOGISTICS_HOST=logistics.$HOST
 PARTNER_HOST=partner.$HOST
+CHAT_HOST=chat.$HOST
 WEBAUTHN_ID=$HOST
 EOE
 fi

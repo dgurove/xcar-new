@@ -7,6 +7,8 @@ return [
     'logistics_host' => env('LOGISTICS_HOST', 'logistics.localhost'),
     // Партнёр (07.11.2026) — поставщики: сотрудники страховых заводят черновики и вписывают цены.
     'partner_host' => env('PARTNER_HOST', 'partner.localhost'),
+    // XCAR Chat (20.11.2026) — чаты сайта и CRM отдельным приложением: сотрудникам — чаты площадки, менеджерам — свои.
+    'chat_host' => env('CHAT_HOST', 'chat.localhost'),
     // Короткие имена логистики (`log.`, `l.`, `go.` у хоста сайта) — 301 на неё (`RedirectLegacyPaths`); в `SITE_ADDRESSES`
     // прода они есть только ради сертификата.
     'logistics_aliases' => array_filter(explode(',', (string) env('LOGISTICS_ALIASES', 'log,l,go'))),

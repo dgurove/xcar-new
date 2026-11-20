@@ -8,7 +8,8 @@ use App\Users\User;
 
 /**
  * Поверхность — одно из пяти приложений на своём хосте: сайт, CRM, стоянка, логистика (гараж — раздел сайта /garage) и
- * партнёр — partner.xcar.ru для поставщиков (07.11.2026).
+ * партнёр — partner.xcar.ru для поставщиков (07.11.2026), чат — chat.xcar.ru (20.11.2026): те же чаты сайта и CRM отдельным
+ * приложением, вид — по человеку (`Chat::staffView`), сделка — листом поверх чата (`x-chat.deal-sheet`).
  * Определяется по хосту запроса в ResolveSurface; вне запроса — сайт.
  */
 enum Surface: string
@@ -18,6 +19,7 @@ enum Surface: string
     case Park = 'park';
     case Logistics = 'logistics';
     case Partner = 'partner';
+    case Chat = 'chat';
 
     public static function fromHost(string $host): self
     {
@@ -26,6 +28,7 @@ enum Surface: string
             config('xcar.park_host') => self::Park,
             config('xcar.logistics_host') => self::Logistics,
             config('xcar.partner_host') => self::Partner,
+            config('xcar.chat_host') => self::Chat,
             default => self::Site,
         };
     }
@@ -54,6 +57,7 @@ enum Surface: string
             self::Park => config('xcar.park_host'),
             self::Logistics => config('xcar.logistics_host'),
             self::Partner => config('xcar.partner_host'),
+            self::Chat => config('xcar.chat_host'),
         };
     }
 
@@ -105,17 +109,20 @@ enum Surface: string
             self::Park => (bool) $user?->canAccess(Section::Park),
             self::Logistics => (bool) $user?->canLogistics(),
             self::Partner => (bool) $user?->isSupplier(),
+            self::Chat => (bool) $user && ($user->canEditDeals() || $user->canChat()),
         };
     }
 
     public function label(): string
     {
         return match ($this) {
+            // 20.11.2026, владелец: «XCAR, XCAR CRM, XCAR Park, XCAR Logistics», чат — «XCAR Chat».
             self::Site => 'XCAR',
-            self::Crm => 'CRM XCAR',
-            self::Park => 'Park XCAR',
-            self::Logistics => 'Logistics XCAR',
-            self::Partner => 'Partner XCAR',
+            self::Crm => 'XCAR CRM',
+            self::Park => 'XCAR Park',
+            self::Logistics => 'XCAR Logistics',
+            self::Partner => 'XCAR Partner',
+            self::Chat => 'XCAR Chat',
         };
     }
 
@@ -135,6 +142,7 @@ enum Surface: string
             self::Site, self::Crm, self::Partner => '/offers',
             self::Park => '/requests',
             self::Logistics => '/transports',
+            self::Chat => '/chats',
         };
     }
 

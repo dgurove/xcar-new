@@ -7,7 +7,7 @@
     use App\Support\Surface;
     $word = StepAsk::documentWord($ask);
     $mine = $user && $ask->user_id === $user->id;
-    $staff = ! $mine && $user?->canEditDeals() && Surface::current() === Surface::Crm && $ask->stage?->isPayStep();
+    $staff = ! $mine && \App\Chats\Chat::staffView($user) && $ask->stage?->isPayStep();
 @endphp
 @if ($mine)
     <form method="post" action="/deals/{{ $ask->deal_id }}/chat-files" class="msg-step" data-turbo-confirm="Приложить к шагу как {{ $word }}?" data-turbo-confirm-label="Приложить">

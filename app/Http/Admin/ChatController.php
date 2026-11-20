@@ -66,7 +66,7 @@ class ChatController
         $delete($chat);
         $back = parse_url(url()->previous(), PHP_URL_QUERY);
 
-        return redirect('/work/chats'.($back ? '?'.$back : ''))->with('toast', 'Чат удалён');
+        return redirect(Chat::base().($back ? '?'.$back : ''))->with('toast', 'Чат удалён');
     }
 
     /** Список чатов площадки и поиск из адреса; открытый чат его не меняет. Старый `?preset=` ничего не значит. */
@@ -78,7 +78,7 @@ class ChatController
             ->search($q, crm: true);
         // Непрочитанные сверху, дальше свежие. Страницы списка ведут на список, даже когда справа открыт чат.
         $chats = $chats->orderByRaw('unread_for_staff > 0 desc')->orderByDesc('last_message_at')
-            ->paginate(ListView::perPage($request, ListView::PER_ROWS))->withPath('/work/chats')->withQueryString();
+            ->paginate(ListView::perPage($request, ListView::PER_ROWS))->withPath(Chat::base())->withQueryString();
 
         return ['chats' => $chats, 'q' => $q];
     }

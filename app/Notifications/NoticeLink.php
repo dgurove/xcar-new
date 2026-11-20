@@ -2,6 +2,7 @@
 
 namespace App\Notifications;
 
+use App\Chats\Chat;
 use App\Offers\OfferNumber;
 use App\Support\Paths;
 use App\Support\Surface;
@@ -59,6 +60,12 @@ final class NoticeLink
             Surface::Crm => self::crm($href, $path, $subject),
             Surface::Site => self::site($href, $path, $subject),
             Surface::Park, Surface::Logistics, Surface::Partner => $href,
+            // XCAR Chat: в нём только чаты — обращение гостя по своей теме, остальное — список чатов.
+            Surface::Chat => match (true) {
+                $path === '/contacts' => preg_match('~^/account/chats/(\d+)$~', (string) $subject, $m) ? Chat::path((int) $m[1]) : Chat::ROOT,
+                (bool) preg_match('~^/chats(?:/\d+)?$~', $path) => $href,
+                default => Chat::ROOT,
+            },
         };
     }
 

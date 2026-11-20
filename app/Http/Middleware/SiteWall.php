@@ -18,7 +18,10 @@ class SiteWall
 {
     public function handle(Request $request, Closure $next)
     {
-        if (Surface::current() !== Surface::Site) {
+        // XCAR Chat (20.11.2026) — чаты и сотрудников, и менеджеров: в свой дом никого не уводим, а закрытый доступ покупателя
+        // закрыт и здесь.
+        $chat = Surface::current() === Surface::Chat;
+        if (Surface::current() !== Surface::Site && ! $chat) {
             return $next($request);
         }
         $user = $request->user();
@@ -33,6 +36,9 @@ class SiteWall
             $request->session()->regenerateToken();
 
             return $request->expectsJson() ? abort(403) : response()->view('auth.closed', [], 403);
+        }
+        if ($chat) {
+            return $next($request);
         }
         // Управляющему парковкой и модератору сайта нет: их место — park.xcar и CRM, туда и уводим.
         if ($home = Surface::onlyFor($user)) {

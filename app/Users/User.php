@@ -1017,6 +1017,8 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
             Surface::Crm => $this->notifications()->where(fn ($q) => $q->whereNull('data->surface')->orWhere('data->surface', 'crm')),
             Surface::Site => $this->notifications()->whereNull('data->surface'),
             Surface::Partner => $this->notifications()->where('data->surface', 'partner'),
+            // У XCAR Chat ленты уведомлений нет: число на значке — непрочитанные чаты (`Nav::badges`).
+            Surface::Chat => $this->notifications()->where('data->surface', 'chat'),
         };
     }
 
@@ -1047,6 +1049,11 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
 
             return $this->unreadChats(platform: false) + ($deals ? $asks['deals'] : 0)
                 + (! $deals && $this->holdsAsBuyer() && $this->canGarage() ? $asks['garage'] : 0);
+        }
+
+        // XCAR Chat — только чаты: сотруднику и площадки, как в CRM.
+        if ($here === Surface::Chat) {
+            return $this->unreadChats(platform: \App\Chats\Chat::staffView($this));
         }
 
         // Чаты площадки — работа CRM: на значке сайта их нет (08.10.2026).

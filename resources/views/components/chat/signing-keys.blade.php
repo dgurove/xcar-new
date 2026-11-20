@@ -16,7 +16,7 @@
         @if ($said)
             <p class="msg-step-done !items-start"><x-ui.icon name="check" class="mt-0.5 size-4 shrink-0"/>@if ($deal->signing_at)<span class="min-w-0">{{ $said }}</span>@else<x-deal.signing-wish-lines :deal="$deal"/>@endif</p>
         @elseif ($asks && $manager)
-            <x-ui.button :href="$deal->href().'#step'" variant="primary" block>Выбрать время</x-ui.button>
+            <a href="{{ \App\Chats\Chat::carHref($deal->offer, $user, $deal->href().'#step') }}" class="btn btn-accent btn-block" {!! \App\Chats\Chat::sheetAttrs($deal->offer) !!}>Выбрать время</a>
         @elseif ($asks)
             <div class="msg-step-off"><span>Ждём ответа менеджера</span></div>
         @endif

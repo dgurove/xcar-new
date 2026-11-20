@@ -21,6 +21,12 @@ class ResolveSurface
 
     private const PARTNER_PATHS = ['account', 'account/password'];
 
+    /**
+     * XCAR Chat (20.11.2026) сверх общих путей — только то, что шлют формы самого чата: «Написать» по ТС (`/offers/{n}/chat`) и
+     * «Приложить за менеджера» документом об оплате. Кнопки шага (`/deals/{id}/reply`, `chat-files`) — уже в общих `deals`.
+     */
+    private const CHAT_PATHS = '~^(?:offers/\d+/chat|work/deals/\d+/payment-proof(?:/.*)?)$~';
+
     /** Что открыто на чужом хосте тому, кому туда нельзя: выйти и служебное. */
     private const ANYONE = ['login', 'logout', 'password', 'passkey', 'up', 'manifest.webmanifest', 'offline', 'sw.js', 'icons.svg', 'admin', 'client'];
 
@@ -34,9 +40,11 @@ class ResolveSurface
         if ($surface !== Surface::Site) {
             $first = explode('/', $request->path())[0];
             $own = $request->route()?->getDomain() === $surface->host();
-            $shared = $surface === Surface::Partner
-                ? in_array($first, self::PARTNER_SHARED, true) || in_array($request->path(), self::PARTNER_PATHS, true)
-                : in_array($first, self::SHARED, true);
+            $shared = match ($surface) {
+                Surface::Partner => in_array($first, self::PARTNER_SHARED, true) || in_array($request->path(), self::PARTNER_PATHS, true),
+                Surface::Chat => in_array($first, self::SHARED, true) || preg_match(self::CHAT_PATHS, $request->path()) === 1,
+                default => in_array($first, self::SHARED, true),
+            };
             abort_unless($own || $shared, 404);
 
             $user = $request->user();

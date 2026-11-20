@@ -241,6 +241,15 @@ html.has-action { --action: 1; }
 /* Партнёр (08.11.2026, владелец: «шапка и лого тут не нужны»): шапки и таб-бара нет — верх у самого выреза, низ у края. */
 body.surface-partner { --header-edge: var(--safe-top); --stick-top: var(--safe-top); --tabbar: 0px; --bottom-edge: 0px; --bottom-room: calc(var(--action) * var(--spacing-action)); --page-room: var(--bottom-room); }
 @media (min-width: 768px) { body.surface-partner { --bottom-room: calc(var(--action) * 6rem); --page-room: var(--bottom-room); } }
+/* Страница во фрейме шторки сделки XCAR Chat (20.11.2026, `x-chat.deal-sheet`): своё приложение вокруг уже есть — ни шапки,
+   ни таб-бара, ни подвала; верх и низ у краёв шторки. Класс ставит `x-ui.layout` до отрисовки, когда окно — не верхнее. */
+html.is-embedded body { --safe-top: 0px; --header-edge: 0px; --stick-top: 0px; --tabbar: 0px; --bottom-edge: 0px; --home-gap: 0px; }
+html.is-embedded .header, html.is-embedded #tabbar, html.is-embedded .footer, html.is-embedded .impersonation { display: none !important; }
+/* На телефоне в шторке — блоки от края до края, без полей по бокам (20.11.2026, владелец); вложенный блок — как был. */
+@media (max-width: 639.98px) {
+  html.is-embedded .container-site .box { margin-inline: -1rem; border-radius: 0; }
+  html.is-embedded .container-site .box .box { margin-inline: 0; border-radius: var(--radius-xl); }
+}
 /* От планшета таб-бара нет, кнопки действий парят справа внизу. */
 @media (min-width: 768px) {
   :root { --spacing-header: 80px; --tabbar: 0px; --bottom-edge: 0px; --bottom-room: calc(var(--action) * 6rem); } /* шапка: py-2 + два ряда по 30 px + 4 px между */
@@ -4389,6 +4398,11 @@ html.kb-open { --home-gap: 0px; }
   /* Шапка — как navigation bar: волосяная линия появляется, когда содержимое ушло под неё (.is-scrolled). В центре —
      всегда логотип, заголовка экрана в шапке нет никогда (22.10.2026, владелец: «всегда, без исключений»). */
   .header { @apply relative z-(--z-chrome) text-ink; flex: none; padding-top: var(--safe-top); }
+  /* Шторка сделки XCAR Chat: фрейм во всё место под строкой заголовка, края — у шторки. */
+  .sheet-deal[open] { display: flex; flex-direction: column; overflow: hidden; }
+  .sheet-deal .sheet-bar { flex: none; margin-bottom: .75rem; }
+  .sheet-deal .deal-frame { flex: 1 1 auto; min-height: 0; width: calc(100% + 2.5rem); margin: 0 -1.25rem calc(-1 * var(--sheet-pad-b)); border: 0; background: var(--color-ground); }
+  @media (min-width: 640px) { .sheet-deal.sheet-tall { max-width: 64rem; height: calc(100dvh - 4rem); } }
   .header > div { position: relative; }
   .header::after { content: ''; position: absolute; inset: auto 0 0 0; height: var(--hairline); background: var(--color-hairline); opacity: 0; transition: opacity var(--dur-fast); }
   .header.is-scrolled::after { opacity: 1; }
