@@ -126,7 +126,12 @@ class RouteController
                 app(UpdateOffer::class)($offer, OwnerContacts::fields($contacts), $request->user(), ['why' => $exit->label]);
                 $offer->refresh();
             }
+            $skipped = $request->boolean('skip_precheck') && $exit->to?->asksConsent() ? $offer->deal()->first()?->needsPrecheck() : false;
             $offer = $take($offer, $exit, Actor::Staff, $request->user(), $payload);
+            // «Сразу спросить менеджера» без доп. запроса ПТС и осмотра, который он просит (`Deal::needsPrecheck`) — строкой «Истории».
+            if ($skipped) {
+                $offer->log(\App\Offers\OfferEventType::Note, $request->user(), ['text' => 'Сразу спросили менеджера, без доп. запроса ПТС и осмотра']);
+            }
             if ($request->boolean('then_take') && $exit->to?->asksConsent()) {
                 $deal = $offer->deal()->first();
                 $agree = $exit->to->exitsFor(Actor::Manager, $deal)->first(fn (Outcome $x) => $x->takes());

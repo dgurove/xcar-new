@@ -570,7 +570,14 @@
                                     {{-- Закрыть сделку, пока автомобиль не забрали (18.10.2026), — только переспросив. --}}
                                     @php $confirm = \App\Offers\Deal::closes($exit) && $offer->deal?->closeBlocker() ? 'Автомобиль ещё не забрали. Закрыть сделку?'
                                         : $exit->confirm; @endphp
-                                    @if ($asks($exit))
+                                    @if ($asks($exit) && $deal?->needsPrecheck($stage))
+                                        {{-- Менеджер просит сначала ПТС и осмотр (20.11.2026, Корабельников по грузовым Альфы, `Deal::needsPrecheck`):
+                                             доп. запрос с отмеченными «Запросить ПТС» и «Согласовать осмотр» — главной; пропустить — рядом. --}}
+                                        <x-mail.window-button :url="'/work/mail/new?offer='.$n.'&extra=1'.\App\Offers\Deal::precheckPicks()" label="Отправить доп. запрос" icon="mail" class="btn-s btn-accent step-main"/>
+                                        <form method="post" action="/offers/{{ $n }}/exit/{{ $exit->id }}" data-controller="ask-consent" data-action="submit->ask-consent#ask">
+                                            @csrf<input type="hidden" name="then_take" value="" data-ask-consent-target="take"><input type="hidden" name="skip_precheck" value="1"><x-ui.button size="sm" variant="secondary">Сразу спросить менеджера</x-ui.button>
+                                        </form>
+                                    @elseif ($asks($exit))
                                         {{-- Спросить или «Уже согласился» — одной шторкой (`ask_consent_controller`, 28.10.2026). --}}
                                         <form method="post" action="/offers/{{ $n }}/exit/{{ $exit->id }}" data-controller="ask-consent" data-action="submit->ask-consent#ask" @class([$main])>
                                             @csrf<input type="hidden" name="then_take" value="" data-ask-consent-target="take"><x-ui.button size="sm" :variant="$variant">{{ $label($exit) }}</x-ui.button>

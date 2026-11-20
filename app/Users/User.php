@@ -46,7 +46,7 @@ use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\InteractsWithMedia;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
-#[Fillable(['name', 'first_name', 'last_name', 'phone', 'login', 'email', 'password', 'roles', 'access', 'notification_settings', 'approved_at', 'approved_by', 'rejected_at', 'manager_id', 'invite_id', 'contact_fields', 'park_readonly', 'party_id', 'park_city_id', 'park_requests_city_id', 'buyer_sees', 'buyer_show_vin', 'buyer_access_at', 'logist_id', 'logistics_city', 'cdek_point', 'garage_enabled', 'garage_price_shown', 'garage_share', 'deal_share', 'offer_regions', 'vendor_id'])]
+#[Fillable(['consent_precheck', 'name', 'first_name', 'last_name', 'phone', 'login', 'email', 'password', 'roles', 'access', 'notification_settings', 'approved_at', 'approved_by', 'rejected_at', 'manager_id', 'invite_id', 'contact_fields', 'park_readonly', 'party_id', 'park_city_id', 'park_requests_city_id', 'buyer_sees', 'buyer_show_vin', 'buyer_access_at', 'logist_id', 'logistics_city', 'cdek_point', 'garage_enabled', 'garage_price_shown', 'garage_share', 'deal_share', 'offer_regions', 'vendor_id'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
 {
@@ -113,6 +113,7 @@ class User extends Authenticatable implements HasMedia, WebAuthnAuthenticatable
             'buyer_show_vin' => 'bool',
             'buyer_access_at' => 'datetime',
             'garage_enabled' => 'bool',
+            'consent_precheck' => 'bool',
             'garage_share' => 'int',
             'deal_share' => 'int',
             'garage_price_shown' => 'bool',

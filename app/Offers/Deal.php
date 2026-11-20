@@ -610,6 +610,32 @@ class Deal extends Model implements HasMedia
             && ($contract = $this->contract) !== null && $contract->vatRate() !== Seller::Prime->vatRate();
     }
 
+    /**
+     * Доп. запрос до «Беру в работу» (20.11.2026, владелец: Корабельников по всем грузовым Альфы требует запросить ПТС и осмотр до
+     * вопроса, берёт ли он): у менеджера признак `consent_precheck`, ТС грузовое (и прицеп), вендор Альфа, этап — перед «Согласием
+     * менеджера», доп. запросов по сделке ещё не было. Тогда в шаге вместо «Спросить менеджера» — «Отправить доп. запрос» и «Сразу
+     * спросить менеджера».
+     */
+    public function needsPrecheck(?Stage $stage = null): bool
+    {
+        if (! $this->isActive() || ! $this->buyer?->consent_precheck || ! $this->offer?->vendor?->pay_before_pickup || ! $this->offer->isHeavy()) {
+            return false;
+        }
+        $stage ??= $this->offer->position(Track::Sale)?->stage;
+        if (! $stage || ! $stage->exitsFor(\App\Workflow\Actor::Staff, $this)->contains(fn (Outcome $x) => $x->to?->asksConsent())) {
+            return false;
+        }
+
+        return ! ExtraAsk::where('deal_id', $this->id)->exists();
+    }
+
+    /** Галки доп. запроса до согласия: «Запросить ПТС» и «Согласовать осмотр» — ид шаблонов по названию, `&pick[]=…`. */
+    public static function precheckPicks(): string
+    {
+        return collect(\App\Mail\Template::where('kind', 'request')->whereIn('name', ['Запросить ПТС', 'Согласовать осмотр'])->pluck('id'))
+            ->map(fn ($id) => '&pick[]='.$id)->implode('');
+    }
+
     /** Менеджер платит нам подбор по ссылке — у ДКП и «страховой напрямую»; гаражная — не по цене, а долей (`share`). */
     public function paysSelection(): bool
     {

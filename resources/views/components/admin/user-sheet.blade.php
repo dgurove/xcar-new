@@ -94,6 +94,8 @@
                     <x-ui.field name="garage_manager_share" :id="'garage-share-'.$user->id" label="Менеджеру от навара в гараже, %" :value="old('garage_manager_share', 100 - ($user->garage_share ?? \App\Offers\Deal::GARAGE_SHARE))"/>
                     <x-ui.field name="deal_share" :id="'deal-share-'.$user->id" label="Менеджеру от разницы, %" :value="old('deal_share', $user->deal_share)"/>
                 </div>
+                {{-- Доп. запрос до «Беру в работу» (20.11.2026, Корабельников): по грузовым Альфы сначала ПТС и осмотр (`Deal::needsPrecheck`). --}}
+                <x-ui.check name="consent_precheck" :checked="old('consent_precheck', $user->consent_precheck)" id="precheck-{{ $user->id }}">Грузовые Альфы: сначала доп. запрос ПТС и осмотра</x-ui.check>
             </div>
             <div data-super class="flex flex-col gap-3">
                 <x-admin.garage-toggle :user="$user"/>

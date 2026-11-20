@@ -216,7 +216,10 @@ final class Disclose
         return in_array(mb_strtolower(trim($exit->label)), self::REQUISITES, true)
             || (mb_strtolower(trim($exit->label)) === 'договор готов' && $letters->contains(fn (Message $m) => SigningLetter::ready($m)))
             || SupplierInvoice::needs($deal, $exit)
-            || $letters->contains(fn (Message $m) => InsurerReplies::hasContact($m));
+            || $letters->contains(fn (Message $m) => InsurerReplies::hasContact($m))
+            // Доп. запрос до согласия (ПТС и осмотр, 20.11.2026, `Deal::needsPrecheck`): ответ показываем — и сразу спрашиваем
+            // менеджера, одним нажатием: ПТС в его документы и в чат, «Берёте в работу?» следом.
+            || ($deal && $exit->to?->asksConsent() && \App\Offers\ExtraAsk::holding($deal));
     }
 
     /** @param  Collection<int, Message>  $letters */
