@@ -85,11 +85,11 @@
                         <span class="edit-step-n">1</span>
                         <div class="min-w-0 flex-1">
                             <div>Скачайте Word и заполните</div>
-                            {{-- Файлом, как везде (20.11.2026, владелец: чип «⤓ ДКП … .docx» — «уродство»): значок Word, имя, «Скачать» справа. --}}
+                            {{-- Строкой документа сделки (`x-deal.doc-row`, как «Счёт за ТС» рядом; 20.11.2026, владелец: чип «⤓ ДКП … .docx» — «уродство»). --}}
                             <div class="list mt-2">
-                                <x-ui.file :name="$name.'.docx'">
-                                    <a href="{{ $base }}/dkp.docx?edit=1" download class="btn btn-ghost btn-s px-1.5 text-ink-muted" aria-label="Скачать" data-turbo="false" data-turbo-prefetch="false" data-controller="file" data-action="file#share" data-file-name="{{ $name }}.docx"><x-ui.icon name="download" class="size-5"/></a>
-                                </x-ui.file>
+                                <x-deal.doc-row :href="$base.'/dkp.docx?edit=1'" :title="$name" :name="$name.'.docx'" mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document">
+                                    <x-slot:dl><a href="{{ $base }}/dkp.docx?edit=1" download class="btn btn-ghost btn-s px-1.5 text-ink-muted" aria-label="Скачать" title="Скачать" data-turbo="false" data-turbo-prefetch="false" data-controller="file" data-action="file#share" data-file-name="{{ $name }}.docx"><x-ui.icon name="download" class="size-5"/></a></x-slot:dl>
+                                </x-deal.doc-row>
                             </div>
                         </div>
                     </div>
