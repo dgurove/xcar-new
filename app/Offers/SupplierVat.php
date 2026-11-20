@@ -102,7 +102,7 @@ final class SupplierVat
     /**
      * Ставка из документов поставщика по машине — самого свежего письма, где она есть (договор комиссии, его счёт или ДКП).
      *
-     * @return array{rate: int, at: Carbon, message_id: int}|null
+     * @return array{rate: int, at: Carbon, message_id: int, snippet: string}|null
      */
     public static function fromDocuments(Car $car): ?array
     {
@@ -112,16 +112,31 @@ final class SupplierVat
                 continue;
             }
             $text = $file->isImage() ? DocumentText::cached($file) : DocumentText::layer($file);
-            if (! $text || ($rate = self::fromText($text)) === null) {
+            if (! $text || ! self::saleDocument($text) || ($rate = self::fromText($text)) === null) {
                 continue;
             }
             $at = $message->date_at ?? $message->created_at;
             if (! $found || $at->gt($found['at'])) {
-                $found = ['rate' => $rate, 'at' => $at, 'message_id' => $message->id];
+                $flat = (string) preg_replace('/\s+/u', ' ', $text);
+                $pos = mb_stripos($flat, 'НДС');
+                $found = ['rate' => $rate, 'at' => $at, 'message_id' => $message->id, 'snippet' => $pos === false ? '' : mb_substr($flat, max(0, $pos - 40), 80)];
             }
         }
 
         return $found;
+    }
+
+    /**
+     * Документ о продаже самой машины: его счёт («Оплата за повреждённое ТС»), договор комиссии или купли-продажи. Соглашение о
+     * страховом возмещении и уведомление об абандоне лизинговой машины несут НДС возмещения и лизинга, а не продавца (прогон по
+     * проду 20.11.2026: 2610101663, 2610272958 вышли бы «22 %», хотя Совкомбанк пишет «Сделка НДС не облагается»).
+     */
+    public static function saleDocument(string $text): bool
+    {
+        $t = (string) preg_replace('/\s+/u', ' ', $text);
+
+        return (bool) preg_match('/сч[её]т\s+на\s+оплату|оплата\s+за\s+поврежд|договор\w*\s+комисси|договор\w*\s+купли[\s-]*продажи/ui', $t)
+            && ! preg_match('/страхов\w+\s+возмещени|абандон/ui', $t);
     }
 
     /** Письмо поставщика по машине — его ставка, если сказана (`OnMessage`). */

@@ -58,6 +58,14 @@ class SupplierVatTest extends TestCase
         }
     }
 
+    public function test_only_sale_documents_count(): void
+    {
+        $this->assertTrue(SupplierVat::saleDocument('Счет на оплату № 5. Оплата за поврежденное ТС RENAULT DUSTER, в т.ч. НДС 22%'));
+        $this->assertTrue(SupplierVat::saleDocument('ДОГОВОР КОМИССИИ № 511631/2026. НДС не облагается'));
+        $this->assertFalse(SupplierVat::saleDocument('Соглашение: 209 524,00 рубля с учетом НДС 22%, выплачивается в составе страхового возмещения'));
+        $this->assertFalse(SupplierVat::saleDocument('Односторонний абандон, договор купли-продажи предмета лизинга, в том числе НДС 22% в размере 64 136,49'));
+    }
+
     private function deal(?int $supplierVat): Deal
     {
         Storage::fake('private');
