@@ -59,6 +59,9 @@ $doors = [
     ['resources/views', '/\.blade\.php$/', "/translatedFormat\\('j [MF](,? H:i)?'\\)/", [], 'дата — App\\Support\\Ago::html или x-ui.when'],
     ['app', '/\.php$/', "/translatedFormat\\('j [MF](,? H:i)?'\\)/", [], 'дата — App\\Support\\Ago::at'],
     ['resources/views', '/\.blade\.php$/', '/<x-ui\.sheet.* :open="\$errors->(has|hasAny|any)\((\[[^\]]*\]|\'[^\']*\')?\)"/', [], 'шторка с ошибками открывается сама — _sheet в sheet.js'],
+    // Файл — строкой `x-ui.file` (значок типа, имя, «Скачать» справа), не чипом со стрелкой (20.11.2026, владелец: «уродство», «убираем —
+    // а он опять всплывает»): ссылка на скачивание с классом chip / pill / tag.
+    ['resources/views', '/\.blade\.php$/', '/<a\b(?=[^>]*\sdownload\b)(?=[^>]*class="[^"]*\b(chip|pill|tag)\b)/', [], 'файл — x-ui.file, не чип'],
     // Директивы вплотную (12.11.2026: «@endif@else» в строке сделки печатал «@else» текстом с 10.11): Blade такое не узнаёт.
     ['resources/views', '/\.blade\.php$/', '/@(endif|endunless|endforeach|endisset|else)@(else|elseif|endif|if|unless|isset|foreach)\b/', [], 'директивы Blade разводить: {{ "" }} или пробел'],
 ];
