@@ -17,7 +17,7 @@
         <button class="btn btn-s btn-quiet msg-step-chip"><x-ui.icon name="clip" class="size-4"/>Это {{ $word }}</button>
     </form>
 @elseif ($staff)
-    <form method="post" action="/work/deals/{{ $ask->deal_id }}/payment-proof" class="msg-step" data-turbo-confirm="Приложить как документ об оплате и пройти шаг за менеджера?" data-turbo-confirm-label="Приложить">
+    <form method="post" action="{{ Surface::inCrm() ? '/work' : '/chats' }}/deals/{{ $ask->deal_id }}/payment-proof" class="msg-step" data-turbo-confirm="Приложить как документ об оплате и пройти шаг за менеджера?" data-turbo-confirm-label="Приложить">
         @csrf
         <input type="hidden" name="message" value="{{ $message->id }}">
         <input type="hidden" name="pass" value="1">

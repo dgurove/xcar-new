@@ -37,8 +37,10 @@ class SiteWall
 
             return $request->expectsJson() ? abort(403) : response()->view('auth.closed', [], 403);
         }
+        // В XCAR Chat — без увода в свой дом и в гараж, но допуск тот же: ждущему и отклонённому чатов нет и здесь.
         if ($chat) {
-            return $next($request);
+            return $user->isApproved() ? $next($request)
+                : ($request->expectsJson() ? abort(403) : response()->view($user->isRejected() ? 'auth.rejected' : 'auth.waiting', ['user' => $user], 403));
         }
         // Управляющему парковкой и модератору сайта нет: их место — park.xcar и CRM, туда и уводим.
         if ($home = Surface::onlyFor($user)) {

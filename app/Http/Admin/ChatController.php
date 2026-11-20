@@ -10,6 +10,7 @@ use App\Chats\Presence;
 use App\Http\Site\ChatController as Feed;
 use App\Offers\Offer;
 use App\Support\ListView;
+use App\Support\Surface;
 use App\Users\User;
 use Illuminate\Http\Request;
 
@@ -74,7 +75,10 @@ class ChatController
     {
         $q = trim((string) $request->query('q'));
         // Заведённый кнопкой «Написать» и брошенный без сообщения — не строка списка.
-        $chats = Chat::withLast()->whereNull('manager_id')->where('messages_count', '>', 0)
+        // В XCAR Chat (20.11.2026) у админа, который ещё и менеджер, — и его переписки с покупателями: приложение у него одно.
+        $own = Surface::current() === Surface::Chat ? $request->user()?->id : null;
+        $chats = Chat::withLast()->where(fn ($q) => $q->whereNull('manager_id')->when($own, fn ($q) => $q->orWhere('manager_id', $own)))
+            ->where('messages_count', '>', 0)
             ->search($q, crm: true);
         // Непрочитанные сверху, дальше свежие. Страницы списка ведут на список, даже когда справа открыт чат.
         $chats = $chats->orderByRaw('unread_for_staff > 0 desc')->orderByDesc('last_message_at')

@@ -33,16 +33,6 @@
      просили»; до того экран жил и в кабинете `/account/chats`, и пилюлей «Сделок» `/deals/chats`). Заголовок «Чаты» — у
      списка (`cabinet.chats-split`), у открытого чата на телефоне — своя шапка с «назад» к списку. --}}
 <x-ui.shell :title="$current ? $name : 'Чаты'" :back="$current ? ['Чаты', $base] : false" :heading="false" :back-row="false">
-    {{-- Заголовок раздела, как у «Чатов» CRM; открыт чат на телефоне — прячется (`body.chat-open`). --}}
-    <div class="chat-crm-top">
-        {{-- XCAR Chat без шапки: профиль, тема и выход — аватаром справа (`partner.me`). Ряд — внутри: у `.chat-crm-top` свой
-             `display: none` в открытом чате на телефоне, утилита `flex` на нём его перебила бы. --}}
-        <div class="flex items-center justify-between gap-3">
-            <h1 class="head-title text-xl sm:text-2xl">Чаты</h1>
-            @if (\App\Support\Surface::current() === \App\Support\Surface::Chat)
-                @include('partner.me')
-            @endif
-        </div>
-    </div>
+    <x-chat.list-top/>
     @include('cabinet.chats-split')
 </x-ui.shell>

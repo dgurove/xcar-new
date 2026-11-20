@@ -20,9 +20,13 @@ class ChatController
         return Chat::staffView($request->user()) ? app(Staff::class)->index($request) : app(Cabinet::class)->index($request);
     }
 
+    /** Своя переписка сотрудника (он менеджер покупателя или сам пишет площадке) — экраном сайта: там он сторона, а не читатель. */
     public function show(Request $request, Chat $chat, MarkChatRead $read)
     {
-        return Chat::staffView($request->user()) ? app(Staff::class)->show($request, $chat, $read) : app(Cabinet::class)->show($request, $chat, $read);
+        $user = $request->user();
+        $own = $chat->manager_id === $user->id || $chat->user_id === $user->id;
+
+        return Chat::staffView($user) && ! $own ? app(Staff::class)->show($request, $chat, $read) : app(Cabinet::class)->show($request, $chat, $read);
     }
 
     public function destroy(Request $request, Chat $chat, DeleteChat $delete)

@@ -12,7 +12,7 @@
 @php $open = $open || (($errors ?? null)?->any() && old('_sheet') === $id); @endphp
 <dialog id="{{ $id }}" {{ $attributes->class(['sheet', 'sheet-wide' => $wide, 'sheet-tall' => $tall, 'sheet--inflow' => $inflow]) }} data-sheet-target="dialog" data-action="click->sheet#backdrop" @if ($anchor) data-sheet-anchor @endif @if ($open) data-sheet-open-value="true" @endif>
     @if (! $bare && ($title || !$inflow))
-    <div class="sheet-bar mb-4 flex justify-between gap-3{{ $tall ? ' sheet-head items-start' : ' items-center' }}">
+    <div class="sheet-bar mb-4 flex justify-between gap-3{{ $tall ? ' sheet-head items-start' : ' items-center' }}{{ $title || $tools ? '' : ' sheet-bar--bare' }}">
         @if ($tall)<button type="button" class="sheet-close sheet-back -ml-2" data-action="sheet#close" aria-label="Назад"><x-ui.icon name="chevron-left" class="size-5"/></button>@endif
         {{-- Высокое окно: заголовок слева у «‹», даже когда крестик на телефоне спрятан и справа ничего нет; не режется — переносится,
              на телефоне начинается вровень с текстом окна (17.11.2026, владелец: тема писем целиком, «отступ неадекватный»). --}}

@@ -29,7 +29,7 @@ final class WebPushChannel
         // ничего, кроме чатов, не идёт.
         $only = $notice->surface();
         $chat = $notice instanceof \App\Notifications\ChatNotice && $subs->contains(fn ($s) => $s->host && Surface::fromHost($s->host) === Surface::Chat);
-        $subs = $subs->filter(function ($sub) use ($only, $chat, $notice) {
+        $subs = $subs->filter(function ($sub) use ($only, $chat) {
             $host = $sub->host ? Surface::fromHost($sub->host) : Surface::Site;
             if ($chat || $host === Surface::Chat) {
                 return $chat && $host === Surface::Chat;
@@ -47,7 +47,9 @@ final class WebPushChannel
         $brief = $car ? $notice->brief($user) : null;
         $notification = array_filter([
             'title' => $car ?? $notice->titleFor($user),
-            'body' => $car ? $brief.($text && $text !== $brief ? "\n".$text : '') : (string) $text,
+            // Текст, что уже есть в первой строке (чат: «Кто: сообщение» и само сообщение), второй раз не пишем (20.11.2026,
+            // владелец: «текст уведомления по два раза написан»).
+            'body' => $car ? $brief.($text && ! str_contains($brief, mb_substr($text, 0, 40)) ? "\n".$text : '') : (string) $text,
             'tag' => $notice->tag(),
             'lang' => 'ru',
         ], fn ($v) => $v !== null);

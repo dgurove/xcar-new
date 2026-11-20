@@ -13,4 +13,7 @@ Route::domain(config('xcar.chat_host'))->middleware(['auth', 'wall'])->group(fun
     Route::get('/chats', [ChatController::class, 'index']);
     Route::get('/chats/{chat}', [ChatController::class, 'show'])->whereNumber('chat');
     Route::delete('/chats/{chat}', [ChatController::class, 'destroy'])->whereNumber('chat');
+    // «Приложить за менеджера» под файлами в чате сделки (`x-chat.doc-pick`) — та же дверь, что в CRM: на этом хосте путь
+    // `/work/deals/…/payment-proof` — сайтовый, менеджерский.
+    Route::post('/chats/deals/{deal}/payment-proof', [\App\Http\Admin\PaymentProofController::class, 'store'])->middleware('ability:canEditDeals');
 });

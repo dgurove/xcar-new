@@ -1,9 +1,9 @@
 {{-- Partner XCAR (07.11.2026): черновики вендора поставщика без закупочной цены — таблицей, как CRM «Без закупочной».
      Цена — прямо в строке (08.11.2026): Enter сохраняет, уходит к нам — «Отправить» у строки или «Отправить N» над списком;
      нажатие по строке — редактор; «+ Новое» — окно «Номер убытка» (`OfferController::find`).
-     Вписал цену — строка уходит. Шапки нет: справа от заголовка — аватар с меню (`partner.me`). --}}
+     Вписал цену — строка уходит. Шапки нет: справа от заголовка — аватар с меню (`x-ui.me-menu`). --}}
 <x-ui.shell title="Предложения" :count="$offers->total()">
-    <x-slot:actions class="!w-auto ml-auto">@include('partner.me')</x-slot:actions>
+    <x-slot:actions class="!w-auto ml-auto"><x-ui.me-menu/></x-slot:actions>
     <x-ui.toolbar :sort="$sort" name="partner-offers" :facets="$facets" search="Номер, марка, VIN">
         <x-slot:actions>
             <div class="contents" data-controller="sheet">

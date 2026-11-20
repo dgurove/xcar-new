@@ -163,13 +163,14 @@ class Chat extends Model
             return $sitePath ?? '/offers/'.$offer->number;
         }
         $user ??= auth()->user();
+        if (self::staffView($user)) {
+            return \App\Support\Surface::Crm->url('/offers/'.$offer->number);
+        }
         // Менеджеру из плашки ТС — его идущая сделка по машине, если есть: ради неё шторку и открывают.
-        $path = $sitePath ?? ($user && ! self::staffView($user)
-            ? \App\Offers\Deal::where('offer_id', $offer->id)->where('buyer_id', $user->id)->active()->latest('id')->first()?->href()
-            : null) ?? '/offers/'.$offer->number;
+        $path = $sitePath ?? ($user ? \App\Offers\Deal::where('offer_id', $offer->id)->where('buyer_id', $user->id)->active()->latest('id')->first()?->href() : null)
+            ?? '/offers/'.$offer->number;
 
-        return self::staffView($user) ? \App\Support\Surface::Crm->url('/offers/'.$offer->number)
-            : (str_starts_with($path, 'http') ? $path : \App\Support\Surface::Site->url($path));
+        return str_starts_with($path, 'http') ? $path : \App\Support\Surface::Site->url($path);
     }
 
     /** Атрибуты ссылки, что открывает шторку сделки в XCAR Chat; на других хостах — ничего. */

@@ -1,11 +1,11 @@
-{{-- Аватар поставщика в ряду заголовка (08.11.2026: шапки у партнёра нет): меню — кто он и чей, «Профиль», тема, «Выйти».
-     Тот же — у «Чатов» XCAR Chat (20.11.2026), там шапки тоже нет. --}}
+{{-- Аватар в ряду заголовка там, где шапки нет: партнёр (08.11.2026) и XCAR Chat (20.11.2026). Меню — кто он (и чей, у
+     поставщика), «Профиль», в XCAR Chat ещё «Уведомления», тема, «Выйти». --}}
 @php $me = auth()->user(); @endphp
 <div class="contents" data-controller="menu">
-    <button type="button" class="btn btn-s btn-quiet btn-round shrink-0 !p-0" data-action="menu#toggle" aria-haspopup="menu" aria-controls="partner-me" aria-label="{{ $me->name }}">
+    <button type="button" class="btn btn-s btn-quiet btn-round shrink-0 !p-0" data-action="menu#toggle" aria-haspopup="menu" aria-controls="me-menu" aria-label="{{ $me->name }}">
         <x-ui.avatar :user="$me" :size="36"/>
     </button>
-    <div id="partner-me" class="menu" popover data-menu-target="list" data-align="end" role="menu">
+    <div id="me-menu" class="menu" popover data-menu-target="list" data-align="end" role="menu">
         <div class="menu-group">
             <div class="flex flex-col px-4 pb-2.5 pt-3">
                 <span class="font-medium">{{ $me->name }}</span>

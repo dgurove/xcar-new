@@ -23,6 +23,9 @@ class UseLinkedAccount
             $surface = Surface::fromHost($request->getHost());
             if (Surface::homeFor($user) !== $surface && ($linked = $user->linked) && Surface::homeFor($linked) === $surface) {
                 Auth::setUser($linked);
+            } elseif ($surface === Surface::Chat && ! $surface->opensFor($user) && ($linked = $user->linked) && $surface->opensFor($linked)) {
+                // XCAR Chat (20.11.2026) ничей не дом: вошли аккаунтом без чатов (управляющий), а чаты у второго (менеджер) — работает он.
+                Auth::setUser($linked);
             }
         }
 
