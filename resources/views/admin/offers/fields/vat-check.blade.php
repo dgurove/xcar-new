@@ -6,11 +6,12 @@
 @php
     $rate = old('supplier_vat', $offer->supplier_vat);
     $from = match ($offer->supplier_vat_source) {
-        'letter' => 'по письму', 'document' => 'по документу', 'vendor' => 'как у вендора', default => null,
+        // «как у вендора» не пишем (20.11.2026, владелец: вёрстка «Цен» разъехалась) — только откуда пришла из писем.
+        'letter' => 'по письму', 'document' => 'по документу', default => null,
     };
 @endphp
-<span class="flex items-center gap-1.5 text-sm text-ink-muted whitespace-nowrap">
-    <label for="supplier-vat-{{ $offer->id }}-{{ $form ?? 'f' }}">НДС поставщика</label>
+<span class="flex min-w-0 flex-wrap items-center justify-end gap-x-1.5 text-sm text-ink-muted">
+    <label class="whitespace-nowrap" for="supplier-vat-{{ $offer->id }}-{{ $form ?? 'f' }}">НДС поставщика</label>
     <select id="supplier-vat-{{ $offer->id }}-{{ $form ?? 'f' }}" name="supplier_vat" class="keep-hours text-ink" @if ($form ?? null) form="{{ $form }}" @endif>
         <option value="" @selected($rate === null || $rate === '')>не указан</option>
         @foreach (\App\Billing\Vat::RATES as $r)

@@ -52,7 +52,8 @@ class InvoiceNudgeTest extends TestCase
         $this->manager = User::create(['name' => 'Армен Хачян', 'phone' => '79000000002', 'roles' => [Role::Manager], 'approved_at' => now()]);
         $vendor = Vendor::create(['name' => 'Совкомбанк тест', 'deal_format' => 'commission']);
         app(ApplyPreset::class)($vendor->workflowOrNew(Track::Sale), Preset::Sovcombank);
-        $offer = Offer::create(['vendor_id' => $vendor->id, 'floor_price' => 944000, 'asking_price' => 1050000, 'bids_close_at' => now()->addDay()]);
+        // НДС поставщика 5 % — как ставка ПРАЙМ: счёт за ТС одной строкой с подбором (20.11.2026, `Deal::splitsSelection`).
+        $offer = Offer::create(['vendor_id' => $vendor->id, 'supplier_vat' => 5, 'floor_price' => 944000, 'asking_price' => 1050000, 'bids_close_at' => now()->addDay()]);
         $offer->forceFill(['state' => OfferState::Open])->save();
         $offer->car->update(['vin' => 'LVTDB21B8RE049131', 'year' => 2024, 'pts' => '164302109662152', 'color' => 'Белый']);
         $offer->viewers()->create(['user_id' => $this->manager->id, 'opens_at' => now()]);

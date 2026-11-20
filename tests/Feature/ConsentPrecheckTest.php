@@ -90,6 +90,31 @@ class ConsentPrecheckTest extends TestCase
         $this->assertTrue(Disclose::stepByDefault($ask, collect(), $truck->fresh()));
     }
 
+    /**
+     * Альфа просит реквизиты для счёта — «Поставщик просит реквизиты» сам, по письму; реквизитов покупателя нет — у менеджера
+     * просим сразу (20.11.2026, владелец).
+     */
+    public function test_requisites_letter_moves_step_and_asks_manager(): void
+    {
+        $roma = $this->manager('79000000002', false);
+        $deal = $this->deal($roma, Category::Passenger);
+        $stage = fn () => $this->stage($deal);
+        app(\App\Workflow\Actions\TakeExit::class)($deal->offer->fresh(), $stage()->exitsFor(Actor::Staff, $deal)->first(fn ($x) => $x->to?->asksConsent()), Actor::Staff, $this->admin);
+        app(\App\Workflow\Actions\TakeExit::class)($deal->offer->fresh(), $stage()->exitsFor(Actor::Manager, $deal)->first(fn ($x) => $x->takes()), Actor::Manager, $roma);
+        $this->assertSame('Подтверждение покупки', $stage()->name);
+        $account = \Illuminate\Support\Facades\DB::table('mail_accounts')->insertGetId(['slug' => 'deal', 'title' => 'deal', 'email' => 'deal@xcar.test', 'scope' => 'offers',
+            'imap_host' => 'x', 'imap_username' => 'x', 'imap_password' => 'x', 'smtp_host' => 'x', 'smtp_username' => 'x', 'smtp_password' => 'x']);
+        $thread = \App\Mail\Thread::create(['account_id' => $account, 'subject' => '0790/046/1/26', 'offer_id' => $deal->offer_id]);
+        $letter = \App\Mail\Message::create(['account_id' => $account, 'thread_id' => $thread->id, 'direction' => 'in', 'from_email' => 'implementation@alfastrah.test',
+            'subject' => 'Re: 0790/046/1/26', 'text_body' => 'Добрый день. Просьба прислать реквизиты для выставления счета. Без НДС.', 'date_at' => now()]);
+
+        event(new \App\Offers\Events\InsurerReplied($deal->fresh(), $letter));
+
+        $this->assertSame('Письмо с реквизитами', $stage()->name);
+        $this->assertNotNull($deal->fresh()->buyer_asked_at, 'реквизитов нет — менеджера спросили');
+        $this->assertTrue($deal->offer->events()->get()->contains(fn ($e) => ($e->payload['text'] ?? '') === 'Запросили реквизиты у менеджера'));
+    }
+
     public function test_skip_asks_manager_and_logs(): void
     {
         $roma = $this->manager('79000000002', true);

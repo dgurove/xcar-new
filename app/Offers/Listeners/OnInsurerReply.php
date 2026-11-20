@@ -26,6 +26,10 @@ use App\Workflow\Outcome;
 use App\Workflow\Presets\Route;
 use App\Workflow\Track;
 use App\Workflow\WaitsFor;
+use App\Workflow\Events\StageEntered;
+use App\Workflow\Presets\Alfa;
+use App\Billing\Robot;
+use App\Offers\Actions\AskBuyer;
 use Illuminate\Events\Dispatcher;
 use Illuminate\Support\Facades\Notification;
 
@@ -77,6 +81,38 @@ final class OnInsurerReply
         }
         // Поставщик подтвердил оплату — шаг оплаты проходит сам (18.11.2026, владелец): платёжку не просим и не отправляем.
         $e->live && $this->paid($deal, $message);
+        // Просит реквизиты для счёта — «Поставщик просит реквизиты» сам (20.11.2026, владелец: «у них всегда одна и та же формулировка»).
+        $e->live && $this->requisitesAsked($deal, $message);
+    }
+
+    /**
+     * Письмо «просьба прислать реквизиты для выставления счёта» (`InsurerReplies::asksRequisites`) — шаг «Подтверждение покупки»
+     * проходит «Поставщик просит реквизиты» сам, от имени системы, в «Истории» — по письму; письмо из «Разобрать ответ» уходит.
+     * Реквизитов нет — у менеджера их просим сразу (`entered` → `AskBuyer::nudge`), есть — дальше «Отправить реквизиты» админом.
+     */
+    public function requisitesAsked(Deal $deal, Message $message): bool
+    {
+        if (! $deal->isActive() || ! InsurerReplies::asksRequisites($message)) {
+            return false;
+        }
+        $offer = $deal->offer->unsetRelation('positions');
+        $exit = $offer->position(Track::Sale)?->stage?->exitsFor(Actor::Staff, $deal)
+            ->first(fn (Outcome $x) => mb_strtolower(trim($x->label)) === mb_strtolower(Alfa::ASKS_REQUISITES));
+        if (! $exit) {
+            return false;
+        }
+        try {
+            app(TakeExit::class)($offer, $exit, Actor::Staff, Robot::user(),
+                ['label' => $exit->label.' — по письму поставщика '.($message->date_at ?? now())->format('d.m')]);
+            ReplyReview::where('message_id', $message->id)->where('state', ReplyReview::PENDING)->update(['state' => ReplyReview::DONE, 'done_at' => now()]);
+            Disclose::publish($deal);
+
+            return true;
+        } catch (\Throwable $err) {
+            \Illuminate\Support\Facades\Log::warning('Просьба реквизитов по письму не прошла шаг', ['deal' => $deal->id, 'error' => $err->getMessage()]);
+
+            return false;
+        }
     }
 
     /**
@@ -160,6 +196,22 @@ final class OnInsurerReply
         }
         $deal = $e->deal ?? $e->offer->deal()->first();
         if (! $deal?->isActive() || ! $deal->buyer_id) {
+            return;
+        }
+        $deal->setRelation('offer', $e->offer);
+        // «Письмо с реквизитами» (20.11.2026, владелец: «реквизиты должны запрашиваться у менеджера автоматически»): покупатель
+        // платит поставщику сам и его реквизитов нет — сразу просим менеджера (чат, уведомление); есть или платим мы (Р.О.С.,
+        // ПРАЙМ — наши реквизиты) — дальше «Отправить реквизиты» админом.
+        if ($e->to->isRequisitesStep()) {
+            if (! $deal->schemeOf()->paysCar() && ! $deal->isGarageUs() && $deal->requisitesGap() !== null) {
+                app(AskBuyer::class)->nudge($deal, Robot::user());
+            }
+
+            return;
+        }
+        // Просьба реквизитов пришла раньше, чем шаг её ждал (менеджер взял после письма) — шаг проходит сам.
+        $asked = InsurerReplies::for($deal)->first(fn (Message $m) => InsurerReplies::asksRequisites($m));
+        if ($asked && $this->requisitesAsked($deal, $asked)) {
             return;
         }
         $letter = InsurerReplies::for($deal)->first(fn (Message $m) => InsurerReplies::hasContact($m) || InsurerReplies::asksRequisites($m));
