@@ -37,7 +37,14 @@
     // Весь путь менеджеру начинается со сделки со страховой: идёт — её блок текущим (ваш ход — оранжевым), закрыта — галочкой.
     $deal = $set === 'all' && ($withDeal ?? true) && $car->deal_id ? $car->deal : null;
 @endphp
-@php $steps = $car->path($states); @endphp
+@php
+    $steps = $car->path($states);
+    // Покупка идёт, а забирать ещё рано (Альфа — только после оплаты, 20.11.2026, владелец: «почему этап „Вывоз“, если он ещё не
+    // оплатил»): текущей — одна «Покупка», этапы машины впереди серым. Где вывоз до оплаты разрешён (Совкомбанк), — как было.
+    if ($deal && $car->dealOpen() && ! $deal->mayPickUp()) {
+        $steps = array_map(fn ($p) => $p['status'] === 'current' ? ['status' => 'next'] + $p : $p, $steps);
+    }
+@endphp
 @unless ($bare)<div class="steps">@endunless
     @if ($deal)
         @php $open = $car->dealOpen(); @endphp
