@@ -35,10 +35,11 @@
      договор и покупатель (`x-deal.contract bare`, `x-deal.buyer`), сумма договора, наши счета и сколько остаётся нам. Что уходит за
      машину — соседним блоком `x-deal.supplier-payment`. --}}
 @php
-    // Договор и покупатель — строками этого блока: на странице всегда, в окне — покупатель, пока его данных нет.
-    // `window` — окно машины (13.11.2026: там покупатель, пока его данных нет; договор целиком — на странице).
-    $withContract = ! $window && $deal->hasContract() && ! $deal->isAuction();
-    $withBuyer = ! $withContract && $deal->isLive() && ($deal->collectsBuyer() || $deal->contract?->buyer_user_id) && (! $window || $deal->buyerGap() !== null);
+    // Договор и покупатель — строками этого блока, в окне машины так же, как на странице (20.11.2026, владелец: «а где его
+    // отправлять-то», «покупателя тоже не указать в окошке» — с 13.11 договор в окне не рисовался, покупатель — только пока
+    // его данных нет; вкладка «Отправить договор» открывала окно без договора).
+    $withContract = $deal->hasContract() && ! $deal->isAuction();
+    $withBuyer = ! $withContract && $deal->isLive() && ($deal->collectsBuyer() || $deal->contract?->buyer_user_id);
 @endphp
 <x-ui.card title="Продажа" {{ $attributes->class('sale-card') }}>
     @php
