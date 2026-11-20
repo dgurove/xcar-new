@@ -16,11 +16,13 @@
     $pills = $mailbox?->reply_account_id ? array_diff_key($boxes, ['sent' => 1]) : $boxes;
     $boxUrl = fn (?string $slug) => request()->fullUrlWithQuery(['account' => $slug ?? '', 'page' => null, 'peek' => null, 'box' => $slug && $mailbox?->slug !== $slug && $box === 'sent' ? null : request()->query('box')]);
 @endphp
-<x-ui.shell :title="$title" :count="$crm || $letters ? null : $threads->total()">
+{{-- XCAR Mail: «Из писем» — назад к «Почте» строкой над заголовком, шапки с «‹» там нет. --}}
+@php $app = \App\Support\Surface::current() === \App\Support\Surface::Mail; @endphp
+<x-ui.shell :title="$title" :count="$crm || $letters ? null : $threads->total()" :back="$app && $forced ? ['Почта', $base] : null">
     {{-- Кнопки стоят в строке заголовка и на телефоне: своей строки они не стоят. --}}
-    @unless ($forced)
+    @if (! $forced || $app)
         <x-slot:actions class="!ml-auto !w-auto">@include('admin.mail.actions')</x-slot:actions>
-    @endunless
+    @endif
 
     <x-ui.toolbar :class="$crm && ! $forced ? 'mt-4' : ''" :sort="$letters ? null : $sort" :pills="$pills" :pill="$forced ? '' : $box" pill-param="box" pill-home="in" :pill-drop="['peek']" :counts="$counts" :tones="['attention' => ! empty($counts['attention']) ? 'pill-urgent' : '']" :name="$forced ? 'from-mail' : 'mail'"
                   search="Найти письмо" search-target="#threads" :q="$q" :facets="$facets">

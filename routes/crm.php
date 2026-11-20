@@ -77,13 +77,8 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
     // «Горит» — срок обязывающего (19.10.2026): ведущим логистику, админам и модераторам.
     Route::get('/alarms', [AlarmController::class, 'index'])->middleware('ability:leadsLogistics');
     Route::post('/offers', [OfferController::class, 'store']);
-    // Из писем: та же почта с вшитой выборкой «надо завести» — раньше `/offers/{offer}`, иначе from-mail примут за номер.
-    Route::middleware('ability:canCrmMail')->group(function () {
-        Route::get('/offers/from-mail', [MailController::class, 'fromMail']);
-        Route::post('/offers/from-mail/{candidate}/create', [MailController::class, 'promote']);
-        Route::post('/offers/from-mail/{candidate}/decline', [MailController::class, 'decline']);
-        Route::get('/offers/from-mail/{candidate}/letters', [MailController::class, 'candidateLetters']);
-    });
+    // Почта и «Из писем» — общим куском с XCAR Mail (`routes/mail-shared.php`); до `/offers/{offer}`, иначе from-mail примут за номер.
+    require __DIR__.'/mail-shared.php';
     Route::get('/offers/twins', [OfferController::class, 'twins']);
     // Окно «Выгрузка» над списком: вкладка, чипы и лупа — файлом или данными для буфера (`format=json`).
     Route::get('/offers/export', [OfferController::class, 'export']);
@@ -143,34 +138,6 @@ Route::domain(config('xcar.crm_host'))->middleware(['auth', 'ability:isStaff'])-
         Route::post('/offers/{offer}/media/{media}/learn', [OfferPhotoController::class, 'learn']);
         Route::delete('/offers/{offer}/media/{media}', [OfferPhotoController::class, 'destroy']);
         Route::patch('/offers/{offer}/media/{media}', [OfferPhotoController::class, 'rename']);
-    });
-    Route::prefix('work/mail')->middleware('ability:canCrmMail')->group(function () {
-        Route::get('/', [MailController::class, 'index']);
-        Route::get('/new', [MailController::class, 'compose']);
-        // Шторка «Вендор письма» — по первому требованию (`data-lazy-sheets`): со списком всех вендоров она ехала на каждую страницу.
-        Route::view('/vendor-sheet', 'admin.mail.vendor-sheet');
-        Route::post('/', [MailController::class, 'send']);
-        Route::post('/file', [MailController::class, 'file']);
-        Route::get('/addresses', [MailController::class, 'addresses']);
-        Route::post('/sync', [MailController::class, 'sync']);
-        Route::get('/attachments/{attachment}', [MailController::class, 'attachment']);
-        Route::post('/messages/{message}/flag', [MailController::class, 'flag']);
-        // «Входящие»: прочитано по письму (17.11.2026).
-        Route::post('/messages/{message}/seen', [MailController::class, 'seen']);
-        Route::post('/messages/{message}/parse', [MailController::class, 'reparse']);
-        Route::post('/messages/{message}/retry', [MailController::class, 'resend']);
-        Route::get('/messages/{message}/sent', [MailController::class, 'sent']);
-        Route::get('/messages/{message}/state', [MailController::class, 'state']);
-        Route::get('/{thread}', [MailController::class, 'show']);
-        Route::get('/{thread}/window', [MailController::class, 'window']);
-        Route::get('/{thread}/reply/{message}', [MailController::class, 'reply']);
-        Route::post('/{thread}/unread', [MailController::class, 'unread']);
-        Route::post('/{thread}/answered', [MailController::class, 'answered']);
-        Route::post('/{thread}/archive', [MailController::class, 'archive']);
-        Route::post('/case/{kind}/{id}/archive', [MailController::class, 'archiveCase'])->whereIn('kind', ['o', 'c', 't'])->whereNumber('id');
-        Route::post('/{thread}/candidate', [MailController::class, 'candidate']);
-        Route::post('/{thread}/link', [MailController::class, 'link']);
-        Route::post('/{thread}/vendor', [MailController::class, 'vendor']);
     });
     // Кабинет CRM = «Настройки»: корень — профиль (общий экран с сайтом), /account сюда же.
     Route::get('/settings', [ProfileController::class, 'profile']);

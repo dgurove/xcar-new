@@ -102,6 +102,10 @@ final class Nav
             // Капсулой в шапке ПК не рисуем: одна капсула на всю ширину — пустая полоса, раздел и так один.
             return $user ? [self::item('Чаты', Chat::ROOT, icon: 'chats', capsule: false) + ['own' => true]] : [];
         }
+        // XCAR Mail (20.11.2026): только почта и профиль; «Из писем» — кнопкой в строке заголовка.
+        if ($surface === Surface::Mail) {
+            return $user ? [self::item('Почта', '/work/mail', icon: 'mail', capsule: false) + ['own' => true]] : [];
+        }
 
         // Модератор: черновики, сделки и гараж вкладками «Предложений» (17.11.2026 — вся работа со сделками), почта по галке, чаты
         // с менеджерами и профиль; оплаты и остальное CRM — админу. Значки — как у админа.
@@ -249,8 +253,8 @@ final class Nav
     {
         $surface ??= Surface::current();
 
-        // Из XCAR Chat переходов нет: установленное приложение другое не открывает, сделка — шторкой поверх чата.
-        if ($surface === Surface::Chat) {
+        // Из XCAR Chat и XCAR Mail переходов нет: установленное приложение другое не открывает, сделка — шторкой поверх.
+        if ($surface->single()) {
             return [];
         }
         // С CRM и парковки — переходы на соседние приложения, только открытые человеку (ролей бывает несколько).
@@ -317,8 +321,8 @@ final class Nav
             ])), 'Переходы' => self::switchers($user, $surface, fn ($label, $url, $icon) => self::link($label, $url, icon: $icon))]);
         }
 
-        // Чату — профиль и уведомления (там темы и каналы), переходов нет: из установленного приложения в другое не уйти.
-        if ($surface === Surface::Chat) {
+        // Чату и почте — профиль и уведомления (там темы и каналы), переходов нет: из установленного приложения в другое не уйти.
+        if ($surface->single()) {
             return ['' => [self::link('Профиль', '/account', exact: true), self::link('Уведомления', '/account/notifications', icon: 'bell')]];
         }
 
@@ -601,7 +605,7 @@ final class Nav
                         : 0),
                 ], 'fresh' => []];
             }
-            if ($surface === Surface::Chat) {
+            if ($surface->single()) {
                 return ['totals' => [], 'fresh' => []];
             }
             if ($surface === Surface::Partner) {
@@ -703,6 +707,10 @@ final class Nav
         // Чату — только непрочитанное в чатах: сотруднику — и площадки, как в CRM.
         if ($surface === Surface::Chat) {
             return array_filter([Chat::ROOT => $user->unreadChats(platform: Chat::staffView($user))]);
+        }
+        // Почте — непрочитанные «Входящие» и что ждёт в «Из писем», как у CRM.
+        if ($surface === Surface::Mail) {
+            return $user->canCrmMail() ? array_filter(['/work/mail' => Boxes::unreadCount(Scope::Offers), '/offers/from-mail' => Boxes::registerCount(Scope::Offers)]) : [];
         }
         $badges = ['/account/notifications' => $user->unreadCount()];
 

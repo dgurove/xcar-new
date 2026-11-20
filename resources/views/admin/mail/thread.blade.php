@@ -7,7 +7,7 @@
         @if ($park && $thread->vehicle)
             <a href="/cars/{{ $thread->vehicle->id }}" class="text-sm text-accent-text">{{ $thread->vehicle->titleWithYear() }}@if ($thread->vehicle->ref && $thread->vehicle->brand_id) <span class="nums opacity-70">{{ $thread->vehicle->ref }}</span>@endif</a>
         @elseif (!$park && $thread->offer)
-            <a href="{{ $thread->offer->crmPath() }}" class="text-sm text-accent-text">{{ $thread->offer->title() }} <span class="nums opacity-70">№ {{ $thread->offer->number }}</span></a>
+            <a href="{{ \App\Support\DealSheet::crm($thread->offer) }}" class="text-sm text-accent-text" {!! \App\Support\DealSheet::attrs() !!}>{{ $thread->offer->title() }} <span class="nums opacity-70">№ {{ $thread->offer->number }}</span></a>
         @endif
     </div>
 

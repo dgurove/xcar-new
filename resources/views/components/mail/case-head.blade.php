@@ -14,7 +14,7 @@
     $vehicle ??= $park ? ($thread?->vehicle ?? ($candidate?->state === CandidateState::Promoted ? $candidate->vehicle : null)) : null;
     $queue = $park ? '/requests/from-mail' : '/offers/from-mail';
     $car = match (true) {
-        (bool) $offer => ['href' => $offer->crmPath(), 'cat' => $offer->category(), 'name' => $offer->titleWithYear(), 'place' => $offer->crmPlace(auth()->user())],
+        (bool) $offer => ['href' => \App\Support\DealSheet::crm($offer), 'sheet' => \App\Support\DealSheet::attrs(), 'cat' => $offer->category(), 'name' => $offer->titleWithYear(), 'place' => $offer->crmPlace(auth()->user())],
         (bool) $vehicle => ['href' => '/cars/'.$vehicle->id, 'cat' => $vehicle->category ?? \App\Cars\Category::guess($vehicle->titleWithYear()) ?? \App\Cars\Category::Passenger,
             'name' => $vehicle->titleWithYear(), 'place' => $vehicle->state->label()],
         default => null,
@@ -27,9 +27,9 @@
 @endphp
 @if ($car)
     @if ($compact)
-        <a href="{{ $car['href'] }}" class="letter-car pane-car" data-turbo-frame="_top"><x-ui.cat-icon :category="$car['cat']"/><span class="truncate">{{ $car['name'] }}</span><x-ui.icon name="chevron-right" class="size-3.5 shrink-0"/></a>
+        <a href="{{ $car['href'] }}" class="letter-car pane-car" data-turbo-frame="_top" {!! $car['sheet'] ?? '' !!}><x-ui.cat-icon :category="$car['cat']"/><span class="truncate">{{ $car['name'] }}</span><x-ui.icon name="chevron-right" class="size-3.5 shrink-0"/></a>
     @else
-        <a href="{{ $car['href'] }}" class="case-head" data-turbo-frame="_top">
+        <a href="{{ $car['href'] }}" class="case-head" data-turbo-frame="_top" {!! $car['sheet'] ?? '' !!}>
             <span class="case-head-icon"><x-ui.cat-icon :category="$car['cat']"/></span>
             <span class="case-head-name">{{ $car['name'] }}</span>
             <span class="case-head-place">{{ $car['place'] }}</span>

@@ -72,11 +72,11 @@
     </script>
     @endif
     {{-- Во фрейме шторки сделки XCAR Chat — без шапки и таб-бара (`html.is-embedded`), до первой отрисовки. Метка — имя окна
-         фрейма (`x-chat.deal-sheet`), а не «я в каком-то фрейме»: чужой фрейм страницу без шапки не получит. --}}
+         фрейма (`x-ui.deal-sheet`), а не «я в каком-то фрейме»: чужой фрейм страницу без шапки не получит. --}}
     <script>if (window.name === 'xcar-deal' && window.top !== window.self) document.documentElement.classList.add('is-embedded');</script>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
-<body data-controller="{{ trim('pwa '.$attributes->get('data-controller')) }}" data-nav-tab="{{ \App\Support\Nav::currentTab(auth()->user()) }}" {{ $attributes->except('data-controller')->merge(['class' => 'antialiased surface-'.$surface->value.(request()->attributes->get('chat-page') ? ' chat-open' : '')]) }}>
+<body data-controller="{{ trim('pwa '.$attributes->get('data-controller')) }}" data-nav-tab="{{ \App\Support\Nav::currentTab(auth()->user()) }}" {{ $attributes->except('data-controller')->merge(['class' => 'antialiased surface-'.$surface->value.($surface === \App\Support\Surface::Mail ? ' surface-crm' : '').(request()->attributes->get('chat-page') ? ' chat-open' : '')]) }}>
     {{ $slot }}
     @if ($as = \App\Users\Impersonation::current())
         {{-- Админ в чужом кабинете: плашка на каждом экране, чтобы не забыть, за кого действуешь (место — .impersonation). --}}

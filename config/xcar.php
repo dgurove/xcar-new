@@ -9,6 +9,8 @@ return [
     'partner_host' => env('PARTNER_HOST', 'partner.localhost'),
     // XCAR Chat (20.11.2026) — чаты сайта и CRM отдельным приложением: сотрудникам — чаты площадки, менеджерам — свои.
     'chat_host' => env('CHAT_HOST', 'chat.localhost'),
+    // XCAR Mail (20.11.2026) — почта CRM отдельным приложением: админам и модераторам с галкой «Почта».
+    'mail_host' => env('MAIL_APP_HOST', 'mail.localhost'),
     // Короткие имена логистики (`log.`, `l.`, `go.` у хоста сайта) — 301 на неё (`RedirectLegacyPaths`); в `SITE_ADDRESSES`
     // прода они есть только ради сертификата.
     'logistics_aliases' => array_filter(explode(',', (string) env('LOGISTICS_ALIASES', 'log,l,go'))),

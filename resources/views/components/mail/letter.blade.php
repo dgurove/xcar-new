@@ -81,7 +81,7 @@
                 <span class="nums whitespace-nowrap">{{ \App\Support\Ago::at($sentAt, true) }}</span>
             </div>
             @if ($car)
-                <a href="{{ $car['href'] }}" class="letter-car" data-turbo-frame="_top" @if ($car['cross']) data-turbo="false" @endif><x-ui.cat-icon :category="$car['cat']"/><span class="truncate">{{ $car['name'] }}</span><x-ui.icon name="chevron-right" class="size-3.5 shrink-0"/></a>
+                <a href="{{ $car['href'] }}" class="letter-car" data-turbo-frame="_top" @if ($car['cross']) data-turbo="false" @elseif ($thread?->offer) {!! \App\Support\DealSheet::attrs() !!} @endif><x-ui.cat-icon :category="$car['cat']"/><span class="truncate">{{ $car['name'] }}</span><x-ui.icon name="chevron-right" class="size-3.5 shrink-0"/></a>
             @elseif ($showCar && $chainNew && $sameSide)
                 @if ($park)<a href="/requests/new?candidate={{ $chainNew->id }}" class="letter-car letter-car--do" data-turbo-frame="_top">Завести: {{ $chainNew->title() }}</a>
                 @else<form method="post" action="/offers/from-mail/{{ $chainNew->id }}/create" class="contents" data-turbo-frame="_top">@csrf<button class="letter-car letter-car--do">Завести: {{ $chainNew->title() }}</button></form>@endif

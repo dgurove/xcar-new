@@ -54,6 +54,7 @@ use App\Offers\Documents\PaymentProofPdf;
 use App\Offers\ExtraRequest;
 use App\Offers\Intake\OpenDraft;
 use App\Offers\Offer;
+use App\Support\Surface;
 use App\Offers\OfferNumber;
 use App\Offers\OfferState;
 use App\Offers\Pricing;
@@ -425,10 +426,23 @@ class MailController
             return redirect('/requests/new?candidate='.$candidate->id);
         }
         if ($candidate->state === CandidateState::Promoted && $candidate->offer) {
-            return redirect("/offers/{$candidate->offer->number}");
+            return $this->toOffer($candidate->offer);
         }
 
         return $this->draft($candidate, $request->user());
+    }
+
+    /**
+     * К заведённому предложению: в CRM — его страница; в XCAR Mail (20.11.2026) страниц CRM нет — назад к письму, и оно открывается
+     * шторкой сделки поверх почты (`x-ui.deal-sheet`, flash `deal-sheet`).
+     */
+    private function toOffer(Offer $offer, ?string $toast = null)
+    {
+        $to = Surface::current() === Surface::Mail
+            ? redirect()->back(fallback: $this->base)->with('deal-sheet', $offer->crmUrl())
+            : redirect("/offers/{$offer->number}");
+
+        return $toast ? $to->with('toast', $toast) : $to;
     }
 
     /**
@@ -498,11 +512,11 @@ class MailController
     {
         [$offer, $outcome] = app(PromoteCandidate::class)->promote($candidate, $by);
         if ($outcome !== OpenDraft::CREATED) {
-            return redirect("/offers/{$offer->number}")->with('toast', 'Письма привязаны к предложению');
+            return $this->toOffer($offer, 'Письма привязаны к предложению');
         }
         session()->put("mail-draft.{$offer->id}", $candidate->id);
 
-        return redirect("/offers/{$offer->number}");
+        return $this->toOffer($offer);
     }
 
     /**

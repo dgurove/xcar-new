@@ -296,6 +296,12 @@ abstract class Notice extends Notification implements ShouldQueue
         return 'other';
     }
 
+    /** Уведомление о письме (письмо поставщика, «Новое из писем»): есть подписка XCAR Mail — пуш только туда (`WebPushChannel`). */
+    public function aboutMail(): bool
+    {
+        return in_array($this->category(), ['supplier_mail', 'letters'], true);
+    }
+
     /** Критичное приходит всегда: ответ на подтверждение, сделки, выбор цены. */
     public function critical(): bool
     {

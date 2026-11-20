@@ -1,4 +1,4 @@
-{{-- Аватар в ряду заголовка там, где шапки нет: партнёр (08.11.2026) и XCAR Chat (20.11.2026). Меню — кто он (и чей, у
+{{-- Аватар в ряду заголовка там, где шапки нет: партнёр (08.11.2026), XCAR Chat и XCAR Mail (20.11.2026). Меню — кто он (и чей, у
      поставщика), «Профиль», в XCAR Chat ещё «Уведомления», тема, «Выйти». --}}
 @php $me = auth()->user(); @endphp
 <div class="contents" data-controller="menu">
@@ -14,8 +14,8 @@
         </div>
         <div class="menu-group">
             <a href="/account" class="menu-item" role="menuitem"><x-ui.icon name="user" class="size-5 text-ink-muted"/>Профиль</a>
-            {{-- В XCAR Chat — и уведомления: какие темы и куда (пуш, Telegram). --}}
-            @if (\App\Support\Surface::current() === \App\Support\Surface::Chat)<a href="/account/notifications" class="menu-item" role="menuitem"><x-ui.icon name="bell" class="size-5 text-ink-muted"/>Уведомления</a>@endif
+            {{-- В XCAR Chat и XCAR Mail — и уведомления: какие темы и куда (пуш, Telegram). --}}
+            @if (\App\Support\Surface::current()->single())<a href="/account/notifications" class="menu-item" role="menuitem"><x-ui.icon name="bell" class="size-5 text-ink-muted"/>Уведомления</a>@endif
             <button type="button" class="menu-item" role="menuitem" data-controller="theme" data-action="theme#toggle"><x-ui.icon name="sun" class="on-light size-5 text-ink-muted"/><x-ui.icon name="moon" class="on-dark size-5 text-ink-muted"/>Тема</button>
             <form method="post" action="/logout" class="contents">@csrf<button type="submit" class="menu-item" role="menuitem"><x-ui.icon name="exit" class="size-5 text-ink-muted"/>Выйти</button></form>
         </div>

@@ -155,7 +155,7 @@ class Chat extends Model
 
     /**
      * Адрес машины или сделки из чата. Везде — путь этого хоста; в XCAR Chat (20.11.2026) — страница приложения человека
-     * (сотруднику — CRM, остальным — сайт) для шторки поверх чата (`x-chat.deal-sheet`, атрибуты — `sheetAttrs`).
+     * (сотруднику — CRM, остальным — сайт) для шторки поверх чата (`x-ui.deal-sheet`, атрибуты — `sheetAttrs`).
      */
     public static function carHref(Offer $offer, ?User $user = null, ?string $sitePath = null): string
     {
@@ -173,10 +173,10 @@ class Chat extends Model
         return str_starts_with($path, 'http') ? $path : \App\Support\Surface::Site->url($path);
     }
 
-    /** Атрибуты ссылки, что открывает шторку сделки в XCAR Chat; на других хостах — ничего. */
+    /** Атрибуты ссылки, что открывает шторку сделки в XCAR Chat; на других хостах — ничего (`Support\DealSheet`). */
     public static function sheetAttrs(Offer $offer): string
     {
-        return \App\Support\Surface::current() === \App\Support\Surface::Chat ? 'data-deal-sheet data-turbo="false"' : '';
+        return \App\Support\Surface::current() === \App\Support\Surface::Chat ? \App\Support\DealSheet::attrs() : '';
     }
 
     /** Корень экрана чатов на этом хосте: в CRM — «Чаты» работы, на сайте и в XCAR Chat — `/chats`. */

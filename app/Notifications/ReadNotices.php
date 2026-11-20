@@ -38,6 +38,7 @@ final class ReadNotices
                 Surface::Site => $q->whereNull('data->surface'),
                 Surface::Partner => $q->where('data->surface', 'partner'),
                 Surface::Chat => $q->where('data->surface', 'chat'),
+                Surface::Mail => $q->where('data->surface', 'mail'),
             })
             ->update(['read_at' => now()]);
         if ($read > 0) {

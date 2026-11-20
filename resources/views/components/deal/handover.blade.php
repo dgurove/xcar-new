@@ -23,7 +23,8 @@
     $editing = old('_form') === $form && $errors->hasAny($keys);
 @endphp
 @if ($deal->isActive() && ! $deal->isGarage())
-    <section {{ $attributes->class([$compact ? '' : 'box']) }} data-controller="edit-card" data-edit-card-form-value="{{ $form }}" @if ($editing) data-edit-card-editing-value="true" @endif>
+    {{-- Машина на нашей парковке — правки контакта нет (ни «Изменить», ни полей): и контроллера правки нет, иначе он падает без целей. --}}
+    <section {{ $attributes->class([$compact ? '' : 'box']) }} @unless ($handover->park) data-controller="edit-card" data-edit-card-form-value="{{ $form }}" @if ($editing) data-edit-card-editing-value="true" @endif @endunless>
         {{-- Кнопки уходят строкой ниже, когда заголовку с местом тесно (06.11.2026: в окошке сделки он сжимался в три строки). --}}
         <div class="flex flex-wrap items-start gap-x-3 gap-y-2">
             <div class="flex min-w-[min(100%,14rem)] flex-1 flex-wrap items-center gap-x-3 gap-y-1.5">

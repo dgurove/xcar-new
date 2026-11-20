@@ -50,7 +50,7 @@
             @if ($heading || isset($actions) || ($back && $backRow))
                 {{-- Без заголовка и действий ряд нужен только ради круглой «‹» на десктопе: на телефоне она в шапке. --}}
                 <div @class(['has-back mb-4 flex-wrap items-center gap-x-4 gap-y-2', 'has-sub' => isset($sub), 'flex' => $heading || isset($actions), 'hidden md:flex' => !$heading && !isset($actions), 'max-md:hidden' => !$phoneHeading, 'md:hidden' => !$desktopHeading])>
-                    @if ($back)<x-ui.back :back="$back" :phone="$partner"/>@endif
+                    @if ($back)<x-ui.back :back="$back" :phone="$partner || \App\Support\Surface::current()->single()"/>@endif
                     @if ($heading)<h1 class="head-title text-xl sm:text-2xl">@isset($lead){{ $lead }} @endisset @if ($copyTitle)<x-ui.copy-text>{{ $heading }}</x-ui.copy-text>@else{{ $heading }}@endif{{ $badge ?? '' }}@if ($count !== null) <span class="nums ml-2 text-base font-normal text-ink-dim" data-shell-count>{{ $count }}</span>@endif</h1>@endif
                     {{-- sub — строка под названием (факты документа, 09.11.2026): на ПК второй строкой под заголовком, на телефоне —
                          между заголовком и кнопками действий. --}}
@@ -76,7 +76,9 @@
     @endif
     {{-- Новые лоты Мигторга черновиками — капсула сотрудникам CRM (админы и модераторы, тема `staff`). --}}
     @if (! $bare && auth()->user()?->isStaff() && \App\Support\Surface::current() === \App\Support\Surface::Crm)<x-migtorg.island/>@endif
-    {{-- XCAR Chat — тоже без таб-бара: раздел один, профиль — аватаром у заголовка «Чатов». --}}
-    @unless ($partner || \App\Support\Surface::current() === \App\Support\Surface::Chat)<x-ui.tabbar/>@endunless
+    {{-- Сделка шторкой поверх приложения одного раздела (XCAR Chat, XCAR Mail): одна на страницу, переходы во фреймах её не трогают. --}}
+    @if (! $bare && \App\Support\DealSheet::here() && auth()->check())<x-ui.deal-sheet/>@endif
+    {{-- XCAR Chat и XCAR Mail — тоже без таб-бара: раздел один, профиль — аватаром у заголовка. --}}
+    @unless ($partner || \App\Support\Surface::current()->single())<x-ui.tabbar/>@endunless
     @unless ($bare)<x-ui.toasts/>@endunless
 </x-ui.layout>

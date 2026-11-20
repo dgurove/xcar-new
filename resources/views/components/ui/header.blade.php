@@ -20,12 +20,13 @@
     // Тревога «нет покупателя» — ведущим логистику в CRM и логистике, логисту в логистике (`Offers\Binding::alarmsFor`).
     $alarm = \App\Offers\Binding::alarmsFor($user, $surface);
     // Партнёру (поставщик, 07.11.2026) — ни поиска по системе, ни уведомлений: его список ищет лупой сам.
-    // В XCAR Chat (20.11.2026) — тоже: в нём только чаты, искать по системе и читать ленту — в своём приложении.
-    $tools = $user && $surface !== \App\Support\Surface::Partner && $surface !== \App\Support\Surface::Chat;
+    // В XCAR Chat и XCAR Mail (20.11.2026) — тоже: в них только чаты (почта), искать по системе и читать ленту — в своём приложении.
+    $tools = $user && $surface !== \App\Support\Surface::Partner && ! $surface->single();
     // Партнёру шапки нет вовсе (08.11.2026, владелец: «шапка и лого тут не нужны»): у вошедшего остаётся полоса под вырез
     // экрана (`--safe-top`, цвет строки состояния), раздел, профиль, тема и выход — в ряду заголовка (`x-ui.me-menu`).
     // XCAR Chat (20.11.2026, владелец: «шапку надо убрать полностью») — так же: аватар с меню — у заголовка «Чатов».
-    $bare = $user && ($surface === \App\Support\Surface::Partner || $surface === \App\Support\Surface::Chat);
+    // XCAR Mail — так же: аватар — в строке заголовка «Почты».
+    $bare = $user && ($surface === \App\Support\Surface::Partner || $surface->single());
 @endphp
 <header id="header" class="header">
     {{-- Состояние связи — полоса по нижнему краю шапки, вне раскладки (05.11.2026, владелец: надпись «Соединение…» в ряду

@@ -11,10 +11,10 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 
 const at = (p) => new URL(p, import.meta.url).pathname;
 const BLACK = '#000000';
-const SURFACES = ['site', 'crm', 'park', 'logistics', 'partner', 'chat'];
+const SURFACES = ['site', 'crm', 'park', 'logistics', 'partner', 'chat', 'mail'];
 
 // Ярлыки манифеста по поверхностям → иконки кита; тот же список — в PwaController::manifest.
-const SHORTCUT_ICONS = { site: ['cat-car', 'chat', 'bell'], crm: ['cat-car', 'mail', 'chat', 'deal'], park: ['flag', 'cat-car'], logistics: ['cat-car'], partner: ['cat-car'], chat: ['chat'] };
+const SHORTCUT_ICONS = { site: ['cat-car', 'chat', 'bell'], crm: ['cat-car', 'mail', 'chat', 'deal'], park: ['flag', 'cat-car'], logistics: ['cat-car'], partner: ['cat-car'], chat: ['chat'], mail: ['mail', 'flag'] };
 
 // Экраны iPhone в точках и плотности; тот же список — в components/ui/startup.blade.php.
 const SCREENS = [
@@ -73,7 +73,7 @@ for (const name of SURFACES) {
         .composite([{ input: inner, gravity: 'centre' }]).png().toFile(out('icon-maskable-512.png'));
 
     // Силуэт: без фона, всё белым.
-    // У знака с маской (XCAR Chat) замена цветов сломала бы маску — у него свой исходник силуэта.
+    // У знака с маской (XCAR Chat) и двухцветного (XCAR Mail) замена цветов сломала бы маску — у него свой исходник силуэта.
     const own = at(`../resources/icons/${name}-mono.svg`);
     const mono = existsSync(own) ? readFileSync(own, 'utf8') : svg.replace(/<rect[^>]*\/>\s*/, '').replace(/fill="(white|black|#97BF0D)"/g, 'fill="white"');
     await sharp(Buffer.from(mono)).resize(512, 512).png().toFile(out('icon-mono-512.png'));

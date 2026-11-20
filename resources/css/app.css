@@ -242,8 +242,8 @@ html.has-action { --action: 1; }
 body.surface-partner { --header-edge: var(--safe-top); --stick-top: var(--safe-top); --tabbar: 0px; --bottom-edge: 0px; --bottom-room: calc(var(--action) * var(--spacing-action)); --page-room: var(--bottom-room); }
 @media (min-width: 768px) { body.surface-partner { --bottom-room: calc(var(--action) * 6rem); --page-room: var(--bottom-room); } }
 /* XCAR Chat (20.11.2026, владелец: «шапку надо убрать полностью»): ни шапки, ни таб-бара, как у партнёра. */
-body.surface-chat { --header-edge: var(--safe-top); --stick-top: var(--safe-top); --tabbar: 0px; --bottom-edge: 0px; --bottom-room: calc(var(--action) * var(--spacing-action)); }
-/* Страница во фрейме шторки сделки XCAR Chat (20.11.2026, `x-chat.deal-sheet`): своё приложение вокруг уже есть — ни шапки,
+body.surface-chat, body.surface-mail { --header-edge: var(--safe-top); --stick-top: var(--safe-top); --tabbar: 0px; --bottom-edge: 0px; --bottom-room: calc(var(--action) * var(--spacing-action)); }
+/* Страница во фрейме шторки сделки XCAR Chat и XCAR Mail (20.11.2026, `x-ui.deal-sheet`): своё приложение вокруг уже есть — ни шапки,
    ни таб-бара, ни подвала; верх и низ у краёв шторки. Класс ставит `x-ui.layout` до отрисовки, когда окно — не верхнее. */
 html.is-embedded body { --safe-top: 0px; --header-edge: 0px; --stick-top: 0px; --tabbar: 0px; --bottom-edge: 0px; --home-gap: 0px; }
 html.is-embedded #main > .container-site { padding-top: .5rem !important; }
@@ -4595,7 +4595,7 @@ html.kb-open { --home-gap: 0px; }
      Над листом таб-бар и в движении листа: уезжающий вниз лист проходит под ним, а не по нему. */
   @media (max-width: 767.98px) {
     body.app-shell { --tabbar-edge: var(--tabbar); }
-    body.app-shell.surface-partner, body.app-shell.surface-chat, html.kb-open body.app-shell { --tabbar-edge: 0px; }
+    body.app-shell.surface-partner, body.app-shell.surface-chat, body.app-shell.surface-mail, html.kb-open body.app-shell { --tabbar-edge: 0px; }
     html.detail-open .tabbar { z-index: calc(var(--z-panel) + 1); }
   }
   /* Клавиатура стоит — бара нет, без движения: на iOS он и так под ней (visibility — колонка не пересчитывается, длинный

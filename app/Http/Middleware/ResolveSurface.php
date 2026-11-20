@@ -27,6 +27,12 @@ class ResolveSurface
      */
     private const CHAT_PATHS = '~^(?:offers/\d+/chat|work/deals/\d+/payment-proof(?:/.*)?)$~';
 
+    /**
+     * XCAR Mail (20.11.2026) из общих путей — вход, профиль и уведомления (`account`), файлы и медиа писем, служебное; ни чатов,
+     * ни сделок сайта. Свои пути — `routes/mail.php`.
+     */
+    private const MAIL_SHARED = ['login', 'logout', 'lock', 'password', 'passkey', 'up', 'media', 'live', 'account', 'manifest.webmanifest', 'offline', 'push', 'sw.js', 'icons.svg', 'files', 'jpg', 'client'];
+
     /** Что открыто на чужом хосте тому, кому туда нельзя: выйти и служебное. */
     private const ANYONE = ['login', 'logout', 'password', 'passkey', 'up', 'manifest.webmanifest', 'offline', 'sw.js', 'icons.svg', 'admin', 'client'];
 
@@ -43,6 +49,7 @@ class ResolveSurface
             $shared = match ($surface) {
                 Surface::Partner => in_array($first, self::PARTNER_SHARED, true) || in_array($request->path(), self::PARTNER_PATHS, true),
                 Surface::Chat => in_array($first, self::SHARED, true) || preg_match(self::CHAT_PATHS, $request->path()) === 1,
+                Surface::Mail => in_array($first, self::MAIL_SHARED, true),
                 default => in_array($first, self::SHARED, true),
             };
             abort_unless($own || $shared, 404);

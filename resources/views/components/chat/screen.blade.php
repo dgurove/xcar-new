@@ -48,6 +48,5 @@
             @if ($carOpen)<x-ui.icon name="chevron-right" class="size-4 shrink-0 text-ink-dim"/>@endif
         @if ($carOpen)</a>@else</div>@endif
     @endif
-    @if (\App\Support\Surface::current() === \App\Support\Surface::Chat)<x-chat.deal-sheet/>@endif
     <x-chat.box :chat="$chat" :messages="$messages" :user="$user" :first-unread="$firstUnread" :more="$more" :readonly="$readonly" :open="$open ?? ($chat || !$offer ? null : '/offers/'.$offer->number.'/chat')" screen/>
 </div>

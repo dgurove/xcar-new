@@ -46,6 +46,9 @@ final class NoticeLink
                 $href = $local;
             } elseif ($surface === Surface::Crm && $host === Surface::Site->host()) {
                 $href = $local;
+            } elseif ($surface === Surface::Mail && $host === Surface::Crm->host()) {
+                // Письмо в CRM — то же письмо в XCAR Mail: адреса почты те же.
+                $href = $local;
             } else {
                 return $href;
             }
@@ -61,6 +64,7 @@ final class NoticeLink
             Surface::Site => self::site($href, $path, $subject),
             Surface::Park, Surface::Logistics, Surface::Partner => $href,
             // XCAR Chat: в нём только чаты — обращение гостя по своей теме, остальное — список чатов.
+            Surface::Mail => self::mail($href, $path),
             Surface::Chat => match (true) {
                 $path === '/contacts' => preg_match('~^/account/chats/(\d+)$~', (string) $subject, $m) ? Chat::path((int) $m[1]) : Chat::ROOT,
                 (bool) preg_match('~^/chats(?:/\d+)?$~', $path) => $href,
@@ -84,6 +88,22 @@ final class NoticeLink
             $path === '/work/invoices/new' => self::dealOfOffer($href) ?? '/offers?preset=agree',
             default => $href,
         };
+    }
+
+    /**
+     * XCAR Mail: почта и «Из писем» — как есть; машина CRM (`/offers/N`, у письма поставщика — с окном её писем) — окно писем
+     * этой машины поверх «Входящих», сделка из него — шторкой; остальное — «Входящие».
+     */
+    private static function mail(string $href, string $path): string
+    {
+        if (preg_match('~^/(?:work/mail|offers/from-mail)(?:/|$)~', $path)) {
+            return $href;
+        }
+        if (preg_match('~^/offers/(\d+)(?:/letters)?$~', $path, $m)) {
+            return '/work/mail?letters='.rawurlencode('/offers/'.$m[1].'/letters');
+        }
+
+        return '/work/mail';
     }
 
     private static function site(string $href, string $path, ?string $subject): string

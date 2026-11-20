@@ -6,6 +6,7 @@
         \App\Support\Surface::Logistics => 'логистика',
         \App\Support\Surface::Partner => 'кабинет поставщиков',
         \App\Support\Surface::Chat => 'чат',
+        \App\Support\Surface::Mail => 'почта',
         default => 'администрация',
     };
 @endphp

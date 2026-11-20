@@ -25,14 +25,19 @@ final class WebPushChannel
             return Sent::skipped('нет подписок');
         }
         // Пуш — в приложение уведомления: парковки, логистики и CRM — только на подписки своего хоста, общее — на сайт и CRM.
-        // Чат (20.11.2026): есть подписка XCAR Chat — сообщение только туда, где его и читают; нет — как было. В XCAR Chat
-        // ничего, кроме чатов, не идёт.
+        // Чат и почта (20.11.2026): есть подписка XCAR Chat (XCAR Mail) — сообщение (письмо) только туда, где его и читают; нет —
+        // как было. В XCAR Chat и XCAR Mail ничего, кроме своего, не идёт.
         $only = $notice->surface();
-        $chat = $notice instanceof \App\Notifications\ChatNotice && $subs->contains(fn ($s) => $s->host && Surface::fromHost($s->host) === Surface::Chat);
-        $subs = $subs->filter(function ($sub) use ($only, $chat) {
+        $app = match (true) {
+            $notice instanceof \App\Notifications\ChatNotice => Surface::Chat,
+            $notice->aboutMail() => Surface::Mail,
+            default => null,
+        };
+        $own = $app && $subs->contains(fn ($s) => $s->host && Surface::fromHost($s->host) === $app);
+        $subs = $subs->filter(function ($sub) use ($only, $app, $own) {
             $host = $sub->host ? Surface::fromHost($sub->host) : Surface::Site;
-            if ($chat || $host === Surface::Chat) {
-                return $chat && $host === Surface::Chat;
+            if ($own || $host->single()) {
+                return $own && $host === $app;
             }
 
             return $only ? $host === $only : ! in_array($host, [Surface::Park, Surface::Logistics, Surface::Partner], true);

@@ -15,11 +15,23 @@
 сайта; `Http\Chat\ChatController` зовёт их контроллеры, корень — `Chat::base()`); свои маршруты — `routes/chat.php`, сверх общих
 путей — только формы чата (`ResolveSurface::CHAT_PATHS`); ни поиска, ни колокольчика, ни переходов, значок — непрочитанные чаты.
 Из PWA в другое PWA не уйти (iPhone открыл бы Safari, где человек не вошёл), поэтому **сделка — шторкой поверх чата**
-(`x-chat.deal-sheet`, `deal_sheet_controller`): ссылки `Chat::carHref` + `sheetAttrs` (плашка ТС, «Открыть сделку», «Выбрать
+(`x-ui.deal-sheet`, `deal_sheet_controller`): ссылки `Chat::carHref` + `sheetAttrs` (плашка ТС, «Открыть сделку», «Выбрать
 время», ссылка шага) грузят во фрейм настоящую страницу — сотруднику CRM `/offers/N`, менеджеру его сделку на сайте; вход общий
 (cookie `.xcar.ru`), в фрейме `html.is-embedded` прячет шапку и таб-бар, на телефоне блоки от края до края; пускает фрейм
 `frame-ancestors 'self' https://*.xcar.ru` (`deploy/Caddyfile`). Пуш чата — на подписку XCAR Chat, если она есть (`WebPushChannel`).
-Названия приложений — XCAR, XCAR CRM, XCAR Park, XCAR Logistics, XCAR Partner, XCAR Chat (`Surface::label`).
+**XCAR Mail** (`mail.xcar.ru`, `Surface::Mail`, 20.11.2026, владелец: «так же для почты, только для администраторов и модераторов CRM»)
+— почта CRM своим приложением, пускает `canCrmMail`. Адреса те же, что в CRM (`/work/mail`, «Из писем» `/offers/from-mail`): маршруты
+почты — один кусок `routes/mail-shared.php`, его подключают `routes/crm.php` и `routes/mail.php` (сверх — окно писем машины,
+«Отменить» черновика из писем, «Поставщик отказал»); из общих путей — только вход, профиль и уведомления, файлы, служебное
+(`ResolveSurface::MAIL_SHARED`). Вид — CRM (`body.surface-crm`), без шапки и таб-бара: «Из писем», «Написать» и аватар — в строке
+заголовка, «‹» на телефоне — в ряду заголовка (`x-ui.back phone`). Приложения одного раздела — `Surface::single()` (Chat, Mail):
+ни поиска, ни колокольчика, ни переходов. **Сделка письма — той же шторкой**, что в чате (`x-ui.deal-sheet` в `x-ui.shell`, дверь
+`Support\DealSheet`: `here`, `attrs`, `crm` — страница CRM во фрейм): машина в шапке письма (`x-mail.case-head`), в письме
+(`x-mail.letter`), в карточке дела и на странице ветки; «Завести» возвращает к письму с черновиком в шторке (flash `deal-sheet`,
+`MailController::toOffer`, `deal_sheet_controller` `openValueChanged` — после редиректа на тот же адрес Turbo морфит, а не
+переподключает). Пуш о письме (`Notice::aboutMail`: `supplier_mail`, `letters`) — на подписку XCAR Mail, если она есть, ссылка —
+окно писем машины `?letters=` (`NoticeLink::mail`); значок — непрочитанные «Входящие».
+Названия приложений — XCAR, XCAR CRM, XCAR Park, XCAR Logistics, XCAR Partner, XCAR Chat, XCAR Mail (`Surface::label`).
 Поверхность — `App\Support\Surface`, ставит `ResolveSurface` по хосту; кому хост
 открыт — одна дверь `Surface::opensFor` (CRM сотрудникам, стоянка по разделу); чужие маршруты на хосте — 404, чужой вошедший — стена
 `auth.foreign` (403, без шапки: в кабинет на сайт, написать, выйти). **Адреса только английские** (`/deals`,

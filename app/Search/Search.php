@@ -50,7 +50,7 @@ final class Search
             Surface::Logistics => self::logistics($user, $t),
             Surface::Site => self::site($user, $t),
             // У партнёра поиска в шапке нет: лупа его списка ищет только в его черновиках (`PartnerOffers`).
-            Surface::Partner, Surface::Chat => [],
+            Surface::Partner, Surface::Chat, Surface::Mail => [],
         }, fn ($g) => $g['rows'] !== []);
     }
 
@@ -144,6 +144,7 @@ final class Search
             Surface::Site => 'Марка, модель, номер',
             Surface::Partner => 'Номер, VIN, марка',
             Surface::Chat => 'Имя, ТС, номер',
+            Surface::Mail => 'Тема, номер, VIN',
         };
     }
 

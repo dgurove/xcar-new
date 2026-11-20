@@ -25,9 +25,9 @@
                 $head = match (true) {
                     (bool) $v => ['cat' => $v->category ?? \App\Cars\Category::guess($v->titleWithYear()) ?? \App\Cars\Category::Passenger, 'title' => $v->titleWithYear(), 'href' => \App\Support\Surface::Park->url('/cars/'.$v->id), 'vendor' => $v->vendor, 'ref' => $v->ref,
                         'state' => $v->state->label(), 'urgent' => $v->state->tone() === 'urgent'],
-                    (bool) $o => ['cat' => $o->category(), 'title' => $o->title().($o->published_at ? ' № '.$o->number : ''), 'href' => $o->crmPath(), 'vendor' => $o->vendor, 'ref' => $o->claim_ref,
+                    (bool) $o => ['cat' => $o->category(), 'title' => $o->title().($o->published_at ? ' № '.$o->number : ''), 'href' => \App\Support\DealSheet::crm($o), 'vendor' => $o->vendor, 'ref' => $o->claim_ref,
                         'state' => $o->crmPlace(), 'urgent' => false],
-                    $c && ! $fresh => ['cat' => $c->hasCar() ? (\App\Cars\Category::guess($c->title()) ?? \App\Cars\Category::Passenger) : null, 'title' => $c->title(), 'href' => $c->state === CandidateState::Promoted ? ($park ? '/cars/'.$c->vehicle_id : '/offers/'.$c->offer?->number) : null,
+                    $c && ! $fresh => ['cat' => $c->hasCar() ? (\App\Cars\Category::guess($c->title()) ?? \App\Cars\Category::Passenger) : null, 'title' => $c->title(), 'href' => $c->state === CandidateState::Promoted ? ($park ? '/cars/'.$c->vehicle_id : ($c->offer ? \App\Support\DealSheet::crm($c->offer) : null)) : null,
                         'vendor' => $c->vendor, 'ref' => $c->code, 'state' => $c->state->label(), 'urgent' => false],
                     ! $orphan && ! $c => ['title' => \App\Mail\Extraction\Patterns::cleanSubject($t->subject) ?: '(без темы)', 'href' => null, 'vendor' => $t->vendor, 'ref' => null, 'state' => null, 'urgent' => false],
                     default => null,
@@ -76,7 +76,7 @@
                     <div class="chain-head">
                         <div class="min-w-0 flex-1">
                             @if ($head['href'])
-                                <a href="{{ $head['href'] }}" class="chain-head-title block hover:text-accent-text" @if ($v && $crm) data-turbo="false" @endif>@if ($head['cat'] ?? null)<x-ui.cat-icon :category="$head['cat']"/>@endif{{ $head['title'] }}</a>
+                                <a href="{{ $head['href'] }}" class="chain-head-title block hover:text-accent-text" @if ($v && $crm) data-turbo="false" @elseif (! $v) {!! \App\Support\DealSheet::attrs() !!} @endif>@if ($head['cat'] ?? null)<x-ui.cat-icon :category="$head['cat']"/>@endif{{ $head['title'] }}</a>
                             @else
                                 <div class="chain-head-title">@if ($head['cat'] ?? null)<x-ui.cat-icon :category="$head['cat']"/>@endif{{ $head['title'] }}</div>
                             @endif
@@ -92,7 +92,7 @@
                         @if ($archived)
                             <form method="post" action="{{ $base }}/case/{{ $section['kind'] }}/{{ $section['id'] }}/archive?restore=1" class="contents">@csrf<button class="btn btn-s btn-quiet case-do">Вернуть</button></form>
                         @endif
-                        @if ($head['href'])<a href="{{ $head['href'] }}" class="-mr-1.5 shrink-0 p-1.5" aria-label="Открыть" @if ($v && $crm) data-turbo="false" @endif><x-ui.chevron/></a>@endif
+                        @if ($head['href'])<a href="{{ $head['href'] }}" class="-mr-1.5 shrink-0 p-1.5" aria-label="Открыть" @if ($v && $crm) data-turbo="false" @elseif (! $v) {!! \App\Support\DealSheet::attrs() !!} @endif><x-ui.chevron/></a>@endif
                         @if ($enroll && ! $archived)
                             <form method="post" action="{{ $base }}/{{ $t->id }}/candidate" class="contents">@csrf<button class="btn btn-s btn-accent case-do">Завести</button></form>
                         @endif
