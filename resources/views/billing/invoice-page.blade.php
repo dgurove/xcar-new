@@ -76,7 +76,7 @@
                     @endforeach
                     @if ($i->vat_on_top)<div class="flex items-baseline gap-3 py-2"><span class="flex-1">{{ $i->vatLabel() }}</span><span class="nums shrink-0 font-semibold">{{ Money::rub($i->vatAmount()) }}</span></div>@endif
                     <div class="flex items-baseline gap-3 py-2"><span class="flex-1">Итого</span><span class="nums text-lg font-semibold">{{ Money::rub($i->total) }}</span></div>
-                    @if ($i->vatRate() && ! $i->vat_on_top)<div class="text-sm text-ink-muted">{{ mb_strtolower($i->vatLabel()) }}</div>@endif
+                    @if ($i->vatRate() && ! $i->vat_on_top)<div class="text-sm text-ink-muted">{{ mb_strtolower($i->vatLabel()) }} {{ Money::rub($i->vatAmount()) }}</div>@endif
                     @if ($offset > 0)<div class="flex items-baseline gap-3 py-2 text-sm text-ink-muted"><span class="flex-1">Вознаграждение менеджера</span><span class="nums">{{ Money::rub($offset) }}</span></div>@endif
                 </div>
             </x-ui.card>

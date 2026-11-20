@@ -27,7 +27,7 @@ final class Changes
      * Производное от других полей и служебное. Цвета меток — оформление: «цвета меток» без значения в ленте ничего не
      * говорило (07.11.2026).
      */
-    private const SKIP = ['claim_ref_key', 'ref_key', 'plate_key', 'vehicle_category', 'city_id', 'tab_at', 'tab_by', 'updated_at', 'created_at', 'tag_colors'];
+    private const SKIP = ['claim_ref_key', 'ref_key', 'plate_key', 'vehicle_category', 'city_id', 'tab_at', 'tab_by', 'updated_at', 'created_at', 'tag_colors', 'prices_include_vat', 'supplier_vat_source', 'supplier_vat_message_id', 'supplier_vat_at'];
 
     /**
      * Грязные поля моделей (одна правка может писать и предложение, и машину) — до `save()`.

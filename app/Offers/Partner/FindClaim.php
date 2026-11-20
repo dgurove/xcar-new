@@ -64,7 +64,7 @@ final class FindClaim
         }
         if (! $offer) {
             // Машина у нас без продажи (своя на парковке) — предложение встаёт на неё же: одна машина — одна запись.
-            $offer = ($this->create)($user, ['vendor_id' => $user->vendor_id, 'claim_ref' => $ref, 'prices_include_vat' => Vendor::offersVat($user->vendor_id)], ['partner' => true], $car);
+            $offer = ($this->create)($user, ['vendor_id' => $user->vendor_id, 'claim_ref' => $ref, 'prices_include_vat' => Vendor::offersVat($user->vendor_id), 'supplier_vat' => Vendor::supplierVat($user->vendor_id)], ['partner' => true], $car);
 
             return [self::CREATED, $offer];
         }

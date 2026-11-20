@@ -61,7 +61,7 @@ use Illuminate\Support\Facades\DB;
     'brand_id', 'no_brand', 'model_id', 'year', 'mileage', 'vin', 'show_vin', 'body', 'transmission', 'drive', 'fuel',
     'engine_volume', 'engine_power', 'color', 'damage_cause', 'damage_zones', 'is_runnable', 'has_keys', 'papers',
     'incident_date', 'description', 'settlement_id', 'sale_settlement_id', 'inspection_address', 'show_address', 'floor_price', 'owner_price', 'value', 'publish_price',
-    'asking_price', 'min_bid_price', 'min_bid_share', 'prices_include_vat', 'tags', 'tag_colors', 'bids_close_at', 'sort_weight',
+    'asking_price', 'min_bid_price', 'min_bid_share', 'prices_include_vat', 'supplier_vat', 'supplier_vat_source', 'supplier_vat_message_id', 'supplier_vat_at', 'tags', 'tag_colors', 'bids_close_at', 'sort_weight',
     'chat_enabled', 'share_locked', 'share_locked_by_estimate', 'audience_rules', 'recommended', 'vendor_id', 'claim_ref', 'insurer_deadline_at', 'car_place',
     'answer_by', 'insured_name', 'insured_phone', 'insured_phone2', 'insured_contacts', 'flags', 'holder', 'docs_required', 'contact_name', 'contact_email',
     'garage_allowed', 'deal_show_until', 'deal_published_at', 'deal_audience_rules', 'binding_until', 'held_by', 'plate', 'sts', 'pts', 'body_no', 'chassis_no', 'policy_no', 'vehicle_category', 'first_look_until', 'first_look_user_id', 'floor_rules', 'value_from',
@@ -109,6 +109,16 @@ class Offer extends Model
         static::saving(function (self $o) {
             if ($o->isDirty('value') && ! ParkValue::$writing) {
                 $o->value_from = null;
+            }
+        });
+        // НДС поставщика ставкой (`supplier_vat`, 20.11.2026) и прежняя галка «С НДС» (по ней выбираются схемы) — одно и то же:
+        // поменяли ставку — галка за ней; старые двери (письмо, вендор, «Через Р.О.С.») ставят галку — ставка за ней: «с НДС» без
+        // ставки — 22 %, «без НДС» — 0, если ставка была.
+        static::saving(function (self $o) {
+            if ($o->isDirty('supplier_vat')) {
+                $o->prices_include_vat = (int) $o->supplier_vat > 0;
+            } elseif ($o->isDirty('prices_include_vat')) {
+                $o->supplier_vat = $o->prices_include_vat ? ($o->supplier_vat ?: 22) : ($o->supplier_vat ? 0 : $o->supplier_vat);
             }
         });
         // `opened_at` — вычисленное каталогом (`CatalogQuery::openedAtSql`), колонки нет: в запись не уходит.
@@ -238,6 +248,8 @@ class Offer extends Model
             'show_vin' => 'bool',
             'show_address' => 'bool',
             'prices_include_vat' => 'bool',
+            'supplier_vat' => 'int',
+            'supplier_vat_at' => 'datetime',
             'chat_enabled' => 'bool',
             'share_locked' => 'bool',
             'share_locked_by_estimate' => 'bool',

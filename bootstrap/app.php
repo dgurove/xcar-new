@@ -75,6 +75,7 @@ use App\Offers\Console\MoneyCloseCommand;
 use App\Offers\Console\RepricesFromLettersCommand;
 use App\Offers\Console\TickOffers;
 use App\Offers\Console\ValuationsCommand;
+use App\Offers\Console\SupplierVatCommand;
 use App\Offers\Share\Console\PreparePdfs;
 use App\Park\Console\AcceptByLettersCommand;
 use App\Park\Console\AutoRequestsCommand;
@@ -150,6 +151,7 @@ return Application::configure(basePath: dirname(__DIR__))
         MigtorgArchive::class,
         MigtorgDropOsago::class,
         ValuationsCommand::class,
+        SupplierVatCommand::class,
         RefillVendors::class,
         TickPark::class,
         StoreByLettersCommand::class,

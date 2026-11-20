@@ -63,7 +63,7 @@ class ContractPriceTest extends TestCase
 
     private function invoice(Deal $deal)
     {
-        return $deal->fresh()->issuedInvoices()->where('state', '!=', InvoiceState::Void)->sole();
+        return $deal->fresh()->issuedInvoices()->where('kind', \App\Billing\ChargeKind::Sale)->where('state', '!=', InvoiceState::Void)->sole();
     }
 
     public function test_invoice_vat_follows_contract_and_changes_in_place(): void
@@ -74,10 +74,11 @@ class ContractPriceTest extends TestCase
         $this->assertNull($first->vat_rate);
         $this->assertFalse($first->vat);
 
-        app(SaveDealContract::class)(DealContract::for($deal), ['vat_rate' => 5], $this->admin);
+        // 22 % — как и без НДС, не ставка ПРАЙМ: подбор отдельным счётом, сумма счёта за ТС та же (20.11.2026, `Deal::splitsSelection`).
+        app(SaveDealContract::class)(DealContract::for($deal), ['vat_rate' => 22], $this->admin);
         $same = $this->invoice($deal);
         $this->assertTrue($same->is($first), 'сменилась только ставка — тот же счёт');
-        $this->assertSame(5, $same->vat_rate);
+        $this->assertSame(22, $same->vat_rate);
         $this->assertSame($first->number, $same->number);
     }
 
@@ -89,6 +90,8 @@ class ContractPriceTest extends TestCase
 
         $this->actingAs($moderator)->get($crm.'/work/deals')->assertRedirect();
         $this->actingAs($moderator)->get($crm.'/offers?preset=agree')->assertOk();
+        // Ставка ПРАЙМ 5 % — одна строка «ТС» на цену минус вознаграждение (подбор не отдельно, 20.11.2026).
+        app(SaveDealContract::class)(DealContract::for($deal), ['vat_rate' => 5], $this->admin);
         // Часть отдали наличными мимо счёта — договор и счёт меньше на неё, цена продажи та же (18.11.2026).
         $this->actingAs($moderator)->put($crm.'/work/deals/'.$deal->id.'/money', ['amount' => '1 050 000', 'commission' => 30000, 'cash_part' => '30 000'])->assertRedirect();
         $contract = $deal->fresh()->contract;
@@ -107,6 +110,8 @@ class ContractPriceTest extends TestCase
         // Наличные стёрли — снова цена минус вознаграждение.
         $this->actingAs($this->admin)->put($crm.'/work/deals/'.$deal->id.'/money', ['amount' => '1 050 000', 'commission' => 30000, 'cash_part' => ''])->assertRedirect();
         $this->assertNull($deal->fresh()->contract->cash_part);
-        $this->assertEqualsWithDelta(1020000, (float) $this->invoice($deal)->total, 0.01);
+        // Ставка 22 % — счёт за ТС на закупочную, подбор отдельно (20.11.2026).
+        $this->assertEqualsWithDelta(944000, (float) $this->invoice($deal)->total, 0.01);
+        $this->assertEqualsWithDelta(76000, (float) $deal->fresh()->issuedInvoices()->where('kind', \App\Billing\ChargeKind::Selection)->where('state', '!=', InvoiceState::Void)->sole()->total, 0.01);
     }
 }

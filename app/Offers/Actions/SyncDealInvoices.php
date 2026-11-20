@@ -123,6 +123,11 @@ final class SyncDealInvoices
         if ($due <= 0 || ! $deal->buyer) {
             return null;
         }
+        // Подбор отдельно от счёта за ТС (ставка ТС не ПРАЙМ, `Deal::splitsSelection`) — вместе с ним, не раньше: иначе счёт
+        // подбора закрывал бы ход менеджера «Укажите покупателя».
+        if ($deal->splitsSelection() && ! $this->prime($deal)) {
+            return null;
+        }
         // Услуги подбора от Р.О.С. (`Deal::feeSeller`) без его реквизитов — счёт с прочерками не выставляем, как у продажи.
         if ($deal->feeSeller() !== Seller::Prime && ! Party::seller($deal->feeSeller())->billable()) {
             return null;

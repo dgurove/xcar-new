@@ -46,7 +46,8 @@ final class PaymentQr
      */
     public static function purpose(Invoice $invoice): string
     {
-        $vat = $invoice->vatRate() ? 'В т.ч. НДС '.$invoice->vatRate().'%' : 'НДС не облагается';
+        // НДС с суммой, без ставки — «Без НДС» (20.11.2026, бухгалтер).
+        $vat = $invoice->vatRate() ? 'В т.ч. НДС '.$invoice->vatRate().'% - '.number_format($invoice->vatAmount(), 2, '.', '').' руб.' : 'Без НДС';
         if ($invoice->kind === ChargeKind::Sale && ($offer = $invoice->carOffer()) && trim((string) $offer->carRecord()->vin) !== '') {
             return 'Оплата '.$offer->invoiceTitle().'. '.$vat;
         }

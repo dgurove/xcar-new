@@ -54,6 +54,8 @@ final class Collect
             app(Pick::class)->fillEmpty($car);
             // Заявка поставщика свежее нынешней оценочной — она и встаёт (`Offers\Valuations`, 15.11.2026).
             \App\Offers\Valuations::fromDocuments($car->refresh());
+            // НДС поставщика из его договора комиссии, счёта или ДКП (`Offers\SupplierVat`, 20.11.2026).
+            \App\Offers\SupplierVat::onDocuments($car->refresh());
         }
         Variants::recount($car->refresh());
     }

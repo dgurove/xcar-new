@@ -103,6 +103,7 @@ final class FillFromLetter
         ], fn ($v) => $v !== null && $v !== '');
         if (isset($data['vendor_id']) && $offer->prices_include_vat === null) {
             $data['prices_include_vat'] = Vendor::offersVat($data['vendor_id']);
+            $data['supplier_vat'] = Vendor::supplierVat($data['vendor_id']);
         }
         // Характеристики по VIN — в пустые, как у черновика, заведённого из письма (`PromoteCandidate::data`).
         if ($offer->vin && in_array('vin', $written, true)) {

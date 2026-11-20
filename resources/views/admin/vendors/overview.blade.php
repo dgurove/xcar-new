@@ -5,7 +5,7 @@
         <div class="row justify-between"><span class="text-ink-muted">Формат сделки</span><span>{{ $vendor->deal_format->label() }}</span></div>
         @if ($vendor->answer_hours)<div class="row justify-between"><span class="text-ink-muted">Ответ</span><span class="nums">{{ $vendor->answer_hours }}ч</span></div>@endif
         @if ($vendor->binding_days)<div class="row justify-between"><span class="text-ink-muted">Предложение держим</span><span class="nums">{{ $vendor->binding_days }} дн</span></div>@endif
-        <div class="row justify-between"><span class="text-ink-muted">НДС</span><span>{{ $vendor->offers_include_vat ? 'Цены с НДС' : 'Без НДС' }}</span></div>
+        <div class="row justify-between"><span class="text-ink-muted">НДС</span><span>{{ $vendor->supplier_vat === null ? 'не указан' : \App\Billing\Vat::label($vendor->supplier_vat) }}</span></div>
         @if ($vendor->defaultTags->isNotEmpty())
             <div class="row justify-between gap-3"><span class="shrink-0 text-ink-muted">Метки</span><span class="flex flex-wrap justify-end gap-1">@foreach ($vendor->defaultTags as $t)<span class="tag" style="{{ \App\Offers\Tag::style($t->color) }}">{{ $t->name }}</span>@endforeach</span></div>
         @endif

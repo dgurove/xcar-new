@@ -42,7 +42,7 @@ use Spatie\MediaLibrary\InteractsWithMedia;
 #[Fillable([
     'name', 'kind', 'is_active', 'on_park', 'notes',
     'agreement_number', 'agreement_date', 'agreement_until', 'act_form', 'tow_agreement_number', 'tow_agreement_date',
-    'deal_format', 'to_gallery', 'drafts_from_migtorg', 'letters_to_telegram', 'pickup_on_arrival', 'claim_ref_optional', 'payment_days', 'offers_include_vat', 'answer_hours', 'silence_means_buy', 'binding_days',
+    'deal_format', 'to_gallery', 'drafts_from_migtorg', 'letters_to_telegram', 'pickup_on_arrival', 'claim_ref_optional', 'payment_days', 'offers_include_vat', 'supplier_vat', 'answer_hours', 'silence_means_buy', 'binding_days',
     'storage_payer', 'buyer_pays_late', 'release_without_payment', 'release_by_qr', 'auto_sale', 'floor_by_value', 'buyer_rate_multiplier', 'billing_cadence',
     'senders', 'parser', 'park_senders', 'mail_account_id', 'party_id', 'report_template_id', 'refusal_template_id', 'home_yard_id', 'park_seller',
     'intake_docs', 'intake_note', 'audience_rules', 'intake_report_docs', 'floor_rules', 'signing_office',
@@ -56,6 +56,12 @@ class Vendor extends Model implements HasMedia
     protected static function booted(): void
     {
         static::saved(fn () => self::forgetSenders());
+        // Прежняя галка «Цены предложений с НДС» — за ставкой (20.11.2026).
+        static::saving(function (self $v) {
+            if ($v->isDirty('supplier_vat')) {
+                $v->offers_include_vat = (int) $v->supplier_vat > 0;
+            }
+        });
         // Сменили парковку по умолчанию — город ТС вендора без своей парковки следует за ней (`Park\City`).
         static::saved(function (self $v) {
             if ($v->wasChanged('home_yard_id')) {
@@ -78,6 +84,7 @@ class Vendor extends Model implements HasMedia
             'act_form' => ActForm::class,
             'deal_format' => DealFormat::class,
             'offers_include_vat' => 'bool',
+            'supplier_vat' => 'int',
             'to_gallery' => 'bool',
             'drafts_from_migtorg' => 'bool',
             'letters_to_telegram' => 'bool',
@@ -141,7 +148,15 @@ class Vendor extends Model implements HasMedia
     /** НДС цен предложений этого вендора по умолчанию — одна дверь для письма, ручного черновика и смены вендора. */
     public static function offersVat(?int $id): bool
     {
-        return (bool) ($id ? self::whereKey($id)->value('offers_include_vat') : false);
+        return (int) self::supplierVat($id) > 0;
+    }
+
+    /** НДС поставщика по умолчанию у его предложений — ставка (20.11.2026); null — не знаем. */
+    public static function supplierVat(?int $id): ?int
+    {
+        $rate = $id ? self::whereKey($id)->value('supplier_vat') : null;
+
+        return $rate === null ? null : (int) $rate;
     }
 
     /** Вендор, чей это контрагент счёта, — для логотипа перед именем контрагента. */

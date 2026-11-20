@@ -171,7 +171,7 @@ class DealContractController
         if ($request->has('vat_rate') && ! $request->has('vehicle')) {
             // НДС договора — и модератору (18.11.2026, владелец: «полный доступ ко всему, что касается договоров и счетов»).
             abort_unless($request->user()->canEditDeals(), 403);
-            $data = $request->validate(['vat_rate' => ['required', 'integer', Rule::in(DealContract::VAT_RATES)]], [], ['vat_rate' => 'НДС']);
+            $data = $request->validate(['vat_rate' => ['required', 'integer', Rule::in(\App\Billing\Vat::RATES)]], [], ['vat_rate' => 'НДС']);
             $contract = $save(DealContract::for($deal), $data, $request->user());
 
             return back()->with('toast', $contract->vat_rate ? 'ДКП: НДС '.$contract->vat_rate.' %' : 'ДКП без НДС');

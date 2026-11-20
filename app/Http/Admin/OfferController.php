@@ -1120,7 +1120,7 @@ class OfferController
             ->whereDoesntHave('events', fn ($q) => $q->where('type', OfferEventType::Created)->whereNotNull('payload')->whereRaw("payload::text not in ('[]', '{}', 'null')"))
             ->latest('id')->value('vendor_id');
 
-        return $vendorId ? ['vendor_id' => $vendorId, 'prices_include_vat' => Vendor::offersVat($vendorId)] : [];
+        return $vendorId ? ['vendor_id' => $vendorId, 'prices_include_vat' => Vendor::offersVat($vendorId), 'supplier_vat' => Vendor::supplierVat($vendorId)] : [];
     }
 
     public function edit(Request $request, Offer $offer)

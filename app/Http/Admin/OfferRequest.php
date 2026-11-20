@@ -32,7 +32,7 @@ class OfferRequest extends FormRequest
     public const MODERATOR = [
         'brand_id', 'model_id', 'year', 'mileage', 'vin', 'show_vin', 'show_address', 'body', 'transmission', 'drive', 'fuel',
         'engine_volume', 'engine_power', 'color', 'settlement_id', 'sale_settlement_id', 'inspection_address', 'description', 'floor_price', 'value', 'vendor_id', 'claim_ref',
-        'prices_include_vat', 'vehicle_category', 'plate', 'pts', 'sts', 'policy_no', 'body_no', 'chassis_no', 'binding_until', 'floor_rules',
+        'prices_include_vat', 'supplier_vat', 'supplier_vat_source', 'supplier_vat_message_id', 'supplier_vat_at', 'vehicle_category', 'plate', 'pts', 'sts', 'policy_no', 'body_no', 'chassis_no', 'binding_until', 'floor_rules',
     ];
 
     protected function prepareForValidation(): void
@@ -90,6 +90,7 @@ class OfferRequest extends FormRequest
             'min_bid_price' => ['nullable', 'integer', 'max:100000000'],
             'min_bid_share' => ['nullable', 'numeric', 'between:0,1'],
             'prices_include_vat' => ['nullable', 'boolean'],
+            'supplier_vat' => ['nullable', 'integer', \Illuminate\Validation\Rule::in(\App\Billing\Vat::RATES)],
             'tags' => ['nullable', 'array'],
             'tags.*' => ['string', 'max:40'],
             'tag_colors' => ['nullable', 'json'],
@@ -144,7 +145,14 @@ class OfferRequest extends FormRequest
         // рисует (06.10.2026), и сохранение полей ТС не должно их сбрасывать.
         $show = $only !== null || $this->has('_show');
         $showOnly = ['chat_enabled', 'share_locked', 'recommended', 'garage_allowed'];
-        foreach (['show_vin', 'show_address', 'chat_enabled', 'share_locked', 'recommended', 'prices_include_vat', 'garage_allowed'] as $flag) {
+        // НДС поставщика ставкой (20.11.2026) вместо галки «С НДС»: пустое — «не указан»; вписал человек — главнее писем.
+        if ($sent('supplier_vat') && $this->has('supplier_vat')) {
+            $data['supplier_vat'] = $this->filled('supplier_vat') ? $this->integer('supplier_vat') : null;
+            $data['supplier_vat_source'] = $data['supplier_vat'] === null ? null : 'human';
+            $data['supplier_vat_message_id'] = null;
+            $data['supplier_vat_at'] = now();
+        }
+        foreach (['show_vin', 'show_address', 'chat_enabled', 'share_locked', 'recommended', 'garage_allowed'] as $flag) {
             if ($sent($flag) && ($show || ! in_array($flag, $showOnly, true))) {
                 $data[$flag] = $this->boolean($flag);
             }

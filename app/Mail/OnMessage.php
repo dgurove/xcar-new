@@ -94,6 +94,8 @@ final class OnMessage
                 app(FillFromLetter::class)($offer, $message);
                 // «Новая стоимость – 433 200 руб.» по машине с закупочной — переоценка на решение админа, сама цена не меняется.
                 app(DetectReprice::class)($offer->refresh(), $message);
+                // «Сделка НДС не облагается», «Без НДС.» / «C НДС.» — НДС поставщика для счёта за ТС (`SupplierVat`, 20.11.2026).
+                \App\Offers\SupplierVat::onLetter($offer->refresh(), $message);
                 // Сделка ждала письма поставщика (Т-Страхование) — VIN уже в машине, ход наш: «Спросить менеджера» (`SupplierLetterWait`).
                 SupplierLetterWait::mark($offer->refresh());
             } catch (Throwable $e) {

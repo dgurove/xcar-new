@@ -29,7 +29,14 @@
 @if ($contract && auth()->user()?->canEditDeals())
     <form method="post" action="/work/deals/{{ $deal->id }}/contract" data-controller="autosubmit" data-sheet-clean class="mt-4 flex flex-col gap-1.5">
         @csrf @method('put')
-        <span class="text-sm text-ink-muted">НДС в договоре и счёте</span>
-        <x-ui.segment name="vat_rate" :options="collect(DealContract::VAT_RATES)->mapWithKeys(fn ($r) => [$r => $r ? $nb($r.' %') : $nb('Без НДС')])->all()" :value="$contract->vatRate()" data-action="change->autosubmit#submit"/>
+        {{-- Ставок больше трёх (20.11.2026, бухгалтер: в счёте за ТС — НДС того, у кого забираем машину, 0 / 5 / 7 / 10 / 20 / 22) —
+             выбором; откуда ставка, если не выбрана руками, — строкой ниже (`DealContract::vatSource`). --}}
+        <label class="text-sm text-ink-muted" for="deal-vat-{{ $deal->id }}">НДС в договоре и счёте за ТС</label>
+        <select id="deal-vat-{{ $deal->id }}" name="vat_rate" class="field-input" data-action="change->autosubmit#submit">
+            @foreach (\App\Billing\Vat::RATES as $r)
+                <option value="{{ $r }}" @selected($contract->vatRate() === $r)>{{ \App\Billing\Vat::label($r) }}</option>
+            @endforeach
+        </select>
+        @if ($why = $contract->vatSource())<span class="text-sm text-ink-muted">{{ $why }}</span>@endif
     </form>
 @endif

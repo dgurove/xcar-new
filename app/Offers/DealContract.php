@@ -30,8 +30,6 @@ class DealContract extends Model
     use FastAttributes;
 
     /** Документы ТС для договора — поля машины, правит сотрудник в карточке ДКП. */
-    /** Ставки НДС на выбор в карточке ДКП (14.11.2026, владелец: «бывает и без НДС, и 5 %, и 22 %»). */
-    public const VAT_RATES = [0, 5, 22];
 
     public const VEHICLE = ['plate' => 'Госномер', 'sts' => 'СТС', 'pts' => 'ПТС или ЭПТС', 'body_no' => 'Кузов №', 'chassis_no' => 'Шасси (рама) №'];
 
@@ -98,6 +96,8 @@ class DealContract extends Model
         return match (true) {
             $deal->isDkp() => $deal->ownerPrice(),
             $deal->isGarage() && ! $deal->namesBuyer() => $deal->cost,
+            // Ставка ТС не 5 % ПРАЙМ — подбор отдельным счётом (`Deal::splitsSelection`), договор и счёт за ТС — на закупочную.
+            $deal->splitsSelection() => (int) $deal->cost,
             // Цена продажи минус вознаграждение и часть, отданная наличными мимо счёта (18.11.2026, владелец: сумму договора путали
             // с ценой продажи; «сумма договора меняется в редких случаях, когда часть наличными отдали» — `cash_part`).
             $deal->amount !== null => max(0, (int) $deal->amount - (int) $deal->commission - (int) $deal->contract?->cash_part),
@@ -121,16 +121,46 @@ class DealContract extends Model
     }
 
     /**
-     * Ставка НДС договора — одна дверь: выбранная в CRM (`VAT_RATES`); не выбрана — по ценам предложения: «С НДС» — ставка
-     * продавца (ПРАЙМ 5 %, Р.О.С. 22 %), без — без НДС. У ДКП собственника НДС нет.
+     * Ставка НДС договора и счёта за ТС — одна дверь (20.11.2026, бухгалтер: «НДС всегда на всю сумму»): выбранная в CRM
+     * (`Vat::RATES`); не выбрана — по схеме:
+     * — ПРАЙМ продаёт по договору комиссии (`commissioned`: Совкомбанк, вписан собственник) — НДС того, у кого забираем машину,
+     *   `offers.supplier_vat` (письмо, документ, вендор, рука; не знаем — без НДС, владелец);
+     * — ПРАЙМ сам покупает и перепродаёт (Каркаде «Оптом») — ставка ПРАЙМ, 5 %;
+     * — Р.О.С. — его ставка (22 %); ДКП собственника — без НДС.
      */
     public function vatRate(): int
     {
         if ($this->form() === 'owner') {
             return 0;
         }
+        if ($this->vat_rate !== null) {
+            return $this->vat_rate;
+        }
+        $seller = $this->deal->seller();
+        if ($seller !== Seller::Prime) {
+            return $seller->vatRate();
+        }
 
-        return $this->vat_rate ?? ($this->deal->offer->prices_include_vat ? $this->deal->seller()->vatRate() : 0);
+        return $this->commissioned() ? (int) $this->deal->offer->supplier_vat : $seller->vatRate();
+    }
+
+    /** Откуда ставка, когда её не выбрали руками: «как у поставщика, по письму 12.11» / «НДС поставщика не указан» / null. */
+    public function vatSource(): ?string
+    {
+        if ($this->vat_rate !== null || $this->form() === 'owner' || $this->deal->seller() !== Seller::Prime) {
+            return null;
+        }
+        if (! $this->commissioned()) {
+            return 'ПРАЙМ перепродаёт';
+        }
+        $offer = $this->deal->offer;
+        if ($offer->supplier_vat === null) {
+            return 'НДС поставщика не указан';
+        }
+
+        return 'как у поставщика'.match ($offer->supplier_vat_source) {
+            'letter' => ', по письму', 'document' => ', по документу', 'vendor' => ', как у вендора', default => '',
+        }.($offer->supplier_vat_at && in_array($offer->supplier_vat_source, ['letter', 'document'], true) ? ' '.$offer->supplier_vat_at->format('d.m') : '');
     }
 
     /** Собственник для договора комиссии: ФИО и серия с номером паспорта, у организации — название и ИНН; больше шаблон о нём не пишет. */

@@ -598,6 +598,18 @@ class Deal extends Model implements HasMedia
         return $this->schemeOf()->seller();
     }
 
+    /**
+     * Счёт ПРАЙМ за ТС не по ставке ПРАЙМ (20.11.2026, владелец: «если ставка НДС отличается — не склеивать услугу подбора в
+     * одном счёте, отдельно её по ссылке как обычно, чтобы мозги не выносили в бухгалтерии»): договор комиссии с НДС
+     * поставщика, отличным от 5 %, — счёт за ТС на закупочную по его ставке, подбор (цена − вознаграждение − закупочная) —
+     * своим счётом ПРАЙМ по ссылке, 5 %. Ставки совпали — одна строка, как было.
+     */
+    public function splitsSelection(): bool
+    {
+        return $this->isPrime() && ! $this->isGarage() && $this->seller() === Seller::Prime && $this->cost !== null && $this->amount !== null
+            && ($contract = $this->contract) !== null && $contract->vatRate() !== Seller::Prime->vatRate();
+    }
+
     /** Менеджер платит нам подбор по ссылке — у ДКП и «страховой напрямую»; гаражная — не по цене, а долей (`share`). */
     public function paysSelection(): bool
     {
@@ -1224,6 +1236,7 @@ class Deal extends Model implements HasMedia
     {
         return match (true) {
             $this->isGarageManager() => (int) $this->share,
+            $this->splitsSelection() => max(0, (int) $this->amount - (int) $this->commission - (int) $this->contract?->cash_part - (int) $this->cost),
             $this->paysSelection() => (int) $this->selectionBase() - (int) $this->commission,
             default => 0,
         };

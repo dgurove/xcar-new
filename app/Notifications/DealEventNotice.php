@@ -68,6 +68,15 @@ final class DealEventNotice extends Notice
             path: self::dealPath($deal));
     }
 
+    /**
+     * НДС поставщика узнали из письма или документа (20.11.2026, `Offers\SupplierVat`): счёт за ТС пошёл за ним; оплаченный не
+     * трогаем — громко, разобраться руками.
+     */
+    public static function supplierVat(Deal $deal, string $what, bool $loud): self
+    {
+        return new self($deal->offer, 'supplier-vat', 'НДС поставщика', $what, null, 'deals', null, loud: $loud, path: self::dealPath($deal));
+    }
+
     /** Сделка отменена; сам менеджер («Отказываюсь») — громко: машину снова продавать. */
     public static function dealCancelled(Deal $deal, ?User $by): self
     {

@@ -117,8 +117,8 @@
                 @case ('vendor')
                     @if ($sale)
                         {{-- У опубликованного вендор ведёт маршрут и волны показа: модератор меняет его только в черновике.
-                             Сменили вендора — «С НДС» у закупочной встаёт по нему (`vendor_vat_controller`). --}}
-                        <div class="contents" data-controller="vendor-vat" data-vendor-vat-ids-value="{{ json_encode(once(fn () => \App\Vendors\Vendor::where('offers_include_vat', true)->pluck('id')->all())) }}" data-action="change->vendor-vat#sync">
+                             Сменили вендора — «НДС поставщика» встаёт по нему (`vendor_vat_controller`). --}}
+                        <div class="contents" data-controller="vendor-vat" data-vendor-vat-rates-value="{{ json_encode(once(fn () => \App\Vendors\Vendor::whereNotNull('supplier_vat')->pluck('supplier_vat', 'id')->all())) }}" data-action="change->vendor-vat#sync">
                             <x-ui.combobox name="vendor_id" label="Вендор" url="/reference/vendors" :create="auth()->user()->canManageCrm() ? '/reference/vendors' : null"
                                 :value="$raw('vendor_id')" :text="$vendor?->name" :required="$req('vendor_id')"
                                 :disabled="! auth()->user()->canManageCrm() && ! $draft"/>

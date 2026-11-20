@@ -59,7 +59,8 @@ class PrimeDealFlowTest extends TestCase
         $this->manager = User::create(['name' => 'Тужиков Евгений', 'phone' => '79000000002', 'roles' => [Role::Manager], 'approved_at' => now()]);
         $vendor = Vendor::create(['name' => 'Совкомбанк тест', 'deal_format' => $format]);
         app(ApplyPreset::class)($vendor->workflowOrNew(Track::Sale), Preset::Sovcombank);
-        $offer = Offer::create(['vendor_id' => $vendor->id, 'floor_price' => $floor, 'asking_price' => 1050000, 'bids_close_at' => now()->addDay()]);
+        // НДС поставщика 5 % — как ставка ПРАЙМ: счёт за ТС одной строкой с подбором (20.11.2026, `Deal::splitsSelection`; раздельные — `SupplierVatTest`).
+        $offer = Offer::create(['vendor_id' => $vendor->id, 'supplier_vat' => 5, 'floor_price' => $floor, 'asking_price' => 1050000, 'bids_close_at' => now()->addDay()]);
         $offer->forceFill(['state' => OfferState::Open])->save();
         $offer->viewers()->create(['user_id' => $this->manager->id, 'opens_at' => now()]);
         app(EnterStage::class)($offer, Stage::where('workflow_id', $vendor->fresh()->workflow(Track::Sale)->id)->where('name', 'Приём подтверждений')->firstOrFail());

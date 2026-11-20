@@ -33,7 +33,9 @@
                 {{-- Волны показа его предложений, у которых нет своих: группы менеджеров и люди, через сколько. --}}
                 <x-audience.field :value="$vendor->audience_rules ? json_encode($vendor->audience_rules) : ''" :rules="$vendor->audience_rules" inline/>
                 <x-ui.check name="silence_means_buy" :checked="$vendor->silence_means_buy">Молчание означает покупку</x-ui.check>
-                <x-ui.check name="offers_include_vat" :checked="$vendor->offers_include_vat">Цены предложений с НДС</x-ui.check>
+                {{-- НДС поставщика ставкой (20.11.2026): умолчание его предложений, в счёте за ТС по договору комиссии — она. --}}
+                <x-ui.field type="select" name="supplier_vat" label="НДС поставщика" :value="$vendor->supplier_vat"
+                    :options="['' => 'не указан'] + collect(\App\Billing\Vat::RATES)->mapWithKeys(fn ($r) => [$r => \App\Billing\Vat::label($r)])->all()"/>
                 {{-- Сумма страховой — оценочная (Альфа): закупочная от неё по правилу `Offers\Pricing`, в CRM поле «Оценочная». --}}
                 <x-ui.check name="floor_by_value" :checked="$vendor->floor_by_value">Закупочная от оценочной</x-ui.check>
                 {{-- Диапазоны наценки к оценочной (07.11.2026): умолчание предложений вендора — поставщик на partner.xcar.ru

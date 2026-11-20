@@ -47,7 +47,7 @@ final class FieldLabels
         'engine_volume' => 'объём двигателя', 'engine_power' => 'мощность', 'damage_cause' => 'причина повреждений', 'damage_zones' => 'повреждения', 'damage_note' => 'что заметили',
         'is_runnable' => 'на ходу', 'has_keys' => 'ключи', 'papers' => 'документы', 'incident_date' => 'дата события', 'description' => 'описание',
         'car_place' => 'где ТС', 'settlement_id' => 'город', 'sale_settlement_id' => 'город продажи', 'inspection_address' => 'адрес осмотра', 'floor_price' => 'закупочная цена', 'owner_price' => 'собственнику по ДКП', 'value' => 'оценочная стоимость', 'publish_price' => 'заявленная цена', 'asking_price' => 'цена продажи',
-        'min_bid_price' => 'минимальная цена', 'min_bid_share' => 'доля от цены', 'prices_include_vat' => 'НДС', 'tags' => 'метки', 'tag_colors' => 'цвета меток', 'bids_close_at' => 'срок приёма', 'first_look_until' => 'только оценившему до',
+        'min_bid_price' => 'минимальная цена', 'min_bid_share' => 'доля от цены', 'prices_include_vat' => 'НДС', 'supplier_vat' => 'НДС поставщика', 'tags' => 'метки', 'tag_colors' => 'цвета меток', 'bids_close_at' => 'срок приёма', 'first_look_until' => 'только оценившему до',
         'chat_enabled' => 'чат', 'share_locked' => 'запрет шеринга', 'recommended' => 'рекомендуем', 'managers_limited' => 'круг менеджеров', 'managers' => 'менеджеры', 'audience_rules' => 'кому показывать', 'floor_rules' => 'наценка к оценочной', 'audience_id' => 'шаблон показа', 'deal_audience' => 'кому показывать в сделке', 'deal_show_until' => 'сколько показывать в сделке',
         'vendor_id' => 'вендор', 'answer_by' => 'ответ до', 'insured_name' => 'страхователь', 'insured_phone' => 'телефон страхователя', 'insured_phone2' => 'ещё телефон страхователя', 'insured_contacts' => 'контакты владельца', 'flags' => 'признаки', 'holder' => 'держатель',
         'contact_name' => 'контакт', 'contact_phone' => 'телефон', 'contact_email' => 'почта ответственного', 'insurer_deadline_at' => 'срок от вендора', 'binding_until' => 'срок обязывающего предложения',
@@ -78,10 +78,13 @@ final class FieldLabels
     {
         if ($value === null || $value === '' || $value === []) {
             // Город продажи пустой — значит, совпадает с городом ТС (`Offer::saleCity`).
-            return $field === 'sale_settlement_id' ? 'как город ТС' : null;
+            return match ($field) { 'sale_settlement_id' => 'как город ТС', 'supplier_vat' => 'не указан', default => null };
         }
         if (self::isMoney($field)) {
             return Money::rub((int) $value);
+        }
+        if ($field === 'supplier_vat') {
+            return \App\Billing\Vat::label((int) $value);
         }
         if (is_bool($value)) {
             return $value ? 'да' : 'нет';

@@ -77,8 +77,12 @@ final class UpdateOffer
         }
         // Сменили вендора, а НДС не прислали (у модератора галки нет) — НДС цен от вендора. Присланный — письмом или
         // галкой админа — не перетирается, даже если совпадает с прежним.
-        if ($offer->isDirty('vendor_id') && ! array_key_exists('prices_include_vat', $data) && $offer->vendor_id) {
-            $offer->prices_include_vat = Vendor::offersVat($offer->vendor_id);
+        // НДС поставщика ставкой (`supplier_vat`, 20.11.2026): вписанный человеком, письмом или документом не трогаем.
+        if ($offer->isDirty('vendor_id') && ! array_key_exists('prices_include_vat', $data) && ! array_key_exists('supplier_vat', $data) && $offer->vendor_id
+            && in_array($offer->supplier_vat_source, [null, 'vendor'], true)) {
+            $offer->supplier_vat = Vendor::supplierVat($offer->vendor_id);
+            $offer->supplier_vat_source = $offer->supplier_vat === null ? null : 'vendor';
+            $offer->prices_include_vat = (int) $offer->supplier_vat > 0;
         }
         // Новая закупочная, а подтвердившие уже есть (28.10.2026, владелец: «у тех, кто подтвердил, и в сделке — оставить
         // прежнюю или обновить»): откуда бы ни пришла — руками, из текста, с Мигторга, — сразу не пишется, а встаёт
