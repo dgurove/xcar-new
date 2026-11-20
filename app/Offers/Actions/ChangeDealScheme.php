@@ -49,6 +49,12 @@ final class ChangeDealScheme
             app(UpdateOffer::class)($deal->offer, ['prices_include_vat' => true], $by, ['why' => 'Через Р.О.С. — с НДС']);
             $deal = $deal->fresh(['offer', 'contract.buyer.party']);
         }
+        // Альфа ушла с Р.О.С. руками (20.11.2026, владелец: «убрать „с НДС“ — снова напрямую Альфе») — и наоборот: схема без
+        // Р.О.С. у Альфы — без НДС, ставка и метка «С НДС» снимаются, в «Истории» строкой.
+        if ($was === DealScheme::Ros && $scheme !== DealScheme::Ros && $deal->offer->vendor?->pay_before_pickup && (int) $deal->offer->supplier_vat > 0) {
+            app(UpdateOffer::class)($deal->offer, ['supplier_vat' => 0, 'supplier_vat_source' => 'human', 'supplier_vat_at' => now()], $by, ['why' => 'Не через Р.О.С. — без НДС']);
+            $deal = $deal->fresh(['offer', 'contract.buyer.party']);
+        }
         $this->advance->rehome($deal, $by);
         // Сменился продавец (ПРАЙМ ↔ Р.О.С.) — номер договора прежний: очередь одна на обоих, выданный номер не меняется
         // (`ContractNumber`, 16.11.2026); счёт уже перевыставил `UpdateDealMoney` → `SyncDealInvoices`.

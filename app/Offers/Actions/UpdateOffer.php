@@ -184,7 +184,8 @@ final class UpdateOffer
             app(CloseEstimates::class)($offer, $by);
         }
         // «С НДС» у машины в сделке — схема за ним сама: с НДС через Р.О.С. (17.11.2026, `SchemeFollowsVat`).
-        if (in_array('prices_include_vat', $changed, true)) {
+        // НДС поставщика ставкой (20.11.2026) — галка за ней ставится в `Offer::saving`, уже после списка изменений: смотрим и её.
+        if (array_intersect(['prices_include_vat', 'supplier_vat'], $changed)) {
             app(SchemeFollowsVat::class)($offer, $by);
         }
         if (in_array('insurer_deadline_at', $changed, true)) {

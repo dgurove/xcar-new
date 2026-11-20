@@ -95,6 +95,40 @@ class SupplierVatTest extends TestCase
         $this->assertSame(22, $car->fresh()->supplier_vat);
     }
 
+    /** Альфа: «НДС поставщика» 22 % — сделка через Р.О.С., убрали — снова напрямую Альфе по её счёту (20.11.2026, владелец). */
+    public function test_alfa_scheme_follows_supplier_vat_both_ways(): void
+    {
+        Notification::fake();
+        $admin = User::create(['name' => 'Владелец', 'phone' => '79000000001', 'roles' => [Role::Admin], 'approved_at' => now()]);
+        $manager = User::create(['name' => 'Роман', 'phone' => '79000000002', 'roles' => [Role::Manager], 'approved_at' => now()]);
+        $vendor = Vendor::create(['name' => 'Альфа тест']);
+        $vendor->forceFill(['pay_before_pickup' => true])->save();
+        app(ApplyPreset::class)($vendor->workflowOrNew(Track::Sale), Preset::Alfa);
+        \App\Billing\Party::seller(\App\Billing\Seller::Ros);
+        $offer = Offer::create(['vendor_id' => $vendor->id, 'floor_price' => 900000, 'asking_price' => 1000000, 'bids_close_at' => now()->addDay()]);
+        $offer->forceFill(['state' => OfferState::Open])->save();
+        $offer->viewers()->create(['user_id' => $manager->id, 'opens_at' => now()]);
+        app(EnterStage::class)($offer, Stage::where('workflow_id', $vendor->fresh()->workflow(Track::Sale)->id)->where('name', 'Приём подтверждений')->firstOrFail());
+        $deal = app(AcceptBid::class)(app(PlaceBid::class)($offer->fresh(), $manager, 1000000), $admin, scheme: DealScheme::Insurer);
+        $this->assertSame(DealScheme::Insurer, $deal->fresh()->schemeOf());
+
+        app(\App\Offers\Actions\UpdateOffer::class)($offer->fresh(), ['supplier_vat' => 22, 'supplier_vat_source' => 'human'], $admin);
+        $this->assertSame(DealScheme::Ros, $deal->fresh()->schemeOf());
+        $this->assertContains(Offer::VAT_TAG, $offer->fresh()->tags);
+
+        app(\App\Offers\Actions\UpdateOffer::class)($offer->fresh(), ['supplier_vat' => 0, 'supplier_vat_source' => 'human'], $admin);
+        $this->assertSame(DealScheme::Insurer, $deal->fresh()->schemeOf());
+        $this->assertNotContains(Offer::VAT_TAG, $offer->fresh()->tags ?? []);
+        // Руками схему Р.О.С. → «напрямую» — НДС снимается тоже.
+        app(\App\Offers\Actions\ChangeDealScheme::class)($deal->fresh(), DealScheme::Ros, $admin);
+        $this->assertSame(22, $offer->fresh()->supplier_vat);
+        app(\App\Offers\Actions\ChangeDealScheme::class)($deal->fresh(), DealScheme::Insurer, $admin);
+        $this->assertSame(0, $offer->fresh()->supplier_vat);
+        $this->assertSame(DealScheme::Insurer, $deal->fresh()->schemeOf());
+        $history = $offer->fresh()->events()->get()->map(fn ($e) => json_encode($e->payload, JSON_UNESCAPED_UNICODE))->implode(' ');
+        $this->assertStringContainsString('Схема', $history);
+    }
+
     private function deal(?int $supplierVat): Deal
     {
         Storage::fake('private');
