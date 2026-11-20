@@ -96,6 +96,33 @@ class ParkReplyRecipientsTest extends TestCase
         $this->assertEqualsCanonicalizing(['6691111@mail.ru', 'fartushniakd@alfastrah.ru'], array_map('trim', explode(',', $report->cc)));
     }
 
+    /**
+     * 20.11.2026, 0323/046/16269/26: заявка — в «ч.1» Ткаченко, а акт Степашкина просила в «ч.6». Отчёт о приёме отвечает в живую
+     * переписку — ей, в копии — люди заявки (владелец: «пусть будут и те и те»).
+     */
+    public function test_intake_report_answers_latest_letter_and_keeps_request_people(): void
+    {
+        $this->setUpCar();
+        $one = Thread::create(['account_id' => $this->account, 'subject' => '0323/046/16269/26 ч.1', 'vehicle_id' => $this->car->id]);
+        $request = $this->letter($one, '2026-11-13 11:24');
+        \App\Park\Request::withoutEvents(fn () => \App\Park\Request::create(['vehicle_id' => $this->car->id, 'type' => \App\Park\RequestType::Intake, 'letter_id' => $request->id]));
+        $six = Thread::create(['account_id' => $this->account, 'subject' => 'RE: 0323/046/16269/26 ч.6', 'vehicle_id' => $this->car->id]);
+        $ask = Message::create(['account_id' => $this->account, 'thread_id' => $six->id, 'direction' => 'in', 'intent' => 'question',
+            'from_email' => 'stepashkinaap@alfastrah.ru', 'from_name' => 'Степашкина Анастасия', 'subject' => $six->subject, 'date_at' => '2026-11-19 11:37', 'text_body' => 'Прошу направить скан акта']);
+        $ask->addresses()->create(['kind' => 'from', 'email' => 'stepashkinaap@alfastrah.ru', 'position' => 0]);
+        $ask->addresses()->create(['kind' => 'to', 'email' => 'storage@xcar.ru', 'position' => 1]);
+
+        $report = \App\Park\IntakeReport::for($this->car->fresh());
+        $this->assertTrue($report->parent->is($ask));
+        $this->assertSame('stepashkinaap@alfastrah.ru', $report->to);
+        $cc = array_map('trim', explode(',', $report->cc));
+        foreach (['tkachenkoev@alfastrah.ru', '6691111@mail.ru', 'fartushniakd@alfastrah.ru'] as $who) {
+            $this->assertContains($who, $cc);
+        }
+        $this->assertNotContains('storage@xcar.ru', $cc);
+        $this->assertSame('Ответ на письмо Степашкина Анастасия от 19.11', $report->basis());
+    }
+
     public function test_same_letter_in_two_threads_is_one_waiting_block(): void
     {
         $this->setUpCar();

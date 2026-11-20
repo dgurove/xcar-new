@@ -6,7 +6,6 @@ use App\Mail\Account;
 use App\Mail\Direction;
 use App\Mail\Message;
 use App\Mail\Scope;
-use App\Mail\Thread;
 use App\Vendors\ContactRole;
 use App\Vendors\Vendor;
 use Illuminate\Support\Collection;
@@ -39,7 +38,8 @@ final class IntakeReport
     public static function for(Vehicle $vehicle, ?Message $parent = null): ?self
     {
         $vehicle->loadMissing(['vendor', 'media', 'requests']);
-        $parent ??= self::parent($vehicle);
+        $request = self::request($vehicle);
+        $parent ??= self::parent($vehicle, $request);
         $account = $parent?->account?->sender() ?? Account::where('scope', Scope::Park)->sending()->orderBy('title')->first();
         if (! $account) {
             return null;
@@ -57,7 +57,24 @@ final class IntakeReport
 
         // Копия — все участники письма, на которое отвечаем (16.11.2026, Альфа: «Почему удаляете участников переписки?»): то же
         // правило, что у ответа в редакторе (`Composer::reply`), без наших ящиков и без того, кто уже в «Кому».
-        $cc = $parent ? implode(', ', array_diff(array_map('trim', explode(',', app(\App\Mail\Composer::class)->reply($parent)['cc'])), [$to, ''])) : '';
+        // Отвечаем не на заявку, а в живую переписку (20.11.2026) — в копии и участники заявки (владелец: «пусть будут и те и те»):
+        // её отправитель и её копия, без наших ящиков и повторов.
+        $copy = $parent ? array_map('trim', explode(',', app(\App\Mail\Composer::class)->reply($parent)['cc'])) : [];
+        if ($request && $parent && $request->isNot($parent)) {
+            $first = $request->isForwardedByStaff() ? (string) $request->field('sender') : (string) $request->replyToAddress();
+            $copy = [...$copy, $first, ...array_map('trim', explode(',', app(\App\Mail\Composer::class)->reply($request)['cc']))];
+        }
+        $ours = Account::pluck('email')->map(fn ($e) => mb_strtolower((string) $e))->all();
+        $seen = [mb_strtolower($to)];
+        $cc = implode(', ', array_values(array_filter($copy, function ($a) use (&$seen, $ours) {
+            $key = mb_strtolower(trim((string) (preg_match('/<([^>]+)>/', $a, $m) ? $m[1] : $a)));
+            if ($key === '' || in_array($key, $seen, true) || in_array($key, $ours, true)) {
+                return false;
+            }
+            $seen[] = $key;
+
+            return true;
+        })));
 
         return new self($vehicle, $parent, $account, $to, $cc, $photos, $slots);
     }
@@ -76,17 +93,38 @@ final class IntakeReport
         return array_values(array_filter(array_map(fn ($k) => ReportDoc::tryFrom((string) $k), $list), fn ($k) => $k !== ReportDoc::Other));
     }
 
-    /** Письмо, на которое отвечаем: письмо заявки на приём, иначе последнее входящее в ветке ТС (не покупателю). */
-    private static function parent(Vehicle $vehicle): ?Message
+    /** Письмо заявки на приём. */
+    private static function request(Vehicle $vehicle): ?Message
     {
         $letterId = $vehicle->requests->where('type', RequestType::Intake)->sortByDesc('id')->first(fn ($r) => $r->letter_id)?->letter_id;
-        $letter = $letterId ? Message::with(['account', 'thread'])->find($letterId) : null;
-        if ($letter) {
-            return $letter;
-        }
-        $thread = Thread::where('vehicle_id', $vehicle->id)->park()->where('buyer', false)->orderByDesc('last_message_at')->first();
 
-        return $thread?->messages()->with(['account', 'thread'])->where('direction', Direction::In)->orderByDesc('date_at')->first();
+        return $letterId ? Message::with(['account', 'thread'])->find($letterId) : null;
+    }
+
+    /**
+     * Письмо, на которое отвечаем: последнее входящее вендора по ТС (ветки парковки, не покупателю, не автоответ), если оно новее
+     * заявки, иначе письмо заявки (20.11.2026, 0323/046/16269/26: у Альфы шесть веток «ч.1…ч.6», Степашкина просила акт в «ч.6», а
+     * отчёт ушёл ответом на заявку «ч.1» Ткаченко — ей он не пришёл: «у вас письмо есть, а на почте нет»).
+     */
+    private static function parent(Vehicle $vehicle, ?Message $request): ?Message
+    {
+        $latest = Message::with(['account', 'thread'])->where('direction', Direction::In)
+            ->whereHas('thread', fn ($t) => $t->where('vehicle_id', $vehicle->id)->park()->where('buyer', false))
+            ->when($request?->date_at, fn ($q) => $q->where('date_at', '>', $request->date_at))
+            ->orderByDesc('date_at')->limit(10)->get()->first(fn (Message $m) => ! $m->isAutomatic());
+
+        return $latest ?? $request;
+    }
+
+    /** Подпись формы: на чьё письмо отвечаем — «Ответ на письмо Степашкина Анастасия от 19.11». */
+    public function basis(): ?string
+    {
+        if (! $this->parent) {
+            return null;
+        }
+        $who = trim((string) $this->parent->from_name) ?: (string) $this->parent->from_email;
+
+        return 'Ответ на письмо '.$who.' от '.$this->parent->date_at?->timezone('Europe/Moscow')->format('d.m');
     }
 
     /** Фраза письма — как писали руками: со сканами — «фотоотчет и скан-копии документов», без — «фотоотчет». */

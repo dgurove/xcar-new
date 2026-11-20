@@ -39,6 +39,8 @@
             @if ($advance)<input type="hidden" name="advance" value="1">@endif
             @if ($report->parent && $parent)<input type="hidden" name="parent" value="{{ $report->parent->id }}">@endif
             @error('report')<x-ui.flash tone="danger">{{ $message }}</x-ui.flash>@enderror
+            {{-- На чьё письмо отвечаем (20.11.2026): отчёт ушёл ответом на заявку Ткаченко, а акт просила Степашкина в другой ветке. --}}
+            @if ($basis = $report->basis())<p class="text-sm text-ink-muted">{{ $basis }}</p>@endif
             <div class="fields">
                 <x-ui.field name="to" :id="$id.'-to'" label="Кому" :value="old('to', $report->to)" required/>
                 {{-- Копия — участники письма, на которое отвечаем (16.11.2026, Альфа: «Почему удаляете участников переписки?»;
