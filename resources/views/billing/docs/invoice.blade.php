@@ -138,7 +138,8 @@
         @endif
         <tr class="main"><td>{{ $offset > 0 || $invoice->vat_on_top ? 'Всего к оплате' : 'Итого к оплате' }}:</td><td class="s">{{ Money::nums($due, 2) }} ₽</td></tr>
         @unless ($invoice->vat_on_top)
-            <tr><td colspan="2">{{ $invoice->vatRate() ? $invoice->vatLabel().': '.Money::nums($invoice->vatAmount(), 2).' ₽' : 'НДС не облагается' }}</td></tr>
+            {{-- «В том числе НДС 5 %» без суммы (20.11.2026, владелец: «не писать сумму НДС, просто 5 %»). --}}
+            <tr><td colspan="2">{{ $invoice->vatRate() ? $invoice->vatLabel() : 'НДС не облагается' }}</td></tr>
         @endunless
     </table>
 
