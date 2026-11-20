@@ -29,13 +29,14 @@ final class SupplierVatCommand extends Command
     public function handle(): int
     {
         $apply = (bool) $this->option('apply');
-        $offers = Offer::query()->with('vendor')
-            ->where(fn ($q) => $q->whereIn('state', [OfferState::Draft, OfferState::Gallery, OfferState::Open])
-                ->orWhereIn('id', Deal::query()->active()->select('offer_id')))
+        // Черновики — нет: НДС нужен счёту за ТС, а их письма разберёт `OnMessage` по ходу. По одной машине — память не копится.
+        $ids = Offer::query()->where(fn ($q) => $q->whereIn('state', [OfferState::Gallery, OfferState::Open])
+            ->orWhereIn('id', Deal::query()->active()->select('offer_id')))
             ->where(fn ($q) => $q->whereNull('supplier_vat_source')->orWhere('supplier_vat_source', '!=', 'human'))
-            ->orderBy('id')->get();
+            ->orderBy('id')->pluck('id');
         $rows = [];
-        foreach ($offers as $offer) {
+        foreach ($ids as $id) {
+            $offer = Offer::with('vendor')->find($id);
             $found = $this->letter($offer);
             $doc = $offer->carRecord() ? SupplierVat::fromDocuments($offer->carRecord()) : null;
             if ($doc && (! $found || $doc['at']->gt($found['at']))) {
@@ -67,7 +68,9 @@ final class SupplierVatCommand extends Command
         if ($threads->isEmpty()) {
             return null;
         }
-        $letters = Message::whereIn('thread_id', $threads)->where('direction', Direction::In)->orderByDesc('date_at')->orderByDesc('id')->get();
+        $letters = Message::whereIn('thread_id', $threads)->where('direction', Direction::In)
+            ->where(fn ($q) => $q->where('text_body', 'ilike', '%НДС%')->orWhere('html_body', 'ilike', '%НДС%'))
+            ->orderByDesc('date_at')->orderByDesc('id')->limit(20)->get();
         foreach ($letters as $m) {
             if (($rate = SupplierVat::fromLetter($m)) !== null) {
                 $text = (string) preg_replace('/\s+/u', ' ', $m->ownText());
