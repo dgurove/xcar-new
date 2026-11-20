@@ -10,6 +10,7 @@ use App\Live\Topics;
 use App\Mail\Message;
 use App\Notifications\DealInfoNotice;
 use App\Notifications\YourTurnNotice;
+use App\Offers\Binding;
 use App\Offers\Deal;
 use App\Offers\Disclosure;
 use App\Offers\InsurerReplies;
@@ -86,7 +87,11 @@ final class Disclose
             $moved && mb_strtolower(trim($step->label)) === 'договор готов' && self::keepOffice($deal, $letters);
             $disclosure && $deal->offer->log(OfferEventType::Note, $by, ['text' => 'Показали менеджеру: '.$disclosure->summary()]);
 
-            return [$disclosure, (bool) $moved, $moved ? Requirement::where('deal_id', $deal->id)->whereNull('done_at')->latest('id')->first() : null];
+            // Шаг оплаты поставщику, застрявший нашим ходом (20.11.2026, 7925/046/01102/26: в «Оплату счёта» вошли, когда гаражная
+            // «платит менеджер» ещё не считалась оплатой поставщику, — ход встал наш, просьбы менеджеру нет): счёт показан — ход его.
+            $asked = $billed && ! $moved ? $this->payTurn($deal) : null;
+
+            return [$disclosure, (bool) $moved, $moved ? Requirement::where('deal_id', $deal->id)->whereNull('done_at')->latest('id')->first() : $asked];
         });
         self::publish($deal);
         if ($buyer = $deal->buyer) {
@@ -107,6 +112,21 @@ final class Disclose
         $disclosure && \App\Notifications\Notify::toStaff(\App\Notifications\DealEventNotice::disclosed($deal->loadMissing('offer'), $by), $by);
 
         return ['disclosure' => $disclosure, 'moved' => $moved];
+    }
+
+    /** Счёт поставщика показан, а шаг оплаты ждёт нас — ход менеджера: «Оплатите», срок шага от сейчас. */
+    private function payTurn(Deal $deal): ?Requirement
+    {
+        $offer = $deal->offer->unsetRelation('positions');
+        $position = $offer->position(Track::Sale);
+        if (! $position || $position->waits_for !== WaitsFor::Us || ! $deal->paysSupplierOn($position->stage)
+            || Requirement::where('deal_id', $deal->id)->whereNull('done_at')->exists()) {
+            return null;
+        }
+        $stage = $position->stage;
+        $position->update(['waits_for' => null, 'deadline_at' => Binding::stageDeadline($offer, $deal, WaitsFor::Manager, $stage->deadlineFor($offer, now()), $stage)]);
+
+        return Requirement::askFor($deal, $stage, $position);
     }
 
     /**

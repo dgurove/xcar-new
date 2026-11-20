@@ -371,9 +371,11 @@
                     @endif
                     {{-- Письмо поставщика ждёт разбора — строкой в шаге, а не лаймовой плашкой над путём (10.11.2026). --}}
                     @if ($deal && $position->track === \App\Workflow\Track::Sale && auth()->user()?->canEditDeals())<x-deal.reply-review :deal="$deal" line :manual="false"/>@endif
-                    {{-- Менеджер платит поставщику по его счёту, а счёта не видит (10.11.2026, 0790/046/11079/26) — красной строкой. --}}
-                    @if ($deal && \App\Offers\SupplierInvoice::onPay($deal, $stage) && auth()->user()?->canEditDeals() && \App\Offers\SupplierInvoice::shown($offer)->isEmpty())
-                        <div class="contents" data-controller="sheet">
+                    {{-- Менеджер платит поставщику по его счёту, а счёта не видит (10.11.2026, 0790/046/11079/26) — красной строкой, а главная
+                         кнопка шага — «Показать счёт» (20.11.2026, владелец: «тут должна быть кнопка „Показать счёт“»). --}}
+                    @php $billNeeded = $deal && \App\Offers\SupplierInvoice::onPay($deal, $stage) && auth()->user()?->canEditDeals() && \App\Offers\SupplierInvoice::shown($offer)->isEmpty(); @endphp
+                    @if ($billNeeded)
+                        <div class="contents" data-controller="sheet" data-action="invoice-pay-{{ $position->id }}:open@window->sheet#open">
                             <x-route.task-row icon="file" urgent aria-controls="invoice-pay-{{ $position->id }}">Менеджер не видит счёт поставщика</x-route.task-row>
                             <x-deal.supplier-invoice-sheet :id="'invoice-pay-'.$position->id" :deal="$deal"/>
                         </div>
@@ -443,13 +445,9 @@
                             </div>
                         </div>
                     @endforeach
-                    @php
-                        // Гаражная «платит менеджер» платит поставщику сама (19.11.2026): ход менеджера, а наши услуги подбора не вписаны —
-                        // серой кнопкой рядом, не главным делом шага (оплату страховой они не держат; ноль — «без подбора»).
-                        $shareLater = ! $wantsInvoice && $deal && $deal->isActive() && $deal->isGarageManager() && $deal->share === null
-                            && $deal->paysSupplierOn($stage) && $deal->moneyEditable() && auth()->user()?->canEditDeals();
-                    @endphp
-                    @if ($wantsInvoice || $shareLater || $moves->isNotEmpty() || $stage->template_id || $requests || $payNow->isNotEmpty())
+                    {{-- Услуги подбора гаражной на шаге оплаты поставщику не вписываются (20.11.2026, владелец: «услуги подбора ваще в другом
+                         месте указываются») — только в «Деньгах» сделки. Главное здесь — «Показать счёт» поставщика. --}}
+                    @if ($wantsInvoice || $billNeeded || $moves->isNotEmpty() || $stage->template_id || $requests || $payNow->isNotEmpty())
                         @php
                             // Письмо с реквизитами без реквизитов — не кнопкой, а чего не хватает (03.11.2026, владелец: «почему
                             // „Написать поставщику“, если покупатель так и не заполнен»).
@@ -463,7 +461,7 @@
                                 ? \App\Offers\Deal::awaitingSupplier($offer->vendor_id) : collect();
                             $invoiceButton = $wantsInvoice && $position->gap() !== 'send' && ! ($position->gap() === 'ros_requisites' && ! auth()->user()?->isParkAdmin());
                             // Сколько кнопок в ряду: от трёх лаймовая встаёт своей строкой во всю ширину (`.step-acts--lead`, 17.11.2026).
-                            $actCount = ($requests ? 1 : 0) + ($invoiceButton ? 1 : 0) + ($shareLater ? 1 : 0) + $payNow->count() + $moves->count()
+                            $actCount = ($requests ? 1 : 0) + ($invoiceButton ? 1 : 0) + ($billNeeded ? 1 : 0) + $payNow->count() + $moves->count()
                                 + ($stage->template_id ? 1 : 0) + ($waiting->count() > 1 ? 1 : 0);
                         @endphp
                         {{-- `.step-acts`: кнопки делят ширину дорожки, перенеслись — каждая во всю ширину (05.11.2026, владелец про
@@ -490,8 +488,8 @@
                                     <a href="{{ $action['url'] }}" class="btn btn-s btn-accent step-main" data-turbo-frame="_top">{{ $action['button'] }}</a>
                                 @endif
                             @endif
-                            @if ($shareLater)
-                                <button type="button" class="btn btn-s btn-quiet" data-controller="emit" data-action="emit#send" data-emit-event-param="deal-money-{{ $deal->id }}:open">Вписать услуги подбора</button>
+                            @if ($billNeeded)
+                                <button type="button" class="btn btn-s btn-accent step-main" data-controller="emit" data-action="emit#send" data-emit-event-param="invoice-pay-{{ $position->id }}:open">Показать счёт</button>
                             @endif
                             @foreach ($payNow as $i)
                                 <div data-controller="sheet">

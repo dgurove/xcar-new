@@ -498,10 +498,14 @@ class Position extends Model
         return isset($this->payload['reply_at']) ? Carbon::parse($this->payload['reply_at']) : null;
     }
 
-    /** Этап оплаты, а счёта ещё нет: наш ход — выставить счёт. */
+    /**
+     * Этап оплаты, а счёта ещё нет: наш ход — выставить счёт. Менеджер платит поставщику по его счёту (`Deal::paysSupplierOn`)
+     * — нашего счёта тут нет вовсе, наш ход — показать счёт поставщика (20.11.2026, владелец по 7925/046/01102/26: «тут должна
+     * быть кнопка „Показать счёт“, а не „Вписать услуги подбора“, это же от Альфы счёт»).
+     */
     public function awaitsInvoice(): bool
     {
-        return $this->waits_for === WaitsFor::Us && $this->stage->isPayStep();
+        return $this->waits_for === WaitsFor::Us && $this->stage->isPayStep() && ! $this->deal?->paysSupplierOn($this->stage);
     }
 
     /**

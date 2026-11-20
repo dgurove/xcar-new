@@ -221,6 +221,7 @@
             @include('admin.deals.supplier-rows')
         @php $top = trim(ob_get_clean()); ob_start(); @endphp
             <x-deal.contract-gaps :deal="$deal"/>
+            @include('admin.deals.supplier-contract-row')
             {!! $contractLine !!}
         @php $dealGroup = trim(ob_get_clean()); @endphp
         <div class="mb-2 flex items-start gap-3 px-3">
