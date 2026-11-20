@@ -443,7 +443,8 @@ html.kb-open { --home-gap: 0px; }
     .surface-crm .container-site .list:not(dialog *, #detail *, .box *, .list *),
     .surface-crm .container-site .chat-rows-list:not(dialog *, #detail *),
     .surface-crm .container-site .cards--list:not(dialog *, #detail *),
-    .surface-crm .container-site .inbox-list { margin-inline: -1rem; }
+    .surface-crm .container-site .inbox-list,
+    .surface-crm .container-site .chain-swipe:not(dialog *, #detail *) { margin-inline: -1rem; }
     /* Сайт — так же (18.11.2026, владелец: «хочу сделать xcar побольше похожим на CRM — блоки на телефоне тоже от края до края»). */
     .surface-site .container-site .box:not(dialog *, #detail *, .box *, .list *),
     .surface-site .container-site .list:not(dialog *, #detail *, .box *, .list *),

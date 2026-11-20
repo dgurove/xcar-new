@@ -13,9 +13,16 @@
     $phoneBack = $back ?? Nav::phoneBack($path, $user);
     $heading ??= $title;
     // Партнёр (08.11.2026): шапки и таб-бара нет — «‹» к списку в ряду заголовка, и на корне тоже, иначе из профиля не уйти.
-    $partner = \App\Support\Surface::current() === \App\Support\Surface::Partner;
+    // XCAR Chat и XCAR Mail (20.11.2026, владелец: «кнопки назад нет, если в кабинет свой зайти») — так же: «‹» к чатам или почте.
+    $surface = \App\Support\Surface::current();
+    $partner = $surface === \App\Support\Surface::Partner || $surface->single();
     if ($partner) {
-        $back = $back && $back[1] !== '/account' ? $back : ['Предложения', '/offers'];
+        $home = match ($surface) {
+            \App\Support\Surface::Chat => ['Чаты', $surface->home()],
+            \App\Support\Surface::Mail => ['Почта', $surface->home()],
+            default => ['Предложения', '/offers'],
+        };
+        $back = $back && $back[1] !== '/account' ? $back : $home;
         $phoneBack = $back;
         $root = false;
         $pills = false; // один раздел — колонки пилюль с одним «Профилем» нет

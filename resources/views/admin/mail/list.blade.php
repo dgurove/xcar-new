@@ -52,7 +52,7 @@
                 $archived = $c?->state === CandidateState::Rejected || $section['threads']->every(fn ($x) => $x->archived_at);
             @endphp
             {{-- Смахивается дело целиком: архивировать одно письмо из цепочки смысла нет. --}}
-            <x-ui.swipe id="case-{{ $section['kind'] }}-{{ $section['id'] }}" data-search-group>
+            <x-ui.swipe class="chain-swipe" id="case-{{ $section['kind'] }}-{{ $section['id'] }}" data-search-group>
             <section class="chain-card {{ $mark ? 'case--'.$mark : '' }}">
                 @if ($fresh)
                     <x-mail.chain-head :candidate="$c" :queue="$queue" :park="$park"/>

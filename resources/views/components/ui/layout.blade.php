@@ -9,6 +9,13 @@
     $bar = ['light' => '#ffffff', 'dark' => '#161616'];
     // Замок менеджера: состояние и конец окна — свежие на каждой странице (узел замка постоянный и сам их не обновит).
     // Окно замка — только на хосте, открытом человеку: на чужом его встречает стена, а /lock там закрыт.
+    // Вид приложения одного раздела — того, чьи экраны в нём (20.11.2026, владелец: «блоки во всю ширину»): XCAR Mail — CRM, XCAR Chat —
+    // CRM сотруднику и сайт остальным (`Chat::staffView`); правила `.surface-crm|site` (края, плотность) действуют и там.
+    $skin = match ($surface) {
+        \App\Support\Surface::Mail => ' surface-crm',
+        \App\Support\Surface::Chat => \App\Chats\Chat::staffView(auth()->user()) ? ' surface-crm' : ' surface-site',
+        default => '',
+    };
     $lock = $surface->opensFor(auth()->user()) ? \App\Users\Access\Lock::state() : null;
     // Одно устройство без полной защиты: окна нет, панель только слушает «вошли с другого».
     $lock ??= \App\Users\Access\Lock::lite(auth()->user()) && \App\Users\Access\Lock::token(request()) ? 'single' : null;
@@ -76,7 +83,7 @@
     <script>if (window.name === 'xcar-deal' && window.top !== window.self) document.documentElement.classList.add('is-embedded');</script>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
-<body data-controller="{{ trim('pwa '.$attributes->get('data-controller')) }}" data-nav-tab="{{ \App\Support\Nav::currentTab(auth()->user()) }}" {{ $attributes->except('data-controller')->merge(['class' => 'antialiased surface-'.$surface->value.($surface === \App\Support\Surface::Mail ? ' surface-crm' : '').(request()->attributes->get('chat-page') ? ' chat-open' : '')]) }}>
+<body data-controller="{{ trim('pwa '.$attributes->get('data-controller')) }}" data-nav-tab="{{ \App\Support\Nav::currentTab(auth()->user()) }}" {{ $attributes->except('data-controller')->merge(['class' => 'antialiased surface-'.$surface->value.$skin.(request()->attributes->get('chat-page') ? ' chat-open' : '')]) }}>
     {{ $slot }}
     @if ($as = \App\Users\Impersonation::current())
         {{-- Админ в чужом кабинете: плашка на каждом экране, чтобы не забыть, за кого действуешь (место — .impersonation). --}}
