@@ -19,6 +19,8 @@
     $stepKeys = !$deleted && !$system && ($m->requirement_id || $m->ask);
     $docPick = !$deleted && !$stepKeys && ($docAsk ?? null) && $m->author_kind === AuthorKind::Participant && $m->files->isNotEmpty()
         && $m->created_at->gte($docAsk->created_at->copy()->subDays(2));
+    $author = $system || $cont ? null : $m->authorName($chat, $user);
+    $authorShown = $author !== null && ($readonly || (!$mine && !$chat->isBuyerChat() && $author !== $chat->counterpartName($user)));
 @endphp
 <div class="msg {{ $system ? 'is-system' : ($mine ? 'is-mine' : 'is-their') }} {{ $cont ? 'is-cont' : '' }} {{ $mine && !$system && $m->seq <= $readSeq ? 'is-read' : '' }} {{ $m->edited_at && !$deleted ? 'is-edited' : '' }} {{ $photoOnly ? 'is-photo' : '' }} {{ $stepKeys || $docPick ? 'has-step' : '' }}" data-seq="{{ $m->seq }}" data-day="{{ $day }}" data-author="{{ $m->author_id ?? $m->author_kind->value }}" @if ($own) data-own @endif @if ($del) data-del @endif @if ($deleted) data-deleted @endif @if (!$system && !$readonly && !$deleted) data-action="contextmenu->chat#menu:prevent pointerdown->chat#press pointerup->chat#release pointercancel->chat#release pointermove->chat#drag" @endif>
     @if ($system)
@@ -29,7 +31,9 @@
                  правую кнопку никто не знал). Телефон — долгое нажатие. --}}
             @if (!$readonly && !$deleted)<button type="button" class="msg-more" data-action="chat#more" aria-label="Действия с сообщением"><x-ui.icon name="chevron-down" class="size-4"/></button>@endif
             {{-- Имя над чужим пузырём — где на той стороне могут быть разные люди (площадка) или читает сотрудник; покупателю и его менеджеру имя говорит полоса сверху. --}}
-            @if (!$cont && ($readonly || (!$mine && !$chat->isBuyerChat())))<div class="msg-author">{{ $m->authorName($chat, $user) }}</div>@endif
+            {{-- То же имя, что в шапке чата, не повторяем (20.11.2026, владелец: «зачем имя писать, если сверху имя написано»): у
+                 пузыря оно — только когда на той стороне пишет не тот, кто в шапке. --}}
+            @if ($authorShown)<div class="msg-author">{{ $author }}</div>@endif
             @if ($reply)
                 <button type="button" class="msg-quote" data-action="chat#jump" data-seq="{{ $reply->seq }}"><span class="msg-quote-name">{{ $reply->authorName($chat, $user) }}</span>{{ $reply->preview(80) }}</button>
             @endif
