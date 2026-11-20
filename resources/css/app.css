@@ -6001,7 +6001,10 @@ dialog.lightbox:not(.lb-one) .lb-pill--bottom { bottom: calc(var(--lb-strip-bott
   .msg.is-their { justify-content: flex-start; }
   .msg.is-system { justify-content: center; }
   .msg-bubble { position: relative; max-width: min(85%, 34rem); padding: .5rem .75rem .375rem; border-radius: 18px; background: var(--color-surface-3); }
-  .msg.is-mine .msg-bubble { background: var(--color-accent-soft); }
+  /* Без цвета (20.11.2026, владелец выбрал из трёх: светло-зелёные свои на белом — «вырвиглазно»): свои — белые, чужие — серые. */
+  .msg.is-mine .msg-bubble { background: var(--color-surface); }
+  .msg.is-their .msg-bubble { background: #e6e6e6; }
+  .dark .msg.is-their .msg-bubble { background: var(--color-surface-3); }
   .msg.is-mine:not(:has(+ .msg.is-mine.is-cont)) .msg-bubble { border-end-end-radius: 6px; }
   .msg.is-their:not(:has(+ .msg.is-their.is-cont)) .msg-bubble { border-end-start-radius: 6px; }
   /* На пальце долгое нажатие — меню пузыря, а не выделение текста (скопировать — пунктом меню). */
